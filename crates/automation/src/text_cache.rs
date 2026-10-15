@@ -131,7 +131,7 @@ mod tests {
         text.space_before.reserve(64);
         let mut word = String::with_capacity(1000);
         word.push('a');
-        text.glyphs.push(TextGlyph { text: word, rect: [0.0; 4], quad: [[0.0; 2]; 4], direction: [1.0, 0.0] });
+        text.glyphs.push(TextGlyph::new(word, [0.0; 4], [[0.0; 2]; 4], [1.0, 0.0]));
         let cost = retained_bytes(&text);
         assert!(cost >= 32 * std::mem::size_of::<TextGlyph>() + 48 * 4 + 64 + 1000);
         let text = Arc::new(text);

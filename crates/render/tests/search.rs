@@ -3,7 +3,7 @@ use std::ops::Range;
 
 fn page(parts: &[&str]) -> PageText {
     PageText {
-        glyphs: parts.iter().map(|text| TextGlyph { text: (*text).into(), rect: [0.0; 4], quad: [[0.0; 2]; 4], direction: [1.0, 0.0] }).collect(),
+        glyphs: parts.iter().map(|text| TextGlyph::new(*text, [0.0; 4], [[0.0; 2]; 4], [1.0, 0.0])).collect(),
         line_of: vec![0; parts.len()],
         space_before: vec![false; parts.len()],
     }

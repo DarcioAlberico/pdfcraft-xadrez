@@ -15,6 +15,7 @@ use hayro::hayro_interpret::{
 };
 use kurbo::{Affine, BezPath, Rect, Shape};
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 
 /// Semantic exclusions for statistics. Untagged text is retained; no layout guess is made.
 #[derive(Clone, Debug, Default)]
@@ -51,6 +52,34 @@ pub struct TextGlyph {
     pub quad: [[f32; 2]; 4],
     /// Unit vector of the writing direction in page view space (`[1, 0]`: left to right).
     pub direction: [f32; 2],
+    /// The font's `/BaseFont` without its subset prefix (`ABCDEF+ChessMerida` → `ChessMerida`).
+    /// Symbol fonts such as chess figurines draw pictures under letter codes, so `text` alone
+    /// reads `l` where the page shows a knight; the font name says which catalogue applies.
+    pub font: Option<Arc<str>>,
+    /// The character code the content stream showed, before any Unicode mapping: what a symbol
+    /// font's catalogue is keyed by. `None` for an `/ActualText` replacement of several glyphs.
+    pub code: Option<u32>,
+}
+
+impl TextGlyph {
+    /// A glyph with no font name or character code (built rather than read from a page).
+    pub fn new(text: impl Into<String>, rect: [f32; 4], quad: [[f32; 2]; 4], direction: [f32; 2]) -> Self {
+        TextGlyph { text: text.into(), rect, quad, direction, font: None, code: None }
+    }
+
+    /// The glyph with its font name (subset prefix already removed) and character code.
+    pub fn with_source(self, font: Option<Arc<str>>, code: Option<u32>) -> Self {
+        TextGlyph { font, code, ..self }
+    }
+}
+
+/// `name` without a font subset tag: six uppercase ASCII letters and `+` (ISO 32000-2 §9.6.4),
+/// so `ABCDEF+ChessMerida` gives `ChessMerida`. Any other name comes back unchanged.
+pub fn strip_subset_prefix(name: &str) -> &str {
+    match name.as_bytes().get(..7) {
+        Some([tag @ .., b'+']) if tag.iter().all(u8::is_ascii_uppercase) => name.get(7..).unwrap_or(name),
+        _ => name,
+    }
 }
 
 /// `s` folded for case-insensitive search, one character for one character.
@@ -362,6 +391,8 @@ struct TextDevice {
     excluded_depth: Option<usize>,
     actual_filtered: bool,
     partial_replacement: bool,
+    /// The last font name seen, as written and stripped: glyphs of one font share the `Arc`.
+    last_font: Option<(String, Arc<str>)>,
 }
 
 /// An `/ActualText` replacement: the glyph standing for it in `TextDevice::glyphs` (none for an
@@ -421,7 +452,10 @@ fn merge(drawn: &[Drawn], text: String) -> Option<Drawn> {
     let rect = quad.iter().fold([f32::INFINITY, f32::INFINITY, f32::NEG_INFINITY, f32::NEG_INFINITY], |r, p| {
         [r[0].min(p[0]), r[1].min(p[1]), r[2].max(p[0]), r[3].max(p[1])]
     });
-    Some((quarter, u, TextGlyph { text, rect, quad, direction: first.2.direction }))
+    // One font when every replaced glyph shares it; a code only when one glyph is replaced.
+    let font = first.2.font.clone().filter(|f| drawn.iter().all(|d| d.2.font.as_ref() == Some(f)));
+    let code = if let [only] = drawn { only.2.code } else { None };
+    Some((quarter, u, TextGlyph::new(text, rect, quad, first.2.direction).with_source(font, code)))
 }
 
 impl TextDevice {
@@ -435,6 +469,19 @@ impl TextDevice {
             excluded_depth: None,
             actual_filtered: false,
             partial_replacement: false,
+            last_font: None,
+        }
+    }
+
+    /// `base_font` without its subset prefix, shared with the glyphs before it in that font.
+    fn font_name(&mut self, base_font: &str) -> Arc<str> {
+        match &self.last_font {
+            Some((raw, name)) if raw == base_font => name.clone(),
+            _ => {
+                let name: Arc<str> = Arc::from(strip_subset_prefix(base_font));
+                self.last_font = Some((base_font.to_owned(), name.clone()));
+                name
+            }
         }
     }
 
@@ -626,12 +673,14 @@ impl<'a> Device<'a> for TextDevice {
         let direction = if length.is_finite() && length > 0.0 { [dx / length, dy / length] } else { [1.0, 0.0] };
         // A glyph whose Unicode is several characters (a ligature such as "ffi") stays one glyph
         // with its own box: the PDF gives no position for the characters inside it.
-        let glyph = TextGlyph {
+        let font = glyph.base_font().map(|f| self.font_name(f));
+        let glyph = TextGlyph::new(
             text,
-            rect: [b.x0 as f32, b.y0 as f32, b.x1 as f32, b.y1 as f32],
-            quad: corners.map(|p| [p.x as f32, p.y as f32]),
-            direction: direction.map(|d| d as f32),
-        };
+            [b.x0 as f32, b.y0 as f32, b.x1 as f32, b.y1 as f32],
+            corners.map(|p| [p.x as f32, p.y as f32]),
+            direction.map(|d| d as f32),
+        )
+        .with_source(font, Some(glyph.char_code()));
         match &mut self.actual {
             Some((_, _, drawn)) => drawn.push((dir, direction, glyph)),
             None => self.glyphs.push((dir, direction, glyph)),
@@ -1685,7 +1734,7 @@ mod tests {
         const N: usize = 100_000;
         let glyph = |text: &str| {
             let quad = [[100.0, 110.0], [110.0, 110.0], [110.0, 100.0], [100.0, 100.0]];
-            (0, [1.0, 0.0], TextGlyph { text: text.into(), rect: [100.0, 100.0, 110.0, 110.0], quad, direction: [1.0, 0.0] })
+            (0, [1.0, 0.0], TextGlyph::new(text, [100.0, 100.0, 110.0, 110.0], quad, [1.0, 0.0]))
         };
         let mut dev = TextDevice::new();
         // A genuine redraw first: it is still deduplicated within the budget.
@@ -1866,7 +1915,7 @@ mod tests {
 
     fn g(t: &str, x0: f32, y0: f32, x1: f32) -> TextGlyph {
         let rect = [x0, y0, x1, y0 + 10.0];
-        TextGlyph { text: t.into(), rect, quad: [[x0, y0], [x1, y0], [x1, rect[3]], [x0, rect[3]]], direction: [1.0, 0.0] }
+        TextGlyph::new(t, rect, [[x0, y0], [x1, y0], [x1, rect[3]], [x0, rect[3]]], [1.0, 0.0])
     }
 
     #[test]
@@ -2042,12 +2091,7 @@ mod tests {
     #[test]
     fn words_and_lines_around_a_glyph() {
         let t = PageText {
-            glyphs: Vec::from(["a", "b", " ", "c", "d", "e", "f", "g"].map(|s| TextGlyph {
-                text: s.into(),
-                rect: [0.0; 4],
-                quad: [[0.0; 2]; 4],
-                direction: [1.0, 0.0],
-            })),
+            glyphs: Vec::from(["a", "b", " ", "c", "d", "e", "f", "g"].map(|s| TextGlyph::new(s, [0.0; 4], [[0.0; 2]; 4], [1.0, 0.0]))),
             line_of: vec![0, 0, 0, 0, 0, 1, 1, 1],
             space_before: vec![false, false, false, false, false, false, true, false],
         };
@@ -2538,11 +2582,8 @@ mod tests {
     #[test]
     fn vertical_lines_keep_reading_order() {
         // Written downwards: the em box's edge towards the next line is its left one.
-        let cell = |t: &str, x: f32, y: f32| TextGlyph {
-            text: t.into(),
-            rect: [x, y, x + 10.0, y + 10.0],
-            quad: [[x, y], [x, y + 10.0], [x + 10.0, y + 10.0], [x + 10.0, y]],
-            direction: [0.0, 1.0],
+        let cell = |t: &str, x: f32, y: f32| {
+            TextGlyph::new(t, [x, y, x + 10.0, y + 10.0], [[x, y], [x, y + 10.0], [x + 10.0, y + 10.0], [x + 10.0, y]], [0.0, 1.0])
         };
         let t = PageText {
             // Right column 日本 first, then the left column 語文, each top to bottom.
@@ -2591,5 +2632,103 @@ mod tests {
         let expected = "Rückfragen für Überhitzungsschutz: können, weiß, Café";
         assert_eq!(ocr_layer_text(4, false), expected, "symbolic, no /ToUnicode");
         assert_eq!(ocr_layer_text(32, true), expected, "nonsymbolic, /ToUnicode for ASCII only");
+    }
+
+    #[test]
+    fn subset_prefix_is_six_uppercase_letters_and_a_plus() {
+        assert_eq!(strip_subset_prefix("ABCDEF+ChessMerida"), "ChessMerida");
+        assert_eq!(strip_subset_prefix("ABCDEF+"), "");
+        assert_eq!(strip_subset_prefix("ABCDEF+Échecs+Bold"), "Échecs+Bold", "only the first tag goes");
+        assert_eq!(strip_subset_prefix("ChessMerida"), "ChessMerida");
+        assert_eq!(strip_subset_prefix("abcdef+ChessMerida"), "abcdef+ChessMerida", "lowercase is no tag");
+        assert_eq!(strip_subset_prefix("ABCDE1+Font"), "ABCDE1+Font", "a digit is no tag");
+        assert_eq!(strip_subset_prefix("ABCDE+Font"), "ABCDE+Font", "five letters are no tag");
+        assert_eq!(strip_subset_prefix("ABCDEFG+Font"), "ABCDEFG+Font", "seven letters are no tag");
+        assert_eq!(strip_subset_prefix("ABCDEF"), "ABCDEF");
+        assert_eq!(strip_subset_prefix(""), "");
+        assert_eq!(strip_subset_prefix("+"), "+");
+        // Multi-byte characters across the first seven bytes: no tag, and no slice inside a char.
+        assert_eq!(strip_subset_prefix("ÄBCDEF+Font"), "ÄBCDEF+Font");
+        assert_eq!(strip_subset_prefix("ABCDE♞+Font"), "ABCDE♞+Font");
+        assert_eq!(strip_subset_prefix("♞♞♞"), "♞♞♞");
+        assert_eq!(strip_subset_prefix("ABCDEF+♞"), "♞");
+    }
+
+    /// A page showing `l0` in a non-embedded Type 1 font named `ABCDEF+TestFigurine` (`/F1`), `a`
+    /// in a Type 3 font with no `/BaseFont` (`/F2`, code 65), and CID 0x0124 in an Identity-H
+    /// Type 0 font named `QWERTY+TestCID` (`/F3`) whose `/ToUnicode` reads it as `Z`.
+    fn named_fonts_page() -> Pdf {
+        use lopdf::{Document, Object, Stream, dictionary};
+        let mut doc = Document::with_version("1.7");
+        let figurine = doc.add_object(dictionary! { "Type" => "Font", "Subtype" => "Type1", "BaseFont" => "ABCDEF+TestFigurine" });
+        let proc_a = doc.add_object(Stream::new(dictionary! {}, b"600 0 0 0 600 700 d1 0 0 600 700 re f".to_vec()));
+        let type3 = doc.add_object(dictionary! {
+            "Type" => "Font", "Subtype" => "Type3",
+            "FontBBox" => vec![0.into(), 0.into(), 600.into(), 700.into()],
+            "FontMatrix" => vec![0.001.into(), 0.into(), 0.into(), 0.001.into(), 0.into(), 0.into()],
+            "FirstChar" => 65, "LastChar" => 65, "Widths" => vec![600.into()],
+            "Encoding" => dictionary! { "Type" => "Encoding", "Differences" => vec![65.into(), Object::Name(b"a".to_vec())] },
+            "CharProcs" => dictionary! { "a" => proc_a },
+        });
+        let program = doc.add_object(Stream::new(dictionary! {}, include_bytes!("../../../assets/fonts/Inter-Regular.ttf").to_vec()));
+        let descriptor = doc.add_object(dictionary! {
+            "Type" => "FontDescriptor", "FontName" => "QWERTY+TestCID", "Flags" => 4, "FontFile2" => program,
+            "FontBBox" => vec![0.into(), (-200).into(), 1000.into(), 800.into()], "ItalicAngle" => 0, "Ascent" => 800, "Descent" => -200, "CapHeight" => 700, "StemV" => 80,
+        });
+        let cid_font = doc.add_object(dictionary! {
+            "Type" => "Font", "Subtype" => "CIDFontType2", "BaseFont" => "QWERTY+TestCID",
+            "CIDSystemInfo" => dictionary! { "Registry" => Object::string_literal("Adobe"), "Ordering" => Object::string_literal("Identity"), "Supplement" => 0 },
+            "FontDescriptor" => descriptor, "CIDToGIDMap" => "Identity",
+        });
+        let cmap = b"/CIDInit /ProcSet findresource begin 12 dict begin begincmap /CMapName /Z def /CMapType 2 def 1 begincodespacerange <0000> <FFFF> endcodespacerange 1 beginbfchar <0124> <005A> endbfchar endcmap CMapName currentdict /CMap defineresource pop end end";
+        let to_unicode = doc.add_object(Stream::new(dictionary! {}, cmap.to_vec()));
+        let type0 = doc.add_object(dictionary! {
+            "Type" => "Font", "Subtype" => "Type0", "BaseFont" => "QWERTY+TestCID", "Encoding" => "Identity-H",
+            "DescendantFonts" => vec![Object::Reference(cid_font)], "ToUnicode" => to_unicode,
+        });
+        let ops = "BT /F1 20 Tf 1 0 0 1 50 300 Tm (l0) Tj ET BT /F2 20 Tf 1 0 0 1 50 200 Tm (A) Tj ET BT /F3 20 Tf 1 0 0 1 50 100 Tm <0124> Tj ET";
+        let content = doc.add_object(Stream::new(dictionary! {}, ops.as_bytes().to_vec()));
+        let pages = doc.new_object_id();
+        let resources = dictionary! { "Font" => dictionary! { "F1" => figurine, "F2" => type3, "F3" => type0 } };
+        let page = doc.add_object(dictionary! { "Type" => "Page", "Parent" => pages, "MediaBox" => vec![Object::Integer(0), Object::Integer(0), Object::Integer(400), Object::Integer(400)], "Resources" => resources, "Contents" => content });
+        doc.objects.insert(pages, dictionary! {"Type" => "Pages", "Kids" => vec![Object::Reference(page)], "Count" => 1}.into());
+        let catalog = doc.add_object(dictionary! {"Type" => "Catalog", "Pages" => pages});
+        doc.trailer.set("Root", catalog);
+        let mut bytes = Vec::new();
+        doc.save_to(&mut bytes).unwrap();
+        Pdf::new(std::sync::Arc::new(bytes)).unwrap()
+    }
+
+    #[test]
+    fn glyphs_carry_their_font_name_and_character_code() {
+        let text = extract_page(&named_fonts_page(), 0, &InterpreterSettings::default()).unwrap();
+        let found: Vec<(&str, Option<&str>, Option<u32>)> = text.glyphs.iter().map(|g| (g.text.as_str(), g.font.as_deref(), g.code)).collect();
+        assert_eq!(
+            found,
+            [
+                ("l", Some("TestFigurine"), Some(0x6C)),
+                ("0", Some("TestFigurine"), Some(0x30)),
+                ("a", None, Some(65)),
+                ("Z", Some("TestCID"), Some(0x0124)),
+            ]
+        );
+        // Glyphs of one font share one name.
+        let (l, zero) = (&text.glyphs[0], &text.glyphs[1]);
+        assert!(l.font.as_ref().zip(zero.font.as_ref()).is_some_and(|(a, b)| Arc::ptr_eq(a, b)));
+    }
+
+    #[test]
+    fn an_actual_text_replacement_keeps_the_font_and_only_a_lone_code() {
+        let quad = [[0.0, 10.0], [10.0, 10.0], [10.0, 0.0], [0.0, 0.0]];
+        let font: Arc<str> = Arc::from("TestFigurine");
+        let drawn = |code: u32, font: &Arc<str>| {
+            (0, [1.0, 0.0], TextGlyph::new("l", [0.0, 0.0, 10.0, 10.0], quad, [1.0, 0.0]).with_source(Some(font.clone()), Some(code)))
+        };
+        let one = merge(&[drawn(0x6C, &font)], "♘".into()).unwrap().2;
+        assert_eq!((one.font.as_deref(), one.code), (Some("TestFigurine"), Some(0x6C)));
+        let two = merge(&[drawn(0x6C, &font), drawn(0x30, &font)], "♘0".into()).unwrap().2;
+        assert_eq!((two.font.as_deref(), two.code), (Some("TestFigurine"), None));
+        let mixed = merge(&[drawn(0x6C, &font), drawn(0x30, &Arc::from("Other"))], "♘0".into()).unwrap().2;
+        assert_eq!((mixed.font.as_deref(), mixed.code), (None, None));
     }
 }

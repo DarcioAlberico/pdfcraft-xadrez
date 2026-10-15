@@ -10,8 +10,7 @@ fn main() {
         ("ordinary", "The quick brown fox jumps over the lazy dog. ".repeat(3000), "brown fox".into()),
         ("unicode", "İSTANBUL κόσμος Straße العربية 日本語 ".repeat(3000), "istanbul".into()),
     ] {
-        let glyphs: Vec<_> =
-            text.chars().map(|c| TextGlyph { text: c.to_string(), rect: [0.0; 4], quad: [[0.0; 2]; 4], direction: [1.0, 0.0] }).collect();
+        let glyphs: Vec<_> = text.chars().map(|c| TextGlyph::new(c, [0.0; 4], [[0.0; 2]; 4], [1.0, 0.0])).collect();
         let n = glyphs.len();
         let page = PageText { glyphs, line_of: vec![0; n], space_before: vec![false; n] };
         black_box(page.find(&query));
