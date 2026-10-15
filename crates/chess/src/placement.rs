@@ -112,6 +112,12 @@ impl Square {
         (file < 8 && rank < 8).then_some(Square(rank * 8 + file))
     }
 
+    /// The square at `file` and `rank` taken modulo 8. For coordinates that are on the board by
+    /// construction (another chess library's squares), where `new` could only ever succeed.
+    pub(crate) fn wrapping(file: u8, rank: u8) -> Square {
+        Square((rank % 8) * 8 + file % 8)
+    }
+
     /// The square with this index (a1 = 0), or `None` above 63.
     pub fn from_index(index: usize) -> Option<Square> {
         u8::try_from(index).ok().filter(|&i| i < 64).map(Square)
