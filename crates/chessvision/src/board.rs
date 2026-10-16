@@ -8,8 +8,15 @@
 //! - [`checker_score`] and [`texture_score`] measure how much a crop looks like a board. The
 //!   contour detector ranks and filters its quads with them.
 //!
+//! S8 reads the boards: [`read`] turns a page's diagram candidates into positions (see
+//! [`reading`]).
+//!
 //! Ported from the Python prototype `ChessVisionOFF_Puro` (`board_detection.py`, relicensed
 //! MIT/Apache by its author), with its measured constants in [`consts`].
+
+pub mod reading;
+
+pub use reading::{BoardReading, ReadPosition, ReadingSource, SquareClassifier, Unreadable, board_image, read, squares};
 
 use crate::coords::PixelRect;
 use crate::imageops::{Plane, dims, resize_area, resize_bilinear, to_gray, to_plane, warp_plane};

@@ -5,6 +5,7 @@
 //! written here from OpenCV's documented semantics. Where the result can differ from OpenCV the
 //! function says so.
 
+use crate::coords::PixelRect;
 use crate::raster::GrayImage;
 
 /// A gray plane of `f32` samples, row-major: the working form of a resized or warped image.
@@ -16,14 +17,6 @@ pub(crate) struct Plane {
 }
 
 impl Plane {
-    /// The sample at column `x`, row `y`, or 0 outside the plane.
-    pub fn at(&self, x: usize, y: usize) -> f32 {
-        if x >= self.width {
-            return 0.0;
-        }
-        y.checked_mul(self.width).and_then(|row| row.checked_add(x)).and_then(|i| self.data.get(i)).copied().unwrap_or(0.0)
-    }
-
     /// Row `y`, empty outside the plane.
     pub fn row(&self, y: usize) -> &[f32] {
         let start = y.saturating_mul(self.width);
@@ -268,25 +261,36 @@ pub(crate) fn to_plane(image: &GrayImage) -> Plane {
 /// `image` resized bilinearly (OpenCV's `INTER_LINEAR`: pixel centres aligned, border
 /// replicated). `None` for an empty destination or one larger than a gray image may be.
 pub(crate) fn resize_bilinear(image: &GrayImage, width: u32, height: u32) -> Option<GrayImage> {
-    let (sw, sh) = dims(image);
+    resize_region_bilinear(image, PixelRect { x0: 0, y0: 0, x1: image.width(), y1: image.height() }, width, height)
+}
+
+/// The pixels of `image` inside `region` resized bilinearly, as [`resize_bilinear`] resizes a copy
+/// of them, but sampled in place: a region as large as the page costs no copy of it. `None` for an
+/// empty or out-of-bounds region, an empty destination or one larger than a gray image may be.
+pub(crate) fn resize_region_bilinear(image: &GrayImage, region: PixelRect, width: u32, height: u32) -> Option<GrayImage> {
+    if region.x1 > image.width() || region.y1 > image.height() || region.width() == 0 || region.height() == 0 {
+        return None;
+    }
+    let (sw, sh) = (usize::try_from(region.width()).ok()?, usize::try_from(region.height()).ok()?);
     let (dw, dh) = (usize::try_from(width).ok()?, usize::try_from(height).ok()?);
     if dw == 0 || dh == 0 || dw.checked_mul(dh)? > crate::raster::MAX_GRAY_PIXELS {
         return None;
     }
-    let source = to_plane(image);
-    let axis = |d: usize, dst: usize, src: usize| -> (usize, usize, f32) {
+    // Source offsets within the region, which lie inside the image (checked above), so the sums fit.
+    let axis = |d: usize, dst: usize, src: usize| -> (u32, u32, f32) {
         let pos = ((d as f64 + 0.5) * src as f64 / dst as f64 - 0.5).max(0.0);
         let low = (pos.floor() as usize).min(src.saturating_sub(1));
         let high = (low + 1).min(src.saturating_sub(1));
-        (low, high, (pos - low as f64).clamp(0.0, 1.0) as f32)
+        (low as u32, high as u32, (pos - low as f64).clamp(0.0, 1.0) as f32)
     };
+    let at = |x: u32, y: u32| image.get(region.x0.saturating_add(x), region.y0.saturating_add(y)).map_or(0.0, f32::from);
+    let columns: Vec<(u32, u32, f32)> = (0..dw).map(|x| axis(x, dw, sw)).collect();
     let mut data = Vec::with_capacity(dw * dh);
     for y in 0..dh {
         let (y0, y1, fy) = axis(y, dh, sh);
-        for x in 0..dw {
-            let (x0, x1, fx) = axis(x, dw, sw);
-            let top = source.at(x0, y0) * (1.0 - fx) + source.at(x1, y0) * fx;
-            let bottom = source.at(x0, y1) * (1.0 - fx) + source.at(x1, y1) * fx;
+        for &(x0, x1, fx) in &columns {
+            let top = at(x0, y0) * (1.0 - fx) + at(x1, y0) * fx;
+            let bottom = at(x0, y1) * (1.0 - fx) + at(x1, y1) * fx;
             data.push(top * (1.0 - fy) + bottom * fy);
         }
     }
@@ -496,5 +500,12 @@ mod tests {
         assert!(out.data().iter().all(|&v| v == 77));
         assert!(resize_bilinear(&gray(1, 1, vec![9]), 0, 4).is_none());
         assert!(resize_bilinear(&gray(1, 1, vec![9]), u32::MAX, u32::MAX).is_none());
+        // A region is resized as a copy of its pixels would be, and must lie inside the image.
+        let image = gray(7, 6, (0..42).map(|v| (v * 37 % 256) as u8).collect());
+        let region = PixelRect { x0: 2, y0: 1, x1: 6, y1: 5 };
+        let copy = gray(4, 4, (1..5).flat_map(|y| (2..6).map(move |x| ((y * 7 + x) * 37 % 256) as u8)).collect());
+        assert_eq!(resize_region_bilinear(&image, region, 9, 13), resize_bilinear(&copy, 9, 13));
+        assert!(resize_region_bilinear(&image, PixelRect { x1: 8, ..region }, 9, 13).is_none());
+        assert!(resize_region_bilinear(&image, PixelRect { x1: 2, ..region }, 9, 13).is_none());
     }
 }
