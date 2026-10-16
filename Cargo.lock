@@ -4041,6 +4041,7 @@ dependencies = [
  "pdfcraft-chess",
  "pdfcraft-geom",
  "pdfcraft-render",
+ "png 0.18.1",
  "proptest",
  "rten",
  "rten-imageproc",

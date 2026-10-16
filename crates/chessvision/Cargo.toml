@@ -29,4 +29,6 @@ rten-imageproc = { version = "0.26.0", default-features = false }
 thiserror.workspace = true
 
 [dev-dependencies]
+# The board-reading benchmark (`examples/read_bench.rs`) decodes the prototype's PNG boards.
+png = "0.18"
 proptest.workspace = true
