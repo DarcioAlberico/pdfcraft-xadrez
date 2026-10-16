@@ -18,7 +18,13 @@ Planned contents (blueprint `docs/chess/blueprint.md`):
 - **Coordinates.** Boxes travel in PDF user space (points), with the DPI they were measured at. `coords` is the one place that converts them: `PageGeometry` (crop box, `/Rotate`, `/UserUnit`) maps user space to view space (y down, after `/Rotate`, as rendered pixels and `TextGlyph.rect`) and back, and pixel boxes take their DPI explicitly.
 - **Reading** (S8). `board` crops and normalises each diagram, cuts it into 64 squares and classifies them with the piece model. The `pdfcraft-chess` recognizer then makes the reading legal.
 - **Chess text** (S12–S13):
-  - `chess_text` reads figurine fonts in a page's text layer;
+  - `chess_text` reads a page's text layer (S12, done). `from_page_text(&PageText, lang_hint)` returns `ChessPageText`:
+    - `lines`: runs (`Text`, `MoveNumber`, `Move`, `Nag`, `Figurine`), each with a view-space box (`ChessSpan::user_rect` converts to user space);
+    - `lang` and `lang_tally`: the piece-letter language, guessed from the page or merged across a document;
+    - `quality`: `Good`, `Poor { reason }` or `Missing`, so the engine knows when to fall back to OCR;
+    - `unknown_chess_fonts`.
+
+    In catalogued figurine fonts the character code, not the extracted text, says which piece a glyph is, and context decides whether a capital is a piece or a letter. Publisher symbols (`³`) are normalized first, Informator symbol fonts are mapped, and diagram-font glyphs are left to the diagram detector. Tests build `TextGlyph`s directly; no PDF is needed.
   - `glyphs` classifies chess symbols in scanned text.
 - **Document** (S14). `doc::ChessDoc` is the recognised document that feeds the PDF-and-text view and every export.
 
