@@ -279,7 +279,13 @@ fn candidate(unit: &Unit, images: &[ImageBox], page: &PageGeometry) -> Option<Di
     // edge of the tolerance.
     let shape = (1.0 - (aspect - 1.0).abs() / tolerance.max(1e-6)).clamp(0.0, 1.0) as f32;
     let base = if trimmed.is_some() { TRIMMED_SCORE_BASE } else { UNTRIMMED_SCORE_BASE };
-    Some(DiagramCandidate { bbox_user: trimmed.unwrap_or(unit.bbox), source: Source::Embedded, score: base + base * shape, dpi_hint })
+    Some(DiagramCandidate {
+        bbox_user: trimmed.unwrap_or(unit.bbox),
+        source: Source::Embedded,
+        score: base + base * shape,
+        dpi_hint,
+        placement: None,
+    })
 }
 
 /// The board's box in user space after trimming `gray` (a raster of `bbox` as displayed), or

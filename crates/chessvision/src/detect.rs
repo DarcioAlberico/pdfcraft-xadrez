@@ -5,7 +5,10 @@
 //! `order`.
 
 pub mod embedded;
+pub mod font;
+pub mod vector;
 
+use pdfcraft_chess::placement::Placement;
 use pdfcraft_geom::PageRect;
 
 /// Which detector found a candidate.
@@ -13,6 +16,10 @@ use pdfcraft_geom::PageRect;
 pub enum Source {
     /// An image the PDF embeds on the page ([`embedded`]).
     Embedded,
+    /// Text set in a chess diagram font ([`font`]); the position is read exactly.
+    Font,
+    /// A grid of filled squares drawn with vector paths ([`vector`]).
+    Vector,
 }
 
 /// A region of a page that a detector believes holds one chess diagram.
@@ -27,4 +34,6 @@ pub struct DiagramCandidate {
     /// The resolution the source offers for this box, in dots per inch: rendering it finer
     /// than this adds no detail. Clamped to a sensible rendering range by each detector.
     pub dpi_hint: f32,
+    /// The position, when the detector could read it without a model (a diagram font).
+    pub placement: Option<Placement>,
 }
