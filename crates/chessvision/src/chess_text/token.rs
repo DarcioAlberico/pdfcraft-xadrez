@@ -62,7 +62,13 @@ fn normalized(chars: &[char]) -> Vec<char> {
 /// Step 2: `normalize_publisher_symbols` on a word, keeping each character's box. An alias of
 /// several characters (`+/=`) becomes one glyph with the union of their boxes. The word is
 /// still the raw extracted text (figurines aside): nothing else has normalized it.
+///
+/// Words longer than [`MAX_WORD_CHARS`] are prose or noise and come back as they are: aligning
+/// the aliases re-normalizes the rest of the word at each one, which is quadratic in its length.
 pub(crate) fn normalize_symbols(word: &[Cell]) -> Vec<Cell> {
+    if word.len() > MAX_WORD_CHARS {
+        return word.to_vec();
+    }
     let src: Vec<char> = word.iter().map(|c| c.ch).collect();
     let out = normalized(&src);
     if out == src {
@@ -447,4 +453,18 @@ pub(crate) fn assemble(words: Vec<Vec<Token>>, side: &mut Side) -> Option<ChessL
     }
     let rect = view(union(boxes)?);
     Some(ChessLine { spans, rect })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_long_word_is_not_normalized() {
+        // A line of aliases with no word gap: aligning it would be quadratic in its length.
+        let word: Vec<Cell> = "+/=".repeat(MAX_WORD_CHARS).chars().map(|c| Cell::new(c, [0.0; 4])).collect();
+        assert_eq!(normalize_symbols(&word), word);
+        let short: Vec<Cell> = "+/=".chars().map(|c| Cell::new(c, [0.0; 4])).collect();
+        assert_eq!(normalize_symbols(&short).len(), 1, "a short alias is still normalized");
+    }
 }
