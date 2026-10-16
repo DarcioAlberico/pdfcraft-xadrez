@@ -8,7 +8,7 @@
 //! detector and reader returns diagrams in one reading order ([`order`]), so "diagram 3" means
 //! the same diagram on screen, in an export and in a tool result.
 //!
-//! No model weights ship with PdfCraft: [`models`] loads the user's own `.rten` files, and
+//! No model weights ship with PdfCraft: [`models`] loads the user's own `.onnx` files, and
 //! without them detection still works and reading reports the models as missing.
 
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable, clippy::indexing_slicing)]
