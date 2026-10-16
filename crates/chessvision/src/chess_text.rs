@@ -38,6 +38,9 @@ pub mod lang;
 pub mod quality;
 mod token;
 
+#[cfg(test)]
+mod tests;
+
 use std::sync::Arc;
 
 use pdfcraft_chess::placement::PieceKind;
