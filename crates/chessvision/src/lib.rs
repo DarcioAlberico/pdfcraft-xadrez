@@ -19,6 +19,7 @@ pub mod coords;
 pub mod detect;
 pub mod doc;
 pub mod glyphs;
+mod imageops;
 pub mod merge;
 pub mod models;
 pub mod order;

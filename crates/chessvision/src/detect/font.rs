@@ -107,6 +107,7 @@ pub fn candidates(glyphs: &[FontGlyph], page: &PageGeometry, options: Options) -
                     // The position is exact; any resolution will do for display.
                     dpi_hint: 150.0,
                     placement: Some(board.placement),
+                    corners: None,
                 });
             }
         }

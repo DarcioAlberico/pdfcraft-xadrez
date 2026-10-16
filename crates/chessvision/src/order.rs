@@ -83,6 +83,7 @@ mod tests {
             score: 1.0,
             dpi_hint: 150.0,
             placement: None,
+            corners: None,
         }
     }
 

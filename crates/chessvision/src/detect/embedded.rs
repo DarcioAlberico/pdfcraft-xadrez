@@ -285,6 +285,7 @@ fn candidate(unit: &Unit, images: &[ImageBox], page: &PageGeometry) -> Option<Di
         score: base + base * shape,
         dpi_hint,
         placement: None,
+        corners: None,
     })
 }
 

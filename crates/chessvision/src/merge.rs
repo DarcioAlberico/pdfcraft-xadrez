@@ -35,9 +35,8 @@ fn precision(s: Source) -> u8 {
     match s {
         Source::Font => 4,
         Source::Vector => 3,
+        Source::Contour => 2,
         Source::Embedded => 1,
-        #[allow(unreachable_patterns)]
-        _ => 2,
     }
 }
 
@@ -132,7 +131,7 @@ mod tests {
     use pdfcraft_chess::placement::Placement;
 
     fn cand(x: f32, y: f32, side: f32, source: Source) -> DiagramCandidate {
-        DiagramCandidate { bbox_user: PageRect::new(x, y, x + side, y + side), source, score: 0.7, dpi_hint: 150.0, placement: None }
+        DiagramCandidate { bbox_user: PageRect::new(x, y, x + side, y + side), source, score: 0.7, dpi_hint: 150.0, placement: None, corners: None }
     }
 
     #[test]

@@ -155,6 +155,7 @@ fn lattices(squares: &[FilledBox], side: f32) -> Vec<DiagramCandidate> {
                 score: 0.6 + 0.4 * (count as f32 / 32.0).min(1.0),
                 dpi_hint: 300.0,
                 placement: None,
+                corners: None,
             });
         }
     }
