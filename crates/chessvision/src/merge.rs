@@ -35,9 +35,8 @@ fn precision(s: Source) -> u8 {
     match s {
         Source::Font => 4,
         Source::Vector => 3,
+        Source::Contour => 2,
         Source::Embedded => 1,
-        #[allow(unreachable_patterns)]
-        _ => 2,
     }
 }
 
@@ -132,7 +131,7 @@ mod tests {
     use pdfcraft_chess::placement::Placement;
 
     fn cand(x: f32, y: f32, side: f32, source: Source) -> DiagramCandidate {
-        DiagramCandidate { bbox_user: PageRect::new(x, y, x + side, y + side), source, score: 0.7, dpi_hint: 150.0, placement: None }
+        DiagramCandidate { bbox_user: PageRect::new(x, y, x + side, y + side), source, score: 0.7, dpi_hint: 150.0, placement: None, corners: None }
     }
 
     #[test]
@@ -153,6 +152,22 @@ mod tests {
         assert_eq!(merged[0].candidate.bbox_user, font.bbox_user);
         assert_eq!(merged[0].candidate.placement, Some(Placement::standard()));
         assert_eq!(merged[0].sources, vec![Source::Embedded, Source::Font]);
+    }
+
+    #[test]
+    fn a_contour_beats_an_embedded_image_and_keeps_its_corners() {
+        let image = cand(100.0, 100.0, 160.0, Source::Embedded);
+        let corners = [(104.0, 256.0), (256.0, 256.0), (256.0, 104.0), (104.0, 104.0)];
+        let contour = DiagramCandidate { corners: Some(corners), ..cand(104.0, 104.0, 152.0, Source::Contour) };
+        let merged = merge(vec![image, contour.clone()]);
+        assert_eq!(merged.len(), 1);
+        assert_eq!(merged[0].candidate.bbox_user, contour.bbox_user);
+        assert_eq!(merged[0].candidate.corners, Some(corners));
+        // A font reading over the same board is more precise still, and carries no corners.
+        let font = DiagramCandidate { placement: Some(Placement::standard()), ..cand(103.0, 103.0, 154.0, Source::Font) };
+        let merged = merge(vec![contour, font.clone()]);
+        assert_eq!(merged[0].candidate.bbox_user, font.bbox_user);
+        assert_eq!(merged[0].candidate.corners, None);
     }
 
     #[test]
