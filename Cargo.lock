@@ -4038,6 +4038,7 @@ dependencies = [
 name = "pdfcraft-chessvision"
 version = "0.8.0"
 dependencies = [
+ "ocrs",
  "pdfcraft-chess",
  "pdfcraft-geom",
  "pdfcraft-render",
@@ -4050,6 +4051,7 @@ dependencies = [
  "serde_json",
  "skrifa 0.44.0",
  "thiserror 2.0.21",
+ "unicode-normalization",
 ]
 
 [[package]]
