@@ -96,6 +96,9 @@ pub fn validate(bytes: &[u8]) -> Result<(), String> {
     Ok(())
 }
 
+/// How many objects at each end of the document [`embed_mapping`] reads for a program to reuse.
+const PROGRAM_SEARCH: usize = 8192;
+
 fn stream(doc: &mut Document, bytes: Vec<u8>) -> Object {
     Object::Ref(doc.add(Object::Stream(Stream::from_raw(Dict::new(), bytes))))
 }
@@ -192,9 +195,15 @@ pub fn embed_mapping(
         Object::Array([bounds.x_min, bounds.y_min, bounds.x_max, bounds.y_max].map(|v| Object::Real(f64::from(v) * scale)).to_vec()),
     );
     // Reuse the program another resource of this page already has, else one registered on another
-    // page; source subset programs stay untouched.
+    // page; source subset programs stay untouched. The search reads the first objects and the
+    // newest ones: one written earlier in this session (another page of an OCR run, say) has a
+    // number past the original file's.
     let existing = written(doc, fonts).find(|w| w.has_program(doc, bytes)).map(|w| w.program).or_else(|| {
-        doc.scan_objects().take(8192).find_map(|(r, o)| match o.as_ref() {
+        let numbers = doc.object_numbers();
+        let first = numbers.len().min(PROGRAM_SEARCH);
+        let newest = numbers.len().saturating_sub(PROGRAM_SEARCH).max(first);
+        let search: Vec<u32> = numbers.get(..first).into_iter().chain(numbers.get(newest..)).flatten().copied().collect();
+        doc.scan_objects_subset(search).find_map(|(r, o)| match o.ok()?.as_ref() {
             Object::Stream(s) if s.dict.get(b"PCFullFont").is_some() && s.raw.as_ref() == bytes => Some(Object::Ref(r)),
             _ => None,
         })
@@ -357,6 +366,11 @@ mod tests {
         assert_eq!(embed_mapping(&mut doc, &mut fonts, bytes, "Inter", &shaped).unwrap(), first);
         assert_eq!(embed_mapping(&mut doc, &mut fonts, bytes, "Inter", &shaped[..1]).map(|r| r != first), Ok(true), "a different mapping");
         assert_eq!(programs(&doc), 1, "one program for every mapping");
+        // Another page (its own font resources, as each page of an OCR run has) reuses the
+        // program too, though it is past the first 8192 objects.
+        let mut other_page = Dict::new();
+        embed_mapping(&mut doc, &mut other_page, bytes, "Inter", &shaped).unwrap();
+        assert_eq!(programs(&doc), 1, "another page reuses the program");
         assert_eq!(fonts.iter().count(), 3);
         assert!(doc.scan_objects().count() > objects);
         // Another writer may have compressed the streams since; the page still recognises them.

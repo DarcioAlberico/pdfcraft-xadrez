@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 
 use pdfcraft_render::{PageInfo, PageRenderer, RenderConfig, RenderRequest, RequestKind};
 
-pub use pdfcraft_ocr::{LANGUAGES, Models, Ocr, OcrError, PlacedWord};
+pub use pdfcraft_ocr::{Degraded, LANGUAGES, Models, Ocr, OcrError, PlacedWord};
 
 use crate::{DocId, Edit, EditError, Session};
 
@@ -69,6 +69,12 @@ pub struct OcrPage {
 impl OcrPage {
     pub fn text(&self) -> String {
         self.words.iter().map(|w| w.text.as_str()).collect::<Vec<_>>().join(" ")
+    }
+
+    /// The characters the text layer writes differently in this build (chess figurines as SAN
+    /// letters when it has no craft-fonts face; see [`pdfcraft_ocr::write_text_layer`]).
+    pub fn degraded(&self) -> Vec<Degraded> {
+        pdfcraft_ocr::degraded(&self.words)
     }
 }
 
@@ -295,6 +301,89 @@ mod tests {
                 let near = |got: u32, want: u32| got.abs_diff(want) <= 1;
                 assert!(near(shot.width, want[0]) && near(shot.height, want[1]), "{dpi} dpi, page {page}: {}x{}", shot.width, shot.height);
             }
+        }
+    }
+
+    /// A word on a letter page, 30 × 9 pt with its bottom-left corner at `x`, 700.
+    fn placed(text: &str, x: f64) -> PlacedWord {
+        PlacedWord { text: text.into(), origin: [x, 700.0], across: [30.0, 0.0], up: [0.0, 9.0] }
+    }
+
+    /// Recognised words added to page 1 of a blank letter page, then saved: the original
+    /// bytes, the saved bytes, and what the OCR run reported.
+    fn saved_ocr(words: Vec<PlacedWord>) -> (Arc<Vec<u8>>, Arc<Vec<u8>>, OcrPage) {
+        let mut s = Session::new().with_clock(|| 1_700_000_000);
+        let blank = s.create_blank(612.0, 792.0, 1).unwrap();
+        let id = s.open("scan.pdf", None, blank.clone(), None).unwrap();
+        let page = OcrPage { page: 0, words, already_on_page: 0, skipped: None };
+        s.apply_ocr(id, std::slice::from_ref(&page)).unwrap();
+        let saved = s.save_bytes(id).unwrap();
+        s.check_save(id, &saved).unwrap();
+        (blank, saved, page)
+    }
+
+    /// Page 1's text as search and selection see it, from a file opened afresh.
+    fn reopened_text(bytes: &Arc<Vec<u8>>) -> Arc<pdfcraft_render::PageText> {
+        let mut s = Session::new();
+        let id = s.open("reopened.pdf", None, bytes.clone(), None).unwrap();
+        let mut r = PageRenderer::new(s.get(id).unwrap().bytes.clone(), RenderConfig::default());
+        r.render(RenderRequest { page: 0, kind: RequestKind::Text, scale: 1.0, ..Default::default() }).text.unwrap_or_default()
+    }
+
+    /// S13d: with craft-fonts, recognised chess text keeps its figurines and signs. After an
+    /// incremental save and a reopen, searching for "♘" finds the word, over its box, and the
+    /// layer is still invisible.
+    #[test]
+    fn a_figurine_in_the_ocr_layer_is_found_after_save_and_reopen() {
+        if pdfcraft_ocr::layer_face().is_none() {
+            eprintln!("skipped: built without craft-fonts (CRAFT_FONTS_DIR)");
+            return;
+        }
+        let (blank, saved, page) = saved_ocr(vec![placed("1.♘f3", 100.0), placed("⩲", 200.0)]);
+        assert!(page.degraded().is_empty(), "{:?}", page.degraded());
+        assert!(saved.starts_with(&blank), "the save is incremental");
+        let text = reopened_text(&saved);
+        let hits = text.find("♘");
+        assert_eq!(hits.len(), 1, "{:?}", text.plain_text());
+        assert_eq!(text.find("1.♘f3").len(), 1, "{:?}", text.plain_text());
+        assert_eq!(text.find("⩲").len(), 1, "{:?}", text.plain_text());
+        // The figurine is over its word (x 100–130, y 700–709 in user space; view y runs down).
+        let g = &text.glyphs[hits[0].start];
+        let [x0, y0, x1, y1] = g.rect;
+        assert!(x0 >= 99.0 && x1 <= 131.0 && x0 < x1, "{:?}", g.rect);
+        assert!(y0 >= 792.0 - 712.0 && y1 <= 792.0 - 697.0, "{:?}", g.rect);
+        let mut r = PageRenderer::new(saved.clone(), RenderConfig::default());
+        let shot = r.render(RenderRequest { page: 0, scale: 0.5, ..Default::default() });
+        assert!(shot.error.is_none() && !shot.rgba.is_empty());
+        assert!(shot.rgba.iter().all(|&v| v == 255), "the text layer is invisible");
+    }
+
+    /// S13d without craft-fonts: the Helvetica layer writes the figurine as its SAN letter and the
+    /// sign in its ASCII form, and the run reports both.
+    #[test]
+    fn without_craft_fonts_figurines_become_san_letters_and_are_reported() {
+        if pdfcraft_ocr::layer_face().is_some() {
+            eprintln!("skipped: built with craft-fonts, which keep the figurines");
+            return;
+        }
+        let (blank, saved, page) = saved_ocr(vec![placed("1.♘f3", 100.0), placed("⩲", 200.0)]);
+        assert!(saved.starts_with(&blank), "the save is incremental");
+        let written: Vec<(char, String)> = page.degraded().into_iter().map(|d| (d.ch, d.written)).collect();
+        assert_eq!(written, [('♘', "N".to_string()), ('⩲', "+/=".to_string())]);
+        let text = reopened_text(&saved);
+        assert_eq!(text.find("1.Nf3").len(), 1, "{:?}", text.plain_text());
+        assert_eq!(text.find("+/=").len(), 1, "{:?}", text.plain_text());
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::prelude::ProptestConfig::with_cases(12))]
+        /// Any recognised text goes through the edit, the save check and a reopen without a
+        /// panic, in the Unicode layer (with craft-fonts) or the Helvetica one (without).
+        #[test]
+        fn any_recognised_text_saves_and_reopens(texts in proptest::collection::vec(".{0,8}|[\\u{2654}-\\u{265F}\\u{2A71}\\u{2A72}\\u{1F600}\\u{0301}\\u{FFFD}\\x00-\\x1F]{1,6}", 1..5)) {
+            let words = texts.iter().enumerate().map(|(i, t)| placed(t, 50.0 + 60.0 * i as f64)).collect();
+            let (_, saved, _) = saved_ocr(words);
+            let _ = reopened_text(&saved);
         }
     }
 
