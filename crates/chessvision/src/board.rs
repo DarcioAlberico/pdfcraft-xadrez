@@ -312,9 +312,13 @@ fn fit_grid_1d(profile: &[f64]) -> Option<(usize, usize, f64, f64)> {
 /// it and a uniform 8 × 8 grid over the whole crop misses the squares. Each axis is refitted
 /// where the nine grid lines catch the most edge energy, and taken only when the fitted grid
 /// responds [`consts::INNER_GRID_MIN_GAIN`] times more than the uniform one.
+///
+/// `None` as well for a side above [`consts::MAX_WARP_SIDE`]: boards come from [`warp`], and the
+/// search is quadratic in the side.
 pub fn fit_inner_board(board: &GrayImage) -> Option<PixelRect> {
     let (width, height) = dims(board);
-    if width < MIN_FIT_SIDE || height < MIN_FIT_SIDE {
+    let max_side = usize::try_from(MAX_WARP_SIDE).unwrap_or(usize::MAX);
+    if width < MIN_FIT_SIDE || height < MIN_FIT_SIDE || width > max_side || height > max_side {
         return None;
     }
     let plane = to_plane(board);
@@ -523,5 +527,15 @@ mod tests {
         assert_eq!(tighten(&image), image);
         assert_eq!(fit_inner_board(&GrayImage::new(8, 8, vec![0; 64]).unwrap()), None);
         assert_eq!(tighten(&GrayImage::new(1, 1, vec![0]).unwrap()).width(), 1);
+    }
+
+    /// The grid search is quadratic in the side: a long strip within the gray-image cap would
+    /// hang it, so a side above the warp cap is refused, even with a frame to trim.
+    #[test]
+    fn a_board_larger_than_any_warp_is_not_fitted() {
+        let side = MAX_WARP_SIDE - 400 + 1;
+        let image = framed_board(side, 200, 80);
+        assert!(image.width() > MAX_WARP_SIDE);
+        assert_eq!(fit_inner_board(&image), None);
     }
 }
