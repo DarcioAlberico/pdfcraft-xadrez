@@ -32,3 +32,8 @@ thiserror.workspace = true
 # The board-reading benchmark (`examples/read_bench.rs`) decodes the prototype's PNG boards.
 png = "0.18"
 proptest.workspace = true
+# The OCR benchmark (`examples/ocr_bench.rs`) only: the general OCR whose words the glyph reader is
+# fused with (the engine passes them in; `pdfcraft-ocr` is the same layer, so the example uses the
+# external crate directly), and NFKC for the Caïssa scorer.
+ocrs = { version = "0.13.1", default-features = false, features = ["rten"] }
+unicode-normalization = "0.1"
