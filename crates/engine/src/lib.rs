@@ -19,6 +19,7 @@ pub mod camera;
 pub mod camera_clean;
 pub mod camera_edges;
 pub mod catalog;
+pub mod chess;
 pub mod commands;
 pub mod compare;
 mod copy_image;
@@ -2894,6 +2895,8 @@ pub struct Session {
     date_format: Option<String>,
     /// Preferences ▸ Date format ▸ Language, when not following the interface language.
     date_language: Option<String>,
+    /// Chess diagram scans, per document, page and scan parameters ([`chess`]).
+    chess: chess::ChessCache,
 }
 
 /// Immutable session state needed while a document is prepared away from its owning thread.
@@ -4861,6 +4864,7 @@ impl Session {
 
     pub fn close(&mut self, id: DocId) {
         self.docs.retain(|d| d.id != id);
+        self.chess.forget(id);
     }
 
     pub fn get(&self, id: DocId) -> Option<&Document> {

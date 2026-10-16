@@ -34,6 +34,9 @@ pdfcraft-fonts = { workspace = true }
 pdfcraft-create = { workspace = true }
 pdfcraft-model = { workspace = true }
 pdfcraft-geom = { workspace = true }
+# Chess ▸ Scan diagrams (chess.rs): the rules and the diagram vision it adapts the document to.
+pdfcraft-chess = { workspace = true }
+pdfcraft-chessvision = { workspace = true }
 thiserror = { workspace = true }
 png = "0.18"
 # Already in the graph (url and idna through webbrowser, icu_properties through boa): they show
