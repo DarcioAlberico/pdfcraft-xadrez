@@ -4039,6 +4039,7 @@ name = "pdfcraft-chessvision"
 version = "0.8.0"
 dependencies = [
  "pdfcraft-chess",
+ "pdfcraft-geom",
  "rten",
  "rten-imageproc",
  "thiserror 2.0.21",

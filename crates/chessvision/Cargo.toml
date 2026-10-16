@@ -12,6 +12,8 @@ workspace = true
 
 [dependencies]
 pdfcraft-chess = { workspace = true }
+# L0: `PageRect` and `Rotation`, the page geometry `coords` converts between spaces.
+pdfcraft-geom = { workspace = true }
 # Same inference runtime and format as pdfcraft-ocr: pure Rust, builds for wasm32.
 rten = { version = "0.26.0", default-features = false, features = ["rten_format"] }
 # Contours, polygon simplification and minimum-area rectangles for the page detector (no OpenCV).

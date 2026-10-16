@@ -11,7 +11,7 @@
 //! No model weights ship with PdfCraft: [`models`] loads the user's own `.rten` files, and
 //! without them detection still works and reading reports the models as missing.
 
-#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
+#![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable, clippy::indexing_slicing)]
 
 pub mod board;
 pub mod chess_text;
@@ -22,3 +22,4 @@ pub mod glyphs;
 pub mod merge;
 pub mod models;
 pub mod order;
+pub mod raster;

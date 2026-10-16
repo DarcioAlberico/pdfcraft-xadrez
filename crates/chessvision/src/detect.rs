@@ -1,1 +1,30 @@
 //! Diagram candidates from embedded images, page contours, diagram fonts and vector grids (blueprint S7a-S7c).
+//!
+//! Every detector returns [`DiagramCandidate`]s in user space. Each source is a submodule; the
+//! candidates of different sources are joined later by `merge` and put in reading order by
+//! `order`.
+
+pub mod embedded;
+
+use pdfcraft_geom::PageRect;
+
+/// Which detector found a candidate.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Source {
+    /// An image the PDF embeds on the page ([`embedded`]).
+    Embedded,
+}
+
+/// A region of a page that a detector believes holds one chess diagram.
+#[derive(Clone, Debug, PartialEq)]
+pub struct DiagramCandidate {
+    /// The diagram's box in PDF user space (points, y up): the space of page images and links.
+    pub bbox_user: PageRect,
+    /// The detector that found it.
+    pub source: Source,
+    /// The detector's confidence in this box, in 0..=1. Not a reading confidence.
+    pub score: f32,
+    /// The resolution the source offers for this box, in dots per inch: rendering it finer
+    /// than this adds no detail. Clamped to a sensible rendering range by each detector.
+    pub dpi_hint: f32,
+}

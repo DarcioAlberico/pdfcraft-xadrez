@@ -13,7 +13,9 @@ Planned contents (blueprint `docs/chess/blueprint.md`):
   - vector-drawn grids.
 
   `merge` joins candidates from different sources into one diagram each. `order` puts them in reading order, the single ordering shared by the screen, export, links and tools.
-- **Coordinates.** Boxes travel in PDF user space (points), with the DPI they were measured at. `coords` is the one place that converts them to view or display space.
+
+  Embedded images are done (S7a): `detect::embedded::candidates_from_images` takes the page's `ImageBox`es (box in user space, pixel size, optional gray raster as a `raster::GrayImage`) and drops background scans, joins touching tiles, filters by pixel size, aspect and size on the page, and trims frame and caption off with `trim_to_grid` / `trim_to_frame`. Its thresholds, ported from the Python prototype's measurements, are in `detect::embedded::consts`.
+- **Coordinates.** Boxes travel in PDF user space (points), with the DPI they were measured at. `coords` is the one place that converts them: `PageGeometry` (crop box, `/Rotate`, `/UserUnit`) maps user space to view space (y down, after `/Rotate`, as rendered pixels and `TextGlyph.rect`) and back, and pixel boxes take their DPI explicitly.
 - **Reading** (S8). `board` crops and normalises each diagram, cuts it into 64 squares and classifies them with the piece model. The `pdfcraft-chess` recognizer then makes the reading legal.
 - **Chess text** (S12–S13):
   - `chess_text` reads figurine fonts in a page's text layer;
