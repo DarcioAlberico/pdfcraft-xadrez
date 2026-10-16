@@ -22,4 +22,6 @@ Planned contents (blueprint `docs/chess/blueprint.md`):
   - `glyphs` classifies chess symbols in scanned text.
 - **Document** (S14). `doc::ChessDoc` is the recognised document that feeds the PDF-and-text view and every export.
 
-No model weights ship with PdfCraft. `models` loads the user's own `.rten` files from `$PDFCRAFT_MODELS`, or from bytes on the web. Without them, detection still works and reading reports the models as missing.
+No model weights ship with PdfCraft. `models` loads the user's own ONNX models from `$PDFCRAFT_MODELS` or from beside the executable; on the web, the page passes their bytes. There are two, each with a JSON description: `chess-pieces.onnx` (one 64×64 square → 13 classes) and `chess-glyphs.onnx` (one 32×32 character cell → chess glyphs). The description and the model are checked against each other when they load. `rten` reads ONNX directly, so there is no conversion step. Without the models, detection still works and reading reports them as missing.
+
+To check the loader against real models, point `PDFCRAFT_CHESS_TEST_MODELS` at their folder. A test then loads them and compares their probabilities with reference outputs written beside them (`*.parity.json`, tolerance 1e-4). Without that variable the test is skipped.
