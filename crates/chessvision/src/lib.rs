@@ -15,6 +15,7 @@
 
 pub mod board;
 pub mod chess_text;
+pub mod cipher;
 pub mod coords;
 pub mod detect;
 pub mod doc;

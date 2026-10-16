@@ -366,6 +366,14 @@ fn decode(token: &ReadToken, s: &Shape, cipher: &CipherMap) -> Option<(Vec<Strin
     (!used.is_empty()).then_some((out, used))
 }
 
+/// The token's slot texts with `cipher`'s symbols replaced by solid figurines (a cluster's
+/// figurine in its first slot, the rest emptied), or `None` when it holds none. Decoding alone
+/// proves nothing: it is for a book's table, already proved elsewhere.
+pub fn decipher(token: &ReadToken, cipher: &CipherMap) -> Option<Vec<String>> {
+    let s = shape(token)?;
+    decode(token, &s, cipher).map(|(texts, _)| texts)
+}
+
 /// A position moves are replayed from: a diagram's FEN, or the initial position of a game.
 #[derive(Clone, Debug)]
 pub struct GameContext {
