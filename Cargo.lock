@@ -4040,6 +4040,8 @@ version = "0.8.0"
 dependencies = [
  "pdfcraft-chess",
  "pdfcraft-geom",
+ "pdfcraft-render",
+ "proptest",
  "rten",
  "rten-imageproc",
  "rten-tensor",

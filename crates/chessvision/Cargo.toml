@@ -14,6 +14,8 @@ workspace = true
 pdfcraft-chess = { workspace = true }
 # L0: `PageRect` and `Rotation`, the page geometry `coords` converts between spaces.
 pdfcraft-geom = { workspace = true }
+# L3: `TextGlyph` / `PageText`, the page text layer `chess_text` reads (with font name and code).
+pdfcraft-render = { workspace = true }
 # Same inference runtime as pdfcraft-ocr: pure Rust, builds for wasm32. `onnx_format` loads the
 # user's exported .onnx models directly (no conversion step).
 rten = { version = "0.26.0", default-features = false, features = ["rten_format", "onnx_format"] }
@@ -25,3 +27,6 @@ serde_json.workspace = true
 # Contours, polygon simplification and minimum-area rectangles for the page detector (no OpenCV).
 rten-imageproc = { version = "0.26.0", default-features = false }
 thiserror.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
