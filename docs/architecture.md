@@ -8,7 +8,7 @@ crate's `README.md` has the detail.
 
 ## Shape
 
-One Cargo workspace (`Cargo.toml`, edition 2024, Rust ≥ 1.95, `MIT OR Apache-2.0`), 31 library
+One Cargo workspace (`Cargo.toml`, edition 2024, Rust ≥ 1.95, `MIT OR Apache-2.0`), 35 library
 crates in `crates/`, three binaries in `apps/`, build tooling in `xtask/`, and patched third-party
 crates in `vendor/`. About 152k lines of Rust and 1,765 tests (2026-10-10). Rust only: no
 handwritten JS/TS, in the product or the build.
@@ -27,11 +27,11 @@ standalone and publishable.
 
 | Layer | Crates today | Role |
 |---|---|---|
-| L0 foundation | `geom`, `filters`, `crypt` | Geometry; stream filters (Flate, LZW, predictors, ASCII85, ASCIIHex, RunLength); standard security handler R2–R6 (RC4, AES-128/256, SASLprep) |
+| L0 foundation | `geom`, `filters`, `crypt`, `chess` | Geometry; stream filters (Flate, LZW, predictors, ASCII85, ASCIIHex, RunLength); standard security handler R2–R6 (RC4, AES-128/256, SASLprep); chess positions, legality, notation and board drawing (no PDF) |
 | L1 objects | `cos` | Lazy, tolerant parser with xref repair; copy-on-write object graph; incremental and full writers with object streams; decryption on load and re-encryption on save |
 | L2 core model | `content`, `model`, `fonts` | Content-stream operators with source spans and a serializer; typed page tree with inherited attributes and display geometry (`/UserUnit`, `/Rotate`); font metrics and encodings for generated appearances |
 | L3 core services | `render`, `annot`, `forms`, `js`, `xfa` | Rendering and inspection (bootstrap: vendored `hayro`, `lopdf`); annotation builders and appearance streams; AcroForm model, filling, appearances; sandboxed JavaScript (boa) and FormCalc; XFA template layout and data |
-| L4 features | `edit`, `organize`, `redact`, `xfdf`, `sign`, `ocr`, `create`, `export`, `optimize`, `preflight`, `a11y`, `compare`, `measure`, `print` | One crate per Acrobat tool family |
+| L4 features | `edit`, `organize`, `redact`, `xfdf`, `sign`, `ocr`, `create`, `export`, `optimize`, `preflight`, `a11y`, `compare`, `measure`, `print`, `chessvision` | One crate per Acrobat tool family; `chessvision` finds and reads chess diagrams and chess text |
 | L6 façade | `engine` | Session, open documents, edit history, the command registry and tool catalogue. Frontends never reach past it |
 | L7 platform and frontends | `platform`, `ui-egui`, `automation` | OS services; the egui shell (desktop and web); headless JSON-Schema tools, CLI and MCP |
 
