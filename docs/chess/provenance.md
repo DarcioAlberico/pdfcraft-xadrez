@@ -34,6 +34,7 @@ Repositórios cobertos, todos com commits só de DarcioAlberico:
 | arquivo | situação | python-chess |
 |---|---|---|
 | core/chess/notation_tables.py, ocr/notation/cipher.py, ocr/notation/book_cipher.py, export/fidelity.py | próprio | — |
+| ocr/metrics.py (métrica CER/lances, portada em `crates/chessvision/examples/ocr_bench.rs`) | próprio (único autor no histórico) | — |
 | notation/legality_repair.py | próprio (cita PGN_Live_Editor como ideia) | Board, Move → `cozy-chess` |
 | notation/nag_table.py | próprio (portado do PGN_Live_Editor, seu) | — |
 | notation/annotations.py | próprio (portado do PGN_Live_Editor, seu) | square helpers |
