@@ -70,6 +70,30 @@ fn comment_ref(mut extra: Value) -> Value {
     extra
 }
 
+fn models_dir() -> Value {
+    json!({ "type": "string", "description": "A file path to the folder holding chess-pieces.onnx/.json (relative to --root when set). Default: PDFCRAFT_MODELS, then beside the executable." })
+}
+
+/// The arguments of `chess_detect` and, with `read`, `chess_read`.
+fn chess_props(read: bool) -> Value {
+    let mut props = json!({
+        "doc": doc(),
+        "pages": pages("to scan (default: all)"),
+        "dpi": { "type": "number", "minimum": 72, "maximum": 600, "description": "Resolution pages are rendered at to find diagrams (default 220)." },
+        "order": { "type": "string", "enum": ["column", "row"], "description": "Reading order of the diagrams on a page (default column)." },
+        "max_per_page": { "type": "integer", "minimum": 1, "maximum": 64, "description": "Most diagrams kept per page, in reading order (default 64)." },
+        "allow_unverified_fonts": { "type": "boolean", "description": "Also read chess fonts whose layout was not checked (default false)." },
+    });
+    if read && let Some(o) = props.as_object_mut() {
+        o.insert("models_dir".into(), models_dir());
+        o.insert(
+            "max_read_dpi".into(),
+            json!({ "type": "number", "minimum": 72, "maximum": 600, "description": "Highest resolution a page is rendered at again for reading, when a diagram (an embedded image) has finer detail than dpi (default 600)." }),
+        );
+    }
+    props
+}
+
 fn schema(props: Value, required: &[&str]) -> Value {
     json!({ "type": "object", "properties": props, "required": required, "additionalProperties": false })
 }
@@ -1145,6 +1169,15 @@ pub fn tools() -> Vec<ToolDef> {
             .ro()
             .cmd("ocr.recognize")
             .with(schema(json!({}), &[])),
+        t("chess_detect", "Find chess diagrams", "Chess ▸ Scan diagrams: find the chess diagrams on pages, from embedded images, contours on the rendered page, text in chess diagram fonts and boards drawn as filled squares, joined into one diagram each and numbered in reading order (column by column unless order is row): diagram n is the same diagram in every chess tool. Returns, per page, each diagram's rect (points from the top-left of the displayed page), bbox_user (PDF user space), the detector that placed it and every detector that saw it (image, contour, font, vector), score, dpi_hint, corners when the board is turned or skewed, and whether its position is in the text; truncated when the page had more than max_per_page; notes on anything skipped. Read-only; needs no model.")
+            .ro()
+            .with(schema(chess_props(false), &["doc"])),
+        t("chess_read", "Read chess diagrams", "Chess ▸ Scan diagrams ▸ Read: find the diagrams as chess_detect does and read each into a position. A diagram set in a chess font is read exactly from the text, with no model; the others need the user's piece model (chess_status) and otherwise say unreadable: no_model, with the reason. A reading gives fen, legal and legality (with violations), side_to_move and how it was decided, orientation, min_confidence (the weakest square, not the mean), accepted (legal and every square at least 0.80; a reading the decoder repaired never is, and goes to review), uncertain squares with their second reading, repairs, the dpi it was read at, and lichess_url only for a legal position the decoder did not repair. Read-only.")
+            .ro()
+            .with(schema(chess_props(true), &["doc"])),
+        t("chess_status", "Chess model status", "Whether the user's chess models are available (none ship with PdfCraft): the piece model reads drawn and scanned diagrams, the glyph model chess text. Each is loaded, missing or invalid (with the reason). models_dir looks in that folder instead of PDFCRAFT_MODELS and beside the executable. Also says where the piece set for drawing diagrams comes from (PDFCRAFT_CHESS_PIECES, an installed Chess Merida, or plain geometric pieces). Diagrams in chess fonts are read without any model.")
+            .ro()
+            .with(schema(json!({ "models_dir": models_dir() }), &[])),
         t("doc_export_all_images", "Export all images", "Write the images that pages use into a folder (`<name>_Page_<n>_Image_<k>.jpg|png`, n zero-padded to the page count's digits), each once: JPEG images unchanged, others as PNG with their soft mask as alpha. min_size skips images with fewer pixels on their shorter side. Images that can't be decoded yet (JPEG 2000, JBIG2, CCITT, separations) are listed under skipped. Includes unsaved edits.")
             .cmd("export.all_images")
             .with(schema(

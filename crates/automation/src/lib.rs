@@ -16,6 +16,7 @@
 
 mod a11y;
 mod batch;
+mod chess;
 mod comments;
 mod content;
 mod conventions;
@@ -788,6 +789,9 @@ impl Automation {
             "form_set_actions" => self.form_set_actions(&a)?,
             "ocr_status" => self.ocr_status()?,
             "ocr_recognize_files" => self.ocr_recognize_files(&a)?,
+            "chess_detect" => self.chess_detect(&a)?,
+            "chess_read" => self.chess_read(&a)?,
+            "chess_status" => self.chess_status(&a)?,
             "accessibility_report" => self.a11y_report(&a)?,
             "accessibility_review_record" => self.a11y_review_record(&a)?,
             "accessibility_review_save" => self.a11y_review_save(&a)?,
