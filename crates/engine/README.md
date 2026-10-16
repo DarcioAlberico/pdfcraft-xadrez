@@ -72,6 +72,7 @@ family (`sign`, `sign_with_timestamp`, `timestamp_document`, `embed_ltv`).
 | `links` | Link creation, properties, and finding URLs in page text |
 | `js` | The bridge to `pdfcraft-js`. `forms` never depends on `js` directly; the engine injects it, so a build without JavaScript is possible |
 | `xfa`, `ocr`, `compare`, `export` | Façades over the L3/L4 crates of the same names |
+| `chess` | Chess ▸ Scan diagrams: adapts page images, filled paths, chess-font text and the gray page raster to `pdfcraft-chessvision`, runs detect → merge → reading order → `board::read`, and caches each page's result by document state and scan settings. Read-only; jobs run like OCR's |
 
 ## Not done here
 

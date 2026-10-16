@@ -20,6 +20,7 @@
 #[cfg(feature = "mcp")]
 mod automation_args;
 mod batch;
+mod chess;
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -70,6 +71,8 @@ pdfcraft-cli audit  <file.pdf> [--password PW]            find faux redactions (
 pdfcraft-cli batch <files or dirs...> --steps convert,ocr,optimize --out-dir DIR
                       [--recursive] [--root DIR] [--stop-on-error]
                       [--ppi 150] [--quality 60] [--dpi 300] [--language en] [--ocr-all-pages]
+pdfcraft-cli chess scan <file.pdf> [--pages 1,3-5] [--json] [--models DIR] [--dpi 220] [--detect-only]
+                      [--root DIR] [--password PW]          find and read chess diagrams (chess_read)
 pdfcraft-cli tools                                       automation tools and their JSON Schemas
 pdfcraft-cli run    <tool> [key=value …] [--root DIR] [--out image.png]
 pdfcraft-cli run    --script steps.json [--root DIR] [--report]
@@ -105,6 +108,7 @@ fn main() -> ExitCode {
         Some("tools") => tools(),
         Some("run") => run(&args[1..]),
         Some("batch") => batch::run(&args[1..]),
+        Some("chess") => chess::run(&args[1..]),
         Some("ui") => ui(&args[1..]),
         #[cfg(feature = "mcp")]
         Some("mcp") => mcp(&args[1..]),
