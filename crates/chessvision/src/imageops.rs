@@ -16,6 +16,14 @@ pub(crate) struct Plane {
 }
 
 impl Plane {
+    /// The sample at column `x`, row `y`, or 0 outside the plane.
+    pub fn at(&self, x: usize, y: usize) -> f32 {
+        if x >= self.width {
+            return 0.0;
+        }
+        y.checked_mul(self.width).and_then(|row| row.checked_add(x)).and_then(|i| self.data.get(i)).copied().unwrap_or(0.0)
+    }
+
     /// Row `y`, empty outside the plane.
     pub fn row(&self, y: usize) -> &[f32] {
         let start = y.saturating_mul(self.width);
@@ -257,6 +265,34 @@ pub(crate) fn to_plane(image: &GrayImage) -> Plane {
     Plane { width, height, data: image.data().iter().map(|&v| f32::from(v)).collect() }
 }
 
+/// `image` resized bilinearly (OpenCV's `INTER_LINEAR`: pixel centres aligned, border
+/// replicated). `None` for an empty destination or one larger than a gray image may be.
+pub(crate) fn resize_bilinear(image: &GrayImage, width: u32, height: u32) -> Option<GrayImage> {
+    let (sw, sh) = dims(image);
+    let (dw, dh) = (usize::try_from(width).ok()?, usize::try_from(height).ok()?);
+    if dw == 0 || dh == 0 || dw.checked_mul(dh)? > crate::raster::MAX_GRAY_PIXELS {
+        return None;
+    }
+    let source = to_plane(image);
+    let axis = |d: usize, dst: usize, src: usize| -> (usize, usize, f32) {
+        let pos = ((d as f64 + 0.5) * src as f64 / dst as f64 - 0.5).max(0.0);
+        let low = (pos.floor() as usize).min(src.saturating_sub(1));
+        let high = (low + 1).min(src.saturating_sub(1));
+        (low, high, (pos - low as f64).clamp(0.0, 1.0) as f32)
+    };
+    let mut data = Vec::with_capacity(dw * dh);
+    for y in 0..dh {
+        let (y0, y1, fy) = axis(y, dh, sh);
+        for x in 0..dw {
+            let (x0, x1, fx) = axis(x, dw, sw);
+            let top = source.at(x0, y0) * (1.0 - fx) + source.at(x1, y0) * fx;
+            let bottom = source.at(x0, y1) * (1.0 - fx) + source.at(x1, y1) * fx;
+            data.push(top * (1.0 - fy) + bottom * fy);
+        }
+    }
+    to_gray(&Plane { width: dw, height: dh, data })
+}
+
 /// The 3 × 3 projective transform (row-major, last entry 1) that takes each `from` point to the
 /// matching `to` point, as OpenCV's `getPerspectiveTransform` solves it. `None` when the points
 /// are degenerate (three in a line) or not finite.
@@ -452,5 +488,13 @@ mod tests {
         assert_eq!(to_gray(&out).unwrap().data(), &data[..]);
         assert!(warp_plane(&plane, [[0.0, 0.0]; 4], 8).is_none());
         assert!(warp_plane(&plane, [[0.0, 0.0], [7.0, 0.0], [7.0, 7.0], [0.0, 7.0]], 0).is_none());
+    }
+
+    #[test]
+    fn bilinear_resize_keeps_flat_images_flat_and_refuses_empty_sizes() {
+        let out = resize_bilinear(&gray(3, 5, vec![77; 15]), 11, 4).unwrap();
+        assert!(out.data().iter().all(|&v| v == 77));
+        assert!(resize_bilinear(&gray(1, 1, vec![9]), 0, 4).is_none());
+        assert!(resize_bilinear(&gray(1, 1, vec![9]), u32::MAX, u32::MAX).is_none());
     }
 }

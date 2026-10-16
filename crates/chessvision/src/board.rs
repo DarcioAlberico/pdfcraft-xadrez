@@ -3,13 +3,16 @@
 //! S7b brings the geometry the reader starts from:
 //! - [`warp`] turns a detected quad (four corners on the page raster) into an upright square
 //!   board, [`consts::BOARD_SIZE`] pixels a side by default, so S8 can cut it into 64 squares;
+//! - [`fit_inner_board`] and [`tighten`] trim the frame a contour sometimes includes, so the
+//!   8 × 8 grid sits on the squares;
 //! - [`checker_score`] and [`texture_score`] measure how much a crop looks like a board. The
 //!   contour detector ranks and filters its quads with them.
 //!
 //! Ported from the Python prototype `ChessVisionOFF_Puro` (`board_detection.py`, relicensed
 //! MIT/Apache by its author), with its measured constants in [`consts`].
 
-use crate::imageops::{Plane, resize_area, to_gray, to_plane, warp_plane};
+use crate::coords::PixelRect;
+use crate::imageops::{Plane, dims, resize_area, resize_bilinear, to_gray, to_plane, warp_plane};
 use crate::raster::GrayImage;
 
 /// The reader's constants. The measured ones come from the prototype and say what they
@@ -51,6 +54,28 @@ pub mod consts {
     /// Least half-width, in pixels, of the window searched around each expected grid line
     /// (`max(2, period // 8)`).
     pub const GRID_MIN_PEAK_RADIUS: usize = 2;
+
+    /// How far inside the crop, as a share of its side, the board's edge may sit
+    /// (`INNER_GRID_MAX_INSET`).
+    pub const INNER_GRID_MAX_INSET: f64 = 0.12;
+
+    /// A fitted grid must respond this many times more than the uniform one before its axis is
+    /// even considered (`INNER_GRID_MIN_GAIN`). The cheap first filter.
+    pub const INNER_GRID_MIN_GAIN: f64 = 1.15;
+
+    /// A tightened crop is kept only when its checker contrast rises by at least 0.10 **and** by
+    /// at least 30 % (`INNER_GRID_MIN_CHECKER_GAIN`). Edge energy alone accepted 2–13 px trims
+    /// of crops that were already right and cost 6 exact boards on the field set (103 → 97);
+    /// on double-framed crops the contrast doubles (Koblenz 0.31–0.39 → 0.58–0.67).
+    pub const INNER_GRID_MIN_CHECKER_GAIN: f64 = 0.10;
+    pub const INNER_GRID_MIN_CHECKER_RATIO: f64 = 1.3;
+
+    /// Width of the box filter that smooths the edge profiles (`_edge_profile`: 5 px).
+    pub const EDGE_PROFILE_SMOOTHING: usize = 5;
+
+    /// Smallest board side, in pixels, [`super::fit_inner_board`] works on: below it the
+    /// smoothing and the inset search have nothing to work with. A guard, not a measurement.
+    pub const MIN_FIT_SIDE: usize = 16;
 }
 
 use consts::*;
@@ -226,6 +251,113 @@ fn percentile(values: &[f64], q: f64) -> f64 {
     a + (b - a) * (rank - low as f64)
 }
 
+/// Edge energy per column (`across`) or per row, smoothed by a 5 px box (`_edge_profile`).
+fn edge_profile(board: &Plane, across: bool) -> Vec<f64> {
+    let (w, h) = (board.width, board.height);
+    let raw: Vec<f64> = if across {
+        let mut sums = vec![0.0_f64; w.saturating_sub(1)];
+        for y in 0..h {
+            for (slot, pair) in sums.iter_mut().zip(board.row(y).windows(2)) {
+                if let [a, b] = pair {
+                    *slot += f64::from((b - a).abs());
+                }
+            }
+        }
+        sums
+    } else {
+        (0..h.saturating_sub(1)).map(|y| board.row(y).iter().zip(board.row(y + 1)).map(|(a, b)| f64::from((b - a).abs())).sum()).collect()
+    };
+    // `np.convolve(mode="same")` with a centred box: zeros beyond either end.
+    let half = EDGE_PROFILE_SMOOTHING / 2;
+    (0..raw.len())
+        .map(|i| raw.get(i.saturating_sub(half)..(i + half + 1).min(raw.len())).unwrap_or(&[]).iter().sum::<f64>() / EDGE_PROFILE_SMOOTHING as f64)
+        .collect()
+}
+
+/// Where the 8-square grid starts and ends along one axis, with its response and the response
+/// of the uniform grid over the whole length (`_fit_grid_1d`): the pair whose nine lines sum the
+/// most edge energy, the start within the first [`consts::INNER_GRID_MAX_INSET`] of the length
+/// and the end within the last.
+fn fit_grid_1d(profile: &[f64]) -> Option<(usize, usize, f64, f64)> {
+    let last = profile.len().checked_sub(1)?;
+    let length = profile.len() + 1;
+    let inset = ((length as f64 * INNER_GRID_MAX_INSET) as usize).max(1);
+    let response = |start: usize, end: usize| -> f64 {
+        (0..=8_u32)
+            .map(|k| {
+                let position = start as f64 + (end as f64 - start as f64) * f64::from(k) / 8.0;
+                let index = (position.round_ties_even().max(0.0) as usize).min(last);
+                profile.get(index).copied().unwrap_or(0.0)
+            })
+            .sum()
+    };
+    let ends = length.saturating_sub(inset)..length;
+    let mut best: Option<(usize, usize, f64)> = None;
+    for start in 0..inset {
+        for end in ends.clone() {
+            let r = response(start, end);
+            if best.is_none_or(|(_, _, b)| r > b) {
+                best = Some((start, end, r));
+            }
+        }
+    }
+    let (start, end, fitted) = best?;
+    Some((start, end, fitted, response(0, length - 1)))
+}
+
+/// The board inside a crop that took its frame along, as a pixel box of the crop, or `None` when
+/// the crop is already tight (`fit_inner_board`).
+///
+/// A contour often closes on a diagram's frame; with a double frame the board sits 1–2 % inside
+/// it and a uniform 8 × 8 grid over the whole crop misses the squares. Each axis is refitted
+/// where the nine grid lines catch the most edge energy, and taken only when the fitted grid
+/// responds [`consts::INNER_GRID_MIN_GAIN`] times more than the uniform one.
+pub fn fit_inner_board(board: &GrayImage) -> Option<PixelRect> {
+    let (width, height) = dims(board);
+    if width < MIN_FIT_SIDE || height < MIN_FIT_SIDE {
+        return None;
+    }
+    let plane = to_plane(board);
+    let accept = |(start, end, fitted, uniform): (usize, usize, f64, f64), full: usize| {
+        if uniform > 0.0 && fitted >= INNER_GRID_MIN_GAIN * uniform { (start, end) } else { (0, full) }
+    };
+    let (x0, x1) = accept(fit_grid_1d(&edge_profile(&plane, true))?, width);
+    let (y0, y1) = accept(fit_grid_1d(&edge_profile(&plane, false))?, height);
+    if (x0, y0, x1, y1) == (0, 0, width, height) {
+        return None;
+    }
+    Some(PixelRect { x0: u32::try_from(x0).ok()?, y0: u32::try_from(y0).ok()?, x1: u32::try_from(x1).ok()?, y1: u32::try_from(y1).ok()? })
+}
+
+/// The board cut to [`fit_inner_board`]'s box and stretched back to its size, when that raises
+/// its checker contrast enough ([`consts::INNER_GRID_MIN_CHECKER_GAIN`],
+/// [`consts::INNER_GRID_MIN_CHECKER_RATIO`]); otherwise a copy of `board` (`tighten_board`). A
+/// crop that was already right comes back unchanged, which is why every board can go through it.
+pub fn tighten(board: &GrayImage) -> GrayImage {
+    tightened(board).unwrap_or_else(|| board.clone())
+}
+
+fn tightened(board: &GrayImage) -> Option<GrayImage> {
+    let inner = fit_inner_board(board)?;
+    let interior = crop(board, inner)?;
+    let tight = resize_bilinear(&interior, board.width(), board.height())?;
+    let (before, after) = (checker_score(board), checker_score(&tight));
+    (after >= before + INNER_GRID_MIN_CHECKER_GAIN && after >= before * INNER_GRID_MIN_CHECKER_RATIO).then_some(tight)
+}
+
+/// The pixels of `image` inside `rect`, or `None` for an empty or out-of-bounds box.
+fn crop(image: &GrayImage, rect: PixelRect) -> Option<GrayImage> {
+    if rect.x1 > image.width() || rect.y1 > image.height() || rect.width() == 0 || rect.height() == 0 {
+        return None;
+    }
+    let (x0, x1) = (usize::try_from(rect.x0).ok()?, usize::try_from(rect.x1).ok()?);
+    let mut data = Vec::with_capacity(usize::try_from(rect.width()).ok()?.checked_mul(usize::try_from(rect.height()).ok()?)?);
+    for y in rect.y0..rect.y1 {
+        data.extend_from_slice(image.row(y)?.get(x0..x1)?);
+    }
+    GrayImage::new(rect.width(), rect.height(), data).ok()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -348,5 +480,48 @@ mod tests {
         assert_eq!(percentile(&values, 100.0), 4.0);
         assert!((percentile(&values, 55.0) - 2.65).abs() < 1e-12);
         assert_eq!(percentile(&[], 50.0), 0.0);
+    }
+
+    #[test]
+    fn fit_inner_board_finds_the_board_inside_a_double_frame() {
+        // A 400 px board inside a frame 20 px out, with 8 px of paper between them.
+        let image = framed_board(400, 20, 8);
+        let inner = fit_inner_board(&image).expect("the frame is off the grid");
+        // The board's edges are at 20 and 420. The 5 px smoothing spreads each line over a
+        // plateau and the first maximum is its left end, so the fit lands up to 3 px early.
+        for (got, want) in [(inner.x0, 20), (inner.y0, 20), (inner.x1, 420), (inner.y1, 420)] {
+            assert!(got.abs_diff(want) <= 3, "{inner:?}");
+        }
+        let tight = tighten(&image);
+        assert_eq!((tight.width(), tight.height()), (image.width(), image.height()));
+        assert!(checker_score(&tight) > checker_score(&image) + INNER_GRID_MIN_CHECKER_GAIN);
+    }
+
+    /// A table of empty cells inside a double frame: the grid fit moves inside the frame, but the
+    /// checker contrast stays 0, so the crop is not tightened.
+    #[test]
+    fn a_fit_that_does_not_raise_the_checker_contrast_is_refused() {
+        let mut image = framed_board(400, 20, 8);
+        let width = image.width();
+        let mut data = image.data().to_vec();
+        for (i, v) in data.iter_mut().enumerate() {
+            let (x, y) = (i as u32 % width, i as u32 / width);
+            let inside = |v: u32| (20..420).contains(&v);
+            if inside(x) && inside(y) {
+                *v = if (x - 20) % 50 < 2 || (y - 20) % 50 < 2 { 0 } else { 255 };
+            }
+        }
+        image = GrayImage::new(width, width, data).unwrap();
+        assert!(fit_inner_board(&image).is_some(), "premise: the fit moves");
+        assert_eq!(tighten(&image), image);
+    }
+
+    #[test]
+    fn a_tight_board_is_left_alone() {
+        let image = framed_board(400, 0, 0);
+        assert_eq!(fit_inner_board(&image), None, "the uniform grid is already the best fit");
+        assert_eq!(tighten(&image), image);
+        assert_eq!(fit_inner_board(&GrayImage::new(8, 8, vec![0; 64]).unwrap()), None);
+        assert_eq!(tighten(&GrayImage::new(1, 1, vec![0]).unwrap()).width(), 1);
     }
 }
