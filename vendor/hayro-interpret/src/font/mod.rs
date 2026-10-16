@@ -105,6 +105,23 @@ impl Glyph<'_> {
             Glyph::Type3(g) => g.as_unicode(),
         }
     }
+
+    /// PdfCraft patch: the character code the content stream showed for this glyph, before any
+    /// Unicode mapping. Symbol fonts (chess figurines, dingbats) are catalogued by this code.
+    pub fn char_code(&self) -> u32 {
+        match self {
+            Glyph::Outline(g) => g.char_code(),
+            Glyph::Type3(g) => g.char_code(),
+        }
+    }
+
+    /// PdfCraft patch: the font dictionary's `/BaseFont` as written, subset prefix included.
+    pub fn base_font(&self) -> Option<&str> {
+        match self {
+            Glyph::Outline(g) => g.base_font(),
+            Glyph::Type3(g) => g.base_font(),
+        }
+    }
 }
 
 /// An identifier that uniquely identifies a glyph, for caching purposes.
@@ -126,6 +143,8 @@ pub struct OutlineGlyph {
     pub(crate) id: GlyphId,
     pub(crate) font: OutlineFont,
     pub(crate) char_code: u32,
+    /// PdfCraft patch: the font dictionary's `/BaseFont`, as written.
+    pub(crate) base_font: Option<Rc<str>>,
 }
 
 impl OutlineGlyph {
@@ -165,6 +184,18 @@ impl OutlineGlyph {
         self.id
     }
 
+    /// PdfCraft patch: the character code the content stream showed for this glyph (one byte
+    /// for simple fonts, as read through the CMap for Type0 fonts), before any Unicode mapping.
+    pub fn char_code(&self) -> u32 {
+        self.char_code
+    }
+
+    /// PdfCraft patch: the font dictionary's `/BaseFont` as written, subset prefix included;
+    /// `None` without one (or for the fallback font used when the font can't be loaded).
+    pub fn base_font(&self) -> Option<&str> {
+        self.base_font.as_deref()
+    }
+
     /// PdfCraft patch: whether this glyph belongs to a vertical-writing Type0 font.
     /// The glyph outline stays upright; text extraction must follow the font's advance axis.
     pub fn is_vertical(&self) -> bool {
@@ -200,6 +231,8 @@ pub struct Type3Glyph<'a> {
     pub(crate) settings: InterpreterSettings,
     pub(crate) nesting_depth: u32,
     pub(crate) char_code: u32,
+    /// PdfCraft patch: the font dictionary's `/BaseFont`, as written.
+    pub(crate) base_font: Option<Rc<str>>,
 }
 
 /// A glyph defined by PDF drawing instructions.
@@ -227,6 +260,17 @@ impl<'a> Type3Glyph<'a> {
     pub fn advance_width(&self) -> Option<f32> {
         u8::try_from(self.char_code).ok().map(|c| self.font.glyph_width(c))
     }
+
+    /// PdfCraft patch: the character code the content stream showed for this glyph.
+    pub fn char_code(&self) -> u32 {
+        self.char_code
+    }
+
+    /// PdfCraft patch: the font dictionary's `/BaseFont` as written, if it has one (Type 3
+    /// fonts usually don't).
+    pub fn base_font(&self) -> Option<&str> {
+        self.base_font.as_deref()
+    }
 }
 
 impl CacheKey for Type3Glyph<'_> {
@@ -235,8 +279,9 @@ impl CacheKey for Type3Glyph<'_> {
     }
 }
 
+/// PdfCraft patch: the third field is the font dictionary's `/BaseFont`, handed to its glyphs.
 #[derive(Clone, Debug)]
-pub(crate) struct Font<'a>(u128, FontType<'a>);
+pub(crate) struct Font<'a>(u128, FontType<'a>, Option<Rc<str>>);
 
 impl<'a> Font<'a> {
     pub(crate) fn new(
@@ -267,8 +312,11 @@ impl<'a> Font<'a> {
         };
 
         let cache_key = dict.cache_key();
+        let base_font = dict
+            .get::<Name<'_>>(BASE_FONT)
+            .map(|n| Rc::from(String::from_utf8_lossy(&n).as_ref()));
 
-        Some(Self(cache_key, f_type))
+        Some(Self(cache_key, f_type, base_font))
     }
 
     pub(crate) fn new_standard(
@@ -277,7 +325,7 @@ impl<'a> Font<'a> {
     ) -> Option<Self> {
         let font = Type1Font::new_standard(standard_font, font_resolver)?;
 
-        Some(Self(0, FontType::Type1(Rc::new(font))))
+        Some(Self(0, FontType::Type1(Rc::new(font)), None))
     }
 
     pub(crate) fn map_code(&self, code: u32) -> GlyphId {
@@ -320,6 +368,7 @@ impl<'a> Font<'a> {
                     id: glyph,
                     font,
                     char_code,
+                    base_font: self.2.clone(),
                 })
             }
             FontType::TrueType(t) => {
@@ -328,6 +377,7 @@ impl<'a> Font<'a> {
                     id: glyph,
                     font,
                     char_code,
+                    base_font: self.2.clone(),
                 })
             }
             FontType::Type0(t) => {
@@ -336,6 +386,7 @@ impl<'a> Font<'a> {
                     id: glyph,
                     font,
                     char_code,
+                    base_font: self.2.clone(),
                 })
             }
             FontType::Type3(t) => {
@@ -350,6 +401,7 @@ impl<'a> Font<'a> {
                     settings: ctx.settings.clone(),
                     nesting_depth,
                     char_code,
+                    base_font: self.2.clone(),
                 };
 
                 Glyph::Type3(Box::new(shape_glyph))

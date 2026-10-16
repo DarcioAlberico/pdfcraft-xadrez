@@ -46,6 +46,8 @@ horizontal differencing and an 8-bit control) and
 
 Text extraction: hayro-interpret exposes `OutlineGlyph::is_vertical` from a Type0 font’s CMap writing mode. PdfCraft follows negative glyph-space y for WMode 1 so upright vertical columns can be searched (#126).
 
+Text extraction: hayro-interpret exposes `Glyph::char_code` and `Glyph::base_font` (also on `OutlineGlyph` and `Type3Glyph`): the character code shown before any Unicode mapping, and the font dictionary's `/BaseFont` as written, carried from `Font::new` to every glyph of the font. Symbol fonts such as chess figurines are catalogued by font name and code, while their Unicode reads as letters. Covered by `pdfcraft-render` `text::tests::glyphs_carry_their_font_name_and_character_code` (Type 1, Type 3 and Identity-H Type 0 glyphs).
+
 Lab Bradford follow-up to #1237: Lab adapts XYZ to D65 with white-point ratios
 computed in Bradford LMS coordinates. CalRGB's existing flat-white and
 black-point normalization is unchanged. `lab_bradford_tests` checks independent

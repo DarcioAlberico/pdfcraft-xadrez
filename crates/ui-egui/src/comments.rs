@@ -1932,7 +1932,7 @@ mod tests {
                     xs.into_iter().fold(f32::NEG_INFINITY, f32::max),
                     ys.into_iter().fold(f32::NEG_INFINITY, f32::max),
                 ];
-                TextGlyph { text: c.to_string(), rect, quad, direction }
+                TextGlyph::new(c, rect, quad, direction)
             })
             .collect::<Vec<_>>();
         let n = glyphs.len();

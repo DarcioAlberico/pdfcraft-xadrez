@@ -5088,12 +5088,12 @@ trailer << /Root 1 0 R >>
         v.texts.insert(
             3,
             pdfcraft_render::PageText {
-                glyphs: vec![pdfcraft_render::TextGlyph {
-                    text: "match".into(),
-                    rect: [20.0, 260.0, 60.0, 280.0],
-                    quad: [[20.0, 260.0], [60.0, 260.0], [60.0, 280.0], [20.0, 280.0]],
-                    direction: [1.0, 0.0],
-                }],
+                glyphs: vec![pdfcraft_render::TextGlyph::new(
+                    "match",
+                    [20.0, 260.0, 60.0, 280.0],
+                    [[20.0, 260.0], [60.0, 260.0], [60.0, 280.0], [20.0, 280.0]],
+                    [1.0, 0.0],
+                )],
                 line_of: vec![0],
                 space_before: vec![false],
             }
@@ -5174,7 +5174,7 @@ trailer << /Root 1 0 R >>
         let info = thumbnail_info(100);
         let mut v = DocView::new(DocId(1), &info, ViewDefaults::default());
         let text = PageText {
-            glyphs: vec![pdfcraft_render::TextGlyph { text: "x".into(), rect: [0.0, 0.0, 10.0, 10.0], quad: [[0.0, 0.0]; 4], direction: [1.0, 0.0] }],
+            glyphs: vec![pdfcraft_render::TextGlyph::new("x", [0.0, 0.0, 10.0, 10.0], [[0.0, 0.0]; 4], [1.0, 0.0])],
             line_of: vec![0],
             space_before: vec![false],
         };
