@@ -17,6 +17,7 @@ pub mod lichess;
 pub mod nag;
 pub mod placement;
 pub mod recognize;
+pub mod repair;
 pub mod rules;
 pub mod san;
 pub mod svg;
