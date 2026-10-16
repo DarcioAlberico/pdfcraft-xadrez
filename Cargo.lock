@@ -4169,6 +4169,7 @@ dependencies = [
  "pdfcraft-xfa",
  "pdfcraft-xfdf",
  "png 0.18.1",
+ "proptest",
  "thiserror 2.0.21",
  "unicode-segmentation",
  "url",
@@ -4249,8 +4250,12 @@ name = "pdfcraft-ocr"
 version = "0.8.0"
 dependencies = [
  "ocrs",
+ "pdfcraft-cos",
  "pdfcraft-fonts",
+ "pdfcraft-testkit",
+ "proptest",
  "rten",
+ "skrifa 0.44.0",
  "thiserror 2.0.21",
 ]
 

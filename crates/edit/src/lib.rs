@@ -296,8 +296,25 @@ fn contents(doc: &mut Document, page: &pdfcraft_model::Page) -> Result<Vec<Objec
 
 /// Add the font (and an opacity state) to the page's own resources.
 fn add_resources(doc: &mut Document, page: &pdfcraft_model::Page, opacity: Option<f64>, content: Option<&[u8]>) -> Result<(), EditError> {
+    let fonts = page_fonts(doc, page);
+    add_resources_with(doc, page, opacity, content, fonts)
+}
+
+/// A copy of the page's font resources.
+fn page_fonts(doc: &Document, page: &pdfcraft_model::Page) -> Dict {
+    let res = page.dict.get(b"Resources").map(|r| doc.resolve(r)).and_then(|r| r.as_dict().cloned()).unwrap_or_default();
+    res.get(b"Font").map(|f| doc.resolve(f)).and_then(|f| f.as_dict().cloned()).unwrap_or_default()
+}
+
+/// [`add_resources`] with `fonts` as the page's font resources.
+fn add_resources_with(
+    doc: &mut Document,
+    page: &pdfcraft_model::Page,
+    opacity: Option<f64>,
+    content: Option<&[u8]>,
+    mut fonts: Dict,
+) -> Result<(), EditError> {
     let mut res = page.dict.get(b"Resources").map(|r| doc.resolve(r)).and_then(|r| r.as_dict().cloned()).unwrap_or_default();
-    let mut fonts = res.get(b"Font").map(|f| doc.resolve(f)).and_then(|f| f.as_dict().cloned()).unwrap_or_default();
     for (name, base) in [(&b"PCHelv"[..], "Helvetica"), (b"PCTimes", "Times-Roman"), (b"PCCour", "Courier")] {
         // Helvetica always (marks use it); the others only when the content names them.
         if name != b"PCHelv" && !content.is_some_and(|c| c.windows(name.len() + 1).any(|w| w[0] == b'/' && &w[1..] == name)) {
@@ -383,10 +400,24 @@ fn place_tagged(doc: &mut Document, page: &pdfcraft_model::Page, tag: &str, cont
 /// available as `/PCHelv`. The stream is tagged `tag` (not a mark kind, so Remove never takes
 /// it away); the original content is wrapped in q/Q first. Used for applied redaction boxes.
 pub fn stamp(doc: &mut Document, page: usize, tag: &str, content: Vec<u8>) -> Result<(), EditError> {
+    stamp_with(doc, page, tag, |_, _| Ok(content))
+}
+
+/// [`stamp`] content that brings its own fonts: `build` gets a copy of the page's font resources,
+/// may add fonts to it (their objects go in `doc`) and returns the content. The page's own
+/// resources take the fonts; nothing is drawn if `build` fails. Used for OCR text layers.
+pub fn stamp_with(
+    doc: &mut Document,
+    page: usize,
+    tag: &str,
+    build: impl FnOnce(&mut Document, &mut Dict) -> Result<Vec<u8>, String>,
+) -> Result<(), EditError> {
     let all = page_list(doc);
-    check(&[page], all.len())?;
-    add_resources(doc, &all[page], None, Some(&content))?;
-    let p = page_list(doc).swap_remove(page);
+    let p = all.get(page).ok_or(EditError::NoSuchPage(page))?;
+    let mut fonts = page_fonts(doc, p);
+    let content = build(doc, &mut fonts).map_err(EditError::Invalid)?;
+    add_resources_with(doc, p, None, Some(&content), fonts)?;
+    let p = page_list(doc).into_iter().nth(page).ok_or(EditError::NoSuchPage(page))?;
     place_tagged(doc, &p, tag, content, false)
 }
 

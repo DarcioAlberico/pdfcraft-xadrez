@@ -2484,7 +2484,10 @@ fn run_edit(doc: &mut pdfcraft_cos::Document, edit: &Edit, cx: &mut EditCtx) -> 
         }
         Edit::SetDocumentScript { name, script } => pdfcraft_forms::set_document_script(doc, name, script.as_deref())?,
         Edit::AddOcrText { page, words } => {
-            pdfcraft_edit::stamp(doc, *page, "OCR", pdfcraft_ocr::text_layer(words))?;
+            // Unicode text (chess figurines, signs) brings its own font; see `pdfcraft_ocr::write_text_layer`.
+            pdfcraft_edit::stamp_with(doc, *page, "OCR", |doc, fonts| {
+                pdfcraft_ocr::write_text_layer(doc, fonts, words).map(|layer| layer.content).map_err(|e| e.to_string())
+            })?;
         }
         Edit::EditPageImage { page, index, change } => {
             let img = pdfcraft_edit::page_images(doc, *page)?
