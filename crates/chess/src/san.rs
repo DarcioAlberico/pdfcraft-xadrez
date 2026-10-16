@@ -639,11 +639,11 @@ fn square_from_cozy(sq: cozy_chess::Square) -> Square {
     Square::wrapping(sq.file() as u8, sq.rank() as u8)
 }
 
-fn square_to_cozy(sq: Square) -> Option<cozy_chess::Square> {
+pub(crate) fn square_to_cozy(sq: Square) -> Option<cozy_chess::Square> {
     Some(cozy_chess::Square::new(cozy_chess::File::try_index(usize::from(sq.file()))?, cozy_chess::Rank::try_index(usize::from(sq.rank()))?))
 }
 
-fn kind_from_cozy(p: cozy_chess::Piece) -> PieceKind {
+pub(crate) fn kind_from_cozy(p: cozy_chess::Piece) -> PieceKind {
     match p {
         cozy_chess::Piece::Pawn => PieceKind::Pawn,
         cozy_chess::Piece::Knight => PieceKind::Knight,
