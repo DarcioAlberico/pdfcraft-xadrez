@@ -22,4 +22,5 @@ pub mod glyphs;
 pub mod merge;
 pub mod models;
 pub mod order;
+pub mod pieces;
 pub mod raster;

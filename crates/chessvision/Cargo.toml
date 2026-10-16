@@ -18,6 +18,8 @@ pdfcraft-geom = { workspace = true }
 # user's exported .onnx models directly (no conversion step).
 rten = { version = "0.26.0", default-features = false, features = ["rten_format", "onnx_format"] }
 rten-tensor = "0.26.0"
+# Glyph outlines of the user's chess diagram font, for drawn diagrams (same version as pdfcraft-fonts).
+skrifa = "0.44"
 serde.workspace = true
 serde_json.workspace = true
 # Contours, polygon simplification and minimum-area rectangles for the page detector (no OpenCV).

@@ -4045,6 +4045,7 @@ dependencies = [
  "rten-tensor",
  "serde",
  "serde_json",
+ "skrifa 0.44.0",
  "thiserror 2.0.21",
 ]
 
