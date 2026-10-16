@@ -13,3 +13,6 @@ workspace = true
 [dependencies]
 # MIT. `pext` stays off: it is x86-only and the crate must build for wasm32.
 cozy-chess = { version = "0.3.4", default-features = false, features = ["std"] }
+
+[dev-dependencies]
+proptest.workspace = true

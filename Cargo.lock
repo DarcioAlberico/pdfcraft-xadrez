@@ -4031,6 +4031,7 @@ name = "pdfcraft-chess"
 version = "0.8.0"
 dependencies = [
  "cozy-chess",
+ "proptest",
 ]
 
 [[package]]
