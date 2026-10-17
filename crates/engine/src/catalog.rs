@@ -270,6 +270,20 @@ pub static TOOL_GROUPS: &[ToolGroup] = &[
             ],
         }],
     },
+    // Chess books (blueprint S16a): find the diagrams and read their positions. Replacing
+    // diagrams and adding lichess links come with S10 and S11.
+    ToolGroup {
+        id: "chess",
+        label: "Chess",
+        icon: "grid-3x3",
+        hue: TEAL,
+        badge: None,
+        availability: Ready,
+        sections: &[ToolSection {
+            title: "Diagrams",
+            items: &[item("Scan chess diagrams", "grid-3x3", "chess.scan", Ready), item("Chess diagrams panel", "grid-3x3", "chess.panel", Ready)],
+        }],
+    },
     ToolGroup {
         id: "protect",
         label: "Protect a PDF",

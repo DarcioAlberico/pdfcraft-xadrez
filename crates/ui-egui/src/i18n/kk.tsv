@@ -2426,3 +2426,31 @@ animation effects	Off	Өшірулі
 	Make properties default	Қасиеттерді әдепкі ету
 	Pages selected	Таңдалған беттер
 	Page properties	Бет қасиеттері
+
+# Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
+	Scan chess diagrams	Шахмат диаграммаларын табу
+	Chess diagrams panel	Шахмат диаграммалары панелі
+	Chess	Шахмат
+	Diagrams	Диаграммалар
+	Chess diagrams	Шахмат диаграммалары
+	Scan this page	Осы беттен іздеу
+	Scan all pages	Барлық беттерден іздеу
+	Scanning for diagrams… page {d} of {t}	Диаграммалар ізделуде… бет {d}/{t}
+	Scan this page or all pages to find the chess diagrams in this document.	Құжаттағы шахмат диаграммаларын табу үшін осы беттен немесе барлық беттерден іздеңіз.
+	The document changed since the scan. Scan again to update the diagrams.	Іздеуден кейін құжат өзгерді. Диаграммаларды жаңарту үшін қайта іздеңіз.
+	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	Фигуралар моделі жоқ: тек шахмат қаріпімен терілген диаграммалар оқылады. PDFCRAFT_MODELS мәніне chess-pieces.onnx бар қалтаны орнатыңыз.
+	The piece model couldn't be loaded: {e}	Фигуралар моделін жүктеу мүмкін болмады: {e}
+	No diagrams found.	Диаграмма табылмады.
+	This page couldn't be scanned: {e}	Бұл бетті тексеру мүмкін болмады: {e}
+	Only the first {n} diagrams on this page are listed.	Осы беттегі алғашқы {n} диаграмма ғана көрсетілген.
+	Diagram {n}	Диаграмма {n}
+	Position read	Позиция оқылды
+	Needs review	Тексеру қажет
+	Not read: no piece model	Оқылмады: фигуралар моделі жоқ
+	Couldn't be read: {e}	Оқу мүмкін болмады: {e}
+	Not read	Оқылмады
+	Copy FEN	FEN көшіру
+	Open in lichess	lichess-те ашу
+	Diagrams are already being scanned	Диаграммалар қазір ізделуде
+	Diagrams found: {n}	Табылған диаграммалар: {n}
+	FEN copied	FEN көшірілді

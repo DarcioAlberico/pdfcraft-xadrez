@@ -402,6 +402,18 @@ fn a_scan_of_a_document_that_changed_since_is_not_stored() {
 }
 
 #[test]
+fn a_scans_stamp_matches_the_document_until_it_changes() {
+    let (mut s, id) = open(three_boards(400));
+    let scan = s.chess_scan_job(id, &[0], &no_model(), false).unwrap().run_with(None, |_, _| true);
+    assert_eq!(s.chess_stamp(id), Some(scan.stamp()));
+    s.apply(id, Edit::RotatePages { pages: vec![0], degrees: 90 }).unwrap();
+    assert_ne!(s.chess_stamp(id), Some(scan.stamp()), "an edit makes the scan stale");
+    s.undo(id).unwrap();
+    assert_ne!(s.chess_stamp(id), Some(scan.stamp()), "so does undoing it: the generation moves on");
+    assert_eq!(s.chess_stamp(DocId(9999)), None);
+}
+
+#[test]
 fn progress_can_stop_a_scan() {
     let (s, id) = open(three_boards(400));
     let scan = s.chess_scan_job(id, &[], &no_model(), false).unwrap().run_with(None, |done, _| done == 0 && false);

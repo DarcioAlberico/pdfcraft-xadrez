@@ -32,6 +32,7 @@ mod a11y_ui;
 mod actions_ui;
 mod appearance;
 pub mod canvas;
+mod chess_ui;
 mod chrome;
 mod combine_grid;
 mod image_pick;
@@ -204,6 +205,8 @@ pub enum RightPanel {
     Search,
     /// Compare files: the differences.
     Compare,
+    /// Chess diagrams: the diagrams scanned in the document and the positions read.
+    Chess,
 }
 
 /// Quick-action bar tools (the vertical floating strip).
@@ -669,6 +672,8 @@ pub struct PdfCraftApp {
     /// Compare files: the chosen older document and the last result.
     pub compare_old: Option<DocId>,
     pub compare: Option<compare_ui::CompareState>,
+    /// Chess diagrams: the last scan and the running one.
+    pub chess: chess_ui::ChessState,
     /// The JavaScript console and the Document JavaScripts draft.
     pub js_console: js_ui::JsConsole,
     pub doc_js: js_ui::DocJsDraft,
@@ -992,6 +997,7 @@ impl PdfCraftApp {
             pdfa: Default::default(),
             compare_old: None,
             compare: None,
+            chess: Default::default(),
             js_console: Default::default(),
             doc_js: Default::default(),
             a11y: a11y_ui::A11yState::default(),
@@ -2487,6 +2493,7 @@ impl PdfCraftApp {
                     "tags" => Some(RightPanel::Tags),
                     "search" => Some(RightPanel::Search),
                     "compare" => Some(RightPanel::Compare),
+                    "chess" => Some(RightPanel::Chess),
                     "none" => None,
                     other => return Err(format!("unknown panel {other}")),
                 }
@@ -3064,6 +3071,7 @@ impl eframe::App for PdfCraftApp {
         }
         self.poll_export();
         self.poll_ocr();
+        self.poll_chess();
         self.poll_optimize();
         self.poll_action();
         self.process_file_requests();

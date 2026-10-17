@@ -2502,3 +2502,31 @@ animation effects	Off	Vypnuto
 	Make properties default	Nastavit vlastnosti jako výchozí
 	Pages selected	Vybrané stránky
 	Page properties	Vlastnosti stránky
+
+# Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
+	Scan chess diagrams	Najít šachové diagramy
+	Chess diagrams panel	Panel šachových diagramů
+	Chess	Šachy
+	Diagrams	Diagramy
+	Chess diagrams	Šachové diagramy
+	Scan this page	Hledat na této stránce
+	Scan all pages	Hledat na všech stránkách
+	Scanning for diagrams… page {d} of {t}	Hledání diagramů… stránka {d} z {t}
+	Scan this page or all pages to find the chess diagrams in this document.	Spusťte hledání na této stránce nebo na všech stránkách a najděte šachové diagramy v tomto dokumentu.
+	The document changed since the scan. Scan again to update the diagrams.	Dokument se od hledání změnil. Spusťte hledání znovu, aby se diagramy aktualizovaly.
+	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	Chybí model figur: čtou se jen diagramy vysázené šachovým písmem. Nastavte PDFCRAFT_MODELS na složku se souborem chess-pieces.onnx.
+	The piece model couldn't be loaded: {e}	Model figur se nepodařilo načíst: {e}
+	No diagrams found.	Nebyly nalezeny žádné diagramy.
+	This page couldn't be scanned: {e}	Tuto stránku se nepodařilo prohledat: {e}
+	Only the first {n} diagrams on this page are listed.	Zobrazeny jsou jen první diagramy této stránky: {n}.
+	Diagram {n}	Diagram č. {n}
+	Position read	Pozice přečtena
+	Needs review	Vyžaduje kontrolu
+	Not read: no piece model	Nepřečteno: chybí model figur
+	Couldn't be read: {e}	Nepodařilo se přečíst: {e}
+	Not read	Nepřečteno
+	Copy FEN	Kopírovat FEN
+	Open in lichess	Otevřít v lichess
+	Diagrams are already being scanned	Diagramy se už hledají
+	Diagrams found: {n}	Nalezené diagramy: {n}
+	FEN copied	FEN zkopírován

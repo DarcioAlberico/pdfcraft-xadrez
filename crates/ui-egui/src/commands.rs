@@ -427,6 +427,8 @@ impl PdfCraftApp {
             "a11y.alt_text" => self.start_alt_text(),
             "a11y.autotag_fields" => self.autotag_form_fields(),
             "a11y.tags" => self.choose_right_panel(Some(RightPanel::Tags)),
+            "chess.scan" => self.start_chess_scan(true),
+            "chess.panel" => self.choose_right_panel(Some(RightPanel::Chess)),
             "a11y.reading_options" => self.dialog = Some(Dialog::Properties(crate::PropsTab::Advanced)),
             "export.all_images" => self.dialog = Some(Dialog::Export(crate::export_ui::ExportKind::AllImages)),
             "edit.text" => {

@@ -2341,3 +2341,31 @@ animation effects	Off	ఆఫ్
 	Make properties default	లక్షణాలను డిఫాల్ట్‌గా చేయి
 	Pages selected	ఎంచుకున్న పేజీలు
 	Page properties	పేజీ లక్షణాలు
+
+# Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
+	Scan chess diagrams	చదరంగం రేఖాచిత్రాలను కనుగొను
+	Chess diagrams panel	చదరంగం రేఖాచిత్రాల ప్యానెల్
+	Chess	చదరంగం
+	Diagrams	రేఖాచిత్రాలు
+	Chess diagrams	చదరంగం రేఖాచిత్రాలు
+	Scan this page	ఈ పేజీలో వెతుకు
+	Scan all pages	అన్ని పేజీలలో వెతుకు
+	Scanning for diagrams… page {d} of {t}	రేఖాచిత్రాల కోసం వెతుకుతోంది… {t}లో {d}వ పేజీ
+	Scan this page or all pages to find the chess diagrams in this document.	ఈ పత్రంలోని చదరంగం రేఖాచిత్రాలను కనుగొనడానికి ఈ పేజీలో లేదా అన్ని పేజీలలో వెతకండి.
+	The document changed since the scan. Scan again to update the diagrams.	వెతికిన తర్వాత పత్రం మారింది. రేఖాచిత్రాలను నవీకరించడానికి మళ్లీ వెతకండి.
+	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	పావుల మోడల్ లేదు: చదరంగం ఫాంట్‌లో కూర్చిన రేఖాచిత్రాలు మాత్రమే చదవబడతాయి. chess-pieces.onnx ఉన్న ఫోల్డర్‌ను PDFCRAFT_MODELSకు సెట్ చేయండి.
+	The piece model couldn't be loaded: {e}	పావుల మోడల్‌ను లోడ్ చేయలేకపోయింది: {e}
+	No diagrams found.	రేఖాచిత్రాలు ఏవీ కనుగొనబడలేదు.
+	This page couldn't be scanned: {e}	ఈ పేజీని పరిశీలించలేకపోయింది: {e}
+	Only the first {n} diagrams on this page are listed.	ఈ పేజీలోని మొదటి {n} రేఖాచిత్రాలు మాత్రమే జాబితాలో ఉన్నాయి.
+	Diagram {n}	రేఖాచిత్రం {n}
+	Position read	స్థితి చదవబడింది
+	Needs review	సమీక్ష అవసరం
+	Not read: no piece model	చదవలేదు: పావుల మోడల్ లేదు
+	Couldn't be read: {e}	చదవలేకపోయింది: {e}
+	Not read	చదవలేదు
+	Copy FEN	FEN కాపీ చేయి
+	Open in lichess	lichessలో తెరువు
+	Diagrams are already being scanned	రేఖాచిత్రాల కోసం ఇప్పటికే వెతుకుతోంది
+	Diagrams found: {n}	కనుగొన్న రేఖాచిత్రాలు: {n}
+	FEN copied	FEN కాపీ అయింది

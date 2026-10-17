@@ -2427,3 +2427,31 @@ animation effects	Off	Ki
 	Make properties default	Tulajdonságok beállítása alapértelmezettként
 	Pages selected	Kijelölt oldalak
 	Page properties	Oldaltulajdonságok
+
+# Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
+	Scan chess diagrams	Sakkdiagramok keresése
+	Chess diagrams panel	Sakkdiagramok panel
+	Chess	Sakk
+	Diagrams	Diagramok
+	Chess diagrams	Sakkdiagramok
+	Scan this page	Keresés ezen az oldalon
+	Scan all pages	Keresés minden oldalon
+	Scanning for diagrams… page {d} of {t}	Diagramok keresése… {d}. oldal / {t}
+	Scan this page or all pages to find the chess diagrams in this document.	Keress ezen az oldalon vagy minden oldalon, hogy megtaláld a dokumentum sakkdiagramjait.
+	The document changed since the scan. Scan again to update the diagrams.	A dokumentum a keresés óta megváltozott. Keress újra a diagramok frissítéséhez.
+	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	Nincs bábumodell: csak a sakkbetűtípussal szedett diagramok olvashatók be. Állítsd a PDFCRAFT_MODELS értékét a chess-pieces.onnx fájlt tartalmazó mappára.
+	The piece model couldn't be loaded: {e}	A bábumodell nem tölthető be: {e}
+	No diagrams found.	Nem található diagram.
+	This page couldn't be scanned: {e}	Ez az oldal nem vizsgálható át: {e}
+	Only the first {n} diagrams on this page are listed.	Csak az oldal első {n} diagramja látható a listában.
+	Diagram {n}	{n}. diagram
+	Position read	Állás beolvasva
+	Needs review	Ellenőrzést igényel
+	Not read: no piece model	Nincs beolvasva: nincs bábumodell
+	Couldn't be read: {e}	Nem olvasható be: {e}
+	Not read	Nincs beolvasva
+	Copy FEN	FEN másolása
+	Open in lichess	Megnyitás a lichessben
+	Diagrams are already being scanned	A diagramok keresése már folyamatban van
+	Diagrams found: {n}	Talált diagramok: {n}
+	FEN copied	FEN másolva

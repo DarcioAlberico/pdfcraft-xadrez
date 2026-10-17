@@ -2438,3 +2438,31 @@ animation effects	Off	Ανενεργά
 	Make properties default	Ορισμός ιδιοτήτων ως προεπιλογή
 	Pages selected	Επιλεγμένες σελίδες
 	Page properties	Ιδιότητες σελίδας
+
+# Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
+	Scan chess diagrams	Εύρεση σκακιστικών διαγραμμάτων
+	Chess diagrams panel	Πίνακας σκακιστικών διαγραμμάτων
+	Chess	Σκάκι
+	Diagrams	Διαγράμματα
+	Chess diagrams	Σκακιστικά διαγράμματα
+	Scan this page	Αναζήτηση σε αυτή τη σελίδα
+	Scan all pages	Αναζήτηση σε όλες τις σελίδες
+	Scanning for diagrams… page {d} of {t}	Αναζήτηση διαγραμμάτων… σελίδα {d} από {t}
+	Scan this page or all pages to find the chess diagrams in this document.	Αναζητήστε σε αυτή τη σελίδα ή σε όλες τις σελίδες για να βρείτε τα σκακιστικά διαγράμματα του εγγράφου.
+	The document changed since the scan. Scan again to update the diagrams.	Το έγγραφο άλλαξε μετά την αναζήτηση. Αναζητήστε ξανά για να ενημερωθούν τα διαγράμματα.
+	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	Δεν υπάρχει μοντέλο κομματιών: διαβάζονται μόνο διαγράμματα στοιχειοθετημένα με γραμματοσειρά σκακιού. Ορίστε στο PDFCRAFT_MODELS τον φάκελο που περιέχει το chess-pieces.onnx.
+	The piece model couldn't be loaded: {e}	Δεν ήταν δυνατή η φόρτωση του μοντέλου κομματιών: {e}
+	No diagrams found.	Δεν βρέθηκαν διαγράμματα.
+	This page couldn't be scanned: {e}	Δεν ήταν δυνατή η εξέταση αυτής της σελίδας: {e}
+	Only the first {n} diagrams on this page are listed.	Εμφανίζονται μόνο τα πρώτα {n} διαγράμματα αυτής της σελίδας.
+	Diagram {n}	Διάγραμμα {n}
+	Position read	Η θέση διαβάστηκε
+	Needs review	Χρειάζεται έλεγχο
+	Not read: no piece model	Δεν διαβάστηκε: δεν υπάρχει μοντέλο κομματιών
+	Couldn't be read: {e}	Δεν ήταν δυνατή η ανάγνωση: {e}
+	Not read	Δεν διαβάστηκε
+	Copy FEN	Αντιγραφή FEN
+	Open in lichess	Άνοιγμα στο lichess
+	Diagrams are already being scanned	Η αναζήτηση διαγραμμάτων είναι ήδη σε εξέλιξη
+	Diagrams found: {n}	Διαγράμματα που βρέθηκαν: {n}
+	FEN copied	Το FEN αντιγράφηκε

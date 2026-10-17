@@ -2560,6 +2560,9 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     view.text_background.prepare(ui.ctx(), doc, view.line_editor.as_ref(), view.content.draft.as_ref(), scale);
     let added = if editing_content { doc.added().to_vec() } else { Vec::new() };
     let doc_links = if tool == QuickTool::Link { doc.links().to_vec() } else { Vec::new() };
+    // Chess diagrams found in this document, while it is as it was scanned.
+    let chess_shown = crate::chess_ui::shown(&app.chess, view.id, app.session.chess_stamp(view.id));
+    let mut chess_pick: Option<(usize, usize)> = None;
     if editing_content {
         crate::content_ui::after_refresh(view, &added);
     } else {
@@ -3264,6 +3267,16 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
                     }
                 }
             }
+            if let Some((d, tip)) = crate::chess_ui::paint(painter, &xf, i, info, chess_shown, pointer.filter(|_| !page_covered)) {
+                if hover_text.is_none()
+                    && let Some(p) = pointer
+                {
+                    hover_text = Some((p, tip));
+                }
+                if resp.clicked() && tool == QuickTool::Select && !consumed {
+                    chess_pick = Some((i, d));
+                }
+            }
             for (mp, mr, mc) in &view.compare_marks {
                 if *mp == i {
                     let sr = xf.user_rect(info, i, *mr).expand(1.5);
@@ -3651,6 +3664,10 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
         Some(comments::CanvasAction::CopyImage(p, i)) => image_action = Some(crate::edit_text_ui::ImageAction::Copy(p, i)),
         Some(comments::CanvasAction::CopyImageFile(p, i)) => image_action = Some(crate::edit_text_ui::ImageAction::CopyFile(p, i)),
         None => {}
+    }
+    // `select_chess_diagram` would borrow all of `app` while `view` is held: the next poll does it.
+    if chess_pick.is_some() {
+        app.chess.picked = chess_pick;
     }
     match clicked_link {
         Some(LinkTarget::Page(p, dest)) => view.go_to_dest(p, dest, info),

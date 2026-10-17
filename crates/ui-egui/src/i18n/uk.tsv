@@ -2450,3 +2450,31 @@ animation effects	Off	Вимкнено
 	Make properties default	Зробити властивості типовими
 	Pages selected	Вибрані сторінки
 	Page properties	Властивості сторінки
+
+# Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
+	Scan chess diagrams	Знайти шахові діаграми
+	Chess diagrams panel	Панель шахових діаграм
+	Chess	Шахи
+	Diagrams	Діаграми
+	Chess diagrams	Шахові діаграми
+	Scan this page	Шукати на цій сторінці
+	Scan all pages	Шукати на всіх сторінках
+	Scanning for diagrams… page {d} of {t}	Пошук діаграм… сторінка {d} із {t}
+	Scan this page or all pages to find the chess diagrams in this document.	Запустіть пошук на цій сторінці або на всіх сторінках, щоб знайти шахові діаграми в документі.
+	The document changed since the scan. Scan again to update the diagrams.	Документ змінився після пошуку. Повторіть пошук, щоб оновити діаграми.
+	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	Немає моделі фігур: читаються лише діаграми, набрані шаховим шрифтом. Укажіть у PDFCRAFT_MODELS папку з файлом chess-pieces.onnx.
+	The piece model couldn't be loaded: {e}	Не вдалося завантажити модель фігур: {e}
+	No diagrams found.	Діаграм не знайдено.
+	This page couldn't be scanned: {e}	Не вдалося перевірити сторінку: {e}
+	Only the first {n} diagrams on this page are listed.	Показано лише перші діаграми цієї сторінки: {n}.
+	Diagram {n}	Діаграма {n}
+	Position read	Позицію прочитано
+	Needs review	Потрібна перевірка
+	Not read: no piece model	Не прочитано: немає моделі фігур
+	Couldn't be read: {e}	Не вдалося прочитати: {e}
+	Not read	Не прочитано
+	Copy FEN	Копіювати FEN
+	Open in lichess	Відкрити в lichess
+	Diagrams are already being scanned	Пошук діаграм уже триває
+	Diagrams found: {n}	Знайдено діаграм: {n}
+	FEN copied	FEN скопійовано

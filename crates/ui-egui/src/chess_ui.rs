@@ -1,0 +1,537 @@
+//! Chess ▸ Diagrams (blueprint S16a): find the chess diagrams in the open document, mark them on
+//! its pages and list what was read from each in the Chess diagrams panel: the position (FEN),
+//! whether the reading passed the gate, and a lichess link when the position is legal and was not
+//! repaired.
+//!
+//! The scan is the engine's ([`pdfcraft_engine::chess`]); this file runs it and shows it. Pages
+//! are scanned in batches on a worker thread (inline on the web and in tests) and each batch is
+//! shown when it is done, so a long book fills in as it goes. Results are kept for one document.
+//! Once the document changes (an edit, undo or redo) the boxes may no longer be where its
+//! diagrams are: they leave the pages, the panel says so, and the next scan starts afresh.
+//! Nothing here changes the document.
+
+use std::sync::{Arc, Mutex, MutexGuard};
+
+use egui::{Color32, CornerRadius, Pos2, Stroke};
+use pdfcraft_engine::DocId;
+use pdfcraft_engine::chess::pdfcraft_chessvision::board::{BoardReading, Unreadable};
+use pdfcraft_engine::chess::{ChessModels, ChessPage, ChessScan, ChessScanJob, ChessScanSettings, ModelState, ScanStamp};
+use pdfcraft_render::DocInfo;
+
+use crate::canvas::PageXform;
+use crate::theme::{self, Tokens};
+use crate::{PdfCraftApp, RightPanel, widgets};
+
+/// Pages scanned per job. Each job opens the file in its own renderer, so smaller batches show
+/// results sooner and larger ones parse the file fewer times.
+const PAGES_PER_JOB: usize = 8;
+
+/// Diagrams listed in the panel at most; the page marks show them all.
+const MAX_LISTED: usize = 2000;
+
+/// The colour of a diagram's state, on the page and beside it in the panel.
+const READ: Color32 = Color32::from_rgb(0x2D, 0x9D, 0x5B);
+const REVIEW: Color32 = Color32::from_rgb(0xE0, 0x8A, 0x1A);
+const FOUND: Color32 = Color32::from_rgb(0x3A, 0x6F, 0xE8);
+const FAILED: Color32 = Color32::from_rgb(0xE0, 0x3E, 0x3E);
+
+/// Chess diagrams: the last results and the running scan.
+#[derive(Default)]
+pub struct ChessState {
+    pub results: Option<ChessResults>,
+    pub run: Option<ChessRun>,
+    /// A diagram clicked on the page this frame (page, index), picked at the next poll.
+    pub picked: Option<(usize, usize)>,
+}
+
+/// What scanning found in one document.
+pub struct ChessResults {
+    pub doc: DocId,
+    /// The document state the pages were scanned in.
+    pub stamp: ScanStamp,
+    /// The scanned pages, by page number, each once.
+    pub pages: Vec<Arc<ChessPage>>,
+    /// The diagram picked in the panel or on the page: page (0-based) and its index there.
+    pub selected: Option<(usize, usize)>,
+    /// The panel scrolls the picked diagram into view once (it was picked on the page).
+    pub reveal: bool,
+    /// Whether the piece model could be used.
+    pub model: ModelNote,
+}
+
+impl ChessResults {
+    /// How many diagrams were found.
+    pub fn count(&self) -> usize {
+        self.pages.iter().map(|p| p.diagrams.len()).sum()
+    }
+
+    /// The reading of diagram `index` on `page`, when it was read.
+    fn reading(page: &ChessPage, index: usize) -> Option<&BoardReading> {
+        page.readings.as_ref()?.iter().find(|r| r.index == index)
+    }
+
+    /// Diagram `index` on `page` (0-based): its box in user space and its FEN when read.
+    pub fn diagram(&self, page: usize, index: usize) -> Option<([f32; 4], Option<&str>)> {
+        let p = self.pages.iter().find(|p| p.page == page)?;
+        let d = p.diagrams.get(index)?;
+        let b = d.candidate.bbox_user;
+        let fen = Self::reading(p, index).and_then(BoardReading::position).map(|pos| pos.fen.as_str());
+        Some(([b.x0, b.y0, b.x1, b.y1], fen))
+    }
+}
+
+/// Whether the scan could use the piece model. Without one only diagrams set in a chess font are
+/// read; the others are found and marked.
+#[derive(Clone, Debug, PartialEq)]
+pub enum ModelNote {
+    Loaded,
+    Missing,
+    Invalid(String),
+}
+
+impl ModelNote {
+    fn of(models: &ChessModels) -> ModelNote {
+        match &models.pieces {
+            ModelState::Loaded(_) => ModelNote::Loaded,
+            ModelState::Missing => ModelNote::Missing,
+            ModelState::Invalid(why) => ModelNote::Invalid(why.clone()),
+        }
+    }
+}
+
+/// A running scan: pages done of the total, the batches finished and not yet shown, and a
+/// cancel request.
+#[derive(Default)]
+pub struct ChessProgress {
+    pub done: usize,
+    pub total: usize,
+    pub scans: Vec<ChessScan>,
+    pub model: Option<ModelNote>,
+    pub finished: bool,
+    pub cancel: bool,
+}
+
+pub struct ChessRun {
+    pub doc: DocId,
+    pub progress: Arc<Mutex<ChessProgress>>,
+    /// Diagrams in the batches shown so far.
+    pub found: usize,
+    /// A batch was dropped because the document changed during the scan (said once).
+    pub stale: bool,
+}
+
+/// The progress, even after a worker panicked while holding it (it is plain data).
+fn lock(p: &Mutex<ChessProgress>) -> MutexGuard<'_, ChessProgress> {
+    p.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+/// Marks the scan finished when the worker ends, however it ends, so the screen never waits for
+/// a worker that is gone.
+struct Finish(Arc<Mutex<ChessProgress>>);
+
+impl Drop for Finish {
+    fn drop(&mut self) {
+        lock(&self.0).finished = true;
+    }
+}
+
+/// What the panel asks for.
+#[derive(Clone, Debug, PartialEq)]
+pub enum PanelAction {
+    ScanPage,
+    ScanAll,
+    Cancel,
+    Select(usize, usize),
+    CopyFen(String),
+    OpenLichess(String),
+}
+
+/// One diagram's state: its label and colour.
+fn status(reading: Option<&BoardReading>) -> (String, Color32) {
+    match reading.map(|r| &r.outcome) {
+        Some(Ok(p)) if p.accepted => (tl!("Position read").to_string(), READ),
+        Some(Ok(_)) => (tl!("Needs review").to_string(), REVIEW),
+        Some(Err(Unreadable::NoModel)) => (tl!("Not read: no piece model").to_string(), FOUND),
+        Some(Err(e)) => (crate::i18n::fmt(tl!("Couldn't be read: {e}"), &[("e", &e.to_string())]), FAILED),
+        None => (tl!("Not read").to_string(), FOUND),
+    }
+}
+
+/// The results to show for document `id`: none for another document, and none once it changed
+/// since the scan (`current` is its state now).
+pub(crate) fn shown(state: &ChessState, id: DocId, current: Option<ScanStamp>) -> Option<&ChessResults> {
+    state.results.as_ref().filter(|r| r.doc == id && Some(r.stamp) == current)
+}
+
+/// Outline the diagrams of `page` and number them. Returns the diagram under `pointer` (its
+/// index on the page) with its hover text.
+pub(crate) fn paint(
+    painter: &egui::Painter,
+    xf: &PageXform,
+    page: usize,
+    info: &DocInfo,
+    results: Option<&ChessResults>,
+    pointer: Option<Pos2>,
+) -> Option<(usize, String)> {
+    let results = results?;
+    // `user_rect` reads the page's box: never for a page the document does not have.
+    info.pages.get(page)?;
+    let p = results.pages.iter().find(|p| p.page == page)?;
+    let mut hovered = None;
+    for (i, d) in p.diagrams.iter().enumerate() {
+        let b = d.candidate.bbox_user;
+        if ![b.x0, b.y0, b.x1, b.y1].iter().all(|v| v.is_finite()) {
+            continue;
+        }
+        let r = xf.user_rect(info, page, [b.x0, b.y0, b.x1, b.y1]);
+        let reading = ChessResults::reading(p, i);
+        let (label, colour) = status(reading);
+        let selected = results.selected == Some((page, i));
+        painter.rect_filled(r, CornerRadius::same(2), colour.gamma_multiply(0.10));
+        painter.rect_stroke(r, CornerRadius::same(2), Stroke::new(if selected { 3.0 } else { 1.5 }, colour), egui::StrokeKind::Outside);
+        if selected {
+            painter.rect_stroke(r.expand(5.0), CornerRadius::same(4), Stroke::new(1.5, colour.gamma_multiply(0.6)), egui::StrokeKind::Outside);
+        }
+        // The diagram's number in reading order, in a tab at its top-left corner.
+        let number = painter.layout_no_wrap((i + 1).to_string(), theme::semibold(11.0), Color32::WHITE);
+        let tab = egui::Rect::from_min_size(r.left_top(), number.size() + egui::vec2(8.0, 2.0));
+        painter.rect_filled(tab, CornerRadius::same(2), colour);
+        painter.galley(tab.min + egui::vec2(4.0, 1.0), number, Color32::WHITE);
+        if hovered.is_none() && pointer.is_some_and(|q| r.contains(q)) {
+            let title = crate::i18n::fmt(tl!("Diagram {n}"), &[("n", &(i + 1).to_string())]);
+            let fen = reading.and_then(BoardReading::position).map(|pos| pos.fen.as_str());
+            let text = match fen {
+                Some(fen) => format!("{title} · {label}\n{fen}"),
+                None => format!("{title} · {label}"),
+            };
+            hovered = Some((i, text));
+        }
+    }
+    hovered
+}
+
+/// The Chess diagrams panel: scan buttons, progress, and the diagrams found, page by page.
+pub(crate) fn panel(
+    ui: &mut egui::Ui,
+    t: &Tokens,
+    state: &mut ChessState,
+    id: DocId,
+    info: &DocInfo,
+    current: Option<ScanStamp>,
+) -> Option<PanelAction> {
+    let mut action = None;
+    let running = state.run.as_ref().filter(|r| r.doc == id).map(|r| {
+        let s = lock(&r.progress);
+        (s.done, s.total)
+    });
+    ui.horizontal_wrapped(|ui| {
+        ui.add_enabled_ui(state.run.is_none(), |ui| {
+            if widgets::pill_button(ui, tl!("Scan this page"), true).clicked() {
+                action = Some(PanelAction::ScanPage);
+            }
+            if widgets::pill_button(ui, tl!("Scan all pages"), false).clicked() {
+                action = Some(PanelAction::ScanAll);
+            }
+        });
+    });
+    if let Some((done, total)) = running {
+        ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.spinner();
+            ui.label(
+                egui::RichText::new(crate::i18n::fmt(
+                    tl!("Scanning for diagrams… page {d} of {t}"),
+                    &[("d", &(done + 1).min(total.max(1)).to_string()), ("t", &total.max(1).to_string())],
+                ))
+                .small()
+                .color(t.text_muted),
+            );
+            if ui.button(tl!("Cancel")).clicked() {
+                action = Some(PanelAction::Cancel);
+            }
+        });
+    }
+    ui.add_space(6.0);
+    let mine = state.results.as_mut().filter(|r| r.doc == id);
+    let Some(results) = mine else {
+        if running.is_none() {
+            ui.label(egui::RichText::new(tl!("Scan this page or all pages to find the chess diagrams in this document.")).color(t.text_muted));
+        }
+        return action;
+    };
+    if Some(results.stamp) != current {
+        ui.label(egui::RichText::new(tl!("The document changed since the scan. Scan again to update the diagrams.")).color(t.text_muted));
+        ui.add_space(4.0);
+    }
+    match &results.model {
+        ModelNote::Loaded => {}
+        ModelNote::Missing => {
+            ui.label(
+                egui::RichText::new(tl!(
+                    "No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx."
+                ))
+                .small()
+                .color(t.text_muted),
+            );
+        }
+        ModelNote::Invalid(why) => {
+            ui.label(
+                egui::RichText::new(crate::i18n::fmt(tl!("The piece model couldn't be loaded: {e}"), &[("e", why)])).small().color(t.text_muted),
+            );
+        }
+    }
+    if running.is_none() && results.count() == 0 {
+        ui.add_space(4.0);
+        ui.label(tl!("No diagrams found."));
+    }
+    ui.separator();
+    let reveal = std::mem::take(&mut results.reveal);
+    let mut listed = 0;
+    for page in &results.pages {
+        if page.diagrams.is_empty() && page.error.is_none() {
+            continue;
+        }
+        let label = info.pages.get(page.page).map_or_else(|| (page.page + 1).to_string(), |p| p.label.clone());
+        ui.add_space(4.0);
+        ui.label(egui::RichText::new(crate::i18n::fmt(tl!("Page {label}"), &[("label", &label)])).font(theme::semibold(12.5)));
+        if let Some(e) = &page.error {
+            ui.label(egui::RichText::new(crate::i18n::fmt(tl!("This page couldn't be scanned: {e}"), &[("e", e)])).small().color(t.text_muted));
+        }
+        if page.truncated {
+            ui.label(
+                egui::RichText::new(crate::i18n::fmt(
+                    tl!("Only the first {n} diagrams on this page are listed."),
+                    &[("n", &page.diagrams.len().to_string())],
+                ))
+                .small()
+                .color(t.text_muted),
+            );
+        }
+        for (i, _) in page.diagrams.iter().enumerate() {
+            if listed >= MAX_LISTED {
+                break;
+            }
+            listed += 1;
+            let reading = ChessResults::reading(page, i);
+            let (label, colour) = status(reading);
+            let position = reading.and_then(BoardReading::position);
+            let selected = results.selected == Some((page.page, i));
+            let row = ui.push_id((page.page, i), |ui| {
+                ui.horizontal(|ui| {
+                    let (bar, _) = ui.allocate_exact_size(egui::vec2(4.0, if position.is_some() { 58.0 } else { 20.0 }), egui::Sense::hover());
+                    ui.painter().rect_filled(bar, CornerRadius::same(2), colour);
+                    ui.vertical(|ui| {
+                        let title = crate::i18n::fmt(tl!("Diagram {n}"), &[("n", &(i + 1).to_string())]);
+                        let head = ui.selectable_label(selected, format!("{title} · {label}"));
+                        if let Some(pos) = position {
+                            ui.add(egui::Label::new(egui::RichText::new(&pos.fen).monospace().small()).wrap());
+                            ui.horizontal(|ui| {
+                                if ui.small_button(tl!("Copy FEN")).clicked() {
+                                    action = Some(PanelAction::CopyFen(pos.fen.clone()));
+                                }
+                                if let Some(url) = pdfcraft_engine::chess::lichess_url(pos)
+                                    && ui.small_button(tl!("Open in lichess")).on_hover_text(&url).clicked()
+                                {
+                                    action = Some(PanelAction::OpenLichess(url));
+                                }
+                            });
+                        }
+                        head
+                    })
+                    .inner
+                })
+                .inner
+            });
+            if selected && reveal {
+                row.response.scroll_to_me(Some(egui::Align::Center));
+            }
+            if row.inner.clicked() {
+                action = Some(PanelAction::Select(page.page, i));
+            }
+        }
+    }
+    action
+}
+
+impl PdfCraftApp {
+    /// Chess ▸ Scan diagrams: scan the current page (`all`: every page) of the active document in
+    /// the background and show the Chess diagrams panel.
+    pub fn start_chess_scan(&mut self, all: bool) {
+        let Some((vi, id)) = self.active_ids() else { return };
+        if self.chess.run.is_some() {
+            self.notify(tl!("Diagrams are already being scanned").to_string());
+            return;
+        }
+        // Reading positions out of a document copies its content.
+        if !self.may_copy(id) {
+            return;
+        }
+        let Some(count) = self.session.get(id).map(|d| d.info.pages.len()) else { return };
+        let pages: Vec<usize> =
+            if all { (0..count).collect() } else { self.views.get(vi).map(|v| v.current).filter(|p| *p < count).into_iter().collect() };
+        let settings = ChessScanSettings::default();
+        // `chunks` needs a batch size above zero: PAGES_PER_JOB is 8.
+        let jobs: Vec<ChessScanJob> = pages.chunks(PAGES_PER_JOB).filter_map(|c| self.session.chess_scan_job(id, c, &settings, true)).collect();
+        // Results for another document, or for this one before it changed, give way.
+        let now = self.session.chess_stamp(id);
+        if self.chess.results.as_ref().is_some_and(|r| r.doc != id || Some(r.stamp) != now) {
+            self.chess.results = None;
+        }
+        let progress = Arc::new(Mutex::new(ChessProgress { total: pages.len(), ..Default::default() }));
+        let p = progress.clone();
+        let work = move || {
+            let _finish = Finish(p.clone());
+            let models = pdfcraft_engine::chess::models(settings.models_dir.as_deref());
+            lock(&p).model = Some(ModelNote::of(&models));
+            let mut base: usize = 0;
+            for job in jobs {
+                let size = job.pages().len();
+                let scan = job.run(&models, |done, _| {
+                    let mut s = lock(&p);
+                    s.done = base.saturating_add(done);
+                    !s.cancel
+                });
+                base = base.saturating_add(size);
+                let mut s = lock(&p);
+                s.scans.push(scan);
+                if s.cancel {
+                    break;
+                }
+            }
+        };
+        #[cfg(not(target_arch = "wasm32"))]
+        if self.run_inline {
+            work();
+        } else if std::thread::Builder::new().name("pdfcraft-chess".into()).spawn(work).is_err() {
+            // The work never ran, so no `Finish` will mark the scan done: do it here.
+            lock(&progress).finished = true;
+        }
+        #[cfg(target_arch = "wasm32")]
+        work();
+        self.chess.run = Some(ChessRun { doc: id, progress, found: 0, stale: false });
+        if self.right != Some(RightPanel::Chess) {
+            self.choose_right_panel(Some(RightPanel::Chess));
+        }
+        self.poll_chess();
+    }
+
+    /// Stop a running scan (the pages scanned so far are kept).
+    pub fn cancel_chess_scan(&mut self) {
+        if let Some(r) = &self.chess.run {
+            lock(&r.progress).cancel = true;
+        }
+    }
+
+    /// Show the batches the worker finished; report the scan once it is done.
+    pub(crate) fn poll_chess(&mut self) {
+        // A closed document takes its results with it.
+        if self.chess.results.as_ref().is_some_and(|r| self.session.get(r.doc).is_none()) {
+            self.chess.results = None;
+        }
+        if let Some((page, index)) = self.chess.picked.take() {
+            self.select_chess_diagram(page, index, false);
+        }
+        let Some(progress) = self.chess.run.as_ref().map(|r| r.progress.clone()) else { return };
+        let (scans, model, finished) = {
+            let mut s = lock(&progress);
+            (std::mem::take(&mut s.scans), s.model.clone(), s.finished)
+        };
+        for scan in scans {
+            let found: usize = scan.pages.iter().map(|p| p.diagrams.len()).sum();
+            let kept = self.keep_chess_scan(scan, model.clone());
+            let Some(run) = self.chess.run.as_mut() else { return };
+            let first_stale = if kept {
+                run.found = run.found.saturating_add(found);
+                false
+            } else {
+                !std::mem::replace(&mut run.stale, true)
+            };
+            if first_stale {
+                self.notify(tl!("The document changed since the scan. Scan again to update the diagrams.").to_string());
+            }
+        }
+        if !finished {
+            if let Some(ctx) = &self.ctx {
+                ctx.request_repaint_after(std::time::Duration::from_millis(200));
+            }
+            return;
+        }
+        let Some(run) = self.chess.run.take() else { return };
+        if !run.stale {
+            let n = run.found;
+            self.notify(crate::i18n::fmt(tl!("Diagrams found: {n}"), &[("n", &n.to_string())]));
+        }
+    }
+
+    /// Add one batch to the results. Returns `false` when the document changed since the batch
+    /// was made: its boxes describe a state that is gone, and it is dropped.
+    fn keep_chess_scan(&mut self, scan: ChessScan, model: Option<ModelNote>) -> bool {
+        let stamp = scan.stamp();
+        if self.session.chess_stamp(scan.doc) != Some(stamp) {
+            return false;
+        }
+        // Agents and the CLI in this session reuse what was found.
+        self.session.store_chess_scan(&scan);
+        let fresh = self.chess.results.as_ref().is_none_or(|r| r.doc != scan.doc || r.stamp != stamp);
+        if fresh {
+            self.chess.results =
+                Some(ChessResults { doc: scan.doc, stamp, pages: Vec::new(), selected: None, reveal: false, model: ModelNote::Missing });
+        }
+        let Some(results) = self.chess.results.as_mut() else { return true };
+        if let Some(m) = model {
+            results.model = m;
+        }
+        for page in scan.pages {
+            match results.pages.binary_search_by_key(&page.page, |p| p.page) {
+                Ok(i) => {
+                    if let Some(slot) = results.pages.get_mut(i) {
+                        *slot = page;
+                    }
+                }
+                Err(i) => results.pages.insert(i, page),
+            }
+        }
+        if results.selected.is_some_and(|(p, i)| results.diagram(p, i).is_none()) {
+            results.selected = None;
+        }
+        true
+    }
+
+    /// Pick diagram `index` on `page`. From the panel (`go`), the view goes to it and outlines it;
+    /// from the page, the panel shows its entry.
+    pub fn select_chess_diagram(&mut self, page: usize, index: usize, go: bool) {
+        let Some((vi, id)) = self.active_ids() else { return };
+        let Some(results) = self.chess.results.as_mut().filter(|r| r.doc == id) else { return };
+        let Some((rect, _)) = results.diagram(page, index) else { return };
+        results.selected = Some((page, index));
+        results.reveal = !go;
+        if go && let Some(view) = self.views.get_mut(vi) {
+            view.go_to_page(page);
+            view.flash = Some((page, rect, 0.0));
+        }
+        if !go && self.right != Some(RightPanel::Chess) {
+            self.choose_right_panel(Some(RightPanel::Chess));
+        }
+    }
+
+    pub(crate) fn chess_action(&mut self, action: PanelAction) {
+        match action {
+            PanelAction::ScanPage => self.start_chess_scan(false),
+            PanelAction::ScanAll => self.start_chess_scan(true),
+            PanelAction::Cancel => self.cancel_chess_scan(),
+            PanelAction::Select(page, index) => self.select_chess_diagram(page, index, true),
+            PanelAction::CopyFen(fen) => {
+                let Some((_, id)) = self.active_ids() else { return };
+                if !self.may_copy(id) {
+                    return;
+                }
+                if let Some(ctx) = &self.ctx {
+                    ctx.copy_text(fen);
+                }
+                self.notify(tl!("FEN copied").to_string());
+            }
+            // A lichess address PdfCraft built from the position, opened because the user asked.
+            PanelAction::OpenLichess(url) => self.open_url(&url),
+        }
+    }
+}
