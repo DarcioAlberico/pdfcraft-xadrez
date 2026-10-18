@@ -47,6 +47,8 @@ icu_properties = "2.3"
 unicode-segmentation = "1.13"
 
 [dev-dependencies]
+# Parses the operators a diagram replacement draws, to count them.
+pdfcraft-content = { workspace = true }
 proptest.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

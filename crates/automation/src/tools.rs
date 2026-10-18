@@ -94,6 +94,34 @@ fn chess_props(read: bool) -> Value {
     props
 }
 
+/// The arguments of `chess_replace_diagram`: the diagram as `chess_detect` numbered it (and the
+/// scan settings it used), the position and how to draw it.
+fn chess_replace_props() -> Value {
+    let mut props = chess_props(false);
+    if let Some(o) = props.as_object_mut() {
+        o.remove("pages");
+        let extra = json!({
+            "page": { "type": "integer", "minimum": 1, "description": "The diagram's page." },
+            "index": { "type": "integer", "minimum": 1, "description": "The diagram's number on the page, as chess_detect or chess_read numbered it (with the same dpi, order, max_per_page and allow_unverified_fonts)." },
+            "generation": { "type": "integer", "minimum": 0, "description": "The generation chess_detect or chess_read reported. Refused when the document changed since." },
+            "fen": { "type": "string", "maxLength": 128, "description": "The position to draw, as a FEN (only its placement is drawn). Give fen or placement." },
+            "placement": { "type": "string", "maxLength": 100, "description": "The position to draw, as the first field of a FEN." },
+            "light": color(),
+            "dark": color(),
+            "border": { "type": "number", "minimum": 0, "maximum": 1, "description": "Frame width in square widths (default 0.04; 0 for none)." },
+            "border_color": color(),
+            "coordinates": { "type": "boolean", "description": "Print a-h and 1-8 around the board (default false)." },
+            "flipped": { "type": "boolean", "description": "Draw from Black's side (default false)." },
+            "pieces": { "type": "string", "enum": ["installed", "geometric"], "description": "installed (default): PDFCRAFT_CHESS_PIECES or an installed Chess Merida, else plain geometric pieces; geometric: always the plain pieces." },
+            "dry_run": { "type": "boolean", "description": "Only say what would be done; change nothing (default false)." },
+        });
+        if let Value::Object(extra) = extra {
+            o.extend(extra);
+        }
+    }
+    props
+}
+
 fn schema(props: Value, required: &[&str]) -> Value {
     json!({ "type": "object", "properties": props, "required": required, "additionalProperties": false })
 }
@@ -1178,6 +1206,18 @@ pub fn tools() -> Vec<ToolDef> {
         t("chess_status", "Chess model status", "Whether the user's chess models are available (none ship with PdfCraft): the piece model reads drawn and scanned diagrams, the glyph model chess text. Each is loaded, missing or invalid (with the reason). models_dir looks in that folder instead of PDFCRAFT_MODELS and beside the executable. Also says where the piece set for drawing diagrams comes from (PDFCRAFT_CHESS_PIECES, an installed Chess Merida, or plain geometric pieces). Diagrams in chess fonts are read without any model.")
             .ro()
             .with(schema(json!({ "models_dir": models_dir() }), &[])),
+        t("content_draw", "Draw content operators", "Draw a fragment of PDF content-stream operators (ISO 32000-2 §8–9) on top of a page, in its default user space (points, y up, origin at the media box's corner; /Rotate is not applied), as page content of its own wrapped in q … Q. Checked first and refused with the reason: at most 4 MiB; q/Q, BT/ET and marked content balanced (q at most 28 deep); operand counts and finite numbers; only path, clipping, device colour (g, rg, k, and cs/CS with DeviceGray, DeviceRGB or DeviceCMYK), general graphics state, text and marked-content operators with inline property lists; nothing that needs a page resource (Do, gs, sh, inline images, patterns). Text may use /PCHelv, /PCTimes or /PCCour (standard fonts, WinAnsi), which are added for it. One undo step.")
+            .with(schema(
+                json!({
+                    "doc": doc(),
+                    "page": { "type": "integer", "minimum": 1 },
+                    "ops": { "type": "string", "maxLength": 4194304, "description": "The operators, e.g. \"1 0 0 rg 72 72 144 72 re f\"." },
+                }),
+                &["doc", "page", "ops"],
+            )),
+        t("chess_replace_diagram", "Replace a chess diagram", "Chess ▸ Replace diagram: draw a new board, as vector paths, over diagram index of page (numbered as chess_detect numbers them, with the same scan settings; generation is the one chess_detect reported, and a document changed since is refused). The board shows upright as the page is displayed, as large as fits in the diagram's box and centred. The old diagram: an embedded image that is the diagram is deleted; text in a chess diagram font is removed and its box covered; anything else (a scanned page, squares drawn as paths, an image that also holds a caption) is covered with opaque white and stays in the page's content underneath. Returns what was done (old_diagram: image_deleted, text_removed_and_covered or covered), the diagram's box, the cover and the board's box (user space; rect and board_rect from the top-left of the displayed page), the piece set used, and notes on what stays. One undo step; dry_run changes nothing. Needs permission to change the document.")
+            .destructive()
+            .with(schema(chess_replace_props(), &["doc", "page", "index", "generation"])),
         t("doc_export_all_images", "Export all images", "Write the images that pages use into a folder (`<name>_Page_<n>_Image_<k>.jpg|png`, n zero-padded to the page count's digits), each once: JPEG images unchanged, others as PNG with their soft mask as alpha. min_size skips images with fewer pixels on their shorter side. Images that can't be decoded yet (JPEG 2000, JBIG2, CCITT, separations) are listed under skipped. Includes unsaved edits.")
             .cmd("export.all_images")
             .with(schema(

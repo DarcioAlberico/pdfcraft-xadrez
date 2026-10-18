@@ -64,6 +64,7 @@ pub use pdfcraft_forms::{
 };
 
 pub use pdfcraft_a11y as a11y;
+pub use pdfcraft_edit::operators::{MAX_OPERATOR_BYTES, check_operators};
 pub use pdfcraft_edit::{BlockStyle, PageImage, RangeStyle, TextBlock, TextLine, first_undrawable};
 pub use pdfcraft_measure as measure;
 pub use pdfcraft_xfa::Report as XfaLayout;
@@ -279,6 +280,9 @@ fn scope_of(edit: &Edit) -> Scope {
         | Edit::EditPageImage { .. }
         | Edit::AddText { .. }
         | Edit::AddImage { .. }
+        | Edit::AddContent { .. }
+        | Edit::RemoveTextLines { .. }
+        | Edit::ReplaceDiagram(_)
         | Edit::UpdateContent { .. }
         | Edit::DeleteContent { .. }
         | Edit::ReplaceImage { .. }
@@ -1627,6 +1631,24 @@ pub enum Edit {
         page: usize,
         index: usize,
     },
+    /// Draw a fragment of content-stream operators on top of `page`, in its default user space,
+    /// as page content of its own (`pdfcraft_edit::add_operators`). The fragment is checked
+    /// first: balanced, within a size cap, and naming no page resource (`/PCHelv`, `/PCTimes` and
+    /// `/PCCour` are provided for text).
+    AddContent {
+        page: usize,
+        ops: Arc<Vec<u8>>,
+    },
+    /// Remove lines of text (indexes from `Document::text_lines`) for good; text after them
+    /// stays where it was (`pdfcraft_edit::remove_lines`).
+    RemoveTextLines {
+        page: usize,
+        lines: Vec<usize>,
+    },
+    /// Chess ▸ Replace diagram: draw a new board over a diagram the scan found. Checked against
+    /// the page and turned into a [`Edit::Batch`] when applied ([`Session::chess_replacement`]),
+    /// so it must be applied by itself, not inside a batch.
+    ReplaceDiagram(Box<chess::DiagramReplacement>),
     /// Replace an added image with another file (keeping its box and transforms).
     ReplaceImage {
         page: usize,
@@ -1878,6 +1900,8 @@ pub const EDIT_LABELS: &[&str] = &[
     "Remove background",
     "Add text",
     "Add image",
+    "Add content",
+    "Replace diagram",
     "Edit content",
     "Delete content",
     "Apply redactions",
@@ -1902,7 +1926,8 @@ pub const EDIT_LABELS: &[&str] = &[
 /// The names of the batches built below L7, which an interface shows in the same places as
 /// [`EDIT_LABELS`] and so translates the same way. A batch built in the interface itself arrives
 /// already worded in the interface's language.
-pub const BATCH_LABELS: &[&str] = &["Set document title", "Mark differences", "Detect form fields", "Run JavaScript", "Recognize text"];
+pub const BATCH_LABELS: &[&str] =
+    &["Set document title", "Mark differences", "Detect form fields", "Run JavaScript", "Recognize text", chess::replace::LABEL];
 
 impl Edit {
     /// Label for the Edit menu and history ("Undo Rotate pages").
@@ -2011,6 +2036,9 @@ impl Edit {
             Edit::RemoveMarks { kind: MarkKind::Background } => Label::of("Remove background"),
             Edit::AddText { .. } => Label::of("Add text"),
             Edit::AddImage { .. } => Label::of("Add image"),
+            Edit::AddContent { .. } => Label::of("Add content"),
+            Edit::RemoveTextLines { .. } => Label::of("Edit text"),
+            Edit::ReplaceDiagram(_) => Label::of(chess::replace::LABEL),
             Edit::UpdateContent { .. } => Label::of("Edit content"),
             Edit::DeleteContent { .. } => Label::of("Delete content"),
             Edit::ReplaceImage { .. } => Label::of("Replace image"),
@@ -2150,6 +2178,9 @@ fn check_permission(edit: &Edit, p: &pdfcraft_cos::Permissions) -> Result<(), Ed
         | Edit::ApplyRedactions { .. }
         | Edit::AddText { .. }
         | Edit::AddImage { .. }
+        | Edit::AddContent { .. }
+        | Edit::RemoveTextLines { .. }
+        | Edit::ReplaceDiagram(_)
         | Edit::UpdateContent { .. }
         | Edit::MoveObjects { .. }
         | Edit::DeleteContent { .. }
@@ -2520,6 +2551,16 @@ fn run_edit(doc: &mut pdfcraft_cos::Document, edit: &Edit, cx: &mut EditCtx) -> 
             pdfcraft_edit::change_image(doc, *page, *index, &c)?;
         }
         Edit::MoveObjects { page, objects, offset } => pdfcraft_edit::move_objects(doc, *page, objects, *offset)?,
+        Edit::AddContent { page, ops } => pdfcraft_edit::add_operators(doc, *page, ops)?,
+        Edit::RemoveTextLines { page, lines } => {
+            if pdfcraft_edit::remove_lines(doc, *page, lines)? == 0 {
+                return Err(EditError::Edit(pdfcraft_edit::EditError::Invalid("there is no line to remove".into())));
+            }
+        }
+        // `Session::apply` turns it into a batch first; only one nested in a batch arrives here.
+        Edit::ReplaceDiagram(_) => {
+            return Err(EditError::Invalid("a diagram replacement is checked against the page's scan, so it must be applied by itself".into()));
+        }
         Edit::EditTextBlock { page, block, text, style } => {
             pdfcraft_edit::rewrite_block(doc, *page, *block, Some(text), style)?;
         }
@@ -3598,6 +3639,11 @@ impl Session {
 
     /// Apply an edit. On success the previous state is undoable and the view data is refreshed.
     pub fn apply(&mut self, id: DocId, edit: Edit) -> Result<(), EditError> {
+        // A diagram is named by the page's scan: checked against it, and made a batch, here.
+        let edit = match edit {
+            Edit::ReplaceDiagram(r) => self.chess_replacement(id, &r)?.edit,
+            other => other,
+        };
         let now = self.now();
         let today = self.today();
         let js_off = self.js_off;

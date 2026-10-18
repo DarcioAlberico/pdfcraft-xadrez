@@ -744,6 +744,14 @@ impl Automation {
             "page_add_image" => self.page_add_image(&a)?,
             "content_update" => self.content_update(&a)?,
             "content_delete" => self.content_delete(&a)?,
+            "content_draw" => {
+                let page = self.page(&a)?;
+                let ops = a.str("ops")?.as_bytes().to_vec();
+                let count = pdfcraft_engine::check_operators(&ops).map_err(failed)?;
+                let mut out = self.apply(&a, Edit::AddContent { page, ops: Arc::new(ops) })?;
+                out["operators"] = json!(count);
+                out
+            }
             "doc_print" => self.doc_print(&a)?,
             "doc_remove_hidden" => self.doc_remove_hidden(&a)?,
             "doc_audit_redactions" => self.doc_audit_redactions(&a)?,
@@ -792,6 +800,7 @@ impl Automation {
             "chess_detect" => self.chess_detect(&a)?,
             "chess_read" => self.chess_read(&a)?,
             "chess_status" => self.chess_status(&a)?,
+            "chess_replace_diagram" => self.chess_replace_diagram(&a)?,
             "accessibility_report" => self.a11y_report(&a)?,
             "accessibility_review_record" => self.a11y_review_record(&a)?,
             "accessibility_review_save" => self.a11y_review_save(&a)?,

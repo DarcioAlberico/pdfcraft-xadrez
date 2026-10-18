@@ -4136,6 +4136,7 @@ dependencies = [
  "pdfcraft-fonts",
  "pdfcraft-model",
  "pdfcraft-testkit",
+ "proptest",
  "thiserror 2.0.21",
  "unicode-bidi",
 ]
@@ -4154,6 +4155,7 @@ dependencies = [
  "pdfcraft-chess",
  "pdfcraft-chessvision",
  "pdfcraft-compare",
+ "pdfcraft-content",
  "pdfcraft-cos",
  "pdfcraft-create",
  "pdfcraft-edit",
