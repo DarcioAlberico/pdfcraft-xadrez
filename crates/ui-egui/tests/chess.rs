@@ -301,3 +301,109 @@ fn the_review_queue_lists_and_walks_the_diagrams_to_review() {
     h.run_steps(2);
     assert_eq!(h.state().chess.results.as_ref().and_then(|r| r.selected), Some((0, 1)));
 }
+
+/// A page with a heading and moves in Helvetica above a board in the Chess Merida font (top left
+/// at 60, 200 from the page's top).
+fn chapter() -> Vec<u8> {
+    let mut content = String::from("BT /F2 24 Tf 60 760 Td (Chapter 1) Tj ET\nBT /F2 11 Tf 60 730 Td (1.e4 e5 2.Nf3 Nc6 3.Bb5 a6) Tj ET\n");
+    content.push_str("BT /F1 20 Tf 60 584 Td ");
+    for (i, line) in MERIDA_START.iter().enumerate() {
+        if i > 0 {
+            content.push_str("0 -20 Td ");
+        }
+        content.push_str(&format!("({line}) Tj "));
+    }
+    content.push_str("ET\n");
+    let widths = vec!["1000"; 95].join(" ");
+    let objs = [
+        "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 600 800] >>".to_string(),
+        "<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>".to_string(),
+        format!("<< /Length {} >>\nstream\n{content}\nendstream", content.len()),
+        format!("<< /Type /Font /Subtype /Type1 /BaseFont /ChessMerida /FirstChar 32 /LastChar 126 /Widths [{widths}] >>"),
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>".to_string(),
+    ];
+    let mut out = b"%PDF-1.7\n".to_vec();
+    let mut offsets = Vec::new();
+    for (i, o) in objs.iter().enumerate() {
+        offsets.push(out.len());
+        out.extend_from_slice(format!("{} 0 obj\n{o}\nendobj\n", i + 1).as_bytes());
+    }
+    let xref = out.len();
+    out.extend_from_slice(format!("xref\n0 {}\n0000000000 65535 f \n", objs.len() + 1).as_bytes());
+    for o in offsets {
+        out.extend_from_slice(format!("{o:010} 00000 n \n").as_bytes());
+    }
+    out.extend_from_slice(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objs.len() + 1).as_bytes());
+    out
+}
+
+fn chapter_harness() -> Harness<'static, PdfCraftApp> {
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).build_eframe(|_cc| {
+        let mut app = PdfCraftApp::new();
+        app.set_option("language", "en").unwrap();
+        app.open_bytes("chapter.pdf", None, chapter()).unwrap();
+        app.run_inline = true;
+        app
+    });
+    h.run_steps(4);
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(2);
+    h
+}
+
+/// The Text tab reads the page beside it: the heading, the moves (each outlining itself on the
+/// page when clicked) and the diagram, which opens in the editor.
+#[test]
+fn the_text_tab_shows_the_page_read_as_chess_text_and_points_back_at_it() {
+    let mut h = chapter_harness();
+    h.get_by_label("Text").click();
+    h.run_steps(4);
+    h.get_by_label("Recognised text of page 1");
+    h.get_by_label("Chapter 1");
+    let text = h.state().chess.text.as_ref().expect("the page was read");
+    let moves: Vec<String> = text.chess.pages[0]
+        .blocks
+        .iter()
+        .flat_map(|b| b.inlines())
+        .filter_map(|i| if let pdfcraft_engine::chess::pdfcraft_chessvision::doc::Inline::Move(m) = i { Some(m.san.clone()) } else { None })
+        .collect();
+    assert_eq!(moves, ["e4", "e5", "Nf3", "Nc6", "Bb5", "a6"]);
+    // A move is shown with its figurine when the fonts have it, else as printed.
+    h.get_all_by_label_contains("e4").next().expect("the move 1.e4 is shown").click();
+    h.run_steps(2);
+    let flash = h.state().views[0].flash.expect("the move is outlined on the page");
+    assert_eq!(flash.0, 0);
+    assert!(flash.1[1] > 700.0 && flash.1[3] < 760.0, "the moves' line, near the top: {:?}", flash.1);
+    // The diagram opens in the editor, on the Diagrams tab.
+    h.get_by_label("Diagram 1").click();
+    h.run_steps(4);
+    assert!(h.state().chess.editor.as_ref().is_some_and(|e| (e.page, e.index) == (0, 0)), "the editor is on the diagram");
+}
+
+/// Export… writes the document: PGN with the position's game, and Markdown with its image in a
+/// folder beside it.
+#[test]
+fn export_writes_pgn_and_markdown_with_images() {
+    let dir = std::env::temp_dir().join(format!("pdfcraft-chess-export-ui-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    for (format, name) in [("Export as PGN", "book.pgn"), ("Export as Markdown", "book.md")] {
+        let mut h = chapter_harness();
+        h.state_mut().save_override = Some(dir.join(name).to_string_lossy().into_owned());
+        h.get_by_label("Export…").click();
+        h.run_steps(2);
+        h.get_by_label(format).click();
+        h.run_steps(4);
+        assert!(h.state().toast.as_ref().is_some_and(|t| t.0.starts_with("Exported to")), "{format}: {:?}", h.state().toast);
+    }
+    let pgn = std::fs::read_to_string(dir.join("book.pgn")).unwrap();
+    assert!(
+        pgn.contains("[FEN \"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\"]") && pgn.contains("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6"),
+        "{pgn}"
+    );
+    let md = std::fs::read_to_string(dir.join("book.md")).unwrap();
+    assert!(md.contains("](book_diagrams/diagram-p0001-1.png)"), "{md}");
+    assert!(dir.join("book_diagrams").join("diagram-p0001-1.png").exists());
+    let _ = std::fs::remove_dir_all(&dir);
+}

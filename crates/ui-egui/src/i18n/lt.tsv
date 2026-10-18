@@ -2696,6 +2696,22 @@ key	Space	Tarpas
 	Couldn't be read: {e}	Nepavyko nuskaityti: {e}
 	Not read	Nenuskaityta
 	Copy FEN	Kopijuoti FEN
+	Ambiguous move	Dviprasmis ėjimas
+	Chess OCR read nothing on this page.	Šachmatų OCR šiame puslapyje nieko neperskaitė.
+	Export as {f}	Eksportuoti kaip {f}
+	Illegal move	Neteisėtas ėjimas
+	Move out of sequence	Ėjimas ne iš eilės
+	No text on this page.	Šiame puslapyje nėra teksto.
+	Not reached: an earlier move failed	Nepasiekta: ankstesnis ėjimas nepavyko
+	Read the page image instead of its text layer (needs the chess-glyphs model).	Skaityti puslapio vaizdą vietoj teksto sluoksnio (reikia chess-glyphs modelio).
+	Read this page with chess OCR	Perskaityti šį puslapį šachmatų OCR
+	Read with chess OCR: check it against the page.	Perskaityta šachmatų OCR: palyginkite su puslapiu.
+	Reading the page…	Skaitomas puslapis…
+	Recognised text of page {p}	{p} puslapio atpažintas tekstas
+	This document does not allow copying its content, so its text is not read.	Šis dokumentas neleidžia kopijuoti turinio, todėl jo tekstas neskaitomas.
+	This page's text layer can't be believed ({e}): read it with chess OCR.	Šio puslapio teksto sluoksniu negalima pasitikėti ({e}): perskaitykite jį šachmatų OCR.
+	Unchecked: no position to play it from	Nepatikrinta: nėra pozicijos, iš kurios jį sužaisti
+	Valid move	Galiojantis ėjimas
 	Diagram replaced	Diagrama pakeista
 	Lichess link added	Pridėta lichess nuoroda
 	No link was added: {e}	Nuoroda nepridėta: {e}

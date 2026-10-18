@@ -2453,6 +2453,22 @@ animation effects	Off	Aus
 	Couldn't be read: {e}	Konnte nicht gelesen werden: {e}
 	Not read	Nicht gelesen
 	Copy FEN	FEN kopieren
+	Ambiguous move	Mehrdeutiger Zug
+	Chess OCR read nothing on this page.	Die Schach-OCR hat auf dieser Seite nichts gelesen.
+	Export as {f}	Als {f} exportieren
+	Illegal move	Illegaler Zug
+	Move out of sequence	Zug außer der Reihe
+	No text on this page.	Kein Text auf dieser Seite.
+	Not reached: an earlier move failed	Nicht erreicht: ein früherer Zug ist gescheitert
+	Read the page image instead of its text layer (needs the chess-glyphs model).	Das Seitenbild statt der Textebene lesen (braucht das Modell chess-glyphs).
+	Read this page with chess OCR	Diese Seite mit Schach-OCR lesen
+	Read with chess OCR: check it against the page.	Mit Schach-OCR gelesen: mit der Seite vergleichen.
+	Reading the page…	Seite wird gelesen…
+	Recognised text of page {p}	Erkannter Text von Seite {p}
+	This document does not allow copying its content, so its text is not read.	Dieses Dokument erlaubt kein Kopieren seines Inhalts, daher wird sein Text nicht gelesen.
+	This page's text layer can't be believed ({e}): read it with chess OCR.	Der Textebene dieser Seite ist nicht zu trauen ({e}): lesen Sie sie mit Schach-OCR.
+	Unchecked: no position to play it from	Nicht geprüft: keine Stellung, von der aus er gespielt werden kann
+	Valid move	Gültiger Zug
 	Diagram replaced	Diagramm ersetzt
 	Lichess link added	Lichess-Link hinzugefügt
 	No link was added: {e}	Es wurde kein Link hinzugefügt: {e}

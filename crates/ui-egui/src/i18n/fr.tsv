@@ -2452,6 +2452,22 @@ animation effects	Off	Désactivés
 	Couldn't be read: {e}	Lecture impossible : {e}
 	Not read	Non lu
 	Copy FEN	Copier la FEN
+	Ambiguous move	Coup ambigu
+	Chess OCR read nothing on this page.	L'OCR d'échecs n'a rien lu sur cette page.
+	Export as {f}	Exporter en {f}
+	Illegal move	Coup illégal
+	Move out of sequence	Coup hors séquence
+	No text on this page.	Aucun texte sur cette page.
+	Not reached: an earlier move failed	Non atteint : un coup précédent a échoué
+	Read the page image instead of its text layer (needs the chess-glyphs model).	Lire l'image de la page au lieu de sa couche de texte (nécessite le modèle chess-glyphs).
+	Read this page with chess OCR	Lire cette page avec l'OCR d'échecs
+	Read with chess OCR: check it against the page.	Lu par l'OCR d'échecs : vérifiez-le sur la page.
+	Reading the page…	Lecture de la page…
+	Recognised text of page {p}	Texte reconnu de la page {p}
+	This document does not allow copying its content, so its text is not read.	Ce document n'autorise pas la copie de son contenu : son texte n'est pas lu.
+	This page's text layer can't be believed ({e}): read it with chess OCR.	La couche de texte de cette page n'est pas fiable ({e}) : lisez-la avec l'OCR d'échecs.
+	Unchecked: no position to play it from	Non vérifié : aucune position d'où le jouer
+	Valid move	Coup valide
 	Diagram replaced	Diagramme remplacé
 	Lichess link added	Lien lichess ajouté
 	No link was added: {e}	Aucun lien n'a été ajouté : {e}

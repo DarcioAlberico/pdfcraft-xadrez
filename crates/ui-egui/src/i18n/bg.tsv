@@ -2415,6 +2415,22 @@ animation effects	Off	Изключени
 	Couldn't be read: {e}	Не можа да се прочете: {e}
 	Not read	Не е прочетена
 	Copy FEN	Копиране на FEN
+	Ambiguous move	Двусмислен ход
+	Chess OCR read nothing on this page.	Шахматното OCR не разчете нищо на тази страница.
+	Export as {f}	Експортиране като {f}
+	Illegal move	Незаконен ход
+	Move out of sequence	Ход извън последователността
+	No text on this page.	Няма текст на тази страница.
+	Not reached: an earlier move failed	Не е достигнат: по-ранен ход не е успял
+	Read the page image instead of its text layer (needs the chess-glyphs model).	Разчитане на изображението на страницата вместо текстовия слой (нужен е моделът chess-glyphs).
+	Read this page with chess OCR	Разчитане на тази страница с шахматно OCR
+	Read with chess OCR: check it against the page.	Разчетено с шахматно OCR: сверете със страницата.
+	Reading the page…	Разчитане на страницата…
+	Recognised text of page {p}	Разпознат текст на страница {p}
+	This document does not allow copying its content, so its text is not read.	Този документ не позволява копиране на съдържанието, затова текстът не се разчита.
+	This page's text layer can't be believed ({e}): read it with chess OCR.	На текстовия слой на тази страница не може да се вярва ({e}): разчетете я с шахматно OCR.
+	Unchecked: no position to play it from	Непроверен: няма позиция, от която да се изиграе
+	Valid move	Валиден ход
 	Diagram replaced	Диаграмата е заменена
 	Lichess link added	Връзката към lichess е добавена
 	No link was added: {e}	Не е добавена връзка: {e}

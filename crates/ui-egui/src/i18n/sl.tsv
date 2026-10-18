@@ -2457,6 +2457,22 @@ animation effects	Off	Izklopljeni
 	Couldn't be read: {e}	Ni bilo mogoče prebrati: {e}
 	Not read	Ni prebrano
 	Copy FEN	Kopiraj FEN
+	Ambiguous move	Dvoumna poteza
+	Chess OCR read nothing on this page.	Šahovski OCR na tej strani ni prebral ničesar.
+	Export as {f}	Izvozi kot {f}
+	Illegal move	Nelegalna poteza
+	Move out of sequence	Poteza zunaj zaporedja
+	No text on this page.	Na tej strani ni besedila.
+	Not reached: an earlier move failed	Ni doseženo: prejšnja poteza ni uspela
+	Read the page image instead of its text layer (needs the chess-glyphs model).	Beri sliko strani namesto besedilne plasti (potreben je model chess-glyphs).
+	Read this page with chess OCR	Preberi to stran s šahovskim OCR
+	Read with chess OCR: check it against the page.	Prebrano s šahovskim OCR: preverite s stranjo.
+	Reading the page…	Branje strani …
+	Recognised text of page {p}	Prepoznano besedilo strani {p}
+	This document does not allow copying its content, so its text is not read.	Ta dokument ne dovoli kopiranja vsebine, zato se njegovo besedilo ne bere.
+	This page's text layer can't be believed ({e}): read it with chess OCR.	Besedilni plasti te strani ni mogoče zaupati ({e}): preberite jo s šahovskim OCR.
+	Unchecked: no position to play it from	Nepreverjeno: ni položaja, iz katerega bi jo odigrali
+	Valid move	Veljavna poteza
 	Diagram replaced	Diagram zamenjan
 	Lichess link added	Povezava na lichess dodana
 	No link was added: {e}	Nobena povezava ni bila dodana: {e}

@@ -48,6 +48,10 @@ pub struct ChessState {
     pub review_only: bool,
     /// The pieces the editor draws with, found once.
     pub pieces: Option<Arc<pdfcraft_engine::chess::pdfcraft_chess::draw::PieceSet>>,
+    /// The panel's tab: the diagrams, or the page's recognised text (S16).
+    pub tab: crate::chess_text_ui::ChessTab,
+    /// The page last read as text.
+    pub text: Option<crate::chess_text_ui::PageText>,
 }
 
 /// What scanning found in one document.
@@ -159,6 +163,7 @@ pub enum PanelAction {
     CopyFen(String),
     OpenLichess(String),
     Editor(crate::chess_editor::EditorAction),
+    Text(crate::chess_text_ui::TextAction),
 }
 
 /// One diagram's state: its label and colour.
@@ -233,8 +238,18 @@ pub(crate) fn panel(
     id: DocId,
     info: &DocInfo,
     current: Option<ScanStamp>,
+    page_now: usize,
 ) -> Option<PanelAction> {
+    use crate::chess_text_ui::ChessTab;
     let mut action = None;
+    ui.horizontal(|ui| {
+        ui.selectable_value(&mut state.tab, ChessTab::Diagrams, tl!("Diagrams"));
+        ui.selectable_value(&mut state.tab, ChessTab::Text, tl!("Text"));
+    });
+    ui.add_space(4.0);
+    if state.tab == ChessTab::Text {
+        return crate::chess_text_ui::text_tab(ui, t, state.text.as_mut(), id, page_now, current).map(PanelAction::Text);
+    }
     let running = state.run.as_ref().filter(|r| r.doc == id).map(|r| {
         let s = lock(&r.progress);
         (s.done, s.total)
@@ -248,6 +263,9 @@ pub(crate) fn panel(
                 action = Some(PanelAction::ScanAll);
             }
         });
+        if let Some(a) = crate::chess_text_ui::export_menu(ui) {
+            action = Some(PanelAction::Text(a));
+        }
     });
     if let Some((done, total)) = running {
         ui.add_space(4.0);
@@ -569,6 +587,7 @@ impl PdfCraftApp {
             // A lichess address PdfCraft built from the position, opened because the user asked.
             PanelAction::OpenLichess(url) => self.open_url(&url),
             PanelAction::Editor(a) => self.chess_editor_action(a),
+            PanelAction::Text(a) => self.chess_text_action(a),
         }
     }
 

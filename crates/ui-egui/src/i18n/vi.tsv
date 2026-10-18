@@ -2639,6 +2639,22 @@ key	Space	Space
 	Couldn't be read: {e}	Không đọc được: {e}
 	Not read	Chưa đọc
 	Copy FEN	Sao chép FEN
+	Ambiguous move	Nước đi mơ hồ
+	Chess OCR read nothing on this page.	OCR cờ vua không đọc được gì trên trang này.
+	Export as {f}	Xuất dưới dạng {f}
+	Illegal move	Nước đi không hợp lệ
+	Move out of sequence	Nước đi sai thứ tự
+	No text on this page.	Trang này không có văn bản.
+	Not reached: an earlier move failed	Chưa tới: một nước đi trước đó bị lỗi
+	Read the page image instead of its text layer (needs the chess-glyphs model).	Đọc ảnh trang thay vì lớp văn bản (cần mô hình chess-glyphs).
+	Read this page with chess OCR	Đọc trang này bằng OCR cờ vua
+	Read with chess OCR: check it against the page.	Đã đọc bằng OCR cờ vua: hãy đối chiếu với trang.
+	Reading the page…	Đang đọc trang…
+	Recognised text of page {p}	Văn bản nhận dạng của trang {p}
+	This document does not allow copying its content, so its text is not read.	Tài liệu này không cho phép sao chép nội dung, nên không đọc văn bản của nó.
+	This page's text layer can't be believed ({e}): read it with chess OCR.	Không thể tin lớp văn bản của trang này ({e}): hãy đọc bằng OCR cờ vua.
+	Unchecked: no position to play it from	Chưa kiểm tra: không có thế cờ để đi
+	Valid move	Nước đi hợp lệ
 	Diagram replaced	Đã thay sơ đồ
 	Lichess link added	Đã thêm liên kết lichess
 	No link was added: {e}	Không thêm liên kết nào: {e}
