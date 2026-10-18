@@ -516,6 +516,7 @@ fn the_users_models_read_an_embedded_board() {
     }
 }
 
+mod document;
 mod replace;
 
 proptest! {

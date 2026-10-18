@@ -15,9 +15,11 @@ use pdfcraft_engine::Edit;
 use pdfcraft_engine::chess::pdfcraft_chess::draw::{BoardStyle, PieceSet, Rgb};
 use pdfcraft_engine::chess::pdfcraft_chess::fen;
 use pdfcraft_engine::chess::pdfcraft_chess::rules::Legality;
+use pdfcraft_engine::chess::pdfcraft_chess::san::Lang;
 use pdfcraft_engine::chess::pdfcraft_chessvision::board::{BoardReading, ReadPosition, ReadingSource, Unreadable};
 use pdfcraft_engine::chess::pdfcraft_chessvision::coords::{PageGeometry, PageRect};
 use pdfcraft_engine::chess::pdfcraft_chessvision::detect::Source;
+use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, Inline, MoveInline, MoveStatus};
 use pdfcraft_engine::chess::pdfcraft_chessvision::merge::Merged;
 use pdfcraft_engine::chess::pdfcraft_chessvision::pieces::{self, PieceSource};
 use pdfcraft_engine::chess::{self, ChessPage, ChessScanSettings, DiagramReplacement, ModelState, ReadingOrder};
@@ -345,6 +347,67 @@ impl Automation {
             o.extend(f);
         }
         Ok(out)
+    }
+
+    /// Chess ▸ Recognised document: the pages read into a `ChessDoc`. A summary always; the
+    /// document as JSON and the games as PGN inline (`include`) or written to `out` / `pgn_out`.
+    pub(crate) fn chess_document(&mut self, a: &Args) -> Result<Value> {
+        let settings = self.chess_settings(a)?;
+        let pages = if a.opt_ints("pages")?.is_some() { self.pages(a, "pages")? } else { Vec::new() };
+        let lang = match a.opt_str("lang")? {
+            None => None,
+            Some(tag) => Some(Lang::from_tag(tag).ok_or_else(|| Args::wrong("lang", "a piece-letter language such as en, de, pt or fr"))?),
+        };
+        let mut inline_json = false;
+        let mut inline_pgn = false;
+        let include = if a.get("include").is_some_and(|v| !v.is_null()) { a.strs("include")? } else { Vec::new() };
+        for item in include {
+            match item {
+                "json" => inline_json = true,
+                "pgn" => inline_pgn = true,
+                _ => return Err(Args::wrong("include", "a list of \"json\" and \"pgn\"")),
+            }
+        }
+        // Resolved before reading, so a path outside the root costs nothing.
+        let out = a.opt_str("out")?.map(|p| self.resolve(p, true).map(|r| (p, r))).transpose()?;
+        let pgn_out = a.opt_str("pgn_out")?.map(|p| self.resolve(p, true).map(|r| (p, r))).transpose()?;
+        let id = self.doc(a)?.id;
+        let read = self.session.chess_document(id, &pages, &settings, lang).map_err(failed)?;
+        let doc = &read.doc;
+        let blocks = doc.pages.iter().flat_map(|p| &p.blocks);
+        let count = |f: fn(&Block) -> bool| doc.pages.iter().flat_map(|p| &p.blocks).filter(|b| f(b)).count();
+        let moves: Vec<&MoveInline> = blocks.flat_map(|b| b.inlines()).filter_map(|i| if let Inline::Move(m) = i { Some(m) } else { None }).collect();
+        let json_text = doc.to_json().map_err(|e| failed(format!("the document could not be written as JSON: {e}")))?;
+        let pgn = doc.pgn();
+        let mut result = json!({
+            "pages": doc.pages.len(),
+            "lang": read.lang.lang.code(),
+            "lang_given": read.lang_given,
+            "headings": count(|b| matches!(b, Block::Heading { .. })),
+            "paragraphs": count(|b| matches!(b, Block::Paragraph { .. })),
+            "diagrams": count(|b| matches!(b, Block::Diagram(_))),
+            "games": doc.games.len(),
+            "moves": moves.len(),
+            "valid_moves": moves.iter().filter(|m| m.status == MoveStatus::Valid).count(),
+            "flagged_moves": moves.iter().filter(|m| matches!(m.status, MoveStatus::Illegal | MoveStatus::Ambiguous)).count(),
+            "needs_ocr": read.needs_ocr.iter().map(|(p, why)| json!({ "page": p + 1, "reason": why })).collect::<Vec<_>>(),
+            "notes": read.notes.iter().map(|(p, n)| json!({ "page": p + 1, "note": n })).collect::<Vec<_>>(),
+        });
+        if let Some((shown, path)) = out {
+            crate::write_atomic(&path, json_text.as_bytes())?;
+            result["out"] = json!(shown);
+        }
+        if let Some((shown, path)) = pgn_out {
+            crate::write_atomic(&path, pgn.as_bytes())?;
+            result["pgn_out"] = json!(shown);
+        }
+        if inline_json {
+            result["document"] = serde_json::from_str(&json_text).map_err(|e| failed(format!("the document JSON could not be read back: {e}")))?;
+        }
+        if inline_pgn {
+            result["pgn"] = json!(pgn);
+        }
+        Ok(result)
     }
 
     pub(crate) fn chess_status(&self, a: &Args) -> Result<Value> {

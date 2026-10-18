@@ -322,6 +322,62 @@ fn content_draw_adds_checked_operators_and_refuses_the_rest() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// The page's three diagrams become three diagram blocks in reading order; the JSON and PGN come
+/// inline or as files in the root, and the document is not changed.
+#[test]
+fn chess_document_reads_the_page_into_blocks_and_writes_json_and_pgn() {
+    let (base, root) = workdir("document");
+    let (mut a, doc) = opened(&root);
+    let read = ok(&mut a, "chess_document", json!({ "doc": doc, "models_dir": "models", "include": ["json", "pgn"], "lang": "en" }));
+    assert_eq!(
+        (read["pages"].as_u64(), read["diagrams"].as_u64(), read["lang"].as_str(), read["lang_given"].as_bool()),
+        (Some(1), Some(3), Some("en"), Some(true)),
+        "{read:#}"
+    );
+    let blocks = read["document"]["pages"][0]["blocks"].as_array().unwrap();
+    assert_eq!(blocks.iter().map(|b| b["type"].as_str().unwrap()).collect::<Vec<_>>(), ["diagram"; 3], "{read:#}");
+    // The font diagram is read, with its link; the two others need the piece model.
+    assert_eq!(blocks[0]["reading"]["fen"], "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "{:#}", blocks[0]);
+    assert!(blocks[0]["lichess_url"].as_str().unwrap().starts_with("https://lichess.org/analysis/"));
+    assert!(blocks[1]["reading"].is_null() && blocks[2]["reading"].is_null(), "{blocks:#?}");
+    assert!(read["pgn"].is_string());
+    // To files inside the root.
+    let files = ok(&mut a, "chess_document", json!({ "doc": doc, "out": "doc.json", "pgn_out": "games.pgn" }));
+    assert!(files.get("document").is_none() && files.get("pgn").is_none(), "nothing inline unless asked: {files:#}");
+    let written: Value = serde_json::from_str(&std::fs::read_to_string(root.join("doc.json")).unwrap()).unwrap();
+    assert_eq!(written["pages"][0]["blocks"].as_array().unwrap().len(), 3);
+    assert!(root.join("games.pgn").exists());
+    assert_eq!(ok(&mut a, "doc_list", json!({}))["documents"][0]["dirty"], false, "reading is read-only");
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// `out` and `pgn_out` are confined to `--root`, and nothing is written outside it. The same
+/// call into the root succeeds, so the refusal comes from resolving the path.
+#[test]
+fn chess_document_outputs_outside_the_root_are_refused() {
+    let (base, root) = workdir("document-confined");
+    let (mut a, doc) = opened(&root);
+    for key in ["out", "pgn_out"] {
+        for dir in ["../outside/x.out".to_string(), base.join("outside").join("y.out").to_string_lossy().into_owned()] {
+            match a.call("chess_document", &json!({ "doc": doc, key: dir })) {
+                Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{key} {dir}: {m}"),
+                other => panic!("{key} {dir} accepted: {other:?}"),
+            }
+        }
+        ok(&mut a, "chess_document", json!({ "doc": doc, key: "inside.out" }));
+    }
+    assert_eq!(std::fs::read_dir(base.join("outside")).unwrap().count(), 0, "nothing was written outside");
+    for (args, needle) in [
+        (json!({ "doc": doc, "lang": "klingon" }), "lang"),
+        (json!({ "doc": doc, "include": ["html"] }), "include"),
+        (json!({ "doc": doc, "pages": [2] }), "out of range"),
+    ] {
+        let e = a.call("chess_document", &args).unwrap_err();
+        assert!(e.to_string().contains(needle), "{args}: {e}");
+    }
+    let _ = std::fs::remove_dir_all(base);
+}
+
 #[test]
 fn chess_arguments_out_of_range_are_refused_with_what_is_allowed() {
     let (base, root) = workdir("args");
