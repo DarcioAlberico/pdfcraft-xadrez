@@ -6842,6 +6842,18 @@ tools = ["chess_add_lichess_links"]
 evidence = ["crates/engine/src/chess/tests/links.rs::a_read_diagram_gets_a_label_and_a_link_below_it_and_the_others_say_why_not", "crates/engine/src/chess/tests/links.rs::the_label_moves_beside_a_board_at_the_foot_and_stays_upright_on_a_turned_page", "crates/engine/src/chess/tests/links.rs::labels_are_placed_below_else_right_else_above_and_never_off_the_page", "crates/automation/tests/chess.rs::chess_add_lichess_links_links_the_read_diagram_and_says_why_not_the_others"]
 notes = "An extension, not an Acrobat parity claim (fork decision D3). Under each diagram whose reading is legal, not repaired and (by default) passed the gate, an added-text label (Helvetica, editable later, upright on turned pages) with a URI link to the lichess.org analysis board; below the diagram, else to its right, else above, clear of the page edge and other diagrams and labels. A page already linking to the position is skipped; every skipped diagram says why. One undo step. Nothing is fetched. Headless only: no button in the interface yet (S17)."
 
+[[feature]]
+id = "export.chess-html"
+title = "Export a chess book as HTML with redrawn diagrams"
+area = "I"
+tier = "P2"
+milestone = "none"
+status = "partial"
+commands = []
+tools = ["chess_export_html"]
+evidence = ["crates/chessvision/src/doc/tests/html.rs::the_html_reads_back_as_the_document", "crates/chessvision/src/doc/tests/html.rs::an_unread_diagram_is_a_figure_without_a_position_and_no_unsafe_link_is_made", "crates/chessvision/src/doc/tests/html.rs::arbitrary_text_is_escaped", "crates/automation/tests/chess.rs::chess_export_html_writes_the_diagrams_in_order_and_reads_back", "crates/automation/tests/chess.rs::chess_export_html_outside_the_root_is_refused"]
+notes = "An extension, not an Acrobat parity claim (fork decision D3). The recognised document (chess_document) as one static HTML file: headings, paragraphs with moves (Unicode figurines, letters in any of the 18 languages, or as printed), annotation glyphs, and each diagram redrawn as inline SVG with the same chess::draw drawing as the PDF replacement, or as FEN, with a lichess link under it. No script, nothing fetched; only http(s) addresses become links. Readable back by attributes (data-fen, data-san, data-nag, class unread/review). Pieces from PDFCRAFT_CHESS_PIECES or an installed Chess Merida, else geometric. Missing: PNG diagrams (for DOCX/RTF/Markdown, S15c/S15d), EPUB (S15b), the interface's Export menu, and text the OCR would read on pages without a usable text layer."
+
 # ==================================================================================================
 # J. Create and export
 # ==================================================================================================

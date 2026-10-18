@@ -7,6 +7,8 @@ use pdfcraft_chess::rules::check_position;
 use pdfcraft_chess::san::{Lang, San};
 use proptest::prelude::*;
 
+mod html;
+
 use super::*;
 use crate::board::Unreadable;
 use crate::chess_text::{ChessLine, ChessRun, ChessSpan, LangGuess, LangTally};

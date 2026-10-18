@@ -451,6 +451,76 @@ impl Automation {
         Ok(out)
     }
 
+    /// Chess ▸ Export ▸ HTML: the recognised document as one static HTML file at `out`.
+    pub(crate) fn chess_export_html(&mut self, a: &Args) -> Result<Value> {
+        use pdfcraft_engine::chess::pdfcraft_chessvision::doc::html::{self, DiagramMode, Figurines, HtmlOptions};
+        let settings = self.chess_settings(a)?;
+        let pages = if a.opt_ints("pages")?.is_some() { self.pages(a, "pages")? } else { Vec::new() };
+        let lang_of = |key: &str, tag: &str| Lang::from_tag(tag).ok_or_else(|| Args::wrong(key, "a piece-letter language such as en, de, pt or fr"));
+        let lang = a.opt_str("lang")?.map(|t| lang_of("lang", t)).transpose()?;
+        let diagrams = match a.opt_str("diagrams")? {
+            None | Some("svg") => DiagramMode::Svg,
+            Some("fen") => DiagramMode::Fen,
+            Some(_) => return Err(Args::wrong("diagrams", "\"svg\" or \"fen\"")),
+        };
+        let figurines = match a.opt_str("figurines")? {
+            None | Some("unicode") => Figurines::Unicode,
+            Some("printed") => Figurines::AsPrinted,
+            Some("letters") => Figurines::Letters(match a.opt_str("letters_lang")? {
+                Some(t) => lang_of("letters_lang", t)?,
+                None => lang.unwrap_or(Lang::En),
+            }),
+            Some(_) => return Err(Args::wrong("figurines", "\"unicode\", \"letters\" or \"printed\"")),
+        };
+        let (pieces, source, error) = match a.opt_str("pieces")? {
+            None | Some("installed") => pieces::find(),
+            Some("geometric") => (PieceSet::geometric(), PieceSource::Geometric, None),
+            Some(_) => return Err(Args::wrong("pieces", "\"installed\" or \"geometric\"")),
+        };
+        let link_text = a.opt_str("link_text")?.unwrap_or(chess::links::DEFAULT_TEXT).to_owned();
+        if link_text.trim().is_empty() || link_text.chars().count() > 80 {
+            return Err(Args::wrong("link_text", "1 to 80 characters"));
+        }
+        let shown = a.str("out")?.to_owned();
+        // Resolved before reading, so a path outside the root costs nothing.
+        let path = self.resolve(&shown, true)?;
+        let id = self.doc(a)?.id;
+        let title = match a.opt_str("title")? {
+            Some(t) => t.to_owned(),
+            None => self.doc(a)?.name.trim_end_matches(".pdf").to_owned(),
+        };
+        let read = self.session.chess_document(id, &pages, &settings, lang).map_err(failed)?;
+        let options = HtmlOptions {
+            title: &title,
+            pieces: &pieces,
+            style: BoardStyle::default(),
+            diagrams,
+            figurines,
+            links: a.opt_bool("links")?.unwrap_or(true),
+            link_text: &link_text,
+        };
+        let text = html::write(&read.doc, &options);
+        crate::write_atomic(&path, text.as_bytes())?;
+        let figures = read.doc.pages.iter().flat_map(|p| &p.blocks).filter_map(|b| if let Block::Diagram(d) = b { Some(d) } else { None });
+        let (all, positioned) = figures.fold((0usize, 0usize), |(n, p), d| (n + 1, p + usize::from(d.reading.is_some())));
+        Ok(json!({
+            "out": shown,
+            "bytes": text.len(),
+            "pages": read.doc.pages.len(),
+            "lang": read.lang.lang.code(),
+            "diagrams": all,
+            "diagrams_drawn": if diagrams == DiagramMode::Svg { positioned } else { 0 },
+            "diagrams_unread": all - positioned,
+            "games": read.doc.games.len(),
+            "pieces": match source {
+                PieceSource::Font { family, .. } => json!({ "source": "font", "family": family, "error": Value::Null }),
+                PieceSource::Geometric => json!({ "source": "geometric", "family": Value::Null, "error": error.map(|e| e.to_string()) }),
+            },
+            "needs_ocr": read.needs_ocr.iter().map(|(p, why)| json!({ "page": p + 1, "reason": why })).collect::<Vec<_>>(),
+            "notes": read.notes.iter().map(|(p, n)| json!({ "page": p + 1, "note": n })).collect::<Vec<_>>(),
+        }))
+    }
+
     pub(crate) fn chess_status(&self, a: &Args) -> Result<Value> {
         let dir = self.models_dir(a)?;
         let models = chess::models(dir.as_deref());
