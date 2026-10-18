@@ -1203,6 +1203,20 @@ pub fn tools() -> Vec<ToolDef> {
         t("chess_read", "Read chess diagrams", "Chess ▸ Scan diagrams ▸ Read: find the diagrams as chess_detect does and read each into a position. A diagram set in a chess font is read exactly from the text, with no model; the others need the user's piece model (chess_status) and otherwise say unreadable: no_model, with the reason. A reading gives fen, legal and legality (with violations), side_to_move and how it was decided, orientation, min_confidence (the weakest square, not the mean), accepted (legal and every square at least 0.80; a reading the decoder repaired never is, and goes to review), uncertain squares with their second reading, repairs, the dpi it was read at, and lichess_url only for a legal position the decoder did not repair. Read-only.")
             .ro()
             .with(schema(chess_props(true), &["doc"])),
+        t("chess_document", "Recognised chess document", "Chess ▸ Recognised document: read pages into one document of headings, paragraphs of chess text and diagrams in reading order, with the games replayed from the diagram before them (or from the initial position at 1.) into variation trees. Diagrams are found and read as chess_read does (scan settings and models_dir alike). Text comes from the text layer; the piece letters' language is chosen from all the pages unless lang names it. Headings are blocks set larger than the body text. Moves are valid, illegal, ambiguous, out of sequence (flagged and stopping their line, never dropped), not reached or unchecked (before any position). Returns a summary (pages, lang, headings, paragraphs, diagrams, games, moves and how many are valid or flagged, pages whose text layer needs OCR, notes); include adds the document as JSON (document) and the games as PGN (pgn) to the reply, and out / pgn_out write them to files. The document is not changed.")
+            .with(schema(
+                {
+                    let mut props = chess_props(true);
+                    if let Some(o) = props.as_object_mut() {
+                        o.insert("lang".into(), json!({ "type": "string", "maxLength": 16, "description": "The piece letters' language as a BCP 47 tag (en, de, fr, es, pt, it, nl, ru, …). Default: chosen from the pages." }));
+                        o.insert("include".into(), json!({ "type": "array", "items": { "type": "string", "enum": ["json", "pgn"] }, "description": "Add the document (json) and/or the games as PGN (pgn) to the reply." }));
+                        o.insert("out".into(), json!({ "type": "string", "description": "Write the document as JSON to this file." }));
+                        o.insert("pgn_out".into(), json!({ "type": "string", "description": "Write the games as PGN to this file." }));
+                    }
+                    props
+                },
+                &["doc"],
+            )),
         t("chess_status", "Chess model status", "Whether the user's chess models are available (none ship with PdfCraft): the piece model reads drawn and scanned diagrams, the glyph model chess text. Each is loaded, missing or invalid (with the reason). models_dir looks in that folder instead of PDFCRAFT_MODELS and beside the executable. Also says where the piece set for drawing diagrams comes from (PDFCRAFT_CHESS_PIECES, an installed Chess Merida, or plain geometric pieces). Diagrams in chess fonts are read without any model.")
             .ro()
             .with(schema(json!({ "models_dir": models_dir() }), &[])),

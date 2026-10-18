@@ -801,6 +801,7 @@ impl Automation {
             "chess_read" => self.chess_read(&a)?,
             "chess_status" => self.chess_status(&a)?,
             "chess_replace_diagram" => self.chess_replace_diagram(&a)?,
+            "chess_document" => self.chess_document(&a)?,
             "accessibility_report" => self.a11y_report(&a)?,
             "accessibility_review_record" => self.a11y_review_record(&a)?,
             "accessibility_review_save" => self.a11y_review_save(&a)?,
@@ -2566,7 +2567,7 @@ fn unused(dir: &Path, stem: &str) -> PathBuf {
 /// Write and sync a temporary file in the same directory, then rename over the target.
 /// This flushes staged contents; it does not promise parent-directory durability after a
 /// power loss. Filesystems that refuse sync cause the save to fail before publication.
-fn write_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
+pub(crate) fn write_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
     write_atomic_with(path, bytes, staging_suffixes())
 }
 

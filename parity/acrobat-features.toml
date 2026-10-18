@@ -6818,6 +6818,18 @@ tools = ["chess_replace_diagram", "content_draw"]
 evidence = ["crates/engine/src/chess/tests/replace.rs::an_image_diagram_is_deleted_and_the_new_board_reads_back", "crates/engine/src/chess/tests/replace.rs::undo_restores_the_original_object_graph", "crates/edit/src/operators/tests.rs::a_fragment_is_drawn_on_top_in_its_own_tagged_stream", "crates/automation/tests/chess.rs::chess_replace_diagram_draws_a_vector_board_where_the_font_diagram_was", "crates/automation/tests/chess.rs::chess_replace_diagram_refuses_what_it_cannot_place", "crates/automation/tests/chess.rs::content_draw_adds_checked_operators_and_refuses_the_rest"]
 notes = "An extension, not an Acrobat parity claim (fork decision D3). A diagram the scan numbered is replaced, as one undo step, by a board drawn as vector paths (chess::draw, the same drawing the exports will use), upright as displayed and centred in the diagram's box. An embedded image that is the diagram is deleted; text in a chess diagram font is removed and its box covered; anything else (a scanned page, a vector board, an image with a caption) is covered with opaque white and stays in the content underneath. The edit names the document generation it was numbered at and is refused after any other edit. content_draw is the generic edit under it: checked content operators (no page resources, balanced, capped) as page content of their own. Pieces come from PDFCRAFT_CHESS_PIECES or an installed Chess Merida (never shipped), else plain geometric ones. Headless only: there is no Replace button in the interface yet (S17)."
 
+[[feature]]
+id = "export.chess-document"
+title = "Read a chess book's pages into a document of text, diagrams and games (JSON, PGN)"
+area = "I"
+tier = "P2"
+milestone = "none"
+status = "partial"
+commands = []
+tools = ["chess_document"]
+evidence = ["crates/engine/src/chess/tests/document.rs::a_chapter_page_becomes_heading_caption_diagram_and_its_game", "crates/engine/src/chess/tests/document.rs::a_page_without_text_needs_ocr_and_a_given_language_is_kept", "crates/chessvision/src/doc/pgn/tests.rs::a_written_game_reads_back_equal", "crates/automation/tests/chess.rs::chess_document_reads_the_page_into_blocks_and_writes_json_and_pgn", "crates/automation/tests/chess.rs::chess_document_outputs_outside_the_root_are_refused"]
+notes = "An extension, not an Acrobat parity claim (fork decision D3). Pages become headings (blocks set larger than the body text), paragraphs of chess text (moves, move numbers, NAGs, figurines from catalogued fonts) and diagrams in the one reading order, each with its source box; moves are replayed with cozy-chess from the diagram before them or the initial position into variation trees, and illegal, ambiguous or out-of-sequence moves are flagged, never dropped. One piece-letter language for the whole document, from every page unless given. Output as JSON and PGN (inline or to files in the root). Missing: chess OCR of pages whose text layer is poor or missing (they are listed in needs_ocr; the S13b reader is not wired into the engine yet), so the S13c book cipher and legality repair have no input; the PDF-and-text view (S16) and the HTML/EPUB/DOCX/Markdown exports (S15)."
+
 # ==================================================================================================
 # J. Create and export
 # ==================================================================================================
