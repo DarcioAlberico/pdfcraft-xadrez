@@ -1516,6 +1516,29 @@ fn editor_background_removes_glyphs_but_preserves_following_text_advance() {
     }
 }
 
+/// Removing lines takes their glyphs away for good and leaves the text after them in place, in
+/// the same text object; only the chosen lines go, a missing one is refused, none is a no-op.
+#[test]
+fn removed_lines_are_gone_and_the_rest_stays_put() {
+    for show in ["(Hello) Tj", "[(He) -20 (llo)] TJ", "(Hello) '", "2 1 (Hello) \""] {
+        let mut doc = text_page(&format!("BT /F1 12 Tf 14 TL 72 700 Td {show} [-3000] TJ /F2 12 Tf (ab) Tj 0 -40 Td /F1 12 Tf (Below) Tj ET"));
+        let before = text::text_lines(&doc, 0).unwrap();
+        assert_eq!(before.iter().map(|l| l.text.as_str()).collect::<Vec<_>>(), ["Hello", "ab", "Below"], "{show}");
+        assert_eq!(text::remove_lines(&mut doc, 0, &[0]).unwrap(), 1);
+        let after = text::text_lines(&reopen(&doc), 0).unwrap();
+        assert_eq!(after.iter().map(|l| l.text.as_str()).collect::<Vec<_>>(), ["ab", "Below"], "{show}");
+        for (kept, was) in after.iter().zip(&before[1..]) {
+            for (a, b) in kept.rect.iter().zip(was.rect) {
+                assert!((a - b).abs() < 1e-6, "{show}: {} moved", kept.text);
+            }
+        }
+    }
+    let mut doc = text_page("BT /F1 12 Tf 72 700 Td (One) Tj ET");
+    assert!(text::remove_lines(&mut doc, 0, &[1]).unwrap_err().to_string().contains("no line 2"));
+    assert_eq!(text::remove_lines(&mut doc, 0, &[]).unwrap(), 0);
+    assert!(!doc.is_modified(), "a refused or empty removal changes nothing");
+}
+
 #[test]
 fn editor_background_refuses_clipping_text_without_mutation() {
     let mut doc = text_page("BT /F1 12 Tf 7 Tr 72 700 Td (Clip) Tj ET");

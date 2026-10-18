@@ -516,6 +516,8 @@ fn the_users_models_read_an_embedded_board() {
     }
 }
 
+mod replace;
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(24))]
 

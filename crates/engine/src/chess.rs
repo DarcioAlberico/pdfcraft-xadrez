@@ -23,8 +23,8 @@
 //! and scan parameters, the document's edit generation included: an entry whose parameters
 //! differ is dropped and the page scanned again, never adapted.
 //!
-//! Scanning is read-only: nothing here changes a document. Replacing diagrams and adding lichess
-//! links are later steps (S10, S11).
+//! Scanning is read-only: nothing here changes a document. Replacing a diagram is [`replace`]
+//! (S10); adding lichess links is a later step (S11).
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
@@ -44,6 +44,7 @@ use pdfcraft_render::{PageInfo, PageRenderer, RenderConfig, RenderRequest, Reque
 
 pub use pdfcraft_chessvision::models::{ChessModels, ModelState};
 pub use pdfcraft_chessvision::order::ReadingOrder;
+pub use replace::{DiagramReplacement, ReplacementPlan};
 pub use {pdfcraft_chess, pdfcraft_chessvision};
 
 use crate::{DocId, Session};
@@ -830,6 +831,8 @@ impl ChessScan {
         ScanStamp { generation: self.params.generation, bytes: self.params.bytes }
     }
 }
+
+pub mod replace;
 
 #[cfg(test)]
 mod tests;

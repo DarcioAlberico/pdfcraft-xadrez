@@ -1,21 +1,29 @@
-//! Chess ▸ Scan diagrams as tools (blueprint S9): `chess_detect`, `chess_read`, `chess_status`.
+//! Chess ▸ Scan diagrams as tools (blueprint S9): `chess_detect`, `chess_read`, `chess_status`;
+//! and Chess ▸ Replace diagram (S10): `chess_replace_diagram`.
 //!
-//! The tools are read-only: they find and read diagrams, and never change a document. Pages and
+//! The scanning tools are read-only: they find and read diagrams, and never change a document.
+//! They report the document's edit `generation`, which `chess_replace_diagram` takes back so a
+//! diagram numbered before a later edit is never the one replaced. Pages and
 //! diagram numbers are 1-based; diagram `n` is the `n`-th in the engine's reading order, the same
 //! one the interface and exports use. Boxes are given twice: `rect` in points from the top-left
 //! of the displayed page (the tools' convention) and `bbox_user` in PDF user space (where links
 //! and replacements go).
 
+use std::sync::Arc;
+
+use pdfcraft_engine::Edit;
+use pdfcraft_engine::chess::pdfcraft_chess::draw::{BoardStyle, PieceSet, Rgb};
+use pdfcraft_engine::chess::pdfcraft_chess::fen;
 use pdfcraft_engine::chess::pdfcraft_chess::rules::Legality;
 use pdfcraft_engine::chess::pdfcraft_chessvision::board::{BoardReading, ReadPosition, ReadingSource, Unreadable};
 use pdfcraft_engine::chess::pdfcraft_chessvision::coords::{PageGeometry, PageRect};
 use pdfcraft_engine::chess::pdfcraft_chessvision::detect::Source;
 use pdfcraft_engine::chess::pdfcraft_chessvision::merge::Merged;
 use pdfcraft_engine::chess::pdfcraft_chessvision::pieces::{self, PieceSource};
-use pdfcraft_engine::chess::{self, ChessPage, ChessScanSettings, ModelState, ReadingOrder};
+use pdfcraft_engine::chess::{self, ChessPage, ChessScanSettings, DiagramReplacement, ModelState, ReadingOrder};
 use serde_json::{Value, json};
 
-use crate::{Args, Automation, Result, failed};
+use crate::{Args, Automation, Result, ToolError, comments, failed};
 
 /// Two decimals: enough for points, and stable in test output.
 fn round(v: f32) -> f64 {
@@ -150,6 +158,44 @@ fn page(p: &ChessPage) -> Value {
     out
 }
 
+fn page_rect(r: [f64; 4]) -> PageRect {
+    let [x0, y0, x1, y1] = r.map(|v| v as f32);
+    PageRect::new(x0, y0, x1, y1)
+}
+
+/// `light`, `dark`, `border`, `border_color`, `coordinates` and `flipped`, over the default style.
+fn board_style(a: &Args) -> Result<BoardStyle> {
+    let mut style = BoardStyle::default();
+    let colour = |key: &str| -> Result<Option<Rgb>> {
+        Ok(a.opt_str(key)?.map(comments::parse_color).transpose()?.map(|c| {
+            let [r, g, b] = c.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8);
+            Rgb(r, g, b)
+        }))
+    };
+    if let Some(c) = colour("light")? {
+        style.light = c;
+    }
+    if let Some(c) = colour("dark")? {
+        style.dark = c;
+    }
+    if let Some(c) = colour("border_color")? {
+        style.border_color = c;
+    }
+    if let Some(b) = a.opt_num("border")? {
+        if !(0.0..=1.0).contains(&b) {
+            return Err(Args::wrong("border", "from 0 to 1 (a share of a square)"));
+        }
+        style.border = b as f32;
+    }
+    if let Some(c) = a.opt_bool("coordinates")? {
+        style.coordinates = c;
+    }
+    if let Some(f) = a.opt_bool("flipped")? {
+        style.flipped = f;
+    }
+    Ok(style)
+}
+
 fn model_json<T>(state: &ModelState<T>) -> Value {
     let (word, reason) = chess::model_state(state);
     json!({ "state": word, "reason": reason })
@@ -218,7 +264,8 @@ impl Automation {
                 o.remove("readings");
             }
         }
-        Ok(json!({ "diagrams": pages.iter().map(|p| p.diagrams.len()).sum::<usize>(), "pages": detected }))
+        let generation = self.doc(a)?.edit_generation();
+        Ok(json!({ "diagrams": pages.iter().map(|p| p.diagrams.len()).sum::<usize>(), "generation": generation, "pages": detected }))
     }
 
     pub(crate) fn chess_read(&mut self, a: &Args) -> Result<Value> {
@@ -230,13 +277,74 @@ impl Automation {
         if let Some(o) = model.as_object_mut() {
             o.insert("folder".into(), models.folder.as_ref().map(|f| f.to_string_lossy().into_owned()).into());
         }
+        let generation = self.doc(a)?.edit_generation();
         Ok(json!({
             "model": model,
+            "generation": generation,
             "diagrams": pages.iter().map(|p| p.diagrams.len()).sum::<usize>(),
             "read": readings().filter(|r| r.position().is_some()).count(),
             "accepted": readings().filter(|r| r.accepted()).count(),
             "pages": pages.iter().map(|p| page(p)).collect::<Vec<_>>(),
         }))
+    }
+
+    /// Chess ▸ Replace diagram: plan it against the page as it is now, and (unless `dry_run`)
+    /// apply it as one undoable step.
+    pub(crate) fn chess_replace_diagram(&mut self, a: &Args) -> Result<Value> {
+        let page = self.page(a)?;
+        let index = a.int("index")?;
+        let index = usize::try_from(index).ok().and_then(|i| i.checked_sub(1)).ok_or_else(|| Args::wrong("index", "1 or more"))?;
+        let generation = u64::try_from(a.int("generation")?).map_err(|_| Args::wrong("generation", "0 or more"))?;
+        let placement = match (a.opt_str("fen")?, a.opt_str("placement")?) {
+            (Some(fen), None) => fen::parse(fen).map_err(|e| ToolError::InvalidArgs(format!("fen: {e}")))?.placement,
+            (None, Some(p)) => fen::parse_placement(p).map_err(|e| ToolError::InvalidArgs(format!("placement: {e}")))?,
+            _ => return Err(ToolError::InvalidArgs("give either fen or placement (the first field of a FEN), not both".into())),
+        };
+        let style = board_style(a)?;
+        let (pieces, source, error) = match a.opt_str("pieces")? {
+            None | Some("installed") => pieces::find(),
+            Some("geometric") => (PieceSet::geometric(), PieceSource::Geometric, None),
+            Some(_) => return Err(Args::wrong("pieces", "\"installed\" or \"geometric\"")),
+        };
+        let mut settings = self.chess_settings(a)?;
+        settings.models_dir = None;
+        let replacement = DiagramReplacement { page, index, generation, placement, style, pieces: Arc::new(pieces), scan: settings };
+        let id = self.doc(a)?.id;
+        let plan = self.session.chess_replacement(id, &replacement).map_err(failed)?;
+        let geometry = self.session.chess_scan(id, &[page], &replacement.scan, false).ok().and_then(|p| p.first().and_then(|p| p.geometry));
+        let dry_run = a.opt_bool("dry_run")?.unwrap_or(false);
+        let mut out = if dry_run { json!({}) } else { self.apply(a, Edit::ReplaceDiagram(Box::new(replacement)))? };
+        let user = |r: [f64; 4]| page_rect(r);
+        let removed = match (plan.deleted_image, plan.removed_lines.is_empty()) {
+            (Some(_), _) => "image_deleted",
+            (None, false) => "text_removed_and_covered",
+            (None, true) => "covered",
+        };
+        let fields = json!({
+            "dry_run": dry_run,
+            "page": page + 1,
+            "index": index + 1,
+            "source": source_name(plan.source),
+            "sources": plan.sources.iter().map(|s| source_name(*s)).collect::<Vec<_>>(),
+            "bbox_user": user_rect(plan.bbox_user),
+            "rect": view_rect(geometry.as_ref(), plan.bbox_user),
+            "old_diagram": removed,
+            "deleted_image": plan.deleted_image.map(|i| i + 1),
+            "removed_text_lines": plan.removed_lines.len(),
+            "cover_user": plan.cover.map(|c| user_rect(user(c))),
+            "board_user": user_rect(user(plan.board_user)),
+            "board_rect": view_rect(geometry.as_ref(), user(plan.board_user)),
+            "fen": fen::format_placement(&placement),
+            "pieces": match source {
+                PieceSource::Font { family, .. } => json!({ "source": "font", "family": family, "error": Value::Null }),
+                PieceSource::Geometric => json!({ "source": "geometric", "family": Value::Null, "error": error.map(|e| e.to_string()) }),
+            },
+            "notes": plan.notes,
+        });
+        if let (Some(o), Value::Object(f)) = (out.as_object_mut(), fields) {
+            o.extend(f);
+        }
+        Ok(out)
     }
 
     pub(crate) fn chess_status(&self, a: &Args) -> Result<Value> {

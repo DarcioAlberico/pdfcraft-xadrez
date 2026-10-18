@@ -203,6 +203,125 @@ fn a_models_dir_outside_the_root_is_refused() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// After 1. e4 c5 2. Nf3 d6: not symmetric, so a board drawn turned or mirrored would show.
+const SICILIAN: &str = "rnbqkbnr/pp2pppp/3p4/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R";
+
+fn nums(v: &Value) -> Vec<f64> {
+    v.as_array().unwrap().iter().map(|n| n.as_f64().unwrap()).collect()
+}
+
+/// The font diagram is replaced by a vector board in its place: a dry run says what would be
+/// done and changes nothing; the real one removes the font text, covers its box, and the scan
+/// afterwards finds a board where the font board was. Undo brings the font board back.
+#[test]
+fn chess_replace_diagram_draws_a_vector_board_where_the_font_diagram_was() {
+    let (base, root) = workdir("replace");
+    let (mut a, doc) = opened(&root);
+    let found = ok(&mut a, "chess_detect", json!({ "doc": doc }));
+    let generation = found["generation"].as_u64().unwrap();
+    let before = nums(&found["pages"][0]["diagrams"][0]["bbox_user"]);
+    let args = json!({ "doc": doc, "page": 1, "index": 1, "generation": generation, "placement": SICILIAN, "pieces": "geometric", "dry_run": true });
+    let dry = ok(&mut a, "chess_replace_diagram", args.clone());
+    assert_eq!(
+        (dry["dry_run"].as_bool(), dry["source"].as_str(), dry["old_diagram"].as_str()),
+        (Some(true), Some("font"), Some("text_removed_and_covered")),
+        "{dry:#}"
+    );
+    assert_eq!(dry["removed_text_lines"], 8, "{dry:#}");
+    assert_eq!(dry["fen"], SICILIAN);
+    assert_eq!(dry["pieces"]["source"], "geometric");
+    assert_eq!(ok(&mut a, "doc_list", json!({}))["documents"][0]["dirty"], false, "a dry run changes nothing");
+    let mut real = args;
+    real["dry_run"] = json!(false);
+    let done = ok(&mut a, "chess_replace_diagram", real.clone());
+    assert_eq!(done["dry_run"], false);
+    let board = nums(&done["board_user"]);
+    // The new board sits inside the old diagram's box.
+    assert!(
+        board[0] >= before[0] - 0.5 && board[2] <= before[2] + 0.5 && board[1] >= before[1] - 0.5 && board[3] <= before[3] + 0.5,
+        "{board:?} in {before:?}"
+    );
+    let after = ok(&mut a, "chess_detect", json!({ "doc": doc }));
+    let sources: Vec<&str> = after["pages"][0]["diagrams"].as_array().unwrap().iter().map(|d| d["source"].as_str().unwrap()).collect();
+    assert!(!sources.contains(&"font"), "the font diagram is gone: {after:#}");
+    assert_eq!(after["diagrams"], 3, "{after:#}");
+    let same_place = after["pages"][0]["diagrams"].as_array().unwrap().iter().any(|d| {
+        let r = nums(&d["bbox_user"]);
+        d["source"] != "font" && (0..4).all(|i| (r[i] - board[i]).abs() < 3.0)
+    });
+    // The redrawn board is one path per colour, so the page contour finds it, not the vector detector.
+    assert!(same_place, "a board where the new one was drawn: {after:#}");
+    // The generation it was numbered under is stale now.
+    let stale = a.call("chess_replace_diagram", &real).unwrap_err();
+    assert!(stale.to_string().contains("generation") || stale.to_string().contains("changed"), "{stale}");
+    ok(&mut a, "edit_undo", json!({ "doc": doc }));
+    let undone = ok(&mut a, "chess_detect", json!({ "doc": doc }));
+    assert_eq!(undone["pages"][0]["diagrams"][0]["source"], "font", "{undone:#}");
+    let _ = std::fs::remove_dir_all(base);
+}
+
+#[test]
+fn chess_replace_diagram_refuses_what_it_cannot_place() {
+    let (base, root) = workdir("replace-args");
+    let (mut a, doc) = opened(&root);
+    let generation = ok(&mut a, "chess_detect", json!({ "doc": doc }))["generation"].as_u64().unwrap();
+    for (extra, needle) in [
+        (json!({ "index": 9, "placement": SICILIAN }), ""),
+        (json!({ "index": 0, "placement": SICILIAN }), "index"),
+        (json!({ "index": 1 }), "give either fen or placement"),
+        (json!({ "index": 1, "placement": SICILIAN, "fen": "8/8/8/8/8/8/8/8 w - - 0 1" }), "give either fen or placement"),
+        (json!({ "index": 1, "placement": "not a board" }), "placement"),
+        (json!({ "index": 1, "placement": SICILIAN, "border": 2 }), "border"),
+        (json!({ "index": 1, "placement": SICILIAN, "pieces": "merida" }), "pieces"),
+        (json!({ "index": 1, "placement": SICILIAN, "generation": generation + 1 }), ""),
+    ] {
+        let mut args = json!({ "doc": doc, "page": 1, "generation": generation });
+        if let (Some(o), Value::Object(e)) = (args.as_object_mut(), extra.clone()) {
+            o.extend(e);
+        }
+        let e = a.call("chess_replace_diagram", &args).unwrap_err();
+        assert!(e.to_string().contains(needle), "{extra}: {e}");
+    }
+    assert_eq!(ok(&mut a, "doc_list", json!({}))["documents"][0]["dirty"], false, "nothing was changed");
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// `content_draw` adds checked operators as one undo step and refuses fragments that name a
+/// page resource or are unbalanced, saying why.
+#[test]
+fn content_draw_adds_checked_operators_and_refuses_the_rest() {
+    let (base, root) = workdir("draw");
+    let (mut a, doc) = opened(&root);
+    let before = ok(&mut a, "chess_detect", json!({ "doc": doc }))["diagrams"].as_u64().unwrap();
+    for (ops, needle) in [
+        ("/Im1 Do", "not allowed"),
+        ("q 0 0 10 10 re f", "q without a matching Q"),
+        ("BT /PCHelv 12 Tf (x) Tj", "not closed with ET"),
+        ("0 0 re f", "wrong operands"),
+        ("", "no operators"),
+    ] {
+        let e = a.call("content_draw", &json!({ "doc": doc, "page": 1, "ops": ops })).unwrap_err();
+        assert!(e.to_string().contains(needle), "{ops:?}: {e}");
+    }
+    assert_eq!(ok(&mut a, "doc_list", json!({}))["documents"][0]["dirty"], false);
+    // A 4×4 checkerboard of 30 pt squares is too small a grid to be a board; a full 8×8 one is.
+    let mut ops = String::from("0.4 g ");
+    for rank in 0..8 {
+        for file in 0..8 {
+            if (rank + file) % 2 == 0 {
+                ops.push_str(&format!("{} {} 15 15 re ", 360 + file * 15, 60 + rank * 15));
+            }
+        }
+    }
+    ops.push('f');
+    let drawn = ok(&mut a, "content_draw", json!({ "doc": doc, "page": 1, "ops": ops }));
+    assert_eq!(drawn["operators"], 34, "{drawn:#}");
+    assert_eq!(ok(&mut a, "chess_detect", json!({ "doc": doc }))["diagrams"].as_u64().unwrap(), before + 1);
+    ok(&mut a, "edit_undo", json!({ "doc": doc }));
+    assert_eq!(ok(&mut a, "chess_detect", json!({ "doc": doc }))["diagrams"].as_u64().unwrap(), before);
+    let _ = std::fs::remove_dir_all(base);
+}
+
 #[test]
 fn chess_arguments_out_of_range_are_refused_with_what_is_allowed() {
     let (base, root) = workdir("args");

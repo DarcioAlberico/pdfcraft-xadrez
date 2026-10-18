@@ -1847,6 +1847,31 @@ pub fn clear_block(doc: &mut Document, page: usize, block: usize) -> Result<(), 
     let targets: Vec<&TextLine> = target.lines.iter().filter_map(|i| lines.get(*i)).collect();
     let mut drops = coincident_ops(&lines, &targets);
     drops.extend(target.lines.iter().filter_map(|i| lines.get(*i)).flat_map(|l| l.ops.iter().copied()));
+    blank_shown(doc, page, &drops, "previewed for editing")
+}
+
+/// Remove lines `lines` (indexes into [`text_lines`]) from `page` for good, as [`clear_block`]
+/// clears a paragraph: each showing operator becomes a `TJ` adjustment of the same advance, so
+/// text drawn after it in the same text object stays where it was. Only the streams that drew
+/// them are rewritten. Returns how many lines were removed; an index past the end is refused.
+pub fn remove_lines(doc: &mut Document, page: usize, remove: &[usize]) -> Result<usize, EditError> {
+    let lines = text_lines(doc, page)?;
+    let targets: Vec<&TextLine> = remove
+        .iter()
+        .map(|i| lines.get(*i).ok_or_else(|| EditError::Invalid(format!("page {} has no line {}", page + 1, i + 1))))
+        .collect::<Result<_, _>>()?;
+    if targets.is_empty() {
+        return Ok(0);
+    }
+    let mut drops = coincident_ops(&lines, &targets);
+    drops.extend(targets.iter().flat_map(|l| l.ops.iter().copied()));
+    blank_shown(doc, page, &drops, "removed")?;
+    Ok(targets.len())
+}
+
+/// Replace the showing operators `drops` (indexes into the page's operators, parsed joined) with
+/// `TJ` adjustments of the same advance. `what` names the operation in refusals.
+fn blank_shown(doc: &mut Document, page: usize, drops: &std::collections::HashSet<usize>, what: &str) -> Result<(), EditError> {
     let p = page_dict(doc, page)?;
     let res = p.dict.get(b"Resources").and_then(|r| doc.resolve(r).as_dict().cloned()).unwrap_or_default();
     let fonts = res.get(b"Font").and_then(|r| doc.resolve(r).as_dict().cloned()).unwrap_or_default();
@@ -1857,12 +1882,12 @@ pub fn clear_block(doc: &mut Document, page: usize, block: usize) -> Result<(), 
     let mut patches = HashMap::new();
     for s in shown.into_iter().filter(|s| drops.contains(&s.op)) {
         if s.state.render_mode >= 4 {
-            return Err(EditError::Invalid("text used as a clipping path cannot be previewed for editing".into()));
+            return Err(EditError::Invalid(format!("text used as a clipping path cannot be {what}")));
         }
         let denominator = s.state.size * s.state.scale;
         let adjustment = if denominator != 0.0 { -1000.0 * s.advance / denominator } else { 0.0 };
         if !adjustment.is_finite() || (denominator == 0.0 && s.advance != 0.0) {
-            return Err(EditError::Invalid("the paragraph's text advance cannot be previewed".into()));
+            return Err(EditError::Invalid(format!("the text's advance cannot be {what}")));
         }
         let mut replacement = Vec::new();
         if let Some(op) = ops.get(s.op) {
