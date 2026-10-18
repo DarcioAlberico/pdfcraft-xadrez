@@ -164,6 +164,29 @@ fn synthetic_seeds() -> Vec<Vec<u8>> {
     };
     let content = "BT /F1 24 Tf 20 150 Td (Hello) Tj ET 0 0 1 rg 10 10 50 50 re f q 20 0 0 20 100 100 cm BI /W 2 /H 2 /BPC 8 /CS /G ID \u{0}\u{ff}\u{ff}\u{0} EI Q";
     let stream = format!("<< /Length {} >>\nstream\n{content}\nendstream", content.len());
+    let rows = ["tMvWlVmT", "OoOoOoOo", " + + + +", "+ + + + ", " + + + +", "+ + + + ", "pPpPpPpP", "RnBqKbNr"];
+    let mut chess = String::from("BT /F1 16 Tf 20 470 Td ");
+    for (i, row) in rows.iter().enumerate() {
+        if i > 0 {
+            chess.push_str("0 -16 Td ");
+        }
+        chess.push_str(&format!("({row}) Tj "));
+    }
+    chess.push_str("ET BT /F2 10 Tf 20 320 Td (1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 1-0) Tj ET 0.4 g ");
+    for r in 0..8 {
+        for f in 0..8 {
+            if (r + f) % 2 == 0 {
+                chess.push_str(&format!("{} {} 16 16 re ", 220 + f * 16, 340 + r * 16));
+            }
+        }
+    }
+    chess.push_str("f q 128 0 0 128 20 20 cm /Im1 Do Q");
+    let chess_stream = format!("<< /Length {} >>\nstream\n{chess}\nendstream", chess.len());
+    let pixels: String = (0..64 * 64).map(|i| if ((i % 64) / 8 + (i / 64) / 8) % 2 == 0 { 'f' } else { '3' }).flat_map(|c| [c, c]).collect();
+    let chess_image = format!(
+        "<< /Type /XObject /Subtype /Image /Width 64 /Height 64 /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /ASCIIHexDecode /Length {} >>\nstream\n{pixels}>\nendstream",
+        pixels.len() + 1
+    );
     vec![
         build(
             &[
@@ -185,6 +208,20 @@ fn synthetic_seeds() -> Vec<Vec<u8>> {
                 "<< /Type /Catalog /Pages 2 0 R >>",
                 "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
                 "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 10 10] >>",
+            ],
+            "/Root 1 0 R",
+        ),
+        // Chess (S18): a board in a chess diagram font (read without a model), a board of filled
+        // squares, moves in prose, and a small checkerboard image.
+        build(
+            &[
+                "<< /Type /Catalog /Pages 2 0 R >>",
+                "<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 400 500] >>",
+                "<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> /XObject << /Im1 7 0 R >> >> >>",
+                &chess_stream,
+                "<< /Type /Font /Subtype /Type1 /BaseFont /ChessMerida /FirstChar 32 /LastChar 126 >>",
+                "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+                &chess_image,
             ],
             "/Root 1 0 R",
         ),
@@ -243,8 +280,11 @@ fn child_command(exe: &Path) -> Command {
 }
 
 fn run_one(exe: &Path, file: &Path, timeout: Duration) -> (Outcome, String) {
-    let child =
-        child_command(exe).args(["check-one", &file.to_string_lossy(), "--dpi", "18", "--edit"]).stdout(Stdio::null()).stderr(Stdio::piped()).spawn();
+    let child = child_command(exe)
+        .args(["check-one", &file.to_string_lossy(), "--dpi", "18", "--edit", "--chess"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn();
     let Ok(mut child) = child else { return (Outcome::Ok, String::new()) };
     let start = Instant::now();
     loop {
