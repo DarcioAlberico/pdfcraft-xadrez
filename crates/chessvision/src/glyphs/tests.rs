@@ -461,6 +461,14 @@ fn notation_is_told_from_prose() {
     for w in ["the", "If", "Hübner", "1984a", "", "(and", "x", "wins"] {
         assert!(!notation::is_notation(w), "{w}");
     }
+    // A figurine after a letter is a misread prose digraph (German `ch` as `♔`), not a piece.
+    for w in ["g1ei♔e", "s♔wierig", "M♘lich", "Lãufer"] {
+        assert!(!notation::is_notation(w), "{w}");
+    }
+    // A figurine after a move number, a bracket or at the start still is.
+    for w in ["12.♘f3", "(♖d1", "♔g2", "e8♕"] {
+        assert!(notation::is_notation(w), "{w}");
+    }
 }
 
 // ---------------------------------------------------------------- whole reader

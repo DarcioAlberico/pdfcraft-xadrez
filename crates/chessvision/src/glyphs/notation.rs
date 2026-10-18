@@ -181,9 +181,17 @@ pub(crate) fn has_move(c: &[char]) -> bool {
 /// Whether a glyph-reader word is chess notation, and so the glyph reader's to decide: a
 /// figurine or a chess symbol (anything not ASCII and not a letter), a move token, a move number
 /// (`24`, `24...`, `24)`) or marks only (`!?`, `+-`).
+///
+/// A figurine right after a letter is not one: no move puts a letter before its piece, while a
+/// glyph reader that mistakes a prose digraph for a piece does (German `ch` read as `♔` in
+/// `gleiche`), and the word is prose for the general OCR to read.
 pub(crate) fn is_notation(word: &str) -> bool {
     let n = fold(word);
-    if n.iter().any(|c| !c.is_ascii() && !c.is_alphabetic()) || has_move(&n) {
+    let symbol = n.iter().enumerate().any(|(i, c)| {
+        let after_letter = i > 0 && n.get(i - 1).is_some_and(|p| p.is_alphabetic());
+        !c.is_ascii() && !c.is_alphabetic() && !(is_figurine(*c) && after_letter)
+    });
+    if symbol || has_move(&n) {
         return true;
     }
     let core_end = n.iter().rposition(|c| !".,;:)(".contains(*c)).map_or(0, |i| i + 1);
