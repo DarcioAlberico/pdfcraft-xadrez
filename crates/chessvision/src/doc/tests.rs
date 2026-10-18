@@ -8,6 +8,7 @@ use pdfcraft_chess::san::{Lang, San};
 use proptest::prelude::*;
 
 mod html;
+mod markdown;
 
 use super::*;
 use crate::board::Unreadable;

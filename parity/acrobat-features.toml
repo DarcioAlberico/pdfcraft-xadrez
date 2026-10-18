@@ -6878,6 +6878,30 @@ tools = ["chess_export_docx", "chess_export_rtf"]
 evidence = ["crates/engine/src/chess/tests/office.rs::the_diagram_image_shows_the_position_square_by_square", "crates/engine/src/chess/tests/office.rs::the_chapter_lays_out_in_order_and_both_files_carry_the_diagram", "crates/export/src/lib.rs::rtf_keeps_images_as_pictures", "crates/automation/tests/chess.rs::chess_export_docx_and_rtf_carry_the_diagram_as_an_image"]
 notes = "An extension, not an Acrobat parity claim (fork decision D3). The recognised document through the Word and RTF writers of Export a PDF: headings, paragraphs with moves (Unicode figurines, letters or as printed), and each diagram as a PNG drawn with the same board and operators as the PDF replacement and rendered by the page renderer, with its FEN and lichess address under it; an unread diagram is said in words. The RTF writer now keeps images as \\pict pictures (it dropped them before), for every RTF export. Missing: real hyperlinks (the address is text; the writers have no link runs yet), a font with figurines (readers use their own), the interface's Export menu."
 
+[[feature]]
+id = "export.chess-markdown"
+title = "Export a chess book as Markdown with diagram images"
+area = "I"
+tier = "P2"
+milestone = "none"
+status = "partial"
+commands = []
+tools = ["chess_export_markdown"]
+evidence = ["crates/chessvision/src/doc/tests/markdown.rs::the_markdown_reads_back_as_the_document", "crates/chessvision/src/doc/tests/markdown.rs::text_stays_text_and_unread_diagrams_say_so", "crates/automation/tests/chess.rs::chess_export_markdown_and_pgn_write_inside_the_root"]
+notes = "An extension, not an Acrobat parity claim (fork decision D3); not create.from-markdown, which imports. The recognised document as Markdown: # headings, paragraphs with moves (figurines, letters or as printed), escaped so they read as printed (1. e4 at a paragraph start is not a list), each diagram as ![FEN](name_diagrams/diagram-pNNNN-k.png) with the PNG written beside the file (or the FEN in backticks), and its lichess link. Missing: the interface's Export menu."
+
+[[feature]]
+id = "export.chess-pgn"
+title = "Export a chess book's games and positions as PGN"
+area = "I"
+tier = "P2"
+milestone = "none"
+status = "partial"
+commands = []
+tools = ["chess_export_pgn", "chess_document"]
+evidence = ["crates/chessvision/src/doc/tests/markdown.rs::the_pgn_has_a_game_for_every_legal_position", "crates/chessvision/src/doc/pgn/tests.rs::a_written_game_reads_back_equal", "crates/automation/tests/chess.rs::chess_export_markdown_and_pgn_write_inside_the_root"]
+notes = "An extension, not an Acrobat parity claim (fork decision D3). Every game found in the text (variations, NAGs, comments, SetUp/FEN from the diagram it starts at) and, for each legal, unrepaired diagram that starts none, a game with no moves holding its position; PdfPage/PdfDiagram tags, the book's order; a position that did not pass review says so. Reads back with the same parser. Missing: games in pages whose text needs OCR (no chess OCR in the engine yet)."
+
 # ==================================================================================================
 # J. Create and export
 # ==================================================================================================

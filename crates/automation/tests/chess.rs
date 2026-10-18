@@ -529,6 +529,48 @@ fn chess_export_docx_and_rtf_carry_the_diagram_as_an_image() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// Markdown: the read diagram is an image in a folder beside the file, with its FEN as alt text;
+/// the unread ones say so. PGN: the font diagram's position as a game. Both stay in the root.
+#[test]
+fn chess_export_markdown_and_pgn_write_inside_the_root() {
+    let (base, root) = workdir("markdown");
+    let (mut a, doc) = opened(&root);
+    std::fs::create_dir_all(root.join("out")).unwrap();
+    let md = ok(
+        &mut a,
+        "chess_export_markdown",
+        json!({ "doc": doc, "models_dir": "models", "out": "out/book.md", "pieces": "geometric", "diagram_px": 96 }),
+    );
+    assert_eq!((md["diagrams_drawn"].as_u64(), md["image_dir"].as_str()), (Some(1), Some("book_diagrams")), "{md:#}");
+    let text = std::fs::read_to_string(root.join("out").join("book.md")).unwrap();
+    assert!(text.contains("![rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1](book_diagrams/diagram-p0001-1.png)"), "{text}");
+    assert_eq!(text.matches("(not read)").count(), 2, "{text}");
+    let png = std::fs::read(root.join("out").join("book_diagrams").join("diagram-p0001-1.png")).unwrap();
+    assert_eq!(&png[..8], b"\x89PNG\r\n\x1a\n");
+    // FEN only: no folder.
+    let fen = ok(&mut a, "chess_export_markdown", json!({ "doc": doc, "out": "fen.md", "diagrams": "fen" }));
+    assert!(fen["image_dir"].is_null());
+    assert!(!root.join("fen_diagrams").exists());
+    assert!(std::fs::read_to_string(root.join("fen.md")).unwrap().contains("`rnbqkbnr/"));
+    let pgn = ok(&mut a, "chess_export_pgn", json!({ "doc": doc, "out": "games.pgn" }));
+    assert_eq!(pgn["position_games"], 1, "{pgn:#}");
+    let games = std::fs::read_to_string(root.join("games.pgn")).unwrap();
+    assert!(
+        games.contains("[SetUp \"1\"]")
+            && games.contains("[FEN \"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\"]")
+            && games.contains("[PdfDiagram \"1\"]"),
+        "{games}"
+    );
+    for (tool, out) in [("chess_export_markdown", "../outside/x.md"), ("chess_export_pgn", "../outside/x.pgn")] {
+        match a.call(tool, &json!({ "doc": doc, "out": out })) {
+            Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{tool}: {m}"),
+            other => panic!("{tool} accepted {out}: {other:?}"),
+        }
+    }
+    assert_eq!(std::fs::read_dir(base.join("outside")).unwrap().count(), 0, "nothing was written outside");
+    let _ = std::fs::remove_dir_all(base);
+}
+
 #[test]
 fn chess_arguments_out_of_range_are_refused_with_what_is_allowed() {
     let (base, root) = workdir("args");

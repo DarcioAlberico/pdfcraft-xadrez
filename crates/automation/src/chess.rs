@@ -33,6 +33,8 @@ enum ExportFormat {
     Epub,
     Docx,
     Rtf,
+    Markdown,
+    Pgn,
 }
 
 use crate::{Args, Automation, Result, ToolError, comments, failed};
@@ -475,6 +477,17 @@ impl Automation {
         self.chess_export(a, ExportFormat::Docx)
     }
 
+    /// Chess ▸ Export ▸ Markdown: the same document as a .md file at `out`, diagrams as PNG files
+    /// in a folder beside it.
+    pub(crate) fn chess_export_markdown(&mut self, a: &Args) -> Result<Value> {
+        self.chess_export(a, ExportFormat::Markdown)
+    }
+
+    /// Chess ▸ Export ▸ PGN: every game, and every legal diagram as a position, at `out`.
+    pub(crate) fn chess_export_pgn(&mut self, a: &Args) -> Result<Value> {
+        self.chess_export(a, ExportFormat::Pgn)
+    }
+
     /// Chess ▸ Export ▸ RTF: the same document as an .rtf file at `out`, diagrams as pictures.
     pub(crate) fn chess_export_rtf(&mut self, a: &Args) -> Result<Value> {
         self.chess_export(a, ExportFormat::Rtf)
@@ -482,6 +495,7 @@ impl Automation {
 
     fn chess_export(&mut self, a: &Args, format: ExportFormat) -> Result<Value> {
         use pdfcraft_engine::chess::pdfcraft_chessvision::doc::html::{self, DiagramMode, Figurines, HtmlOptions};
+        use pdfcraft_engine::chess::pdfcraft_chessvision::doc::markdown;
         let settings = self.chess_settings(a)?;
         let pages = if a.opt_ints("pages")?.is_some() { self.pages(a, "pages")? } else { Vec::new() };
         let lang_of = |key: &str, tag: &str| Lang::from_tag(tag).ok_or_else(|| Args::wrong(key, "a piece-letter language such as en, de, pt or fr"));
@@ -536,6 +550,8 @@ impl Automation {
         };
         let mut notes: Vec<Value> = read.notes.iter().map(|(p, n)| json!({ "page": p + 1, "note": n })).collect();
         let mut drawn = if diagrams == DiagramMode::Svg { None } else { Some(0) };
+        let mut position_games: Option<usize> = None;
+        let mut image_dir: Option<String> = None;
         let bytes = if format == ExportFormat::Epub {
             let doc = self.doc(a)?;
             let modified = chess::epub::modified_at(self.session.now_secs());
@@ -548,6 +564,52 @@ impl Automation {
             chess::epub::epub(&read.doc, &options, &meta).map_err(failed)?
         } else if format == ExportFormat::Html {
             html::write(&read.doc, &options).into_bytes()
+        } else if format == ExportFormat::Pgn {
+            let (pgn, added) = markdown::pgn_with_diagrams(&read.doc);
+            position_games = Some(added);
+            drawn = Some(0);
+            pgn.into_bytes()
+        } else if format == ExportFormat::Markdown {
+            // The images go in a folder beside the file: `book.md` → `book_diagrams/`.
+            let out = std::path::Path::new(&shown);
+            let stem = out.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "document".into());
+            let folder = format!("{stem}_diagrams");
+            let images = diagrams == DiagramMode::Svg;
+            let mut count = 0;
+            if images {
+                let folder_shown = out.with_file_name(&folder).to_string_lossy().into_owned();
+                let dir = self.resolve(&folder_shown, true)?;
+                for page in &read.doc.pages {
+                    for block in &page.blocks {
+                        let Block::Diagram(d) = block else { continue };
+                        let Some(reading) = &d.reading else { continue };
+                        let png = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(&reading.fen)
+                            .map_err(|e| e.to_string())
+                            .and_then(|f| chess::office::diagram_png(&f.placement, &pieces, &BoardStyle::default(), diagram_px));
+                        match png {
+                            Ok(bytes) => {
+                                if count == 0 {
+                                    std::fs::create_dir_all(&dir).map_err(|e| failed(format!("{folder_shown}: {e}")))?;
+                                }
+                                crate::write_atomic(&dir.join(markdown::image_name(page.index, d.number)), &bytes)?;
+                                count += 1;
+                            }
+                            Err(e) => notes.push(json!({ "page": u64::from(page.index) + 1, "note": format!("diagram {}: {e}", d.number + 1) })),
+                        }
+                    }
+                }
+                image_dir = Some(folder.clone());
+            }
+            drawn = Some(count);
+            let md = markdown::MarkdownOptions {
+                title: &title,
+                figurines,
+                diagrams: if images { markdown::MarkdownDiagrams::Images } else { markdown::MarkdownDiagrams::Fen },
+                links: options.links,
+                link_text: &link_text,
+                image_dir: &folder,
+            };
+            markdown::write(&read.doc, &md).into_bytes()
         } else {
             let office = chess::office::OfficeOptions {
                 pieces: &pieces,
@@ -581,6 +643,8 @@ impl Automation {
             },
             "needs_ocr": read.needs_ocr.iter().map(|(p, why)| json!({ "page": p + 1, "reason": why })).collect::<Vec<_>>(),
             "notes": notes,
+            "position_games": position_games,
+            "image_dir": image_dir,
         }))
     }
 
