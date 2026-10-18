@@ -2640,3 +2640,31 @@ certificate	Key usage	Utilizzo chiave
 certificate	Self-signed	Autofirmato
 certificate	SHA-1 digest	Impronta SHA-1
 certificate	SHA-256 digest	Impronta SHA-256
+
+# Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
+	Scan chess diagrams	Cerca diagrammi di scacchi
+	Chess diagrams panel	Pannello diagrammi di scacchi
+	Chess	Scacchi
+	Diagrams	Diagrammi
+	Chess diagrams	Diagrammi di scacchi
+	Scan this page	Cerca in questa pagina
+	Scan all pages	Cerca in tutte le pagine
+	Scanning for diagrams… page {d} of {t}	Ricerca dei diagrammi… pagina {d} di {t}
+	Scan this page or all pages to find the chess diagrams in this document.	Cerca in questa pagina o in tutte per trovare i diagrammi di scacchi di questo documento.
+	The document changed since the scan. Scan again to update the diagrams.	Il documento è cambiato dopo la ricerca. Ripeti la ricerca per aggiornare i diagrammi.
+	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	Nessun modello dei pezzi: vengono letti solo i diagrammi composti con un font di scacchi. Imposta PDFCRAFT_MODELS sulla cartella che contiene chess-pieces.onnx.
+	The piece model couldn't be loaded: {e}	Impossibile caricare il modello dei pezzi: {e}
+	No diagrams found.	Nessun diagramma trovato.
+	This page couldn't be scanned: {e}	Impossibile esaminare questa pagina: {e}
+	Only the first {n} diagrams on this page are listed.	Sono elencati solo i primi {n} diagrammi di questa pagina.
+	Diagram {n}	Diagramma {n}
+	Position read	Posizione letta
+	Needs review	Da verificare
+	Not read: no piece model	Non letto: nessun modello dei pezzi
+	Couldn't be read: {e}	Impossibile leggere: {e}
+	Not read	Non letto
+	Copy FEN	Copia FEN
+	Open in lichess	Apri in lichess
+	Diagrams are already being scanned	La ricerca dei diagrammi è già in corso
+	Diagrams found: {n}	Diagrammi trovati: {n}
+	FEN copied	FEN copiata

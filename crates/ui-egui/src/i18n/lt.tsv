@@ -2672,3 +2672,31 @@ key	Space	Tarpas
 	Make properties default	Nustatyti ypatybes kaip numatytąsias
 	Pages selected	Pasirinkti puslapiai
 	Page properties	Puslapio ypatybės
+
+# Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
+	Scan chess diagrams	Rasti šachmatų diagramas
+	Chess diagrams panel	Šachmatų diagramų skydelis
+	Chess	Šachmatai
+	Diagrams	Diagramos
+	Chess diagrams	Šachmatų diagramos
+	Scan this page	Ieškoti šiame puslapyje
+	Scan all pages	Ieškoti visuose puslapiuose
+	Scanning for diagrams… page {d} of {t}	Ieškoma diagramų… puslapis {d} iš {t}
+	Scan this page or all pages to find the chess diagrams in this document.	Ieškokite šiame puslapyje arba visuose puslapiuose, kad rastumėte šio dokumento šachmatų diagramas.
+	The document changed since the scan. Scan again to update the diagrams.	Dokumentas pasikeitė po paieškos. Ieškokite dar kartą, kad atnaujintumėte diagramas.
+	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	Nėra figūrų modelio: nuskaitomos tik šachmatų šriftu surinktos diagramos. Nurodykite PDFCRAFT_MODELS aplanką, kuriame yra chess-pieces.onnx.
+	The piece model couldn't be loaded: {e}	Nepavyko įkelti figūrų modelio: {e}
+	No diagrams found.	Diagramų nerasta.
+	This page couldn't be scanned: {e}	Nepavyko patikrinti šio puslapio: {e}
+	Only the first {n} diagrams on this page are listed.	Rodomos tik pirmosios šio puslapio diagramos: {n}.
+	Diagram {n}	Diagrama {n}
+	Position read	Pozicija nuskaityta
+	Needs review	Reikia peržiūrėti
+	Not read: no piece model	Nenuskaityta: nėra figūrų modelio
+	Couldn't be read: {e}	Nepavyko nuskaityti: {e}
+	Not read	Nenuskaityta
+	Copy FEN	Kopijuoti FEN
+	Open in lichess	Atverti lichess
+	Diagrams are already being scanned	Diagramų jau ieškoma
+	Diagrams found: {n}	Rasta diagramų: {n}
+	FEN copied	FEN nukopijuotas

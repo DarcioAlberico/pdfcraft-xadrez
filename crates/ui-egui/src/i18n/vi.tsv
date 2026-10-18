@@ -2615,3 +2615,31 @@ key	Space	Space
 	Redact Image	Xóa nội dung nhạy cảm của hình ảnh
 	Create Link…	Tạo liên kết…
 	Recognize Text…	Nhận dạng văn bản…
+
+# Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
+	Scan chess diagrams	Tìm sơ đồ cờ vua
+	Chess diagrams panel	Bảng sơ đồ cờ vua
+	Chess	Cờ vua
+	Diagrams	Sơ đồ
+	Chess diagrams	Sơ đồ cờ vua
+	Scan this page	Tìm trên trang này
+	Scan all pages	Tìm trên mọi trang
+	Scanning for diagrams… page {d} of {t}	Đang tìm sơ đồ… trang {d} trên {t}
+	Scan this page or all pages to find the chess diagrams in this document.	Hãy tìm trên trang này hoặc trên mọi trang để thấy các sơ đồ cờ vua trong tài liệu này.
+	The document changed since the scan. Scan again to update the diagrams.	Tài liệu đã thay đổi sau khi tìm. Hãy tìm lại để cập nhật các sơ đồ.
+	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	Không có mô hình quân cờ: chỉ đọc được các sơ đồ dựng bằng phông chữ cờ vua. Hãy đặt PDFCRAFT_MODELS là thư mục chứa chess-pieces.onnx.
+	The piece model couldn't be loaded: {e}	Không tải được mô hình quân cờ: {e}
+	No diagrams found.	Không tìm thấy sơ đồ nào.
+	This page couldn't be scanned: {e}	Không thể kiểm tra trang này: {e}
+	Only the first {n} diagrams on this page are listed.	Chỉ liệt kê {n} sơ đồ đầu tiên trên trang này.
+	Diagram {n}	Sơ đồ {n}
+	Position read	Đã đọc thế cờ
+	Needs review	Cần xem lại
+	Not read: no piece model	Chưa đọc: không có mô hình quân cờ
+	Couldn't be read: {e}	Không đọc được: {e}
+	Not read	Chưa đọc
+	Copy FEN	Sao chép FEN
+	Open in lichess	Mở trong lichess
+	Diagrams are already being scanned	Đang tìm sơ đồ rồi
+	Diagrams found: {n}	Số sơ đồ tìm thấy: {n}
+	FEN copied	Đã sao chép FEN

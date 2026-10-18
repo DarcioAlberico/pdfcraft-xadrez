@@ -2391,3 +2391,31 @@ animation effects	Off	Изключени
 	Make properties default	Задаване като свойства по подразбиране
 	Pages selected	Избрани страници
 	Page properties	Свойства на страницата
+
+# Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
+	Scan chess diagrams	Търсене на шахматни диаграми
+	Chess diagrams panel	Панел с шахматни диаграми
+	Chess	Шахмат
+	Diagrams	Диаграми
+	Chess diagrams	Шахматни диаграми
+	Scan this page	Търсене в тази страница
+	Scan all pages	Търсене във всички страници
+	Scanning for diagrams… page {d} of {t}	Търсене на диаграми… страница {d} от {t}
+	Scan this page or all pages to find the chess diagrams in this document.	Потърсете в тази страница или във всички страници, за да намерите шахматните диаграми в документа.
+	The document changed since the scan. Scan again to update the diagrams.	Документът е променен след търсенето. Потърсете отново, за да обновите диаграмите.
+	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	Няма модел на фигурите: четат се само диаграми, набрани с шахматен шрифт. Задайте в PDFCRAFT_MODELS папката с chess-pieces.onnx.
+	The piece model couldn't be loaded: {e}	Моделът на фигурите не можа да се зареди: {e}
+	No diagrams found.	Не са намерени диаграми.
+	This page couldn't be scanned: {e}	Тази страница не можа да се провери: {e}
+	Only the first {n} diagrams on this page are listed.	Показани са само първите {n} диаграми от тази страница.
+	Diagram {n}	Диаграма {n}
+	Position read	Позицията е прочетена
+	Needs review	Нужна е проверка
+	Not read: no piece model	Не е прочетена: няма модел на фигурите
+	Couldn't be read: {e}	Не можа да се прочете: {e}
+	Not read	Не е прочетена
+	Copy FEN	Копиране на FEN
+	Open in lichess	Отваряне в lichess
+	Diagrams are already being scanned	Диаграмите вече се търсят
+	Diagrams found: {n}	Намерени диаграми: {n}
+	FEN copied	FEN е копиран

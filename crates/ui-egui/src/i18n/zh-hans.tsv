@@ -2392,3 +2392,31 @@ animation effects	Off	关
 	Make properties default	将属性设为默认
 	Pages selected	选定的页面
 	Page properties	页面属性
+
+# Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
+	Scan chess diagrams	查找国际象棋棋图
+	Chess diagrams panel	国际象棋棋图面板
+	Chess	国际象棋
+	Diagrams	棋图
+	Chess diagrams	国际象棋棋图
+	Scan this page	查找此页
+	Scan all pages	查找所有页面
+	Scanning for diagrams… page {d} of {t}	正在查找棋图…第{d}页，共{t}页
+	Scan this page or all pages to find the chess diagrams in this document.	查找此页或所有页面，以找到此文档中的国际象棋棋图。
+	The document changed since the scan. Scan again to update the diagrams.	查找之后文档已更改。请重新查找以更新棋图。
+	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	没有棋子模型：只能读取用国际象棋字体排出的棋图。请将 PDFCRAFT_MODELS 设为包含 chess-pieces.onnx 的文件夹。
+	The piece model couldn't be loaded: {e}	无法加载棋子模型：{e}
+	No diagrams found.	未找到棋图。
+	This page couldn't be scanned: {e}	无法查找此页：{e}
+	Only the first {n} diagrams on this page are listed.	仅列出此页的前 {n} 个棋图。
+	Diagram {n}	棋图 {n}
+	Position read	已读取局面
+	Needs review	需要复核
+	Not read: no piece model	未读取：没有棋子模型
+	Couldn't be read: {e}	无法读取：{e}
+	Not read	未读取
+	Copy FEN	复制 FEN
+	Open in lichess	在 lichess 中打开
+	Diagrams are already being scanned	已在查找棋图
+	Diagrams found: {n}	找到的棋图：{n}
+	FEN copied	已复制 FEN

@@ -2433,3 +2433,31 @@ animation effects	Off	Izklopljeni
 	Make properties default	Nastavi lastnosti kot privzete
 	Pages selected	Izbrane strani
 	Page properties	Lastnosti strani
+
+# Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
+	Scan chess diagrams	Poišči šahovske diagrame
+	Chess diagrams panel	Podokno šahovskih diagramov
+	Chess	Šah
+	Diagrams	Diagrami
+	Chess diagrams	Šahovski diagrami
+	Scan this page	Išči na tej strani
+	Scan all pages	Išči na vseh straneh
+	Scanning for diagrams… page {d} of {t}	Iskanje diagramov… stran {d} od {t}
+	Scan this page or all pages to find the chess diagrams in this document.	Preiščite to stran ali vse strani, da najdete šahovske diagrame v tem dokumentu.
+	The document changed since the scan. Scan again to update the diagrams.	Dokument se je po iskanju spremenil. Ponovno iščite, da posodobite diagrame.
+	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	Ni modela figur: berejo se le diagrami, postavljeni s šahovsko pisavo. PDFCRAFT_MODELS nastavite na mapo z datoteko chess-pieces.onnx.
+	The piece model couldn't be loaded: {e}	Modela figur ni bilo mogoče naložiti: {e}
+	No diagrams found.	Ni najdenih diagramov.
+	This page couldn't be scanned: {e}	Te strani ni bilo mogoče preiskati: {e}
+	Only the first {n} diagrams on this page are listed.	Prikazani so le prvi diagrami te strani: {n}.
+	Diagram {n}	Diagram {n}
+	Position read	Pozicija prebrana
+	Needs review	Potreben pregled
+	Not read: no piece model	Ni prebrano: ni modela figur
+	Couldn't be read: {e}	Ni bilo mogoče prebrati: {e}
+	Not read	Ni prebrano
+	Copy FEN	Kopiraj FEN
+	Open in lichess	Odpri v lichess
+	Diagrams are already being scanned	Diagrami se že iščejo
+	Diagrams found: {n}	Najdeni diagrami: {n}
+	FEN copied	FEN kopiran

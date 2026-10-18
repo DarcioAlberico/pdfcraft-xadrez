@@ -807,6 +807,28 @@ impl Session {
     pub fn chess_page(&mut self, id: DocId, page: usize, settings: &ChessScanSettings) -> Result<Arc<ChessPage>, String> {
         self.chess_scan(id, &[page], settings, true)?.into_iter().next().ok_or_else(|| "the page could not be scanned".into())
     }
+
+    /// The state document `id` is in now, to compare with a scan's [`ChessScan::stamp`]: a
+    /// screen showing a scan's boxes drops them once the two differ. `None` when there is no
+    /// such document.
+    pub fn chess_stamp(&self, id: DocId) -> Option<ScanStamp> {
+        self.get(id).map(|doc| ScanStamp { generation: doc.generation, bytes: doc.bytes.len() })
+    }
+}
+
+/// The document state a scan describes (its edit generation and size). Every edit, undo or
+/// redo makes a new one, after which the scan's boxes and positions may no longer be on the page.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ScanStamp {
+    generation: u64,
+    bytes: usize,
+}
+
+impl ChessScan {
+    /// The document state this scan was made from: see [`Session::chess_stamp`].
+    pub fn stamp(&self) -> ScanStamp {
+        ScanStamp { generation: self.params.generation, bytes: self.params.bytes }
+    }
 }
 
 #[cfg(test)]

@@ -2442,3 +2442,31 @@ animation effects	Off	Desativados
 	Make properties default	Tornar propriedades padrão
 	Pages selected	Páginas selecionadas
 	Page properties	Propriedades da página
+
+# Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
+	Scan chess diagrams	Procurar diagramas de xadrez
+	Chess diagrams panel	Painel de diagramas de xadrez
+	Chess	Xadrez
+	Diagrams	Diagramas
+	Chess diagrams	Diagramas de xadrez
+	Scan this page	Procurar nesta página
+	Scan all pages	Procurar em todas as páginas
+	Scanning for diagrams… page {d} of {t}	Procurando diagramas… página {d} de {t}
+	Scan this page or all pages to find the chess diagrams in this document.	Procure nesta página ou em todas para encontrar os diagramas de xadrez deste documento.
+	The document changed since the scan. Scan again to update the diagrams.	O documento mudou depois da busca. Procure de novo para atualizar os diagramas.
+	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	Sem modelo de peças: só são lidos os diagramas compostos em fonte de xadrez. Defina PDFCRAFT_MODELS como a pasta que contém chess-pieces.onnx.
+	The piece model couldn't be loaded: {e}	Não foi possível carregar o modelo de peças: {e}
+	No diagrams found.	Nenhum diagrama encontrado.
+	This page couldn't be scanned: {e}	Não foi possível examinar esta página: {e}
+	Only the first {n} diagrams on this page are listed.	Só os primeiros {n} diagramas desta página estão listados.
+	Diagram {n}	Diagrama {n}
+	Position read	Posição lida
+	Needs review	Precisa de revisão
+	Not read: no piece model	Não lido: sem modelo de peças
+	Couldn't be read: {e}	Não foi possível ler: {e}
+	Not read	Não lido
+	Copy FEN	Copiar FEN
+	Open in lichess	Abrir no lichess
+	Diagrams are already being scanned	Os diagramas já estão sendo procurados
+	Diagrams found: {n}	Diagramas encontrados: {n}
+	FEN copied	FEN copiada

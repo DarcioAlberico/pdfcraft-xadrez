@@ -2384,3 +2384,31 @@ animation effects	Off	關
 	Make properties default	將內容設為預設
 	Pages selected	選取的頁面
 	Page properties	頁面屬性
+
+# Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
+	Scan chess diagrams	尋找西洋棋棋圖
+	Chess diagrams panel	西洋棋棋圖面板
+	Chess	西洋棋
+	Diagrams	棋圖
+	Chess diagrams	西洋棋棋圖
+	Scan this page	尋找此頁
+	Scan all pages	尋找所有頁面
+	Scanning for diagrams… page {d} of {t}	正在尋找棋圖…第{d}頁，共{t}頁
+	Scan this page or all pages to find the chess diagrams in this document.	尋找此頁或所有頁面，以找出此文件中的西洋棋棋圖。
+	The document changed since the scan. Scan again to update the diagrams.	尋找之後文件已變更。請重新尋找以更新棋圖。
+	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	沒有棋子模型：只會讀取以西洋棋字型排版的棋圖。請將 PDFCRAFT_MODELS 設為包含 chess-pieces.onnx 的資料夾。
+	The piece model couldn't be loaded: {e}	無法載入棋子模型：{e}
+	No diagrams found.	找不到棋圖。
+	This page couldn't be scanned: {e}	無法尋找此頁：{e}
+	Only the first {n} diagrams on this page are listed.	僅列出此頁的前 {n} 個棋圖。
+	Diagram {n}	棋圖 {n}
+	Position read	已讀取局面
+	Needs review	需要複核
+	Not read: no piece model	未讀取：沒有棋子模型
+	Couldn't be read: {e}	無法讀取：{e}
+	Not read	未讀取
+	Copy FEN	複製 FEN
+	Open in lichess	在 lichess 中開啟
+	Diagrams are already being scanned	已在尋找棋圖
+	Diagrams found: {n}	找到的棋圖：{n}
+	FEN copied	已複製 FEN

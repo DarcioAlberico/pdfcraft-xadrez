@@ -2706,3 +2706,31 @@ certificate	Version	الإصدار
 	Make properties default	جعل الخصائص افتراضية
 	Pages selected	الصفحات المحددة
 	Page properties	خصائص الصفحة
+
+# Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
+	Scan chess diagrams	البحث عن مخططات الشطرنج
+	Chess diagrams panel	لوحة مخططات الشطرنج
+	Chess	الشطرنج
+	Diagrams	المخططات
+	Chess diagrams	مخططات الشطرنج
+	Scan this page	البحث في هذه الصفحة
+	Scan all pages	البحث في كل الصفحات
+	Scanning for diagrams… page {d} of {t}	جارٍ البحث عن المخططات… الصفحة {d} من {t}
+	Scan this page or all pages to find the chess diagrams in this document.	ابحث في هذه الصفحة أو في كل الصفحات للعثور على مخططات الشطرنج في هذا المستند.
+	The document changed since the scan. Scan again to update the diagrams.	تغيّر المستند منذ البحث. ابحث مرة أخرى لتحديث المخططات.
+	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	لا يوجد نموذج للقطع: لا تُقرأ إلا المخططات المصفوفة بخط شطرنج. اضبط PDFCRAFT_MODELS على المجلد الذي يحتوي على chess-pieces.onnx.
+	The piece model couldn't be loaded: {e}	تعذّر تحميل نموذج القطع: {e}
+	No diagrams found.	لم يُعثر على مخططات.
+	This page couldn't be scanned: {e}	تعذّر فحص هذه الصفحة: {e}
+	Only the first {n} diagrams on this page are listed.	تُعرض أول {n} من مخططات هذه الصفحة فقط.
+	Diagram {n}	المخطط {n}
+	Position read	قُرئت الوضعية
+	Needs review	يحتاج إلى مراجعة
+	Not read: no piece model	لم يُقرأ: لا يوجد نموذج للقطع
+	Couldn't be read: {e}	تعذّرت القراءة: {e}
+	Not read	لم يُقرأ
+	Copy FEN	نسخ FEN
+	Open in lichess	فتح في lichess
+	Diagrams are already being scanned	البحث عن المخططات جارٍ بالفعل
+	Diagrams found: {n}	المخططات التي عُثر عليها: {n}
+	FEN copied	تم نسخ FEN

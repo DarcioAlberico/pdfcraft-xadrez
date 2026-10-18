@@ -2428,3 +2428,31 @@ animation effects	Off	オフ
 	Make properties default	プロパティをデフォルトに設定
 	Pages selected	選択したページ
 	Page properties	ページのプロパティ
+
+# Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
+	Scan chess diagrams	チェスの局面図を検索
+	Chess diagrams panel	チェス局面図パネル
+	Chess	チェス
+	Diagrams	局面図
+	Chess diagrams	チェスの局面図
+	Scan this page	このページを検索
+	Scan all pages	すべてのページを検索
+	Scanning for diagrams… page {d} of {t}	局面図を検索中… ページ {d} / {t}
+	Scan this page or all pages to find the chess diagrams in this document.	このページまたはすべてのページを検索して、この文書のチェスの局面図を見つけます。
+	The document changed since the scan. Scan again to update the diagrams.	検索後に文書が変更されました。局面図を更新するには、もう一度検索してください。
+	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	駒モデルがありません。チェスフォントで組まれた局面図だけを読み取ります。PDFCRAFT_MODELS に chess-pieces.onnx があるフォルダーを設定してください。
+	The piece model couldn't be loaded: {e}	駒モデルを読み込めませんでした: {e}
+	No diagrams found.	局面図は見つかりませんでした。
+	This page couldn't be scanned: {e}	このページを検索できませんでした: {e}
+	Only the first {n} diagrams on this page are listed.	このページの最初の {n} 個の局面図だけを表示しています。
+	Diagram {n}	局面図 {n}
+	Position read	局面を読み取りました
+	Needs review	確認が必要
+	Not read: no piece model	未読み取り: 駒モデルなし
+	Couldn't be read: {e}	読み取れませんでした: {e}
+	Not read	未読み取り
+	Copy FEN	FEN をコピー
+	Open in lichess	lichess で開く
+	Diagrams are already being scanned	局面図はすでに検索中です
+	Diagrams found: {n}	見つかった局面図: {n}
+	FEN copied	FEN をコピーしました

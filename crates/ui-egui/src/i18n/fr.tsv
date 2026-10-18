@@ -2428,3 +2428,31 @@ animation effects	Off	Désactivés
 	Make properties default	Définir comme propriétés par défaut
 	Pages selected	Pages sélectionnées
 	Page properties	Propriétés de la page
+
+# Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
+	Scan chess diagrams	Rechercher les diagrammes d'échecs
+	Chess diagrams panel	Panneau des diagrammes d'échecs
+	Chess	Échecs
+	Diagrams	Diagrammes
+	Chess diagrams	Diagrammes d'échecs
+	Scan this page	Rechercher dans cette page
+	Scan all pages	Rechercher dans toutes les pages
+	Scanning for diagrams… page {d} of {t}	Recherche de diagrammes… page {d} sur {t}
+	Scan this page or all pages to find the chess diagrams in this document.	Lancez la recherche sur cette page ou sur toutes les pages pour trouver les diagrammes d'échecs de ce document.
+	The document changed since the scan. Scan again to update the diagrams.	Le document a changé depuis la recherche. Relancez-la pour mettre à jour les diagrammes.
+	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	Aucun modèle de pièces : seuls les diagrammes composés dans une police d'échecs sont lus. Définissez PDFCRAFT_MODELS sur le dossier qui contient chess-pieces.onnx.
+	The piece model couldn't be loaded: {e}	Impossible de charger le modèle de pièces : {e}
+	No diagrams found.	Aucun diagramme trouvé.
+	This page couldn't be scanned: {e}	Impossible d'analyser cette page : {e}
+	Only the first {n} diagrams on this page are listed.	Seuls les {n} premiers diagrammes de cette page sont listés.
+	Diagram {n}	Diagramme {n}
+	Position read	Position lue
+	Needs review	À vérifier
+	Not read: no piece model	Non lu : aucun modèle de pièces
+	Couldn't be read: {e}	Lecture impossible : {e}
+	Not read	Non lu
+	Copy FEN	Copier la FEN
+	Open in lichess	Ouvrir dans lichess
+	Diagrams are already being scanned	La recherche de diagrammes est déjà en cours
+	Diagrams found: {n}	Diagrammes trouvés : {n}
+	FEN copied	FEN copiée

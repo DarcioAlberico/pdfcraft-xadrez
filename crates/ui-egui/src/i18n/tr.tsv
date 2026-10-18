@@ -2424,3 +2424,31 @@ animation effects	Off	Kapalı
 	Make properties default	Özellikleri varsayılan yap
 	Pages selected	Seçilen sayfalar
 	Page properties	Sayfa özellikleri
+
+# Chess ▸ Diagrams (blueprint S16a): the Chess diagrams panel, its commands and catalogue group.
+	Scan chess diagrams	Satranç diyagramlarını bul
+	Chess diagrams panel	Satranç diyagramları paneli
+	Chess	Satranç
+	Diagrams	Diyagramlar
+	Chess diagrams	Satranç diyagramları
+	Scan this page	Bu sayfada ara
+	Scan all pages	Tüm sayfalarda ara
+	Scanning for diagrams… page {d} of {t}	Diyagramlar aranıyor… Sayfa {d} / {t}
+	Scan this page or all pages to find the chess diagrams in this document.	Bu belgedeki satranç diyagramlarını bulmak için bu sayfada veya tüm sayfalarda arayın.
+	The document changed since the scan. Scan again to update the diagrams.	Belge aramadan sonra değişti. Diyagramları güncellemek için yeniden arayın.
+	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	Taş modeli yok: yalnızca satranç yazı tipiyle dizilmiş diyagramlar okunur. PDFCRAFT_MODELS değerini chess-pieces.onnx dosyasını içeren klasöre ayarlayın.
+	The piece model couldn't be loaded: {e}	Taş modeli yüklenemedi: {e}
+	No diagrams found.	Diyagram bulunamadı.
+	This page couldn't be scanned: {e}	Bu sayfa taranamadı: {e}
+	Only the first {n} diagrams on this page are listed.	Bu sayfadaki yalnızca ilk {n} diyagram listeleniyor.
+	Diagram {n}	Diyagram {n}
+	Position read	Konum okundu
+	Needs review	İnceleme gerekiyor
+	Not read: no piece model	Okunmadı: taş modeli yok
+	Couldn't be read: {e}	Okunamadı: {e}
+	Not read	Okunmadı
+	Copy FEN	FEN'i kopyala
+	Open in lichess	lichess'te aç
+	Diagrams are already being scanned	Diyagramlar zaten aranıyor
+	Diagrams found: {n}	Bulunan diyagramlar: {n}
+	FEN copied	FEN kopyalandı

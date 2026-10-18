@@ -606,6 +606,7 @@ fn main_menu(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                     (RightPanel::Tags, tl!("Tags")),
                     (RightPanel::Search, tl!("Search")),
                     (RightPanel::Compare, tl!("Compare")),
+                    (RightPanel::Chess, tl!("Chess diagrams")),
                 ] {
                     if ui.add(widgets::radio(app.right == Some(p), tl!(label))).clicked() {
                         app.choose_right_panel(Some(p));
@@ -623,6 +624,7 @@ pub fn right_rail(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let Some(doc) = app.session.get(id) else { return };
     let has_signatures = doc.is_signed();
     let has_check = app.a11y.report.as_ref().is_some_and(|(d, _)| *d == id);
+    let has_chess = app.chess.results.as_ref().is_some_and(|r| r.doc == id);
     let (has_comments, has_outline, has_fields, has_layers, has_files) = (
         !doc.info.annotations.is_empty(),
         !doc.info.outline.is_empty(),
@@ -660,6 +662,9 @@ pub fn right_rail(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                 rail_button(ui, RightPanel::Accessibility, "accessibility", "Accessibility Checker", false);
             }
             rail_button(ui, RightPanel::Tags, "tag", "Tags", false);
+            if has_chess {
+                rail_button(ui, RightPanel::Chess, "grid-3x3", "Chess diagrams", false);
+            }
 
             // Page navigation cluster at the bottom (as in Acrobat's rail).
             let view = &mut app.views[index];
