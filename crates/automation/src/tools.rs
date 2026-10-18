@@ -1274,6 +1274,10 @@ pub fn tools() -> Vec<ToolDef> {
             .with(chess_export_schema()),
         t("chess_export_rtf", "Export chess document as RTF", "Chess ▸ Export ▸ RTF: as chess_export_docx, written as an .rtf file at out (figurines as \\uN? escapes, diagrams as PNG pictures).")
             .with(chess_export_schema()),
+        t("chess_export_markdown", "Export chess document as Markdown", "Chess ▸ Export ▸ Markdown: the chess_export_html document as a .md file at out: # headings, paragraphs with moves (figurines as chess_export_html; text escaped so it stays text), and each diagram as an image ![FEN](<name>_diagrams/diagram-pNNNN-k.png) written as PNG into a folder beside the file (diagrams: fen sets the FEN in backticks and writes no images), with its lichess link under it. Same options and reply as chess_export_html, plus image_dir (the folder, relative to out). The document is not changed.")
+            .with(chess_export_schema()),
+        t("chess_export_pgn", "Export chess games as PGN", "Chess ▸ Export ▸ PGN: every game found in the text (roster, SetUp/FEN from the diagram it starts at, NAGs, comments, variations), and for each legal, unrepaired diagram that starts none a game with no moves holding its position, all with PdfPage and PdfDiagram tags, in the order of the book, written to out. A position whose reading did not pass review says so in a comment. Reply as chess_export_html, plus position_games (how many such games were added). The document is not changed.")
+            .with(chess_export_schema()),
         t("chess_status", "Chess model status", "Whether the user's chess models are available (none ship with PdfCraft): the piece model reads drawn and scanned diagrams, the glyph model chess text. Each is loaded, missing or invalid (with the reason). models_dir looks in that folder instead of PDFCRAFT_MODELS and beside the executable. Also says where the piece set for drawing diagrams comes from (PDFCRAFT_CHESS_PIECES, an installed Chess Merida, or plain geometric pieces). Diagrams in chess fonts are read without any model.")
             .ro()
             .with(schema(json!({ "models_dir": models_dir() }), &[])),
