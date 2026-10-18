@@ -453,6 +453,15 @@ impl Automation {
 
     /// Chess ▸ Export ▸ HTML: the recognised document as one static HTML file at `out`.
     pub(crate) fn chess_export_html(&mut self, a: &Args) -> Result<Value> {
+        self.chess_export(a, false)
+    }
+
+    /// Chess ▸ Export ▸ EPUB: the same document as an EPUB 3 book at `out`.
+    pub(crate) fn chess_export_epub(&mut self, a: &Args) -> Result<Value> {
+        self.chess_export(a, true)
+    }
+
+    fn chess_export(&mut self, a: &Args, as_epub: bool) -> Result<Value> {
         use pdfcraft_engine::chess::pdfcraft_chessvision::doc::html::{self, DiagramMode, Figurines, HtmlOptions};
         let settings = self.chess_settings(a)?;
         let pages = if a.opt_ints("pages")?.is_some() { self.pages(a, "pages")? } else { Vec::new() };
@@ -499,13 +508,25 @@ impl Automation {
             links: a.opt_bool("links")?.unwrap_or(true),
             link_text: &link_text,
         };
-        let text = html::write(&read.doc, &options);
-        crate::write_atomic(&path, text.as_bytes())?;
+        let bytes = if as_epub {
+            let doc = self.doc(a)?;
+            let modified = chess::epub::modified_at(self.session.now_secs());
+            let meta = chess::epub::EpubMeta {
+                title: title.clone(),
+                lang: read.lang.lang.code().to_owned(),
+                identifier: chess::epub::identifier(&doc.bytes),
+                modified,
+            };
+            chess::epub::epub(&read.doc, &options, &meta).map_err(failed)?
+        } else {
+            html::write(&read.doc, &options).into_bytes()
+        };
+        crate::write_atomic(&path, &bytes)?;
         let figures = read.doc.pages.iter().flat_map(|p| &p.blocks).filter_map(|b| if let Block::Diagram(d) = b { Some(d) } else { None });
         let (all, positioned) = figures.fold((0usize, 0usize), |(n, p), d| (n + 1, p + usize::from(d.reading.is_some())));
         Ok(json!({
             "out": shown,
-            "bytes": text.len(),
+            "bytes": bytes.len(),
             "pages": read.doc.pages.len(),
             "lang": read.lang.lang.code(),
             "diagrams": all,

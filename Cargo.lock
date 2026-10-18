@@ -4178,6 +4178,7 @@ dependencies = [
  "pdfcraft-xfdf",
  "png 0.18.1",
  "proptest",
+ "roxmltree",
  "thiserror 2.0.21",
  "unicode-segmentation",
  "url",

@@ -49,6 +49,8 @@ unicode-segmentation = "1.13"
 [dev-dependencies]
 # Parses the operators a diagram replacement draws, to count them.
 pdfcraft-content = { workspace = true }
+# Checks that every XML file of an exported EPUB is well-formed (MIT OR Apache-2.0).
+roxmltree = "0.20"
 proptest.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

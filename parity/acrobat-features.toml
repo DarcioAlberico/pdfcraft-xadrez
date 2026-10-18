@@ -6854,6 +6854,18 @@ tools = ["chess_export_html"]
 evidence = ["crates/chessvision/src/doc/tests/html.rs::the_html_reads_back_as_the_document", "crates/chessvision/src/doc/tests/html.rs::an_unread_diagram_is_a_figure_without_a_position_and_no_unsafe_link_is_made", "crates/chessvision/src/doc/tests/html.rs::arbitrary_text_is_escaped", "crates/automation/tests/chess.rs::chess_export_html_writes_the_diagrams_in_order_and_reads_back", "crates/automation/tests/chess.rs::chess_export_html_outside_the_root_is_refused"]
 notes = "An extension, not an Acrobat parity claim (fork decision D3). The recognised document (chess_document) as one static HTML file: headings, paragraphs with moves (Unicode figurines, letters in any of the 18 languages, or as printed), annotation glyphs, and each diagram redrawn as inline SVG with the same chess::draw drawing as the PDF replacement, or as FEN, with a lichess link under it. No script, nothing fetched; only http(s) addresses become links. Readable back by attributes (data-fen, data-san, data-nag, class unread/review). Pieces from PDFCRAFT_CHESS_PIECES or an installed Chess Merida, else geometric. Missing: PNG diagrams (for DOCX/RTF/Markdown, S15c/S15d), EPUB (S15b), the interface's Export menu, and text the OCR would read on pages without a usable text layer."
 
+[[feature]]
+id = "export.chess-epub"
+title = "Export a chess book as EPUB 3 with redrawn diagrams"
+area = "I"
+tier = "P2"
+milestone = "none"
+status = "partial"
+commands = []
+tools = ["chess_export_epub"]
+evidence = ["crates/engine/src/chess/tests/epub.rs::the_package_is_well_formed_and_every_reference_resolves", "crates/engine/src/chess/tests/epub.rs::the_archive_starts_with_the_stored_mimetype", "crates/engine/src/chess/tests/epub.rs::a_book_without_headings_lists_its_pages_and_limits_hold", "crates/automation/tests/chess.rs::chess_export_epub_writes_a_book_inside_the_root_only"]
+notes = "An extension, not an Acrobat parity claim (fork decision D3). The chess HTML export cut into one XHTML content document per PDF page (same markup, inline SVG boards, lichess links), a navigation document from the headings (or the pages), the package document (stable identifier from the PDF bytes, dcterms:modified) and the OCF container, with mimetype first and stored. Every XML file is checked well-formed and every manifest, spine and navigation reference resolves in tests. No script, nothing fetched. Missing: validation by epubcheck (not installed here), an embedded font with figurines (none in craft-fonts yet; readers use their own fonts), cover image, the interface's Export menu."
+
 # ==================================================================================================
 # J. Create and export
 # ==================================================================================================

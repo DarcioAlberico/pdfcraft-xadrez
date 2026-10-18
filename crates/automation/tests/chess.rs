@@ -471,6 +471,32 @@ fn chess_export_html_outside_the_root_is_refused() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// The EPUB is written inside the root, starts with the stored `mimetype`, and holds the
+/// package, the navigation and the page; outside the root it is refused and nothing is written.
+#[test]
+fn chess_export_epub_writes_a_book_inside_the_root_only() {
+    let (base, root) = workdir("epub");
+    let (mut a, doc) = opened(&root);
+    let done =
+        ok(&mut a, "chess_export_epub", json!({ "doc": doc, "models_dir": "models", "out": "book.epub", "pieces": "geometric", "title": "Board" }));
+    assert_eq!((done["diagrams"].as_u64(), done["diagrams_drawn"].as_u64()), (Some(3), Some(1)), "{done:#}");
+    let bytes = std::fs::read(root.join("book.epub")).unwrap();
+    assert_eq!(done["bytes"].as_u64(), Some(bytes.len() as u64));
+    assert_eq!(&bytes[30..58], b"mimetypeapplication/epub+zip");
+    for name in ["META-INF/container.xml", "OEBPS/content.opf", "OEBPS/nav.xhtml", "OEBPS/page-00001.xhtml"] {
+        assert!(bytes.windows(name.len()).any(|w| w == name.as_bytes()), "no {name} in the archive");
+    }
+    for out in ["../outside/x.epub".to_string(), base.join("outside").join("y.epub").to_string_lossy().into_owned()] {
+        match a.call("chess_export_epub", &json!({ "doc": doc, "out": out })) {
+            Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{out}: {m}"),
+            other => panic!("{out} accepted: {other:?}"),
+        }
+    }
+    assert_eq!(std::fs::read_dir(base.join("outside")).unwrap().count(), 0, "nothing was written outside");
+    assert_eq!(ok(&mut a, "doc_list", json!({}))["documents"][0]["dirty"], false);
+    let _ = std::fs::remove_dir_all(base);
+}
+
 #[test]
 fn chess_arguments_out_of_range_are_refused_with_what_is_allowed() {
     let (base, root) = workdir("args");
