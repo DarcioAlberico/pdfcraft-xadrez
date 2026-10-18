@@ -12,6 +12,7 @@
 use std::sync::Arc;
 
 use pdfcraft_engine::Edit;
+use pdfcraft_engine::chess::links::Side;
 use pdfcraft_engine::chess::pdfcraft_chess::draw::{BoardStyle, PieceSet, Rgb};
 use pdfcraft_engine::chess::pdfcraft_chess::fen;
 use pdfcraft_engine::chess::pdfcraft_chess::rules::Legality;
@@ -22,7 +23,7 @@ use pdfcraft_engine::chess::pdfcraft_chessvision::detect::Source;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, Inline, MoveInline, MoveStatus};
 use pdfcraft_engine::chess::pdfcraft_chessvision::merge::Merged;
 use pdfcraft_engine::chess::pdfcraft_chessvision::pieces::{self, PieceSource};
-use pdfcraft_engine::chess::{self, ChessPage, ChessScanSettings, DiagramReplacement, ModelState, ReadingOrder};
+use pdfcraft_engine::chess::{self, ChessPage, ChessScanSettings, DiagramReplacement, LinkSettings, ModelState, ReadingOrder};
 use serde_json::{Value, json};
 
 use crate::{Args, Automation, Result, ToolError, comments, failed};
@@ -408,6 +409,46 @@ impl Automation {
             result["pgn"] = json!(pgn);
         }
         Ok(result)
+    }
+
+    /// Chess ▸ Add lichess links: plan the labels on the pages as they are now and (unless
+    /// `dry_run`) add them as one undoable step.
+    pub(crate) fn chess_add_lichess_links(&mut self, a: &Args) -> Result<Value> {
+        let scan = self.chess_settings(a)?;
+        let pages = if a.opt_ints("pages")?.is_some() { self.pages(a, "pages")? } else { Vec::new() };
+        let mut settings = LinkSettings::default();
+        if let Some(text) = a.opt_str("label")? {
+            settings.text = text.to_owned();
+        }
+        if let Some(size) = a.opt_num("size")? {
+            settings.size = size;
+        }
+        settings.allow_unaccepted = a.opt_bool("allow_unaccepted")?.unwrap_or(false);
+        let dry_run = a.opt_bool("dry_run")?.unwrap_or(false);
+        let id = self.doc(a)?.id;
+        let plan = self.session.chess_link_plan(id, &pages, &scan, &settings).map_err(failed)?;
+        let mut out = match (&plan.edit, dry_run) {
+            (Some(edit), false) => self.apply(a, edit.clone())?,
+            _ => json!({}),
+        };
+        let fields = json!({
+            "dry_run": dry_run,
+            "added": if dry_run { 0 } else { plan.links.len() },
+            "links": plan.links.iter().map(|l| json!({
+                "page": l.page + 1,
+                "index": l.index + 1,
+                "fen": l.fen,
+                "url": l.url,
+                "side": match l.side { Side::Below => "below", Side::Right => "right", Side::Above => "above" },
+                "rect": ([l.label_view.x0, l.label_view.y0, l.label_view.x1, l.label_view.y1].map(round)),
+                "link_user": (l.link_user.map(|v| round(v as f32))),
+            })).collect::<Vec<_>>(),
+            "skipped": plan.skipped.iter().map(|s| json!({ "page": s.page + 1, "index": s.index + 1, "reason": s.reason })).collect::<Vec<_>>(),
+        });
+        if let (Some(o), Value::Object(f)) = (out.as_object_mut(), fields) {
+            o.extend(f);
+        }
+        Ok(out)
     }
 
     pub(crate) fn chess_status(&self, a: &Args) -> Result<Value> {

@@ -732,6 +732,7 @@
 	Flip vertical	上下反転
 	Replace image	画像を置換
 	Replace diagram	局面図を置換
+	Add lichess links	lichess へのリンクを追加
 	Crop (% trimmed from each side)	トリミング（各辺から削る割合）
 	Click on the page to add text; each click starts a new box, and ✓ finishes. Drag items to move them, drag a corner to resize, double-click text to edit it.	ページをクリックしてテキストを追加します。クリックごとに新しいボックスを作成し、✓ で完了します。項目をドラッグして移動、角をドラッグしてサイズ変更、テキストをダブルクリックして編集できます。
 	Choose an image	画像を選択
