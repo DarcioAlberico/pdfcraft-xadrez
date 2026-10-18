@@ -30,6 +30,7 @@
 
 mod build;
 pub mod games;
+pub mod html;
 pub mod pgn;
 
 #[cfg(test)]

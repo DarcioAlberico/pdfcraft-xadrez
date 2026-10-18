@@ -414,6 +414,63 @@ fn chess_add_lichess_links_links_the_read_diagram_and_says_why_not_the_others() 
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// The page exports as HTML with its three diagrams in order: the font one redrawn as SVG with
+/// its FEN and lichess link, the two unread ones as figures without a position. Read back from
+/// the file.
+#[test]
+fn chess_export_html_writes_the_diagrams_in_order_and_reads_back() {
+    let (base, root) = workdir("html");
+    let (mut a, doc) = opened(&root);
+    let done = ok(&mut a, "chess_export_html", json!({ "doc": doc, "models_dir": "models", "out": "book.html", "pieces": "geometric" }));
+    assert_eq!(
+        (done["diagrams"].as_u64(), done["diagrams_drawn"].as_u64(), done["diagrams_unread"].as_u64()),
+        (Some(3), Some(1), Some(2)),
+        "{done:#}"
+    );
+    assert_eq!(done["pieces"]["source"], "geometric");
+    let html = std::fs::read_to_string(root.join("book.html")).unwrap();
+    assert_eq!(done["bytes"].as_u64(), Some(html.len() as u64));
+    assert_eq!(html.matches("<figure class=\"diagram").count(), 3, "{html}");
+    assert_eq!(html.matches("<figure class=\"diagram unread").count(), 2);
+    assert!(html.contains("data-fen=\"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\""), "{html}");
+    assert_eq!(html.matches("<svg").count(), 1);
+    assert_eq!(html.matches("href=\"https://lichess.org/analysis/").count(), 1);
+    assert!(!html.contains("<script"));
+    // FEN text instead of boards, no links.
+    let fen = ok(&mut a, "chess_export_html", json!({ "doc": doc, "out": "fen.html", "diagrams": "fen", "links": false }));
+    assert_eq!(fen["diagrams_drawn"], 0);
+    let html = std::fs::read_to_string(root.join("fen.html")).unwrap();
+    assert!(html.contains("<code>rnbqkbnr/") && !html.contains("<svg") && !html.contains("lichess.org"), "{html}");
+    assert_eq!(ok(&mut a, "doc_list", json!({}))["documents"][0]["dirty"], false);
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// `out` is confined to `--root`; the same call into the root succeeds. Bad options are refused.
+#[test]
+fn chess_export_html_outside_the_root_is_refused() {
+    let (base, root) = workdir("html-confined");
+    let (mut a, doc) = opened(&root);
+    for out in ["../outside/x.html".to_string(), base.join("outside").join("y.html").to_string_lossy().into_owned()] {
+        match a.call("chess_export_html", &json!({ "doc": doc, "out": out })) {
+            Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{out}: {m}"),
+            other => panic!("{out} accepted: {other:?}"),
+        }
+    }
+    assert_eq!(std::fs::read_dir(base.join("outside")).unwrap().count(), 0, "nothing was written outside");
+    ok(&mut a, "chess_export_html", json!({ "doc": doc, "out": "inside.html" }));
+    for (args, needle) in [
+        (json!({ "doc": doc, "out": "a.html", "diagrams": "png" }), "diagrams"),
+        (json!({ "doc": doc, "out": "a.html", "figurines": "emoji" }), "figurines"),
+        (json!({ "doc": doc, "out": "a.html", "figurines": "letters", "letters_lang": "xx" }), "letters_lang"),
+        (json!({ "doc": doc, "out": "a.html", "link_text": "" }), "link_text"),
+        (json!({ "doc": doc }), "out"),
+    ] {
+        let e = a.call("chess_export_html", &args).unwrap_err();
+        assert!(e.to_string().contains(needle), "{args}: {e}");
+    }
+    let _ = std::fs::remove_dir_all(base);
+}
+
 #[test]
 fn chess_arguments_out_of_range_are_refused_with_what_is_allowed() {
     let (base, root) = workdir("args");
