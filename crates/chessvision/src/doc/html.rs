@@ -24,7 +24,7 @@ use pdfcraft_chess::draw::{BoardStyle, PieceSet, board};
 use pdfcraft_chess::san::{FigurineSet, Lang, San, Style};
 use pdfcraft_chess::svg::to_svg;
 
-use super::{Block, ChessDoc, DiagramBlock, Inline, MoveInline, MoveStatus};
+use super::{Block, ChessDoc, ChessPage, DiagramBlock, Inline, MoveInline, MoveStatus};
 
 /// How diagrams appear.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -177,33 +177,90 @@ fn diagram_html(d: &DiagramBlock, page: u32, o: &HtmlOptions<'_>) -> String {
     format!("<figure class=\"diagram{review}\" id=\"{id}\" data-fen=\"{fen}\">{body}{caption}</figure>\n")
 }
 
+/// The style both outputs share.
+const STYLE: &str = "body{max-width:46em;margin:2em auto;padding:0 1em;font-family:serif;line-height:1.5}\
+.move{white-space:nowrap}.review{background:#fff3c4}\
+figure.diagram{margin:1.2em auto;text-align:center}figure.diagram svg{max-width:100%;height:auto;width:20em}\
+figcaption{font-family:sans-serif;font-size:.85em}section.page+section.page{border-top:1px solid #ccc;margin-top:2em}";
+
+/// The anchor of heading `k` (0-based, in order) of page `index`.
+pub fn heading_id(index: u32, k: usize) -> String {
+    format!("p{}-h{}", u64::from(index) + 1, k + 1)
+}
+
+/// One page as a `<section>`.
+fn page_section(page: &ChessPage, o: &HtmlOptions<'_>) -> String {
+    let mut s = String::new();
+    let _ = writeln!(s, "<section class=\"page\" data-page=\"{}\">", u64::from(page.index) + 1);
+    let mut k = 0;
+    for block in &page.blocks {
+        match block {
+            Block::Heading { level, inlines, .. } => {
+                let l = (*level).clamp(1, 6);
+                let _ = writeln!(s, "<h{l} id=\"{}\">{}</h{l}>", heading_id(page.index, k), inlines_html(inlines, o));
+                k += 1;
+            }
+            Block::Paragraph { inlines, .. } => {
+                let _ = writeln!(s, "<p>{}</p>", inlines_html(inlines, o));
+            }
+            Block::Diagram(d) => s.push_str(&diagram_html(d, page.index, o)),
+        }
+    }
+    s.push_str("</section>\n");
+    s
+}
+
 /// The document as one HTML file.
 pub fn write(doc: &ChessDoc, o: &HtmlOptions<'_>) -> String {
     let mut s = format!(
-        "<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n<title>{}</title>\n<style>\
-body{{max-width:46em;margin:2em auto;padding:0 1em;font-family:serif;line-height:1.5}}\
-.move{{white-space:nowrap}}.review{{background:#fff3c4}}\
-figure.diagram{{margin:1.2em auto;text-align:center}}figure.diagram svg{{max-width:100%;height:auto;width:20em}}\
-figcaption{{font-family:sans-serif;font-size:.85em}}section.page+section.page{{border-top:1px solid #ccc;margin-top:2em}}\
-</style>\n</head>\n<body>\n",
+        "<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n<title>{}</title>\n<style>{STYLE}</style>\n</head>\n<body>\n",
         esc(o.title)
     );
     for page in &doc.pages {
-        let _ = writeln!(s, "<section class=\"page\" data-page=\"{}\">", u64::from(page.index) + 1);
-        for block in &page.blocks {
-            match block {
-                Block::Heading { level, inlines, .. } => {
-                    let l = (*level).clamp(1, 6);
-                    let _ = writeln!(s, "<h{l}>{}</h{l}>", inlines_html(inlines, o));
-                }
-                Block::Paragraph { inlines, .. } => {
-                    let _ = writeln!(s, "<p>{}</p>", inlines_html(inlines, o));
-                }
-                Block::Diagram(d) => s.push_str(&diagram_html(d, page.index, o)),
-            }
-        }
-        s.push_str("</section>\n");
+        s.push_str(&page_section(page, o));
     }
     s.push_str("</body>\n</html>\n");
     s
+}
+
+/// One page as a standalone XHTML document (an EPUB 3 content document): well-formed XML, the
+/// same markup as [`write`] inside. `lang` is the book's language tag.
+pub fn xhtml_page(page: &ChessPage, o: &HtmlOptions<'_>, lang: &str) -> String {
+    format!(
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE html>\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:epub=\"http://www.idpf.org/2007/ops\" lang=\"{l}\" xml:lang=\"{l}\">\n<head>\n<meta charset=\"utf-8\"/>\n<title>{t}</title>\n<style>{STYLE}</style>\n</head>\n<body>\n{body}</body>\n</html>\n",
+        l = esc(lang),
+        t = esc(o.title),
+        body = page_section(page, o),
+    )
+}
+
+/// A heading for a table of contents.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TocEntry {
+    /// The page's index in the document, from 0.
+    pub page: u32,
+    pub level: u8,
+    pub text: String,
+    /// Its anchor ([`heading_id`]).
+    pub id: String,
+}
+
+/// The document's headings, in order.
+pub fn toc(doc: &ChessDoc) -> Vec<TocEntry> {
+    let mut out = Vec::new();
+    for page in &doc.pages {
+        let mut k = 0;
+        for block in &page.blocks {
+            if let Block::Heading { level, inlines, .. } = block {
+                out.push(TocEntry { page: page.index, level: (*level).clamp(1, 6), text: super::plain_text(inlines), id: heading_id(page.index, k) });
+                k += 1;
+            }
+        }
+    }
+    out
+}
+
+/// Escape text for HTML and XML (the writer's own escaping, for other parts of a package).
+pub fn escape(s: &str) -> String {
+    esc(s)
 }

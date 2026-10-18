@@ -836,6 +836,7 @@ impl ChessScan {
 }
 
 pub mod document;
+pub mod epub;
 pub mod links;
 pub mod replace;
 

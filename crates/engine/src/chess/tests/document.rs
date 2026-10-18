@@ -9,7 +9,7 @@ use crate::chess::document::{HEADING_MAX_CHARS, block_hints, heading_level};
 
 /// A 600 × 800 pt page: `content` with `F1` a Merida diagram font (every code 1000 units wide)
 /// and `F2` Helvetica.
-fn two_font_pdf(content: &str) -> Vec<u8> {
+pub(super) fn two_font_pdf(content: &str) -> Vec<u8> {
     let widths = vec!["1000"; 95].join(" ");
     let objs: Vec<Vec<u8>> = vec![
         b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(),
@@ -43,7 +43,7 @@ fn helv(top: f32, size: f32, text: &str) -> String {
 
 /// The page of the blueprint's check: a heading, a caption, the start position in Merida, the
 /// opening played from it and a closing paragraph.
-fn chapter() -> Vec<u8> {
+pub(super) fn chapter() -> Vec<u8> {
     let mut content = helv(40.0, 24.0, "Chapter 1");
     content.push_str(&helv(70.0, 11.0, "White to play. The Spanish opening."));
     content.push_str(&font_board(60.0, 90.0, MERIDA_START));

@@ -122,6 +122,40 @@ fn chess_replace_props() -> Value {
     props
 }
 
+/// The arguments of `chess_export_html` and `chess_export_epub`.
+fn chess_export_schema() -> Value {
+    schema(
+        {
+            let mut props = chess_props(true);
+            if let Some(o) = props.as_object_mut() {
+                o.insert("out".into(), json!({ "type": "string", "description": "The HTML file to write." }));
+                o.insert(
+                    "title".into(),
+                    json!({ "type": "string", "maxLength": 200, "description": "The page title (default: the document's name)." }),
+                );
+                o.insert("lang".into(), json!({ "type": "string", "maxLength": 16, "description": "The piece letters' language in the PDF, as a BCP 47 tag. Default: chosen from the pages." }));
+                o.insert(
+                    "diagrams".into(),
+                    json!({ "type": "string", "enum": ["svg", "fen"], "description": "Diagrams as redrawn SVG boards (default) or as FEN text." }),
+                );
+                o.insert("figurines".into(), json!({ "type": "string", "enum": ["unicode", "letters", "printed"], "description": "Pieces in moves as Unicode figurines (default), letters, or as printed." }));
+                o.insert("letters_lang".into(), json!({ "type": "string", "maxLength": 16, "description": "With figurines: letters, the language of the letters (default: lang, else en)." }));
+                o.insert(
+                    "links".into(),
+                    json!({ "type": "boolean", "description": "A lichess link under each diagram that has one (default true)." }),
+                );
+                o.insert(
+                    "link_text".into(),
+                    json!({ "type": "string", "maxLength": 80, "description": "The links' text (default \"Analyze on lichess\")." }),
+                );
+                o.insert("pieces".into(), json!({ "type": "string", "enum": ["installed", "geometric"], "description": "installed (default): PDFCRAFT_CHESS_PIECES or an installed Chess Merida, else geometric; geometric: always the plain pieces." }));
+            }
+            props
+        },
+        &["doc", "out"],
+    )
+}
+
 fn schema(props: Value, required: &[&str]) -> Value {
     json!({ "type": "object", "properties": props, "required": required, "additionalProperties": false })
 }
@@ -1232,24 +1266,9 @@ pub fn tools() -> Vec<ToolDef> {
                 &["doc"],
             )),
         t("chess_export_html", "Export chess document as HTML", "Chess ▸ Export ▸ HTML: read pages as chess_document does and write one static HTML file to out (no script, nothing fetched): headings, paragraphs with moves (figurines: unicode ♞f3 by default, letters in letters_lang, or as printed), annotation glyphs, and each diagram redrawn as an inline SVG board (diagrams: svg) or its FEN (fen), with a link to the position on lichess under it (links, default true; link_text). Pieces come from PDFCRAFT_CHESS_PIECES or an installed Chess Merida, else plain geometric ones (pieces: geometric forces them). Readable back: each diagram is a figure with data-fen, each move a span with data-san (and data-fen after it), a diagram that was not read is a figure with class unread; anything to review has class review. Returns out, bytes, pages, lang, diagrams (drawn, unread), games, the piece set used, pages needing OCR and notes. The document is not changed.")
-            .with(schema(
-                {
-                    let mut props = chess_props(true);
-                    if let Some(o) = props.as_object_mut() {
-                        o.insert("out".into(), json!({ "type": "string", "description": "The HTML file to write." }));
-                        o.insert("title".into(), json!({ "type": "string", "maxLength": 200, "description": "The page title (default: the document's name)." }));
-                        o.insert("lang".into(), json!({ "type": "string", "maxLength": 16, "description": "The piece letters' language in the PDF, as a BCP 47 tag. Default: chosen from the pages." }));
-                        o.insert("diagrams".into(), json!({ "type": "string", "enum": ["svg", "fen"], "description": "Diagrams as redrawn SVG boards (default) or as FEN text." }));
-                        o.insert("figurines".into(), json!({ "type": "string", "enum": ["unicode", "letters", "printed"], "description": "Pieces in moves as Unicode figurines (default), letters, or as printed." }));
-                        o.insert("letters_lang".into(), json!({ "type": "string", "maxLength": 16, "description": "With figurines: letters, the language of the letters (default: lang, else en)." }));
-                        o.insert("links".into(), json!({ "type": "boolean", "description": "A lichess link under each diagram that has one (default true)." }));
-                        o.insert("link_text".into(), json!({ "type": "string", "maxLength": 80, "description": "The links' text (default \"Analyze on lichess\")." }));
-                        o.insert("pieces".into(), json!({ "type": "string", "enum": ["installed", "geometric"], "description": "installed (default): PDFCRAFT_CHESS_PIECES or an installed Chess Merida, else geometric; geometric: always the plain pieces." }));
-                    }
-                    props
-                },
-                &["doc", "out"],
-            )),
+            .with(chess_export_schema()),
+        t("chess_export_epub", "Export chess document as EPUB", "Chess ▸ Export ▸ EPUB: the chess_export_html document as an EPUB 3 book at out: one XHTML page per PDF page (the same markup and inline SVG boards), a table of contents from the headings (or the pages), the package document with a stable identifier made from the PDF's bytes and the date. No script, nothing fetched, no font embedded (figurines use the reader's fonts). Same options and reply as chess_export_html. The document is not changed.")
+            .with(chess_export_schema()),
         t("chess_status", "Chess model status", "Whether the user's chess models are available (none ship with PdfCraft): the piece model reads drawn and scanned diagrams, the glyph model chess text. Each is loaded, missing or invalid (with the reason). models_dir looks in that folder instead of PDFCRAFT_MODELS and beside the executable. Also says where the piece set for drawing diagrams comes from (PDFCRAFT_CHESS_PIECES, an installed Chess Merida, or plain geometric pieces). Diagrams in chess fonts are read without any model.")
             .ro()
             .with(schema(json!({ "models_dir": models_dir() }), &[])),
