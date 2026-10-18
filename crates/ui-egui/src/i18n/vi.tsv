@@ -2639,6 +2639,42 @@ key	Space	Space
 	Couldn't be read: {e}	Không đọc được: {e}
 	Not read	Chưa đọc
 	Copy FEN	Sao chép FEN
+	Diagram replaced	Đã thay sơ đồ
+	Lichess link added	Đã thêm liên kết lichess
+	No link was added: {e}	Không thêm liên kết nào: {e}
+	Only diagrams to review ({n})	Chỉ các sơ đồ cần xem lại ({n})
+	Add lichess link	Thêm liên kết lichess
+	Back to the reading	Quay lại kết quả đọc
+	White king	Vua trắng
+	White queen	Hậu trắng
+	White rook	Xe trắng
+	White bishop	Tượng trắng
+	White knight	Mã trắng
+	White pawn	Tốt trắng
+	Black king	Vua đen
+	Black queen	Hậu đen
+	Black rook	Xe đen
+	Black bishop	Tượng đen
+	Black knight	Mã đen
+	Black pawn	Tốt đen
+	White	Trắng
+	Board: {fen}	Bàn cờ: {fen}
+	Castling:	Nhập thành:
+	Click a square to put the chosen piece there; click it again to empty it.	Bấm vào một ô để đặt quân đã chọn vào đó; bấm lại để làm trống ô.
+	Close the editor	Đóng trình chỉnh sửa
+	Draw this position over the diagram on the page (one undo step).	Vẽ thế cờ này đè lên sơ đồ trên trang (một bước hoàn tác).
+	Edit {d}, page {p}	Sửa {d}, trang {p}
+	Flip board	Lật bàn cờ
+	Legal position	Thế cờ hợp lệ
+	Next to review ▶	Cần xem lại tiếp theo ▶
+	Not a legal position	Thế cờ không hợp lệ
+	Put a link to this position on lichess under the diagram.	Đặt liên kết tới thế cờ này trên lichess bên dưới sơ đồ.
+	Replace on the page	Thay trên trang
+	The board couldn't be drawn: {e}	Không vẽ được bàn cờ: {e}
+	To move:	Lượt đi:
+	Use the second reading	Dùng kết quả đọc thứ hai
+	{n} to review	Cần xem lại: {n}
+	◀ Previous to review	◀ Cần xem lại trước đó
 	Open in lichess	Mở trong lichess
 	Diagrams are already being scanned	Đang tìm sơ đồ rồi
 	Diagrams found: {n}	Số sơ đồ tìm thấy: {n}

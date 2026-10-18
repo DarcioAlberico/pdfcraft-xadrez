@@ -55,6 +55,13 @@ pub struct OfficeOptions<'a> {
 
 /// The board as a PNG of `px` × `px` pixels (clamped to 32..=[`MAX_DIAGRAM_PX`]).
 pub fn diagram_png(placement: &Placement, pieces: &PieceSet, style: &BoardStyle, px: u32) -> Result<Vec<u8>, String> {
+    let (w, h, rgba) = diagram_rgba(placement, pieces, style, px)?;
+    crate::export::encode_png(w, h, &rgba)
+}
+
+/// The board as premultiplied RGBA pixels, `px` × `px` (clamped to 32..=[`MAX_DIAGRAM_PX`]): what
+/// [`diagram_png`] encodes, for a screen to show directly.
+pub fn diagram_rgba(placement: &Placement, pieces: &PieceSet, style: &BoardStyle, px: u32) -> Result<(u32, u32, Vec<u8>), String> {
     let drawing = board(placement, pieces, style);
     let side = f64::from(drawing.width);
     if !(side.is_finite() && side > 0.0) {
@@ -69,7 +76,7 @@ pub fn diagram_png(placement: &Placement, pieces: &PieceSet, style: &BoardStyle,
     if let Some(e) = shot.error {
         return Err(format!("the diagram could not be drawn: {e}"));
     }
-    crate::export::encode_png(shot.width, shot.height, &shot.rgba)
+    Ok((shot.width, shot.height, shot.rgba.to_vec()))
 }
 
 /// A one-page PDF of `side` × `side` points drawing `ops`, with Helvetica as `/PCHelv` for the

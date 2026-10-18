@@ -2448,6 +2448,42 @@ animation effects	Off	Kapalı
 	Couldn't be read: {e}	Okunamadı: {e}
 	Not read	Okunmadı
 	Copy FEN	FEN'i kopyala
+	Diagram replaced	Diyagram değiştirildi
+	Lichess link added	Lichess bağlantısı eklendi
+	No link was added: {e}	Bağlantı eklenmedi: {e}
+	Only diagrams to review ({n})	Yalnızca gözden geçirilecek diyagramlar ({n})
+	Add lichess link	Lichess bağlantısı ekle
+	Back to the reading	Okumaya geri dön
+	White king	Beyaz şah
+	White queen	Beyaz vezir
+	White rook	Beyaz kale
+	White bishop	Beyaz fil
+	White knight	Beyaz at
+	White pawn	Beyaz piyon
+	Black king	Siyah şah
+	Black queen	Siyah vezir
+	Black rook	Siyah kale
+	Black bishop	Siyah fil
+	Black knight	Siyah at
+	Black pawn	Siyah piyon
+	White	Beyaz
+	Board: {fen}	Tahta: {fen}
+	Castling:	Rok:
+	Click a square to put the chosen piece there; click it again to empty it.	Seçilen taşı oraya koymak için bir kareye tıklayın; boşaltmak için yeniden tıklayın.
+	Close the editor	Düzenleyiciyi kapat
+	Draw this position over the diagram on the page (one undo step).	Bu konumu sayfadaki diyagramın üzerine çiz (tek geri alma adımı).
+	Edit {d}, page {p}	{d} düzenle, sayfa {p}
+	Flip board	Tahtayı çevir
+	Legal position	Geçerli konum
+	Next to review ▶	Sonraki gözden geçirilecek ▶
+	Not a legal position	Geçerli bir konum değil
+	Put a link to this position on lichess under the diagram.	Diyagramın altına bu konumun lichess bağlantısını koy.
+	Replace on the page	Sayfada değiştir
+	The board couldn't be drawn: {e}	Tahta çizilemedi: {e}
+	To move:	Hamle sırası:
+	Use the second reading	İkinci okumayı kullan
+	{n} to review	Gözden geçirilecek: {n}
+	◀ Previous to review	◀ Önceki gözden geçirilecek
 	Open in lichess	lichess'te aç
 	Diagrams are already being scanned	Diyagramlar zaten aranıyor
 	Diagrams found: {n}	Bulunan diyagramlar: {n}

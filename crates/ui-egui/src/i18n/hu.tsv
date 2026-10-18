@@ -2451,6 +2451,42 @@ animation effects	Off	Ki
 	Couldn't be read: {e}	Nem olvasható be: {e}
 	Not read	Nincs beolvasva
 	Copy FEN	FEN másolása
+	Diagram replaced	Diagram lecserélve
+	Lichess link added	Lichess-hivatkozás hozzáadva
+	No link was added: {e}	Nem került hivatkozás: {e}
+	Only diagrams to review ({n})	Csak az ellenőrizendő diagramok ({n})
+	Add lichess link	Lichess-hivatkozás hozzáadása
+	Back to the reading	Vissza a felismeréshez
+	White king	Világos király
+	White queen	Világos vezér
+	White rook	Világos bástya
+	White bishop	Világos futó
+	White knight	Világos huszár
+	White pawn	Világos gyalog
+	Black king	Sötét király
+	Black queen	Sötét vezér
+	Black rook	Sötét bástya
+	Black bishop	Sötét futó
+	Black knight	Sötét huszár
+	Black pawn	Sötét gyalog
+	White	Világos
+	Board: {fen}	Tábla: {fen}
+	Castling:	Sáncolás:
+	Click a square to put the chosen piece there; click it again to empty it.	Kattintson egy mezőre, hogy oda tegye a kiválasztott bábut; újabb kattintással kiüríti.
+	Close the editor	Szerkesztő bezárása
+	Draw this position over the diagram on the page (one undo step).	Ez az állás rajzolódik az oldalon lévő diagram fölé (egy visszavonási lépés).
+	Edit {d}, page {p}	{d} szerkesztése, {p}. oldal
+	Flip board	Tábla megfordítása
+	Legal position	Szabályos állás
+	Next to review ▶	Következő ellenőrizendő ▶
+	Not a legal position	Nem szabályos állás
+	Put a link to this position on lichess under the diagram.	Hivatkozás a diagram alá erre az állásra a lichessen.
+	Replace on the page	Csere az oldalon
+	The board couldn't be drawn: {e}	A táblát nem sikerült megrajzolni: {e}
+	To move:	Lép:
+	Use the second reading	A második olvasat használata
+	{n} to review	Ellenőrizendő: {n}
+	◀ Previous to review	◀ Előző ellenőrizendő
 	Open in lichess	Megnyitás a lichessben
 	Diagrams are already being scanned	A diagramok keresése már folyamatban van
 	Diagrams found: {n}	Talált diagramok: {n}

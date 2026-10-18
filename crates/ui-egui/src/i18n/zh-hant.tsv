@@ -2408,6 +2408,42 @@ animation effects	Off	關
 	Couldn't be read: {e}	無法讀取：{e}
 	Not read	未讀取
 	Copy FEN	複製 FEN
+	Diagram replaced	已取代局面圖
+	Lichess link added	已新增 lichess 連結
+	No link was added: {e}	未新增連結：{e}
+	Only diagrams to review ({n})	僅顯示需要複核的局面圖 ({n})
+	Add lichess link	新增 lichess 連結
+	Back to the reading	還原辨識結果
+	White king	白王
+	White queen	白后
+	White rook	白車
+	White bishop	白象
+	White knight	白馬
+	White pawn	白兵
+	Black king	黑王
+	Black queen	黑后
+	Black rook	黑車
+	Black bishop	黑象
+	Black knight	黑馬
+	Black pawn	黑兵
+	White	白方
+	Board: {fen}	棋盤：{fen}
+	Castling:	王車易位：
+	Click a square to put the chosen piece there; click it again to empty it.	點選格子放置所選棋子；再次點選即清空該格。
+	Close the editor	關閉編輯器
+	Draw this position over the diagram on the page (one undo step).	在頁面上的局面圖上方繪製此局面（可一步復原）。
+	Edit {d}, page {p}	編輯{d}，第 {p} 頁
+	Flip board	翻轉棋盤
+	Legal position	合法局面
+	Next to review ▶	下一個待複核 ▶
+	Not a legal position	不合法的局面
+	Put a link to this position on lichess under the diagram.	在局面圖下方放置指向 lichess 上此局面的連結。
+	Replace on the page	在頁面上取代
+	The board couldn't be drawn: {e}	無法繪製棋盤：{e}
+	To move:	輪到：
+	Use the second reading	使用第二辨識結果
+	{n} to review	待複核 {n} 個
+	◀ Previous to review	◀ 上一個待複核
 	Open in lichess	在 lichess 中開啟
 	Diagrams are already being scanned	已在尋找棋圖
 	Diagrams found: {n}	找到的棋圖：{n}

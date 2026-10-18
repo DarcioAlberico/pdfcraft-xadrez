@@ -2450,6 +2450,42 @@ animation effects	Off	Өшірулі
 	Couldn't be read: {e}	Оқу мүмкін болмады: {e}
 	Not read	Оқылмады
 	Copy FEN	FEN көшіру
+	Diagram replaced	Диаграмма ауыстырылды
+	Lichess link added	lichess сілтемесі қосылды
+	No link was added: {e}	Сілтеме қосылмады: {e}
+	Only diagrams to review ({n})	Тек тексерілетін диаграммалар ({n})
+	Add lichess link	lichess сілтемесін қосу
+	Back to the reading	Танылғанға қайту
+	White king	Ақ патша
+	White queen	Ақ уәзір
+	White rook	Ақ тура
+	White bishop	Ақ піл
+	White knight	Ақ ат
+	White pawn	Ақ пешка
+	Black king	Қара патша
+	Black queen	Қара уәзір
+	Black rook	Қара тура
+	Black bishop	Қара піл
+	Black knight	Қара ат
+	Black pawn	Қара пешка
+	White	Ақтар
+	Board: {fen}	Тақта: {fen}
+	Castling:	Рокировка:
+	Click a square to put the chosen piece there; click it again to empty it.	Таңдалған фигураны қою үшін шаршыны басыңыз; босату үшін қайта басыңыз.
+	Close the editor	Редакторды жабу
+	Draw this position over the diagram on the page (one undo step).	Бұл позицияны беттегі диаграмманың үстіне салу (бір болдырмау қадамы).
+	Edit {d}, page {p}	{d} өңдеу, {p}-бет
+	Flip board	Тақтаны аудару
+	Legal position	Заңды позиция
+	Next to review ▶	Келесі тексерілетін ▶
+	Not a legal position	Заңсыз позиция
+	Put a link to this position on lichess under the diagram.	Диаграмма астына lichess-тегі осы позицияға сілтеме қою.
+	Replace on the page	Бетте ауыстыру
+	The board couldn't be drawn: {e}	Тақтаны салу мүмкін болмады: {e}
+	To move:	Жүріс:
+	Use the second reading	Екінші оқылуды пайдалану
+	{n} to review	Тексерілетін: {n}
+	◀ Previous to review	◀ Алдыңғы тексерілетін
 	Open in lichess	lichess-те ашу
 	Diagrams are already being scanned	Диаграммалар қазір ізделуде
 	Diagrams found: {n}	Табылған диаграммалар: {n}

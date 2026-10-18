@@ -2365,6 +2365,42 @@ animation effects	Off	Выкл
 	Couldn't be read: {e}	Не удалось прочитать: {e}
 	Not read	Не прочитано
 	Copy FEN	Копировать FEN
+	Diagram replaced	Диаграмма заменена
+	Lichess link added	Ссылка на lichess добавлена
+	No link was added: {e}	Ссылка не добавлена: {e}
+	Only diagrams to review ({n})	Только диаграммы для проверки ({n})
+	Add lichess link	Добавить ссылку на lichess
+	Back to the reading	Вернуть распознанное
+	White king	Белый король
+	White queen	Белый ферзь
+	White rook	Белая ладья
+	White bishop	Белый слон
+	White knight	Белый конь
+	White pawn	Белая пешка
+	Black king	Чёрный король
+	Black queen	Чёрный ферзь
+	Black rook	Чёрная ладья
+	Black bishop	Чёрный слон
+	Black knight	Чёрный конь
+	Black pawn	Чёрная пешка
+	White	Белые
+	Board: {fen}	Доска: {fen}
+	Castling:	Рокировка:
+	Click a square to put the chosen piece there; click it again to empty it.	Щёлкните по полю, чтобы поставить туда выбранную фигуру; щёлкните ещё раз, чтобы очистить его.
+	Close the editor	Закрыть редактор
+	Draw this position over the diagram on the page (one undo step).	Нарисовать эту позицию поверх диаграммы на странице (одно действие отмены).
+	Edit {d}, page {p}	Изменить {d}, страница {p}
+	Flip board	Перевернуть доску
+	Legal position	Легальная позиция
+	Next to review ▶	Следующая для проверки ▶
+	Not a legal position	Нелегальная позиция
+	Put a link to this position on lichess under the diagram.	Поставить под диаграммой ссылку на эту позицию на lichess.
+	Replace on the page	Заменить на странице
+	The board couldn't be drawn: {e}	Не удалось нарисовать доску: {e}
+	To move:	Ход:
+	Use the second reading	Взять второй вариант
+	{n} to review	Для проверки: {n}
+	◀ Previous to review	◀ Предыдущая для проверки
 	Open in lichess	Открыть в lichess
 	Diagrams are already being scanned	Поиск диаграмм уже идёт
 	Diagrams found: {n}	Найдено диаграмм: {n}

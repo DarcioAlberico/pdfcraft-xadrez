@@ -2457,6 +2457,42 @@ animation effects	Off	Izklopljeni
 	Couldn't be read: {e}	Ni bilo mogoče prebrati: {e}
 	Not read	Ni prebrano
 	Copy FEN	Kopiraj FEN
+	Diagram replaced	Diagram zamenjan
+	Lichess link added	Povezava na lichess dodana
+	No link was added: {e}	Nobena povezava ni bila dodana: {e}
+	Only diagrams to review ({n})	Samo diagrami za pregled ({n})
+	Add lichess link	Dodaj povezavo na lichess
+	Back to the reading	Nazaj na branje
+	White king	Beli kralj
+	White queen	Bela dama
+	White rook	Bela trdnjava
+	White bishop	Beli lovec
+	White knight	Beli skakač
+	White pawn	Beli kmet
+	Black king	Črni kralj
+	Black queen	Črna dama
+	Black rook	Črna trdnjava
+	Black bishop	Črni lovec
+	Black knight	Črni skakač
+	Black pawn	Črni kmet
+	White	Beli
+	Board: {fen}	Šahovnica: {fen}
+	Castling:	Rokada:
+	Click a square to put the chosen piece there; click it again to empty it.	Kliknite polje, da nanj postavite izbrano figuro; znova kliknite, da ga izpraznite.
+	Close the editor	Zapri urejevalnik
+	Draw this position over the diagram on the page (one undo step).	Nariši ta položaj čez diagram na strani (en korak razveljavitve).
+	Edit {d}, page {p}	Uredi {d}, stran {p}
+	Flip board	Obrni šahovnico
+	Legal position	Legalen položaj
+	Next to review ▶	Naslednji za pregled ▶
+	Not a legal position	Nelegalen položaj
+	Put a link to this position on lichess under the diagram.	Pod diagram postavi povezavo na ta položaj na lichess.
+	Replace on the page	Zamenjaj na strani
+	The board couldn't be drawn: {e}	Šahovnice ni bilo mogoče narisati: {e}
+	To move:	Na potezi:
+	Use the second reading	Uporabi drugo branje
+	{n} to review	Za pregled: {n}
+	◀ Previous to review	◀ Prejšnji za pregled
 	Open in lichess	Odpri v lichess
 	Diagrams are already being scanned	Diagrami se že iščejo
 	Diagrams found: {n}	Najdeni diagrami: {n}

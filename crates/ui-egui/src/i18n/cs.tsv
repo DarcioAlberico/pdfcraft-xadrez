@@ -2526,6 +2526,42 @@ animation effects	Off	Vypnuto
 	Couldn't be read: {e}	Nepodařilo se přečíst: {e}
 	Not read	Nepřečteno
 	Copy FEN	Kopírovat FEN
+	Diagram replaced	Diagram nahrazen
+	Lichess link added	Odkaz na lichess přidán
+	No link was added: {e}	Žádný odkaz nebyl přidán: {e}
+	Only diagrams to review ({n})	Jen diagramy ke kontrole ({n})
+	Add lichess link	Přidat odkaz na lichess
+	Back to the reading	Zpět k přečtení
+	White king	Bílý král
+	White queen	Bílá dáma
+	White rook	Bílá věž
+	White bishop	Bílý střelec
+	White knight	Bílý jezdec
+	White pawn	Bílý pěšec
+	Black king	Černý král
+	Black queen	Černá dáma
+	Black rook	Černá věž
+	Black bishop	Černý střelec
+	Black knight	Černý jezdec
+	Black pawn	Černý pěšec
+	White	Bílý
+	Board: {fen}	Šachovnice: {fen}
+	Castling:	Rošáda:
+	Click a square to put the chosen piece there; click it again to empty it.	Klepnutím na pole tam položíte zvolenou figuru; dalším klepnutím pole vyprázdníte.
+	Close the editor	Zavřít editor
+	Draw this position over the diagram on the page (one undo step).	Nakreslit tuto pozici přes diagram na stránce (jeden krok zpět).
+	Edit {d}, page {p}	Upravit {d}, strana {p}
+	Flip board	Otočit šachovnici
+	Legal position	Legální pozice
+	Next to review ▶	Další ke kontrole ▶
+	Not a legal position	Nelegální pozice
+	Put a link to this position on lichess under the diagram.	Umístit pod diagram odkaz na tuto pozici na lichess.
+	Replace on the page	Nahradit na stránce
+	The board couldn't be drawn: {e}	Šachovnici se nepodařilo nakreslit: {e}
+	To move:	Na tahu:
+	Use the second reading	Použít druhé čtení
+	{n} to review	Ke kontrole: {n}
+	◀ Previous to review	◀ Předchozí ke kontrole
 	Open in lichess	Otevřít v lichess
 	Diagrams are already being scanned	Diagramy se už hledají
 	Diagrams found: {n}	Nalezené diagramy: {n}

@@ -2454,6 +2454,42 @@ animation effects	Off	オフ
 	Couldn't be read: {e}	読み取れませんでした: {e}
 	Not read	未読み取り
 	Copy FEN	FEN をコピー
+	Diagram replaced	局面図を置換しました
+	Lichess link added	lichess へのリンクを追加しました
+	No link was added: {e}	リンクは追加されませんでした: {e}
+	Only diagrams to review ({n})	確認が必要な局面図のみ ({n})
+	Add lichess link	lichess リンクを追加
+	Back to the reading	読み取り結果に戻す
+	White king	白のキング
+	White queen	白のクイーン
+	White rook	白のルーク
+	White bishop	白のビショップ
+	White knight	白のナイト
+	White pawn	白のポーン
+	Black king	黒のキング
+	Black queen	黒のクイーン
+	Black rook	黒のルーク
+	Black bishop	黒のビショップ
+	Black knight	黒のナイト
+	Black pawn	黒のポーン
+	White	白
+	Board: {fen}	盤面: {fen}
+	Castling:	キャスリング:
+	Click a square to put the chosen piece there; click it again to empty it.	マスをクリックすると選んだ駒を置きます。もう一度クリックすると空にします。
+	Close the editor	エディターを閉じる
+	Draw this position over the diagram on the page (one undo step).	この局面をページ上の局面図の上に描画します (取り消しは 1 回)。
+	Edit {d}, page {p}	{d} を編集、{p} ページ
+	Flip board	盤を反転
+	Legal position	合法な局面
+	Next to review ▶	次の確認対象 ▶
+	Not a legal position	合法な局面ではありません
+	Put a link to this position on lichess under the diagram.	局面図の下に lichess のこの局面へのリンクを置きます。
+	Replace on the page	ページ上で置換
+	The board couldn't be drawn: {e}	盤面を描画できませんでした: {e}
+	To move:	手番:
+	Use the second reading	第 2 候補を使う
+	{n} to review	確認待ち {n} 件
+	◀ Previous to review	◀ 前の確認対象
 	Open in lichess	lichess で開く
 	Diagrams are already being scanned	局面図はすでに検索中です
 	Diagrams found: {n}	見つかった局面図: {n}

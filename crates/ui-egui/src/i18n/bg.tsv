@@ -2415,6 +2415,42 @@ animation effects	Off	Изключени
 	Couldn't be read: {e}	Не можа да се прочете: {e}
 	Not read	Не е прочетена
 	Copy FEN	Копиране на FEN
+	Diagram replaced	Диаграмата е заменена
+	Lichess link added	Връзката към lichess е добавена
+	No link was added: {e}	Не е добавена връзка: {e}
+	Only diagrams to review ({n})	Само диаграмите за проверка ({n})
+	Add lichess link	Добавяне на връзка към lichess
+	Back to the reading	Обратно към разчетеното
+	White king	Бял цар
+	White queen	Бяла дама
+	White rook	Бял топ
+	White bishop	Бял офицер
+	White knight	Бял кон
+	White pawn	Бяла пешка
+	Black king	Черен цар
+	Black queen	Черна дама
+	Black rook	Черен топ
+	Black bishop	Черен офицер
+	Black knight	Черен кон
+	Black pawn	Черна пешка
+	White	Белите
+	Board: {fen}	Дъска: {fen}
+	Castling:	Рокада:
+	Click a square to put the chosen piece there; click it again to empty it.	Щракнете върху поле, за да поставите там избраната фигура; щракнете пак, за да го изпразните.
+	Close the editor	Затваряне на редактора
+	Draw this position over the diagram on the page (one undo step).	Изчертаване на тази позиция върху диаграмата на страницата (една стъпка за отмяна).
+	Edit {d}, page {p}	Редактиране на {d}, страница {p}
+	Flip board	Обръщане на дъската
+	Legal position	Законна позиция
+	Next to review ▶	Следваща за проверка ▶
+	Not a legal position	Незаконна позиция
+	Put a link to this position on lichess under the diagram.	Поставяне под диаграмата на връзка към тази позиция в lichess.
+	Replace on the page	Замяна на страницата
+	The board couldn't be drawn: {e}	Дъската не можа да бъде изчертана: {e}
+	To move:	На ход:
+	Use the second reading	Използване на второто разчитане
+	{n} to review	За проверка: {n}
+	◀ Previous to review	◀ Предишна за проверка
 	Open in lichess	Отваряне в lichess
 	Diagrams are already being scanned	Диаграмите вече се търсят
 	Diagrams found: {n}	Намерени диаграми: {n}

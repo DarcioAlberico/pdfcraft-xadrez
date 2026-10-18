@@ -2664,6 +2664,42 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Couldn't be read: {e}	Impossibile leggere: {e}
 	Not read	Non letto
 	Copy FEN	Copia FEN
+	Diagram replaced	Diagramma sostituito
+	Lichess link added	Link lichess aggiunto
+	No link was added: {e}	Nessun link aggiunto: {e}
+	Only diagrams to review ({n})	Solo i diagrammi da rivedere ({n})
+	Add lichess link	Aggiungi link lichess
+	Back to the reading	Torna alla lettura
+	White king	Re bianco
+	White queen	Donna bianca
+	White rook	Torre bianca
+	White bishop	Alfiere bianco
+	White knight	Cavallo bianco
+	White pawn	Pedone bianco
+	Black king	Re nero
+	Black queen	Donna nera
+	Black rook	Torre nera
+	Black bishop	Alfiere nero
+	Black knight	Cavallo nero
+	Black pawn	Pedone nero
+	White	Bianco
+	Board: {fen}	Scacchiera: {fen}
+	Castling:	Arrocco:
+	Click a square to put the chosen piece there; click it again to empty it.	Fai clic su una casa per mettervi il pezzo scelto; fai di nuovo clic per svuotarla.
+	Close the editor	Chiudi l'editor
+	Draw this position over the diagram on the page (one undo step).	Disegna questa posizione sul diagramma della pagina (un passo di annullamento).
+	Edit {d}, page {p}	Modifica {d}, pagina {p}
+	Flip board	Ruota scacchiera
+	Legal position	Posizione legale
+	Next to review ▶	Successivo da rivedere ▶
+	Not a legal position	Posizione non legale
+	Put a link to this position on lichess under the diagram.	Metti sotto il diagramma un link a questa posizione su lichess.
+	Replace on the page	Sostituisci nella pagina
+	The board couldn't be drawn: {e}	Impossibile disegnare la scacchiera: {e}
+	To move:	Tratto:
+	Use the second reading	Usa la seconda lettura
+	{n} to review	{n} da rivedere
+	◀ Previous to review	◀ Precedente da rivedere
 	Open in lichess	Apri in lichess
 	Diagrams are already being scanned	La ricerca dei diagrammi è già in corso
 	Diagrams found: {n}	Diagrammi trovati: {n}

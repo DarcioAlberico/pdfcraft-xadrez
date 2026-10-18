@@ -42,6 +42,12 @@ pub struct ChessState {
     pub run: Option<ChessRun>,
     /// A diagram clicked on the page this frame (page, index), picked at the next poll.
     pub picked: Option<(usize, usize)>,
+    /// The selected diagram's position being edited (S17).
+    pub editor: Option<crate::chess_editor::DiagramEditor>,
+    /// List only the diagrams to review.
+    pub review_only: bool,
+    /// The pieces the editor draws with, found once.
+    pub pieces: Option<Arc<pdfcraft_engine::chess::pdfcraft_chess::draw::PieceSet>>,
 }
 
 /// What scanning found in one document.
@@ -65,8 +71,16 @@ impl ChessResults {
         self.pages.iter().map(|p| p.diagrams.len()).sum()
     }
 
+    /// The diagrams to review, in reading order: page, then index.
+    pub fn review_queue(&self) -> Vec<(usize, usize)> {
+        self.pages
+            .iter()
+            .flat_map(|p| (0..p.diagrams.len()).filter(|i| crate::chess_editor::needs_review(Self::reading(p, *i))).map(|i| (p.page, i)))
+            .collect()
+    }
+
     /// The reading of diagram `index` on `page`, when it was read.
-    fn reading(page: &ChessPage, index: usize) -> Option<&BoardReading> {
+    pub(crate) fn reading(page: &ChessPage, index: usize) -> Option<&BoardReading> {
         page.readings.as_ref()?.iter().find(|r| r.index == index)
     }
 
@@ -144,6 +158,7 @@ pub enum PanelAction {
     Select(usize, usize),
     CopyFen(String),
     OpenLichess(String),
+    Editor(crate::chess_editor::EditorAction),
 }
 
 /// One diagram's state: its label and colour.
@@ -253,6 +268,7 @@ pub(crate) fn panel(
     }
     ui.add_space(6.0);
     let mine = state.results.as_mut().filter(|r| r.doc == id);
+    let review_only = state.review_only;
     let Some(results) = mine else {
         if running.is_none() {
             ui.label(egui::RichText::new(tl!("Scan this page or all pages to find the chess diagrams in this document.")).color(t.text_muted));
@@ -284,7 +300,20 @@ pub(crate) fn panel(
         ui.add_space(4.0);
         ui.label(tl!("No diagrams found."));
     }
+    // The selected diagram's editor (S17), above the list.
+    let queue = results.review_queue();
+    if let Some(ed) = state.editor.as_mut().filter(|e| e.doc == id && Some(results.stamp) == current) {
+        ui.separator();
+        let pieces = crate::chess_editor::piece_set(&mut state.pieces);
+        if let Some(a) = crate::chess_editor::editor_ui(ui, t, ed, &pieces, queue.len()) {
+            action = Some(PanelAction::Editor(a));
+        }
+    }
     ui.separator();
+    ui.add(crate::widgets::checkbox(
+        &mut state.review_only,
+        crate::i18n::fmt(tl!("Only diagrams to review ({n})"), &[("n", &queue.len().to_string())]),
+    ));
     let reveal = std::mem::take(&mut results.reveal);
     let mut listed = 0;
     for page in &results.pages {
@@ -311,8 +340,11 @@ pub(crate) fn panel(
             if listed >= MAX_LISTED {
                 break;
             }
-            listed += 1;
             let reading = ChessResults::reading(page, i);
+            if review_only && !crate::chess_editor::needs_review(reading) {
+                continue;
+            }
+            listed += 1;
             let (label, colour) = status(reading);
             let position = reading.and_then(BoardReading::position);
             let selected = results.selected == Some((page.page, i));
@@ -504,6 +536,10 @@ impl PdfCraftApp {
         let Some(results) = self.chess.results.as_mut().filter(|r| r.doc == id) else { return };
         let Some((rect, _)) = results.diagram(page, index) else { return };
         results.selected = Some((page, index));
+        let reading = results.pages.iter().find(|p| p.page == page).and_then(|p| ChessResults::reading(p, index));
+        if self.chess.editor.as_ref().is_none_or(|e| (e.doc, e.page, e.index) != (id, page, index)) {
+            self.chess.editor = Some(crate::chess_editor::DiagramEditor::new(id, page, index, reading));
+        }
         results.reveal = !go;
         if go && let Some(view) = self.views.get_mut(vi) {
             view.go_to_page(page);
@@ -532,6 +568,78 @@ impl PdfCraftApp {
             }
             // A lichess address PdfCraft built from the position, opened because the user asked.
             PanelAction::OpenLichess(url) => self.open_url(&url),
+            PanelAction::Editor(a) => self.chess_editor_action(a),
+        }
+    }
+
+    /// What the diagram editor asked for.
+    fn chess_editor_action(&mut self, action: crate::chess_editor::EditorAction) {
+        use crate::chess_editor::EditorAction;
+        match action {
+            EditorAction::CopyFen(fen) => self.chess_action(PanelAction::CopyFen(fen)),
+            EditorAction::OpenLichess(url) => self.chess_action(PanelAction::OpenLichess(url)),
+            EditorAction::Close => self.chess.editor = None,
+            EditorAction::Previous | EditorAction::Next => {
+                let Some(results) = self.chess.results.as_ref() else { return };
+                let queue = results.review_queue();
+                let at = self.chess.editor.as_ref().map(|e| (e.page, e.index)).or(results.selected);
+                let next = match (action == EditorAction::Next, at) {
+                    (true, Some(at)) => queue.iter().find(|q| **q > at).or(queue.first()),
+                    (false, Some(at)) => queue.iter().rev().find(|q| **q < at).or(queue.last()),
+                    (true, None) => queue.first(),
+                    (false, None) => queue.last(),
+                };
+                if let Some(&(page, index)) = next {
+                    self.select_chess_diagram(page, index, true);
+                }
+            }
+            EditorAction::Replace => self.replace_chess_diagram(),
+            EditorAction::Link => self.link_chess_diagram(),
+        }
+    }
+
+    /// Draw the editor's position over its diagram on the page, then scan that page again.
+    pub fn replace_chess_diagram(&mut self) {
+        let Some(ed) = self.chess.editor.as_ref() else { return };
+        let Some(generation) = self.session.get(ed.doc).map(|d| d.edit_generation()) else { return };
+        let pieces = crate::chess_editor::piece_set(&mut self.chess.pieces);
+        let replacement = pdfcraft_engine::chess::DiagramReplacement {
+            page: ed.page,
+            index: ed.index,
+            generation,
+            placement: ed.position.placement,
+            style: pdfcraft_engine::chess::pdfcraft_chess::draw::BoardStyle { flipped: ed.flipped, ..Default::default() },
+            pieces,
+            scan: ChessScanSettings::default(),
+        };
+        if self.apply_edit(pdfcraft_engine::Edit::ReplaceDiagram(Box::new(replacement))) {
+            self.chess.editor = None;
+            self.notify(tl!("Diagram replaced").to_string());
+            self.start_chess_scan(false);
+        }
+    }
+
+    /// Put a lichess link to the editor's position under its diagram.
+    pub fn link_chess_diagram(&mut self) {
+        let Some(ed) = self.chess.editor.as_ref() else { return };
+        let (id, page, index, fen) = (ed.doc, ed.page, ed.index, ed.fen());
+        let settings = pdfcraft_engine::chess::LinkSettings {
+            only: Some(pdfcraft_engine::chess::LinkTarget { page, index, fen }),
+            ..pdfcraft_engine::chess::LinkSettings::default()
+        };
+        match self.session.chess_link_plan(id, &[], &ChessScanSettings::default(), &settings) {
+            Ok(plan) => match plan.edit {
+                Some(edit) => {
+                    if self.apply_edit(edit) {
+                        self.notify(tl!("Lichess link added").to_string());
+                    }
+                }
+                None => {
+                    let why = plan.skipped.first().map(|s| s.reason.clone()).unwrap_or_default();
+                    self.notify(crate::i18n::fmt(tl!("No link was added: {e}"), &[("e", &why)]));
+                }
+            },
+            Err(e) => self.notify(crate::i18n::fmt(tl!("No link was added: {e}"), &[("e", &e)])),
         }
     }
 }

@@ -2453,6 +2453,42 @@ animation effects	Off	Aus
 	Couldn't be read: {e}	Konnte nicht gelesen werden: {e}
 	Not read	Nicht gelesen
 	Copy FEN	FEN kopieren
+	Diagram replaced	Diagramm ersetzt
+	Lichess link added	Lichess-Link hinzugefügt
+	No link was added: {e}	Es wurde kein Link hinzugefügt: {e}
+	Only diagrams to review ({n})	Nur zu prüfende Diagramme ({n})
+	Add lichess link	Lichess-Link hinzufügen
+	Back to the reading	Zurück zur Erkennung
+	White king	Weißer König
+	White queen	Weiße Dame
+	White rook	Weißer Turm
+	White bishop	Weißer Läufer
+	White knight	Weißer Springer
+	White pawn	Weißer Bauer
+	Black king	Schwarzer König
+	Black queen	Schwarze Dame
+	Black rook	Schwarzer Turm
+	Black bishop	Schwarzer Läufer
+	Black knight	Schwarzer Springer
+	Black pawn	Schwarzer Bauer
+	White	Weiß
+	Board: {fen}	Brett: {fen}
+	Castling:	Rochade:
+	Click a square to put the chosen piece there; click it again to empty it.	Klicken Sie auf ein Feld, um die gewählte Figur dorthin zu setzen; erneut klicken leert es.
+	Close the editor	Editor schließen
+	Draw this position over the diagram on the page (one undo step).	Diese Stellung über das Diagramm auf der Seite zeichnen (ein Rückgängig-Schritt).
+	Edit {d}, page {p}	{d} bearbeiten, Seite {p}
+	Flip board	Brett drehen
+	Legal position	Legale Stellung
+	Next to review ▶	Nächstes zu prüfen ▶
+	Not a legal position	Keine legale Stellung
+	Put a link to this position on lichess under the diagram.	Unter dem Diagramm einen Link zu dieser Stellung auf lichess einfügen.
+	Replace on the page	Auf der Seite ersetzen
+	The board couldn't be drawn: {e}	Das Brett konnte nicht gezeichnet werden: {e}
+	To move:	Am Zug:
+	Use the second reading	Zweite Lesung verwenden
+	{n} to review	{n} zu prüfen
+	◀ Previous to review	◀ Vorheriges zu prüfen
 	Open in lichess	In lichess öffnen
 	Diagrams are already being scanned	Diagramme werden bereits gesucht
 	Diagrams found: {n}	Gefundene Diagramme: {n}

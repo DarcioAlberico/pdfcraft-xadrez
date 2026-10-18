@@ -2432,6 +2432,42 @@ animation effects	Off	Wyłączone
 	Couldn't be read: {e}	Nie udało się odczytać: {e}
 	Not read	Nie odczytano
 	Copy FEN	Kopiuj FEN
+	Diagram replaced	Diagram zastąpiony
+	Lichess link added	Dodano link do lichess
+	No link was added: {e}	Nie dodano linku: {e}
+	Only diagrams to review ({n})	Tylko diagramy do sprawdzenia ({n})
+	Add lichess link	Dodaj link do lichess
+	Back to the reading	Wróć do odczytu
+	White king	Biały król
+	White queen	Biały hetman
+	White rook	Biała wieża
+	White bishop	Biały goniec
+	White knight	Biały skoczek
+	White pawn	Biały pion
+	Black king	Czarny król
+	Black queen	Czarny hetman
+	Black rook	Czarna wieża
+	Black bishop	Czarny goniec
+	Black knight	Czarny skoczek
+	Black pawn	Czarny pion
+	White	Białe
+	Board: {fen}	Szachownica: {fen}
+	Castling:	Roszada:
+	Click a square to put the chosen piece there; click it again to empty it.	Kliknij pole, aby postawić na nim wybraną bierkę; kliknij ponownie, aby je opróżnić.
+	Close the editor	Zamknij edytor
+	Draw this position over the diagram on the page (one undo step).	Narysuj tę pozycję na diagramie na stronie (jeden krok cofania).
+	Edit {d}, page {p}	Edytuj {d}, strona {p}
+	Flip board	Obróć szachownicę
+	Legal position	Pozycja legalna
+	Next to review ▶	Następny do sprawdzenia ▶
+	Not a legal position	Pozycja nielegalna
+	Put a link to this position on lichess under the diagram.	Umieść pod diagramem link do tej pozycji na lichess.
+	Replace on the page	Zastąp na stronie
+	The board couldn't be drawn: {e}	Nie udało się narysować szachownicy: {e}
+	To move:	Ruch:
+	Use the second reading	Użyj drugiego odczytu
+	{n} to review	Do sprawdzenia: {n}
+	◀ Previous to review	◀ Poprzedni do sprawdzenia
 	Open in lichess	Otwórz w lichess
 	Diagrams are already being scanned	Diagramy są już wyszukiwane
 	Diagrams found: {n}	Znalezione diagramy: {n}

@@ -54,12 +54,33 @@ pub struct LinkSettings {
     /// Also link readings that are legal but did not pass the reading gate (a square read with
     /// little confidence). Repaired readings are never linked.
     pub allow_unaccepted: bool,
+    /// Link one diagram only, to a position a person confirmed (the diagram editor): its page
+    /// (0-based), its index in the page's reading order and the full FEN. The reading's gate and
+    /// repairs do not apply; the FEN must be a legal position.
+    pub only: Option<LinkTarget>,
+}
+
+/// One diagram to link, with the position to link it to.
+#[derive(Clone, Debug, PartialEq)]
+pub struct LinkTarget {
+    pub page: usize,
+    pub index: usize,
+    pub fen: String,
 }
 
 impl Default for LinkSettings {
     fn default() -> Self {
-        LinkSettings { text: DEFAULT_TEXT.into(), size: DEFAULT_SIZE, allow_unaccepted: false }
+        LinkSettings { text: DEFAULT_TEXT.into(), size: DEFAULT_SIZE, allow_unaccepted: false, only: None }
     }
+}
+
+/// The lichess address of a confirmed position, or why it cannot have one.
+fn confirmed_url(fen: &str) -> Result<String, String> {
+    let position = pdfcraft_chess::fen::parse(fen).map_err(|e| format!("the position is not a FEN: {e}"))?;
+    if pdfcraft_chess::repair::GameContext::from_fen(fen).is_none() {
+        return Err("the position is not legal".into());
+    }
+    Ok(pdfcraft_chess::lichess::analysis_url(&position, pdfcraft_chess::placement::Color::White))
 }
 
 /// Where a label goes relative to its diagram.
@@ -174,7 +195,12 @@ impl Session {
                 return Err("the document's permissions do not allow changes".into());
             }
         }
-        let scanned = self.chess_scan(id, pages, scan, true)?;
+        let target_url = settings.only.as_ref().map(|t| confirmed_url(&t.fen)).transpose()?;
+        let pages = match &settings.only {
+            Some(t) => vec![t.page],
+            None => pages.to_vec(),
+        };
+        let scanned = self.chess_scan(id, &pages, scan, true)?;
         let doc = self.get(id).ok_or("no such document")?;
         let existing = doc.links();
         let size = settings.size as f32;
@@ -194,6 +220,28 @@ impl Session {
             // Labels go clear of every diagram on the page, and of the labels placed before.
             let mut taken: Vec<ViewRect> = page.diagrams.iter().filter_map(|d| geometry.user_to_view(d.candidate.bbox_user)).collect();
             for (index, _) in page.diagrams.iter().enumerate() {
+                if let (Some(t), Some(url)) = (&settings.only, &target_url) {
+                    if index != t.index {
+                        continue;
+                    }
+                    // The position a person confirmed: placed like any other.
+                    let Some(diagram) = page.diagrams.get(index).and_then(|d| geometry.user_to_view(d.candidate.bbox_user)) else {
+                        skip(index, "the diagram's box is not finite");
+                        continue;
+                    };
+                    if existing.iter().any(|l| l.page == page.page && matches!(&l.action, pdfcraft_annot::links::LinkAction::Uri(u) if u == url)) {
+                        skip(index, "the page already links to this position");
+                        continue;
+                    }
+                    match place_label(diagram, view, (w, h), &taken).and_then(|(side, r)| Some((side, r, user_box(&geometry, r)?))) {
+                        Some((side, label_view, link_user)) => {
+                            taken.push(label_view);
+                            links.push(PlannedLink { page: page.page, index, fen: t.fen.clone(), url: url.clone(), side, label_view, link_user });
+                        }
+                        None => skip(index, "there is no room for a label beside the diagram"),
+                    }
+                    continue;
+                }
                 let Some(reading) = readings.get(index) else {
                     skip(index, "the diagram was not read");
                     continue;
@@ -232,6 +280,12 @@ impl Session {
                 taken.push(label_view);
                 links.push(PlannedLink { page: page.page, index, fen: position.fen.clone(), url, side, label_view, link_user });
             }
+        }
+        if let Some(t) = &settings.only
+            && links.is_empty()
+            && skipped.is_empty()
+        {
+            skipped.push(SkippedDiagram { page: t.page, index: t.index, reason: "the page has no such diagram".into() });
         }
         let edit = (!links.is_empty()).then(|| {
             let mut edits: Vec<Edit> = Vec::with_capacity(links.len() + 1);

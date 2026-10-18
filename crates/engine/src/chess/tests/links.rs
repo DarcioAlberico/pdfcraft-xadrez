@@ -133,3 +133,24 @@ fn labels_the_font_cannot_draw_and_bad_sizes_are_refused() {
     let e = s.chess_link_plan(id, &[], &no_model(), &LinkSettings { text: "↗ lichess".into(), ..LinkSettings::default() }).unwrap_err();
     assert!(e.contains("cannot draw"), "{e}");
 }
+
+/// The diagram editor's link: one diagram, to the position a person confirmed (here the vector
+/// board, which no model read); an illegal position or a missing diagram is refused or said.
+#[test]
+fn one_diagram_is_linked_to_a_confirmed_position() {
+    use crate::chess::links::LinkTarget;
+    let (mut s, id) = open(page(60.0, ""));
+    let fen = "4k3/8/8/8/8/8/8/R3K3 w Q - 0 1";
+    let only = |index: usize, fen: &str| LinkSettings { only: Some(LinkTarget { page: 0, index, fen: fen.into() }), ..LinkSettings::default() };
+    let plan = s.chess_link_plan(id, &[], &no_model(), &only(1, fen)).unwrap();
+    assert_eq!(plan.links.len(), 1, "{plan:#?}");
+    assert_eq!(plan.links[0].index, 1);
+    assert_eq!(plan.links[0].url, "https://lichess.org/analysis/4k3/8/8/8/8/8/8/R3K3%20w%20Q%20-%200%201");
+    assert!(plan.skipped.is_empty(), "the font diagram is not looked at: {plan:#?}");
+    s.apply(id, plan.edit.unwrap()).unwrap();
+    assert_eq!(s.get(id).unwrap().links().len(), 1);
+    let e = s.chess_link_plan(id, &[], &no_model(), &only(1, "8/8/8/8/8/8/8/8 w - - 0 1")).unwrap_err();
+    assert!(e.contains("not legal"), "{e}");
+    let none = s.chess_link_plan(id, &[], &no_model(), &only(7, fen)).unwrap();
+    assert!(none.edit.is_none() && none.skipped[0].reason.contains("no such diagram"), "{none:#?}");
+}
