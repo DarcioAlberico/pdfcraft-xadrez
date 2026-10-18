@@ -29,7 +29,7 @@
 //! `board_probabilities_batch` (one batch with the board as printed and turned 180°, no TTA, no
 //! temperature).
 
-use pdfcraft_chess::placement::Placement;
+use pdfcraft_chess::placement::{Color, Placement};
 use pdfcraft_chess::recognize::decode::{Change, Limits};
 use pdfcraft_chess::recognize::orient::{Verdict, orient};
 use pdfcraft_chess::recognize::side::{SideToMove, compose_position, infer_side_to_move};
@@ -150,6 +150,20 @@ impl ReadPosition {
     /// Whether the decoder changed any square.
     pub fn repaired(&self) -> bool {
         !self.repairs.is_empty()
+    }
+
+    /// The lichess analysis URL of the position, only when it is legal with the side to move it
+    /// was given and the decoder did not have to change a square to make it so: an illegal reading
+    /// gets no link, nor does a repaired one until a person confirms it (an empty board "repaired"
+    /// with two kings would show a position the book does not have). Seen from Black when the
+    /// board was printed from Black's side. The same rule as the engine's `chess::lichess_url`.
+    pub fn lichess_url(&self) -> Option<String> {
+        if !self.legality.allows(self.side.color) || self.repaired() {
+            return None;
+        }
+        let parsed = pdfcraft_chess::fen::parse(&self.fen).ok()?;
+        let from = if self.orientation.is_some_and(|v| v.black_point_of_view) { Color::Black } else { Color::White };
+        Some(pdfcraft_chess::lichess::analysis_url(&parsed, from))
     }
 }
 

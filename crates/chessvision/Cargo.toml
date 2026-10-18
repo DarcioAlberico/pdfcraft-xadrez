@@ -11,6 +11,9 @@ repository.workspace = true
 workspace = true
 
 [dependencies]
+# The same version and features as pdfcraft-chess (MIT, `pext` off for wasm32): `doc::games`
+# replays the games it finds in a document's text.
+cozy-chess = { version = "0.3.4", default-features = false, features = ["std"] }
 pdfcraft-chess = { workspace = true }
 # L0: `PageRect` and `Rotation`, the page geometry `coords` converts between spaces.
 pdfcraft-geom = { workspace = true }

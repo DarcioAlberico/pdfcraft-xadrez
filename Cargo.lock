@@ -4038,6 +4038,7 @@ dependencies = [
 name = "pdfcraft-chessvision"
 version = "0.8.0"
 dependencies = [
+ "cozy-chess",
  "ocrs",
  "pdfcraft-chess",
  "pdfcraft-geom",
