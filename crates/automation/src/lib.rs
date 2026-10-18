@@ -802,6 +802,7 @@ impl Automation {
             "chess_status" => self.chess_status(&a)?,
             "chess_replace_diagram" => self.chess_replace_diagram(&a)?,
             "chess_document" => self.chess_document(&a)?,
+            "chess_add_lichess_links" => self.chess_add_lichess_links(&a)?,
             "accessibility_report" => self.a11y_report(&a)?,
             "accessibility_review_record" => self.a11y_review_record(&a)?,
             "accessibility_review_save" => self.a11y_review_save(&a)?,

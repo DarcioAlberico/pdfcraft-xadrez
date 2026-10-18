@@ -378,6 +378,42 @@ fn chess_document_outputs_outside_the_root_are_refused() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// The font diagram gets a label and a link under it (found by `link_list`); the two diagrams
+/// no model reads are skipped with the reason. A dry run changes nothing, a second run adds
+/// nothing, and undo takes it all back.
+#[test]
+fn chess_add_lichess_links_links_the_read_diagram_and_says_why_not_the_others() {
+    let (base, root) = workdir("links");
+    let (mut a, doc) = opened(&root);
+    let dry = ok(&mut a, "chess_add_lichess_links", json!({ "doc": doc, "models_dir": "models", "dry_run": true }));
+    assert_eq!((dry["dry_run"].as_bool(), dry["added"].as_u64()), (Some(true), Some(0)), "{dry:#}");
+    assert_eq!(dry["links"].as_array().unwrap().len(), 1, "{dry:#}");
+    assert_eq!(ok(&mut a, "doc_list", json!({}))["documents"][0]["dirty"], false, "a dry run changes nothing");
+    let done = ok(&mut a, "chess_add_lichess_links", json!({ "doc": doc, "models_dir": "models", "label": "Analisar no lichess" }));
+    assert_eq!(done["added"], 1, "{done:#}");
+    let link = &done["links"][0];
+    assert_eq!((link["page"].as_u64(), link["index"].as_u64(), link["side"].as_str()), (Some(1), Some(1), Some("below")), "{done:#}");
+    assert_eq!(link["url"], "https://lichess.org/analysis/rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR%20w%20KQkq%20-%200%201");
+    let skipped = done["skipped"].as_array().unwrap();
+    assert_eq!(skipped.len(), 2, "{done:#}");
+    assert!(skipped.iter().all(|s| s["reason"].as_str().unwrap().contains("no piece model")), "{skipped:#?}");
+    let listed = ok(&mut a, "link_list", json!({ "doc": doc }));
+    assert!(listed.to_string().contains("lichess.org/analysis"), "{listed:#}");
+    let again = ok(&mut a, "chess_add_lichess_links", json!({ "doc": doc, "models_dir": "models" }));
+    assert_eq!(again["added"], 0, "{again:#}");
+    ok(&mut a, "edit_undo", json!({ "doc": doc }));
+    assert!(!ok(&mut a, "link_list", json!({ "doc": doc })).to_string().contains("lichess.org"));
+    for (args, needle) in [
+        (json!({ "doc": doc, "label": "♘ lichess" }), "cannot draw"),
+        (json!({ "doc": doc, "size": 1 }), "size"),
+        (json!({ "doc": doc, "pages": [2] }), "out of range"),
+    ] {
+        let e = a.call("chess_add_lichess_links", &args).unwrap_err();
+        assert!(e.to_string().contains(needle), "{args}: {e}");
+    }
+    let _ = std::fs::remove_dir_all(base);
+}
+
 #[test]
 fn chess_arguments_out_of_range_are_refused_with_what_is_allowed() {
     let (base, root) = workdir("args");

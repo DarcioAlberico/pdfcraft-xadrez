@@ -24,7 +24,7 @@
 //! differ is dropped and the page scanned again, never adapted.
 //!
 //! Scanning is read-only: nothing here changes a document. Replacing a diagram is [`replace`]
-//! (S10); the recognised document is [`document`] (S14b); adding lichess links is a later step
+//! (S10); the recognised document is [`document`] (S14b); adding lichess links is [`links`]
 //! (S11).
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
@@ -44,6 +44,7 @@ use pdfcraft_edit::paths::{PathColor, PathItem, PathSegment, Subpath};
 use pdfcraft_render::{PageInfo, PageRenderer, RenderConfig, RenderRequest, RequestKind};
 
 pub use document::ChessDocument;
+pub use links::{LinkPlan, LinkSettings};
 pub use pdfcraft_chessvision::models::{ChessModels, ModelState};
 pub use pdfcraft_chessvision::order::ReadingOrder;
 pub use replace::{DiagramReplacement, ReplacementPlan};
@@ -835,6 +836,7 @@ impl ChessScan {
 }
 
 pub mod document;
+pub mod links;
 pub mod replace;
 
 #[cfg(test)]

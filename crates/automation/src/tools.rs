@@ -1217,6 +1217,20 @@ pub fn tools() -> Vec<ToolDef> {
                 },
                 &["doc"],
             )),
+        t("chess_add_lichess_links", "Add lichess links", "Chess ▸ Add lichess links: under each diagram whose position is known, a small blue label (Helvetica, default \"Analyze on lichess\", 8 pt) with a link to the position's lichess.org analysis board. Diagrams are found and read as chess_read does. Only a legal position the decoder did not repair is linked, and by default only a reading that passed the gate (allow_unaccepted also takes legal readings with an uncertain square); a page that already links to the same position is skipped. The label goes below the diagram, else to its right, else above it, clear of the page edge and of other diagrams and labels. Returns the links added (page, index, fen, url, side, rect from the top-left of the displayed page, link_user) and the diagrams skipped with the reason. One undo step; the label is added text that can be moved or edited later. dry_run changes nothing. Nothing is fetched: the link opens when a reader clicks it. Needs permission to change the document.")
+            .with(schema(
+                {
+                    let mut props = chess_props(true);
+                    if let Some(o) = props.as_object_mut() {
+                        o.insert("label".into(), json!({ "type": "string", "maxLength": 80, "description": "The label's text, one line Helvetica can draw (WinAnsi). Default \"Analyze on lichess\"." }));
+                        o.insert("size".into(), json!({ "type": "number", "minimum": 4, "maximum": 48, "description": "The label's size in points (default 8)." }));
+                        o.insert("allow_unaccepted".into(), json!({ "type": "boolean", "description": "Also link legal readings that did not pass the reading gate (default false). Repaired readings are never linked." }));
+                        o.insert("dry_run".into(), json!({ "type": "boolean", "description": "Only say what would be done; change nothing (default false)." }));
+                    }
+                    props
+                },
+                &["doc"],
+            )),
         t("chess_status", "Chess model status", "Whether the user's chess models are available (none ship with PdfCraft): the piece model reads drawn and scanned diagrams, the glyph model chess text. Each is loaded, missing or invalid (with the reason). models_dir looks in that folder instead of PDFCRAFT_MODELS and beside the executable. Also says where the piece set for drawing diagrams comes from (PDFCRAFT_CHESS_PIECES, an installed Chess Merida, or plain geometric pieces). Diagrams in chess fonts are read without any model.")
             .ro()
             .with(schema(json!({ "models_dir": models_dir() }), &[])),

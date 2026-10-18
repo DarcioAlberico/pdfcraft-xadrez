@@ -1927,7 +1927,7 @@ pub const EDIT_LABELS: &[&str] = &[
 /// [`EDIT_LABELS`] and so translates the same way. A batch built in the interface itself arrives
 /// already worded in the interface's language.
 pub const BATCH_LABELS: &[&str] =
-    &["Set document title", "Mark differences", "Detect form fields", "Run JavaScript", "Recognize text", chess::replace::LABEL];
+    &["Set document title", "Mark differences", "Detect form fields", "Run JavaScript", "Recognize text", chess::replace::LABEL, chess::links::LABEL];
 
 impl Edit {
     /// Label for the Edit menu and history ("Undo Rotate pages").
