@@ -2462,6 +2462,42 @@ animation effects	Off	Ανενεργά
 	Couldn't be read: {e}	Δεν ήταν δυνατή η ανάγνωση: {e}
 	Not read	Δεν διαβάστηκε
 	Copy FEN	Αντιγραφή FEN
+	Diagram replaced	Το διάγραμμα αντικαταστάθηκε
+	Lichess link added	Προστέθηκε σύνδεσμος lichess
+	No link was added: {e}	Δεν προστέθηκε σύνδεσμος: {e}
+	Only diagrams to review ({n})	Μόνο διαγράμματα για έλεγχο ({n})
+	Add lichess link	Προσθήκη συνδέσμου lichess
+	Back to the reading	Επιστροφή στην ανάγνωση
+	White king	Λευκός βασιλιάς
+	White queen	Λευκή βασίλισσα
+	White rook	Λευκός πύργος
+	White bishop	Λευκός αξιωματικός
+	White knight	Λευκός ίππος
+	White pawn	Λευκό πιόνι
+	Black king	Μαύρος βασιλιάς
+	Black queen	Μαύρη βασίλισσα
+	Black rook	Μαύρος πύργος
+	Black bishop	Μαύρος αξιωματικός
+	Black knight	Μαύρος ίππος
+	Black pawn	Μαύρο πιόνι
+	White	Λευκά
+	Board: {fen}	Σκακιέρα: {fen}
+	Castling:	Ροκέ:
+	Click a square to put the chosen piece there; click it again to empty it.	Κάντε κλικ σε ένα τετράγωνο για να βάλετε εκεί το επιλεγμένο κομμάτι· κάντε ξανά κλικ για να το αδειάσετε.
+	Close the editor	Κλείσιμο επεξεργαστή
+	Draw this position over the diagram on the page (one undo step).	Σχεδίαση αυτής της θέσης πάνω από το διάγραμμα στη σελίδα (ένα βήμα αναίρεσης).
+	Edit {d}, page {p}	Επεξεργασία {d}, σελίδα {p}
+	Flip board	Αναστροφή σκακιέρας
+	Legal position	Νόμιμη θέση
+	Next to review ▶	Επόμενο για έλεγχο ▶
+	Not a legal position	Μη νόμιμη θέση
+	Put a link to this position on lichess under the diagram.	Τοποθέτηση συνδέσμου προς αυτή τη θέση στο lichess κάτω από το διάγραμμα.
+	Replace on the page	Αντικατάσταση στη σελίδα
+	The board couldn't be drawn: {e}	Η σκακιέρα δεν σχεδιάστηκε: {e}
+	To move:	Παίζουν:
+	Use the second reading	Χρήση της δεύτερης ανάγνωσης
+	{n} to review	Για έλεγχο: {n}
+	◀ Previous to review	◀ Προηγούμενο για έλεγχο
 	Open in lichess	Άνοιγμα στο lichess
 	Diagrams are already being scanned	Η αναζήτηση διαγραμμάτων είναι ήδη σε εξέλιξη
 	Diagrams found: {n}	Διαγράμματα που βρέθηκαν: {n}

@@ -2365,6 +2365,42 @@ animation effects	Off	ఆఫ్
 	Couldn't be read: {e}	చదవలేకపోయింది: {e}
 	Not read	చదవలేదు
 	Copy FEN	FEN కాపీ చేయి
+	Diagram replaced	రేఖాచిత్రం మార్చబడింది
+	Lichess link added	lichess లింక్ జోడించబడింది
+	No link was added: {e}	ఏ లింక్ జోడించబడలేదు: {e}
+	Only diagrams to review ({n})	సమీక్షించాల్సిన రేఖాచిత్రాలు మాత్రమే ({n})
+	Add lichess link	lichess లింక్ జోడించు
+	Back to the reading	చదివినదానికి తిరిగి వెళ్ళు
+	White king	తెల్ల రాజు
+	White queen	తెల్ల మంత్రి
+	White rook	తెల్ల ఏనుగు
+	White bishop	తెల్ల శకటం
+	White knight	తెల్ల గుర్రం
+	White pawn	తెల్ల బంటు
+	Black king	నల్ల రాజు
+	Black queen	నల్ల మంత్రి
+	Black rook	నల్ల ఏనుగు
+	Black bishop	నల్ల శకటం
+	Black knight	నల్ల గుర్రం
+	Black pawn	నల్ల బంటు
+	White	తెలుపు
+	Board: {fen}	బోర్డు: {fen}
+	Castling:	క్యాస్లింగ్:
+	Click a square to put the chosen piece there; click it again to empty it.	ఎంచుకున్న పావును అక్కడ ఉంచడానికి ఒక గడిపై క్లిక్ చేయండి; ఖాళీ చేయడానికి మళ్ళీ క్లిక్ చేయండి.
+	Close the editor	ఎడిటర్ మూసివేయి
+	Draw this position over the diagram on the page (one undo step).	ఈ స్థితిని పేజీలోని రేఖాచిత్రంపై గీయి (ఒక రద్దు దశ).
+	Edit {d}, page {p}	{d} సవరించు, పేజీ {p}
+	Flip board	బోర్డు తిప్పు
+	Legal position	చెల్లుబాటైన స్థితి
+	Next to review ▶	తదుపరి సమీక్ష ▶
+	Not a legal position	చెల్లని స్థితి
+	Put a link to this position on lichess under the diagram.	రేఖాచిత్రం కింద lichessలో ఈ స్థితికి లింక్ ఉంచు.
+	Replace on the page	పేజీలో మార్చు
+	The board couldn't be drawn: {e}	బోర్డు గీయలేకపోయింది: {e}
+	To move:	ఎత్తు:
+	Use the second reading	రెండవ పఠనాన్ని ఉపయోగించు
+	{n} to review	సమీక్షకు: {n}
+	◀ Previous to review	◀ మునుపటి సమీక్ష
 	Open in lichess	lichessలో తెరువు
 	Diagrams are already being scanned	రేఖాచిత్రాల కోసం ఇప్పటికే వెతుకుతోంది
 	Diagrams found: {n}	కనుగొన్న రేఖాచిత్రాలు: {n}

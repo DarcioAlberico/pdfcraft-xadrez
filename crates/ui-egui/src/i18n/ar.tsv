@@ -2730,6 +2730,42 @@ certificate	Version	الإصدار
 	Couldn't be read: {e}	تعذّرت القراءة: {e}
 	Not read	لم يُقرأ
 	Copy FEN	نسخ FEN
+	Diagram replaced	تم استبدال المخطط
+	Lichess link added	أُضيف رابط lichess
+	No link was added: {e}	لم يُضف أي رابط: {e}
+	Only diagrams to review ({n})	المخططات التي تحتاج مراجعة فقط ({n})
+	Add lichess link	إضافة رابط lichess
+	Back to the reading	العودة إلى القراءة
+	White king	ملك أبيض
+	White queen	وزير أبيض
+	White rook	رخ أبيض
+	White bishop	فيل أبيض
+	White knight	حصان أبيض
+	White pawn	بيدق أبيض
+	Black king	ملك أسود
+	Black queen	وزير أسود
+	Black rook	رخ أسود
+	Black bishop	فيل أسود
+	Black knight	حصان أسود
+	Black pawn	بيدق أسود
+	White	الأبيض
+	Board: {fen}	الرقعة: {fen}
+	Castling:	التبييت:
+	Click a square to put the chosen piece there; click it again to empty it.	انقر مربعًا لوضع القطعة المختارة فيه؛ وانقره مرة أخرى لإفراغه.
+	Close the editor	إغلاق المحرر
+	Draw this position over the diagram on the page (one undo step).	ارسم هذا الوضع فوق المخطط في الصفحة (خطوة تراجع واحدة).
+	Edit {d}, page {p}	تحرير {d}، الصفحة {p}
+	Flip board	قلب الرقعة
+	Legal position	وضع قانوني
+	Next to review ▶	التالي للمراجعة ▶
+	Not a legal position	ليس وضعًا قانونيًا
+	Put a link to this position on lichess under the diagram.	ضع تحت المخطط رابطًا إلى هذا الوضع على lichess.
+	Replace on the page	استبدال في الصفحة
+	The board couldn't be drawn: {e}	تعذر رسم الرقعة: {e}
+	To move:	الدور:
+	Use the second reading	استخدام القراءة الثانية
+	{n} to review	للمراجعة: {n}
+	◀ Previous to review	◀ السابق للمراجعة
 	Open in lichess	فتح في lichess
 	Diagrams are already being scanned	البحث عن المخططات جارٍ بالفعل
 	Diagrams found: {n}	المخططات التي عُثر عليها: {n}

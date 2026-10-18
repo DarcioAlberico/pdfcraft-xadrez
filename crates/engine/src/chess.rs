@@ -44,7 +44,7 @@ use pdfcraft_edit::paths::{PathColor, PathItem, PathSegment, Subpath};
 use pdfcraft_render::{PageInfo, PageRenderer, RenderConfig, RenderRequest, RequestKind};
 
 pub use document::ChessDocument;
-pub use links::{LinkPlan, LinkSettings};
+pub use links::{LinkPlan, LinkSettings, LinkTarget};
 pub use pdfcraft_chessvision::models::{ChessModels, ModelState};
 pub use pdfcraft_chessvision::order::ReadingOrder;
 pub use replace::{DiagramReplacement, ReplacementPlan};

@@ -2468,6 +2468,42 @@ animation effects	Off	Desativados
 	Couldn't be read: {e}	Não foi possível ler: {e}
 	Not read	Não lido
 	Copy FEN	Copiar FEN
+	Diagram replaced	Diagrama substituído
+	Lichess link added	Link do lichess adicionado
+	No link was added: {e}	Nenhum link foi adicionado: {e}
+	Only diagrams to review ({n})	Só os diagramas a revisar ({n})
+	Add lichess link	Adicionar link do lichess
+	Back to the reading	Voltar à leitura
+	White king	Rei branco
+	White queen	Dama branca
+	White rook	Torre branca
+	White bishop	Bispo branco
+	White knight	Cavalo branco
+	White pawn	Peão branco
+	Black king	Rei preto
+	Black queen	Dama preta
+	Black rook	Torre preta
+	Black bishop	Bispo preto
+	Black knight	Cavalo preto
+	Black pawn	Peão preto
+	White	Brancas
+	Board: {fen}	Tabuleiro: {fen}
+	Castling:	Roque:
+	Click a square to put the chosen piece there; click it again to empty it.	Clique numa casa para pôr ali a peça escolhida; clique de novo para esvaziá-la.
+	Close the editor	Fechar o editor
+	Draw this position over the diagram on the page (one undo step).	Desenhar esta posição sobre o diagrama na página (um passo de desfazer).
+	Edit {d}, page {p}	Editar {d}, página {p}
+	Flip board	Virar tabuleiro
+	Legal position	Posição legal
+	Next to review ▶	Próximo a revisar ▶
+	Not a legal position	Posição ilegal
+	Put a link to this position on lichess under the diagram.	Pôr um link para esta posição no lichess abaixo do diagrama.
+	Replace on the page	Substituir na página
+	The board couldn't be drawn: {e}	Não foi possível desenhar o tabuleiro: {e}
+	To move:	Lance:
+	Use the second reading	Usar a segunda leitura
+	{n} to review	{n} a revisar
+	◀ Previous to review	◀ Anterior a revisar
 	Open in lichess	Abrir no lichess
 	Diagrams are already being scanned	Os diagramas já estão sendo procurados
 	Diagrams found: {n}	Diagramas encontrados: {n}

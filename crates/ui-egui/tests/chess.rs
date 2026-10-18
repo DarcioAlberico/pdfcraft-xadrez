@@ -191,3 +191,113 @@ fn a_document_that_forbids_copying_is_not_scanned() {
     app.start_chess_scan(true);
     assert!(app.chess.run.is_none() && app.chess.results.is_none(), "nothing was scanned");
 }
+
+/// The position the user set in the editor (blueprint S17), for the drawn board no model read.
+const EDITED: &str = "4k3/8/8/8/8/8/8/R3K3 w Q - 0 1";
+
+fn scan_and_edit_second(h: &mut Harness<'static, PdfCraftApp>) {
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    let second = h
+        .get_all_by_label_contains("Diagram 2 · ")
+        .next()
+        .expect("the drawn board is listed")
+        .accesskit_node()
+        .label()
+        .unwrap_or_default()
+        .to_string();
+    h.get_by_label(&second).click();
+    h.run_steps(3);
+    let ed = h.state_mut().chess.editor.as_mut().expect("picking a diagram opens the editor");
+    assert_eq!((ed.page, ed.index), (0, 1));
+    ed.position = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(EDITED).unwrap();
+    h.run_steps(2);
+}
+
+/// The editor shows the position, says whether it is legal, and a click on the board puts the
+/// chosen piece on the square under it.
+#[test]
+fn the_editor_edits_the_selected_diagrams_position() {
+    let mut h = harness();
+    scan_and_edit_second(&mut h);
+    h.get_by_label(EDITED);
+    h.get_by_label("Legal position");
+    // Click e4 on the board (from White's side: file e = column 4, rank 4 = row 4 from the top).
+    let board = h.get_by_label_contains("Board: ").rect();
+    let at = board.min + egui::vec2(board.width() * 4.5 / 8.0, board.height() * 4.5 / 8.0);
+    h.hover_at(at);
+    h.run_steps(1);
+    for pressed in [true, false] {
+        h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed, modifiers: egui::Modifiers::NONE });
+    }
+    h.run_steps(3);
+    assert_eq!(
+        h.state().chess.editor.as_ref().map(|e| e.fen()).as_deref(),
+        Some("4k3/8/8/8/4Q3/8/8/R3K3 w Q - 0 1"),
+        "the white queen (the default brush) is on e4"
+    );
+    // Two white kings is not a position.
+    let ed = h.state_mut().chess.editor.as_mut().unwrap();
+    ed.position = pdfcraft_engine::chess::pdfcraft_chess::fen::parse("4K3/8/8/8/8/8/8/R3K3 w - - 0 1").unwrap();
+    h.run_steps(2);
+    h.get_by_label("Not a legal position");
+}
+
+/// Replace on the page draws the corrected position over the diagram as one undo step and scans
+/// the page again; undo brings the old page back.
+#[test]
+fn replace_on_the_page_then_undo() {
+    let mut h = harness();
+    scan_and_edit_second(&mut h);
+    let before = h.state().session.get(h.state().active_ids().unwrap().1).unwrap().edit_generation();
+    h.get_by_label("Replace on the page").click();
+    h.run_steps(4);
+    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Diagrams found: 2"), "replaced, then the page was scanned again");
+    let id = h.state().active_ids().unwrap().1;
+    assert!(h.state().session.get(id).unwrap().edit_generation() > before);
+    assert!(h.state().chess.editor.is_none());
+    assert_eq!(diagrams(&h), 2, "the new board is found where the old one was");
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(2);
+    assert_eq!(h.state().session.get(id).unwrap().can_undo(), None, "back to the opened file");
+}
+
+/// Add lichess link puts a link to the corrected position under the diagram.
+#[test]
+fn the_editor_links_the_corrected_position() {
+    let mut h = harness();
+    scan_and_edit_second(&mut h);
+    h.get_by_label("Add lichess link").click();
+    h.run_steps(3);
+    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Lichess link added"));
+    let id = h.state().active_ids().unwrap().1;
+    let links = h.state().session.get(id).unwrap().links().to_vec();
+    assert_eq!(links.len(), 1);
+    assert_eq!(links[0].action, pdfcraft_engine::LinkAction::Uri("https://lichess.org/analysis/4k3/8/8/8/8/8/8/R3K3%20w%20Q%20-%200%201".into()));
+}
+
+/// The review queue: only the drawn board (no model read it) needs review; the list can show
+/// only it, and Next goes to it.
+#[test]
+fn the_review_queue_lists_and_walks_the_diagrams_to_review() {
+    let mut h = harness();
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    let queue = h.state().chess.results.as_ref().unwrap().review_queue();
+    if queue.is_empty() {
+        // With the user's piece model installed the drawn board may be read and accepted.
+        return;
+    }
+    assert_eq!(queue, vec![(0, 1)]);
+    h.get_by_label("Only diagrams to review (1)").click();
+    h.run_steps(2);
+    assert!(h.query_by_label_contains("Diagram 1 · ").is_none(), "the font diagram is not to review");
+    h.get_by_label_contains("Diagram 2 · ").click();
+    h.run_steps(2);
+    h.state_mut().chess.editor = None;
+    h.state_mut().select_chess_diagram(0, 0, true);
+    h.run_steps(2);
+    h.get_by_label("Next to review ▶").click();
+    h.run_steps(2);
+    assert_eq!(h.state().chess.results.as_ref().and_then(|r| r.selected), Some((0, 1)));
+}
