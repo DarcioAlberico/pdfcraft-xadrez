@@ -497,6 +497,38 @@ fn chess_export_epub_writes_a_book_inside_the_root_only() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// Word and RTF: the read diagram becomes an image, the two unread ones are said in words, and
+/// both files are confined to the root.
+#[test]
+fn chess_export_docx_and_rtf_carry_the_diagram_as_an_image() {
+    let (base, root) = workdir("office");
+    let (mut a, doc) = opened(&root);
+    let rtf =
+        ok(&mut a, "chess_export_rtf", json!({ "doc": doc, "models_dir": "models", "out": "book.rtf", "pieces": "geometric", "diagram_px": 120 }));
+    assert_eq!((rtf["diagrams"].as_u64(), rtf["diagrams_drawn"].as_u64(), rtf["diagrams_unread"].as_u64()), (Some(3), Some(1), Some(2)), "{rtf:#}");
+    let text = std::fs::read_to_string(root.join("book.rtf")).unwrap();
+    assert_eq!(text.matches("\\pngblip").count(), 1, "{text:.300}");
+    assert!(text.contains("\\picw120\\pich120"));
+    assert_eq!(text.matches("not read]").count(), 2);
+    assert!(text.contains("FEN: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"));
+    assert!(text.contains("https://lichess.org/analysis/"));
+    let docx = ok(&mut a, "chess_export_docx", json!({ "doc": doc, "out": "book.docx", "pieces": "geometric", "links": false }));
+    assert_eq!(docx["diagrams_drawn"], 1, "{docx:#}");
+    let bytes = std::fs::read(root.join("book.docx")).unwrap();
+    assert_eq!(&bytes[..2], b"PK");
+    assert!(bytes.windows(16).any(|w| w == b"word/media/image"));
+    for (tool, out) in [("chess_export_docx", "../outside/x.docx"), ("chess_export_rtf", "../outside/x.rtf")] {
+        match a.call(tool, &json!({ "doc": doc, "out": out })) {
+            Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{tool}: {m}"),
+            other => panic!("{tool} accepted {out}: {other:?}"),
+        }
+    }
+    assert_eq!(std::fs::read_dir(base.join("outside")).unwrap().count(), 0);
+    let e = a.call("chess_export_docx", &json!({ "doc": doc, "out": "a.docx", "diagram_px": 5000 })).unwrap_err();
+    assert!(e.to_string().contains("diagram_px"), "{e}");
+    let _ = std::fs::remove_dir_all(base);
+}
+
 #[test]
 fn chess_arguments_out_of_range_are_refused_with_what_is_allowed() {
     let (base, root) = workdir("args");

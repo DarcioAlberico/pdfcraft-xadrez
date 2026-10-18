@@ -744,6 +744,37 @@ xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawin
     z.finish()
 }
 
+/// A PNG's pixel size, from its `IHDR` chunk.
+fn png_size(bytes: &[u8]) -> Option<(u32, u32)> {
+    if bytes.get(..8)? != b"\x89PNG\r\n\x1a\n" || bytes.get(12..16)? != b"IHDR" {
+        return None;
+    }
+    let be = |at: usize| bytes.get(at..at + 4).and_then(|b| <[u8; 4]>::try_from(b).ok()).map(u32::from_be_bytes);
+    Some((be(16)?, be(20)?))
+}
+
+/// An image as an RTF picture (`\pict` with `\pngblip` or `\jpegblip`) in its own centred
+/// paragraph, at its size in points; the bytes as hex, 128 digits a line. `\picw`/`\pich` are the
+/// PNG's pixel size when it says it, else the size in points.
+fn rtf_picture(im: &Image) -> String {
+    let blip = if im.ext == "jpg" { "\\jpegblip" } else { "\\pngblip" };
+    // Clamped before the cast, so it cannot truncate; NaN reads as two inches.
+    let twips = |pt: f64| if pt.is_finite() { (pt * 20.0).round().clamp(20.0, 31_680.0) as i64 } else { 2880 };
+    let (w, h) = (twips(im.size[0]), twips(im.size[1]));
+    let (pw, ph) = png_size(&im.bytes).map_or((w / 20, h / 20), |(x, y)| (i64::from(x), i64::from(y)));
+    let mut s = format!("{{\\pard\\qc{{\\pict{blip}\\picw{pw}\\pich{ph}\\picwgoal{w}\\pichgoal{h}\n");
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    for line in im.bytes.chunks(64) {
+        for b in line {
+            s.push(char::from(HEX[usize::from(b >> 4)]));
+            s.push(char::from(HEX[usize::from(b & 15)]));
+        }
+        s.push('\n');
+    }
+    s.push_str("}\\par}\n");
+    s
+}
+
 fn rtf_text(s: &str) -> String {
     let mut o = String::new();
     for c in s.chars().filter(|c| allowed(*c)) {
@@ -839,7 +870,7 @@ pub fn rtf(pages: &[Page]) -> String {
                     s.push_str("\\row\n");
                 }
             }
-            Item::Img(_) => {}
+            Item::Img(im) => s.push_str(&rtf_picture(im)),
             Item::PageBreak => s.push_str("\\page\n"),
         }
     }
@@ -1061,6 +1092,28 @@ mod tests {
         assert!(r.starts_with("{\\rtf1") && r.ends_with('}'));
         assert!(r.contains("\\fs48\\b Annual Report"));
         assert!(r.contains("\\fs20\\i Caf\\u233? \\{x\\}"), "{r}");
+    }
+
+    /// Images are pictures: the PNG's bytes in hex, its pixel size from `IHDR`, its size in
+    /// twips, in its place among the paragraphs; a JPEG says so.
+    #[test]
+    fn rtf_keeps_images_as_pictures() {
+        let p = page();
+        let r = rtf(std::slice::from_ref(&p));
+        assert!(r.contains("{\\pict\\pngblip\\picw2\\pich3\\picwgoal4000\\pichgoal3000\n89504e470d0a1a0a"), "{r}");
+        // Between the heading above it (top 664) and the body text below it (top 411).
+        let (at, overview, body) = (r.find("\\pict").unwrap(), r.find("Overview").unwrap(), r.find("Body text after").unwrap());
+        assert!(overview < at && at < body, "{r}");
+        let mut jpeg = p;
+        jpeg.images[0].ext = "jpg";
+        jpeg.images[0].bytes = vec![0xFF, 0xD8, 0xFF];
+        let r = rtf(&[jpeg]);
+        assert!(r.contains("\\jpegblip\\picw200\\pich150") && r.contains("ffd8ff"), "{r}");
+        // Hostile sizes stay in range.
+        let mut odd = page();
+        odd.images[0].size = [f64::NAN, 1e12];
+        odd.images[0].bytes = Vec::new();
+        assert!(rtf(&[odd]).contains("\\picwgoal2880\\pichgoal31680"));
     }
 
     /// A 3-column table with a spanning header row and a hole in the last row.
