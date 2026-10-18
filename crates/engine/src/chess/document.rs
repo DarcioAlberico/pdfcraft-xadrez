@@ -29,7 +29,13 @@ use pdfcraft_chessvision::coords::PageRect;
 use pdfcraft_chessvision::doc::{BlockHint, ChessDoc, DocBuilder, HintKind, PageInput};
 use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind};
 
+use pdfcraft_chess::repair::GameContext;
+use pdfcraft_chessvision::cipher::BookCipher;
+use pdfcraft_chessvision::doc::TextReview;
+use pdfcraft_chessvision::glyphs::GlyphClassifier;
+
 use super::ChessScanSettings;
+use super::text_ocr::{self, OCR_DPI};
 use crate::{DocId, Session};
 
 /// A block at least this many times the body size is a heading.
@@ -47,11 +53,49 @@ pub struct ChessDocument {
     pub lang: LangGuess,
     /// Whether `lang` was the caller's (`true`) or chosen from the pages' letters.
     pub lang_given: bool,
-    /// Pages (0-based) whose text layer is poor or missing, with the reason: their text needs
-    /// OCR, which this does not run.
+    /// Pages (0-based) whose text layer is poor or missing and that chess OCR did not read (no
+    /// glyph model, or OCR off), with the reason.
     pub needs_ocr: Vec<(usize, String)>,
+    /// Pages chess OCR read instead of their text layer.
+    pub ocr_pages: Vec<OcrPage>,
+    /// The book's cipher as the pages taught it (keep it with the document to read more pages
+    /// the same way).
+    pub cipher: BookCipher,
     /// What the scan and the text reading noted, page by page (0-based), never silent.
     pub notes: Vec<(usize, String)>,
+}
+
+/// When to read pages with chess OCR instead of their text layer.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum OcrMode {
+    /// Never: pages with a poor layer are listed in [`ChessDocument::needs_ocr`].
+    Off,
+    /// Pages whose text layer is poor or missing.
+    #[default]
+    Auto,
+    /// Every page.
+    All,
+}
+
+/// How [`Session::chess_document_with`] runs chess OCR.
+#[derive(Clone, Copy, Default)]
+pub struct OcrOptions<'a> {
+    pub mode: OcrMode,
+    /// The glyph classifier; `None` loads the user's `chess-glyphs` model.
+    pub glyphs: Option<&'a dyn GlyphClassifier>,
+    /// Also run the general OCR (`ocrs`) for prose when its models are installed.
+    pub general: bool,
+}
+
+/// What chess OCR did on one page.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct OcrPage {
+    pub page: usize,
+    pub lines: usize,
+    /// Words the repair changed, and words it could not settle (both flagged for review).
+    pub edits: usize,
+    pub flags: usize,
+    pub general_ocr: bool,
 }
 
 /// The heading level of a block of `size` with `chars` characters on a page whose body text is
@@ -131,6 +175,18 @@ impl Session {
     /// when the document does not exist, a page is out of range, or its permissions do not allow
     /// copying its content.
     pub fn chess_document(&mut self, id: DocId, pages: &[usize], settings: &ChessScanSettings, lang: Option<Lang>) -> Result<ChessDocument, String> {
+        self.chess_document_with(id, pages, settings, lang, &OcrOptions { general: true, ..OcrOptions::default() })
+    }
+
+    /// [`Self::chess_document`], with chess OCR as `ocr` says.
+    pub fn chess_document_with(
+        &mut self,
+        id: DocId,
+        pages: &[usize],
+        settings: &ChessScanSettings,
+        lang: Option<Lang>,
+        ocr: &OcrOptions<'_>,
+    ) -> Result<ChessDocument, String> {
         let scanned = self.chess_scan(id, pages, settings, true)?;
         let doc = self.get(id).ok_or("no such document")?;
         let config = RenderConfig { password: doc.password.as_deref().map(std::sync::Arc::from), ..Default::default() };
@@ -169,15 +225,98 @@ impl Session {
             }
         };
 
+        // The glyph classifier, when chess OCR may run.
+        let models = (ocr.mode != OcrMode::Off && ocr.glyphs.is_none()).then(|| super::models(settings.models_dir.as_deref()));
+        let glyphs: Option<&dyn GlyphClassifier> = match (ocr.mode, ocr.glyphs) {
+            (OcrMode::Off, _) => None,
+            (_, Some(g)) => Some(g),
+            (_, None) => models.as_deref().and_then(|m| m.glyphs.loaded()).map(|g| g as &dyn GlyphClassifier),
+        };
         let mut needs_ocr = Vec::new();
+        let mut ocr_pages = Vec::new();
+        let mut cipher = BookCipher::default();
+        // The last legal, accepted position seen: the moves of a page without a diagram go on from it.
+        let mut last_fen: Option<String> = None;
         let mut builder = DocBuilder::new();
-        for (page, text) in scanned.iter().zip(&chess_texts) {
+        for (page, layer_text) in scanned.iter().zip(&chess_texts) {
+            let mut text = layer_text;
+            let mut reviews: Vec<TextReview> = Vec::new();
+            let ocr_text;
             notes.extend(page.notes.iter().map(|n| (page.page, n.clone())));
             if let Some(e) = &page.error {
                 notes.push((page.page, e.clone()));
             }
-            if let Some(why) = poor_reason(&text.quality) {
-                needs_ocr.push((page.page, why));
+            let poor = poor_reason(&text.quality);
+            let wanted = match ocr.mode {
+                OcrMode::Off => false,
+                OcrMode::Auto => poor.is_some(),
+                OcrMode::All => true,
+            };
+            let readings = page.readings.as_deref().unwrap_or_default();
+            let here_fen = readings
+                .iter()
+                .filter_map(|r| r.position())
+                .find(|p| p.accepted && p.legality.allows(p.side.color) && !p.repaired())
+                .map(|p| p.fen.clone());
+            match (wanted, glyphs, doc.info.pages.get(page.page), page.geometry) {
+                (true, Some(g), Some(info), Some(geometry)) => match super::render_gray(&mut renderer, page.page, info, OCR_DPI) {
+                    Ok((gray, dpi)) => {
+                        let boxes: Vec<_> = page
+                            .diagrams
+                            .iter()
+                            .filter_map(|d| geometry.user_to_view(d.candidate.bbox_user))
+                            .filter_map(|v| pdfcraft_chessvision::coords::view_to_pixels(v, dpi))
+                            .collect();
+                        let words = match if ocr.general { text_ocr::general_ocr_words(&gray) } else { None } {
+                            Some(Ok(w)) => Some(w),
+                            Some(Err(e)) => {
+                                notes.push((page.page, format!("the general OCR failed ({e}); the glyph reader read the prose too")));
+                                None
+                            }
+                            None => None,
+                        };
+                        let context = here_fen.as_deref().or(last_fen.as_deref()).and_then(GameContext::from_fen);
+                        let index = u32::try_from(page.page).unwrap_or(u32::MAX);
+                        match text_ocr::read_page(&gray, dpi, &boxes, g, words.as_deref(), chosen.lang, context.as_ref(), &mut cipher, index) {
+                            Ok(read) => {
+                                ocr_pages.push(OcrPage {
+                                    page: page.page,
+                                    lines: read.lines,
+                                    edits: read.edits,
+                                    flags: read.flags,
+                                    general_ocr: read.general_ocr,
+                                });
+                                reviews = read.reviews;
+                                ocr_text = read.text;
+                                text = &ocr_text;
+                            }
+                            Err(e) => {
+                                notes.push((page.page, format!("chess OCR failed: {e}")));
+                                if let Some(why) = &poor {
+                                    needs_ocr.push((page.page, why.clone()));
+                                }
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        notes.push((page.page, format!("the page could not be rendered for chess OCR: {e}")));
+                        if let Some(why) = &poor {
+                            needs_ocr.push((page.page, why.clone()));
+                        }
+                    }
+                },
+                _ => {
+                    if wanted && glyphs.is_none() && poor.is_none() {
+                        notes.push((page.page, "chess OCR was asked for, but it needs the chess-glyphs model".into()));
+                    }
+                    if let Some(why) = poor {
+                        let why = if wanted && glyphs.is_none() { format!("{why} (chess OCR needs the chess-glyphs model)") } else { why };
+                        needs_ocr.push((page.page, why));
+                    }
+                }
+            }
+            if here_fen.is_some() {
+                last_fen = here_fen;
             }
             for font in &text.unknown_chess_fonts {
                 notes.push((
@@ -197,13 +336,13 @@ impl Session {
                 }
                 None => Vec::new(),
             };
-            let diagrams = page.readings.as_deref().unwrap_or_default();
+            let diagrams = readings;
             if page.readings.is_none() && !page.diagrams.is_empty() {
                 notes.push((page.page, "the page's diagrams could not be read; they are left out".into()));
             }
             let index = u32::try_from(page.page).unwrap_or(u32::MAX);
-            builder.add_page(&PageInput { index, geometry, text, diagrams, hints: &hints, reviews: &[] });
+            builder.add_page(&PageInput { index, geometry, text, diagrams, hints: &hints, reviews: &reviews });
         }
-        Ok(ChessDocument { doc: builder.finish(), lang: chosen, lang_given: lang.is_some(), needs_ocr, notes })
+        Ok(ChessDocument { doc: builder.finish(), lang: chosen, lang_given: lang.is_some(), needs_ocr, ocr_pages, cipher, notes })
     }
 }

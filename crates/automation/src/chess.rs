@@ -12,6 +12,7 @@
 use std::sync::Arc;
 
 use pdfcraft_engine::Edit;
+use pdfcraft_engine::chess::document::{OcrMode, OcrOptions};
 use pdfcraft_engine::chess::links::Side;
 use pdfcraft_engine::chess::pdfcraft_chess::draw::{BoardStyle, PieceSet, Rgb};
 use pdfcraft_engine::chess::pdfcraft_chess::fen;
@@ -25,6 +26,18 @@ use pdfcraft_engine::chess::pdfcraft_chessvision::merge::Merged;
 use pdfcraft_engine::chess::pdfcraft_chessvision::pieces::{self, PieceSource};
 use pdfcraft_engine::chess::{self, ChessPage, ChessScanSettings, DiagramReplacement, LinkSettings, ModelState, ReadingOrder};
 use serde_json::{Value, json};
+
+/// `ocr`: when chess OCR reads a page instead of its text layer (default auto: when the layer is
+/// poor or missing). The general OCR reads the prose when its models are installed.
+fn ocr_options(a: &Args) -> Result<OcrOptions<'static>> {
+    let mode = match a.opt_str("ocr")? {
+        None | Some("auto") => OcrMode::Auto,
+        Some("off") => OcrMode::Off,
+        Some("all") => OcrMode::All,
+        Some(_) => return Err(Args::wrong("ocr", "\"auto\", \"off\" or \"all\"")),
+    };
+    Ok(OcrOptions { mode, glyphs: None, general: true })
+}
 
 /// The files Chess ▸ Export writes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -384,7 +397,7 @@ impl Automation {
         let out = a.opt_str("out")?.map(|p| self.resolve(p, true).map(|r| (p, r))).transpose()?;
         let pgn_out = a.opt_str("pgn_out")?.map(|p| self.resolve(p, true).map(|r| (p, r))).transpose()?;
         let id = self.doc(a)?.id;
-        let read = self.session.chess_document(id, &pages, &settings, lang).map_err(failed)?;
+        let read = self.session.chess_document_with(id, &pages, &settings, lang, &ocr_options(a)?).map_err(failed)?;
         let doc = &read.doc;
         let blocks = doc.pages.iter().flat_map(|p| &p.blocks);
         let count = |f: fn(&Block) -> bool| doc.pages.iter().flat_map(|p| &p.blocks).filter(|b| f(b)).count();
@@ -403,6 +416,7 @@ impl Automation {
             "valid_moves": moves.iter().filter(|m| m.status == MoveStatus::Valid).count(),
             "flagged_moves": moves.iter().filter(|m| matches!(m.status, MoveStatus::Illegal | MoveStatus::Ambiguous)).count(),
             "needs_ocr": read.needs_ocr.iter().map(|(p, why)| json!({ "page": p + 1, "reason": why })).collect::<Vec<_>>(),
+            "ocr_pages": read.ocr_pages.iter().map(|o| json!({ "page": o.page + 1, "lines": o.lines, "repaired": o.edits, "unsettled": o.flags, "general_ocr": o.general_ocr })).collect::<Vec<_>>(),
             "notes": read.notes.iter().map(|(p, n)| json!({ "page": p + 1, "note": n })).collect::<Vec<_>>(),
         });
         if let Some((shown, path)) = out {
@@ -538,7 +552,7 @@ impl Automation {
             Some(t) => t.to_owned(),
             None => self.doc(a)?.name.trim_end_matches(".pdf").to_owned(),
         };
-        let read = self.session.chess_document(id, &pages, &settings, lang).map_err(failed)?;
+        let read = self.session.chess_document_with(id, &pages, &settings, lang, &ocr_options(a)?).map_err(failed)?;
         let options = HtmlOptions {
             title: &title,
             pieces: &pieces,
@@ -642,6 +656,7 @@ impl Automation {
                 PieceSource::Geometric => json!({ "source": "geometric", "family": Value::Null, "error": error.map(|e| e.to_string()) }),
             },
             "needs_ocr": read.needs_ocr.iter().map(|(p, why)| json!({ "page": p + 1, "reason": why })).collect::<Vec<_>>(),
+            "ocr_pages": read.ocr_pages.iter().map(|o| json!({ "page": o.page + 1, "lines": o.lines, "repaired": o.edits, "unsettled": o.flags, "general_ocr": o.general_ocr })).collect::<Vec<_>>(),
             "notes": notes,
             "position_games": position_games,
             "image_dir": image_dir,

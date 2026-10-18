@@ -840,6 +840,7 @@ pub mod epub;
 pub mod links;
 pub mod office;
 pub mod replace;
+pub mod text_ocr;
 
 #[cfg(test)]
 mod tests;

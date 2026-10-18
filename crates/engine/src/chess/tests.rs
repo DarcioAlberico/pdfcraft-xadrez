@@ -521,6 +521,7 @@ mod epub;
 mod links;
 mod office;
 mod replace;
+mod text_ocr;
 
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(24))]

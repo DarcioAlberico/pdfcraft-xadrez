@@ -571,6 +571,24 @@ fn chess_export_markdown_and_pgn_write_inside_the_root() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// Chess OCR asked for every page, without the glyph model in models_dir: nothing is read, and
+/// the reply says what is missing; a bad mode is refused.
+#[test]
+fn chess_document_ocr_says_what_it_needs() {
+    let (base, root) = workdir("ocr");
+    let (mut a, doc) = opened(&root);
+    let all = ok(&mut a, "chess_document", json!({ "doc": doc, "models_dir": "models", "ocr": "all" }));
+    assert!(all["ocr_pages"].as_array().unwrap().is_empty(), "{all:#}");
+    assert!(all["notes"].to_string().contains("needs the chess-glyphs model"), "{all:#}");
+    let off = ok(&mut a, "chess_document", json!({ "doc": doc, "models_dir": "models", "ocr": "off" }));
+    assert!(!off["notes"].to_string().contains("chess-glyphs"), "{off:#}");
+    let e = a.call("chess_document", &json!({ "doc": doc, "ocr": "sometimes" })).unwrap_err();
+    assert!(e.to_string().contains("ocr"), "{e}");
+    let e = a.call("chess_export_html", &json!({ "doc": doc, "out": "x.html", "ocr": "sometimes" })).unwrap_err();
+    assert!(e.to_string().contains("ocr"), "{e}");
+    let _ = std::fs::remove_dir_all(base);
+}
+
 #[test]
 fn chess_arguments_out_of_range_are_refused_with_what_is_allowed() {
     let (base, root) = workdir("args");
