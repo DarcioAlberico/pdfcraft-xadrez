@@ -715,7 +715,7 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                     }
                     RightPanel::Search => crate::search_ui::panel(ui, &t, view, info.pages.len()),
                     RightPanel::Compare => compare_action = crate::compare_ui::panel(ui, &t, compare, id),
-                    RightPanel::Chess => chess_action = crate::chess_ui::panel(ui, &t, chess, id, info, chess_now),
+                    RightPanel::Chess => chess_action = crate::chess_ui::panel(ui, &t, chess, id, info, chess_now, view.current),
                     RightPanel::Attachments => {
                         if info.attachments.is_empty() {
                             empty(ui, &t, "paperclip", "This document has no attachments.");

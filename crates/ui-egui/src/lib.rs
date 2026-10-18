@@ -33,6 +33,7 @@ mod actions_ui;
 mod appearance;
 pub mod canvas;
 mod chess_editor;
+mod chess_text_ui;
 mod chess_ui;
 mod chrome;
 mod combine_grid;

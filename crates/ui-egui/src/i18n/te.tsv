@@ -2365,6 +2365,22 @@ animation effects	Off	ఆఫ్
 	Couldn't be read: {e}	చదవలేకపోయింది: {e}
 	Not read	చదవలేదు
 	Copy FEN	FEN కాపీ చేయి
+	Ambiguous move	అస్పష్టమైన ఎత్తు
+	Chess OCR read nothing on this page.	చదరంగం OCR ఈ పేజీలో ఏదీ చదవలేదు.
+	Export as {f}	{f}గా ఎగుమతి చేయి
+	Illegal move	చెల్లని ఎత్తు
+	Move out of sequence	క్రమం తప్పిన ఎత్తు
+	No text on this page.	ఈ పేజీలో వచనం లేదు.
+	Not reached: an earlier move failed	చేరలేదు: మునుపటి ఎత్తు విఫలమైంది
+	Read the page image instead of its text layer (needs the chess-glyphs model).	వచన పొరకు బదులు పేజీ చిత్రాన్ని చదువు (chess-glyphs మోడల్ అవసరం).
+	Read this page with chess OCR	ఈ పేజీని చదరంగం OCRతో చదువు
+	Read with chess OCR: check it against the page.	చదరంగం OCRతో చదివాం: పేజీతో పోల్చి చూడండి.
+	Reading the page…	పేజీ చదువుతోంది…
+	Recognised text of page {p}	పేజీ {p} గుర్తించిన వచనం
+	This document does not allow copying its content, so its text is not read.	ఈ పత్రం దాని విషయాన్ని కాపీ చేయడానికి అనుమతించదు, కాబట్టి దాని వచనం చదవబడదు.
+	This page's text layer can't be believed ({e}): read it with chess OCR.	ఈ పేజీ వచన పొరను నమ్మలేము ({e}): దీన్ని చదరంగం OCRతో చదవండి.
+	Unchecked: no position to play it from	తనిఖీ చేయలేదు: ఆడేందుకు స్థితి లేదు
+	Valid move	చెల్లుబాటైన ఎత్తు
 	Diagram replaced	రేఖాచిత్రం మార్చబడింది
 	Lichess link added	lichess లింక్ జోడించబడింది
 	No link was added: {e}	ఏ లింక్ జోడించబడలేదు: {e}

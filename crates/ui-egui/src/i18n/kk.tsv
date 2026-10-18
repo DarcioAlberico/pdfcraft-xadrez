@@ -2450,6 +2450,22 @@ animation effects	Off	Өшірулі
 	Couldn't be read: {e}	Оқу мүмкін болмады: {e}
 	Not read	Оқылмады
 	Copy FEN	FEN көшіру
+	Ambiguous move	Екіұшты жүріс
+	Chess OCR read nothing on this page.	Шахмат OCR бұл бетте ештеңе оқымады.
+	Export as {f}	{f} ретінде экспорттау
+	Illegal move	Ережеге қайшы жүріс
+	Move out of sequence	Ретінен тыс жүріс
+	No text on this page.	Бұл бетте мәтін жоқ.
+	Not reached: an earlier move failed	Жетпеді: алдыңғы жүріс сәтсіз болды
+	Read the page image instead of its text layer (needs the chess-glyphs model).	Мәтін қабатының орнына бет кескінін оқу (chess-glyphs моделі қажет).
+	Read this page with chess OCR	Бұл бетті шахмат OCR арқылы оқу
+	Read with chess OCR: check it against the page.	Шахмат OCR арқылы оқылды: бетпен салыстырыңыз.
+	Reading the page…	Бет оқылуда…
+	Recognised text of page {p}	{p}-беттің танылған мәтіні
+	This document does not allow copying its content, so its text is not read.	Бұл құжат мазмұнын көшіруге рұқсат етпейді, сондықтан оның мәтіні оқылмайды.
+	This page's text layer can't be believed ({e}): read it with chess OCR.	Бұл беттің мәтін қабатына сенуге болмайды ({e}): оны шахмат OCR арқылы оқыңыз.
+	Unchecked: no position to play it from	Тексерілмеген: ойнайтын позиция жоқ
+	Valid move	Дұрыс жүріс
 	Diagram replaced	Диаграмма ауыстырылды
 	Lichess link added	lichess сілтемесі қосылды
 	No link was added: {e}	Сілтеме қосылмады: {e}

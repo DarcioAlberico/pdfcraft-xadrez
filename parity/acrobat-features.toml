@@ -6840,7 +6840,19 @@ status = "partial"
 commands = []
 tools = ["chess_document"]
 evidence = ["crates/engine/src/chess/tests/document.rs::a_chapter_page_becomes_heading_caption_diagram_and_its_game", "crates/engine/src/chess/tests/document.rs::a_page_without_text_needs_ocr_and_a_given_language_is_kept", "crates/chessvision/src/doc/pgn/tests.rs::a_written_game_reads_back_equal", "crates/automation/tests/chess.rs::chess_document_reads_the_page_into_blocks_and_writes_json_and_pgn", "crates/automation/tests/chess.rs::chess_document_outputs_outside_the_root_are_refused"]
-notes = "An extension, not an Acrobat parity claim (fork decision D3). Pages become headings (blocks set larger than the body text), paragraphs of chess text (moves, move numbers, NAGs, figurines from catalogued fonts) and diagrams in the one reading order, each with its source box; moves are replayed with cozy-chess from the diagram before them or the initial position into variation trees, and illegal, ambiguous or out-of-sequence moves are flagged, never dropped. One piece-letter language for the whole document, from every page unless given. Output as JSON and PGN (inline or to files in the root). Pages whose text layer is poor or missing are read by chess OCR (ocr.chess-text) when the user's glyph model is installed, else listed in needs_ocr. Missing: the PDF-and-text view (S16); two-column pages are read across the columns."
+notes = "An extension, not an Acrobat parity claim (fork decision D3). Pages become headings (blocks set larger than the body text), paragraphs of chess text (moves, move numbers, NAGs, figurines from catalogued fonts) and diagrams in the one reading order, each with its source box; moves are replayed with cozy-chess from the diagram before them or the initial position into variation trees, and illegal, ambiguous or out-of-sequence moves are flagged, never dropped. One piece-letter language for the whole document, from every page unless given. Output as JSON and PGN (inline or to files in the root). Pages whose text layer is poor or missing are read by chess OCR (ocr.chess-text) when the user's glyph model is installed, else listed in needs_ocr. In the interface: the Chess panel's Text tab (view.chess-recognised-text). Missing: two-column pages are read across the columns."
+
+[[feature]]
+id = "view.chess-recognised-text"
+title = "See a chess page's recognised text beside it"
+area = "I"
+tier = "P2"
+milestone = "none"
+status = "partial"
+commands = []
+tools = []
+evidence = ["crates/ui-egui/tests/chess.rs::the_text_tab_shows_the_page_read_as_chess_text_and_points_back_at_it", "crates/ui-egui/tests/chess.rs::export_writes_pgn_and_markdown_with_images"]
+notes = "An extension, not an Acrobat parity claim (fork decision D3). The Chess diagrams panel's Text tab shows the page displayed beside it read as a chess document: headings, paragraphs with moves coloured by what replaying them found (valid, illegal or ambiguous, out of sequence or not reached, unchecked), annotation glyphs and the diagrams as small boards. It follows the page (its text layer); chess OCR reads it on request. Clicking a move or a paragraph outlines it on the page; a diagram opens in the editor. Figurines show when the interface fonts have them, else moves as printed. Export… writes the whole document in the six chess formats. Missing: a full-width or tabbed layout beside the panel, editing the recognised text and writing it back as a text layer (S13d), and OCR off the interface thread (a page read with OCR holds the interface for a few seconds)."
 
 [[feature]]
 id = "edit.chess-lichess-links"
@@ -6864,7 +6876,7 @@ status = "partial"
 commands = []
 tools = ["chess_export_html"]
 evidence = ["crates/chessvision/src/doc/tests/html.rs::the_html_reads_back_as_the_document", "crates/chessvision/src/doc/tests/html.rs::an_unread_diagram_is_a_figure_without_a_position_and_no_unsafe_link_is_made", "crates/chessvision/src/doc/tests/html.rs::arbitrary_text_is_escaped", "crates/automation/tests/chess.rs::chess_export_html_writes_the_diagrams_in_order_and_reads_back", "crates/automation/tests/chess.rs::chess_export_html_outside_the_root_is_refused"]
-notes = "An extension, not an Acrobat parity claim (fork decision D3). The recognised document (chess_document) as one static HTML file: headings, paragraphs with moves (Unicode figurines, letters in any of the 18 languages, or as printed), annotation glyphs, and each diagram redrawn as inline SVG with the same chess::draw drawing as the PDF replacement, or as FEN, with a lichess link under it. No script, nothing fetched; only http(s) addresses become links. Readable back by attributes (data-fen, data-san, data-nag, class unread/review). Pieces from PDFCRAFT_CHESS_PIECES or an installed Chess Merida, else geometric. Missing: PNG diagrams (for DOCX/RTF/Markdown, S15c/S15d), EPUB (S15b), the interface's Export menu, and text the OCR would read on pages without a usable text layer."
+notes = "An extension, not an Acrobat parity claim (fork decision D3). The recognised document (chess_document) as one static HTML file: headings, paragraphs with moves (Unicode figurines, letters in any of the 18 languages, or as printed), annotation glyphs, and each diagram redrawn as inline SVG with the same chess::draw drawing as the PDF replacement, or as FEN, with a lichess link under it. No script, nothing fetched; only http(s) addresses become links. Readable back by attributes (data-fen, data-san, data-nag, class unread/review). Pieces from PDFCRAFT_CHESS_PIECES or an installed Chess Merida, else geometric. Also in the interface: the Chess diagrams panel's Export menu. PNG diagrams, EPUB and OCR'd text are the other exports' and ocr.chess-text's."
 
 [[feature]]
 id = "export.chess-epub"
@@ -6876,7 +6888,7 @@ status = "partial"
 commands = []
 tools = ["chess_export_epub"]
 evidence = ["crates/engine/src/chess/tests/epub.rs::the_package_is_well_formed_and_every_reference_resolves", "crates/engine/src/chess/tests/epub.rs::the_archive_starts_with_the_stored_mimetype", "crates/engine/src/chess/tests/epub.rs::a_book_without_headings_lists_its_pages_and_limits_hold", "crates/automation/tests/chess.rs::chess_export_epub_writes_a_book_inside_the_root_only"]
-notes = "An extension, not an Acrobat parity claim (fork decision D3). The chess HTML export cut into one XHTML content document per PDF page (same markup, inline SVG boards, lichess links), a navigation document from the headings (or the pages), the package document (stable identifier from the PDF bytes, dcterms:modified) and the OCF container, with mimetype first and stored. Every XML file is checked well-formed and every manifest, spine and navigation reference resolves in tests. No script, nothing fetched. Missing: validation by epubcheck (not installed here), an embedded font with figurines (none in craft-fonts yet; readers use their own fonts), cover image, the interface's Export menu."
+notes = "An extension, not an Acrobat parity claim (fork decision D3). The chess HTML export cut into one XHTML content document per PDF page (same markup, inline SVG boards, lichess links), a navigation document from the headings (or the pages), the package document (stable identifier from the PDF bytes, dcterms:modified) and the OCF container, with mimetype first and stored. Every XML file is checked well-formed and every manifest, spine and navigation reference resolves in tests. No script, nothing fetched. Missing: validation by epubcheck (not installed here), an embedded font with figurines (none in craft-fonts yet; readers use their own fonts), cover image. Also in the interface: the Chess panel's Export menu."
 
 [[feature]]
 id = "export.chess-office"
@@ -6888,7 +6900,7 @@ status = "partial"
 commands = []
 tools = ["chess_export_docx", "chess_export_rtf"]
 evidence = ["crates/engine/src/chess/tests/office.rs::the_diagram_image_shows_the_position_square_by_square", "crates/engine/src/chess/tests/office.rs::the_chapter_lays_out_in_order_and_both_files_carry_the_diagram", "crates/export/src/lib.rs::rtf_keeps_images_as_pictures", "crates/automation/tests/chess.rs::chess_export_docx_and_rtf_carry_the_diagram_as_an_image"]
-notes = "An extension, not an Acrobat parity claim (fork decision D3). The recognised document through the Word and RTF writers of Export a PDF: headings, paragraphs with moves (Unicode figurines, letters or as printed), and each diagram as a PNG drawn with the same board and operators as the PDF replacement and rendered by the page renderer, with its FEN and lichess address under it; an unread diagram is said in words. The RTF writer now keeps images as \\pict pictures (it dropped them before), for every RTF export. Missing: real hyperlinks (the address is text; the writers have no link runs yet), a font with figurines (readers use their own), the interface's Export menu."
+notes = "An extension, not an Acrobat parity claim (fork decision D3). The recognised document through the Word and RTF writers of Export a PDF: headings, paragraphs with moves (Unicode figurines, letters or as printed), and each diagram as a PNG drawn with the same board and operators as the PDF replacement and rendered by the page renderer, with its FEN and lichess address under it; an unread diagram is said in words. The RTF writer now keeps images as \\pict pictures (it dropped them before), for every RTF export. Missing: real hyperlinks (the address is text; the writers have no link runs yet), a font with figurines (readers use their own). Also in the interface: the Chess panel's Export menu."
 
 [[feature]]
 id = "export.chess-markdown"
@@ -6900,7 +6912,7 @@ status = "partial"
 commands = []
 tools = ["chess_export_markdown"]
 evidence = ["crates/chessvision/src/doc/tests/markdown.rs::the_markdown_reads_back_as_the_document", "crates/chessvision/src/doc/tests/markdown.rs::text_stays_text_and_unread_diagrams_say_so", "crates/automation/tests/chess.rs::chess_export_markdown_and_pgn_write_inside_the_root"]
-notes = "An extension, not an Acrobat parity claim (fork decision D3); not create.from-markdown, which imports. The recognised document as Markdown: # headings, paragraphs with moves (figurines, letters or as printed), escaped so they read as printed (1. e4 at a paragraph start is not a list), each diagram as ![FEN](name_diagrams/diagram-pNNNN-k.png) with the PNG written beside the file (or the FEN in backticks), and its lichess link. Missing: the interface's Export menu."
+notes = "An extension, not an Acrobat parity claim (fork decision D3); not create.from-markdown, which imports. The recognised document as Markdown: # headings, paragraphs with moves (figurines, letters or as printed), escaped so they read as printed (1. e4 at a paragraph start is not a list), each diagram as ![FEN](name_diagrams/diagram-pNNNN-k.png) with the PNG written beside the file (or the FEN in backticks), and its lichess link. Also in the interface: the Chess panel's Export menu, which writes the images folder beside the file."
 
 [[feature]]
 id = "export.chess-pgn"

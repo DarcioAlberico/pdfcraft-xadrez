@@ -2664,6 +2664,22 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Couldn't be read: {e}	Impossibile leggere: {e}
 	Not read	Non letto
 	Copy FEN	Copia FEN
+	Ambiguous move	Mossa ambigua
+	Chess OCR read nothing on this page.	L'OCR scacchistico non ha letto nulla in questa pagina.
+	Export as {f}	Esporta come {f}
+	Illegal move	Mossa illegale
+	Move out of sequence	Mossa fuori sequenza
+	No text on this page.	Nessun testo in questa pagina.
+	Not reached: an earlier move failed	Non raggiunta: una mossa precedente non è riuscita
+	Read the page image instead of its text layer (needs the chess-glyphs model).	Leggi l'immagine della pagina invece del livello di testo (serve il modello chess-glyphs).
+	Read this page with chess OCR	Leggi questa pagina con l'OCR scacchistico
+	Read with chess OCR: check it against the page.	Letto con l'OCR scacchistico: controllalo sulla pagina.
+	Reading the page…	Lettura della pagina…
+	Recognised text of page {p}	Testo riconosciuto della pagina {p}
+	This document does not allow copying its content, so its text is not read.	Questo documento non consente di copiarne il contenuto, quindi il testo non viene letto.
+	This page's text layer can't be believed ({e}): read it with chess OCR.	Il livello di testo di questa pagina non è affidabile ({e}): leggila con l'OCR scacchistico.
+	Unchecked: no position to play it from	Non verificata: nessuna posizione da cui giocarla
+	Valid move	Mossa valida
 	Diagram replaced	Diagramma sostituito
 	Lichess link added	Link lichess aggiunto
 	No link was added: {e}	Nessun link aggiunto: {e}

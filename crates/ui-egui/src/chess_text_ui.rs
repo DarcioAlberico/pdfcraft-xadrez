@@ -1,0 +1,383 @@
+//! Chess ▸ Recognised text (blueprint S16): beside the page, what was read from it, and the
+//! chess exports.
+//!
+//! The Chess diagrams panel has a second tab, **Text**: the current page read as a chess
+//! document (`Session::chess_document_with`): headings, paragraphs whose moves are coloured by
+//! what replaying them found (valid, illegal or ambiguous, not reached, unchecked), annotation
+//! glyphs, and the diagrams as small boards. It follows the page shown (reading its text layer,
+//! which is quick); a page whose layer cannot be believed is read with chess OCR on request.
+//! Clicking a move, a paragraph or a diagram outlines where it is on the page; a diagram also
+//! opens in the editor. Figurines are shown when the interface's fonts have them, else the
+//! moves as printed.
+//!
+//! **Export…** writes the whole document as HTML, EPUB, Word, RTF, Markdown (with its diagram
+//! images in a folder beside it) or PGN, through the engine's `chess_export`.
+
+use egui::{Color32, FontId, TextureHandle};
+use pdfcraft_engine::DocId;
+use pdfcraft_engine::chess::document::{OcrMode, OcrOptions};
+use pdfcraft_engine::chess::export::{ChessExportOptions, ChessFormat};
+use pdfcraft_engine::chess::pdfcraft_chess::draw::BoardStyle;
+use pdfcraft_engine::chess::pdfcraft_chessvision::doc::html::{Figurines, plain_text_with};
+use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, ChessDoc, Inline, MoveStatus, UserRect};
+use pdfcraft_engine::chess::{ChessScanSettings, ScanStamp};
+
+use crate::theme::Tokens;
+use crate::{PdfCraftApp, theme};
+
+/// The panel's two tabs.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ChessTab {
+    #[default]
+    Diagrams,
+    Text,
+}
+
+/// One page read as text.
+pub struct PageText {
+    pub doc: DocId,
+    pub stamp: ScanStamp,
+    pub page: usize,
+    pub chess: ChessDoc,
+    /// Read with chess OCR (not the text layer).
+    pub ocr: bool,
+    /// Why the page's layer cannot be believed, when it cannot (and OCR did not read it).
+    pub needs_ocr: Option<String>,
+    pub notes: Vec<String>,
+    /// The diagrams' boards, by block index.
+    boards: Vec<(usize, TextureHandle)>,
+}
+
+/// What the text tab asks for.
+#[derive(Clone, Debug, PartialEq)]
+pub enum TextAction {
+    /// Read the current page (with chess OCR when `true`).
+    Read(bool),
+    /// Outline a box of `page` (user space) on the page.
+    Show(usize, [f32; 4]),
+    /// Open diagram `index` of `page` in the editor.
+    Diagram(usize, usize),
+    Export(ChessFormat),
+}
+
+fn status_colour(s: MoveStatus) -> Color32 {
+    match s {
+        MoveStatus::Valid => Color32::from_rgb(0x2D, 0x9D, 0x5B),
+        MoveStatus::Illegal | MoveStatus::Ambiguous => Color32::from_rgb(0xE0, 0x3E, 0x3E),
+        MoveStatus::OutOfSequence | MoveStatus::NotReached => Color32::from_rgb(0xE0, 0x8A, 0x1A),
+        MoveStatus::Unchecked => Color32::GRAY,
+    }
+}
+
+fn status_label(s: MoveStatus) -> &'static str {
+    match s {
+        MoveStatus::Valid => tl!("Valid move"),
+        MoveStatus::Illegal => tl!("Illegal move"),
+        MoveStatus::Ambiguous => tl!("Ambiguous move"),
+        MoveStatus::OutOfSequence => tl!("Move out of sequence"),
+        MoveStatus::NotReached => tl!("Not reached: an earlier move failed"),
+        MoveStatus::Unchecked => tl!("Unchecked: no position to play it from"),
+    }
+}
+
+fn rect_of(r: Option<UserRect>) -> Option<[f32; 4]> {
+    let r = r?.page_rect();
+    [r.x0, r.y0, r.x1, r.y1].iter().all(|v| v.is_finite()).then_some([r.x0, r.y0, r.x1, r.y1])
+}
+
+/// How moves are printed here: figurines when the interface's fonts have them.
+fn figurines(ctx: &egui::Context) -> Figurines {
+    if ctx.fonts_mut(|f| f.has_glyphs(&FontId::proportional(13.0), "♔♕♖♗♘♙")) { Figurines::Unicode } else { Figurines::AsPrinted }
+}
+
+/// The Export… menu.
+pub fn export_menu(ui: &mut egui::Ui) -> Option<TextAction> {
+    let mut action = None;
+    ui.menu_button(tl!("Export…"), |ui| {
+        for f in ChessFormat::ALL {
+            if ui.button(crate::i18n::fmt(tl!("Export as {f}"), &[("f", f.name())])).clicked() {
+                action = Some(TextAction::Export(f));
+                ui.close();
+            }
+        }
+    });
+    action
+}
+
+/// The Text tab for page `page` of document `id`.
+pub fn text_tab(ui: &mut egui::Ui, t: &Tokens, text: Option<&mut PageText>, id: DocId, page: usize, now: Option<ScanStamp>) -> Option<TextAction> {
+    let mut action = None;
+    let current = text.filter(|x| x.doc == id && x.page == page && Some(x.stamp) == now);
+    ui.horizontal_wrapped(|ui| {
+        if ui
+            .button(tl!("Read this page with chess OCR"))
+            .on_hover_text(tl!("Read the page image instead of its text layer (needs the chess-glyphs model)."))
+            .clicked()
+        {
+            action = Some(TextAction::Read(true));
+        }
+        if let Some(a) = export_menu(ui) {
+            action = Some(a);
+        }
+    });
+    let Some(x) = current else {
+        // Follows the page: read its text layer now (quick); OCR is on request.
+        if action.is_none() {
+            action = Some(TextAction::Read(false));
+        }
+        ui.label(egui::RichText::new(tl!("Reading the page…")).color(t.text_muted));
+        return action;
+    };
+    ui.label(
+        egui::RichText::new(crate::i18n::fmt(tl!("Recognised text of page {p}"), &[("p", &(page + 1).to_string())])).font(theme::semibold(12.5)),
+    );
+    if x.ocr {
+        ui.label(egui::RichText::new(tl!("Read with chess OCR: check it against the page.")).small().color(t.text_muted));
+    }
+    if let Some(why) = &x.needs_ocr {
+        ui.label(
+            egui::RichText::new(crate::i18n::fmt(tl!("This page's text layer can't be believed ({e}): read it with chess OCR."), &[("e", why)]))
+                .small()
+                .color(t.text_muted),
+        );
+    }
+    for n in &x.notes {
+        ui.label(egui::RichText::new(n).small().color(t.text_muted));
+    }
+    ui.separator();
+    let figurines = figurines(ui.ctx());
+    let Some(page_doc) = x.chess.pages.first() else {
+        ui.label(tl!("No text on this page."));
+        return action;
+    };
+    if page_doc.blocks.is_empty() {
+        ui.label(tl!("No text on this page."));
+    }
+    for (bi, block) in page_doc.blocks.iter().enumerate() {
+        ui.push_id(bi, |ui| match block {
+            Block::Heading { inlines, source_rect, .. } => {
+                let r = ui.add(
+                    egui::Label::new(egui::RichText::new(plain_text_with(inlines, figurines)).font(theme::semibold(14.0)))
+                        .sense(egui::Sense::click()),
+                );
+                if r.clicked()
+                    && let Some(rect) = rect_of(*source_rect)
+                {
+                    action = Some(TextAction::Show(page, rect));
+                }
+            }
+            Block::Paragraph { inlines, source_rect } => {
+                ui.horizontal_wrapped(|ui| {
+                    ui.spacing_mut().item_spacing.x = 4.0;
+                    for (k, inline) in inlines.iter().enumerate() {
+                        ui.push_id(k, |ui| match inline {
+                            Inline::Move(m) => {
+                                let shown = plain_text_with(std::slice::from_ref(inline), figurines);
+                                let mut tip = status_label(m.status).to_string();
+                                if let Some(fen) = &m.fen {
+                                    tip = format!("{tip}\n{fen}");
+                                }
+                                let r = ui
+                                    .add(
+                                        egui::Label::new(egui::RichText::new(shown).color(status_colour(m.status)).strong())
+                                            .sense(egui::Sense::click()),
+                                    )
+                                    .on_hover_text(tip);
+                                if r.clicked()
+                                    && let Some(rect) = rect_of(m.source_rect)
+                                {
+                                    action = Some(TextAction::Show(page, rect));
+                                }
+                            }
+                            other => {
+                                let r = ui.add(egui::Label::new(other.text()).sense(egui::Sense::click()));
+                                if r.clicked()
+                                    && let Some(rect) = rect_of(other.source_rect().or(*source_rect))
+                                {
+                                    action = Some(TextAction::Show(page, rect));
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+            Block::Diagram(d) => {
+                ui.horizontal(|ui| {
+                    if let Some((_, tex)) = x.boards.iter().find(|(i, _)| *i == bi) {
+                        let r = ui.add(egui::Image::new(tex).fit_to_exact_size(egui::vec2(96.0, 96.0)).sense(egui::Sense::click()));
+                        if r.clicked() {
+                            action = Some(TextAction::Diagram(page, d.number));
+                        }
+                    }
+                    ui.vertical(|ui| {
+                        let title = crate::i18n::fmt(tl!("Diagram {n}"), &[("n", &(d.number + 1).to_string())]);
+                        if ui.link(title).clicked() {
+                            action = Some(TextAction::Diagram(page, d.number));
+                        }
+                        match &d.reading {
+                            Some(r) => {
+                                ui.add(egui::Label::new(egui::RichText::new(&r.fen).monospace().small()).wrap());
+                            }
+                            None => {
+                                ui.label(egui::RichText::new(tl!("Not read")).small().color(t.text_muted));
+                            }
+                        }
+                    });
+                });
+            }
+        });
+        ui.add_space(4.0);
+    }
+    action
+}
+
+/// Small boards for the page's diagrams.
+fn boards(ctx: &egui::Context, chess: &ChessDoc, pieces: &pdfcraft_engine::chess::pdfcraft_chess::draw::PieceSet) -> Vec<(usize, TextureHandle)> {
+    let Some(page) = chess.pages.first() else { return Vec::new() };
+    let style = BoardStyle { border: 0.0, coordinates: false, ..BoardStyle::default() };
+    page.blocks
+        .iter()
+        .enumerate()
+        .filter_map(|(i, b)| {
+            let Block::Diagram(d) = b else { return None };
+            let fen = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(&d.reading.as_ref()?.fen).ok()?;
+            let (w, h, rgba) = pdfcraft_engine::chess::office::diagram_rgba(&fen.placement, pieces, &style, 192).ok()?;
+            let (w, h) = (usize::try_from(w).ok()?, usize::try_from(h).ok()?);
+            (rgba.len() == w.checked_mul(h)?.checked_mul(4)?).then_some(())?;
+            let image = egui::ColorImage::from_rgba_premultiplied([w, h], &rgba);
+            Some((i, ctx.load_texture(format!("chess-text-board-{i}"), image, egui::TextureOptions::LINEAR)))
+        })
+        .collect()
+}
+
+impl PdfCraftApp {
+    /// Read page `page` of the active document as chess text for the Text tab (`ocr`: with chess
+    /// OCR on every page asked, not only where the layer is poor).
+    pub fn read_chess_text(&mut self, page: usize, ocr: bool) {
+        let Some((_, id)) = self.active_ids() else { return };
+        let Some(stamp) = self.session.chess_stamp(id) else { return };
+        // A failed read is kept too, with why, so the tab does not try again every frame.
+        let failed = |why: String| PageText {
+            doc: id,
+            stamp,
+            page,
+            chess: ChessDoc { format: pdfcraft_engine::chess::pdfcraft_chessvision::doc::FORMAT_VERSION, pages: Vec::new(), games: Vec::new() },
+            ocr: false,
+            needs_ocr: None,
+            notes: vec![why],
+            boards: Vec::new(),
+        };
+        if self.session.get(id).is_some_and(|d| d.check_copying().is_err()) {
+            self.chess.text = Some(failed(tl!("This document does not allow copying its content, so its text is not read.").to_string()));
+            return;
+        }
+        let options = OcrOptions { mode: if ocr { OcrMode::All } else { OcrMode::Off }, glyphs: None, general: true };
+        match self.session.chess_document_with(id, &[page], &ChessScanSettings::default(), None, &options) {
+            Ok(read) => {
+                let pieces = crate::chess_editor::piece_set(&mut self.chess.pieces);
+                let boards = self.ctx.as_ref().map(|ctx| boards(ctx, &read.doc, &pieces)).unwrap_or_default();
+                let needs_ocr = read.needs_ocr.first().map(|(_, why)| why.clone());
+                let mut notes: Vec<String> = read.notes.into_iter().map(|(_, n)| n).collect();
+                if ocr && read.ocr_pages.is_empty() && !notes.iter().any(|n| n.contains("chess-glyphs")) {
+                    notes.push(tl!("Chess OCR read nothing on this page.").to_string());
+                }
+                self.chess.text = Some(PageText { doc: id, stamp, page, chess: read.doc, ocr: !read.ocr_pages.is_empty(), needs_ocr, notes, boards });
+            }
+            Err(e) => self.chess.text = Some(failed(e)),
+        }
+    }
+
+    pub(crate) fn chess_text_action(&mut self, action: TextAction) {
+        match action {
+            TextAction::Read(ocr) => {
+                let Some((vi, _)) = self.active_ids() else { return };
+                let Some(page) = self.views.get(vi).map(|v| v.current) else { return };
+                self.read_chess_text(page, ocr);
+            }
+            TextAction::Show(page, rect) => {
+                let Some((vi, _)) = self.active_ids() else { return };
+                if let Some(view) = self.views.get_mut(vi) {
+                    view.go_to_page(page);
+                    view.flash = Some((page, rect, 0.0));
+                }
+            }
+            TextAction::Diagram(page, index) => {
+                // The diagram list must hold this page's scan for the editor to open on it.
+                if self.chess.results.as_ref().is_none_or(|r| r.diagram(page, index).is_none()) {
+                    self.start_chess_scan(false);
+                }
+                self.select_chess_diagram(page, index, true);
+                self.chess.tab = ChessTab::Diagrams;
+            }
+            TextAction::Export(format) => self.export_chess_dialog(format),
+        }
+    }
+
+    /// Chess ▸ Export: ask where (`save_override` in tests), then read the document and write it.
+    pub fn export_chess_dialog(&mut self, format: ChessFormat) {
+        let Some((_, id)) = self.active_ids() else { return };
+        if !self.may_copy(id) {
+            return;
+        }
+        let Some(doc) = self.session.get(id) else { return };
+        let stem = doc.name.trim_end_matches(".pdf").trim_end_matches(".PDF").to_string();
+        let ext = format.extension();
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let write = move |app: &mut Self, path: std::path::PathBuf| app.export_chess_to(id, format, &path);
+            match self.save_override.clone() {
+                Some(p) => write(self, p.into()),
+                None => {
+                    let dialog = rfd::AsyncFileDialog::new()
+                        .set_title(tl!("Export").to_string())
+                        .add_filter(format.name(), &[ext])
+                        .set_file_name(format!("{stem}.{ext}"));
+                    self.ask_one(crate::pickers::Ask::Save(dialog), None, write);
+                }
+            }
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            let mut options = ChessExportOptions::new(&stem);
+            options.pieces = crate::chess_editor::piece_set(&mut self.chess.pieces);
+            match self.session.chess_export(id, format, &options) {
+                Ok(made) => {
+                    if let Err(e) = crate::editing::download(&format!("{stem}.{ext}"), &made.bytes) {
+                        self.notify_error(e);
+                    }
+                }
+                Err(e) => self.notify(e),
+            }
+        }
+    }
+
+    /// Write the chess export of document `id` to `path` (Markdown's images in a folder beside it).
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn export_chess_to(&mut self, id: DocId, format: ChessFormat, path: &std::path::Path) {
+        let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "document".into());
+        let mut options = ChessExportOptions::new(&stem);
+        options.image_dir = format!("{stem}_diagrams");
+        options.pieces = crate::chess_editor::piece_set(&mut self.chess.pieces);
+        let made = match self.session.chess_export(id, format, &options) {
+            Ok(m) => m,
+            Err(e) => return self.notify(e),
+        };
+        if !made.images.is_empty() {
+            let dir = path.with_file_name(&options.image_dir);
+            if let Err(e) = std::fs::create_dir_all(&dir) {
+                return self.notify_fmt("Couldn't write {name}: {e}", &[("name", &dir.display().to_string()), ("e", &e.to_string())]);
+            }
+            for (rel, png) in &made.images {
+                let Some(name) = std::path::Path::new(rel).file_name() else { continue };
+                let target = dir.join(name);
+                if let Err(e) = crate::editing::write_atomically(&target.to_string_lossy(), png) {
+                    return self.notify_fmt("Couldn't write {name}: {e}", &[("name", &target.display().to_string()), ("e", &e.to_string())]);
+                }
+            }
+        }
+        match crate::editing::write_atomically(&path.to_string_lossy(), &made.bytes) {
+            Ok(()) => self.notify_fmt("Exported to {path}", &[("path", &path.display().to_string())]),
+            Err(e) => self.notify_fmt("Couldn't write {name}: {e}", &[("name", &path.display().to_string()), ("e", &e.to_string())]),
+        }
+    }
+}

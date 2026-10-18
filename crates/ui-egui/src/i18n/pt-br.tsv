@@ -2468,6 +2468,22 @@ animation effects	Off	Desativados
 	Couldn't be read: {e}	Não foi possível ler: {e}
 	Not read	Não lido
 	Copy FEN	Copiar FEN
+	Ambiguous move	Lance ambíguo
+	Chess OCR read nothing on this page.	O OCR de xadrez não leu nada nesta página.
+	Export as {f}	Exportar como {f}
+	Illegal move	Lance ilegal
+	Move out of sequence	Lance fora de sequência
+	No text on this page.	Não há texto nesta página.
+	Not reached: an earlier move failed	Não alcançado: um lance anterior falhou
+	Read the page image instead of its text layer (needs the chess-glyphs model).	Ler a imagem da página em vez da camada de texto (precisa do modelo chess-glyphs).
+	Read this page with chess OCR	Ler esta página com OCR de xadrez
+	Read with chess OCR: check it against the page.	Lido com OCR de xadrez: confira com a página.
+	Reading the page…	Lendo a página…
+	Recognised text of page {p}	Texto reconhecido da página {p}
+	This document does not allow copying its content, so its text is not read.	Este documento não permite copiar o conteúdo, por isso o texto não é lido.
+	This page's text layer can't be believed ({e}): read it with chess OCR.	Não dá para confiar na camada de texto desta página ({e}): leia-a com OCR de xadrez.
+	Unchecked: no position to play it from	Não verificado: não há posição de onde jogá-lo
+	Valid move	Lance válido
 	Diagram replaced	Diagrama substituído
 	Lichess link added	Link do lichess adicionado
 	No link was added: {e}	Nenhum link foi adicionado: {e}

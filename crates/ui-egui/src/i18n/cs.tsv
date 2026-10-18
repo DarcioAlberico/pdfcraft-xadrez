@@ -2526,6 +2526,22 @@ animation effects	Off	Vypnuto
 	Couldn't be read: {e}	Nepodařilo se přečíst: {e}
 	Not read	Nepřečteno
 	Copy FEN	Kopírovat FEN
+	Ambiguous move	Nejednoznačný tah
+	Chess OCR read nothing on this page.	Šachové OCR na této stránce nic nepřečetlo.
+	Export as {f}	Exportovat jako {f}
+	Illegal move	Nelegální tah
+	Move out of sequence	Tah mimo pořadí
+	No text on this page.	Na této stránce není text.
+	Not reached: an earlier move failed	Nedosaženo: dřívější tah selhal
+	Read the page image instead of its text layer (needs the chess-glyphs model).	Číst obraz stránky místo textové vrstvy (vyžaduje model chess-glyphs).
+	Read this page with chess OCR	Přečíst tuto stránku šachovým OCR
+	Read with chess OCR: check it against the page.	Přečteno šachovým OCR: ověřte podle stránky.
+	Reading the page…	Čtení stránky…
+	Recognised text of page {p}	Rozpoznaný text stránky {p}
+	This document does not allow copying its content, so its text is not read.	Tento dokument nepovoluje kopírovat obsah, proto se jeho text nečte.
+	This page's text layer can't be believed ({e}): read it with chess OCR.	Textové vrstvě této stránky nelze věřit ({e}): přečtěte ji šachovým OCR.
+	Unchecked: no position to play it from	Neověřeno: chybí pozice, z níž jej zahrát
+	Valid move	Platný tah
 	Diagram replaced	Diagram nahrazen
 	Lichess link added	Odkaz na lichess přidán
 	No link was added: {e}	Žádný odkaz nebyl přidán: {e}
