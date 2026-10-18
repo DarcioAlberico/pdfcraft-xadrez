@@ -26,6 +26,15 @@ use pdfcraft_engine::chess::pdfcraft_chessvision::pieces::{self, PieceSource};
 use pdfcraft_engine::chess::{self, ChessPage, ChessScanSettings, DiagramReplacement, LinkSettings, ModelState, ReadingOrder};
 use serde_json::{Value, json};
 
+/// The files Chess ▸ Export writes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ExportFormat {
+    Html,
+    Epub,
+    Docx,
+    Rtf,
+}
+
 use crate::{Args, Automation, Result, ToolError, comments, failed};
 
 /// Two decimals: enough for points, and stable in test output.
@@ -453,15 +462,25 @@ impl Automation {
 
     /// Chess ▸ Export ▸ HTML: the recognised document as one static HTML file at `out`.
     pub(crate) fn chess_export_html(&mut self, a: &Args) -> Result<Value> {
-        self.chess_export(a, false)
+        self.chess_export(a, ExportFormat::Html)
     }
 
     /// Chess ▸ Export ▸ EPUB: the same document as an EPUB 3 book at `out`.
     pub(crate) fn chess_export_epub(&mut self, a: &Args) -> Result<Value> {
-        self.chess_export(a, true)
+        self.chess_export(a, ExportFormat::Epub)
     }
 
-    fn chess_export(&mut self, a: &Args, as_epub: bool) -> Result<Value> {
+    /// Chess ▸ Export ▸ Word: the same document as a .docx file at `out`, diagrams as images.
+    pub(crate) fn chess_export_docx(&mut self, a: &Args) -> Result<Value> {
+        self.chess_export(a, ExportFormat::Docx)
+    }
+
+    /// Chess ▸ Export ▸ RTF: the same document as an .rtf file at `out`, diagrams as pictures.
+    pub(crate) fn chess_export_rtf(&mut self, a: &Args) -> Result<Value> {
+        self.chess_export(a, ExportFormat::Rtf)
+    }
+
+    fn chess_export(&mut self, a: &Args, format: ExportFormat) -> Result<Value> {
         use pdfcraft_engine::chess::pdfcraft_chessvision::doc::html::{self, DiagramMode, Figurines, HtmlOptions};
         let settings = self.chess_settings(a)?;
         let pages = if a.opt_ints("pages")?.is_some() { self.pages(a, "pages")? } else { Vec::new() };
@@ -490,6 +509,13 @@ impl Automation {
         if link_text.trim().is_empty() || link_text.chars().count() > 80 {
             return Err(Args::wrong("link_text", "1 to 80 characters"));
         }
+        let diagram_px = match a.opt_int("diagram_px")? {
+            None => chess::office::DEFAULT_DIAGRAM_PX,
+            Some(n) => u32::try_from(n)
+                .ok()
+                .filter(|n| (32..=chess::office::MAX_DIAGRAM_PX).contains(n))
+                .ok_or_else(|| Args::wrong("diagram_px", &format!("from 32 to {}", chess::office::MAX_DIAGRAM_PX)))?,
+        };
         let shown = a.str("out")?.to_owned();
         // Resolved before reading, so a path outside the root costs nothing.
         let path = self.resolve(&shown, true)?;
@@ -508,7 +534,9 @@ impl Automation {
             links: a.opt_bool("links")?.unwrap_or(true),
             link_text: &link_text,
         };
-        let bytes = if as_epub {
+        let mut notes: Vec<Value> = read.notes.iter().map(|(p, n)| json!({ "page": p + 1, "note": n })).collect();
+        let mut drawn = if diagrams == DiagramMode::Svg { None } else { Some(0) };
+        let bytes = if format == ExportFormat::Epub {
             let doc = self.doc(a)?;
             let modified = chess::epub::modified_at(self.session.now_secs());
             let meta = chess::epub::EpubMeta {
@@ -518,8 +546,22 @@ impl Automation {
                 modified,
             };
             chess::epub::epub(&read.doc, &options, &meta).map_err(failed)?
-        } else {
+        } else if format == ExportFormat::Html {
             html::write(&read.doc, &options).into_bytes()
+        } else {
+            let office = chess::office::OfficeOptions {
+                pieces: &pieces,
+                style: BoardStyle::default(),
+                figurines,
+                links: options.links,
+                link_text: &link_text,
+                diagram_px,
+            };
+            let mut office_notes = Vec::new();
+            let (pages, count) = chess::office::to_pages(&read.doc, &office, &mut office_notes);
+            notes.extend(office_notes.into_iter().map(|n| json!({ "note": n })));
+            drawn = Some(count);
+            if format == ExportFormat::Docx { chess::office::docx(&pages, &title) } else { chess::office::rtf(&pages).into_bytes() }
         };
         crate::write_atomic(&path, &bytes)?;
         let figures = read.doc.pages.iter().flat_map(|p| &p.blocks).filter_map(|b| if let Block::Diagram(d) = b { Some(d) } else { None });
@@ -530,7 +572,7 @@ impl Automation {
             "pages": read.doc.pages.len(),
             "lang": read.lang.lang.code(),
             "diagrams": all,
-            "diagrams_drawn": if diagrams == DiagramMode::Svg { positioned } else { 0 },
+            "diagrams_drawn": drawn.unwrap_or(positioned),
             "diagrams_unread": all - positioned,
             "games": read.doc.games.len(),
             "pieces": match source {
@@ -538,7 +580,7 @@ impl Automation {
                 PieceSource::Geometric => json!({ "source": "geometric", "family": Value::Null, "error": error.map(|e| e.to_string()) }),
             },
             "needs_ocr": read.needs_ocr.iter().map(|(p, why)| json!({ "page": p + 1, "reason": why })).collect::<Vec<_>>(),
-            "notes": read.notes.iter().map(|(p, n)| json!({ "page": p + 1, "note": n })).collect::<Vec<_>>(),
+            "notes": notes,
         }))
     }
 

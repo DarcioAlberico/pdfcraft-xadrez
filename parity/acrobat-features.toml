@@ -6866,6 +6866,18 @@ tools = ["chess_export_epub"]
 evidence = ["crates/engine/src/chess/tests/epub.rs::the_package_is_well_formed_and_every_reference_resolves", "crates/engine/src/chess/tests/epub.rs::the_archive_starts_with_the_stored_mimetype", "crates/engine/src/chess/tests/epub.rs::a_book_without_headings_lists_its_pages_and_limits_hold", "crates/automation/tests/chess.rs::chess_export_epub_writes_a_book_inside_the_root_only"]
 notes = "An extension, not an Acrobat parity claim (fork decision D3). The chess HTML export cut into one XHTML content document per PDF page (same markup, inline SVG boards, lichess links), a navigation document from the headings (or the pages), the package document (stable identifier from the PDF bytes, dcterms:modified) and the OCF container, with mimetype first and stored. Every XML file is checked well-formed and every manifest, spine and navigation reference resolves in tests. No script, nothing fetched. Missing: validation by epubcheck (not installed here), an embedded font with figurines (none in craft-fonts yet; readers use their own fonts), cover image, the interface's Export menu."
 
+[[feature]]
+id = "export.chess-office"
+title = "Export a chess book as Word or RTF with diagram images"
+area = "I"
+tier = "P2"
+milestone = "none"
+status = "partial"
+commands = []
+tools = ["chess_export_docx", "chess_export_rtf"]
+evidence = ["crates/engine/src/chess/tests/office.rs::the_diagram_image_shows_the_position_square_by_square", "crates/engine/src/chess/tests/office.rs::the_chapter_lays_out_in_order_and_both_files_carry_the_diagram", "crates/export/src/lib.rs::rtf_keeps_images_as_pictures", "crates/automation/tests/chess.rs::chess_export_docx_and_rtf_carry_the_diagram_as_an_image"]
+notes = "An extension, not an Acrobat parity claim (fork decision D3). The recognised document through the Word and RTF writers of Export a PDF: headings, paragraphs with moves (Unicode figurines, letters or as printed), and each diagram as a PNG drawn with the same board and operators as the PDF replacement and rendered by the page renderer, with its FEN and lichess address under it; an unread diagram is said in words. The RTF writer now keeps images as \\pict pictures (it dropped them before), for every RTF export. Missing: real hyperlinks (the address is text; the writers have no link runs yet), a font with figurines (readers use their own), the interface's Export menu."
+
 # ==================================================================================================
 # J. Create and export
 # ==================================================================================================
@@ -7071,8 +7083,8 @@ milestone = "M10"
 status = "shipped"
 commands = ["export.rtf"]
 tools = ["doc_export_office"]
-evidence = ["crates/export/src/lib.rs::rtf_escapes_and_sizes", "crates/export/src/lib.rs::text_colour_survives_every_format", "crates/export/src/lib.rs::word_opens_text_with_control_characters_and_long_pages", "crates/automation/tests/automation.rs::exporting_to_word_html_and_rtf", "crates/ui-egui/tests/compare.rs::export_to_word_html_and_rtf"]
-notes = "Paragraphs with sizes, bold, italic, text colour (colortbl), Unicode; page breaks. Images are left out."
+evidence = ["crates/export/src/lib.rs::rtf_escapes_and_sizes", "crates/export/src/lib.rs::rtf_keeps_images_as_pictures", "crates/export/src/lib.rs::text_colour_survives_every_format", "crates/export/src/lib.rs::word_opens_text_with_control_characters_and_long_pages", "crates/automation/tests/automation.rs::exporting_to_word_html_and_rtf", "crates/ui-egui/tests/compare.rs::export_to_word_html_and_rtf"]
+notes = "Paragraphs with sizes, bold, italic, text colour (colortbl), Unicode; page breaks; images as PNG or JPEG pictures (\\pict with \\pngblip/\\jpegblip) at their size, in reading order."
 
 [[feature]]
 id = "create.export-xlsx"

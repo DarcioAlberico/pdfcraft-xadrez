@@ -128,7 +128,8 @@ fn chess_export_schema() -> Value {
         {
             let mut props = chess_props(true);
             if let Some(o) = props.as_object_mut() {
-                o.insert("out".into(), json!({ "type": "string", "description": "The HTML file to write." }));
+                o.insert("out".into(), json!({ "type": "string", "description": "The file to write." }));
+                o.insert("diagram_px".into(), json!({ "type": "integer", "minimum": 32, "maximum": 2400, "description": "Word and RTF: the diagram images' side in pixels (default 480)." }));
                 o.insert(
                     "title".into(),
                     json!({ "type": "string", "maxLength": 200, "description": "The page title (default: the document's name)." }),
@@ -1268,6 +1269,10 @@ pub fn tools() -> Vec<ToolDef> {
         t("chess_export_html", "Export chess document as HTML", "Chess ▸ Export ▸ HTML: read pages as chess_document does and write one static HTML file to out (no script, nothing fetched): headings, paragraphs with moves (figurines: unicode ♞f3 by default, letters in letters_lang, or as printed), annotation glyphs, and each diagram redrawn as an inline SVG board (diagrams: svg) or its FEN (fen), with a link to the position on lichess under it (links, default true; link_text). Pieces come from PDFCRAFT_CHESS_PIECES or an installed Chess Merida, else plain geometric ones (pieces: geometric forces them). Readable back: each diagram is a figure with data-fen, each move a span with data-san (and data-fen after it), a diagram that was not read is a figure with class unread; anything to review has class review. Returns out, bytes, pages, lang, diagrams (drawn, unread), games, the piece set used, pages needing OCR and notes. The document is not changed.")
             .with(chess_export_schema()),
         t("chess_export_epub", "Export chess document as EPUB", "Chess ▸ Export ▸ EPUB: the chess_export_html document as an EPUB 3 book at out: one XHTML page per PDF page (the same markup and inline SVG boards), a table of contents from the headings (or the pages), the package document with a stable identifier made from the PDF's bytes and the date. No script, nothing fetched, no font embedded (figurines use the reader's fonts). Same options and reply as chess_export_html. The document is not changed.")
+            .with(chess_export_schema()),
+        t("chess_export_docx", "Export chess document as Word", "Chess ▸ Export ▸ Word: the chess_export_html document as a .docx file at out: headings, paragraphs with moves (figurines as chess_export_html), and each diagram as a PNG image (the same board as the PDF replacement, diagram_px pixels a side) with its FEN and, with links, its lichess address under it as text. A diagram that was not read is said in words. Same options and reply as chess_export_html (diagrams does not apply). The document is not changed.")
+            .with(chess_export_schema()),
+        t("chess_export_rtf", "Export chess document as RTF", "Chess ▸ Export ▸ RTF: as chess_export_docx, written as an .rtf file at out (figurines as \\uN? escapes, diagrams as PNG pictures).")
             .with(chess_export_schema()),
         t("chess_status", "Chess model status", "Whether the user's chess models are available (none ship with PdfCraft): the piece model reads drawn and scanned diagrams, the glyph model chess text. Each is loaded, missing or invalid (with the reason). models_dir looks in that folder instead of PDFCRAFT_MODELS and beside the executable. Also says where the piece set for drawing diagrams comes from (PDFCRAFT_CHESS_PIECES, an installed Chess Merida, or plain geometric pieces). Diagrams in chess fonts are read without any model.")
             .ro()

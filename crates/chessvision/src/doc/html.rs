@@ -154,6 +154,24 @@ fn inlines_html(inlines: &[Inline], o: &HtmlOptions<'_>) -> String {
     out
 }
 
+/// Inlines as plain text, spaced as [`super::plain_text`], with moves printed as `figurines`
+/// says: the text the Word and RTF exports set.
+pub fn plain_text_with(inlines: &[Inline], figurines: Figurines) -> String {
+    let mut out = String::new();
+    for inline in inlines {
+        let text = match inline {
+            Inline::Move(m) => move_text(m, figurines),
+            other => other.text(),
+        };
+        let glued = matches!(inline, Inline::Nag { .. }) || text.starts_with([')', ']', ',', '.', ';', ':', '!', '?']);
+        if !out.is_empty() && !glued && !out.ends_with(['(', '[', ' ']) {
+            out.push(' ');
+        }
+        out.push_str(&text);
+    }
+    out
+}
+
 fn diagram_html(d: &DiagramBlock, page: u32, o: &HtmlOptions<'_>) -> String {
     let review = if d.review.is_empty() && d.reading.as_ref().is_some_and(|r| r.accepted) { "" } else { " review" };
     let id = format!("p{}-d{}", u64::from(page) + 1, d.number + 1);
