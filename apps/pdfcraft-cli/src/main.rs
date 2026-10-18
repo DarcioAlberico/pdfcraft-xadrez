@@ -259,7 +259,11 @@ const RENDER_OPTIONS: &[OptionSpec] = &[
     OptionSpec { name: "--out", takes_value: true },
     OptionSpec { name: "--password", takes_value: true },
 ];
-const CHECK_ONE_OPTIONS: &[OptionSpec] = &[OptionSpec { name: "--dpi", takes_value: true }, OptionSpec { name: "--edit", takes_value: false }];
+const CHECK_ONE_OPTIONS: &[OptionSpec] = &[
+    OptionSpec { name: "--dpi", takes_value: true },
+    OptionSpec { name: "--edit", takes_value: false },
+    OptionSpec { name: "--chess", takes_value: false },
+];
 const CHECK_OPTIONS: &[OptionSpec] = &[
     OptionSpec { name: "--timeout", takes_value: true },
     OptionSpec { name: "--dpi", takes_value: true },
@@ -651,6 +655,10 @@ fn check_one(args: &[String]) -> Result<(), CliError> {
     if args.iter().any(|a| a == "--edit") {
         edit_round_trip(&std::fs::read(path).map_err(|e| e.to_string())?);
     }
+    // `--chess` (fuzzing, blueprint S18): the chess paths end to end, also with no safety net.
+    if args.iter().any(|a| a == "--chess") {
+        chess_round_trip(&std::fs::read(path).map_err(|e| e.to_string())?);
+    }
     let line = serde_json::json!({ "file": path, "status": status, "pages": pages, "failed_pages": failed, "warnings": warnings,
         "ms": start.elapsed().as_millis() as u64, "detail": detail.chars().take(400).collect::<String>() });
     stdout_line(format_args!("{line}"))?;
@@ -681,6 +689,53 @@ fn edit_round_trip(bytes: &[u8]) {
             let _ = again.root().map(|r| again.get(r));
         }
     }
+}
+
+/// Scan for diagrams, read the pages as a chess document, write every chess export, then link
+/// and replace the diagrams found and save. No models are loaded (`models_dir` is a folder that
+/// holds none), so only the paths every user runs are exercised. Errors are fine; panics, hangs
+/// and aborts are bugs. (A page's scan has its own last-resort guard; everything after it has
+/// none.)
+fn chess_round_trip(bytes: &[u8]) {
+    use pdfcraft_engine::Session;
+    use pdfcraft_engine::chess::ChessScanSettings;
+    use pdfcraft_engine::chess::document::{OcrMode, OcrOptions};
+    use pdfcraft_engine::chess::export::{ChessExportOptions, ChessFormat};
+    let mut s = Session::new();
+    let Ok(id) = s.open("fuzz.pdf", None, Arc::new(bytes.to_vec()), None) else { return };
+    let pages: Vec<usize> = (0..s.get(id).map_or(0, |d| d.info.pages.len()).min(8)).collect();
+    let none = std::env::temp_dir().join("pdfcraft-fuzz-no-models");
+    let _ = std::fs::create_dir_all(&none);
+    let scan = ChessScanSettings { dpi: 72.0, max_read_dpi: 72.0, models_dir: Some(none), ..ChessScanSettings::default() };
+    let _ = s.chess_document_with(id, &pages, &scan, None, &OcrOptions { mode: OcrMode::Off, glyphs: None, general: false });
+    let mut options = ChessExportOptions::new("fuzz");
+    options.pages = pages.clone();
+    options.scan = scan.clone();
+    options.ocr = OcrMode::Off;
+    options.pieces = Arc::new(pdfcraft_engine::chess::pdfcraft_chess::draw::PieceSet::geometric());
+    options.diagram_px = 64;
+    for format in ChessFormat::ALL {
+        let _ = s.chess_export(id, format, &options);
+    }
+    if let Ok(plan) = s.chess_link_plan(id, &pages, &scan, &pdfcraft_engine::chess::LinkSettings::default())
+        && let Some(edit) = plan.edit
+    {
+        let _ = s.apply(id, edit);
+    }
+    let first = s.chess_scan(id, &pages, &scan, false).ok().and_then(|ps| ps.into_iter().find(|p| !p.diagrams.is_empty()));
+    if let (Some(page), Some(doc)) = (first, s.get(id)) {
+        let replacement = pdfcraft_engine::chess::DiagramReplacement {
+            page: page.page,
+            index: 0,
+            generation: doc.edit_generation(),
+            placement: pdfcraft_engine::chess::pdfcraft_chess::placement::Placement::standard(),
+            style: Default::default(),
+            pieces: options.pieces.clone(),
+            scan: scan.clone(),
+        };
+        let _ = s.apply(id, pdfcraft_engine::Edit::ReplaceDiagram(Box::new(replacement)));
+    }
+    let _ = s.save_bytes(id);
 }
 
 fn short(s: &str) -> String {
