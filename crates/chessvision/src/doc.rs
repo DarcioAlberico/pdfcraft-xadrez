@@ -379,6 +379,10 @@ pub struct DiagramBlock {
     /// The lichess analysis link: only for a position legal with its side to move and not
     /// repaired ([`ReadPosition::lichess_url`]).
     pub lichess_url: Option<String>,
+    /// The puzzle number its caption gives (`№185. Teichmann – Lasker`, above or below it): a
+    /// solution that starts with that number, however far on, is played from this diagram.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub puzzle: Option<u32>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub review: Vec<ReviewFlag>,
 }
@@ -414,6 +418,7 @@ impl DiagramBlock {
             dpi: finite(reading.dpi),
             reading: None,
             lichess_url: None,
+            puzzle: None,
             review: Vec::new(),
         };
         match &reading.outcome {
