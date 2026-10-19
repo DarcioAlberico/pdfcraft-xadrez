@@ -94,6 +94,10 @@ That PDF is a scan under an invisible text layer in Courier New, left by an earl
 
 Both are scans with no text layer, read with chess OCR, set in two columns with game scores as tables (`2 f4 ef`). Two things kept the columns apart from being read in order. The OCR's glyph boxes are their ink (an `a` half an `h`), so against those heights every word gap looked like a gutter; the page text now gives each recognised glyph its line's height, as a text layer does. And a column whose score table is cut into narrow pieces fell below the average width a column needs; five wide lines now make it a column too. On pages 40–49 of Gallagher, valid moves went from 1 to 31 of 865; on pages 60–69 of Flores Rios, from 55 to 87 of 786 (Aagaard 87 → 85, the text-layer books unchanged). Both books draw their dark squares hatched, which the piece model misreads: their diagrams start no game until the model is trained on such boards.
 
+### A puzzle book: Karpov, *Chess Combinations – World Champions 1*
+
+The book prints six numbered diagrams a page (`№185. Teichmann – Em.Lasker` above each, which the text layer extracts as `N!!185.`) and the solutions 230 pages on (`№185. … 27 ... ♕e2+?`), on pages whose old OCR layer the chess OCR rereads (it reads `№` as `N9`). A caption above or below a diagram, in its column, that starts with a puzzle number gives the diagram that number (a caption with `№` wins over a bare `185.`, a caption goes to its nearest diagram, and a bare number needs a name after it). A paragraph of solutions that names a puzzle seen earlier closes the open game and plays its moves from that diagram; the game is tagged `PdfPuzzle`. On puzzle pages 40–41 and solution pages 275–276, valid moves went from 0 to 139 of 483, all twelve numbers read right; the other books unchanged.
+
 ## Limits
 
 - **Moves and text**
