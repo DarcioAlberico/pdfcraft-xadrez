@@ -84,15 +84,15 @@ All figures below are on the user's own models. Each has its command and the mac
 |---|---|---|
 | Find the diagrams | 0.31 s/page | 19 diagrams |
 | Find and read them | 0.53 s/page | 19 of 19 accepted |
-| The recognised document (text layer) | 0.86 s/page | 420 moves, 12 games, 61 valid (7 before column order) |
+| The recognised document (text layer) | 0.86 s/page | 459 moves, 18 games, 381 valid (7 before column order, 61 before subset figurines, 324 before games across diagrams, 369 before bracketed replies) |
 | The recognised document with chess OCR | 1.8 s/page | |
 
-That PDF's text layer is an old OCR layer (words like `Taf7asch` for Tarrasch), and its pages are set in two columns. Lines are now cut at the gutter and read column by column, and a diagram's printed coordinates are left out: valid moves went from 7 to 61. Most of the rest are "not reached": the text often goes on with a game whose first moves are on an earlier page ("5 Kg6" under a diagram of the starting position), and a line stops at its first move that cannot be played.
+That PDF's pages are set in two columns, and its figurines come from a subset font that renumbers its glyphs. Lines are cut at the gutter and read column by column, and a diagram's printed coordinates are left out (valid moves 7 → 61). A figurine is read from the text layer when its code names no piece, so the page is no longer judged poor and handed to OCR, whose words (`Taf7asch` for Tarrasch) replaced a clean layer (61 → 324). Games are found across diagrams: a text after two diagrams printed side by side starts from the one its first move is legal in, a diagram of a game's own position does not end it, and after an alternative written as prose a move is tried on the main line (324 → 369). Brackets after a move that hold the replies to it (`1.Kb1 (1...b3 2.Kb2; 1...a3 …)`) are played after it (369 → 381; with page 49, which holds page 50's diagram, 402 of 478). Most of the rest are "not reached" after a move that cannot be played, or belong to a diagram on a page that was not read.
 
 ## Limits
 
 - **Moves and text**
-  - A game that goes on from an earlier page, or past a move that cannot be played, is not followed: its later moves are "not reached" (see above).
+  - A line stops at a move that cannot be played (a misprint, or a misread diagram): its later moves are "not reached" until a numbered move finds its place again. A game whose diagram is on a page that was not read has no position.
   - Three or more columns are read as two at most.
   - Umlauts in prose come through only where the glyph reader has them, because ocrs reads ASCII only.
 - **Links:** the lichess address is plain text in Word and RTF; it is a working link in PDF, HTML, EPUB and Markdown.

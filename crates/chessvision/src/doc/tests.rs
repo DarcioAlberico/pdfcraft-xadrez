@@ -323,6 +323,88 @@ fn a_game_runs_on_across_pages_and_a_new_one_starts_at_one() {
     assert_eq!(r(2), Some(NodeRef { game: 1, node: 0 }));
 }
 
+/// Two diagrams, then both texts: each text starts from the diagram its first move is legal in,
+/// not from the last one read.
+#[test]
+fn texts_after_two_diagrams_find_their_own() {
+    let rook = "8/8/4k3/8/8/4K3/r7/7R w - - 0 1";
+    let text = page_text(vec![line(380.0, "3.Qh5 Nf6 4.Qxf7#"), line(410.0, "1.Rh6+ Kd5 2.Rh5+")]);
+    let diagrams = [reading(0, 60.0, SCHOLAR, true, false), reading(1, 220.0, rook, true, false)];
+    let doc = build_page(&input(0, &text, &diagrams, &[], &[]));
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    assert_eq!(doc.games.len(), 2);
+    assert_eq!(doc.games[0].origin, GameOrigin::Diagram { page: 0, diagram: 0, accepted: true });
+    assert_eq!(doc.games[1].origin, GameOrigin::Diagram { page: 0, diagram: 1, accepted: true });
+    for game in &doc.games {
+        assert!(game.flags.iter().any(|f| f.flag == ReviewFlag::DiagramMatchedByMove));
+    }
+    // A `1.` that would be another first move of the open game, and fits a diagram with no text
+    // yet, starts that diagram's game.
+    let rook = "8/8/4k3/8/8/4K3/r5P1/7R w - - 0 1";
+    let pawn = "8/8/8/3k4/8/8/6P1/K7 w - - 0 1";
+    let text = page_text(vec![line(380.0, "1.Rh6+ Kd5 2.Rh5+"), line(410.0, "1.g3 Ke4")]);
+    let two = [reading(0, 60.0, rook, true, false), reading(1, 220.0, pawn, true, false)];
+    let doc = build_page(&input(0, &text, &two, &[], &[]));
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    assert_eq!(doc.games.len(), 2);
+    assert_eq!(doc.games[1].origin, GameOrigin::Diagram { page: 0, diagram: 1, accepted: true });
+    // A text that fits the diagram just before it needs no match.
+    let doc = build_page(&input(0, &page_text(vec![line(380.0, "1.Rh6+ Kd5")]), &diagrams, &[], &[]));
+    assert_eq!(doc.games[0].origin, GameOrigin::Diagram { page: 0, diagram: 1, accepted: true });
+    assert!(doc.games[0].flags.is_empty());
+}
+
+/// A game goes on past a diagram of the position it reached, the book reprinting it on the next
+/// page; and past a diagram its next move cannot start from, flagged.
+#[test]
+fn a_game_goes_on_past_a_diagram_of_its_own_position() {
+    let after = "rnbqkbnr/pppp1ppp/8/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 0 1";
+    let p0 = page_text(vec![line(700.0, "1.e4 e5 2.Nf3")]);
+    let p1 = page_text(vec![line(230.0, "Black to play. 2...Nc6 3.Bb5")]);
+    for (fen, assumed, flagged) in [(after, true, false), (SCHOLAR, false, true)] {
+        let mut b = DocBuilder::new();
+        b.add_page(&input(0, &p0, &[], &[], &[]));
+        b.add_page(&input(1, &p1, &[reading(0, 60.0, fen, true, assumed)], &[], &[]));
+        let doc = b.finish();
+        assert_eq!(doc.games.len(), 1, "{fen}");
+        assert_eq!(doc.games[0].score.mainline().len(), 5);
+        assert!(moves(&doc.pages[1]).iter().all(|(_, s)| *s == MoveStatus::Valid));
+        assert_eq!(doc.games[0].flags.iter().any(|f| f.flag == ReviewFlag::ContinuedPastDiagram { page: 1, diagram: 0 }), flagged);
+        assert!(!pgn::write_game(&doc.games[0].score).contains("Black to play"), "the caption goes to neither game");
+    }
+}
+
+/// After an alternative written as prose, the text goes back to the main line: a move the
+/// alternative cannot play is tried there.
+#[test]
+fn the_main_line_resumes_after_a_prose_alternative() {
+    let text = page_text(vec![line(230.0, "1.e4 e5 2.Nf3 Nc6 . Instead 2.Bc4 Nf6 is calmer. 3.Nxe5 Nxe5")]);
+    let doc = build_page(&input(0, &text, &[], &[], &[]));
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    let score = &doc.games[0].score;
+    let main: Vec<&str> = score.mainline().iter().map(|&n| score.nodes[n].san.as_str()).collect();
+    assert_eq!(main, ["e4", "e5", "Nf3", "Nc6", "Nxe5", "Nxe5"]);
+}
+
+/// Brackets after a move holding the replies to it: they are played after it, and the main
+/// line's own reply still goes first.
+#[test]
+fn brackets_can_hold_the_replies_to_a_move() {
+    let text = page_text(vec![line(230.0, "1.e4 ( 1...c5 2.Nf3 ; 1...e6 2.d4 ) 1...e5 2.Nf3")]);
+    let doc = build_page(&input(0, &text, &[], &[], &[]));
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    let score = &doc.games[0].score;
+    let main: Vec<&str> = score.mainline().iter().map(|&n| score.nodes[n].san.as_str()).collect();
+    assert_eq!(main, ["e4", "e5", "Nf3"]);
+    let pgn = pgn::write_game(score);
+    assert!(pgn.contains("1. e4 e5 (1... c5 2. Nf3") && pgn.contains("(1... e6 2. d4)"), "{pgn}");
+    // A bracket whose first move is an alternative stays one.
+    let text = page_text(vec![line(230.0, "1.e4 e5 2.Nf3 ( 2.Bc4 Nf6 ) Nc6")]);
+    let doc = build_page(&input(0, &text, &[], &[], &[]));
+    let pgn = pgn::write_game(&doc.games[0].score);
+    assert!(pgn.contains("2. Nf3 (2. Bc4 Nf6) 2... Nc6"), "{pgn}");
+}
+
 #[test]
 fn node_references_follow_the_canonical_order() {
     // The variation is read before the main move it is an alternative to is written: nodes are
