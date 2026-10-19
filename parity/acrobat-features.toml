@@ -6855,6 +6855,18 @@ evidence = ["crates/ui-egui/tests/chess.rs::the_text_tab_shows_the_page_read_as_
 notes = "An extension, not an Acrobat parity claim (fork decision D3). The Chess diagrams panel's Text tab shows the page displayed beside it read as a chess document: headings, paragraphs with moves coloured by what replaying them found (valid, illegal or ambiguous, out of sequence or not reached, unchecked), annotation glyphs and the diagrams as small boards. It follows the page (its text layer); chess OCR reads it on request. Clicking a move or a paragraph outlines it on the page; a diagram opens in the editor. Figurines show when the interface fonts have them, else moves as printed. Export… writes the whole document in the six chess formats. Missing: a full-width or tabbed layout beside the panel, editing the recognised text and writing it back as a text layer (S13d). Reading a page and exporting run on a worker thread, on a session of their own opened from the working bytes; a result of a state the document has left is dropped. They cannot be cancelled."
 
 [[feature]]
+id = "view.chess-analysis-board"
+title = "Play through a chess diagram's position on an analysis board"
+area = "I"
+tier = "P2"
+milestone = "none"
+status = "partial"
+commands = []
+tools = []
+evidence = ["crates/chess/src/game.rs::castling_is_the_kings_two_file_step", "crates/chess/src/game.rs::a_move_at_an_earlier_ply_replaces_the_rest_unless_it_is_the_same", "crates/chess/src/game.rs::pgn_round_trips_and_skips_what_is_not_the_main_line", "crates/ui-egui/src/chess_board_ui.rs::an_illegal_diagram_is_shown_but_not_played", "crates/ui-egui/tests/chess.rs::double_clicking_a_diagram_puts_it_on_the_board_to_play", "crates/ui-egui/tests/chess.rs::open_on_the_board_from_the_panel"]
+notes = "An extension, not an Acrobat parity claim (fork decision D3). The Chess board panel is a docking tab beside the Inspector (and a side panel in Read mode). A diagram goes onto it by a double-click on the page or Open on the board in the Chess diagrams panel or its editor (the position as edited). Moves are played by click or drag with legal targets, the last move and check marked; castling is the king's two-file step; promotion asks for the piece. The line is walked by buttons or the arrow, Home and End keys; a move at an earlier ply replaces the rest. FEN and PGN fields follow the board and load back (PGN main line only, stopping at the first illegal move). Rules are pdfcraft_chess::game (L0, cozy-chess). Illegal diagrams are shown framed and cannot be played. Missing: variations (the board keeps one line), comments and NAGs in the PGN it writes, editing PGN tags, an engine evaluation, a piece following the pointer while dragging, and a headless automation tool (the game model is L0 and tested; the board is interface only)."
+
+[[feature]]
 id = "edit.chess-lichess-links"
 title = "Link chess diagrams to their position on lichess"
 area = "I"

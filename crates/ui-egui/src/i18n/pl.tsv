@@ -2491,3 +2491,34 @@ animation effects	Off	Wyłączone
 	Diagrams are already being scanned	Diagramy są już wyszukiwane
 	Diagrams found: {n}	Znalezione diagramy: {n}
 	FEN copied	Skopiowano FEN
+# Chess ▸ Board: the analysis board panel.
+	Black to move	Ruch czarnych
+	Black to move, in check	Ruch czarnych, szach
+	Checkmate: Black wins	Mat: wygrywają czarne
+	Checkmate: White wins	Mat: wygrywają białe
+	Chess board	Szachownica
+	Copy PGN	Kopiuj PGN
+	Delete the moves after this one	Usuń ruchy po tym
+	Draw by the fifty-move rule	Remis z zasady 50 ruchów
+	End (End)	Koniec (End)
+	Load PGN	Wczytaj PGN
+	Next move (Right arrow)	Następny ruch (strzałka w prawo)
+	Not a legal position: correct it in the diagram editor to play moves on it.	Pozycja nielegalna: popraw ją w edytorze diagramu, aby wykonywać w niej ruchy.
+	Open on the board	Otwórz na szachownicy
+	PGN copied	Skopiowano PGN
+	Play a move: click a piece, then where it goes, or drag it there.	Wykonaj ruch: kliknij bierkę, a potem pole docelowe, albo przeciągnij ją tam.
+	Play the main line of the PGN above on the board.	Odegraj na szachownicy główny wariant PGN powyżej.
+	Previous move (Left arrow)	Poprzedni ruch (strzałka w lewo)
+	Promote to:	Promuj na:
+	Reading stopped at {move}: it is not a legal move there.	Odczyt zatrzymał się na {move}: to nie jest tam legalny ruch.
+	Show the analysis board. Double-click a diagram on the page to load it there.	Pokaż szachownicę analizy. Kliknij dwukrotnie diagram na stronie, aby go tam wczytać.
+	Show this diagram on the page	Pokaż ten diagram na stronie
+	Stalemate	Pat
+	Standard start position	Standardowa pozycja początkowa
+	Start (Home)	Początek (Home)
+	That side can't be to move: the other king is in check.	Ta strona nie może mieć ruchu: drugi król jest szachowany.
+	The FEN couldn't be read: {e}	Nie można odczytać FEN: {e}
+	The PGN couldn't be read: {e}	Nie można odczytać PGN: {e}
+	This diagram hasn't been read: scan its page first, or set its position in the editor.	Ten diagram nie został odczytany: najpierw zeskanuj jego stronę lub ustaw pozycję w edytorze.
+	White to move	Ruch białych
+	White to move, in check	Ruch białych, szach

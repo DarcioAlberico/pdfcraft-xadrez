@@ -2513,3 +2513,34 @@ animation effects	Off	オフ
 	Diagrams are already being scanned	局面図はすでに検索中です
 	Diagrams found: {n}	見つかった局面図: {n}
 	FEN copied	FEN をコピーしました
+# Chess ▸ Board: the analysis board panel.
+	Black to move	黒番
+	Black to move, in check	黒番、チェックされています
+	Checkmate: Black wins	チェックメイト：黒の勝ち
+	Checkmate: White wins	チェックメイト：白の勝ち
+	Chess board	チェス盤
+	Copy PGN	PGN をコピー
+	Delete the moves after this one	この手より後の手を削除
+	Draw by the fifty-move rule	50 手ルールによる引き分け
+	End (End)	最後 (End)
+	Load PGN	PGN を読み込む
+	Next move (Right arrow)	次の手 (右矢印)
+	Not a legal position: correct it in the diagram editor to play moves on it.	合法な局面ではありません：手を指すには図面エディターで修正してください。
+	Open on the board	盤で開く
+	PGN copied	PGN をコピーしました
+	Play a move: click a piece, then where it goes, or drag it there.	手を指す：駒をクリックしてから行き先をクリックするか、駒をそこへドラッグします。
+	Play the main line of the PGN above on the board.	上の PGN の本線を盤上で再生します。
+	Previous move (Left arrow)	前の手 (左矢印)
+	Promote to:	昇格先:
+	Reading stopped at {move}: it is not a legal move there.	{move} で読み込みを中止しました：その局面では合法手ではありません。
+	Show the analysis board. Double-click a diagram on the page to load it there.	解析用の盤を表示します。ページ上の図面をダブルクリックすると盤に読み込まれます。
+	Show this diagram on the page	この図面をページ上で表示
+	Stalemate	ステイルメイト
+	Standard start position	標準の初期配置
+	Start (Home)	最初 (Home)
+	That side can't be to move: the other king is in check.	その手番にはできません：相手のキングがチェックされています。
+	The FEN couldn't be read: {e}	FEN を読み取れませんでした: {e}
+	The PGN couldn't be read: {e}	PGN を読み取れませんでした: {e}
+	This diagram hasn't been read: scan its page first, or set its position in the editor.	この図面はまだ読み取られていません：先にそのページをスキャンするか、エディターで局面を設定してください。
+	White to move	白番
+	White to move, in check	白番、チェックされています

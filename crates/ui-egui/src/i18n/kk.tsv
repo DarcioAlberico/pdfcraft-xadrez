@@ -2509,3 +2509,34 @@ animation effects	Off	Өшірулі
 	Diagrams are already being scanned	Диаграммалар қазір ізделуде
 	Diagrams found: {n}	Табылған диаграммалар: {n}
 	FEN copied	FEN көшірілді
+# Chess ▸ Board: the analysis board panel.
+	Black to move	Қаралардың жүрісі
+	Black to move, in check	Қаралардың жүрісі, шах
+	Checkmate: Black wins	Мат: қаралар жеңді
+	Checkmate: White wins	Мат: ақтар жеңді
+	Chess board	Шахмат тақтасы
+	Copy PGN	PGN көшіру
+	Delete the moves after this one	Осыдан кейінгі жүрістерді жою
+	Draw by the fifty-move rule	50 жүріс ережесі бойынша тең ойын
+	End (End)	Соңы (End)
+	Load PGN	PGN жүктеу
+	Next move (Right arrow)	Келесі жүріс (оң жақ көрсеткі)
+	Not a legal position: correct it in the diagram editor to play moves on it.	Заңсыз позиция: онда жүріс жасау үшін оны диаграмма редакторында түзетіңіз.
+	Open on the board	Тақтада ашу
+	PGN copied	PGN көшірілді
+	Play a move: click a piece, then where it goes, or drag it there.	Жүріс жасаңыз: фигураны, содан кейін оның баратын шаршысын шертіңіз немесе оны сонда сүйреңіз.
+	Play the main line of the PGN above on the board.	Жоғарыдағы PGN-нің негізгі нұсқасын тақтада ойнау.
+	Previous move (Left arrow)	Алдыңғы жүріс (сол жақ көрсеткі)
+	Promote to:	Айналдыру:
+	Reading stopped at {move}: it is not a legal move there.	Оқу {move} жүрісінде тоқтады: ол жерде бұл заңды жүріс емес.
+	Show the analysis board. Double-click a diagram on the page to load it there.	Талдау тақтасын көрсету. Диаграмманы сонда жүктеу үшін беттегі диаграмманы екі рет шертіңіз.
+	Show this diagram on the page	Бұл диаграмманы бетте көрсету
+	Stalemate	Пат
+	Standard start position	Стандартты бастапқы позиция
+	Start (Home)	Басы (Home)
+	That side can't be to move: the other king is in check.	Бұл жақтың жүрісі бола алмайды: екінші патшаға шах.
+	The FEN couldn't be read: {e}	FEN оқылмады: {e}
+	The PGN couldn't be read: {e}	PGN оқылмады: {e}
+	This diagram hasn't been read: scan its page first, or set its position in the editor.	Бұл диаграмма оқылмаған: алдымен оның бетін сканерлеңіз немесе позицияны редакторда орнатыңыз.
+	White to move	Ақтардың жүрісі
+	White to move, in check	Ақтардың жүрісі, шах

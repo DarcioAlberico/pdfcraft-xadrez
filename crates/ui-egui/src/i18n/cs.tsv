@@ -2585,3 +2585,34 @@ animation effects	Off	Vypnuto
 	Diagrams are already being scanned	Diagramy se už hledají
 	Diagrams found: {n}	Nalezené diagramy: {n}
 	FEN copied	FEN zkopírován
+# Chess ▸ Board: the analysis board panel.
+	Black to move	Na tahu je černý
+	Black to move, in check	Na tahu je černý, v šachu
+	Checkmate: Black wins	Mat: vyhrává černý
+	Checkmate: White wins	Mat: vyhrává bílý
+	Chess board	Šachovnice
+	Copy PGN	Kopírovat PGN
+	Delete the moves after this one	Smazat tahy po tomto
+	Draw by the fifty-move rule	Remíza podle pravidla 50 tahů
+	End (End)	Konec (End)
+	Load PGN	Načíst PGN
+	Next move (Right arrow)	Další tah (šipka vpravo)
+	Not a legal position: correct it in the diagram editor to play moves on it.	Nelegální pozice: opravte ji v editoru diagramu, abyste v ní mohli táhnout.
+	Open on the board	Otevřít na šachovnici
+	PGN copied	PGN zkopírováno
+	Play a move: click a piece, then where it goes, or drag it there.	Zahrajte tah: klikněte na figuru a pak na cílové pole, nebo ji tam přetáhněte.
+	Play the main line of the PGN above on the board.	Přehrát na šachovnici hlavní variantu PGN výše.
+	Previous move (Left arrow)	Předchozí tah (šipka vlevo)
+	Promote to:	Proměnit na:
+	Reading stopped at {move}: it is not a legal move there.	Čtení se zastavilo u {move}: tam to není legální tah.
+	Show the analysis board. Double-click a diagram on the page to load it there.	Zobrazit analytickou šachovnici. Dvojklikem na diagram na stránce ho do ní načtete.
+	Show this diagram on the page	Zobrazit tento diagram na stránce
+	Stalemate	Pat
+	Standard start position	Výchozí postavení
+	Start (Home)	Začátek (Home)
+	That side can't be to move: the other king is in check.	Tato strana nemůže být na tahu: druhý král je v šachu.
+	The FEN couldn't be read: {e}	FEN nelze přečíst: {e}
+	The PGN couldn't be read: {e}	PGN nelze přečíst: {e}
+	This diagram hasn't been read: scan its page first, or set its position in the editor.	Tento diagram nebyl přečten: nejprve naskenujte jeho stránku nebo zadejte pozici v editoru.
+	White to move	Na tahu je bílý
+	White to move, in check	Na tahu je bílý, v šachu

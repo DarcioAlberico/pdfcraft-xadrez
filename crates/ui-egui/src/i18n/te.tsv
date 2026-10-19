@@ -2424,3 +2424,34 @@ animation effects	Off	ఆఫ్
 	Diagrams are already being scanned	రేఖాచిత్రాల కోసం ఇప్పటికే వెతుకుతోంది
 	Diagrams found: {n}	కనుగొన్న రేఖాచిత్రాలు: {n}
 	FEN copied	FEN కాపీ అయింది
+# Chess ▸ Board: the analysis board panel.
+	Black to move	నలుపు ఆడాలి
+	Black to move, in check	నలుపు ఆడాలి, చెక్‌లో ఉంది
+	Checkmate: Black wins	చెక్‌మేట్: నలుపు గెలిచింది
+	Checkmate: White wins	చెక్‌మేట్: తెలుపు గెలిచింది
+	Chess board	చదరంగం బోర్డు
+	Copy PGN	PGN కాపీ చేయి
+	Delete the moves after this one	దీని తర్వాతి ఎత్తులను తొలగించు
+	Draw by the fifty-move rule	50 ఎత్తుల నియమం ప్రకారం డ్రా
+	End (End)	చివర (End)
+	Load PGN	PGN లోడ్ చేయి
+	Next move (Right arrow)	తదుపరి ఎత్తు (కుడి బాణం)
+	Not a legal position: correct it in the diagram editor to play moves on it.	చెల్లని స్థితి: దానిపై ఎత్తులు వేయడానికి డయాగ్రామ్ ఎడిటర్‌లో సరిచేయండి.
+	Open on the board	బోర్డుపై తెరువు
+	PGN copied	PGN కాపీ అయింది
+	Play a move: click a piece, then where it goes, or drag it there.	ఒక ఎత్తు వేయండి: పావును క్లిక్ చేసి, అది వెళ్లే గడిని క్లిక్ చేయండి, లేదా దాన్ని అక్కడికి లాగండి.
+	Play the main line of the PGN above on the board.	పై PGN యొక్క ప్రధాన వరుసను బోర్డుపై ఆడు.
+	Previous move (Left arrow)	మునుపటి ఎత్తు (ఎడమ బాణం)
+	Promote to:	పదోన్నతి:
+	Reading stopped at {move}: it is not a legal move there.	{move} వద్ద చదవడం ఆగింది: అక్కడ అది చెల్లే ఎత్తు కాదు.
+	Show the analysis board. Double-click a diagram on the page to load it there.	విశ్లేషణ బోర్డును చూపు. పేజీలోని డయాగ్రామ్‌ను అక్కడ లోడ్ చేయడానికి దానిపై డబుల్-క్లిక్ చేయండి.
+	Show this diagram on the page	ఈ డయాగ్రామ్‌ను పేజీలో చూపు
+	Stalemate	స్టేల్‌మేట్
+	Standard start position	ప్రామాణిక ప్రారంభ స్థితి
+	Start (Home)	మొదలు (Home)
+	That side can't be to move: the other king is in check.	ఆ పక్షం ఆడలేదు: మరో రాజు చెక్‌లో ఉన్నాడు.
+	The FEN couldn't be read: {e}	FEN చదవలేకపోయాం: {e}
+	The PGN couldn't be read: {e}	PGN చదవలేకపోయాం: {e}
+	This diagram hasn't been read: scan its page first, or set its position in the editor.	ఈ డయాగ్రామ్ చదవబడలేదు: ముందు దాని పేజీని స్కాన్ చేయండి, లేదా ఎడిటర్‌లో స్థితిని అమర్చండి.
+	White to move	తెలుపు ఆడాలి
+	White to move, in check	తెలుపు ఆడాలి, చెక్‌లో ఉంది

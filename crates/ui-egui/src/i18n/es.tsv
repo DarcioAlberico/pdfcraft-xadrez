@@ -2653,3 +2653,34 @@ animation effects	Off	Desactivados
 	Diagrams are already being scanned	Ya se están buscando diagramas
 	Diagrams found: {n}	Diagramas encontrados: {n}
 	FEN copied	FEN copiado
+# Chess ▸ Board: the analysis board panel.
+	Black to move	Juegan las negras
+	Black to move, in check	Juegan las negras, en jaque
+	Checkmate: Black wins	Jaque mate: ganan las negras
+	Checkmate: White wins	Jaque mate: ganan las blancas
+	Chess board	Tablero
+	Copy PGN	Copiar PGN
+	Delete the moves after this one	Borrar las jugadas posteriores a esta
+	Draw by the fifty-move rule	Tablas por la regla de las 50 jugadas
+	End (End)	Final (Fin)
+	Load PGN	Cargar PGN
+	Next move (Right arrow)	Jugada siguiente (flecha derecha)
+	Not a legal position: correct it in the diagram editor to play moves on it.	Posición ilegal: corríjala en el editor de diagramas para jugar en ella.
+	Open on the board	Abrir en el tablero
+	PGN copied	PGN copiado
+	Play a move: click a piece, then where it goes, or drag it there.	Haga una jugada: pulse una pieza y luego su destino, o arrástrela allí.
+	Play the main line of the PGN above on the board.	Jugar en el tablero la línea principal del PGN de arriba.
+	Previous move (Left arrow)	Jugada anterior (flecha izquierda)
+	Promote to:	Coronar en:
+	Reading stopped at {move}: it is not a legal move there.	La lectura se detuvo en {move}: no es una jugada legal ahí.
+	Show the analysis board. Double-click a diagram on the page to load it there.	Mostrar el tablero de análisis. Haga doble clic en un diagrama de la página para cargarlo en él.
+	Show this diagram on the page	Mostrar este diagrama en la página
+	Stalemate	Ahogado
+	Standard start position	Posición inicial estándar
+	Start (Home)	Inicio (Inicio)
+	That side can't be to move: the other king is in check.	Ese bando no puede tener el turno: el otro rey está en jaque.
+	The FEN couldn't be read: {e}	No se pudo leer la FEN: {e}
+	The PGN couldn't be read: {e}	No se pudo leer el PGN: {e}
+	This diagram hasn't been read: scan its page first, or set its position in the editor.	Este diagrama no se ha leído: escanee primero su página o monte la posición en el editor.
+	White to move	Juegan las blancas
+	White to move, in check	Juegan las blancas, en jaque

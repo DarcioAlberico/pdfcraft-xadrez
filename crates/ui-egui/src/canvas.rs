@@ -3666,7 +3666,15 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
         None => {}
     }
     // `select_chess_diagram` would borrow all of `app` while `view` is held: the next poll does it.
-    if chess_pick.is_some() {
+    if let Some(pick) = chess_pick {
+        // A second click on the same diagram within egui's double-click delay is a double-click:
+        // the diagram goes onto the chess board too. Counted here, on the clicks, because the
+        // page's own count follows the text layer.
+        let now = ui.input(|inp| inp.time);
+        let delay = ui.ctx().options(|o| o.input_options.max_double_click_delay);
+        let again = app.chess.last_pick.is_some_and(|(p, t)| p == pick && (0.0..=delay).contains(&(now - t)));
+        app.chess.to_board |= again;
+        app.chess.last_pick = (!again).then_some((pick, now));
         app.chess.picked = chess_pick;
     }
     match clicked_link {

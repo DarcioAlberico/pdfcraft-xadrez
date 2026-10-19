@@ -2467,3 +2467,34 @@ animation effects	Off	關
 	Diagrams are already being scanned	已在尋找棋圖
 	Diagrams found: {n}	找到的棋圖：{n}
 	FEN copied	已複製 FEN
+# Chess ▸ Board: the analysis board panel.
+	Black to move	黑方走棋
+	Black to move, in check	黑方走棋，被將軍
+	Checkmate: Black wins	將死：黑方勝
+	Checkmate: White wins	將死：白方勝
+	Chess board	棋盤
+	Copy PGN	複製 PGN
+	Delete the moves after this one	刪除此步之後的著法
+	Draw by the fifty-move rule	依五十步規則判和
+	End (End)	末尾 (End)
+	Load PGN	載入 PGN
+	Next move (Right arrow)	下一步 (右箭頭)
+	Not a legal position: correct it in the diagram editor to play moves on it.	不合法的局面：請在圖表編輯器中更正後再走棋。
+	Open on the board	在棋盤上開啟
+	PGN copied	已複製 PGN
+	Play a move: click a piece, then where it goes, or drag it there.	走一步：先點選棋子，再點選目標格，或把棋子拖過去。
+	Play the main line of the PGN above on the board.	在棋盤上走出上方 PGN 的主線。
+	Previous move (Left arrow)	上一步 (左箭頭)
+	Promote to:	升變為：
+	Reading stopped at {move}: it is not a legal move there.	讀取在 {move} 處停止：該著法在此不合法。
+	Show the analysis board. Double-click a diagram on the page to load it there.	顯示分析棋盤。按兩下頁面上的圖表即可將其載入。
+	Show this diagram on the page	在頁面上顯示此圖表
+	Stalemate	逼和
+	Standard start position	標準初始局面
+	Start (Home)	開頭 (Home)
+	That side can't be to move: the other king is in check.	該方不能走棋：對方的王正被將軍。
+	The FEN couldn't be read: {e}	無法讀取 FEN：{e}
+	The PGN couldn't be read: {e}	無法讀取 PGN：{e}
+	This diagram hasn't been read: scan its page first, or set its position in the editor.	此圖表尚未讀取：請先掃描其所在頁面，或在編輯器中設定局面。
+	White to move	白方走棋
+	White to move, in check	白方走棋，被將軍
