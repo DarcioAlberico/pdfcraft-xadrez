@@ -140,6 +140,12 @@ pub fn from_page_text(page: &PageText, lang_hint: Option<Lang>) -> ChessPageText
     }
     // 2. Publisher symbols, word by word.
     let lines: Vec<Vec<Vec<glyph::Cell>>> = lines.iter().map(|l| token::words(l).map(token::normalize_symbols).collect()).collect();
+    for word in lines.iter().flatten() {
+        let chars: Vec<char> = word.iter().map(|c| c.ch).collect();
+        if quality::is_garbled_piece(&chars) {
+            mapper.stats.garbled = mapper.stats.garbled.saturating_add(1);
+        }
+    }
     // 3. The language.
     let mut lang_tally = LangTally::default();
     for word in lines.iter().flatten() {

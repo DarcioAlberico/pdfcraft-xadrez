@@ -140,9 +140,11 @@ fn split_marks(chars: &[char], standalone: bool) -> Option<Vec<(Mark, Range<usiz
             at += n;
         } else {
             match rest.chars().next() {
-                Some(c @ ('+' | '#')) if !standalone => {
-                    out.push((Mark::Check(c), at..at + 1));
-                    byte += 1;
+                // After a move only: `†` (and the crosses OCR reads it as) is check, `‡` mate.
+                // In prose a dagger is a footnote or a date of death.
+                Some(c @ ('+' | '#' | '†' | '✝' | '✞' | '‡')) if !standalone => {
+                    out.push((Mark::Check(if c == '‡' || c == '#' { '#' } else { '+' }), at..at + 1));
+                    byte += c.len_utf8();
                     at += 1;
                 }
                 _ => return None,
