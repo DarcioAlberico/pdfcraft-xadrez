@@ -97,7 +97,7 @@ impl GlyphClassifier for Templates {
 const MOVES: &str = "1.e4 e5 2.Nf3 Nc6";
 
 fn options(t: &Templates) -> OcrOptions<'_> {
-    OcrOptions { mode: OcrMode::Auto, glyphs: Some(t), general: false }
+    OcrOptions { mode: OcrMode::Auto, glyphs: Some(t), general: false, book: None }
 }
 
 use crate::chess::document::{OcrMode, OcrOptions};
@@ -197,7 +197,7 @@ fn the_users_glyph_model_reads_a_scanned_line() {
             &[],
             &settings,
             Some(pdfcraft_chess::san::Lang::En),
-            &OcrOptions { mode: OcrMode::All, glyphs: None, general: false },
+            &OcrOptions { mode: OcrMode::All, glyphs: None, general: false, book: None },
         )
         .unwrap();
     assert_eq!(read.ocr_pages.len(), 1, "{:?} {:?}", read.needs_ocr, read.notes);
@@ -212,4 +212,22 @@ fn the_users_glyph_model_reads_a_scanned_line() {
         pdfcraft_chessvision::doc::plain_text(read.doc.pages[0].blocks.first().map(|b| b.inlines()).unwrap_or_default())
     );
     assert!(moves.len() >= 8, "most of the ten moves are read: {moves:?}");
+}
+
+/// The book cipher learned before is where a reading starts, and the reading hands it on.
+#[test]
+fn the_book_cipher_is_carried_from_one_reading_to_the_next() {
+    use pdfcraft_chess::placement::PieceKind;
+    use pdfcraft_chessvision::cipher::{BookCipher, Source};
+    let mut seed = BookCipher::default();
+    for _ in 0..12 {
+        seed.observe("W", PieceKind::Queen, Source::Glyph, None);
+    }
+    assert!(seed.proven().contains_key("W"), "twelve observations settle the row");
+    let (mut s, id) = open(scanned_pdf(&[(MOVES, 14.0, 300.0)], ""));
+    let off = OcrOptions { mode: OcrMode::Off, book: Some(&seed), ..OcrOptions::default() };
+    let read = s.chess_document_with(id, &[], &no_model(), None, &off).unwrap();
+    assert_eq!(read.cipher, seed, "nothing read, so the cipher is the one given");
+    let fresh = s.chess_document_with(id, &[], &no_model(), None, &OcrOptions { mode: OcrMode::Off, ..OcrOptions::default() }).unwrap();
+    assert!(fresh.cipher.entries().is_empty());
 }

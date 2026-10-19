@@ -707,7 +707,7 @@ fn chess_round_trip(bytes: &[u8]) {
     let none = std::env::temp_dir().join("pdfcraft-fuzz-no-models");
     let _ = std::fs::create_dir_all(&none);
     let scan = ChessScanSettings { dpi: 72.0, max_read_dpi: 72.0, models_dir: Some(none), ..ChessScanSettings::default() };
-    let _ = s.chess_document_with(id, &pages, &scan, None, &OcrOptions { mode: OcrMode::Off, glyphs: None, general: false });
+    let _ = s.chess_document_with(id, &pages, &scan, None, &OcrOptions { mode: OcrMode::Off, glyphs: None, general: false, book: None });
     let mut options = ChessExportOptions::new("fuzz");
     options.pages = pages.clone();
     options.scan = scan.clone();

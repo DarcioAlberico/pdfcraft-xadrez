@@ -342,10 +342,16 @@ impl PdfCraftApp {
             return;
         }
         let mode = if ocr { OcrMode::All } else { OcrMode::Off };
+        let book = self.chess_cipher(id);
         self.start_chess_job(id, JobKind::Read { page, stamp, ocr }, move |s, id| {
-            let options = OcrOptions { mode, glyphs: None, general: true };
+            let options = OcrOptions { mode, glyphs: None, general: true, book: book.as_ref() };
             JobDone::Read(s.chess_document_with(id, &[page], &ChessScanSettings::default(), None, &options))
         });
+    }
+
+    /// The book cipher learned so far for document `id`, if any.
+    fn chess_cipher(&self, id: DocId) -> Option<pdfcraft_engine::chess::pdfcraft_chessvision::cipher::BookCipher> {
+        self.chess.cipher.as_ref().filter(|(d, _)| *d == id).map(|(_, c)| c.clone())
     }
 
     /// Run `work` on a session of its own, opened from document `id`'s working bytes, on a
@@ -399,6 +405,7 @@ impl PdfCraftApp {
                     || ChessDoc { format: pdfcraft_engine::chess::pdfcraft_chessvision::doc::FORMAT_VERSION, pages: Vec::new(), games: Vec::new() };
                 self.chess.text = Some(match read {
                     Ok(read) => {
+                        self.chess.cipher = Some((job.doc, read.cipher.clone()));
                         let pieces = crate::chess_editor::piece_set(&mut self.chess.pieces);
                         let boards = self.ctx.as_ref().map(|ctx| boards(ctx, &read.doc, &pieces)).unwrap_or_default();
                         let needs_ocr = read.needs_ocr.first().map(|(_, why)| why.clone());
@@ -412,7 +419,12 @@ impl PdfCraftApp {
                 });
             }
             #[cfg(not(target_arch = "wasm32"))]
-            (JobKind::Export { path, image_dir, .. }, JobDone::Export(made)) => self.write_chess_export(made, &path, &image_dir),
+            (JobKind::Export { path, image_dir, .. }, JobDone::Export(made)) => {
+                if let Ok(m) = &made {
+                    self.chess.cipher = Some((job.doc, m.read.cipher.clone()));
+                }
+                self.write_chess_export(made, &path, &image_dir);
+            }
             #[cfg(target_arch = "wasm32")]
             (JobKind::Export { name, .. }, JobDone::Export(made)) => match made {
                 Ok(made) => {
@@ -496,6 +508,7 @@ impl PdfCraftApp {
         let mut options = ChessExportOptions::new(&stem);
         options.image_dir = format!("{stem}_diagrams");
         options.pieces = crate::chess_editor::piece_set(&mut self.chess.pieces);
+        options.book = self.chess_cipher(id);
         let kind = JobKind::Export { format, path: path.to_path_buf(), image_dir: options.image_dir.clone() };
         self.notify(tl!("Exporting the chess document…").to_string());
         self.start_chess_job(id, kind, move |s, id| JobDone::Export(s.chess_export(id, format, &options)));

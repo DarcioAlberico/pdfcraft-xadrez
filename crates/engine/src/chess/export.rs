@@ -75,6 +75,8 @@ pub struct ChessExportOptions {
     pub diagram_px: u32,
     /// Markdown: the images' folder, relative to the Markdown file.
     pub image_dir: String,
+    /// The book's cipher so far: chess OCR starts from it ([`ChessExport::read`] carries it on).
+    pub book: Option<pdfcraft_chessvision::cipher::BookCipher>,
 }
 
 impl ChessExportOptions {
@@ -94,6 +96,7 @@ impl ChessExportOptions {
             title: title.into(),
             diagram_px: super::office::DEFAULT_DIAGRAM_PX,
             image_dir: format!("{title}_diagrams"),
+            book: None,
         }
     }
 }
@@ -129,7 +132,7 @@ impl ChessExport {
 impl Session {
     /// Chess ▸ Export: read the document's pages and write them as `format`.
     pub fn chess_export(&mut self, id: DocId, format: ChessFormat, o: &ChessExportOptions) -> Result<ChessExport, String> {
-        let ocr = OcrOptions { mode: o.ocr, glyphs: None, general: true };
+        let ocr = OcrOptions { mode: o.ocr, glyphs: None, general: true, book: o.book.as_ref() };
         let read = self.chess_document_with(id, &o.pages, &o.scan, o.lang, &ocr)?;
         let options = HtmlOptions {
             title: &o.title,
