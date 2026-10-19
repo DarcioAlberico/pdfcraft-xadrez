@@ -90,6 +90,10 @@ That book prints move numbers with no full stop (`19 ♖xd5`, Black's `15 … �
 
 That PDF is a scan under an invisible text layer in Courier New, left by an earlier OCR program that read the figurines as stray symbols (`50.&xe5 ®f7 51.^d5`). Every move failed. Such words now make the layer poor (at least three on a page), so chess OCR reads the page again; the old layer's block sizes no longer decide headings on a page read with OCR; and a check written `†` (which OCR returns as a cross, `✝`) or mate `‡` after a move is read. On pages 40–49, with the models, valid moves went from 0 of 102 to 80 of 374. Moves OCR cuts with spaces (`♖ e 1`, `f1 =♕`) are put back together (80 → 87 of 376); the rest are mostly OCR misreadings.
 
+### Two-column scans: Gallagher, *Winning With the King's Gambit*, and Flores Rios, *Chess Structures*
+
+Both are scans with no text layer, read with chess OCR, set in two columns with game scores as tables (`2 f4 ef`). Two things kept the columns apart from being read in order. The OCR's glyph boxes are their ink (an `a` half an `h`), so against those heights every word gap looked like a gutter; the page text now gives each recognised glyph its line's height, as a text layer does. And a column whose score table is cut into narrow pieces fell below the average width a column needs; five wide lines now make it a column too. On pages 40–49 of Gallagher, valid moves went from 1 to 31 of 865; on pages 60–69 of Flores Rios, from 55 to 87 of 786 (Aagaard 87 → 85, the text-layer books unchanged). Both books draw their dark squares hatched, which the piece model misreads: their diagrams start no game until the model is trained on such boards.
+
 ## Limits
 
 - **Moves and text**

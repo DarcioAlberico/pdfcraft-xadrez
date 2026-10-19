@@ -37,6 +37,9 @@ pub const MAX_CROSSING_SHARE: f32 = 0.15;
 /// A column's lines must be this wide on average, as a share of the page (narrower blocks side
 /// by side are a table or a game score, not columns).
 pub const MIN_COLUMN_SHARE: f32 = 0.2;
+/// Or at least this many of them must be that wide each: a column that holds a game score's
+/// table (`2 f4 ef`, cut at its wide gaps) beside its prose is still a column.
+pub const MIN_WIDE_COLUMN_LINES: usize = 5;
 
 /// The line's text, when it holds only text and move numbers.
 fn plain_text(line: &ChessLine) -> Option<String> {
@@ -73,7 +76,8 @@ pub(crate) fn is_coordinates(line: &ChessLine, diagrams: &[Option<ViewRect>]) ->
 
 /// The x of a gutter that splits the page's lines into two columns, if there is one: the middle
 /// of the widest run of positions (between 30% and 70% of the page) that the fewest lines cross,
-/// with enough lines, wide enough, on both sides.
+/// with enough lines on both sides, wide enough on average or with enough wide ones among them
+/// ([`MIN_WIDE_COLUMN_LINES`]).
 pub(crate) fn gutter(lines: &[&ChessLine], page_width: f32) -> Option<f32> {
     if !(page_width.is_finite() && page_width > 0.0) || lines.len() < 2 * MIN_COLUMN_LINES {
         return None;
@@ -88,8 +92,11 @@ pub(crate) fn gutter(lines: &[&ChessLine], page_width: f32) -> Option<f32> {
         let crossing = lines.iter().filter(|l| l.rect.x0 < x && x < l.rect.x1).count();
         let left: Vec<&&ChessLine> = lines.iter().filter(|l| l.rect.x1 <= x).collect();
         let right: Vec<&&ChessLine> = lines.iter().filter(|l| l.rect.x0 >= x).collect();
-        let wide =
-            |side: &[&&ChessLine]| side.iter().map(|l| l.rect.width()).sum::<f32>() / side.len().max(1) as f32 >= MIN_COLUMN_SHARE * page_width;
+        let wide = |side: &[&&ChessLine]| {
+            let min = MIN_COLUMN_SHARE * page_width;
+            side.iter().map(|l| l.rect.width()).sum::<f32>() / side.len().max(1) as f32 >= min
+                || side.iter().filter(|l| l.rect.width() >= min).count() >= MIN_WIDE_COLUMN_LINES
+        };
         let ok = crossing <= max_crossing && left.len() >= MIN_COLUMN_LINES && right.len() >= MIN_COLUMN_LINES && wide(&left) && wide(&right);
         ok.then_some(crossing)
     };
