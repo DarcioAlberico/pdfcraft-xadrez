@@ -463,6 +463,9 @@ fn puzzle_labels() {
     // A bare number only in a caption, and only with its full stop.
     assert_eq!(puzzle_label("185. Teichmann – Lasker", true), Some(185));
     assert_eq!(puzzle_label("185. Teichmann – Lasker", false), None);
+    assert_eq!(puzzle_label("1675 ", true), Some(1675));
+    assert_eq!(puzzle_label("1675", false), None);
+    assert_eq!(puzzle_label("2.2 Combinations #2 (451-3514)", true), None, "a section number");
     for text in ["1996 was a good year", "6.", "6. ±", "N9", "No way", "Nothing 12.", "№0.", "№123456.", "the №5 is", ""] {
         assert_eq!(puzzle_label(text, true), None, "{text}");
     }
@@ -502,6 +505,32 @@ fn solutions_are_played_from_their_numbered_diagrams() {
     assert_eq!(doc.games[0].origin, GameOrigin::Diagram { page: 0, diagram: 1, accepted: true });
     assert_eq!(doc.games[1].origin, GameOrigin::Diagram { page: 0, diagram: 0, accepted: true });
     assert!(pgn::write_game(&doc.games[1].score).contains("[PdfPuzzle \"1\"]"));
+}
+
+/// Polgar's layout: the number alone above each diagram (`1675`), and solutions as the number
+/// alone before the key move (`1675 1.Rd3+`), pages on.
+#[test]
+fn bare_numbers_link_solutions_to_diagrams() {
+    let rook = "8/8/4k3/8/8/4K3/r7/7R w - - 0 1";
+    let p0 = page_text(vec![line(20.0, "2.2 Combinations #2"), line(45.0, "1675"), line(245.0, "1676")]);
+    let d0 = [reading(0, 60.0, SCHOLAR, true, false), reading(1, 260.0, rook, true, false)];
+    let p1 = page_text(vec![line(100.0, "Solutions")]);
+    // 1601 has no diagram here: its move is not read into the game before it.
+    let p2 = page_text(vec![line(100.0, "1676 1.Rh6+ Kd5"), line(120.0, "1601 1.Re1"), line(140.0, "1675 1.Qh5 Nf6")]);
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &d0, &[], &[]));
+    b.add_page(&input(1, &p1, &[], &[], &[]));
+    b.add_page(&input(2, &p2, &[], &[], &[]));
+    let doc = b.finish();
+    let numbers: Vec<Option<u32>> =
+        doc.pages[0].blocks.iter().filter_map(|b| if let Block::Diagram(d) = b { Some(d.puzzle) } else { None }).collect();
+    assert_eq!(numbers, [Some(1675), Some(1676)]);
+    let statuses: Vec<MoveStatus> = moves(&doc.pages[2]).iter().map(|(_, s)| *s).collect();
+    assert_eq!(statuses, [MoveStatus::Valid, MoveStatus::Valid, MoveStatus::Unchecked, MoveStatus::Valid, MoveStatus::Valid]);
+    assert_eq!(
+        doc.games.iter().map(|g| g.origin).collect::<Vec<_>>(),
+        [GameOrigin::Diagram { page: 0, diagram: 1, accepted: true }, GameOrigin::Diagram { page: 0, diagram: 0, accepted: true }]
+    );
 }
 
 /// A caption under the diagram gives its number too; one with no number gives none.
