@@ -14,9 +14,9 @@ None of these files ship with PdfCraft (fork decisions D2 and D4). Without them,
 | `chess-pieces.onnx` + `.json` | reads drawn and scanned diagrams | only diagrams set in a chess diagram font are read; the others are found and marked |
 | `chess-glyphs.onnx` + `.json` | chess OCR: reads moves, figurines and signs from page images | pages without a usable text layer are listed as needing OCR |
 | `text-detection.rten`, `text-recognition.rten` (ocrs) | reads the prose around the notation | the glyph reader reads the prose too, less well |
-| a chess diagram font (Chess Merida) | draws redrawn diagrams with real pieces | plain geometric pieces |
+| a chess diagram font (Chess Merida), or a `pieces` folder of 12 PNG images | draws redrawn diagrams with real pieces | plain geometric pieces |
 
-PdfCraft looks for the models in the folder named by `PDFCRAFT_MODELS`, then beside the executable. For the pieces it uses the font named by `PDFCRAFT_CHESS_PIECES`, then an installed Chess Merida. A diagram drawn with Merida or cburnett pieces carries those pieces into what you export. That is fine for personal use, but not for publishing.
+PdfCraft looks for the models in the folder named by `PDFCRAFT_MODELS`, then beside the executable. For the pieces it uses the font or image folder named by `PDFCRAFT_CHESS_PIECES`, then a `pieces` folder beside the executable, then an installed Chess Merida. A piece folder holds one PNG per piece named `wK.png wQ.png wR.png wB.png wN.png wP.png bK.png bQ.png bR.png bB.png bN.png bP.png`, each filling one square with a transparent background; PdfCraft traces them into outlines, so they draw sharply in the board, the PDF and every export. A diagram drawn with Merida or cburnett pieces carries those pieces into what you export. That is fine for personal use, but not for publishing.
 
 ## In the app
 
