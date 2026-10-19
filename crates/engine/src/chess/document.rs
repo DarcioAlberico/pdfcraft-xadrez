@@ -10,8 +10,9 @@
 //! - **text**: the page's text layer read as chess text (`chess_text::from_page_text`). The
 //!   piece-letter language is chosen once for the whole document from every page's evidence
 //!   (`LangTally`), unless the caller names one. A layer the reader cannot believe (no text, dead
-//!   maps, Type0 without Unicode) is reported in [`ChessDocument::needs_ocr`]: chess OCR of the
-//!   page image is not wired into the engine yet;
+//!   maps, Type0 without Unicode, or another program's OCR drawn invisibly over a picture of the
+//!   page) is read with chess OCR as [`OcrMode`] says, else reported in
+//!   [`ChessDocument::needs_ocr`]. [`BookOrigin`] is the user's say over a whole book;
 //! - **headings and paragraphs**: the page's reading blocks (`edit::reading_blocks`) as
 //!   [`BlockHint`]s. A block set at least [`HEADING_RATIO`] times the body size (the size most of
 //!   the characters of all the pages read use: a book keeps one body size, while a page that
@@ -77,6 +78,34 @@ pub enum OcrMode {
     Auto,
     /// Every page.
     All,
+}
+
+/// Where a book's pages came from, as the user says: which of a page's text layer and chess OCR
+/// to believe. The engine decides page by page; this choice overrides it for a whole document.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum BookOrigin {
+    /// Decide page by page: chess OCR where the text layer is poor or missing, or is another
+    /// program's invisible OCR over a scan ([`OcrMode::Auto`]).
+    #[default]
+    Auto,
+    /// Born digital: the text layer is the book's own, so chess OCR never runs. A page whose layer
+    /// looks poor is still read from it, and listed in [`ChessDocument::needs_ocr`] with why.
+    Digital,
+    /// Scanned: every page is read with chess OCR, whatever text layer it has.
+    Scanned,
+}
+
+impl BookOrigin {
+    pub const ALL: [BookOrigin; 3] = [BookOrigin::Auto, BookOrigin::Digital, BookOrigin::Scanned];
+
+    /// When chess OCR reads a page of such a book.
+    pub fn ocr_mode(self) -> OcrMode {
+        match self {
+            BookOrigin::Auto => OcrMode::Auto,
+            BookOrigin::Digital => OcrMode::Off,
+            BookOrigin::Scanned => OcrMode::All,
+        }
+    }
 }
 
 /// How [`Session::chess_document_with`] runs chess OCR.
@@ -189,6 +218,7 @@ fn poor_reason(quality: &TextQuality) -> Option<String> {
             PoorReason::GarbledPieces { words } => {
                 format!("{words} moves have a stray symbol for their piece: an earlier OCR layer lost the figurines")
             }
+            PoorReason::HiddenOcrLayer { .. } => "the text layer is invisible text over an image of the page: another program's OCR".into(),
         }),
     }
 }
@@ -236,7 +266,7 @@ impl Session {
                 .collect()
         };
         let first = read(lang);
-        let (chosen, chess_texts) = match lang {
+        let (chosen, mut chess_texts) = match lang {
             Some(l) => (LangGuess { lang: l, confidence: 1.0 }, first),
             None => {
                 let mut tally = LangTally::default();
@@ -249,6 +279,15 @@ impl Session {
                 (guess, texts)
             }
         };
+        // A layer mostly drawn invisibly over a picture of the page is another program's OCR.
+        // Only such layers ask whether images cover the page.
+        for (page, text) in scanned.iter().zip(&mut chess_texts) {
+            if text.hidden > pdfcraft_chessvision::chess_text::quality::MAX_HIDDEN_RATIO
+                && doc.info.pages.get(page.page).is_some_and(|info| crate::scan_fields::is_scan(doc, page.page, info))
+            {
+                text.over_page_image();
+            }
+        }
 
         // The glyph classifier, when chess OCR may run.
         let models = (ocr.mode != OcrMode::Off && ocr.glyphs.is_none()).then(|| super::models(settings.models_dir.as_deref()));

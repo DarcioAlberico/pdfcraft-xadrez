@@ -2469,6 +2469,12 @@ animation effects	Off	Désactivés
 	Recognised text of page {p}	Texte reconnu de la page {p}
 	This document does not allow copying its content, so its text is not read.	Ce document n'autorise pas la copie de son contenu : son texte n'est pas lu.
 	This page's text layer can't be believed ({e}): read it with chess OCR.	La couche de texte de cette page n'est pas fiable ({e}) : lisez-la avec l'OCR d'échecs.
+	Book origin	Origine du livre
+	Auto (page by page)	Automatique (page par page)
+	Born digital (text layer only)	Numérique natif (couche de texte uniquement)
+	Scanned (chess OCR on every page)	Numérisé (OCR d'échecs sur chaque page)
+	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	D'où viennent les pages du livre. Automatique se fie à la couche de texte de chaque page sauf si elle semble fausse ; Numérique natif n'utilise jamais l'OCR d'échecs ; Numérisé lit chaque page avec l'OCR d'échecs (nécessite le modèle chess-glyphs).
+	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	La couche de texte de cette page semble de mauvaise qualité ({e}) ; elle a été lue telle quelle, car le livre est numérique natif.
 	Unchecked: no position to play it from	Non vérifié : aucune position d'où le jouer
 	Valid move	Coup valide
 	Diagram replaced	Diagramme remplacé

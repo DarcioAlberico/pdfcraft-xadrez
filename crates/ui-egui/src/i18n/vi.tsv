@@ -2656,6 +2656,12 @@ key	Space	Space
 	Recognised text of page {p}	Văn bản nhận dạng của trang {p}
 	This document does not allow copying its content, so its text is not read.	Tài liệu này không cho phép sao chép nội dung, nên không đọc văn bản của nó.
 	This page's text layer can't be believed ({e}): read it with chess OCR.	Không thể tin lớp văn bản của trang này ({e}): hãy đọc bằng OCR cờ vua.
+	Book origin	Nguồn gốc sách
+	Auto (page by page)	Tự động (từng trang)
+	Born digital (text layer only)	Kỹ thuật số gốc (chỉ lớp văn bản)
+	Scanned (chess OCR on every page)	Bản quét (OCR cờ vua trên mọi trang)
+	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	Các trang của sách đến từ đâu. Tự động tin lớp văn bản của từng trang trừ khi nó có vẻ sai; Kỹ thuật số gốc không bao giờ dùng OCR cờ vua; Bản quét đọc mọi trang bằng OCR cờ vua (cần mô hình chess-glyphs).
+	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	Lớp văn bản của trang này có vẻ kém ({e}); nó đã được đọc nguyên trạng vì sách là bản kỹ thuật số gốc.
 	Unchecked: no position to play it from	Chưa kiểm tra: không có thế cờ để đi
 	Valid move	Nước đi hợp lệ
 	Diagram replaced	Đã thay sơ đồ

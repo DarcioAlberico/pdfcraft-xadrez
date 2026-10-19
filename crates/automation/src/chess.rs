@@ -33,7 +33,8 @@ use serde_json::{Value, json};
 type CipherOut = (String, std::path::PathBuf);
 
 /// `ocr`: when chess OCR reads a page instead of its text layer (default auto: when the layer is
-/// poor or missing). The general OCR reads the prose when its models are installed.
+/// poor or missing, or another program's invisible OCR over a scan). The general OCR reads the
+/// prose when its models are installed.
 fn ocr_options(a: &Args) -> Result<OcrOptions<'static>> {
     let mode = match a.opt_str("ocr")? {
         None | Some("auto") => OcrMode::Auto,

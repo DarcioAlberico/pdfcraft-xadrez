@@ -2382,6 +2382,12 @@ animation effects	Off	ఆఫ్
 	Recognised text of page {p}	పేజీ {p} గుర్తించిన వచనం
 	This document does not allow copying its content, so its text is not read.	ఈ పత్రం దాని విషయాన్ని కాపీ చేయడానికి అనుమతించదు, కాబట్టి దాని వచనం చదవబడదు.
 	This page's text layer can't be believed ({e}): read it with chess OCR.	ఈ పేజీ వచన పొరను నమ్మలేము ({e}): దీన్ని చదరంగం OCRతో చదవండి.
+	Book origin	పుస్తకం మూలం
+	Auto (page by page)	స్వయంచాలకం (పేజీ వారీగా)
+	Born digital (text layer only)	మొదటి నుంచే డిజిటల్ (వచన పొర మాత్రమే)
+	Scanned (chess OCR on every page)	స్కాన్ చేసినది (ప్రతి పేజీలో చదరంగం OCR)
+	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	పుస్తక పేజీలు ఎక్కడి నుంచి వచ్చాయి. స్వయంచాలకం ప్రతి పేజీ వచన పొర తప్పుగా కనిపిస్తే తప్ప దాన్ని నమ్ముతుంది; మొదటి నుంచే డిజిటల్ ఎప్పుడూ చదరంగం OCR వాడదు; స్కాన్ చేసినది ప్రతి పేజీని చదరంగం OCRతో చదువుతుంది (chess-glyphs మోడల్ అవసరం).
+	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	ఈ పేజీ వచన పొర నాణ్యత తక్కువగా ఉన్నట్లుంది ({e}); పుస్తకం మొదటి నుంచే డిజిటల్ కాబట్టి దాన్ని ఉన్నది ఉన్నట్లుగా చదివాం.
 	Unchecked: no position to play it from	తనిఖీ చేయలేదు: ఆడేందుకు స్థితి లేదు
 	Valid move	చెల్లుబాటైన ఎత్తు
 	Diagram replaced	రేఖాచిత్రం మార్చబడింది

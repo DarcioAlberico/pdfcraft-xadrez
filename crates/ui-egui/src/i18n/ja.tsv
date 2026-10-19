@@ -2471,6 +2471,12 @@ animation effects	Off	オフ
 	Recognised text of page {p}	{p} ページの認識テキスト
 	This document does not allow copying its content, so its text is not read.	この文書は内容のコピーを許可していないため、テキストは読み取りません。
 	This page's text layer can't be believed ({e}): read it with chess OCR.	このページのテキストレイヤーは信頼できません ({e})。チェス OCR で読んでください。
+	Book origin	本の出所
+	Auto (page by page)	自動 (ページごと)
+	Born digital (text layer only)	デジタル原本 (テキストレイヤーのみ)
+	Scanned (chess OCR on every page)	スキャン (全ページでチェス OCR)
+	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	本のページの出所です。自動は、誤って見えない限り各ページのテキストレイヤーを信頼します。デジタル原本はチェス OCR を使いません。スキャンは全ページをチェス OCR で読み取ります (chess-glyphs モデルが必要)。
+	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	このページのテキストレイヤーは品質が低いようです ({e})。本がデジタル原本のため、そのまま読み取りました。
 	Unchecked: no position to play it from	未検証: 指せる局面がありません
 	Valid move	有効な指し手
 	Diagram replaced	局面図を置換しました

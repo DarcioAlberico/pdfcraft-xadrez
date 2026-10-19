@@ -2425,6 +2425,12 @@ animation effects	Off	關
 	Recognised text of page {p}	第 {p} 頁的辨識文字
 	This document does not allow copying its content, so its text is not read.	此文件不允許複製其內容，因此不讀取其文字。
 	This page's text layer can't be believed ({e}): read it with chess OCR.	此頁的文字層不可信（{e}）：請用西洋棋 OCR 讀取。
+	Book origin	書籍來源
+	Auto (page by page)	自動（逐頁判斷）
+	Born digital (text layer only)	數位原生（僅文字層）
+	Scanned (chess OCR on every page)	掃描件（每頁都用西洋棋 OCR）
+	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	書頁的來源。「自動」會信任每頁的文字層，除非它看起來有誤；「數位原生」從不使用西洋棋 OCR；「掃描件」用西洋棋 OCR 讀取每一頁（需要 chess-glyphs 模型）。
+	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	此頁的文字層品質似乎較差（{e}）；由於本書是數位原生，已依原樣讀取。
 	Unchecked: no position to play it from	未檢查：沒有可走此著的局面
 	Valid move	有效著法
 	Diagram replaced	已取代局面圖

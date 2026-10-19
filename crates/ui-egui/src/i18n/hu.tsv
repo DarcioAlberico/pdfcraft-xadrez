@@ -2468,6 +2468,12 @@ animation effects	Off	Ki
 	Recognised text of page {p}	A(z) {p}. oldal felismert szövege
 	This document does not allow copying its content, so its text is not read.	Ez a dokumentum nem engedi a tartalom másolását, ezért a szövege nem olvasható be.
 	This page's text layer can't be believed ({e}): read it with chess OCR.	Ennek az oldalnak a szövegrétegében nem lehet megbízni ({e}): olvassa sakk-OCR-rel.
+	Book origin	A könyv eredete
+	Auto (page by page)	Automatikus (oldalanként)
+	Born digital (text layer only)	Eredetileg digitális (csak a szövegréteg)
+	Scanned (chess OCR on every page)	Szkennelt (sakk-OCR minden oldalon)
+	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	Honnan származnak a könyv oldalai. Az Automatikus minden oldal szövegrétegében megbízik, hacsak nem tűnik hibásnak; az Eredetileg digitális soha nem használ sakk-OCR-t; a Szkennelt minden oldalt sakk-OCR-rel olvas (a chess-glyphs modell kell hozzá).
+	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	Ennek az oldalnak a szövegrétege gyengének tűnik ({e}); úgy olvastuk, ahogy van, mert a könyv eredetileg digitális.
 	Unchecked: no position to play it from	Ellenőrizetlen: nincs állás, ahonnan megtehető
 	Valid move	Érvényes lépés
 	Diagram replaced	Diagram lecserélve

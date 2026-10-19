@@ -16,6 +16,11 @@
 //! 5. **Garbled pieces**: at least [`MIN_GARBLED`] words are a stray symbol and a square (`&xe5`,
 //!    `®f7`, `^d5`): an earlier OCR program's invisible layer over a scanned book, which read the
 //!    figurines as whatever symbol looked closest. The page is to be read again with chess OCR.
+//! 6. **Hidden OCR layer**: more than [`MAX_HIDDEN_RATIO`] of the glyphs are drawn invisibly
+//!    (`3 Tr`) on a page that is a picture. That is the layer FineReader, Acrobat or Tesseract
+//!    write over a scan, and a general OCR guesses at figurines and annotation symbols. The text
+//!    layer cannot tell whether images cover the page, so this check is the caller's
+//!    ([`over_page_image`]), made once it knows.
 //!
 //! Glyphs of chess diagram fonts are left out of the ratios: they are a position, which the
 //! diagram detector reads from their codes, not language.
@@ -31,6 +36,10 @@ pub const MIN_UNRESOLVED: usize = 3;
 /// This many garbled piece words make the layer poor: one `&e4` can be a typo, a few are a
 /// figurine the layer lost every time.
 pub const MIN_GARBLED: usize = 3;
+
+/// Above this share of invisible glyphs, a layer over a picture of the page is another program's
+/// OCR: "mostly invisible". Born-digital text has none; a scan's OCR layer has nothing else.
+pub const MAX_HIDDEN_RATIO: f32 = 0.5;
 
 /// The verdict on one page's text layer.
 #[derive(Clone, Debug, PartialEq)]
@@ -56,6 +65,8 @@ pub enum PoorReason {
     UnresolvedChessCodes { glyphs: usize },
     /// Words that are a stray symbol and a square, where a figurine was lost.
     GarbledPieces { words: usize },
+    /// Glyphs drawn invisibly over a picture of the page: another program's OCR of a scan.
+    HiddenOcrLayer { ratio: f32 },
 }
 
 /// Counts gathered while mapping a page's glyphs.
@@ -73,6 +84,8 @@ pub(crate) struct GlyphStats {
     pub wide_bad: usize,
     /// Chess-font glyphs whose meaning is unknown.
     pub unresolved: usize,
+    /// Judged glyphs drawn invisibly (`3 Tr`).
+    pub invisible: usize,
     /// Words that are a stray symbol and a square (`&xe5`).
     pub garbled: usize,
 }
@@ -129,4 +142,19 @@ pub(crate) fn verdict(stats: &GlyphStats) -> TextQuality {
         return TextQuality::Poor { reason: PoorReason::GarbledPieces { words: stats.garbled } };
     }
     TextQuality::Good
+}
+
+/// The share of the judged glyphs drawn invisibly.
+pub(crate) fn hidden_ratio(stats: &GlyphStats) -> f32 {
+    ratio(stats.invisible, stats.judged)
+}
+
+/// The verdict on a page that is a picture (images cover most of it), from the verdict on its
+/// text layer alone and the share `hidden` of the layer's judged glyphs drawn invisibly. A layer
+/// already poor or missing keeps its reason, as the checks before this one come first.
+pub fn over_page_image(quality: &TextQuality, hidden: f32) -> TextQuality {
+    match quality {
+        TextQuality::Good if hidden > MAX_HIDDEN_RATIO => TextQuality::Poor { reason: PoorReason::HiddenOcrLayer { ratio: hidden } },
+        other => other.clone(),
+    }
 }

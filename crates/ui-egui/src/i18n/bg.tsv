@@ -2432,6 +2432,12 @@ animation effects	Off	Изключени
 	Recognised text of page {p}	Разпознат текст на страница {p}
 	This document does not allow copying its content, so its text is not read.	Този документ не позволява копиране на съдържанието, затова текстът не се разчита.
 	This page's text layer can't be believed ({e}): read it with chess OCR.	На текстовия слой на тази страница не може да се вярва ({e}): разчетете я с шахматно OCR.
+	Book origin	Произход на книгата
+	Auto (page by page)	Автоматично (страница по страница)
+	Born digital (text layer only)	Изначално цифрова (само текстовият слой)
+	Scanned (chess OCR on every page)	Сканирана (шахматно OCR на всяка страница)
+	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	Откъде идват страниците на книгата. „Автоматично“ вярва на текстовия слой на всяка страница, освен ако не изглежда грешен; „Изначално цифрова“ никога не използва шахматно OCR; „Сканирана“ разчита всяка страница с шахматно OCR (нужен е моделът chess-glyphs).
+	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	Текстовият слой на тази страница изглежда лош ({e}); разчетен е такъв, какъвто е, защото книгата е изначално цифрова.
 	Unchecked: no position to play it from	Непроверен: няма позиция, от която да се изиграе
 	Valid move	Валиден ход
 	Diagram replaced	Диаграмата е заменена

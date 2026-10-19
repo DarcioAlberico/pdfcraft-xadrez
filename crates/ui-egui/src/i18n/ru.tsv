@@ -2382,6 +2382,12 @@ animation effects	Off	Выкл
 	Recognised text of page {p}	Распознанный текст страницы {p}
 	This document does not allow copying its content, so its text is not read.	Этот документ не разрешает копировать содержимое, поэтому текст не читается.
 	This page's text layer can't be believed ({e}): read it with chess OCR.	Текстовому слою этой страницы нельзя доверять ({e}): прочитайте её шахматным OCR.
+	Book origin	Происхождение книги
+	Auto (page by page)	Автоматически (по страницам)
+	Born digital (text layer only)	Изначально цифровая (только текстовый слой)
+	Scanned (chess OCR on every page)	Сканированная (шахматный OCR на каждой странице)
+	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	Откуда взялись страницы книги. «Автоматически» доверяет текстовому слою каждой страницы, если он не выглядит ошибочным; «Изначально цифровая» никогда не использует шахматный OCR; «Сканированная» читает каждую страницу шахматным OCR (нужна модель chess-glyphs).
+	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	Текстовый слой этой страницы выглядит плохим ({e}); он прочитан как есть, так как книга изначально цифровая.
 	Unchecked: no position to play it from	Не проверен: нет позиции, из которой его сыграть
 	Valid move	Допустимый ход
 	Diagram replaced	Диаграмма заменена

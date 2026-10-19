@@ -455,6 +455,36 @@ fn the_page_is_read_off_the_interface_thread() {
     assert!(app.chess.text.is_none(), "the stale reading was not shown");
 }
 
+/// Book origin: the user says where the document's pages came from. The choice is kept with the
+/// document, and the page shown is read again under it (a scanned book with chess OCR).
+#[test]
+fn the_book_origin_is_kept_and_the_page_is_read_again_under_it() {
+    use pdfcraft_engine::chess::document::BookOrigin;
+    let mut h = chapter_harness();
+    h.get_by_label("Text").click();
+    h.run_steps(4);
+    assert_eq!(h.state().chess.text.as_ref().map(|t| t.origin), Some(BookOrigin::Auto));
+    // The combo box shows the origin chosen; each choice reads the page again.
+    for (shown, label, origin) in [
+        ("Auto (page by page)", "Born digital (text layer only)", BookOrigin::Digital),
+        ("Born digital (text layer only)", "Scanned (chess OCR on every page)", BookOrigin::Scanned),
+    ] {
+        // A combo box shows its choice as its value.
+        h.get_by(|n| n.role() == egui::accesskit::Role::ComboBox && n.value().is_some_and(|v| v == shown)).click();
+        h.run_steps(2);
+        h.get_all_by_label(label).last().expect("the choice is listed").click();
+        h.run_steps(4);
+        let app = h.state();
+        assert_eq!(app.chess.origin.map(|(_, o)| o), Some(origin), "{label}");
+        let text = app.chess.text.as_ref().expect("the page was read again");
+        assert_eq!(text.origin, origin, "{label}");
+        // The page's own layer is good, so a born-digital read has nothing to note.
+        if origin == BookOrigin::Digital {
+            assert!(text.needs_ocr.is_none() && !text.ocr, "{:?}", text.needs_ocr);
+        }
+    }
+}
+
 /// Click the square `name` on the analysis board (from White's side).
 fn click_square(h: &mut Harness<'static, PdfCraftApp>, name: &str) {
     let b = name.as_bytes();

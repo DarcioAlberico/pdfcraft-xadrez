@@ -2491,6 +2491,12 @@ animation effects	Off	Вимкнено
 	Recognised text of page {p}	Розпізнаний текст сторінки {p}
 	This document does not allow copying its content, so its text is not read.	Цей документ не дозволяє копіювати вміст, тому текст не читається.
 	This page's text layer can't be believed ({e}): read it with chess OCR.	Текстовому шару цієї сторінки не можна довіряти ({e}): прочитайте її шаховим OCR.
+	Book origin	Походження книги
+	Auto (page by page)	Автоматично (посторінково)
+	Born digital (text layer only)	Початково цифрова (лише текстовий шар)
+	Scanned (chess OCR on every page)	Сканована (шаховий OCR на кожній сторінці)
+	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	Звідки походять сторінки книги. «Автоматично» довіряє текстовому шару кожної сторінки, якщо він не виглядає хибним; «Початково цифрова» ніколи не використовує шаховий OCR; «Сканована» читає кожну сторінку шаховим OCR (потрібна модель chess-glyphs).
+	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	Текстовий шар цієї сторінки виглядає поганим ({e}); його прочитано як є, бо книга початково цифрова.
 	Unchecked: no position to play it from	Не перевірено: немає позиції, з якої його зіграти
 	Valid move	Допустимий хід
 	Diagram replaced	Діаграму замінено

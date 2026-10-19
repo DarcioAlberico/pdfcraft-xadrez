@@ -180,6 +180,9 @@ impl GlyphMapper {
             return;
         }
         self.stats.judged = self.stats.judged.saturating_add(1);
+        if g.invisible {
+            self.stats.invisible = self.stats.invisible.saturating_add(1);
+        }
         let chess = class != FontClass::Plain;
         let chars: Vec<char> = g.text.chars().take(MAX_GLYPH_CHARS).map(|c| if chess { catalog::normalize_char(c) } else { c }).collect();
         let code = code_char(g.code);
