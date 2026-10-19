@@ -150,3 +150,64 @@ fn headings_are_larger_than_the_body_and_short() {
     broken.rect = [f64::NAN; 4];
     assert!(block_hints(&[broken, block("body", 10.0, 50.0)]).len() == 1);
 }
+
+/// A two-column page in Helvetica, lines of both columns on the same baselines (so the layout
+/// reads them as one line each): the lines are cut at the gutter and read column by column, and
+/// each column's game replays from the initial position.
+#[test]
+fn a_two_column_page_replays_each_columns_game() {
+    let left = ["The open game is shown here.", "1.e4 e5 2.Nf3 Nc6 in the classical way", "3.Bb5 a6 and White keeps the bishop."];
+    let right = ["The closed game is shown here.", "1.d4 d5 2.c4 e6 the Queen's Gambit", "3.Nc3 Nf6 and Black develops calmly."];
+    let mut content = String::new();
+    for (k, (l, r)) in left.iter().zip(&right).enumerate() {
+        let y = 700.0 - 16.0 * k as f32;
+        content.push_str(&format!("BT /F2 11 Tf 40 {y} Td ({l}) Tj ET\nBT /F2 11 Tf 320 {y} Td ({r}) Tj ET\n"));
+    }
+    let (mut s, id) = open(two_font_pdf(&content));
+    let read = s.chess_document(id, &[], &no_model(), Some(pdfcraft_chess::san::Lang::En)).unwrap();
+    let moves: Vec<(String, MoveStatus)> = read.doc.pages[0]
+        .blocks
+        .iter()
+        .flat_map(|b| b.inlines())
+        .filter_map(|i| if let Inline::Move(m) = i { Some((m.san.clone(), m.status)) } else { None })
+        .collect();
+    assert_eq!(
+        moves.iter().map(|(m, _)| m.as_str()).collect::<Vec<_>>(),
+        ["e4", "e5", "Nf3", "Nc6", "Bb5", "a6", "d4", "d5", "c4", "e6", "Nc3", "Nf6"],
+        "{:#?}",
+        read.doc.pages[0].blocks
+    );
+    assert!(moves.iter().all(|(_, st)| *st == MoveStatus::Valid), "{moves:?}");
+    assert_eq!(read.doc.games.len(), 2);
+}
+
+/// The same with a book's narrow gutter (14 pt), which the text layout reads as one line per
+/// baseline: the lines are cut at the gutter first.
+#[test]
+fn a_narrow_gutter_is_cut_before_the_columns_are_read() {
+    let left = ["The open game is in this column here.", "1.e4 e5 2.Nf3 Nc6 in the classical way", "3.Bb5 a6 and White keeps the bishop"];
+    let right = ["The closed game is in this column.", "1.d4 d5 2.c4 e6 is the Queen's Gambit", "3.Nc3 Nf6 and Black develops calmly."];
+    let width = |t: &str| pdfcraft_fonts::helvetica_width(t, 11.0);
+    let gutter = 300.0 + 14.0;
+    let mut content = String::new();
+    for (k, (l, r)) in left.iter().zip(&right).enumerate() {
+        let y = 700.0 - 16.0 * k as f32;
+        // The left line ends at x 300: right-aligned to the gutter.
+        content.push_str(&format!("BT /F2 11 Tf {} {y} Td ({l}) Tj ET\nBT /F2 11 Tf {gutter} {y} Td ({r}) Tj ET\n", 300.0 - width(l)));
+    }
+    let (mut s, id) = open(two_font_pdf(&content));
+    let read = s.chess_document(id, &[], &no_model(), Some(pdfcraft_chess::san::Lang::En)).unwrap();
+    let moves: Vec<(String, MoveStatus)> = read.doc.pages[0]
+        .blocks
+        .iter()
+        .flat_map(|b| b.inlines())
+        .filter_map(|i| if let Inline::Move(m) = i { Some((m.san.clone(), m.status)) } else { None })
+        .collect();
+    assert_eq!(
+        moves.iter().map(|(m, _)| m.as_str()).collect::<Vec<_>>(),
+        ["e4", "e5", "Nf3", "Nc6", "Bb5", "a6", "d4", "d5", "c4", "e6", "Nc3", "Nf6"],
+        "{:#?}",
+        read.doc.pages[0].blocks
+    );
+    assert!(moves.iter().all(|(_, st)| *st == MoveStatus::Valid), "{moves:?}");
+}
