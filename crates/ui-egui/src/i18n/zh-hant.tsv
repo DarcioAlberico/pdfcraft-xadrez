@@ -2408,6 +2408,9 @@ animation effects	Off	關
 	Couldn't be read: {e}	無法讀取：{e}
 	Not read	未讀取
 	Copy FEN	複製 FEN
+	Reading the page with chess OCR…	正在用西洋棋 OCR 讀取頁面…
+	Exporting the chess document…	正在匯出西洋棋文件…
+	A chess document is already being read or exported	已有西洋棋文件正在讀取或匯出
 	Ambiguous move	有歧義的著法
 	Chess OCR read nothing on this page.	西洋棋 OCR 在此頁上沒有讀到任何內容。
 	Export as {f}	匯出為 {f}

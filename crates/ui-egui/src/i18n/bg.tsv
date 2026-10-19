@@ -2415,6 +2415,9 @@ animation effects	Off	Изключени
 	Couldn't be read: {e}	Не можа да се прочете: {e}
 	Not read	Не е прочетена
 	Copy FEN	Копиране на FEN
+	Reading the page with chess OCR…	Разчитане на страницата с шахматно OCR…
+	Exporting the chess document…	Експортиране на шахматния документ…
+	A chess document is already being read or exported	Вече се разчита или експортира шахматен документ
 	Ambiguous move	Двусмислен ход
 	Chess OCR read nothing on this page.	Шахматното OCR не разчете нищо на тази страница.
 	Export as {f}	Експортиране като {f}

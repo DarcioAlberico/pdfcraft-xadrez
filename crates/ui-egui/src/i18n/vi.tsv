@@ -2639,6 +2639,9 @@ key	Space	Space
 	Couldn't be read: {e}	Không đọc được: {e}
 	Not read	Chưa đọc
 	Copy FEN	Sao chép FEN
+	Reading the page with chess OCR…	Đang đọc trang bằng OCR cờ vua…
+	Exporting the chess document…	Đang xuất tài liệu cờ vua…
+	A chess document is already being read or exported	Một tài liệu cờ vua đang được đọc hoặc xuất
 	Ambiguous move	Nước đi mơ hồ
 	Chess OCR read nothing on this page.	OCR cờ vua không đọc được gì trên trang này.
 	Export as {f}	Xuất dưới dạng {f}

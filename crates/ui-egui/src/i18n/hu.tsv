@@ -2451,6 +2451,9 @@ animation effects	Off	Ki
 	Couldn't be read: {e}	Nem olvasható be: {e}
 	Not read	Nincs beolvasva
 	Copy FEN	FEN másolása
+	Reading the page with chess OCR…	Az oldal olvasása sakk-OCR-rel…
+	Exporting the chess document…	A sakkdokumentum exportálása…
+	A chess document is already being read or exported	Egy sakkdokumentum olvasása vagy exportálása már folyamatban van
 	Ambiguous move	Kétértelmű lépés
 	Chess OCR read nothing on this page.	A sakk-OCR semmit sem olvasott ezen az oldalon.
 	Export as {f}	Exportálás: {f}

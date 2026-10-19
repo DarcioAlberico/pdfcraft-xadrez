@@ -52,6 +52,8 @@ pub struct ChessState {
     pub tab: crate::chess_text_ui::ChessTab,
     /// The page last read as text.
     pub text: Option<crate::chess_text_ui::PageText>,
+    /// A page being read, or the book being exported, off the interface thread.
+    pub job: Option<crate::chess_text_ui::ChessJob>,
 }
 
 /// What scanning found in one document.
@@ -248,7 +250,8 @@ pub(crate) fn panel(
     });
     ui.add_space(4.0);
     if state.tab == ChessTab::Text {
-        return crate::chess_text_ui::text_tab(ui, t, state.text.as_mut(), id, page_now, current).map(PanelAction::Text);
+        let busy = state.job.as_ref().filter(|j| j.doc == id).map(crate::chess_text_ui::ChessJob::label);
+        return crate::chess_text_ui::text_tab(ui, t, state.text.as_mut(), id, page_now, current, busy).map(PanelAction::Text);
     }
     let running = state.run.as_ref().filter(|r| r.doc == id).map(|r| {
         let s = lock(&r.progress);
@@ -474,6 +477,7 @@ impl PdfCraftApp {
 
     /// Show the batches the worker finished; report the scan once it is done.
     pub(crate) fn poll_chess(&mut self) {
+        self.poll_chess_job();
         // A closed document takes its results with it.
         if self.chess.results.as_ref().is_some_and(|r| self.session.get(r.doc).is_none()) {
             self.chess.results = None;

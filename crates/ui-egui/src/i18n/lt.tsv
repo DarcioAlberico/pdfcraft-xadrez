@@ -2696,6 +2696,9 @@ key	Space	Tarpas
 	Couldn't be read: {e}	Nepavyko nuskaityti: {e}
 	Not read	Nenuskaityta
 	Copy FEN	Kopijuoti FEN
+	Reading the page with chess OCR…	Puslapis skaitomas šachmatų OCR…
+	Exporting the chess document…	Eksportuojamas šachmatų dokumentas…
+	A chess document is already being read or exported	Šachmatų dokumentas jau skaitomas arba eksportuojamas
 	Ambiguous move	Dviprasmis ėjimas
 	Chess OCR read nothing on this page.	Šachmatų OCR šiame puslapyje nieko neperskaitė.
 	Export as {f}	Eksportuoti kaip {f}

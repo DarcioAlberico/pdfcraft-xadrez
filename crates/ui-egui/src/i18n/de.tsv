@@ -2453,6 +2453,9 @@ animation effects	Off	Aus
 	Couldn't be read: {e}	Konnte nicht gelesen werden: {e}
 	Not read	Nicht gelesen
 	Copy FEN	FEN kopieren
+	Reading the page with chess OCR…	Seite wird mit Schach-OCR gelesen…
+	Exporting the chess document…	Schachdokument wird exportiert…
+	A chess document is already being read or exported	Ein Schachdokument wird bereits gelesen oder exportiert
 	Ambiguous move	Mehrdeutiger Zug
 	Chess OCR read nothing on this page.	Die Schach-OCR hat auf dieser Seite nichts gelesen.
 	Export as {f}	Als {f} exportieren

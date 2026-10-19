@@ -2474,6 +2474,9 @@ animation effects	Off	Вимкнено
 	Couldn't be read: {e}	Не вдалося прочитати: {e}
 	Not read	Не прочитано
 	Copy FEN	Копіювати FEN
+	Reading the page with chess OCR…	Читання сторінки шаховим OCR…
+	Exporting the chess document…	Експорт шахового документа…
+	A chess document is already being read or exported	Шаховий документ уже читається або експортується
 	Ambiguous move	Неоднозначний хід
 	Chess OCR read nothing on this page.	Шахове OCR нічого не прочитало на цій сторінці.
 	Export as {f}	Експортувати як {f}

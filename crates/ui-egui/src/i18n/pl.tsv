@@ -2432,6 +2432,9 @@ animation effects	Off	Wyłączone
 	Couldn't be read: {e}	Nie udało się odczytać: {e}
 	Not read	Nie odczytano
 	Copy FEN	Kopiuj FEN
+	Reading the page with chess OCR…	Odczytywanie strony OCR-em szachowym…
+	Exporting the chess document…	Eksportowanie dokumentu szachowego…
+	A chess document is already being read or exported	Dokument szachowy jest już odczytywany lub eksportowany
 	Ambiguous move	Niejednoznaczny ruch
 	Chess OCR read nothing on this page.	OCR szachowy nic nie odczytał na tej stronie.
 	Export as {f}	Eksportuj jako {f}

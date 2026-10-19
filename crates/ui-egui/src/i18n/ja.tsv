@@ -2454,6 +2454,9 @@ animation effects	Off	オフ
 	Couldn't be read: {e}	読み取れませんでした: {e}
 	Not read	未読み取り
 	Copy FEN	FEN をコピー
+	Reading the page with chess OCR…	チェス OCR でページを読み取り中…
+	Exporting the chess document…	チェス文書を書き出し中…
+	A chess document is already being read or exported	チェス文書はすでに読み取りまたは書き出し中です
 	Ambiguous move	曖昧な指し手
 	Chess OCR read nothing on this page.	チェス OCR はこのページで何も読み取れませんでした。
 	Export as {f}	{f} として書き出す

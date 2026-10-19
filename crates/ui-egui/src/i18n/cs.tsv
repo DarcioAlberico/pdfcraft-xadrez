@@ -2526,6 +2526,9 @@ animation effects	Off	Vypnuto
 	Couldn't be read: {e}	Nepodařilo se přečíst: {e}
 	Not read	Nepřečteno
 	Copy FEN	Kopírovat FEN
+	Reading the page with chess OCR…	Čtení stránky šachovým OCR…
+	Exporting the chess document…	Export šachového dokumentu…
+	A chess document is already being read or exported	Šachový dokument se už čte nebo exportuje
 	Ambiguous move	Nejednoznačný tah
 	Chess OCR read nothing on this page.	Šachové OCR na této stránce nic nepřečetlo.
 	Export as {f}	Exportovat jako {f}

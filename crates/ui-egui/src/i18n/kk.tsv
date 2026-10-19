@@ -2450,6 +2450,9 @@ animation effects	Off	Өшірулі
 	Couldn't be read: {e}	Оқу мүмкін болмады: {e}
 	Not read	Оқылмады
 	Copy FEN	FEN көшіру
+	Reading the page with chess OCR…	Бет шахмат OCR арқылы оқылуда…
+	Exporting the chess document…	Шахмат құжаты экспортталуда…
+	A chess document is already being read or exported	Шахмат құжаты әлдеқашан оқылып немесе экспортталып жатыр
 	Ambiguous move	Екіұшты жүріс
 	Chess OCR read nothing on this page.	Шахмат OCR бұл бетте ештеңе оқымады.
 	Export as {f}	{f} ретінде экспорттау
