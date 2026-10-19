@@ -5,7 +5,7 @@
 use pdfcraft_chessvision::doc::{Block, GameOrigin, HintKind, Inline, MoveStatus};
 
 use super::*;
-use crate::chess::document::{HEADING_MAX_CHARS, block_hints, body_size, heading_level};
+use crate::chess::document::{HEADING_MAX_CHARS, block_hints, body_size, heading_level, page_hints};
 
 /// A 600 × 800 pt page: `content` with `F1` a Merida diagram font (every code 1000 units wide)
 /// and `F2` Helvetica.
@@ -153,6 +153,11 @@ fn headings_are_larger_than_the_body_and_short() {
     // text headings.
     let hints = block_hints(&blocks, body_size(&blocks[..2]));
     assert!(hints.iter().all(|h| h.kind == HintKind::Paragraph), "{hints:?}");
+    // A page read with OCR takes no hints from the layer that was not believed.
+    let read = Ok(blocks.to_vec());
+    assert_eq!(page_hints(Some(&read), None, false).0.len(), 3);
+    assert_eq!(page_hints(Some(&read), None, true), (Vec::new(), None));
+    assert!(page_hints(Some(&Err("bad".into())), None, false).1.is_some());
 }
 
 /// Pages in Helvetica (`/F2`), one content stream each.

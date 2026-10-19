@@ -418,6 +418,7 @@ fn poor_reason(reason: &PoorReason) -> String {
         PoorReason::ReplacementChars { ratio } => format!("replacement characters ({:.0}% of glyphs)", ratio * 100.0),
         PoorReason::DeadMap { ratio } => format!("characters with no text ({:.0}% of glyphs)", ratio * 100.0),
         PoorReason::UnresolvedChessCodes { glyphs } => format!("{glyphs} chess-font glyphs not resolved"),
+        PoorReason::GarbledPieces { words } => format!("{words} moves whose piece is a stray symbol (an earlier OCR layer)"),
     }
 }
 

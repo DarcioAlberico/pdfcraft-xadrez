@@ -155,6 +155,29 @@ fn bare_move_numbers_before_moves() {
     assert_eq!(runs(&read), vec![vec![text("he played"), mv("Nf3", "Nf3"), text("2 times")]]);
 }
 
+/// An earlier OCR program's layer over a scanned book, its figurines read as stray symbols:
+/// the layer is poor, so chess OCR reads the page again. Ordinary prose and moves are not.
+#[test]
+fn stray_symbols_for_pieces_make_the_layer_poor() {
+    let read = Page::new().text("49...f6 50.&xe5 ®f7 51.^d5 §fl and the extra material decides.").read(Some(Lang::En));
+    assert_eq!(read.quality, TextQuality::Poor { reason: PoorReason::GarbledPieces { words: 4 } });
+    // Two are not enough, and moves, quotes, ellipses and brackets are not stray symbols.
+    let read = Page::new().text("50.&xe5 ®f7 then 51.Nd5 …e5 (e4) “Qf3” –e5 ×d5 +f7 and 52.Kxd5 – a draw.").read(Some(Lang::En));
+    assert_eq!(read.quality, TextQuality::Good);
+}
+
+/// Books (and OCR, which reads it as a cross) print check as `†` and mate as `‡`.
+#[test]
+fn a_dagger_after_a_move_is_check() {
+    let read = Page::new().text("47...f6✝!! 48.Kxf6 Qa1† 49.Qh7‡").read(Some(Lang::En));
+    let sans: Vec<String> =
+        read.lines[0].spans.iter().filter_map(|s| if let ChessRun::Move { san, .. } = &s.run { Some(san.to_english()) } else { None }).collect();
+    assert_eq!(sans, ["f6+", "Kxf6", "Qa1+", "Qh7#"]);
+    // In prose it stays a dagger.
+    let read = Page::new().text("Rubinstein † 1961").read(Some(Lang::En));
+    assert_eq!(runs(&read), vec![vec![text("Rubinstein † 1961")]]);
+}
+
 #[test]
 fn novelty_after_a_move_is_nag_146() {
     let read = Page::new().text("12.Nf4N").read(None);
