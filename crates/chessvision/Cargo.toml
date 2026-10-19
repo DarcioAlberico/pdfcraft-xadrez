@@ -25,6 +25,9 @@ rten = { version = "0.26.0", default-features = false, features = ["rten_format"
 rten-tensor = "0.26.0"
 # Glyph outlines of the user's chess diagram font, for drawn diagrams (same version as pdfcraft-fonts).
 skrifa = "0.44"
+# The user's piece images (`pieces::images`), traced into outlines; pure Rust, builds for wasm32.
+# Also decodes the prototype's PNG boards in the board-reading benchmark (`examples/read_bench.rs`).
+png = "0.18"
 serde.workspace = true
 serde_json.workspace = true
 # Contours, polygon simplification and minimum-area rectangles for the page detector (no OpenCV).
@@ -32,8 +35,6 @@ rten-imageproc = { version = "0.26.0", default-features = false }
 thiserror.workspace = true
 
 [dev-dependencies]
-# The board-reading benchmark (`examples/read_bench.rs`) decodes the prototype's PNG boards.
-png = "0.18"
 proptest.workspace = true
 # The OCR benchmark (`examples/ocr_bench.rs`) only: the general OCR whose words the glyph reader is
 # fused with (the engine passes them in; `pdfcraft-ocr` is the same layer, so the example uses the

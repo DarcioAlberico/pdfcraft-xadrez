@@ -358,6 +358,7 @@ impl Automation {
             "fen": fen::format_placement(&placement),
             "pieces": match source {
                 PieceSource::Font { family, .. } => json!({ "source": "font", "family": family, "error": Value::Null }),
+                PieceSource::Images { dir } => json!({ "source": "images", "family": dir.to_string_lossy(), "error": Value::Null }),
                 PieceSource::Geometric => json!({ "source": "geometric", "family": Value::Null, "error": error.map(|e| e.to_string()) }),
             },
             "notes": plan.notes,
@@ -602,6 +603,7 @@ impl Automation {
             "games": read.doc.games.len(),
             "pieces": match source {
                 PieceSource::Font { family, .. } => json!({ "source": "font", "family": family, "error": Value::Null }),
+                PieceSource::Images { dir } => json!({ "source": "images", "family": dir.to_string_lossy(), "error": Value::Null }),
                 PieceSource::Geometric => json!({ "source": "geometric", "family": Value::Null, "error": error.map(|e| e.to_string()) }),
             },
             "needs_ocr": read.needs_ocr.iter().map(|(p, why)| json!({ "page": p + 1, "reason": why })).collect::<Vec<_>>(),
@@ -645,6 +647,7 @@ impl Automation {
             PieceSource::Font { path, family } => {
                 json!({ "source": "font", "family": family, "path": path.map(|p| p.to_string_lossy().into_owned()) })
             }
+            PieceSource::Images { dir } => json!({ "source": "images", "family": Value::Null, "path": dir.to_string_lossy() }),
             PieceSource::Geometric => json!({ "source": "geometric", "family": Value::Null, "path": Value::Null }),
         };
         if let Some(o) = piece_set.as_object_mut() {

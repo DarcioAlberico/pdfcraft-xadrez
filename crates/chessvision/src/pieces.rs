@@ -1,8 +1,9 @@
-//! Piece sets from the user's own chess diagram fonts.
+//! Piece sets from the user's own chess diagram fonts or piece images.
 //!
 //! PdfCraft ships no piece artwork (blueprint decision D4). Diagrams are drawn with a font the
-//! user already has, such as Chess Merida, read from their machine when needed and never copied
-//! into the repository or the binary.
+//! user already has, such as Chess Merida, or with a folder of their own piece images
+//! ([`images`]), read from their machine when needed and never copied into the repository or
+//! the binary.
 //!
 //! A diagram font's light-square glyphs draw each piece as an outline with an open interior. On
 //! a dark square that interior would show the square's colour, so each white piece is drawn in
@@ -11,13 +12,18 @@
 //! filled black. The [`pdfcraft_chess::catalog`] layout of the font's family says which character
 //! is which piece.
 //!
-//! Where the font comes from, in order ([`find`]):
-//! 1. `$PDFCRAFT_CHESS_PIECES`, the path of a chess diagram font;
-//! 2. Chess Merida among the fonts installed on this machine.
+//! Where the pieces come from, in order ([`find`]):
+//! 1. `$PDFCRAFT_CHESS_PIECES`, the path of a chess diagram font or of a folder of piece images;
+//! 2. a `pieces` folder of piece images beside the executable;
+//! 3. Chess Merida among the fonts installed on this machine.
 //!
 //! Without either, [`PieceSet::geometric`] draws plain shapes and the caller says so.
 
 use std::path::{Path, PathBuf};
+
+pub mod images;
+
+pub use images::{from_image_dir, is_piece_folder};
 
 use pdfcraft_chess::catalog::{FontKind, Layout, lookup_family, normalize_font_name};
 use pdfcraft_chess::draw::{Layer, Paint, PieceGlyph, PieceSet, Rgb, Segment, Subpath};
@@ -46,6 +52,10 @@ pub enum PieceError {
     UnknownLayout(String),
     #[error("the font has no glyph for {0:?}")]
     MissingGlyph(char),
+    #[error("the piece folder {dir} has no {name}")]
+    MissingImage { dir: PathBuf, name: String },
+    #[error("cannot use the piece image {path}: {reason}")]
+    Image { path: PathBuf, reason: String },
 }
 
 /// Where a piece set came from, to tell the user.
@@ -53,6 +63,8 @@ pub enum PieceError {
 pub enum PieceSource {
     /// A font file: its path and family name.
     Font { path: Option<PathBuf>, family: String },
+    /// A folder of twelve piece images.
+    Images { dir: PathBuf },
     /// No font was found; plain shapes drawn in code.
     Geometric,
 }
@@ -133,10 +145,14 @@ pub fn from_font_file(path: &Path) -> Result<PieceSet, PieceError> {
     from_font_bytes(&bytes, hint).map(|(set, _)| set)
 }
 
-/// The user's piece set: `$PDFCRAFT_CHESS_PIECES`, then an installed Chess Merida, else the
-/// geometric set. A configured font that fails is reported, not silently replaced.
+/// The user's piece set: `$PDFCRAFT_CHESS_PIECES` (a font or a folder of images), then a
+/// `pieces` folder beside the executable, then an installed Chess Merida, else the geometric
+/// set. Configured pieces that fail are reported, not silently replaced.
 pub fn find() -> (PieceSet, PieceSource, Option<PieceError>) {
     if let Some(path) = std::env::var_os("PDFCRAFT_CHESS_PIECES").map(PathBuf::from) {
+        if path.is_dir() {
+            return from_folder(path);
+        }
         return match from_font_file(&path) {
             Ok(set) => {
                 let family = set.name.clone();
@@ -144,6 +160,9 @@ pub fn find() -> (PieceSet, PieceSource, Option<PieceError>) {
             }
             Err(e) => (PieceSet::geometric(), PieceSource::Geometric, Some(e)),
         };
+    }
+    if let Some(dir) = beside_executable().filter(|d| is_piece_folder(d)) {
+        return from_folder(dir);
     }
     for path in installed_fonts() {
         let stem = path.file_stem().and_then(|s| s.to_str()).map(normalize_font_name).unwrap_or_default();
@@ -155,6 +174,19 @@ pub fn find() -> (PieceSet, PieceSource, Option<PieceError>) {
         }
     }
     (PieceSet::geometric(), PieceSource::Geometric, None)
+}
+
+fn from_folder(dir: PathBuf) -> (PieceSet, PieceSource, Option<PieceError>) {
+    match from_image_dir(&dir) {
+        Ok(set) => (set, PieceSource::Images { dir }, None),
+        Err(e) => (PieceSet::geometric(), PieceSource::Geometric, Some(e)),
+    }
+}
+
+/// The `pieces` folder beside the executable, as the models are looked for there.
+fn beside_executable() -> Option<PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    Some(exe.parent()?.join("pieces"))
 }
 
 /// Font files in the usual font folders of this machine (one level deep, capped).
