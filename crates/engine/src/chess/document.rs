@@ -189,6 +189,22 @@ pub fn block_hints(blocks: &[pdfcraft_edit::TextBlock], body: Option<f64>) -> Ve
         .collect()
 }
 
+/// The hints for a page from its reading blocks, and a note when they could not be read. A page
+/// read with OCR gets none: its blocks are the layer that was not believed (an earlier OCR
+/// program's invisible text, whose sizes say nothing), so its lines are grouped by spacing.
+pub fn page_hints(
+    blocks: Option<&Result<Vec<pdfcraft_edit::TextBlock>, String>>,
+    body: Option<f64>,
+    read_by_ocr: bool,
+) -> (Vec<BlockHint>, Option<String>) {
+    match blocks {
+        _ if read_by_ocr => (Vec::new(), None),
+        Some(Ok(blocks)) => (block_hints(blocks, body), None),
+        Some(Err(e)) => (Vec::new(), Some(format!("the page's paragraphs could not be read ({e}); lines were grouped by spacing"))),
+        None => (Vec::new(), None),
+    }
+}
+
 fn poor_reason(quality: &TextQuality) -> Option<String> {
     use pdfcraft_chessvision::chess_text::PoorReason;
     match quality {
@@ -199,6 +215,9 @@ fn poor_reason(quality: &TextQuality) -> Option<String> {
             PoorReason::ReplacementChars { .. } => "the text layer extracts as replacement characters".into(),
             PoorReason::DeadMap { .. } => "the text layer's Unicode map is dead".into(),
             PoorReason::UnresolvedChessCodes { glyphs } => format!("{glyphs} chess-font glyphs could not be resolved"),
+            PoorReason::GarbledPieces { words } => {
+                format!("{words} moves have a stray symbol for their piece: an earlier OCR layer lost the figurines")
+            }
             PoorReason::HiddenOcrLayer { .. } => "the text layer is invisible text over an image of the page: another program's OCR".into(),
         }),
     }
@@ -379,14 +398,9 @@ impl Session {
                 notes.push((page.page, "the page has no visible area; it is left out".into()));
                 continue;
             };
-            let hints = match blocks {
-                Some(Ok(blocks)) => block_hints(blocks, body),
-                Some(Err(e)) => {
-                    notes.push((page.page, format!("the page's paragraphs could not be read ({e}); lines were grouped by spacing")));
-                    Vec::new()
-                }
-                None => Vec::new(),
-            };
+            let read_by_ocr = !std::ptr::eq(text, layer_text);
+            let (hints, note) = page_hints(blocks.as_ref(), body, read_by_ocr);
+            notes.extend(note.map(|n| (page.page, n)));
             let diagrams = readings;
             if page.readings.is_none() && !page.diagrams.is_empty() {
                 notes.push((page.page, "the page's diagrams could not be read; they are left out".into()));

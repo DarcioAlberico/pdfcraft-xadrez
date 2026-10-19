@@ -13,7 +13,10 @@
 //! 4. **Unresolved chess codes**: at least [`MIN_UNRESOLVED`] glyphs are set in a chess font
 //!    the catalogue does not know, or stand where a piece belongs under a figurine-font code that
 //!    is not a piece letter. Their letters would be read as the wrong pieces.
-//! 5. **Hidden OCR layer**: more than [`MAX_HIDDEN_RATIO`] of the glyphs are drawn invisibly
+//! 5. **Garbled pieces**: at least [`MIN_GARBLED`] words are a stray symbol and a square (`&xe5`,
+//!    `®f7`, `^d5`): an earlier OCR program's invisible layer over a scanned book, which read the
+//!    figurines as whatever symbol looked closest. The page is to be read again with chess OCR.
+//! 6. **Hidden OCR layer**: more than [`MAX_HIDDEN_RATIO`] of the glyphs are drawn invisibly
 //!    (`3 Tr`) on a page that is a picture. That is the layer FineReader, Acrobat or Tesseract
 //!    write over a scan, and a general OCR guesses at figurines and annotation symbols. The text
 //!    layer cannot tell whether images cover the page, so this check is the caller's
@@ -29,6 +32,10 @@ pub const MAX_BAD_RATIO: f32 = 0.15;
 /// This many unresolved chess glyphs make the layer poor. One stray glyph in an unknown chess
 /// font is not worth an OCR pass; a few mean a whole font's moves are unreadable.
 pub const MIN_UNRESOLVED: usize = 3;
+
+/// This many garbled piece words make the layer poor: one `&e4` can be a typo, a few are a
+/// figurine the layer lost every time.
+pub const MIN_GARBLED: usize = 3;
 
 /// Above this share of invisible glyphs, a layer over a picture of the page is another program's
 /// OCR: "mostly invisible". Born-digital text has none; a scan's OCR layer has nothing else.
@@ -56,6 +63,8 @@ pub enum PoorReason {
     DeadMap { ratio: f32 },
     /// Glyphs in chess fonts whose codes could not be resolved to what they draw.
     UnresolvedChessCodes { glyphs: usize },
+    /// Words that are a stray symbol and a square, where a figurine was lost.
+    GarbledPieces { words: usize },
     /// Glyphs drawn invisibly over a picture of the page: another program's OCR of a scan.
     HiddenOcrLayer { ratio: f32 },
 }
@@ -77,6 +86,32 @@ pub(crate) struct GlyphStats {
     pub unresolved: usize,
     /// Judged glyphs drawn invisibly (`3 Tr`).
     pub invisible: usize,
+    /// Words that are a stray symbol and a square (`&xe5`).
+    pub garbled: usize,
+}
+
+/// Whether a word is a stray symbol where a figurine belongs, then a square: `&xe5`, `®f7`,
+/// `^d5`, `§fl` (an OCR'd `1`). The symbol is no letter, digit, figurine or punctuation a move
+/// is written with.
+pub(crate) fn is_garbled_piece(word: &[char]) -> bool {
+    const MOVE_PUNCTUATION: &str = ".…-–—,;:()[]{}\"'«»“”‘’!?+#=/×";
+    // After an opening bracket or quote, and a move number (`50.&xe5`).
+    let mut chars =
+        word.iter().copied().skip_while(|c| "([{\"'«“‘".contains(*c)).skip_while(char::is_ascii_digit).skip_while(|c| *c == '.' || *c == '…');
+    let Some(symbol) = chars.next() else { return false };
+    if symbol.is_alphanumeric()
+        || symbol.is_whitespace()
+        || MOVE_PUNCTUATION.contains(symbol)
+        || pdfcraft_chess::san::figurine_piece(symbol).is_some()
+    {
+        return false;
+    }
+    let rest: Vec<char> = chars.collect();
+    let square = match rest.as_slice() {
+        ['x' | ':', file, rank, ..] | [file, rank, ..] => (*file, *rank),
+        _ => return false,
+    };
+    ('a'..='h').contains(&square.0) && ("12345678lI|".contains(square.1))
 }
 
 fn ratio(part: usize, whole: usize) -> f32 {
@@ -102,6 +137,9 @@ pub(crate) fn verdict(stats: &GlyphStats) -> TextQuality {
     }
     if stats.unresolved >= MIN_UNRESOLVED {
         return TextQuality::Poor { reason: PoorReason::UnresolvedChessCodes { glyphs: stats.unresolved } };
+    }
+    if stats.garbled >= MIN_GARBLED {
+        return TextQuality::Poor { reason: PoorReason::GarbledPieces { words: stats.garbled } };
     }
     TextQuality::Good
 }
