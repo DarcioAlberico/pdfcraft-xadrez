@@ -54,6 +54,9 @@ pub struct ChessState {
     pub text: Option<crate::chess_text_ui::PageText>,
     /// A page being read, or the book being exported, off the interface thread.
     pub job: Option<crate::chess_text_ui::ChessJob>,
+    /// The open document's book cipher, as its reads so far taught it: every later read and
+    /// export starts from it.
+    pub cipher: Option<(DocId, pdfcraft_engine::chess::pdfcraft_chessvision::cipher::BookCipher)>,
 }
 
 /// What scanning found in one document.

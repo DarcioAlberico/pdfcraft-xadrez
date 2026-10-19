@@ -92,5 +92,5 @@ That PDF's text layer is an old OCR layer (words like `Taf7asch` for Tarrasch). 
 - **Links:** the lichess address is plain text in Word and RTF; it is a working link in PDF, HTML, EPUB and Markdown.
 - **Readings and corrections**
   - A reading the decoder repaired is never linked or accepted until a person confirms it.
-  - The book's cipher (figurines a font maps to other letters) is learned per run, not kept with the document.
+  - The book's cipher (what a figurine font or a misreading maps to) is carried from page to page and between reads while the document is open; headless runs save and load it with `cipher_out` / `cipher_in`. It is not saved inside the PDF.
 - **Speed:** reading a page with OCR, or exporting a whole book, runs off the interface thread (the panel shows it is working) but cannot be cancelled once started.

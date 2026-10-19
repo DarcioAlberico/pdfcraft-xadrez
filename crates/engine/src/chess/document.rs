@@ -85,6 +85,9 @@ pub struct OcrOptions<'a> {
     pub glyphs: Option<&'a dyn GlyphClassifier>,
     /// Also run the general OCR (`ocrs`) for prose when its models are installed.
     pub general: bool,
+    /// The book's cipher so far (from earlier pages or an earlier run): this reading starts from
+    /// it, and [`ChessDocument::cipher`] carries it on with what these pages taught.
+    pub book: Option<&'a BookCipher>,
 }
 
 /// What chess OCR did on one page.
@@ -234,7 +237,7 @@ impl Session {
         };
         let mut needs_ocr = Vec::new();
         let mut ocr_pages = Vec::new();
-        let mut cipher = BookCipher::default();
+        let mut cipher = ocr.book.cloned().unwrap_or_default();
         // The last legal, accepted position seen: the moves of a page without a diagram go on from it.
         let mut last_fen: Option<String> = None;
         let mut builder = DocBuilder::new();

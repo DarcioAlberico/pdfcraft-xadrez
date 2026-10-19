@@ -589,6 +589,31 @@ fn chess_document_ocr_says_what_it_needs() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// cipher_out saves the book cipher, cipher_in starts from it; both stay in the root, and a
+/// file that is not a cipher is refused.
+#[test]
+fn the_book_cipher_is_saved_and_read_back_inside_the_root() {
+    let (base, root) = workdir("cipher");
+    let (mut a, doc) = opened(&root);
+    let first = ok(&mut a, "chess_document", json!({ "doc": doc, "cipher_out": "book.cipher.json" }));
+    assert_eq!(first["cipher"]["saved"], "book.cipher.json", "{first:#}");
+    let saved = std::fs::read_to_string(root.join("book.cipher.json")).unwrap();
+    assert!(serde_json::from_str::<Value>(&saved).is_ok(), "{saved}");
+    let again = ok(&mut a, "chess_export_pgn", json!({ "doc": doc, "out": "g.pgn", "cipher_in": "book.cipher.json" }));
+    assert_eq!(again["cipher"]["rows"], first["cipher"]["rows"]);
+    std::fs::write(root.join("bad.json"), "{ not json").unwrap();
+    let e = a.call("chess_document", &json!({ "doc": doc, "cipher_in": "bad.json" })).unwrap_err();
+    assert!(e.to_string().contains("bad.json"), "{e}");
+    for (key, path) in [("cipher_in", "../outside/c.json"), ("cipher_out", "../outside/c.json")] {
+        match a.call("chess_document", &json!({ "doc": doc, key: path })) {
+            Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{key}: {m}"),
+            other => panic!("{key} accepted: {other:?}"),
+        }
+    }
+    assert_eq!(std::fs::read_dir(base.join("outside")).unwrap().count(), 0);
+    let _ = std::fs::remove_dir_all(base);
+}
+
 #[test]
 fn chess_arguments_out_of_range_are_refused_with_what_is_allowed() {
     let (base, root) = workdir("args");

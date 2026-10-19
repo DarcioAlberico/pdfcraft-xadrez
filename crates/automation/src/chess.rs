@@ -20,6 +20,7 @@ use pdfcraft_engine::chess::pdfcraft_chess::fen;
 use pdfcraft_engine::chess::pdfcraft_chess::rules::Legality;
 use pdfcraft_engine::chess::pdfcraft_chess::san::Lang;
 use pdfcraft_engine::chess::pdfcraft_chessvision::board::{BoardReading, ReadPosition, ReadingSource, Unreadable};
+use pdfcraft_engine::chess::pdfcraft_chessvision::cipher::BookCipher;
 use pdfcraft_engine::chess::pdfcraft_chessvision::coords::{PageGeometry, PageRect};
 use pdfcraft_engine::chess::pdfcraft_chessvision::detect::Source;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, Inline, MoveInline, MoveStatus};
@@ -27,6 +28,9 @@ use pdfcraft_engine::chess::pdfcraft_chessvision::merge::Merged;
 use pdfcraft_engine::chess::pdfcraft_chessvision::pieces::{self, PieceSource};
 use pdfcraft_engine::chess::{self, ChessPage, ChessScanSettings, DiagramReplacement, LinkSettings, ModelState, ReadingOrder};
 use serde_json::{Value, json};
+
+/// Where to save the book cipher: the path as given, and resolved in the root.
+type CipherOut = (String, std::path::PathBuf);
 
 /// `ocr`: when chess OCR reads a page instead of its text layer (default auto: when the layer is
 /// poor or missing). The general OCR reads the prose when its models are installed.
@@ -37,7 +41,7 @@ fn ocr_options(a: &Args) -> Result<OcrOptions<'static>> {
         Some("all") => OcrMode::All,
         Some(_) => return Err(Args::wrong("ocr", "\"auto\", \"off\" or \"all\"")),
     };
-    Ok(OcrOptions { mode, glyphs: None, general: true })
+    Ok(OcrOptions { mode, glyphs: None, general: true, book: None })
 }
 
 use crate::{Args, Automation, Result, ToolError, comments, failed};
@@ -387,7 +391,10 @@ impl Automation {
         let out = a.opt_str("out")?.map(|p| self.resolve(p, true).map(|r| (p, r))).transpose()?;
         let pgn_out = a.opt_str("pgn_out")?.map(|p| self.resolve(p, true).map(|r| (p, r))).transpose()?;
         let id = self.doc(a)?.id;
-        let read = self.session.chess_document_with(id, &pages, &settings, lang, &ocr_options(a)?).map_err(failed)?;
+        let (seed, cipher_out) = self.cipher_args(a)?;
+        let ocr = OcrOptions { book: seed.as_ref(), ..ocr_options(a)? };
+        let read = self.session.chess_document_with(id, &pages, &settings, lang, &ocr).map_err(failed)?;
+        let cipher = Self::cipher_reply(&read.cipher, cipher_out.as_ref())?;
         let doc = &read.doc;
         let blocks = doc.pages.iter().flat_map(|p| &p.blocks);
         let count = |f: fn(&Block) -> bool| doc.pages.iter().flat_map(|p| &p.blocks).filter(|b| f(b)).count();
@@ -407,6 +414,7 @@ impl Automation {
             "flagged_moves": moves.iter().filter(|m| matches!(m.status, MoveStatus::Illegal | MoveStatus::Ambiguous)).count(),
             "needs_ocr": read.needs_ocr.iter().map(|(p, why)| json!({ "page": p + 1, "reason": why })).collect::<Vec<_>>(),
             "ocr_pages": read.ocr_pages.iter().map(|o| json!({ "page": o.page + 1, "lines": o.lines, "repaired": o.edits, "unsettled": o.flags, "general_ocr": o.general_ocr })).collect::<Vec<_>>(),
+            "cipher": cipher,
             "notes": read.notes.iter().map(|(p, n)| json!({ "page": p + 1, "note": n })).collect::<Vec<_>>(),
         });
         if let Some((shown, path)) = out {
@@ -532,6 +540,7 @@ impl Automation {
                 .ok_or_else(|| Args::wrong("diagram_px", &format!("from 32 to {}", chess::office::MAX_DIAGRAM_PX)))?,
         };
         let ocr = ocr_options(a)?.mode;
+        let (book, cipher_out) = self.cipher_args(a)?;
         let scan = self.chess_settings(a)?;
         let pages = if a.opt_ints("pages")?.is_some() { self.pages(a, "pages")? } else { Vec::new() };
         let shown = a.str("out")?.to_owned();
@@ -564,6 +573,7 @@ impl Automation {
             title,
             diagram_px,
             image_dir: image_dir.clone(),
+            book,
         };
         let made = self.session.chess_export(id, format, &options).map_err(failed)?;
         if let Some(dir) = &folder
@@ -598,8 +608,33 @@ impl Automation {
             "ocr_pages": read.ocr_pages.iter().map(|o| json!({ "page": o.page + 1, "lines": o.lines, "repaired": o.edits, "unsettled": o.flags, "general_ocr": o.general_ocr })).collect::<Vec<_>>(),
             "notes": notes,
             "position_games": made.position_games,
+            "cipher": Self::cipher_reply(&made.read.cipher, cipher_out.as_ref())?,
             "image_dir": folder.as_ref().filter(|_| !made.images.is_empty()).map(|_| image_dir),
         }))
+    }
+
+    /// `cipher_in`: a book cipher saved by an earlier run (JSON), to start from; `cipher_out`:
+    /// where to save the cipher these pages taught. Both confined to the root.
+    fn cipher_args(&self, a: &Args) -> Result<(Option<BookCipher>, Option<CipherOut>)> {
+        let seed = match a.opt_str("cipher_in")? {
+            None => None,
+            Some(p) => {
+                let path = self.resolve(p, false)?;
+                let text = std::fs::read_to_string(&path).map_err(|e| failed(format!("{p}: {e}")))?;
+                Some(BookCipher::from_json(&text).map_err(|e| failed(format!("{p}: {e}")))?)
+            }
+        };
+        let out = a.opt_str("cipher_out")?.map(|p| self.resolve(p, true).map(|r| (p.to_owned(), r))).transpose()?;
+        Ok((seed, out))
+    }
+
+    /// Save `cipher` to `out` (when asked) and say what it holds.
+    fn cipher_reply(cipher: &BookCipher, out: Option<&CipherOut>) -> Result<Value> {
+        if let Some((_, path)) = out {
+            let text = cipher.to_json().map_err(|e| failed(format!("the cipher could not be written: {e}")))?;
+            crate::write_atomic(path, text.as_bytes())?;
+        }
+        Ok(json!({ "rows": cipher.entries().len(), "settled": cipher.proven().len(), "saved": out.map(|(shown, _)| shown.clone()) }))
     }
 
     pub(crate) fn chess_status(&self, a: &Args) -> Result<Value> {

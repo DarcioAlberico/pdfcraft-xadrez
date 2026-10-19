@@ -136,6 +136,11 @@ fn chess_export_schema() -> Value {
                 );
                 o.insert("lang".into(), json!({ "type": "string", "maxLength": 16, "description": "The piece letters' language in the PDF, as a BCP 47 tag. Default: chosen from the pages." }));
                 o.insert("ocr".into(), json!({ "type": "string", "enum": ["auto", "off", "all"], "description": "Chess OCR of the page image instead of the text layer: auto (default) on pages whose layer is poor or missing, off, or all pages. Needs the user's chess-glyphs model; the general OCR reads prose when its models are installed. ocr_pages says what it read." }));
+                o.insert("cipher_in".into(), json!({ "type": "string", "description": "A book cipher saved by an earlier run (cipher_out), to start chess OCR from: what the book's figurine fonts or misreadings map to, learned on other pages." }));
+                o.insert(
+                    "cipher_out".into(),
+                    json!({ "type": "string", "description": "Save the book cipher these pages taught (JSON), for later runs on the same book." }),
+                );
                 o.insert(
                     "diagrams".into(),
                     json!({ "type": "string", "enum": ["svg", "fen"], "description": "Diagrams as redrawn SVG boards (default) or as FEN text." }),
@@ -1246,6 +1251,8 @@ pub fn tools() -> Vec<ToolDef> {
                     if let Some(o) = props.as_object_mut() {
                         o.insert("lang".into(), json!({ "type": "string", "maxLength": 16, "description": "The piece letters' language as a BCP 47 tag (en, de, fr, es, pt, it, nl, ru, …). Default: chosen from the pages." }));
                         o.insert("ocr".into(), json!({ "type": "string", "enum": ["auto", "off", "all"], "description": "Chess OCR of the page image instead of the text layer: auto (default) on pages whose layer is poor or missing, off, or all pages. Needs the user's chess-glyphs model; the general OCR reads prose when its models are installed. ocr_pages says what it read." }));
+                        o.insert("cipher_in".into(), json!({ "type": "string", "description": "A book cipher saved by an earlier run (cipher_out), to start chess OCR from: what the book's figurine fonts or misreadings map to, learned on other pages." }));
+                        o.insert("cipher_out".into(), json!({ "type": "string", "description": "Save the book cipher these pages taught (JSON), for later runs on the same book." }));
                         o.insert("include".into(), json!({ "type": "array", "items": { "type": "string", "enum": ["json", "pgn"] }, "description": "Add the document (json) and/or the games as PGN (pgn) to the reply." }));
                         o.insert("out".into(), json!({ "type": "string", "description": "Write the document as JSON to this file." }));
                         o.insert("pgn_out".into(), json!({ "type": "string", "description": "Write the games as PGN to this file." }));
