@@ -31,6 +31,7 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
+use pdfcraft_chess::recognize::side::SideSource;
 use pdfcraft_chessvision::board::{self, BoardReading, ReadPosition, SquareClassifier};
 use pdfcraft_chessvision::coords::{PageGeometry, PageRect, PixelRect, Rotation, ViewRect, view_to_pixels};
 use pdfcraft_chessvision::detect::embedded::{self, ImageBox};
@@ -40,6 +41,7 @@ use pdfcraft_chessvision::detect::{DiagramCandidate, contour};
 use pdfcraft_chessvision::merge::{self, Merged};
 use pdfcraft_chessvision::order::reading_order;
 use pdfcraft_chessvision::raster::GrayImage;
+use pdfcraft_chessvision::{chess_text, side_text};
 use pdfcraft_edit::paths::{PathColor, PathItem, PathSegment, Subpath};
 use pdfcraft_render::{PageInfo, PageRenderer, RenderConfig, RenderRequest, RequestKind};
 
@@ -654,7 +656,7 @@ fn scan_page(
     let truncated = diagrams.len() > settings.max_diagrams;
     diagrams.truncate(settings.max_diagrams);
 
-    let (dpi, error, readings) = match raster {
+    let (dpi, error, mut readings) = match raster {
         Err(e) => (0.0, Some(e), None),
         Ok((gray, dpi)) => {
             let readings = read.then(|| {
@@ -664,7 +666,30 @@ fn scan_page(
             (dpi, None, readings)
         }
     };
+    if let (Some(readings), Some(text)) = (readings.as_mut(), text.text.as_deref()) {
+        sides_from_move_numbers(text, &geometry, &diagrams, readings);
+    }
     ChessPage { page: input.page, geometry: Some(geometry), dpi, diagrams, readings, truncated, error, notes }
+}
+
+/// The side to move (and move number) from the bold move number under each diagram, in a
+/// born-digital page's text (`side_text`). The position still overrules it.
+fn sides_from_move_numbers(text: &pdfcraft_render::PageText, geometry: &PageGeometry, diagrams: &[Merged], readings: &mut [BoardReading]) {
+    if !readings.iter().any(|r| r.position().is_some()) {
+        return;
+    }
+    // A box that does not map to the page matches no text.
+    let nowhere = ViewRect { x0: f32::NAN, y0: f32::NAN, x1: f32::NAN, y1: f32::NAN };
+    let boxes: Vec<ViewRect> = diagrams.iter().map(|d| geometry.user_to_view(d.candidate.bbox_user).unwrap_or(nowhere)).collect();
+    let chess = chess_text::from_page_text(text, None);
+    let hints = side_text::hints(text, &chess, &boxes);
+    for reading in readings {
+        if let Some(hint) = hints.get(reading.index).copied().flatten()
+            && let Ok(position) = &mut reading.outcome
+        {
+            position.declare_side(hint.color, SideSource::MoveNumber, u32::from(hint.number));
+        }
+    }
 }
 
 /// Read the candidates, on the detection raster, or on a finer one when a candidate's source has

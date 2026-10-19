@@ -533,3 +533,22 @@ proptest! {
         prop_assert!(readings.iter().enumerate().all(|(k, r)| r.index == k));
     }
 }
+
+#[test]
+fn a_declared_side_and_move_number_go_into_the_fen() {
+    let mut p = font_position(parse_placement(MIDDLE).unwrap());
+    assert_eq!(p.side.source, SideSource::Default);
+    p.declare_side(Color::Black, SideSource::MoveNumber, 23);
+    assert_eq!((p.side.color, p.side.source, p.side.conflicting), (Color::Black, SideSource::MoveNumber, false));
+    assert!(p.fen.ends_with(" b - - 0 23"), "{}", p.fen);
+    assert!(p.lichess_url().unwrap().contains("%20b%20"), "{:?}", p.lichess_url());
+}
+
+#[test]
+fn the_position_overrules_a_declared_side() {
+    // The black king on e8 is in check from the rook on e1: only Black can be to move.
+    let mut p = font_position(parse_placement("4k3/8/8/8/8/8/8/K3R3").unwrap());
+    p.declare_side(Color::White, SideSource::MoveNumber, 40);
+    assert_eq!((p.side.color, p.side.source, p.side.conflicting), (Color::Black, SideSource::Legality, true));
+    assert!(p.fen.ends_with(" b - - 0 1"), "{}", p.fen);
+}

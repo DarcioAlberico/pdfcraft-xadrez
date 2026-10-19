@@ -8,6 +8,7 @@ use std::sync::Arc;
 
 use pdfcraft_chess::draw::{BoardStyle, Paint, PieceSet, Rgb, Segment, board};
 use pdfcraft_chess::fen::parse_placement;
+use pdfcraft_chess::placement::Color;
 use pdfcraft_chess::recognize::{CLASS_COUNT, class_of};
 use pdfcraft_chessvision::board::{ReadingSource, SquareClassifier, Unreadable};
 use pdfcraft_chessvision::detect::Source;
@@ -26,11 +27,20 @@ const MERIDA_START: [&str; 8] = ["tMvWlVmT", "OoOoOoOo", " + + + +", "+ + + + ",
 /// A one-page PDF of 600 × 800 pt drawing `content`, with the font `F1` (`/BaseFont font`,
 /// every code 1000 units wide), an image `Im1` when given (8-bit gray) and extra page keys.
 fn pdf(content: &str, font: &str, image: Option<(u32, u32, &[u8])>, page_extra: &str) -> Vec<u8> {
+    pdf_fonts(content, &[font], image, page_extra)
+}
+
+/// [`pdf`] with several fonts: `F1` is `fonts[0]`, `F2` is `fonts[1]`, and so on.
+fn pdf_fonts(content: &str, fonts: &[&str], image: Option<(u32, u32, &[u8])>, page_extra: &str) -> Vec<u8> {
     let widths = vec!["1000"; 95].join(" ");
+    let font_dict =
+        |name: &str| format!("<< /Type /Font /Subtype /Type1 /BaseFont /{name} /FirstChar 32 /LastChar 126 /Widths [{widths}] >>").into_bytes();
+    // F1 is object 5 and the image object 6; further fonts follow from object 7.
+    let refs: String = (0..fonts.len()).map(|i| format!(" /F{} {} 0 R", i + 1, if i == 0 { 5 } else { 6 + i })).collect();
     let mut objs: Vec<Vec<u8>> = vec![
         b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(),
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 600 800] >>".to_vec(),
-        format!("<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> /XObject << /Im1 6 0 R >> >> {page_extra} >>")
+        format!("<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font <<{refs} >> /XObject << /Im1 6 0 R >> >> {page_extra} >>")
             .into_bytes(),
         {
             let mut s = format!("<< /Length {} >>\nstream\n", content.len()).into_bytes();
@@ -38,7 +48,7 @@ fn pdf(content: &str, font: &str, image: Option<(u32, u32, &[u8])>, page_extra: 
             s.extend_from_slice(b"\nendstream");
             s
         },
-        format!("<< /Type /Font /Subtype /Type1 /BaseFont /{font} /FirstChar 32 /LastChar 126 /Widths [{widths}] >>").into_bytes(),
+        font_dict(fonts.first().copied().unwrap_or("Helvetica")),
     ];
     let (w, h, data) = image.unwrap_or((1, 1, &[255]));
     let mut im = format!(
@@ -49,6 +59,7 @@ fn pdf(content: &str, font: &str, image: Option<(u32, u32, &[u8])>, page_extra: 
     im.extend_from_slice(data);
     im.extend_from_slice(b"\nendstream");
     objs.push(im);
+    objs.extend(fonts.iter().skip(1).map(|f| font_dict(f)));
     let mut out = b"%PDF-1.7\n".to_vec();
     let mut offsets = Vec::new();
     for (i, o) in objs.iter().enumerate() {
@@ -287,6 +298,34 @@ fn a_box_only_diagram_is_read_at_its_own_resolution_not_the_detection_raster() {
     // A stand-in's readings are not cached: another classifier would read differently.
     let mut s = s;
     assert!(!s.store_chess_scan(&scan));
+}
+
+/// The start position set in Chess Merida, with `number` (in `number_font`) and a move under it.
+fn board_with_move_number(number: &str, number_font: &str) -> Vec<u8> {
+    // The board fills 50..210 pt from the top; the game goes on at 240 pt.
+    let content = format!("{}BT /F2 10 Tf 50 550 Td ({number}) Tj /F3 10 Tf (Nf6 24.Bb5) Tj ET\n", font_board(50.0, 50.0, MERIDA_START));
+    pdf_fonts(&content, &["ChessMerida", number_font, "Times-Roman"], None, "")
+}
+
+/// In a born-digital book the first move number under a diagram is set in bold, and says whose
+/// move it is: `23...` makes it Black's, numbered 23, in the FEN and the lichess link.
+#[test]
+fn a_bold_move_number_under_a_diagram_sets_the_side_to_move() {
+    let (mut s, id) = open(board_with_move_number("23...", "Times-Bold"));
+    let page = s.chess_page(id, 0, &no_model()).unwrap();
+    let read = page.readings.as_ref().unwrap()[0].position().unwrap();
+    assert_eq!((read.side.color, read.side.source), (Color::Black, SideSource::MoveNumber), "{read:?}");
+    assert_eq!(read.fen, format!("{START} b KQkq - 0 23"));
+    assert_eq!(
+        lichess_url(read).as_deref(),
+        Some("https://lichess.org/analysis/rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR%20b%20KQkq%20-%200%2023")
+    );
+
+    // The same number in the body font is prose: White, assumed.
+    let (mut s, id) = open(board_with_move_number("23...", "Times-Roman"));
+    let page = s.chess_page(id, 0, &no_model()).unwrap();
+    let read = page.readings.as_ref().unwrap()[0].position().unwrap();
+    assert_eq!((read.side.color, read.side.source), (Color::White, SideSource::Default), "{read:?}");
 }
 
 /// An illegal reading (no kings) is reported, but gets no lichess link.
