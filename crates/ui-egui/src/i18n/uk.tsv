@@ -2570,3 +2570,12 @@ animation effects	Off	Вимкнено
 	This diagram hasn't been read: scan its page first, or set its position in the editor.	Цю діаграму не прочитано: спершу проскануйте її сторінку або задайте позицію в редакторі.
 	White to move	Хід білих
 	White to move, in check	Хід білих, шах
+# Chess ▸ Board: variations, annotations and game details.
+	Comment on this move	Коментар до цього ходу
+	Delete from this move	Видалити починаючи з цього ходу
+	Event	Турнір
+	Game details	Дані партії
+	Make this the main line	Зробити головним варіантом
+	Result	Результат
+	Round	Тур
+	Site	Місце

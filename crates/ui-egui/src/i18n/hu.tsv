@@ -2547,3 +2547,12 @@ animation effects	Off	Ki
 	This diagram hasn't been read: scan its page first, or set its position in the editor.	Ez a diagram nincs beolvasva: előbb szkennelje be az oldalát, vagy állítsa be az állást a szerkesztőben.
 	White to move	Világos lép
 	White to move, in check	Világos lép, sakkban
+# Chess ▸ Board: variations, annotations and game details.
+	Comment on this move	Megjegyzés ehhez a lépéshez
+	Delete from this move	Törlés ettől a lépéstől
+	Event	Esemény
+	Game details	A játszma adatai
+	Make this the main line	Legyen ez a főváltozat
+	Result	Eredmény
+	Round	Forduló
+	Site	Helyszín

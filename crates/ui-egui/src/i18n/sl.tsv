@@ -2553,3 +2553,12 @@ animation effects	Off	Izklopljeni
 	This diagram hasn't been read: scan its page first, or set its position in the editor.	Ta diagram ni prebran: najprej skenirajte njegovo stran ali nastavite položaj v urejevalniku.
 	White to move	Na potezi je beli
 	White to move, in check	Na potezi je beli, v šahu
+# Chess ▸ Board: variations, annotations and game details.
+	Comment on this move	Komentar k tej potezi
+	Delete from this move	Izbriši od te poteze
+	Event	Turnir
+	Game details	Podatki o partiji
+	Make this the main line	Naj bo to glavna varianta
+	Result	Rezultat
+	Round	Kolo
+	Site	Kraj

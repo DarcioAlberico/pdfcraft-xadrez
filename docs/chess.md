@@ -1,7 +1,7 @@
 # Chess books
 
 **Status:** current to 2026-10-19 (blueprint steps S1–S18; see [`chess/blueprint.md`](chess/blueprint.md)).
-**Revision history:** 2026-10-18 — first version, after S18. 2026-10-19 — the chess board panel; book origin, and hidden OCR layers over scans.
+**Revision history:** 2026-10-18 — first version, after S18. 2026-10-19 — the chess board panel, its variations, annotations, game details and `chess_game`; book origin, and hidden OCR layers over scans.
 
 PdfCraft can read a chess book in PDF. It finds the diagrams, reads each one as a position (FEN), and reads the moves in the text, including figurines and annotation signs. It can redraw a diagram, put a lichess link under it, and export the book as HTML, EPUB, Word, RTF, Markdown or PGN. Everything runs on your machine; nothing is sent anywhere.
 
@@ -46,9 +46,12 @@ Open the **Chess diagrams** panel (`chess.panel`), or run **Chess ▸ Scan** (`c
 - The **Chess board** is an analysis board in its own tab, beside the Inspector.
   - **Double-click a diagram** on the page, or choose **Open on the board** in the list or the editor, to load its position. The position being edited is used when the editor has that diagram.
   - Play moves by clicking a piece and then where it goes, or by dragging it. A pawn reaching the last rank asks for its piece.
-  - The arrows, or the arrow keys, Home and End with the pointer over the panel, walk the line. A move made at an earlier point replaces the rest of the line.
+  - The arrows, or the arrow keys, Home and End with the pointer over the panel, walk the line. A move made at an earlier point starts a **variation**; forward follows each move's main reply, as on lichess.
+  - The move list shows variations in brackets and comments in italics. Click a move to go to it; right-click it to **make it the main line** or **delete from this move**.
+  - The move shown takes annotation glyphs (`!`, `?`, `!!`, `??`, `!?`, `?!` and the evaluations) and a comment.
+  - **Game details** holds the players, event, site, date, round and result, written as the PGN's tags.
   - Before the first move, choose who is to move. **Flip board** shows it from Black's side.
-  - The **FEN** and **PGN** fields follow the board. Edit one and press Enter (FEN) or **Load PGN** to load it; reading a PGN stops at its first move that is not legal and says which.
+  - The **FEN** and **PGN** fields follow the board. Edit one and press Enter (FEN) or **Load PGN** to load it. A PGN's variations, comments, glyphs and tags are read; a move that is not legal ends only its own line, and the first one is named.
   - A diagram whose position is not legal is shown in a red frame and cannot be played until it is corrected in the editor.
 
 ## Headless: tools and CLI
@@ -62,6 +65,7 @@ Every feature is also a tool (`pdfcraft-cli tools`; the MCP server is opt-in):
 | `chess_document` | the book as headings, paragraphs of moves and diagrams, with the games replayed into variation trees; JSON and PGN |
 | `chess_replace_diagram`, `content_draw` | redraw a diagram (one undo step); the generic checked-operators edit under it |
 | `chess_add_lichess_links` | a label and link under every legal, accepted diagram |
+| `chess_game` | the board without a document: a game from a FEN or a PGN, moves in SAN or UCI, the position at a ply with its legal moves, and the game as PGN |
 | `chess_export_html`, `_epub`, `_docx`, `_rtf`, `_markdown`, `_pgn` | the exports |
 
 `pdfcraft-cli chess scan FILE` prints the diagrams found. All paths are confined to `--root`.

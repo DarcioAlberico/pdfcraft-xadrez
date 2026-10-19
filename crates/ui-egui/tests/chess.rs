@@ -531,14 +531,25 @@ fn double_clicking_a_diagram_puts_it_on_the_board_to_play() {
     click_square(&mut h, "e5");
     assert_eq!(h.state().chess.board.game.movetext(), "1. e4 e5");
     h.get_by_label("e5");
-    // Back one move with the button, then a different move replaces the rest of the line.
+    // Back one move with the button, then a different move starts a variation.
     h.get_by_label("◀").click();
     h.run_steps(2);
     assert_eq!(h.state().chess.board.game.ply(), 1);
     click_square(&mut h, "c7");
     click_square(&mut h, "c5");
-    assert_eq!(h.state().chess.board.game.movetext(), "1. e4 c5");
-    assert!(h.state().chess.board.pgn_text.ends_with("1. e4 c5 *\n"), "{}", h.state().chess.board.pgn_text);
+    assert_eq!(h.state().chess.board.game.movetext(), "1. e4 e5 (1... c5)");
+    assert!(h.state().chess.board.pgn_text.ends_with("1. e4 e5 (1... c5) *\n"), "{}", h.state().chess.board.pgn_text);
+    // A glyph on the move shown.
+    h.get_by_label("!?").click();
+    h.run_steps(2);
+    let c5 = h.state().chess.board.game.current();
+    assert_eq!(h.state().chess.board.game.nags(c5), &[5]);
+    // The move's menu makes the variation the main line.
+    h.get_by_label("c5!?").click_secondary();
+    h.run_steps(2);
+    h.get_by_label("Make this the main line").click();
+    h.run_steps(2);
+    assert_eq!(h.state().chess.board.game.movetext(), "1. e4 c5 $5 (1... e5)");
     // Copy FEN copies the position on the board.
     h.get_by_label("Copy FEN").click();
     let mut copied = false;
@@ -552,6 +563,16 @@ fn double_clicking_a_diagram_puts_it_on_the_board_to_play() {
             .any(|c| matches!(c, egui::OutputCommand::CopyText(t) if t == "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2"));
     }
     assert!(copied, "the board's FEN was copied");
+    // A comment typed in two goes keeps the space between them: the game trims what it stores,
+    // and the field must not take that back while it is being typed in.
+    let comment = h.get_all_by_role(egui::accesskit::Role::MultilineTextInput).find(|n| n.value().unwrap_or_default().is_empty()).unwrap();
+    comment.focus();
+    comment.type_text("good ");
+    h.run_steps(2);
+    h.get_all_by_role(egui::accesskit::Role::MultilineTextInput).find(|n| n.value().as_deref() == Some("good ")).unwrap().type_text("move");
+    h.run_steps(2);
+    let node = h.state().chess.board.game.current();
+    assert_eq!(h.state().chess.board.game.comment(node), "good move");
 }
 
 /// Open on the board, in the Chess diagrams panel, puts that diagram on the board too.

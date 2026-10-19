@@ -2564,3 +2564,12 @@ animation effects	Off	Desativados
 	This diagram hasn't been read: scan its page first, or set its position in the editor.	Este diagrama não foi lido: escaneie a página dele primeiro ou monte a posição no editor.
 	White to move	Brancas jogam
 	White to move, in check	Brancas jogam, em xeque
+# Chess ▸ Board: variations, annotations and game details.
+	Comment on this move	Comentário sobre este lance
+	Delete from this move	Apagar a partir deste lance
+	Event	Evento
+	Game details	Dados da partida
+	Make this the main line	Tornar esta a linha principal
+	Result	Resultado
+	Round	Rodada
+	Site	Local

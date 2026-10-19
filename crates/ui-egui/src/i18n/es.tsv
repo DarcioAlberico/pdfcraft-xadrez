@@ -2690,3 +2690,12 @@ animation effects	Off	Desactivados
 	This diagram hasn't been read: scan its page first, or set its position in the editor.	Este diagrama no se ha leído: escanee primero su página o monte la posición en el editor.
 	White to move	Juegan las blancas
 	White to move, in check	Juegan las blancas, en jaque
+# Chess ▸ Board: variations, annotations and game details.
+	Comment on this move	Comentario sobre esta jugada
+	Delete from this move	Borrar desde esta jugada
+	Event	Evento
+	Game details	Datos de la partida
+	Make this the main line	Convertir en la línea principal
+	Result	Resultado
+	Round	Ronda
+	Site	Lugar

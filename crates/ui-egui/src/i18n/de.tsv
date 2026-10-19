@@ -2549,3 +2549,12 @@ animation effects	Off	Aus
 	This diagram hasn't been read: scan its page first, or set its position in the editor.	Dieses Diagramm wurde nicht gelesen: zuerst seine Seite scannen oder die Stellung im Editor setzen.
 	White to move	Weiß am Zug
 	White to move, in check	Weiß am Zug, im Schach
+# Chess ▸ Board: variations, annotations and game details.
+	Comment on this move	Kommentar zu diesem Zug
+	Delete from this move	Ab diesem Zug löschen
+	Event	Turnier
+	Game details	Partiedaten
+	Make this the main line	Zur Hauptvariante machen
+	Result	Ergebnis
+	Round	Runde
+	Site	Ort

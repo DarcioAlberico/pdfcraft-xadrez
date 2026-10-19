@@ -2558,3 +2558,12 @@ animation effects	Off	Ανενεργά
 	This diagram hasn't been read: scan its page first, or set its position in the editor.	Αυτό το διάγραμμα δεν έχει διαβαστεί: σαρώστε πρώτα τη σελίδα του ή ορίστε τη θέση στον επεξεργαστή.
 	White to move	Παίζουν τα λευκά
 	White to move, in check	Παίζουν τα λευκά, σε σαχ
+# Chess ▸ Board: variations, annotations and game details.
+	Comment on this move	Σχόλιο για αυτή την κίνηση
+	Delete from this move	Διαγραφή από αυτή την κίνηση
+	Event	Διοργάνωση
+	Game details	Στοιχεία παρτίδας
+	Make this the main line	Να γίνει κύρια γραμμή
+	Result	Αποτέλεσμα
+	Round	Γύρος
+	Site	Τόπος

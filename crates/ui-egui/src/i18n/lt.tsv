@@ -2792,3 +2792,12 @@ key	Space	Tarpas
 	This diagram hasn't been read: scan its page first, or set its position in the editor.	Ši diagrama neperskaityta: pirmiausia nuskenuokite jos puslapį arba nustatykite poziciją rengyklėje.
 	White to move	Ėjimas baltųjų
 	White to move, in check	Ėjimas baltųjų, šachas
+# Chess ▸ Board: variations, annotations and game details.
+	Comment on this move	Komentaras apie šį ėjimą
+	Delete from this move	Ištrinti nuo šio ėjimo
+	Event	Turnyras
+	Game details	Partijos duomenys
+	Make this the main line	Paversti pagrindiniu variantu
+	Result	Rezultatas
+	Round	Ratas
+	Site	Vieta

@@ -2511,3 +2511,12 @@ animation effects	Off	Изключени
 	This diagram hasn't been read: scan its page first, or set its position in the editor.	Тази диаграма не е прочетена: първо сканирайте страницата ѝ или задайте позицията в редактора.
 	White to move	На ход са белите
 	White to move, in check	На ход са белите, шах
+# Chess ▸ Board: variations, annotations and game details.
+	Comment on this move	Коментар към този ход
+	Delete from this move	Изтриване от този ход нататък
+	Event	Турнир
+	Game details	Данни за партията
+	Make this the main line	Да стане главен вариант
+	Result	Резултат
+	Round	Кръг
+	Site	Място

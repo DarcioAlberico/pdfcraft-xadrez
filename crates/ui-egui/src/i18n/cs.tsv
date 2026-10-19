@@ -2622,3 +2622,12 @@ animation effects	Off	Vypnuto
 	This diagram hasn't been read: scan its page first, or set its position in the editor.	Tento diagram nebyl přečten: nejprve naskenujte jeho stránku nebo zadejte pozici v editoru.
 	White to move	Na tahu je bílý
 	White to move, in check	Na tahu je bílý, v šachu
+# Chess ▸ Board: variations, annotations and game details.
+	Comment on this move	Komentář k tomuto tahu
+	Delete from this move	Smazat od tohoto tahu
+	Event	Turnaj
+	Game details	Údaje o partii
+	Make this the main line	Udělat z ní hlavní variantu
+	Result	Výsledek
+	Round	Kolo
+	Site	Místo

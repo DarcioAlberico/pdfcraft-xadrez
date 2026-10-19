@@ -2,10 +2,12 @@
 //!
 //! A diagram goes onto it from the page (double-click the diagram) or from the Chess diagrams
 //! panel (Open on the board). Moves are played by clicking a piece and then where it goes, or by
-//! dragging it there; the board keeps the line played, which the arrows (or the arrow keys, with
-//! the pointer over the panel) walk back and forth. A move made at an earlier point replaces the
-//! rest of the line. The position is also a FEN field and the game a PGN field: both can be
-//! copied, or edited and loaded back.
+//! dragging it there; the arrows (or the arrow keys, with the pointer over the panel) walk the
+//! game back and forth. A move made at an earlier point starts a variation. The move list shows
+//! the variations, comments and annotation glyphs; a move's menu makes its line the main one or
+//! deletes it. The move shown takes a glyph and a comment, and the game its details (the PGN
+//! tags). The position is also a FEN field and the game a PGN field: both can be copied, or
+//! edited and loaded back.
 //!
 //! The rules are `pdfcraft_chess::game` (L0); this file only shows them. A diagram read from a
 //! book can be illegal (a misread square): it is shown as it is, and no move can be played on it
@@ -13,8 +15,8 @@
 
 use egui::{Color32, Key, Pos2, Rect, Stroke, TextureHandle, vec2};
 use pdfcraft_engine::DocId;
-use pdfcraft_engine::chess::pdfcraft_chess::draw::{BoardStyle, PieceSet};
-use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, GameError, Outcome};
+use pdfcraft_engine::chess::pdfcraft_chess::draw::{BoardStyle, PieceSet, Rgb};
+use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, GameError, NodeId, Outcome, Token};
 use pdfcraft_engine::chess::pdfcraft_chess::placement::{Color, Piece, PieceKind, Placement, Square};
 
 use crate::theme::{self, Tokens};
@@ -54,6 +56,12 @@ pub struct BoardState {
     pub message: Option<String>,
     texture: Option<(String, TextureHandle)>,
     draw_error: Option<String>,
+    /// The pieces cut out of their squares, for the one following the pointer in a drag.
+    sprites: Option<TextureHandle>,
+    /// The comment or game-detail field being typed in (its key) and its text as typed. The game
+    /// keeps comments and tags cleaned (spaces collapsed, ends trimmed), so a field re-read from
+    /// it every frame would eat a space typed at the end.
+    draft: Option<(String, String)>,
 }
 
 impl Default for BoardState {
@@ -71,6 +79,8 @@ impl Default for BoardState {
             message: None,
             texture: None,
             draw_error: None,
+            sprites: None,
+            draft: None,
         }
     }
 }
@@ -137,7 +147,7 @@ impl BoardState {
     fn refresh_fields(&mut self, force: bool) {
         let key = match &self.illegal {
             Some((_, fen)) => format!("illegal|{fen}"),
-            None => format!("{}|{}|{}", self.game.start_fen(), self.game.movetext(), self.game.ply()),
+            None => format!("{}|{}|{}", self.game.start_fen(), self.game.revision(), self.game.current()),
         };
         if force || key != self.shown {
             self.fen_text = self.current_fen();
@@ -232,6 +242,46 @@ impl BoardState {
         }
     }
 
+    /// The twelve pieces cut out of their squares, in one image: White's king, queen, rook,
+    /// bishop, knight and pawn on the top row, Black's on the second (see [`sprite_uv`]). Each
+    /// is drawn on white and on black; where the two differ the piece is see-through, so the
+    /// difference is its alpha and the drawing on black its premultiplied colour.
+    fn sprites(&mut self, ctx: &egui::Context, pieces: &PieceSet) -> Option<TextureHandle> {
+        if let Some(tex) = &self.sprites {
+            return Some(tex.clone());
+        }
+        let mut placement = Placement::empty();
+        for (row, color) in [(7u8, Color::White), (6u8, Color::Black)] {
+            for (file, kind) in (0u8..).zip(KINDS) {
+                if let Some(sq) = Square::new(file, row) {
+                    placement.set(sq, Some(Piece { color, kind }));
+                }
+            }
+        }
+        let style = |c: Rgb| BoardStyle { border: 0.0, coordinates: false, flipped: false, light: c, dark: c, ..BoardStyle::default() };
+        let draw = |c: Rgb| pdfcraft_engine::chess::office::diagram_rgba(&placement, pieces, &style(c), BOARD_PX).ok();
+        let (w, h, on_white) = draw(Rgb(255, 255, 255))?;
+        let (w2, h2, on_black) = draw(Rgb(0, 0, 0))?;
+        let (w, h) = (usize::try_from(w).ok()?, usize::try_from(h).ok()?);
+        if (w, h) != (usize::try_from(w2).ok()?, usize::try_from(h2).ok()?)
+            || on_white.len() != w.checked_mul(h)?.checked_mul(4)?
+            || on_black.len() != on_white.len()
+        {
+            return None;
+        }
+        let mut rgba = Vec::with_capacity(on_white.len());
+        for (wp, bp) in on_white.as_chunks::<4>().0.iter().zip(on_black.as_chunks::<4>().0) {
+            let diff: u16 = wp.iter().zip(bp).take(3).map(|(a, b)| u16::from(a.saturating_sub(*b))).sum::<u16>() / 3;
+            let alpha = 255u8.saturating_sub(u8::try_from(diff).unwrap_or(255));
+            // Premultiplied: the colour on black is colour × alpha, never above alpha.
+            rgba.extend(bp.iter().take(3).map(|c| (*c).min(alpha)));
+            rgba.push(alpha);
+        }
+        let tex = ctx.load_texture("chess-analysis-pieces", egui::ColorImage::from_rgba_premultiplied([w, h], &rgba), egui::TextureOptions::LINEAR);
+        self.sprites = Some(tex.clone());
+        Some(tex)
+    }
+
     /// The board image, redrawn when the pieces or the view change.
     fn texture(&mut self, ctx: &egui::Context, pieces: &PieceSet) -> Option<TextureHandle> {
         let placement = self.placement();
@@ -260,6 +310,16 @@ impl BoardState {
             }
         }
     }
+}
+
+/// The pieces in the order of the sprite image's columns.
+const KINDS: [PieceKind; 6] = [PieceKind::King, PieceKind::Queen, PieceKind::Rook, PieceKind::Bishop, PieceKind::Knight, PieceKind::Pawn];
+
+/// Where `piece` is in the sprite image (texture coordinates).
+fn sprite_uv(piece: Piece) -> Rect {
+    let col = KINDS.iter().position(|k| *k == piece.kind).unwrap_or(0) as f32;
+    let row = if piece.color == Color::White { 0.0 } else { 1.0 };
+    Rect::from_min_size(egui::pos2(col / 8.0, row / 8.0), vec2(1.0 / 8.0, 1.0 / 8.0))
 }
 
 /// The colours drawn over the board.
@@ -323,11 +383,27 @@ fn board_view(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, pieces: &Pi
                 }
             }
         }
-        // The square a dragged piece would land on.
+        // The square a dragged piece would land on, and the piece itself under the pointer: its
+        // square shows empty meanwhile.
         if response.dragged()
-            && let Some(sq) = response.interact_pointer_pos().and_then(|p| at(state, p))
+            && let Some(from) = state.selected
+            && let Some(pointer) = response.interact_pointer_pos()
         {
-            painter.rect_stroke(state.square_rect(rect, sq), 0.0, Stroke::new(2.0, Color32::WHITE), egui::StrokeKind::Inside);
+            if let Some(sq) = at(state, pointer) {
+                painter.rect_stroke(state.square_rect(rect, sq), 0.0, Stroke::new(2.0, Color32::WHITE), egui::StrokeKind::Inside);
+            }
+            if let (Some(piece), Some(sprites)) = (state.game.piece_on(from), state.sprites(ui.ctx(), pieces)) {
+                let cell = state.square_rect(rect, from);
+                let Rgb(r, g, b) = if from.is_light() { BoardStyle::default().light } else { BoardStyle::default().dark };
+                painter.rect_filled(cell, 0.0, Color32::from_rgb(r, g, b));
+                let ghost = Rect::from_center_size(pointer, cell.size() * 1.1);
+                ui.ctx().layer_painter(egui::LayerId::new(egui::Order::Tooltip, egui::Id::new("chess-board-drag"))).image(
+                    sprites.id(),
+                    ghost,
+                    sprite_uv(piece),
+                    Color32::WHITE,
+                );
+            }
         }
     }
     // Coordinates in the corner squares, as on an analysis board.
@@ -369,42 +445,178 @@ fn status(state: &BoardState) -> (String, Color32) {
     }
 }
 
-/// The move list: numbered, the move shown highlighted, each one a click away.
+/// What a move's menu asked for.
+enum MoveEdit {
+    Go(NodeId),
+    Promote(NodeId),
+    Delete(NodeId),
+}
+
+/// The move list: numbered, the move shown highlighted, each one a click away; variations in
+/// brackets and smaller, comments in italics. A move's menu (right-click) makes its line the main
+/// one or deletes it.
 fn move_list(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) {
     if state.illegal.is_some() {
         return;
     }
-    let moves = state.game.moves();
-    if moves.is_empty() {
+    let tokens = state.game.tokens();
+    if tokens.iter().all(|t| !matches!(t, Token::Move { .. })) {
         ui.label(egui::RichText::new(tl!("Play a move: click a piece, then where it goes, or drag it there.")).small().color(t.text_muted));
         return;
     }
-    let mut go = None;
-    egui::ScrollArea::vertical().id_salt("chess-board-moves").max_height(150.0).auto_shrink([false, true]).show(ui, |ui| {
+    let mut edit = None;
+    let current = state.game.current();
+    egui::ScrollArea::vertical().id_salt("chess-board-moves").max_height(180.0).auto_shrink([false, true]).show(ui, |ui| {
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing.x = 4.0;
-            for (k, (ply, number, color, san)) in moves.iter().enumerate() {
-                match color {
-                    Color::White => {
-                        ui.label(egui::RichText::new(format!("{number}.")).small().color(t.text_faint));
+            for token in &tokens {
+                match token {
+                    Token::Move { node, number, color, numbered, san, nags, depth } => {
+                        let depth = *depth;
+                        if *numbered {
+                            let n = if *color == Color::White { format!("{number}.") } else { format!("{number}...") };
+                            ui.label(egui::RichText::new(n).small().color(t.text_faint));
+                        }
+                        let text = format!("{san}{}", glyphs(nags));
+                        let mut rich = egui::RichText::new(text).monospace();
+                        if depth > 0 {
+                            rich = rich.small().color(t.text_muted);
+                        }
+                        let r = ui.selectable_label(*node == current, rich);
+                        if r.clicked() {
+                            edit = Some(MoveEdit::Go(*node));
+                        }
+                        r.context_menu(|ui| {
+                            if depth > 0 && ui.button(tl!("Make this the main line")).clicked() {
+                                edit = Some(MoveEdit::Promote(*node));
+                                ui.close();
+                            }
+                            if ui.button(tl!("Delete from this move")).clicked() {
+                                edit = Some(MoveEdit::Delete(*node));
+                                ui.close();
+                            }
+                        });
                     }
-                    Color::Black if k == 0 => {
-                        ui.label(egui::RichText::new(format!("{number}...")).small().color(t.text_faint));
+                    Token::Comment { text, .. } => {
+                        ui.label(egui::RichText::new(text).italics().small().color(t.text_muted));
                     }
-                    Color::Black => {}
-                }
-                let shown = *ply == state.game.ply();
-                if ui.selectable_label(shown, egui::RichText::new(*san).monospace()).clicked() {
-                    go = Some(*ply);
+                    Token::VariationStart => {
+                        ui.label(egui::RichText::new("(").small().color(t.text_faint));
+                    }
+                    Token::VariationEnd => {
+                        ui.label(egui::RichText::new(")").small().color(t.text_faint));
+                    }
                 }
             }
         });
     });
-    if let Some(ply) = go {
+    if let Some(e) = edit {
         state.selected = None;
         state.promotion = None;
-        state.game.go_to(ply);
+        match e {
+            MoveEdit::Go(node) => state.game.go_to_node(node),
+            MoveEdit::Promote(node) => state.game.promote(node),
+            MoveEdit::Delete(node) => state.game.delete(node),
+        }
     }
+}
+
+/// How glyph `code` is shown. The slight advantages (⩲ ⩱) are written `+=` and `=+`, as books
+/// set them in text: the interface fonts lack the two signs.
+fn nag_text(code: u16) -> String {
+    match code {
+        14 => "+=".to_owned(),
+        15 => "=+".to_owned(),
+        _ => pdfcraft_engine::chess::pdfcraft_chess::nag::by_code(code).map_or_else(|| format!("${code}"), |nag| nag.glyph.to_owned()),
+    }
+}
+
+/// How a move's glyphs read after it: `!`, `?` and the like glued on, the others after a space.
+fn glyphs(nags: &[u16]) -> String {
+    let mut out = String::new();
+    for &code in nags {
+        if !(1..=6).contains(&code) {
+            out.push(' ');
+        }
+        out.push_str(&nag_text(code));
+    }
+    out
+}
+
+/// The glyphs the panel offers for the move shown: its quality, then the evaluation.
+const OFFERED_NAGS: [u16; 13] = [1, 2, 3, 4, 5, 6, 10, 14, 15, 16, 17, 18, 19];
+
+/// The glyph buttons and the comment of the move shown.
+fn annotation(ui: &mut egui::Ui, state: &mut BoardState) {
+    let node = state.game.current();
+    if state.illegal.is_some() || node == 0 {
+        return;
+    }
+    ui.horizontal_wrapped(|ui| {
+        ui.spacing_mut().item_spacing.x = 2.0;
+        for code in OFFERED_NAGS {
+            let on = state.game.nags(node).contains(&code);
+            if ui.selectable_label(on, egui::RichText::new(nag_text(code)).monospace()).clicked() {
+                state.game.toggle_nag(node, code);
+            }
+        }
+    });
+    let key = format!("comment {node}");
+    let mut comment = drafted(&state.draft, &key, state.game.comment(node));
+    let r = ui.add(egui::TextEdit::multiline(&mut comment).hint_text(tl!("Comment on this move")).desired_rows(1).desired_width(f32::INFINITY));
+    if r.changed() {
+        state.game.set_comment(node, &comment);
+    }
+    keep_draft(&mut state.draft, &key, &r, comment);
+}
+
+/// The text a cleaned field shows: as typed while it is being typed in (`draft` holds its
+/// `key`), else as the game keeps it.
+fn drafted(draft: &Option<(String, String)>, key: &str, stored: &str) -> String {
+    match draft {
+        Some((k, text)) if k == key => text.clone(),
+        _ => stored.to_owned(),
+    }
+}
+
+/// Keep a field's text as typed while it has the keyboard; once it loses it, show the game's.
+fn keep_draft(draft: &mut Option<(String, String)>, key: &str, response: &egui::Response, text: String) {
+    if response.has_focus() {
+        *draft = Some((key.to_owned(), text));
+    } else if draft.as_ref().is_some_and(|(k, _)| k == key) {
+        *draft = None;
+    }
+}
+
+/// The game's details: the PGN tags people fill in.
+fn details(ui: &mut egui::Ui, state: &mut BoardState) {
+    if state.illegal.is_some() {
+        return;
+    }
+    egui::CollapsingHeader::new(tl!("Game details")).id_salt("chess-board-details").show(ui, |ui| {
+        egui::Grid::new("chess-board-tags").num_columns(2).spacing([8.0, 4.0]).show(ui, |ui| {
+            for (tag, label) in [
+                ("White", tl!("White")),
+                ("Black", tl_ctx!("chess side", "Black")),
+                ("Event", tl!("Event")),
+                ("Site", tl!("Site")),
+                ("Date", tl!("Date")),
+                ("Round", tl!("Round")),
+                ("Result", tl!("Result")),
+            ] {
+                ui.label(label);
+                let key = format!("tag {tag}");
+                let mut value = drafted(&state.draft, &key, state.game.tag(tag).unwrap_or_default());
+                let r = ui.add(egui::TextEdit::singleline(&mut value).desired_width(f32::INFINITY));
+                if r.changed() {
+                    // The names above are valid tag names: this cannot fail.
+                    let _ = state.game.set_tag(tag, &value);
+                }
+                keep_draft(&mut state.draft, &key, &r, value);
+                ui.end_row();
+            }
+        });
+    });
 }
 
 /// The Chess board panel. `source_label` names the diagram the board was loaded from.
@@ -493,6 +705,8 @@ pub fn panel(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, pieces: &Pie
     if state.illegal.is_none() && state.game.ply() < state.game.len() && ui.small_button(tl!("Delete the moves after this one")).clicked() {
         state.game.truncate();
     }
+    annotation(ui, state);
+    details(ui, state);
     ui.add_space(6.0);
     state.refresh_fields(false);
     // FEN.
@@ -524,6 +738,7 @@ pub fn panel(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, pieces: &Pie
             state.selected = None;
             state.promotion = None;
             state.message = None;
+            state.refresh_fields(true);
         }
     });
     ui.add_space(4.0);
@@ -616,6 +831,14 @@ mod tests {
         s.set_first_side(Color::White);
         assert_eq!(s.game.side_to_move(), Color::Black);
         assert!(s.message.is_some());
+    }
+
+    #[test]
+    fn glyphs_read_as_books_print_them() {
+        assert_eq!(glyphs(&[1]), "!");
+        assert_eq!(glyphs(&[5, 14]), "!? +=");
+        assert_eq!(glyphs(&[15, 18]), " =+ +-");
+        assert_eq!(glyphs(&[999]), " $999");
     }
 
     #[test]
