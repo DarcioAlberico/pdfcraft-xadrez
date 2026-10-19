@@ -615,6 +615,31 @@ fn fused_lines_read_as_chess_text_like_a_text_layer() {
     assert!(to_page_text(&[bad], 0.0).glyphs.is_empty());
 }
 
+/// A recognised glyph's box is its ink (`a` half the height of `h`), but on the page text every
+/// glyph spans its line, as a text layer's glyphs span the font: the layout measures word gaps
+/// and gutters against glyph height.
+#[test]
+fn page_text_glyphs_span_their_line() {
+    let glyph = |c: &str, x0: u32, y0: u32| Glyph {
+        rect: PixelRect { x0, y0, x1: x0 + 8, y1: 60 },
+        text: c.into(),
+        p: 0.9,
+        alternatives: Vec::new(),
+        margin: 0.5,
+    };
+    let word = FusedWord {
+        text: "ah".into(),
+        rect: PixelRect { x0: 0, y0: 40, x1: 16, y1: 60 },
+        source: WordSource::Glyphs,
+        glyphs: vec![glyph("a", 0, 50), glyph("h", 8, 40)],
+        other: None,
+    };
+    let fused = FusedLine { words: vec![word], rect: PixelRect { x0: 0, y0: 38, x1: 16, y1: 62 } };
+    let page = to_page_text(&[fused], 72.0);
+    assert!(page.glyphs.iter().all(|g| g.rect[1] == 38.0 && g.rect[3] == 62.0), "{:?}", page.glyphs.iter().map(|g| g.rect).collect::<Vec<_>>());
+    assert_eq!((page.glyphs[0].rect[0], page.glyphs[0].rect[2]), (0.0, 8.0), "the horizontal box is the glyph's");
+}
+
 // ---------------------------------------------------------------- properties
 
 proptest! {

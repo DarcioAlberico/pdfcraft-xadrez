@@ -668,6 +668,32 @@ fn a_two_column_page_is_read_column_by_column() {
 
 /// A page with one column keeps its order, whatever the line widths; full-width lines cut the
 /// columns into bands read in turn.
+/// A two-column page whose right column holds a game score's table (`2 f4 ef`, cut at its wide
+/// gaps into narrow pieces) beside its prose: the pieces bring the column's average width down,
+/// but its prose lines still make it a column.
+#[test]
+fn a_column_with_a_score_table_is_still_a_column() {
+    let prose = "the text runs on in its column here";
+    let mut lines = Vec::new();
+    for k in 0..8 {
+        lines.push(line_at(30.0, 100.0 + 20.0 * k as f32, prose));
+    }
+    for k in 0..5 {
+        lines.push(line_at(330.0, 100.0 + 20.0 * k as f32, prose));
+    }
+    for k in 0..6 {
+        let y = 200.0 + 20.0 * k as f32;
+        lines.push(line_at(330.0, y, &format!("{}.", k + 2)));
+        lines.push(line_at(380.0, y, "f4"));
+        lines.push(line_at(460.0, y, "ef"));
+    }
+    let refs: Vec<&ChessLine> = lines.iter().collect();
+    let x = crate::doc::build::gutter(&refs, 600.0).expect("a gutter between the columns");
+    assert!((290.0..330.0).contains(&x), "{x}");
+    let order = crate::doc::build::column_order(&refs, 600.0);
+    assert!(order[..8].iter().all(|l| l.rect.x0 < 100.0), "the left column first");
+}
+
 #[test]
 fn columns_need_a_real_gutter_and_full_width_lines_cut_bands() {
     let one = [line_at(30.0, 100.0, "1.e4 e5 2.Nf3 Nc6"), line_at(30.0, 120.0, "3.Bb5 a6 4.Ba4 Nf6"), line_at(30.0, 140.0, "5.O-O Be7")];
