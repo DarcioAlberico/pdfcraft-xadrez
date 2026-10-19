@@ -134,6 +134,12 @@ pub enum ReviewFlag {
     UntrustedStart { page: u32, diagram: usize },
     /// The diagram's side to move was assumed, and the first move's number said the other side.
     SideFromMoveNumber,
+    /// The first move is not legal from the diagram before it, but is from another diagram
+    /// nearby (two diagrams printed side by side, their texts after both): the game starts there.
+    DiagramMatchedByMove,
+    /// A diagram stands between these moves, but the next move continues this game and is not
+    /// legal from the diagram, so the game was carried on past it.
+    ContinuedPastDiagram { page: u32, diagram: usize },
     /// The game reached [`games::MAX_GAME_NODES`] moves or [`games::MAX_VARIATION_DEPTH`]
     /// nested variations; the rest of the line was not added.
     GameTooLarge,
