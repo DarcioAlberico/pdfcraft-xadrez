@@ -447,6 +447,75 @@ fn a_new_game_from_one_after_a_later_diagram() {
 }
 
 #[test]
+fn puzzle_labels() {
+    use crate::doc::build::puzzle_label;
+    for (text, want) in [
+        ("№185. Teichmann – Lasker", 185),
+        ("N!!185. Teichmann", 185),
+        ("N!! 186. Lasker – Marco", 186),
+        ("N9191. Lasker", 191),
+        ("No. 12 Smith", 12),
+        ("Nr 7)", 7),
+        ("#42:", 42),
+    ] {
+        assert_eq!(puzzle_label(text, false), Some(want), "{text}");
+    }
+    // A bare number only in a caption, and only with its full stop.
+    assert_eq!(puzzle_label("185. Teichmann – Lasker", true), Some(185));
+    assert_eq!(puzzle_label("185. Teichmann – Lasker", false), None);
+    for text in ["1996 was a good year", "6.", "6. ±", "N9", "No way", "Nothing 12.", "№0.", "№123456.", "the №5 is", ""] {
+        assert_eq!(puzzle_label(text, true), None, "{text}");
+    }
+}
+
+/// A puzzle book: the diagrams with their numbers, the solutions pages on, in another order.
+/// Each solution is played from the diagram its number names.
+#[test]
+fn solutions_are_played_from_their_numbered_diagrams() {
+    let rook = "8/8/4k3/8/8/4K3/r7/7R w - - 0 1";
+    // Under each diagram, nearer than its `№` caption, a line that reads as a bare caption: the
+    // `№` wins.
+    let p0 = page_text(vec![
+        line(45.0, "№1. Brown – Green"),
+        line(211.0, "12. White to play"),
+        line(245.0, "№2. Smith – Jones"),
+        line(411.0, "13. Black to play"),
+    ]);
+    let d0 = [reading(0, 60.0, SCHOLAR, true, false), reading(1, 260.0, rook, true, false)];
+    let p1 = page_text(vec![line(100.0, "Solutions follow on the next page.")]);
+    let p2 = page_text(vec![
+        line(100.0, "№2. Smith – Jones"),
+        line(120.0, "1.Rh6+ Kd5 2.Rh5+"),
+        line(160.0, "№1. Brown – Green"),
+        line(180.0, "3.Qh5 Nf6 4.Qxf7#"),
+    ]);
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &d0, &[], &[]));
+    b.add_page(&input(1, &p1, &[], &[], &[]));
+    b.add_page(&input(2, &p2, &[], &[], &[]));
+    let doc = b.finish();
+    let numbers: Vec<Option<u32>> =
+        doc.pages[0].blocks.iter().filter_map(|b| if let Block::Diagram(d) = b { Some(d.puzzle) } else { None }).collect();
+    assert_eq!(numbers, [Some(1), Some(2)]);
+    assert!(moves(&doc.pages[2]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[2]));
+    assert_eq!(doc.games.len(), 2);
+    assert_eq!(doc.games[0].origin, GameOrigin::Diagram { page: 0, diagram: 1, accepted: true });
+    assert_eq!(doc.games[1].origin, GameOrigin::Diagram { page: 0, diagram: 0, accepted: true });
+    assert!(pgn::write_game(&doc.games[1].score).contains("[PdfPuzzle \"1\"]"));
+}
+
+/// A caption under the diagram gives its number too; one with no number gives none.
+#[test]
+fn a_caption_below_gives_the_puzzle_number() {
+    let text = page_text(vec![line(215.0, "No. 7 White to play"), line(420.0, "A quiet position.")]);
+    let diagrams = [reading(0, 60.0, SCHOLAR, true, false), reading(1, 260.0, SCHOLAR, true, false)];
+    let doc = build_page(&input(0, &text, &diagrams, &[], &[]));
+    let numbers: Vec<Option<u32>> =
+        doc.pages[0].blocks.iter().filter_map(|b| if let Block::Diagram(d) = b { Some(d.puzzle) } else { None }).collect();
+    assert_eq!(numbers, [Some(7), None]);
+}
+
+#[test]
 fn node_references_follow_the_canonical_order() {
     // The variation is read before the main move it is an alternative to is written: nodes are
     // reordered when the game closes, and the inlines must still point at their own moves.

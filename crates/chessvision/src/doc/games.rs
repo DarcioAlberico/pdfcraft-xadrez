@@ -44,6 +44,9 @@
 //!   into the game's comments, so the PGN still carries it.
 //! - **Comments and NAGs.** Prose inside a game is the comment of the move before it. An annotation
 //!   glyph belongs to the move it follows.
+//! - **Puzzles.** A diagram whose caption gives a number (`№185.`) is remembered by it. A
+//!   solution that names it (`№185. Teichmann – Lasker 1...Qh4`), however many pages on, closes
+//!   the open game and starts its moves from that diagram (tagged `PdfPuzzle`).
 //! - **Where a game ends.** At the next diagram, at a heading, at a result (`1-0`, `0-1`, `½-½`,
 //!   `1/2-1/2`) outside variations, and at a new `1.` when the game started from the initial
 //!   position. Paragraphs and page breaks do not end a game. A diagram does not end it when it
@@ -76,6 +79,8 @@ pub const MAX_GAMES: usize = 4096;
 pub const MAX_LISTED_MOVES: usize = 8;
 /// Most diagrams kept that no game started from, to be matched by a later first move.
 pub const MAX_SPARE_DIAGRAMS: usize = 6;
+/// Most numbered puzzle diagrams remembered for their solutions.
+pub const MAX_PUZZLES: usize = 20_000;
 
 /// How a game ended.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -537,6 +542,8 @@ impl Game {
 pub(crate) struct Seed {
     pub page: u32,
     pub diagram: usize,
+    /// The puzzle number its caption gives.
+    pub puzzle: Option<u32>,
     /// The reading's FEN, when it is legal with its side to move.
     pub fen: Option<String>,
     pub accepted: bool,
@@ -641,6 +648,8 @@ pub(crate) struct Walker {
     spare: Vec<Seed>,
     /// The next game starts from a spare diagram its first move matched.
     matched: bool,
+    /// Numbered puzzle diagrams, for the solutions that name them; at most [`MAX_PUZZLES`].
+    puzzles: Vec<Seed>,
     blocked: Vec<(u32, usize)>,
 }
 
@@ -748,6 +757,9 @@ fn seed_score(seed: &Seed, number: Option<MoveNumber>) -> Option<(GameScore, Vec
     let mut score = GameScore::new(Some(board.to_string()));
     score.extra_tags.push(Tag { name: "PdfPage".to_owned(), value: seed.page.saturating_add(1).to_string() });
     score.extra_tags.push(Tag { name: "PdfDiagram".to_owned(), value: seed.diagram.saturating_add(1).to_string() });
+    if let Some(n) = seed.puzzle {
+        score.extra_tags.push(Tag { name: "PdfPuzzle".to_owned(), value: n.to_string() });
+    }
     Some((score, flags, honour))
 }
 
@@ -755,10 +767,36 @@ impl Walker {
     /// A diagram: the next moves start from it, unless they continue the open game (see
     /// [`Walker::resolve_held`]). A diagram before it that no game started from is kept spare.
     pub fn diagram(&mut self, seed: Seed) {
+        if let Some(n) = seed.puzzle {
+            match self.puzzles.iter().position(|s| s.puzzle == Some(n)) {
+                Some(i) => {
+                    if let Some(old) = self.puzzles.get_mut(i) {
+                        *old = seed.clone();
+                    }
+                }
+                None if self.puzzles.len() < MAX_PUZZLES => self.puzzles.push(seed.clone()),
+                None => {}
+            }
+        }
         if let Anchor::Seed(old) = std::mem::take(&mut self.anchor) {
             self.keep_spare(old);
         }
         self.held = self.open.is_some();
+        self.anchor = Anchor::Seed(seed);
+    }
+
+    /// A solution names puzzle `n`: the open game ends and the next moves start from that
+    /// puzzle's diagram, however far back it was. Nothing happens for a number no diagram
+    /// gave, or when that diagram's moves are being read already (a caption under it).
+    pub fn puzzle(&mut self, n: u32) {
+        let Some(seed) = self.puzzles.iter().find(|s| s.puzzle == Some(n)).cloned() else { return };
+        let same = |s: &Seed| s.page == seed.page && s.diagram == seed.diagram;
+        let waiting = matches!(&self.anchor, Anchor::Seed(s) if same(s));
+        let playing = self.open.as_ref().is_some_and(|o| o.seed.as_ref().is_some_and(same));
+        if waiting || playing {
+            return;
+        }
+        self.close();
         self.anchor = Anchor::Seed(seed);
     }
 
