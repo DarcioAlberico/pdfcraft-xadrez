@@ -2455,3 +2455,12 @@ animation effects	Off	Выкл
 	This diagram hasn't been read: scan its page first, or set its position in the editor.	Эта диаграмма не прочитана: сначала просканируйте её страницу или задайте позицию в редакторе.
 	White to move	Ход белых
 	White to move, in check	Ход белых, шах
+# Chess ▸ Board: variations, annotations and game details.
+	Comment on this move	Комментарий к этому ходу
+	Delete from this move	Удалить начиная с этого хода
+	Event	Турнир
+	Game details	Данные партии
+	Make this the main line	Сделать главным вариантом
+	Result	Результат
+	Round	Тур
+	Site	Место

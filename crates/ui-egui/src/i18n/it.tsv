@@ -2754,3 +2754,12 @@ certificate	SHA-256 digest	Impronta SHA-256
 	This diagram hasn't been read: scan its page first, or set its position in the editor.	Questo diagramma non è stato letto: analizza prima la sua pagina o imposta la posizione nell'editor.
 	White to move	Muove il Bianco
 	White to move, in check	Muove il Bianco, sotto scacco
+# Chess ▸ Board: variations, annotations and game details.
+	Comment on this move	Commento a questa mossa
+	Delete from this move	Elimina da questa mossa
+	Event	Evento
+	Game details	Dati della partita
+	Make this the main line	Rendi questa la linea principale
+	Result	Risultato
+	Round	Turno
+	Site	Luogo

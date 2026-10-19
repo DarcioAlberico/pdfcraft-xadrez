@@ -800,6 +800,7 @@ impl Automation {
             "chess_detect" => self.chess_detect(&a)?,
             "chess_read" => self.chess_read(&a)?,
             "chess_status" => self.chess_status(&a)?,
+            "chess_game" => self.chess_game(&a)?,
             "chess_replace_diagram" => self.chess_replace_diagram(&a)?,
             "chess_document" => self.chess_document(&a)?,
             "chess_add_lichess_links" => self.chess_add_lichess_links(&a)?,

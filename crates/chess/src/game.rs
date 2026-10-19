@@ -1,10 +1,14 @@
-//! A game played out from a position: the moves made on an analysis board, the ply being looked
-//! at, and the game as PGN.
+//! A game played out from a position: the moves made on an analysis board with their variations,
+//! comments and annotation glyphs, the move being looked at, and the game as PGN.
 //!
-//! The board is a line, not a tree. A move made at an earlier ply replaces everything after it,
-//! unless it is the move already there, which just steps forward. Moves are named by their
-//! squares, the way a board is clicked: castling is the king moving two files (or onto its own
-//! rook), and a pawn reaching the last rank needs the piece it becomes.
+//! The moves are a tree. Each move's first reply is the line it continues in; the others are
+//! variations. A move made where a reply already exists is a new variation, unless it is one of
+//! the replies already there, which is then just followed. Moves are named by their squares, the
+//! way a board is clicked: castling is the king moving two files (or onto its own rook), and a
+//! pawn reaching the last rank needs the piece it becomes.
+//!
+//! Everything is bounded: the moves in a game ([`MAX_NODES`]), how deep variations nest
+//! ([`MAX_DEPTH`]), the PGN read ([`MAX_PGN_LEN`]), comments and tags.
 
 use std::fmt;
 
@@ -14,11 +18,30 @@ use crate::fen::Position;
 use crate::placement::{Color, Piece, PieceKind, Placement, Square};
 use crate::san::{San, color_from_cozy, kind_from_cozy, square_from_cozy, square_to_cozy, to_cozy_kind};
 
-/// Most plies a game holds. Real games are under 600.
-pub const MAX_PLIES: usize = 2000;
+/// Most moves a game holds, variations included. Real annotated games are under 3,000.
+pub const MAX_NODES: usize = 10_000;
+
+/// Deepest nesting of variations (a variation inside a variation…).
+pub const MAX_DEPTH: usize = 32;
 
 /// Longest PGN read, in bytes.
 pub const MAX_PGN_LEN: usize = 1 << 20;
+
+/// Longest comment kept, in bytes (cut at a character boundary).
+pub const MAX_COMMENT_LEN: usize = 4096;
+
+/// Most tags kept, and the longest tag name and value.
+pub const MAX_TAGS: usize = 64;
+pub const MAX_TAG_LEN: usize = 256;
+
+/// Most annotation glyphs on one move.
+const MAX_NAGS: usize = 8;
+
+/// The Seven Tag Roster, in the order PGN writes it.
+pub const ROSTER: [&str; 7] = ["Event", "Site", "Date", "Round", "White", "Black", "Result"];
+
+/// A move in the game (the start position is node 0).
+pub type NodeId = usize;
 
 /// Why a game could not be set up or a move made.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -32,10 +55,12 @@ pub enum GameError {
     IllegalMove,
     /// A pawn reaches the last rank: say what it becomes.
     NeedsPromotion,
-    /// The game is as long as a game may be.
+    /// The game holds as many moves, or variations nest as deep, as a game may.
     TooLong,
     /// The PGN is longer than [`MAX_PGN_LEN`].
     PgnTooLong,
+    /// A tag name that PGN does not allow (letters, digits and `_` only), or one too long.
+    BadTag,
 }
 
 impl fmt::Display for GameError {
@@ -47,13 +72,14 @@ impl fmt::Display for GameError {
             GameError::NeedsPromotion => write!(f, "the pawn needs a piece to become"),
             GameError::TooLong => write!(f, "the game is too long"),
             GameError::PgnTooLong => write!(f, "the PGN is too long"),
+            GameError::BadTag => write!(f, "a tag name has letters, digits and _ only"),
         }
     }
 }
 
 impl std::error::Error for GameError {}
 
-/// How the game stands at the ply shown.
+/// How the game stands at the move shown.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Outcome {
     Ongoing,
@@ -64,15 +90,63 @@ pub enum Outcome {
     FiftyMoves,
 }
 
+/// One piece of the move text, in PGN order: what a move list shows.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Token {
+    /// A move. `number` is shown before it when `numbered` (always for White; for Black at the
+    /// start of a line and after a comment or a variation). `depth` is how deep in variations it
+    /// is (0: the main line).
+    Move {
+        node: NodeId,
+        number: u32,
+        color: Color,
+        numbered: bool,
+        san: String,
+        nags: Vec<u16>,
+        depth: usize,
+    },
+    /// A comment after a move (or, on node 0, before the first one).
+    Comment {
+        node: NodeId,
+        text: String,
+    },
+    VariationStart,
+    VariationEnd,
+}
+
+#[derive(Clone, Debug)]
+struct Node {
+    /// The move that led here (`None` for the start).
+    mv: Option<Move>,
+    san: String,
+    /// The board after the move.
+    board: Board,
+    parent: NodeId,
+    /// The replies: the first continues the line, the others are variations.
+    children: Vec<NodeId>,
+    nags: Vec<u16>,
+    comment: String,
+    /// Moves from the start.
+    ply: usize,
+    /// How deep in variations (0: the main line).
+    depth: usize,
+}
+
+impl Node {
+    fn start(board: Board) -> Node {
+        Node { mv: None, san: String::new(), board, parent: 0, children: Vec::new(), nags: Vec::new(), comment: String::new(), ply: 0, depth: 0 }
+    }
+}
+
 /// A game from a start position.
 #[derive(Clone, Debug)]
 pub struct Game {
-    /// The board before each ply: `boards[0]` is the start, `boards[k]` the board after `k` plies.
-    boards: Vec<Board>,
-    moves: Vec<Move>,
-    sans: Vec<String>,
-    /// The ply shown (0 = the start).
-    ply: usize,
+    /// Node 0 is the start; it is never removed.
+    nodes: Vec<Node>,
+    current: NodeId,
+    tags: Vec<(String, String)>,
+    /// Counts the changes to the moves, comments, glyphs and tags (not to the move shown).
+    revision: u64,
 }
 
 impl Default for Game {
@@ -88,7 +162,7 @@ impl Game {
     }
 
     fn from_board(board: Board) -> Game {
-        Game { boards: vec![board], moves: Vec::new(), sans: Vec::new(), ply: 0 }
+        Game { nodes: vec![Node::start(board)], current: 0, tags: Vec::new(), revision: 0 }
     }
 
     /// A game from `position`, `side` to move when the position does not say.
@@ -103,52 +177,91 @@ impl Game {
         Game::new(&position, Color::White)
     }
 
-    /// The board at `ply`, the start when out of range (never: `ply` is kept in range).
-    fn board_at(&self, ply: usize) -> &Board {
-        // `boards` is never empty: every constructor puts the start in it, and `truncate` keeps it.
-        match self.boards.get(ply).or_else(|| self.boards.first()) {
-            Some(board) => board,
-            None => unreachable_board(),
+    /// Node `id`, the start when there is none (ids come from this game, so never).
+    fn node(&self, id: NodeId) -> &Node {
+        match self.nodes.get(id).or_else(|| self.nodes.first()) {
+            Some(node) => node,
+            None => unreachable_node(),
         }
     }
 
-    /// The board shown.
     fn board(&self) -> &Board {
-        self.board_at(self.ply)
+        &self.node(self.current).board
     }
 
-    /// The ply shown (0 = the start).
+    /// The move shown (0: the start).
+    pub fn current(&self) -> NodeId {
+        self.current
+    }
+
+    /// Changes with every change to the moves, comments, glyphs or tags.
+    pub fn revision(&self) -> u64 {
+        self.revision
+    }
+
+    /// Show move `node` (ignored when the game has no such move).
+    pub fn go_to_node(&mut self, node: NodeId) {
+        if node < self.nodes.len() {
+            self.current = node;
+        }
+    }
+
+    /// The line shown: the moves from the start to the move shown, then on along each first reply.
+    fn line(&self) -> Vec<NodeId> {
+        let mut back = vec![self.current];
+        let mut at = self.current;
+        while at != 0 {
+            at = self.node(at).parent;
+            back.push(at);
+        }
+        back.reverse();
+        let mut at = self.current;
+        while let Some(&next) = self.node(at).children.first() {
+            back.push(next);
+            at = next;
+        }
+        back
+    }
+
+    /// Moves from the start to the move shown.
     pub fn ply(&self) -> usize {
-        self.ply
+        self.node(self.current).ply
     }
 
-    /// How many plies the game has.
+    /// How many moves the line shown has.
     pub fn len(&self) -> usize {
-        self.moves.len()
+        self.line().len().saturating_sub(1)
     }
 
-    /// Whether no move was made.
+    /// Whether no move was made at all.
     pub fn is_empty(&self) -> bool {
-        self.moves.is_empty()
+        self.nodes.len() <= 1
     }
 
-    /// Show ply `ply` (clamped to the game).
+    /// Show the move `ply` moves into the line shown (clamped to it).
     pub fn go_to(&mut self, ply: usize) {
-        self.ply = ply.min(self.moves.len());
+        let line = self.line();
+        if let Some(&node) = line.get(ply).or(line.last()) {
+            self.current = node;
+        }
     }
 
-    /// One ply back; `false` at the start.
+    /// One move back; `false` at the start.
     pub fn back(&mut self) -> bool {
-        let moved = self.ply > 0;
-        self.ply = self.ply.saturating_sub(1);
+        let moved = self.current != 0;
+        self.current = self.node(self.current).parent;
         moved
     }
 
-    /// One ply forward; `false` at the end.
+    /// One move forward along the line; `false` at its end.
     pub fn forward(&mut self) -> bool {
-        let moved = self.ply < self.moves.len();
-        self.go_to(self.ply.saturating_add(1));
-        moved
+        match self.node(self.current).children.first() {
+            Some(&next) => {
+                self.current = next;
+                true
+            }
+            None => false,
+        }
     }
 
     /// The pieces shown.
@@ -163,7 +276,7 @@ impl Game {
 
     /// The FEN of the start.
     pub fn start_fen(&self) -> String {
-        self.board_at(0).to_string()
+        self.node(0).board.to_string()
     }
 
     /// Whose move it is on the board shown.
@@ -178,13 +291,7 @@ impl Game {
 
     /// How the game stands on the board shown.
     pub fn outcome(&self) -> Outcome {
-        let board = self.board();
-        match board.status() {
-            GameStatus::Ongoing => Outcome::Ongoing,
-            GameStatus::Won => Outcome::Checkmate,
-            GameStatus::Drawn if board.halfmove_clock() >= 100 && has_moves(board) => Outcome::FiftyMoves,
-            GameStatus::Drawn => Outcome::Stalemate,
-        }
+        outcome_of(self.board())
     }
 
     /// The legal moves on the board shown, as (from, to) the way they are clicked: castling is the
@@ -210,6 +317,15 @@ impl Game {
         out
     }
 
+    /// The legal moves on the board shown, in SAN, sorted.
+    pub fn legal_moves(&self) -> Vec<String> {
+        let board = self.board();
+        let mut out: Vec<String> =
+            self.clicks().into_iter().filter_map(|(_, _, mv)| San::from_move(board, mv).ok().map(|san| san.to_english())).collect();
+        out.sort();
+        out
+    }
+
     /// Whether moving `from` → `to` is a promotion (and so needs a piece).
     pub fn is_promotion(&self, from: Square, to: Square) -> bool {
         self.clicks().iter().any(|(f, t, mv)| *f == from && *t == to && mv.promotion.is_some())
@@ -220,8 +336,9 @@ impl Game {
         self.placement().get(square)
     }
 
-    /// Play `from` → `to` at the ply shown (`promotion` for a pawn reaching the last rank). The
-    /// moves after the ply shown are replaced, unless this is the next one already.
+    /// Play `from` → `to` at the move shown (`promotion` for a pawn reaching the last rank). A
+    /// reply already there is followed; a new one continues the line when there was none, else it
+    /// is a new variation.
     pub fn play(&mut self, from: Square, to: Square, promotion: Option<PieceKind>) -> Result<(), GameError> {
         let candidates: Vec<Move> = self.clicks().into_iter().filter(|(f, t, _)| *f == from && *t == to).map(|(_, _, mv)| mv).collect();
         if candidates.is_empty() {
@@ -242,99 +359,400 @@ impl Game {
         self.push(mv)
     }
 
-    /// Play a move written in SAN (English letters, or as books print it) at the ply shown.
+    /// Play a move written in SAN (English letters, or as books print it) at the move shown.
     pub fn play_san(&mut self, text: &str) -> Result<(), GameError> {
         let san = San::parse(text).map_err(|_| GameError::IllegalMove)?;
         let mv = san.to_move(self.board()).map_err(|_| GameError::IllegalMove)?;
         self.push(mv)
     }
 
+    /// Play a move in UCI notation (`e2e4`, `e7e8q`; castling as `e1g1` or the king onto its rook).
+    pub fn play_uci(&mut self, text: &str) -> Result<(), GameError> {
+        let text = text.trim();
+        let (from, to) = (text.get(0..2).and_then(Square::parse), text.get(2..4).and_then(Square::parse));
+        let (Some(from), Some(to)) = (from, to) else { return Err(GameError::IllegalMove) };
+        let promotion = match text.get(4..) {
+            None | Some("") => None,
+            Some(p) => Some(match p.to_ascii_lowercase().as_str() {
+                "q" => PieceKind::Queen,
+                "r" => PieceKind::Rook,
+                "b" => PieceKind::Bishop,
+                "n" => PieceKind::Knight,
+                _ => return Err(GameError::IllegalMove),
+            }),
+        };
+        self.play(from, to, promotion)
+    }
+
     fn push(&mut self, mv: Move) -> Result<(), GameError> {
-        if self.moves.get(self.ply) == Some(&mv) {
-            self.ply = self.ply.saturating_add(1);
+        let here = self.current;
+        if let Some(&existing) = self.node(here).children.iter().find(|&&c| self.node(c).mv == Some(mv)) {
+            self.current = existing;
             return Ok(());
         }
-        if self.ply >= MAX_PLIES {
+        let parent = self.node(here);
+        let depth = parent.depth.saturating_add(usize::from(!parent.children.is_empty()));
+        if self.nodes.len() >= MAX_NODES || depth > MAX_DEPTH {
             return Err(GameError::TooLong);
         }
-        let board = self.board().clone();
+        let board = parent.board.clone();
         let san = San::from_move(&board, mv).map_err(|_| GameError::IllegalMove)?;
         let mut after = board;
         after.try_play(mv).map_err(|_| GameError::IllegalMove)?;
-        self.moves.truncate(self.ply);
-        self.sans.truncate(self.ply);
-        self.boards.truncate(self.ply.saturating_add(1));
-        self.moves.push(mv);
-        self.sans.push(san.to_english());
-        self.boards.push(after);
-        self.ply = self.moves.len();
+        let id = self.nodes.len();
+        let ply = parent.ply.saturating_add(1);
+        self.nodes.push(Node {
+            mv: Some(mv),
+            san: san.to_english(),
+            board: after,
+            parent: here,
+            children: Vec::new(),
+            nags: Vec::new(),
+            comment: String::new(),
+            ply,
+            depth,
+        });
+        if let Some(p) = self.nodes.get_mut(here) {
+            p.children.push(id);
+        }
+        self.current = id;
+        self.revision = self.revision.wrapping_add(1);
         Ok(())
     }
 
-    /// Drop the moves after the ply shown.
+    /// Delete the replies to the move shown (and everything after them).
     pub fn truncate(&mut self) {
-        self.moves.truncate(self.ply);
-        self.sans.truncate(self.ply);
-        self.boards.truncate(self.ply.saturating_add(1));
+        if let Some(n) = self.nodes.get_mut(self.current)
+            && !n.children.is_empty()
+        {
+            n.children.clear();
+            self.compact();
+        }
+    }
+
+    /// Delete move `node` and everything after it (not the start). The move shown goes back to
+    /// `node`'s parent when it was among them.
+    pub fn delete(&mut self, node: NodeId) {
+        if node == 0 || node >= self.nodes.len() {
+            return;
+        }
+        let parent = self.node(node).parent;
+        if self.is_after(self.current, node) {
+            self.current = parent;
+        }
+        if let Some(p) = self.nodes.get_mut(parent) {
+            p.children.retain(|&c| c != node);
+        }
+        self.compact();
+    }
+
+    /// Make the line through `node` the main line: at each move on the way from the start it
+    /// becomes the first reply.
+    pub fn promote(&mut self, node: NodeId) {
+        if node >= self.nodes.len() {
+            return;
+        }
+        let mut at = node;
+        while at != 0 {
+            let parent = self.node(at).parent;
+            if let Some(p) = self.nodes.get_mut(parent)
+                && let Some(i) = p.children.iter().position(|&c| c == at)
+            {
+                let child = p.children.remove(i);
+                p.children.insert(0, child);
+            }
+            at = parent;
+        }
+        self.compact();
+    }
+
+    /// Whether `node` is `ancestor` or comes after it.
+    fn is_after(&self, mut node: NodeId, ancestor: NodeId) -> bool {
+        loop {
+            if node == ancestor {
+                return true;
+            }
+            if node == 0 {
+                return false;
+            }
+            node = self.node(node).parent;
+        }
+    }
+
+    /// Drop the moves no longer reachable from the start, renumber the rest depth first (first
+    /// replies first), and recompute how deep each one is in variations.
+    fn compact(&mut self) {
+        let mut order: Vec<NodeId> = Vec::with_capacity(self.nodes.len());
+        let mut stack = vec![0];
+        while let Some(id) = stack.pop() {
+            if id >= self.nodes.len() || order.len() >= MAX_NODES {
+                continue;
+            }
+            order.push(id);
+            // Reversed, so the first reply is visited first.
+            stack.extend(self.node(id).children.iter().rev().copied());
+        }
+        let mut new_id = vec![usize::MAX; self.nodes.len()];
+        for (new, &old) in order.iter().enumerate() {
+            if let Some(slot) = new_id.get_mut(old) {
+                *slot = new;
+            }
+        }
+        let map = |id: NodeId| new_id.get(id).copied().filter(|&n| n != usize::MAX);
+        let mut nodes: Vec<Node> = order.iter().filter_map(|&old| self.nodes.get(old).cloned()).collect();
+        for n in &mut nodes {
+            n.parent = map(n.parent).unwrap_or(0);
+            n.children = n.children.iter().filter_map(|&c| map(c)).collect();
+        }
+        // Depths: the parent comes before its children in `order`.
+        for i in 1..nodes.len() {
+            let Some(parent) = nodes.get(i).map(|n| n.parent) else { continue };
+            let (pdepth, first) = nodes.get(parent).map_or((0, true), |p| (p.depth, p.children.first() == Some(&i)));
+            if let Some(n) = nodes.get_mut(i) {
+                n.depth = pdepth.saturating_add(usize::from(!first));
+            }
+        }
+        self.current = map(self.current).unwrap_or(0);
+        self.nodes = nodes;
+        self.revision = self.revision.wrapping_add(1);
+    }
+
+    /// The comment after move `node` (on node 0: before the first move).
+    pub fn comment(&self, node: NodeId) -> &str {
+        &self.node(node).comment
+    }
+
+    /// Set the comment after move `node`, cut to [`MAX_COMMENT_LEN`]. Braces, which end a PGN
+    /// comment, become parentheses.
+    pub fn set_comment(&mut self, node: NodeId, text: &str) {
+        let clean = clean_comment(text);
+        if let Some(n) = self.nodes.get_mut(node)
+            && n.comment != clean
+        {
+            n.comment = clean;
+            self.revision = self.revision.wrapping_add(1);
+        }
+    }
+
+    /// The annotation glyphs on move `node` (PGN codes).
+    pub fn nags(&self, node: NodeId) -> &[u16] {
+        &self.node(node).nags
+    }
+
+    /// Put glyph `code` on move `node`, or take it off. A move-quality glyph (`!`, `?`, …: codes
+    /// 1–6) replaces the one there, as does an evaluation (codes 10–21).
+    pub fn toggle_nag(&mut self, node: NodeId, code: u16) {
+        if node == 0 || code == 0 || code > 255 {
+            return;
+        }
+        let Some(n) = self.nodes.get_mut(node) else { return };
+        if let Some(i) = n.nags.iter().position(|&c| c == code) {
+            n.nags.remove(i);
+        } else {
+            let group = |c: u16| match c {
+                1..=6 => 1,
+                10..=21 => 2,
+                _ => 0,
+            };
+            let g = group(code);
+            if g != 0 {
+                n.nags.retain(|&c| group(c) != g);
+            }
+            if n.nags.len() < MAX_NAGS {
+                n.nags.push(code);
+                n.nags.sort_unstable();
+            }
+        }
+        self.revision = self.revision.wrapping_add(1);
+    }
+
+    /// The SAN of move `node` (empty for the start).
+    pub fn san(&self, node: NodeId) -> &str {
+        &self.node(node).san
     }
 
     /// The move that led to the board shown, as (from, to) clicked.
     pub fn last_move(&self) -> Option<(Square, Square)> {
-        let k = self.ply.checked_sub(1)?;
-        let mv = *self.moves.get(k)?;
-        Some(click_of(self.board_at(k), mv))
+        let node = self.node(self.current);
+        let mv = node.mv?;
+        Some(click_of(&self.node(node.parent).board, mv))
     }
 
-    /// The moves in SAN, each with its number and whose it was: `(ply, number, color, san)`, `ply`
-    /// being the board after the move.
+    /// The moves of the line shown in SAN, each with its number and whose it was: `(ply, number,
+    /// color, san)`, `ply` being the board after the move.
     pub fn moves(&self) -> Vec<(usize, u32, Color, &str)> {
-        self.sans
-            .iter()
-            .enumerate()
-            .map(|(k, san)| {
-                let before = self.board_at(k);
-                (k.saturating_add(1), u32::from(before.fullmove_number()), color_from_cozy(before.side_to_move()), san.as_str())
+        self.line()
+            .into_iter()
+            .skip(1)
+            .map(|id| {
+                let n = self.node(id);
+                let before = &self.node(n.parent).board;
+                (n.ply, u32::from(before.fullmove_number()), color_from_cozy(before.side_to_move()), n.san.as_str())
             })
             .collect()
     }
 
-    /// The moves as PGN movetext: `1. e4 e5 2. Nf3`, or `35... Kg7 36. Rd1` from Black's move.
+    /// The move text in PGN order: moves, comments and variations.
+    pub fn tokens(&self) -> Vec<Token> {
+        let mut out = Vec::new();
+        let root = self.node(0);
+        if !root.comment.is_empty() {
+            out.push(Token::Comment { node: 0, text: root.comment.clone() });
+        }
+        self.emit_line(0, true, &mut out, 0);
+        out
+    }
+
+    /// Write the line that goes on from `parent`, with the variations at each move.
+    fn emit_line(&self, mut parent: NodeId, mut numbered: bool, out: &mut Vec<Token>, nesting: usize) {
+        if nesting > MAX_DEPTH {
+            return;
+        }
+        loop {
+            let children = &self.node(parent).children;
+            let Some(&main) = children.first() else { break };
+            numbered = self.emit_move(main, numbered, out);
+            for &alt in children.iter().skip(1) {
+                out.push(Token::VariationStart);
+                let after = self.emit_move(alt, true, out);
+                self.emit_line(alt, after, out, nesting.saturating_add(1));
+                out.push(Token::VariationEnd);
+                numbered = true;
+            }
+            parent = main;
+        }
+    }
+
+    /// One move and its comment. Returns whether the next move needs its number.
+    fn emit_move(&self, id: NodeId, numbered: bool, out: &mut Vec<Token>) -> bool {
+        let n = self.node(id);
+        let before = &self.node(n.parent).board;
+        let color = color_from_cozy(before.side_to_move());
+        out.push(Token::Move {
+            node: id,
+            number: u32::from(before.fullmove_number()),
+            color,
+            numbered: numbered || color == Color::White,
+            san: n.san.clone(),
+            nags: n.nags.clone(),
+            depth: n.depth,
+        });
+        if n.comment.is_empty() {
+            false
+        } else {
+            out.push(Token::Comment { node: id, text: n.comment.clone() });
+            true
+        }
+    }
+
+    /// The moves as PGN movetext: `1. e4 e5 (1... c5 {Sicilian}) 2. Nf3 $1`.
     pub fn movetext(&self) -> String {
         let mut out = String::new();
-        for (k, (_, number, color, san)) in self.moves().into_iter().enumerate() {
-            if !out.is_empty() {
+        let mut glue = true; // no space before the next piece
+        for token in self.tokens() {
+            let piece = match &token {
+                Token::Move { number, color, numbered, san, nags, .. } => {
+                    let mut s = String::new();
+                    if *numbered {
+                        s.push_str(&match color {
+                            Color::White => format!("{number}. "),
+                            Color::Black => format!("{number}... "),
+                        });
+                    }
+                    s.push_str(san);
+                    for code in nags {
+                        s.push_str(&format!(" ${code}"));
+                    }
+                    s
+                }
+                Token::Comment { text, .. } => format!("{{{text}}}"),
+                Token::VariationStart => "(".to_owned(),
+                Token::VariationEnd => ")".to_owned(),
+            };
+            if !(glue || matches!(token, Token::VariationEnd)) {
                 out.push(' ');
             }
-            match color {
-                Color::White => out.push_str(&format!("{number}. ")),
-                Color::Black if k == 0 => out.push_str(&format!("{number}... ")),
-                Color::Black => {}
-            }
-            out.push_str(san);
+            out.push_str(&piece);
+            glue = matches!(token, Token::VariationStart);
         }
         out
     }
 
-    /// The result tag: decided only by a mate or a draw at the end of the game.
-    fn result(&self) -> &'static str {
-        let end = self.board_at(self.moves.len());
-        match end.status() {
-            GameStatus::Won if end.side_to_move() == cozy_chess::Color::White => "0-1",
-            GameStatus::Won => "1-0",
-            GameStatus::Drawn => "1/2-1/2",
-            GameStatus::Ongoing => "*",
+    /// The tags read or set, in their order (the start position's `SetUp` and `FEN` are not
+    /// among them: they are written from the game).
+    pub fn tags(&self) -> &[(String, String)] {
+        &self.tags
+    }
+
+    /// A tag's value.
+    pub fn tag(&self, name: &str) -> Option<&str> {
+        self.tags.iter().find(|(n, _)| n == name).map(|(_, v)| v.as_str())
+    }
+
+    /// Set tag `name` (an empty value removes it). Names are letters, digits and `_`; values are
+    /// cut to [`MAX_TAG_LEN`] and lose their line breaks.
+    pub fn set_tag(&mut self, name: &str, value: &str) -> Result<(), GameError> {
+        let name = name.trim();
+        if name.is_empty() || name.len() > MAX_TAG_LEN || !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+            return Err(GameError::BadTag);
+        }
+        if matches!(name, "FEN" | "SetUp") {
+            return Ok(());
+        }
+        let value: String = cut(&value.replace(['\r', '\n', '\t'], " "), MAX_TAG_LEN).trim().to_owned();
+        let at = self.tags.iter().position(|(n, _)| n == name);
+        match (at, value.is_empty()) {
+            (Some(i), true) => {
+                self.tags.remove(i);
+            }
+            (Some(i), false) => {
+                if let Some(t) = self.tags.get_mut(i) {
+                    t.1 = value;
+                }
+            }
+            (None, true) => return Ok(()),
+            (None, false) if self.tags.len() < MAX_TAGS => self.tags.push((name.to_owned(), value)),
+            (None, false) => return Err(GameError::TooLong),
+        }
+        self.revision = self.revision.wrapping_add(1);
+        Ok(())
+    }
+
+    /// The result: decided by a mate or a draw at the end of the main line, else the Result tag,
+    /// else `*`.
+    fn result(&self) -> String {
+        let mut end = 0;
+        while let Some(&next) = self.node(end).children.first() {
+            end = next;
+        }
+        let board = &self.node(end).board;
+        match board.status() {
+            GameStatus::Won if board.side_to_move() == cozy_chess::Color::White => "0-1".to_owned(),
+            GameStatus::Won => "1-0".to_owned(),
+            GameStatus::Drawn => "1/2-1/2".to_owned(),
+            GameStatus::Ongoing => match self.tag("Result") {
+                Some(r @ ("1-0" | "0-1" | "1/2-1/2")) => r.to_owned(),
+                _ => "*".to_owned(),
+            },
         }
     }
 
-    /// The game as PGN: the seven tags, the start position when it is not the standard one, and
-    /// the moves.
+    /// The game as PGN: the seven tags, the others, the start position when it is not the
+    /// standard one, and the moves wrapped under 80 columns.
     pub fn pgn(&self) -> String {
         let result = self.result();
         let mut out = String::new();
-        for (tag, value) in
-            [("Event", "?"), ("Site", "?"), ("Date", "????.??.??"), ("Round", "?"), ("White", "?"), ("Black", "?"), ("Result", result)]
-        {
-            out.push_str(&format!("[{tag} \"{value}\"]\n"));
+        let quote = |v: &str| v.replace('\\', "\\\\").replace('"', "\\\"");
+        for tag in ROSTER {
+            let value = if tag == "Result" {
+                result.clone()
+            } else {
+                self.tag(tag).map_or_else(|| if tag == "Date" { "????.??.??".to_owned() } else { "?".to_owned() }, str::to_owned)
+            };
+            out.push_str(&format!("[{tag} \"{}\"]\n", quote(&value)));
+        }
+        for (name, value) in self.tags.iter().filter(|(n, _)| !ROSTER.contains(&n.as_str())) {
+            out.push_str(&format!("[{name} \"{}\"]\n", quote(value)));
         }
         let start = self.start_fen();
         if start != Board::default().to_string() {
@@ -343,48 +761,141 @@ impl Game {
         }
         out.push('\n');
         let moves = self.movetext();
-        if moves.is_empty() {
-            out.push_str(result);
-        } else {
-            out.push_str(&format!("{moves} {result}"));
-        }
+        let text = if moves.is_empty() { result } else { format!("{moves} {result}") };
+        out.push_str(&wrap(&text, 79));
         out.push('\n');
         out
     }
 
-    /// Read a PGN's main line: its `FEN` tag (the standard start without one) and its moves, with
-    /// comments, variations, move numbers, NAGs and the result skipped. Reading stops at the first
-    /// move that is not legal; that move is returned with the game read so far. The game is shown
-    /// at its end.
+    /// Read a PGN's first game: its tags (the `FEN` tag's position, the standard start without
+    /// one), its moves with their variations, comments and annotation glyphs. Move numbers and
+    /// the result are skipped. A move that is not legal ends its line (the variation it is in, or
+    /// the main line); the first such move is returned with the game. The game is shown at the
+    /// end of its main line.
     pub fn from_pgn(text: &str) -> Result<(Game, Option<String>), GameError> {
         if text.len() > MAX_PGN_LEN {
             return Err(GameError::PgnTooLong);
         }
-        let mut game = match fen_tag(text) {
+        let lexed = lex(text);
+        let mut tags = Vec::new();
+        for t in &lexed {
+            match t {
+                Lexed::Tag(name, value) if tags.len() < MAX_TAGS => tags.push((name.clone(), value.clone())),
+                Lexed::Tag(..) => {}
+                _ => break,
+            }
+        }
+        let fen = tags.iter().find(|(n, _)| n == "FEN").map(|(_, v): &(String, String)| v.clone());
+        let mut game = match fen {
             Some(fen) => Game::from_fen(&fen)?,
             None => Game::standard(),
         };
-        for token in movetext_tokens(text) {
-            if game.len() >= MAX_PLIES {
-                return Ok((game, Some(token)));
-            }
-            if game.play_san(&token).is_err() {
-                return Ok((game, Some(token)));
+        for (name, value) in &tags {
+            // The placeholders PGN writes for unknown values are no values. Bad names are
+            // skipped, not fatal: the moves are what matters.
+            if !matches!(value.as_str(), "?" | "????.??.??" | "*") {
+                let _ = game.set_tag(name, value);
             }
         }
-        Ok((game, None))
+        let mut stopped: Option<String> = None;
+        // The move the next one is played after, and the last move played (for comments and
+        // glyphs), saved at each `(`.
+        let (mut cursor, mut last): (NodeId, Option<NodeId>) = (0, None);
+        let mut stack: Vec<(NodeId, Option<NodeId>)> = Vec::new();
+        // The nesting at which a line was cut by an illegal move: skip until it closes.
+        let mut dead: Option<usize> = None;
+        let mut started = false;
+        for t in lexed.into_iter().skip(tags.len()) {
+            match t {
+                Lexed::Tag(..) if started => break, // the next game
+                Lexed::Tag(..) => {}
+                Lexed::Result(r) if stack.is_empty() && started => {
+                    if game.tag("Result").is_none() && r != "*" {
+                        let _ = game.set_tag("Result", &r);
+                    }
+                    break;
+                }
+                Lexed::Result(_) => {}
+                Lexed::Open => {
+                    stack.push((cursor, last));
+                    if dead.is_none() {
+                        match last {
+                            // A variation replaces the move before it.
+                            Some(l) if stack.len() <= MAX_DEPTH => cursor = game.node(l).parent,
+                            _ => dead = Some(stack.len()),
+                        }
+                    }
+                    last = None;
+                }
+                Lexed::Close => {
+                    if let Some((c, l)) = stack.pop() {
+                        (cursor, last) = (c, l);
+                    }
+                    if dead.is_some_and(|d| stack.len() < d) {
+                        dead = None;
+                    }
+                }
+                Lexed::Comment(text) => {
+                    if dead.is_none() {
+                        let node = last.unwrap_or(cursor);
+                        let joined = match game.comment(node) {
+                            "" => text,
+                            before => format!("{before} {text}"),
+                        };
+                        game.set_comment(node, &joined);
+                    }
+                }
+                Lexed::Nag(code) => {
+                    if dead.is_none()
+                        && let Some(l) = last
+                        && !game.nags(l).contains(&code)
+                    {
+                        game.toggle_nag(l, code);
+                    }
+                }
+                Lexed::Move(word) => {
+                    started = true;
+                    if dead.is_some() {
+                        continue;
+                    }
+                    let (san, glyphs) = split_glyphs(&word);
+                    game.current = cursor;
+                    let white = game.side_to_move() == Color::White;
+                    if game.play_san(san).is_ok() {
+                        cursor = game.current;
+                        last = Some(cursor);
+                        for code in crate::nag::nags_from_suffix(glyphs, white) {
+                            if !game.nags(cursor).contains(&code) {
+                                game.toggle_nag(cursor, code);
+                            }
+                        }
+                    } else {
+                        stopped.get_or_insert(word);
+                        dead = Some(stack.len());
+                    }
+                }
+            }
+        }
+        game.current = 0;
+        while game.forward() {}
+        Ok((game, stopped))
     }
 }
 
-/// Never called: `boards` always holds the start. A board to return instead of panicking.
+/// Never called: node 0 always exists. A node to return instead of panicking.
 #[cold]
-fn unreachable_board() -> &'static Board {
-    static START: std::sync::OnceLock<Board> = std::sync::OnceLock::new();
-    START.get_or_init(Board::default)
+fn unreachable_node() -> &'static Node {
+    static START: std::sync::OnceLock<Node> = std::sync::OnceLock::new();
+    START.get_or_init(|| Node::start(Board::default()))
 }
 
-fn has_moves(board: &Board) -> bool {
-    board.generate_moves(|_| true)
+fn outcome_of(board: &Board) -> Outcome {
+    match board.status() {
+        GameStatus::Ongoing => Outcome::Ongoing,
+        GameStatus::Won => Outcome::Checkmate,
+        GameStatus::Drawn if board.halfmove_clock() >= 100 && board.generate_moves(|_| true) => Outcome::FiftyMoves,
+        GameStatus::Drawn => Outcome::Stalemate,
+    }
 }
 
 /// A move as it is clicked: castling (the king onto its own rook in cozy-chess) is the king's
@@ -411,78 +922,182 @@ fn placement_of(board: &Board) -> Placement {
     placement
 }
 
-/// The value of the `FEN` tag, when there is one.
-fn fen_tag(text: &str) -> Option<String> {
-    text.lines().map(str::trim).find_map(|line| {
-        let inner = line.strip_prefix('[')?.strip_suffix(']')?.trim();
-        let rest = inner.strip_prefix("FEN")?.trim();
-        Some(rest.strip_prefix('"')?.strip_suffix('"')?.to_owned())
-    })
+/// `text` cut to at most `max` bytes, at a character boundary.
+fn cut(text: &str, max: usize) -> &str {
+    if text.len() <= max {
+        return text;
+    }
+    let mut end = max;
+    while !text.is_char_boundary(end) {
+        end = end.saturating_sub(1);
+    }
+    text.get(..end).unwrap_or_default()
 }
 
-/// The move tokens of the main line, in order.
-fn movetext_tokens(text: &str) -> Vec<String> {
-    let mut tokens = Vec::new();
-    let mut depth: usize = 0; // inside variations
-    let mut in_brace = false;
-    for line in text.lines() {
-        let trimmed = line.trim_start();
-        if !in_brace && depth == 0 && trimmed.starts_with('[') {
-            continue; // a tag
-        }
-        if !in_brace && trimmed.starts_with('%') {
-            continue; // an escaped line
-        }
-        let mut word = String::new();
-        let mut flush = |word: &mut String, depth: usize| {
-            if depth == 0 && !word.is_empty() && is_move(word) {
-                tokens.push(std::mem::take(word));
-            }
-            word.clear();
-        };
+/// A comment as kept: braces made parentheses, whitespace runs made one space, capped.
+fn clean_comment(text: &str) -> String {
+    let swapped = text.replace('{', "(").replace('}', ")");
+    let joined = swapped.split_whitespace().collect::<Vec<_>>().join(" ");
+    cut(&joined, MAX_COMMENT_LEN).to_owned()
+}
 
-        for c in line.chars() {
-            if in_brace {
-                in_brace = c != '}';
-                continue;
+/// A move word split into the move and the glyphs glued to its end (`e4!?` → `e4`, `!?`).
+fn split_glyphs(word: &str) -> (&str, &str) {
+    let end = word.trim_end_matches(['!', '?']).len();
+    (word.get(..end).unwrap_or(word), word.get(end..).unwrap_or_default())
+}
+
+/// Wrap `text` at spaces, lines at most `width` characters (a longer word stays whole).
+fn wrap(text: &str, width: usize) -> String {
+    let mut out = String::new();
+    let mut col = 0;
+    for word in text.split(' ').filter(|w| !w.is_empty()) {
+        let n = word.chars().count();
+        if col > 0 && col + 1 + n > width {
+            out.push('\n');
+            col = 0;
+        } else if col > 0 {
+            out.push(' ');
+            col += 1;
+        }
+        out.push_str(word);
+        col += n;
+    }
+    out
+}
+
+/// A piece of PGN.
+#[derive(Debug, PartialEq)]
+enum Lexed {
+    Tag(String, String),
+    Move(String),
+    Comment(String),
+    Nag(u16),
+    Open,
+    Close,
+    Result(String),
+}
+
+/// Split PGN into its pieces. Move numbers are dropped; `{…}` and `;…` are comments; a line
+/// starting with `%` is skipped.
+fn lex(text: &str) -> Vec<Lexed> {
+    let mut out = Vec::new();
+    let mut chars = text.chars().peekable();
+    let mut word = String::new();
+    let mut line_start = true;
+    let flush = |word: &mut String, out: &mut Vec<Lexed>| {
+        let w = std::mem::take(word);
+        if w.is_empty() {
+            return;
+        }
+        if let Some(n) = w.strip_prefix('$') {
+            if let Ok(code) = n.parse::<u16>() {
+                out.push(Lexed::Nag(code));
             }
-            match c {
-                '{' => {
-                    flush(&mut word, depth);
-                    in_brace = true;
-                }
-                ';' => {
-                    flush(&mut word, depth);
-                    break; // a comment to the end of the line
-                }
-                '(' => {
-                    flush(&mut word, depth);
-                    depth = depth.saturating_add(1);
-                }
-                ')' => {
-                    flush(&mut word, depth);
-                    depth = depth.saturating_sub(1);
-                }
-                c if c.is_whitespace() => flush(&mut word, depth),
-                // A move number glued to its move: `1.e4`, `12...Nf6`.
-                '.' => {
-                    if word.chars().all(|c| c.is_ascii_digit()) {
-                        word.clear();
-                    } else {
-                        word.push(c);
+        } else if matches!(w.as_str(), "*" | "1-0" | "0-1" | "1/2-1/2" | "½-½") {
+            out.push(Lexed::Result(if w == "½-½" { "1/2-1/2".to_owned() } else { w }));
+        } else if let Some(code) = crate::nag::nags_from_suffix(&w, true).first().filter(|_| w.chars().all(|c| matches!(c, '!' | '?'))) {
+            // A glyph standing alone (`e4 !?`).
+            out.push(Lexed::Nag(*code));
+        } else if !w.chars().all(|c| c.is_ascii_digit()) {
+            out.push(Lexed::Move(w));
+        }
+    };
+    while let Some(c) = chars.next() {
+        let at_line_start = std::mem::replace(&mut line_start, c == '\n');
+        match c {
+            '[' if at_line_start || (out.is_empty() && word.is_empty()) => {
+                flush(&mut word, &mut out);
+                let mut body = String::new();
+                let mut in_quotes = false;
+                let mut escaped = false;
+                for c in chars.by_ref() {
+                    if c == '\n' {
+                        line_start = true;
+                        break;
+                    }
+                    if in_quotes {
+                        if escaped {
+                            escaped = false;
+                        } else if c == '\\' {
+                            escaped = true;
+                            continue;
+                        } else if c == '"' {
+                            in_quotes = false;
+                            continue;
+                        }
+                        body.push(c);
+                        continue;
+                    }
+                    match c {
+                        '"' => {
+                            in_quotes = true;
+                            body.push('\u{1}');
+                        }
+                        ']' => break,
+                        _ => body.push(c),
                     }
                 }
-                c => word.push(c),
+                if let Some((name, value)) = body.split_once('\u{1}') {
+                    out.push(Lexed::Tag(cut(name.trim(), MAX_TAG_LEN).to_owned(), cut(value, MAX_TAG_LEN).to_owned()));
+                }
+            }
+            '%' if at_line_start => {
+                for c in chars.by_ref() {
+                    if c == '\n' {
+                        line_start = true;
+                        break;
+                    }
+                }
+            }
+            '{' => {
+                flush(&mut word, &mut out);
+                let mut body = String::new();
+                for c in chars.by_ref() {
+                    if c == '}' {
+                        break;
+                    }
+                    if body.len() < MAX_COMMENT_LEN.saturating_mul(2) {
+                        body.push(c);
+                    }
+                }
+                out.push(Lexed::Comment(body));
+            }
+            ';' => {
+                flush(&mut word, &mut out);
+                let mut body = String::new();
+                for c in chars.by_ref() {
+                    if c == '\n' {
+                        line_start = true;
+                        break;
+                    }
+                    if body.len() < MAX_COMMENT_LEN {
+                        body.push(c);
+                    }
+                }
+                out.push(Lexed::Comment(body));
+            }
+            '(' => {
+                flush(&mut word, &mut out);
+                out.push(Lexed::Open);
+            }
+            ')' => {
+                flush(&mut word, &mut out);
+                out.push(Lexed::Close);
+            }
+            // A move number glued to its move: `1.e4`, `12...Nf6`.
+            '.' if word.chars().all(|c| c.is_ascii_digit()) => word.clear(),
+            '.' => {}
+            c if c.is_whitespace() => flush(&mut word, &mut out),
+            c => {
+                if word.len() < 64 {
+                    word.push(c);
+                }
             }
         }
-        flush(&mut word, depth);
     }
-    tokens
-}
-
-/// Whether a word of movetext is a move (not a number, NAG or result).
-fn is_move(word: &str) -> bool {
-    !(word.starts_with('$') || word.chars().all(|c| c.is_ascii_digit()) || matches!(word, "*" | "1-0" | "0-1" | "1/2-1/2" | "½-½"))
+    flush(&mut word, &mut out);
+    out
 }
 
 #[cfg(test)]
@@ -493,12 +1108,16 @@ mod tests {
         Square::parse(name).unwrap()
     }
 
+    fn play(g: &mut Game, moves: &[(&str, &str)]) {
+        for (f, t) in moves {
+            g.play(sq(f), sq(t), None).unwrap();
+        }
+    }
+
     #[test]
     fn plays_moves_by_squares_and_names_them() {
         let mut g = Game::standard();
-        g.play(sq("e2"), sq("e4"), None).unwrap();
-        g.play(sq("e7"), sq("e5"), None).unwrap();
-        g.play(sq("g1"), sq("f3"), None).unwrap();
+        play(&mut g, &[("e2", "e4"), ("e7", "e5"), ("g1", "f3")]);
         assert_eq!(g.movetext(), "1. e4 e5 2. Nf3");
         assert_eq!(g.last_move(), Some((sq("g1"), sq("f3"))));
         assert_eq!(g.side_to_move(), Color::Black);
@@ -529,18 +1148,95 @@ mod tests {
     }
 
     #[test]
-    fn a_move_at_an_earlier_ply_replaces_the_rest_unless_it_is_the_same() {
+    fn legal_moves_are_listed_in_san() {
+        let g = Game::from_fen("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1").unwrap();
+        let moves = g.legal_moves();
+        assert!(moves.contains(&"O-O".to_owned()) && moves.contains(&"O-O-O".to_owned()) && moves.contains(&"Rxa8+".to_owned()), "{moves:?}");
+        assert_eq!(Game::standard().legal_moves().len(), 20);
+    }
+
+    #[test]
+    fn uci_moves_are_played_too() {
+        let mut g = Game::from_fen("8/P6k/8/8/8/8/8/K7 w - - 0 1").unwrap();
+        g.play_uci("a7a8q").unwrap();
+        assert_eq!(g.movetext(), "1. a8=Q");
+        assert_eq!(g.play_uci("h7"), Err(GameError::IllegalMove));
+        assert_eq!(g.play_uci("h7h6x"), Err(GameError::IllegalMove));
+    }
+
+    #[test]
+    fn a_move_at_an_earlier_point_is_a_variation_unless_it_is_already_there() {
         let mut g = Game::standard();
-        for (f, t) in [("e2", "e4"), ("e7", "e5"), ("g1", "f3")] {
-            g.play(sq(f), sq(t), None).unwrap();
-        }
+        play(&mut g, &[("e2", "e4"), ("e7", "e5"), ("g1", "f3")]);
         g.go_to(1);
         g.play(sq("e7"), sq("e5"), None).unwrap();
-        assert_eq!((g.ply(), g.len()), (2, 3), "the same move steps forward");
+        assert_eq!((g.ply(), g.len()), (2, 3), "the same move is followed");
         g.go_to(1);
-        g.play(sq("c7"), sq("c5"), None).unwrap();
+        play(&mut g, &[("c7", "c5"), ("g1", "f3")]);
+        assert_eq!(g.movetext(), "1. e4 e5 (1... c5 2. Nf3) 2. Nf3");
+        assert_eq!(g.ply(), 3);
+        assert_eq!(g.len(), 3, "the line shown is the variation's");
+        // Forward follows each move's first reply, as on lichess.
+        g.back();
+        g.back();
+        g.forward();
+        assert_eq!(g.san(g.current()), "e5");
+    }
+
+    #[test]
+    fn variations_are_promoted_and_deleted() {
+        let mut g = Game::standard();
+        play(&mut g, &[("e2", "e4"), ("e7", "e5")]);
+        g.go_to(1);
+        play(&mut g, &[("c7", "c5"), ("g1", "f3")]);
+        let nf3 = g.current();
+        g.promote(nf3);
+        assert_eq!(g.movetext(), "1. e4 c5 (1... e5) 2. Nf3");
+        assert_eq!(g.san(g.current()), "Nf3", "the move shown follows its renumbering");
+        // Delete the e5 variation.
+        g.go_to(0);
+        g.forward();
+        let e5 = match g.tokens().into_iter().find(|t| matches!(t, Token::Move { san, .. } if san == "e5")) {
+            Some(Token::Move { node, .. }) => node,
+            _ => panic!("e5 is listed"),
+        };
+        g.delete(e5);
+        assert_eq!(g.movetext(), "1. e4 c5 2. Nf3");
+        // Deleting the move shown goes back to its parent.
+        g.go_to(3);
+        let shown = g.current();
+        g.delete(shown);
         assert_eq!(g.movetext(), "1. e4 c5");
         assert_eq!(g.ply(), 2);
+        g.truncate();
+        g.go_to(1);
+        g.truncate();
+        assert_eq!(g.movetext(), "1. e4");
+    }
+
+    #[test]
+    fn comments_and_glyphs_are_written_where_they_belong() {
+        let mut g = Game::standard();
+        play(&mut g, &[("e2", "e4"), ("e7", "e5")]);
+        let e5 = g.current();
+        g.toggle_nag(e5, 1);
+        g.toggle_nag(e5, 2);
+        assert_eq!(g.nags(e5), &[2], "one move-quality glyph at a time");
+        g.toggle_nag(e5, 14);
+        g.set_comment(e5, "  the {classical}\nreply ");
+        play(&mut g, &[("g1", "f3")]);
+        g.set_comment(0, "A test");
+        assert_eq!(g.movetext(), "{A test} 1. e4 e5 $2 $14 {the (classical) reply} 2. Nf3");
+        // After a comment, Black's move gets its number again.
+        g.set_comment(e5, "");
+        let nf3 = g.current();
+        g.set_comment(nf3, "develops");
+        play(&mut g, &[("b8", "c6")]);
+        assert_eq!(g.movetext(), "{A test} 1. e4 e5 $2 $14 2. Nf3 {develops} 2... Nc6");
+        g.toggle_nag(e5, 14);
+        assert_eq!(g.nags(e5), &[2]);
+        g.set_comment(e5, &"é".repeat(MAX_COMMENT_LEN));
+        assert!(g.comment(e5).len() <= MAX_COMMENT_LEN);
     }
 
     #[test]
@@ -554,13 +1250,14 @@ mod tests {
         assert!(g.back());
         assert_eq!(g.fen(), Board::default().to_string());
         assert_eq!(g.last_move(), None);
+        g.go_to_node(12345);
+        assert_eq!(g.current(), 0);
     }
 
     #[test]
     fn numbering_starts_from_the_position() {
         let mut g = Game::from_fen("6k1/5ppp/8/8/8/8/5PPP/3R2K1 b - - 0 35").unwrap();
-        g.play(sq("g8"), sq("h8"), None).unwrap();
-        g.play(sq("d1"), sq("d8"), None).unwrap();
+        play(&mut g, &[("g8", "h8"), ("d1", "d8")]);
         assert_eq!(g.movetext(), "35... Kh8 36. Rd8#");
         assert_eq!(g.outcome(), Outcome::Checkmate);
         let pgn = g.pgn();
@@ -577,24 +1274,51 @@ mod tests {
     }
 
     #[test]
-    fn pgn_round_trips_and_skips_what_is_not_the_main_line() {
-        let text = "[Event \"x\"]\n[FEN \"r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1\"]\n\n1.O-O {short} (1. O-O-O O-O) 1...O-O-O $1 ; note\n2. Ra7 *";
+    fn pgn_round_trips_variations_comments_glyphs_and_tags() {
+        let text = "[Event \"Club \\\"open\\\"\"]\n[White \"Ana\"]\n[ECO \"C20\"]\n[FEN \"r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1\"]\n\n\
+                    {Start} 1.O-O! {short} (1. O-O-O O-O (1... Rb8) 2. Rd7) 1...O-O-O $14 ; note\n2. Ra7 *";
         let (g, stopped) = Game::from_pgn(text).unwrap();
         assert_eq!(stopped, None);
-        assert_eq!(g.movetext(), "1. O-O O-O-O 2. Ra7");
-        assert_eq!(g.ply(), 3);
-        let (again, stopped) = Game::from_pgn(&g.pgn()).unwrap();
+        assert_eq!(g.movetext(), "{Start} 1. O-O $1 {short} (1. O-O-O O-O (1... Rb8) 2. Rd7) 1... O-O-O $14 {note} 2. Ra7");
+        assert_eq!(g.ply(), 3, "shown at the end of the main line");
+        assert_eq!(g.tag("Event"), Some("Club \"open\""));
+        assert_eq!(g.tag("ECO"), Some("C20"));
+        let pgn = g.pgn();
+        assert!(pgn.starts_with("[Event \"Club \\\"open\\\"\"]\n[Site \"?\"]"), "{pgn}");
+        assert!(pgn.contains("[White \"Ana\"]") && pgn.contains("[ECO \"C20\"]"), "{pgn}");
+        let (again, stopped) = Game::from_pgn(&pgn).unwrap();
         assert_eq!(stopped, None);
         assert_eq!(again.movetext(), g.movetext());
         assert_eq!(again.start_fen(), g.start_fen());
+        assert_eq!(again.tags(), g.tags());
     }
 
     #[test]
-    fn pgn_reading_stops_at_the_first_illegal_move() {
-        let (g, stopped) = Game::from_pgn("1. e4 e5 2. Ke3 Nc6").unwrap();
-        assert_eq!(g.movetext(), "1. e4 e5");
+    fn an_illegal_move_ends_only_its_own_line() {
+        let (g, stopped) = Game::from_pgn("1. e4 e5 (1... Ke3 c5) 2. Nf3 Nc6 3. Ke3 Bc5").unwrap();
+        assert_eq!(g.movetext(), "1. e4 e5 2. Nf3 Nc6");
         assert_eq!(stopped.as_deref(), Some("Ke3"));
         assert_eq!(Game::from_pgn(&"e".repeat(MAX_PGN_LEN + 1)).err(), Some(GameError::PgnTooLong));
+    }
+
+    #[test]
+    fn only_the_first_game_is_read() {
+        let (g, _) = Game::from_pgn("[Event \"a\"]\n\n1. e4 e5 1-0\n\n[Event \"b\"]\n\n1. d4 d5 0-1\n").unwrap();
+        assert_eq!(g.movetext(), "1. e4 e5");
+        assert_eq!(g.tag("Event"), Some("a"));
+        assert!(g.pgn().contains("1. e4 e5 1-0"), "the result tag is kept when the moves don't decide it");
+    }
+
+    #[test]
+    fn tags_are_checked() {
+        let mut g = Game::standard();
+        assert_eq!(g.set_tag("Bad name", "x"), Err(GameError::BadTag));
+        g.set_tag("White", "Line\nbreak").unwrap();
+        assert_eq!(g.tag("White"), Some("Line break"));
+        g.set_tag("White", "").unwrap();
+        assert_eq!(g.tag("White"), None);
+        g.set_tag("FEN", "8/8/8/8/8/8/8/8 w - - 0 1").unwrap();
+        assert_eq!(g.tag("FEN"), None, "the start position is written from the game");
     }
 
     #[test]
@@ -607,27 +1331,64 @@ mod tests {
     }
 
     #[test]
+    fn long_move_text_is_wrapped() {
+        let mut g = Game::standard();
+        for _ in 0..10 {
+            play(&mut g, &[("g1", "f3"), ("g8", "f6"), ("f3", "g1"), ("f6", "g8")]);
+        }
+        assert!(g.pgn().lines().all(|l| l.chars().count() <= 79));
+    }
+
+    #[test]
     fn stalemate_is_told_apart_from_mate() {
         let g = Game::from_fen("7k/5Q2/6K1/8/8/8/8/8 b - - 0 1").unwrap();
         assert_eq!(g.outcome(), Outcome::Stalemate);
         assert!(!g.in_check());
     }
 
+    #[test]
+    fn nesting_is_capped() {
+        let mut text = String::from("1. e4 ");
+        for _ in 0..(MAX_DEPTH + 10) {
+            text.push_str("(1. d4 ");
+        }
+        let (g, _) = Game::from_pgn(&text).unwrap();
+        assert!(g.movetext().matches('(').count() <= MAX_DEPTH);
+    }
+
     proptest::proptest! {
         #[test]
-        fn pgn_reader_never_panics(text in "\\PC{0,200}") {
+        fn pgn_reader_never_panics(text in "\\PC{0,300}") {
             let _ = Game::from_pgn(&text);
         }
 
         #[test]
-        fn random_clicks_never_panic(clicks in proptest::collection::vec((0usize..64, 0usize..64, 0usize..7), 0..60)) {
+        fn pgn_reader_never_panics_on_pgn_like_text(parts in proptest::collection::vec(
+            proptest::sample::select(vec!["e4", "e5", "Nf3", "(", ")", "{c}", "$1", "1.", "1...", "*", "[Event \"x\"]\n", "O-O", "d4", "c5", "!?", ";x\n"]), 0..80)) {
+            let text = parts.join(" ");
+            if let Ok((g, _)) = Game::from_pgn(&text) {
+                let (again, _) = Game::from_pgn(&g.pgn()).unwrap();
+                proptest::prop_assert_eq!(again.movetext(), g.movetext());
+            }
+        }
+
+        #[test]
+        fn random_clicks_never_panic(clicks in proptest::collection::vec((0usize..64, 0usize..64, 0usize..9), 0..80)) {
             let mut g = Game::standard();
-            for (f, t, back) in clicks {
+            for (f, t, op) in clicks {
                 let (Some(f), Some(t)) = (Square::from_index(f), Square::from_index(t)) else { continue };
                 let _ = g.play(f, t, Some(PieceKind::Queen));
-                if back == 0 { g.back(); }
+                match op {
+                    0 => { g.back(); }
+                    1 => g.delete(g.current()),
+                    2 => g.promote(g.current()),
+                    3 => g.toggle_nag(g.current(), 1),
+                    4 => g.go_to(t.index() % 5),
+                    _ => {}
+                }
                 proptest::prop_assert!(g.ply() <= g.len());
                 let _ = g.last_move();
+                let _ = g.pgn();
             }
         }
     }

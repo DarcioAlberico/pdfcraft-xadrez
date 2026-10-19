@@ -2538,3 +2538,12 @@ animation effects	Off	Kapalı
 	This diagram hasn't been read: scan its page first, or set its position in the editor.	Bu diyagram okunmadı: önce sayfasını tarayın ya da konumu düzenleyicide kurun.
 	White to move	Hamle beyazda
 	White to move, in check	Hamle beyazda, şah çekildi
+# Chess ▸ Board: variations, annotations and game details.
+	Comment on this move	Bu hamle için yorum
+	Delete from this move	Bu hamleden itibaren sil
+	Event	Etkinlik
+	Game details	Oyun bilgileri
+	Make this the main line	Ana varyant yap
+	Result	Sonuç
+	Round	Tur
+	Site	Yer

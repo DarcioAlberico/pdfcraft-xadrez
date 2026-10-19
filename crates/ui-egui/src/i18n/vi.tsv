@@ -2729,3 +2729,12 @@ key	Space	Space
 	This diagram hasn't been read: scan its page first, or set its position in the editor.	Sơ đồ này chưa được đọc: hãy quét trang của nó trước, hoặc đặt thế cờ trong trình chỉnh sửa.
 	White to move	Đến lượt Trắng
 	White to move, in check	Đến lượt Trắng, đang bị chiếu
+# Chess ▸ Board: variations, annotations and game details.
+	Comment on this move	Bình luận cho nước này
+	Delete from this move	Xóa từ nước này
+	Event	Giải đấu
+	Game details	Thông tin ván cờ
+	Make this the main line	Đặt làm diễn biến chính
+	Result	Kết quả
+	Round	Vòng
+	Site	Địa điểm

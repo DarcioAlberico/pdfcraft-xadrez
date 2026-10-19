@@ -2820,3 +2820,12 @@ certificate	Version	الإصدار
 	This diagram hasn't been read: scan its page first, or set its position in the editor.	لم يُقرأ هذا المخطط: امسح صفحته أولًا أو اضبط الوضع في المحرر.
 	White to move	دور الأبيض
 	White to move, in check	دور الأبيض، في كش
+# Chess ▸ Board: variations, annotations and game details.
+	Comment on this move	تعليق على هذه النقلة
+	Delete from this move	حذف بدءًا من هذه النقلة
+	Event	البطولة
+	Game details	بيانات المباراة
+	Make this the main line	جعلها الخط الرئيسي
+	Result	النتيجة
+	Round	الجولة
+	Site	المكان

@@ -2522,3 +2522,12 @@ animation effects	Off	Wyłączone
 	This diagram hasn't been read: scan its page first, or set its position in the editor.	Ten diagram nie został odczytany: najpierw zeskanuj jego stronę lub ustaw pozycję w edytorze.
 	White to move	Ruch białych
 	White to move, in check	Ruch białych, szach
+# Chess ▸ Board: variations, annotations and game details.
+	Comment on this move	Komentarz do tego ruchu
+	Delete from this move	Usuń od tego ruchu
+	Event	Turniej
+	Game details	Dane partii
+	Make this the main line	Uczyń główną linią
+	Result	Wynik
+	Round	Runda
+	Site	Miejsce

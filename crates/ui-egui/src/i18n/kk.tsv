@@ -2540,3 +2540,12 @@ animation effects	Off	Өшірулі
 	This diagram hasn't been read: scan its page first, or set its position in the editor.	Бұл диаграмма оқылмаған: алдымен оның бетін сканерлеңіз немесе позицияны редакторда орнатыңыз.
 	White to move	Ақтардың жүрісі
 	White to move, in check	Ақтардың жүрісі, шах
+# Chess ▸ Board: variations, annotations and game details.
+	Comment on this move	Осы жүріске түсініктеме
+	Delete from this move	Осы жүрістен бастап жою
+	Event	Турнир
+	Game details	Партия деректері
+	Make this the main line	Негізгі нұсқа ету
+	Result	Нәтиже
+	Round	Тур
+	Site	Орны

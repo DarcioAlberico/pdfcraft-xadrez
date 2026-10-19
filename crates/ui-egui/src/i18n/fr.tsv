@@ -2542,3 +2542,12 @@ animation effects	Off	Désactivés
 	This diagram hasn't been read: scan its page first, or set its position in the editor.	Ce diagramme n'a pas été lu : analysez d'abord sa page ou saisissez la position dans l'éditeur.
 	White to move	Trait aux Blancs
 	White to move, in check	Trait aux Blancs, en échec
+# Chess ▸ Board: variations, annotations and game details.
+	Comment on this move	Commentaire sur ce coup
+	Delete from this move	Supprimer à partir de ce coup
+	Event	Événement
+	Game details	Détails de la partie
+	Make this the main line	En faire la ligne principale
+	Result	Résultat
+	Round	Ronde
+	Site	Lieu

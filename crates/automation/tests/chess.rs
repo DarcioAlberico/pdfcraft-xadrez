@@ -630,3 +630,32 @@ fn chess_arguments_out_of_range_are_refused_with_what_is_allowed() {
     }
     let _ = std::fs::remove_dir_all(base);
 }
+
+/// chess_game plays a game without a document: from a FEN or a PGN, with moves in SAN or UCI,
+/// shown at a ply, and stops at the first illegal move.
+#[test]
+fn chess_game_plays_moves_from_a_fen_or_a_pgn() {
+    let (_base, root) = workdir("game");
+    let mut auto = Automation::new().with_root(&root).unwrap();
+    let call = |auto: &mut Automation, args: Value| ok(auto, "chess_game", args);
+    let r = call(&mut auto, json!({ "moves": ["e4", "e7e5", "Qh5", "Nc6", "Bc4", "Nf6", "Qxf7#"] }));
+    assert_eq!(r["outcome"], "checkmate");
+    assert_eq!(r["plies"], 7);
+    assert_eq!(r["movetext"], "1. e4 e5 2. Qh5 Nc6 3. Bc4 Nf6 4. Qxf7#");
+    assert!(r["pgn"].as_str().unwrap().contains("[Result \"1-0\"]"));
+    assert_eq!(r["legal_moves"].as_array().unwrap().len(), 0);
+
+    let r = call(&mut auto, json!({ "pgn": "1. e4 e5 (1... c5 2. Nf3) 2. Nf3 {develops} *", "ply": 1 }));
+    assert_eq!(r["fen"], "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
+    assert_eq!(r["side_to_move"], "black");
+    assert_eq!(r["movetext"], "1. e4 e5 (1... c5 2. Nf3) 2. Nf3 {develops}");
+    assert_eq!(r["legal_moves"].as_array().unwrap().len(), 20);
+
+    let r = call(&mut auto, json!({ "fen": "4k3/8/8/8/8/8/8/R3K3 w Q - 0 1", "moves": ["O-O-O", "Ke7", "Kc3"] }));
+    assert_eq!(r["movetext"], "1. O-O-O Ke7");
+    assert_eq!(r["stopped"], "Kc3");
+
+    for bad in [json!({ "fen": "x" }), json!({ "fen": "8/8/8/8/8/8/8/8", "pgn": "" }), json!({ "moves": "e4" }), json!({ "ply": -1 })] {
+        assert!(auto.call("chess_game", &bad).is_err(), "{bad} is refused");
+    }
+}

@@ -2498,3 +2498,12 @@ animation effects	Off	關
 	This diagram hasn't been read: scan its page first, or set its position in the editor.	此圖表尚未讀取：請先掃描其所在頁面，或在編輯器中設定局面。
 	White to move	白方走棋
 	White to move, in check	白方走棋，被將軍
+# Chess ▸ Board: variations, annotations and game details.
+	Comment on this move	對此著法的評論
+	Delete from this move	從此著法起刪除
+	Event	賽事
+	Game details	對局資訊
+	Make this the main line	設為主線
+	Result	結果
+	Round	輪次
+	Site	地點

@@ -637,6 +637,58 @@ impl Automation {
         Ok(json!({ "rows": cipher.entries().len(), "settled": cipher.proven().len(), "saved": out.map(|(shown, _)| shown.clone()) }))
     }
 
+    pub(crate) fn chess_game(&self, a: &Args) -> Result<Value> {
+        use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, Outcome};
+        let (fen, pgn) = (a.opt_str("fen")?, a.opt_str("pgn")?);
+        let (mut game, mut stopped) = match (fen, pgn) {
+            (Some(_), Some(_)) => return Err(ToolError::InvalidArgs("give fen or pgn, not both".into())),
+            (Some(fen), None) => (Game::from_fen(fen).map_err(|e| ToolError::InvalidArgs(format!("fen: {e}")))?, None),
+            (None, Some(pgn)) => Game::from_pgn(pgn).map_err(|e| ToolError::InvalidArgs(format!("pgn: {e}")))?,
+            (None, None) => (Game::standard(), None),
+        };
+        let moves = if a.get("moves").is_some() { a.strs("moves")? } else { Vec::new() };
+        if moves.len() > 2000 {
+            return Err(Args::wrong("moves", "at most 2000 moves"));
+        }
+        game.go_to(usize::MAX);
+        for mv in moves {
+            if stopped.is_some() {
+                break;
+            }
+            // UCI first: `e2e4` is not SAN, and no SAN reads as UCI.
+            if game.play_uci(mv).is_err() && game.play_san(mv).is_err() {
+                stopped = Some(mv.to_owned());
+            }
+        }
+        // The main line's length, then the move asked for along it.
+        game.go_to_node(0);
+        let plies = game.len();
+        let ply = match a.opt_int("ply")? {
+            Some(p) => usize::try_from(p).map_err(|_| Args::wrong("ply", "0 or more"))?,
+            None => plies,
+        };
+        game.go_to(ply);
+        let outcome = match game.outcome() {
+            Outcome::Ongoing => "ongoing",
+            Outcome::Checkmate => "checkmate",
+            Outcome::Stalemate => "stalemate",
+            Outcome::FiftyMoves => "fifty_moves",
+        };
+        Ok(json!({
+            "fen": game.fen(),
+            "start_fen": game.start_fen(),
+            "side_to_move": if game.side_to_move() == pdfcraft_engine::chess::pdfcraft_chess::placement::Color::White { "white" } else { "black" },
+            "in_check": game.in_check(),
+            "outcome": outcome,
+            "legal_moves": game.legal_moves(),
+            "ply": game.ply(),
+            "plies": plies,
+            "movetext": game.movetext(),
+            "pgn": game.pgn(),
+            "stopped": stopped,
+        }))
+    }
+
     pub(crate) fn chess_status(&self, a: &Args) -> Result<Value> {
         let dir = self.models_dir(a)?;
         let models = chess::models(dir.as_deref());

@@ -2544,3 +2544,12 @@ animation effects	Off	オフ
 	This diagram hasn't been read: scan its page first, or set its position in the editor.	この図面はまだ読み取られていません：先にそのページをスキャンするか、エディターで局面を設定してください。
 	White to move	白番
 	White to move, in check	白番、チェックされています
+# Chess ▸ Board: variations, annotations and game details.
+	Comment on this move	この手へのコメント
+	Delete from this move	この手以降を削除
+	Event	大会
+	Game details	対局情報
+	Make this the main line	本線にする
+	Result	結果
+	Round	ラウンド
+	Site	場所

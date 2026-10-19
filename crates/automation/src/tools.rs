@@ -1290,6 +1290,17 @@ pub fn tools() -> Vec<ToolDef> {
         t("chess_status", "Chess model status", "Whether the user's chess models are available (none ship with PdfCraft): the piece model reads drawn and scanned diagrams, the glyph model chess text. Each is loaded, missing or invalid (with the reason). models_dir looks in that folder instead of PDFCRAFT_MODELS and beside the executable. Also says where the piece set for drawing diagrams comes from (PDFCRAFT_CHESS_PIECES, an installed Chess Merida, or plain geometric pieces). Diagrams in chess fonts are read without any model.")
             .ro()
             .with(schema(json!({ "models_dir": models_dir() }), &[])),
+        t("chess_game", "Play through a chess game", "Chess ▸ Board without the interface: set up a game from fen (a position; the standard start without it) or pgn (its first game: tags, moves, variations, comments and glyphs; a FEN tag gives its start), play moves (SAN as books print it, or UCI such as e2e4 and e7e8q) after the end of its main line, then show the position at ply (moves from the start along the main line; default its end). An illegal move stops the moves there and is returned as stopped (the first one, in pgn or moves). Returns the position shown (fen, side_to_move, in_check, outcome: ongoing, checkmate, stalemate or fifty_moves, legal_moves in SAN), start_fen, ply, plies (the main line's length), movetext and the game as pgn. No document is read or changed.")
+            .ro()
+            .with(schema(
+                json!({
+                    "fen": { "type": "string", "maxLength": 256, "description": "The start position. Not with pgn." },
+                    "pgn": { "type": "string", "maxLength": 1048576, "description": "A game in PGN. Not with fen." },
+                    "moves": { "type": "array", "maxItems": 2000, "items": { "type": "string", "maxLength": 32 }, "description": "Moves to play after the main line's end, in SAN or UCI." },
+                    "ply": { "type": "integer", "minimum": 0, "description": "Show the position this many moves into the main line." },
+                }),
+                &[],
+            )),
         t("content_draw", "Draw content operators", "Draw a fragment of PDF content-stream operators (ISO 32000-2 §8–9) on top of a page, in its default user space (points, y up, origin at the media box's corner; /Rotate is not applied), as page content of its own wrapped in q … Q. Checked first and refused with the reason: at most 4 MiB; q/Q, BT/ET and marked content balanced (q at most 28 deep); operand counts and finite numbers; only path, clipping, device colour (g, rg, k, and cs/CS with DeviceGray, DeviceRGB or DeviceCMYK), general graphics state, text and marked-content operators with inline property lists; nothing that needs a page resource (Do, gs, sh, inline images, patterns). Text may use /PCHelv, /PCTimes or /PCCour (standard fonts, WinAnsi), which are added for it. One undo step.")
             .with(schema(
                 json!({
