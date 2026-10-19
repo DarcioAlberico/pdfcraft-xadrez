@@ -1,5 +1,9 @@
 //! One page's blocks from its text lines, diagrams and hints.
 //!
+//! 0. **Columns.** Lines are read column by column ([`column_order`]): on a page whose lines
+//!    leave a gutter free (a two-column book), each band between full-width lines is read down its
+//!    left column, then down its right one. The coordinates printed around a diagram (`a b c … h`,
+//!    `8 … 1`) are not text and are left out ([`is_coordinates`]).
 //! 1. **Diagrams among the lines.** Lines keep their reading order and diagrams theirs; a diagram
 //!    goes before the first line below it in its column, or in a column to its right
 //!    ([`diagram_before`]). Diagrams are never reordered among themselves, so the n-th diagram
@@ -26,6 +30,123 @@ pub const PARAGRAPH_GAP_SHARE: f32 = 0.8;
 /// How far outside a hint's box a line's centre may be and still belong to it, in points.
 pub const HINT_TOLERANCE: f32 = 1.0;
 
+/// A gutter must leave at least this many lines on each side.
+pub const MIN_COLUMN_LINES: usize = 3;
+/// At most this share of the page's lines may cross a gutter (headings, captions, wide lines).
+pub const MAX_CROSSING_SHARE: f32 = 0.15;
+/// A column's lines must be this wide on average, as a share of the page (narrower blocks side
+/// by side are a table or a game score, not columns).
+pub const MIN_COLUMN_SHARE: f32 = 0.2;
+
+/// The line's text, when it holds only text and move numbers.
+fn plain_text(line: &ChessLine) -> Option<String> {
+    let mut out = String::new();
+    for span in &line.spans {
+        match &span.run {
+            ChessRun::Text(t) => out.push_str(t),
+            ChessRun::MoveNumber { number, .. } => out.push_str(&number.to_string()),
+            _ => return None,
+        }
+        out.push(' ');
+    }
+    Some(out)
+}
+
+/// Whether `line` is a diagram's printed coordinates: only single files (`a`–`h`) or ranks
+/// (`1`–`8`), beside or under one of the diagrams (within a quarter of its side).
+pub(crate) fn is_coordinates(line: &ChessLine, diagrams: &[Option<ViewRect>]) -> bool {
+    let Some(text) = plain_text(line) else { return false };
+    let mut tokens = text.split_whitespace().peekable();
+    if tokens.peek().is_none() {
+        return false;
+    }
+    let coordinate = |t: &str| t.chars().count() == 1 && t.chars().all(|c| ('a'..='h').contains(&c) || ('1'..='8').contains(&c));
+    if !tokens.all(coordinate) {
+        return false;
+    }
+    let r = line.rect;
+    diagrams.iter().flatten().any(|d| {
+        let pad = d.width().max(d.height()) * 0.25;
+        r.x0 < d.x1 + pad && d.x0 - pad < r.x1 && r.y0 < d.y1 + pad && d.y0 - pad < r.y1
+    })
+}
+
+/// The x of a gutter that splits the page's lines into two columns, if there is one: the middle
+/// of the widest run of positions (between 30% and 70% of the page) that the fewest lines cross,
+/// with enough lines, wide enough, on both sides.
+pub(crate) fn gutter(lines: &[&ChessLine], page_width: f32) -> Option<f32> {
+    if !(page_width.is_finite() && page_width > 0.0) || lines.len() < 2 * MIN_COLUMN_LINES {
+        return None;
+    }
+    let max_crossing = ((lines.len() as f32) * MAX_CROSSING_SHARE).floor() as usize;
+    // Candidate positions, one point apart; bounded by the page width (at most a few thousand).
+    let (lo, hi) = (page_width * 0.3, page_width * 0.7);
+    let steps = ((hi - lo).max(0.0) as usize).min(20_000);
+    let mut best: Option<(usize, usize, usize)> = None; // (crossings, run length, run start)
+    let mut run: Option<(usize, usize)> = None; // (start, crossings)
+    let score = |x: f32| {
+        let crossing = lines.iter().filter(|l| l.rect.x0 < x && x < l.rect.x1).count();
+        let left: Vec<&&ChessLine> = lines.iter().filter(|l| l.rect.x1 <= x).collect();
+        let right: Vec<&&ChessLine> = lines.iter().filter(|l| l.rect.x0 >= x).collect();
+        let wide =
+            |side: &[&&ChessLine]| side.iter().map(|l| l.rect.width()).sum::<f32>() / side.len().max(1) as f32 >= MIN_COLUMN_SHARE * page_width;
+        let ok = crossing <= max_crossing && left.len() >= MIN_COLUMN_LINES && right.len() >= MIN_COLUMN_LINES && wide(&left) && wide(&right);
+        ok.then_some(crossing)
+    };
+    for k in 0..=steps {
+        let x = lo + k as f32;
+        match (score(x), run) {
+            (Some(c), Some((start, rc))) if c == rc => run = Some((start, rc)),
+            (now, prev) => {
+                if let Some((start, rc)) = prev {
+                    let len = k - start;
+                    if best.is_none_or(|(bc, bl, _)| rc < bc || (rc == bc && len > bl)) {
+                        best = Some((rc, len, start));
+                    }
+                }
+                run = now.map(|c| (k, c));
+            }
+        }
+    }
+    if let Some((start, rc)) = run {
+        let len = steps + 1 - start;
+        if best.is_none_or(|(bc, bl, _)| rc < bc || (rc == bc && len > bl)) {
+            best = Some((rc, len, start));
+        }
+    }
+    best.map(|(_, len, start)| lo + start as f32 + len as f32 / 2.0)
+}
+
+/// The lines in reading order, column by column: lines that cross the gutter (if any) cut the
+/// page into bands, and each band is read down its left column, then down its right one. Without a
+/// gutter, the lines keep their order.
+pub(crate) fn column_order<'a>(lines: &[&'a ChessLine], page_width: f32) -> Vec<&'a ChessLine> {
+    let Some(x) = gutter(lines, page_width) else { return lines.to_vec() };
+    let top = |l: &&ChessLine| l.rect.y0;
+    let mut out = Vec::with_capacity(lines.len());
+    let mut left: Vec<&ChessLine> = Vec::new();
+    let mut right: Vec<&ChessLine> = Vec::new();
+    let mut sorted: Vec<&ChessLine> = lines.to_vec();
+    sorted.sort_by(|a, b| top(a).total_cmp(&top(b)).then(a.rect.x0.total_cmp(&b.rect.x0)));
+    let flush = |out: &mut Vec<&'a ChessLine>, left: &mut Vec<&'a ChessLine>, right: &mut Vec<&'a ChessLine>| {
+        out.append(left);
+        out.append(right);
+    };
+    for line in sorted {
+        if line.rect.x1 <= x {
+            left.push(line);
+        } else if line.rect.x0 >= x {
+            right.push(line);
+        } else {
+            // A full-width line: what is above it is read first.
+            flush(&mut out, &mut left, &mut right);
+            out.push(line);
+        }
+    }
+    flush(&mut out, &mut left, &mut right);
+    out
+}
+
 enum Item<'a> {
     Line(&'a ChessLine),
     Diagram(usize),
@@ -38,10 +159,10 @@ fn diagram_before(d: ViewRect, l: ViewRect) -> bool {
     if same_column { (l.y0 + l.y1) * 0.5 >= (d.y0 + d.y1) * 0.5 } else { l.x0 >= d.x1 }
 }
 
-fn interleave<'a>(lines: &'a [ChessLine], diagrams: &[Option<ViewRect>]) -> Vec<Item<'a>> {
+fn interleave<'a>(lines: &[&'a ChessLine], diagrams: &[Option<ViewRect>]) -> Vec<Item<'a>> {
     let mut items = Vec::with_capacity(lines.len().saturating_add(diagrams.len()));
     let mut next = 0usize;
-    for line in lines {
+    for &line in lines {
         while let Some(d) = diagrams.get(next) {
             if !d.is_some_and(|d| diagram_before(d, line.rect)) {
                 break;
@@ -199,7 +320,9 @@ fn blocks(input: &PageInput<'_>) -> Vec<Block> {
             group.clear();
         }
     };
-    for item in interleave(&input.text.lines, &diagram_views) {
+    let kept: Vec<&ChessLine> = input.text.lines.iter().filter(|l| !is_coordinates(l, &diagram_views)).collect();
+    let ordered = column_order(&kept, input.geometry.view_size().0);
+    for item in interleave(&ordered, &diagram_views) {
         match item {
             Item::Diagram(i) => {
                 flush(&mut blocks, &mut group, key);

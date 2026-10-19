@@ -77,16 +77,16 @@ All figures below are on the user's own models. Each has its command and the mac
 |---|---|---|
 | Find the diagrams | 0.31 s/page | 19 diagrams |
 | Find and read them | 0.53 s/page | 19 of 19 accepted |
-| The recognised document (text layer) | 1.96 s/page | 421 moves, 13 games, **only 7 moves valid** |
+| The recognised document (text layer) | 0.86 s/page | 420 moves, 12 games, 61 valid (7 before column order) |
 | The recognised document with chess OCR | 1.8 s/page | |
 
-That PDF's text layer is an old OCR layer (words like `Taf7asch` for Tarrasch). Its pages are set in **two columns**, and they are read across both, so a move from one column lands in the other column's game and most moves are "not reached". The coordinates printed around the diagrams (`a b c d e f g h`) are read as text too. Column-aware reading order is the next thing to do for books like this.
+That PDF's text layer is an old OCR layer (words like `Taf7asch` for Tarrasch), and its pages are set in two columns. Lines are now cut at the gutter and read column by column, and a diagram's printed coordinates are left out: valid moves went from 7 to 61. Most of the rest are "not reached": the text often goes on with a game whose first moves are on an earlier page ("5 Kg6" under a diagram of the starting position), and a line stops at its first move that cannot be played.
 
 ## Limits
 
 - **Moves and text**
-  - A page in two columns is read across both columns. This is the main limit on real books (see above).
-  - The coordinates printed around a diagram are read as text.
+  - A game that goes on from an earlier page, or past a move that cannot be played, is not followed: its later moves are "not reached" (see above).
+  - Three or more columns are read as two at most.
   - Umlauts in prose come through only where the glyph reader has them, because ocrs reads ASCII only.
 - **Links:** the lichess address is plain text in Word and RTF; it is a working link in PDF, HTML, EPUB and Markdown.
 - **Readings and corrections**
