@@ -69,14 +69,14 @@ All figures below are on the user's own models. Each has its command and the mac
 - **Chess OCR, fused with ocrs:** CER 0.88% and 98.0% of moves exact on the Caïssa benchmark (744 lines). These numbers are in-sample: the Dvoretsky lines are in the model's training data.
   - A scanned line of ten Helvetica moves is read 10 of 10.
   - Outline figurines in fonts the model never saw are still weak, at about 74% of moves for DejaVu Sans.
-- Diagrams set in a chess diagram font are read exactly, from the text.
+- Diagrams set in a chess diagram font are read exactly, from the text. A subset font whose codes were renumbered is read by its text map, and glyphs under 3 pt (stray spaces between the squares) are not squares.
 
 **Speed and a real book** (2026-10-18, `pdfcraft-cli run` in release, the user's models, Windows 11 on an AMD desktop; *Dvoretsky's Endgame Manual* (2025), pages 51–60, one process per run, so nothing cached):
 
 | Step | Time | Result |
 |---|---|---|
 | Find the diagrams | 0.31 s/page | 19 diagrams |
-| Find and read them | 0.53 s/page | 19 of 19 accepted |
+| Find and read them | 0.53 s/page | 19 of 19 accepted, all from the diagram font (before, by the piece model: the subset font's renumbered codes and its 0.7 pt spaces hid the boards; without the models no diagram was read and no move checked) |
 | The recognised document (text layer) | 0.86 s/page | 459 moves, 18 games, 381 valid (7 before column order, 61 before subset figurines, 324 before games across diagrams, 369 before bracketed replies) |
 | The recognised document with chess OCR | 1.8 s/page | |
 
