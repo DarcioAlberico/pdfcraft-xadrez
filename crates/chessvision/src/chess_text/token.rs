@@ -302,10 +302,21 @@ pub(crate) struct Token {
     rect: Option<[f32; 4]>,
     /// A bare pawn move or a number with nothing after it: notation only next to other notation.
     weak: bool,
+    /// A number with no full stop (`19 Rxd5`, `15 … Rxb6`, as some books print them): a move
+    /// number only when the next word is a move or an ellipsis.
+    bare: bool,
 }
 
 fn token(kind: Kind, cells: &[Cell]) -> Token {
-    Token { kind, text: cells.iter().map(|c| c.ch).collect(), rect: rect_of(cells), weak: false }
+    Token { kind, text: cells.iter().map(|c| c.ch).collect(), rect: rect_of(cells), weak: false, bare: false }
+}
+
+/// A word that is only a move number's digits (`19`).
+fn bare_number(chars: &[char]) -> Option<u16> {
+    if chars.is_empty() || chars.len() > MAX_NUMBER_DIGITS || !chars.iter().all(char::is_ascii_digit) {
+        return None;
+    }
+    chars.iter().collect::<String>().parse().ok().filter(|n| *n > 0)
 }
 
 /// Step 4a: cut one word into tokens, reading moves in `lang`.
@@ -316,6 +327,17 @@ pub(crate) fn tokenize(word: &[Cell], lang: Lang) -> Vec<Token> {
     let chars: Vec<char> = word.iter().map(|c| c.ch).collect();
     let p = parts(&chars);
     let cells = |r: Range<usize>| word.get(r).unwrap_or(&[]);
+    // A bare number, maybe after an opening quote or bracket (`“57 Rh7`).
+    if p.number.is_none()
+        && let Some(number) = chars.get(p.lead..).and_then(bare_number)
+    {
+        let mut out = Vec::new();
+        if p.lead > 0 {
+            out.push(token(Kind::Text, cells(0..p.lead)));
+        }
+        out.push(Token { bare: true, ..token(Kind::Number { number, black: false }, cells(p.lead..chars.len())) });
+        return out;
+    }
     let mut out = Vec::new();
     let push_text = |out: &mut Vec<Token>, r: Range<usize>| {
         if !r.is_empty() {
@@ -373,7 +395,8 @@ pub(crate) fn tokenize(word: &[Cell], lang: Lang) -> Vec<Token> {
 /// Step 4b: settle the weak tokens of a page's words (`lines` of words of tokens). A bare pawn
 /// move or a lone number is notation when a neighbouring word is notation (or another weak
 /// token); otherwise it is prose. Words run on across line ends, so a move number that ends a
-/// line (`… 12.`) is settled by the move that starts the next.
+/// line (`… 12.`) is settled by the move that starts the next. A bare number is a move number
+/// only before a word that starts with a move or an ellipsis.
 pub(crate) fn settle(lines: &mut [Vec<Vec<Token>>]) {
     let mut words: Vec<&mut Vec<Token>> = lines.iter_mut().flatten().collect();
     // A word "is notation" when it holds a notation token and no word-like prose.
@@ -381,13 +404,16 @@ pub(crate) fn settle(lines: &mut [Vec<Vec<Token>>]) {
         .iter()
         .map(|w| w.iter().any(|t| t.kind.is_notation()) && !w.iter().any(|t| t.kind == Kind::Text && t.text.chars().any(char::is_alphanumeric)))
         .collect();
+    let opens_move: Vec<bool> = words.iter().map(|w| w.first().is_some_and(|t| matches!(t.kind, Kind::Move(_) | Kind::Ellipsis))).collect();
     for (i, word) in words.iter_mut().enumerate() {
         let neighbour = i.checked_sub(1).and_then(|p| notation.get(p)).copied().unwrap_or(false) || notation.get(i + 1).copied().unwrap_or(false);
+        let before_move = opens_move.get(i + 1).copied().unwrap_or(false);
         for t in word.iter_mut() {
-            if t.weak && !neighbour {
+            if (t.weak && !neighbour) || (t.bare && !before_move) {
                 t.kind = Kind::Text;
             }
             t.weak = false;
+            t.bare = false;
         }
     }
 }

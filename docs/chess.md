@@ -82,6 +82,10 @@ All figures below are on the user's own models. Each has its command and the mac
 
 That PDF's pages are set in two columns, and its figurines come from a subset font that renumbers its glyphs. Lines are cut at the gutter and read column by column, and a diagram's printed coordinates are left out (valid moves 7 → 61). A figurine is read from the text layer when its code names no piece, so the page is no longer judged poor and handed to OCR, whose words (`Taf7asch` for Tarrasch) replaced a clean layer (61 → 324). Games are found across diagrams: a text after two diagrams printed side by side starts from the one its first move is legal in, a diagram of a game's own position does not end it, and after an alternative written as prose a move is tried on the main line (324 → 369). Brackets after a move that hold the replies to it (`1.Kb1 (1...b3 2.Kb2; 1...a3 …)`) are played after it (369 → 381; with page 49, which holds page 50's diagram, 402 of 478). A diagram whose text gives the solution for each side to move (`Black, if on move, holds by 1...f5`, then `1.f5+`) starts a game for each: on pages 100–119, valid moves went from 790 to 812 of 978. Most of the rest are "not reached" after a move that cannot be played (often a position the prose describes but the book does not print), or belong to a diagram on a page that was not read.
 
+### A game collection: Fischer's *My 60 Memorable Games* (Portuguese edition)
+
+That book prints move numbers with no full stop (`19 ♖xd5`, Black's `15 … ♖xb6`), sets its game text larger than the introductions, and opens each game with a short introduction in a smaller italic. Numbers are now read without the full stop when a move follows; the body size is the book's, not the page's, so a page that opens a game does not make its moves and notes headings; a block with moves is never a heading; and a `1.` that the game from the last diagram cannot play starts the next game from the initial position. On pages 30–59, valid moves went from 142 to 468 of 1179 (and 63 false headings to 8 true ones), and the eight game titles and subtitles are the headings.
+
 ## Limits
 
 - **Moves and text**

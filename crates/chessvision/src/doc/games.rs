@@ -973,12 +973,19 @@ impl Walker {
             self.close();
             self.anchor = Anchor::Seed(seed);
         }
-        // A new `1.` after a game from the initial position has moved on is a new game.
-        if number == Some(MoveNumber { number: 1, black: false })
+        // A new `1.` after a game from the initial position has moved on is a new game. So is a
+        // `1.` that a game from a later move's diagram cannot play and the initial position can:
+        // a game collection's next game, after the diagrams of the last one.
+        let first = MoveNumber { number: 1, black: false };
+        if number == Some(first)
             && let Some(open) = &self.open
-            && open.lines.len() == 1
-            && open.lines.first().is_some_and(|l| l.moved)
-            && self.games.get(open.game).is_some_and(|g| g.origin == GameOrigin::Initial)
+            && let [main] = open.lines.as_slice()
+            && main.moved
+            && let Some(game) = self.games.get(open.game)
+            && (game.origin == GameOrigin::Initial
+                || (game.score.start_ply().is_some_and(|p| p > ply_of(first).saturating_add(1))
+                    && !playable(&game.score, main, number, san)
+                    && san.to_move(&Board::default()).is_ok()))
         {
             self.close();
             self.anchor = Anchor::None;

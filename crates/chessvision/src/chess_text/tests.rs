@@ -139,6 +139,22 @@ fn subset_figurine_code_falls_back_to_the_text() {
     assert_eq!(read.quality, TextQuality::Good);
 }
 
+/// Move numbers with no full stop, as some books print them (`19 Rxd5`, Black's `15 … Rxb6`); a
+/// number in prose is not one.
+#[test]
+fn bare_move_numbers_before_moves() {
+    let read = Page::new().text("15 … Rxb6 16 Nd5 Nxd5").read(Some(Lang::En));
+    assert_eq!(runs(&read), vec![vec![black(15), mv("Rxb6", "Rxb6"), white(16), mv("Nd5", "Nd5"), mv("Nxd5", "Nxd5")]]);
+    // After an opening quote.
+    let read = Page::new().text("line: “57 Rh7 c6").read(Some(Lang::En));
+    assert_eq!(runs(&read), vec![vec![text("line: “"), white(57), mv("Rh7", "Rh7"), mv("c6", "c6")]]);
+    let read = Page::new().text("in 1968 he won 20 games").read(Some(Lang::En));
+    assert_eq!(runs(&read), vec![vec![text("in 1968 he won 20 games")]]);
+    // A number after a move, before prose, is not one either.
+    let read = Page::new().text("he played Nf3 2 times").read(Some(Lang::En));
+    assert_eq!(runs(&read), vec![vec![text("he played"), mv("Nf3", "Nf3"), text("2 times")]]);
+}
+
 #[test]
 fn novelty_after_a_move_is_nag_146() {
     let read = Page::new().text("12.Nf4N").read(None);
