@@ -93,4 +93,4 @@ That PDF's text layer is an old OCR layer (words like `Taf7asch` for Tarrasch). 
 - **Readings and corrections**
   - A reading the decoder repaired is never linked or accepted until a person confirms it.
   - The book's cipher (figurines a font maps to other letters) is learned per run, not kept with the document.
-- **Speed:** reading a page with OCR, or exporting a whole book, holds the interface until it is done.
+- **Speed:** reading a page with OCR, or exporting a whole book, runs off the interface thread (the panel shows it is working) but cannot be cancelled once started.

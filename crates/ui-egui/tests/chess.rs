@@ -407,3 +407,45 @@ fn export_writes_pgn_and_markdown_with_images() {
     assert!(dir.join("book_diagrams").join("diagram-p0001-1.png").exists());
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// Off the interface thread: the Text tab says it is reading while a worker reads the page, and
+/// shows the text when it is done. A reading of a state the document has left is never shown.
+#[test]
+fn the_page_is_read_off_the_interface_thread() {
+    let mut h = chapter_harness();
+    h.state_mut().run_inline = false;
+    h.get_by_label("Text").click();
+    h.run_steps(1);
+    assert!(h.state().chess.job.is_some() || h.state().chess.text.is_some(), "a read was started");
+    for _ in 0..200 {
+        if h.state().chess.text.is_some() && h.state().chess.job.is_none() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        h.step();
+    }
+    h.run_steps(2);
+    h.get_by_label("Chapter 1");
+    // An edit while a page is being read: the reading, of a state that is gone, is dropped.
+    let app = h.state_mut();
+    app.chess.text = None;
+    app.read_chess_text(0, false);
+    assert!(app.chess.job.is_some(), "reading on a worker");
+    let shape = Shape::Rectangle { rect: [10.0, 10.0, 50.0, 50.0] };
+    app.apply_edit(Edit::AddAnnotation(NewAnnotation {
+        page: 0,
+        style: Style::default_for(&shape),
+        shape,
+        contents: String::new(),
+        author: String::new(),
+    }));
+    for _ in 0..500 {
+        app.poll_chess_job();
+        if app.chess.job.is_none() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
+    assert!(app.chess.job.is_none(), "the worker finished");
+    assert!(app.chess.text.is_none(), "the stale reading was not shown");
+}

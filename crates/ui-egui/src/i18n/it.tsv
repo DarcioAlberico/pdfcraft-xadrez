@@ -2664,6 +2664,9 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Couldn't be read: {e}	Impossibile leggere: {e}
 	Not read	Non letto
 	Copy FEN	Copia FEN
+	Reading the page with chess OCR…	Lettura della pagina con l'OCR scacchistico…
+	Exporting the chess document…	Esportazione del documento scacchistico…
+	A chess document is already being read or exported	Un documento scacchistico è già in lettura o in esportazione
 	Ambiguous move	Mossa ambigua
 	Chess OCR read nothing on this page.	L'OCR scacchistico non ha letto nulla in questa pagina.
 	Export as {f}	Esporta come {f}

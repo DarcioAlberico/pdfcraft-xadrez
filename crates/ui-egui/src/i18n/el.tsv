@@ -2462,6 +2462,9 @@ animation effects	Off	Ανενεργά
 	Couldn't be read: {e}	Δεν ήταν δυνατή η ανάγνωση: {e}
 	Not read	Δεν διαβάστηκε
 	Copy FEN	Αντιγραφή FEN
+	Reading the page with chess OCR…	Ανάγνωση της σελίδας με OCR σκακιού…
+	Exporting the chess document…	Εξαγωγή του εγγράφου σκακιού…
+	A chess document is already being read or exported	Ένα έγγραφο σκακιού διαβάζεται ή εξάγεται ήδη
 	Ambiguous move	Αμφίσημη κίνηση
 	Chess OCR read nothing on this page.	Το OCR σκακιού δεν διάβασε τίποτα σε αυτή τη σελίδα.
 	Export as {f}	Εξαγωγή ως {f}

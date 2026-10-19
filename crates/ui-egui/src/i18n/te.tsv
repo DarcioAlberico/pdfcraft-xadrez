@@ -2365,6 +2365,9 @@ animation effects	Off	ఆఫ్
 	Couldn't be read: {e}	చదవలేకపోయింది: {e}
 	Not read	చదవలేదు
 	Copy FEN	FEN కాపీ చేయి
+	Reading the page with chess OCR…	పేజీని చదరంగం OCRతో చదువుతోంది…
+	Exporting the chess document…	చదరంగం పత్రాన్ని ఎగుమతి చేస్తోంది…
+	A chess document is already being read or exported	ఒక చదరంగం పత్రం ఇప్పటికే చదవబడుతోంది లేదా ఎగుమతి అవుతోంది
 	Ambiguous move	అస్పష్టమైన ఎత్తు
 	Chess OCR read nothing on this page.	చదరంగం OCR ఈ పేజీలో ఏదీ చదవలేదు.
 	Export as {f}	{f}గా ఎగుమతి చేయి

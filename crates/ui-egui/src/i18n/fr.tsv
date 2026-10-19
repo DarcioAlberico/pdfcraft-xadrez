@@ -2452,6 +2452,9 @@ animation effects	Off	Désactivés
 	Couldn't be read: {e}	Lecture impossible : {e}
 	Not read	Non lu
 	Copy FEN	Copier la FEN
+	Reading the page with chess OCR…	Lecture de la page avec l'OCR d'échecs…
+	Exporting the chess document…	Exportation du document d'échecs…
+	A chess document is already being read or exported	Un document d'échecs est déjà en cours de lecture ou d'exportation
 	Ambiguous move	Coup ambigu
 	Chess OCR read nothing on this page.	L'OCR d'échecs n'a rien lu sur cette page.
 	Export as {f}	Exporter en {f}

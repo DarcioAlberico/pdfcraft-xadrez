@@ -2730,6 +2730,9 @@ certificate	Version	الإصدار
 	Couldn't be read: {e}	تعذّرت القراءة: {e}
 	Not read	لم يُقرأ
 	Copy FEN	نسخ FEN
+	Reading the page with chess OCR…	جارٍ قراءة الصفحة بالتعرف الضوئي للشطرنج…
+	Exporting the chess document…	جارٍ تصدير مستند الشطرنج…
+	A chess document is already being read or exported	يُقرأ مستند شطرنج أو يُصدَّر بالفعل
 	Ambiguous move	نقلة ملتبسة
 	Chess OCR read nothing on this page.	لم يقرأ التعرف الضوئي للشطرنج شيئًا في هذه الصفحة.
 	Export as {f}	تصدير بتنسيق {f}

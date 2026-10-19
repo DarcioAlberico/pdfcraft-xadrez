@@ -2448,6 +2448,9 @@ animation effects	Off	Kapalı
 	Couldn't be read: {e}	Okunamadı: {e}
 	Not read	Okunmadı
 	Copy FEN	FEN'i kopyala
+	Reading the page with chess OCR…	Sayfa satranç OCR ile okunuyor…
+	Exporting the chess document…	Satranç belgesi dışa aktarılıyor…
+	A chess document is already being read or exported	Bir satranç belgesi zaten okunuyor veya dışa aktarılıyor
 	Ambiguous move	Belirsiz hamle
 	Chess OCR read nothing on this page.	Satranç OCR bu sayfada hiçbir şey okumadı.
 	Export as {f}	{f} olarak dışa aktar

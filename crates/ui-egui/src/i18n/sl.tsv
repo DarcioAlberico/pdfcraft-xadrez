@@ -2457,6 +2457,9 @@ animation effects	Off	Izklopljeni
 	Couldn't be read: {e}	Ni bilo mogoče prebrati: {e}
 	Not read	Ni prebrano
 	Copy FEN	Kopiraj FEN
+	Reading the page with chess OCR…	Branje strani s šahovskim OCR …
+	Exporting the chess document…	Izvažanje šahovskega dokumenta …
+	A chess document is already being read or exported	Šahovski dokument se že bere ali izvaža
 	Ambiguous move	Dvoumna poteza
 	Chess OCR read nothing on this page.	Šahovski OCR na tej strani ni prebral ničesar.
 	Export as {f}	Izvozi kot {f}

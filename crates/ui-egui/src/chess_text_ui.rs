@@ -13,6 +13,8 @@
 //! **Export…** writes the whole document as HTML, EPUB, Word, RTF, Markdown (with its diagram
 //! images in a folder beside it) or PGN, through the engine's `chess_export`.
 
+use std::sync::{Arc, Mutex};
+
 use egui::{Color32, FontId, TextureHandle};
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::document::{OcrMode, OcrOptions};
@@ -46,6 +48,57 @@ pub struct PageText {
     pub notes: Vec<String>,
     /// The diagrams' boards, by block index.
     boards: Vec<(usize, TextureHandle)>,
+}
+
+/// Reading a page or exporting the book, off the interface thread: the work runs on a session
+/// of its own, opened from the document's working bytes, and the result is picked up when it is
+/// done (inline on the web and in tests).
+pub struct ChessJob {
+    pub doc: DocId,
+    pub kind: JobKind,
+    result: Arc<Mutex<Option<JobDone>>>,
+}
+
+/// What a job does.
+#[derive(Clone, Debug, PartialEq)]
+pub enum JobKind {
+    Read {
+        page: usize,
+        stamp: ScanStamp,
+        ocr: bool,
+    },
+    #[cfg(not(target_arch = "wasm32"))]
+    Export {
+        format: ChessFormat,
+        path: std::path::PathBuf,
+        image_dir: String,
+    },
+    #[cfg(target_arch = "wasm32")]
+    Export {
+        format: ChessFormat,
+        name: String,
+    },
+}
+
+enum JobDone {
+    Read(Result<pdfcraft_engine::chess::document::ChessDocument, String>),
+    Export(Result<pdfcraft_engine::chess::export::ChessExport, String>),
+}
+
+impl ChessJob {
+    /// What the panel says while it runs.
+    pub fn label(&self) -> &'static str {
+        match self.kind {
+            JobKind::Read { ocr: true, .. } => tl!("Reading the page with chess OCR…"),
+            JobKind::Read { .. } => tl!("Reading the page…"),
+            JobKind::Export { .. } => tl!("Exporting the chess document…"),
+        }
+    }
+}
+
+/// The lock, even after a worker panicked while holding it (it holds plain data).
+fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    m.lock().unwrap_or_else(|e| e.into_inner())
 }
 
 /// What the text tab asks for.
@@ -105,8 +158,22 @@ pub fn export_menu(ui: &mut egui::Ui) -> Option<TextAction> {
 }
 
 /// The Text tab for page `page` of document `id`.
-pub fn text_tab(ui: &mut egui::Ui, t: &Tokens, text: Option<&mut PageText>, id: DocId, page: usize, now: Option<ScanStamp>) -> Option<TextAction> {
+pub fn text_tab(
+    ui: &mut egui::Ui,
+    t: &Tokens,
+    text: Option<&mut PageText>,
+    id: DocId,
+    page: usize,
+    now: Option<ScanStamp>,
+    busy: Option<&'static str>,
+) -> Option<TextAction> {
     let mut action = None;
+    if let Some(label) = busy {
+        ui.horizontal(|ui| {
+            ui.spinner();
+            ui.label(egui::RichText::new(label).color(t.text_muted));
+        });
+    }
     let current = text.filter(|x| x.doc == id && x.page == page && Some(x.stamp) == now);
     ui.horizontal_wrapped(|ui| {
         if ui
@@ -122,7 +189,7 @@ pub fn text_tab(ui: &mut egui::Ui, t: &Tokens, text: Option<&mut PageText>, id: 
     });
     let Some(x) = current else {
         // Follows the page: read its text layer now (quick); OCR is on request.
-        if action.is_none() {
+        if action.is_none() && busy.is_none() {
             action = Some(TextAction::Read(false));
         }
         ui.label(egui::RichText::new(tl!("Reading the page…")).color(t.text_muted));
@@ -271,19 +338,92 @@ impl PdfCraftApp {
             self.chess.text = Some(failed(tl!("This document does not allow copying its content, so its text is not read.").to_string()));
             return;
         }
-        let options = OcrOptions { mode: if ocr { OcrMode::All } else { OcrMode::Off }, glyphs: None, general: true };
-        match self.session.chess_document_with(id, &[page], &ChessScanSettings::default(), None, &options) {
-            Ok(read) => {
-                let pieces = crate::chess_editor::piece_set(&mut self.chess.pieces);
-                let boards = self.ctx.as_ref().map(|ctx| boards(ctx, &read.doc, &pieces)).unwrap_or_default();
-                let needs_ocr = read.needs_ocr.first().map(|(_, why)| why.clone());
-                let mut notes: Vec<String> = read.notes.into_iter().map(|(_, n)| n).collect();
-                if ocr && read.ocr_pages.is_empty() && !notes.iter().any(|n| n.contains("chess-glyphs")) {
-                    notes.push(tl!("Chess OCR read nothing on this page.").to_string());
-                }
-                self.chess.text = Some(PageText { doc: id, stamp, page, chess: read.doc, ocr: !read.ocr_pages.is_empty(), needs_ocr, notes, boards });
+        if self.chess.job.is_some() {
+            return;
+        }
+        let mode = if ocr { OcrMode::All } else { OcrMode::Off };
+        self.start_chess_job(id, JobKind::Read { page, stamp, ocr }, move |s, id| {
+            let options = OcrOptions { mode, glyphs: None, general: true };
+            JobDone::Read(s.chess_document_with(id, &[page], &ChessScanSettings::default(), None, &options))
+        });
+    }
+
+    /// Run `work` on a session of its own, opened from document `id`'s working bytes, on a
+    /// worker thread (inline on the web and in tests); [`Self::poll_chess_job`] picks it up.
+    fn start_chess_job(&mut self, id: DocId, kind: JobKind, work: impl FnOnce(&mut pdfcraft_engine::Session, DocId) -> JobDone + Send + 'static) {
+        let Some(doc) = self.session.get(id) else { return };
+        let (name, bytes, password) = (doc.name.clone(), doc.bytes.clone(), doc.password.clone());
+        let result: Arc<Mutex<Option<JobDone>>> = Arc::default();
+        let slot = result.clone();
+        let is_read = matches!(kind, JobKind::Read { .. });
+        let run = move || {
+            let mut s = pdfcraft_engine::Session::new();
+            let done = match s.open(name, None, bytes, password.as_deref()) {
+                Ok(job_id) => work(&mut s, job_id),
+                Err(e) if is_read => JobDone::Read(Err(e.to_string())),
+                Err(e) => JobDone::Export(Err(e.to_string())),
+            };
+            *lock(&slot) = Some(done);
+        };
+        self.chess.job = Some(ChessJob { doc: id, kind, result });
+        #[cfg(not(target_arch = "wasm32"))]
+        if self.run_inline {
+            run();
+        } else if let Err(e) = std::thread::Builder::new().name("pdfcraft-chess-job".into()).spawn(run) {
+            self.chess.job = None;
+            self.notify(e.to_string());
+            return;
+        }
+        #[cfg(target_arch = "wasm32")]
+        run();
+        self.poll_chess_job();
+    }
+
+    /// Pick up a finished job: show the page read, or write the export.
+    pub fn poll_chess_job(&mut self) {
+        let Some(job) = self.chess.job.as_ref() else { return };
+        let Some(done) = lock(&job.result).take() else {
+            if let Some(ctx) = &self.ctx {
+                ctx.request_repaint_after(std::time::Duration::from_millis(200));
             }
-            Err(e) => self.chess.text = Some(failed(e)),
+            return;
+        };
+        let Some(job) = self.chess.job.take() else { return };
+        match (job.kind, done) {
+            (JobKind::Read { page, stamp, ocr }, JobDone::Read(read)) => {
+                // The document changed meanwhile: the reading describes a state that is gone.
+                if self.session.chess_stamp(job.doc) != Some(stamp) {
+                    return;
+                }
+                let empty =
+                    || ChessDoc { format: pdfcraft_engine::chess::pdfcraft_chessvision::doc::FORMAT_VERSION, pages: Vec::new(), games: Vec::new() };
+                self.chess.text = Some(match read {
+                    Ok(read) => {
+                        let pieces = crate::chess_editor::piece_set(&mut self.chess.pieces);
+                        let boards = self.ctx.as_ref().map(|ctx| boards(ctx, &read.doc, &pieces)).unwrap_or_default();
+                        let needs_ocr = read.needs_ocr.first().map(|(_, why)| why.clone());
+                        let mut notes: Vec<String> = read.notes.into_iter().map(|(_, n)| n).collect();
+                        if ocr && read.ocr_pages.is_empty() && !notes.iter().any(|n| n.contains("chess-glyphs")) {
+                            notes.push(tl!("Chess OCR read nothing on this page.").to_string());
+                        }
+                        PageText { doc: job.doc, stamp, page, chess: read.doc, ocr: !read.ocr_pages.is_empty(), needs_ocr, notes, boards }
+                    }
+                    Err(e) => PageText { doc: job.doc, stamp, page, chess: empty(), ocr: false, needs_ocr: None, notes: vec![e], boards: Vec::new() },
+                });
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            (JobKind::Export { path, image_dir, .. }, JobDone::Export(made)) => self.write_chess_export(made, &path, &image_dir),
+            #[cfg(target_arch = "wasm32")]
+            (JobKind::Export { name, .. }, JobDone::Export(made)) => match made {
+                Ok(made) => {
+                    if let Err(e) = crate::editing::download(&name, &made.bytes) {
+                        self.notify_error(e);
+                    }
+                }
+                Err(e) => self.notify(e),
+            },
+            (_, JobDone::Read(Err(e)) | JobDone::Export(Err(e))) => self.notify(e),
+            _ => {}
         }
     }
 
@@ -340,30 +480,36 @@ impl PdfCraftApp {
         {
             let mut options = ChessExportOptions::new(&stem);
             options.pieces = crate::chess_editor::piece_set(&mut self.chess.pieces);
-            match self.session.chess_export(id, format, &options) {
-                Ok(made) => {
-                    if let Err(e) = crate::editing::download(&format!("{stem}.{ext}"), &made.bytes) {
-                        self.notify_error(e);
-                    }
-                }
-                Err(e) => self.notify(e),
-            }
+            self.start_chess_job(id, JobKind::Export { format, name: format!("{stem}.{ext}") }, move |s, id| {
+                JobDone::Export(s.chess_export(id, format, &options))
+            });
         }
     }
 
     /// Write the chess export of document `id` to `path` (Markdown's images in a folder beside it).
     #[cfg(not(target_arch = "wasm32"))]
     pub fn export_chess_to(&mut self, id: DocId, format: ChessFormat, path: &std::path::Path) {
+        if self.chess.job.is_some() {
+            return self.notify(tl!("A chess document is already being read or exported").to_string());
+        }
         let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "document".into());
         let mut options = ChessExportOptions::new(&stem);
         options.image_dir = format!("{stem}_diagrams");
         options.pieces = crate::chess_editor::piece_set(&mut self.chess.pieces);
-        let made = match self.session.chess_export(id, format, &options) {
+        let kind = JobKind::Export { format, path: path.to_path_buf(), image_dir: options.image_dir.clone() };
+        self.notify(tl!("Exporting the chess document…").to_string());
+        self.start_chess_job(id, kind, move |s, id| JobDone::Export(s.chess_export(id, format, &options)));
+    }
+
+    /// Write a finished export to `path`, Markdown's images in `image_dir` beside it.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn write_chess_export(&mut self, made: Result<pdfcraft_engine::chess::export::ChessExport, String>, path: &std::path::Path, image_dir: &str) {
+        let made = match made {
             Ok(m) => m,
             Err(e) => return self.notify(e),
         };
         if !made.images.is_empty() {
-            let dir = path.with_file_name(&options.image_dir);
+            let dir = path.with_file_name(image_dir);
             if let Err(e) = std::fs::create_dir_all(&dir) {
                 return self.notify_fmt("Couldn't write {name}: {e}", &[("name", &dir.display().to_string()), ("e", &e.to_string())]);
             }
