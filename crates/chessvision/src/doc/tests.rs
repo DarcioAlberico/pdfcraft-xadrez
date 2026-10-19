@@ -506,3 +506,112 @@ fn a_hostile_doc_writes_pgn_without_panicking() {
     let doc = ChessDoc::from_json(json).unwrap();
     assert!(doc.pgn().contains("e4"));
 }
+
+/// A game in long algebraic replays like any other.
+#[test]
+fn a_long_algebraic_game_replays() {
+    let text = page_text(vec![line(100.0, "1.e2-e4 e7-e5 2.Ng1-f3 Nb8-c6 3.Bf1-b5 a7-a6 4.Bb5:c6 d7:c6")]);
+    let doc = build_page(&input(0, &text, &[], &[], &[]));
+    let got = moves(&doc.pages[0]);
+    assert_eq!(got.len(), 8, "{got:?}");
+    assert!(got.iter().all(|(_, s)| *s == MoveStatus::Valid), "{got:?}");
+    let pgn = doc.pgn();
+    assert!(pgn.contains("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Bxc6 dxc6"), "written back in short algebraic: {pgn}");
+}
+
+/// A two-column page whose lines come interleaved (the layout reads across): each column's game
+/// replays in its own order.
+#[test]
+fn a_two_column_page_is_read_column_by_column() {
+    let left = ["The open game in this column.", "1.e4 e5 2.Nf3 Nc6 a classical start", "3.Bb5 a6 and White keeps the bishop."];
+    let right = ["The closed game in this column.", "1.d4 d5 2.c4 e6 is the Queen's Gambit", "3.Nc3 Nf6 and Black develops calmly."];
+    let mut lines = Vec::new();
+    for (k, (l, r)) in left.iter().zip(&right).enumerate() {
+        let y = 100.0 + 20.0 * k as f32;
+        lines.push(line_at(30.0, y, l));
+        lines.push(line_at(320.0, y, r));
+    }
+    let doc = build_page(&input(0, &page_text(lines), &[], &[], &[]));
+    use MoveStatus::*;
+    let got = moves(&doc.pages[0]);
+    assert_eq!(
+        got.iter().map(|(m, _)| m.as_str()).collect::<Vec<_>>(),
+        ["1.e4", "e5", "2.Nf3", "Nc6", "3.Bb5", "a6", "1.d4", "d5", "2.c4", "e6", "3.Nc3", "Nf6"],
+        "left column first, then the right"
+    );
+    assert!(got.iter().all(|(_, s)| *s == Valid), "{got:?}");
+    assert_eq!(doc.games.len(), 2);
+}
+
+/// A page with one column keeps its order, whatever the line widths; full-width lines cut the
+/// columns into bands read in turn.
+#[test]
+fn columns_need_a_real_gutter_and_full_width_lines_cut_bands() {
+    let one = [line_at(30.0, 100.0, "1.e4 e5 2.Nf3 Nc6"), line_at(30.0, 120.0, "3.Bb5 a6 4.Ba4 Nf6"), line_at(30.0, 140.0, "5.O-O Be7")];
+    let refs: Vec<&ChessLine> = one.iter().collect();
+    assert!(crate::doc::build::gutter(&refs, 600.0).is_none(), "one column, all on the left");
+    // Band 1: two columns; a full-width line; band 2: two columns.
+    let rows = [
+        (100.0, "Left one, a fairly long line.", "Right one, a fairly long line."),
+        (120.0, "Left two, a fairly long line.", "Right two, a fairly long line."),
+        (140.0, "Left three, a fairly long line.", "Right three, a fairly long line."),
+    ];
+    let mut lines = Vec::new();
+    for (y, l, r) in rows {
+        lines.push(line_at(30.0, y, l));
+        lines.push(line_at(320.0, y, r));
+    }
+    lines.push(line_at(30.0, 170.0, "A heading set across the whole page, from one margin to the other one"));
+    for (y, l, r) in rows {
+        lines.push(line_at(30.0, y + 100.0, &l.replace("one", "four").replace("two", "five").replace("three", "six")));
+        lines.push(line_at(320.0, y + 100.0, &r.replace("one", "four").replace("two", "five").replace("three", "six")));
+    }
+    let refs: Vec<&ChessLine> = lines.iter().collect();
+    let order: Vec<String> = crate::doc::build::column_order(&refs, 600.0)
+        .iter()
+        .map(|l| {
+            l.spans
+                .iter()
+                .map(|s| {
+                    if let ChessRun::Text(t) = &s.run {
+                        t.split(' ').next().unwrap_or("").to_owned() + &t.split(' ').nth(1).unwrap_or("").replace(',', "")
+                    } else {
+                        String::new()
+                    }
+                })
+                .collect()
+        })
+        .collect();
+    assert_eq!(
+        order,
+        [
+            "Leftone",
+            "Lefttwo",
+            "Leftthree",
+            "Rightone",
+            "Righttwo",
+            "Rightthree",
+            "Aheading",
+            "Leftfour",
+            "Leftfive",
+            "Leftsix",
+            "Rightfour",
+            "Rightfive",
+            "Rightsix"
+        ]
+    );
+}
+
+/// The coordinates printed around a diagram are left out; the same letters elsewhere stay.
+#[test]
+fn a_diagrams_printed_coordinates_are_not_text() {
+    let text = page_text(vec![
+        line_at(40.0, 212.0, "a b c d e f g h"),
+        line_at(28.0, 62.0, "8"),
+        line(230.0, "3.Qh5 Nf6 4.Qxf7#"),
+        line_at(300.0, 600.0, "a b c"),
+    ]);
+    let doc = build_page(&input(0, &text, &[reading(0, 60.0, SCHOLAR, true, false)], &[], &[]));
+    let k = kinds(&doc.pages[0]);
+    assert_eq!(k, ["D0", "P:3.Qh5 Nf6 4.Qxf7#", "P:a b c"], "{k:?}");
+}

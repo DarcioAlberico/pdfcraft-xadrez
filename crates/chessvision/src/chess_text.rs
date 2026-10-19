@@ -116,14 +116,16 @@ pub struct ChessPageText {
 /// `lang_hint` is the document's language when known ([`LangTally::guess`] says when it wins over
 /// the page's own letters).
 pub fn from_page_text(page: &PageText, lang_hint: Option<Lang>) -> ChessPageText {
-    // 1. Glyphs to cells, line by line, figurine letters settled by what follows them.
+    // 1. Glyphs to cells, line by line, figurine letters settled by what follows them. A line is
+    //    first cut where it crosses a gutter, so the columns of a two-column page are lines apart.
+    let line_of = split_at_gutters(page);
     let mut mapper = glyph::GlyphMapper::default();
     let mut lines: Vec<Vec<glyph::Cell>> = Vec::new();
     let mut line: Vec<glyph::Cell> = Vec::new();
     let mut line_id: Option<u32> = None;
     for (i, g) in page.glyphs.iter().enumerate() {
         // A glyph without a line number stays on the current line.
-        let id = page.line_of.get(i).copied().or(line_id);
+        let id = line_of.get(i).copied().flatten().or(line_id);
         if id != line_id {
             lines.push(std::mem::take(&mut line));
             line_id = id;
@@ -150,6 +152,72 @@ pub fn from_page_text(page: &PageText, lang_hint: Option<Lang>) -> ChessPageText
     let mut side = token::Side::default();
     let lines = tokens.into_iter().filter_map(|words| token::assemble(words, &mut side)).collect();
     ChessPageText { lines, lang, quality: quality::verdict(&mapper.stats), unknown_chess_fonts: mapper.unknown_fonts, lang_tally }
+}
+
+/// A gap between two glyphs of one line wider than this many times the taller glyph's height is
+/// a gutter between columns wherever it is: justified text stretches its spaces to about one
+/// height at most.
+pub const GUTTER_SHARE: f32 = 2.5;
+/// A narrower gap (down to [`ALIGNED_SHARE`] of a height and [`MIN_GUTTER`] points) is a gutter
+/// when at least [`ALIGNED_LINES`] other lines have one at the same place: books leave 12–24 pt
+/// between columns, and word spaces do not line up from line to line.
+pub const ALIGNED_SHARE: f32 = 0.6;
+pub const ALIGNED_LINES: usize = 2;
+/// The narrowest gutter, in points.
+pub const MIN_GUTTER: f32 = 6.0;
+/// Candidate gaps looked at per page, at most.
+const MAX_GAPS: usize = 4096;
+
+/// Each glyph's line, with a layout line that crosses a gutter cut into one line per side. The
+/// numbers are fresh (in order) and say only which glyphs share a line.
+fn split_at_gutters(page: &PageText) -> Vec<Option<u32>> {
+    // 1. Candidate gaps: (glyph that starts after the gap, layout line, gap x0, gap x1, wide).
+    let mut gaps: Vec<(usize, u32, f32, f32, bool)> = Vec::new();
+    let mut prev: Option<(u32, [f32; 4])> = None;
+    for (i, g) in page.glyphs.iter().enumerate() {
+        let Some(layout) = page.line_of.get(i).copied() else { continue };
+        if let Some((pl, p)) = prev
+            && pl == layout
+            && gaps.len() < MAX_GAPS
+        {
+            let h = (p[3] - p[1]).max(g.rect[3] - g.rect[1]).max(0.0);
+            let gap = g.rect[0] - p[2];
+            if gap.is_finite() && h.is_finite() && gap > MIN_GUTTER && gap > ALIGNED_SHARE * h {
+                gaps.push((i, layout, p[2], g.rect[0], gap > GUTTER_SHARE * h));
+            }
+        }
+        prev = Some((layout, g.rect));
+    }
+    // 2. The gaps that cut: wide ones, and those whose middle other lines' gaps also cover.
+    let cuts: std::collections::HashSet<usize> = gaps
+        .iter()
+        .filter(|(_, line, x0, x1, wide)| {
+            let mid = (x0 + x1) * 0.5;
+            let aligned = || {
+                let mut lines: Vec<u32> = gaps.iter().filter(|(_, l, a, b, _)| l != line && *a <= mid && mid <= *b).map(|g| g.1).collect();
+                lines.dedup();
+                lines.len() >= ALIGNED_LINES
+            };
+            *wide || aligned()
+        })
+        .map(|g| g.0)
+        .collect();
+    // 3. The lines.
+    let mut out = Vec::with_capacity(page.glyphs.len());
+    let mut next: u32 = 0;
+    let mut current: Option<(u32, u32)> = None; // (layout line, our line)
+    for i in 0..page.glyphs.len() {
+        let Some(layout) = page.line_of.get(i).copied() else {
+            out.push(current.map(|c| c.1));
+            continue;
+        };
+        if current.is_none_or(|c| c.0 != layout) || cuts.contains(&i) {
+            current = Some((layout, next));
+            next = next.saturating_add(1);
+        }
+        out.push(current.map(|c| c.1));
+    }
+    out
 }
 
 /// [`from_page_text`] for glyphs in content order: lays them out into lines first.
