@@ -47,8 +47,9 @@ pub const MAX_BARE_CAPTION_CHARS: usize = 80;
 pub const MAX_PUZZLE: u32 = 99_999;
 
 /// The puzzle number a text starts with: `№185.`, `N!!185.` (how text layers extract `№`),
-/// `N9191.` (how OCR reads it), `No. 12`, `Nr. 12`, `#12`; with `bare`, also `185.` alone.
-/// The number must be followed by a full stop, a bracket, a colon or a space.
+/// `N9191.` (how OCR reads it), `No. 12`, `Nr. 12`, `#12`, followed by a full stop, a bracket,
+/// a colon or a space. With `bare`, also a caption that is the number alone (`1675`) or the
+/// number, a full stop and a name (`185. Teichmann`).
 pub(crate) fn puzzle_label(text: &str, bare: bool) -> Option<u32> {
     let t = text.trim_start();
     let prefixed = ["№", "N!!", "N°", "Nº", "No.", "Nr.", "N9", "No", "Nr", "#"].iter().find_map(|p| t.strip_prefix(p)).map(str::trim_start);
@@ -64,9 +65,14 @@ pub(crate) fn puzzle_label(text: &str, bare: bool) -> Option<u32> {
     // Digits are ASCII, so `digits` is a char boundary.
     let after = rest.get(digits..)?.chars().next();
     let ends = match (prefixed.is_some(), after) {
-        // A bare number must end in a full stop and name something (`185. Teichmann`): `1996
-        // was` is prose, and `6.` alone a mark under a diagram.
-        (false, c) => c == Some('.') && rest.get(digits + 1..).is_some_and(|r| r.chars().any(char::is_alphabetic)),
+        // A bare number stands alone (`1675`) or ends in a full stop, a space and a name
+        // (`185. Teichmann`): `1996 was` is prose, `6.` a mark under a diagram and `2.2
+        // Combinations` a section.
+        (false, _) => {
+            let rem = rest.get(digits..).unwrap_or_default();
+            let named = rem.strip_prefix('.').is_some_and(|r| r.starts_with(char::is_whitespace) && r.chars().any(char::is_alphabetic));
+            rem.trim().is_empty() || named
+        }
         (true, None) => true,
         (true, Some(c)) => matches!(c, '.' | ')' | ':') || c.is_whitespace(),
     };
@@ -82,10 +88,8 @@ fn caption_text(line: &ChessLine) -> Option<String> {
     for span in &line.spans {
         match &span.run {
             ChessRun::Text(t) => out.push_str(t),
-            ChessRun::MoveNumber { number, .. } => {
-                out.push_str(&number.to_string());
-                out.push('.');
-            }
+            // Read as a move number (`1675` before a move-like word); the caption is the number.
+            ChessRun::MoveNumber { number, .. } => out.push_str(&number.to_string()),
             ChessRun::Nag(code) => out.push_str(pdfcraft_chess::nag::by_code(*code).map_or("", |n| n.glyph)),
             ChessRun::Figurine(_) => {}
             _ => return None,
@@ -494,13 +498,25 @@ fn walk(page: u32, blocks: &mut [Block], walker: &mut Walker) {
             }
             Block::Heading { .. } => walker.heading(),
             Block::Paragraph { inlines, .. } => {
-                for inline in inlines {
+                // A number alone just before a first move (`1675 1.Rd3+`) names a puzzle too.
+                let solutions: Vec<Option<u32>> = (0..inlines.len())
+                    .map(|k| match (inlines.get(k), inlines.get(k + 1)) {
+                        (Some(Inline::Text { text, .. }), Some(Inline::Move(m))) if m.number.is_some_and(|n| n.number == 1) => {
+                            let t = text.trim();
+                            (!t.is_empty() && t.len() <= 5 && t.chars().all(|c| c.is_ascii_digit())).then(|| t.parse().ok()).flatten()
+                        }
+                        _ => None,
+                    })
+                    .collect();
+                for (k, inline) in inlines.iter_mut().enumerate() {
                     match inline {
                         Inline::Text { text, .. } | Inline::Link { text, .. } => {
                             // A solution names its puzzle (`№191. Lasker – Steinitz`): its moves
                             // start from that puzzle's diagram.
                             if let Some(n) = puzzle_label(text, false) {
                                 walker.puzzle(n);
+                            } else if let Some(n) = solutions.get(k).copied().flatten() {
+                                walker.solution(n);
                             }
                             walker.text(text);
                         }

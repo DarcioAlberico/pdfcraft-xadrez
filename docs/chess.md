@@ -98,6 +98,8 @@ Both are scans with no text layer, read with chess OCR, set in two columns with 
 
 The book prints six numbered diagrams a page (`№185. Teichmann – Em.Lasker` above each, which the text layer extracts as `N!!185.`) and the solutions 230 pages on (`№185. … 27 ... ♕e2+?`), on pages whose old OCR layer the chess OCR rereads (it reads `№` as `N9`). A caption above or below a diagram, in its column, that starts with a puzzle number gives the diagram that number (a caption with `№` wins over a bare `185.`, a caption goes to its nearest diagram, and a bare number needs a name after it). A paragraph of solutions that names a puzzle seen earlier closes the open game and plays its moves from that diagram; the game is tagged `PdfPuzzle`. On puzzle pages 40–41 and solution pages 275–276, valid moves went from 0 to 139 of 483, all twelve numbers read right; the other books unchanged.
 
+Polgar's *Chess 5334 Problems, Combinations and Games* prints the number alone above each diagram (`1675`, the diagrams in the `skak` font, read exactly) and its solutions as the number alone before the key move (`1675 1.Rd3+`), 700 pages on. A caption that is the number alone counts (a section number such as `2.2 Combinations` does not), and a number alone just before a move numbered `1.` names a puzzle. For a number no diagram gave, the open game ends and the moves stay unchecked, instead of being read into whatever game was open. On pages 297–298 and 1009, 11 of the 12 key moves whose diagrams were read are valid (the twelfth, `1.O-O-O`, has no rook on its diagram), and no solution of an unread diagram is validated by chance.
+
 ## Limits
 
 - **Moves and text**

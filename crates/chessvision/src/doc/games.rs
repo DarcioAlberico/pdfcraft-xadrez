@@ -800,6 +800,18 @@ impl Walker {
         self.anchor = Anchor::Seed(seed);
     }
 
+    /// A solution whose number stands alone before its first move (`1675 1.Rd3+`): as
+    /// [`Walker::puzzle`], and for a number no diagram gave, the open game still ends and the
+    /// moves stay unchecked, rather than being read into whatever game was open.
+    pub fn solution(&mut self, n: u32) {
+        if self.puzzles.iter().any(|s| s.puzzle == Some(n)) {
+            self.puzzle(n);
+        } else {
+            self.close();
+            self.anchor = Anchor::Blocked;
+        }
+    }
+
     /// A heading: the open game ends, and no diagram waits.
     pub fn heading(&mut self) {
         self.close();
