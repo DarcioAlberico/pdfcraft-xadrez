@@ -6,6 +6,10 @@
 //! what replaying them found (valid, illegal or ambiguous, not reached, unchecked), annotation
 //! glyphs, and the diagrams as small boards. It follows the page shown (reading its text layer,
 //! which is quick); a page whose layer cannot be believed is read with chess OCR on request.
+//! **Book origin** is the user's say over the whole document: Auto (the above, and exports read
+//! with chess OCR where a layer cannot be believed), Digital (never chess OCR: a poor layer is
+//! read as it is, with a note) or Scanned (every page and export read with chess OCR). It is kept
+//! with the document like its book cipher.
 //! Clicking a move, a paragraph or a diagram outlines where it is on the page; a diagram also
 //! opens in the editor. Figurines are shown when the interface's fonts have them, else the
 //! moves as printed.
@@ -17,7 +21,7 @@ use std::sync::{Arc, Mutex};
 
 use egui::{Color32, FontId, TextureHandle};
 use pdfcraft_engine::DocId;
-use pdfcraft_engine::chess::document::{OcrMode, OcrOptions};
+use pdfcraft_engine::chess::document::{BookOrigin, OcrMode, OcrOptions};
 use pdfcraft_engine::chess::export::{ChessExportOptions, ChessFormat};
 use pdfcraft_engine::chess::pdfcraft_chess::draw::BoardStyle;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::html::{Figurines, plain_text_with};
@@ -40,6 +44,8 @@ pub struct PageText {
     pub doc: DocId,
     pub stamp: ScanStamp,
     pub page: usize,
+    /// The book origin the page was read under.
+    pub origin: BookOrigin,
     pub chess: ChessDoc,
     /// Read with chess OCR (not the text layer).
     pub ocr: bool,
@@ -65,6 +71,7 @@ pub enum JobKind {
     Read {
         page: usize,
         stamp: ScanStamp,
+        origin: BookOrigin,
         ocr: bool,
     },
     #[cfg(not(target_arch = "wasm32"))]
@@ -111,6 +118,38 @@ pub enum TextAction {
     /// Open diagram `index` of `page` in the editor.
     Diagram(usize, usize),
     Export(ChessFormat),
+    /// Say where the document's pages came from.
+    Origin(BookOrigin),
+}
+
+fn origin_label(o: BookOrigin) -> &'static str {
+    match o {
+        BookOrigin::Auto => tl!("Auto (page by page)"),
+        BookOrigin::Digital => tl!("Born digital (text layer only)"),
+        BookOrigin::Scanned => tl!("Scanned (chess OCR on every page)"),
+    }
+}
+
+/// The Book origin choice.
+fn origin_menu(ui: &mut egui::Ui, origin: BookOrigin) -> Option<TextAction> {
+    let mut action = None;
+    ui.label(tl!("Book origin"));
+    let mut chosen = origin;
+    egui::ComboBox::from_id_salt("chess-book-origin")
+        .selected_text(origin_label(origin))
+        .show_ui(ui, |ui| {
+            for o in BookOrigin::ALL {
+                ui.selectable_value(&mut chosen, o, origin_label(o));
+            }
+        })
+        .response
+        .on_hover_text(tl!(
+            "Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model)."
+        ));
+    if chosen != origin {
+        action = Some(TextAction::Origin(chosen));
+    }
+    action
 }
 
 fn status_colour(s: MoveStatus) -> Color32 {
@@ -157,7 +196,8 @@ pub fn export_menu(ui: &mut egui::Ui) -> Option<TextAction> {
     action
 }
 
-/// The Text tab for page `page` of document `id`.
+/// The Text tab for page `page` of document `id`, whose book origin is `origin`.
+#[allow(clippy::too_many_arguments)]
 pub fn text_tab(
     ui: &mut egui::Ui,
     t: &Tokens,
@@ -165,6 +205,7 @@ pub fn text_tab(
     id: DocId,
     page: usize,
     now: Option<ScanStamp>,
+    origin: BookOrigin,
     busy: Option<&'static str>,
 ) -> Option<TextAction> {
     let mut action = None;
@@ -174,7 +215,12 @@ pub fn text_tab(
             ui.label(egui::RichText::new(label).color(t.text_muted));
         });
     }
-    let current = text.filter(|x| x.doc == id && x.page == page && Some(x.stamp) == now);
+    let current = text.filter(|x| x.doc == id && x.page == page && Some(x.stamp) == now && x.origin == origin);
+    ui.horizontal_wrapped(|ui| {
+        if let Some(a) = origin_menu(ui, origin) {
+            action = Some(a);
+        }
+    });
     ui.horizontal_wrapped(|ui| {
         if ui
             .button(tl!("Read this page with chess OCR"))
@@ -202,11 +248,13 @@ pub fn text_tab(
         ui.label(egui::RichText::new(tl!("Read with chess OCR: check it against the page.")).small().color(t.text_muted));
     }
     if let Some(why) = &x.needs_ocr {
-        ui.label(
-            egui::RichText::new(crate::i18n::fmt(tl!("This page's text layer can't be believed ({e}): read it with chess OCR."), &[("e", why)]))
-                .small()
-                .color(t.text_muted),
-        );
+        // The user said the book is born digital: the layer was read anyway, and OCR is not urged.
+        let said = if x.origin == BookOrigin::Digital {
+            tl!("This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.")
+        } else {
+            tl!("This page's text layer can't be believed ({e}): read it with chess OCR.")
+        };
+        ui.label(egui::RichText::new(crate::i18n::fmt(said, &[("e", why)])).small().color(t.text_muted));
     }
     for n in &x.notes {
         ui.label(egui::RichText::new(n).small().color(t.text_muted));
@@ -319,15 +367,18 @@ fn boards(ctx: &egui::Context, chess: &ChessDoc, pieces: &pdfcraft_engine::chess
 
 impl PdfCraftApp {
     /// Read page `page` of the active document as chess text for the Text tab (`ocr`: with chess
-    /// OCR on every page asked, not only where the layer is poor).
+    /// OCR, as asked). Otherwise the page's text layer is read, quickly, unless the book is
+    /// scanned: then every page is read with chess OCR.
     pub fn read_chess_text(&mut self, page: usize, ocr: bool) {
         let Some((_, id)) = self.active_ids() else { return };
         let Some(stamp) = self.session.chess_stamp(id) else { return };
+        let origin = self.chess_origin(id);
         // A failed read is kept too, with why, so the tab does not try again every frame.
         let failed = |why: String| PageText {
             doc: id,
             stamp,
             page,
+            origin,
             chess: ChessDoc { format: pdfcraft_engine::chess::pdfcraft_chessvision::doc::FORMAT_VERSION, pages: Vec::new(), games: Vec::new() },
             ocr: false,
             needs_ocr: None,
@@ -341,9 +392,10 @@ impl PdfCraftApp {
         if self.chess.job.is_some() {
             return;
         }
+        let ocr = ocr || origin == BookOrigin::Scanned;
         let mode = if ocr { OcrMode::All } else { OcrMode::Off };
         let book = self.chess_cipher(id);
-        self.start_chess_job(id, JobKind::Read { page, stamp, ocr }, move |s, id| {
+        self.start_chess_job(id, JobKind::Read { page, stamp, origin, ocr }, move |s, id| {
             let options = OcrOptions { mode, glyphs: None, general: true, book: book.as_ref() };
             JobDone::Read(s.chess_document_with(id, &[page], &ChessScanSettings::default(), None, &options))
         });
@@ -352,6 +404,11 @@ impl PdfCraftApp {
     /// The book cipher learned so far for document `id`, if any.
     fn chess_cipher(&self, id: DocId) -> Option<pdfcraft_engine::chess::pdfcraft_chessvision::cipher::BookCipher> {
         self.chess.cipher.as_ref().filter(|(d, _)| *d == id).map(|(_, c)| c.clone())
+    }
+
+    /// Where document `id`'s pages came from, as the user said (Auto when not said).
+    pub fn chess_origin(&self, id: DocId) -> BookOrigin {
+        self.chess.origin.filter(|(d, _)| *d == id).map(|(_, o)| o).unwrap_or_default()
     }
 
     /// Run `work` on a session of its own, opened from document `id`'s working bytes, on a
@@ -396,7 +453,7 @@ impl PdfCraftApp {
         };
         let Some(job) = self.chess.job.take() else { return };
         match (job.kind, done) {
-            (JobKind::Read { page, stamp, ocr }, JobDone::Read(read)) => {
+            (JobKind::Read { page, stamp, origin, ocr }, JobDone::Read(read)) => {
                 // The document changed meanwhile: the reading describes a state that is gone.
                 if self.session.chess_stamp(job.doc) != Some(stamp) {
                     return;
@@ -413,9 +470,19 @@ impl PdfCraftApp {
                         if ocr && read.ocr_pages.is_empty() && !notes.iter().any(|n| n.contains("chess-glyphs")) {
                             notes.push(tl!("Chess OCR read nothing on this page.").to_string());
                         }
-                        PageText { doc: job.doc, stamp, page, chess: read.doc, ocr: !read.ocr_pages.is_empty(), needs_ocr, notes, boards }
+                        PageText { doc: job.doc, stamp, page, origin, chess: read.doc, ocr: !read.ocr_pages.is_empty(), needs_ocr, notes, boards }
                     }
-                    Err(e) => PageText { doc: job.doc, stamp, page, chess: empty(), ocr: false, needs_ocr: None, notes: vec![e], boards: Vec::new() },
+                    Err(e) => PageText {
+                        doc: job.doc,
+                        stamp,
+                        page,
+                        origin,
+                        chess: empty(),
+                        ocr: false,
+                        needs_ocr: None,
+                        notes: vec![e],
+                        boards: Vec::new(),
+                    },
                 });
             }
             #[cfg(not(target_arch = "wasm32"))]
@@ -462,6 +529,12 @@ impl PdfCraftApp {
                 self.chess.tab = ChessTab::Diagrams;
             }
             TextAction::Export(format) => self.export_chess_dialog(format),
+            // The page shown is read again under the new origin (the tab sees it is not current).
+            TextAction::Origin(origin) => {
+                if let Some((_, id)) = self.active_ids() {
+                    self.chess.origin = Some((id, origin));
+                }
+            }
         }
     }
 
@@ -492,6 +565,8 @@ impl PdfCraftApp {
         {
             let mut options = ChessExportOptions::new(&stem);
             options.pieces = crate::chess_editor::piece_set(&mut self.chess.pieces);
+            options.book = self.chess_cipher(id);
+            options.ocr = self.chess_origin(id).ocr_mode();
             self.start_chess_job(id, JobKind::Export { format, name: format!("{stem}.{ext}") }, move |s, id| {
                 JobDone::Export(s.chess_export(id, format, &options))
             });
@@ -509,6 +584,7 @@ impl PdfCraftApp {
         options.image_dir = format!("{stem}_diagrams");
         options.pieces = crate::chess_editor::piece_set(&mut self.chess.pieces);
         options.book = self.chess_cipher(id);
+        options.ocr = self.chess_origin(id).ocr_mode();
         let kind = JobKind::Export { format, path: path.to_path_buf(), image_dir: options.image_dir.clone() };
         self.notify(tl!("Exporting the chess document…").to_string());
         self.start_chess_job(id, kind, move |s, id| JobDone::Export(s.chess_export(id, format, &options)));

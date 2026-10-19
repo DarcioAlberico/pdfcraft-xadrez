@@ -2543,6 +2543,12 @@ animation effects	Off	Vypnuto
 	Recognised text of page {p}	Rozpoznaný text stránky {p}
 	This document does not allow copying its content, so its text is not read.	Tento dokument nepovoluje kopírovat obsah, proto se jeho text nečte.
 	This page's text layer can't be believed ({e}): read it with chess OCR.	Textové vrstvě této stránky nelze věřit ({e}): přečtěte ji šachovým OCR.
+	Book origin	Původ knihy
+	Auto (page by page)	Automaticky (stránku po stránce)
+	Born digital (text layer only)	Původně digitální (jen textová vrstva)
+	Scanned (chess OCR on every page)	Skenovaná (šachové OCR na každé stránce)
+	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	Odkud stránky knihy pocházejí. Automaticky věří textové vrstvě každé stránky, pokud nevypadá chybně; Původně digitální nikdy nepoužívá šachové OCR; Skenovaná čte každou stránku šachovým OCR (vyžaduje model chess-glyphs).
+	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	Textová vrstva této stránky vypadá špatně ({e}); byla přečtena tak, jak je, protože kniha je původně digitální.
 	Unchecked: no position to play it from	Neověřeno: chybí pozice, z níž jej zahrát
 	Valid move	Platný tah
 	Diagram replaced	Diagram nahrazen

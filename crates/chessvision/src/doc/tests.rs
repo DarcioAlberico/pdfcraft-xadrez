@@ -81,6 +81,7 @@ fn page_text(lines: Vec<ChessLine>) -> ChessPageText {
         lines,
         lang: LangGuess { lang: Lang::En, confidence: 1.0 },
         quality: TextQuality::Good,
+        hidden: 0.0,
         unknown_chess_fonts: Vec::new(),
         lang_tally: LangTally::default(),
     }

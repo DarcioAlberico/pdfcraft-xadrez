@@ -135,7 +135,7 @@ fn chess_export_schema() -> Value {
                     json!({ "type": "string", "maxLength": 200, "description": "The page title (default: the document's name)." }),
                 );
                 o.insert("lang".into(), json!({ "type": "string", "maxLength": 16, "description": "The piece letters' language in the PDF, as a BCP 47 tag. Default: chosen from the pages." }));
-                o.insert("ocr".into(), json!({ "type": "string", "enum": ["auto", "off", "all"], "description": "Chess OCR of the page image instead of the text layer: auto (default) on pages whose layer is poor or missing, off, or all pages. Needs the user's chess-glyphs model; the general OCR reads prose when its models are installed. ocr_pages says what it read." }));
+                o.insert("ocr".into(), json!({ "type": "string", "enum": ["auto", "off", "all"], "description": "Chess OCR of the page image instead of the text layer: auto (default) on pages whose layer is poor or missing, or is another program's invisible OCR over a scan; off (a born-digital book: never, poor pages are listed in needs_ocr); or all pages (a scanned book). Needs the user's chess-glyphs model; the general OCR reads prose when its models are installed. ocr_pages says what it read." }));
                 o.insert("cipher_in".into(), json!({ "type": "string", "description": "A book cipher saved by an earlier run (cipher_out), to start chess OCR from: what the book's figurine fonts or misreadings map to, learned on other pages." }));
                 o.insert(
                     "cipher_out".into(),
@@ -1250,7 +1250,7 @@ pub fn tools() -> Vec<ToolDef> {
                     let mut props = chess_props(true);
                     if let Some(o) = props.as_object_mut() {
                         o.insert("lang".into(), json!({ "type": "string", "maxLength": 16, "description": "The piece letters' language as a BCP 47 tag (en, de, fr, es, pt, it, nl, ru, …). Default: chosen from the pages." }));
-                        o.insert("ocr".into(), json!({ "type": "string", "enum": ["auto", "off", "all"], "description": "Chess OCR of the page image instead of the text layer: auto (default) on pages whose layer is poor or missing, off, or all pages. Needs the user's chess-glyphs model; the general OCR reads prose when its models are installed. ocr_pages says what it read." }));
+                        o.insert("ocr".into(), json!({ "type": "string", "enum": ["auto", "off", "all"], "description": "Chess OCR of the page image instead of the text layer: auto (default) on pages whose layer is poor or missing, or is another program's invisible OCR over a scan; off (a born-digital book: never, poor pages are listed in needs_ocr); or all pages (a scanned book). Needs the user's chess-glyphs model; the general OCR reads prose when its models are installed. ocr_pages says what it read." }));
                         o.insert("cipher_in".into(), json!({ "type": "string", "description": "A book cipher saved by an earlier run (cipher_out), to start chess OCR from: what the book's figurine fonts or misreadings map to, learned on other pages." }));
                         o.insert("cipher_out".into(), json!({ "type": "string", "description": "Save the book cipher these pages taught (JSON), for later runs on the same book." }));
                         o.insert("include".into(), json!({ "type": "array", "items": { "type": "string", "enum": ["json", "pgn"] }, "description": "Add the document (json) and/or the games as PGN (pgn) to the reply." }));

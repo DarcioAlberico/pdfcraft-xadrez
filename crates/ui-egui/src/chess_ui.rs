@@ -57,6 +57,9 @@ pub struct ChessState {
     /// The open document's book cipher, as its reads so far taught it: every later read and
     /// export starts from it.
     pub cipher: Option<(DocId, pdfcraft_engine::chess::pdfcraft_chessvision::cipher::BookCipher)>,
+    /// Where the open document's pages came from, as the user said (Auto when not said): every
+    /// later read and export follows it.
+    pub origin: Option<(DocId, pdfcraft_engine::chess::document::BookOrigin)>,
 }
 
 /// What scanning found in one document.
@@ -254,7 +257,8 @@ pub(crate) fn panel(
     ui.add_space(4.0);
     if state.tab == ChessTab::Text {
         let busy = state.job.as_ref().filter(|j| j.doc == id).map(crate::chess_text_ui::ChessJob::label);
-        return crate::chess_text_ui::text_tab(ui, t, state.text.as_mut(), id, page_now, current, busy).map(PanelAction::Text);
+        let origin = state.origin.filter(|(d, _)| *d == id).map(|(_, o)| o).unwrap_or_default();
+        return crate::chess_text_ui::text_tab(ui, t, state.text.as_mut(), id, page_now, current, origin, busy).map(PanelAction::Text);
     }
     let running = state.run.as_ref().filter(|r| r.doc == id).map(|r| {
         let s = lock(&r.progress);

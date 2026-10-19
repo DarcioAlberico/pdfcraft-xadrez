@@ -2713,6 +2713,12 @@ key	Space	Tarpas
 	Recognised text of page {p}	{p} puslapio atpažintas tekstas
 	This document does not allow copying its content, so its text is not read.	Šis dokumentas neleidžia kopijuoti turinio, todėl jo tekstas neskaitomas.
 	This page's text layer can't be believed ({e}): read it with chess OCR.	Šio puslapio teksto sluoksniu negalima pasitikėti ({e}): perskaitykite jį šachmatų OCR.
+	Book origin	Knygos kilmė
+	Auto (page by page)	Automatiškai (puslapis po puslapio)
+	Born digital (text layer only)	Iš pradžių skaitmeninė (tik teksto sluoksnis)
+	Scanned (chess OCR on every page)	Nuskenuota (šachmatų OCR kiekviename puslapyje)
+	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	Iš kur kilę knygos puslapiai. Automatiškai pasitiki kiekvieno puslapio teksto sluoksniu, nebent jis atrodo klaidingas; Iš pradžių skaitmeninė niekada nenaudoja šachmatų OCR; Nuskenuota kiekvieną puslapį skaito šachmatų OCR (reikia chess-glyphs modelio).
+	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	Šio puslapio teksto sluoksnis atrodo prastas ({e}); jis perskaitytas toks, koks yra, nes knyga iš pradžių skaitmeninė.
 	Unchecked: no position to play it from	Nepatikrinta: nėra pozicijos, iš kurios jį sužaisti
 	Valid move	Galiojantis ėjimas
 	Diagram replaced	Diagrama pakeista

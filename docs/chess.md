@@ -1,7 +1,7 @@
 # Chess books
 
-**Status:** current to 2026-10-18 (blueprint steps S1–S18; see [`chess/blueprint.md`](chess/blueprint.md)).
-**Revision history:** 2026-10-18 — first version, after S18.
+**Status:** current to 2026-10-19 (blueprint steps S1–S18; see [`chess/blueprint.md`](chess/blueprint.md)).
+**Revision history:** 2026-10-18 — first version, after S18. 2026-10-19 — book origin, and hidden OCR layers over scans.
 
 PdfCraft can read a chess book in PDF. It finds the diagrams, reads each one as a position (FEN), and reads the moves in the text, including figurines and annotation signs. It can redraw a diagram, put a lichess link under it, and export the book as HTML, EPUB, Word, RTF, Markdown or PGN. Everything runs on your machine; nothing is sent anywhere.
 
@@ -41,6 +41,7 @@ Open the **Chess diagrams** panel (`chess.panel`), or run **Chess ▸ Scan** (`c
   - Moves are coloured by what replaying them found: valid, illegal, not reached, or unchecked.
   - Click a move or a paragraph to see where it is on the page, or click a diagram to edit it.
   - **Read this page with chess OCR** reads the page image instead of its text layer.
+  - **Book origin** says where the book's pages came from, for the open document: **Auto** decides page by page, **Born digital** never uses chess OCR (a page whose layer looks poor is read as it is, with a note), and **Scanned** reads every page, and every export, with chess OCR.
 - **Export…** writes the whole book as HTML, EPUB, Word, RTF, Markdown or PGN. Markdown's diagram images go in a folder beside the file.
 
 ## Headless: tools and CLI
@@ -58,7 +59,9 @@ Every feature is also a tool (`pdfcraft-cli tools`; the MCP server is opt-in):
 
 `pdfcraft-cli chess scan FILE` prints the diagrams found. All paths are confined to `--root`.
 
-The pages to OCR are chosen with `ocr`: `auto` (the default) reads only pages whose text layer is poor or missing, `off` reads none, and `all` reads every page.
+The pages to OCR are chosen with `ocr`: `auto` (the default) reads only pages whose text layer is poor or missing, `off` reads none (a born-digital book), and `all` reads every page (a scanned book).
+
+A scan that FineReader, Acrobat or Tesseract already recognised carries their text drawn invisibly over the page image. That layer reads cleanly but is a general OCR's guess at the figurines and annotation signs, so a page whose text is mostly invisible and whose images cover at least half of it is judged poor ("another program's OCR"), and `auto` reads it with chess OCR.
 
 ## How well it reads
 

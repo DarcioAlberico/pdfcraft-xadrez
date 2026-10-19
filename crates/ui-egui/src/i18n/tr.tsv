@@ -2465,6 +2465,12 @@ animation effects	Off	Kapalı
 	Recognised text of page {p}	{p}. sayfanın tanınan metni
 	This document does not allow copying its content, so its text is not read.	Bu belge içeriğinin kopyalanmasına izin vermiyor, bu yüzden metni okunmuyor.
 	This page's text layer can't be believed ({e}): read it with chess OCR.	Bu sayfanın metin katmanına güvenilemez ({e}): satranç OCR ile okuyun.
+	Book origin	Kitabın kaynağı
+	Auto (page by page)	Otomatik (sayfa sayfa)
+	Born digital (text layer only)	Doğrudan dijital (yalnızca metin katmanı)
+	Scanned (chess OCR on every page)	Taranmış (her sayfada satranç OCR)
+	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	Kitabın sayfalarının nereden geldiği. Otomatik, yanlış görünmedikçe her sayfanın metin katmanına güvenir; Doğrudan dijital hiçbir zaman satranç OCR kullanmaz; Taranmış her sayfayı satranç OCR ile okur (chess-glyphs modeli gerekir).
+	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	Bu sayfanın metin katmanı kötü görünüyor ({e}); kitap doğrudan dijital olduğu için olduğu gibi okundu.
 	Unchecked: no position to play it from	Denetlenmedi: oynanacağı bir konum yok
 	Valid move	Geçerli hamle
 	Diagram replaced	Diyagram değiştirildi

@@ -153,6 +153,61 @@ fn without_a_glyph_model_or_with_ocr_off_the_page_needs_ocr() {
     let _ = std::fs::remove_dir_all(dir);
 }
 
+/// The moves as invisible Helvetica (`3 Tr`) where the scan shows them: another program's OCR.
+const HIDDEN_LAYER: &str = "BT /F1 14 Tf 3 Tr 60 500 Td (1.e4 e5 2.Nf3 Nc6) Tj ET\n";
+
+/// The SAN of the moves read on the document's first page.
+fn sans(read: &crate::chess::document::ChessDocument) -> Vec<String> {
+    read.doc.pages[0]
+        .blocks
+        .iter()
+        .flat_map(|b| b.inlines())
+        .filter_map(|i| if let pdfcraft_chessvision::doc::Inline::Move(m) = i { Some(m.san.clone()) } else { None })
+        .collect()
+}
+
+/// A scan with FineReader's (or Acrobat's, or Tesseract's) invisible layer over it: the layer
+/// reads cleanly, but it is a general OCR's guess, so Auto reads the page with chess OCR.
+#[test]
+fn an_invisible_layer_over_a_scan_is_read_with_chess_ocr() {
+    let templates = Templates::learn("1.e4526Nf3c", 14.0);
+    let scanned = format!("q 600 0 0 800 0 0 cm /Im1 Do Q\n{HIDDEN_LAYER}");
+    let (mut s, id) = open(pdf(&scanned, "Helvetica", Some(scan_image(&[(MOVES, 14.0, 300.0)])), ""));
+    let read = s.chess_document_with(id, &[], &no_model(), Some(pdfcraft_chess::san::Lang::En), &options(&templates)).unwrap();
+    assert!(read.needs_ocr.is_empty(), "{:?}", read.needs_ocr);
+    assert_eq!(read.ocr_pages.len(), 1, "the hidden layer was believed: {:?}", read.notes);
+
+    // The same invisible text without the picture under it (text kept for search, say) is no
+    // scan's OCR: the layer is read as it is.
+    let (mut s, id) = open(pdf(HIDDEN_LAYER, "Helvetica", None, ""));
+    let read = s.chess_document_with(id, &[], &no_model(), Some(pdfcraft_chess::san::Lang::En), &options(&templates)).unwrap();
+    assert!(read.ocr_pages.is_empty() && read.needs_ocr.is_empty(), "{:?} {:?}", read.ocr_pages, read.needs_ocr);
+    assert_eq!(sans(&read), ["e4", "e5", "Nf3", "Nc6"]);
+}
+
+/// The user says the book is born digital: chess OCR never runs, the page is read from its text
+/// layer, and why that layer looked poor is noted.
+#[test]
+fn a_digital_book_reads_even_a_hidden_layer_and_notes_it() {
+    use crate::chess::document::BookOrigin;
+    let templates = Templates::learn("1.e4526Nf3c", 14.0);
+    let scanned = format!("q 600 0 0 800 0 0 cm /Im1 Do Q\n{HIDDEN_LAYER}");
+    let (mut s, id) = open(pdf(&scanned, "Helvetica", Some(scan_image(&[(MOVES, 14.0, 300.0)])), ""));
+    let digital = OcrOptions { mode: BookOrigin::Digital.ocr_mode(), ..options(&templates) };
+    let read = s.chess_document_with(id, &[], &no_model(), Some(pdfcraft_chess::san::Lang::En), &digital).unwrap();
+    assert!(read.ocr_pages.is_empty(), "{:?}", read.ocr_pages);
+    assert_eq!(sans(&read), ["e4", "e5", "Nf3", "Nc6"], "read from the text layer");
+    assert_eq!(read.needs_ocr.len(), 1);
+    assert!(read.needs_ocr[0].1.contains("invisible text over an image"), "{:?}", read.needs_ocr);
+    let review = &read.doc.pages[0].review;
+    assert!(review.iter().any(|r| format!("{r:?}").contains("invisible text over an image")), "{review:?}");
+    // Scanned reads every page with chess OCR, a clean visible layer too.
+    let (mut s, id) = open(pdf("BT /F1 14 Tf 60 500 Td (1.e4 e5 2.Nf3 Nc6) Tj ET", "Helvetica", None, ""));
+    let scanned = OcrOptions { mode: BookOrigin::Scanned.ocr_mode(), ..options(&templates) };
+    let read = s.chess_document_with(id, &[], &no_model(), Some(pdfcraft_chess::san::Lang::En), &scanned).unwrap();
+    assert_eq!(read.ocr_pages.len(), 1, "{:?}", read.notes);
+}
+
 #[test]
 fn ocr_words_join_the_glyph_line_they_overlap() {
     use pdfcraft_chessvision::coords::PixelRect;

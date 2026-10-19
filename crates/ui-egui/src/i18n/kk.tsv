@@ -2467,6 +2467,12 @@ animation effects	Off	Өшірулі
 	Recognised text of page {p}	{p}-беттің танылған мәтіні
 	This document does not allow copying its content, so its text is not read.	Бұл құжат мазмұнын көшіруге рұқсат етпейді, сондықтан оның мәтіні оқылмайды.
 	This page's text layer can't be believed ({e}): read it with chess OCR.	Бұл беттің мәтін қабатына сенуге болмайды ({e}): оны шахмат OCR арқылы оқыңыз.
+	Book origin	Кітаптың шығу тегі
+	Auto (page by page)	Автоматты (бетпе-бет)
+	Born digital (text layer only)	Бастапқыда цифрлық (тек мәтін қабаты)
+	Scanned (chess OCR on every page)	Сканерленген (әр бетте шахмат OCR)
+	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	Кітап беттерінің қайдан келгені. Автоматты әр беттің мәтін қабатына, қате көрінбесе, сенеді; Бастапқыда цифрлық шахмат OCR-ын ешқашан қолданбайды; Сканерленген әр бетті шахмат OCR арқылы оқиды (chess-glyphs моделі қажет).
+	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	Бұл беттің мәтін қабаты сапасыз көрінеді ({e}); кітап бастапқыда цифрлық болғандықтан, ол сол күйінде оқылды.
 	Unchecked: no position to play it from	Тексерілмеген: ойнайтын позиция жоқ
 	Valid move	Дұрыс жүріс
 	Diagram replaced	Диаграмма ауыстырылды

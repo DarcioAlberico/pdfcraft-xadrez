@@ -59,17 +59,25 @@ pub struct TextGlyph {
     /// The character code the content stream showed, before any Unicode mapping: what a symbol
     /// font's catalogue is keyed by. `None` for an `/ActualText` replacement of several glyphs.
     pub code: Option<u32>,
+    /// Drawn invisibly (text rendering mode 3, `3 Tr`): found by search and copy but never seen,
+    /// as in the OCR layer another program wrote over a scanned image.
+    pub invisible: bool,
 }
 
 impl TextGlyph {
-    /// A glyph with no font name or character code (built rather than read from a page).
+    /// A visible glyph with no font name or character code (built rather than read from a page).
     pub fn new(text: impl Into<String>, rect: [f32; 4], quad: [[f32; 2]; 4], direction: [f32; 2]) -> Self {
-        TextGlyph { text: text.into(), rect, quad, direction, font: None, code: None }
+        TextGlyph { text: text.into(), rect, quad, direction, font: None, code: None, invisible: false }
     }
 
     /// The glyph with its font name (subset prefix already removed) and character code.
     pub fn with_source(self, font: Option<Arc<str>>, code: Option<u32>) -> Self {
         TextGlyph { font, code, ..self }
+    }
+
+    /// The glyph, drawn invisibly when `invisible` is `true`.
+    pub fn with_invisible(self, invisible: bool) -> Self {
+        TextGlyph { invisible, ..self }
     }
 }
 
@@ -455,7 +463,8 @@ fn merge(drawn: &[Drawn], text: String) -> Option<Drawn> {
     // One font when every replaced glyph shares it; a code only when one glyph is replaced.
     let font = first.2.font.clone().filter(|f| drawn.iter().all(|d| d.2.font.as_ref() == Some(f)));
     let code = if let [only] = drawn { only.2.code } else { None };
-    Some((quarter, u, TextGlyph::new(text, rect, quad, first.2.direction).with_source(font, code)))
+    let invisible = drawn.iter().all(|d| d.2.invisible);
+    Some((quarter, u, TextGlyph::new(text, rect, quad, first.2.direction).with_source(font, code).with_invisible(invisible)))
 }
 
 impl TextDevice {
@@ -680,7 +689,8 @@ impl<'a> Device<'a> for TextDevice {
             corners.map(|p| [p.x as f32, p.y as f32]),
             direction.map(|d| d as f32),
         )
-        .with_source(font, Some(glyph.char_code()));
+        .with_source(font, Some(glyph.char_code()))
+        .with_invisible(matches!(mode, GlyphDrawMode::Invisible));
         match &mut self.actual {
             Some((_, _, drawn)) => drawn.push((dir, direction, glyph)),
             None => self.glyphs.push((dir, direction, glyph)),
@@ -2292,6 +2302,15 @@ mod tests {
 
     fn page_glyphs(ops: &str) -> PageText {
         extract_page(&text_page(ops), 0, &InterpreterSettings::default()).unwrap()
+    }
+
+    #[test]
+    fn invisible_text_is_extracted_and_flagged() {
+        // An OCR layer over a scan is drawn with `3 Tr`: it is found, and marked as never seen.
+        let text = page_glyphs("BT /F1 12 Tf 72 700 Td (Seen) Tj 3 Tr 0 -20 Td (Hidden) Tj ET");
+        assert_eq!(text.plain_text(), "Seen\nHidden");
+        let flags: Vec<bool> = text.glyphs.iter().map(|g| g.invisible).collect();
+        assert_eq!(flags, [false, false, false, false, true, true, true, true, true, true]);
     }
 
     fn assert_single_word(text: PageText) {

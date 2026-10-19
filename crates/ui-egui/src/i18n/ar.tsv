@@ -2747,6 +2747,12 @@ certificate	Version	الإصدار
 	Recognised text of page {p}	النص المتعرَّف عليه في الصفحة {p}
 	This document does not allow copying its content, so its text is not read.	لا يسمح هذا المستند بنسخ محتواه، لذا لا يُقرأ نصه.
 	This page's text layer can't be believed ({e}): read it with chess OCR.	لا يمكن الوثوق بطبقة النص في هذه الصفحة ({e}): اقرأها بالتعرف الضوئي للشطرنج.
+	Book origin	مصدر الكتاب
+	Auto (page by page)	تلقائي (صفحة بصفحة)
+	Born digital (text layer only)	رقمي أصلًا (طبقة النص فقط)
+	Scanned (chess OCR on every page)	ممسوح ضوئيًا (التعرف الضوئي للشطرنج في كل صفحة)
+	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	مصدر صفحات الكتاب. يثق الوضع التلقائي بطبقة النص في كل صفحة ما لم تبدُ خاطئة؛ ولا يستخدم وضع الرقمي أصلًا التعرف الضوئي للشطرنج أبدًا؛ ويقرأ وضع الممسوح ضوئيًا كل صفحة بالتعرف الضوئي للشطرنج (يتطلب نموذج chess-glyphs).
+	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	تبدو طبقة النص في هذه الصفحة رديئة ({e})؛ قُرئت كما هي لأن الكتاب رقمي أصلًا.
 	Unchecked: no position to play it from	غير مُتحقق منها: لا يوجد وضع تُلعب منه
 	Valid move	نقلة صحيحة
 	Diagram replaced	تم استبدال المخطط

@@ -300,6 +300,50 @@ fn replacement_characters_make_a_poor_layer() {
 }
 
 #[test]
+fn an_invisible_layer_over_a_picture_is_a_hidden_ocr_layer() {
+    // FineReader's layer over a scan: plain text, all of it drawn with `3 Tr`.
+    let mut page = Page::new().text("1.e4 e5 2.Nf3 Nc6");
+    for g in &mut page.text.glyphs {
+        g.invisible = true;
+    }
+    let mut read = page.read(None);
+    // The layer alone reads well; only a picture under it makes it another program's OCR.
+    assert_eq!(read.quality, TextQuality::Good);
+    assert_eq!(read.hidden, 1.0);
+    read.over_page_image();
+    assert_eq!(read.quality, TextQuality::Poor { reason: PoorReason::HiddenOcrLayer { ratio: 1.0 } });
+
+    // Visible text over a picture (a photographed page with a caption set as text) is believed.
+    let mut visible = Page::new().text("1.e4 e5 2.Nf3 Nc6").read(None);
+    visible.over_page_image();
+    assert_eq!(visible.quality, TextQuality::Good);
+
+    // A few invisible glyphs among visible ones are not a layer of their own.
+    let mut mixed = Page::new().text("1.e4 e5 2.Nf3 Nc6");
+    for g in mixed.text.glyphs.iter_mut().take(3) {
+        g.invisible = true;
+    }
+    let mut mixed = mixed.read(None);
+    mixed.over_page_image();
+    assert_eq!(mixed.quality, TextQuality::Good, "hidden {}", mixed.hidden);
+
+    // A layer already poor keeps the reason found first, and a page without one stays missing.
+    let mut dead = Page::new();
+    for code in 0x41..0x48u32 {
+        dead = dead.glyph("\u{0}", "SomeSerif", Some(code));
+    }
+    for g in &mut dead.text.glyphs {
+        g.invisible = true;
+    }
+    let mut dead = dead.read(None);
+    dead.over_page_image();
+    assert!(matches!(dead.quality, TextQuality::Poor { reason: PoorReason::DeadMap { .. } }), "{:?}", dead.quality);
+    let mut missing = Page::new().read(None);
+    missing.over_page_image();
+    assert_eq!(missing.quality, TextQuality::Missing);
+}
+
+#[test]
 fn dead_two_byte_codes_are_type0_without_unicode() {
     let mut page = Page::new();
     for gid in 3..12u32 {

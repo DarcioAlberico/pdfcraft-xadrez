@@ -2474,6 +2474,12 @@ animation effects	Off	Izklopljeni
 	Recognised text of page {p}	Prepoznano besedilo strani {p}
 	This document does not allow copying its content, so its text is not read.	Ta dokument ne dovoli kopiranja vsebine, zato se njegovo besedilo ne bere.
 	This page's text layer can't be believed ({e}): read it with chess OCR.	Besedilni plasti te strani ni mogoče zaupati ({e}): preberite jo s šahovskim OCR.
+	Book origin	Izvor knjige
+	Auto (page by page)	Samodejno (stran za stranjo)
+	Born digital (text layer only)	Izvorno digitalna (samo besedilna plast)
+	Scanned (chess OCR on every page)	Skenirana (šahovski OCR na vsaki strani)
+	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	Od kod izvirajo strani knjige. Samodejno zaupa besedilni plasti vsake strani, razen če je videti napačna; Izvorno digitalna nikoli ne uporablja šahovskega OCR; Skenirana prebere vsako stran s šahovskim OCR (potreben je model chess-glyphs).
+	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	Besedilna plast te strani je videti slaba ({e}); prebrana je bila takšna, kot je, ker je knjiga izvorno digitalna.
 	Unchecked: no position to play it from	Nepreverjeno: ni položaja, iz katerega bi jo odigrali
 	Valid move	Veljavna poteza
 	Diagram replaced	Diagram zamenjan

@@ -2433,6 +2433,12 @@ animation effects	Off	关
 	Recognised text of page {p}	第 {p} 页的识别文本
 	This document does not allow copying its content, so its text is not read.	此文档不允许复制其内容，因此不读取其文本。
 	This page's text layer can't be believed ({e}): read it with chess OCR.	此页的文本层不可信（{e}）：请用国际象棋 OCR 读取。
+	Book origin	书籍来源
+	Auto (page by page)	自动（逐页判断）
+	Born digital (text layer only)	数字原生（仅文本层）
+	Scanned (chess OCR on every page)	扫描件（每页都用国际象棋 OCR）
+	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	书页的来源。“自动”会信任每页的文本层，除非它看起来有误；“数字原生”从不使用国际象棋 OCR；“扫描件”用国际象棋 OCR 读取每一页（需要 chess-glyphs 模型）。
+	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	此页的文本层质量似乎较差（{e}）；由于本书是数字原生，已按原样读取。
 	Unchecked: no position to play it from	未检查：没有可走此着的局面
 	Valid move	有效着法
 	Diagram replaced	已替换局面图

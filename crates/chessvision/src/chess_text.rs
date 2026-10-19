@@ -104,6 +104,9 @@ pub struct ChessPageText {
     pub lang: LangGuess,
     /// Whether the layer can be believed.
     pub quality: TextQuality,
+    /// The share (0 to 1) of the judged glyphs drawn invisibly, as an OCR layer over a scan is.
+    /// [`Self::over_page_image`] judges it once the caller knows the page is a picture.
+    pub hidden: f32,
     /// Fonts that look like chess fonts but are not in the catalogue. Their glyphs are kept as
     /// they extract; adding the family to the catalogue fixes them.
     pub unknown_chess_fonts: Vec<Arc<str>>,
@@ -151,7 +154,22 @@ pub fn from_page_text(page: &PageText, lang_hint: Option<Lang>) -> ChessPageText
     token::settle(&mut tokens);
     let mut side = token::Side::default();
     let lines = tokens.into_iter().filter_map(|words| token::assemble(words, &mut side)).collect();
-    ChessPageText { lines, lang, quality: quality::verdict(&mapper.stats), unknown_chess_fonts: mapper.unknown_fonts, lang_tally }
+    ChessPageText {
+        lines,
+        lang,
+        quality: quality::verdict(&mapper.stats),
+        hidden: quality::hidden_ratio(&mapper.stats),
+        unknown_chess_fonts: mapper.unknown_fonts,
+        lang_tally,
+    }
+}
+
+impl ChessPageText {
+    /// Judge the layer again on a page that is a picture (images cover most of it): a layer
+    /// mostly drawn invisibly over it is another program's OCR ([`quality::over_page_image`]).
+    pub fn over_page_image(&mut self) {
+        self.quality = quality::over_page_image(&self.quality, self.hidden);
+    }
 }
 
 /// A gap between two glyphs of one line wider than this many times the taller glyph's height is
