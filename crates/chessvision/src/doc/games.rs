@@ -30,7 +30,9 @@
 //! - **Lines.** A move continues its line. A numbered move that points back into the line (`1...Ke8`
 //!   after `1.Qh5 Kd7 2.Qf7+`) starts an alternative to the move with that number, as books write
 //!   second solutions. `(` and `[` open a variation, an alternative to the last move, and `)` and `]`
-//!   close it (PGN's rule).
+//!   close it (PGN's rule). A variation whose first move is numbered as the move after the last
+//!   one holds replies to it instead (`1.Kb1 (1...b3 2.Kb2; 1...a3 2.Ka2)`); the main line's own
+//!   reply, when it comes, still goes first.
 //! - **Failures.** A move that is illegal, ambiguous or numbered out of sequence is flagged, and its
 //!   line stops: every later move of that line is [`MoveStatus::NotReached`] until a numbered move
 //!   finds its place again. A numbered move that cannot be played where the reading is, outside
@@ -447,6 +449,22 @@ impl GameScore {
 
     /// Put text that came before node `n`: its own `comment_before` when it starts a variation,
     /// else the comment of the move before it (or of the game).
+    /// Make node `n` the first of its siblings: the line its parent goes on with.
+    pub(crate) fn put_first(&mut self, n: usize) {
+        let parent = self.nodes.get(n).and_then(|node| node.parent);
+        let siblings = match parent {
+            None => &mut self.roots,
+            Some(p) => match self.nodes.get_mut(p) {
+                Some(node) => &mut node.children,
+                None => return,
+            },
+        };
+        if let Some(i) = siblings.iter().position(|&c| c == n) {
+            let node = siblings.remove(i);
+            siblings.insert(0, node);
+        }
+    }
+
     pub(crate) fn comment_before(&mut self, n: usize, text: &str) -> bool {
         let starts = self.starts_variation(n);
         let parent = self.nodes.get(n).and_then(|node| node.parent);
@@ -569,6 +587,9 @@ struct Line {
     last_ok: bool,
     /// Text before the line's first move.
     pending: String,
+    /// A variation not yet moved in: the move it was opened after. Its first move may be a reply
+    /// to that move instead of an alternative to it.
+    after: Option<usize>,
 }
 
 #[derive(Clone, Debug)]
@@ -580,6 +601,8 @@ struct Open {
     overflow: usize,
     truncated: bool,
     too_large: bool,
+    /// Moves whose first reply was read inside brackets: the main line's own reply goes first.
+    replies: Vec<usize>,
 }
 
 /// The finished walk.
@@ -890,7 +913,8 @@ impl Walker {
             }
         };
         let flags = flags.into_iter().map(|flag| GameFlag { page: loc.page, source_rect: loc.rect, flag }).collect();
-        self.open = Some(Open { game: self.games.len(), lines: vec![Line::default()], overflow: 0, truncated: false, too_large: false });
+        self.open =
+            Some(Open { game: self.games.len(), lines: vec![Line::default()], overflow: 0, truncated: false, too_large: false, replies: Vec::new() });
         self.games.push(Game { origin, trusted, page: loc.page, score, flags });
         self.remaps.push(Vec::new());
         Some(honour)
@@ -953,6 +977,21 @@ impl Walker {
                 *line = main;
             }
         }
+        // A bracket opened after a move can hold the replies to it (`1.Kb1 (1...b3 2.Kb2; 1...a3)`):
+        // a first move numbered as the move after it is played after it.
+        if let Some(n) = number
+            && let Some(line) = open.lines.last_mut()
+            && !line.moved
+            && let Some(after) = line.after
+            && game.score.nodes.get(after).is_some_and(|m| ply_of(n) == m.ply.saturating_add(1))
+            && playable(&game.score, &Line { cursor: Some(after), ..Line::default() }, number, san)
+        {
+            line.cursor = Some(after);
+            line.after = None;
+            if game.score.children(Some(after)).is_empty() && !open.replies.contains(&after) {
+                open.replies.push(after);
+            }
+        }
         let Some(line) = open.lines.last() else { return MoveOutcome::status(MoveStatus::Unchecked) };
         let (status, flag) = match decide(&game.score, line, number) {
             Decision::NotReached => (MoveStatus::NotReached, None),
@@ -966,7 +1005,15 @@ impl Walker {
                         open.truncated |= game.score.comment_before(node, &pending);
                     }
                     if let Some(line) = open.lines.last_mut() {
-                        *line = Line { cursor: Some(node), moved: true, skipped: 0, last_ok: true, pending: String::new() };
+                        *line = Line { cursor: Some(node), moved: true, skipped: 0, last_ok: true, ..Line::default() };
+                    }
+                    // The main line's reply to a move whose replies came first in brackets.
+                    if open.lines.len() == 1
+                        && let Some(parent) = game.score.nodes.get(node).and_then(|n| n.parent)
+                        && let Some(i) = open.replies.iter().position(|&r| r == parent)
+                    {
+                        open.replies.swap_remove(i);
+                        game.score.put_first(node);
                     }
                     let n = game.score.nodes.get(node);
                     return MoveOutcome {
@@ -1077,18 +1124,18 @@ impl Walker {
         }
         let Some(game) = self.games.get(open.game) else { return };
         let Some(parent) = open.lines.last() else { return };
-        let (cursor, skipped) = match (parent.moved, parent.skipped) {
+        let (cursor, skipped, after) = match (parent.moved, parent.skipped) {
             // An alternative to the last move: from the position before it.
             (true, 0) => match parent.cursor.and_then(|c| game.score.nodes.get(c)) {
-                Some(last) => (last.parent, 0),
-                None => (parent.cursor, 2),
+                Some(last) => (last.parent, 0, parent.cursor),
+                None => (parent.cursor, 2, None),
             },
             // An alternative to the one printed move that could not be played.
-            (_, 1) => (parent.cursor, 0),
+            (_, 1) => (parent.cursor, 0, None),
             // Nothing to be an alternative to, or the position is lost.
-            _ => (parent.cursor, 2),
+            _ => (parent.cursor, 2, None),
         };
-        open.lines.push(Line { cursor, moved: false, skipped, last_ok: false, pending: String::new() });
+        open.lines.push(Line { cursor, moved: false, skipped, after, ..Line::default() });
     }
 
     fn close_variation(&mut self) {
