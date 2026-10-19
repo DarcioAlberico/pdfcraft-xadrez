@@ -507,6 +507,18 @@ fn a_hostile_doc_writes_pgn_without_panicking() {
     assert!(doc.pgn().contains("e4"));
 }
 
+/// A game in long algebraic replays like any other.
+#[test]
+fn a_long_algebraic_game_replays() {
+    let text = page_text(vec![line(100.0, "1.e2-e4 e7-e5 2.Ng1-f3 Nb8-c6 3.Bf1-b5 a7-a6 4.Bb5:c6 d7:c6")]);
+    let doc = build_page(&input(0, &text, &[], &[], &[]));
+    let got = moves(&doc.pages[0]);
+    assert_eq!(got.len(), 8, "{got:?}");
+    assert!(got.iter().all(|(_, s)| *s == MoveStatus::Valid), "{got:?}");
+    let pgn = doc.pgn();
+    assert!(pgn.contains("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Bxc6 dxc6"), "written back in short algebraic: {pgn}");
+}
+
 /// A two-column page whose lines come interleaved (the layout reads across): each column's game
 /// replays in its own order.
 #[test]

@@ -167,6 +167,14 @@ fn plausible(san: &San) -> bool {
         SanBody::Castle(_) => true,
         SanBody::Null => false,
         SanBody::Move { piece: Some(_), promotion, .. } => promotion.is_none(),
+        // Long algebraic (`e2-e4`, `d7:c6`): a pawn's step from its full from-square.
+        SanBody::Move { piece: None, from_file: Some(ff), from_rank: Some(fr), capture, to, promotion } => {
+            let last_rank = to.rank() == 0 || to.rank() == 7;
+            let df = i16::from(ff).abs_diff(i16::from(to.file()));
+            let dr = i16::from(fr).abs_diff(i16::from(to.rank()));
+            let step = if capture { df == 1 && dr == 1 } else { df == 0 && (dr == 1 || (dr == 2 && (fr == 1 || fr == 6))) };
+            step && promotion.is_some() == last_rank
+        }
         SanBody::Move { piece: None, from_file, from_rank, capture, to, promotion } => {
             let last_rank = to.rank() == 0 || to.rank() == 7;
             from_rank.is_none() && capture == from_file.is_some() && promotion.is_some() == last_rank

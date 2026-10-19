@@ -617,8 +617,12 @@ fn read_squares(text: &str) -> Option<(Option<u8>, Option<u8>, bool, Square)> {
     let (rank_c, rest) = chars.split_last()?;
     let (file_c, rest) = rest.split_last()?;
     let to = Square::parse(&format!("{file_c}{rank_c}"))?;
+    // Long algebraic, as German books print it: `e2-e4`, `Sg1–f3` (dashes are normalised to `-`),
+    // and `:` for a capture (`e5:d6`, `Lb5:c6`) as well as `x`. A `-` separates a full from-square.
     let (capture, rest) = match rest.split_last() {
-        Some(('x', rest)) => (true, rest),
+        Some(('x' | ':', rest)) => (true, rest),
+        Some(('-', rest)) if rest.len() == 2 => (false, rest),
+        Some(('-', _)) => return None,
         _ => (false, rest),
     };
     let file = |c: &char| ('a'..='h').contains(c).then(|| *c as u8 - b'a');
@@ -728,6 +732,28 @@ mod tests {
         }
         assert_eq!(San::read(&"N".repeat(40), Lang::En), Err(SanError::TooLong));
         assert_eq!(San::parse("0-0"), Err(SanError::NotCanonical("0-0".into())));
+    }
+
+    /// Long algebraic, as German books print it: the from-square, `-` (or a dash) for a move and
+    /// `:` (or `x`) for a capture. It plays as the move it names.
+    #[test]
+    fn long_algebraic_reads_and_plays() {
+        let read = |s: &str, lang: Lang| San::read(s, lang).map(|m| m.to_english()).unwrap_or_else(|e| format!("error: {e}"));
+        assert_eq!(read("e2-e4", Lang::En), "e2e4");
+        assert_eq!(read("Sg1–f3", Lang::De), "Ng1f3");
+        assert_eq!(read("Lf1—b5", Lang::De), "Bf1b5");
+        assert_eq!(read("e5:d6", Lang::De), "e5xd6");
+        assert_eq!(read("Lb5:c6+", Lang::De), "Bb5xc6+");
+        for bad in ["e-4", "-e4", "Sg-f3", "e2--e4", "e2-"] {
+            assert!(San::read(bad, Lang::De).is_err(), "{bad}");
+        }
+        let start = Board::default();
+        let mv = San::read("e2-e4", Lang::En).unwrap().to_move(&start).unwrap();
+        assert_eq!(mv.to_string(), "e2e4");
+        let mv = San::read("Sg1-f3", Lang::De).unwrap().to_move(&start).unwrap();
+        assert_eq!(mv.to_string(), "g1f3");
+        // A from-square with nothing of its colour on it is not a move here.
+        assert!(San::read("Sg2-f3", Lang::De).unwrap().to_move(&start).is_err());
     }
 
     #[test]
