@@ -2521,3 +2521,34 @@ animation effects	Off	Ανενεργά
 	Diagrams are already being scanned	Η αναζήτηση διαγραμμάτων είναι ήδη σε εξέλιξη
 	Diagrams found: {n}	Διαγράμματα που βρέθηκαν: {n}
 	FEN copied	Το FEN αντιγράφηκε
+# Chess ▸ Board: the analysis board panel.
+	Black to move	Παίζουν τα μαύρα
+	Black to move, in check	Παίζουν τα μαύρα, σε σαχ
+	Checkmate: Black wins	Ματ: κερδίζουν τα μαύρα
+	Checkmate: White wins	Ματ: κερδίζουν τα λευκά
+	Chess board	Σκακιέρα
+	Copy PGN	Αντιγραφή PGN
+	Delete the moves after this one	Διαγραφή των κινήσεων μετά από αυτή
+	Draw by the fifty-move rule	Ισοπαλία με τον κανόνα των 50 κινήσεων
+	End (End)	Τέλος (End)
+	Load PGN	Φόρτωση PGN
+	Next move (Right arrow)	Επόμενη κίνηση (δεξί βέλος)
+	Not a legal position: correct it in the diagram editor to play moves on it.	Μη νόμιμη θέση: διορθώστε τη στον επεξεργαστή διαγράμματος για να παίξετε κινήσεις.
+	Open on the board	Άνοιγμα στη σκακιέρα
+	PGN copied	Το PGN αντιγράφηκε
+	Play a move: click a piece, then where it goes, or drag it there.	Παίξτε μια κίνηση: κάντε κλικ σε ένα κομμάτι και μετά στον προορισμό του ή σύρετέ το εκεί.
+	Play the main line of the PGN above on the board.	Παίξτε στη σκακιέρα την κύρια γραμμή του παραπάνω PGN.
+	Previous move (Left arrow)	Προηγούμενη κίνηση (αριστερό βέλος)
+	Promote to:	Προαγωγή σε:
+	Reading stopped at {move}: it is not a legal move there.	Η ανάγνωση σταμάτησε στο {move}: δεν είναι νόμιμη κίνηση εκεί.
+	Show the analysis board. Double-click a diagram on the page to load it there.	Εμφάνιση της σκακιέρας ανάλυσης. Κάντε διπλό κλικ σε ένα διάγραμμα της σελίδας για να φορτωθεί εκεί.
+	Show this diagram on the page	Εμφάνιση αυτού του διαγράμματος στη σελίδα
+	Stalemate	Πατ
+	Standard start position	Τυπική αρχική θέση
+	Start (Home)	Αρχή (Home)
+	That side can't be to move: the other king is in check.	Αυτή η πλευρά δεν μπορεί να έχει τη σειρά: ο άλλος βασιλιάς είναι σε σαχ.
+	The FEN couldn't be read: {e}	Δεν ήταν δυνατή η ανάγνωση του FEN: {e}
+	The PGN couldn't be read: {e}	Δεν ήταν δυνατή η ανάγνωση του PGN: {e}
+	This diagram hasn't been read: scan its page first, or set its position in the editor.	Αυτό το διάγραμμα δεν έχει διαβαστεί: σαρώστε πρώτα τη σελίδα του ή ορίστε τη θέση στον επεξεργαστή.
+	White to move	Παίζουν τα λευκά
+	White to move, in check	Παίζουν τα λευκά, σε σαχ

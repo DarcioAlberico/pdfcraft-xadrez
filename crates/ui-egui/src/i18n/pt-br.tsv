@@ -2527,3 +2527,34 @@ animation effects	Off	Desativados
 	Diagrams are already being scanned	Os diagramas já estão sendo procurados
 	Diagrams found: {n}	Diagramas encontrados: {n}
 	FEN copied	FEN copiada
+# Chess ▸ Board: the analysis board panel.
+	Black to move	Pretas jogam
+	Black to move, in check	Pretas jogam, em xeque
+	Checkmate: Black wins	Xeque-mate: as pretas vencem
+	Checkmate: White wins	Xeque-mate: as brancas vencem
+	Chess board	Tabuleiro
+	Copy PGN	Copiar PGN
+	Delete the moves after this one	Apagar os lances depois deste
+	Draw by the fifty-move rule	Empate pela regra dos 50 lances
+	End (End)	Fim (End)
+	Load PGN	Carregar PGN
+	Next move (Right arrow)	Próximo lance (seta para a direita)
+	Not a legal position: correct it in the diagram editor to play moves on it.	Posição ilegal: corrija-a no editor de diagrama para jogar lances nela.
+	Open on the board	Abrir no tabuleiro
+	PGN copied	PGN copiado
+	Play a move: click a piece, then where it goes, or drag it there.	Jogue um lance: clique numa peça e depois aonde ela vai, ou arraste-a até lá.
+	Play the main line of the PGN above on the board.	Jogar no tabuleiro a linha principal do PGN acima.
+	Previous move (Left arrow)	Lance anterior (seta para a esquerda)
+	Promote to:	Promover a:
+	Reading stopped at {move}: it is not a legal move there.	A leitura parou em {move}: não é um lance legal ali.
+	Show the analysis board. Double-click a diagram on the page to load it there.	Mostrar o tabuleiro de análise. Dê um duplo clique num diagrama da página para carregá-lo nele.
+	Show this diagram on the page	Mostrar este diagrama na página
+	Stalemate	Afogamento
+	Standard start position	Posição inicial padrão
+	Start (Home)	Início (Home)
+	That side can't be to move: the other king is in check.	Esse lado não pode ter a vez: o outro rei está em xeque.
+	The FEN couldn't be read: {e}	Não foi possível ler a FEN: {e}
+	The PGN couldn't be read: {e}	Não foi possível ler o PGN: {e}
+	This diagram hasn't been read: scan its page first, or set its position in the editor.	Este diagrama não foi lido: escaneie a página dele primeiro ou monte a posição no editor.
+	White to move	Brancas jogam
+	White to move, in check	Brancas jogam, em xeque

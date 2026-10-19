@@ -639,7 +639,7 @@ fn read_squares(text: &str) -> Option<(Option<u8>, Option<u8>, bool, Square)> {
     }
 }
 
-fn square_from_cozy(sq: cozy_chess::Square) -> Square {
+pub(crate) fn square_from_cozy(sq: cozy_chess::Square) -> Square {
     Square::wrapping(sq.file() as u8, sq.rank() as u8)
 }
 
@@ -658,7 +658,7 @@ pub(crate) fn kind_from_cozy(p: cozy_chess::Piece) -> PieceKind {
     }
 }
 
-fn to_cozy_kind(k: PieceKind) -> cozy_chess::Piece {
+pub(crate) fn to_cozy_kind(k: PieceKind) -> cozy_chess::Piece {
     match k {
         PieceKind::Pawn => cozy_chess::Piece::Pawn,
         PieceKind::Knight => cozy_chess::Piece::Knight,

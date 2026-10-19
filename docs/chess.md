@@ -1,7 +1,7 @@
 # Chess books
 
 **Status:** current to 2026-10-18 (blueprint steps S1–S18; see [`chess/blueprint.md`](chess/blueprint.md)).
-**Revision history:** 2026-10-18 — first version, after S18.
+**Revision history:** 2026-10-18 — first version, after S18. 2026-10-19 — the chess board panel.
 
 PdfCraft can read a chess book in PDF. It finds the diagrams, reads each one as a position (FEN), and reads the moves in the text, including figurines and annotation signs. It can redraw a diagram, put a lichess link under it, and export the book as HTML, EPUB, Word, RTF, Markdown or PGN. Everything runs on your machine; nothing is sent anywhere.
 
@@ -42,6 +42,13 @@ Open the **Chess diagrams** panel (`chess.panel`), or run **Chess ▸ Scan** (`c
   - Click a move or a paragraph to see where it is on the page, or click a diagram to edit it.
   - **Read this page with chess OCR** reads the page image instead of its text layer.
 - **Export…** writes the whole book as HTML, EPUB, Word, RTF, Markdown or PGN. Markdown's diagram images go in a folder beside the file.
+- The **Chess board** is an analysis board in its own tab, beside the Inspector.
+  - **Double-click a diagram** on the page, or choose **Open on the board** in the list or the editor, to load its position. The position being edited is used when the editor has that diagram.
+  - Play moves by clicking a piece and then where it goes, or by dragging it. A pawn reaching the last rank asks for its piece.
+  - The arrows, or the arrow keys, Home and End with the pointer over the panel, walk the line. A move made at an earlier point replaces the rest of the line.
+  - Before the first move, choose who is to move. **Flip board** shows it from Black's side.
+  - The **FEN** and **PGN** fields follow the board. Edit one and press Enter (FEN) or **Load PGN** to load it; reading a PGN stops at its first move that is not legal and says which.
+  - A diagram whose position is not legal is shown in a red frame and cannot be played until it is corrected in the editor.
 
 ## Headless: tools and CLI
 

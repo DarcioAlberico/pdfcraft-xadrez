@@ -2474,3 +2474,34 @@ animation effects	Off	Изключени
 	Diagrams are already being scanned	Диаграмите вече се търсят
 	Diagrams found: {n}	Намерени диаграми: {n}
 	FEN copied	FEN е копиран
+# Chess ▸ Board: the analysis board panel.
+	Black to move	На ход са черните
+	Black to move, in check	На ход са черните, шах
+	Checkmate: Black wins	Мат: черните печелят
+	Checkmate: White wins	Мат: белите печелят
+	Chess board	Шахматна дъска
+	Copy PGN	Копиране на PGN
+	Delete the moves after this one	Изтриване на ходовете след този
+	Draw by the fifty-move rule	Реми по правилото за 50 хода
+	End (End)	Край (End)
+	Load PGN	Зареждане на PGN
+	Next move (Right arrow)	Следващ ход (стрелка надясно)
+	Not a legal position: correct it in the diagram editor to play moves on it.	Незаконна позиция: поправете я в редактора на диаграми, за да играете ходове в нея.
+	Open on the board	Отваряне на дъската
+	PGN copied	PGN е копиран
+	Play a move: click a piece, then where it goes, or drag it there.	Изиграйте ход: щракнете фигура, после полето, където отива, или я плъзнете там.
+	Play the main line of the PGN above on the board.	Изиграване на дъската на главния вариант от PGN по-горе.
+	Previous move (Left arrow)	Предишен ход (стрелка наляво)
+	Promote to:	Произвеждане в:
+	Reading stopped at {move}: it is not a legal move there.	Четенето спря при {move}: там това не е законен ход.
+	Show the analysis board. Double-click a diagram on the page to load it there.	Показване на дъската за анализ. Щракнете двукратно диаграма на страницата, за да я заредите там.
+	Show this diagram on the page	Показване на тази диаграма на страницата
+	Stalemate	Пат
+	Standard start position	Стандартна начална позиция
+	Start (Home)	Начало (Home)
+	That side can't be to move: the other king is in check.	Тази страна не може да е на ход: другият цар е в шах.
+	The FEN couldn't be read: {e}	FEN не можа да се прочете: {e}
+	The PGN couldn't be read: {e}	PGN не можа да се прочете: {e}
+	This diagram hasn't been read: scan its page first, or set its position in the editor.	Тази диаграма не е прочетена: първо сканирайте страницата ѝ или задайте позицията в редактора.
+	White to move	На ход са белите
+	White to move, in check	На ход са белите, шах

@@ -2511,3 +2511,34 @@ animation effects	Off	Désactivés
 	Diagrams are already being scanned	La recherche de diagrammes est déjà en cours
 	Diagrams found: {n}	Diagrammes trouvés : {n}
 	FEN copied	FEN copiée
+# Chess ▸ Board: the analysis board panel.
+	Black to move	Trait aux Noirs
+	Black to move, in check	Trait aux Noirs, en échec
+	Checkmate: Black wins	Échec et mat : les Noirs gagnent
+	Checkmate: White wins	Échec et mat : les Blancs gagnent
+	Chess board	Échiquier
+	Copy PGN	Copier le PGN
+	Delete the moves after this one	Supprimer les coups après celui-ci
+	Draw by the fifty-move rule	Nulle par la règle des 50 coups
+	End (End)	Fin (Fin)
+	Load PGN	Charger le PGN
+	Next move (Right arrow)	Coup suivant (flèche droite)
+	Not a legal position: correct it in the diagram editor to play moves on it.	Position illégale : corrigez-la dans l'éditeur de diagramme pour y jouer des coups.
+	Open on the board	Ouvrir sur l'échiquier
+	PGN copied	PGN copié
+	Play a move: click a piece, then where it goes, or drag it there.	Jouez un coup : cliquez sur une pièce puis sur sa destination, ou faites-la glisser.
+	Play the main line of the PGN above on the board.	Jouer sur l'échiquier la ligne principale du PGN ci-dessus.
+	Previous move (Left arrow)	Coup précédent (flèche gauche)
+	Promote to:	Promouvoir en :
+	Reading stopped at {move}: it is not a legal move there.	La lecture s'est arrêtée à {move} : ce coup n'est pas légal ici.
+	Show the analysis board. Double-click a diagram on the page to load it there.	Afficher l'échiquier d'analyse. Double-cliquez sur un diagramme de la page pour l'y charger.
+	Show this diagram on the page	Afficher ce diagramme sur la page
+	Stalemate	Pat
+	Standard start position	Position de départ standard
+	Start (Home)	Début (Origine)
+	That side can't be to move: the other king is in check.	Ce camp ne peut pas avoir le trait : l'autre roi est en échec.
+	The FEN couldn't be read: {e}	Impossible de lire la FEN : {e}
+	The PGN couldn't be read: {e}	Impossible de lire le PGN : {e}
+	This diagram hasn't been read: scan its page first, or set its position in the editor.	Ce diagramme n'a pas été lu : analysez d'abord sa page ou saisissez la position dans l'éditeur.
+	White to move	Trait aux Blancs
+	White to move, in check	Trait aux Blancs, en échec

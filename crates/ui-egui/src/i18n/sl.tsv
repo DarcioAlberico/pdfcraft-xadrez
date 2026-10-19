@@ -2516,3 +2516,34 @@ animation effects	Off	Izklopljeni
 	Diagrams are already being scanned	Diagrami se že iščejo
 	Diagrams found: {n}	Najdeni diagrami: {n}
 	FEN copied	FEN kopiran
+# Chess ▸ Board: the analysis board panel.
+	Black to move	Na potezi je črni
+	Black to move, in check	Na potezi je črni, v šahu
+	Checkmate: Black wins	Mat: zmaga črni
+	Checkmate: White wins	Mat: zmaga beli
+	Chess board	Šahovnica
+	Copy PGN	Kopiraj PGN
+	Delete the moves after this one	Izbriši poteze za to
+	Draw by the fifty-move rule	Remi po pravilu 50 potez
+	End (End)	Konec (End)
+	Load PGN	Naloži PGN
+	Next move (Right arrow)	Naslednja poteza (puščica desno)
+	Not a legal position: correct it in the diagram editor to play moves on it.	Nelegalen položaj: popravite ga v urejevalniku diagrama, da boste v njem lahko vlekli poteze.
+	Open on the board	Odpri na šahovnici
+	PGN copied	PGN kopiran
+	Play a move: click a piece, then where it goes, or drag it there.	Povlecite potezo: kliknite figuro in nato cilj ali jo povlecite tja.
+	Play the main line of the PGN above on the board.	Odigraj na šahovnici glavno varianto zgornjega PGN.
+	Previous move (Left arrow)	Prejšnja poteza (puščica levo)
+	Promote to:	Promoviraj v:
+	Reading stopped at {move}: it is not a legal move there.	Branje se je ustavilo pri {move}: tam to ni legalna poteza.
+	Show the analysis board. Double-click a diagram on the page to load it there.	Prikaži šahovnico za analizo. Dvokliknite diagram na strani, da ga naložite tja.
+	Show this diagram on the page	Prikaži ta diagram na strani
+	Stalemate	Pat
+	Standard start position	Standardni začetni položaj
+	Start (Home)	Začetek (Home)
+	That side can't be to move: the other king is in check.	Ta stran ne more biti na potezi: drugi kralj je v šahu.
+	The FEN couldn't be read: {e}	FEN-a ni bilo mogoče prebrati: {e}
+	The PGN couldn't be read: {e}	PGN-ja ni bilo mogoče prebrati: {e}
+	This diagram hasn't been read: scan its page first, or set its position in the editor.	Ta diagram ni prebran: najprej skenirajte njegovo stran ali nastavite položaj v urejevalniku.
+	White to move	Na potezi je beli
+	White to move, in check	Na potezi je beli, v šahu

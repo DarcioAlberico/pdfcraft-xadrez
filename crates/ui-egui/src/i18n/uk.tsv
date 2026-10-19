@@ -2533,3 +2533,34 @@ animation effects	Off	Вимкнено
 	Diagrams are already being scanned	Пошук діаграм уже триває
 	Diagrams found: {n}	Знайдено діаграм: {n}
 	FEN copied	FEN скопійовано
+# Chess ▸ Board: the analysis board panel.
+	Black to move	Хід чорних
+	Black to move, in check	Хід чорних, шах
+	Checkmate: Black wins	Мат: чорні виграли
+	Checkmate: White wins	Мат: білі виграли
+	Chess board	Шахова дошка
+	Copy PGN	Копіювати PGN
+	Delete the moves after this one	Видалити ходи після цього
+	Draw by the fifty-move rule	Нічия за правилом 50 ходів
+	End (End)	Кінець (End)
+	Load PGN	Завантажити PGN
+	Next move (Right arrow)	Наступний хід (стрілка праворуч)
+	Not a legal position: correct it in the diagram editor to play moves on it.	Нелегальна позиція: виправте її в редакторі діаграми, щоб робити в ній ходи.
+	Open on the board	Відкрити на дошці
+	PGN copied	PGN скопійовано
+	Play a move: click a piece, then where it goes, or drag it there.	Зробіть хід: клацніть фігуру, потім поле, куди вона йде, або перетягніть її туди.
+	Play the main line of the PGN above on the board.	Розіграти на дошці головний варіант PGN вище.
+	Previous move (Left arrow)	Попередній хід (стрілка ліворуч)
+	Promote to:	Перетворити на:
+	Reading stopped at {move}: it is not a legal move there.	Читання зупинилося на {move}: тут це не легальний хід.
+	Show the analysis board. Double-click a diagram on the page to load it there.	Показати дошку для аналізу. Двічі клацніть діаграму на сторінці, щоб завантажити її туди.
+	Show this diagram on the page	Показати цю діаграму на сторінці
+	Stalemate	Пат
+	Standard start position	Стандартна початкова позиція
+	Start (Home)	Початок (Home)
+	That side can't be to move: the other king is in check.	Ця сторона не може ходити: інший король під шахом.
+	The FEN couldn't be read: {e}	Не вдалося прочитати FEN: {e}
+	The PGN couldn't be read: {e}	Не вдалося прочитати PGN: {e}
+	This diagram hasn't been read: scan its page first, or set its position in the editor.	Цю діаграму не прочитано: спершу проскануйте її сторінку або задайте позицію в редакторі.
+	White to move	Хід білих
+	White to move, in check	Хід білих, шах

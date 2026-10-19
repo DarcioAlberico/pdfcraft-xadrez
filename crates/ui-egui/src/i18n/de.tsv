@@ -2512,3 +2512,34 @@ animation effects	Off	Aus
 	Diagrams are already being scanned	Diagramme werden bereits gesucht
 	Diagrams found: {n}	Gefundene Diagramme: {n}
 	FEN copied	FEN kopiert
+# Chess ▸ Board: the analysis board panel.
+	Black to move	Schwarz am Zug
+	Black to move, in check	Schwarz am Zug, im Schach
+	Checkmate: Black wins	Schachmatt: Schwarz gewinnt
+	Checkmate: White wins	Schachmatt: Weiß gewinnt
+	Chess board	Schachbrett
+	Copy PGN	PGN kopieren
+	Delete the moves after this one	Züge nach diesem löschen
+	Draw by the fifty-move rule	Remis nach der 50-Züge-Regel
+	End (End)	Ende (Ende)
+	Load PGN	PGN laden
+	Next move (Right arrow)	Nächster Zug (Pfeil rechts)
+	Not a legal position: correct it in the diagram editor to play moves on it.	Keine legale Stellung: im Diagrammeditor korrigieren, um darauf zu ziehen.
+	Open on the board	Auf dem Brett öffnen
+	PGN copied	PGN kopiert
+	Play a move: click a piece, then where it goes, or drag it there.	Ziehen: eine Figur anklicken, dann das Zielfeld, oder sie dorthin ziehen.
+	Play the main line of the PGN above on the board.	Die Hauptvariante der PGN oben auf dem Brett nachspielen.
+	Previous move (Left arrow)	Vorheriger Zug (Pfeil links)
+	Promote to:	Umwandeln in:
+	Reading stopped at {move}: it is not a legal move there.	Lesen bei {move} angehalten: dort kein legaler Zug.
+	Show the analysis board. Double-click a diagram on the page to load it there.	Das Analysebrett zeigen. Ein Diagramm auf der Seite doppelt anklicken, um es dort zu laden.
+	Show this diagram on the page	Dieses Diagramm auf der Seite zeigen
+	Stalemate	Patt
+	Standard start position	Grundstellung
+	Start (Home)	Anfang (Pos1)
+	That side can't be to move: the other king is in check.	Diese Seite kann nicht am Zug sein: der andere König steht im Schach.
+	The FEN couldn't be read: {e}	Die FEN konnte nicht gelesen werden: {e}
+	The PGN couldn't be read: {e}	Die PGN konnte nicht gelesen werden: {e}
+	This diagram hasn't been read: scan its page first, or set its position in the editor.	Dieses Diagramm wurde nicht gelesen: zuerst seine Seite scannen oder die Stellung im Editor setzen.
+	White to move	Weiß am Zug
+	White to move, in check	Weiß am Zug, im Schach

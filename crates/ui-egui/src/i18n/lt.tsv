@@ -2755,3 +2755,34 @@ key	Space	Tarpas
 	Diagrams are already being scanned	Diagramų jau ieškoma
 	Diagrams found: {n}	Rasta diagramų: {n}
 	FEN copied	FEN nukopijuotas
+# Chess ▸ Board: the analysis board panel.
+	Black to move	Ėjimas juodųjų
+	Black to move, in check	Ėjimas juodųjų, šachas
+	Checkmate: Black wins	Matas: laimi juodieji
+	Checkmate: White wins	Matas: laimi baltieji
+	Chess board	Šachmatų lenta
+	Copy PGN	Kopijuoti PGN
+	Delete the moves after this one	Ištrinti ėjimus po šio
+	Draw by the fifty-move rule	Lygiosios pagal 50 ėjimų taisyklę
+	End (End)	Pabaiga (End)
+	Load PGN	Įkelti PGN
+	Next move (Right arrow)	Kitas ėjimas (rodyklė dešinėn)
+	Not a legal position: correct it in the diagram editor to play moves on it.	Neteisėta pozicija: pataisykite ją diagramos rengyklėje, kad galėtumėte joje daryti ėjimus.
+	Open on the board	Atverti lentoje
+	PGN copied	PGN nukopijuotas
+	Play a move: click a piece, then where it goes, or drag it there.	Atlikite ėjimą: spustelėkite figūrą, tada langelį, į kurį ji eina, arba nuvilkite ją ten.
+	Play the main line of the PGN above on the board.	Sužaisti lentoje pagrindinį aukščiau esančio PGN variantą.
+	Previous move (Left arrow)	Ankstesnis ėjimas (rodyklė kairėn)
+	Promote to:	Paversti į:
+	Reading stopped at {move}: it is not a legal move there.	Skaitymas sustojo ties {move}: ten tai nėra teisėtas ėjimas.
+	Show the analysis board. Double-click a diagram on the page to load it there.	Rodyti analizės lentą. Dukart spustelėkite diagramą puslapyje, kad ją ten įkeltumėte.
+	Show this diagram on the page	Rodyti šią diagramą puslapyje
+	Stalemate	Patas
+	Standard start position	Standartinė pradinė pozicija
+	Start (Home)	Pradžia (Home)
+	That side can't be to move: the other king is in check.	Ši pusė negali eiti: kitam karaliui skelbiamas šachas.
+	The FEN couldn't be read: {e}	Nepavyko perskaityti FEN: {e}
+	The PGN couldn't be read: {e}	Nepavyko perskaityti PGN: {e}
+	This diagram hasn't been read: scan its page first, or set its position in the editor.	Ši diagrama neperskaityta: pirmiausia nuskenuokite jos puslapį arba nustatykite poziciją rengyklėje.
+	White to move	Ėjimas baltųjų
+	White to move, in check	Ėjimas baltųjų, šachas

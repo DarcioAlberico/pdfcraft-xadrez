@@ -12,15 +12,18 @@ pub enum Panel {
     Canvas,
     Tools,
     Inspector,
+    /// Chess ▸ Board: the analysis board, a tab beside the Inspector.
+    Board,
 }
 
 impl Panel {
-    pub const ALL: &[Self] = &[Self::Canvas, Self::Tools, Self::Inspector];
+    pub const ALL: &[Self] = &[Self::Canvas, Self::Tools, Self::Inspector, Self::Board];
     pub fn id(self) -> &'static str {
         match self {
             Self::Canvas => "canvas",
             Self::Tools => "tools",
             Self::Inspector => "inspector",
+            Self::Board => "board",
         }
     }
     fn label(self) -> &'static str {
@@ -28,13 +31,14 @@ impl Panel {
             Self::Canvas => "Document",
             Self::Tools => "Tools",
             Self::Inspector => "Inspector",
+            Self::Board => "Chess board",
         }
     }
     fn default_side(self) -> Zone {
         match self {
             Self::Canvas => Zone::Right,
             Self::Tools => Zone::Left,
-            Self::Inspector => Zone::Right,
+            Self::Inspector | Self::Board => Zone::Right,
         }
     }
     fn parse(id: &str) -> Result<Self, String> {
@@ -201,6 +205,17 @@ impl Workspace {
             saved.placement = Placement::Tab { before: None };
         }
         let restored = location.as_ref().is_some_and(|location| next.layout.restore(panel, location).is_ok());
+        // The board opens as a tab beside the Inspector, where the diagrams it shows are listed.
+        let restored = restored
+            || (panel == Panel::Board
+                && next.layout.contains(&Panel::Inspector)
+                && next
+                    .layout
+                    .apply_with_permissions(
+                        Action::OpenAt { panel, anchor: Panel::Inspector, placement: Placement::Tab { before: None } },
+                        permissions,
+                    )
+                    .is_ok());
         if !restored {
             next.layout
                 .apply_with_permissions(
@@ -301,6 +316,12 @@ fn sync(workspace: &mut Workspace, app: &crate::PdfCraftApp) -> Result<(), Strin
 
 fn drain_reveals(workspace: &mut Workspace, app: &mut crate::PdfCraftApp) {
     for panel in std::mem::take(&mut app.pending_panel_reveals) {
+        // The board's visibility is its own (the others follow the app's state): revealing opens it.
+        if panel == Panel::Board
+            && let Err(error) = workspace.set_visible(panel, true)
+        {
+            app.notify_fmt("Panel move was not applied: {error}", &[("error", &error)]);
+        }
         if workspace.layout.contains(&panel) {
             let _ = workspace.apply(Action::Activate { panel });
         }
@@ -420,6 +441,7 @@ pub fn show(app: &mut crate::PdfCraftApp, ui: &mut egui::Ui) {
                 ui.data_mut(|data| data.insert_temp(egui::Id::new("pdfcraft-inspector-body"), ui.max_rect()));
                 crate::panels::right_panel(app, ui);
             }
+            Panel::Board => crate::chess_ui::board_panel(app, ui),
         },
     );
     let _ = sync(&mut workspace, app);
@@ -445,7 +467,7 @@ fn panel_limits(panel: &Panel) -> PanelLimits {
     let (min, max_width) = match panel {
         Panel::Canvas => (egui::vec2(160.0, 160.0), 1_000_000.0),
         Panel::Tools => (egui::vec2(240.0, 120.0), 520.0),
-        Panel::Inspector => (egui::vec2(260.0, 120.0), 520.0),
+        Panel::Inspector | Panel::Board => (egui::vec2(260.0, 120.0), 520.0),
     };
     PanelLimits { min, max: egui::vec2(max_width, 1_000_000.0) }
 }
