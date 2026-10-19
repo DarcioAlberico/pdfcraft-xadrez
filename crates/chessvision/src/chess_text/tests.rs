@@ -368,3 +368,16 @@ mod soup {
         }
     }
 }
+
+/// Long algebraic, as German books print it, reads as moves.
+#[test]
+fn long_algebraic_moves_are_moves() {
+    let read = Page::new().text("1.e2-e4 e7–e5 2.Sg1-f3 Sb8-c6 3.Lf1:c6 d7:c6").read(Some(Lang::De));
+    let moves: Vec<String> = read
+        .lines
+        .iter()
+        .flat_map(|l| &l.spans)
+        .filter_map(|s| if let ChessRun::Move { san, .. } = &s.run { Some(san.to_english()) } else { None })
+        .collect();
+    assert_eq!(moves, ["e2e4", "e7e5", "Ng1f3", "Nb8c6", "Bf1xc6", "d7xc6"], "{:?}", runs(&read));
+}

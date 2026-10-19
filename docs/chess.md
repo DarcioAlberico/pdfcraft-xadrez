@@ -87,7 +87,6 @@ That PDF's text layer is an old OCR layer (words like `Taf7asch` for Tarrasch). 
 - **Moves and text**
   - A page in two columns is read across both columns. This is the main limit on real books (see above).
   - The coordinates printed around a diagram are read as text.
-  - German long algebraic notation (`Kf8–f7`) is not yet recognised as a move.
   - Umlauts in prose come through only where the glyph reader has them, because ocrs reads ASCII only.
 - **Links:** the lichess address is plain text in Word and RTF; it is a working link in PDF, HTML, EPUB and Markdown.
 - **Readings and corrections**
