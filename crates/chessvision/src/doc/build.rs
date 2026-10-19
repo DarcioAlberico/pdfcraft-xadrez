@@ -300,8 +300,10 @@ fn inlines(lines: &[&ChessLine], geometry: &PageGeometry) -> Vec<Inline> {
 fn text_block(kind: Option<HintKind>, lines: &[&ChessLine], geometry: &PageGeometry) -> Block {
     let source_rect = lines.iter().map(|l| user(l.rect, geometry)).fold(None, union);
     let inlines = inlines(lines, geometry);
+    // A block with moves in it is never a heading: books set their main lines larger and bold.
+    let moves = inlines.iter().any(|i| matches!(i, Inline::Move(_)));
     match kind {
-        Some(HintKind::Heading { level }) => Block::Heading { level, inlines, source_rect },
+        Some(HintKind::Heading { level }) if !moves => Block::Heading { level, inlines, source_rect },
         _ => Block::Paragraph { inlines, source_rect },
     }
 }

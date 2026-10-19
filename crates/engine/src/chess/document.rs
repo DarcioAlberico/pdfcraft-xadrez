@@ -14,9 +14,10 @@
 //!   page image is not wired into the engine yet;
 //! - **headings and paragraphs**: the page's reading blocks (`edit::reading_blocks`) as
 //!   [`BlockHint`]s. A block set at least [`HEADING_RATIO`] times the body size (the size most of
-//!   the page's characters use) and at most [`HEADING_MAX_CHARS`] long is a heading: level 1 at
-//!   [`TITLE_RATIO`] or more, else level 2. Bold alone is not a heading, as chess books set main
-//!   lines in bold.
+//!   the characters of all the pages read use: a book keeps one body size, while a page that
+//!   opens a game can hold more of its smaller introduction than of the game) and at most
+//!   [`HEADING_MAX_CHARS`] long is a heading: level 1 at [`TITLE_RATIO`] or more, else level 2.
+//!   Bold alone is not a heading, as chess books set main lines in bold.
 //!
 //! The text repair of S13c (`BookCipher`, legality repair) works on OCR'd lines, so it has no
 //! input here yet and no review is passed.
@@ -38,8 +39,9 @@ use super::ChessScanSettings;
 use super::text_ocr::{self, OCR_DPI};
 use crate::{DocId, Session};
 
-/// A block at least this many times the body size is a heading.
-pub const HEADING_RATIO: f64 = 1.15;
+/// A block at least this many times the body size is a heading (a game collection's 18 pt titles
+/// over its 16 pt game text).
+pub const HEADING_RATIO: f64 = 1.1;
 /// A heading at least this many times the body size is level 1.
 pub const TITLE_RATIO: f64 = 1.5;
 /// A longer block is a paragraph whatever its size (a pull quote, an introduction set large).
@@ -118,7 +120,7 @@ pub fn heading_level(size: f64, chars: usize, body: f64) -> Option<u8> {
 }
 
 /// The size most of the blocks' characters are set in (to the half point), or `None` for no text.
-fn body_size(blocks: &[pdfcraft_edit::TextBlock]) -> Option<f64> {
+pub fn body_size<'a>(blocks: impl IntoIterator<Item = &'a pdfcraft_edit::TextBlock>) -> Option<f64> {
     let mut sizes: Vec<(i64, usize)> = Vec::new();
     for b in blocks {
         if !(b.size.is_finite() && b.size > 0.0 && b.size < 10_000.0) {
@@ -136,9 +138,10 @@ fn body_size(blocks: &[pdfcraft_edit::TextBlock]) -> Option<f64> {
     sizes.iter().max_by(|a, b| a.1.cmp(&b.1).then(b.0.cmp(&a.0))).map(|(k, _)| *k as f64 / 2.0)
 }
 
-/// The page's reading blocks as hints: headings by size, the rest paragraphs.
-pub fn block_hints(blocks: &[pdfcraft_edit::TextBlock]) -> Vec<BlockHint> {
-    let Some(body) = body_size(blocks) else { return Vec::new() };
+/// The page's reading blocks as hints: headings by size against `body` (`None`: the page's own
+/// body size), the rest paragraphs.
+pub fn block_hints(blocks: &[pdfcraft_edit::TextBlock], body: Option<f64>) -> Vec<BlockHint> {
+    let Some(body) = body.or_else(|| body_size(blocks)) else { return Vec::new() };
     blocks
         .iter()
         .filter_map(|b| {
@@ -240,8 +243,14 @@ impl Session {
         let mut cipher = ocr.book.cloned().unwrap_or_default();
         // The last legal, accepted position seen: the moves of a page without a diagram go on from it.
         let mut last_fen: Option<String> = None;
+        // Every page's reading blocks, and the body size of them all.
+        let page_blocks: Vec<Option<Result<Vec<pdfcraft_edit::TextBlock>, String>>> = scanned
+            .iter()
+            .map(|page| doc.editor.as_ref().map(|e| pdfcraft_edit::reading_blocks(&e.cos, page.page).map_err(|e| e.to_string())))
+            .collect();
+        let body = body_size(page_blocks.iter().flatten().flatten().flatten());
         let mut builder = DocBuilder::new();
-        for (page, layer_text) in scanned.iter().zip(&chess_texts) {
+        for ((page, layer_text), blocks) in scanned.iter().zip(&chess_texts).zip(&page_blocks) {
             let mut text = layer_text;
             let mut reviews: Vec<TextReview> = Vec::new();
             let ocr_text;
@@ -331,8 +340,8 @@ impl Session {
                 notes.push((page.page, "the page has no visible area; it is left out".into()));
                 continue;
             };
-            let hints = match doc.editor.as_ref().map(|e| pdfcraft_edit::reading_blocks(&e.cos, page.page)) {
-                Some(Ok(blocks)) => block_hints(&blocks),
+            let hints = match blocks {
+                Some(Ok(blocks)) => block_hints(blocks, body),
                 Some(Err(e)) => {
                     notes.push((page.page, format!("the page's paragraphs could not be read ({e}); lines were grouped by spacing")));
                     Vec::new()
