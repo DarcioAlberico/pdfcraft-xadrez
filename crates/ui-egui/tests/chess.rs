@@ -533,6 +533,16 @@ fn double_clicking_a_diagram_puts_it_on_the_board_to_play() {
             .any(|c| matches!(c, egui::OutputCommand::CopyText(t) if t == "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2"));
     }
     assert!(copied, "the board's FEN was copied");
+    // A comment typed in two goes keeps the space between them: the game trims what it stores,
+    // and the field must not take that back while it is being typed in.
+    let comment = h.get_all_by_role(egui::accesskit::Role::MultilineTextInput).find(|n| n.value().unwrap_or_default().is_empty()).unwrap();
+    comment.focus();
+    comment.type_text("good ");
+    h.run_steps(2);
+    h.get_all_by_role(egui::accesskit::Role::MultilineTextInput).find(|n| n.value().as_deref() == Some("good ")).unwrap().type_text("move");
+    h.run_steps(2);
+    let node = h.state().chess.board.game.current();
+    assert_eq!(h.state().chess.board.game.comment(node), "good move");
 }
 
 /// Open on the board, in the Chess diagrams panel, puts that diagram on the board too.

@@ -447,15 +447,18 @@ impl Game {
     }
 
     /// Make the line through `node` the main line: at each move on the way from the start it
-    /// becomes the first reply.
+    /// becomes the first reply. The old main line becomes a variation, one level deeper with
+    /// everything under it; when that would nest a move deeper than [`MAX_DEPTH`] (where it could
+    /// no longer be written out), the game is left as it is.
     pub fn promote(&mut self, node: NodeId) {
         if node >= self.nodes.len() {
             return;
         }
+        let mut promoted = self.clone();
         let mut at = node;
         while at != 0 {
-            let parent = self.node(at).parent;
-            if let Some(p) = self.nodes.get_mut(parent)
+            let parent = promoted.node(at).parent;
+            if let Some(p) = promoted.nodes.get_mut(parent)
                 && let Some(i) = p.children.iter().position(|&c| c == at)
             {
                 let child = p.children.remove(i);
@@ -463,7 +466,10 @@ impl Game {
             }
             at = parent;
         }
-        self.compact();
+        promoted.compact();
+        if promoted.nodes.iter().all(|n| n.depth <= MAX_DEPTH) {
+            *self = promoted;
+        }
     }
 
     /// Whether `node` is `ancestor` or comes after it.
@@ -1348,12 +1354,56 @@ mod tests {
 
     #[test]
     fn nesting_is_capped() {
-        let mut text = String::from("1. e4 ");
+        // Each level a variation of the last one: as deep as variations may nest, and no deeper.
+        let mut g = Game::standard();
+        assert!(nest(&mut g), "the cap was never reached");
+        let text = g.movetext();
+        assert_eq!(text.matches('(').count(), MAX_DEPTH, "{text}");
+        // The PGN reader keeps the same depth when it reads the game back.
+        let (back, stopped) = Game::from_pgn(&g.pgn()).unwrap();
+        assert_eq!((back.movetext(), stopped), (text, None));
+    }
+
+    /// Under the current move, nest variations one inside the other (each the second reply to
+    /// the move before) until the depth cap refuses one. Says whether it did.
+    fn nest(g: &mut Game) -> bool {
         for _ in 0..(MAX_DEPTH + 10) {
-            text.push_str("(1. d4 ");
+            let mut moves = g.legal_moves();
+            moves.dedup();
+            let here = g.current();
+            g.play_san(&moves[0]).unwrap();
+            g.go_to_node(here);
+            match g.play_san(&moves[1]) {
+                Ok(()) => {}
+                Err(GameError::TooLong) => return true,
+                Err(e) => panic!("{e:?}"),
+            }
         }
-        let (g, _) = Game::from_pgn(&text).unwrap();
-        assert!(g.movetext().matches('(').count() <= MAX_DEPTH);
+        false
+    }
+
+    #[test]
+    fn a_promotion_that_would_nest_past_the_cap_is_refused() {
+        // The main line's first move carries variations nested to the cap; promoting another
+        // first move would push them all one deeper.
+        let mut g = Game::standard();
+        g.play_san("e4").unwrap();
+        assert!(nest(&mut g));
+        g.go_to_node(0);
+        g.play_san("d4").unwrap();
+        let d4 = g.current();
+        let before = g.movetext();
+        g.promote(d4);
+        assert_eq!(g.movetext(), before);
+        assert!(g.movetext().starts_with("1. e4"), "{}", g.movetext());
+        // A shallow promotion still works.
+        let mut h = Game::standard();
+        h.play_san("e4").unwrap();
+        h.go_to_node(0);
+        h.play_san("d4").unwrap();
+        let d4 = h.current();
+        h.promote(d4);
+        assert!(h.movetext().starts_with("1. d4 (1. e4)"), "{}", h.movetext());
     }
 
     proptest::proptest! {

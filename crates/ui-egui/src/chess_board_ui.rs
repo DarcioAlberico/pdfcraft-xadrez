@@ -58,6 +58,10 @@ pub struct BoardState {
     draw_error: Option<String>,
     /// The pieces cut out of their squares, for the one following the pointer in a drag.
     sprites: Option<TextureHandle>,
+    /// The comment or game-detail field being typed in (its key) and its text as typed. The game
+    /// keeps comments and tags cleaned (spaces collapsed, ends trimmed), so a field re-read from
+    /// it every frame would eat a space typed at the end.
+    draft: Option<(String, String)>,
 }
 
 impl Default for BoardState {
@@ -76,6 +80,7 @@ impl Default for BoardState {
             texture: None,
             draw_error: None,
             sprites: None,
+            draft: None,
         }
     }
 }
@@ -556,10 +561,30 @@ fn annotation(ui: &mut egui::Ui, state: &mut BoardState) {
             }
         }
     });
-    let mut comment = state.game.comment(node).to_owned();
+    let key = format!("comment {node}");
+    let mut comment = drafted(&state.draft, &key, state.game.comment(node));
     let r = ui.add(egui::TextEdit::multiline(&mut comment).hint_text(tl!("Comment on this move")).desired_rows(1).desired_width(f32::INFINITY));
     if r.changed() {
         state.game.set_comment(node, &comment);
+    }
+    keep_draft(&mut state.draft, &key, &r, comment);
+}
+
+/// The text a cleaned field shows: as typed while it is being typed in (`draft` holds its
+/// `key`), else as the game keeps it.
+fn drafted(draft: &Option<(String, String)>, key: &str, stored: &str) -> String {
+    match draft {
+        Some((k, text)) if k == key => text.clone(),
+        _ => stored.to_owned(),
+    }
+}
+
+/// Keep a field's text as typed while it has the keyboard; once it loses it, show the game's.
+fn keep_draft(draft: &mut Option<(String, String)>, key: &str, response: &egui::Response, text: String) {
+    if response.has_focus() {
+        *draft = Some((key.to_owned(), text));
+    } else if draft.as_ref().is_some_and(|(k, _)| k == key) {
+        *draft = None;
     }
 }
 
@@ -580,11 +605,14 @@ fn details(ui: &mut egui::Ui, state: &mut BoardState) {
                 ("Result", tl!("Result")),
             ] {
                 ui.label(label);
-                let mut value = state.game.tag(tag).unwrap_or_default().to_owned();
-                if ui.add(egui::TextEdit::singleline(&mut value).desired_width(f32::INFINITY)).changed() {
+                let key = format!("tag {tag}");
+                let mut value = drafted(&state.draft, &key, state.game.tag(tag).unwrap_or_default());
+                let r = ui.add(egui::TextEdit::singleline(&mut value).desired_width(f32::INFINITY));
+                if r.changed() {
                     // The names above are valid tag names: this cannot fail.
                     let _ = state.game.set_tag(tag, &value);
                 }
+                keep_draft(&mut state.draft, &key, &r, value);
                 ui.end_row();
             }
         });
