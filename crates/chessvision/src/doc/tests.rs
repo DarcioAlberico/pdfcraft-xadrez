@@ -405,6 +405,20 @@ fn brackets_can_hold_the_replies_to_a_move() {
     assert!(pgn.contains("2. Nf3 (2. Bc4 Nf6) 2... Nc6"), "{pgn}");
 }
 
+/// One diagram, the solution for each side to move: Black's first (`1...Kd5`, the side taken
+/// from the move number), then White's (`1.Rh6+`). Each is a game from the diagram.
+#[test]
+fn a_diagram_can_have_a_solution_for_each_side() {
+    let rook = "8/8/4k3/8/8/4K3/r7/7R w - - 0 1";
+    let text = page_text(vec![line(230.0, "If Black is on move, 1...Kd5 2.Rh5+ . White plays 1.Rh6+ Kd5 2.Rh5+")]);
+    let doc = build_page(&input(0, &text, &[reading(0, 60.0, rook, true, true)], &[], &[]));
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    assert_eq!(doc.games.len(), 2);
+    assert_eq!(doc.games[0].score.start_fen.as_deref(), Some("8/8/4k3/8/8/4K3/r7/7R b - - 0 1"));
+    assert_eq!(doc.games[1].score.start_fen.as_deref(), Some("8/8/4k3/8/8/4K3/r7/7R w - - 0 1"));
+    assert_eq!(doc.games[1].origin, GameOrigin::Diagram { page: 0, diagram: 0, accepted: true });
+}
+
 #[test]
 fn node_references_follow_the_canonical_order() {
     // The variation is read before the main move it is an alternative to is written: nodes are
