@@ -207,6 +207,49 @@ fn parse_move(chars: &[char], lang: Lang) -> Option<MoveParse> {
     None
 }
 
+/// Whether a word, numbered or not, reads as a move in `lang`.
+fn reads_as_move(cells: &[Cell], lang: Lang) -> bool {
+    let chars: Vec<char> = cells.iter().map(|c| c.ch).collect();
+    let p = parts(&chars);
+    chars.get(p.core).and_then(|core| parse_move(core, lang)).is_some()
+}
+
+/// Step 2b: put back together a move that OCR cut with spaces. A lone figurine and the one or
+/// two words after it (`♖ e1`, `♖ e 1`) join when together they read as a move; so do a move to
+/// the last rank and a promotion written apart (`f1 =♕`). A figurine in prose (`the ♗ pair`)
+/// joins nothing.
+pub(crate) fn join_split_moves(words: Vec<Vec<Cell>>, lang: Lang) -> Vec<Vec<Cell>> {
+    let mut out: Vec<Vec<Cell>> = Vec::with_capacity(words.len());
+    let mut i = 0;
+    while let Some(word) = words.get(i) {
+        let lone_figurine = matches!(word.as_slice(), [c] if figurine_piece(c.ch).is_some());
+        let promotion_next = words.get(i + 1).is_some_and(|next| next.first().is_some_and(|c| c.ch == '='));
+        let spans: &[usize] = if lone_figurine {
+            &[1, 2]
+        } else if promotion_next {
+            &[1]
+        } else {
+            &[]
+        };
+        let joined = spans.iter().find_map(|&n| {
+            let rest = words.get(i + 1..=i + n)?;
+            let cells: Vec<Cell> = std::iter::once(word).chain(rest).flatten().copied().collect();
+            (cells.len() <= MAX_WORD_CHARS && reads_as_move(&cells, lang)).then_some((cells, n))
+        });
+        match joined {
+            Some((cells, n)) => {
+                out.push(cells);
+                i += 1 + n;
+            }
+            None => {
+                out.push(word.clone());
+                i += 1;
+            }
+        }
+    }
+    out
+}
+
 fn is_piece_move(m: &MoveParse) -> bool {
     matches!(m.san.body, SanBody::Move { piece: Some(_), .. })
 }

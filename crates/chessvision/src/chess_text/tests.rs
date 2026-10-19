@@ -178,6 +178,17 @@ fn a_dagger_after_a_move_is_check() {
     assert_eq!(runs(&read), vec![vec![text("Rubinstein † 1961")]]);
 }
 
+/// OCR cuts moves with spaces: `♖ e 1`, `♖ h1`, `f1 =♕`. They are put back together; a
+/// figurine in prose is not joined to the next word.
+#[test]
+fn moves_cut_by_spaces_are_joined() {
+    let read = Page::new().text("45.Nh5 ♖ e 1 46.Kf5 ♖ h1 47.h8=♕ f1 =♕ and the ♗ pair").read(Some(Lang::En));
+    let sans: Vec<String> =
+        read.lines[0].spans.iter().filter_map(|s| if let ChessRun::Move { san, .. } = &s.run { Some(san.to_english()) } else { None }).collect();
+    assert_eq!(sans, ["Nh5", "Re1", "Kf5", "Rh1", "h8=Q", "f1=Q"]);
+    assert!(read.lines[0].spans.iter().any(|s| s.run == ChessRun::Figurine(PieceKind::Bishop)));
+}
+
 #[test]
 fn novelty_after_a_move_is_nag_146() {
     let read = Page::new().text("12.Nf4N").read(None);
