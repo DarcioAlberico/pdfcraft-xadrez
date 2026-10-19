@@ -2516,3 +2516,34 @@ animation effects	Off	Ki
 	Diagrams are already being scanned	A diagramok keresése már folyamatban van
 	Diagrams found: {n}	Talált diagramok: {n}
 	FEN copied	FEN másolva
+# Chess ▸ Board: the analysis board panel.
+	Black to move	Sötét lép
+	Black to move, in check	Sötét lép, sakkban
+	Checkmate: Black wins	Matt: sötét nyer
+	Checkmate: White wins	Matt: világos nyer
+	Chess board	Sakktábla
+	Copy PGN	PGN másolása
+	Delete the moves after this one	Az ez utáni lépések törlése
+	Draw by the fifty-move rule	Döntetlen az 50 lépéses szabály miatt
+	End (End)	Vége (End)
+	Load PGN	PGN betöltése
+	Next move (Right arrow)	Következő lépés (jobbra nyíl)
+	Not a legal position: correct it in the diagram editor to play moves on it.	Nem szabályos állás: javítsa ki a diagramszerkesztőben, hogy lépni lehessen benne.
+	Open on the board	Megnyitás a táblán
+	PGN copied	PGN másolva
+	Play a move: click a piece, then where it goes, or drag it there.	Lépjen: kattintson egy bábura, majd a célmezőre, vagy húzza oda.
+	Play the main line of the PGN above on the board.	A fenti PGN főváltozatának lejátszása a táblán.
+	Previous move (Left arrow)	Előző lépés (balra nyíl)
+	Promote to:	Átváltozás erre:
+	Reading stopped at {move}: it is not a legal move there.	Az olvasás itt megállt: {move} – ott ez nem szabályos lépés.
+	Show the analysis board. Double-click a diagram on the page to load it there.	Az elemzőtábla megjelenítése. Kattintson duplán egy diagramra az oldalon a betöltéséhez.
+	Show this diagram on the page	Ennek a diagramnak a megjelenítése az oldalon
+	Stalemate	Patt
+	Standard start position	Szabványos kezdőállás
+	Start (Home)	Eleje (Home)
+	That side can't be to move: the other king is in check.	Ez a fél nem lehet lépésen: a másik király sakkban áll.
+	The FEN couldn't be read: {e}	A FEN nem olvasható: {e}
+	The PGN couldn't be read: {e}	A PGN nem olvasható: {e}
+	This diagram hasn't been read: scan its page first, or set its position in the editor.	Ez a diagram nincs beolvasva: előbb szkennelje be az oldalát, vagy állítsa be az állást a szerkesztőben.
+	White to move	Világos lép
+	White to move, in check	Világos lép, sakkban

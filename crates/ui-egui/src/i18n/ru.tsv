@@ -2430,3 +2430,34 @@ animation effects	Off	Выкл
 	Diagrams are already being scanned	Поиск диаграмм уже идёт
 	Diagrams found: {n}	Найдено диаграмм: {n}
 	FEN copied	FEN скопирован
+# Chess ▸ Board: the analysis board panel.
+	Black to move	Ход чёрных
+	Black to move, in check	Ход чёрных, шах
+	Checkmate: Black wins	Мат: чёрные выиграли
+	Checkmate: White wins	Мат: белые выиграли
+	Chess board	Шахматная доска
+	Copy PGN	Копировать PGN
+	Delete the moves after this one	Удалить ходы после этого
+	Draw by the fifty-move rule	Ничья по правилу 50 ходов
+	End (End)	Конец (End)
+	Load PGN	Загрузить PGN
+	Next move (Right arrow)	Следующий ход (стрелка вправо)
+	Not a legal position: correct it in the diagram editor to play moves on it.	Нелегальная позиция: исправьте её в редакторе диаграммы, чтобы делать в ней ходы.
+	Open on the board	Открыть на доске
+	PGN copied	PGN скопирован
+	Play a move: click a piece, then where it goes, or drag it there.	Сделайте ход: щёлкните фигуру, затем поле, куда она идёт, или перетащите её туда.
+	Play the main line of the PGN above on the board.	Разыграть на доске главный вариант PGN выше.
+	Previous move (Left arrow)	Предыдущий ход (стрелка влево)
+	Promote to:	Превратить в:
+	Reading stopped at {move}: it is not a legal move there.	Чтение остановлено на {move}: здесь это не легальный ход.
+	Show the analysis board. Double-click a diagram on the page to load it there.	Показать доску для анализа. Дважды щёлкните диаграмму на странице, чтобы загрузить её туда.
+	Show this diagram on the page	Показать эту диаграмму на странице
+	Stalemate	Пат
+	Standard start position	Стандартная начальная позиция
+	Start (Home)	Начало (Home)
+	That side can't be to move: the other king is in check.	Эта сторона не может ходить: другой король под шахом.
+	The FEN couldn't be read: {e}	Не удалось прочитать FEN: {e}
+	The PGN couldn't be read: {e}	Не удалось прочитать PGN: {e}
+	This diagram hasn't been read: scan its page first, or set its position in the editor.	Эта диаграмма не прочитана: сначала просканируйте её страницу или задайте позицию в редакторе.
+	White to move	Ход белых
+	White to move, in check	Ход белых, шах

@@ -129,6 +129,8 @@ pub enum EditorAction {
     Previous,
     Next,
     Close,
+    /// Put the position on the chess board.
+    OpenBoard,
 }
 
 fn piece_letter(p: Piece) -> String {
@@ -143,7 +145,7 @@ fn piece_letter(p: Piece) -> String {
     if p.color == Color::White { c.to_string() } else { c.to_ascii_lowercase().to_string() }
 }
 
-fn piece_name(p: Piece) -> &'static str {
+pub(crate) fn piece_name(p: Piece) -> &'static str {
     match (p.color, p.kind) {
         (Color::White, PieceKind::King) => tl!("White king"),
         (Color::White, PieceKind::Queen) => tl!("White queen"),
@@ -312,6 +314,9 @@ pub fn editor_ui(ui: &mut egui::Ui, t: &Tokens, ed: &mut DiagramEditor, pieces: 
             if ui.small_button(tl!("Open in lichess")).on_hover_text(&url).clicked() {
                 action = Some(EditorAction::OpenLichess(url));
             }
+        }
+        if ui.small_button(tl!("Open on the board")).clicked() {
+            action = Some(EditorAction::OpenBoard);
         }
     });
     ui.horizontal(|ui| {

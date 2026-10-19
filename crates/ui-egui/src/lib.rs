@@ -32,6 +32,7 @@ mod a11y_ui;
 mod actions_ui;
 mod appearance;
 pub mod canvas;
+mod chess_board_ui;
 mod chess_editor;
 mod chess_text_ui;
 mod chess_ui;
@@ -3142,6 +3143,15 @@ impl eframe::App for PdfCraftApp {
                     .size_range(260.0..=520.0)
                     .frame(egui::Frame::NONE)
                     .show(ui, |ui| panels::right_panel(self, ui));
+            }
+            // The chess board panel too, when it is open (Read mode has no docking workspace).
+            if self.mode == Mode::Read && self.docking.exposed(docking::Panel::Board) {
+                egui::Panel::right("read_board_panel")
+                    .resizable(true)
+                    .default_size(330.0)
+                    .size_range(260.0..=520.0)
+                    .frame(egui::Frame::NONE)
+                    .show(ui, |ui| chess_ui::board_panel(self, ui));
             }
         }
         let t = theme::Tokens::get(&ctx);

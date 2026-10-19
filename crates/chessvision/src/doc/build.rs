@@ -37,6 +37,106 @@ pub const MAX_CROSSING_SHARE: f32 = 0.15;
 /// A column's lines must be this wide on average, as a share of the page (narrower blocks side
 /// by side are a table or a game score, not columns).
 pub const MIN_COLUMN_SHARE: f32 = 0.2;
+/// Or at least this many of them must be that wide each: a column that holds a game score's
+/// table (`2 f4 ef`, cut at its wide gaps) beside its prose is still a column.
+pub const MIN_WIDE_COLUMN_LINES: usize = 5;
+
+/// Longest caption that may give a puzzle number without a `№` (`185. Teichmann – Lasker`).
+pub const MAX_BARE_CAPTION_CHARS: usize = 80;
+/// Largest puzzle number read.
+pub const MAX_PUZZLE: u32 = 99_999;
+
+/// The puzzle number a text starts with: `№185.`, `N!!185.` (how text layers extract `№`),
+/// `N9191.` (how OCR reads it), `No. 12`, `Nr. 12`, `#12`, followed by a full stop, a bracket,
+/// a colon or a space. With `bare`, also a caption that is the number alone (`1675`) or the
+/// number, a full stop and a name (`185. Teichmann`).
+pub(crate) fn puzzle_label(text: &str, bare: bool) -> Option<u32> {
+    let t = text.trim_start();
+    let prefixed = ["№", "N!!", "N°", "Nº", "No.", "Nr.", "N9", "No", "Nr", "#"].iter().find_map(|p| t.strip_prefix(p)).map(str::trim_start);
+    let rest = match prefixed {
+        Some(rest) => rest,
+        None if bare && t.chars().count() <= MAX_BARE_CAPTION_CHARS => t,
+        None => return None,
+    };
+    let digits = rest.chars().take_while(char::is_ascii_digit).count();
+    if digits == 0 || digits > 5 {
+        return None;
+    }
+    // Digits are ASCII, so `digits` is a char boundary.
+    let after = rest.get(digits..)?.chars().next();
+    let ends = match (prefixed.is_some(), after) {
+        // A bare number stands alone (`1675`) or ends in a full stop, a space and a name
+        // (`185. Teichmann`): `1996 was` is prose, `6.` a mark under a diagram and `2.2
+        // Combinations` a section.
+        (false, _) => {
+            let rem = rest.get(digits..).unwrap_or_default();
+            let named = rem.strip_prefix('.').is_some_and(|r| r.starts_with(char::is_whitespace) && r.chars().any(char::is_alphabetic));
+            rem.trim().is_empty() || named
+        }
+        (true, None) => true,
+        (true, Some(c)) => matches!(c, '.' | ')' | ':') || c.is_whitespace(),
+    };
+    if !ends {
+        return None;
+    }
+    rest.get(..digits)?.parse().ok().filter(|n| *n > 0 && *n <= MAX_PUZZLE)
+}
+
+/// A caption line's text, or `None` for a line with moves in it.
+fn caption_text(line: &ChessLine) -> Option<String> {
+    let mut out = String::new();
+    for span in &line.spans {
+        match &span.run {
+            ChessRun::Text(t) => out.push_str(t),
+            // Read as a move number (`1675` before a move-like word); the caption is the number.
+            ChessRun::MoveNumber { number, .. } => out.push_str(&number.to_string()),
+            ChessRun::Nag(code) => out.push_str(pdfcraft_chess::nag::by_code(*code).map_or("", |n| n.glyph)),
+            ChessRun::Figurine(_) => {}
+            _ => return None,
+        }
+        out.push(' ');
+    }
+    Some(out)
+}
+
+/// The puzzle number of each diagram (view space): the caption just above it, or else just below
+/// it, in its column, that starts with one. A caption goes to the one diagram it is nearest (the
+/// line between two diagrams stacked in a column is the lower one's caption, or the upper one's),
+/// and a diagram takes its nearest caption.
+fn caption_numbers(lines: &[&ChessLine], diagrams: &[Option<ViewRect>]) -> Vec<Option<u32>> {
+    // (bare, gap, number) per diagram: a caption with its `№` wins over a bare number.
+    let mut best: Vec<Option<(bool, f32, u32)>> = vec![None; diagrams.len()];
+    for l in lines {
+        let Some(text) = caption_text(l) else { continue };
+        let (n, bare) = match (puzzle_label(&text, false), puzzle_label(&text, true)) {
+            (Some(n), _) => (n, false),
+            (None, Some(n)) => (n, true),
+            (None, None) => continue,
+        };
+        let gap_to = |d: &ViewRect| {
+            if !(l.rect.x0 < d.x1 && d.x0 < l.rect.x1) {
+                return None;
+            }
+            let gap = if l.rect.y1 <= d.y0 + 2.0 {
+                d.y0 - l.rect.y1
+            } else if l.rect.y0 >= d.y1 - 2.0 {
+                // Below counts a little farther: a caption above is the usual place.
+                l.rect.y0 - d.y1 + 1.0
+            } else {
+                return None;
+            };
+            (gap <= d.height() * 0.35).then_some(gap)
+        };
+        let nearest = diagrams.iter().enumerate().filter_map(|(k, d)| Some((k, gap_to(d.as_ref()?)?))).min_by(|a, b| a.1.total_cmp(&b.1));
+        if let Some((k, gap)) = nearest
+            && let Some(slot) = best.get_mut(k)
+            && slot.is_none_or(|(b, g, _)| (bare, gap) < (b, g))
+        {
+            *slot = Some((bare, gap, n));
+        }
+    }
+    best.into_iter().map(|b| b.map(|(_, _, n)| n)).collect()
+}
 
 /// The line's text, when it holds only text and move numbers.
 fn plain_text(line: &ChessLine) -> Option<String> {
@@ -73,7 +173,8 @@ pub(crate) fn is_coordinates(line: &ChessLine, diagrams: &[Option<ViewRect>]) ->
 
 /// The x of a gutter that splits the page's lines into two columns, if there is one: the middle
 /// of the widest run of positions (between 30% and 70% of the page) that the fewest lines cross,
-/// with enough lines, wide enough, on both sides.
+/// with enough lines on both sides, wide enough on average or with enough wide ones among them
+/// ([`MIN_WIDE_COLUMN_LINES`]).
 pub(crate) fn gutter(lines: &[&ChessLine], page_width: f32) -> Option<f32> {
     if !(page_width.is_finite() && page_width > 0.0) || lines.len() < 2 * MIN_COLUMN_LINES {
         return None;
@@ -88,8 +189,11 @@ pub(crate) fn gutter(lines: &[&ChessLine], page_width: f32) -> Option<f32> {
         let crossing = lines.iter().filter(|l| l.rect.x0 < x && x < l.rect.x1).count();
         let left: Vec<&&ChessLine> = lines.iter().filter(|l| l.rect.x1 <= x).collect();
         let right: Vec<&&ChessLine> = lines.iter().filter(|l| l.rect.x0 >= x).collect();
-        let wide =
-            |side: &[&&ChessLine]| side.iter().map(|l| l.rect.width()).sum::<f32>() / side.len().max(1) as f32 >= MIN_COLUMN_SHARE * page_width;
+        let wide = |side: &[&&ChessLine]| {
+            let min = MIN_COLUMN_SHARE * page_width;
+            side.iter().map(|l| l.rect.width()).sum::<f32>() / side.len().max(1) as f32 >= min
+                || side.iter().filter(|l| l.rect.width() >= min).count() >= MIN_WIDE_COLUMN_LINES
+        };
         let ok = crossing <= max_crossing && left.len() >= MIN_COLUMN_LINES && right.len() >= MIN_COLUMN_LINES && wide(&left) && wide(&right);
         ok.then_some(crossing)
     };
@@ -324,12 +428,15 @@ fn blocks(input: &PageInput<'_>) -> Vec<Block> {
     };
     let kept: Vec<&ChessLine> = input.text.lines.iter().filter(|l| !is_coordinates(l, &diagram_views)).collect();
     let ordered = column_order(&kept, input.geometry.view_size().0);
+    let puzzles = caption_numbers(&kept, &diagram_views);
     for item in interleave(&ordered, &diagram_views) {
         match item {
             Item::Diagram(i) => {
                 flush(&mut blocks, &mut group, key);
                 if let Some(reading) = input.diagrams.get(i) {
-                    blocks.push(Block::Diagram(DiagramBlock::from_reading(i, reading)));
+                    let mut block = DiagramBlock::from_reading(i, reading);
+                    block.puzzle = puzzles.get(i).copied().flatten();
+                    blocks.push(Block::Diagram(block));
                 }
             }
             Item::Line(line) => {
@@ -383,6 +490,7 @@ fn walk(page: u32, blocks: &mut [Block], walker: &mut Walker) {
                 walker.diagram(Seed {
                     page,
                     diagram: d.number,
+                    puzzle: d.puzzle,
                     fen: r.filter(|r| r.legal).map(|r| r.fen.clone()),
                     accepted: r.is_some_and(|r| r.accepted),
                     side_assumed: r.is_some_and(|r| r.side_assumed),
@@ -390,9 +498,28 @@ fn walk(page: u32, blocks: &mut [Block], walker: &mut Walker) {
             }
             Block::Heading { .. } => walker.heading(),
             Block::Paragraph { inlines, .. } => {
-                for inline in inlines {
+                // A number alone just before a first move (`1675 1.Rd3+`) names a puzzle too.
+                let solutions: Vec<Option<u32>> = (0..inlines.len())
+                    .map(|k| match (inlines.get(k), inlines.get(k + 1)) {
+                        (Some(Inline::Text { text, .. }), Some(Inline::Move(m))) if m.number.is_some_and(|n| n.number == 1) => {
+                            let t = text.trim();
+                            (!t.is_empty() && t.len() <= 5 && t.chars().all(|c| c.is_ascii_digit())).then(|| t.parse().ok()).flatten()
+                        }
+                        _ => None,
+                    })
+                    .collect();
+                for (k, inline) in inlines.iter_mut().enumerate() {
                     match inline {
-                        Inline::Text { text, .. } | Inline::Link { text, .. } => walker.text(text),
+                        Inline::Text { text, .. } | Inline::Link { text, .. } => {
+                            // A solution names its puzzle (`№191. Lasker – Steinitz`): its moves
+                            // start from that puzzle's diagram.
+                            if let Some(n) = puzzle_label(text, false) {
+                                walker.puzzle(n);
+                            } else if let Some(n) = solutions.get(k).copied().flatten() {
+                                walker.solution(n);
+                            }
+                            walker.text(text);
+                        }
                         Inline::Nag { code, .. } => walker.nag(*code),
                         Inline::Move(m) => {
                             // The English SAN reads back as the move it was written from.

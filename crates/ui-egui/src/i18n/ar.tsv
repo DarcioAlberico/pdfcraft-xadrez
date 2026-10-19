@@ -2795,3 +2795,34 @@ certificate	Version	الإصدار
 	Diagrams are already being scanned	البحث عن المخططات جارٍ بالفعل
 	Diagrams found: {n}	المخططات التي عُثر عليها: {n}
 	FEN copied	تم نسخ FEN
+# Chess ▸ Board: the analysis board panel.
+	Black to move	دور الأسود
+	Black to move, in check	دور الأسود، في كش
+	Checkmate: Black wins	كش مات: الأسود يفوز
+	Checkmate: White wins	كش مات: الأبيض يفوز
+	Chess board	رقعة الشطرنج
+	Copy PGN	نسخ PGN
+	Delete the moves after this one	حذف النقلات بعد هذه
+	Draw by the fifty-move rule	تعادل بقاعدة الخمسين نقلة
+	End (End)	النهاية (End)
+	Load PGN	تحميل PGN
+	Next move (Right arrow)	النقلة التالية (السهم الأيمن)
+	Not a legal position: correct it in the diagram editor to play moves on it.	ليس وضعًا قانونيًا: صحّحه في محرر المخطط للعب نقلات عليه.
+	Open on the board	فتح على الرقعة
+	PGN copied	تم نسخ PGN
+	Play a move: click a piece, then where it goes, or drag it there.	العب نقلة: انقر قطعة ثم المربع الذي تذهب إليه، أو اسحبها إليه.
+	Play the main line of the PGN above on the board.	لعب الخط الرئيسي لـ PGN أعلاه على الرقعة.
+	Previous move (Left arrow)	النقلة السابقة (السهم الأيسر)
+	Promote to:	الترقية إلى:
+	Reading stopped at {move}: it is not a legal move there.	توقفت القراءة عند {move}: ليست نقلة قانونية هناك.
+	Show the analysis board. Double-click a diagram on the page to load it there.	إظهار رقعة التحليل. انقر نقرًا مزدوجًا على مخطط في الصفحة لتحميله فيها.
+	Show this diagram on the page	إظهار هذا المخطط في الصفحة
+	Stalemate	تعادل بالجمود
+	Standard start position	وضع البداية القياسي
+	Start (Home)	البداية (Home)
+	That side can't be to move: the other king is in check.	لا يمكن أن يكون الدور لهذا الطرف: الملك الآخر في كش.
+	The FEN couldn't be read: {e}	تعذرت قراءة FEN: {e}
+	The PGN couldn't be read: {e}	تعذرت قراءة PGN: {e}
+	This diagram hasn't been read: scan its page first, or set its position in the editor.	لم يُقرأ هذا المخطط: امسح صفحته أولًا أو اضبط الوضع في المحرر.
+	White to move	دور الأبيض
+	White to move, in check	دور الأبيض، في كش

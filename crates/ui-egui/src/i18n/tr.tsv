@@ -2513,3 +2513,34 @@ animation effects	Off	Kapalı
 	Diagrams are already being scanned	Diyagramlar zaten aranıyor
 	Diagrams found: {n}	Bulunan diyagramlar: {n}
 	FEN copied	FEN kopyalandı
+# Chess ▸ Board: the analysis board panel.
+	Black to move	Hamle siyahta
+	Black to move, in check	Hamle siyahta, şah çekildi
+	Checkmate: Black wins	Şah mat: siyah kazanır
+	Checkmate: White wins	Şah mat: beyaz kazanır
+	Chess board	Satranç tahtası
+	Copy PGN	PGN'i kopyala
+	Delete the moves after this one	Bundan sonraki hamleleri sil
+	Draw by the fifty-move rule	50 hamle kuralıyla beraberlik
+	End (End)	Son (End)
+	Load PGN	PGN yükle
+	Next move (Right arrow)	Sonraki hamle (sağ ok)
+	Not a legal position: correct it in the diagram editor to play moves on it.	Geçerli bir konum değil: hamle oynamak için diyagram düzenleyicisinde düzeltin.
+	Open on the board	Tahtada aç
+	PGN copied	PGN kopyalandı
+	Play a move: click a piece, then where it goes, or drag it there.	Hamle yapın: bir taşa, sonra gideceği kareye tıklayın ya da onu oraya sürükleyin.
+	Play the main line of the PGN above on the board.	Yukarıdaki PGN'in ana varyantını tahtada oyna.
+	Previous move (Left arrow)	Önceki hamle (sol ok)
+	Promote to:	Terfi:
+	Reading stopped at {move}: it is not a legal move there.	Okuma {move} hamlesinde durdu: orada geçerli bir hamle değil.
+	Show the analysis board. Double-click a diagram on the page to load it there.	Analiz tahtasını göster. Yüklemek için sayfadaki bir diyagrama çift tıklayın.
+	Show this diagram on the page	Bu diyagramı sayfada göster
+	Stalemate	Pat
+	Standard start position	Standart başlangıç konumu
+	Start (Home)	Başa (Home)
+	That side can't be to move: the other king is in check.	Hamle o tarafta olamaz: diğer şah tehdit altında.
+	The FEN couldn't be read: {e}	FEN okunamadı: {e}
+	The PGN couldn't be read: {e}	PGN okunamadı: {e}
+	This diagram hasn't been read: scan its page first, or set its position in the editor.	Bu diyagram okunmadı: önce sayfasını tarayın ya da konumu düzenleyicide kurun.
+	White to move	Hamle beyazda
+	White to move, in check	Hamle beyazda, şah çekildi

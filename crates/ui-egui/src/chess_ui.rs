@@ -42,6 +42,12 @@ pub struct ChessState {
     pub run: Option<ChessRun>,
     /// A diagram clicked on the page this frame (page, index), picked at the next poll.
     pub picked: Option<(usize, usize)>,
+    /// The diagram picked was double-clicked: it goes onto the chess board too.
+    pub to_board: bool,
+    /// The last diagram clicked on the page and when (egui's input time), to tell a double-click.
+    pub last_pick: Option<((usize, usize), f64)>,
+    /// The chess board panel: the analysis board diagrams are loaded onto.
+    pub board: crate::chess_board_ui::BoardState,
     /// The selected diagram's position being edited (S17).
     pub editor: Option<crate::chess_editor::DiagramEditor>,
     /// List only the diagrams to review.
@@ -168,6 +174,10 @@ pub enum PanelAction {
     ScanAll,
     Cancel,
     Select(usize, usize),
+    /// Put diagram (page, index) on the chess board.
+    OpenBoard(usize, usize),
+    /// Show the chess board panel.
+    ShowBoard,
     CopyFen(String),
     OpenLichess(String),
     Editor(crate::chess_editor::EditorAction),
@@ -275,6 +285,10 @@ pub(crate) fn panel(
         });
         if let Some(a) = crate::chess_text_ui::export_menu(ui) {
             action = Some(PanelAction::Text(a));
+        }
+        if ui.button(tl!("Chess board")).on_hover_text(tl!("Show the analysis board. Double-click a diagram on the page to load it there.")).clicked()
+        {
+            action = Some(PanelAction::ShowBoard);
         }
     });
     if let Some((done, total)) = running {
@@ -394,6 +408,9 @@ pub(crate) fn panel(
                                 {
                                     action = Some(PanelAction::OpenLichess(url));
                                 }
+                                if ui.small_button(tl!("Open on the board")).clicked() {
+                                    action = Some(PanelAction::OpenBoard(page.page, i));
+                                }
                             });
                         }
                         head
@@ -491,6 +508,9 @@ impl PdfCraftApp {
         }
         if let Some((page, index)) = self.chess.picked.take() {
             self.select_chess_diagram(page, index, false);
+            if std::mem::take(&mut self.chess.to_board) {
+                self.open_chess_board(page, index);
+            }
         }
         let Some(progress) = self.chess.run.as_ref().map(|r| r.progress.clone()) else { return };
         let (scans, model, finished) = {
@@ -585,6 +605,11 @@ impl PdfCraftApp {
             PanelAction::ScanAll => self.start_chess_scan(true),
             PanelAction::Cancel => self.cancel_chess_scan(),
             PanelAction::Select(page, index) => self.select_chess_diagram(page, index, true),
+            PanelAction::OpenBoard(page, index) => {
+                self.select_chess_diagram(page, index, false);
+                self.open_chess_board(page, index);
+            }
+            PanelAction::ShowBoard => self.show_chess_board(),
             PanelAction::CopyFen(fen) => {
                 let Some((_, id)) = self.active_ids() else { return };
                 if !self.may_copy(id) {
@@ -621,6 +646,14 @@ impl PdfCraftApp {
                 };
                 if let Some(&(page, index)) = next {
                     self.select_chess_diagram(page, index, true);
+                }
+            }
+            EditorAction::OpenBoard => {
+                if let Some(ed) = self.chess.editor.as_ref() {
+                    let source = crate::chess_board_ui::Source { doc: ed.doc, page: ed.page, index: ed.index };
+                    let (fen, flipped) = (ed.fen(), ed.flipped);
+                    self.chess.board.load_fen(&fen, flipped, Some(source));
+                    self.show_chess_board();
                 }
             }
             EditorAction::Replace => self.replace_chess_diagram(),
@@ -671,5 +704,97 @@ impl PdfCraftApp {
             },
             Err(e) => self.notify(crate::i18n::fmt(tl!("No link was added: {e}"), &[("e", &e)])),
         }
+    }
+
+    /// Put diagram `index` of `page` on the chess board and show it: the position being edited
+    /// when the editor has that diagram, else the position read.
+    pub fn open_chess_board(&mut self, page: usize, index: usize) {
+        let Some((_, id)) = self.active_ids() else { return };
+        let source = crate::chess_board_ui::Source { doc: id, page, index };
+        let edited = self.chess.editor.as_ref().filter(|e| (e.doc, e.page, e.index) == (id, page, index)).map(|e| (e.fen(), e.flipped));
+        let read = || {
+            let results = self.chess.results.as_ref().filter(|r| r.doc == id)?;
+            let reading = results.pages.iter().find(|p| p.page == page).and_then(|p| ChessResults::reading(p, index))?;
+            let pos = reading.position()?;
+            Some((pos.fen.clone(), pos.orientation.is_some_and(|o| o.black_point_of_view)))
+        };
+        let Some((fen, flipped)) = edited.or_else(read) else {
+            self.notify(tl!("This diagram hasn't been read: scan its page first, or set its position in the editor.").to_string());
+            return;
+        };
+        self.chess.board.load_fen(&fen, flipped, Some(source));
+        self.show_chess_board();
+    }
+
+    /// Open the chess board panel and bring it to the front. The docking workspace does it when it
+    /// is next drawn: it may be drawing now (this is often called from a panel), holding the layout.
+    /// Read mode draws no workspace, so there it is done at once.
+    pub fn show_chess_board(&mut self) {
+        let panel = crate::docking::Panel::Board;
+        if self.mode == crate::Mode::Read {
+            let opened = self.docking.set_visible(panel, true).and_then(|()| self.docking.apply(craft_ui::docking::Action::Activate { panel }));
+            if let Err(e) = opened {
+                self.notify_fmt("Panel move was not applied: {error}", &[("error", &e)]);
+            }
+        } else {
+            self.pending_panel_reveals.push(panel);
+        }
+    }
+
+    /// What the chess board panel asked for.
+    fn chess_board_action(&mut self, action: crate::chess_board_ui::BoardAction) {
+        use crate::chess_board_ui::BoardAction;
+        match action {
+            BoardAction::CopyFen(fen) => self.copy_from_board(fen, tl!("FEN copied")),
+            BoardAction::CopyPgn(pgn) => self.copy_from_board(pgn, tl!("PGN copied")),
+            // A lichess address PdfCraft built from the position, opened because the user asked.
+            BoardAction::OpenLichess(url) => self.open_url(&url),
+            BoardAction::ShowSource(s) => {
+                if self.active_ids().is_some_and(|(_, id)| id == s.doc) {
+                    self.select_chess_diagram(s.page, s.index, true);
+                }
+            }
+        }
+    }
+
+    /// Copy what the board shows, and say so. A position read from a document is that
+    /// document's content: its copy permission applies while it is open.
+    fn copy_from_board(&mut self, text: String, done: &str) {
+        if let Some(s) = self.chess.board.source
+            && self.session.get(s.doc).is_some()
+            && !self.may_copy(s.doc)
+        {
+            return;
+        }
+        if let Some(ctx) = &self.ctx {
+            ctx.copy_text(text);
+        }
+        self.notify(done.to_string());
+    }
+}
+
+/// The chess board panel, in the docking workspace or beside the page in Read mode.
+pub(crate) fn board_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
+    let t = Tokens::get(ui.ctx());
+    let pieces = crate::chess_editor::piece_set(&mut app.chess.pieces);
+    // The diagram the board came from, when it belongs to the document shown.
+    let active = app.active_ids().map(|(_, id)| id);
+    let source_label = app.chess.board.source.filter(|s| active == Some(s.doc)).map(|s| {
+        let label = app.session.get(s.doc).and_then(|d| d.info.pages.get(s.page)).map_or_else(|| (s.page + 1).to_string(), |p| p.label.clone());
+        let title = crate::i18n::fmt(tl!("Diagram {n}"), &[("n", &(s.index + 1).to_string())]);
+        let page = crate::i18n::fmt(tl!("Page {label}"), &[("label", &label)]);
+        format!("{title} · {page}")
+    });
+    let mut action = None;
+    egui::Frame::NONE.fill(t.panel).inner_margin(egui::Margin { left: 14, right: 12, top: 12, bottom: 8 }).stroke(Stroke::new(1.0, t.divider)).show(
+        ui,
+        |ui| {
+            egui::ScrollArea::vertical().id_salt("chess-board-panel").auto_shrink([false, false]).show(ui, |ui| {
+                action = crate::chess_board_ui::panel(ui, &t, &mut app.chess.board, &pieces, source_label);
+            });
+        },
+    );
+    if let Some(a) = action {
+        app.chess_board_action(a);
     }
 }

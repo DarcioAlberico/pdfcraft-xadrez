@@ -162,13 +162,18 @@ fn text_glyph(text: &str, rect: PixelRect, dpi: f32) -> Option<TextGlyph> {
 
 /// The recognised lines as a page text layer in view space, for a raster of the whole page at
 /// `dpi`: one glyph per recognised glyph, and an OCR word's box shared evenly among its
-/// characters. Nothing converts for a DPI that is not finite and positive.
+/// characters. Every glyph spans its line's height, as a text layer's glyphs span the font's:
+/// a recognised glyph's box is its ink (an `a` is half an `h`), and the layout measures word
+/// gaps and gutters against glyph height, so ink boxes would make every word gap a gutter.
+/// Nothing converts for a DPI that is not finite and positive.
 pub fn to_page_text(lines: &[FusedLine], dpi: f32) -> PageText {
     let mut text = PageText { glyphs: Vec::new(), line_of: Vec::new(), space_before: Vec::new() };
     for (li, line) in lines.iter().enumerate() {
         let li = u32::try_from(li).unwrap_or(u32::MAX);
+        let (top, bottom) = (line.rect.y0, line.rect.y1);
         for (wi, w) in line.words.iter().enumerate() {
             let mut first = wi > 0;
+            let tall = |r: PixelRect| PixelRect { y0: r.y0.min(top), y1: r.y1.max(bottom), ..r };
             let mut push = |g: Option<TextGlyph>| {
                 if let Some(g) = g {
                     text.glyphs.push(g);
@@ -184,11 +189,11 @@ pub fn to_page_text(lines: &[FusedLine], dpi: f32) -> PageText {
                     let i = u32::try_from(i).unwrap_or(u32::MAX);
                     let x0 = w.rect.x0.saturating_add(step.saturating_mul(i));
                     let x1 = if i.saturating_add(1) == n { w.rect.x1 } else { x0.saturating_add(step) };
-                    push(text_glyph(&c.to_string(), PixelRect { x0, x1, ..w.rect }, dpi));
+                    push(text_glyph(&c.to_string(), tall(PixelRect { x0, x1, ..w.rect }), dpi));
                 }
             } else {
                 for g in &w.glyphs {
-                    push(text_glyph(&g.text, g.rect, dpi));
+                    push(text_glyph(&g.text, tall(g.rect), dpi));
                 }
             }
         }

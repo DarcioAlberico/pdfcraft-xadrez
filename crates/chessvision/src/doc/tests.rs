@@ -448,6 +448,104 @@ fn a_new_game_from_one_after_a_later_diagram() {
 }
 
 #[test]
+fn puzzle_labels() {
+    use crate::doc::build::puzzle_label;
+    for (text, want) in [
+        ("№185. Teichmann – Lasker", 185),
+        ("N!!185. Teichmann", 185),
+        ("N!! 186. Lasker – Marco", 186),
+        ("N9191. Lasker", 191),
+        ("No. 12 Smith", 12),
+        ("Nr 7)", 7),
+        ("#42:", 42),
+    ] {
+        assert_eq!(puzzle_label(text, false), Some(want), "{text}");
+    }
+    // A bare number only in a caption, and only with its full stop.
+    assert_eq!(puzzle_label("185. Teichmann – Lasker", true), Some(185));
+    assert_eq!(puzzle_label("185. Teichmann – Lasker", false), None);
+    assert_eq!(puzzle_label("1675 ", true), Some(1675));
+    assert_eq!(puzzle_label("1675", false), None);
+    assert_eq!(puzzle_label("2.2 Combinations #2 (451-3514)", true), None, "a section number");
+    for text in ["1996 was a good year", "6.", "6. ±", "N9", "No way", "Nothing 12.", "№0.", "№123456.", "the №5 is", ""] {
+        assert_eq!(puzzle_label(text, true), None, "{text}");
+    }
+}
+
+/// A puzzle book: the diagrams with their numbers, the solutions pages on, in another order.
+/// Each solution is played from the diagram its number names.
+#[test]
+fn solutions_are_played_from_their_numbered_diagrams() {
+    let rook = "8/8/4k3/8/8/4K3/r7/7R w - - 0 1";
+    // Under each diagram, nearer than its `№` caption, a line that reads as a bare caption: the
+    // `№` wins.
+    let p0 = page_text(vec![
+        line(45.0, "№1. Brown – Green"),
+        line(211.0, "12. White to play"),
+        line(245.0, "№2. Smith – Jones"),
+        line(411.0, "13. Black to play"),
+    ]);
+    let d0 = [reading(0, 60.0, SCHOLAR, true, false), reading(1, 260.0, rook, true, false)];
+    let p1 = page_text(vec![line(100.0, "Solutions follow on the next page.")]);
+    let p2 = page_text(vec![
+        line(100.0, "№2. Smith – Jones"),
+        line(120.0, "1.Rh6+ Kd5 2.Rh5+"),
+        line(160.0, "№1. Brown – Green"),
+        line(180.0, "3.Qh5 Nf6 4.Qxf7#"),
+    ]);
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &d0, &[], &[]));
+    b.add_page(&input(1, &p1, &[], &[], &[]));
+    b.add_page(&input(2, &p2, &[], &[], &[]));
+    let doc = b.finish();
+    let numbers: Vec<Option<u32>> =
+        doc.pages[0].blocks.iter().filter_map(|b| if let Block::Diagram(d) = b { Some(d.puzzle) } else { None }).collect();
+    assert_eq!(numbers, [Some(1), Some(2)]);
+    assert!(moves(&doc.pages[2]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[2]));
+    assert_eq!(doc.games.len(), 2);
+    assert_eq!(doc.games[0].origin, GameOrigin::Diagram { page: 0, diagram: 1, accepted: true });
+    assert_eq!(doc.games[1].origin, GameOrigin::Diagram { page: 0, diagram: 0, accepted: true });
+    assert!(pgn::write_game(&doc.games[1].score).contains("[PdfPuzzle \"1\"]"));
+}
+
+/// Polgar's layout: the number alone above each diagram (`1675`), and solutions as the number
+/// alone before the key move (`1675 1.Rd3+`), pages on.
+#[test]
+fn bare_numbers_link_solutions_to_diagrams() {
+    let rook = "8/8/4k3/8/8/4K3/r7/7R w - - 0 1";
+    let p0 = page_text(vec![line(20.0, "2.2 Combinations #2"), line(45.0, "1675"), line(245.0, "1676")]);
+    let d0 = [reading(0, 60.0, SCHOLAR, true, false), reading(1, 260.0, rook, true, false)];
+    let p1 = page_text(vec![line(100.0, "Solutions")]);
+    // 1601 has no diagram here: its move is not read into the game before it.
+    let p2 = page_text(vec![line(100.0, "1676 1.Rh6+ Kd5"), line(120.0, "1601 1.Re1"), line(140.0, "1675 1.Qh5 Nf6")]);
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &d0, &[], &[]));
+    b.add_page(&input(1, &p1, &[], &[], &[]));
+    b.add_page(&input(2, &p2, &[], &[], &[]));
+    let doc = b.finish();
+    let numbers: Vec<Option<u32>> =
+        doc.pages[0].blocks.iter().filter_map(|b| if let Block::Diagram(d) = b { Some(d.puzzle) } else { None }).collect();
+    assert_eq!(numbers, [Some(1675), Some(1676)]);
+    let statuses: Vec<MoveStatus> = moves(&doc.pages[2]).iter().map(|(_, s)| *s).collect();
+    assert_eq!(statuses, [MoveStatus::Valid, MoveStatus::Valid, MoveStatus::Unchecked, MoveStatus::Valid, MoveStatus::Valid]);
+    assert_eq!(
+        doc.games.iter().map(|g| g.origin).collect::<Vec<_>>(),
+        [GameOrigin::Diagram { page: 0, diagram: 1, accepted: true }, GameOrigin::Diagram { page: 0, diagram: 0, accepted: true }]
+    );
+}
+
+/// A caption under the diagram gives its number too; one with no number gives none.
+#[test]
+fn a_caption_below_gives_the_puzzle_number() {
+    let text = page_text(vec![line(215.0, "No. 7 White to play"), line(420.0, "A quiet position.")]);
+    let diagrams = [reading(0, 60.0, SCHOLAR, true, false), reading(1, 260.0, SCHOLAR, true, false)];
+    let doc = build_page(&input(0, &text, &diagrams, &[], &[]));
+    let numbers: Vec<Option<u32>> =
+        doc.pages[0].blocks.iter().filter_map(|b| if let Block::Diagram(d) = b { Some(d.puzzle) } else { None }).collect();
+    assert_eq!(numbers, [Some(7), None]);
+}
+
+#[test]
 fn node_references_follow_the_canonical_order() {
     // The variation is read before the main move it is an alternative to is written: nodes are
     // reordered when the game closes, and the inlines must still point at their own moves.
@@ -669,6 +767,32 @@ fn a_two_column_page_is_read_column_by_column() {
 
 /// A page with one column keeps its order, whatever the line widths; full-width lines cut the
 /// columns into bands read in turn.
+/// A two-column page whose right column holds a game score's table (`2 f4 ef`, cut at its wide
+/// gaps into narrow pieces) beside its prose: the pieces bring the column's average width down,
+/// but its prose lines still make it a column.
+#[test]
+fn a_column_with_a_score_table_is_still_a_column() {
+    let prose = "the text runs on in its column here";
+    let mut lines = Vec::new();
+    for k in 0..8 {
+        lines.push(line_at(30.0, 100.0 + 20.0 * k as f32, prose));
+    }
+    for k in 0..5 {
+        lines.push(line_at(330.0, 100.0 + 20.0 * k as f32, prose));
+    }
+    for k in 0..6 {
+        let y = 200.0 + 20.0 * k as f32;
+        lines.push(line_at(330.0, y, &format!("{}.", k + 2)));
+        lines.push(line_at(380.0, y, "f4"));
+        lines.push(line_at(460.0, y, "ef"));
+    }
+    let refs: Vec<&ChessLine> = lines.iter().collect();
+    let x = crate::doc::build::gutter(&refs, 600.0).expect("a gutter between the columns");
+    assert!((290.0..330.0).contains(&x), "{x}");
+    let order = crate::doc::build::column_order(&refs, 600.0);
+    assert!(order[..8].iter().all(|l| l.rect.x0 < 100.0), "the left column first");
+}
+
 #[test]
 fn columns_need_a_real_gutter_and_full_width_lines_cut_bands() {
     let one = [line_at(30.0, 100.0, "1.e4 e5 2.Nf3 Nc6"), line_at(30.0, 120.0, "3.Bb5 a6 4.Ba4 Nf6"), line_at(30.0, 140.0, "5.O-O Be7")];

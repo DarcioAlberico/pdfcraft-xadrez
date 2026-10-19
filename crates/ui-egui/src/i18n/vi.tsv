@@ -2704,3 +2704,34 @@ key	Space	Space
 	Diagrams are already being scanned	Đang tìm sơ đồ rồi
 	Diagrams found: {n}	Số sơ đồ tìm thấy: {n}
 	FEN copied	Đã sao chép FEN
+# Chess ▸ Board: the analysis board panel.
+	Black to move	Đến lượt Đen
+	Black to move, in check	Đến lượt Đen, đang bị chiếu
+	Checkmate: Black wins	Chiếu hết: Đen thắng
+	Checkmate: White wins	Chiếu hết: Trắng thắng
+	Chess board	Bàn cờ
+	Copy PGN	Sao chép PGN
+	Delete the moves after this one	Xóa các nước sau nước này
+	Draw by the fifty-move rule	Hòa theo luật 50 nước
+	End (End)	Cuối (End)
+	Load PGN	Tải PGN
+	Next move (Right arrow)	Nước tiếp theo (mũi tên phải)
+	Not a legal position: correct it in the diagram editor to play moves on it.	Thế cờ không hợp lệ: hãy sửa trong trình chỉnh sửa sơ đồ để đi quân trên đó.
+	Open on the board	Mở trên bàn cờ
+	PGN copied	Đã sao chép PGN
+	Play a move: click a piece, then where it goes, or drag it there.	Đi một nước: nhấp vào một quân rồi vào ô đích, hoặc kéo quân đến đó.
+	Play the main line of the PGN above on the board.	Đi trên bàn cờ diễn biến chính của PGN ở trên.
+	Previous move (Left arrow)	Nước trước (mũi tên trái)
+	Promote to:	Phong cấp thành:
+	Reading stopped at {move}: it is not a legal move there.	Việc đọc dừng ở {move}: đó không phải nước đi hợp lệ tại đó.
+	Show the analysis board. Double-click a diagram on the page to load it there.	Hiện bàn cờ phân tích. Nhấp đúp vào một sơ đồ trên trang để tải nó vào đó.
+	Show this diagram on the page	Hiện sơ đồ này trên trang
+	Stalemate	Hết nước đi (hòa pat)
+	Standard start position	Thế cờ ban đầu chuẩn
+	Start (Home)	Đầu (Home)
+	That side can't be to move: the other king is in check.	Bên đó không thể đến lượt: vua bên kia đang bị chiếu.
+	The FEN couldn't be read: {e}	Không đọc được FEN: {e}
+	The PGN couldn't be read: {e}	Không đọc được PGN: {e}
+	This diagram hasn't been read: scan its page first, or set its position in the editor.	Sơ đồ này chưa được đọc: hãy quét trang của nó trước, hoặc đặt thế cờ trong trình chỉnh sửa.
+	White to move	Đến lượt Trắng
+	White to move, in check	Đến lượt Trắng, đang bị chiếu

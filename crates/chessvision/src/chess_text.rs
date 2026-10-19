@@ -156,6 +156,7 @@ pub fn from_page_text(page: &PageText, lang_hint: Option<Lang>) -> ChessPageText
     }
     let lang = lang_tally.guess(lang_hint);
     // 4. Runs.
+    let lines: Vec<Vec<Vec<glyph::Cell>>> = lines.into_iter().map(|words| token::join_split_moves(words, lang.lang)).collect();
     let mut tokens: Vec<Vec<Vec<token::Token>>> = lines.iter().map(|words| words.iter().map(|w| token::tokenize(w, lang.lang)).collect()).collect();
     token::settle(&mut tokens);
     let mut side = token::Side::default();

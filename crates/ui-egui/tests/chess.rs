@@ -57,7 +57,12 @@ fn boards() -> Vec<u8> {
 }
 
 fn harness() -> Harness<'static, PdfCraftApp> {
-    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).build_eframe(|_cc| {
+    harness_stepping(0.25)
+}
+
+/// The harness, with frames `step_dt` seconds apart (kittest's default is 0.25 s).
+fn harness_stepping(step_dt: f32) -> Harness<'static, PdfCraftApp> {
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).with_step_dt(step_dt).build_eframe(|_cc| {
         let mut app = PdfCraftApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("boards.pdf", None, boards()).unwrap();
@@ -478,4 +483,87 @@ fn the_book_origin_is_kept_and_the_page_is_read_again_under_it() {
             assert!(text.needs_ocr.is_none() && !text.ocr, "{:?}", text.needs_ocr);
         }
     }
+}
+
+/// Click the square `name` on the analysis board (from White's side).
+fn click_square(h: &mut Harness<'static, PdfCraftApp>, name: &str) {
+    let b = name.as_bytes();
+    let (file, rank) = (f32::from(b[0] - b'a'), f32::from(b[1] - b'1'));
+    let board = h.get_by_label_contains("Board: ").rect();
+    let at = board.min + egui::vec2(board.width() * (file + 0.5) / 8.0, board.height() * (7.5 - rank) / 8.0);
+    h.hover_at(at);
+    h.run_steps(1);
+    for pressed in [true, false] {
+        h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed, modifiers: egui::Modifiers::NONE });
+    }
+    h.run_steps(2);
+}
+
+/// A double-click on a diagram on the page puts it on the chess board, a tab beside the
+/// Inspector, where moves are played by clicking and walked back and forth.
+#[test]
+fn double_clicking_a_diagram_puts_it_on_the_board_to_play() {
+    // Short frames, so two clicks a frame apart are within the 0.3 s double-click delay.
+    let mut h = harness_stepping(0.05);
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    let board = pdfcraft_ui_egui::docking::Panel::Board;
+    assert!(!h.state().docking.layout.contains(&board), "the board is not open until a diagram goes onto it");
+    let at = on_page(&h, 140.0, 660.0);
+    h.hover_at(at);
+    h.run_steps(1);
+    for _ in 0..2 {
+        for pressed in [true, false] {
+            h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed, modifiers: egui::Modifiers::NONE });
+        }
+        h.step();
+    }
+    h.run_steps(3);
+    assert!(h.state().docking.layout.contains(&board), "the double-click opened the board");
+    assert_eq!(h.state().chess.board.game.fen(), START_FEN);
+    assert_eq!(h.state().chess.board.source.map(|s| (s.page, s.index)), Some((0, 0)));
+    h.get_by_label("Diagram 1 · Page 1");
+    h.get_by_label("White to move");
+
+    click_square(&mut h, "e2");
+    click_square(&mut h, "e4");
+    click_square(&mut h, "e7");
+    click_square(&mut h, "e5");
+    assert_eq!(h.state().chess.board.game.movetext(), "1. e4 e5");
+    h.get_by_label("e5");
+    // Back one move with the button, then a different move replaces the rest of the line.
+    h.get_by_label("◀").click();
+    h.run_steps(2);
+    assert_eq!(h.state().chess.board.game.ply(), 1);
+    click_square(&mut h, "c7");
+    click_square(&mut h, "c5");
+    assert_eq!(h.state().chess.board.game.movetext(), "1. e4 c5");
+    assert!(h.state().chess.board.pgn_text.ends_with("1. e4 c5 *\n"), "{}", h.state().chess.board.pgn_text);
+    // Copy FEN copies the position on the board.
+    h.get_by_label("Copy FEN").click();
+    let mut copied = false;
+    for _ in 0..3 {
+        h.step();
+        copied |= h
+            .output()
+            .platform_output
+            .commands
+            .iter()
+            .any(|c| matches!(c, egui::OutputCommand::CopyText(t) if t == "rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq c6 0 2"));
+    }
+    assert!(copied, "the board's FEN was copied");
+}
+
+/// Open on the board, in the Chess diagrams panel, puts that diagram on the board too.
+#[test]
+fn open_on_the_board_from_the_panel() {
+    let mut h = harness();
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    h.get_all_by_label("Open on the board").next().expect("diagram 1 has a position").click();
+    h.run_steps(3);
+    assert!(h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Board));
+    assert_eq!(h.state().chess.board.game.fen(), START_FEN);
+    // The Inspector is still there, a tab beside the board.
+    assert!(h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Inspector));
 }

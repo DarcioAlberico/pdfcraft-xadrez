@@ -2729,3 +2729,34 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Diagrams are already being scanned	La ricerca dei diagrammi è già in corso
 	Diagrams found: {n}	Diagrammi trovati: {n}
 	FEN copied	FEN copiata
+# Chess ▸ Board: the analysis board panel.
+	Black to move	Muove il Nero
+	Black to move, in check	Muove il Nero, sotto scacco
+	Checkmate: Black wins	Scacco matto: vince il Nero
+	Checkmate: White wins	Scacco matto: vince il Bianco
+	Chess board	Scacchiera
+	Copy PGN	Copia PGN
+	Delete the moves after this one	Elimina le mosse dopo questa
+	Draw by the fifty-move rule	Patta per la regola delle 50 mosse
+	End (End)	Fine (Fine)
+	Load PGN	Carica PGN
+	Next move (Right arrow)	Mossa successiva (freccia destra)
+	Not a legal position: correct it in the diagram editor to play moves on it.	Posizione non legale: correggila nell'editor del diagramma per giocarci delle mosse.
+	Open on the board	Apri sulla scacchiera
+	PGN copied	PGN copiato
+	Play a move: click a piece, then where it goes, or drag it there.	Gioca una mossa: fai clic su un pezzo e poi sulla destinazione, oppure trascinalo lì.
+	Play the main line of the PGN above on the board.	Gioca sulla scacchiera la linea principale del PGN qui sopra.
+	Previous move (Left arrow)	Mossa precedente (freccia sinistra)
+	Promote to:	Promuovi a:
+	Reading stopped at {move}: it is not a legal move there.	Lettura interrotta a {move}: lì non è una mossa legale.
+	Show the analysis board. Double-click a diagram on the page to load it there.	Mostra la scacchiera di analisi. Fai doppio clic su un diagramma della pagina per caricarlo lì.
+	Show this diagram on the page	Mostra questo diagramma nella pagina
+	Stalemate	Stallo
+	Standard start position	Posizione iniziale standard
+	Start (Home)	Inizio (Home)
+	That side can't be to move: the other king is in check.	Quel lato non può avere il tratto: l'altro re è sotto scacco.
+	The FEN couldn't be read: {e}	Impossibile leggere la FEN: {e}
+	The PGN couldn't be read: {e}	Impossibile leggere il PGN: {e}
+	This diagram hasn't been read: scan its page first, or set its position in the editor.	Questo diagramma non è stato letto: analizza prima la sua pagina o imposta la posizione nell'editor.
+	White to move	Muove il Bianco
+	White to move, in check	Muove il Bianco, sotto scacco
