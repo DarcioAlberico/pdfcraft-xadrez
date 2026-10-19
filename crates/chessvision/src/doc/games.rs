@@ -12,6 +12,11 @@
 //! - **Where a game starts.** At the first move after a diagram, from the diagram's FEN; or, with
 //!   no diagram before it, at a move numbered `1.`, from the initial position. Moves anywhere else
 //!   (prose such as "after 23.Nf5") have no position and stay [`MoveStatus::Unchecked`].
+//! - **Which diagram.** Books print two diagrams side by side and their texts after both, so the
+//!   diagram just before a first move is not always its own. When the first move is not legal
+//!   there but is from a diagram nearby (this page or the one before) that no game started from,
+//!   the game starts from that one, flagged [`ReviewFlag::DiagramMatchedByMove`]. A `1.` the open
+//!   game cannot play, or would take as another first move, starts a new game the same way.
 //! - **The diagram's FEN.** The first move's number fixes the full-move number, and the side to
 //!   move when the reading only assumed it (`1...Kd7` under a diagram read as White to move, if the
 //!   position allows Black to move; flagged [`ReviewFlag::SideFromMoveNumber`]). A reading that
@@ -28,13 +33,19 @@
 //!   close it (PGN's rule).
 //! - **Failures.** A move that is illegal, ambiguous or numbered out of sequence is flagged, and its
 //!   line stops: every later move of that line is [`MoveStatus::NotReached`] until a numbered move
-//!   finds its place again. Nothing is dropped: the printed text of a move that was not played goes
+//!   finds its place again. A numbered move that cannot be played where the reading is, outside
+//!   brackets, is tried on the main line: books go back to it after an alternative written as
+//!   prose. Nothing is dropped: the printed text of a move that was not played goes
 //!   into the game's comments, so the PGN still carries it.
 //! - **Comments and NAGs.** Prose inside a game is the comment of the move before it. An annotation
 //!   glyph belongs to the move it follows.
 //! - **Where a game ends.** At the next diagram, at a heading, at a result (`1-0`, `0-1`, `½-½`,
 //!   `1/2-1/2`) outside variations, and at a new `1.` when the game started from the initial
-//!   position. Paragraphs and page breaks do not end a game.
+//!   position. Paragraphs and page breaks do not end a game. A diagram does not end it when it
+//!   shows the position the main line reached (a book reprinting the game's position, often on
+//!   the next page), or when the next move continues the main line and is not a first move from
+//!   the diagram (flagged [`ReviewFlag::ContinuedPastDiagram`]); text between the diagram and that
+//!   move goes to neither game.
 //!
 //! Everything is bounded: [`MAX_GAME_NODES`] moves a game, [`MAX_VARIATION_DEPTH`] nested
 //! variations, [`MAX_COMMENT_CHARS`] a comment, [`MAX_GAMES`] games a document.
@@ -58,6 +69,8 @@ pub const MAX_NAGS: usize = 8;
 pub const MAX_GAMES: usize = 4096;
 /// Most legal moves listed for a reviewer.
 pub const MAX_LISTED_MOVES: usize = 8;
+/// Most diagrams kept that no game started from, to be matched by a later first move.
+pub const MAX_SPARE_DIAGRAMS: usize = 6;
 
 /// How a game ended.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -593,6 +606,13 @@ pub(crate) struct Walker {
     remaps: Vec<Vec<Option<usize>>>,
     anchor: Anchor,
     open: Option<Open>,
+    /// A diagram came while a game was open: whether the game goes on past it is decided by the
+    /// next move. Only set while `open` is.
+    held: bool,
+    /// Diagrams no game started from yet, oldest first, at most [`MAX_SPARE_DIAGRAMS`].
+    spare: Vec<Seed>,
+    /// The next game starts from a spare diagram its first move matched.
+    matched: bool,
     blocked: Vec<(u32, usize)>,
 }
 
@@ -646,6 +666,25 @@ fn decide(score: &GameScore, line: &Line, number: Option<MoveNumber>) -> Decisio
     }
 }
 
+/// Whether `san`, numbered `number`, can be played in `line`: it has its place there and is legal.
+fn playable(score: &GameScore, line: &Line, number: Option<MoveNumber>, san: &San) -> bool {
+    match decide(score, line, number) {
+        Decision::Play(at) => score.board_after(at).is_some_and(|b| san.to_move(&b).is_ok()),
+        _ => false,
+    }
+}
+
+/// Whether `san` is the first move of a game from `seed`, numbered `number`: the number is
+/// believed and the move is legal there.
+fn seed_fits(seed: &Seed, number: Option<MoveNumber>, san: &San) -> bool {
+    seed_score(seed, number).is_some_and(|(score, _, honour)| honour && score.start_board().is_some_and(|b| san.to_move(&b).is_ok()))
+}
+
+/// The piece placement of a FEN, its first field.
+fn placement_of(fen: &str) -> &str {
+    fen.split_whitespace().next().unwrap_or_default()
+}
+
 /// A FEN from its six fields.
 fn compose(placement: &str, black: bool, castling: &str, ep: &str, halfmove: &str, fullmove: &str) -> String {
     format!("{placement} {} {castling} {ep} {halfmove} {fullmove}", if black { 'b' } else { 'w' })
@@ -685,9 +724,13 @@ fn seed_score(seed: &Seed, number: Option<MoveNumber>) -> Option<(GameScore, Vec
 }
 
 impl Walker {
-    /// A diagram: the open game ends, and the next moves start from it.
+    /// A diagram: the next moves start from it, unless they continue the open game (see
+    /// [`Walker::resolve_held`]). A diagram before it that no game started from is kept spare.
     pub fn diagram(&mut self, seed: Seed) {
-        self.close();
+        if let Anchor::Seed(old) = std::mem::take(&mut self.anchor) {
+            self.keep_spare(old);
+        }
+        self.held = self.open.is_some();
         self.anchor = Anchor::Seed(seed);
     }
 
@@ -695,9 +738,73 @@ impl Walker {
     pub fn heading(&mut self) {
         self.close();
         self.anchor = Anchor::None;
+        self.spare.clear();
+    }
+
+    fn keep_spare(&mut self, seed: Seed) {
+        if seed.fen.is_none() {
+            return;
+        }
+        if self.spare.len() >= MAX_SPARE_DIAGRAMS {
+            self.spare.remove(0);
+        }
+        self.spare.push(seed);
+    }
+
+    /// The most recent spare diagram, on this page or the one before, that `san` is a first move
+    /// from; taken out of the spares.
+    fn take_spare(&mut self, number: Option<MoveNumber>, san: &San, page: u32) -> Option<Seed> {
+        let i = self.spare.iter().rposition(|s| s.page <= page && s.page.saturating_add(1) >= page && seed_fits(s, number, san))?;
+        Some(self.spare.remove(i))
+    }
+
+    /// The first move after a diagram that came while a game was open. The game goes on when the
+    /// diagram shows the position its main line reached, or when the move continues the main line
+    /// (its number is the next one, and it is legal there) and is not a first move from the
+    /// diagram. Otherwise the game ends and the move starts from the diagram.
+    fn resolve_held(&mut self, number: Option<MoveNumber>, san: &San) {
+        self.held = false;
+        let seed = match &self.anchor {
+            Anchor::Seed(s) => Some(s),
+            _ => None,
+        };
+        let (same, fits) = match self.open.as_ref().and_then(|o| Some((o.lines.first()?, self.games.get(o.game)?))) {
+            Some((main, game)) => {
+                let board = game.score.board_after(main.cursor);
+                let same =
+                    seed.and_then(|s| s.fen.as_deref()).zip(board.as_ref()).is_some_and(|(f, b)| placement_of(f) == placement_of(&b.to_string()));
+                let next = number.is_some_and(|n| game.score.next_ply(main.cursor) == Some(ply_of(n)));
+                let fits = main.moved && main.skipped == 0 && next && board.is_some_and(|b| san.to_move(&b).is_ok());
+                (same, fits && !seed.is_some_and(|s| seed_fits(s, number, san)))
+            }
+            None => (false, false),
+        };
+        if !same && !fits {
+            self.close();
+            return;
+        }
+        let anchor = std::mem::take(&mut self.anchor);
+        if let Some(open) = self.open.as_mut()
+            && let Some(game) = self.games.get_mut(open.game)
+        {
+            while open.lines.len() > 1 {
+                pop_line(game, open);
+            }
+            if !same && let Anchor::Seed(s) = &anchor {
+                game.flags.push(GameFlag {
+                    page: s.page,
+                    source_rect: None,
+                    flag: ReviewFlag::ContinuedPastDiagram { page: s.page, diagram: s.diagram },
+                });
+            }
+        }
+        if !same && let Anchor::Seed(s) = anchor {
+            self.keep_spare(s);
+        }
     }
 
     fn close(&mut self) {
+        self.held = false;
         let Some(mut open) = self.open.take() else { return };
         let Some(game) = self.games.get_mut(open.game) else { return };
         while open.lines.len() > 1 {
@@ -714,11 +821,41 @@ impl Walker {
 
     /// Open a game for the move about to be read. Returns whether one is open, and whether the
     /// move's number is to be believed.
-    fn start(&mut self, number: Option<MoveNumber>, loc: Loc) -> Option<bool> {
+    fn start(&mut self, number: Option<MoveNumber>, san: &San, loc: Loc) -> Option<bool> {
         if self.games.len() >= MAX_GAMES {
             return None;
         }
-        let (origin, score, mut flags, honour) = match std::mem::take(&mut self.anchor) {
+        // A first move that does not fit where it stands may fit a spare diagram nearby.
+        let mut matched = std::mem::take(&mut self.matched);
+        let first = MoveNumber { number: 1, black: false };
+        let anchor = match std::mem::take(&mut self.anchor) {
+            Anchor::Seed(seed) if !seed_fits(&seed, number, san) => match self.take_spare(number, san, loc.page) {
+                Some(spare) => {
+                    matched = true;
+                    self.keep_spare(seed);
+                    Anchor::Seed(spare)
+                }
+                None => Anchor::Seed(seed),
+            },
+            Anchor::Blocked => match self.take_spare(number, san, loc.page) {
+                Some(spare) => {
+                    matched = true;
+                    Anchor::Seed(spare)
+                }
+                None => Anchor::Blocked,
+            },
+            Anchor::None if number.is_some_and(|n| n.number == 1) && !(number == Some(first) && san.to_move(&Board::default()).is_ok()) => {
+                match self.take_spare(number, san, loc.page) {
+                    Some(spare) => {
+                        matched = true;
+                        Anchor::Seed(spare)
+                    }
+                    None => Anchor::None,
+                }
+            }
+            other => other,
+        };
+        let (origin, score, mut flags, honour) = match anchor {
             Anchor::Seed(seed) => match seed_score(&seed, number) {
                 Some((score, flags, honour)) => {
                     (GameOrigin::Diagram { page: seed.page, diagram: seed.diagram, accepted: seed.accepted }, score, flags, honour)
@@ -740,6 +877,9 @@ impl Walker {
             }
             Anchor::None => return None,
         };
+        if matched {
+            flags.push(ReviewFlag::DiagramMatchedByMove);
+        }
         let trusted = match origin {
             GameOrigin::Initial => true,
             GameOrigin::Diagram { page, diagram, accepted } => {
@@ -760,6 +900,25 @@ impl Walker {
     pub fn play(&mut self, number: Option<MoveNumber>, san: &San, text: &str, loc: Loc) -> MoveOutcome {
         let printed = format!("{}{}", number.map(|n| n.text()).unwrap_or_default(), text);
         let mut number = number;
+        if self.held {
+            self.resolve_held(number, san);
+        }
+        // A `1.` that a spare diagram nearby starts, when the open game cannot play it or would
+        // take it as another first move: a new example. A diagram with no text yet is likelier
+        // its own than a second solution is.
+        if let Some(n) = number
+            && n.number == 1
+            && let Some(open) = &self.open
+            && let [main] = open.lines.as_slice()
+            && main.moved
+            && let Some(game) = self.games.get(open.game)
+            && (game.score.start_ply() == Some(ply_of(n)) || !playable(&game.score, main, number, san))
+            && let Some(spare) = self.take_spare(number, san, loc.page)
+        {
+            self.close();
+            self.anchor = Anchor::Seed(spare);
+            self.matched = true;
+        }
         // A new `1.` after a game from the initial position has moved on is a new game.
         if number == Some(MoveNumber { number: 1, black: false })
             && let Some(open) = &self.open
@@ -771,7 +930,7 @@ impl Walker {
             self.anchor = Anchor::None;
         }
         if self.open.is_none() {
-            match self.start(number, loc) {
+            match self.start(number, san, loc) {
                 Some(true) => {}
                 Some(false) => number = None,
                 None => return MoveOutcome::status(MoveStatus::Unchecked),
@@ -780,6 +939,20 @@ impl Walker {
         let Some(open) = self.open.as_mut() else { return MoveOutcome::status(MoveStatus::Unchecked) };
         let gi = open.game;
         let Some(game) = self.games.get_mut(gi) else { return MoveOutcome::status(MoveStatus::Unchecked) };
+        // A numbered move that cannot be played where the reading is, outside brackets, but can on
+        // the main line: the text went back to the main line after an alternative written as prose
+        // (`2.Kg7 ... The premature 2.h4+ loses to 2...Kxh4 ... 2...c5`).
+        if number.is_some()
+            && let [line] = open.lines.as_mut_slice()
+            && !playable(&game.score, line, number, san)
+            && let Some(tip) = game.score.mainline().last().copied()
+            && line.cursor != Some(tip)
+        {
+            let main = Line { cursor: Some(tip), moved: true, ..Line::default() };
+            if playable(&game.score, &main, number, san) {
+                *line = main;
+            }
+        }
         let Some(line) = open.lines.last() else { return MoveOutcome::status(MoveStatus::Unchecked) };
         let (status, flag) = match decide(&game.score, line, number) {
             Decision::NotReached => (MoveStatus::NotReached, None),
@@ -828,6 +1001,9 @@ impl Walker {
 
     /// An annotation glyph: the last move's, when it was played; else part of the comment.
     pub fn nag(&mut self, code: u16) {
+        if self.held {
+            return;
+        }
         let Some(open) = self.open.as_mut() else { return };
         let Some(game) = self.games.get_mut(open.game) else { return };
         let Some(line) = open.lines.last() else { return };
@@ -846,6 +1022,10 @@ impl Walker {
 
     /// Prose, punctuation and brackets between moves.
     pub fn text(&mut self, text: &str) {
+        // Captions and prose between a diagram and the move that settles it belong to neither.
+        if self.held {
+            return;
+        }
         let mut segment = String::new();
         for ch in text.chars() {
             if self.open.is_none() {
