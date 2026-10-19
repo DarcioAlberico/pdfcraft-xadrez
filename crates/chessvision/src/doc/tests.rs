@@ -386,6 +386,25 @@ fn the_main_line_resumes_after_a_prose_alternative() {
     assert_eq!(main, ["e4", "e5", "Nf3", "Nc6", "Nxe5", "Nxe5"]);
 }
 
+/// Brackets after a move holding the replies to it: they are played after it, and the main
+/// line's own reply still goes first.
+#[test]
+fn brackets_can_hold_the_replies_to_a_move() {
+    let text = page_text(vec![line(230.0, "1.e4 ( 1...c5 2.Nf3 ; 1...e6 2.d4 ) 1...e5 2.Nf3")]);
+    let doc = build_page(&input(0, &text, &[], &[], &[]));
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    let score = &doc.games[0].score;
+    let main: Vec<&str> = score.mainline().iter().map(|&n| score.nodes[n].san.as_str()).collect();
+    assert_eq!(main, ["e4", "e5", "Nf3"]);
+    let pgn = pgn::write_game(score);
+    assert!(pgn.contains("1. e4 e5 (1... c5 2. Nf3") && pgn.contains("(1... e6 2. d4)"), "{pgn}");
+    // A bracket whose first move is an alternative stays one.
+    let text = page_text(vec![line(230.0, "1.e4 e5 2.Nf3 ( 2.Bc4 Nf6 ) Nc6")]);
+    let doc = build_page(&input(0, &text, &[], &[], &[]));
+    let pgn = pgn::write_game(&doc.games[0].score);
+    assert!(pgn.contains("2. Nf3 (2. Bc4 Nf6) 2... Nc6"), "{pgn}");
+}
+
 #[test]
 fn node_references_follow_the_canonical_order() {
     // The variation is read before the main move it is an alternative to is written: nodes are

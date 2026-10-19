@@ -77,10 +77,10 @@ All figures below are on the user's own models. Each has its command and the mac
 |---|---|---|
 | Find the diagrams | 0.31 s/page | 19 diagrams |
 | Find and read them | 0.53 s/page | 19 of 19 accepted |
-| The recognised document (text layer) | 0.86 s/page | 459 moves, 18 games, 369 valid (7 before column order, 61 before subset figurines, 324 before games across diagrams) |
+| The recognised document (text layer) | 0.86 s/page | 459 moves, 18 games, 381 valid (7 before column order, 61 before subset figurines, 324 before games across diagrams, 369 before bracketed replies) |
 | The recognised document with chess OCR | 1.8 s/page | |
 
-That PDF's pages are set in two columns, and its figurines come from a subset font that renumbers its glyphs. Lines are cut at the gutter and read column by column, and a diagram's printed coordinates are left out (valid moves 7 → 61). A figurine is read from the text layer when its code names no piece, so the page is no longer judged poor and handed to OCR, whose words (`Taf7asch` for Tarrasch) replaced a clean layer (61 → 324). Games are found across diagrams: a text after two diagrams printed side by side starts from the one its first move is legal in, a diagram of a game's own position does not end it, and after an alternative written as prose a move is tried on the main line (324 → 369). Most of the rest are "not reached" after a move that cannot be played, or belong to a diagram on a page that was not read.
+That PDF's pages are set in two columns, and its figurines come from a subset font that renumbers its glyphs. Lines are cut at the gutter and read column by column, and a diagram's printed coordinates are left out (valid moves 7 → 61). A figurine is read from the text layer when its code names no piece, so the page is no longer judged poor and handed to OCR, whose words (`Taf7asch` for Tarrasch) replaced a clean layer (61 → 324). Games are found across diagrams: a text after two diagrams printed side by side starts from the one its first move is legal in, a diagram of a game's own position does not end it, and after an alternative written as prose a move is tried on the main line (324 → 369). Brackets after a move that hold the replies to it (`1.Kb1 (1...b3 2.Kb2; 1...a3 …)`) are played after it (369 → 381; with page 49, which holds page 50's diagram, 402 of 478). Most of the rest are "not reached" after a move that cannot be played, or belong to a diagram on a page that was not read.
 
 ## Limits
 
