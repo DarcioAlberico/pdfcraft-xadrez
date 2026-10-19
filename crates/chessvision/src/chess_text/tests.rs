@@ -129,6 +129,16 @@ fn figurine_codes_in_the_symbol_range_are_folded() {
     assert_eq!(runs(&page.read(None)), vec![vec![mv("Nf3", "♘f3")]]);
 }
 
+/// A subset figurine font renumbers its glyphs (Dvoretsky's SemFig draws `K` under code 46, `.`):
+/// the code names no piece, so the extracted letter decides, and the page stays Good instead of
+/// being handed to OCR.
+#[test]
+fn subset_figurine_code_falls_back_to_the_text() {
+    let read = Page::new().text("1.").glyph("K", "SemFigBold", Some(46)).text("g8!! ").glyph("K", "SemFigNormal", Some(46)).text("xf5").read(None);
+    assert_eq!(runs(&read), vec![vec![white(1), mv("Kg8", "♔g8"), ChessRun::Nag(3), mv("Kxf5", "♔xf5")]]);
+    assert_eq!(read.quality, TextQuality::Good);
+}
+
 #[test]
 fn novelty_after_a_move_is_nag_146() {
     let read = Page::new().text("12.Nf4N").read(None);

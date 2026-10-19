@@ -194,11 +194,11 @@ impl GlyphMapper {
                     return;
                 }
                 // Otherwise the code decides: the catalogue's figurine layout puts the pieces on
-                // the English letters, whatever the text map says.
+                // the English letters, whatever the text map says. A subset font renumbers its
+                // codes (`K` drawn from code 46): when the code names no piece, a text map that
+                // says a piece letter is believed.
                 let single = if let [c] = chars.as_slice() { Some(*c) } else { None };
-                if let Some(letter) = code.or(single)
-                    && let Some(kind) = piece_letter(letter)
-                {
+                if let Some((letter, kind)) = [code, single].into_iter().flatten().find_map(|l| piece_letter(l).map(|k| (l, k))) {
                     out.push(Cell { piece_code: Some(kind), ..cell(letter) });
                     return;
                 }
