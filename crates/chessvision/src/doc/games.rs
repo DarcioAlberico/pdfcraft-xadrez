@@ -16,7 +16,10 @@
 //!   diagram just before a first move is not always its own. When the first move is not legal
 //!   there but is from a diagram nearby (this page or the one before) that no game started from,
 //!   the game starts from that one, flagged [`ReviewFlag::DiagramMatchedByMove`]. A `1.` the open
-//!   game cannot play, or would take as another first move, starts a new game the same way.
+//!   game cannot play, or would take as another first move, starts a new game the same way. A move
+//!   of the other side one ply before the game's start (`1.f5+` after a game from `1...f5`) that
+//!   is a first move from the game's own diagram starts a second game from it: books give the
+//!   solution for each side to move.
 //! - **The diagram's FEN.** The first move's number fixes the full-move number, and the side to
 //!   move when the reading only assumed it (`1...Kd7` under a diagram read as White to move, if the
 //!   position allows Black to move; flagged [`ReviewFlag::SideFromMoveNumber`]). A reading that
@@ -603,6 +606,8 @@ struct Open {
     too_large: bool,
     /// Moves whose first reply was read inside brackets: the main line's own reply goes first.
     replies: Vec<usize>,
+    /// The diagram the game started from.
+    seed: Option<Seed>,
 }
 
 /// The finished walk.
@@ -878,10 +883,13 @@ impl Walker {
             }
             other => other,
         };
+        let mut started_from = None;
         let (origin, score, mut flags, honour) = match anchor {
             Anchor::Seed(seed) => match seed_score(&seed, number) {
                 Some((score, flags, honour)) => {
-                    (GameOrigin::Diagram { page: seed.page, diagram: seed.diagram, accepted: seed.accepted }, score, flags, honour)
+                    let origin = GameOrigin::Diagram { page: seed.page, diagram: seed.diagram, accepted: seed.accepted };
+                    started_from = Some(seed);
+                    (origin, score, flags, honour)
                 }
                 None => {
                     self.blocked.push((seed.page, seed.diagram));
@@ -913,8 +921,15 @@ impl Walker {
             }
         };
         let flags = flags.into_iter().map(|flag| GameFlag { page: loc.page, source_rect: loc.rect, flag }).collect();
-        self.open =
-            Some(Open { game: self.games.len(), lines: vec![Line::default()], overflow: 0, truncated: false, too_large: false, replies: Vec::new() });
+        self.open = Some(Open {
+            game: self.games.len(),
+            lines: vec![Line::default()],
+            overflow: 0,
+            truncated: false,
+            too_large: false,
+            replies: Vec::new(),
+            seed: started_from,
+        });
         self.games.push(Game { origin, trusted, page: loc.page, score, flags });
         self.remaps.push(Vec::new());
         Some(honour)
@@ -943,12 +958,34 @@ impl Walker {
             self.anchor = Anchor::Seed(spare);
             self.matched = true;
         }
-        // A new `1.` after a game from the initial position has moved on is a new game.
-        if number == Some(MoveNumber { number: 1, black: false })
+        // The other side's move of the game's first move number, a first move from the game's own
+        // diagram: the text gave one side's solution, then the other's (`Black, if on move, holds
+        // by 1...f5`, then `1.f5+`). It starts a second game from the diagram.
+        if let Some(n) = number
             && let Some(open) = &self.open
             && open.lines.len() == 1
-            && open.lines.first().is_some_and(|l| l.moved)
-            && self.games.get(open.game).is_some_and(|g| g.origin == GameOrigin::Initial)
+            && let Some(seed) = &open.seed
+            && let Some(game) = self.games.get(open.game)
+            && game.score.start_ply() == Some(ply_of(n).saturating_add(1))
+            && seed_fits(seed, number, san)
+        {
+            let seed = seed.clone();
+            self.close();
+            self.anchor = Anchor::Seed(seed);
+        }
+        // A new `1.` after a game from the initial position has moved on is a new game. So is a
+        // `1.` that a game from a later move's diagram cannot play and the initial position can:
+        // a game collection's next game, after the diagrams of the last one.
+        let first = MoveNumber { number: 1, black: false };
+        if number == Some(first)
+            && let Some(open) = &self.open
+            && let [main] = open.lines.as_slice()
+            && main.moved
+            && let Some(game) = self.games.get(open.game)
+            && (game.origin == GameOrigin::Initial
+                || (game.score.start_ply().is_some_and(|p| p > ply_of(first).saturating_add(1))
+                    && !playable(&game.score, main, number, san)
+                    && san.to_move(&Board::default()).is_ok()))
         {
             self.close();
             self.anchor = Anchor::None;

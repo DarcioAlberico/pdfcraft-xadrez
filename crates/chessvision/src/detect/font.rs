@@ -13,6 +13,11 @@
 //!
 //! Only families whose layout was checked ([`Family::readable`]) are read. An unverified family
 //! is skipped unless the caller opts in.
+//!
+//! A subset font renumbers its codes (Dvoretsky's Chess-Merida draws its light square under code
+//! 4), while its text map still gives the font's own characters. Each font is read by whichever
+//! of the two the catalogue understands for more of its glyphs, so one renumbered code that
+//! happens to name a piece cannot mix into a board read from the text.
 
 use pdfcraft_chess::catalog::{Family, GlyphKind, SquareColor, lookup_family};
 use pdfcraft_chess::placement::{Piece, Placement};
@@ -49,6 +54,10 @@ const ROW_TOLERANCE: f32 = 0.35;
 const COLUMN_TOLERANCE: f32 = 0.30;
 /// Rows of a board are one square apart, within this share of a square.
 const ROW_STEP_TOLERANCE: f32 = 0.25;
+/// Smallest square, in points: a smaller glyph is not a diagram square (Dvoretsky's Merida
+/// scatters 0.7 pt space glyphs between its 24 pt squares, more of them than squares, which
+/// would set the square size).
+const MIN_SQUARE_PT: f32 = 3.0;
 /// Fewest square glyphs a rank must show; the rest are taken as empty squares whose glyph the
 /// extractor dropped.
 const MIN_CELLS_PER_ROW: usize = 4;
@@ -66,6 +75,7 @@ struct Cell {
 
 /// Diagrams set in a chess diagram font on one page.
 pub fn candidates(glyphs: &[FontGlyph], page: &PageGeometry, options: Options) -> Vec<DiagramCandidate> {
+    let by_text = text_read_fonts(glyphs);
     let mut by_font: Vec<(&'static Family, Vec<Cell>)> = Vec::new();
     for g in glyphs.iter().take(MAX_GLYPHS) {
         let Some(family) = lookup_family(&g.font) else { continue };
@@ -77,13 +87,14 @@ pub fn candidates(glyphs: &[FontGlyph], page: &PageGeometry, options: Options) -
         if family.key == "unicode" {
             continue;
         }
-        let Some(c) = glyph_char(g) else { continue };
+        let c = if by_text.iter().any(|f| *f == g.font) { text_char(g) } else { glyph_char(g) };
+        let Some(c) = c else { continue };
         let Some(role) = family.role(c) else { continue };
         if !role.occupies_cell() {
             continue;
         }
         let (w, h) = (g.rect.width(), g.rect.height());
-        if !(w.is_finite() && h.is_finite() && w > 0.0 && h > 0.0) {
+        if !(w.is_finite() && h.is_finite() && w >= MIN_SQUARE_PT && h >= MIN_SQUARE_PT) {
             continue;
         }
         let piece = match role.kind {
@@ -119,12 +130,35 @@ pub fn candidates(glyphs: &[FontGlyph], page: &PageGeometry, options: Options) -
 fn glyph_char(g: &FontGlyph) -> Option<char> {
     match g.code {
         Some(code) if code <= 0xFF => char::from_u32(code),
-        _ => {
-            let mut chars = g.text.chars();
-            let c = chars.next()?;
-            chars.next().is_none().then_some(c)
+        _ => text_char(g),
+    }
+}
+
+/// The glyph's text, when it is one character.
+fn text_char(g: &FontGlyph) -> Option<char> {
+    let mut chars = g.text.chars();
+    let c = chars.next()?;
+    chars.next().is_none().then_some(c)
+}
+
+/// The fonts read by their text rather than their codes: those whose text the catalogue knows
+/// for more glyphs than their codes (a subset font's renumbered codes).
+fn text_read_fonts(glyphs: &[FontGlyph]) -> Vec<&str> {
+    // (font, glyphs known by code, glyphs known by text)
+    let mut tally: Vec<(&str, u32, u32)> = Vec::new();
+    for g in glyphs.iter().take(MAX_GLYPHS) {
+        let Some(family) = lookup_family(&g.font) else { continue };
+        let known = |c: Option<char>| u32::from(c.and_then(|c| family.role(c)).is_some());
+        let (code, text) = (known(glyph_char(g)), known(text_char(g)));
+        match tally.iter_mut().find(|(f, _, _)| *f == g.font) {
+            Some((_, c, t)) => {
+                *c = c.saturating_add(code);
+                *t = t.saturating_add(text);
+            }
+            None => tally.push((&g.font, code, text)),
         }
     }
+    tally.into_iter().filter(|(_, code, text)| text > code).map(|(f, _, _)| f).collect()
 }
 
 struct Board {
@@ -322,6 +356,36 @@ mod tests {
         // 160 × 160 pt from (100, 100) in view space; y flips into user space on an 800 pt page.
         assert!((c.bbox_user.x0 - 100.0).abs() < 0.01 && (c.bbox_user.x1 - 260.0).abs() < 0.01, "{:?}", c.bbox_user);
         assert!((c.bbox_user.y0 - 540.0).abs() < 0.01 && (c.bbox_user.y1 - 700.0).abs() < 0.01, "{:?}", c.bbox_user);
+    }
+
+    /// A subset Merida whose codes were renumbered (1, 2, 3 … in order of first use), its text map
+    /// still giving Merida's characters: the board is read from the text.
+    #[test]
+    fn a_subset_font_with_renumbered_codes_is_read_by_its_text() {
+        let mut glyphs = merida(START, "ABCDEF+Chess-Merida");
+        let mut seen: Vec<String> = Vec::new();
+        for g in &mut glyphs {
+            let i = seen.iter().position(|t| *t == g.text).unwrap_or_else(|| {
+                seen.push(g.text.clone());
+                seen.len() - 1
+            });
+            g.code = Some(i as u32 + 1);
+        }
+        // And between the squares, more tiny space glyphs than squares (as that book has them).
+        for r in 0..8 {
+            for c in 0..10 {
+                let (x, y) = (100.0 + c as f32 * 17.0, 113.0 + r as f32 * 20.0);
+                glyphs.push(FontGlyph {
+                    font: "ABCDEF+Chess-Merida".into(),
+                    code: Some(3),
+                    text: " ".into(),
+                    rect: ViewRect::new(x, y, x + 0.7, y + 0.7),
+                });
+            }
+        }
+        let found = candidates(&glyphs, &page(), Options::default());
+        assert_eq!(found.len(), 1);
+        assert_eq!(format_placement(found[0].placement.as_ref().unwrap()), "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
     }
 
     #[test]

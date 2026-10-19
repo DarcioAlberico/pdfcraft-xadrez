@@ -76,18 +76,26 @@ All figures below are on the user's own models. Each has its command and the mac
 - **Chess OCR, fused with ocrs:** CER 0.88% and 98.0% of moves exact on the Caïssa benchmark (744 lines). These numbers are in-sample: the Dvoretsky lines are in the model's training data.
   - A scanned line of ten Helvetica moves is read 10 of 10.
   - Outline figurines in fonts the model never saw are still weak, at about 74% of moves for DejaVu Sans.
-- Diagrams set in a chess diagram font are read exactly, from the text.
+- Diagrams set in a chess diagram font are read exactly, from the text. A subset font whose codes were renumbered is read by its text map, and glyphs under 3 pt (stray spaces between the squares) are not squares.
 
 **Speed and a real book** (2026-10-18, `pdfcraft-cli run` in release, the user's models, Windows 11 on an AMD desktop; *Dvoretsky's Endgame Manual* (2025), pages 51–60, one process per run, so nothing cached):
 
 | Step | Time | Result |
 |---|---|---|
 | Find the diagrams | 0.31 s/page | 19 diagrams |
-| Find and read them | 0.53 s/page | 19 of 19 accepted |
+| Find and read them | 0.53 s/page | 19 of 19 accepted, all from the diagram font (before, by the piece model: the subset font's renumbered codes and its 0.7 pt spaces hid the boards; without the models no diagram was read and no move checked) |
 | The recognised document (text layer) | 0.86 s/page | 459 moves, 18 games, 381 valid (7 before column order, 61 before subset figurines, 324 before games across diagrams, 369 before bracketed replies) |
 | The recognised document with chess OCR | 1.8 s/page | |
 
-That PDF's pages are set in two columns, and its figurines come from a subset font that renumbers its glyphs. Lines are cut at the gutter and read column by column, and a diagram's printed coordinates are left out (valid moves 7 → 61). A figurine is read from the text layer when its code names no piece, so the page is no longer judged poor and handed to OCR, whose words (`Taf7asch` for Tarrasch) replaced a clean layer (61 → 324). Games are found across diagrams: a text after two diagrams printed side by side starts from the one its first move is legal in, a diagram of a game's own position does not end it, and after an alternative written as prose a move is tried on the main line (324 → 369). Brackets after a move that hold the replies to it (`1.Kb1 (1...b3 2.Kb2; 1...a3 …)`) are played after it (369 → 381; with page 49, which holds page 50's diagram, 402 of 478). Most of the rest are "not reached" after a move that cannot be played, or belong to a diagram on a page that was not read.
+That PDF's pages are set in two columns, and its figurines come from a subset font that renumbers its glyphs. Lines are cut at the gutter and read column by column, and a diagram's printed coordinates are left out (valid moves 7 → 61). A figurine is read from the text layer when its code names no piece, so the page is no longer judged poor and handed to OCR, whose words (`Taf7asch` for Tarrasch) replaced a clean layer (61 → 324). Games are found across diagrams: a text after two diagrams printed side by side starts from the one its first move is legal in, a diagram of a game's own position does not end it, and after an alternative written as prose a move is tried on the main line (324 → 369). Brackets after a move that hold the replies to it (`1.Kb1 (1...b3 2.Kb2; 1...a3 …)`) are played after it (369 → 381; with page 49, which holds page 50's diagram, 402 of 478). A diagram whose text gives the solution for each side to move (`Black, if on move, holds by 1...f5`, then `1.f5+`) starts a game for each: on pages 100–119, valid moves went from 790 to 812 of 978. Most of the rest are "not reached" after a move that cannot be played (often a position the prose describes but the book does not print), or belong to a diagram on a page that was not read.
+
+### A game collection: Fischer's *My 60 Memorable Games* (Portuguese edition)
+
+That book prints move numbers with no full stop (`19 ♖xd5`, Black's `15 … ♖xb6`), sets its game text larger than the introductions, and opens each game with a short introduction in a smaller italic. Numbers are now read without the full stop when a move follows; the body size is the book's, not the page's, so a page that opens a game does not make its moves and notes headings; a block with moves is never a heading; and a `1.` that the game from the last diagram cannot play starts the next game from the initial position. On pages 30–59, valid moves went from 142 to 468 of 1179 (and 63 false headings to 8 true ones), and the eight game titles and subtitles are the headings.
+
+### A scanned book with an old OCR layer: Aagaard, *A Matter of Endgame Technique*
+
+That PDF is a scan under an invisible text layer in Courier New, left by an earlier OCR program that read the figurines as stray symbols (`50.&xe5 ®f7 51.^d5`). Every move failed. Such words now make the layer poor (at least three on a page), so chess OCR reads the page again; the old layer's block sizes no longer decide headings on a page read with OCR; and a check written `†` (which OCR returns as a cross, `✝`) or mate `‡` after a move is read. On pages 40–49, with the models, valid moves went from 0 of 102 to 80 of 374. Moves OCR cuts with spaces (`♖ e 1`, `f1 =♕`) are put back together (80 → 87 of 376); the rest are mostly OCR misreadings.
 
 ## Limits
 

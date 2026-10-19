@@ -405,6 +405,47 @@ fn brackets_can_hold_the_replies_to_a_move() {
     assert!(pgn.contains("2. Nf3 (2. Bc4 Nf6) 2... Nc6"), "{pgn}");
 }
 
+/// One diagram, the solution for each side to move: Black's first (`1...Kd5`, the side taken
+/// from the move number), then White's (`1.Rh6+`). Each is a game from the diagram.
+#[test]
+fn a_diagram_can_have_a_solution_for_each_side() {
+    let rook = "8/8/4k3/8/8/4K3/r7/7R w - - 0 1";
+    let text = page_text(vec![line(230.0, "If Black is on move, 1...Kd5 2.Rh5+ . White plays 1.Rh6+ Kd5 2.Rh5+")]);
+    let doc = build_page(&input(0, &text, &[reading(0, 60.0, rook, true, true)], &[], &[]));
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    assert_eq!(doc.games.len(), 2);
+    assert_eq!(doc.games[0].score.start_fen.as_deref(), Some("8/8/4k3/8/8/4K3/r7/7R b - - 0 1"));
+    assert_eq!(doc.games[1].score.start_fen.as_deref(), Some("8/8/4k3/8/8/4K3/r7/7R w - - 0 1"));
+    assert_eq!(doc.games[1].origin, GameOrigin::Diagram { page: 0, diagram: 0, accepted: true });
+}
+
+/// Main lines set larger than the notes: a block with moves is a paragraph even when its size
+/// makes it a heading, so it does not end the game.
+#[test]
+fn a_block_with_moves_is_never_a_heading() {
+    let text = page_text(vec![line(40.0, "1.e4 e5"), line(70.0, "Both sides open."), line(100.0, "2.Nf3 Nc6")]);
+    let hints = [
+        BlockHint { kind: HintKind::Heading { level: 2 }, rect: user_box(30.0, 35.0, 300.0, 55.0) },
+        BlockHint { kind: HintKind::Heading { level: 2 }, rect: user_box(30.0, 95.0, 300.0, 115.0) },
+    ];
+    let doc = build_page(&input(0, &text, &[], &hints, &[]));
+    assert!(kinds(&doc.pages[0]).iter().all(|k| k.starts_with("P:")), "{:?}", kinds(&doc.pages[0]));
+    assert_eq!(doc.games.len(), 1);
+    assert_eq!(doc.games[0].score.mainline().len(), 4);
+}
+
+/// A game collection: the last game's diagram (at move 26), then the next game from move 1.
+#[test]
+fn a_new_game_from_one_after_a_later_diagram() {
+    // White to play move 27.
+    let after = "1r3rk1/3b1p1p/1q1p2p1/3Pb3/1p6/P7/1PR1BQPP/5R1K w - - 0 27";
+    let text = page_text(vec![line(230.0, "27.Bc4 Rb7 . Next game 1.c4 Nf6 2.Nc3 g6")]);
+    let doc = build_page(&input(0, &text, &[reading(0, 60.0, after, true, false)], &[], &[]));
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    assert_eq!(doc.games.len(), 2);
+    assert_eq!(doc.games[1].origin, GameOrigin::Initial);
+}
+
 #[test]
 fn node_references_follow_the_canonical_order() {
     // The variation is read before the main move it is an alternative to is written: nodes are

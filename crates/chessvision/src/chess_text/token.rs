@@ -140,9 +140,11 @@ fn split_marks(chars: &[char], standalone: bool) -> Option<Vec<(Mark, Range<usiz
             at += n;
         } else {
             match rest.chars().next() {
-                Some(c @ ('+' | '#')) if !standalone => {
-                    out.push((Mark::Check(c), at..at + 1));
-                    byte += 1;
+                // After a move only: `†` (and the crosses OCR reads it as) is check, `‡` mate.
+                // In prose a dagger is a footnote or a date of death.
+                Some(c @ ('+' | '#' | '†' | '✝' | '✞' | '‡')) if !standalone => {
+                    out.push((Mark::Check(if c == '‡' || c == '#' { '#' } else { '+' }), at..at + 1));
+                    byte += c.len_utf8();
                     at += 1;
                 }
                 _ => return None,
@@ -203,6 +205,49 @@ fn parse_move(chars: &[char], lang: Lang) -> Option<MoveParse> {
         return Some(MoveParse { san, head, marks });
     }
     None
+}
+
+/// Whether a word, numbered or not, reads as a move in `lang`.
+fn reads_as_move(cells: &[Cell], lang: Lang) -> bool {
+    let chars: Vec<char> = cells.iter().map(|c| c.ch).collect();
+    let p = parts(&chars);
+    chars.get(p.core).and_then(|core| parse_move(core, lang)).is_some()
+}
+
+/// Step 2b: put back together a move that OCR cut with spaces. A lone figurine and the one or
+/// two words after it (`♖ e1`, `♖ e 1`) join when together they read as a move; so do a move to
+/// the last rank and a promotion written apart (`f1 =♕`). A figurine in prose (`the ♗ pair`)
+/// joins nothing.
+pub(crate) fn join_split_moves(words: Vec<Vec<Cell>>, lang: Lang) -> Vec<Vec<Cell>> {
+    let mut out: Vec<Vec<Cell>> = Vec::with_capacity(words.len());
+    let mut i = 0;
+    while let Some(word) = words.get(i) {
+        let lone_figurine = matches!(word.as_slice(), [c] if figurine_piece(c.ch).is_some());
+        let promotion_next = words.get(i + 1).is_some_and(|next| next.first().is_some_and(|c| c.ch == '='));
+        let spans: &[usize] = if lone_figurine {
+            &[1, 2]
+        } else if promotion_next {
+            &[1]
+        } else {
+            &[]
+        };
+        let joined = spans.iter().find_map(|&n| {
+            let rest = words.get(i + 1..=i + n)?;
+            let cells: Vec<Cell> = std::iter::once(word).chain(rest).flatten().copied().collect();
+            (cells.len() <= MAX_WORD_CHARS && reads_as_move(&cells, lang)).then_some((cells, n))
+        });
+        match joined {
+            Some((cells, n)) => {
+                out.push(cells);
+                i += 1 + n;
+            }
+            None => {
+                out.push(word.clone());
+                i += 1;
+            }
+        }
+    }
+    out
 }
 
 fn is_piece_move(m: &MoveParse) -> bool {
@@ -302,10 +347,21 @@ pub(crate) struct Token {
     rect: Option<[f32; 4]>,
     /// A bare pawn move or a number with nothing after it: notation only next to other notation.
     weak: bool,
+    /// A number with no full stop (`19 Rxd5`, `15 … Rxb6`, as some books print them): a move
+    /// number only when the next word is a move or an ellipsis.
+    bare: bool,
 }
 
 fn token(kind: Kind, cells: &[Cell]) -> Token {
-    Token { kind, text: cells.iter().map(|c| c.ch).collect(), rect: rect_of(cells), weak: false }
+    Token { kind, text: cells.iter().map(|c| c.ch).collect(), rect: rect_of(cells), weak: false, bare: false }
+}
+
+/// A word that is only a move number's digits (`19`).
+fn bare_number(chars: &[char]) -> Option<u16> {
+    if chars.is_empty() || chars.len() > MAX_NUMBER_DIGITS || !chars.iter().all(char::is_ascii_digit) {
+        return None;
+    }
+    chars.iter().collect::<String>().parse().ok().filter(|n| *n > 0)
 }
 
 /// Step 4a: cut one word into tokens, reading moves in `lang`.
@@ -316,6 +372,17 @@ pub(crate) fn tokenize(word: &[Cell], lang: Lang) -> Vec<Token> {
     let chars: Vec<char> = word.iter().map(|c| c.ch).collect();
     let p = parts(&chars);
     let cells = |r: Range<usize>| word.get(r).unwrap_or(&[]);
+    // A bare number, maybe after an opening quote or bracket (`“57 Rh7`).
+    if p.number.is_none()
+        && let Some(number) = chars.get(p.lead..).and_then(bare_number)
+    {
+        let mut out = Vec::new();
+        if p.lead > 0 {
+            out.push(token(Kind::Text, cells(0..p.lead)));
+        }
+        out.push(Token { bare: true, ..token(Kind::Number { number, black: false }, cells(p.lead..chars.len())) });
+        return out;
+    }
     let mut out = Vec::new();
     let push_text = |out: &mut Vec<Token>, r: Range<usize>| {
         if !r.is_empty() {
@@ -373,7 +440,8 @@ pub(crate) fn tokenize(word: &[Cell], lang: Lang) -> Vec<Token> {
 /// Step 4b: settle the weak tokens of a page's words (`lines` of words of tokens). A bare pawn
 /// move or a lone number is notation when a neighbouring word is notation (or another weak
 /// token); otherwise it is prose. Words run on across line ends, so a move number that ends a
-/// line (`… 12.`) is settled by the move that starts the next.
+/// line (`… 12.`) is settled by the move that starts the next. A bare number is a move number
+/// only before a word that starts with a move or an ellipsis.
 pub(crate) fn settle(lines: &mut [Vec<Vec<Token>>]) {
     let mut words: Vec<&mut Vec<Token>> = lines.iter_mut().flatten().collect();
     // A word "is notation" when it holds a notation token and no word-like prose.
@@ -381,13 +449,16 @@ pub(crate) fn settle(lines: &mut [Vec<Vec<Token>>]) {
         .iter()
         .map(|w| w.iter().any(|t| t.kind.is_notation()) && !w.iter().any(|t| t.kind == Kind::Text && t.text.chars().any(char::is_alphanumeric)))
         .collect();
+    let opens_move: Vec<bool> = words.iter().map(|w| w.first().is_some_and(|t| matches!(t.kind, Kind::Move(_) | Kind::Ellipsis))).collect();
     for (i, word) in words.iter_mut().enumerate() {
         let neighbour = i.checked_sub(1).and_then(|p| notation.get(p)).copied().unwrap_or(false) || notation.get(i + 1).copied().unwrap_or(false);
+        let before_move = opens_move.get(i + 1).copied().unwrap_or(false);
         for t in word.iter_mut() {
-            if t.weak && !neighbour {
+            if (t.weak && !neighbour) || (t.bare && !before_move) {
                 t.kind = Kind::Text;
             }
             t.weak = false;
+            t.bare = false;
         }
     }
 }
