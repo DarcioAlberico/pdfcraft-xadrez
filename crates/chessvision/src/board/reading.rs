@@ -32,7 +32,7 @@
 use pdfcraft_chess::placement::{Color, Placement};
 use pdfcraft_chess::recognize::decode::{Change, Limits};
 use pdfcraft_chess::recognize::orient::{Verdict, orient};
-use pdfcraft_chess::recognize::side::{SideToMove, compose_position, infer_side_to_move};
+use pdfcraft_chess::recognize::side::{SideSource, SideToMove, compose_position, infer_side_to_move};
 use pdfcraft_chess::recognize::{CLASS_COUNT, Probabilities, ProbabilityError, Reading, Uncertain};
 use pdfcraft_chess::rules::{Legality, check_position};
 use pdfcraft_geom::PageRect;
@@ -150,6 +150,16 @@ impl ReadPosition {
     /// Whether the decoder changed any square.
     pub fn repaired(&self) -> bool {
         !self.repairs.is_empty()
+    }
+
+    /// Take the side to move a source declared (the bold move number under the diagram, say),
+    /// with its move number, and rebuild the FEN. The position still wins: when it proves the
+    /// other side, that side is kept, the conflict is flagged and the move number, which belongs
+    /// to the other side's move, is dropped.
+    pub fn declare_side(&mut self, color: Color, source: SideSource, fullmove: u32) {
+        self.side = infer_side_to_move(&self.placement, Some((color, source)));
+        let fullmove = if self.side.conflicting { 1 } else { fullmove };
+        self.fen = compose_position(self.placement, self.side.color, None, fullmove).fen();
     }
 
     /// The lichess analysis URL of the position, only when it is legal with the side to move it

@@ -25,6 +25,7 @@ Open the **Chess diagrams** panel (`chess.panel`), or run **Chess ▸ Scan** (`c
 - **Scan this page** or **Scan all pages** find the diagrams. Pages are scanned in batches in the background, and each batch shows as soon as it is done.
   - Boxes on the page show each diagram's state: read, needs review, not read, or failed.
   - Any edit makes the scan stale. The boxes leave the page until you scan again.
+  - **Side to move.** In a born-digital PDF the game usually goes on under the diagram with its first move number in bold: **23.** Nf3 means White is to move, **23...** Rxe4 means Black is. The first bold move number under a diagram (in its column, before the next diagram) sets the side to move and the move number in the FEN and the lichess link. A move number in the body font is prose and is passed over. When the position proves the other side (the side not to move would be in check), the position wins and the reading is flagged. Without either, White is assumed.
 - **Pick a diagram**, in the list or on the page, to open the **editor**.
   - The editor shows the position on a board. Click a square to put the chosen piece there, and click it again to empty it.
   - You can also set the side to move and the castling rights, flip the board, or go back to the reading.

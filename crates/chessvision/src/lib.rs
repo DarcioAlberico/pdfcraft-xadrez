@@ -26,3 +26,4 @@ pub mod models;
 pub mod order;
 pub mod pieces;
 pub mod raster;
+pub mod side_text;
