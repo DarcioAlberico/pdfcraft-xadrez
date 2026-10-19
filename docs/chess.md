@@ -88,7 +88,7 @@ That book prints move numbers with no full stop (`19 ♖xd5`, Black's `15 … �
 
 ### A scanned book with an old OCR layer: Aagaard, *A Matter of Endgame Technique*
 
-That PDF is a scan under an invisible text layer in Courier New, left by an earlier OCR program that read the figurines as stray symbols (`50.&xe5 ®f7 51.^d5`). Every move failed. Such words now make the layer poor (at least three on a page), so chess OCR reads the page again; the old layer's block sizes no longer decide headings on a page read with OCR; and a check written `†` (which OCR returns as a cross, `✝`) or mate `‡` after a move is read. On pages 40–49, with the models, valid moves went from 0 of 102 to 80 of 374; the rest are mostly OCR misreadings.
+That PDF is a scan under an invisible text layer in Courier New, left by an earlier OCR program that read the figurines as stray symbols (`50.&xe5 ®f7 51.^d5`). Every move failed. Such words now make the layer poor (at least three on a page), so chess OCR reads the page again; the old layer's block sizes no longer decide headings on a page read with OCR; and a check written `†` (which OCR returns as a cross, `✝`) or mate `‡` after a move is read. On pages 40–49, with the models, valid moves went from 0 of 102 to 80 of 374. Moves OCR cuts with spaces (`♖ e 1`, `f1 =♕`) are put back together (80 → 87 of 376); the rest are mostly OCR misreadings.
 
 ## Limits
 
