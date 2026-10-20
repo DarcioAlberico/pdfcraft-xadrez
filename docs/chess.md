@@ -1,7 +1,7 @@
 # Chess books
 
 **Status:** current to 2026-10-20 (blueprint steps S1–S18; see [`chess/blueprint.md`](chess/blueprint.md)).
-**Revision history:** 2026-10-18 — first version, after S18. 2026-10-19 — the chess board panel, its variations, annotations, game details and `chess_game`; book origin, and hidden OCR layers over scans. 2026-10-20 — the main line by printed weight (bold moves).
+**Revision history:** 2026-10-18 — first version, after S18. 2026-10-19 — the chess board panel, its variations, annotations, game details and `chess_game`; book origin, and hidden OCR layers over scans. 2026-10-20 — the main line by printed weight (bold moves); `chess_pgn_edit`.
 
 PdfCraft can read a chess book in PDF. It finds the diagrams, reads each one as a position (FEN), and reads the moves in the text, including figurines and annotation signs. It can redraw a diagram, put a lichess link under it, and export the book as HTML, EPUB, Word, RTF, Markdown or PGN. Everything runs on your machine; nothing is sent anywhere.
 
@@ -88,6 +88,7 @@ Every feature is also a tool (`pdfcraft-cli tools`; the MCP server is opt-in):
 | `chess_replace_diagram`, `content_draw` | redraw a diagram (one undo step); the generic checked-operators edit under it |
 | `chess_add_lichess_links` | a label and link under every legal, accepted diagram |
 | `chess_game` | the board without a document: a game from a FEN or a PGN, moves in SAN or UCI, the position at a ply with its legal moves, and the game as PGN |
+| `chess_pgn_edit` | a game's moves without the board: play, comment (after or before a move), glyphs, promote one level, make main line, demote, delete a variation, cut, and graft move text as a variation, as the line or as a comment, at a main-line half-move (`main:35`) or a reply path (`path:0.1`), with a report per operation; inline only |
 | `chess_export_html`, `_epub`, `_docx`, `_rtf`, `_markdown`, `_pgn` | the exports |
 
 `pdfcraft-cli chess scan FILE` prints the diagrams found. All paths are confined to `--root`.
