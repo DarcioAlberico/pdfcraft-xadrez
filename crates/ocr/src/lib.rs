@@ -314,7 +314,10 @@ pub struct TextLayer {
 /// figurines become SAN letters (♘ → N); [`write_text_layer`] keeps them when it can.
 pub fn text_layer(words: &[PlacedWord]) -> TextLayer {
     let mut degraded = std::collections::BTreeMap::new();
-    let mut out = b"/OCR BMC\nBT\n3 Tr\n/PCHelv 1 Tf\n".to_vec();
+    // `3 Tr` and the font are graphics state, which `ET` doesn't reset: without `q … Q` they
+    // would stay set for every later content stream on the page, so text added after OCR (a
+    // header or footer) drew invisibly (#3029).
+    let mut out = b"/OCR BMC\nq\nBT\n3 Tr\n/PCHelv 1 Tf\n".to_vec();
     for w in words {
         let text = win_ansi_form(&w.text, &mut degraded);
         if text.is_empty() {
@@ -324,7 +327,7 @@ pub fn text_layer(words: &[PlacedWord]) -> TextLayer {
             show(&mut out, m, &pdfcraft_fonts::literal(&pdfcraft_fonts::win_ansi(&text)));
         }
     }
-    out.extend_from_slice(b"ET\nEMC\n");
+    out.extend_from_slice(b"ET\nQ\nEMC\n");
     TextLayer { content: out, degraded: degraded.into_iter().map(|(ch, w)| Degraded { ch, written: w.into() }).collect() }
 }
 
@@ -425,7 +428,8 @@ pub fn unicode_text_layer(doc: &mut Document, fonts: &mut Dict, words: &[PlacedW
         codes.insert(c, (cid, advance));
         mapping.push((c.to_string(), g));
     }
-    let mut out = b"/OCR BMC\nBT\n3 Tr\n".to_vec();
+    // Inside `q … Q`, as in [`text_layer`] (#3029).
+    let mut out = b"/OCR BMC\nq\nBT\n3 Tr\n".to_vec();
     if !mapping.is_empty() {
         let resource = embedding::embed_mapping(doc, fonts, face, family, &mapping).map_err(OcrError::Font)?;
         out.extend_from_slice(format!("/{resource} 1 Tf\n").as_bytes());
@@ -441,7 +445,7 @@ pub fn unicode_text_layer(doc: &mut Document, fonts: &mut Dict, words: &[PlacedW
         hex.push('>');
         show(&mut out, m, hex.as_bytes());
     }
-    out.extend_from_slice(b"ET\nEMC\n");
+    out.extend_from_slice(b"ET\nQ\nEMC\n");
     Ok(out)
 }
 
@@ -476,6 +480,26 @@ mod tests {
         // "Hi" has no descender: its box spans the cap height, from the baseline up.
         assert!(s.contains(&format!("{} 0 0 {} 10 20 Tm (Hi) Tj", num(30.0 / width), num(9.3 / CAP_HEIGHT))), "{s}");
         assert!(s.starts_with("/OCR BMC") && s.ends_with("EMC\n"));
+    }
+
+    /// #3029: the layer's invisible rendering mode and font end with the layer. Every operator
+    /// that sets them sits inside a `q … Q` pair that the layer closes itself, so content drawn
+    /// after it on the page starts from the graphics state it had before.
+    #[test]
+    fn the_layer_restores_the_graphics_state_it_changes() {
+        let w = PlacedWord { text: "Hi".into(), origin: [10.0, 20.0], across: [30.0, 0.0], up: [0.0, 9.3] };
+        let s = String::from_utf8(text_layer(&[w]).content).unwrap();
+        let mut depth = 0_i32;
+        for token in s.split_ascii_whitespace() {
+            match token {
+                "q" => depth += 1,
+                "Q" => depth -= 1,
+                "Tr" | "Tf" | "Tm" => assert!(depth > 0, "`{token}` outside q … Q in {s:?}"),
+                _ => {}
+            }
+            assert!(depth >= 0, "unbalanced Q in {s:?}");
+        }
+        assert_eq!(depth, 0, "the layer leaves a q open: {s:?}");
     }
 
     /// A word box is tight around the ink, so the text's size and baseline come from the letters:
@@ -647,7 +671,7 @@ mod tests {
         let words = [word("1.♘f3", 10.0), word("⩲", 50.0), word("♔♕♖♗♙♚♛♜♝♞♟", 90.0), word("e4!?", 150.0)];
         let (doc, font, content) = saved_layer(&words);
         let s = String::from_utf8_lossy(&content);
-        assert!(s.starts_with("/OCR BMC\nBT\n3 Tr\n/PCFull0 1 Tf\n") && s.ends_with("ET\nEMC\n"), "{s}");
+        assert!(s.starts_with("/OCR BMC\nq\nBT\n3 Tr\n/PCFull0 1 Tf\n") && s.ends_with("ET\nQ\nEMC\n"), "{s}");
         assert_eq!(font.name(b"Subtype"), Some(&b"Type0"[..]));
         assert_eq!(font.name(b"Encoding"), Some(&b"Identity-H"[..]));
         assert!(font.get(b"ToUnicode").is_some());
@@ -729,7 +753,7 @@ mod tests {
             let words: Vec<PlacedWord> =
                 words.into_iter().map(|(text, x, w, h)| PlacedWord { text, origin: [x, 50.0], across: [w, 0.0], up: [0.0, h] }).collect();
             let helvetica = text_layer(&words);
-            proptest::prop_assert!(helvetica.content.ends_with(b"ET\nEMC\n"));
+            proptest::prop_assert!(helvetica.content.ends_with(b"ET\nQ\nEMC\n"));
             let (doc, font, content) = saved_layer(&words);
             let m = pdfcraft_fonts::pdf::Metrics::from_dict(&doc, &font);
             let read: Vec<String> = shown_hex(&content).iter().map(|h| m.decode(h)).collect();
