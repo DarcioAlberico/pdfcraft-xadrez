@@ -133,7 +133,7 @@ pub enum EditorAction {
     OpenBoard,
 }
 
-fn piece_letter(p: Piece) -> String {
+pub(crate) fn piece_letter(p: Piece) -> String {
     let c = match p.kind {
         PieceKind::King => 'K',
         PieceKind::Queen => 'Q',

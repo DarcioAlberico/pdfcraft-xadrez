@@ -2817,3 +2817,26 @@ key	Space	Space
 	Result	Kết quả
 	Round	Vòng
 	Site	Địa điểm
+# Chess ▸ Study board: set-up, drawings and engine analysis.
+	Study board	Bàn cờ nghiên cứu
+	Set up a position	Xếp thế cờ
+	Put pieces on an empty or starting board, then play from there.	Đặt quân lên bàn cờ trống hoặc thế ban đầu, rồi chơi tiếp từ đó.
+	Click a square to put the chosen piece there; click it again, or right-click it, to empty it.	Bấm vào một ô để đặt quân đã chọn vào đó; bấm lại, hoặc bấm chuột phải, để làm trống ô.
+	Empty board	Bàn cờ trống
+	Play from this position, as a new game.	Chơi từ thế cờ này như một ván mới.
+	Clear drawings	Xóa hình vẽ
+	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Bấm chuột phải vào một ô để khoanh tròn, hoặc kéo bằng nút phải để vẽ mũi tên (Shift đỏ, Alt xanh dương, Ctrl vàng).
+	Engine analysis	Phân tích bằng engine
+	Lines:	Số biến:
+	Choose engine…	Chọn engine…
+	Pick a UCI chess engine program, such as Stockfish.	Chọn một chương trình engine cờ vua UCI, chẳng hạn Stockfish.
+	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Không tìm thấy engine cờ vua. Đặt PDFCRAFT_CHESS_ENGINE trỏ tới một engine UCI như Stockfish, đặt một engine vào thư mục engine cạnh PdfCraft, hoặc chọn một engine.
+	The engine couldn't be started: {e}	Không thể khởi động engine: {e}
+	That program didn't answer as a UCI chess engine.	Chương trình đó không trả lời như một engine cờ vua UCI.
+	The engine stopped.	Engine đã dừng.
+	Starting the engine…	Đang khởi động engine…
+	depth {n}	độ sâu {n}
+	No moves to analyse in this position.	Không có nước đi nào để phân tích trong thế cờ này.
+	Play the line up to this move	Chơi biến đến nước này
+	Engine analysis needs the desktop app.	Phân tích bằng engine cần ứng dụng máy tính.
+	Programs	Chương trình

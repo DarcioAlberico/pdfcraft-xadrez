@@ -2564,3 +2564,26 @@ animation effects	Off	Aus
 	Result	Ergebnis
 	Round	Runde
 	Site	Ort
+# Chess ▸ Study board: set-up, drawings and engine analysis.
+	Study board	Studienbrett
+	Set up a position	Stellung aufbauen
+	Put pieces on an empty or starting board, then play from there.	Figuren auf ein leeres Brett oder die Grundstellung setzen und von dort aus spielen.
+	Click a square to put the chosen piece there; click it again, or right-click it, to empty it.	Klicken Sie auf ein Feld, um die gewählte Figur dorthin zu setzen; erneut klicken oder Rechtsklick leert es.
+	Empty board	Leeres Brett
+	Play from this position, as a new game.	Von dieser Stellung aus spielen, als neue Partie.
+	Clear drawings	Zeichnungen löschen
+	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Rechtsklick auf ein Feld kreist es ein, Ziehen mit der rechten Maustaste zeichnet einen Pfeil (Umschalt rot, Alt blau, Strg gelb).
+	Engine analysis	Engine-Analyse
+	Lines:	Varianten:
+	Choose engine…	Engine wählen…
+	Pick a UCI chess engine program, such as Stockfish.	Wählen Sie ein UCI-Schachengine-Programm, etwa Stockfish.
+	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Keine Schachengine gefunden. Setzen Sie PDFCRAFT_CHESS_ENGINE auf eine UCI-Engine wie Stockfish, legen Sie eine in einen Ordner engine neben PdfCraft oder wählen Sie eine aus.
+	The engine couldn't be started: {e}	Die Engine konnte nicht gestartet werden: {e}
+	That program didn't answer as a UCI chess engine.	Dieses Programm hat nicht wie eine UCI-Schachengine geantwortet.
+	The engine stopped.	Die Engine wurde beendet.
+	Starting the engine…	Engine wird gestartet…
+	depth {n}	Tiefe {n}
+	No moves to analyse in this position.	In dieser Stellung gibt es keine Züge zu analysieren.
+	Play the line up to this move	Die Variante bis zu diesem Zug spielen
+	Engine analysis needs the desktop app.	Die Engine-Analyse erfordert die Desktop-App.
+	Programs	Programme

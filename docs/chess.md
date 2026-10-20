@@ -55,6 +55,15 @@ Open the **Chess diagrams** panel (`chess.panel`), or run **Chess ▸ Scan** (`c
   - Before the first move, choose who is to move. **Flip board** shows it from Black's side.
   - The **FEN** and **PGN** fields follow the board. Edit one and press Enter (FEN) or **Load PGN** to load it. A PGN's variations, comments, glyphs and tags are read; a move that is not legal ends only its own line, and the first one is named.
   - A diagram whose position is not legal is shown in a red frame and cannot be played until it is corrected in the editor.
+  - **Draw on the board** with the right button, as on lichess: a click circles a square, a drag draws an arrow. Hold Shift for red, Alt for blue or Ctrl for yellow; green otherwise. Drawing the same thing again takes it off. Drawings belong to the position, so they come back when you return to it; a left click on the board clears them.
+- The **Study board** tab, beside **Diagrams** and **Text**, is the same board and game inside the Chess panel, with more for studying a position. **Open on the board** in the list or the editor loads a diagram there.
+  - **Set up a position** puts pieces on the board from a palette: click a square to put the chosen piece there, click it again or right-click it to empty it. **Standard start position** and **Empty board** start over; set who is to move and the castling rights (a right the pieces no longer allow is taken off). The panel says at once whether the position is legal, and **Done** plays from it as a new game.
+  - **Engine analysis** runs a UCI chess engine you installed, such as Stockfish. None comes with PdfCraft. It is found through the `PDFCRAFT_CHESS_ENGINE` environment variable (the program's path) or the program in an `engine` folder beside PdfCraft, or you pick one with **Choose engine…** (for this session).
+    - It analyses the position shown, to depth 30, and starts again whenever the position changes. It stops when you switch to another tab of the panel; with the panel closed it finishes the search it is on and starts no other.
+    - An **evaluation bar** beside the board shows who is better, and the best move is drawn as a blue arrow.
+    - **Lines** (1–3) shows the engine's best lines with their scores for White (`+0.40`, `#3`). Click a move of a line to play the line up to it; moves already in the game are followed, the others start a variation.
+    - The engine runs as a separate program and only on the desktop. No automation tool starts it.
+  - Under the board, the **material** each side is ahead by, as pieces and points.
 
 ## Headless: tools and CLI
 

@@ -22,3 +22,4 @@ pub mod repair;
 pub mod rules;
 pub mod san;
 pub mod svg;
+pub mod uci;

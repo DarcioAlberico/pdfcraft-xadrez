@@ -2476,3 +2476,26 @@ animation effects	Off	Выкл
 	Result	Результат
 	Round	Тур
 	Site	Место
+# Chess ▸ Study board: set-up, drawings and engine analysis.
+	Study board	Доска для анализа
+	Set up a position	Расставить позицию
+	Put pieces on an empty or starting board, then play from there.	Расставьте фигуры на пустой доске или в начальной позиции и играйте оттуда.
+	Click a square to put the chosen piece there; click it again, or right-click it, to empty it.	Щёлкните по полю, чтобы поставить туда выбранную фигуру; щёлкните ещё раз или правой кнопкой, чтобы очистить его.
+	Empty board	Пустая доска
+	Play from this position, as a new game.	Играть из этой позиции как новую партию.
+	Clear drawings	Стереть рисунки
+	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Щёлкните поле правой кнопкой, чтобы обвести его, или потяните правой кнопкой, чтобы нарисовать стрелку (Shift красная, Alt синяя, Ctrl жёлтая).
+	Engine analysis	Анализ движком
+	Lines:	Варианты:
+	Choose engine…	Выбрать движок…
+	Pick a UCI chess engine program, such as Stockfish.	Выберите программу шахматного движка UCI, например Stockfish.
+	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Шахматный движок не найден. Укажите в PDFCRAFT_CHESS_ENGINE движок UCI, например Stockfish, положите его в папку engine рядом с PdfCraft или выберите движок.
+	The engine couldn't be started: {e}	Не удалось запустить движок: {e}
+	That program didn't answer as a UCI chess engine.	Эта программа не ответила как шахматный движок UCI.
+	The engine stopped.	Движок остановился.
+	Starting the engine…	Запуск движка…
+	depth {n}	глубина {n}
+	No moves to analyse in this position.	В этой позиции нет ходов для анализа.
+	Play the line up to this move	Сыграть вариант до этого хода
+	Engine analysis needs the desktop app.	Анализ движком доступен только в настольном приложении.
+	Programs	Программы

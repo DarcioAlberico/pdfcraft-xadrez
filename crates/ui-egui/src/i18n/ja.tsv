@@ -2565,3 +2565,26 @@ animation effects	Off	オフ
 	Result	結果
 	Round	ラウンド
 	Site	場所
+# Chess ▸ Study board: set-up, drawings and engine analysis.
+	Study board	研究用ボード
+	Set up a position	局面を配置
+	Put pieces on an empty or starting board, then play from there.	空の盤面か初期配置に駒を置き、そこから指します。
+	Click a square to put the chosen piece there; click it again, or right-click it, to empty it.	マスをクリックすると選んだ駒を置きます。もう一度クリックするか右クリックすると空にします。
+	Empty board	空の盤面
+	Play from this position, as a new game.	この局面から新しい対局として指します。
+	Clear drawings	描画を消去
+	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	マスを右クリックすると丸で囲み、右ボタンでドラッグすると矢印を描きます（Shift 赤、Alt 青、Ctrl 黄）。
+	Engine analysis	エンジン解析
+	Lines:	読み筋の数:
+	Choose engine…	エンジンを選択…
+	Pick a UCI chess engine program, such as Stockfish.	Stockfish などの UCI チェスエンジンのプログラムを選びます。
+	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	チェスエンジンが見つかりません。PDFCRAFT_CHESS_ENGINE に Stockfish などの UCI エンジンを指定するか、PdfCraft の隣の engine フォルダーに置くか、エンジンを選んでください。
+	The engine couldn't be started: {e}	エンジンを起動できませんでした: {e}
+	That program didn't answer as a UCI chess engine.	そのプログラムは UCI チェスエンジンとして応答しませんでした。
+	The engine stopped.	エンジンが停止しました。
+	Starting the engine…	エンジンを起動しています…
+	depth {n}	深さ {n}
+	No moves to analyse in this position.	この局面には解析する手がありません。
+	Play the line up to this move	この手まで読み筋を指す
+	Engine analysis needs the desktop app.	エンジン解析にはデスクトップ版アプリが必要です。
+	Programs	プログラム
