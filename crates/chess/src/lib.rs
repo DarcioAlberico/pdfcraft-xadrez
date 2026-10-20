@@ -13,6 +13,7 @@
 pub mod catalog;
 pub mod draw;
 pub mod fen;
+pub mod fragment;
 pub mod game;
 pub mod lichess;
 pub mod nag;
