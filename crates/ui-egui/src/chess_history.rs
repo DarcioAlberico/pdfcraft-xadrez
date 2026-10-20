@@ -54,6 +54,10 @@ pub enum ChessEdit {
     Glyph(String),
     /// A move's comment typed in.
     Comment,
+    /// The comment before a move typed in.
+    CommentBefore,
+    /// Every glyph taken off a move (typed `0`).
+    ClearGlyphs,
     /// The game's details (its PGN tags) typed in.
     GameDetails,
     /// Whose move it is at the start.
@@ -83,6 +87,8 @@ impl ChessEdit {
             ChessEdit::DeleteVariation => tl!("Delete a variation").to_string(),
             ChessEdit::Glyph(glyph) => crate::i18n::fmt(tl!("Glyph {glyph}"), &[("glyph", glyph)]),
             ChessEdit::Comment => tl!("Edit move comment").to_string(),
+            ChessEdit::CommentBefore => tl!("Edit the comment before a move").to_string(),
+            ChessEdit::ClearGlyphs => tl!("Clear glyphs").to_string(),
             ChessEdit::GameDetails => tl!("Edit game details").to_string(),
             ChessEdit::SideToMove => tl!("Change side to move").to_string(),
             ChessEdit::LoadFen => tl!("Load the FEN").to_string(),

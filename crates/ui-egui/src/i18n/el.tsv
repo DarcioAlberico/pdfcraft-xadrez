@@ -2677,3 +2677,58 @@ animation effects	Off	Ανενεργά
 	Make variation the main line	Η παραλλαγή να γίνει κύρια γραμμή
 	Demote line	Υποβιβασμός γραμμής
 	Delete the moves after the current move	Διαγραφή των κινήσεων μετά την τρέχουσα κίνηση
+
+# Chess ▸ PGN toolbar: T6, glyphs (the 28 names are the annotation glyphs' standard meanings), comments and the glyph palette. "Edit the comment before a move" and "Clear glyphs" name undo steps (they follow "Undo" or "Redo"); the last seven are command names.
+	Good move	Καλή κίνηση
+	Poor move	Αδύναμη κίνηση
+	Brilliant move	Λαμπρή κίνηση
+	Blunder	Χοντρό λάθος
+	Interesting move	Ενδιαφέρουσα κίνηση
+	Dubious move	Αμφίβολη κίνηση
+	Only move	Μοναδική κίνηση
+	Novelty	Καινοτομία
+	Equal position	Ισόπαλη θέση
+	Unclear position	Ασαφής θέση
+	White is slightly better	Τα λευκά είναι ελαφρώς καλύτερα
+	Black is slightly better	Τα μαύρα είναι ελαφρώς καλύτερα
+	White is clearly better	Τα λευκά είναι σαφώς καλύτερα
+	Black is clearly better	Τα μαύρα είναι σαφώς καλύτερα
+	White is winning	Τα λευκά κερδίζουν
+	Black is winning	Τα μαύρα κερδίζουν
+	Compensation for the material	Αντιστάθμισμα για το υλικό
+	Zugzwang	Τσούγκτσβανγκ
+	Development advantage	Πλεονέκτημα ανάπτυξης
+	With the initiative	Με την πρωτοβουλία
+	With an attack	Με επίθεση
+	With counterplay	Με αντεπίθεση
+	Time trouble	Πίεση χρόνου
+	With the idea	Με την ιδέα
+	Aimed against	Στρέφεται κατά
+	Better is	Καλύτερο είναι
+	Worse is	Χειρότερο είναι
+	Editorial comment	Σχόλιο της σύνταξης
+	Choose a move first: glyphs go on a move.	Επιλέξτε πρώτα μια κίνηση: τα σημεία μπαίνουν σε κίνηση.
+	Not added: this move has as many glyphs as it can take.	Δεν προστέθηκε: αυτή η κίνηση έχει ήδη όσα σημεία μπορεί.
+	One half	Ένα δεύτερο
+	Dash	Παύλα
+	Capture sign	Σημείο αιχμαλωσίας
+	Check sign	Σημείο σαχ
+	Double check sign	Σημείο διπλού σαχ
+	Glyph palette	Παλέτα σημείων
+	Close the glyph palette	Κλείσιμο της παλέτας σημείων
+	Puts the character into the field you were typing in, or at the end of the move's comment.	Εισάγει τον χαρακτήρα στο πεδίο όπου γράφατε ή στο τέλος του σχολίου της κίνησης.
+	Comment before {move}	Σχόλιο πριν από {move}
+	In PGN this comment joins the comment before the game's first move.	Στο PGN αυτό το σχόλιο ενώνεται με το σχόλιο πριν από την πρώτη κίνηση της παρτίδας.
+	In PGN this comment is written after the previous move.	Στο PGN αυτό το σχόλιο γράφεται μετά την προηγούμενη κίνηση.
+	Move glyphs	Σημεία κίνησης
+	Evaluation glyphs	Σημεία αξιολόγησης
+	Other glyphs	Άλλα σημεία
+	Edit the comment before a move	επεξεργασίας σχολίου πριν από κίνηση
+	Clear glyphs	αφαίρεσης σημείων
+	Edit the move's comment	Επεξεργασία του σχολίου της κίνησης
+	Glyph ! (good move)	Σημείο ! (καλή κίνηση)
+	Glyph ? (poor move)	Σημείο ? (αδύναμη κίνηση)
+	Glyph !! (brilliant move)	Σημείο !! (λαμπρή κίνηση)
+	Glyph ?? (blunder)	Σημείο ?? (χοντρό λάθος)
+	Glyph !? (interesting move)	Σημείο !? (ενδιαφέρουσα κίνηση)
+	Glyph ?! (dubious move)	Σημείο ?! (αμφίβολη κίνηση)

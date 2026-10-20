@@ -356,6 +356,16 @@ pub const COMMANDS: &[CommandSpec] = &[
     c("chess.variation.demote", "Demote line", None, None, Nothing, "chevron-down"),
     c("chess.variation.delete", "Delete variation", None, None, Nothing, "trash-2"),
     c("chess.moves.cut", "Delete the moves after the current move", None, None, Nothing, "scissors"),
+    // T6: the comment editor, the glyph palette, and the six move-quality glyphs (the other 22
+    // glyphs are on the rail and typed, not registered: 28 palette entries would bury the rest).
+    c("chess.comment.edit", "Edit the move's comment", None, None, Nothing, "message-square-quote"),
+    c("chess.palette.toggle", "Glyph palette", None, None, Nothing, "type"),
+    c("chess.nag.1", "Glyph ! (good move)", None, None, Nothing, "type"),
+    c("chess.nag.2", "Glyph ? (poor move)", None, None, Nothing, "type"),
+    c("chess.nag.3", "Glyph !! (brilliant move)", None, None, Nothing, "type"),
+    c("chess.nag.4", "Glyph ?? (blunder)", None, None, Nothing, "type"),
+    c("chess.nag.5", "Glyph !? (interesting move)", None, None, Nothing, "type"),
+    c("chess.nag.6", "Glyph ?! (dubious move)", None, None, Nothing, "type"),
     c("export.all_images", "Export all images…", FILE, None, Copying, "image"),
     c("edit.header_footer", "Add header & footer…", None, None, Modification, "heading"),
     c("edit.header_footer.update", "Update header & footer…", None, None, Marks(crate::MarkKind::HeaderFooter), "heading"),

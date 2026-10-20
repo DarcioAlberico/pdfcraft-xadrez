@@ -2647,3 +2647,58 @@ animation effects	Off	Wyłączone
 	Make variation the main line	Uczyń wariant główną linią
 	Demote line	Obniż linię
 	Delete the moves after the current move	Usuń ruchy po bieżącym ruchu
+
+# Chess ▸ PGN toolbar: T6, glyphs (the 28 names are the annotation glyphs' standard meanings), comments and the glyph palette. "Edit the comment before a move" and "Clear glyphs" name undo steps (they follow "Undo" or "Redo"); the last seven are command names.
+	Good move	Dobry ruch
+	Poor move	Słaby ruch
+	Brilliant move	Świetny ruch
+	Blunder	Gruby błąd
+	Interesting move	Ciekawy ruch
+	Dubious move	Wątpliwy ruch
+	Only move	Jedyny ruch
+	Novelty	Nowość
+	Equal position	Pozycja równa
+	Unclear position	Pozycja niejasna
+	White is slightly better	Białe stoją nieco lepiej
+	Black is slightly better	Czarne stoją nieco lepiej
+	White is clearly better	Białe stoją wyraźnie lepiej
+	Black is clearly better	Czarne stoją wyraźnie lepiej
+	White is winning	Białe wygrywają
+	Black is winning	Czarne wygrywają
+	Compensation for the material	Rekompensata za materiał
+	Zugzwang	Zugzwang
+	Development advantage	Przewaga w rozwoju
+	With the initiative	Z inicjatywą
+	With an attack	Z atakiem
+	With counterplay	Z kontrgrą
+	Time trouble	Niedoczas
+	With the idea	Z ideą
+	Aimed against	Skierowane przeciw
+	Better is	Lepiej
+	Worse is	Gorzej
+	Editorial comment	Komentarz redakcyjny
+	Choose a move first: glyphs go on a move.	Najpierw wybierz ruch: znaki stawia się przy ruchu.
+	Not added: this move has as many glyphs as it can take.	Nie dodano: ten ruch ma już tyle znaków, ile może mieć.
+	One half	Jedna druga
+	Dash	Półpauza
+	Capture sign	Znak bicia
+	Check sign	Znak szacha
+	Double check sign	Znak podwójnego szacha
+	Glyph palette	Paleta znaków
+	Close the glyph palette	Zamknij paletę znaków
+	Puts the character into the field you were typing in, or at the end of the move's comment.	Wstawia znak w pole, w którym pisano, lub na koniec komentarza do ruchu.
+	Comment before {move}	Komentarz przed {move}
+	In PGN this comment joins the comment before the game's first move.	W PGN ten komentarz łączy się z komentarzem przed pierwszym ruchem partii.
+	In PGN this comment is written after the previous move.	W PGN ten komentarz jest zapisywany po poprzednim ruchu.
+	Move glyphs	Znaki ruchu
+	Evaluation glyphs	Znaki oceny
+	Other glyphs	Inne znaki
+	Edit the comment before a move	edycję komentarza przed ruchem
+	Clear glyphs	usunięcie znaków
+	Edit the move's comment	Edytuj komentarz do ruchu
+	Glyph ! (good move)	Znak ! (dobry ruch)
+	Glyph ? (poor move)	Znak ? (słaby ruch)
+	Glyph !! (brilliant move)	Znak !! (świetny ruch)
+	Glyph ?? (blunder)	Znak ?? (gruby błąd)
+	Glyph !? (interesting move)	Znak !? (ciekawy ruch)
+	Glyph ?! (dubious move)	Znak ?! (wątpliwy ruch)

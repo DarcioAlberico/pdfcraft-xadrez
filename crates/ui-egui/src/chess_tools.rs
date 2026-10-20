@@ -9,7 +9,9 @@
 //! click, or Enter or Down arrow while it has the keyboard focus opens the others, and Shift with
 //! the group's letter switches the member shown. Later steps add tools by adding entries: the
 //! rail, the keys the scope takes, the key hints in the names and the move list's context menu
-//! all follow from the list.
+//! all follow from the list. The annotation tools (T6) are there too: the three glyph groups,
+//! whose buttons show their glyph as text and are named for it, the comment editor and the glyph
+//! palette (`chess_annotate`).
 //!
 //! **The key scope** (`chess_scope`, spec §4.2). While Undo goes to the game
 //! ([`ChessState::in_scope`]) and a rail was on screen in the last frame, the chess keys (Esc,
@@ -20,7 +22,9 @@
 //! while a text field has the keyboard, so a letter or Delete typed in a comment is the comment's;
 //! the hook runs before the frame, so that is the focus as the last frame left it. They are also
 //! left alone while a popup or menu is open (Esc and the arrows are its own) and under a modal
-//! dialog.
+//! dialog. Enter is taken only while nothing has the keyboard focus (a focused button is pressed
+//! with it). Text made only of the characters of typed glyphs (`!?=+-/~0`) is taken too, for
+//! `chess_annotate::Typed`.
 
 use std::time::Duration;
 
@@ -28,6 +32,7 @@ use egui::{Align, Event, Key, Layout, Modifiers, Rect, Sense, Stroke, UiBuilder,
 use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, NodeId, NodePath, StructureError};
 use pdfcraft_engine::commands::Shortcut;
 
+use crate::chess_annotate::{self, TYPED_WAIT, Typed};
 use crate::chess_board_ui::BoardState;
 use crate::chess_history::ChessEdit;
 use crate::chess_ui::ChessState;
@@ -75,6 +80,8 @@ pub struct ToolState {
     focus_popup: bool,
     /// The app commands rail tools asked for ([`Kind::Command`]), in order, until the app runs them.
     commands: Vec<&'static str>,
+    /// Glyph signs typed (T6).
+    typed: Typed,
 }
 
 impl ToolState {
@@ -170,6 +177,8 @@ pub(crate) enum Kind {
     /// Runs a registered command of the app (it acts beyond the board): queued for the app,
     /// which runs it at the start of the next frame (`chess_window::frame`).
     Command(&'static str),
+    /// Puts glyph `code` (White's code) on the move shown, or takes it off.
+    Glyph(u16),
 }
 
 /// A tool of the rail.
@@ -198,6 +207,9 @@ pub(crate) struct Tool {
     pub heads: Option<fn(&Game) -> Vec<NodeId>>,
     /// In a move's context menu: what it would act on for that move, or why it can't.
     pub on_move: Option<OnMove>,
+    /// Whether it shows as on: a panel it opened is open (modes are on while armed, glyphs while
+    /// the move shown has them).
+    pub on: Option<fn(&BoardState) -> bool>,
 }
 
 /// Tools that share one place on the rail.
@@ -215,8 +227,13 @@ pub(crate) enum Entry {
 }
 
 /// The rail, top to bottom: sections, with a separator between them.
-pub(crate) static RAIL: &[&[Entry]] =
-    &[&[Entry::Tool(NAVIGATE)], &[Entry::Group(STRUCTURE)], &[Entry::Tool(UNDO), Entry::Tool(REDO)], &[Entry::Tool(WINDOW)]];
+pub(crate) static RAIL: &[&[Entry]] = &[
+    &[Entry::Tool(NAVIGATE)],
+    &[Entry::Group(STRUCTURE)],
+    &[Entry::Group(MOVE_GLYPHS), Entry::Group(EVALUATION_GLYPHS), Entry::Group(OTHER_GLYPHS), Entry::Tool(COMMENT), Entry::Tool(PALETTE)],
+    &[Entry::Tool(UNDO), Entry::Tool(REDO)],
+    &[Entry::Tool(WINDOW)],
+];
 
 const ESC: ChessKey = ChessKey::plain(Key::Escape);
 
@@ -235,6 +252,7 @@ const NAVIGATE: Tool = Tool {
     heads: None,
     visible: |_| true,
     on_move: None,
+    on: None,
 };
 
 const STRUCTURE: Group = Group {
@@ -253,6 +271,7 @@ const STRUCTURE: Group = Group {
             heads: Some(|g| Op::PromoteOne.heads(g, g.current())),
             visible: |_| true,
             on_move: Some(|g, n| Op::PromoteOne.check(g, n)),
+            on: None,
         },
         Tool {
             id: "make-main",
@@ -265,6 +284,7 @@ const STRUCTURE: Group = Group {
             heads: None,
             visible: |_| true,
             on_move: Some(|g, n| Op::MakeMain.check(g, n)),
+            on: None,
         },
         Tool {
             id: "demote",
@@ -277,6 +297,7 @@ const STRUCTURE: Group = Group {
             heads: Some(|g| Op::Demote.heads(g, g.current())),
             visible: |_| true,
             on_move: Some(|g, n| Op::Demote.check(g, n)),
+            on: None,
         },
         Tool {
             id: "delete-variation",
@@ -289,6 +310,7 @@ const STRUCTURE: Group = Group {
             heads: Some(|g| Op::DeleteVariation.heads(g, g.current())),
             visible: |_| true,
             on_move: Some(|g, n| Op::DeleteVariation.check(g, n)),
+            on: None,
         },
         Tool {
             id: "cut-after",
@@ -301,8 +323,108 @@ const STRUCTURE: Group = Group {
             heads: None,
             visible: |_| true,
             on_move: Some(|g, n| Op::CutAfter.check(g, n)),
+            on: None,
         },
     ],
+};
+
+/// A glyph's tool: named and shown by its glyph (`chess_annotate`), off without a move shown.
+const fn glyph(id: &'static str, code: u16, command: Option<&'static str>) -> Tool {
+    Tool {
+        id,
+        icon: "",
+        label: |_| String::new(),
+        keys: &[],
+        command,
+        kind: Kind::Glyph(code),
+        enabled: chess_annotate::has_move,
+        visible: |_| true,
+        heads: None,
+        on_move: None,
+        on: None,
+    }
+}
+
+/// The glyph groups (spec §4.2, §4.4), in `chess_annotate`'s order. The six move-quality glyphs
+/// are registered commands too.
+const MOVE_GLYPHS: Group = Group {
+    id: "glyphs-move",
+    label: || tl!("Move glyphs"),
+    letter: None,
+    members: &[
+        glyph("nag-1", 1, Some("chess.nag.1")),
+        glyph("nag-2", 2, Some("chess.nag.2")),
+        glyph("nag-3", 3, Some("chess.nag.3")),
+        glyph("nag-4", 4, Some("chess.nag.4")),
+        glyph("nag-5", 5, Some("chess.nag.5")),
+        glyph("nag-6", 6, Some("chess.nag.6")),
+        glyph("nag-7", 7, None),
+        glyph("nag-146", 146, None),
+    ],
+};
+
+const EVALUATION_GLYPHS: Group = Group {
+    id: "glyphs-evaluation",
+    label: || tl!("Evaluation glyphs"),
+    letter: None,
+    members: &[
+        glyph("nag-10", 10, None),
+        glyph("nag-13", 13, None),
+        glyph("nag-14", 14, None),
+        glyph("nag-15", 15, None),
+        glyph("nag-16", 16, None),
+        glyph("nag-17", 17, None),
+        glyph("nag-18", 18, None),
+        glyph("nag-19", 19, None),
+        glyph("nag-44", 44, None),
+    ],
+};
+
+const OTHER_GLYPHS: Group = Group {
+    id: "glyphs-other",
+    label: || tl!("Other glyphs"),
+    letter: None,
+    members: &[
+        glyph("nag-32", 32, None),
+        glyph("nag-36", 36, None),
+        glyph("nag-40", 40, None),
+        glyph("nag-132", 132, None),
+        glyph("nag-140", 140, None),
+        glyph("nag-141", 141, None),
+        glyph("nag-22", 22, None),
+        glyph("nag-138", 138, None),
+        glyph("nag-142", 142, None),
+        glyph("nag-143", 143, None),
+        glyph("nag-145", 145, None),
+    ],
+};
+
+const COMMENT: Tool = Tool {
+    id: "comment",
+    icon: "message-square-quote",
+    label: |_| tl!("Move comment").to_owned(),
+    keys: &[ChessKey::plain(Key::Enter)],
+    command: Some("chess.comment.edit"),
+    kind: Kind::Action(|b, _| b.toggle_comment_editor()),
+    enabled: |b| b.illegal.is_none(),
+    visible: |_| true,
+    heads: None,
+    on_move: None,
+    on: Some(|b| b.comment_open),
+};
+
+const PALETTE: Tool = Tool {
+    id: "palette",
+    icon: "type",
+    label: |_| tl!("Glyph palette").to_owned(),
+    keys: &[ChessKey::plain(Key::G)],
+    command: Some("chess.palette.toggle"),
+    kind: Kind::Action(|b, _| b.palette_open = !b.palette_open),
+    enabled: |_| true,
+    visible: |_| true,
+    heads: None,
+    on_move: None,
+    on: Some(|b| b.palette_open),
 };
 
 const UNDO: Tool = Tool {
@@ -318,6 +440,7 @@ const UNDO: Tool = Tool {
     heads: None,
     visible: |_| true,
     on_move: None,
+    on: None,
 };
 
 const REDO: Tool = Tool {
@@ -333,6 +456,7 @@ const REDO: Tool = Tool {
     heads: None,
     visible: |_| true,
     on_move: None,
+    on: None,
 };
 
 /// The board in its own window, or back in the dock (T13a): only where separate windows can be
@@ -348,6 +472,7 @@ const WINDOW: Tool = Tool {
     visible: |ctx| !ctx.embed_viewports(),
     heads: None,
     on_move: None,
+    on: None,
 };
 
 /// Moving about the game, and Esc: the keys the panel takes besides the tools'.
@@ -408,12 +533,18 @@ pub(crate) fn take_scope_keys(chess: &mut ChessState, ctx: &egui::Context, raw: 
     if blocked || !shown || !chess.in_scope() || ctx.text_edit_focused() || egui::Popup::is_any_open(ctx) {
         return;
     }
-    let keys = &mut chess.tools.keys;
+    // A focused button is pressed with Enter: Enter is the panel's only while nothing has focus.
+    let focused = ctx.memory(|m| m.focused().is_some());
+    let tools = &mut chess.tools;
     raw.events.retain(|event| match event {
-        Event::Key { key, pressed: true, modifiers, .. } if scope_key(*key, *modifiers) => {
-            if keys.len() < MAX_KEYS {
-                keys.push((*key, *modifiers));
+        Event::Key { key, pressed: true, modifiers, .. } if scope_key(*key, *modifiers) && !(*key == Key::Enter && focused) => {
+            if tools.keys.len() < MAX_KEYS {
+                tools.keys.push((*key, *modifiers));
             }
+            false
+        }
+        Event::Text(text) if chess_annotate::is_glyph_text(text) => {
+            text.chars().for_each(|c| tools.typed.take(c));
             false
         }
         _ => true,
@@ -434,13 +565,19 @@ pub(crate) struct MainScope {
 pub(crate) fn take_window_keys(chess: &mut ChessState, ctx: &egui::Context) -> MainScope {
     let main = MainScope { rail_shown: chess.tools.rail_shown, keys: std::mem::take(&mut chess.tools.keys) };
     if !ctx.text_edit_focused() && !egui::Popup::is_any_open(ctx) {
-        let keys = &mut chess.tools.keys;
+        // As in the main window's scope: Enter only while nothing has focus, and typed glyphs.
+        let focused = ctx.memory(|m| m.focused().is_some());
+        let tools = &mut chess.tools;
         ctx.input_mut(|i| {
             i.events.retain(|event| match event {
-                Event::Key { key, pressed: true, modifiers, .. } if scope_key(*key, *modifiers) => {
-                    if keys.len() < MAX_KEYS {
-                        keys.push((*key, *modifiers));
+                Event::Key { key, pressed: true, modifiers, .. } if scope_key(*key, *modifiers) && !(*key == Key::Enter && focused) => {
+                    if tools.keys.len() < MAX_KEYS {
+                        tools.keys.push((*key, *modifiers));
                     }
+                    false
+                }
+                Event::Text(text) if chess_annotate::is_glyph_text(text) => {
+                    text.chars().for_each(|c| tools.typed.take(c));
                     false
                 }
                 _ => true,
@@ -456,9 +593,38 @@ pub(crate) fn end_window_keys(chess: &mut ChessState, main: MainScope) {
     chess.tools.keys = main.keys;
 }
 
+/// A tool's label in the current language: a glyph's is the glyph's name.
+fn label(tool: &Tool, board: &BoardState) -> String {
+    match tool.kind {
+        Kind::Glyph(code) => chess_annotate::nag_name(code).unwrap_or_default().to_owned(),
+        _ => (tool.label)(board),
+    }
+}
+
+/// Whether a tool shows as on: the mode armed, a glyph the move shown has, a panel it opened.
+fn is_on(tool: &Tool, chess: &ChessState) -> bool {
+    match tool.kind {
+        Kind::Mode(m) => m == chess.tools.tool,
+        Kind::Glyph(code) => chess_annotate::has_glyph(chess.board(), code),
+        Kind::Action(_) | Kind::Command(_) => tool.on.is_some_and(|on| on(chess.board())),
+    }
+}
+
+/// A tool's button on the rail: its icon, or for a glyph its sign as the fonts can show it.
+fn tool_button(ui: &mut egui::Ui, tool: &Tool, on: bool, name: &str) -> egui::Response {
+    match tool.kind {
+        Kind::Glyph(code) => {
+            let ctx = ui.ctx().clone();
+            let face = chess_annotate::face(code, |s| chess_annotate::drawable(&ctx, s));
+            icons::text_button(ui, &face, BUTTON, on, name)
+        }
+        _ => icons::button(ui, tool.icon, BUTTON, on, name),
+    }
+}
+
 /// The name a tool is known by: its label and its key ("Demote (Ctrl+↓)").
 fn name(ctx: &egui::Context, tool: &Tool, board: &BoardState) -> String {
-    let label = (tool.label)(board);
+    let label = label(tool, board);
     let key = match (tool.keys.first(), tool.command) {
         (Some(k), _) => k.label(ctx),
         (None, Some(id)) => crate::commands::command_shortcut_label(ctx, id),
@@ -522,6 +688,7 @@ fn activate(chess: &mut ChessState, tool: &Tool, target: Target) {
                 chess.tools.commands.push(id);
             }
         }
+        Kind::Glyph(code) => chess_annotate::toggle_glyph(chess.board_mut(), code),
     }
 }
 
@@ -540,6 +707,7 @@ pub(crate) fn with_rail<R>(ui: &mut egui::Ui, chess: &mut ChessState, body: impl
     for (key, m) in std::mem::take(&mut chess.tools.keys) {
         handle_key(ui.ctx(), chess, key, m, focused_group);
     }
+    typed_glyphs(ui, chess);
     let body_rect = Rect::from_min_max(pos2(area.min.x + RAIL_WIDTH + 1.0, area.min.y), area.max);
     let mut body_ui = ui.new_child(UiBuilder::new().id_salt("chess-rail-body").max_rect(body_rect).layout(*ui.layout()));
     let out = body(&mut body_ui, chess);
@@ -547,6 +715,22 @@ pub(crate) fn with_rail<R>(ui: &mut egui::Ui, chess: &mut ChessState, body: impl
     ui.painter().vline(area.min.x + RAIL_WIDTH + 0.5, area.min.y..=bottom, Stroke::new(1.0, t.divider));
     ui.advance_cursor_after_rect(Rect::from_min_max(area.min, pos2(area.max.x, bottom)));
     out
+}
+
+/// The glyph signs typed since the last frame, and the one waiting once its wait is over.
+fn typed_glyphs(ui: &egui::Ui, chess: &mut ChessState) {
+    let now = ui.input(|i| i.time);
+    let mut codes = Vec::new();
+    for c in std::mem::take(&mut chess.tools.typed.incoming) {
+        codes.extend(chess.tools.typed.push(c, now));
+    }
+    codes.extend(chess.tools.typed.tick(now));
+    for code in codes {
+        chess_annotate::typed_glyph(chess.board_mut(), code);
+    }
+    if chess.tools.typed.waiting() {
+        ui.ctx().request_repaint_after(Duration::from_secs_f64(TYPED_WAIT));
+    }
 }
 
 /// Draw the rail. Returns the popup id of the group whose button has the keyboard focus, if any.
@@ -569,10 +753,9 @@ fn rail(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) -> Option<egui::I
             match entry {
                 Entry::Tool(tool) => {
                     let name = name(ui.ctx(), tool, chess.board());
-                    let selected = matches!(tool.kind, Kind::Mode(m) if m == chess.tools.tool);
+                    let on = is_on(tool, chess);
                     let enabled = (tool.enabled)(chess.board());
-                    let r =
-                        ui.push_id(tool.id, |ui| ui.add_enabled_ui(enabled, |ui| icons::button(ui, tool.icon, BUTTON, selected, &name)).inner).inner;
+                    let r = ui.push_id(tool.id, |ui| ui.add_enabled_ui(enabled, |ui| tool_button(ui, tool, on, &name)).inner).inner;
                     any_focus |= r.has_focus();
                     if r.clicked() {
                         activate(chess, tool, Target::Current);
@@ -602,9 +785,14 @@ fn group_button(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, group: &'
     let shown = chess.tools.shown(group.id).min(group.members.len().saturating_sub(1));
     let tool = group.members.get(shown);
     let name = tool.map(|tool| name(&ctx, tool, chess.board())).unwrap_or_default();
-    let icon = tool.map_or("square", |tool| tool.icon);
+    let on = tool.is_some_and(|tool| is_on(tool, chess));
     let enabled = group.members.iter().any(|m| (m.enabled)(chess.board()));
-    let r = ui.add_enabled_ui(enabled, |ui| icons::button(ui, icon, BUTTON, false, &name)).inner;
+    let r = ui
+        .add_enabled_ui(enabled, |ui| match tool {
+            Some(tool) => tool_button(ui, tool, on, &name),
+            None => icons::button(ui, "square", BUTTON, false, &name),
+        })
+        .inner;
     let popup = r.id.with("tools");
     let key = group.letter.map(|l| ChessKey::shift(l).label(&ctx)).unwrap_or_default();
     let r = r.on_hover_text(crate::i18n::fmt(
@@ -657,9 +845,17 @@ fn group_button(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, group: &'
             ui.set_min_width(200.0);
             ui.label(egui::RichText::new((group.label)()).small().color(t.text_muted));
             for (i, tool) in group.members.iter().enumerate() {
-                let label = (tool.label)(chess.board());
+                let label = label(tool, chess.board());
                 let key = tool.keys.first().map(|k| k.label(&ctx)).unwrap_or_default();
-                let button = egui::Button::image_and_text(icons::image(tool.icon, 16.0, t.icon), label.as_str()).shortcut_text(key);
+                let button = match tool.kind {
+                    // A glyph: its sign, then its name; ticked while the move shown has it.
+                    Kind::Glyph(code) => {
+                        let face = chess_annotate::face(code, |s| chess_annotate::drawable(&ctx, s));
+                        let mark = if is_on(tool, chess) { "✓" } else { "" };
+                        egui::Button::new(egui::RichText::new(format!("{face:<4} {label}"))).shortcut_text(mark)
+                    }
+                    _ => egui::Button::image_and_text(icons::image(tool.icon, 16.0, t.icon), label.as_str()).shortcut_text(key),
+                };
                 let b = ui.add_enabled((tool.enabled)(chess.board()), button);
                 b.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, b.enabled(), i == shown, &label));
                 if i == 0 && std::mem::take(&mut chess.tools.focus_popup) {
@@ -740,9 +936,14 @@ fn handle_key(ctx: &egui::Context, chess: &mut ChessState, key: Key, m: Modifier
 /// Esc, the arrows, Home and End.
 fn navigate(chess: &mut ChessState, nav: Nav) {
     if nav == Nav::Escape {
-        // In order: the capture preview closes (T7b), then an armed tool goes back to Navigate,
-        // then the piece picked up (or the pawn waiting for its piece) is put down.
-        if chess.tools.tool != PgnTool::Navigate {
+        // In order: the capture preview closes (T7b), then the comment editor and the glyph
+        // palette, then an armed tool goes back to Navigate, then the piece picked up (or the
+        // pawn waiting for its piece) is put down.
+        let board = chess.board_mut();
+        if board.comment_open || board.palette_open {
+            board.comment_open = false;
+            board.palette_open = false;
+        } else if chess.tools.tool != PgnTool::Navigate {
             chess.tools.tool = PgnTool::Navigate;
         } else {
             let board = chess.board_mut();
@@ -942,7 +1143,7 @@ pub(crate) fn move_menu(ui: &mut egui::Ui, board: &BoardState, node: NodeId) -> 
     for tool in tools() {
         let (Kind::Action(run), Some(on_move)) = (tool.kind, tool.on_move) else { continue };
         let target = on_move(&board.game, node);
-        let label = (tool.label)(board);
+        let label = label(tool, board);
         let r = ui.add_enabled(target.is_ok(), egui::Button::new(label));
         let r = match &target {
             Ok(Target::Head(head)) if *head != node => {
@@ -1052,6 +1253,9 @@ mod tests {
         assert!(scope_key(Key::ArrowDown, cmd));
         assert!(scope_key(Key::Escape, Modifiers::NONE));
         assert!(scope_key(Key::S, Modifiers::SHIFT), "the Structure group's letter");
+        assert!(scope_key(Key::Enter, Modifiers::NONE), "the comment editor");
+        assert!(scope_key(Key::G, Modifiers::NONE), "the glyph palette");
+        assert!(!scope_key(Key::G, cmd), "Ctrl+G is the app's (find next)");
         // Not ours: the app's Undo, Select all, plain letters, Alt with the arrows.
         assert!(!scope_key(Key::Z, cmd));
         assert!(!scope_key(Key::A, cmd));
@@ -1073,7 +1277,9 @@ mod tests {
                 assert!(command(id).is_some(), "{}: {id} is not registered", tool.id);
             }
         }
-        let rail = |id: &str| ["chess.tool.", "chess.variation.", "chess.moves."].iter().any(|p| id.starts_with(p));
+        let rail = |id: &str| {
+            ["chess.tool.", "chess.variation.", "chess.moves.", "chess.nag.", "chess.comment.", "chess.palette."].iter().any(|p| id.starts_with(p))
+        };
         for spec in COMMANDS.iter().filter(|c| rail(c.id)) {
             assert!(is_tool_command(spec.id), "{} runs no rail tool", spec.id);
             assert!(spec.shortcut.is_none(), "{}: the chess keys are the panel's, not the registry's", spec.id);
@@ -1091,7 +1297,7 @@ mod tests {
     fn every_rail_tool_has_an_icon_and_its_own_keys() {
         let mut keys = Vec::new();
         for tool in tools() {
-            assert!(icons::exists(tool.icon), "{}: no icon {}", tool.id, tool.icon);
+            assert!(matches!(tool.kind, Kind::Glyph(_)) || icons::exists(tool.icon), "{}: no icon {}", tool.id, tool.icon);
             for k in tool.keys {
                 assert!(!keys.contains(k), "{}: {k:?} is another tool's", tool.id);
                 assert!(!NAV_KEYS.iter().any(|(n, _)| n == k) || tool.id == "navigate", "{}: {k:?} moves about", tool.id);

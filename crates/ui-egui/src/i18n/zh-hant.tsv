@@ -2621,3 +2621,58 @@ animation effects	Off	關
 	Make variation the main line	將變化設為主線
 	Demote line	降級此線路
 	Delete the moves after the current move	刪除目前著法之後的著法
+
+# Chess ▸ PGN toolbar: T6, glyphs (the 28 names are the annotation glyphs' standard meanings), comments and the glyph palette. "Edit the comment before a move" and "Clear glyphs" name undo steps (they follow "Undo" or "Redo"); the last seven are command names.
+	Good move	好棋
+	Poor move	壞棋
+	Brilliant move	妙著
+	Blunder	敗著
+	Interesting move	有趣的著法
+	Dubious move	可疑的著法
+	Only move	唯一著法
+	Novelty	新著
+	Equal position	均勢
+	Unclear position	局面不明
+	White is slightly better	白方稍優
+	Black is slightly better	黑方稍優
+	White is clearly better	白方明顯佔優
+	Black is clearly better	黑方明顯佔優
+	White is winning	白方勝勢
+	Black is winning	黑方勝勢
+	Compensation for the material	子力補償
+	Zugzwang	楚茨文格
+	Development advantage	出子優勢
+	With the initiative	握有主動權
+	With an attack	有攻勢
+	With counterplay	有反擊
+	Time trouble	時間緊迫
+	With the idea	意圖
+	Aimed against	針對
+	Better is	更好的是
+	Worse is	更差的是
+	Editorial comment	編者註
+	Choose a move first: glyphs go on a move.	請先選擇一步著法：符號要標在著法上。
+	Not added: this move has as many glyphs as it can take.	未新增：此著法已有可容納的全部符號。
+	One half	二分之一
+	Dash	破折號
+	Capture sign	吃子符號
+	Check sign	將軍符號
+	Double check sign	雙將符號
+	Glyph palette	符號面板
+	Close the glyph palette	關閉符號面板
+	Puts the character into the field you were typing in, or at the end of the move's comment.	將字元插入你正在輸入的欄位，若沒有則加到此著法評論的末尾。
+	Comment before {move}	{move} 之前的評論
+	In PGN this comment joins the comment before the game's first move.	在 PGN 中，此評論會併入對局第一步之前的評論。
+	In PGN this comment is written after the previous move.	在 PGN 中，此評論寫在前一步之後。
+	Move glyphs	著法符號
+	Evaluation glyphs	評估符號
+	Other glyphs	其他符號
+	Edit the comment before a move	編輯著法前的評論
+	Clear glyphs	清除符號
+	Edit the move's comment	編輯此著法的評論
+	Glyph ! (good move)	符號 !（好棋）
+	Glyph ? (poor move)	符號 ?（壞棋）
+	Glyph !! (brilliant move)	符號 !!（妙著）
+	Glyph ?? (blunder)	符號 ??（敗著）
+	Glyph !? (interesting move)	符號 !?（有趣的著法）
+	Glyph ?! (dubious move)	符號 ?!（可疑的著法）

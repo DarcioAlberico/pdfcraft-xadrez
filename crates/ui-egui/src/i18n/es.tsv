@@ -2812,3 +2812,58 @@ animation effects	Off	Desactivados
 	Make variation the main line	Convertir la variante en la línea principal
 	Demote line	Relegar la línea
 	Delete the moves after the current move	Borrar las jugadas posteriores a la jugada actual
+
+# Chess ▸ PGN toolbar: T6, glyphs (the 28 names are the annotation glyphs' standard meanings), comments and the glyph palette. "Edit the comment before a move" and "Clear glyphs" name undo steps (they follow "Undo" or "Redo"); the last seven are command names.
+	Good move	Buena jugada
+	Poor move	Mala jugada
+	Brilliant move	Jugada brillante
+	Blunder	Error grave
+	Interesting move	Jugada interesante
+	Dubious move	Jugada dudosa
+	Only move	Única jugada
+	Novelty	Novedad
+	Equal position	Posición igualada
+	Unclear position	Posición incierta
+	White is slightly better	Las blancas están algo mejor
+	Black is slightly better	Las negras están algo mejor
+	White is clearly better	Las blancas están claramente mejor
+	Black is clearly better	Las negras están claramente mejor
+	White is winning	Las blancas ganan
+	Black is winning	Las negras ganan
+	Compensation for the material	Compensación por el material
+	Zugzwang	Zugzwang
+	Development advantage	Ventaja en desarrollo
+	With the initiative	Con la iniciativa
+	With an attack	Con ataque
+	With counterplay	Con contrajuego
+	Time trouble	Apuros de tiempo
+	With the idea	Con la idea
+	Aimed against	Dirigido contra
+	Better is	Mejor es
+	Worse is	Peor es
+	Editorial comment	Comentario editorial
+	Choose a move first: glyphs go on a move.	Elija primero una jugada: los signos van en una jugada.
+	Not added: this move has as many glyphs as it can take.	No añadido: esta jugada ya tiene todos los signos que admite.
+	One half	Un medio
+	Dash	Raya
+	Capture sign	Signo de captura
+	Check sign	Signo de jaque
+	Double check sign	Signo de jaque doble
+	Glyph palette	Paleta de signos
+	Close the glyph palette	Cerrar la paleta de signos
+	Puts the character into the field you were typing in, or at the end of the move's comment.	Inserta el carácter en el campo en el que escribía, o al final del comentario de la jugada.
+	Comment before {move}	Comentario antes de {move}
+	In PGN this comment joins the comment before the game's first move.	En PGN, este comentario se une al comentario anterior a la primera jugada de la partida.
+	In PGN this comment is written after the previous move.	En PGN, este comentario se escribe después de la jugada anterior.
+	Move glyphs	Signos de la jugada
+	Evaluation glyphs	Signos de valoración
+	Other glyphs	Otros signos
+	Edit the comment before a move	edición del comentario previo a la jugada
+	Clear glyphs	borrado de los signos
+	Edit the move's comment	Editar el comentario de la jugada
+	Glyph ! (good move)	Signo ! (buena jugada)
+	Glyph ? (poor move)	Signo ? (mala jugada)
+	Glyph !! (brilliant move)	Signo !! (jugada brillante)
+	Glyph ?? (blunder)	Signo ?? (error grave)
+	Glyph !? (interesting move)	Signo !? (jugada interesante)
+	Glyph ?! (dubious move)	Signo ?! (jugada dudosa)

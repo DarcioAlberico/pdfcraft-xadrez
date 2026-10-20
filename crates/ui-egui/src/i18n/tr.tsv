@@ -2667,3 +2667,58 @@ animation effects	Off	Kapalı
 	Make variation the main line	Varyantı ana varyant yap
 	Demote line	Hattı düşür
 	Delete the moves after the current move	Geçerli hamleden sonraki hamleleri sil
+
+# Chess ▸ PGN toolbar: T6, glyphs (the 28 names are the annotation glyphs' standard meanings), comments and the glyph palette. "Edit the comment before a move" and "Clear glyphs" name undo steps (they follow "Undo" or "Redo"); the last seven are command names.
+	Good move	İyi hamle
+	Poor move	Zayıf hamle
+	Brilliant move	Parlak hamle
+	Blunder	Büyük hata
+	Interesting move	İlginç hamle
+	Dubious move	Şüpheli hamle
+	Only move	Tek hamle
+	Novelty	Yenilik
+	Equal position	Eşit konum
+	Unclear position	Belirsiz konum
+	White is slightly better	Beyaz biraz daha iyi
+	Black is slightly better	Siyah biraz daha iyi
+	White is clearly better	Beyaz açıkça daha iyi
+	Black is clearly better	Siyah açıkça daha iyi
+	White is winning	Beyaz kazanıyor
+	Black is winning	Siyah kazanıyor
+	Compensation for the material	Malzemeye karşılık telafi
+	Zugzwang	Hamle zorunluluğu
+	Development advantage	Gelişim üstünlüğü
+	With the initiative	İnisiyatifle
+	With an attack	Saldırıyla
+	With counterplay	Karşı oyunla
+	Time trouble	Zaman sıkıntısı
+	With the idea	Şu fikirle
+	Aimed against	Şuna karşı
+	Better is	Daha iyisi
+	Worse is	Daha kötüsü
+	Editorial comment	Editör yorumu
+	Choose a move first: glyphs go on a move.	Önce bir hamle seçin: işaretler bir hamleye konur.
+	Not added: this move has as many glyphs as it can take.	Eklenmedi: bu hamlede alabileceği kadar işaret var.
+	One half	Bir bölü iki
+	Dash	Tire
+	Capture sign	Alma işareti
+	Check sign	Şah işareti
+	Double check sign	Çifte şah işareti
+	Glyph palette	İşaret paleti
+	Close the glyph palette	İşaret paletini kapat
+	Puts the character into the field you were typing in, or at the end of the move's comment.	Karakteri yazdığınız alana ya da hamlenin yorumunun sonuna ekler.
+	Comment before {move}	{move} öncesi yorum
+	In PGN this comment joins the comment before the game's first move.	PGN'de bu yorum, oyunun ilk hamlesinden önceki yorumla birleşir.
+	In PGN this comment is written after the previous move.	PGN'de bu yorum önceki hamleden sonra yazılır.
+	Move glyphs	Hamle işaretleri
+	Evaluation glyphs	Değerlendirme işaretleri
+	Other glyphs	Diğer işaretler
+	Edit the comment before a move	hamle öncesi yorum düzenleme
+	Clear glyphs	işaretleri temizleme
+	Edit the move's comment	Hamlenin yorumunu düzenle
+	Glyph ! (good move)	İşaret ! (iyi hamle)
+	Glyph ? (poor move)	İşaret ? (zayıf hamle)
+	Glyph !! (brilliant move)	İşaret !! (parlak hamle)
+	Glyph ?? (blunder)	İşaret ?? (büyük hata)
+	Glyph !? (interesting move)	İşaret !? (ilginç hamle)
+	Glyph ?! (dubious move)	İşaret ?! (şüpheli hamle)

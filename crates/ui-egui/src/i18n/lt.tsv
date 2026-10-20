@@ -2924,3 +2924,58 @@ chess side	Black	Juodieji
 	Make variation the main line	Paversti variantą pagrindiniu
 	Demote line	Nuleisti liniją
 	Delete the moves after the current move	Ištrinti ėjimus po dabartinio ėjimo
+
+# Chess ▸ PGN toolbar: T6, glyphs (the 28 names are the annotation glyphs' standard meanings), comments and the glyph palette. "Edit the comment before a move" and "Clear glyphs" name undo steps (they follow "Undo" or "Redo"); the last seven are command names.
+	Good move	Geras ėjimas
+	Poor move	Silpnas ėjimas
+	Brilliant move	Puikus ėjimas
+	Blunder	Grubi klaida
+	Interesting move	Įdomus ėjimas
+	Dubious move	Abejotinas ėjimas
+	Only move	Vienintelis ėjimas
+	Novelty	Naujovė
+	Equal position	Lygi pozicija
+	Unclear position	Neaiški pozicija
+	White is slightly better	Baltieji stovi šiek tiek geriau
+	Black is slightly better	Juodieji stovi šiek tiek geriau
+	White is clearly better	Baltieji stovi aiškiai geriau
+	Black is clearly better	Juodieji stovi aiškiai geriau
+	White is winning	Baltieji laimi
+	Black is winning	Juodieji laimi
+	Compensation for the material	Kompensacija už medžiagą
+	Zugzwang	Cugcvangas
+	Development advantage	Pranašumas vystyme
+	With the initiative	Su iniciatyva
+	With an attack	Su ataka
+	With counterplay	Su kontržaidimu
+	Time trouble	Laiko stoka
+	With the idea	Su idėja
+	Aimed against	Nukreipta prieš
+	Better is	Geriau
+	Worse is	Blogiau
+	Editorial comment	Redakcinis komentaras
+	Choose a move first: glyphs go on a move.	Pirmiausia pasirinkite ėjimą: ženklai dedami prie ėjimo.
+	Not added: this move has as many glyphs as it can take.	Nepridėta: šis ėjimas jau turi tiek ženklų, kiek gali.
+	One half	Viena antroji
+	Dash	Brūkšnys
+	Capture sign	Kirtimo ženklas
+	Check sign	Šacho ženklas
+	Double check sign	Dvigubo šacho ženklas
+	Glyph palette	Ženklų paletė
+	Close the glyph palette	Uždaryti ženklų paletę
+	Puts the character into the field you were typing in, or at the end of the move's comment.	Įterpia simbolį į lauką, kuriame rašėte, arba ėjimo komentaro pabaigoje.
+	Comment before {move}	Komentaras prieš {move}
+	In PGN this comment joins the comment before the game's first move.	PGN faile šis komentaras sujungiamas su komentaru prieš pirmąjį partijos ėjimą.
+	In PGN this comment is written after the previous move.	PGN faile šis komentaras rašomas po ankstesnio ėjimo.
+	Move glyphs	Ėjimo ženklai
+	Evaluation glyphs	Įvertinimo ženklai
+	Other glyphs	Kiti ženklai
+	Edit the comment before a move	komentaro prieš ėjimą taisymą
+	Clear glyphs	ženklų šalinimą
+	Edit the move's comment	Taisyti ėjimo komentarą
+	Glyph ! (good move)	Ženklas ! (geras ėjimas)
+	Glyph ? (poor move)	Ženklas ? (silpnas ėjimas)
+	Glyph !! (brilliant move)	Ženklas !! (puikus ėjimas)
+	Glyph ?? (blunder)	Ženklas ?? (grubi klaida)
+	Glyph !? (interesting move)	Ženklas !? (įdomus ėjimas)
+	Glyph ?! (dubious move)	Ženklas ?! (abejotinas ėjimas)

@@ -2580,3 +2580,58 @@ animation effects	Off	ఆఫ్
 	Make variation the main line	ఉపవరుసను ప్రధాన వరుసగా చేయి
 	Demote line	వరుసను కిందికి దించు
 	Delete the moves after the current move	ప్రస్తుత ఎత్తు తర్వాతి ఎత్తులను తొలగించు
+
+# Chess ▸ PGN toolbar: T6, glyphs (the 28 names are the annotation glyphs' standard meanings), comments and the glyph palette. "Edit the comment before a move" and "Clear glyphs" name undo steps (they follow "Undo" or "Redo"); the last seven are command names.
+	Good move	మంచి ఎత్తు
+	Poor move	బలహీన ఎత్తు
+	Brilliant move	అద్భుతమైన ఎత్తు
+	Blunder	పెద్ద తప్పు
+	Interesting move	ఆసక్తికరమైన ఎత్తు
+	Dubious move	సందేహాస్పద ఎత్తు
+	Only move	ఏకైక ఎత్తు
+	Novelty	కొత్తదనం
+	Equal position	సమాన స్థితి
+	Unclear position	అస్పష్ట స్థితి
+	White is slightly better	తెలుపు కొంచెం మెరుగు
+	Black is slightly better	నలుపు కొంచెం మెరుగు
+	White is clearly better	తెలుపు స్పష్టంగా మెరుగు
+	Black is clearly better	నలుపు స్పష్టంగా మెరుగు
+	White is winning	తెలుపు గెలుస్తోంది
+	Black is winning	నలుపు గెలుస్తోంది
+	Compensation for the material	బలానికి పరిహారం
+	Zugzwang	త్సుగ్‌త్స్వాంగ్
+	Development advantage	అభివృద్ధిలో ఆధిక్యం
+	With the initiative	చొరవతో
+	With an attack	దాడితో
+	With counterplay	ప్రతిదాడితో
+	Time trouble	సమయ ఒత్తిడి
+	With the idea	ఆలోచనతో
+	Aimed against	దీనికి వ్యతిరేకంగా
+	Better is	మెరుగైనది
+	Worse is	అధ్వాన్నమైనది
+	Editorial comment	సంపాదకీయ వ్యాఖ్య
+	Choose a move first: glyphs go on a move.	ముందుగా ఒక ఎత్తును ఎంచుకోండి: గుర్తులు ఎత్తుకు వేస్తారు.
+	Not added: this move has as many glyphs as it can take.	జోడించలేదు: ఈ ఎత్తుకు ఉండగలిగినన్ని గుర్తులు ఇప్పటికే ఉన్నాయి.
+	One half	సగం
+	Dash	డాష్
+	Capture sign	పట్టే గుర్తు
+	Check sign	చెక్ గుర్తు
+	Double check sign	డబుల్ చెక్ గుర్తు
+	Glyph palette	గుర్తుల పాలెట్
+	Close the glyph palette	గుర్తుల పాలెట్‌ను మూసివేయి
+	Puts the character into the field you were typing in, or at the end of the move's comment.	మీరు టైప్ చేస్తున్న ఫీల్డ్‌లో, లేకపోతే ఎత్తు వ్యాఖ్య చివర అక్షరాన్ని చేరుస్తుంది.
+	Comment before {move}	{move} ముందు వ్యాఖ్య
+	In PGN this comment joins the comment before the game's first move.	PGNలో ఈ వ్యాఖ్య ఆట మొదటి ఎత్తుకు ముందున్న వ్యాఖ్యతో కలుస్తుంది.
+	In PGN this comment is written after the previous move.	PGNలో ఈ వ్యాఖ్య మునుపటి ఎత్తు తర్వాత రాయబడుతుంది.
+	Move glyphs	ఎత్తు గుర్తులు
+	Evaluation glyphs	మూల్యాంకన గుర్తులు
+	Other glyphs	ఇతర గుర్తులు
+	Edit the comment before a move	ఎత్తుకు ముందు వ్యాఖ్య సవరణ
+	Clear glyphs	గుర్తుల తొలగింపు
+	Edit the move's comment	ఎత్తు వ్యాఖ్యను సవరించు
+	Glyph ! (good move)	గుర్తు ! (మంచి ఎత్తు)
+	Glyph ? (poor move)	గుర్తు ? (బలహీన ఎత్తు)
+	Glyph !! (brilliant move)	గుర్తు !! (అద్భుతమైన ఎత్తు)
+	Glyph ?? (blunder)	గుర్తు ?? (పెద్ద తప్పు)
+	Glyph !? (interesting move)	గుర్తు !? (ఆసక్తికరమైన ఎత్తు)
+	Glyph ?! (dubious move)	గుర్తు ?! (సందేహాస్పద ఎత్తు)

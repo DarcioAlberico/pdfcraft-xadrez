@@ -154,7 +154,7 @@ fn every_registered_command_is_implemented() {
             app.set_chess_window_detached(true);
         }
         // The chess rail's commands need a game with variations on the board, at 2.Nf3 in 1...c5.
-        if spec.id.starts_with("chess.variation.") || spec.id.starts_with("chess.moves.") {
+        if spec.id.starts_with("chess.variation.") || spec.id.starts_with("chess.moves.") || spec.id.starts_with("chess.nag.") {
             use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, NodePath};
             let (mut game, _) = Game::from_pgn("1. e4 e5 (1... c5 2. Nf3 (2. c3) d6) 2. Nf3 *").unwrap();
             game.go_to_node(game.node_at(&NodePath::new(vec![0, 1, 0])).unwrap());

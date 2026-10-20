@@ -2672,3 +2672,58 @@ animation effects	Off	Aus
 	Make variation the main line	Variante zur Hauptvariante machen
 	Demote line	Linie herabstufen
 	Delete the moves after the current move	Züge nach dem aktuellen Zug löschen
+
+# Chess ▸ PGN toolbar: T6, glyphs (the 28 names are the annotation glyphs' standard meanings), comments and the glyph palette. "Edit the comment before a move" and "Clear glyphs" name undo steps (they follow "Undo" or "Redo"); the last seven are command names.
+	Good move	Guter Zug
+	Poor move	Schlechter Zug
+	Brilliant move	Brillanter Zug
+	Blunder	Grober Fehler
+	Interesting move	Interessanter Zug
+	Dubious move	Zweifelhafter Zug
+	Only move	Einziger Zug
+	Novelty	Neuerung
+	Equal position	Ausgeglichene Stellung
+	Unclear position	Unklare Stellung
+	White is slightly better	Weiß steht etwas besser
+	Black is slightly better	Schwarz steht etwas besser
+	White is clearly better	Weiß steht deutlich besser
+	Black is clearly better	Schwarz steht deutlich besser
+	White is winning	Weiß steht auf Gewinn
+	Black is winning	Schwarz steht auf Gewinn
+	Compensation for the material	Kompensation für das Material
+	Zugzwang	Zugzwang
+	Development advantage	Entwicklungsvorsprung
+	With the initiative	Mit Initiative
+	With an attack	Mit Angriff
+	With counterplay	Mit Gegenspiel
+	Time trouble	Zeitnot
+	With the idea	Mit der Idee
+	Aimed against	Gerichtet gegen
+	Better is	Besser ist
+	Worse is	Schlechter ist
+	Editorial comment	Redaktioneller Kommentar
+	Choose a move first: glyphs go on a move.	Wählen Sie zuerst einen Zug: Zeichen gehören zu einem Zug.
+	Not added: this move has as many glyphs as it can take.	Nicht hinzugefügt: Dieser Zug hat schon so viele Zeichen, wie er tragen kann.
+	One half	Ein Halb
+	Dash	Gedankenstrich
+	Capture sign	Schlagzeichen
+	Check sign	Schachzeichen
+	Double check sign	Doppelschachzeichen
+	Glyph palette	Zeichenpalette
+	Close the glyph palette	Zeichenpalette schließen
+	Puts the character into the field you were typing in, or at the end of the move's comment.	Fügt das Zeichen in das Feld ein, in dem Sie getippt haben, oder ans Ende des Zugkommentars.
+	Comment before {move}	Kommentar vor {move}
+	In PGN this comment joins the comment before the game's first move.	In PGN schließt sich dieser Kommentar dem Kommentar vor dem ersten Zug der Partie an.
+	In PGN this comment is written after the previous move.	In PGN steht dieser Kommentar nach dem vorigen Zug.
+	Move glyphs	Zugzeichen
+	Evaluation glyphs	Bewertungszeichen
+	Other glyphs	Weitere Zeichen
+	Edit the comment before a move	Kommentar vor einem Zug bearbeiten
+	Clear glyphs	Zeichen entfernen
+	Edit the move's comment	Kommentar des Zugs bearbeiten
+	Glyph ! (good move)	Zeichen ! (guter Zug)
+	Glyph ? (poor move)	Zeichen ? (schlechter Zug)
+	Glyph !! (brilliant move)	Zeichen !! (brillanter Zug)
+	Glyph ?? (blunder)	Zeichen ?? (grober Fehler)
+	Glyph !? (interesting move)	Zeichen !? (interessanter Zug)
+	Glyph ?! (dubious move)	Zeichen ?! (zweifelhafter Zug)
