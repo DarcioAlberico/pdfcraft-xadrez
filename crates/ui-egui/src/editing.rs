@@ -228,7 +228,7 @@ impl PdfCraftApp {
     /// not fall through to the document, whose change the user may not even see from the chess
     /// panels (the command is disabled then, see `command_enabled`).
     fn chess_history_step(&mut self, undo: bool) {
-        let board = &mut self.chess.board;
+        let board = self.chess.board_mut();
         let label = if undo { board.undo_label() } else { board.redo_label() };
         let done = if undo { board.undo() } else { board.redo() };
         if let (true, Some(label)) = (done, label) {
@@ -690,6 +690,8 @@ impl PdfCraftApp {
             match delivered {
                 Ok(()) => {
                     let _ = self.session.mark_saved(id, bytes, None);
+                    // The save may have given the file its first /ID and a new size.
+                    self.rekey_chess_games(id);
                     if let Some(doc) = self.session.get(id)
                         && let Some(view) = self.views.get_mut(index)
                     {
@@ -790,6 +792,8 @@ impl PdfCraftApp {
         match self.session.mark_saved(id, bytes, Some(dest.to_string())) {
             Ok(()) => {
                 self.forget_recovery(id);
+                // The save may have given the file its first /ID, a new size or a new path.
+                self.rekey_chess_games(id);
                 if let Some(doc) = self.session.get(id)
                     && let Some(view) = self.views.iter_mut().find(|v| v.id == id)
                 {

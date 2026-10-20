@@ -2857,3 +2857,34 @@ chess side	Black	Đen
 	Load the diagram	tải sơ đồ
 	Position set-up	xếp thế cờ
 	Reset to the start position	trở về thế cờ ban đầu
+# Chess ▸ PGN toolbar: T4b, each document's games (the list, their autosave, PGN files in and out).
+	Diagram {n}, p. {page}	Sơ đồ {n}, tr. {page}
+	Game {n}	Ván {n}
+	Games in this document ({n})	Các ván trong tài liệu ({n})
+	Games ({n})	Các ván ({n})
+	New game	Ván mới
+	Open PGN…	Mở PGN…
+	Save PGN…	Lưu PGN…
+	Save all games as PGN…	Lưu tất cả các ván thành PGN…
+	Save chess games for this protected document?	Lưu các ván cờ của tài liệu được bảo vệ này?
+	They are kept in the app's own folder, unencrypted, so they come back when the document is opened again.	Chúng được giữ trong thư mục riêng của ứng dụng, không mã hóa, để quay lại khi tài liệu được mở lại.
+	Save them	Lưu
+	Too many games to autosave here: save them as PGN.	Quá nhiều ván để tự động lưu: hãy lưu chúng thành PGN.
+	Another PdfCraft window autosaves these games.	Một cửa sổ PdfCraft khác đang tự động lưu các ván này.
+	These games aren't being autosaved.	Các ván này không được tự động lưu.
+	Chess game restored: {name}, moves: {n}	Đã khôi phục ván cờ: {name}, số nước: {n}
+	Chess games restored: {n}	Số ván cờ đã khôi phục: {n}
+	Saved chess games that couldn't be read: {n}	Số ván cờ đã lưu không đọc được: {n}
+	A file of saved chess games couldn't be read. It was kept as {name}.	Không đọc được một tệp ván cờ đã lưu. Tệp được giữ lại với tên {name}.
+	Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.	Không đọc được các ván cờ đã lưu. Chúng được để riêng, và từ giờ các ván mới sẽ được lưu.
+	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Tài liệu này được bảo vệ: các ván cờ của nó chỉ được tự động lưu nếu bạn cho phép, trong bảng Bàn cờ.
+	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Quá nhiều ván cờ để tự động lưu cho tài liệu này (tối đa {n}, {mb} MB). Hãy lưu chúng bằng Lưu tất cả các ván thành PGN… để không mất gì.
+	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Không thể tự động lưu ván cờ: không khóa được thư mục dữ liệu của ứng dụng cho cửa sổ này.
+	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Các ván cờ này được một cửa sổ PdfCraft khác tự động lưu. Các thay đổi ở đây không được tự động lưu.
+	Chess games couldn't be autosaved: {e}	Không thể tự động lưu ván cờ: {e}
+	Nothing to save: an illegal position has no PGN.	Không có gì để lưu: thế cờ không hợp lệ không có PGN.
+	Games read from {name}: {n}	Số ván đọc từ {name}: {n}
+	Not read: {n}	Chưa đọc: {n}
+	Only the first {n} were read.	Chỉ đọc {n} ván đầu tiên.
+	the file is too large	tệp quá lớn
+	no game could be read	không đọc được ván nào

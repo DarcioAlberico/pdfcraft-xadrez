@@ -2604,3 +2604,34 @@ animation effects	Off	オフ
 	Load the diagram	局面図の読み込み
 	Position set-up	局面の配置
 	Reset to the start position	初期配置に戻す
+# Chess ▸ PGN toolbar: T4b, each document's games (the list, their autosave, PGN files in and out).
+	Diagram {n}, p. {page}	局面図 {n}、{page} ページ
+	Game {n}	対局 {n}
+	Games in this document ({n})	この文書の対局 ({n})
+	Games ({n})	対局 ({n})
+	New game	新しい対局
+	Open PGN…	PGN を開く…
+	Save PGN…	PGN を保存…
+	Save all games as PGN…	すべての対局を PGN で保存…
+	Save chess games for this protected document?	この保護された文書のチェスの対局を保存しますか?
+	They are kept in the app's own folder, unencrypted, so they come back when the document is opened again.	対局はアプリ専用のフォルダーに暗号化せずに保存され、文書をもう一度開いたときに戻ります。
+	Save them	保存する
+	Too many games to autosave here: save them as PGN.	対局が多すぎて自動保存できません: PGN で保存してください。
+	Another PdfCraft window autosaves these games.	別の PdfCraft ウィンドウがこれらの対局を自動保存しています。
+	These games aren't being autosaved.	これらの対局は自動保存されていません。
+	Chess game restored: {name}, moves: {n}	チェスの対局を復元しました: {name}、{n} 手
+	Chess games restored: {n}	復元したチェスの対局: {n}
+	Saved chess games that couldn't be read: {n}	読み取れなかった保存済みの対局: {n}
+	A file of saved chess games couldn't be read. It was kept as {name}.	保存済みのチェスの対局ファイルを読み取れませんでした。{name} として保管しました。
+	Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.	保存済みのチェスの対局を読み取れませんでした。別に保管し、これからは新しい対局を保存します。
+	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	この文書は保護されています: チェスの対局は、チェス盤パネルで許可した場合にのみ自動保存されます。
+	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	この文書のチェスの対局が多すぎて自動保存できません (最大 {n} 局、{mb} MB)。何も失わないよう「すべての対局を PGN で保存…」で保存してください。
+	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	チェスの対局を自動保存できません: このウィンドウ用にアプリのデータフォルダーをロックできませんでした。
+	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	これらのチェスの対局は別の PdfCraft ウィンドウが自動保存しています。ここでの変更は自動保存されません。
+	Chess games couldn't be autosaved: {e}	チェスの対局を自動保存できませんでした: {e}
+	Nothing to save: an illegal position has no PGN.	保存するものがありません: 不正な局面には PGN がありません。
+	Games read from {name}: {n}	{name} から読み込んだ対局: {n}
+	Not read: {n}	読み取れなかったもの: {n}
+	Only the first {n} were read.	最初の {n} 局だけを読み込みました。
+	the file is too large	ファイルが大きすぎます
+	no game could be read	読み取れる対局がありません

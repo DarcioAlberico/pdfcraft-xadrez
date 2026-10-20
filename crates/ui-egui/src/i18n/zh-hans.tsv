@@ -2566,3 +2566,34 @@ animation effects	Off	关
 	Load the diagram	载入棋图
 	Position set-up	摆放局面
 	Reset to the start position	恢复初始局面
+# Chess ▸ PGN toolbar: T4b, each document's games (the list, their autosave, PGN files in and out).
+	Diagram {n}, p. {page}	棋图 {n}，第 {page} 页
+	Game {n}	对局 {n}
+	Games in this document ({n})	本文档的对局 ({n})
+	Games ({n})	对局 ({n})
+	New game	新对局
+	Open PGN…	打开 PGN…
+	Save PGN…	保存 PGN…
+	Save all games as PGN…	将所有对局保存为 PGN…
+	Save chess games for this protected document?	保存这个受保护文档的国际象棋对局吗？
+	They are kept in the app's own folder, unencrypted, so they come back when the document is opened again.	对局以未加密的形式保存在应用自己的文件夹中，再次打开文档时会恢复。
+	Save them	保存
+	Too many games to autosave here: save them as PGN.	对局太多，无法自动保存：请保存为 PGN。
+	Another PdfCraft window autosaves these games.	另一个 PdfCraft 窗口正在自动保存这些对局。
+	These games aren't being autosaved.	这些对局没有被自动保存。
+	Chess game restored: {name}, moves: {n}	已恢复国际象棋对局：{name}，{n} 步
+	Chess games restored: {n}	已恢复的国际象棋对局：{n}
+	Saved chess games that couldn't be read: {n}	无法读取的已保存对局：{n}
+	A file of saved chess games couldn't be read. It was kept as {name}.	无法读取一个已保存国际象棋对局的文件。已将其保留为 {name}。
+	Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.	无法读取已保存的国际象棋对局。已将其另行保留，从现在起会保存新的对局。
+	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	此文档受保护：只有在“棋盘”面板中允许后，其国际象棋对局才会自动保存。
+	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	此文档的国际象棋对局太多，无法自动保存（最多 {n} 局，{mb} MB）。请使用“将所有对局保存为 PGN…”保存，以免丢失。
+	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	无法自动保存国际象棋对局：无法为此窗口锁定应用的数据文件夹。
+	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	另一个 PdfCraft 窗口正在自动保存这些国际象棋对局。此处的更改不会自动保存。
+	Chess games couldn't be autosaved: {e}	无法自动保存国际象棋对局：{e}
+	Nothing to save: an illegal position has no PGN.	没有可保存的内容：非法局面没有 PGN。
+	Games read from {name}: {n}	从 {name} 读取的对局：{n}
+	Not read: {n}	未读取：{n}
+	Only the first {n} were read.	只读取了前 {n} 局。
+	the file is too large	文件太大
+	no game could be read	无法读取任何对局

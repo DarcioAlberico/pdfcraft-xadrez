@@ -2814,3 +2814,34 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Load the diagram	caricamento del diagramma
 	Position set-up	impostazione della posizione
 	Reset to the start position	ritorno alla posizione iniziale
+# Chess ▸ PGN toolbar: T4b, each document's games (the list, their autosave, PGN files in and out).
+	Diagram {n}, p. {page}	Diagramma {n}, p. {page}
+	Game {n}	Partita {n}
+	Games in this document ({n})	Partite del documento ({n})
+	Games ({n})	Partite ({n})
+	New game	Nuova partita
+	Open PGN…	Apri PGN…
+	Save PGN…	Salva PGN…
+	Save all games as PGN…	Salva tutte le partite in PGN…
+	Save chess games for this protected document?	Salvare le partite di scacchi di questo documento protetto?
+	They are kept in the app's own folder, unencrypted, so they come back when the document is opened again.	Vengono conservate nella cartella dell'app, non cifrate, per ritrovarle quando il documento viene riaperto.
+	Save them	Salvale
+	Too many games to autosave here: save them as PGN.	Troppe partite per il salvataggio automatico: salvale in PGN.
+	Another PdfCraft window autosaves these games.	Un'altra finestra di PdfCraft salva automaticamente queste partite.
+	These games aren't being autosaved.	Queste partite non vengono salvate automaticamente.
+	Chess game restored: {name}, moves: {n}	Partita ripristinata: {name}, mosse: {n}
+	Chess games restored: {n}	Partite ripristinate: {n}
+	Saved chess games that couldn't be read: {n}	Partite salvate non leggibili: {n}
+	A file of saved chess games couldn't be read. It was kept as {name}.	Un file di partite salvate non è leggibile. È stato conservato come {name}.
+	Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.	Le partite salvate non sono leggibili. Sono state messe da parte, e da ora vengono salvate le nuove partite.
+	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Questo documento è protetto: le sue partite di scacchi vengono salvate automaticamente solo se lo consenti, nel pannello Scacchiera.
+	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Troppe partite di scacchi da salvare automaticamente per questo documento (al massimo {n}, {mb} MB). Salvale con Salva tutte le partite in PGN… per non perdere nulla.
+	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Le partite di scacchi non possono essere salvate automaticamente: non è stato possibile bloccare la cartella dati dell'app per questa finestra.
+	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Queste partite di scacchi vengono salvate automaticamente da un'altra finestra di PdfCraft. Le modifiche fatte qui non vengono salvate automaticamente.
+	Chess games couldn't be autosaved: {e}	Impossibile salvare automaticamente le partite di scacchi: {e}
+	Nothing to save: an illegal position has no PGN.	Niente da salvare: una posizione illegale non ha PGN.
+	Games read from {name}: {n}	Partite lette da {name}: {n}
+	Not read: {n}	Non lette: {n}
+	Only the first {n} were read.	Sono state lette solo le prime {n}.
+	the file is too large	il file è troppo grande
+	no game could be read	nessuna partita è leggibile

@@ -341,6 +341,11 @@ pub const COMMANDS: &[CommandSpec] = &[
     c("a11y.tags", "Tags panel", None, None, Document, "tag"),
     c("chess.scan", "Scan chess diagrams", None, None, Copying, "grid-3x3"),
     c("chess.panel", "Chess diagrams panel", None, None, Document, "grid-3x3"),
+    // The chess board's games (T4b): a new game, and PGN files in and out.
+    c("chess.game.new", "New game", None, None, Nothing, "plus"),
+    c("chess.pgn.open", "Open PGN…", None, None, Nothing, "folder-open"),
+    c("chess.pgn.save", "Save PGN…", None, None, Nothing, "save"),
+    c("chess.pgn.save_all", "Save all games as PGN…", None, None, Nothing, "save"),
     c("export.all_images", "Export all images…", FILE, None, Copying, "image"),
     c("edit.header_footer", "Add header & footer…", None, None, Modification, "heading"),
     c("edit.header_footer.update", "Update header & footer…", None, None, Marks(crate::MarkKind::HeaderFooter), "heading"),

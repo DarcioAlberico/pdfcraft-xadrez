@@ -84,7 +84,7 @@ impl PdfCraftApp {
         // (D12), first: with nothing to undo there, they are off rather than reaching for the
         // document's history.
         if self.chess.in_scope() && matches!(spec.id, "edit.undo" | "edit.redo") {
-            let history = &self.chess.board.history;
+            let history = &self.chess.board().history;
             return if spec.id == "edit.undo" { history.undo_edit().is_some() } else { history.redo_edit().is_some() };
         }
         // Undo and Redo act on the Combine files list while its tab shows.
@@ -113,7 +113,7 @@ impl PdfCraftApp {
         if !self.chess.in_scope() {
             return None;
         }
-        Some(self.chess.board.command_text(undo).unwrap_or_else(|| crate::i18n::command_label(spec.label)))
+        Some(self.chess.board().command_text(undo).unwrap_or_else(|| crate::i18n::command_label(spec.label)))
     }
 
     /// Run a registered command by id. Returns `false` when the id is unknown or the command
@@ -450,6 +450,10 @@ impl PdfCraftApp {
             "a11y.tags" => self.choose_right_panel(Some(RightPanel::Tags)),
             "chess.scan" => self.start_chess_scan(true),
             "chess.panel" => self.choose_right_panel(Some(RightPanel::Chess)),
+            "chess.game.new" => self.chess_games_action(crate::chess_collection::GamesAction::New),
+            "chess.pgn.open" => self.open_chess_pgn(),
+            "chess.pgn.save" => self.save_chess_pgn(false),
+            "chess.pgn.save_all" => self.save_chess_pgn(true),
             "a11y.reading_options" => self.dialog = Some(Dialog::Properties(crate::PropsTab::Advanced)),
             "export.all_images" => self.dialog = Some(Dialog::Export(crate::export_ui::ExportKind::AllImages)),
             "edit.text" => {

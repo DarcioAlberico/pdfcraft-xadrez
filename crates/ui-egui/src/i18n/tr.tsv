@@ -2598,3 +2598,34 @@ animation effects	Off	Kapalı
 	Load the diagram	diyagram yükleme
 	Position set-up	pozisyon kurma
 	Reset to the start position	başlangıç konumuna dönüş
+# Chess ▸ PGN toolbar: T4b, each document's games (the list, their autosave, PGN files in and out).
+	Diagram {n}, p. {page}	Diyagram {n}, s. {page}
+	Game {n}	Oyun {n}
+	Games in this document ({n})	Bu belgedeki oyunlar ({n})
+	Games ({n})	Oyunlar ({n})
+	New game	Yeni oyun
+	Open PGN…	PGN aç…
+	Save PGN…	PGN kaydet…
+	Save all games as PGN…	Tüm oyunları PGN olarak kaydet…
+	Save chess games for this protected document?	Bu korumalı belgenin satranç oyunları kaydedilsin mi?
+	They are kept in the app's own folder, unencrypted, so they come back when the document is opened again.	Uygulamanın kendi klasöründe şifrelenmeden tutulurlar; böylece belge yeniden açıldığında geri gelirler.
+	Save them	Kaydet
+	Too many games to autosave here: save them as PGN.	Otomatik kayıt için çok fazla oyun var: bunları PGN olarak kaydedin.
+	Another PdfCraft window autosaves these games.	Bu oyunları başka bir PdfCraft penceresi otomatik olarak kaydediyor.
+	These games aren't being autosaved.	Bu oyunlar otomatik olarak kaydedilmiyor.
+	Chess game restored: {name}, moves: {n}	Satranç oyunu geri yüklendi: {name}, hamle: {n}
+	Chess games restored: {n}	Geri yüklenen satranç oyunları: {n}
+	Saved chess games that couldn't be read: {n}	Okunamayan kayıtlı satranç oyunları: {n}
+	A file of saved chess games couldn't be read. It was kept as {name}.	Kayıtlı satranç oyunlarının bir dosyası okunamadı. {name} olarak saklandı.
+	Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.	Kayıtlı satranç oyunları okunamadı. Bir kenara ayrıldılar; yeni oyunlar artık kaydediliyor.
+	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Bu belge korumalı: satranç oyunları yalnızca Satranç tahtası panelinde izin verirseniz otomatik olarak kaydedilir.
+	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Bu belge için otomatik kaydedilecek çok fazla satranç oyunu var (en fazla {n}, {mb} MB). Hiçbir şey kaybolmasın diye bunları Tüm oyunları PGN olarak kaydet… ile kaydedin.
+	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Satranç oyunları otomatik olarak kaydedilemiyor: uygulamanın veri klasörü bu pencere için kilitlenemedi.
+	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Bu satranç oyunlarını başka bir PdfCraft penceresi otomatik olarak kaydediyor. Burada yapılan değişiklikler otomatik olarak kaydedilmiyor.
+	Chess games couldn't be autosaved: {e}	Satranç oyunları otomatik olarak kaydedilemedi: {e}
+	Nothing to save: an illegal position has no PGN.	Kaydedilecek bir şey yok: geçersiz bir konumun PGN'si yoktur.
+	Games read from {name}: {n}	{name} dosyasından okunan oyunlar: {n}
+	Not read: {n}	Okunmadı: {n}
+	Only the first {n} were read.	Yalnızca ilk {n} oyun okundu.
+	the file is too large	dosya çok büyük
+	no game could be read	hiçbir oyun okunamadı

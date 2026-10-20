@@ -542,6 +542,13 @@ impl BoardState {
         Some(tex)
     }
 
+    /// Drop the board's pictures (they are drawn again when it is shown): a game not shown keeps
+    /// none.
+    pub(crate) fn release_textures(&mut self) {
+        self.texture = None;
+        self.sprites = None;
+    }
+
     /// The board image, redrawn when the pieces or the view change.
     fn texture(&mut self, ctx: &egui::Context, pieces: &PieceSet) -> Option<TextureHandle> {
         let placement = self.placement();

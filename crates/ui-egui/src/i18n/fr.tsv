@@ -2602,3 +2602,34 @@ animation effects	Off	Désactivés
 	Load the diagram	le chargement du diagramme
 	Position set-up	la composition de la position
 	Reset to the start position	le retour à la position de départ
+# Chess ▸ PGN toolbar: T4b, each document's games (the list, their autosave, PGN files in and out).
+	Diagram {n}, p. {page}	Diagramme {n}, p. {page}
+	Game {n}	Partie {n}
+	Games in this document ({n})	Parties du document ({n})
+	Games ({n})	Parties ({n})
+	New game	Nouvelle partie
+	Open PGN…	Ouvrir un PGN…
+	Save PGN…	Enregistrer le PGN…
+	Save all games as PGN…	Enregistrer toutes les parties en PGN…
+	Save chess games for this protected document?	Enregistrer les parties d'échecs de ce document protégé ?
+	They are kept in the app's own folder, unencrypted, so they come back when the document is opened again.	Elles sont conservées dans le dossier propre à l'application, non chiffrées, pour revenir quand le document est rouvert.
+	Save them	Les enregistrer
+	Too many games to autosave here: save them as PGN.	Trop de parties pour l'enregistrement automatique : enregistrez-les en PGN.
+	Another PdfCraft window autosaves these games.	Une autre fenêtre de PdfCraft enregistre automatiquement ces parties.
+	These games aren't being autosaved.	Ces parties ne sont pas enregistrées automatiquement.
+	Chess game restored: {name}, moves: {n}	Partie d'échecs restaurée : {name}, coups : {n}
+	Chess games restored: {n}	Parties d'échecs restaurées : {n}
+	Saved chess games that couldn't be read: {n}	Parties d'échecs enregistrées illisibles : {n}
+	A file of saved chess games couldn't be read. It was kept as {name}.	Un fichier de parties d'échecs enregistrées est illisible. Il a été conservé sous le nom {name}.
+	Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.	Les parties d'échecs enregistrées sont illisibles. Elles ont été mises de côté, et les nouvelles parties sont enregistrées à partir de maintenant.
+	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Ce document est protégé : ses parties d'échecs ne sont enregistrées automatiquement que si vous l'autorisez, dans le panneau Échiquier.
+	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Trop de parties d'échecs à enregistrer automatiquement pour ce document ({n} au plus, {mb} Mo). Enregistrez-les avec Enregistrer toutes les parties en PGN… pour ne rien perdre.
+	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Les parties d'échecs ne peuvent pas être enregistrées automatiquement : le dossier de données de l'application n'a pas pu être verrouillé pour cette fenêtre.
+	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Ces parties d'échecs sont enregistrées automatiquement par une autre fenêtre de PdfCraft. Les modifications faites ici ne le sont pas.
+	Chess games couldn't be autosaved: {e}	Impossible d'enregistrer automatiquement les parties d'échecs : {e}
+	Nothing to save: an illegal position has no PGN.	Rien à enregistrer : une position illégale n'a pas de PGN.
+	Games read from {name}: {n}	Parties lues dans {name} : {n}
+	Not read: {n}	Non lues : {n}
+	Only the first {n} were read.	Seules les {n} premières ont été lues.
+	the file is too large	le fichier est trop volumineux
+	no game could be read	aucune partie n'a pu être lue

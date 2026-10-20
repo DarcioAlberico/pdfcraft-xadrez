@@ -2600,3 +2600,34 @@ animation effects	Off	Өшірулі
 	Load the diagram	диаграмма жүктеу
 	Position set-up	позиция құру
 	Reset to the start position	бастапқы позицияға оралу
+# Chess ▸ PGN toolbar: T4b, each document's games (the list, their autosave, PGN files in and out).
+	Diagram {n}, p. {page}	Диаграмма {n}, {page}-бет
+	Game {n}	Партия {n}
+	Games in this document ({n})	Құжаттағы партиялар ({n})
+	Games ({n})	Партиялар ({n})
+	New game	Жаңа партия
+	Open PGN…	PGN ашу…
+	Save PGN…	PGN сақтау…
+	Save all games as PGN…	Барлық партияларды PGN ретінде сақтау…
+	Save chess games for this protected document?	Осы қорғалған құжаттың шахмат партиялары сақталсын ба?
+	They are kept in the app's own folder, unencrypted, so they come back when the document is opened again.	Олар қолданбаның өз қалтасында шифрленбей сақталады, сондықтан құжатты қайта ашқанда қайтып келеді.
+	Save them	Сақтау
+	Too many games to autosave here: save them as PGN.	Автосақтау үшін партиялар тым көп: оларды PGN ретінде сақтаңыз.
+	Another PdfCraft window autosaves these games.	Бұл партияларды PdfCraft-тың басқа терезесі автоматты түрде сақтайды.
+	These games aren't being autosaved.	Бұл партиялар автоматты түрде сақталмайды.
+	Chess game restored: {name}, moves: {n}	Шахмат партиясы қалпына келтірілді: {name}, жүрістер: {n}
+	Chess games restored: {n}	Қалпына келтірілген шахмат партиялары: {n}
+	Saved chess games that couldn't be read: {n}	Оқылмаған сақталған шахмат партиялары: {n}
+	A file of saved chess games couldn't be read. It was kept as {name}.	Сақталған шахмат партиялары бар файл оқылмады. Ол {name} ретінде сақталды.
+	Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.	Сақталған шахмат партиялары оқылмады. Олар бөлек сақталды, енді жаңа партиялар сақталады.
+	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Бұл құжат қорғалған: оның шахмат партиялары «Шахмат тақтасы» панелінде рұқсат етсеңіз ғана автоматты түрде сақталады.
+	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Бұл құжат үшін автосақтауға шахмат партиялары тым көп (ең көбі {n}, {mb} МБ). Ештеңе жоғалмас үшін оларды «Барлық партияларды PGN ретінде сақтау…» арқылы сақтаңыз.
+	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Шахмат партияларын автоматты түрде сақтау мүмкін емес: бұл терезе үшін қолданбаның деректер қалтасын құлыптау мүмкін болмады.
+	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Бұл шахмат партияларын PdfCraft-тың басқа терезесі автоматты түрде сақтайды. Мұнда енгізілген өзгерістер автоматты түрде сақталмайды.
+	Chess games couldn't be autosaved: {e}	Шахмат партияларын автоматты түрде сақтау мүмкін болмады: {e}
+	Nothing to save: an illegal position has no PGN.	Сақтайтын ештеңе жоқ: жарамсыз позицияның PGN-і жоқ.
+	Games read from {name}: {n}	{name} ішінен оқылған партиялар: {n}
+	Not read: {n}	Оқылмады: {n}
+	Only the first {n} were read.	Тек алғашқы {n} партия оқылды.
+	the file is too large	файл тым үлкен
+	no game could be read	бірде-бір партия оқылмады

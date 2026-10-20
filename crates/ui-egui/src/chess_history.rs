@@ -254,20 +254,26 @@ impl ChessState {
     /// Whether Undo and Redo go to the chess game: the last action was a click in the chess
     /// panels or a change to the game (counted by the game's history), not a click on the page or
     /// a change to the document.
+    ///
+    /// The changes counted are the game shown's: showing another game (another document's, or
+    /// another of the list) is not a change to it. Before the scope was ever settled, any change
+    /// counts.
     pub fn in_scope(&self) -> bool {
-        self.scope || self.board.history.edits() != self.scope_edits
+        let (game, edits) = self.games.scope_stamp();
+        let (settled_game, settled_edits) = self.scope_edits;
+        self.scope || ((game == settled_game || settled_game == 0) && edits != settled_edits)
     }
 
     /// Undo and Redo go to the chess game.
     pub(crate) fn enter_scope(&mut self) {
         self.scope = true;
-        self.scope_edits = self.board.history.edits();
+        self.scope_edits = self.games.scope_stamp();
     }
 
     /// Undo and Redo go to the document again.
     pub(crate) fn leave_scope(&mut self) {
         self.scope = false;
-        self.scope_edits = self.board.history.edits();
+        self.scope_edits = self.games.scope_stamp();
     }
 }
 

@@ -2601,3 +2601,34 @@ animation effects	Off	Ki
 	Load the diagram	diagram betöltése
 	Position set-up	állás felállítása
 	Reset to the start position	visszatérés a kezdőálláshoz
+# Chess ▸ PGN toolbar: T4b, each document's games (the list, their autosave, PGN files in and out).
+	Diagram {n}, p. {page}	{n}. diagram, {page}. o.
+	Game {n}	{n}. játszma
+	Games in this document ({n})	A dokumentum játszmái ({n})
+	Games ({n})	Játszmák ({n})
+	New game	Új játszma
+	Open PGN…	PGN megnyitása…
+	Save PGN…	PGN mentése…
+	Save all games as PGN…	Az összes játszma mentése PGN-ként…
+	Save chess games for this protected document?	Mentsük a védett dokumentum sakkjátszmáit?
+	They are kept in the app's own folder, unencrypted, so they come back when the document is opened again.	Az alkalmazás saját mappájában, titkosítás nélkül tároljuk őket, hogy a dokumentum újbóli megnyitásakor visszatérjenek.
+	Save them	Mentés
+	Too many games to autosave here: save them as PGN.	Túl sok játszma az automatikus mentéshez: mentsd őket PGN-ként.
+	Another PdfCraft window autosaves these games.	Egy másik PdfCraft-ablak menti automatikusan ezeket a játszmákat.
+	These games aren't being autosaved.	Ezek a játszmák nincsenek automatikusan mentve.
+	Chess game restored: {name}, moves: {n}	Sakkjátszma visszaállítva: {name}, lépések: {n}
+	Chess games restored: {n}	Visszaállított sakkjátszmák: {n}
+	Saved chess games that couldn't be read: {n}	Be nem olvasható mentett sakkjátszmák: {n}
+	A file of saved chess games couldn't be read. It was kept as {name}.	Egy mentett sakkjátszmákat tartalmazó fájl nem olvasható be. {name} néven megőriztük.
+	Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.	A mentett sakkjátszmák nem olvashatók be. Félretettük őket, és mostantól az új játszmákat mentjük.
+	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Ez a dokumentum védett: a sakkjátszmái csak akkor mentődnek automatikusan, ha ezt a Sakktábla panelen engedélyezed.
+	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Túl sok sakkjátszma a dokumentum automatikus mentéséhez (legfeljebb {n}, {mb} MB). Mentsd őket „Az összes játszma mentése PGN-ként…” paranccsal, hogy semmi ne vesszen el.
+	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	A sakkjátszmák nem menthetők automatikusan: az alkalmazás adatmappáját nem sikerült zárolni ehhez az ablakhoz.
+	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Ezeket a sakkjátszmákat egy másik PdfCraft-ablak menti automatikusan. Az itt végzett módosítások nem mentődnek automatikusan.
+	Chess games couldn't be autosaved: {e}	A sakkjátszmák automatikus mentése nem sikerült: {e}
+	Nothing to save: an illegal position has no PGN.	Nincs mit menteni: a szabálytalan állásnak nincs PGN-je.
+	Games read from {name}: {n}	{name} fájlból beolvasott játszmák: {n}
+	Not read: {n}	Nincs beolvasva: {n}
+	Only the first {n} were read.	Csak az első {n} lett beolvasva.
+	the file is too large	a fájl túl nagy
+	no game could be read	egyetlen játszma sem olvasható be
