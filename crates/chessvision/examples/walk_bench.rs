@@ -1,7 +1,7 @@
 //! Game-walk benchmark on documents read before. Not run in CI.
 //!
 //! ```text
-//! cargo run --release -p pdfcraft-chessvision --example walk_bench -- <document.json>… [--dump=<file>] [--plain]
+//! cargo run --release -p pdfcraft-chessvision --example walk_bench -- <document.json>… [--dump=<file>] [--plain] [--rules=…]
 //! ```
 //!
 //! Each file is a chess document as `chess_document` writes it (`out`). Its pages are judged again
@@ -10,12 +10,15 @@
 //! every move (file, page, printed text with `*` before a bold one, status) one per line, so two runs can be compared move by
 //! move. `--plain` forgets which moves were printed in bold first, as a document read before the
 //! weight was kept (or from OCR) has it, so the weight's part is measured on the same reading.
+//! `--rules=` reads with other [`WalkRules`] than the book's: `none`, `all`, or a comma-separated
+//! list of `implied_close`, `prose_moves`, `separators`, `results`, `ellipsis`, so each rule's
+//! effect on whole books is measured before it is turned on for them.
 //!
 //! The documents come from the user's own books and stay outside the repository.
 
 use std::collections::BTreeMap;
 
-use pdfcraft_chessvision::doc::{Block, ChessDoc, ChessPage, DocBuilder, Inline};
+use pdfcraft_chessvision::doc::{Block, ChessDoc, ChessPage, DocBuilder, Inline, WalkRules};
 
 /// Forget which moves were printed in bold.
 fn plain(page: &mut ChessPage) {
@@ -29,16 +32,36 @@ fn plain(page: &mut ChessPage) {
     }
 }
 
+/// `--rules=` as rules.
+fn rules(spec: &str) -> Result<WalkRules, String> {
+    let mut r = WalkRules::NONE;
+    for name in spec.split(',').map(str::trim).filter(|n| !n.is_empty()) {
+        match name {
+            "none" => r = WalkRules::NONE,
+            "all" => r = WalkRules::ALL,
+            "book" => r = WalkRules::BOOK,
+            "implied_close" => r.implied_close = true,
+            "prose_moves" => r.prose_moves = true,
+            "separators" => r.separators = true,
+            "results" => r.results = true,
+            "ellipsis" => r.ellipsis = true,
+            other => return Err(format!("unknown rule {other}")),
+        }
+    }
+    Ok(r)
+}
+
 fn main() -> Result<(), String> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     // `--dump=<file>`: every move's page, printed text and status, one per line, to compare runs.
     let mut dump = args.iter().find_map(|a| a.strip_prefix("--dump=")).map(|p| std::fs::File::create(p).map_err(|e| e.to_string())).transpose()?;
     let forget = args.iter().any(|a| a == "--plain");
+    let rules = args.iter().find_map(|a| a.strip_prefix("--rules=")).map(rules).transpose()?.unwrap_or_default();
     let mut total: BTreeMap<String, usize> = BTreeMap::new();
     for path in args.iter().filter(|a| !a.starts_with("--")) {
         let text = std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"))?;
         let doc = ChessDoc::from_json(&text).map_err(|e| format!("{path}: {e}"))?;
-        let mut builder = DocBuilder::new();
+        let mut builder = DocBuilder::with_rules(rules);
         for mut page in doc.pages {
             if forget {
                 plain(&mut page);

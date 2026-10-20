@@ -29,6 +29,7 @@
 //! relicensed MIT/Apache, `docs/chess/provenance.md`); the code is written here.
 
 mod build;
+pub mod fragment;
 pub mod games;
 pub mod html;
 pub mod markdown;
@@ -45,7 +46,7 @@ use crate::chess_text::{ChessPageText, TextQuality};
 use crate::cipher::{WordEdit, WordFlag};
 use crate::coords::{PageGeometry, PageRect, ViewRect, pixels_to_view};
 
-pub use games::{Game, GameOrigin, GameResult, GameScore, Node, NodeRef, Roster, Tag};
+pub use games::{Game, GameOrigin, GameResult, GameScore, Node, NodeRef, Roster, Tag, WalkRules};
 
 /// The version of the JSON shape. Bumped when a field changes meaning or is removed.
 pub const FORMAT_VERSION: u32 = 1;
@@ -130,6 +131,9 @@ pub enum ReviewFlag {
     AmbiguousMove { text: String, candidates: Vec<String> },
     /// A numbered move that neither continues its line nor points back into it. The line stops.
     OutOfSequence { text: String, expected: String },
+    /// A numbered move that only a line outside the variation it was read in can take: the
+    /// variation's closing bracket was assumed (OCR loses brackets), and the move played there.
+    ImpliedClose { text: String },
     /// The game starts from a diagram reading that did not pass the gate.
     UntrustedStart { page: u32, diagram: usize },
     /// The diagram's side to move was assumed, and the first move's number said the other side.
@@ -560,6 +564,12 @@ pub struct DocBuilder {
 impl DocBuilder {
     pub fn new() -> DocBuilder {
         DocBuilder::default()
+    }
+
+    /// A builder whose game walker reads with `rules` (see [`WalkRules`]; [`DocBuilder::new`]
+    /// uses [`WalkRules::BOOK`]).
+    pub fn with_rules(rules: WalkRules) -> DocBuilder {
+        DocBuilder { pages: Vec::new(), walker: games::Walker::with_rules(rules) }
     }
 
     /// Add the next page. Pages are taken in the order added.

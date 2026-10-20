@@ -367,8 +367,8 @@ fn push_text(out: &mut Vec<Inline>, text: &str, rect: Option<UserRect>) {
     }
 }
 
-/// A block's lines as inlines.
-fn inlines(lines: &[&ChessLine], geometry: &PageGeometry) -> Vec<Inline> {
+/// A block's lines as inlines; without a geometry, they have no source boxes.
+pub(crate) fn inlines(lines: &[&ChessLine], geometry: Option<&PageGeometry>) -> Vec<Inline> {
     let mut out = Vec::new();
     // A move number waiting for its move: the number, its box and its line.
     let mut number: Option<(MoveNumber, Option<UserRect>, usize)> = None;
@@ -379,7 +379,7 @@ fn inlines(lines: &[&ChessLine], geometry: &PageGeometry) -> Vec<Inline> {
     };
     for (li, line) in lines.iter().enumerate() {
         for span in &line.spans {
-            let rect = user(span.rect, geometry);
+            let rect = geometry.and_then(|g| user(span.rect, g));
             match &span.run {
                 ChessRun::MoveNumber { number: n, black } => {
                     flush(&mut out, &mut number);
@@ -424,7 +424,7 @@ fn inlines(lines: &[&ChessLine], geometry: &PageGeometry) -> Vec<Inline> {
 
 fn text_block(kind: Option<HintKind>, lines: &[&ChessLine], geometry: &PageGeometry) -> Block {
     let source_rect = lines.iter().map(|l| user(l.rect, geometry)).fold(None, union);
-    let inlines = inlines(lines, geometry);
+    let inlines = inlines(lines, Some(geometry));
     // A block with moves in it is never a heading: books set their main lines larger and bold.
     let moves = inlines.iter().any(|i| matches!(i, Inline::Move(_)));
     match kind {

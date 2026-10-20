@@ -64,6 +64,11 @@
 //!   the diagram (flagged [`ReviewFlag::ContinuedPastDiagram`]); text between the diagram and that
 //!   move goes to neither game.
 //!
+//! - **Rules for selections.** [`WalkRules`] adds rules first written for a selection of the page
+//!   (an assumed lost bracket, moves in prose, sibling separators, more results, a lone
+//!   ellipsis); a whole book reads with [`WalkRules::BOOK`], and [`Walker::fragment`] reads one
+//!   game from a given position with all of them ([`super::fragment`]).
+//!
 //! Everything is bounded: [`MAX_GAME_NODES`] moves a game, [`MAX_VARIATION_DEPTH`] nested
 //! variations, [`MAX_COMMENT_CHARS`] a comment, [`MAX_GAMES`] games a document.
 
@@ -662,6 +667,24 @@ struct Open {
     bold_failed: bool,
 }
 
+impl Open {
+    fn new(game: usize, seed: Option<Seed>) -> Open {
+        Open {
+            game,
+            lines: vec![Line::default()],
+            overflow: 0,
+            truncated: false,
+            too_large: false,
+            replies: Vec::new(),
+            seed,
+            bold_tip: None,
+            strayed: false,
+            regular_seen: false,
+            bold_failed: false,
+        }
+    }
+}
+
 /// The finished walk.
 #[derive(Debug, Default)]
 pub(crate) struct Done {
@@ -696,6 +719,71 @@ pub(crate) struct Walker {
     /// Numbered puzzle diagrams, for the solutions that name them; at most [`MAX_PUZZLES`].
     puzzles: Vec<Seed>,
     blocked: Vec<(u32, usize)>,
+    /// The reading rules beyond the walker's own.
+    rules: WalkRules,
+    /// Fragment mode ([`Walker::fragment`]): one game from a given position, never split.
+    fragment: bool,
+    /// Prose words were read since the last move or bracket ([`WalkRules::prose_moves`]).
+    prose_seen: bool,
+    /// The text since the last move ends in an ellipsis standing alone ([`WalkRules::ellipsis`]).
+    ellipsis: bool,
+    /// A separator was read inside brackets ([`WalkRules::separators`]).
+    separator: Separator,
+    /// In fragment mode, the text after the result that ended the game.
+    rest: Option<String>,
+}
+
+/// A separator between sibling variations, waiting for the move after it.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum Separator {
+    #[default]
+    None,
+    /// `;`: taken by a move that can be played as a sibling, numbered or with no prose before it.
+    Weak,
+    /// `a)`, `b)`: taken by the next move.
+    Strong,
+}
+
+/// Reading rules the walker can apply beyond its own (PGN toolbar spec, step T2a). Fragment mode
+/// ([`Walker::fragment`]) applies them all; reading a whole book applies [`WalkRules::BOOK`],
+/// those `examples/walk_bench.rs` showed do not make it worse.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct WalkRules {
+    /// A numbered move that cannot be played in the variation being read but can on a line
+    /// outside it closes the variations in between: their bracket was lost (OCR drops them).
+    /// Flagged [`ReviewFlag::ImpliedClose`].
+    pub implied_close: bool,
+    /// A move without a number after prose words (since the last move or bracket) is prose and
+    /// stays in the comment (`the break …f5`), unless it is set in bold.
+    pub prose_moves: bool,
+    /// Inside brackets, `;` before a move that can start a sibling variation (numbered, or
+    /// right after it with no prose between), and a label `a)`, `(b)` before any move, close the
+    /// variation and open its sibling. A label is never a bracket.
+    pub separators: bool,
+    /// `1:0`, `0:1`, `½:½`, `1/2:1/2` and a result in brackets (`(1-0)`) end the game too.
+    pub results: bool,
+    /// A move without a number after an ellipsis standing alone (`… Rc7`; the fragment's text
+    /// reader splits `…Rc7` so) is Black's.
+    pub ellipsis: bool,
+}
+
+impl WalkRules {
+    /// None of the rules: the walker's own reading.
+    pub const NONE: WalkRules = WalkRules { implied_close: false, prose_moves: false, separators: false, results: false, ellipsis: false };
+    /// Every rule: fragment mode.
+    pub const ALL: WalkRules = WalkRules { implied_close: true, prose_moves: true, separators: true, results: true, ellipsis: true };
+    /// The rules a whole book is read with: those that made no move of ten earlier documents
+    /// worse (`walk_bench --rules=`, 2,304 -> 2,327 valid moves, 23 better and none worse, all
+    /// from `ellipsis`; the other two changed nothing there). `prose_moves` made 88 worse (books go
+    /// on after prose without numbers), and `results` 3, all played into the wrong game before a
+    /// result it now reads (`0:1`) ended the right one; both stay for fragments only.
+    pub const BOOK: WalkRules = WalkRules { implied_close: true, prose_moves: false, separators: true, results: false, ellipsis: true };
+}
+
+impl Default for WalkRules {
+    fn default() -> WalkRules {
+        WalkRules::BOOK
+    }
 }
 
 /// Append text to the comment the current line is at.
@@ -708,6 +796,32 @@ fn comment(game: &mut Game, open: &mut Open, text: &str) {
         _ => append_comment(&mut line.pending, text),
     };
     open.truncated |= cut;
+}
+
+/// A variation opened in `parent`: an alternative to its last move.
+fn variation_line(score: &GameScore, parent: &Line) -> Line {
+    let (cursor, skipped, after) = match (parent.moved, parent.skipped) {
+        // An alternative to the last move: from the position before it.
+        (true, 0) => match parent.cursor.and_then(|c| score.nodes.get(c)) {
+            Some(last) => (last.parent, 0, parent.cursor),
+            None => (parent.cursor, 2, None),
+        },
+        // An alternative to the one printed move that could not be played.
+        (_, 1) => (parent.cursor, 0, None),
+        // Nothing to be an alternative to, or the position is lost.
+        _ => (parent.cursor, 2, None),
+    };
+    Line { cursor, moved: false, skipped, after, ..Line::default() }
+}
+
+/// Whether `san`, numbered `number`, can be played as the first move of `line`, a variation just
+/// opened: as a reply to the move it was opened after (see [`Walker::play`]) or in it.
+fn opens_with(score: &GameScore, line: &Line, number: Option<MoveNumber>, san: &San) -> bool {
+    let reply = number.is_some_and(|n| {
+        line.after.is_some_and(|a| score.nodes.get(a).is_some_and(|m| ply_of(n) == m.ply.saturating_add(1)))
+            && playable(score, &Line { cursor: line.after, ..Line::default() }, number, san)
+    });
+    reply || playable(score, line, number, san)
 }
 
 /// Close the innermost variation. Text it held before any move went in goes to the line around
@@ -823,7 +937,66 @@ fn seed_score(seed: &Seed, number: Option<MoveNumber>) -> Option<(GameScore, Vec
     Some((score, flags, honour))
 }
 
+/// A word that is a result: `1-0`, `0-1`, `½-½`, `1/2-1/2`, before a full stop or comma. With
+/// `extended` ([`WalkRules::results`]) also with a colon (`1:0`) or a dash (`1–0`).
+fn result_word(word: &str, extended: bool) -> Option<GameResult> {
+    let core = word.trim_end_matches(['.', ',', ';', ':']);
+    GameResult::from_text(core).or_else(|| {
+        if !extended {
+            return None;
+        }
+        let plain: String = core.chars().map(|c| if matches!(c, ':' | '–' | '—') { '-' } else { c }).collect();
+        GameResult::from_text(&plain)
+    })
+}
+
+/// A result closed by a bracket at the start of `text` (the text after an opening bracket):
+/// the result and the bytes up to and including the bracket.
+fn bracketed_result(text: &str) -> Option<(GameResult, usize)> {
+    let end = text.find([')', ']'])?;
+    // The longest result, `1/2-1/2`, with a space on each side.
+    if end > 12 {
+        return None;
+    }
+    let result = result_word(text.get(..end)?.trim(), true)?;
+    Some((result, end.saturating_add(1)))
+}
+
+/// Whether `text` (the text before a `)`) ends in a label: one letter `a` to `h` alone.
+fn is_label(text: &str) -> bool {
+    let mut rev = text.chars().rev();
+    matches!(rev.next(), Some('a'..='h')) && rev.next().is_none_or(char::is_whitespace)
+}
+
 impl Walker {
+    /// A walker for a whole document that reads with `rules`.
+    pub fn with_rules(rules: WalkRules) -> Walker {
+        Walker { rules, ..Walker::default() }
+    }
+
+    /// A walker in fragment mode: one game from `start_fen`, with every [`WalkRules`] rule. A
+    /// numbered `1.` does not start another game, and nothing starts one after its result.
+    /// `None` when the FEN is not a legal position.
+    pub fn fragment(start_fen: &str) -> Option<Walker> {
+        let score = GameScore::new(Some(start_fen.trim().to_owned()));
+        score.start_board()?;
+        let mut walker = Walker { rules: WalkRules::ALL, fragment: true, ..Walker::default() };
+        walker.open = Some(Open::new(0, None));
+        walker.games.push(Game { origin: GameOrigin::Initial, trusted: true, page: 0, score, flags: Vec::new() });
+        walker.remaps.push(Vec::new());
+        Some(walker)
+    }
+
+    /// Whether a game is being read.
+    pub fn is_open(&self) -> bool {
+        self.open.is_some()
+    }
+
+    /// In fragment mode, the text after the result that ended the game.
+    pub fn take_rest(&mut self) -> Option<String> {
+        self.rest.take()
+    }
+
     /// A diagram: the next moves start from it, unless they continue the open game (see
     /// [`Walker::resolve_held`]). A diagram before it that no game started from is kept spare.
     pub fn diagram(&mut self, seed: Seed) {
@@ -1031,28 +1204,15 @@ impl Walker {
             }
         };
         let flags = flags.into_iter().map(|flag| GameFlag { page: loc.page, source_rect: loc.rect, flag }).collect();
-        self.open = Some(Open {
-            game: self.games.len(),
-            lines: vec![Line::default()],
-            overflow: 0,
-            truncated: false,
-            too_large: false,
-            replies: Vec::new(),
-            seed: started_from,
-            bold_tip: None,
-            strayed: false,
-            regular_seen: false,
-            bold_failed: false,
-        });
+        self.open = Some(Open::new(self.games.len(), started_from));
         self.games.push(Game { origin, trusted, page: loc.page, score, flags });
         self.remaps.push(Vec::new());
         Some(honour)
     }
 
-    /// A printed move; `bold` when it is set in bold (the book's main line).
-    pub fn play(&mut self, number: Option<MoveNumber>, san: &San, text: &str, bold: bool, loc: Loc) -> MoveOutcome {
-        let printed = format!("{}{}", number.map(|n| n.text()).unwrap_or_default(), text);
-        let mut number = number;
+    /// Where the move about to be read ends the open game and starts another (whole-book reading
+    /// only; see [`Walker::play`]).
+    fn split(&mut self, number: Option<MoveNumber>, san: &San, loc: Loc) {
         if self.held {
             self.resolve_held(number, san);
         }
@@ -1104,16 +1264,73 @@ impl Walker {
             self.close();
             self.anchor = Anchor::None;
         }
+    }
+
+    /// A printed move; `bold` when it is set in bold (the book's main line).
+    pub fn play(&mut self, number: Option<MoveNumber>, san: &San, text: &str, bold: bool, loc: Loc) -> MoveOutcome {
+        let printed = format!("{}{}", number.map(|n| n.text()).unwrap_or_default(), text);
+        let mut number = number;
+        if !self.fragment {
+            self.split(number, san, loc);
+        }
         if self.open.is_none() {
+            // A fragment is one game: after its result nothing starts another.
+            if self.fragment {
+                return MoveOutcome::status(MoveStatus::Unchecked);
+            }
             match self.start(number, san, loc) {
                 Some(true) => {}
                 Some(false) => number = None,
                 None => return MoveOutcome::status(MoveStatus::Unchecked),
             }
         }
+        let rules = self.rules;
+        let prose_seen = std::mem::take(&mut self.prose_seen);
+        let ellipsis = std::mem::take(&mut self.ellipsis);
+        let separator = std::mem::take(&mut self.separator);
         let Some(open) = self.open.as_mut() else { return MoveOutcome::status(MoveStatus::Unchecked) };
         let gi = open.game;
         let Some(game) = self.games.get_mut(gi) else { return MoveOutcome::status(MoveStatus::Unchecked) };
+        // A move in prose stays in the comment: one without a number after prose words
+        // (`the break f5`), and in a fragment one numbered before the fragment's start, which no
+        // line of it can hold (`as after 1.e4`).
+        let citation = self.fragment && number.is_some_and(|n| game.score.start_ply().is_some_and(|s| ply_of(n) < s));
+        if citation || (rules.prose_moves && prose_seen && number.is_none() && !bold) {
+            comment(game, open, &printed);
+            self.prose_seen = true;
+            return MoveOutcome::status(MoveStatus::Unchecked);
+        }
+        // A move after a lone ellipsis is Black's: the next Black move of the line, or the reply
+        // to the move a fresh variation was opened after, or else an alternative to the line's
+        // last Black move.
+        if rules.ellipsis
+            && ellipsis
+            && number.is_none()
+            && let Some(line) = open.lines.last()
+            && let Some(next) = game.score.next_ply(line.cursor)
+        {
+            let ply = if next % 2 == 1 {
+                Some(next)
+            } else if !line.moved && line.after.is_some() {
+                next.checked_add(1)
+            } else {
+                next.checked_sub(1)
+            };
+            number = ply.map(number_of);
+        }
+        // A separator inside brackets: the variation ends and its sibling starts, when the move
+        // can start it (`;`, before a numbered move or one right after it) or whatever the move
+        // (`b)`).
+        if rules.separators
+            && (separator == Separator::Strong || (separator == Separator::Weak && (number.is_some() || !prose_seen)))
+            && let Some(parent) = open.lines.len().checked_sub(2).and_then(|k| open.lines.get(k))
+        {
+            let sibling = variation_line(&game.score, parent);
+            if separator == Separator::Strong || opens_with(&game.score, &sibling, number, san) {
+                pop_line(game, open);
+                open.lines.push(sibling);
+            }
+        }
         open.regular_seen |= !bold;
         // A bold move after regular ones goes on the bold line, when it can be played there: the
         // regular moves were analysis (`1...Be6+ 2.Kg6`, then the game's `1...Bxg7?`), even when
@@ -1156,6 +1373,20 @@ impl Walker {
             if game.score.children(Some(after)).is_empty() && !open.replies.contains(&after) {
                 open.replies.push(after);
             }
+        }
+        // A numbered move that only a line outside the variation being read can take: the
+        // variation's closing bracket was lost.
+        if rules.implied_close
+            && number.is_some()
+            && let Some(current) = open.lines.last()
+            && !playable(&game.score, current, number, san)
+            && let Some(k) =
+                (0..open.lines.len().saturating_sub(1)).rev().find(|&k| open.lines.get(k).is_some_and(|l| playable(&game.score, l, number, san)))
+        {
+            while open.lines.len() > k.saturating_add(1) {
+                pop_line(game, open);
+            }
+            game.flags.push(GameFlag { page: loc.page, source_rect: loc.rect, flag: ReviewFlag::ImpliedClose { text: printed.clone() } });
         }
         let Some(line) = open.lines.last() else { return MoveOutcome::status(MoveStatus::Unchecked) };
         let (status, flag) = match decide(&game.score, line, number) {
@@ -1258,47 +1489,158 @@ impl Walker {
         if self.held {
             return;
         }
-        let mut segment = String::new();
-        for ch in text.chars() {
+        let mut start = 0usize;
+        // The end of a label in brackets (`(a)`) read whole.
+        let mut skip_to = 0usize;
+        for (i, ch) in text.char_indices() {
             if self.open.is_none() {
                 return;
             }
+            if i < skip_to {
+                continue;
+            }
+            let after = i.saturating_add(ch.len_utf8());
             match ch {
                 '(' | '[' => {
-                    self.prose(&std::mem::take(&mut segment));
+                    if self.prose_until(text, start, i) {
+                        return;
+                    }
+                    // A label in brackets (`(a)`, `(b)`) opens no variation.
+                    if ch == '('
+                        && self.rules.separators
+                        && let Some(rest) = text.get(after..)
+                        && let [Some('a'..='h'), Some(')'), next] = [rest.chars().next(), rest.chars().nth(1), rest.chars().nth(2)]
+                        && next.is_none_or(char::is_whitespace)
+                    {
+                        // `(`, a letter `a`-`h` and `)` are one byte each.
+                        skip_to = after.saturating_add(2);
+                        if self.prose_until(text, i, skip_to) {
+                            return;
+                        }
+                        self.prose_seen = false;
+                        self.mark_separator(Separator::Strong);
+                        start = skip_to;
+                        continue;
+                    }
+                    // A result in brackets ends the game as a bare one does (`(1-0)`).
+                    if self.rules.results
+                        && self.main_level()
+                        && let Some((result, len)) = text.get(after..).and_then(bracketed_result)
+                    {
+                        self.end(result, text.get(after.saturating_add(len)..).unwrap_or_default());
+                        return;
+                    }
                     self.open_variation();
+                    (self.prose_seen, self.ellipsis, self.separator) = (false, false, Separator::None);
+                    start = after;
                 }
                 ')' | ']' => {
-                    self.prose(&std::mem::take(&mut segment));
-                    self.close_variation();
+                    // A label (`a)`, `b)`) is not a bracket: it separates sibling variations.
+                    let label = ch == ')'
+                        && self.rules.separators
+                        && is_label(text.get(start..i).unwrap_or_default())
+                        && text.get(after..).is_some_and(|t| t.trim().is_empty());
+                    if label {
+                        if self.prose_until(text, start, after) {
+                            return;
+                        }
+                        self.prose_seen = false;
+                        self.mark_separator(Separator::Strong);
+                    } else {
+                        if self.prose_until(text, start, i) {
+                            return;
+                        }
+                        self.close_variation();
+                        (self.prose_seen, self.ellipsis, self.separator) = (false, false, Separator::None);
+                    }
+                    start = after;
                 }
-                _ => segment.push(ch),
+                ';' if self.rules.separators && !self.main_level() => {
+                    if self.prose_until(text, start, after) {
+                        return;
+                    }
+                    self.prose_seen = false;
+                    self.mark_separator(Separator::Weak);
+                    start = after;
+                }
+                _ => {}
             }
         }
-        self.prose(&segment);
+        self.prose_until(text, start, text.len());
     }
 
-    fn prose(&mut self, text: &str) {
-        if text.trim().is_empty() {
-            return;
+    /// Whether the reading is on the game's main level (no variation open).
+    fn main_level(&self) -> bool {
+        self.open.as_ref().is_some_and(|o| o.lines.len() == 1)
+    }
+
+    /// Remember a separator, when the reading is in a variation that has had a move.
+    fn mark_separator(&mut self, kind: Separator) {
+        if self.open.as_ref().is_some_and(|o| o.lines.len() > 1 && o.lines.last().is_some_and(|l| l.moved || l.skipped > 0)) {
+            self.separator = kind;
         }
-        let Some(open) = self.open.as_mut() else { return };
-        let Some(game) = self.games.get_mut(open.game) else { return };
+    }
+
+    /// The prose `text[start..end]`. Returns whether a result in it ended the game; in fragment
+    /// mode the text after the result is kept ([`Walker::take_rest`]).
+    fn prose_until(&mut self, text: &str, start: usize, end: usize) -> bool {
+        match self.prose(text.get(start..end).unwrap_or_default()) {
+            Some(off) => {
+                if self.fragment {
+                    self.rest = Some(text.get(start.saturating_add(off)..).unwrap_or_default().to_owned());
+                }
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// The game ends with `result`; in fragment mode, `rest` is the text after it.
+    fn end(&mut self, result: GameResult, rest: &str) {
+        if let Some(game) = self.open.as_ref().and_then(|o| self.games.get_mut(o.game)) {
+            game.score.result = result;
+        }
+        self.close();
+        self.anchor = Anchor::None;
+        if self.fragment {
+            self.rest = Some(rest.to_owned());
+        }
+    }
+
+    /// Prose; returns where in it a result that ended the game stops (a byte offset), if one did.
+    fn prose(&mut self, text: &str) -> Option<usize> {
+        if text.trim().is_empty() {
+            return None;
+        }
+        // Words, not numbers or signs: `64.` before a move is no prose.
+        if text.chars().any(char::is_alphabetic) {
+            (self.prose_seen, self.ellipsis) = (true, false);
+        } else if text.trim_end().ends_with('…') || text.trim_end().ends_with("...") {
+            self.ellipsis = true;
+        }
+        let extended = self.rules.results;
+        let open = self.open.as_mut()?;
+        let game = self.games.get_mut(open.game)?;
         if open.lines.len() == 1 {
             let mut before = String::new();
+            let mut pos = 0usize;
             for word in text.split_whitespace() {
-                if let Some(result) = GameResult::from_text(word.trim_end_matches(['.', ',', ';', ':'])) {
+                // Words are found in order, so each is in the text after the one before.
+                let at = text.get(pos..).and_then(|t| t.find(word)).map_or(pos, |k| pos.saturating_add(k));
+                pos = at.saturating_add(word.len());
+                if let Some(result) = result_word(word, extended) {
                     comment(game, open, &before);
                     game.score.result = result;
                     self.close();
                     self.anchor = Anchor::None;
-                    return;
+                    return Some(pos);
                 }
                 before.push_str(word);
                 before.push(' ');
             }
         }
         comment(game, open, text);
+        None
     }
 
     fn open_variation(&mut self) {
@@ -1309,18 +1651,8 @@ impl Walker {
         }
         let Some(game) = self.games.get(open.game) else { return };
         let Some(parent) = open.lines.last() else { return };
-        let (cursor, skipped, after) = match (parent.moved, parent.skipped) {
-            // An alternative to the last move: from the position before it.
-            (true, 0) => match parent.cursor.and_then(|c| game.score.nodes.get(c)) {
-                Some(last) => (last.parent, 0, parent.cursor),
-                None => (parent.cursor, 2, None),
-            },
-            // An alternative to the one printed move that could not be played.
-            (_, 1) => (parent.cursor, 0, None),
-            // Nothing to be an alternative to, or the position is lost.
-            _ => (parent.cursor, 2, None),
-        };
-        open.lines.push(Line { cursor, moved: false, skipped, after, ..Line::default() });
+        let line = variation_line(&game.score, parent);
+        open.lines.push(line);
     }
 
     fn close_variation(&mut self) {

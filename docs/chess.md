@@ -1,7 +1,7 @@
 # Chess books
 
 **Status:** current to 2026-10-20 (blueprint steps S1–S18; see [`chess/blueprint.md`](chess/blueprint.md)).
-**Revision history:** 2026-10-18 — first version, after S18. 2026-10-19 — the chess board panel, its variations, annotations, game details and `chess_game`; book origin, and hidden OCR layers over scans. 2026-10-20 — the main line by printed weight (bold moves); `chess_pgn_edit`.
+**Revision history:** 2026-10-18 — first version, after S18. 2026-10-19 — the chess board panel, its variations, annotations, game details and `chess_game`; book origin, and hidden OCR layers over scans. 2026-10-20 — the main line by printed weight (bold moves); `chess_pgn_edit`. 2026-10-20 — reading a selection of move text (fragment mode of the walker, PGN toolbar T2a).
 
 PdfCraft can read a chess book in PDF. It finds the diagrams, reads each one as a position (FEN), and reads the moves in the text, including figurines and annotation signs. It can redraw a diagram, put a lichess link under it, and export the book as HTML, EPUB, Word, RTF, Markdown or PGN. Everything runs on your machine; nothing is sent anywhere.
 
@@ -156,6 +156,19 @@ Tried and not kept: guessing a different move in place of a failed one when the 
 ### A diagram centred above a short line
 
 Fischer's *My 60 Memorable Games* centres each diagram (its caption printed beside it, `Position after 19 ♘d5!`) and sets the next move under it at the left margin (`19 … ♗xd5`), so the move lies wholly to the left of the diagram. A diagram used to go only before a line under it or in a column to its right, so it came after that move: the game was played on from a position before its last move, closed, and the book's analysis became a new game. A diagram now also goes before a line wholly below it on its side of the gutter, or of the page's middle on a page without one; a diagram or line across that middle is on both sides. On a two-column page, a left-column line below a right-column diagram is still read first. On the ten re-read stretches, valid moves went from 2,515 to 2,948 (all in Fischer pp. 30–59: 706 → 1,139 of 1,179; not reached 414 → 20; 18 games → 9), no move got worse, and the other nine stretches read exactly as before. Pages checked against the book: Fischer pp. 30, 31, 33, 34, 38, 47, 52, 56.
+
+### Reading a selection (fragment mode)
+
+The PGN toolbar will capture a selection on the page into the game on the board (its spec, `plan/chess/pgn-toolbar.md`, step T2a; the capture itself is a later step). The reader is the same game walker that reads whole books, in a *fragment mode* (`chessvision::doc::fragment`): it starts from the position it is given (never renumbered from the moves), reads one game (a `1.e4` quoted in prose does not start another, and a move numbered before the start position is prose), and writes the game out as the items `Game::graft` takes, moves with their printed half-move, weight and box. The selection is read in the document's language, never one guessed from a few words (`Rc7` is a rook in English and a king in Portuguese). Rules added for it:
+
+- a bracket lost in the text is assumed when a numbered move fits only outside the variation (flagged);
+- a move without a number after prose words stays in the comment (`the break …f5`), unless it is bold;
+- inside brackets, `;` before a numbered move and labels `a)`, `(b)` separate sibling variations, and a label is never a closing bracket;
+- `1:0`, `1–0` and `(1-0)` end the selection as `1-0` does; what follows is left over, never dropped;
+- `20.…`, `20. …Qd8` and `…Qd8` are notation, and a move after a lone ellipsis is Black's;
+- a word cut by a hyphen at a line's end is joined only between letters (`posi-` `tion`), never after a square or a digit (`Nd7-` `b6`, `1-` `0`).
+
+Whole books take only the rules that made no move worse on the ten stored documents (`examples/walk_bench.rs --rules=`): the assumed bracket, the separators and the ellipsis, 2,304 → 2,327 valid moves, 23 better and none worse. Moves in prose made 88 worse (books go on after prose without numbers) and the new results 3 (moves that were played into the wrong game before a `0:1` ended the right one), so those stay for selections. Reading every variation the walker built again as a selection, from the position before it, and grafting it (`examples/fragment_bench.rs`) gives the walker's own tree for 100% of Dvoretsky's (59 of 59), 94.1% of the second Dvoretsky stretch, 91.0% of Fischer's (81 of 89) and 94.2% overall (275 of 292). Most of the differences are the whole-book reading's: a numbered move after a prose digression goes back to the variation's own line in the selection, while the whole book keeps it in the digression.
 
 ## Limits
 
