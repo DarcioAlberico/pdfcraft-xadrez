@@ -153,11 +153,16 @@ On the same ten stretches read again on 2026-10-20 (release `pdfcraft-cli`, the 
 
 Tried and not kept: guessing a different move in place of a failed one when the next printed moves fit exactly one move like it. All six moves it would have changed were printed correctly; each had failed because of something earlier (the line on the wrong branch, a short capture such as `hg` not read as a move), so guessing only hides the cause.
 
+### A diagram centred above a short line
+
+Fischer's *My 60 Memorable Games* centres each diagram (its caption printed beside it, `Position after 19 ♘d5!`) and sets the next move under it at the left margin (`19 … ♗xd5`), so the move lies wholly to the left of the diagram. A diagram used to go only before a line under it or in a column to its right, so it came after that move: the game was played on from a position before its last move, closed, and the book's analysis became a new game. A diagram now also goes before a line wholly below it on its side of the gutter, or of the page's middle on a page without one; a diagram or line across that middle is on both sides. On a two-column page, a left-column line below a right-column diagram is still read first. On the ten re-read stretches, valid moves went from 2,515 to 2,948 (all in Fischer pp. 30–59: 706 → 1,139 of 1,179; not reached 414 → 20; 18 games → 9), no move got worse, and the other nine stretches read exactly as before. Pages checked against the book: Fischer pp. 30, 31, 33, 34, 38, 47, 52, 56.
+
 ## Limits
 
 - **Moves and text**
   - A line stops at a move that cannot be played (a misprint, a misread diagram, or a line read onto the wrong branch): its later moves are "not reached" until a numbered move finds its place again. A game whose first chain of moves is a digression (the book's analysis of an earlier move printed before the game goes on) has that digression as its main line when the book does not set its main line in bold, or the page is a scan. A diagram centred beside a short line of moves can be read after that line, so a game can start from the analysis that follows it. A game whose diagram is on a page that was not read has no position.
   - Three or more columns are read as two at most.
+  - A diagram goes among the lines by its place on the page: before the first line under its middle, in a column to its right, or wholly below it on its side of the gutter (or of the page's middle). On a one-column page, a diagram set entirely on one side of the middle still comes after a line below it on the other side.
   - Umlauts in prose come through only where the glyph reader has them, because ocrs reads ASCII only.
 - **Links:** the lichess address is plain text in Word and RTF; it is a working link in PDF, HTML, EPUB and Markdown.
 - **Readings and corrections**

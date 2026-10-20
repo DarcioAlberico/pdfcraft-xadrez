@@ -716,6 +716,39 @@ fn diagrams_interleave_by_column_and_keep_their_numbers() {
     assert_eq!(kinds(&doc.pages[0]), vec!["P:only text above", "D0"]);
 }
 
+/// A diagram centred on the page goes before a short line below it, even one that lies entirely
+/// to its left (Fischer pt-BR p.47: `19 … ♗xd5` under a centred diagram).
+#[test]
+fn a_centred_diagram_goes_before_a_short_line_below_it() {
+    let mut d0 = reading(0, 100.0, SCHOLAR, true, false);
+    d0.bbox_user = user_box(200.0, 100.0, 400.0, 250.0);
+    let text = page_text(vec![line(60.0, "text above the diagram"), line(270.0, "short"), line(290.0, "and on")]);
+    let doc = build_page(&input(0, &text, &[d0], &[], &[]));
+    assert_eq!(kinds(&doc.pages[0]), vec!["P:text above the diagram", "D0", "P:short and on"]);
+}
+
+/// On a two-column page, a diagram in the right column still goes after a left-column line below
+/// it: the left column is read first.
+#[test]
+fn a_diagram_in_the_right_column_waits_for_the_left_one() {
+    let mut d0 = reading(0, 100.0, SCHOLAR, true, false);
+    d0.bbox_user = user_box(330.0, 100.0, 480.0, 250.0);
+    let mut lines = Vec::new();
+    for k in 0..6 {
+        lines.push(line_at(30.0, 100.0 + 40.0 * k as f32, &format!("Left {k}, a fairly long line.")));
+    }
+    for k in 0..3 {
+        lines.push(line_at(330.0, 270.0 + 40.0 * k as f32, &format!("Right {k}, a fairly long line.")));
+    }
+    let refs: Vec<&ChessLine> = lines.iter().collect();
+    assert!(crate::doc::build::gutter(&refs, 600.0).is_some(), "two columns");
+    let doc = build_page(&input(0, &page_text(lines), &[d0], &[], &[]));
+    let kinds = kinds(&doc.pages[0]);
+    let at = kinds.iter().position(|k| k == "D0").unwrap();
+    assert!(kinds[..at].iter().any(|k| k.contains("Left 5")), "{kinds:?}");
+    assert!(kinds[at + 1..].iter().all(|k| k.contains("Right")), "{kinds:?}");
+}
+
 #[test]
 fn text_reviews_go_to_the_word_they_cover() {
     let text = page_text(vec![line(100.0, "1.e4 e5 2.Nf3")]);
@@ -926,7 +959,7 @@ fn a_column_with_a_score_table_is_still_a_column() {
     let refs: Vec<&ChessLine> = lines.iter().collect();
     let x = crate::doc::build::gutter(&refs, 600.0).expect("a gutter between the columns");
     assert!((290.0..330.0).contains(&x), "{x}");
-    let order = crate::doc::build::column_order(&refs, 600.0);
+    let order = crate::doc::build::column_order(&refs, crate::doc::build::gutter(&refs, 600.0));
     assert!(order[..8].iter().all(|l| l.rect.x0 < 100.0), "the left column first");
 }
 
@@ -952,7 +985,7 @@ fn columns_need_a_real_gutter_and_full_width_lines_cut_bands() {
         lines.push(line_at(320.0, y + 100.0, &r.replace("one", "four").replace("two", "five").replace("three", "six")));
     }
     let refs: Vec<&ChessLine> = lines.iter().collect();
-    let order: Vec<String> = crate::doc::build::column_order(&refs, 600.0)
+    let order: Vec<String> = crate::doc::build::column_order(&refs, crate::doc::build::gutter(&refs, 600.0))
         .iter()
         .map(|l| {
             l.spans
