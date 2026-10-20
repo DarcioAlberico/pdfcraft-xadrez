@@ -343,3 +343,8 @@ pub fn needs_review(reading: Option<&BoardReading>) -> bool {
 pub fn piece_set(slot: &mut Option<Arc<PieceSet>>) -> Arc<PieceSet> {
     slot.get_or_insert_with(|| Arc::new(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::find().0)).clone()
 }
+
+/// The piece set the analysis board draws with, found once.
+pub fn board_piece_set(slot: &mut Option<Arc<PieceSet>>) -> Arc<PieceSet> {
+    slot.get_or_insert_with(|| Arc::new(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::find_for_board().0)).clone()
+}

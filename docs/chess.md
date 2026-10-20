@@ -15,9 +15,20 @@ None of these files ship with PdfCraft (fork decisions D2 and D4). Without them,
 | `chess-glyphs.onnx` + `.json` | chess OCR: reads moves, figurines and signs from page images | pages without a usable text layer are listed as needing OCR |
 | `text-detection.rten`, `text-recognition.rten` (ocrs) | reads the prose around the notation | the glyph reader reads the prose too, less well |
 | a chess diagram font (Chess Merida), or a `pieces` folder of 12 PNG or SVG images | draws redrawn diagrams with real pieces | plain geometric pieces |
-| a font with chess figurines (DejaVu Sans, Segoe UI Symbol…) | shows the figurines (♘f3) in HTML and EPUB exports | the reader's own fonts |
+| a figurine font (SemFig, or one with the Unicode chess symbols such as DejaVu Sans) | shows the figurines (♘f3) in HTML and EPUB exports | the reader's own fonts |
+| ISChess, the Chess Informant symbol font | shows the annotation signs (⩲ ± □ →) in HTML and EPUB exports | the reader's own fonts |
 
-PdfCraft looks for the models in the folder named by `PDFCRAFT_MODELS`, then beside the executable. For the pieces it uses the font or image folder named by `PDFCRAFT_CHESS_PIECES`, then a `pieces` folder beside the executable, then an installed Chess Merida. A piece folder holds one image per piece, PNG or SVG, named `wK wQ wR wB wN wP bK bQ bR bB bN bP` (`.png` or `.svg`; an SVG wins over a PNG of the same name), each filling one square with a transparent background. An SVG keeps its own paths (a gradient is drawn in its first colour); a PNG is traced into outlines. Either way they draw sharply in the board, the PDF and every export. A diagram drawn with Merida or cburnett pieces carries those pieces into what you export. That is fine for personal use, but not for publishing. For the figurines in HTML and EPUB it uses the font file named by `PDFCRAFT_CHESS_TEXT_FONT`, then the first font with chess figurines in a `fonts` folder beside the executable (TrueType, OpenType, WOFF or WOFF2). The font is used for the chess symbols only, so the prose keeps the body font: HTML embeds it, an EPUB carries it as a file of the book. A diagram drawn with Merida or cburnett pieces carries those pieces into what you export. That is fine for personal use, but not for publishing.
+PdfCraft looks for the models in the folder named by `PDFCRAFT_MODELS`, then beside the executable.
+
+**Diagrams** (redrawn on the page, in the editor and in every export) are drawn with the font or image folder named by `PDFCRAFT_CHESS_PIECES`, then a chess diagram font in a `fonts` folder beside the executable, then an installed Chess Merida, then a `pieces` folder of images beside the executable. The **analysis board** uses the `pieces` folder first, so a book's diagrams can be in Chess Merida while the board to play on shows your own pictures. A piece folder holds one image per piece, PNG or SVG, named `wK wQ wR wB wN wP bK bQ bR bB bN bP` (`.png` or `.svg`; an SVG wins over a PNG of the same name), each filling one square with a transparent background. An SVG keeps its own paths (a gradient is drawn in its first colour); a PNG is traced into outlines. Either way they draw sharply in the board, the PDF and every export.
+
+**Text fonts** for HTML and EPUB come from the files named by `PDFCRAFT_CHESS_TEXT_FONT` (several separated as in `PATH`), else from the `fonts` folder beside the executable, each for what it draws:
+
+- a figurine font that draws pieces on the letters K Q R B N, such as **SemFig**: each move's piece letters are written in it, and nothing else, so "Kasparov" in the prose stays a word;
+- a font with the Unicode chess symbols (DejaVu Sans…): used for those symbols only, so the prose keeps the body font;
+- **ISChess**, the Chess Informant symbol font: the annotation signs it draws (⩲ ⩱ ± ∓ +− −+ = ∞ © !? ?! □ △ ⌓ → ↑ ⇄ ⟳ ⊙ ⊕) are written in it; ! ? !! ?? stay plain characters.
+
+HTML embeds the fonts (the file stays self-contained); an EPUB carries them as files of the book. A diagram font in the same `fonts` folder is for the pieces. A diagram drawn with Merida or cburnett pieces, and a book exported with SemFig or ISChess, carry those fonts into what you export. That is fine for personal use, but not for publishing.
 
 ## In the app
 

@@ -54,6 +54,8 @@ pub struct ChessState {
     pub review_only: bool,
     /// The pieces the editor draws with, found once.
     pub pieces: Option<Arc<pdfcraft_engine::chess::pdfcraft_chess::draw::PieceSet>>,
+    /// The pieces the analysis board draws with, found once (the user's piece pictures first).
+    pub board_pieces: Option<Arc<pdfcraft_engine::chess::pdfcraft_chess::draw::PieceSet>>,
     /// The panel's tab: the diagrams, or the page's recognised text (S16).
     pub tab: crate::chess_text_ui::ChessTab,
     /// The page last read as text.
@@ -776,7 +778,7 @@ impl PdfCraftApp {
 /// The chess board panel, in the docking workspace or beside the page in Read mode.
 pub(crate) fn board_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
-    let pieces = crate::chess_editor::piece_set(&mut app.chess.pieces);
+    let pieces = crate::chess_editor::board_piece_set(&mut app.chess.board_pieces);
     // The diagram the board came from, when it belongs to the document shown.
     let active = app.active_ids().map(|(_, id)| id);
     let source_label = app.chess.board.source.filter(|s| active == Some(s.doc)).map(|s| {
