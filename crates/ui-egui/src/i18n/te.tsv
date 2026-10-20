@@ -2497,3 +2497,17 @@ animation effects	Off	ఆఫ్
 	Play the line up to this move	ఈ ఎత్తు వరకు లైన్‌ను ఆడండి
 	Engine analysis needs the desktop app.	ఇంజిన్ విశ్లేషణకు డెస్క్‌టాప్ యాప్ అవసరం.
 	Programs	ప్రోగ్రామ్‌లు
+# Chess ▸ PGN toolbar: T4a, undo and redo for the game (each name follows "Undo" or "Redo").
+	Play {san}	ఎత్తు {san}
+	Play the engine's line	ఇంజిన్ లైన్
+	Delete moves	ఎత్తుల తొలగింపు
+	Make main line	ప్రధాన వరుసగా మార్పు
+	Glyph {glyph}	గుర్తు {glyph}
+	Edit move comment	వ్యాఖ్య సవరణ
+	Edit game details	ఆట వివరాల సవరణ
+	Change side to move	ఎత్తు వేసే పక్షం మార్పు
+	Load the FEN	FEN లోడ్
+	Load the PGN	PGN లోడ్
+	Load the diagram	రేఖాచిత్రం లోడ్
+	Position set-up	స్థితి అమరిక
+	Reset to the start position	ప్రారంభ స్థితికి మళ్లింపు

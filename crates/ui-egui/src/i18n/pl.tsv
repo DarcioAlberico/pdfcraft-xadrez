@@ -2564,3 +2564,17 @@ animation effects	Off	Wyłączone
 	Play the line up to this move	Zagraj wariant do tego ruchu
 	Engine analysis needs the desktop app.	Analiza silnikiem wymaga aplikacji komputerowej.
 	Programs	Programy
+# Chess ▸ PGN toolbar: T4a, undo and redo for the game (each name follows "Undo" or "Redo").
+	Play {san}	ruch {san}
+	Play the engine's line	wariant silnika
+	Delete moves	usunięcie ruchów
+	Make main line	ustawienie głównej linii
+	Glyph {glyph}	znak {glyph}
+	Edit move comment	edycję komentarza
+	Edit game details	edycję danych partii
+	Change side to move	zmianę strony na posunięciu
+	Load the FEN	wczytanie FEN
+	Load the PGN	wczytanie PGN
+	Load the diagram	wczytanie diagramu
+	Position set-up	ustawienie pozycji
+	Reset to the start position	powrót do pozycji początkowej

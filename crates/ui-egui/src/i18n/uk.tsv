@@ -2610,3 +2610,17 @@ animation effects	Off	Вимкнено
 	Play the line up to this move	Зіграти варіант до цього ходу
 	Engine analysis needs the desktop app.	Аналіз рушієм доступний лише в настільному застосунку.
 	Programs	Програми
+# Chess ▸ PGN toolbar: T4a, undo and redo for the game (each name follows "Undo" or "Redo").
+	Play {san}	хід {san}
+	Play the engine's line	варіант рушія
+	Delete moves	видалення ходів
+	Make main line	вибір головного варіанта
+	Glyph {glyph}	знак {glyph}
+	Edit move comment	редагування коментаря
+	Edit game details	редагування даних партії
+	Change side to move	зміну черговості ходу
+	Load the FEN	завантаження FEN
+	Load the PGN	завантаження PGN
+	Load the diagram	завантаження діаграми
+	Position set-up	розстановку позиції
+	Reset to the start position	повернення до початкової позиції

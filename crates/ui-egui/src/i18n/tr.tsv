@@ -2584,3 +2584,17 @@ animation effects	Off	Kapalı
 	Play the line up to this move	Varyantı bu hamleye kadar oyna
 	Engine analysis needs the desktop app.	Motor analizi masaüstü uygulamasını gerektirir.
 	Programs	Programlar
+# Chess ▸ PGN toolbar: T4a, undo and redo for the game (each name follows "Undo" or "Redo").
+	Play {san}	{san} hamlesi
+	Play the engine's line	motor varyantı
+	Delete moves	hamle silme
+	Make main line	ana varyant yapma
+	Glyph {glyph}	{glyph} işareti
+	Edit move comment	yorum düzenleme
+	Edit game details	oyun bilgisi düzenleme
+	Change side to move	hamle sırası değişikliği
+	Load the FEN	FEN yükleme
+	Load the PGN	PGN yükleme
+	Load the diagram	diyagram yükleme
+	Position set-up	pozisyon kurma
+	Reset to the start position	başlangıç konumuna dönüş

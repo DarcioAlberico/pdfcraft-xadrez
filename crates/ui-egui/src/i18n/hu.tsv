@@ -2587,3 +2587,17 @@ animation effects	Off	Ki
 	Play the line up to this move	A változat lejátszása eddig a lépésig
 	Engine analysis needs the desktop app.	A motoros elemzéshez az asztali alkalmazás szükséges.
 	Programs	Programok
+# Chess ▸ PGN toolbar: T4a, undo and redo for the game (each name follows "Undo" or "Redo").
+	Play {san}	{san} lépés
+	Play the engine's line	motorváltozat
+	Delete moves	lépések törlése
+	Make main line	főváltozattá tétel
+	Glyph {glyph}	{glyph} jel
+	Edit move comment	megjegyzés szerkesztése
+	Edit game details	játszmaadatok szerkesztése
+	Change side to move	lépő fél módosítása
+	Load the FEN	FEN betöltése
+	Load the PGN	PGN betöltése
+	Load the diagram	diagram betöltése
+	Position set-up	állás felállítása
+	Reset to the start position	visszatérés a kezdőálláshoz

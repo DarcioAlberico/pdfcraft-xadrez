@@ -70,6 +70,11 @@ pub struct ChessState {
     /// Where the open document's pages came from, as the user said (Auto when not said): every
     /// later read and export follows it.
     pub origin: Option<(DocId, pdfcraft_engine::chess::document::BookOrigin)>,
+    /// Undo and Redo go to the chess game, not the document: the last action was a click in the
+    /// chess panels (D12). See [`ChessState::in_scope`], which also counts changes to the game.
+    pub scope: bool,
+    /// The game's history's step count when the scope was last settled.
+    pub(crate) scope_edits: u64,
 }
 
 /// What scanning found in one document.
@@ -266,6 +271,10 @@ pub(crate) fn panel(
 ) -> Option<PanelAction> {
     use crate::chess_text_ui::ChessTab;
     let mut action = None;
+    // A click anywhere in the panel, whichever tab shows, puts Undo and Redo on the game (D12).
+    if crate::chess_history::pressed_in(ui) {
+        state.enter_scope();
+    }
     ui.horizontal(|ui| {
         ui.selectable_value(&mut state.tab, ChessTab::Diagrams, tl!("Diagrams"));
         ui.selectable_value(&mut state.tab, ChessTab::Text, tl!("Text"));
@@ -821,6 +830,10 @@ impl PdfCraftApp {
 /// The chess board panel, in the docking workspace or beside the page in Read mode.
 pub(crate) fn board_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
+    // A click anywhere in the panel puts Undo and Redo on the game (D12).
+    if crate::chess_history::pressed_in(ui) {
+        app.chess.enter_scope();
+    }
     let pieces = crate::chess_editor::board_piece_set(&mut app.chess.board_pieces);
     // The diagram the board came from, when it belongs to the document shown.
     let active = app.active_ids().map(|(_, id)| id);

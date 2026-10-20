@@ -2800,3 +2800,17 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Play the line up to this move	Gioca la linea fino a questa mossa
 	Engine analysis needs the desktop app.	L'analisi del motore richiede l'app desktop.
 	Programs	Programmi
+# Chess ▸ PGN toolbar: T4a, undo and redo for the game (each name follows "Undo" or "Redo").
+	Play {san}	mossa {san}
+	Play the engine's line	linea del motore
+	Delete moves	eliminazione delle mosse
+	Make main line	promozione a linea principale
+	Glyph {glyph}	segno {glyph}
+	Edit move comment	modifica del commento
+	Edit game details	modifica dei dati della partita
+	Change side to move	cambio del tratto
+	Load the FEN	caricamento del FEN
+	Load the PGN	caricamento del PGN
+	Load the diagram	caricamento del diagramma
+	Position set-up	impostazione della posizione
+	Reset to the start position	ritorno alla posizione iniziale

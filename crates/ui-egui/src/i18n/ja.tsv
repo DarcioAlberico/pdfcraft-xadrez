@@ -2590,3 +2590,17 @@ animation effects	Off	オフ
 	Play the line up to this move	この手まで読み筋を指す
 	Engine analysis needs the desktop app.	エンジン解析にはデスクトップ版アプリが必要です。
 	Programs	プログラム
+# Chess ▸ PGN toolbar: T4a, undo and redo for the game (each name follows "Undo" or "Redo").
+	Play {san}	指し手 {san}
+	Play the engine's line	エンジンの読み筋
+	Delete moves	指し手の削除
+	Make main line	本線への変更
+	Glyph {glyph}	記号 {glyph}
+	Edit move comment	コメントの編集
+	Edit game details	対局情報の編集
+	Change side to move	手番の変更
+	Load the FEN	FEN の読み込み
+	Load the PGN	PGN の読み込み
+	Load the diagram	局面図の読み込み
+	Position set-up	局面の配置
+	Reset to the start position	初期配置に戻す

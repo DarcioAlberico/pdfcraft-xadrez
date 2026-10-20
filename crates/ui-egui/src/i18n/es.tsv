@@ -2729,3 +2729,17 @@ animation effects	Off	Desactivados
 	Play the line up to this move	Jugar la línea hasta esta jugada
 	Engine analysis needs the desktop app.	El análisis del motor requiere la aplicación de escritorio.
 	Programs	Programas
+# Chess ▸ PGN toolbar: T4a, undo and redo for the game (each name follows "Undo" or "Redo").
+	Play {san}	jugada {san}
+	Play the engine's line	línea del motor
+	Delete moves	borrado de jugadas
+	Make main line	conversión en línea principal
+	Glyph {glyph}	signo {glyph}
+	Edit move comment	edición del comentario
+	Edit game details	edición de los datos de la partida
+	Change side to move	cambio del bando que juega
+	Load the FEN	carga del FEN
+	Load the PGN	carga del PGN
+	Load the diagram	carga del diagrama
+	Position set-up	preparación de la posición
+	Reset to the start position	vuelta a la posición inicial

@@ -2594,3 +2594,17 @@ animation effects	Off	Ανενεργά
 	Play the line up to this move	Παίξτε τη γραμμή μέχρι αυτή την κίνηση
 	Engine analysis needs the desktop app.	Η ανάλυση μηχανής απαιτεί την εφαρμογή υπολογιστή.
 	Programs	Προγράμματα
+# Chess ▸ PGN toolbar: T4a, undo and redo for the game (each name follows "Undo" or "Redo").
+	Play {san}	κίνησης {san}
+	Play the engine's line	γραμμής μηχανής
+	Delete moves	διαγραφής κινήσεων
+	Make main line	ορισμού κύριας γραμμής
+	Glyph {glyph}	σημείου {glyph}
+	Edit move comment	επεξεργασίας σχολίου
+	Edit game details	επεξεργασίας στοιχείων παρτίδας
+	Change side to move	αλλαγής πλευράς που παίζει
+	Load the FEN	φόρτωσης FEN
+	Load the PGN	φόρτωσης PGN
+	Load the diagram	φόρτωσης διαγράμματος
+	Position set-up	στησίματος θέσης
+	Reset to the start position	επιστροφής στην αρχική θέση

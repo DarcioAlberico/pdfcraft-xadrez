@@ -2843,3 +2843,17 @@ chess side	Black	Đen
 	Play the line up to this move	Chơi biến đến nước này
 	Engine analysis needs the desktop app.	Phân tích bằng engine cần ứng dụng máy tính.
 	Programs	Chương trình
+# Chess ▸ PGN toolbar: T4a, undo and redo for the game (each name follows "Undo" or "Redo").
+	Play {san}	nước {san}
+	Play the engine's line	biến của engine
+	Delete moves	xóa nước đi
+	Make main line	đặt diễn biến chính
+	Glyph {glyph}	ký hiệu {glyph}
+	Edit move comment	sửa bình luận
+	Edit game details	sửa thông tin ván cờ
+	Change side to move	đổi lượt đi
+	Load the FEN	tải FEN
+	Load the PGN	tải PGN
+	Load the diagram	tải sơ đồ
+	Position set-up	xếp thế cờ
+	Reset to the start position	trở về thế cờ ban đầu

@@ -358,7 +358,7 @@ fn setup_view(ui: &mut egui::Ui, t: &Tokens, setup: &mut Setup, board: &mut Boar
     ui.label(egui::RichText::new(text).small().color(colour));
     ui.horizontal(|ui| {
         if ui.add_enabled(legal, egui::Button::new(tl!("Done"))).on_hover_text(tl!("Play from this position, as a new game.")).clicked() {
-            board.load_fen(&fen, board.flipped, None);
+            board.load_fen_as(crate::chess_history::ChessEdit::SetUp, &fen, board.flipped, None);
             finished = true;
         }
         if ui.button(tl!("Cancel")).clicked() {

@@ -2593,3 +2593,17 @@ animation effects	Off	Izklopljeni
 	Play the line up to this move	Odigraj varianto do te poteze
 	Engine analysis needs the desktop app.	Analiza s programom zahteva namizno aplikacijo.
 	Programs	Programi
+# Chess ▸ PGN toolbar: T4a, undo and redo for the game (each name follows "Undo" or "Redo").
+	Play {san}	potezo {san}
+	Play the engine's line	varianto programa
+	Delete moves	brisanje potez
+	Make main line	nastavitev glavne variante
+	Glyph {glyph}	znak {glyph}
+	Edit move comment	urejanje komentarja
+	Edit game details	urejanje podatkov o partiji
+	Change side to move	menjavo strani na potezi
+	Load the FEN	nalaganje FEN
+	Load the PGN	nalaganje PGN
+	Load the diagram	nalaganje diagrama
+	Position set-up	postavitev pozicije
+	Reset to the start position	vrnitev na začetni položaj

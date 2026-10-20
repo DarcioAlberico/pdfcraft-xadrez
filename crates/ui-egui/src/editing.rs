@@ -50,6 +50,8 @@ impl PdfCraftApp {
         };
         match self.session.apply(id, edit.clone()) {
             Ok(()) => {
+                // A change to the document puts Undo and Redo back on it (D12).
+                self.chess.leave_scope();
                 let Some(doc) = self.session.get(id) else { return true };
                 let info = &doc.info;
                 let view = &mut self.views[i];
@@ -189,8 +191,13 @@ impl PdfCraftApp {
         }
     }
 
-    /// Undo the last change: to the Combine files list while its tab shows, else the document.
+    /// Undo the last change: to the chess game when the last action was in the chess panels
+    /// (D12), to the Combine files list while its tab shows, else the document.
     pub fn undo(&mut self) {
+        if self.chess.in_scope() {
+            self.chess_history_step(true);
+            return;
+        }
         // While a polygon, cloud or run of connected lines is being drawn, Undo takes back its
         // last point instead of the last finished edit.
         if let Some((i, _)) = self.active_ids()
@@ -206,10 +213,30 @@ impl PdfCraftApp {
     }
 
     pub fn redo(&mut self) {
+        if self.chess.in_scope() {
+            self.chess_history_step(false);
+            return;
+        }
         if self.combine_showing() {
             self.combine_history_step(false);
         } else {
             self.history_step(false);
+        }
+    }
+
+    /// Undo or redo a change to the chess game. With nothing to undo, nothing happens: Undo does
+    /// not fall through to the document, whose change the user may not even see from the chess
+    /// panels (the command is disabled then, see `command_enabled`).
+    fn chess_history_step(&mut self, undo: bool) {
+        let board = &mut self.chess.board;
+        let label = if undo { board.undo_label() } else { board.redo_label() };
+        let done = if undo { board.undo() } else { board.redo() };
+        if let (true, Some(label)) = (done, label) {
+            if undo {
+                self.notify_fmt("Undid {label}", &[("label", &label)]);
+            } else {
+                self.notify_fmt("Redid {label}", &[("label", &label)]);
+            }
         }
     }
 
