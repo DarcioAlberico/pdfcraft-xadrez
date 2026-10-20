@@ -1,7 +1,7 @@
 # Chess books
 
 **Status:** current to 2026-10-20 (blueprint steps S1–S18; see [`chess/blueprint.md`](chess/blueprint.md)).
-**Revision history:** 2026-10-18 — first version, after S18. 2026-10-19 — the chess board panel, its variations, annotations, game details and `chess_game`; book origin, and hidden OCR layers over scans. 2026-10-20 — `chess_pgn_edit`.
+**Revision history:** 2026-10-18 — first version, after S18. 2026-10-19 — the chess board panel, its variations, annotations, game details and `chess_game`; book origin, and hidden OCR layers over scans. 2026-10-20 — the main line by printed weight (bold moves); `chess_pgn_edit`.
 
 PdfCraft can read a chess book in PDF. It finds the diagrams, reads each one as a position (FEN), and reads the moves in the text, including figurines and annotation signs. It can redraw a diagram, put a lichess link under it, and export the book as HTML, EPUB, Word, RTF, Markdown or PGN. Everything runs on your machine; nothing is sent anywhere.
 
@@ -141,12 +141,22 @@ Polgar's *Chess 5334 Problems, Combinations and Games* prints the number alone a
 
 Annotated books leave the main line in prose (`2...Kd7? and gives away the h-pawn, White wins with 3.Kf4 Kd6 … 9.Kf5`) and come back to it in bold (`3.Kd4 Kf6!`). A numbered move like `3.Kd4` could also be an alternative inside the digression, to its own `3.Kf4`, and it used to be taken that way: the next move (`Kf6`, legal on the main line, not in the digression) then failed and stopped the line. Now a numbered move that is exactly the main line's next move, and legal there, goes back to the main line when the digression could only take it as an alternative to one of its own moves; a move that goes straight on from the digression (`1...c5 2.Nf3`) stays in it. On ten documents read earlier (Aagaard, Dvoretsky in two stretches, Fischer pt-BR, Flores Rios, Gallagher, Karpov, Polgar, Capablanca; replayed with `examples/walk_bench.rs`, no reading or OCR), valid moves went from 2,036 to 2,304 and moves not reached from 2,778 to 2,509; 13 moves got worse, in two games whose first chain of moves was itself a digression. Pages checked against the books: Fischer p. 46 (the Spielmann–Tartakover digression, then `7...♘c6 8.♗e3 ♘xd4?`), Flores Rios p. 60 (`If 14...♗xd6 15.♘xd6 …`, `Slightly better is 15...♕d7 …`), Dvoretsky p. 112.
 
+### The main line by its printed weight
+
+Annotated books print the main line in bold and their analysis in regular type (Dvoretsky, Fischer pt-BR). The text layer says which font each glyph is in, so each move now carries its weight (`bold` in the document's JSON, written only when true; OCR text and documents read before have none). When the book's analysis comes first (`Black wins without any trouble after 1...Be6+ 2.Kg6 …`, then the game's **`1...Bxg7?`**) or goes straight on from the main line's last move (**`4...Kg4`** `Tarrasch had expected 5.Kf6? c4 …` **`5.Kg6!`**), the first chain read used to become the main line. Now, in a game with moves of both weights:
+
+- a bold move after regular ones goes on from the last bold move, when it can be played there (an unnumbered one only after a bold move that was played: after one that failed it would be read a ply early);
+- a bold move played on the bold line makes that line the main line, so the analysis stays as variations; one that could only be read inside the analysis does not;
+- a game whose moves all have one weight is read as before.
+
+On the same ten stretches read again on 2026-10-20 (release `pdfcraft-cli`, the user's models; Karpov and Capablanca are scans, used as stored) and replayed with `examples/walk_bench.rs` with and without the weights (`--plain`), valid moves went from 2,305 to 2,515 and moves not reached from 2,509 to 2,329: 217 better, 7 worse. Checked against the books: Dvoretsky p. 52 (`1...♗xg7? 2.♗xf5! ♔xf5 3.♔xg7 … 11.♔xa5 ♔xb3`, before the analysis `1...Be6+ 2.Kg6`), p. 51 (`1.♔c8!! b5 … 5.♔d4=` and `1.♔c3? b1=♕ … 4.♔xa4 ♔c3`, which had the analysis `1.c8=Q? …` and `1.Qc4+ Ka3` as main lines), pp. 100–101, 108–110 (the whole of Matanovic's rook ending, `1.♖d6+? … 22...♖c1`, after the book's detour into a pawn ending and its `Let's return to diagram 1-134`), 113, 115 and 119; Fischer pp. 37–38 (`6.♗e2 e5 … 11.♕e1`, past `6 h3` and `6 ♗c4`), 43–44, 47 and 52–54. Not real gains: on Fischer p. 49 (16 moves) the game started from the digression `19...♘e5`, because the centred diagram is ordered after the short line `19 … ♗xd5` beside it, and on p. 55 (14) from a diagram read with White to move; those moves are legal there by chance. The 7 worse moves were valid only on a branch that was already wrong (Fischer pp. 33 and 35, after `51...♔d6` and `57...c3` failed; p. 56, in the game started from the digression `26 b3`).
+
 Tried and not kept: guessing a different move in place of a failed one when the next printed moves fit exactly one move like it. All six moves it would have changed were printed correctly; each had failed because of something earlier (the line on the wrong branch, a short capture such as `hg` not read as a move), so guessing only hides the cause.
 
 ## Limits
 
 - **Moves and text**
-  - A line stops at a move that cannot be played (a misprint, a misread diagram, or a line read onto the wrong branch): its later moves are "not reached" until a numbered move finds its place again. A game whose first chain of moves is a digression (the book's analysis of an earlier move printed before the game goes on) has that digression as its main line, and moves coming back to the real main line can go wrong. A game whose diagram is on a page that was not read has no position.
+  - A line stops at a move that cannot be played (a misprint, a misread diagram, or a line read onto the wrong branch): its later moves are "not reached" until a numbered move finds its place again. A game whose first chain of moves is a digression (the book's analysis of an earlier move printed before the game goes on) has that digression as its main line when the book does not set its main line in bold, or the page is a scan. A diagram centred beside a short line of moves can be read after that line, so a game can start from the analysis that follows it. A game whose diagram is on a page that was not read has no position.
   - Three or more columns are read as two at most.
   - Umlauts in prose come through only where the glyph reader has them, because ocrs reads ASCII only.
 - **Links:** the lichess address is plain text in Word and RTF; it is a working link in PDF, HTML, EPUB and Markdown.

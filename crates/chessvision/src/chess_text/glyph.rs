@@ -13,6 +13,7 @@ use pdfcraft_chess::san::{FigurineSet, figurine, figurine_piece};
 use pdfcraft_render::text::TextGlyph;
 
 use super::quality::GlyphStats;
+use crate::side_text::is_bold_font;
 
 /// Characters kept from one glyph's text. A glyph is one character or a ligature; more is noise.
 const MAX_GLYPH_CHARS: usize = 8;
@@ -91,11 +92,13 @@ pub(crate) struct Cell {
     /// A figurine-font glyph whose code is not a piece letter: unresolved if it stands where a
     /// piece belongs.
     pub odd_code: bool,
+    /// Set in a bold font ([`crate::side_text::is_bold_font`]).
+    pub bold: bool,
 }
 
 impl Cell {
     pub fn new(ch: char, rect: [f32; 4]) -> Self {
-        Cell { ch, rect, piece_code: None, odd_code: false }
+        Cell { ch, rect, piece_code: None, odd_code: false, bold: false }
     }
 
     pub fn space() -> Self {
@@ -148,23 +151,25 @@ fn piece_letter(c: char) -> Option<PieceKind> {
 /// Maps a page's glyphs to cells, remembering what each font is.
 #[derive(Default)]
 pub(crate) struct GlyphMapper {
-    fonts: HashMap<Arc<str>, FontClass>,
+    /// Each font's class, and whether it is bold.
+    fonts: HashMap<Arc<str>, (FontClass, bool)>,
     pub stats: GlyphStats,
     pub unknown_fonts: Vec<Arc<str>>,
 }
 
 impl GlyphMapper {
-    fn class(&mut self, font: Option<&Arc<str>>) -> FontClass {
-        let Some(font) = font else { return FontClass::Plain };
-        if let Some(class) = self.fonts.get(font) {
-            return *class;
+    fn class(&mut self, font: Option<&Arc<str>>) -> (FontClass, bool) {
+        let Some(font) = font else { return (FontClass::Plain, false) };
+        if let Some(known) = self.fonts.get(font) {
+            return *known;
         }
         let class = classify(font);
         if class == FontClass::UnknownChess && self.unknown_fonts.len() < MAX_UNKNOWN_FONTS {
             self.unknown_fonts.push(Arc::clone(font));
         }
-        self.fonts.insert(Arc::clone(font), class);
-        class
+        let known = (class, is_bold_font(font));
+        self.fonts.insert(Arc::clone(font), known);
+        known
     }
 
     /// Push the cells `g` reads as onto `out`. Whitespace becomes a word gap; diagram-font glyphs
@@ -175,7 +180,7 @@ impl GlyphMapper {
             return;
         }
         self.stats.visible = self.stats.visible.saturating_add(1);
-        let class = self.class(g.font.as_ref());
+        let (class, bold) = self.class(g.font.as_ref());
         if class == FontClass::Diagram {
             return;
         }
@@ -186,7 +191,7 @@ impl GlyphMapper {
         let chess = class != FontClass::Plain;
         let chars: Vec<char> = g.text.chars().take(MAX_GLYPH_CHARS).map(|c| if chess { catalog::normalize_char(c) } else { c }).collect();
         let code = code_char(g.code);
-        let cell = |ch: char| Cell::new(ch, g.rect);
+        let cell = |ch: char| Cell { bold, ..Cell::new(ch, g.rect) };
         match class {
             FontClass::Figurine => {
                 // A map that already says "knight" is believed.
