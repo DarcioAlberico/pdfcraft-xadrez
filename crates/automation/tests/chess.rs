@@ -428,6 +428,9 @@ fn chess_export_html_writes_the_diagrams_in_order_and_reads_back() {
         "{done:#}"
     );
     assert_eq!(done["pieces"]["source"], "geometric");
+    // The figurine font is reported: used only when the machine has one configured.
+    let font = &done["text_font"];
+    assert_eq!(font["used"], font["path"].is_string() || font["format"].is_string(), "{font}");
     let html = std::fs::read_to_string(root.join("book.html")).unwrap();
     assert_eq!(done["bytes"].as_u64(), Some(html.len() as u64));
     assert_eq!(html.matches("<figure class=\"diagram").count(), 3, "{html}");

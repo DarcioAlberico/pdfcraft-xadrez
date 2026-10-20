@@ -16,6 +16,7 @@ fn options(pieces: &PieceSet) -> HtmlOptions<'_> {
         figurines: Figurines::Unicode,
         links: true,
         link_text: "Analyze on lichess",
+        text_font: None,
     }
 }
 
@@ -124,4 +125,22 @@ proptest! {
             prop_assert!(["<section", "</section", "<p>", "</p>", "<span", "</span", "<h", "</h", "<figure", "</figure", "</body", "<a ", "</a"].iter().any(|t| tag.starts_with(t)), "{tag:.40}");
         }
     }
+}
+
+#[test]
+fn the_users_figurine_font_is_embedded_for_the_chess_symbols_only() {
+    let pieces = PieceSet::geometric();
+    let doc = showcase_doc();
+    let font = crate::text_font::from_bytes(b"wOF2 figurine font".to_vec()).unwrap();
+    let html = write(&doc, &HtmlOptions { text_font: Some(&font), ..options(&pieces) });
+    // One face, from a data URL, kept to the chess symbols; first in both families.
+    assert_eq!(html.matches("@font-face").count(), 1);
+    assert!(html.contains("src:url(\"data:font/woff2;base64,d09GMiBmaWd1cmluZSBmb250\") format(\"woff2\")"), "{html}");
+    assert!(html.contains(&format!("unicode-range:{}", crate::text_font::UNICODE_RANGE)));
+    assert!(html.contains("body{max-width:46em;margin:2em auto;padding:0 1em;font-family:\"PdfCraft Figurines\",serif;"));
+    assert!(html.contains("figcaption{font-family:\"PdfCraft Figurines\",sans-serif;"));
+    // Without a font, the style is as before.
+    let plain = write(&doc, &options(&pieces));
+    assert!(!plain.contains("@font-face") && !plain.contains("PdfCraft Figurines"));
+    assert_eq!(plain.replace("font-family:serif", "").len() + "font-family:serif".len(), plain.len());
 }

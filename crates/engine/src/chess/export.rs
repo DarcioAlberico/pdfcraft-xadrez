@@ -12,6 +12,7 @@ use pdfcraft_chess::draw::{BoardStyle, PieceSet};
 use pdfcraft_chess::san::Lang;
 use pdfcraft_chessvision::doc::html::{self, DiagramMode, Figurines, HtmlOptions};
 use pdfcraft_chessvision::doc::{Block, markdown};
+use pdfcraft_chessvision::text_font::TextFont;
 
 use super::ChessScanSettings;
 use super::document::{ChessDocument, OcrMode, OcrOptions};
@@ -70,6 +71,8 @@ pub struct ChessExportOptions {
     pub links: bool,
     pub link_text: String,
     pub pieces: Arc<PieceSet>,
+    /// HTML and EPUB: the user's figurine font, if any (`chessvision::text_font::find`).
+    pub text_font: Option<Arc<TextFont>>,
     pub title: String,
     /// Word, RTF and Markdown: the diagram images' side in pixels.
     pub diagram_px: u32,
@@ -93,6 +96,7 @@ impl ChessExportOptions {
             links: true,
             link_text: super::links::DEFAULT_TEXT.into(),
             pieces: Arc::new(pdfcraft_chessvision::pieces::find().0),
+            text_font: pdfcraft_chessvision::text_font::find().0.map(Arc::new),
             title: title.into(),
             diagram_px: super::office::DEFAULT_DIAGRAM_PX,
             image_dir: format!("{title}_diagrams"),
@@ -142,6 +146,7 @@ impl Session {
             figurines: o.figurines,
             links: o.links,
             link_text: &o.link_text,
+            text_font: o.text_font.as_deref(),
         };
         let mut notes = Vec::new();
         let mut images = Vec::new();

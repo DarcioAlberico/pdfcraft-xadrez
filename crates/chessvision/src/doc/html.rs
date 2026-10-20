@@ -18,6 +18,7 @@
 //!
 //! Only `http` and `https` addresses become links. Every size is bounded by the document's own.
 
+use crate::text_font::{self, TextFont};
 use std::fmt::Write as _;
 
 use pdfcraft_chess::draw::{BoardStyle, PieceSet, board};
@@ -59,6 +60,9 @@ pub struct HtmlOptions<'a> {
     pub links: bool,
     /// The text of that link.
     pub link_text: &'a str,
+    /// The user's figurine font ([`crate::text_font`]): HTML embeds it, an EPUB carries it as
+    /// [`epub_font_href`]. Used only for the chess symbols.
+    pub text_font: Option<&'a TextFont>,
 }
 
 /// Escape for text and for attribute values in double quotes.
@@ -201,6 +205,23 @@ const STYLE: &str = "body{max-width:46em;margin:2em auto;padding:0 1em;font-fami
 figure.diagram{margin:1.2em auto;text-align:center}figure.diagram svg{max-width:100%;height:auto;width:20em}\
 figcaption{font-family:sans-serif;font-size:.85em}section.page+section.page{border-top:1px solid #ccc;margin-top:2em}";
 
+/// Where an EPUB carries the figurine font, relative to its pages.
+pub fn epub_font_href(font: &TextFont) -> String {
+    format!("fonts/figurines.{}", font.format.extension())
+}
+
+/// The style, with the figurine font loaded from `src` first in each font family when there is
+/// one. Its `unicode-range` keeps it to the chess symbols, so the prose keeps the body font.
+fn style(font: Option<(&TextFont, &str)>) -> String {
+    match font {
+        None => STYLE.to_owned(),
+        Some((f, src)) => {
+            let family = format!("font-family:\"{}\",", text_font::FAMILY);
+            format!("{}{}", text_font::font_face(f, src), STYLE.replace("font-family:", &family))
+        }
+    }
+}
+
 /// The anchor of heading `k` (0-based, in order) of page `index`.
 pub fn heading_id(index: u32, k: usize) -> String {
     format!("p{}-h{}", u64::from(index) + 1, k + 1)
@@ -230,9 +251,12 @@ fn page_section(page: &ChessPage, o: &HtmlOptions<'_>) -> String {
 
 /// The document as one HTML file.
 pub fn write(doc: &ChessDoc, o: &HtmlOptions<'_>) -> String {
+    // The file stays self-contained: the font goes in as a data URL.
+    let src = o.text_font.map(text_font::data_url);
     let mut s = format!(
-        "<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n<title>{}</title>\n<style>{STYLE}</style>\n</head>\n<body>\n",
-        esc(o.title)
+        "<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n<title>{}</title>\n<style>{}</style>\n</head>\n<body>\n",
+        esc(o.title),
+        style(o.text_font.zip(src.as_deref())),
     );
     for page in &doc.pages {
         s.push_str(&page_section(page, o));
@@ -245,9 +269,10 @@ pub fn write(doc: &ChessDoc, o: &HtmlOptions<'_>) -> String {
 /// same markup as [`write`] inside. `lang` is the book's language tag.
 pub fn xhtml_page(page: &ChessPage, o: &HtmlOptions<'_>, lang: &str) -> String {
     format!(
-        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE html>\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:epub=\"http://www.idpf.org/2007/ops\" lang=\"{l}\" xml:lang=\"{l}\">\n<head>\n<meta charset=\"utf-8\"/>\n<title>{t}</title>\n<style>{STYLE}</style>\n</head>\n<body>\n{body}</body>\n</html>\n",
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE html>\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:epub=\"http://www.idpf.org/2007/ops\" lang=\"{l}\" xml:lang=\"{l}\">\n<head>\n<meta charset=\"utf-8\"/>\n<title>{t}</title>\n<style>{css}</style>\n</head>\n<body>\n{body}</body>\n</html>\n",
         l = esc(lang),
         t = esc(o.title),
+        css = style(o.text_font.map(|f| (f, epub_font_href(f))).as_ref().map(|(f, h)| (*f, h.as_str()))),
         body = page_section(page, o),
     )
 }

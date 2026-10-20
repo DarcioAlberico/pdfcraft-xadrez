@@ -27,3 +27,4 @@ pub mod order;
 pub mod pieces;
 pub mod raster;
 pub mod side_text;
+pub mod text_font;
