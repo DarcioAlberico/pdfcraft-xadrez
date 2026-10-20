@@ -2518,6 +2518,8 @@ animation effects	Off	オフ
 	Replace on the page	ページ上で置換
 	The board couldn't be drawn: {e}	盤面を描画できませんでした: {e}
 	To move:	手番:
+	Move number:	手数:
+	The move the diagram stands at: 35 with Black to move is 35…	図の局面の手数。黒番の35手目の書き方: 35…
 	Use the second reading	第 2 候補を使う
 	{n} to review	確認待ち {n} 件
 	◀ Previous to review	◀ 前の確認対象

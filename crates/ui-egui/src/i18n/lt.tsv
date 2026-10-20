@@ -2768,6 +2768,9 @@ theme	Appearance	Išvaizda
 	Replace on the page	Pakeisti puslapyje
 	The board couldn't be drawn: {e}	Nepavyko nupiešti lentos: {e}
 	To move:	Ėjimas:
+	Move number:	Ėjimo numeris:
+	The move the diagram stands at: 35 with Black to move is 35…	Ėjimas, ties kuriuo yra diagrama: 35, kai eina juodieji, yra 35…
+chess side	Black	Juodieji
 	Use the second reading	Naudoti antrąjį atpažinimą
 	{n} to review	Tikrintinų: {n}
 	◀ Previous to review	◀ Ankstesnė tikrintina
