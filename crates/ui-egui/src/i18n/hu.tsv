@@ -2564,3 +2564,26 @@ animation effects	Off	Ki
 	Result	Eredmény
 	Round	Forduló
 	Site	Helyszín
+# Chess ▸ Study board: set-up, drawings and engine analysis.
+	Study board	Elemzőtábla
+	Set up a position	Állás felállítása
+	Put pieces on an empty or starting board, then play from there.	Tegyen bábukat üres táblára vagy a kezdőállásba, majd játsszon onnan.
+	Click a square to put the chosen piece there; click it again, or right-click it, to empty it.	Kattintson egy mezőre, hogy oda tegye a kiválasztott bábut; újabb kattintással vagy jobb kattintással kiüríti.
+	Empty board	Üres tábla
+	Play from this position, as a new game.	Játék ebből az állásból, új játszmaként.
+	Clear drawings	Rajzok törlése
+	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Jobb kattintás egy mezőre bekarikázza, jobb gombos húzással nyilat rajzol (Shift piros, Alt kék, Ctrl sárga).
+	Engine analysis	Motoros elemzés
+	Lines:	Változatok:
+	Choose engine…	Motor kiválasztása…
+	Pick a UCI chess engine program, such as Stockfish.	Válasszon egy UCI sakkmotor programot, például a Stockfisht.
+	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Nem található sakkmotor. Állítsa a PDFCRAFT_CHESS_ENGINE változót egy UCI motorra, például a Stockfishre, tegyen egyet a PdfCraft melletti engine mappába, vagy válasszon egyet.
+	The engine couldn't be started: {e}	A motort nem sikerült elindítani: {e}
+	That program didn't answer as a UCI chess engine.	Ez a program nem UCI sakkmotorként válaszolt.
+	The engine stopped.	A motor leállt.
+	Starting the engine…	A motor indítása…
+	depth {n}	mélység {n}
+	No moves to analyse in this position.	Ebben az állásban nincs elemezhető lépés.
+	Play the line up to this move	A változat lejátszása eddig a lépésig
+	Engine analysis needs the desktop app.	A motoros elemzéshez az asztali alkalmazás szükséges.
+	Programs	Programok

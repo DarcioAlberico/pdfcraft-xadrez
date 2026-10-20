@@ -592,7 +592,8 @@ fn double_clicking_a_diagram_puts_it_on_the_board_to_play() {
     assert_eq!(h.state().chess.board.game.comment(node), "good move");
 }
 
-/// Open on the board, in the Chess diagrams panel, puts that diagram on the board too.
+/// Open on the board, in the Chess diagrams panel, puts that diagram on the panel's Study board
+/// tab, where it is played.
 #[test]
 fn open_on_the_board_from_the_panel() {
     let mut h = harness();
@@ -600,8 +601,127 @@ fn open_on_the_board_from_the_panel() {
     h.run_steps(3);
     h.get_all_by_label("Open on the board").next().expect("diagram 1 has a position").click();
     h.run_steps(3);
-    assert!(h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Board));
+    assert_eq!(format!("{:?}", h.state().chess.tab), "Study");
+    assert!(!h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Board), "the tab shows it; the Board panel stays closed");
     assert_eq!(h.state().chess.board.game.fen(), START_FEN);
-    // The Inspector is still there, a tab beside the board.
-    assert!(h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Inspector));
+    h.get_by_label(&format!("Board: {START_FEN}"));
+    click_square(&mut h, "e2");
+    click_square(&mut h, "e4");
+    assert_eq!(h.state().chess.board.game.movetext(), "1. e4");
+}
+
+/// Press `button` on square `from`, move to `to` and let go there, holding `modifiers` when
+/// letting go.
+fn drag_square(h: &mut Harness<'static, PdfCraftApp>, button: egui::PointerButton, from: &str, to: &str, modifiers: egui::Modifiers) {
+    let at = |h: &Harness<'static, PdfCraftApp>, name: &str| {
+        let b = name.as_bytes();
+        let (file, rank) = (f32::from(b[0] - b'a'), f32::from(b[1] - b'1'));
+        let board = h.get_by_label_contains("Board: ").rect();
+        board.min + egui::vec2(board.width() * (file + 0.5) / 8.0, board.height() * (7.5 - rank) / 8.0)
+    };
+    let (a, b) = (at(h, from), at(h, to));
+    h.hover_at(a);
+    h.run_steps(1);
+    h.event(egui::Event::PointerButton { pos: a, button, pressed: true, modifiers: egui::Modifiers::NONE });
+    h.run_steps(1);
+    for k in 1..=4u8 {
+        h.event(egui::Event::PointerMoved(a + (b - a) * (f32::from(k) / 4.0)));
+        h.run_steps(1);
+    }
+    h.event(egui::Event::ModifiersChanged(modifiers));
+    h.event(egui::Event::PointerButton { pos: b, button, pressed: false, modifiers });
+    h.run_steps(1);
+    h.event(egui::Event::ModifiersChanged(egui::Modifiers::NONE));
+    h.run_steps(2);
+}
+
+/// The drawings on the position shown, as `fromtoColour`.
+fn marks(h: &Harness<'static, PdfCraftApp>) -> Vec<String> {
+    h.state().chess.board.marks().iter().map(|m| format!("{}{}{:?}", m.from, m.to, m.color)).collect()
+}
+
+/// The Study board tab: a position set up from an empty board and played from, drawings made
+/// with the right button, and the engine part saying when its engine cannot be started.
+#[test]
+fn the_study_board_sets_up_a_position_and_draws_on_it() {
+    let mut h = harness();
+    assert!(h.state_mut().execute("chess.panel"));
+    h.run_steps(2);
+    h.get_by_label("Study board").click();
+    h.run_steps(2);
+    h.get_by_label(&format!("Board: {START_FEN}"));
+    h.get_by_label("Set up a position").click();
+    h.run_steps(2);
+    h.get_by_label("Empty board").click();
+    h.run_steps(2);
+    for (piece, square) in [("White king", "e1"), ("Black king", "e8"), ("White rook", "a1")] {
+        h.get_by_label(piece).click();
+        h.run_steps(1);
+        click_square(&mut h, square);
+    }
+    h.get_by_label("Legal position");
+    h.get_by_label("Done").click();
+    h.run_steps(2);
+    assert!(h.state().chess.study.setup.is_none());
+    assert_eq!(h.state().chess.board.game.fen(), "4k3/8/8/8/8/8/8/R3K3 w - - 0 1");
+    click_square(&mut h, "a1");
+    click_square(&mut h, "a8");
+    assert_eq!(h.state().chess.board.game.movetext(), "1. Ra8+");
+
+    // A right click circles a square; a right drag with Shift held draws a red arrow.
+    drag_square(&mut h, egui::PointerButton::Secondary, "d4", "d4", egui::Modifiers::NONE);
+    drag_square(&mut h, egui::PointerButton::Secondary, "e8", "d7", egui::Modifiers::SHIFT);
+    assert_eq!(marks(&h), ["d4d4Green", "e8d7Red"]);
+    // The drawings stay with their position.
+    h.get_by_label("◀").click();
+    h.run_steps(2);
+    assert!(marks(&h).is_empty());
+    h.get_by_label("▶").click();
+    h.run_steps(2);
+    assert_eq!(marks(&h).len(), 2);
+    h.get_by_label("Clear drawings").click();
+    h.run_steps(2);
+    assert!(marks(&h).is_empty());
+
+    // Analysis with an engine that cannot be started says so.
+    h.state_mut().chess.study.engine_path = Some("this-engine-does-not-exist-anywhere.exe".into());
+    h.get_by_label("Engine analysis").click();
+    h.run_steps(3);
+    assert!(h.get_all_by_label_contains("The engine couldn't be started").next().is_some());
+}
+
+/// With a real UCI engine (`PDFCRAFT_CHESS_TEST_ENGINE`, e.g. Stockfish), the Study board shows
+/// its lines and plays one when its move is clicked. Skipped when the variable is not set.
+#[test]
+fn the_study_board_analyses_with_a_real_engine() {
+    let Some(engine) = std::env::var_os("PDFCRAFT_CHESS_TEST_ENGINE") else {
+        eprintln!("PDFCRAFT_CHESS_TEST_ENGINE not set: skipped");
+        return;
+    };
+    let mut h = harness();
+    assert!(h.state_mut().execute("chess.panel"));
+    h.run_steps(2);
+    h.get_by_label("Study board").click();
+    h.run_steps(2);
+    h.state_mut().chess.study.engine_path = Some(engine.into());
+    h.get_by_label("Engine analysis").click();
+    let mut found = false;
+    for _ in 0..200 {
+        h.run_steps(1);
+        if h.query_by_label_contains("depth ").is_some() && h.query_all_by_label("1.").next().is_some() {
+            found = true;
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    assert!(found, "the engine reported a line");
+    // A click on the first move of the best line plays it.
+    let first = h.get_all_by_label("1.").next().unwrap().rect();
+    let mv = h
+        .get_all_by_role(egui::accesskit::Role::Label)
+        .find(|n| n.rect().min.x > first.max.x && (n.rect().center().y - first.center().y).abs() < 4.0)
+        .expect("the move after the number");
+    mv.click();
+    h.run_steps(3);
+    assert_eq!(h.state().chess.board.game.len(), 1, "{}", h.state().chess.board.game.movetext());
 }

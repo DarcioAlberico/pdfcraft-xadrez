@@ -2639,3 +2639,26 @@ animation effects	Off	Vypnuto
 	Result	Výsledek
 	Round	Kolo
 	Site	Místo
+# Chess ▸ Study board: set-up, drawings and engine analysis.
+	Study board	Studijní šachovnice
+	Set up a position	Postavit pozici
+	Put pieces on an empty or starting board, then play from there.	Rozestavte figury na prázdnou šachovnici nebo do výchozí pozice a hrajte odtud.
+	Click a square to put the chosen piece there; click it again, or right-click it, to empty it.	Klepnutím na pole tam položíte zvolenou figuru; dalším klepnutím nebo pravým tlačítkem pole vyprázdníte.
+	Empty board	Prázdná šachovnice
+	Play from this position, as a new game.	Hrát z této pozice jako novou partii.
+	Clear drawings	Smazat kresby
+	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Klepnutím pravým tlačítkem na pole ho zakroužkujete, tažením pravým tlačítkem nakreslíte šipku (Shift červená, Alt modrá, Ctrl žlutá).
+	Engine analysis	Analýza enginem
+	Lines:	Varianty:
+	Choose engine…	Vybrat engine…
+	Pick a UCI chess engine program, such as Stockfish.	Vyberte program šachového enginu UCI, například Stockfish.
+	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Nebyl nalezen žádný šachový engine. Nastavte PDFCRAFT_CHESS_ENGINE na engine UCI, například Stockfish, vložte ho do složky engine vedle PdfCraftu, nebo nějaký vyberte.
+	The engine couldn't be started: {e}	Engine nelze spustit: {e}
+	That program didn't answer as a UCI chess engine.	Tento program neodpověděl jako šachový engine UCI.
+	The engine stopped.	Engine se zastavil.
+	Starting the engine…	Spouštění enginu…
+	depth {n}	hloubka {n}
+	No moves to analyse in this position.	V této pozici nejsou žádné tahy k analýze.
+	Play the line up to this move	Zahrát variantu až do tohoto tahu
+	Engine analysis needs the desktop app.	Analýza enginem vyžaduje desktopovou aplikaci.
+	Programs	Programy

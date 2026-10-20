@@ -2541,3 +2541,26 @@ animation effects	Off	Wyłączone
 	Result	Wynik
 	Round	Runda
 	Site	Miejsce
+# Chess ▸ Study board: set-up, drawings and engine analysis.
+	Study board	Szachownica do analizy
+	Set up a position	Ustaw pozycję
+	Put pieces on an empty or starting board, then play from there.	Postaw bierki na pustej szachownicy lub w pozycji początkowej i graj od tego miejsca.
+	Click a square to put the chosen piece there; click it again, or right-click it, to empty it.	Kliknij pole, aby postawić na nim wybraną bierkę; kliknij ponownie lub prawym przyciskiem, aby je opróżnić.
+	Empty board	Pusta szachownica
+	Play from this position, as a new game.	Graj z tej pozycji jako nową partię.
+	Clear drawings	Wyczyść rysunki
+	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Kliknij pole prawym przyciskiem, aby je zakreślić, lub przeciągnij prawym przyciskiem, aby narysować strzałkę (Shift czerwona, Alt niebieska, Ctrl żółta).
+	Engine analysis	Analiza silnikiem
+	Lines:	Warianty:
+	Choose engine…	Wybierz silnik…
+	Pick a UCI chess engine program, such as Stockfish.	Wybierz program silnika szachowego UCI, na przykład Stockfish.
+	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Nie znaleziono silnika szachowego. Ustaw PDFCRAFT_CHESS_ENGINE na silnik UCI, na przykład Stockfish, umieść go w folderze engine obok PdfCraft lub wybierz jakiś.
+	The engine couldn't be started: {e}	Nie udało się uruchomić silnika: {e}
+	That program didn't answer as a UCI chess engine.	Ten program nie odpowiedział jak silnik szachowy UCI.
+	The engine stopped.	Silnik się zatrzymał.
+	Starting the engine…	Uruchamianie silnika…
+	depth {n}	głębokość {n}
+	No moves to analyse in this position.	W tej pozycji nie ma ruchów do analizy.
+	Play the line up to this move	Zagraj wariant do tego ruchu
+	Engine analysis needs the desktop app.	Analiza silnikiem wymaga aplikacji komputerowej.
+	Programs	Programy

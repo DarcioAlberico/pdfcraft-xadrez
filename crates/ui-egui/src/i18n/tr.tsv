@@ -2561,3 +2561,26 @@ animation effects	Off	Kapalı
 	Result	Sonuç
 	Round	Tur
 	Site	Yer
+# Chess ▸ Study board: set-up, drawings and engine analysis.
+	Study board	Çalışma tahtası
+	Set up a position	Pozisyon kur
+	Put pieces on an empty or starting board, then play from there.	Taşları boş bir tahtaya ya da başlangıç pozisyonuna koyun, sonra oradan oynayın.
+	Click a square to put the chosen piece there; click it again, or right-click it, to empty it.	Seçilen taşı oraya koymak için bir kareye tıklayın; boşaltmak için yeniden tıklayın ya da sağ tıklayın.
+	Empty board	Boş tahta
+	Play from this position, as a new game.	Bu pozisyondan yeni bir oyun olarak oyna.
+	Clear drawings	Çizimleri temizle
+	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Bir kareyi daire içine almak için sağ tıklayın ya da ok çizmek için sağ düğmeyle sürükleyin (Shift kırmızı, Alt mavi, Ctrl sarı).
+	Engine analysis	Motor analizi
+	Lines:	Varyantlar:
+	Choose engine…	Motor seç…
+	Pick a UCI chess engine program, such as Stockfish.	Stockfish gibi bir UCI satranç motoru programı seçin.
+	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Satranç motoru bulunamadı. PDFCRAFT_CHESS_ENGINE değişkenini Stockfish gibi bir UCI motoruna ayarlayın, PdfCraft'ın yanındaki engine klasörüne bir motor koyun ya da bir motor seçin.
+	The engine couldn't be started: {e}	Motor başlatılamadı: {e}
+	That program didn't answer as a UCI chess engine.	Bu program bir UCI satranç motoru gibi yanıt vermedi.
+	The engine stopped.	Motor durdu.
+	Starting the engine…	Motor başlatılıyor…
+	depth {n}	derinlik {n}
+	No moves to analyse in this position.	Bu pozisyonda analiz edilecek hamle yok.
+	Play the line up to this move	Varyantı bu hamleye kadar oyna
+	Engine analysis needs the desktop app.	Motor analizi masaüstü uygulamasını gerektirir.
+	Programs	Programlar

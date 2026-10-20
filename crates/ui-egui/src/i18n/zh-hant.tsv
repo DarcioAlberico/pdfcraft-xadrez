@@ -2515,3 +2515,26 @@ animation effects	Off	關
 	Result	結果
 	Round	輪次
 	Site	地點
+# Chess ▸ Study board: set-up, drawings and engine analysis.
+	Study board	研究棋盤
+	Set up a position	擺放局面
+	Put pieces on an empty or starting board, then play from there.	在空棋盤或初始局面上擺放棋子，然後從那裡開始走。
+	Click a square to put the chosen piece there; click it again, or right-click it, to empty it.	點選格子放置所選棋子；再次點選或按右鍵即清空該格。
+	Empty board	空棋盤
+	Play from this position, as a new game.	從此局面開始，作為一盤新對局。
+	Clear drawings	清除標記
+	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	在格子上按右鍵可畫圈，按住右鍵拖曳可畫箭頭（Shift 紅色，Alt 藍色，Ctrl 黃色）。
+	Engine analysis	引擎分析
+	Lines:	變化數：
+	Choose engine…	選擇引擎…
+	Pick a UCI chess engine program, such as Stockfish.	選擇一個 UCI 西洋棋引擎程式，例如 Stockfish。
+	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	找不到西洋棋引擎。請將 PDFCRAFT_CHESS_ENGINE 設為 Stockfish 等 UCI 引擎，或在 PdfCraft 旁的 engine 資料夾中放一個引擎，或選擇一個引擎。
+	The engine couldn't be started: {e}	無法啟動引擎：{e}
+	That program didn't answer as a UCI chess engine.	該程式未以 UCI 西洋棋引擎的方式回應。
+	The engine stopped.	引擎已停止。
+	Starting the engine…	正在啟動引擎…
+	depth {n}	深度 {n}
+	No moves to analyse in this position.	此局面沒有可分析的著法。
+	Play the line up to this move	走到此著為止的變化
+	Engine analysis needs the desktop app.	引擎分析需要桌面版應用程式。
+	Programs	程式

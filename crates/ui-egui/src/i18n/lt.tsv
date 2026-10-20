@@ -2818,3 +2818,26 @@ chess side	Black	Juodieji
 	Result	Rezultatas
 	Round	Ratas
 	Site	Vieta
+# Chess ▸ Study board: set-up, drawings and engine analysis.
+	Study board	Studijų lenta
+	Set up a position	Sustatyti poziciją
+	Put pieces on an empty or starting board, then play from there.	Sudėkite figūras į tuščią lentą arba pradinę poziciją ir žaiskite iš ten.
+	Click a square to put the chosen piece there; click it again, or right-click it, to empty it.	Spustelėkite langelį, kad padėtumėte ten pasirinktą figūrą; spustelėkite dar kartą arba dešiniuoju mygtuku, kad jį ištuštintumėte.
+	Empty board	Tuščia lenta
+	Play from this position, as a new game.	Žaisti iš šios pozicijos kaip naują partiją.
+	Clear drawings	Išvalyti piešinius
+	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Spustelėkite langelį dešiniuoju mygtuku, kad jį apibrėžtumėte, arba vilkite dešiniuoju mygtuku, kad nupieštumėte rodyklę (Shift raudona, Alt mėlyna, Ctrl geltona).
+	Engine analysis	Variklio analizė
+	Lines:	Variantai:
+	Choose engine…	Pasirinkti variklį…
+	Pick a UCI chess engine program, such as Stockfish.	Pasirinkite UCI šachmatų variklio programą, pavyzdžiui, Stockfish.
+	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Šachmatų variklis nerastas. Nustatykite PDFCRAFT_CHESS_ENGINE į UCI variklį, pavyzdžiui, Stockfish, įdėkite jį į aplanką engine šalia PdfCraft arba pasirinkite.
+	The engine couldn't be started: {e}	Nepavyko paleisti variklio: {e}
+	That program didn't answer as a UCI chess engine.	Ši programa neatsakė kaip UCI šachmatų variklis.
+	The engine stopped.	Variklis sustojo.
+	Starting the engine…	Paleidžiamas variklis…
+	depth {n}	gylis {n}
+	No moves to analyse in this position.	Šioje pozicijoje nėra ėjimų analizei.
+	Play the line up to this move	Sužaisti variantą iki šio ėjimo
+	Engine analysis needs the desktop app.	Variklio analizei reikia darbalaukio programos.
+	Programs	Programos

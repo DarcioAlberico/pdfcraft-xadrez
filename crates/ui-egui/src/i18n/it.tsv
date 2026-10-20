@@ -2777,3 +2777,26 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Result	Risultato
 	Round	Turno
 	Site	Luogo
+# Chess ▸ Study board: set-up, drawings and engine analysis.
+	Study board	Scacchiera di studio
+	Set up a position	Imposta una posizione
+	Put pieces on an empty or starting board, then play from there.	Metti i pezzi su una scacchiera vuota o nella posizione iniziale, poi gioca da lì.
+	Click a square to put the chosen piece there; click it again, or right-click it, to empty it.	Fai clic su una casa per mettervi il pezzo scelto; fai di nuovo clic, o clic destro, per svuotarla.
+	Empty board	Scacchiera vuota
+	Play from this position, as a new game.	Gioca da questa posizione, come nuova partita.
+	Clear drawings	Cancella i disegni
+	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Fai clic destro su una casa per cerchiarla, o trascina con il tasto destro per disegnare una freccia (Maiusc rossa, Alt blu, Ctrl gialla).
+	Engine analysis	Analisi del motore
+	Lines:	Linee:
+	Choose engine…	Scegli motore…
+	Pick a UCI chess engine program, such as Stockfish.	Scegli un programma motore di scacchi UCI, come Stockfish.
+	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Nessun motore di scacchi trovato. Imposta PDFCRAFT_CHESS_ENGINE su un motore UCI come Stockfish, mettine uno in una cartella engine accanto a PdfCraft o sceglilo.
+	The engine couldn't be started: {e}	Impossibile avviare il motore: {e}
+	That program didn't answer as a UCI chess engine.	Quel programma non ha risposto come un motore di scacchi UCI.
+	The engine stopped.	Il motore si è fermato.
+	Starting the engine…	Avvio del motore…
+	depth {n}	profondità {n}
+	No moves to analyse in this position.	Nessuna mossa da analizzare in questa posizione.
+	Play the line up to this move	Gioca la linea fino a questa mossa
+	Engine analysis needs the desktop app.	L'analisi del motore richiede l'app desktop.
+	Programs	Programmi

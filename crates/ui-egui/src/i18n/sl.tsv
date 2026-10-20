@@ -2570,3 +2570,26 @@ animation effects	Off	Izklopljeni
 	Result	Rezultat
 	Round	Kolo
 	Site	Kraj
+# Chess ▸ Study board: set-up, drawings and engine analysis.
+	Study board	Študijska šahovnica
+	Set up a position	Postavi pozicijo
+	Put pieces on an empty or starting board, then play from there.	Postavite figure na prazno šahovnico ali v začetno pozicijo in igrajte od tam.
+	Click a square to put the chosen piece there; click it again, or right-click it, to empty it.	Kliknite polje, da nanj postavite izbrano figuro; znova kliknite ali kliknite z desno tipko, da ga izpraznite.
+	Empty board	Prazna šahovnica
+	Play from this position, as a new game.	Igraj iz te pozicije kot novo partijo.
+	Clear drawings	Počisti risbe
+	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Z desno tipko kliknite polje, da ga obkrožite, ali vlecite z desno tipko, da narišete puščico (Shift rdeča, Alt modra, Ctrl rumena).
+	Engine analysis	Analiza s programom
+	Lines:	Variante:
+	Choose engine…	Izberi šahovski program…
+	Pick a UCI chess engine program, such as Stockfish.	Izberite šahovski program UCI, na primer Stockfish.
+	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Šahovskega programa ni bilo mogoče najti. Nastavite PDFCRAFT_CHESS_ENGINE na program UCI, na primer Stockfish, ga postavite v mapo engine poleg PdfCrafta ali ga izberite.
+	The engine couldn't be started: {e}	Šahovskega programa ni bilo mogoče zagnati: {e}
+	That program didn't answer as a UCI chess engine.	Ta program se ni odzval kot šahovski program UCI.
+	The engine stopped.	Šahovski program se je ustavil.
+	Starting the engine…	Zaganjanje šahovskega programa…
+	depth {n}	globina {n}
+	No moves to analyse in this position.	V tej poziciji ni potez za analizo.
+	Play the line up to this move	Odigraj varianto do te poteze
+	Engine analysis needs the desktop app.	Analiza s programom zahteva namizno aplikacijo.
+	Programs	Programi

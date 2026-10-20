@@ -2842,3 +2842,26 @@ certificate	Version	الإصدار
 	Result	النتيجة
 	Round	الجولة
 	Site	المكان
+# Chess ▸ Study board: set-up, drawings and engine analysis.
+	Study board	رقعة الدراسة
+	Set up a position	إعداد وضعية
+	Put pieces on an empty or starting board, then play from there.	ضع القطع على رقعة فارغة أو على وضعية البداية، ثم العب من هناك.
+	Click a square to put the chosen piece there; click it again, or right-click it, to empty it.	انقر مربعًا لوضع القطعة المختارة فيه؛ وانقره مرة أخرى، أو انقره بالزر الأيمن، لإفراغه.
+	Empty board	رقعة فارغة
+	Play from this position, as a new game.	العب من هذه الوضعية كمباراة جديدة.
+	Clear drawings	مسح الرسوم
+	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	انقر مربعًا بالزر الأيمن لإحاطته بدائرة، أو اسحب بالزر الأيمن لرسم سهم (Shift أحمر، Alt أزرق، Ctrl أصفر).
+	Engine analysis	تحليل المحرك
+	Lines:	الخطوط:
+	Choose engine…	اختيار المحرك…
+	Pick a UCI chess engine program, such as Stockfish.	اختر برنامج محرك شطرنج يدعم UCI، مثل Stockfish.
+	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	لم يُعثر على محرك شطرنج. اضبط PDFCRAFT_CHESS_ENGINE على محرك UCI مثل Stockfish، أو ضع محركًا في مجلد engine بجوار PdfCraft، أو اختر واحدًا.
+	The engine couldn't be started: {e}	تعذّر تشغيل المحرك: {e}
+	That program didn't answer as a UCI chess engine.	لم يستجب هذا البرنامج كمحرك شطرنج UCI.
+	The engine stopped.	توقف المحرك.
+	Starting the engine…	جارٍ تشغيل المحرك…
+	depth {n}	العمق {n}
+	No moves to analyse in this position.	لا توجد نقلات لتحليلها في هذه الوضعية.
+	Play the line up to this move	العب الخط حتى هذه النقلة
+	Engine analysis needs the desktop app.	يتطلب تحليل المحرك تطبيق سطح المكتب.
+	Programs	البرامج

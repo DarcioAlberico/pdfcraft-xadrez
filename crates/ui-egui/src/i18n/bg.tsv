@@ -2528,3 +2528,26 @@ animation effects	Off	Изключени
 	Result	Резултат
 	Round	Кръг
 	Site	Място
+# Chess ▸ Study board: set-up, drawings and engine analysis.
+	Study board	Дъска за изучаване
+	Set up a position	Подреждане на позиция
+	Put pieces on an empty or starting board, then play from there.	Поставете фигури на празна дъска или в началната позиция и играйте оттам.
+	Click a square to put the chosen piece there; click it again, or right-click it, to empty it.	Щракнете върху поле, за да поставите там избраната фигура; щракнете пак или с десния бутон, за да го изпразните.
+	Empty board	Празна дъска
+	Play from this position, as a new game.	Играйте от тази позиция като нова партия.
+	Clear drawings	Изчистване на рисунките
+	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Щракнете с десния бутон върху поле, за да го оградите, или плъзнете с десния бутон, за да нарисувате стрелка (Shift червена, Alt синя, Ctrl жълта).
+	Engine analysis	Анализ с енджин
+	Lines:	Варианти:
+	Choose engine…	Избор на енджин…
+	Pick a UCI chess engine program, such as Stockfish.	Изберете програма шахматен енджин с UCI, например Stockfish.
+	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Не е намерен шахматен енджин. Задайте PDFCRAFT_CHESS_ENGINE да сочи UCI енджин, например Stockfish, сложете такъв в папка engine до PdfCraft или изберете един.
+	The engine couldn't be started: {e}	Енджинът не можа да се стартира: {e}
+	That program didn't answer as a UCI chess engine.	Тази програма не отговори като UCI шахматен енджин.
+	The engine stopped.	Енджинът спря.
+	Starting the engine…	Енджинът се стартира…
+	depth {n}	дълбочина {n}
+	No moves to analyse in this position.	В тази позиция няма ходове за анализ.
+	Play the line up to this move	Изиграйте варианта до този ход
+	Engine analysis needs the desktop app.	Анализът с енджин изисква настолното приложение.
+	Programs	Програми
