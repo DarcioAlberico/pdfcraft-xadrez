@@ -3057,3 +3057,16 @@ certificate	Version	الإصدار
 	Line from the start	خط من البداية
 	Variation of {move}	خط فرعي لـ {move}
 	moves: {n}	النقلات: {n}
+# Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
+	Fit at	الموضع
+	Apply and keep the rest as a comment	تطبيق مع الاحتفاظ بالباقي كتعليق
+	Unreadable move	نقلة غير مقروءة
+	Past the capture's limits	خارج حدود الالتقاط
+	Variations nest too deep	خطوط فرعية متداخلة بعمق زائد
+	A null move can't be played	لا يمكن لعب نقلة فارغة
+	The move it goes after is gone	النقلة التي يأتي بعدها لم تعد موجودة
+	Undo this capture	التراجع عن هذا الالتقاط
+	Underline captured text on the page	تسطير النص الملتقط بالفعل في الصفحة
+	The capture was closed: the document was edited.	أُغلق الالتقاط: عُدِّل المستند.
+	The rest is too long to keep as a comment; it is still on the page.	الباقي أطول من أن يُحفظ كتعليق؛ ما يزال في الصفحة.
+	Nothing new: the moves are in the game already.	لا جديد: النقلات موجودة في المباراة بالفعل.

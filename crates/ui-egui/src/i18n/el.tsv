@@ -2786,3 +2786,16 @@ animation effects	Off	Ανενεργά
 	Line from the start	Γραμμή από την αρχή
 	Variation of {move}	Παραλλαγή της {move}
 	moves: {n}	κινήσεις: {n}
+# Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
+	Fit at	Θέση
+	Apply and keep the rest as a comment	Εφαρμογή και διατήρηση του υπολοίπου ως σχόλιο
+	Unreadable move	Μη αναγνώσιμη κίνηση
+	Past the capture's limits	Πέρα από τα όρια της καταγραφής
+	Variations nest too deep	Παραλλαγές εμφωλευμένες πολύ βαθιά
+	A null move can't be played	Μια μηδενική κίνηση δεν μπορεί να παιχτεί
+	The move it goes after is gone	Η κίνηση μετά την οποία πηγαίνει δεν υπάρχει πια
+	Undo this capture	Αναίρεση αυτής της καταγραφής
+	Underline captured text on the page	Υπογράμμιση στη σελίδα του κειμένου που έχει ήδη καταγραφεί
+	The capture was closed: the document was edited.	Η καταγραφή έκλεισε: το έγγραφο επεξεργάστηκε.
+	The rest is too long to keep as a comment; it is still on the page.	Το υπόλοιπο είναι πολύ μεγάλο για σχόλιο· παραμένει στη σελίδα.
+	Nothing new: the moves are in the game already.	Τίποτα νέο: οι κινήσεις υπάρχουν ήδη στην παρτίδα.

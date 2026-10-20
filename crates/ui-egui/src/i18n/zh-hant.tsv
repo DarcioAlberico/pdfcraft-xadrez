@@ -2730,3 +2730,16 @@ animation effects	Off	關
 	Line from the start	從開頭開始的續著
 	Variation of {move}	{move} 的變化
 	moves: {n}	著數：{n}
+# Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
+	Fit at	放置位置
+	Apply and keep the rest as a comment	套用並將其餘部分保留為註解
+	Unreadable move	無法讀取的著法
+	Past the capture's limits	超出擷取的限制
+	Variations nest too deep	變化巢狀過深
+	A null move can't be played	空著無法走出
+	The move it goes after is gone	它所接續的著法已不存在
+	Undo this capture	復原這次擷取
+	Underline captured text on the page	在頁面上為已擷取的文字加底線
+	The capture was closed: the document was edited.	擷取已關閉：文件已被編輯。
+	The rest is too long to keep as a comment; it is still on the page.	其餘部分太長，無法保留為註解；它仍在頁面上。
+	Nothing new: the moves are in the game already.	沒有新內容：這些著法已在對局中。

@@ -32,10 +32,12 @@ use std::sync::{Arc, Mutex, MutexGuard};
 
 use egui::{Key, Modifiers, Rect, RichText, pos2};
 use pdfcraft_engine::DocId;
-use pdfcraft_engine::chess::capture::{self, CaptureError, CaptureMode, CapturePlan, CaptureText, PreviewReason};
-use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, GraftMode, NodePath};
+use pdfcraft_engine::chess::capture::{self, Candidate, CaptureError, CaptureMode, CapturePlan, CaptureText, PreviewReason};
+use pdfcraft_engine::chess::pdfcraft_chess::fragment::FragmentItem;
+use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, GraftMode, GraftStopReason, MAX_COMMENT_LEN, NodeId, NodePath, Token};
 use pdfcraft_engine::chess::pdfcraft_chess::san::Lang;
 use pdfcraft_engine::chess::pdfcraft_chessvision::coords::PageGeometry;
+use pdfcraft_engine::chess::pdfcraft_chessvision::doc::MoveStatus;
 use pdfcraft_engine::commands::Shortcut;
 use pdfcraft_render::text::{PageText, TextGlyph};
 
@@ -101,6 +103,68 @@ pub struct CaptureState {
     paste_mode: Option<(CaptureMode, bool)>,
     /// A capture tool was just armed: the page tool goes to Select at the next tick.
     select_page: bool,
+    /// Underline on the page the text already captured into the document's games (§4.3.5).
+    pub show_captured: bool,
+    /// What that layer drew in the last frame: page and box in user space (tests and automation
+    /// read it; nothing else does).
+    pub drawn: Vec<(usize, [f32; 4])>,
+    /// The layer's boxes, with a key over the games they were read from.
+    layer: Option<(u64, Layer)>,
+    /// The notice after a capture went in, with its Undo, until the game changes again.
+    pub toast: Option<Toast>,
+    /// Enter was pressed while a plan waits: it applies the plan (taken before anything else
+    /// that uses Enter can see it).
+    enter: bool,
+    /// Notices for the user, shown at the next tick.
+    notes: Vec<String>,
+    /// The notice's Undo was clicked: done at the next tick.
+    undo: bool,
+}
+
+/// The notice after a capture went in: what it did, and Undo. It stays (no timeout: WCAG 2.2.1)
+/// while the game is as the capture left it.
+pub struct Toast {
+    pub text: String,
+    /// The game it is about (the collection's id for it) and its revision after the capture.
+    game: u64,
+    revision: u64,
+}
+
+/// The moves a capture just added, tinted in the notation: for a few seconds, or with reduced
+/// motion (no animation) until the game changes again.
+#[derive(Clone, Debug, Default)]
+pub struct Fresh {
+    nodes: Vec<NodeId>,
+    revision: u64,
+    since: f64,
+}
+
+impl Fresh {
+    /// How long the tint fades, in seconds.
+    const SECONDS: f64 = 3.0;
+
+    /// The moves tinted in `game`: none once it has changed.
+    pub fn nodes(&self, game: &Game) -> &[NodeId] {
+        if game.revision() == self.revision { &self.nodes } else { &[] }
+    }
+
+    /// The tint behind move `node` of `game` now, if any.
+    pub(crate) fn tint(&self, game: &Game, node: NodeId, ctx: &egui::Context) -> Option<egui::Color32> {
+        if !self.nodes(game).contains(&node) {
+            return None;
+        }
+        let base = Tokens::get(ctx).accent_soft;
+        if ctx.global_style().animation_time <= 0.0 {
+            return Some(base);
+        }
+        let age = ctx.input(|i| i.time) - self.since;
+        // A NaN age is in no range: no tint.
+        if !(0.0..Self::SECONDS).contains(&age) {
+            return None;
+        }
+        ctx.request_repaint();
+        Some(base.gamma_multiply((1.0 - age / Self::SECONDS) as f32))
+    }
 }
 
 /// A plan the user is to look at before it goes in.
@@ -121,13 +185,17 @@ pub(crate) struct Request {
     /// The document whose games it goes into (`None`: the games kept without a document).
     pub doc: Option<DocId>,
     pub lang: Lang,
+    /// The document's edit generation when a page's text was selected: a preview of it closes
+    /// once the document is edited.
+    pub generation: Option<u64>,
 }
 
 /// The text captured.
 #[derive(Clone)]
 pub(crate) enum Text {
-    /// Glyphs of page `page`, with the page's geometry (the moves keep where they were printed).
-    Page { page: usize, glyphs: Arc<Vec<TextGlyph>>, geometry: Option<PageGeometry> },
+    /// Glyphs of page `page`, with the page's geometry (the moves keep where they were printed)
+    /// and their boxes in view space, one per piece of a line (the preview goes beside the last).
+    Page { page: usize, glyphs: Arc<Vec<TextGlyph>>, geometry: Option<PageGeometry>, rects: Vec<[f32; 4]> },
     /// Pasted text.
     Plain(Arc<str>),
 }
@@ -378,9 +446,18 @@ fn plan_for(game: &Game, request: &Request) -> CapturePlan {
     capture::plan(game, current, request.mode, text, request.lang)
 }
 
+/// Candidate `choice` of `plan`, its best when `None`.
+fn candidate(plan: &CapturePlan, choice: Option<usize>) -> Option<&Candidate> {
+    choice.or(plan.chosen).and_then(|i| plan.candidates.get(i))
+}
+
 /// What candidate `choice` of `plan` (its best when `None`) makes of the game.
 fn captured(plan: &CapturePlan, choice: Option<usize>, mode: CaptureMode) -> Captured {
-    let Some(c) = choice.or(plan.chosen).and_then(|i| plan.candidates.get(i)) else { return Captured::Variation };
+    candidate(plan, choice).map_or(Captured::Variation, |c| captured_by(c, mode))
+}
+
+/// What candidate `c` makes of the game, captured in `mode`.
+fn captured_by(c: &Candidate, mode: CaptureMode) -> Captured {
     let first_reply = c.report.new_nodes.first().is_some_and(|p| p.indices().last() == Some(&0));
     match c.mode_used {
         GraftMode::Comment => Captured::Comment,
@@ -398,11 +475,21 @@ fn parent_path(path: &NodePath) -> Option<NodePath> {
 
 /// What a capture did, in words: "Variation of 18…Qxe1 · moves: 4".
 pub(crate) fn summary(plan: &CapturePlan, choice: Option<usize>, kind: Captured) -> String {
-    let Some(c) = choice.or(plan.chosen).and_then(|i| plan.candidates.get(i)) else { return String::new() };
+    let Some(c) = candidate(plan, choice) else { return String::new() };
+    let what = headline(c, kind);
+    if kind == Captured::Comment {
+        return what;
+    }
+    format!("{what} · {}", crate::i18n::fmt(tl!("moves: {n}"), &[("n", &c.report.played.to_string())]))
+}
+
+/// Where candidate `c` puts the text, in words: "Variation of 18…Qxe1", "Line after 17…Bc4",
+/// "Comment on 20.Nxf6+".
+pub(crate) fn headline(c: &Candidate, kind: Captured) -> String {
     let g = &c.game;
     let name = |path: &NodePath| g.node_at(path).filter(|&n| n != 0).map(|n| crate::chess_tools::move_name(g, n));
     let first = c.report.new_nodes.first();
-    let what = match kind {
+    match kind {
         Captured::Comment => match name(&c.report.anchor) {
             Some(mv) => crate::i18n::fmt(tl!("Comment on {move}"), &[("move", &mv)]),
             None => tl!("Comment at the start").to_owned(),
@@ -425,11 +512,7 @@ pub(crate) fn summary(plan: &CapturePlan, choice: Option<usize>, kind: Captured)
                 None => kind.text().to_owned(),
             }
         }
-    };
-    if kind == Captured::Comment {
-        return what;
     }
-    format!("{what} · {}", crate::i18n::fmt(tl!("moves: {n}"), &[("n", &c.report.played.to_string())]))
 }
 
 /// Why a plan is shown before it goes in, in words.
@@ -469,10 +552,13 @@ impl PdfCraftApp {
         }
         let geometry = self.session.get(id).and_then(|d| d.info.pages.get(page)).and_then(pdfcraft_engine::chess::geometry);
         let glyphs: Vec<TextGlyph> = snapped.iter().filter_map(|&i| text.glyphs.get(i).cloned()).collect();
+        let rects = text.glyph_rects(&snapped);
+        let generation = self.session.get(id).map(pdfcraft_engine::Document::edit_generation);
         self.sync_chess_docs();
         let lang = document_lang(&self.chess, Some(id));
         let doc = self.chess.games.current_doc();
-        self.start_capture(Request { mode, replace, text: Text::Page { page, glyphs: Arc::new(glyphs), geometry }, doc, lang });
+        let text = Text::Page { page, glyphs: Arc::new(glyphs), geometry, rects };
+        self.start_capture(Request { mode, replace, text, doc, lang, generation });
     }
 
     /// Capture pasted `text`: in `mode`, else as the armed tool says, else automatically.
@@ -484,7 +570,7 @@ impl PdfCraftApp {
         self.sync_chess_docs();
         let doc = self.chess.games.current_doc();
         let lang = document_lang(&self.chess, doc);
-        self.start_capture(Request { mode, replace, text: Text::Plain(Arc::from(text)), doc, lang });
+        self.start_capture(Request { mode, replace, text: Text::Plain(Arc::from(text)), doc, lang, generation: None });
     }
 
     /// Paste as ▸ `mode`: capture the clipboard's text. `text` is the clipboard's, when it can be
@@ -556,16 +642,29 @@ impl PdfCraftApp {
             self.chess.enter_scope();
             return;
         }
-        self.apply_capture(request, &plan, None, replanned);
+        self.apply_capture(request, &plan, None, replanned, false);
     }
 
-    /// Apply candidate `choice` of `plan` (its best when `None`) as one undo step. A plan made on
-    /// a game that has changed since is made again, once.
-    fn apply_capture(&mut self, request: Request, plan: &CapturePlan, choice: Option<usize>, replanned: bool) {
+    /// Apply candidate `choice` of `plan` (its best when `None`) as one undo step; `keep_rest`
+    /// adds what was not read to the comment of the last move it put in. A plan made on a game
+    /// that has changed since is made again, once.
+    fn apply_capture(&mut self, request: Request, plan: &CapturePlan, choice: Option<usize>, replanned: bool, keep_rest: bool) {
         let kind = captured(plan, choice, request.mode);
-        let mut stale = false;
-        self.chess.board_mut().edit(|s| match plan.apply(&mut s.game, choice) {
+        let rest = if keep_rest { candidate(plan, choice).map(leftover).unwrap_or_default() } else { String::new() };
+        let (mut stale, mut rest_kept) = (false, true);
+        let recorded = self.chess.board_mut().edit(|s| match plan.apply(&mut s.game, choice) {
             Ok(()) => {
+                if !rest.is_empty() {
+                    let node = s.game.current();
+                    let old = s.game.comment(node);
+                    let joined = if old.is_empty() { rest.clone() } else { format!("{old} {rest}") };
+                    // Never cut: a rest too long for the comment stays on the page, and is said.
+                    if joined.len() <= MAX_COMMENT_LEN {
+                        s.game.set_comment(node, &joined);
+                    } else {
+                        rest_kept = false;
+                    }
+                }
                 s.selected = None;
                 s.promotion = None;
                 s.message = None;
@@ -588,17 +687,37 @@ impl PdfCraftApp {
         }
         // Undo goes to the game, whatever the pointer is over (D12).
         self.chess.enter_scope();
-        let said = summary(plan, choice, kind);
-        if !said.is_empty() {
-            self.notify(said);
+        if !rest_kept {
+            self.notify(tl!("The rest is too long to keep as a comment; it is still on the page.").to_owned());
         }
+        if !recorded {
+            self.notify(tl!("Nothing new: the moves are in the game already.").to_owned());
+            return;
+        }
+        let now = self.ctx.as_ref().map_or(0.0, |ctx| ctx.input(|i| i.time));
+        let game_id = self.chess.games.scope_stamp().0;
+        let board = self.chess.board_mut();
+        let nodes = candidate(plan, choice).map(|c| c.report.new_nodes.iter().filter_map(|p| board.game.node_at(p)).collect()).unwrap_or_default();
+        let revision = board.game.revision();
+        board.fresh = Fresh { nodes, revision, since: now };
+        self.chess.capture.toast = Some(Toast { text: summary(plan, choice, kind), game: game_id, revision });
     }
 
-    /// Apply the plan waiting for the user, as candidate `choice` (its chosen one when `None`).
-    pub fn apply_pending_capture(&mut self, choice: Option<usize>) {
+    /// Apply the plan waiting for the user, as candidate `choice` (its chosen one when `None`),
+    /// with what was not read kept as a comment when `keep_rest`.
+    pub fn apply_pending_capture(&mut self, choice: Option<usize>, keep_rest: bool) {
         let Some(p) = self.chess.capture.pending.take() else { return };
         let choice = choice.or(p.choice);
-        self.apply_capture(p.request, &p.plan, choice, false);
+        self.apply_capture(p.request, &p.plan, choice, false, keep_rest);
+    }
+
+    /// The capture notice's Undo: the capture it is about is undone, if it is still the game's
+    /// last change.
+    pub fn undo_capture(&mut self) {
+        let Some(toast) = self.chess.capture.toast.take() else { return };
+        if toast.is_current(&self.chess) && matches!(self.chess.board().history.undo_edit(), Some(ChessEdit::Capture(_))) {
+            self.chess.board_mut().undo();
+        }
     }
 
     /// Every frame: a capture tool just armed puts the page tool on Select, pasted text is
@@ -608,6 +727,12 @@ impl PdfCraftApp {
             && !matches!(self.quick_tool, crate::QuickTool::Select | crate::QuickTool::ColumnSelect)
         {
             self.quick_tool = crate::QuickTool::Select;
+        }
+        if std::mem::take(&mut self.chess.capture.undo) {
+            self.undo_capture();
+        }
+        for note in std::mem::take(&mut self.chess.capture.notes) {
+            self.notify(note);
         }
         for text in std::mem::take(&mut self.chess.capture.pasted) {
             let mode = self.chess.capture.paste_mode.take();
@@ -678,20 +803,6 @@ pub(crate) fn send_menu(ui: &mut egui::Ui) -> Option<(CaptureMode, bool)> {
     chosen
 }
 
-/// The board panel's Paste as ▸: the clipboard's text captured in the mode chosen.
-pub(crate) fn paste_menu(ui: &mut egui::Ui) -> Option<(CaptureMode, bool)> {
-    let mut chosen = None;
-    ui.menu_button(tl!("Paste as"), |ui| {
-        for (mode, label) in menu_modes() {
-            if ui.button(label).clicked() {
-                chosen = Some(mode);
-                ui.close();
-            }
-        }
-    });
-    chosen
-}
-
 /// The clipboard's text, when it can be read now: on the desktop.
 pub(crate) fn clipboard_text() -> Option<String> {
     #[cfg(not(target_arch = "wasm32"))]
@@ -715,60 +826,467 @@ fn mode_phrase(tool: PgnTool) -> &'static str {
     }
 }
 
-/// The capture's marks over the page area `area`: while a tool is armed, the chip in its corner
-/// ("Capturing · automatic ▾ · Esc to stop"), with the Comment tool's switches; while a plan is
-/// made, that it is; while one waits, what to look at, with Apply and Cancel. Esc closes what
-/// waits, then disarms. Returns the candidate to apply when the user said so.
-pub(crate) fn page_overlay(ui: &mut egui::Ui, area: Rect, chess: &mut ChessState) -> Option<Option<usize>> {
+/// The capture's marks over the page area `area` of `view`, whose document is at edit
+/// `generation`: while a tool is armed, the chip in its corner ("Capturing · automatic ▾ · Esc
+/// to stop") with the Comment tool's switches; while a plan is made, that it is; while one waits,
+/// the preview beside the selection (§4.3.4), closed by Esc or once the document is edited;
+/// after a capture went in, its notice with Undo. Returns the candidate to apply, with whether
+/// to keep the rest as a comment, when the user said so (Apply, or Enter).
+pub(crate) fn page_overlay(
+    ui: &mut egui::Ui,
+    area: Rect,
+    chess: &mut ChessState,
+    view: &crate::canvas::DocView,
+    generation: u64,
+) -> Option<(Option<usize>, bool)> {
     let ctx = ui.ctx().clone();
+    // A preview of a selection on a page that has changed since shows a state that is gone.
+    if chess.capture.pending.as_ref().is_some_and(|p| p.request.doc == Some(view.id) && p.request.generation.is_some_and(|g| g != generation)) {
+        chess.capture.pending = None;
+        chess.capture.notes.push(tl!("The capture was closed: the document was edited.").to_owned());
+    }
+    if chess.capture.toast.as_ref().is_some_and(|t| !t.is_current(chess)) {
+        chess.capture.toast = None;
+    }
     let tool = chess.tools.tool;
     let armed = mode_of(tool).is_some();
     let busy = chess.capture.job.is_some();
-    if !armed && !busy && chess.capture.pending.is_none() {
+    let waiting = chess.capture.pending.is_some();
+    if !armed && !busy && !waiting && chess.capture.toast.is_none() {
         return None;
     }
-    if !ctx.text_edit_focused() && !egui::Popup::is_any_open(&ctx) && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape)) {
+    let free = !ctx.text_edit_focused() && !egui::Popup::is_any_open(&ctx);
+    if (armed || waiting) && free && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape)) {
         if !escape_preview(chess) {
             chess.tools.tool = PgnTool::Navigate;
         }
         return None;
     }
     let t = Tokens::get(&ctx);
-    let (mut apply, mut cancel) = (None, false);
-    egui::Area::new(egui::Id::new("chess-capture-chip"))
-        .order(egui::Order::Foreground)
-        .pivot(egui::Align2::RIGHT_TOP)
-        .fixed_pos(pos2(area.right() - 16.0, area.top() + 10.0))
-        .show(&ctx, |ui| {
-            egui::Frame::popup(ui.style()).show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    if armed {
-                        chip(ui, &t, chess, tool);
-                    } else if busy {
-                        ui.spinner();
-                        ui.label(RichText::new(tl!("Reading the selection…")).color(t.text_muted));
-                    }
-                });
-                if let Some(p) = chess.capture.pending.as_ref() {
-                    ui.separator();
-                    ui.set_max_width(360.0);
-                    ui.label(RichText::new(tl!("Check this capture before it goes in:")).strong());
-                    for reason in &p.plan.reasons {
-                        ui.label(format!("• {}", reason_text(*reason)));
-                    }
+    let mut apply = None;
+    if waiting && (std::mem::take(&mut chess.capture.enter) || (free && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Enter)))) {
+        apply = chess.capture.pending.as_ref().map(|p| (p.choice, false));
+    }
+    if armed || busy {
+        egui::Area::new(egui::Id::new("chess-capture-chip"))
+            .order(egui::Order::Foreground)
+            .pivot(egui::Align2::RIGHT_TOP)
+            .fixed_pos(pos2(area.right() - 16.0, area.top() + 10.0))
+            .show(&ctx, |ui| {
+                egui::Frame::popup(ui.style()).show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        if ui.button(tl!("Apply")).clicked() {
-                            apply = Some(p.choice);
+                        if armed {
+                            chip(ui, &t, chess, tool);
+                        } else {
+                            ui.spinner();
+                            ui.label(RichText::new(tl!("Reading the selection…")).color(t.text_muted));
                         }
-                        cancel = ui.button(tl!("Cancel")).clicked();
                     });
-                }
+                });
             });
-        });
-    if cancel {
-        chess.capture.pending = None;
+    }
+    if let Some(action) = preview_area(&ctx, &t, area, chess, view) {
+        match action {
+            PreviewAction::Apply { keep_rest } => apply = chess.capture.pending.as_ref().map(|p| (p.choice, keep_rest)),
+            PreviewAction::Cancel => chess.capture.pending = None,
+            PreviewAction::Choose(i) => {
+                if let Some(p) = chess.capture.pending.as_mut() {
+                    p.choice = Some(i);
+                }
+            }
+            PreviewAction::Lang(lang) => relang(chess, lang),
+        }
+    }
+    if let Some(toast) = chess.capture.toast.as_ref() {
+        let text = toast.text.clone();
+        let mut undo = false;
+        egui::Area::new(egui::Id::new("chess-capture-toast"))
+            .order(egui::Order::Foreground)
+            .pivot(egui::Align2::CENTER_BOTTOM)
+            .fixed_pos(pos2(area.center().x, area.bottom() - 24.0))
+            .show(&ctx, |ui| {
+                egui::Frame::popup(ui.style()).show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.add(icons::image("check", 14.0, t.accent));
+                        ui.label(&text);
+                        let r = ui.button(tl!("Undo"));
+                        r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, tl!("Undo this capture")));
+                        undo = r.clicked();
+                    });
+                });
+            });
+        if undo {
+            chess.capture.undo = true;
+        }
     }
     apply
+}
+
+/// What the preview asks for.
+enum PreviewAction {
+    Apply {
+        keep_rest: bool,
+    },
+    Cancel,
+    /// Another place to fit at.
+    Choose(usize),
+    /// Read the text again in another language.
+    Lang(Lang),
+}
+
+/// The language names the preview offers, each in its own language.
+fn endonym(lang: Lang) -> &'static str {
+    match lang {
+        Lang::En => "English",
+        Lang::Pt => "Português",
+        Lang::De => "Deutsch",
+        Lang::Es => "Español",
+        Lang::Fr => "Français",
+        Lang::It => "Italiano",
+        Lang::Ru => "Русский",
+        Lang::Nl => "Nederlands",
+        Lang::Pl => "Polski",
+        Lang::Cs => "Čeština",
+        Lang::Hu => "Magyar",
+        Lang::Da => "Dansk",
+        Lang::Sv => "Svenska",
+        Lang::No => "Norsk",
+        Lang::Fi => "Suomi",
+        Lang::Ro => "Română",
+        Lang::Is => "Íslenska",
+        Lang::Ca => "Català",
+    }
+}
+
+/// Plan the waiting capture again, read in `lang`, which becomes its document's language for
+/// captures.
+fn relang(chess: &mut ChessState, lang: Lang) {
+    let Some(mut p) = chess.capture.pending.take() else { return };
+    if let Some(doc) = p.request.doc {
+        chess.capture.lang = Some((doc, lang));
+    }
+    p.request.lang = lang;
+    let plan = plan_for(&chess.board().game, &p.request);
+    let choice = plan.chosen;
+    chess.capture.pending = Some(Pending { request: p.request, plan, choice });
+}
+
+/// Where the preview goes: beside the last piece of the selection while it is on screen, else
+/// under the chip.
+fn preview_place(area: Rect, p: &Pending, view: &crate::canvas::DocView) -> (egui::Align2, egui::Pos2) {
+    let beside = match &p.request.text {
+        Text::Page { page, rects, .. } => rects.last().and_then(|r| Some(view.page_xform(*page)?.view_rect(*r))),
+        Text::Plain(_) => None,
+    };
+    match beside.filter(|r| area.intersects(*r)) {
+        Some(r) => {
+            let x = r.left().clamp(area.left() + 8.0, (area.right() - 460.0).max(area.left() + 8.0));
+            (egui::Align2::LEFT_TOP, pos2(x, (r.bottom() + 8.0).min(area.bottom() - 40.0)))
+        }
+        None => (egui::Align2::RIGHT_TOP, pos2(area.right() - 16.0, area.top() + 56.0)),
+    }
+}
+
+/// The preview popover of the capture waiting (§4.3.4): where it goes ("Variation of 18…Qxe1")
+/// and the other places it fits, the language it is read in, its moves as chips (✓ played, ✗
+/// stopped with why, grey not read; the main line's in bold), why it is shown, and Apply, Apply
+/// and keep the rest as a comment, Cancel.
+fn preview_area(ctx: &egui::Context, t: &Tokens, area: Rect, chess: &ChessState, view: &crate::canvas::DocView) -> Option<PreviewAction> {
+    let p = chess.capture.pending.as_ref()?;
+    let (pivot, at) = preview_place(area, p, view);
+    let mut action = None;
+    egui::Area::new(egui::Id::new("chess-capture-preview")).order(egui::Order::Foreground).pivot(pivot).fixed_pos(at).show(ctx, |ui| {
+        egui::Frame::popup(ui.style()).show(ui, |ui| {
+            ui.set_max_width(440.0);
+            action = preview(ui, t, p);
+        });
+    });
+    action
+}
+
+fn preview(ui: &mut egui::Ui, t: &Tokens, p: &Pending) -> Option<PreviewAction> {
+    let mut action = None;
+    let c = candidate(&p.plan, p.choice);
+    let title = c.map_or_else(|| tl!("No move of the text fits the game here.").to_owned(), |c| headline(c, captured_by(c, p.request.mode)));
+    ui.label(RichText::new(title).font(crate::theme::semibold(14.0)));
+    ui.horizontal_wrapped(|ui| {
+        if p.plan.candidates.len() > 1 {
+            let label = ui.label(RichText::new(tl!("Fit at")).small().color(t.text_muted));
+            let shown = c.map(|c| headline(c, captured_by(c, p.request.mode))).unwrap_or_default();
+            let combo = egui::ComboBox::from_id_salt("chess-capture-fit").selected_text(shown).show_ui(ui, |ui| {
+                for (i, other) in p.plan.candidates.iter().enumerate() {
+                    let moves = crate::i18n::fmt(tl!("moves: {n}"), &[("n", &other.played.to_string())]);
+                    let label = format!("{} · {moves}", headline(other, captured_by(other, p.request.mode)));
+                    if ui.selectable_label(p.choice == Some(i), label).clicked() {
+                        action = Some(PreviewAction::Choose(i));
+                    }
+                }
+            });
+            combo.response.labelled_by(label.id);
+        }
+        let label = ui.label(RichText::new(tl!("Language")).small().color(t.text_muted));
+        let combo = egui::ComboBox::from_id_salt("chess-capture-lang").selected_text(endonym(p.request.lang)).show_ui(ui, |ui| {
+            for lang in Lang::ALL {
+                if ui.selectable_label(lang == p.request.lang, endonym(lang)).clicked() && lang != p.request.lang {
+                    action = Some(PreviewAction::Lang(lang));
+                }
+            }
+        });
+        combo.response.labelled_by(label.id);
+    });
+    if let Some(c) = c {
+        ui.add_space(4.0);
+        egui::ScrollArea::vertical().id_salt("chess-capture-chips").max_height(160.0).show(ui, |ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.spacing_mut().item_spacing = egui::vec2(4.0, 3.0);
+                chips(ui, t, c);
+            });
+        });
+    }
+    let reasons: &[PreviewReason] = match c {
+        Some(c) if p.choice != p.plan.chosen => &c.reasons,
+        _ => &p.plan.reasons,
+    };
+    for reason in reasons {
+        ui.label(RichText::new(format!("• {}", reason_text(*reason))).small());
+    }
+    ui.add_space(4.0);
+    ui.horizontal_wrapped(|ui| {
+        let can = c.is_some();
+        if ui.add_enabled(can, egui::Button::new(tl!("Apply")).shortcut_text("Enter")).clicked() {
+            action = Some(PreviewAction::Apply { keep_rest: false });
+        }
+        if c.is_some_and(|c| c.mode_used != GraftMode::Comment && !leftover(c).is_empty())
+            && ui.button(tl!("Apply and keep the rest as a comment")).clicked()
+        {
+            action = Some(PreviewAction::Apply { keep_rest: true });
+        }
+        if ui.add(egui::Button::new(tl!("Cancel")).shortcut_text("Esc")).clicked() {
+            action = Some(PreviewAction::Cancel);
+        }
+    });
+    action
+}
+
+/// Most chips the preview shows.
+const MAX_CHIPS: usize = 160;
+
+/// The candidate's items as chips: each move ✓ played, ✗ where the graft stopped (and why), or
+/// grey when not read, bold when printed bold; glyphs, comments and brackets as they read; then
+/// the printed moves the reader could not play, ✗ with why. Colour is never the only sign.
+fn chips(ui: &mut egui::Ui, t: &Tokens, c: &Candidate) {
+    const PLAYED: egui::Color32 = egui::Color32::from_rgb(0x2D, 0x9D, 0x5B);
+    const STOPPED: egui::Color32 = egui::Color32::from_rgb(0xE0, 0x3E, 0x3E);
+    let stop = c.report.stop.as_ref();
+    let rest_from = c.report.rest_from.or(stop.map(|s| s.index));
+    let mut shown = 0usize;
+    for (k, item) in c.read.items.iter().enumerate() {
+        if shown >= MAX_CHIPS {
+            ui.label(RichText::new("…").color(t.text_faint));
+            return;
+        }
+        shown = shown.saturating_add(1);
+        match item {
+            FragmentItem::Move { text, bold, .. } => {
+                let (mark, colour, why) = match (stop, rest_from) {
+                    (Some(s), _) if s.index == k => ("✗", STOPPED, Some(stop_text(s.reason))),
+                    (_, Some(r)) if k >= r => ("·", t.text_faint, None),
+                    _ => ("✓", PLAYED, None),
+                };
+                let mut rich = RichText::new(format!("{mark} {text}")).small().color(colour);
+                if *bold == Some(true) {
+                    rich = rich.strong();
+                }
+                let r = ui.label(rich);
+                if let Some(why) = why {
+                    r.on_hover_text(why);
+                    ui.label(RichText::new(why).small().color(STOPPED));
+                }
+            }
+            FragmentItem::Nag(code) => {
+                ui.label(RichText::new(glyph_text(*code)).small().color(t.text_muted));
+            }
+            FragmentItem::Comment { text, .. } => {
+                let short: String = text.chars().take(40).collect();
+                let more = if text.chars().count() > 40 { "…" } else { "" };
+                ui.label(RichText::new(format!("“{short}{more}”")).small().italics().color(t.text_muted));
+            }
+            FragmentItem::Open => {
+                ui.label(RichText::new("(").small().color(t.text_faint));
+            }
+            FragmentItem::Close => {
+                ui.label(RichText::new(")").small().color(t.text_faint));
+            }
+            FragmentItem::Result => {}
+        }
+    }
+    for s in &c.read.stops {
+        ui.label(RichText::new(format!("✗ {} — {}", s.text, status_text(s.status))).small().color(STOPPED));
+    }
+}
+
+/// A glyph as the notation shows it.
+fn glyph_text(code: u16) -> String {
+    pdfcraft_engine::chess::pdfcraft_chess::nag::by_code(code).map_or_else(|| format!("${code}"), |n| n.glyph.to_owned())
+}
+
+/// Why the graft stopped at a move, in words.
+fn stop_text(reason: GraftStopReason) -> &'static str {
+    match reason {
+        GraftStopReason::Illegal => tl!("Illegal move"),
+        GraftStopReason::Ambiguous => tl!("Ambiguous move"),
+        GraftStopReason::Unreadable => tl!("Unreadable move"),
+        GraftStopReason::TooLong => tl!("Past the capture's limits"),
+        GraftStopReason::TooDeep => tl!("Variations nest too deep"),
+        GraftStopReason::NullMove => tl!("A null move can't be played"),
+        GraftStopReason::NoAnchor => tl!("The move it goes after is gone"),
+    }
+}
+
+/// Why the reader did not play a printed move, in words (the Text tab's words).
+fn status_text(status: MoveStatus) -> &'static str {
+    match status {
+        MoveStatus::Valid => tl!("Valid move"),
+        MoveStatus::Illegal => tl!("Illegal move"),
+        MoveStatus::Ambiguous => tl!("Ambiguous move"),
+        MoveStatus::OutOfSequence => tl!("Move out of sequence"),
+        MoveStatus::NotReached => tl!("Not reached: an earlier move failed"),
+        MoveStatus::Unchecked => tl!("Unchecked: no position to play it from"),
+    }
+}
+
+/// What candidate `c` did not read: the graft's leftover, then the text after a result.
+fn leftover(c: &Candidate) -> String {
+    let mut out = c.report.leftover_text.trim().to_owned();
+    let rest = c.read.rest.trim();
+    if !rest.is_empty() && !out.contains(rest) {
+        if !out.is_empty() {
+            out.push(' ');
+        }
+        out.push_str(rest);
+    }
+    out
+}
+
+impl Toast {
+    /// Whether the game is as the capture left it.
+    fn is_current(&self, chess: &ChessState) -> bool {
+        chess.games.scope_stamp().0 == self.game && chess.board().game.revision() == self.revision
+    }
+}
+
+/// Take Enter out of a frame's `events` (the main window's raw input, or the chess window's
+/// own) while a capture waits for the user: it applies the capture, before the rail, a group or
+/// the comment editor can use it. Nothing is taken when `skip` (a modal dialog is open, or a
+/// text field has the keyboard: the caller knows, and must not ask the context while it holds
+/// its input).
+pub(crate) fn take_enter(chess: &mut ChessState, events: &mut Vec<egui::Event>, skip: bool) {
+    if skip || chess.capture.pending.is_none() {
+        return;
+    }
+    let enter = &mut chess.capture.enter;
+    events.retain(|event| match event {
+        egui::Event::Key { key: Key::Enter, pressed, modifiers, .. } if modifiers.is_none() => {
+            *enter |= *pressed;
+            false
+        }
+        _ => true,
+    });
+}
+
+// ─── Text already captured (§4.3.5) ──────────────────────────────────────────────────────────
+
+/// The text already captured, as boxes: page, and box in user space.
+pub(crate) type Layer = Arc<Vec<(usize, [f32; 4])>>;
+
+/// Most boxes the layer keeps.
+const MAX_LAYER: usize = 100_000;
+
+/// The boxes of the text already captured into the games of document `doc` (page, box in user
+/// space), when the layer is on and `doc` is the document shown. Read again only when a game
+/// changed.
+pub(crate) fn captured_layer(chess: &mut ChessState, doc: DocId) -> Option<Layer> {
+    use std::hash::{Hash, Hasher};
+    if !chess.capture.show_captured || chess.games.current_doc() != Some(doc) {
+        return None;
+    }
+    let games = chess.games.collection();
+    let mut h = std::collections::hash_map::DefaultHasher::new();
+    doc.hash(&mut h);
+    games.len().hash(&mut h);
+    for e in games.iter() {
+        e.board.game.revision().hash(&mut h);
+        e.board.game.start_fen().hash(&mut h);
+    }
+    let key = h.finish();
+    if let Some((k, layer)) = &chess.capture.layer
+        && *k == key
+    {
+        return Some(layer.clone());
+    }
+    let mut boxes = Vec::new();
+    'games: for e in games.iter() {
+        let g = &e.board.game;
+        for token in g.tokens() {
+            if let Token::Move { node, .. } = token
+                && let Some(source) = g.source(node)
+                && let Ok(page) = usize::try_from(source.page)
+            {
+                if boxes.len() >= MAX_LAYER {
+                    break 'games;
+                }
+                boxes.push((page, source.rect_user));
+            }
+        }
+    }
+    let layer = Arc::new(boxes);
+    chess.capture.layer = Some((key, layer.clone()));
+    Some(layer)
+}
+
+/// Underline on page `page` the boxes of `layer` there, lightly; each one drawn is added to
+/// `drawn`.
+pub(crate) fn paint_captured(
+    painter: &egui::Painter,
+    xf: &crate::canvas::PageXform,
+    page: usize,
+    info: &pdfcraft_render::DocInfo,
+    layer: Option<&[(usize, [f32; 4])]>,
+    drawn: &mut Vec<(usize, [f32; 4])>,
+) {
+    let Some(layer) = layer else { return };
+    // `user_rect` reads the page's box: never for a page the document does not have.
+    if info.pages.get(page).is_none() {
+        return;
+    }
+    let colour = Tokens::get(painter.ctx()).accent.gamma_multiply(0.75);
+    for (_, r) in layer.iter().filter(|(p, _)| *p == page) {
+        if !r.iter().all(|v| v.is_finite()) {
+            continue;
+        }
+        let sr = xf.user_rect(info, page, *r);
+        let y = sr.bottom() + 1.0;
+        painter.line_segment([pos2(sr.left(), y), pos2(sr.right(), y)], egui::Stroke::new(1.5, colour));
+        drawn.push((page, *r));
+    }
+}
+
+/// The board panel's row for captures: Paste as ▸ (the clipboard's text captured in the mode
+/// chosen) and the switch for the layer of text already captured.
+pub(crate) fn panel_row(ui: &mut egui::Ui, chess: &mut ChessState) -> Option<(CaptureMode, bool)> {
+    let mut chosen = None;
+    ui.horizontal_wrapped(|ui| {
+        ui.menu_button(tl!("Paste as"), |ui| {
+            for (mode, label) in menu_modes() {
+                if ui.button(label).clicked() {
+                    chosen = Some(mode);
+                    ui.close();
+                }
+            }
+        });
+        ui.add(crate::widgets::checkbox(&mut chess.capture.show_captured, tl!("Underline captured text on the page")));
+    });
+    chosen
 }
 
 /// The chip's line: what is armed, its menu, the Comment tool's switches, and how to stop.
@@ -777,7 +1295,7 @@ fn chip(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, tool: PgnTool) {
     ui.label(RichText::new(tl!("Capturing")).strong());
     ui.label(RichText::new("·").color(t.text_faint));
     let mut picked = None;
-    ui.menu_button(format!("{} ▾", mode_phrase(tool)), |ui| {
+    ui.menu_button((mode_phrase(tool), icons::image("chevron-down", 12.0, t.icon)), |ui| {
         let tools = [
             PgnTool::Capture(CaptureMode::Auto),
             PgnTool::Capture(CaptureMode::Line),

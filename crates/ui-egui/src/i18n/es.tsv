@@ -2921,3 +2921,16 @@ animation effects	Off	Desactivados
 	Line from the start	Línea desde el inicio
 	Variation of {move}	Variante de {move}
 	moves: {n}	jugadas: {n}
+# Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
+	Fit at	Encajar en
+	Apply and keep the rest as a comment	Aplicar y guardar el resto como comentario
+	Unreadable move	Jugada ilegible
+	Past the capture's limits	Fuera de los límites de la captura
+	Variations nest too deep	Variantes anidadas en exceso
+	A null move can't be played	Una jugada nula no se puede jugar
+	The move it goes after is gone	La jugada tras la que va ya no existe
+	Undo this capture	Deshacer esta captura
+	Underline captured text on the page	Subrayar en la página el texto ya capturado
+	The capture was closed: the document was edited.	La captura se cerró: el documento se editó.
+	The rest is too long to keep as a comment; it is still on the page.	El resto es demasiado largo para guardarlo como comentario; sigue en la página.
+	Nothing new: the moves are in the game already.	Nada nuevo: las jugadas ya están en la partida.

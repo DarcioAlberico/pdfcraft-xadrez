@@ -2802,3 +2802,16 @@ animation effects	Off	Вимкнено
 	Line from the start	Лінія з початку
 	Variation of {move}	Варіант до {move}
 	moves: {n}	ходів: {n}
+# Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
+	Fit at	Місце
+	Apply and keep the rest as a comment	Застосувати й зберегти решту як коментар
+	Unreadable move	Нечитабельний хід
+	Past the capture's limits	Поза межами захоплення
+	Variations nest too deep	Варіанти вкладені надто глибоко
+	A null move can't be played	Нульовий хід не можна зіграти
+	The move it goes after is gone	Ходу, після якого він іде, більше немає
+	Undo this capture	Скасувати це захоплення
+	Underline captured text on the page	Підкреслювати на сторінці вже захоплений текст
+	The capture was closed: the document was edited.	Захоплення закрито: документ змінено.
+	The rest is too long to keep as a comment; it is still on the page.	Решта задовга для коментаря; вона лишається на сторінці.
+	Nothing new: the moves are in the game already.	Нічого нового: ходи вже є в партії.

@@ -2744,3 +2744,16 @@ animation effects	Off	关
 	Line from the start	从开头开始的续着
 	Variation of {move}	{move} 的变化
 	moves: {n}	着数：{n}
+# Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
+	Fit at	放置位置
+	Apply and keep the rest as a comment	应用并将剩余部分保留为注释
+	Unreadable move	无法读取的着法
+	Past the capture's limits	超出提取的限制
+	Variations nest too deep	变化嵌套过深
+	A null move can't be played	空着无法走出
+	The move it goes after is gone	它所接续的着法已不存在
+	Undo this capture	撤销此次提取
+	Underline captured text on the page	在页面上为已提取的文本加下划线
+	The capture was closed: the document was edited.	提取已关闭：文档已被编辑。
+	The rest is too long to keep as a comment; it is still on the page.	剩余部分太长，无法作为注释保留；它仍在页面上。
+	Nothing new: the moves are in the game already.	没有新内容：这些着法已在对局中。

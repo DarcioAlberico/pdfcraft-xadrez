@@ -633,8 +633,8 @@ fn board_column(
     source_label: Option<String>,
     asked: &mut Asked,
 ) {
-    // Captures from the clipboard (T7a), above the board, as in the docked panel.
-    asked.paste = crate::chess_capture::paste_menu(ui);
+    // Captures from the clipboard (T7a) and the layer of captured text (T7b), above the board, as in the docked panel.
+    asked.paste = crate::chess_capture::panel_row(ui, chess);
     let sizing = sizing(ui.available_size());
     if !sizing.wide {
         // The notation takes the height the scroll area shows and the rest leaves.

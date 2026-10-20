@@ -2689,3 +2689,16 @@ animation effects	Off	ఆఫ్
 	Line from the start	ప్రారంభం నుండి వరుస
 	Variation of {move}	{move} యొక్క ఉపవరుస
 	moves: {n}	ఎత్తులు: {n}
+# Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
+	Fit at	ఇక్కడ అమర్చు
+	Apply and keep the rest as a comment	వర్తింపజేసి మిగిలినదాన్ని వ్యాఖ్యగా ఉంచు
+	Unreadable move	చదవలేని ఎత్తు
+	Past the capture's limits	సంగ్రహణ పరిమితులకు మించి
+	Variations nest too deep	ఉపవరుసలు చాలా లోతుగా ఉన్నాయి
+	A null move can't be played	శూన్య ఎత్తును ఆడలేము
+	The move it goes after is gone	ఇది వచ్చే ముందరి ఎత్తు ఇప్పుడు లేదు
+	Undo this capture	ఈ సంగ్రహణను రద్దు చేయి
+	Underline captured text on the page	ఇప్పటికే సంగ్రహించిన పాఠ్యాన్ని పేజీపై అండర్‌లైన్ చేయి
+	The capture was closed: the document was edited.	సంగ్రహణ మూసివేయబడింది: పత్రం సవరించబడింది.
+	The rest is too long to keep as a comment; it is still on the page.	మిగిలినది వ్యాఖ్యగా ఉంచడానికి చాలా పొడవుగా ఉంది; అది ఇంకా పేజీపైనే ఉంది.
+	Nothing new: the moves are in the game already.	కొత్తదేమీ లేదు: ఎత్తులు ఇప్పటికే ఆటలో ఉన్నాయి.

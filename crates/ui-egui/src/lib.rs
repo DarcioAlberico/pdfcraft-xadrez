@@ -2337,6 +2337,7 @@ impl PdfCraftApp {
         // The chess board in its own window: {detached, size, position}.
         v["docking_detached"] = self.chess_window.to_json();
         v["chess_capture_on_copy"] = serde_json::Value::Bool(self.chess.capture.on_copy);
+        v["chess_captured_layer"] = serde_json::Value::Bool(self.chess.capture.show_captured);
         v.to_string()
     }
 
@@ -2445,6 +2446,9 @@ impl PdfCraftApp {
         }
         if let Some(on) = v["chess_capture_on_copy"].as_bool() {
             self.chess.capture.on_copy = on;
+        }
+        if let Some(on) = v["chess_captured_layer"].as_bool() {
+            self.chess.capture.show_captured = on;
         }
         // Per-tool comment styles (#340): each field goes through its clamping setter, so a
         // malformed or hostile entry is clamped or ignored rather than trusted.

@@ -2779,3 +2779,16 @@ animation effects	Off	Ki
 	Line from the start	Vonal a kezdettől
 	Variation of {move}	Változat ehhez: {move}
 	moves: {n}	lépések: {n}
+# Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
+	Fit at	Hely
+	Apply and keep the rest as a comment	Alkalmazás, a maradék megtartása megjegyzésként
+	Unreadable move	Olvashatatlan lépés
+	Past the capture's limits	A rögzítés korlátain túl
+	Variations nest too deep	Túl mélyen egymásba ágyazott változatok
+	A null move can't be played	Nulla lépést nem lehet megtenni
+	The move it goes after is gone	Már nincs meg a lépés, amely után következne
+	Undo this capture	A rögzítés visszavonása
+	Underline captured text on the page	A már rögzített szöveg aláhúzása az oldalon
+	The capture was closed: the document was edited.	A rögzítés bezárult: a dokumentumot szerkesztették.
+	The rest is too long to keep as a comment; it is still on the page.	A maradék túl hosszú egy megjegyzéshez; továbbra is az oldalon van.
+	Nothing new: the moves are in the game already.	Nincs új: a lépések már szerepelnek a játszmában.
