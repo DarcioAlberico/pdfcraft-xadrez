@@ -2756,3 +2756,16 @@ animation effects	Off	Wyłączone
 	Line from the start	Linia od początku
 	Variation of {move}	Wariant do {move}
 	moves: {n}	ruchy: {n}
+# Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
+	Fit at	Umieść w
+	Apply and keep the rest as a comment	Zastosuj i zachowaj resztę jako komentarz
+	Unreadable move	Nieczytelny ruch
+	Past the capture's limits	Poza granicami przechwycenia
+	Variations nest too deep	Warianty zagnieżdżone zbyt głęboko
+	A null move can't be played	Ruchu zerowego nie można zagrać
+	The move it goes after is gone	Ruchu, po którym ma nastąpić, już nie ma
+	Undo this capture	Cofnij to przechwycenie
+	Underline captured text on the page	Podkreślaj na stronie już przechwycony tekst
+	The capture was closed: the document was edited.	Przechwycenie zamknięto: dokument został zmieniony.
+	The rest is too long to keep as a comment; it is still on the page.	Reszta jest za długa na komentarz; nadal jest na stronie.
+	Nothing new: the moves are in the game already.	Nic nowego: ruchy są już w partii.

@@ -2854,3 +2854,16 @@ animation effects	Off	Vypnuto
 	Line from the start	Linie od začátku
 	Variation of {move}	Varianta k {move}
 	moves: {n}	tahů: {n}
+# Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
+	Fit at	Umístit na
+	Apply and keep the rest as a comment	Použít a zbytek ponechat jako komentář
+	Unreadable move	Nečitelný tah
+	Past the capture's limits	Mimo meze zachycení
+	Variations nest too deep	Varianty jsou vnořené příliš hluboko
+	A null move can't be played	Nulový tah nelze zahrát
+	The move it goes after is gone	Tah, po kterém má následovat, už neexistuje
+	Undo this capture	Vrátit toto zachycení
+	Underline captured text on the page	Podtrhnout na stránce již zachycený text
+	The capture was closed: the document was edited.	Zachycení bylo zavřeno: dokument byl upraven.
+	The rest is too long to keep as a comment; it is still on the page.	Zbytek je na komentář příliš dlouhý; zůstává na stránce.
+	Nothing new: the moves are in the game already.	Nic nového: tahy už v partii jsou.

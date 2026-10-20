@@ -2776,3 +2776,16 @@ animation effects	Off	Kapalı
 	Line from the start	Başlangıçtan hat
 	Variation of {move}	{move} varyantı
 	moves: {n}	hamle: {n}
+# Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
+	Fit at	Yerleştir
+	Apply and keep the rest as a comment	Uygula ve kalanı yorum olarak sakla
+	Unreadable move	Okunamayan hamle
+	Past the capture's limits	Yakalama sınırlarının dışında
+	Variations nest too deep	Varyantlar çok derin iç içe
+	A null move can't be played	Boş hamle oynanamaz
+	The move it goes after is gone	Arkasından geleceği hamle artık yok
+	Undo this capture	Bu yakalamayı geri al
+	Underline captured text on the page	Sayfada zaten yakalanmış metnin altını çiz
+	The capture was closed: the document was edited.	Yakalama kapatıldı: belge düzenlendi.
+	The rest is too long to keep as a comment; it is still on the page.	Kalan, yorum olarak saklanamayacak kadar uzun; hâlâ sayfada.
+	Nothing new: the moves are in the game already.	Yeni bir şey yok: hamleler zaten oyunda.

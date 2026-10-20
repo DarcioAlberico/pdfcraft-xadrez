@@ -2785,3 +2785,16 @@ animation effects	Off	Izklopljeni
 	Line from the start	Linija od začetka
 	Variation of {move}	Varianta k {move}
 	moves: {n}	potez: {n}
+# Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
+	Fit at	Umesti pri
+	Apply and keep the rest as a comment	Uporabi in ostanek obdrži kot komentar
+	Unreadable move	Neberljiva poteza
+	Past the capture's limits	Zunaj meja zajema
+	Variations nest too deep	Variante so pregloboko gnezdene
+	A null move can't be played	Ničelne poteze ni mogoče odigrati
+	The move it goes after is gone	Poteze, za katero sledi, ni več
+	Undo this capture	Razveljavi ta zajem
+	Underline captured text on the page	Na strani podčrtaj že zajeto besedilo
+	The capture was closed: the document was edited.	Zajem je bil zaprt: dokument je bil urejen.
+	The rest is too long to keep as a comment; it is still on the page.	Ostanek je predolg za komentar; še vedno je na strani.
+	Nothing new: the moves are in the game already.	Nič novega: poteze so že v partiji.

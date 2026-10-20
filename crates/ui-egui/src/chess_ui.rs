@@ -893,8 +893,8 @@ pub(crate) fn board_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     egui::Frame::NONE.fill(t.panel).stroke(Stroke::new(1.0, t.divider)).show(ui, |ui| {
         crate::chess_tools::with_rail(ui, &mut app.chess, |ui, chess| {
             egui::Frame::NONE.inner_margin(egui::Margin { left: 10, right: 12, top: 12, bottom: 8 }).show(ui, |ui| {
-                // Captures from the clipboard (T7a), above the board.
-                paste = crate::chess_capture::paste_menu(ui);
+                // Captures from the clipboard (T7a) and the layer of captured text (T7b), above the board.
+                paste = crate::chess_capture::panel_row(ui, chess);
                 // The notation takes the height the scroll area shows and the rest leaves.
                 let viewport = ui.available_height();
                 egui::ScrollArea::vertical().id_salt("chess-board-panel").auto_shrink([false, false]).show(ui, |ui| {

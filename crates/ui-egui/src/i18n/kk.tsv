@@ -2778,3 +2778,16 @@ animation effects	Off	Өшірулі
 	Line from the start	Басынан бастап жол
 	Variation of {move}	{move} жүрісінің нұсқасы
 	moves: {n}	жүрістер: {n}
+# Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
+	Fit at	Орны
+	Apply and keep the rest as a comment	Қолдану және қалғанын түсініктеме ретінде сақтау
+	Unreadable move	Оқылмайтын жүріс
+	Past the capture's limits	Түсіру шегінен тыс
+	Variations nest too deep	Нұсқалар тым терең кірістірілген
+	A null move can't be played	Бос жүрісті жүруге болмайды
+	The move it goes after is gone	Ол кейін келетін жүріс енді жоқ
+	Undo this capture	Бұл түсіруді болдырмау
+	Underline captured text on the page	Беттегі түсірілген мәтіннің астын сызу
+	The capture was closed: the document was edited.	Түсіру жабылды: құжат өңделді.
+	The rest is too long to keep as a comment; it is still on the page.	Қалғаны түсініктемеге тым ұзын; ол бетте қалады.
+	Nothing new: the moves are in the game already.	Жаңа ештеңе жоқ: жүрістер партияда бар.

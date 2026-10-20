@@ -550,6 +550,8 @@ pub(crate) fn scope_key(key: Key, m: Modifiers) -> bool {
 pub(crate) fn take_scope_keys(chess: &mut ChessState, ctx: &egui::Context, raw: &mut egui::RawInput, blocked: bool) {
     chess.tools.keys.clear();
     let shown = std::mem::take(&mut chess.tools.rail_shown);
+    // Enter applies a capture waiting for the user, before anything else can use it (T7b).
+    crate::chess_capture::take_enter(chess, &mut raw.events, blocked || ctx.text_edit_focused());
     if blocked || !chess.in_scope() || ctx.text_edit_focused() || egui::Popup::is_any_open(ctx) {
         return;
     }
@@ -590,8 +592,12 @@ pub(crate) struct MainScope {
 pub(crate) fn take_window_keys(chess: &mut ChessState, ctx: &egui::Context) -> MainScope {
     let main = MainScope { rail_shown: chess.tools.rail_shown, keys: std::mem::take(&mut chess.tools.keys) };
     if !ctx.text_edit_focused() && !egui::Popup::is_any_open(ctx) {
-        // A paste in the chess window goes to the game (T7a).
-        ctx.input_mut(|i| crate::chess_capture::take_paste(chess, &mut i.events));
+        // A paste in the chess window goes to the game (T7a), and Enter applies a capture
+        // waiting for the user before the window's rail can use it (T7b).
+        ctx.input_mut(|i| {
+            crate::chess_capture::take_enter(chess, &mut i.events, false);
+            crate::chess_capture::take_paste(chess, &mut i.events);
+        });
         // As in the main window's scope: Enter only while nothing has focus, and typed glyphs.
         let focused = ctx.memory(|m| m.focused().is_some());
         let tools = &mut chess.tools;

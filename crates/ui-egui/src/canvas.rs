@@ -2834,6 +2834,9 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     view.text_background.prepare(ui.ctx(), doc, view.line_editor.as_ref(), view.content.draft.as_ref(), scale);
     let added = if editing_content { doc.added().to_vec() } else { Vec::new() };
     let doc_links = if tool == QuickTool::Link { doc.links().to_vec() } else { Vec::new() };
+    // The text already captured into the document's games, when that layer is on (T7b).
+    let captured_layer = crate::chess_capture::captured_layer(&mut app.chess, view.id);
+    let mut captured_drawn = Vec::new();
     // Chess diagrams found in this document, while it is as it was scanned.
     let chess_shown = crate::chess_ui::shown(&app.chess, view.id, app.session.chess_stamp(view.id));
     let mut chess_pick: Option<(usize, usize)> = None;
@@ -3556,6 +3559,7 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
                     }
                 }
             }
+            crate::chess_capture::paint_captured(painter, &xf, i, info, captured_layer.as_deref().map(Vec::as_slice), &mut captured_drawn);
             if let Some((d, tip)) = crate::chess_ui::paint(painter, &xf, i, info, chess_shown, pointer.filter(|_| !page_covered)) {
                 if hover_text.is_none()
                     && let Some(p) = pointer
@@ -3937,7 +3941,7 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
         });
     }
     find_bar(view, info.pages.len(), avail, ui, &t);
-    let capture_apply = crate::chess_capture::page_overlay(ui, avail, &mut app.chess);
+    let capture_apply = crate::chess_capture::page_overlay(ui, avail, &mut app.chess, view, doc.edit_generation());
     page_size_hint(view, info, units, avail, unobstructed, ui, &t);
     if tool == QuickTool::EnhanceCamera {
         crate::camera_ui::bar(ui.ctx(), view, avail, &t, can_modify);
@@ -4004,6 +4008,7 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
         Some(comments::CanvasAction::CopyImageFile(p, i)) => image_action = Some(crate::edit_text_ui::ImageAction::CopyFile(p, i)),
         None => {}
     }
+    app.chess.capture.drawn = captured_drawn;
     // `select_chess_diagram` would borrow all of `app` while `view` is held: the next poll does it.
     if let Some(pick) = chess_pick {
         // A second click on the same diagram within egui's double-click delay is a double-click:
@@ -4137,8 +4142,8 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     if chess_release || chess_send.is_some() {
         app.capture_selection(index, chess_send);
     }
-    if let Some(choice) = capture_apply {
-        app.apply_pending_capture(choice);
+    if let Some((choice, keep_rest)) = capture_apply {
+        app.apply_pending_capture(choice, keep_rest);
     }
     // Read mode hides the tools (#2646).
     if app.mode != crate::Mode::Read {

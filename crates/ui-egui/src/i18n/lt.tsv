@@ -3033,3 +3033,16 @@ chess side	Black	Juodieji
 	Line from the start	Linija nuo pradžios
 	Variation of {move}	{move} variantas
 	moves: {n}	ėjimų: {n}
+# Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
+	Fit at	Vieta
+	Apply and keep the rest as a comment	Pritaikyti ir likutį palikti kaip komentarą
+	Unreadable move	Neįskaitomas ėjimas
+	Past the capture's limits	Už perkėlimo ribų
+	Variations nest too deep	Variantai įdėti per giliai
+	A null move can't be played	Tuščio ėjimo sužaisti negalima
+	The move it goes after is gone	Ėjimo, po kurio jis eina, nebėra
+	Undo this capture	Atšaukti šį perkėlimą
+	Underline captured text on the page	Pabraukti puslapyje jau perkeltą tekstą
+	The capture was closed: the document was edited.	Perkėlimas uždarytas: dokumentas buvo redaguotas.
+	The rest is too long to keep as a comment; it is still on the page.	Likutis per ilgas komentarui; jis lieka puslapyje.
+	Nothing new: the moves are in the game already.	Nieko naujo: ėjimai jau yra partijoje.

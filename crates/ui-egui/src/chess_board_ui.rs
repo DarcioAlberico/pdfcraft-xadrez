@@ -179,6 +179,8 @@ pub struct BoardState {
     pub(crate) focus_comment: bool,
     /// Where the glyph palette types.
     pub(crate) typing: crate::chess_annotate::Typing,
+    /// The moves the last capture added, tinted in the move list (T7b).
+    pub fresh: crate::chess_capture::Fresh,
 }
 
 /// A comment or game-detail field while it has the keyboard: its key, its text as typed, and
@@ -215,6 +217,7 @@ impl Default for BoardState {
             palette_open: false,
             focus_comment: false,
             typing: Default::default(),
+            fresh: Default::default(),
         }
     }
 }
@@ -934,6 +937,9 @@ pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, he
                                     egui::RichText::new(format!("{san}{}", glyphs(nags, |s| crate::chess_annotate::drawable(&ctx, s)))).monospace();
                                 if small {
                                     rich = rich.small().color(t.text_muted);
+                                }
+                                if let Some(tint) = state.fresh.tint(&state.game, *node, ui.ctx()) {
+                                    rich = rich.background_color(tint);
                                 }
                                 let r = ui.selectable_label(*node == current, rich);
                                 if *node == current && reveal {

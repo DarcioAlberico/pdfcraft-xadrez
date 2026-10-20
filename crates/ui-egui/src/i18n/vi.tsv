@@ -3035,3 +3035,16 @@ chess side	Black	Đen
 	Line from the start	Dòng từ đầu ván
 	Variation of {move}	Biến của {move}
 	moves: {n}	số nước: {n}
+# Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
+	Fit at	Đặt tại
+	Apply and keep the rest as a comment	Áp dụng và giữ phần còn lại làm bình luận
+	Unreadable move	Nước đi không đọc được
+	Past the capture's limits	Vượt quá giới hạn ghi lại
+	Variations nest too deep	Các biến lồng nhau quá sâu
+	A null move can't be played	Không thể đi một nước rỗng
+	The move it goes after is gone	Nước đi mà nó theo sau không còn nữa
+	Undo this capture	Hoàn tác lần ghi này
+	Underline captured text on the page	Gạch chân trên trang văn bản đã ghi lại
+	The capture was closed: the document was edited.	Lần ghi đã đóng: tài liệu đã bị chỉnh sửa.
+	The rest is too long to keep as a comment; it is still on the page.	Phần còn lại quá dài để làm bình luận; nó vẫn còn trên trang.
+	Nothing new: the moves are in the game already.	Không có gì mới: các nước đi đã có trong ván cờ.

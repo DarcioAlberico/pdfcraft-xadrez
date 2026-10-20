@@ -2992,3 +2992,16 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Line from the start	Linea dall'inizio
 	Variation of {move}	Variante di {move}
 	moves: {n}	mosse: {n}
+# Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
+	Fit at	Inserisci in
+	Apply and keep the rest as a comment	Applica e conserva il resto come commento
+	Unreadable move	Mossa illeggibile
+	Past the capture's limits	Oltre i limiti dell'acquisizione
+	Variations nest too deep	Varianti annidate troppo in profondità
+	A null move can't be played	Una mossa nulla non si può giocare
+	The move it goes after is gone	La mossa dopo cui va non esiste più
+	Undo this capture	Annulla questa acquisizione
+	Underline captured text on the page	Sottolinea sulla pagina il testo già acquisito
+	The capture was closed: the document was edited.	L'acquisizione è stata chiusa: il documento è stato modificato.
+	The rest is too long to keep as a comment; it is still on the page.	Il resto è troppo lungo per un commento; è ancora sulla pagina.
+	Nothing new: the moves are in the game already.	Niente di nuovo: le mosse sono già nella partita.

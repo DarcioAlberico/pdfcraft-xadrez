@@ -2797,3 +2797,16 @@ chess side	Black	Pretas
 	Line from the start	Linha desde o início
 	Variation of {move}	Variante de {move}
 	moves: {n}	lances: {n}
+# Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
+	Fit at	Encaixar em
+	Apply and keep the rest as a comment	Aplicar e guardar o resto como comentário
+	Unreadable move	Lance ilegível
+	Past the capture's limits	Além dos limites da captura
+	Variations nest too deep	Variantes aninhadas demais
+	A null move can't be played	Um lance nulo não pode ser jogado
+	The move it goes after is gone	O lance depois do qual ele vai não existe mais
+	Undo this capture	Desfazer esta captura
+	Underline captured text on the page	Sublinhar na página o texto já capturado
+	The capture was closed: the document was edited.	A captura foi fechada: o documento foi editado.
+	The rest is too long to keep as a comment; it is still on the page.	O resto é longo demais para ficar como comentário; ele continua na página.
+	Nothing new: the moves are in the game already.	Nada novo: os lances já estão na partida.

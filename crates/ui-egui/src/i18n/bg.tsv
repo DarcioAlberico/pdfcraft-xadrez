@@ -2743,3 +2743,16 @@ animation effects	Off	Изключени
 	Line from the start	Линия от началото
 	Variation of {move}	Вариант на {move}
 	moves: {n}	ходове: {n}
+# Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
+	Fit at	Място
+	Apply and keep the rest as a comment	Прилагане и запазване на остатъка като коментар
+	Unreadable move	Нечетлив ход
+	Past the capture's limits	Извън границите на прихващането
+	Variations nest too deep	Твърде дълбоко вложени варианти
+	A null move can't be played	Нулев ход не може да се изиграе
+	The move it goes after is gone	Ходът, след който отива, вече го няма
+	Undo this capture	Отмяна на това прихващане
+	Underline captured text on the page	Подчертаване на вече прихванатия текст на страницата
+	The capture was closed: the document was edited.	Прихващането беше затворено: документът беше редактиран.
+	The rest is too long to keep as a comment; it is still on the page.	Остатъкът е твърде дълъг за коментар; той остава на страницата.
+	Nothing new: the moves are in the game already.	Нищо ново: ходовете вече са в партията.

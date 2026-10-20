@@ -2782,3 +2782,16 @@ animation effects	Off	オフ
 	Line from the start	開始からの手順
 	Variation of {move}	{move} の変化
 	moves: {n}	手数: {n}
+# Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
+	Fit at	当てはめる位置
+	Apply and keep the rest as a comment	適用して残りをコメントとして保持
+	Unreadable move	読み取れない指し手
+	Past the capture's limits	取り込みの上限を超えています
+	Variations nest too deep	変化の入れ子が深すぎます
+	A null move can't be played	パスの指し手は指せません
+	The move it goes after is gone	続けるはずの指し手がもうありません
+	Undo this capture	この取り込みを取り消す
+	Underline captured text on the page	取り込み済みのテキストをページ上で下線表示
+	The capture was closed: the document was edited.	文書が編集されたため、取り込みを閉じました。
+	The rest is too long to keep as a comment; it is still on the page.	残りが長すぎてコメントにできません。ページにはそのまま残っています。
+	Nothing new: the moves are in the game already.	新しいものはありません: 指し手は既に棋譜にあります。
