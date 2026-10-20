@@ -2730,12 +2730,15 @@ animation effects	Off	Vypnuto
 	Demote a line	snížení linie
 	Delete a variation	smazání varianty
 # Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
-	Chess board in its own window	Šachovnice ve vlastním okně
-	Move the board to its own window	Přesunout šachovnici do vlastního okna
 	Dock	Ukotvit
-	Put the board back in its panel	Vrátit šachovnici do jejího panelu
 	The chess board couldn't open in its own window, so it is back in its panel.	Šachovnici nebylo možné otevřít ve vlastním okně, proto je zpět ve svém panelu.
 	The chess board couldn't open in its own window, so it stays in its panel.	Šachovnici nebylo možné otevřít ve vlastním okně, proto zůstává ve svém panelu.
+# Chess ▸ PGN toolbar: T13b, the whole chess panel in its own window (the rail's tool and the command, the window's tab strip and Dock button, the Inspector's note while it is out).
+	Chess in its own window	Šachy ve vlastním okně
+	Board	Šachovnice
+	The chess panel is in its own window.	Šachový panel je ve vlastním okně.
+	Bring it back	Vrátit zpět
+	Put the board and the chess panel back in the main window	Vrátit šachovnici a šachový panel do hlavního okna
 
 # Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
 	Moves	Tahy

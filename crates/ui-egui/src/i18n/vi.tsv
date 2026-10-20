@@ -2911,12 +2911,15 @@ chess side	Black	Đen
 	Demote a line	hạ cấp đường
 	Delete a variation	xóa một biến
 # Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
-	Chess board in its own window	Bàn cờ trong cửa sổ riêng
-	Move the board to its own window	Chuyển bàn cờ sang cửa sổ riêng
 	Dock	Gắn lại
-	Put the board back in its panel	Đưa bàn cờ về bảng của nó
 	The chess board couldn't open in its own window, so it is back in its panel.	Không thể mở bàn cờ trong cửa sổ riêng nên bàn cờ đã trở về bảng của nó.
 	The chess board couldn't open in its own window, so it stays in its panel.	Không thể mở bàn cờ trong cửa sổ riêng nên bàn cờ vẫn ở trong bảng của nó.
+# Chess ▸ PGN toolbar: T13b, the whole chess panel in its own window (the rail's tool and the command, the window's tab strip and Dock button, the Inspector's note while it is out).
+	Chess in its own window	Cờ vua trong cửa sổ riêng
+	Board	Bàn cờ
+	The chess panel is in its own window.	Bảng cờ vua đang ở cửa sổ riêng.
+	Bring it back	Đưa về
+	Put the board and the chess panel back in the main window	Đưa bàn cờ và bảng cờ vua về cửa sổ chính
 
 # Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
 	Moves	Nước đi

@@ -2620,12 +2620,15 @@ animation effects	Off	关
 	Demote a line	降级线路
 	Delete a variation	删除变化
 # Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
-	Chess board in its own window	在单独窗口中显示棋盘
-	Move the board to its own window	将棋盘移到单独窗口
 	Dock	停靠
-	Put the board back in its panel	将棋盘放回其面板
 	The chess board couldn't open in its own window, so it is back in its panel.	无法在单独窗口中打开棋盘，已将其放回面板。
 	The chess board couldn't open in its own window, so it stays in its panel.	无法在单独窗口中打开棋盘，棋盘仍留在面板中。
+# Chess ▸ PGN toolbar: T13b, the whole chess panel in its own window (the rail's tool and the command, the window's tab strip and Dock button, the Inspector's note while it is out).
+	Chess in its own window	在单独窗口中显示国际象棋
+	Board	棋盘
+	The chess panel is in its own window.	国际象棋面板在单独窗口中。
+	Bring it back	移回此处
+	Put the board and the chess panel back in the main window	将棋盘和国际象棋面板放回主窗口
 
 # Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
 	Moves	着法

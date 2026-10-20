@@ -2569,12 +2569,15 @@ animation effects	Off	Выкл
 	Demote a line	понижение линии
 	Delete a variation	удаление варианта
 # Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
-	Chess board in its own window	Шахматная доска в отдельном окне
-	Move the board to its own window	Переместить доску в отдельное окно
 	Dock	Закрепить
-	Put the board back in its panel	Вернуть доску на её панель
 	The chess board couldn't open in its own window, so it is back in its panel.	Не удалось открыть шахматную доску в отдельном окне, поэтому она возвращена на свою панель.
 	The chess board couldn't open in its own window, so it stays in its panel.	Не удалось открыть шахматную доску в отдельном окне, поэтому она остаётся на своей панели.
+# Chess ▸ PGN toolbar: T13b, the whole chess panel in its own window (the rail's tool and the command, the window's tab strip and Dock button, the Inspector's note while it is out).
+	Chess in its own window	Шахматы в отдельном окне
+	Board	Доска
+	The chess panel is in its own window.	Панель шахмат открыта в отдельном окне.
+	Bring it back	Вернуть
+	Put the board and the chess panel back in the main window	Вернуть доску и панель шахмат в главное окно
 
 # Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
 	Moves	Ходы

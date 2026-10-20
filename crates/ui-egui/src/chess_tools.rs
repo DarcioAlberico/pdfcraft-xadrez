@@ -459,12 +459,13 @@ const REDO: Tool = Tool {
     on: None,
 };
 
-/// The board in its own window, or back in the dock (T13a): only where separate windows can be
-/// opened (not on the web, nor in tests, where windows are drawn inside the main one).
+/// The board and the chess panel's Diagrams and Text tabs in their own window, or back (T13a,
+/// T13b): only where separate windows can be opened (not on the web, nor in tests, where windows
+/// are drawn inside the main one).
 const WINDOW: Tool = Tool {
     id: "window",
     icon: "app-window",
-    label: |_| tl!("Chess board in its own window").to_owned(),
+    label: |_| tl!("Chess in its own window").to_owned(),
     keys: &[],
     command: Some("chess.window.detach"),
     kind: Kind::Command("chess.window.detach"),

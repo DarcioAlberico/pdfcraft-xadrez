@@ -2655,12 +2655,15 @@ animation effects	Off	Ki
 	Demote a line	vonal lefokozása
 	Delete a variation	változat eltávolítása
 # Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
-	Chess board in its own window	Sakktábla saját ablakban
-	Move the board to its own window	A tábla áthelyezése saját ablakba
 	Dock	Rögzítés
-	Put the board back in its panel	A tábla visszahelyezése a paneljére
 	The chess board couldn't open in its own window, so it is back in its panel.	A sakktáblát nem sikerült saját ablakban megnyitni, ezért visszakerült a paneljére.
 	The chess board couldn't open in its own window, so it stays in its panel.	A sakktáblát nem sikerült saját ablakban megnyitni, ezért a paneljén marad.
+# Chess ▸ PGN toolbar: T13b, the whole chess panel in its own window (the rail's tool and the command, the window's tab strip and Dock button, the Inspector's note while it is out).
+	Chess in its own window	Sakk saját ablakban
+	Board	Tábla
+	The chess panel is in its own window.	A sakkpanel saját ablakban van.
+	Bring it back	Visszahozás
+	Put the board and the chess panel back in the main window	A tábla és a sakkpanel visszahelyezése a főablakba
 
 # Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
 	Moves	Lépések

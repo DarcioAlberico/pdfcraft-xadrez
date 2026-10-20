@@ -1,9 +1,18 @@
-//! The chess board in its own window (PGN toolbar spec T13a, §4.8).
+//! The chess window (PGN toolbar spec T13a, T13b, §4.8, D8 b).
 //!
 //! `chess.window.detach` moves the Board panel out of the docking workspace into a window of its
 //! own and back. While it is out, the panel is closed in the workspace with its place kept (a
 //! hidden `Location`), so its slot collapses and docking it again puts it back where it was; the
 //! Read-mode board panel, which shows only while the panel is in the workspace, is gone too.
+//!
+//! The window holds the Inspector Chess panel's Diagrams and Text tabs too (T13b): from 760 pt
+//! wide beside the board, narrower behind a Board | Diagrams | Text strip. Meanwhile the
+//! Inspector's panel only says where they are, with a button that docks the window, so no frame
+//! draws them twice (both views act on the same `ChessState`). Its Study tab, the same board with
+//! set-up and analysis, stays in the Inspector until the dock and Study merge (T5c). What picks a
+//! tab for the user (a diagram picked on the page, a diagram opened on the board, a scan) picks
+//! the window's while it is out ([`PdfCraftApp::show_chess_tab`],
+//! [`PdfCraftApp::reveal_chess_diagrams`]).
 //!
 //! On the desktop the window is a native one: an immediate viewport
 //! (`Context::show_viewport_immediate`), drawn every frame from the main window's pass, before
@@ -33,19 +42,26 @@ use craft_ui::docking::Action;
 use egui::{Pos2, Vec2, ViewportId, vec2};
 use serde_json::{Value, json};
 
-use crate::PdfCraftApp;
 use crate::chess_board_ui::{self, Sizing};
+use crate::chess_text_ui::ChessTab;
 use crate::docking::Panel;
 use crate::theme::Tokens;
+use crate::{PdfCraftApp, RightPanel};
 
-/// The window's size the first time, in points.
-const DEFAULT_SIZE: Vec2 = vec2(560.0, 760.0);
+/// The window's size the first time, in points: wide enough for the tabs beside the board.
+const DEFAULT_SIZE: Vec2 = vec2(960.0, 760.0);
 /// The smallest window.
 const MIN_SIZE: Vec2 = vec2(320.0, 360.0);
 /// Saved sizes and positions beyond this many points are not believed.
 const MAX_SAVED: f32 = 16_384.0;
-/// From this width the board has the moves, notes and fields beside it (§4.1).
+/// From this width the window has the Diagrams and Text tabs beside the board, and the board's
+/// column the moves, notes and fields beside the board (§4.1).
 const WIDE_FROM: f32 = 760.0;
+/// The column of the Diagrams and Text tabs beside the board: this part of the width, within
+/// these bounds.
+const TABS_SHARE: f32 = 0.4;
+const TABS_MIN: f32 = 300.0;
+const TABS_MAX: f32 = 560.0;
 /// The largest board in the window, in points (§4.8).
 const MAX_SIDE: f32 = 1_200.0;
 /// The largest board picture in the window, in pixels.
@@ -60,6 +76,31 @@ const ON_SCREEN: Vec2 = vec2(48.0, 48.0);
 /// The windows whose surface couldn't be configured since it was last asked (the patched
 /// egui-wgpu's `take_surface_failures`), oldest first.
 pub type SurfaceFailuresFn = Box<dyn FnMut() -> Vec<ViewportId>>;
+
+/// What the chess window shows: a narrow window one of these, behind a strip; a wide one the
+/// board, with Diagrams or Text beside it (Text when chosen, else Diagrams).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ChessWindowTab {
+    #[default]
+    Board,
+    Diagrams,
+    Text,
+}
+
+impl ChessWindowTab {
+    /// The settings value.
+    fn key(self) -> &'static str {
+        match self {
+            ChessWindowTab::Board => "board",
+            ChessWindowTab::Diagrams => "diagrams",
+            ChessWindowTab::Text => "text",
+        }
+    }
+
+    fn from_key(key: &str) -> Option<ChessWindowTab> {
+        [ChessWindowTab::Board, ChessWindowTab::Diagrams, ChessWindowTab::Text].into_iter().find(|t| t.key() == key)
+    }
+}
 
 /// The chess board window's state: whether it is out, its geometry, and what was asked of it.
 pub struct ChessWindow {
@@ -80,8 +121,13 @@ pub struct ChessWindow {
     failed: bool,
     /// The patched egui-wgpu's record of windows without a surface (desktop, wgpu only).
     surface_failures: Option<SurfaceFailuresFn>,
-    /// The layout the window was last drawn with: two columns.
+    /// The layout the window was last drawn with: the tabs beside the board.
     wide: bool,
+    /// The tab chosen (saved).
+    tab: ChessWindowTab,
+    /// The window was drawn in this frame (reset when the frame starts): the Inspector's panel
+    /// then doesn't draw what it holds, even when it was docked during the frame.
+    shown: bool,
     /// How many times the font atlas was rebuilt after a failed window (see [`recover_textures`]).
     refreshes: u32,
 }
@@ -98,6 +144,8 @@ impl Default for ChessWindow {
             failed: false,
             surface_failures: None,
             wide: false,
+            tab: ChessWindowTab::default(),
+            shown: false,
             refreshes: 0,
         }
     }
@@ -111,23 +159,41 @@ impl std::fmt::Debug for ChessWindow {
             .field("position", &self.position)
             .field("failed", &self.failed)
             .field("wide", &self.wide)
+            .field("tab", &self.tab)
             .finish_non_exhaustive()
     }
 }
 
 impl ChessWindow {
-    /// The settings value (`docking_detached`): `{detached, size: [w, h], position: [x, y] | null}`.
+    /// The settings value (`docking_detached`): `{detached, size: [w, h], position: [x, y] |
+    /// null, tab: "board" | "diagrams" | "text"}`.
     pub(crate) fn to_json(&self) -> Value {
         json!({
             "detached": self.detached,
             "size": [self.size.x, self.size.y],
             "position": self.position.map(|p| [p.x, p.y]),
+            "tab": self.tab.key(),
         })
+    }
+
+    /// Whether the Diagrams and Text tabs are in the window in this frame: it is out (or goes
+    /// out next frame), or it was drawn in this frame before it was docked.
+    pub(crate) fn in_window(&self) -> bool {
+        self.shown || self.request.unwrap_or(self.detached)
+    }
+
+    /// Show the board: a narrow window switches to it; a wide one always shows it, and keeps
+    /// the tab beside it.
+    fn show_board(&mut self) {
+        if !self.wide {
+            self.tab = ChessWindowTab::Board;
+        }
     }
 
     /// Take saved settings. Anything not as written by [`ChessWindow::to_json`] is ignored: a
     /// size that is not two finite numbers between 1 and 16,384 points (a smaller one is raised
-    /// to the smallest window), a position that is not two finite numbers within ±16,384.
+    /// to the smallest window), a position that is not two finite numbers within ±16,384, a tab
+    /// that is not one of the three (settings saved before T13b have none: the board).
     /// Whether the position is on screen is checked when the window opens.
     fn restore(&mut self, v: &Value) {
         self.detached = v.get("detached").and_then(Value::as_bool).unwrap_or(false);
@@ -135,6 +201,9 @@ impl ChessWindow {
             self.size = vec2(w, h).max(MIN_SIZE);
         }
         self.position = pair(v.get("position")).filter(|p| p.iter().all(|c| c.abs() <= MAX_SAVED)).map(|[x, y]| Pos2::new(x, y));
+        if let Some(tab) = v.get("tab").and_then(Value::as_str).and_then(ChessWindowTab::from_key) {
+            self.tab = tab;
+        }
     }
 }
 
@@ -157,9 +226,41 @@ impl PdfCraftApp {
         [self.chess_window.size.x, self.chess_window.size.y]
     }
 
-    /// Whether the chess board window was last drawn with the board beside the moves (§4.1).
+    /// Whether the chess window was last drawn with the Diagrams and Text tabs beside the board.
     pub fn chess_window_wide(&self) -> bool {
         self.chess_window.wide
+    }
+
+    /// The chess window's tab: what a narrow window shows (a wide one shows the board, with Text
+    /// beside it when that is the tab, else Diagrams).
+    pub fn chess_window_tab(&self) -> ChessWindowTab {
+        self.chess_window.tab
+    }
+
+    /// Show the chess panel's `tab`: in the Inspector, or in the chess window while the panel is
+    /// there, where the Study board is the window's board.
+    pub(crate) fn show_chess_tab(&mut self, tab: ChessTab) {
+        if !self.chess_window_detached() {
+            self.chess.tab = tab;
+            return;
+        }
+        match tab {
+            ChessTab::Study => self.chess_window.show_board(),
+            ChessTab::Diagrams => self.chess_window.tab = ChessWindowTab::Diagrams,
+            ChessTab::Text => self.chess_window.tab = ChessWindowTab::Text,
+        }
+    }
+
+    /// Show the list of diagrams where it is: the Inspector's Chess panel, or the chess window's
+    /// Diagrams tab when a narrow window shows the board. The Text tab stays, as in the Inspector.
+    pub(crate) fn reveal_chess_diagrams(&mut self) {
+        if self.chess_window_detached() {
+            if self.chess_window.tab == ChessWindowTab::Board {
+                self.chess_window.tab = ChessWindowTab::Diagrams;
+            }
+        } else if self.right != Some(RightPanel::Chess) {
+            self.choose_right_panel(Some(RightPanel::Chess));
+        }
     }
 
     /// Let the app learn of windows whose surface couldn't be configured: the desktop app passes
@@ -194,10 +295,12 @@ impl PdfCraftApp {
         self.chess_window.request = Some(detached);
     }
 
-    /// The board is in its own window: bring it to the front (next frame) and say so.
+    /// The board is in its own window: bring it to the front (next frame), showing the board,
+    /// and say so.
     pub(crate) fn raise_chess_window(&mut self) -> bool {
         if self.chess_window.detached || self.chess_window.request == Some(true) {
             self.chess_window.raise = true;
+            self.chess_window.show_board();
             return true;
         }
         false
@@ -254,7 +357,7 @@ impl PdfCraftApp {
 
 /// The Board tab's context menu in the docking workspace: its own window.
 pub(crate) fn dock_menu(app: &mut PdfCraftApp, ui: &mut egui::Ui, panel: Panel) {
-    if panel == Panel::Board && app.chess_window_available() && ui.button(tl!("Move the board to its own window")).clicked() {
+    if panel == Panel::Board && app.chess_window_available() && ui.button(tl!("Chess in its own window")).clicked() {
         app.toggle_chess_window();
         ui.close();
     }
@@ -263,6 +366,7 @@ pub(crate) fn dock_menu(app: &mut PdfCraftApp, ui: &mut egui::Ui, panel: Panel) 
 /// Every frame, from the main window's pass: what was asked of the window, then the window
 /// itself while the board is out.
 pub(crate) fn frame(app: &mut PdfCraftApp, ctx: &egui::Context) {
+    app.chess_window.shown = false;
     // The app commands the PGN tool rails asked for in the last frame (the Own window tool).
     for id in app.chess.tools.take_commands() {
         app.execute(id);
@@ -308,7 +412,7 @@ struct Pass {
 fn native(app: &mut PdfCraftApp, ctx: &egui::Context) {
     let id = crate::viewports::chess();
     let (size, position) = *app.chess_window.opened.get_or_insert_with(|| open_geometry(ctx, app.chess_window.size, app.chess_window.position));
-    let mut builder = egui::ViewportBuilder::default().with_title(tl!("Chess board")).with_inner_size(size).with_min_inner_size(MIN_SIZE);
+    let mut builder = egui::ViewportBuilder::default().with_title(tl!("Chess")).with_inner_size(size).with_min_inner_size(MIN_SIZE);
     if let Some(p) = position {
         builder = builder.with_position(p);
     }
@@ -339,6 +443,7 @@ fn native(app: &mut PdfCraftApp, ctx: &egui::Context) {
         app.chess_window_failed(&m);
         return;
     }
+    app.chess_window.shown = true;
     let failed_surface = app.chess_window.surface_failures.as_mut().is_some_and(|take| take().contains(&id));
     if failed_surface {
         app.chess_window_failed("its surface couldn't be configured");
@@ -385,15 +490,21 @@ fn embedded(app: &mut PdfCraftApp, ctx: &egui::Context) {
     if std::mem::take(&mut app.chess_window.raise) {
         ctx.move_to_top(egui::LayerId::new(egui::Order::Middle, id));
     }
-    // `default_size` is the whole window's, title bar included: so is the size kept.
-    let window = egui::Window::new(tl!("Chess board"))
+    // At first on the right, over the Inspector (whose Chess panel now only says where its tabs
+    // are), leaving the page in view. `default_size` is the whole window's, title bar included:
+    // so is the size kept.
+    let screen = ctx.content_rect();
+    let right = Pos2::new(screen.right() - app.chess_window.size.x - 8.0, screen.top() + 96.0).max(screen.left_top());
+    let window = egui::Window::new(tl!("Chess"))
         .id(id)
+        .default_pos(if right.is_finite() { right } else { Pos2::ZERO })
         .default_size(app.chess_window.size)
         .min_size(MIN_SIZE)
         .resizable(true)
         .collapsible(false)
         .open(&mut open)
         .show(ctx, |ui| contents(app, ui));
+    app.chess_window.shown = true;
     if let Some(s) = window.map(|w| w.response.rect.size()).filter(|s| s.is_finite() && s.x >= 1.0 && s.y >= 1.0) {
         app.chess_window.size = s.max(MIN_SIZE);
     }
@@ -402,9 +513,27 @@ fn embedded(app: &mut PdfCraftApp, ctx: &egui::Context) {
     }
 }
 
-/// The window's contents: the PGN tool rail, a Dock button, then the Board panel within the
-/// window's size. The chess keys reach the rail from the window's own input in a native window
-/// (`take_window_keys`), and through the main window's key scope in an embedded one.
+/// The open document, for the Diagrams and Text tabs.
+struct OpenDoc<'a> {
+    id: pdfcraft_engine::DocId,
+    info: &'a pdfcraft_render::DocInfo,
+    stamp: Option<pdfcraft_engine::chess::ScanStamp>,
+    page: usize,
+}
+
+/// What the window's contents asked for, done once they are drawn.
+#[derive(Default)]
+struct Asked {
+    board: Option<chess_board_ui::BoardAction>,
+    games: Option<crate::chess_collection::GamesAction>,
+    panel: Option<crate::chess_ui::PanelAction>,
+    dock: bool,
+}
+
+/// The window's contents: the PGN tool rail, a row with the Dock button (and a narrow window's
+/// tab strip), then the board panel and the Diagrams or Text tab: side by side from 760 pt wide,
+/// else the tab chosen. The chess keys reach the rail from the window's own input in a native
+/// window (`take_window_keys`), and through the main window's key scope in an embedded one.
 fn contents(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
     // A click anywhere in the window puts Undo and Redo on the game (D12).
@@ -413,65 +542,136 @@ fn contents(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     }
     let pieces = crate::chess_editor::board_piece_set(&mut app.chess.board_pieces);
     let source_label = crate::chess_ui::board_source_label(app);
-    let mut action = None;
-    let mut games = None;
-    let mut dock = false;
+    let open = app.active_ids().and_then(|(vi, id)| {
+        let page = app.views.get(vi)?.current;
+        let doc = app.session.get(id)?;
+        Some(OpenDoc { id, info: &doc.info, stamp: app.session.chess_stamp(id), page })
+    });
+    let mut tab = app.chess_window.tab;
+    let mut asked = Asked::default();
     let mut wide = false;
     egui::Frame::NONE.fill(t.panel).show(ui, |ui| {
         crate::chess_tools::with_rail(ui, &mut app.chess, |ui, chess| {
             egui::Frame::NONE.inner_margin(egui::Margin { left: 10, right: 12, top: 8, bottom: 8 }).show(ui, |ui| {
-                // One row, its button on the right.
+                wide = ui.available_width() >= WIDE_FROM;
+                // One row: a narrow window's tabs on the left, the Dock button on the right.
                 ui.allocate_ui_with_layout(vec2(ui.available_width(), 24.0), egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    dock = ui.button(tl!("Dock")).on_hover_text(tl!("Put the board back in its panel")).clicked();
+                    asked.dock = ui.button(tl!("Dock")).on_hover_text(tl!("Put the board and the chess panel back in the main window")).clicked();
+                    if !wide {
+                        ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                            ui.selectable_value(&mut tab, ChessWindowTab::Board, tl!("Board"));
+                            ui.selectable_value(&mut tab, ChessWindowTab::Diagrams, tl!("Diagrams"));
+                            ui.selectable_value(&mut tab, ChessWindowTab::Text, tl!("Text"));
+                        });
+                    }
                 });
-                let sizing = sizing(ui.available_size());
-                wide = sizing.wide;
-                if !sizing.wide {
-                    // The notation takes the height the scroll area shows and the rest leaves.
-                    let viewport = ui.available_height();
-                    egui::ScrollArea::vertical().id_salt("chess-window-panel").auto_shrink([false, false]).show(ui, |ui| {
-                        (action, games) = chess_board_ui::panel_body(ui, &t, chess, &pieces, source_label, sizing, viewport);
-                    });
+                if !wide {
+                    match tab {
+                        ChessWindowTab::Board => board_column(ui, &t, chess, &pieces, source_label, &mut asked),
+                        ChessWindowTab::Diagrams | ChessWindowTab::Text => {
+                            side_tab(ui, &t, chess, tab == ChessWindowTab::Text, open.as_ref(), &mut asked)
+                        }
+                    }
                     return;
                 }
-                // Wide (§4.1): the board on the left, the moves, notes and fields on the right.
-                let side = sizing.max_side;
+                // Wide: the board panel on the left, the Diagrams or Text tab on the right.
+                let room = ui.available_width();
+                let tabs = (room * TABS_SHARE).clamp(TABS_MIN, TABS_MAX);
+                // The separator and the spacing on either side of it.
+                let board = (room - tabs - 2.0 * ui.spacing().item_spacing.x - 1.0).max(160.0);
                 ui.horizontal_top(|ui| {
-                    ui.allocate_ui_with_layout(vec2(side, ui.available_height()), egui::Layout::top_down(egui::Align::Min), |ui| {
-                        ui.set_width(side);
-                        let state = chess.board_mut();
-                        action = chess_board_ui::title(ui, state, source_label);
-                        ui.add_space(4.0);
-                        chess_board_ui::view_controls(ui, state);
-                        ui.add_space(4.0);
-                        chess_board_ui::board_view_sized(ui, &t, state, &pieces, &[], sizing);
-                        chess_board_ui::promotion_choice(ui, state);
-                        chess_board_ui::navigation(ui, &t, state);
+                    ui.allocate_ui_with_layout(vec2(board, ui.available_height()), egui::Layout::top_down(egui::Align::Min), |ui| {
+                        ui.set_width(board);
+                        board_column(ui, &t, chess, &pieces, source_label, &mut asked);
                     });
                     ui.separator();
                     ui.vertical(|ui| {
-                        // The notation fills the column's height, less what goes under it.
-                        let room = ui.available_height();
-                        egui::ScrollArea::vertical().id_salt("chess-window-notes").auto_shrink([false, false]).show(ui, |ui| {
-                            let (fields, listed) = chess_board_ui::moves_column(ui, &t, chess, room);
-                            games = listed;
-                            action = action.take().or(fields);
+                        let text = tab == ChessWindowTab::Text;
+                        ui.horizontal(|ui| {
+                            if ui.selectable_label(!text, tl!("Diagrams")).clicked() {
+                                tab = ChessWindowTab::Diagrams;
+                            }
+                            if ui.selectable_label(text, tl!("Text")).clicked() {
+                                tab = ChessWindowTab::Text;
+                            }
                         });
+                        ui.add_space(4.0);
+                        side_tab(ui, &t, chess, text, open.as_ref(), &mut asked);
                     });
                 });
             });
         });
     });
     app.chess_window.wide = wide;
-    if dock {
+    app.chess_window.tab = tab;
+    if asked.dock {
         app.chess_window.request = Some(false);
     }
-    if let Some(a) = action {
+    if let Some(a) = asked.board {
         app.chess_board_action(a);
     }
-    if let Some(a) = games {
+    if let Some(a) = asked.games {
         app.chess_games_action(a);
     }
+    if let Some(a) = asked.panel {
+        app.chess_action(a);
+    }
+}
+
+/// The Board panel within the room it has: board, moves, notes and fields in one column, or
+/// from 760 pt wide the moves, notes and fields beside the board (§4.1).
+fn board_column(
+    ui: &mut egui::Ui,
+    t: &Tokens,
+    chess: &mut crate::chess_ui::ChessState,
+    pieces: &pdfcraft_engine::chess::pdfcraft_chess::draw::PieceSet,
+    source_label: Option<String>,
+    asked: &mut Asked,
+) {
+    let sizing = sizing(ui.available_size());
+    if !sizing.wide {
+        // The notation takes the height the scroll area shows and the rest leaves.
+        let viewport = ui.available_height();
+        egui::ScrollArea::vertical().id_salt("chess-window-panel").auto_shrink([false, false]).show(ui, |ui| {
+            (asked.board, asked.games) = chess_board_ui::panel_body(ui, t, chess, pieces, source_label, sizing, viewport);
+        });
+        return;
+    }
+    let side = sizing.max_side;
+    ui.horizontal_top(|ui| {
+        ui.allocate_ui_with_layout(vec2(side, ui.available_height()), egui::Layout::top_down(egui::Align::Min), |ui| {
+            ui.set_width(side);
+            let state = chess.board_mut();
+            asked.board = chess_board_ui::title(ui, state, source_label);
+            ui.add_space(4.0);
+            chess_board_ui::view_controls(ui, state);
+            ui.add_space(4.0);
+            chess_board_ui::board_view_sized(ui, t, state, pieces, &[], sizing);
+            chess_board_ui::promotion_choice(ui, state);
+            chess_board_ui::navigation(ui, t, state);
+        });
+        ui.separator();
+        ui.vertical(|ui| {
+            // The notation fills the column's height, less what goes under it.
+            let room = ui.available_height();
+            egui::ScrollArea::vertical().id_salt("chess-window-notes").auto_shrink([false, false]).show(ui, |ui| {
+                let (fields, listed) = chess_board_ui::moves_column(ui, t, chess, room);
+                asked.games = listed;
+                asked.board = asked.board.take().or(fields);
+            });
+        });
+    });
+}
+
+/// The chess panel's Text tab (`text`) or Diagrams tab, for the open document.
+fn side_tab(ui: &mut egui::Ui, t: &Tokens, chess: &mut crate::chess_ui::ChessState, text: bool, open: Option<&OpenDoc<'_>>, asked: &mut Asked) {
+    egui::ScrollArea::vertical().id_salt(("chess-window-tab", text)).auto_shrink([false, false]).show(ui, |ui| {
+        let Some(d) = open else {
+            ui.label(egui::RichText::new(tl!("Open a document first")).color(t.text_muted));
+            return;
+        };
+        asked.panel = crate::chess_ui::tab_contents(ui, t, chess, text, d.id, d.info, d.stamp, d.page);
+    });
 }
 
 /// How the board fits a window whose contents have `room`: as tall as the window allows under
@@ -508,13 +708,26 @@ mod tests {
 
     #[test]
     fn saved_settings_round_trip_and_bad_values_are_ignored() {
-        let mut w = ChessWindow { detached: true, size: vec2(900.0, 700.0), position: Some(Pos2::new(40.0, 60.0)), ..ChessWindow::default() };
+        let mut w = ChessWindow {
+            detached: true,
+            size: vec2(900.0, 700.0),
+            position: Some(Pos2::new(40.0, 60.0)),
+            tab: ChessWindowTab::Text,
+            ..ChessWindow::default()
+        };
         let saved = w.to_json();
         let mut back = ChessWindow::default();
         back.restore(&saved);
         assert!(back.detached);
         assert_eq!(back.size, vec2(900.0, 700.0));
         assert_eq!(back.position, Some(Pos2::new(40.0, 60.0)));
+        assert_eq!(back.tab, ChessWindowTab::Text);
+        // A tab not one of the three, or none (saved before T13b): the board.
+        for tab in [json!("Text"), json!("moves"), json!(1), json!(null)] {
+            back = ChessWindow::default();
+            back.restore(&json!({"detached": true, "tab": tab}));
+            assert_eq!(back.tab, ChessWindowTab::Board, "{tab}");
+        }
         // Each bad value is ignored on its own; the others are kept.
         for (bad, size, position) in [
             (json!({"detached": true, "size": [-5.0, 700.0], "position": [1.0, 2.0]}), DEFAULT_SIZE, Some(Pos2::new(1.0, 2.0))),
