@@ -1,10 +1,11 @@
 //! Piece sets from a folder of twelve piece images, traced into outlines.
 //!
-//! The folder holds one PNG per piece, named by colour and FEN letter as most chess sites do:
-//! `wK.png wQ.png wR.png wB.png wN.png wP.png bK.png … bP.png` (case does not matter). Each image
-//! fills one square; transparent pixels show the square.
+//! The folder holds one image per piece, PNG or SVG, named by colour and FEN letter as most chess
+//! sites do: `wK.png wQ.svg wR.png … bP.png` (case does not matter; an SVG wins over a PNG of the
+//! same name). Each image fills one square; what it leaves transparent shows the square.
 //!
-//! Drawings are paths everywhere (PDF, SVG, PNG), so an image becomes two filled outlines: its
+//! An SVG is vector art already and keeps its own paths ([`super::svg`]). Drawings are paths
+//! everywhere (PDF, SVG, PNG), so a PNG becomes two filled outlines: its
 //! opaque silhouette in black, then its light parts in white on top. The outlines are iso-lines
 //! of the image at half intensity, found with marching squares on a bilinear upsampling, so an
 //! anti-aliased image gives smooth edges at any size.
@@ -45,16 +46,23 @@ pub fn is_piece_folder(dir: &Path) -> bool {
     dir.is_dir() && images_in(dir).contains_key("wk")
 }
 
-/// PNG files in `dir` by lower-case stem.
+/// Whether `path` is an SVG file (else a PNG), by its extension.
+fn is_svg(path: &Path) -> bool {
+    path.extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("svg"))
+}
+
+/// PNG and SVG files in `dir` by lower-case stem; an SVG wins over a PNG of the same stem.
 fn images_in(dir: &Path) -> HashMap<String, PathBuf> {
     let Ok(entries) = std::fs::read_dir(dir) else { return HashMap::new() };
-    entries
-        .flatten()
-        .take(1_000)
-        .map(|e| e.path())
-        .filter(|p| p.extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("png")))
-        .filter_map(|p| Some((p.file_stem()?.to_str()?.to_ascii_lowercase(), p.clone())))
-        .collect()
+    let mut out: HashMap<String, PathBuf> = HashMap::new();
+    for p in entries.flatten().take(1_000).map(|e| e.path()) {
+        let image = p.extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("png") || e.eq_ignore_ascii_case("svg"));
+        let Some(stem) = p.file_stem().and_then(|s| s.to_str()).map(str::to_ascii_lowercase) else { continue };
+        if image && !out.get(&stem).is_some_and(|kept| is_svg(kept)) {
+            out.insert(stem, p);
+        }
+    }
+    out
 }
 
 /// Make a piece set from the twelve images in `dir`.
@@ -65,16 +73,17 @@ pub fn from_image_dir(dir: &Path) -> Result<PieceSet, PieceError> {
         let color = if i < 6 { Color::White } else { Color::Black };
         let kind = PieceKind::ALL.get(i % 6).copied().unwrap_or(PieceKind::Pawn);
         let name = stem(color, kind);
-        let path =
-            files.get(&name.to_ascii_lowercase()).ok_or_else(|| PieceError::MissingImage { dir: dir.to_path_buf(), name: format!("{name}.png") })?;
+        let path = files
+            .get(&name.to_ascii_lowercase())
+            .ok_or_else(|| PieceError::MissingImage { dir: dir.to_path_buf(), name: format!("{name}.png or {name}.svg") })?;
         let size = std::fs::metadata(path).map_err(|source| PieceError::Read { path: path.clone(), source })?.len();
         let size = usize::try_from(size).unwrap_or(usize::MAX);
         if size > MAX_IMAGE_BYTES {
             return Err(PieceError::Image { path: path.clone(), reason: format!("{size} bytes, more than the {MAX_IMAGE_BYTES} accepted") });
         }
         let bytes = std::fs::read(path).map_err(|source| PieceError::Read { path: path.clone(), source })?;
-        let image = decode_png(&bytes).map_err(|reason| PieceError::Image { path: path.clone(), reason })?;
-        *slot = glyph_from_image(&image);
+        let glyph = if is_svg(path) { super::svg::glyph_from_svg(&bytes) } else { decode_png(&bytes).map(|image| glyph_from_image(&image)) };
+        *slot = glyph.map_err(|reason| PieceError::Image { path: path.clone(), reason })?;
     }
     let name = dir.file_name().and_then(|n| n.to_str()).filter(|n| !n.is_empty()).unwrap_or("images").to_owned();
     Ok(PieceSet { glyphs, name })
@@ -445,6 +454,39 @@ mod tests {
         assert!(err.to_string().contains("bQ.png"), "{err}");
         std::fs::write(dir.join("bQ.png"), b"not a png").unwrap();
         assert!(matches!(from_image_dir(&dir), Err(PieceError::Image { .. })));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_folder_can_mix_svg_and_png_and_svg_wins() {
+        let dir = std::env::temp_dir().join(format!("pdfcraft-piece-svg-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let image = square_image(16, 3, 13, [255, 255, 255, 255]);
+        let bytes: Vec<u8> = image.pixels.iter().flatten().copied().collect();
+        let svg = br##"<svg xmlns="http://www.w3.org/2000/svg" width="45" height="45"><path d="M9 36H36L22.5 9Z" fill="#fff" stroke="#000" stroke-width="1.5"/></svg>"##;
+        for color in ['w', 'b'] {
+            for kind in "KQRBNP".chars() {
+                write_png(&dir.join(format!("{color}{kind}.png")), 16, &bytes);
+            }
+        }
+        // The white king also as SVG, in upper case: the SVG is drawn, not the PNG.
+        std::fs::write(dir.join("WK.SVG"), svg).unwrap();
+        // The black queen only as SVG.
+        std::fs::remove_file(dir.join("bQ.png")).unwrap();
+        std::fs::write(dir.join("bQ.svg"), svg).unwrap();
+        let set = from_image_dir(&dir).unwrap();
+        let king = &set.glyphs[5];
+        assert!(matches!(king.layers.last().map(|l| l.paint), Some(Paint::Stroke { .. })), "{:?}", king.layers);
+        assert!(matches!(set.glyphs[10].layers.last().map(|l| l.paint), Some(Paint::Stroke { .. })));
+        // A PNG piece is traced: fills only.
+        assert!(set.glyphs[0].layers.iter().all(|l| matches!(l.paint, Paint::Fill { .. })));
+        // A broken SVG is an error that names the file.
+        std::fs::write(dir.join("bQ.svg"), b"<svg").unwrap();
+        let err = from_image_dir(&dir).unwrap_err();
+        assert!(matches!(&err, PieceError::Image { path, .. } if path.ends_with("bQ.svg")), "{err}");
+        std::fs::remove_file(dir.join("bQ.svg")).unwrap();
+        assert!(from_image_dir(&dir).unwrap_err().to_string().contains("bQ.png or bQ.svg"));
         let _ = std::fs::remove_dir_all(&dir);
     }
 

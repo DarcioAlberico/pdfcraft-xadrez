@@ -22,6 +22,7 @@
 use std::path::{Path, PathBuf};
 
 pub mod images;
+mod svg;
 
 pub use images::{from_image_dir, is_piece_folder};
 
