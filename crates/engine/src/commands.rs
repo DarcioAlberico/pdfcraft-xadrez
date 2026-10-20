@@ -366,6 +366,13 @@ pub const COMMANDS: &[CommandSpec] = &[
     c("chess.nag.4", "Glyph ?? (blunder)", None, None, Nothing, "type"),
     c("chess.nag.5", "Glyph !? (interesting move)", None, None, Nothing, "type"),
     c("chess.nag.6", "Glyph ?! (dubious move)", None, None, Nothing, "type"),
+    // The PGN toolbar's capture (T7a): arm a capture tool, or capture the clipboard's text.
+    c("chess.tool.capture", "Capture (automatic)", None, None, Nothing, "wand-sparkles"),
+    c("chess.tool.capture_line", "Capture as the line", None, None, Nothing, "list-ordered"),
+    c("chess.tool.capture_variation", "Capture as a variation", None, None, Nothing, "git-compare"),
+    c("chess.tool.capture_subvariation", "Capture as a sub-variation", None, None, Nothing, "spline"),
+    c("chess.tool.comment", "Capture as a comment", None, None, Nothing, "message-square-text"),
+    c("chess.pgn.paste_as", "Paste and capture", None, None, Nothing, "clipboard-paste"),
     c("export.all_images", "Export all images…", FILE, None, Copying, "image"),
     c("edit.header_footer", "Add header & footer…", None, None, Modification, "heading"),
     c("edit.header_footer.update", "Update header & footer…", None, None, Marks(crate::MarkKind::HeaderFooter), "heading"),

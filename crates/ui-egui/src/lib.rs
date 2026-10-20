@@ -35,6 +35,7 @@ pub mod canvas;
 mod chess_annotate;
 mod chess_autosave;
 mod chess_board_ui;
+mod chess_capture;
 mod chess_collection;
 mod chess_editor;
 mod chess_history;
@@ -2335,6 +2336,7 @@ impl PdfCraftApp {
         v["hide_empty_highlight_hover"] = serde_json::Value::Bool(self.comment_prefs.hide_empty_highlight_hover);
         // The chess board in its own window: {detached, size, position}.
         v["docking_detached"] = self.chess_window.to_json();
+        v["chess_capture_on_copy"] = serde_json::Value::Bool(self.chess.capture.on_copy);
         v.to_string()
     }
 
@@ -2440,6 +2442,9 @@ impl PdfCraftApp {
         }
         if let Some(hide) = v["hide_empty_highlight_hover"].as_bool() {
             self.comment_prefs.hide_empty_highlight_hover = hide;
+        }
+        if let Some(on) = v["chess_capture_on_copy"].as_bool() {
+            self.chess.capture.on_copy = on;
         }
         // Per-tool comment styles (#340): each field goes through its clamping setter, so a
         // malformed or hostile entry is clamped or ignored rather than trusted.
@@ -2751,6 +2756,13 @@ impl PdfCraftApp {
                 };
             }
             ("author", _) => self.comment_prefs.author = value.to_string(),
+            ("chess-capture-on-copy", _) => {
+                self.chess.capture.on_copy = match value {
+                    "true" => true,
+                    "false" => false,
+                    _ => return Err("chess-capture-on-copy must be true or false".into()),
+                };
+            }
             ("hide-empty-highlight-hover", _) => {
                 self.comment_prefs.hide_empty_highlight_hover = match value {
                     "true" => true,
@@ -2936,6 +2948,7 @@ impl PdfCraftApp {
             return false;
         }
         ctx.copy_text(text);
+        self.capture_on_copy(i);
         true
     }
 

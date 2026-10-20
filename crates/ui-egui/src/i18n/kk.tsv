@@ -2727,3 +2727,54 @@ animation effects	Off	Өшірулі
 	Glyph ?? (blunder)	Белгі ?? (өрескел қате)
 	Glyph !? (interesting move)	Белгі !? (қызық жүріс)
 	Glyph ?! (dubious move)	Белгі ?! (күмәнді жүріс)
+# Chess ▸ PGN toolbar: T7a, capture from a page selection or the clipboard ("Capture line", "… variation", "… sub-variation" and "… comment" name undo steps: each follows "Undo" or "Redo").
+	Capture	Түсіру
+	Capture (automatic)	Түсіру (автоматты)
+	Capture as the line	Жол ретінде түсіру
+	Capture as a variation	Нұсқа ретінде түсіру
+	Capture as a sub-variation	Ішкі нұсқа ретінде түсіру
+	Capture as a comment	Түсініктеме ретінде түсіру
+	Capture line	жолды түсіру
+	Capture variation	нұсқаны түсіру
+	Capture sub-variation	ішкі нұсқаны түсіру
+	Capture comment	түсініктемені түсіру
+	Capturing	Түсірілуде
+	automatic	автоматты
+	as the line	жол ретінде
+	as a variation	нұсқа ретінде
+	as a sub-variation	ішкі нұсқа ретінде
+	as a comment	түсініктеме ретінде
+	after the move	жүрістен кейін
+	before the move	жүріс алдында
+	add to the comment	түсініктемеге қосу
+	replace the comment	түсініктемені ауыстыру
+	Esc to stop	Тоқтату үшін Esc
+	Also capture what is copied ({key})	Көшірілгенді де түсіру ({key})
+	Send to PGN	PGN-ге жіберу
+	Paste as	Қою түрі
+	Paste and capture	Қою және түсіру
+	Press {key} to capture the text on the clipboard.	Алмасу буферіндегі мәтінді түсіру үшін {key} пернесін басыңыз.
+	Reading the selection…	Таңдау оқылуда…
+	Check this capture before it goes in:	Қолданар алдында бұл түсіруді тексеріңіз:
+	It fits in more than one place.	Ол бірнеше орынға сәйкес келеді.
+	Part of the text wasn't read.	Мәтіннің бір бөлігі оқылмады.
+	It goes on a line outside the one of the move shown.	Ол көрсетілген жүрістің жолынан тыс жолға түседі.
+	It extends the end of a line instead of branching from it.	Ол жолдан тармақталудың орнына жолдың соңын ұзартады.
+	The start is renumbered to the text's first move.	Басы мәтіннің бірінші жүрісіне қайта нөмірленеді.
+	A closing bracket the text lacks was assumed.	Мәтінде жоқ жабатын жақша болжанды.
+	A move already there becomes a variation.	Бұрыннан бар жүріс нұсқаға айналады.
+	No move of the text fits the game here.	Мәтіннің ешбір жүрісі мұнда партияға сәйкес келмейді.
+	The text is too long to capture.	Мәтін түсіру үшін тым ұзын.
+	Too much text to capture at once: at most 64 KiB.	Бір рет түсіру үшін мәтін тым көп: ең көбі 64 KiB.
+	Nothing was captured: no move of the text fits the game here.	Ештеңе түсірілмеді: мәтіннің ешбір жүрісі мұнда партияға сәйкес келмейді.
+	Nothing was captured: there is no text to write.	Ештеңе түсірілмеді: жазатын мәтін жоқ.
+	The board shows an illegal position: correct it before capturing moves into it.	Тақтада жарамсыз позиция тұр: оған жүрістерді түсірмес бұрын оны түзетіңіз.
+	The capture couldn't be planned.	Түсіруді жоспарлау мүмкін болмады.
+	The capture was dropped: another document's games are shown now.	Түсіру тасталды: енді басқа құжаттың партиялары көрсетілуде.
+	The game kept changing: the capture was not applied.	Партия өзгере берді: түсіру қолданылмады.
+	Comment on {move}	{move} жүрісіне түсініктеме
+	Comment at the start	Басындағы түсініктеме
+	Line after {move}	{move} жүрісінен кейінгі жол
+	Line from the start	Басынан бастап жол
+	Variation of {move}	{move} жүрісінің нұсқасы
+	moves: {n}	жүрістер: {n}

@@ -2692,3 +2692,54 @@ animation effects	Off	Изключени
 	Glyph ?? (blunder)	Знак ?? (груба грешка)
 	Glyph !? (interesting move)	Знак !? (интересен ход)
 	Glyph ?! (dubious move)	Знак ?! (съмнителен ход)
+# Chess ▸ PGN toolbar: T7a, capture from a page selection or the clipboard ("Capture line", "… variation", "… sub-variation" and "… comment" name undo steps: each follows "Undo" or "Redo").
+	Capture	Прихващане
+	Capture (automatic)	Прихващане (автоматично)
+	Capture as the line	Прихващане като линия
+	Capture as a variation	Прихващане като вариант
+	Capture as a sub-variation	Прихващане като подвариант
+	Capture as a comment	Прихващане като коментар
+	Capture line	прихващането на линия
+	Capture variation	прихващането на вариант
+	Capture sub-variation	прихващането на подвариант
+	Capture comment	прихващането на коментар
+	Capturing	Прихващане
+	automatic	автоматично
+	as the line	като линия
+	as a variation	като вариант
+	as a sub-variation	като подвариант
+	as a comment	като коментар
+	after the move	след хода
+	before the move	преди хода
+	add to the comment	добавяне към коментара
+	replace the comment	замяна на коментара
+	Esc to stop	Esc за изход
+	Also capture what is copied ({key})	Прихващане и на копираното ({key})
+	Send to PGN	Изпращане към PGN
+	Paste as	Поставяне като
+	Paste and capture	Поставяне и прихващане
+	Press {key} to capture the text on the clipboard.	Натиснете {key}, за да прихванете текста от клипборда.
+	Reading the selection…	Четене на селекцията…
+	Check this capture before it goes in:	Проверете това прихващане, преди да бъде приложено:
+	It fits in more than one place.	То пасва на повече от едно място.
+	Part of the text wasn't read.	Част от текста не беше прочетена.
+	It goes on a line outside the one of the move shown.	То отива на линия извън линията на показания ход.
+	It extends the end of a line instead of branching from it.	То удължава края на линия, вместо да се разклони от нея.
+	The start is renumbered to the text's first move.	Началото се преномерира към първия ход от текста.
+	A closing bracket the text lacks was assumed.	Беше допусната затваряща скоба, която липсва в текста.
+	A move already there becomes a variation.	Ход, който вече е там, става вариант.
+	No move of the text fits the game here.	Нито един ход от текста не пасва тук на партията.
+	The text is too long to capture.	Текстът е твърде дълъг за прихващане.
+	Too much text to capture at once: at most 64 KiB.	Твърде много текст за едно прихващане: най-много 64 KiB.
+	Nothing was captured: no move of the text fits the game here.	Нищо не беше прихванато: нито един ход от текста не пасва тук на партията.
+	Nothing was captured: there is no text to write.	Нищо не беше прихванато: няма текст за записване.
+	The board shows an illegal position: correct it before capturing moves into it.	Дъската показва неправилна позиция: поправете я, преди да прихващате ходове в нея.
+	The capture couldn't be planned.	Прихващането не можа да бъде планирано.
+	The capture was dropped: another document's games are shown now.	Прихващането беше отхвърлено: сега се показват партиите на друг документ.
+	The game kept changing: the capture was not applied.	Партията продължи да се променя: прихващането не беше приложено.
+	Comment on {move}	Коментар към {move}
+	Comment at the start	Коментар в началото
+	Line after {move}	Линия след {move}
+	Line from the start	Линия от началото
+	Variation of {move}	Вариант на {move}
+	moves: {n}	ходове: {n}

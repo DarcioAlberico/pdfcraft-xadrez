@@ -29,6 +29,7 @@
 use std::time::Duration;
 
 use egui::{Align, Event, Key, Layout, Modifiers, Rect, Sense, Stroke, UiBuilder, pos2, vec2};
+use pdfcraft_engine::chess::capture::CaptureMode;
 use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, NodeId, NodePath, StructureError};
 use pdfcraft_engine::commands::Shortcut;
 
@@ -54,13 +55,29 @@ const MAX_KEYS: usize = 64;
 /// Most app commands queued between two frames.
 const MAX_COMMANDS: usize = 8;
 
-/// The mode the rail has armed. Navigate is the default; the capture modes come with their steps
-/// (T7a, T9).
+/// The mode the rail has armed. Navigate is the default; the capture modes are `chess_capture`'s
+/// (T7a); the OCR area comes with T9.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum PgnTool {
     /// A click on a move goes to it; nothing is armed.
     #[default]
     Navigate,
+    /// Text selected on the page goes into the game, as the mode says.
+    Capture(CaptureMode),
+    /// Text selected on the page becomes the move's comment: `before` it (else after), and in
+    /// place of what it says (`replace`, else added to it).
+    Comment { before: bool, replace: bool },
+}
+
+impl PgnTool {
+    /// Whether `self` and `other` are the same tool of the rail: Comment is one tool whatever its
+    /// switches.
+    pub fn same(self, other: PgnTool) -> bool {
+        match (self, other) {
+            (PgnTool::Comment { .. }, PgnTool::Comment { .. }) => true,
+            (a, b) => a == b,
+        }
+    }
 }
 
 /// The rail's state, kept in [`ChessState`].
@@ -113,7 +130,7 @@ pub(crate) struct ChessKey {
 }
 
 impl ChessKey {
-    const fn plain(key: Key) -> ChessKey {
+    pub(crate) const fn plain(key: Key) -> ChessKey {
         ChessKey { key, command: false, shift: false }
     }
 
@@ -230,6 +247,7 @@ pub(crate) enum Entry {
 pub(crate) static RAIL: &[&[Entry]] = &[
     &[Entry::Tool(NAVIGATE)],
     &[Entry::Group(STRUCTURE)],
+    &[Entry::Group(crate::chess_capture::CAPTURE), Entry::Tool(crate::chess_capture::COMMENT)],
     &[Entry::Group(MOVE_GLYPHS), Entry::Group(EVALUATION_GLYPHS), Entry::Group(OTHER_GLYPHS), Entry::Tool(COMMENT), Entry::Tool(PALETTE)],
     &[Entry::Tool(UNDO), Entry::Tool(REDO)],
     &[Entry::Tool(WINDOW)],
@@ -527,11 +545,17 @@ pub(crate) fn scope_key(key: Key, m: Modifiers) -> bool {
 /// `blocked` (a modal dialog or the command palette is open), while a text field has the
 /// keyboard (as the last frame left it), while a popup or menu is open, or when no rail was drawn
 /// since the last call. Only presses are taken: a release that egui sees without its press is
-/// harmless, while a press seen without its release would leave the key held down.
+/// harmless, while a press seen without its release would leave the key held down. A `Paste` is
+/// taken for a capture (`chess_capture`) whenever the scope is on, rail or not.
 pub(crate) fn take_scope_keys(chess: &mut ChessState, ctx: &egui::Context, raw: &mut egui::RawInput, blocked: bool) {
     chess.tools.keys.clear();
     let shown = std::mem::take(&mut chess.tools.rail_shown);
-    if blocked || !shown || !chess.in_scope() || ctx.text_edit_focused() || egui::Popup::is_any_open(ctx) {
+    if blocked || !chess.in_scope() || ctx.text_edit_focused() || egui::Popup::is_any_open(ctx) {
+        return;
+    }
+    // A paste goes to the game whether or not the rail is on screen (T7a).
+    crate::chess_capture::take_paste(chess, &mut raw.events);
+    if !shown {
         return;
     }
     // A focused button is pressed with Enter: Enter is the panel's only while nothing has focus.
@@ -566,6 +590,8 @@ pub(crate) struct MainScope {
 pub(crate) fn take_window_keys(chess: &mut ChessState, ctx: &egui::Context) -> MainScope {
     let main = MainScope { rail_shown: chess.tools.rail_shown, keys: std::mem::take(&mut chess.tools.keys) };
     if !ctx.text_edit_focused() && !egui::Popup::is_any_open(ctx) {
+        // A paste in the chess window goes to the game (T7a).
+        ctx.input_mut(|i| crate::chess_capture::take_paste(chess, &mut i.events));
         // As in the main window's scope: Enter only while nothing has focus, and typed glyphs.
         let focused = ctx.memory(|m| m.focused().is_some());
         let tools = &mut chess.tools;
@@ -605,7 +631,7 @@ fn label(tool: &Tool, board: &BoardState) -> String {
 /// Whether a tool shows as on: the mode armed, a glyph the move shown has, a panel it opened.
 fn is_on(tool: &Tool, chess: &ChessState) -> bool {
     match tool.kind {
-        Kind::Mode(m) => m == chess.tools.tool,
+        Kind::Mode(m) => m.same(chess.tools.tool),
         Kind::Glyph(code) => chess_annotate::has_glyph(chess.board(), code),
         Kind::Action(_) | Kind::Command(_) => tool.on.is_some_and(|on| on(chess.board())),
     }
@@ -682,7 +708,7 @@ pub(crate) fn run_command(chess: &mut ChessState, id: &str) -> bool {
 /// Use `tool` on `target`: arm a mode, or act.
 fn activate(chess: &mut ChessState, tool: &Tool, target: Target) {
     match tool.kind {
-        Kind::Mode(mode) => chess.tools.tool = mode,
+        Kind::Mode(mode) => crate::chess_capture::arm(chess, mode),
         Kind::Action(run) => run(chess.board_mut(), target),
         Kind::Command(id) => {
             if chess.tools.commands.len() < MAX_COMMANDS && !chess.tools.commands.contains(&id) {
@@ -915,6 +941,10 @@ fn handle_key(ctx: &egui::Context, chess: &mut ChessState, key: Key, m: Modifier
     if let Some(group) = groups().find(|g| g.letter.is_some_and(|letter| ChessKey::shift(letter).matches(key, m))) {
         let next = chess.tools.shown(group.id).saturating_add(1) % group.members.len().max(1);
         chess.tools.show(group.id, next);
+        // A group of modes (Capture) arms the tool it switched to.
+        if let Some(tool) = group.members.get(next).filter(|tool| matches!(tool.kind, Kind::Mode(_)) && (tool.enabled)(chess.board())) {
+            activate(chess, tool, Target::Current);
+        }
         return;
     }
     for entry in RAIL.iter().flat_map(|section| section.iter()) {
@@ -937,9 +967,12 @@ fn handle_key(ctx: &egui::Context, chess: &mut ChessState, key: Key, m: Modifier
 /// Esc, the arrows, Home and End.
 fn navigate(chess: &mut ChessState, nav: Nav) {
     if nav == Nav::Escape {
-        // In order: the capture preview closes (T7b), then the comment editor and the glyph
-        // palette, then an armed tool goes back to Navigate, then the piece picked up (or the
-        // pawn waiting for its piece) is put down.
+        // In order: the capture preview closes, then the comment editor and the glyph palette,
+        // then an armed tool goes back to Navigate, then the piece picked up (or the pawn waiting
+        // for its piece) is put down.
+        if crate::chess_capture::escape_preview(chess) {
+            return;
+        }
         let board = chess.board_mut();
         if board.comment_open || board.palette_open {
             board.comment_open = false;

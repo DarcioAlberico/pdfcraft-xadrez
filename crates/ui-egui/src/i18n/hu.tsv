@@ -2728,3 +2728,54 @@ animation effects	Off	Ki
 	Glyph ?? (blunder)	?? jel (durva hiba)
 	Glyph !? (interesting move)	!? jel (érdekes lépés)
 	Glyph ?! (dubious move)	?! jel (kétes lépés)
+# Chess ▸ PGN toolbar: T7a, capture from a page selection or the clipboard ("Capture line", "… variation", "… sub-variation" and "… comment" name undo steps: each follows "Undo" or "Redo").
+	Capture	Rögzítés
+	Capture (automatic)	Rögzítés (automatikus)
+	Capture as the line	Rögzítés vonalként
+	Capture as a variation	Rögzítés változatként
+	Capture as a sub-variation	Rögzítés alváltozatként
+	Capture as a comment	Rögzítés megjegyzésként
+	Capture line	vonal rögzítése
+	Capture variation	változat rögzítése
+	Capture sub-variation	alváltozat rögzítése
+	Capture comment	megjegyzés rögzítése
+	Capturing	Rögzítés folyamatban
+	automatic	automatikus
+	as the line	vonalként
+	as a variation	változatként
+	as a sub-variation	alváltozatként
+	as a comment	megjegyzésként
+	after the move	a lépés után
+	before the move	a lépés előtt
+	add to the comment	hozzáadás a megjegyzéshez
+	replace the comment	a megjegyzés cseréje
+	Esc to stop	Esc: kilépés
+	Also capture what is copied ({key})	A másolt szöveg rögzítése is ({key})
+	Send to PGN	Küldés a PGN-be
+	Paste as	Beillesztés mint
+	Paste and capture	Beillesztés és rögzítés
+	Press {key} to capture the text on the clipboard.	Nyomja meg a(z) {key} billentyűt a vágólap szövegének rögzítéséhez.
+	Reading the selection…	A kijelölés olvasása…
+	Check this capture before it goes in:	Ellenőrizze ezt a rögzítést, mielőtt alkalmazná:
+	It fits in more than one place.	Több helyre is illik.
+	Part of the text wasn't read.	A szöveg egy része nem lett beolvasva.
+	It goes on a line outside the one of the move shown.	A megjelenített lépés vonalán kívüli vonalra kerül.
+	It extends the end of a line instead of branching from it.	Egy vonal végét hosszabbítja meg ahelyett, hogy elágazna belőle.
+	The start is renumbered to the text's first move.	A kezdet a szöveg első lépésére lesz átszámozva.
+	A closing bracket the text lacks was assumed.	A szövegből hiányzó záró zárójelet feltételeztünk.
+	A move already there becomes a variation.	Egy már ott lévő lépés változattá válik.
+	No move of the text fits the game here.	A szöveg egyik lépése sem illik ide a játszmába.
+	The text is too long to capture.	A szöveg túl hosszú a rögzítéshez.
+	Too much text to capture at once: at most 64 KiB.	Túl sok szöveg egy rögzítéshez: legfeljebb 64 KiB.
+	Nothing was captured: no move of the text fits the game here.	Semmi sem lett rögzítve: a szöveg egyik lépése sem illik ide a játszmába.
+	Nothing was captured: there is no text to write.	Semmi sem lett rögzítve: nincs beírandó szöveg.
+	The board shows an illegal position: correct it before capturing moves into it.	A táblán szabálytalan állás látható: javítsa ki, mielőtt lépéseket rögzítene bele.
+	The capture couldn't be planned.	A rögzítést nem sikerült megtervezni.
+	The capture was dropped: another document's games are shown now.	A rögzítés elvetve: most egy másik dokumentum játszmái látszanak.
+	The game kept changing: the capture was not applied.	A játszma folyton változott: a rögzítés nem lett alkalmazva.
+	Comment on {move}	Megjegyzés ehhez: {move}
+	Comment at the start	Megjegyzés a kezdetnél
+	Line after {move}	Vonal ez után: {move}
+	Line from the start	Vonal a kezdettől
+	Variation of {move}	Változat ehhez: {move}
+	moves: {n}	lépések: {n}

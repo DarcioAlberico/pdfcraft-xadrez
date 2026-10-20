@@ -2734,3 +2734,54 @@ animation effects	Off	Izklopljeni
 	Glyph ?? (blunder)	Znak ?? (huda napaka)
 	Glyph !? (interesting move)	Znak !? (zanimiva poteza)
 	Glyph ?! (dubious move)	Znak ?! (dvomljiva poteza)
+# Chess ▸ PGN toolbar: T7a, capture from a page selection or the clipboard ("Capture line", "… variation", "… sub-variation" and "… comment" name undo steps: each follows "Undo" or "Redo").
+	Capture	Zajemi
+	Capture (automatic)	Zajemi (samodejno)
+	Capture as the line	Zajemi kot linijo
+	Capture as a variation	Zajemi kot varianto
+	Capture as a sub-variation	Zajemi kot podvarianto
+	Capture as a comment	Zajemi kot komentar
+	Capture line	zajem linije
+	Capture variation	zajem variante
+	Capture sub-variation	zajem podvariante
+	Capture comment	zajem komentarja
+	Capturing	Zajemanje
+	automatic	samodejno
+	as the line	kot linijo
+	as a variation	kot varianto
+	as a sub-variation	kot podvarianto
+	as a comment	kot komentar
+	after the move	za potezo
+	before the move	pred potezo
+	add to the comment	dodaj h komentarju
+	replace the comment	zamenjaj komentar
+	Esc to stop	Esc za konec
+	Also capture what is copied ({key})	Zajemi tudi kopirano ({key})
+	Send to PGN	Pošlji v PGN
+	Paste as	Prilepi kot
+	Paste and capture	Prilepi in zajemi
+	Press {key} to capture the text on the clipboard.	Pritisnite {key}, da zajamete besedilo iz odložišča.
+	Reading the selection…	Branje izbora …
+	Check this capture before it goes in:	Preverite ta zajem, preden se uporabi:
+	It fits in more than one place.	Ustreza več kot enemu mestu.
+	Part of the text wasn't read.	Dela besedila ni bilo mogoče prebrati.
+	It goes on a line outside the one of the move shown.	Gre na linijo zunaj linije prikazane poteze.
+	It extends the end of a line instead of branching from it.	Podaljša konec linije, namesto da bi se odcepil od nje.
+	The start is renumbered to the text's first move.	Začetek se preštevilči na prvo potezo besedila.
+	A closing bracket the text lacks was assumed.	Predpostavljen je zaklepaj, ki ga v besedilu ni.
+	A move already there becomes a variation.	Poteza, ki je že bila tam, postane varianta.
+	No move of the text fits the game here.	Nobena poteza besedila tu ne ustreza partiji.
+	The text is too long to capture.	Besedilo je predolgo za zajem.
+	Too much text to capture at once: at most 64 KiB.	Preveč besedila za en zajem: največ 64 KiB.
+	Nothing was captured: no move of the text fits the game here.	Nič ni bilo zajeto: nobena poteza besedila tu ne ustreza partiji.
+	Nothing was captured: there is no text to write.	Nič ni bilo zajeto: ni besedila za zapis.
+	The board shows an illegal position: correct it before capturing moves into it.	Šahovnica kaže neveljavno pozicijo: popravite jo, preden vanjo zajemate poteze.
+	The capture couldn't be planned.	Zajema ni bilo mogoče načrtovati.
+	The capture was dropped: another document's games are shown now.	Zajem je bil zavržen: zdaj so prikazane partije drugega dokumenta.
+	The game kept changing: the capture was not applied.	Partija se je kar naprej spreminjala: zajem ni bil uporabljen.
+	Comment on {move}	Komentar k {move}
+	Comment at the start	Komentar na začetku
+	Line after {move}	Linija po {move}
+	Line from the start	Linija od začetka
+	Variation of {move}	Varianta k {move}
+	moves: {n}	potez: {n}

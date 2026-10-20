@@ -2941,3 +2941,54 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Glyph ?? (blunder)	Segno ?? (grave errore)
 	Glyph !? (interesting move)	Segno !? (mossa interessante)
 	Glyph ?! (dubious move)	Segno ?! (mossa dubbia)
+# Chess ▸ PGN toolbar: T7a, capture from a page selection or the clipboard ("Capture line", "… variation", "… sub-variation" and "… comment" name undo steps: each follows "Undo" or "Redo").
+	Capture	Acquisisci
+	Capture (automatic)	Acquisisci (automatico)
+	Capture as the line	Acquisisci come linea
+	Capture as a variation	Acquisisci come variante
+	Capture as a sub-variation	Acquisisci come sottovariante
+	Capture as a comment	Acquisisci come commento
+	Capture line	acquisizione della linea
+	Capture variation	acquisizione della variante
+	Capture sub-variation	acquisizione della sottovariante
+	Capture comment	acquisizione del commento
+	Capturing	Acquisizione
+	automatic	automatico
+	as the line	come linea
+	as a variation	come variante
+	as a sub-variation	come sottovariante
+	as a comment	come commento
+	after the move	dopo la mossa
+	before the move	prima della mossa
+	add to the comment	aggiungi al commento
+	replace the comment	sostituisci il commento
+	Esc to stop	Esc per uscire
+	Also capture what is copied ({key})	Acquisisci anche ciò che viene copiato ({key})
+	Send to PGN	Invia al PGN
+	Paste as	Incolla come
+	Paste and capture	Incolla e acquisisci
+	Press {key} to capture the text on the clipboard.	Premi {key} per acquisire il testo degli appunti.
+	Reading the selection…	Lettura della selezione…
+	Check this capture before it goes in:	Controlla questa acquisizione prima che venga applicata:
+	It fits in more than one place.	Si adatta a più di un punto.
+	Part of the text wasn't read.	Una parte del testo non è stata letta.
+	It goes on a line outside the one of the move shown.	Va su una linea diversa da quella della mossa mostrata.
+	It extends the end of a line instead of branching from it.	Prolunga la fine di una linea invece di aprire una variante.
+	The start is renumbered to the text's first move.	L'inizio viene rinumerato alla prima mossa del testo.
+	A closing bracket the text lacks was assumed.	È stata supposta una parentesi di chiusura che manca nel testo.
+	A move already there becomes a variation.	Una mossa già presente diventa una variante.
+	No move of the text fits the game here.	Nessuna mossa del testo si adatta qui alla partita.
+	The text is too long to capture.	Il testo è troppo lungo da acquisire.
+	Too much text to capture at once: at most 64 KiB.	Troppo testo da acquisire in una volta: al massimo 64 KiB.
+	Nothing was captured: no move of the text fits the game here.	Nulla è stato acquisito: nessuna mossa del testo si adatta qui alla partita.
+	Nothing was captured: there is no text to write.	Nulla è stato acquisito: non c'è testo da scrivere.
+	The board shows an illegal position: correct it before capturing moves into it.	La scacchiera mostra una posizione illegale: correggila prima di acquisirvi delle mosse.
+	The capture couldn't be planned.	Non è stato possibile pianificare l'acquisizione.
+	The capture was dropped: another document's games are shown now.	L'acquisizione è stata scartata: ora sono mostrate le partite di un altro documento.
+	The game kept changing: the capture was not applied.	La partita ha continuato a cambiare: l'acquisizione non è stata applicata.
+	Comment on {move}	Commento su {move}
+	Comment at the start	Commento all'inizio
+	Line after {move}	Linea dopo {move}
+	Line from the start	Linea dall'inizio
+	Variation of {move}	Variante di {move}
+	moves: {n}	mosse: {n}

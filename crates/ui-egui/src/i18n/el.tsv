@@ -2735,3 +2735,54 @@ animation effects	Off	Ανενεργά
 	Glyph ?? (blunder)	Σημείο ?? (χοντρό λάθος)
 	Glyph !? (interesting move)	Σημείο !? (ενδιαφέρουσα κίνηση)
 	Glyph ?! (dubious move)	Σημείο ?! (αμφίβολη κίνηση)
+# Chess ▸ PGN toolbar: T7a, capture from a page selection or the clipboard ("Capture line", "… variation", "… sub-variation" and "… comment" name undo steps: each follows "Undo" or "Redo").
+	Capture	Καταγραφή
+	Capture (automatic)	Καταγραφή (αυτόματα)
+	Capture as the line	Καταγραφή ως γραμμή
+	Capture as a variation	Καταγραφή ως παραλλαγή
+	Capture as a sub-variation	Καταγραφή ως υποπαραλλαγή
+	Capture as a comment	Καταγραφή ως σχόλιο
+	Capture line	καταγραφής γραμμής
+	Capture variation	καταγραφής παραλλαγής
+	Capture sub-variation	καταγραφής υποπαραλλαγής
+	Capture comment	καταγραφής σχολίου
+	Capturing	Καταγραφή σε εξέλιξη
+	automatic	αυτόματα
+	as the line	ως γραμμή
+	as a variation	ως παραλλαγή
+	as a sub-variation	ως υποπαραλλαγή
+	as a comment	ως σχόλιο
+	after the move	μετά την κίνηση
+	before the move	πριν από την κίνηση
+	add to the comment	προσθήκη στο σχόλιο
+	replace the comment	αντικατάσταση του σχολίου
+	Esc to stop	Esc για διακοπή
+	Also capture what is copied ({key})	Καταγραφή και όσων αντιγράφονται ({key})
+	Send to PGN	Αποστολή στο PGN
+	Paste as	Επικόλληση ως
+	Paste and capture	Επικόλληση και καταγραφή
+	Press {key} to capture the text on the clipboard.	Πατήστε {key} για να καταγράψετε το κείμενο του προχείρου.
+	Reading the selection…	Ανάγνωση της επιλογής…
+	Check this capture before it goes in:	Ελέγξτε αυτή την καταγραφή πριν εφαρμοστεί:
+	It fits in more than one place.	Ταιριάζει σε περισσότερες από μία θέσεις.
+	Part of the text wasn't read.	Μέρος του κειμένου δεν διαβάστηκε.
+	It goes on a line outside the one of the move shown.	Πηγαίνει σε γραμμή εκτός της γραμμής της κίνησης που εμφανίζεται.
+	It extends the end of a line instead of branching from it.	Επεκτείνει το τέλος μιας γραμμής αντί να διακλαδωθεί από αυτήν.
+	The start is renumbered to the text's first move.	Η αρχή επαναριθμείται στην πρώτη κίνηση του κειμένου.
+	A closing bracket the text lacks was assumed.	Θεωρήθηκε μια παρένθεση κλεισίματος που λείπει από το κείμενο.
+	A move already there becomes a variation.	Μια κίνηση που υπήρχε ήδη γίνεται παραλλαγή.
+	No move of the text fits the game here.	Καμία κίνηση του κειμένου δεν ταιριάζει εδώ στην παρτίδα.
+	The text is too long to capture.	Το κείμενο είναι πολύ μεγάλο για καταγραφή.
+	Too much text to capture at once: at most 64 KiB.	Πάρα πολύ κείμενο για μία καταγραφή: έως 64 KiB.
+	Nothing was captured: no move of the text fits the game here.	Δεν καταγράφηκε τίποτα: καμία κίνηση του κειμένου δεν ταιριάζει εδώ στην παρτίδα.
+	Nothing was captured: there is no text to write.	Δεν καταγράφηκε τίποτα: δεν υπάρχει κείμενο για εγγραφή.
+	The board shows an illegal position: correct it before capturing moves into it.	Η σκακιέρα δείχνει μη έγκυρη θέση: διορθώστε την πριν καταγράψετε κινήσεις σε αυτήν.
+	The capture couldn't be planned.	Δεν ήταν δυνατός ο σχεδιασμός της καταγραφής.
+	The capture was dropped: another document's games are shown now.	Η καταγραφή απορρίφθηκε: τώρα εμφανίζονται οι παρτίδες άλλου εγγράφου.
+	The game kept changing: the capture was not applied.	Η παρτίδα συνέχιζε να αλλάζει: η καταγραφή δεν εφαρμόστηκε.
+	Comment on {move}	Σχόλιο στην {move}
+	Comment at the start	Σχόλιο στην αρχή
+	Line after {move}	Γραμμή μετά την {move}
+	Line from the start	Γραμμή από την αρχή
+	Variation of {move}	Παραλλαγή της {move}
+	moves: {n}	κινήσεις: {n}

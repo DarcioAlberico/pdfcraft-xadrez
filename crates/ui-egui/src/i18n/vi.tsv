@@ -2984,3 +2984,54 @@ chess side	Black	Đen
 	Glyph ?? (blunder)	Ký hiệu ?? (nước sai lầm nặng)
 	Glyph !? (interesting move)	Ký hiệu !? (nước thú vị)
 	Glyph ?! (dubious move)	Ký hiệu ?! (nước đáng ngờ)
+# Chess ▸ PGN toolbar: T7a, capture from a page selection or the clipboard ("Capture line", "… variation", "… sub-variation" and "… comment" name undo steps: each follows "Undo" or "Redo").
+	Capture	Ghi lại
+	Capture (automatic)	Ghi lại (tự động)
+	Capture as the line	Ghi lại thành dòng
+	Capture as a variation	Ghi lại thành biến
+	Capture as a sub-variation	Ghi lại thành biến phụ
+	Capture as a comment	Ghi lại thành bình luận
+	Capture line	ghi lại dòng
+	Capture variation	ghi lại biến
+	Capture sub-variation	ghi lại biến phụ
+	Capture comment	ghi lại bình luận
+	Capturing	Đang ghi lại
+	automatic	tự động
+	as the line	thành dòng
+	as a variation	thành biến
+	as a sub-variation	thành biến phụ
+	as a comment	thành bình luận
+	after the move	sau nước đi
+	before the move	trước nước đi
+	add to the comment	thêm vào bình luận
+	replace the comment	thay bình luận
+	Esc to stop	Esc để dừng
+	Also capture what is copied ({key})	Ghi lại cả nội dung được sao chép ({key})
+	Send to PGN	Gửi vào PGN
+	Paste as	Dán dưới dạng
+	Paste and capture	Dán và ghi lại
+	Press {key} to capture the text on the clipboard.	Nhấn {key} để ghi lại văn bản trong bảng nhớ tạm.
+	Reading the selection…	Đang đọc vùng chọn…
+	Check this capture before it goes in:	Hãy kiểm tra lần ghi này trước khi áp dụng:
+	It fits in more than one place.	Nó khớp với nhiều hơn một vị trí.
+	Part of the text wasn't read.	Một phần văn bản chưa được đọc.
+	It goes on a line outside the one of the move shown.	Nó nằm trên một dòng ngoài dòng của nước đi đang hiển thị.
+	It extends the end of a line instead of branching from it.	Nó kéo dài cuối một dòng thay vì rẽ nhánh từ đó.
+	The start is renumbered to the text's first move.	Điểm bắt đầu được đánh số lại theo nước đi đầu tiên của văn bản.
+	A closing bracket the text lacks was assumed.	Đã giả định một dấu ngoặc đóng mà văn bản thiếu.
+	A move already there becomes a variation.	Một nước đi đã có ở đó trở thành biến.
+	No move of the text fits the game here.	Không nước đi nào của văn bản khớp với ván cờ ở đây.
+	The text is too long to capture.	Văn bản quá dài để ghi lại.
+	Too much text to capture at once: at most 64 KiB.	Quá nhiều văn bản để ghi lại một lần: tối đa 64 KiB.
+	Nothing was captured: no move of the text fits the game here.	Không ghi lại được gì: không nước đi nào của văn bản khớp với ván cờ ở đây.
+	Nothing was captured: there is no text to write.	Không ghi lại được gì: không có văn bản để ghi.
+	The board shows an illegal position: correct it before capturing moves into it.	Bàn cờ đang hiển thị một thế cờ không hợp lệ: hãy sửa nó trước khi ghi nước đi vào.
+	The capture couldn't be planned.	Không thể lập kế hoạch ghi lại.
+	The capture was dropped: another document's games are shown now.	Lần ghi đã bị bỏ: giờ đang hiển thị các ván của tài liệu khác.
+	The game kept changing: the capture was not applied.	Ván cờ liên tục thay đổi: lần ghi không được áp dụng.
+	Comment on {move}	Bình luận cho {move}
+	Comment at the start	Bình luận ở đầu ván
+	Line after {move}	Dòng sau {move}
+	Line from the start	Dòng từ đầu ván
+	Variation of {move}	Biến của {move}
+	moves: {n}	số nước: {n}

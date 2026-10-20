@@ -2693,3 +2693,54 @@ animation effects	Off	关
 	Glyph ?? (blunder)	符号 ??（败着）
 	Glyph !? (interesting move)	符号 !?（有趣的着法）
 	Glyph ?! (dubious move)	符号 ?!（可疑的着法）
+# Chess ▸ PGN toolbar: T7a, capture from a page selection or the clipboard ("Capture line", "… variation", "… sub-variation" and "… comment" name undo steps: each follows "Undo" or "Redo").
+	Capture	提取
+	Capture (automatic)	提取（自动）
+	Capture as the line	提取为续着
+	Capture as a variation	提取为变化
+	Capture as a sub-variation	提取为子变化
+	Capture as a comment	提取为注释
+	Capture line	提取续着
+	Capture variation	提取变化
+	Capture sub-variation	提取子变化
+	Capture comment	提取注释
+	Capturing	正在提取
+	automatic	自动
+	as the line	作为续着
+	as a variation	作为变化
+	as a sub-variation	作为子变化
+	as a comment	作为注释
+	after the move	在着法之后
+	before the move	在着法之前
+	add to the comment	追加到注释
+	replace the comment	替换注释
+	Esc to stop	按 Esc 停止
+	Also capture what is copied ({key})	同时提取复制的内容（{key}）
+	Send to PGN	发送到 PGN
+	Paste as	粘贴为
+	Paste and capture	粘贴并提取
+	Press {key} to capture the text on the clipboard.	按 {key} 提取剪贴板中的文本。
+	Reading the selection…	正在读取所选内容…
+	Check this capture before it goes in:	应用前请检查此次提取：
+	It fits in more than one place.	它适合不止一个位置。
+	Part of the text wasn't read.	部分文本未能读取。
+	It goes on a line outside the one of the move shown.	它进入所示着法所在线路之外的一条线路。
+	It extends the end of a line instead of branching from it.	它延长了线路的末端，而不是从中分支。
+	The start is renumbered to the text's first move.	开局局面按文本的第一步重新编号。
+	A closing bracket the text lacks was assumed.	假定了文本中缺少的右括号。
+	A move already there becomes a variation.	已有的着法变为变化。
+	No move of the text fits the game here.	文本中没有任何着法适合此处的对局。
+	The text is too long to capture.	文本太长，无法提取。
+	Too much text to capture at once: at most 64 KiB.	一次提取的文本太多：最多 64 KiB。
+	Nothing was captured: no move of the text fits the game here.	未提取任何内容：文本中没有任何着法适合此处的对局。
+	Nothing was captured: there is no text to write.	未提取任何内容：没有可写入的文本。
+	The board shows an illegal position: correct it before capturing moves into it.	棋盘显示的是非法局面：请先更正，再向其中提取着法。
+	The capture couldn't be planned.	无法规划此次提取。
+	The capture was dropped: another document's games are shown now.	提取已放弃：现在显示的是另一个文档的对局。
+	The game kept changing: the capture was not applied.	对局一直在变化：提取未应用。
+	Comment on {move}	{move} 的注释
+	Comment at the start	开头的注释
+	Line after {move}	{move} 之后的续着
+	Line from the start	从开头开始的续着
+	Variation of {move}	{move} 的变化
+	moves: {n}	着数：{n}

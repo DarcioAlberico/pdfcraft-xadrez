@@ -2751,3 +2751,54 @@ animation effects	Off	Вимкнено
 	Glyph ?? (blunder)	Знак ?? (груба помилка)
 	Glyph !? (interesting move)	Знак !? (цікавий хід)
 	Glyph ?! (dubious move)	Знак ?! (сумнівний хід)
+# Chess ▸ PGN toolbar: T7a, capture from a page selection or the clipboard ("Capture line", "… variation", "… sub-variation" and "… comment" name undo steps: each follows "Undo" or "Redo").
+	Capture	Захоплення
+	Capture (automatic)	Захопити (автоматично)
+	Capture as the line	Захопити як лінію
+	Capture as a variation	Захопити як варіант
+	Capture as a sub-variation	Захопити як підваріант
+	Capture as a comment	Захопити як коментар
+	Capture line	захоплення лінії
+	Capture variation	захоплення варіанта
+	Capture sub-variation	захоплення підваріанта
+	Capture comment	захоплення коментаря
+	Capturing	Захоплення
+	automatic	автоматично
+	as the line	як лінію
+	as a variation	як варіант
+	as a sub-variation	як підваріант
+	as a comment	як коментар
+	after the move	після ходу
+	before the move	перед ходом
+	add to the comment	додати до коментаря
+	replace the comment	замінити коментар
+	Esc to stop	Esc — вихід
+	Also capture what is copied ({key})	Захоплювати й скопійоване ({key})
+	Send to PGN	Надіслати до PGN
+	Paste as	Вставити як
+	Paste and capture	Вставити й захопити
+	Press {key} to capture the text on the clipboard.	Натисніть {key}, щоб захопити текст із буфера обміну.
+	Reading the selection…	Читання виділення…
+	Check this capture before it goes in:	Перевірте це захоплення, перш ніж його буде застосовано:
+	It fits in more than one place.	Воно підходить до кількох місць.
+	Part of the text wasn't read.	Частину тексту не прочитано.
+	It goes on a line outside the one of the move shown.	Воно потрапляє на лінію поза лінією показаного ходу.
+	It extends the end of a line instead of branching from it.	Воно подовжує кінець лінії замість відгалуження від неї.
+	The start is renumbered to the text's first move.	Початок перенумеровано на перший хід тексту.
+	A closing bracket the text lacks was assumed.	Припущено закривну дужку, якої бракує в тексті.
+	A move already there becomes a variation.	Хід, що вже був, стає варіантом.
+	No move of the text fits the game here.	Жоден хід тексту тут не підходить до партії.
+	The text is too long to capture.	Текст задовгий для захоплення.
+	Too much text to capture at once: at most 64 KiB.	Забагато тексту для одного захоплення: щонайбільше 64 КіБ.
+	Nothing was captured: no move of the text fits the game here.	Нічого не захоплено: жоден хід тексту тут не підходить до партії.
+	Nothing was captured: there is no text to write.	Нічого не захоплено: немає тексту для запису.
+	The board shows an illegal position: correct it before capturing moves into it.	На дошці неприпустима позиція: виправте її, перш ніж захоплювати в неї ходи.
+	The capture couldn't be planned.	Не вдалося спланувати захоплення.
+	The capture was dropped: another document's games are shown now.	Захоплення скасовано: тепер показано партії іншого документа.
+	The game kept changing: the capture was not applied.	Партія далі змінювалася: захоплення не застосовано.
+	Comment on {move}	Коментар до {move}
+	Comment at the start	Коментар на початку
+	Line after {move}	Лінія після {move}
+	Line from the start	Лінія з початку
+	Variation of {move}	Варіант до {move}
+	moves: {n}	ходів: {n}

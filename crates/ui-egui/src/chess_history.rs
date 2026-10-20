@@ -72,6 +72,8 @@ pub enum ChessEdit {
     SetUp,
     /// Back to the standard start position.
     StandardStart,
+    /// Text from the page or the clipboard captured into the game (T7a).
+    Capture(crate::chess_capture::Captured),
 }
 
 impl ChessEdit {
@@ -96,6 +98,7 @@ impl ChessEdit {
             ChessEdit::LoadDiagram => tl!("Load the diagram").to_string(),
             ChessEdit::SetUp => tl!("Position set-up").to_string(),
             ChessEdit::StandardStart => tl!("Reset to the start position").to_string(),
+            ChessEdit::Capture(kind) => kind.text().to_string(),
         }
     }
 

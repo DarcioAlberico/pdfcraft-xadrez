@@ -2803,3 +2803,54 @@ animation effects	Off	Vypnuto
 	Glyph ?? (blunder)	Značka ?? (hrubá chyba)
 	Glyph !? (interesting move)	Značka !? (zajímavý tah)
 	Glyph ?! (dubious move)	Značka ?! (pochybný tah)
+# Chess ▸ PGN toolbar: T7a, capture from a page selection or the clipboard ("Capture line", "… variation", "… sub-variation" and "… comment" name undo steps: each follows "Undo" or "Redo").
+	Capture	Zachytit
+	Capture (automatic)	Zachytit (automaticky)
+	Capture as the line	Zachytit jako linii
+	Capture as a variation	Zachytit jako variantu
+	Capture as a sub-variation	Zachytit jako podvariantu
+	Capture as a comment	Zachytit jako komentář
+	Capture line	zachycení linie
+	Capture variation	zachycení varianty
+	Capture sub-variation	zachycení podvarianty
+	Capture comment	zachycení komentáře
+	Capturing	Zachytávání
+	automatic	automaticky
+	as the line	jako linii
+	as a variation	jako variantu
+	as a sub-variation	jako podvariantu
+	as a comment	jako komentář
+	after the move	po tahu
+	before the move	před tahem
+	add to the comment	přidat ke komentáři
+	replace the comment	nahradit komentář
+	Esc to stop	Esc ukončí
+	Also capture what is copied ({key})	Zachytit i to, co se zkopíruje ({key})
+	Send to PGN	Odeslat do PGN
+	Paste as	Vložit jako
+	Paste and capture	Vložit a zachytit
+	Press {key} to capture the text on the clipboard.	Stisknutím {key} zachytíte text ze schránky.
+	Reading the selection…	Čtení výběru…
+	Check this capture before it goes in:	Zkontrolujte toto zachycení, než se použije:
+	It fits in more than one place.	Hodí se na více než jedno místo.
+	Part of the text wasn't read.	Část textu nebyla přečtena.
+	It goes on a line outside the one of the move shown.	Patří na linii mimo linii zobrazeného tahu.
+	It extends the end of a line instead of branching from it.	Prodlužuje konec linie místo odbočení z ní.
+	The start is renumbered to the text's first move.	Začátek se přečísluje na první tah textu.
+	A closing bracket the text lacks was assumed.	Byla předpokládána uzavírací závorka, která v textu chybí.
+	A move already there becomes a variation.	Tah, který tam již byl, se stane variantou.
+	No move of the text fits the game here.	Žádný tah textu se sem do partie nehodí.
+	The text is too long to capture.	Text je na zachycení příliš dlouhý.
+	Too much text to capture at once: at most 64 KiB.	Příliš mnoho textu k zachycení najednou: nejvýše 64 KiB.
+	Nothing was captured: no move of the text fits the game here.	Nic nebylo zachyceno: žádný tah textu se sem do partie nehodí.
+	Nothing was captured: there is no text to write.	Nic nebylo zachyceno: není žádný text k zapsání.
+	The board shows an illegal position: correct it before capturing moves into it.	Šachovnice ukazuje neplatnou pozici: opravte ji, než do ní budete zachytávat tahy.
+	The capture couldn't be planned.	Zachycení nebylo možné naplánovat.
+	The capture was dropped: another document's games are shown now.	Zachycení bylo zahozeno: nyní se zobrazují partie jiného dokumentu.
+	The game kept changing: the capture was not applied.	Partie se stále měnila: zachycení nebylo použito.
+	Comment on {move}	Komentář k {move}
+	Comment at the start	Komentář na začátku
+	Line after {move}	Linie po {move}
+	Line from the start	Linie od začátku
+	Variation of {move}	Varianta k {move}
+	moves: {n}	tahů: {n}

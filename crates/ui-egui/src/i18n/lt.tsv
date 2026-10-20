@@ -2982,3 +2982,54 @@ chess side	Black	Juodieji
 	Glyph ?? (blunder)	Ženklas ?? (grubi klaida)
 	Glyph !? (interesting move)	Ženklas !? (įdomus ėjimas)
 	Glyph ?! (dubious move)	Ženklas ?! (abejotinas ėjimas)
+# Chess ▸ PGN toolbar: T7a, capture from a page selection or the clipboard ("Capture line", "… variation", "… sub-variation" and "… comment" name undo steps: each follows "Undo" or "Redo").
+	Capture	Perkelti
+	Capture (automatic)	Perkelti (automatiškai)
+	Capture as the line	Perkelti kaip liniją
+	Capture as a variation	Perkelti kaip variantą
+	Capture as a sub-variation	Perkelti kaip subvariantą
+	Capture as a comment	Perkelti kaip komentarą
+	Capture line	linijos perkėlimą
+	Capture variation	varianto perkėlimą
+	Capture sub-variation	subvarianto perkėlimą
+	Capture comment	komentaro perkėlimą
+	Capturing	Perkeliama
+	automatic	automatiškai
+	as the line	kaip liniją
+	as a variation	kaip variantą
+	as a sub-variation	kaip subvariantą
+	as a comment	kaip komentarą
+	after the move	po ėjimo
+	before the move	prieš ėjimą
+	add to the comment	pridėti prie komentaro
+	replace the comment	pakeisti komentarą
+	Esc to stop	Esc – baigti
+	Also capture what is copied ({key})	Perkelti ir tai, kas nukopijuota ({key})
+	Send to PGN	Siųsti į PGN
+	Paste as	Įklijuoti kaip
+	Paste and capture	Įklijuoti ir perkelti
+	Press {key} to capture the text on the clipboard.	Paspauskite {key}, kad perkeltumėte iškarpinės tekstą.
+	Reading the selection…	Skaitomas pažymėjimas…
+	Check this capture before it goes in:	Patikrinkite šį perkėlimą, prieš jį pritaikant:
+	It fits in more than one place.	Jis tinka daugiau nei vienoje vietoje.
+	Part of the text wasn't read.	Dalis teksto neperskaityta.
+	It goes on a line outside the one of the move shown.	Jis patenka į liniją už rodomo ėjimo linijos.
+	It extends the end of a line instead of branching from it.	Jis pratęsia linijos galą, užuot nuo jos atsišakojęs.
+	The start is renumbered to the text's first move.	Pradžia pernumeruojama pagal pirmąjį teksto ėjimą.
+	A closing bracket the text lacks was assumed.	Buvo numatytas uždarantysis skliaustas, kurio tekste trūksta.
+	A move already there becomes a variation.	Jau esantis ėjimas tampa variantu.
+	No move of the text fits the game here.	Joks teksto ėjimas čia netinka partijai.
+	The text is too long to capture.	Tekstas per ilgas perkelti.
+	Too much text to capture at once: at most 64 KiB.	Per daug teksto vienam perkėlimui: daugiausia 64 KiB.
+	Nothing was captured: no move of the text fits the game here.	Nieko neperkelta: joks teksto ėjimas čia netinka partijai.
+	Nothing was captured: there is no text to write.	Nieko neperkelta: nėra teksto, kurį būtų galima įrašyti.
+	The board shows an illegal position: correct it before capturing moves into it.	Lentoje rodoma neleistina pozicija: pataisykite ją prieš perkeldami į ją ėjimus.
+	The capture couldn't be planned.	Perkėlimo nepavyko suplanuoti.
+	The capture was dropped: another document's games are shown now.	Perkėlimas atmestas: dabar rodomos kito dokumento partijos.
+	The game kept changing: the capture was not applied.	Partija vis keitėsi: perkėlimas nepritaikytas.
+	Comment on {move}	Komentaras prie {move}
+	Comment at the start	Komentaras pradžioje
+	Line after {move}	Linija po {move}
+	Line from the start	Linija nuo pradžios
+	Variation of {move}	{move} variantas
+	moves: {n}	ėjimų: {n}
