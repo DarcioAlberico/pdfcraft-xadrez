@@ -91,8 +91,10 @@ pub fn entries(doc: &ChessDoc, o: &HtmlOptions<'_>, meta: &EpubMeta) -> Result<V
         spine.push_str(&format!("<itemref idref=\"p{}\"/>\n", n + 1));
         pages.push(entry(&format!("OEBPS/{}", page_file(n)), xhtml));
     }
-    if let Some(font) = o.text_font {
-        manifest.push_str(&format!("<item id=\"font\" href=\"{}\" media-type=\"{}\"/>\n", epub_font_href(font), font.format.mime()));
+    for (id, font) in [("font", o.text_font), ("signs", o.sign_font)] {
+        if let Some(font) = font {
+            manifest.push_str(&format!("<item id=\"{id}\" href=\"{}\" media-type=\"{}\"/>\n", epub_font_href(font), font.format.mime()));
+        }
     }
 
     // The table of contents: the headings, flat (each links to its anchor), else the pages.
@@ -132,8 +134,8 @@ pub fn entries(doc: &ChessDoc, o: &HtmlOptions<'_>, meta: &EpubMeta) -> Result<V
         ),
     ));
     out.extend(pages);
-    // The figurine font the pages' style loads (`html::epub_font_href`).
-    if let Some(font) = o.text_font {
+    // The fonts the pages' style loads (`html::epub_font_href`).
+    for font in [o.text_font, o.sign_font].into_iter().flatten() {
         out.push(EpubEntry { name: format!("OEBPS/{}", epub_font_href(font)), data: font.bytes.clone(), compress: true });
     }
     Ok(out)

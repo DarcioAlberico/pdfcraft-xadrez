@@ -12,10 +12,15 @@
 //! filled black. The [`pdfcraft_chess::catalog`] layout of the font's family says which character
 //! is which piece.
 //!
-//! Where the pieces come from, in order ([`find`]):
+//! Where the pieces of **diagrams** come from (redrawn on the page, in the editor and in every
+//! export), in order ([`find`]):
 //! 1. `$PDFCRAFT_CHESS_PIECES`, the path of a chess diagram font or of a folder of piece images;
-//! 2. a `pieces` folder of piece images beside the executable;
-//! 3. Chess Merida among the fonts installed on this machine.
+//! 2. a chess diagram font (Chess Merida…) in the `fonts` folder beside the executable;
+//! 3. Chess Merida among the fonts installed on this machine;
+//! 4. a `pieces` folder of piece images beside the executable.
+//!
+//! The analysis **board** looks for the `pieces` folder first ([`find_for_board`]): a book's
+//! diagrams in its diagram font, the board to play on in the user's own pictures.
 //!
 //! Without either, [`PieceSet::geometric`] draws plain shapes and the caller says so.
 
@@ -162,8 +167,8 @@ pub fn find() -> (PieceSet, PieceSource, Option<PieceError>) {
             Err(e) => (PieceSet::geometric(), PieceSource::Geometric, Some(e)),
         };
     }
-    if let Some(dir) = beside_executable().filter(|d| is_piece_folder(d)) {
-        return from_folder(dir);
+    if let Some(found) = crate::text_font::beside_executable().and_then(|dir| diagram_font_in(&dir)) {
+        return found;
     }
     for path in installed_fonts() {
         let stem = path.file_stem().and_then(|s| s.to_str()).map(normalize_font_name).unwrap_or_default();
@@ -174,7 +179,38 @@ pub fn find() -> (PieceSet, PieceSource, Option<PieceError>) {
             return (set, PieceSource::Font { path: Some(path), family }, None);
         }
     }
+    if let Some(dir) = beside_executable().filter(|d| is_piece_folder(d)) {
+        return from_folder(dir);
+    }
     (PieceSet::geometric(), PieceSource::Geometric, None)
+}
+
+/// The analysis board's pieces: the `pieces` folder beside the executable when there is one
+/// (and `$PDFCRAFT_CHESS_PIECES` names nothing), else as diagrams ([`find`]).
+pub fn find_for_board() -> (PieceSet, PieceSource, Option<PieceError>) {
+    if std::env::var_os("PDFCRAFT_CHESS_PIECES").is_none()
+        && let Some(dir) = beside_executable().filter(|d| is_piece_folder(d))
+    {
+        return from_folder(dir);
+    }
+    find()
+}
+
+/// The first chess diagram font in `dir`, by file name (other fonts there are for text).
+fn diagram_font_in(dir: &Path) -> Option<(PieceSet, PieceSource, Option<PieceError>)> {
+    let mut files: Vec<PathBuf> = std::fs::read_dir(dir)
+        .ok()?
+        .flatten()
+        .take(200)
+        .map(|e| e.path())
+        .filter(|p| p.extension().and_then(|e| e.to_str()).is_some_and(|e| matches!(e.to_ascii_lowercase().as_str(), "ttf" | "otf")))
+        .collect();
+    files.sort();
+    files.into_iter().find_map(|path| {
+        let set = from_font_file(&path).ok()?;
+        let family = set.name.clone();
+        Some((set, PieceSource::Font { path: Some(path), family }, None))
+    })
 }
 
 fn from_folder(dir: PathBuf) -> (PieceSet, PieceSource, Option<PieceError>) {
@@ -349,6 +385,25 @@ mod tests {
             pen.line_to(i as f32, 0.0);
         }
         assert_eq!(pen.finish()[0].segments.len(), MAX_SEGMENTS);
+    }
+
+    #[test]
+    fn a_fonts_folder_gives_its_diagram_font_and_skips_text_fonts() {
+        let dir = std::env::temp_dir().join(format!("pdfcraft-diagram-font-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        // A text font is no diagram font.
+        std::fs::write(dir.join("Inter.ttf"), include_bytes!("../../../assets/fonts/Inter-Regular.ttf")).unwrap();
+        assert!(diagram_font_in(&dir).is_none());
+        // With the user's Chess Merida (PDFCRAFT_CHESS_TEST_PIECES), it is found among them.
+        if let Some(merida) = std::env::var_os("PDFCRAFT_CHESS_TEST_PIECES") {
+            std::fs::copy(&merida, dir.join("ChessMerida.ttf")).unwrap();
+            let (set, source, error) = diagram_font_in(&dir).unwrap();
+            assert!(error.is_none());
+            assert!(matches!(source, PieceSource::Font { ref family, .. } if family == &set.name), "{source:?}");
+            assert_eq!(set.glyphs[5].layers.len(), 2);
+        }
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// Builds a piece set from a real chess font when `PDFCRAFT_CHESS_TEST_PIECES` names one

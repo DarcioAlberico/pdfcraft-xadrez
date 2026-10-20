@@ -1721,3 +1721,86 @@ fn routine_continuous_scrolling_does_not_add_navigation_history() {
     assert!(h.state().views[0].back.is_empty());
     assert!(h.state().views[0].forward.is_empty());
 }
+
+/// The backend lists the chess window among its viewports (kittest draws no second window, so
+/// this is the open-and-not-yet-drawn state), with this focus.
+fn chess_window(h: &mut Harness<'static, PdfCraftApp>, focused: Option<bool>) {
+    let info = egui::ViewportInfo { parent: Some(egui::ViewportId::ROOT), focused, ..Default::default() };
+    h.input_mut().viewports.insert(pdfcraft_ui_egui::viewports::chess(), info);
+}
+
+/// T12: input addressed to a separate window goes into that window's passes only: the main
+/// window's passes never take it, and the request fails once the window closes.
+#[test]
+fn input_for_the_chess_window_is_not_taken_by_the_main_window() {
+    let (mut h, c) = harness();
+    let mode = ok(&mut h, &c, "ui.state", json!({}))["mode"].clone();
+    assert_ne!(mode, "Read");
+    let found = ok(&mut h, &c, "ui.inspect", json!({ "query": "read" }));
+    let tab = found["widgets"].as_array().unwrap().iter().find(|w| w["label"] == "Read" && w["clickable"] == true).cloned().expect("a Read tab");
+    let r: Vec<f32> = tab["rect"].as_array().unwrap().iter().map(|v| v.as_f64().unwrap() as f32).collect();
+    let read = egui::pos2((r[0] + r[2]) / 2.0, (r[1] + r[3]) / 2.0);
+    // Not open: refused at once, as is a window the app doesn't know.
+    let err = call(&mut h, &c, "ui.click", json!({ "x": read.x, "y": read.y, "viewport": "chess" })).unwrap_err();
+    assert!(err.contains("the chess window is not open"), "{err}");
+    let err = call(&mut h, &c, "ui.inspect", json!({ "viewport": "board" })).unwrap_err();
+    assert!(err.contains("unknown viewport \"board\""), "{err}");
+    chess_window(&mut h, Some(false));
+    let rx = c.send("ui.click", json!({ "x": read.x, "y": read.y, "viewport": "chess" }));
+    h.run_steps(10);
+    assert!(rx.try_recv().is_err(), "waits for the chess window's own passes");
+    assert_eq!(ok(&mut h, &c, "ui.state", json!({}))["mode"], mode, "the main window was not clicked");
+    // The same click for the main window lands while the other still waits.
+    ok(&mut h, &c, "ui.click", json!({ "x": read.x, "y": read.y, "viewport": "root" }));
+    assert_eq!(ok(&mut h, &c, "ui.state", json!({}))["mode"], "Read");
+    assert!(rx.try_recv().is_err());
+    h.input_mut().viewports.remove(&pdfcraft_ui_egui::viewports::chess());
+    h.step();
+    let err = rx.try_recv().expect("answered when the window closes").unwrap_err();
+    assert!(err.contains("chess window closed"), "{err}");
+}
+
+/// T12: moving the focus into the app's own chess window is not losing it, so the page tools'
+/// gestures are not held off; leaving the app still holds them off. The window reports its
+/// focus a pass late, so the first pass where neither window has it is waited out.
+#[test]
+fn focus_moving_into_the_chess_window_is_not_losing_it() {
+    let (mut h, _c) = harness();
+    let blocked = |h: &Harness<'static, PdfCraftApp>| h.state().views[0].page_input_blocked();
+    assert!(!blocked(&h));
+    chess_window(&mut h, Some(false));
+    h.input_mut().focused = false;
+    h.step();
+    assert!(!blocked(&h), "the chess window may not have reported the focus yet");
+    chess_window(&mut h, Some(true));
+    h.run_steps(3);
+    assert!(!blocked(&h), "the focus is in the app's chess window");
+    // Now another application has it.
+    chess_window(&mut h, Some(false));
+    h.run_steps(2);
+    assert!(blocked(&h));
+    // With no separate window, losing the focus holds them off at once, as before.
+    h.input_mut().viewports.remove(&pdfcraft_ui_egui::viewports::chess());
+    h.input_mut().focused = true;
+    h.step();
+    assert!(!blocked(&h));
+    h.input_mut().focused = false;
+    h.step();
+    assert!(blocked(&h));
+}
+
+/// T12: the app's shortcuts read the keys of the window that has the focus. While the chess
+/// window has it, the main window's pass leaves them to that window's pass.
+#[test]
+fn shortcuts_follow_the_focused_window() {
+    let (mut h, c) = harness();
+    assert!(h.state().quick_tool == pdfcraft_ui_egui::QuickTool::Select);
+    chess_window(&mut h, Some(true));
+    h.input_mut().focused = false;
+    ok(&mut h, &c, "ui.key", json!({ "key": "H" }));
+    assert!(h.state().quick_tool == pdfcraft_ui_egui::QuickTool::Select, "not the main window's keys to read now");
+    h.input_mut().viewports.remove(&pdfcraft_ui_egui::viewports::chess());
+    h.input_mut().focused = true;
+    ok(&mut h, &c, "ui.key", json!({ "key": "H" }));
+    assert!(h.state().quick_tool == pdfcraft_ui_egui::QuickTool::Hand, "the main window has the keyboard again");
+}

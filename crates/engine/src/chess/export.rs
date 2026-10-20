@@ -71,8 +71,10 @@ pub struct ChessExportOptions {
     pub links: bool,
     pub link_text: String,
     pub pieces: Arc<PieceSet>,
-    /// HTML and EPUB: the user's figurine font, if any (`chessvision::text_font::find`).
+    /// HTML and EPUB: the user's figurine font, if any (`chessvision::text_font::find_fonts`).
     pub text_font: Option<Arc<TextFont>>,
+    /// HTML and EPUB: the user's sign font (ISChess), if any.
+    pub sign_font: Option<Arc<TextFont>>,
     pub title: String,
     /// Word, RTF and Markdown: the diagram images' side in pixels.
     pub diagram_px: u32,
@@ -86,6 +88,7 @@ impl ChessExportOptions {
     /// The defaults for a document titled `title`: every page, OCR where the layer is poor,
     /// redrawn diagrams, Unicode figurines, lichess links, the user's pieces.
     pub fn new(title: &str) -> ChessExportOptions {
+        let fonts = pdfcraft_chessvision::text_font::find_fonts();
         ChessExportOptions {
             pages: Vec::new(),
             scan: ChessScanSettings::default(),
@@ -96,7 +99,8 @@ impl ChessExportOptions {
             links: true,
             link_text: super::links::DEFAULT_TEXT.into(),
             pieces: Arc::new(pdfcraft_chessvision::pieces::find().0),
-            text_font: pdfcraft_chessvision::text_font::find().0.map(Arc::new),
+            text_font: fonts.figurines.map(Arc::new),
+            sign_font: fonts.signs.map(Arc::new),
             title: title.into(),
             diagram_px: super::office::DEFAULT_DIAGRAM_PX,
             image_dir: format!("{title}_diagrams"),
@@ -147,6 +151,7 @@ impl Session {
             links: o.links,
             link_text: &o.link_text,
             text_font: o.text_font.as_deref(),
+            sign_font: o.sign_font.as_deref(),
         };
         let mut notes = Vec::new();
         let mut images = Vec::new();

@@ -112,7 +112,7 @@ fn chess_replace_props() -> Value {
             "border_color": color(),
             "coordinates": { "type": "boolean", "description": "Print a-h and 1-8 around the board (default false)." },
             "flipped": { "type": "boolean", "description": "Draw from Black's side (default false)." },
-            "pieces": { "type": "string", "enum": ["installed", "geometric"], "description": "installed (default): PDFCRAFT_CHESS_PIECES (a font or a folder of piece images), a pieces folder beside the executable or an installed Chess Merida, else plain geometric pieces; geometric: always the plain pieces." },
+            "pieces": { "type": "string", "enum": ["installed", "geometric"], "description": "installed (default): PDFCRAFT_CHESS_PIECES (a font or a folder of piece images), a diagram font in the fonts folder beside the executable, an installed Chess Merida or a pieces folder beside the executable, else plain geometric pieces; geometric: always the plain pieces." },
             "dry_run": { "type": "boolean", "description": "Only say what would be done; change nothing (default false)." },
         });
         if let Value::Object(extra) = extra {
@@ -155,7 +155,7 @@ fn chess_export_schema() -> Value {
                     "link_text".into(),
                     json!({ "type": "string", "maxLength": 80, "description": "The links' text (default \"Analyze on lichess\")." }),
                 );
-                o.insert("pieces".into(), json!({ "type": "string", "enum": ["installed", "geometric"], "description": "installed (default): PDFCRAFT_CHESS_PIECES (a font or a folder of piece images), a pieces folder beside the executable or an installed Chess Merida, else geometric; geometric: always the plain pieces." }));
+                o.insert("pieces".into(), json!({ "type": "string", "enum": ["installed", "geometric"], "description": "installed (default): PDFCRAFT_CHESS_PIECES (a font or a folder of piece images), a diagram font in the fonts folder beside the executable, an installed Chess Merida or a pieces folder beside the executable, else geometric; geometric: always the plain pieces." }));
             }
             props
         },
@@ -1280,7 +1280,7 @@ pub fn tools() -> Vec<ToolDef> {
                 },
                 &["doc"],
             )),
-        t("chess_export_html", "Export chess document as HTML", "Chess ▸ Export ▸ HTML: read pages as chess_document does and write one static HTML file to out (no script, nothing fetched): headings, paragraphs with moves (figurines: unicode ♞f3 by default, letters in letters_lang, or as printed), annotation glyphs, and each diagram redrawn as an inline SVG board (diagrams: svg) or its FEN (fen), with a link to the position on lichess under it (links, default true; link_text). Pieces come from PDFCRAFT_CHESS_PIECES, a pieces folder beside the executable or an installed Chess Merida, else plain geometric ones (pieces: geometric forces them). Figurines use the font named by PDFCRAFT_CHESS_TEXT_FONT or found in a fonts folder beside the executable, when there is one (text_font: path, format, used, error). Readable back: each diagram is a figure with data-fen, each move a span with data-san (and data-fen after it), a diagram that was not read is a figure with class unread; anything to review has class review. Returns out, bytes, pages, lang, diagrams (drawn, unread), games, the piece set used, pages needing OCR and notes. The document is not changed.")
+        t("chess_export_html", "Export chess document as HTML", "Chess ▸ Export ▸ HTML: read pages as chess_document does and write one static HTML file to out (no script, nothing fetched): headings, paragraphs with moves (figurines: unicode ♞f3 by default, letters in letters_lang, or as printed), annotation glyphs, and each diagram redrawn as an inline SVG board (diagrams: svg) or its FEN (fen), with a link to the position on lichess under it (links, default true; link_text). Pieces come from PDFCRAFT_CHESS_PIECES, a pieces folder beside the executable or an installed Chess Merida, else plain geometric ones (pieces: geometric forces them). Figurines and annotation signs use the fonts named by PDFCRAFT_CHESS_TEXT_FONT or found in the fonts folder beside the executable: a figurine font by letters (SemFig) or with Unicode chess symbols, and ISChess for the signs (text_font and sign_font: path, family, role, format, used, error). Readable back: each diagram is a figure with data-fen, each move a span with data-san (and data-fen after it), a diagram that was not read is a figure with class unread; anything to review has class review. Returns out, bytes, pages, lang, diagrams (drawn, unread), games, the piece set used, pages needing OCR and notes. The document is not changed.")
             .with(chess_export_schema()),
         t("chess_export_epub", "Export chess document as EPUB", "Chess ▸ Export ▸ EPUB: the chess_export_html document as an EPUB 3 book at out: one XHTML page per PDF page (the same markup and inline SVG boards), a table of contents from the headings (or the pages), the package document with a stable identifier made from the PDF's bytes and the date. No script, nothing fetched, no font embedded (figurines use the reader's fonts). Same options and reply as chess_export_html. The document is not changed.")
             .with(chess_export_schema()),
