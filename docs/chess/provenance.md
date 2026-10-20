@@ -56,4 +56,4 @@ Repositórios cobertos, todos com commits só de DarcioAlberico:
 ## Pendências do titular
 - [x] "PGN Live Editor <dev@localhost>" é o titular (confirmado em 2026-10-15).
 - [x] Há permissão de Wagner Escorcio para o PDFimport (declarado em 2026-10-15).
-- [ ] Guardar uma cópia da permissão em `docs/chess/permissions/` e anotar se ela cobre a distribuição sob MIT/Apache. Isso só bloqueia a **publicação**, não o desenvolvimento.
+- [ ] Guardar uma cópia da permissão em `docs/chess/permissions/` e anotar se ela cobre a distribuição sob MIT/Apache. Isso só bloqueia a **publicação**, não o desenvolvimento. A pasta já tem um modelo de termo para o autor confirmar (`permissions/pdfimport-termo-MODELO.md`) e o passo a passo (`permissions/README.md`).
