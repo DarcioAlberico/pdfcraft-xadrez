@@ -18,8 +18,10 @@ use crate::fen::Position;
 use crate::placement::{Color, Piece, PieceKind, Placement, Square};
 use crate::san::{San, color_from_cozy, kind_from_cozy, square_from_cozy, square_to_cozy, to_cozy_kind};
 
+mod graft;
 mod structure;
 
+pub use graft::{GraftMode, GraftReport, GraftStop, GraftStopReason, MAX_LEFTOVER_LEN};
 pub use structure::{NodePath, NodeSource, StructureError};
 
 /// Most moves a game holds, variations included. Real annotated games are under 3,000.
@@ -1024,9 +1026,14 @@ fn cut(text: &str, max: usize) -> &str {
 
 /// A comment as kept: braces made parentheses, whitespace runs made one space, capped.
 fn clean_comment(text: &str) -> String {
+    cut(&tidy_comment(text), MAX_COMMENT_LEN).to_owned()
+}
+
+/// A comment with braces made parentheses and whitespace runs made one space, not capped (for a
+/// caller that must not cut it silently).
+fn tidy_comment(text: &str) -> String {
     let swapped = text.replace('{', "(").replace('}', ")");
-    let joined = swapped.split_whitespace().collect::<Vec<_>>().join(" ");
-    cut(&joined, MAX_COMMENT_LEN).to_owned()
+    swapped.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 /// A move word split into the move and the glyphs glued to its end (`e4!?` → `e4`, `!?`).
