@@ -2515,3 +2515,34 @@ animation effects	Off	Выкл
 	Load the diagram	загрузку диаграммы
 	Position set-up	расстановку позиции
 	Reset to the start position	возврат к начальной позиции
+# Chess ▸ PGN toolbar: T4b, each document's games (the list, their autosave, PGN files in and out).
+	Diagram {n}, p. {page}	Диаграмма {n}, с. {page}
+	Game {n}	Партия {n}
+	Games in this document ({n})	Партии документа ({n})
+	Games ({n})	Партии ({n})
+	New game	Новая партия
+	Open PGN…	Открыть PGN…
+	Save PGN…	Сохранить PGN…
+	Save all games as PGN…	Сохранить все партии в PGN…
+	Save chess games for this protected document?	Сохранять шахматные партии этого защищённого документа?
+	They are kept in the app's own folder, unencrypted, so they come back when the document is opened again.	Они хранятся в собственной папке приложения без шифрования, чтобы вернуться при повторном открытии документа.
+	Save them	Сохранять
+	Too many games to autosave here: save them as PGN.	Слишком много партий для автосохранения: сохраните их в PGN.
+	Another PdfCraft window autosaves these games.	Эти партии автоматически сохраняет другое окно PdfCraft.
+	These games aren't being autosaved.	Эти партии не сохраняются автоматически.
+	Chess game restored: {name}, moves: {n}	Шахматная партия восстановлена: {name}, ходов: {n}
+	Chess games restored: {n}	Восстановлено шахматных партий: {n}
+	Saved chess games that couldn't be read: {n}	Не удалось прочитать сохранённых партий: {n}
+	A file of saved chess games couldn't be read. It was kept as {name}.	Не удалось прочитать файл сохранённых шахматных партий. Он сохранён как {name}.
+	Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.	Не удалось прочитать сохранённые шахматные партии. Они отложены, а новые партии теперь сохраняются.
+	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Документ защищён: его шахматные партии сохраняются автоматически, только если вы разрешите это в панели «Шахматная доска».
+	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Слишком много шахматных партий для автосохранения в этом документе (не более {n}, {mb} МБ). Сохраните их командой «Сохранить все партии в PGN…», чтобы ничего не потерять.
+	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Шахматные партии нельзя сохранять автоматически: не удалось заблокировать папку данных приложения для этого окна.
+	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Эти шахматные партии автоматически сохраняет другое окно PdfCraft. Изменения, сделанные здесь, не сохраняются автоматически.
+	Chess games couldn't be autosaved: {e}	Не удалось автоматически сохранить шахматные партии: {e}
+	Nothing to save: an illegal position has no PGN.	Нечего сохранять: у недопустимой позиции нет PGN.
+	Games read from {name}: {n}	Прочитано партий из {name}: {n}
+	Not read: {n}	Не прочитано: {n}
+	Only the first {n} were read.	Прочитаны только первые {n}.
+	the file is too large	файл слишком большой
+	no game could be read	не удалось прочитать ни одной партии

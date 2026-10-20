@@ -137,7 +137,13 @@ impl RecoveryStore {
     /// is no longer held is a crash's leftover and is removed. The name comes from the sidecar,
     /// which is untrusted, so only a plain `instance-….lock` name in the folder is looked at.
     fn written_by_a_live_instance(&self, meta: &RecoveryMeta) -> bool {
-        let Some(name) = meta.instance.as_deref() else { return false };
+        meta.instance.as_deref().is_some_and(|name| self.held_by_another_instance(name))
+    }
+
+    /// Whether `name` is the lock file of another instance that is still running (see
+    /// [`Self::written_by_a_live_instance`]; the chess games' autosave asks it too). `name` is
+    /// untrusted: only a plain `instance-….lock` name in the folder is looked at.
+    pub(crate) fn held_by_another_instance(&self, name: &str) -> bool {
         if self.own_lock().is_some_and(|l| l.name == name) {
             return false;
         }
@@ -282,8 +288,10 @@ fn now_secs() -> u64 {
 
 impl PdfCraftApp {
     /// Turn on autosave into `store`, and look for documents a previous session left behind.
+    /// The chess games are autosaved in its `chess` folder, under the same instance lock.
     pub fn enable_recovery(&mut self, store: RecoveryStore) {
         store.claim();
+        self.chess.games.autosave_to_files(&store);
         self.recoverable = store.list();
         if !self.recoverable.is_empty() {
             self.dialog = Some(crate::Dialog::Recovery);
@@ -397,6 +405,8 @@ impl PdfCraftApp {
 
     /// Clean shutdown: documents were saved or discarded, so nothing needs recovering.
     pub fn shutdown_recovery(&mut self) {
+        // The chess games are kept whatever happens to the documents.
+        self.flush_chess_games();
         if self.first_dirty().is_none()
             && let Some(store) = &self.recovery
         {

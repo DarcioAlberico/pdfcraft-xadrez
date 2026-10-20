@@ -2608,3 +2608,34 @@ animation effects	Off	Ανενεργά
 	Load the diagram	φόρτωσης διαγράμματος
 	Position set-up	στησίματος θέσης
 	Reset to the start position	επιστροφής στην αρχική θέση
+# Chess ▸ PGN toolbar: T4b, each document's games (the list, their autosave, PGN files in and out).
+	Diagram {n}, p. {page}	Διάγραμμα {n}, σ. {page}
+	Game {n}	Παρτίδα {n}
+	Games in this document ({n})	Παρτίδες του εγγράφου ({n})
+	Games ({n})	Παρτίδες ({n})
+	New game	Νέα παρτίδα
+	Open PGN…	Άνοιγμα PGN…
+	Save PGN…	Αποθήκευση PGN…
+	Save all games as PGN…	Αποθήκευση όλων των παρτίδων ως PGN…
+	Save chess games for this protected document?	Να αποθηκεύονται οι παρτίδες σκακιού αυτού του προστατευμένου εγγράφου;
+	They are kept in the app's own folder, unencrypted, so they come back when the document is opened again.	Φυλάσσονται στον φάκελο της εφαρμογής, χωρίς κρυπτογράφηση, ώστε να επιστρέφουν όταν ανοίγετε ξανά το έγγραφο.
+	Save them	Αποθήκευση
+	Too many games to autosave here: save them as PGN.	Πάρα πολλές παρτίδες για αυτόματη αποθήκευση: αποθηκεύστε τις ως PGN.
+	Another PdfCraft window autosaves these games.	Ένα άλλο παράθυρο του PdfCraft αποθηκεύει αυτόματα αυτές τις παρτίδες.
+	These games aren't being autosaved.	Αυτές οι παρτίδες δεν αποθηκεύονται αυτόματα.
+	Chess game restored: {name}, moves: {n}	Η παρτίδα σκακιού επανήλθε: {name}, κινήσεις: {n}
+	Chess games restored: {n}	Παρτίδες σκακιού που επανήλθαν: {n}
+	Saved chess games that couldn't be read: {n}	Αποθηκευμένες παρτίδες σκακιού που δεν διαβάστηκαν: {n}
+	A file of saved chess games couldn't be read. It was kept as {name}.	Ένα αρχείο αποθηκευμένων παρτίδων σκακιού δεν διαβάστηκε. Φυλάχτηκε ως {name}.
+	Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.	Οι αποθηκευμένες παρτίδες σκακιού δεν διαβάστηκαν. Φυλάχτηκαν χωριστά, και από τώρα αποθηκεύονται οι νέες παρτίδες.
+	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Αυτό το έγγραφο προστατεύεται: οι παρτίδες σκακιού του αποθηκεύονται αυτόματα μόνο αν το επιτρέψετε, στο πλαίσιο Σκακιέρα.
+	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Πάρα πολλές παρτίδες σκακιού για αυτόματη αποθήκευση σε αυτό το έγγραφο (το πολύ {n}, {mb} MB). Αποθηκεύστε τις με την εντολή «Αποθήκευση όλων των παρτίδων ως PGN…», ώστε να μη χαθεί τίποτα.
+	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Οι παρτίδες σκακιού δεν μπορούν να αποθηκεύονται αυτόματα: ο φάκελος δεδομένων της εφαρμογής δεν κλειδώθηκε για αυτό το παράθυρο.
+	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Αυτές τις παρτίδες σκακιού τις αποθηκεύει αυτόματα ένα άλλο παράθυρο του PdfCraft. Οι αλλαγές εδώ δεν αποθηκεύονται αυτόματα.
+	Chess games couldn't be autosaved: {e}	Οι παρτίδες σκακιού δεν αποθηκεύτηκαν αυτόματα: {e}
+	Nothing to save: an illegal position has no PGN.	Τίποτα για αποθήκευση: μια μη έγκυρη θέση δεν έχει PGN.
+	Games read from {name}: {n}	Παρτίδες που διαβάστηκαν από το {name}: {n}
+	Not read: {n}	Δεν διαβάστηκαν: {n}
+	Only the first {n} were read.	Διαβάστηκαν μόνο οι πρώτες {n}.
+	the file is too large	το αρχείο είναι πολύ μεγάλο
+	no game could be read	δεν διαβάστηκε καμία παρτίδα

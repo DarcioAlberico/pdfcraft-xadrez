@@ -2607,3 +2607,34 @@ animation effects	Off	Izklopljeni
 	Load the diagram	nalaganje diagrama
 	Position set-up	postavitev pozicije
 	Reset to the start position	vrnitev na začetni položaj
+# Chess ▸ PGN toolbar: T4b, each document's games (the list, their autosave, PGN files in and out).
+	Diagram {n}, p. {page}	Diagram {n}, str. {page}
+	Game {n}	Partija {n}
+	Games in this document ({n})	Partije v dokumentu ({n})
+	Games ({n})	Partije ({n})
+	New game	Nova partija
+	Open PGN…	Odpri PGN…
+	Save PGN…	Shrani PGN…
+	Save all games as PGN…	Shrani vse partije kot PGN…
+	Save chess games for this protected document?	Ali naj se šahovske partije tega zaščitenega dokumenta shranjujejo?
+	They are kept in the app's own folder, unencrypted, so they come back when the document is opened again.	Hranijo se nešifrirane v lastni mapi aplikacije, da se vrnejo, ko dokument znova odprete.
+	Save them	Shranjuj
+	Too many games to autosave here: save them as PGN.	Preveč partij za samodejno shranjevanje: shranite jih kot PGN.
+	Another PdfCraft window autosaves these games.	Te partije samodejno shranjuje drugo okno PdfCraft.
+	These games aren't being autosaved.	Te partije se ne shranjujejo samodejno.
+	Chess game restored: {name}, moves: {n}	Šahovska partija obnovljena: {name}, potez: {n}
+	Chess games restored: {n}	Obnovljene šahovske partije: {n}
+	Saved chess games that couldn't be read: {n}	Shranjene šahovske partije, ki jih ni bilo mogoče prebrati: {n}
+	A file of saved chess games couldn't be read. It was kept as {name}.	Datoteke s shranjenimi šahovskimi partijami ni bilo mogoče prebrati. Shranjena je kot {name}.
+	Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.	Shranjenih šahovskih partij ni bilo mogoče prebrati. Odložene so na stran, nove partije pa se odslej shranjujejo.
+	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Ta dokument je zaščiten: njegove šahovske partije se samodejno shranjujejo le, če to dovolite v podoknu Šahovnica.
+	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Preveč šahovskih partij za samodejno shranjevanje v tem dokumentu (največ {n}, {mb} MB). Shranite jih z ukazom Shrani vse partije kot PGN…, da se nič ne izgubi.
+	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Šahovskih partij ni mogoče samodejno shranjevati: podatkovne mape aplikacije za to okno ni bilo mogoče zakleniti.
+	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Te šahovske partije samodejno shranjuje drugo okno PdfCraft. Spremembe, narejene tukaj, se ne shranjujejo samodejno.
+	Chess games couldn't be autosaved: {e}	Šahovskih partij ni bilo mogoče samodejno shraniti: {e}
+	Nothing to save: an illegal position has no PGN.	Ničesar ni treba shraniti: neveljavna pozicija nima PGN.
+	Games read from {name}: {n}	Partije, prebrane iz {name}: {n}
+	Not read: {n}	Ni prebrano: {n}
+	Only the first {n} were read.	Prebranih je bilo le prvih {n}.
+	the file is too large	datoteka je prevelika
+	no game could be read	nobene partije ni bilo mogoče prebrati

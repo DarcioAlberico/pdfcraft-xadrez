@@ -2511,3 +2511,34 @@ animation effects	Off	ఆఫ్
 	Load the diagram	రేఖాచిత్రం లోడ్
 	Position set-up	స్థితి అమరిక
 	Reset to the start position	ప్రారంభ స్థితికి మళ్లింపు
+# Chess ▸ PGN toolbar: T4b, each document's games (the list, their autosave, PGN files in and out).
+	Diagram {n}, p. {page}	రేఖాచిత్రం {n}, పేజీ {page}
+	Game {n}	ఆట {n}
+	Games in this document ({n})	ఈ పత్రంలోని ఆటలు ({n})
+	Games ({n})	ఆటలు ({n})
+	New game	కొత్త ఆట
+	Open PGN…	PGN తెరువు…
+	Save PGN…	PGN సేవ్ చేయి…
+	Save all games as PGN…	అన్ని ఆటలను PGNగా సేవ్ చేయి…
+	Save chess games for this protected document?	ఈ రక్షిత పత్రం యొక్క చదరంగం ఆటలను సేవ్ చేయాలా?
+	They are kept in the app's own folder, unencrypted, so they come back when the document is opened again.	అవి ఎన్‌క్రిప్ట్ చేయకుండా యాప్ సొంత ఫోల్డర్‌లో ఉంచబడతాయి, పత్రాన్ని మళ్లీ తెరిచినప్పుడు తిరిగి వస్తాయి.
+	Save them	సేవ్ చేయి
+	Too many games to autosave here: save them as PGN.	స్వయంచాలకంగా సేవ్ చేయడానికి ఆటలు చాలా ఎక్కువ: వాటిని PGNగా సేవ్ చేయండి.
+	Another PdfCraft window autosaves these games.	మరో PdfCraft విండో ఈ ఆటలను స్వయంచాలకంగా సేవ్ చేస్తోంది.
+	These games aren't being autosaved.	ఈ ఆటలు స్వయంచాలకంగా సేవ్ కావడం లేదు.
+	Chess game restored: {name}, moves: {n}	చదరంగం ఆట పునరుద్ధరించబడింది: {name}, ఎత్తులు: {n}
+	Chess games restored: {n}	పునరుద్ధరించిన చదరంగం ఆటలు: {n}
+	Saved chess games that couldn't be read: {n}	చదవలేకపోయిన సేవ్ చేసిన చదరంగం ఆటలు: {n}
+	A file of saved chess games couldn't be read. It was kept as {name}.	సేవ్ చేసిన చదరంగం ఆటల ఫైల్‌ను చదవలేకపోయాము. దాన్ని {name}గా ఉంచాము.
+	Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.	సేవ్ చేసిన చదరంగం ఆటలను చదవలేకపోయాము. వాటిని పక్కన ఉంచాము, ఇకపై కొత్త ఆటలు సేవ్ అవుతాయి.
+	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	ఈ పత్రం రక్షితమైనది: చదరంగం బోర్డు ప్యానెల్‌లో మీరు అనుమతిస్తేనే దీని చదరంగం ఆటలు స్వయంచాలకంగా సేవ్ అవుతాయి.
+	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	ఈ పత్రానికి స్వయంచాలకంగా సేవ్ చేయడానికి చదరంగం ఆటలు చాలా ఎక్కువ (గరిష్ఠంగా {n}, {mb} MB). ఏదీ కోల్పోకుండా ఉండటానికి వాటిని "అన్ని ఆటలను PGNగా సేవ్ చేయి…"తో సేవ్ చేయండి.
+	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	చదరంగం ఆటలను స్వయంచాలకంగా సేవ్ చేయలేము: ఈ విండో కోసం యాప్ డేటా ఫోల్డర్‌ను లాక్ చేయలేకపోయాము.
+	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	ఈ చదరంగం ఆటలను మరో PdfCraft విండో స్వయంచాలకంగా సేవ్ చేస్తోంది. ఇక్కడ చేసిన మార్పులు స్వయంచాలకంగా సేవ్ కావు.
+	Chess games couldn't be autosaved: {e}	చదరంగం ఆటలను స్వయంచాలకంగా సేవ్ చేయలేకపోయాము: {e}
+	Nothing to save: an illegal position has no PGN.	సేవ్ చేయడానికి ఏమీ లేదు: చెల్లని స్థితికి PGN లేదు.
+	Games read from {name}: {n}	{name} నుండి చదివిన ఆటలు: {n}
+	Not read: {n}	చదవలేదు: {n}
+	Only the first {n} were read.	మొదటి {n} మాత్రమే చదవబడ్డాయి.
+	the file is too large	ఫైల్ చాలా పెద్దది
+	no game could be read	ఏ ఆటనూ చదవలేకపోయాము

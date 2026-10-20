@@ -2676,3 +2676,34 @@ animation effects	Off	Vypnuto
 	Load the diagram	načtení diagramu
 	Position set-up	postavení pozice
 	Reset to the start position	návrat do výchozího postavení
+# Chess ▸ PGN toolbar: T4b, each document's games (the list, their autosave, PGN files in and out).
+	Diagram {n}, p. {page}	Diagram č. {n}, s. {page}
+	Game {n}	Partie {n}
+	Games in this document ({n})	Partie v dokumentu ({n})
+	Games ({n})	Partie ({n})
+	New game	Nová partie
+	Open PGN…	Otevřít PGN…
+	Save PGN…	Uložit PGN…
+	Save all games as PGN…	Uložit všechny partie jako PGN…
+	Save chess games for this protected document?	Ukládat šachové partie tohoto chráněného dokumentu?
+	They are kept in the app's own folder, unencrypted, so they come back when the document is opened again.	Ukládají se nešifrované do vlastní složky aplikace, aby se vrátily, až se dokument znovu otevře.
+	Save them	Ukládat
+	Too many games to autosave here: save them as PGN.	Příliš mnoho partií pro automatické ukládání: uložte je jako PGN.
+	Another PdfCraft window autosaves these games.	Tyto partie automaticky ukládá jiné okno PdfCraft.
+	These games aren't being autosaved.	Tyto partie se automaticky neukládají.
+	Chess game restored: {name}, moves: {n}	Šachová partie obnovena: {name}, tahů: {n}
+	Chess games restored: {n}	Obnovené šachové partie: {n}
+	Saved chess games that couldn't be read: {n}	Uložené šachové partie, které nešlo přečíst: {n}
+	A file of saved chess games couldn't be read. It was kept as {name}.	Soubor s uloženými šachovými partiemi nešlo přečíst. Byl uschován jako {name}.
+	Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.	Uložené šachové partie nešlo přečíst. Byly uschovány stranou a od teď se ukládají nové partie.
+	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Tento dokument je chráněný: jeho šachové partie se automaticky ukládají, jen pokud to povolíte v panelu Šachovnice.
+	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Příliš mnoho šachových partií pro automatické ukládání tohoto dokumentu (nejvýše {n}, {mb} MB). Uložte je příkazem Uložit všechny partie jako PGN…, aby se nic neztratilo.
+	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Šachové partie nelze automaticky ukládat: datovou složku aplikace se pro toto okno nepodařilo zamknout.
+	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Tyto šachové partie automaticky ukládá jiné okno PdfCraft. Změny provedené zde se automaticky neukládají.
+	Chess games couldn't be autosaved: {e}	Šachové partie se nepodařilo automaticky uložit: {e}
+	Nothing to save: an illegal position has no PGN.	Není co uložit: nepřípustná pozice nemá PGN.
+	Games read from {name}: {n}	Partie načtené z {name}: {n}
+	Not read: {n}	Nepřečteno: {n}
+	Only the first {n} were read.	Načteno jen prvních {n}.
+	the file is too large	soubor je příliš velký
+	no game could be read	nepodařilo se přečíst žádnou partii

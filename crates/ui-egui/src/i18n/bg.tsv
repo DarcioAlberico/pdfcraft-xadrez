@@ -2565,3 +2565,34 @@ animation effects	Off	Изключени
 	Load the diagram	зареждането на диаграмата
 	Position set-up	подреждането на позицията
 	Reset to the start position	връщането към началната позиция
+# Chess ▸ PGN toolbar: T4b, each document's games (the list, their autosave, PGN files in and out).
+	Diagram {n}, p. {page}	Диаграма {n}, с. {page}
+	Game {n}	Партия {n}
+	Games in this document ({n})	Партии в документа ({n})
+	Games ({n})	Партии ({n})
+	New game	Нова партия
+	Open PGN…	Отвори PGN…
+	Save PGN…	Запиши PGN…
+	Save all games as PGN…	Запиши всички партии като PGN…
+	Save chess games for this protected document?	Да се записват ли шахматните партии на този защитен документ?
+	They are kept in the app's own folder, unencrypted, so they come back when the document is opened again.	Те се пазят в собствената папка на приложението, без шифроване, за да се върнат, когато документът бъде отворен отново.
+	Save them	Записвай
+	Too many games to autosave here: save them as PGN.	Твърде много партии за автоматично записване: запишете ги като PGN.
+	Another PdfCraft window autosaves these games.	Друг прозорец на PdfCraft записва автоматично тези партии.
+	These games aren't being autosaved.	Тези партии не се записват автоматично.
+	Chess game restored: {name}, moves: {n}	Шахматната партия е възстановена: {name}, ходове: {n}
+	Chess games restored: {n}	Възстановени шахматни партии: {n}
+	Saved chess games that couldn't be read: {n}	Записани шахматни партии, които не можаха да бъдат прочетени: {n}
+	A file of saved chess games couldn't be read. It was kept as {name}.	Файл със записани шахматни партии не можа да бъде прочетен. Той е запазен като {name}.
+	Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.	Записаните шахматни партии не можаха да бъдат прочетени. Те бяха оставени настрана и отсега нататък се записват новите партии.
+	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Този документ е защитен: шахматните му партии се записват автоматично само ако разрешите това в панела „Шахматна дъска“.
+	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Твърде много шахматни партии за автоматично записване в този документ (най-много {n}, {mb} MB). Запишете ги с „Запиши всички партии като PGN…“, за да не се загуби нищо.
+	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Шахматните партии не могат да се записват автоматично: папката с данни на приложението не можа да бъде заключена за този прозорец.
+	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Тези шахматни партии се записват автоматично от друг прозорец на PdfCraft. Промените, направени тук, не се записват автоматично.
+	Chess games couldn't be autosaved: {e}	Шахматните партии не можаха да бъдат записани автоматично: {e}
+	Nothing to save: an illegal position has no PGN.	Няма нищо за записване: невъзможната позиция няма PGN.
+	Games read from {name}: {n}	Прочетени партии от {name}: {n}
+	Not read: {n}	Непрочетени: {n}
+	Only the first {n} were read.	Прочетени са само първите {n}.
+	the file is too large	файлът е твърде голям
+	no game could be read	не можа да бъде прочетена нито една партия

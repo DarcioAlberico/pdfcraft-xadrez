@@ -2855,3 +2855,34 @@ chess side	Black	Juodieji
 	Load the diagram	diagramos įkėlimą
 	Position set-up	pozicijos sustatymą
 	Reset to the start position	grįžimą į pradinę poziciją
+# Chess ▸ PGN toolbar: T4b, each document's games (the list, their autosave, PGN files in and out).
+	Diagram {n}, p. {page}	Diagrama {n}, p. {page}
+	Game {n}	Partija {n}
+	Games in this document ({n})	Dokumento partijos ({n})
+	Games ({n})	Partijos ({n})
+	New game	Nauja partija
+	Open PGN…	Atverti PGN…
+	Save PGN…	Įrašyti PGN…
+	Save all games as PGN…	Įrašyti visas partijas kaip PGN…
+	Save chess games for this protected document?	Įrašyti šio apsaugoto dokumento šachmatų partijas?
+	They are kept in the app's own folder, unencrypted, so they come back when the document is opened again.	Jos laikomos pačios programos aplanke, nešifruotos, kad sugrįžtų vėl atvėrus dokumentą.
+	Save them	Įrašyti
+	Too many games to autosave here: save them as PGN.	Per daug partijų automatiniam įrašymui: įrašykite jas kaip PGN.
+	Another PdfCraft window autosaves these games.	Šias partijas automatiškai įrašo kitas PdfCraft langas.
+	These games aren't being autosaved.	Šios partijos neįrašomos automatiškai.
+	Chess game restored: {name}, moves: {n}	Šachmatų partija atkurta: {name}, ėjimų: {n}
+	Chess games restored: {n}	Atkurta šachmatų partijų: {n}
+	Saved chess games that couldn't be read: {n}	Neperskaitytų įrašytų šachmatų partijų: {n}
+	A file of saved chess games couldn't be read. It was kept as {name}.	Nepavyko perskaityti įrašytų šachmatų partijų failo. Jis išsaugotas kaip {name}.
+	Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.	Nepavyko perskaityti įrašytų šachmatų partijų. Jos atidėtos, o naujos partijos nuo šiol įrašomos.
+	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Šis dokumentas apsaugotas: jo šachmatų partijos automatiškai įrašomos tik jums leidus, skydelyje „Šachmatų lenta“.
+	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Per daug šachmatų partijų automatiniam įrašymui šiame dokumente (daugiausia {n}, {mb} MB). Įrašykite jas komanda „Įrašyti visas partijas kaip PGN…“, kad niekas neprapultų.
+	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Šachmatų partijų negalima įrašyti automatiškai: nepavyko užrakinti programos duomenų aplanko šiam langui.
+	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Šias šachmatų partijas automatiškai įrašo kitas PdfCraft langas. Čia atlikti pakeitimai automatiškai neįrašomi.
+	Chess games couldn't be autosaved: {e}	Nepavyko automatiškai įrašyti šachmatų partijų: {e}
+	Nothing to save: an illegal position has no PGN.	Nėra ką įrašyti: neleistina pozicija neturi PGN.
+	Games read from {name}: {n}	Partijų perskaityta iš {name}: {n}
+	Not read: {n}	Neperskaityta: {n}
+	Only the first {n} were read.	Perskaitytos tik pirmosios {n}.
+	the file is too large	failas per didelis
+	no game could be read	nepavyko perskaityti nė vienos partijos

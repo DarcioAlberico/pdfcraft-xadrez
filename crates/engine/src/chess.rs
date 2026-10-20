@@ -46,6 +46,7 @@ use pdfcraft_edit::paths::{PathColor, PathItem, PathSegment, Subpath};
 use pdfcraft_render::{PageInfo, PageRenderer, RenderConfig, RenderRequest, RequestKind};
 
 pub use document::ChessDocument;
+pub use keys::DocKeys;
 pub use links::{LinkPlan, LinkSettings, LinkTarget};
 pub use pdfcraft_chessvision::models::{ChessModels, ModelState};
 pub use pdfcraft_chessvision::order::ReadingOrder;
@@ -865,6 +866,7 @@ pub mod analysis;
 pub mod document;
 pub mod epub;
 pub mod export;
+pub mod keys;
 pub mod links;
 pub mod office;
 pub mod replace;

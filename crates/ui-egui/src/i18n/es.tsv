@@ -2743,3 +2743,34 @@ animation effects	Off	Desactivados
 	Load the diagram	carga del diagrama
 	Position set-up	preparación de la posición
 	Reset to the start position	vuelta a la posición inicial
+# Chess ▸ PGN toolbar: T4b, each document's games (the list, their autosave, PGN files in and out).
+	Diagram {n}, p. {page}	Diagrama {n}, p. {page}
+	Game {n}	Partida {n}
+	Games in this document ({n})	Partidas del documento ({n})
+	Games ({n})	Partidas ({n})
+	New game	Nueva partida
+	Open PGN…	Abrir PGN…
+	Save PGN…	Guardar PGN…
+	Save all games as PGN…	Guardar todas las partidas en PGN…
+	Save chess games for this protected document?	¿Guardar las partidas de ajedrez de este documento protegido?
+	They are kept in the app's own folder, unencrypted, so they come back when the document is opened again.	Se guardan en la carpeta propia de la aplicación, sin cifrar, para que vuelvan cuando se abra de nuevo el documento.
+	Save them	Guardarlas
+	Too many games to autosave here: save them as PGN.	Demasiadas partidas para el guardado automático: guárdalas en PGN.
+	Another PdfCraft window autosaves these games.	Otra ventana de PdfCraft guarda automáticamente estas partidas.
+	These games aren't being autosaved.	Estas partidas no se están guardando automáticamente.
+	Chess game restored: {name}, moves: {n}	Partida restaurada: {name}, jugadas: {n}
+	Chess games restored: {n}	Partidas restauradas: {n}
+	Saved chess games that couldn't be read: {n}	Partidas guardadas que no se pudieron leer: {n}
+	A file of saved chess games couldn't be read. It was kept as {name}.	No se pudo leer un archivo de partidas guardadas. Se conservó como {name}.
+	Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.	No se pudieron leer las partidas guardadas. Se apartaron, y a partir de ahora se guardan las partidas nuevas.
+	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Este documento está protegido: sus partidas de ajedrez solo se guardan automáticamente si lo permites, en el panel Tablero.
+	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Demasiadas partidas de ajedrez para guardar automáticamente en este documento (como máximo {n}, {mb} MB). Guárdalas con Guardar todas las partidas en PGN… para no perder nada.
+	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Las partidas de ajedrez no se pueden guardar automáticamente: no se pudo bloquear la carpeta de datos de la aplicación para esta ventana.
+	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Otra ventana de PdfCraft guarda automáticamente estas partidas de ajedrez. Los cambios hechos aquí no se guardan automáticamente.
+	Chess games couldn't be autosaved: {e}	No se pudieron guardar automáticamente las partidas de ajedrez: {e}
+	Nothing to save: an illegal position has no PGN.	Nada que guardar: una posición ilegal no tiene PGN.
+	Games read from {name}: {n}	Partidas leídas de {name}: {n}
+	Not read: {n}	Sin leer: {n}
+	Only the first {n} were read.	Solo se leyeron las primeras {n}.
+	the file is too large	el archivo es demasiado grande
+	no game could be read	no se pudo leer ninguna partida

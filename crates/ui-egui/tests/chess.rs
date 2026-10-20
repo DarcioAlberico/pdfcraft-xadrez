@@ -537,8 +537,8 @@ fn double_clicking_a_diagram_puts_it_on_the_board_to_play() {
     }
     h.run_steps(3);
     assert!(h.state().docking.layout.contains(&board), "the double-click opened the board");
-    assert_eq!(h.state().chess.board.game.fen(), START_FEN);
-    assert_eq!(h.state().chess.board.source.map(|s| (s.page, s.index)), Some((0, 0)));
+    assert_eq!(h.state().chess.board().game.fen(), START_FEN);
+    assert_eq!(h.state().chess.board().source.map(|s| (s.page, s.index)), Some((0, 0)));
     h.get_by_label("Diagram 1 · Page 1");
     h.get_by_label("White to move");
 
@@ -546,27 +546,27 @@ fn double_clicking_a_diagram_puts_it_on_the_board_to_play() {
     click_square(&mut h, "e4");
     click_square(&mut h, "e7");
     click_square(&mut h, "e5");
-    assert_eq!(h.state().chess.board.game.movetext(), "1. e4 e5");
+    assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5");
     h.get_by_label("e5");
     // Back one move with the button, then a different move starts a variation.
     h.get_by_label("◀").click();
     h.run_steps(2);
-    assert_eq!(h.state().chess.board.game.ply(), 1);
+    assert_eq!(h.state().chess.board().game.ply(), 1);
     click_square(&mut h, "c7");
     click_square(&mut h, "c5");
-    assert_eq!(h.state().chess.board.game.movetext(), "1. e4 e5 (1... c5)");
-    assert!(h.state().chess.board.pgn_text.ends_with("1. e4 e5 (1... c5) *\n"), "{}", h.state().chess.board.pgn_text);
+    assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5 (1... c5)");
+    assert!(h.state().chess.board().pgn_text.ends_with("1. e4 e5 (1... c5) *\n"), "{}", h.state().chess.board().pgn_text);
     // A glyph on the move shown.
     h.get_by_label("!?").click();
     h.run_steps(2);
-    let c5 = h.state().chess.board.game.current();
-    assert_eq!(h.state().chess.board.game.nags(c5), &[5]);
+    let c5 = h.state().chess.board().game.current();
+    assert_eq!(h.state().chess.board().game.nags(c5), &[5]);
     // The move's menu makes the variation the main line.
     h.get_by_label("c5!?").click_secondary();
     h.run_steps(2);
     h.get_by_label("Make this the main line").click();
     h.run_steps(2);
-    assert_eq!(h.state().chess.board.game.movetext(), "1. e4 c5 $5 (1... e5)");
+    assert_eq!(h.state().chess.board().game.movetext(), "1. e4 c5 $5 (1... e5)");
     // Copy FEN copies the position on the board.
     h.get_by_label("Copy FEN").click();
     let mut copied = false;
@@ -588,8 +588,8 @@ fn double_clicking_a_diagram_puts_it_on_the_board_to_play() {
     h.run_steps(2);
     h.get_all_by_role(egui::accesskit::Role::MultilineTextInput).find(|n| n.value().as_deref() == Some("good ")).unwrap().type_text("move");
     h.run_steps(2);
-    let node = h.state().chess.board.game.current();
-    assert_eq!(h.state().chess.board.game.comment(node), "good move");
+    let node = h.state().chess.board().game.current();
+    assert_eq!(h.state().chess.board().game.comment(node), "good move");
 }
 
 /// Open on the board, in the Chess diagrams panel, puts that diagram on the panel's Study board
@@ -603,11 +603,11 @@ fn open_on_the_board_from_the_panel() {
     h.run_steps(3);
     assert_eq!(format!("{:?}", h.state().chess.tab), "Study");
     assert!(!h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Board), "the tab shows it; the Board panel stays closed");
-    assert_eq!(h.state().chess.board.game.fen(), START_FEN);
+    assert_eq!(h.state().chess.board().game.fen(), START_FEN);
     h.get_by_label(&format!("Board: {START_FEN}"));
     click_square(&mut h, "e2");
     click_square(&mut h, "e4");
-    assert_eq!(h.state().chess.board.game.movetext(), "1. e4");
+    assert_eq!(h.state().chess.board().game.movetext(), "1. e4");
 }
 
 /// Press `button` on square `from`, move to `to` and let go there, holding `modifiers` when
@@ -637,7 +637,7 @@ fn drag_square(h: &mut Harness<'static, PdfCraftApp>, button: egui::PointerButto
 
 /// The drawings on the position shown, as `fromtoColour`.
 fn marks(h: &Harness<'static, PdfCraftApp>) -> Vec<String> {
-    h.state().chess.board.marks().iter().map(|m| format!("{}{}{:?}", m.from, m.to, m.color)).collect()
+    h.state().chess.board().marks().iter().map(|m| format!("{}{}{:?}", m.from, m.to, m.color)).collect()
 }
 
 /// The Study board tab: a position set up from an empty board and played from, drawings made
@@ -663,10 +663,10 @@ fn the_study_board_sets_up_a_position_and_draws_on_it() {
     h.get_by_label("Done").click();
     h.run_steps(2);
     assert!(h.state().chess.study.setup.is_none());
-    assert_eq!(h.state().chess.board.game.fen(), "4k3/8/8/8/8/8/8/R3K3 w - - 0 1");
+    assert_eq!(h.state().chess.board().game.fen(), "4k3/8/8/8/8/8/8/R3K3 w - - 0 1");
     click_square(&mut h, "a1");
     click_square(&mut h, "a8");
-    assert_eq!(h.state().chess.board.game.movetext(), "1. Ra8+");
+    assert_eq!(h.state().chess.board().game.movetext(), "1. Ra8+");
 
     // A right click circles a square; a right drag with Shift held draws a red arrow.
     drag_square(&mut h, egui::PointerButton::Secondary, "d4", "d4", egui::Modifiers::NONE);
@@ -723,7 +723,7 @@ fn the_study_board_analyses_with_a_real_engine() {
         .expect("the move after the number");
     mv.click();
     h.run_steps(3);
-    assert_eq!(h.state().chess.board.game.len(), 1, "{}", h.state().chess.board.game.movetext());
+    assert_eq!(h.state().chess.board().game.len(), 1, "{}", h.state().chess.board().game.movetext());
 }
 
 /// Open the Chess board panel on the standard start position, after a PDF edit (a rectangle in a
@@ -788,24 +788,24 @@ fn undo_follows_the_scope_of_the_last_action() {
     for sq in ["e2", "e4", "e7", "e5", "g1", "f3"] {
         click_square(&mut h, sq);
     }
-    assert_eq!(h.state().chess.board.game.movetext(), "1. e4 e5 2. Nf3");
+    assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5 2. Nf3");
     click_square(&mut h, "a4");
     // The palette and the board's button name the move.
     assert_eq!(palette_labels(&mut h, "Undo Play Nf3"), 2, "the palette's Undo and the board's button");
     assert!(h.state_mut().execute("edit.undo"));
     h.run_steps(2);
-    assert_eq!(h.state().chess.board.game.movetext(), "1. e4 e5");
+    assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5");
     shortcut(&mut h, egui::Key::Z, false);
-    assert_eq!(h.state().chess.board.game.movetext(), "1. e4");
+    assert_eq!(h.state().chess.board().game.movetext(), "1. e4");
     assert_eq!(pdf_undo(&h).as_deref(), Some(pdf.as_str()), "the document is untouched");
     shortcut(&mut h, egui::Key::Z, true);
-    assert_eq!(h.state().chess.board.game.movetext(), "1. e4 e5");
+    assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5");
     h.get_by_label("Undo Play e5").click();
     h.run_steps(2);
-    assert_eq!(h.state().chess.board.game.movetext(), "1. e4");
+    assert_eq!(h.state().chess.board().game.movetext(), "1. e4");
     h.get_by_label("Redo Play e5").click();
     h.run_steps(2);
-    assert_eq!(h.state().chess.board.game.movetext(), "1. e4 e5");
+    assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5");
 
     // A click on the page: Undo goes back to the document.
     let page = on_page(&h, 400.0, 300.0);
@@ -814,13 +814,13 @@ fn undo_follows_the_scope_of_the_last_action() {
     assert_eq!(palette_labels(&mut h, &format!("Undo {pdf}")), 1);
     shortcut(&mut h, egui::Key::Z, false);
     assert_eq!(pdf_undo(&h), None, "the rectangle was undone");
-    assert_eq!(h.state().chess.board.game.movetext(), "1. e4 e5", "the game is untouched");
+    assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5", "the game is untouched");
     // And a move played on the board brings it back to the game.
     click_square(&mut h, "g1");
     click_square(&mut h, "f3");
     assert!(h.state().chess.in_scope());
     shortcut(&mut h, egui::Key::Z, false);
-    assert_eq!(h.state().chess.board.game.movetext(), "1. e4 e5");
+    assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5");
 }
 
 /// A comment typed in several goes is one undo step, named after what it was.
@@ -839,17 +839,17 @@ fn a_comment_typed_in_several_goes_is_one_undo_step() {
     h.run_steps(2);
     // Leave the field.
     click_square(&mut h, "a4");
-    let node = h.state().chess.board.game.current();
-    assert_eq!(h.state().chess.board.game.comment(node), "good move");
-    assert_eq!(h.state().chess.board.undo_label().as_deref(), Some("Edit move comment"));
+    let node = h.state().chess.board().game.current();
+    assert_eq!(h.state().chess.board().game.comment(node), "good move");
+    assert_eq!(h.state().chess.board().undo_label().as_deref(), Some("Edit move comment"));
     assert!(h.state_mut().execute("edit.undo"));
     h.run_steps(2);
-    assert_eq!(h.state().chess.board.game.comment(node), "");
-    assert_eq!(h.state().chess.board.game.movetext(), "1. e4", "one step took the whole comment back, and only it");
-    assert_eq!(h.state().chess.board.undo_label().as_deref(), Some("Play e4"));
+    assert_eq!(h.state().chess.board().game.comment(node), "");
+    assert_eq!(h.state().chess.board().game.movetext(), "1. e4", "one step took the whole comment back, and only it");
+    assert_eq!(h.state().chess.board().undo_label().as_deref(), Some("Play e4"));
     assert!(h.state_mut().execute("edit.redo"));
     h.run_steps(2);
-    assert_eq!(h.state().chess.board.game.comment(node), "good move");
+    assert_eq!(h.state().chess.board().game.comment(node), "good move");
 }
 
 /// The FEN and PGN fields show the game put back by Undo, even when another change follows it
@@ -862,15 +862,328 @@ fn the_fields_follow_the_game_put_back() {
     h.run_steps(3);
     click_square(&mut h, "e2");
     click_square(&mut h, "e4");
-    assert!(h.state().chess.board.pgn_text.contains("1. e4 *"), "{}", h.state().chess.board.pgn_text);
+    assert!(h.state().chess.board().pgn_text.contains("1. e4 *"), "{}", h.state().chess.board().pgn_text);
     {
         let app = h.state_mut();
         assert!(app.execute("edit.undo"));
-        app.chess.board.play_uci_line(&["d2d4".into()]);
+        app.chess.board_mut().play_uci_line(&["d2d4".into()]);
     }
     h.run_steps(2);
-    let board = &h.state().chess.board;
+    let board = h.state().chess.board();
     assert_eq!(board.game.movetext(), "1. d4");
     assert!(board.pgn_text.contains("1. d4 *"), "the PGN field is stale: {}", board.pgn_text);
     assert_eq!(board.fen_text, "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq d3 0 1");
+}
+
+// ─── Chess ▸ Game collections (T4b): a game per diagram, kept across sessions ───────────────────
+
+/// Double-click diagram 1 on page 1 (the scan must have run, with short frames).
+fn double_click_diagram(h: &mut Harness<'static, PdfCraftApp>) {
+    let at = on_page(h, 140.0, 660.0);
+    h.hover_at(at);
+    h.run_steps(1);
+    for _ in 0..2 {
+        for pressed in [true, false] {
+            h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed, modifiers: egui::Modifiers::NONE });
+        }
+        h.step();
+    }
+    h.run_steps(3);
+}
+
+/// The movetext of every game of the document shown, in list order, and which one is shown.
+fn games(app: &PdfCraftApp) -> (Vec<String>, usize) {
+    let c = app.chess.games.collection();
+    (c.iter().map(|e| e.board.game.movetext()).collect(), c.active_index())
+}
+
+/// Opening a diagram on the board again, after moves were played on it, is a new game: the game
+/// played stays as it was, and the list switches between them. The same diagram, opened again
+/// while its game is untouched, shows that game rather than a copy.
+#[test]
+fn each_diagram_opened_is_a_new_game_and_the_first_is_kept() {
+    let mut h = harness_stepping(0.05);
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    double_click_diagram(&mut h);
+    assert_eq!(games(h.state()), (vec![String::new()], 0), "the blank game gave way to the diagram");
+    click_square(&mut h, "e2");
+    click_square(&mut h, "e4");
+    double_click_diagram(&mut h);
+    assert_eq!(games(h.state()), (vec!["1. e4".to_owned(), String::new()], 1), "a new game; the first is intact");
+    assert_eq!(h.state().chess.board().game.fen(), START_FEN);
+    h.get_by_label("Games in this document (2)");
+    // Back to the first game from the list: its moves are there, and a click there is not an undo step.
+    h.get_all_by_label("Diagram 1, p. 1").next().expect("listed").click();
+    h.run_steps(2);
+    assert_eq!(games(h.state()).1, 0);
+    assert_eq!(h.state().chess.board().game.movetext(), "1. e4");
+    assert_eq!(h.state().chess.board().undo_label().as_deref(), Some("Play e4"), "switching games is not a step");
+    // The untouched second game is shown again, not copied.
+    double_click_diagram(&mut h);
+    assert_eq!(games(h.state()), (vec!["1. e4".to_owned(), String::new()], 1));
+    // New game adds a blank one.
+    h.get_by_label("New game").click();
+    h.run_steps(2);
+    assert_eq!(games(h.state()).0.len(), 3);
+    h.get_by_label("Game 3");
+}
+
+/// A temporary recovery folder for one test.
+fn store(tag: &str) -> pdfcraft_ui_egui::RecoveryStore {
+    let dir = std::env::temp_dir().join(format!("pdfcraft-chess-games-{tag}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    pdfcraft_ui_egui::RecoveryStore::new(dir)
+}
+
+/// The app with autosave into `store`, on `bytes` opened as `name` from `path`.
+fn session(store: &pdfcraft_ui_egui::RecoveryStore, name: &str, path: Option<&str>, bytes: Vec<u8>) -> Harness<'static, PdfCraftApp> {
+    let (store, name, path) = (store.clone(), name.to_owned(), path.map(str::to_owned));
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).with_step_dt(0.05).build_eframe(move |_cc| {
+        let mut app = PdfCraftApp::new();
+        app.set_option("language", "en").unwrap();
+        app.run_inline = true;
+        app.enable_recovery(store);
+        app.open_bytes(&name, path, bytes).unwrap();
+        app
+    });
+    h.run_steps(4);
+    h
+}
+
+/// The `.games` files (and the files set aside) in the store's chess folder, by name.
+fn chess_files(store: &pdfcraft_ui_egui::RecoveryStore) -> Vec<String> {
+    let mut names: Vec<String> = std::fs::read_dir(store.dir().join("chess"))
+        .map(|d| d.flatten().map(|e| e.file_name().to_string_lossy().into_owned()).filter(|n| n.contains(".games")).collect())
+        .unwrap_or_default();
+    names.sort();
+    names
+}
+
+/// Everything about a move the autosave must bring back, by its path: its comments, glyphs and
+/// where it was read on the page.
+type Move = (Vec<u16>, String, String, Vec<u16>, Option<(u32, [f32; 4])>);
+
+/// Every game of the document shown: its PGN, the move shown, its moves and the board's side.
+fn game_state(app: &PdfCraftApp) -> Vec<(String, Vec<u16>, Vec<Move>, bool)> {
+    use pdfcraft_engine::chess::pdfcraft_chess::game::Token;
+    let c = app.chess.games.collection();
+    c.iter()
+        .map(|e| {
+            let g = &e.board.game;
+            let nodes = std::iter::once(0).chain(g.tokens().into_iter().filter_map(|t| match t {
+                Token::Move { node, .. } => Some(node),
+                _ => None,
+            }));
+            let moves = nodes
+                .map(|n| {
+                    let path = g.path_of(n).unwrap().indices().to_vec();
+                    (path, g.comment(n).to_owned(), g.comment_before(n).to_owned(), g.nags(n).to_vec(), g.source(n).map(|s| (s.page, s.rect_user)))
+                })
+                .collect();
+            (g.pgn(), e.current_path().indices().to_vec(), moves, e.board.flipped)
+        })
+        .collect()
+}
+
+/// The games, with what PGN can't hold, come back as they were when the document is opened again
+/// in a new session: the move shown, where each move was read, and a comment before a first
+/// reply (which PGN writes into the comment of the move before it).
+#[test]
+fn the_games_come_back_exactly_in_the_next_session() {
+    use pdfcraft_engine::chess::pdfcraft_chess::game::NodeSource;
+    let s = store("round-trip");
+    let path = s.dir().join("book.pdf").to_string_lossy().into_owned();
+    let expected = {
+        let mut h = session(&s, "book.pdf", Some(&path), boards());
+        assert!(h.state_mut().execute("chess.scan"));
+        h.run_steps(3);
+        h.state_mut().open_chess_board(0, 0);
+        h.run_steps(2);
+        {
+            let b = h.state_mut().chess.board_mut();
+            b.play_uci_line(&["e2e4".into(), "e7e5".into(), "g1f3".into()]);
+            let g = &mut b.game;
+            let nf3 = g.current();
+            g.go_to(2);
+            let e5 = g.current();
+            g.set_comment(e5, "after e5");
+            g.set_comment_before(nf3, "before Nf3");
+            g.toggle_nag(nf3, 1);
+            assert!(g.set_source(nf3, Some(NodeSource { page: 0, rect_user: [60.0, 500.0, 90.0, 512.0] })));
+            g.set_tag("White", "Werle").unwrap();
+            g.set_tag("Black", "Jianu").unwrap();
+            b.flipped = true;
+            // The move shown: a variation, 1... c5.
+            b.game.go_to(1);
+        }
+        h.state_mut().chess.board_mut().play_uci_line(&["c7c5".into()]);
+        // A second game, shown, with a move.
+        assert!(h.state_mut().execute("chess.game.new"));
+        h.state_mut().chess.board_mut().play_uci_line(&["d2d4".into()]);
+        // Written two seconds after the last change (frames are 0.05 s apart).
+        h.run_steps(10);
+        assert!(chess_files(&s).is_empty(), "not before the changes have rested");
+        h.run_steps(40);
+        assert_eq!(chess_files(&s).len(), 1, "written once they have");
+        let state = game_state(h.state());
+        assert_eq!(state.len(), 2);
+        assert_eq!(state[0].1, vec![0, 1], "the move shown in the first game: the variation 1... c5");
+        state
+    };
+    let mut h = session(&s, "book.pdf", Some(&path), boards());
+    assert_eq!(game_state(h.state()), expected);
+    assert_eq!(games(h.state()).1, 1, "the game shown too");
+    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Chess games restored: 2"));
+    // The diagram the first game came from is in this document.
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    h.get_by_label("Werle–Jianu").click();
+    h.run_steps(2);
+    let source = h.state().chess.board().source.unwrap();
+    assert_eq!((source.doc, source.page, source.index), (h.state().views[0].id, 0, 0));
+}
+
+/// A file without `/ID` gets one when it is saved, and a new size: the games take the new keys at
+/// once, so a copy of the saved file (another name and folder, found by its `/ID` alone) brings
+/// them back.
+#[test]
+fn saving_a_pdf_without_an_id_rekeys_its_games() {
+    let s = store("rekey");
+    std::fs::create_dir_all(s.dir()).unwrap();
+    let path = s.dir().join("book.pdf");
+    std::fs::write(&path, boards()).unwrap();
+    {
+        let mut h = session(&s, "book.pdf", Some(&path.to_string_lossy()), boards());
+        h.state_mut().chess.board_mut().play_uci_line(&["e2e4".into()]);
+        h.state_mut().flush_chess_games();
+        assert_eq!(chess_files(&s).len(), 1);
+        let app = h.state_mut();
+        assert!(app.apply_edit(Edit::RotatePages { pages: vec![0], degrees: 90 }));
+        app.save_override = Some(path.to_string_lossy().into_owned());
+        assert!(app.save_active(pdfcraft_ui_egui::SaveTarget::InPlace));
+    }
+    let copy = s.dir().join("copy of the book.pdf");
+    std::fs::copy(&path, &copy).unwrap();
+    let h = session(&s, "copy of the book.pdf", Some(&copy.to_string_lossy()), std::fs::read(&copy).unwrap());
+    assert_eq!(games(h.state()).0, ["1. e4"], "found by the /ID the save created");
+    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Chess game restored: Game 1, moves: 1"));
+}
+
+/// Files that can't be read (random bytes, a file over the cap, an unknown version) are set
+/// aside as `.bad`, never deleted, and the user is told; the document opens with a blank game.
+#[test]
+fn unreadable_game_files_are_set_aside_and_said() {
+    let s = store("corrupt");
+    let dir = s.dir().join("chess");
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut noise = vec![0u8; 4096];
+    let mut x: u32 = 12345;
+    for b in &mut noise {
+        x = x.wrapping_mul(1_103_515_245).wrapping_add(12345);
+        *b = (x >> 16) as u8;
+    }
+    std::fs::write(dir.join("aa-1.games"), &noise).unwrap();
+    // 2 MiB over the cap of a document's file (32 MiB of games and the header).
+    let big = std::fs::File::create(dir.join("bb-2.games")).unwrap();
+    big.set_len((34 << 20) + (64 << 10)).unwrap();
+    drop(big);
+    let newer = "{\"format\":\"pdfcraft-chess-games\",\"version\":99,\"keys\":{\"name\":\"boards.pdf\"}}\n{}\n";
+    std::fs::write(dir.join("cc-3.games"), newer).unwrap();
+    let h = session(&s, "boards.pdf", None, boards());
+    assert_eq!(chess_files(&s), ["aa-1.games.bad", "bb-2.games.bad", "cc-3.games.bad"]);
+    let toast = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    assert!(toast.contains("couldn't be read. It was kept as aa-1.games.bad"), "{toast}");
+    assert!(toast.contains("cc-3.games.bad"), "{toast}");
+    assert_eq!(games(h.state()).0, [""], "a blank game");
+    // What was set aside stays aside: a second session neither reads nor renames it again.
+    drop(h);
+    let h = session(&s, "boards.pdf", None, boards());
+    assert_eq!(chess_files(&s), ["aa-1.games.bad", "bb-2.games.bad", "cc-3.games.bad"]);
+    assert!(h.state().toast.is_none());
+}
+
+/// Two windows on the same document: the second one finds the games the first autosaves, but
+/// doesn't write over them while the first runs (and says so); once the first is gone, it does.
+#[test]
+fn a_second_instance_does_not_overwrite_the_games_of_the_first() {
+    let s = store("instances");
+    let mut first = session(&s, "boards.pdf", None, boards());
+    first.state_mut().chess.board_mut().play_uci_line(&["e2e4".into()]);
+    first.state_mut().flush_chess_games();
+    let files = chess_files(&s);
+    assert_eq!(files.len(), 1);
+    let file = s.dir().join("chess").join(&files[0]);
+    let written = std::fs::read(&file).unwrap();
+    // Another instance: the same folder, its own lock.
+    let other = pdfcraft_ui_egui::RecoveryStore::new(s.dir());
+    let mut second = session(&other, "boards.pdf", None, boards());
+    assert_eq!(games(second.state()).0, ["1. e4"]);
+    second.state_mut().chess.board_mut().play_uci_line(&["e7e5".into()]);
+    second.state_mut().flush_chess_games();
+    assert_eq!(std::fs::read(&file).unwrap(), written, "the first window's file is untouched");
+    let toast = second.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    assert!(toast.contains("autosaved by another PdfCraft window"), "{toast}");
+    // The first window quits: its lock goes with the last handle on its folder.
+    drop(first);
+    drop(s);
+    second.state_mut().flush_chess_games();
+    assert!(String::from_utf8_lossy(&std::fs::read(&file).unwrap()).contains("1. e4 e5"), "written once the first window is gone");
+}
+
+/// A document that forbids copying: its games are written only once the user allows it. Until
+/// then nothing is written; "Don't save" writes nothing for the session.
+#[test]
+fn a_protected_document_asks_before_its_games_are_written() {
+    let mut doc = pdfcraft_cos::Document::open(std::sync::Arc::new(boards())).unwrap();
+    doc.set_encryption(&pdfcraft_cos::NewEncryption {
+        algorithm: pdfcraft_cos::Algorithm::Aes256,
+        user_password: "",
+        owner_password: "owner",
+        permissions: 0b0100,
+        encrypt_metadata: true,
+        seed: [3; 32],
+    })
+    .unwrap();
+    let bytes = pdfcraft_cos::write_full(&doc, &Default::default()).unwrap();
+    for allow in [false, true] {
+        let s = store(if allow { "protected-yes" } else { "protected-no" });
+        let mut h = session(&s, "restricted.pdf", None, bytes.clone());
+        h.state_mut().show_chess_board();
+        h.run_steps(3);
+        click_square(&mut h, "e2");
+        click_square(&mut h, "e4");
+        h.state_mut().flush_chess_games();
+        assert!(chess_files(&s).is_empty(), "nothing before the user answers");
+        let toast = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+        assert!(toast.contains("autosaved only if you allow it"), "{toast}");
+        h.get_by_label("Save chess games for this protected document?");
+        h.get_by_label(if allow { "Save them" } else { "Don't save" }).click();
+        h.run_steps(2);
+        assert!(h.query_by_label("Save chess games for this protected document?").is_none(), "asked once");
+        click_square(&mut h, "e7");
+        click_square(&mut h, "e5");
+        h.state_mut().flush_chess_games();
+        assert_eq!(chess_files(&s).len(), usize::from(allow));
+    }
+}
+
+/// Open PGN… adds every game of a file (games split at their tag lines); a game that can't be
+/// read is left out and said.
+#[test]
+fn a_pgn_file_with_several_games_is_imported() {
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    let pgn = "[Event \"A\"]\n[White \"Werle\"]\n[Black \"Jianu\"]\n\n1. e4 e5 {open} 2. Nf3 *\n\n\
+               [Event \"B\"]\n[FEN \"not a position\"]\n\n1. e4 *\n\n\
+               [Event \"C\"]\n\n1. d4 d5 (1... Nf6 2. c4) 2. c4 *\n";
+    assert_eq!(h.state_mut().import_chess_pgn("db.pgn", pgn.as_bytes()), 2);
+    h.run_steps(2);
+    assert_eq!(games(h.state()), (vec!["1. e4 e5 {open} 2. Nf3".to_owned(), "1. d4 d5 (1... Nf6 2. c4) 2. c4".to_owned()], 0));
+    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Games read from db.pgn: 2 · Not read: 1"));
+    h.get_by_label("Werle–Jianu");
+    h.get_by_label("Game 2").click();
+    h.run_steps(2);
+    assert_eq!(h.state().chess.board().game.movetext(), "1. d4 d5 (1... Nf6 2. c4) 2. c4");
 }

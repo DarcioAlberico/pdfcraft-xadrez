@@ -2603,3 +2603,34 @@ animation effects	Off	Aus
 	Load the diagram	Diagramm laden
 	Position set-up	Stellungsaufbau
 	Reset to the start position	Zurück zur Grundstellung
+# Chess ▸ PGN toolbar: T4b, each document's games (the list, their autosave, PGN files in and out).
+	Diagram {n}, p. {page}	Diagramm {n}, S. {page}
+	Game {n}	Partie {n}
+	Games in this document ({n})	Partien dieses Dokuments ({n})
+	Games ({n})	Partien ({n})
+	New game	Neue Partie
+	Open PGN…	PGN öffnen…
+	Save PGN…	PGN speichern…
+	Save all games as PGN…	Alle Partien als PGN speichern…
+	Save chess games for this protected document?	Schachpartien dieses geschützten Dokuments speichern?
+	They are kept in the app's own folder, unencrypted, so they come back when the document is opened again.	Sie werden unverschlüsselt im eigenen Ordner der App aufbewahrt, damit sie beim erneuten Öffnen des Dokuments wieder da sind.
+	Save them	Speichern
+	Too many games to autosave here: save them as PGN.	Zu viele Partien für die automatische Speicherung: Speichere sie als PGN.
+	Another PdfCraft window autosaves these games.	Ein anderes PdfCraft-Fenster speichert diese Partien automatisch.
+	These games aren't being autosaved.	Diese Partien werden nicht automatisch gespeichert.
+	Chess game restored: {name}, moves: {n}	Schachpartie wiederhergestellt: {name}, Züge: {n}
+	Chess games restored: {n}	Schachpartien wiederhergestellt: {n}
+	Saved chess games that couldn't be read: {n}	Gespeicherte Schachpartien, die nicht gelesen werden konnten: {n}
+	A file of saved chess games couldn't be read. It was kept as {name}.	Eine Datei mit gespeicherten Schachpartien konnte nicht gelesen werden. Sie wurde als {name} aufbewahrt.
+	Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.	Die gespeicherten Schachpartien konnten nicht gelesen werden. Sie wurden beiseitegelegt; neue Partien werden ab jetzt gespeichert.
+	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Dieses Dokument ist geschützt: Seine Schachpartien werden nur automatisch gespeichert, wenn du es im Bereich „Schachbrett“ erlaubst.
+	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Zu viele Schachpartien für die automatische Speicherung dieses Dokuments (höchstens {n}, {mb} MB). Speichere sie mit „Alle Partien als PGN speichern…“, damit nichts verloren geht.
+	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Schachpartien können nicht automatisch gespeichert werden: Der Datenordner der App konnte für dieses Fenster nicht gesperrt werden.
+	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Diese Schachpartien werden von einem anderen PdfCraft-Fenster automatisch gespeichert. Änderungen hier werden nicht automatisch gespeichert.
+	Chess games couldn't be autosaved: {e}	Schachpartien konnten nicht automatisch gespeichert werden: {e}
+	Nothing to save: an illegal position has no PGN.	Nichts zu speichern: Eine ungültige Stellung hat kein PGN.
+	Games read from {name}: {n}	Aus {name} gelesene Partien: {n}
+	Not read: {n}	Nicht gelesen: {n}
+	Only the first {n} were read.	Nur die ersten {n} wurden gelesen.
+	the file is too large	die Datei ist zu groß
+	no game could be read	keine Partie konnte gelesen werden

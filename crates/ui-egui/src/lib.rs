@@ -32,7 +32,9 @@ mod a11y_ui;
 mod actions_ui;
 mod appearance;
 pub mod canvas;
+mod chess_autosave;
 mod chess_board_ui;
+mod chess_collection;
 mod chess_editor;
 mod chess_history;
 mod chess_study_ui;
@@ -2983,6 +2985,8 @@ impl eframe::App for PdfCraftApp {
             self.window_state.keep(storage, minimized);
         }
         storage.set_string("pdfcraft", self.persist());
+        // The chess games are written now too (on the web, into `storage`).
+        self.chess_games_to_storage(storage);
     }
 
     fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
