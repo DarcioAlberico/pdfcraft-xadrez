@@ -123,6 +123,19 @@ pub struct ChessPageText {
 /// `lang_hint` is the document's language when known ([`LangTally::guess`] says when it wins over
 /// the page's own letters).
 pub fn from_page_text(page: &PageText, lang_hint: Option<Lang>) -> ChessPageText {
+    read(page, lang_hint, None)
+}
+
+/// [`from_page_text`] for a selection (PGN toolbar spec, step T2a): the language is `lang` (the
+/// document's), never guessed from the few words of a selection (`Rc7` is a rook in English and
+/// a king in Portuguese), and `20.…`, `20. …Qd8`, `…Qd8` and `...Qd8` are notation (an ellipsis
+/// standing alone before a move: Black's). The page's own language evidence is still counted.
+pub(crate) fn from_selection(page: &PageText, lang: Lang) -> ChessPageText {
+    read(page, None, Some(lang))
+}
+
+/// Read a page; `selection`: the language of a selection ([`from_selection`]).
+fn read(page: &PageText, lang_hint: Option<Lang>, selection: Option<Lang>) -> ChessPageText {
     // 1. Glyphs to cells, line by line, figurine letters settled by what follows them. A line is
     //    first cut where it crosses a gutter, so the columns of a two-column page are lines apart.
     let line_of = split_at_gutters(page);
@@ -158,10 +171,15 @@ pub fn from_page_text(page: &PageText, lang_hint: Option<Lang>) -> ChessPageText
     for word in lines.iter().flatten() {
         token::tally_word(word, &mut lang_tally);
     }
-    let lang = lang_tally.guess(lang_hint);
+    let lang = match selection {
+        Some(lang) => LangGuess { lang, confidence: lang_tally.guess(Some(lang)).confidence },
+        None => lang_tally.guess(lang_hint),
+    };
+    let rules = token::Rules { ellipsis: selection.is_some() };
     // 4. Runs.
     let lines: Vec<Vec<Vec<glyph::Cell>>> = lines.into_iter().map(|words| token::join_split_moves(words, lang.lang)).collect();
-    let mut tokens: Vec<Vec<Vec<token::Token>>> = lines.iter().map(|words| words.iter().map(|w| token::tokenize(w, lang.lang)).collect()).collect();
+    let mut tokens: Vec<Vec<Vec<token::Token>>> =
+        lines.iter().map(|words| words.iter().map(|w| token::tokenize(w, lang.lang, rules)).collect()).collect();
     token::settle(&mut tokens);
     let mut side = token::Side::default();
     let lines = tokens.into_iter().filter_map(|words| token::assemble(words, &mut side)).collect();

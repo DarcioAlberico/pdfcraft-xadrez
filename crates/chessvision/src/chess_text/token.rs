@@ -274,6 +274,25 @@ fn is_ellipsis(chars: &[char]) -> bool {
     matches!(chars, ['…'] | ['.', '.'] | ['.', '.', '.'])
 }
 
+/// The characters of an ellipsis that starts `chars` and has more after it (`…Qd8`, `...Qd8`).
+fn ellipsis_prefix(chars: &[char]) -> Option<usize> {
+    let n = match chars {
+        ['…', ..] => 1,
+        ['.', '.', '.', ..] => 3,
+        ['.', '.', ..] => 2,
+        _ => return None,
+    };
+    (chars.len() > n).then_some(n)
+}
+
+/// Reading rules beyond a page's: those of a selection ([`super::from_selection`]).
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct Rules {
+    /// An ellipsis glued before a move (`…Qd8`, `20.…Qd8`) or after a number (`20.…`) is
+    /// notation, as `20...Qd8` is.
+    pub ellipsis: bool,
+}
+
 fn move_number(chars: &[char]) -> Option<(u16, bool, usize)> {
     let digits = chars.iter().take_while(|c| c.is_ascii_digit()).count();
     if digits == 0 || digits > MAX_NUMBER_DIGITS {
@@ -374,7 +393,7 @@ fn bare_number(chars: &[char]) -> Option<u16> {
 }
 
 /// Step 4a: cut one word into tokens, reading moves in `lang`.
-pub(crate) fn tokenize(word: &[Cell], lang: Lang) -> Vec<Token> {
+pub(crate) fn tokenize(word: &[Cell], lang: Lang, rules: Rules) -> Vec<Token> {
     if word.len() > MAX_WORD_CHARS {
         return vec![token(Kind::Text, word)];
     }
@@ -399,14 +418,20 @@ pub(crate) fn tokenize(word: &[Cell], lang: Lang) -> Vec<Token> {
         }
     };
     push_text(&mut out, 0..p.lead);
-    let core = chars.get(p.core.clone()).unwrap_or(&[]);
-    let core_cells = cells(p.core.clone());
+    // With the selection's rules, an ellipsis glued before a move is cut off it (`…Qd8`).
+    let lead_ellipsis = if rules.ellipsis { chars.get(p.core.clone()).and_then(ellipsis_prefix) } else { None };
+    let core_range = p.core.start.saturating_add(lead_ellipsis.unwrap_or(0))..p.core.end;
+    let core = chars.get(core_range.clone()).unwrap_or(&[]);
+    let core_cells = cells(core_range.clone());
     let mut body = Vec::new();
     if let Some((number, black, n)) = p.number {
         body.push(Token { weak: core.is_empty(), ..token(Kind::Number { number, black }, cells(p.lead..p.lead + n)) });
     }
+    if let Some(n) = lead_ellipsis {
+        body.push(token(Kind::Ellipsis, cells(p.core.start..p.core.start.saturating_add(n))));
+    }
     if core.is_empty() {
-    } else if p.number.is_none() && is_ellipsis(core) {
+    } else if (p.number.is_none() || rules.ellipsis) && lead_ellipsis.is_none() && is_ellipsis(core) {
         body.push(token(Kind::Ellipsis, core_cells));
     } else if let Some(m) = parse_move(core, lang) {
         let head = core_cells.get(..m.head).unwrap_or(&[]);
@@ -414,7 +439,7 @@ pub(crate) fn tokenize(word: &[Cell], lang: Lang) -> Vec<Token> {
         let pawn_push = matches!(m.san.body, SanBody::Move { piece: None, capture: false, .. });
         let checks: Vec<Cell> = m.marks.iter().filter(|(k, _)| matches!(k, Mark::Check(_))).filter_map(|(_, r)| tail.get(r.start)).copied().collect();
         let mut mv = token(Kind::Move(m.san), &[head, &checks].concat());
-        mv.weak = pawn_push && p.number.is_none();
+        mv.weak = pawn_push && p.number.is_none() && lead_ellipsis.is_none();
         body.push(mv);
         for (mark, r) in m.marks {
             if let Mark::Nag(sym) = mark {
@@ -442,7 +467,7 @@ pub(crate) fn tokenize(word: &[Cell], lang: Lang) -> Vec<Token> {
         body = vec![token(Kind::Text, cells(p.lead..p.core.end))];
     }
     out.extend(body);
-    push_text(&mut out, p.core.end..chars.len());
+    push_text(&mut out, core_range.end..chars.len());
     out
 }
 
