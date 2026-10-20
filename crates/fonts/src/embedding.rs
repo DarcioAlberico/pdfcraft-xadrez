@@ -204,7 +204,7 @@ pub fn embed_mapping(
         let newest = numbers.len().saturating_sub(PROGRAM_SEARCH).max(first);
         let search: Vec<u32> = numbers.get(..first).into_iter().chain(numbers.get(newest..)).flatten().copied().collect();
         doc.scan_objects_subset(search).find_map(|(r, o)| match o.ok()?.as_ref() {
-            Object::Stream(s) if s.dict.get(b"PCFullFont").is_some() && s.raw.as_ref() == bytes => Some(Object::Ref(r)),
+            Object::Stream(s) if is_program(doc, s, bytes) => Some(Object::Ref(r)),
             _ => None,
         })
     });
@@ -215,7 +215,7 @@ pub fn embed_mapping(
             d.set(b"Subtype".to_vec(), Object::name("OpenType"));
         }
         d.set(b"PCFullFont".to_vec(), Object::Bool(true));
-        Object::Ref(doc.add(Object::Stream(Stream::from_raw(d, bytes.to_vec()))))
+        Object::Ref(doc.add(Object::Stream(Stream::flate(d, bytes))))
     });
     descriptor.set(if cff { b"FontFile3".to_vec() } else { b"FontFile2".to_vec() }, program);
     let desc = Object::Ref(doc.add(Object::Dict(descriptor)));
@@ -273,13 +273,18 @@ struct Written {
 }
 
 impl Written {
-    /// Whether its program is `bytes`. The length it was written with is compared before decoding.
+    /// Whether its program is `bytes`.
     fn has_program(&self, doc: &Document, bytes: &[u8]) -> bool {
-        let Object::Stream(s) = doc.resolve(&self.program).as_ref().clone() else { return false };
-        s.dict.get(b"PCFullFont").is_some()
-            && s.dict.get(b"Length1").and_then(|l| doc.resolve(l).as_int()) == i64::try_from(bytes.len()).ok()
-            && s.decoded_within(17 << 20).is_ok_and(|data| data == bytes)
+        matches!(doc.resolve(&self.program).as_ref(), Object::Stream(s) if is_program(doc, s, bytes))
     }
+}
+
+/// Whether `s` is a full program written for `bytes`, compressed or not. The length it was
+/// written with is compared before decoding.
+fn is_program(doc: &Document, s: &Stream, bytes: &[u8]) -> bool {
+    s.dict.get(b"PCFullFont").is_some()
+        && s.dict.get(b"Length1").and_then(|l| doc.resolve(l).as_int()) == i64::try_from(bytes.len()).ok()
+        && s.decoded_within(17 << 20).is_ok_and(|data| data == bytes)
 }
 
 /// The `PCFull` resources in `fonts`, in order.
@@ -392,5 +397,32 @@ mod tests {
         let medium = embed(&mut doc, &mut more, other, "Inter").unwrap();
         assert!(!fonts.contains(medium.as_bytes()), "{medium} is new");
         assert_eq!(programs(&doc), 2);
+    }
+
+    #[test]
+    fn the_full_program_is_written_compressed_and_another_page_reuses_it() {
+        let bytes = include_bytes!("../../../assets/fonts/Inter-Regular.ttf");
+        let mut doc = Document::new_empty();
+        let mut first = Dict::new();
+        embed(&mut doc, &mut first, bytes, "Inter").unwrap();
+        let program = || {
+            doc.scan_objects()
+                .find_map(|(_, o)| match o.as_ref() {
+                    Object::Stream(s) if s.dict.get(b"PCFullFont").is_some() => Some(s.clone()),
+                    _ => None,
+                })
+                .unwrap()
+        };
+        let stream = program();
+        assert_eq!(stream.dict.name(b"Filter"), Some(b"FlateDecode".as_slice()));
+        assert!(stream.raw.len() < bytes.len(), "{} of {} bytes", stream.raw.len(), bytes.len());
+        assert_eq!(stream.decoded().unwrap(), bytes);
+        // Another page's resources don't have it, so it is found among the document's objects.
+        let objects = doc.scan_objects().count();
+        let mut second = Dict::new();
+        embed(&mut doc, &mut second, bytes, "Inter").unwrap();
+        let programs = doc.scan_objects().filter(|(_, o)| matches!(o.as_ref(), Object::Stream(s) if s.dict.get(b"PCFullFont").is_some())).count();
+        assert_eq!(programs, 1, "one program for both pages");
+        assert!(doc.scan_objects().count() > objects, "the second page gets its own resource");
     }
 }
