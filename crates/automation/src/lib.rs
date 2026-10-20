@@ -17,6 +17,7 @@
 mod a11y;
 mod batch;
 mod chess;
+mod chess_pgn;
 mod comments;
 mod content;
 mod conventions;
@@ -809,6 +810,7 @@ impl Automation {
             "chess_read" => self.chess_read(&a)?,
             "chess_status" => self.chess_status(&a)?,
             "chess_game" => self.chess_game(&a)?,
+            "chess_pgn_edit" => self.chess_pgn_edit(&a)?,
             "chess_replace_diagram" => self.chess_replace_diagram(&a)?,
             "chess_document" => self.chess_document(&a)?,
             "chess_add_lichess_links" => self.chess_add_lichess_links(&a)?,
