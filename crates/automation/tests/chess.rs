@@ -662,3 +662,233 @@ fn chess_game_plays_moves_from_a_fen_or_a_pgn() {
         assert!(auto.call("chess_game", &bad).is_err(), "{bad} is refused");
     }
 }
+
+/// The position before White's 18th move in the PGN toolbar spec's scenario.
+const SCENARIO: &str = "2r2rk1/1p2ppb1/p2p1npp/q4P2/P1b1P2B/2NB4/1PP3PP/R3QR1K w - - 0 18";
+
+/// A `move` fragment item for chess_pgn_edit; `n.` or `n...` before the SAN gives its half-move.
+fn item_move(text: &str) -> Value {
+    match text.split_once('.') {
+        Some((number, san)) => {
+            let number: u64 = number.parse().unwrap();
+            let black = san.starts_with("..");
+            json!({ "item": "move", "san": san.trim_start_matches('.'), "ply": 2 * (number - 1) + u64::from(black) })
+        }
+        None => json!({ "item": "move", "san": text }),
+    }
+}
+
+/// chess_pgn_edit with `ops` on the scenario's game (its main line when `main` is set).
+fn pgn_edit(auto: &mut Automation, main: bool, ops: Value) -> Value {
+    let mut args = if main {
+        let r = ok(
+            auto,
+            "chess_pgn_edit",
+            json!({ "fen": SCENARIO, "ops": [{ "op": "play", "at": "main:34", "moves": ["Nd5", "Qxe1", "Nxe7+", "Kh7", "Raxe1"] }] }),
+        );
+        json!({ "pgn": r["pgn"] })
+    } else {
+        json!({ "fen": SCENARIO })
+    };
+    args["ops"] = ops;
+    ok(auto, "chess_pgn_edit", args)
+}
+
+/// The scenario's variation as fragment items: `18...Qd8 19.Bxf6 Bxf6 20.fxg6 (20.Nxf6+ exf6
+/// 21.Bxc4 Rxc4) 20...fxg6 21.Qg3 Kh7 22.e5`.
+fn variation_items() -> Value {
+    let mut items: Vec<Value> = ["18...Qd8", "19.Bxf6", "Bxf6", "20.fxg6"].iter().map(|m| item_move(m)).collect();
+    items.push(json!({ "item": "open" }));
+    items.extend(["20.Nxf6+", "exf6", "21.Bxc4", "Rxc4"].iter().map(|m| item_move(m)));
+    items.push(json!({ "item": "close" }));
+    items.extend(["20...fxg6", "21.Qg3", "Kh7", "22.e5"].iter().map(|m| item_move(m)));
+    items.push(json!({ "item": "result" }));
+    Value::Array(items)
+}
+
+const MAIN: &str = "18. Nd5 Qxe1 19. Nxe7+ Kh7 20. Raxe1";
+const WITH_VARIATION: &str =
+    "18. Nd5 Qxe1 (18... Qd8 19. Bxf6 Bxf6 20. fxg6 (20. Nxf6+ exf6 21. Bxc4 Rxc4) 20... fxg6 21. Qg3 Kh7 22. e5) 19. Nxe7+ Kh7 20. Raxe1";
+
+/// chess_pgn_edit plays, comments, sets glyphs, reshapes variations and grafts fragments, each
+/// at a main-line half-move or a path, and reports every operation.
+#[test]
+fn chess_pgn_edit_applies_every_operation() {
+    let (_base, root) = workdir("pgn-edit");
+    let mut auto = Automation::new().with_root(&root).unwrap();
+    let a = &mut auto;
+
+    // play, from the start (main:34, the half-move of 18. Nd5).
+    let r = pgn_edit(a, true, json!([]));
+    assert_eq!((r["movetext"].as_str().unwrap(), r["applied"].as_u64().unwrap()), (MAIN, 0));
+    assert!(r["pgn"].as_str().unwrap().contains("[FEN \"2r2rk1/"));
+    let r = pgn_edit(a, false, json!([{ "op": "play", "at": "main:34", "moves": ["Nd5", "Qxe1"] }]));
+    assert_eq!((r["movetext"].as_str(), r["current_path"].as_str()), (Some("18. Nd5 Qxe1"), Some("path:0.0")));
+    assert_eq!(r["report"][0]["path"], "path:0.0");
+
+    // graft: the variation after 18. Nd5 (main:35), in follow mode.
+    let r = pgn_edit(a, true, json!([{ "op": "graft", "at": "main:35", "items": variation_items() }]));
+    assert_eq!(r["movetext"], WITH_VARIATION);
+    let g = &r["report"][0];
+    assert_eq!((g["ok"].as_bool(), g["op"].as_str(), g["path"].as_str()), (Some(true), Some("graft"), Some("path:0.1.0.0.0.0.0.0.0")));
+    assert_eq!(g["graft"]["played"], 12);
+    assert_eq!(g["graft"]["stop"], Value::Null);
+    assert_eq!(g["graft"]["new_nodes"][0], "path:0.1");
+    assert_eq!(g["graft"]["anchor"], "path:0");
+    assert_eq!(g["graft"]["unbalanced"], json!([]));
+    assert_eq!(r["current_path"], "path:0.1.0.0.0.0.0.0.0");
+
+    // Line mode demotes the move there; glyphs are given by White's code.
+    let line = json!([{ "op": "graft", "at": "path:0", "mode": "line", "items": [item_move("18...Qd8"), { "item": "nag", "code": 36 }, { "item": "comment", "text": "solid" }, { "item": "close" }] }]);
+    let r = pgn_edit(a, true, line);
+    assert_eq!(r["movetext"], "18. Nd5 Qd8 $37 {solid} (18... Qxe1 19. Nxe7+ Kh7 20. Raxe1)");
+    assert_eq!(r["report"][0]["graft"]["demoted"], true);
+    assert_eq!(r["report"][0]["graft"]["unbalanced"], json!([3]));
+
+    // A graft that stops reports where and why, and keeps what played.
+    let r = pgn_edit(
+        a,
+        true,
+        json!([{ "op": "graft", "at": "main:35", "items": [item_move("18...Qd8"), item_move("19.Qh1"), { "item": "comment", "text": "lost" }] }]),
+    );
+    let g = &r["report"][0]["graft"];
+    assert_eq!((g["stop"]["index"].as_u64(), g["stop"]["reason"].as_str()), (Some(1), Some("illegal")));
+    assert_eq!(g["leftover_text"], "Qh1 lost");
+    assert!(r["movetext"].as_str().unwrap().starts_with("18. Nd5 Qxe1 (18... Qd8) 19. Nxe7+"));
+
+    // Comment mode writes the items as text.
+    let r = pgn_edit(a, true, json!([{ "op": "graft", "at": "path:0", "mode": "comment", "items": [item_move("18...Qd8"), item_move("19.Bxf6")] }]));
+    assert_eq!(r["movetext"], "18. Nd5 {18...Qd8 19.Bxf6} 18... Qxe1 19. Nxe7+ Kh7 20. Raxe1");
+
+    // comment, comment_before and nag on the variation's first move, then the structure ops.
+    let ops = json!([
+        { "op": "graft", "at": "main:35", "items": variation_items() },
+        { "op": "comment", "at": "path:0.1", "text": "solid" },
+        { "op": "comment_before", "at": "path:0.1", "text": "the try" },
+        { "op": "nag", "at": "path:0.1", "code": 5 },
+    ]);
+    let r = pgn_edit(a, true, ops.clone());
+    assert!(r["movetext"].as_str().unwrap().starts_with("18. Nd5 Qxe1 ({the try} 18... Qd8 $5 {solid} 19. Bxf6"), "{}", r["movetext"]);
+    assert_eq!(r["applied"], 4);
+    assert_eq!(r["report"][3]["path"], "path:0.1");
+
+    let with = |extra: Value| {
+        let mut all = ops.as_array().unwrap().clone();
+        all.extend(extra.as_array().unwrap().iter().cloned());
+        Value::Array(all)
+    };
+    // The comment before a first reply is written with the comment before it (PGN has no other
+    // place for it), and stays on the move.
+    let r = pgn_edit(a, true, with(json!([{ "op": "promote_one", "at": "path:0.1" }])));
+    assert!(
+        r["movetext"].as_str().unwrap().starts_with("18. Nd5 {the try} 18... Qd8 $5 {solid} (18... Qxe1 19. Nxe7+ Kh7 20. Raxe1) 19. Bxf6"),
+        "{}",
+        r["movetext"]
+    );
+    let r = pgn_edit(a, true, with(json!([{ "op": "promote_one", "at": "path:0.1" }, { "op": "demote", "at": "path:0.0" }])));
+    assert!(r["movetext"].as_str().unwrap().starts_with("18. Nd5 Qxe1 ({the try} 18... Qd8 $5 {solid}"), "{}", r["movetext"]);
+    // make_main: 20. Nxf6+ (the variation's variation) becomes the main line.
+    let r = pgn_edit(a, true, with(json!([{ "op": "make_main", "at": "path:0.1.0.0.1" }])));
+    assert!(r["movetext"].as_str().unwrap().starts_with("18. Nd5 {the try} 18... Qd8 $5 {solid} (18... Qxe1"), "{}", r["movetext"]);
+    assert!(r["movetext"].as_str().unwrap().contains("20. Nxf6+ (20. fxg6 fxg6 21. Qg3 Kh7 22. e5) 20... exf6 21. Bxc4 Rxc4"), "{}", r["movetext"]);
+    assert_eq!(r["report"][4]["path"], "path:0.0.0.0.0");
+    let r = pgn_edit(a, true, with(json!([{ "op": "delete_variation", "at": "path:0.1" }])));
+    assert_eq!(r["movetext"], MAIN);
+    let r = pgn_edit(a, true, json!([{ "op": "cut", "at": "main:36" }]));
+    assert_eq!(r["movetext"], "18. Nd5 Qxe1");
+    assert_eq!(r["current_path"], "path:0.0");
+
+    // A PGN move that cannot be played is said, not dropped silently.
+    let r = ok(a, "chess_pgn_edit", json!({ "pgn": "1. e4 e5 2. Ke3 Nc6 *", "ops": [] }));
+    assert_eq!((r["movetext"].as_str(), r["pgn_stopped"].as_str()), (Some("1. e4 e5"), Some("Ke3")));
+    assert_eq!(pgn_edit(a, false, json!([]))["pgn_stopped"], Value::Null);
+
+    // play follows a move already there, and takes UCI too.
+    let r =
+        pgn_edit(a, true, json!([{ "op": "play", "at": "path:0", "moves": ["Qxe1", "d5e7"] }, { "op": "play", "at": "path:0", "moves": ["a5d8"] }]));
+    assert_eq!(r["movetext"], "18. Nd5 Qxe1 (18... Qd8) 19. Nxe7+ Kh7 20. Raxe1");
+}
+
+/// A refused operation says why, changes nothing and stops the list; arguments that are wrong as
+/// a whole are refused before anything runs.
+#[test]
+fn chess_pgn_edit_refuses_what_the_game_does_not_allow() {
+    let (_base, root) = workdir("pgn-edit-refusals");
+    let mut auto = Automation::new().with_root(&root).unwrap();
+    let a = &mut auto;
+    let refused = [
+        (json!({ "op": "play", "at": "main:99", "moves": ["e4"] }), "no move there"),
+        (json!({ "op": "play", "at": "path:7", "moves": ["e4"] }), "no such move"),
+        (json!({ "op": "play", "at": "path:0.x", "moves": ["e4"] }), "reply indices"),
+        (json!({ "op": "play", "at": "18.Nd5", "moves": ["e4"] }), "an address is"),
+        (json!({ "op": "play", "moves": ["e4"] }), "at is missing"),
+        (json!({ "op": "play", "at": "path:0", "moves": ["Qd8", "Qh1"] }), "Qh1 cannot be played"),
+        (json!({ "op": "comment", "at": "path:0", "text": "x".repeat(4097) }), "longer than"),
+        (json!({ "op": "comment_before", "at": "path:", "text": "x" }), "the start"),
+        (json!({ "op": "nag", "at": "path:0", "code": 0 }), "cannot be put"),
+        (json!({ "op": "nag", "at": "path:", "code": 1 }), "cannot be put"),
+        (json!({ "op": "nag", "at": "path:0", "code": "!" }), "PGN code"),
+        (json!({ "op": "promote_one", "at": "path:0.0" }), "already continues its line"),
+        (json!({ "op": "demote", "at": "path:0.0" }), "no variation to take its place"),
+        (json!({ "op": "delete_variation", "at": "path:0" }), "already continues its line"),
+        (json!({ "op": "promote_one", "at": "path:" }), "no such move"),
+        (json!({ "op": "graft", "at": "path:0", "mode": "sideways", "items": [] }), "follow, line or comment"),
+        (json!({ "op": "graft", "at": "path:0", "items": [{ "item": "move", "san": "Zz9" }] }), "items[0]"),
+        (json!({ "op": "graft", "at": "path:0", "items": [{ "item": "nag" }] }), "items[0]"),
+        (json!({ "op": "graft", "at": "path:0", "items": [{ "item": "jump" }] }), "unknown item"),
+        (json!({ "op": "rotate", "at": "path:0" }), "unknown op"),
+        (json!("cut"), "an object"),
+    ];
+    for (op, needle) in refused {
+        let r = pgn_edit(a, true, json!([op, { "op": "cut", "at": "path:" }]));
+        assert_eq!(r["movetext"], MAIN, "{op} changed the game");
+        assert_eq!(r["applied"], 0, "{op}");
+        let report = r["report"].as_array().unwrap();
+        assert_eq!(report.len(), 1, "{op}: the list stops at the refusal");
+        assert_eq!(report[0]["ok"], false);
+        assert!(report[0]["error"].as_str().unwrap().contains(needle), "{op}: {}", report[0]["error"]);
+    }
+    // Moves already played by a refused play are taken back too.
+    let r = pgn_edit(a, true, json!([{ "op": "play", "at": "path:0.0.0.0.0", "moves": ["Rf8", "Qh1"] }]));
+    assert_eq!(r["movetext"], MAIN);
+
+    let too_many: Vec<Value> = (0..2001).map(|_| json!({ "op": "cut", "at": "path:" })).collect();
+    let too_long: Vec<Value> = (0..11).map(|_| json!({ "op": "play", "at": "path:", "moves": vec!["Nd5"; 2000] })).collect();
+    for bad in [
+        json!({ "fen": SCENARIO, "pgn": "", "ops": [] }),
+        json!({ "fen": "x", "ops": [] }),
+        json!({ "ops": "cut" }),
+        json!({}),
+        json!({ "ops": too_many }),
+        json!({ "fen": SCENARIO, "ops": too_long }),
+    ] {
+        assert!(matches!(a.call("chess_pgn_edit", &bad), Err(ToolError::InvalidArgs(_))), "{bad} is refused");
+    }
+}
+
+/// chess_pgn_edit works only on the game in its arguments: it is read-only and no argument, at
+/// any depth of its schema, is a path (so it needs no --root confinement).
+#[test]
+fn chess_pgn_edit_takes_no_path() {
+    let def = pdfcraft_automation::tools().into_iter().find(|t| t.name == "chess_pgn_edit").unwrap();
+    assert!(def.read_only && !def.destructive);
+    let mut names = Vec::new();
+    let mut stack = vec![&def.input_schema];
+    while let Some(schema) = stack.pop() {
+        if let Some(props) = schema["properties"].as_object() {
+            for (name, spec) in props {
+                names.push(name.clone());
+                stack.push(spec);
+            }
+        }
+        if schema["items"].is_object() {
+            stack.push(&schema["items"]);
+        }
+    }
+    assert!(names.contains(&"san".to_owned()), "the nested properties are walked: {names:?}");
+    let pathish = ["path", "paths", "folder", "out_dir", "file", "out", "image", "dir", "models_dir", "cipher_in", "cipher_out", "pgn_out"];
+    for name in &names {
+        assert!(!pathish.contains(&name.as_str()), "{name} looks like a path");
+        assert!(!name.contains("path") && !name.contains("file") && !name.contains("dir"), "{name} looks like a path");
+    }
+}
