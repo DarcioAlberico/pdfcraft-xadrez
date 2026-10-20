@@ -2631,3 +2631,25 @@ animation effects	Off	Өшірулі
 	Only the first {n} were read.	Тек алғашқы {n} партия оқылды.
 	the file is too large	файл тым үлкен
 	no game could be read	бірде-бір партия оқылмады
+# Chess ▸ PGN toolbar: T5a, the tool rail and its keys (the last three name undo steps: each follows "Undo" or "Redo").
+	Navigate	Шарлау
+	Structure	Құрылым
+	Promote one level	Бір деңгейге көтеру
+	Demote	Төмендету
+	Delete variation	Нұсқаны жою
+	Cut after this move	Осы жүрістен кейін кесу
+	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	«{group}» тобының басқа құралдары: оң жақ батырмамен басу, басып тұру немесе Enter. {key} олардың арасында ауыстырады.
+	This move is on the main line already.	Бұл жүріс негізгі нұсқада тұр.
+	There are no moves after this one.	Бұл жүрістен кейін жүрістер жоқ.
+	Not done: variations would nest too deep.	Орындалмады: нұсқалар тым терең кірістіріліп кетер еді.
+	Not demoted: this move is a variation; only the line that continues a move is demoted.	Төмендетілмеді: бұл жүріс — нұсқа; тек жүрісті жалғастыратын желі төмендетіледі.
+	Not demoted: there is no variation to take its place.	Төмендетілмеді: оның орнын басатын нұсқа жоқ.
+	Not promoted: there is no variation on the way to this move.	Көтерілмеді: осы жүріске дейінгі жолда нұсқа жоқ.
+	Not promoted: this line already continues its move.	Көтерілмеді: бұл желі өз жүрісін әлдеқашан жалғастырады.
+	Not deleted: there is no variation on the way to this move.	Жойылмады: осы жүріске дейінгі жолда нұсқа жоқ.
+	Not deleted: this is the main line here, not a variation.	Жойылмады: мұнда бұл — негізгі нұсқа, қосалқы нұсқа емес.
+	Not done: there is no such move.	Орындалмады: мұндай жүріс жоқ.
+	Acts on {move}	Әсер ететін жүріс: {move}
+	Promote a variation	нұсқаны көтеру
+	Demote a line	желіні төмендету
+	Delete a variation	нұсқаны өшіру

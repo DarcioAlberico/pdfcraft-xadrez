@@ -2634,3 +2634,25 @@ animation effects	Off	Aus
 	Only the first {n} were read.	Nur die ersten {n} wurden gelesen.
 	the file is too large	die Datei ist zu groß
 	no game could be read	keine Partie konnte gelesen werden
+# Chess ▸ PGN toolbar: T5a, the tool rail and its keys (the last three name undo steps: each follows "Undo" or "Redo").
+	Navigate	Navigieren
+	Structure	Struktur
+	Promote one level	Eine Ebene hochstufen
+	Demote	Herabstufen
+	Delete variation	Variante löschen
+	Cut after this move	Nach diesem Zug abschneiden
+	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	Weitere Werkzeuge der Gruppe {group}: Rechtsklick, gedrückt halten oder Eingabe drücken. {key} wechselt zwischen ihnen.
+	This move is on the main line already.	Dieser Zug ist bereits in der Hauptvariante.
+	There are no moves after this one.	Nach diesem Zug folgen keine Züge.
+	Not done: variations would nest too deep.	Nicht ausgeführt: Die Varianten wären zu tief verschachtelt.
+	Not demoted: this move is a variation; only the line that continues a move is demoted.	Nicht herabgestuft: Dieser Zug ist eine Variante; herabgestuft wird nur die Fortsetzung eines Zuges.
+	Not demoted: there is no variation to take its place.	Nicht herabgestuft: Es gibt keine Variante, die ihren Platz einnehmen kann.
+	Not promoted: there is no variation on the way to this move.	Nicht hochgestuft: Auf dem Weg zu diesem Zug gibt es keine Variante.
+	Not promoted: this line already continues its move.	Nicht hochgestuft: Diese Linie setzt ihren Zug bereits fort.
+	Not deleted: there is no variation on the way to this move.	Nicht gelöscht: Auf dem Weg zu diesem Zug gibt es keine Variante.
+	Not deleted: this is the main line here, not a variation.	Nicht gelöscht: Hier ist das die Hauptvariante, keine Nebenvariante.
+	Not done: there is no such move.	Nicht ausgeführt: Diesen Zug gibt es nicht.
+	Acts on {move}	Wirkt auf {move}
+	Promote a variation	Variante hochstufen
+	Demote a line	Linie herabstufen
+	Delete a variation	Variante entfernen

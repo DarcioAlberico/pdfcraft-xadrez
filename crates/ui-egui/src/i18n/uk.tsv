@@ -2655,3 +2655,25 @@ animation effects	Off	Вимкнено
 	Only the first {n} were read.	Прочитано лише перші {n}.
 	the file is too large	файл завеликий
 	no game could be read	не вдалося прочитати жодної партії
+# Chess ▸ PGN toolbar: T5a, the tool rail and its keys (the last three name undo steps: each follows "Undo" or "Redo").
+	Navigate	Навігація
+	Structure	Структура
+	Promote one level	Підвищити на рівень
+	Demote	Понизити
+	Delete variation	Видалити варіант
+	Cut after this move	Обрізати після цього ходу
+	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	Інші інструменти групи «{group}»: клацання правою кнопкою, довге натискання або Enter. {key} перемикає між ними.
+	This move is on the main line already.	Цей хід уже в головному варіанті.
+	There are no moves after this one.	Після цього ходу ходів немає.
+	Not done: variations would nest too deep.	Не виконано: варіанти були б вкладені надто глибоко.
+	Not demoted: this move is a variation; only the line that continues a move is demoted.	Не понижено: цей хід — варіант; понизити можна лише продовження ходу.
+	Not demoted: there is no variation to take its place.	Не понижено: немає варіанта, що посів би його місце.
+	Not promoted: there is no variation on the way to this move.	Не підвищено: на шляху до цього ходу немає варіантів.
+	Not promoted: this line already continues its move.	Не підвищено: ця лінія вже продовжує свій хід.
+	Not deleted: there is no variation on the way to this move.	Не видалено: на шляху до цього ходу немає варіантів.
+	Not deleted: this is the main line here, not a variation.	Не видалено: тут це головний варіант, а не побічний.
+	Not done: there is no such move.	Не виконано: такого ходу немає.
+	Acts on {move}	Діє на {move}
+	Promote a variation	підвищення варіанта
+	Demote a line	пониження лінії
+	Delete a variation	видалення варіанта

@@ -2886,3 +2886,25 @@ chess side	Black	Juodieji
 	Only the first {n} were read.	Perskaitytos tik pirmosios {n}.
 	the file is too large	failas per didelis
 	no game could be read	nepavyko perskaityti nė vienos partijos
+# Chess ▸ PGN toolbar: T5a, the tool rail and its keys (the last three name undo steps: each follows "Undo" or "Redo").
+	Navigate	Naršymas
+	Structure	Struktūra
+	Promote one level	Pakelti vienu lygiu
+	Demote	Nuleisti
+	Delete variation	Ištrinti variantą
+	Cut after this move	Nukirpti po šio ėjimo
+	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	Daugiau grupės „{group}“ įrankių: dešinysis spustelėjimas, ilgas paspaudimas arba Enter. {key} perjungia juos.
+	This move is on the main line already.	Šis ėjimas jau yra pagrindiniame variante.
+	There are no moves after this one.	Po šio ėjimo ėjimų nėra.
+	Not done: variations would nest too deep.	Neatlikta: variantai būtų įdėti per giliai.
+	Not demoted: this move is a variation; only the line that continues a move is demoted.	Nenuleista: šis ėjimas yra variantas; nuleidžiama tik ėjimą tęsianti linija.
+	Not demoted: there is no variation to take its place.	Nenuleista: nėra varianto, kuris užimtų jos vietą.
+	Not promoted: there is no variation on the way to this move.	Nepakelta: kelyje iki šio ėjimo nėra varianto.
+	Not promoted: this line already continues its move.	Nepakelta: ši linija jau tęsia savo ėjimą.
+	Not deleted: there is no variation on the way to this move.	Neištrinta: kelyje iki šio ėjimo nėra varianto.
+	Not deleted: this is the main line here, not a variation.	Neištrinta: čia tai pagrindinis variantas, o ne šalutinis.
+	Not done: there is no such move.	Neatlikta: tokio ėjimo nėra.
+	Acts on {move}	Taikoma {move}
+	Promote a variation	varianto pakėlimą
+	Demote a line	linijos nuleidimą
+	Delete a variation	varianto trynimą

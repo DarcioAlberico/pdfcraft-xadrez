@@ -39,6 +39,7 @@ mod chess_editor;
 mod chess_history;
 mod chess_study_ui;
 mod chess_text_ui;
+mod chess_tools;
 mod chess_ui;
 mod chrome;
 mod combine_grid;
@@ -2968,6 +2969,10 @@ impl eframe::App for PdfCraftApp {
     fn raw_input_hook(&mut self, ctx: &egui::Context, raw: &mut egui::RawInput) {
         // Before egui reads this frame's wheel input.
         self.scroll_speed.apply(ctx, raw);
+        // The chess key scope (§4.2): the chess panel's keys leave the input before egui and any
+        // shortcut of the app (Delete on pages or a selected annotation, the arrows) can see them.
+        let blocked = self.modal_open() || self.palette_open;
+        chess_tools::take_scope_keys(&mut self.chess, ctx, raw, blocked);
         if raw.hovered_files.is_empty() && raw.dropped_files.is_empty() {
             return;
         }

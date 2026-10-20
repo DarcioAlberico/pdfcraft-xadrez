@@ -2583,3 +2583,25 @@ animation effects	Off	關
 	Only the first {n} were read.	只讀取了前 {n} 局。
 	the file is too large	檔案太大
 	no game could be read	無法讀取任何對局
+# Chess ▸ PGN toolbar: T5a, the tool rail and its keys (the last three name undo steps: each follows "Undo" or "Redo").
+	Navigate	導覽
+	Structure	結構
+	Promote one level	提升一級
+	Demote	降級
+	Delete variation	刪除變化
+	Cut after this move	剪除此著法之後
+	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	更多{group}工具：按右鍵、長按或按 Enter。{key} 在它們之間切換。
+	This move is on the main line already.	此著法已在主線上。
+	There are no moves after this one.	此著法之後沒有著法。
+	Not done: variations would nest too deep.	未執行：變化會巢狀過深。
+	Not demoted: this move is a variation; only the line that continues a move is demoted.	未降級：此著法是變化；只有延續某著法的路線才能降級。
+	Not demoted: there is no variation to take its place.	未降級：沒有可以取代它的變化。
+	Not promoted: there is no variation on the way to this move.	未提升：到此著法的路徑上沒有變化。
+	Not promoted: this line already continues its move.	未提升：此路線已經是其著法的延續。
+	Not deleted: there is no variation on the way to this move.	未刪除：到此著法的路徑上沒有變化。
+	Not deleted: this is the main line here, not a variation.	未刪除：這裡是主線，不是變化。
+	Not done: there is no such move.	未執行：沒有該著法。
+	Acts on {move}	作用於 {move}
+	Promote a variation	提升變化
+	Demote a line	降級路線
+	Delete a variation	刪除變化

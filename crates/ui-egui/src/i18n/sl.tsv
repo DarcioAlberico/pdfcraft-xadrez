@@ -2638,3 +2638,25 @@ animation effects	Off	Izklopljeni
 	Only the first {n} were read.	Prebranih je bilo le prvih {n}.
 	the file is too large	datoteka je prevelika
 	no game could be read	nobene partije ni bilo mogoče prebrati
+# Chess ▸ PGN toolbar: T5a, the tool rail and its keys (the last three name undo steps: each follows "Undo" or "Redo").
+	Navigate	Krmarjenje
+	Structure	Struktura
+	Promote one level	Povišaj za raven
+	Demote	Znižaj
+	Delete variation	Izbriši varianto
+	Cut after this move	Odreži po tej potezi
+	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	Več orodij skupine {group}: desni klik, pridržanje ali tipka Enter. {key} preklaplja med njimi.
+	This move is on the main line already.	Ta poteza je že v glavni varianti.
+	There are no moves after this one.	Po tej potezi ni potez.
+	Not done: variations would nest too deep.	Ni izvedeno: variante bi bile pregloboko ugnezdene.
+	Not demoted: this move is a variation; only the line that continues a move is demoted.	Ni znižano: ta poteza je varianta; zniža se le linija, ki nadaljuje potezo.
+	Not demoted: there is no variation to take its place.	Ni znižano: ni variante, ki bi prevzela njeno mesto.
+	Not promoted: there is no variation on the way to this move.	Ni povišano: na poti do te poteze ni variante.
+	Not promoted: this line already continues its move.	Ni povišano: ta linija že nadaljuje svojo potezo.
+	Not deleted: there is no variation on the way to this move.	Ni izbrisano: na poti do te poteze ni variante.
+	Not deleted: this is the main line here, not a variation.	Ni izbrisano: tu je to glavna varianta, ne stranska.
+	Not done: there is no such move.	Ni izvedeno: take poteze ni.
+	Acts on {move}	Velja za {move}
+	Promote a variation	povišanje variante
+	Demote a line	znižanje linije
+	Delete a variation	brisanje variante

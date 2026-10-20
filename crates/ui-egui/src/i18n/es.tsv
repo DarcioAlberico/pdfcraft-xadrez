@@ -2774,3 +2774,25 @@ animation effects	Off	Desactivados
 	Only the first {n} were read.	Solo se leyeron las primeras {n}.
 	the file is too large	el archivo es demasiado grande
 	no game could be read	no se pudo leer ninguna partida
+# Chess ▸ PGN toolbar: T5a, the tool rail and its keys (the last three name undo steps: each follows "Undo" or "Redo").
+	Navigate	Navegar
+	Structure	Estructura
+	Promote one level	Promover un nivel
+	Demote	Relegar
+	Delete variation	Borrar variante
+	Cut after this move	Cortar después de esta jugada
+	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	Más herramientas de {group}: clic derecho, mantener pulsado o pulsar Intro. {key} alterna entre ellas.
+	This move is on the main line already.	Esta jugada ya está en la línea principal.
+	There are no moves after this one.	No hay jugadas después de esta.
+	Not done: variations would nest too deep.	No se hizo: las variantes quedarían anidadas demasiado hondo.
+	Not demoted: this move is a variation; only the line that continues a move is demoted.	No se relegó: esta jugada es una variante; solo se relega la línea que continúa una jugada.
+	Not demoted: there is no variation to take its place.	No se relegó: no hay ninguna variante que ocupe su lugar.
+	Not promoted: there is no variation on the way to this move.	No se promovió: no hay ninguna variante en el camino hasta esta jugada.
+	Not promoted: this line already continues its move.	No se promovió: esta línea ya continúa su jugada.
+	Not deleted: there is no variation on the way to this move.	No se borró: no hay ninguna variante en el camino hasta esta jugada.
+	Not deleted: this is the main line here, not a variation.	No se borró: aquí esta es la línea principal, no una variante.
+	Not done: there is no such move.	No se hizo: esa jugada no existe.
+	Acts on {move}	Actúa sobre {move}
+	Promote a variation	promoción de variante
+	Demote a line	relegación de línea
+	Delete a variation	borrado de variante

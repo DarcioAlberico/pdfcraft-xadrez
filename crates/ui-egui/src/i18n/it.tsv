@@ -2845,3 +2845,25 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Only the first {n} were read.	Sono state lette solo le prime {n}.
 	the file is too large	il file è troppo grande
 	no game could be read	nessuna partita è leggibile
+# Chess ▸ PGN toolbar: T5a, the tool rail and its keys (the last three name undo steps: each follows "Undo" or "Redo").
+	Navigate	Naviga
+	Structure	Struttura
+	Promote one level	Promuovi di un livello
+	Demote	Retrocedi
+	Delete variation	Elimina variante
+	Cut after this move	Taglia dopo questa mossa
+	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	Altri strumenti di {group}: clic destro, tieni premuto o premi Invio. {key} passa dall'uno all'altro.
+	This move is on the main line already.	Questa mossa è già sulla linea principale.
+	There are no moves after this one.	Non ci sono mosse dopo questa.
+	Not done: variations would nest too deep.	Non eseguito: le varianti sarebbero annidate troppo in profondità.
+	Not demoted: this move is a variation; only the line that continues a move is demoted.	Non retrocessa: questa mossa è una variante; si retrocede solo la linea che continua una mossa.
+	Not demoted: there is no variation to take its place.	Non retrocessa: non c'è una variante che ne prenda il posto.
+	Not promoted: there is no variation on the way to this move.	Non promossa: non c'è alcuna variante lungo il percorso fino a questa mossa.
+	Not promoted: this line already continues its move.	Non promossa: questa linea continua già la sua mossa.
+	Not deleted: there is no variation on the way to this move.	Non eliminata: non c'è alcuna variante lungo il percorso fino a questa mossa.
+	Not deleted: this is the main line here, not a variation.	Non eliminata: qui questa è la linea principale, non una variante.
+	Not done: there is no such move.	Non eseguito: questa mossa non esiste.
+	Acts on {move}	Agisce su {move}
+	Promote a variation	promozione della variante
+	Demote a line	retrocessione della linea
+	Delete a variation	eliminazione della variante
