@@ -810,6 +810,9 @@ impl Game {
         let mut stack: Vec<(NodeId, Option<NodeId>)> = Vec::new();
         // The nesting at which a line was cut by an illegal move: skip until it closes.
         let mut dead: Option<usize> = None;
+        // A comment that opens a variation (`({an idea} 1. d4)`), before its first move: comments
+        // are kept after a move, so it waits for that move rather than going to the line's.
+        let mut pending: Option<String> = None;
         let mut started = false;
         for t in lexed.into_iter().skip(tags.len()) {
             match t {
@@ -834,6 +837,12 @@ impl Game {
                     last = None;
                 }
                 Lexed::Close => {
+                    // A variation with a comment and no move: the comment goes where it used to.
+                    if let Some(text) = pending.take()
+                        && dead.is_none()
+                    {
+                        append_comment(&mut game, cursor, text);
+                    }
                     if let Some((c, l)) = stack.pop() {
                         (cursor, last) = (c, l);
                     }
@@ -842,13 +851,17 @@ impl Game {
                     }
                 }
                 Lexed::Comment(text) => {
-                    if dead.is_none() {
-                        let node = last.unwrap_or(cursor);
-                        let joined = match game.comment(node) {
-                            "" => text,
-                            before => format!("{before} {text}"),
-                        };
-                        game.set_comment(node, &joined);
+                    if dead.is_some() {
+                        continue;
+                    }
+                    match last {
+                        None if !stack.is_empty() => {
+                            pending = Some(match pending.take() {
+                                Some(before) => format!("{before} {text}"),
+                                None => text,
+                            });
+                        }
+                        _ => append_comment(&mut game, last.unwrap_or(cursor), text),
                     }
                 }
                 Lexed::Nag(code) => {
@@ -875,9 +888,13 @@ impl Game {
                                 game.toggle_nag(cursor, code);
                             }
                         }
+                        if let Some(text) = pending.take() {
+                            append_comment(&mut game, cursor, text);
+                        }
                     } else {
                         stopped.get_or_insert(word);
                         dead = Some(stack.len());
+                        pending = None;
                     }
                 }
             }
@@ -886,6 +903,15 @@ impl Game {
         while game.forward() {}
         Ok((game, stopped))
     }
+}
+
+/// Add `text` to the comment after `node`, after what it already says.
+fn append_comment(game: &mut Game, node: NodeId, text: String) {
+    let joined = match game.comment(node) {
+        "" => text,
+        before => format!("{before} {text}"),
+    };
+    game.set_comment(node, &joined);
 }
 
 /// Never called: node 0 always exists. A node to return instead of panicking.
@@ -1380,6 +1406,19 @@ mod tests {
             }
         }
         false
+    }
+
+    #[test]
+    fn a_comment_opening_a_variation_goes_with_its_first_move() {
+        let (g, stopped) = Game::from_pgn("{Intro} 1. e4 ({An idea} 1. d4 d5) 1... e5 ({Sharper} {still} 1... c5) *").unwrap();
+        assert_eq!(stopped, None);
+        // The game's own comment stays before the first move; nothing lands on e4 or e5.
+        assert_eq!(g.comment(0), "Intro");
+        let text = g.movetext();
+        assert!(text.contains("1. e4 (1. d4 {An idea} 1... d5) 1... e5 (1... c5 {Sharper still})"), "{text}");
+        // What it writes reads back the same.
+        let (back, _) = Game::from_pgn(&g.pgn()).unwrap();
+        assert_eq!(back.movetext(), text);
     }
 
     #[test]
