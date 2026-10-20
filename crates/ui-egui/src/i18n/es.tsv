@@ -2704,3 +2704,26 @@ animation effects	Off	Desactivados
 	Result	Resultado
 	Round	Ronda
 	Site	Lugar
+# Chess ▸ Study board: set-up, drawings and engine analysis.
+	Study board	Tablero de estudio
+	Set up a position	Preparar posición
+	Put pieces on an empty or starting board, then play from there.	Coloca piezas en un tablero vacío o en la posición inicial y juega desde ahí.
+	Click a square to put the chosen piece there; click it again, or right-click it, to empty it.	Haz clic en una casilla para poner ahí la pieza elegida; vuelve a hacer clic, o haz clic derecho, para vaciarla.
+	Empty board	Tablero vacío
+	Play from this position, as a new game.	Jugar desde esta posición, como una partida nueva.
+	Clear drawings	Borrar dibujos
+	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Haz clic derecho en una casilla para rodearla con un círculo, o arrastra con el botón derecho para dibujar una flecha (Mayús roja, Alt azul, Ctrl amarilla).
+	Engine analysis	Análisis del motor
+	Lines:	Líneas:
+	Choose engine…	Elegir motor…
+	Pick a UCI chess engine program, such as Stockfish.	Elige un programa de motor de ajedrez UCI, como Stockfish.
+	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	No se encontró ningún motor de ajedrez. Define PDFCRAFT_CHESS_ENGINE con un motor UCI como Stockfish, pon uno en una carpeta engine junto a PdfCraft o elige uno.
+	The engine couldn't be started: {e}	No se pudo iniciar el motor: {e}
+	That program didn't answer as a UCI chess engine.	Ese programa no respondió como un motor de ajedrez UCI.
+	The engine stopped.	El motor se detuvo.
+	Starting the engine…	Iniciando el motor…
+	depth {n}	profundidad {n}
+	No moves to analyse in this position.	No hay jugadas que analizar en esta posición.
+	Play the line up to this move	Jugar la línea hasta esta jugada
+	Engine analysis needs the desktop app.	El análisis del motor requiere la aplicación de escritorio.
+	Programs	Programas

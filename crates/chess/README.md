@@ -13,5 +13,7 @@ Planned contents (blueprint `docs/chess/blueprint.md`):
 - **Recognition post-processing** (S3). `recognize` turns a 64×13 matrix of per-square probabilities into a legal reading: constrained decoding, orientation and side to move, each with the rule that decided it.
 - **Drawing** (S4). `draw` turns a placement and a piece set into resolution-free shapes, and `svg` writes them as SVG. These are the single source for replaced diagrams in the PDF and for diagrams in HTML, EPUB, DOCX, RTF and Markdown export.
 - **Piece sets** come from the caller, already as shapes. This crate never reads font or image files.
+- **Games** (analysis board). `game` holds a game as a tree of moves with variations, comments, glyphs and tags, read from and written to PGN.
+- **Engine protocol** (study board). `uci` reads the lines a UCI engine sends (`info`, `bestmove`, `id name`), bounded and lenient, turns its moves into SAN on their position and gives the evaluation bar its share. It starts no process: the engine crate runs the engine.
 
 The only external dependency is `cozy-chess` (MIT), with the x86-only `pext` feature off.

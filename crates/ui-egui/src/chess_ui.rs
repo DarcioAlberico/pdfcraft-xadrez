@@ -54,8 +54,10 @@ pub struct ChessState {
     pub review_only: bool,
     /// The pieces the editor draws with, found once.
     pub pieces: Option<Arc<pdfcraft_engine::chess::pdfcraft_chess::draw::PieceSet>>,
-    /// The panel's tab: the diagrams, or the page's recognised text (S16).
+    /// The panel's tab: the diagrams, the page's recognised text (S16), or the study board.
     pub tab: crate::chess_text_ui::ChessTab,
+    /// The study board tab: set-up, engine analysis (the board itself is `board`).
+    pub study: crate::chess_study_ui::StudyState,
     /// The page last read as text.
     pub text: Option<crate::chess_text_ui::PageText>,
     /// A page being read, or the book being exported, off the interface thread.
@@ -182,6 +184,8 @@ pub enum PanelAction {
     OpenLichess(String),
     Editor(crate::chess_editor::EditorAction),
     Text(crate::chess_text_ui::TextAction),
+    /// What the study board tab asked for.
+    Study(crate::chess_study_ui::StudyAction),
 }
 
 /// One diagram's state: its label and colour.
@@ -263,8 +267,15 @@ pub(crate) fn panel(
     ui.horizontal(|ui| {
         ui.selectable_value(&mut state.tab, ChessTab::Diagrams, tl!("Diagrams"));
         ui.selectable_value(&mut state.tab, ChessTab::Text, tl!("Text"));
+        ui.selectable_value(&mut state.tab, ChessTab::Study, tl!("Study board"));
     });
     ui.add_space(4.0);
+    if state.tab == ChessTab::Study {
+        let pieces = crate::chess_editor::piece_set(&mut state.pieces);
+        return crate::chess_study_ui::study_tab(ui, t, &mut state.study, &mut state.board, &pieces).map(PanelAction::Study);
+    }
+    // The engine rests while its tab is not shown.
+    state.study.pause();
     if state.tab == ChessTab::Text {
         let busy = state.job.as_ref().filter(|j| j.doc == id).map(crate::chess_text_ui::ChessJob::label);
         let origin = state.origin.filter(|(d, _)| *d == id).map(|(_, o)| o).unwrap_or_default();
@@ -607,7 +618,9 @@ impl PdfCraftApp {
             PanelAction::Select(page, index) => self.select_chess_diagram(page, index, true),
             PanelAction::OpenBoard(page, index) => {
                 self.select_chess_diagram(page, index, false);
-                self.open_chess_board(page, index);
+                if self.load_chess_board(page, index) {
+                    self.chess.tab = crate::chess_text_ui::ChessTab::Study;
+                }
             }
             PanelAction::ShowBoard => self.show_chess_board(),
             PanelAction::CopyFen(fen) => {
@@ -624,6 +637,25 @@ impl PdfCraftApp {
             PanelAction::OpenLichess(url) => self.open_url(&url),
             PanelAction::Editor(a) => self.chess_editor_action(a),
             PanelAction::Text(a) => self.chess_text_action(a),
+            PanelAction::Study(crate::chess_study_ui::StudyAction::Board(a)) => self.chess_board_action(a),
+            PanelAction::Study(crate::chess_study_ui::StudyAction::ChooseEngine) => self.choose_chess_engine(),
+        }
+    }
+
+    /// Chess ▸ Study board ▸ Choose engine: pick the UCI engine program for this session (the
+    /// picker answers on a later frame; `pick_override` stands in for it in tests).
+    pub fn choose_chess_engine(&mut self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let mut dialog = rfd::AsyncFileDialog::new().set_title(tl!("Choose engine…").to_string());
+            if cfg!(windows) {
+                dialog = dialog.add_filter(tl!("Programs"), &["exe"]);
+            }
+            self.ask_one(crate::pickers::Ask::File(dialog), None, |app, path| {
+                app.chess.study.engine_path = Some(path);
+                app.chess.study.analysis = true;
+                app.chess.study.restart();
+            });
         }
     }
 
@@ -653,7 +685,8 @@ impl PdfCraftApp {
                     let source = crate::chess_board_ui::Source { doc: ed.doc, page: ed.page, index: ed.index };
                     let (fen, flipped) = (ed.fen(), ed.flipped);
                     self.chess.board.load_fen(&fen, flipped, Some(source));
-                    self.show_chess_board();
+                    self.chess.study.setup = None;
+                    self.chess.tab = crate::chess_text_ui::ChessTab::Study;
                 }
             }
             EditorAction::Replace => self.replace_chess_diagram(),
@@ -706,10 +739,18 @@ impl PdfCraftApp {
         }
     }
 
-    /// Put diagram `index` of `page` on the chess board and show it: the position being edited
-    /// when the editor has that diagram, else the position read.
+    /// Put diagram `index` of `page` on the chess board and show the Board panel.
     pub fn open_chess_board(&mut self, page: usize, index: usize) {
-        let Some((_, id)) = self.active_ids() else { return };
+        if self.load_chess_board(page, index) {
+            self.show_chess_board();
+        }
+    }
+
+    /// Put diagram `index` of `page` on the chess board: the position being edited when the
+    /// editor has that diagram, else the position read. Whether there was one (else the user is
+    /// told why not).
+    pub fn load_chess_board(&mut self, page: usize, index: usize) -> bool {
+        let Some((_, id)) = self.active_ids() else { return false };
         let source = crate::chess_board_ui::Source { doc: id, page, index };
         let edited = self.chess.editor.as_ref().filter(|e| (e.doc, e.page, e.index) == (id, page, index)).map(|e| (e.fen(), e.flipped));
         let read = || {
@@ -720,10 +761,11 @@ impl PdfCraftApp {
         };
         let Some((fen, flipped)) = edited.or_else(read) else {
             self.notify(tl!("This diagram hasn't been read: scan its page first, or set its position in the editor.").to_string());
-            return;
+            return false;
         };
         self.chess.board.load_fen(&fen, flipped, Some(source));
-        self.show_chess_board();
+        self.chess.study.setup = None;
+        true
     }
 
     /// Open the chess board panel and bring it to the front. The docking workspace does it when it

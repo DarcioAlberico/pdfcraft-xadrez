@@ -2563,3 +2563,26 @@ animation effects	Off	Désactivés
 	Result	Résultat
 	Round	Ronde
 	Site	Lieu
+# Chess ▸ Study board: set-up, drawings and engine analysis.
+	Study board	Échiquier d'étude
+	Set up a position	Composer une position
+	Put pieces on an empty or starting board, then play from there.	Placez des pièces sur un échiquier vide ou dans la position initiale, puis jouez à partir de là.
+	Click a square to put the chosen piece there; click it again, or right-click it, to empty it.	Cliquez sur une case pour y poser la pièce choisie ; cliquez à nouveau, ou faites un clic droit, pour la vider.
+	Empty board	Échiquier vide
+	Play from this position, as a new game.	Jouer à partir de cette position, comme une nouvelle partie.
+	Clear drawings	Effacer les dessins
+	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Faites un clic droit sur une case pour l'entourer, ou faites glisser avec le bouton droit pour tracer une flèche (Maj rouge, Alt bleue, Ctrl jaune).
+	Engine analysis	Analyse par le moteur
+	Lines:	Lignes :
+	Choose engine…	Choisir le moteur…
+	Pick a UCI chess engine program, such as Stockfish.	Choisissez un programme de moteur d'échecs UCI, comme Stockfish.
+	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Aucun moteur d'échecs trouvé. Définissez PDFCRAFT_CHESS_ENGINE sur un moteur UCI comme Stockfish, placez-en un dans un dossier engine à côté de PdfCraft, ou choisissez-en un.
+	The engine couldn't be started: {e}	Impossible de démarrer le moteur : {e}
+	That program didn't answer as a UCI chess engine.	Ce programme n'a pas répondu comme un moteur d'échecs UCI.
+	The engine stopped.	Le moteur s'est arrêté.
+	Starting the engine…	Démarrage du moteur…
+	depth {n}	profondeur {n}
+	No moves to analyse in this position.	Aucun coup à analyser dans cette position.
+	Play the line up to this move	Jouer la ligne jusqu'à ce coup
+	Engine analysis needs the desktop app.	L'analyse par le moteur nécessite l'application de bureau.
+	Programs	Programmes

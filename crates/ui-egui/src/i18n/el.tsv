@@ -2569,3 +2569,26 @@ animation effects	Off	Ανενεργά
 	Result	Αποτέλεσμα
 	Round	Γύρος
 	Site	Τόπος
+# Chess ▸ Study board: set-up, drawings and engine analysis.
+	Study board	Σκακιέρα μελέτης
+	Set up a position	Στήσιμο θέσης
+	Put pieces on an empty or starting board, then play from there.	Τοποθετήστε κομμάτια σε κενή σκακιέρα ή στην αρχική θέση και παίξτε από εκεί.
+	Click a square to put the chosen piece there; click it again, or right-click it, to empty it.	Κάντε κλικ σε ένα τετράγωνο για να βάλετε εκεί το επιλεγμένο κομμάτι· κάντε ξανά κλικ ή δεξί κλικ για να το αδειάσετε.
+	Empty board	Κενή σκακιέρα
+	Play from this position, as a new game.	Παίξτε από αυτή τη θέση, ως νέα παρτίδα.
+	Clear drawings	Διαγραφή σχεδίων
+	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Κάντε δεξί κλικ σε ένα τετράγωνο για να το κυκλώσετε ή σύρετε με το δεξί κουμπί για να σχεδιάσετε βέλος (Shift κόκκινο, Alt μπλε, Ctrl κίτρινο).
+	Engine analysis	Ανάλυση μηχανής
+	Lines:	Γραμμές:
+	Choose engine…	Επιλογή μηχανής…
+	Pick a UCI chess engine program, such as Stockfish.	Επιλέξτε ένα πρόγραμμα σκακιστικής μηχανής UCI, όπως το Stockfish.
+	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Δεν βρέθηκε σκακιστική μηχανή. Ορίστε το PDFCRAFT_CHESS_ENGINE σε μια μηχανή UCI όπως το Stockfish, βάλτε μία σε φάκελο engine δίπλα στο PdfCraft ή επιλέξτε μία.
+	The engine couldn't be started: {e}	Δεν ήταν δυνατή η εκκίνηση της μηχανής: {e}
+	That program didn't answer as a UCI chess engine.	Αυτό το πρόγραμμα δεν απάντησε ως σκακιστική μηχανή UCI.
+	The engine stopped.	Η μηχανή σταμάτησε.
+	Starting the engine…	Εκκίνηση της μηχανής…
+	depth {n}	βάθος {n}
+	No moves to analyse in this position.	Δεν υπάρχουν κινήσεις για ανάλυση σε αυτή τη θέση.
+	Play the line up to this move	Παίξτε τη γραμμή μέχρι αυτή την κίνηση
+	Engine analysis needs the desktop app.	Η ανάλυση μηχανής απαιτεί την εφαρμογή υπολογιστή.
+	Programs	Προγράμματα

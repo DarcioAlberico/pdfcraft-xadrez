@@ -34,6 +34,7 @@ mod appearance;
 pub mod canvas;
 mod chess_board_ui;
 mod chess_editor;
+mod chess_study_ui;
 mod chess_text_ui;
 mod chess_ui;
 mod chrome;

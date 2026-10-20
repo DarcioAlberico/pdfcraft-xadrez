@@ -1,19 +1,26 @@
 //! Chess ▸ Board: an analysis board in its own panel, beside the Inspector.
 //!
-//! A diagram goes onto it from the page (double-click the diagram) or from the Chess diagrams
-//! panel (Open on the board). Moves are played by clicking a piece and then where it goes, or by
+//! A diagram goes onto it from the page (double-click the diagram); Open on the board, in the
+//! Chess diagrams panel, puts it on that panel's Study board tab, the same board. Moves are played by clicking a piece and then where it goes, or by
 //! dragging it there; the arrows (or the arrow keys, with the pointer over the panel) walk the
 //! game back and forth. A move made at an earlier point starts a variation. The move list shows
 //! the variations, comments and annotation glyphs; a move's menu makes its line the main one or
 //! deletes it. The move shown takes a glyph and a comment, and the game its details (the PGN
 //! tags). The position is also a FEN field and the game a PGN field: both can be copied, or
-//! edited and loaded back.
+//! edited and loaded back. The right button draws on the board, as on lichess: a click circles a
+//! square and a drag draws an arrow (Shift red, Alt blue, Ctrl yellow, green otherwise); the
+//! drawings belong to the position, and a left click on the board clears them.
+//!
+//! The Chess panel's Study board tab (`chess_study_ui`) shows this same board and game, built
+//! from the parts below, and adds position set-up and engine analysis.
 //!
 //! The rules are `pdfcraft_chess::game` (L0); this file only shows them. A diagram read from a
 //! book can be illegal (a misread square): it is shown as it is, and no move can be played on it
 //! until it is corrected in the diagram editor.
 
-use egui::{Color32, Key, Pos2, Rect, Stroke, TextureHandle, vec2};
+use std::collections::HashMap;
+
+use egui::{Color32, Key, PointerButton, Pos2, Rect, Stroke, TextureHandle, vec2};
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::pdfcraft_chess::draw::{BoardStyle, PieceSet, Rgb};
 use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, GameError, NodeId, Outcome, Token};
@@ -26,6 +33,57 @@ const BOARD_PX: u32 = 640;
 
 /// Largest board on screen, in points.
 const MAX_BOARD_PT: f32 = 480.0;
+
+/// Most positions that keep drawings; the oldest go first.
+const MAX_MARKED_POSITIONS: usize = 512;
+
+/// Most drawings on one position.
+const MAX_MARKS: usize = 64;
+
+/// The colours drawings come in.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MarkColor {
+    Green,
+    Red,
+    Blue,
+    Yellow,
+    /// The engine's best move (not drawn by hand).
+    Engine,
+}
+
+impl MarkColor {
+    /// The colour a right-button drawing gets from the keys held: Shift red, Alt blue, Ctrl (or
+    /// Command) yellow, green otherwise.
+    pub fn from_modifiers(m: egui::Modifiers) -> MarkColor {
+        if m.shift {
+            MarkColor::Red
+        } else if m.alt {
+            MarkColor::Blue
+        } else if m.command || m.ctrl {
+            MarkColor::Yellow
+        } else {
+            MarkColor::Green
+        }
+    }
+
+    fn color32(self) -> Color32 {
+        match self {
+            MarkColor::Green => Color32::from_rgba_unmultiplied(21, 120, 27, 200),
+            MarkColor::Red => Color32::from_rgba_unmultiplied(136, 32, 32, 200),
+            MarkColor::Blue => Color32::from_rgba_unmultiplied(0, 48, 136, 200),
+            MarkColor::Yellow => Color32::from_rgba_unmultiplied(230, 143, 0, 200),
+            MarkColor::Engine => Color32::from_rgba_unmultiplied(0, 92, 175, 140),
+        }
+    }
+}
+
+/// An arrow from one square to another, or a circle when the two are the same.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Mark {
+    pub from: Square,
+    pub to: Square,
+    pub color: MarkColor,
+}
 
 /// Where the position on the board came from.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -62,6 +120,11 @@ pub struct BoardState {
     /// keeps comments and tags cleaned (spaces collapsed, ends trimmed), so a field re-read from
     /// it every frame would eat a space typed at the end.
     draft: Option<(String, String)>,
+    /// The drawings, by position (its FEN), and the order the positions got their first one.
+    marks: HashMap<String, Vec<Mark>>,
+    marked_order: Vec<String>,
+    /// Where a right-button drag started.
+    drawing: Option<Square>,
 }
 
 impl Default for BoardState {
@@ -81,6 +144,9 @@ impl Default for BoardState {
             draw_error: None,
             sprites: None,
             draft: None,
+            marks: HashMap::new(),
+            marked_order: Vec::new(),
+            drawing: None,
         }
     }
 }
@@ -144,7 +210,7 @@ impl BoardState {
     }
 
     /// Fill the FEN and PGN fields from the board, when it changed (`force`: always).
-    fn refresh_fields(&mut self, force: bool) {
+    pub(crate) fn refresh_fields(&mut self, force: bool) {
         let key = match &self.illegal {
             Some((_, fen)) => format!("illegal|{fen}"),
             None => format!("{}|{}|{}", self.game.start_fen(), self.game.revision(), self.game.current()),
@@ -157,17 +223,17 @@ impl BoardState {
     }
 
     /// The FEN of the board shown (an illegal position's as it was given).
-    fn current_fen(&self) -> String {
+    pub(crate) fn current_fen(&self) -> String {
         self.illegal.as_ref().map_or_else(|| self.game.fen(), |(_, fen)| fen.clone())
     }
 
     /// The pieces shown.
-    fn placement(&self) -> Placement {
+    pub(crate) fn placement(&self) -> Placement {
         self.illegal.as_ref().map_or_else(|| self.game.placement(), |(p, _)| *p)
     }
 
     /// The square at `(x, y)` in the board's own units (0..1 from its top left), as shown.
-    fn square_at(&self, x: f32, y: f32) -> Option<Square> {
+    pub(crate) fn square_at(&self, x: f32, y: f32) -> Option<Square> {
         if !(x.is_finite() && y.is_finite() && (0.0..1.0).contains(&x) && (0.0..1.0).contains(&y)) {
             return None;
         }
@@ -177,7 +243,7 @@ impl BoardState {
     }
 
     /// The rectangle of `square` on a board drawn in `board`.
-    fn square_rect(&self, board: Rect, square: Square) -> Rect {
+    pub(crate) fn square_rect(&self, board: Rect, square: Square) -> Rect {
         let (file, rank) = (f32::from(square.file()), f32::from(square.rank()));
         let (col, row) = if self.flipped { (7.0 - file, rank) } else { (file, 7.0 - rank) };
         let cell = board.width() / 8.0;
@@ -210,8 +276,26 @@ impl BoardState {
         }
     }
 
+    /// Play `moves` (UCI) from the move shown, as far as they can be played: a line the engine
+    /// suggested. Moves already in the game are followed; the others continue the line or start
+    /// a variation.
+    pub fn play_uci_line(&mut self, moves: &[String]) {
+        if self.illegal.is_some() {
+            return;
+        }
+        self.selected = None;
+        self.promotion = None;
+        self.message = None;
+        for mv in moves {
+            if let Err(e) = self.game.play_uci(mv) {
+                self.message = Some(e.to_string());
+                return;
+            }
+        }
+    }
+
     /// Step through the line: `Some(true)` forward, `Some(false)` back.
-    fn step(&mut self, forward: bool) {
+    pub(crate) fn step(&mut self, forward: bool) {
         self.selected = None;
         self.promotion = None;
         if forward {
@@ -242,11 +326,50 @@ impl BoardState {
         }
     }
 
+    /// The drawings on the position shown.
+    pub fn marks(&self) -> &[Mark] {
+        self.marks.get(&self.current_fen()).map_or(&[], Vec::as_slice)
+    }
+
+    /// Draw `mark` on the position shown, or take it off when it is there already in that
+    /// colour; the same squares in another colour are recoloured.
+    pub fn toggle_mark(&mut self, mark: Mark) {
+        let key = self.current_fen();
+        if !self.marks.contains_key(&key) {
+            if self.marked_order.len() >= MAX_MARKED_POSITIONS && !self.marked_order.is_empty() {
+                let oldest = self.marked_order.remove(0);
+                self.marks.remove(&oldest);
+            }
+            self.marked_order.push(key.clone());
+        }
+        let list = self.marks.entry(key).or_default();
+        match list.iter().position(|m| m.from == mark.from && m.to == mark.to) {
+            Some(i) if list.get(i).is_some_and(|m| m.color == mark.color) => {
+                list.remove(i);
+            }
+            Some(i) => {
+                if let Some(m) = list.get_mut(i) {
+                    m.color = mark.color;
+                }
+            }
+            None if list.len() < MAX_MARKS => list.push(mark),
+            None => {}
+        }
+    }
+
+    /// Take the drawings off the position shown.
+    pub fn clear_marks(&mut self) {
+        let key = self.current_fen();
+        if self.marks.remove(&key).is_some() {
+            self.marked_order.retain(|k| *k != key);
+        }
+    }
+
     /// The twelve pieces cut out of their squares, in one image: White's king, queen, rook,
     /// bishop, knight and pawn on the top row, Black's on the second (see [`sprite_uv`]). Each
     /// is drawn on white and on black; where the two differ the piece is see-through, so the
     /// difference is its alpha and the drawing on black its premultiplied colour.
-    fn sprites(&mut self, ctx: &egui::Context, pieces: &PieceSet) -> Option<TextureHandle> {
+    pub(crate) fn sprites(&mut self, ctx: &egui::Context, pieces: &PieceSet) -> Option<TextureHandle> {
         if let Some(tex) = &self.sprites {
             return Some(tex.clone());
         }
@@ -316,7 +439,7 @@ impl BoardState {
 const KINDS: [PieceKind; 6] = [PieceKind::King, PieceKind::Queen, PieceKind::Rook, PieceKind::Bishop, PieceKind::Knight, PieceKind::Pawn];
 
 /// Where `piece` is in the sprite image (texture coordinates).
-fn sprite_uv(piece: Piece) -> Rect {
+pub(crate) fn sprite_uv(piece: Piece) -> Rect {
     let col = KINDS.iter().position(|k| *k == piece.kind).unwrap_or(0) as f32;
     let row = if piece.color == Color::White { 0.0 } else { 1.0 };
     Rect::from_min_size(egui::pos2(col / 8.0, row / 8.0), vec2(1.0 / 8.0, 1.0 / 8.0))
@@ -328,8 +451,33 @@ const PICKED: Color32 = Color32::from_rgba_premultiplied(20, 85, 30, 110);
 const TARGET: Color32 = Color32::from_rgba_premultiplied(20, 85, 30, 120);
 const CHECK: Color32 = Color32::from_rgb(0xE0, 0x3E, 0x3E);
 
-/// The board itself, with its marks, taking clicks and drags.
-fn board_view(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, pieces: &PieceSet) {
+/// An arrow from the centre of `mark.from` to the centre of `mark.to` (a ring when they are the
+/// same square).
+fn paint_mark(painter: &egui::Painter, state: &BoardState, board: Rect, mark: Mark) {
+    let (a, b) = (state.square_rect(board, mark.from), state.square_rect(board, mark.to));
+    let cell = a.width();
+    let color = mark.color.color32();
+    if mark.from == mark.to {
+        painter.circle_stroke(a.center(), cell * 0.44, Stroke::new(cell * 0.07, color));
+        return;
+    }
+    let (start, end) = (a.center(), b.center());
+    let dir = (end - start).normalized();
+    if !(dir.x.is_finite() && dir.y.is_finite()) {
+        return;
+    }
+    let head = cell * 0.42;
+    // The head ends a little short of the centre; the shaft stops where the head starts.
+    let tip = end - dir * cell * 0.12;
+    let base = tip - dir * head;
+    let normal = vec2(-dir.y, dir.x);
+    painter.line_segment([start + dir * cell * 0.18, base], Stroke::new(cell * 0.17, color));
+    painter.add(egui::Shape::convex_polygon(vec![tip, base + normal * head * 0.55, base - normal * head * 0.55], color, Stroke::NONE));
+}
+
+/// The board itself, with its marks, taking clicks and drags. `overlay` is drawn under the
+/// hand-made drawings (the engine's best move).
+pub(crate) fn board_view(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, pieces: &PieceSet, overlay: &[Mark]) {
     let side = ui.available_width().clamp(160.0, MAX_BOARD_PT);
     let Some(tex) = state.texture(ui.ctx(), pieces) else {
         if let Some(e) = &state.draw_error {
@@ -342,15 +490,16 @@ fn board_view(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, pieces: &Pi
     response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &board_name));
     let rect = response.rect;
     let at = |state: &BoardState, p: Pos2| state.square_at((p.x - rect.min.x) / rect.width().max(1.0), (p.y - rect.min.y) / rect.height().max(1.0));
-    if response.drag_started()
+    if response.drag_started_by(PointerButton::Primary)
         && let Some(sq) = response.interact_pointer_pos().and_then(|p| at(state, p))
     {
         // Dragging picks the piece up; dropping it on its own square leaves it picked.
+        state.clear_marks();
         if state.selected != Some(sq) {
             state.click(sq);
         }
     }
-    if response.drag_stopped()
+    if response.drag_stopped_by(PointerButton::Primary)
         && let (Some(from), Some(to)) = (state.selected, response.interact_pointer_pos().and_then(|p| at(state, p)))
         && from != to
     {
@@ -358,7 +507,22 @@ fn board_view(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, pieces: &Pi
     } else if response.clicked()
         && let Some(sq) = response.interact_pointer_pos().and_then(|p| at(state, p))
     {
+        state.clear_marks();
         state.click(sq);
+    }
+    // The right button draws: a click circles a square, a drag draws an arrow.
+    let modifiers = ui.input(|i| i.modifiers);
+    if response.drag_started_by(PointerButton::Secondary) {
+        state.drawing = response.interact_pointer_pos().and_then(|p| at(state, p));
+    }
+    if response.drag_stopped_by(PointerButton::Secondary) {
+        if let (Some(from), Some(to)) = (state.drawing.take(), response.interact_pointer_pos().and_then(|p| at(state, p))) {
+            state.toggle_mark(Mark { from, to, color: MarkColor::from_modifiers(modifiers) });
+        }
+    } else if response.secondary_clicked()
+        && let Some(sq) = response.interact_pointer_pos().and_then(|p| at(state, p))
+    {
+        state.toggle_mark(Mark { from: sq, to: sq, color: MarkColor::from_modifiers(modifiers) });
     }
     let painter = ui.painter_at(rect);
     if state.illegal.is_none() {
@@ -385,7 +549,7 @@ fn board_view(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, pieces: &Pi
         }
         // The square a dragged piece would land on, and the piece itself under the pointer: its
         // square shows empty meanwhile.
-        if response.dragged()
+        if response.dragged_by(PointerButton::Primary)
             && let Some(from) = state.selected
             && let Some(pointer) = response.interact_pointer_pos()
         {
@@ -421,6 +585,15 @@ fn board_view(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, pieces: &Pi
             let r = state.square_rect(rect, sq);
             painter.text(r.right_top() + vec2(-2.0, 1.0), egui::Align2::RIGHT_TOP, (sq.rank() + 1).to_string(), font.clone(), ink(sq));
         }
+    }
+    // The drawings: the overlay, the position's own, and the arrow being drawn.
+    for mark in overlay.iter().chain(state.marks()) {
+        paint_mark(&painter, state, rect, *mark);
+    }
+    if response.dragged_by(PointerButton::Secondary)
+        && let (Some(from), Some(to)) = (state.drawing, response.interact_pointer_pos().and_then(|p| at(state, p)))
+    {
+        paint_mark(&painter, state, rect, Mark { from, to, color: MarkColor::from_modifiers(modifiers) });
     }
     if state.illegal.is_some() {
         painter.rect_stroke(rect, 0.0, Stroke::new(2.0, CHECK), egui::StrokeKind::Inside);
@@ -619,10 +792,8 @@ fn details(ui: &mut egui::Ui, state: &mut BoardState) {
     });
 }
 
-/// The Chess board panel. `source_label` names the diagram the board was loaded from.
-pub fn panel(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, pieces: &PieceSet, source_label: Option<String>) -> Option<BoardAction> {
-    let mut action = None;
-    // The arrow keys walk the line while the pointer is over the panel and no field has the keyboard.
+/// The arrow keys walk the line while the pointer is over the panel and no field has the keyboard.
+pub(crate) fn keys(ui: &mut egui::Ui, state: &mut BoardState) {
     if ui.rect_contains_pointer(ui.max_rect()) && !ui.ctx().egui_wants_keyboard_input() {
         let keys = ui.input_mut(|i| [Key::ArrowLeft, Key::ArrowRight, Key::Home, Key::End].map(|k| i.consume_key(egui::Modifiers::NONE, k)));
         match keys {
@@ -633,15 +804,10 @@ pub fn panel(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, pieces: &Pie
             _ => {}
         }
     }
-    ui.horizontal(|ui| {
-        ui.label(egui::RichText::new(tl!("Chess board")).font(theme::semibold(15.5)));
-        if let (Some(label), Some(source)) = (source_label, state.source)
-            && ui.link(egui::RichText::new(label).small()).on_hover_text(tl!("Show this diagram on the page")).clicked()
-        {
-            action = Some(BoardAction::ShowSource(source));
-        }
-    });
-    ui.add_space(4.0);
+}
+
+/// Flip, and whose move it is (before the first move).
+pub(crate) fn view_controls(ui: &mut egui::Ui, state: &mut BoardState) {
     ui.horizontal_wrapped(|ui| {
         if ui.small_button(tl!("Flip board")).clicked() {
             state.flipped = !state.flipped;
@@ -657,24 +823,28 @@ pub fn panel(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, pieces: &Pie
             }
         });
     });
-    ui.add_space(4.0);
-    board_view(ui, t, state, pieces);
-    if let Some((from, to)) = state.promotion {
-        ui.horizontal(|ui| {
-            ui.label(tl!("Promote to:"));
-            let color = state.game.side_to_move();
-            for kind in [PieceKind::Queen, PieceKind::Rook, PieceKind::Bishop, PieceKind::Knight] {
-                let name = crate::chess_editor::piece_name(Piece { color, kind });
-                if ui.small_button(name).clicked() {
-                    state.play(from, to, Some(kind));
-                }
+}
+
+/// The pieces a pawn reaching the last rank can become, while one waits.
+pub(crate) fn promotion_choice(ui: &mut egui::Ui, state: &mut BoardState) {
+    let Some((from, to)) = state.promotion else { return };
+    ui.horizontal(|ui| {
+        ui.label(tl!("Promote to:"));
+        let color = state.game.side_to_move();
+        for kind in [PieceKind::Queen, PieceKind::Rook, PieceKind::Bishop, PieceKind::Knight] {
+            let name = crate::chess_editor::piece_name(Piece { color, kind });
+            if ui.small_button(name).clicked() {
+                state.play(from, to, Some(kind));
             }
-            if ui.small_button("✕").on_hover_text(tl!("Cancel")).clicked() {
-                state.promotion = None;
-            }
-        });
-    }
-    // Navigation.
+        }
+        if ui.small_button("✕").on_hover_text(tl!("Cancel")).clicked() {
+            state.promotion = None;
+        }
+    });
+}
+
+/// Start, back, forward and end; then the status line and the last message.
+pub(crate) fn navigation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) {
     ui.horizontal(|ui| {
         let (ply, len) = (state.game.ply(), state.game.len());
         let nav = |ui: &mut egui::Ui, on: bool, text: &str, tip: &str| {
@@ -700,14 +870,21 @@ pub fn panel(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, pieces: &Pie
     if let Some(m) = &state.message {
         ui.label(egui::RichText::new(m).small().color(t.text_muted));
     }
-    ui.add_space(4.0);
+}
+
+/// The move list, the glyphs and comment of the move shown, and the game's details.
+pub(crate) fn moves_and_notes(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) {
     move_list(ui, t, state);
     if state.illegal.is_none() && state.game.ply() < state.game.len() && ui.small_button(tl!("Delete the moves after this one")).clicked() {
         state.game.truncate();
     }
     annotation(ui, state);
     details(ui, state);
-    ui.add_space(6.0);
+}
+
+/// The FEN and PGN fields, with what can be done with them.
+pub(crate) fn fen_and_pgn(ui: &mut egui::Ui, state: &mut BoardState) -> Option<BoardAction> {
+    let mut action = None;
     state.refresh_fields(false);
     // FEN.
     ui.horizontal(|ui| {
@@ -754,6 +931,31 @@ pub fn panel(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, pieces: &Pie
         }
     });
     action
+}
+
+/// The Chess board panel. `source_label` names the diagram the board was loaded from.
+pub fn panel(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, pieces: &PieceSet, source_label: Option<String>) -> Option<BoardAction> {
+    let mut action = None;
+    keys(ui, state);
+    ui.horizontal(|ui| {
+        ui.label(egui::RichText::new(tl!("Chess board")).font(theme::semibold(15.5)));
+        if let (Some(label), Some(source)) = (source_label, state.source)
+            && ui.link(egui::RichText::new(label).small()).on_hover_text(tl!("Show this diagram on the page")).clicked()
+        {
+            action = Some(BoardAction::ShowSource(source));
+        }
+    });
+    ui.add_space(4.0);
+    view_controls(ui, state);
+    ui.add_space(4.0);
+    board_view(ui, t, state, pieces, &[]);
+    promotion_choice(ui, state);
+    navigation(ui, t, state);
+    ui.add_space(4.0);
+    moves_and_notes(ui, t, state);
+    ui.add_space(6.0);
+    let fields = fen_and_pgn(ui, state);
+    action.or(fields)
 }
 
 #[cfg(test)]

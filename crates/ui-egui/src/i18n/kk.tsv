@@ -2561,3 +2561,26 @@ animation effects	Off	Өшірулі
 	Result	Нәтиже
 	Round	Тур
 	Site	Орны
+# Chess ▸ Study board: set-up, drawings and engine analysis.
+	Study board	Зерттеу тақтасы
+	Set up a position	Позиция құру
+	Put pieces on an empty or starting board, then play from there.	Фигураларды бос тақтаға немесе бастапқы позицияға қойып, сол жерден ойнаңыз.
+	Click a square to put the chosen piece there; click it again, or right-click it, to empty it.	Таңдалған фигураны қою үшін шаршыны басыңыз; босату үшін қайта басыңыз немесе оң жақ батырманы басыңыз.
+	Empty board	Бос тақта
+	Play from this position, as a new game.	Осы позициядан жаңа партия ретінде ойнау.
+	Clear drawings	Суреттерді өшіру
+	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Шаршыны дөңгелектеу үшін оң жақ батырмамен басыңыз, ал көрсеткі салу үшін оң жақ батырмамен сүйреңіз (Shift қызыл, Alt көк, Ctrl сары).
+	Engine analysis	Қозғалтқыш талдауы
+	Lines:	Нұсқалар:
+	Choose engine…	Қозғалтқышты таңдау…
+	Pick a UCI chess engine program, such as Stockfish.	Stockfish сияқты UCI шахмат қозғалтқышы бағдарламасын таңдаңыз.
+	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Шахмат қозғалтқышы табылмады. PDFCRAFT_CHESS_ENGINE айнымалысына Stockfish сияқты UCI қозғалтқышын орнатыңыз, PdfCraft жанындағы engine қалтасына біреуін салыңыз немесе біреуін таңдаңыз.
+	The engine couldn't be started: {e}	Қозғалтқышты іске қосу мүмкін болмады: {e}
+	That program didn't answer as a UCI chess engine.	Бұл бағдарлама UCI шахмат қозғалтқышы ретінде жауап бермеді.
+	The engine stopped.	Қозғалтқыш тоқтады.
+	Starting the engine…	Қозғалтқыш іске қосылуда…
+	depth {n}	тереңдік {n}
+	No moves to analyse in this position.	Бұл позицияда талданатын жүріс жоқ.
+	Play the line up to this move	Нұсқаны осы жүріске дейін ойнау
+	Engine analysis needs the desktop app.	Қозғалтқыш талдауы үшін жұмыс үстелі қолданбасы қажет.
+	Programs	Бағдарламалар

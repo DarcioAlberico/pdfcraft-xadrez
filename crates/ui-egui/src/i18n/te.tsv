@@ -2472,3 +2472,26 @@ animation effects	Off	ఆఫ్
 	Result	ఫలితం
 	Round	రౌండ్
 	Site	స్థలం
+# Chess ▸ Study board: set-up, drawings and engine analysis.
+	Study board	అధ్యయన బోర్డు
+	Set up a position	స్థితిని అమర్చండి
+	Put pieces on an empty or starting board, then play from there.	ఖాళీ బోర్డుపై లేదా ప్రారంభ స్థితిలో పావులను ఉంచి, అక్కడి నుండి ఆడండి.
+	Click a square to put the chosen piece there; click it again, or right-click it, to empty it.	ఎంచుకున్న పావును అక్కడ ఉంచడానికి ఒక గడిపై క్లిక్ చేయండి; ఖాళీ చేయడానికి మళ్ళీ క్లిక్ చేయండి లేదా కుడి క్లిక్ చేయండి.
+	Empty board	ఖాళీ బోర్డు
+	Play from this position, as a new game.	ఈ స్థితి నుండి కొత్త ఆటగా ఆడండి.
+	Clear drawings	చిత్రాలను తుడిచివేయి
+	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	గడిని వృత్తంతో గుర్తించడానికి దానిపై కుడి క్లిక్ చేయండి, లేదా బాణం గీయడానికి కుడి బటన్‌తో లాగండి (Shift ఎరుపు, Alt నీలం, Ctrl పసుపు).
+	Engine analysis	ఇంజిన్ విశ్లేషణ
+	Lines:	లైన్లు:
+	Choose engine…	ఇంజిన్‌ను ఎంచుకోండి…
+	Pick a UCI chess engine program, such as Stockfish.	Stockfish వంటి UCI చదరంగం ఇంజిన్ ప్రోగ్రామ్‌ను ఎంచుకోండి.
+	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	చదరంగం ఇంజిన్ కనబడలేదు. PDFCRAFT_CHESS_ENGINE‌ను Stockfish వంటి UCI ఇంజిన్‌కు సెట్ చేయండి, PdfCraft పక్కన ఉన్న engine ఫోల్డర్‌లో ఒకదాన్ని ఉంచండి, లేదా ఒకదాన్ని ఎంచుకోండి.
+	The engine couldn't be started: {e}	ఇంజిన్‌ను ప్రారంభించలేకపోయాం: {e}
+	That program didn't answer as a UCI chess engine.	ఆ ప్రోగ్రామ్ UCI చదరంగం ఇంజిన్‌గా స్పందించలేదు.
+	The engine stopped.	ఇంజిన్ ఆగిపోయింది.
+	Starting the engine…	ఇంజిన్‌ను ప్రారంభిస్తోంది…
+	depth {n}	లోతు {n}
+	No moves to analyse in this position.	ఈ స్థితిలో విశ్లేషించడానికి ఎత్తులు లేవు.
+	Play the line up to this move	ఈ ఎత్తు వరకు లైన్‌ను ఆడండి
+	Engine analysis needs the desktop app.	ఇంజిన్ విశ్లేషణకు డెస్క్‌టాప్ యాప్ అవసరం.
+	Programs	ప్రోగ్రామ్‌లు

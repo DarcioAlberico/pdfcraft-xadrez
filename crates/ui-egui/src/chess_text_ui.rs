@@ -31,12 +31,14 @@ use pdfcraft_engine::chess::{ChessScanSettings, ScanStamp};
 use crate::theme::Tokens;
 use crate::{PdfCraftApp, theme};
 
-/// The panel's two tabs.
+/// The panel's tabs.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ChessTab {
     #[default]
     Diagrams,
     Text,
+    /// The study board (`chess_study_ui`).
+    Study,
 }
 
 /// One page read as text.
