@@ -555,6 +555,7 @@ fn the_users_models_read_an_embedded_board() {
     }
 }
 
+mod capture;
 mod document;
 mod epub;
 mod links;

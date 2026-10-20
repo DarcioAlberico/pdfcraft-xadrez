@@ -892,3 +892,223 @@ fn chess_pgn_edit_takes_no_path() {
         assert!(!name.contains("path") && !name.contains("file") && !name.contains("dir"), "{name} looks like a path");
     }
 }
+
+/// The scenario's paragraph as the book sets it, `*` toggling bold: the game's moves in bold.
+const PARAGRAPH: &str = "*18.Nd5!* *Qxe1* After 18…Qd8 19.Bxf6! Bxf6 20.fxg6 (less good is
+20.Nxf6+, as Black has nothing to fear after 20…exf6 21.Bxc4
+Rxc4) 20…fxg6 21.Qg3, White obtains a dangerous initiative. For
+example: 21…Kh7 22.e5!. *19.Nxe7+ Kh7 20.Raxe1*";
+
+/// A capture op on `marked` (see [`PARAGRAPH`]): its text, and its bold runs when it has any.
+fn capture_op(at: &str, mode: &str, marked: &str) -> Value {
+    let (mut text, mut runs, mut open) = (String::new(), Vec::new(), None);
+    for c in marked.chars() {
+        if c == '*' {
+            let here = text.chars().count();
+            match open.take() {
+                Some(start) => runs.push(json!([start, here])),
+                None => open = Some(here),
+            }
+        } else {
+            text.push(c);
+        }
+    }
+    let mut op = json!({ "op": "capture", "at": at, "mode": mode, "text": text });
+    if !runs.is_empty() {
+        op["bold_runs"] = Value::Array(runs);
+    }
+    op
+}
+
+/// Movetext without comments, and without the number PGN repeats for a Black move after one.
+fn without_comments(movetext: &str) -> String {
+    let mut flat = String::new();
+    let mut depth = 0usize;
+    for c in movetext.chars() {
+        match c {
+            '{' => {
+                if depth == 0 {
+                    flat.push_str(" {} ");
+                }
+                depth += 1;
+            }
+            '}' => depth = depth.saturating_sub(1),
+            '(' | ')' if depth == 0 => flat.push_str(&format!(" {c} ")),
+            _ if depth == 0 => flat.push(c),
+            _ => {}
+        }
+    }
+    let words: Vec<&str> = flat.split_whitespace().collect();
+    let mut kept: Vec<&str> = Vec::new();
+    for (k, w) in words.iter().enumerate() {
+        let repeated = w.ends_with("...") && k >= 2 && words[k - 1] == "{}" && !matches!(words[k - 2], "(" | ")");
+        if *w != "{}" && !repeated {
+            kept.push(w);
+        }
+    }
+    kept.join(" ").replace("( ", "(").replace(" )", ")")
+}
+
+fn capture_of(r: &Value, index: usize) -> &Value {
+    let entry = &r["report"][index];
+    assert_eq!(entry["ok"], true, "{entry}");
+    &entry["capture"]
+}
+
+/// §4.10 step 2: the whole paragraph, bold main line marked, in one capture: main line, variation,
+/// sub-variation and comments, applied without the preview (complete, one place).
+#[test]
+fn chess_pgn_edit_captures_the_scenario_paragraph_at_once() {
+    let (_base, root) = workdir("pgn-capture");
+    let mut auto = Automation::new().with_root(&root).unwrap();
+    let mut op = capture_op("path:", "auto", PARAGRAPH);
+    op["apply"] = json!("auto");
+    let r = pgn_edit(&mut auto, false, json!([op]));
+    let c = capture_of(&r, 0);
+    assert_eq!((c["applied"].as_bool(), c["needs_preview"].as_bool()), (Some(true), Some(false)), "{c}");
+    assert_eq!(c["reasons"], json!([]));
+    assert_eq!(c["candidates"].as_array().unwrap().len(), 1);
+    assert_eq!((c["candidates"][0]["mode"].as_str(), c["candidates"][0]["played"].as_u64()), (Some("line"), Some(17)));
+    let movetext = r["movetext"].as_str().unwrap();
+    assert_eq!(
+        without_comments(movetext),
+        "18. Nd5 $1 Qxe1 (18... Qd8 19. Bxf6 $1 Bxf6 20. fxg6 (20. Nxf6+ exf6 21. Bxc4 Rxc4) 20... fxg6 21. Qg3 Kh7 22. e5 $1) 19. Nxe7+ Kh7 20. Raxe1"
+    );
+    assert!(movetext.contains("{less good is} 20. Nxf6+ {as Black has nothing to fear after}"), "{movetext}");
+    assert_eq!(c["candidates"][0]["movetext"], r["movetext"]);
+    assert_eq!(r["current_path"], "path:0.0.0.0.0");
+}
+
+/// §4.10 step 3: prose `20…Rc7 21.e5!` extends the main line's end (preview: tip_extension); the
+/// bold `20…Rc7 21.Bxc4 Rxc4` then follows 20…Rc7 and demotes 21.e5 (preview: demotes), which
+/// `apply: auto` leaves for the preview and the default applies.
+#[test]
+fn chess_pgn_edit_capture_on_the_line_demotes_a_different_move() {
+    let (_base, root) = workdir("pgn-capture-demote");
+    let mut auto = Automation::new().with_root(&root).unwrap();
+    let a = &mut auto;
+    let extend = capture_op("main:39", "auto", "20…Rc7 21.e5!");
+    let r = pgn_edit(a, true, json!([extend]));
+    let c = capture_of(&r, 0);
+    assert_eq!((c["applied"].as_bool(), c["needs_preview"].as_bool()), (Some(true), Some(true)));
+    assert_eq!(c["reasons"], json!(["tip_extension"]));
+    assert_eq!(r["movetext"], "18. Nd5 Qxe1 19. Nxe7+ Kh7 20. Raxe1 Rc7 21. e5 $1");
+
+    let mut bold = capture_op("main:39", "auto", "*20…Rc7 21.Bxc4 Rxc4*");
+    bold["apply"] = json!("auto");
+    let r = pgn_edit(a, true, json!([extend, bold]));
+    let c = capture_of(&r, 1);
+    assert_eq!((c["applied"].as_bool(), c["needs_preview"].as_bool()), (Some(false), Some(true)));
+    assert_eq!(c["reasons"], json!(["demotes"]));
+    let candidate = &c["candidates"][0];
+    assert_eq!((candidate["mode"].as_str(), candidate["graft"]["demoted"].as_bool()), (Some("line"), Some(true)));
+    assert_eq!(candidate["movetext"], "18. Nd5 Qxe1 19. Nxe7+ Kh7 20. Raxe1 Rc7 21. Bxc4 (21. e5 $1) 21... Rxc4");
+    assert_eq!(r["movetext"], "18. Nd5 Qxe1 19. Nxe7+ Kh7 20. Raxe1 Rc7 21. e5 $1", "not applied");
+    assert_eq!(r["current_path"], "path:0.0.0.0.0");
+
+    bold["apply"] = json!("chosen");
+    let r = pgn_edit(a, true, json!([extend, bold]));
+    assert_eq!(capture_of(&r, 1)["applied"], true);
+    assert_eq!(r["movetext"], "18. Nd5 Qxe1 19. Nxe7+ Kh7 20. Raxe1 Rc7 21. Bxc4 (21. e5 $1) 21... Rxc4");
+    assert_eq!(r["current_path"], "path:0.0.0.0.0.0.0.0");
+}
+
+/// §4.10 step 4: the forced modes from the empty game. The last, `20…fxg6 21.Qg3` as the line
+/// from inside the sub-variation, cannot follow 20.Nxf6+ and lands on L1, the variation it left.
+#[test]
+fn chess_pgn_edit_capture_in_forced_modes() {
+    let (_base, root) = workdir("pgn-capture-forced");
+    let mut auto = Automation::new().with_root(&root).unwrap();
+    let ops = json!([
+        capture_op("path:", "line", "18.Nd5! Qxe1"),
+        capture_op("path:0.0", "variation", "18…Qd8 19.Bxf6! Bxf6 20.fxg6"),
+        capture_op("path:0.1.0.0.0", "subvariation", "20.Nxf6+"),
+        capture_op("path:0.1.0.0.1", "line", "20…exf6 21.Bxc4 Rxc4"),
+        capture_op("path:0.1.0.0.1.0.0.0", "line", "20…fxg6 21.Qg3"),
+    ]);
+    let r = pgn_edit(&mut auto, false, ops);
+    assert_eq!(r["applied"], 5, "{}", r["report"]);
+    let paths: Vec<&str> = (0..5).map(|i| r["report"][i]["path"].as_str().unwrap()).collect();
+    assert_eq!(paths, vec!["path:0.0", "path:0.1.0.0.0", "path:0.1.0.0.1", "path:0.1.0.0.1.0.0.0", "path:0.1.0.0.0.0.0"]);
+    for i in 0..4 {
+        let c = capture_of(&r, i);
+        assert_eq!((c["needs_preview"].as_bool(), c["applied"].as_bool()), (Some(false), Some(true)), "op {i}: {c}");
+    }
+    let last = capture_of(&r, 4);
+    assert_eq!(last["reasons"], json!(["outer_line"]));
+    assert_eq!(last["chosen"], 1, "the best candidate, not the first");
+    let candidates = last["candidates"].as_array().unwrap();
+    let summary: Vec<(u64, u64, &str)> =
+        candidates.iter().map(|c| (c["line"].as_u64().unwrap(), c["played"].as_u64().unwrap(), c["anchor"].as_str().unwrap())).collect();
+    assert_eq!(summary, vec![(0, 0, "path:0.1.0.0.1"), (1, 2, "path:0.1.0.0.0")]);
+    assert_eq!(r["movetext"], "18. Nd5 $1 Qxe1 (18... Qd8 19. Bxf6 $1 Bxf6 20. fxg6 (20. Nxf6+ exf6 21. Bxc4 Rxc4) 20... fxg6 21. Qg3)");
+}
+
+/// A move that fits two places is offered at both, with the preview; a start at move 1 is
+/// offered renumbered; a capture that fits nowhere changes nothing; comments take the text.
+#[test]
+fn chess_pgn_edit_capture_reports_ambiguity_renumbering_and_no_fit() {
+    let (_base, root) = workdir("pgn-capture-ambiguous");
+    let mut auto = Automation::new().with_root(&root).unwrap();
+    let a = &mut auto;
+    // 19…Kh8, a variation of 19…Kh7: 20.Rfxe1 fits after either.
+    let r =
+        pgn_edit(a, true, json!([{ "op": "play", "at": "path:0.0.0", "moves": ["Kh8"] }, capture_op("path:0.0.0.1", "subvariation", "(20.Rfxe1)")]));
+    let c = capture_of(&r, 1);
+    assert_eq!(c["needs_preview"], true);
+    assert!(c["reasons"].as_array().unwrap().contains(&json!("ambiguous")), "{c}");
+    let lines: Vec<(u64, u64)> =
+        c["candidates"].as_array().unwrap().iter().map(|c| (c["line"].as_u64().unwrap(), c["played"].as_u64().unwrap())).collect();
+    assert_eq!(lines, vec![(0, 1), (1, 1)]);
+
+    let unnumbered = SCENARIO.replace(" 0 18", " 0 1");
+    let r = ok(a, "chess_pgn_edit", json!({ "fen": unnumbered, "ops": [capture_op("path:", "auto", "18.Nd5 Qxe1")] }));
+    let c = capture_of(&r, 0);
+    assert_eq!(c["reasons"], json!(["renumber"]));
+    assert_eq!(c["candidates"][0]["renumbered"], 18);
+    assert!(c["candidates"][0]["start_fen"].as_str().unwrap().ends_with(" 0 18"));
+    assert_eq!(r["movetext"], "18. Nd5 Qxe1");
+
+    let r = pgn_edit(a, true, json!([capture_op("main:39", "auto", "20…Qh1 is no move here")]));
+    let c = capture_of(&r, 0);
+    assert_eq!((c["applied"].as_bool(), c["chosen"].is_null()), (Some(false), true));
+    assert_eq!(c["reasons"], json!(["no_fit"]));
+    assert_eq!(r["movetext"], MAIN);
+
+    // comment_before, in Portuguese (`C` is the knight), on a variation's first move.
+    let mut op = capture_op("path:0.0.0.1", "comment_before", "a tentativa 20.Cxf6");
+    op["lang"] = json!("pt-BR");
+    let r = pgn_edit(a, true, json!([{ "op": "play", "at": "path:0.0.0", "moves": ["Kh8"] }, op]));
+    assert!(r["movetext"].as_str().unwrap().contains("({a tentativa 20.Nxf6} 19... Kh8)"), "{}", r["movetext"]);
+}
+
+/// A capture with a bad mode, language, bold range or apply is refused like any other op.
+#[test]
+fn chess_pgn_edit_capture_refuses_bad_arguments() {
+    let (_base, root) = workdir("pgn-capture-refusals");
+    let mut auto = Automation::new().with_root(&root).unwrap();
+    let a = &mut auto;
+    let refused = [
+        (json!({ "op": "capture", "at": "path:0" }), "text is missing"),
+        (json!({ "op": "capture", "at": "path:0", "text": "18…Qd8", "mode": "sideways" }), "auto, line"),
+        (json!({ "op": "capture", "at": "path:0", "text": "18…Qd8", "lang": "xx" }), "language tag"),
+        (json!({ "op": "capture", "at": "path:0", "text": "18…Qd8", "lang": 7 }), "language tag"),
+        (json!({ "op": "capture", "at": "path:0", "text": "18…Qd8", "bold_runs": [[0]] }), "pairs"),
+        (json!({ "op": "capture", "at": "path:0", "text": "18…Qd8", "bold_runs": [[0, -1]] }), "pairs"),
+        (json!({ "op": "capture", "at": "path:0", "text": "18…Qd8", "bold_runs": "0-3" }), "an array"),
+        (json!({ "op": "capture", "at": "path:0", "text": "18…Qd8", "bold_runs": vec![json!([0, 1]); 4097] }), "at most"),
+        (json!({ "op": "capture", "at": "path:0", "text": "18…Qd8", "apply": "always" }), "chosen, auto or never"),
+    ];
+    for (op, needle) in refused {
+        let r = pgn_edit(a, true, json!([op]));
+        assert_eq!(r["movetext"], MAIN, "{op} changed the game");
+        let entry = &r["report"][0];
+        assert_eq!(entry["ok"], false, "{op}");
+        assert!(entry["error"].as_str().unwrap().contains(needle), "{op}: {}", entry["error"]);
+    }
+    // Too long a text, or ranges past it, are reported, not refused.
+    let r = pgn_edit(a, true, json!([{ "op": "capture", "at": "path:0", "text": "x".repeat(65_537) }]));
+    assert_eq!(capture_of(&r, 0)["reasons"], json!(["too_long"]));
+    let r = pgn_edit(a, true, json!([{ "op": "capture", "at": "path:0", "text": "18…Qd8", "bold_runs": [[3, 1], [0, u64::MAX]] }]));
+    assert_eq!(capture_of(&r, 0)["applied"], true);
+}

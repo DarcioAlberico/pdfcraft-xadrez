@@ -8,10 +8,14 @@
 //! indices from the start (`0` the line, `1` the first variation; `path:` is the start).
 //! Addresses are read when their operation runs, after the ones before it changed the tree.
 //!
+//! `capture` plans where a selection of move text goes (`pdfcraft_engine::chess::capture`) and
+//! applies the chosen place unless told otherwise; its entry lists every candidate place.
+//!
 //! Each operation adds an entry to the report. One that is refused (a bad address, an illegal
 //! move, a structure change the tree does not allow) adds an error entry, leaves the game as it
 //! was before it, and stops the list there.
 
+use pdfcraft_engine::chess::capture::{self, Candidate, CaptureMode, CapturePlan, CaptureText};
 use pdfcraft_engine::chess::pdfcraft_chess::fragment::FragmentItem;
 use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, GraftMode, GraftReport, GraftStopReason, MAX_COMMENT_LEN, NodeId, NodePath};
 use pdfcraft_engine::chess::pdfcraft_chess::san::{Lang, San};
@@ -30,6 +34,9 @@ const MAX_ITEMS: usize = 4096;
 
 /// Longest address read (`path:` with every index of a deep line).
 const MAX_ADDRESS_LEN: usize = 65_536;
+
+/// Most bold ranges in one `capture`.
+pub(crate) const MAX_BOLD_RUNS: usize = 4096;
 
 /// Why one operation was refused: said in its report entry.
 type Refusal = String;
@@ -154,10 +161,105 @@ fn apply(game: &mut Game, op: &Value) -> std::result::Result<Map<String, Value>,
             *game = grafted;
             entry.insert("graft".into(), graft_json(&graft));
         }
+        "capture" => {
+            let plan = capture_plan(game, at, obj)?;
+            let apply = match obj.get("apply").and_then(Value::as_str) {
+                None | Some("chosen") => plan.chosen.is_some(),
+                Some("auto") => plan.chosen.is_some() && !plan.needs_preview,
+                Some("never") => false,
+                Some(other) => return Err(format!("apply {other:?} is chosen, auto or never")),
+            };
+            // Planned on this very game, so only a missing candidate can refuse it.
+            let applied = apply && plan.apply(game, None).is_ok();
+            if !applied {
+                game.go_to_node(at);
+            }
+            entry.insert("capture".into(), capture_json(&plan, applied));
+        }
         other => return Err(format!("unknown op {other:?}")),
     }
     entry.insert("path".into(), json!(address_of(game, game.current())));
     Ok(entry)
+}
+
+/// The plan of a `capture` op: `text` read in `lang` (English by default) after `at` in `mode`
+/// (auto by default), the characters in `bold_runs` (`[start, end]` pairs) set in bold.
+fn capture_plan(game: &Game, at: NodeId, obj: &Map<String, Value>) -> std::result::Result<CapturePlan, Refusal> {
+    let text = obj.get("text").and_then(Value::as_str).ok_or("text is missing")?;
+    let lang = match obj.get("lang").filter(|l| !l.is_null()) {
+        None => Lang::En,
+        Some(l) => l.as_str().and_then(Lang::from_tag).ok_or("lang is a language tag such as en or pt")?,
+    };
+    let mode = match obj.get("mode").and_then(Value::as_str) {
+        None | Some("auto") => CaptureMode::Auto,
+        Some("line") => CaptureMode::Line,
+        Some("variation") => CaptureMode::Variation,
+        Some("subvariation") => CaptureMode::SubVariation,
+        Some("comment") => CaptureMode::Comment { before: false },
+        Some("comment_before") => CaptureMode::Comment { before: true },
+        Some(other) => return Err(format!("mode {other:?} is auto, line, variation, subvariation, comment or comment_before")),
+    };
+    let bold = match obj.get("bold_runs").filter(|b| !b.is_null()) {
+        None => None,
+        Some(runs) => {
+            let runs = runs.as_array().ok_or("bold_runs is an array of [start, end] character ranges")?;
+            if runs.len() > MAX_BOLD_RUNS {
+                return Err(format!("at most {MAX_BOLD_RUNS} bold_runs"));
+            }
+            let bound = |v: Option<&Value>| v.and_then(Value::as_u64).map(|n| usize::try_from(n).unwrap_or(usize::MAX));
+            let ranges = runs
+                .iter()
+                .map(|r| match r.as_array().map(Vec::as_slice) {
+                    Some([a, b]) => bound(Some(a)).zip(bound(Some(b))).map(|(start, end)| start..end),
+                    _ => None,
+                })
+                .collect::<Option<Vec<_>>>()
+                .ok_or("bold_runs are [start, end] pairs of character indices")?;
+            Some(ranges)
+        }
+    };
+    let text = match &bold {
+        Some(bold) => CaptureText::Styled { text, bold },
+        None => CaptureText::Plain(text),
+    };
+    Ok(capture::plan(game, at, mode, text, lang))
+}
+
+/// A capture plan as the reply gives it: every candidate, the chosen one and whether it was applied.
+fn capture_json(plan: &CapturePlan, applied: bool) -> Value {
+    json!({
+        "applied": applied,
+        "needs_preview": plan.needs_preview,
+        "reasons": plan.reasons.iter().map(|r| r.name()).collect::<Vec<_>>(),
+        "chosen": plan.chosen,
+        "base_revision": plan.base_revision,
+        "candidates": plan.candidates.iter().map(candidate_json).collect::<Vec<_>>(),
+    })
+}
+
+fn candidate_json(c: &Candidate) -> Value {
+    json!({
+        "anchor": path_text(&c.anchor),
+        "line": c.line,
+        "mode": match c.mode_used {
+            GraftMode::Follow => "follow",
+            GraftMode::Line => "line",
+            GraftMode::Comment => "comment",
+        },
+        "renumbered": c.renumbered,
+        "start_fen": c.renumbered.map(|_| c.game.start_fen()),
+        "played": c.played,
+        "stops": c.stops,
+        "reasons": c.reasons.iter().map(|r| r.name()).collect::<Vec<_>>(),
+        "movetext": c.game.movetext(),
+        "graft": graft_json(&c.report),
+        "read": {
+            "played": c.read.played,
+            "stops": c.read.stops.iter().map(|s| json!({ "text": s.text, "status": serde_json::to_value(s.status).unwrap_or(Value::Null) })).collect::<Vec<_>>(),
+            "flags": c.read.flags.iter().map(|f| serde_json::to_value(f).unwrap_or(Value::Null)).collect::<Vec<_>>(),
+            "rest": c.read.rest,
+        },
+    })
 }
 
 /// Make the line through `at` the main line, saying so when it could not be (it would nest the
