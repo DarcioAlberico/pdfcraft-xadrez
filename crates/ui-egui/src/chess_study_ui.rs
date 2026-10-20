@@ -207,7 +207,11 @@ impl StudyState {
                 None => self.no_engine = true,
                 Some(path) => {
                     let ctx = ctx.clone();
-                    match Analyser::start(&path, options, Arc::new(move || ctx.request_repaint())) {
+                    // At most ten repaints a second (T13a): an engine reports up to ~70 lines a
+                    // second for a moment after each new position, and every repaint of the main
+                    // window draws the chess board's own window too.
+                    let repaint = move || ctx.request_repaint_after(std::time::Duration::from_millis(100));
+                    match Analyser::start(&path, options, Arc::new(repaint)) {
                         Ok(engine) => self.engine = Some(engine),
                         Err(e) => self.start_error = Some(e),
                     }
@@ -482,6 +486,32 @@ fn numbered_moves(fen: &str, sans: &[String]) -> Vec<(Option<String>, String)> {
     out
 }
 
+/// egui's spinner, turning at ten frames a second. egui's own asks for every frame, so while the
+/// engine searched, the main window (and the chess board's own window with it, T13a) was drawn
+/// at the display's rate. Measured on Windows with Stockfish analysing (dev build, pdfcraft.exe's
+/// own CPU): 22% of a core docked and 52% with the board's window out, against 4% and 9% now.
+#[cfg(not(target_arch = "wasm32"))]
+fn searching_mark(ui: &mut egui::Ui) {
+    let side = ui.style().spacing.interact_size.y;
+    let (rect, _) = ui.allocate_exact_size(vec2(side, side), egui::Sense::hover());
+    if !ui.is_rect_visible(rect) {
+        return;
+    }
+    ui.ctx().request_repaint_after(std::time::Duration::from_millis(100));
+    let radius = (rect.height() / 2.0 - 2.0).max(1.0);
+    let time = ui.input(|i| i.time);
+    let start = time * std::f64::consts::TAU;
+    let sweep = 240f64.to_radians() * time.sin();
+    let points: Vec<egui::Pos2> = (0..=20)
+        .map(|i| {
+            let angle = start + sweep * f64::from(i) / 20.0;
+            let (sin, cos) = angle.sin_cos();
+            rect.center() + radius * vec2(cos as f32, sin as f32)
+        })
+        .collect();
+    ui.painter().add(egui::Shape::line(points, Stroke::new(3.0, ui.visuals().strong_text_color())));
+}
+
 /// The engine's part: the switch, the engine's state and its lines. A click on a move of a line
 /// plays the line up to that move.
 #[cfg(not(target_arch = "wasm32"))]
@@ -532,7 +562,7 @@ fn engine_view(ui: &mut egui::Ui, t: &Tokens, study: &mut StudyState, board: &mu
     let Some(snap) = study.snapshot(board) else { return action };
     ui.horizontal_wrapped(|ui| {
         if snap.searching || !snap.ready {
-            ui.spinner();
+            searching_mark(ui);
         }
         let mut status = snap.name.clone().unwrap_or_else(|| tl!("Starting the engine…").to_string());
         if let Some(depth) = snap.lines.first().map(|l| l.depth) {

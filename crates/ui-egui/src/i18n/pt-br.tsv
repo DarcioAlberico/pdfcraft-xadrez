@@ -2672,3 +2672,10 @@ chess side	Black	Pretas
 	Promote a variation	promoção de variante
 	Demote a line	rebaixamento de linha
 	Delete a variation	exclusão de variante
+# Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
+	Chess board in its own window	Tabuleiro em janela própria
+	Move the board to its own window	Mover o tabuleiro para uma janela própria
+	Dock	Encaixar
+	Put the board back in its panel	Devolver o tabuleiro ao painel
+	The chess board couldn't open in its own window, so it is back in its panel.	Não foi possível abrir o tabuleiro em uma janela própria; ele voltou ao painel.
+	The chess board couldn't open in its own window, so it stays in its panel.	Não foi possível abrir o tabuleiro em uma janela própria; ele continua no painel.

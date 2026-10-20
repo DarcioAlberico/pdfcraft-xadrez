@@ -795,6 +795,10 @@ impl PdfCraftApp {
     /// is next drawn: it may be drawing now (this is often called from a panel), holding the layout.
     /// Read mode draws no workspace, so there it is done at once.
     pub fn show_chess_board(&mut self) {
+        // In its own window (T13a), the board is brought to the front instead of docked.
+        if self.raise_chess_window() {
+            return;
+        }
         let panel = crate::docking::Panel::Board;
         if self.mode == crate::Mode::Read {
             let opened = self.docking.set_visible(panel, true).and_then(|()| self.docking.apply(craft_ui::docking::Action::Activate { panel }));
@@ -807,7 +811,7 @@ impl PdfCraftApp {
     }
 
     /// What the chess board panel asked for.
-    fn chess_board_action(&mut self, action: crate::chess_board_ui::BoardAction) {
+    pub(crate) fn chess_board_action(&mut self, action: crate::chess_board_ui::BoardAction) {
         use crate::chess_board_ui::BoardAction;
         match action {
             BoardAction::CopyFen(fen) => self.copy_from_board(fen, tl!("FEN copied")),
@@ -846,14 +850,7 @@ pub(crate) fn board_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
         app.chess.enter_scope();
     }
     let pieces = crate::chess_editor::board_piece_set(&mut app.chess.board_pieces);
-    // The diagram the board came from, when it belongs to the document shown.
-    let active = app.active_ids().map(|(_, id)| id);
-    let source_label = app.chess.board().source.filter(|s| active == Some(s.doc)).map(|s| {
-        let label = app.session.get(s.doc).and_then(|d| d.info.pages.get(s.page)).map_or_else(|| (s.page + 1).to_string(), |p| p.label.clone());
-        let title = crate::i18n::fmt(tl!("Diagram {n}"), &[("n", &(s.index + 1).to_string())]);
-        let page = crate::i18n::fmt(tl!("Page {label}"), &[("label", &label)]);
-        format!("{title} · {page}")
-    });
+    let source_label = board_source_label(app);
     let mut action = None;
     let mut games = None;
     // The PGN tool rail on the left edge, at the full height and outside the scroll area.
@@ -873,4 +870,15 @@ pub(crate) fn board_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     if let Some(a) = games {
         app.chess_games_action(a);
     }
+}
+
+/// The diagram the board came from, when it belongs to the document shown: "Diagram 2 · Page 14".
+pub(crate) fn board_source_label(app: &PdfCraftApp) -> Option<String> {
+    let active = app.active_ids().map(|(_, id)| id);
+    app.chess.board().source.filter(|s| active == Some(s.doc)).map(|s| {
+        let label = app.session.get(s.doc).and_then(|d| d.info.pages.get(s.page)).map_or_else(|| (s.page + 1).to_string(), |p| p.label.clone());
+        let title = crate::i18n::fmt(tl!("Diagram {n}"), &[("n", &(s.index + 1).to_string())]);
+        let page = crate::i18n::fmt(tl!("Page {label}"), &[("label", &label)]);
+        format!("{title} · {page}")
+    })
 }

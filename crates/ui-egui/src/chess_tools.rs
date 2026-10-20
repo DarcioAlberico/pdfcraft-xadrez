@@ -46,6 +46,9 @@ pub(crate) const LONG_PRESS: f64 = 0.4;
 /// Most keys kept for the panel from one frame's input (a held key repeats).
 const MAX_KEYS: usize = 64;
 
+/// Most app commands queued between two frames.
+const MAX_COMMANDS: usize = 8;
+
 /// The mode the rail has armed. Navigate is the default; the capture modes come with their steps
 /// (T7a, T9).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -70,9 +73,16 @@ pub struct ToolState {
     long_press: Option<egui::Id>,
     /// The popup was opened from the keyboard: its first tool takes the focus.
     focus_popup: bool,
+    /// The app commands rail tools asked for ([`Kind::Command`]), in order, until the app runs them.
+    commands: Vec<&'static str>,
 }
 
 impl ToolState {
+    /// The app commands the rail asked for since the last call, in order.
+    pub(crate) fn take_commands(&mut self) -> Vec<&'static str> {
+        std::mem::take(&mut self.commands)
+    }
+
     /// The member group `id` shows.
     fn shown(&self, id: &str) -> usize {
         self.shown.iter().find(|(g, _)| *g == id).map_or(0, |(_, i)| *i)
@@ -157,6 +167,9 @@ pub(crate) enum Kind {
     Mode(PgnTool),
     /// Acts once.
     Action(Run),
+    /// Runs a registered command of the app (it acts beyond the board): queued for the app,
+    /// which runs it at the start of the next frame (`chess_window::frame`).
+    Command(&'static str),
 }
 
 /// A tool of the rail.
@@ -175,6 +188,9 @@ pub(crate) struct Tool {
     pub kind: Kind,
     /// Whether it can act now.
     pub enabled: fn(&BoardState) -> bool,
+    /// Whether it is on the rail at all here (its own window: not where windows are drawn
+    /// inside the main one).
+    pub visible: fn(&egui::Context) -> bool,
     /// The variations it can act on from the move shown, nearest first: a group lists them when
     /// there are several to choose from.
     pub heads: Option<fn(&Game) -> Vec<NodeId>>,
@@ -197,7 +213,8 @@ pub(crate) enum Entry {
 }
 
 /// The rail, top to bottom: sections, with a separator between them.
-pub(crate) static RAIL: &[&[Entry]] = &[&[Entry::Tool(NAVIGATE)], &[Entry::Group(STRUCTURE)], &[Entry::Tool(UNDO), Entry::Tool(REDO)]];
+pub(crate) static RAIL: &[&[Entry]] =
+    &[&[Entry::Tool(NAVIGATE)], &[Entry::Group(STRUCTURE)], &[Entry::Tool(UNDO), Entry::Tool(REDO)], &[Entry::Tool(WINDOW)]];
 
 const ESC: ChessKey = ChessKey::plain(Key::Escape);
 
@@ -214,6 +231,7 @@ const NAVIGATE: Tool = Tool {
     kind: Kind::Mode(PgnTool::Navigate),
     enabled: |_| true,
     heads: None,
+    visible: |_| true,
     on_move: None,
 };
 
@@ -231,6 +249,7 @@ const STRUCTURE: Group = Group {
             kind: Kind::Action(|b, t| structure(b, Op::PromoteOne, t)),
             enabled: has_moves,
             heads: Some(|g| Op::PromoteOne.heads(g, g.current())),
+            visible: |_| true,
             on_move: Some(|g, n| Op::PromoteOne.check(g, n)),
         },
         Tool {
@@ -242,6 +261,7 @@ const STRUCTURE: Group = Group {
             kind: Kind::Action(|b, t| structure(b, Op::MakeMain, t)),
             enabled: has_moves,
             heads: None,
+            visible: |_| true,
             on_move: Some(|g, n| Op::MakeMain.check(g, n)),
         },
         Tool {
@@ -253,6 +273,7 @@ const STRUCTURE: Group = Group {
             kind: Kind::Action(|b, t| structure(b, Op::Demote, t)),
             enabled: has_moves,
             heads: Some(|g| Op::Demote.heads(g, g.current())),
+            visible: |_| true,
             on_move: Some(|g, n| Op::Demote.check(g, n)),
         },
         Tool {
@@ -264,6 +285,7 @@ const STRUCTURE: Group = Group {
             kind: Kind::Action(|b, t| structure(b, Op::DeleteVariation, t)),
             enabled: has_moves,
             heads: Some(|g| Op::DeleteVariation.heads(g, g.current())),
+            visible: |_| true,
             on_move: Some(|g, n| Op::DeleteVariation.check(g, n)),
         },
         Tool {
@@ -275,6 +297,7 @@ const STRUCTURE: Group = Group {
             kind: Kind::Action(|b, t| structure(b, Op::CutAfter, t)),
             enabled: has_moves,
             heads: None,
+            visible: |_| true,
             on_move: Some(|g, n| Op::CutAfter.check(g, n)),
         },
     ],
@@ -291,6 +314,7 @@ const UNDO: Tool = Tool {
     }),
     enabled: |b| b.history.undo_edit().is_some(),
     heads: None,
+    visible: |_| true,
     on_move: None,
 };
 
@@ -304,6 +328,22 @@ const REDO: Tool = Tool {
         b.redo();
     }),
     enabled: |b| b.history.redo_edit().is_some(),
+    heads: None,
+    visible: |_| true,
+    on_move: None,
+};
+
+/// The board in its own window, or back in the dock (T13a): only where separate windows can be
+/// opened (not on the web, nor in tests, where windows are drawn inside the main one).
+const WINDOW: Tool = Tool {
+    id: "window",
+    icon: "app-window",
+    label: |_| tl!("Chess board in its own window").to_owned(),
+    keys: &[],
+    command: Some("chess.window.detach"),
+    kind: Kind::Command("chess.window.detach"),
+    enabled: |_| true,
+    visible: |ctx| !ctx.embed_viewports(),
     heads: None,
     on_move: None,
 };
@@ -378,6 +418,42 @@ pub(crate) fn take_scope_keys(chess: &mut ChessState, ctx: &egui::Context, raw: 
     });
 }
 
+/// The main window's key scope, set aside while the chess board's own window draws its rail.
+pub(crate) struct MainScope {
+    rail_shown: bool,
+    keys: Vec<(Key, Modifiers)>,
+}
+
+/// The chess board's own window (T13a), at the start of its pass: its keys are its own (its
+/// input never reaches `raw_input_hook`, which is the main window's), so the chess keys are
+/// taken from it for its rail, unless a text field has the keyboard or a popup is open. The main
+/// window's scope is set aside, and put back by [`end_window_keys`]: a rail drawn in the window
+/// takes no keys from the main one.
+pub(crate) fn take_window_keys(chess: &mut ChessState, ctx: &egui::Context) -> MainScope {
+    let main = MainScope { rail_shown: chess.tools.rail_shown, keys: std::mem::take(&mut chess.tools.keys) };
+    if !ctx.text_edit_focused() && !egui::Popup::is_any_open(ctx) {
+        let keys = &mut chess.tools.keys;
+        ctx.input_mut(|i| {
+            i.events.retain(|event| match event {
+                Event::Key { key, pressed: true, modifiers, .. } if scope_key(*key, *modifiers) => {
+                    if keys.len() < MAX_KEYS {
+                        keys.push((*key, *modifiers));
+                    }
+                    false
+                }
+                _ => true,
+            });
+        });
+    }
+    main
+}
+
+/// The end of the chess window's pass: the main window's key scope as it was.
+pub(crate) fn end_window_keys(chess: &mut ChessState, main: MainScope) {
+    chess.tools.rail_shown = main.rail_shown;
+    chess.tools.keys = main.keys;
+}
+
 /// The name a tool is known by: its label and its key ("Demote (Ctrl+↓)").
 fn name(ctx: &egui::Context, tool: &Tool, board: &BoardState) -> String {
     let label = (tool.label)(board);
@@ -394,6 +470,11 @@ fn activate(chess: &mut ChessState, tool: &Tool, target: Target) {
     match tool.kind {
         Kind::Mode(mode) => chess.tools.tool = mode,
         Kind::Action(run) => run(chess.board_mut(), target),
+        Kind::Command(id) => {
+            if chess.tools.commands.len() < MAX_COMMANDS && !chess.tools.commands.contains(&id) {
+                chess.tools.commands.push(id);
+            }
+        }
     }
 }
 
@@ -427,12 +508,17 @@ fn rail(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) -> Option<egui::I
     ui.add_space(6.0);
     let mut focused = None;
     let mut any_focus = false;
-    for (i, section) in RAIL.iter().enumerate() {
+    let ctx = ui.ctx().clone();
+    let visible = |entry: &Entry| match entry {
+        Entry::Tool(tool) => (tool.visible)(&ctx),
+        Entry::Group(_) => true,
+    };
+    for (i, section) in RAIL.iter().filter(|section| section.iter().any(visible)).enumerate() {
         if i > 0 {
             let (r, _) = ui.allocate_exact_size(vec2(20.0, 9.0), Sense::hover());
             ui.painter().hline(r.x_range(), r.center().y, Stroke::new(1.0, t.divider));
         }
-        for entry in section.iter() {
+        for entry in section.iter().filter(|entry| visible(entry)) {
             match entry {
                 Entry::Tool(tool) => {
                     let name = name(ui.ctx(), tool, chess.board());

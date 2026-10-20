@@ -2564,3 +2564,10 @@ animation effects	Off	ఆఫ్
 	Promote a variation	ఉపవరుస పైకి
 	Demote a line	వరుస కిందికి
 	Delete a variation	ఉపవరుస తొలగింపు
+# Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
+	Chess board in its own window	చెస్ బోర్డు దాని సొంత విండోలో
+	Move the board to its own window	బోర్డును దాని సొంత విండోకు తరలించు
+	Dock	డాక్ చేయి
+	Put the board back in its panel	బోర్డును దాని ప్యానెల్‌కు తిరిగి పెట్టు
+	The chess board couldn't open in its own window, so it is back in its panel.	చెస్ బోర్డును దాని సొంత విండోలో తెరవలేకపోయాం, కాబట్టి అది తిరిగి దాని ప్యానెల్‌లో ఉంది.
+	The chess board couldn't open in its own window, so it stays in its panel.	చెస్ బోర్డును దాని సొంత విండోలో తెరవలేకపోయాం, కాబట్టి అది దాని ప్యానెల్‌లోనే ఉంటుంది.

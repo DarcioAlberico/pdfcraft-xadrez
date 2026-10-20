@@ -1,7 +1,7 @@
 //! Application panel identities and persistence around the shared docking renderer.
 //! Document contents remain owned by their existing view implementations.
 
-use craft_ui::docking::{Action, DockArea, DockStyle, Layout, Location, Node, PanelLimits, Permissions, Placement, Zone};
+use craft_ui::docking::{Action, DockArea, DockContent, DockStyle, Layout, Location, Node, PanelLimits, Permissions, Placement, Zone};
 use craft_ui::layout::{SplitAxis, SplitSize};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -417,32 +417,14 @@ pub fn show(app: &mut crate::PdfCraftApp, ui: &mut egui::Ui) {
         // Availability is a render projection: the saved group, selection and width survive Home.
         let _ = rendered.apply(Action::Close { panel: Panel::Inspector });
     }
-    let output = DockArea::new(egui::Id::new("pdfcraft-docking")).show_with_limits(
+    let output = DockArea::new(egui::Id::new("pdfcraft-docking")).show_customized(
         ui,
         &rendered,
         &style,
         |panel| crate::i18n::t(panel.label()).into(),
         permissions,
         panel_limits,
-        |ui, panel| match panel {
-            Panel::Canvas => {
-                ui.painter().rect_filled(ui.max_rect(), 0.0, t.pasteboard);
-                match app.active {
-                    None if app.combine_showing() => crate::combine_ui::page(app, ui),
-                    None => crate::home::show(app, ui),
-                    Some(index) => match crate::compare_ui::side_by_side(app, index) {
-                        Some((old, new)) => crate::compare_ui::compare_area(app, old, new, ui),
-                        None => crate::canvas::document_area(app, index, ui),
-                    },
-                }
-            }
-            Panel::Tools => crate::panels::left_panel(app, ui),
-            Panel::Inspector => {
-                ui.data_mut(|data| data.insert_temp(egui::Id::new("pdfcraft-inspector-body"), ui.max_rect()));
-                crate::panels::right_panel(app, ui);
-            }
-            Panel::Board => crate::chess_ui::board_panel(app, ui),
-        },
+        &mut Content { app: &mut *app, t },
     );
     let _ = sync(&mut workspace, app);
     drain_reveals(&mut workspace, app);
@@ -460,6 +442,42 @@ pub fn show(app: &mut crate::PdfCraftApp, ui: &mut egui::Ui) {
         {
             app.notify_fmt("Panel move was not applied: {error}", &[("error", &error)]);
         }
+    }
+}
+
+/// The panels' bodies, and the app's items in a tab's context menu.
+struct Content<'a> {
+    app: &'a mut crate::PdfCraftApp,
+    t: crate::theme::Tokens,
+}
+
+impl DockContent<Panel> for Content<'_> {
+    fn body(&mut self, ui: &mut egui::Ui, panel: &Panel) {
+        let (app, t) = (&mut *self.app, &self.t);
+        match panel {
+            Panel::Canvas => {
+                ui.painter().rect_filled(ui.max_rect(), 0.0, t.pasteboard);
+                match app.active {
+                    None if app.combine_showing() => crate::combine_ui::page(app, ui),
+                    None => crate::home::show(app, ui),
+                    Some(index) => match crate::compare_ui::side_by_side(app, index) {
+                        Some((old, new)) => crate::compare_ui::compare_area(app, old, new, ui),
+                        None => crate::canvas::document_area(app, index, ui),
+                    },
+                }
+            }
+            Panel::Tools => crate::panels::left_panel(app, ui),
+            Panel::Inspector => {
+                ui.data_mut(|data| data.insert_temp(egui::Id::new("pdfcraft-inspector-body"), ui.max_rect()));
+                crate::panels::right_panel(app, ui);
+            }
+            Panel::Board => crate::chess_ui::board_panel(app, ui),
+        }
+    }
+
+    fn panel_menu(&mut self, ui: &mut egui::Ui, panel: &Panel) {
+        // The Board tab: the board in its own window (T13a).
+        crate::chess_window::dock_menu(self.app, ui, *panel);
     }
 }
 

@@ -423,6 +423,9 @@ fn app_creator<'a>(
                 adapter.backend
             );
             notify_software_renderer(&mut app, adapter.device_type);
+            // A separate window (the chess board's) whose surface wgpu couldn't configure is
+            // only logged by eframe: the patched egui-wgpu records it for the app (T13a).
+            app.watch_surface_failures(Box::new(eframe::egui_wgpu::winit::take_surface_failures));
         } else {
             log::info!("renderer: OpenGL (glow)");
         }
@@ -1106,6 +1109,33 @@ mod tests {
         ] {
             assert!(add_surface.contains(patch), "vendor/egui-wgpu lost its surface configure patch: {patch}");
         }
+    }
+
+    #[test]
+    fn egui_wgpu_records_a_window_whose_surface_it_could_not_configure() {
+        // T13a: eframe only logs `set_window`'s error for a window opened while another is
+        // drawn (the chess board's own window), so the patched painter records the window, and
+        // the app docks the board back and uploads its textures again (`watch_surface_failures`).
+        use eframe::egui_wgpu::winit::{MAX_SURFACE_FAILURES, record_surface_failure, take_surface_failures};
+        let (a, b) = (egui::ViewportId::from_hash_of("t13a-a"), egui::ViewportId::from_hash_of("t13a-b"));
+        let _ = take_surface_failures();
+        record_surface_failure(a);
+        record_surface_failure(b);
+        record_surface_failure(a);
+        assert_eq!(take_surface_failures(), vec![a, b], "each window once, oldest first");
+        assert!(take_surface_failures().is_empty(), "taking empties the list");
+        for i in 0..MAX_SURFACE_FAILURES + 10 {
+            record_surface_failure(egui::ViewportId::from_hash_of(("t13a-many", i)));
+        }
+        assert_eq!(take_surface_failures().len(), MAX_SURFACE_FAILURES, "bounded");
+        // And the painter calls it where a new window's surface fails to configure.
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let painter = std::fs::read_to_string(root.join("vendor/egui-wgpu/src/winit.rs")).unwrap().replace("\r\n", "\n");
+        let add_surface = painter.split("async fn add_surface(").nth(1).and_then(|s| s.split("\n    fn ").next()).expect("add_surface");
+        assert!(
+            add_surface.contains("record_surface_failure(viewport_id);\n            return Err(crate::WgpuError::ConfigureSurface(error));"),
+            "vendor/egui-wgpu lost its surface-failure record"
+        );
     }
 
     #[test]

@@ -2655,3 +2655,10 @@ animation effects	Off	Désactivés
 	Promote a variation	la promotion d'une variante
 	Demote a line	la rétrogradation d'une ligne
 	Delete a variation	la suppression d'une variante
+# Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
+	Chess board in its own window	Échiquier dans sa propre fenêtre
+	Move the board to its own window	Déplacer l’échiquier dans sa propre fenêtre
+	Dock	Ancrer
+	Put the board back in its panel	Remettre l’échiquier dans son panneau
+	The chess board couldn't open in its own window, so it is back in its panel.	L’échiquier n’a pas pu s’ouvrir dans sa propre fenêtre : il est revenu dans son panneau.
+	The chess board couldn't open in its own window, so it stays in its panel.	L’échiquier n’a pas pu s’ouvrir dans sa propre fenêtre : il reste dans son panneau.

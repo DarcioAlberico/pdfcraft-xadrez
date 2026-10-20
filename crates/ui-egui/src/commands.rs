@@ -98,6 +98,8 @@ impl PdfCraftApp {
             && match spec.id {
                 "view.previous_view" => self.active.and_then(|i| self.views.get(i)).is_some_and(|v| !v.back.is_empty()),
                 "view.next_view" => self.active.and_then(|i| self.views.get(i)).is_some_and(|v| !v.forward.is_empty()),
+                // Only where separate windows can be opened; out, it can always come back.
+                "chess.window.detach" => self.chess_window_detached() || self.chess_window_available(),
                 _ => true,
             }
     }
@@ -454,6 +456,7 @@ impl PdfCraftApp {
             "chess.pgn.open" => self.open_chess_pgn(),
             "chess.pgn.save" => self.save_chess_pgn(false),
             "chess.pgn.save_all" => self.save_chess_pgn(true),
+            "chess.window.detach" => self.toggle_chess_window(),
             "a11y.reading_options" => self.dialog = Some(Dialog::Properties(crate::PropsTab::Advanced)),
             "export.all_images" => self.dialog = Some(Dialog::Export(crate::export_ui::ExportKind::AllImages)),
             "edit.text" => {

@@ -346,6 +346,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     c("chess.pgn.open", "Open PGN…", None, None, Nothing, "folder-open"),
     c("chess.pgn.save", "Save PGN…", None, None, Nothing, "save"),
     c("chess.pgn.save_all", "Save all games as PGN…", None, None, Nothing, "save"),
+    // The chess board in its own window, or back in the dock (T13a): a toggle.
+    c("chess.window.detach", "Chess board in its own window", None, None, Nothing, "app-window"),
     c("export.all_images", "Export all images…", FILE, None, Copying, "image"),
     c("edit.header_footer", "Add header & footer…", None, None, Modification, "heading"),
     c("edit.header_footer.update", "Update header & footer…", None, None, Marks(crate::MarkKind::HeaderFooter), "heading"),

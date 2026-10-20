@@ -41,6 +41,8 @@ mod chess_study_ui;
 mod chess_text_ui;
 mod chess_tools;
 mod chess_ui;
+mod chess_window;
+pub use chess_window::SurfaceFailuresFn;
 mod chrome;
 mod combine_grid;
 mod image_pick;
@@ -688,6 +690,8 @@ pub struct PdfCraftApp {
     pub compare: Option<compare_ui::CompareState>,
     /// Chess diagrams: the last scan and the running one.
     pub chess: chess_ui::ChessState,
+    /// The chess board in its own window (T13a).
+    chess_window: chess_window::ChessWindow,
     /// The JavaScript console and the Document JavaScripts draft.
     pub js_console: js_ui::JsConsole,
     pub doc_js: js_ui::DocJsDraft,
@@ -1016,6 +1020,7 @@ impl PdfCraftApp {
             compare_old: None,
             compare: None,
             chess: Default::default(),
+            chess_window: Default::default(),
             js_console: Default::default(),
             doc_js: Default::default(),
             a11y: a11y_ui::A11yState::default(),
@@ -2327,6 +2332,8 @@ impl PdfCraftApp {
         v["redact_prefs"] = self.redact_defaults.to_json();
         // Set outside json! above, which is at serde_json's macro recursion limit.
         v["hide_empty_highlight_hover"] = serde_json::Value::Bool(self.comment_prefs.hide_empty_highlight_hover);
+        // The chess board in its own window: {detached, size, position}.
+        v["docking_detached"] = self.chess_window.to_json();
         v.to_string()
     }
 
@@ -2342,6 +2349,8 @@ impl PdfCraftApp {
                 v.get("docking_left_open").and_then(serde_json::Value::as_bool).unwrap_or(self.docking.layout.contains(&docking::Panel::Tools));
             self.right = v.get("docking_right").and_then(|value| serde_json::from_value(value.clone()).ok()).flatten();
         }
+        // After the workspace: a board in its own window is not also in the dock.
+        self.restore_chess_window(&v["docking_detached"]);
         self.combine_columns = combine_ui::Columns::from_json(&v["combine_columns"]);
         if let Some(view) = v["combine_view"].as_str().and_then(combine_ui::CombineView::parse) {
             self.combine_view = view;
@@ -3168,6 +3177,8 @@ impl eframe::App for PdfCraftApp {
         for view in &mut self.views {
             view.begin_render_frame();
         }
+        // The chess board's own window, every frame while it is out: before full screen returns.
+        chess_window::frame(self, &ctx);
         // The window shows the active document's name (or title, if it asks for that).
         let title = self
             .active

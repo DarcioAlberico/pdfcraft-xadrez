@@ -2796,3 +2796,10 @@ animation effects	Off	Desactivados
 	Promote a variation	promoción de variante
 	Demote a line	relegación de línea
 	Delete a variation	borrado de variante
+# Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
+	Chess board in its own window	Tablero de ajedrez en su propia ventana
+	Move the board to its own window	Mover el tablero a su propia ventana
+	Dock	Acoplar
+	Put the board back in its panel	Devolver el tablero a su panel
+	The chess board couldn't open in its own window, so it is back in its panel.	El tablero de ajedrez no se pudo abrir en su propia ventana, así que ha vuelto a su panel.
+	The chess board couldn't open in its own window, so it stays in its panel.	El tablero de ajedrez no se pudo abrir en su propia ventana, así que sigue en su panel.

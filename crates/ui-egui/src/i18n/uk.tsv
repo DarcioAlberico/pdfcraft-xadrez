@@ -2677,3 +2677,10 @@ animation effects	Off	Вимкнено
 	Promote a variation	підвищення варіанта
 	Demote a line	пониження лінії
 	Delete a variation	видалення варіанта
+# Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
+	Chess board in its own window	Шахова дошка в окремому вікні
+	Move the board to its own window	Перемістити дошку в окреме вікно
+	Dock	Закріпити
+	Put the board back in its panel	Повернути дошку на її панель
+	The chess board couldn't open in its own window, so it is back in its panel.	Не вдалося відкрити шахову дошку в окремому вікні, тому її повернуто на панель.
+	The chess board couldn't open in its own window, so it stays in its panel.	Не вдалося відкрити шахову дошку в окремому вікні, тому вона залишається на панелі.
