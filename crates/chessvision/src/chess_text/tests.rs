@@ -109,6 +109,33 @@ fn figurine_font_code_reads_as_a_knight() {
     assert_eq!(span.rect, ViewRect::new(2.0 * W, 0.0, 6.0 * W, 10.0));
 }
 
+/// The weight of each run: a move set in a bold font is bold, a figurine in a regular figurine
+/// font inside it does not change that, and a move in the body font is not.
+#[test]
+fn moves_in_a_bold_font_are_bold() {
+    let read = Page::new()
+        .text_in("17.Qf3", "ABCDEF+Times-Bold")
+        .text(" ")
+        .glyph("N", "SemFig", Some(0x4E))
+        .text_in("e6", "Times-Bold")
+        .text(" Not 17...h5 18.Nd5")
+        .read(None);
+    let weights: Vec<(ChessRun, bool)> = read.lines[0].spans.iter().map(|s| (s.run.clone(), s.bold)).collect();
+    assert_eq!(
+        weights,
+        vec![
+            (white(17), true),
+            (mv("Qf3", "Qf3"), true),
+            (mv("Ne6", "♘e6"), true),
+            (text("Not"), false),
+            (black(17), false),
+            (mv("h5", "h5"), false),
+            (white(18), false),
+            (mv("Nd5", "Nd5"), false),
+        ]
+    );
+}
+
 /// The same codes in a figurine font, in a sentence: no notation follows, so they stay letters.
 #[test]
 fn figurine_font_prose_stays_text() {

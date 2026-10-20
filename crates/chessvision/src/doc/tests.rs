@@ -22,15 +22,20 @@ fn geometry() -> PageGeometry {
 }
 
 /// Runs from space-separated tokens: `12.` / `12...` prefixes are move numbers, readable SAN is a
-/// move, a NAG glyph is a NAG, the rest is prose (joined, as `chess_text` joins it).
-fn runs(text: &str) -> Vec<ChessRun> {
-    let mut out: Vec<ChessRun> = Vec::new();
+/// move, a NAG glyph is a NAG, the rest is prose (joined, as `chess_text` joins it). A token
+/// starting with `*` is set in bold.
+fn runs(text: &str) -> Vec<(ChessRun, bool)> {
+    let mut out: Vec<(ChessRun, bool)> = Vec::new();
     for tok in text.split(' ').filter(|t| !t.is_empty()) {
+        let (tok, bold) = match tok.strip_prefix('*') {
+            Some(t) => (t, true),
+            None => (tok, false),
+        };
         let digits = tok.chars().take_while(char::is_ascii_digit).count();
         let mut rest = tok;
         if digits > 0 && tok[digits..].starts_with('.') {
             let dots = tok[digits..].chars().take_while(|c| *c == '.').count();
-            out.push(ChessRun::MoveNumber { number: tok[..digits].parse().unwrap(), black: dots >= 3 });
+            out.push((ChessRun::MoveNumber { number: tok[..digits].parse().unwrap(), black: dots >= 3 }, bold));
             rest = &tok[digits + dots..];
             if rest.is_empty() {
                 continue;
@@ -38,14 +43,14 @@ fn runs(text: &str) -> Vec<ChessRun> {
         }
         let starts_like_move = rest.starts_with(|c: char| ('a'..='h').contains(&c) || "KQRBNO".contains(c));
         if starts_like_move && let Ok(san) = San::read(rest, Lang::En) {
-            out.push(ChessRun::Move { san, text: rest.to_owned() });
+            out.push((ChessRun::Move { san, text: rest.to_owned() }, bold));
         } else if let Some(n) = nag::by_glyph(rest) {
-            out.push(ChessRun::Nag(n.code));
-        } else if let Some(ChessRun::Text(prev)) = out.last_mut() {
+            out.push((ChessRun::Nag(n.code), bold));
+        } else if let Some((ChessRun::Text(prev), _)) = out.last_mut() {
             prev.push(' ');
             prev.push_str(rest);
         } else {
-            out.push(ChessRun::Text(rest.to_owned()));
+            out.push((ChessRun::Text(rest.to_owned()), bold));
         }
     }
     out
@@ -56,7 +61,7 @@ fn line_at(x: f32, y: f32, text: &str) -> ChessLine {
     let mut cx = x;
     let spans: Vec<ChessSpan> = runs(text)
         .into_iter()
-        .map(|run| {
+        .map(|(run, bold)| {
             let chars = match &run {
                 ChessRun::Text(s) => s.chars().count(),
                 ChessRun::Move { text, .. } => text.chars().count(),
@@ -65,7 +70,7 @@ fn line_at(x: f32, y: f32, text: &str) -> ChessLine {
             } as f32;
             let rect = ViewRect::new(cx, y, cx + 7.0 * chars, y + 12.0);
             cx += 7.0 * chars + 4.0;
-            ChessSpan { run, rect }
+            ChessSpan { run, rect, bold }
         })
         .collect();
     let rect = ViewRect::new(x, y, cx, y + 12.0);
@@ -406,6 +411,93 @@ fn a_move_that_is_the_main_lines_next_goes_back_to_it() {
     let main: Vec<&str> = score.mainline().iter().map(|&n| score.nodes[n].san.as_str()).collect();
     assert_eq!(main, ["e4", "e5"]);
     assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid));
+}
+
+fn mainline(doc: &ChessDoc) -> Vec<&str> {
+    let score = &doc.games[0].score;
+    score.mainline().iter().map(|&n| score.nodes[n].san.as_str()).collect()
+}
+
+/// Books print their main line in bold and the analysis in regular type. Analysis that comes
+/// before the main line (Dvoretsky's `Black wins after 1...Be6+ 2.Kg6`, then the game's bold
+/// `1...Bxg7?`) is not the main line: the bold moves are, and the game goes on from them.
+#[test]
+fn bold_moves_are_the_main_line_when_analysis_comes_first() {
+    let text = page_text(vec![line(230.0, "After 3.Qf3 Nf6 4.Qb3 it is level. *3.Qh5 *Nf6 Better 3...g6 4.Qf3 Nf6 *4.Qxf7#")]);
+    let diagrams = [reading(0, 60.0, SCHOLAR, true, false)];
+    let doc = build_page(&input(0, &text, &diagrams, &[], &[]));
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    assert_eq!(mainline(&doc), ["Qh5", "Nf6", "Qxf7#"]);
+    assert_eq!(doc.games.len(), 1);
+    // The analysis is still there, as variations, and the bold flag is kept on the moves.
+    let pgn = pgn::write_game(&doc.games[0].score).split_whitespace().collect::<Vec<_>>().join(" ");
+    assert!(pgn.contains("3. Qh5 (3. Qf3 Nf6 4. Qb3") && pgn.contains("(3... g6 4. Qf3 Nf6 ) 4. Qxf7#"), "{pgn}");
+    let bold: Vec<bool> =
+        doc.pages[0].blocks.iter().flat_map(|b| b.inlines()).filter_map(|i| if let Inline::Move(m) = i { Some(m.bold) } else { None }).collect();
+    assert_eq!(bold, [false, false, false, true, true, false, false, false, true]);
+    // Without weights (OCR, documents read before) the first chain stays the main line.
+    let plain = page_text(vec![line(230.0, "After 3.Qf3 Nf6 4.Qb3 it is level. 3.Qh5 Nf6 Better 3...g6 4.Qf3 Nf6 4.Qxf7#")]);
+    let doc = build_page(&input(0, &plain, &diagrams, &[], &[]));
+    assert_eq!(mainline(&doc), ["Qf3", "Nf6", "Qb3"]);
+}
+
+/// Analysis that goes straight on from the bold line's last move (`4...Kg4`, then `Tarrasch had
+/// expected 5.Kf6? c4`) is not the main line either: the next bold move (`5.Kg6!`) takes its place.
+#[test]
+fn a_bold_move_takes_the_place_of_analysis_that_went_on_from_it() {
+    let text = page_text(vec![line(230.0, "*1.e4 *e5 *2.Nf3 *Nc6 He expected 3.Bc4 Nf6 4.d3 here. *3.Bb5 *a6")]);
+    let doc = build_page(&input(0, &text, &[], &[], &[]));
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    assert_eq!(mainline(&doc), ["e4", "e5", "Nf3", "Nc6", "Bb5", "a6"]);
+    // All in regular type, the line read first stays the main line.
+    let text = page_text(vec![line(230.0, "1.e4 e5 2.Nf3 Nc6 He expected 3.Bc4 Nf6 4.d3 here. 3.Bb5 a6")]);
+    let doc = build_page(&input(0, &text, &[], &[], &[]));
+    assert_eq!(mainline(&doc), ["e4", "e5", "Nf3", "Nc6", "Bc4", "Nf6", "d3"]);
+    // All in bold, nothing changes either: a book that sets everything in bold says nothing.
+    let text = page_text(vec![line(230.0, "*1.e4 *e5 *2.Nf3 *Nc6 He expected *3.Bc4 *Nf6 *4.d3 here. *3.Bb5 *a6")]);
+    let doc = build_page(&input(0, &text, &[], &[], &[]));
+    assert_eq!(mainline(&doc), ["e4", "e5", "Nf3", "Nc6", "Bc4", "Nf6", "d3"]);
+}
+
+/// An unnumbered bold move goes on from the bold line too (Fischer prints `6 …` and `e5` on
+/// separate lines, after the regular `6 ♗c4`), but not after a bold move that failed: there it
+/// would be read a ply early, as the other side's move (`2.Bxf7`, then `e5` as White's pawn).
+#[test]
+fn an_unnumbered_bold_move_goes_on_from_the_last_bold_move_played() {
+    let text = page_text(vec![line(230.0, "*1.e4 *e5 *2.Nf3 *Nc6 *3.Bb5 Instead 3.Bc4 is the Italian. *a6")]);
+    let doc = build_page(&input(0, &text, &[], &[], &[]));
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    assert_eq!(mainline(&doc), ["e4", "e5", "Nf3", "Nc6", "Bb5", "a6"]);
+    let text = page_text(vec![line(230.0, "*1.e4 *d6 Or 1...c5 2.Nf3 here. *2.Bxf7 *e5")]);
+    let doc = build_page(&input(0, &text, &[], &[], &[]));
+    let read = moves(&doc.pages[0]);
+    assert_eq!(read.last(), Some(&("e5".to_owned(), MoveStatus::NotReached)), "{read:?}");
+    assert_eq!(mainline(&doc), ["e4", "d6"]);
+}
+
+/// A bold move that the bold line cannot take, read inside a line of analysis, does not make that
+/// analysis the main line.
+#[test]
+fn a_bold_move_inside_analysis_does_not_make_it_the_main_line() {
+    let text = page_text(vec![line(230.0, "*1.e4 *e5 Or 1...c5 2.Nf3 d6 *3.Bb5+")]);
+    let doc = build_page(&input(0, &text, &[], &[], &[]));
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    assert_eq!(mainline(&doc), ["e4", "e5"]);
+}
+
+/// A move's weight is kept in the document's JSON only when it is bold, so documents written
+/// before it was kept read as they did.
+#[test]
+fn a_moves_weight_is_in_the_json_only_when_bold() {
+    let text = page_text(vec![line(230.0, "*1.e4 e5")]);
+    let doc = build_page(&input(0, &text, &[], &[], &[]));
+    let json = doc.to_json().unwrap();
+    assert_eq!(json.matches("\"bold\":true").count(), 1, "{json}");
+    assert!(!json.contains("\"bold\":false"));
+    assert_eq!(ChessDoc::from_json(&json).unwrap(), doc);
+    let old = json.replace(",\"bold\":true", "");
+    let read = ChessDoc::from_json(&old).unwrap();
+    assert!(read.pages[0].blocks.iter().flat_map(|b| b.inlines()).all(|i| !matches!(i, Inline::Move(m) if m.bold)));
 }
 
 /// Pages read before are judged again from what is printed: replaying a finished document's

@@ -44,6 +44,13 @@
 //!   while it is exactly the main line's next move (`2...Kd7? 3.Kf4 … 9.Kf5` and then
 //!   `3.Kd4 Kf6!`): the book is back on its main line. Nothing is dropped: the printed text of a
 //!   move that was not played goes into the game's comments, so the PGN still carries it.
+//! - **Weight.** Annotated books print the main line in bold and their analysis in regular type.
+//!   In a game with moves of both weights, a bold move after regular ones goes on from the last
+//!   bold move when it can be played there (an unnumbered one only when that bold move was
+//!   played), and a bold move played on the bold line makes it the main line, so analysis printed
+//!   first or going on from the main line's last move stays a variation. A bold move that only
+//!   fits inside the analysis changes nothing. Moves all of one weight (OCR text, documents read
+//!   before the weight was kept) are read as above.
 //! - **Comments and NAGs.** Prose inside a game is the comment of the move before it. An annotation
 //!   glyph belongs to the move it follows.
 //! - **Puzzles.** A diagram whose caption gives a number (`№185.`) is remembered by it. A
@@ -457,8 +464,6 @@ impl GameScore {
         map
     }
 
-    /// Put text that came before node `n`: its own `comment_before` when it starts a variation,
-    /// else the comment of the move before it (or of the game).
     /// Make node `n` the first of its siblings: the line its parent goes on with.
     pub(crate) fn put_first(&mut self, n: usize) {
         let parent = self.nodes.get(n).and_then(|node| node.parent);
@@ -475,6 +480,33 @@ impl GameScore {
         }
     }
 
+    /// Whether the line to node `to` goes through node `at` (`None`: the starting position, which
+    /// every line goes through).
+    fn leads_to(&self, at: Option<usize>, to: Option<usize>) -> bool {
+        let Some(at) = at else { return true };
+        let mut cur = to;
+        for _ in 0..=self.nodes.len() {
+            let Some(c) = cur else { return false };
+            if c == at {
+                return true;
+            }
+            cur = self.nodes.get(c).and_then(|node| node.parent);
+        }
+        false
+    }
+
+    /// Make the line through node `n` the main line: `n` and each move before it go first.
+    fn put_line_first(&mut self, n: usize) {
+        let mut cur = Some(n);
+        for _ in 0..=self.nodes.len() {
+            let Some(c) = cur else { break };
+            self.put_first(c);
+            cur = self.nodes.get(c).and_then(|node| node.parent);
+        }
+    }
+
+    /// Put text that came before node `n`: its own `comment_before` when it starts a variation,
+    /// else the comment of the move before it (or of the game).
     pub(crate) fn comment_before(&mut self, n: usize, text: &str) -> bool {
         let starts = self.starts_variation(n);
         let parent = self.nodes.get(n).and_then(|node| node.parent);
@@ -617,6 +649,17 @@ struct Open {
     replies: Vec<usize>,
     /// The diagram the game started from.
     seed: Option<Seed>,
+    /// The last move a bold move put on the main level (`None`: none yet, the starting position).
+    /// Books print their main line in bold and their analysis in regular type.
+    bold_tip: Option<usize>,
+    /// A regular move was read on the main level since the last bold one (or since the start):
+    /// the reading may have left the bold line.
+    strayed: bool,
+    /// A regular move was read in this game: with bold ones, the book marks its main line by
+    /// weight.
+    regular_seen: bool,
+    /// The last bold move read on the main level could not be played.
+    bold_failed: bool,
 }
 
 /// The finished walk.
@@ -996,14 +1039,18 @@ impl Walker {
             too_large: false,
             replies: Vec::new(),
             seed: started_from,
+            bold_tip: None,
+            strayed: false,
+            regular_seen: false,
+            bold_failed: false,
         });
         self.games.push(Game { origin, trusted, page: loc.page, score, flags });
         self.remaps.push(Vec::new());
         Some(honour)
     }
 
-    /// A printed move.
-    pub fn play(&mut self, number: Option<MoveNumber>, san: &San, text: &str, loc: Loc) -> MoveOutcome {
+    /// A printed move; `bold` when it is set in bold (the book's main line).
+    pub fn play(&mut self, number: Option<MoveNumber>, san: &San, text: &str, bold: bool, loc: Loc) -> MoveOutcome {
         let printed = format!("{}{}", number.map(|n| n.text()).unwrap_or_default(), text);
         let mut number = number;
         if self.held {
@@ -1067,10 +1114,29 @@ impl Walker {
         let Some(open) = self.open.as_mut() else { return MoveOutcome::status(MoveStatus::Unchecked) };
         let gi = open.game;
         let Some(game) = self.games.get_mut(gi) else { return MoveOutcome::status(MoveStatus::Unchecked) };
+        open.regular_seen |= !bold;
+        // A bold move after regular ones goes on the bold line, when it can be played there: the
+        // regular moves were analysis (`1...Be6+ 2.Kg6`, then the game's `1...Bxg7?`), even when
+        // they came first or went on from the bold line's last move. An unnumbered one only goes
+        // on from a bold move that was played: after one that failed (`20.exd5`, then `e5`), it
+        // would be read a ply early.
+        let mut placed = false;
+        if bold
+            && open.strayed
+            && (number.is_some() || (open.bold_tip.is_some() && !open.bold_failed))
+            && let [line] = open.lines.as_mut_slice()
+        {
+            let base = Line { cursor: open.bold_tip, moved: open.bold_tip.is_some(), ..Line::default() };
+            if playable(&game.score, &base, number, san) {
+                placed = true;
+                *line = base;
+            }
+        }
         // A numbered move that the main line takes (see `main_takes`): the text went back to the
         // main line after an alternative written as prose (`2.Kg7 ... The premature 2.h4+ loses to
         // 2...Kxh4 ... 2...c5`).
-        if main_takes(&game.score, &open.lines, number, san)
+        if !placed
+            && main_takes(&game.score, &open.lines, number, san)
             && let [line] = open.lines.as_mut_slice()
             && let Some(tip) = game.score.mainline().last().copied()
         {
@@ -1106,6 +1172,22 @@ impl Walker {
                     if let Some(line) = open.lines.last_mut() {
                         *line = Line { cursor: Some(node), moved: true, skipped: 0, last_ok: true, ..Line::default() };
                     }
+                    if open.lines.len() == 1 {
+                        // In a book that marks its main line by weight, the bold line is the main
+                        // line: a bold move played on it (after its last move, or as an
+                        // alternative to one of its moves) puts its own line first. One that could
+                        // only be read inside a line of analysis does not, and a book that sets
+                        // everything in one weight says nothing: its first line stays the main one.
+                        let parent = game.score.nodes.get(node).and_then(|n| n.parent);
+                        if bold && open.regular_seen && game.score.leads_to(parent, open.bold_tip) {
+                            game.score.put_line_first(node);
+                        }
+                        if bold {
+                            open.bold_tip = Some(node);
+                            open.bold_failed = false;
+                        }
+                        open.strayed = !bold;
+                    }
                     // The main line's reply to a move whose replies came first in brackets.
                     if open.lines.len() == 1
                         && let Some(parent) = game.score.nodes.get(node).and_then(|n| n.parent)
@@ -1140,6 +1222,10 @@ impl Walker {
         if let Some(line) = open.lines.last_mut() {
             line.skipped = line.skipped.saturating_add(1);
             line.last_ok = false;
+        }
+        if open.lines.len() == 1 {
+            open.strayed |= !bold;
+            open.bold_failed |= bold;
         }
         comment(game, open, &printed);
         MoveOutcome::status(status)

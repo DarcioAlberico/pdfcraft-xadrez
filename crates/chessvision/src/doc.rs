@@ -302,6 +302,10 @@ pub struct MoveInline {
     /// The move's node in [`ChessDoc::games`], when valid.
     pub game: Option<NodeRef>,
     pub source_rect: Option<UserRect>,
+    /// Printed in bold: books set their main line in bold and the analysis around it in regular
+    /// type. Only a text layer knows; OCR text and documents read before it was kept say `false`.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub bold: bool,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub review: Vec<ReviewFlag>,
 }
