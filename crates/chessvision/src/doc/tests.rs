@@ -387,6 +387,51 @@ fn the_main_line_resumes_after_a_prose_alternative() {
     assert_eq!(main, ["e4", "e5", "Nf3", "Nc6", "Nxe5", "Nxe5"]);
 }
 
+/// After a prose digression, a numbered move that is exactly the main line's next move goes back
+/// to the main line, even though it could also be an alternative inside the digression
+/// (Dvoretsky's `2...Kd7? 3.Kf4 … 9.Kf5` and then `3.Kd4 Kf6!`). Here `3.Bb5` would be legal in
+/// the `2...d6` line too (with check), where `a6` could not answer it.
+#[test]
+fn a_move_that_is_the_main_lines_next_goes_back_to_it() {
+    let text = page_text(vec![line(230.0, "1.e4 e5 2.Nf3 Nc6! If 2...d6? 3.d4 Nd7 4.Bc4 c6 is passive. 3.Bb5 a6 4.Ba4 Nf6")]);
+    let doc = build_page(&input(0, &text, &[], &[], &[]));
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    let score = &doc.games[0].score;
+    let main: Vec<&str> = score.mainline().iter().map(|&n| score.nodes[n].san.as_str()).collect();
+    assert_eq!(main, ["e4", "e5", "Nf3", "Nc6", "Bb5", "a6", "Ba4", "Nf6"]);
+    // A move that goes straight on from the digression stays in it: `2.Nf3` continues `1...c5`.
+    let text = page_text(vec![line(230.0, "1.e4 e5! Not 1...c5 2.Nf3 d6 here.")]);
+    let doc = build_page(&input(0, &text, &[], &[], &[]));
+    let score = &doc.games[0].score;
+    let main: Vec<&str> = score.mainline().iter().map(|&n| score.nodes[n].san.as_str()).collect();
+    assert_eq!(main, ["e4", "e5"]);
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid));
+}
+
+/// Pages read before are judged again from what is printed: replaying a finished document's
+/// pages gives the same document, whatever statuses they carried.
+#[test]
+fn read_pages_replay_into_the_same_document() {
+    let (text, diagrams, hints) = showcase();
+    let doc = build_page(&input(0, &text, &diagrams, &hints, &[]));
+    let mut stale = doc.pages.clone();
+    for block in &mut stale[0].blocks {
+        if let Block::Paragraph { inlines, .. } = block {
+            for inline in inlines {
+                if let Inline::Move(m) = inline {
+                    m.status = MoveStatus::Illegal;
+                    m.game = None;
+                }
+            }
+        }
+    }
+    let mut builder = DocBuilder::new();
+    for page in stale {
+        builder.add_read_page(page);
+    }
+    assert_eq!(builder.finish(), doc);
+}
+
 /// Brackets after a move holding the replies to it: they are played after it, and the main
 /// line's own reply still goes first.
 #[test]
