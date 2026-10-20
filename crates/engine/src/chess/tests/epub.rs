@@ -19,6 +19,7 @@ fn options(pieces: &PieceSet) -> HtmlOptions<'_> {
         links: true,
         link_text: "Analyze on lichess",
         text_font: None,
+        sign_font: None,
     }
 }
 
@@ -124,7 +125,7 @@ fn a_book_without_headings_lists_its_pages_and_limits_hold() {
 fn the_users_figurine_font_travels_in_the_book() {
     let pieces = PieceSet::geometric();
     let doc = chapter_doc();
-    let font = pdfcraft_chessvision::text_font::from_bytes(b"wOF2 figurine font".to_vec()).unwrap();
+    let font = pdfcraft_chessvision::text_font::from_bytes(b"wOF2 figurine font".to_vec(), "dejavu").unwrap();
     let files = entries(&doc, &HtmlOptions { text_font: Some(&font), ..options(&pieces) }, &meta()).unwrap();
     // The file, its manifest item and every page's face point at the same place.
     let stored = files.iter().find(|e| e.name == "OEBPS/fonts/figurines.woff2").expect("the font file");
@@ -141,4 +142,24 @@ fn the_users_figurine_font_travels_in_the_book() {
     // Without a font the book has no font file.
     let plain = entries(&doc, &options(&pieces), &meta()).unwrap();
     assert!(!plain.iter().any(|e| e.name.contains("fonts/")));
+}
+
+#[test]
+fn a_figurine_font_by_letters_and_the_sign_font_travel_as_two_files() {
+    use pdfcraft_chessvision::text_font::{FontFormat, FontRole, TextFont};
+    let font = |role, bytes: &[u8]| TextFont { bytes: bytes.to_vec(), format: FontFormat::TrueType, role, family: String::new(), path: None };
+    let (semfig, ischess) = (font(FontRole::Letters, b"semfig"), font(FontRole::Signs, b"ischess"));
+    let pieces = PieceSet::geometric();
+    let doc = chapter_doc();
+    let files = entries(&doc, &HtmlOptions { text_font: Some(&semfig), sign_font: Some(&ischess), ..options(&pieces) }, &meta()).unwrap();
+    assert_eq!(files.iter().find(|e| e.name == "OEBPS/fonts/figurines.ttf").map(|e| e.data.as_slice()), Some(b"semfig".as_slice()));
+    assert_eq!(files.iter().find(|e| e.name == "OEBPS/fonts/signs.ttf").map(|e| e.data.as_slice()), Some(b"ischess".as_slice()));
+    let opf = file(&files, "OEBPS/content.opf");
+    assert!(opf.contains("<item id=\"font\" href=\"fonts/figurines.ttf\" media-type=\"font/ttf\"/>"), "{opf}");
+    assert!(opf.contains("<item id=\"signs\" href=\"fonts/signs.ttf\" media-type=\"font/ttf\"/>"), "{opf}");
+    for p in files.iter().filter(|e| e.name.starts_with("OEBPS/page-")) {
+        let text = std::str::from_utf8(&p.data).unwrap();
+        assert!(text.contains(".fig{font-family:\"PdfCraft Figurines\"}") && text.contains(".sign{font-family:\"PdfCraft Signs\"}"), "{}", p.name);
+        roxmltree::Document::parse_with_options(text, roxmltree::ParsingOptions { allow_dtd: true, ..Default::default() }).unwrap();
+    }
 }

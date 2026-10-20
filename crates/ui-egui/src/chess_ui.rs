@@ -54,6 +54,8 @@ pub struct ChessState {
     pub review_only: bool,
     /// The pieces the editor draws with, found once.
     pub pieces: Option<Arc<pdfcraft_engine::chess::pdfcraft_chess::draw::PieceSet>>,
+    /// The pieces the analysis board draws with, found once (the user's piece pictures first).
+    pub board_pieces: Option<Arc<pdfcraft_engine::chess::pdfcraft_chess::draw::PieceSet>>,
     /// The panel's tab: the diagrams, the page's recognised text (S16), or the study board.
     pub tab: crate::chess_text_ui::ChessTab,
     /// The study board tab: set-up, engine analysis (the board itself is `board`).
@@ -271,7 +273,8 @@ pub(crate) fn panel(
     });
     ui.add_space(4.0);
     if state.tab == ChessTab::Study {
-        let pieces = crate::chess_editor::piece_set(&mut state.pieces);
+        // A board to play on, like the analysis board: the user's piece pictures first.
+        let pieces = crate::chess_editor::board_piece_set(&mut state.board_pieces);
         return crate::chess_study_ui::study_tab(ui, t, &mut state.study, &mut state.board, &pieces).map(PanelAction::Study);
     }
     // The engine rests while its tab is not shown.
@@ -818,7 +821,7 @@ impl PdfCraftApp {
 /// The chess board panel, in the docking workspace or beside the page in Read mode.
 pub(crate) fn board_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
-    let pieces = crate::chess_editor::piece_set(&mut app.chess.pieces);
+    let pieces = crate::chess_editor::board_piece_set(&mut app.chess.board_pieces);
     // The diagram the board came from, when it belongs to the document shown.
     let active = app.active_ids().map(|(_, id)| id);
     let source_label = app.chess.board.source.filter(|s| active == Some(s.doc)).map(|s| {

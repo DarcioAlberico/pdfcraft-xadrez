@@ -17,6 +17,7 @@ fn options(pieces: &PieceSet) -> HtmlOptions<'_> {
         links: true,
         link_text: "Analyze on lichess",
         text_font: None,
+        sign_font: None,
     }
 }
 
@@ -131,7 +132,7 @@ proptest! {
 fn the_users_figurine_font_is_embedded_for_the_chess_symbols_only() {
     let pieces = PieceSet::geometric();
     let doc = showcase_doc();
-    let font = crate::text_font::from_bytes(b"wOF2 figurine font".to_vec()).unwrap();
+    let font = crate::text_font::from_bytes(b"wOF2 figurine font".to_vec(), "dejavu").unwrap();
     let html = write(&doc, &HtmlOptions { text_font: Some(&font), ..options(&pieces) });
     // One face, from a data URL, kept to the chess symbols; first in both families.
     assert_eq!(html.matches("@font-face").count(), 1);
@@ -143,4 +144,61 @@ fn the_users_figurine_font_is_embedded_for_the_chess_symbols_only() {
     let plain = write(&doc, &options(&pieces));
     assert!(!plain.contains("@font-face") && !plain.contains("PdfCraft Figurines"));
     assert_eq!(plain.replace("font-family:serif", "").len() + "font-family:serif".len(), plain.len());
+}
+
+fn role_font(role: crate::text_font::FontRole) -> crate::text_font::TextFont {
+    crate::text_font::TextFont { bytes: b"wOF2 font".to_vec(), format: crate::text_font::FontFormat::Woff2, role, family: String::new(), path: None }
+}
+
+#[test]
+fn a_figurine_font_by_letters_draws_only_the_piece_letters_of_moves() {
+    use crate::text_font::FontRole;
+    let pieces = PieceSet::geometric();
+    let doc = showcase_doc();
+    let semfig = role_font(FontRole::Letters);
+    let html = write(&doc, &HtmlOptions { text_font: Some(&semfig), ..options(&pieces) });
+    // The face has no unicode-range and is used by the fig spans only; the body font is untouched.
+    assert!(html.contains("@font-face{font-family:\"PdfCraft Figurines\";src:url(\"data:font/woff2;base64,"), "{html}");
+    assert!(html.contains(".fig{font-family:\"PdfCraft Figurines\"}"));
+    assert!(html.contains("font-family:serif;"), "the body keeps its font");
+    // Every piece letter of a move is a fig span; the moves still carry their SAN.
+    let spans = html.matches("<span class=\"fig\">").count();
+    assert!(spans > 0, "{html}");
+    for piece in ['K', 'Q', 'R', 'B', 'N'] {
+        assert!(!html.contains(&format!("{}", ['♔', '♕', '♖', '♗', '♘'][['K', 'Q', 'R', 'B', 'N'].iter().position(|p| *p == piece).unwrap()])));
+    }
+    assert!(attrs(&html, "data-san").iter().all(|s| !s.is_empty()));
+    // Prose is never put in the figurine font: only move spans hold fig spans.
+    for (i, _) in html.match_indices("<span class=\"fig\">") {
+        let before = &html[..i];
+        let open = before.rfind("<span class=\"move").unwrap();
+        assert!(
+            !before[open..].contains("</span>") || before[open..].matches("<span").count() > before[open..].matches("</span>").count(),
+            "a fig outside a move"
+        );
+    }
+    // With figurines as letters of a language, the font is not used for moves.
+    let letters =
+        write(&doc, &HtmlOptions { text_font: Some(&semfig), figurines: Figurines::Letters(pdfcraft_chess::san::Lang::Pt), ..options(&pieces) });
+    assert!(!letters.contains("<span class=\"fig\">"));
+}
+
+#[test]
+fn the_sign_font_draws_the_annotation_glyphs_it_has() {
+    use crate::text_font::FontRole;
+    let pieces = PieceSet::geometric();
+    let mut doc = showcase_doc();
+    // White is clearly better (±): ISChess draws it on the letter O.
+    let para = doc.pages[0].blocks.iter_mut().find_map(|b| if let Block::Paragraph { inlines, .. } = b { Some(inlines) } else { None }).unwrap();
+    para.push(Inline::Nag { code: 16, source_rect: None, review: Vec::new() });
+    let ischess = role_font(FontRole::Signs);
+    let html = write(&doc, &HtmlOptions { sign_font: Some(&ischess), ..options(&pieces) });
+    assert!(html.contains("@font-face{font-family:\"PdfCraft Signs\""), "{html}");
+    assert!(html.contains(".sign{font-family:\"PdfCraft Signs\"}"));
+    assert!(html.contains("<span class=\"nag sign\" data-nag=\"16\" title=\"White is clearly better\">O</span>"), "{html}");
+    // Glyphs ISChess has no letter for (! and ??) stay as they are.
+    assert!(html.contains("<span class=\"nag\" data-nag=\"1\""), "{html}");
+    // Without the sign font, ± is written as itself.
+    let plain = write(&doc, &options(&pieces));
+    assert!(plain.contains(">±</span>") && !plain.contains("nag sign"));
 }

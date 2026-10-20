@@ -1,20 +1,32 @@
-//! The user's figurine font for HTML and EPUB exports (blueprint decision D4).
+//! The user's chess text fonts for HTML and EPUB exports (blueprint decision D4).
 //!
-//! Exported text writes figurines as Unicode chess symbols (♘f3), and a reader shows them with
-//! whatever font it finds, often one without them or with pieces that do not match the book.
-//! A font the user points PdfCraft at is carried into the export for those symbols only: an
-//! `@font-face` restricted by `unicode-range` ([`UNICODE_RANGE`]), so the prose keeps the body
-//! font. HTML embeds it as a data URL (the file stays self-contained); an EPUB carries it as a
-//! file of the book.
+//! Exported text writes figurines (♘f3) and annotation signs (⩲ ± □) as Unicode, and a reader
+//! shows them with whatever font it finds. Fonts the user points PdfCraft at are carried into
+//! the export instead, each for what it draws ([`FontRole`]):
 //!
-//! PdfCraft ships no such font. Where it comes from, in order ([`find`]):
-//! 1. `$PDFCRAFT_CHESS_TEXT_FONT`, the path of a TrueType, OpenType, WOFF or WOFF2 font;
-//! 2. a `fonts` folder beside the executable: its first font with chess figurines.
+//! - a font with the Unicode chess symbols (DejaVu Sans, say): an `@font-face` restricted by
+//!   `unicode-range` ([`UNICODE_RANGE`]) to those symbols, so the prose keeps the body font;
+//! - a figurine font that draws pieces on the letters K Q R B N (SemFig, Figurine CB… the
+//!   [`pdfcraft_chess::catalog`] figurine families): the piece letters of each move are written
+//!   in it, and nothing else, so "Kasparov" in the prose stays a word;
+//! - ISChess, a symbol font in the Chess Informant tradition whose letters draw the signs
+//!   ([`ischess_letter`]): the annotation glyphs are written in it.
 //!
-//! Without either, exports are as before.
+//! HTML embeds the fonts as data URLs (the file stays self-contained); an EPUB carries them as
+//! files of the book.
+//!
+//! PdfCraft ships no such font. Where they come from ([`find_fonts`]):
+//! 1. `$PDFCRAFT_CHESS_TEXT_FONT`: one font file, or several separated as in `PATH`;
+//! 2. a `fonts` folder beside the executable: every font in it, by file name, the first of each
+//!    role kept (a figurine font by letters is preferred over a Unicode one). Diagram fonts in
+//!    the same folder are for the pieces ([`crate::pieces`]) and are passed over here.
+//!
+//! Without any, exports are as before.
 
 use std::path::{Path, PathBuf};
 
+use pdfcraft_chess::catalog::{FontKind, lookup_family, normalize_font_name};
+use skrifa::string::StringId;
 use skrifa::{FontRef, MetadataProvider};
 
 /// Largest font file read.
@@ -22,12 +34,53 @@ const MAX_FONT_BYTES: usize = 16 << 20;
 /// Most files looked at in the `fonts` folder.
 const MAX_FOLDER_FILES: usize = 200;
 
-/// The CSS family name the exports give the font.
+/// The CSS family name the exports give the figurine font.
 pub const FAMILY: &str = "PdfCraft Figurines";
+/// The CSS family name the exports give the sign font.
+pub const SIGN_FAMILY: &str = "PdfCraft Signs";
 
-/// The characters the font is used for: the twelve chess symbols, then the Informator signs a
-/// body font often lacks (⩲ ⩱ ∓ □ △ ∆ ∇ ⟳ ⇆ ⨀ ⨁ ⌓).
+/// The characters a Unicode figurine font is used for: the twelve chess symbols, then the
+/// Informator signs a body font often lacks (⩲ ⩱ ∓ □ △ ∆ ∇ ⟳ ⇆ ⨀ ⨁ ⌓).
 pub const UNICODE_RANGE: &str = "U+2654-265F,U+2A71-2A72,U+2213,U+25A1,U+25B3,U+2206,U+2207,U+27F3,U+21C6,U+2A00-2A01,U+2313";
+
+/// The ISChess letter of each annotation code it draws, both sides' codes listed. Read off the
+/// glyph table printed in the font itself, as the PDFimport plugin by Wagner Escorcio records it
+/// (used with his permission, `docs/chess/provenance.md`); its other letters draw signs PGN has
+/// no code for.
+const ISCHESS_SIGNS: &[(u16, char)] = &[
+    (5, 'a'),  // !?
+    (6, 'b'),  // ?!
+    (7, 'd'),  // □ only move
+    (10, 'S'), // =
+    (13, 'T'), // ∞
+    (14, 'M'), // ⩲
+    (15, 'N'), // ⩱
+    (16, 'O'), // ±
+    (17, 'P'), // ∓
+    (18, 'Q'), // +−
+    (19, 'R'), // −+
+    (22, 'W'), // ⊙ zugzwang
+    (23, 'W'),
+    (32, 'V'), // ⟳ development
+    (33, 'V'),
+    (36, 'Y'), // ↑ initiative
+    (37, 'Y'),
+    (40, 'X'), // → attack
+    (41, 'X'),
+    (44, 'U'), // © compensation
+    (45, 'U'),
+    (132, 'Z'), // ⇄ counterplay
+    (133, 'Z'),
+    (138, 'u'), // ⊕ time trouble
+    (139, 'u'),
+    (140, 'c'), // △ with the idea
+    (142, 'e'), // ⌓ better is
+];
+
+/// The ISChess letter that draws annotation `code`, if the font has it.
+pub fn ischess_letter(code: u16) -> Option<char> {
+    ISCHESS_SIGNS.iter().find(|(c, _)| *c == code).map(|(_, l)| *l)
+}
 
 /// A font file's format, from its first bytes.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -80,11 +133,25 @@ impl FontFormat {
     }
 }
 
-/// A font to show figurines with.
+/// What a font draws, and so how an export uses it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FontRole {
+    /// The Unicode chess symbols (U+2654–U+265F).
+    Unicode,
+    /// Pieces on the letters K Q R B N: a catalogued figurine family (SemFig…).
+    Letters,
+    /// The annotation signs on letters: ISChess ([`ischess_letter`]).
+    Signs,
+}
+
+/// A font to show figurines or signs with.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TextFont {
     pub bytes: Vec<u8>,
     pub format: FontFormat,
+    pub role: FontRole,
+    /// Its family name, when the file says.
+    pub family: String,
     /// Where it was read from, to tell the user.
     pub path: Option<PathBuf>,
 }
@@ -98,25 +165,39 @@ pub enum TextFontError {
     TooLarge(usize),
     #[error("not a TrueType, OpenType, WOFF or WOFF2 font")]
     NotAFont,
-    #[error("the font has no chess figurines (U+2654–U+265F)")]
+    #[error("the font has no chess figurines (U+2654–U+265F) and is not a figurine or sign font PdfCraft knows")]
     NoFigurines,
 }
 
-/// A font from its bytes. TrueType and OpenType fonts must have the chess figurines; WOFF and
-/// WOFF2 are compressed and taken as they are.
-pub fn from_bytes(bytes: Vec<u8>) -> Result<TextFont, TextFontError> {
+/// The role a font named `name` has by its name alone: ISChess, or a catalogued figurine family.
+fn role_by_name(name: &str) -> Option<FontRole> {
+    let bare = normalize_font_name(name);
+    if bare.contains("ischess") {
+        return Some(FontRole::Signs);
+    }
+    lookup_family(name).filter(|f| f.kind == FontKind::Figurine).map(|_| FontRole::Letters)
+}
+
+/// A font from its bytes. `name_hint` (the file name, say) helps when the font's own name does
+/// not say what it is. A TrueType or OpenType font must be ISChess, a catalogued figurine font
+/// or have the Unicode chess symbols; WOFF and WOFF2 are compressed, so only their name says,
+/// else they are taken as Unicode figurine fonts.
+pub fn from_bytes(bytes: Vec<u8>, name_hint: &str) -> Result<TextFont, TextFontError> {
     if bytes.len() > MAX_FONT_BYTES {
         return Err(TextFontError::TooLarge(bytes.len()));
     }
     let format = FontFormat::sniff(&bytes).ok_or(TextFontError::NotAFont)?;
-    if matches!(format, FontFormat::TrueType | FontFormat::OpenType) {
+    let (role, family) = if matches!(format, FontFormat::TrueType | FontFormat::OpenType) {
         let font = FontRef::new(&bytes).map_err(|_| TextFontError::NotAFont)?;
-        let charmap = font.charmap();
-        if !('\u{2654}'..='\u{265F}').any(|c| charmap.map(c).is_some()) {
-            return Err(TextFontError::NoFigurines);
-        }
-    }
-    Ok(TextFont { bytes, format, path: None })
+        let family = font.localized_strings(StringId::FAMILY_NAME).english_or_first().map(|s| s.to_string()).unwrap_or_default();
+        let named = role_by_name(&family).or_else(|| role_by_name(name_hint));
+        let unicode = ('\u{2654}'..='\u{265F}').any(|c| font.charmap().map(c).is_some());
+        let role = named.or(unicode.then_some(FontRole::Unicode)).ok_or(TextFontError::NoFigurines)?;
+        (role, family)
+    } else {
+        (role_by_name(name_hint).unwrap_or(FontRole::Unicode), String::new())
+    };
+    Ok(TextFont { bytes, format, role, family, path: None })
 }
 
 /// A font read from a file.
@@ -127,13 +208,41 @@ pub fn from_file(path: &Path) -> Result<TextFont, TextFontError> {
         return Err(TextFontError::TooLarge(size));
     }
     let bytes = std::fs::read(path).map_err(|source| TextFontError::Read { path: path.to_path_buf(), source })?;
-    from_bytes(bytes).map(|f| TextFont { path: Some(path.to_path_buf()), ..f })
+    let hint = path.file_stem().and_then(|s| s.to_str()).unwrap_or_default();
+    from_bytes(bytes, hint).map(|f| TextFont { path: Some(path.to_path_buf()), ..f })
 }
 
-/// The first font with figurines in `dir`, by file name.
-pub fn from_folder(dir: &Path) -> Option<TextFont> {
-    let mut files: Vec<PathBuf> = std::fs::read_dir(dir)
-        .ok()?
+/// The export fonts found.
+#[derive(Debug, Default)]
+pub struct UserFonts {
+    /// For the figurines: by letters ([`FontRole::Letters`]) or Unicode.
+    pub figurines: Option<TextFont>,
+    /// For the annotation signs ([`FontRole::Signs`]).
+    pub signs: Option<TextFont>,
+    /// Configured fonts that could not be used.
+    pub errors: Vec<TextFontError>,
+}
+
+impl UserFonts {
+    /// Keep `font` if its role's slot is free (a font by letters takes the figurine slot from a
+    /// Unicode one).
+    fn offer(&mut self, font: TextFont) {
+        match font.role {
+            FontRole::Signs => {
+                self.signs.get_or_insert(font);
+            }
+            FontRole::Letters if self.figurines.as_ref().is_none_or(|f| f.role == FontRole::Unicode) => self.figurines = Some(font),
+            FontRole::Letters | FontRole::Unicode => {
+                self.figurines.get_or_insert(font);
+            }
+        }
+    }
+}
+
+/// Font files in `dir`, by file name.
+fn font_files(dir: &Path) -> Vec<PathBuf> {
+    let Ok(entries) = std::fs::read_dir(dir) else { return Vec::new() };
+    let mut files: Vec<PathBuf> = entries
         .flatten()
         .take(MAX_FOLDER_FILES)
         .map(|e| e.path())
@@ -142,25 +251,48 @@ pub fn from_folder(dir: &Path) -> Option<TextFont> {
         })
         .collect();
     files.sort();
-    files.iter().find_map(|p| from_file(p).ok())
+    files
 }
 
-/// The user's figurine font: `$PDFCRAFT_CHESS_TEXT_FONT`, else the `fonts` folder beside the
-/// executable. A configured font that fails is reported, not silently replaced.
-pub fn find() -> (Option<TextFont>, Option<TextFontError>) {
-    if let Some(path) = std::env::var_os("PDFCRAFT_CHESS_TEXT_FONT").map(PathBuf::from) {
-        return match from_file(&path) {
-            Ok(f) => (Some(f), None),
-            Err(e) => (None, Some(e)),
-        };
+/// The export fonts in `dir`. Files that are no export font (a diagram font, say) are skipped.
+pub fn from_folder(dir: &Path) -> UserFonts {
+    let mut found = UserFonts::default();
+    for path in font_files(dir) {
+        if let Ok(font) = from_file(&path) {
+            found.offer(font);
+        }
     }
-    let beside = std::env::current_exe().ok().and_then(|exe| Some(exe.parent()?.join("fonts")));
-    (beside.and_then(|dir| from_folder(&dir)), None)
+    found
 }
 
-/// The `@font-face` rule for `font` loaded from `src` (a URL, already escaped for CSS).
+/// The user's export fonts: the files `$PDFCRAFT_CHESS_TEXT_FONT` names, else the `fonts` folder
+/// beside the executable. A configured file that fails is reported, not silently skipped.
+pub fn find_fonts() -> UserFonts {
+    if let Some(paths) = std::env::var_os("PDFCRAFT_CHESS_TEXT_FONT") {
+        let mut found = UserFonts::default();
+        for path in std::env::split_paths(&paths).filter(|p| !p.as_os_str().is_empty()) {
+            match from_file(&path) {
+                Ok(f) => found.offer(f),
+                Err(e) => found.errors.push(e),
+            }
+        }
+        return found;
+    }
+    beside_executable().map(|dir| from_folder(&dir)).unwrap_or_default()
+}
+
+/// The `fonts` folder beside the executable.
+pub fn beside_executable() -> Option<PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    Some(exe.parent()?.join("fonts"))
+}
+
+/// The `@font-face` rule for `font` loaded from `src` (a URL, already escaped for CSS): named
+/// [`FAMILY`] or [`SIGN_FAMILY`], and kept to [`UNICODE_RANGE`] for a Unicode figurine font.
 pub fn font_face(font: &TextFont, src: &str) -> String {
-    format!("@font-face{{font-family:\"{FAMILY}\";src:url(\"{src}\") format(\"{}\");unicode-range:{UNICODE_RANGE}}}", font.format.css())
+    let family = if font.role == FontRole::Signs { SIGN_FAMILY } else { FAMILY };
+    let range = if font.role == FontRole::Unicode { format!(";unicode-range:{UNICODE_RANGE}") } else { String::new() };
+    format!("@font-face{{font-family:\"{family}\";src:url(\"{src}\") format(\"{}\"){range}}}", font.format.css())
 }
 
 /// `font` as a `data:` URL.
@@ -173,6 +305,10 @@ pub fn data_url(font: &TextFont) -> String {
 mod tests {
     use super::*;
 
+    fn font(role: FontRole) -> TextFont {
+        TextFont { bytes: b"wOF2 data".to_vec(), format: FontFormat::Woff2, role, family: String::new(), path: None }
+    }
+
     #[test]
     fn formats_are_told_by_their_first_bytes() {
         assert_eq!(FontFormat::sniff(&[0, 1, 0, 0, 9]), Some(FontFormat::TrueType));
@@ -184,53 +320,86 @@ mod tests {
     }
 
     #[test]
-    fn a_font_without_figurines_or_not_a_font_is_refused() {
-        assert!(matches!(from_bytes(b"not a font".to_vec()), Err(TextFontError::NotAFont)));
-        // Inter has no chess symbols.
+    fn a_font_without_a_chess_role_or_not_a_font_is_refused() {
+        assert!(matches!(from_bytes(b"not a font".to_vec(), "x"), Err(TextFontError::NotAFont)));
+        // Inter has no chess symbols and is no catalogued figurine font.
         let inter = include_bytes!("../../../assets/fonts/Inter-Regular.ttf").to_vec();
-        assert!(matches!(from_bytes(inter), Err(TextFontError::NoFigurines)));
-        assert!(matches!(from_bytes(vec![0; MAX_FONT_BYTES + 1]), Err(TextFontError::TooLarge(_))));
+        assert!(matches!(from_bytes(inter, "Inter-Regular"), Err(TextFontError::NoFigurines)));
+        assert!(matches!(from_bytes(vec![0; MAX_FONT_BYTES + 1], "x"), Err(TextFontError::TooLarge(_))));
     }
 
     #[test]
-    fn woff_is_taken_as_it_is_and_written_as_a_face() {
-        let font = from_bytes(b"wOF2 compressed font data".to_vec()).unwrap();
-        assert_eq!(font.format, FontFormat::Woff2);
-        let url = data_url(&font);
-        assert!(url.starts_with("data:font/woff2;base64,d09GMi"), "{url}");
-        let face = font_face(&font, "fonts/figurines.woff2");
+    fn roles_by_name() {
+        assert_eq!(role_by_name("ISChess"), Some(FontRole::Signs));
+        assert_eq!(role_by_name("ABCDEF+ISChess-Regular"), Some(FontRole::Signs));
+        assert_eq!(role_by_name("SemFig"), Some(FontRole::Letters));
+        assert_eq!(role_by_name("SEMFIGN"), Some(FontRole::Letters));
+        assert_eq!(role_by_name("ChessMerida"), None, "a diagram font is for the pieces");
+        assert_eq!(role_by_name("Inter"), None);
+        // A compressed font is known by its file name only.
+        assert_eq!(from_bytes(b"wOF2 data".to_vec(), "semfign").unwrap().role, FontRole::Letters);
+        assert_eq!(from_bytes(b"wOF2 data".to_vec(), "dejavu").unwrap().role, FontRole::Unicode);
+    }
+
+    #[test]
+    fn ischess_draws_the_informator_signs() {
+        assert_eq!(ischess_letter(14), Some('M'));
+        assert_eq!(ischess_letter(16), Some('O'));
+        assert_eq!(ischess_letter(19), Some('R'));
+        assert_eq!(ischess_letter(41), Some('X'), "Black's attack too");
+        assert_eq!(ischess_letter(7), Some('d'));
+        assert_eq!(ischess_letter(1), None, "! is a plain character");
+        // Every code is a known annotation.
+        for (code, _) in ISCHESS_SIGNS {
+            assert!(pdfcraft_chess::nag::by_code(*code).is_some(), "${code}");
+        }
+    }
+
+    #[test]
+    fn faces_by_role() {
+        let unicode = font_face(&font(FontRole::Unicode), "u.woff2");
         assert_eq!(
-            face,
-            format!(
-                "@font-face{{font-family:\"PdfCraft Figurines\";src:url(\"fonts/figurines.woff2\") format(\"woff2\");unicode-range:{UNICODE_RANGE}}}"
-            )
+            unicode,
+            format!("@font-face{{font-family:\"PdfCraft Figurines\";src:url(\"u.woff2\") format(\"woff2\");unicode-range:{UNICODE_RANGE}}}")
         );
+        let letters = font_face(&font(FontRole::Letters), "l.woff2");
+        assert_eq!(letters, "@font-face{font-family:\"PdfCraft Figurines\";src:url(\"l.woff2\") format(\"woff2\")}");
+        let signs = font_face(&font(FontRole::Signs), "s.woff2");
+        assert!(signs.starts_with("@font-face{font-family:\"PdfCraft Signs\""), "{signs}");
+        assert!(data_url(&font(FontRole::Signs)).starts_with("data:font/woff2;base64,d09GMi"));
     }
 
     #[test]
-    fn a_folder_gives_its_first_font_with_figurines() {
-        let dir = std::env::temp_dir().join(format!("pdfcraft-text-font-{}", std::process::id()));
+    fn a_folder_gives_one_font_per_role_letters_first() {
+        let dir = std::env::temp_dir().join(format!("pdfcraft-text-fonts-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
-        assert!(from_folder(&dir).is_none());
-        // Inter has no figurines and is passed over; the WOFF2 is taken.
+        assert!(from_folder(&dir).figurines.is_none());
+        // Inter (no role) and a text file are passed over; a Unicode font comes first by name, a
+        // figurine font by letters takes its place, ISChess is the sign font.
         std::fs::write(dir.join("a-inter.ttf"), include_bytes!("../../../assets/fonts/Inter-Regular.ttf")).unwrap();
         std::fs::write(dir.join("notes.txt"), b"not a font").unwrap();
-        assert!(from_folder(&dir).is_none());
-        std::fs::write(dir.join("b-figurines.WOFF2"), b"wOF2 data").unwrap();
-        let found = from_folder(&dir).unwrap();
-        assert_eq!(found.format, FontFormat::Woff2);
-        assert_eq!(found.path.as_deref(), Some(dir.join("b-figurines.WOFF2").as_path()));
+        std::fs::write(dir.join("b-dejavu.woff2"), b"wOF2 unicode").unwrap();
+        std::fs::write(dir.join("c-SemFigN.WOFF2"), b"wOF2 letters").unwrap();
+        std::fs::write(dir.join("d-ISChess.woff2"), b"wOF2 signs").unwrap();
+        let found = from_folder(&dir);
+        let figurines = found.figurines.unwrap();
+        assert_eq!((figurines.role, figurines.bytes.as_slice()), (FontRole::Letters, b"wOF2 letters".as_slice()));
+        let signs = found.signs.unwrap();
+        assert_eq!(signs.role, FontRole::Signs);
+        assert_eq!(signs.path.as_deref(), Some(dir.join("d-ISChess.woff2").as_path()));
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    /// Builds a face from a real figurine font when `PDFCRAFT_CHESS_TEST_TEXT_FONT` names one
-    /// (DejaVu Sans, say). Skipped otherwise: no such font is committed (decision D4).
+    /// The user's real fonts, when `PDFCRAFT_CHESS_TEST_TEXT_FONT` names them (as in `PATH`):
+    /// each must have a role. Skipped otherwise: no such font is committed (decision D4).
     #[test]
-    fn a_real_figurine_font_is_accepted() {
-        let Some(path) = std::env::var_os("PDFCRAFT_CHESS_TEST_TEXT_FONT") else { return };
-        let font = from_file(Path::new(&path)).unwrap();
-        assert!(matches!(font.format, FontFormat::TrueType | FontFormat::OpenType));
-        assert!(data_url(&font).len() > font.bytes.len());
+    fn real_chess_text_fonts_have_a_role() {
+        let Some(paths) = std::env::var_os("PDFCRAFT_CHESS_TEST_TEXT_FONT") else { return };
+        for path in std::env::split_paths(&paths) {
+            let font = from_file(&path).unwrap();
+            eprintln!("{}: {:?} ({})", path.display(), font.role, font.family);
+            assert!(data_url(&font).len() > font.bytes.len());
+        }
     }
 }
