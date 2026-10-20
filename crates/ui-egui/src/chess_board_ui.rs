@@ -37,6 +37,43 @@ const BOARD_PX: u32 = 640;
 /// Largest board on screen, in points.
 const MAX_BOARD_PT: f32 = 480.0;
 
+/// How large the board may be drawn, how sharp its picture is and how the panel is laid out:
+/// [`Sizing::DOCKED`] in the panels, larger in the chess board's own window
+/// (`chess_window`).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Sizing {
+    /// Largest board side, in points (at least the smallest board, 160 pt).
+    pub(crate) max_side: f32,
+    /// Largest side of the board's picture, in pixels; at [`BOARD_PX`] or below it is drawn at
+    /// [`BOARD_PX`] whatever the screen, as in the panels.
+    pub(crate) max_px: u32,
+    /// Two columns: the board on the left, the moves, notes and fields on the right.
+    pub(crate) wide: bool,
+}
+
+impl Sizing {
+    /// The panels: at most 480 pt, a 640 px picture, one column.
+    pub(crate) const DOCKED: Sizing = Sizing { max_side: MAX_BOARD_PT, max_px: BOARD_PX, wide: false };
+
+    /// The largest board side, never below the smallest board (160 pt) nor NaN, so `clamp`
+    /// with it can't panic.
+    fn side_limit(self) -> f32 {
+        if self.max_side.is_finite() { self.max_side.max(160.0) } else { 160.0 }
+    }
+
+    /// The picture's side for a board `side` points wide at `pixels_per_point`: the screen's
+    /// pixels rounded up to a multiple of 128 (so resizing a window redraws it now and then, not
+    /// every frame), within [`BOARD_PX`]..=`max_px`.
+    fn picture_px(self, side: f32, pixels_per_point: f32) -> u32 {
+        if self.max_px <= BOARD_PX {
+            return BOARD_PX;
+        }
+        // `as` saturates, and NaN becomes 0: any input stays within the bounds below.
+        let px = (side * pixels_per_point / 128.0).ceil() as u32;
+        px.saturating_mul(128).clamp(BOARD_PX, self.max_px)
+    }
+}
+
 /// Most positions that keep drawings; the oldest go first.
 const MAX_MARKED_POSITIONS: usize = 512;
 
@@ -115,7 +152,8 @@ pub struct BoardState {
     shown: String,
     /// Why the last load or move did not work.
     pub message: Option<String>,
-    texture: Option<(String, TextureHandle)>,
+    /// The board picture, the position and view it shows, and its side in pixels.
+    texture: Option<(String, u32, TextureHandle)>,
     draw_error: Option<String>,
     /// The pieces cut out of their squares, for the one following the pointer in a drag.
     sprites: Option<TextureHandle>,
@@ -551,17 +589,19 @@ impl BoardState {
         self.sprites = None;
     }
 
-    /// The board image, redrawn when the pieces or the view change.
-    fn texture(&mut self, ctx: &egui::Context, pieces: &PieceSet) -> Option<TextureHandle> {
+    /// The board image, at least `px` pixels wide, redrawn when the pieces or the view change
+    /// or a larger one is wanted (a sharper one drawn for the chess window serves the panels).
+    fn texture(&mut self, ctx: &egui::Context, pieces: &PieceSet, px: u32) -> Option<TextureHandle> {
         let placement = self.placement();
         let key = format!("{}|{}", pdfcraft_engine::chess::pdfcraft_chess::fen::format_placement(&placement), self.flipped);
-        if let Some((k, tex)) = &self.texture
+        if let Some((k, drawn, tex)) = &self.texture
             && *k == key
+            && *drawn >= px
         {
             return Some(tex.clone());
         }
         let style = BoardStyle { border: 0.0, coordinates: false, flipped: self.flipped, ..BoardStyle::default() };
-        match pdfcraft_engine::chess::office::diagram_rgba(&placement, pieces, &style, BOARD_PX) {
+        match pdfcraft_engine::chess::office::diagram_rgba(&placement, pieces, &style, px) {
             Ok((w, h, rgba)) => {
                 let (w, h) = (usize::try_from(w).ok()?, usize::try_from(h).ok()?);
                 if rgba.len() != w.checked_mul(h)?.checked_mul(4)? {
@@ -569,7 +609,7 @@ impl BoardState {
                 }
                 let image = egui::ColorImage::from_rgba_premultiplied([w, h], &rgba);
                 let tex = ctx.load_texture("chess-analysis-board", image, egui::TextureOptions::LINEAR);
-                self.texture = Some((key, tex.clone()));
+                self.texture = Some((key, px, tex.clone()));
                 self.draw_error = None;
                 Some(tex)
             }
@@ -624,8 +664,14 @@ fn paint_mark(painter: &egui::Painter, state: &BoardState, board: Rect, mark: Ma
 /// The board itself, with its marks, taking clicks and drags. `overlay` is drawn under the
 /// hand-made drawings (the engine's best move).
 pub(crate) fn board_view(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, pieces: &PieceSet, overlay: &[Mark]) {
-    let side = ui.available_width().clamp(160.0, MAX_BOARD_PT);
-    let Some(tex) = state.texture(ui.ctx(), pieces) else {
+    board_view_sized(ui, t, state, pieces, overlay, Sizing::DOCKED);
+}
+
+/// [`board_view`] within `sizing`'s limits.
+pub(crate) fn board_view_sized(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, pieces: &PieceSet, overlay: &[Mark], sizing: Sizing) {
+    let side = ui.available_width().clamp(160.0, sizing.side_limit());
+    let px = sizing.picture_px(side, ui.ctx().pixels_per_point());
+    let Some(tex) = state.texture(ui.ctx(), pieces, px) else {
         if let Some(e) = &state.draw_error {
             ui.label(egui::RichText::new(crate::i18n::fmt(tl!("The board couldn't be drawn: {e}"), &[("e", e)])).small().color(t.text_muted));
         }
@@ -1094,6 +1140,11 @@ pub(crate) fn fen_and_pgn(ui: &mut egui::Ui, state: &mut BoardState) -> Option<B
 
 /// The Chess board panel. `source_label` names the diagram the board was loaded from.
 pub fn panel(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, pieces: &PieceSet, source_label: Option<String>) -> Option<BoardAction> {
+    panel_body(ui, t, state, pieces, source_label, Sizing::DOCKED)
+}
+
+/// The panel's title, and the diagram the board was loaded from as a link to it.
+pub(crate) fn title(ui: &mut egui::Ui, state: &BoardState, source_label: Option<String>) -> Option<BoardAction> {
     let mut action = None;
     ui.horizontal(|ui| {
         ui.label(egui::RichText::new(tl!("Chess board")).font(theme::semibold(15.5)));
@@ -1103,10 +1154,23 @@ pub fn panel(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, pieces: &Pie
             action = Some(BoardAction::ShowSource(source));
         }
     });
+    action
+}
+
+/// The panel below its keys, in one column.
+pub(crate) fn panel_body(
+    ui: &mut egui::Ui,
+    t: &Tokens,
+    state: &mut BoardState,
+    pieces: &PieceSet,
+    source_label: Option<String>,
+    sizing: Sizing,
+) -> Option<BoardAction> {
+    let action = title(ui, state, source_label);
     ui.add_space(4.0);
     view_controls(ui, state);
     ui.add_space(4.0);
-    board_view(ui, t, state, pieces, &[]);
+    board_view_sized(ui, t, state, pieces, &[], sizing);
     promotion_choice(ui, state);
     navigation(ui, t, state);
     ui.add_space(4.0);

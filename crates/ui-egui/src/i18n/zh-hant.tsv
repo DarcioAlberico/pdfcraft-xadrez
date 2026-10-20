@@ -2605,3 +2605,10 @@ animation effects	Off	關
 	Promote a variation	提升變化
 	Demote a line	降級路線
 	Delete a variation	刪除變化
+# Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
+	Chess board in its own window	在獨立視窗中顯示棋盤
+	Move the board to its own window	將棋盤移到獨立視窗
+	Dock	停駐
+	Put the board back in its panel	將棋盤放回其面板
+	The chess board couldn't open in its own window, so it is back in its panel.	無法在獨立視窗中開啟棋盤，已將其放回面板。
+	The chess board couldn't open in its own window, so it stays in its panel.	無法在獨立視窗中開啟棋盤，棋盤仍留在面板中。

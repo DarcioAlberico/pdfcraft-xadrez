@@ -2932,3 +2932,10 @@ certificate	Version	الإصدار
 	Promote a variation	ترقية خط فرعي
 	Demote a line	تخفيض خط
 	Delete a variation	حذف خط فرعي
+# Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
+	Chess board in its own window	رقعة الشطرنج في نافذتها الخاصة
+	Move the board to its own window	نقل الرقعة إلى نافذتها الخاصة
+	Dock	إرساء
+	Put the board back in its panel	إعادة الرقعة إلى لوحتها
+	The chess board couldn't open in its own window, so it is back in its panel.	تعذّر فتح رقعة الشطرنج في نافذتها الخاصة، فأُعيدت إلى لوحتها.
+	The chess board couldn't open in its own window, so it stays in its panel.	تعذّر فتح رقعة الشطرنج في نافذتها الخاصة، فبقيت في لوحتها.

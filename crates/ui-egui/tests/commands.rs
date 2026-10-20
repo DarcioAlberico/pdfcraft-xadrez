@@ -148,6 +148,11 @@ fn every_registered_command_is_implemented() {
             let p = pdfcraft_engine::Protection { open_password: Some("pw".into()), ..Default::default() };
             app.apply_edit(pdfcraft_engine::Edit::Protect(p));
         }
+        // The chess board's own window can't be opened without a backend that draws windows;
+        // out (as settings may leave it), the command docks it.
+        if spec.id == "chess.window.detach" {
+            app.set_chess_window_detached(true);
+        }
         // The cover toggle needs two-page view first (it is disabled elsewhere).
         if spec.id == "view.layout.cover" {
             app.set_option("layout", "two-up").unwrap();

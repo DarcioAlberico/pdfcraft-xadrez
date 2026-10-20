@@ -2661,3 +2661,10 @@ animation effects	Off	Ανενεργά
 	Promote a variation	προβιβασμού παραλλαγής
 	Demote a line	υποβιβασμού γραμμής
 	Delete a variation	διαγραφής παραλλαγής
+# Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
+	Chess board in its own window	Σκακιέρα σε δικό της παράθυρο
+	Move the board to its own window	Μετακίνηση της σκακιέρας σε δικό της παράθυρο
+	Dock	Προσάρτηση
+	Put the board back in its panel	Επιστροφή της σκακιέρας στο πλαίσιό της
+	The chess board couldn't open in its own window, so it is back in its panel.	Η σκακιέρα δεν ήταν δυνατό να ανοίξει σε δικό της παράθυρο, οπότε επέστρεψε στο πλαίσιό της.
+	The chess board couldn't open in its own window, so it stays in its panel.	Η σκακιέρα δεν ήταν δυνατό να ανοίξει σε δικό της παράθυρο, οπότε μένει στο πλαίσιό της.

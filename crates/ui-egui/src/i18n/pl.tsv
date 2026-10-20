@@ -2631,3 +2631,10 @@ animation effects	Off	Wyłączone
 	Promote a variation	awans wariantu
 	Demote a line	obniżenie linii
 	Delete a variation	usunięcie wariantu
+# Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
+	Chess board in its own window	Szachownica we własnym oknie
+	Move the board to its own window	Przenieś szachownicę do własnego okna
+	Dock	Zadokuj
+	Put the board back in its panel	Przywróć szachownicę do jej panelu
+	The chess board couldn't open in its own window, so it is back in its panel.	Nie udało się otworzyć szachownicy we własnym oknie, więc wróciła do swojego panelu.
+	The chess board couldn't open in its own window, so it stays in its panel.	Nie udało się otworzyć szachownicy we własnym oknie, więc pozostaje w swoim panelu.

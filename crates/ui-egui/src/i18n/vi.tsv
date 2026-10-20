@@ -2910,3 +2910,10 @@ chess side	Black	Đen
 	Promote a variation	nâng cấp biến
 	Demote a line	hạ cấp đường
 	Delete a variation	xóa một biến
+# Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
+	Chess board in its own window	Bàn cờ trong cửa sổ riêng
+	Move the board to its own window	Chuyển bàn cờ sang cửa sổ riêng
+	Dock	Gắn lại
+	Put the board back in its panel	Đưa bàn cờ về bảng của nó
+	The chess board couldn't open in its own window, so it is back in its panel.	Không thể mở bàn cờ trong cửa sổ riêng nên bàn cờ đã trở về bảng của nó.
+	The chess board couldn't open in its own window, so it stays in its panel.	Không thể mở bàn cờ trong cửa sổ riêng nên bàn cờ vẫn ở trong bảng của nó.

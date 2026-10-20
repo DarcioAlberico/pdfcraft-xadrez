@@ -2651,3 +2651,10 @@ animation effects	Off	Kapalı
 	Promote a variation	varyant yükseltme
 	Demote a line	hat düşürme
 	Delete a variation	varyant silme
+# Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
+	Chess board in its own window	Satranç tahtası kendi penceresinde
+	Move the board to its own window	Tahtayı kendi penceresine taşı
+	Dock	Yerleştir
+	Put the board back in its panel	Tahtayı paneline geri koy
+	The chess board couldn't open in its own window, so it is back in its panel.	Satranç tahtası kendi penceresinde açılamadı, bu yüzden paneline geri döndü.
+	The chess board couldn't open in its own window, so it stays in its panel.	Satranç tahtası kendi penceresinde açılamadı, bu yüzden panelinde kalıyor.

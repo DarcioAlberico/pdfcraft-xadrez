@@ -1538,3 +1538,144 @@ fn the_structure_group_opens_and_switches_from_the_keyboard() {
     assert_eq!(movetext(&h), demoted, "no demote on letting go");
     h.get_by_label("Promote one level");
 }
+
+/// The harness of [`harness`], with `settings` (as `persist` writes them) restored first, as
+/// the desktop app does at start.
+fn harness_restoring(settings: String) -> Harness<'static, PdfCraftApp> {
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).with_step_dt(0.25).build_eframe(move |_cc| {
+        let mut app = PdfCraftApp::new();
+        app.restore(&settings);
+        app.set_option("language", "en").unwrap();
+        app.open_bytes("boards.pdf", None, boards()).unwrap();
+        app.run_inline = true;
+        app
+    });
+    h.run_steps(4);
+    h
+}
+
+/// Settings with the chess board window as given (`docking_detached`).
+fn window_settings(window: serde_json::Value) -> String {
+    serde_json::json!({ "docking_detached": window }).to_string()
+}
+
+/// T13a: the board moves into its own window and back. kittest draws windows inside the main
+/// one, as the web does, so neither the command nor the rail offers it there; the app's own
+/// window (not egui's fallback) holds the board, with a Dock button. Out, the dock tab is gone
+/// and its place kept; docked again, it is back where it was. Opening a diagram on the board
+/// while it is out does not dock it, and closing the window docks it.
+#[test]
+fn the_board_moves_to_its_own_window_and_docks_back_where_it_was() {
+    let board = pdfcraft_ui_egui::docking::Panel::Board;
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    let place = h.state().docking.layout.location(&board).expect("the board is docked");
+    assert!(!h.state_mut().execute("chess.window.detach"), "off where windows are drawn inside the main one");
+    assert!(h.query_by_label("Chess board in its own window").is_none(), "nor on the rail");
+    assert!(h.query_by_label("Move the board to its own window").is_none());
+    assert!(!h.state().chess_window_detached());
+
+    h.state_mut().set_chess_window_detached(true);
+    h.run_steps(3);
+    assert!(h.state().chess_window_detached());
+    assert!(!h.state().docking.layout.contains(&board), "the dock tab is gone");
+    assert!(h.state().docking.hidden.iter().any(|(p, _)| *p == board), "its place is kept");
+    assert_eq!(h.get_all_by_label_contains("Board: ").count(), 1, "one board, in the window");
+    h.get_by_label("Dock");
+    // The board in the window plays.
+    click_square(&mut h, "e2");
+    click_square(&mut h, "e4");
+    assert_eq!(movetext(&h), "1. e4");
+
+    h.get_by_label("Dock").click();
+    h.run_steps(3);
+    assert!(!h.state().chess_window_detached());
+    assert_eq!(h.state().docking.layout.location(&board).ok(), Some(place.clone()), "back where it was");
+    assert!(h.query_by_label("Dock").is_none());
+    assert_eq!(movetext(&h), "1. e4", "the same game");
+
+    // Out again: a diagram opened on the board leaves it out; the command, on while it is out,
+    // docks it; and so does closing the window.
+    h.state_mut().set_chess_window_detached(true);
+    h.run_steps(3);
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    assert!(h.state().chess_window_detached());
+    assert!(!h.state().docking.layout.contains(&board));
+    assert!(h.state_mut().execute("chess.window.detach"));
+    h.run_steps(3);
+    assert!(!h.state().chess_window_detached());
+    assert!(h.state().docking.layout.contains(&board));
+    h.state_mut().set_chess_window_detached(true);
+    h.run_steps(3);
+    h.get_by_label("Close window").click();
+    h.run_steps(3);
+    assert!(!h.state().chess_window_detached(), "closing the window docks the board");
+    assert_eq!(h.state().docking.layout.location(&board).ok(), Some(place));
+}
+
+/// T13a: in Read mode, which draws the board beside the page instead of the workspace, a board
+/// in its own window is not drawn there too.
+#[test]
+fn read_mode_shows_the_board_only_in_its_window() {
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    assert!(h.state_mut().execute("view.read_mode"));
+    h.run_steps(3);
+    assert_eq!(h.get_all_by_label_contains("Board: ").count(), 1, "beside the page");
+    h.state_mut().set_chess_window_detached(true);
+    h.run_steps(3);
+    assert_eq!(h.get_all_by_label_contains("Board: ").count(), 1, "in the window only");
+    h.get_by_label("Dock");
+}
+
+/// T13a: whether the board is out, and the window's size, come back in the next session; a bad
+/// saved value is ignored on its own, never a panic.
+#[test]
+fn the_window_and_its_size_come_back_and_bad_values_are_ignored() {
+    let mut h = harness();
+    h.state_mut().set_chess_window_detached(true);
+    h.run_steps(3);
+    let saved: serde_json::Value = serde_json::from_str(&h.state().persist()).unwrap();
+    let window = &saved["docking_detached"];
+    assert_eq!(window["detached"], true, "{window}");
+    assert_eq!(window["size"].as_array().map(Vec::len), Some(2), "{window}");
+    // The next session, with the window made larger meanwhile.
+    let mut next = saved.clone();
+    next["docking_detached"]["size"] = serde_json::json!([900.0, 640.0]);
+    let h = harness_restoring(next.to_string());
+    assert!(h.state().chess_window_detached());
+    assert!(!h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Board));
+    h.get_by_label("Dock");
+    let [w, ht] = h.state().chess_window_size();
+    assert!((w - 900.0).abs() < 1.0 && (ht - 640.0).abs() < 1.0, "the window kept its size: {w} × {ht}");
+    let again: serde_json::Value = serde_json::from_str(&h.state().persist()).unwrap();
+    assert_eq!(again["docking_detached"]["detached"], true);
+    // Bad values: each ignored, the rest used.
+    let h = harness_restoring(window_settings(serde_json::json!({"detached": true, "size": [-1.0, 1e40], "position": "here"})));
+    assert!(h.state().chess_window_detached());
+    assert_eq!(h.state().chess_window_size(), [560.0, 760.0], "the default size");
+    for bad in [serde_json::json!("yes"), serde_json::json!({"detached": 3}), serde_json::json!([true]), serde_json::Value::Null] {
+        let h = harness_restoring(window_settings(bad.clone()));
+        assert!(!h.state().chess_window_detached(), "{bad}");
+        assert!(h.query_by_label("Dock").is_none());
+    }
+}
+
+/// T13a: the window lifts the docked panel's 480 pt board: a window 760 pt wide or more has the
+/// board, larger, beside the moves and fields (§4.1); a narrow one stacks them.
+#[test]
+fn a_wide_window_has_a_larger_board_beside_the_moves() {
+    let h = harness_restoring(window_settings(serde_json::json!({"detached": true, "size": [1000.0, 820.0]})));
+    assert!(h.state().chess_window_wide());
+    let board = h.get_by_label_contains("Board: ").rect();
+    assert!(board.width() > 520.0, "{board:?}");
+    let fen = h.get_by_label("Copy FEN").rect();
+    assert!(fen.min.x > board.max.x && fen.min.y < board.max.y, "the fields beside the board: {fen:?} {board:?}");
+    let h = harness_restoring(window_settings(serde_json::json!({"detached": true, "size": [560.0, 820.0]})));
+    assert!(!h.state().chess_window_wide());
+    let board = h.get_by_label_contains("Board: ").rect();
+    assert!(board.width() <= 520.0, "{board:?}");
+}

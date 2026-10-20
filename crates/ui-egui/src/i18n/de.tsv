@@ -2656,3 +2656,10 @@ animation effects	Off	Aus
 	Promote a variation	Variante hochstufen
 	Demote a line	Linie herabstufen
 	Delete a variation	Variante entfernen
+# Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
+	Chess board in its own window	Schachbrett im eigenen Fenster
+	Move the board to its own window	Brett in ein eigenes Fenster verschieben
+	Dock	Andocken
+	Put the board back in its panel	Brett zurück in sein Bedienfeld
+	The chess board couldn't open in its own window, so it is back in its panel.	Das Schachbrett konnte nicht in einem eigenen Fenster geöffnet werden und ist wieder in seinem Bedienfeld.
+	The chess board couldn't open in its own window, so it stays in its panel.	Das Schachbrett konnte nicht in einem eigenen Fenster geöffnet werden und bleibt in seinem Bedienfeld.

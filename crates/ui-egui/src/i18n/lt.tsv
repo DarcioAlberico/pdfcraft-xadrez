@@ -2908,3 +2908,10 @@ chess side	Black	Juodieji
 	Promote a variation	varianto pakėlimą
 	Demote a line	linijos nuleidimą
 	Delete a variation	varianto trynimą
+# Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
+	Chess board in its own window	Šachmatų lenta atskirame lange
+	Move the board to its own window	Perkelti lentą į atskirą langą
+	Dock	Prisegti
+	Put the board back in its panel	Grąžinti lentą į jos skydelį
+	The chess board couldn't open in its own window, so it is back in its panel.	Šachmatų lentos nepavyko atverti atskirame lange, todėl ji grąžinta į savo skydelį.
+	The chess board couldn't open in its own window, so it stays in its panel.	Šachmatų lentos nepavyko atverti atskirame lange, todėl ji lieka savo skydelyje.

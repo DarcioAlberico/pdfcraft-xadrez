@@ -98,6 +98,35 @@ pub async fn catch_errors<T>(
     }
 }
 
+/// PdfCraft patch (T13a): the windows whose new surface couldn't be configured, oldest first.
+///
+/// eframe only logs [`Painter::set_window`]'s error for a window it opens while drawing another
+/// (an immediate viewport): the window's egui pass still runs, nothing is painted in it, and the
+/// texture changes of that pass (glyphs new to the font atlas among them) are never uploaded.
+/// Recording it lets the app close the window and upload the textures again. At most
+/// [`MAX_SURFACE_FAILURES`] distinct windows are kept until [`take_surface_failures`].
+static SURFACE_FAILURES: std::sync::Mutex<Vec<ViewportId>> = std::sync::Mutex::new(Vec::new());
+
+/// PdfCraft patch (T13a): the most windows [`SURFACE_FAILURES`] keeps between two takes.
+pub const MAX_SURFACE_FAILURES: usize = 64;
+
+/// PdfCraft patch (T13a): record that the surface of `viewport_id`'s window couldn't be
+/// configured (once per window until [`take_surface_failures`]). Called by the painter; public so
+/// an app can test how it recovers.
+pub fn record_surface_failure(viewport_id: ViewportId) {
+    // A panic elsewhere while the list was held leaves it usable: it is only a list of ids.
+    let mut failures = SURFACE_FAILURES.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+    if !failures.contains(&viewport_id) && failures.len() < MAX_SURFACE_FAILURES {
+        failures.push(viewport_id);
+    }
+}
+
+/// PdfCraft patch (T13a): the windows whose surface couldn't be configured since the last call,
+/// oldest first; the list is emptied.
+pub fn take_surface_failures() -> Vec<ViewportId> {
+    std::mem::take(&mut *SURFACE_FAILURES.lock().unwrap_or_else(std::sync::PoisonError::into_inner))
+}
+
 /// Everything you need to paint egui with [`wgpu`] on [`winit`].
 ///
 /// Alternatively you can use [`crate::Renderer`] directly.
@@ -341,6 +370,9 @@ impl Painter {
             self.surfaces.remove(&viewport_id);
             self.depth_texture_view.remove(&viewport_id);
             self.msaa_texture_view.remove(&viewport_id);
+            // PdfCraft patch (T13a): eframe only logs this error for a window opened while
+            // another is drawn; the app learns of it from `take_surface_failures`.
+            record_surface_failure(viewport_id);
             return Err(crate::WgpuError::ConfigureSurface(error));
         }
         Ok(())

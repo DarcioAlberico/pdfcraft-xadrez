@@ -2657,3 +2657,10 @@ animation effects	Off	オフ
 	Promote a variation	変化の昇格
 	Demote a line	筋の降格
 	Delete a variation	変化の削除
+# Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
+	Chess board in its own window	チェス盤を別ウィンドウに表示
+	Move the board to its own window	盤を別ウィンドウに移動
+	Dock	ドッキング
+	Put the board back in its panel	盤をパネルに戻す
+	The chess board couldn't open in its own window, so it is back in its panel.	チェス盤を別ウィンドウで開けなかったため、パネルに戻しました。
+	The chess board couldn't open in its own window, so it stays in its panel.	チェス盤を別ウィンドウで開けないため、パネルに表示したままにします。
