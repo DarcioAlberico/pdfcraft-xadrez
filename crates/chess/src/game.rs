@@ -294,6 +294,12 @@ impl Game {
         self.node(0).board.to_string()
     }
 
+    /// The FEN of the position after move `node` (the start's for node 0), whatever move is
+    /// shown; `None` when the game has no such move.
+    pub fn fen_at(&self, node: NodeId) -> Option<String> {
+        self.nodes.get(node).map(|n| n.board.to_string())
+    }
+
     /// Whose move it is on the board shown.
     pub fn side_to_move(&self) -> Color {
         color_from_cozy(self.board().side_to_move())
@@ -1217,6 +1223,18 @@ mod tests {
         assert_eq!(g.last_move(), Some((sq("g1"), sq("f3"))));
         assert_eq!(g.side_to_move(), Color::Black);
         assert_eq!(g.play(sq("e5"), sq("e3"), None), Err(GameError::IllegalMove));
+    }
+
+    #[test]
+    fn fen_at_is_the_position_after_a_move_whatever_is_shown() {
+        let mut g = Game::standard();
+        play(&mut g, &[("e2", "e4"), ("e7", "e5")]);
+        let after_e4 = g.main_line()[1];
+        g.go_to_node(0);
+        assert_eq!(g.fen_at(after_e4).as_deref(), Some("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"));
+        assert_eq!(g.fen_at(0), Some(g.start_fen()));
+        assert_eq!(g.fen(), g.start_fen(), "the move shown is unchanged");
+        assert_eq!(g.fen_at(99), None);
     }
 
     #[test]
