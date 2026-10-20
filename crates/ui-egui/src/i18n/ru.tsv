@@ -2501,3 +2501,17 @@ animation effects	Off	Выкл
 	Play the line up to this move	Сыграть вариант до этого хода
 	Engine analysis needs the desktop app.	Анализ движком доступен только в настольном приложении.
 	Programs	Программы
+# Chess ▸ PGN toolbar: T4a, undo and redo for the game (each name follows "Undo" or "Redo").
+	Play {san}	ход {san}
+	Play the engine's line	вариант движка
+	Delete moves	удаление ходов
+	Make main line	выбор главного варианта
+	Glyph {glyph}	знак {glyph}
+	Edit move comment	правку комментария
+	Edit game details	правку данных партии
+	Change side to move	смену очерёдности хода
+	Load the FEN	загрузку FEN
+	Load the PGN	загрузку PGN
+	Load the diagram	загрузку диаграммы
+	Position set-up	расстановку позиции
+	Reset to the start position	возврат к начальной позиции

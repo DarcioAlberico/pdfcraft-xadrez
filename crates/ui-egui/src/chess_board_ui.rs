@@ -26,6 +26,7 @@ use pdfcraft_engine::chess::pdfcraft_chess::draw::{BoardStyle, PieceSet, Rgb};
 use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, GameError, NodeId, Outcome, Token};
 use pdfcraft_engine::chess::pdfcraft_chess::placement::{Color, Piece, PieceKind, Placement, Square};
 
+use crate::chess_history::{ChessEdit, GameHistory, Snapshot};
 use crate::theme::{self, Tokens};
 
 /// The board image's side, in pixels (it is scaled to the panel).
@@ -116,15 +117,25 @@ pub struct BoardState {
     draw_error: Option<String>,
     /// The pieces cut out of their squares, for the one following the pointer in a drag.
     sprites: Option<TextureHandle>,
-    /// The comment or game-detail field being typed in (its key) and its text as typed. The game
-    /// keeps comments and tags cleaned (spaces collapsed, ends trimmed), so a field re-read from
-    /// it every frame would eat a space typed at the end.
-    draft: Option<(String, String)>,
+    /// The comment or game-detail field being typed in. The game keeps comments and tags cleaned
+    /// (spaces collapsed, ends trimmed), so a field re-read from it every frame would eat a space
+    /// typed at the end.
+    draft: Option<Draft>,
     /// The drawings, by position (its FEN), and the order the positions got their first one.
     marks: HashMap<String, Vec<Mark>>,
     marked_order: Vec<String>,
     /// Where a right-button drag started.
     drawing: Option<Square>,
+    /// The game's undo and redo steps.
+    pub(crate) history: GameHistory,
+}
+
+/// A comment or game-detail field while it has the keyboard: its key, its text as typed, and
+/// whether this editing session is an undo step yet (a session is one step, not one per key).
+struct Draft {
+    key: String,
+    text: String,
+    recorded: bool,
 }
 
 impl Default for BoardState {
@@ -147,6 +158,7 @@ impl Default for BoardState {
             marks: HashMap::new(),
             marked_order: Vec::new(),
             drawing: None,
+            history: GameHistory::default(),
         }
     }
 }
@@ -165,12 +177,24 @@ impl BoardState {
     /// Put the position `fen` on the board, from Black's side when `flipped`. A position that is
     /// not legal is shown but cannot be played.
     /// A FEN that cannot be read changes nothing but the message (the field keeps what was typed).
+    /// One undo step: "Load diagram" with a `source`, "Load FEN" without.
     pub fn load_fen(&mut self, fen: &str, flipped: bool, source: Option<Source>) {
+        let edit = if source.is_some() { ChessEdit::LoadDiagram } else { ChessEdit::LoadFen };
+        self.load_fen_as(edit, fen, flipped, source);
+    }
+
+    /// [`Self::load_fen`] as the undo step `edit`.
+    pub(crate) fn load_fen_as(&mut self, edit: ChessEdit, fen: &str, flipped: bool, source: Option<Source>) {
+        self.edit(|s| s.put_fen(fen, flipped, source).then_some(edit));
+    }
+
+    /// The change [`Self::load_fen`] makes; whether the FEN could be read.
+    fn put_fen(&mut self, fen: &str, flipped: bool, source: Option<Source>) -> bool {
         let (game, illegal, message) = match Game::from_fen(fen) {
             Ok(game) => (game, None, None),
             Err(GameError::BadFen(e)) => {
                 self.message = Some(crate::i18n::fmt(tl!("The FEN couldn't be read: {e}"), &[("e", &e)]));
-                return;
+                return false;
             }
             Err(_) => match pdfcraft_engine::chess::pdfcraft_chess::fen::parse_placement(fen) {
                 Ok(placement) => (
@@ -180,7 +204,7 @@ impl BoardState {
                 ),
                 Err(e) => {
                     self.message = Some(crate::i18n::fmt(tl!("The FEN couldn't be read: {e}"), &[("e", &e.to_string())]));
-                    return;
+                    return false;
                 }
             },
         };
@@ -192,21 +216,118 @@ impl BoardState {
         self.flipped = flipped;
         self.source = source;
         self.refresh_fields(true);
+        true
     }
 
-    /// Read the PGN field into the board.
+    /// Read the PGN field into the board (one undo step).
     fn load_pgn(&mut self) {
-        match Game::from_pgn(&self.pgn_text) {
+        self.edit(|s| match Game::from_pgn(&s.pgn_text) {
             Ok((game, stopped)) => {
-                self.game = game;
-                self.illegal = None;
-                self.selected = None;
-                self.promotion = None;
-                self.message = stopped.map(|m| crate::i18n::fmt(tl!("Reading stopped at {move}: it is not a legal move there."), &[("move", &m)]));
-                self.refresh_fields(true);
+                s.game = game;
+                s.illegal = None;
+                s.selected = None;
+                s.promotion = None;
+                s.message = stopped.map(|m| crate::i18n::fmt(tl!("Reading stopped at {move}: it is not a legal move there."), &[("move", &m)]));
+                s.refresh_fields(true);
+                Some(ChessEdit::LoadPgn)
             }
-            Err(e) => self.message = Some(crate::i18n::fmt(tl!("The PGN couldn't be read: {e}"), &[("e", &e.to_string())])),
+            Err(e) => {
+                s.message = Some(crate::i18n::fmt(tl!("The PGN couldn't be read: {e}"), &[("e", &e.to_string())]));
+                None
+            }
+        });
+    }
+
+    /// Back to the standard start position, as a new game (one undo step).
+    fn standard_start(&mut self) {
+        self.edit(|s| {
+            s.game = Game::standard();
+            s.illegal = None;
+            s.source = None;
+            s.selected = None;
+            s.promotion = None;
+            s.message = None;
+            s.refresh_fields(true);
+            Some(ChessEdit::StandardStart)
+        });
+    }
+
+    /// The board as an undo step keeps it.
+    fn snapshot(&self) -> Snapshot {
+        Snapshot { game: self.game.clone(), illegal: self.illegal.clone(), source: self.source, flipped: self.flipped }
+    }
+
+    /// Make a change to the game as one undo step. `change` says what it did, or `None` when it
+    /// did nothing; a change that left the game's revision as it was is not a step either (a
+    /// move already in the game was only followed), unless it put a new game in place. Returns
+    /// whether a step was recorded.
+    pub(crate) fn edit(&mut self, change: impl FnOnce(&mut BoardState) -> Option<ChessEdit>) -> bool {
+        let before = self.snapshot();
+        let revision = self.game.revision();
+        self.history.see(revision);
+        let Some(edit) = change(self) else { return false };
+        let replaced = edit.replaces_game();
+        if !replaced && self.game.revision() == revision {
+            return false;
         }
+        if replaced {
+            // A new game starts at revision 0: keep revisions from repeating across games.
+            self.game.bump_revision(self.history.max_revision());
+        }
+        self.history.see(self.game.revision());
+        self.history.record(edit, before);
+        true
+    }
+
+    /// Undo the last change to the game. Whether there was one.
+    pub fn undo(&mut self) -> bool {
+        self.restore(true)
+    }
+
+    /// Redo the last change undone. Whether there was one.
+    pub fn redo(&mut self) -> bool {
+        self.restore(false)
+    }
+
+    /// What Undo would undo ("Play Nd5"), in the current language.
+    pub fn undo_label(&self) -> Option<String> {
+        self.history.undo_edit().map(ChessEdit::text)
+    }
+
+    /// What Redo would redo, in the current language.
+    pub fn redo_label(&self) -> Option<String> {
+        self.history.redo_edit().map(ChessEdit::text)
+    }
+
+    /// "Undo Play Nd5" or "Redo Play Nd5" when there is a step to undo (`undo`) or redo.
+    pub(crate) fn command_text(&self, undo: bool) -> Option<String> {
+        let edit = if undo { self.history.undo_edit() } else { self.history.redo_edit() };
+        edit.map(|e| crate::chess_history::command_text(undo, e))
+    }
+
+    /// Put back the board a step kept. The game put back gets a revision newer than any seen, so
+    /// the FEN and PGN fields (refreshed on the revision) and anything else keyed on it can't
+    /// take it for the game they last saw.
+    fn restore(&mut self, undo: bool) -> bool {
+        let current = self.snapshot();
+        let seen = self.history.max_revision().max(self.game.revision());
+        let back = if undo { self.history.undo(current) } else { self.history.redo(current) };
+        let Some((edit, snapshot)) = back else { return false };
+        self.game = snapshot.game;
+        self.game.bump_revision(seen);
+        self.history.see(self.game.revision());
+        self.illegal = snapshot.illegal;
+        self.source = snapshot.source;
+        if edit.sets_side() {
+            self.flipped = snapshot.flipped;
+        }
+        self.selected = None;
+        self.promotion = None;
+        self.message = None;
+        self.drawing = None;
+        // A field being typed in shows the game's text again, and its next key starts a new step.
+        self.draft = None;
+        true
     }
 
     /// Fill the FEN and PGN fields from the board, when it changed (`force`: always).
@@ -264,21 +385,29 @@ impl BoardState {
         }
     }
 
+    /// Play a move (one undo step, unless it was in the game already and is only followed).
     fn play(&mut self, from: Square, to: Square, promotion: Option<PieceKind>) {
         self.selected = None;
-        match self.game.play(from, to, promotion) {
+        self.edit(|s| match s.game.play(from, to, promotion) {
             Ok(()) => {
-                self.promotion = None;
-                self.message = None;
+                s.promotion = None;
+                s.message = None;
+                Some(ChessEdit::Play(s.game.san(s.game.current()).to_owned()))
             }
-            Err(GameError::NeedsPromotion) => self.promotion = Some((from, to)),
-            Err(e) => self.message = Some(e.to_string()),
-        }
+            Err(GameError::NeedsPromotion) => {
+                s.promotion = Some((from, to));
+                None
+            }
+            Err(e) => {
+                s.message = Some(e.to_string());
+                None
+            }
+        });
     }
 
     /// Play `moves` (UCI) from the move shown, as far as they can be played: a line the engine
     /// suggested. Moves already in the game are followed; the others continue the line or start
-    /// a variation.
+    /// a variation. One undo step, when a move was added.
     pub fn play_uci_line(&mut self, moves: &[String]) {
         if self.illegal.is_some() {
             return;
@@ -286,12 +415,15 @@ impl BoardState {
         self.selected = None;
         self.promotion = None;
         self.message = None;
-        for mv in moves {
-            if let Err(e) = self.game.play_uci(mv) {
-                self.message = Some(e.to_string());
-                return;
+        self.edit(|s| {
+            for mv in moves {
+                if let Err(e) = s.game.play_uci(mv) {
+                    s.message = Some(e.to_string());
+                    break;
+                }
             }
-        }
+            Some(ChessEdit::EngineLine)
+        });
     }
 
     /// Step through the line: `Some(true)` forward, `Some(false)` back.
@@ -316,14 +448,19 @@ impl BoardState {
         if let Some(ep) = fields.get_mut(3) {
             *ep = "-";
         }
-        match Game::from_fen(&fields.join(" ")) {
+        let fen = fields.join(" ");
+        self.edit(|s| match Game::from_fen(&fen) {
             Ok(game) => {
-                self.game = game;
-                self.message = None;
-                self.selected = None;
+                s.game = game;
+                s.message = None;
+                s.selected = None;
+                Some(ChessEdit::SideToMove)
             }
-            Err(_) => self.message = Some(tl!("That side can't be to move: the other king is in check.").to_string()),
-        }
+            Err(_) => {
+                s.message = Some(tl!("That side can't be to move: the other king is in check.").to_string());
+                None
+            }
+        });
     }
 
     /// The drawings on the position shown.
@@ -688,8 +825,18 @@ fn move_list(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) {
         state.promotion = None;
         match e {
             MoveEdit::Go(node) => state.game.go_to_node(node),
-            MoveEdit::Promote(node) => state.game.promote(node),
-            MoveEdit::Delete(node) => state.game.delete(node),
+            MoveEdit::Promote(node) => {
+                state.edit(|s| {
+                    s.game.promote(node);
+                    Some(ChessEdit::MakeMainLine)
+                });
+            }
+            MoveEdit::Delete(node) => {
+                state.edit(|s| {
+                    s.game.delete(node);
+                    Some(ChessEdit::DeleteMoves)
+                });
+            }
         }
     }
 }
@@ -730,33 +877,54 @@ fn annotation(ui: &mut egui::Ui, state: &mut BoardState) {
         for code in OFFERED_NAGS {
             let on = state.game.nags(node).contains(&code);
             if ui.selectable_label(on, egui::RichText::new(nag_text(code)).monospace()).clicked() {
-                state.game.toggle_nag(node, code);
+                state.edit(|s| {
+                    s.game.toggle_nag(node, code);
+                    Some(ChessEdit::Glyph(nag_text(code)))
+                });
             }
         }
     });
     let key = format!("comment {node}");
-    let mut comment = drafted(&state.draft, &key, state.game.comment(node));
+    let (mut comment, mut recorded) = drafted(&state.draft, &key, state.game.comment(node));
     let r = ui.add(egui::TextEdit::multiline(&mut comment).hint_text(tl!("Comment on this move")).desired_rows(1).desired_width(f32::INFINITY));
     if r.changed() {
-        state.game.set_comment(node, &comment);
+        recorded = state.type_in(recorded, ChessEdit::Comment, |game| game.set_comment(node, &comment));
     }
-    keep_draft(&mut state.draft, &key, &r, comment);
+    keep_draft(&mut state.draft, &key, &r, comment, recorded);
+}
+
+impl BoardState {
+    /// A key typed in a comment or detail field: the first change of the field's editing session
+    /// (`recorded` false) is an undo step, the next ones join it. Whether the session is a step.
+    fn type_in(&mut self, recorded: bool, edit: ChessEdit, change: impl FnOnce(&mut Game)) -> bool {
+        if recorded {
+            change(&mut self.game);
+            self.history.see(self.game.revision());
+            true
+        } else {
+            self.edit(|s| {
+                change(&mut s.game);
+                Some(edit)
+            })
+        }
+    }
 }
 
 /// The text a cleaned field shows: as typed while it is being typed in (`draft` holds its
-/// `key`), else as the game keeps it.
-fn drafted(draft: &Option<(String, String)>, key: &str, stored: &str) -> String {
+/// `key`), else as the game keeps it; and whether its editing session is an undo step yet.
+fn drafted(draft: &Option<Draft>, key: &str, stored: &str) -> (String, bool) {
     match draft {
-        Some((k, text)) if k == key => text.clone(),
-        _ => stored.to_owned(),
+        Some(d) if d.key == key => (d.text.clone(), d.recorded),
+        _ => (stored.to_owned(), false),
     }
 }
 
-/// Keep a field's text as typed while it has the keyboard; once it loses it, show the game's.
-fn keep_draft(draft: &mut Option<(String, String)>, key: &str, response: &egui::Response, text: String) {
+/// Keep a field's text as typed while it has the keyboard; once it loses it, show the game's
+/// (and the next change to it is a new undo step).
+fn keep_draft(draft: &mut Option<Draft>, key: &str, response: &egui::Response, text: String, recorded: bool) {
     if response.has_focus() {
-        *draft = Some((key.to_owned(), text));
-    } else if draft.as_ref().is_some_and(|(k, _)| k == key) {
+        *draft = Some(Draft { key: key.to_owned(), text, recorded });
+    } else if draft.as_ref().is_some_and(|d| d.key == key) {
         *draft = None;
     }
 }
@@ -779,13 +947,15 @@ fn details(ui: &mut egui::Ui, state: &mut BoardState) {
             ] {
                 ui.label(label);
                 let key = format!("tag {tag}");
-                let mut value = drafted(&state.draft, &key, state.game.tag(tag).unwrap_or_default());
+                let (mut value, mut recorded) = drafted(&state.draft, &key, state.game.tag(tag).unwrap_or_default());
                 let r = ui.add(egui::TextEdit::singleline(&mut value).desired_width(f32::INFINITY));
                 if r.changed() {
-                    // The names above are valid tag names: this cannot fail.
-                    let _ = state.game.set_tag(tag, &value);
+                    recorded = state.type_in(recorded, ChessEdit::GameDetails, |game| {
+                        // The names above are valid tag names: this cannot fail.
+                        let _ = game.set_tag(tag, &value);
+                    });
                 }
-                keep_draft(&mut state.draft, &key, &r, value);
+                keep_draft(&mut state.draft, &key, &r, value, recorded);
                 ui.end_row();
             }
         });
@@ -864,6 +1034,21 @@ pub(crate) fn navigation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) 
             state.game.go_to(usize::MAX);
             state.selected = None;
         }
+        // Undo and Redo for the game (provisional here: they move to the PGN toolbar in T5a).
+        // Each names the step it would take back ("Undo Play Nd5").
+        ui.separator();
+        for undo in [true, false] {
+            let name = state.command_text(undo).unwrap_or_else(|| if undo { tl!("Undo") } else { tl!("Redo") }.to_string());
+            let (icon, enabled) =
+                if undo { ("undo-2", state.history.undo_edit().is_some()) } else { ("redo-2", state.history.redo_edit().is_some()) };
+            if ui.add_enabled_ui(enabled, |ui| crate::icons::button(ui, icon, 28.0, false, &name)).inner.clicked() {
+                if undo {
+                    state.undo();
+                } else {
+                    state.redo();
+                }
+            }
+        }
     });
     let (text, colour) = status(state);
     ui.label(egui::RichText::new(text).small().color(colour));
@@ -876,7 +1061,10 @@ pub(crate) fn navigation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) 
 pub(crate) fn moves_and_notes(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) {
     move_list(ui, t, state);
     if state.illegal.is_none() && state.game.ply() < state.game.len() && ui.small_button(tl!("Delete the moves after this one")).clicked() {
-        state.game.truncate();
+        state.edit(|s| {
+            s.game.truncate();
+            Some(ChessEdit::DeleteMoves)
+        });
     }
     annotation(ui, state);
     details(ui, state);
@@ -909,13 +1097,7 @@ pub(crate) fn fen_and_pgn(ui: &mut egui::Ui, state: &mut BoardState) -> Option<B
             }
         }
         if ui.small_button(tl!("Standard start position")).clicked() {
-            state.game = Game::standard();
-            state.illegal = None;
-            state.source = None;
-            state.selected = None;
-            state.promotion = None;
-            state.message = None;
-            state.refresh_fields(true);
+            state.standard_start();
         }
     });
     ui.add_space(4.0);

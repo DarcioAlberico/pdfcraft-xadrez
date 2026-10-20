@@ -80,6 +80,13 @@ impl PdfCraftApp {
     /// Whether a registered command can run now. The engine judges the document (security,
     /// contents, undo history); view state it can't see is checked here.
     pub(crate) fn command_enabled(&self, spec: &CommandSpec) -> bool {
+        // Undo and Redo act on the chess game after a click or a change in the chess panels
+        // (D12), first: with nothing to undo there, they are off rather than reaching for the
+        // document's history.
+        if self.chess.in_scope() && matches!(spec.id, "edit.undo" | "edit.redo") {
+            let history = &self.chess.board.history;
+            return if spec.id == "edit.undo" { history.undo_edit().is_some() } else { history.redo_edit().is_some() };
+        }
         // Undo and Redo act on the Combine files list while its tab shows.
         if self.combine_showing() && matches!(spec.needs, commands::Needs::Undo | commands::Needs::Redo) {
             return self.combine_can_undo(spec.needs == commands::Needs::Undo);
@@ -93,6 +100,20 @@ impl PdfCraftApp {
                 "view.next_view" => self.active.and_then(|i| self.views.get(i)).is_some_and(|v| !v.forward.is_empty()),
                 _ => true,
             }
+    }
+
+    /// Undo's or Redo's label while they act on the chess game ("Undo Play Nd5", translated);
+    /// `None` for any other command, or while they act on the document.
+    pub(crate) fn chess_command_label(&self, spec: &CommandSpec) -> Option<String> {
+        let undo = match spec.id {
+            "edit.undo" => true,
+            "edit.redo" => false,
+            _ => return None,
+        };
+        if !self.chess.in_scope() {
+            return None;
+        }
+        Some(self.chess.board.command_text(undo).unwrap_or_else(|| crate::i18n::command_label(spec.label)))
     }
 
     /// Run a registered command by id. Returns `false` when the id is unknown or the command
@@ -768,8 +789,10 @@ fn tab_after(current: Option<usize>, count: usize, forward: bool) -> Option<usiz
 /// Render a top-level menu's registered commands (with live labels, shortcuts and enablement).
 pub(crate) fn registry_menu(app: &mut PdfCraftApp, ui: &mut egui::Ui, menu: &str) {
     for spec in commands::menu(menu) {
-        let label = commands::current_label(spec, &app.session, app.active_ids().map(|(_, id)| id));
-        let label = crate::i18n::menu_label(spec.id, &label);
+        let label = app.chess_command_label(spec).unwrap_or_else(|| {
+            let label = commands::current_label(spec, &app.session, app.active_ids().map(|(_, id)| id));
+            crate::i18n::menu_label(spec.id, &label)
+        });
         // Open Recent is a submenu of the live recent list, not one action: disabled while the
         // list is empty, otherwise each entry opens its file (or focuses the tab showing it), and
         // Clear Recent Files at the foot empties the list (#430).

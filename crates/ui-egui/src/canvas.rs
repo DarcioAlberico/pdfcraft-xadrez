@@ -2373,6 +2373,10 @@ fn page_scroll<R>(
 
 pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
+    // A click on the page puts Undo and Redo back on the document (D12).
+    if crate::chess_history::pressed_in(ui) {
+        app.chess.leave_scope();
+    }
     // Keyboard scrolling applies to this frame's page view only, never later.
     let key_scroll = std::mem::take(&mut app.views[index].key_scroll);
     // The Search panel closed: its search moves to the find bar.

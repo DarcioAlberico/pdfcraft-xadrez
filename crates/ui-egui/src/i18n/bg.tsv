@@ -2551,3 +2551,17 @@ animation effects	Off	Изключени
 	Play the line up to this move	Изиграйте варианта до този ход
 	Engine analysis needs the desktop app.	Анализът с енджин изисква настолното приложение.
 	Programs	Програми
+# Chess ▸ PGN toolbar: T4a, undo and redo for the game (each name follows "Undo" or "Redo").
+	Play {san}	хода {san}
+	Play the engine's line	варианта на енджина
+	Delete moves	изтриването на ходове
+	Make main line	избора на главен вариант
+	Glyph {glyph}	знака {glyph}
+	Edit move comment	редакцията на коментара
+	Edit game details	редакцията на данните за партията
+	Change side to move	смяната на страната на ход
+	Load the FEN	зареждането на FEN
+	Load the PGN	зареждането на PGN
+	Load the diagram	зареждането на диаграмата
+	Position set-up	подреждането на позицията
+	Reset to the start position	връщането към началната позиция

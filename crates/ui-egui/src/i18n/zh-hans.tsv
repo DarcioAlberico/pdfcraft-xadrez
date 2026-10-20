@@ -2552,3 +2552,17 @@ animation effects	Off	关
 	Play the line up to this move	走到此着为止的变化
 	Engine analysis needs the desktop app.	引擎分析需要桌面版应用。
 	Programs	程序
+# Chess ▸ PGN toolbar: T4a, undo and redo for the game (each name follows "Undo" or "Redo").
+	Play {san}	着法 {san}
+	Play the engine's line	引擎变化
+	Delete moves	删除着法
+	Make main line	设为主线
+	Glyph {glyph}	符号 {glyph}
+	Edit move comment	编辑评论
+	Edit game details	编辑对局信息
+	Change side to move	更改轮走方
+	Load the FEN	载入 FEN
+	Load the PGN	载入 PGN
+	Load the diagram	载入棋图
+	Position set-up	摆放局面
+	Reset to the start position	恢复初始局面

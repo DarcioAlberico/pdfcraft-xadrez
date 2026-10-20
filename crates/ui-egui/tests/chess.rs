@@ -725,3 +725,152 @@ fn the_study_board_analyses_with_a_real_engine() {
     h.run_steps(3);
     assert_eq!(h.state().chess.board.game.len(), 1, "{}", h.state().chess.board.game.movetext());
 }
+
+/// Open the Chess board panel on the standard start position, after a PDF edit (a rectangle in a
+/// corner of page 1). Returns what the document's Undo would undo.
+fn board_after_a_pdf_edit(h: &mut Harness<'static, PdfCraftApp>) -> String {
+    let shape = Shape::Rectangle { rect: [10.0, 10.0, 50.0, 50.0] };
+    let style = Style::default_for(&shape);
+    assert!(h.state_mut().apply_edit(Edit::AddAnnotation(NewAnnotation { page: 0, style, shape, contents: String::new(), author: String::new() })));
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    pdf_undo(h).expect("the rectangle can be undone")
+}
+
+/// What the document's Undo would undo.
+fn pdf_undo(h: &Harness<'static, PdfCraftApp>) -> Option<String> {
+    let app = h.state();
+    app.session.get(app.views[0].id).unwrap().can_undo().map(str::to_owned)
+}
+
+/// Press `key` with Ctrl (Command on macOS), and Shift when `shift`.
+fn shortcut(h: &mut Harness<'static, PdfCraftApp>, key: egui::Key, shift: bool) {
+    let m = if shift { egui::Modifiers::COMMAND | egui::Modifiers::SHIFT } else { egui::Modifiers::COMMAND };
+    h.key_press_modifiers(m, key);
+    h.run_steps(2);
+}
+
+/// Click at `at` with the primary button, as a pointer would.
+fn click_at(h: &mut Harness<'static, PdfCraftApp>, at: Pos2) {
+    h.hover_at(at);
+    h.run_steps(1);
+    for pressed in [true, false] {
+        h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed, modifiers: egui::Modifiers::NONE });
+    }
+    h.run_steps(2);
+}
+
+/// How many nodes are labelled `label` while the palette lists the Undo and Redo commands.
+fn palette_labels(h: &mut Harness<'static, PdfCraftApp>, label: &str) -> usize {
+    h.state_mut().set_option("palette", "undo").unwrap();
+    h.run_steps(2);
+    let n = h.query_all_by_label(label).count();
+    h.key_press(egui::Key::Escape);
+    h.run_steps(2);
+    n
+}
+
+/// Undo goes where the last action was (D12): after moves on the chess board, Edit ▸ Undo, Ctrl+Z
+/// and the board's own button take the moves back and leave the document alone; after a click on
+/// the page, Ctrl+Z undoes the document's edit and leaves the game alone. Undo is named after
+/// what it would undo, in the palette too.
+#[test]
+fn undo_follows_the_scope_of_the_last_action() {
+    let mut h = harness();
+    let pdf = board_after_a_pdf_edit(&mut h);
+    // A click in the board panel with nothing played: Undo is off, rather than reaching for the
+    // document's history behind the user's back.
+    click_square(&mut h, "a4");
+    assert!(h.state().chess.in_scope());
+    assert!(!h.state_mut().execute("edit.undo"), "nothing to undo in the game");
+    assert_eq!(pdf_undo(&h).as_deref(), Some(pdf.as_str()));
+
+    for sq in ["e2", "e4", "e7", "e5", "g1", "f3"] {
+        click_square(&mut h, sq);
+    }
+    assert_eq!(h.state().chess.board.game.movetext(), "1. e4 e5 2. Nf3");
+    click_square(&mut h, "a4");
+    // The palette and the board's button name the move.
+    assert_eq!(palette_labels(&mut h, "Undo Play Nf3"), 2, "the palette's Undo and the board's button");
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(2);
+    assert_eq!(h.state().chess.board.game.movetext(), "1. e4 e5");
+    shortcut(&mut h, egui::Key::Z, false);
+    assert_eq!(h.state().chess.board.game.movetext(), "1. e4");
+    assert_eq!(pdf_undo(&h).as_deref(), Some(pdf.as_str()), "the document is untouched");
+    shortcut(&mut h, egui::Key::Z, true);
+    assert_eq!(h.state().chess.board.game.movetext(), "1. e4 e5");
+    h.get_by_label("Undo Play e5").click();
+    h.run_steps(2);
+    assert_eq!(h.state().chess.board.game.movetext(), "1. e4");
+    h.get_by_label("Redo Play e5").click();
+    h.run_steps(2);
+    assert_eq!(h.state().chess.board.game.movetext(), "1. e4 e5");
+
+    // A click on the page: Undo goes back to the document.
+    let page = on_page(&h, 400.0, 300.0);
+    click_at(&mut h, page);
+    assert!(!h.state().chess.in_scope());
+    assert_eq!(palette_labels(&mut h, &format!("Undo {pdf}")), 1);
+    shortcut(&mut h, egui::Key::Z, false);
+    assert_eq!(pdf_undo(&h), None, "the rectangle was undone");
+    assert_eq!(h.state().chess.board.game.movetext(), "1. e4 e5", "the game is untouched");
+    // And a move played on the board brings it back to the game.
+    click_square(&mut h, "g1");
+    click_square(&mut h, "f3");
+    assert!(h.state().chess.in_scope());
+    shortcut(&mut h, egui::Key::Z, false);
+    assert_eq!(h.state().chess.board.game.movetext(), "1. e4 e5");
+}
+
+/// A comment typed in several goes is one undo step, named after what it was.
+#[test]
+fn a_comment_typed_in_several_goes_is_one_undo_step() {
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    click_square(&mut h, "e2");
+    click_square(&mut h, "e4");
+    let comment = h.get_all_by_role(egui::accesskit::Role::MultilineTextInput).find(|n| n.value().unwrap_or_default().is_empty()).unwrap();
+    comment.focus();
+    comment.type_text("good ");
+    h.run_steps(2);
+    h.get_all_by_role(egui::accesskit::Role::MultilineTextInput).find(|n| n.value().as_deref() == Some("good ")).unwrap().type_text("move");
+    h.run_steps(2);
+    // Leave the field.
+    click_square(&mut h, "a4");
+    let node = h.state().chess.board.game.current();
+    assert_eq!(h.state().chess.board.game.comment(node), "good move");
+    assert_eq!(h.state().chess.board.undo_label().as_deref(), Some("Edit move comment"));
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(2);
+    assert_eq!(h.state().chess.board.game.comment(node), "");
+    assert_eq!(h.state().chess.board.game.movetext(), "1. e4", "one step took the whole comment back, and only it");
+    assert_eq!(h.state().chess.board.undo_label().as_deref(), Some("Play e4"));
+    assert!(h.state_mut().execute("edit.redo"));
+    h.run_steps(2);
+    assert_eq!(h.state().chess.board.game.comment(node), "good move");
+}
+
+/// The FEN and PGN fields show the game put back by Undo, even when another change follows it
+/// before they are drawn again: the game put back gets a newer revision than any seen, so it is
+/// never taken for the game the fields last showed.
+#[test]
+fn the_fields_follow_the_game_put_back() {
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    click_square(&mut h, "e2");
+    click_square(&mut h, "e4");
+    assert!(h.state().chess.board.pgn_text.contains("1. e4 *"), "{}", h.state().chess.board.pgn_text);
+    {
+        let app = h.state_mut();
+        assert!(app.execute("edit.undo"));
+        app.chess.board.play_uci_line(&["d2d4".into()]);
+    }
+    h.run_steps(2);
+    let board = &h.state().chess.board;
+    assert_eq!(board.game.movetext(), "1. d4");
+    assert!(board.pgn_text.contains("1. d4 *"), "the PGN field is stale: {}", board.pgn_text);
+    assert_eq!(board.fen_text, "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq d3 0 1");
+}

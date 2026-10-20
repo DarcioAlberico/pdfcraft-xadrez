@@ -2589,3 +2589,17 @@ animation effects	Off	Aus
 	Play the line up to this move	Die Variante bis zu diesem Zug spielen
 	Engine analysis needs the desktop app.	Die Engine-Analyse erfordert die Desktop-App.
 	Programs	Programme
+# Chess ▸ PGN toolbar: T4a, undo and redo for the game (each name follows "Undo" or "Redo").
+	Play {san}	Zug {san}
+	Play the engine's line	Engine-Variante
+	Delete moves	Züge löschen
+	Make main line	Hauptvariante festlegen
+	Glyph {glyph}	Zeichen {glyph}
+	Edit move comment	Zugkommentar bearbeiten
+	Edit game details	Partiedaten bearbeiten
+	Change side to move	Seite am Zug ändern
+	Load the FEN	FEN laden
+	Load the PGN	PGN laden
+	Load the diagram	Diagramm laden
+	Position set-up	Stellungsaufbau
+	Reset to the start position	Zurück zur Grundstellung

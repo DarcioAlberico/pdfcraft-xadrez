@@ -2865,3 +2865,17 @@ certificate	Version	الإصدار
 	Play the line up to this move	العب الخط حتى هذه النقلة
 	Engine analysis needs the desktop app.	يتطلب تحليل المحرك تطبيق سطح المكتب.
 	Programs	البرامج
+# Chess ▸ PGN toolbar: T4a, undo and redo for the game (each name follows "Undo" or "Redo").
+	Play {san}	النقلة {san}
+	Play the engine's line	خط المحرك
+	Delete moves	حذف النقلات
+	Make main line	تعيين الخط الرئيسي
+	Glyph {glyph}	الرمز {glyph}
+	Edit move comment	تحرير التعليق
+	Edit game details	تحرير بيانات المباراة
+	Change side to move	تغيير الطرف صاحب الدور
+	Load the FEN	تحميل FEN
+	Load the PGN	تحميل PGN
+	Load the diagram	تحميل المخطط
+	Position set-up	إعداد الوضعية
+	Reset to the start position	العودة إلى وضع البداية

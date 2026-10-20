@@ -2662,3 +2662,17 @@ animation effects	Off	Vypnuto
 	Play the line up to this move	Zahrát variantu až do tohoto tahu
 	Engine analysis needs the desktop app.	Analýza enginem vyžaduje desktopovou aplikaci.
 	Programs	Programy
+# Chess ▸ PGN toolbar: T4a, undo and redo for the game (each name follows "Undo" or "Redo").
+	Play {san}	tah {san}
+	Play the engine's line	varianta enginu
+	Delete moves	smazání tahů
+	Make main line	nastavení hlavní varianty
+	Glyph {glyph}	znak {glyph}
+	Edit move comment	úprava komentáře
+	Edit game details	úprava údajů o partii
+	Change side to move	změna strany na tahu
+	Load the FEN	načtení FEN
+	Load the PGN	načtení PGN
+	Load the diagram	načtení diagramu
+	Position set-up	postavení pozice
+	Reset to the start position	návrat do výchozího postavení

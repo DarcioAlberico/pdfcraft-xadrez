@@ -2586,3 +2586,17 @@ animation effects	Off	Өшірулі
 	Play the line up to this move	Нұсқаны осы жүріске дейін ойнау
 	Engine analysis needs the desktop app.	Қозғалтқыш талдауы үшін жұмыс үстелі қолданбасы қажет.
 	Programs	Бағдарламалар
+# Chess ▸ PGN toolbar: T4a, undo and redo for the game (each name follows "Undo" or "Redo").
+	Play {san}	{san} жүрісі
+	Play the engine's line	қозғалтқыш нұсқасы
+	Delete moves	жүрістерді жою
+	Make main line	негізгі нұсқа ету
+	Glyph {glyph}	{glyph} белгісі
+	Edit move comment	түсініктемені өңдеу
+	Edit game details	партия деректерін өңдеу
+	Change side to move	жүріс кезегін ауыстыру
+	Load the FEN	FEN жүктеу
+	Load the PGN	PGN жүктеу
+	Load the diagram	диаграмма жүктеу
+	Position set-up	позиция құру
+	Reset to the start position	бастапқы позицияға оралу

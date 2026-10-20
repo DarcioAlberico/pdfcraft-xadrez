@@ -2605,3 +2605,17 @@ chess side	Black	Pretas
 	Play the line up to this move	Jogar a linha até este lance
 	Engine analysis needs the desktop app.	A análise do motor exige o aplicativo para desktop.
 	Programs	Programas
+# Chess ▸ PGN toolbar: T4a, undo and redo for the game (each name follows "Undo" or "Redo").
+	Play {san}	lance {san}
+	Play the engine's line	linha do motor
+	Delete moves	exclusão de lances
+	Make main line	promoção a linha principal
+	Glyph {glyph}	sinal {glyph}
+	Edit move comment	edição do comentário
+	Edit game details	edição dos dados da partida
+	Change side to move	troca do lado que joga
+	Load the FEN	carregamento da FEN
+	Load the PGN	carregamento do PGN
+	Load the diagram	carregamento do diagrama
+	Position set-up	montagem da posição
+	Reset to the start position	volta à posição inicial

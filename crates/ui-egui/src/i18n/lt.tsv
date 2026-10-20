@@ -2841,3 +2841,17 @@ chess side	Black	Juodieji
 	Play the line up to this move	Sužaisti variantą iki šio ėjimo
 	Engine analysis needs the desktop app.	Variklio analizei reikia darbalaukio programos.
 	Programs	Programos
+# Chess ▸ PGN toolbar: T4a, undo and redo for the game (each name follows "Undo" or "Redo").
+	Play {san}	ėjimą {san}
+	Play the engine's line	variklio variantą
+	Delete moves	ėjimų trynimą
+	Make main line	pagrindinio varianto nustatymą
+	Glyph {glyph}	ženklą {glyph}
+	Edit move comment	komentaro taisymą
+	Edit game details	partijos duomenų taisymą
+	Change side to move	ėjimo eilės keitimą
+	Load the FEN	FEN įkėlimą
+	Load the PGN	PGN įkėlimą
+	Load the diagram	diagramos įkėlimą
+	Position set-up	pozicijos sustatymą
+	Reset to the start position	grįžimą į pradinę poziciją
