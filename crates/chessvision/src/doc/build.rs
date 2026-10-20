@@ -5,8 +5,8 @@
 //!    left column, then down its right one. The coordinates printed around a diagram (`a b c … h`,
 //!    `8 … 1`) are not text and are left out ([`is_coordinates`]).
 //! 1. **Diagrams among the lines.** Lines keep their reading order and diagrams theirs; a diagram
-//!    goes before the first line below it in its column, or in a column to its right
-//!    ([`diagram_before`]). Diagrams are never reordered among themselves, so the n-th diagram
+//!    goes before the first line below it in its column, or in a column to its right, or wholly
+//!    below it and not in another column ([`diagram_before`]). Diagrams are never reordered among themselves, so the n-th diagram
 //!    block is diagram n of the reading order. Diagrams no line comes after go at the end.
 //! 2. **Blocks.** A line belongs to the first hint whose box holds its centre; consecutive lines of
 //!    one hint form one heading or paragraph. Lines without a hint form paragraphs, a new one at a
@@ -221,11 +221,11 @@ pub(crate) fn gutter(lines: &[&ChessLine], page_width: f32) -> Option<f32> {
     best.map(|(_, len, start)| lo + start as f32 + len as f32 / 2.0)
 }
 
-/// The lines in reading order, column by column: lines that cross the gutter (if any) cut the
+/// The lines in reading order, column by column: lines that cross the [`gutter`] (if any) cut the
 /// page into bands, and each band is read down its left column, then down its right one. Without a
 /// gutter, the lines keep their order.
-pub(crate) fn column_order<'a>(lines: &[&'a ChessLine], page_width: f32) -> Vec<&'a ChessLine> {
-    let Some(x) = gutter(lines, page_width) else { return lines.to_vec() };
+pub(crate) fn column_order<'a>(lines: &[&'a ChessLine], gutter: Option<f32>) -> Vec<&'a ChessLine> {
+    let Some(x) = gutter else { return lines.to_vec() };
     let top = |l: &&ChessLine| l.rect.y0;
     let mut out = Vec::with_capacity(lines.len());
     let mut left: Vec<&ChessLine> = Vec::new();
@@ -256,19 +256,39 @@ enum Item<'a> {
     Diagram(usize),
 }
 
-/// Whether diagram `d` comes before line `l` (view space): `l` is below `d`'s middle in the same
-/// column, or in a column to its right.
-fn diagram_before(d: ViewRect, l: ViewRect) -> bool {
+/// Whether diagram `d` comes before line `l` (view space): `l` is below `d`'s middle under it, in
+/// a column to its right, or wholly below it on its side of `split` (the gutter, or the page's
+/// middle on a page without one). A diagram or line across `split` is on both sides: a short line
+/// under a centred diagram is read after it, however far left it starts, while a left-column line
+/// below a right-column diagram is still read before it.
+fn diagram_before(d: ViewRect, l: ViewRect, split: f32) -> bool {
     let same_column = d.x0 < l.x1 && l.x0 < d.x1;
-    if same_column { (l.y0 + l.y1) * 0.5 >= (d.y0 + d.y1) * 0.5 } else { l.x0 >= d.x1 }
+    if same_column {
+        return (l.y0 + l.y1) * 0.5 >= (d.y0 + d.y1) * 0.5;
+    }
+    if l.x0 >= d.x1 {
+        return true;
+    }
+    // `l` is to the left of `d`.
+    let side = |r: ViewRect| {
+        if r.x1 <= split {
+            Some(false)
+        } else if r.x0 >= split {
+            Some(true)
+        } else {
+            None
+        }
+    };
+    let (sd, sl) = (side(d), side(l));
+    l.y0 >= d.y1 && (sd.is_none() || sl.is_none() || sd == sl)
 }
 
-fn interleave<'a>(lines: &[&'a ChessLine], diagrams: &[Option<ViewRect>]) -> Vec<Item<'a>> {
+fn interleave<'a>(lines: &[&'a ChessLine], diagrams: &[Option<ViewRect>], split: f32) -> Vec<Item<'a>> {
     let mut items = Vec::with_capacity(lines.len().saturating_add(diagrams.len()));
     let mut next = 0usize;
     for &line in lines {
         while let Some(d) = diagrams.get(next) {
-            if !d.is_some_and(|d| diagram_before(d, line.rect)) {
+            if !d.is_some_and(|d| diagram_before(d, line.rect, split)) {
                 break;
             }
             items.push(Item::Diagram(next));
@@ -427,9 +447,11 @@ fn blocks(input: &PageInput<'_>) -> Vec<Block> {
         }
     };
     let kept: Vec<&ChessLine> = input.text.lines.iter().filter(|l| !is_coordinates(l, &diagram_views)).collect();
-    let ordered = column_order(&kept, input.geometry.view_size().0);
+    let page_width = input.geometry.view_size().0;
+    let split = gutter(&kept, page_width);
+    let ordered = column_order(&kept, split);
     let puzzles = caption_numbers(&kept, &diagram_views);
-    for item in interleave(&ordered, &diagram_views) {
+    for item in interleave(&ordered, &diagram_views, split.unwrap_or(page_width * 0.5)) {
         match item {
             Item::Diagram(i) => {
                 flush(&mut blocks, &mut group, key);
