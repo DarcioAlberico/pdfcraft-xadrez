@@ -125,10 +125,16 @@ The book prints six numbered diagrams a page (`№185. Teichmann – Em.Lasker` 
 
 Polgar's *Chess 5334 Problems, Combinations and Games* prints the number alone above each diagram (`1675`, the diagrams in the `skak` font, read exactly) and its solutions as the number alone before the key move (`1675 1.Rd3+`), 700 pages on. A caption that is the number alone counts (a section number such as `2.2 Combinations` does not), and a number alone just before a move numbered `1.` names a puzzle. For a number no diagram gave, the open game ends and the moves stay unchecked, instead of being read into whatever game was open. On pages 297–298 and 1009, 11 of the 12 key moves whose diagrams were read are valid (the twelfth, `1.O-O-O`, has no rook on its diagram), and no solution of an unread diagram is validated by chance.
 
+### Back to the main line after a prose digression
+
+Annotated books leave the main line in prose (`2...Kd7? and gives away the h-pawn, White wins with 3.Kf4 Kd6 … 9.Kf5`) and come back to it in bold (`3.Kd4 Kf6!`). A numbered move like `3.Kd4` could also be an alternative inside the digression, to its own `3.Kf4`, and it used to be taken that way: the next move (`Kf6`, legal on the main line, not in the digression) then failed and stopped the line. Now a numbered move that is exactly the main line's next move, and legal there, goes back to the main line when the digression could only take it as an alternative to one of its own moves; a move that goes straight on from the digression (`1...c5 2.Nf3`) stays in it. On ten documents read earlier (Aagaard, Dvoretsky in two stretches, Fischer pt-BR, Flores Rios, Gallagher, Karpov, Polgar, Capablanca; replayed with `examples/walk_bench.rs`, no reading or OCR), valid moves went from 2,036 to 2,304 and moves not reached from 2,778 to 2,509; 13 moves got worse, in two games whose first chain of moves was itself a digression. Pages checked against the books: Fischer p. 46 (the Spielmann–Tartakover digression, then `7...♘c6 8.♗e3 ♘xd4?`), Flores Rios p. 60 (`If 14...♗xd6 15.♘xd6 …`, `Slightly better is 15...♕d7 …`), Dvoretsky p. 112.
+
+Tried and not kept: guessing a different move in place of a failed one when the next printed moves fit exactly one move like it. All six moves it would have changed were printed correctly; each had failed because of something earlier (the line on the wrong branch, a short capture such as `hg` not read as a move), so guessing only hides the cause.
+
 ## Limits
 
 - **Moves and text**
-  - A line stops at a move that cannot be played (a misprint, or a misread diagram): its later moves are "not reached" until a numbered move finds its place again. A game whose diagram is on a page that was not read has no position.
+  - A line stops at a move that cannot be played (a misprint, a misread diagram, or a line read onto the wrong branch): its later moves are "not reached" until a numbered move finds its place again. A game whose first chain of moves is a digression (the book's analysis of an earlier move printed before the game goes on) has that digression as its main line, and moves coming back to the real main line can go wrong. A game whose diagram is on a page that was not read has no position.
   - Three or more columns are read as two at most.
   - Umlauts in prose come through only where the glyph reader has them, because ocrs reads ASCII only.
 - **Links:** the lichess address is plain text in Word and RTF; it is a working link in PDF, HTML, EPUB and Markdown.

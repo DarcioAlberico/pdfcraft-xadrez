@@ -40,8 +40,10 @@
 //!   line stops: every later move of that line is [`MoveStatus::NotReached`] until a numbered move
 //!   finds its place again. A numbered move that cannot be played where the reading is, outside
 //!   brackets, is tried on the main line: books go back to it after an alternative written as
-//!   prose. Nothing is dropped: the printed text of a move that was not played goes
-//!   into the game's comments, so the PGN still carries it.
+//!   prose. So is one that could only be an alternative to a move of the digression it follows
+//!   while it is exactly the main line's next move (`2...Kd7? 3.Kf4 … 9.Kf5` and then
+//!   `3.Kd4 Kf6!`): the book is back on its main line. Nothing is dropped: the printed text of a
+//!   move that was not played goes into the game's comments, so the PGN still carries it.
 //! - **Comments and NAGs.** Prose inside a game is the comment of the move before it. An annotation
 //!   glyph belongs to the move it follows.
 //! - **Puzzles.** A diagram whose caption gives a number (`№185.`) is remembered by it. A
@@ -711,6 +713,21 @@ fn playable(score: &GameScore, line: &Line, number: Option<MoveNumber>, san: &Sa
     }
 }
 
+/// Whether the main line takes `san`, numbered `number`, while the reading is elsewhere in the
+/// game (one line open, not at the main line's last move): the move cannot be played where the
+/// reading is, or only as an alternative to a move of that line (its number is earlier than the
+/// line's next), while it is the main line's very next move. Books go back to the main line after
+/// an alternative written as prose.
+fn main_takes(score: &GameScore, lines: &[Line], number: Option<MoveNumber>, san: &San) -> bool {
+    let ([line], Some(n)) = (lines, number) else { return false };
+    let Some(tip) = score.mainline().last().copied() else { return false };
+    if line.cursor == Some(tip) || !playable(score, &Line { cursor: Some(tip), moved: true, ..Line::default() }, number, san) {
+        return false;
+    }
+    let q = ply_of(n);
+    !playable(score, line, number, san) || (score.next_ply(Some(tip)) == Some(q) && score.next_ply(line.cursor).is_some_and(|next| q < next))
+}
+
 /// Whether `san` is the first move of a game from `seed`, numbered `number`: the number is
 /// believed and the move is legal there.
 fn seed_fits(seed: &Seed, number: Option<MoveNumber>, san: &San) -> bool {
@@ -1050,19 +1067,14 @@ impl Walker {
         let Some(open) = self.open.as_mut() else { return MoveOutcome::status(MoveStatus::Unchecked) };
         let gi = open.game;
         let Some(game) = self.games.get_mut(gi) else { return MoveOutcome::status(MoveStatus::Unchecked) };
-        // A numbered move that cannot be played where the reading is, outside brackets, but can on
-        // the main line: the text went back to the main line after an alternative written as prose
-        // (`2.Kg7 ... The premature 2.h4+ loses to 2...Kxh4 ... 2...c5`).
-        if number.is_some()
+        // A numbered move that the main line takes (see `main_takes`): the text went back to the
+        // main line after an alternative written as prose (`2.Kg7 ... The premature 2.h4+ loses to
+        // 2...Kxh4 ... 2...c5`).
+        if main_takes(&game.score, &open.lines, number, san)
             && let [line] = open.lines.as_mut_slice()
-            && !playable(&game.score, line, number, san)
             && let Some(tip) = game.score.mainline().last().copied()
-            && line.cursor != Some(tip)
         {
-            let main = Line { cursor: Some(tip), moved: true, ..Line::default() };
-            if playable(&game.score, &main, number, san) {
-                *line = main;
-            }
+            *line = Line { cursor: Some(tip), moved: true, ..Line::default() };
         }
         // A bracket opened after a move can hold the replies to it (`1.Kb1 (1...b3 2.Kb2; 1...a3)`):
         // a first move numbered as the move after it is played after it.

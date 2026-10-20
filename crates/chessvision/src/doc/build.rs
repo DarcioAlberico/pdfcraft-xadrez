@@ -482,7 +482,7 @@ fn attach_reviews(input: &PageInput<'_>, blocks: &mut [Block], page: &mut Vec<Re
 }
 
 /// Run the page's blocks through the game walker, recording what became of each move.
-fn walk(page: u32, blocks: &mut [Block], walker: &mut Walker) {
+pub(crate) fn walk(page: u32, blocks: &mut [Block], walker: &mut Walker) {
     for block in blocks {
         match block {
             Block::Diagram(d) => {

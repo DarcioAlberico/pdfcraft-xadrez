@@ -564,6 +564,28 @@ impl DocBuilder {
         self.pages.push(page);
     }
 
+    /// Add a page read before (from a document's JSON, or after its moves were corrected): its
+    /// moves are judged again, in order with the other pages, from what is printed. What the last
+    /// walk wrote on them (status, position, node, the diagrams' missing-start flags) is replaced.
+    pub fn add_read_page(&mut self, mut page: ChessPage) {
+        for block in &mut page.blocks {
+            match block {
+                Block::Heading { inlines, .. } | Block::Paragraph { inlines, .. } => {
+                    for inline in inlines {
+                        if let Inline::Move(m) = inline {
+                            m.status = MoveStatus::Unchecked;
+                            m.fen = None;
+                            m.game = None;
+                        }
+                    }
+                }
+                Block::Diagram(d) => d.review.retain(|f| !matches!(f, ReviewFlag::NoStartPosition)),
+            }
+        }
+        build::walk(page.index, &mut page.blocks, &mut self.walker);
+        self.pages.push(page);
+    }
+
     /// The document: every open game is closed and every move's node reference made final.
     pub fn finish(self) -> ChessDoc {
         let mut pages = self.pages;
