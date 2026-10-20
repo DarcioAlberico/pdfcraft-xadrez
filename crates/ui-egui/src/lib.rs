@@ -32,6 +32,7 @@ mod a11y_ui;
 mod actions_ui;
 mod appearance;
 pub mod canvas;
+mod chess_annotate;
 mod chess_autosave;
 mod chess_board_ui;
 mod chess_collection;

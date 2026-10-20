@@ -2669,3 +2669,58 @@ animation effects	Off	Өшірулі
 	Make variation the main line	Нұсқаны негізгі нұсқа ету
 	Demote line	Желіні төмендету
 	Delete the moves after the current move	Ағымдағы жүрістен кейінгі жүрістерді жою
+
+# Chess ▸ PGN toolbar: T6, glyphs (the 28 names are the annotation glyphs' standard meanings), comments and the glyph palette. "Edit the comment before a move" and "Clear glyphs" name undo steps (they follow "Undo" or "Redo"); the last seven are command names.
+	Good move	Жақсы жүріс
+	Poor move	Әлсіз жүріс
+	Brilliant move	Тамаша жүріс
+	Blunder	Өрескел қате
+	Interesting move	Қызық жүріс
+	Dubious move	Күмәнді жүріс
+	Only move	Жалғыз жүріс
+	Novelty	Жаңалық
+	Equal position	Тең позиция
+	Unclear position	Түсініксіз позиция
+	White is slightly better	Ақтар сәл жақсырақ
+	Black is slightly better	Қаралар сәл жақсырақ
+	White is clearly better	Ақтар анық жақсырақ
+	Black is clearly better	Қаралар анық жақсырақ
+	White is winning	Ақтар ұтып жатыр
+	Black is winning	Қаралар ұтып жатыр
+	Compensation for the material	Материалдың өтемі
+	Zugzwang	Цугцванг
+	Development advantage	Дамудағы басымдық
+	With the initiative	Бастамамен
+	With an attack	Шабуылмен
+	With counterplay	Қарсы ойынмен
+	Time trouble	Уақыт тапшылығы
+	With the idea	Мақсатпен
+	Aimed against	Қарсы бағытталған
+	Better is	Жақсырағы
+	Worse is	Нашарырағы
+	Editorial comment	Редакция түсініктемесі
+	Choose a move first: glyphs go on a move.	Алдымен жүрісті таңдаңыз: белгілер жүріске қойылады.
+	Not added: this move has as many glyphs as it can take.	Қосылмады: бұл жүрісте болуы мүмкін белгілердің бәрі бар.
+	One half	Екіден бір
+	Dash	Сызықша
+	Capture sign	Алу белгісі
+	Check sign	Шах белгісі
+	Double check sign	Қос шах белгісі
+	Glyph palette	Белгілер палитрасы
+	Close the glyph palette	Белгілер палитрасын жабу
+	Puts the character into the field you were typing in, or at the end of the move's comment.	Таңбаны сіз жазып отырған өріске немесе жүріс түсініктемесінің соңына қояды.
+	Comment before {move}	{move} алдындағы түсініктеме
+	In PGN this comment joins the comment before the game's first move.	PGN-де бұл түсініктеме партияның бірінші жүрісінің алдындағы түсініктемеге қосылады.
+	In PGN this comment is written after the previous move.	PGN-де бұл түсініктеме алдыңғы жүрістен кейін жазылады.
+	Move glyphs	Жүріс белгілері
+	Evaluation glyphs	Бағалау белгілері
+	Other glyphs	Басқа белгілер
+	Edit the comment before a move	жүріс алдындағы түсініктемені өңдеу
+	Clear glyphs	белгілерді өшіру
+	Edit the move's comment	Жүріс түсініктемесін өңдеу
+	Glyph ! (good move)	Белгі ! (жақсы жүріс)
+	Glyph ? (poor move)	Белгі ? (әлсіз жүріс)
+	Glyph !! (brilliant move)	Белгі !! (тамаша жүріс)
+	Glyph ?? (blunder)	Белгі ?? (өрескел қате)
+	Glyph !? (interesting move)	Белгі !? (қызық жүріс)
+	Glyph ?! (dubious move)	Белгі ?! (күмәнді жүріс)

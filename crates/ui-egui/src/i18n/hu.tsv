@@ -2670,3 +2670,58 @@ animation effects	Off	Ki
 	Make variation the main line	A változat legyen a főváltozat
 	Demote line	Vonal lefokozása
 	Delete the moves after the current move	Az aktuális lépés utáni lépések törlése
+
+# Chess ▸ PGN toolbar: T6, glyphs (the 28 names are the annotation glyphs' standard meanings), comments and the glyph palette. "Edit the comment before a move" and "Clear glyphs" name undo steps (they follow "Undo" or "Redo"); the last seven are command names.
+	Good move	Jó lépés
+	Poor move	Gyenge lépés
+	Brilliant move	Kiváló lépés
+	Blunder	Durva hiba
+	Interesting move	Érdekes lépés
+	Dubious move	Kétes lépés
+	Only move	Egyetlen lépés
+	Novelty	Újítás
+	Equal position	Egyenlő állás
+	Unclear position	Tisztázatlan állás
+	White is slightly better	Világos kissé jobban áll
+	Black is slightly better	Sötét kissé jobban áll
+	White is clearly better	Világos egyértelműen jobban áll
+	Black is clearly better	Sötét egyértelműen jobban áll
+	White is winning	Világos nyerésre áll
+	Black is winning	Sötét nyerésre áll
+	Compensation for the material	Ellenérték az anyagért
+	Zugzwang	Lépéskényszer
+	Development advantage	Fejlődési előny
+	With the initiative	Kezdeményezéssel
+	With an attack	Támadással
+	With counterplay	Ellenjátékkal
+	Time trouble	Időzavar
+	With the idea	Azzal az ötlettel
+	Aimed against	Ellene irányul
+	Better is	Jobb
+	Worse is	Rosszabb
+	Editorial comment	Szerkesztői megjegyzés
+	Choose a move first: glyphs go on a move.	Előbb válasszon lépést: a jelek egy lépéshez tartoznak.
+	Not added: this move has as many glyphs as it can take.	Nincs hozzáadva: ennek a lépésnek már annyi jele van, amennyi lehet.
+	One half	Egy ketted
+	Dash	Gondolatjel
+	Capture sign	Ütés jele
+	Check sign	Sakk jele
+	Double check sign	Kettős sakk jele
+	Glyph palette	Jelpaletta
+	Close the glyph palette	A jelpaletta bezárása
+	Puts the character into the field you were typing in, or at the end of the move's comment.	Beszúrja a karaktert abba a mezőbe, amelybe gépelt, vagy a lépés megjegyzésének végére.
+	Comment before {move}	Megjegyzés {move} előtt
+	In PGN this comment joins the comment before the game's first move.	PGN-ben ez a megjegyzés összeolvad a játszma első lépése előtti megjegyzéssel.
+	In PGN this comment is written after the previous move.	PGN-ben ez a megjegyzés az előző lépés után kerül.
+	Move glyphs	Lépésjelek
+	Evaluation glyphs	Értékelő jelek
+	Other glyphs	Egyéb jelek
+	Edit the comment before a move	lépés előtti megjegyzés szerkesztése
+	Clear glyphs	jelek törlése
+	Edit the move's comment	A lépés megjegyzésének szerkesztése
+	Glyph ! (good move)	! jel (jó lépés)
+	Glyph ? (poor move)	? jel (gyenge lépés)
+	Glyph !! (brilliant move)	!! jel (kiváló lépés)
+	Glyph ?? (blunder)	?? jel (durva hiba)
+	Glyph !? (interesting move)	!? jel (érdekes lépés)
+	Glyph ?! (dubious move)	?! jel (kétes lépés)

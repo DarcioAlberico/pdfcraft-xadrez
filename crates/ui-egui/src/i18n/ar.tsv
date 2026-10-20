@@ -2948,3 +2948,58 @@ certificate	Version	الإصدار
 	Make variation the main line	جعل الخط الفرعي الخط الرئيسي
 	Demote line	تخفيض الخط
 	Delete the moves after the current move	حذف النقلات بعد النقلة الحالية
+
+# Chess ▸ PGN toolbar: T6, glyphs (the 28 names are the annotation glyphs' standard meanings), comments and the glyph palette. "Edit the comment before a move" and "Clear glyphs" name undo steps (they follow "Undo" or "Redo"); the last seven are command names.
+	Good move	نقلة جيدة
+	Poor move	نقلة ضعيفة
+	Brilliant move	نقلة رائعة
+	Blunder	خطأ فادح
+	Interesting move	نقلة مثيرة للاهتمام
+	Dubious move	نقلة مشكوك فيها
+	Only move	النقلة الوحيدة
+	Novelty	تجديد
+	Equal position	موقف متعادل
+	Unclear position	موقف غامض
+	White is slightly better	الأبيض أفضل قليلًا
+	Black is slightly better	الأسود أفضل قليلًا
+	White is clearly better	الأبيض أفضل بوضوح
+	Black is clearly better	الأسود أفضل بوضوح
+	White is winning	الأبيض يفوز
+	Black is winning	الأسود يفوز
+	Compensation for the material	تعويض عن المادة
+	Zugzwang	تسوغتسفانغ
+	Development advantage	تفوق في التطوير
+	With the initiative	مع المبادرة
+	With an attack	مع هجوم
+	With counterplay	مع لعب مضاد
+	Time trouble	ضيق الوقت
+	With the idea	مع فكرة
+	Aimed against	موجّه ضد
+	Better is	الأفضل هو
+	Worse is	الأسوأ هو
+	Editorial comment	تعليق تحريري
+	Choose a move first: glyphs go on a move.	اختر نقلة أولًا: الرموز توضع على نقلة.
+	Not added: this move has as many glyphs as it can take.	لم تُضف: هذه النقلة تحمل أقصى عدد من الرموز.
+	One half	نصف
+	Dash	شرطة
+	Capture sign	علامة الأسر
+	Check sign	علامة الكش
+	Double check sign	علامة الكش المزدوج
+	Glyph palette	لوحة الرموز
+	Close the glyph palette	إغلاق لوحة الرموز
+	Puts the character into the field you were typing in, or at the end of the move's comment.	يُدرج الحرف في الحقل الذي كنت تكتب فيه، أو في نهاية تعليق النقلة.
+	Comment before {move}	تعليق قبل {move}
+	In PGN this comment joins the comment before the game's first move.	في PGN يُدمج هذا التعليق مع التعليق الذي يسبق النقلة الأولى في المباراة.
+	In PGN this comment is written after the previous move.	في PGN يُكتب هذا التعليق بعد النقلة السابقة.
+	Move glyphs	رموز النقلة
+	Evaluation glyphs	رموز التقييم
+	Other glyphs	رموز أخرى
+	Edit the comment before a move	تحرير التعليق قبل النقلة
+	Clear glyphs	مسح الرموز
+	Edit the move's comment	تحرير تعليق النقلة
+	Glyph ! (good move)	الرمز ! (نقلة جيدة)
+	Glyph ? (poor move)	الرمز ? (نقلة ضعيفة)
+	Glyph !! (brilliant move)	الرمز !! (نقلة رائعة)
+	Glyph ?? (blunder)	الرمز ?? (خطأ فادح)
+	Glyph !? (interesting move)	الرمز !? (نقلة مثيرة للاهتمام)
+	Glyph ?! (dubious move)	الرمز ?! (نقلة مشكوك فيها)

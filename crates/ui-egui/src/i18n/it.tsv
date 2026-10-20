@@ -2883,3 +2883,58 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Make variation the main line	Rendi la variante la linea principale
 	Demote line	Retrocedi la linea
 	Delete the moves after the current move	Elimina le mosse dopo la mossa attuale
+
+# Chess ▸ PGN toolbar: T6, glyphs (the 28 names are the annotation glyphs' standard meanings), comments and the glyph palette. "Edit the comment before a move" and "Clear glyphs" name undo steps (they follow "Undo" or "Redo"); the last seven are command names.
+	Good move	Buona mossa
+	Poor move	Mossa debole
+	Brilliant move	Mossa brillante
+	Blunder	Grave errore
+	Interesting move	Mossa interessante
+	Dubious move	Mossa dubbia
+	Only move	Unica mossa
+	Novelty	Novità
+	Equal position	Posizione pari
+	Unclear position	Posizione poco chiara
+	White is slightly better	Il Bianco sta leggermente meglio
+	Black is slightly better	Il Nero sta leggermente meglio
+	White is clearly better	Il Bianco sta nettamente meglio
+	Black is clearly better	Il Nero sta nettamente meglio
+	White is winning	Il Bianco vince
+	Black is winning	Il Nero vince
+	Compensation for the material	Compenso per il materiale
+	Zugzwang	Zugzwang
+	Development advantage	Vantaggio di sviluppo
+	With the initiative	Con l'iniziativa
+	With an attack	Con attacco
+	With counterplay	Con controgioco
+	Time trouble	Zeitnot
+	With the idea	Con l'idea
+	Aimed against	Diretto contro
+	Better is	Meglio è
+	Worse is	Peggio è
+	Editorial comment	Commento editoriale
+	Choose a move first: glyphs go on a move.	Scegli prima una mossa: i segni vanno su una mossa.
+	Not added: this move has as many glyphs as it can take.	Non aggiunto: questa mossa ha già tutti i segni che può avere.
+	One half	Un mezzo
+	Dash	Lineetta
+	Capture sign	Segno di presa
+	Check sign	Segno di scacco
+	Double check sign	Segno di scacco doppio
+	Glyph palette	Tavolozza dei segni
+	Close the glyph palette	Chiudi la tavolozza dei segni
+	Puts the character into the field you were typing in, or at the end of the move's comment.	Inserisce il carattere nel campo in cui stavi scrivendo, o alla fine del commento della mossa.
+	Comment before {move}	Commento prima di {move}
+	In PGN this comment joins the comment before the game's first move.	In PGN questo commento si unisce al commento prima della prima mossa della partita.
+	In PGN this comment is written after the previous move.	In PGN questo commento viene scritto dopo la mossa precedente.
+	Move glyphs	Segni della mossa
+	Evaluation glyphs	Segni di valutazione
+	Other glyphs	Altri segni
+	Edit the comment before a move	modifica del commento prima di una mossa
+	Clear glyphs	rimozione dei segni
+	Edit the move's comment	Modifica il commento della mossa
+	Glyph ! (good move)	Segno ! (buona mossa)
+	Glyph ? (poor move)	Segno ? (mossa debole)
+	Glyph !! (brilliant move)	Segno !! (mossa brillante)
+	Glyph ?? (blunder)	Segno ?? (grave errore)
+	Glyph !? (interesting move)	Segno !? (mossa interessante)
+	Glyph ?! (dubious move)	Segno ?! (mossa dubbia)

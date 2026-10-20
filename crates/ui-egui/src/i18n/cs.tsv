@@ -2745,3 +2745,58 @@ animation effects	Off	Vypnuto
 	Make variation the main line	Udělat z varianty hlavní variantu
 	Demote line	Snížit linii
 	Delete the moves after the current move	Smazat tahy po aktuálním tahu
+
+# Chess ▸ PGN toolbar: T6, glyphs (the 28 names are the annotation glyphs' standard meanings), comments and the glyph palette. "Edit the comment before a move" and "Clear glyphs" name undo steps (they follow "Undo" or "Redo"); the last seven are command names.
+	Good move	Dobrý tah
+	Poor move	Slabý tah
+	Brilliant move	Výborný tah
+	Blunder	Hrubá chyba
+	Interesting move	Zajímavý tah
+	Dubious move	Pochybný tah
+	Only move	Jediný tah
+	Novelty	Novinka
+	Equal position	Vyrovnaná pozice
+	Unclear position	Nejasná pozice
+	White is slightly better	Bílý stojí o něco lépe
+	Black is slightly better	Černý stojí o něco lépe
+	White is clearly better	Bílý stojí zřetelně lépe
+	Black is clearly better	Černý stojí zřetelně lépe
+	White is winning	Bílý vyhrává
+	Black is winning	Černý vyhrává
+	Compensation for the material	Kompenzace za materiál
+	Zugzwang	Nevýhoda tahu
+	Development advantage	Náskok ve vývinu
+	With the initiative	S iniciativou
+	With an attack	S útokem
+	With counterplay	S protihrou
+	Time trouble	Časová tíseň
+	With the idea	S myšlenkou
+	Aimed against	Namířeno proti
+	Better is	Lepší je
+	Worse is	Horší je
+	Editorial comment	Redakční komentář
+	Choose a move first: glyphs go on a move.	Nejprve vyberte tah: značky patří k tahu.
+	Not added: this move has as many glyphs as it can take.	Nepřidáno: tento tah už má tolik značek, kolik může mít.
+	One half	Jedna polovina
+	Dash	Pomlčka
+	Capture sign	Značka braní
+	Check sign	Značka šachu
+	Double check sign	Značka dvojitého šachu
+	Glyph palette	Paleta značek
+	Close the glyph palette	Zavřít paletu značek
+	Puts the character into the field you were typing in, or at the end of the move's comment.	Vloží znak do pole, do kterého jste psali, nebo na konec komentáře k tahu.
+	Comment before {move}	Komentář před {move}
+	In PGN this comment joins the comment before the game's first move.	V PGN se tento komentář spojí s komentářem před prvním tahem partie.
+	In PGN this comment is written after the previous move.	V PGN se tento komentář zapíše za předchozí tah.
+	Move glyphs	Značky tahu
+	Evaluation glyphs	Značky hodnocení
+	Other glyphs	Další značky
+	Edit the comment before a move	úprava komentáře před tahem
+	Clear glyphs	odstranění značek
+	Edit the move's comment	Upravit komentář k tahu
+	Glyph ! (good move)	Značka ! (dobrý tah)
+	Glyph ? (poor move)	Značka ? (slabý tah)
+	Glyph !! (brilliant move)	Značka !! (výborný tah)
+	Glyph ?? (blunder)	Značka ?? (hrubá chyba)
+	Glyph !? (interesting move)	Značka !? (zajímavý tah)
+	Glyph ?! (dubious move)	Značka ?! (pochybný tah)

@@ -2671,3 +2671,58 @@ animation effects	Off	Désactivés
 	Make variation the main line	Faire de la variante la ligne principale
 	Demote line	Rétrograder la ligne
 	Delete the moves after the current move	Supprimer les coups après le coup actuel
+
+# Chess ▸ PGN toolbar: T6, glyphs (the 28 names are the annotation glyphs' standard meanings), comments and the glyph palette. "Edit the comment before a move" and "Clear glyphs" name undo steps (they follow "Undo" or "Redo"); the last seven are command names.
+	Good move	Bon coup
+	Poor move	Mauvais coup
+	Brilliant move	Coup brillant
+	Blunder	Gaffe
+	Interesting move	Coup intéressant
+	Dubious move	Coup douteux
+	Only move	Coup unique
+	Novelty	Nouveauté
+	Equal position	Position égale
+	Unclear position	Position incertaine
+	White is slightly better	Les Blancs sont un peu mieux
+	Black is slightly better	Les Noirs sont un peu mieux
+	White is clearly better	Les Blancs sont nettement mieux
+	Black is clearly better	Les Noirs sont nettement mieux
+	White is winning	Les Blancs gagnent
+	Black is winning	Les Noirs gagnent
+	Compensation for the material	Compensation pour le matériel
+	Zugzwang	Zugzwang
+	Development advantage	Avance de développement
+	With the initiative	Avec l'initiative
+	With an attack	Avec attaque
+	With counterplay	Avec contre-jeu
+	Time trouble	Zeitnot
+	With the idea	Avec l'idée
+	Aimed against	Dirigé contre
+	Better is	Meilleur est
+	Worse is	Moins bon est
+	Editorial comment	Commentaire éditorial
+	Choose a move first: glyphs go on a move.	Choisissez d'abord un coup : les signes vont sur un coup.
+	Not added: this move has as many glyphs as it can take.	Non ajouté : ce coup a déjà autant de signes qu'il peut en porter.
+	One half	Un demi
+	Dash	Tiret
+	Capture sign	Signe de prise
+	Check sign	Signe d'échec
+	Double check sign	Signe d'échec double
+	Glyph palette	Palette de signes
+	Close the glyph palette	Fermer la palette de signes
+	Puts the character into the field you were typing in, or at the end of the move's comment.	Insère le caractère dans le champ où vous écriviez, ou à la fin du commentaire du coup.
+	Comment before {move}	Commentaire avant {move}
+	In PGN this comment joins the comment before the game's first move.	En PGN, ce commentaire rejoint le commentaire placé avant le premier coup de la partie.
+	In PGN this comment is written after the previous move.	En PGN, ce commentaire est écrit après le coup précédent.
+	Move glyphs	Signes du coup
+	Evaluation glyphs	Signes d'évaluation
+	Other glyphs	Autres signes
+	Edit the comment before a move	la modification du commentaire avant un coup
+	Clear glyphs	la suppression des signes
+	Edit the move's comment	Modifier le commentaire du coup
+	Glyph ! (good move)	Signe ! (bon coup)
+	Glyph ? (poor move)	Signe ? (mauvais coup)
+	Glyph !! (brilliant move)	Signe !! (coup brillant)
+	Glyph ?? (blunder)	Signe ?? (gaffe)
+	Glyph !? (interesting move)	Signe !? (coup intéressant)
+	Glyph ?! (dubious move)	Signe ?! (coup douteux)

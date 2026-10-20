@@ -2688,3 +2688,58 @@ chess side	Black	Pretas
 	Make variation the main line	Tornar a variante a linha principal
 	Demote line	Rebaixar a linha
 	Delete the moves after the current move	Excluir os lances depois do lance atual
+
+# Chess ▸ PGN toolbar: T6, glyphs (the 28 names are the annotation glyphs' standard meanings), comments and the glyph palette. "Edit the comment before a move" and "Clear glyphs" name undo steps (they follow "Undo" or "Redo"); the last seven are command names.
+	Good move	Bom lance
+	Poor move	Lance ruim
+	Brilliant move	Lance brilhante
+	Blunder	Erro grave
+	Interesting move	Lance interessante
+	Dubious move	Lance duvidoso
+	Only move	Lance único
+	Novelty	Novidade
+	Equal position	Posição igual
+	Unclear position	Posição incerta
+	White is slightly better	As brancas estão um pouco melhor
+	Black is slightly better	As pretas estão um pouco melhor
+	White is clearly better	As brancas estão claramente melhor
+	Black is clearly better	As pretas estão claramente melhor
+	White is winning	As brancas estão ganhando
+	Black is winning	As pretas estão ganhando
+	Compensation for the material	Compensação pelo material
+	Zugzwang	Zugzwang
+	Development advantage	Vantagem de desenvolvimento
+	With the initiative	Com a iniciativa
+	With an attack	Com ataque
+	With counterplay	Com contrajogo
+	Time trouble	Apuro de tempo
+	With the idea	Com a ideia
+	Aimed against	Dirigido contra
+	Better is	Melhor é
+	Worse is	Pior é
+	Editorial comment	Comentário editorial
+	Choose a move first: glyphs go on a move.	Escolha um lance primeiro: os sinais vão num lance.
+	Not added: this move has as many glyphs as it can take.	Não adicionado: este lance já tem todos os sinais que pode ter.
+	One half	Um meio
+	Dash	Travessão
+	Capture sign	Sinal de captura
+	Check sign	Sinal de xeque
+	Double check sign	Sinal de xeque duplo
+	Glyph palette	Paleta de glifos
+	Close the glyph palette	Fechar a paleta de glifos
+	Puts the character into the field you were typing in, or at the end of the move's comment.	Insere o caractere no campo em que você estava digitando, ou no fim do comentário do lance.
+	Comment before {move}	Comentário antes de {move}
+	In PGN this comment joins the comment before the game's first move.	No PGN, este comentário se junta ao comentário antes do primeiro lance da partida.
+	In PGN this comment is written after the previous move.	No PGN, este comentário sai depois do lance anterior.
+	Move glyphs	Sinais do lance
+	Evaluation glyphs	Sinais de avaliação
+	Other glyphs	Outros sinais
+	Edit the comment before a move	edição do comentário antes do lance
+	Clear glyphs	remoção dos sinais
+	Edit the move's comment	Editar o comentário do lance
+	Glyph ! (good move)	Sinal ! (bom lance)
+	Glyph ? (poor move)	Sinal ? (lance ruim)
+	Glyph !! (brilliant move)	Sinal !! (lance brilhante)
+	Glyph ?? (blunder)	Sinal ?? (erro grave)
+	Glyph !? (interesting move)	Sinal !? (lance interessante)
+	Glyph ?! (dubious move)	Sinal ?! (lance duvidoso)

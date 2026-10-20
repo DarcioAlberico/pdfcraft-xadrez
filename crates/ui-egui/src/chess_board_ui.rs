@@ -7,8 +7,9 @@
 //! A move made at an earlier point starts a variation. The notation under the board takes the
 //! panel's height left (spec §4.1) and shows each variation on a row of its own, indented by its
 //! depth, with the comments and annotation glyphs; a move's menu has the rail's structure tools
-//! (promote, demote, delete a variation, cut) and deletes the move. The move shown takes a glyph
-//! and a comment, and the game its details (the PGN tags). The position is also a FEN field and
+//! (promote, demote, delete a variation, cut) and deletes the move. The move shown takes glyphs
+//! (from the rail, or typed) and comments after and before it (`chess_annotate`), and the game
+//! its details (the PGN tags). The position is also a FEN field and
 //! the game a PGN field: both can be copied, or edited and loaded back; the two and the details
 //! are sections, closed until opened. The right button draws on the board, as on lichess: a
 //! click circles a square and a drag draws an arrow (Shift red, Alt blue, Ctrl yellow, green
@@ -171,6 +172,13 @@ pub struct BoardState {
     pub(crate) history: GameHistory,
     /// The move shown (and the game's revision) when the notation last scrolled to it.
     revealed: Option<(NodeId, u64)>,
+    /// The comment editor (the comment before the move too) and the glyph palette are open.
+    pub(crate) comment_open: bool,
+    pub(crate) palette_open: bool,
+    /// The comment field takes the keyboard when it is drawn next.
+    pub(crate) focus_comment: bool,
+    /// Where the glyph palette types.
+    pub(crate) typing: crate::chess_annotate::Typing,
 }
 
 /// A comment or game-detail field while it has the keyboard: its key, its text as typed, and
@@ -203,6 +211,10 @@ impl Default for BoardState {
             drawing: None,
             history: GameHistory::default(),
             revealed: None,
+            comment_open: false,
+            palette_open: false,
+            focus_comment: false,
+            typing: Default::default(),
         }
     }
 }
@@ -917,7 +929,9 @@ pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, he
                                     let n = if *color == Color::White { format!("{number}.") } else { format!("{number}...") };
                                     ui.label(egui::RichText::new(n).small().color(t.text_faint));
                                 }
-                                let mut rich = egui::RichText::new(format!("{san}{}", glyphs(nags))).monospace();
+                                let ctx = ui.ctx().clone();
+                                let mut rich =
+                                    egui::RichText::new(format!("{san}{}", glyphs(nags, |s| crate::chess_annotate::drawable(&ctx, s)))).monospace();
                                 if small {
                                     rich = rich.small().color(t.text_muted);
                                 }
@@ -972,9 +986,9 @@ pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, he
     }
 }
 
-/// How glyph `code` is shown. The slight advantages (⩲ ⩱) are written `+=` and `=+`, as books
-/// set them in text: the interface fonts lack the two signs.
-fn nag_text(code: u16) -> String {
+/// How glyph `code` is named in an undo step (whatever the fonts). The slight advantages (⩲ ⩱)
+/// are written `+=` and `=+`, as books set them in text: the interface fonts lack the two signs.
+pub(crate) fn nag_text(code: u16) -> String {
     match code {
         14 => "+=".to_owned(),
         15 => "=+".to_owned(),
@@ -982,52 +996,45 @@ fn nag_text(code: u16) -> String {
     }
 }
 
-/// How a move's glyphs read after it: `!`, `?` and the like glued on, the others after a space.
-fn glyphs(nags: &[u16]) -> String {
+/// How a move's glyphs read after it: `!`, `?` and the like glued on, the others after a space;
+/// each as [`crate::chess_annotate::face`] shows it with the fonts `drawable` describes.
+fn glyphs(nags: &[u16], mut drawable: impl FnMut(&str) -> bool) -> String {
     let mut out = String::new();
     for &code in nags {
         if !(1..=6).contains(&code) {
             out.push(' ');
         }
-        out.push_str(&nag_text(code));
+        out.push_str(&crate::chess_annotate::face(code, &mut drawable));
     }
     out
 }
 
-/// The glyphs the panel offers for the move shown: its quality, then the evaluation.
-const OFFERED_NAGS: [u16; 13] = [1, 2, 3, 4, 5, 6, 10, 14, 15, 16, 17, 18, 19];
-
-/// The glyph buttons and the comment of the move shown.
-fn annotation(ui: &mut egui::Ui, state: &mut BoardState) {
-    let node = state.game.current();
-    if state.illegal.is_some() || node == 0 {
-        return;
-    }
-    ui.horizontal_wrapped(|ui| {
-        ui.spacing_mut().item_spacing.x = 2.0;
-        for code in OFFERED_NAGS {
-            let on = state.game.nags(node).contains(&code);
-            if ui.selectable_label(on, egui::RichText::new(nag_text(code)).monospace()).clicked() {
-                state.edit(|s| {
-                    s.game.toggle_nag(node, code);
-                    Some(ChessEdit::Glyph(nag_text(code)))
-                });
-            }
-        }
-    });
-    let key = format!("comment {node}");
-    let (mut comment, mut recorded) = drafted(&state.draft, &key, state.game.comment(node));
-    let r = ui.add(egui::TextEdit::multiline(&mut comment).hint_text(tl!("Comment on this move")).desired_rows(1).desired_width(f32::INFINITY));
-    if r.changed() {
-        recorded = state.type_in(recorded, ChessEdit::Comment, |game| game.set_comment(node, &comment));
-    }
-    keep_draft(&mut state.draft, &key, &r, comment, recorded);
-}
-
 impl BoardState {
+    /// The text of field `key` (a comment or a game detail) as typed while it has the keyboard,
+    /// else `stored`; and whether its editing session is an undo step yet.
+    pub(crate) fn drafted(&self, key: &str, stored: &str) -> (String, bool) {
+        drafted(&self.draft, key, stored)
+    }
+
+    /// Keep field `key`'s text as typed while it has the keyboard (see [`keep_draft`]).
+    pub(crate) fn keep(&mut self, key: &str, response: &egui::Response, text: String, recorded: bool) {
+        keep_draft(&mut self.draft, key, response, text, recorded);
+    }
+
+    /// Whether the comment editor (the comment before the move too) is open.
+    pub fn comment_editor_open(&self) -> bool {
+        self.comment_open
+    }
+
+    /// Open or close the comment editor; opened, its comment field takes the keyboard.
+    pub(crate) fn toggle_comment_editor(&mut self) {
+        self.comment_open = !self.comment_open;
+        self.focus_comment = self.comment_open;
+    }
+
     /// A key typed in a comment or detail field: the first change of the field's editing session
     /// (`recorded` false) is an undo step, the next ones join it. Whether the session is a step.
-    fn type_in(&mut self, recorded: bool, edit: ChessEdit, change: impl FnOnce(&mut Game)) -> bool {
+    pub(crate) fn type_in(&mut self, recorded: bool, edit: ChessEdit, change: impl FnOnce(&mut Game)) -> bool {
         if recorded {
             change(&mut self.game);
             self.history.see(self.game.revision());
@@ -1154,15 +1161,25 @@ pub(crate) fn navigation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) 
     }
 }
 
-/// Under the notation: cutting the moves after the move shown, and its glyphs and comment.
-pub(crate) fn notes(ui: &mut egui::Ui, state: &mut BoardState) {
-    if state.illegal.is_none() && state.game.ply() < state.game.len() && ui.small_button(tl!("Delete the moves after this one")).clicked() {
+/// Under the notation: cutting the moves after the move shown, its comments (the one before it
+/// while the comment editor is open) and the glyph palette when it is open.
+pub(crate) fn notes(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) {
+    if state.illegal.is_some() {
+        return;
+    }
+    // Before any field is drawn: which one had the keyboard, for the palette.
+    state.typing.track(ui);
+    if state.game.ply() < state.game.len() && ui.small_button(tl!("Delete the moves after this one")).clicked() {
         state.edit(|s| {
             s.game.truncate();
             Some(ChessEdit::DeleteMoves)
         });
     }
-    annotation(ui, state);
+    let (editor, focus) = (state.comment_open, std::mem::take(&mut state.focus_comment));
+    crate::chess_annotate::comments(ui, t, state, editor, focus);
+    if state.palette_open && crate::chess_annotate::palette(ui, t, state) {
+        state.palette_open = false;
+    }
 }
 
 /// The FEN, the PGN and the game's details, each a section of its own, closed until opened
@@ -1172,7 +1189,9 @@ pub(crate) fn sections(ui: &mut egui::Ui, state: &mut BoardState) -> Option<Boar
     let mut action = None;
     state.refresh_fields(false);
     egui::CollapsingHeader::new("FEN").id_salt("chess-board-fen").default_open(false).show(ui, |ui| {
-        let r = ui.add(egui::TextEdit::singleline(&mut state.fen_text).font(egui::TextStyle::Monospace).desired_width(f32::INFINITY));
+        let id = ui.make_persistent_id("chess-fen-field");
+        crate::chess_annotate::insert_pending(ui, &mut state.typing, crate::chess_annotate::Field::Fen, id, &mut state.fen_text);
+        let r = ui.add(egui::TextEdit::singleline(&mut state.fen_text).id(id).font(egui::TextStyle::Monospace).desired_width(f32::INFINITY));
         if r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
             let fen = state.fen_text.clone();
             let flipped = state.flipped;
@@ -1196,7 +1215,9 @@ pub(crate) fn sections(ui: &mut egui::Ui, state: &mut BoardState) -> Option<Boar
         });
     });
     egui::CollapsingHeader::new("PGN").id_salt("chess-board-pgn").default_open(false).show(ui, |ui| {
-        ui.add(egui::TextEdit::multiline(&mut state.pgn_text).font(egui::TextStyle::Monospace).desired_rows(5).desired_width(f32::INFINITY));
+        let id = ui.make_persistent_id("chess-pgn-field");
+        crate::chess_annotate::insert_pending(ui, &mut state.typing, crate::chess_annotate::Field::Pgn, id, &mut state.pgn_text);
+        ui.add(egui::TextEdit::multiline(&mut state.pgn_text).id(id).font(egui::TextStyle::Monospace).desired_rows(5).desired_width(f32::INFINITY));
         ui.horizontal_wrapped(|ui| {
             if ui.add_enabled(state.illegal.is_none(), egui::Button::new(tl!("Copy PGN")).small()).clicked() {
                 action = Some(BoardAction::CopyPgn(state.game.pgn()));
@@ -1271,7 +1292,7 @@ pub(crate) fn moves_column(
     let height = notation_height(room, 0.0, below);
     notation(ui, t, state, Some(height));
     let below_top = ui.cursor().top();
-    notes(ui, state);
+    notes(ui, t, state);
     ui.add_space(4.0);
     let games = crate::chess_collection::games_section(ui, t, &chess.games);
     let fields = sections(ui, chess.board_mut());
@@ -1398,10 +1419,13 @@ mod tests {
 
     #[test]
     fn glyphs_read_as_books_print_them() {
-        assert_eq!(glyphs(&[1]), "!");
-        assert_eq!(glyphs(&[5, 14]), "!? +=");
-        assert_eq!(glyphs(&[15, 18]), " =+ +-");
-        assert_eq!(glyphs(&[999]), " $999");
+        // Fonts without the slight-advantage signs, as the interface's own.
+        let fonts = |s: &str| !s.contains(['⩲', '⩱']);
+        assert_eq!(glyphs(&[1], fonts), "!");
+        assert_eq!(glyphs(&[5, 14], fonts), "!? +=");
+        assert_eq!(glyphs(&[15, 18], fonts), " =+ +-");
+        assert_eq!(glyphs(&[999], fonts), " $999");
+        assert_eq!(glyphs(&[14], |_| true), " ⩲", "a font with the sign shows it");
     }
 
     #[test]

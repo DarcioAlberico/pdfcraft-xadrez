@@ -556,8 +556,10 @@ fn double_clicking_a_diagram_puts_it_on_the_board_to_play() {
     click_square(&mut h, "c5");
     assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5 (1... c5)");
     assert!(h.state().chess.board().pgn_text.ends_with("1. e4 e5 (1... c5) *\n"), "{}", h.state().chess.board().pgn_text);
-    // A glyph on the move shown.
-    h.get_by_label("!?").click();
+    // A glyph on the move shown, from the rail's Move glyphs group (named for the glyphs).
+    h.get_by_label("Good move").click_secondary();
+    h.run_steps(2);
+    h.get_by_label("Interesting move").click();
     h.run_steps(2);
     let c5 = h.state().chess.board().game.current();
     assert_eq!(h.state().chess.board().game.nags(c5), &[5]);
@@ -1726,21 +1728,23 @@ fn the_rails_commands_run_the_rails_actions() {
     h.get_by_label(&format!("Demote ({})", key_text(true, false, "↓")));
 }
 
+/// The harness in a window `height` points tall.
+fn tall_window(height: f32) -> Harness<'static, PdfCraftApp> {
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, height)).build_eframe(|_cc| {
+        let mut app = PdfCraftApp::new();
+        app.set_option("language", "en").unwrap();
+        app.open_bytes("boards.pdf", None, boards()).unwrap();
+        app
+    });
+    h.run_steps(4);
+    h
+}
+
 /// The Board panel's height (spec §4.1): the notation takes what the board and the rest leave,
 /// never less than 120 pt; FEN, PGN and the game's details are sections, closed until opened,
 /// and one opened takes its room from the notation.
 #[test]
 fn the_notation_fills_the_panel_and_the_fields_are_closed_sections() {
-    let tall_window = |height: f32| {
-        let mut h = Harness::builder().with_size(egui::vec2(1400.0, height)).build_eframe(|_cc| {
-            let mut app = PdfCraftApp::new();
-            app.set_option("language", "en").unwrap();
-            app.open_bytes("boards.pdf", None, boards()).unwrap();
-            app
-        });
-        h.run_steps(4);
-        h
-    };
     let mut h = tall_window(1400.0);
     h.state_mut().show_chess_board();
     h.run_steps(3);
@@ -1771,4 +1775,199 @@ fn the_notation_fills_the_panel_and_the_fields_are_closed_sections() {
     h.run_steps(3);
     let least = moves(&h);
     assert!((119.0..=121.0).contains(&least), "the notation's least height: {least}");
+}
+
+// ---- T6: glyphs, comments and the glyph palette ----
+
+/// Type `text` as the desktop app gets it: through `raw_input_hook`, where the chess scope takes
+/// the signs of typed glyphs (kittest itself skips the hook). One frame.
+fn host_text(h: &mut Harness<'static, PdfCraftApp>, text: &str) {
+    use eframe::App as _;
+    let ctx = h.ctx.clone();
+    let mut raw = std::mem::take(h.input_mut());
+    raw.events.push(egui::Event::Text(text.to_owned()));
+    h.state_mut().raw_input_hook(&ctx, &mut raw);
+    *h.input_mut() = raw;
+    h.step();
+}
+
+/// The glyphs of the move shown.
+fn glyph_codes(h: &Harness<'static, PdfCraftApp>) -> Vec<u16> {
+    let game = &h.state().chess.board().game;
+    game.nags(game.current()).to_vec()
+}
+
+fn undo_label(h: &Harness<'static, PdfCraftApp>) -> Option<String> {
+    h.state().chess.board().undo_label()
+}
+
+/// The rail's glyph groups put a glyph on the move shown with the code of the side that made it
+/// (↑ on Black's move is $37), a move-quality glyph replaces the other, a click on a glyph the
+/// move has takes it off, and each is one undo step. Their buttons are named for the glyphs.
+#[test]
+fn the_glyph_groups_put_the_sides_code_and_replace_within_their_group() {
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, "1. e4 e5 *", &[0, 0]);
+    // Other glyphs shows Development advantage; its tools open on a right-click.
+    h.get_by_label("Development advantage").click_secondary();
+    h.run_steps(2);
+    h.get_by_label("With the initiative").click();
+    h.run_steps(2);
+    assert_eq!(glyph_codes(&h), [37], "Black made the move: Black's code");
+    assert_eq!(undo_label(&h).as_deref(), Some("Glyph ↑"));
+    // The group shows it now, on; a click takes it off.
+    let shown = h.get_by_label("With the initiative");
+    assert_eq!(shown.accesskit_node().toggled(), Some(egui::accesskit::Toggled::True));
+    shown.click();
+    h.run_steps(2);
+    assert_eq!(glyph_codes(&h), [] as [u16; 0]);
+    // ! then ?: only ? stays (one quality glyph a move).
+    h.get_by_label("Good move").click();
+    h.run_steps(2);
+    assert_eq!(glyph_codes(&h), [1]);
+    h.get_by_label("Good move").click_secondary();
+    h.run_steps(2);
+    h.get_by_label("Poor move").click();
+    h.run_steps(2);
+    assert_eq!(glyph_codes(&h), [2]);
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(2);
+    assert_eq!(glyph_codes(&h), [1], "one undo step took ? back to !");
+    // The commands do as the buttons: ?? replaces !.
+    assert!(h.state_mut().execute("chess.nag.4"));
+    h.run_steps(2);
+    assert_eq!(glyph_codes(&h), [4]);
+    // White's move: White's code. The group shows the glyph used last.
+    put_game(&mut h, "1. e4 e5 *", &[0]);
+    h.get_by_label("With the initiative").click();
+    h.run_steps(2);
+    assert_eq!(glyph_codes(&h), [36]);
+}
+
+/// With the chess scope on, the signs typed go on the move shown: two characters within 600 ms
+/// make one sign, one alone waits that long, `0` takes the glyphs off; each is one undo step.
+/// Typed in a text field they are the field's.
+#[test]
+fn glyphs_typed_in_the_chess_scope_go_on_the_move_and_not_into_a_text_field() {
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, "1. e4 e5 *", &[0, 0]);
+    click_board_title(&mut h);
+    host_text(&mut h, "!");
+    host_text(&mut h, "?");
+    h.run_steps(1);
+    assert_eq!(glyph_codes(&h), [5], "!? typed within the wait");
+    assert_eq!(undo_label(&h).as_deref(), Some("Glyph !?"));
+    host_text(&mut h, "!");
+    assert_eq!(glyph_codes(&h), [5], "! waits for a second sign");
+    h.run_steps(3);
+    assert_eq!(glyph_codes(&h), [1], "the wait is over: ! replaces !?");
+    host_text(&mut h, "+=");
+    h.run_steps(1);
+    assert_eq!(glyph_codes(&h), [1, 14]);
+    host_text(&mut h, "0");
+    h.run_steps(1);
+    assert_eq!(glyph_codes(&h), [] as [u16; 0]);
+    assert_eq!(undo_label(&h).as_deref(), Some("Clear glyphs"));
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(2);
+    assert_eq!(glyph_codes(&h), [1, 14], "one step put both back");
+    // In the comment field, ! is text.
+    let comment = h.get_all_by_role(egui::accesskit::Role::MultilineTextInput).find(|n| n.value().unwrap_or_default().is_empty()).unwrap();
+    comment.focus();
+    h.run_steps(2);
+    host_text(&mut h, "!");
+    h.run_steps(3);
+    let node = h.state().chess.board().game.current();
+    assert_eq!(h.state().chess.board().game.comment(node), "!", "the field took it");
+    assert_eq!(glyph_codes(&h), [1, 14], "and no glyph changed");
+}
+
+/// The comment before a move (the comment editor: Enter with the chess scope on) is written
+/// after the `(` of the variation the move starts; before a move that continues its line, PGN
+/// has no place for it and the editor says where it goes.
+#[test]
+fn the_comment_before_a_move_goes_where_pgn_has_room_and_says_where_it_has_none() {
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, FORKS, &[0, 1]);
+    click_board_title(&mut h);
+    assert_eq!(h.get_all_by_role(egui::accesskit::Role::MultilineTextInput).count(), 1, "the comment after the move only");
+    host_key(&mut h, egui::Modifiers::NONE, egui::Key::Enter);
+    assert!(h.state().chess.board().comment_editor_open(), "Enter opened the comment editor");
+    let before = h.get_by_label("Comment before 1…c5");
+    before.focus();
+    before.type_text("Sicilian");
+    h.run_steps(2);
+    assert!(h.query_by_label_contains("In PGN this comment").is_none(), "a variation's first move has its place");
+    click_board_title(&mut h);
+    let c5 = h.state().chess.board().game.current();
+    assert_eq!(h.state().chess.board().game.comment_before(c5), "Sicilian");
+    assert!(h.state().chess.board().pgn_text.contains("({Sicilian} 1... c5"), "{}", h.state().chess.board().pgn_text);
+    assert_eq!(undo_label(&h).as_deref(), Some("Edit the comment before a move"));
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(2);
+    assert_eq!(h.state().chess.board().game.comment_before(c5), "", "one step");
+    // 2.Nf3 continues 1...c5's line: PGN writes its comment after 1...c5.
+    put_game(&mut h, FORKS, &[0, 1, 0]);
+    let before = h.get_by_label("Comment before 2.Nf3");
+    before.focus();
+    before.type_text("Main idea");
+    h.run_steps(2);
+    h.get_by_label_contains("In PGN this comment is written after the previous move.");
+    // Esc (the field gave the keyboard back) closes the editor.
+    click_board_title(&mut h);
+    host_key(&mut h, egui::Modifiers::NONE, egui::Key::Escape);
+    assert!(!h.state().chess.board().comment_editor_open());
+}
+
+/// The glyph palette (G) types into the field that had the keyboard, at its cursor; with no field
+/// it adds to the move's comment. Each insertion is one undo step.
+#[test]
+fn the_glyph_palette_types_at_the_cursor_of_the_field_that_had_the_keyboard() {
+    // Tall enough for the open palette to show whole.
+    let mut h = tall_window(1400.0);
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, "1. e4 e5 *", &[0]);
+    click_board_title(&mut h);
+    host_key(&mut h, egui::Modifiers::NONE, egui::Key::G);
+    h.get_by_label("White knight");
+    let comment = h.get_all_by_role(egui::accesskit::Role::MultilineTextInput).find(|n| n.value().unwrap_or_default().is_empty()).unwrap();
+    comment.focus();
+    comment.type_text("a b");
+    h.run_steps(2);
+    for _ in 0..2 {
+        h.key_press(egui::Key::ArrowLeft);
+        h.run_steps(1);
+    }
+    click_board_title(&mut h);
+    let e4 = h.state().chess.board().game.current();
+    assert_eq!(h.state().chess.board().game.comment(e4), "a b");
+    // The field lost the keyboard to the title: the knight goes to the comment's end.
+    h.get_by_label("White knight").click();
+    h.run_steps(3);
+    assert_eq!(h.state().chess.board().game.comment(e4), "a b ♘");
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(2);
+    assert_eq!(h.state().chess.board().game.comment(e4), "a b", "one step");
+    // In the field, at its cursor: after "a".
+    let comment = h.get_all_by_role(egui::accesskit::Role::MultilineTextInput).find(|n| n.value().as_deref() == Some("a b")).unwrap();
+    comment.focus();
+    h.run_steps(1);
+    h.key_press(egui::Key::Home);
+    h.run_steps(1);
+    h.key_press(egui::Key::ArrowRight);
+    h.run_steps(1);
+    h.get_by_label("Black knight").click();
+    h.run_steps(3);
+    assert_eq!(h.state().chess.board().game.comment(e4), "a♞ b");
+    assert!(h.ctx.egui_wants_keyboard_input(), "the field has the keyboard back");
+    h.get_by_label("Capture sign").click();
+    h.run_steps(3);
+    assert_eq!(h.state().chess.board().game.comment(e4), "a♞× b", "after the knight: the cursor moved past it");
 }

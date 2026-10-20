@@ -2676,3 +2676,58 @@ animation effects	Off	Izklopljeni
 	Make variation the main line	Naj bo varianta glavna varianta
 	Demote line	Znižaj linijo
 	Delete the moves after the current move	Izbriši poteze za trenutno potezo
+
+# Chess ▸ PGN toolbar: T6, glyphs (the 28 names are the annotation glyphs' standard meanings), comments and the glyph palette. "Edit the comment before a move" and "Clear glyphs" name undo steps (they follow "Undo" or "Redo"); the last seven are command names.
+	Good move	Dobra poteza
+	Poor move	Slaba poteza
+	Brilliant move	Odlična poteza
+	Blunder	Huda napaka
+	Interesting move	Zanimiva poteza
+	Dubious move	Dvomljiva poteza
+	Only move	Edina poteza
+	Novelty	Novost
+	Equal position	Izenačen položaj
+	Unclear position	Nejasen položaj
+	White is slightly better	Beli stoji nekoliko bolje
+	Black is slightly better	Črni stoji nekoliko bolje
+	White is clearly better	Beli stoji očitno bolje
+	Black is clearly better	Črni stoji očitno bolje
+	White is winning	Beli zmaguje
+	Black is winning	Črni zmaguje
+	Compensation for the material	Nadomestilo za material
+	Zugzwang	Nujnica
+	Development advantage	Prednost v razvoju
+	With the initiative	Z iniciativo
+	With an attack	Z napadom
+	With counterplay	S protiigro
+	Time trouble	Časovna stiska
+	With the idea	Z idejo
+	Aimed against	Usmerjeno proti
+	Better is	Bolje je
+	Worse is	Slabše je
+	Editorial comment	Uredniški komentar
+	Choose a move first: glyphs go on a move.	Najprej izberite potezo: znaki gredo na potezo.
+	Not added: this move has as many glyphs as it can take.	Ni dodano: ta poteza ima že toliko znakov, kolikor jih lahko.
+	One half	Ena polovica
+	Dash	Pomišljaj
+	Capture sign	Znak za jemanje
+	Check sign	Znak za šah
+	Double check sign	Znak za dvojni šah
+	Glyph palette	Paleta znakov
+	Close the glyph palette	Zapri paleto znakov
+	Puts the character into the field you were typing in, or at the end of the move's comment.	Vstavi znak v polje, v katero ste tipkali, ali na konec komentarja k potezi.
+	Comment before {move}	Komentar pred {move}
+	In PGN this comment joins the comment before the game's first move.	V PGN se ta komentar združi s komentarjem pred prvo potezo partije.
+	In PGN this comment is written after the previous move.	V PGN se ta komentar zapiše za prejšnjo potezo.
+	Move glyphs	Znaki poteze
+	Evaluation glyphs	Znaki ocene
+	Other glyphs	Drugi znaki
+	Edit the comment before a move	urejanje komentarja pred potezo
+	Clear glyphs	odstranjevanje znakov
+	Edit the move's comment	Uredi komentar k potezi
+	Glyph ! (good move)	Znak ! (dobra poteza)
+	Glyph ? (poor move)	Znak ? (slaba poteza)
+	Glyph !! (brilliant move)	Znak !! (odlična poteza)
+	Glyph ?? (blunder)	Znak ?? (huda napaka)
+	Glyph !? (interesting move)	Znak !? (zanimiva poteza)
+	Glyph ?! (dubious move)	Znak ?! (dvomljiva poteza)

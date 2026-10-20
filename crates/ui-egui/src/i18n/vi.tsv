@@ -2926,3 +2926,58 @@ chess side	Black	Đen
 	Make variation the main line	Đặt biến làm diễn biến chính
 	Demote line	Hạ cấp diễn biến
 	Delete the moves after the current move	Xóa các nước sau nước hiện tại
+
+# Chess ▸ PGN toolbar: T6, glyphs (the 28 names are the annotation glyphs' standard meanings), comments and the glyph palette. "Edit the comment before a move" and "Clear glyphs" name undo steps (they follow "Undo" or "Redo"); the last seven are command names.
+	Good move	Nước hay
+	Poor move	Nước kém
+	Brilliant move	Nước tuyệt hay
+	Blunder	Nước sai lầm nặng
+	Interesting move	Nước thú vị
+	Dubious move	Nước đáng ngờ
+	Only move	Nước duy nhất
+	Novelty	Cải tiến mới
+	Equal position	Thế cân bằng
+	Unclear position	Thế không rõ ràng
+	White is slightly better	Trắng hơn một chút
+	Black is slightly better	Đen hơn một chút
+	White is clearly better	Trắng hơn rõ rệt
+	Black is clearly better	Đen hơn rõ rệt
+	White is winning	Trắng đang thắng
+	Black is winning	Đen đang thắng
+	Compensation for the material	Bù đắp cho quân
+	Zugzwang	Thế buộc phải đi
+	Development advantage	Ưu thế phát triển
+	With the initiative	Với thế chủ động
+	With an attack	Với tấn công
+	With counterplay	Với phản công
+	Time trouble	Thiếu thời gian
+	With the idea	Với ý đồ
+	Aimed against	Nhằm chống lại
+	Better is	Tốt hơn là
+	Worse is	Tệ hơn là
+	Editorial comment	Bình luận của biên tập
+	Choose a move first: glyphs go on a move.	Hãy chọn một nước trước: ký hiệu được gắn vào một nước.
+	Not added: this move has as many glyphs as it can take.	Chưa thêm: nước này đã có đủ số ký hiệu tối đa.
+	One half	Một phần hai
+	Dash	Gạch ngang
+	Capture sign	Ký hiệu bắt quân
+	Check sign	Ký hiệu chiếu
+	Double check sign	Ký hiệu chiếu đôi
+	Glyph palette	Bảng ký hiệu
+	Close the glyph palette	Đóng bảng ký hiệu
+	Puts the character into the field you were typing in, or at the end of the move's comment.	Chèn ký tự vào ô bạn đang gõ, hoặc vào cuối bình luận của nước đi.
+	Comment before {move}	Bình luận trước {move}
+	In PGN this comment joins the comment before the game's first move.	Trong PGN, bình luận này nhập vào bình luận trước nước đầu tiên của ván.
+	In PGN this comment is written after the previous move.	Trong PGN, bình luận này được ghi sau nước trước đó.
+	Move glyphs	Ký hiệu nước đi
+	Evaluation glyphs	Ký hiệu đánh giá
+	Other glyphs	Ký hiệu khác
+	Edit the comment before a move	sửa bình luận trước nước đi
+	Clear glyphs	xóa ký hiệu
+	Edit the move's comment	Sửa bình luận của nước đi
+	Glyph ! (good move)	Ký hiệu ! (nước hay)
+	Glyph ? (poor move)	Ký hiệu ? (nước kém)
+	Glyph !! (brilliant move)	Ký hiệu !! (nước tuyệt hay)
+	Glyph ?? (blunder)	Ký hiệu ?? (nước sai lầm nặng)
+	Glyph !? (interesting move)	Ký hiệu !? (nước thú vị)
+	Glyph ?! (dubious move)	Ký hiệu ?! (nước đáng ngờ)

@@ -35,6 +35,25 @@ pub fn paint(ui: &egui::Ui, rect: Rect, name: &str, size: f32, tint: Color32) {
 
 /// Square icon button: transparent until hovered; `selected` gets the accent treatment.
 pub fn button(ui: &mut egui::Ui, name: &str, box_size: f32, selected: bool, tooltip: &str) -> Response {
+    let label = if tooltip.is_empty() { name } else { tooltip };
+    let resp = framed(ui, label, box_size, selected, |ui, rect, size, tint| paint(ui, rect, name, size, tint));
+    if tooltip.is_empty() { resp } else { resp.on_hover_text(tooltip) }
+}
+
+/// [`button`] showing `text` (a chess glyph such as `!?` or `±`) instead of an icon. `name` is
+/// what it is called (assistive technology reads it, never the text) and its tooltip.
+pub fn text_button(ui: &mut egui::Ui, text: &str, box_size: f32, selected: bool, name: &str) -> Response {
+    let chars = text.chars().count().max(1) as f32;
+    let resp = framed(ui, name, box_size, selected, |ui, rect, size, tint| {
+        // Wide signs (`+/-`, `$142`) get smaller to stay inside the button.
+        let font = egui::FontId::monospace(size.min(box_size * 0.8 / (0.6 * chars)).max(6.0));
+        ui.painter().text(rect.center(), egui::Align2::CENTER_CENTER, text, font, tint);
+    });
+    resp.on_hover_text(name)
+}
+
+/// The square button both kinds share: `face` paints its middle (rect, size, colour).
+fn framed(ui: &mut egui::Ui, label: &str, box_size: f32, selected: bool, face: impl FnOnce(&egui::Ui, Rect, f32, Color32)) -> Response {
     let t = Tokens::get(ui.ctx());
     // The shared button paints no fill of its own: the eased press wash below replaces it.
     let clear = |icon| ButtonVisuals { fill: Color32::TRANSPARENT, stroke: Stroke::NONE, icon };
@@ -46,7 +65,6 @@ pub fn button(ui: &mut egui::Ui, name: &str, box_size: f32, selected: bool, tool
         corner_radius: t.radius.into(),
         focus_stroke: Stroke::new(1.0, t.accent),
     };
-    let label = if tooltip.is_empty() { name } else { tooltip };
     // The wash eases from the response, so reserve its place under the icon and focus ring.
     let wash = ui.painter().add(egui::Shape::Noop);
     let mut painted = None;
@@ -69,10 +87,9 @@ pub fn button(ui: &mut egui::Ui, name: &str, box_size: f32, selected: bool, tool
         ui.painter().set(wash, egui::Shape::Vec(shapes));
         // The glyph shrinks a little and drops a pixel while the pointer is down.
         let size = (box_size * 0.5).round() * (1.0 - 0.08 * press.down);
-        paint(ui, rect.translate(press.offset()), name, size, tint);
+        face(ui, rect.translate(press.offset()), size, tint);
     }
-    let resp = theme::hand(resp);
-    if tooltip.is_empty() { resp } else { resp.on_hover_text(tooltip) }
+    theme::hand(resp)
 }
 
 #[cfg(test)]

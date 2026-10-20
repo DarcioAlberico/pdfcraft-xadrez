@@ -668,7 +668,7 @@ pub fn study_tab(ui: &mut egui::Ui, t: &Tokens, study: &mut StudyState, board: &
     ui.label(egui::RichText::new(tl!("Engine analysis needs the desktop app.")).small().color(t.text_muted));
     ui.add_space(6.0);
     chess_board_ui::notation(ui, t, board, None);
-    chess_board_ui::notes(ui, board);
+    chess_board_ui::notes(ui, t, board);
     ui.add_space(6.0);
     if let Some(a) = chess_board_ui::sections(ui, board) {
         action = Some(StudyAction::Board(a));
