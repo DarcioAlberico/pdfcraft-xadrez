@@ -2658,3 +2658,12 @@ animation effects	Off	Kapalı
 	Put the board back in its panel	Tahtayı paneline geri koy
 	The chess board couldn't open in its own window, so it is back in its panel.	Satranç tahtası kendi penceresinde açılamadı, bu yüzden paneline geri döndü.
 	The chess board couldn't open in its own window, so it stays in its panel.	Satranç tahtası kendi penceresinde açılamadı, bu yüzden panelinde kalıyor.
+
+# Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
+	Moves	Hamleler
+	Put a game on the chess board first: there are no moves to change.	Önce satranç tahtasına bir oyun koyun: değiştirilecek hamle yok.
+	Chess board: Navigate	Satranç tahtası: Gezinme
+	Promote variation one level	Varyantı bir düzey yükselt
+	Make variation the main line	Varyantı ana varyant yap
+	Demote line	Hattı düşür
+	Delete the moves after the current move	Geçerli hamleden sonraki hamleleri sil

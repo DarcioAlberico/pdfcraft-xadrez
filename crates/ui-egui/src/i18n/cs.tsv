@@ -2736,3 +2736,12 @@ animation effects	Off	Vypnuto
 	Put the board back in its panel	Vrátit šachovnici do jejího panelu
 	The chess board couldn't open in its own window, so it is back in its panel.	Šachovnici nebylo možné otevřít ve vlastním okně, proto je zpět ve svém panelu.
 	The chess board couldn't open in its own window, so it stays in its panel.	Šachovnici nebylo možné otevřít ve vlastním okně, proto zůstává ve svém panelu.
+
+# Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
+	Moves	Tahy
+	Put a game on the chess board first: there are no moves to change.	Nejprve dejte partii na šachovnici: nejsou tu žádné tahy ke změně.
+	Chess board: Navigate	Šachovnice: Navigace
+	Promote variation one level	Povýšit variantu o úroveň
+	Make variation the main line	Udělat z varianty hlavní variantu
+	Demote line	Snížit linii
+	Delete the moves after the current move	Smazat tahy po aktuálním tahu

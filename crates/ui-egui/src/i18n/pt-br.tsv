@@ -2679,3 +2679,12 @@ chess side	Black	Pretas
 	Put the board back in its panel	Devolver o tabuleiro ao painel
 	The chess board couldn't open in its own window, so it is back in its panel.	Não foi possível abrir o tabuleiro em uma janela própria; ele voltou ao painel.
 	The chess board couldn't open in its own window, so it stays in its panel.	Não foi possível abrir o tabuleiro em uma janela própria; ele continua no painel.
+
+# Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
+	Moves	Lances
+	Put a game on the chess board first: there are no moves to change.	Coloque primeiro uma partida no tabuleiro de xadrez: não há lances para alterar.
+	Chess board: Navigate	Tabuleiro de xadrez: Navegar
+	Promote variation one level	Promover a variante um nível
+	Make variation the main line	Tornar a variante a linha principal
+	Demote line	Rebaixar a linha
+	Delete the moves after the current move	Excluir os lances depois do lance atual

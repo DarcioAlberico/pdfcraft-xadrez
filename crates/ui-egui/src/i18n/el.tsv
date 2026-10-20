@@ -2668,3 +2668,12 @@ animation effects	Off	Ανενεργά
 	Put the board back in its panel	Επιστροφή της σκακιέρας στο πλαίσιό της
 	The chess board couldn't open in its own window, so it is back in its panel.	Η σκακιέρα δεν ήταν δυνατό να ανοίξει σε δικό της παράθυρο, οπότε επέστρεψε στο πλαίσιό της.
 	The chess board couldn't open in its own window, so it stays in its panel.	Η σκακιέρα δεν ήταν δυνατό να ανοίξει σε δικό της παράθυρο, οπότε μένει στο πλαίσιό της.
+
+# Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
+	Moves	Κινήσεις
+	Put a game on the chess board first: there are no moves to change.	Βάλτε πρώτα μια παρτίδα στη σκακιέρα: δεν υπάρχουν κινήσεις για αλλαγή.
+	Chess board: Navigate	Σκακιέρα: Πλοήγηση
+	Promote variation one level	Προβιβασμός παραλλαγής κατά ένα επίπεδο
+	Make variation the main line	Η παραλλαγή να γίνει κύρια γραμμή
+	Demote line	Υποβιβασμός γραμμής
+	Delete the moves after the current move	Διαγραφή των κινήσεων μετά την τρέχουσα κίνηση

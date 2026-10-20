@@ -2575,3 +2575,12 @@ animation effects	Off	Выкл
 	Put the board back in its panel	Вернуть доску на её панель
 	The chess board couldn't open in its own window, so it is back in its panel.	Не удалось открыть шахматную доску в отдельном окне, поэтому она возвращена на свою панель.
 	The chess board couldn't open in its own window, so it stays in its panel.	Не удалось открыть шахматную доску в отдельном окне, поэтому она остаётся на своей панели.
+
+# Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
+	Moves	Ходы
+	Put a game on the chess board first: there are no moves to change.	Сначала поставьте партию на шахматную доску: нет ходов, которые можно изменить.
+	Chess board: Navigate	Шахматная доска: Навигация
+	Promote variation one level	Повысить вариант на уровень
+	Make variation the main line	Сделать вариант главным
+	Demote line	Понизить линию
+	Delete the moves after the current move	Удалить ходы после текущего хода

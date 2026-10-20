@@ -2662,3 +2662,12 @@ animation effects	Off	Désactivés
 	Put the board back in its panel	Remettre l’échiquier dans son panneau
 	The chess board couldn't open in its own window, so it is back in its panel.	L’échiquier n’a pas pu s’ouvrir dans sa propre fenêtre : il est revenu dans son panneau.
 	The chess board couldn't open in its own window, so it stays in its panel.	L’échiquier n’a pas pu s’ouvrir dans sa propre fenêtre : il reste dans son panneau.
+
+# Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
+	Moves	Coups
+	Put a game on the chess board first: there are no moves to change.	Placez d'abord une partie sur l'échiquier : il n'y a aucun coup à modifier.
+	Chess board: Navigate	Échiquier : Naviguer
+	Promote variation one level	Promouvoir la variante d'un niveau
+	Make variation the main line	Faire de la variante la ligne principale
+	Demote line	Rétrograder la ligne
+	Delete the moves after the current move	Supprimer les coups après le coup actuel

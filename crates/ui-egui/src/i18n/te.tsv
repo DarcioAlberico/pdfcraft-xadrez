@@ -2571,3 +2571,12 @@ animation effects	Off	ఆఫ్
 	Put the board back in its panel	బోర్డును దాని ప్యానెల్‌కు తిరిగి పెట్టు
 	The chess board couldn't open in its own window, so it is back in its panel.	చెస్ బోర్డును దాని సొంత విండోలో తెరవలేకపోయాం, కాబట్టి అది తిరిగి దాని ప్యానెల్‌లో ఉంది.
 	The chess board couldn't open in its own window, so it stays in its panel.	చెస్ బోర్డును దాని సొంత విండోలో తెరవలేకపోయాం, కాబట్టి అది దాని ప్యానెల్‌లోనే ఉంటుంది.
+
+# Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
+	Moves	ఎత్తులు
+	Put a game on the chess board first: there are no moves to change.	ముందుగా చదరంగం బోర్డుపై ఒక ఆటను ఉంచండి: మార్చడానికి ఎత్తులు లేవు.
+	Chess board: Navigate	చదరంగం బోర్డు: నావిగేట్
+	Promote variation one level	ఉపవరుసను ఒక స్థాయి పైకి
+	Make variation the main line	ఉపవరుసను ప్రధాన వరుసగా చేయి
+	Demote line	వరుసను కిందికి దించు
+	Delete the moves after the current move	ప్రస్తుత ఎత్తు తర్వాతి ఎత్తులను తొలగించు

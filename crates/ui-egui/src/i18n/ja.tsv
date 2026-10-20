@@ -2664,3 +2664,12 @@ animation effects	Off	オフ
 	Put the board back in its panel	盤をパネルに戻す
 	The chess board couldn't open in its own window, so it is back in its panel.	チェス盤を別ウィンドウで開けなかったため、パネルに戻しました。
 	The chess board couldn't open in its own window, so it stays in its panel.	チェス盤を別ウィンドウで開けないため、パネルに表示したままにします。
+
+# Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
+	Moves	指し手
+	Put a game on the chess board first: there are no moves to change.	先にチェス盤に棋譜を置いてください: 変更する指し手がありません。
+	Chess board: Navigate	チェス盤: ナビゲート
+	Promote variation one level	変化を 1 段階昇格
+	Make variation the main line	変化を本線にする
+	Demote line	筋を降格
+	Delete the moves after the current move	現在の手より後の手を削除

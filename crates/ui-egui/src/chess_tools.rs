@@ -182,8 +182,10 @@ pub(crate) struct Tool {
     pub label: fn(&BoardState) -> String,
     /// The keys the scope takes for it; the first is shown in its name.
     pub keys: &'static [ChessKey],
-    /// A registered command whose shortcut is shown instead, for a tool the app's own key runs
-    /// (Undo and Redo follow the scope themselves, D12): the scope does not take it.
+    /// The registered command that runs it (Ctrl+K, automation): a `chess.*` command runs the
+    /// tool through [`run_command`], and the palette shows the tool's key for it. A tool without
+    /// keys of its own is run by the app's own key for its command (Undo and Redo follow the scope
+    /// themselves, D12), and its name shows that command's shortcut.
     pub command: Option<&'static str>,
     pub kind: Kind,
     /// Whether it can act now.
@@ -227,7 +229,7 @@ const NAVIGATE: Tool = Tool {
     icon: "mouse-pointer-2",
     label: |_| tl!("Navigate").to_owned(),
     keys: &[ESC],
-    command: None,
+    command: Some("chess.tool.navigate"),
     kind: Kind::Mode(PgnTool::Navigate),
     enabled: |_| true,
     heads: None,
@@ -245,7 +247,7 @@ const STRUCTURE: Group = Group {
             icon: "chevron-up",
             label: |_| tl!("Promote one level").to_owned(),
             keys: &[ChessKey::command(Key::ArrowUp)],
-            command: None,
+            command: Some("chess.variation.promote_one"),
             kind: Kind::Action(|b, t| structure(b, Op::PromoteOne, t)),
             enabled: has_moves,
             heads: Some(|g| Op::PromoteOne.heads(g, g.current())),
@@ -257,7 +259,7 @@ const STRUCTURE: Group = Group {
             icon: "badge-check",
             label: |_| tl!("Make this the main line").to_owned(),
             keys: &[ChessKey::command_shift(Key::ArrowUp)],
-            command: None,
+            command: Some("chess.variation.make_main"),
             kind: Kind::Action(|b, t| structure(b, Op::MakeMain, t)),
             enabled: has_moves,
             heads: None,
@@ -269,7 +271,7 @@ const STRUCTURE: Group = Group {
             icon: "chevron-down",
             label: |_| tl!("Demote").to_owned(),
             keys: &[ChessKey::command(Key::ArrowDown)],
-            command: None,
+            command: Some("chess.variation.demote"),
             kind: Kind::Action(|b, t| structure(b, Op::Demote, t)),
             enabled: has_moves,
             heads: Some(|g| Op::Demote.heads(g, g.current())),
@@ -281,7 +283,7 @@ const STRUCTURE: Group = Group {
             icon: "trash-2",
             label: |_| tl!("Delete variation").to_owned(),
             keys: &[ChessKey::plain(Key::Delete), ChessKey::plain(Key::Backspace)],
-            command: None,
+            command: Some("chess.variation.delete"),
             kind: Kind::Action(|b, t| structure(b, Op::DeleteVariation, t)),
             enabled: has_moves,
             heads: Some(|g| Op::DeleteVariation.heads(g, g.current())),
@@ -293,7 +295,7 @@ const STRUCTURE: Group = Group {
             icon: "scissors",
             label: |_| tl!("Cut after this move").to_owned(),
             keys: &[ChessKey::shift(Key::Delete)],
-            command: None,
+            command: Some("chess.moves.cut"),
             kind: Kind::Action(|b, t| structure(b, Op::CutAfter, t)),
             enabled: has_moves,
             heads: None,
@@ -463,6 +465,51 @@ fn name(ctx: &egui::Context, tool: &Tool, board: &BoardState) -> String {
         (None, None) => String::new(),
     };
     if key.is_empty() { label } else { format!("{label} ({key})") }
+}
+
+/// The rail tool registered command `id` runs (only `chess.*` commands are the rail's), and the
+/// group it belongs to with its place there. A tool that asks the app for a command of its own
+/// ([`Kind::Command`], the chess window) is not one: the app runs and enables that command.
+fn command_tool(id: &str) -> Option<(&'static Tool, Option<(&'static str, usize)>)> {
+    if !id.starts_with("chess.") {
+        return None;
+    }
+    let runs = |tool: &Tool| tool.command == Some(id) && !matches!(tool.kind, Kind::Command(_));
+    RAIL.iter().flat_map(|section| section.iter()).find_map(|entry| match entry {
+        Entry::Tool(tool) => runs(tool).then_some((tool, None)),
+        Entry::Group(group) => group.members.iter().enumerate().find(|(_, t)| runs(t)).map(|(i, t)| (t, Some((group.id, i)))),
+    })
+}
+
+/// Whether registered command `id` is a rail tool's.
+pub(crate) fn is_tool_command(id: &str) -> bool {
+    command_tool(id).is_some()
+}
+
+/// Whether the rail tool of command `id` can act now (`None`: not a rail tool's command).
+pub(crate) fn command_enabled(chess: &ChessState, id: &str) -> Option<bool> {
+    command_tool(id).map(|(tool, _)| (tool.enabled)(chess.board()))
+}
+
+/// The chess panel's key for the rail tool of command `id`, as written on this platform: the
+/// palette shows it, since the registry has no shortcut for these commands.
+pub(crate) fn command_key(ctx: &egui::Context, id: &str) -> Option<String> {
+    command_tool(id).and_then(|(tool, _)| tool.keys.first()).map(|k| k.label(ctx))
+}
+
+/// Run the rail tool of command `id` as its button would, on the move shown: the same action, so
+/// the rail, its keys, its menu and the command never differ. A group shows the tool after.
+/// Returns whether `id` is a rail tool's command and it could act.
+pub(crate) fn run_command(chess: &mut ChessState, id: &str) -> bool {
+    let Some((tool, place)) = command_tool(id) else { return false };
+    if !(tool.enabled)(chess.board()) {
+        return false;
+    }
+    if let Some((group, i)) = place {
+        chess.tools.show(group, i);
+    }
+    activate(chess, tool, Target::Current);
+    true
 }
 
 /// Use `tool` on `target`: arm a mode, or act.
@@ -1013,6 +1060,31 @@ mod tests {
         assert!(!scope_key(Key::Delete, cmd));
         // macOS: Ctrl with the arrows is the system's, not the command key's.
         assert!(!scope_key(Key::ArrowUp, Modifiers { ctrl: true, ..Modifiers::NONE }));
+    }
+
+    /// Each rail tool with a command is registered, without a shortcut of the registry's own (the
+    /// key is the panel's), and every `chess.*` command of the rail's kinds is a rail tool's; the
+    /// palette shows the panel's key for it.
+    #[test]
+    fn the_rails_tools_and_their_commands_match() {
+        use pdfcraft_engine::commands::{COMMANDS, command};
+        for tool in tools() {
+            if let Some(id) = tool.command {
+                assert!(command(id).is_some(), "{}: {id} is not registered", tool.id);
+            }
+        }
+        let rail = |id: &str| ["chess.tool.", "chess.variation.", "chess.moves."].iter().any(|p| id.starts_with(p));
+        for spec in COMMANDS.iter().filter(|c| rail(c.id)) {
+            assert!(is_tool_command(spec.id), "{} runs no rail tool", spec.id);
+            assert!(spec.shortcut.is_none(), "{}: the chess keys are the panel's, not the registry's", spec.id);
+        }
+        assert!(!is_tool_command("edit.undo"), "the app's Undo is not the rail's to run");
+        assert!(!is_tool_command("chess.window.detach"), "the app runs the chess window's command");
+        let ctx = egui::Context::default();
+        ctx.set_os(egui::os::OperatingSystem::Nix);
+        assert_eq!(command_key(&ctx, "chess.variation.promote_one").as_deref(), Some("Ctrl+↑"));
+        assert_eq!(command_key(&ctx, "chess.variation.delete").as_deref(), Some("Delete"));
+        assert_eq!(command_key(&ctx, "chess.scan"), None);
     }
 
     #[test]

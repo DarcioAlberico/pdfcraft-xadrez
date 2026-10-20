@@ -857,9 +857,11 @@ pub(crate) fn board_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     egui::Frame::NONE.fill(t.panel).stroke(Stroke::new(1.0, t.divider)).show(ui, |ui| {
         crate::chess_tools::with_rail(ui, &mut app.chess, |ui, chess| {
             egui::Frame::NONE.inner_margin(egui::Margin { left: 10, right: 12, top: 12, bottom: 8 }).show(ui, |ui| {
+                // The notation takes the height the scroll area shows and the rest leaves.
+                let viewport = ui.available_height();
                 egui::ScrollArea::vertical().id_salt("chess-board-panel").auto_shrink([false, false]).show(ui, |ui| {
-                    games = crate::chess_collection::games_section(ui, &t, &chess.games);
-                    action = crate::chess_board_ui::panel(ui, &t, chess.board_mut(), &pieces, source_label);
+                    (action, games) =
+                        crate::chess_board_ui::panel_body(ui, &t, chess, &pieces, source_label, crate::chess_board_ui::Sizing::DOCKED, viewport);
                 });
             });
         });

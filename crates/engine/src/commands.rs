@@ -348,6 +348,14 @@ pub const COMMANDS: &[CommandSpec] = &[
     c("chess.pgn.save_all", "Save all games as PGN…", None, None, Nothing, "save"),
     // The chess board in its own window, or back in the dock (T13a): a toggle.
     c("chess.window.detach", "Chess board in its own window", None, None, Nothing, "app-window"),
+    // The chess board's PGN tool rail (T5b). No shortcut here: their keys are the chess panel's
+    // own, taken only while its key scope is on (ui-egui `chess_tools`), and the palette shows them.
+    c("chess.tool.navigate", "Chess board: Navigate", None, None, Nothing, "mouse-pointer-2"),
+    c("chess.variation.promote_one", "Promote variation one level", None, None, Nothing, "chevron-up"),
+    c("chess.variation.make_main", "Make variation the main line", None, None, Nothing, "badge-check"),
+    c("chess.variation.demote", "Demote line", None, None, Nothing, "chevron-down"),
+    c("chess.variation.delete", "Delete variation", None, None, Nothing, "trash-2"),
+    c("chess.moves.cut", "Delete the moves after the current move", None, None, Nothing, "scissors"),
     c("export.all_images", "Export all images…", FILE, None, Copying, "image"),
     c("edit.header_footer", "Add header & footer…", None, None, Modification, "heading"),
     c("edit.header_footer.update", "Update header & footer…", None, None, Marks(crate::MarkKind::HeaderFooter), "heading"),

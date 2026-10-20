@@ -427,9 +427,10 @@ fn contents(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                 let sizing = sizing(ui.available_size());
                 wide = sizing.wide;
                 if !sizing.wide {
+                    // The notation takes the height the scroll area shows and the rest leaves.
+                    let viewport = ui.available_height();
                     egui::ScrollArea::vertical().id_salt("chess-window-panel").auto_shrink([false, false]).show(ui, |ui| {
-                        games = crate::chess_collection::games_section(ui, &t, &chess.games);
-                        action = chess_board_ui::panel_body(ui, &t, chess.board_mut(), &pieces, source_label, sizing);
+                        (action, games) = chess_board_ui::panel_body(ui, &t, chess, &pieces, source_label, sizing, viewport);
                     });
                     return;
                 }
@@ -449,12 +450,11 @@ fn contents(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                     });
                     ui.separator();
                     ui.vertical(|ui| {
+                        // The notation fills the column's height, less what goes under it.
+                        let room = ui.available_height();
                         egui::ScrollArea::vertical().id_salt("chess-window-notes").auto_shrink([false, false]).show(ui, |ui| {
-                            games = crate::chess_collection::games_section(ui, &t, &chess.games);
-                            let state = chess.board_mut();
-                            chess_board_ui::moves_and_notes(ui, &t, state);
-                            ui.add_space(6.0);
-                            let fields = chess_board_ui::fen_and_pgn(ui, state);
+                            let (fields, listed) = chess_board_ui::moves_column(ui, &t, chess, room);
+                            games = listed;
                             action = action.take().or(fields);
                         });
                     });

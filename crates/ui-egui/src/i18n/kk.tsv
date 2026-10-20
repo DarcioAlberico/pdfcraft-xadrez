@@ -2660,3 +2660,12 @@ animation effects	Off	Өшірулі
 	Put the board back in its panel	Тақтаны тақтасына қайтару
 	The chess board couldn't open in its own window, so it is back in its panel.	Шахмат тақтасын жеке терезеде ашу мүмкін болмады, сондықтан ол өз тақтасына қайтарылды.
 	The chess board couldn't open in its own window, so it stays in its panel.	Шахмат тақтасын жеке терезеде ашу мүмкін болмады, сондықтан ол өз тақтасында қалады.
+
+# Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
+	Moves	Жүрістер
+	Put a game on the chess board first: there are no moves to change.	Алдымен шахмат тақтасына партия қойыңыз: өзгертетін жүріс жоқ.
+	Chess board: Navigate	Шахмат тақтасы: Шарлау
+	Promote variation one level	Нұсқаны бір деңгейге көтеру
+	Make variation the main line	Нұсқаны негізгі нұсқа ету
+	Demote line	Желіні төмендету
+	Delete the moves after the current move	Ағымдағы жүрістен кейінгі жүрістерді жою

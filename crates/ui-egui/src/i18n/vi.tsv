@@ -2917,3 +2917,12 @@ chess side	Black	Đen
 	Put the board back in its panel	Đưa bàn cờ về bảng của nó
 	The chess board couldn't open in its own window, so it is back in its panel.	Không thể mở bàn cờ trong cửa sổ riêng nên bàn cờ đã trở về bảng của nó.
 	The chess board couldn't open in its own window, so it stays in its panel.	Không thể mở bàn cờ trong cửa sổ riêng nên bàn cờ vẫn ở trong bảng của nó.
+
+# Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
+	Moves	Nước đi
+	Put a game on the chess board first: there are no moves to change.	Hãy đặt một ván cờ lên bàn cờ trước: không có nước đi nào để thay đổi.
+	Chess board: Navigate	Bàn cờ vua: Điều hướng
+	Promote variation one level	Nâng biến lên một cấp
+	Make variation the main line	Đặt biến làm diễn biến chính
+	Demote line	Hạ cấp diễn biến
+	Delete the moves after the current move	Xóa các nước sau nước hiện tại
