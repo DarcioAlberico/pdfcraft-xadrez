@@ -2705,3 +2705,54 @@ animation effects	Off	Wyłączone
 	Glyph ?? (blunder)	Znak ?? (gruby błąd)
 	Glyph !? (interesting move)	Znak !? (ciekawy ruch)
 	Glyph ?! (dubious move)	Znak ?! (wątpliwy ruch)
+# Chess ▸ PGN toolbar: T7a, capture from a page selection or the clipboard ("Capture line", "… variation", "… sub-variation" and "… comment" name undo steps: each follows "Undo" or "Redo").
+	Capture	Przechwyć
+	Capture (automatic)	Przechwyć (automatycznie)
+	Capture as the line	Przechwyć jako linię
+	Capture as a variation	Przechwyć jako wariant
+	Capture as a sub-variation	Przechwyć jako podwariant
+	Capture as a comment	Przechwyć jako komentarz
+	Capture line	przechwycenie linii
+	Capture variation	przechwycenie wariantu
+	Capture sub-variation	przechwycenie podwariantu
+	Capture comment	przechwycenie komentarza
+	Capturing	Przechwytywanie
+	automatic	automatycznie
+	as the line	jako linię
+	as a variation	jako wariant
+	as a sub-variation	jako podwariant
+	as a comment	jako komentarz
+	after the move	po ruchu
+	before the move	przed ruchem
+	add to the comment	dodaj do komentarza
+	replace the comment	zastąp komentarz
+	Esc to stop	Esc kończy
+	Also capture what is copied ({key})	Przechwytuj też to, co skopiowane ({key})
+	Send to PGN	Wyślij do PGN
+	Paste as	Wklej jako
+	Paste and capture	Wklej i przechwyć
+	Press {key} to capture the text on the clipboard.	Naciśnij {key}, aby przechwycić tekst ze schowka.
+	Reading the selection…	Odczytywanie zaznaczenia…
+	Check this capture before it goes in:	Sprawdź to przechwycenie, zanim zostanie zastosowane:
+	It fits in more than one place.	Pasuje do więcej niż jednego miejsca.
+	Part of the text wasn't read.	Część tekstu nie została odczytana.
+	It goes on a line outside the one of the move shown.	Trafia na linię poza linią pokazanego ruchu.
+	It extends the end of a line instead of branching from it.	Przedłuża koniec linii zamiast od niej odgałęziać.
+	The start is renumbered to the text's first move.	Początek zostaje przenumerowany na pierwszy ruch tekstu.
+	A closing bracket the text lacks was assumed.	Przyjęto nawias zamykający, którego brakuje w tekście.
+	A move already there becomes a variation.	Ruch, który już tam był, staje się wariantem.
+	No move of the text fits the game here.	Żaden ruch tekstu nie pasuje tu do partii.
+	The text is too long to capture.	Tekst jest za długi do przechwycenia.
+	Too much text to capture at once: at most 64 KiB.	Za dużo tekstu do przechwycenia naraz: najwyżej 64 KiB.
+	Nothing was captured: no move of the text fits the game here.	Nic nie przechwycono: żaden ruch tekstu nie pasuje tu do partii.
+	Nothing was captured: there is no text to write.	Nic nie przechwycono: nie ma tekstu do zapisania.
+	The board shows an illegal position: correct it before capturing moves into it.	Szachownica pokazuje niedozwoloną pozycję: popraw ją przed przechwytywaniem do niej ruchów.
+	The capture couldn't be planned.	Nie udało się zaplanować przechwycenia.
+	The capture was dropped: another document's games are shown now.	Przechwycenie odrzucono: teraz są pokazane partie innego dokumentu.
+	The game kept changing: the capture was not applied.	Partia ciągle się zmieniała: przechwycenia nie zastosowano.
+	Comment on {move}	Komentarz do {move}
+	Comment at the start	Komentarz na początku
+	Line after {move}	Linia po {move}
+	Line from the start	Linia od początku
+	Variation of {move}	Wariant do {move}
+	moves: {n}	ruchy: {n}

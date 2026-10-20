@@ -3006,3 +3006,54 @@ certificate	Version	الإصدار
 	Glyph ?? (blunder)	الرمز ?? (خطأ فادح)
 	Glyph !? (interesting move)	الرمز !? (نقلة مثيرة للاهتمام)
 	Glyph ?! (dubious move)	الرمز ?! (نقلة مشكوك فيها)
+# Chess ▸ PGN toolbar: T7a, capture from a page selection or the clipboard ("Capture line", "… variation", "… sub-variation" and "… comment" name undo steps: each follows "Undo" or "Redo").
+	Capture	التقاط
+	Capture (automatic)	التقاط (تلقائي)
+	Capture as the line	التقاط كخط
+	Capture as a variation	التقاط كخط فرعي
+	Capture as a sub-variation	التقاط كخط فرعي داخلي
+	Capture as a comment	التقاط كتعليق
+	Capture line	التقاط خط
+	Capture variation	التقاط خط فرعي
+	Capture sub-variation	التقاط خط فرعي داخلي
+	Capture comment	التقاط تعليق
+	Capturing	جارٍ الالتقاط
+	automatic	تلقائي
+	as the line	كخط
+	as a variation	كخط فرعي
+	as a sub-variation	كخط فرعي داخلي
+	as a comment	كتعليق
+	after the move	بعد النقلة
+	before the move	قبل النقلة
+	add to the comment	إضافة إلى التعليق
+	replace the comment	استبدال التعليق
+	Esc to stop	Esc للإيقاف
+	Also capture what is copied ({key})	التقاط ما يُنسخ أيضًا ({key})
+	Send to PGN	إرسال إلى PGN
+	Paste as	لصق بصيغة
+	Paste and capture	لصق والتقاط
+	Press {key} to capture the text on the clipboard.	اضغط {key} لالتقاط النص من الحافظة.
+	Reading the selection…	جارٍ قراءة التحديد…
+	Check this capture before it goes in:	راجع هذا الالتقاط قبل تطبيقه:
+	It fits in more than one place.	يناسب أكثر من موضع واحد.
+	Part of the text wasn't read.	لم يُقرأ جزء من النص.
+	It goes on a line outside the one of the move shown.	يذهب إلى خط خارج خط النقلة المعروضة.
+	It extends the end of a line instead of branching from it.	يمدّ نهاية خط بدلًا من التفرع منه.
+	The start is renumbered to the text's first move.	يُعاد ترقيم البداية إلى أول نقلة في النص.
+	A closing bracket the text lacks was assumed.	افتُرض قوس إغلاق ينقص النص.
+	A move already there becomes a variation.	نقلة كانت موجودة تصبح خطًا فرعيًا.
+	No move of the text fits the game here.	لا تناسب أي نقلة من النص المباراة هنا.
+	The text is too long to capture.	النص أطول من أن يُلتقط.
+	Too much text to capture at once: at most 64 KiB.	نص كثير جدًا لالتقاطه مرة واحدة: 64 كيلوبايت على الأكثر.
+	Nothing was captured: no move of the text fits the game here.	لم يُلتقط شيء: لا تناسب أي نقلة من النص المباراة هنا.
+	Nothing was captured: there is no text to write.	لم يُلتقط شيء: لا يوجد نص لكتابته.
+	The board shows an illegal position: correct it before capturing moves into it.	تعرض الرقعة وضعًا غير قانوني: صحّحه قبل التقاط نقلات فيه.
+	The capture couldn't be planned.	تعذّر تخطيط الالتقاط.
+	The capture was dropped: another document's games are shown now.	أُلغي الالتقاط: تُعرض الآن مباريات مستند آخر.
+	The game kept changing: the capture was not applied.	ظلت المباراة تتغير: لم يُطبَّق الالتقاط.
+	Comment on {move}	تعليق على {move}
+	Comment at the start	تعليق في البداية
+	Line after {move}	خط بعد {move}
+	Line from the start	خط من البداية
+	Variation of {move}	خط فرعي لـ {move}
+	moves: {n}	النقلات: {n}

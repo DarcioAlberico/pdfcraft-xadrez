@@ -1,7 +1,7 @@
 # Chess books
 
 **Status:** current to 2026-10-20 (blueprint steps S1–S18; see [`chess/blueprint.md`](chess/blueprint.md)).
-**Revision history:** 2026-10-18 — first version, after S18. 2026-10-19 — the chess board panel, its variations, annotations, game details and `chess_game`; book origin, and hidden OCR layers over scans. 2026-10-20 — the main line by printed weight (bold moves); `chess_pgn_edit`. 2026-10-20 — reading a selection of move text (fragment mode of the walker, PGN toolbar T2a). 2026-10-20 — where a selection goes (capture planning, PGN toolbar T3) and the `capture` operation of `chess_pgn_edit`.
+**Revision history:** 2026-10-18 — first version, after S18. 2026-10-19 — the chess board panel, its variations, annotations, game details and `chess_game`; book origin, and hidden OCR layers over scans. 2026-10-20 — the main line by printed weight (bold moves); `chess_pgn_edit`. 2026-10-20 — reading a selection of move text (fragment mode of the walker, PGN toolbar T2a). 2026-10-20 — where a selection goes (capture planning, PGN toolbar T3) and the `capture` operation of `chess_pgn_edit`. 2026-10-20 — capturing text from the page or the clipboard in the app (PGN toolbar T7a).
 
 PdfCraft can read a chess book in PDF. It finds the diagrams, reads each one as a position (FEN), and reads the moves in the text, including figurines and annotation signs. It can redraw a diagram, put a lichess link under it, and export the book as HTML, EPUB, Word, RTF, Markdown or PGN. Everything runs on your machine; nothing is sent anywhere.
 
@@ -75,6 +75,20 @@ Open the **Chess diagrams** panel (`chess.panel`), or run **Chess ▸ Scan** (`c
     - **Lines** (1–3) shows the engine's best lines with their scores for White (`+0.40`, `#3`). Click a move of a line to play the line up to it; moves already in the game are followed, the others start a variation.
     - The engine runs as a separate program and only on the desktop. No automation tool starts it.
   - Under the board, the **material** each side is ahead by, as pieces and points.
+
+### Capturing text
+
+Move text printed in a book can go into the game on the board without playing it move by move (PGN toolbar spec, step T7a).
+
+- On the board's tool rail, arm **Capture** (X) or **Comment** (C). The page tool switches to Select and a chip in the page's corner says what is armed ("Capturing · automatic ▾ · Esc to stop"); its menu switches the mode, and Esc stops.
+  - **Automatic** reads the text as the book sets it: a bold first move continues the main line, anything else becomes a variation where its move numbers fit; prose becomes comments, brackets variations, and `!`, `±`… glyphs.
+  - Shift+X switches to the forced modes: **as the line** (continue the line of the move shown; a different move already there becomes a variation), **as a variation** (of the main line) and **as a sub-variation** (of the line of the move shown, or one outside it).
+  - **Comment** puts the text on the move shown, moves in English SAN. The chip's switches put it **before** the move instead of after, and **replace** the comment instead of adding to it.
+- **Select the text and let go.** The selection grows to whole moves ("20.Nx" takes "20.Nxf6+"). When the text reads completely and fits only one place, it goes in at once, as one undo step: Ctrl+Z (Edit ▸ Undo) takes it back even with the pointer still on the page, and the document is never touched. Otherwise the capture waits for you to look at it, with why, and **Apply** or **Cancel**.
+- Without arming anything: **Send to PGN ▸** in the bar beside a selection, or in the page's right-click menu, captures it in the mode you pick.
+- **Paste**: Ctrl+V with the chess panel last used (and no text field typing) captures the clipboard's text; **Paste as ▸** in the board panel picks the mode. Ctrl+C on the page captures too when you turn on **Also capture what is copied** in the chip's menu (off by default).
+- The text is read in the document's language (as the **Text** tab read the page; English until it has), never guessed from the selection. Figurines in a figurine font are read as pieces. Each move remembers where it was printed on the page.
+- A document that doesn't allow copying doesn't allow capturing either. At most 64 KiB of text is captured at once.
 
 ## Headless: tools and CLI
 
@@ -159,7 +173,7 @@ Fischer's *My 60 Memorable Games* centres each diagram (its caption printed besi
 
 ### Reading a selection (fragment mode)
 
-The PGN toolbar will capture a selection on the page into the game on the board (its spec, `plan/chess/pgn-toolbar.md`, step T2a; the capture itself is a later step). The reader is the same game walker that reads whole books, in a *fragment mode* (`chessvision::doc::fragment`): it starts from the position it is given (never renumbered from the moves), reads one game (a `1.e4` quoted in prose does not start another, and a move numbered before the start position is prose), and writes the game out as the items `Game::graft` takes, moves with their printed half-move, weight and box. The selection is read in the document's language, never one guessed from a few words (`Rc7` is a rook in English and a king in Portuguese). Rules added for it:
+The PGN toolbar captures a selection on the page into the game on the board (its spec, `plan/chess/pgn-toolbar.md`, step T2a for the reader; the capture in the app is step T7a, see [Capturing text](#capturing-text)). The reader is the same game walker that reads whole books, in a *fragment mode* (`chessvision::doc::fragment`): it starts from the position it is given (never renumbered from the moves), reads one game (a `1.e4` quoted in prose does not start another, and a move numbered before the start position is prose), and writes the game out as the items `Game::graft` takes, moves with their printed half-move, weight and box. The selection is read in the document's language, never one guessed from a few words (`Rc7` is a rook in English and a king in Portuguese). Rules added for it:
 
 - a bracket lost in the text is assumed when a numbered move fits only outside the variation (flagged);
 - a move without a number after prose words stays in the comment (`the break …f5`), unless it is bold;

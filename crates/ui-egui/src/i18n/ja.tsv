@@ -2731,3 +2731,54 @@ animation effects	Off	オフ
 	Glyph ?? (blunder)	記号 ?? (大悪手)
 	Glyph !? (interesting move)	記号 !? (面白い手)
 	Glyph ?! (dubious move)	記号 ?! (疑問手)
+# Chess ▸ PGN toolbar: T7a, capture from a page selection or the clipboard ("Capture line", "… variation", "… sub-variation" and "… comment" name undo steps: each follows "Undo" or "Redo").
+	Capture	取り込み
+	Capture (automatic)	取り込み (自動)
+	Capture as the line	手順として取り込む
+	Capture as a variation	変化として取り込む
+	Capture as a sub-variation	枝変化として取り込む
+	Capture as a comment	コメントとして取り込む
+	Capture line	手順の取り込み
+	Capture variation	変化の取り込み
+	Capture sub-variation	枝変化の取り込み
+	Capture comment	コメントの取り込み
+	Capturing	取り込み中
+	automatic	自動
+	as the line	手順として
+	as a variation	変化として
+	as a sub-variation	枝変化として
+	as a comment	コメントとして
+	after the move	指し手の後
+	before the move	指し手の前
+	add to the comment	コメントに追加
+	replace the comment	コメントを置き換え
+	Esc to stop	Esc で終了
+	Also capture what is copied ({key})	コピーした内容も取り込む ({key})
+	Send to PGN	PGN に送る
+	Paste as	形式を選んで貼り付け
+	Paste and capture	貼り付けて取り込む
+	Press {key} to capture the text on the clipboard.	{key} を押すとクリップボードのテキストを取り込みます。
+	Reading the selection…	選択範囲を読み取っています…
+	Check this capture before it goes in:	適用する前にこの取り込みを確認してください:
+	It fits in more than one place.	複数の場所に当てはまります。
+	Part of the text wasn't read.	テキストの一部を読み取れませんでした。
+	It goes on a line outside the one of the move shown.	表示中の指し手の手順の外にある手順に入ります。
+	It extends the end of a line instead of branching from it.	手順から分岐せず、手順の末尾を延長します。
+	The start is renumbered to the text's first move.	開始局面をテキストの最初の指し手の番号に振り直します。
+	A closing bracket the text lacks was assumed.	テキストに欠けている閉じ括弧を補いました。
+	A move already there becomes a variation.	既にある指し手が変化になります。
+	No move of the text fits the game here.	テキストのどの指し手もここでは棋譜に合いません。
+	The text is too long to capture.	テキストが長すぎて取り込めません。
+	Too much text to capture at once: at most 64 KiB.	一度に取り込むにはテキストが多すぎます: 最大 64 KiB です。
+	Nothing was captured: no move of the text fits the game here.	何も取り込みませんでした: テキストのどの指し手もここでは棋譜に合いません。
+	Nothing was captured: there is no text to write.	何も取り込みませんでした: 書き込むテキストがありません。
+	The board shows an illegal position: correct it before capturing moves into it.	盤面が不正な局面です: 指し手を取り込む前に修正してください。
+	The capture couldn't be planned.	取り込みを計画できませんでした。
+	The capture was dropped: another document's games are shown now.	取り込みを破棄しました: 現在は別の文書の対局が表示されています。
+	The game kept changing: the capture was not applied.	対局が変わり続けたため、取り込みは適用されませんでした。
+	Comment on {move}	{move} へのコメント
+	Comment at the start	開始局面のコメント
+	Line after {move}	{move} の後の手順
+	Line from the start	開始からの手順
+	Variation of {move}	{move} の変化
+	moves: {n}	手数: {n}

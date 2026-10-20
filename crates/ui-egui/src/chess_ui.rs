@@ -78,6 +78,8 @@ pub struct ChessState {
     pub(crate) scope_edits: (u64, u64),
     /// The PGN tool rail: the tool armed and the keys the chess scope took (T5a).
     pub tools: crate::chess_tools::ToolState,
+    /// Text captured from the page or the clipboard (T7a).
+    pub capture: crate::chess_capture::CaptureState,
 }
 
 /// What scanning found in one document.
@@ -567,6 +569,7 @@ impl PdfCraftApp {
     pub(crate) fn poll_chess(&mut self) {
         self.chess_games_tick();
         self.poll_chess_job();
+        self.poll_chess_capture();
         // A closed document takes its results with it.
         if self.chess.results.as_ref().is_some_and(|r| self.session.get(r.doc).is_none()) {
             self.chess.results = None;
@@ -885,10 +888,13 @@ pub(crate) fn board_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let source_label = board_source_label(app);
     let mut action = None;
     let mut games = None;
+    let mut paste = None;
     // The PGN tool rail on the left edge, at the full height and outside the scroll area.
     egui::Frame::NONE.fill(t.panel).stroke(Stroke::new(1.0, t.divider)).show(ui, |ui| {
         crate::chess_tools::with_rail(ui, &mut app.chess, |ui, chess| {
             egui::Frame::NONE.inner_margin(egui::Margin { left: 10, right: 12, top: 12, bottom: 8 }).show(ui, |ui| {
+                // Captures from the clipboard (T7a), above the board.
+                paste = crate::chess_capture::paste_menu(ui);
                 // The notation takes the height the scroll area shows and the rest leaves.
                 let viewport = ui.available_height();
                 egui::ScrollArea::vertical().id_salt("chess-board-panel").auto_shrink([false, false]).show(ui, |ui| {
@@ -903,6 +909,9 @@ pub(crate) fn board_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     }
     if let Some(a) = games {
         app.chess_games_action(a);
+    }
+    if let Some(mode) = paste {
+        app.chess_paste_as(mode, crate::chess_capture::clipboard_text());
     }
 }
 

@@ -2642,3 +2642,54 @@ animation effects	Off	Выкл
 	Glyph ?? (blunder)	Знак ?? (грубая ошибка)
 	Glyph !? (interesting move)	Знак !? (интересный ход)
 	Glyph ?! (dubious move)	Знак ?! (сомнительный ход)
+# Chess ▸ PGN toolbar: T7a, capture from a page selection or the clipboard ("Capture line", "… variation", "… sub-variation" and "… comment" name undo steps: each follows "Undo" or "Redo").
+	Capture	Захват
+	Capture (automatic)	Захватить (автоматически)
+	Capture as the line	Захватить как линию
+	Capture as a variation	Захватить как вариант
+	Capture as a sub-variation	Захватить как подвариант
+	Capture as a comment	Захватить как комментарий
+	Capture line	захват линии
+	Capture variation	захват варианта
+	Capture sub-variation	захват подварианта
+	Capture comment	захват комментария
+	Capturing	Захват
+	automatic	автоматически
+	as the line	как линию
+	as a variation	как вариант
+	as a sub-variation	как подвариант
+	as a comment	как комментарий
+	after the move	после хода
+	before the move	перед ходом
+	add to the comment	добавить к комментарию
+	replace the comment	заменить комментарий
+	Esc to stop	Esc — выход
+	Also capture what is copied ({key})	Захватывать и копируемое ({key})
+	Send to PGN	Отправить в PGN
+	Paste as	Вставить как
+	Paste and capture	Вставить и захватить
+	Press {key} to capture the text on the clipboard.	Нажмите {key}, чтобы захватить текст из буфера обмена.
+	Reading the selection…	Чтение выделения…
+	Check this capture before it goes in:	Проверьте этот захват, прежде чем он будет применён:
+	It fits in more than one place.	Он подходит более чем к одному месту.
+	Part of the text wasn't read.	Часть текста не прочитана.
+	It goes on a line outside the one of the move shown.	Он попадает на линию вне линии показанного хода.
+	It extends the end of a line instead of branching from it.	Он продлевает конец линии, а не ответвляется от неё.
+	The start is renumbered to the text's first move.	Начало перенумеровывается на первый ход текста.
+	A closing bracket the text lacks was assumed.	Предполагается закрывающая скобка, которой нет в тексте.
+	A move already there becomes a variation.	Уже имеющийся ход становится вариантом.
+	No move of the text fits the game here.	Ни один ход текста здесь не подходит к партии.
+	The text is too long to capture.	Текст слишком длинный для захвата.
+	Too much text to capture at once: at most 64 KiB.	Слишком много текста для одного захвата: не больше 64 КиБ.
+	Nothing was captured: no move of the text fits the game here.	Ничего не захвачено: ни один ход текста здесь не подходит к партии.
+	Nothing was captured: there is no text to write.	Ничего не захвачено: нет текста для записи.
+	The board shows an illegal position: correct it before capturing moves into it.	На доске недопустимая позиция: исправьте её, прежде чем захватывать в неё ходы.
+	The capture couldn't be planned.	Не удалось спланировать захват.
+	The capture was dropped: another document's games are shown now.	Захват отменён: теперь показаны партии другого документа.
+	The game kept changing: the capture was not applied.	Партия продолжала меняться: захват не применён.
+	Comment on {move}	Комментарий к {move}
+	Comment at the start	Комментарий в начале
+	Line after {move}	Линия после {move}
+	Line from the start	Линия с начала
+	Variation of {move}	Вариант к {move}
+	moves: {n}	ходов: {n}

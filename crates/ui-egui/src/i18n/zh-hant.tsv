@@ -2679,3 +2679,54 @@ animation effects	Off	關
 	Glyph ?? (blunder)	符號 ??（敗著）
 	Glyph !? (interesting move)	符號 !?（有趣的著法）
 	Glyph ?! (dubious move)	符號 ?!（可疑的著法）
+# Chess ▸ PGN toolbar: T7a, capture from a page selection or the clipboard ("Capture line", "… variation", "… sub-variation" and "… comment" name undo steps: each follows "Undo" or "Redo").
+	Capture	擷取
+	Capture (automatic)	擷取（自動）
+	Capture as the line	擷取為續著
+	Capture as a variation	擷取為變化
+	Capture as a sub-variation	擷取為子變化
+	Capture as a comment	擷取為註解
+	Capture line	擷取續著
+	Capture variation	擷取變化
+	Capture sub-variation	擷取子變化
+	Capture comment	擷取註解
+	Capturing	正在擷取
+	automatic	自動
+	as the line	作為續著
+	as a variation	作為變化
+	as a sub-variation	作為子變化
+	as a comment	作為註解
+	after the move	在著法之後
+	before the move	在著法之前
+	add to the comment	附加到註解
+	replace the comment	取代註解
+	Esc to stop	按 Esc 停止
+	Also capture what is copied ({key})	同時擷取複製的內容（{key}）
+	Send to PGN	傳送到 PGN
+	Paste as	貼上為
+	Paste and capture	貼上並擷取
+	Press {key} to capture the text on the clipboard.	按 {key} 擷取剪貼簿中的文字。
+	Reading the selection…	正在讀取所選內容…
+	Check this capture before it goes in:	套用前請檢查這次擷取：
+	It fits in more than one place.	它適合不只一個位置。
+	Part of the text wasn't read.	部分文字未能讀取。
+	It goes on a line outside the one of the move shown.	它進入所示著法所在線路之外的另一條線路。
+	It extends the end of a line instead of branching from it.	它延長了線路的末端，而不是從中分支。
+	The start is renumbered to the text's first move.	開局局面依文字的第一步重新編號。
+	A closing bracket the text lacks was assumed.	假定了文字中缺少的右括號。
+	A move already there becomes a variation.	原有的著法變為變化。
+	No move of the text fits the game here.	文字中沒有任何著法適合此處的對局。
+	The text is too long to capture.	文字太長，無法擷取。
+	Too much text to capture at once: at most 64 KiB.	一次擷取的文字太多：最多 64 KiB。
+	Nothing was captured: no move of the text fits the game here.	未擷取任何內容：文字中沒有任何著法適合此處的對局。
+	Nothing was captured: there is no text to write.	未擷取任何內容：沒有可寫入的文字。
+	The board shows an illegal position: correct it before capturing moves into it.	棋盤顯示的是不合法局面：請先更正，再向其中擷取著法。
+	The capture couldn't be planned.	無法規劃這次擷取。
+	The capture was dropped: another document's games are shown now.	已放棄擷取：現在顯示的是另一份文件的對局。
+	The game kept changing: the capture was not applied.	對局一直在變化：擷取未套用。
+	Comment on {move}	{move} 的註解
+	Comment at the start	開頭的註解
+	Line after {move}	{move} 之後的續著
+	Line from the start	從開頭開始的續著
+	Variation of {move}	{move} 的變化
+	moves: {n}	著數：{n}

@@ -2730,3 +2730,54 @@ animation effects	Off	Aus
 	Glyph ?? (blunder)	Zeichen ?? (grober Fehler)
 	Glyph !? (interesting move)	Zeichen !? (interessanter Zug)
 	Glyph ?! (dubious move)	Zeichen ?! (zweifelhafter Zug)
+# Chess ▸ PGN toolbar: T7a, capture from a page selection or the clipboard ("Capture line", "… variation", "… sub-variation" and "… comment" name undo steps: each follows "Undo" or "Redo").
+	Capture	Erfassen
+	Capture (automatic)	Erfassen (automatisch)
+	Capture as the line	Als Linie erfassen
+	Capture as a variation	Als Variante erfassen
+	Capture as a sub-variation	Als Untervariante erfassen
+	Capture as a comment	Als Kommentar erfassen
+	Capture line	Linie erfassen
+	Capture variation	Variante erfassen
+	Capture sub-variation	Untervariante erfassen
+	Capture comment	Kommentar erfassen
+	Capturing	Erfassung
+	automatic	automatisch
+	as the line	als Linie
+	as a variation	als Variante
+	as a sub-variation	als Untervariante
+	as a comment	als Kommentar
+	after the move	nach dem Zug
+	before the move	vor dem Zug
+	add to the comment	zum Kommentar hinzufügen
+	replace the comment	Kommentar ersetzen
+	Esc to stop	Esc beendet
+	Also capture what is copied ({key})	Auch Kopiertes erfassen ({key})
+	Send to PGN	An PGN senden
+	Paste as	Einfügen als
+	Paste and capture	Einfügen und erfassen
+	Press {key} to capture the text on the clipboard.	Drücken Sie {key}, um den Text aus der Zwischenablage zu erfassen.
+	Reading the selection…	Auswahl wird gelesen…
+	Check this capture before it goes in:	Prüfen Sie diese Erfassung, bevor sie übernommen wird:
+	It fits in more than one place.	Sie passt an mehr als eine Stelle.
+	Part of the text wasn't read.	Ein Teil des Textes wurde nicht gelesen.
+	It goes on a line outside the one of the move shown.	Sie kommt auf eine andere Linie als die des angezeigten Zugs.
+	It extends the end of a line instead of branching from it.	Sie verlängert das Ende einer Linie, statt eine Variante abzuzweigen.
+	The start is renumbered to the text's first move.	Der Anfang wird auf den ersten Zug des Textes umnummeriert.
+	A closing bracket the text lacks was assumed.	Eine im Text fehlende schließende Klammer wurde angenommen.
+	A move already there becomes a variation.	Ein bereits vorhandener Zug wird zur Variante.
+	No move of the text fits the game here.	Kein Zug des Textes passt hier in die Partie.
+	The text is too long to capture.	Der Text ist zu lang zum Erfassen.
+	Too much text to capture at once: at most 64 KiB.	Zu viel Text für eine Erfassung: höchstens 64 KiB.
+	Nothing was captured: no move of the text fits the game here.	Nichts erfasst: Kein Zug des Textes passt hier in die Partie.
+	Nothing was captured: there is no text to write.	Nichts erfasst: Es gibt keinen Text zu schreiben.
+	The board shows an illegal position: correct it before capturing moves into it.	Das Brett zeigt eine ungültige Stellung: Korrigieren Sie sie, bevor Sie Züge darin erfassen.
+	The capture couldn't be planned.	Die Erfassung konnte nicht geplant werden.
+	The capture was dropped: another document's games are shown now.	Die Erfassung wurde verworfen: Jetzt werden die Partien eines anderen Dokuments angezeigt.
+	The game kept changing: the capture was not applied.	Die Partie hat sich immer wieder geändert: Die Erfassung wurde nicht übernommen.
+	Comment on {move}	Kommentar zu {move}
+	Comment at the start	Kommentar am Anfang
+	Line after {move}	Linie nach {move}
+	Line from the start	Linie vom Anfang
+	Variation of {move}	Variante zu {move}
+	moves: {n}	Züge: {n}

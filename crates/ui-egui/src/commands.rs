@@ -462,7 +462,10 @@ impl PdfCraftApp {
             "chess.pgn.save" => self.save_chess_pgn(false),
             "chess.pgn.save_all" => self.save_chess_pgn(true),
             "chess.window.detach" => self.toggle_chess_window(),
-            // The rail's tools, by the same actions as their buttons.
+            "chess.pgn.paste_as" => {
+                self.chess_paste_as((pdfcraft_engine::chess::capture::CaptureMode::Auto, false), crate::chess_capture::clipboard_text())
+            }
+            // The rail's tools (the capture tools among them), by the same actions as their buttons.
             id if crate::chess_tools::is_tool_command(id) => {
                 crate::chess_tools::run_command(&mut self.chess, id);
             }

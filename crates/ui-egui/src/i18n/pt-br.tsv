@@ -2746,3 +2746,54 @@ chess side	Black	Pretas
 	Glyph ?? (blunder)	Sinal ?? (erro grave)
 	Glyph !? (interesting move)	Sinal !? (lance interessante)
 	Glyph ?! (dubious move)	Sinal ?! (lance duvidoso)
+# Chess ▸ PGN toolbar: T7a, capture from a page selection or the clipboard ("Capture line", "… variation", "… sub-variation" and "… comment" name undo steps: each follows "Undo" or "Redo").
+	Capture	Captura
+	Capture (automatic)	Capturar (automático)
+	Capture as the line	Capturar como linha
+	Capture as a variation	Capturar como variante
+	Capture as a sub-variation	Capturar como sub-variante
+	Capture as a comment	Capturar como comentário
+	Capture line	captura de linha
+	Capture variation	captura de variante
+	Capture sub-variation	captura de sub-variante
+	Capture comment	captura de comentário
+	Capturing	Capturando
+	automatic	automático
+	as the line	como linha
+	as a variation	como variante
+	as a sub-variation	como sub-variante
+	as a comment	como comentário
+	after the move	depois do lance
+	before the move	antes do lance
+	add to the comment	acrescentar ao comentário
+	replace the comment	substituir o comentário
+	Esc to stop	Esc sai
+	Also capture what is copied ({key})	Capturar também o que for copiado ({key})
+	Send to PGN	Enviar ao PGN
+	Paste as	Colar como
+	Paste and capture	Colar e capturar
+	Press {key} to capture the text on the clipboard.	Pressione {key} para capturar o texto da área de transferência.
+	Reading the selection…	Lendo a seleção…
+	Check this capture before it goes in:	Confira esta captura antes de aplicá-la:
+	It fits in more than one place.	Ela cabe em mais de um lugar.
+	Part of the text wasn't read.	Parte do texto não foi lida.
+	It goes on a line outside the one of the move shown.	Ela vai para uma linha fora da linha do lance mostrado.
+	It extends the end of a line instead of branching from it.	Ela estende o fim de uma linha em vez de abrir uma variante.
+	The start is renumbered to the text's first move.	O início é renumerado para o primeiro lance do texto.
+	A closing bracket the text lacks was assumed.	Foi suposto um parêntese de fechamento que falta no texto.
+	A move already there becomes a variation.	Um lance que já estava lá vira variante.
+	No move of the text fits the game here.	Nenhum lance do texto cabe na partida aqui.
+	The text is too long to capture.	O texto é longo demais para capturar.
+	Too much text to capture at once: at most 64 KiB.	Texto demais para capturar de uma vez: no máximo 64 KiB.
+	Nothing was captured: no move of the text fits the game here.	Nada foi capturado: nenhum lance do texto cabe na partida aqui.
+	Nothing was captured: there is no text to write.	Nada foi capturado: não há texto para escrever.
+	The board shows an illegal position: correct it before capturing moves into it.	O tabuleiro mostra uma posição ilegal: corrija-a antes de capturar lances nela.
+	The capture couldn't be planned.	Não foi possível planejar a captura.
+	The capture was dropped: another document's games are shown now.	A captura foi descartada: agora são mostradas as partidas de outro documento.
+	The game kept changing: the capture was not applied.	A partida continuou mudando: a captura não foi aplicada.
+	Comment on {move}	Comentário em {move}
+	Comment at the start	Comentário no início
+	Line after {move}	Linha depois de {move}
+	Line from the start	Linha desde o início
+	Variation of {move}	Variante de {move}
+	moves: {n}	lances: {n}

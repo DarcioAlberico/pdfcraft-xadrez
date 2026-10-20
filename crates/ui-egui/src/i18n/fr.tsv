@@ -2729,3 +2729,54 @@ animation effects	Off	Désactivés
 	Glyph ?? (blunder)	Signe ?? (gaffe)
 	Glyph !? (interesting move)	Signe !? (coup intéressant)
 	Glyph ?! (dubious move)	Signe ?! (coup douteux)
+# Chess ▸ PGN toolbar: T7a, capture from a page selection or the clipboard ("Capture line", "… variation", "… sub-variation" and "… comment" name undo steps: each follows "Undo" or "Redo").
+	Capture	Capture
+	Capture (automatic)	Capturer (automatique)
+	Capture as the line	Capturer comme ligne
+	Capture as a variation	Capturer comme variante
+	Capture as a sub-variation	Capturer comme sous-variante
+	Capture as a comment	Capturer comme commentaire
+	Capture line	la capture d'une ligne
+	Capture variation	la capture d'une variante
+	Capture sub-variation	la capture d'une sous-variante
+	Capture comment	la capture d'un commentaire
+	Capturing	Capture en cours
+	automatic	automatique
+	as the line	comme ligne
+	as a variation	comme variante
+	as a sub-variation	comme sous-variante
+	as a comment	comme commentaire
+	after the move	après le coup
+	before the move	avant le coup
+	add to the comment	ajouter au commentaire
+	replace the comment	remplacer le commentaire
+	Esc to stop	Échap pour arrêter
+	Also capture what is copied ({key})	Capturer aussi ce qui est copié ({key})
+	Send to PGN	Envoyer au PGN
+	Paste as	Coller comme
+	Paste and capture	Coller et capturer
+	Press {key} to capture the text on the clipboard.	Appuyez sur {key} pour capturer le texte du presse-papiers.
+	Reading the selection…	Lecture de la sélection…
+	Check this capture before it goes in:	Vérifiez cette capture avant qu'elle soit appliquée :
+	It fits in more than one place.	Elle convient à plus d'un endroit.
+	Part of the text wasn't read.	Une partie du texte n'a pas été lue.
+	It goes on a line outside the one of the move shown.	Elle va sur une ligne autre que celle du coup affiché.
+	It extends the end of a line instead of branching from it.	Elle prolonge la fin d'une ligne au lieu d'ouvrir une variante.
+	The start is renumbered to the text's first move.	Le départ est renuméroté au premier coup du texte.
+	A closing bracket the text lacks was assumed.	Une parenthèse fermante absente du texte a été supposée.
+	A move already there becomes a variation.	Un coup déjà présent devient une variante.
+	No move of the text fits the game here.	Aucun coup du texte ne convient ici dans la partie.
+	The text is too long to capture.	Le texte est trop long pour être capturé.
+	Too much text to capture at once: at most 64 KiB.	Trop de texte à capturer d'un coup : 64 Kio au maximum.
+	Nothing was captured: no move of the text fits the game here.	Rien n'a été capturé : aucun coup du texte ne convient ici dans la partie.
+	Nothing was captured: there is no text to write.	Rien n'a été capturé : il n'y a pas de texte à écrire.
+	The board shows an illegal position: correct it before capturing moves into it.	L'échiquier montre une position illégale : corrigez-la avant d'y capturer des coups.
+	The capture couldn't be planned.	La capture n'a pas pu être planifiée.
+	The capture was dropped: another document's games are shown now.	La capture a été abandonnée : ce sont maintenant les parties d'un autre document qui sont affichées.
+	The game kept changing: the capture was not applied.	La partie n'a pas cessé de changer : la capture n'a pas été appliquée.
+	Comment on {move}	Commentaire sur {move}
+	Comment at the start	Commentaire au départ
+	Line after {move}	Ligne après {move}
+	Line from the start	Ligne depuis le départ
+	Variation of {move}	Variante de {move}
+	moves: {n}	coups : {n}

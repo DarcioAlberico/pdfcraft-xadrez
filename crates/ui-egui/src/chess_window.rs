@@ -528,6 +528,8 @@ struct Asked {
     games: Option<crate::chess_collection::GamesAction>,
     panel: Option<crate::chess_ui::PanelAction>,
     dock: bool,
+    /// Paste as ▸: the clipboard's text to capture, in this mode (T7a).
+    paste: Option<(pdfcraft_engine::chess::capture::CaptureMode, bool)>,
 }
 
 /// The window's contents: the PGN tool rail, a row with the Dock button (and a narrow window's
@@ -603,6 +605,9 @@ fn contents(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
         });
     });
     app.chess_window.wide = wide;
+    if let Some(mode) = asked.paste {
+        app.chess_paste_as(mode, crate::chess_capture::clipboard_text());
+    }
     app.chess_window.tab = tab;
     if asked.dock {
         app.chess_window.request = Some(false);
@@ -628,6 +633,8 @@ fn board_column(
     source_label: Option<String>,
     asked: &mut Asked,
 ) {
+    // Captures from the clipboard (T7a), above the board, as in the docked panel.
+    asked.paste = crate::chess_capture::paste_menu(ui);
     let sizing = sizing(ui.available_size());
     if !sizing.wide {
         // The notation takes the height the scroll area shows and the rest leaves.

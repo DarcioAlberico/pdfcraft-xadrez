@@ -2638,3 +2638,54 @@ animation effects	Off	ఆఫ్
 	Glyph ?? (blunder)	గుర్తు ?? (పెద్ద తప్పు)
 	Glyph !? (interesting move)	గుర్తు !? (ఆసక్తికరమైన ఎత్తు)
 	Glyph ?! (dubious move)	గుర్తు ?! (సందేహాస్పద ఎత్తు)
+# Chess ▸ PGN toolbar: T7a, capture from a page selection or the clipboard ("Capture line", "… variation", "… sub-variation" and "… comment" name undo steps: each follows "Undo" or "Redo").
+	Capture	సంగ్రహించు
+	Capture (automatic)	సంగ్రహించు (స్వయంచాలకం)
+	Capture as the line	వరుసగా సంగ్రహించు
+	Capture as a variation	ఉపవరుసగా సంగ్రహించు
+	Capture as a sub-variation	ఉప-ఉపవరుసగా సంగ్రహించు
+	Capture as a comment	వ్యాఖ్యగా సంగ్రహించు
+	Capture line	వరుస సంగ్రహణ
+	Capture variation	ఉపవరుస సంగ్రహణ
+	Capture sub-variation	ఉప-ఉపవరుస సంగ్రహణ
+	Capture comment	వ్యాఖ్య సంగ్రహణ
+	Capturing	సంగ్రహిస్తోంది
+	automatic	స్వయంచాలకం
+	as the line	వరుసగా
+	as a variation	ఉపవరుసగా
+	as a sub-variation	ఉప-ఉపవరుసగా
+	as a comment	వ్యాఖ్యగా
+	after the move	ఎత్తు తర్వాత
+	before the move	ఎత్తుకు ముందు
+	add to the comment	వ్యాఖ్యకు జోడించు
+	replace the comment	వ్యాఖ్యను భర్తీ చేయి
+	Esc to stop	ఆపడానికి Esc
+	Also capture what is copied ({key})	కాపీ చేసినదాన్నీ సంగ్రహించు ({key})
+	Send to PGN	PGNకి పంపు
+	Paste as	ఇలా అతికించు
+	Paste and capture	అతికించి సంగ్రహించు
+	Press {key} to capture the text on the clipboard.	క్లిప్‌బోర్డ్‌లోని పాఠ్యాన్ని సంగ్రహించడానికి {key} నొక్కండి.
+	Reading the selection…	ఎంపికను చదువుతోంది…
+	Check this capture before it goes in:	వర్తింపజేసే ముందు ఈ సంగ్రహణను తనిఖీ చేయండి:
+	It fits in more than one place.	ఇది ఒకటి కంటే ఎక్కువ చోట్ల సరిపోతుంది.
+	Part of the text wasn't read.	పాఠ్యంలో కొంత భాగం చదవబడలేదు.
+	It goes on a line outside the one of the move shown.	ఇది చూపిన ఎత్తు వరుస వెలుపలి వరుసకు వెళ్తుంది.
+	It extends the end of a line instead of branching from it.	ఇది వరుస నుండి శాఖ కాకుండా వరుస చివరను పొడిగిస్తుంది.
+	The start is renumbered to the text's first move.	ప్రారంభం పాఠ్యంలోని మొదటి ఎత్తుకు తిరిగి సంఖ్యీకరించబడుతుంది.
+	A closing bracket the text lacks was assumed.	పాఠ్యంలో లేని మూసే బ్రాకెట్ ఉన్నట్లు భావించబడింది.
+	A move already there becomes a variation.	ఇప్పటికే ఉన్న ఎత్తు ఉపవరుస అవుతుంది.
+	No move of the text fits the game here.	పాఠ్యంలోని ఏ ఎత్తూ ఇక్కడ ఆటకు సరిపోదు.
+	The text is too long to capture.	సంగ్రహించడానికి పాఠ్యం చాలా పొడవుగా ఉంది.
+	Too much text to capture at once: at most 64 KiB.	ఒకేసారి సంగ్రహించడానికి పాఠ్యం చాలా ఎక్కువ: గరిష్ఠంగా 64 KiB.
+	Nothing was captured: no move of the text fits the game here.	ఏదీ సంగ్రహించబడలేదు: పాఠ్యంలోని ఏ ఎత్తూ ఇక్కడ ఆటకు సరిపోదు.
+	Nothing was captured: there is no text to write.	ఏదీ సంగ్రహించబడలేదు: రాయడానికి పాఠ్యం లేదు.
+	The board shows an illegal position: correct it before capturing moves into it.	బోర్డు చెల్లని స్థితిని చూపుతోంది: దానిలోకి ఎత్తులను సంగ్రహించే ముందు దాన్ని సరిదిద్దండి.
+	The capture couldn't be planned.	సంగ్రహణను ప్రణాళిక చేయలేకపోయాము.
+	The capture was dropped: another document's games are shown now.	సంగ్రహణ విస్మరించబడింది: ఇప్పుడు మరో పత్రం ఆటలు చూపబడుతున్నాయి.
+	The game kept changing: the capture was not applied.	ఆట మారుతూనే ఉంది: సంగ్రహణ వర్తింపజేయబడలేదు.
+	Comment on {move}	{move} పై వ్యాఖ్య
+	Comment at the start	ప్రారంభంలో వ్యాఖ్య
+	Line after {move}	{move} తర్వాతి వరుస
+	Line from the start	ప్రారంభం నుండి వరుస
+	Variation of {move}	{move} యొక్క ఉపవరుస
+	moves: {n}	ఎత్తులు: {n}

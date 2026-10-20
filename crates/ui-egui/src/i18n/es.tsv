@@ -2870,3 +2870,54 @@ animation effects	Off	Desactivados
 	Glyph ?? (blunder)	Signo ?? (error grave)
 	Glyph !? (interesting move)	Signo !? (jugada interesante)
 	Glyph ?! (dubious move)	Signo ?! (jugada dudosa)
+# Chess ▸ PGN toolbar: T7a, capture from a page selection or the clipboard ("Capture line", "… variation", "… sub-variation" and "… comment" name undo steps: each follows "Undo" or "Redo").
+	Capture	Captura
+	Capture (automatic)	Capturar (automático)
+	Capture as the line	Capturar como línea
+	Capture as a variation	Capturar como variante
+	Capture as a sub-variation	Capturar como subvariante
+	Capture as a comment	Capturar como comentario
+	Capture line	captura de línea
+	Capture variation	captura de variante
+	Capture sub-variation	captura de subvariante
+	Capture comment	captura de comentario
+	Capturing	Capturando
+	automatic	automático
+	as the line	como línea
+	as a variation	como variante
+	as a sub-variation	como subvariante
+	as a comment	como comentario
+	after the move	después de la jugada
+	before the move	antes de la jugada
+	add to the comment	añadir al comentario
+	replace the comment	reemplazar el comentario
+	Esc to stop	Esc para salir
+	Also capture what is copied ({key})	Capturar también lo que se copie ({key})
+	Send to PGN	Enviar al PGN
+	Paste as	Pegar como
+	Paste and capture	Pegar y capturar
+	Press {key} to capture the text on the clipboard.	Pulsa {key} para capturar el texto del portapapeles.
+	Reading the selection…	Leyendo la selección…
+	Check this capture before it goes in:	Revisa esta captura antes de aplicarla:
+	It fits in more than one place.	Encaja en más de un lugar.
+	Part of the text wasn't read.	Parte del texto no se leyó.
+	It goes on a line outside the one of the move shown.	Va a una línea distinta de la de la jugada mostrada.
+	It extends the end of a line instead of branching from it.	Alarga el final de una línea en lugar de abrir una variante.
+	The start is renumbered to the text's first move.	El inicio se renumera a la primera jugada del texto.
+	A closing bracket the text lacks was assumed.	Se supuso un paréntesis de cierre que falta en el texto.
+	A move already there becomes a variation.	Una jugada que ya estaba pasa a ser variante.
+	No move of the text fits the game here.	Ninguna jugada del texto encaja aquí en la partida.
+	The text is too long to capture.	El texto es demasiado largo para capturarlo.
+	Too much text to capture at once: at most 64 KiB.	Demasiado texto para capturar de una vez: como máximo 64 KiB.
+	Nothing was captured: no move of the text fits the game here.	No se capturó nada: ninguna jugada del texto encaja aquí en la partida.
+	Nothing was captured: there is no text to write.	No se capturó nada: no hay texto que escribir.
+	The board shows an illegal position: correct it before capturing moves into it.	El tablero muestra una posición ilegal: corrígela antes de capturar jugadas en ella.
+	The capture couldn't be planned.	No se pudo planificar la captura.
+	The capture was dropped: another document's games are shown now.	La captura se descartó: ahora se muestran las partidas de otro documento.
+	The game kept changing: the capture was not applied.	La partida siguió cambiando: la captura no se aplicó.
+	Comment on {move}	Comentario en {move}
+	Comment at the start	Comentario al inicio
+	Line after {move}	Línea después de {move}
+	Line from the start	Línea desde el inicio
+	Variation of {move}	Variante de {move}
+	moves: {n}	jugadas: {n}

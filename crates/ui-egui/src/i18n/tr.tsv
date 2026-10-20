@@ -2725,3 +2725,54 @@ animation effects	Off	Kapalı
 	Glyph ?? (blunder)	İşaret ?? (büyük hata)
 	Glyph !? (interesting move)	İşaret !? (ilginç hamle)
 	Glyph ?! (dubious move)	İşaret ?! (şüpheli hamle)
+# Chess ▸ PGN toolbar: T7a, capture from a page selection or the clipboard ("Capture line", "… variation", "… sub-variation" and "… comment" name undo steps: each follows "Undo" or "Redo").
+	Capture	Yakala
+	Capture (automatic)	Yakala (otomatik)
+	Capture as the line	Hat olarak yakala
+	Capture as a variation	Varyant olarak yakala
+	Capture as a sub-variation	Alt varyant olarak yakala
+	Capture as a comment	Yorum olarak yakala
+	Capture line	hat yakalama
+	Capture variation	varyant yakalama
+	Capture sub-variation	alt varyant yakalama
+	Capture comment	yorum yakalama
+	Capturing	Yakalanıyor
+	automatic	otomatik
+	as the line	hat olarak
+	as a variation	varyant olarak
+	as a sub-variation	alt varyant olarak
+	as a comment	yorum olarak
+	after the move	hamleden sonra
+	before the move	hamleden önce
+	add to the comment	yoruma ekle
+	replace the comment	yorumu değiştir
+	Esc to stop	Çıkmak için Esc
+	Also capture what is copied ({key})	Kopyalananı da yakala ({key})
+	Send to PGN	PGN'ye gönder
+	Paste as	Farklı yapıştır
+	Paste and capture	Yapıştır ve yakala
+	Press {key} to capture the text on the clipboard.	Panodaki metni yakalamak için {key} tuşuna basın.
+	Reading the selection…	Seçim okunuyor…
+	Check this capture before it goes in:	Uygulanmadan önce bu yakalamayı kontrol edin:
+	It fits in more than one place.	Birden fazla yere uyuyor.
+	Part of the text wasn't read.	Metnin bir kısmı okunamadı.
+	It goes on a line outside the one of the move shown.	Gösterilen hamlenin hattı dışındaki bir hatta gidiyor.
+	It extends the end of a line instead of branching from it.	Bir hattan dallanmak yerine hattın sonunu uzatıyor.
+	The start is renumbered to the text's first move.	Başlangıç, metnin ilk hamlesine göre yeniden numaralanıyor.
+	A closing bracket the text lacks was assumed.	Metinde eksik olan bir kapanış parantezi varsayıldı.
+	A move already there becomes a variation.	Zaten orada olan bir hamle varyant oluyor.
+	No move of the text fits the game here.	Metindeki hiçbir hamle burada oyuna uymuyor.
+	The text is too long to capture.	Metin yakalamak için çok uzun.
+	Too much text to capture at once: at most 64 KiB.	Bir seferde yakalamak için çok fazla metin: en fazla 64 KiB.
+	Nothing was captured: no move of the text fits the game here.	Hiçbir şey yakalanmadı: metindeki hiçbir hamle burada oyuna uymuyor.
+	Nothing was captured: there is no text to write.	Hiçbir şey yakalanmadı: yazılacak metin yok.
+	The board shows an illegal position: correct it before capturing moves into it.	Tahta geçersiz bir konum gösteriyor: hamle yakalamadan önce onu düzeltin.
+	The capture couldn't be planned.	Yakalama planlanamadı.
+	The capture was dropped: another document's games are shown now.	Yakalama bırakıldı: artık başka bir belgenin oyunları gösteriliyor.
+	The game kept changing: the capture was not applied.	Oyun değişmeye devam etti: yakalama uygulanmadı.
+	Comment on {move}	{move} için yorum
+	Comment at the start	Başlangıçta yorum
+	Line after {move}	{move} sonrası hat
+	Line from the start	Başlangıçtan hat
+	Variation of {move}	{move} varyantı
+	moves: {n}	hamle: {n}

@@ -1176,6 +1176,18 @@ impl DocView {
         Some(xf.view_rect(g.rect).center())
     }
 
+    /// The glyphs of the text selection, in content order, with its page (a chess capture reads
+    /// them, not the text Copy makes). Indices past the page's text are left out.
+    pub(crate) fn selection_glyphs(&self) -> Option<(usize, Vec<usize>)> {
+        let s = self.selection?;
+        let text = self.texts.get(&s.page)?;
+        let glyphs = match s.span {
+            Span::Run { anchor, head } => Selection::range(anchor, head).take_while(|&i| i < text.glyphs.len()).collect(),
+            Span::Column { rect } => text.glyphs_in(rect),
+        };
+        Some((s.page, glyphs))
+    }
+
     /// Selected text, if any (⌘C).
     pub fn selected_text(&self) -> Option<String> {
         let s = self.selection?;
@@ -2373,8 +2385,10 @@ fn page_scroll<R>(
 
 pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
-    // A click on the page puts Undo and Redo back on the document (D12).
-    if crate::chess_history::pressed_in(ui) {
+    // A click on the page puts Undo and Redo back on the document (D12), unless it selects text
+    // for a chess capture (T7a).
+    let capture_armed = crate::chess_capture::armed(&app.chess).is_some();
+    if crate::chess_history::pressed_in(ui) && !capture_armed {
         app.chess.leave_scope();
     }
     // Keyboard scrolling applies to this frame's page view only, never later.
@@ -2823,6 +2837,9 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     // Chess diagrams found in this document, while it is as it was scanned.
     let chess_shown = crate::chess_ui::shown(&app.chess, view.id, app.session.chess_stamp(view.id));
     let mut chess_pick: Option<(usize, usize)> = None;
+    // A selection let go with a capture tool armed, or sent to the game from a menu (T7a).
+    let mut chess_release = false;
+    let mut chess_send: Option<(pdfcraft_engine::chess::capture::CaptureMode, bool)> = None;
     if editing_content {
         crate::content_ui::after_refresh(view, &added);
     } else {
@@ -3405,6 +3422,9 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
                     {
                         view.selection = None;
                     }
+                    if resp.drag_stopped() && capture_armed && view.selection.is_some_and(|s| s.page == i) {
+                        chess_release = true;
+                    }
                     // Quick clicks widen the selection: two a word, three the line, four the page.
                     // Release-based fallback for platforms or synthetic events that report double_clicked.
                     let release_clicks = if resp.triple_clicked() {
@@ -3718,6 +3738,10 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
                     copy_selected = true;
                     ui.close();
                 }
+                if selected && let Some(mode) = crate::chess_capture::send_menu(ui) {
+                    chess_send = Some(mode);
+                    ui.close();
+                }
                 ui.separator();
             }
             // Over a picture (and no comment): Copy Image, as in Acrobat's page menu.
@@ -3762,8 +3786,11 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
 
     view.viewport_screen = out.inner_rect;
     view.auto_scroll.paint(ui, avail);
-    if unobstructed && matches!(tool, QuickTool::Select | QuickTool::ColumnSelect) {
-        copy_selected |= selection_actions(ui, avail, view, info, prefs, allowed && !comments_hidden, can_copy);
+    // With a capture tool armed, letting go of the selection captured it: no action bar.
+    if unobstructed && matches!(tool, QuickTool::Select | QuickTool::ColumnSelect) && !capture_armed {
+        let (copy, send) = selection_actions(ui, avail, view, info, prefs, allowed && !comments_hidden, can_copy);
+        copy_selected |= copy;
+        chess_send = chess_send.or(send);
     }
 
     // Collect all main-page demand, including cached surfaces, for byte admission later.
@@ -3910,6 +3937,7 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
         });
     }
     find_bar(view, info.pages.len(), avail, ui, &t);
+    let capture_apply = crate::chess_capture::page_overlay(ui, avail, &mut app.chess);
     page_size_hint(view, info, units, avail, unobstructed, ui, &t);
     if tool == QuickTool::EnhanceCamera {
         crate::camera_ui::bar(ui.ctx(), view, avail, &t, can_modify);
@@ -4106,6 +4134,12 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     if copy_selected {
         app.execute("edit.copy");
     }
+    if chess_release || chess_send.is_some() {
+        app.capture_selection(index, chess_send);
+    }
+    if let Some(choice) = capture_apply {
+        app.apply_pending_capture(choice);
+    }
     // Read mode hides the tools (#2646).
     if app.mode != crate::Mode::Read {
         quick_bar(app, avail, ui);
@@ -4132,58 +4166,65 @@ fn selection_actions(
     prefs: &comments::CommentPrefs,
     can_comment: bool,
     can_copy: bool,
-) -> bool {
+) -> (bool, Option<(pdfcraft_engine::chess::capture::CaptureMode, bool)>) {
     if ui.input(|input| input.pointer.is_decidedly_dragging()) {
-        return false;
+        return (false, None);
     }
     let Some(selection) = view.selection else {
         view.actions_dismissed = None;
-        return false;
+        return (false, None);
     };
     if view.actions_dismissed == Some(selection) {
-        return false;
+        return (false, None);
     }
-    let Some(text) = view.texts.get(&selection.page) else { return false };
-    let Some(xf) = view.page_xform(selection.page) else { return false };
-    let Some(last) = selection.rects(text).last().copied() else { return false };
+    let Some(text) = view.texts.get(&selection.page) else { return (false, None) };
+    let Some(xf) = view.page_xform(selection.page) else { return (false, None) };
+    let Some(last) = selection.rects(text).last().copied() else { return (false, None) };
     let selected = selection.text(text);
     if selected.is_empty() {
-        return false;
+        return (false, None);
     }
     let rect = xf.view_rect(last);
     if !viewport.intersects(rect) {
-        return false;
+        return (false, None);
     }
-    let x = rect.left().clamp(viewport.left() + 8.0, (viewport.right() - 520.0).max(viewport.left() + 8.0));
+    let x = rect.left().clamp(viewport.left() + 8.0, (viewport.right() - 640.0).max(viewport.left() + 8.0));
     let y = if rect.bottom() + 48.0 < viewport.bottom() { rect.bottom() + 6.0 } else { (rect.top() - 44.0).max(viewport.top() + 6.0) };
     let mut chosen = None;
-    egui::Area::new(egui::Id::new(("text-selection-actions", view.id.0))).order(egui::Order::Foreground).fixed_pos(pos2(x, y)).show(ui.ctx(), |ui| {
-        egui::Frame::popup(ui.style()).show(ui, |ui| {
-            ui.horizontal(|ui| {
-                for (label, action) in [
-                    (tl!("Add comment"), SelectionAction::Note),
-                    (tl!("Highlight"), SelectionAction::Markup(comments::CommentTool::Highlight)),
-                    (tl!("Underline"), SelectionAction::Markup(comments::CommentTool::Underline)),
-                    (tl!("Strikethrough"), SelectionAction::Markup(comments::CommentTool::StrikeOut)),
-                    (tl!("Replace text"), SelectionAction::Replace),
-                ] {
-                    if ui.add_enabled(can_comment, egui::Button::new(label)).clicked() {
-                        chosen = Some(action);
+    let mut send = None;
+    // Kept inside the page area: a bar running past it would cover the side panels' buttons.
+    egui::Area::new(egui::Id::new(("text-selection-actions", view.id.0)))
+        .order(egui::Order::Foreground)
+        .fixed_pos(pos2(x, y))
+        .constrain_to(viewport)
+        .show(ui.ctx(), |ui| {
+            egui::Frame::popup(ui.style()).show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    for (label, action) in [
+                        (tl!("Add comment"), SelectionAction::Note),
+                        (tl!("Highlight"), SelectionAction::Markup(comments::CommentTool::Highlight)),
+                        (tl!("Underline"), SelectionAction::Markup(comments::CommentTool::Underline)),
+                        (tl!("Strikethrough"), SelectionAction::Markup(comments::CommentTool::StrikeOut)),
+                        (tl!("Replace text"), SelectionAction::Replace),
+                    ] {
+                        if ui.add_enabled(can_comment, egui::Button::new(label)).clicked() {
+                            chosen = Some(action);
+                        }
                     }
-                }
-                if ui.add_enabled(can_copy, egui::Button::new(tl!("Copy"))).clicked() {
-                    chosen = Some(SelectionAction::Copy);
-                }
+                    if ui.add_enabled(can_copy, egui::Button::new(tl!("Copy"))).clicked() {
+                        chosen = Some(SelectionAction::Copy);
+                    }
+                    send = crate::chess_capture::send_menu(ui).or(send);
+                });
             });
         });
-    });
-    let Some(action) = chosen else { return false };
+    let Some(action) = chosen else { return (false, send) };
     if let SelectionAction::Copy = action {
         // Copying closes the bar but keeps the words selected, for ⌘C or a second action.
         view.actions_dismissed = Some(selection);
-        return true;
+        return (true, None);
     }
-    let Some((page, quads)) = view.selection_quads(info) else { return false };
+    let Some((page, quads)) = view.selection_quads(info) else { return (false, None) };
     let last = quads.last().copied().unwrap_or_default();
     let at = [last[2].max(last[6]), last[1].max(last[3])];
     view.clear_selection();
@@ -4202,7 +4243,7 @@ fn selection_actions(
         }
         SelectionAction::Markup(tool) => {
             // Every markup button carries a markup tool; anything else adds nothing.
-            let Some(kind) = tool.markup() else { return false };
+            let Some(kind) = tool.markup() else { return (false, None) };
             view.pending_edit = Some(Edit::AddAnnotation(pdfcraft_engine::NewAnnotation {
                 page,
                 shape: pdfcraft_engine::Shape::TextMarkup { kind, quads },
@@ -4214,7 +4255,7 @@ fn selection_actions(
         // Copy is dispatched through the app after the view borrow ends.
         SelectionAction::Copy => {}
     }
-    false
+    (false, None)
 }
 
 /// Run a push button's action (the ones that need no JavaScript engine).
