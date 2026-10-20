@@ -2933,12 +2933,15 @@ certificate	Version	الإصدار
 	Demote a line	تخفيض خط
 	Delete a variation	حذف خط فرعي
 # Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
-	Chess board in its own window	رقعة الشطرنج في نافذتها الخاصة
-	Move the board to its own window	نقل الرقعة إلى نافذتها الخاصة
 	Dock	إرساء
-	Put the board back in its panel	إعادة الرقعة إلى لوحتها
 	The chess board couldn't open in its own window, so it is back in its panel.	تعذّر فتح رقعة الشطرنج في نافذتها الخاصة، فأُعيدت إلى لوحتها.
 	The chess board couldn't open in its own window, so it stays in its panel.	تعذّر فتح رقعة الشطرنج في نافذتها الخاصة، فبقيت في لوحتها.
+# Chess ▸ PGN toolbar: T13b, the whole chess panel in its own window (the rail's tool and the command, the window's tab strip and Dock button, the Inspector's note while it is out).
+	Chess in its own window	الشطرنج في نافذة خاصة
+	Board	الرقعة
+	The chess panel is in its own window.	لوحة الشطرنج في نافذة خاصة بها.
+	Bring it back	إعادتها
+	Put the board and the chess panel back in the main window	إعادة الرقعة ولوحة الشطرنج إلى النافذة الرئيسية
 
 # Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
 	Moves	النقلات

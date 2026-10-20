@@ -2673,12 +2673,15 @@ chess side	Black	Pretas
 	Demote a line	rebaixamento de linha
 	Delete a variation	exclusão de variante
 # Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
-	Chess board in its own window	Tabuleiro em janela própria
-	Move the board to its own window	Mover o tabuleiro para uma janela própria
 	Dock	Encaixar
-	Put the board back in its panel	Devolver o tabuleiro ao painel
 	The chess board couldn't open in its own window, so it is back in its panel.	Não foi possível abrir o tabuleiro em uma janela própria; ele voltou ao painel.
 	The chess board couldn't open in its own window, so it stays in its panel.	Não foi possível abrir o tabuleiro em uma janela própria; ele continua no painel.
+# Chess ▸ PGN toolbar: T13b, the whole chess panel in its own window (the rail's tool and the command, the window's tab strip and Dock button, the Inspector's note while it is out).
+	Chess in its own window	Xadrez em janela própria
+	Board	Tabuleiro
+	The chess panel is in its own window.	O painel de xadrez está em uma janela própria.
+	Bring it back	Trazer de volta
+	Put the board and the chess panel back in the main window	Devolver o tabuleiro e o painel de xadrez à janela principal
 
 # Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
 	Moves	Lances

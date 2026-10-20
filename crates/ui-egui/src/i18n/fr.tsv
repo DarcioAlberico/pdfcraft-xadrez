@@ -2656,12 +2656,15 @@ animation effects	Off	Désactivés
 	Demote a line	la rétrogradation d'une ligne
 	Delete a variation	la suppression d'une variante
 # Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
-	Chess board in its own window	Échiquier dans sa propre fenêtre
-	Move the board to its own window	Déplacer l’échiquier dans sa propre fenêtre
 	Dock	Ancrer
-	Put the board back in its panel	Remettre l’échiquier dans son panneau
 	The chess board couldn't open in its own window, so it is back in its panel.	L’échiquier n’a pas pu s’ouvrir dans sa propre fenêtre : il est revenu dans son panneau.
 	The chess board couldn't open in its own window, so it stays in its panel.	L’échiquier n’a pas pu s’ouvrir dans sa propre fenêtre : il reste dans son panneau.
+# Chess ▸ PGN toolbar: T13b, the whole chess panel in its own window (the rail's tool and the command, the window's tab strip and Dock button, the Inspector's note while it is out).
+	Chess in its own window	Échecs dans leur propre fenêtre
+	Board	Échiquier
+	The chess panel is in its own window.	Le panneau Échecs est dans sa propre fenêtre.
+	Bring it back	Le ramener
+	Put the board and the chess panel back in the main window	Remettre l’échiquier et le panneau Échecs dans la fenêtre principale
 
 # Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
 	Moves	Coups

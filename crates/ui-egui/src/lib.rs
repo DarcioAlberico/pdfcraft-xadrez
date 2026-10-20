@@ -43,7 +43,7 @@ mod chess_text_ui;
 mod chess_tools;
 mod chess_ui;
 mod chess_window;
-pub use chess_window::SurfaceFailuresFn;
+pub use chess_window::{ChessWindowTab, SurfaceFailuresFn};
 mod chrome;
 mod combine_grid;
 mod image_pick;

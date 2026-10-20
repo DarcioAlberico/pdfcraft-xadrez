@@ -528,7 +528,7 @@ impl PdfCraftApp {
                     self.start_chess_scan(false);
                 }
                 self.select_chess_diagram(page, index, true);
-                self.chess.tab = ChessTab::Diagrams;
+                self.show_chess_tab(ChessTab::Diagrams);
             }
             TextAction::Export(format) => self.export_chess_dialog(format),
             // The page shown is read again under the new origin (the tab sees it is not current).

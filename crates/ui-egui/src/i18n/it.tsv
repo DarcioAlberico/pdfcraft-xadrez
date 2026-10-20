@@ -2868,12 +2868,15 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Demote a line	retrocessione della linea
 	Delete a variation	eliminazione della variante
 # Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
-	Chess board in its own window	Scacchiera in una finestra propria
-	Move the board to its own window	Sposta la scacchiera in una finestra propria
 	Dock	Aggancia
-	Put the board back in its panel	Rimetti la scacchiera nel suo pannello
 	The chess board couldn't open in its own window, so it is back in its panel.	Non è stato possibile aprire la scacchiera in una finestra propria, quindi è tornata nel suo pannello.
 	The chess board couldn't open in its own window, so it stays in its panel.	Non è stato possibile aprire la scacchiera in una finestra propria, quindi resta nel suo pannello.
+# Chess ▸ PGN toolbar: T13b, the whole chess panel in its own window (the rail's tool and the command, the window's tab strip and Dock button, the Inspector's note while it is out).
+	Chess in its own window	Scacchi in una finestra propria
+	Board	Scacchiera
+	The chess panel is in its own window.	Il pannello degli scacchi è in una finestra propria.
+	Bring it back	Riporta qui
+	Put the board and the chess panel back in the main window	Riporta la scacchiera e il pannello degli scacchi nella finestra principale
 
 # Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
 	Moves	Mosse

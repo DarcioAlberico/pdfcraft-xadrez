@@ -20,7 +20,7 @@ use pdfcraft_render::DocInfo;
 
 use crate::canvas::PageXform;
 use crate::theme::{self, Tokens};
-use crate::{PdfCraftApp, RightPanel, widgets};
+use crate::{PdfCraftApp, widgets};
 
 /// Pages scanned per job. Each job opens the file in its own renderer, so smaller batches show
 /// results sooner and larger ones parse the file fewer times.
@@ -198,6 +198,8 @@ pub enum PanelAction {
     Study(crate::chess_study_ui::StudyAction),
     /// What the list of games asked for.
     Games(crate::chess_collection::GamesAction),
+    /// Put the chess window's panel back in the main window (T13b).
+    DockWindow,
 }
 
 /// One diagram's state: its label and colour.
@@ -264,7 +266,10 @@ pub(crate) fn paint(
     hovered
 }
 
-/// The Chess diagrams panel: scan buttons, progress, and the diagrams found, page by page.
+/// The Chess diagrams panel: its tabs, and the tab chosen. While the panel is in its own window
+/// (`in_window`, T13b) the Diagrams and Text tabs are drawn there and only said to be here, so
+/// one frame never draws them twice; the Study board stays here.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn panel(
     ui: &mut egui::Ui,
     t: &Tokens,
@@ -273,9 +278,9 @@ pub(crate) fn panel(
     info: &DocInfo,
     current: Option<ScanStamp>,
     page_now: usize,
+    in_window: bool,
 ) -> Option<PanelAction> {
     use crate::chess_text_ui::ChessTab;
-    let mut action = None;
     // A click anywhere in the panel, whichever tab shows, puts Undo and Redo on the game (D12).
     if crate::chess_history::pressed_in(ui) {
         state.enter_scope();
@@ -298,11 +303,39 @@ pub(crate) fn panel(
     }
     // The engine rests while its tab is not shown.
     state.study.pause();
-    if state.tab == ChessTab::Text {
+    if in_window {
+        return in_window_note(ui, t);
+    }
+    tab_contents(ui, t, state, state.tab == ChessTab::Text, id, info, current, page_now)
+}
+
+/// Where the Diagrams and Text tabs were: they are in the chess window, which can be docked.
+fn in_window_note(ui: &mut egui::Ui, t: &Tokens) -> Option<PanelAction> {
+    ui.add_space(6.0);
+    ui.label(egui::RichText::new(tl!("The chess panel is in its own window.")).color(t.text_muted));
+    ui.add_space(4.0);
+    ui.button(tl!("Bring it back")).clicked().then_some(PanelAction::DockWindow)
+}
+
+/// The Text tab (`text`) or the Diagrams tab: in the Inspector's Chess panel, or in the chess
+/// window (T13b).
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn tab_contents(
+    ui: &mut egui::Ui,
+    t: &Tokens,
+    state: &mut ChessState,
+    text: bool,
+    id: DocId,
+    info: &DocInfo,
+    current: Option<ScanStamp>,
+    page_now: usize,
+) -> Option<PanelAction> {
+    if text {
         let busy = state.job.as_ref().filter(|j| j.doc == id).map(crate::chess_text_ui::ChessJob::label);
         let origin = state.origin.filter(|(d, _)| *d == id).map(|(_, o)| o).unwrap_or_default();
         return crate::chess_text_ui::text_tab(ui, t, state.text.as_mut(), id, page_now, current, origin, busy).map(PanelAction::Text);
     }
+    let mut action = None;
     let running = state.run.as_ref().filter(|r| r.doc == id).map(|r| {
         let s = lock(&r.progress);
         (s.done, s.total)
@@ -519,9 +552,7 @@ impl PdfCraftApp {
         #[cfg(target_arch = "wasm32")]
         work();
         self.chess.run = Some(ChessRun { doc: id, progress, found: 0, stale: false });
-        if self.right != Some(RightPanel::Chess) {
-            self.choose_right_panel(Some(RightPanel::Chess));
-        }
+        self.reveal_chess_diagrams();
         self.poll_chess();
     }
 
@@ -628,8 +659,8 @@ impl PdfCraftApp {
             view.go_to_page(page);
             view.flash = Some((page, rect, 0.0));
         }
-        if !go && self.right != Some(RightPanel::Chess) {
-            self.choose_right_panel(Some(RightPanel::Chess));
+        if !go {
+            self.reveal_chess_diagrams();
         }
     }
 
@@ -642,7 +673,7 @@ impl PdfCraftApp {
             PanelAction::OpenBoard(page, index) => {
                 self.select_chess_diagram(page, index, false);
                 if self.load_chess_board(page, index) {
-                    self.chess.tab = crate::chess_text_ui::ChessTab::Study;
+                    self.show_chess_tab(crate::chess_text_ui::ChessTab::Study);
                 }
             }
             PanelAction::ShowBoard => self.show_chess_board(),
@@ -663,6 +694,7 @@ impl PdfCraftApp {
             PanelAction::Study(crate::chess_study_ui::StudyAction::Board(a)) => self.chess_board_action(a),
             PanelAction::Study(crate::chess_study_ui::StudyAction::ChooseEngine) => self.choose_chess_engine(),
             PanelAction::Games(a) => self.chess_games_action(a),
+            PanelAction::DockWindow => self.set_chess_window_detached(false),
         }
     }
 
@@ -710,7 +742,7 @@ impl PdfCraftApp {
                     let (fen, flipped) = (ed.fen(), ed.flipped);
                     // A new game in the document's games: the game on the board stays as it is.
                     if self.open_chess_game(&fen, flipped, Some(source)) {
-                        self.chess.tab = crate::chess_text_ui::ChessTab::Study;
+                        self.show_chess_tab(crate::chess_text_ui::ChessTab::Study);
                     }
                 }
             }

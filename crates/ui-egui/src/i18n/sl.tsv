@@ -2661,12 +2661,15 @@ animation effects	Off	Izklopljeni
 	Demote a line	znižanje linije
 	Delete a variation	brisanje variante
 # Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
-	Chess board in its own window	Šahovnica v lastnem oknu
-	Move the board to its own window	Premakni šahovnico v lastno okno
 	Dock	Zasidraj
-	Put the board back in its panel	Vrni šahovnico na njeno ploščo
 	The chess board couldn't open in its own window, so it is back in its panel.	Šahovnice ni bilo mogoče odpreti v lastnem oknu, zato je spet na svoji plošči.
 	The chess board couldn't open in its own window, so it stays in its panel.	Šahovnice ni bilo mogoče odpreti v lastnem oknu, zato ostaja na svoji plošči.
+# Chess ▸ PGN toolbar: T13b, the whole chess panel in its own window (the rail's tool and the command, the window's tab strip and Dock button, the Inspector's note while it is out).
+	Chess in its own window	Šah v lastnem oknu
+	Board	Šahovnica
+	The chess panel is in its own window.	Šahovska plošča je v lastnem oknu.
+	Bring it back	Vrni nazaj
+	Put the board and the chess panel back in the main window	Vrni šahovnico in šahovsko ploščo v glavno okno
 
 # Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
 	Moves	Poteze

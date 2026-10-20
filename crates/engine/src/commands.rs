@@ -346,8 +346,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     c("chess.pgn.open", "Open PGN…", None, None, Nothing, "folder-open"),
     c("chess.pgn.save", "Save PGN…", None, None, Nothing, "save"),
     c("chess.pgn.save_all", "Save all games as PGN…", None, None, Nothing, "save"),
-    // The chess board in its own window, or back in the dock (T13a): a toggle.
-    c("chess.window.detach", "Chess board in its own window", None, None, Nothing, "app-window"),
+    // The chess board and the chess panel's tabs in their own window, or back (T13a, T13b): a toggle.
+    c("chess.window.detach", "Chess in its own window", None, None, Nothing, "app-window"),
     // The chess board's PGN tool rail (T5b). No shortcut here: their keys are the chess panel's
     // own, taken only while its key scope is on (ui-egui `chess_tools`), and the palette shows them.
     c("chess.tool.navigate", "Chess board: Navigate", None, None, Nothing, "mouse-pointer-2"),

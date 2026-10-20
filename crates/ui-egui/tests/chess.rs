@@ -1546,7 +1546,12 @@ fn the_structure_group_opens_and_switches_from_the_keyboard() {
 /// The harness of [`harness`], with `settings` (as `persist` writes them) restored first, as
 /// the desktop app does at start.
 fn harness_restoring(settings: String) -> Harness<'static, PdfCraftApp> {
-    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).with_step_dt(0.25).build_eframe(move |_cc| {
+    harness_restoring_stepping(settings, 0.25)
+}
+
+/// [`harness_restoring`], with frames `step_dt` seconds apart.
+fn harness_restoring_stepping(settings: String, step_dt: f32) -> Harness<'static, PdfCraftApp> {
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).with_step_dt(step_dt).build_eframe(move |_cc| {
         let mut app = PdfCraftApp::new();
         app.restore(&settings);
         app.set_option("language", "en").unwrap();
@@ -1576,8 +1581,7 @@ fn the_board_moves_to_its_own_window_and_docks_back_where_it_was() {
     h.run_steps(3);
     let place = h.state().docking.layout.location(&board).expect("the board is docked");
     assert!(!h.state_mut().execute("chess.window.detach"), "off where windows are drawn inside the main one");
-    assert!(h.query_by_label("Chess board in its own window").is_none(), "nor on the rail");
-    assert!(h.query_by_label("Move the board to its own window").is_none());
+    assert!(h.query_by_label("Chess in its own window").is_none(), "nor on the rail, nor in the Board tab's menu");
     assert!(!h.state().chess_window_detached());
 
     h.state_mut().set_chess_window_detached(true);
@@ -1660,7 +1664,7 @@ fn the_window_and_its_size_come_back_and_bad_values_are_ignored() {
     // Bad values: each ignored, the rest used.
     let h = harness_restoring(window_settings(serde_json::json!({"detached": true, "size": [-1.0, 1e40], "position": "here"})));
     assert!(h.state().chess_window_detached());
-    assert_eq!(h.state().chess_window_size(), [560.0, 760.0], "the default size");
+    assert_eq!(h.state().chess_window_size(), [960.0, 760.0], "the default size");
     for bad in [serde_json::json!("yes"), serde_json::json!({"detached": 3}), serde_json::json!([true]), serde_json::Value::Null] {
         let h = harness_restoring(window_settings(bad.clone()));
         assert!(!h.state().chess_window_detached(), "{bad}");
@@ -1668,24 +1672,171 @@ fn the_window_and_its_size_come_back_and_bad_values_are_ignored() {
     }
 }
 
-/// T13a: the window lifts the docked panel's 480 pt board: a window 760 pt wide or more has the
-/// board, larger, beside the moves and fields (§4.1); a narrow one stacks them.
+/// T13a, T13b: the window lifts the docked panel's 480 pt board. A window 760 pt wide or more
+/// has the Diagrams and Text tabs beside the board panel, and in a very wide one the board panel
+/// has the moves and fields beside the board too (§4.1); a narrow one shows one at a time.
 #[test]
-fn a_wide_window_has_a_larger_board_beside_the_moves() {
+fn a_wide_window_has_a_larger_board_beside_the_diagrams() {
     let h = harness_restoring(window_settings(serde_json::json!({"detached": true, "size": [1000.0, 820.0]})));
     assert!(h.state().chess_window_wide());
     let board = h.get_by_label_contains("Board: ").rect();
-    assert!(board.width() > 520.0, "{board:?}");
+    assert!(board.width() > 480.0, "{board:?}");
+    let scan = h.get_by_label("Scan this page").rect();
+    assert!(scan.min.x > board.max.x && scan.min.y < board.max.y, "the Diagrams tab beside the board: {scan:?} {board:?}");
+    let moves = h.get_by_label("Moves").rect();
+    assert!(moves.min.y > board.max.y && moves.max.x < scan.min.x, "the moves under the board: {moves:?} {board:?}");
+    // Very wide: the board column has the notation beside the board (T5b), filling the column
+    // from its top, and the Diagrams tab beyond it.
+    let h = harness_restoring(window_settings(serde_json::json!({"detached": true, "size": [1390.0, 900.0]})));
+    let board = h.get_by_label_contains("Board: ").rect();
     let fen = h.get_by_label("FEN").rect();
     assert!(fen.min.x > board.max.x, "the fields beside the board: {fen:?} {board:?}");
-    // T5b: the notation fills the right-hand column, beside the board, from its top.
     let moves = h.get_by_label("Moves").rect();
     assert!(moves.min.x > board.max.x && moves.min.y < board.center().y, "the moves beside the board: {moves:?} {board:?}");
     assert!(moves.height() > 300.0, "the notation fills the column: {moves:?}");
+    let scan = h.get_by_label("Scan this page").rect();
+    assert!(scan.min.x > moves.max.x, "and the Diagrams tab beside them: {scan:?} {moves:?}");
     let h = harness_restoring(window_settings(serde_json::json!({"detached": true, "size": [560.0, 820.0]})));
     assert!(!h.state().chess_window_wide());
     let board = h.get_by_label_contains("Board: ").rect();
     assert!(board.width() <= 520.0, "{board:?}");
+    assert!(h.query_by_label("Scan this page").is_none(), "one tab at a time");
+}
+
+/// The node labelled `label` in the chess window (the Inspector's Chess panel has some of the
+/// same labels).
+fn in_window<'a>(h: &'a Harness<'static, PdfCraftApp>, label: &'a str) -> egui_kittest::Node<'a> {
+    let window = h.get_all_by_label("Chess").find(|n| n.query_by_label("Dock").is_some()).expect("the chess window");
+    window.get_by_label(label)
+}
+
+/// T13b: the whole chess panel in its own window. Out, the Diagrams list is drawn once, in the
+/// window beside the board; the Inspector's Chess panel only says where it is, and its button
+/// docks the window, after which the list is back in the Inspector.
+#[test]
+fn the_chess_panel_moves_to_the_window_and_the_inspector_says_so() {
+    let mut h = harness();
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    assert_eq!(h.state().right, Some(RightPanel::Chess));
+    assert_eq!(h.get_all_by_label("Diagram 1 · Position read").count(), 1, "in the Inspector");
+    h.state_mut().set_chess_window_detached(true);
+    h.run_steps(3);
+    assert!(h.state().chess_window_wide(), "the window opens wide");
+    let board = h.get_by_label_contains("Board: ").rect();
+    let item = h.get_by_label("Diagram 1 · Position read").rect();
+    assert!(item.min.x > board.max.x, "the list beside the board, once: {item:?} {board:?}");
+    h.get_by_label(START_FEN);
+    h.get_by_label("The chess panel is in its own window.");
+    assert_eq!(h.get_all_by_label("Scan this page").count(), 1, "the Diagrams tab is drawn once");
+    // The Text tab beside the board, chosen in the window.
+    in_window(&h, "Text").click();
+    h.run_steps(4);
+    assert_eq!(h.state().chess_window_tab(), pdfcraft_ui_egui::ChessWindowTab::Text);
+    h.get_by_label("Recognised text of page 1");
+    h.get_by_label_contains("Board: ");
+    assert!(h.query_by_label("Scan this page").is_none());
+    // The Inspector brings it back. (Its button is under the window here, which kittest draws
+    // inside the main one: pressed the way a screen reader would.)
+    h.get_by_label("Bring it back").click_accesskit();
+    h.run_steps(3);
+    assert!(!h.state().chess_window_detached());
+    assert!(h.query_by_label("Dock").is_none(), "the window is gone");
+    // The board is back in its tab beside the Inspector, in front; the Inspector's tab has the
+    // list again.
+    assert!(h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Board));
+    assert_eq!(h.get_all_by_label_contains("Board: ").count(), 1);
+    h.get_by_label("Inspector").click();
+    h.run_steps(3);
+    assert!(h.query_by_label("The chess panel is in its own window.").is_none());
+    assert_eq!(h.get_all_by_label("Diagram 1 · Position read").count(), 1, "back in the Inspector");
+}
+
+/// T13b: a narrow chess window shows the board, the Diagrams or the Text, chosen on a strip. A
+/// scan while it is out shows its Diagrams instead of opening the Inspector; a diagram clicked on
+/// the page is selected in the window's list, which shows; a double-click puts it on the board,
+/// which the window then shows.
+#[test]
+fn a_narrow_window_switches_tabs_and_follows_the_diagrams_picked_on_the_page() {
+    use pdfcraft_ui_egui::ChessWindowTab;
+    // Short frames, so two clicks a frame apart are within the 0.3 s double-click delay.
+    let mut h = harness_restoring_stepping(window_settings(serde_json::json!({"detached": true, "size": [560.0, 900.0]})), 0.05);
+    assert!(!h.state().chess_window_wide());
+    assert_eq!(h.state().chess_window_tab(), ChessWindowTab::Board);
+    h.get_by_label_contains("Board: ");
+    assert!(h.query_by_label("Scan this page").is_none(), "one tab at a time");
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    assert_ne!(h.state().right, Some(RightPanel::Chess), "the diagrams are in the window, not the Inspector");
+    assert_eq!(h.state().chess_window_tab(), ChessWindowTab::Diagrams);
+    h.get_by_label("Diagram 1 · Position read");
+    assert!(h.query_by_label_contains("Board: ").is_none());
+    h.get_by_label("Text").click();
+    h.run_steps(4);
+    assert_eq!(h.state().chess_window_tab(), ChessWindowTab::Text);
+    h.get_by_label("Recognised text of page 1");
+    assert!(h.query_by_label("Diagram 1 · Position read").is_none());
+    h.get_by_label("Board").click();
+    h.run_steps(2);
+    assert_eq!(h.state().chess_window_tab(), ChessWindowTab::Board);
+    h.get_by_label_contains("Board: ");
+
+    // A diagram clicked on the page: selected, and shown selected in the window's list.
+    let at = on_page(&h, 140.0, 660.0);
+    let dock = h.get_by_label("Dock").rect().center();
+    let window = h.get_all_by_label("Chess").map(|n| n.rect()).find(|r| r.contains(dock)).expect("the chess window");
+    assert!(!window.contains(at), "the page's diagram is not under the window: {window:?} {at:?}");
+    h.hover_at(at);
+    h.run_steps(1);
+    for pressed in [true, false] {
+        h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed, modifiers: egui::Modifiers::NONE });
+    }
+    h.step();
+    h.run_steps(8);
+    assert_eq!(h.state().chess.results.as_ref().and_then(|r| r.selected), Some((0, 0)));
+    assert_eq!(h.state().chess_window_tab(), ChessWindowTab::Diagrams, "the list shows");
+    assert_eq!(h.get_by_label("Diagram 1 · Position read").accesskit_node().toggled(), Some(egui::accesskit::Toggled::True), "selected in the list");
+    assert_ne!(h.state().right, Some(RightPanel::Chess));
+    // A double-click puts it on the board, and the window shows the board.
+    h.hover_at(at);
+    h.run_steps(1);
+    for _ in 0..2 {
+        for pressed in [true, false] {
+            h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed, modifiers: egui::Modifiers::NONE });
+        }
+        h.step();
+    }
+    h.run_steps(3);
+    assert_eq!(h.state().chess.board().source.map(|s| (s.page, s.index)), Some((0, 0)));
+    assert_eq!(h.state().chess_window_tab(), ChessWindowTab::Board);
+    h.get_by_label("Diagram 1 · Page 1");
+    assert!(h.state().chess_window_detached(), "the board stays in the window");
+}
+
+/// T13b: the window's tab comes back in the next session; settings saved before it had one
+/// (T13a) and a bad value open on the board.
+#[test]
+fn the_windows_tab_comes_back_and_old_or_bad_values_open_on_the_board() {
+    use pdfcraft_ui_egui::ChessWindowTab;
+    let mut h = harness_restoring(window_settings(serde_json::json!({"detached": true, "size": [560.0, 900.0]})));
+    h.get_by_label("Text").click();
+    h.run_steps(3);
+    let saved: serde_json::Value = serde_json::from_str(&h.state().persist()).unwrap();
+    assert_eq!(saved["docking_detached"]["tab"], "text", "{saved}");
+    let h = harness_restoring(saved.to_string());
+    assert_eq!(h.state().chess_window_tab(), ChessWindowTab::Text);
+    h.get_by_label("Recognised text of page 1");
+    assert!(h.query_by_label_contains("Board: ").is_none());
+    for tab in [serde_json::json!("diagrams"), serde_json::json!("moves"), serde_json::json!(2), serde_json::Value::Null] {
+        let mut window = serde_json::json!({"detached": true, "size": [560.0, 900.0]});
+        if !tab.is_null() {
+            window["tab"] = tab.clone();
+        }
+        let h = harness_restoring(window_settings(window));
+        assert!(h.state().chess_window_detached(), "{tab}");
+        let want = if tab == "diagrams" { ChessWindowTab::Diagrams } else { ChessWindowTab::Board };
+        assert_eq!(h.state().chess_window_tab(), want, "{tab}");
+    }
 }
 
 // ---- T5b: the board panel's layout and the rail's commands ----

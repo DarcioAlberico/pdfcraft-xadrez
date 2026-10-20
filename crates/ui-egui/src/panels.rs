@@ -530,6 +530,8 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
         let a11y = &mut app.a11y;
         let tags_state = &mut app.tags_state;
         let compare = &app.compare;
+        // The Diagrams and Text tabs are in the chess window while it is out (T13b).
+        let chess_in_window = app.chess_window.in_window();
         let chess = &mut app.chess;
         let chess_now = app.session.chess_stamp(id);
         let comment_allowed = doc.allows_annotation();
@@ -724,7 +726,7 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                     }
                     RightPanel::Search => crate::search_ui::panel(ui, &t, view, info.pages.len()),
                     RightPanel::Compare => compare_action = crate::compare_ui::panel(ui, &t, compare, id),
-                    RightPanel::Chess => chess_action = crate::chess_ui::panel(ui, &t, chess, id, info, chess_now, view.current),
+                    RightPanel::Chess => chess_action = crate::chess_ui::panel(ui, &t, chess, id, info, chess_now, view.current, chess_in_window),
                     RightPanel::Attachments => {
                         if info.attachments.is_empty() {
                             empty(ui, &t, "paperclip", "This document has no attachments.");
