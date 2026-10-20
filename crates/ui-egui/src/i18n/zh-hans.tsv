@@ -2480,6 +2480,8 @@ animation effects	Off	关
 	Replace on the page	在页面上替换
 	The board couldn't be drawn: {e}	无法绘制棋盘：{e}
 	To move:	轮到：
+	Move number:	回合数:
+	The move the diagram stands at: 35 with Black to move is 35…	图所处的回合：黑方走的第 35 回合写作 35…
 	Use the second reading	使用第二识别结果
 	{n} to review	待复核 {n} 个
 	◀ Previous to review	◀ 上一个待复核

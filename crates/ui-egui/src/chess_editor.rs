@@ -3,7 +3,8 @@
 //!
 //! The board is drawn by the engine with the drawing the PDF replacement and the exports use
 //! (`chess::draw`, the user's diagram font when one is installed) and shown as an image. A piece
-//! from the palette goes where the board is clicked (the eraser empties the square); side to
+//! from the palette goes where the board is clicked (the eraser empties the square); the move
+//! number (read from the bold move number under the diagram when one is printed there), side to
 //! move, castling and the view from Black's side complete the position, and the panel says at
 //! once whether it is legal. Squares the model was unsure of are listed with its second reading,
 //! one click away. From here the corrected position replaces the diagram on the page (one undo
@@ -29,6 +30,9 @@ use crate::theme::Tokens;
 /// The board's side on screen, in points, and the image drawn for it, in pixels.
 const BOARD_PT: f32 = 248.0;
 const BOARD_PX: u32 = 496;
+
+/// Highest move number the editor takes.
+const MAX_MOVE_NUMBER: u32 = 999;
 
 /// What a click on the board puts there.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -244,12 +248,15 @@ pub fn editor_ui(ui: &mut egui::Ui, t: &Tokens, ed: &mut DiagramEditor, pieces: 
             }
         });
     }
-    // Side to move, castling, view.
+    // Move number, side to move, castling, view.
     ui.horizontal_wrapped(|ui| {
+        ui.label(tl!("Move number:"));
+        ui.add(egui::DragValue::new(&mut ed.position.fullmove_number).range(1..=MAX_MOVE_NUMBER).speed(0.2))
+            .on_hover_text(tl!("The move the diagram stands at: 35 with Black to move is 35…"));
         let mut side = ed.position.side_to_move.unwrap_or(Color::White);
         ui.label(tl!("To move:"));
         crate::widgets::radio_value(ui, &mut side, Color::White, tl!("White"));
-        crate::widgets::radio_value(ui, &mut side, Color::Black, tl!("Black"));
+        crate::widgets::radio_value(ui, &mut side, Color::Black, tl_ctx!("chess side", "Black"));
         ed.position.side_to_move = Some(side);
     });
     ui.horizontal_wrapped(|ui| {

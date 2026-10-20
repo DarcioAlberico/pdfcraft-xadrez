@@ -248,6 +248,23 @@ fn the_editor_edits_the_selected_diagrams_position() {
     h.get_by_label("Not a legal position");
 }
 
+/// The move number is a field of its own: 35 with Black to move is `b … 35` in the FEN.
+#[test]
+fn the_editor_sets_the_move_number() {
+    let mut h = harness();
+    scan_and_edit_second(&mut h);
+    h.get_by_label("Move number:");
+    h.get_by_role(egui::accesskit::Role::SpinButton).click();
+    h.run_steps(2);
+    h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::A);
+    h.get_by_role(egui::accesskit::Role::SpinButton).type_text("35");
+    h.key_press(egui::Key::Enter);
+    h.run_steps(2);
+    h.get_by_label("Black").click();
+    h.run_steps(2);
+    assert_eq!(h.state().chess.editor.as_ref().map(|e| e.fen()).as_deref(), Some("4k3/8/8/8/8/8/8/R3K3 b Q - 0 35"));
+}
+
 /// Replace on the page draws the corrected position over the diagram as one undo step and scans
 /// the page again; undo brings the old page back.
 #[test]

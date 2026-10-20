@@ -2770,6 +2770,9 @@ key	Space	Space
 	Replace on the page	Thay trên trang
 	The board couldn't be drawn: {e}	Không vẽ được bàn cờ: {e}
 	To move:	Lượt đi:
+	Move number:	Số nước đi:
+	The move the diagram stands at: 35 with Black to move is 35…	Nước đi mà sơ đồ đang ở: 35 với Đen đi là 35…
+chess side	Black	Đen
 	Use the second reading	Dùng kết quả đọc thứ hai
 	{n} to review	Cần xem lại: {n}
 	◀ Previous to review	◀ Cần xem lại trước đó

@@ -2531,7 +2531,10 @@ animation effects	Off	Desativados
 	Put a link to this position on lichess under the diagram.	Pôr um link para esta posição no lichess abaixo do diagrama.
 	Replace on the page	Substituir na página
 	The board couldn't be drawn: {e}	Não foi possível desenhar o tabuleiro: {e}
-	To move:	Lance:
+	To move:	Vez:
+	Move number:	Lance nº:
+	The move the diagram stands at: 35 with Black to move is 35…	O lance em que o diagrama está: 35 com as pretas a jogar é 35…
+chess side	Black	Pretas
 	Use the second reading	Usar a segunda leitura
 	{n} to review	{n} a revisar
 	◀ Previous to review	◀ Anterior a revisar
