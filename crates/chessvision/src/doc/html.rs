@@ -18,7 +18,7 @@
 //!
 //! Only `http` and `https` addresses become links. Every size is bounded by the document's own.
 
-use crate::text_font::{self, TextFont};
+use crate::text_font::{self, FontRole, TextFont};
 use std::fmt::Write as _;
 
 use pdfcraft_chess::draw::{BoardStyle, PieceSet, board};
@@ -61,8 +61,11 @@ pub struct HtmlOptions<'a> {
     /// The text of that link.
     pub link_text: &'a str,
     /// The user's figurine font ([`crate::text_font`]): HTML embeds it, an EPUB carries it as
-    /// [`epub_font_href`]. Used only for the chess symbols.
+    /// [`epub_font_href`]. A Unicode one is used for the chess symbols, one that draws pieces on
+    /// letters (SemFig) for the piece letters of the moves (with [`Figurines::Unicode`]).
     pub text_font: Option<&'a TextFont>,
+    /// The user's sign font (ISChess): the annotation glyphs it draws are written in it.
+    pub sign_font: Option<&'a TextFont>,
 }
 
 /// Escape for text and for attribute values in double quotes.
@@ -86,6 +89,29 @@ fn esc(s: &str) -> String {
 fn safe_url(url: &str) -> bool {
     let lower = url.trim_start().to_ascii_lowercase();
     (lower.starts_with("http://") || lower.starts_with("https://")) && !url.chars().any(|c| c.is_control() || c.is_whitespace())
+}
+
+/// A move's text, and its markup inside the move's span. With a figurine font that draws pieces
+/// on letters, the move is written with English letters and each piece letter (K Q R B N, never
+/// a file or castling's O) is a `fig` span in that font.
+fn move_markup(m: &MoveInline, o: &HtmlOptions<'_>) -> (String, String) {
+    let letters = o.figurines == Figurines::Unicode && o.text_font.is_some_and(|f| f.role == FontRole::Letters);
+    if letters && let Ok(san) = San::read(&m.san, Lang::En) {
+        let number = m.number.map(|n| n.text()).unwrap_or_default();
+        let body = san.write(Lang::En, Style::Letters);
+        let mut html = esc(&number);
+        for c in body.chars() {
+            if matches!(c, 'K' | 'Q' | 'R' | 'B' | 'N') {
+                let _ = write!(html, "<span class=\"fig\">{c}</span>");
+            } else {
+                html.push_str(&esc(&c.to_string()));
+            }
+        }
+        return (format!("{number}{body}"), html);
+    }
+    let shown = move_text(m, o.figurines);
+    let html = esc(&shown);
+    (shown, html)
 }
 
 /// The move as it is printed in the file.
@@ -119,7 +145,7 @@ fn inline_html(inline: &Inline, o: &HtmlOptions<'_>) -> (String, String) {
             (html, text.clone())
         }
         Inline::Move(m) => {
-            let shown = move_text(m, o.figurines);
+            let (shown, body) = move_markup(m, o);
             let mut attrs = format!(" data-san=\"{}\"", esc(&m.san));
             if let Some(fen) = &m.fen {
                 let _ = write!(attrs, " data-fen=\"{}\"", esc(fen));
@@ -127,12 +153,18 @@ fn inline_html(inline: &Inline, o: &HtmlOptions<'_>) -> (String, String) {
             if m.status != MoveStatus::Valid {
                 let _ = write!(attrs, " data-status=\"{}\"", status_word(m.status));
             }
-            (format!("<span class=\"move{review}\"{attrs}>{}</span>", esc(&shown)), shown)
+            (format!("<span class=\"move{review}\"{attrs}>{body}</span>"), shown)
         }
         Inline::Nag { code, .. } => {
             let (glyph, name) =
                 pdfcraft_chess::nag::by_code(*code).map_or_else(|| (format!("${code}"), String::new()), |n| (n.glyph.to_owned(), n.name.to_owned()));
             let title = if name.is_empty() { String::new() } else { format!(" title=\"{}\"", esc(&name)) };
+            // With the sign font, the glyph is its letter (the title still names it).
+            if o.sign_font.is_some()
+                && let Some(letter) = text_font::ischess_letter(*code)
+            {
+                return (format!("<span class=\"nag sign{review}\" data-nag=\"{code}\"{title}>{letter}</span>"), glyph);
+            }
             (format!("<span class=\"nag{review}\" data-nag=\"{code}\"{title}>{}</span>", esc(&glyph)), glyph)
         }
         Inline::Link { url, text, .. } => {
@@ -205,21 +237,32 @@ const STYLE: &str = "body{max-width:46em;margin:2em auto;padding:0 1em;font-fami
 figure.diagram{margin:1.2em auto;text-align:center}figure.diagram svg{max-width:100%;height:auto;width:20em}\
 figcaption{font-family:sans-serif;font-size:.85em}section.page+section.page{border-top:1px solid #ccc;margin-top:2em}";
 
-/// Where an EPUB carries the figurine font, relative to its pages.
+/// Where an EPUB carries a font, relative to its pages: `fonts/figurines.*` or `fonts/signs.*`.
 pub fn epub_font_href(font: &TextFont) -> String {
-    format!("fonts/figurines.{}", font.format.extension())
+    let name = if font.role == FontRole::Signs { "signs" } else { "figurines" };
+    format!("fonts/{name}.{}", font.format.extension())
 }
 
-/// The style, with the figurine font loaded from `src` first in each font family when there is
-/// one. Its `unicode-range` keeps it to the chess symbols, so the prose keeps the body font.
-fn style(font: Option<(&TextFont, &str)>) -> String {
-    match font {
-        None => STYLE.to_owned(),
-        Some((f, src)) => {
-            let family = format!("font-family:\"{}\",", text_font::FAMILY);
-            format!("{}{}", text_font::font_face(f, src), STYLE.replace("font-family:", &family))
+/// The style, with the user's fonts loaded from their `src`. A Unicode figurine font goes first
+/// in each font family (its `unicode-range` keeps it to the chess symbols, so the prose keeps the
+/// body font); a figurine font by letters and the sign font are used only by the `fig` and `sign`
+/// spans.
+fn style(figurines: Option<(&TextFont, &str)>, signs: Option<(&TextFont, &str)>) -> String {
+    let mut faces = String::new();
+    let mut css = STYLE.to_owned();
+    if let Some((f, src)) = figurines {
+        faces.push_str(&text_font::font_face(f, src));
+        if f.role == FontRole::Unicode {
+            css = css.replace("font-family:", &format!("font-family:\"{}\",", text_font::FAMILY));
+        } else {
+            let _ = write!(css, ".fig{{font-family:\"{}\"}}", text_font::FAMILY);
         }
     }
+    if let Some((f, src)) = signs {
+        faces.push_str(&text_font::font_face(f, src));
+        let _ = write!(css, ".sign{{font-family:\"{}\"}}", text_font::SIGN_FAMILY);
+    }
+    format!("{faces}{css}")
 }
 
 /// The anchor of heading `k` (0-based, in order) of page `index`.
@@ -251,12 +294,12 @@ fn page_section(page: &ChessPage, o: &HtmlOptions<'_>) -> String {
 
 /// The document as one HTML file.
 pub fn write(doc: &ChessDoc, o: &HtmlOptions<'_>) -> String {
-    // The file stays self-contained: the font goes in as a data URL.
-    let src = o.text_font.map(text_font::data_url);
+    // The file stays self-contained: the fonts go in as data URLs.
+    let (fig_src, sign_src) = (o.text_font.map(text_font::data_url), o.sign_font.map(text_font::data_url));
     let mut s = format!(
         "<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n<title>{}</title>\n<style>{}</style>\n</head>\n<body>\n",
         esc(o.title),
-        style(o.text_font.zip(src.as_deref())),
+        style(o.text_font.zip(fig_src.as_deref()), o.sign_font.zip(sign_src.as_deref())),
     );
     for page in &doc.pages {
         s.push_str(&page_section(page, o));
@@ -272,7 +315,10 @@ pub fn xhtml_page(page: &ChessPage, o: &HtmlOptions<'_>, lang: &str) -> String {
         "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE html>\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:epub=\"http://www.idpf.org/2007/ops\" lang=\"{l}\" xml:lang=\"{l}\">\n<head>\n<meta charset=\"utf-8\"/>\n<title>{t}</title>\n<style>{css}</style>\n</head>\n<body>\n{body}</body>\n</html>\n",
         l = esc(lang),
         t = esc(o.title),
-        css = style(o.text_font.map(|f| (f, epub_font_href(f))).as_ref().map(|(f, h)| (*f, h.as_str()))),
+        css = {
+            let (fig, sign) = (o.text_font.map(epub_font_href), o.sign_font.map(epub_font_href));
+            style(o.text_font.zip(fig.as_deref()), o.sign_font.zip(sign.as_deref()))
+        },
         body = page_section(page, o),
     )
 }

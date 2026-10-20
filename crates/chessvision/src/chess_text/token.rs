@@ -45,6 +45,12 @@ fn rect_of(cells: &[Cell]) -> Option<[f32; 4]> {
     union(cells.iter().map(|c| c.rect))
 }
 
+/// Whether most of the cells are set in a bold font.
+fn bold_of(cells: &[Cell]) -> bool {
+    let bold = cells.iter().filter(|c| c.bold).count();
+    bold.saturating_mul(2) > cells.len()
+}
+
 fn view(rect: [f32; 4]) -> ViewRect {
     ViewRect::new(rect[0], rect[1], rect[2], rect[3])
 }
@@ -88,8 +94,9 @@ pub(crate) fn normalize_symbols(word: &[Cell]) -> Vec<Cell> {
         } else {
             let rest_out = out.get(j + 1..).unwrap_or(&[]);
             let Some(k) = (1..=MAX_ALIAS_CHARS).find(|k| src.get(i + k..).is_some_and(|rest| normalized(rest) == rest_out)) else { break };
-            let rect = word.get(i..i + k).and_then(rect_of).unwrap_or([0.0; 4]);
-            cells.push(Cell::new(*o, rect));
+            let alias = word.get(i..i + k).unwrap_or(&[]);
+            let rect = rect_of(alias).unwrap_or([0.0; 4]);
+            cells.push(Cell { bold: bold_of(alias), ..Cell::new(*o, rect) });
             i += k;
         }
         j += 1;
@@ -99,8 +106,8 @@ pub(crate) fn normalize_symbols(word: &[Cell]) -> Vec<Cell> {
     }
     // Not aligned (cannot happen with the normalizer as written): every character gets the
     // word's box.
-    let rect = rect_of(word).unwrap_or([0.0; 4]);
-    out.into_iter().map(|c| Cell::new(c, rect)).collect()
+    let (rect, bold) = (rect_of(word).unwrap_or([0.0; 4]), bold_of(word));
+    out.into_iter().map(|c| Cell { bold, ..Cell::new(c, rect) }).collect()
 }
 
 /// One annotation symbol after a move, or a check mark.
@@ -350,10 +357,12 @@ pub(crate) struct Token {
     /// A number with no full stop (`19 Rxd5`, `15 … Rxb6`, as some books print them): a move
     /// number only when the next word is a move or an ellipsis.
     bare: bool,
+    /// Set in a bold font, most of it.
+    bold: bool,
 }
 
 fn token(kind: Kind, cells: &[Cell]) -> Token {
-    Token { kind, text: cells.iter().map(|c| c.ch).collect(), rect: rect_of(cells), weak: false, bare: false }
+    Token { kind, text: cells.iter().map(|c| c.ch).collect(), rect: rect_of(cells), weak: false, bare: false, bold: bold_of(cells) }
 }
 
 /// A word that is only a move number's digits (`19`).
@@ -496,7 +505,7 @@ pub(crate) fn assemble(words: Vec<Vec<Token>>, side: &mut Side) -> Option<ChessL
                     ChessRun::MoveNumber { number, black }
                 }
                 Kind::Ellipsis => match spans.last_mut() {
-                    Some(ChessSpan { run: ChessRun::MoveNumber { black, .. }, rect: r }) => {
+                    Some(ChessSpan { run: ChessRun::MoveNumber { black, .. }, rect: r, .. }) => {
                         *black = true;
                         side.white_next = false;
                         *r = view(union([[r.x0, r.y0, r.x1, r.y1], rect]).unwrap_or(rect));
@@ -518,7 +527,7 @@ pub(crate) fn assemble(words: Vec<Vec<Token>>, side: &mut Side) -> Option<ChessL
             };
             // Prose runs join, keeping single spaces at word gaps.
             if let ChessRun::Text(s) = &run
-                && let Some(ChessSpan { run: ChessRun::Text(prev), rect: r }) = spans.last_mut()
+                && let Some(ChessSpan { run: ChessRun::Text(prev), rect: r, .. }) = spans.last_mut()
             {
                 if gap {
                     prev.push(' ');
@@ -527,7 +536,7 @@ pub(crate) fn assemble(words: Vec<Vec<Token>>, side: &mut Side) -> Option<ChessL
                 *r = view(union([[r.x0, r.y0, r.x1, r.y1], rect]).unwrap_or(rect));
                 continue;
             }
-            spans.push(ChessSpan { run, rect: view(rect) });
+            spans.push(ChessSpan { run, rect: view(rect), bold: t.bold });
         }
     }
     let rect = view(union(boxes)?);

@@ -18,6 +18,12 @@ use crate::fen::Position;
 use crate::placement::{Color, Piece, PieceKind, Placement, Square};
 use crate::san::{San, color_from_cozy, kind_from_cozy, square_from_cozy, square_to_cozy, to_cozy_kind};
 
+mod graft;
+mod structure;
+
+pub use graft::{GraftMode, GraftReport, GraftStop, GraftStopReason, MAX_LEFTOVER_LEN};
+pub use structure::{NodePath, NodeSource, StructureError};
+
 /// Most moves a game holds, variations included. Real annotated games are under 3,000.
 pub const MAX_NODES: usize = 10_000;
 
@@ -105,10 +111,14 @@ pub enum Token {
         nags: Vec<u16>,
         depth: usize,
     },
-    /// A comment after a move (or, on node 0, before the first one).
+    /// A comment after move `node` (on node 0: before the first move), or, with `before`, the
+    /// comment before move `node`. A comment before a first reply comes where PGN has room for
+    /// it, right after the comment on the move before (so before that move's variations); one
+    /// before a variation's first move comes right after its `(`.
     Comment {
         node: NodeId,
         text: String,
+        before: bool,
     },
     VariationStart,
     VariationEnd,
@@ -126,6 +136,11 @@ struct Node {
     children: Vec<NodeId>,
     nags: Vec<u16>,
     comment: String,
+    /// The comment before the move (none on the start, whose own comment already comes before
+    /// the first move).
+    comment_before: String,
+    /// Where on a page the move was read, when it was.
+    source: Option<NodeSource>,
     /// Moves from the start.
     ply: usize,
     /// How deep in variations (0: the main line).
@@ -134,7 +149,19 @@ struct Node {
 
 impl Node {
     fn start(board: Board) -> Node {
-        Node { mv: None, san: String::new(), board, parent: 0, children: Vec::new(), nags: Vec::new(), comment: String::new(), ply: 0, depth: 0 }
+        Node {
+            mv: None,
+            san: String::new(),
+            board,
+            parent: 0,
+            children: Vec::new(),
+            nags: Vec::new(),
+            comment: String::new(),
+            comment_before: String::new(),
+            source: None,
+            ply: 0,
+            depth: 0,
+        }
     }
 }
 
@@ -208,19 +235,7 @@ impl Game {
 
     /// The line shown: the moves from the start to the move shown, then on along each first reply.
     fn line(&self) -> Vec<NodeId> {
-        let mut back = vec![self.current];
-        let mut at = self.current;
-        while at != 0 {
-            at = self.node(at).parent;
-            back.push(at);
-        }
-        back.reverse();
-        let mut at = self.current;
-        while let Some(&next) = self.node(at).children.first() {
-            back.push(next);
-            at = next;
-        }
-        back
+        self.line_of(self.current)
     }
 
     /// Moves from the start to the move shown.
@@ -409,6 +424,8 @@ impl Game {
             children: Vec::new(),
             nags: Vec::new(),
             comment: String::new(),
+            comment_before: String::new(),
+            source: None,
             ply,
             depth,
         });
@@ -555,14 +572,9 @@ impl Game {
         if let Some(i) = n.nags.iter().position(|&c| c == code) {
             n.nags.remove(i);
         } else {
-            let group = |c: u16| match c {
-                1..=6 => 1,
-                10..=21 => 2,
-                _ => 0,
-            };
-            let g = group(code);
+            let g = nag_group(code);
             if g != 0 {
-                n.nags.retain(|&c| group(c) != g);
+                n.nags.retain(|&c| nag_group(c) != g);
             }
             if n.nags.len() < MAX_NAGS {
                 n.nags.push(code);
@@ -603,8 +615,9 @@ impl Game {
         let mut out = Vec::new();
         let root = self.node(0);
         if !root.comment.is_empty() {
-            out.push(Token::Comment { node: 0, text: root.comment.clone() });
+            out.push(Token::Comment { node: 0, text: root.comment.clone(), before: false });
         }
+        self.emit_first_reply_before(0, &mut out);
         self.emit_line(0, true, &mut out, 0);
         out
     }
@@ -620,6 +633,10 @@ impl Game {
             numbered = self.emit_move(main, numbered, out);
             for &alt in children.iter().skip(1) {
                 out.push(Token::VariationStart);
+                let alt_node = self.node(alt);
+                if !alt_node.comment_before.is_empty() {
+                    out.push(Token::Comment { node: alt, text: alt_node.comment_before.clone(), before: true });
+                }
                 let after = self.emit_move(alt, true, out);
                 self.emit_line(alt, after, out, nesting.saturating_add(1));
                 out.push(Token::VariationEnd);
@@ -629,7 +646,8 @@ impl Game {
         }
     }
 
-    /// One move and its comment. Returns whether the next move needs its number.
+    /// One move, its comment and the comment before its first reply. Returns whether the next
+    /// move needs its number.
     fn emit_move(&self, id: NodeId, numbered: bool, out: &mut Vec<Token>) -> bool {
         let n = self.node(id);
         let before = &self.node(n.parent).board;
@@ -643,19 +661,45 @@ impl Game {
             nags: n.nags.clone(),
             depth: n.depth,
         });
-        if n.comment.is_empty() {
-            false
-        } else {
-            out.push(Token::Comment { node: id, text: n.comment.clone() });
-            true
+        let commented = !n.comment.is_empty();
+        if commented {
+            out.push(Token::Comment { node: id, text: n.comment.clone(), before: false });
         }
+        self.emit_first_reply_before(id, out) || commented
     }
 
-    /// The moves as PGN movetext: `1. e4 e5 (1... c5 {Sicilian}) 2. Nf3 $1`.
+    /// The comment before `id`'s first reply, which PGN can only hold right after `id`'s own
+    /// comment. Returns whether there was one.
+    fn emit_first_reply_before(&self, id: NodeId, out: &mut Vec<Token>) -> bool {
+        let Some(&first) = self.node(id).children.first() else { return false };
+        let text = &self.node(first).comment_before;
+        if text.is_empty() {
+            return false;
+        }
+        out.push(Token::Comment { node: first, text: text.clone(), before: true });
+        true
+    }
+
+    /// The moves as PGN movetext: `1. e4 e5 (1... c5 {Sicilian}) 2. Nf3 $1`. Comments next to
+    /// each other (a move's own and the one before its first reply) are written as one, the way
+    /// PGN reads them back, so the text read and written again is the same (while the two
+    /// together fit in [`MAX_COMMENT_LEN`], which is all of a comment the reader keeps).
     pub fn movetext(&self) -> String {
         let mut out = String::new();
         let mut glue = true; // no space before the next piece
+        let mut after_comment = false;
         for token in self.tokens() {
+            if let Token::Comment { text, .. } = &token
+                && after_comment
+                && out.ends_with('}')
+            {
+                out.pop();
+                out.push(' ');
+                out.push_str(text);
+                out.push('}');
+                continue;
+            }
+            after_comment = matches!(token, Token::Comment { .. });
             let piece = match &token {
                 Token::Move { number, color, numbered, san, nags, .. } => {
                     let mut s = String::new();
@@ -810,8 +854,8 @@ impl Game {
         let mut stack: Vec<(NodeId, Option<NodeId>)> = Vec::new();
         // The nesting at which a line was cut by an illegal move: skip until it closes.
         let mut dead: Option<usize> = None;
-        // A comment that opens a variation (`({an idea} 1. d4)`), before its first move: comments
-        // are kept after a move, so it waits for that move rather than going to the line's.
+        // A comment that opens a variation (`({an idea} 1. d4)`): it is the comment before the
+        // variation's first move, so it waits for that move rather than going to the line's.
         let mut pending: Option<String> = None;
         let mut started = false;
         for t in lexed.into_iter().skip(tags.len()) {
@@ -889,7 +933,11 @@ impl Game {
                             }
                         }
                         if let Some(text) = pending.take() {
-                            append_comment(&mut game, cursor, text);
+                            let joined = match game.comment_before(cursor) {
+                                "" => text,
+                                before => format!("{before} {text}"),
+                            };
+                            game.set_comment_before(cursor, &joined);
                         }
                     } else {
                         stopped.get_or_insert(word);
@@ -912,6 +960,16 @@ fn append_comment(game: &mut Game, node: NodeId, text: String) {
         before => format!("{before} {text}"),
     };
     game.set_comment(node, &joined);
+}
+
+/// Which glyphs exclude each other on one move: 1 for the move-quality glyphs (codes 1–6), 2 for
+/// the evaluations (10–21), 0 for the others (which don't).
+fn nag_group(code: u16) -> u8 {
+    match code {
+        1..=6 => 1,
+        10..=21 => 2,
+        _ => 0,
+    }
 }
 
 /// Never called: node 0 always exists. A node to return instead of panicking.
@@ -968,9 +1026,14 @@ fn cut(text: &str, max: usize) -> &str {
 
 /// A comment as kept: braces made parentheses, whitespace runs made one space, capped.
 fn clean_comment(text: &str) -> String {
+    cut(&tidy_comment(text), MAX_COMMENT_LEN).to_owned()
+}
+
+/// A comment with braces made parentheses and whitespace runs made one space, not capped (for a
+/// caller that must not cut it silently).
+fn tidy_comment(text: &str) -> String {
     let swapped = text.replace('{', "(").replace('}', ")");
-    let joined = swapped.split_whitespace().collect::<Vec<_>>().join(" ");
-    cut(&joined, MAX_COMMENT_LEN).to_owned()
+    swapped.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 /// A move word split into the move and the glyphs glued to its end (`e4!?` → `e4`, `!?`).
@@ -1415,10 +1478,15 @@ mod tests {
         // The game's own comment stays before the first move; nothing lands on e4 or e5.
         assert_eq!(g.comment(0), "Intro");
         let text = g.movetext();
-        assert!(text.contains("1. e4 (1. d4 {An idea} 1... d5) 1... e5 (1... c5 {Sharper still})"), "{text}");
+        assert!(text.contains("1. e4 ({An idea} 1. d4 d5) 1... e5 ({Sharper still} 1... c5)"), "{text}");
+        // It is the comment before the variation's first move, not one after it.
+        let d4 = g.node_at(&NodePath::new(vec![1])).unwrap();
+        assert_eq!((g.comment_before(d4), g.comment(d4)), ("An idea", ""));
         // What it writes reads back the same.
-        let (back, _) = Game::from_pgn(&g.pgn()).unwrap();
+        let pgn = g.pgn();
+        let (back, _) = Game::from_pgn(&pgn).unwrap();
         assert_eq!(back.movetext(), text);
+        assert_eq!(back.pgn(), pgn);
     }
 
     #[test]

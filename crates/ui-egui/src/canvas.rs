@@ -687,6 +687,12 @@ impl DocView {
         self.auto_scroll.panning()
     }
 
+    /// Whether the page tools' group gestures are held off: another tab is active, a modal or
+    /// the palette is open, or the app has lost the keyboard focus (tests and automation).
+    pub fn page_input_blocked(&self) -> bool {
+        self.objects.input_blocked()
+    }
+
     /// Pages that could not be rendered, with the reason (for automation; 0-based pages).
     pub fn page_errors(&self) -> Vec<(usize, &str)> {
         let mut v: Vec<(usize, &str)> = self.errors.iter().map(|(p, e)| (*p, e.as_str())).collect();

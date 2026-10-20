@@ -563,7 +563,7 @@ impl Automation {
             None => self.doc(a)?.name.trim_end_matches(".pdf").to_owned(),
         };
         // HTML and EPUB show figurines with the user's font when there is one.
-        let (text_font, text_font_error) = pdfcraft_engine::chess::pdfcraft_chessvision::text_font::find();
+        let fonts = pdfcraft_engine::chess::pdfcraft_chessvision::text_font::find_fonts();
         let options = ChessExportOptions {
             pages,
             scan,
@@ -574,7 +574,8 @@ impl Automation {
             links: a.opt_bool("links")?.unwrap_or(true),
             link_text,
             pieces: std::sync::Arc::new(pieces),
-            text_font: text_font.clone().map(std::sync::Arc::new),
+            text_font: fonts.figurines.clone().map(std::sync::Arc::new),
+            sign_font: fonts.signs.clone().map(std::sync::Arc::new),
             title,
             diagram_px,
             image_dir: image_dir.clone(),
@@ -605,12 +606,8 @@ impl Automation {
             "diagrams_drawn": made.drawn,
             "diagrams_unread": all - positioned,
             "games": read.doc.games.len(),
-            "text_font": json!({
-                "path": text_font.as_ref().and_then(|f| f.path.as_ref()).map(|p| p.to_string_lossy().into_owned()),
-                "format": text_font.as_ref().map(|f| f.format.extension()),
-                "used": text_font.is_some() && matches!(format, ChessFormat::Html | ChessFormat::Epub),
-                "error": text_font_error.map(|e| e.to_string()),
-            }),
+            "text_font": font_json(fonts.figurines.as_ref(), matches!(format, ChessFormat::Html | ChessFormat::Epub), &fonts.errors),
+            "sign_font": font_json(fonts.signs.as_ref(), matches!(format, ChessFormat::Html | ChessFormat::Epub), &[]),
             "pieces": match source {
                 PieceSource::Font { family, .. } => json!({ "source": "font", "family": family, "error": Value::Null }),
                 PieceSource::Images { dir } => json!({ "source": "images", "family": dir.to_string_lossy(), "error": Value::Null }),
@@ -724,4 +721,20 @@ impl Automation {
             "piece_set": piece_set,
         }))
     }
+}
+
+/// What an export says about one of the user's fonts (`chessvision::text_font`).
+fn font_json(
+    font: Option<&pdfcraft_engine::chess::pdfcraft_chessvision::text_font::TextFont>,
+    exported: bool,
+    errors: &[pdfcraft_engine::chess::pdfcraft_chessvision::text_font::TextFontError],
+) -> Value {
+    json!({
+        "path": font.and_then(|f| f.path.as_ref()).map(|p| p.to_string_lossy().into_owned()),
+        "family": font.map(|f| f.family.clone()),
+        "role": font.map(|f| format!("{:?}", f.role).to_lowercase()),
+        "format": font.map(|f| f.format.extension()),
+        "used": font.is_some() && exported,
+        "error": errors.first().map(|e| e.to_string()),
+    })
 }

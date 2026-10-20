@@ -1,7 +1,7 @@
 # Chess books
 
-**Status:** current to 2026-10-19 (blueprint steps S1–S18; see [`chess/blueprint.md`](chess/blueprint.md)).
-**Revision history:** 2026-10-18 — first version, after S18. 2026-10-19 — the chess board panel, its variations, annotations, game details and `chess_game`; book origin, and hidden OCR layers over scans.
+**Status:** current to 2026-10-20 (blueprint steps S1–S18; see [`chess/blueprint.md`](chess/blueprint.md)).
+**Revision history:** 2026-10-18 — first version, after S18. 2026-10-19 — the chess board panel, its variations, annotations, game details and `chess_game`; book origin, and hidden OCR layers over scans. 2026-10-20 — the main line by printed weight (bold moves); `chess_pgn_edit`.
 
 PdfCraft can read a chess book in PDF. It finds the diagrams, reads each one as a position (FEN), and reads the moves in the text, including figurines and annotation signs. It can redraw a diagram, put a lichess link under it, and export the book as HTML, EPUB, Word, RTF, Markdown or PGN. Everything runs on your machine; nothing is sent anywhere.
 
@@ -15,9 +15,20 @@ None of these files ship with PdfCraft (fork decisions D2 and D4). Without them,
 | `chess-glyphs.onnx` + `.json` | chess OCR: reads moves, figurines and signs from page images | pages without a usable text layer are listed as needing OCR |
 | `text-detection.rten`, `text-recognition.rten` (ocrs) | reads the prose around the notation | the glyph reader reads the prose too, less well |
 | a chess diagram font (Chess Merida), or a `pieces` folder of 12 PNG or SVG images | draws redrawn diagrams with real pieces | plain geometric pieces |
-| a font with chess figurines (DejaVu Sans, Segoe UI Symbol…) | shows the figurines (♘f3) in HTML and EPUB exports | the reader's own fonts |
+| a figurine font (SemFig, or one with the Unicode chess symbols such as DejaVu Sans) | shows the figurines (♘f3) in HTML and EPUB exports | the reader's own fonts |
+| ISChess, the Chess Informant symbol font | shows the annotation signs (⩲ ± □ →) in HTML and EPUB exports | the reader's own fonts |
 
-PdfCraft looks for the models in the folder named by `PDFCRAFT_MODELS`, then beside the executable. For the pieces it uses the font or image folder named by `PDFCRAFT_CHESS_PIECES`, then a `pieces` folder beside the executable, then an installed Chess Merida. A piece folder holds one image per piece, PNG or SVG, named `wK wQ wR wB wN wP bK bQ bR bB bN bP` (`.png` or `.svg`; an SVG wins over a PNG of the same name), each filling one square with a transparent background. An SVG keeps its own paths (a gradient is drawn in its first colour); a PNG is traced into outlines. Either way they draw sharply in the board, the PDF and every export. A diagram drawn with Merida or cburnett pieces carries those pieces into what you export. That is fine for personal use, but not for publishing. For the figurines in HTML and EPUB it uses the font file named by `PDFCRAFT_CHESS_TEXT_FONT`, then the first font with chess figurines in a `fonts` folder beside the executable (TrueType, OpenType, WOFF or WOFF2). The font is used for the chess symbols only, so the prose keeps the body font: HTML embeds it, an EPUB carries it as a file of the book. A diagram drawn with Merida or cburnett pieces carries those pieces into what you export. That is fine for personal use, but not for publishing.
+PdfCraft looks for the models in the folder named by `PDFCRAFT_MODELS`, then beside the executable.
+
+**Diagrams** (redrawn on the page, in the editor and in every export) are drawn with the font or image folder named by `PDFCRAFT_CHESS_PIECES`, then a chess diagram font in a `fonts` folder beside the executable, then an installed Chess Merida, then a `pieces` folder of images beside the executable. The **analysis board** uses the `pieces` folder first, so a book's diagrams can be in Chess Merida while the board to play on shows your own pictures. A piece folder holds one image per piece, PNG or SVG, named `wK wQ wR wB wN wP bK bQ bR bB bN bP` (`.png` or `.svg`; an SVG wins over a PNG of the same name), each filling one square with a transparent background. An SVG keeps its own paths (a gradient is drawn in its first colour); a PNG is traced into outlines. Either way they draw sharply in the board, the PDF and every export.
+
+**Text fonts** for HTML and EPUB come from the files named by `PDFCRAFT_CHESS_TEXT_FONT` (several separated as in `PATH`), else from the `fonts` folder beside the executable, each for what it draws:
+
+- a figurine font that draws pieces on the letters K Q R B N, such as **SemFig**: each move's piece letters are written in it, and nothing else, so "Kasparov" in the prose stays a word;
+- a font with the Unicode chess symbols (DejaVu Sans…): used for those symbols only, so the prose keeps the body font;
+- **ISChess**, the Chess Informant symbol font: the annotation signs it draws (⩲ ⩱ ± ∓ +− −+ = ∞ © !? ?! □ △ ⌓ → ↑ ⇄ ⟳ ⊙ ⊕) are written in it; ! ? !! ?? stay plain characters.
+
+HTML embeds the fonts (the file stays self-contained); an EPUB carries them as files of the book. A diagram font in the same `fonts` folder is for the pieces. A diagram drawn with Merida or cburnett pieces, and a book exported with SemFig or ISChess, carry those fonts into what you export. That is fine for personal use, but not for publishing.
 
 ## In the app
 
@@ -77,6 +88,7 @@ Every feature is also a tool (`pdfcraft-cli tools`; the MCP server is opt-in):
 | `chess_replace_diagram`, `content_draw` | redraw a diagram (one undo step); the generic checked-operators edit under it |
 | `chess_add_lichess_links` | a label and link under every legal, accepted diagram |
 | `chess_game` | the board without a document: a game from a FEN or a PGN, moves in SAN or UCI, the position at a ply with its legal moves, and the game as PGN |
+| `chess_pgn_edit` | a game's moves without the board: play, comment (after or before a move), glyphs, promote one level, make main line, demote, delete a variation, cut, and graft move text as a variation, as the line or as a comment, at a main-line half-move (`main:35`) or a reply path (`path:0.1`), with a report per operation; inline only |
 | `chess_export_html`, `_epub`, `_docx`, `_rtf`, `_markdown`, `_pgn` | the exports |
 
 `pdfcraft-cli chess scan FILE` prints the diagrams found. All paths are confined to `--root`.
@@ -129,6 +141,16 @@ Polgar's *Chess 5334 Problems, Combinations and Games* prints the number alone a
 
 Annotated books leave the main line in prose (`2...Kd7? and gives away the h-pawn, White wins with 3.Kf4 Kd6 … 9.Kf5`) and come back to it in bold (`3.Kd4 Kf6!`). A numbered move like `3.Kd4` could also be an alternative inside the digression, to its own `3.Kf4`, and it used to be taken that way: the next move (`Kf6`, legal on the main line, not in the digression) then failed and stopped the line. Now a numbered move that is exactly the main line's next move, and legal there, goes back to the main line when the digression could only take it as an alternative to one of its own moves; a move that goes straight on from the digression (`1...c5 2.Nf3`) stays in it. On ten documents read earlier (Aagaard, Dvoretsky in two stretches, Fischer pt-BR, Flores Rios, Gallagher, Karpov, Polgar, Capablanca; replayed with `examples/walk_bench.rs`, no reading or OCR), valid moves went from 2,036 to 2,304 and moves not reached from 2,778 to 2,509; 13 moves got worse, in two games whose first chain of moves was itself a digression. Pages checked against the books: Fischer p. 46 (the Spielmann–Tartakover digression, then `7...♘c6 8.♗e3 ♘xd4?`), Flores Rios p. 60 (`If 14...♗xd6 15.♘xd6 …`, `Slightly better is 15...♕d7 …`), Dvoretsky p. 112.
 
+### The main line by its printed weight
+
+Annotated books print the main line in bold and their analysis in regular type (Dvoretsky, Fischer pt-BR). The text layer says which font each glyph is in, so each move now carries its weight (`bold` in the document's JSON, written only when true; OCR text and documents read before have none). When the book's analysis comes first (`Black wins without any trouble after 1...Be6+ 2.Kg6 …`, then the game's **`1...Bxg7?`**) or goes straight on from the main line's last move (**`4...Kg4`** `Tarrasch had expected 5.Kf6? c4 …` **`5.Kg6!`**), the first chain read used to become the main line. Now, in a game with moves of both weights:
+
+- a bold move after regular ones goes on from the last bold move, when it can be played there (an unnumbered one only after a bold move that was played: after one that failed it would be read a ply early);
+- a bold move played on the bold line makes that line the main line, so the analysis stays as variations; one that could only be read inside the analysis does not;
+- a game whose moves all have one weight is read as before.
+
+On the same ten stretches read again on 2026-10-20 (release `pdfcraft-cli`, the user's models; Karpov and Capablanca are scans, used as stored) and replayed with `examples/walk_bench.rs` with and without the weights (`--plain`), valid moves went from 2,305 to 2,515 and moves not reached from 2,509 to 2,329: 217 better, 7 worse. Checked against the books: Dvoretsky p. 52 (`1...♗xg7? 2.♗xf5! ♔xf5 3.♔xg7 … 11.♔xa5 ♔xb3`, before the analysis `1...Be6+ 2.Kg6`), p. 51 (`1.♔c8!! b5 … 5.♔d4=` and `1.♔c3? b1=♕ … 4.♔xa4 ♔c3`, which had the analysis `1.c8=Q? …` and `1.Qc4+ Ka3` as main lines), pp. 100–101, 108–110 (the whole of Matanovic's rook ending, `1.♖d6+? … 22...♖c1`, after the book's detour into a pawn ending and its `Let's return to diagram 1-134`), 113, 115 and 119; Fischer pp. 37–38 (`6.♗e2 e5 … 11.♕e1`, past `6 h3` and `6 ♗c4`), 43–44, 47 and 52–54. Not real gains: on Fischer p. 49 (16 moves) the game started from the digression `19...♘e5`, because the centred diagram is ordered after the short line `19 … ♗xd5` beside it, and on p. 55 (14) from a diagram read with White to move; those moves are legal there by chance. The 7 worse moves were valid only on a branch that was already wrong (Fischer pp. 33 and 35, after `51...♔d6` and `57...c3` failed; p. 56, in the game started from the digression `26 b3`).
+
 Tried and not kept: guessing a different move in place of a failed one when the next printed moves fit exactly one move like it. All six moves it would have changed were printed correctly; each had failed because of something earlier (the line on the wrong branch, a short capture such as `hg` not read as a move), so guessing only hides the cause.
 
 ### A diagram centred above a short line
@@ -138,7 +160,7 @@ Fischer's *My 60 Memorable Games* centres each diagram (its caption printed besi
 ## Limits
 
 - **Moves and text**
-  - A line stops at a move that cannot be played (a misprint, a misread diagram, or a line read onto the wrong branch): its later moves are "not reached" until a numbered move finds its place again. A game whose first chain of moves is a digression (the book's analysis of an earlier move printed before the game goes on) has that digression as its main line, and moves coming back to the real main line can go wrong. A game whose diagram is on a page that was not read has no position.
+  - A line stops at a move that cannot be played (a misprint, a misread diagram, or a line read onto the wrong branch): its later moves are "not reached" until a numbered move finds its place again. A game whose first chain of moves is a digression (the book's analysis of an earlier move printed before the game goes on) has that digression as its main line when the book does not set its main line in bold, or the page is a scan. A diagram centred beside a short line of moves can be read after that line, so a game can start from the analysis that follows it. A game whose diagram is on a page that was not read has no position.
   - Three or more columns are read as two at most.
   - A diagram goes among the lines by its place on the page: before the first line under its middle, in a column to its right, or wholly below it on its side of the gutter (or of the page's middle). On a one-column page, a diagram set entirely on one side of the middle still comes after a line below it on the other side.
   - Umlauts in prose come through only where the glyph reader has them, because ocrs reads ASCII only.

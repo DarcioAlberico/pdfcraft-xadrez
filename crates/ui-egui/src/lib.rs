@@ -144,6 +144,7 @@ mod tab_context;
 pub mod theme;
 pub mod ui_scale;
 pub mod updates;
+pub mod viewports;
 mod wheel_boost;
 mod wheel_pager;
 mod widgets;
@@ -528,6 +529,8 @@ pub struct PdfCraftApp {
     pub quick_tool: QuickTool,
     /// The tool to go back to when Space, held for a temporary Hand, is released.
     space_hand: Option<QuickTool>,
+    /// Whether the app as a whole lost the keyboard focus (not just to one of its own windows).
+    focus_loss: viewports::FocusLoss,
     /// Comment author, per-tool colours and widths, pin.
     pub comment_prefs: comments::CommentPrefs,
     /// Resolved colours, including the current OS theme when following the system.
@@ -919,6 +922,7 @@ impl PdfCraftApp {
             right_panel_closed: false,
             quick_tool: QuickTool::Select,
             space_hand: None,
+            focus_loss: Default::default(),
             comment_prefs: Default::default(),
             theme: ThemeKind::Light,
             theme_preference: ThemePreference::Light,
@@ -2806,6 +2810,18 @@ impl PdfCraftApp {
         Ok(())
     }
 
+    /// The app's shortcuts, if this pass is the one of the window that has the keyboard: they
+    /// read `ctx`'s input, which is only this pass's window's. The main window's pass (in
+    /// `logic`) runs them unless a separate app window has the focus; that window's own pass
+    /// is the one to call this then. Returns whether they ran.
+    pub(crate) fn shortcuts_in_pass(&mut self, ctx: &egui::Context) -> bool {
+        if viewports::input_viewport(ctx) != ctx.viewport_id() {
+            return false;
+        }
+        self.shortcuts(ctx);
+        true
+    }
+
     fn shortcuts(&mut self, ctx: &egui::Context) {
         use egui::Key;
         // "Save changes?" is modal: its keys are its own (⌘D is Don't save there, not Document
@@ -3099,10 +3115,12 @@ impl eframe::App for PdfCraftApp {
         self.poll_print();
         // Shortcuts deferred last frame: the text field has taken that frame's typing since.
         let deferred = std::mem::take(&mut self.deferred_commands);
-        self.shortcuts(ctx);
+        self.shortcuts_in_pass(ctx);
         // Scrolling and group-drag previews are transient: never resume after changing tabs,
-        // opening a modal/palette, or returning to a window that lost focus.
-        let blocked = self.modal_open() || self.palette_open || !ctx.input(|i| i.focused);
+        // opening a modal/palette, or returning to the app after it lost focus (moving the focus
+        // into one of the app's own windows is not losing it).
+        let focus_lost = self.focus_loss.lost(ctx);
+        let blocked = self.modal_open() || self.palette_open || focus_lost;
         for (index, view) in self.views.iter_mut().enumerate() {
             view.objects.set_input_blocked(blocked || self.active != Some(index));
             if blocked || self.active != Some(index) {

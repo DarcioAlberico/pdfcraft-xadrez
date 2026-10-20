@@ -77,6 +77,10 @@ pub struct ChessSpan {
     pub run: ChessRun,
     /// The union of the run's glyph boxes, in view space.
     pub rect: ViewRect,
+    /// Set in a bold font (most of its glyphs). Books print their main line in bold and the
+    /// analysis around it in regular type. Prose runs joined from several words keep the first
+    /// word's weight; OCR text is never bold.
+    pub bold: bool,
 }
 
 impl ChessSpan {

@@ -112,7 +112,7 @@ fn chess_replace_props() -> Value {
             "border_color": color(),
             "coordinates": { "type": "boolean", "description": "Print a-h and 1-8 around the board (default false)." },
             "flipped": { "type": "boolean", "description": "Draw from Black's side (default false)." },
-            "pieces": { "type": "string", "enum": ["installed", "geometric"], "description": "installed (default): PDFCRAFT_CHESS_PIECES (a font or a folder of piece images), a pieces folder beside the executable or an installed Chess Merida, else plain geometric pieces; geometric: always the plain pieces." },
+            "pieces": { "type": "string", "enum": ["installed", "geometric"], "description": "installed (default): PDFCRAFT_CHESS_PIECES (a font or a folder of piece images), a diagram font in the fonts folder beside the executable, an installed Chess Merida or a pieces folder beside the executable, else plain geometric pieces; geometric: always the plain pieces." },
             "dry_run": { "type": "boolean", "description": "Only say what would be done; change nothing (default false)." },
         });
         if let Value::Object(extra) = extra {
@@ -155,7 +155,7 @@ fn chess_export_schema() -> Value {
                     "link_text".into(),
                     json!({ "type": "string", "maxLength": 80, "description": "The links' text (default \"Analyze on lichess\")." }),
                 );
-                o.insert("pieces".into(), json!({ "type": "string", "enum": ["installed", "geometric"], "description": "installed (default): PDFCRAFT_CHESS_PIECES (a font or a folder of piece images), a pieces folder beside the executable or an installed Chess Merida, else geometric; geometric: always the plain pieces." }));
+                o.insert("pieces".into(), json!({ "type": "string", "enum": ["installed", "geometric"], "description": "installed (default): PDFCRAFT_CHESS_PIECES (a font or a folder of piece images), a diagram font in the fonts folder beside the executable, an installed Chess Merida or a pieces folder beside the executable, else geometric; geometric: always the plain pieces." }));
             }
             props
         },
@@ -1280,7 +1280,7 @@ pub fn tools() -> Vec<ToolDef> {
                 },
                 &["doc"],
             )),
-        t("chess_export_html", "Export chess document as HTML", "Chess ▸ Export ▸ HTML: read pages as chess_document does and write one static HTML file to out (no script, nothing fetched): headings, paragraphs with moves (figurines: unicode ♞f3 by default, letters in letters_lang, or as printed), annotation glyphs, and each diagram redrawn as an inline SVG board (diagrams: svg) or its FEN (fen), with a link to the position on lichess under it (links, default true; link_text). Pieces come from PDFCRAFT_CHESS_PIECES, a pieces folder beside the executable or an installed Chess Merida, else plain geometric ones (pieces: geometric forces them). Figurines use the font named by PDFCRAFT_CHESS_TEXT_FONT or found in a fonts folder beside the executable, when there is one (text_font: path, format, used, error). Readable back: each diagram is a figure with data-fen, each move a span with data-san (and data-fen after it), a diagram that was not read is a figure with class unread; anything to review has class review. Returns out, bytes, pages, lang, diagrams (drawn, unread), games, the piece set used, pages needing OCR and notes. The document is not changed.")
+        t("chess_export_html", "Export chess document as HTML", "Chess ▸ Export ▸ HTML: read pages as chess_document does and write one static HTML file to out (no script, nothing fetched): headings, paragraphs with moves (figurines: unicode ♞f3 by default, letters in letters_lang, or as printed), annotation glyphs, and each diagram redrawn as an inline SVG board (diagrams: svg) or its FEN (fen), with a link to the position on lichess under it (links, default true; link_text). Pieces come from PDFCRAFT_CHESS_PIECES, a pieces folder beside the executable or an installed Chess Merida, else plain geometric ones (pieces: geometric forces them). Figurines and annotation signs use the fonts named by PDFCRAFT_CHESS_TEXT_FONT or found in the fonts folder beside the executable: a figurine font by letters (SemFig) or with Unicode chess symbols, and ISChess for the signs (text_font and sign_font: path, family, role, format, used, error). Readable back: each diagram is a figure with data-fen, each move a span with data-san (and data-fen after it), a diagram that was not read is a figure with class unread; anything to review has class review. Returns out, bytes, pages, lang, diagrams (drawn, unread), games, the piece set used, pages needing OCR and notes. The document is not changed.")
             .with(chess_export_schema()),
         t("chess_export_epub", "Export chess document as EPUB", "Chess ▸ Export ▸ EPUB: the chess_export_html document as an EPUB 3 book at out: one XHTML page per PDF page (the same markup and inline SVG boards), a table of contents from the headings (or the pages), the package document with a stable identifier made from the PDF's bytes and the date. No script, nothing fetched, no font embedded (figurines use the reader's fonts). Same options and reply as chess_export_html. The document is not changed.")
             .with(chess_export_schema()),
@@ -1305,6 +1305,49 @@ pub fn tools() -> Vec<ToolDef> {
                     "ply": { "type": "integer", "minimum": 0, "description": "Show the position this many moves into the main line." },
                 }),
                 &[],
+            )),
+        t("chess_pgn_edit", "Edit a chess game's moves", "Chess ▸ Board ▸ moves, without the interface: start from pgn (its first game) or fen (the standard start without either) and apply ops in order, each at an address: main:<n> is the main-line move after which the absolute half-move is n (2·(move number−1), plus 1 when Black is to move; the start's own when nothing was played, so main:0 from the standard start and main:35 from a FEN \"… b - - 0 18\"), path:<i.j.k> the move reached by those reply indices from the start (0 continues the line, 1 is the first variation; path: is the start). Ops: play {at, moves: SAN or UCI, a reply already there is followed}; comment {at, text} and comment_before {at, text} (set, at most 4096 bytes); nag {at, code} (set the PGN code as given; ↑ after a Black move is 37); promote_one {at} (a variation up one place), make_main {at} (its line becomes the main line), demote {at} (a first reply down to second), delete_variation {at} (a variation and its moves), cut {at} (every move after at); graft {at, mode: follow (as a variation, the default), line (a new move becomes the first reply and demotes the old one) or comment (the items as text on at), items: [{item: move, san (English SAN), ply?, bold?} | {item: nag, code (White's; the side's code is applied)} | {item: comment, text, before?} | {item: open} | {item: close} | {item: result}]}, which reports what was played, where it stopped and why, the moves added, parentheses that did not balance, glyphs and comments with no place, and the leftover text. Each op adds a report entry with ok and path (the move shown after it); a refused op adds ok: false with the error, changes nothing and stops the list. Returns pgn, movetext, report, applied (the ops done), current_path, and pgn_stopped (the first move of the given pgn that could not be played, whose line ends there). No document or file is read or changed.")
+            .ro()
+            .with(schema(
+                json!({
+                    "fen": { "type": "string", "maxLength": 256, "description": "The start position. Not with pgn." },
+                    "pgn": { "type": "string", "maxLength": 1048576, "description": "A game in PGN. Not with fen." },
+                    "ops": {
+                        "type": "array",
+                        "maxItems": crate::chess_pgn::MAX_OPS,
+                        "description": "The operations, applied in order. 20,000 moves and items at most in all.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "op": { "type": "string", "enum": ["play", "comment", "comment_before", "nag", "promote_one", "make_main", "demote", "delete_variation", "cut", "graft"] },
+                                "at": { "type": "string", "maxLength": 65536, "description": "main:<half-move> or path:<i.j.k>." },
+                                "moves": { "type": "array", "maxItems": 2000, "items": { "type": "string", "maxLength": 32 } },
+                                "text": { "type": "string", "maxLength": 4096 },
+                                "code": { "type": "integer", "minimum": 1, "maximum": 255 },
+                                "mode": { "type": "string", "enum": ["follow", "line", "comment"] },
+                                "items": {
+                                    "type": "array",
+                                    "maxItems": 4096,
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "item": { "type": "string", "enum": ["move", "nag", "comment", "open", "close", "result"] },
+                                            "san": { "type": "string", "maxLength": 32 },
+                                            "ply": { "type": "integer", "minimum": 0 },
+                                            "bold": { "type": "boolean" },
+                                            "code": { "type": "integer", "minimum": 1, "maximum": 255 },
+                                            "text": { "type": "string" },
+                                            "before": { "type": "boolean" },
+                                        },
+                                        "required": ["item"],
+                                    },
+                                },
+                            },
+                            "required": ["op", "at"],
+                        },
+                    },
+                }),
+                &["ops"],
             )),
         t("content_draw", "Draw content operators", "Draw a fragment of PDF content-stream operators (ISO 32000-2 §8–9) on top of a page, in its default user space (points, y up, origin at the media box's corner; /Rotate is not applied), as page content of its own wrapped in q … Q. Checked first and refused with the reason: at most 4 MiB; q/Q, BT/ET and marked content balanced (q at most 28 deep); operand counts and finite numbers; only path, clipping, device colour (g, rg, k, and cs/CS with DeviceGray, DeviceRGB or DeviceCMYK), general graphics state, text and marked-content operators with inline property lists; nothing that needs a page resource (Do, gs, sh, inline images, patterns). Text may use /PCHelv, /PCTimes or /PCCour (standard fonts, WinAnsi), which are added for it. One undo step.")
             .with(schema(

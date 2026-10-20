@@ -399,6 +399,7 @@ fn inlines(lines: &[&ChessLine], geometry: &PageGeometry) -> Vec<Inline> {
                         fen: None,
                         game: None,
                         source_rect,
+                        bold: span.bold,
                         review: Vec::new(),
                     }));
                 }
@@ -546,7 +547,7 @@ pub(crate) fn walk(page: u32, blocks: &mut [Block], walker: &mut Walker) {
                         Inline::Move(m) => {
                             // The English SAN reads back as the move it was written from.
                             let Ok(san) = San::read(&m.san, Lang::En) else { continue };
-                            let out = walker.play(m.number, &san, &m.text, Loc { page, rect: m.source_rect });
+                            let out = walker.play(m.number, &san, &m.text, m.bold, Loc { page, rect: m.source_rect });
                             m.status = out.status;
                             if let Some(s) = out.san {
                                 m.san = s;
