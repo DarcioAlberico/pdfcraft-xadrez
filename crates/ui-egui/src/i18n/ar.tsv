@@ -2939,3 +2939,12 @@ certificate	Version	الإصدار
 	Put the board back in its panel	إعادة الرقعة إلى لوحتها
 	The chess board couldn't open in its own window, so it is back in its panel.	تعذّر فتح رقعة الشطرنج في نافذتها الخاصة، فأُعيدت إلى لوحتها.
 	The chess board couldn't open in its own window, so it stays in its panel.	تعذّر فتح رقعة الشطرنج في نافذتها الخاصة، فبقيت في لوحتها.
+
+# Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
+	Moves	النقلات
+	Put a game on the chess board first: there are no moves to change.	ضع مباراة على رقعة الشطرنج أولًا: لا توجد نقلات لتغييرها.
+	Chess board: Navigate	رقعة الشطرنج: التنقل
+	Promote variation one level	ترقية الخط الفرعي مستوى واحدًا
+	Make variation the main line	جعل الخط الفرعي الخط الرئيسي
+	Demote line	تخفيض الخط
+	Delete the moves after the current move	حذف النقلات بعد النقلة الحالية

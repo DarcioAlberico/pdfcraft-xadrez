@@ -2874,3 +2874,12 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Put the board back in its panel	Rimetti la scacchiera nel suo pannello
 	The chess board couldn't open in its own window, so it is back in its panel.	Non è stato possibile aprire la scacchiera in una finestra propria, quindi è tornata nel suo pannello.
 	The chess board couldn't open in its own window, so it stays in its panel.	Non è stato possibile aprire la scacchiera in una finestra propria, quindi resta nel suo pannello.
+
+# Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
+	Moves	Mosse
+	Put a game on the chess board first: there are no moves to change.	Metti prima una partita sulla scacchiera: non ci sono mosse da cambiare.
+	Chess board: Navigate	Scacchiera: Naviga
+	Promote variation one level	Promuovi la variante di un livello
+	Make variation the main line	Rendi la variante la linea principale
+	Demote line	Retrocedi la linea
+	Delete the moves after the current move	Elimina le mosse dopo la mossa attuale

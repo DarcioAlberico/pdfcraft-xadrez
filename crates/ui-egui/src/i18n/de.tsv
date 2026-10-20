@@ -2663,3 +2663,12 @@ animation effects	Off	Aus
 	Put the board back in its panel	Brett zurück in sein Bedienfeld
 	The chess board couldn't open in its own window, so it is back in its panel.	Das Schachbrett konnte nicht in einem eigenen Fenster geöffnet werden und ist wieder in seinem Bedienfeld.
 	The chess board couldn't open in its own window, so it stays in its panel.	Das Schachbrett konnte nicht in einem eigenen Fenster geöffnet werden und bleibt in seinem Bedienfeld.
+
+# Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
+	Moves	Züge
+	Put a game on the chess board first: there are no moves to change.	Bringen Sie zuerst eine Partie aufs Schachbrett: Es gibt keine Züge zu ändern.
+	Chess board: Navigate	Schachbrett: Navigieren
+	Promote variation one level	Variante eine Ebene hochstufen
+	Make variation the main line	Variante zur Hauptvariante machen
+	Demote line	Linie herabstufen
+	Delete the moves after the current move	Züge nach dem aktuellen Zug löschen

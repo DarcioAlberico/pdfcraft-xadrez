@@ -2626,3 +2626,12 @@ animation effects	Off	关
 	Put the board back in its panel	将棋盘放回其面板
 	The chess board couldn't open in its own window, so it is back in its panel.	无法在单独窗口中打开棋盘，已将其放回面板。
 	The chess board couldn't open in its own window, so it stays in its panel.	无法在单独窗口中打开棋盘，棋盘仍留在面板中。
+
+# Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
+	Moves	着法
+	Put a game on the chess board first: there are no moves to change.	请先在棋盘上放置一盘棋局：没有可更改的着法。
+	Chess board: Navigate	棋盘：导航
+	Promote variation one level	将变化提升一级
+	Make variation the main line	将变化设为主线
+	Demote line	降级此线路
+	Delete the moves after the current move	删除当前着法之后的着法

@@ -2915,3 +2915,12 @@ chess side	Black	Juodieji
 	Put the board back in its panel	Grąžinti lentą į jos skydelį
 	The chess board couldn't open in its own window, so it is back in its panel.	Šachmatų lentos nepavyko atverti atskirame lange, todėl ji grąžinta į savo skydelį.
 	The chess board couldn't open in its own window, so it stays in its panel.	Šachmatų lentos nepavyko atverti atskirame lange, todėl ji lieka savo skydelyje.
+
+# Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
+	Moves	Ėjimai
+	Put a game on the chess board first: there are no moves to change.	Pirmiausia padėkite partiją ant šachmatų lentos: nėra ėjimų, kuriuos būtų galima keisti.
+	Chess board: Navigate	Šachmatų lenta: Naršymas
+	Promote variation one level	Pakelti variantą vienu lygiu
+	Make variation the main line	Paversti variantą pagrindiniu
+	Demote line	Nuleisti liniją
+	Delete the moves after the current move	Ištrinti ėjimus po dabartinio ėjimo

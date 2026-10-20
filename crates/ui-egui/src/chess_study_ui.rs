@@ -667,9 +667,10 @@ pub fn study_tab(ui: &mut egui::Ui, t: &Tokens, study: &mut StudyState, board: &
     #[cfg(target_arch = "wasm32")]
     ui.label(egui::RichText::new(tl!("Engine analysis needs the desktop app.")).small().color(t.text_muted));
     ui.add_space(6.0);
-    chess_board_ui::moves_and_notes(ui, t, board);
+    chess_board_ui::notation(ui, t, board, None);
+    chess_board_ui::notes(ui, board);
     ui.add_space(6.0);
-    if let Some(a) = chess_board_ui::fen_and_pgn(ui, board) {
+    if let Some(a) = chess_board_ui::sections(ui, board) {
         action = Some(StudyAction::Board(a));
     }
     action

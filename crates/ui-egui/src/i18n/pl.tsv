@@ -2638,3 +2638,12 @@ animation effects	Off	Wyłączone
 	Put the board back in its panel	Przywróć szachownicę do jej panelu
 	The chess board couldn't open in its own window, so it is back in its panel.	Nie udało się otworzyć szachownicy we własnym oknie, więc wróciła do swojego panelu.
 	The chess board couldn't open in its own window, so it stays in its panel.	Nie udało się otworzyć szachownicy we własnym oknie, więc pozostaje w swoim panelu.
+
+# Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
+	Moves	Ruchy
+	Put a game on the chess board first: there are no moves to change.	Najpierw umieść partię na szachownicy: nie ma ruchów do zmiany.
+	Chess board: Navigate	Szachownica: Nawigacja
+	Promote variation one level	Awansuj wariant o poziom
+	Make variation the main line	Uczyń wariant główną linią
+	Demote line	Obniż linię
+	Delete the moves after the current move	Usuń ruchy po bieżącym ruchu

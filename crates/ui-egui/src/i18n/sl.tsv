@@ -2667,3 +2667,12 @@ animation effects	Off	Izklopljeni
 	Put the board back in its panel	Vrni šahovnico na njeno ploščo
 	The chess board couldn't open in its own window, so it is back in its panel.	Šahovnice ni bilo mogoče odpreti v lastnem oknu, zato je spet na svoji plošči.
 	The chess board couldn't open in its own window, so it stays in its panel.	Šahovnice ni bilo mogoče odpreti v lastnem oknu, zato ostaja na svoji plošči.
+
+# Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
+	Moves	Poteze
+	Put a game on the chess board first: there are no moves to change.	Najprej postavite partijo na šahovnico: ni potez za spreminjanje.
+	Chess board: Navigate	Šahovnica: Krmarjenje
+	Promote variation one level	Povišaj varianto za raven
+	Make variation the main line	Naj bo varianta glavna varianta
+	Demote line	Znižaj linijo
+	Delete the moves after the current move	Izbriši poteze za trenutno potezo

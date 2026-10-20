@@ -2803,3 +2803,12 @@ animation effects	Off	Desactivados
 	Put the board back in its panel	Devolver el tablero a su panel
 	The chess board couldn't open in its own window, so it is back in its panel.	El tablero de ajedrez no se pudo abrir en su propia ventana, así que ha vuelto a su panel.
 	The chess board couldn't open in its own window, so it stays in its panel.	El tablero de ajedrez no se pudo abrir en su propia ventana, así que sigue en su panel.
+
+# Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
+	Moves	Jugadas
+	Put a game on the chess board first: there are no moves to change.	Primero ponga una partida en el tablero de ajedrez: no hay jugadas que cambiar.
+	Chess board: Navigate	Tablero de ajedrez: Navegar
+	Promote variation one level	Promover la variante un nivel
+	Make variation the main line	Convertir la variante en la línea principal
+	Demote line	Relegar la línea
+	Delete the moves after the current move	Borrar las jugadas posteriores a la jugada actual

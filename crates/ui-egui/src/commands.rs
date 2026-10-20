@@ -87,6 +87,10 @@ impl PdfCraftApp {
             let history = &self.chess.board().history;
             return if spec.id == "edit.undo" { history.undo_edit().is_some() } else { history.redo_edit().is_some() };
         }
+        // The chess board's rail tools: as their buttons are.
+        if let Some(enabled) = crate::chess_tools::command_enabled(&self.chess, spec.id) {
+            return enabled;
+        }
         // Undo and Redo act on the Combine files list while its tab shows.
         if self.combine_showing() && matches!(spec.needs, commands::Needs::Undo | commands::Needs::Redo) {
             return self.combine_can_undo(spec.needs == commands::Needs::Undo);
@@ -137,6 +141,7 @@ impl PdfCraftApp {
         let Some(spec) = commands::command(id) else { return false };
         if !self.command_enabled(spec) {
             let why = match spec.needs {
+                _ if crate::chess_tools::is_tool_command(id) => tl!("Put a game on the chess board first: there are no moves to change.").to_string(),
                 commands::Needs::Undo => tl!("Nothing to undo").to_string(),
                 commands::Needs::Redo => tl!("Nothing to redo").to_string(),
                 commands::Needs::FillForms if self.active.is_some() => tl!("This document has no form fields you can fill in").to_string(),
@@ -457,6 +462,10 @@ impl PdfCraftApp {
             "chess.pgn.save" => self.save_chess_pgn(false),
             "chess.pgn.save_all" => self.save_chess_pgn(true),
             "chess.window.detach" => self.toggle_chess_window(),
+            // The rail's tools, by the same actions as their buttons.
+            id if crate::chess_tools::is_tool_command(id) => {
+                crate::chess_tools::run_command(&mut self.chess, id);
+            }
             "a11y.reading_options" => self.dialog = Some(Dialog::Properties(crate::PropsTab::Advanced)),
             "export.all_images" => self.dialog = Some(Dialog::Export(crate::export_ui::ExportKind::AllImages)),
             "edit.text" => {

@@ -4,14 +4,15 @@
 //! Chess diagrams panel, puts it on that panel's Study board tab, the same board. Moves are
 //! played by clicking a piece and then where it goes, or by dragging it there; the arrows (or
 //! the arrow keys, once the panel was clicked: see `chess_tools`) walk the game back and forth.
-//! A move made at an earlier point starts a variation. The move list shows the variations,
-//! comments and annotation glyphs; a move's menu has the rail's structure tools (promote,
-//! demote, delete a variation, cut) and deletes the move. The move shown takes a glyph and a
-//! comment, and the game its details (the PGN tags). The position is also a FEN field and the
-//! game a PGN field: both can be copied, or edited and loaded back. The right button draws on
-//! the board, as on lichess: a click circles a square and a drag draws an arrow (Shift red, Alt
-//! blue, Ctrl yellow, green otherwise); the drawings belong to the position, and a left click on
-//! the board clears them.
+//! A move made at an earlier point starts a variation. The notation under the board takes the
+//! panel's height left (spec §4.1) and shows each variation on a row of its own, indented by its
+//! depth, with the comments and annotation glyphs; a move's menu has the rail's structure tools
+//! (promote, demote, delete a variation, cut) and deletes the move. The move shown takes a glyph
+//! and a comment, and the game its details (the PGN tags). The position is also a FEN field and
+//! the game a PGN field: both can be copied, or edited and loaded back; the two and the details
+//! are sections, closed until opened. The right button draws on the board, as on lichess: a
+//! click circles a square and a drag draws an arrow (Shift red, Alt blue, Ctrl yellow, green
+//! otherwise); the drawings belong to the position, and a left click on the board clears them.
 //!
 //! The Chess panel's Study board tab (`chess_study_ui`) shows this same board and game, built
 //! from the parts below, and adds position set-up and engine analysis.
@@ -168,6 +169,8 @@ pub struct BoardState {
     drawing: Option<Square>,
     /// The game's undo and redo steps.
     pub(crate) history: GameHistory,
+    /// The move shown (and the game's revision) when the notation last scrolled to it.
+    revealed: Option<(NodeId, u64)>,
 }
 
 /// A comment or game-detail field while it has the keyboard: its key, its text as typed, and
@@ -199,6 +202,7 @@ impl Default for BoardState {
             marked_order: Vec::new(),
             drawing: None,
             history: GameHistory::default(),
+            revealed: None,
         }
     }
 }
@@ -818,65 +822,140 @@ enum MoveEdit {
     Delete(NodeId),
 }
 
-/// The move list: numbered, the move shown highlighted, each one a click away; variations in
-/// brackets and smaller, comments in italics. A move's menu (right-click) has the rail's
-/// structure tools, acting on that move's variation, and deletes the move with what follows.
-fn move_list(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) {
+/// Least height of the notation in the Board panel, in points (spec §4.1).
+pub(crate) const MIN_NOTATION: f32 = 120.0;
+
+/// Tallest the notation grows to where it is not told how tall to be (the Study board tab).
+const SHRINK_NOTATION: f32 = 180.0;
+
+/// How far a variation is indented per level, in points; deeper levels than [`MAX_INDENT`] are
+/// indented as that one, so a deep tree still leaves room for its moves.
+const INDENT: usize = 12;
+const MAX_INDENT: usize = 8;
+
+/// One row of the notation: a stretch of a line, indented by how deep in variations it is.
+struct Row<'a> {
+    depth: usize,
+    tokens: Vec<&'a Token>,
+}
+
+/// The notation's rows: each variation starts a row of its own, one level in, and the line it
+/// branched from goes on in a new row after it. A `)` with nothing before it in its row closes
+/// the row before instead (`(2... Nf6 3. e5))`), rather than standing alone.
+fn rows(tokens: &[Token]) -> Vec<Row<'_>> {
+    let mut rows = vec![Row { depth: 0, tokens: Vec::new() }];
+    let mut depth = 0usize;
+    for token in tokens {
+        match token {
+            Token::VariationStart => {
+                depth = depth.saturating_add(1);
+                rows.push(Row { depth, tokens: vec![token] });
+            }
+            Token::VariationEnd => {
+                if rows.last().is_some_and(|r| r.tokens.is_empty()) && rows.len() > 1 {
+                    rows.pop();
+                }
+                if let Some(row) = rows.last_mut() {
+                    row.tokens.push(token);
+                }
+                depth = depth.saturating_sub(1);
+                rows.push(Row { depth, tokens: Vec::new() });
+            }
+            _ => {
+                if let Some(row) = rows.last_mut() {
+                    row.tokens.push(token);
+                }
+            }
+        }
+    }
+    rows.retain(|r| !r.tokens.is_empty());
+    rows
+}
+
+/// The notation: numbered moves, the move shown highlighted (and scrolled into view when it
+/// changes), each one a click away; each variation on its own row, indented by its depth, smaller
+/// and muted; comments in italics, a comment before a move written before it. A move's menu
+/// (right-click) has the rail's structure tools, acting on that move's variation, and deletes the
+/// move with what follows. `height`: exactly this tall (the Board panel, where it takes the
+/// height left), or `None` to shrink to the moves up to [`SHRINK_NOTATION`].
+pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, height: Option<f32>) {
     if state.illegal.is_some() {
         return;
     }
     let tokens = state.game.tokens();
-    if tokens.iter().all(|t| !matches!(t, Token::Move { .. })) {
-        ui.label(egui::RichText::new(tl!("Play a move: click a piece, then where it goes, or drag it there.")).small().color(t.text_muted));
-        return;
+    let width = ui.available_width();
+    // The area as one named region, for assistive technology (and the tests, which measure it).
+    if let Some(h) = height {
+        let region = Rect::from_min_size(ui.cursor().min, vec2(width, h));
+        let r = ui.interact(region, ui.id().with("chess-notation"), egui::Sense::hover());
+        r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Other, true, tl!("Moves")));
     }
+    let mut area = egui::ScrollArea::vertical().id_salt("chess-board-moves");
+    area = match height {
+        Some(h) => area.min_scrolled_height(h).max_height(h).auto_shrink([false, false]),
+        None => area.max_height(SHRINK_NOTATION).auto_shrink([false, true]),
+    };
     let mut edit = None;
     let current = state.game.current();
-    egui::ScrollArea::vertical().id_salt("chess-board-moves").max_height(180.0).auto_shrink([false, true]).show(ui, |ui| {
-        ui.horizontal_wrapped(|ui| {
-            ui.spacing_mut().item_spacing.x = 4.0;
-            for token in &tokens {
-                match token {
-                    Token::Move { node, number, color, numbered, san, nags, depth } => {
-                        let depth = *depth;
-                        if *numbered {
-                            let n = if *color == Color::White { format!("{number}.") } else { format!("{number}...") };
-                            ui.label(egui::RichText::new(n).small().color(t.text_faint));
-                        }
-                        let text = format!("{san}{}", glyphs(nags));
-                        let mut rich = egui::RichText::new(text).monospace();
-                        if depth > 0 {
-                            rich = rich.small().color(t.text_muted);
-                        }
-                        let r = ui.selectable_label(*node == current, rich);
-                        if r.clicked() {
-                            edit = Some(MoveEdit::Go(*node));
-                        }
-                        r.context_menu(|ui| {
-                            if let Some((run, target)) = crate::chess_tools::move_menu(ui, state, *node) {
-                                edit = Some(MoveEdit::Tool(run, target));
-                                ui.close();
+    let reveal = state.revealed != Some((current, state.game.revision()));
+    area.show(ui, |ui| {
+        if tokens.iter().all(|t| !matches!(t, Token::Move { .. })) {
+            ui.label(egui::RichText::new(tl!("Play a move: click a piece, then where it goes, or drag it there.")).small().color(t.text_muted));
+            return;
+        }
+        ui.spacing_mut().item_spacing.y = 2.0;
+        for row in rows(&tokens) {
+            let indent = i8::try_from(row.depth.min(MAX_INDENT).saturating_mul(INDENT)).unwrap_or(i8::MAX);
+            egui::Frame::NONE.inner_margin(egui::Margin { left: indent, ..egui::Margin::ZERO }).show(ui, |ui| {
+                ui.horizontal_wrapped(|ui| {
+                    ui.spacing_mut().item_spacing.x = 4.0;
+                    let small = row.depth > 0;
+                    for token in &row.tokens {
+                        match token {
+                            Token::Move { node, number, color, numbered, san, nags, .. } => {
+                                if *numbered {
+                                    let n = if *color == Color::White { format!("{number}.") } else { format!("{number}...") };
+                                    ui.label(egui::RichText::new(n).small().color(t.text_faint));
+                                }
+                                let mut rich = egui::RichText::new(format!("{san}{}", glyphs(nags))).monospace();
+                                if small {
+                                    rich = rich.small().color(t.text_muted);
+                                }
+                                let r = ui.selectable_label(*node == current, rich);
+                                if *node == current && reveal {
+                                    r.scroll_to_me_animation(None, egui::style::ScrollAnimation::none());
+                                }
+                                if r.clicked() {
+                                    edit = Some(MoveEdit::Go(*node));
+                                }
+                                r.context_menu(|ui| {
+                                    if let Some((run, target)) = crate::chess_tools::move_menu(ui, state, *node) {
+                                        edit = Some(MoveEdit::Tool(run, target));
+                                        ui.close();
+                                    }
+                                    ui.separator();
+                                    if ui.button(tl!("Delete from this move")).clicked() {
+                                        edit = Some(MoveEdit::Delete(*node));
+                                        ui.close();
+                                    }
+                                });
                             }
-                            ui.separator();
-                            if ui.button(tl!("Delete from this move")).clicked() {
-                                edit = Some(MoveEdit::Delete(*node));
-                                ui.close();
+                            Token::Comment { text, .. } => {
+                                ui.label(egui::RichText::new(text).italics().small().color(t.text_muted));
                             }
-                        });
+                            Token::VariationStart => {
+                                ui.label(egui::RichText::new("(").small().color(t.text_faint));
+                            }
+                            Token::VariationEnd => {
+                                ui.label(egui::RichText::new(")").small().color(t.text_faint));
+                            }
+                        }
                     }
-                    Token::Comment { text, .. } => {
-                        ui.label(egui::RichText::new(text).italics().small().color(t.text_muted));
-                    }
-                    Token::VariationStart => {
-                        ui.label(egui::RichText::new("(").small().color(t.text_faint));
-                    }
-                    Token::VariationEnd => {
-                        ui.label(egui::RichText::new(")").small().color(t.text_faint));
-                    }
-                }
-            }
-        });
+                });
+            });
+        }
     });
+    state.revealed = Some((current, state.game.revision()));
     if let Some(e) = edit {
         state.selected = None;
         state.promotion = None;
@@ -983,34 +1062,29 @@ fn keep_draft(draft: &mut Option<Draft>, key: &str, response: &egui::Response, t
 
 /// The game's details: the PGN tags people fill in.
 fn details(ui: &mut egui::Ui, state: &mut BoardState) {
-    if state.illegal.is_some() {
-        return;
-    }
-    egui::CollapsingHeader::new(tl!("Game details")).id_salt("chess-board-details").show(ui, |ui| {
-        egui::Grid::new("chess-board-tags").num_columns(2).spacing([8.0, 4.0]).show(ui, |ui| {
-            for (tag, label) in [
-                ("White", tl!("White")),
-                ("Black", tl_ctx!("chess side", "Black")),
-                ("Event", tl!("Event")),
-                ("Site", tl!("Site")),
-                ("Date", tl!("Date")),
-                ("Round", tl!("Round")),
-                ("Result", tl!("Result")),
-            ] {
-                ui.label(label);
-                let key = format!("tag {tag}");
-                let (mut value, mut recorded) = drafted(&state.draft, &key, state.game.tag(tag).unwrap_or_default());
-                let r = ui.add(egui::TextEdit::singleline(&mut value).desired_width(f32::INFINITY));
-                if r.changed() {
-                    recorded = state.type_in(recorded, ChessEdit::GameDetails, |game| {
-                        // The names above are valid tag names: this cannot fail.
-                        let _ = game.set_tag(tag, &value);
-                    });
-                }
-                keep_draft(&mut state.draft, &key, &r, value, recorded);
-                ui.end_row();
+    egui::Grid::new("chess-board-tags").num_columns(2).spacing([8.0, 4.0]).show(ui, |ui| {
+        for (tag, label) in [
+            ("White", tl!("White")),
+            ("Black", tl_ctx!("chess side", "Black")),
+            ("Event", tl!("Event")),
+            ("Site", tl!("Site")),
+            ("Date", tl!("Date")),
+            ("Round", tl!("Round")),
+            ("Result", tl!("Result")),
+        ] {
+            ui.label(label);
+            let key = format!("tag {tag}");
+            let (mut value, mut recorded) = drafted(&state.draft, &key, state.game.tag(tag).unwrap_or_default());
+            let r = ui.add(egui::TextEdit::singleline(&mut value).desired_width(f32::INFINITY));
+            if r.changed() {
+                recorded = state.type_in(recorded, ChessEdit::GameDetails, |game| {
+                    // The names above are valid tag names: this cannot fail.
+                    let _ = game.set_tag(tag, &value);
+                });
             }
-        });
+            keep_draft(&mut state.draft, &key, &r, value, recorded);
+            ui.end_row();
+        }
     });
 }
 
@@ -1080,9 +1154,8 @@ pub(crate) fn navigation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) 
     }
 }
 
-/// The move list, the glyphs and comment of the move shown, and the game's details.
-pub(crate) fn moves_and_notes(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) {
-    move_list(ui, t, state);
+/// Under the notation: cutting the moves after the move shown, and its glyphs and comment.
+pub(crate) fn notes(ui: &mut egui::Ui, state: &mut BoardState) {
     if state.illegal.is_none() && state.game.ply() < state.game.len() && ui.small_button(tl!("Delete the moves after this one")).clicked() {
         state.edit(|s| {
             s.game.truncate();
@@ -1090,57 +1163,53 @@ pub(crate) fn moves_and_notes(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardSt
         });
     }
     annotation(ui, state);
-    details(ui, state);
 }
 
-/// The FEN and PGN fields, with what can be done with them.
-pub(crate) fn fen_and_pgn(ui: &mut egui::Ui, state: &mut BoardState) -> Option<BoardAction> {
+/// The FEN, the PGN and the game's details, each a section of its own, closed until opened
+/// (egui keeps which are open, for the session and the next). The fields are refreshed from the
+/// game whether or not their section is open.
+pub(crate) fn sections(ui: &mut egui::Ui, state: &mut BoardState) -> Option<BoardAction> {
     let mut action = None;
     state.refresh_fields(false);
-    // FEN.
-    ui.horizontal(|ui| {
-        ui.label(egui::RichText::new("FEN").small().strong());
+    egui::CollapsingHeader::new("FEN").id_salt("chess-board-fen").default_open(false).show(ui, |ui| {
         let r = ui.add(egui::TextEdit::singleline(&mut state.fen_text).font(egui::TextStyle::Monospace).desired_width(f32::INFINITY));
         if r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
             let fen = state.fen_text.clone();
             let flipped = state.flipped;
             state.load_fen(&fen, flipped, None);
         }
-    });
-    ui.horizontal_wrapped(|ui| {
-        if ui.small_button(tl!("Copy FEN")).clicked() {
-            action = Some(BoardAction::CopyFen(state.current_fen()));
-        }
-        if state.illegal.is_none()
-            && let Ok(p) = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(&state.game.fen())
-        {
-            let url = pdfcraft_engine::chess::pdfcraft_chess::lichess::analysis_url(&p, if state.flipped { Color::Black } else { Color::White });
-            if ui.small_button(tl!("Open in lichess")).on_hover_text(&url).clicked() {
-                action = Some(BoardAction::OpenLichess(url));
+        ui.horizontal_wrapped(|ui| {
+            if ui.small_button(tl!("Copy FEN")).clicked() {
+                action = Some(BoardAction::CopyFen(state.current_fen()));
             }
-        }
-        if ui.small_button(tl!("Standard start position")).clicked() {
-            state.standard_start();
-        }
+            if state.illegal.is_none()
+                && let Ok(p) = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(&state.game.fen())
+            {
+                let url = pdfcraft_engine::chess::pdfcraft_chess::lichess::analysis_url(&p, if state.flipped { Color::Black } else { Color::White });
+                if ui.small_button(tl!("Open in lichess")).on_hover_text(&url).clicked() {
+                    action = Some(BoardAction::OpenLichess(url));
+                }
+            }
+            if ui.small_button(tl!("Standard start position")).clicked() {
+                state.standard_start();
+            }
+        });
     });
-    ui.add_space(4.0);
-    // PGN.
-    ui.label(egui::RichText::new("PGN").small().strong());
-    ui.add(egui::TextEdit::multiline(&mut state.pgn_text).font(egui::TextStyle::Monospace).desired_rows(5).desired_width(f32::INFINITY));
-    ui.horizontal_wrapped(|ui| {
-        if ui.add_enabled(state.illegal.is_none(), egui::Button::new(tl!("Copy PGN")).small()).clicked() {
-            action = Some(BoardAction::CopyPgn(state.game.pgn()));
-        }
-        if ui.small_button(tl!("Load PGN")).on_hover_text(tl!("Play the main line of the PGN above on the board.")).clicked() {
-            state.load_pgn();
-        }
+    egui::CollapsingHeader::new("PGN").id_salt("chess-board-pgn").default_open(false).show(ui, |ui| {
+        ui.add(egui::TextEdit::multiline(&mut state.pgn_text).font(egui::TextStyle::Monospace).desired_rows(5).desired_width(f32::INFINITY));
+        ui.horizontal_wrapped(|ui| {
+            if ui.add_enabled(state.illegal.is_none(), egui::Button::new(tl!("Copy PGN")).small()).clicked() {
+                action = Some(BoardAction::CopyPgn(state.game.pgn()));
+            }
+            if ui.small_button(tl!("Load PGN")).on_hover_text(tl!("Play the main line of the PGN above on the board.")).clicked() {
+                state.load_pgn();
+            }
+        });
     });
+    if state.illegal.is_none() {
+        egui::CollapsingHeader::new(tl!("Game details")).id_salt("chess-board-details").default_open(false).show(ui, |ui| details(ui, state));
+    }
     action
-}
-
-/// The Chess board panel. `source_label` names the diagram the board was loaded from.
-pub fn panel(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, pieces: &PieceSet, source_label: Option<String>) -> Option<BoardAction> {
-    panel_body(ui, t, state, pieces, source_label, Sizing::DOCKED)
 }
 
 /// The panel's title, and the diagram the board was loaded from as a link to it.
@@ -1157,15 +1226,21 @@ pub(crate) fn title(ui: &mut egui::Ui, state: &BoardState, source_label: Option<
     action
 }
 
-/// The panel below its keys, in one column.
+/// The Chess board panel below its keys, in one column (spec §4.1), in a scroll area whose
+/// visible part is `viewport` points tall: the board and its controls within `sizing`'s limits,
+/// then [`moves_column`] in the height left. `source_label` names the diagram the board was
+/// loaded from.
 pub(crate) fn panel_body(
     ui: &mut egui::Ui,
     t: &Tokens,
-    state: &mut BoardState,
+    chess: &mut crate::chess_ui::ChessState,
     pieces: &PieceSet,
     source_label: Option<String>,
     sizing: Sizing,
-) -> Option<BoardAction> {
+    viewport: f32,
+) -> (Option<BoardAction>, Option<crate::chess_collection::GamesAction>) {
+    let top = ui.cursor().top();
+    let state = chess.board_mut();
     let action = title(ui, state, source_label);
     ui.add_space(4.0);
     view_controls(ui, state);
@@ -1174,10 +1249,46 @@ pub(crate) fn panel_body(
     promotion_choice(ui, state);
     navigation(ui, t, state);
     ui.add_space(4.0);
-    moves_and_notes(ui, t, state);
-    ui.add_space(6.0);
-    let fields = fen_and_pgn(ui, state);
-    action.or(fields)
+    let (fields, games) = moves_column(ui, t, chess, viewport - (ui.cursor().top() - top));
+    (action.or(fields), games)
+}
+
+/// The notation taking `room` points (at least [`MIN_NOTATION`]) less what goes under it, then
+/// the glyphs and comment of the move shown, the document's games and the closed FEN, PGN and
+/// details sections: under the board in one column, or the right-hand column of the chess
+/// window's wide layout (`chess_window`). What goes under the notation is measured each frame
+/// and set aside the next, so opening a section shrinks the notation (down to its least height,
+/// then the column scrolls).
+pub(crate) fn moves_column(
+    ui: &mut egui::Ui,
+    t: &Tokens,
+    chess: &mut crate::chess_ui::ChessState,
+    room: f32,
+) -> (Option<BoardAction>, Option<crate::chess_collection::GamesAction>) {
+    let state = chess.board_mut();
+    let below_id = ui.id().with("chess-board-below");
+    let below = ui.ctx().data(|d| d.get_temp::<f32>(below_id)).unwrap_or(0.0);
+    let height = notation_height(room, 0.0, below);
+    notation(ui, t, state, Some(height));
+    let below_top = ui.cursor().top();
+    notes(ui, state);
+    ui.add_space(4.0);
+    let games = crate::chess_collection::games_section(ui, t, &chess.games);
+    let fields = sections(ui, chess.board_mut());
+    let measured = ui.cursor().top() - below_top;
+    if measured.is_finite() && (measured - below).abs() > 0.5 {
+        ui.ctx().data_mut(|d| d.insert_temp(below_id, measured));
+        ui.ctx().request_repaint();
+    }
+    (fields, games)
+}
+
+/// The notation's height in a panel `viewport` points tall, with `above` points drawn above it
+/// and `below` to go under it: what is left, and at least [`MIN_NOTATION`].
+fn notation_height(viewport: f32, above: f32, below: f32) -> f32 {
+    // A little to spare, so rounding never makes the panel scroll by a point.
+    let left = viewport - above - below - 4.0;
+    if left.is_finite() { left.max(MIN_NOTATION) } else { MIN_NOTATION }
 }
 
 #[cfg(test)]
@@ -1255,6 +1366,34 @@ mod tests {
         s.set_first_side(Color::White);
         assert_eq!(s.game.side_to_move(), Color::Black);
         assert!(s.message.is_some());
+    }
+
+    #[test]
+    fn variations_get_rows_of_their_own_indented_by_depth() {
+        let (g, _) = Game::from_pgn("1. e4 {Open} e5 (1... c5 2. Nf3 (2. c3 d5 (2... Nf6 3. e5)) d6) 2. Nf3 *").unwrap();
+        let tokens = g.tokens();
+        let rows: Vec<(usize, String)> = rows(&tokens)
+            .iter()
+            .map(|r| {
+                let words: Vec<String> = r
+                    .tokens
+                    .iter()
+                    .map(|t| match t {
+                        Token::Move { san, .. } => san.clone(),
+                        Token::Comment { text, .. } => format!("{{{text}}}"),
+                        Token::VariationStart => "(".to_owned(),
+                        Token::VariationEnd => ")".to_owned(),
+                    })
+                    .collect();
+                (r.depth, words.join(" "))
+            })
+            .collect();
+        let expected = [(0, "e4 {Open} e5"), (1, "( c5 Nf3"), (2, "( c3 d5"), (3, "( Nf6 e5 ) )"), (1, "d6 )"), (0, "Nf3")];
+        assert_eq!(rows, expected.map(|(d, s)| (d, s.to_owned())));
+        assert!(super::rows(&[]).is_empty());
+        assert_eq!(notation_height(800.0, 500.0, 100.0), 196.0);
+        assert_eq!(notation_height(400.0, 500.0, 100.0), MIN_NOTATION);
+        assert_eq!(notation_height(f32::INFINITY, 500.0, f32::INFINITY), MIN_NOTATION, "NaN is not a height");
     }
 
     #[test]

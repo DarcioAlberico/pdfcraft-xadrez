@@ -567,7 +567,9 @@ fn double_clicking_a_diagram_puts_it_on_the_board_to_play() {
     h.get_by_label("Make this the main line").click();
     h.run_steps(2);
     assert_eq!(h.state().chess.board().game.movetext(), "1. e4 c5 $5 (1... e5)");
-    // Copy FEN copies the position on the board.
+    // Copy FEN, in the FEN section (closed until opened), copies the position on the board.
+    h.get_by_label("FEN").click();
+    h.run_steps(2);
     h.get_by_label("Copy FEN").click();
     let mut copied = false;
     for _ in 0..3 {
@@ -1672,10 +1674,101 @@ fn a_wide_window_has_a_larger_board_beside_the_moves() {
     assert!(h.state().chess_window_wide());
     let board = h.get_by_label_contains("Board: ").rect();
     assert!(board.width() > 520.0, "{board:?}");
-    let fen = h.get_by_label("Copy FEN").rect();
-    assert!(fen.min.x > board.max.x && fen.min.y < board.max.y, "the fields beside the board: {fen:?} {board:?}");
+    let fen = h.get_by_label("FEN").rect();
+    assert!(fen.min.x > board.max.x, "the fields beside the board: {fen:?} {board:?}");
+    // T5b: the notation fills the right-hand column, beside the board, from its top.
+    let moves = h.get_by_label("Moves").rect();
+    assert!(moves.min.x > board.max.x && moves.min.y < board.center().y, "the moves beside the board: {moves:?} {board:?}");
+    assert!(moves.height() > 300.0, "the notation fills the column: {moves:?}");
     let h = harness_restoring(window_settings(serde_json::json!({"detached": true, "size": [560.0, 820.0]})));
     assert!(!h.state().chess_window_wide());
     let board = h.get_by_label_contains("Board: ").rect();
     assert!(board.width() <= 520.0, "{board:?}");
+}
+
+// ---- T5b: the board panel's layout and the rail's commands ----
+
+/// The rail's registered commands (Ctrl+K, menus, automation) run the rail's own actions: each
+/// changes the game as its button does, as one undo step, and the PGN field shows the result.
+/// With no moves on the board they are off, and say why.
+#[test]
+fn the_rails_commands_run_the_rails_actions() {
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    assert!(!h.state_mut().execute("chess.variation.promote_one"), "no moves: off");
+    let cases: [(&str, &[u16], &str, &str); 5] = [
+        ("chess.variation.promote_one", &[0, 1, 0, 0], "1. e4 c5 (1... e5 2. Nf3) 2. Nf3 (2. c3) 2... d6", "Promote a variation"),
+        ("chess.variation.make_main", &[0, 1, 1], "1. e4 c5 (1... e5 2. Nf3) 2. c3 (2. Nf3 d6)", "Make main line"),
+        ("chess.variation.demote", &[0, 1, 0, 0], "1. e4 e5 (1... c5 2. c3 (2. Nf3 d6)) 2. Nf3", "Demote a line"),
+        ("chess.variation.delete", &[0, 1, 0, 0], "1. e4 e5 2. Nf3", "Delete a variation"),
+        ("chess.moves.cut", &[0], "1. e4", "Delete moves"),
+    ];
+    for (id, path, after, step) in cases {
+        put_game(&mut h, FORKS, path);
+        assert!(h.state_mut().execute(id), "{id}");
+        h.run_steps(2);
+        assert_eq!(movetext(&h), after, "{id}");
+        let pgn = h.state().chess.board().pgn_text.clone();
+        assert!(pgn.ends_with(&format!("{after} *\n")), "{id}: the PGN field shows {pgn}");
+        assert_eq!(h.state().chess.board().undo_label().as_deref(), Some(step), "{id}");
+        assert!(h.state_mut().execute("edit.undo"));
+        h.run_steps(2);
+        assert_eq!(movetext(&h), FORKS_TEXT, "{id}: one undo step took it back");
+    }
+    // Navigate is the mode armed after it.
+    assert!(h.state_mut().execute("chess.tool.navigate"));
+    assert_eq!(format!("{:?}", h.state().chess.tools.tool), "Navigate");
+    // The Structure group shows the tool its command ran last.
+    put_game(&mut h, FORKS, &[0, 1, 0, 0]);
+    assert!(h.state_mut().execute("chess.variation.demote"));
+    h.run_steps(2);
+    h.get_by_label(&format!("Demote ({})", key_text(true, false, "↓")));
+}
+
+/// The Board panel's height (spec §4.1): the notation takes what the board and the rest leave,
+/// never less than 120 pt; FEN, PGN and the game's details are sections, closed until opened,
+/// and one opened takes its room from the notation.
+#[test]
+fn the_notation_fills_the_panel_and_the_fields_are_closed_sections() {
+    let tall_window = |height: f32| {
+        let mut h = Harness::builder().with_size(egui::vec2(1400.0, height)).build_eframe(|_cc| {
+            let mut app = PdfCraftApp::new();
+            app.set_option("language", "en").unwrap();
+            app.open_bytes("boards.pdf", None, boards()).unwrap();
+            app
+        });
+        h.run_steps(4);
+        h
+    };
+    let mut h = tall_window(1400.0);
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, FORKS, &[0, 1, 0, 0]);
+    h.run_steps(3);
+    let moves = |h: &Harness<'static, PdfCraftApp>| h.get_by_label("Moves").rect().height();
+    let tall = moves(&h);
+    assert!(tall > 180.0, "the notation fills the panel, not capped at 180 pt: {tall}");
+    for (section, inside) in [("FEN", "Copy FEN"), ("PGN", "Load PGN"), ("Game details", "Event")] {
+        assert!(h.query_by_label(inside).is_none(), "{section} is closed until opened");
+        h.get_by_label(section).click();
+        h.run_steps(3);
+        h.get_by_label(inside);
+        h.get_by_label(section).click();
+        h.run_steps(3);
+        assert!(h.query_by_label(inside).is_none(), "{section} closes again");
+    }
+    assert!((moves(&h) - tall).abs() < 1.0, "all closed again: the notation is as tall as before");
+    h.get_by_label("PGN").click();
+    h.run_steps(3);
+    let shorter = moves(&h);
+    assert!(shorter < tall - 40.0 && shorter >= 120.0, "the PGN field took its room from the notation: {tall} → {shorter}");
+    // A short window: the notation keeps its least height, and the panel scrolls instead.
+    let mut h = tall_window(560.0);
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, FORKS, &[0, 1, 0, 0]);
+    h.run_steps(3);
+    let least = moves(&h);
+    assert!((119.0..=121.0).contains(&least), "the notation's least height: {least}");
 }
