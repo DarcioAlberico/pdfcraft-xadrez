@@ -213,3 +213,37 @@ fn a_control_file_owned_by_another_user_is_refused() {
     let o = ui(&control, "state");
     assert_refused(&o, &spy.received(), "owned by another user");
 }
+
+/// T12: `--viewport NAME` addresses one of the app's windows; given twice, nothing is sent.
+#[test]
+fn viewport_names_the_window_a_request_is_for() {
+    let dir = scratch("viewport");
+    let first = spy();
+    let control = dir.join("pc.json");
+    write_private(&control, &control_json(first.port));
+    let o = Command::new(env!("CARGO_BIN_EXE_pdfcraft-cli"))
+        .args(["ui", "--control"])
+        .arg(&control)
+        .args(["inspect", "--viewport", "chess", "query=Board"])
+        .output()
+        .unwrap();
+    let received = first.received();
+    assert!(o.status.success(), "{}", String::from_utf8_lossy(&o.stderr));
+    let request = received.lines().find(|l| l.contains("ui.inspect")).unwrap_or_default();
+    let request: serde_json::Value = serde_json::from_str(request).unwrap();
+    assert_eq!(request["params"], serde_json::json!({ "viewport": "chess", "query": "Board" }), "{received}");
+
+    let second = spy();
+    let control = dir.join("pc2.json");
+    write_private(&control, &control_json(second.port));
+    let o = Command::new(env!("CARGO_BIN_EXE_pdfcraft-cli"))
+        .args(["ui", "--control"])
+        .arg(&control)
+        .args(["click", "--viewport", "chess", "viewport=root", "label=Board"])
+        .output()
+        .unwrap();
+    let received = second.received();
+    assert!(!o.status.success());
+    assert!(String::from_utf8_lossy(&o.stderr).contains("not both"), "{}", String::from_utf8_lossy(&o.stderr));
+    assert!(received.is_empty(), "nothing was sent: {received}");
+}

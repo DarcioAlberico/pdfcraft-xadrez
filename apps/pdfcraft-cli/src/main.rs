@@ -81,8 +81,9 @@ pdfcraft-cli run    --script steps.json [--root DIR] [--report]
 ",
     mcp_usage!(),
     "\
-pdfcraft-cli ui     --control FILE <method> [key=value …] [--out shot.png]
+pdfcraft-cli ui     --control FILE <method> [key=value …] [--out shot.png] [--viewport NAME]
                                                            drive a running app started with --control FILE
+                                                           (--viewport: the app window, root by default)
 help and feedback: https://discord.gg/artcraft"
 );
 
@@ -276,7 +277,11 @@ const RUN_OPTIONS: &[OptionSpec] = &[
     OptionSpec { name: "--out", takes_value: true },
     OptionSpec { name: "--report", takes_value: false },
 ];
-const UI_OPTIONS: &[OptionSpec] = &[OptionSpec { name: "--control", takes_value: true }, OptionSpec { name: "--out", takes_value: true }];
+const UI_OPTIONS: &[OptionSpec] = &[
+    OptionSpec { name: "--control", takes_value: true },
+    OptionSpec { name: "--out", takes_value: true },
+    OptionSpec { name: "--viewport", takes_value: true },
+];
 
 #[cfg(feature = "mcp")]
 const MCP_OPTIONS: &[OptionSpec] = &[OptionSpec { name: "--root", takes_value: true }, OptionSpec { name: "--compact", takes_value: false }];
@@ -1058,6 +1063,16 @@ fn ui(args: &[String]) -> Result<(), CliError> {
     for kv in pos.iter().skip(1) {
         let (k, v) = kv.split_once('=').ok_or(format!("ui: expected key=value, got {kv:?}"))?;
         params.insert(k.to_string(), serde_json::from_str(v).unwrap_or_else(|_| serde_json::Value::String(v.to_string())));
+    }
+    // The app window the request is for (`root`, `chess`); the app refuses names it doesn't know.
+    if let Some(viewport) = flag(args, "--viewport") {
+        if params.contains_key("viewport") {
+            return Err("ui: give the window either as --viewport or as viewport=, not both".into());
+        }
+        if viewport.is_empty() || viewport.starts_with("--") {
+            return Err("ui: --viewport needs a window name (root, chess)".into());
+        }
+        params.insert("viewport".into(), serde_json::Value::String(viewport.to_string()));
     }
     let stream =
         std::net::TcpStream::connect(("127.0.0.1", port)).map_err(|e| format!("can't reach the app on port {port}: {e} (is it still running?)"))?;

@@ -39,6 +39,11 @@ impl ObjectSelection {
         self.selected.len()
     }
 
+    /// Whether [`Self::set_input_blocked`] holds the gestures off.
+    pub fn input_blocked(&self) -> bool {
+        self.input_blocked
+    }
+
     /// A preview belongs to the active, focused document. Returning from another tab or a
     /// modal must not turn a release that happened elsewhere into a document edit.
     pub fn set_input_blocked(&mut self, blocked: bool) {
