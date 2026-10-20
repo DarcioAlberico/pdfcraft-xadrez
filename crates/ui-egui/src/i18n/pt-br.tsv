@@ -2650,3 +2650,25 @@ chess side	Black	Pretas
 	Only the first {n} were read.	Só as primeiras {n} foram lidas.
 	the file is too large	o arquivo é grande demais
 	no game could be read	nenhuma partida pôde ser lida
+# Chess ▸ PGN toolbar: T5a, the tool rail and its keys (the last three name undo steps: each follows "Undo" or "Redo").
+	Navigate	Navegar
+	Structure	Estrutura
+	Promote one level	Promover um nível
+	Demote	Rebaixar
+	Delete variation	Excluir variante
+	Cut after this move	Cortar depois deste lance
+	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	Mais ferramentas de {group}: clique com o botão direito, segure ou pressione Enter. {key} alterna entre elas.
+	This move is on the main line already.	Este lance já está na linha principal.
+	There are no moves after this one.	Não há lances depois deste.
+	Not done: variations would nest too deep.	Não feito: as variantes ficariam aninhadas demais.
+	Not demoted: this move is a variation; only the line that continues a move is demoted.	Não rebaixado: este lance é uma variante; só se rebaixa a linha que continua um lance.
+	Not demoted: there is no variation to take its place.	Não rebaixado: não há variante para assumir o lugar.
+	Not promoted: there is no variation on the way to this move.	Não promovido: não há variante no caminho até este lance.
+	Not promoted: this line already continues its move.	Não promovido: esta linha já continua o seu lance.
+	Not deleted: there is no variation on the way to this move.	Não excluído: não há variante no caminho até este lance.
+	Not deleted: this is the main line here, not a variation.	Não excluído: aqui esta é a linha principal, não uma variante.
+	Not done: there is no such move.	Não feito: esse lance não existe.
+	Acts on {move}	Age em {move}
+	Promote a variation	promoção de variante
+	Demote a line	rebaixamento de linha
+	Delete a variation	exclusão de variante

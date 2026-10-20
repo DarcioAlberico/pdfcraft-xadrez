@@ -2596,3 +2596,25 @@ animation effects	Off	Изключени
 	Only the first {n} were read.	Прочетени са само първите {n}.
 	the file is too large	файлът е твърде голям
 	no game could be read	не можа да бъде прочетена нито една партия
+# Chess ▸ PGN toolbar: T5a, the tool rail and its keys (the last three name undo steps: each follows "Undo" or "Redo").
+	Navigate	Навигация
+	Structure	Структура
+	Promote one level	Повишаване с едно ниво
+	Demote	Понижаване
+	Delete variation	Изтриване на варианта
+	Cut after this move	Отрязване след този ход
+	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	Още инструменти от групата „{group}“: десен бутон, задържане или Enter. {key} превключва между тях.
+	This move is on the main line already.	Този ход вече е в главния вариант.
+	There are no moves after this one.	След този ход няма ходове.
+	Not done: variations would nest too deep.	Не е изпълнено: вариантите биха се вложили твърде дълбоко.
+	Not demoted: this move is a variation; only the line that continues a move is demoted.	Не е понижено: този ход е вариант; понижава се само линията, която продължава хода.
+	Not demoted: there is no variation to take its place.	Не е понижено: няма вариант, който да заеме мястото ѝ.
+	Not promoted: there is no variation on the way to this move.	Не е повишено: по пътя до този ход няма вариант.
+	Not promoted: this line already continues its move.	Не е повишено: тази линия вече продължава своя ход.
+	Not deleted: there is no variation on the way to this move.	Не е изтрито: по пътя до този ход няма вариант.
+	Not deleted: this is the main line here, not a variation.	Не е изтрито: тук това е главният вариант, а не страничен.
+	Not done: there is no such move.	Не е изпълнено: такъв ход няма.
+	Acts on {move}	Засяга {move}
+	Promote a variation	повишаването на вариант
+	Demote a line	понижаването на линия
+	Delete a variation	изтриването на вариант

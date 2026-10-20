@@ -2888,3 +2888,25 @@ chess side	Black	Đen
 	Only the first {n} were read.	Chỉ đọc {n} ván đầu tiên.
 	the file is too large	tệp quá lớn
 	no game could be read	không đọc được ván nào
+# Chess ▸ PGN toolbar: T5a, the tool rail and its keys (the last three name undo steps: each follows "Undo" or "Redo").
+	Navigate	Điều hướng
+	Structure	Cấu trúc
+	Promote one level	Nâng lên một cấp
+	Demote	Hạ cấp
+	Delete variation	Xóa biến
+	Cut after this move	Cắt sau nước này
+	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	Thêm công cụ {group}: nhấp chuột phải, nhấn giữ hoặc nhấn Enter. {key} chuyển qua lại giữa chúng.
+	This move is on the main line already.	Nước này đã nằm trên diễn biến chính.
+	There are no moves after this one.	Không có nước nào sau nước này.
+	Not done: variations would nest too deep.	Không thực hiện: các biến sẽ lồng nhau quá sâu.
+	Not demoted: this move is a variation; only the line that continues a move is demoted.	Không hạ cấp: nước này là một biến; chỉ hạ cấp được đường tiếp nối một nước.
+	Not demoted: there is no variation to take its place.	Không hạ cấp: không có biến nào thay thế chỗ của nó.
+	Not promoted: there is no variation on the way to this move.	Không nâng cấp: không có biến nào trên đường đến nước này.
+	Not promoted: this line already continues its move.	Không nâng cấp: đường này đã tiếp nối nước của nó.
+	Not deleted: there is no variation on the way to this move.	Không xóa: không có biến nào trên đường đến nước này.
+	Not deleted: this is the main line here, not a variation.	Không xóa: ở đây là diễn biến chính, không phải biến.
+	Not done: there is no such move.	Không thực hiện: không có nước đó.
+	Acts on {move}	Áp dụng cho {move}
+	Promote a variation	nâng cấp biến
+	Demote a line	hạ cấp đường
+	Delete a variation	xóa một biến

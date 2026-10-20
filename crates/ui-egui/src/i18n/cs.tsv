@@ -2707,3 +2707,25 @@ animation effects	Off	Vypnuto
 	Only the first {n} were read.	Načteno jen prvních {n}.
 	the file is too large	soubor je příliš velký
 	no game could be read	nepodařilo se přečíst žádnou partii
+# Chess ▸ PGN toolbar: T5a, the tool rail and its keys (the last three name undo steps: each follows "Undo" or "Redo").
+	Navigate	Navigace
+	Structure	Struktura
+	Promote one level	Povýšit o úroveň
+	Demote	Snížit
+	Delete variation	Smazat variantu
+	Cut after this move	Odříznout po tomto tahu
+	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	Další nástroje skupiny {group}: klikněte pravým tlačítkem, podržte nebo stiskněte Enter. {key} mezi nimi přepíná.
+	This move is on the main line already.	Tento tah už je v hlavní variantě.
+	There are no moves after this one.	Po tomto tahu nejsou žádné tahy.
+	Not done: variations would nest too deep.	Neprovedeno: varianty by byly vnořené příliš hluboko.
+	Not demoted: this move is a variation; only the line that continues a move is demoted.	Nesníženo: tento tah je varianta; snížit lze jen linii, která pokračuje v tahu.
+	Not demoted: there is no variation to take its place.	Nesníženo: není žádná varianta, která by zaujala její místo.
+	Not promoted: there is no variation on the way to this move.	Nepovýšeno: na cestě k tomuto tahu není žádná varianta.
+	Not promoted: this line already continues its move.	Nepovýšeno: tato linie už pokračuje ve svém tahu.
+	Not deleted: there is no variation on the way to this move.	Nesmazáno: na cestě k tomuto tahu není žádná varianta.
+	Not deleted: this is the main line here, not a variation.	Nesmazáno: tady je to hlavní varianta, ne vedlejší.
+	Not done: there is no such move.	Neprovedeno: takový tah neexistuje.
+	Acts on {move}	Týká se {move}
+	Promote a variation	povýšení varianty
+	Demote a line	snížení linie
+	Delete a variation	smazání varianty

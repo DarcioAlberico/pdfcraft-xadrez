@@ -2639,3 +2639,25 @@ animation effects	Off	Ανενεργά
 	Only the first {n} were read.	Διαβάστηκαν μόνο οι πρώτες {n}.
 	the file is too large	το αρχείο είναι πολύ μεγάλο
 	no game could be read	δεν διαβάστηκε καμία παρτίδα
+# Chess ▸ PGN toolbar: T5a, the tool rail and its keys (the last three name undo steps: each follows "Undo" or "Redo").
+	Navigate	Πλοήγηση
+	Structure	Δομή
+	Promote one level	Προβιβασμός κατά ένα επίπεδο
+	Demote	Υποβιβασμός
+	Delete variation	Διαγραφή παραλλαγής
+	Cut after this move	Αποκοπή μετά από αυτή την κίνηση
+	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	Περισσότερα εργαλεία της ομάδας {group}: δεξί κλικ, παρατεταμένο πάτημα ή Enter. Το {key} εναλλάσσει μεταξύ τους.
+	This move is on the main line already.	Αυτή η κίνηση είναι ήδη στην κύρια γραμμή.
+	There are no moves after this one.	Δεν υπάρχουν κινήσεις μετά από αυτή.
+	Not done: variations would nest too deep.	Δεν έγινε: οι παραλλαγές θα ήταν εμφωλευμένες πολύ βαθιά.
+	Not demoted: this move is a variation; only the line that continues a move is demoted.	Δεν υποβιβάστηκε: αυτή η κίνηση είναι παραλλαγή· υποβιβάζεται μόνο η γραμμή που συνεχίζει μια κίνηση.
+	Not demoted: there is no variation to take its place.	Δεν υποβιβάστηκε: δεν υπάρχει παραλλαγή να πάρει τη θέση της.
+	Not promoted: there is no variation on the way to this move.	Δεν προβιβάστηκε: δεν υπάρχει παραλλαγή στη διαδρομή ως αυτή την κίνηση.
+	Not promoted: this line already continues its move.	Δεν προβιβάστηκε: αυτή η γραμμή ήδη συνεχίζει την κίνησή της.
+	Not deleted: there is no variation on the way to this move.	Δεν διαγράφηκε: δεν υπάρχει παραλλαγή στη διαδρομή ως αυτή την κίνηση.
+	Not deleted: this is the main line here, not a variation.	Δεν διαγράφηκε: εδώ είναι η κύρια γραμμή, όχι παραλλαγή.
+	Not done: there is no such move.	Δεν έγινε: δεν υπάρχει τέτοια κίνηση.
+	Acts on {move}	Αφορά την {move}
+	Promote a variation	προβιβασμού παραλλαγής
+	Demote a line	υποβιβασμού γραμμής
+	Delete a variation	διαγραφής παραλλαγής

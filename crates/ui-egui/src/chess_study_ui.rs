@@ -587,7 +587,6 @@ pub fn study_tab(ui: &mut egui::Ui, t: &Tokens, study: &mut StudyState, board: &
         return None;
     }
     let mut action = None;
-    chess_board_ui::keys(ui, board);
     ui.horizontal_wrapped(|ui| {
         if ui.button(tl!("Set up a position")).on_hover_text(tl!("Put pieces on an empty or starting board, then play from there.")).clicked() {
             study.setup = Some(Setup::from_fen(&board.current_fen()));

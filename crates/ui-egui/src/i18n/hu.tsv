@@ -2632,3 +2632,25 @@ animation effects	Off	Ki
 	Only the first {n} were read.	Csak az első {n} lett beolvasva.
 	the file is too large	a fájl túl nagy
 	no game could be read	egyetlen játszma sem olvasható be
+# Chess ▸ PGN toolbar: T5a, the tool rail and its keys (the last three name undo steps: each follows "Undo" or "Redo").
+	Navigate	Navigálás
+	Structure	Szerkezet
+	Promote one level	Előléptetés egy szinttel
+	Demote	Lefokozás
+	Delete variation	Változat törlése
+	Cut after this move	Levágás e lépés után
+	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	További {group} eszközök: jobb kattintás, nyomva tartás vagy Enter. {key}: váltás közöttük.
+	This move is on the main line already.	Ez a lépés már a főváltozatban van.
+	There are no moves after this one.	E lépés után nincs több lépés.
+	Not done: variations would nest too deep.	Nem történt meg: a változatok túl mélyen ágyazódnának egymásba.
+	Not demoted: this move is a variation; only the line that continues a move is demoted.	Nincs lefokozva: ez a lépés változat; csak a lépést folytató vonal fokozható le.
+	Not demoted: there is no variation to take its place.	Nincs lefokozva: nincs változat, amely átvehetné a helyét.
+	Not promoted: there is no variation on the way to this move.	Nincs előléptetve: az e lépésig vezető úton nincs változat.
+	Not promoted: this line already continues its move.	Nincs előléptetve: ez a vonal már folytatja a lépését.
+	Not deleted: there is no variation on the way to this move.	Nincs törölve: az e lépésig vezető úton nincs változat.
+	Not deleted: this is the main line here, not a variation.	Nincs törölve: itt ez a főváltozat, nem mellékváltozat.
+	Not done: there is no such move.	Nem történt meg: nincs ilyen lépés.
+	Acts on {move}	Érintett lépés: {move}
+	Promote a variation	változat előléptetése
+	Demote a line	vonal lefokozása
+	Delete a variation	változat eltávolítása

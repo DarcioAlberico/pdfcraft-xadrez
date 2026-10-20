@@ -2629,3 +2629,25 @@ animation effects	Off	Kapalı
 	Only the first {n} were read.	Yalnızca ilk {n} oyun okundu.
 	the file is too large	dosya çok büyük
 	no game could be read	hiçbir oyun okunamadı
+# Chess ▸ PGN toolbar: T5a, the tool rail and its keys (the last three name undo steps: each follows "Undo" or "Redo").
+	Navigate	Gezinme
+	Structure	Yapı
+	Promote one level	Bir düzey yükselt
+	Demote	Düşür
+	Delete variation	Varyantı sil
+	Cut after this move	Bu hamleden sonrasını kes
+	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	Diğer {group} araçları: sağ tıklayın, basılı tutun veya Enter'a basın. {key} aralarında geçiş yapar.
+	This move is on the main line already.	Bu hamle zaten ana varyantta.
+	There are no moves after this one.	Bu hamleden sonra hamle yok.
+	Not done: variations would nest too deep.	Yapılmadı: varyantlar çok derin iç içe geçerdi.
+	Not demoted: this move is a variation; only the line that continues a move is demoted.	Düşürülmedi: bu hamle bir varyant; yalnızca bir hamleyi sürdüren hat düşürülür.
+	Not demoted: there is no variation to take its place.	Düşürülmedi: yerini alacak bir varyant yok.
+	Not promoted: there is no variation on the way to this move.	Yükseltilmedi: bu hamleye giden yolda varyant yok.
+	Not promoted: this line already continues its move.	Yükseltilmedi: bu hat hamlesini zaten sürdürüyor.
+	Not deleted: there is no variation on the way to this move.	Silinmedi: bu hamleye giden yolda varyant yok.
+	Not deleted: this is the main line here, not a variation.	Silinmedi: burada bu ana varyant, bir yan varyant değil.
+	Not done: there is no such move.	Yapılmadı: böyle bir hamle yok.
+	Acts on {move}	Etkilenen: {move}
+	Promote a variation	varyant yükseltme
+	Demote a line	hat düşürme
+	Delete a variation	varyant silme

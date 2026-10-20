@@ -2910,3 +2910,25 @@ certificate	Version	الإصدار
 	Only the first {n} were read.	قُرئت أول {n} فقط.
 	the file is too large	الملف كبير جدًا
 	no game could be read	تعذّرت قراءة أي مباراة
+# Chess ▸ PGN toolbar: T5a, the tool rail and its keys (the last three name undo steps: each follows "Undo" or "Redo").
+	Navigate	التنقل
+	Structure	البنية
+	Promote one level	الترقية مستوى واحدًا
+	Demote	التخفيض
+	Delete variation	حذف الخط الفرعي
+	Cut after this move	القص بعد هذه النقلة
+	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	مزيد من أدوات {group}: انقر بزر الماوس الأيمن أو اضغط مطولًا أو اضغط Enter. يبدّل {key} بينها.
+	This move is on the main line already.	هذه النقلة على الخط الرئيسي بالفعل.
+	There are no moves after this one.	لا توجد نقلات بعد هذه النقلة.
+	Not done: variations would nest too deep.	لم يُنفَّذ: ستتداخل الخطوط الفرعية بعمق زائد.
+	Not demoted: this move is a variation; only the line that continues a move is demoted.	لم يُخفَّض: هذه النقلة خط فرعي؛ لا يُخفَّض إلا الخط الذي يتابع نقلة.
+	Not demoted: there is no variation to take its place.	لم يُخفَّض: لا يوجد خط فرعي يحل محله.
+	Not promoted: there is no variation on the way to this move.	لم يُرقَّ: لا يوجد خط فرعي في الطريق إلى هذه النقلة.
+	Not promoted: this line already continues its move.	لم يُرقَّ: هذا الخط يتابع نقلته بالفعل.
+	Not deleted: there is no variation on the way to this move.	لم يُحذف: لا يوجد خط فرعي في الطريق إلى هذه النقلة.
+	Not deleted: this is the main line here, not a variation.	لم يُحذف: هذا هو الخط الرئيسي هنا، وليس خطًا فرعيًا.
+	Not done: there is no such move.	لم يُنفَّذ: لا توجد نقلة كهذه.
+	Acts on {move}	يؤثر في {move}
+	Promote a variation	ترقية خط فرعي
+	Demote a line	تخفيض خط
+	Delete a variation	حذف خط فرعي

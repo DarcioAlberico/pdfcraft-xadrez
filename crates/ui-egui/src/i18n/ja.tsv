@@ -2635,3 +2635,25 @@ animation effects	Off	オフ
 	Only the first {n} were read.	最初の {n} 局だけを読み込みました。
 	the file is too large	ファイルが大きすぎます
 	no game could be read	読み取れる対局がありません
+# Chess ▸ PGN toolbar: T5a, the tool rail and its keys (the last three name undo steps: each follows "Undo" or "Redo").
+	Navigate	ナビゲート
+	Structure	構造
+	Promote one level	1 段階昇格
+	Demote	降格
+	Delete variation	変化を削除
+	Cut after this move	この手の後を切り取る
+	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	{group}のその他のツール: 右クリック、長押し、または Enter キー。{key} で切り替えます。
+	This move is on the main line already.	この手はすでに本線にあります。
+	There are no moves after this one.	この手の後に指し手はありません。
+	Not done: variations would nest too deep.	実行されませんでした: 変化の入れ子が深くなりすぎます。
+	Not demoted: this move is a variation; only the line that continues a move is demoted.	降格されませんでした: この手は変化です。降格できるのは手の続きとなる筋だけです。
+	Not demoted: there is no variation to take its place.	降格されませんでした: 代わりになる変化がありません。
+	Not promoted: there is no variation on the way to this move.	昇格されませんでした: この手までの経路に変化がありません。
+	Not promoted: this line already continues its move.	昇格されませんでした: この筋はすでに手の続きです。
+	Not deleted: there is no variation on the way to this move.	削除されませんでした: この手までの経路に変化がありません。
+	Not deleted: this is the main line here, not a variation.	削除されませんでした: ここは本線で、変化ではありません。
+	Not done: there is no such move.	実行されませんでした: その手はありません。
+	Acts on {move}	対象: {move}
+	Promote a variation	変化の昇格
+	Demote a line	筋の降格
+	Delete a variation	変化の削除

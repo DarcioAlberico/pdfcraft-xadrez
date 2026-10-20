@@ -2633,3 +2633,25 @@ animation effects	Off	Désactivés
 	Only the first {n} were read.	Seules les {n} premières ont été lues.
 	the file is too large	le fichier est trop volumineux
 	no game could be read	aucune partie n'a pu être lue
+# Chess ▸ PGN toolbar: T5a, the tool rail and its keys (the last three name undo steps: each follows "Undo" or "Redo").
+	Navigate	Naviguer
+	Structure	Structure
+	Promote one level	Promouvoir d'un niveau
+	Demote	Rétrograder
+	Delete variation	Supprimer la variante
+	Cut after this move	Couper après ce coup
+	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	Autres outils {group} : clic droit, appui long ou Entrée. {key} passe de l'un à l'autre.
+	This move is on the main line already.	Ce coup est déjà sur la ligne principale.
+	There are no moves after this one.	Il n'y a aucun coup après celui-ci.
+	Not done: variations would nest too deep.	Non effectué : les variantes seraient imbriquées trop profondément.
+	Not demoted: this move is a variation; only the line that continues a move is demoted.	Non rétrogradée : ce coup est une variante ; seule la ligne qui continue un coup peut être rétrogradée.
+	Not demoted: there is no variation to take its place.	Non rétrogradée : aucune variante ne peut prendre sa place.
+	Not promoted: there is no variation on the way to this move.	Non promue : aucune variante sur le chemin jusqu'à ce coup.
+	Not promoted: this line already continues its move.	Non promue : cette ligne continue déjà son coup.
+	Not deleted: there is no variation on the way to this move.	Non supprimée : aucune variante sur le chemin jusqu'à ce coup.
+	Not deleted: this is the main line here, not a variation.	Non supprimée : ici, c'est la ligne principale, pas une variante.
+	Not done: there is no such move.	Non effectué : ce coup n'existe pas.
+	Acts on {move}	Agit sur {move}
+	Promote a variation	la promotion d'une variante
+	Demote a line	la rétrogradation d'une ligne
+	Delete a variation	la suppression d'une variante

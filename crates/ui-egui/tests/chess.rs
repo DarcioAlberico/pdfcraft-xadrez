@@ -790,8 +790,9 @@ fn undo_follows_the_scope_of_the_last_action() {
     }
     assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5 2. Nf3");
     click_square(&mut h, "a4");
-    // The palette and the board's button name the move.
-    assert_eq!(palette_labels(&mut h, "Undo Play Nf3"), 2, "the palette's Undo and the board's button");
+    // The palette and the rail's button name the move (the button with its key too).
+    assert_eq!(palette_labels(&mut h, "Undo Play Nf3"), 1, "the palette's Undo");
+    assert_eq!(h.query_all_by_label_contains("Undo Play Nf3 (").count(), 1, "the rail's Undo");
     assert!(h.state_mut().execute("edit.undo"));
     h.run_steps(2);
     assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5");
@@ -800,10 +801,10 @@ fn undo_follows_the_scope_of_the_last_action() {
     assert_eq!(pdf_undo(&h).as_deref(), Some(pdf.as_str()), "the document is untouched");
     shortcut(&mut h, egui::Key::Z, true);
     assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5");
-    h.get_by_label("Undo Play e5").click();
+    h.get_by_label_contains("Undo Play e5 (").click();
     h.run_steps(2);
     assert_eq!(h.state().chess.board().game.movetext(), "1. e4");
-    h.get_by_label("Redo Play e5").click();
+    h.get_by_label_contains("Redo Play e5 (").click();
     h.run_steps(2);
     assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5");
 
@@ -1186,4 +1187,354 @@ fn a_pgn_file_with_several_games_is_imported() {
     h.get_by_label("Game 2").click();
     h.run_steps(2);
     assert_eq!(h.state().chess.board().game.movetext(), "1. d4 d5 (1... Nf6 2. c4) 2. c4");
+}
+
+// ---- T5a: the PGN tool rail and the chess key scope ----
+
+/// A game with variations: 1.e4 e5 (1...c5 2.Nf3 (2.c3) d6) 2.Nf3.
+const FORKS: &str = "1. e4 e5 (1... c5 2. Nf3 (2. c3) d6) 2. Nf3 *";
+
+/// Its move text, as the game writes it.
+const FORKS_TEXT: &str = "1. e4 e5 (1... c5 2. Nf3 (2. c3) 2... d6) 2. Nf3";
+
+/// Put the game of `pgn` on the board, at the move reached by `path` (reply indices).
+fn put_game(h: &mut Harness<'static, PdfCraftApp>, pgn: &str, path: &[u16]) {
+    use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, NodePath};
+    let (mut game, stopped) = Game::from_pgn(pgn).unwrap();
+    assert_eq!(stopped, None);
+    game.go_to_node(game.node_at(&NodePath::new(path.to_vec())).unwrap());
+    h.state_mut().chess.board_mut().game = game;
+    h.run_steps(2);
+}
+
+fn movetext(h: &Harness<'static, PdfCraftApp>) -> String {
+    h.state().chess.board().game.movetext()
+}
+
+/// The move shown, as its SAN.
+fn shown(h: &Harness<'static, PdfCraftApp>) -> String {
+    let game = &h.state().chess.board().game;
+    game.san(game.current()).to_owned()
+}
+
+/// A key as the rail writes it on this platform: "Ctrl+Shift+↑" (⇧⌘↑ on macOS).
+fn key_text(command: bool, shift: bool, key: &str) -> String {
+    if cfg!(target_os = "macos") {
+        format!("{}{}{key}", if shift { "⇧" } else { "" }, if command { "⌘" } else { "" })
+    } else {
+        format!("{}{}{key}", if command { "Ctrl+" } else { "" }, if shift { "Shift+" } else { "" })
+    }
+}
+
+/// Press `key` with `modifiers` as the desktop app gets it: the frame's raw input goes through
+/// `raw_input_hook` first, where the chess scope takes its keys (kittest itself skips the hook).
+fn host_key(h: &mut Harness<'static, PdfCraftApp>, modifiers: egui::Modifiers, key: egui::Key) {
+    use eframe::App as _;
+    let ctx = h.ctx.clone();
+    for pressed in [true, false] {
+        let mut raw = std::mem::take(h.input_mut());
+        raw.events.push(egui::Event::ModifiersChanged(if pressed { modifiers } else { egui::Modifiers::NONE }));
+        raw.events.push(egui::Event::Key { key, physical_key: None, pressed, repeat: false, modifiers });
+        h.state_mut().raw_input_hook(&ctx, &mut raw);
+        *h.input_mut() = raw;
+        h.step();
+    }
+    h.run_steps(2);
+}
+
+/// A click on the Board panel's title: the chess scope goes on, and nothing takes the focus.
+fn click_board_title(h: &mut Harness<'static, PdfCraftApp>) {
+    let title = h.get_all_by_label("Chess board").find(|n| n.accesskit_node().role() == egui::accesskit::Role::Label).expect("the panel's title");
+    let at = title.rect().center();
+    click_at(h, at);
+    assert!(h.state().chess.in_scope());
+    assert!(!h.ctx.egui_wants_keyboard_input(), "nothing has the keyboard");
+}
+
+/// The rail's buttons are named by their tool and key, the mode armed says so, and each acts:
+/// Promote one level promotes the variation nearest the move shown, Undo and Redo take it back
+/// and forth, and Esc puts down the piece picked up.
+#[test]
+fn the_rail_names_its_tools_and_they_act() {
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, FORKS, &[0, 1, 0, 0]);
+    assert_eq!(shown(&h), "d6");
+    let navigate_name = format!("Navigate ({})", key_text(false, false, "Esc"));
+    let navigate = h.get_by_label(&navigate_name);
+    assert_eq!(navigate.accesskit_node().role(), egui::accesskit::Role::Button);
+    assert_eq!(navigate.accesskit_node().toggled(), Some(egui::accesskit::Toggled::True), "Navigate is the mode armed");
+    navigate.click();
+    h.run_steps(2);
+    assert_eq!(format!("{:?}", h.state().chess.tools.tool), "Navigate");
+    // The Structure group shows its first tool; Undo and Redo name what they would do.
+    h.get_by_label(&format!("Promote one level ({})", key_text(true, false, "↑"))).click();
+    h.run_steps(2);
+    assert_eq!(movetext(&h), "1. e4 c5 (1... e5 2. Nf3) 2. Nf3 (2. c3) 2... d6");
+    assert_eq!(h.state().chess.board().message, None);
+    h.get_by_label_contains("Undo Promote a variation (").click();
+    h.run_steps(2);
+    assert_eq!(movetext(&h), FORKS_TEXT);
+    h.get_by_label_contains("Redo Promote a variation (").click();
+    h.run_steps(2);
+    assert_eq!(movetext(&h), "1. e4 c5 (1... e5 2. Nf3) 2. Nf3 (2. c3) 2... d6");
+    // Nothing more to redo: Redo is off.
+    assert!(h.get_by_label_contains("Redo (").accesskit_node().is_disabled());
+    // Esc puts the piece picked up down.
+    click_square(&mut h, "b1");
+    assert!(h.state().chess.board().selected.is_some());
+    host_key(&mut h, egui::Modifiers::NONE, egui::Key::Escape);
+    assert_eq!(h.state().chess.board().selected, None);
+}
+
+/// With the chess scope on, the keys of the chess keymap edit and walk the game: each structure
+/// change is one undo step, a refusal says why in the panel, and the arrows, Home and End move
+/// along the line of the move shown.
+#[test]
+fn the_chess_keys_edit_and_walk_the_game() {
+    use egui::{Key, Modifiers};
+    let (cmd, shift) = (Modifiers::COMMAND, Modifiers::SHIFT);
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, FORKS, &[0, 1, 0, 0]);
+    click_board_title(&mut h);
+    let undo = |h: &mut Harness<'static, PdfCraftApp>| {
+        assert!(h.state_mut().execute("edit.undo"));
+        h.run_steps(2);
+        assert_eq!(movetext(h), FORKS_TEXT);
+    };
+    // Mod+↓ demotes the nearest line that continues its move: 2.Nf3, so 2.c3 continues 1...c5.
+    host_key(&mut h, cmd, Key::ArrowDown);
+    assert_eq!(movetext(&h), "1. e4 e5 (1... c5 2. c3 (2. Nf3 d6)) 2. Nf3");
+    assert_eq!(h.state().chess.board().undo_label().as_deref(), Some("Demote a line"));
+    undo(&mut h);
+    // Mod+↑ promotes the nearest variation: 1...c5.
+    host_key(&mut h, cmd, Key::ArrowUp);
+    assert_eq!(movetext(&h), "1. e4 c5 (1... e5 2. Nf3) 2. Nf3 (2. c3) 2... d6");
+    undo(&mut h);
+    // Mod+Shift+↑ makes the line of the move shown the main line.
+    put_game(&mut h, FORKS, &[0, 1, 1]);
+    host_key(&mut h, cmd | shift, Key::ArrowUp);
+    assert_eq!(movetext(&h), "1. e4 c5 (1... e5 2. Nf3) 2. c3 (2. Nf3 d6)");
+    assert_eq!(h.state().chess.board().undo_label().as_deref(), Some("Make main line"));
+    put_game(&mut h, FORKS, &[0, 1, 0, 0]);
+    // Delete and Backspace delete the nearest variation, and the move shown goes to its fork.
+    for key in [Key::Delete, Key::Backspace] {
+        host_key(&mut h, Modifiers::NONE, key);
+        assert_eq!(movetext(&h), "1. e4 e5 2. Nf3", "{key:?}");
+        assert_eq!(shown(&h), "e4");
+        assert_eq!(h.state().chess.board().undo_label().as_deref(), Some("Delete a variation"));
+        undo(&mut h);
+    }
+    // Home, End and the arrows walk the line of the move shown; Down and Up switch the reply at
+    // a fork.
+    put_game(&mut h, FORKS, &[0, 1, 0, 0]);
+    host_key(&mut h, Modifiers::NONE, Key::Home);
+    assert_eq!(h.state().chess.board().game.current(), 0);
+    host_key(&mut h, Modifiers::NONE, Key::End);
+    assert_eq!(shown(&h), "Nf3", "Home went to the start: the line shown is the main line now");
+    put_game(&mut h, FORKS, &[0, 1]);
+    host_key(&mut h, Modifiers::NONE, Key::End);
+    assert_eq!(shown(&h), "d6", "the end of the line shown, not of the main line");
+    host_key(&mut h, Modifiers::NONE, Key::ArrowLeft);
+    assert_eq!(shown(&h), "Nf3");
+    host_key(&mut h, Modifiers::NONE, Key::ArrowDown);
+    assert_eq!(shown(&h), "c3");
+    host_key(&mut h, Modifiers::NONE, Key::ArrowUp);
+    assert_eq!(shown(&h), "Nf3");
+    host_key(&mut h, Modifiers::NONE, Key::ArrowRight);
+    assert_eq!(shown(&h), "d6");
+    // On the main line before any fork there is nothing to demote: the panel says so.
+    put_game(&mut h, FORKS, &[0]);
+    assert_eq!(shown(&h), "e4");
+    host_key(&mut h, cmd, Key::ArrowDown);
+    assert_eq!(movetext(&h), FORKS_TEXT, "refused: nothing changed");
+    h.get_by_label("Not demoted: there is no variation to take its place.");
+    // Shift+Delete cuts the moves after the move shown.
+    host_key(&mut h, shift, Key::Delete);
+    assert_eq!(movetext(&h), "1. e4");
+    assert_eq!(h.state().chess.board().message, None, "done: the refusal's notice is gone");
+    assert_eq!(h.state().chess.board().undo_label().as_deref(), Some("Delete moves"));
+    undo(&mut h);
+}
+
+/// A move's context menu has the structure tools, acting on that move's nearest variation; one
+/// that has nothing to act on there is off.
+#[test]
+fn a_moves_menu_deletes_its_variation() {
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, FORKS, &[0, 0, 0]);
+    h.get_by_label("d6").click_secondary();
+    h.run_steps(2);
+    let item = h.get_by_label("Delete variation");
+    assert!(!item.accesskit_node().is_disabled());
+    item.click();
+    h.run_steps(2);
+    assert_eq!(movetext(&h), "1. e4 e5 2. Nf3");
+    // On the main line there is no variation to delete; after the last move nothing to cut.
+    h.get_by_label("Nf3").click_secondary();
+    h.run_steps(2);
+    assert!(h.get_by_label("Delete variation").accesskit_node().is_disabled());
+    assert!(h.get_by_label("Cut after this move").accesskit_node().is_disabled());
+}
+
+/// A three-page document, for the page grid.
+fn three_pages() -> Vec<u8> {
+    let n = 3;
+    let mut objs: Vec<String> = vec!["<< /Type /Catalog /Pages 2 0 R >>".into()];
+    let kids: Vec<String> = (0..n).map(|i| format!("{} 0 R", 4 + 2 * i)).collect();
+    objs.push(format!("<< /Type /Pages /Kids [{}] /Count {n} /MediaBox [0 0 600 800] >>", kids.join(" ")));
+    objs.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>".into());
+    for i in 0..n {
+        objs.push(format!("<< /Type /Page /Parent 2 0 R /Contents {} 0 R /Resources << /Font << /F1 3 0 R >> >> >>", 5 + 2 * i));
+        let body = format!("BT /F1 24 Tf 60 400 Td (Page {}) Tj ET", i + 1);
+        objs.push(format!("<< /Length {} >>\nstream\n{body}\nendstream", body.len()));
+    }
+    let mut out = b"%PDF-1.7\n".to_vec();
+    let mut offsets = Vec::new();
+    for (i, o) in objs.iter().enumerate() {
+        offsets.push(out.len());
+        out.extend_from_slice(format!("{} 0 obj\n{o}\nendobj\n", i + 1).as_bytes());
+    }
+    let xref = out.len();
+    out.extend_from_slice(format!("xref\n0 {}\n0000000000 65535 f \n", objs.len() + 1).as_bytes());
+    for o in offsets {
+        out.extend_from_slice(format!("{o:010} 00000 n \n").as_bytes());
+    }
+    out.extend_from_slice(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objs.len() + 1).as_bytes());
+    out
+}
+
+/// Delete and Backspace with the chess scope on act on the game only: not on the pages selected
+/// in the page grid, nor on the annotation selected on the page (§4.2). The keys leave the input
+/// in `raw_input_hook`, before the page grid and the annotation layer can see them.
+#[test]
+fn delete_and_backspace_in_the_chess_scope_touch_only_the_game() {
+    use egui::{Key, Modifiers};
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).build_eframe(|_cc| {
+        let mut app = PdfCraftApp::new();
+        app.set_option("language", "en").unwrap();
+        app.open_bytes("pages.pdf", None, three_pages()).unwrap();
+        app
+    });
+    h.run_steps(4);
+    let shape = Shape::Rectangle { rect: [100.0, 100.0, 300.0, 200.0] };
+    let style = Style::default_for(&shape);
+    assert!(h.state_mut().apply_edit(Edit::AddAnnotation(NewAnnotation { page: 0, style, shape, contents: String::new(), author: String::new() })));
+    let pages = |h: &Harness<'static, PdfCraftApp>| h.state().session.get(h.state().views[0].id).unwrap().info.pages.len();
+    let annotations = |h: &Harness<'static, PdfCraftApp>| h.state().session.get(h.state().views[0].id).unwrap().info.annotations.len();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, "1. e4 e5 (1... c5) (1... e6) (1... d5) 2. Nf3 *", &[0, 3]);
+
+    // The page grid, page 2 selected.
+    h.state_mut().set_option("organize", "on").unwrap();
+    h.run_steps(3);
+    h.state_mut().views[0].select_pages(&[1]);
+    h.run_steps(2);
+    click_board_title(&mut h);
+    host_key(&mut h, Modifiers::NONE, Key::Delete);
+    assert_eq!(pages(&h), 3, "Delete removed no page");
+    assert_eq!(movetext(&h), "1. e4 e5 (1... c5) (1... e6) 2. Nf3", "the game's variation went");
+    put_game(&mut h, "1. e4 e5 (1... c5) (1... e6) 2. Nf3 *", &[0, 2]);
+    host_key(&mut h, Modifiers::NONE, Key::Backspace);
+    assert_eq!(pages(&h), 3, "Backspace removed no page");
+    assert_eq!(movetext(&h), "1. e4 e5 (1... c5) 2. Nf3");
+    assert_eq!(h.state().views[0].target_pages(), [1], "the page selection is untouched");
+
+    // The page, with the rectangle selected.
+    h.state_mut().set_option("organize", "off").unwrap();
+    h.run_steps(3);
+    h.state_mut().views[0].comments.selected = Some((0, 0));
+    h.run_steps(2);
+    click_board_title(&mut h);
+    assert_eq!(h.state().views[0].comments.selected, Some((0, 0)), "a click in the chess panel leaves the selection");
+    put_game(&mut h, "1. e4 e5 (1... c5) (1... e6) 2. Nf3 *", &[0, 2]);
+    host_key(&mut h, Modifiers::NONE, Key::Delete);
+    put_game(&mut h, "1. e4 e5 (1... c5) 2. Nf3 *", &[0, 1]);
+    host_key(&mut h, Modifiers::NONE, Key::Backspace);
+    assert_eq!(annotations(&h), 1, "the selected rectangle is still there");
+    assert_eq!(movetext(&h), "1. e4 e5 2. Nf3", "both variations went");
+    assert_eq!(pages(&h), 3);
+}
+
+/// A key typed in a comment is the comment's: Shift+S is a capital S there, not the Structure
+/// group's next tool, and Backspace takes back a letter, not a variation.
+#[test]
+fn keys_typed_in_a_comment_stay_in_the_comment() {
+    use egui::{Key, Modifiers};
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, FORKS, &[0, 1, 0, 0]);
+    click_board_title(&mut h);
+    let promote = format!("Promote one level ({})", key_text(true, false, "↑"));
+    h.get_by_label(&promote);
+    let comment = h.get_all_by_role(egui::accesskit::Role::MultilineTextInput).find(|n| n.value().unwrap_or_default().is_empty()).unwrap();
+    comment.focus();
+    comment.type_text("good");
+    h.run_steps(2);
+    host_key(&mut h, Modifiers::SHIFT, Key::S);
+    host_key(&mut h, Modifiers::NONE, Key::Backspace);
+    let node = h.state().chess.board().game.current();
+    assert_eq!(h.state().chess.board().game.comment(node), "goo", "Backspace took back a letter");
+    assert_eq!(movetext(&h), "1. e4 e5 (1... c5 2. Nf3 (2. c3) 2... d6 {goo}) 2. Nf3", "and no variation");
+    h.get_by_label(&promote);
+}
+
+/// The Structure group: Shift+S switches the tool it shows; Enter on it (or a right-click, or a
+/// long press) opens its tools, with the lines a tool could act on when there are several, the
+/// nearest first; Esc closes it.
+#[test]
+fn the_structure_group_opens_and_switches_from_the_keyboard() {
+    use egui::{Key, Modifiers};
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, "1. e4 e5 (1... c5) 2. Nf3 Nc6 (2... d6) 3. Bb5 *", &[0, 0, 0, 0, 0]);
+    let start = "1. e4 e5 (1... c5) 2. Nf3 Nc6 (2... d6) 3. Bb5";
+    click_board_title(&mut h);
+    host_key(&mut h, Modifiers::SHIFT, Key::S);
+    h.get_by_label(&format!("Make this the main line ({})", key_text(true, true, "↑")));
+    host_key(&mut h, Modifiers::SHIFT, Key::S);
+    let demote = format!("Demote ({})", key_text(true, false, "↓"));
+    h.get_by_label(&demote).focus();
+    h.run_steps(2);
+    h.key_press(Key::Enter);
+    h.run_steps(2);
+    assert_eq!(movetext(&h), start, "Enter opened the group: nothing was demoted");
+    h.get_by_label("Promote one level");
+    h.get_by_label("Demote: 2…Nc6");
+    // Esc closes it: the scope leaves Esc alone while a popup is open.
+    host_key(&mut h, Modifiers::NONE, Key::Escape);
+    assert!(h.query_by_label("Demote: 2…Nc6").is_none());
+    // Down arrow on the focused group opens it too (the scope takes the arrow for the rail).
+    h.get_by_label(&demote).focus();
+    h.run_steps(2);
+    host_key(&mut h, Modifiers::NONE, Key::ArrowDown);
+    h.get_by_label("Demote: 2…Nc6");
+    assert_eq!(shown(&h), "Bb5", "Down opened the group rather than switching the reply");
+    host_key(&mut h, Modifiers::NONE, Key::Escape);
+    // A right-click opens it; the farther line is chosen there.
+    h.get_by_label(&demote).click_secondary();
+    h.run_steps(2);
+    h.get_by_label("Demote: 1…e5").click();
+    h.run_steps(2);
+    let demoted = "1. e4 c5 (1... e5 2. Nf3 Nc6 (2... d6) 3. Bb5)";
+    assert_eq!(movetext(&h), demoted);
+    assert!(h.query_by_label("Demote: 1…e5").is_none(), "the choice closed the tools");
+    // A long press opens it and does not act when let go.
+    let at = h.get_by_label(&demote).rect().center();
+    h.hover_at(at);
+    h.run_steps(1);
+    h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed: true, modifiers: Modifiers::NONE });
+    h.run_steps(3);
+    h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed: false, modifiers: Modifiers::NONE });
+    h.run_steps(2);
+    assert_eq!(movetext(&h), demoted, "no demote on letting go");
+    h.get_by_label("Promote one level");
 }

@@ -1,0 +1,948 @@
+//! Chess ▸ PGN toolbar (T5a): the vertical tool rail beside the chess board, and the keys the
+//! chess panel takes for itself while its scope is on.
+//!
+//! **The rail** is drawn from [`RAIL`], a static list of sections with a separator between them.
+//! A section holds [`Entry`]s: a [`Tool`] or a [`Group`] of tools. A tool is either a mode
+//! ([`Kind::Mode`]: armed until Esc or another mode, see [`PgnTool`]) or an action
+//! ([`Kind::Action`]: it acts once on the board). A group shows one of its members, the last
+//! used, with a small triangle in its corner; a long press (at least [`LONG_PRESS`]), a right
+//! click, or Enter or Down arrow while it has the keyboard focus opens the others, and Shift with
+//! the group's letter switches the member shown. Later steps add tools by adding entries: the
+//! rail, the keys the scope takes, the key hints in the names and the move list's context menu
+//! all follow from the list.
+//!
+//! **The key scope** (`chess_scope`, spec §4.2). While Undo goes to the game
+//! ([`ChessState::in_scope`]) and a rail was on screen in the last frame, the chess keys (Esc,
+//! the arrows, Home, End and every key a rail tool or group has) are taken out of the frame's raw
+//! input in `raw_input_hook`, before egui (which moves the focus on the arrows) and before every
+//! shortcut of the app (Delete on the page grid's pages and on the selected annotation, the arrows
+//! on the page) can see them, and handed to the panel through [`ToolState`]. They are left alone
+//! while a text field has the keyboard, so a letter or Delete typed in a comment is the comment's;
+//! the hook runs before the frame, so that is the focus as the last frame left it. They are also
+//! left alone while a popup or menu is open (Esc and the arrows are its own) and under a modal
+//! dialog.
+
+use std::time::Duration;
+
+use egui::{Align, Event, Key, Layout, Modifiers, Rect, Sense, Stroke, UiBuilder, pos2, vec2};
+use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, NodeId, NodePath, StructureError};
+use pdfcraft_engine::commands::Shortcut;
+
+use crate::chess_board_ui::BoardState;
+use crate::chess_history::ChessEdit;
+use crate::chess_ui::ChessState;
+use crate::icons;
+use crate::theme::Tokens;
+
+/// The rail's width, in points.
+pub(crate) const RAIL_WIDTH: f32 = 32.0;
+
+/// A rail button's side, in points (WCAG 2.5.8 asks for at least 24).
+const BUTTON: f32 = 28.0;
+
+/// How long a group's button is held before its other tools show, in seconds.
+pub(crate) const LONG_PRESS: f64 = 0.4;
+
+/// Most keys kept for the panel from one frame's input (a held key repeats).
+const MAX_KEYS: usize = 64;
+
+/// The mode the rail has armed. Navigate is the default; the capture modes come with their steps
+/// (T7a, T9).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum PgnTool {
+    /// A click on a move goes to it; nothing is armed.
+    #[default]
+    Navigate,
+}
+
+/// The rail's state, kept in [`ChessState`].
+#[derive(Default)]
+pub struct ToolState {
+    /// The mode armed.
+    pub tool: PgnTool,
+    /// The keys taken from this frame's input for the panel, in order.
+    keys: Vec<(Key, Modifiers)>,
+    /// A rail was drawn since the last frame's input was read: only then are keys taken.
+    rail_shown: bool,
+    /// The member each group shows (the last used), by group id.
+    shown: Vec<(&'static str, usize)>,
+    /// The group button held long enough to open its tools: its click when let go is not an action.
+    long_press: Option<egui::Id>,
+    /// The popup was opened from the keyboard: its first tool takes the focus.
+    focus_popup: bool,
+}
+
+impl ToolState {
+    /// The member group `id` shows.
+    fn shown(&self, id: &str) -> usize {
+        self.shown.iter().find(|(g, _)| *g == id).map_or(0, |(_, i)| *i)
+    }
+
+    fn show(&mut self, id: &'static str, member: usize) {
+        match self.shown.iter_mut().find(|(g, _)| *g == id) {
+            Some(slot) => slot.1 = member,
+            None => self.shown.push((id, member)),
+        }
+    }
+}
+
+/// A key of the chess keymap: the key and the modifiers it is pressed with. `command` is Ctrl on
+/// Windows and Linux and ⌘ on macOS (where Ctrl with the arrows belongs to the system).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct ChessKey {
+    key: Key,
+    command: bool,
+    shift: bool,
+}
+
+impl ChessKey {
+    const fn plain(key: Key) -> ChessKey {
+        ChessKey { key, command: false, shift: false }
+    }
+
+    const fn shift(key: Key) -> ChessKey {
+        ChessKey { key, command: false, shift: true }
+    }
+
+    const fn command(key: Key) -> ChessKey {
+        ChessKey { key, command: true, shift: false }
+    }
+
+    const fn command_shift(key: Key) -> ChessKey {
+        ChessKey { key, command: true, shift: true }
+    }
+
+    /// Whether `key` pressed with `m` is this key: the same modifiers, and never Alt.
+    fn matches(self, key: Key, m: Modifiers) -> bool {
+        key == self.key && m.command == self.command && m.shift == self.shift && !m.alt && (self.command || !(m.ctrl || m.mac_cmd))
+    }
+
+    /// How the key is written on this platform ("Ctrl+Shift+↑", "⇧⌘↑").
+    fn label(self, ctx: &egui::Context) -> String {
+        let key = match self.key {
+            Key::Escape => "Esc",
+            Key::Delete => "Delete",
+            Key::Backspace => "Backspace",
+            Key::ArrowUp => "↑",
+            Key::ArrowDown => "↓",
+            Key::ArrowLeft => "←",
+            Key::ArrowRight => "→",
+            other => other.name(),
+        };
+        crate::commands::shortcut_label(ctx, Shortcut { command: self.command, shift: self.shift, mac_ctrl: false, key })
+    }
+}
+
+/// What a tool acts on.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Target {
+    /// The move shown: a tool that acts on a variation picks the nearest it can act on.
+    Current,
+    /// The move a context menu was opened on.
+    Move(NodeId),
+    /// This variation's first move (its head), chosen in a group's list.
+    Head(NodeId),
+}
+
+/// An action: what it does to the board.
+pub(crate) type Run = fn(&mut BoardState, Target);
+
+/// What a tool would act on for a move of a game (a context menu), or why it can't.
+pub(crate) type OnMove = fn(&Game, NodeId) -> Result<Target, String>;
+
+/// What a tool is.
+#[derive(Clone, Copy)]
+pub(crate) enum Kind {
+    /// Armed until Esc or another mode.
+    Mode(PgnTool),
+    /// Acts once.
+    Action(Run),
+}
+
+/// A tool of the rail.
+pub(crate) struct Tool {
+    /// Stable id (groups remember their member by index; this names the tool in tests and logs).
+    pub id: &'static str,
+    /// Its Lucide icon (`icon_data.rs`).
+    pub icon: &'static str,
+    /// Its name in the current language (Undo's names the step it would undo).
+    pub label: fn(&BoardState) -> String,
+    /// The keys the scope takes for it; the first is shown in its name.
+    pub keys: &'static [ChessKey],
+    /// A registered command whose shortcut is shown instead, for a tool the app's own key runs
+    /// (Undo and Redo follow the scope themselves, D12): the scope does not take it.
+    pub command: Option<&'static str>,
+    pub kind: Kind,
+    /// Whether it can act now.
+    pub enabled: fn(&BoardState) -> bool,
+    /// The variations it can act on from the move shown, nearest first: a group lists them when
+    /// there are several to choose from.
+    pub heads: Option<fn(&Game) -> Vec<NodeId>>,
+    /// In a move's context menu: what it would act on for that move, or why it can't.
+    pub on_move: Option<OnMove>,
+}
+
+/// Tools that share one place on the rail.
+pub(crate) struct Group {
+    pub id: &'static str,
+    pub label: fn() -> &'static str,
+    /// Shift with this letter switches the member shown.
+    pub letter: Option<Key>,
+    pub members: &'static [Tool],
+}
+
+pub(crate) enum Entry {
+    Tool(Tool),
+    Group(Group),
+}
+
+/// The rail, top to bottom: sections, with a separator between them.
+pub(crate) static RAIL: &[&[Entry]] = &[&[Entry::Tool(NAVIGATE)], &[Entry::Group(STRUCTURE)], &[Entry::Tool(UNDO), Entry::Tool(REDO)]];
+
+const ESC: ChessKey = ChessKey::plain(Key::Escape);
+
+fn has_moves(board: &BoardState) -> bool {
+    board.illegal.is_none() && !board.game.is_empty()
+}
+
+const NAVIGATE: Tool = Tool {
+    id: "navigate",
+    icon: "mouse-pointer-2",
+    label: |_| tl!("Navigate").to_owned(),
+    keys: &[ESC],
+    command: None,
+    kind: Kind::Mode(PgnTool::Navigate),
+    enabled: |_| true,
+    heads: None,
+    on_move: None,
+};
+
+const STRUCTURE: Group = Group {
+    id: "structure",
+    label: || tl!("Structure"),
+    letter: Some(Key::S),
+    members: &[
+        Tool {
+            id: "promote-one",
+            icon: "chevron-up",
+            label: |_| tl!("Promote one level").to_owned(),
+            keys: &[ChessKey::command(Key::ArrowUp)],
+            command: None,
+            kind: Kind::Action(|b, t| structure(b, Op::PromoteOne, t)),
+            enabled: has_moves,
+            heads: Some(|g| Op::PromoteOne.heads(g, g.current())),
+            on_move: Some(|g, n| Op::PromoteOne.check(g, n)),
+        },
+        Tool {
+            id: "make-main",
+            icon: "badge-check",
+            label: |_| tl!("Make this the main line").to_owned(),
+            keys: &[ChessKey::command_shift(Key::ArrowUp)],
+            command: None,
+            kind: Kind::Action(|b, t| structure(b, Op::MakeMain, t)),
+            enabled: has_moves,
+            heads: None,
+            on_move: Some(|g, n| Op::MakeMain.check(g, n)),
+        },
+        Tool {
+            id: "demote",
+            icon: "chevron-down",
+            label: |_| tl!("Demote").to_owned(),
+            keys: &[ChessKey::command(Key::ArrowDown)],
+            command: None,
+            kind: Kind::Action(|b, t| structure(b, Op::Demote, t)),
+            enabled: has_moves,
+            heads: Some(|g| Op::Demote.heads(g, g.current())),
+            on_move: Some(|g, n| Op::Demote.check(g, n)),
+        },
+        Tool {
+            id: "delete-variation",
+            icon: "trash-2",
+            label: |_| tl!("Delete variation").to_owned(),
+            keys: &[ChessKey::plain(Key::Delete), ChessKey::plain(Key::Backspace)],
+            command: None,
+            kind: Kind::Action(|b, t| structure(b, Op::DeleteVariation, t)),
+            enabled: has_moves,
+            heads: Some(|g| Op::DeleteVariation.heads(g, g.current())),
+            on_move: Some(|g, n| Op::DeleteVariation.check(g, n)),
+        },
+        Tool {
+            id: "cut-after",
+            icon: "scissors",
+            label: |_| tl!("Cut after this move").to_owned(),
+            keys: &[ChessKey::shift(Key::Delete)],
+            command: None,
+            kind: Kind::Action(|b, t| structure(b, Op::CutAfter, t)),
+            enabled: has_moves,
+            heads: None,
+            on_move: Some(|g, n| Op::CutAfter.check(g, n)),
+        },
+    ],
+};
+
+const UNDO: Tool = Tool {
+    id: "undo",
+    icon: "undo-2",
+    label: |b| b.command_text(true).unwrap_or_else(|| tl!("Undo").to_owned()),
+    keys: &[],
+    command: Some("edit.undo"),
+    kind: Kind::Action(|b, _| {
+        b.undo();
+    }),
+    enabled: |b| b.history.undo_edit().is_some(),
+    heads: None,
+    on_move: None,
+};
+
+const REDO: Tool = Tool {
+    id: "redo",
+    icon: "redo-2",
+    label: |b| b.command_text(false).unwrap_or_else(|| tl!("Redo").to_owned()),
+    keys: &[],
+    command: Some("edit.redo"),
+    kind: Kind::Action(|b, _| {
+        b.redo();
+    }),
+    enabled: |b| b.history.redo_edit().is_some(),
+    heads: None,
+    on_move: None,
+};
+
+/// Moving about the game, and Esc: the keys the panel takes besides the tools'.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Nav {
+    Escape,
+    Back,
+    Forward,
+    /// The variation before the move shown, at its fork.
+    Up,
+    /// The variation after it.
+    Down,
+    Start,
+    End,
+}
+
+const NAV_KEYS: [(ChessKey, Nav); 7] = [
+    (ESC, Nav::Escape),
+    (ChessKey::plain(Key::ArrowLeft), Nav::Back),
+    (ChessKey::plain(Key::ArrowRight), Nav::Forward),
+    (ChessKey::plain(Key::ArrowUp), Nav::Up),
+    (ChessKey::plain(Key::ArrowDown), Nav::Down),
+    (ChessKey::plain(Key::Home), Nav::Start),
+    (ChessKey::plain(Key::End), Nav::End),
+];
+
+/// Every tool of the rail, groups' members included.
+fn tools() -> impl Iterator<Item = &'static Tool> {
+    RAIL.iter().flat_map(|section| section.iter()).flat_map(|entry| match entry {
+        Entry::Tool(tool) => std::slice::from_ref(tool).iter(),
+        Entry::Group(group) => group.members.iter(),
+    })
+}
+
+fn groups() -> impl Iterator<Item = &'static Group> {
+    RAIL.iter().flat_map(|section| section.iter()).filter_map(|entry| match entry {
+        Entry::Group(group) => Some(group),
+        Entry::Tool(_) => None,
+    })
+}
+
+/// Whether the scope takes `key` pressed with `m`.
+pub(crate) fn scope_key(key: Key, m: Modifiers) -> bool {
+    NAV_KEYS.iter().any(|(k, _)| k.matches(key, m))
+        || tools().any(|tool| tool.keys.iter().any(|k| k.matches(key, m)))
+        || groups().any(|group| group.letter.is_some_and(|letter| ChessKey::shift(letter).matches(key, m)))
+}
+
+/// The key scope (§4.2), called from `raw_input_hook` before egui reads the frame's input: take
+/// the chess keys out of `raw` for the panel when the scope is on. Nothing is taken when
+/// `blocked` (a modal dialog or the command palette is open), while a text field has the
+/// keyboard (as the last frame left it), while a popup or menu is open, or when no rail was drawn
+/// since the last call. Only presses are taken: a release that egui sees without its press is
+/// harmless, while a press seen without its release would leave the key held down.
+pub(crate) fn take_scope_keys(chess: &mut ChessState, ctx: &egui::Context, raw: &mut egui::RawInput, blocked: bool) {
+    chess.tools.keys.clear();
+    let shown = std::mem::take(&mut chess.tools.rail_shown);
+    if blocked || !shown || !chess.in_scope() || ctx.text_edit_focused() || egui::Popup::is_any_open(ctx) {
+        return;
+    }
+    let keys = &mut chess.tools.keys;
+    raw.events.retain(|event| match event {
+        Event::Key { key, pressed: true, modifiers, .. } if scope_key(*key, *modifiers) => {
+            if keys.len() < MAX_KEYS {
+                keys.push((*key, *modifiers));
+            }
+            false
+        }
+        _ => true,
+    });
+}
+
+/// The name a tool is known by: its label and its key ("Demote (Ctrl+↓)").
+fn name(ctx: &egui::Context, tool: &Tool, board: &BoardState) -> String {
+    let label = (tool.label)(board);
+    let key = match (tool.keys.first(), tool.command) {
+        (Some(k), _) => k.label(ctx),
+        (None, Some(id)) => crate::commands::command_shortcut_label(ctx, id),
+        (None, None) => String::new(),
+    };
+    if key.is_empty() { label } else { format!("{label} ({key})") }
+}
+
+/// Use `tool` on `target`: arm a mode, or act.
+fn activate(chess: &mut ChessState, tool: &Tool, target: Target) {
+    match tool.kind {
+        Kind::Mode(mode) => chess.tools.tool = mode,
+        Kind::Action(run) => run(chess.board_mut(), target),
+    }
+}
+
+/// The chess board panel with the rail glued to its left edge: the rail takes the full height
+/// (outside `body`, so it does not scroll with it where the space is bounded), then `body` draws
+/// the panel in the rest. The keys the scope took this frame are handled between the two.
+pub(crate) fn with_rail<R>(ui: &mut egui::Ui, chess: &mut ChessState, body: impl FnOnce(&mut egui::Ui, &mut ChessState) -> R) -> R {
+    let t = Tokens::get(ui.ctx());
+    chess.tools.rail_shown = true;
+    let area = ui.available_rect_before_wrap();
+    // In a scroll area the height is not bounded: the rail is as tall as it needs.
+    let bounded = area.height().is_finite();
+    let rail_rect = Rect::from_min_size(area.min, vec2(RAIL_WIDTH, if bounded { area.height() } else { 4096.0 }));
+    let mut rail_ui = ui.new_child(UiBuilder::new().id_salt("chess-rail").max_rect(rail_rect).layout(Layout::top_down(Align::Center)));
+    let focused_group = rail(&mut rail_ui, &t, chess);
+    for (key, m) in std::mem::take(&mut chess.tools.keys) {
+        handle_key(ui.ctx(), chess, key, m, focused_group);
+    }
+    let body_rect = Rect::from_min_max(pos2(area.min.x + RAIL_WIDTH + 1.0, area.min.y), area.max);
+    let mut body_ui = ui.new_child(UiBuilder::new().id_salt("chess-rail-body").max_rect(body_rect).layout(*ui.layout()));
+    let out = body(&mut body_ui, chess);
+    let bottom = if bounded { area.bottom() } else { rail_ui.min_rect().bottom().max(body_ui.min_rect().bottom()) };
+    ui.painter().vline(area.min.x + RAIL_WIDTH + 0.5, area.min.y..=bottom, Stroke::new(1.0, t.divider));
+    ui.advance_cursor_after_rect(Rect::from_min_max(area.min, pos2(area.max.x, bottom)));
+    out
+}
+
+/// Draw the rail. Returns the popup id of the group whose button has the keyboard focus, if any.
+fn rail(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) -> Option<egui::Id> {
+    ui.spacing_mut().item_spacing.y = 2.0;
+    ui.add_space(6.0);
+    let mut focused = None;
+    let mut any_focus = false;
+    for (i, section) in RAIL.iter().enumerate() {
+        if i > 0 {
+            let (r, _) = ui.allocate_exact_size(vec2(20.0, 9.0), Sense::hover());
+            ui.painter().hline(r.x_range(), r.center().y, Stroke::new(1.0, t.divider));
+        }
+        for entry in section.iter() {
+            match entry {
+                Entry::Tool(tool) => {
+                    let name = name(ui.ctx(), tool, chess.board());
+                    let selected = matches!(tool.kind, Kind::Mode(m) if m == chess.tools.tool);
+                    let enabled = (tool.enabled)(chess.board());
+                    let r =
+                        ui.push_id(tool.id, |ui| ui.add_enabled_ui(enabled, |ui| icons::button(ui, tool.icon, BUTTON, selected, &name)).inner).inner;
+                    any_focus |= r.has_focus();
+                    if r.clicked() {
+                        activate(chess, tool, Target::Current);
+                    }
+                }
+                Entry::Group(group) => {
+                    let (r, popup) = ui.push_id(group.id, |ui| group_button(ui, t, chess, group)).inner;
+                    if r.has_focus() {
+                        any_focus = true;
+                        focused = Some(popup);
+                    }
+                }
+            }
+        }
+    }
+    // The keyboard in the rail puts Undo on the game, as a click in the panel does (D12).
+    if any_focus {
+        chess.enter_scope();
+    }
+    focused
+}
+
+/// A group's button, showing its last used member, and its popup with all of them. Returns the
+/// button's response and the popup's id.
+fn group_button(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, group: &'static Group) -> (egui::Response, egui::Id) {
+    let ctx = ui.ctx().clone();
+    let shown = chess.tools.shown(group.id).min(group.members.len().saturating_sub(1));
+    let tool = group.members.get(shown);
+    let name = tool.map(|tool| name(&ctx, tool, chess.board())).unwrap_or_default();
+    let icon = tool.map_or("square", |tool| tool.icon);
+    let enabled = group.members.iter().any(|m| (m.enabled)(chess.board()));
+    let r = ui.add_enabled_ui(enabled, |ui| icons::button(ui, icon, BUTTON, false, &name)).inner;
+    let popup = r.id.with("tools");
+    let key = group.letter.map(|l| ChessKey::shift(l).label(&ctx)).unwrap_or_default();
+    let r = r.on_hover_text(crate::i18n::fmt(
+        tl!("More {group} tools: right-click, hold, or press Enter. {key} switches between them."),
+        &[("group", (group.label)()), ("key", &key)],
+    ));
+    // The triangle that says there is more.
+    let corner = r.rect.right_bottom() + vec2(-3.0, -3.0);
+    let ink = if enabled { t.text_muted } else { t.text_faint };
+    ui.painter().add(egui::Shape::convex_polygon(vec![corner, corner + vec2(-5.0, 0.0), corner + vec2(0.0, -5.0)], ink, Stroke::NONE));
+
+    let down = r.is_pointer_button_down_on();
+    if down {
+        ctx.request_repaint_after(Duration::from_secs_f64(LONG_PRESS));
+    }
+    let held = down && ui.input(|i| i.pointer.press_start_time().is_some_and(|start| i.time - start >= LONG_PRESS));
+    let mut open = false;
+    if held && chess.tools.long_press != Some(r.id) {
+        chess.tools.long_press = Some(r.id);
+        open = true;
+    }
+    let after_long_press = chess.tools.long_press == Some(r.id);
+    // Let go after a long press: that click (elsewhere, for the popup) must not close it.
+    let letting_go = after_long_press && !down;
+    if letting_go {
+        chess.tools.long_press = None;
+    }
+    let enter = r.has_focus() && ui.input(|i| i.key_pressed(Key::Enter));
+    if r.secondary_clicked() || enter {
+        open = true;
+        chess.tools.focus_popup = enter;
+    }
+    if r.clicked()
+        && !after_long_press
+        && !enter
+        && let Some(tool) = tool
+        && (tool.enabled)(chess.board())
+    {
+        activate(chess, tool, Target::Current);
+    }
+    let behavior = if letting_go { egui::PopupCloseBehavior::IgnoreClicks } else { egui::PopupCloseBehavior::CloseOnClickOutside };
+    let mut chosen = None;
+    egui::Popup::from_response(&r)
+        .id(popup)
+        .open_memory(open.then_some(egui::SetOpenCommand::Bool(true)))
+        .close_behavior(behavior)
+        .align(egui::RectAlign::RIGHT_START)
+        .gap(4.0)
+        .show(|ui| {
+            ui.set_min_width(200.0);
+            ui.label(egui::RichText::new((group.label)()).small().color(t.text_muted));
+            for (i, tool) in group.members.iter().enumerate() {
+                let label = (tool.label)(chess.board());
+                let key = tool.keys.first().map(|k| k.label(&ctx)).unwrap_or_default();
+                let button = egui::Button::image_and_text(icons::image(tool.icon, 16.0, t.icon), label.as_str()).shortcut_text(key);
+                let b = ui.add_enabled((tool.enabled)(chess.board()), button);
+                b.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, b.enabled(), i == shown, &label));
+                if i == 0 && std::mem::take(&mut chess.tools.focus_popup) {
+                    b.request_focus();
+                }
+                if b.clicked() {
+                    chosen = Some((i, Target::Current));
+                    ui.close();
+                }
+                // Several variations it could act on: each is a choice ("Demote: 20.fxg6 · 18…Qd8").
+                let heads = tool.heads.map(|heads| heads(&chess.board().game)).unwrap_or_default();
+                if heads.len() > 1 && (tool.enabled)(chess.board()) {
+                    ui.horizontal_wrapped(|ui| {
+                        ui.spacing_mut().item_spacing.x = 4.0;
+                        ui.add_space(22.0);
+                        ui.label(egui::RichText::new(format!("{label}:")).small().color(t.text_muted));
+                        for (k, head) in heads.iter().enumerate() {
+                            if k > 0 {
+                                ui.label(egui::RichText::new("·").small().color(t.text_faint));
+                            }
+                            let mv = move_name(&chess.board().game, *head);
+                            let h = ui.small_button(&mv);
+                            let full = format!("{label}: {mv}");
+                            h.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &full));
+                            if h.clicked() {
+                                chosen = Some((i, Target::Head(*head)));
+                                ui.close();
+                            }
+                        }
+                    });
+                }
+            }
+        });
+    if let Some((i, target)) = chosen
+        && let Some(tool) = group.members.get(i)
+    {
+        chess.tools.show(group.id, i);
+        activate(chess, tool, target);
+    }
+    (r, popup)
+}
+
+/// A key the scope took: Esc and moving about first, then a group's letter, then a tool's key.
+/// `focused_group` is the popup of the group whose button has the keyboard focus (Down opens it).
+fn handle_key(ctx: &egui::Context, chess: &mut ChessState, key: Key, m: Modifiers, focused_group: Option<egui::Id>) {
+    if let Some(nav) = NAV_KEYS.iter().find(|(k, _)| k.matches(key, m)).map(|(_, nav)| *nav) {
+        match (nav, focused_group) {
+            (Nav::Down, Some(popup)) => {
+                chess.tools.focus_popup = true;
+                egui::Popup::open_id(ctx, popup);
+            }
+            _ => navigate(chess, nav),
+        }
+        return;
+    }
+    if let Some(group) = groups().find(|g| g.letter.is_some_and(|letter| ChessKey::shift(letter).matches(key, m))) {
+        let next = chess.tools.shown(group.id).saturating_add(1) % group.members.len().max(1);
+        chess.tools.show(group.id, next);
+        return;
+    }
+    for entry in RAIL.iter().flat_map(|section| section.iter()) {
+        let (group, members) = match entry {
+            Entry::Tool(tool) => (None, std::slice::from_ref(tool)),
+            Entry::Group(group) => (Some(group.id), group.members),
+        };
+        if let Some((i, tool)) = members.iter().enumerate().find(|(_, tool)| tool.keys.iter().any(|k| k.matches(key, m))) {
+            if (tool.enabled)(chess.board()) {
+                if let Some(id) = group {
+                    chess.tools.show(id, i);
+                }
+                activate(chess, tool, Target::Current);
+            }
+            return;
+        }
+    }
+}
+
+/// Esc, the arrows, Home and End.
+fn navigate(chess: &mut ChessState, nav: Nav) {
+    if nav == Nav::Escape {
+        // In order: the capture preview closes (T7b), then an armed tool goes back to Navigate,
+        // then the piece picked up (or the pawn waiting for its piece) is put down.
+        if chess.tools.tool != PgnTool::Navigate {
+            chess.tools.tool = PgnTool::Navigate;
+        } else {
+            let board = chess.board_mut();
+            board.selected = None;
+            board.promotion = None;
+        }
+        return;
+    }
+    let board = chess.board_mut();
+    if board.illegal.is_some() {
+        return;
+    }
+    board.selected = None;
+    board.promotion = None;
+    match nav {
+        Nav::Back => board.step(false),
+        Nav::Forward => board.step(true),
+        Nav::Start => board.game.go_to(0),
+        Nav::End => board.game.go_to(usize::MAX),
+        Nav::Up | Nav::Down => {
+            if let Some(node) = sibling(&board.game, board.game.current(), nav == Nav::Down) {
+                board.game.go_to_node(node);
+            }
+        }
+        Nav::Escape => {}
+    }
+}
+
+/// The reply after (`next`) or before move `node` among its parent's replies: the next or the
+/// previous variation at its fork. `None` at either end and for the start.
+fn sibling(game: &Game, node: NodeId, next: bool) -> Option<NodeId> {
+    let mut path = game.path_of(node)?.indices().to_vec();
+    let last = path.last_mut()?;
+    *last = if next { last.checked_add(1)? } else { last.checked_sub(1)? };
+    game.node_at(&NodePath::new(path))
+}
+
+/// Move `node`'s index among its parent's replies (0: it continues its parent's line).
+fn reply_index(game: &Game, node: NodeId) -> Option<u16> {
+    game.path_of(node)?.indices().last().copied()
+}
+
+/// Whether `node` is on the game's main line (the start is).
+fn on_main_line(game: &Game, node: NodeId) -> bool {
+    game.path_of(node).is_some_and(|p| p.indices().iter().all(|&i| i == 0))
+}
+
+/// Whether a move follows `node`.
+fn has_reply(game: &Game, node: NodeId) -> bool {
+    game.line_of(node).last().is_some_and(|&last| last != node)
+}
+
+/// A move as books write it in running text: "20.fxg6", "18…Qd8".
+pub(crate) fn move_name(game: &Game, node: NodeId) -> String {
+    let san = game.san(node);
+    let half = game.path_of(node).and_then(|p| {
+        let mut up = p.indices().to_vec();
+        up.pop()?;
+        game.abs_ply(game.node_at(&NodePath::new(up))?)
+    });
+    match half {
+        Some(half) if half % 2 == 1 => format!("{}…{san}", half / 2 + 1),
+        Some(half) => format!("{}.{san}", half / 2 + 1),
+        None => san.to_owned(),
+    }
+}
+
+/// The structure tools (§4.5).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Op {
+    PromoteOne,
+    MakeMain,
+    Demote,
+    DeleteVariation,
+    CutAfter,
+}
+
+impl Op {
+    /// Whether a variation whose head has reply index `index` is one this tool acts on.
+    fn takes(self, index: u16) -> bool {
+        match self {
+            Op::PromoteOne | Op::DeleteVariation => index != 0,
+            Op::Demote => index == 0,
+            Op::MakeMain | Op::CutAfter => false,
+        }
+    }
+
+    /// The heads on the way to `from` this tool can act on, nearest first.
+    fn heads(self, game: &Game, from: NodeId) -> Vec<NodeId> {
+        game.heads_on_path(from).into_iter().filter(|&h| reply_index(game, h).is_some_and(|i| self.takes(i))).collect()
+    }
+
+    /// The move this tool acts on for `target`. For a variation tool, from a move: the nearest
+    /// head it can act on, else the nearest head (to say why not).
+    fn resolve(self, game: &Game, target: Target) -> Result<NodeId, String> {
+        match self {
+            Op::PromoteOne | Op::Demote | Op::DeleteVariation => {
+                let from = match target {
+                    Target::Head(head) => return Ok(head),
+                    Target::Current => game.current(),
+                    Target::Move(node) => node,
+                };
+                let nearest = game.heads_on_path(from).first().copied();
+                self.heads(game, from).first().copied().or(nearest).ok_or_else(|| self.refusal(StructureError::NoSuchMove))
+            }
+            Op::MakeMain | Op::CutAfter => Ok(match target {
+                Target::Current => game.current(),
+                Target::Move(node) | Target::Head(node) => node,
+            }),
+        }
+    }
+
+    /// What the tool would act on for move `node` (a context menu), or why it can't, without
+    /// changing anything. Variations nesting too deep are only found when it acts.
+    fn check(self, game: &Game, node: NodeId) -> Result<Target, String> {
+        let at = self.resolve(game, Target::Move(node))?;
+        match self {
+            Op::PromoteOne | Op::DeleteVariation | Op::Demote => match reply_index(game, at) {
+                Some(i) if self.takes(i) => Ok(Target::Head(at)),
+                Some(0) => Err(self.refusal(if self == Op::Demote { StructureError::NoAlternative } else { StructureError::AlreadyFirst })),
+                _ => Err(self.refusal(StructureError::NotFirst)),
+            },
+            Op::MakeMain if on_main_line(game, at) => Err(tl!("This move is on the main line already.").to_owned()),
+            Op::CutAfter if !has_reply(game, at) => Err(tl!("There are no moves after this one.").to_owned()),
+            Op::MakeMain | Op::CutAfter => Ok(Target::Move(at)),
+        }
+    }
+
+    /// Change `game`; the undo step's name, or why it was not done (the game is then unchanged).
+    fn apply(self, game: &mut Game, target: Target) -> Result<ChessEdit, String> {
+        let at = self.resolve(game, target)?;
+        let refused = |e| self.refusal(e);
+        match self {
+            Op::PromoteOne => game.promote_one(at).map(|()| ChessEdit::PromoteOne).map_err(refused),
+            Op::Demote => game.demote(at).map(|()| ChessEdit::Demote).map_err(refused),
+            Op::DeleteVariation => game.delete_variation(at).map(|()| ChessEdit::DeleteVariation).map_err(refused),
+            Op::MakeMain => {
+                if on_main_line(game, at) {
+                    return Err(tl!("This move is on the main line already.").to_owned());
+                }
+                let revision = game.revision();
+                game.promote(at);
+                // `promote` leaves the game as it is when the old main line would nest too deep.
+                if game.revision() == revision { Err(refused(StructureError::TooDeep)) } else { Ok(ChessEdit::MakeMainLine) }
+            }
+            Op::CutAfter => {
+                if !has_reply(game, at) {
+                    return Err(tl!("There are no moves after this one.").to_owned());
+                }
+                game.go_to_node(at);
+                game.truncate();
+                Ok(ChessEdit::DeleteMoves)
+            }
+        }
+    }
+
+    /// Why the tool was refused, in the current language.
+    fn refusal(self, e: StructureError) -> String {
+        let text = match (self, e) {
+            (_, StructureError::TooDeep) => tl!("Not done: variations would nest too deep."),
+            (Op::Demote, StructureError::NotFirst) => tl!("Not demoted: this move is a variation; only the line that continues a move is demoted."),
+            (Op::Demote, _) => tl!("Not demoted: there is no variation to take its place."),
+            (Op::PromoteOne, StructureError::NoSuchMove) => tl!("Not promoted: there is no variation on the way to this move."),
+            (Op::PromoteOne, _) => tl!("Not promoted: this line already continues its move."),
+            (Op::DeleteVariation, StructureError::NoSuchMove) => tl!("Not deleted: there is no variation on the way to this move."),
+            (Op::DeleteVariation, _) => tl!("Not deleted: this is the main line here, not a variation."),
+            (Op::MakeMain | Op::CutAfter, _) => tl!("Not done: there is no such move."),
+        };
+        text.to_owned()
+    }
+}
+
+/// Use structure tool `op` on `target` as one undo step; a refusal is said in the panel, never
+/// silently nothing.
+fn structure(board: &mut BoardState, op: Op, target: Target) {
+    if board.illegal.is_some() {
+        return;
+    }
+    board.selected = None;
+    board.promotion = None;
+    let mut refused = None;
+    board.edit(|s| match op.apply(&mut s.game, target) {
+        Ok(edit) => Some(edit),
+        Err(why) => {
+            refused = Some(why);
+            None
+        }
+    });
+    board.message = refused;
+}
+
+/// The rail's tools a move's context menu offers, for move `node`: each acts on what it would
+/// for that move (the nearest variation it can act on, for the variation tools), or is off with
+/// the reason. Returns the one chosen, with its target.
+pub(crate) fn move_menu(ui: &mut egui::Ui, board: &BoardState, node: NodeId) -> Option<(Run, Target)> {
+    let mut chosen = None;
+    for tool in tools() {
+        let (Kind::Action(run), Some(on_move)) = (tool.kind, tool.on_move) else { continue };
+        let target = on_move(&board.game, node);
+        let label = (tool.label)(board);
+        let r = ui.add_enabled(target.is_ok(), egui::Button::new(label));
+        let r = match &target {
+            Ok(Target::Head(head)) if *head != node => {
+                r.on_hover_text(crate::i18n::fmt(tl!("Acts on {move}"), &[("move", &move_name(&board.game, *head))]))
+            }
+            Err(why) => r.on_disabled_hover_text(why.as_str()),
+            Ok(_) => r,
+        };
+        if r.clicked()
+            && let Ok(target) = target
+        {
+            chosen = Some((run, target));
+        }
+    }
+    chosen
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The game of `pgn`, at the move reached by `path` (reply indices from the start).
+    fn game(pgn: &str, path: &[u16]) -> Game {
+        let (mut game, stopped) = Game::from_pgn(pgn).unwrap();
+        assert_eq!(stopped, None);
+        let node = game.node_at(&NodePath::new(path.to_vec())).unwrap();
+        game.go_to_node(node);
+        game
+    }
+
+    const FORKS: &str = "1. e4 e5 (1... c5 2. Nf3 (2. c3) d6) 2. Nf3 *";
+
+    #[test]
+    fn variation_tools_act_on_the_nearest_variation_they_can() {
+        // At 2...d6 in the 1...c5 variation, the heads are 2.Nf3 (continuing c5's line) and
+        // 1...c5 (a variation).
+        let mut g = game(FORKS, &[0, 1, 0, 0]);
+        assert_eq!(g.san(g.current()), "d6");
+        let names: Vec<String> = g.heads_on_path(g.current()).into_iter().map(|h| move_name(&g, h)).collect();
+        assert_eq!(names, ["2.Nf3", "1…c5"]);
+        assert_eq!(Op::PromoteOne.heads(&g, g.current()).iter().map(|&h| move_name(&g, h)).collect::<Vec<_>>(), ["1…c5"]);
+        assert_eq!(Op::Demote.heads(&g, g.current()).iter().map(|&h| move_name(&g, h)).collect::<Vec<_>>(), ["2.Nf3"]);
+        assert_eq!(Op::PromoteOne.apply(&mut g, Target::Current), Ok(ChessEdit::PromoteOne));
+        assert_eq!(g.movetext(), "1. e4 c5 (1... e5 2. Nf3) 2. Nf3 (2. c3) 2... d6");
+        let mut g = game(FORKS, &[0, 1, 0, 0]);
+        assert_eq!(Op::Demote.apply(&mut g, Target::Current), Ok(ChessEdit::Demote));
+        assert_eq!(g.movetext(), "1. e4 e5 (1... c5 2. c3 (2. Nf3 d6)) 2. Nf3");
+        let mut g = game(FORKS, &[0, 1, 0, 0]);
+        assert_eq!(Op::DeleteVariation.apply(&mut g, Target::Current), Ok(ChessEdit::DeleteVariation));
+        assert_eq!(g.movetext(), "1. e4 e5 2. Nf3");
+        assert_eq!(g.san(g.current()), "e4", "the move shown went with the variation: its fork's move is shown");
+    }
+
+    #[test]
+    fn refusals_say_why_and_change_nothing() {
+        // On the main line before any fork: nothing to promote, demote or delete.
+        let mut g = game(FORKS, &[0]);
+        let before = g.movetext();
+        for op in [Op::PromoteOne, Op::Demote, Op::DeleteVariation, Op::MakeMain] {
+            let why = op.apply(&mut g, Target::Current).unwrap_err();
+            assert!(!why.is_empty());
+            assert_eq!(g.movetext(), before, "{op:?}");
+        }
+        assert_eq!(Op::Demote.apply(&mut g, Target::Current), Err("Not demoted: there is no variation to take its place.".to_owned()));
+        // On 1...c5 itself: a variation is not demoted.
+        let mut g = game(FORKS, &[0, 1]);
+        assert!(Op::Demote.apply(&mut g, Target::Current).unwrap_err().contains("is a variation"));
+        // At the end of a line: nothing to cut.
+        let mut g = game(FORKS, &[0, 0, 0]);
+        assert_eq!(Op::CutAfter.apply(&mut g, Target::Current), Err("There are no moves after this one.".to_owned()));
+        assert_eq!(g.movetext(), before);
+    }
+
+    #[test]
+    fn a_move_menu_names_what_each_tool_acts_on() {
+        let g = game(FORKS, &[0]);
+        let d6 = g.node_at(&NodePath::new(vec![0, 1, 0, 0])).unwrap();
+        let c5 = g.node_at(&NodePath::new(vec![0, 1])).unwrap();
+        let e4 = g.node_at(&NodePath::new(vec![0])).unwrap();
+        assert_eq!(Op::DeleteVariation.check(&g, d6), Ok(Target::Head(c5)));
+        assert_eq!(Op::MakeMain.check(&g, d6), Ok(Target::Move(d6)));
+        assert!(Op::MakeMain.check(&g, e4).is_err());
+        assert_eq!(Op::CutAfter.check(&g, e4), Ok(Target::Move(e4)));
+        assert!(Op::CutAfter.check(&g, d6).is_err());
+        assert!(Op::DeleteVariation.check(&g, e4).is_err());
+    }
+
+    #[test]
+    fn up_and_down_choose_among_the_replies_at_a_fork() {
+        let g = game(FORKS, &[0, 0]);
+        let c5 = sibling(&g, g.current(), true).unwrap();
+        assert_eq!(g.san(c5), "c5");
+        assert_eq!(sibling(&g, c5, true), None);
+        assert_eq!(sibling(&g, c5, false), Some(g.current()));
+        assert_eq!(sibling(&g, g.current(), false), None);
+        assert_eq!(sibling(&g, 0, true), None, "the start has no fork");
+    }
+
+    #[test]
+    fn the_keymap_takes_its_keys_and_no_others() {
+        let cmd = Modifiers::COMMAND;
+        assert!(scope_key(Key::Delete, Modifiers::NONE));
+        assert!(scope_key(Key::Backspace, Modifiers::NONE));
+        assert!(scope_key(Key::Delete, Modifiers::SHIFT));
+        assert!(scope_key(Key::ArrowUp, cmd));
+        assert!(scope_key(Key::ArrowUp, cmd | Modifiers::SHIFT));
+        assert!(scope_key(Key::ArrowDown, cmd));
+        assert!(scope_key(Key::Escape, Modifiers::NONE));
+        assert!(scope_key(Key::S, Modifiers::SHIFT), "the Structure group's letter");
+        // Not ours: the app's Undo, Select all, plain letters, Alt with the arrows.
+        assert!(!scope_key(Key::Z, cmd));
+        assert!(!scope_key(Key::A, cmd));
+        assert!(!scope_key(Key::S, Modifiers::NONE));
+        assert!(!scope_key(Key::ArrowUp, Modifiers::ALT));
+        assert!(!scope_key(Key::Delete, cmd));
+        // macOS: Ctrl with the arrows is the system's, not the command key's.
+        assert!(!scope_key(Key::ArrowUp, Modifiers { ctrl: true, ..Modifiers::NONE }));
+    }
+
+    #[test]
+    fn every_rail_tool_has_an_icon_and_its_own_keys() {
+        let mut keys = Vec::new();
+        for tool in tools() {
+            assert!(icons::exists(tool.icon), "{}: no icon {}", tool.id, tool.icon);
+            for k in tool.keys {
+                assert!(!keys.contains(k), "{}: {k:?} is another tool's", tool.id);
+                assert!(!NAV_KEYS.iter().any(|(n, _)| n == k) || tool.id == "navigate", "{}: {k:?} moves about", tool.id);
+                keys.push(*k);
+            }
+        }
+        for group in groups() {
+            assert!(!group.members.is_empty());
+            assert!(group.letter.is_none_or(|l| l.name().len() == 1), "a group's key is a letter");
+        }
+    }
+}

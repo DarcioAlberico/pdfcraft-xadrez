@@ -2542,3 +2542,25 @@ animation effects	Off	ఆఫ్
 	Only the first {n} were read.	మొదటి {n} మాత్రమే చదవబడ్డాయి.
 	the file is too large	ఫైల్ చాలా పెద్దది
 	no game could be read	ఏ ఆటనూ చదవలేకపోయాము
+# Chess ▸ PGN toolbar: T5a, the tool rail and its keys (the last three name undo steps: each follows "Undo" or "Redo").
+	Navigate	నావిగేట్
+	Structure	నిర్మాణం
+	Promote one level	ఒక స్థాయి పైకి
+	Demote	కిందికి దించు
+	Delete variation	ఉపవరుసను తొలగించు
+	Cut after this move	ఈ ఎత్తు తర్వాతివి కత్తిరించు
+	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	మరిన్ని {group} సాధనాలు: కుడి-క్లిక్ చేయండి, నొక్కి పట్టుకోండి లేదా Enter నొక్కండి. {key} వాటి మధ్య మారుస్తుంది.
+	This move is on the main line already.	ఈ ఎత్తు ఇప్పటికే ప్రధాన వరుసలో ఉంది.
+	There are no moves after this one.	ఈ ఎత్తు తర్వాత ఎత్తులు లేవు.
+	Not done: variations would nest too deep.	చేయలేదు: ఉపవరుసలు చాలా లోతుగా ఒకదానిలో ఒకటి ఉంటాయి.
+	Not demoted: this move is a variation; only the line that continues a move is demoted.	కిందికి దించలేదు: ఈ ఎత్తు ఒక ఉపవరుస; ఒక ఎత్తును కొనసాగించే వరుసను మాత్రమే కిందికి దించవచ్చు.
+	Not demoted: there is no variation to take its place.	కిందికి దించలేదు: దాని స్థానాన్ని తీసుకునే ఉపవరుస లేదు.
+	Not promoted: there is no variation on the way to this move.	పైకి తేలేదు: ఈ ఎత్తు వరకు దారిలో ఉపవరుస లేదు.
+	Not promoted: this line already continues its move.	పైకి తేలేదు: ఈ వరుస ఇప్పటికే తన ఎత్తును కొనసాగిస్తోంది.
+	Not deleted: there is no variation on the way to this move.	తొలగించలేదు: ఈ ఎత్తు వరకు దారిలో ఉపవరుస లేదు.
+	Not deleted: this is the main line here, not a variation.	తొలగించలేదు: ఇక్కడ ఇది ప్రధాన వరుస, ఉపవరుస కాదు.
+	Not done: there is no such move.	చేయలేదు: అలాంటి ఎత్తు లేదు.
+	Acts on {move}	దీనిపై పనిచేస్తుంది: {move}
+	Promote a variation	ఉపవరుస పైకి
+	Demote a line	వరుస కిందికి
+	Delete a variation	ఉపవరుస తొలగింపు

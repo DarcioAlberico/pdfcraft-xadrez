@@ -76,6 +76,8 @@ pub struct ChessState {
     pub scope: bool,
     /// The game shown (its id) and its history's step count when the scope was last settled.
     pub(crate) scope_edits: (u64, u64),
+    /// The PGN tool rail: the tool armed and the keys the chess scope took (T5a).
+    pub tools: crate::chess_tools::ToolState,
 }
 
 /// What scanning found in one document.
@@ -285,11 +287,14 @@ pub(crate) fn panel(
     });
     ui.add_space(4.0);
     if state.tab == ChessTab::Study {
-        // A board to play on, like the analysis board: the user's piece pictures first.
+        // A board to play on, like the analysis board: the user's piece pictures first. The PGN
+        // tool rail is beside it, as beside the Board panel's (the two merge in T5c).
         let pieces = crate::chess_editor::board_piece_set(&mut state.board_pieces);
-        let games = crate::chess_collection::games_section(ui, t, &state.games).map(PanelAction::Games);
-        let study = crate::chess_study_ui::study_tab(ui, t, &mut state.study, state.games.board_mut(), &pieces).map(PanelAction::Study);
-        return games.or(study);
+        return crate::chess_tools::with_rail(ui, state, |ui, state| {
+            let games = crate::chess_collection::games_section(ui, t, &state.games).map(PanelAction::Games);
+            let study = crate::chess_study_ui::study_tab(ui, t, &mut state.study, state.games.board_mut(), &pieces).map(PanelAction::Study);
+            games.or(study)
+        });
     }
     // The engine rests while its tab is not shown.
     state.study.pause();
@@ -851,15 +856,17 @@ pub(crate) fn board_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     });
     let mut action = None;
     let mut games = None;
-    egui::Frame::NONE.fill(t.panel).inner_margin(egui::Margin { left: 14, right: 12, top: 12, bottom: 8 }).stroke(Stroke::new(1.0, t.divider)).show(
-        ui,
-        |ui| {
-            egui::ScrollArea::vertical().id_salt("chess-board-panel").auto_shrink([false, false]).show(ui, |ui| {
-                games = crate::chess_collection::games_section(ui, &t, &app.chess.games);
-                action = crate::chess_board_ui::panel(ui, &t, app.chess.board_mut(), &pieces, source_label);
+    // The PGN tool rail on the left edge, at the full height and outside the scroll area.
+    egui::Frame::NONE.fill(t.panel).stroke(Stroke::new(1.0, t.divider)).show(ui, |ui| {
+        crate::chess_tools::with_rail(ui, &mut app.chess, |ui, chess| {
+            egui::Frame::NONE.inner_margin(egui::Margin { left: 10, right: 12, top: 12, bottom: 8 }).show(ui, |ui| {
+                egui::ScrollArea::vertical().id_salt("chess-board-panel").auto_shrink([false, false]).show(ui, |ui| {
+                    games = crate::chess_collection::games_section(ui, &t, &chess.games);
+                    action = crate::chess_board_ui::panel(ui, &t, chess.board_mut(), &pieces, source_label);
+                });
             });
-        },
-    );
+        });
+    });
     if let Some(a) = action {
         app.chess_board_action(a);
     }

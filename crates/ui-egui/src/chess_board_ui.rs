@@ -1,15 +1,17 @@
 //! Chess ▸ Board: an analysis board in its own panel, beside the Inspector.
 //!
 //! A diagram goes onto it from the page (double-click the diagram); Open on the board, in the
-//! Chess diagrams panel, puts it on that panel's Study board tab, the same board. Moves are played by clicking a piece and then where it goes, or by
-//! dragging it there; the arrows (or the arrow keys, with the pointer over the panel) walk the
-//! game back and forth. A move made at an earlier point starts a variation. The move list shows
-//! the variations, comments and annotation glyphs; a move's menu makes its line the main one or
-//! deletes it. The move shown takes a glyph and a comment, and the game its details (the PGN
-//! tags). The position is also a FEN field and the game a PGN field: both can be copied, or
-//! edited and loaded back. The right button draws on the board, as on lichess: a click circles a
-//! square and a drag draws an arrow (Shift red, Alt blue, Ctrl yellow, green otherwise); the
-//! drawings belong to the position, and a left click on the board clears them.
+//! Chess diagrams panel, puts it on that panel's Study board tab, the same board. Moves are
+//! played by clicking a piece and then where it goes, or by dragging it there; the arrows (or
+//! the arrow keys, once the panel was clicked: see `chess_tools`) walk the game back and forth.
+//! A move made at an earlier point starts a variation. The move list shows the variations,
+//! comments and annotation glyphs; a move's menu has the rail's structure tools (promote,
+//! demote, delete a variation, cut) and deletes the move. The move shown takes a glyph and a
+//! comment, and the game its details (the PGN tags). The position is also a FEN field and the
+//! game a PGN field: both can be copied, or edited and loaded back. The right button draws on
+//! the board, as on lichess: a click circles a square and a drag draws an arrow (Shift red, Alt
+//! blue, Ctrl yellow, green otherwise); the drawings belong to the position, and a left click on
+//! the board clears them.
 //!
 //! The Chess panel's Study board tab (`chess_study_ui`) shows this same board and game, built
 //! from the parts below, and adds position set-up and engine analysis.
@@ -765,13 +767,14 @@ fn status(state: &BoardState) -> (String, Color32) {
 /// What a move's menu asked for.
 enum MoveEdit {
     Go(NodeId),
-    Promote(NodeId),
+    /// A rail tool, on what it acts on for the move.
+    Tool(crate::chess_tools::Run, crate::chess_tools::Target),
     Delete(NodeId),
 }
 
 /// The move list: numbered, the move shown highlighted, each one a click away; variations in
-/// brackets and smaller, comments in italics. A move's menu (right-click) makes its line the main
-/// one or deletes it.
+/// brackets and smaller, comments in italics. A move's menu (right-click) has the rail's
+/// structure tools, acting on that move's variation, and deletes the move with what follows.
 fn move_list(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) {
     if state.illegal.is_some() {
         return;
@@ -804,10 +807,11 @@ fn move_list(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) {
                             edit = Some(MoveEdit::Go(*node));
                         }
                         r.context_menu(|ui| {
-                            if depth > 0 && ui.button(tl!("Make this the main line")).clicked() {
-                                edit = Some(MoveEdit::Promote(*node));
+                            if let Some((run, target)) = crate::chess_tools::move_menu(ui, state, *node) {
+                                edit = Some(MoveEdit::Tool(run, target));
                                 ui.close();
                             }
+                            ui.separator();
                             if ui.button(tl!("Delete from this move")).clicked() {
                                 edit = Some(MoveEdit::Delete(*node));
                                 ui.close();
@@ -832,12 +836,7 @@ fn move_list(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) {
         state.promotion = None;
         match e {
             MoveEdit::Go(node) => state.game.go_to_node(node),
-            MoveEdit::Promote(node) => {
-                state.edit(|s| {
-                    s.game.promote(node);
-                    Some(ChessEdit::MakeMainLine)
-                });
-            }
+            MoveEdit::Tool(run, target) => run(state, target),
             MoveEdit::Delete(node) => {
                 state.edit(|s| {
                     s.game.delete(node);
@@ -969,20 +968,6 @@ fn details(ui: &mut egui::Ui, state: &mut BoardState) {
     });
 }
 
-/// The arrow keys walk the line while the pointer is over the panel and no field has the keyboard.
-pub(crate) fn keys(ui: &mut egui::Ui, state: &mut BoardState) {
-    if ui.rect_contains_pointer(ui.max_rect()) && !ui.ctx().egui_wants_keyboard_input() {
-        let keys = ui.input_mut(|i| [Key::ArrowLeft, Key::ArrowRight, Key::Home, Key::End].map(|k| i.consume_key(egui::Modifiers::NONE, k)));
-        match keys {
-            [true, ..] => state.step(false),
-            [_, true, ..] => state.step(true),
-            [_, _, true, _] => state.game.go_to(0),
-            [.., true] => state.game.go_to(usize::MAX),
-            _ => {}
-        }
-    }
-}
-
 /// Flip, and whose move it is (before the first move).
 pub(crate) fn view_controls(ui: &mut egui::Ui, state: &mut BoardState) {
     ui.horizontal_wrapped(|ui| {
@@ -1040,21 +1025,6 @@ pub(crate) fn navigation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) 
         if nav(ui, ply < len, "⏭", tl!("End (End)")) {
             state.game.go_to(usize::MAX);
             state.selected = None;
-        }
-        // Undo and Redo for the game (provisional here: they move to the PGN toolbar in T5a).
-        // Each names the step it would take back ("Undo Play Nd5").
-        ui.separator();
-        for undo in [true, false] {
-            let name = state.command_text(undo).unwrap_or_else(|| if undo { tl!("Undo") } else { tl!("Redo") }.to_string());
-            let (icon, enabled) =
-                if undo { ("undo-2", state.history.undo_edit().is_some()) } else { ("redo-2", state.history.redo_edit().is_some()) };
-            if ui.add_enabled_ui(enabled, |ui| crate::icons::button(ui, icon, 28.0, false, &name)).inner.clicked() {
-                if undo {
-                    state.undo();
-                } else {
-                    state.redo();
-                }
-            }
         }
     });
     let (text, colour) = status(state);
@@ -1125,7 +1095,6 @@ pub(crate) fn fen_and_pgn(ui: &mut egui::Ui, state: &mut BoardState) -> Option<B
 /// The Chess board panel. `source_label` names the diagram the board was loaded from.
 pub fn panel(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, pieces: &PieceSet, source_label: Option<String>) -> Option<BoardAction> {
     let mut action = None;
-    keys(ui, state);
     ui.horizontal(|ui| {
         ui.label(egui::RichText::new(tl!("Chess board")).font(theme::semibold(15.5)));
         if let (Some(label), Some(source)) = (source_label, state.source)

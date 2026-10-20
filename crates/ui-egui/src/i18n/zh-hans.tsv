@@ -2597,3 +2597,25 @@ animation effects	Off	关
 	Only the first {n} were read.	只读取了前 {n} 局。
 	the file is too large	文件太大
 	no game could be read	无法读取任何对局
+# Chess ▸ PGN toolbar: T5a, the tool rail and its keys (the last three name undo steps: each follows "Undo" or "Redo").
+	Navigate	导航
+	Structure	结构
+	Promote one level	提升一级
+	Demote	降级
+	Delete variation	删除变化
+	Cut after this move	剪除此着法之后
+	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	更多{group}工具：右键单击、长按或按 Enter。{key} 在它们之间切换。
+	This move is on the main line already.	此着法已在主线上。
+	There are no moves after this one.	此着法之后没有着法。
+	Not done: variations would nest too deep.	未执行：变化会嵌套过深。
+	Not demoted: this move is a variation; only the line that continues a move is demoted.	未降级：此着法是变化；只有延续某着法的线路才能降级。
+	Not demoted: there is no variation to take its place.	未降级：没有可以取代它的变化。
+	Not promoted: there is no variation on the way to this move.	未提升：到此着法的路径上没有变化。
+	Not promoted: this line already continues its move.	未提升：此线路已经是其着法的延续。
+	Not deleted: there is no variation on the way to this move.	未删除：到此着法的路径上没有变化。
+	Not deleted: this is the main line here, not a variation.	未删除：这里是主线，不是变化。
+	Not done: there is no such move.	未执行：没有该着法。
+	Acts on {move}	作用于 {move}
+	Promote a variation	提升变化
+	Demote a line	降级线路
+	Delete a variation	删除变化

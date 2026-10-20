@@ -2609,3 +2609,25 @@ animation effects	Off	Wyłączone
 	Only the first {n} were read.	Odczytano tylko pierwsze {n}.
 	the file is too large	plik jest za duży
 	no game could be read	nie udało się odczytać żadnej partii
+# Chess ▸ PGN toolbar: T5a, the tool rail and its keys (the last three name undo steps: each follows "Undo" or "Redo").
+	Navigate	Nawigacja
+	Structure	Struktura
+	Promote one level	Awansuj o poziom
+	Demote	Obniż
+	Delete variation	Usuń wariant
+	Cut after this move	Utnij po tym ruchu
+	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	Więcej narzędzi z grupy {group}: kliknij prawym przyciskiem, przytrzymaj lub naciśnij Enter. {key} przełącza między nimi.
+	This move is on the main line already.	Ten ruch jest już w głównej linii.
+	There are no moves after this one.	Po tym ruchu nie ma ruchów.
+	Not done: variations would nest too deep.	Nie wykonano: warianty byłyby zagnieżdżone zbyt głęboko.
+	Not demoted: this move is a variation; only the line that continues a move is demoted.	Nie obniżono: ten ruch jest wariantem; obniża się tylko linię kontynuującą ruch.
+	Not demoted: there is no variation to take its place.	Nie obniżono: nie ma wariantu, który zająłby jej miejsce.
+	Not promoted: there is no variation on the way to this move.	Nie awansowano: na drodze do tego ruchu nie ma wariantu.
+	Not promoted: this line already continues its move.	Nie awansowano: ta linia już kontynuuje swój ruch.
+	Not deleted: there is no variation on the way to this move.	Nie usunięto: na drodze do tego ruchu nie ma wariantu.
+	Not deleted: this is the main line here, not a variation.	Nie usunięto: tu jest główna linia, a nie wariant.
+	Not done: there is no such move.	Nie wykonano: nie ma takiego ruchu.
+	Acts on {move}	Dotyczy {move}
+	Promote a variation	awans wariantu
+	Demote a line	obniżenie linii
+	Delete a variation	usunięcie wariantu

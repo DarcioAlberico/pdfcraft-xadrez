@@ -44,6 +44,12 @@ pub enum ChessEdit {
     DeleteMoves,
     /// A variation made the main line.
     MakeMainLine,
+    /// A variation promoted one level (it continues its move; the old line is its first variation).
+    PromoteOne,
+    /// A line demoted: its first variation continues its move instead.
+    Demote,
+    /// A variation deleted, with the moves after it.
+    DeleteVariation,
     /// A glyph put on or taken off a move (as it is shown).
     Glyph(String),
     /// A move's comment typed in.
@@ -72,6 +78,9 @@ impl ChessEdit {
             ChessEdit::EngineLine => tl!("Play the engine's line").to_string(),
             ChessEdit::DeleteMoves => tl!("Delete moves").to_string(),
             ChessEdit::MakeMainLine => tl!("Make main line").to_string(),
+            ChessEdit::PromoteOne => tl!("Promote a variation").to_string(),
+            ChessEdit::Demote => tl!("Demote a line").to_string(),
+            ChessEdit::DeleteVariation => tl!("Delete a variation").to_string(),
             ChessEdit::Glyph(glyph) => crate::i18n::fmt(tl!("Glyph {glyph}"), &[("glyph", glyph)]),
             ChessEdit::Comment => tl!("Edit move comment").to_string(),
             ChessEdit::GameDetails => tl!("Edit game details").to_string(),
