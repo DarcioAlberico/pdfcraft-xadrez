@@ -8,7 +8,7 @@
 //! own fonts (an embedded face waits for one with figurines in craft-fonts).
 
 use pdfcraft_chessvision::doc::ChessDoc;
-use pdfcraft_chessvision::doc::html::{HtmlOptions, escape, toc, xhtml_page};
+use pdfcraft_chessvision::doc::html::{HtmlOptions, epub_font_href, escape, toc, xhtml_page};
 use pdfcraft_export::Zip;
 
 /// The most pages a book holds (each is a file in the archive, whose count is 16-bit).
@@ -91,6 +91,9 @@ pub fn entries(doc: &ChessDoc, o: &HtmlOptions<'_>, meta: &EpubMeta) -> Result<V
         spine.push_str(&format!("<itemref idref=\"p{}\"/>\n", n + 1));
         pages.push(entry(&format!("OEBPS/{}", page_file(n)), xhtml));
     }
+    if let Some(font) = o.text_font {
+        manifest.push_str(&format!("<item id=\"font\" href=\"{}\" media-type=\"{}\"/>\n", epub_font_href(font), font.format.mime()));
+    }
 
     // The table of contents: the headings, flat (each links to its anchor), else the pages.
     let headings = toc(doc);
@@ -129,6 +132,10 @@ pub fn entries(doc: &ChessDoc, o: &HtmlOptions<'_>, meta: &EpubMeta) -> Result<V
         ),
     ));
     out.extend(pages);
+    // The figurine font the pages' style loads (`html::epub_font_href`).
+    if let Some(font) = o.text_font {
+        out.push(EpubEntry { name: format!("OEBPS/{}", epub_font_href(font)), data: font.bytes.clone(), compress: true });
+    }
     Ok(out)
 }
 

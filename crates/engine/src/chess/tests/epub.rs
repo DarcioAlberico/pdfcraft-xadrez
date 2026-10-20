@@ -18,6 +18,7 @@ fn options(pieces: &PieceSet) -> HtmlOptions<'_> {
         figurines: Figurines::Unicode,
         links: true,
         link_text: "Analyze on lichess",
+        text_font: None,
     }
 }
 
@@ -117,4 +118,27 @@ fn a_book_without_headings_lists_its_pages_and_limits_hold() {
     assert_eq!(modified("D:2026"), "1970-01-01T00:00:00Z");
     assert_eq!(modified("garbage"), "1970-01-01T00:00:00Z");
     assert_eq!(modified_at(1_700_000_000), "2023-11-14T22:13:20Z");
+}
+
+#[test]
+fn the_users_figurine_font_travels_in_the_book() {
+    let pieces = PieceSet::geometric();
+    let doc = chapter_doc();
+    let font = pdfcraft_chessvision::text_font::from_bytes(b"wOF2 figurine font".to_vec()).unwrap();
+    let files = entries(&doc, &HtmlOptions { text_font: Some(&font), ..options(&pieces) }, &meta()).unwrap();
+    // The file, its manifest item and every page's face point at the same place.
+    let stored = files.iter().find(|e| e.name == "OEBPS/fonts/figurines.woff2").expect("the font file");
+    assert_eq!(stored.data, font.bytes);
+    assert!(file(&files, "OEBPS/content.opf").contains("<item id=\"font\" href=\"fonts/figurines.woff2\" media-type=\"font/woff2\"/>"));
+    let pages: Vec<&EpubEntry> = files.iter().filter(|e| e.name.starts_with("OEBPS/page-")).collect();
+    assert!(!pages.is_empty());
+    for p in pages {
+        let text = std::str::from_utf8(&p.data).unwrap();
+        assert!(text.contains("src:url(\"fonts/figurines.woff2\") format(\"woff2\")"), "{}", p.name);
+        // Still well-formed XML.
+        roxmltree::Document::parse_with_options(text, roxmltree::ParsingOptions { allow_dtd: true, ..Default::default() }).unwrap();
+    }
+    // Without a font the book has no font file.
+    let plain = entries(&doc, &options(&pieces), &meta()).unwrap();
+    assert!(!plain.iter().any(|e| e.name.contains("fonts/")));
 }

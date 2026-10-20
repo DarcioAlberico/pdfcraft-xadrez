@@ -28,6 +28,8 @@ skrifa = "0.44"
 # The user's piece images (`pieces::images`), traced into outlines; pure Rust, builds for wasm32.
 # Also decodes the prototype's PNG boards in the board-reading benchmark (`examples/read_bench.rs`).
 png = "0.18"
+# The figurine font as a data URL in HTML exports (`text_font`); pure Rust, builds for wasm32.
+base64 = "0.22"
 serde.workspace = true
 serde_json.workspace = true
 # Contours, polygon simplification and minimum-area rectangles for the page detector (no OpenCV).
