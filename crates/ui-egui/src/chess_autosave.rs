@@ -579,8 +579,94 @@ impl MemoryStore {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
+    use serde_json::{Value, json};
+
+    /// xorshift64*: deterministic choices for the fuzz-like tests of untrusted settings and files
+    /// (here and in `chess_window`).
+    pub(crate) struct Rng(pub u64);
+
+    impl Rng {
+        pub(crate) fn next(&mut self) -> u64 {
+            self.0 ^= self.0 >> 12;
+            self.0 ^= self.0 << 25;
+            self.0 ^= self.0 >> 27;
+            self.0.wrapping_mul(0x2545_F491_4F6C_DD1D)
+        }
+
+        pub(crate) fn below(&mut self, n: usize) -> usize {
+            if n == 0 { 0 } else { (self.next() % n as u64) as usize }
+        }
+    }
+
+    /// A random JSON value of at most `depth` levels: the numbers and strings that break parsers
+    /// and casts (negative, huge, fractional, `u64::MAX`), and arrays and objects of them.
+    pub(crate) fn random_value(rng: &mut Rng, depth: usize) -> Value {
+        match rng.below(if depth == 0 { 6 } else { 10 }) {
+            0 => Value::Null,
+            1 => json!(rng.below(2) == 0),
+            2 | 3 => random_number(rng),
+            4 => json!(["", "board", "text", "diagrams", "Board", "1. e4 ((", "é", "x"][rng.below(8)]),
+            5 => json!("9".repeat(rng.below(400))),
+            // A pair of numbers, as sizes and positions are written.
+            6 => json!([random_number(rng), random_number(rng)]),
+            7 => Value::Array((0..rng.below(5)).map(|_| random_value(rng, depth - 1)).collect()),
+            _ => {
+                let names = ["detached", "size", "position", "tab", "pgn", "current", "comments", "path", "page", "rect", "active", "games"];
+                Value::Object((0..rng.below(5)).map(|_| (names[rng.below(names.len())].to_owned(), random_value(rng, depth - 1))).collect())
+            }
+        }
+    }
+
+    /// A number that breaks casts and bounds: negative, huge, fractional, at a limit or just past it.
+    fn random_number(rng: &mut Rng) -> Value {
+        match rng.below(5) {
+            0 => json!(rng.below(70_000)),
+            1 => json!(-i64::try_from(rng.below(70_000)).unwrap_or(0)),
+            2 => json!([0.0, -0.5, 1e-300, 1e300, f64::MAX, -f64::MAX, 16_384.0, 16_384.5, -16_385.0, 320.0, 319.9][rng.below(11)]),
+            3 => json!(u64::MAX),
+            _ => json!(i64::MIN),
+        }
+    }
+
+    /// `v` with some of its values, at any depth, replaced by random ones: of any type, or (with
+    /// `same_type`) of the type there, so the file still parses and its games are restored from
+    /// values no autosave wrote (a path of 65,535s, a PGN that is not one, a page past the end).
+    fn mutate_value(rng: &mut Rng, v: &mut Value, same_type: bool) {
+        // A body has dozens of values: one in 24 keeps most files of the same types readable.
+        if rng.below(if same_type { 24 } else { 8 }) == 0 {
+            *v = match (&*v, same_type) {
+                (Value::Number(_), true) => json!([0, 1, 2, 7, 255, 65_535][rng.below(6)]),
+                (Value::String(_), true) => {
+                    let pgn = [
+                        "",
+                        "1. e4 e5 (",
+                        "{",
+                        "*",
+                        "1. e4 e5 2. Nf3 Nc6 3. Bb5 (3. Bc4 {x} Bc5) a6 $1 $220 --",
+                        "K7/8/8/8/8/8/8/K6k w - - 0 1",
+                        "é",
+                    ];
+                    match rng.below(9) {
+                        7 => json!("x".repeat(5000)),
+                        8 => json!("(".repeat(500)),
+                        i => json!(pgn[i]),
+                    }
+                }
+                (Value::Bool(_), true) => json!(rng.below(2) == 0),
+                (Value::Array(items), true) if rng.below(2) == 0 => Value::Array(items.iter().cycle().take(rng.below(70)).cloned().collect()),
+                (Value::Array(_), true) => json!(vec![65_535; rng.below(40)]),
+                _ => random_value(rng, 2),
+            };
+            return;
+        }
+        match v {
+            Value::Array(items) => items.iter_mut().for_each(|item| mutate_value(rng, item, same_type)),
+            Value::Object(map) => map.values_mut().for_each(|item| mutate_value(rng, item, same_type)),
+            _ => {}
+        }
+    }
 
     fn keys() -> DocKeys {
         DocKeys { id0: Some([9; 16]), path: Some("/b/book.pdf".into()), name: Some("book.pdf".into()), size: Some(1234) }
@@ -719,5 +805,128 @@ mod tests {
             assert!(bad);
             assert_eq!(m.take_bad().as_deref(), Some(junk));
         }
+    }
+
+    /// A store in a fresh folder of its own, under a claimed recovery lock, holding a valid v1
+    /// file of two games; the file's path and bytes.
+    fn store_with_a_file(test: &str) -> (PathBuf, FileStore, PathBuf, Vec<u8>) {
+        let dir = std::env::temp_dir().join(format!("pdfcraft-chess-games-{test}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let recovery = crate::RecoveryStore::new(dir.join("recovery"));
+        recovery.claim();
+        let mut store = FileStore::new(dir.join("chess"), recovery);
+        store.write("abc-1", &keys(), 1, &[&annotated(), &BoardState::default()]).unwrap();
+        let path = store.path("abc-1");
+        let valid = std::fs::read(&path).unwrap();
+        (dir, store, path, valid)
+    }
+
+    /// Put `bytes` in place of the games file and look for the document's games: whatever they
+    /// are, nothing panics, and a file that is not read is set aside as `.bad` (renamed, never
+    /// deleted) unless it names another document. The folder is left with no file.
+    fn find_after_writing(store: &mut FileStore, path: &Path, bytes: &[u8]) -> Found {
+        std::fs::write(path, bytes).unwrap();
+        let found = store.find(&keys(), &HashSet::new());
+        let bad = path.with_file_name("abc-1.games.bad");
+        if let Some((_, body)) = &found.games {
+            let _ = decode(body, Some(DocId(3)));
+            assert!(found.set_aside.is_empty());
+        } else if found.set_aside.is_empty() {
+            // Read and not this document's: left where it was.
+            assert!(path.exists() && !bad.exists());
+        } else {
+            assert_eq!(found.set_aside, ["abc-1.games.bad"]);
+            assert_eq!(std::fs::read(&bad).unwrap(), bytes, "kept as it was");
+            assert!(!path.exists());
+        }
+        assert!(store.ignored.is_empty(), "every file could be set aside");
+        let _ = std::fs::remove_file(path);
+        let _ = std::fs::remove_file(&bad);
+        found
+    }
+
+    /// PGN toolbar T16: every truncation of a valid file is set aside as `.bad` and said, except
+    /// the one that only loses the last line break, which reads as before.
+    #[test]
+    fn every_truncation_of_a_games_file_is_set_aside() {
+        let (dir, mut store, path, valid) = store_with_a_file("truncated");
+        let whole = find_after_writing(&mut store, &path, &valid);
+        assert_eq!(whole.games.map(|(cid, body)| (cid, body.games.len(), body.active)), Some(("abc-1".to_owned(), 2, 1)));
+        let header_end = valid.iter().position(|&b| b == b'\n').unwrap();
+        let step = (valid.len() / 300).max(1);
+        let cuts = (0..valid.len() - 1).step_by(step).chain([header_end, header_end + 1, valid.len() - 2]);
+        for cut in cuts {
+            let found = find_after_writing(&mut store, &path, &valid[..cut]);
+            assert!(found.games.is_none() && !found.set_aside.is_empty(), "a file cut at {cut} of {} was not set aside", valid.len());
+        }
+        assert!(find_after_writing(&mut store, &path, &valid[..valid.len() - 1]).games.is_some(), "only the last line break gone");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// PGN toolbar T16: random bytes, bytes of a valid file flipped, spliced or dropped, and valid
+    /// JSON with random values in place of any of the stored ones (paths of 65,535, huge pages,
+    /// a PGN that is not one) never panic, in the file store and in the web's; what is not read
+    /// is set aside.
+    #[test]
+    fn mutated_games_files_never_panic() {
+        let (dir, mut store, path, valid) = store_with_a_file("mutated");
+        let mut rng = Rng(0x7E16_A5A5);
+        let header_end = valid.iter().position(|&b| b == b'\n').unwrap();
+        let header: Value = serde_json::from_slice(&valid[..header_end]).unwrap();
+        let body: Value = serde_json::from_slice(&valid[header_end + 1..]).unwrap();
+        let (mut read, mut set_aside) = (0usize, 0usize);
+        for round in 0..400 {
+            let bytes: Vec<u8> = match round % 4 {
+                // Random bytes, sometimes with a line break.
+                0 => (0..rng.below(300)).map(|_| if rng.below(40) == 0 { b'\n' } else { rng.next() as u8 }).collect(),
+                // The valid file with bytes changed.
+                1 => {
+                    let mut b = valid.clone();
+                    for _ in 0..1 + rng.below(6) {
+                        let at = rng.below(b.len());
+                        match rng.below(3) {
+                            0 => b[at] = rng.next() as u8,
+                            1 => {
+                                b.remove(at);
+                            }
+                            _ => b.insert(at, b"{}[]\",:0\n\\"[rng.below(10)]),
+                        }
+                    }
+                    b
+                }
+                // The body's values changed to others of their type, the header kept: the games
+                // are read and restored.
+                2 => {
+                    let mut body = body.clone();
+                    mutate_value(&mut rng, &mut body, true);
+                    format!("{header}\n{body}\n").into_bytes()
+                }
+                // Values of any type, in the header too.
+                _ => {
+                    let (mut body, mut header) = (body.clone(), header.clone());
+                    mutate_value(&mut rng, &mut body, false);
+                    mutate_value(&mut rng, &mut header, false);
+                    format!("{header}\n{body}\n").into_bytes()
+                }
+            };
+            let found = find_after_writing(&mut store, &path, &bytes);
+            read += usize::from(found.games.is_some());
+            set_aside += usize::from(!found.set_aside.is_empty());
+            // The web's store takes the same bytes as its whole value, and their second line as a
+            // document's games.
+            let text = String::from_utf8_lossy(&bytes);
+            let (mut m, _) = MemoryStore::load(Some(&text));
+            let _ = m.find(&keys(), &HashSet::new());
+            let games = text.split_once('\n').map_or("", |(_, games)| games);
+            let wrapped =
+                json!({ "format": FORMAT, "version": VERSION, "entries": [{ "cid": "abc-1", "header": header, "body": games }] }).to_string();
+            let (mut m, bad) = MemoryStore::load(Some(&wrapped));
+            assert!(!bad);
+            if let Some((_, body)) = m.find(&keys(), &HashSet::new()).games {
+                let _ = decode(&body, None);
+            }
+        }
+        assert!(read > 50 && set_aside > 50, "both ways were taken: {read} read, {set_aside} set aside");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

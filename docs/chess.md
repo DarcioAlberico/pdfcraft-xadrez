@@ -1,7 +1,7 @@
 # Chess books
 
-**Status:** current to 2026-10-21 (blueprint steps S1–S18; see [`chess/blueprint.md`](chess/blueprint.md)).
-**Revision history:** 2026-10-18 — first version, after S18. 2026-10-19 — the chess board panel, its variations, annotations, game details and `chess_game`; book origin, and hidden OCR layers over scans. 2026-10-20 — the main line by printed weight (bold moves); `chess_pgn_edit`. 2026-10-20 — reading a selection of move text (fragment mode of the walker, PGN toolbar T2a). 2026-10-20 — where a selection goes (capture planning, PGN toolbar T3) and the `capture` operation of `chess_pgn_edit`. 2026-10-20 — capturing text from the page or the clipboard in the app (PGN toolbar T7a). 2026-10-20 — the capture preview, its notice and the layer of captured text (T7b). 2026-10-21 — the board is the study board: set-up as a rail tool, the Analysis section (T5c).
+**Status:** current to 2026-10-21 (blueprint steps S1–S18, see [`chess/blueprint.md`](chess/blueprint.md); PGN toolbar steps T1–T8 and T12–T16).
+**Revision history:** 2026-10-18 — first version, after S18. 2026-10-19 — the chess board panel, its variations, annotations, game details and `chess_game`; book origin, and hidden OCR layers over scans. 2026-10-20 — the main line by printed weight (bold moves); `chess_pgn_edit`. 2026-10-20 — reading a selection of move text (fragment mode of the walker, PGN toolbar T2a). 2026-10-20 — where a selection goes (capture planning, PGN toolbar T3) and the `capture` operation of `chess_pgn_edit`. 2026-10-20 — capturing text from the page or the clipboard in the app (PGN toolbar T7a). 2026-10-20 — the capture preview, its notice and the layer of captured text (T7b). 2026-10-21 — the board is the study board: set-up as a rail tool, the Analysis section (T5c). 2026-10-21 — the PGN toolbar chapter (T16): the rail, capturing and where a capture goes, glyphs, comments before and after, structure, undo, the games of a document and their autosave, the chess window, Follow, the spec's scenario as a worked example, the keys and the measurements; the capture planning section folded into it.
 
 PdfCraft can read a chess book in PDF. It finds the diagrams, reads each one as a position (FEN), and reads the moves in the text, including figurines and annotation signs. It can redraw a diagram, put a lichess link under it, and export the book as HTML, EPUB, Word, RTF, Markdown or PGN. Everything runs on your machine; nothing is sent anywhere.
 
@@ -76,21 +76,194 @@ Open the **Chess diagrams** panel (`chess.panel`), or run **Chess ▸ Scan** (`c
     - The engine runs as a separate program and only on the desktop. No automation tool starts it.
   - The section also shows the **material** each side is ahead by, as pieces and points, clears the drawings and says how they are drawn.
 
+## PGN toolbar
+
+The **PGN toolbar** turns a book's printed moves into games without playing them one by one: you select the text on the page and it goes into the game on the board, as the line, a variation or a comment, with its glyphs. A narrow rail of tools beside the board does the rest: glyphs, comments, the shape of the variations, the games of the document, and the board in its own window. (Its spec is `plan/chess/pgn-toolbar.md`, steps T1–T16; it is local to the fork.)
+
+### The rail
+
+The rail is a column of 28 pt buttons beside the board, in sections. Each button's name says its key, which works while the **chess key scope** is on (below). A button with a small triangle is a **group**: it shows the tool used last, and a long press, a right click, or Enter or ↓ while it has the keyboard focus opens the others; Shift with the group's letter switches the one shown.
+
+| Tool | Key | What it does |
+|---|---|---|
+| **Navigate** | Esc | A click on a move goes to it. Esc also puts down any other tool. |
+| **Set up a position** | | The set-up view in the board's place (see the board, above). |
+| **Structure** group | Shift+S switches | Promote one level (Ctrl+↑), Make this the main line (Ctrl+Shift+↑), Demote (Ctrl+↓), Delete variation (Delete or Backspace), Move variation up (Alt+↑), Move variation down (Alt+↓), Cut after this move (Shift+Delete), Threat (null move). |
+| **Capture** group | X; Shift+X switches | Capture (automatic), Capture as the line, as a variation, as a sub-variation: armed, a text selection on the page goes into the game. |
+| **Capture as a comment** | C | Armed, a text selection on the page becomes the move's comment. |
+| **OCR area** | O | On a scanned page, capture what chess OCR reads in a rectangle (step T9). |
+| **Move glyphs**, **Evaluation glyphs**, **Other glyphs** | typed | The 28 annotation glyphs, in three groups. |
+| **Glyph brush** | B | Armed, each move clicked in the notation gets the brush's glyph, or loses it. |
+| **Move comment** | Enter | Opens the comment editor, with the comment before the move. |
+| **Glyph palette** | G | Figurines, glyphs and `½ – × † ‡` to type into a comment or field. |
+| **Follow** | F | The page follows the move shown (below). |
+| **Show in PDF** | | Scrolls the page to where the move shown was printed. |
+| **Undo**, **Redo** | Ctrl+Z, Ctrl+Shift+Z | The game's own history (below); the names say what they would undo. |
+| **Chess in its own window** | | The board and the Chess panel in a window of their own (desktop only). |
+
+On macOS, Ctrl is ⌘ and Alt is ⌥. Every tool is also a command (`chess.tool.*`, `chess.variation.*`, `chess.moves.*`, `chess.nag.1`–`6`, `chess.comment.edit`, `chess.palette.toggle`, `chess.source.*`, `chess.window.detach`), so it can be found with Ctrl+K and run by automation. A move's right-click menu in the notation has the structure tools, each saying what it would act on (or why it can't), plus **Diagram here**, **Copy line with figurines**, **Copy line (letters)**, **Delete from this move** and **New game from this position**.
+
+**The chess key scope.** A click in the chess panels, or a change to the game, gives the keyboard and Undo to the game; a click on the page or a change to the document gives them back to the document. While the game has them, the keys above go to the board before anything else sees them: Delete deletes a variation, never a page or an annotation, and the arrows walk the game, never the page. They are left alone while a text field has the keyboard (a letter or Delete typed in a comment is the comment's), while a menu or popup is open and under a dialog.
+
 ### Capturing text
 
-Move text printed in a book can go into the game on the board without playing it move by move (PGN toolbar spec, steps T7a and T7b).
-
-- On the board's tool rail, arm **Capture** (X) or **Comment** (C). The page tool switches to Select and a chip in the page's corner says what is armed ("Capturing · automatic ▾ · Esc to stop"); its menu switches the mode, and Esc stops.
+- **Arm a tool.** **Capture** (X) or **Capture as a comment** (C). The page tool switches to Select and a chip in the page's corner says what is armed ("Capturing · automatic ▾ · Esc to stop"); its menu switches the mode, and Esc stops.
   - **Automatic** reads the text as the book sets it: a bold first move continues the main line, anything else becomes a variation where its move numbers fit; prose becomes comments, brackets variations, and `!`, `±`… glyphs.
-  - Shift+X switches to the forced modes: **as the line** (continue the line of the move shown; a different move already there becomes a variation), **as a variation** (of the main line) and **as a sub-variation** (of the line of the move shown, or one outside it).
-  - **Comment** puts the text on the move shown, moves in English SAN. The chip's switches put it **before** the move instead of after, and **replace** the comment instead of adding to it.
-- **Select the text and let go.** The selection grows to whole moves ("20.Nx" takes "20.Nxf6+"). When the text reads completely and fits only one place, it goes in at once, as one undo step: Ctrl+Z (Edit ▸ Undo) takes it back even with the pointer still on the page, and the document is never touched. Otherwise a **preview** opens beside the selection: where the text goes ("Variation of 18…Qxe1"), **Fit at** to pick another place it fits, the **Language** it is read in, its moves (✓ played, ✗ where it stopped and why, grey not read, bold for the main line) and why it is shown. **Apply** (Enter), **Apply and keep the rest as a comment** or **Cancel** (Esc); the preview closes if the document is edited.
-- After a capture goes in, a notice says what it did ("Variation of 18…Qxe1 · moves: 4") with **Undo**, until the game changes again; the new moves are highlighted in the move list.
-- **Underline captured text on the page**, in the board panel, underlines every move already captured from the document, so you can see what is left to transcribe.
-- Without arming anything: **Send to PGN ▸** in the bar beside a selection, or in the page's right-click menu, captures it in the mode you pick.
-- **Paste**: Ctrl+V with the chess panel last used (and no text field typing) captures the clipboard's text; **Paste as ▸** in the board panel picks the mode. Ctrl+C on the page captures too when you turn on **Also capture what is copied** in the chip's menu (off by default).
-- The text is read in the document's language (as the **Text** tab read the page; English until it has), never guessed from the selection. Figurines in a figurine font are read as pieces. Each move remembers where it was printed on the page.
-- A document that doesn't allow copying doesn't allow capturing either. At most 64 KiB of text is captured at once.
+  - **Forced** modes (Shift+X steps through them) are for books that use no bold, or text that fits in more than one place: **as the line** continues the line of the move shown (a different move already there becomes a variation), **as a variation** of the main line, **as a sub-variation** of the line of the move shown or one outside it.
+  - **Comment** puts the text on the move shown, its moves in English SAN. The chip's switches put it **before** the move instead of after, and **replace** the comment instead of adding to it.
+- **Select the text and let go.** The selection grows to whole moves ("20.Nx" takes "20.Nxf6+"). It is read from the page's glyphs, not from copied text: a figurine font's pieces are pieces, and a bold glyph is bold. The language is the document's (as the **Text** tab read the page; English until it has), never guessed from the selection: `Rc7` is a rook in English and a king in Portuguese.
+- **Without arming anything:** **Send to PGN ▸** in the bar beside a selection, or in the page's right-click menu, captures it in the mode you pick. **Paste:** Ctrl+V with the chess scope on (and no field typing) captures the clipboard's text; **Paste as ▸** in the board panel picks the mode. Ctrl+C on the page captures too when you turn on **Also capture what is copied** in the chip's menu (off by default).
+
+**Where a capture goes.** The selection's first move decides, by its printed number:
+
+1. The number says the half-move the move is played at, counted from the diagram's move number (a diagram already carries the number printed under it).
+2. The candidate lines are the line of the move shown, the line that one branched from, and so on out to the main line. As the line or a sub-variation every one is tried, the innermost first; as a variation, only the main line. Automatic capture takes a bold first move as the main line's continuation and anything else as a sub-variation.
+3. On each line the place is the move after which that half-move comes. A first move printed without a number goes after the move shown.
+4. As the line, a new move where a move already has replies becomes the first reply, and the old first reply a variation. As a variation, it goes after the replies there. A reply that is already there is followed, not added twice.
+5. Each place is tried on a copy of the game: the selection is read from that position and grafted there. The place that plays the most moves wins, then the one with the fewest moves that did not play, then the inner line. Two places that play as many are **ambiguous**.
+6. In a game with no moves whose start says move 1 (the number under the diagram was not read), the start renumbered to the first move's number is offered too.
+
+**When it asks first.** A capture goes in at once, as one undo step, only when the whole text was read, it fits one place, that place is on the line of the move shown, no line's end was extended by a variation, no move already there was demoted and nothing was renumbered. Otherwise a **preview** opens beside the selection and says why:
+
+| Reason | Means |
+|---|---|
+| ambiguous | another place plays as many moves |
+| incomplete | part of the text was not read: a move that did not play, a bracket that did not balance, text after a result, a glyph or comment with no place, or a comment too long |
+| outer line | the place is on a line outside the one of the move shown |
+| tip extension | taken as a variation, it found no move to be an alternative to and extended a line's end |
+| renumber | the start is renumbered to the text's first move |
+| implied close | a closing bracket the text lacks was assumed |
+| demotes | a move already there became a variation |
+| no fit | no place plays a move |
+| too long | over 64 KiB of text; nothing was read |
+
+The preview shows where the text goes ("Variation of 18…Qxe1"), **Fit at** to pick another place it fits, the **Language** it is read in (changing it reads the text again, and becomes the document's language for captures), and the moves as chips: ✓ played, ✗ where it stopped and why, grey not read, bold for the main line. **Apply** (Enter), **Apply and keep the rest as a comment** (what was not read is never thrown away) or **Cancel** (Esc). It follows the page as it scrolls and closes when the document is edited.
+
+**Undo.** A capture is one step of the game's history: Ctrl+Z takes it back even with the pointer still on the page, and the document is never touched. After a capture a notice says what it did ("Variation of 18…Qxe1 · moves: 4") with **Undo**, which stays until the game changes again (it has no timeout), and the new moves are tinted in the move list for a moment (a plain tint with reduced motion).
+
+**Captured text on the page.** Every captured move remembers where it was printed. **Underline captured text on the page**, in the board panel, underlines them, so you can see what is left to transcribe; the places come back with the games in the next session.
+
+A document that doesn't allow copying doesn't allow capturing either. At most 64 KiB of text is captured at once; a selection over 4 KiB is planned off the interface thread.
+
+### Glyphs
+
+The 28 glyphs of the PGN standard's table that books use are in three groups on the rail, each named for its meaning ("Good move", "White is slightly better"), never read out as a sign:
+
+- **Move glyphs:** `!` `?` `!!` `??` `!?` `?!`, only move `□`, novelty `N`. A move has at most one; another replaces it.
+- **Evaluation glyphs:** `=` `∞` `⩲` `⩱` `±` `∓` `+−` `−+` and compensation. At most one; another replaces it.
+- **Other glyphs:** zugzwang, development, initiative, attack, counterplay, time trouble, with the idea, aimed against, better is, worse is, editorial comment. These add up.
+
+A glyph goes on the move shown with the code for the side it speaks of (zugzwang: the side to move after it); clicking a glyph the move has takes it off. Each change is one undo step.
+
+- **Typed glyphs:** with the chess scope on and no field typing, type the sign: `!` `?` `!!` `??` `!?` `?!` `=` `+=` `=+` `+/-` `-/+` `+-` `-+` `~`, or `0` to take the move's glyphs off. They come as text, so any keyboard layout works; a two-character sign waits up to 600 ms for its second character.
+- **Glyph brush** (B): each move clicked in the notation gets the brush's glyph, or loses it, one undo step a click; the move shown does not change. A glyph chosen in a group while it is armed becomes the brush's. Esc puts it down.
+- **Glyph palette** (G): figurines, the glyphs and `½ – × † ‡`, typed at the cursor of the field that had the keyboard (a comment, FEN, PGN), or at the end of the move's comment.
+- **Diagram here**, in a move's menu, shows a small board after the move in the notation and is kept in the PGN as `$220` (a de-facto code, from the public table of non-standard NAGs; other programs may not read it).
+
+### Comments before and after
+
+Under the notation the move shown has its comment, the one after it. **Move comment** (Enter) opens the editor with the **comment before** the move too. Typing in a comment is one undo step per visit to the field, not one per key.
+
+PGN only has a place for a comment before a move that starts a variation: `(18... {Better is} Qd8 …)`. Before a move that continues its line, the PGN writes it into the comment after the previous move (or before the game's first move), and the editor says so. PdfCraft keeps it on its move in the game and in the autosave, so it comes back where it was; only a PGN file loses where it was.
+
+### Structure
+
+Each operation is one undo step, and can be undone exactly: promote one level then demote, or move up then move down, gives back the same tree, comments before included.
+
+- **Promote one level** (Ctrl+↑): the variation continues the line it branches from, and that line's move becomes its first variation; the other variations keep their order. From a move inside a variation, the nearest variation that can be promoted is the one; when several could be, the group's popup lists them by their first move.
+- **Make this the main line** (Ctrl+Shift+↑): promote all the way.
+- **Demote** (Ctrl+↓): a move that continues its line becomes the first variation, and the variation that was first continues the line instead; the inverse of promoting.
+- **Move variation up / down** (Alt+↑ / Alt+↓): among the variations at the same fork. The line itself never moves.
+- **Delete variation** (Delete, Backspace): the variation and its moves; the move shown goes back to the fork.
+- **Cut after this move** (Shift+Delete): every move after the move shown, variations included.
+- **Threat (null move)**: the side to move passes, and the moves after show what the other side threatens, as books do (`12... --`). Written `--` in PGN and read back (also as `Z0` or `0000`); refused when the side to move is in check.
+- **Copy line with figurines / (letters)** in a move's menu copies the line up to it as book text (`18.♘d5! ♕xe1 19.♘xe7+`), from the start of its variation or of the game.
+
+### Undo
+
+The game has its own history, apart from the document's: every change (a move, a capture, a glyph, a comment, a structure change, the game's details, a position or a PGN loaded) is one step, and walking the moves is not a change. Undo and Redo follow the scope of the last action: after a click in the chess panels or a change to the game they undo the game; after a click on the page or a document edit, the document. The rail's Undo and Redo always undo the game. The history keeps at most 200 steps and 64 MiB per game, the oldest going first. It is not kept across sessions.
+
+### Games of a document
+
+Every open document has its own games, and the board shows the active one; switching documents switches games. **Games in this document**, in the board panels, lists them by their players, else their event, the diagram they came from, or their number.
+
+- A diagram opened on the board is a **new game**: it never replaces the game there (the same untouched diagram opened twice shows its game again). **New game** adds a blank one; **New game from this position** starts one at the move shown, keeping its diagram.
+- Each game's menu, its buttons on the row under the pointer, or the keys of a focused row: **Rename…** (F2; the White, Black and Event tags, so the name is in the PGN), **Duplicate**, **Move up / down** (Alt+↑ / Alt+↓), **Delete…** (Delete or Backspace; it asks, because the list has no undo; deleting the last game leaves a blank one), and Enter shows it.
+- **Open PGN…** adds every game of a file (at most 256). **Save PGN…** writes the game shown, **Save all games as PGN…** (Export… in the list) the whole list in its order (a file you pick; a download on the web). Saving is refused for a document that does not allow copying.
+
+**Autosave.** Two seconds after the last change, when a document closes and on exit, each document's games are written to a file of their own in the `chess` folder of the recovery folder: `%LOCALAPPDATA%\PdfCraft\Recovery\chess` on Windows, `~/Library/Application Support/PdfCraft/Recovery/chess` on macOS, `~/.local/share/pdfcraft/recovery/chess` elsewhere (in portable mode, the portable data folder). The file is two lines of JSON: the document's keys (its `/ID`, path, and name and size), then the games: each one's PGN and what PGN cannot hold (the move shown, the board's side, an illegal position, the diagram it came from, where each move was printed, and the comments before a move PGN would merge). Opening the document again finds them by any of its keys, and saving the document takes the new keys at once.
+
+- Files are written atomically, and only by the running instance that holds the recovery folder's lock; a file another running instance wrote is left alone, and you are told.
+- A file that can't be read, is too big or has another version is renamed `….games.bad` (never deleted, never written over) and you are told; new games are saved from then on.
+- Caps: 256 games and 32 MiB per document. Above them the document's games are not autosaved (you are told) until they are back under; nothing is ever evicted.
+- **Protected documents** (encrypted, or not allowing copying): you are asked once per document and session before their games are written to disk.
+- On the web the games are kept in the browser's storage (4 MiB for all documents), written when the app saves its state; a value that can't be read is kept aside.
+
+### The chess window
+
+**Chess in its own window** (the rail's last tool, or the Board tab's menu) moves the board, with the Chess panel's Diagrams and Text tabs, into a window of its own, so the PDF can fill the main window, on another monitor if you like. From 760 pt wide the board sits beside the tabs; narrower, a **Board | Diagrams | Text** strip switches them. In the window the board can grow past the dock's 480 pt, up to 1,200 pt. Its keys are its own: the chess keys go to its rail and the app's shortcuts still work there. Closing it, or **Dock**, puts the board back where it was. Its size, place and tab are remembered in the settings (`docking_detached`); a value that isn't usable is ignored, and a place off the main window's monitor is not used. If the window or its drawing surface can't be made, the board docks back once, with a notice, and no window is tried again in that session. Only on the desktop: on the web nothing offers it (a window remembered in the settings is drawn inside the page, with a Dock button).
+
+### Follow the source
+
+A captured move, and a move of a game opened from the **Text** tab (a double-click on a move there, or **Open this game on the board**), remembers where it was printed. **Show in PDF** scrolls the page to the move shown and outlines it, unless it is on screen already. **Follow** (F, a switch for the session) does that whenever the move shown changes, so walking the game walks the book, with the board docked or in its own window. A move with no place on the page (played on the board, or typed) shows nothing.
+
+### A worked example
+
+The spec's scenario is a page of Grooten's *Chess Strategy for Club Players* (the game up to 17…Bc4 and the diagram under it, `2r2rk1/1p2ppb1/p2p1npp/q4P2/P1b1P2B/2NB4/1PP3PP/R3QR1K w - - 0 18`):
+
+1. Double-click the diagram: game 1 of the document's collection, at move 18 (the number printed under the diagram), nothing renumbered.
+2. Press X and select from `18.Nd5!` to `20.Raxe1`, prose included. In one capture, without the preview: the bold main line `18.Nd5! Qxe1 19.Nxe7+ Kh7 20.Raxe1`, the variation `18…Qd8 19.Bxf6! Bxf6 20.fxg6` with its sub-variation `(20.Nxf6+ exf6 21.Bxc4 Rxc4)` and the return `20…fxg6 21.Qg3 Kh7 22.e5!`, the prose as comments where it was, and `!` on 18.Nd5, 19.Bxf6 and 22.e5.
+3. The next paragraph: `(20.Rfxe1)` inside the prose becomes a variation of 20.Raxe1, and the bold `20…Rc7 21.Bxc4 Rxc4` the main line. Captured alone first, the prose's `20…Rc7 21.e5!` extends the main line's end (with the preview); the bold line captured after it follows `20…Rc7`, puts `21.Bxc4` as the first reply and demotes `21.e5` to a variation (with the preview, because a move already there was demoted).
+4. The forced modes build the same tree step by step from the empty game: as the line `18.Nd5! Qxe1`; as a variation `18…Qd8 19.Bxf6! Bxf6 20.fxg6`; as a sub-variation `20.Nxf6+`; as the line `20…exf6 21.Bxc4 Rxc4` (it continues the sub-variation); as the line `20…fxg6 21.Qg3`, which can't be played in the sub-variation (after 20.Nxf6+ Black is in check and no White piece is on g6), so it extends the outer variation, with the preview.
+5. Click 20.Nxf6+, press C and select the prose after it: its comment. With **before** on the chip, the words before it become its comment-before (it starts a variation, so the PGN keeps it there).
+6. Right-click 18…Qd8 ▸ **Promote one level**: it becomes the main line. ▸ **Demote**: back, identical, comment-before included. Ctrl+Z twice gives the same game, and the PDF was never touched.
+7. The PGN reads back to itself. Close and reopen the app: the collection comes back, and the underline of captured text with it.
+8. With **Follow** on, going to 20…exf6 scrolls the page to it and outlines it.
+9. **Chess in its own window**: the board and the notation in a window of their own, the PDF in the whole main window. Closing it docks them back.
+
+Steps 2–4 are tests of the engine (`engine::chess::capture`), of `chess_pgn_edit` and of the app; step 2 is one selection and no Enter, against about forty clicks on the board.
+
+### Keyboard
+
+These work while the chess scope is on (a click in the chess panels), and not while a text field has the keyboard. Ctrl is ⌘ on macOS.
+
+| Key | Does |
+|---|---|
+| ← → | previous, next move |
+| ↑ ↓ | the variation before, after the move shown at its fork |
+| Home, End | the start, the end of the line |
+| Esc | put the armed tool down (Navigate); cancel a preview |
+| Enter | open the comment editor; apply a preview |
+| X, Shift+X | arm Capture; switch to the next capture mode |
+| C | arm Capture as a comment |
+| O | the OCR area on or off |
+| B | arm the glyph brush |
+| G | the glyph palette |
+| F | Follow on or off |
+| Shift+S | switch the Structure group's tool |
+| Ctrl+↑, Ctrl+Shift+↑, Ctrl+↓ | promote one level, make the main line, demote |
+| Alt+↑, Alt+↓ | move the variation up, down |
+| Delete, Backspace | delete the variation |
+| Shift+Delete | cut after the move shown |
+| `!` `?` `=` `+` `-` `/` `~` | type a glyph; `0` takes them off |
+| Ctrl+Z, Ctrl+Shift+Z | undo, redo the game |
+| Ctrl+V | capture the clipboard's text |
+
+In the list of games, a focused row takes F2 (rename), Delete or Backspace (delete), Alt+↑ / Alt+↓ (move) and Enter (show), and nothing else.
+
+### Measurements
+
+Measured on 2026-10-21 (Windows 11, AMD desktop, release builds; the stored readings of the ten stretches of the user's books used throughout this page; spec §8):
+
+| What | How | Result | Target |
+|---|---|---|---|
+| A selection gives the book's own variation | `examples/fragment_bench.rs`: every variation the walker built is read again as a selection from the position before it and grafted | 275 of 292 (94.2%) on the readings without weights; 294 of 301 (97.7%) on the same stretches read again with their weights, where bold main lines count (Dvoretsky 60/60 and 89/90, Fischer 90/92) | ≥ 95% |
+| Whole books don't read worse | `examples/walk_bench.rs` | 2,327 valid moves on the readings without weights (2,304 before the toolbar's rules, none worse); 2,534 with the weights | ≥ the base |
+| Gestures for the scenario's paragraph | the worked example, step 2 (`the_paragraph_selected_with_capture_armed_goes_in_at_once`) | one selection, no Enter | 1 selection + at most 1 Enter |
+| Time to plan a capture | `plan_cost_on_the_scenario` (`cargo test --release -p pdfcraft-engine --lib -- --ignored plan_cost`) | 0.84 ms from the empty game, 0.86 and 0.69 ms from inside the sub-variation (one candidate each; each candidate is one reading and one graft, so the most a plan can have, 35, stays near 30 ms) | < 50 ms |
+| Never panics | `cargo xtask fuzz` with a page of move text to capture (T16), and fuzz-like tests of `chess_pgn_edit`, the games files and the chess window's saved settings | 8,913 runs in 300 s (two jobs, the four synthetic seeds; 9,184 in an earlier run before the OCR area's reading was added): no crash, no hang | no crash |
+
+The differences left in `fragment_bench` are mostly the whole book's misreadings: a numbered move after a prose digression goes back to the variation's own line in a selection, while the whole book keeps it in the digression.
 
 ## Headless: tools and CLI
 
@@ -104,7 +277,7 @@ Every feature is also a tool (`pdfcraft-cli tools`; the MCP server is opt-in):
 | `chess_replace_diagram`, `content_draw` | redraw a diagram (one undo step); the generic checked-operators edit under it |
 | `chess_add_lichess_links` | a label and link under every legal, accepted diagram |
 | `chess_game` | the board without a document: a game from a FEN or a PGN, moves in SAN or UCI, the position at a ply with its legal moves, and the game as PGN |
-| `chess_pgn_edit` | a game's moves without the board: play, comment (after or before a move), glyphs, promote one level, make main line, demote, delete a variation, cut, and graft move text as a variation, as the line or as a comment, at a main-line half-move (`main:35`) or a reply path (`path:0.1`), with a report per operation; `capture` plans where a selection of move text goes (below) and applies it, reporting every candidate place; inline only |
+| `chess_pgn_edit` | a game's moves without the board: play, a null move, comment (after or before a move), glyphs, a diagram mark, promote one level, make main line, demote, move a variation up or down, delete a variation, cut, and graft move text as a variation, as the line or as a comment, at a main-line half-move (`main:35`) or a reply path (`path:0.1`), with a report per operation; `capture` plans where a selection of move text goes (see [Capturing text](#capturing-text)) and applies it, reporting every candidate place; inline only (the game in the arguments and the reply, no path) |
 | `chess_export_html`, `_epub`, `_docx`, `_rtf`, `_markdown`, `_pgn` | the exports |
 
 `pdfcraft-cli chess scan FILE` prints the diagrams found. All paths are confined to `--root`.
@@ -175,7 +348,7 @@ Fischer's *My 60 Memorable Games* centres each diagram (its caption printed besi
 
 ### Reading a selection (fragment mode)
 
-The PGN toolbar captures a selection on the page into the game on the board (its spec, `plan/chess/pgn-toolbar.md`, step T2a for the reader; the capture in the app is step T7a, see [Capturing text](#capturing-text)). The reader is the same game walker that reads whole books, in a *fragment mode* (`chessvision::doc::fragment`): it starts from the position it is given (never renumbered from the moves), reads one game (a `1.e4` quoted in prose does not start another, and a move numbered before the start position is prose), and writes the game out as the items `Game::graft` takes, moves with their printed half-move, weight and box. The selection is read in the document's language, never one guessed from a few words (`Rc7` is a rook in English and a king in Portuguese). Rules added for it:
+The PGN toolbar captures a selection on the page into the game on the board (its spec, `plan/chess/pgn-toolbar.md`, step T2a for the reader; the capture in the app is steps T3 and T7a, see [Capturing text](#capturing-text) under the [PGN toolbar](#pgn-toolbar)). The reader is the same game walker that reads whole books, in a *fragment mode* (`chessvision::doc::fragment`): it starts from the position it is given (never renumbered from the moves), reads one game (a `1.e4` quoted in prose does not start another, and a move numbered before the start position is prose), and writes the game out as the items `Game::graft` takes, moves with their printed half-move, weight and box. The selection is read in the document's language, never one guessed from a few words (`Rc7` is a rook in English and a king in Portuguese). Rules added for it:
 
 - a bracket lost in the text is assumed when a numbered move fits only outside the variation (flagged);
 - a move without a number after prose words stays in the comment (`the break …f5`), unless it is bold;
@@ -185,10 +358,6 @@ The PGN toolbar captures a selection on the page into the game on the board (its
 - a word cut by a hyphen at a line's end is joined only between letters (`posi-` `tion`), never after a square or a digit (`Nd7-` `b6`, `1-` `0`).
 
 Whole books take only the rules that made no move worse on the ten stored documents (`examples/walk_bench.rs --rules=`): the assumed bracket, the separators and the ellipsis, 2,304 → 2,327 valid moves, 23 better and none worse. Moves in prose made 88 worse (books go on after prose without numbers) and the new results 3 (moves that were played into the wrong game before a `0:1` ended the right one), so those stay for selections. Reading every variation the walker built again as a selection, from the position before it, and grafting it (`examples/fragment_bench.rs`) gives the walker's own tree for 100% of Dvoretsky's (59 of 59), 94.1% of the second Dvoretsky stretch, 91.0% of Fischer's (81 of 89) and 94.2% overall (275 of 292). Most of the differences are the whole-book reading's: a numbered move after a prose digression goes back to the variation's own line in the selection, while the whole book keeps it in the digression.
-
-### Where a selection goes (capture planning)
-
-`engine::chess::capture::plan` (PGN toolbar spec step T3) decides where a selection goes in the game, on copies, and says when to show the preview first. Half-moves are absolute (`2·(n−1)`, plus one for Black, from the start FEN's move number; the start has one). The candidate lines are the current move's line (`L0`), the line it branched from (`L1`), and so on to the main line. As the line or a sub-variation every line is tried, innermost first; as a variation only the main line; automatic capture takes a bold first move as the main line's continuation and anything else as a sub-variation. On each line the place is the move after which the half-move is the first move's printed one; a first move without a number goes after the current move (as the line), or is an alternative to the move after it, then to it. Each place is scored by reading the selection with the walker from its position and grafting it on a copy: the most moves played wins, then the fewest that did not play, then the inner line. Two places playing as many are ambiguous. A game with no moves whose start says move 1 is also offered the start renumbered to the first move's number. The plan is applied without the preview only when the reading is complete, the place unique and on `L0`, no line's end was extended by a variation, no move was demoted and nothing was renumbered (decision D6 b); otherwise it lists why (`ambiguous`, `incomplete`, `outer_line`, `tip_extension`, `renumber`, `implied_close`, `demotes`, `no_fit`, `too_long`). Applying checks the game's revision is still the planned one. As a comment, the selection becomes the current move's comment (or comment-before), moves in English SAN. Text over 64 KiB is not read. Planning the scenario's paragraph takes about 0.9 ms (one candidate; each candidate is one reading and one graft, so even the most a plan can have, 35, stays near 30 ms) in a release build.
 
 ## Limits
 
@@ -201,4 +370,8 @@ Whole books take only the rules that made no move worse on the ten stored docume
 - **Readings and corrections**
   - A reading the decoder repaired is never linked or accepted until a person confirms it.
   - The book's cipher (what a figurine font or a misreading maps to) is carried from page to page and between reads while the document is open; headless runs save and load it with `cipher_out` / `cipher_in`. It is not saved inside the PDF.
+- **PGN toolbar**
+  - A PGN file keeps a comment before a move only where the move starts a variation; elsewhere it joins the comment after the move before (the app's autosave keeps it apart). `chess_pgn_edit` reads only the first game of a PGN; Open PGN… reads them all.
+  - The game's undo history is not kept across sessions, and deleting or reordering games in the list cannot be undone.
+  - The chess window has not yet been checked on the real executable across two monitors with different scaling; only the main window's monitor is known, so a window saved on another monitor opens where the system puts it.
 - **Speed:** reading a page with OCR, or exporting a whole book, runs off the interface thread (the panel shows it is working) but cannot be cancelled once started.
