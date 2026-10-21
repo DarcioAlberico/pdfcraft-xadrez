@@ -2713,7 +2713,9 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Double check sign	Қос шах белгісі
 	Glyph palette	Белгілер палитрасы
 	Close the glyph palette	Белгілер палитрасын жабу
-	Puts the character into the field you were typing in, or at the end of the move's comment.	Таңбаны сіз жазып отырған өріске немесе жүріс түсініктемесінің соңына қояды.
+	Glyphs go on the move shown and the other characters at the end of its comment, or all into the field you were typing in.	Белгілер көрсетілген жүріске, ал басқа таңбалар оның түсініктемесінің соңына қойылады, немесе бәрі сіз жазып отырған өріске.
+	Figurines and signs	Фигура белгілері және таңбалар
+	Remove all glyphs	Барлық белгілерді өшіру
 	Comment before {move}	{move} алдындағы түсініктеме
 	In PGN this comment joins the comment before the game's first move.	PGN-де бұл түсініктеме партияның бірінші жүрісінің алдындағы түсініктемеге қосылады.
 	In PGN this comment is written after the previous move.	PGN-де бұл түсініктеме алдыңғы жүрістен кейін жазылады.

@@ -190,7 +190,7 @@ pub(crate) fn panel(
         }
     });
     if fix.palette
-        && let Some(insert) = crate::chess_annotate::palette_buttons(ui, true)
+        && let Some(insert) = crate::chess_annotate::palette_buttons(ui, true, |_| false).map(|pick| pick.text)
         && fix.field.chars().count().saturating_add(insert.chars().count()) <= MAX_FIELD_CHARS
     {
         crate::chess_annotate::insert_at_cursor(ui, id, &mut fix.field, &insert);

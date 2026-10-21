@@ -2970,7 +2970,9 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Double check sign	Ký hiệu chiếu đôi
 	Glyph palette	Bảng ký hiệu
 	Close the glyph palette	Đóng bảng ký hiệu
-	Puts the character into the field you were typing in, or at the end of the move's comment.	Chèn ký tự vào ô bạn đang gõ, hoặc vào cuối bình luận của nước đi.
+	Glyphs go on the move shown and the other characters at the end of its comment, or all into the field you were typing in.	Ký hiệu được gắn vào nước đi đang hiển thị, các ký tự khác vào cuối bình luận của nó, hoặc tất cả vào ô bạn đang gõ.
+	Figurines and signs	Biểu tượng quân cờ và ký hiệu
+	Remove all glyphs	Xóa mọi ký hiệu
 	Comment before {move}	Bình luận trước {move}
 	In PGN this comment joins the comment before the game's first move.	Trong PGN, bình luận này nhập vào bình luận trước nước đầu tiên của ván.
 	In PGN this comment is written after the previous move.	Trong PGN, bình luận này được ghi sau nước trước đó.

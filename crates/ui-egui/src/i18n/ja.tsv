@@ -2717,7 +2717,9 @@ chess undo step	Clear drawings	描画の消去
 	Double check sign	ダブルチェックの記号
 	Glyph palette	記号パレット
 	Close the glyph palette	記号パレットを閉じる
-	Puts the character into the field you were typing in, or at the end of the move's comment.	入力中だったフィールドに文字を挿入します。なければ手のコメントの末尾に追加します。
+	Glyphs go on the move shown and the other characters at the end of its comment, or all into the field you were typing in.	記号は表示中の手に付き、それ以外の文字はそのコメントの末尾に入ります。入力中のフィールドがあれば、すべてそこに入ります。
+	Figurines and signs	駒の記号とその他の記号
+	Remove all glyphs	すべての記号を消去
 	Comment before {move}	{move} の前のコメント
 	In PGN this comment joins the comment before the game's first move.	PGN では、このコメントは対局の最初の手の前のコメントと一緒になります。
 	In PGN this comment is written after the previous move.	PGN では、このコメントは前の手の後に書かれます。

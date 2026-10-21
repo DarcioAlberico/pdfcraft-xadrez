@@ -2856,7 +2856,9 @@ chess undo step	Clear drawings	borrado de los dibujos
 	Double check sign	Signo de jaque doble
 	Glyph palette	Paleta de signos
 	Close the glyph palette	Cerrar la paleta de signos
-	Puts the character into the field you were typing in, or at the end of the move's comment.	Inserta el carácter en el campo en el que escribía, o al final del comentario de la jugada.
+	Glyphs go on the move shown and the other characters at the end of its comment, or all into the field you were typing in.	Los signos se ponen en la jugada mostrada y los demás caracteres al final de su comentario, o todo en el campo en el que escribía.
+	Figurines and signs	Figurines y signos
+	Remove all glyphs	Quitar todos los signos
 	Comment before {move}	Comentario antes de {move}
 	In PGN this comment joins the comment before the game's first move.	En PGN, este comentario se une al comentario anterior a la primera jugada de la partida.
 	In PGN this comment is written after the previous move.	En PGN, este comentario se escribe después de la jugada anterior.

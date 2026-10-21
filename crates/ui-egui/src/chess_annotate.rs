@@ -28,12 +28,22 @@
 //! that continues its line the comment is written in one `{…}` with the comment after the move
 //! before, and the editor says so.
 //!
-//! **The glyph palette** (the rail's Glyph palette, or G) puts figurines, the glyphs and `½ – × †
-//! ‡` into the text field that had the keyboard when it was clicked (the comment fields, FEN,
-//! PGN), at its cursor, or, when none had, at the end of the move's comment. Figurines are
-//! inserted as the Unicode characters; their buttons show the piece letters where the interface
-//! fonts lack the figurines. The full palette (T10) is the same with the ellipsis, in the correction
-//! field of a capture's preview ([`palette_buttons`]).
+//! **The glyph palette** (the rail's Glyph palette, or G; U1) is a small floating window, kept
+//! within the window it is drawn in (the main one or the chess board's own), that the user can
+//! drag about: egui keeps where it was put for the session, and the rail whether it is open. Esc,
+//! its close button, the rail's button and G close it. It holds the figurines, `½ – × † ‡` and the
+//! 28 glyphs in the rail's three groups. A glyph clicked goes on the move shown, or comes off it,
+//! as the rail's do (one undo step); the other characters go at the end of the move's comment (one
+//! undo step). While a text field had the keyboard when it was clicked (the comment fields, FEN,
+//! PGN), any character, a glyph's sign too, goes into that field at its cursor instead. Figurines
+//! are inserted as the Unicode characters; their buttons show the piece letters where the
+//! interface fonts lack the figurines. A click in the palette puts the chess key scope on, as a
+//! click in the panel does. The correction field of a capture's preview (T10) has the same
+//! buttons inline, with the ellipsis, and every one of them types there ([`palette_buttons`]).
+//!
+//! **A move's context menu** offers the six move-quality glyphs, the evaluations and "Remove all
+//! glyphs" ([`glyph_menu`]): the same changes as the rail's glyphs, on the move clicked, without
+//! going to it (as with the glyph brush).
 
 use egui::Id;
 use pdfcraft_engine::chess::pdfcraft_chess::game::NodeId;
@@ -42,6 +52,7 @@ use pdfcraft_engine::chess::pdfcraft_chess::placement::{Color, Piece, PieceKind}
 
 use crate::chess_board_ui::BoardState;
 use crate::chess_history::ChessEdit;
+use crate::chess_ui::ChessState;
 
 /// The rail's glyph groups (spec §4.2), by PGN code (White's, for the side-dependent ones). The
 /// three hold the 28 glyphs of `NAGS` once each.
@@ -171,9 +182,9 @@ pub(crate) fn typed_glyph(board: &mut BoardState, code: u16) {
     }
 }
 
-/// The glyph brush (T15) on move `node`, clicked in the notation: glyph `code` (White's) goes on
-/// the move with its side's code, or comes off when the move has it; one undo step. The move
-/// shown stays.
+/// The glyph brush (T15) on move `node`, clicked in the notation, or a glyph chosen in the move's
+/// context menu (U1): glyph `code` (White's) goes on the move with its side's code, or comes off
+/// when the move has it; one undo step. The move shown stays.
 pub(crate) fn brush_glyph(board: &mut BoardState, node: NodeId, code: u16) {
     if board.illegal.is_some() || node == 0 {
         return;
@@ -214,7 +225,16 @@ fn clear_glyphs(board: &mut BoardState) {
     if !has_move(board) {
         return;
     }
-    let node = board.game.current();
+    clear_glyphs_at(board, board.game.current());
+}
+
+/// Take every glyph off move `node` (one undo step; none when it has none). The move shown stays.
+pub(crate) fn clear_glyphs_at(board: &mut BoardState, node: NodeId) {
+    if board.illegal.is_some() || node == 0 || board.game.nags(node).is_empty() {
+        return;
+    }
+    board.selected = None;
+    board.promotion = None;
     board.edit(|s| {
         for code in s.game.nags(node).to_vec() {
             s.game.toggle_nag(node, code);
@@ -323,7 +343,7 @@ pub(crate) struct Typing {
     /// The fields drawn in the last frames, by their egui id.
     fields: Vec<(Field, Id)>,
     /// The field that had the keyboard as the pointer last went down (or has it now).
-    last: Option<Id>,
+    pub(crate) last: Option<Id>,
     /// Text to put into a field at its cursor when it is drawn next.
     pending: Option<(Id, String)>,
 }
@@ -383,8 +403,8 @@ pub(crate) fn insert_at_cursor(ui: &egui::Ui, id: Id, text: &mut String, insert:
     true
 }
 
-/// A palette button clicked: `text` goes into the field that had the keyboard, next time it is
-/// drawn, or else at the end of the comment after the move shown (one undo step).
+/// A palette character clicked: `text` goes into the field that had the keyboard, next time it
+/// is drawn, or else at the end of the comment after the move shown (one undo step).
 pub(crate) fn palette_insert(board: &mut BoardState, text: &str) {
     if let Some(id) = board.typing.last {
         board.typing.pending = Some((id, text.to_owned()));
@@ -426,67 +446,171 @@ fn marks() -> [(&'static str, &'static str); 5] {
     [("½", tl!("One half")), ("–", tl!("Dash")), ("×", tl!("Capture sign")), ("†", tl!("Check sign")), ("‡", tl!("Double check sign"))]
 }
 
-/// The glyph palette: a button per character, each named for what it is. Returns whether it was
-/// closed.
-pub(crate) fn palette(ui: &mut egui::Ui, t: &crate::theme::Tokens, board: &mut BoardState) -> bool {
+/// The glyph palette window's id: egui keeps where it was put under it, for the session.
+const PALETTE_ID: &str = "chess-glyph-palette";
+
+/// The palette window's content width, in points: the figurines and signs in one row.
+const PALETTE_WIDTH: f32 = 340.0;
+
+/// What a palette button puts in: `text`, and for a glyph its code (White's).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct Pick {
+    pub(crate) text: String,
+    pub(crate) glyph: Option<u16>,
+}
+
+/// The glyph palette (U1), when the rail has it open: a floating window that can be dragged
+/// about, kept within the window it is drawn in, at first at `anchor` (beside the rail's
+/// button). A glyph clicked goes on the move shown or comes off it, any other character at the
+/// end of the move's comment; while a text field had the keyboard, any character goes into it at
+/// its cursor ([`palette_insert`]). A click in it puts the chess key scope on. Drawn at most once
+/// a pass of each window, so two rails in one window draw one palette.
+pub(crate) fn palette_window(ctx: &egui::Context, chess: &mut ChessState, anchor: Option<egui::Pos2>) {
+    if !chess.tools.palette_open {
+        return;
+    }
+    let pass = (ctx.viewport_id(), ctx.cumulative_pass_nr());
+    if chess.tools.palette_drawn == Some(pass) {
+        return;
+    }
+    chess.tools.palette_drawn = Some(pass);
+    let t = crate::theme::Tokens::get(ctx);
+    let board = chess.board();
+    // The glyphs the move shown has, ticked in the palette.
+    let on: Vec<u16> = MOVE_GLYPHS.iter().chain(&EVALUATION_GLYPHS).chain(&OTHER_GLYPHS).copied().filter(|&c| has_glyph(board, c)).collect();
+    let mut window = egui::Window::new(tl!("Glyph palette"))
+        .id(Id::new(PALETTE_ID))
+        .title_bar(false)
+        .collapsible(false)
+        .resizable(false)
+        // Its own width from the first frame: egui places a window it hasn't measured yet as if it
+        // were wide, and would push it away from the rail to keep it in the window.
+        .default_width(PALETTE_WIDTH)
+        .constrain(true)
+        .order(egui::Order::Foreground);
+    if let Some(at) = anchor.filter(|p| p.is_finite()) {
+        window = window.default_pos(at);
+    }
     let mut closed = false;
-    egui::Frame::group(ui.style()).inner_margin(6).show(ui, |ui| {
+    let mut pick = None;
+    let shown = window.show(ctx, |ui| {
+        // Which field had the keyboard, whether or not the panel with the fields is drawn.
+        chess.board_mut().typing.track(ui);
+        ui.set_width(PALETTE_WIDTH);
         ui.horizontal(|ui| {
-            ui.label(egui::RichText::new(tl!("Glyph palette")).small().strong());
+            ui.add(egui::Label::new(egui::RichText::new(tl!("Glyph palette")).strong()).selectable(false));
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if crate::icons::button(ui, "x", 20.0, false, tl!("Close the glyph palette")).clicked() {
                     closed = true;
                 }
             });
         });
-        ui.label(
-            egui::RichText::new(tl!("Puts the character into the field you were typing in, or at the end of the move's comment."))
-                .small()
-                .color(t.text_muted),
-        );
-        if let Some(text) = palette_buttons(ui, false) {
-            palette_insert(board, &text);
-        }
+        let hint = tl!("Glyphs go on the move shown and the other characters at the end of its comment, or all into the field you were typing in.");
+        ui.add(egui::Label::new(egui::RichText::new(hint).small().color(t.text_muted)).selectable(false));
+        pick = palette_buttons(ui, false, |c| on.contains(&c));
     });
-    closed
+    let pressed = shown.is_some_and(|w| w.response.contains_pointer()) && ctx.input(|i| i.pointer.any_pressed());
+    if pressed || pick.is_some() {
+        // A click in the palette is a click in the chess panels (D12): Undo and the keys are the game's.
+        chess.enter_scope();
+    }
+    if closed {
+        chess.tools.palette_open = false;
+    }
+    let Some(pick) = pick else { return };
+    let board = chess.board_mut();
+    match pick.glyph {
+        // No field had the keyboard: a glyph is the move's.
+        Some(code) if board.typing.last.is_none() => toggle_glyph(board, code),
+        _ => palette_insert(board, &pick.text),
+    }
 }
 
-/// The palette's buttons, one per character and each named for what it is: the figurines, the
-/// glyphs and `½ – × † ‡`; with `full` (the correction field of a capture, T10) also the ellipsis
-/// Black's moves are printed with. Returns the text of the one clicked.
-pub(crate) fn palette_buttons(ui: &mut egui::Ui, full: bool) -> Option<String> {
+/// The palette's buttons, one per character and each named for what it is: the figurines and
+/// `½ – × † ‡`, then the glyphs in the rail's three groups. For the correction field of a
+/// capture (T10, `correction`) also the ellipsis Black's moves are printed with, and no headings.
+/// `on` says which glyphs show as ticked. Returns what the one clicked puts in.
+pub(crate) fn palette_buttons(ui: &mut egui::Ui, correction: bool, on: impl Fn(u16) -> bool) -> Option<Pick> {
     let ctx = ui.ctx().clone();
+    let muted = crate::theme::Tokens::get(&ctx).text_muted;
     let mut chosen = None;
-    let mut button = |ui: &mut egui::Ui, shown: &str, insert: &str, name: &str| {
-        let r = ui.add(egui::Button::new(egui::RichText::new(shown).monospace()).min_size(egui::vec2(26.0, 24.0)));
-        r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name));
-        let r = r.on_hover_text(name);
-        if r.clicked() {
-            chosen = Some(insert.to_owned());
+    let mut button = |ui: &mut egui::Ui, shown: &str, pick: Pick, name: &str, selected: bool| {
+        let r = ui.add(egui::Button::new(egui::RichText::new(shown).monospace()).min_size(egui::vec2(26.0, 24.0)).selected(selected));
+        r.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, selected, name));
+        if r.on_hover_text(name).clicked() {
+            chosen = Some(pick);
         }
     };
+    let heading = |ui: &mut egui::Ui, text: &str| {
+        if !correction {
+            ui.add(egui::Label::new(egui::RichText::new(text).small().color(muted)).selectable(false));
+        }
+    };
+    let text = |s: &str| Pick { text: s.to_owned(), glyph: None };
+    heading(ui, tl!("Figurines and signs"));
     ui.horizontal_wrapped(|ui| {
         ui.spacing_mut().item_spacing = egui::vec2(2.0, 2.0);
         let figurines = drawable(&ctx, "♔♕♖♗♘♙♚♛♜♝♞♟");
         for (figurine, letter, color, kind) in FIGURINES {
             let name = crate::chess_editor::piece_name(Piece { color, kind });
-            button(ui, if figurines { figurine } else { letter }, figurine, name);
-        }
-    });
-    ui.horizontal_wrapped(|ui| {
-        ui.spacing_mut().item_spacing = egui::vec2(2.0, 2.0);
-        for code in MOVE_GLYPHS.iter().chain(&EVALUATION_GLYPHS).chain(&OTHER_GLYPHS) {
-            let Some(n) = nag::by_code(*code) else { continue };
-            let shown = face(*code, |s| drawable(&ctx, s));
-            button(ui, &shown, &n.insert_text(), nag_name(*code).unwrap_or(n.name));
+            button(ui, if figurines { figurine } else { letter }, text(figurine), name, false);
         }
         for (mark, name) in marks() {
-            button(ui, mark, mark, name);
+            button(ui, mark, text(mark), name, false);
         }
-        if full {
-            button(ui, "\u{2026}", "\u{2026}", tl!("Ellipsis"));
+        if correction {
+            button(ui, "\u{2026}", text("\u{2026}"), tl!("Ellipsis"), false);
         }
     });
+    let groups: [(&str, &[u16]); 3] =
+        [(tl!("Move glyphs"), &MOVE_GLYPHS), (tl!("Evaluation glyphs"), &EVALUATION_GLYPHS), (tl!("Other glyphs"), &OTHER_GLYPHS)];
+    for (title, codes) in groups {
+        heading(ui, title);
+        ui.horizontal_wrapped(|ui| {
+            ui.spacing_mut().item_spacing = egui::vec2(2.0, 2.0);
+            for &code in codes {
+                let Some(n) = nag::by_code(code) else { continue };
+                let shown = face(code, |s| drawable(&ctx, s));
+                button(ui, &shown, Pick { text: n.insert_text(), glyph: Some(code) }, nag_name(code).unwrap_or(n.name), on(code));
+            }
+        });
+    }
+    chosen
+}
+
+/// The glyphs in a move's context menu (U1), for move `node`: the six move-quality glyphs and
+/// the evaluations, each ticked while the move has it, and "Remove all glyphs". Returns the one
+/// chosen: a code (White's) to put on the move or take off ([`brush_glyph`]), or [`CLEAR`] to
+/// take them all off ([`clear_glyphs_at`]).
+pub(crate) fn glyph_menu(ui: &mut egui::Ui, board: &BoardState, node: NodeId) -> Option<u16> {
+    if board.illegal.is_some() || node == 0 {
+        return None;
+    }
+    let ctx = ui.ctx().clone();
+    let muted = crate::theme::Tokens::get(&ctx).text_muted;
+    let has = |code: u16| code_at(board, node, code).is_some_and(|c| board.game.nags(node).contains(&c));
+    let mut chosen = None;
+    // The move-quality glyphs are the group's first six (Only move and Novelty are left to the rail).
+    let quality: &[u16] = MOVE_GLYPHS.get(..6).unwrap_or(&MOVE_GLYPHS);
+    for (title, codes) in [(tl!("Move glyphs"), quality), (tl!("Evaluation glyphs"), &EVALUATION_GLYPHS[..])] {
+        ui.add(egui::Label::new(egui::RichText::new(title).small().color(muted)).selectable(false));
+        ui.horizontal_wrapped(|ui| {
+            ui.spacing_mut().item_spacing = egui::vec2(2.0, 2.0);
+            for &code in codes {
+                let Some(name) = nag_name(code) else { continue };
+                let selected = has(code);
+                let shown = face(code, |s| drawable(&ctx, s));
+                let r = ui.add(egui::Button::new(egui::RichText::new(shown).monospace()).min_size(egui::vec2(26.0, 22.0)).selected(selected));
+                r.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, selected, name));
+                if r.on_hover_text(name).clicked() {
+                    chosen = Some(code);
+                }
+            }
+        });
+    }
+    if ui.add_enabled(!board.game.nags(node).is_empty(), egui::Button::new(tl!("Remove all glyphs"))).clicked() {
+        chosen = Some(CLEAR);
+    }
     chosen
 }
 

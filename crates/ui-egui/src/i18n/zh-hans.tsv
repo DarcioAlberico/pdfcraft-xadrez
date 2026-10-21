@@ -2679,7 +2679,9 @@ chess undo step	Clear drawings	清除标记
 	Double check sign	双将符号
 	Glyph palette	符号面板
 	Close the glyph palette	关闭符号面板
-	Puts the character into the field you were typing in, or at the end of the move's comment.	将字符插入你正在输入的字段，若没有则加到此着法评论的末尾。
+	Glyphs go on the move shown and the other characters at the end of its comment, or all into the field you were typing in.	符号加到当前显示的着法上，其他字符加到其评论末尾；若你正在某个字段中输入，则全部插入该字段。
+	Figurines and signs	棋子符号与标记
+	Remove all glyphs	清除所有符号
 	Comment before {move}	{move} 之前的评论
 	In PGN this comment joins the comment before the game's first move.	在 PGN 中，此评论会并入对局第一步之前的评论。
 	In PGN this comment is written after the previous move.	在 PGN 中，此评论写在前一步之后。

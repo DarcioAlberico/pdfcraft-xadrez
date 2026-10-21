@@ -112,6 +112,12 @@ pub struct ToolState {
     /// The glyph last chosen in a glyph group (White's code; 0: none yet), which the glyph brush
     /// takes when it is armed (T15).
     last_glyph: u16,
+    /// The glyph palette's window is open (U1): for the session, whatever game is shown.
+    pub(crate) palette_open: bool,
+    /// The window and pass the palette was last drawn in: once a pass.
+    pub(crate) palette_drawn: Option<(egui::ViewportId, u64)>,
+    /// Where the palette first opens: beside the rail's button, as last drawn.
+    palette_anchor: Option<egui::Pos2>,
 }
 
 impl ToolState {
@@ -259,9 +265,9 @@ pub(crate) struct Tool {
     /// Whether it is on the rail at all here (its own window: not where windows are drawn
     /// inside the main one).
     pub visible: fn(&egui::Context) -> bool,
-    /// The variations it can act on from the move shown, nearest first: a group lists them when
-    /// there are several to choose from.
-    pub heads: Option<fn(&Game) -> Vec<NodeId>>,
+    /// The variations it can act on from a move (the move shown, or a context menu's), nearest
+    /// first: a group and a move's menu list them when there are several to choose from.
+    pub heads: Option<fn(&Game, NodeId) -> Vec<NodeId>>,
     /// In a move's context menu: what it would act on for that move, or why it can't.
     pub on_move: Option<OnMove>,
     /// Whether it shows as on: a panel it opened is open, a switch is on (modes are on while
@@ -349,7 +355,7 @@ const STRUCTURE: Group = Group {
             command: Some("chess.variation.promote_one"),
             kind: Kind::Action(|b, t| structure(b, Op::PromoteOne, t)),
             enabled: has_moves,
-            heads: Some(|g| Op::PromoteOne.heads(g, g.current())),
+            heads: Some(|g, from| Op::PromoteOne.heads(g, from)),
             visible: |_| true,
             on_move: Some(|g, n| Op::PromoteOne.check(g, n)),
             on: None,
@@ -375,7 +381,7 @@ const STRUCTURE: Group = Group {
             command: Some("chess.variation.demote"),
             kind: Kind::Action(|b, t| structure(b, Op::Demote, t)),
             enabled: has_moves,
-            heads: Some(|g| Op::Demote.heads(g, g.current())),
+            heads: Some(|g, from| Op::Demote.heads(g, from)),
             visible: |_| true,
             on_move: Some(|g, n| Op::Demote.check(g, n)),
             on: None,
@@ -388,7 +394,7 @@ const STRUCTURE: Group = Group {
             command: Some("chess.variation.delete"),
             kind: Kind::Action(|b, t| structure(b, Op::DeleteVariation, t)),
             enabled: has_moves,
-            heads: Some(|g| Op::DeleteVariation.heads(g, g.current())),
+            heads: Some(|g, from| Op::DeleteVariation.heads(g, from)),
             visible: |_| true,
             on_move: Some(|g, n| Op::DeleteVariation.check(g, n)),
             on: None,
@@ -401,7 +407,7 @@ const STRUCTURE: Group = Group {
             command: Some("chess.variation.up"),
             kind: Kind::Action(|b, t| structure(b, Op::MoveUp, t)),
             enabled: has_moves,
-            heads: Some(|g| Op::MoveUp.heads(g, g.current())),
+            heads: Some(|g, from| Op::MoveUp.heads(g, from)),
             visible: |_| true,
             on_move: Some(|g, n| Op::MoveUp.check(g, n)),
             on: None,
@@ -414,7 +420,7 @@ const STRUCTURE: Group = Group {
             command: Some("chess.variation.down"),
             kind: Kind::Action(|b, t| structure(b, Op::MoveDown, t)),
             enabled: has_moves,
-            heads: Some(|g| Op::MoveDown.heads(g, g.current())),
+            heads: Some(|g, from| Op::MoveDown.heads(g, from)),
             visible: |_| true,
             on_move: Some(|g, n| Op::MoveDown.check(g, n)),
             on: None,
@@ -557,12 +563,12 @@ const PALETTE: Tool = Tool {
     label: |_| tl!("Glyph palette").to_owned(),
     keys: &[ChessKey::plain(Key::G)],
     command: Some("chess.palette.toggle"),
-    kind: Kind::Action(|b, _| b.palette_open = !b.palette_open),
+    kind: Kind::Switch(|c| c.tools.palette_open = !c.tools.palette_open),
     enabled: |_| true,
     visible: |_| true,
     heads: None,
     on_move: None,
-    on: Some(|c| c.board().palette_open),
+    on: Some(|c| c.tools.palette_open),
 };
 
 const UNDO: Tool = Tool {
@@ -902,6 +908,9 @@ pub(crate) fn with_rail<R>(ui: &mut egui::Ui, chess: &mut ChessState, body: impl
     let body_rect = Rect::from_min_max(pos2(area.min.x + RAIL_WIDTH + 1.0, area.min.y), area.max);
     let mut body_ui = ui.new_child(UiBuilder::new().id_salt("chess-rail-body").max_rect(body_rect).layout(*ui.layout()));
     let out = body(&mut body_ui, chess);
+    // The glyph palette floats over the window the rail is in (U1).
+    let anchor = chess.tools.palette_anchor;
+    chess_annotate::palette_window(ui.ctx(), chess, anchor);
     let bottom = if bounded { area.bottom() } else { rail_ui.min_rect().bottom().max(body_ui.min_rect().bottom()) };
     ui.painter().vline(area.min.x + RAIL_WIDTH + 0.5, area.min.y..=bottom, Stroke::new(1.0, t.divider));
     ui.advance_cursor_after_rect(Rect::from_min_max(area.min, pos2(area.max.x, bottom)));
@@ -954,6 +963,9 @@ fn rail(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) -> Option<egui::I
                         _ => r,
                     };
                     any_focus |= r.has_focus();
+                    if tool.id == PALETTE.id {
+                        chess.tools.palette_anchor = Some(r.rect.right_top() + vec2(8.0, 0.0));
+                    }
                     if r.clicked() {
                         activate(chess, tool, Target::Current);
                     }
@@ -1063,26 +1075,12 @@ fn group_button(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, group: &'
                     ui.close();
                 }
                 // Several variations it could act on: each is a choice ("Demote: 20.fxg6 · 18…Qd8").
-                let heads = tool.heads.map(|heads| heads(&chess.board().game)).unwrap_or_default();
-                if heads.len() > 1 && (tool.enabled)(chess.board()) {
-                    ui.horizontal_wrapped(|ui| {
-                        ui.spacing_mut().item_spacing.x = 4.0;
-                        ui.add_space(22.0);
-                        ui.label(egui::RichText::new(format!("{label}:")).small().color(t.text_muted));
-                        for (k, head) in heads.iter().enumerate() {
-                            if k > 0 {
-                                ui.label(egui::RichText::new("·").small().color(t.text_faint));
-                            }
-                            let mv = move_name(&chess.board().game, *head);
-                            let h = ui.small_button(&mv);
-                            let full = format!("{label}: {mv}");
-                            h.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &full));
-                            if h.clicked() {
-                                chosen = Some((i, Target::Head(*head)));
-                                ui.close();
-                            }
-                        }
-                    });
+                let game = &chess.board().game;
+                if (tool.enabled)(chess.board())
+                    && let Some(head) = head_choices(ui, t, game, tool, &label, game.current())
+                {
+                    chosen = Some((i, Target::Head(head)));
+                    ui.close();
                 }
             }
         });
@@ -1093,6 +1091,35 @@ fn group_button(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, group: &'
         activate(chess, tool, target);
     }
     (r, popup)
+}
+
+/// Under a tool's entry in a group's popup or a move's menu: when the tool could act on several
+/// variations on the way to move `from` (§4.5), a row naming them nearest first, each a button
+/// ("Demote: 20.fxg6 · 18…Qd8"). Returns the head chosen.
+fn head_choices(ui: &mut egui::Ui, t: &Tokens, game: &Game, tool: &Tool, label: &str, from: NodeId) -> Option<NodeId> {
+    let heads = tool.heads.map(|heads| heads(game, from)).unwrap_or_default();
+    if heads.len() < 2 {
+        return None;
+    }
+    let mut chosen = None;
+    ui.horizontal_wrapped(|ui| {
+        ui.spacing_mut().item_spacing.x = 4.0;
+        ui.add_space(22.0);
+        ui.label(egui::RichText::new(format!("{label}:")).small().color(t.text_muted));
+        for (k, head) in heads.iter().enumerate() {
+            if k > 0 {
+                ui.label(egui::RichText::new("·").small().color(t.text_faint));
+            }
+            let mv = move_name(game, *head);
+            let h = ui.small_button(&mv);
+            let full = format!("{label}: {mv}");
+            h.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &full));
+            if h.clicked() {
+                chosen = Some(*head);
+            }
+        }
+    });
+    chosen
 }
 
 /// A key the scope took: Esc and moving about first, then a group's letter, then a tool's key.
@@ -1143,10 +1170,10 @@ fn navigate(chess: &mut ChessState, nav: Nav) {
         if crate::chess_capture::escape_preview(chess) {
             return;
         }
+        let palette = std::mem::take(&mut chess.tools.palette_open);
         let board = chess.board_mut();
-        if board.comment_open || board.palette_open {
+        if board.comment_open || palette {
             board.comment_open = false;
-            board.palette_open = false;
         } else if chess.tools.tool != PgnTool::Navigate {
             chess.tools.tool = PgnTool::Navigate;
         } else {
@@ -1374,14 +1401,16 @@ fn structure(board: &mut BoardState, op: Op, target: Target) {
 
 /// The rail's tools a move's context menu offers, for move `node`: each acts on what it would
 /// for that move (the nearest variation it can act on, for the variation tools), or is off with
-/// the reason. Returns the one chosen, with its target.
+/// the reason; where a variation tool could act on several variations on the way to the move,
+/// they are listed under it to choose from (§4.5, U1). Returns the one chosen, with its target.
 pub(crate) fn move_menu(ui: &mut egui::Ui, board: &BoardState, node: NodeId) -> Option<(Run, Target)> {
+    let t = Tokens::get(ui.ctx());
     let mut chosen = None;
     for tool in tools() {
         let (Kind::Action(run), Some(on_move)) = (tool.kind, tool.on_move) else { continue };
         let target = on_move(&board.game, node);
         let label = label(tool, board);
-        let r = ui.add_enabled(target.is_ok(), egui::Button::new(label));
+        let r = ui.add_enabled(target.is_ok(), egui::Button::new(label.as_str()));
         let r = match &target {
             Ok(Target::Head(head)) if *head != node => {
                 r.on_hover_text(crate::i18n::fmt(tl!("Acts on {move}"), &[("move", &move_name(&board.game, *head))]))
@@ -1393,6 +1422,11 @@ pub(crate) fn move_menu(ui: &mut egui::Ui, board: &BoardState, node: NodeId) -> 
             && let Ok(target) = target
         {
             chosen = Some((run, target));
+        }
+        if target.is_ok()
+            && let Some(head) = head_choices(ui, &t, &board.game, tool, &label, node)
+        {
+            chosen = Some((run, Target::Head(head)));
         }
     }
     chosen

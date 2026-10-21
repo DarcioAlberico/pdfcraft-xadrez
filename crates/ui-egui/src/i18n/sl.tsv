@@ -2720,7 +2720,9 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Double check sign	Znak za dvojni šah
 	Glyph palette	Paleta znakov
 	Close the glyph palette	Zapri paleto znakov
-	Puts the character into the field you were typing in, or at the end of the move's comment.	Vstavi znak v polje, v katero ste tipkali, ali na konec komentarja k potezi.
+	Glyphs go on the move shown and the other characters at the end of its comment, or all into the field you were typing in.	Znaki gredo na prikazano potezo, ostali simboli na konec njenega komentarja, ali vse v polje, v katero ste tipkali.
+	Figurines and signs	Figurice in znaki
+	Remove all glyphs	Odstrani vse znake
 	Comment before {move}	Komentar pred {move}
 	In PGN this comment joins the comment before the game's first move.	V PGN se ta komentar združi s komentarjem pred prvo potezo partije.
 	In PGN this comment is written after the previous move.	V PGN se ta komentar zapiše za prejšnjo potezo.

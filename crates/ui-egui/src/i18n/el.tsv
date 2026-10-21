@@ -2721,7 +2721,9 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Double check sign	Σημείο διπλού σαχ
 	Glyph palette	Παλέτα σημείων
 	Close the glyph palette	Κλείσιμο της παλέτας σημείων
-	Puts the character into the field you were typing in, or at the end of the move's comment.	Εισάγει τον χαρακτήρα στο πεδίο όπου γράφατε ή στο τέλος του σχολίου της κίνησης.
+	Glyphs go on the move shown and the other characters at the end of its comment, or all into the field you were typing in.	Τα σημεία μπαίνουν στην κίνηση που εμφανίζεται και οι άλλοι χαρακτήρες στο τέλος του σχολίου της, ή όλα στο πεδίο όπου γράφατε.
+	Figurines and signs	Σύμβολα κομματιών και σημεία
+	Remove all glyphs	Αφαίρεση όλων των σημείων
 	Comment before {move}	Σχόλιο πριν από {move}
 	In PGN this comment joins the comment before the game's first move.	Στο PGN αυτό το σχόλιο ενώνεται με το σχόλιο πριν από την πρώτη κίνηση της παρτίδας.
 	In PGN this comment is written after the previous move.	Στο PGN αυτό το σχόλιο γράφεται μετά την προηγούμενη κίνηση.

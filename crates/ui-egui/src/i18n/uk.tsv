@@ -2737,7 +2737,9 @@ chess undo step	Clear drawings	видалення малюнків
 	Double check sign	Знак подвійного шаху
 	Glyph palette	Палітра знаків
 	Close the glyph palette	Закрити палітру знаків
-	Puts the character into the field you were typing in, or at the end of the move's comment.	Вставляє символ у поле, де ви друкували, або в кінець коментаря до ходу.
+	Glyphs go on the move shown and the other characters at the end of its comment, or all into the field you were typing in.	Знаки ставляться на показаний хід, інші символи — в кінець його коментаря, або все — у поле, де ви друкували.
+	Figurines and signs	Фігурки та знаки
+	Remove all glyphs	Прибрати всі знаки
 	Comment before {move}	Коментар перед {move}
 	In PGN this comment joins the comment before the game's first move.	У PGN цей коментар об'єднується з коментарем перед першим ходом партії.
 	In PGN this comment is written after the previous move.	У PGN цей коментар записується після попереднього ходу.

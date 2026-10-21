@@ -2624,7 +2624,9 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Double check sign	డబుల్ చెక్ గుర్తు
 	Glyph palette	గుర్తుల పాలెట్
 	Close the glyph palette	గుర్తుల పాలెట్‌ను మూసివేయి
-	Puts the character into the field you were typing in, or at the end of the move's comment.	మీరు టైప్ చేస్తున్న ఫీల్డ్‌లో, లేకపోతే ఎత్తు వ్యాఖ్య చివర అక్షరాన్ని చేరుస్తుంది.
+	Glyphs go on the move shown and the other characters at the end of its comment, or all into the field you were typing in.	గుర్తులు చూపిన ఎత్తుకు, మిగతా అక్షరాలు దాని వ్యాఖ్య చివరకు చేరతాయి; మీరు టైప్ చేస్తున్న ఫీల్డ్ ఉంటే అన్నీ అందులోకి.
+	Figurines and signs	పావుల గుర్తులు మరియు చిహ్నాలు
+	Remove all glyphs	అన్ని గుర్తులను తొలగించు
 	Comment before {move}	{move} ముందు వ్యాఖ్య
 	In PGN this comment joins the comment before the game's first move.	PGNలో ఈ వ్యాఖ్య ఆట మొదటి ఎత్తుకు ముందున్న వ్యాఖ్యతో కలుస్తుంది.
 	In PGN this comment is written after the previous move.	PGNలో ఈ వ్యాఖ్య మునుపటి ఎత్తు తర్వాత రాయబడుతుంది.
