@@ -351,3 +351,138 @@ fn an_ocr_reading_picked_rewrites_the_glyph_and_reads_again() {
     let nf3 = board.game.node_at(&pdfcraft_engine::chess::pdfcraft_chess::game::NodePath::new(vec![0, 0, 0])).unwrap();
     assert!(board.game.source(nf3).is_some());
 }
+
+// ─── T11: corrected characters collected for retraining ───────────────────────────────────────
+
+/// The scan, encrypted, its permissions allowing printing and copying.
+fn protected_scan() -> Vec<u8> {
+    let plain = scan(false);
+    let mut doc = pdfcraft_cos::Document::open(Arc::new(plain)).unwrap();
+    doc.set_encryption(&pdfcraft_cos::NewEncryption {
+        algorithm: pdfcraft_cos::Algorithm::Aes256,
+        user_password: "",
+        owner_password: "owner",
+        // Print and copy.
+        permissions: 0b1_0100,
+        encrypt_metadata: true,
+        seed: [9; 32],
+    })
+    .unwrap();
+    pdfcraft_cos::write_full(&doc, &Default::default()).unwrap()
+}
+
+/// A fresh, empty folder for samples.
+fn sample_dir(test: &str) -> std::path::PathBuf {
+    let dir = std::env::temp_dir().join(format!("pdfcraft-samples-{test}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    dir
+}
+
+/// Every file under `dir`, relative to it with `/` between the parts, sorted.
+fn files(dir: &std::path::Path) -> Vec<String> {
+    let mut out = Vec::new();
+    for class in std::fs::read_dir(dir).unwrap().flatten() {
+        for f in std::fs::read_dir(class.path()).into_iter().flatten().flatten() {
+            out.push(format!("{}/{}", class.file_name().to_string_lossy(), f.file_name().to_string_lossy()));
+        }
+    }
+    out.sort();
+    out
+}
+
+/// Read the area, open the stopped 2.Nf8 and read its doubtful 8 as a 3; then close the preview.
+fn correct_the_eight(h: &mut Harness<'static, PdfCraftApp>) {
+    draw_area(h);
+    h.get_by_label("✗ 2.Nf8 — Illegal move").click();
+    h.run_steps(2);
+    h.get_by_label("Character 8, doubtful").click();
+    h.run_steps(2);
+    h.get_by_label("Read the character as 3").click();
+    h.run_steps(3);
+    h.key_press(egui::Key::Escape);
+    h.run_steps(2);
+}
+
+fn collect_into(h: &mut Harness<'static, PdfCraftApp>, dir: &std::path::Path) {
+    let samples = &mut h.state_mut().chess.capture.samples;
+    samples.on = true;
+    samples.folder = Some(dir.to_path_buf());
+}
+
+/// Off (the default), a correction saves nothing. On, a character corrected by hand is saved
+/// once, as a 32 × 32 gray PNG in its class's folder (`digit_3`), named for the model's
+/// confidence first; the same correction again gets the next count, never overwriting; at the
+/// session's cap nothing more is saved, and the user is told.
+#[test]
+fn a_corrected_character_is_saved_for_retraining_only_when_collecting() {
+    let dir = sample_dir("collect");
+    let mut h = harness(scan(false));
+    h.state_mut().set_chess_area_reader(Some(doubtful_reader("1.e4 e5 2.Nf8 Nc6")));
+    assert!(h.state_mut().execute("chess.tool.capture"));
+    support::wait_until(&mut h, "the OCR area switching on", |app| app.chess.capture.area.on);
+    assert!(!h.state().chess.capture.samples.on, "off by default");
+    h.state_mut().chess.capture.samples.folder = Some(dir.clone());
+    correct_the_eight(&mut h);
+    assert!(files(&dir).is_empty(), "off: nothing is saved");
+    collect_into(&mut h, &dir);
+    correct_the_eight(&mut h);
+    let saved = files(&dir);
+    assert_eq!(saved.len(), 1, "{saved:?}");
+    let name = saved[0].strip_prefix("digit_3/").expect("in the corrected character's folder");
+    let parts: Vec<&str> = name.trim_end_matches(".png").split('_').collect();
+    assert_eq!((parts[0], parts[2], parts[3]), ("0500", "p0001", "1"), "{name}");
+    assert!(parts[1].len() == 16 && parts[1].chars().all(|c| c.is_ascii_hexdigit()), "{name}");
+    let png = image::load_from_memory(&std::fs::read(dir.join(&saved[0])).unwrap()).unwrap();
+    assert_eq!((png.width(), png.height(), png.color()), (32, 32, image::ColorType::L8));
+    // The same correction again: the next count.
+    correct_the_eight(&mut h);
+    let saved = files(&dir);
+    assert_eq!(saved.len(), 2, "{saved:?}");
+    assert!(saved[1].ends_with("_2.png"), "{saved:?}");
+    // At the session's cap, nothing more, and the user is told.
+    h.state_mut().chess.capture.samples.written = 2000;
+    correct_the_eight(&mut h);
+    assert_eq!(files(&dir).len(), 2);
+    assert!(toast(&h).starts_with("Collecting stopped"), "{}", toast(&h));
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// An encrypted document is asked about first; declined, none of its characters is saved, then
+/// or later.
+#[test]
+fn a_protected_document_is_asked_about_and_a_no_saves_nothing() {
+    let dir = sample_dir("protected");
+    let mut h = harness(protected_scan());
+    h.state_mut().set_chess_area_reader(Some(doubtful_reader("1.e4 e5 2.Nf8 Nc6")));
+    assert!(h.state_mut().execute("chess.tool.capture"));
+    support::wait_until(&mut h, "the OCR area switching on", |app| app.chess.capture.area.on);
+    collect_into(&mut h, &dir);
+    correct_the_eight(&mut h);
+    assert!(files(&dir).is_empty(), "not before the answer");
+    h.get_by_label("Save character samples from this protected document?");
+    h.get_by_label("Don't save").click();
+    h.run_steps(3);
+    assert!(files(&dir).is_empty());
+    assert!(h.query_by_label("Save character samples from this protected document?").is_none(), "asked once");
+    correct_the_eight(&mut h);
+    assert!(files(&dir).is_empty(), "declined stays declined");
+    assert!(h.query_by_label("Save character samples from this protected document?").is_none());
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// Allowed, the characters waiting are saved.
+#[test]
+fn a_protected_document_allowed_saves_what_waited() {
+    let dir = sample_dir("allowed");
+    let mut h = harness(protected_scan());
+    h.state_mut().set_chess_area_reader(Some(doubtful_reader("1.e4 e5 2.Nf8 Nc6")));
+    assert!(h.state_mut().execute("chess.tool.capture"));
+    support::wait_until(&mut h, "the OCR area switching on", |app| app.chess.capture.area.on);
+    collect_into(&mut h, &dir);
+    correct_the_eight(&mut h);
+    h.get_by_label("Save them").click();
+    h.run_steps(3);
+    assert_eq!(files(&dir).len(), 1, "{:?}", files(&dir));
+    let _ = std::fs::remove_dir_all(dir);
+}

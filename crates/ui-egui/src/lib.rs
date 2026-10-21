@@ -41,6 +41,7 @@ mod chess_correct;
 mod chess_editor;
 mod chess_history;
 mod chess_ocr_area;
+mod chess_samples;
 pub use chess_ocr_area::AreaQuery;
 mod chess_source;
 mod chess_study_ui;
@@ -2342,6 +2343,7 @@ impl PdfCraftApp {
         v["docking_detached"] = self.chess_window.to_json();
         v["chess_capture_on_copy"] = serde_json::Value::Bool(self.chess.capture.on_copy);
         v["chess_captured_layer"] = serde_json::Value::Bool(self.chess.capture.show_captured);
+        v["chess_glyph_samples"] = self.chess.capture.samples.to_json();
         v.to_string()
     }
 
@@ -2454,6 +2456,7 @@ impl PdfCraftApp {
         if let Some(on) = v["chess_captured_layer"].as_bool() {
             self.chess.capture.show_captured = on;
         }
+        self.chess.capture.samples.restore(&v["chess_glyph_samples"]);
         // Per-tool comment styles (#340): each field goes through its clamping setter, so a
         // malformed or hostile entry is clamped or ignored rather than trusted.
         if let Some(styles) = v["comment_styles"].as_array() {

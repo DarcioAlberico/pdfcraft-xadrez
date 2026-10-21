@@ -3009,3 +3009,13 @@ animation effects	Off	Desactivados
 	Read the text again with the move corrected	Volver a leer el texto con la jugada corregida
 	The correction couldn't be made: the move wasn't found in the text.	No se pudo hacer la corrección: la jugada no se encontró en el texto.
 	The corrected text fits nowhere: nothing was changed.	El texto corregido no encaja en ningún sitio: no se cambió nada.
+# Chess ▸ PGN toolbar: T11, collecting the characters corrected in an OCR area as samples for retraining the glyph model (opt-in, in the capture chip's menu; the question about a protected document reuses "Save them" and "Don't save").
+	Collect corrected characters for retraining	Recopilar caracteres corregidos para reentrenar
+	Each character you correct in an OCR area is saved as a 32 × 32 picture, in a folder per character, to train the glyph model with. Nothing leaves this computer.	Cada carácter que corriges en un área OCR se guarda como una imagen de 32 × 32, en una carpeta por carácter, para entrenar el modelo de glifos. Nada sale de este equipo.
+	No folder chosen	No se eligió ninguna carpeta
+	Choose folder…	Elegir carpeta…
+	Choose the folder for character samples	Elige la carpeta de las muestras de caracteres
+	Save character samples from this protected document?	¿Guardar muestras de caracteres de este documento protegido?
+	They are saved unencrypted, in the folder you chose for retraining.	Se guardan sin cifrar, en la carpeta que elegiste para el reentrenamiento.
+	Collecting stopped: {n} character samples were saved this session.	Recopilación detenida: se guardaron {n} muestras de caracteres en esta sesión.
+	Couldn't save a character sample: {e}	No se pudo guardar una muestra de carácter: {e}

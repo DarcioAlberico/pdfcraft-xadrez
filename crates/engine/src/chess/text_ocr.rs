@@ -24,6 +24,10 @@
 //! judges by legality only from the game start, when the area's first move is `1.`). The result
 //! is the page's text layer for that rectangle ([`AreaRead::glyphs`], view space), which the
 //! capture reads like a selection, plus each glyph's top readings for review (T10).
+//!
+//! **A character as a training sample** (T11, [`Session::chess_glyph_sample`]): a character's box
+//! rendered again at the area's resolution, padded to a square and scaled to 32 × 32 gray, the
+//! pictures the user's glyph model is trained on.
 
 use std::path::Path;
 use std::sync::Arc;
@@ -446,15 +450,20 @@ impl OcrAreaJob {
         let (x0, y0) = (px(self.view.x0, f32::floor), px(self.view.y0, f32::floor));
         let (x1, y1) = (px(self.view.x1, f32::ceil), px(self.view.y1, f32::ceil));
         let tile = Tile { x: x0, y: y0, w: x1.saturating_sub(x0).clamp(1, MAX_AREA_SIDE), h: y1.saturating_sub(y0).clamp(1, MAX_AREA_SIDE) };
-        let config = RenderConfig { password: self.password.as_deref().map(Arc::from), ..Default::default() };
-        let mut renderer = PageRenderer::new(self.bytes.clone(), config);
-        let shot = renderer.render(RenderRequest { page: self.page, kind: RequestKind::Pixels, tile: Some(tile), scale, ..Default::default() });
-        if let Some(e) = shot.error {
-            return Err(AreaError::Render(e));
-        }
-        let gray = super::to_gray(&shot.rgba, shot.width, shot.height).ok_or_else(|| AreaError::Render("the area's raster is malformed".into()))?;
+        let gray = render_gray(self.bytes.clone(), self.password.as_deref(), self.page, tile, scale)?;
         Ok((gray, tile, dpi))
     }
+}
+
+/// Tile `tile` of page `page` of the document `bytes` (opened with `password`) at `scale`, in gray.
+fn render_gray(bytes: Arc<Vec<u8>>, password: Option<&str>, page: usize, tile: Tile, scale: f32) -> Result<GrayImage, AreaError> {
+    let config = RenderConfig { password: password.map(Arc::from), ..Default::default() };
+    let mut renderer = PageRenderer::new(bytes, config);
+    let shot = renderer.render(RenderRequest { page, kind: RequestKind::Pixels, tile: Some(tile), scale, ..Default::default() });
+    if let Some(e) = shot.error {
+        return Err(AreaError::Render(e));
+    }
+    super::to_gray(&shot.rgba, shot.width, shot.height).ok_or_else(|| AreaError::Render("the area's raster is malformed".into()))
 }
 
 /// Every box of `lines` moved right by `dx` and down by `dy` pixels (saturating).
@@ -471,4 +480,77 @@ fn shift_lines(lines: &mut [FusedLine], dx: u32, dy: u32) {
             }
         }
     }
+}
+
+// ─── A character's sample for retraining (PGN toolbar T11) ──────────────────────────────────
+
+/// The side of a character sample, in pixels: the 32 × 32 gray pictures the glyph model is trained
+/// on (ChessVisionOFF's `training_data`).
+pub const SAMPLE_SIDE: u32 = 32;
+/// The largest box a sample is made of, in points: a character is a few points, more is a word.
+pub const MAX_SAMPLE_BOX: f32 = 72.0;
+
+impl Session {
+    /// A character read by chess OCR in an area, as a training sample (PGN toolbar T11): its box
+    /// `rect_view` (view space) of page `page` (0-based) of document `id`, rendered at `dpi` (the
+    /// area's resolution, kept between [`MIN_AREA_DPI`] and [`OCR_DPI`]), in gray, padded with
+    /// white to a square around it and scaled to [`SAMPLE_SIDE`] pixels a side, as a PNG. Refused
+    /// as an area is: no such document or page, copying not allowed, and a box that is not
+    /// finite, is empty or is larger than [`MAX_SAMPLE_BOX`].
+    pub fn chess_glyph_sample(&self, id: DocId, page: usize, rect_view: [f32; 4], dpi: f32) -> Result<Vec<u8>, AreaError> {
+        let doc = self.get(id).ok_or(AreaError::NoDocument)?;
+        if doc.check_copying().is_err() {
+            return Err(AreaError::NotPermitted);
+        }
+        let info = doc.info.pages.get(page).ok_or(AreaError::NoPage(page))?;
+        let geometry = super::geometry(info).ok_or(AreaError::Degenerate)?;
+        let [x0, y0, x1, y1] = rect_view;
+        let (w, h) = geometry.view_size();
+        if !(rect_view.iter().all(|v| v.is_finite()) && x1 > x0 && y1 > y0 && x1 - x0 <= MAX_SAMPLE_BOX && y1 - y0 <= MAX_SAMPLE_BOX) {
+            return Err(AreaError::Degenerate);
+        }
+        // `max` then `min`, never `clamp`: no bound can make it panic.
+        let view = ViewRect::new(x0.max(0.0).min(w), y0.max(0.0).min(h), x1.max(0.0).min(w), y1.max(0.0).min(h));
+        if !(view.width() > 0.0 && view.height() > 0.0) {
+            return Err(AreaError::Degenerate);
+        }
+        // Constant bounds in order (100 < 300) and a finite value: `clamp` cannot panic.
+        let dpi = if dpi.is_finite() { dpi.clamp(MIN_AREA_DPI, OCR_DPI) } else { OCR_DPI };
+        let scale = dpi / 72.0;
+        // Finite and at most 72 pt × 300 dpi / 72 = 300 px a side, so the casts are exact.
+        let px = |v: f32, round: fn(f32) -> f32| round(v * scale).max(0.0) as u32;
+        let (tx, ty) = (px(view.x0, f32::floor), px(view.y0, f32::floor));
+        let tile = Tile { x: tx, y: ty, w: px(view.x1, f32::ceil).saturating_sub(tx).max(1), h: px(view.y1, f32::ceil).saturating_sub(ty).max(1) };
+        let gray = render_gray(doc.bytes.clone(), doc.password.as_deref(), page, tile, scale)?;
+        sample_png(&gray).ok_or_else(|| AreaError::Render("the character's sample could not be made".into()))
+    }
+}
+
+/// `gray` padded with white to a square around it, scaled to [`SAMPLE_SIDE`] pixels a side and
+/// encoded as a gray PNG.
+fn sample_png(gray: &GrayImage) -> Option<Vec<u8>> {
+    let (w, h) = (gray.width(), gray.height());
+    let side = w.max(h);
+    if side == 0 || side > MAX_AREA_SIDE {
+        return None;
+    }
+    let mut square = image::GrayImage::from_pixel(side, side, image::Luma([255]));
+    let (dx, dy) = ((side - w) / 2, (side - h) / 2);
+    for y in 0..h {
+        for x in 0..w {
+            let at = usize::try_from(u64::from(y) * u64::from(w) + u64::from(x)).ok()?;
+            square.put_pixel(x + dx, y + dy, image::Luma([*gray.data().get(at)?]));
+        }
+    }
+    let small = image::imageops::resize(&square, SAMPLE_SIDE, SAMPLE_SIDE, image::imageops::FilterType::Triangle);
+    let mut png = Vec::new();
+    image::ImageEncoder::write_image(
+        image::codecs::png::PngEncoder::new(&mut png),
+        small.as_raw(),
+        SAMPLE_SIDE,
+        SAMPLE_SIDE,
+        image::ExtendedColorType::L8,
+    )
+    .ok()?;
+    Some(png)
 }

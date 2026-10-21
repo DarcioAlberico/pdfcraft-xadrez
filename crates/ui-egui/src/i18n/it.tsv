@@ -3080,3 +3080,13 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Read the text again with the move corrected	Rileggi il testo con la mossa corretta
 	The correction couldn't be made: the move wasn't found in the text.	Impossibile correggere: la mossa non è stata trovata nel testo.
 	The corrected text fits nowhere: nothing was changed.	Il testo corretto non si inserisce da nessuna parte: non è stato cambiato nulla.
+# Chess ▸ PGN toolbar: T11, collecting the characters corrected in an OCR area as samples for retraining the glyph model (opt-in, in the capture chip's menu; the question about a protected document reuses "Save them" and "Don't save").
+	Collect corrected characters for retraining	Raccogli i caratteri corretti per il riaddestramento
+	Each character you correct in an OCR area is saved as a 32 × 32 picture, in a folder per character, to train the glyph model with. Nothing leaves this computer.	Ogni carattere che correggi in un'area OCR viene salvato come immagine 32 × 32, in una cartella per carattere, per addestrare il modello dei glifi. Nulla esce da questo computer.
+	No folder chosen	Nessuna cartella scelta
+	Choose folder…	Scegli cartella…
+	Choose the folder for character samples	Scegli la cartella dei campioni di caratteri
+	Save character samples from this protected document?	Salvare i campioni di caratteri di questo documento protetto?
+	They are saved unencrypted, in the folder you chose for retraining.	Vengono salvati senza crittografia, nella cartella scelta per il riaddestramento.
+	Collecting stopped: {n} character samples were saved this session.	Raccolta interrotta: in questa sessione sono stati salvati {n} campioni di caratteri.
+	Couldn't save a character sample: {e}	Impossibile salvare un campione di carattere: {e}

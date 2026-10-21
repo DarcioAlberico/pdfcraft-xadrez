@@ -2844,3 +2844,13 @@ animation effects	Off	Wyłączone
 	Read the text again with the move corrected	Odczytaj tekst ponownie z poprawionym ruchem
 	The correction couldn't be made: the move wasn't found in the text.	Nie udało się wprowadzić poprawki: nie znaleziono ruchu w tekście.
 	The corrected text fits nowhere: nothing was changed.	Poprawiony tekst nigdzie nie pasuje: nic nie zmieniono.
+# Chess ▸ PGN toolbar: T11, collecting the characters corrected in an OCR area as samples for retraining the glyph model (opt-in, in the capture chip's menu; the question about a protected document reuses "Save them" and "Don't save").
+	Collect corrected characters for retraining	Zbieraj poprawione znaki do ponownego trenowania
+	Each character you correct in an OCR area is saved as a 32 × 32 picture, in a folder per character, to train the glyph model with. Nothing leaves this computer.	Każdy znak poprawiony w obszarze OCR jest zapisywany jako obraz 32 × 32 w folderze dla danego znaku, aby trenować model znaków. Nic nie opuszcza tego komputera.
+	No folder chosen	Nie wybrano folderu
+	Choose folder…	Wybierz folder…
+	Choose the folder for character samples	Wybierz folder na próbki znaków
+	Save character samples from this protected document?	Zapisywać próbki znaków z tego chronionego dokumentu?
+	They are saved unencrypted, in the folder you chose for retraining.	Są zapisywane bez szyfrowania w folderze wybranym do ponownego trenowania.
+	Collecting stopped: {n} character samples were saved this session.	Zbieranie zatrzymane: w tej sesji zapisano próbek znaków: {n}.
+	Couldn't save a character sample: {e}	Nie udało się zapisać próbki znaku: {e}

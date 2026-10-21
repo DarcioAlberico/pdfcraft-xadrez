@@ -23,6 +23,7 @@
 use std::sync::Arc;
 
 use egui::{Key, RichText};
+use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::capture::{StoppedMove, move_word};
 use pdfcraft_engine::chess::pdfcraft_chess::san::{Lang, Style};
 use pdfcraft_engine::chess::pdfcraft_chessvision::coords::{PageGeometry, PageRect};
@@ -30,6 +31,7 @@ use pdfcraft_engine::chess::text_ocr::AreaRead;
 use pdfcraft_render::text::{PageText, TextGlyph};
 
 use crate::chess_capture::{Pending, Request, Text};
+use crate::chess_samples::GlyphFix;
 use crate::chess_ui::ChessState;
 use crate::theme::Tokens;
 
@@ -203,7 +205,7 @@ pub(crate) fn panel(
 /// nowhere.
 pub(crate) fn correct(chess: &mut ChessState, change: Change) {
     let Some(p) = chess.capture.pending.as_ref() else { return };
-    let Some(request) = rewrite(p, &change) else {
+    let Some((request, fixes)) = rewrite(p, &change) else {
         chess.capture.note(tl!("The correction couldn't be made: the move wasn't found in the text.").to_owned());
         return;
     };
@@ -213,10 +215,13 @@ pub(crate) fn correct(chess: &mut ChessState, change: Change) {
         return;
     }
     chess.capture.pending = Some(Pending::new(request, plan));
+    // The characters corrected by hand, for retraining (T11: only when the user collects them).
+    chess.capture.samples.collect(fixes);
 }
 
-/// The request of `p` with `change` made to its text; `None` when it can't be made.
-fn rewrite(p: &Pending, change: &Change) -> Option<Request> {
+/// The request of `p` with `change` made to its text, and the characters of an OCR area it
+/// corrected; `None` when it can't be made.
+fn rewrite(p: &Pending, change: &Change) -> Option<(Request, Vec<GlyphFix>)> {
     let mut request = p.request.clone();
     match change {
         Change::Word { stop, text } => {
@@ -233,7 +238,33 @@ fn rewrite(p: &Pending, change: &Change) -> Option<Request> {
             request.text = page_text(*page, *geometry, rects.clone(), read);
         }
     }
-    Some(request)
+    let fixes = match (&p.request.text, &request.text) {
+        (Text::Page { read: Some(old), .. }, Text::Page { read: Some(new), .. }) => {
+            corrected(old, new, p.request.doc, matches!(change, Change::Word { .. }))
+        }
+        _ => Vec::new(),
+    };
+    Some((request, fixes))
+}
+
+/// The characters the glyph reader read in `old` (an OCR area) that `new` reads otherwise in the
+/// same box: the corrections made by hand, as samples for retraining (T11). With `single`, only
+/// boxes read as one character before (a typed move maps a character to a box only then); a
+/// reading picked for a box is that box's, whatever its length. `doc` is the area's document.
+fn corrected(old: &AreaRead, new: &AreaRead, doc: Option<DocId>, single: bool) -> Vec<GlyphFix> {
+    let Some(doc) = doc else { return Vec::new() };
+    old.alternatives
+        .iter()
+        .filter_map(|a| {
+            let before = old.text.glyphs.iter().find(|g| same_box(g.rect, a.rect))?;
+            let after = new.text.glyphs.iter().find(|g| same_box(g.rect, a.rect))?;
+            if after.text == before.text || after.text.trim().is_empty() || (single && before.text.chars().count() != 1) {
+                return None;
+            }
+            let confidence = a.choices.first().map_or(0.0, |c| c.1);
+            Some(GlyphFix { doc, page: new.page, rect: a.rect, dpi: new.dpi, text: after.text.clone(), confidence })
+        })
+        .collect()
 }
 
 /// Two boxes that are the same glyph's.

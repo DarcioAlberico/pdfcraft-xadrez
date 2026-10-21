@@ -2832,3 +2832,13 @@ animation effects	Off	关
 	Read the text again with the move corrected	用更正后的着法重新读取文本
 	The correction couldn't be made: the move wasn't found in the text.	无法更正：在文本中找不到该着法。
 	The corrected text fits nowhere: nothing was changed.	更正后的文本无处可放：未做任何更改。
+# Chess ▸ PGN toolbar: T11, collecting the characters corrected in an OCR area as samples for retraining the glyph model (opt-in, in the capture chip's menu; the question about a protected document reuses "Save them" and "Don't save").
+	Collect corrected characters for retraining	收集更正过的字符以便重新训练
+	Each character you correct in an OCR area is saved as a 32 × 32 picture, in a folder per character, to train the glyph model with. Nothing leaves this computer.	在 OCR 区域中更正的每个字符都会以 32 × 32 图像保存在按字符划分的文件夹中，用于训练符号模型。任何内容都不会离开这台计算机。
+	No folder chosen	未选择文件夹
+	Choose folder…	选择文件夹…
+	Choose the folder for character samples	选择字符样本的文件夹
+	Save character samples from this protected document?	要保存此受保护文档中的字符样本吗？
+	They are saved unencrypted, in the folder you chose for retraining.	它们会以未加密形式保存在你为重新训练选择的文件夹中。
+	Collecting stopped: {n} character samples were saved this session.	已停止收集：本次会话已保存 {n} 个字符样本。
+	Couldn't save a character sample: {e}	无法保存字符样本：{e}

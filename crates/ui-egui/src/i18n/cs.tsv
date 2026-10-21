@@ -2942,3 +2942,13 @@ animation effects	Off	Vypnuto
 	Read the text again with the move corrected	Přečíst text znovu s opraveným tahem
 	The correction couldn't be made: the move wasn't found in the text.	Opravu nelze provést: tah nebyl v textu nalezen.
 	The corrected text fits nowhere: nothing was changed.	Opravený text nikam nepasuje: nic se nezměnilo.
+# Chess ▸ PGN toolbar: T11, collecting the characters corrected in an OCR area as samples for retraining the glyph model (opt-in, in the capture chip's menu; the question about a protected document reuses "Save them" and "Don't save").
+	Collect corrected characters for retraining	Sbírat opravené znaky pro přeučení
+	Each character you correct in an OCR area is saved as a 32 × 32 picture, in a folder per character, to train the glyph model with. Nothing leaves this computer.	Každý znak, který opravíte v oblasti OCR, se uloží jako obrázek 32 × 32 do složky pro daný znak, aby se na něm mohl trénovat model znaků. Nic neopouští tento počítač.
+	No folder chosen	Není vybrána žádná složka
+	Choose folder…	Vybrat složku…
+	Choose the folder for character samples	Vyberte složku pro vzorky znaků
+	Save character samples from this protected document?	Ukládat vzorky znaků z tohoto chráněného dokumentu?
+	They are saved unencrypted, in the folder you chose for retraining.	Ukládají se nešifrované do složky, kterou jste vybrali pro přeučení.
+	Collecting stopped: {n} character samples were saved this session.	Sběr zastaven: v této relaci bylo uloženo {n} vzorků znaků.
+	Couldn't save a character sample: {e}	Vzorek znaku nelze uložit: {e}

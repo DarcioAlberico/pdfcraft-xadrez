@@ -2885,3 +2885,13 @@ chess side	Black	Pretas
 	Read the text again with the move corrected	Ler o texto de novo com o lance corrigido
 	The correction couldn't be made: the move wasn't found in the text.	Não foi possível fazer a correção: o lance não foi encontrado no texto.
 	The corrected text fits nowhere: nothing was changed.	O texto corrigido não se encaixa em lugar nenhum: nada foi alterado.
+# Chess ▸ PGN toolbar: T11, collecting the characters corrected in an OCR area as samples for retraining the glyph model (opt-in, in the capture chip's menu; the question about a protected document reuses "Save them" and "Don't save").
+	Collect corrected characters for retraining	Coletar caracteres corrigidos para retreino
+	Each character you correct in an OCR area is saved as a 32 × 32 picture, in a folder per character, to train the glyph model with. Nothing leaves this computer.	Cada caractere que você corrige numa área OCR é salvo como uma imagem de 32 × 32, numa pasta por caractere, para treinar o modelo de glifos. Nada sai deste computador.
+	No folder chosen	Nenhuma pasta escolhida
+	Choose folder…	Escolher pasta…
+	Choose the folder for character samples	Escolha a pasta das amostras de caracteres
+	Save character samples from this protected document?	Salvar amostras de caracteres deste documento protegido?
+	They are saved unencrypted, in the folder you chose for retraining.	Elas são salvas sem criptografia, na pasta que você escolheu para o retreino.
+	Collecting stopped: {n} character samples were saved this session.	Coleta interrompida: {n} amostras de caracteres foram salvas nesta sessão.
+	Couldn't save a character sample: {e}	Não foi possível salvar uma amostra de caractere: {e}

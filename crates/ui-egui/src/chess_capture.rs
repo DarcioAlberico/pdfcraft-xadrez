@@ -123,6 +123,8 @@ pub struct CaptureState {
     undo: bool,
     /// The OCR area (T9): drawing an area of a scan to read with chess OCR.
     pub area: crate::chess_ocr_area::AreaState,
+    /// Collecting corrected characters for retraining (T11, opt-in).
+    pub samples: crate::chess_samples::Samples,
 }
 
 impl CaptureState {
@@ -788,6 +790,7 @@ impl PdfCraftApp {
             self.capture_pasted(&text, mode);
         }
         self.poll_chess_area();
+        self.poll_chess_samples();
         let Some(job) = self.chess.capture.job.as_ref() else { return };
         let state = std::mem::replace(&mut *lock(&job.state), JobState::Running);
         match state {
@@ -903,6 +906,9 @@ pub(crate) fn page_overlay(
     let reading_area = crate::chess_ocr_area::reading(chess);
     let busy = chess.capture.job.is_some() || reading_area;
     let waiting = chess.capture.pending.is_some();
+    if let Some(save) = crate::chess_samples::ask(&ctx, area, chess, view.id) {
+        chess.capture.samples.answer(view.id, save);
+    }
     if !armed && !busy && !waiting && chess.capture.toast.is_none() {
         return None;
     }
@@ -1411,6 +1417,7 @@ fn chip(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, tool: PgnTool) {
         ui.separator();
         let copy = crate::commands::shortcut_label(ui.ctx(), crate::commands::COPY);
         ui.add(crate::widgets::checkbox(&mut chess.capture.on_copy, crate::i18n::fmt(tl!("Also capture what is copied ({key})"), &[("key", &copy)])));
+        crate::chess_samples::menu(ui, t, chess);
     });
     if let Some(other) = picked {
         arm(chess, other);

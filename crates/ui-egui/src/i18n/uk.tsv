@@ -2890,3 +2890,13 @@ animation effects	Off	Вимкнено
 	Read the text again with the move corrected	Прочитати текст знову з виправленим ходом
 	The correction couldn't be made: the move wasn't found in the text.	Не вдалося виправити: хід не знайдено в тексті.
 	The corrected text fits nowhere: nothing was changed.	Виправлений текст нікуди не підходить: нічого не змінено.
+# Chess ▸ PGN toolbar: T11, collecting the characters corrected in an OCR area as samples for retraining the glyph model (opt-in, in the capture chip's menu; the question about a protected document reuses "Save them" and "Don't save").
+	Collect corrected characters for retraining	Збирати виправлені символи для донавчання
+	Each character you correct in an OCR area is saved as a 32 × 32 picture, in a folder per character, to train the glyph model with. Nothing leaves this computer.	Кожен символ, виправлений в області OCR, зберігається як зображення 32 × 32 у теці для цього символу, щоб навчати модель знаків. Ніщо не залишає цей комп’ютер.
+	No folder chosen	Теку не вибрано
+	Choose folder…	Вибрати теку…
+	Choose the folder for character samples	Виберіть теку для зразків символів
+	Save character samples from this protected document?	Зберігати зразки символів із цього захищеного документа?
+	They are saved unencrypted, in the folder you chose for retraining.	Вони зберігаються без шифрування в теці, вибраній для донавчання.
+	Collecting stopped: {n} character samples were saved this session.	Збирання зупинено: за цей сеанс збережено зразків символів: {n}.
+	Couldn't save a character sample: {e}	Не вдалося зберегти зразок символу: {e}
