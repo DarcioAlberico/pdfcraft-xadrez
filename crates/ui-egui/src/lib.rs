@@ -163,6 +163,7 @@ mod wheel_boost;
 mod wheel_pager;
 mod widgets;
 pub mod window_controls;
+mod window_place;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod window_state;
 
@@ -3035,10 +3036,16 @@ impl eframe::App for PdfCraftApp {
         self.chess_games_to_storage(storage);
     }
 
-    fn logic(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn logic(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         self.ctx = Some(ctx.clone());
         #[cfg(not(target_arch = "wasm32"))]
-        self.window_state.repair(ctx);
+        {
+            self.window_state.repair(ctx);
+            // Where the chess window may open: the desktop's monitors (U5).
+            self.read_chess_window_monitors(ctx, frame);
+        }
+        #[cfg(target_arch = "wasm32")]
+        let _ = frame;
         self.dialog_epoch();
         // Notices raised outside `ui` (opened files, OS events, the control channel) translate too.
         let lang = i18n::Lang::from_pref(&self.language);

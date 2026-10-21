@@ -687,7 +687,7 @@ impl PdfCraftApp {
             PanelAction::OpenLichess(url) => self.open_url(&url),
             PanelAction::Editor(a) => self.chess_editor_action(a),
             PanelAction::Text(a) => self.chess_text_action(a),
-            PanelAction::DockWindow => self.set_chess_window_detached(false),
+            PanelAction::DockWindow => self.bring_back_chess_window(),
             PanelAction::Models => self.choose_chess_models(),
         }
     }
