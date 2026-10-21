@@ -28,8 +28,11 @@
 //!   the report.
 //! - **A result** ends the fragment.
 //!
-//! The graft stops at the first move that cannot be played (illegal, ambiguous, a null move, or
-//! past [`MAX_NODES`] or [`MAX_DEPTH`]), and after [`MAX_FRAGMENT_ITEMS`] items. What was not
+//! A null move (`--`, a threat shown by passing) is played as a move is, as [`Game::play_null`]
+//! plays it.
+//!
+//! The graft stops at the first move that cannot be played (illegal, ambiguous, a null move by a
+//! side in check, or past [`MAX_NODES`] or [`MAX_DEPTH`]), and after [`MAX_FRAGMENT_ITEMS`] items. What was not
 //! used, a glyph or comment with no place included, is in the report as indices and as text: it
 //! never vanishes. Grafting the same items twice changes nothing the second time.
 
@@ -76,7 +79,7 @@ pub enum GraftStopReason {
     TooLong,
     /// Variations would nest deeper than [`MAX_DEPTH`].
     TooDeep,
-    /// A null move (`--`), which a game does not hold.
+    /// A null move (`--`) by the side to move in check, which cannot pass.
     NullMove,
 }
 
@@ -280,15 +283,17 @@ impl Game {
                     }
                     let parent = self.node(cur);
                     let white = parent.board.side_to_move() == CozyColor::White;
+                    // The step to play: a move, or `None` for a null move.
                     let mv = match san.body {
+                        SanBody::Null if parent.board.checkers().is_empty() => Ok(None),
                         SanBody::Null => Err(GraftStopReason::NullMove),
-                        _ => san.to_move(&parent.board).map_err(|e| match e {
+                        _ => san.to_move(&parent.board).map(Some).map_err(|e| match e {
                             SanError::Ambiguous(_) => GraftStopReason::Ambiguous,
                             SanError::NoSuchMove(_) | SanError::IllegalMove => GraftStopReason::Illegal,
                             _ => GraftStopReason::Unreadable,
                         }),
                     };
-                    let existing = mv.ok().and_then(|mv| parent.children.iter().copied().find(|&c| self.node(c).mv == Some(mv)));
+                    let existing = mv.ok().and_then(|mv| parent.children.iter().copied().find(|&c| self.node(c).mv == mv));
                     let node = match (mv, existing) {
                         (_, Some(node)) => node,
                         (Err(reason), None) => {
@@ -350,10 +355,11 @@ impl Game {
         self.current = shown.unwrap_or(at);
     }
 
-    /// Add `mv` as a reply to `parent`: the last reply, or with `first` the first one (the reply
-    /// that was first becomes the second, a variation, one level deeper with all its moves).
-    /// Returns the new move, or why it could not be added (the game is then unchanged).
-    fn add_reply(&mut self, parent: NodeId, mv: cozy_chess::Move, first: bool) -> Result<NodeId, GraftStopReason> {
+    /// Add `mv` (`None`: a null move) as a reply to `parent`: the last reply, or with `first` the
+    /// first one (the reply that was first becomes the second, a variation, one level deeper with
+    /// all its moves). Returns the new move, or why it could not be added (the game is then
+    /// unchanged).
+    fn add_reply(&mut self, parent: NodeId, mv: Option<cozy_chess::Move>, first: bool) -> Result<NodeId, GraftStopReason> {
         let p = self.node(parent);
         let old_first = p.children.first().copied();
         let depth = p.depth.saturating_add(usize::from(old_first.is_some() && !first));
@@ -368,8 +374,8 @@ impl Game {
             return Err(GraftStopReason::TooDeep);
         }
         self.current = parent;
-        // The limits were just checked; `push` checks them again and the move is legal.
-        self.push(mv).map_err(|_| GraftStopReason::TooLong)?;
+        // The limits were just checked; `push_step` checks them again and the move is legal.
+        self.push_step(mv).map_err(|_| GraftStopReason::TooLong)?;
         let node = self.current;
         if first && let Some(old) = old_first {
             let moved = self.subtree(old);

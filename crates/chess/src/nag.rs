@@ -114,6 +114,22 @@ pub const NAGS: &[Nag] = &[
     Nag { safe_glyph: false, ..nag(145, "RR", "Editorial comment", NagGroup::Intent) },
 ];
 
+/// The diagram marker: a diagram of the position after the move goes here. It is not in the
+/// table above, nor in the PGN standard's (codes 0–139): `$220` "Diagram" and `$221` "Diagram
+/// (from Black)" are a de-facto extension, listed among the non-standard glyphs in the public
+/// table of NAGs (the Wikipedia article "Numeric Annotation Glyphs", which attributes them to the
+/// ChessPad editor). Other programs may mark diagrams differently; a code they do not know is
+/// still kept and written back as it was.
+pub const DIAGRAM: u16 = 220;
+
+/// The diagram marker, the board seen from Black's side (see [`DIAGRAM`]).
+pub const DIAGRAM_FROM_BLACK: u16 = 221;
+
+/// Whether `code` marks a diagram ([`DIAGRAM`] or [`DIAGRAM_FROM_BLACK`]).
+pub fn is_diagram(code: u16) -> bool {
+    matches!(code, DIAGRAM | DIAGRAM_FROM_BLACK)
+}
+
 /// The entry for a PGN code (either side's).
 pub fn by_code(code: u16) -> Option<&'static Nag> {
     NAGS.iter().find(|n| n.code == code || n.black_code == Some(code))

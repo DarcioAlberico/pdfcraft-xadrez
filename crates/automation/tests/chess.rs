@@ -809,6 +809,59 @@ fn chess_pgn_edit_applies_every_operation() {
     assert_eq!(r["movetext"], "18. Nd5 Qxe1 (18... Qd8) 19. Nxe7+ Kh7 20. Raxe1");
 }
 
+/// T15: a null move (a threat shown by passing), a variation moved among the others at its fork
+/// and the diagram mark, each refused where the game does not allow it.
+#[test]
+fn chess_pgn_edit_plays_null_moves_reorders_variations_and_marks_diagrams() {
+    let (_base, root) = workdir("pgn-edit-t15");
+    let mut auto = Automation::new().with_root(&root).unwrap();
+    let a = &mut auto;
+    let forks = "1. e4 e5 (1... c5) (1... e6) (1... d5) 2. Nf3 *";
+    let edit = |a: &mut Automation, ops: Value| ok(a, "chess_pgn_edit", json!({ "pgn": forks, "ops": ops }));
+
+    // A null move after 2. Nf3 (Black passes), then White's threat.
+    let r = edit(a, json!([{ "op": "play_null", "at": "path:0.0.0" }, { "op": "play", "at": "path:0.0.0.0", "moves": ["Nxe5"] }]));
+    assert_eq!(r["movetext"], "1. e4 e5 (1... c5) (1... e6) (1... d5) 2. Nf3 -- 3. Nxe5");
+    assert_eq!(r["report"][0]["path"], "path:0.0.0.0");
+    // Read back from its own PGN: the same text.
+    let back = ok(a, "chess_pgn_edit", json!({ "pgn": r["pgn"], "ops": [] }));
+    assert_eq!((back["movetext"].clone(), back["pgn_stopped"].clone()), (r["movetext"].clone(), Value::Null));
+
+    // 1...e6 up before 1...c5, then down again; 1...d5 down is refused (it is the last).
+    let r = edit(a, json!([{ "op": "move_variation", "at": "path:0.2", "to": "up" }]));
+    assert_eq!(r["movetext"], "1. e4 e5 (1... e6) (1... c5) (1... d5) 2. Nf3");
+    assert_eq!(r["report"][0]["path"], "path:0.0.0", "the move shown stays");
+    let r = edit(a, json!([{ "op": "move_variation", "at": "path:0.2", "to": "up" }, { "op": "move_variation", "at": "path:0.1", "to": "down" }]));
+    assert_eq!(r["movetext"], "1. e4 e5 (1... c5) (1... e6) (1... d5) 2. Nf3");
+
+    // The diagram mark, on and off.
+    let r = edit(a, json!([{ "op": "diagram", "at": "main:2" }]));
+    assert_eq!(r["movetext"], "1. e4 e5 $220 (1... c5) (1... e6) (1... d5) 2. Nf3");
+    let r = edit(
+        a,
+        json!([{ "op": "diagram", "at": "main:2" }, { "op": "diagram", "at": "main:2", "on": false }, { "op": "diagram", "at": "main:2", "on": false }]),
+    );
+    assert_eq!((r["movetext"].as_str(), r["applied"].as_u64()), (Some("1. e4 e5 (1... c5) (1... e6) (1... d5) 2. Nf3"), Some(3)));
+
+    for (op, needle) in [
+        (json!({ "op": "move_variation", "at": "path:0.1", "to": "up" }), "no variation on that side"),
+        (json!({ "op": "move_variation", "at": "path:0.3", "to": "down" }), "no variation on that side"),
+        (json!({ "op": "move_variation", "at": "path:0.0", "to": "down" }), "already continues its line"),
+        (json!({ "op": "move_variation", "at": "path:0.2" }), "up or down"),
+        (json!({ "op": "diagram", "at": "path:" }), "cannot go on this move"),
+        (json!({ "op": "diagram", "at": "path:0", "on": "yes" }), "true or false"),
+    ] {
+        let r = edit(a, json!([op]));
+        assert_eq!(r["report"][0]["ok"], false, "{op}");
+        assert!(r["report"][0]["error"].as_str().unwrap().contains(needle), "{op}: {}", r["report"][0]["error"]);
+        assert_eq!(r["movetext"], "1. e4 e5 (1... c5) (1... e6) (1... d5) 2. Nf3", "{op} changed nothing");
+    }
+    // A side in check cannot pass.
+    let r = ok(a, "chess_pgn_edit", json!({ "pgn": "1. e4 f5 2. Qh5+ *", "ops": [{ "op": "play_null", "at": "main:3" }] }));
+    assert_eq!(r["report"][0]["ok"], false);
+    assert!(r["report"][0]["error"].as_str().unwrap().contains("in check"), "{}", r["report"][0]["error"]);
+}
+
 /// A refused operation says why, changes nothing and stops the list; arguments that are wrong as
 /// a whole are refused before anything runs.
 #[test]

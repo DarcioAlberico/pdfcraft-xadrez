@@ -259,8 +259,14 @@ fn the_graft_stops_at_the_first_move_that_does_not_play() {
     let (_, report) = g.graft(at(&g, &[0, 0]), GraftMode::Follow, &items("19.Nxe7+ Kh7 Rxe1"), None);
     assert_eq!(report.stop.unwrap().reason, GraftStopReason::Ambiguous);
 
+    // A null move plays (a threat shown by passing), unless the side to move is in check.
     let null = FragmentItem::Move { ply: None, san: San::read("--", Lang::En).unwrap(), text: "--".into(), bold: None, rect: None };
-    let (_, report) = g.graft(0, GraftMode::Follow, &[null], None);
+    let (passed, report) = g.graft(0, GraftMode::Follow, std::slice::from_ref(&null), None);
+    assert_eq!((report.stop, report.played), (None, 1));
+    assert!(passed.movetext().contains("(18. --)"), "{}", passed.movetext());
+    let check = at(&g, &[0, 0, 0]);
+    assert_eq!(g.san(check), "Nxe7+");
+    let (_, report) = g.graft(check, GraftMode::Follow, &[null], None);
     assert_eq!(report.stop.unwrap().reason, GraftStopReason::NullMove);
 
     let (g3, report) = g.graft(usize::MAX, GraftMode::Follow, &items("18.Nd5"), None);
