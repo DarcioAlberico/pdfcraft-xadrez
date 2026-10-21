@@ -1352,6 +1352,8 @@ fn a_protected_document_asks_before_its_games_are_written() {
     for allow in [false, true] {
         let s = store(if allow { "protected-yes" } else { "protected-no" });
         let mut h = session(&s, "restricted.pdf", None, bytes.clone());
+        // Tall enough for the Games section under the board, its Analysis section and the moves.
+        h.set_size(egui::vec2(1400.0, 1200.0));
         h.state_mut().show_chess_board();
         h.run_steps(3);
         click_square(&mut h, "e2");
@@ -1376,6 +1378,8 @@ fn a_protected_document_asks_before_its_games_are_written() {
 #[test]
 fn a_pgn_file_with_several_games_is_imported() {
     let mut h = harness();
+    // Tall enough for the Games section under the board, its Analysis section and the moves.
+    h.set_size(egui::vec2(1400.0, 1200.0));
     h.state_mut().show_chess_board();
     h.run_steps(3);
     let pgn = "[Event \"A\"]\n[White \"Werle\"]\n[Black \"Jianu\"]\n\n1. e4 e5 {open} 2. Nf3 *\n\n\
