@@ -2486,6 +2486,8 @@ animation effects	Off	Выкл
 	Empty board	Пустая доска
 	Play from this position, as a new game.	Играть из этой позиции как новую партию.
 	Clear drawings	Стереть рисунки
+	Draw on the board	рисование на доске
+chess undo step	Clear drawings	удаление рисунков
 	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Щёлкните поле правой кнопкой, чтобы обвести его, или потяните правой кнопкой, чтобы нарисовать стрелку (Shift красная, Alt синяя, Ctrl жёлтая).
 	Engine analysis	Анализ движком
 	Lines:	Варианты:

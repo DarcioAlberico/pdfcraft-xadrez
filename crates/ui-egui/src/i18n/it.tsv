@@ -2785,6 +2785,8 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Empty board	Scacchiera vuota
 	Play from this position, as a new game.	Gioca da questa posizione, come nuova partita.
 	Clear drawings	Cancella i disegni
+	Draw on the board	disegno sulla scacchiera
+chess undo step	Clear drawings	cancellazione dei disegni
 	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Fai clic destro su una casa per cerchiarla, o trascina con il tasto destro per disegnare una freccia (Maiusc rossa, Alt blu, Ctrl gialla).
 	Engine analysis	Analisi del motore
 	Lines:	Linee:

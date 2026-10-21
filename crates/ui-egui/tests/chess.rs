@@ -770,6 +770,118 @@ fn the_board_panel_sets_up_a_position_and_draws_on_it() {
     assert!(h.query_by_label("Empty board").is_none());
 }
 
+/// U7: the drawings belong to the move shown. Each one is an undo step, they go into the game's
+/// PGN as `[%csl]`/`[%cal]` in the move's comment (the comment's text kept after them), a PGN
+/// loaded with them shows them, moving a piece leaves them, and Clear drawings is an undo step.
+#[test]
+fn drawings_belong_to_the_move_and_go_into_the_pgn() {
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    click_square(&mut h, "e2");
+    click_square(&mut h, "e4");
+    drag_square(&mut h, egui::PointerButton::Secondary, "d5", "d5", egui::Modifiers::NONE);
+    drag_square(&mut h, egui::PointerButton::Secondary, "g1", "f3", egui::Modifiers::SHIFT);
+    assert_eq!(marks(&h), ["d5d5Green", "g1f3Red"]);
+    let board = h.state().chess.board();
+    let e4 = board.game.current();
+    assert_eq!(board.game.drawings(e4).len(), 2, "on the move shown");
+    assert!(board.game.drawings(0).is_empty());
+    assert!(board.pgn_text.contains("1. e4 {[%csl Gd5][%cal Rg1f3]} *"), "{}", board.pgn_text);
+    assert_eq!(board.undo_label().as_deref(), Some("Draw on the board"));
+    // Moving a piece (left clicks on the board) leaves them on their move.
+    click_square(&mut h, "e7");
+    click_square(&mut h, "e5");
+    assert_eq!(h.state().chess.board().game.movetext(), "1. e4 {[%csl Gd5][%cal Rg1f3]} 1... e5");
+    assert!(marks(&h).is_empty(), "the next move has its own");
+    h.get_by_label("◀").click();
+    h.run_steps(2);
+    assert_eq!(marks(&h).len(), 2);
+    // Undo takes the move back, then the arrow; redo draws it again.
+    assert!(h.state_mut().chess.board_mut().undo());
+    assert_eq!(h.state().chess.board().undo_label().as_deref(), Some("Draw on the board"));
+    assert!(h.state_mut().chess.board_mut().undo());
+    h.run_steps(2);
+    assert_eq!(marks(&h), ["d5d5Green"]);
+    assert!(h.state_mut().chess.board_mut().redo());
+    h.run_steps(2);
+    assert_eq!(marks(&h), ["d5d5Green", "g1f3Red"]);
+    // Clear drawings in the Analysis section is a step too.
+    h.get_by_label("Analysis").click();
+    h.run_steps(2);
+    h.get_by_label("Clear drawings").click();
+    h.run_steps(2);
+    assert!(marks(&h).is_empty());
+    assert_eq!(h.state().chess.board().undo_label().as_deref(), Some("Clear drawings"));
+    assert!(h.state_mut().chess.board_mut().undo());
+    h.run_steps(2);
+    assert_eq!(marks(&h).len(), 2);
+
+    // A PGN with drawings, and other commands in the comment, puts them on their move.
+    put_game(&mut h, "1. d4 {Center [%clk 0:10:00] [%csl Yd4][%cal Bc1g5]} 1... d5 *", &[0, 0]);
+    let game = &h.state().chess.board().game;
+    let d4 = game.main_line()[1];
+    assert_eq!(game.comment(d4), "Center [%clk 0:10:00]");
+    assert_eq!(game.movetext(), "1. d4 {[%csl Yd4][%cal Bc1g5] Center [%clk 0:10:00]} 1... d5");
+    assert!(marks(&h).is_empty(), "d5 has none");
+    h.get_by_label("◀").click();
+    h.run_steps(2);
+    assert_eq!(marks(&h), ["d4d4Yellow", "c1g5Blue"]);
+}
+
+/// U7: the engine picked and the lines shown come back in the next session, without starting
+/// analysis; a bad saved value is ignored on its own (the engine is then looked for as when none
+/// was picked), never a panic.
+#[test]
+fn the_chosen_engine_is_remembered_and_bad_settings_are_ignored() {
+    // A file that exists (and is no program, so analysis switched on can't start it), to stand
+    // for the engine.
+    let exe = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml");
+    let mut h = harness();
+    h.state_mut().chess.study.engine_path = Some(exe.clone());
+    h.state_mut().chess.study.lines = 2;
+    let saved: serde_json::Value = serde_json::from_str(&h.state().persist()).unwrap();
+    assert_eq!(saved["chess_engine"]["path"].as_str(), exe.to_str(), "{saved}");
+    assert_eq!(saved["chess_engine"]["lines"], 2);
+    let h = harness_restoring(saved.to_string());
+    let study = &h.state().chess.study;
+    assert_eq!((study.engine_path.as_deref(), study.lines), (Some(exe.as_path()), 2));
+    assert!(!study.analysis, "the engine is not started by itself");
+    // Choose engine… keeps the program picked for the next session.
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    h.get_by_label("Analysis").click();
+    h.run_steps(2);
+    h.state_mut().pick_override = Some(vec![exe.display().to_string()]);
+    h.get_by_label("Choose engine…").click();
+    h.run_steps(3);
+    let saved: serde_json::Value = serde_json::from_str(&h.state().persist()).unwrap();
+    assert_eq!(saved["chess_engine"]["path"].as_str(), exe.to_str(), "{saved}");
+    h.get_by_label("Engine analysis").click();
+    h.run_steps(2);
+    // Bad values: each ignored, the rest used.
+    let missing = exe.with_file_name("no-such-engine-anywhere.exe");
+    let long = format!("{}{}", exe.display(), "x".repeat(5000));
+    for bad in [
+        serde_json::json!("yes"),
+        serde_json::json!([1, 2]),
+        serde_json::json!({"path": 3, "lines": 9}),
+        serde_json::json!({"path": "engines/stockfish.exe", "lines": 0}),
+        serde_json::json!({"path": missing, "lines": -1}),
+        serde_json::json!({"path": format!("{}\u{0}", exe.display()), "lines": 2.5}),
+        serde_json::json!({"path": long, "lines": "2"}),
+        serde_json::json!({"path": "", "lines": 4_294_967_297u64}),
+        serde_json::Value::Null,
+    ] {
+        let h = harness_restoring(serde_json::json!({ "chess_engine": bad }).to_string());
+        let study = &h.state().chess.study;
+        assert_eq!((study.engine_path.as_deref(), study.lines, study.analysis), (None, 3, false), "{bad}");
+    }
+    let h = harness_restoring(serde_json::json!({ "chess_engine": {"path": "relative.exe", "lines": 1} }).to_string());
+    assert_eq!((h.state().chess.study.engine_path.as_deref(), h.state().chess.study.lines), (None, 1), "good lines kept beside a bad path");
+}
+
 /// A pretend UCI engine on the other end of two pipes: it reports depths 1–3 of a line from
 /// e2e4 (e7e5 for Black) at +0.30 for the side to move, then waits for `stop`, as an engine
 /// searching deeper does. Every command it is given goes into the log.

@@ -2574,6 +2574,8 @@ animation effects	Off	Aus
 	Empty board	Leeres Brett
 	Play from this position, as a new game.	Von dieser Stellung aus spielen, als neue Partie.
 	Clear drawings	Zeichnungen löschen
+	Draw on the board	Auf dem Brett zeichnen
+chess undo step	Clear drawings	Zeichnungen löschen
 	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Rechtsklick auf ein Feld kreist es ein, Ziehen mit der rechten Maustaste zeichnet einen Pfeil (Umschalt rot, Alt blau, Strg gelb).
 	Engine analysis	Engine-Analyse
 	Lines:	Varianten:

@@ -2578,6 +2578,8 @@ animation effects	Off	Izklopljeni
 	Empty board	Prazna šahovnica
 	Play from this position, as a new game.	Igraj iz te pozicije kot novo partijo.
 	Clear drawings	Počisti risbe
+	Draw on the board	risanje na šahovnici
+chess undo step	Clear drawings	odstranjevanje risb
 	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Z desno tipko kliknite polje, da ga obkrožite, ali vlecite z desno tipko, da narišete puščico (Shift rdeča, Alt modra, Ctrl rumena).
 	Engine analysis	Analiza s programom
 	Lines:	Variante:

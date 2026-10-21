@@ -2549,6 +2549,8 @@ animation effects	Off	Wyłączone
 	Empty board	Pusta szachownica
 	Play from this position, as a new game.	Graj z tej pozycji jako nową partię.
 	Clear drawings	Wyczyść rysunki
+	Draw on the board	rysowanie na szachownicy
+chess undo step	Clear drawings	usunięcie rysunków
 	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Kliknij pole prawym przyciskiem, aby je zakreślić, lub przeciągnij prawym przyciskiem, aby narysować strzałkę (Shift czerwona, Alt niebieska, Ctrl żółta).
 	Engine analysis	Analiza silnikiem
 	Lines:	Warianty:

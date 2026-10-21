@@ -2571,6 +2571,8 @@ animation effects	Off	Өшірулі
 	Empty board	Бос тақта
 	Play from this position, as a new game.	Осы позициядан жаңа партия ретінде ойнау.
 	Clear drawings	Суреттерді өшіру
+	Draw on the board	тақтаға сурет салу
+chess undo step	Clear drawings	суреттерді өшіру
 	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Шаршыны дөңгелектеу үшін оң жақ батырмамен басыңыз, ал көрсеткі салу үшін оң жақ батырмамен сүйреңіз (Shift қызыл, Alt көк, Ctrl сары).
 	Engine analysis	Қозғалтқыш талдауы
 	Lines:	Нұсқалар:

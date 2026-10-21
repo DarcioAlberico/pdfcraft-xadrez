@@ -2572,6 +2572,8 @@ animation effects	Off	Ki
 	Empty board	Üres tábla
 	Play from this position, as a new game.	Játék ebből az állásból, új játszmaként.
 	Clear drawings	Rajzok törlése
+	Draw on the board	rajzolás a táblán
+chess undo step	Clear drawings	rajzok törlése
 	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Jobb kattintás egy mezőre bekarikázza, jobb gombos húzással nyilat rajzol (Shift piros, Alt kék, Ctrl sárga).
 	Engine analysis	Motoros elemzés
 	Lines:	Változatok:

@@ -2573,6 +2573,8 @@ animation effects	Off	Désactivés
 	Empty board	Échiquier vide
 	Play from this position, as a new game.	Jouer à partir de cette position, comme une nouvelle partie.
 	Clear drawings	Effacer les dessins
+	Draw on the board	le dessin sur l'échiquier
+chess undo step	Clear drawings	l'effacement des dessins
 	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Faites un clic droit sur une case pour l'entourer, ou faites glisser avec le bouton droit pour tracer une flèche (Maj rouge, Alt bleue, Ctrl jaune).
 	Engine analysis	Analyse par le moteur
 	Lines:	Lignes :

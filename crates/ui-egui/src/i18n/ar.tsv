@@ -2850,6 +2850,8 @@ certificate	Version	الإصدار
 	Empty board	رقعة فارغة
 	Play from this position, as a new game.	العب من هذه الوضعية كمباراة جديدة.
 	Clear drawings	مسح الرسوم
+	Draw on the board	الرسم على الرقعة
+chess undo step	Clear drawings	مسح الرسوم
 	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	انقر مربعًا بالزر الأيمن لإحاطته بدائرة، أو اسحب بالزر الأيمن لرسم سهم (Shift أحمر، Alt أزرق، Ctrl أصفر).
 	Engine analysis	تحليل المحرك
 	Lines:	الخطوط:

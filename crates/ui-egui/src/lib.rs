@@ -2344,6 +2344,8 @@ impl PdfCraftApp {
         v["chess_capture_on_copy"] = serde_json::Value::Bool(self.chess.capture.on_copy);
         v["chess_captured_layer"] = serde_json::Value::Bool(self.chess.capture.show_captured);
         v["chess_glyph_samples"] = self.chess.capture.samples.to_json();
+        // The analysis board's engine: the program picked and the lines shown (U7).
+        v["chess_engine"] = self.chess.study.to_json();
         v.to_string()
     }
 
@@ -2457,6 +2459,7 @@ impl PdfCraftApp {
             self.chess.capture.show_captured = on;
         }
         self.chess.capture.samples.restore(&v["chess_glyph_samples"]);
+        self.chess.study.restore(&v["chess_engine"]);
         // Per-tool comment styles (#340): each field goes through its clamping setter, so a
         // malformed or hostile entry is clamped or ignored rather than trusted.
         if let Some(styles) = v["comment_styles"].as_array() {

@@ -2826,6 +2826,8 @@ chess side	Black	Juodieji
 	Empty board	Tuščia lenta
 	Play from this position, as a new game.	Žaisti iš šios pozicijos kaip naują partiją.
 	Clear drawings	Išvalyti piešinius
+	Draw on the board	piešimą lentoje
+chess undo step	Clear drawings	piešinių valymą
 	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Spustelėkite langelį dešiniuoju mygtuku, kad jį apibrėžtumėte, arba vilkite dešiniuoju mygtuku, kad nupieštumėte rodyklę (Shift raudona, Alt mėlyna, Ctrl geltona).
 	Engine analysis	Variklio analizė
 	Lines:	Variantai:

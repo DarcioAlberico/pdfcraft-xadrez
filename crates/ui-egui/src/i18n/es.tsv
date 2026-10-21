@@ -2714,6 +2714,8 @@ animation effects	Off	Desactivados
 	Empty board	Tablero vacío
 	Play from this position, as a new game.	Jugar desde esta posición, como una partida nueva.
 	Clear drawings	Borrar dibujos
+	Draw on the board	dibujo en el tablero
+chess undo step	Clear drawings	borrado de los dibujos
 	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Haz clic derecho en una casilla para rodearla con un círculo, o arrastra con el botón derecho para dibujar una flecha (Mayús roja, Alt azul, Ctrl amarilla).
 	Engine analysis	Análisis del motor
 	Lines:	Líneas:
