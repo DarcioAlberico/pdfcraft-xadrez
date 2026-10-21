@@ -32,14 +32,13 @@ use pdfcraft_engine::chess::{ChessScanSettings, ScanStamp};
 use crate::theme::Tokens;
 use crate::{PdfCraftApp, theme};
 
-/// The panel's tabs.
+/// The panel's tabs. The study board that was a third tab is the Board panel since T5c (D11 b);
+/// the tab is not saved, so no setting names it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum ChessTab {
     #[default]
     Diagrams,
     Text,
-    /// The study board (`chess_study_ui`).
-    Study,
 }
 
 /// One page read as text.

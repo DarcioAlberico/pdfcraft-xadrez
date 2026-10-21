@@ -2810,3 +2810,6 @@ animation effects	Off	Kapalı
 	Delete this game? It can't be undone.	Bu oyun silinsin mi? Geri alınamaz.
 	An illegal position can't start a game: correct it in the diagram editor first.	Geçersiz bir konumla oyun başlatılamaz: önce diyagram düzenleyicisinde düzeltin.
 	Games not saved (an illegal position has no PGN): {n}	Kaydedilmeyen oyunlar (geçersiz bir konumun PGN'si yoktur): {n}
+# Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).
+	Analysis	Analiz
+	Chess board: Set up a position	Satranç tahtası: Pozisyon kur

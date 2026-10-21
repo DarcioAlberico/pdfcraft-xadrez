@@ -2813,3 +2813,6 @@ animation effects	Off	Ki
 	Delete this game? It can't be undone.	Törli ezt a játszmát? Nem vonható vissza.
 	An illegal position can't start a game: correct it in the diagram editor first.	Szabálytalan állásból nem indulhat játszma: előbb javítsa ki a diagramszerkesztőben.
 	Games not saved (an illegal position has no PGN): {n}	Nem mentett játszmák (a szabálytalan állásnak nincs PGN-je): {n}
+# Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).
+	Analysis	Elemzés
+	Chess board: Set up a position	Sakktábla: Állás felállítása

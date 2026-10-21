@@ -596,22 +596,47 @@ fn double_clicking_a_diagram_puts_it_on_the_board_to_play() {
     assert_eq!(h.state().chess.board().game.comment(node), "good move");
 }
 
-/// Open on the board, in the Chess diagrams panel, puts that diagram on the panel's Study board
-/// tab, where it is played.
+/// Open on the board, in the Chess diagrams panel, puts that diagram on the Board panel and
+/// brings it forward (T5c: the Board panel is the study board; the panel has no Study tab).
 #[test]
 fn open_on_the_board_from_the_panel() {
+    let board = pdfcraft_ui_egui::docking::Panel::Board;
     let mut h = harness();
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
+    assert!(h.query_by_label("Study board").is_none(), "the Chess panel's tabs are Diagrams and Text");
+    assert!(!h.state().docking.layout.contains(&board));
     h.get_all_by_label("Open on the board").next().expect("diagram 1 has a position").click();
     h.run_steps(3);
-    assert_eq!(format!("{:?}", h.state().chess.tab), "Study");
-    assert!(!h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Board), "the tab shows it; the Board panel stays closed");
+    assert!(h.state().docking.layout.contains(&board), "the Board panel opened");
+    assert_eq!(format!("{:?}", h.state().chess.tab), "Diagrams", "the Chess panel keeps its tab");
     assert_eq!(h.state().chess.board().game.fen(), START_FEN);
+    // In front: its board is drawn, the rail's set-up tool and the Analysis section with it.
     h.get_by_label(&format!("Board: {START_FEN}"));
+    h.get_by_label("Set up a position");
+    h.get_by_label("Analysis");
     click_square(&mut h, "e2");
     click_square(&mut h, "e4");
     assert_eq!(h.state().chess.board().game.movetext(), "1. e4");
+}
+
+/// The same with the chess panel in its own window (narrow, on its Diagrams tab): Open on the
+/// board shows the window's board, not a tab of the Inspector.
+#[test]
+fn open_on_the_board_shows_the_windows_board() {
+    let settings = window_settings(serde_json::json!({"detached": true, "size": [560.0, 820.0], "tab": "diagrams"}));
+    let mut h = harness_restoring(settings);
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    assert_eq!(h.state().chess_window_tab(), pdfcraft_ui_egui::ChessWindowTab::Diagrams);
+    assert!(h.query_by_label_contains("Board: ").is_none());
+    h.get_all_by_label("Open on the board").next().expect("diagram 1 has a position").click();
+    h.run_steps(3);
+    assert_eq!(h.state().chess_window_tab(), pdfcraft_ui_egui::ChessWindowTab::Board);
+    assert!(!h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Board), "not docked");
+    assert_eq!(h.get_all_by_label(&format!("Board: {START_FEN}")).count(), 1, "the window's board, once");
+    h.get_by_label("Analysis");
+    assert_eq!(format!("{:?}", h.state().chess.tab), "Diagrams");
 }
 
 /// Press `button` on square `from`, move to `to` and let go there, holding `modifiers` when
@@ -644,19 +669,26 @@ fn marks(h: &Harness<'static, PdfCraftApp>) -> Vec<String> {
     h.state().chess.board().marks().iter().map(|m| format!("{}{}{:?}", m.from, m.to, m.color)).collect()
 }
 
-/// The Study board tab: a position set up from an empty board and played from, drawings made
-/// with the right button, and the engine part saying when its engine cannot be started.
+/// The Board panel as the study board (T5c): a position set up with the rail's Set up tool from
+/// an empty board and played from (Done is one undo step), drawings made with the right button
+/// and cleared in the Analysis section, and the engine switch there saying when its engine
+/// cannot be started.
 #[test]
-fn the_study_board_sets_up_a_position_and_draws_on_it() {
+fn the_board_panel_sets_up_a_position_and_draws_on_it() {
     let mut h = harness();
-    assert!(h.state_mut().execute("chess.panel"));
-    h.run_steps(2);
-    h.get_by_label("Study board").click();
-    h.run_steps(2);
-    h.get_by_label(&format!("Board: {START_FEN}"));
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    click_square(&mut h, "d2");
+    click_square(&mut h, "d4");
+    assert_eq!(h.state().chess.board().game.movetext(), "1. d4");
     h.get_by_label("Set up a position").click();
     h.run_steps(2);
+    assert_eq!(format!("{:?}", h.state().chess.tools.tool), "Setup");
+    assert!(h.query_by_label("Analysis").is_none(), "the set-up view takes the board's place");
     h.get_by_label("Empty board").click();
+    h.run_steps(2);
+    // The set-up starts from the position shown, Black to move after 1. d4.
+    h.get_by_label("White").click();
     h.run_steps(2);
     for (piece, square) in [("White king", "e1"), ("Black king", "e8"), ("White rook", "a1")] {
         h.get_by_label(piece).click();
@@ -667,7 +699,14 @@ fn the_study_board_sets_up_a_position_and_draws_on_it() {
     h.get_by_label("Done").click();
     h.run_steps(2);
     assert!(h.state().chess.study.setup.is_none());
+    assert_eq!(format!("{:?}", h.state().chess.tools.tool), "Navigate", "back to Navigate");
     assert_eq!(h.state().chess.board().game.fen(), "4k3/8/8/8/8/8/8/R3K3 w - - 0 1");
+    // One undo step, named for the set-up, takes the game back as it was.
+    assert_eq!(h.state().chess.board().undo_label().as_deref(), Some("Position set-up"));
+    assert!(h.state_mut().chess.board_mut().undo());
+    assert_eq!(h.state().chess.board().game.movetext(), "1. d4");
+    assert!(h.state_mut().chess.board_mut().redo());
+    h.run_steps(2);
     click_square(&mut h, "a1");
     click_square(&mut h, "a8");
     assert_eq!(h.state().chess.board().game.movetext(), "1. Ra8+");
@@ -683,29 +722,188 @@ fn the_study_board_sets_up_a_position_and_draws_on_it() {
     h.get_by_label("▶").click();
     h.run_steps(2);
     assert_eq!(marks(&h).len(), 2);
+    // The Analysis section, closed until opened, clears them and says how they are drawn.
+    assert!(h.query_by_label("Clear drawings").is_none());
+    h.get_by_label("Analysis").click();
+    h.run_steps(2);
+    h.get_by_label_contains("Right-click a square to circle it");
     h.get_by_label("Clear drawings").click();
     h.run_steps(2);
     assert!(marks(&h).is_empty());
 
-    // Analysis with an engine that cannot be started says so.
+    // Analysis with an engine that cannot be started says so; switched off, it says nothing.
     h.state_mut().chess.study.engine_path = Some("this-engine-does-not-exist-anywhere.exe".into());
     h.get_by_label("Engine analysis").click();
     h.run_steps(3);
+    assert!(h.state().chess.study.analysis);
     assert!(h.get_all_by_label_contains("The engine couldn't be started").next().is_some());
+    h.get_by_label("Engine analysis").click();
+    h.run_steps(3);
+    assert!(!h.state().chess.study.analysis);
+    assert!(h.query_by_label_contains("The engine couldn't be started").is_none());
+    // Choose engine… takes the program picked and switches the analysis on with it.
+    h.state_mut().pick_override = Some(vec!["another-engine-that-does-not-exist.exe".into()]);
+    h.get_by_label("Choose engine…").click();
+    h.run_steps(3);
+    assert_eq!(h.state().chess.study.engine_path.as_deref(), Some(std::path::Path::new("another-engine-that-does-not-exist.exe")));
+    assert!(h.state().chess.study.analysis);
+    assert!(h.get_all_by_label_contains("The engine couldn't be started").next().is_some());
+    h.get_by_label("Engine analysis").click();
+    h.run_steps(3);
+    assert!(!h.state().chess.study.analysis);
+
+    // The set-up ends when another game takes the board, and Esc ends it too.
+    h.get_by_label("Set up a position").click();
+    h.run_steps(2);
+    assert_eq!(format!("{:?}", h.state().chess.tools.tool), "Setup");
+    assert!(h.state_mut().execute("chess.game.new"));
+    h.run_steps(3);
+    assert_eq!(format!("{:?}", h.state().chess.tools.tool), "Navigate");
+    h.get_by_label("Analysis");
+    assert!(h.state_mut().execute("chess.tool.setup"));
+    h.run_steps(2);
+    assert!(h.query_by_label("Empty board").is_some(), "the command arms the tool");
+    // A click in the panel (a piece put on the set-up board) gives the chess keys to it.
+    click_square(&mut h, "h5");
+    host_key(&mut h, egui::Modifiers::NONE, egui::Key::Escape);
+    assert_eq!(format!("{:?}", h.state().chess.tools.tool), "Navigate");
+    assert!(h.query_by_label("Empty board").is_none());
 }
 
-/// With a real UCI engine (`PDFCRAFT_CHESS_TEST_ENGINE`, e.g. Stockfish), the Study board shows
-/// its lines and plays one when its move is clicked. Skipped when the variable is not set.
+/// A pretend UCI engine on the other end of two pipes: it reports depths 1–3 of a line from
+/// e2e4 (e7e5 for Black) at +0.30 for the side to move, then waits for `stop`, as an engine
+/// searching deeper does. Every command it is given goes into the log.
+fn fake_engine() -> (pdfcraft_engine::chess::analysis::Analyser, std::sync::Arc<std::sync::Mutex<Vec<String>>>) {
+    use std::io::{BufRead, Write};
+    let (engine_in, our_out) = std::io::pipe().unwrap();
+    let (our_in, mut engine_out) = std::io::pipe().unwrap();
+    let log = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let commands = std::sync::Arc::clone(&log);
+    std::thread::spawn(move || {
+        let mut position = String::new();
+        for line in std::io::BufReader::new(engine_in).lines() {
+            let Ok(line) = line else { break };
+            commands.lock().unwrap().push(line.clone());
+            let mv = if position.contains(" b ") { "e7e5" } else { "e2e4" };
+            let mut say = |text: &str| {
+                let _ = writeln!(engine_out, "{text}");
+            };
+            match line.split_whitespace().next() {
+                Some("uci") => {
+                    say("id name Fake Engine 1");
+                    say("option name MultiPV type spin default 1 min 1 max 5");
+                    say("uciok");
+                }
+                Some("position") => position = line.clone(),
+                Some("go") => {
+                    for d in 1..=3 {
+                        say(&format!("info depth {d} multipv 1 score cp 30 nodes 100 nps 1000 pv {mv}"));
+                    }
+                }
+                Some("stop") => say(&format!("bestmove {mv}")),
+                Some("quit") => break,
+                _ => {}
+            }
+        }
+    });
+    // The study board's own options, so that none changes when it takes the engine.
+    let options = pdfcraft_engine::chess::analysis::AnalysisOptions::default();
+    (pdfcraft_engine::chess::analysis::Analyser::with_streams(our_in, our_out, options, std::sync::Arc::new(|| {})), log)
+}
+
+/// Run frames until `done` holds (at most about five seconds: the engine answers on its own
+/// threads).
+fn wait_for(h: &mut Harness<'static, PdfCraftApp>, done: impl Fn(&Harness<'static, PdfCraftApp>) -> bool) -> bool {
+    for _ in 0..100 {
+        h.run_steps(1);
+        if done(h) {
+            return true;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    false
+}
+
+/// With an engine, the Analysis section's switch starts and closes the analysis: the lines in
+/// the section, the evaluation bar beside the board and the best move on it.
 #[test]
-fn the_study_board_analyses_with_a_real_engine() {
+fn the_analysis_section_switches_the_engine() {
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    let (engine, log) = fake_engine();
+    h.state_mut().chess.study.use_engine(engine);
+    // The bar beside the board makes the board narrower, and what is under it moves up.
+    h.run_steps(2);
+    h.get_by_label("Analysis").click();
+    // The score twice: the line's, and the bar's name.
+    let reported = wait_for(&mut h, |h| h.query_by_label_contains("Fake Engine 1").is_some() && h.query_all_by_label("+0.30").count() == 2);
+    assert!(reported, "the engine's line is shown");
+    // Drawn frame after frame, the board keeps the one search going: it is not stopped and
+    // started again each frame.
+    h.run_steps(5);
+    let searches = log.lock().unwrap().iter().filter(|c| c.starts_with("go ")).count();
+    assert_eq!(searches, 1, "{:?}", log.lock().unwrap());
+    assert!(!log.lock().unwrap().iter().any(|c| c == "stop"));
+    assert!(log.lock().unwrap().iter().any(|c| c == &format!("position fen {START_FEN}")), "{:?}", log.lock().unwrap());
+    // The bar, named by its score, is beside the board, as tall as it.
+    let board = h.get_by_label(&format!("Board: {START_FEN}")).rect();
+    let bar = h.get_all_by_label("+0.30").map(|n| n.rect()).find(|r| r.max.x <= board.min.x).expect("the evaluation bar");
+    assert!((bar.height() - board.height()).abs() < 1.0 && bar.width() < 20.0, "{bar:?} {board:?}");
+    if let Ok(dir) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
+        h.render().unwrap().save(std::path::Path::new(&dir).join("study-board-analysis.png")).unwrap();
+    }
+    // A click on the line's move plays it.
+    h.get_by_label("e4").click();
+    h.run_steps(3);
+    assert_eq!(h.state().chess.board().game.movetext(), "1. e4");
+    // Switched off: the engine is closed and the bar goes.
+    h.get_by_label("Engine analysis").click();
+    h.run_steps(3);
+    assert!(!h.state().chess.study.analysis);
+    assert!(h.query_by_label_contains("0.30").is_none(), "no bar, no lines");
+    assert!(wait_for(&mut h, |_| log.lock().unwrap().iter().any(|c| c == "quit")), "the engine was told to quit");
+}
+
+/// The engine rests while the Board panel is not drawn (T5c: the board is the study board, so
+/// its being shown is what counts), and analyses again once it is back.
+#[test]
+fn analysis_pauses_while_the_board_panel_is_hidden() {
+    let board = pdfcraft_ui_egui::docking::Panel::Board;
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    let (engine, log) = fake_engine();
+    h.state_mut().chess.study.use_engine(engine);
+    let searching = |log: &std::sync::Mutex<Vec<String>>| log.lock().unwrap().iter().filter(|c| c.starts_with("go ")).count();
+    assert!(wait_for(&mut h, |_| searching(&log) == 1), "the engine analyses the board shown");
+    assert!(!log.lock().unwrap().iter().any(|c| c == "stop"));
+    h.state_mut().docking.set_visible(board, false).unwrap();
+    assert!(wait_for(&mut h, |_| log.lock().unwrap().iter().any(|c| c == "stop")), "the engine stops: {:?}", log.lock().unwrap());
+    assert!(h.state().chess.study.analysis, "analysis stays on, to go on when the board is back");
+    // Back, on a new position: analysed.
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    click_square(&mut h, "e2");
+    click_square(&mut h, "e4");
+    assert!(wait_for(&mut h, |_| searching(&log) == 2), "{:?}", log.lock().unwrap());
+    let after_e4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
+    assert!(log.lock().unwrap().iter().any(|c| c == &format!("position fen {after_e4}")));
+}
+
+/// With a real UCI engine (`PDFCRAFT_CHESS_TEST_ENGINE`, e.g. Stockfish), the Board panel's
+/// Analysis section shows its lines and plays one when its move is clicked. Skipped when the
+/// variable is not set.
+#[test]
+fn the_board_panel_analyses_with_a_real_engine() {
     let Some(engine) = std::env::var_os("PDFCRAFT_CHESS_TEST_ENGINE") else {
         eprintln!("PDFCRAFT_CHESS_TEST_ENGINE not set: skipped");
         return;
     };
     let mut h = harness();
-    assert!(h.state_mut().execute("chess.panel"));
-    h.run_steps(2);
-    h.get_by_label("Study board").click();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    h.get_by_label("Analysis").click();
     h.run_steps(2);
     h.state_mut().chess.study.engine_path = Some(engine.into());
     h.get_by_label("Engine analysis").click();
@@ -1154,6 +1352,8 @@ fn a_protected_document_asks_before_its_games_are_written() {
     for allow in [false, true] {
         let s = store(if allow { "protected-yes" } else { "protected-no" });
         let mut h = session(&s, "restricted.pdf", None, bytes.clone());
+        // Tall enough for the Games section under the board, its Analysis section and the moves.
+        h.set_size(egui::vec2(1400.0, 1200.0));
         h.state_mut().show_chess_board();
         h.run_steps(3);
         click_square(&mut h, "e2");
@@ -1178,6 +1378,8 @@ fn a_protected_document_asks_before_its_games_are_written() {
 #[test]
 fn a_pgn_file_with_several_games_is_imported() {
     let mut h = harness();
+    // Tall enough for the Games section under the board, its Analysis section and the moves.
+    h.set_size(egui::vec2(1400.0, 1200.0));
     h.state_mut().show_chess_board();
     h.run_steps(3);
     let pgn = "[Event \"A\"]\n[White \"Werle\"]\n[Black \"Jianu\"]\n\n1. e4 e5 {open} 2. Nf3 *\n\n\
@@ -1688,7 +1890,7 @@ fn a_wide_window_has_a_larger_board_beside_the_diagrams() {
     assert!(moves.min.y > board.max.y && moves.max.x < scan.min.x, "the moves under the board: {moves:?} {board:?}");
     // Very wide: the board column has the notation beside the board (T5b), filling the column
     // from its top, and the Diagrams tab beyond it.
-    let h = harness_restoring(window_settings(serde_json::json!({"detached": true, "size": [1390.0, 900.0]})));
+    let mut h = harness_restoring(window_settings(serde_json::json!({"detached": true, "size": [1390.0, 900.0]})));
     let board = h.get_by_label_contains("Board: ").rect();
     let fen = h.get_by_label("FEN").rect();
     assert!(fen.min.x > board.max.x, "the fields beside the board: {fen:?} {board:?}");
@@ -1697,6 +1899,20 @@ fn a_wide_window_has_a_larger_board_beside_the_diagrams() {
     assert!(moves.height() > 300.0, "the notation fills the column: {moves:?}");
     let scan = h.get_by_label("Scan this page").rect();
     assert!(scan.min.x > moves.max.x, "and the Diagrams tab beside them: {scan:?} {moves:?}");
+    // The study board's Analysis section heads that column (T5c); the set-up view takes the
+    // board's place in its own column, and the moves stay beside it.
+    let analysis = h.get_by_label("Analysis").rect();
+    assert!(analysis.min.x > board.max.x && analysis.max.y <= moves.min.y, "{analysis:?} {moves:?}");
+    assert!(h.state_mut().execute("chess.tool.setup"));
+    h.run_steps(2);
+    assert_eq!(h.get_all_by_label("Empty board").count(), 1);
+    assert_eq!(h.get_all_by_label_contains("Board: ").count(), 1, "the set-up board alone");
+    assert!(h.query_by_label("Analysis").is_none());
+    h.get_by_label("Moves");
+    h.get_by_label("Cancel").click();
+    h.run_steps(2);
+    assert_eq!(format!("{:?}", h.state().chess.tools.tool), "Navigate");
+    h.get_by_label_contains("Board: ");
     let h = harness_restoring(window_settings(serde_json::json!({"detached": true, "size": [560.0, 820.0]})));
     assert!(!h.state().chess_window_wide());
     let board = h.get_by_label_contains("Board: ").rect();

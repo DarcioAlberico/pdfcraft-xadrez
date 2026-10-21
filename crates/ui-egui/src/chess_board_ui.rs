@@ -1,7 +1,7 @@
 //! Chess ▸ Board: an analysis board in its own panel, beside the Inspector.
 //!
-//! A diagram goes onto it from the page (double-click the diagram); Open on the board, in the
-//! Chess diagrams panel, puts it on that panel's Study board tab, the same board. Moves are
+//! A diagram goes onto it from the page (double-click the diagram), or from Open on the board in
+//! the Chess diagrams panel and its editor, which bring this panel forward. Moves are
 //! played by clicking a piece and then where it goes, or by dragging it there; the arrows (or
 //! the arrow keys, once the panel was clicked: see `chess_tools`) walk the game back and forth.
 //! A move made at an earlier point starts a variation. The notation under the board takes the
@@ -15,8 +15,9 @@
 //! click circles a square and a drag draws an arrow (Shift red, Alt blue, Ctrl yellow, green
 //! otherwise); the drawings belong to the position, and a left click on the board clears them.
 //!
-//! The Chess panel's Study board tab (`chess_study_ui`) shows this same board and game, built
-//! from the parts below, and adds position set-up and engine analysis.
+//! It is the study board too (T5c, D11 b): `chess_study_ui` adds position set-up (a rail tool),
+//! engine analysis with an evaluation bar beside the board, and the material, in an Analysis
+//! section under the board.
 //!
 //! The rules are `pdfcraft_chess::game` (L0); this file only shows them. A diagram read from a
 //! book can be illegal (a misread square): it is shown as it is, and no move can be played on it
@@ -59,7 +60,7 @@ impl Sizing {
 
     /// The largest board side, never below the smallest board (160 pt) nor NaN, so `clamp`
     /// with it can't panic.
-    fn side_limit(self) -> f32 {
+    pub(crate) fn side_limit(self) -> f32 {
         if self.max_side.is_finite() { self.max_side.max(160.0) } else { 160.0 }
     }
 
@@ -233,6 +234,9 @@ pub enum BoardAction {
     OpenLichess(String),
     /// Go to the diagram the board was loaded from.
     ShowSource(Source),
+    /// Pick the engine program for analysis (desktop only).
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+    ChooseEngine,
 }
 
 impl BoardState {
@@ -683,13 +687,8 @@ fn paint_mark(painter: &egui::Painter, state: &BoardState, board: Rect, mark: Ma
     painter.add(egui::Shape::convex_polygon(vec![tip, base + normal * head * 0.55, base - normal * head * 0.55], color, Stroke::NONE));
 }
 
-/// The board itself, with its marks, taking clicks and drags. `overlay` is drawn under the
-/// hand-made drawings (the engine's best move).
-pub(crate) fn board_view(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, pieces: &PieceSet, overlay: &[Mark]) {
-    board_view_sized(ui, t, state, pieces, overlay, Sizing::DOCKED);
-}
-
-/// [`board_view`] within `sizing`'s limits.
+/// The board itself within `sizing`'s limits, with its marks, taking clicks and drags. `overlay`
+/// is drawn under the hand-made drawings (the engine's best move).
 pub(crate) fn board_view_sized(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, pieces: &PieceSet, overlay: &[Mark], sizing: Sizing) {
     let side = ui.available_width().clamp(160.0, sizing.side_limit());
     let px = sizing.picture_px(side, ui.ctx().pixels_per_point());
@@ -843,7 +842,7 @@ enum MoveEdit {
 /// Least height of the notation in the Board panel, in points (spec §4.1).
 pub(crate) const MIN_NOTATION: f32 = 120.0;
 
-/// Tallest the notation grows to where it is not told how tall to be (the Study board tab).
+/// Tallest the notation grows to where it is not told how tall to be.
 const SHRINK_NOTATION: f32 = 180.0;
 
 /// How far a variation is indented per level, in points; deeper levels than [`MAX_INDENT`] are
@@ -1261,9 +1260,11 @@ pub(crate) fn title(ui: &mut egui::Ui, state: &BoardState, source_label: Option<
 }
 
 /// The Chess board panel below its keys, in one column (spec §4.1), in a scroll area whose
-/// visible part is `viewport` points tall: the board and its controls within `sizing`'s limits,
-/// then [`moves_column`] in the height left. `source_label` names the diagram the board was
-/// loaded from.
+/// visible part is `viewport` points tall: the board and its controls within `sizing`'s limits
+/// (with the evaluation bar while the engine analyses), the Analysis section, then
+/// [`moves_column`] in the height left. While the rail's Set up tool is armed the set-up view
+/// takes the place of all but the title. `source_label` names the diagram the board was loaded
+/// from.
 pub(crate) fn panel_body(
     ui: &mut egui::Ui,
     t: &Tokens,
@@ -1274,17 +1275,21 @@ pub(crate) fn panel_body(
     viewport: f32,
 ) -> (Option<BoardAction>, Option<crate::chess_collection::GamesAction>) {
     let top = ui.cursor().top();
-    let state = chess.board_mut();
-    let action = title(ui, state, source_label);
+    let action = title(ui, chess.board(), source_label);
     ui.add_space(4.0);
+    if crate::chess_study_ui::setup_in_place(ui, t, chess, pieces) {
+        return (action, None);
+    }
+    let (study, state) = (&mut chess.study, chess.games.board_mut());
     view_controls(ui, state);
     ui.add_space(4.0);
-    board_view_sized(ui, t, state, pieces, &[], sizing);
+    crate::chess_study_ui::board_with_bar(ui, t, study, state, pieces, sizing);
     promotion_choice(ui, state);
     navigation(ui, t, state);
+    let analysis = crate::chess_study_ui::analysis_section(ui, t, study, state, pieces);
     ui.add_space(4.0);
     let (fields, games) = moves_column(ui, t, chess, viewport - (ui.cursor().top() - top));
-    (action.or(fields), games)
+    (action.or(analysis).or(fields), games)
 }
 
 /// The notation taking `room` points (at least [`MIN_NOTATION`]) less what goes under it, then

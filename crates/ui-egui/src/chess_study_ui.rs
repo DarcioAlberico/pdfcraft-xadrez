@@ -1,19 +1,21 @@
-//! Chess ▸ Study board: the analysis board as a tab of the Chess panel, beside Diagrams and Text,
-//! with what a study board adds to it (in the manner of chessvision.ai's board, from its public
-//! pages; nothing of it is used):
-//! - **Set up a position**: pieces from a palette onto the board (a click puts the chosen piece,
-//!   a click on the same piece or a right-click empties the square), the start position or an
-//!   empty board, side to move and castling; Done plays from it as a new game.
+//! Chess ▸ Board ▸ study: what the Board panel adds to the analysis board (PGN toolbar spec
+//! T5c, D11 b: the Board panel is the study board; the Chess panel's Study board tab it replaced
+//! is gone), in the manner of chessvision.ai's board, from its public pages; nothing of it is
+//! used:
+//! - **Set up a position** (the rail's Set up tool, a mode: Esc, another mode or another game leaves it): the
+//!   set-up view takes the board's place, with pieces from a palette (a click puts the chosen
+//!   piece, a click on the same piece or a right-click empties the square), the start position
+//!   or an empty board, side to move and castling; Done plays from it as a new game, one undo
+//!   step.
 //! - **Drawings**: arrows and circles drawn with the right button (`chess_board_ui`), kept for
-//!   each position.
-//! - **Engine analysis**: the user's own UCI engine (`engine::chess::analysis`) analyses the
-//!   position shown, with an evaluation bar beside the board, the best lines (a click on one of
-//!   their moves plays the line up to it) and the best move as an arrow. None ships with
-//!   PdfCraft; the desktop app finds one or the user picks one, and the web build has none.
-//! - **Material**: what each side is ahead by, as pieces and points.
-//!
-//! The board, moves, variations, annotations, game details and FEN/PGN are the analysis board's
-//! own parts, on the same game: the Board panel and this tab are two views of one board.
+//!   each position; the Analysis section clears them and says how they are drawn.
+//! - **Engine analysis**, in the Analysis section (closed until opened): the user's own UCI
+//!   engine (`engine::chess::analysis`) analyses the position shown, with a thin evaluation bar
+//!   beside the board, the best lines (a click on one of their moves plays the line up to it) and
+//!   the best move as an arrow. None ships with PdfCraft; the desktop app finds one or the user
+//!   picks one, and the web build has none. The engine rests while the Board panel is not drawn
+//!   (another tab in front of it, closed, or Home mode): [`StudyState::new_frame`].
+//! - **Material**: what each side is ahead by, as pieces and points (in the Analysis section).
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::path::PathBuf;
@@ -30,10 +32,12 @@ use pdfcraft_engine::chess::pdfcraft_chess::placement::{Color, Piece, PieceKind,
 #[cfg(not(target_arch = "wasm32"))]
 use pdfcraft_engine::chess::pdfcraft_chess::uci::Score;
 
+use crate::chess_board_ui::{self, BoardAction, BoardState, Sizing};
 #[cfg(not(target_arch = "wasm32"))]
-use crate::chess_board_ui::MarkColor;
-use crate::chess_board_ui::{self, BoardAction, BoardState, Mark};
+use crate::chess_board_ui::{Mark, MarkColor};
 use crate::chess_editor::Brush;
+use crate::chess_tools::PgnTool;
+use crate::chess_ui::ChessState;
 use crate::theme::Tokens;
 
 /// The set-up board's image, in pixels.
@@ -120,10 +124,15 @@ impl Setup {
     }
 }
 
-/// The Study board tab's own state (the board and game are `ChessState::board`).
+/// The study board's own state (the board and game are `ChessState::board`).
 pub struct StudyState {
-    /// A position being set up, in place of the game.
+    /// A position being set up, in place of the game, while the rail's Set up tool is armed.
+    /// Taken away from outside (another game shown), it ends the set-up: see [`setup_in_place`].
     pub setup: Option<Setup>,
+    /// The set-up view was drawn the last time the Board panel was.
+    setup_shown: bool,
+    /// The Board panel was drawn since the frame began ([`StudyState::new_frame`]).
+    drawn: bool,
     /// Engine analysis is on.
     pub analysis: bool,
     /// Lines the engine shows, 1–3.
@@ -145,6 +154,8 @@ impl Default for StudyState {
     fn default() -> StudyState {
         StudyState {
             setup: None,
+            setup_shown: false,
+            drawn: false,
             analysis: false,
             lines: 3,
             #[cfg(not(target_arch = "wasm32"))]
@@ -159,17 +170,9 @@ impl Default for StudyState {
     }
 }
 
-/// What the tab asks the app for.
-#[derive(Clone, Debug, PartialEq)]
-pub enum StudyAction {
-    Board(BoardAction),
-    /// Pick the engine program (desktop only).
-    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
-    ChooseEngine,
-}
-
 impl StudyState {
-    /// The tab is not shown: the engine stops searching (it starts again when the tab is back).
+    /// The board is not shown: the engine stops searching (it starts again when the board is
+    /// back).
     pub fn pause(&mut self) {
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(engine) = &self.engine
@@ -178,6 +181,25 @@ impl StudyState {
             engine.stop();
         }
         self.sent = None;
+    }
+
+    /// A frame begins (`chess_window::frame`, before any board is drawn): the engine rests when
+    /// the Board panel, docked or in its own window, was not drawn in the frame before.
+    pub(crate) fn new_frame(&mut self) {
+        if !std::mem::take(&mut self.drawn) {
+            self.pause();
+        }
+    }
+
+    /// Analyse with `engine`, already running, from now on: the program picked or found is not
+    /// started meanwhile. For hosts that start the engine themselves, and tests.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn use_engine(&mut self, engine: pdfcraft_engine::chess::analysis::Analyser) {
+        self.engine = Some(engine);
+        self.start_error = None;
+        self.no_engine = false;
+        self.sent = None;
+        self.analysis = true;
     }
 
     /// Close the engine and look for one again at the next frame (another program was picked,
@@ -311,6 +333,8 @@ fn setup_view(ui: &mut egui::Ui, t: &Tokens, setup: &mut Setup, board: &mut Boar
     for color in [Color::White, Color::Black] {
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing.x = 2.0;
+            // Six pieces and the eraser on a row at 330 pt.
+            ui.spacing_mut().button_padding = vec2(3.0, 3.0);
             for kind in KINDS {
                 let piece = Piece { color, kind };
                 if palette_button(ui, sprites.as_ref(), piece, setup.brush == Brush::Put(piece)).clicked() {
@@ -515,7 +539,7 @@ fn searching_mark(ui: &mut egui::Ui) {
 /// The engine's part: the switch, the engine's state and its lines. A click on a move of a line
 /// plays the line up to that move.
 #[cfg(not(target_arch = "wasm32"))]
-fn engine_view(ui: &mut egui::Ui, t: &Tokens, study: &mut StudyState, board: &mut BoardState) -> Option<StudyAction> {
+fn engine_view(ui: &mut egui::Ui, t: &Tokens, study: &mut StudyState, board: &mut BoardState) -> Option<BoardAction> {
     use pdfcraft_engine::chess::analysis::AnalysisError;
     let mut action = None;
     ui.horizontal_wrapped(|ui| {
@@ -525,15 +549,18 @@ fn engine_view(ui: &mut egui::Ui, t: &Tokens, study: &mut StudyState, board: &mu
             study.restart();
         }
         if study.analysis {
-            ui.label(egui::RichText::new(tl!("Lines:")).small());
-            for n in 1..=3u32 {
-                if ui.selectable_label(study.lines == n, n.to_string()).clicked() {
-                    study.lines = n;
+            // One unit, so a narrow panel wraps it whole.
+            ui.horizontal(|ui| {
+                ui.label(egui::RichText::new(tl!("Lines:")).small());
+                for n in 1..=3u32 {
+                    if ui.selectable_label(study.lines == n, n.to_string()).clicked() {
+                        study.lines = n;
+                    }
                 }
-            }
+            });
         }
         if ui.small_button(tl!("Choose engine…")).on_hover_text(tl!("Pick a UCI chess engine program, such as Stockfish.")).clicked() {
-            action = Some(StudyAction::ChooseEngine);
+            action = Some(BoardAction::ChooseEngine);
         }
     });
     if !study.analysis {
@@ -606,74 +633,96 @@ fn engine_view(ui: &mut egui::Ui, t: &Tokens, study: &mut StudyState, board: &mu
     action
 }
 
-/// The Study board tab.
-pub fn study_tab(ui: &mut egui::Ui, t: &Tokens, study: &mut StudyState, board: &mut BoardState, pieces: &PieceSet) -> Option<StudyAction> {
-    #[cfg(not(target_arch = "wasm32"))]
-    study.sync_engine(ui.ctx(), board);
-    if let Some(setup) = study.setup.as_mut() {
+/// The rail's Set up tool is armed: the set-up view in the board's place, and `true`. Done
+/// plays from the position set up (one undo step) and Cancel leaves it; either, or Esc, goes
+/// back to Navigate. A set-up taken away from outside while it showed (another game put on the
+/// board) ends the mode too. It also notes that the board is drawn in this frame and gives the
+/// engine the position shown, so it is called wherever the Board panel is drawn, first.
+pub(crate) fn setup_in_place(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, pieces: &PieceSet) -> bool {
+    let study = &mut chess.study;
+    study.drawn = true;
+    if chess.tools.tool == PgnTool::Setup && study.setup.is_none() && study.setup_shown {
+        chess.tools.tool = PgnTool::Navigate;
+    }
+    let shown = chess.tools.tool == PgnTool::Setup;
+    if shown {
+        let board = chess.games.board_mut();
+        let setup = study.setup.get_or_insert_with(|| Setup::from_fen(&board.current_fen()));
         if setup_view(ui, t, setup, board, pieces) {
             study.setup = None;
+            chess.tools.tool = PgnTool::Navigate;
         }
-        return None;
+    } else {
+        study.setup = None;
     }
-    let mut action = None;
-    ui.horizontal_wrapped(|ui| {
-        if ui.button(tl!("Set up a position")).on_hover_text(tl!("Put pieces on an empty or starting board, then play from there.")).clicked() {
-            study.setup = Some(Setup::from_fen(&board.current_fen()));
-        }
-        if ui.add_enabled(!board.marks().is_empty(), egui::Button::new(tl!("Clear drawings")).small()).clicked() {
-            board.clear_marks();
-        }
-    });
-    chess_board_ui::view_controls(ui, board);
-    ui.add_space(4.0);
-    // The board, with the evaluation bar beside it while the engine analyses.
+    study.setup_shown = shown;
     #[cfg(not(target_arch = "wasm32"))]
-    let snap = study.analysis.then(|| study.snapshot(board)).flatten();
+    study.sync_engine(ui.ctx(), chess.games.board());
+    shown
+}
+
+/// The board within `sizing`'s limits, with the evaluation bar beside it and the engine's best
+/// move on it while the engine analyses.
+pub(crate) fn board_with_bar(ui: &mut egui::Ui, t: &Tokens, study: &StudyState, board: &mut BoardState, pieces: &PieceSet, sizing: Sizing) {
     #[cfg(not(target_arch = "wasm32"))]
-    let best = snap.as_ref().and_then(|s| s.lines.first()).and_then(|l| l.uci.first()).and_then(|mv| {
-        let (from, to) = (mv.get(0..2).and_then(Square::parse)?, mv.get(2..4).and_then(Square::parse)?);
-        Some(Mark { from, to, color: MarkColor::Engine })
-    });
-    #[cfg(target_arch = "wasm32")]
-    let best: Option<Mark> = None;
-    #[cfg(not(target_arch = "wasm32"))]
-    let bar = if study.analysis { BAR_PT + ui.spacing().item_spacing.x } else { 0.0 };
-    #[cfg(target_arch = "wasm32")]
-    let bar = 0.0;
-    let side = (ui.available_width() - bar - SCROLL_BAR_ROOM).clamp(160.0, 480.0);
-    ui.horizontal_top(|ui| {
-        #[cfg(not(target_arch = "wasm32"))]
-        if study.analysis {
+    if study.analysis {
+        let snap = study.snapshot(board);
+        let best = snap.as_ref().and_then(|s| s.lines.first()).and_then(|l| l.uci.first()).and_then(|mv| {
+            let (from, to) = (mv.get(0..2).and_then(Square::parse)?, mv.get(2..4).and_then(Square::parse)?);
+            Some(Mark { from, to, color: MarkColor::Engine })
+        });
+        let bar = BAR_PT + ui.spacing().item_spacing.x;
+        // The board's side as `board_view_sized` finds it in the room the bar leaves: the bar is
+        // as tall.
+        let side = (ui.available_width() - bar).clamp(160.0, sizing.side_limit());
+        ui.horizontal_top(|ui| {
             eval_bar(ui, snap.as_ref().and_then(|s| s.lines.first()).map(|l| l.score), board.flipped, side);
-        }
-        ui.allocate_ui(vec2(side, side), |ui| chess_board_ui::board_view(ui, t, board, pieces, best.as_slice()));
-    });
-    ui.label(
-        egui::RichText::new(tl!(
-            "Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow)."
-        ))
-        .small()
-        .color(t.text_faint),
-    );
-    chess_board_ui::promotion_choice(ui, board);
-    chess_board_ui::navigation(ui, t, board);
-    material_view(ui, t, board, pieces);
-    ui.add_space(6.0);
-    #[cfg(not(target_arch = "wasm32"))]
-    if let Some(a) = engine_view(ui, t, study, board) {
-        action = Some(a);
+            ui.allocate_ui(vec2(side, side), |ui| chess_board_ui::board_view_sized(ui, t, board, pieces, best.as_slice(), sizing));
+        });
+        return;
     }
     #[cfg(target_arch = "wasm32")]
-    ui.label(egui::RichText::new(tl!("Engine analysis needs the desktop app.")).small().color(t.text_muted));
-    ui.add_space(6.0);
-    chess_board_ui::notation(ui, t, board, None);
-    chess_board_ui::notes(ui, t, board);
-    ui.add_space(6.0);
-    if let Some(a) = chess_board_ui::sections(ui, board) {
-        action = Some(StudyAction::Board(a));
-    }
-    action
+    let _ = study;
+    chess_board_ui::board_view_sized(ui, t, board, pieces, &[], sizing);
+}
+
+/// The Analysis section, closed until opened (egui keeps whether it is open): the engine's
+/// switch, its state and lines, the material, and the drawings. What it asks the app for.
+pub(crate) fn analysis_section(
+    ui: &mut egui::Ui,
+    t: &Tokens,
+    study: &mut StudyState,
+    board: &mut BoardState,
+    pieces: &PieceSet,
+) -> Option<BoardAction> {
+    egui::CollapsingHeader::new(tl!("Analysis"))
+        .id_salt("chess-board-analysis")
+        .default_open(false)
+        .show(ui, |ui| {
+            #[cfg(not(target_arch = "wasm32"))]
+            let action = engine_view(ui, t, study, board);
+            #[cfg(target_arch = "wasm32")]
+            let action = {
+                let _ = &study;
+                ui.label(egui::RichText::new(tl!("Engine analysis needs the desktop app.")).small().color(t.text_muted));
+                None
+            };
+            material_view(ui, t, board, pieces);
+            ui.add_space(4.0);
+            if ui.add_enabled(!board.marks().is_empty(), egui::Button::new(tl!("Clear drawings")).small()).clicked() {
+                board.clear_marks();
+            }
+            ui.label(
+                egui::RichText::new(tl!(
+                    "Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow)."
+                ))
+                .small()
+                .color(t.text_faint),
+            );
+            action
+        })
+        .body_returned
+        .flatten()
 }
 
 #[cfg(test)]

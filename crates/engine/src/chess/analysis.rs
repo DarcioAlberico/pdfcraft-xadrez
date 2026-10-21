@@ -1,4 +1,4 @@
-//! Chess ▸ Study board ▸ Analysis: a UCI chess engine the user installed (Stockfish or any
+//! Chess ▸ Board ▸ Analysis: a UCI chess engine the user installed (Stockfish or any
 //! other), run as a child process, analysing the position the board shows.
 //!
 //! None ships with PdfCraft and none is fetched. The engine is `$PDFCRAFT_CHESS_ENGINE`, the

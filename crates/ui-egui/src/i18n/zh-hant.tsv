@@ -2764,3 +2764,6 @@ animation effects	Off	關
 	Delete this game? It can't be undone.	刪除此對局？此動作無法復原。
 	An illegal position can't start a game: correct it in the diagram editor first.	不合法的局面不能開始對局：請先在圖表編輯器中更正。
 	Games not saved (an illegal position has no PGN): {n}	未儲存的對局（不合法的局面沒有 PGN）：{n}
+# Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).
+	Analysis	分析
+	Chess board: Set up a position	棋盤：擺放局面

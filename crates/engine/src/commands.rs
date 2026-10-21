@@ -357,6 +357,7 @@ pub const COMMANDS: &[CommandSpec] = &[
     // The chess board's PGN tool rail (T5b). No shortcut here: their keys are the chess panel's
     // own, taken only while its key scope is on (ui-egui `chess_tools`), and the palette shows them.
     c("chess.tool.navigate", "Chess board: Navigate", None, None, Nothing, "mouse-pointer-2"),
+    c("chess.tool.setup", "Chess board: Set up a position", None, None, Nothing, "layout-grid"),
     c("chess.variation.promote_one", "Promote variation one level", None, None, Nothing, "chevron-up"),
     c("chess.variation.make_main", "Make variation the main line", None, None, Nothing, "badge-check"),
     c("chess.variation.demote", "Demote line", None, None, Nothing, "chevron-down"),

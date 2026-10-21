@@ -2819,3 +2819,6 @@ animation effects	Off	Izklopljeni
 	Delete this game? It can't be undone.	Želite izbrisati to partijo? Tega ni mogoče razveljaviti.
 	An illegal position can't start a game: correct it in the diagram editor first.	Z nelegalnim položajem ni mogoče začeti partije: najprej ga popravite v urejevalniku diagrama.
 	Games not saved (an illegal position has no PGN): {n}	Neshranjene partije (neveljavna pozicija nima PGN): {n}
+# Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).
+	Analysis	Analiza
+	Chess board: Set up a position	Šahovnica: Postavi pozicijo

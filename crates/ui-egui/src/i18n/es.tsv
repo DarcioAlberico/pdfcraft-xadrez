@@ -2955,3 +2955,6 @@ animation effects	Off	Desactivados
 	Delete this game? It can't be undone.	¿Eliminar esta partida? No se puede deshacer.
 	An illegal position can't start a game: correct it in the diagram editor first.	Una posición ilegal no puede iniciar una partida: corríjala antes en el editor de diagramas.
 	Games not saved (an illegal position has no PGN): {n}	Partidas no guardadas (una posición ilegal no tiene PGN): {n}
+# Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).
+	Analysis	Análisis
+	Chess board: Set up a position	Tablero de ajedrez: Preparar posición
