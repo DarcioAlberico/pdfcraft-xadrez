@@ -145,7 +145,8 @@ fn find(hay: &[u8], needle: &[u8]) -> Option<usize> {
 }
 
 /// Synthetic seeds, so fuzzing works without the corpus: plain, object-stream and encrypted
-/// shapes, nested page trees, annotations, forms and inline images.
+/// shapes, nested page trees, annotations, forms and inline images; a chess page (S18) and a page
+/// of move text to capture (T16).
 fn synthetic_seeds() -> Vec<Vec<u8>> {
     let build = |objs: &[&str], trailer: &str| {
         let mut out = b"%PDF-1.7\n".to_vec();
@@ -182,6 +183,19 @@ fn synthetic_seeds() -> Vec<Vec<u8>> {
     }
     chess.push_str("f q 128 0 0 128 20 20 cm /Im1 Do Q");
     let chess_stream = format!("<< /Length {} >>\nstream\n{chess}\nendstream", chess.len());
+    // Captured move text (PGN toolbar, T16): the main line in a bold face, analysis in a regular
+    // one with brackets, `;` and `a)` separators, glyphs as signs and as `$14`, a null move, an
+    // unbalanced bracket and results, and figurines in a figurine font (SemFig draws its K Q R B N
+    // as pieces) and in a private-use one (FigurineCB). `check-one --chess` plans each page's text
+    // as a selection in every capture mode and applies it.
+    let capture = concat!(
+        r"BT /F1 10 Tf 20 470 Td (1.e4 e5 2.Nf3 ) Tj /F3 10 Tf (N) Tj /F1 10 Tf (c6 3.) Tj /F3 10 Tf (B) Tj /F1 10 Tf (b5 a6) Tj ET ",
+        r"BT /F2 10 Tf 20 455 Td (Or 2...d6 3.d4 !? \(3.) Tj /F4 10 Tf (Q) Tj /F2 10 Tf (c4 $14; a\) 3...Nf6 b\) 3...exd4 +=\) 3...Nd7 ~ 1:0) Tj ET ",
+        r"BT /F1 10 Tf 20 440 Td (18.Nd5! Qxe1 19.Nxe7+ Kh7 20.Raxe1) Tj ET ",
+        r"BT /F2 10 Tf 20 425 Td (After 18...Qd8 19.Bxf6! Bxf6 20.fxg6 \(less good is 20.Nxf6+ exf6 21.Bxc4 Rxc4\) 20...fxg6) Tj ",
+        r"0 -12 Td (21.Qg3 +- 21...Kh7 22.e5!! -- 22...Rf7 \(\(\) 0-0-0 23.Qh4# 1-0 \(1/2\)) Tj ET",
+    );
+    let capture_stream = format!("<< /Length {} >>\nstream\n{capture}\nendstream", capture.len());
     let pixels: String = (0..64 * 64).map(|i| if ((i % 64) / 8 + (i / 64) / 8) % 2 == 0 { 'f' } else { '3' }).flat_map(|c| [c, c]).collect();
     let chess_image = format!(
         "<< /Type /XObject /Subtype /Image /Width 64 /Height 64 /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /ASCIIHexDecode /Length {} >>\nstream\n{pixels}>\nendstream",
@@ -222,6 +236,19 @@ fn synthetic_seeds() -> Vec<Vec<u8>> {
                 "<< /Type /Font /Subtype /Type1 /BaseFont /ChessMerida /FirstChar 32 /LastChar 126 >>",
                 "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
                 &chess_image,
+            ],
+            "/Root 1 0 R",
+        ),
+        build(
+            &[
+                "<< /Type /Catalog /Pages 2 0 R >>",
+                "<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 400 500] >>",
+                "<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R /F3 7 0 R /F4 8 0 R >> >> >>",
+                &capture_stream,
+                "<< /Type /Font /Subtype /Type1 /BaseFont /Times-Bold /Encoding /WinAnsiEncoding >>",
+                "<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman /Encoding /WinAnsiEncoding >>",
+                "<< /Type /Font /Subtype /Type1 /BaseFont /SemFig >>",
+                "<< /Type /Font /Subtype /Type1 /BaseFont /FigurineCB-Time >>",
             ],
             "/Root 1 0 R",
         ),

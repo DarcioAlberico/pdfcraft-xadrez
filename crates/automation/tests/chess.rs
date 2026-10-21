@@ -1165,3 +1165,176 @@ fn chess_pgn_edit_capture_refuses_bad_arguments() {
     let r = pgn_edit(a, true, json!([{ "op": "capture", "at": "path:0", "text": "18…Qd8", "bold_runs": [[3, 1], [0, u64::MAX]] }]));
     assert_eq!(capture_of(&r, 0)["applied"], true);
 }
+
+/// xorshift64*: deterministic choices for the fuzz-like test below.
+struct Rng(u64);
+
+impl Rng {
+    fn next(&mut self) -> u64 {
+        self.0 ^= self.0 >> 12;
+        self.0 ^= self.0 << 25;
+        self.0 ^= self.0 >> 27;
+        self.0.wrapping_mul(0x2545_F491_4F6C_DD1D)
+    }
+    fn below(&mut self, n: usize) -> usize {
+        if n == 0 { 0 } else { (self.next() % n as u64) as usize }
+    }
+    fn pick<'a, T>(&mut self, from: &'a [T]) -> &'a T {
+        &from[self.below(from.len())]
+    }
+}
+
+/// Words a random operation is made of: moves (legal somewhere in the scenario or not, SAN, UCI
+/// and figurines), numbers, brackets, separators, glyphs as signs and codes, null moves, results
+/// and text that PGN has to escape.
+#[rustfmt::skip]
+const WORDS: &[&str] = &[
+    "18.Nd5!", "Qxe1", "19.Nxe7+", "Kh7", "20.Raxe1", "18…Qd8", "19.Bxf6!", "Bxf6", "20.fxg6", "(", ")", "20.Nxf6+", "exf6", "21.Bxc4", "Rxc4",
+    "20...fxg6", "21.Qg3", "22.e5!", "e2e4", "a1a8", "♘d5", "♕xe1", "--", "Z0", "0000", "$14", "$220", "$999", "±", "+-", "!?", "1-0", "1:0",
+    "(1-0)", "*", ";", "a)", "b)", "{", "}", "\\", "\"", "posi-", "tion", "Nd7-", "b6", "O-O-O", "0-0", "e8=Q", "1.", "99999999999.", "…",
+    "less", "good", "is", "", " ", "\u{0}", "é", "𝄞",
+];
+
+/// A random string of [`WORDS`], at most `n` of them.
+fn words(rng: &mut Rng, n: usize) -> String {
+    let sep = if rng.below(4) == 0 { "\n" } else { " " };
+    (0..rng.below(n + 1)).map(|_| *rng.pick(WORDS)).collect::<Vec<_>>().join(sep)
+}
+
+/// A random address: mostly one of the scenario's moves, sometimes one that is not there or is
+/// not an address.
+fn address(rng: &mut Rng) -> String {
+    match rng.below(12) {
+        0..=3 => format!("main:{}", 34 + rng.below(7)),
+        4..=7 => format!("path:{}", (0..rng.below(4)).map(|_| if rng.below(4) == 0 { "1" } else { "0" }).collect::<Vec<_>>().join(".")),
+        8 => format!("main:{}", rng.next()),
+        9 => format!("path:{}", (0..rng.below(10)).map(|_| rng.below(3).to_string()).collect::<Vec<_>>().join(".")),
+        10 => format!("path:{}", rng.next()),
+        _ => (*rng.pick(&["main:-1", "path:0..1", "path:x", "", "main:", "path:65536", "cell:3"])).to_owned(),
+    }
+}
+
+/// A random fragment item for `graft`, valid or not.
+fn item(rng: &mut Rng) -> Value {
+    match rng.below(7) {
+        0 | 1 => {
+            let san = *rng.pick(&["Nd5", "Qxe1", "Nxe7+", "Kh7", "Qd8", "Bxf6", "e4", "Kxh1", "--", "Q", ""]);
+            json!({ "item": "move", "san": san, "ply": rng.below(80), "bold": rng.below(2) == 0 })
+        }
+        2 => json!({ "item": "nag", "code": rng.below(300) }),
+        3 => json!({ "item": "comment", "text": words(rng, 6), "before": rng.below(2) == 0 }),
+        4 => json!({ "item": *rng.pick(&["open", "close", "result"]) }),
+        5 => json!({ "item": "move", "san": "Nd5", "ply": rng.next() }),
+        _ => json!({ "item": *rng.pick(&["move", "nag", "glyph", "comment"]) }),
+    }
+}
+
+/// A random operation of chess_pgn_edit, mostly well formed.
+fn random_op(rng: &mut Rng) -> Value {
+    let at = address(rng);
+    match rng.below(16) {
+        0 => json!({ "op": "play", "at": at, "moves": (0..rng.below(6)).map(|_| *rng.pick(WORDS)).collect::<Vec<_>>() }),
+        1 => json!({ "op": *rng.pick(&["comment", "comment_before"]), "at": at, "text": words(rng, 8) }),
+        2 => json!({ "op": "comment", "at": at, "text": "}".repeat(rng.below(5000)) }),
+        3 => json!({ "op": "nag", "at": at, "code": rng.below(300) }),
+        4 => json!({ "op": "play_null", "at": at }),
+        5 => json!({ "op": "move_variation", "at": at, "to": *rng.pick(&["up", "down", "left"]) }),
+        6 => json!({ "op": "diagram", "at": at, "on": rng.below(2) == 0 }),
+        7 => json!({ "op": *rng.pick(&["promote_one", "demote", "delete_variation", "make_main", "cut"]), "at": at }),
+        8 | 9 => {
+            let mode = *rng.pick(&["follow", "line", "comment", "sideways"]);
+            json!({ "op": "graft", "at": at, "mode": mode, "items": (0..rng.below(12)).map(|_| item(rng)).collect::<Vec<_>>() })
+        }
+        10..=13 => {
+            let text = words(rng, 24);
+            let len = text.chars().count();
+            let runs: Vec<Value> = (0..rng.below(4)).map(|_| json!([rng.below(len + 3), rng.below(len + 3)])).collect();
+            json!({
+                "op": "capture", "at": at, "text": text,
+                "mode": *rng.pick(&["auto", "line", "variation", "subvariation", "comment", "comment_before"]),
+                "lang": *rng.pick(&["en", "pt", "de", "en"]),
+                "bold_runs": if rng.below(2) == 0 { Value::Null } else { Value::Array(runs) },
+                "apply": *rng.pick(&["chosen", "auto", "never", "chosen"]),
+            })
+        }
+        14 => json!({ "op": *rng.pick(&["unknown", "", "graft"]), "at": at, "items": "x" }),
+        _ if rng.below(4) == 0 => json!(rng.below(5)),
+        _ => json!({ "op": "play", "at": at, "moves": ["Nd5", "Qxe1", "Nxe7+", "Kh7"] }),
+    }
+}
+
+/// `pgn` with a few characters deleted, inserted or cut off.
+fn mutated(rng: &mut Rng, pgn: &str) -> String {
+    let mut chars: Vec<char> = pgn.chars().collect();
+    for _ in 0..1 + rng.below(4) {
+        let at = rng.below(chars.len() + 1);
+        match rng.below(4) {
+            0 if at < chars.len() => {
+                chars.remove(at);
+            }
+            1 => chars.insert(at, *rng.pick(&['(', ')', '{', '}', '$', '[', '"', '\\', '!', '\n', '9', ';', '%'])),
+            2 => chars.truncate(at),
+            _ => {
+                let word: Vec<char> = rng.pick(WORDS).chars().collect();
+                chars.splice(at..at, word);
+            }
+        }
+    }
+    chars.into_iter().collect()
+}
+
+/// PGN toolbar T16: random lists of operations (well formed and not, at addresses that are and
+/// are not there) on the scenario's game, on games earlier lists built and on mutated PGN. The
+/// tool never panics; a reply's game reads back to itself, every operation reported before the
+/// last succeeded, the list stops at the first refusal, and the caps hold (at most 2,000
+/// operations and 20,000 moves and items a call).
+#[test]
+fn chess_pgn_edit_survives_random_operation_lists() {
+    use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
+    let (_base, root) = workdir("pgn-edit-fuzz");
+    let mut auto = Automation::new().with_root(&root).unwrap();
+    let mut rng = Rng(0x7E16_C0DE);
+    let start = format!("[FEN \"{SCENARIO}\"]\n[SetUp \"1\"]\n\n{WITH_VARIATION}");
+    let mut kept = start.clone();
+    let (mut replied, mut refused, mut applied_ops) = (0usize, 0usize, 0usize);
+    for round in 0..4000 {
+        // One operation at a time, so the game grows from what the last call made of it; or a list.
+        let n = if rng.below(2) == 0 { 1 } else { 1 + rng.below(8) };
+        let ops: Vec<Value> = (0..n).map(|_| random_op(&mut rng)).collect();
+        let count = ops.len();
+        let mut args = match rng.below(8) {
+            0 => json!({ "fen": SCENARIO }),
+            1..=4 => json!({ "pgn": kept }),
+            5 | 6 => json!({ "pgn": mutated(&mut rng, &kept) }),
+            _ => json!({ "pgn": mutated(&mut rng, &start) }),
+        };
+        args["ops"] = Value::Array(ops);
+        let Ok(content) = auto.call("chess_pgn_edit", &args) else {
+            refused += 1;
+            continue;
+        };
+        replied += 1;
+        let r = json_of(content);
+        let report = r["report"].as_array().unwrap();
+        assert!(!report.is_empty() && report.len() <= count, "round {round}: {} entries for {count} operations", report.len());
+        let applied = usize::try_from(r["applied"].as_u64().unwrap()).unwrap();
+        applied_ops += applied;
+        assert!(applied == report.len() || applied + 1 == report.len(), "round {round}: the list went on after a refusal");
+        assert!(report.iter().take(applied).all(|e| e["ok"] == true), "round {round}: {report:?}");
+        let pgn = r["pgn"].as_str().unwrap();
+        let (again, stopped) = Game::from_pgn(pgn).unwrap_or_else(|e| panic!("round {round}: the reply's PGN does not read: {e}\n{pgn}"));
+        assert_eq!(stopped, None, "round {round}: {pgn}");
+        assert_eq!(again.pgn(), pgn, "round {round}: the reply's PGN is not a fixed point");
+        // The next lists go on from a game with moves, while it stays small.
+        if pgn.len() < 16 << 10 && r["movetext"].as_str().is_some_and(|m| !m.is_empty()) {
+            kept = pgn.to_owned();
+        }
+    }
+    assert!(replied > 3000 && refused > 0 && applied_ops > 500, "{replied} replies, {refused} refused, {applied_ops} operations applied");
+    // The caps on one call: operations, and moves and items over all of them.
+    let many = vec![json!({ "op": "cut", "at": "path:" }); 2001];
+    assert!(auto.call("chess_pgn_edit", &json!({ "fen": SCENARIO, "ops": many })).is_err());
+    let moves = vec![json!("Nd5"); 4000];
+    let heavy = vec![json!({ "op": "play", "at": "path:", "moves": moves }); 6];
+    assert!(auto.call("chess_pgn_edit", &json!({ "fen": SCENARIO, "ops": heavy })).is_err());
+}

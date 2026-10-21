@@ -722,11 +722,11 @@ fn edit_round_trip(bytes: &[u8]) {
     }
 }
 
-/// Scan for diagrams, read the pages as a chess document, write every chess export, then link
-/// and replace the diagrams found and save. No models are loaded (`models_dir` is a folder that
-/// holds none), so only the paths every user runs are exercised. Errors are fine; panics, hangs
-/// and aborts are bugs. (A page's scan has its own last-resort guard; everything after it has
-/// none.)
+/// Capture the pages' text into games (`chess_capture_round_trip`), scan for diagrams, read the
+/// pages as a chess document, write every chess export, then link and replace the diagrams found
+/// and save. No models are loaded (`models_dir` is a folder that holds none), so only the paths
+/// every user runs are exercised. Errors are fine; panics, hangs and aborts are bugs. (A page's
+/// scan has its own last-resort guard; everything after it has none.)
 fn chess_round_trip(bytes: &[u8]) {
     use pdfcraft_engine::Session;
     use pdfcraft_engine::chess::ChessScanSettings;
@@ -734,6 +734,7 @@ fn chess_round_trip(bytes: &[u8]) {
     use pdfcraft_engine::chess::export::{ChessExportOptions, ChessFormat};
     let mut s = Session::new();
     let Ok(id) = s.open("fuzz.pdf", None, Arc::new(bytes.to_vec()), None) else { return };
+    chess_capture_round_trip(&s, id, bytes);
     let pages: Vec<usize> = (0..s.get(id).map_or(0, |d| d.info.pages.len()).min(8)).collect();
     let none = std::env::temp_dir().join("pdfcraft-fuzz-no-models");
     let _ = std::fs::create_dir_all(&none);
@@ -767,6 +768,72 @@ fn chess_round_trip(bytes: &[u8]) {
         let _ = s.apply(id, pdfcraft_engine::Edit::ReplaceDiagram(Box::new(replacement)));
     }
     let _ = s.save_bytes(id);
+}
+
+/// Most pages, and glyphs of a page, the capture paths read in one fuzz run: a plan reads its text
+/// once per place it could go, so a corpus page's whole text layer in every mode would make most
+/// runs hangs. The engine's own cap on a selection (64 KiB) has its unit tests.
+const FUZZ_CAPTURE_PAGES: usize = 2;
+const FUZZ_CAPTURE_GLYPHS: usize = 2048;
+
+/// The PGN toolbar's capture (spec T3, T7a, T9; fuzzed since T16): each page's text layer, whole,
+/// its second half and as an OCR area's reading, planned as a selection after the move shown in
+/// every mode, on a game from the
+/// standard start and on one from the spec scenario's diagram, each chosen plan applied: the
+/// fragment reader and the graft under mutation. After every step the game's PGN must read back
+/// to itself (spec §2: `pgn → from_pgn → pgn` is a fixed point); a game whose PGN doesn't ends
+/// the process, so the fuzzer keeps it as a crash.
+fn chess_capture_round_trip(s: &pdfcraft_engine::Session, id: pdfcraft_engine::DocId, bytes: &[u8]) {
+    use pdfcraft_engine::chess::capture::{self, CaptureMode, CaptureText};
+    use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
+    use pdfcraft_engine::chess::pdfcraft_chess::san::Lang;
+    const SCENARIO: &str = "2r2rk1/1p2ppb1/p2p1npp/q4P2/P1b1P2B/2NB4/1PP3PP/R3QR1K w - - 0 18";
+    let Some(doc) = s.get(id) else { return };
+    let mut r = PageRenderer::new(Arc::new(bytes.to_vec()), RenderConfig::default());
+    let starts: Vec<Game> = [Some(Game::standard()), Game::from_fen(SCENARIO).ok()].into_iter().flatten().collect();
+    for page in 0..doc.info.pages.len().min(FUZZ_CAPTURE_PAGES) {
+        let out = r.render(RenderRequest { page, kind: RequestKind::Text, tile: None, scale: 1.0, tag: 0, preview: false });
+        let Some(text) = out.text else { continue };
+        let glyphs = text.glyphs.get(..text.glyphs.len().min(FUZZ_CAPTURE_GLYPHS)).unwrap_or_default();
+        let geometry = doc.info.pages.get(page).and_then(pdfcraft_engine::chess::geometry);
+        let half = glyphs.get(glyphs.len() / 2..).unwrap_or_default();
+        let page_no = u32::try_from(page).unwrap_or(u32::MAX);
+        let mut selections =
+            vec![CaptureText::Glyphs { glyphs, geometry, page: page_no }, CaptureText::Glyphs { glyphs: half, geometry, page: page_no }];
+        // The whole page as the OCR area's reading arrives (T9: lines and word gaps, no weight).
+        if text.glyphs.len() <= FUZZ_CAPTURE_GLYPHS {
+            selections.push(CaptureText::Read { text: &text, geometry, page: page_no });
+        }
+        for text in selections {
+            for start in &starts {
+                let mut game = start.clone();
+                for mode in
+                    [CaptureMode::Auto, CaptureMode::SubVariation, CaptureMode::Line, CaptureMode::Variation, CaptureMode::Comment { before: true }]
+                {
+                    let plan = capture::plan(&game, game.current(), mode, text, Lang::En);
+                    let _ = plan.apply(&mut game, None);
+                    assert_pgn_fixed_point(&game);
+                }
+            }
+        }
+    }
+}
+
+/// End the process (a crash finding for the fuzzer, which keys it by the `fatal:` line) when
+/// `game`'s PGN does not read back to the same text. `check-one --chess` is a fuzzing child only.
+fn assert_pgn_fixed_point(game: &pdfcraft_engine::chess::pdfcraft_chess::game::Game) {
+    use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
+    let pgn = game.pgn();
+    let back = Game::from_pgn(&pgn).map(|(again, _)| again.pgn());
+    if back.as_deref() != Ok(pgn.as_str()) {
+        eprintln!("fatal: a captured game's PGN is not a fixed point");
+        eprintln!(
+            "{pgn}
+---
+{back:?}"
+        );
+        std::process::abort();
+    }
 }
 
 fn short(s: &str) -> String {

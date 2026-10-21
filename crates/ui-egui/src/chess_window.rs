@@ -778,6 +778,43 @@ mod tests {
         }
     }
 
+    /// PGN toolbar T16: random JSON in place of `docking_detached`, or in any of its fields, never
+    /// panics, and what is kept is always a usable window: a size within the limits, a position
+    /// within ±16,384 points, a tab of the three, written back as it was read. Through the app
+    /// too, where a window restored out of the dock takes the Board panel out of the workspace.
+    #[test]
+    fn random_saved_settings_never_panic_and_only_usable_values_are_kept() {
+        use crate::chess_autosave::tests::{Rng, random_value};
+        let mut rng = Rng(0x7E16_0D0C);
+        let fields = ["detached", "size", "position", "tab"];
+        let mut app = PdfCraftApp::new();
+        for round in 0..2000 {
+            let v = if round % 2 == 0 {
+                random_value(&mut rng, 3)
+            } else {
+                // A good value with one or more fields replaced.
+                let mut v = ChessWindow { detached: true, position: Some(Pos2::new(5.0, 6.0)), ..ChessWindow::default() }.to_json();
+                for _ in 0..1 + rng.below(3) {
+                    v[fields[rng.below(fields.len())]] = random_value(&mut rng, 2);
+                }
+                v
+            };
+            let mut w = ChessWindow::default();
+            w.restore(&v);
+            assert!(w.size.x.is_finite() && w.size.y.is_finite(), "{v}");
+            assert!((MIN_SIZE.x..=MAX_SAVED).contains(&w.size.x) && (MIN_SIZE.y..=MAX_SAVED).contains(&w.size.y), "{v}: {:?}", w.size);
+            assert!(w.position.is_none_or(|p| p.x.abs() <= MAX_SAVED && p.y.abs() <= MAX_SAVED), "{v}: {:?}", w.position);
+            assert_eq!(w.detached, v.get("detached").and_then(Value::as_bool).unwrap_or(false), "{v}");
+            let mut again = ChessWindow::default();
+            again.restore(&w.to_json());
+            assert_eq!((again.detached, again.size, again.position, again.tab), (w.detached, w.size, w.position, w.tab), "{v}");
+            if round % 20 == 0 {
+                app.restore_chess_window(&v);
+                assert!(!app.chess_window.detached || !app.docking.layout.contains(&Panel::Board), "{v}");
+            }
+        }
+    }
+
     /// A pass of `app`'s chess window over `ctx`, as `ui()` runs it.
     fn pass(ctx: &egui::Context, app: &mut PdfCraftApp) {
         ctx.run_ui(egui::RawInput::default(), |ui| frame(app, ui.ctx())).textures_delta.clear();
