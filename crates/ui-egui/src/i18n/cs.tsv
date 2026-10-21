@@ -2647,6 +2647,8 @@ animation effects	Off	Vypnuto
 	Empty board	Prázdná šachovnice
 	Play from this position, as a new game.	Hrát z této pozice jako novou partii.
 	Clear drawings	Smazat kresby
+	Draw on the board	kreslení na šachovnici
+chess undo step	Clear drawings	smazání kreseb
 	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Klepnutím pravým tlačítkem na pole ho zakroužkujete, tažením pravým tlačítkem nakreslíte šipku (Shift červená, Alt modrá, Ctrl žlutá).
 	Engine analysis	Analýza enginem
 	Lines:	Varianty:

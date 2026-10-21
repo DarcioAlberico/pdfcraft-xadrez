@@ -2569,6 +2569,8 @@ animation effects	Off	Kapalı
 	Empty board	Boş tahta
 	Play from this position, as a new game.	Bu pozisyondan yeni bir oyun olarak oyna.
 	Clear drawings	Çizimleri temizle
+	Draw on the board	tahtaya çizim
+chess undo step	Clear drawings	çizimleri temizleme
 	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Bir kareyi daire içine almak için sağ tıklayın ya da ok çizmek için sağ düğmeyle sürükleyin (Shift kırmızı, Alt mavi, Ctrl sarı).
 	Engine analysis	Motor analizi
 	Lines:	Varyantlar:

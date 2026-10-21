@@ -2575,6 +2575,8 @@ animation effects	Off	オフ
 	Empty board	空の盤面
 	Play from this position, as a new game.	この局面から新しい対局として指します。
 	Clear drawings	描画を消去
+	Draw on the board	盤への描画
+chess undo step	Clear drawings	描画の消去
 	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	マスを右クリックすると丸で囲み、右ボタンでドラッグすると矢印を描きます（Shift 赤、Alt 青、Ctrl 黄）。
 	Engine analysis	エンジン解析
 	Lines:	読み筋の数:

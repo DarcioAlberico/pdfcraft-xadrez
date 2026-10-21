@@ -1,5 +1,6 @@
 use super::*;
-use crate::game::{GameError, MAX_NODES, Token};
+use crate::game::{DrawColor, Drawing, GameError, MAX_NODES, Token};
+use crate::placement::Square;
 
 /// The game after `moves` (SAN), shown at the last one.
 fn game(moves: &[&str]) -> Game {
@@ -25,18 +26,19 @@ fn at(g: &Game, path: &[u16]) -> NodeId {
 }
 
 /// Everything about the tree that does not depend on node ids, depth first: each move's path,
-/// SAN, comments, glyphs and source, and the path of the move shown.
+/// SAN, comments, glyphs, drawings and source, and the path of the move shown.
 fn dump(g: &Game) -> String {
     let mut out = String::new();
     let mut stack = vec![0];
     while let Some(id) = stack.pop() {
         out.push_str(&format!(
-            "{:?} {} [{}] [{}] {:?} {:?}\n",
+            "{:?} {} [{}] [{}] {:?} {:?} {:?}\n",
             g.path_of(id).unwrap().indices(),
             g.san(id),
             g.comment(id),
             g.comment_before(id),
             g.nags(id),
+            g.drawings(id),
             g.source(id)
         ));
         stack.extend(g.nodes[id].children.iter().rev());
@@ -399,10 +401,21 @@ fn check(g: &Game) -> Result<(), proptest::test_runner::TestCaseError> {
     let (back, stopped) = Game::from_pgn(&pgn).map_err(|e| proptest::test_runner::TestCaseError::fail(e.to_string()))?;
     prop_assert_eq!(stopped, None);
     prop_assert_eq!(back.pgn(), pgn);
+    // The drawings come back on their moves.
+    for id in 0..n {
+        let there = g.path_of(id).and_then(|path| back.node_at(&path));
+        prop_assert!(there.is_some());
+        prop_assert_eq!(back.drawings(there.unwrap_or_default()), g.drawings(id));
+    }
     Ok(())
 }
 
 const TEXTS: [&str; 7] = ["", "a", "two words", "{braces}", "  spaced \n out ", "é (x) ñ", "1. e4 ; % [x]"];
+
+/// Comments after a move may hold drawing commands too (a comment before one keeps them as text,
+/// and before a first reply it is written with the comment after the move before: see
+/// `drawing`).
+const AFTER_TEXTS: [&str; 3] = ["[%csl Ga4] see [%clk 0:01]", "[%cal Ge2e4,Xa1a2] x", "[%csl Rh8]"];
 
 proptest::proptest! {
     #![proptest_config(proptest::prelude::ProptestConfig::with_cases(96))]
@@ -457,7 +470,7 @@ proptest::proptest! {
                     }
                 }
                 7 => g.promote(node),
-                8 => g.set_comment(node, TEXTS[b % TEXTS.len()]),
+                8 => g.set_comment(node, TEXTS.iter().chain(&AFTER_TEXTS).nth(b % (TEXTS.len() + AFTER_TEXTS.len())).copied().unwrap_or_default()),
                 9 => g.set_comment_before(node, TEXTS[b % TEXTS.len()]),
                 10 => { g.set_nag(node, [1u16, 2, 3, 6, 10, 14, 18, 22, 36, 146, 255][b % 11]); }
                 11 => g.toggle_nag(node, [1u16, 2, 14, 36][b % 4]),
@@ -494,6 +507,13 @@ proptest::proptest! {
                         Err(GameError::IllegalMove) => proptest::prop_assert!(in_check),
                         Err(GameError::TooLong) => {}
                         Err(e) => proptest::prop_assert!(false, "{e:?}"),
+                    }
+                }
+                13 => {
+                    let (from, to) = (Square::from_index(b), Square::from_index(if a % 3 == 0 { b } else { (a + b) % 64 }));
+                    let color = [DrawColor::Green, DrawColor::Red, DrawColor::Yellow, DrawColor::Blue][a % 4];
+                    if let (Some(from), Some(to)) = (from, to) {
+                        g.toggle_drawing(node, Drawing { from, to, color });
                     }
                 }
                 16 => { g.toggle_diagram(node); }

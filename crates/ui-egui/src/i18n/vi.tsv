@@ -2828,6 +2828,8 @@ chess side	Black	Đen
 	Empty board	Bàn cờ trống
 	Play from this position, as a new game.	Chơi từ thế cờ này như một ván mới.
 	Clear drawings	Xóa hình vẽ
+	Draw on the board	vẽ trên bàn cờ
+chess undo step	Clear drawings	xóa hình vẽ
 	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Bấm chuột phải vào một ô để khoanh tròn, hoặc kéo bằng nút phải để vẽ mũi tên (Shift đỏ, Alt xanh dương, Ctrl vàng).
 	Engine analysis	Phân tích bằng engine
 	Lines:	Số biến:

@@ -2590,6 +2590,8 @@ chess side	Black	Pretas
 	Empty board	Tabuleiro vazio
 	Play from this position, as a new game.	Jogar a partir desta posição, como uma nova partida.
 	Clear drawings	Apagar desenhos
+	Draw on the board	desenho no tabuleiro
+chess undo step	Clear drawings	remoção dos desenhos
 	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Clique com o botão direito numa casa para circulá-la, ou arraste com o botão direito para desenhar uma seta (Shift vermelha, Alt azul, Ctrl amarela).
 	Engine analysis	Análise do motor
 	Lines:	Linhas:
