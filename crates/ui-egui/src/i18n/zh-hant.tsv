@@ -2753,3 +2753,14 @@ animation effects	Off	關
 	Moves left off the board (more than it holds): {n}	未放到棋盤上的著法（超出棋盤容量）：{n}
 	Double-click to open this game on the board.	按兩下以在棋盤上開啟此對局。
 	Open this game on the board	在棋盤上開啟此對局
+# Chess ▸ PGN toolbar: T14, the list of games (a game's menu and row buttons, the delete question, a new game from a position). "New game from this position", "Duplicate game", "Rename game…" and "Delete game…" are command names too.
+	Rename…	重新命名…
+	Duplicate	複製
+	Delete…	刪除…
+	Rename game…	重新命名對局…
+	Duplicate game	複製對局
+	Delete game…	刪除對局…
+	New game from this position	從此局面新增對局
+	Delete this game? It can't be undone.	刪除此對局？此動作無法復原。
+	An illegal position can't start a game: correct it in the diagram editor first.	不合法的局面不能開始對局：請先在圖表編輯器中更正。
+	Games not saved (an illegal position has no PGN): {n}	未儲存的對局（不合法的局面沒有 PGN）：{n}

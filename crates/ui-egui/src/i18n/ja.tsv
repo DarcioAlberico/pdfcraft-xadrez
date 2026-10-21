@@ -2805,3 +2805,14 @@ animation effects	Off	オフ
 	Moves left off the board (more than it holds): {n}	盤に入らなかった指し手 (盤の上限を超過): {n}
 	Double-click to open this game on the board.	ダブルクリックでこの対局を盤で開きます。
 	Open this game on the board	この対局を盤で開く
+# Chess ▸ PGN toolbar: T14, the list of games (a game's menu and row buttons, the delete question, a new game from a position). "New game from this position", "Duplicate game", "Rename game…" and "Delete game…" are command names too.
+	Rename…	名前を変更…
+	Duplicate	複製
+	Delete…	削除…
+	Rename game…	対局の名前を変更…
+	Duplicate game	対局を複製
+	Delete game…	対局を削除…
+	New game from this position	この局面から新しい対局
+	Delete this game? It can't be undone.	この対局を削除しますか？元に戻せません。
+	An illegal position can't start a game: correct it in the diagram editor first.	不正な局面からは対局を始められません：先に図面エディターで修正してください。
+	Games not saved (an illegal position has no PGN): {n}	保存されなかった対局（不正な局面には PGN がありません）: {n}

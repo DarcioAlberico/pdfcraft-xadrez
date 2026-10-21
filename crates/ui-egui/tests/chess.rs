@@ -1188,7 +1188,8 @@ fn a_pgn_file_with_several_games_is_imported() {
     assert_eq!(games(h.state()), (vec!["1. e4 e5 {open} 2. Nf3".to_owned(), "1. d4 d5 (1... Nf6 2. c4) 2. c4".to_owned()], 0));
     assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Games read from db.pgn: 2 · Not read: 1"));
     h.get_by_label("Werle–Jianu");
-    h.get_by_label("Game 2").click();
+    // Named by its event (T14), without players.
+    h.get_by_label("C").click();
     h.run_steps(2);
     assert_eq!(h.state().chess.board().game.movetext(), "1. d4 d5 (1... Nf6 2. c4) 2. c4");
 }

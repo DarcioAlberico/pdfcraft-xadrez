@@ -3056,3 +3056,13 @@ chess side	Black	Juodieji
 	Moves left off the board (more than it holds): {n}	Ėjimai, nepatekę į lentą (daugiau, nei ji talpina): {n}
 	Double-click to open this game on the board.	Dukart spustelėkite, kad atvertumėte šią partiją lentoje.
 	Open this game on the board	Atverti šią partiją lentoje
+# Chess ▸ PGN toolbar: T14, the list of games (a game's menu and row buttons, the delete question, a new game from a position). "New game from this position", "Duplicate game", "Rename game…" and "Delete game…" are command names too.
+	Rename…	Pervadinti…
+	Delete…	Naikinti…
+	Rename game…	Pervadinti partiją…
+	Duplicate game	Dubliuoti partiją
+	Delete game…	Naikinti partiją…
+	New game from this position	Nauja partija nuo šios pozicijos
+	Delete this game? It can't be undone.	Naikinti šią partiją? To negalima atšaukti.
+	An illegal position can't start a game: correct it in the diagram editor first.	Neteisėta pozicija negali pradėti partijos: pirmiausia pataisykite ją diagramos rengyklėje.
+	Games not saved (an illegal position has no PGN): {n}	Neįrašytos partijos (neleistina pozicija neturi PGN): {n}

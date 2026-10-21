@@ -961,6 +961,10 @@ pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, he
                                         edit = Some(MoveEdit::Delete(*node));
                                         ui.close();
                                     }
+                                    if ui.button(tl!("New game from this position")).clicked() {
+                                        crate::chess_collection::ask_new_game_from(ui.ctx(), *node);
+                                        ui.close();
+                                    }
                                 });
                             }
                             Token::Comment { text, .. } => {
@@ -1303,7 +1307,7 @@ pub(crate) fn moves_column(
     let below_top = ui.cursor().top();
     notes(ui, t, state);
     ui.add_space(4.0);
-    let games = crate::chess_collection::games_section(ui, t, &chess.games);
+    let games = crate::chess_collection::games_section(ui, t, &mut chess.games);
     let fields = sections(ui, chess.board_mut());
     let measured = ui.cursor().top() - below_top;
     if measured.is_finite() && (measured - below).abs() > 0.5 {

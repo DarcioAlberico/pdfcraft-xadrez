@@ -2804,3 +2804,14 @@ animation effects	Off	Aus
 	Moves left off the board (more than it holds): {n}	Nicht aufs Brett übernommene Züge (mehr, als es fasst): {n}
 	Double-click to open this game on the board.	Doppelklicken, um diese Partie auf dem Brett zu öffnen.
 	Open this game on the board	Diese Partie auf dem Brett öffnen
+# Chess ▸ PGN toolbar: T14, the list of games (a game's menu and row buttons, the delete question, a new game from a position). "New game from this position", "Duplicate game", "Rename game…" and "Delete game…" are command names too.
+	Rename…	Umbenennen…
+	Duplicate	Duplizieren
+	Delete…	Löschen…
+	Rename game…	Partie umbenennen…
+	Duplicate game	Partie duplizieren
+	Delete game…	Partie löschen…
+	New game from this position	Neue Partie ab dieser Stellung
+	Delete this game? It can't be undone.	Diese Partie löschen? Das lässt sich nicht rückgängig machen.
+	An illegal position can't start a game: correct it in the diagram editor first.	Mit einer ungültigen Stellung kann keine Partie beginnen: zuerst im Diagrammeditor korrigieren.
+	Games not saved (an illegal position has no PGN): {n}	Nicht gespeicherte Partien (eine ungültige Stellung hat kein PGN): {n}

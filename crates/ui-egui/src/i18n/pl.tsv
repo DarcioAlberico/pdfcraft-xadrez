@@ -2779,3 +2779,14 @@ animation effects	Off	Wyłączone
 	Moves left off the board (more than it holds): {n}	Ruchy pominięte na szachownicy (więcej, niż mieści): {n}
 	Double-click to open this game on the board.	Kliknij dwukrotnie, aby otworzyć tę partię na szachownicy.
 	Open this game on the board	Otwórz tę partię na szachownicy
+# Chess ▸ PGN toolbar: T14, the list of games (a game's menu and row buttons, the delete question, a new game from a position). "New game from this position", "Duplicate game", "Rename game…" and "Delete game…" are command names too.
+	Rename…	Zmień nazwę…
+	Duplicate	Duplikuj
+	Delete…	Usuń…
+	Rename game…	Zmień nazwę partii…
+	Duplicate game	Duplikuj partię
+	Delete game…	Usuń partię…
+	New game from this position	Nowa partia od tej pozycji
+	Delete this game? It can't be undone.	Usunąć tę partię? Tego nie można cofnąć.
+	An illegal position can't start a game: correct it in the diagram editor first.	Nielegalna pozycja nie może rozpocząć partii: najpierw popraw ją w edytorze diagramu.
+	Games not saved (an illegal position has no PGN): {n}	Niezapisane partie (niedozwolona pozycja nie ma PGN): {n}

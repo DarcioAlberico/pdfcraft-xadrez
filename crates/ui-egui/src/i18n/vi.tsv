@@ -3058,3 +3058,13 @@ chess side	Black	Đen
 	Moves left off the board (more than it holds): {n}	Nước đi bị bỏ ngoài bàn cờ (nhiều hơn mức bàn cờ chứa được): {n}
 	Double-click to open this game on the board.	Nhấp đúp để mở ván này trên bàn cờ.
 	Open this game on the board	Mở ván này trên bàn cờ
+# Chess ▸ PGN toolbar: T14, the list of games (a game's menu and row buttons, the delete question, a new game from a position). "New game from this position", "Duplicate game", "Rename game…" and "Delete game…" are command names too.
+	Rename…	Đổi tên…
+	Delete…	Xóa…
+	Rename game…	Đổi tên ván cờ…
+	Duplicate game	Nhân bản ván cờ
+	Delete game…	Xóa ván cờ…
+	New game from this position	Ván mới từ thế cờ này
+	Delete this game? It can't be undone.	Xóa ván cờ này? Không thể hoàn tác.
+	An illegal position can't start a game: correct it in the diagram editor first.	Không thể bắt đầu ván cờ từ thế cờ không hợp lệ: hãy sửa trước trong trình chỉnh sửa sơ đồ.
+	Games not saved (an illegal position has no PGN): {n}	Ván cờ chưa được lưu (thế cờ không hợp lệ không có PGN): {n}

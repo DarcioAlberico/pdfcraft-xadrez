@@ -2825,3 +2825,14 @@ animation effects	Off	Вимкнено
 	Moves left off the board (more than it holds): {n}	Ходи, що не ввійшли на дошку (більше, ніж вона вміщує): {n}
 	Double-click to open this game on the board.	Двічі клацніть, щоб відкрити цю партію на дошці.
 	Open this game on the board	Відкрити цю партію на дошці
+# Chess ▸ PGN toolbar: T14, the list of games (a game's menu and row buttons, the delete question, a new game from a position). "New game from this position", "Duplicate game", "Rename game…" and "Delete game…" are command names too.
+	Rename…	Перейменувати…
+	Duplicate	Дублювати
+	Delete…	Видалити…
+	Rename game…	Перейменувати партію…
+	Duplicate game	Дублювати партію
+	Delete game…	Видалити партію…
+	New game from this position	Нова партія з цієї позиції
+	Delete this game? It can't be undone.	Видалити цю партію? Цю дію не можна скасувати.
+	An illegal position can't start a game: correct it in the diagram editor first.	З нелегальної позиції не можна почати партію: спершу виправте її в редакторі діаграми.
+	Games not saved (an illegal position has no PGN): {n}	Не збережено партій (недопустима позиція не має PGN): {n}
