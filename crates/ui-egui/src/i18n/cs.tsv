@@ -2787,7 +2787,9 @@ animation effects	Off	Vypnuto
 	Double check sign	Značka dvojitého šachu
 	Glyph palette	Paleta značek
 	Close the glyph palette	Zavřít paletu značek
-	Puts the character into the field you were typing in, or at the end of the move's comment.	Vloží znak do pole, do kterého jste psali, nebo na konec komentáře k tahu.
+	Glyphs go on the move shown and the other characters at the end of its comment, or all into the field you were typing in.	Značky se přidají k zobrazenému tahu a ostatní znaky na konec jeho komentáře, nebo vše do pole, do kterého jste psali.
+	Figurines and signs	Figurky a značky
+	Remove all glyphs	Odstranit všechny značky
 	Comment before {move}	Komentář před {move}
 	In PGN this comment joins the comment before the game's first move.	V PGN se tento komentář spojí s komentářem před prvním tahem partie.
 	In PGN this comment is written after the previous move.	V PGN se tento komentář zapíše za předchozí tah.

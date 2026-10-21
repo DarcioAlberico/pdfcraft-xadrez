@@ -173,9 +173,8 @@ pub struct BoardState {
     pub(crate) history: GameHistory,
     /// The move shown (and the game's revision) when the notation last scrolled to it.
     revealed: Option<(NodeId, u64)>,
-    /// The comment editor (the comment before the move too) and the glyph palette are open.
+    /// The comment editor (the comment before the move too) is open.
     pub(crate) comment_open: bool,
-    pub(crate) palette_open: bool,
     /// The comment field takes the keyboard when it is drawn next.
     pub(crate) focus_comment: bool,
     /// Where the glyph palette types.
@@ -217,7 +216,6 @@ impl Default for BoardState {
             history: GameHistory::default(),
             revealed: None,
             comment_open: false,
-            palette_open: false,
             focus_comment: false,
             typing: Default::default(),
             fresh: Default::default(),
@@ -836,8 +834,11 @@ fn status(state: &BoardState) -> (String, Color32) {
 /// What a move's menu asked for.
 enum MoveEdit {
     Go(NodeId),
-    /// The glyph brush (T15) clicked on a move, with its glyph (White's code).
+    /// The glyph brush (T15) clicked on a move, or a glyph chosen in its menu (U1), with its glyph
+    /// (White's code): on the move, or off it.
     Brush(NodeId, u16),
+    /// "Remove all glyphs" in a move's menu (U1).
+    ClearGlyphs(NodeId),
     /// The move's diagram mark, put on or taken off (T15).
     Diagram(NodeId),
     /// A rail tool, on what it acts on for the move.
@@ -978,6 +979,16 @@ pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, he
                                         ui.close();
                                     }
                                     ui.separator();
+                                    // The glyphs, on this move (U1).
+                                    if let Some(code) = crate::chess_annotate::glyph_menu(ui, state, *node) {
+                                        edit = Some(if code == crate::chess_annotate::CLEAR {
+                                            MoveEdit::ClearGlyphs(*node)
+                                        } else {
+                                            MoveEdit::Brush(*node, code)
+                                        });
+                                        ui.close();
+                                    }
+                                    ui.separator();
                                     let marked = state.game.has_diagram(*node);
                                     if ui.add(egui::Button::new(tl!("Diagram here")).selected(marked)).clicked() {
                                         edit = Some(MoveEdit::Diagram(*node));
@@ -1024,6 +1035,7 @@ pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, he
         match e {
             MoveEdit::Go(node) => state.game.go_to_node(node),
             MoveEdit::Brush(node, code) => crate::chess_annotate::brush_glyph(state, node, code),
+            MoveEdit::ClearGlyphs(node) => crate::chess_annotate::clear_glyphs_at(state, node),
             MoveEdit::Diagram(node) => {
                 let mut full = false;
                 state.edit(|s| {
@@ -1220,8 +1232,8 @@ pub(crate) fn navigation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) 
     }
 }
 
-/// Under the notation: cutting the moves after the move shown, its comments (the one before it
-/// while the comment editor is open) and the glyph palette when it is open.
+/// Under the notation: cutting the moves after the move shown and its comments (the one before
+/// it while the comment editor is open). The glyph palette floats (`chess_annotate`, U1).
 pub(crate) fn notes(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) {
     if state.illegal.is_some() {
         return;
@@ -1236,9 +1248,6 @@ pub(crate) fn notes(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) {
     }
     let (editor, focus) = (state.comment_open, std::mem::take(&mut state.focus_comment));
     crate::chess_annotate::comments(ui, t, state, editor, focus);
-    if state.palette_open && crate::chess_annotate::palette(ui, t, state) {
-        state.palette_open = false;
-    }
 }
 
 /// The FEN, the PGN and the game's details, each a section of its own, closed until opened

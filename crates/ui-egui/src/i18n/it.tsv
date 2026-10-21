@@ -2925,7 +2925,9 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Double check sign	Segno di scacco doppio
 	Glyph palette	Tavolozza dei segni
 	Close the glyph palette	Chiudi la tavolozza dei segni
-	Puts the character into the field you were typing in, or at the end of the move's comment.	Inserisce il carattere nel campo in cui stavi scrivendo, o alla fine del commento della mossa.
+	Glyphs go on the move shown and the other characters at the end of its comment, or all into the field you were typing in.	I segni vanno sulla mossa mostrata e gli altri caratteri alla fine del suo commento, oppure tutto nel campo in cui stavi scrivendo.
+	Figurines and signs	Figurine e segni
+	Remove all glyphs	Rimuovi tutti i segni
 	Comment before {move}	Commento prima di {move}
 	In PGN this comment joins the comment before the game's first move.	In PGN questo commento si unisce al commento prima della prima mossa della partita.
 	In PGN this comment is written after the previous move.	In PGN questo commento viene scritto dopo la mossa precedente.

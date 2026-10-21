@@ -2626,7 +2626,9 @@ animation effects	Off	Выкл
 	Double check sign	Знак двойного шаха
 	Glyph palette	Палитра знаков
 	Close the glyph palette	Закрыть палитру знаков
-	Puts the character into the field you were typing in, or at the end of the move's comment.	Вставляет символ в поле, где вы печатали, или в конец комментария к ходу.
+	Glyphs go on the move shown and the other characters at the end of its comment, or all into the field you were typing in.	Знаки ставятся на показанный ход, остальные символы — в конец его комментария, или всё — в поле, где вы печатали.
+	Figurines and signs	Фигурки и знаки
+	Remove all glyphs	Убрать все знаки
 	Comment before {move}	Комментарий перед {move}
 	In PGN this comment joins the comment before the game's first move.	В PGN этот комментарий объединяется с комментарием перед первым ходом партии.
 	In PGN this comment is written after the previous move.	В PGN этот комментарий записывается после предыдущего хода.

@@ -2966,7 +2966,9 @@ chess side	Black	Juodieji
 	Double check sign	Dvigubo šacho ženklas
 	Glyph palette	Ženklų paletė
 	Close the glyph palette	Uždaryti ženklų paletę
-	Puts the character into the field you were typing in, or at the end of the move's comment.	Įterpia simbolį į lauką, kuriame rašėte, arba ėjimo komentaro pabaigoje.
+	Glyphs go on the move shown and the other characters at the end of its comment, or all into the field you were typing in.	Ženklai pridedami prie rodomo ėjimo, o kiti simboliai – jo komentaro pabaigoje, arba viskas į lauką, kuriame rašėte.
+	Figurines and signs	Figūrėlės ir ženklai
+	Remove all glyphs	Pašalinti visus ženklus
 	Comment before {move}	Komentaras prieš {move}
 	In PGN this comment joins the comment before the game's first move.	PGN faile šis komentaras sujungiamas su komentaru prieš pirmąjį partijos ėjimą.
 	In PGN this comment is written after the previous move.	PGN faile šis komentaras rašomas po ankstesnio ėjimo.

@@ -2712,7 +2712,9 @@ animation effects	Off	Ki
 	Double check sign	Kettős sakk jele
 	Glyph palette	Jelpaletta
 	Close the glyph palette	A jelpaletta bezárása
-	Puts the character into the field you were typing in, or at the end of the move's comment.	Beszúrja a karaktert abba a mezőbe, amelybe gépelt, vagy a lépés megjegyzésének végére.
+	Glyphs go on the move shown and the other characters at the end of its comment, or all into the field you were typing in.	A jelek a megjelenített lépésre kerülnek, a többi karakter a megjegyzése végére, vagy minden abba a mezőbe, amelybe gépelt.
+	Figurines and signs	Figurák és jelek
+	Remove all glyphs	Az összes jel törlése
 	Comment before {move}	Megjegyzés {move} előtt
 	In PGN this comment joins the comment before the game's first move.	PGN-ben ez a megjegyzés összeolvad a játszma első lépése előtti megjegyzéssel.
 	In PGN this comment is written after the previous move.	PGN-ben ez a megjegyzés az előző lépés után kerül.

@@ -2709,7 +2709,9 @@ animation effects	Off	Kapalı
 	Double check sign	Çifte şah işareti
 	Glyph palette	İşaret paleti
 	Close the glyph palette	İşaret paletini kapat
-	Puts the character into the field you were typing in, or at the end of the move's comment.	Karakteri yazdığınız alana ya da hamlenin yorumunun sonuna ekler.
+	Glyphs go on the move shown and the other characters at the end of its comment, or all into the field you were typing in.	İşaretler gösterilen hamleye, diğer karakterler yorumunun sonuna eklenir; ya da hepsi yazdığınız alana.
+	Figurines and signs	Taş simgeleri ve işaretler
+	Remove all glyphs	Tüm işaretleri kaldır
 	Comment before {move}	{move} öncesi yorum
 	In PGN this comment joins the comment before the game's first move.	PGN'de bu yorum, oyunun ilk hamlesinden önceki yorumla birleşir.
 	In PGN this comment is written after the previous move.	PGN'de bu yorum önceki hamleden sonra yazılır.

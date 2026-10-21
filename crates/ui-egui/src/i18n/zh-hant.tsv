@@ -2663,7 +2663,9 @@ animation effects	Off	關
 	Double check sign	雙將符號
 	Glyph palette	符號面板
 	Close the glyph palette	關閉符號面板
-	Puts the character into the field you were typing in, or at the end of the move's comment.	將字元插入你正在輸入的欄位，若沒有則加到此著法評論的末尾。
+	Glyphs go on the move shown and the other characters at the end of its comment, or all into the field you were typing in.	符號加到目前顯示的著法上，其他字元加到其評論末尾；若你正在某個欄位中輸入，則全部插入該欄位。
+	Figurines and signs	棋子符號與標記
+	Remove all glyphs	清除所有符號
 	Comment before {move}	{move} 之前的評論
 	In PGN this comment joins the comment before the game's first move.	在 PGN 中，此評論會併入對局第一步之前的評論。
 	In PGN this comment is written after the previous move.	在 PGN 中，此評論寫在前一步之後。

@@ -2730,7 +2730,9 @@ chess side	Black	Pretas
 	Double check sign	Sinal de xeque duplo
 	Glyph palette	Paleta de glifos
 	Close the glyph palette	Fechar a paleta de glifos
-	Puts the character into the field you were typing in, or at the end of the move's comment.	Insere o caractere no campo em que você estava digitando, ou no fim do comentário do lance.
+	Glyphs go on the move shown and the other characters at the end of its comment, or all into the field you were typing in.	Os sinais vão para o lance mostrado e os demais caracteres para o fim do comentário dele, ou tudo para o campo em que você estava digitando.
+	Figurines and signs	Figuras e sinais
+	Remove all glyphs	Remover todos os sinais
 	Comment before {move}	Comentário antes de {move}
 	In PGN this comment joins the comment before the game's first move.	No PGN, este comentário se junta ao comentário antes do primeiro lance da partida.
 	In PGN this comment is written after the previous move.	No PGN, este comentário sai depois do lance anterior.

@@ -2990,7 +2990,9 @@ certificate	Version	الإصدار
 	Double check sign	علامة الكش المزدوج
 	Glyph palette	لوحة الرموز
 	Close the glyph palette	إغلاق لوحة الرموز
-	Puts the character into the field you were typing in, or at the end of the move's comment.	يُدرج الحرف في الحقل الذي كنت تكتب فيه، أو في نهاية تعليق النقلة.
+	Glyphs go on the move shown and the other characters at the end of its comment, or all into the field you were typing in.	تُوضع الرموز على النقلة المعروضة وبقية الحروف في نهاية تعليقها، أو كلها في الحقل الذي كنت تكتب فيه.
+	Figurines and signs	رموز القطع والعلامات
+	Remove all glyphs	إزالة كل الرموز
 	Comment before {move}	تعليق قبل {move}
 	In PGN this comment joins the comment before the game's first move.	في PGN يُدمج هذا التعليق مع التعليق الذي يسبق النقلة الأولى في المباراة.
 	In PGN this comment is written after the previous move.	في PGN يُكتب هذا التعليق بعد النقلة السابقة.

@@ -2676,7 +2676,9 @@ animation effects	Off	Изключени
 	Double check sign	Знак за двоен шах
 	Glyph palette	Палитра със знаци
 	Close the glyph palette	Затваряне на палитрата със знаци
-	Puts the character into the field you were typing in, or at the end of the move's comment.	Вмъква знака в полето, в което пишехте, или в края на коментара към хода.
+	Glyphs go on the move shown and the other characters at the end of its comment, or all into the field you were typing in.	Знаците се поставят на показания ход, а другите символи – в края на коментара му, или всички в полето, в което пишехте.
+	Figurines and signs	Фигурки и знаци
+	Remove all glyphs	Премахване на всички знаци
 	Comment before {move}	Коментар преди {move}
 	In PGN this comment joins the comment before the game's first move.	В PGN този коментар се слива с коментара преди първия ход на партията.
 	In PGN this comment is written after the previous move.	В PGN този коментар се записва след предишния ход.
