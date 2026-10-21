@@ -13,7 +13,11 @@
 //! the game a PGN field: both can be copied, or edited and loaded back; the two and the details
 //! are sections, closed until opened. The right button draws on the board, as on lichess: a
 //! click circles a square and a drag draws an arrow (Shift red, Alt blue, Ctrl yellow, green
-//! otherwise); the drawings belong to the position, and a left click on the board clears them.
+//! otherwise). The drawings belong to the move shown (U7): they are the game's, each one an undo
+//! step, and go into its PGN as `[%csl]`/`[%cal]` commands in the move's comment
+//! (`pdfcraft_chess::game::Drawing`). A left click no longer clears them, since that would take
+//! a book's drawings off as soon as a piece is moved; the Analysis section's Clear drawings does.
+//! An illegal position, which has no game, keeps its drawings beside it, by its FEN.
 //!
 //! It is the study board too (T5c, D11 b): `chess_study_ui` adds position set-up (a rail tool),
 //! engine analysis with an evaluation bar beside the board, and the material, in an Analysis
@@ -28,7 +32,7 @@ use std::collections::HashMap;
 use egui::{Color32, Key, PointerButton, Pos2, Rect, Stroke, TextureHandle, vec2};
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::pdfcraft_chess::draw::{BoardStyle, PieceSet, Rgb};
-use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, GameError, NodeId, Outcome, Token};
+use pdfcraft_engine::chess::pdfcraft_chess::game::{DrawColor, Drawing, Game, GameError, NodeId, Outcome, Token};
 use pdfcraft_engine::chess::pdfcraft_chess::placement::{Color, Piece, PieceKind, Placement, Square};
 
 use crate::chess_history::{ChessEdit, GameHistory, Snapshot};
@@ -77,11 +81,11 @@ impl Sizing {
     }
 }
 
-/// Most positions that keep drawings; the oldest go first.
+/// Most illegal positions that keep drawings; the oldest go first.
 const MAX_MARKED_POSITIONS: usize = 512;
 
-/// Most drawings on one position.
-const MAX_MARKS: usize = 64;
+/// Most drawings on one position (as many as a move of the game keeps).
+const MAX_MARKS: usize = pdfcraft_engine::chess::pdfcraft_chess::game::MAX_DRAWINGS;
 
 /// The colours drawings come in.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -106,6 +110,27 @@ impl MarkColor {
             MarkColor::Yellow
         } else {
             MarkColor::Green
+        }
+    }
+
+    /// The game's colour for a hand-made drawing (`None` for the engine's arrow, which is not
+    /// the game's).
+    fn to_draw(self) -> Option<DrawColor> {
+        match self {
+            MarkColor::Green => Some(DrawColor::Green),
+            MarkColor::Red => Some(DrawColor::Red),
+            MarkColor::Blue => Some(DrawColor::Blue),
+            MarkColor::Yellow => Some(DrawColor::Yellow),
+            MarkColor::Engine => None,
+        }
+    }
+
+    fn from_draw(color: DrawColor) -> MarkColor {
+        match color {
+            DrawColor::Green => MarkColor::Green,
+            DrawColor::Red => MarkColor::Red,
+            DrawColor::Blue => MarkColor::Blue,
+            DrawColor::Yellow => MarkColor::Yellow,
         }
     }
 
@@ -164,7 +189,8 @@ pub struct BoardState {
     /// (spaces collapsed, ends trimmed), so a field re-read from it every frame would eat a space
     /// typed at the end.
     draft: Option<Draft>,
-    /// The drawings, by position (its FEN), and the order the positions got their first one.
+    /// The drawings on illegal positions (a legal one's are its game's), by FEN, and the order
+    /// the positions got their first one.
     marks: HashMap<String, Vec<Mark>>,
     marked_order: Vec<String>,
     /// Where a right-button drag started.
@@ -531,14 +557,26 @@ impl BoardState {
         });
     }
 
-    /// The drawings on the position shown.
-    pub fn marks(&self) -> &[Mark] {
-        self.marks.get(&self.current_fen()).map_or(&[], Vec::as_slice)
+    /// The drawings on the position shown: the move shown's, or an illegal position's.
+    pub fn marks(&self) -> Vec<Mark> {
+        if self.illegal.is_some() {
+            return self.marks.get(&self.current_fen()).cloned().unwrap_or_default();
+        }
+        let drawings = self.game.drawings(self.game.current());
+        drawings.iter().map(|d| Mark { from: d.from, to: d.to, color: MarkColor::from_draw(d.color) }).collect()
     }
 
     /// Draw `mark` on the position shown, or take it off when it is there already in that
-    /// colour; the same squares in another colour are recoloured.
+    /// colour; the same squares in another colour are recoloured. On a legal position it is a
+    /// change to the move shown, one undo step; the engine's colour is never drawn.
     pub fn toggle_mark(&mut self, mark: Mark) {
+        let Some(color) = mark.color.to_draw() else { return };
+        if self.illegal.is_none() {
+            let node = self.game.current();
+            let drawing = Drawing { from: mark.from, to: mark.to, color };
+            self.edit(|s| s.game.toggle_drawing(node, drawing).then_some(ChessEdit::Draw));
+            return;
+        }
         let key = self.current_fen();
         if !self.marks.contains_key(&key) {
             if self.marked_order.len() >= MAX_MARKED_POSITIONS && !self.marked_order.is_empty() {
@@ -562,8 +600,13 @@ impl BoardState {
         }
     }
 
-    /// Take the drawings off the position shown.
+    /// Take the drawings off the position shown (on a legal position, one undo step).
     pub fn clear_marks(&mut self) {
+        if self.illegal.is_none() {
+            let node = self.game.current();
+            self.edit(|s| s.game.clear_drawings(node).then_some(ChessEdit::ClearDrawings));
+            return;
+        }
         let key = self.current_fen();
         if self.marks.remove(&key).is_some() {
             self.marked_order.retain(|k| *k != key);
@@ -709,7 +752,6 @@ pub(crate) fn board_view_sized(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardS
         && let Some(sq) = response.interact_pointer_pos().and_then(|p| at(state, p))
     {
         // Dragging picks the piece up; dropping it on its own square leaves it picked.
-        state.clear_marks();
         if state.selected != Some(sq) {
             state.click(sq);
         }
@@ -722,7 +764,6 @@ pub(crate) fn board_view_sized(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardS
     } else if response.clicked()
         && let Some(sq) = response.interact_pointer_pos().and_then(|p| at(state, p))
     {
-        state.clear_marks();
         state.click(sq);
     }
     // The right button draws: a click circles a square, a drag draws an arrow.
@@ -802,8 +843,8 @@ pub(crate) fn board_view_sized(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardS
         }
     }
     // The drawings: the overlay, the position's own, and the arrow being drawn.
-    for mark in overlay.iter().chain(state.marks()) {
-        paint_mark(&painter, state, rect, *mark);
+    for mark in overlay.iter().copied().chain(state.marks()) {
+        paint_mark(&painter, state, rect, mark);
     }
     if response.dragged_by(PointerButton::Secondary)
         && let (Some(from), Some(to)) = (state.drawing, response.interact_pointer_pos().and_then(|p| at(state, p)))
@@ -1002,6 +1043,8 @@ pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, he
                                     }
                                 });
                             }
+                            // A comment with only drawings has no text to show.
+                            Token::Comment { text, .. } if text.is_empty() => {}
                             Token::Comment { text, .. } => {
                                 ui.label(egui::RichText::new(text).italics().small().color(t.text_muted));
                             }

@@ -2482,6 +2482,8 @@ animation effects	Off	ఆఫ్
 	Empty board	ఖాళీ బోర్డు
 	Play from this position, as a new game.	ఈ స్థితి నుండి కొత్త ఆటగా ఆడండి.
 	Clear drawings	చిత్రాలను తుడిచివేయి
+	Draw on the board	బోర్డుపై గీయడం
+chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	గడిని వృత్తంతో గుర్తించడానికి దానిపై కుడి క్లిక్ చేయండి, లేదా బాణం గీయడానికి కుడి బటన్‌తో లాగండి (Shift ఎరుపు, Alt నీలం, Ctrl పసుపు).
 	Engine analysis	ఇంజిన్ విశ్లేషణ
 	Lines:	లైన్లు:

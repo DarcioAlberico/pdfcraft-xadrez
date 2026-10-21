@@ -2579,6 +2579,8 @@ animation effects	Off	Ανενεργά
 	Empty board	Κενή σκακιέρα
 	Play from this position, as a new game.	Παίξτε από αυτή τη θέση, ως νέα παρτίδα.
 	Clear drawings	Διαγραφή σχεδίων
+	Draw on the board	σχεδίασης στη σκακιέρα
+chess undo step	Clear drawings	διαγραφής σχεδίων
 	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	Κάντε δεξί κλικ σε ένα τετράγωνο για να το κυκλώσετε ή σύρετε με το δεξί κουμπί για να σχεδιάσετε βέλος (Shift κόκκινο, Alt μπλε, Ctrl κίτρινο).
 	Engine analysis	Ανάλυση μηχανής
 	Lines:	Γραμμές:

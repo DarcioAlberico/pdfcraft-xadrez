@@ -7,13 +7,16 @@
 //!   piece, a click on the same piece or a right-click empties the square), the start position
 //!   or an empty board, side to move and castling; Done plays from it as a new game, one undo
 //!   step.
-//! - **Drawings**: arrows and circles drawn with the right button (`chess_board_ui`), kept for
-//!   each position; the Analysis section clears them and says how they are drawn.
+//! - **Drawings**: arrows and circles drawn with the right button (`chess_board_ui`), kept on
+//!   the move shown and written into the game's PGN (`[%csl]`/`[%cal]`, U7); the Analysis
+//!   section clears them and says how they are drawn.
 //! - **Engine analysis**, in the Analysis section (closed until opened): the user's own UCI
 //!   engine (`engine::chess::analysis`) analyses the position shown, with a thin evaluation bar
 //!   beside the board, the best lines (a click on one of their moves plays the line up to it) and
 //!   the best move as an arrow. None ships with PdfCraft; the desktop app finds one or the user
-//!   picks one, and the web build has none. The engine rests while the Board panel is not drawn
+//!   picks one, and the web build has none. The program picked and the number of lines are kept
+//!   in the settings (`chess_engine`, U7: [`StudyState::to_json`]); the engine is started only
+//!   when analysis is switched on. The engine rests while the Board panel is not drawn
 //!   (another tab in front of it, closed, or Home mode): [`StudyState::new_frame`].
 //! - **Material**: what each side is ahead by, as pieces and points (in the Analysis section).
 
@@ -170,7 +173,39 @@ impl Default for StudyState {
     }
 }
 
+/// Longest engine path kept from the settings, in bytes.
+#[cfg(not(target_arch = "wasm32"))]
+const MAX_ENGINE_PATH: usize = 4096;
+
 impl StudyState {
+    /// The engine preferences for the settings file: the program picked (desktop; `null` when
+    /// none was) and the lines shown.
+    pub(crate) fn to_json(&self) -> serde_json::Value {
+        #[cfg(not(target_arch = "wasm32"))]
+        let path = self.engine_path.as_ref().map(|p| p.to_string_lossy().into_owned());
+        #[cfg(target_arch = "wasm32")]
+        let path: Option<String> = None;
+        serde_json::json!({ "path": path, "lines": self.lines })
+    }
+
+    /// The engine preferences from the settings file. It is untrusted: lines outside 1–3 are
+    /// ignored, and so is a path that is empty, too long, not absolute, has a NUL in it or no
+    /// longer names a file (the engine is then looked for as when none was picked). Analysis
+    /// stays off until switched on.
+    pub(crate) fn restore(&mut self, v: &serde_json::Value) {
+        if let Some(lines) = v["lines"].as_u64().and_then(|n| u32::try_from(n).ok()).filter(|n| (1..=3).contains(n)) {
+            self.lines = lines;
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(path) = v["path"].as_str().filter(|p| !p.is_empty() && p.len() <= MAX_ENGINE_PATH && !p.contains('\0')) {
+            let path = PathBuf::from(path);
+            if path.is_absolute() && path.is_file() {
+                self.engine_path = Some(path);
+                self.restart();
+            }
+        }
+    }
+
     /// The board is not shown: the engine stops searching (it starts again when the board is
     /// back).
     pub fn pause(&mut self) {

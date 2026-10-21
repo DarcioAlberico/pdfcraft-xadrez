@@ -18,10 +18,12 @@ use crate::fen::Position;
 use crate::placement::{Color, Piece, PieceKind, Placement, Square};
 use crate::san::{Lang, San, SanBody, color_from_cozy, kind_from_cozy, square_from_cozy, square_to_cozy, to_cozy_kind};
 
+mod drawing;
 mod graft;
 mod line;
 mod structure;
 
+pub use drawing::{DrawColor, Drawing, MAX_DRAWINGS, drawing_commands, split_drawings};
 pub use graft::{GraftMode, GraftReport, GraftStop, GraftStopReason, MAX_LEFTOVER_LEN};
 pub use structure::{NodePath, NodeSource, Shift, StructureError};
 
@@ -143,6 +145,9 @@ struct Node {
     /// The comment before the move (none on the start, whose own comment already comes before
     /// the first move).
     comment_before: String,
+    /// The drawings on the position after the move (squares first, then arrows), written into
+    /// the comment after it.
+    drawings: Vec<Drawing>,
     /// Where on a page the move was read, when it was.
     source: Option<NodeSource>,
     /// Moves from the start.
@@ -162,6 +167,7 @@ impl Node {
             nags: Vec::new(),
             comment: String::new(),
             comment_before: String::new(),
+            drawings: Vec::new(),
             source: None,
             ply: 0,
             depth: 0,
@@ -473,6 +479,7 @@ impl Game {
             nags: Vec::new(),
             comment: String::new(),
             comment_before: String::new(),
+            drawings: Vec::new(),
             source: None,
             ply,
             depth,
@@ -594,13 +601,17 @@ impl Game {
     }
 
     /// Set the comment after move `node`, cut to [`MAX_COMMENT_LEN`]. Braces, which end a PGN
-    /// comment, become parentheses.
+    /// comment, become parentheses. Drawing commands in it (`[%csl …]`, `[%cal …]`) are taken
+    /// out and drawn on the move's position, as reading them from a PGN does
+    /// ([`split_drawings`]): the comment's text never holds a drawing the move could hold, so
+    /// the PGN written is read back the same.
     pub fn set_comment(&mut self, node: NodeId, text: &str) {
-        let clean = clean_comment(text);
-        if let Some(n) = self.nodes.get_mut(node)
-            && n.comment != clean
-        {
+        let Some(n) = self.nodes.get_mut(node) else { return };
+        let mut drawings = n.drawings.clone();
+        let clean = clean_comment(&split_drawings(text, &mut drawings));
+        if n.comment != clean || n.drawings != drawings {
             n.comment = clean;
+            n.drawings = drawings;
             self.revision = self.revision.wrapping_add(1);
         }
     }
@@ -662,7 +673,7 @@ impl Game {
     pub fn tokens(&self) -> Vec<Token> {
         let mut out = Vec::new();
         let root = self.node(0);
-        if !root.comment.is_empty() {
+        if !root.comment.is_empty() || !root.drawings.is_empty() {
             out.push(Token::Comment { node: 0, text: root.comment.clone(), before: false });
         }
         self.emit_first_reply_before(0, &mut out);
@@ -709,7 +720,8 @@ impl Game {
             nags: n.nags.clone(),
             depth: n.depth,
         });
-        let commented = !n.comment.is_empty();
+        // Drawings are written in the comment, so a move with drawings has one.
+        let commented = !n.comment.is_empty() || !n.drawings.is_empty();
         if commented {
             out.push(Token::Comment { node: id, text: n.comment.clone(), before: false });
         }
@@ -737,13 +749,13 @@ impl Game {
         let mut glue = true; // no space before the next piece
         let mut after_comment = false;
         for token in self.tokens() {
-            if let Token::Comment { text, .. } = &token
+            if let Token::Comment { node, text, before } = &token
                 && after_comment
                 && out.ends_with('}')
             {
                 out.pop();
                 out.push(' ');
-                out.push_str(text);
+                out.push_str(&self.comment_body(*node, text, *before));
                 out.push('}');
                 continue;
             }
@@ -763,7 +775,7 @@ impl Game {
                     }
                     s
                 }
-                Token::Comment { text, .. } => format!("{{{text}}}"),
+                Token::Comment { node, text, before } => format!("{{{}}}", self.comment_body(*node, text, *before)),
                 Token::VariationStart => "(".to_owned(),
                 Token::VariationEnd => ")".to_owned(),
             };
@@ -774,6 +786,17 @@ impl Game {
             glue = matches!(token, Token::VariationStart);
         }
         out
+    }
+
+    /// What a comment token writes between its braces: for the comment after move `node`, its
+    /// drawings' commands first (so the text after them is left as it was read), then its text.
+    fn comment_body(&self, node: NodeId, text: &str, before: bool) -> String {
+        let commands = if before { String::new() } else { drawing_commands(self.drawings(node)) };
+        match (commands.is_empty(), text.is_empty()) {
+            (true, _) => text.to_owned(),
+            (false, true) => commands,
+            (false, false) => format!("{commands} {text}"),
+        }
     }
 
     /// The tags read or set, in their order (the start position's `SetUp` and `FEN` are not

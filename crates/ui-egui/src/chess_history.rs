@@ -1,7 +1,7 @@
 //! Chess ▸ Undo: the chess board's game history, and which history Undo goes to.
 //!
 //! Every change to the board's game (a move played, moves deleted, a line promoted, a glyph, a
-//! comment, the game's details, a position or a PGN loaded) is one step. A step keeps the whole
+//! comment, a drawing on the board, the game's details, a position or a PGN loaded) is one step. A step keeps the whole
 //! board as it was before it ([`Snapshot`]: the game with its move shown, the illegal position
 //! shown in its place, where it came from and the board's side), so undoing it puts that back
 //! exactly. Typing in a comment or a detail field is one step per editing session of the field,
@@ -64,6 +64,10 @@ pub enum ChessEdit {
     CommentBefore,
     /// Every glyph taken off a move (typed `0`).
     ClearGlyphs,
+    /// A square coloured or an arrow drawn on the position shown, or taken off (U7).
+    Draw,
+    /// Every drawing taken off the position shown (U7).
+    ClearDrawings,
     /// The game's details (its PGN tags) typed in.
     GameDetails,
     /// Whose move it is at the start.
@@ -100,6 +104,9 @@ impl ChessEdit {
             ChessEdit::Comment => tl!("Edit move comment").to_string(),
             ChessEdit::CommentBefore => tl!("Edit the comment before a move").to_string(),
             ChessEdit::ClearGlyphs => tl!("Clear glyphs").to_string(),
+            ChessEdit::Draw => tl!("Draw on the board").to_string(),
+            // The button says it as a command; as a step it is named like the others.
+            ChessEdit::ClearDrawings => tl_ctx!("chess undo step", "Clear drawings").to_string(),
             ChessEdit::GameDetails => tl!("Edit game details").to_string(),
             ChessEdit::SideToMove => tl!("Change side to move").to_string(),
             ChessEdit::LoadFen => tl!("Load the FEN").to_string(),

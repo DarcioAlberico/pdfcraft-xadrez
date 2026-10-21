@@ -2523,6 +2523,8 @@ animation effects	Off	關
 	Empty board	空棋盤
 	Play from this position, as a new game.	從此局面開始，作為一盤新對局。
 	Clear drawings	清除標記
+	Draw on the board	在棋盤上標記
+chess undo step	Clear drawings	清除標記
 	Right-click a square to circle it, or drag with the right button to draw an arrow (Shift red, Alt blue, Ctrl yellow).	在格子上按右鍵可畫圈，按住右鍵拖曳可畫箭頭（Shift 紅色，Alt 藍色，Ctrl 黃色）。
 	Engine analysis	引擎分析
 	Lines:	變化數：
