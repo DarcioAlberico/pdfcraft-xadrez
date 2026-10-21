@@ -2814,3 +2814,6 @@ animation effects	Off	Désactivés
 	Delete this game? It can't be undone.	Supprimer cette partie ? Cette action est irréversible.
 	An illegal position can't start a game: correct it in the diagram editor first.	Une position illégale ne peut pas commencer une partie : corrigez-la d'abord dans l'éditeur de diagramme.
 	Games not saved (an illegal position has no PGN): {n}	Parties non enregistrées (une position illégale n'a pas de PGN) : {n}
+# Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).
+	Analysis	Analyse
+	Chess board: Set up a position	Échiquier : Composer une position

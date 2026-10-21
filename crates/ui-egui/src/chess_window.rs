@@ -8,11 +8,11 @@
 //! The window holds the Inspector Chess panel's Diagrams and Text tabs too (T13b): from 760 pt
 //! wide beside the board, narrower behind a Board | Diagrams | Text strip. Meanwhile the
 //! Inspector's panel only says where they are, with a button that docks the window, so no frame
-//! draws them twice (both views act on the same `ChessState`). Its Study tab, the same board with
-//! set-up and analysis, stays in the Inspector until the dock and Study merge (T5c). What picks a
-//! tab for the user (a diagram picked on the page, a diagram opened on the board, a scan) picks
-//! the window's while it is out ([`PdfCraftApp::show_chess_tab`],
-//! [`PdfCraftApp::reveal_chess_diagrams`]).
+//! draws them twice (both views act on the same `ChessState`). The board is the study board
+//! (T5c): set-up, analysis and the evaluation bar come with it. What picks a tab for the user (a
+//! diagram picked on the page, a scan) picks the window's while it is out
+//! ([`PdfCraftApp::show_chess_tab`], [`PdfCraftApp::reveal_chess_diagrams`]); a diagram opened on
+//! the board shows the window's board ([`PdfCraftApp::show_chess_board`]).
 //!
 //! On the desktop the window is a native one: an immediate viewport
 //! (`Context::show_viewport_immediate`), drawn every frame from the main window's pass, before
@@ -238,17 +238,16 @@ impl PdfCraftApp {
     }
 
     /// Show the chess panel's `tab`: in the Inspector, or in the chess window while the panel is
-    /// there, where the Study board is the window's board.
+    /// there. The board is not a tab of the panel: [`PdfCraftApp::show_chess_board`] shows it.
     pub(crate) fn show_chess_tab(&mut self, tab: ChessTab) {
         if !self.chess_window_detached() {
             self.chess.tab = tab;
             return;
         }
-        match tab {
-            ChessTab::Study => self.chess_window.show_board(),
-            ChessTab::Diagrams => self.chess_window.tab = ChessWindowTab::Diagrams,
-            ChessTab::Text => self.chess_window.tab = ChessWindowTab::Text,
-        }
+        self.chess_window.tab = match tab {
+            ChessTab::Diagrams => ChessWindowTab::Diagrams,
+            ChessTab::Text => ChessWindowTab::Text,
+        };
     }
 
     /// Show the list of diagrams where it is: the Inspector's Chess panel, or the chess window's
@@ -367,6 +366,8 @@ pub(crate) fn dock_menu(app: &mut PdfCraftApp, ui: &mut egui::Ui, panel: Panel) 
 /// itself while the board is out.
 pub(crate) fn frame(app: &mut PdfCraftApp, ctx: &egui::Context) {
     app.chess_window.shown = false;
+    // The engine rests while the board is not drawn, here or in the dock (T5c).
+    app.chess.study.new_frame();
     // The app commands the PGN tool rails asked for in the last frame (the Own window tool).
     for id in app.chess.tools.take_commands() {
         app.execute(id);
@@ -645,24 +646,44 @@ fn board_column(
         return;
     }
     let side = sizing.max_side;
+    let mut setting_up = false;
     ui.horizontal_top(|ui| {
         ui.allocate_ui_with_layout(vec2(side, ui.available_height()), egui::Layout::top_down(egui::Align::Min), |ui| {
             ui.set_width(side);
-            let state = chess.board_mut();
-            asked.board = chess_board_ui::title(ui, state, source_label);
+            asked.board = chess_board_ui::title(ui, chess.board(), source_label);
             ui.add_space(4.0);
+            if chess.tools.tool == crate::chess_tools::PgnTool::Setup {
+                // The set-up view is taller than the board's controls: it scrolls.
+                egui::ScrollArea::vertical().id_salt("chess-window-setup").auto_shrink([false, true]).show(ui, |ui| {
+                    setting_up = crate::chess_study_ui::setup_in_place(ui, t, chess, pieces);
+                });
+            } else {
+                setting_up = crate::chess_study_ui::setup_in_place(ui, t, chess, pieces);
+            }
+            if setting_up {
+                return;
+            }
+            let (study, state) = (&chess.study, chess.games.board_mut());
             chess_board_ui::view_controls(ui, state);
             ui.add_space(4.0);
-            chess_board_ui::board_view_sized(ui, t, state, pieces, &[], sizing);
+            crate::chess_study_ui::board_with_bar(ui, t, study, state, pieces, sizing);
             chess_board_ui::promotion_choice(ui, state);
             chess_board_ui::navigation(ui, t, state);
         });
         ui.separator();
         ui.vertical(|ui| {
-            // The notation fills the column's height, less what goes under it.
+            // The notation fills the column's height, less the Analysis section above it and
+            // what goes under it.
             let room = ui.available_height();
             egui::ScrollArea::vertical().id_salt("chess-window-notes").auto_shrink([false, false]).show(ui, |ui| {
-                let (fields, listed) = chess_board_ui::moves_column(ui, t, chess, room);
+                let top = ui.cursor().top();
+                if !setting_up {
+                    let (study, state) = (&mut chess.study, chess.games.board_mut());
+                    let analysis = crate::chess_study_ui::analysis_section(ui, t, study, state, pieces);
+                    asked.board = asked.board.take().or(analysis);
+                    ui.add_space(4.0);
+                }
+                let (fields, listed) = chess_board_ui::moves_column(ui, t, chess, room - (ui.cursor().top() - top));
                 asked.games = listed;
                 asked.board = asked.board.take().or(fields);
             });

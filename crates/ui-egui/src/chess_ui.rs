@@ -57,9 +57,10 @@ pub struct ChessState {
     pub pieces: Option<Arc<pdfcraft_engine::chess::pdfcraft_chess::draw::PieceSet>>,
     /// The pieces the analysis board draws with, found once (the user's piece pictures first).
     pub board_pieces: Option<Arc<pdfcraft_engine::chess::pdfcraft_chess::draw::PieceSet>>,
-    /// The panel's tab: the diagrams, the page's recognised text (S16), or the study board.
+    /// The panel's tab: the diagrams or the page's recognised text (S16).
     pub tab: crate::chess_text_ui::ChessTab,
-    /// The study board tab: set-up, engine analysis (the board itself is `board`).
+    /// What the Board panel adds as the study board: set-up, engine analysis (the board itself
+    /// is [`ChessState::board`]).
     pub study: crate::chess_study_ui::StudyState,
     /// The page last read as text.
     pub text: Option<crate::chess_text_ui::PageText>,
@@ -198,10 +199,6 @@ pub enum PanelAction {
     OpenLichess(String),
     Editor(crate::chess_editor::EditorAction),
     Text(crate::chess_text_ui::TextAction),
-    /// What the study board tab asked for.
-    Study(crate::chess_study_ui::StudyAction),
-    /// What the list of games asked for.
-    Games(crate::chess_collection::GamesAction),
     /// Put the chess window's panel back in the main window (T13b).
     DockWindow,
 }
@@ -272,7 +269,7 @@ pub(crate) fn paint(
 
 /// The Chess diagrams panel: its tabs, and the tab chosen. While the panel is in its own window
 /// (`in_window`, T13b) the Diagrams and Text tabs are drawn there and only said to be here, so
-/// one frame never draws them twice; the Study board stays here.
+/// one frame never draws them twice. The study board is the Board panel (T5c).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn panel(
     ui: &mut egui::Ui,
@@ -292,21 +289,8 @@ pub(crate) fn panel(
     ui.horizontal(|ui| {
         ui.selectable_value(&mut state.tab, ChessTab::Diagrams, tl!("Diagrams"));
         ui.selectable_value(&mut state.tab, ChessTab::Text, tl!("Text"));
-        ui.selectable_value(&mut state.tab, ChessTab::Study, tl!("Study board"));
     });
     ui.add_space(4.0);
-    if state.tab == ChessTab::Study {
-        // A board to play on, like the analysis board: the user's piece pictures first. The PGN
-        // tool rail is beside it, as beside the Board panel's (the two merge in T5c).
-        let pieces = crate::chess_editor::board_piece_set(&mut state.board_pieces);
-        return crate::chess_tools::with_rail(ui, state, |ui, state| {
-            let games = crate::chess_collection::games_section(ui, t, &mut state.games).map(PanelAction::Games);
-            let study = crate::chess_study_ui::study_tab(ui, t, &mut state.study, state.games.board_mut(), &pieces).map(PanelAction::Study);
-            games.or(study)
-        });
-    }
-    // The engine rests while its tab is not shown.
-    state.study.pause();
     if in_window {
         return in_window_note(ui, t);
     }
@@ -676,11 +660,10 @@ impl PdfCraftApp {
             PanelAction::ScanAll => self.start_chess_scan(true),
             PanelAction::Cancel => self.cancel_chess_scan(),
             PanelAction::Select(page, index) => self.select_chess_diagram(page, index, true),
+            // The Board panel is the study board (T5c): it comes forward, docked or in its window.
             PanelAction::OpenBoard(page, index) => {
                 self.select_chess_diagram(page, index, false);
-                if self.load_chess_board(page, index) {
-                    self.show_chess_tab(crate::chess_text_ui::ChessTab::Study);
-                }
+                self.open_chess_board(page, index);
             }
             PanelAction::ShowBoard => self.show_chess_board(),
             PanelAction::CopyFen(fen) => {
@@ -697,14 +680,11 @@ impl PdfCraftApp {
             PanelAction::OpenLichess(url) => self.open_url(&url),
             PanelAction::Editor(a) => self.chess_editor_action(a),
             PanelAction::Text(a) => self.chess_text_action(a),
-            PanelAction::Study(crate::chess_study_ui::StudyAction::Board(a)) => self.chess_board_action(a),
-            PanelAction::Study(crate::chess_study_ui::StudyAction::ChooseEngine) => self.choose_chess_engine(),
-            PanelAction::Games(a) => self.chess_games_action(a),
             PanelAction::DockWindow => self.set_chess_window_detached(false),
         }
     }
 
-    /// Chess ▸ Study board ▸ Choose engine: pick the UCI engine program for this session (the
+    /// Chess board ▸ Analysis ▸ Choose engine: pick the UCI engine program for this session (the
     /// picker answers on a later frame; `pick_override` stands in for it in tests).
     pub fn choose_chess_engine(&mut self) {
         #[cfg(not(target_arch = "wasm32"))]
@@ -748,7 +728,7 @@ impl PdfCraftApp {
                     let (fen, flipped) = (ed.fen(), ed.flipped);
                     // A new game in the document's games: the game on the board stays as it is.
                     if self.open_chess_game(&fen, flipped, Some(source)) {
-                        self.show_chess_tab(crate::chess_text_ui::ChessTab::Study);
+                        self.show_chess_board();
                     }
                 }
             }
@@ -861,6 +841,7 @@ impl PdfCraftApp {
                     self.select_chess_diagram(s.page, s.index, true);
                 }
             }
+            BoardAction::ChooseEngine => self.choose_chess_engine(),
         }
     }
 

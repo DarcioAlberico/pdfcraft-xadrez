@@ -2777,3 +2777,6 @@ animation effects	Off	Изключени
 	Delete this game? It can't be undone.	Да се изтрие ли тази партия? Това не може да се отмени.
 	An illegal position can't start a game: correct it in the diagram editor first.	Незаконна позиция не може да започне партия: първо я поправете в редактора на диаграми.
 	Games not saved (an illegal position has no PGN): {n}	Незаписани партии (невъзможната позиция няма PGN): {n}
+# Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).
+	Analysis	Анализ
+	Chess board: Set up a position	Шахматна дъска: Подреждане на позиция

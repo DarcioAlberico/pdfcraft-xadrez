@@ -68,6 +68,8 @@ pub enum PgnTool {
     /// Text selected on the page becomes the move's comment: `before` it (else after), and in
     /// place of what it says (`replace`, else added to it).
     Comment { before: bool, replace: bool },
+    /// The set-up view in the board's place (T5c, `chess_study_ui::setup_in_place`).
+    Setup,
 }
 
 impl PgnTool {
@@ -248,7 +250,7 @@ pub(crate) enum Entry {
 
 /// The rail, top to bottom: sections, with a separator between them.
 pub(crate) static RAIL: &[&[Entry]] = &[
-    &[Entry::Tool(NAVIGATE)],
+    &[Entry::Tool(NAVIGATE), Entry::Tool(SETUP)],
     &[Entry::Group(STRUCTURE)],
     &[Entry::Group(crate::chess_capture::CAPTURE), Entry::Tool(crate::chess_capture::COMMENT)],
     &[Entry::Group(MOVE_GLYPHS), Entry::Group(EVALUATION_GLYPHS), Entry::Group(OTHER_GLYPHS), Entry::Tool(COMMENT), Entry::Tool(PALETTE)],
@@ -270,6 +272,21 @@ const NAVIGATE: Tool = Tool {
     keys: &[ESC],
     command: Some("chess.tool.navigate"),
     kind: Kind::Mode(PgnTool::Navigate),
+    enabled: |_| true,
+    heads: None,
+    visible: |_| true,
+    on_move: None,
+    on: None,
+};
+
+/// Set up a position (T5c): a mode, so Esc or another mode leaves it, as Done and Cancel do.
+const SETUP: Tool = Tool {
+    id: "setup",
+    icon: "layout-grid",
+    label: |_| tl!("Set up a position").to_owned(),
+    keys: &[],
+    command: Some("chess.tool.setup"),
+    kind: Kind::Mode(PgnTool::Setup),
     enabled: |_| true,
     heads: None,
     visible: |_| true,
