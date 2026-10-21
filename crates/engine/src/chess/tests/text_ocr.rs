@@ -444,3 +444,32 @@ fn the_users_glyph_model_reads_an_area() {
     eprintln!("read: {}", read.plain_text());
     assert_eq!(read.lines, 1);
 }
+
+/// A character of an area, as a training sample (T11): its box rendered at the area's resolution,
+/// padded to a square and scaled to 32 × 32 gray, as a PNG with ink in it; degenerate boxes,
+/// boxes larger than a character and missing pages are refused.
+#[test]
+fn a_character_becomes_a_32_pixel_gray_sample() {
+    use crate::chess::text_ocr::{MAX_SAMPLE_BOX, SAMPLE_SIDE};
+    let (s, id) = open(two_lines());
+    // The first characters of the line set 300 pt from the top ("1.e4"), a narrow box.
+    let png = s.chess_glyph_sample(id, 0, [58.0, 288.0, 70.0, 302.0], 300.0).unwrap();
+    let img = image::load_from_memory(&png).unwrap();
+    assert_eq!((img.width(), img.height()), (SAMPLE_SIDE, SAMPLE_SIDE));
+    assert_eq!(img.color(), image::ColorType::L8);
+    let luma = img.to_luma8();
+    assert!(luma.pixels().any(|p| p.0[0] < 128), "the character's ink is in the sample");
+    assert!(luma.pixels().any(|p| p.0[0] > 200), "and paper around it");
+    // A resolution out of range is brought back into it, not refused.
+    assert!(s.chess_glyph_sample(id, 0, [58.0, 288.0, 70.0, 302.0], f32::NAN).is_ok());
+    for bad in [
+        [70.0, 288.0, 58.0, 302.0],
+        [58.0, 288.0, 58.0, 302.0],
+        [f32::INFINITY, 0.0, 1.0, 1.0],
+        [0.0, 0.0, MAX_SAMPLE_BOX + 1.0, 10.0],
+        [-50.0, -50.0, -40.0, -40.0],
+    ] {
+        assert_eq!(s.chess_glyph_sample(id, 0, bad, 300.0), Err(AreaError::Degenerate), "{bad:?}");
+    }
+    assert_eq!(s.chess_glyph_sample(id, 7, [58.0, 288.0, 70.0, 302.0], 300.0), Err(AreaError::NoPage(7)));
+}

@@ -2831,3 +2831,13 @@ animation effects	Off	Изключени
 	Read the text again with the move corrected	Прочети текста отново с поправения ход
 	The correction couldn't be made: the move wasn't found in the text.	Поправката не може да бъде направена: ходът не е намерен в текста.
 	The corrected text fits nowhere: nothing was changed.	Поправеният текст не пасва никъде: нищо не е променено.
+# Chess ▸ PGN toolbar: T11, collecting the characters corrected in an OCR area as samples for retraining the glyph model (opt-in, in the capture chip's menu; the question about a protected document reuses "Save them" and "Don't save").
+	Collect corrected characters for retraining	Събирай поправените символи за дообучение
+	Each character you correct in an OCR area is saved as a 32 × 32 picture, in a folder per character, to train the glyph model with. Nothing leaves this computer.	Всеки символ, който поправите в OCR област, се записва като изображение 32 × 32 в папка за символа, за обучение на модела на знаците. Нищо не напуска този компютър.
+	No folder chosen	Не е избрана папка
+	Choose folder…	Избери папка…
+	Choose the folder for character samples	Изберете папката за мострите на символи
+	Save character samples from this protected document?	Да се записват ли мостри на символи от този защитен документ?
+	They are saved unencrypted, in the folder you chose for retraining.	Те се записват некриптирани в папката, избрана за дообучение.
+	Collecting stopped: {n} character samples were saved this session.	Събирането е спряно: в тази сесия са записани {n} мостри на символи.
+	Couldn't save a character sample: {e}	Мострата на символа не можа да бъде записана: {e}

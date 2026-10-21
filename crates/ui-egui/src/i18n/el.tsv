@@ -2874,3 +2874,13 @@ animation effects	Off	Ανενεργά
 	Read the text again with the move corrected	Νέα ανάγνωση του κειμένου με τη διορθωμένη κίνηση
 	The correction couldn't be made: the move wasn't found in the text.	Η διόρθωση δεν έγινε: η κίνηση δεν βρέθηκε στο κείμενο.
 	The corrected text fits nowhere: nothing was changed.	Το διορθωμένο κείμενο δεν ταιριάζει πουθενά: δεν άλλαξε τίποτα.
+# Chess ▸ PGN toolbar: T11, collecting the characters corrected in an OCR area as samples for retraining the glyph model (opt-in, in the capture chip's menu; the question about a protected document reuses "Save them" and "Don't save").
+	Collect corrected characters for retraining	Συλλογή διορθωμένων χαρακτήρων για επανεκπαίδευση
+	Each character you correct in an OCR area is saved as a 32 × 32 picture, in a folder per character, to train the glyph model with. Nothing leaves this computer.	Κάθε χαρακτήρας που διορθώνετε σε περιοχή OCR αποθηκεύεται ως εικόνα 32 × 32, σε φάκελο ανά χαρακτήρα, για την εκπαίδευση του μοντέλου σημείων. Τίποτα δεν φεύγει από αυτόν τον υπολογιστή.
+	No folder chosen	Δεν επιλέχθηκε φάκελος
+	Choose folder…	Επιλογή φακέλου…
+	Choose the folder for character samples	Επιλέξτε τον φάκελο για τα δείγματα χαρακτήρων
+	Save character samples from this protected document?	Αποθήκευση δειγμάτων χαρακτήρων από αυτό το προστατευμένο έγγραφο;
+	They are saved unencrypted, in the folder you chose for retraining.	Αποθηκεύονται χωρίς κρυπτογράφηση, στον φάκελο που επιλέξατε για την επανεκπαίδευση.
+	Collecting stopped: {n} character samples were saved this session.	Η συλλογή σταμάτησε: σε αυτήν την περίοδο λειτουργίας αποθηκεύτηκαν {n} δείγματα χαρακτήρων.
+	Couldn't save a character sample: {e}	Δεν ήταν δυνατή η αποθήκευση δείγματος χαρακτήρα: {e}

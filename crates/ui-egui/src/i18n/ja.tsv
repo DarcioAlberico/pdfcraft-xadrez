@@ -2870,3 +2870,13 @@ animation effects	Off	オフ
 	Read the text again with the move corrected	指し手を修正してテキストを再読み取り
 	The correction couldn't be made: the move wasn't found in the text.	修正できませんでした: テキスト内に指し手が見つかりません。
 	The corrected text fits nowhere: nothing was changed.	修正したテキストはどこにも当てはまりません: 何も変更されていません。
+# Chess ▸ PGN toolbar: T11, collecting the characters corrected in an OCR area as samples for retraining the glyph model (opt-in, in the capture chip's menu; the question about a protected document reuses "Save them" and "Don't save").
+	Collect corrected characters for retraining	修正した文字を再学習用に収集
+	Each character you correct in an OCR area is saved as a 32 × 32 picture, in a folder per character, to train the glyph model with. Nothing leaves this computer.	OCR 範囲で修正した文字は、文字ごとのフォルダーに 32 × 32 の画像として保存され、記号モデルの学習に使われます。このコンピューターの外には何も送られません。
+	No folder chosen	フォルダーが選択されていません
+	Choose folder…	フォルダーを選択…
+	Choose the folder for character samples	文字サンプルのフォルダーを選択
+	Save character samples from this protected document?	この保護された文書から文字サンプルを保存しますか?
+	They are saved unencrypted, in the folder you chose for retraining.	再学習用に選んだフォルダーに暗号化せずに保存されます。
+	Collecting stopped: {n} character samples were saved this session.	収集を停止しました: このセッションで {n} 件の文字サンプルを保存しました。
+	Couldn't save a character sample: {e}	文字サンプルを保存できませんでした: {e}

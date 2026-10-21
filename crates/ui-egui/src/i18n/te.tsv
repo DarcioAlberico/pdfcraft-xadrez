@@ -2777,3 +2777,13 @@ animation effects	Off	ఆఫ్
 	Read the text again with the move corrected	సరిదిద్దిన ఎత్తుతో పాఠ్యాన్ని మళ్లీ చదువు
 	The correction couldn't be made: the move wasn't found in the text.	సవరణ చేయలేకపోయాము: పాఠ్యంలో ఎత్తు కనుగొనబడలేదు.
 	The corrected text fits nowhere: nothing was changed.	సవరించిన పాఠ్యం ఎక్కడా సరిపోలేదు: ఏమీ మార్చబడలేదు.
+# Chess ▸ PGN toolbar: T11, collecting the characters corrected in an OCR area as samples for retraining the glyph model (opt-in, in the capture chip's menu; the question about a protected document reuses "Save them" and "Don't save").
+	Collect corrected characters for retraining	సరిదిద్దిన అక్షరాలను మళ్లీ శిక్షణ కోసం సేకరించు
+	Each character you correct in an OCR area is saved as a 32 × 32 picture, in a folder per character, to train the glyph model with. Nothing leaves this computer.	OCR ప్రాంతంలో మీరు సరిదిద్దిన ప్రతి అక్షరం, అక్షరానికి ఒక ఫోల్డర్‌లో 32 × 32 చిత్రంగా సేవ్ అవుతుంది, గుర్తుల మోడల్‌కు శిక్షణ ఇవ్వడానికి. ఈ కంప్యూటర్ నుండి ఏదీ బయటకు వెళ్లదు.
+	No folder chosen	ఫోల్డర్ ఎంచుకోలేదు
+	Choose folder…	ఫోల్డర్ ఎంచుకో…
+	Choose the folder for character samples	అక్షర నమూనాల ఫోల్డర్‌ను ఎంచుకోండి
+	Save character samples from this protected document?	ఈ రక్షిత పత్రం నుండి అక్షర నమూనాలను సేవ్ చేయాలా?
+	They are saved unencrypted, in the folder you chose for retraining.	మళ్లీ శిక్షణ కోసం మీరు ఎంచుకున్న ఫోల్డర్‌లో అవి ఎన్‌క్రిప్ట్ చేయకుండా సేవ్ అవుతాయి.
+	Collecting stopped: {n} character samples were saved this session.	సేకరణ ఆగిపోయింది: ఈ సెషన్‌లో {n} అక్షర నమూనాలు సేవ్ అయ్యాయి.
+	Couldn't save a character sample: {e}	అక్షర నమూనాను సేవ్ చేయలేకపోయాము: {e}

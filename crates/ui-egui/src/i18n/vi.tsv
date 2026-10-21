@@ -3122,3 +3122,13 @@ chess side	Black	Đen
 	Read the text again with the move corrected	Đọc lại văn bản với nước đi đã sửa
 	The correction couldn't be made: the move wasn't found in the text.	Không thể sửa: không tìm thấy nước đi trong văn bản.
 	The corrected text fits nowhere: nothing was changed.	Văn bản đã sửa không khớp ở đâu cả: không có gì thay đổi.
+# Chess ▸ PGN toolbar: T11, collecting the characters corrected in an OCR area as samples for retraining the glyph model (opt-in, in the capture chip's menu; the question about a protected document reuses "Save them" and "Don't save").
+	Collect corrected characters for retraining	Thu thập ký tự đã sửa để huấn luyện lại
+	Each character you correct in an OCR area is saved as a 32 × 32 picture, in a folder per character, to train the glyph model with. Nothing leaves this computer.	Mỗi ký tự bạn sửa trong vùng OCR được lưu thành ảnh 32 × 32, trong một thư mục cho từng ký tự, để huấn luyện mô hình ký hiệu. Không có gì rời khỏi máy tính này.
+	No folder chosen	Chưa chọn thư mục
+	Choose folder…	Chọn thư mục…
+	Choose the folder for character samples	Chọn thư mục cho các mẫu ký tự
+	Save character samples from this protected document?	Lưu mẫu ký tự từ tài liệu được bảo vệ này?
+	They are saved unencrypted, in the folder you chose for retraining.	Chúng được lưu không mã hóa, trong thư mục bạn đã chọn để huấn luyện lại.
+	Collecting stopped: {n} character samples were saved this session.	Đã dừng thu thập: đã lưu {n} mẫu ký tự trong phiên này.
+	Couldn't save a character sample: {e}	Không thể lưu mẫu ký tự: {e}

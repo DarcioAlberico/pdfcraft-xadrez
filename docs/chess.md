@@ -155,6 +155,8 @@ In the preview, a ✗ chip (a move that could not be played where it was read, o
 
 Each correction rewrites the move where it was printed (the page's glyphs keep their place and weight) and reads the whole text again, so the preview shows what the corrected text reads as; nothing goes into the game until **Apply**. A correction that fits nowhere is refused and the text stays as it was.
 
+**Collecting corrected characters for retraining** (step T11, opt-in, desktop only). With **Collect corrected characters for retraining** on in the capture chip's menu, and a folder chosen there, each character of an OCR area that you correct (a reading picked, or a corrected move whose characters keep their boxes) is saved as a 32 × 32 gray picture in `<folder>/<character>/<confidence>_<document>_p<page>_<n>.png`, the layout of ChessVisionOFF's review queue (`revisao_ocr`): the folder is the character's class name there (`digit_3`, `upper_N`, `sym_9812` for ♔), and the name starts with the model's confidence in thousandths, so the most doubtful come first. Nothing is overwritten, at most 2,000 are saved a session, an encrypted document is asked about first (once per session; declined, nothing of it is saved), and nothing is trained in the app or leaves the computer.
+
 ### Glyphs
 
 The 28 glyphs of the PGN standard's table that books use are in three groups on the rail, each named for its meaning ("Good move", "White is slightly better"), never read out as a sign:

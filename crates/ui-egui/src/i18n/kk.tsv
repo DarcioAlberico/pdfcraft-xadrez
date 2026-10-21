@@ -2866,3 +2866,13 @@ animation effects	Off	Өшірулі
 	Read the text again with the move corrected	Мәтінді түзетілген жүріспен қайта оқу
 	The correction couldn't be made: the move wasn't found in the text.	Түзету мүмкін болмады: жүріс мәтіннен табылмады.
 	The corrected text fits nowhere: nothing was changed.	Түзетілген мәтін еш жерге сәйкес келмейді: ештеңе өзгертілмеді.
+# Chess ▸ PGN toolbar: T11, collecting the characters corrected in an OCR area as samples for retraining the glyph model (opt-in, in the capture chip's menu; the question about a protected document reuses "Save them" and "Don't save").
+	Collect corrected characters for retraining	Түзетілген таңбаларды қайта оқыту үшін жинау
+	Each character you correct in an OCR area is saved as a 32 × 32 picture, in a folder per character, to train the glyph model with. Nothing leaves this computer.	OCR аймағында түзеткен әр таңба таңбалар бойынша қалтада 32 × 32 сурет ретінде сақталады, белгілер моделін оқыту үшін. Бұл компьютерден ештеңе шықпайды.
+	No folder chosen	Қалта таңдалмады
+	Choose folder…	Қалтаны таңдау…
+	Choose the folder for character samples	Таңба үлгілерінің қалтасын таңдаңыз
+	Save character samples from this protected document?	Бұл қорғалған құжаттан таңба үлгілерін сақтау керек пе?
+	They are saved unencrypted, in the folder you chose for retraining.	Олар қайта оқыту үшін таңдалған қалтаға шифрлаусыз сақталады.
+	Collecting stopped: {n} character samples were saved this session.	Жинау тоқтатылды: осы сеанста {n} таңба үлгісі сақталды.
+	Couldn't save a character sample: {e}	Таңба үлгісін сақтау мүмкін болмады: {e}
