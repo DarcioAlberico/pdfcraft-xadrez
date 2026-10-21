@@ -332,8 +332,8 @@ pub(crate) fn armed(chess: &ChessState) -> Option<(CaptureMode, bool)> {
 
 fn mode_of(tool: PgnTool) -> Option<(CaptureMode, bool)> {
     match tool {
-        // Setting up a position (T5c) captures nothing.
-        PgnTool::Navigate | PgnTool::Setup => None,
+        // Setting up a position (T5c) and the glyph brush (T15) capture nothing.
+        PgnTool::Navigate | PgnTool::Setup | PgnTool::GlyphBrush(_) => None,
         PgnTool::Capture(mode) => Some((mode, false)),
         PgnTool::Comment { before, replace } => Some((CaptureMode::Comment { before }, replace)),
     }
@@ -823,7 +823,7 @@ fn mode_phrase(tool: PgnTool) -> &'static str {
         PgnTool::Capture(CaptureMode::Variation) => tl!("as a variation"),
         PgnTool::Capture(CaptureMode::SubVariation) => tl!("as a sub-variation"),
         PgnTool::Comment { .. } | PgnTool::Capture(CaptureMode::Comment { .. }) => tl!("as a comment"),
-        PgnTool::Capture(CaptureMode::Auto) | PgnTool::Navigate | PgnTool::Setup => tl!("automatic"),
+        PgnTool::Capture(CaptureMode::Auto) | PgnTool::Navigate | PgnTool::Setup | PgnTool::GlyphBrush(_) => tl!("automatic"),
     }
 }
 

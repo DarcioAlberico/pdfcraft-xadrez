@@ -363,6 +363,14 @@ pub const COMMANDS: &[CommandSpec] = &[
     c("chess.variation.demote", "Demote line", None, None, Nothing, "chevron-down"),
     c("chess.variation.delete", "Delete variation", None, None, Nothing, "trash-2"),
     c("chess.moves.cut", "Delete the moves after the current move", None, None, Nothing, "scissors"),
+    // T15: moving a variation among the others at its fork, a threat (a null move), the glyph
+    // brush, and the line up to the current move copied as text (the app's, not the rail's).
+    c("chess.variation.up", "Move variation up", None, None, Nothing, "arrow-up-down"),
+    c("chess.variation.down", "Move variation down", None, None, Nothing, "arrow-up-down"),
+    c("chess.moves.null", "Threat (null move)", None, None, Nothing, "triangle-alert"),
+    c("chess.tool.glyph_brush", "Chess board: Glyph brush", None, None, Nothing, "brush"),
+    c("chess.moves.copy_figurines", "Copy line with figurines", None, None, Nothing, "copy"),
+    c("chess.moves.copy_letters", "Copy line (letters)", None, None, Nothing, "copy"),
     // T6: the comment editor, the glyph palette, and the six move-quality glyphs (the other 22
     // glyphs are on the rail and typed, not registered: 28 palette entries would bury the rest).
     c("chess.comment.edit", "Edit the move's comment", None, None, Nothing, "message-square-quote"),

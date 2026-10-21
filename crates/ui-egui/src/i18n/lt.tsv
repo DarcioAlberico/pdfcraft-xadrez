@@ -3069,3 +3069,25 @@ chess side	Black	Juodieji
 # Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).
 	Analysis	Analizė
 	Chess board: Set up a position	Šachmatų lenta: Sustatyti poziciją
+# Chess ▸ PGN toolbar: T15, extras: the glyph brush, moving a variation, the threat (a null move), the diagram mark and copying a line. "Move a variation", "Play a null move" and "Diagram mark" name undo steps (each follows "Undo" or "Redo"); "Move variation up", "Move variation down", "Threat (null move)", "Chess board: Glyph brush", "Copy line with figurines" and "Copy line (letters)" are command names too.
+	Move variation up	Perkelti variantą aukštyn
+	Move variation down	Perkelti variantą žemyn
+	Threat (null move)	Grėsmė (nulinis ėjimas)
+	Glyph brush	Ženklų teptukas
+	Chess board: Glyph brush	Šachmatų lenta: Ženklų teptukas
+	Move a variation	varianto perkėlimą
+	Play a null move	nulinį ėjimą
+	Diagram mark	diagramos žymę
+	Not moved: there is no variation on the way to this move.	Neperkelta: kelyje iki šio ėjimo nėra varianto.
+	Not moved: this is the line itself, not a variation.	Neperkelta: tai pati linija, ne variantas.
+	Not moved: it is the first variation here already.	Neperkelta: tai jau pirmas variantas čia.
+	Not moved: it is the last variation here already.	Neperkelta: tai jau paskutinis variantas čia.
+	No threat here: the side to move is in check and cannot pass.	Čia nėra grėsmės: ėjimo eilės pusei paskelbtas šachas, ji negali praleisti ėjimo.
+	Diagram after {move}	Diagrama po {move}
+	Diagram here	Diagrama čia
+	Copy line with figurines	Kopijuoti liniją su figūrėlėmis
+	Copy line (letters)	Kopijuoti liniją (raidėmis)
+	Not marked: this move has as many glyphs as it can take.	Nepažymėta: šis ėjimas jau turi tiek ženklų, kiek gali.
+	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	Ženklų teptukas {glyph} ({name}): spustelėkite ėjimus, kad jį uždėtumėte ar nuimtumėte.
+	Stop (Esc)	Sustabdyti (Esc)
+	Line copied	Linija nukopijuota

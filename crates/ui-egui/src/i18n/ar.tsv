@@ -3093,3 +3093,25 @@ certificate	Version	الإصدار
 # Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).
 	Analysis	التحليل
 	Chess board: Set up a position	رقعة الشطرنج: إعداد وضعية
+# Chess ▸ PGN toolbar: T15, extras: the glyph brush, moving a variation, the threat (a null move), the diagram mark and copying a line. "Move a variation", "Play a null move" and "Diagram mark" name undo steps (each follows "Undo" or "Redo"); "Move variation up", "Move variation down", "Threat (null move)", "Chess board: Glyph brush", "Copy line with figurines" and "Copy line (letters)" are command names too.
+	Move variation up	نقل الخط الفرعي لأعلى
+	Move variation down	نقل الخط الفرعي لأسفل
+	Threat (null move)	تهديد (نقلة فارغة)
+	Glyph brush	فرشاة الرموز
+	Chess board: Glyph brush	رقعة الشطرنج: فرشاة الرموز
+	Move a variation	نقل خط فرعي
+	Play a null move	نقلة فارغة
+	Diagram mark	علامة المخطط
+	Not moved: there is no variation on the way to this move.	لم يُنقل: لا يوجد خط فرعي في الطريق إلى هذه النقلة.
+	Not moved: this is the line itself, not a variation.	لم يُنقل: هذا هو الخط نفسه وليس خطًا فرعيًا.
+	Not moved: it is the first variation here already.	لم يُنقل: إنه بالفعل الخط الفرعي الأول هنا.
+	Not moved: it is the last variation here already.	لم يُنقل: إنه بالفعل الخط الفرعي الأخير هنا.
+	No threat here: the side to move is in check and cannot pass.	لا تهديد هنا: الطرف الذي عليه الدور في كش ولا يمكنه التمرير.
+	Diagram after {move}	مخطط بعد {move}
+	Diagram here	مخطط هنا
+	Copy line with figurines	نسخ الخط بالرموز التصويرية للقطع
+	Copy line (letters)	نسخ الخط (بالحروف)
+	Not marked: this move has as many glyphs as it can take.	لم تُوضع العلامة: لهذه النقلة أقصى عدد من الرموز.
+	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	فرشاة الرموز {glyph} ({name}): انقر النقلات لوضعه أو إزالته.
+	Stop (Esc)	إيقاف (Esc)
+	Line copied	تم نسخ الخط

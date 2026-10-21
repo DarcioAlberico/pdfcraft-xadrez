@@ -2958,3 +2958,25 @@ animation effects	Off	Desactivados
 # Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).
 	Analysis	Análisis
 	Chess board: Set up a position	Tablero de ajedrez: Preparar posición
+# Chess ▸ PGN toolbar: T15, extras: the glyph brush, moving a variation, the threat (a null move), the diagram mark and copying a line. "Move a variation", "Play a null move" and "Diagram mark" name undo steps (each follows "Undo" or "Redo"); "Move variation up", "Move variation down", "Threat (null move)", "Chess board: Glyph brush", "Copy line with figurines" and "Copy line (letters)" are command names too.
+	Move variation up	Subir variante
+	Move variation down	Bajar variante
+	Threat (null move)	Amenaza (jugada nula)
+	Glyph brush	Pincel de signos
+	Chess board: Glyph brush	Tablero de ajedrez: Pincel de signos
+	Move a variation	movimiento de variante
+	Play a null move	jugada nula
+	Diagram mark	marca de diagrama
+	Not moved: there is no variation on the way to this move.	No se movió: no hay ninguna variante en el camino a esta jugada.
+	Not moved: this is the line itself, not a variation.	No se movió: es la línea misma, no una variante.
+	Not moved: it is the first variation here already.	No se movió: ya es la primera variante aquí.
+	Not moved: it is the last variation here already.	No se movió: ya es la última variante aquí.
+	No threat here: the side to move is in check and cannot pass.	No hay amenaza aquí: el bando que mueve está en jaque y no puede pasar.
+	Diagram after {move}	Diagrama tras {move}
+	Diagram here	Diagrama aquí
+	Copy line with figurines	Copiar línea con figurines
+	Copy line (letters)	Copiar línea (letras)
+	Not marked: this move has as many glyphs as it can take.	No se marcó: esta jugada ya tiene todos los signos que admite.
+	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	Pincel de signos {glyph} ({name}): haga clic en las jugadas para ponerlo o quitarlo.
+	Stop (Esc)	Detener (Esc)
+	Line copied	Línea copiada

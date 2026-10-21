@@ -2780,3 +2780,25 @@ animation effects	Off	Изключени
 # Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).
 	Analysis	Анализ
 	Chess board: Set up a position	Шахматна дъска: Подреждане на позиция
+# Chess ▸ PGN toolbar: T15, extras: the glyph brush, moving a variation, the threat (a null move), the diagram mark and copying a line. "Move a variation", "Play a null move" and "Diagram mark" name undo steps (each follows "Undo" or "Redo"); "Move variation up", "Move variation down", "Threat (null move)", "Chess board: Glyph brush", "Copy line with figurines" and "Copy line (letters)" are command names too.
+	Move variation up	Преместване на варианта нагоре
+	Move variation down	Преместване на варианта надолу
+	Threat (null move)	Заплаха (нулев ход)
+	Glyph brush	Четка за знаци
+	Chess board: Glyph brush	Шахматна дъска: Четка за знаци
+	Move a variation	преместването на вариант
+	Play a null move	нулевия ход
+	Diagram mark	маркера за диаграма
+	Not moved: there is no variation on the way to this move.	Не е преместено: няма вариант по пътя до този ход.
+	Not moved: this is the line itself, not a variation.	Не е преместено: това е самата линия, не вариант.
+	Not moved: it is the first variation here already.	Не е преместено: вече е първият вариант тук.
+	Not moved: it is the last variation here already.	Не е преместено: вече е последният вариант тук.
+	No threat here: the side to move is in check and cannot pass.	Тук няма заплаха: страната на ход е под шах и не може да пропусне хода.
+	Diagram after {move}	Диаграма след {move}
+	Diagram here	Диаграма тук
+	Copy line with figurines	Копиране на линията с фигурини
+	Copy line (letters)	Копиране на линията (букви)
+	Not marked: this move has as many glyphs as it can take.	Не е маркирано: този ход вече има максималния брой знаци.
+	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	Четка за знаци {glyph} ({name}): щракнете върху ходове, за да го поставите или махнете.
+	Stop (Esc)	Спиране (Esc)
+	Line copied	Линията е копирана

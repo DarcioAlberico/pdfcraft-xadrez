@@ -2818,3 +2818,25 @@ animation effects	Off	Aus
 # Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).
 	Analysis	Analyse
 	Chess board: Set up a position	Schachbrett: Stellung aufbauen
+# Chess ▸ PGN toolbar: T15, extras: the glyph brush, moving a variation, the threat (a null move), the diagram mark and copying a line. "Move a variation", "Play a null move" and "Diagram mark" name undo steps (each follows "Undo" or "Redo"); "Move variation up", "Move variation down", "Threat (null move)", "Chess board: Glyph brush", "Copy line with figurines" and "Copy line (letters)" are command names too.
+	Move variation up	Variante nach oben
+	Move variation down	Variante nach unten
+	Threat (null move)	Drohung (Nullzug)
+	Glyph brush	Zeichenpinsel
+	Chess board: Glyph brush	Schachbrett: Zeichenpinsel
+	Move a variation	Variante verschieben
+	Play a null move	Nullzug
+	Diagram mark	Diagrammmarke
+	Not moved: there is no variation on the way to this move.	Nicht verschoben: Auf dem Weg zu diesem Zug gibt es keine Variante.
+	Not moved: this is the line itself, not a variation.	Nicht verschoben: Das ist die Linie selbst, keine Variante.
+	Not moved: it is the first variation here already.	Nicht verschoben: Sie ist hier schon die erste Variante.
+	Not moved: it is the last variation here already.	Nicht verschoben: Sie ist hier schon die letzte Variante.
+	No threat here: the side to move is in check and cannot pass.	Keine Drohung hier: Die Seite am Zug steht im Schach und kann nicht passen.
+	Diagram after {move}	Diagramm nach {move}
+	Diagram here	Diagramm hier
+	Copy line with figurines	Linie mit Figurinen kopieren
+	Copy line (letters)	Linie kopieren (Buchstaben)
+	Not marked: this move has as many glyphs as it can take.	Nicht markiert: Dieser Zug hat schon so viele Zeichen, wie er haben kann.
+	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	Zeichenpinsel {glyph} ({name}): Klicken Sie auf Züge, um es zu setzen oder zu entfernen.
+	Stop (Esc)	Beenden (Esc)
+	Line copied	Linie kopiert

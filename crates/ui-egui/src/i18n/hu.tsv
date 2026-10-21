@@ -2816,3 +2816,25 @@ animation effects	Off	Ki
 # Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).
 	Analysis	Elemzés
 	Chess board: Set up a position	Sakktábla: Állás felállítása
+# Chess ▸ PGN toolbar: T15, extras: the glyph brush, moving a variation, the threat (a null move), the diagram mark and copying a line. "Move a variation", "Play a null move" and "Diagram mark" name undo steps (each follows "Undo" or "Redo"); "Move variation up", "Move variation down", "Threat (null move)", "Chess board: Glyph brush", "Copy line with figurines" and "Copy line (letters)" are command names too.
+	Move variation up	Változat feljebb
+	Move variation down	Változat lejjebb
+	Threat (null move)	Fenyegetés (nulla lépés)
+	Glyph brush	Jelecset
+	Chess board: Glyph brush	Sakktábla: Jelecset
+	Move a variation	változat áthelyezése
+	Play a null move	nulla lépés
+	Diagram mark	diagramjel
+	Not moved: there is no variation on the way to this move.	Nincs áthelyezve: az ehhez a lépéshez vezető úton nincs változat.
+	Not moved: this is the line itself, not a variation.	Nincs áthelyezve: ez maga a vonal, nem változat.
+	Not moved: it is the first variation here already.	Nincs áthelyezve: már ez az első változat itt.
+	Not moved: it is the last variation here already.	Nincs áthelyezve: már ez az utolsó változat itt.
+	No threat here: the side to move is in check and cannot pass.	Itt nincs fenyegetés: a lépésre következő fél sakkban áll, és nem passzolhat.
+	Diagram after {move}	Diagram ez után: {move}
+	Diagram here	Diagram ide
+	Copy line with figurines	Vonal másolása figurákkal
+	Copy line (letters)	Vonal másolása (betűkkel)
+	Not marked: this move has as many glyphs as it can take.	Nincs megjelölve: ennek a lépésnek már annyi jele van, amennyi lehet.
+	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	Jelecset {glyph} ({name}): kattintson a lépésekre a jel felrakásához vagy levételéhez.
+	Stop (Esc)	Leállítás (Esc)
+	Line copied	Vonal másolva

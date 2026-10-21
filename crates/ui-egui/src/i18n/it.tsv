@@ -3029,3 +3029,25 @@ certificate	SHA-256 digest	Impronta SHA-256
 # Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).
 	Analysis	Analisi
 	Chess board: Set up a position	Scacchiera: Imposta una posizione
+# Chess ▸ PGN toolbar: T15, extras: the glyph brush, moving a variation, the threat (a null move), the diagram mark and copying a line. "Move a variation", "Play a null move" and "Diagram mark" name undo steps (each follows "Undo" or "Redo"); "Move variation up", "Move variation down", "Threat (null move)", "Chess board: Glyph brush", "Copy line with figurines" and "Copy line (letters)" are command names too.
+	Move variation up	Sposta variante su
+	Move variation down	Sposta variante giù
+	Threat (null move)	Minaccia (mossa nulla)
+	Glyph brush	Pennello dei segni
+	Chess board: Glyph brush	Scacchiera: Pennello dei segni
+	Move a variation	spostamento della variante
+	Play a null move	mossa nulla
+	Diagram mark	segno di diagramma
+	Not moved: there is no variation on the way to this move.	Non spostata: non c'è nessuna variante sulla strada per questa mossa.
+	Not moved: this is the line itself, not a variation.	Non spostata: è la linea stessa, non una variante.
+	Not moved: it is the first variation here already.	Non spostata: è già la prima variante qui.
+	Not moved: it is the last variation here already.	Non spostata: è già l'ultima variante qui.
+	No threat here: the side to move is in check and cannot pass.	Nessuna minaccia qui: il lato che muove è sotto scacco e non può passare.
+	Diagram after {move}	Diagramma dopo {move}
+	Diagram here	Diagramma qui
+	Copy line with figurines	Copia linea con figurine
+	Copy line (letters)	Copia linea (lettere)
+	Not marked: this move has as many glyphs as it can take.	Non segnata: questa mossa ha già tutti i segni che può avere.
+	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	Pennello dei segni {glyph} ({name}): fai clic sulle mosse per metterlo o toglierlo.
+	Stop (Esc)	Ferma (Esc)
+	Line copied	Linea copiata

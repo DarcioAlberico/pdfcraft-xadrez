@@ -12,7 +12,10 @@
 //! rail, the keys the scope takes, the key hints in the names and the move list's context menu
 //! all follow from the list. The annotation tools (T6) are there too: the three glyph groups,
 //! whose buttons show their glyph as text and are named for it, the comment editor and the glyph
-//! palette (`chess_annotate`).
+//! palette (`chess_annotate`). T15 adds the glyph brush (a mode: a click on a move in the
+//! notation puts the brush's glyph on that move or takes it off, instead of going to it), moving a
+//! variation up or down among the others at its fork (Alt+↑, Alt+↓) and the threat (a null move)
+//! to the Structure group.
 //!
 //! **The key scope** (`chess_scope`, spec §4.2). While Undo goes to the game
 //! ([`ChessState::in_scope`]) and a rail was on screen in the last frame, the chess keys (Esc,
@@ -31,7 +34,7 @@ use std::time::Duration;
 
 use egui::{Align, Event, Key, Layout, Modifiers, Rect, Sense, Stroke, UiBuilder, pos2, vec2};
 use pdfcraft_engine::chess::capture::CaptureMode;
-use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, NodeId, NodePath, StructureError};
+use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, NodeId, NodePath, Shift, StructureError};
 use pdfcraft_engine::commands::Shortcut;
 
 use crate::chess_annotate::{self, TYPED_WAIT, Typed};
@@ -70,6 +73,10 @@ pub enum PgnTool {
     Comment { before: bool, replace: bool },
     /// The set-up view in the board's place (T5c, `chess_study_ui::setup_in_place`).
     Setup,
+    /// The glyph brush (T15): a click on a move in the notation puts glyph `code` (White's code;
+    /// the side's is used) on that move, or takes it off, as one undo step, instead of going to
+    /// it. A glyph chosen in a glyph group while it is armed becomes the brush's.
+    GlyphBrush(u16),
 }
 
 impl PgnTool {
@@ -77,7 +84,7 @@ impl PgnTool {
     /// switches.
     pub fn same(self, other: PgnTool) -> bool {
         match (self, other) {
-            (PgnTool::Comment { .. }, PgnTool::Comment { .. }) => true,
+            (PgnTool::Comment { .. }, PgnTool::Comment { .. }) | (PgnTool::GlyphBrush(_), PgnTool::GlyphBrush(_)) => true,
             (a, b) => a == b,
         }
     }
@@ -102,6 +109,9 @@ pub struct ToolState {
     commands: Vec<&'static str>,
     /// Glyph signs typed (T6).
     typed: Typed,
+    /// The glyph last chosen in a glyph group (White's code; 0: none yet), which the glyph brush
+    /// takes when it is armed (T15).
+    last_glyph: u16,
 }
 
 impl ToolState {
@@ -113,6 +123,20 @@ impl ToolState {
     /// The member group `id` shows.
     fn shown(&self, id: &str) -> usize {
         self.shown.iter().find(|(g, _)| *g == id).map_or(0, |(_, i)| *i)
+    }
+
+    /// The glyph the brush takes when it is armed: the one last chosen in a glyph group, `!` until
+    /// one is.
+    fn brush_glyph(&self) -> u16 {
+        if self.last_glyph == 0 { 1 } else { self.last_glyph }
+    }
+
+    /// The brush's glyph while the glyph brush is armed (White's code).
+    pub(crate) fn brush(&self) -> Option<u16> {
+        match self.tool {
+            PgnTool::GlyphBrush(code) => Some(code),
+            _ => None,
+        }
     }
 
     fn show(&mut self, id: &'static str, member: usize) {
@@ -130,28 +154,34 @@ pub(crate) struct ChessKey {
     key: Key,
     command: bool,
     shift: bool,
+    /// Alt (⌥ on macOS), alone (T15: Alt+↑ and Alt+↓ move a variation).
+    alt: bool,
 }
 
 impl ChessKey {
     pub(crate) const fn plain(key: Key) -> ChessKey {
-        ChessKey { key, command: false, shift: false }
+        ChessKey { key, command: false, shift: false, alt: false }
     }
 
     const fn shift(key: Key) -> ChessKey {
-        ChessKey { key, command: false, shift: true }
+        ChessKey { key, command: false, shift: true, alt: false }
     }
 
     const fn command(key: Key) -> ChessKey {
-        ChessKey { key, command: true, shift: false }
+        ChessKey { key, command: true, shift: false, alt: false }
     }
 
     const fn command_shift(key: Key) -> ChessKey {
-        ChessKey { key, command: true, shift: true }
+        ChessKey { key, command: true, shift: true, alt: false }
     }
 
-    /// Whether `key` pressed with `m` is this key: the same modifiers, and never Alt.
+    const fn alt(key: Key) -> ChessKey {
+        ChessKey { key, command: false, shift: false, alt: true }
+    }
+
+    /// Whether `key` pressed with `m` is this key: the same modifiers.
     fn matches(self, key: Key, m: Modifiers) -> bool {
-        key == self.key && m.command == self.command && m.shift == self.shift && !m.alt && (self.command || !(m.ctrl || m.mac_cmd))
+        key == self.key && m.command == self.command && m.shift == self.shift && m.alt == self.alt && (self.command || !(m.ctrl || m.mac_cmd))
     }
 
     /// How the key is written on this platform ("Ctrl+Shift+↑", "⇧⌘↑").
@@ -166,7 +196,12 @@ impl ChessKey {
             Key::ArrowRight => "→",
             other => other.name(),
         };
-        crate::commands::shortcut_label(ctx, Shortcut { command: self.command, shift: self.shift, mac_ctrl: false, key })
+        let label = crate::commands::shortcut_label(ctx, Shortcut { command: self.command, shift: self.shift, mac_ctrl: false, key });
+        match (self.alt, crate::commands::mac_shortcuts(ctx)) {
+            (false, _) => label,
+            (true, true) => format!("⌥{label}"),
+            (true, false) => format!("{}+{label}", crate::i18n::key_name("Alt")),
+        }
     }
 }
 
@@ -253,7 +288,14 @@ pub(crate) static RAIL: &[&[Entry]] = &[
     &[Entry::Tool(NAVIGATE), Entry::Tool(SETUP)],
     &[Entry::Group(STRUCTURE)],
     &[Entry::Group(crate::chess_capture::CAPTURE), Entry::Tool(crate::chess_capture::COMMENT)],
-    &[Entry::Group(MOVE_GLYPHS), Entry::Group(EVALUATION_GLYPHS), Entry::Group(OTHER_GLYPHS), Entry::Tool(COMMENT), Entry::Tool(PALETTE)],
+    &[
+        Entry::Group(MOVE_GLYPHS),
+        Entry::Group(EVALUATION_GLYPHS),
+        Entry::Group(OTHER_GLYPHS),
+        Entry::Tool(BRUSH),
+        Entry::Tool(COMMENT),
+        Entry::Tool(PALETTE),
+    ],
     &[Entry::Tool(crate::chess_source::FOLLOW), Entry::Tool(crate::chess_source::SHOW)],
     &[Entry::Tool(UNDO), Entry::Tool(REDO)],
     &[Entry::Tool(WINDOW)],
@@ -352,6 +394,32 @@ const STRUCTURE: Group = Group {
             on: None,
         },
         Tool {
+            id: "variation-up",
+            icon: "arrow-up-down",
+            label: |_| tl!("Move variation up").to_owned(),
+            keys: &[ChessKey::alt(Key::ArrowUp)],
+            command: Some("chess.variation.up"),
+            kind: Kind::Action(|b, t| structure(b, Op::MoveUp, t)),
+            enabled: has_moves,
+            heads: Some(|g| Op::MoveUp.heads(g, g.current())),
+            visible: |_| true,
+            on_move: Some(|g, n| Op::MoveUp.check(g, n)),
+            on: None,
+        },
+        Tool {
+            id: "variation-down",
+            icon: "arrow-up-down",
+            label: |_| tl!("Move variation down").to_owned(),
+            keys: &[ChessKey::alt(Key::ArrowDown)],
+            command: Some("chess.variation.down"),
+            kind: Kind::Action(|b, t| structure(b, Op::MoveDown, t)),
+            enabled: has_moves,
+            heads: Some(|g| Op::MoveDown.heads(g, g.current())),
+            visible: |_| true,
+            on_move: Some(|g, n| Op::MoveDown.check(g, n)),
+            on: None,
+        },
+        Tool {
             id: "cut-after",
             icon: "scissors",
             label: |_| tl!("Cut after this move").to_owned(),
@@ -362,6 +430,21 @@ const STRUCTURE: Group = Group {
             heads: None,
             visible: |_| true,
             on_move: Some(|g, n| Op::CutAfter.check(g, n)),
+            on: None,
+        },
+        // A threat (T15): the side to move passes, and what the other side would play is shown
+        // after the null move, as books do (`12... --`).
+        Tool {
+            id: "threat",
+            icon: "triangle-alert",
+            label: |_| tl!("Threat (null move)").to_owned(),
+            keys: &[],
+            command: Some("chess.moves.null"),
+            kind: Kind::Action(|b, t| structure(b, Op::Threat, t)),
+            enabled: |b| b.illegal.is_none(),
+            heads: None,
+            visible: |_| true,
+            on_move: Some(|g, n| Op::Threat.check(g, n)),
             on: None,
         },
     ],
@@ -436,6 +519,22 @@ const OTHER_GLYPHS: Group = Group {
         glyph("nag-143", 143, None),
         glyph("nag-145", 145, None),
     ],
+};
+
+/// The glyph brush (T15): a mode, armed with the glyph last chosen in a glyph group (`!` until
+/// one is); while it is armed, a glyph chosen in a group becomes the brush's.
+const BRUSH: Tool = Tool {
+    id: "glyph-brush",
+    icon: "brush",
+    label: |_| tl!("Glyph brush").to_owned(),
+    keys: &[ChessKey::plain(Key::B)],
+    command: Some("chess.tool.glyph_brush"),
+    kind: Kind::Mode(PgnTool::GlyphBrush(0)),
+    enabled: has_moves,
+    visible: |_| true,
+    heads: None,
+    on_move: None,
+    on: None,
 };
 
 const COMMENT: Tool = Tool {
@@ -678,7 +777,11 @@ fn label(tool: &Tool, board: &BoardState) -> String {
 fn is_on(tool: &Tool, chess: &ChessState) -> bool {
     match tool.kind {
         Kind::Mode(m) => m.same(chess.tools.tool),
-        Kind::Glyph(code) => chess_annotate::has_glyph(chess.board(), code),
+        // With the brush armed, its glyph shows as on; else the glyphs of the move shown.
+        Kind::Glyph(code) => match chess.tools.brush() {
+            Some(brush) => brush == code,
+            None => chess_annotate::has_glyph(chess.board(), code),
+        },
         Kind::Action(_) | Kind::Command(_) | Kind::Switch(_) => tool.on.is_some_and(|on| on(chess)),
     }
 }
@@ -754,6 +857,12 @@ pub(crate) fn run_command(chess: &mut ChessState, id: &str) -> bool {
 /// Use `tool` on `target`: arm a mode, or act.
 fn activate(chess: &mut ChessState, tool: &Tool, target: Target) {
     match tool.kind {
+        // The brush takes the glyph last chosen; arming it turns the chess scope on (its keys, and
+        // Undo on the game).
+        Kind::Mode(PgnTool::GlyphBrush(_)) => {
+            chess.tools.tool = PgnTool::GlyphBrush(chess.tools.brush_glyph());
+            chess.enter_scope();
+        }
         Kind::Mode(mode) => crate::chess_capture::arm(chess, mode),
         Kind::Action(run) => run(chess.board_mut(), target),
         Kind::Command(id) => {
@@ -761,7 +870,15 @@ fn activate(chess: &mut ChessState, tool: &Tool, target: Target) {
                 chess.tools.commands.push(id);
             }
         }
-        Kind::Glyph(code) => chess_annotate::toggle_glyph(chess.board_mut(), code),
+        Kind::Glyph(code) => {
+            chess.tools.last_glyph = code;
+            // With the brush armed, a glyph chosen is the brush's glyph, not a change to the move.
+            if chess.tools.brush().is_some() {
+                chess.tools.tool = PgnTool::GlyphBrush(code);
+            } else {
+                chess_annotate::toggle_glyph(chess.board_mut(), code);
+            }
+        }
         Kind::Switch(flip) => flip(chess),
     }
 }
@@ -1106,28 +1223,37 @@ enum Op {
     Demote,
     DeleteVariation,
     CutAfter,
+    /// A variation one place up or down among the others at its fork (T15).
+    MoveUp,
+    MoveDown,
+    /// A null move after the move (T15).
+    Threat,
 }
 
 impl Op {
-    /// Whether a variation whose head has reply index `index` is one this tool acts on.
-    fn takes(self, index: u16) -> bool {
+    /// Whether variation head `head` is one this tool acts on: its reply index, and for moving a
+    /// variation down, whether a variation comes after it.
+    fn takes(self, game: &Game, head: NodeId) -> bool {
+        let Some(index) = reply_index(game, head) else { return false };
         match self {
             Op::PromoteOne | Op::DeleteVariation => index != 0,
             Op::Demote => index == 0,
-            Op::MakeMain | Op::CutAfter => false,
+            Op::MoveUp => index >= 2,
+            Op::MoveDown => index != 0 && sibling(game, head, true).is_some(),
+            Op::MakeMain | Op::CutAfter | Op::Threat => false,
         }
     }
 
     /// The heads on the way to `from` this tool can act on, nearest first.
     fn heads(self, game: &Game, from: NodeId) -> Vec<NodeId> {
-        game.heads_on_path(from).into_iter().filter(|&h| reply_index(game, h).is_some_and(|i| self.takes(i))).collect()
+        game.heads_on_path(from).into_iter().filter(|&h| self.takes(game, h)).collect()
     }
 
     /// The move this tool acts on for `target`. For a variation tool, from a move: the nearest
     /// head it can act on, else the nearest head (to say why not).
     fn resolve(self, game: &Game, target: Target) -> Result<NodeId, String> {
         match self {
-            Op::PromoteOne | Op::Demote | Op::DeleteVariation => {
+            Op::PromoteOne | Op::Demote | Op::DeleteVariation | Op::MoveUp | Op::MoveDown => {
                 let from = match target {
                     Target::Head(head) => return Ok(head),
                     Target::Current => game.current(),
@@ -1136,7 +1262,7 @@ impl Op {
                 let nearest = game.heads_on_path(from).first().copied();
                 self.heads(game, from).first().copied().or(nearest).ok_or_else(|| self.refusal(StructureError::NoSuchMove))
             }
-            Op::MakeMain | Op::CutAfter => Ok(match target {
+            Op::MakeMain | Op::CutAfter | Op::Threat => Ok(match target {
                 Target::Current => game.current(),
                 Target::Move(node) | Target::Head(node) => node,
             }),
@@ -1148,11 +1274,14 @@ impl Op {
     fn check(self, game: &Game, node: NodeId) -> Result<Target, String> {
         let at = self.resolve(game, Target::Move(node))?;
         match self {
-            Op::PromoteOne | Op::DeleteVariation | Op::Demote => match reply_index(game, at) {
-                Some(i) if self.takes(i) => Ok(Target::Head(at)),
+            Op::PromoteOne | Op::DeleteVariation | Op::Demote | Op::MoveUp | Op::MoveDown => match reply_index(game, at) {
+                Some(_) if self.takes(game, at) => Ok(Target::Head(at)),
+                Some(i) if i != 0 && matches!(self, Op::MoveUp | Op::MoveDown) => Err(self.refusal(StructureError::NoSibling)),
                 Some(0) => Err(self.refusal(if self == Op::Demote { StructureError::NoAlternative } else { StructureError::AlreadyFirst })),
                 _ => Err(self.refusal(StructureError::NotFirst)),
             },
+            Op::Threat if game.in_check_at(at) => Err(threat_refusal()),
+            Op::Threat => Ok(Target::Move(at)),
             Op::MakeMain if on_main_line(game, at) => Err(tl!("This move is on the main line already.").to_owned()),
             Op::CutAfter if !has_reply(game, at) => Err(tl!("There are no moves after this one.").to_owned()),
             Op::MakeMain | Op::CutAfter => Ok(Target::Move(at)),
@@ -1167,6 +1296,19 @@ impl Op {
             Op::PromoteOne => game.promote_one(at).map(|()| ChessEdit::PromoteOne).map_err(refused),
             Op::Demote => game.demote(at).map(|()| ChessEdit::Demote).map_err(refused),
             Op::DeleteVariation => game.delete_variation(at).map(|()| ChessEdit::DeleteVariation).map_err(refused),
+            Op::MoveUp => game.move_variation(at, Shift::Up).map(|()| ChessEdit::MoveVariation).map_err(refused),
+            Op::MoveDown => game.move_variation(at, Shift::Down).map(|()| ChessEdit::MoveVariation).map_err(refused),
+            Op::Threat => {
+                let shown = game.current();
+                game.go_to_node(at);
+                match game.play_null() {
+                    Ok(()) => Ok(ChessEdit::NullMove),
+                    Err(_) => {
+                        game.go_to_node(shown);
+                        Err(threat_refusal())
+                    }
+                }
+            }
             Op::MakeMain => {
                 if on_main_line(game, at) {
                     return Err(tl!("This move is on the main line already.").to_owned());
@@ -1197,10 +1339,18 @@ impl Op {
             (Op::PromoteOne, _) => tl!("Not promoted: this line already continues its move."),
             (Op::DeleteVariation, StructureError::NoSuchMove) => tl!("Not deleted: there is no variation on the way to this move."),
             (Op::DeleteVariation, _) => tl!("Not deleted: this is the main line here, not a variation."),
-            (Op::MakeMain | Op::CutAfter, _) => tl!("Not done: there is no such move."),
+            (Op::MoveUp | Op::MoveDown, StructureError::NoSuchMove) => tl!("Not moved: there is no variation on the way to this move."),
+            (Op::MoveUp | Op::MoveDown, StructureError::AlreadyFirst) => tl!("Not moved: this is the line itself, not a variation."),
+            (Op::MoveUp, _) => tl!("Not moved: it is the first variation here already."),
+            (Op::MoveDown, _) => tl!("Not moved: it is the last variation here already."),
+            (Op::MakeMain | Op::CutAfter | Op::Threat, _) => tl!("Not done: there is no such move."),
         };
         text.to_owned()
     }
+}
+
+fn threat_refusal() -> String {
+    tl!("No threat here: the side to move is in check and cannot pass.").to_owned()
 }
 
 /// Use structure tool `op` on `target` as one undo step; a refusal is said in the panel, never
@@ -1318,6 +1468,41 @@ mod tests {
         assert!(Op::DeleteVariation.check(&g, e4).is_err());
     }
 
+    const THREE: &str = "1. e4 e5 (1... c5) (1... e6 2. d4) (1... d5) *";
+
+    #[test]
+    fn variations_move_up_and_down_among_their_siblings_and_never_past_the_line() {
+        // At 2.d4 in the 1...e6 variation: up puts it before 1...c5, down after 1...d5.
+        let mut g = game(THREE, &[0, 2, 0]);
+        assert_eq!(Op::MoveUp.apply(&mut g, Target::Current), Ok(ChessEdit::MoveVariation));
+        assert_eq!(g.movetext(), "1. e4 e5 (1... e6 2. d4) (1... c5) (1... d5)");
+        assert_eq!(g.san(g.current()), "d4", "the move shown stays");
+        assert!(Op::MoveUp.apply(&mut g, Target::Current).unwrap_err().contains("first variation"));
+        assert_eq!(Op::MoveDown.apply(&mut g, Target::Current), Ok(ChessEdit::MoveVariation));
+        assert_eq!(g.movetext(), "1. e4 e5 (1... c5) (1... e6 2. d4) (1... d5)");
+        let mut g = game(THREE, &[0, 3]);
+        assert!(Op::MoveDown.apply(&mut g, Target::Current).unwrap_err().contains("last variation"));
+        // On the main line there is no variation to move; a menu says so for the move.
+        let g = game(THREE, &[0, 0]);
+        assert!(Op::MoveUp.check(&g, g.current()).unwrap_err().contains("the line itself"));
+        let e6 = g.node_at(&NodePath::new(vec![0, 2])).unwrap();
+        assert_eq!(Op::MoveDown.check(&g, e6), Ok(Target::Head(e6)));
+        assert_eq!(Op::MoveUp.heads(&g, e6), [e6]);
+    }
+
+    #[test]
+    fn a_threat_is_a_null_move_after_the_move_and_never_in_check() {
+        let mut g = game("1. e4 e5 2. Nf3 *", &[0, 0]);
+        assert_eq!(Op::Threat.apply(&mut g, Target::Current), Ok(ChessEdit::NullMove));
+        assert_eq!(g.movetext(), "1. e4 e5 2. Nf3 (2. --)");
+        assert!(g.is_null(g.current()));
+        let mut g = game("1. e4 f5 2. Qh5+ *", &[0, 0, 0]);
+        let before = g.movetext();
+        assert!(Op::Threat.check(&g, g.current()).is_err());
+        assert!(Op::Threat.apply(&mut g, Target::Current).unwrap_err().contains("in check"));
+        assert_eq!((g.movetext(), g.san(g.current())), (before, "Qh5+"));
+    }
+
     #[test]
     fn up_and_down_choose_among_the_replies_at_a_fork() {
         let g = game(FORKS, &[0, 0]);
@@ -1343,11 +1528,18 @@ mod tests {
         assert!(scope_key(Key::Enter, Modifiers::NONE), "the comment editor");
         assert!(scope_key(Key::G, Modifiers::NONE), "the glyph palette");
         assert!(!scope_key(Key::G, cmd), "Ctrl+G is the app's (find next)");
-        // Not ours: the app's Undo, Select all, plain letters, Alt with the arrows.
+        // Alt with ↑ and ↓ moves a variation (T15); B arms the glyph brush.
+        assert!(scope_key(Key::ArrowUp, Modifiers::ALT));
+        assert!(scope_key(Key::ArrowDown, Modifiers::ALT));
+        assert!(scope_key(Key::B, Modifiers::NONE));
+        // Not ours: the app's Undo, Select all, plain letters, Alt with the other arrows or with
+        // more modifiers.
         assert!(!scope_key(Key::Z, cmd));
         assert!(!scope_key(Key::A, cmd));
         assert!(!scope_key(Key::S, Modifiers::NONE));
-        assert!(!scope_key(Key::ArrowUp, Modifiers::ALT));
+        assert!(!scope_key(Key::ArrowLeft, Modifiers::ALT));
+        assert!(!scope_key(Key::ArrowUp, Modifiers::ALT | Modifiers::SHIFT));
+        assert!(!scope_key(Key::ArrowUp, Modifiers::ALT | cmd));
         assert!(!scope_key(Key::Delete, cmd));
         // macOS: Ctrl with the arrows is the system's, not the command key's.
         assert!(!scope_key(Key::ArrowUp, Modifiers { ctrl: true, ..Modifiers::NONE }));
@@ -1369,7 +1561,8 @@ mod tests {
                 .iter()
                 .any(|p| id.starts_with(p))
         };
-        for spec in COMMANDS.iter().filter(|c| rail(c.id)) {
+        // Copying a line goes to the clipboard, which only the app reaches: its commands are the app's.
+        for spec in COMMANDS.iter().filter(|c| rail(c.id) && !c.id.starts_with("chess.moves.copy_")) {
             assert!(is_tool_command(spec.id), "{} runs no rail tool", spec.id);
             assert!(spec.shortcut.is_none(), "{}: the chess keys are the panel's, not the registry's", spec.id);
         }
@@ -1379,6 +1572,9 @@ mod tests {
         ctx.set_os(egui::os::OperatingSystem::Nix);
         assert_eq!(command_key(&ctx, "chess.variation.promote_one").as_deref(), Some("Ctrl+↑"));
         assert_eq!(command_key(&ctx, "chess.variation.delete").as_deref(), Some("Delete"));
+        assert_eq!(command_key(&ctx, "chess.variation.up").as_deref(), Some("Alt+↑"));
+        ctx.set_os(egui::os::OperatingSystem::Mac);
+        assert_eq!(command_key(&ctx, "chess.variation.down").as_deref(), Some("⌥↓"));
         assert_eq!(command_key(&ctx, "chess.scan"), None);
     }
 
