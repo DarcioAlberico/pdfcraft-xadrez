@@ -3115,3 +3115,14 @@ certificate	Version	الإصدار
 	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	فرشاة الرموز {glyph} ({name}): انقر النقلات لوضعه أو إزالته.
 	Stop (Esc)	إيقاف (Esc)
 	Line copied	تم نسخ الخط
+# Chess ▸ PGN toolbar: T9, the OCR area of scanned pages (its rail switch and chip, the area's notices; "OCR area" is a command name too).
+	OCR area	منطقة التعرف الضوئي
+	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	طبقة النص في هذه الصفحة مفقودة أو غير موثوقة، لذا يرسم السحب منطقة تُقرأ بالتعرف الضوئي للشطرنج. انقر لتحديد النص بدلًا من ذلك.
+	A drag draws an area to read with chess OCR. Click to select text instead.	يرسم السحب منطقة تُقرأ بالتعرف الضوئي للشطرنج. انقر لتحديد النص بدلًا من ذلك.
+	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	يتطلب التعرف الضوئي للشطرنج نموذج chess-glyphs. اضبط PDFCRAFT_MODELS على المجلد الذي يحتوي chess-glyphs.onnx.
+	The area is too large to read at once: draw a smaller one.	المنطقة أكبر من أن تُقرأ دفعة واحدة: ارسم منطقة أصغر.
+	The area couldn't be read: {e}	تعذّرت قراءة المنطقة: {e}
+	The area read was dropped: the document was edited.	أُسقطت قراءة المنطقة: تم تحرير المستند.
+	Chess OCR read nothing in the area.	لم يقرأ التعرف الضوئي للشطرنج شيئًا في المنطقة.
+	Reading the area…	جارٍ قراءة المنطقة…
+	Chess OCR corrected or doubted some words: check the moves.	صحّح التعرف الضوئي للشطرنج بعض الكلمات أو شكّ فيها: راجع النقلات.

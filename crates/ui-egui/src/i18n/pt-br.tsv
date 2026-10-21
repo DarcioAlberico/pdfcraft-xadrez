@@ -2856,3 +2856,14 @@ chess side	Black	Pretas
 	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	Pincel de sinal {glyph} ({name}): clique nos lances para pôr ou tirar o sinal.
 	Stop (Esc)	Parar (Esc)
 	Line copied	Linha copiada
+# Chess ▸ PGN toolbar: T9, the OCR area of scanned pages (its rail switch and chip, the area's notices; "OCR area" is a command name too).
+	OCR area	Área OCR
+	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	A camada de texto desta página está ausente ou não é confiável, então arrastar desenha uma área a ser lida com OCR de xadrez. Clique para selecionar texto em vez disso.
+	A drag draws an area to read with chess OCR. Click to select text instead.	Arrastar desenha uma área a ser lida com OCR de xadrez. Clique para selecionar texto em vez disso.
+	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	O OCR de xadrez precisa do modelo chess-glyphs. Defina PDFCRAFT_MODELS como a pasta que contém chess-glyphs.onnx.
+	The area is too large to read at once: draw a smaller one.	A área é grande demais para ser lida de uma vez: desenhe uma menor.
+	The area couldn't be read: {e}	Não foi possível ler a área: {e}
+	The area read was dropped: the document was edited.	A leitura da área foi descartada: o documento foi editado.
+	Chess OCR read nothing in the area.	O OCR de xadrez não leu nada na área.
+	Reading the area…	Lendo a área…
+	Chess OCR corrected or doubted some words: check the moves.	O OCR de xadrez corrigiu ou ficou em dúvida sobre algumas palavras: confira os lances.

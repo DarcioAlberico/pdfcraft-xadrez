@@ -48,6 +48,11 @@ impl PdfCraftApp {
     /// Finish a marquee gesture for the current tool.
     pub(crate) fn finish_marquee(&mut self, index: usize, done: Marquee) {
         let (page, rect, view_rect) = done;
+        // The chess OCR area (T9) draws with this gesture over any page tool.
+        if crate::chess_ocr_area::drawing(&self.chess) {
+            self.capture_area(index, page, view_rect);
+            return;
+        }
         match self.quick_tool {
             QuickTool::MarqueeZoom => {
                 let view = &mut self.views[index];

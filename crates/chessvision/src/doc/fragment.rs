@@ -36,7 +36,7 @@
 use pdfcraft_chess::fragment::{FragmentItem, MAX_FRAGMENT_ITEMS, ply_of};
 use pdfcraft_chess::nag;
 use pdfcraft_chess::san::{Lang, San, figurine_piece};
-use pdfcraft_render::text::TextGlyph;
+use pdfcraft_render::text::{PageText, TextGlyph};
 
 use super::build::inlines;
 use super::games::{GameScore, Loc, MAX_VARIATION_DEPTH, Walker};
@@ -97,6 +97,13 @@ pub struct FragmentRead {
 /// from the selection; to read it in another one, call this again.
 pub fn text_of_glyphs(glyphs: &[TextGlyph], lang: Option<Lang>) -> ChessPageText {
     chess_text::from_selection(&pdfcraft_render::text::layout(glyphs.to_vec()), lang.unwrap_or(Lang::En))
+}
+
+/// [`text_of_glyphs`] for text whose lines and word gaps are already known, kept as they are:
+/// what chess OCR read in an area of a scan (its words were cut by the reader, which knows
+/// better than a layout of ink boxes where a gap is).
+pub fn text_of_page(text: &PageText, lang: Option<Lang>) -> ChessPageText {
+    chess_text::from_selection(text, lang.unwrap_or(Lang::En))
 }
 
 /// Read a selection's chess text from the position `start_fen` (see the [module](self)).

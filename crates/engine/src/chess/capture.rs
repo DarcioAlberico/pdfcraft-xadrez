@@ -8,7 +8,8 @@
 //! **Reading.** The selection is read by the book walker in fragment mode
 //! (`pdfcraft_chessvision::doc::fragment`), from the position of each place it could go: a
 //! numbered move goes back to its line, prose becomes comments, brackets variations. Glyphs keep
-//! their weight, so a bold chain is the main line; pasted text has none.
+//! their weight, so a bold chain is the main line; pasted text and text read by chess OCR in an
+//! area of a scan ([`CaptureText::Read`]) have none.
 //!
 //! **Anchoring.** Half-moves are absolute ([`Game::abs_ply`]: `2·(n−1)`, plus one for Black,
 //! from the start FEN's move number; the start has one too). The selection's first move decides:
@@ -59,7 +60,7 @@ use pdfcraft_chessvision::chess_text::{ChessPageText, ChessRun};
 use pdfcraft_chessvision::coords::PageGeometry;
 use pdfcraft_chessvision::doc::ReviewFlag;
 use pdfcraft_chessvision::doc::fragment::{self, FragmentOptions, FragmentRead};
-use pdfcraft_render::text::TextGlyph;
+use pdfcraft_render::text::{PageText, TextGlyph};
 
 /// Most text one capture reads, in bytes (PGN toolbar spec §2).
 pub const MAX_CAPTURE_TEXT: usize = 1 << 16;
@@ -87,6 +88,11 @@ pub enum CaptureText<'a> {
     /// Glyphs from a page's text layer, in content order: their fonts give figurines and weight.
     /// With the page's `geometry`, each move keeps where it was printed on page `page`.
     Glyphs { glyphs: &'a [TextGlyph], geometry: Option<PageGeometry>, page: u32 },
+    /// What chess OCR read in an area of a scanned page (`text_ocr::AreaRead::text`), its lines
+    /// and word gaps as the reader cut them: read as [`Self::Glyphs`] are, but without weight, as
+    /// a scan has none (the moves are placed by their numbers only). With the page's `geometry`,
+    /// each move keeps where it was printed.
+    Read { text: &'a PageText, geometry: Option<PageGeometry>, page: u32 },
     /// Pasted text: no weight, no place on a page.
     Plain(&'a str),
     /// Text with the character ranges (`start..end`, in characters) set in bold: pasted rich text,
@@ -99,6 +105,7 @@ impl CaptureText<'_> {
     fn len(&self) -> usize {
         match self {
             CaptureText::Glyphs { glyphs, .. } => glyphs.iter().fold(0usize, |n, g| n.saturating_add(g.text.len())),
+            CaptureText::Read { text, .. } => text.glyphs.iter().fold(0usize, |n, g| n.saturating_add(g.text.len())),
             CaptureText::Plain(text) | CaptureText::Styled { text, .. } => text.len(),
         }
     }
@@ -562,6 +569,9 @@ fn chess_text(text: CaptureText<'_>, lang: Lang) -> (ChessPageText, FragmentOpti
     match text {
         CaptureText::Glyphs { glyphs, geometry, page } => {
             (fragment::text_of_glyphs(glyphs, Some(lang)), FragmentOptions { geometry, weight: true }, Some(page))
+        }
+        CaptureText::Read { text, geometry, page } => {
+            (fragment::text_of_page(text, Some(lang)), FragmentOptions { geometry, weight: false }, Some(page))
         }
         CaptureText::Plain(text) => {
             (fragment::text_of_glyphs(&glyphs_of_text(text, &[]), Some(lang)), FragmentOptions { geometry: None, weight: false }, None)

@@ -2803,3 +2803,14 @@ animation effects	Off	关
 	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	符号刷 {glyph}（{name}）：点击着法以添加或去除。
 	Stop (Esc)	停止 (Esc)
 	Line copied	已复制线路
+# Chess ▸ PGN toolbar: T9, the OCR area of scanned pages (its rail switch and chip, the area's notices; "OCR area" is a command name too).
+	OCR area	OCR 区域
+	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	此页的文本层缺失或不可信，因此拖动会画出一个用国际象棋 OCR 读取的区域。单击可改为选择文本。
+	A drag draws an area to read with chess OCR. Click to select text instead.	拖动会画出一个用国际象棋 OCR 读取的区域。单击可改为选择文本。
+	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	国际象棋 OCR 需要 chess-glyphs 模型。请将 PDFCRAFT_MODELS 设为包含 chess-glyphs.onnx 的文件夹。
+	The area is too large to read at once: draw a smaller one.	区域太大，无法一次读取：请画一个更小的区域。
+	The area couldn't be read: {e}	无法读取该区域：{e}
+	The area read was dropped: the document was edited.	已放弃读取区域：文档已被编辑。
+	Chess OCR read nothing in the area.	国际象棋 OCR 在该区域中没有读到任何内容。
+	Reading the area…	正在读取区域…
+	Chess OCR corrected or doubted some words: check the moves.	国际象棋 OCR 更正或怀疑了一些词：请检查着法。

@@ -2844,3 +2844,14 @@ animation effects	Off	Izklopljeni
 	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	Čopič znakov {glyph} ({name}): kliknite poteze, da ga dodate ali odstranite.
 	Stop (Esc)	Ustavi (Esc)
 	Line copied	Linija kopirana
+# Chess ▸ PGN toolbar: T9, the OCR area of scanned pages (its rail switch and chip, the area's notices; "OCR area" is a command name too).
+	OCR area	Območje OCR
+	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	Besedilna plast te strani manjka ali ji ni mogoče zaupati, zato vlečenje nariše območje za branje s šahovskim OCR. Kliknite, če želite namesto tega izbirati besedilo.
+	A drag draws an area to read with chess OCR. Click to select text instead.	Vlečenje nariše območje za branje s šahovskim OCR. Kliknite, če želite namesto tega izbirati besedilo.
+	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	Šahovski OCR potrebuje model chess-glyphs. PDFCRAFT_MODELS nastavite na mapo, ki vsebuje chess-glyphs.onnx.
+	The area is too large to read at once: draw a smaller one.	Območje je preveliko za branje naenkrat: narišite manjše.
+	The area couldn't be read: {e}	Območja ni bilo mogoče prebrati: {e}
+	The area read was dropped: the document was edited.	Branje območja je bilo zavrženo: dokument je bil urejen.
+	Chess OCR read nothing in the area.	Šahovski OCR v območju ni prebral ničesar.
+	Reading the area…	Branje območja …
+	Chess OCR corrected or doubted some words: check the moves.	Šahovski OCR je nekatere besede popravil ali o njih dvomi: preverite poteze.

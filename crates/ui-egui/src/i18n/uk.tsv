@@ -2861,3 +2861,14 @@ animation effects	Off	Вимкнено
 	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	Пензель знаків {glyph} ({name}): клацайте ходи, щоб поставити чи зняти його.
 	Stop (Esc)	Зупинити (Esc)
 	Line copied	Лінію скопійовано
+# Chess ▸ PGN toolbar: T9, the OCR area of scanned pages (its rail switch and chip, the area's notices; "OCR area" is a command name too).
+	OCR area	Область OCR
+	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	Текстовий шар цієї сторінки відсутній або ненадійний, тому перетягування малює область для читання шаховим OCR. Клацніть, щоб натомість виділяти текст.
+	A drag draws an area to read with chess OCR. Click to select text instead.	Перетягування малює область для читання шаховим OCR. Клацніть, щоб натомість виділяти текст.
+	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	Шаховому OCR потрібна модель chess-glyphs. Вкажіть у PDFCRAFT_MODELS теку, що містить chess-glyphs.onnx.
+	The area is too large to read at once: draw a smaller one.	Область завелика, щоб прочитати її за раз: намалюйте меншу.
+	The area couldn't be read: {e}	Не вдалося прочитати область: {e}
+	The area read was dropped: the document was edited.	Читання області відкинуто: документ було змінено.
+	Chess OCR read nothing in the area.	Шахове OCR нічого не прочитало в області.
+	Reading the area…	Читання області…
+	Chess OCR corrected or doubted some words: check the moves.	Шахове OCR виправило деякі слова або сумнівається в них: перевірте ходи.

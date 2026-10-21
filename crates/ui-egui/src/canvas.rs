@@ -2388,6 +2388,8 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     // A click on the page puts Undo and Redo back on the document (D12), unless it selects text
     // for a chess capture (T7a).
     let capture_armed = crate::chess_capture::armed(&app.chess).is_some();
+    // With the chess OCR area on (T9), a drag draws the area to read rather than selecting text.
+    let chess_area = crate::chess_ocr_area::drawing(&app.chess);
     if crate::chess_history::pressed_in(ui) && !capture_armed {
         app.chess.leave_scope();
     }
@@ -2778,7 +2780,7 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
         | QuickTool::SignArea { .. }
         | QuickTool::MarqueeZoom
         | QuickTool::Snapshot => false,
-    };
+    } && !chess_area;
     let prefs = &app.comment_prefs;
     let redact_mark = (app.redact_prefs.hover_fill, app.redact_prefs.opacity);
     let units = app.units;
@@ -3158,7 +3160,7 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
             if matches!(tool, QuickTool::SignArea { .. }) {
                 crate::sign_ui::page_input(ui, &resp, &xf, i, info, view);
             }
-            if matches!(tool, QuickTool::MarqueeZoom | QuickTool::Snapshot) {
+            if chess_area || matches!(tool, QuickTool::MarqueeZoom | QuickTool::Snapshot) {
                 crate::zoom_snap::page_input(ui, &resp, &xf, i, view);
             }
             if tool == QuickTool::EnhanceCamera {

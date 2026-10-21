@@ -2845,3 +2845,14 @@ animation effects	Off	Ανενεργά
 	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	Πινέλο σημείων {glyph} ({name}): κάντε κλικ σε κινήσεις για να το βάλετε ή να το αφαιρέσετε.
 	Stop (Esc)	Διακοπή (Esc)
 	Line copied	Η γραμμή αντιγράφηκε
+# Chess ▸ PGN toolbar: T9, the OCR area of scanned pages (its rail switch and chip, the area's notices; "OCR area" is a command name too).
+	OCR area	Περιοχή OCR
+	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	Το επίπεδο κειμένου αυτής της σελίδας λείπει ή δεν είναι αξιόπιστο, οπότε η μεταφορά σχεδιάζει μια περιοχή για ανάγνωση με OCR σκακιού. Κάντε κλικ για να επιλέγετε κείμενο αντί γι' αυτό.
+	A drag draws an area to read with chess OCR. Click to select text instead.	Η μεταφορά σχεδιάζει μια περιοχή για ανάγνωση με OCR σκακιού. Κάντε κλικ για να επιλέγετε κείμενο αντί γι' αυτό.
+	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	Το OCR σκακιού χρειάζεται το μοντέλο chess-glyphs. Ορίστε στο PDFCRAFT_MODELS τον φάκελο που περιέχει το chess-glyphs.onnx.
+	The area is too large to read at once: draw a smaller one.	Η περιοχή είναι πολύ μεγάλη για να διαβαστεί με μία φορά: σχεδιάστε μια μικρότερη.
+	The area couldn't be read: {e}	Δεν ήταν δυνατή η ανάγνωση της περιοχής: {e}
+	The area read was dropped: the document was edited.	Η ανάγνωση της περιοχής απορρίφθηκε: το έγγραφο επεξεργάστηκε.
+	Chess OCR read nothing in the area.	Το OCR σκακιού δεν διάβασε τίποτα στην περιοχή.
+	Reading the area…	Ανάγνωση της περιοχής…
+	Chess OCR corrected or doubted some words: check the moves.	Το OCR σκακιού διόρθωσε ή αμφισβήτησε ορισμένες λέξεις: ελέγξτε τις κινήσεις.

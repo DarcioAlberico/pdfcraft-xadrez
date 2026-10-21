@@ -3051,3 +3051,14 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	Pennello dei segni {glyph} ({name}): fai clic sulle mosse per metterlo o toglierlo.
 	Stop (Esc)	Ferma (Esc)
 	Line copied	Linea copiata
+# Chess ▸ PGN toolbar: T9, the OCR area of scanned pages (its rail switch and chip, the area's notices; "OCR area" is a command name too).
+	OCR area	Area OCR
+	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	Il livello di testo di questa pagina manca o non è affidabile, quindi trascinando si disegna un'area da leggere con l'OCR scacchistico. Fai clic per selezionare il testo invece.
+	A drag draws an area to read with chess OCR. Click to select text instead.	Trascinando si disegna un'area da leggere con l'OCR scacchistico. Fai clic per selezionare il testo invece.
+	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	L'OCR scacchistico richiede il modello chess-glyphs. Imposta PDFCRAFT_MODELS sulla cartella che contiene chess-glyphs.onnx.
+	The area is too large to read at once: draw a smaller one.	L'area è troppo grande per leggerla in una volta: disegnane una più piccola.
+	The area couldn't be read: {e}	Impossibile leggere l'area: {e}
+	The area read was dropped: the document was edited.	La lettura dell'area è stata scartata: il documento è stato modificato.
+	Chess OCR read nothing in the area.	L'OCR scacchistico non ha letto nulla nell'area.
+	Reading the area…	Lettura dell'area…
+	Chess OCR corrected or doubted some words: check the moves.	L'OCR scacchistico ha corretto o messo in dubbio alcune parole: controlla le mosse.

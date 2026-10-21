@@ -2815,3 +2815,14 @@ animation effects	Off	Wyłączone
 	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	Pędzel znaków {glyph} ({name}): klikaj ruchy, aby go dodać lub usunąć.
 	Stop (Esc)	Zatrzymaj (Esc)
 	Line copied	Skopiowano linię
+# Chess ▸ PGN toolbar: T9, the OCR area of scanned pages (its rail switch and chip, the area's notices; "OCR area" is a command name too).
+	OCR area	Obszar OCR
+	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	Warstwa tekstowa tej strony nie istnieje lub nie jest wiarygodna, więc przeciągnięcie rysuje obszar do odczytania OCR-em szachowym. Kliknij, aby zamiast tego zaznaczać tekst.
+	A drag draws an area to read with chess OCR. Click to select text instead.	Przeciągnięcie rysuje obszar do odczytania OCR-em szachowym. Kliknij, aby zamiast tego zaznaczać tekst.
+	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	OCR szachowy wymaga modelu chess-glyphs. Ustaw PDFCRAFT_MODELS na folder zawierający chess-glyphs.onnx.
+	The area is too large to read at once: draw a smaller one.	Obszar jest zbyt duży, by odczytać go naraz: narysuj mniejszy.
+	The area couldn't be read: {e}	Nie udało się odczytać obszaru: {e}
+	The area read was dropped: the document was edited.	Odczyt obszaru został porzucony: dokument został zmieniony.
+	Chess OCR read nothing in the area.	OCR szachowy nic nie odczytał w obszarze.
+	Reading the area…	Odczytywanie obszaru…
+	Chess OCR corrected or doubted some words: check the moves.	OCR szachowy poprawił niektóre słowa lub nie jest ich pewny: sprawdź ruchy.
