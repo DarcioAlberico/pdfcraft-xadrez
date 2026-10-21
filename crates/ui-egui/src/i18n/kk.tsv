@@ -2815,3 +2815,25 @@ animation effects	Off	Өшірулі
 # Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).
 	Analysis	Талдау
 	Chess board: Set up a position	Шахмат тақтасы: Позиция құру
+# Chess ▸ PGN toolbar: T15, extras: the glyph brush, moving a variation, the threat (a null move), the diagram mark and copying a line. "Move a variation", "Play a null move" and "Diagram mark" name undo steps (each follows "Undo" or "Redo"); "Move variation up", "Move variation down", "Threat (null move)", "Chess board: Glyph brush", "Copy line with figurines" and "Copy line (letters)" are command names too.
+	Move variation up	Нұсқаны жоғары жылжыту
+	Move variation down	Нұсқаны төмен жылжыту
+	Threat (null move)	Қауіп (нөлдік жүріс)
+	Glyph brush	Белгі қылқаламы
+	Chess board: Glyph brush	Шахмат тақтасы: Белгі қылқаламы
+	Move a variation	нұсқаны жылжыту
+	Play a null move	нөлдік жүріс
+	Diagram mark	диаграмма белгісі
+	Not moved: there is no variation on the way to this move.	Жылжытылмады: осы жүріске дейінгі жолда нұсқа жоқ.
+	Not moved: this is the line itself, not a variation.	Жылжытылмады: бұл нұсқа емес, сызықтың өзі.
+	Not moved: it is the first variation here already.	Жылжытылмады: бұл мұндағы бірінші нұсқа.
+	Not moved: it is the last variation here already.	Жылжытылмады: бұл мұндағы соңғы нұсқа.
+	No threat here: the side to move is in check and cannot pass.	Мұнда қауіп жоқ: жүретін тарап шахта тұр және жүрісті өткізе алмайды.
+	Diagram after {move}	{move} кейінгі диаграмма
+	Diagram here	Диаграмма осында
+	Copy line with figurines	Сызықты фигуриналармен көшіру
+	Copy line (letters)	Сызықты көшіру (әріптер)
+	Not marked: this move has as many glyphs as it can take.	Белгіленбеді: бұл жүрісте белгілердің ең көп саны бар.
+	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	Белгі қылқаламы {glyph} ({name}): қою не алу үшін жүрістерді басыңыз.
+	Stop (Esc)	Тоқтату (Esc)
+	Line copied	Сызық көшірілді

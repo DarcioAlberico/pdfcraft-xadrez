@@ -2819,3 +2819,25 @@ animation effects	Off	オフ
 # Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).
 	Analysis	解析
 	Chess board: Set up a position	チェス盤: 局面を配置
+# Chess ▸ PGN toolbar: T15, extras: the glyph brush, moving a variation, the threat (a null move), the diagram mark and copying a line. "Move a variation", "Play a null move" and "Diagram mark" name undo steps (each follows "Undo" or "Redo"); "Move variation up", "Move variation down", "Threat (null move)", "Chess board: Glyph brush", "Copy line with figurines" and "Copy line (letters)" are command names too.
+	Move variation up	変化を上へ移動
+	Move variation down	変化を下へ移動
+	Threat (null move)	脅威 (ヌルムーブ)
+	Glyph brush	記号ブラシ
+	Chess board: Glyph brush	チェス盤: 記号ブラシ
+	Move a variation	変化の移動
+	Play a null move	ヌルムーブ
+	Diagram mark	図の印
+	Not moved: there is no variation on the way to this move.	移動されませんでした: この指し手までの道筋に変化がありません。
+	Not moved: this is the line itself, not a variation.	移動されませんでした: これは変化ではなく筋そのものです。
+	Not moved: it is the first variation here already.	移動されませんでした: すでにここで最初の変化です。
+	Not moved: it is the last variation here already.	移動されませんでした: すでにここで最後の変化です。
+	No threat here: the side to move is in check and cannot pass.	ここに脅威はありません: 手番側はチェックされていてパスできません。
+	Diagram after {move}	{move} の後の図
+	Diagram here	ここに図
+	Copy line with figurines	筋をフィギュリンでコピー
+	Copy line (letters)	筋をコピー (文字)
+	Not marked: this move has as many glyphs as it can take.	印を付けませんでした: この指し手にはこれ以上記号を付けられません。
+	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	記号ブラシ {glyph} ({name}): 指し手をクリックして記号を付けたり外したりします。
+	Stop (Esc)	停止 (Esc)
+	Line copied	筋をコピーしました

@@ -2793,3 +2793,25 @@ animation effects	Off	Wyłączone
 # Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).
 	Analysis	Analiza
 	Chess board: Set up a position	Szachownica: Ustaw pozycję
+# Chess ▸ PGN toolbar: T15, extras: the glyph brush, moving a variation, the threat (a null move), the diagram mark and copying a line. "Move a variation", "Play a null move" and "Diagram mark" name undo steps (each follows "Undo" or "Redo"); "Move variation up", "Move variation down", "Threat (null move)", "Chess board: Glyph brush", "Copy line with figurines" and "Copy line (letters)" are command names too.
+	Move variation up	Przesuń wariant w górę
+	Move variation down	Przesuń wariant w dół
+	Threat (null move)	Groźba (ruch zerowy)
+	Glyph brush	Pędzel znaków
+	Chess board: Glyph brush	Szachownica: Pędzel znaków
+	Move a variation	przesunięcie wariantu
+	Play a null move	ruch zerowy
+	Diagram mark	znacznik diagramu
+	Not moved: there is no variation on the way to this move.	Nie przesunięto: na drodze do tego ruchu nie ma wariantu.
+	Not moved: this is the line itself, not a variation.	Nie przesunięto: to sama linia, a nie wariant.
+	Not moved: it is the first variation here already.	Nie przesunięto: to już pierwszy wariant tutaj.
+	Not moved: it is the last variation here already.	Nie przesunięto: to już ostatni wariant tutaj.
+	No threat here: the side to move is in check and cannot pass.	Brak groźby: strona na posunięciu jest w szachu i nie może pasować.
+	Diagram after {move}	Diagram po {move}
+	Diagram here	Diagram tutaj
+	Copy line with figurines	Kopiuj linię z figurkami
+	Copy line (letters)	Kopiuj linię (litery)
+	Not marked: this move has as many glyphs as it can take.	Nie oznaczono: ten ruch ma już tyle znaków, ile może.
+	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	Pędzel znaków {glyph} ({name}): klikaj ruchy, aby go dodać lub usunąć.
+	Stop (Esc)	Zatrzymaj (Esc)
+	Line copied	Skopiowano linię

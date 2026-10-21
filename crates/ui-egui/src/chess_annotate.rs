@@ -10,6 +10,11 @@
 //! the signs; their faces are the signs, or the way books set them in plain text (`+=`, `=+`)
 //! where the interface fonts lack them.
 //!
+//! **The glyph brush** (T15, a mode of the rail, B): while it is armed, a click on a move in the
+//! notation puts the brush's glyph on that move (its side's code) or takes it off, one undo step
+//! per click, and does not go to the move. A glyph chosen in a group becomes the brush's; Esc
+//! disarms it.
+//!
 //! **Typed glyphs.** With the chess key scope on and no text field taking the keyboard, the signs
 //! books use can be typed: `!` `?` `!!` `??` `!?` `?!` `=` `+=` `=+` `+/-` `-/+` `+-` `-+` and `~`
 //! (unclear), and `0` takes the move's glyphs off. They arrive as text (so any keyboard layout
@@ -130,8 +135,14 @@ pub(crate) fn drawable(ctx: &egui::Context, text: &str) -> bool {
 /// The code glyph `code` (White's) takes on the move shown: the one for the side that made the
 /// move, or for zugzwang the side to move after it. `None` for a code not in the table.
 fn code_here(board: &BoardState, code: u16) -> Option<u16> {
+    code_at(board, board.game.current(), code)
+}
+
+/// [`code_here`] for move `node`, whatever move is shown.
+fn code_at(board: &BoardState, node: NodeId, code: u16) -> Option<u16> {
     let n = nag::by_code(code)?;
-    let white_to_move = board.game.side_to_move() == Color::White;
+    // An even absolute half-move after the move: White is to move.
+    let white_to_move = board.game.abs_ply(node)? % 2 == 0;
     Some(if n.side_is_mover { n.code_for(!white_to_move) } else { n.code_for(white_to_move) })
 }
 
@@ -159,13 +170,26 @@ pub(crate) fn typed_glyph(board: &mut BoardState, code: u16) {
     }
 }
 
+/// The glyph brush (T15) on move `node`, clicked in the notation: glyph `code` (White's) goes on
+/// the move with its side's code, or comes off when the move has it; one undo step. The move
+/// shown stays.
+pub(crate) fn brush_glyph(board: &mut BoardState, node: NodeId, code: u16) {
+    if board.illegal.is_some() || node == 0 {
+        return;
+    }
+    glyph_edit_at(board, node, code, true);
+}
+
 fn glyph_edit(board: &mut BoardState, code: u16, toggle: bool) {
     if !has_move(board) {
         board.message = Some(tl!("Choose a move first: glyphs go on a move.").to_owned());
         return;
     }
-    let Some(code) = code_here(board, code) else { return };
-    let node = board.game.current();
+    glyph_edit_at(board, board.game.current(), code, toggle);
+}
+
+fn glyph_edit_at(board: &mut BoardState, node: NodeId, code: u16, toggle: bool) {
+    let Some(code) = code_at(board, node, code) else { return };
     board.selected = None;
     board.promotion = None;
     let mut full = false;

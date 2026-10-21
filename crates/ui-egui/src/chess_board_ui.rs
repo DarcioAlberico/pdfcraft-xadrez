@@ -234,6 +234,8 @@ pub enum BoardAction {
     OpenLichess(String),
     /// Go to the diagram the board was loaded from.
     ShowSource(Source),
+    /// A stretch of a line as text (T15: "Copy line with figurines", "Copy line (letters)").
+    CopyLine(String),
     /// Pick the engine program for analysis (desktop only).
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     ChooseEngine,
@@ -834,6 +836,10 @@ fn status(state: &BoardState) -> (String, Color32) {
 /// What a move's menu asked for.
 enum MoveEdit {
     Go(NodeId),
+    /// The glyph brush (T15) clicked on a move, with its glyph (White's code).
+    Brush(NodeId, u16),
+    /// The move's diagram mark, put on or taken off (T15).
+    Diagram(NodeId),
     /// A rail tool, on what it acts on for the move.
     Tool(crate::chess_tools::Run, crate::chess_tools::Target),
     Delete(NodeId),
@@ -894,10 +900,13 @@ fn rows(tokens: &[Token]) -> Vec<Row<'_>> {
 /// and muted; comments in italics, a comment before a move written before it. A move's menu
 /// (right-click) has the rail's structure tools, acting on that move's variation, and deletes the
 /// move with what follows. `height`: exactly this tall (the Board panel, where it takes the
-/// height left), or `None` to shrink to the moves up to [`SHRINK_NOTATION`].
-pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, height: Option<f32>) {
+/// height left), or `None` to shrink to the moves up to [`SHRINK_NOTATION`]. With `brush` (the
+/// glyph brush armed, T15), a click on a move puts that glyph on it or takes it off instead of
+/// going to it. A move marked for a diagram has a small board after it; its menu marks it or takes
+/// the mark off, and copies its line as text. Returns what the menu asked of the app.
+pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, height: Option<f32>, brush: Option<u16>) -> Option<BoardAction> {
     if state.illegal.is_some() {
-        return;
+        return None;
     }
     let tokens = state.game.tokens();
     let width = ui.available_width();
@@ -913,6 +922,7 @@ pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, he
         None => area.max_height(SHRINK_NOTATION).auto_shrink([false, true]),
     };
     let mut edit = None;
+    let mut action = None;
     let current = state.game.current();
     let reveal = state.revealed != Some((current, state.game.revision()));
     area.show(ui, |ui| {
@@ -947,12 +957,38 @@ pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, he
                                 if *node == current && reveal {
                                     r.scroll_to_me_animation(None, egui::style::ScrollAnimation::none());
                                 }
+                                if state.game.has_diagram(*node) {
+                                    let name = crate::i18n::fmt(
+                                        tl!("Diagram after {move}"),
+                                        &[("move", &crate::chess_tools::move_name(&state.game, *node))],
+                                    );
+                                    let d =
+                                        ui.add(crate::icons::image("grid-3x3", 12.0, t.text_muted).sense(egui::Sense::hover())).on_hover_text(&name);
+                                    d.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &name));
+                                }
                                 if r.clicked() {
-                                    edit = Some(MoveEdit::Go(*node));
+                                    edit = Some(match brush {
+                                        Some(code) => MoveEdit::Brush(*node, code),
+                                        None => MoveEdit::Go(*node),
+                                    });
                                 }
                                 r.context_menu(|ui| {
                                     if let Some((run, target)) = crate::chess_tools::move_menu(ui, state, *node) {
                                         edit = Some(MoveEdit::Tool(run, target));
+                                        ui.close();
+                                    }
+                                    ui.separator();
+                                    let marked = state.game.has_diagram(*node);
+                                    if ui.add(egui::Button::new(tl!("Diagram here")).selected(marked)).clicked() {
+                                        edit = Some(MoveEdit::Diagram(*node));
+                                        ui.close();
+                                    }
+                                    if ui.button(tl!("Copy line with figurines")).clicked() {
+                                        action = Some(BoardAction::CopyLine(state.game.line_text(*node, true)));
+                                        ui.close();
+                                    }
+                                    if ui.button(tl!("Copy line (letters)")).clicked() {
+                                        action = Some(BoardAction::CopyLine(state.game.line_text(*node, false)));
                                         ui.close();
                                     }
                                     ui.separator();
@@ -987,6 +1023,15 @@ pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, he
         state.promotion = None;
         match e {
             MoveEdit::Go(node) => state.game.go_to_node(node),
+            MoveEdit::Brush(node, code) => crate::chess_annotate::brush_glyph(state, node, code),
+            MoveEdit::Diagram(node) => {
+                let mut full = false;
+                state.edit(|s| {
+                    full = !s.game.toggle_diagram(node);
+                    (!full).then_some(ChessEdit::Diagram)
+                });
+                state.message = full.then(|| tl!("Not marked: this move has as many glyphs as it can take.").to_owned());
+            }
             MoveEdit::Tool(run, target) => run(state, target),
             MoveEdit::Delete(node) => {
                 state.edit(|s| {
@@ -996,6 +1041,7 @@ pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, he
             }
         }
     }
+    action
 }
 
 /// How glyph `code` is named in an undo step (whatever the fonts). The slight advantages (⩲ ⩱)
@@ -1009,10 +1055,11 @@ pub(crate) fn nag_text(code: u16) -> String {
 }
 
 /// How a move's glyphs read after it: `!`, `?` and the like glued on, the others after a space;
-/// each as [`crate::chess_annotate::face`] shows it with the fonts `drawable` describes.
+/// each as [`crate::chess_annotate::face`] shows it with the fonts `drawable` describes. The
+/// diagram mark is not among them: the notation draws a small board for it.
 fn glyphs(nags: &[u16], mut drawable: impl FnMut(&str) -> bool) -> String {
     let mut out = String::new();
-    for &code in nags {
+    for &code in nags.iter().filter(|&&c| !pdfcraft_engine::chess::pdfcraft_chess::nag::is_diagram(c)) {
         if !(1..=6).contains(&code) {
             out.push(' ');
         }
@@ -1304,11 +1351,15 @@ pub(crate) fn moves_column(
     chess: &mut crate::chess_ui::ChessState,
     room: f32,
 ) -> (Option<BoardAction>, Option<crate::chess_collection::GamesAction>) {
-    let state = chess.board_mut();
     let below_id = ui.id().with("chess-board-below");
     let below = ui.ctx().data(|d| d.get_temp::<f32>(below_id)).unwrap_or(0.0);
     let height = notation_height(room, 0.0, below);
-    notation(ui, t, state, Some(height));
+    let brush = chess.tools.brush();
+    if let Some(code) = brush {
+        brush_bar(ui, t, chess, code);
+    }
+    let state = chess.board_mut();
+    let copied = notation(ui, t, state, Some(height), brush);
     let below_top = ui.cursor().top();
     notes(ui, t, state);
     ui.add_space(4.0);
@@ -1319,7 +1370,23 @@ pub(crate) fn moves_column(
         ui.ctx().data_mut(|d| d.insert_temp(below_id, measured));
         ui.ctx().request_repaint();
     }
-    (fields, games)
+    (copied.or(fields), games)
+}
+
+/// The armed glyph brush (T15), over the notation: its glyph, what a click does, and how to stop.
+fn brush_bar(ui: &mut egui::Ui, t: &Tokens, chess: &mut crate::chess_ui::ChessState, code: u16) {
+    let ctx = ui.ctx().clone();
+    let face = crate::chess_annotate::face(code, |s| crate::chess_annotate::drawable(&ctx, s));
+    let name = crate::chess_annotate::nag_name(code).unwrap_or_default();
+    ui.horizontal_wrapped(|ui| {
+        ui.add(crate::icons::image("brush", 14.0, t.icon));
+        let text =
+            crate::i18n::fmt(tl!("Glyph brush {glyph} ({name}): click moves to put it on or take it off."), &[("glyph", &face), ("name", name)]);
+        ui.label(egui::RichText::new(text).small());
+        if ui.small_button(tl!("Stop (Esc)")).clicked() {
+            chess.tools.tool = crate::chess_tools::PgnTool::Navigate;
+        }
+    });
 }
 
 /// The notation's height in a panel `viewport` points tall, with `above` points drawn above it

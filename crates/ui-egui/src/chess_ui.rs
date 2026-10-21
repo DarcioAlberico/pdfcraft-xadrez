@@ -834,6 +834,7 @@ impl PdfCraftApp {
         match action {
             BoardAction::CopyFen(fen) => self.copy_from_board(fen, tl!("FEN copied")),
             BoardAction::CopyPgn(pgn) => self.copy_from_board(pgn, tl!("PGN copied")),
+            BoardAction::CopyLine(line) => self.copy_from_board(line, tl!("Line copied")),
             // A lichess address PdfCraft built from the position, opened because the user asked.
             BoardAction::OpenLichess(url) => self.open_url(&url),
             BoardAction::ShowSource(s) => {
@@ -843,6 +844,18 @@ impl PdfCraftApp {
             }
             BoardAction::ChooseEngine => self.choose_chess_engine(),
         }
+    }
+
+    /// The commands "Copy line with figurines" and "Copy line (letters)" (T15): the line of the
+    /// move shown, from the start of its variation (of the game, on the main line), as a move's
+    /// menu copies it.
+    pub(crate) fn copy_chess_line(&mut self, figurines: bool) {
+        let board = self.chess.board();
+        if board.illegal.is_some() || board.game.current() == 0 {
+            return;
+        }
+        let line = board.game.line_text(board.game.current(), figurines);
+        self.copy_from_board(line, tl!("Line copied"));
     }
 
     /// Copy what the board shows, and say so. A position read from a document is that

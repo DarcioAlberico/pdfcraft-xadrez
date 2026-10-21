@@ -8,6 +8,10 @@
 //! indices from the start (`0` the line, `1` the first variation; `path:` is the start).
 //! Addresses are read when their operation runs, after the ones before it changed the tree.
 //!
+//! `play_null` plays a null move (`--`, a threat shown by passing), `move_variation` moves a
+//! variation one place up or down among the others at its fork, and `diagram` marks a move for a
+//! diagram (`$220`) or takes the mark off.
+//!
 //! `capture` plans where a selection of move text goes (`pdfcraft_engine::chess::capture`) and
 //! applies the chosen place unless told otherwise; its entry lists every candidate place.
 //!
@@ -17,7 +21,7 @@
 
 use pdfcraft_engine::chess::capture::{self, Candidate, CaptureMode, CapturePlan, CaptureText};
 use pdfcraft_engine::chess::pdfcraft_chess::fragment::FragmentItem;
-use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, GraftMode, GraftReport, GraftStopReason, MAX_COMMENT_LEN, NodeId, NodePath};
+use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, GraftMode, GraftReport, GraftStopReason, MAX_COMMENT_LEN, NodeId, NodePath, Shift};
 use pdfcraft_engine::chess::pdfcraft_chess::san::{Lang, San};
 use serde_json::{Map, Value, json};
 
@@ -130,6 +134,30 @@ fn apply(game: &mut Game, op: &Value) -> std::result::Result<Map<String, Value>,
             let code = obj.get("code").and_then(Value::as_u64).and_then(|c| u16::try_from(c).ok()).ok_or("code is a glyph's PGN code, 1-255")?;
             if !game.set_nag(at, code) {
                 return Err(format!("${code} cannot be put on this move (the start, a code outside 1-255, or too many glyphs)"));
+            }
+            game.go_to_node(at);
+        }
+        "play_null" => {
+            let mut played = game.clone();
+            played.go_to_node(at);
+            played.play_null().map_err(|_| "a null move cannot be played there: the side to move is in check, or the game is full".to_owned())?;
+            *game = played;
+        }
+        "move_variation" => {
+            let shift = match obj.get("to").and_then(Value::as_str) {
+                Some("up") => Shift::Up,
+                Some("down") => Shift::Down,
+                _ => return Err("to is up or down".into()),
+            };
+            game.move_variation(at, shift).map_err(|e| e.to_string())?;
+        }
+        "diagram" => {
+            let on = match obj.get("on") {
+                None => true,
+                Some(v) => v.as_bool().ok_or("on is true or false")?,
+            };
+            if on != game.has_diagram(at) && !game.toggle_diagram(at) {
+                return Err("a diagram mark cannot go on this move (the start, or too many glyphs)".into());
             }
             game.go_to_node(at);
         }

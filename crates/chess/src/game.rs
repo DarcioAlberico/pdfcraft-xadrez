@@ -16,13 +16,14 @@ use cozy_chess::{Board, GameStatus, Move};
 
 use crate::fen::Position;
 use crate::placement::{Color, Piece, PieceKind, Placement, Square};
-use crate::san::{San, color_from_cozy, kind_from_cozy, square_from_cozy, square_to_cozy, to_cozy_kind};
+use crate::san::{Lang, San, SanBody, color_from_cozy, kind_from_cozy, square_from_cozy, square_to_cozy, to_cozy_kind};
 
 mod graft;
+mod line;
 mod structure;
 
 pub use graft::{GraftMode, GraftReport, GraftStop, GraftStopReason, MAX_LEFTOVER_LEN};
-pub use structure::{NodePath, NodeSource, StructureError};
+pub use structure::{NodePath, NodeSource, Shift, StructureError};
 
 /// Most moves a game holds, variations included. Real annotated games are under 3,000.
 pub const MAX_NODES: usize = 10_000;
@@ -42,6 +43,9 @@ pub const MAX_TAG_LEN: usize = 256;
 
 /// Most annotation glyphs on one move.
 const MAX_NAGS: usize = 8;
+
+/// How a null move is written, in the game and in PGN.
+pub const NULL_SAN: &str = "--";
 
 /// The Seven Tag Roster, in the order PGN writes it.
 pub const ROSTER: [&str; 7] = ["Event", "Site", "Date", "Round", "White", "Black", "Result"];
@@ -310,6 +314,12 @@ impl Game {
         !self.board().checkers().is_empty()
     }
 
+    /// Whether the side to move after move `node` (at the start for node 0) is in check, whatever
+    /// move is shown; `false` for a move not in the game.
+    pub fn in_check_at(&self, node: NodeId) -> bool {
+        self.nodes.get(node).is_some_and(|n| !n.board.checkers().is_empty())
+    }
+
     /// How the game stands on the board shown.
     pub fn outcome(&self) -> Outcome {
         outcome_of(self.board())
@@ -380,8 +390,13 @@ impl Game {
         self.push(mv)
     }
 
-    /// Play a move written in SAN (English letters, or as books print it) at the move shown.
+    /// Play a move written in SAN (English letters, or as books print it) at the move shown. A
+    /// null move (`--`, or `Z0` and `0000` as some programs write it) is played as
+    /// [`Game::play_null`] plays it.
     pub fn play_san(&mut self, text: &str) -> Result<(), GameError> {
+        if San::read(text, Lang::En).is_ok_and(|san| san.body == SanBody::Null) {
+            return self.play_null();
+        }
         let san = San::parse(text).map_err(|_| GameError::IllegalMove)?;
         let mv = san.to_move(self.board()).map_err(|_| GameError::IllegalMove)?;
         self.push(mv)
@@ -406,8 +421,28 @@ impl Game {
     }
 
     fn push(&mut self, mv: Move) -> Result<(), GameError> {
+        self.push_step(Some(mv))
+    }
+
+    /// Play a null move at the move shown: the side to move passes, as annotators do to show
+    /// what the other side threatens (`12... --`). It is written `--` in PGN, as most PGN tools
+    /// read and write it. Refused when the side to move is in check (it cannot pass), and at the
+    /// limits [`Game::play`] has. A null move already there is followed.
+    pub fn play_null(&mut self) -> Result<(), GameError> {
+        self.push_step(None)
+    }
+
+    /// Whether move `node` is a null move (a pass). The start is not.
+    pub fn is_null(&self, node: NodeId) -> bool {
+        node != 0 && self.nodes.get(node).is_some_and(|n| n.mv.is_none())
+    }
+
+    /// Play `step` at the move shown: a move, or with `None` a null move. A reply already there
+    /// with the same step is followed.
+    fn push_step(&mut self, step: Option<Move>) -> Result<(), GameError> {
         let here = self.current;
-        if let Some(&existing) = self.node(here).children.iter().find(|&&c| self.node(c).mv == Some(mv)) {
+        // Every node but the start has a parent, so a reply without a move is a null move.
+        if let Some(&existing) = self.node(here).children.iter().find(|&&c| self.node(c).mv == step) {
             self.current = existing;
             return Ok(());
         }
@@ -416,15 +451,22 @@ impl Game {
         if self.nodes.len() >= MAX_NODES || depth > MAX_DEPTH {
             return Err(GameError::TooLong);
         }
-        let board = parent.board.clone();
-        let san = San::from_move(&board, mv).map_err(|_| GameError::IllegalMove)?;
-        let mut after = board;
-        after.try_play(mv).map_err(|_| GameError::IllegalMove)?;
+        let board = &parent.board;
+        let (san, after) = match step {
+            Some(mv) => {
+                let san = San::from_move(board, mv).map_err(|_| GameError::IllegalMove)?.to_english();
+                let mut after = board.clone();
+                after.try_play(mv).map_err(|_| GameError::IllegalMove)?;
+                (san, after)
+            }
+            // `null_move` is `None` when the side to move is in check.
+            None => (NULL_SAN.to_owned(), board.null_move().ok_or(GameError::IllegalMove)?),
+        };
         let id = self.nodes.len();
         let ply = parent.ply.saturating_add(1);
         self.nodes.push(Node {
-            mv: Some(mv),
-            san: san.to_english(),
+            mv: step,
+            san,
             board: after,
             parent: here,
             children: Vec::new(),

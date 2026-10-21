@@ -50,6 +50,12 @@ pub enum ChessEdit {
     Demote,
     /// A variation deleted, with the moves after it.
     DeleteVariation,
+    /// A variation moved one place among the others at its fork (T15).
+    MoveVariation,
+    /// A null move played: the side to move passes, to show the other side's threat (T15).
+    NullMove,
+    /// A move marked for a diagram, or the mark taken off (T15).
+    Diagram,
     /// A glyph put on or taken off a move (as it is shown).
     Glyph(String),
     /// A move's comment typed in.
@@ -87,6 +93,9 @@ impl ChessEdit {
             ChessEdit::PromoteOne => tl!("Promote a variation").to_string(),
             ChessEdit::Demote => tl!("Demote a line").to_string(),
             ChessEdit::DeleteVariation => tl!("Delete a variation").to_string(),
+            ChessEdit::MoveVariation => tl!("Move a variation").to_string(),
+            ChessEdit::NullMove => tl!("Play a null move").to_string(),
+            ChessEdit::Diagram => tl!("Diagram mark").to_string(),
             ChessEdit::Glyph(glyph) => crate::i18n::fmt(tl!("Glyph {glyph}"), &[("glyph", glyph)]),
             ChessEdit::Comment => tl!("Edit move comment").to_string(),
             ChessEdit::CommentBefore => tl!("Edit the comment before a move").to_string(),

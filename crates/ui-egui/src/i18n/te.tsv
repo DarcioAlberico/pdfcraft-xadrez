@@ -2726,3 +2726,25 @@ animation effects	Off	ఆఫ్
 # Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).
 	Analysis	విశ్లేషణ
 	Chess board: Set up a position	చదరంగం బోర్డు: స్థితిని అమర్చండి
+# Chess ▸ PGN toolbar: T15, extras: the glyph brush, moving a variation, the threat (a null move), the diagram mark and copying a line. "Move a variation", "Play a null move" and "Diagram mark" name undo steps (each follows "Undo" or "Redo"); "Move variation up", "Move variation down", "Threat (null move)", "Chess board: Glyph brush", "Copy line with figurines" and "Copy line (letters)" are command names too.
+	Move variation up	ఉపవరుసను పైకి జరుపు
+	Move variation down	ఉపవరుసను కిందికి జరుపు
+	Threat (null move)	బెదిరింపు (శూన్య ఎత్తు)
+	Glyph brush	గుర్తుల కుంచె
+	Chess board: Glyph brush	చదరంగం బోర్డు: గుర్తుల కుంచె
+	Move a variation	ఉపవరుస జరపడం
+	Play a null move	శూన్య ఎత్తు
+	Diagram mark	రేఖాచిత్రం గుర్తు
+	Not moved: there is no variation on the way to this move.	జరపలేదు: ఈ ఎత్తుకు వెళ్ళే దారిలో ఉపవరుస లేదు.
+	Not moved: this is the line itself, not a variation.	జరపలేదు: ఇది ఉపవరుస కాదు, వరుసే.
+	Not moved: it is the first variation here already.	జరపలేదు: ఇది ఇప్పటికే ఇక్కడ మొదటి ఉపవరుస.
+	Not moved: it is the last variation here already.	జరపలేదు: ఇది ఇప్పటికే ఇక్కడ చివరి ఉపవరుస.
+	No threat here: the side to move is in check and cannot pass.	ఇక్కడ బెదిరింపు లేదు: ఆడవలసిన వైపు చెక్‌లో ఉంది, ఎత్తు వదులుకోలేదు.
+	Diagram after {move}	{move} తర్వాత రేఖాచిత్రం
+	Diagram here	ఇక్కడ రేఖాచిత్రం
+	Copy line with figurines	పావుల బొమ్మలతో వరుసను కాపీ చేయి
+	Copy line (letters)	వరుసను కాపీ చేయి (అక్షరాలు)
+	Not marked: this move has as many glyphs as it can take.	గుర్తు పెట్టలేదు: ఈ ఎత్తుకు ఇప్పటికే గరిష్ఠ గుర్తులు ఉన్నాయి.
+	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	గుర్తుల కుంచె {glyph} ({name}): పెట్టడానికి లేదా తీయడానికి ఎత్తులను క్లిక్ చేయండి.
+	Stop (Esc)	ఆపు (Esc)
+	Line copied	వరుస కాపీ అయింది

@@ -2781,3 +2781,25 @@ animation effects	Off	关
 # Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).
 	Analysis	分析
 	Chess board: Set up a position	棋盘：摆放局面
+# Chess ▸ PGN toolbar: T15, extras: the glyph brush, moving a variation, the threat (a null move), the diagram mark and copying a line. "Move a variation", "Play a null move" and "Diagram mark" name undo steps (each follows "Undo" or "Redo"); "Move variation up", "Move variation down", "Threat (null move)", "Chess board: Glyph brush", "Copy line with figurines" and "Copy line (letters)" are command names too.
+	Move variation up	将变化上移
+	Move variation down	将变化下移
+	Threat (null move)	威胁（空着）
+	Glyph brush	符号刷
+	Chess board: Glyph brush	棋盘：符号刷
+	Move a variation	移动变化
+	Play a null move	空着
+	Diagram mark	局面图标记
+	Not moved: there is no variation on the way to this move.	未移动：通往此着法的路线上没有变化。
+	Not moved: this is the line itself, not a variation.	未移动：这是线路本身，不是变化。
+	Not moved: it is the first variation here already.	未移动：它已是此处的第一个变化。
+	Not moved: it is the last variation here already.	未移动：它已是此处的最后一个变化。
+	No threat here: the side to move is in check and cannot pass.	此处没有威胁：行棋方正被将军，不能停着。
+	Diagram after {move}	{move} 之后的局面图
+	Diagram here	此处放局面图
+	Copy line with figurines	用棋子符号复制线路
+	Copy line (letters)	复制线路（字母）
+	Not marked: this move has as many glyphs as it can take.	未标记：此着法的符号已达上限。
+	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	符号刷 {glyph}（{name}）：点击着法以添加或去除。
+	Stop (Esc)	停止 (Esc)
+	Line copied	已复制线路

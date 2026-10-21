@@ -2730,3 +2730,25 @@ animation effects	Off	Выкл
 # Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).
 	Analysis	Анализ
 	Chess board: Set up a position	Шахматная доска: Расставить позицию
+# Chess ▸ PGN toolbar: T15, extras: the glyph brush, moving a variation, the threat (a null move), the diagram mark and copying a line. "Move a variation", "Play a null move" and "Diagram mark" name undo steps (each follows "Undo" or "Redo"); "Move variation up", "Move variation down", "Threat (null move)", "Chess board: Glyph brush", "Copy line with figurines" and "Copy line (letters)" are command names too.
+	Move variation up	Переместить вариант вверх
+	Move variation down	Переместить вариант вниз
+	Threat (null move)	Угроза (нулевой ход)
+	Glyph brush	Кисть знаков
+	Chess board: Glyph brush	Шахматная доска: Кисть знаков
+	Move a variation	перемещение варианта
+	Play a null move	нулевой ход
+	Diagram mark	отметку диаграммы
+	Not moved: there is no variation on the way to this move.	Не перемещено: на пути к этому ходу нет варианта.
+	Not moved: this is the line itself, not a variation.	Не перемещено: это сама линия, а не вариант.
+	Not moved: it is the first variation here already.	Не перемещено: это уже первый вариант здесь.
+	Not moved: it is the last variation here already.	Не перемещено: это уже последний вариант здесь.
+	No threat here: the side to move is in check and cannot pass.	Здесь нет угрозы: сторона, которая ходит, под шахом и не может пропустить ход.
+	Diagram after {move}	Диаграмма после {move}
+	Diagram here	Диаграмма здесь
+	Copy line with figurines	Копировать линию с фигуринами
+	Copy line (letters)	Копировать линию (буквы)
+	Not marked: this move has as many glyphs as it can take.	Не отмечено: у этого хода уже максимум знаков.
+	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	Кисть знаков {glyph} ({name}): щёлкайте по ходам, чтобы поставить или снять его.
+	Stop (Esc)	Остановить (Esc)
+	Line copied	Линия скопирована

@@ -2822,3 +2822,25 @@ animation effects	Off	Izklopljeni
 # Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).
 	Analysis	Analiza
 	Chess board: Set up a position	Šahovnica: Postavi pozicijo
+# Chess ▸ PGN toolbar: T15, extras: the glyph brush, moving a variation, the threat (a null move), the diagram mark and copying a line. "Move a variation", "Play a null move" and "Diagram mark" name undo steps (each follows "Undo" or "Redo"); "Move variation up", "Move variation down", "Threat (null move)", "Chess board: Glyph brush", "Copy line with figurines" and "Copy line (letters)" are command names too.
+	Move variation up	Premakni varianto gor
+	Move variation down	Premakni varianto dol
+	Threat (null move)	Grožnja (ničelna poteza)
+	Glyph brush	Čopič znakov
+	Chess board: Glyph brush	Šahovnica: Čopič znakov
+	Move a variation	premik variante
+	Play a null move	ničelno potezo
+	Diagram mark	oznako diagrama
+	Not moved: there is no variation on the way to this move.	Ni premaknjeno: na poti do te poteze ni variante.
+	Not moved: this is the line itself, not a variation.	Ni premaknjeno: to je sama linija, ne varianta.
+	Not moved: it is the first variation here already.	Ni premaknjeno: to je tu že prva varianta.
+	Not moved: it is the last variation here already.	Ni premaknjeno: to je tu že zadnja varianta.
+	No threat here: the side to move is in check and cannot pass.	Tu ni grožnje: stran na potezi je v šahu in ne more preskočiti poteze.
+	Diagram after {move}	Diagram po {move}
+	Diagram here	Diagram tukaj
+	Copy line with figurines	Kopiraj linijo s figurami
+	Copy line (letters)	Kopiraj linijo (črke)
+	Not marked: this move has as many glyphs as it can take.	Ni označeno: ta poteza ima že toliko znakov, kot jih lahko.
+	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	Čopič znakov {glyph} ({name}): kliknite poteze, da ga dodate ali odstranite.
+	Stop (Esc)	Ustavi (Esc)
+	Line copied	Linija kopirana

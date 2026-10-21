@@ -69,6 +69,18 @@ pub enum StructureError {
     NoAlternative,
     /// The change would nest a move deeper than [`MAX_DEPTH`].
     TooDeep,
+    /// The variation is the first or the last one at its fork already: there is no variation on
+    /// that side to change places with (the line itself is not one).
+    NoSibling,
+}
+
+/// Which way [`Game::move_variation`] moves a variation among the others at its fork.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Shift {
+    /// Before the variation before it.
+    Up,
+    /// After the variation after it.
+    Down,
 }
 
 impl fmt::Display for StructureError {
@@ -79,6 +91,7 @@ impl fmt::Display for StructureError {
             StructureError::NotFirst => write!(f, "the move is a variation, not the line's continuation"),
             StructureError::NoAlternative => write!(f, "there is no variation to take its place"),
             StructureError::TooDeep => write!(f, "variations would nest too deep"),
+            StructureError::NoSibling => write!(f, "there is no variation on that side to change places with"),
         }
     }
 }
@@ -88,7 +101,7 @@ impl std::error::Error for StructureError {}
 impl Game {
     /// The moves from `node` up to the start, `node` first and the start left out (empty for
     /// the start). `None` when the game has no such move.
-    fn ancestry(&self, node: NodeId) -> Option<Vec<NodeId>> {
+    pub(super) fn ancestry(&self, node: NodeId) -> Option<Vec<NodeId>> {
         if node >= self.nodes.len() {
             return None;
         }
@@ -107,7 +120,7 @@ impl Game {
 
     /// `node`'s parent and its index among the parent's replies; `None` for the start or a move
     /// not in the game.
-    fn reply_index(&self, node: NodeId) -> Option<(NodeId, usize)> {
+    pub(super) fn reply_index(&self, node: NodeId) -> Option<(NodeId, usize)> {
         if node == 0 {
             return None;
         }
@@ -204,6 +217,27 @@ impl Game {
             return Err(StructureError::NoAlternative);
         }
         self.move_reply(parent, 0, 1)
+    }
+
+    /// Move variation `head` one place among the variations at its fork: before the one before it
+    /// ([`Shift::Up`]) or after the one after it ([`Shift::Down`]). The line the fork continues
+    /// in (the first reply) never moves, and nothing else changes: the depths stay as they are, so
+    /// no limit can be passed. Refused when `head` is the first reply ([`StructureError::AlreadyFirst`])
+    /// and when there is no variation on that side ([`StructureError::NoSibling`]). Moving a
+    /// variation up undoes moving it down, and the other way round.
+    pub fn move_variation(&mut self, head: NodeId, shift: Shift) -> Result<(), StructureError> {
+        let (parent, index) = self.reply_index(head).ok_or(StructureError::NoSuchMove)?;
+        if index == 0 {
+            return Err(StructureError::AlreadyFirst);
+        }
+        let replies = self.nodes.get(parent).map_or(0, |p| p.children.len());
+        let to = match shift {
+            // Index 1 would change places with the line, index 0.
+            Shift::Up if index >= 2 => index - 1,
+            Shift::Down if index.saturating_add(1) < replies => index + 1,
+            _ => return Err(StructureError::NoSibling),
+        };
+        self.move_reply(parent, index, to)
     }
 
     /// Delete variation `head` and every move after it. Refused when `head` is a first reply

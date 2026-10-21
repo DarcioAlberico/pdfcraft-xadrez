@@ -104,6 +104,10 @@ impl PdfCraftApp {
                 "view.next_view" => self.active.and_then(|i| self.views.get(i)).is_some_and(|v| !v.forward.is_empty()),
                 // Only where separate windows can be opened; out, it can always come back.
                 "chess.window.detach" => self.chess_window_detached() || self.chess_window_available(),
+                // A move to copy the line up to (T15).
+                "chess.moves.copy_figurines" | "chess.moves.copy_letters" => {
+                    self.chess.board().illegal.is_none() && self.chess.board().game.current() != 0
+                }
                 _ => true,
             }
     }
@@ -464,6 +468,8 @@ impl PdfCraftApp {
             "chess.pgn.save" => self.save_chess_pgn(false),
             "chess.pgn.save_all" => self.save_chess_pgn(true),
             "chess.window.detach" => self.toggle_chess_window(),
+            "chess.moves.copy_figurines" => self.copy_chess_line(true),
+            "chess.moves.copy_letters" => self.copy_chess_line(false),
             "chess.pgn.paste_as" => {
                 self.chess_paste_as((pdfcraft_engine::chess::capture::CaptureMode::Auto, false), crate::chess_capture::clipboard_text())
             }

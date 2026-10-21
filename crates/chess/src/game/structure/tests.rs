@@ -318,6 +318,56 @@ fn bump_revision_passes_both() {
     assert_eq!(g.revision(), u64::MAX);
 }
 
+#[test]
+fn a_variation_changes_places_with_its_neighbour_and_never_with_the_line() {
+    let (mut g, _) = Game::from_pgn("1. e4 e5 (1... c5 {Sicilian}) (1... e6 $1) (1... d5) *").unwrap();
+    let before = dump(&g);
+    let e6 = at(&g, &[0, 2]);
+    assert_eq!(g.move_variation(e6, Shift::Up), Ok(()));
+    assert_eq!(g.movetext(), "1. e4 e5 (1... e6 $1) (1... c5 {Sicilian}) (1... d5)");
+    let e6 = at(&g, &[0, 1]);
+    assert_eq!(g.san(e6), "e6");
+    assert_eq!(g.move_variation(e6, Shift::Up), Err(StructureError::NoSibling), "the line is not a variation to pass");
+    assert_eq!(g.move_variation(e6, Shift::Down), Ok(()));
+    assert_eq!(dump(&g), before, "down undid up");
+    let d5 = at(&g, &[0, 3]);
+    assert_eq!(g.move_variation(d5, Shift::Down), Err(StructureError::NoSibling));
+    assert_eq!(g.move_variation(at(&g, &[0, 0]), Shift::Down), Err(StructureError::AlreadyFirst));
+    assert_eq!(g.move_variation(0, Shift::Up), Err(StructureError::NoSuchMove));
+    assert_eq!(g.move_variation(999, Shift::Up), Err(StructureError::NoSuchMove));
+    assert_eq!(dump(&g), before, "refusals change nothing");
+    assert_fixpoint(&g);
+}
+
+#[test]
+fn a_null_move_passes_and_is_written_as_two_dashes() {
+    let mut g = game(&["e4"]);
+    assert_eq!(g.play_null(), Ok(()));
+    let null = g.current();
+    assert!(g.is_null(null));
+    assert!(!g.is_null(0) && !g.is_null(at(&g, &[0])));
+    assert_eq!(g.side_to_move(), crate::placement::Color::White, "Black passed");
+    assert_eq!(g.last_move(), None, "a pass moves no piece");
+    g.play_san("d4").unwrap();
+    assert_eq!(g.movetext(), "1. e4 -- 2. d4");
+    assert_fixpoint(&g);
+    // A null move already there is followed; `Z0` is one too.
+    g.go_to_node(at(&g, &[0]));
+    g.play_san("Z0").unwrap();
+    assert_eq!(g.current(), null);
+    // A side in check cannot pass.
+    let mut g = game(&["e4", "f5", "Qh5+"]);
+    let before = dump(&g);
+    assert_eq!(g.play_null(), Err(GameError::IllegalMove));
+    assert_eq!(g.play_san("--"), Err(GameError::IllegalMove));
+    assert_eq!(dump(&g), before);
+    // Read from PGN, in a variation too: the threat shown by passing.
+    let (g, stopped) = Game::from_pgn("1. e4 e5 2. Nf3 (2. -- d5) Nc6 *").unwrap();
+    assert_eq!(stopped, None);
+    assert_eq!(g.movetext(), "1. e4 e5 2. Nf3 (2. -- d5) 2... Nc6");
+    assert!(g.is_null(at(&g, &[0, 0, 1])));
+}
+
 /// Checks what every game must keep: parents and replies agree, depths are right and capped,
 /// paths name their moves, and the PGN is a fixpoint.
 fn check(g: &Game) -> Result<(), proptest::test_runner::TestCaseError> {
@@ -358,7 +408,7 @@ proptest::proptest! {
     #![proptest_config(proptest::prelude::ProptestConfig::with_cases(96))]
 
     #[test]
-    fn structure_operations_keep_the_tree_whole(ops in proptest::collection::vec((0u8..14, 0usize..64, 0usize..64), 0..60)) {
+    fn structure_operations_keep_the_tree_whole(ops in proptest::collection::vec((0u8..17, 0usize..64, 0usize..64), 0..60)) {
         let mut g = Game::standard();
         for (op, a, b) in ops {
             let node = a % g.nodes.len();
@@ -412,6 +462,41 @@ proptest::proptest! {
                 10 => { g.set_nag(node, [1u16, 2, 3, 6, 10, 14, 18, 22, 36, 146, 255][b % 11]); }
                 11 => g.toggle_nag(node, [1u16, 2, 14, 36][b % 4]),
                 12 => { g.set_source(node, Some(NodeSource { page: b as u32, rect_user: [0.0, 1.0, 2.0, b as f32] })); }
+                14 => {
+                    // A variation moved up or down, and back: the same tree; refused, unchanged.
+                    let before = dump(&g);
+                    let index = g.reply_index(node).map(|(_, i)| i);
+                    let parent = g.path_of(g.nodes[node].parent).unwrap_or_default();
+                    let replies = g.nodes[g.nodes[node].parent].children.len();
+                    let (there, back) = if b % 2 == 0 { (Shift::Up, Shift::Down) } else { (Shift::Down, Shift::Up) };
+                    match (index, g.move_variation(node, there)) {
+                        (None, Err(StructureError::NoSuchMove)) | (Some(0), Err(StructureError::AlreadyFirst)) => {}
+                        (Some(1), Err(StructureError::NoSibling)) if there == Shift::Up => {}
+                        (Some(i), Err(StructureError::NoSibling)) if there == Shift::Down && i + 1 == replies => {}
+                        (Some(i), Ok(())) if i > 0 => {
+                            let mut moved = parent.indices().to_vec();
+                            moved.push(if there == Shift::Up { i as u16 - 1 } else { i as u16 + 1 });
+                            let h = g.node_at(&NodePath::new(moved));
+                            proptest::prop_assert!(h.is_some());
+                            check(&g)?;
+                            proptest::prop_assert_eq!(g.move_variation(h.unwrap_or_default(), back), Ok(()));
+                            proptest::prop_assert_eq!(dump(&g), before.clone());
+                        }
+                        other => proptest::prop_assert!(false, "{other:?}"),
+                    }
+                    proptest::prop_assert_eq!(dump(&g), before);
+                }
+                15 => {
+                    g.go_to_node(node);
+                    let in_check = g.in_check();
+                    match g.play_null() {
+                        Ok(()) => proptest::prop_assert!(!in_check && g.is_null(g.current())),
+                        Err(GameError::IllegalMove) => proptest::prop_assert!(in_check),
+                        Err(GameError::TooLong) => {}
+                        Err(e) => proptest::prop_assert!(false, "{e:?}"),
+                    }
+                }
+                16 => { g.toggle_diagram(node); }
                 _ => g.go_to_node(node),
             }
             check(&g)?;
