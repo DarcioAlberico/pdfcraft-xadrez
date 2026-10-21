@@ -305,6 +305,11 @@ fn moves_that_do_not_play_are_kept_as_stops_and_comments() {
         vec![("19.Nxe8", MoveStatus::Illegal), ("Kh7", MoveStatus::NotReached), ("20.Raxe1", MoveStatus::NotReached),]
     );
     assert!(read.stops.iter().all(|s| s.rect.is_some()));
+    // The illegal move keeps the position it was tried in (after 18...Qxe1); the moves not
+    // reached have none.
+    let tried = read.stops.first().and_then(|s| s.fen.as_deref()).expect("the position 19.Nxe8 was tried in");
+    assert!(tried.starts_with("2r2rk1/1p2ppb1/p2p1npp/3N1P2/P1b1P2B/3B4/1PP3PP/R3qR1K w"), "{tried}");
+    assert!(read.stops.iter().skip(1).all(|s| s.fen.is_none()));
     let movetext = grafted(FEN, &read.items);
     assert_eq!(moves_only(&movetext), "18. Nd5 Qxe1 20. Raxe1".replace(" 20. Raxe1", ""), "{movetext}");
     assert!(movetext.contains("19.Nxe8") && movetext.contains("Kh7"), "{movetext}");

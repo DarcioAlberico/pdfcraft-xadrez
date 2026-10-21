@@ -546,3 +546,108 @@ fn enter_and_esc_go_to_a_waiting_capture_first() {
     host_events(&mut h, vec![key(egui::Key::Escape)]);
     assert_eq!(format!("{:?}", h.state().chess.tools.tool), "Navigate");
 }
+
+// ─── T10: correcting a move that did not play ───────────────────────────────────────────────
+
+/// The candidate shown in the preview: moves played, and the moves that did not play.
+fn shown(h: &Harness<'static, PdfCraftApp>) -> (usize, usize) {
+    let p = h.state().chess.capture.pending.as_ref().expect("a capture waits");
+    let c = p.plan.candidates.get(p.choice.expect("a place is chosen")).expect("the candidate");
+    (c.played, c.read.stops.len())
+}
+
+/// A stopped move's ✗ chip lists the legal moves near it; none goes in by itself: the game is
+/// unchanged until one is clicked, and then the text is read again and waits for Apply.
+#[test]
+fn a_stopped_move_offers_legal_moves_that_go_in_only_when_clicked() {
+    let mut h = harness();
+    h.state_mut().capture_pasted("18.Nd5 Qxe1 19.Nxe6+ Kh7 20.Raxe1", None);
+    h.run_steps(2);
+    assert_eq!(shown(&h).0, 2, "19.Nxe6+ is illegal: the reading stops there");
+    h.get_by_label("✗ 19.Nxe6+ — Illegal move").click();
+    h.run_steps(2);
+    h.get_by_label_contains("Correct 19.Nxe6+");
+    h.get_by_label("Read as Nxe7+");
+    h.get_by_label("Read as Nxf6+");
+    h.run_steps(3);
+    assert_eq!(movetext(&h), "", "nothing is applied without a click");
+    assert_eq!(shown(&h).0, 2, "nor is the text read again with one");
+    h.get_by_label("Read as Nxe7+").click();
+    h.run_steps(3);
+    assert_eq!(shown(&h), (5, 0), "read again with 19.Nxe7+: every move plays");
+    assert_eq!(movetext(&h), "", "and still waits for Apply");
+    h.get_by_label_contains("Apply").click();
+    h.run_steps(3);
+    assert_eq!(movetext(&h), "18. Nd5 Qxe1 19. Nxe7+ Kh7 20. Raxe1");
+    assert!(h.state().chess.board().undo_label().is_some_and(|l| l.starts_with("Capture")), "one capture step");
+}
+
+/// The correction field holds the move as printed; the glyph palette inserts at its cursor, and
+/// Enter reads the text again with it.
+#[test]
+fn the_correction_field_takes_the_glyph_palette() {
+    let mut h = harness();
+    h.state_mut().capture_pasted("18.Nd5 Qxe1 19.Nxe6+ Kh7", None);
+    h.run_steps(2);
+    h.get_by_label("✗ 19.Nxe6+ — Illegal move").click();
+    h.run_steps(2);
+    let field = h.get_by_label("Correction");
+    assert_eq!(field.value().as_deref(), Some("Nxe6+"), "the move as printed");
+    field.click();
+    h.run_steps(1);
+    h.key_press(egui::Key::End);
+    for _ in 0..5 {
+        h.key_press(egui::Key::Backspace);
+    }
+    h.run_steps(1);
+    h.get_by_label("Glyph palette").click();
+    h.run_steps(2);
+    h.get_by_label("White knight").click();
+    h.run_steps(2);
+    assert_eq!(h.get_by_label("Correction").value().as_deref(), Some("♘"));
+    h.get_by_label("Correction").type_text("xe7+");
+    h.run_steps(1);
+    assert_eq!(h.get_by_label("Correction").value().as_deref(), Some("♘xe7+"));
+    h.key_press(egui::Key::Enter);
+    h.run_steps(3);
+    assert_eq!(shown(&h), (4, 0), "read again with ♘xe7+");
+    assert_eq!(movetext(&h), "");
+    h.get_by_label_contains("Apply").click();
+    h.run_steps(3);
+    assert_eq!(movetext(&h), "18. Nd5 Qxe1 19. Nxe7+ Kh7");
+}
+
+/// A selection on a page is corrected in its glyphs: the move keeps where it was printed and its
+/// weight (a bold move stays on the main line).
+#[test]
+fn a_page_selection_is_corrected_in_its_glyphs() {
+    let mut h = harness_with(page(&[&[(Bold, "18.Nd5 Qxe1 19.Nxe6+ Kh7"), (Regular, " and Black holds.")]], false));
+    assert!(h.state_mut().execute("chess.tool.capture"));
+    h.run_steps(2);
+    select(&mut h, "18.Nd5", "Kh7");
+    assert_eq!(shown(&h).0, 2);
+    h.get_by_label("✗ 19.Nxe6+ — Illegal move").click();
+    h.run_steps(2);
+    h.get_by_label("Read as Nxe7+").click();
+    h.run_steps(3);
+    assert_eq!(shown(&h), (4, 0));
+    let p = h.state().chess.capture.pending.as_ref().unwrap();
+    let c = p.plan.candidates.get(p.choice.unwrap()).unwrap();
+    let bold: Vec<Option<bool>> = c
+        .read
+        .items
+        .iter()
+        .filter_map(|i| match i {
+            pdfcraft_engine::chess::pdfcraft_chess::fragment::FragmentItem::Move { bold, .. } => Some(*bold),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(bold, [Some(true); 4], "the corrected move keeps its weight");
+    h.get_by_label_contains("Apply").click();
+    h.run_steps(3);
+    assert_eq!(movetext(&h), "18. Nd5 Qxe1 19. Nxe7+ Kh7");
+    let game = &h.state().chess.board().game;
+    let nxe7 = game.node_at(&pdfcraft_engine::chess::pdfcraft_chess::game::NodePath::new(vec![0, 0, 0])).unwrap();
+    let source = game.source(nxe7).expect("the corrected move keeps its place on the page");
+    assert_eq!(source.page, 0);
+}

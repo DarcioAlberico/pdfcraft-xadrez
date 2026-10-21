@@ -2924,3 +2924,21 @@ animation effects	Off	Vypnuto
 	Chess OCR read nothing in the area.	Šachové OCR v oblasti nic nepřečetlo.
 	Reading the area…	Čtení oblasti…
 	Chess OCR corrected or doubted some words: check the moves.	Šachové OCR některá slova opravilo nebo si jimi není jisté: zkontrolujte tahy.
+# Chess ▸ PGN toolbar: T10, correcting a move of the capture preview that did not play (the OCR's readings of its characters, the legal moves near it, the correction field and the full glyph palette; "Ellipsis" names a palette character).
+	Correct this move	Opravit tento tah
+	Ellipsis	Výpustka
+	Correct {move}	Opravit {move}
+	Character {glyph}	Znak {glyph}
+	Character {glyph}, doubtful	Znak {glyph}, nejistý
+	Characters read (underlined: doubtful)	Přečtené znaky (podtržené: nejisté)
+	Read the character as {glyph}	Číst znak jako {glyph}
+	Read it as	Číst jako
+	Legal moves near it	Blízké legální tahy
+	No legal move is near it.	Žádný legální tah není blízko.
+	Not reached: correct the move that stopped before it first.	Nedosaženo: nejprve opravte tah, u kterého se čtení zastavilo dřív.
+	Read as {move}	Číst jako {move}
+	Correction	Oprava
+	Read again	Přečíst znovu
+	Read the text again with the move corrected	Přečíst text znovu s opraveným tahem
+	The correction couldn't be made: the move wasn't found in the text.	Opravu nelze provést: tah nebyl v textu nalezen.
+	The corrected text fits nowhere: nothing was changed.	Opravený text nikam nepasuje: nic se nezměnilo.

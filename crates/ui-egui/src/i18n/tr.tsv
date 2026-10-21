@@ -2846,3 +2846,21 @@ animation effects	Off	Kapalı
 	Chess OCR read nothing in the area.	Satranç OCR alanda hiçbir şey okumadı.
 	Reading the area…	Alan okunuyor…
 	Chess OCR corrected or doubted some words: check the moves.	Satranç OCR bazı sözcükleri düzeltti veya onlardan emin olamadı: hamleleri kontrol edin.
+# Chess ▸ PGN toolbar: T10, correcting a move of the capture preview that did not play (the OCR's readings of its characters, the legal moves near it, the correction field and the full glyph palette; "Ellipsis" names a palette character).
+	Correct this move	Bu hamleyi düzelt
+	Ellipsis	Üç nokta
+	Correct {move}	{move} hamlesini düzelt
+	Character {glyph}	{glyph} karakteri
+	Character {glyph}, doubtful	{glyph} karakteri, şüpheli
+	Characters read (underlined: doubtful)	Okunan karakterler (altı çizili: şüpheli)
+	Read the character as {glyph}	Karakteri {glyph} olarak oku
+	Read it as	Şöyle oku
+	Legal moves near it	Yakındaki kurala uygun hamleler
+	No legal move is near it.	Yakında kurala uygun hamle yok.
+	Not reached: correct the move that stopped before it first.	Ulaşılmadı: önce okumanın daha önce durduğu hamleyi düzeltin.
+	Read as {move}	{move} olarak oku
+	Correction	Düzeltme
+	Read again	Yeniden oku
+	Read the text again with the move corrected	Metni düzeltilmiş hamleyle yeniden oku
+	The correction couldn't be made: the move wasn't found in the text.	Düzeltme yapılamadı: hamle metinde bulunamadı.
+	The corrected text fits nowhere: nothing was changed.	Düzeltilmiş metin hiçbir yere uymuyor: hiçbir şey değiştirilmedi.

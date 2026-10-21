@@ -3102,3 +3102,21 @@ chess side	Black	Juodieji
 	Chess OCR read nothing in the area.	Šachmatų OCR srityje nieko neperskaitė.
 	Reading the area…	Skaitoma sritis…
 	Chess OCR corrected or doubted some words: check the moves.	Šachmatų OCR pataisė kai kuriuos žodžius arba jais abejoja: patikrinkite ėjimus.
+# Chess ▸ PGN toolbar: T10, correcting a move of the capture preview that did not play (the OCR's readings of its characters, the legal moves near it, the correction field and the full glyph palette; "Ellipsis" names a palette character).
+	Correct this move	Taisyti šį ėjimą
+	Ellipsis	Daugtaškis
+	Correct {move}	Taisyti {move}
+	Character {glyph}	Simbolis {glyph}
+	Character {glyph}, doubtful	Simbolis {glyph}, abejotinas
+	Characters read (underlined: doubtful)	Perskaityti simboliai (pabraukti: abejotini)
+	Read the character as {glyph}	Skaityti simbolį kaip {glyph}
+	Read it as	Skaityti kaip
+	Legal moves near it	Artimi teisėti ėjimai
+	No legal move is near it.	Artimų teisėtų ėjimų nėra.
+	Not reached: correct the move that stopped before it first.	Nepasiekta: pirmiausia pataisykite ėjimą, ties kuriuo skaitymas sustojo anksčiau.
+	Read as {move}	Skaityti kaip {move}
+	Correction	Pataisa
+	Read again	Skaityti iš naujo
+	Read the text again with the move corrected	Skaityti tekstą iš naujo su pataisytu ėjimu
+	The correction couldn't be made: the move wasn't found in the text.	Pataisyti nepavyko: ėjimas tekste nerastas.
+	The corrected text fits nowhere: nothing was changed.	Pataisytas tekstas niekur netinka: niekas nepakeista.

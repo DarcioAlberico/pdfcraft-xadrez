@@ -68,6 +68,9 @@ pub struct FragmentStop {
     pub status: MoveStatus,
     /// Its box in user space, when the geometry was given.
     pub rect: Option<[f32; 4]>,
+    /// The position an illegal or ambiguous move was tried in, as a FEN: where the legal moves
+    /// near it are looked for (PGN toolbar T10). `None` for a move out of sequence or not reached.
+    pub fen: Option<String>,
 }
 
 /// What a selection was read as.
@@ -165,7 +168,12 @@ pub fn read_inlines(inlines: &[Inline], start_fen: &str, weight: bool) -> Fragme
                 }
             }
             _ if matches!(out.status, MoveStatus::Illegal | MoveStatus::Ambiguous | MoveStatus::OutOfSequence | MoveStatus::NotReached) => {
-                stops.push(FragmentStop { text: Inline::Move(m.clone()).text(), status: out.status, rect: m.source_rect.map(corners) });
+                stops.push(FragmentStop {
+                    text: Inline::Move(m.clone()).text(),
+                    status: out.status,
+                    rect: m.source_rect.map(corners),
+                    fen: out.tried.clone(),
+                });
             }
             _ => {}
         }

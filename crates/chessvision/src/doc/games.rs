@@ -609,11 +609,14 @@ pub(crate) struct MoveOutcome {
     pub node: Option<NodeRef>,
     pub san: Option<String>,
     pub fen: Option<String>,
+    /// The position an illegal or ambiguous move was tried in, as a FEN (PGN toolbar T10: where
+    /// the legal moves near it are looked for).
+    pub tried: Option<String>,
 }
 
 impl MoveOutcome {
     fn status(status: MoveStatus) -> MoveOutcome {
-        MoveOutcome { status, node: None, san: None, fen: None }
+        MoveOutcome { status, node: None, san: None, fen: None, tried: None }
     }
 }
 
@@ -1395,6 +1398,8 @@ impl Walker {
             game.flags.push(GameFlag { page: loc.page, source_rect: loc.rect, flag: ReviewFlag::ImpliedClose { text: printed.clone() } });
         }
         let Some(line) = open.lines.last() else { return MoveOutcome::status(MoveStatus::Unchecked) };
+        // The position an illegal or ambiguous move was tried in.
+        let mut tried = None;
         let (status, flag) = match decide(&game.score, line, number) {
             Decision::NotReached => (MoveStatus::NotReached, None),
             Decision::OutOfSequence(expected) => {
@@ -1439,10 +1444,15 @@ impl Walker {
                         node: Some(NodeRef { game: gi, node }),
                         san: n.map(|n| n.san.clone()),
                         fen: n.map(|n| n.fen.clone()),
+                        tried: None,
                     };
                 }
-                Err(PlayError::Illegal(near)) => (MoveStatus::Illegal, Some(ReviewFlag::IllegalMove { text: printed.clone(), near })),
+                Err(PlayError::Illegal(near)) => {
+                    tried = game.score.board_after(at).map(|b| b.to_string());
+                    (MoveStatus::Illegal, Some(ReviewFlag::IllegalMove { text: printed.clone(), near }))
+                }
                 Err(PlayError::Ambiguous(candidates)) => {
+                    tried = game.score.board_after(at).map(|b| b.to_string());
                     (MoveStatus::Ambiguous, Some(ReviewFlag::AmbiguousMove { text: printed.clone(), candidates }))
                 }
                 Err(PlayError::NoPosition) => (MoveStatus::NotReached, None),
@@ -1465,7 +1475,7 @@ impl Walker {
             open.bold_failed |= bold;
         }
         comment(game, open, &printed);
-        MoveOutcome::status(status)
+        MoveOutcome { tried, ..MoveOutcome::status(status) }
     }
 
     /// An annotation glyph: the last move's, when it was played; else part of the comment.

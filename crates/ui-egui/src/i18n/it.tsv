@@ -3062,3 +3062,21 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Chess OCR read nothing in the area.	L'OCR scacchistico non ha letto nulla nell'area.
 	Reading the area…	Lettura dell'area…
 	Chess OCR corrected or doubted some words: check the moves.	L'OCR scacchistico ha corretto o messo in dubbio alcune parole: controlla le mosse.
+# Chess ▸ PGN toolbar: T10, correcting a move of the capture preview that did not play (the OCR's readings of its characters, the legal moves near it, the correction field and the full glyph palette; "Ellipsis" names a palette character).
+	Correct this move	Correggi questa mossa
+	Ellipsis	Puntini di sospensione
+	Correct {move}	Correggi {move}
+	Character {glyph}	Carattere {glyph}
+	Character {glyph}, doubtful	Carattere {glyph}, dubbio
+	Characters read (underlined: doubtful)	Caratteri letti (sottolineati: dubbi)
+	Read the character as {glyph}	Leggi il carattere come {glyph}
+	Read it as	Leggilo come
+	Legal moves near it	Mosse legali vicine
+	No legal move is near it.	Nessuna mossa legale è vicina.
+	Not reached: correct the move that stopped before it first.	Non raggiunta: correggi prima la mossa in cui la lettura si è fermata prima di questa.
+	Read as {move}	Leggi come {move}
+	Correction	Correzione
+	Read again	Rileggi
+	Read the text again with the move corrected	Rileggi il testo con la mossa corretta
+	The correction couldn't be made: the move wasn't found in the text.	Impossibile correggere: la mossa non è stata trovata nel testo.
+	The corrected text fits nowhere: nothing was changed.	Il testo corretto non si inserisce da nessuna parte: non è stato cambiato nulla.

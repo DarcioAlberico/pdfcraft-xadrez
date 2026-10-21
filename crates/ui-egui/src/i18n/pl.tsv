@@ -2826,3 +2826,21 @@ animation effects	Off	Wyłączone
 	Chess OCR read nothing in the area.	OCR szachowy nic nie odczytał w obszarze.
 	Reading the area…	Odczytywanie obszaru…
 	Chess OCR corrected or doubted some words: check the moves.	OCR szachowy poprawił niektóre słowa lub nie jest ich pewny: sprawdź ruchy.
+# Chess ▸ PGN toolbar: T10, correcting a move of the capture preview that did not play (the OCR's readings of its characters, the legal moves near it, the correction field and the full glyph palette; "Ellipsis" names a palette character).
+	Correct this move	Popraw ten ruch
+	Ellipsis	Wielokropek
+	Correct {move}	Popraw {move}
+	Character {glyph}	Znak {glyph}
+	Character {glyph}, doubtful	Znak {glyph}, wątpliwy
+	Characters read (underlined: doubtful)	Odczytane znaki (podkreślone: wątpliwe)
+	Read the character as {glyph}	Odczytaj znak jako {glyph}
+	Read it as	Odczytaj jako
+	Legal moves near it	Legalne ruchy w pobliżu
+	No legal move is near it.	W pobliżu nie ma legalnego ruchu.
+	Not reached: correct the move that stopped before it first.	Nieosiągnięty: najpierw popraw ruch, na którym odczyt zatrzymał się wcześniej.
+	Read as {move}	Odczytaj jako {move}
+	Correction	Poprawka
+	Read again	Odczytaj ponownie
+	Read the text again with the move corrected	Odczytaj tekst ponownie z poprawionym ruchem
+	The correction couldn't be made: the move wasn't found in the text.	Nie udało się wprowadzić poprawki: nie znaleziono ruchu w tekście.
+	The corrected text fits nowhere: nothing was changed.	Poprawiony tekst nigdzie nie pasuje: nic nie zmieniono.

@@ -3126,3 +3126,21 @@ certificate	Version	الإصدار
 	Chess OCR read nothing in the area.	لم يقرأ التعرف الضوئي للشطرنج شيئًا في المنطقة.
 	Reading the area…	جارٍ قراءة المنطقة…
 	Chess OCR corrected or doubted some words: check the moves.	صحّح التعرف الضوئي للشطرنج بعض الكلمات أو شكّ فيها: راجع النقلات.
+# Chess ▸ PGN toolbar: T10, correcting a move of the capture preview that did not play (the OCR's readings of its characters, the legal moves near it, the correction field and the full glyph palette; "Ellipsis" names a palette character).
+	Correct this move	تصحيح هذه النقلة
+	Ellipsis	علامة الحذف
+	Correct {move}	تصحيح {move}
+	Character {glyph}	الحرف {glyph}
+	Character {glyph}, doubtful	الحرف {glyph}، مشكوك فيه
+	Characters read (underlined: doubtful)	الحروف المقروءة (المسطَّر تحتها مشكوك فيها)
+	Read the character as {glyph}	قراءة الحرف على أنه {glyph}
+	Read it as	قراءته على أنه
+	Legal moves near it	نقلات قانونية قريبة
+	No legal move is near it.	لا توجد نقلة قانونية قريبة.
+	Not reached: correct the move that stopped before it first.	لم تُبلغ: صحّح أولًا النقلة التي توقفت القراءة عندها قبلها.
+	Read as {move}	قراءة على أنها {move}
+	Correction	تصحيح
+	Read again	قراءة مرة أخرى
+	Read the text again with the move corrected	إعادة قراءة النص بالنقلة المصححة
+	The correction couldn't be made: the move wasn't found in the text.	تعذّر التصحيح: لم يُعثر على النقلة في النص.
+	The corrected text fits nowhere: nothing was changed.	النص المصحح لا يناسب أي موضع: لم يتغير شيء.

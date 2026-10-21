@@ -23,8 +23,8 @@
 //! **Capturing.** What was read goes through the same capture as a selection (`chess_capture`):
 //! planned, then applied or previewed beside the area. A scan has no weight, so its moves are
 //! placed by their numbers only (`CaptureText::Read`). When the cipher or the repair changed or
-//! doubted a word, the preview is shown even for a plan that fits (T10 adds correcting them; the
-//! glyphs' top readings are kept with the request for it).
+//! doubted a word, the preview is shown even for a plan that fits; there a move that did not play
+//! is corrected with the glyphs' top readings, kept with the request (T10, `chess_correct`).
 
 use std::sync::{Arc, Mutex, MutexGuard};
 

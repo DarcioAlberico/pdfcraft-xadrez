@@ -2800,3 +2800,21 @@ animation effects	Off	關
 	Chess OCR read nothing in the area.	西洋棋 OCR 在該區域中沒有讀到任何內容。
 	Reading the area…	正在讀取區域…
 	Chess OCR corrected or doubted some words: check the moves.	西洋棋 OCR 更正或懷疑了一些字詞：請檢查著法。
+# Chess ▸ PGN toolbar: T10, correcting a move of the capture preview that did not play (the OCR's readings of its characters, the legal moves near it, the correction field and the full glyph palette; "Ellipsis" names a palette character).
+	Correct this move	更正此著法
+	Ellipsis	刪節號
+	Correct {move}	更正 {move}
+	Character {glyph}	字元 {glyph}
+	Character {glyph}, doubtful	字元 {glyph}（存疑）
+	Characters read (underlined: doubtful)	讀到的字元（加底線：存疑）
+	Read the character as {glyph}	將該字元讀作 {glyph}
+	Read it as	讀作
+	Legal moves near it	附近的合法著法
+	No legal move is near it.	附近沒有合法著法。
+	Not reached: correct the move that stopped before it first.	未到達：請先更正讀取在其之前停下的著法。
+	Read as {move}	讀作 {move}
+	Correction	更正
+	Read again	重新讀取
+	Read the text again with the move corrected	用更正後的著法重新讀取文字
+	The correction couldn't be made: the move wasn't found in the text.	無法更正：在文字中找不到該著法。
+	The corrected text fits nowhere: nothing was changed.	更正後的文字無處可放：未做任何變更。

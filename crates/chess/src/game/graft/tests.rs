@@ -255,6 +255,9 @@ fn the_graft_stops_at_the_first_move_that_does_not_play() {
     assert_eq!(report.leftover_text, "Qh1 never read 20.e5");
     assert_eq!(report.played, 2);
     assert!(g2.movetext().contains("(18... Qd8 19. Bxf6)"));
+    // The stop keeps the position the move was tried in (after 19.Bxf6), for the moves near it.
+    let bxf6 = g2.node_at(&report.new_nodes[1]).unwrap();
+    assert_eq!(stop.fen.as_deref(), Some(g2.fen_at(bxf6).unwrap().as_str()));
 
     let (_, report) = g.graft(at(&g, &[0, 0]), GraftMode::Follow, &items("19.Nxe7+ Kh7 Rxe1"), None);
     assert_eq!(report.stop.unwrap().reason, GraftStopReason::Ambiguous);
