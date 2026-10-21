@@ -2723,7 +2723,6 @@ certificate	Version	الإصدار
 	Scanning for diagrams… page {d} of {t}	جارٍ البحث عن المخططات… الصفحة {d} من {t}
 	Scan this page or all pages to find the chess diagrams in this document.	ابحث في هذه الصفحة أو في كل الصفحات للعثور على مخططات الشطرنج في هذا المستند.
 	The document changed since the scan. Scan again to update the diagrams.	تغيّر المستند منذ البحث. ابحث مرة أخرى لتحديث المخططات.
-	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	لا يوجد نموذج للقطع: لا تُقرأ إلا المخططات المصفوفة بخط شطرنج. اضبط PDFCRAFT_MODELS على المجلد الذي يحتوي على chess-pieces.onnx.
 	The piece model couldn't be loaded: {e}	تعذّر تحميل نموذج القطع: {e}
 	No diagrams found.	لم يُعثر على مخططات.
 	This page couldn't be scanned: {e}	تعذّر فحص هذه الصفحة: {e}
@@ -3126,7 +3125,6 @@ chess undo step	Clear drawings	مسح الرسوم
 	OCR area	منطقة التعرف الضوئي
 	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	طبقة النص في هذه الصفحة مفقودة أو غير موثوقة، لذا يرسم السحب منطقة تُقرأ بالتعرف الضوئي للشطرنج. انقر لتحديد النص بدلًا من ذلك.
 	A drag draws an area to read with chess OCR. Click to select text instead.	يرسم السحب منطقة تُقرأ بالتعرف الضوئي للشطرنج. انقر لتحديد النص بدلًا من ذلك.
-	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	يتطلب التعرف الضوئي للشطرنج نموذج chess-glyphs. اضبط PDFCRAFT_MODELS على المجلد الذي يحتوي chess-glyphs.onnx.
 	The area is too large to read at once: draw a smaller one.	المنطقة أكبر من أن تُقرأ دفعة واحدة: ارسم منطقة أصغر.
 	The area couldn't be read: {e}	تعذّرت قراءة المنطقة: {e}
 	The area read was dropped: the document was edited.	أُسقطت قراءة المنطقة: تم تحرير المستند.
@@ -3161,3 +3159,25 @@ chess undo step	Clear drawings	مسح الرسوم
 	They are saved unencrypted, in the folder you chose for retraining.	تُحفظ دون تشفير، في المجلد الذي اخترته لإعادة التدريب.
 	Collecting stopped: {n} character samples were saved this session.	توقف الجمع: حُفظت {n} من عينات الحروف في هذه الجلسة.
 	Couldn't save a character sample: {e}	تعذّر حفظ عينة حرف: {e}
+	loaded	محمَّل
+	not found	غير موجود
+	couldn't be loaded: {e}	تعذّر تحميله: {e}
+	Chess models: piece model {pieces}; glyph model {glyphs}.	نماذج الشطرنج: نموذج القطع {pieces}؛ نموذج الرموز {glyphs}.
+	Chess models	نماذج الشطرنج
+	Choose the model files (chess-pieces.onnx and .json, chess-glyphs.onnx and .json) to use them until this page is closed. Each file may be up to {mb} MB.	اختر ملفات النماذج (chess-pieces.onnx و.json، وchess-glyphs.onnx و.json) لاستخدامها حتى إغلاق هذه الصفحة. يمكن أن يصل حجم كل ملف إلى {mb} ميغابايت.
+	No folder chosen: PDFCRAFT_MODELS, then beside the program	لم يُختر مجلد: PDFCRAFT_MODELS، ثم بجانب البرنامج
+	Models folder	مجلد النماذج
+	This folder holds no chess model, or is gone: the models are looked for in PDFCRAFT_MODELS, then beside the program.	لا يحتوي هذا المجلد على أي نموذج شطرنج، أو لم يعد موجودًا: يُبحث عن النماذج في PDFCRAFT_MODELS، ثم بجانب البرنامج.
+	Piece model: {state}	نموذج القطع: {state}
+	Glyph model: {state}	نموذج الرموز: {state}
+	Found in {folder} instead.	عُثر عليها بدلًا من ذلك في {folder}.
+	Not model files, left out: {names}	ليست ملفات نماذج، تُركت جانبًا: {names}
+	Chess models…	نماذج الشطرنج…
+	Forget	انسَ
+	Look for the models as when none were chosen.	البحث عن النماذج كما لو لم يُختر أي منها.
+	Choose the chess models folder	اختر مجلد نماذج الشطرنج
+	{folder} can't be used as the chess models folder.	لا يمكن استخدام {folder} مجلدًا لنماذج الشطرنج.
+	Choose the chess model files	اختر ملفات نماذج الشطرنج
+	Choose the piece and glyph models that read diagrams and chess text.	اختر نموذجَي القطع والرموز اللذين يقرآن المخططات ونص الشطرنج.
+	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	لا يوجد نموذج للقطع: تُقرأ فقط المخططات المصفوفة بخط شطرنج. استخدم نماذج الشطرنج… لتزويد التطبيق بالملف chess-pieces.onnx.
+	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	يحتاج التعرّف الضوئي على الشطرنج إلى النموذج chess-glyphs. استخدم نماذج الشطرنج… في لوحة الشطرنج لتزويد التطبيق بالملف chess-glyphs.onnx.

@@ -2409,7 +2409,6 @@ animation effects	Off	Изключени
 	Scanning for diagrams… page {d} of {t}	Търсене на диаграми… страница {d} от {t}
 	Scan this page or all pages to find the chess diagrams in this document.	Потърсете в тази страница или във всички страници, за да намерите шахматните диаграми в документа.
 	The document changed since the scan. Scan again to update the diagrams.	Документът е променен след търсенето. Потърсете отново, за да обновите диаграмите.
-	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	Няма модел на фигурите: четат се само диаграми, набрани с шахматен шрифт. Задайте в PDFCRAFT_MODELS папката с chess-pieces.onnx.
 	The piece model couldn't be loaded: {e}	Моделът на фигурите не можа да се зареди: {e}
 	No diagrams found.	Не са намерени диаграми.
 	This page couldn't be scanned: {e}	Тази страница не можа да се провери: {e}
@@ -2813,7 +2812,6 @@ chess undo step	Clear drawings	изчистването на рисунките
 	OCR area	OCR област
 	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	Текстовият слой на тази страница липсва или не е надежден, затова плъзгането очертава област за разчитане с шахматно OCR. Щракнете, за да избирате текст вместо това.
 	A drag draws an area to read with chess OCR. Click to select text instead.	Плъзгането очертава област за разчитане с шахматно OCR. Щракнете, за да избирате текст вместо това.
-	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	Шахматното OCR се нуждае от модела chess-glyphs. Задайте в PDFCRAFT_MODELS папката, която съдържа chess-glyphs.onnx.
 	The area is too large to read at once: draw a smaller one.	Областта е твърде голяма, за да се разчете наведнъж: очертайте по-малка.
 	The area couldn't be read: {e}	Областта не можа да бъде разчетена: {e}
 	The area read was dropped: the document was edited.	Разчитането на областта беше отхвърлено: документът беше редактиран.
@@ -2848,3 +2846,25 @@ chess undo step	Clear drawings	изчистването на рисунките
 	They are saved unencrypted, in the folder you chose for retraining.	Те се записват некриптирани в папката, избрана за дообучение.
 	Collecting stopped: {n} character samples were saved this session.	Събирането е спряно: в тази сесия са записани {n} мостри на символи.
 	Couldn't save a character sample: {e}	Мострата на символа не можа да бъде записана: {e}
+	loaded	зареден
+	not found	не е намерен
+	couldn't be loaded: {e}	не можа да се зареди: {e}
+	Chess models: piece model {pieces}; glyph model {glyphs}.	Шахматни модели: модел на фигурите {pieces}; модел на глифовете {glyphs}.
+	Chess models	Шахматни модели
+	Choose the model files (chess-pieces.onnx and .json, chess-glyphs.onnx and .json) to use them until this page is closed. Each file may be up to {mb} MB.	Изберете файловете на моделите (chess-pieces.onnx и .json, chess-glyphs.onnx и .json), за да се използват, докато тази страница е отворена. Всеки файл може да е до {mb} MB.
+	No folder chosen: PDFCRAFT_MODELS, then beside the program	Няма избрана папка: PDFCRAFT_MODELS, после до програмата
+	Models folder	Папка с модели
+	This folder holds no chess model, or is gone: the models are looked for in PDFCRAFT_MODELS, then beside the program.	Тази папка не съдържа шахматен модел или вече не съществува: моделите се търсят в PDFCRAFT_MODELS, после до програмата.
+	Piece model: {state}	Модел на фигурите: {state}
+	Glyph model: {state}	Модел на глифовете: {state}
+	Found in {folder} instead.	Намерени вместо това в {folder}.
+	Not model files, left out: {names}	Не са файлове на модели, пропуснати: {names}
+	Chess models…	Шахматни модели…
+	Forget	Забрави
+	Look for the models as when none were chosen.	Търсене на моделите, както когато не е избран нито един.
+	Choose the chess models folder	Изберете папката с шахматните модели
+	{folder} can't be used as the chess models folder.	{folder} не може да се използва като папка с шахматни модели.
+	Choose the chess model files	Изберете файловете на шахматните модели
+	Choose the piece and glyph models that read diagrams and chess text.	Изберете моделите на фигурите и глифовете, които четат диаграми и шахматен текст.
+	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	Няма модел на фигурите: четат се само диаграми, набрани с шахматен шрифт. Използвайте Шахматни модели…, за да дадете на приложението chess-pieces.onnx.
+	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	Шахматното OCR се нуждае от модела chess-glyphs. Използвайте Шахматни модели… в шахматния панел, за да дадете на приложението chess-glyphs.onnx.

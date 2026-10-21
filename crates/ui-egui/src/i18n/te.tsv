@@ -2355,7 +2355,6 @@ animation effects	Off	ఆఫ్
 	Scanning for diagrams… page {d} of {t}	రేఖాచిత్రాల కోసం వెతుకుతోంది… {t}లో {d}వ పేజీ
 	Scan this page or all pages to find the chess diagrams in this document.	ఈ పత్రంలోని చదరంగం రేఖాచిత్రాలను కనుగొనడానికి ఈ పేజీలో లేదా అన్ని పేజీలలో వెతకండి.
 	The document changed since the scan. Scan again to update the diagrams.	వెతికిన తర్వాత పత్రం మారింది. రేఖాచిత్రాలను నవీకరించడానికి మళ్లీ వెతకండి.
-	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	పావుల మోడల్ లేదు: చదరంగం ఫాంట్‌లో కూర్చిన రేఖాచిత్రాలు మాత్రమే చదవబడతాయి. chess-pieces.onnx ఉన్న ఫోల్డర్‌ను PDFCRAFT_MODELSకు సెట్ చేయండి.
 	The piece model couldn't be loaded: {e}	పావుల మోడల్‌ను లోడ్ చేయలేకపోయింది: {e}
 	No diagrams found.	రేఖాచిత్రాలు ఏవీ కనుగొనబడలేదు.
 	This page couldn't be scanned: {e}	ఈ పేజీని పరిశీలించలేకపోయింది: {e}
@@ -2759,7 +2758,6 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	OCR area	OCR ప్రాంతం
 	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	ఈ పేజీ టెక్స్ట్ లేయర్ లేదు లేదా నమ్మదగినది కాదు, కాబట్టి లాగడం చదరంగం OCRతో చదవాల్సిన ప్రాంతాన్ని గీస్తుంది. బదులుగా టెక్స్ట్‌ను ఎంచుకోవడానికి క్లిక్ చేయండి.
 	A drag draws an area to read with chess OCR. Click to select text instead.	లాగడం చదరంగం OCRతో చదవాల్సిన ప్రాంతాన్ని గీస్తుంది. బదులుగా టెక్స్ట్‌ను ఎంచుకోవడానికి క్లిక్ చేయండి.
-	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	చదరంగం OCRకు chess-glyphs మోడల్ అవసరం. chess-glyphs.onnx ఉన్న ఫోల్డర్‌కు PDFCRAFT_MODELSను సెట్ చేయండి.
 	The area is too large to read at once: draw a smaller one.	ఒకేసారి చదవడానికి ప్రాంతం చాలా పెద్దది: చిన్నది గీయండి.
 	The area couldn't be read: {e}	ప్రాంతాన్ని చదవలేకపోయింది: {e}
 	The area read was dropped: the document was edited.	ప్రాంతం చదవడం విస్మరించబడింది: పత్రం సవరించబడింది.
@@ -2794,3 +2792,25 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	They are saved unencrypted, in the folder you chose for retraining.	మళ్లీ శిక్షణ కోసం మీరు ఎంచుకున్న ఫోల్డర్‌లో అవి ఎన్‌క్రిప్ట్ చేయకుండా సేవ్ అవుతాయి.
 	Collecting stopped: {n} character samples were saved this session.	సేకరణ ఆగిపోయింది: ఈ సెషన్‌లో {n} అక్షర నమూనాలు సేవ్ అయ్యాయి.
 	Couldn't save a character sample: {e}	అక్షర నమూనాను సేవ్ చేయలేకపోయాము: {e}
+	loaded	లోడ్ అయింది
+	not found	కనబడలేదు
+	couldn't be loaded: {e}	లోడ్ చేయలేకపోయాం: {e}
+	Chess models: piece model {pieces}; glyph model {glyphs}.	చదరంగం మోడళ్లు: పావుల మోడల్ {pieces}; గ్లిఫ్ మోడల్ {glyphs}.
+	Chess models	చదరంగం మోడళ్లు
+	Choose the model files (chess-pieces.onnx and .json, chess-glyphs.onnx and .json) to use them until this page is closed. Each file may be up to {mb} MB.	మోడల్ ఫైళ్లను (chess-pieces.onnx మరియు .json, chess-glyphs.onnx మరియు .json) ఎంచుకోండి; ఈ పేజీ మూసే వరకు అవి వాడబడతాయి. ప్రతి ఫైల్ గరిష్ఠంగా {mb} MB.
+	No folder chosen: PDFCRAFT_MODELS, then beside the program	ఫోల్డర్ ఎంచుకోలేదు: PDFCRAFT_MODELS, తర్వాత ప్రోగ్రామ్ పక్కన
+	Models folder	మోడళ్ల ఫోల్డర్
+	This folder holds no chess model, or is gone: the models are looked for in PDFCRAFT_MODELS, then beside the program.	ఈ ఫోల్డర్‌లో చదరంగం మోడల్ ఏదీ లేదు, లేదా అది ఇక లేదు: మోడళ్లను PDFCRAFT_MODELS లో, తర్వాత ప్రోగ్రామ్ పక్కన వెతుకుతాం.
+	Piece model: {state}	పావుల మోడల్: {state}
+	Glyph model: {state}	గ్లిఫ్ మోడల్: {state}
+	Found in {folder} instead.	బదులుగా {folder} లో కనబడ్డాయి.
+	Not model files, left out: {names}	మోడల్ ఫైళ్లు కావు, వదిలేశాం: {names}
+	Chess models…	చదరంగం మోడళ్లు…
+	Forget	మర్చిపో
+	Look for the models as when none were chosen.	ఏదీ ఎంచుకోనప్పుడు లాగే మోడళ్లను వెతుకు.
+	Choose the chess models folder	చదరంగం మోడళ్ల ఫోల్డర్‌ను ఎంచుకోండి
+	{folder} can't be used as the chess models folder.	{folder} ను చదరంగం మోడళ్ల ఫోల్డర్‌గా వాడలేం.
+	Choose the chess model files	చదరంగం మోడల్ ఫైళ్లను ఎంచుకోండి
+	Choose the piece and glyph models that read diagrams and chess text.	డయాగ్రామ్‌లను, చదరంగం పాఠ్యాన్ని చదివే పావుల, గ్లిఫ్ మోడళ్లను ఎంచుకోండి.
+	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	పావుల మోడల్ లేదు: చదరంగం ఫాంట్‌లో కూర్చిన డయాగ్రామ్‌లు మాత్రమే చదువుతాం. యాప్‌కు chess-pieces.onnx ఇవ్వడానికి చదరంగం మోడళ్లు… వాడండి.
+	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	చదరంగం OCR కు chess-glyphs మోడల్ కావాలి. యాప్‌కు chess-glyphs.onnx ఇవ్వడానికి చదరంగం ప్యానెల్‌లోని చదరంగం మోడళ్లు… వాడండి.

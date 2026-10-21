@@ -2658,7 +2658,6 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Scanning for diagrams… page {d} of {t}	Ricerca dei diagrammi… pagina {d} di {t}
 	Scan this page or all pages to find the chess diagrams in this document.	Cerca in questa pagina o in tutte per trovare i diagrammi di scacchi di questo documento.
 	The document changed since the scan. Scan again to update the diagrams.	Il documento è cambiato dopo la ricerca. Ripeti la ricerca per aggiornare i diagrammi.
-	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	Nessun modello dei pezzi: vengono letti solo i diagrammi composti con un font di scacchi. Imposta PDFCRAFT_MODELS sulla cartella che contiene chess-pieces.onnx.
 	The piece model couldn't be loaded: {e}	Impossibile caricare il modello dei pezzi: {e}
 	No diagrams found.	Nessun diagramma trovato.
 	This page couldn't be scanned: {e}	Impossibile esaminare questa pagina: {e}
@@ -3062,7 +3061,6 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	OCR area	Area OCR
 	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	Il livello di testo di questa pagina manca o non è affidabile, quindi trascinando si disegna un'area da leggere con l'OCR scacchistico. Fai clic per selezionare il testo invece.
 	A drag draws an area to read with chess OCR. Click to select text instead.	Trascinando si disegna un'area da leggere con l'OCR scacchistico. Fai clic per selezionare il testo invece.
-	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	L'OCR scacchistico richiede il modello chess-glyphs. Imposta PDFCRAFT_MODELS sulla cartella che contiene chess-glyphs.onnx.
 	The area is too large to read at once: draw a smaller one.	L'area è troppo grande per leggerla in una volta: disegnane una più piccola.
 	The area couldn't be read: {e}	Impossibile leggere l'area: {e}
 	The area read was dropped: the document was edited.	La lettura dell'area è stata scartata: il documento è stato modificato.
@@ -3097,3 +3095,25 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	They are saved unencrypted, in the folder you chose for retraining.	Vengono salvati senza crittografia, nella cartella scelta per il riaddestramento.
 	Collecting stopped: {n} character samples were saved this session.	Raccolta interrotta: in questa sessione sono stati salvati {n} campioni di caratteri.
 	Couldn't save a character sample: {e}	Impossibile salvare un campione di carattere: {e}
+	loaded	caricato
+	not found	non trovato
+	couldn't be loaded: {e}	non è stato possibile caricarlo: {e}
+	Chess models: piece model {pieces}; glyph model {glyphs}.	Modelli scacchistici: modello dei pezzi {pieces}; modello dei glifi {glyphs}.
+	Chess models	Modelli scacchistici
+	Choose the model files (chess-pieces.onnx and .json, chess-glyphs.onnx and .json) to use them until this page is closed. Each file may be up to {mb} MB.	Scegli i file dei modelli (chess-pieces.onnx e .json, chess-glyphs.onnx e .json) per usarli fino alla chiusura di questa pagina. Ogni file può arrivare a {mb} MB.
+	No folder chosen: PDFCRAFT_MODELS, then beside the program	Nessuna cartella scelta: PDFCRAFT_MODELS, poi accanto al programma
+	Models folder	Cartella dei modelli
+	This folder holds no chess model, or is gone: the models are looked for in PDFCRAFT_MODELS, then beside the program.	Questa cartella non contiene alcun modello scacchistico, o non esiste più: i modelli vengono cercati in PDFCRAFT_MODELS, poi accanto al programma.
+	Piece model: {state}	Modello dei pezzi: {state}
+	Glyph model: {state}	Modello dei glifi: {state}
+	Found in {folder} instead.	Trovati invece in {folder}.
+	Not model files, left out: {names}	Non sono file di modello, esclusi: {names}
+	Chess models…	Modelli scacchistici…
+	Forget	Dimentica
+	Look for the models as when none were chosen.	Cerca i modelli come se non ne fosse stato scelto nessuno.
+	Choose the chess models folder	Scegli la cartella dei modelli scacchistici
+	{folder} can't be used as the chess models folder.	{folder} non può essere usata come cartella dei modelli scacchistici.
+	Choose the chess model files	Scegli i file dei modelli scacchistici
+	Choose the piece and glyph models that read diagrams and chess text.	Scegli i modelli dei pezzi e dei glifi che leggono diagrammi e testo scacchistico.
+	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	Nessun modello dei pezzi: si leggono solo i diagrammi composti in un font scacchistico. Usa Modelli scacchistici… per fornire all’app chess-pieces.onnx.
+	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	L’OCR scacchistico richiede il modello chess-glyphs. Usa Modelli scacchistici… nel pannello degli scacchi per fornire all’app chess-glyphs.onnx.

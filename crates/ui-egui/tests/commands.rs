@@ -69,6 +69,7 @@ const PICKERS: &[&str] = &[
     "chess.pgn.open",
     "chess.pgn.save",
     "chess.pgn.save_all",
+    "chess.models",
 ];
 
 #[test]

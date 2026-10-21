@@ -2446,7 +2446,6 @@ animation effects	Off	Désactivés
 	Scanning for diagrams… page {d} of {t}	Recherche de diagrammes… page {d} sur {t}
 	Scan this page or all pages to find the chess diagrams in this document.	Lancez la recherche sur cette page ou sur toutes les pages pour trouver les diagrammes d'échecs de ce document.
 	The document changed since the scan. Scan again to update the diagrams.	Le document a changé depuis la recherche. Relancez-la pour mettre à jour les diagrammes.
-	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	Aucun modèle de pièces : seuls les diagrammes composés dans une police d'échecs sont lus. Définissez PDFCRAFT_MODELS sur le dossier qui contient chess-pieces.onnx.
 	The piece model couldn't be loaded: {e}	Impossible de charger le modèle de pièces : {e}
 	No diagrams found.	Aucun diagramme trouvé.
 	This page couldn't be scanned: {e}	Impossible d'analyser cette page : {e}
@@ -2850,7 +2849,6 @@ chess undo step	Clear drawings	l'effacement des dessins
 	OCR area	Zone OCR
 	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	La couche de texte de cette page est absente ou peu fiable : un glisser trace une zone à lire avec l'OCR d'échecs. Cliquez pour sélectionner du texte à la place.
 	A drag draws an area to read with chess OCR. Click to select text instead.	Un glisser trace une zone à lire avec l'OCR d'échecs. Cliquez pour sélectionner du texte à la place.
-	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	L'OCR d'échecs a besoin du modèle chess-glyphs. Indiquez dans PDFCRAFT_MODELS le dossier qui contient chess-glyphs.onnx.
 	The area is too large to read at once: draw a smaller one.	La zone est trop grande pour être lue d'un coup : tracez-en une plus petite.
 	The area couldn't be read: {e}	Impossible de lire la zone : {e}
 	The area read was dropped: the document was edited.	La lecture de la zone a été abandonnée : le document a été modifié.
@@ -2885,3 +2883,25 @@ chess undo step	Clear drawings	l'effacement des dessins
 	They are saved unencrypted, in the folder you chose for retraining.	Ils sont enregistrés sans chiffrement, dans le dossier choisi pour le réentraînement.
 	Collecting stopped: {n} character samples were saved this session.	Collecte arrêtée : {n} échantillons de caractères ont été enregistrés pendant cette session.
 	Couldn't save a character sample: {e}	Impossible d'enregistrer un échantillon de caractère : {e}
+	loaded	chargé
+	not found	introuvable
+	couldn't be loaded: {e}	n’a pas pu être chargé : {e}
+	Chess models: piece model {pieces}; glyph model {glyphs}.	Modèles d’échecs : modèle de pièces {pieces} ; modèle de glyphes {glyphs}.
+	Chess models	Modèles d’échecs
+	Choose the model files (chess-pieces.onnx and .json, chess-glyphs.onnx and .json) to use them until this page is closed. Each file may be up to {mb} MB.	Choisissez les fichiers des modèles (chess-pieces.onnx et .json, chess-glyphs.onnx et .json) pour les utiliser jusqu’à la fermeture de cette page. Chaque fichier peut faire jusqu’à {mb} Mo.
+	No folder chosen: PDFCRAFT_MODELS, then beside the program	Aucun dossier choisi : PDFCRAFT_MODELS, puis à côté du programme
+	Models folder	Dossier des modèles
+	This folder holds no chess model, or is gone: the models are looked for in PDFCRAFT_MODELS, then beside the program.	Ce dossier ne contient aucun modèle d’échecs, ou n’existe plus : les modèles sont cherchés dans PDFCRAFT_MODELS, puis à côté du programme.
+	Piece model: {state}	Modèle de pièces : {state}
+	Glyph model: {state}	Modèle de glyphes : {state}
+	Found in {folder} instead.	Trouvés dans {folder} à la place.
+	Not model files, left out: {names}	Ce ne sont pas des fichiers de modèle, ignorés : {names}
+	Chess models…	Modèles d’échecs…
+	Forget	Oublier
+	Look for the models as when none were chosen.	Chercher les modèles comme si aucun n’avait été choisi.
+	Choose the chess models folder	Choisir le dossier des modèles d’échecs
+	{folder} can't be used as the chess models folder.	{folder} ne peut pas servir de dossier des modèles d’échecs.
+	Choose the chess model files	Choisir les fichiers des modèles d’échecs
+	Choose the piece and glyph models that read diagrams and chess text.	Choisir les modèles de pièces et de glyphes qui lisent les diagrammes et le texte d’échecs.
+	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	Pas de modèle de pièces : seuls les diagrammes composés dans une police d’échecs sont lus. Utilisez Modèles d’échecs… pour fournir chess-pieces.onnx à l’application.
+	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	L’OCR d’échecs a besoin du modèle chess-glyphs. Utilisez Modèles d’échecs… dans le panneau d’échecs pour fournir chess-glyphs.onnx à l’application.

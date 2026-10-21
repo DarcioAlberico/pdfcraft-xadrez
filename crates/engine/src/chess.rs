@@ -86,8 +86,10 @@ pub struct ChessScanSettings {
     pub max_diagrams: usize,
     /// Also read diagram fonts whose layout was not checked against the font.
     pub allow_unverified_fonts: bool,
-    /// The folder of the piece model (`chess-pieces.onnx` and `.json`). `None` looks where
-    /// [`ChessModels::find`] looks (`$PDFCRAFT_MODELS`, then beside the executable).
+    /// The folder of the piece model (`chess-pieces.onnx` and `.json`). `None` uses the models
+    /// installed from files ([`install_models`], the web app) or looks where
+    /// [`ChessModels::find`] looks (`$PDFCRAFT_MODELS`, then beside the executable). The app
+    /// passes the folder chosen in it, through [`ChessModels::locate`].
     pub models_dir: Option<PathBuf>,
 }
 
@@ -242,24 +244,96 @@ impl ChessCache {
     }
 }
 
-/// The user's chess models for `dir` (or found as [`ChessModels::find`] finds them), loaded
-/// once and shared. Only a loaded piece model is kept: a missing or broken one is looked for
-/// again next time, so a model installed while the app runs is picked up.
-pub fn models(dir: Option<&Path>) -> Arc<ChessModels> {
-    static LOADED: Mutex<Vec<(Option<PathBuf>, Arc<ChessModels>)>> = Mutex::new(Vec::new());
-    let key = dir.map(Path::to_path_buf);
-    let mut slot = LOADED.lock().unwrap_or_else(|e| e.into_inner());
-    if let Some((_, m)) = slot.iter().find(|(k, _)| *k == key) {
-        return m.clone();
+/// Model folders kept loaded at most; the oldest goes first.
+const MAX_MODEL_FOLDERS: usize = 8;
+
+/// The models loaded so far, by folder (`None`: found as [`ChessModels::find`] finds them), and
+/// the ones installed from files for the session (the web app). Generic so its rules can be
+/// tested without real models.
+struct ModelCache<T> {
+    installed: Option<Arc<T>>,
+    loaded: Vec<(Option<PathBuf>, Arc<T>)>,
+}
+
+impl<T> ModelCache<T> {
+    const fn new() -> Self {
+        ModelCache { installed: None, loaded: Vec::new() }
     }
-    let found = Arc::new(match dir {
+
+    /// The models for `dir`: the installed ones when `dir` is `None` and some are, else the ones
+    /// loaded before, else `load`ed now and kept when `keep` says they are worth keeping.
+    fn get(&mut self, dir: Option<&Path>, load: impl FnOnce(Option<&Path>) -> T, keep: impl Fn(&T) -> bool) -> Arc<T> {
+        if dir.is_none()
+            && let Some(m) = &self.installed
+        {
+            return m.clone();
+        }
+        if let Some((_, m)) = self.loaded.iter().find(|(k, _)| k.as_deref() == dir) {
+            return m.clone();
+        }
+        let found = Arc::new(load(dir));
+        if keep(&found) {
+            if self.loaded.len() >= MAX_MODEL_FOLDERS {
+                self.loaded.remove(0);
+            }
+            self.loaded.push((dir.map(Path::to_path_buf), found.clone()));
+        }
+        found
+    }
+
+    /// [`Self::get`], reading `dir` again (its files may have changed).
+    fn reload(&mut self, dir: Option<&Path>, load: impl FnOnce(Option<&Path>) -> T, keep: impl Fn(&T) -> bool) -> Arc<T> {
+        self.loaded.retain(|(k, _)| k.as_deref() != dir);
+        self.get(dir, load, keep)
+    }
+
+    /// Use `models` wherever no folder is given, or stop (`None`).
+    fn install(&mut self, models: Option<T>) -> Option<Arc<T>> {
+        self.installed = models.map(Arc::new);
+        self.installed.clone()
+    }
+}
+
+/// The session's models. A job holds its own `Arc`, so models reloaded or installed while it
+/// runs replace these for the next job and never change under it.
+static MODELS: Mutex<ModelCache<ChessModels>> = Mutex::new(ModelCache::new());
+
+fn model_cache() -> std::sync::MutexGuard<'static, ModelCache<ChessModels>> {
+    // The cache is a list of shared models: a panic elsewhere while it was held leaves it whole.
+    MODELS.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+fn load_models(dir: Option<&Path>) -> ChessModels {
+    match dir {
         Some(d) => ChessModels::load_from(d),
         None => ChessModels::find(),
-    });
-    if found.pieces.loaded().is_some() {
-        slot.push((key, found.clone()));
     }
-    found
+}
+
+/// Only a loaded piece model is kept: a missing or broken one is looked for again next time, so
+/// a model installed while the app runs is picked up.
+fn worth_keeping(models: &ChessModels) -> bool {
+    models.pieces.loaded().is_some()
+}
+
+/// The user's chess models for `dir` (or found as [`ChessModels::find`] finds them), loaded
+/// once and shared. Without `dir`, models installed from files ([`install_models`]) come first.
+/// The app passes the folder [`ChessModels::locate`] finds from the one chosen in it.
+pub fn models(dir: Option<&Path>) -> Arc<ChessModels> {
+    model_cache().get(dir, load_models, worth_keeping)
+}
+
+/// [`models`], read from `dir` again: after the user chose (or chose again) the models folder,
+/// whose files may have changed. Readings already running keep the models they started with.
+pub fn reload_models(dir: Option<&Path>) -> Arc<ChessModels> {
+    model_cache().reload(dir, load_models, worth_keeping)
+}
+
+/// Use `models` (built from files' bytes: [`ChessModels::from_files`]) wherever no folder is
+/// given, for the rest of the session; `None` stops. The web app's way to have models, where no
+/// folder can be looked in. Returns the models now installed.
+pub fn install_models(models: Option<ChessModels>) -> Option<Arc<ChessModels>> {
+    model_cache().install(models)
 }
 
 /// The state of a model, as a word and a reason.

@@ -174,7 +174,7 @@ pub(crate) fn chip(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) {
 fn error_text(e: &AreaError) -> String {
     match e {
         AreaError::NoModel => {
-            tl!("Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.").to_owned()
+            tl!("Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.").to_owned()
         }
         AreaError::NotPermitted => crate::copy_refused().to_string(),
         AreaError::TooLarge => tl!("The area is too large to read at once: draw a smaller one.").to_owned(),
@@ -224,13 +224,14 @@ impl PdfCraftApp {
         let book = self.chess.cipher.as_ref().filter(|(d, _)| *d == id).map(|(_, c)| c.clone());
         let query = AreaQuery { page, rect_user: [user.x0, user.y0, user.x1, user.y1], rect_view: job.rect_view(), lang };
         let reader = self.chess.capture.area.reader.clone();
+        let models_dir = self.chess.models.models_dir();
         let result: Slot = Arc::default();
         let slot = result.clone();
         let run = move || {
             let _finish = Finish(slot.clone());
             let read = match reader {
                 Some(reader) => reader(&query),
-                None => job.run(&OcrOptions { mode: OcrMode::Off, glyphs: None, general: true, book: book.as_ref() }, lang, None),
+                None => job.run(&OcrOptions { mode: OcrMode::Off, glyphs: None, general: true, book: book.as_ref() }, lang, models_dir.as_deref()),
             };
             *lock(&slot) = Some(read);
         };

@@ -2698,7 +2698,6 @@ theme	Appearance	Išvaizda
 	Scanning for diagrams… page {d} of {t}	Ieškoma diagramų… puslapis {d} iš {t}
 	Scan this page or all pages to find the chess diagrams in this document.	Ieškokite šiame puslapyje arba visuose puslapiuose, kad rastumėte šio dokumento šachmatų diagramas.
 	The document changed since the scan. Scan again to update the diagrams.	Dokumentas pasikeitė po paieškos. Ieškokite dar kartą, kad atnaujintumėte diagramas.
-	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	Nėra figūrų modelio: nuskaitomos tik šachmatų šriftu surinktos diagramos. Nurodykite PDFCRAFT_MODELS aplanką, kuriame yra chess-pieces.onnx.
 	The piece model couldn't be loaded: {e}	Nepavyko įkelti figūrų modelio: {e}
 	No diagrams found.	Diagramų nerasta.
 	This page couldn't be scanned: {e}	Nepavyko patikrinti šio puslapio: {e}
@@ -3102,7 +3101,6 @@ chess undo step	Clear drawings	piešinių valymą
 	OCR area	OCR sritis
 	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	Šio puslapio teksto sluoksnio nėra arba juo negalima pasitikėti, todėl vilkdami nubrėšite sritį, skaitomą šachmatų OCR. Spustelėkite, jei vietoj to norite žymėti tekstą.
 	A drag draws an area to read with chess OCR. Click to select text instead.	Vilkdami nubrėšite sritį, skaitomą šachmatų OCR. Spustelėkite, jei vietoj to norite žymėti tekstą.
-	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	Šachmatų OCR reikia modelio chess-glyphs. Nustatykite PDFCRAFT_MODELS į aplanką, kuriame yra chess-glyphs.onnx.
 	The area is too large to read at once: draw a smaller one.	Sritis per didelė, kad būtų perskaityta iš karto: nubrėžkite mažesnę.
 	The area couldn't be read: {e}	Srities perskaityti nepavyko: {e}
 	The area read was dropped: the document was edited.	Srities skaitymas atmestas: dokumentas buvo redaguotas.
@@ -3137,3 +3135,25 @@ chess undo step	Clear drawings	piešinių valymą
 	They are saved unencrypted, in the folder you chose for retraining.	Jie įrašomi nešifruoti į aplanką, kurį pasirinkote pakartotiniam mokymui.
 	Collecting stopped: {n} character samples were saved this session.	Rinkimas sustabdytas: per šį seansą įrašyta simbolių pavyzdžių: {n}.
 	Couldn't save a character sample: {e}	Nepavyko įrašyti simbolio pavyzdžio: {e}
+	loaded	įkeltas
+	not found	nerastas
+	couldn't be loaded: {e}	nepavyko įkelti: {e}
+	Chess models: piece model {pieces}; glyph model {glyphs}.	Šachmatų modeliai: figūrų modelis {pieces}; glifų modelis {glyphs}.
+	Chess models	Šachmatų modeliai
+	Choose the model files (chess-pieces.onnx and .json, chess-glyphs.onnx and .json) to use them until this page is closed. Each file may be up to {mb} MB.	Pasirinkite modelių failus (chess-pieces.onnx ir .json, chess-glyphs.onnx ir .json), kad jie būtų naudojami, kol šis puslapis atidarytas. Kiekvienas failas gali būti iki {mb} MB.
+	No folder chosen: PDFCRAFT_MODELS, then beside the program	Aplankas nepasirinktas: PDFCRAFT_MODELS, tada šalia programos
+	Models folder	Modelių aplankas
+	This folder holds no chess model, or is gone: the models are looked for in PDFCRAFT_MODELS, then beside the program.	Šiame aplanke nėra šachmatų modelio arba jo nebėra: modelių ieškoma PDFCRAFT_MODELS, tada šalia programos.
+	Piece model: {state}	Figūrų modelis: {state}
+	Glyph model: {state}	Glifų modelis: {state}
+	Found in {folder} instead.	Vietoj to rasti aplanke {folder}.
+	Not model files, left out: {names}	Ne modelių failai, praleisti: {names}
+	Chess models…	Šachmatų modeliai…
+	Forget	Pamiršti
+	Look for the models as when none were chosen.	Ieškoti modelių taip, lyg nė vienas nebūtų pasirinktas.
+	Choose the chess models folder	Pasirinkite šachmatų modelių aplanką
+	{folder} can't be used as the chess models folder.	{folder} negali būti naudojamas kaip šachmatų modelių aplankas.
+	Choose the chess model files	Pasirinkite šachmatų modelių failus
+	Choose the piece and glyph models that read diagrams and chess text.	Pasirinkti figūrų ir glifų modelius, kurie skaito diagramas ir šachmatų tekstą.
+	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	Nėra figūrų modelio: skaitomos tik šachmatų šriftu surinktos diagramos. Naudodami Šachmatų modeliai… nurodykite programai chess-pieces.onnx.
+	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	Šachmatų OCR reikia modelio chess-glyphs. Naudodami Šachmatų modeliai… šachmatų skydelyje nurodykite programai chess-glyphs.onnx.

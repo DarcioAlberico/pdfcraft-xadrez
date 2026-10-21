@@ -2410,7 +2410,6 @@ animation effects	Off	关
 	Scanning for diagrams… page {d} of {t}	正在查找棋图…第{d}页，共{t}页
 	Scan this page or all pages to find the chess diagrams in this document.	查找此页或所有页面，以找到此文档中的国际象棋棋图。
 	The document changed since the scan. Scan again to update the diagrams.	查找之后文档已更改。请重新查找以更新棋图。
-	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	没有棋子模型：只能读取用国际象棋字体排出的棋图。请将 PDFCRAFT_MODELS 设为包含 chess-pieces.onnx 的文件夹。
 	The piece model couldn't be loaded: {e}	无法加载棋子模型：{e}
 	No diagrams found.	未找到棋图。
 	This page couldn't be scanned: {e}	无法查找此页：{e}
@@ -2814,7 +2813,6 @@ chess undo step	Clear drawings	清除标记
 	OCR area	OCR 区域
 	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	此页的文本层缺失或不可信，因此拖动会画出一个用国际象棋 OCR 读取的区域。单击可改为选择文本。
 	A drag draws an area to read with chess OCR. Click to select text instead.	拖动会画出一个用国际象棋 OCR 读取的区域。单击可改为选择文本。
-	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	国际象棋 OCR 需要 chess-glyphs 模型。请将 PDFCRAFT_MODELS 设为包含 chess-glyphs.onnx 的文件夹。
 	The area is too large to read at once: draw a smaller one.	区域太大，无法一次读取：请画一个更小的区域。
 	The area couldn't be read: {e}	无法读取该区域：{e}
 	The area read was dropped: the document was edited.	已放弃读取区域：文档已被编辑。
@@ -2849,3 +2847,25 @@ chess undo step	Clear drawings	清除标记
 	They are saved unencrypted, in the folder you chose for retraining.	它们会以未加密形式保存在你为重新训练选择的文件夹中。
 	Collecting stopped: {n} character samples were saved this session.	已停止收集：本次会话已保存 {n} 个字符样本。
 	Couldn't save a character sample: {e}	无法保存字符样本：{e}
+	loaded	已加载
+	not found	未找到
+	couldn't be loaded: {e}	无法加载：{e}
+	Chess models: piece model {pieces}; glyph model {glyphs}.	国际象棋模型：棋子模型{pieces}；字形模型{glyphs}。
+	Chess models	国际象棋模型
+	Choose the model files (chess-pieces.onnx and .json, chess-glyphs.onnx and .json) to use them until this page is closed. Each file may be up to {mb} MB.	选择模型文件（chess-pieces.onnx 和 .json、chess-glyphs.onnx 和 .json），在关闭此页面前一直使用。每个文件最大 {mb} MB。
+	No folder chosen: PDFCRAFT_MODELS, then beside the program	未选择文件夹：先查 PDFCRAFT_MODELS，再查程序旁边
+	Models folder	模型文件夹
+	This folder holds no chess model, or is gone: the models are looked for in PDFCRAFT_MODELS, then beside the program.	此文件夹中没有国际象棋模型，或已不存在：将在 PDFCRAFT_MODELS 中查找模型，然后在程序旁边查找。
+	Piece model: {state}	棋子模型：{state}
+	Glyph model: {state}	字形模型：{state}
+	Found in {folder} instead.	改为在 {folder} 中找到。
+	Not model files, left out: {names}	不是模型文件，已忽略：{names}
+	Chess models…	国际象棋模型…
+	Forget	忘记
+	Look for the models as when none were chosen.	像未选择任何模型时一样查找模型。
+	Choose the chess models folder	选择国际象棋模型文件夹
+	{folder} can't be used as the chess models folder.	{folder} 不能用作国际象棋模型文件夹。
+	Choose the chess model files	选择国际象棋模型文件
+	Choose the piece and glyph models that read diagrams and chess text.	选择用于读取棋图和棋谱文字的棋子模型和字形模型。
+	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	没有棋子模型：只读取用国际象棋字体排版的棋图。请用“国际象棋模型…”为应用提供 chess-pieces.onnx。
+	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	国际象棋 OCR 需要 chess-glyphs 模型。请用国际象棋面板中的“国际象棋模型…”为应用提供 chess-glyphs.onnx。

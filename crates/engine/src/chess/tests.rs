@@ -246,6 +246,43 @@ fn sources(page: &ChessPage) -> Vec<Vec<Source>> {
     page.diagrams.iter().map(|d| d.sources.clone()).collect()
 }
 
+/// U4: the model cache. Installed models (the web app) answer when no folder is given, never for
+/// a folder; models kept for a folder are read again on reload, while a holder of the old ones
+/// keeps them; models not worth keeping are loaded each time; and the folders kept are capped.
+#[test]
+fn the_model_cache_installs_reloads_and_keeps_what_jobs_hold() {
+    let mut cache: ModelCache<u32> = ModelCache::new();
+    let loads = std::cell::Cell::new(0u32);
+    let load = |_: Option<&Path>| {
+        loads.set(loads.get() + 1);
+        loads.get()
+    };
+    let keep = |_: &u32| true;
+    let dir = Path::new("models");
+    let first = cache.get(Some(dir), load, keep);
+    assert_eq!(*cache.get(Some(dir), load, keep), 1, "kept");
+    let reloaded = cache.reload(Some(dir), load, keep);
+    assert_eq!((*first, *reloaded, loads.get()), (1, 2, 2), "a job holding the old models keeps them");
+    assert_eq!(*cache.get(Some(dir), load, keep), 2);
+
+    let installed = cache.install(Some(100)).unwrap();
+    assert!(Arc::ptr_eq(&cache.get(None, load, keep), &installed));
+    assert!(Arc::ptr_eq(&cache.reload(None, load, keep), &installed), "reloading the search keeps installed models");
+    assert_eq!(*cache.get(Some(dir), load, keep), 2, "a folder given is that folder's");
+    assert!(cache.install(None).is_none());
+    assert_eq!(*cache.get(None, load, keep), 3, "uninstalled: the search again");
+
+    let never = |_: &u32| false;
+    let before = loads.get();
+    cache.get(Some(Path::new("glyphs-only")), load, never);
+    cache.get(Some(Path::new("glyphs-only")), load, never);
+    assert_eq!(loads.get(), before + 2, "not kept: loaded again each time");
+    for i in 0..20 {
+        cache.get(Some(Path::new(&format!("folder-{i}"))), load, keep);
+    }
+    assert_eq!(cache.loaded.len(), MAX_MODEL_FOLDERS);
+}
+
 /// Without a model: the font diagram is read exactly (legal, accepted, with a lichess link), and
 /// the vector board and the image are found but say `NoModel`. The diagrams come in column
 /// order: the left column top to bottom, then the right.

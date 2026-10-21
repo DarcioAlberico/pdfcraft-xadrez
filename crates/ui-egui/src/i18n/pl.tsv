@@ -2422,7 +2422,6 @@ animation effects	Off	Wyłączone
 	Scanning for diagrams… page {d} of {t}	Wyszukiwanie diagramów… strona {d} z {t}
 	Scan this page or all pages to find the chess diagrams in this document.	Przeszukaj tę stronę lub wszystkie strony, aby znaleźć diagramy szachowe w tym dokumencie.
 	The document changed since the scan. Scan again to update the diagrams.	Dokument zmienił się od wyszukiwania. Wyszukaj ponownie, aby zaktualizować diagramy.
-	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	Brak modelu bierek: odczytywane są tylko diagramy złożone czcionką szachową. Ustaw PDFCRAFT_MODELS na folder zawierający chess-pieces.onnx.
 	The piece model couldn't be loaded: {e}	Nie udało się wczytać modelu bierek: {e}
 	No diagrams found.	Nie znaleziono diagramów.
 	This page couldn't be scanned: {e}	Nie udało się przeszukać tej strony: {e}
@@ -2826,7 +2825,6 @@ chess undo step	Clear drawings	usunięcie rysunków
 	OCR area	Obszar OCR
 	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	Warstwa tekstowa tej strony nie istnieje lub nie jest wiarygodna, więc przeciągnięcie rysuje obszar do odczytania OCR-em szachowym. Kliknij, aby zamiast tego zaznaczać tekst.
 	A drag draws an area to read with chess OCR. Click to select text instead.	Przeciągnięcie rysuje obszar do odczytania OCR-em szachowym. Kliknij, aby zamiast tego zaznaczać tekst.
-	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	OCR szachowy wymaga modelu chess-glyphs. Ustaw PDFCRAFT_MODELS na folder zawierający chess-glyphs.onnx.
 	The area is too large to read at once: draw a smaller one.	Obszar jest zbyt duży, by odczytać go naraz: narysuj mniejszy.
 	The area couldn't be read: {e}	Nie udało się odczytać obszaru: {e}
 	The area read was dropped: the document was edited.	Odczyt obszaru został porzucony: dokument został zmieniony.
@@ -2861,3 +2859,25 @@ chess undo step	Clear drawings	usunięcie rysunków
 	They are saved unencrypted, in the folder you chose for retraining.	Są zapisywane bez szyfrowania w folderze wybranym do ponownego trenowania.
 	Collecting stopped: {n} character samples were saved this session.	Zbieranie zatrzymane: w tej sesji zapisano próbek znaków: {n}.
 	Couldn't save a character sample: {e}	Nie udało się zapisać próbki znaku: {e}
+	loaded	wczytany
+	not found	nie znaleziono
+	couldn't be loaded: {e}	nie udało się wczytać: {e}
+	Chess models: piece model {pieces}; glyph model {glyphs}.	Modele szachowe: model bierek {pieces}; model glifów {glyphs}.
+	Chess models	Modele szachowe
+	Choose the model files (chess-pieces.onnx and .json, chess-glyphs.onnx and .json) to use them until this page is closed. Each file may be up to {mb} MB.	Wybierz pliki modeli (chess-pieces.onnx i .json, chess-glyphs.onnx i .json), aby używać ich do zamknięcia tej strony. Każdy plik może mieć do {mb} MB.
+	No folder chosen: PDFCRAFT_MODELS, then beside the program	Nie wybrano folderu: PDFCRAFT_MODELS, potem obok programu
+	Models folder	Folder modeli
+	This folder holds no chess model, or is gone: the models are looked for in PDFCRAFT_MODELS, then beside the program.	Ten folder nie zawiera żadnego modelu szachowego lub już nie istnieje: modele są szukane w PDFCRAFT_MODELS, potem obok programu.
+	Piece model: {state}	Model bierek: {state}
+	Glyph model: {state}	Model glifów: {state}
+	Found in {folder} instead.	Znaleziono zamiast tego w {folder}.
+	Not model files, left out: {names}	To nie są pliki modeli, pominięto: {names}
+	Chess models…	Modele szachowe…
+	Forget	Zapomnij
+	Look for the models as when none were chosen.	Szukaj modeli tak, jakby żadnego nie wybrano.
+	Choose the chess models folder	Wybierz folder modeli szachowych
+	{folder} can't be used as the chess models folder.	Nie można użyć {folder} jako folderu modeli szachowych.
+	Choose the chess model files	Wybierz pliki modeli szachowych
+	Choose the piece and glyph models that read diagrams and chess text.	Wybierz modele bierek i glifów, które odczytują diagramy i tekst szachowy.
+	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	Brak modelu bierek: odczytywane są tylko diagramy złożone czcionką szachową. Użyj Modele szachowe…, aby podać aplikacji chess-pieces.onnx.
+	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	Szachowy OCR potrzebuje modelu chess-glyphs. Użyj Modele szachowe… w panelu szachowym, aby podać aplikacji chess-glyphs.onnx.
