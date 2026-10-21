@@ -2798,3 +2798,13 @@ animation effects	Off	Izklopljeni
 	The capture was closed: the document was edited.	Zajem je bil zaprt: dokument je bil urejen.
 	The rest is too long to keep as a comment; it is still on the page.	Ostanek je predolg za komentar; še vedno je na strani.
 	Nothing new: the moves are in the game already.	Nič novega: poteze so že v partiji.
+
+# Chess ▸ PGN toolbar: T8, a game of the book on the board, and Show in PDF / Follow.
+	Follow the move on the page	Sledi potezi na strani
+	Follow the move on the page: this move has no place on the page	Sledi potezi na strani: ta poteza nima mesta na strani
+	Show in PDF	Pokaži v PDF
+	This move has no place on the page.	Ta poteza nima mesta na strani.
+	This game can't go on the board: its start position isn't legal.	Te partije ni mogoče postaviti na šahovnico: njen začetni položaj ni dovoljen.
+	Moves left off the board (more than it holds): {n}	Poteze, ki so ostale zunaj šahovnice (več, kot jih sprejme): {n}
+	Double-click to open this game on the board.	Dvokliknite, da odprete to partijo na šahovnici.
+	Open this game on the board	Odpri to partijo na šahovnici

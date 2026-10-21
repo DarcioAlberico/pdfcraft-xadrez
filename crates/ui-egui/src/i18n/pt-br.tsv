@@ -2810,3 +2810,13 @@ chess side	Black	Pretas
 	The capture was closed: the document was edited.	A captura foi fechada: o documento foi editado.
 	The rest is too long to keep as a comment; it is still on the page.	O resto é longo demais para ficar como comentário; ele continua na página.
 	Nothing new: the moves are in the game already.	Nada novo: os lances já estão na partida.
+
+# Chess ▸ PGN toolbar: T8, a game of the book on the board, and Show in PDF / Follow.
+	Follow the move on the page	Seguir o lance na página
+	Follow the move on the page: this move has no place on the page	Seguir o lance na página: este lance não tem lugar na página
+	Show in PDF	Mostrar no PDF
+	This move has no place on the page.	Este lance não tem lugar na página.
+	This game can't go on the board: its start position isn't legal.	Esta partida não pode ir para o tabuleiro: sua posição inicial não é legal.
+	Moves left off the board (more than it holds): {n}	Lances deixados fora do tabuleiro (mais do que ele comporta): {n}
+	Double-click to open this game on the board.	Clique duas vezes para abrir esta partida no tabuleiro.
+	Open this game on the board	Abrir esta partida no tabuleiro

@@ -373,6 +373,9 @@ pub const COMMANDS: &[CommandSpec] = &[
     c("chess.tool.capture_subvariation", "Capture as a sub-variation", None, None, Nothing, "spline"),
     c("chess.tool.comment", "Capture as a comment", None, None, Nothing, "message-square-text"),
     c("chess.pgn.paste_as", "Paste and capture", None, None, Nothing, "clipboard-paste"),
+    // T8: where a move was printed, once (Show in PDF) or whenever the move shown changes (Follow).
+    c("chess.source.show", "Show in PDF", None, None, Nothing, "file-search"),
+    c("chess.source.follow", "Follow the move on the page", None, None, Nothing, "navigation"),
     c("export.all_images", "Export all images…", FILE, None, Copying, "image"),
     c("edit.header_footer", "Add header & footer…", None, None, Modification, "heading"),
     c("edit.header_footer.update", "Update header & footer…", None, None, Marks(crate::MarkKind::HeaderFooter), "heading"),

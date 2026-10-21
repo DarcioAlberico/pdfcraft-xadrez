@@ -181,6 +181,8 @@ pub struct BoardState {
     pub(crate) typing: crate::chess_annotate::Typing,
     /// The moves the last capture added, tinted in the move list (T7b).
     pub fresh: crate::chess_capture::Fresh,
+    /// A move whose place on the page was asked for (Show in PDF, T8), until the app shows it.
+    pub(crate) show_source: Option<NodeId>,
 }
 
 /// A comment or game-detail field while it has the keyboard: its key, its text as typed, and
@@ -218,6 +220,7 @@ impl Default for BoardState {
             focus_comment: false,
             typing: Default::default(),
             fresh: Default::default(),
+            show_source: None,
         }
     }
 }

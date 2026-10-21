@@ -2769,3 +2769,13 @@ animation effects	Off	Wyłączone
 	The capture was closed: the document was edited.	Przechwycenie zamknięto: dokument został zmieniony.
 	The rest is too long to keep as a comment; it is still on the page.	Reszta jest za długa na komentarz; nadal jest na stronie.
 	Nothing new: the moves are in the game already.	Nic nowego: ruchy są już w partii.
+
+# Chess ▸ PGN toolbar: T8, a game of the book on the board, and Show in PDF / Follow.
+	Follow the move on the page	Śledź ruch na stronie
+	Follow the move on the page: this move has no place on the page	Śledź ruch na stronie: ten ruch nie ma miejsca na stronie
+	Show in PDF	Pokaż w PDF
+	This move has no place on the page.	Ten ruch nie ma miejsca na stronie.
+	This game can't go on the board: its start position isn't legal.	Tej partii nie można przenieść na szachownicę: jej pozycja początkowa nie jest legalna.
+	Moves left off the board (more than it holds): {n}	Ruchy pominięte na szachownicy (więcej, niż mieści): {n}
+	Double-click to open this game on the board.	Kliknij dwukrotnie, aby otworzyć tę partię na szachownicy.
+	Open this game on the board	Otwórz tę partię na szachownicy

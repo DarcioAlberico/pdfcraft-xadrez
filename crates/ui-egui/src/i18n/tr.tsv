@@ -2789,3 +2789,13 @@ animation effects	Off	Kapalı
 	The capture was closed: the document was edited.	Yakalama kapatıldı: belge düzenlendi.
 	The rest is too long to keep as a comment; it is still on the page.	Kalan, yorum olarak saklanamayacak kadar uzun; hâlâ sayfada.
 	Nothing new: the moves are in the game already.	Yeni bir şey yok: hamleler zaten oyunda.
+
+# Chess ▸ PGN toolbar: T8, a game of the book on the board, and Show in PDF / Follow.
+	Follow the move on the page	Sayfadaki hamleyi izle
+	Follow the move on the page: this move has no place on the page	Sayfadaki hamleyi izle: bu hamlenin sayfada yeri yok
+	Show in PDF	PDF'de göster
+	This move has no place on the page.	Bu hamlenin sayfada yeri yok.
+	This game can't go on the board: its start position isn't legal.	Bu oyun tahtaya konamıyor: başlangıç konumu kurallara uygun değil.
+	Moves left off the board (more than it holds): {n}	Tahtaya alınmayan hamleler (tahtanın alabileceğinden fazla): {n}
+	Double-click to open this game on the board.	Bu oyunu tahtada açmak için çift tıklayın.
+	Open this game on the board	Bu oyunu tahtada aç

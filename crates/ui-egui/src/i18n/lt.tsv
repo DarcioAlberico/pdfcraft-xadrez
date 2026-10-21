@@ -3046,3 +3046,13 @@ chess side	Black	Juodieji
 	The capture was closed: the document was edited.	Perkėlimas uždarytas: dokumentas buvo redaguotas.
 	The rest is too long to keep as a comment; it is still on the page.	Likutis per ilgas komentarui; jis lieka puslapyje.
 	Nothing new: the moves are in the game already.	Nieko naujo: ėjimai jau yra partijoje.
+
+# Chess ▸ PGN toolbar: T8, a game of the book on the board, and Show in PDF / Follow.
+	Follow the move on the page	Sekti ėjimą puslapyje
+	Follow the move on the page: this move has no place on the page	Sekti ėjimą puslapyje: šis ėjimas neturi vietos puslapyje
+	Show in PDF	Rodyti PDF
+	This move has no place on the page.	Šis ėjimas neturi vietos puslapyje.
+	This game can't go on the board: its start position isn't legal.	Šios partijos negalima perkelti į lentą: jos pradinė pozicija neteisinga.
+	Moves left off the board (more than it holds): {n}	Ėjimai, nepatekę į lentą (daugiau, nei ji talpina): {n}
+	Double-click to open this game on the board.	Dukart spustelėkite, kad atvertumėte šią partiją lentoje.
+	Open this game on the board	Atverti šią partiją lentoje

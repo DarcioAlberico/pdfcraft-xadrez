@@ -2795,3 +2795,13 @@ animation effects	Off	オフ
 	The capture was closed: the document was edited.	文書が編集されたため、取り込みを閉じました。
 	The rest is too long to keep as a comment; it is still on the page.	残りが長すぎてコメントにできません。ページにはそのまま残っています。
 	Nothing new: the moves are in the game already.	新しいものはありません: 指し手は既に棋譜にあります。
+
+# Chess ▸ PGN toolbar: T8, a game of the book on the board, and Show in PDF / Follow.
+	Follow the move on the page	ページ上の指し手を追う
+	Follow the move on the page: this move has no place on the page	ページ上の指し手を追う: この指し手はページ上に位置がありません
+	Show in PDF	PDF で表示
+	This move has no place on the page.	この指し手はページ上に位置がありません。
+	This game can't go on the board: its start position isn't legal.	この対局は盤に置けません: 開始局面が合法ではありません。
+	Moves left off the board (more than it holds): {n}	盤に入らなかった指し手 (盤の上限を超過): {n}
+	Double-click to open this game on the board.	ダブルクリックでこの対局を盤で開きます。
+	Open this game on the board	この対局を盤で開く

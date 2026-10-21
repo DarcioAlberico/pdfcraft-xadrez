@@ -123,7 +123,7 @@ impl GameEntry {
     }
 
     /// Nothing done on it since it was opened (no undo or redo step).
-    fn untouched(&self) -> bool {
+    pub(crate) fn untouched(&self) -> bool {
         self.board.history.undo_edit().is_none() && self.board.history.redo_edit().is_none()
     }
 }
@@ -267,7 +267,7 @@ impl ChessCollection {
     }
 
     /// Add `entry` at the end and show it. A blank game alone in the collection gives way to it.
-    fn add(&mut self, entry: GameEntry) {
+    pub(crate) fn add(&mut self, entry: GameEntry) {
         if self.len() == 1 && self.active.is_blank() {
             self.active = entry;
             return;

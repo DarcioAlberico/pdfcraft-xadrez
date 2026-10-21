@@ -2791,3 +2791,13 @@ animation effects	Off	Өшірулі
 	The capture was closed: the document was edited.	Түсіру жабылды: құжат өңделді.
 	The rest is too long to keep as a comment; it is still on the page.	Қалғаны түсініктемеге тым ұзын; ол бетте қалады.
 	Nothing new: the moves are in the game already.	Жаңа ештеңе жоқ: жүрістер партияда бар.
+
+# Chess ▸ PGN toolbar: T8, a game of the book on the board, and Show in PDF / Follow.
+	Follow the move on the page	Беттегі жүрісті қадағалау
+	Follow the move on the page: this move has no place on the page	Беттегі жүрісті қадағалау: бұл жүрістің бетте орны жоқ
+	Show in PDF	PDF-те көрсету
+	This move has no place on the page.	Бұл жүрістің бетте орны жоқ.
+	This game can't go on the board: its start position isn't legal.	Бұл партияны тақтаға қою мүмкін емес: оның бастапқы позициясы ережеге сай емес.
+	Moves left off the board (more than it holds): {n}	Тақтадан тыс қалған жүрістер (сыйғанынан көп): {n}
+	Double-click to open this game on the board.	Бұл партияны тақтада ашу үшін екі рет шертіңіз.
+	Open this game on the board	Бұл партияны тақтада ашу

@@ -2792,3 +2792,13 @@ animation effects	Off	Ki
 	The capture was closed: the document was edited.	A rögzítés bezárult: a dokumentumot szerkesztették.
 	The rest is too long to keep as a comment; it is still on the page.	A maradék túl hosszú egy megjegyzéshez; továbbra is az oldalon van.
 	Nothing new: the moves are in the game already.	Nincs új: a lépések már szerepelnek a játszmában.
+
+# Chess ▸ PGN toolbar: T8, a game of the book on the board, and Show in PDF / Follow.
+	Follow the move on the page	A lépés követése az oldalon
+	Follow the move on the page: this move has no place on the page	A lépés követése az oldalon: ennek a lépésnek nincs helye az oldalon
+	Show in PDF	Megjelenítés a PDF-ben
+	This move has no place on the page.	Ennek a lépésnek nincs helye az oldalon.
+	This game can't go on the board: its start position isn't legal.	Ez a játszma nem tehető a táblára: a kiinduló állása nem szabályos.
+	Moves left off the board (more than it holds): {n}	A táblán kívül maradt lépések (több, mint amennyi elfér): {n}
+	Double-click to open this game on the board.	Kattintson duplán a játszma táblán való megnyitásához.
+	Open this game on the board	A játszma megnyitása a táblán

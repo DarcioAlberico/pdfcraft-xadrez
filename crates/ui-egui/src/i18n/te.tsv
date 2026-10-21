@@ -2702,3 +2702,13 @@ animation effects	Off	ఆఫ్
 	The capture was closed: the document was edited.	సంగ్రహణ మూసివేయబడింది: పత్రం సవరించబడింది.
 	The rest is too long to keep as a comment; it is still on the page.	మిగిలినది వ్యాఖ్యగా ఉంచడానికి చాలా పొడవుగా ఉంది; అది ఇంకా పేజీపైనే ఉంది.
 	Nothing new: the moves are in the game already.	కొత్తదేమీ లేదు: ఎత్తులు ఇప్పటికే ఆటలో ఉన్నాయి.
+
+# Chess ▸ PGN toolbar: T8, a game of the book on the board, and Show in PDF / Follow.
+	Follow the move on the page	పేజీలో ఎత్తును అనుసరించు
+	Follow the move on the page: this move has no place on the page	పేజీలో ఎత్తును అనుసరించు: ఈ ఎత్తుకు పేజీలో స్థానం లేదు
+	Show in PDF	PDFలో చూపించు
+	This move has no place on the page.	ఈ ఎత్తుకు పేజీలో స్థానం లేదు.
+	This game can't go on the board: its start position isn't legal.	ఈ ఆటను బోర్డుపై పెట్టలేము: దాని ప్రారంభ స్థితి చెల్లదు.
+	Moves left off the board (more than it holds): {n}	బోర్డుకు వెలుపల మిగిలిన ఎత్తులు (అది పట్టే దానికంటే ఎక్కువ): {n}
+	Double-click to open this game on the board.	ఈ ఆటను బోర్డుపై తెరవడానికి రెండుసార్లు క్లిక్ చేయండి.
+	Open this game on the board	ఈ ఆటను బోర్డుపై తెరువు

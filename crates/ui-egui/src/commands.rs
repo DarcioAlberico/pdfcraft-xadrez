@@ -141,6 +141,7 @@ impl PdfCraftApp {
         let Some(spec) = commands::command(id) else { return false };
         if !self.command_enabled(spec) {
             let why = match spec.needs {
+                _ if id == "chess.source.show" => tl!("This move has no place on the page.").to_string(),
                 _ if crate::chess_tools::is_tool_command(id) => tl!("Put a game on the chess board first: there are no moves to change.").to_string(),
                 commands::Needs::Undo => tl!("Nothing to undo").to_string(),
                 commands::Needs::Redo => tl!("Nothing to redo").to_string(),
