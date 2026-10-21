@@ -2802,3 +2802,14 @@ animation effects	Off	Изключени
 	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	Четка за знаци {glyph} ({name}): щракнете върху ходове, за да го поставите или махнете.
 	Stop (Esc)	Спиране (Esc)
 	Line copied	Линията е копирана
+# Chess ▸ PGN toolbar: T9, the OCR area of scanned pages (its rail switch and chip, the area's notices; "OCR area" is a command name too).
+	OCR area	OCR област
+	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	Текстовият слой на тази страница липсва или не е надежден, затова плъзгането очертава област за разчитане с шахматно OCR. Щракнете, за да избирате текст вместо това.
+	A drag draws an area to read with chess OCR. Click to select text instead.	Плъзгането очертава област за разчитане с шахматно OCR. Щракнете, за да избирате текст вместо това.
+	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	Шахматното OCR се нуждае от модела chess-glyphs. Задайте в PDFCRAFT_MODELS папката, която съдържа chess-glyphs.onnx.
+	The area is too large to read at once: draw a smaller one.	Областта е твърде голяма, за да се разчете наведнъж: очертайте по-малка.
+	The area couldn't be read: {e}	Областта не можа да бъде разчетена: {e}
+	The area read was dropped: the document was edited.	Разчитането на областта беше отхвърлено: документът беше редактиран.
+	Chess OCR read nothing in the area.	Шахматното OCR не разчете нищо в областта.
+	Reading the area…	Разчитане на областта…
+	Chess OCR corrected or doubted some words: check the moves.	Шахматното OCR поправи или се усъмни в някои думи: проверете ходовете.

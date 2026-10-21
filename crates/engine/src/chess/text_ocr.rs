@@ -16,16 +16,32 @@
 //! 5. the lines become the same `ChessPageText` a text layer gives.
 //!
 //! Reading order is top to bottom by line: a two-column page is read across both columns.
+//!
+//! **An area of a page** (PGN toolbar T9, [`OcrAreaJob`]): the user draws a rectangle on a scan
+//! and only that rectangle is rendered (at [`OCR_DPI`], less for an area too large for one
+//! render tile) and read the same way, without the diagram mask: the glyph reader, the general
+//! OCR's words when asked for, the fusion, then the book's proven cipher and the repair (which
+//! judges by legality only from the game start, when the area's first move is `1.`). The result
+//! is the page's text layer for that rectangle ([`AreaRead::glyphs`], view space), which the
+//! capture reads like a selection, plus each glyph's top readings for review (T10).
+
+use std::path::Path;
+use std::sync::Arc;
 
 use pdfcraft_chess::repair::GameContext;
 use pdfcraft_chess::san::Lang;
-use pdfcraft_chessvision::chess_text::ChessPageText;
+use pdfcraft_chessvision::chess_text::{self, ChessPageText, TextQuality};
 use pdfcraft_chessvision::cipher::{BookCipher, repair_lines};
-use pdfcraft_chessvision::coords::PixelRect;
+use pdfcraft_chessvision::coords::{PageGeometry, PageRect, PixelRect, ViewRect, pixels_to_view};
 use pdfcraft_chessvision::doc::TextReview;
-use pdfcraft_chessvision::glyphs::fuse::{FusedLine, OcrWord, fuse_line, glyphs_only, to_chess_text};
+use pdfcraft_chessvision::glyphs::fuse::{FusedLine, OcrWord, fuse_line, glyphs_only, to_chess_text, to_page_text};
 use pdfcraft_chessvision::glyphs::{GlyphClassifier, GlyphLine, GlyphOptions, read, text_scale};
 use pdfcraft_chessvision::raster::GrayImage;
+use pdfcraft_render::text::PageText;
+use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind, Tile};
+
+use super::document::OcrOptions;
+use crate::{DocId, Session};
 
 /// The resolution pages are read at for chess OCR.
 pub const OCR_DPI: f32 = 300.0;
@@ -169,4 +185,290 @@ pub fn general_ocr_words(gray: &GrayImage) -> Option<Result<Vec<OcrWord>, String
             })
             .collect()
     }))
+}
+
+// ─── An area of a page (PGN toolbar T9) ─────────────────────────────────────────────────────
+
+/// Most pixels along either side of an area's render: the renderer's tile limit. A larger area is
+/// read at a lower resolution.
+pub const MAX_AREA_SIDE: u32 = 4096;
+/// The lowest resolution an area is read at: below it the glyph reader's cells are mush, and the
+/// area is refused as too large.
+pub const MIN_AREA_DPI: f32 = 100.0;
+/// The smallest side of an area, in points: a click or a sliver reads nothing.
+pub const MIN_AREA_SIDE: f32 = 4.0;
+
+/// Why an area could not be read.
+#[derive(Clone, Debug, PartialEq, thiserror::Error)]
+pub enum AreaError {
+    #[error("no such document")]
+    NoDocument,
+    #[error("the document has no page {0}")]
+    NoPage(usize),
+    #[error("the area is not a rectangle on the page, or too thin to read")]
+    Degenerate,
+    #[error("the area is too large to read at once")]
+    TooLarge,
+    #[error("the document's permissions don't allow copying its content")]
+    NotPermitted,
+    #[error("chess OCR needs the chess-glyphs model: set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx")]
+    NoModel,
+    #[error("the chess-glyphs model could not be loaded: {0}")]
+    BadModel(String),
+    #[error("the area could not be rendered: {0}")]
+    Render(String),
+    #[error("the area could not be read: {0}")]
+    Read(String),
+}
+
+/// A glyph's top readings, kept for review (PGN toolbar T10).
+#[derive(Clone, Debug, PartialEq)]
+pub struct GlyphAlternatives {
+    /// The glyph's box in view space.
+    pub rect: [f32; 4],
+    /// The reading taken (after the corrections, the cipher and the repair).
+    pub text: String,
+    /// `1 − p2 / p1` of the model's top two: 0 is a tie, 1 is certain.
+    pub margin: f32,
+    /// The model's top readings with their probabilities, most likely first (at most three).
+    pub choices: Vec<(String, f32)>,
+}
+
+/// What chess OCR read in an area of a page.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct AreaRead {
+    /// The page, 0-based.
+    pub page: usize,
+    /// The area as asked for, in user space.
+    pub rect_user: [f32; 4],
+    /// The area as read (clamped to the page), in view space.
+    pub rect_view: [f32; 4],
+    /// The resolution it was read at.
+    pub dpi: f32,
+    /// What was read as a text layer of the page, in view space and reading order: a glyph per
+    /// glyph read, a general OCR word's box shared among its characters, its lines and word gaps
+    /// as the reader cut them. The capture reads it as it reads a selection, without weight
+    /// (`capture::CaptureText::Read`).
+    pub text: PageText,
+    /// The top readings of every glyph the glyph reader's words kept.
+    pub alternatives: Vec<GlyphAlternatives>,
+    pub lines: usize,
+    /// Words the cipher or the repair changed, and words the repair could not settle.
+    pub edits: usize,
+    pub flags: usize,
+    /// Whether the general OCR read the prose (otherwise the glyph reader read everything).
+    pub general_ocr: bool,
+}
+
+impl AreaRead {
+    /// The text read as chess text in `lang`, as the capture reads it.
+    pub fn chess_text(&self, lang: Lang) -> ChessPageText {
+        pdfcraft_chessvision::doc::fragment::text_of_page(&self.text, Some(lang))
+    }
+
+    /// The text read, a line per line.
+    pub fn plain_text(&self) -> String {
+        self.text.text_of(0..self.text.glyphs.len())
+    }
+}
+
+/// An area of a page to read with chess OCR, detached from the session
+/// ([`Session::chess_ocr_area_job`]): it runs anywhere, a worker thread on the desktop or inline
+/// on the web.
+#[derive(Clone)]
+pub struct OcrAreaJob {
+    bytes: Arc<Vec<u8>>,
+    password: Option<String>,
+    page: usize,
+    rect_user: PageRect,
+    /// The area in view space, clamped to the page.
+    view: ViewRect,
+}
+
+/// The area `rect` (user space) of a page with `geometry`, in view space and clamped to the page;
+/// `None` when a coordinate is not finite, the corners are not lower-left then upper-right, or
+/// less than [`MIN_AREA_SIDE`] of it is on the page either way.
+fn area_view(geometry: &PageGeometry, rect: PageRect) -> Option<ViewRect> {
+    let corners = [rect.x0, rect.y0, rect.x1, rect.y1];
+    if !(corners.iter().all(|v| v.is_finite()) && rect.x1 > rect.x0 && rect.y1 > rect.y0) {
+        return None;
+    }
+    let v = geometry.user_to_view(rect)?;
+    let (w, h) = geometry.view_size();
+    // `max` then `min`, never `clamp`: no bound can make it panic.
+    let x = |v: f32| v.max(0.0).min(w);
+    let y = |v: f32| v.max(0.0).min(h);
+    let c = ViewRect::new(x(v.x0), y(v.y0), x(v.x1), y(v.y1));
+    (c.width() >= MIN_AREA_SIDE && c.height() >= MIN_AREA_SIDE).then_some(c)
+}
+
+impl Session {
+    /// Chess OCR of an area, the job: area `rect_user` (user space) of page `page` (0-based) of
+    /// document `id`. Fails when the document or the page does not exist, its permissions do not
+    /// allow copying its content (reading it is extraction), or the area is not a rectangle with
+    /// at least [`MIN_AREA_SIDE`] points of it on the page each way.
+    pub fn chess_ocr_area_job(&self, id: DocId, page: usize, rect_user: PageRect) -> Result<OcrAreaJob, AreaError> {
+        let doc = self.get(id).ok_or(AreaError::NoDocument)?;
+        if doc.check_copying().is_err() {
+            return Err(AreaError::NotPermitted);
+        }
+        let info = doc.info.pages.get(page).ok_or(AreaError::NoPage(page))?;
+        let geometry = super::geometry(info).ok_or(AreaError::Degenerate)?;
+        let view = area_view(&geometry, rect_user).ok_or(AreaError::Degenerate)?;
+        Ok(OcrAreaJob { bytes: doc.bytes.clone(), password: doc.password.clone(), page, rect_user, view })
+    }
+
+    /// Read area `rect_user` of page `page` of document `id` with chess OCR, as
+    /// [`OcrAreaJob::run`] does.
+    pub fn chess_read_area(
+        &self,
+        id: DocId,
+        page: usize,
+        rect_user: PageRect,
+        options: &OcrOptions<'_>,
+        lang: Lang,
+        models_dir: Option<&Path>,
+    ) -> Result<AreaRead, AreaError> {
+        self.chess_ocr_area_job(id, page, rect_user)?.run(options, lang, models_dir)
+    }
+
+    /// The verdict on page `page`'s text layer `text` (as the view extracted it) for chess OCR,
+    /// as the Text tab judges it, another program's invisible OCR over a picture of the page
+    /// included. `None` when the document or the page does not exist.
+    pub fn chess_layer_quality(&self, id: DocId, page: usize, text: &PageText) -> Option<TextQuality> {
+        let doc = self.get(id)?;
+        let info = doc.info.pages.get(page)?;
+        let mut chess = chess_text::from_page_text(text, None);
+        if chess.hidden > chess_text::quality::MAX_HIDDEN_RATIO && crate::scan_fields::is_scan(doc, page, info) {
+            chess.over_page_image();
+        }
+        Some(chess.quality)
+    }
+}
+
+impl OcrAreaJob {
+    /// The page, 0-based.
+    pub fn page(&self) -> usize {
+        self.page
+    }
+
+    /// The area as read (clamped to the page), in view space.
+    pub fn rect_view(&self) -> [f32; 4] {
+        [self.view.x0, self.view.y0, self.view.x1, self.view.y1]
+    }
+
+    /// Read the area: with `options.glyphs`, else the user's `chess-glyphs` model (from
+    /// `models_dir`, or where [`super::models`] looks), with the general OCR for prose when
+    /// `options.general` and its models are installed, and the book's cipher `options.book`.
+    /// `lang` is the language of the piece letters. Without a glyph model it is
+    /// [`AreaError::NoModel`]; a blank area reads as no glyphs. `options.mode` is not used.
+    pub fn run(&self, options: &OcrOptions<'_>, lang: Lang, models_dir: Option<&Path>) -> Result<AreaRead, AreaError> {
+        let models;
+        let glyphs: &dyn GlyphClassifier = match options.glyphs {
+            Some(g) => g,
+            None => {
+                models = super::models(models_dir);
+                match &models.glyphs {
+                    super::ModelState::Loaded(m) => m,
+                    super::ModelState::Missing => return Err(AreaError::NoModel),
+                    super::ModelState::Invalid(why) => return Err(AreaError::BadModel(why.clone())),
+                }
+            }
+        };
+        // A last-resort guard (AGENTS.md §4): every step returns values for any input, but this
+        // is untrusted-document code, often on a worker thread.
+        crate::guard(|| self.read_with(glyphs, options.general, options.book, lang))
+            .unwrap_or_else(|e| Err(AreaError::Read(format!("reading the area failed unexpectedly ({e})"))))
+    }
+
+    fn read_with(&self, glyphs: &dyn GlyphClassifier, general: bool, book: Option<&BookCipher>, lang: Lang) -> Result<AreaRead, AreaError> {
+        let (gray, tile, dpi) = self.render()?;
+        let scale = text_scale(&gray, &[]).map_err(|e| AreaError::Read(e.to_string()))?;
+        let lines = read(&gray, None, scale, glyphs, &GlyphOptions::default()).map_err(|e| AreaError::Read(e.to_string()))?;
+        // The general OCR failing is not the area failing: the glyph reader reads the prose too.
+        let words = if general { general_ocr_words(&gray).and_then(Result::ok) } else { None };
+        let fused = match &words {
+            Some(w) => bucket(&lines, w),
+            None => glyphs_only(&lines),
+        };
+        let proven = book.map(BookCipher::proven).unwrap_or_default();
+        let mut repaired = repair_lines(&fused, None, lang, &proven);
+        // The tile's pixels as the whole page's at `dpi`, so the boxes convert to view space.
+        shift_lines(&mut repaired.lines, tile.x, tile.y);
+        let text = to_page_text(&repaired.lines, dpi);
+        let alternatives = repaired
+            .lines
+            .iter()
+            .flat_map(|l| &l.words)
+            .flat_map(|w| &w.glyphs)
+            .filter_map(|g| {
+                let v = pixels_to_view(g.rect, dpi)?;
+                Some(GlyphAlternatives {
+                    rect: [v.x0, v.y0, v.x1, v.y1],
+                    text: g.text.clone(),
+                    margin: g.margin,
+                    choices: g.alternatives.iter().map(|a| (a.text.clone(), a.p)).collect(),
+                })
+            })
+            .collect();
+        let r = self.rect_user;
+        Ok(AreaRead {
+            page: self.page,
+            rect_user: [r.x0, r.y0, r.x1, r.y1],
+            rect_view: self.rect_view(),
+            dpi,
+            text,
+            alternatives,
+            lines: repaired.lines.len(),
+            edits: repaired.edits.len(),
+            flags: repaired.flags.len(),
+            general_ocr: words.is_some(),
+        })
+    }
+
+    /// The area rendered to gray, the render tile it is, and its resolution: [`OCR_DPI`], or less
+    /// so that neither side passes [`MAX_AREA_SIDE`].
+    fn render(&self) -> Result<(GrayImage, Tile, f32), AreaError> {
+        let side = self.view.width().max(self.view.height());
+        let mut scale = OCR_DPI / 72.0;
+        if side * scale > MAX_AREA_SIDE as f32 {
+            scale = MAX_AREA_SIDE as f32 / side;
+        }
+        let dpi = scale * 72.0;
+        if !(dpi.is_finite() && dpi >= MIN_AREA_DPI) {
+            return Err(AreaError::TooLarge);
+        }
+        // Finite and clamped at 0 before the cast; `as` saturates at u32::MAX.
+        let px = |v: f32, round: fn(f32) -> f32| {
+            let p = round(v * scale);
+            if p.is_finite() { p.max(0.0) as u32 } else { 0 }
+        };
+        let (x0, y0) = (px(self.view.x0, f32::floor), px(self.view.y0, f32::floor));
+        let (x1, y1) = (px(self.view.x1, f32::ceil), px(self.view.y1, f32::ceil));
+        let tile = Tile { x: x0, y: y0, w: x1.saturating_sub(x0).clamp(1, MAX_AREA_SIDE), h: y1.saturating_sub(y0).clamp(1, MAX_AREA_SIDE) };
+        let config = RenderConfig { password: self.password.as_deref().map(Arc::from), ..Default::default() };
+        let mut renderer = PageRenderer::new(self.bytes.clone(), config);
+        let shot = renderer.render(RenderRequest { page: self.page, kind: RequestKind::Pixels, tile: Some(tile), scale, ..Default::default() });
+        if let Some(e) = shot.error {
+            return Err(AreaError::Render(e));
+        }
+        let gray = super::to_gray(&shot.rgba, shot.width, shot.height).ok_or_else(|| AreaError::Render("the area's raster is malformed".into()))?;
+        Ok((gray, tile, dpi))
+    }
+}
+
+/// Every box of `lines` moved right by `dx` and down by `dy` pixels (saturating).
+fn shift_lines(lines: &mut [FusedLine], dx: u32, dy: u32) {
+    let shift = |r: &mut PixelRect| {
+        *r = PixelRect { x0: r.x0.saturating_add(dx), y0: r.y0.saturating_add(dy), x1: r.x1.saturating_add(dx), y1: r.y1.saturating_add(dy) };
+    };
+    for line in lines {
+        shift(&mut line.rect);
+        for word in &mut line.words {
+            shift(&mut word.rect);
+            for g in &mut word.glyphs {
+                shift(&mut g.rect);
+            }
+        }
+    }
 }

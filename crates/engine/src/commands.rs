@@ -388,6 +388,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     c("chess.tool.capture_subvariation", "Capture as a sub-variation", None, None, Nothing, "spline"),
     c("chess.tool.comment", "Capture as a comment", None, None, Nothing, "message-square-text"),
     c("chess.pgn.paste_as", "Paste and capture", None, None, Nothing, "clipboard-paste"),
+    // T9: drag an area of a scan to read with chess OCR instead of selecting text.
+    c("chess.tool.ocr_area", "OCR area", None, None, Nothing, "scan-text"),
     // T8: where a move was printed, once (Show in PDF) or whenever the move shown changes (Follow).
     c("chess.source.show", "Show in PDF", None, None, Nothing, "file-search"),
     c("chess.source.follow", "Follow the move on the page", None, None, Nothing, "navigation"),

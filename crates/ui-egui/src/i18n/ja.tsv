@@ -2841,3 +2841,14 @@ animation effects	Off	オフ
 	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	記号ブラシ {glyph} ({name}): 指し手をクリックして記号を付けたり外したりします。
 	Stop (Esc)	停止 (Esc)
 	Line copied	筋をコピーしました
+# Chess ▸ PGN toolbar: T9, the OCR area of scanned pages (its rail switch and chip, the area's notices; "OCR area" is a command name too).
+	OCR area	OCR 範囲
+	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	このページのテキストレイヤーがないか信頼できないため、ドラッグでチェス OCR で読み取る範囲を描きます。代わりにテキストを選択するにはクリックします。
+	A drag draws an area to read with chess OCR. Click to select text instead.	ドラッグでチェス OCR で読み取る範囲を描きます。代わりにテキストを選択するにはクリックします。
+	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	チェス OCR には chess-glyphs モデルが必要です。PDFCRAFT_MODELS に chess-glyphs.onnx があるフォルダーを設定してください。
+	The area is too large to read at once: draw a smaller one.	範囲が大きすぎて一度に読み取れません。小さい範囲を描いてください。
+	The area couldn't be read: {e}	範囲を読み取れませんでした: {e}
+	The area read was dropped: the document was edited.	範囲の読み取りを破棄しました: 文書が編集されました。
+	Chess OCR read nothing in the area.	チェス OCR は範囲内で何も読み取れませんでした。
+	Reading the area…	範囲を読み取っています…
+	Chess OCR corrected or doubted some words: check the moves.	チェス OCR が一部の語を修正したか判断できませんでした。指し手を確認してください。

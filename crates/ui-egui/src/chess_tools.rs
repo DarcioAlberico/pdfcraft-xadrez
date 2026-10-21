@@ -60,7 +60,7 @@ const MAX_KEYS: usize = 64;
 const MAX_COMMANDS: usize = 8;
 
 /// The mode the rail has armed. Navigate is the default; the capture modes are `chess_capture`'s
-/// (T7a); the OCR area comes with T9.
+/// (T7a); the OCR area (T9) is a switch on their source, `chess_ocr_area`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum PgnTool {
     /// A click on a move goes to it; nothing is armed.
@@ -287,7 +287,7 @@ pub(crate) enum Entry {
 pub(crate) static RAIL: &[&[Entry]] = &[
     &[Entry::Tool(NAVIGATE), Entry::Tool(SETUP)],
     &[Entry::Group(STRUCTURE)],
-    &[Entry::Group(crate::chess_capture::CAPTURE), Entry::Tool(crate::chess_capture::COMMENT)],
+    &[Entry::Group(crate::chess_capture::CAPTURE), Entry::Tool(crate::chess_capture::COMMENT), Entry::Tool(crate::chess_ocr_area::OCR_AREA)],
     &[
         Entry::Group(MOVE_GLYPHS),
         Entry::Group(EVALUATION_GLYPHS),

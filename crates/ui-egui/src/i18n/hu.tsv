@@ -2838,3 +2838,14 @@ animation effects	Off	Ki
 	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	Jelecset {glyph} ({name}): kattintson a lépésekre a jel felrakásához vagy levételéhez.
 	Stop (Esc)	Leállítás (Esc)
 	Line copied	Vonal másolva
+# Chess ▸ PGN toolbar: T9, the OCR area of scanned pages (its rail switch and chip, the area's notices; "OCR area" is a command name too).
+	OCR area	OCR-terület
+	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	Ennek az oldalnak a szövegrétege hiányzik vagy nem megbízható, ezért a húzás sakk-OCR-rel olvasandó területet rajzol. Kattintson, ha inkább szöveget jelölne ki.
+	A drag draws an area to read with chess OCR. Click to select text instead.	A húzás sakk-OCR-rel olvasandó területet rajzol. Kattintson, ha inkább szöveget jelölne ki.
+	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	A sakk-OCR-hez a chess-glyphs modell kell. Állítsa a PDFCRAFT_MODELS változót a chess-glyphs.onnx fájlt tartalmazó mappára.
+	The area is too large to read at once: draw a smaller one.	A terület túl nagy ahhoz, hogy egyszerre beolvasható legyen: rajzoljon kisebbet.
+	The area couldn't be read: {e}	A területet nem sikerült beolvasni: {e}
+	The area read was dropped: the document was edited.	A terület beolvasása elvetve: a dokumentumot szerkesztették.
+	Chess OCR read nothing in the area.	A sakk-OCR semmit sem olvasott a területen.
+	Reading the area…	A terület olvasása…
+	Chess OCR corrected or doubted some words: check the moves.	A sakk-OCR néhány szót kijavított vagy kétségesnek talált: ellenőrizze a lépéseket.

@@ -2748,3 +2748,14 @@ animation effects	Off	ఆఫ్
 	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	గుర్తుల కుంచె {glyph} ({name}): పెట్టడానికి లేదా తీయడానికి ఎత్తులను క్లిక్ చేయండి.
 	Stop (Esc)	ఆపు (Esc)
 	Line copied	వరుస కాపీ అయింది
+# Chess ▸ PGN toolbar: T9, the OCR area of scanned pages (its rail switch and chip, the area's notices; "OCR area" is a command name too).
+	OCR area	OCR ప్రాంతం
+	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	ఈ పేజీ టెక్స్ట్ లేయర్ లేదు లేదా నమ్మదగినది కాదు, కాబట్టి లాగడం చదరంగం OCRతో చదవాల్సిన ప్రాంతాన్ని గీస్తుంది. బదులుగా టెక్స్ట్‌ను ఎంచుకోవడానికి క్లిక్ చేయండి.
+	A drag draws an area to read with chess OCR. Click to select text instead.	లాగడం చదరంగం OCRతో చదవాల్సిన ప్రాంతాన్ని గీస్తుంది. బదులుగా టెక్స్ట్‌ను ఎంచుకోవడానికి క్లిక్ చేయండి.
+	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	చదరంగం OCRకు chess-glyphs మోడల్ అవసరం. chess-glyphs.onnx ఉన్న ఫోల్డర్‌కు PDFCRAFT_MODELSను సెట్ చేయండి.
+	The area is too large to read at once: draw a smaller one.	ఒకేసారి చదవడానికి ప్రాంతం చాలా పెద్దది: చిన్నది గీయండి.
+	The area couldn't be read: {e}	ప్రాంతాన్ని చదవలేకపోయింది: {e}
+	The area read was dropped: the document was edited.	ప్రాంతం చదవడం విస్మరించబడింది: పత్రం సవరించబడింది.
+	Chess OCR read nothing in the area.	చదరంగం OCR ప్రాంతంలో ఏదీ చదవలేదు.
+	Reading the area…	ప్రాంతాన్ని చదువుతోంది…
+	Chess OCR corrected or doubted some words: check the moves.	చదరంగం OCR కొన్ని పదాలను సరిదిద్దింది లేదా వాటిపై సందేహించింది: ఎత్తులను తనిఖీ చేయండి.

@@ -2835,3 +2835,14 @@ animation effects	Off	Kapalı
 	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	İşaret fırçası {glyph} ({name}): eklemek veya kaldırmak için hamlelere tıklayın.
 	Stop (Esc)	Durdur (Esc)
 	Line copied	Hat kopyalandı
+# Chess ▸ PGN toolbar: T9, the OCR area of scanned pages (its rail switch and chip, the area's notices; "OCR area" is a command name too).
+	OCR area	OCR alanı
+	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	Bu sayfanın metin katmanı yok veya güvenilir değil, bu yüzden sürüklemek satranç OCR ile okunacak bir alan çizer. Bunun yerine metin seçmek için tıklayın.
+	A drag draws an area to read with chess OCR. Click to select text instead.	Sürüklemek satranç OCR ile okunacak bir alan çizer. Bunun yerine metin seçmek için tıklayın.
+	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	Satranç OCR için chess-glyphs modeli gerekir. PDFCRAFT_MODELS değişkenini chess-glyphs.onnx dosyasını içeren klasöre ayarlayın.
+	The area is too large to read at once: draw a smaller one.	Alan bir kerede okunamayacak kadar büyük: daha küçük bir alan çizin.
+	The area couldn't be read: {e}	Alan okunamadı: {e}
+	The area read was dropped: the document was edited.	Alan okuması bırakıldı: belge düzenlendi.
+	Chess OCR read nothing in the area.	Satranç OCR alanda hiçbir şey okumadı.
+	Reading the area…	Alan okunuyor…
+	Chess OCR corrected or doubted some words: check the moves.	Satranç OCR bazı sözcükleri düzeltti veya onlardan emin olamadı: hamleleri kontrol edin.

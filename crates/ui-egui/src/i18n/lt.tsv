@@ -3091,3 +3091,14 @@ chess side	Black	Juodieji
 	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	Ženklų teptukas {glyph} ({name}): spustelėkite ėjimus, kad jį uždėtumėte ar nuimtumėte.
 	Stop (Esc)	Sustabdyti (Esc)
 	Line copied	Linija nukopijuota
+# Chess ▸ PGN toolbar: T9, the OCR area of scanned pages (its rail switch and chip, the area's notices; "OCR area" is a command name too).
+	OCR area	OCR sritis
+	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	Šio puslapio teksto sluoksnio nėra arba juo negalima pasitikėti, todėl vilkdami nubrėšite sritį, skaitomą šachmatų OCR. Spustelėkite, jei vietoj to norite žymėti tekstą.
+	A drag draws an area to read with chess OCR. Click to select text instead.	Vilkdami nubrėšite sritį, skaitomą šachmatų OCR. Spustelėkite, jei vietoj to norite žymėti tekstą.
+	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	Šachmatų OCR reikia modelio chess-glyphs. Nustatykite PDFCRAFT_MODELS į aplanką, kuriame yra chess-glyphs.onnx.
+	The area is too large to read at once: draw a smaller one.	Sritis per didelė, kad būtų perskaityta iš karto: nubrėžkite mažesnę.
+	The area couldn't be read: {e}	Srities perskaityti nepavyko: {e}
+	The area read was dropped: the document was edited.	Srities skaitymas atmestas: dokumentas buvo redaguotas.
+	Chess OCR read nothing in the area.	Šachmatų OCR srityje nieko neperskaitė.
+	Reading the area…	Skaitoma sritis…
+	Chess OCR corrected or doubted some words: check the moves.	Šachmatų OCR pataisė kai kuriuos žodžius arba jais abejoja: patikrinkite ėjimus.

@@ -286,3 +286,161 @@ fn the_book_cipher_is_carried_from_one_reading_to_the_next() {
     let fresh = s.chess_document_with(id, &[], &no_model(), None, &OcrOptions { mode: OcrMode::Off, ..OcrOptions::default() }).unwrap();
     assert!(fresh.cipher.entries().is_empty());
 }
+
+// ─── An area of a page (PGN toolbar T9) ─────────────────────────────────────────────────────
+
+use crate::chess::text_ocr::{AreaError, MIN_AREA_SIDE};
+use pdfcraft_chessvision::coords::PageRect;
+
+/// Two lines of moves on a scanned page: the game's start at 300 pt from the top, and a later
+/// stretch at 500 pt.
+fn two_lines() -> Vec<u8> {
+    scanned_pdf(&[(MOVES, 14.0, 300.0), ("3.Bb5 a6", 14.0, 500.0)], "")
+}
+
+/// The area around a line set at `top` pt from the page's top (its baseline at `800 − top`).
+fn around(top: f32) -> PageRect {
+    PageRect::new(40.0, 800.0 - top - 12.0, 420.0, 800.0 - top + 20.0)
+}
+
+fn area_options(t: &Templates) -> OcrOptions<'_> {
+    OcrOptions { mode: OcrMode::Off, glyphs: Some(t), general: false, book: None }
+}
+
+/// The area around the first line reads only that line, its glyphs on the page where it is
+/// printed (view space), each with its top readings; the capture plays its moves into an empty
+/// game without weight, each move keeping where it was printed, inside the area.
+#[test]
+fn an_area_of_a_scan_reads_its_lines_into_a_capture() {
+    use crate::chess::capture::{CaptureMode, CaptureText, plan};
+    let templates = Templates::learn("1.e4526Nf3cBba", 14.0);
+    let (s, id) = open(two_lines());
+    let lang = pdfcraft_chess::san::Lang::En;
+    let read = s.chess_read_area(id, 0, around(300.0), &area_options(&templates), lang, None).unwrap();
+    assert_eq!(read.plain_text(), MOVES, "{read:#?}");
+    assert_eq!(read.lines, 1);
+    assert!((read.dpi - crate::chess::text_ocr::OCR_DPI).abs() < 0.01);
+    // View space: the line is 300 pt from the top, its glyphs inside the area.
+    let [_, top, _, bottom] = read.rect_view;
+    assert!(
+        read.text.glyphs.iter().all(|g| g.rect[1] >= top - 0.5 && g.rect[3] <= bottom + 0.5 && g.rect[1] > 280.0 && g.rect[3] < 305.0),
+        "{:?}",
+        read.text.glyphs
+    );
+    assert_eq!(read.alternatives.len(), read.text.glyphs.len(), "each glyph read keeps its alternatives");
+    assert!(read.alternatives.iter().all(|a| a.choices.len() <= 3));
+    // Mostly the reading taken is the model's first (a correction may choose another).
+    let first = read.alternatives.iter().filter(|a| a.choices.first().is_some_and(|c| c.0 == a.text)).count();
+    assert!(first * 2 >= read.alternatives.len(), "{:?}", read.alternatives);
+
+    // The capture reads it like a selection, by numbers only: no weight on a scan.
+    let game = pdfcraft_chess::game::Game::from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1").unwrap();
+    let geometry = s.get(id).and_then(|d| d.info.pages.first()).and_then(crate::chess::geometry);
+    let p = plan(&game, game.current(), CaptureMode::Auto, CaptureText::Read { text: &read.text, geometry, page: 0 }, lang);
+    assert!(!p.needs_preview, "{:?}", p.reasons);
+    let c = p.chosen().unwrap();
+    assert_eq!(c.played, 4);
+    assert_eq!(c.game.movetext(), "1. e4 e5 2. Nf3 Nc6");
+    assert!(c.read.items.iter().all(|i| !matches!(i, pdfcraft_chess::fragment::FragmentItem::Move { bold: Some(_), .. })), "no weight");
+    let last = c.game.node_at(&c.report.new_nodes[3]).unwrap();
+    let source = c.game.source(last).expect("the move keeps its place");
+    let area = around(300.0);
+    assert_eq!(source.page, 0);
+    assert!(
+        source.rect_user[0] >= area.x0
+            && source.rect_user[2] <= area.x1
+            && source.rect_user[1] >= area.y0 - 1.0
+            && source.rect_user[3] <= area.y1 + 1.0,
+        "{source:?}"
+    );
+
+    // The other line, read alone, is where it is printed (the render tile's offset is undone).
+    let later = s.chess_read_area(id, 0, around(500.0), &area_options(&templates), lang, None).unwrap();
+    assert_eq!(later.plain_text(), "3.Bb5 a6");
+    assert!(later.text.glyphs.iter().all(|g| g.rect[1] > 480.0 && g.rect[3] < 505.0), "{:?}", later.text.glyphs);
+    // A blank area reads nothing, and is no error.
+    let blank = s.chess_read_area(id, 0, PageRect::new(40.0, 40.0, 300.0, 120.0), &area_options(&templates), lang, None).unwrap();
+    assert!(blank.text.glyphs.is_empty() && blank.lines == 0);
+}
+
+/// Areas that are no rectangle on the page, pages and documents that do not exist: errors,
+/// never a panic or a read.
+#[test]
+fn degenerate_areas_are_refused() {
+    let templates = Templates::learn("1.e4", 14.0);
+    let (s, id) = open(two_lines());
+    let lang = pdfcraft_chess::san::Lang::En;
+    let read = |page: usize, r: PageRect| s.chess_read_area(id, page, r, &area_options(&templates), lang, None).map(|_| ());
+    let raw = |x0: f32, y0: f32, x1: f32, y1: f32| PageRect { x0, y0, x1, y1 };
+    for r in [
+        raw(100.0, 100.0, 100.0, 300.0),                       // no width
+        raw(100.0, 300.0, 400.0, 300.0),                       // no height
+        raw(400.0, 100.0, 100.0, 300.0),                       // corners the wrong way round
+        raw(f32::NAN, 100.0, 400.0, 300.0),                    // not a number
+        raw(100.0, 100.0, f32::INFINITY, 300.0),               // not finite
+        raw(f32::MIN, f32::MIN, f32::MAX, f32::MAX),           // overflows when measured
+        raw(700.0, 100.0, 900.0, 300.0),                       // off the page
+        raw(-500.0, -500.0, -10.0, -10.0),                     // off the page
+        raw(100.0, 100.0, 100.0 + MIN_AREA_SIDE / 2.0, 300.0), // a sliver
+    ] {
+        assert_eq!(read(0, r), Err(AreaError::Degenerate), "{r:?}");
+    }
+    assert_eq!(read(1, around(300.0)), Err(AreaError::NoPage(1)));
+    assert_eq!(read(usize::MAX, around(300.0)), Err(AreaError::NoPage(usize::MAX)));
+    let other = DocId(id.0.wrapping_add(1));
+    assert!(matches!(s.chess_ocr_area_job(other, 0, around(300.0)), Err(AreaError::NoDocument)));
+    // Partly off the page is clamped to it, and read.
+    assert!(read(0, raw(-200.0, 480.0, 1_000.0, 520.0)).is_ok());
+}
+
+/// Without a glyph model (none given, an empty models folder) the area is not read, and the
+/// error says what to install where.
+#[test]
+fn an_area_without_a_glyph_model_says_so() {
+    let dir = std::env::temp_dir().join(format!("pdfcraft-area-no-glyphs-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let (s, id) = open(two_lines());
+    let none = OcrOptions { mode: OcrMode::Off, glyphs: None, general: false, book: None };
+    let err = s.chess_read_area(id, 0, around(300.0), &none, pdfcraft_chess::san::Lang::En, Some(&dir)).unwrap_err();
+    assert_eq!(err, AreaError::NoModel);
+    assert!(err.to_string().contains("chess-glyphs") && err.to_string().contains("PDFCRAFT_MODELS"), "{err}");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// The layer check the PGN toolbar's OCR area switches on by: a scan has no layer, a scan under
+/// another program's invisible OCR has a poor one, a born-digital page a good one.
+#[test]
+fn the_layer_check_tells_scans_from_text() {
+    use pdfcraft_chessvision::chess_text::{PoorReason, TextQuality};
+    use pdfcraft_render::RequestKind;
+    let quality = |bytes: Vec<u8>| {
+        let (s, id) = open(bytes);
+        let doc = s.get(id).unwrap();
+        let mut r = PageRenderer::new(doc.bytes.clone(), RenderConfig::default());
+        let text = r.render(RenderRequest { page: 0, kind: RequestKind::Text, scale: 1.0, ..Default::default() }).text.unwrap_or_default();
+        s.chess_layer_quality(id, 0, &text).unwrap()
+    };
+    assert_eq!(quality(two_lines()), TextQuality::Missing);
+    let hidden = format!("q 600 0 0 800 0 0 cm /Im1 Do Q\n{HIDDEN_LAYER}");
+    assert!(matches!(
+        quality(pdf(&hidden, "Helvetica", Some(scan_image(&[(MOVES, 14.0, 300.0)])), "")),
+        TextQuality::Poor { reason: PoorReason::HiddenOcrLayer { .. } }
+    ));
+    assert_eq!(quality(pdf("BT /F1 14 Tf 60 500 Td (1.e4 e5 2.Nf3 Nc6) Tj ET", "Helvetica", None, "")), TextQuality::Good);
+}
+
+/// With `PDFCRAFT_CHESS_TEST_MODELS`, the user's glyph model reads an area of a scanned page.
+/// Printed, not asserted move by move: this measures the model, not the plumbing.
+#[test]
+fn the_users_glyph_model_reads_an_area() {
+    let Some(dir) = std::env::var_os("PDFCRAFT_CHESS_TEST_MODELS") else {
+        eprintln!("skipped: set PDFCRAFT_CHESS_TEST_MODELS to the folder of the chess models");
+        return;
+    };
+    let (s, id) = open(two_lines());
+    let none = OcrOptions { mode: OcrMode::Off, glyphs: None, general: false, book: None };
+    let dir = std::path::PathBuf::from(dir);
+    let read = s.chess_read_area(id, 0, around(300.0), &none, pdfcraft_chess::san::Lang::En, Some(&dir)).unwrap();
+    eprintln!("read: {}", read.plain_text());
+    assert_eq!(read.lines, 1);
+}

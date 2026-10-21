@@ -3093,3 +3093,14 @@ chess side	Black	Đen
 	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	Cọ ký hiệu {glyph} ({name}): nhấp vào các nước đi để thêm hoặc bỏ.
 	Stop (Esc)	Dừng (Esc)
 	Line copied	Đã sao chép đường đi
+# Chess ▸ PGN toolbar: T9, the OCR area of scanned pages (its rail switch and chip, the area's notices; "OCR area" is a command name too).
+	OCR area	Vùng OCR
+	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	Lớp văn bản của trang này bị thiếu hoặc không đáng tin, nên kéo sẽ vẽ một vùng để đọc bằng OCR cờ vua. Bấm để chọn văn bản thay vào đó.
+	A drag draws an area to read with chess OCR. Click to select text instead.	Kéo sẽ vẽ một vùng để đọc bằng OCR cờ vua. Bấm để chọn văn bản thay vào đó.
+	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	OCR cờ vua cần mô hình chess-glyphs. Đặt PDFCRAFT_MODELS là thư mục chứa chess-glyphs.onnx.
+	The area is too large to read at once: draw a smaller one.	Vùng quá lớn để đọc một lần: hãy vẽ vùng nhỏ hơn.
+	The area couldn't be read: {e}	Không đọc được vùng: {e}
+	The area read was dropped: the document was edited.	Kết quả đọc vùng đã bị bỏ: tài liệu đã được chỉnh sửa.
+	Chess OCR read nothing in the area.	OCR cờ vua không đọc được gì trong vùng.
+	Reading the area…	Đang đọc vùng…
+	Chess OCR corrected or doubted some words: check the moves.	OCR cờ vua đã sửa hoặc nghi ngờ một số từ: hãy kiểm tra các nước đi.

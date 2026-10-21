@@ -2913,3 +2913,14 @@ animation effects	Off	Vypnuto
 	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	Štětec značek {glyph} ({name}): klikáním na tahy jej přidáte nebo odeberete.
 	Stop (Esc)	Zastavit (Esc)
 	Line copied	Linie zkopírována
+# Chess ▸ PGN toolbar: T9, the OCR area of scanned pages (its rail switch and chip, the area's notices; "OCR area" is a command name too).
+	OCR area	Oblast OCR
+	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	Textová vrstva této stránky chybí nebo jí nelze věřit, takže tažením nakreslíte oblast ke čtení šachovým OCR. Klepnutím místo toho vyberete text.
+	A drag draws an area to read with chess OCR. Click to select text instead.	Tažením nakreslíte oblast ke čtení šachovým OCR. Klepnutím místo toho vyberete text.
+	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	Šachové OCR potřebuje model chess-glyphs. Nastavte PDFCRAFT_MODELS na složku, která obsahuje chess-glyphs.onnx.
+	The area is too large to read at once: draw a smaller one.	Oblast je příliš velká na přečtení najednou: nakreslete menší.
+	The area couldn't be read: {e}	Oblast nelze přečíst: {e}
+	The area read was dropped: the document was edited.	Čtení oblasti bylo zahozeno: dokument byl upraven.
+	Chess OCR read nothing in the area.	Šachové OCR v oblasti nic nepřečetlo.
+	Reading the area…	Čtení oblasti…
+	Chess OCR corrected or doubted some words: check the moves.	Šachové OCR některá slova opravilo nebo si jimi není jisté: zkontrolujte tahy.

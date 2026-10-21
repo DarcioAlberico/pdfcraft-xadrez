@@ -2752,3 +2752,14 @@ animation effects	Off	Выкл
 	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	Кисть знаков {glyph} ({name}): щёлкайте по ходам, чтобы поставить или снять его.
 	Stop (Esc)	Остановить (Esc)
 	Line copied	Линия скопирована
+# Chess ▸ PGN toolbar: T9, the OCR area of scanned pages (its rail switch and chip, the area's notices; "OCR area" is a command name too).
+	OCR area	Область OCR
+	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	Текстовый слой этой страницы отсутствует или ненадёжен, поэтому перетаскивание рисует область для чтения шахматным OCR. Щёлкните, чтобы вместо этого выделять текст.
+	A drag draws an area to read with chess OCR. Click to select text instead.	Перетаскивание рисует область для чтения шахматным OCR. Щёлкните, чтобы вместо этого выделять текст.
+	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	Шахматному OCR нужна модель chess-glyphs. Укажите в PDFCRAFT_MODELS папку, где лежит chess-glyphs.onnx.
+	The area is too large to read at once: draw a smaller one.	Область слишком велика, чтобы прочитать её за раз: нарисуйте поменьше.
+	The area couldn't be read: {e}	Не удалось прочитать область: {e}
+	The area read was dropped: the document was edited.	Чтение области отброшено: документ был изменён.
+	Chess OCR read nothing in the area.	Шахматное OCR ничего не прочитало в области.
+	Reading the area…	Чтение области…
+	Chess OCR corrected or doubted some words: check the moves.	Шахматное OCR исправило некоторые слова или сомневается в них: проверьте ходы.

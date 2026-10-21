@@ -38,6 +38,7 @@ use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, GraftMode, GraftStopRea
 use pdfcraft_engine::chess::pdfcraft_chess::san::Lang;
 use pdfcraft_engine::chess::pdfcraft_chessvision::coords::PageGeometry;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::MoveStatus;
+use pdfcraft_engine::chess::text_ocr::AreaRead;
 use pdfcraft_engine::commands::Shortcut;
 use pdfcraft_render::text::{PageText, TextGlyph};
 
@@ -119,6 +120,8 @@ pub struct CaptureState {
     notes: Vec<String>,
     /// The notice's Undo was clicked: done at the next tick.
     undo: bool,
+    /// The OCR area (T9): drawing an area of a scan to read with chess OCR.
+    pub area: crate::chess_ocr_area::AreaState,
 }
 
 /// The notice after a capture went in: what it did, and Undo. It stays (no timeout: WCAG 2.2.1)
@@ -195,9 +198,19 @@ pub(crate) struct Request {
 pub(crate) enum Text {
     /// Glyphs of page `page`, with the page's geometry (the moves keep where they were printed)
     /// and their boxes in view space, one per piece of a line (the preview goes beside the last).
-    Page { page: usize, glyphs: Arc<Vec<TextGlyph>>, geometry: Option<PageGeometry>, rects: Vec<[f32; 4]> },
+    /// `read`: what chess OCR read in an area of a scan (T9), whose glyphs these are; `None` for
+    /// the page's text layer.
+    Page { page: usize, glyphs: Arc<Vec<TextGlyph>>, geometry: Option<PageGeometry>, rects: Vec<[f32; 4]>, read: Option<Arc<AreaRead>> },
     /// Pasted text.
     Plain(Arc<str>),
+}
+
+impl Text {
+    /// Chess OCR changed or doubted words of it (the book's cipher, the repair): the user looks
+    /// before it goes in.
+    fn review(&self) -> bool {
+        matches!(self, Text::Page { read: Some(r), .. } if r.edits > 0 || r.flags > 0)
+    }
 }
 
 impl Request {
@@ -357,7 +370,8 @@ pub(crate) fn arm(chess: &mut ChessState, tool: PgnTool) {
 /// Esc, first part (§4.2: the preview closes, then the armed tool goes back to Navigate). Whether
 /// it closed the preview.
 pub(crate) fn escape_preview(chess: &mut ChessState) -> bool {
-    chess.capture.pending.take().is_some()
+    // An area being read (T9) is dropped first.
+    crate::chess_ocr_area::cancel(chess) || chess.capture.pending.take().is_some()
 }
 
 /// Take the `Paste` events out of a frame's `events` for the chess game: the chess scope is on,
@@ -426,8 +440,13 @@ pub(crate) fn document_lang(chess: &ChessState, doc: Option<DocId>) -> Lang {
 fn plan_for(game: &Game, request: &Request) -> CapturePlan {
     let current = game.current();
     let text = match &request.text {
-        Text::Page { page, glyphs, geometry, .. } => {
-            CaptureText::Glyphs { glyphs: glyphs.as_slice(), geometry: *geometry, page: u32::try_from(*page).unwrap_or(u32::MAX) }
+        Text::Page { page, glyphs, geometry, read, .. } => {
+            let (geometry, page) = (*geometry, u32::try_from(*page).unwrap_or(u32::MAX));
+            // A scan has no weight: OCR'd text is read by numbers only, with the reader's words.
+            match read {
+                Some(read) => CaptureText::Read { text: &read.text, geometry, page },
+                None => CaptureText::Glyphs { glyphs: glyphs.as_slice(), geometry, page },
+            }
         }
         Text::Plain(text) => CaptureText::Plain(text),
     };
@@ -558,7 +577,7 @@ impl PdfCraftApp {
         self.sync_chess_docs();
         let lang = document_lang(&self.chess, Some(id));
         let doc = self.chess.games.current_doc();
-        let text = Text::Page { page, glyphs: Arc::new(glyphs), geometry, rects };
+        let text = Text::Page { page, glyphs: Arc::new(glyphs), geometry, rects, read: None };
         self.start_capture(Request { mode, replace, text, doc, lang, generation });
     }
 
@@ -590,7 +609,7 @@ impl PdfCraftApp {
 
     /// Plan `request` (off the interface thread when it is long), then apply it or keep it for the
     /// user to look at.
-    fn start_capture(&mut self, request: Request) {
+    pub(crate) fn start_capture(&mut self, request: Request) {
         if self.chess.board().illegal.is_some() {
             self.notify(tl!("The board shows an illegal position: correct it before capturing moves into it.").to_owned());
             return;
@@ -637,7 +656,7 @@ impl PdfCraftApp {
             self.notify(why.to_owned());
             return;
         }
-        if plan.needs_preview {
+        if plan.needs_preview || request.text.review() {
             let choice = plan.chosen;
             self.chess.capture.pending = Some(Pending { request, plan, choice });
             self.chess.enter_scope();
@@ -739,6 +758,7 @@ impl PdfCraftApp {
             let mode = self.chess.capture.paste_mode.take();
             self.capture_pasted(&text, mode);
         }
+        self.poll_chess_area();
         let Some(job) = self.chess.capture.job.as_ref() else { return };
         let state = std::mem::replace(&mut *lock(&job.state), JobState::Running);
         match state {
@@ -851,13 +871,14 @@ pub(crate) fn page_overlay(
     }
     let tool = chess.tools.tool;
     let armed = mode_of(tool).is_some();
-    let busy = chess.capture.job.is_some();
+    let reading_area = crate::chess_ocr_area::reading(chess);
+    let busy = chess.capture.job.is_some() || reading_area;
     let waiting = chess.capture.pending.is_some();
     if !armed && !busy && !waiting && chess.capture.toast.is_none() {
         return None;
     }
     let free = !ctx.text_edit_focused() && !egui::Popup::is_any_open(&ctx);
-    if (armed || waiting) && free && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape)) {
+    if (armed || waiting || reading_area) && free && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Escape)) {
         if !escape_preview(chess) {
             chess.tools.tool = PgnTool::Navigate;
         }
@@ -880,7 +901,8 @@ pub(crate) fn page_overlay(
                             chip(ui, &t, chess, tool);
                         } else {
                             ui.spinner();
-                            ui.label(RichText::new(tl!("Reading the selection…")).color(t.text_muted));
+                            let what = if reading_area { tl!("Reading the area…") } else { tl!("Reading the selection…") };
+                            ui.label(RichText::new(what).color(t.text_muted));
                         }
                     });
                 });
@@ -1050,6 +1072,9 @@ fn preview(ui: &mut egui::Ui, t: &Tokens, p: &Pending) -> Option<PreviewAction> 
     };
     for reason in reasons {
         ui.label(RichText::new(format!("• {}", reason_text(*reason))).small());
+    }
+    if p.request.text.review() {
+        ui.label(RichText::new(format!("• {}", tl!("Chess OCR corrected or doubted some words: check the moves."))).small());
     }
     ui.add_space(4.0);
     ui.horizontal_wrapped(|ui| {
@@ -1317,6 +1342,7 @@ fn chip(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, tool: PgnTool) {
     if let Some(other) = picked {
         arm(chess, other);
     }
+    crate::chess_ocr_area::chip(ui, t, chess);
     if let PgnTool::Comment { before, replace } = chess.tools.tool {
         let (mut before, mut replace) = (before, replace);
         ui.label(RichText::new("·").color(t.text_faint));

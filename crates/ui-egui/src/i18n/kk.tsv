@@ -2837,3 +2837,14 @@ animation effects	Off	Өшірулі
 	Glyph brush {glyph} ({name}): click moves to put it on or take it off.	Белгі қылқаламы {glyph} ({name}): қою не алу үшін жүрістерді басыңыз.
 	Stop (Esc)	Тоқтату (Esc)
 	Line copied	Сызық көшірілді
+# Chess ▸ PGN toolbar: T9, the OCR area of scanned pages (its rail switch and chip, the area's notices; "OCR area" is a command name too).
+	OCR area	OCR аймағы
+	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	Бұл беттің мәтін қабаты жоқ немесе оған сенуге болмайды, сондықтан сүйреу шахмат OCR арқылы оқылатын аймақ сызады. Оның орнына мәтін таңдау үшін басыңыз.
+	A drag draws an area to read with chess OCR. Click to select text instead.	Сүйреу шахмат OCR арқылы оқылатын аймақ сызады. Оның орнына мәтін таңдау үшін басыңыз.
+	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	Шахмат OCR үшін chess-glyphs моделі қажет. PDFCRAFT_MODELS айнымалысына chess-glyphs.onnx бар қалтаны орнатыңыз.
+	The area is too large to read at once: draw a smaller one.	Аймақ бір рет оқу үшін тым үлкен: кішірегін сызыңыз.
+	The area couldn't be read: {e}	Аймақты оқу мүмкін болмады: {e}
+	The area read was dropped: the document was edited.	Аймақты оқу тасталды: құжат өңделді.
+	Chess OCR read nothing in the area.	Шахмат OCR аймақта ештеңе оқымады.
+	Reading the area…	Аймақ оқылуда…
+	Chess OCR corrected or doubted some words: check the moves.	Шахмат OCR кейбір сөздерді түзетті немесе күмәнданды: жүрістерді тексеріңіз.
