@@ -2442,7 +2442,6 @@ animation effects	Off	Kapalı
 	Scanning for diagrams… page {d} of {t}	Diyagramlar aranıyor… Sayfa {d} / {t}
 	Scan this page or all pages to find the chess diagrams in this document.	Bu belgedeki satranç diyagramlarını bulmak için bu sayfada veya tüm sayfalarda arayın.
 	The document changed since the scan. Scan again to update the diagrams.	Belge aramadan sonra değişti. Diyagramları güncellemek için yeniden arayın.
-	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	Taş modeli yok: yalnızca satranç yazı tipiyle dizilmiş diyagramlar okunur. PDFCRAFT_MODELS değerini chess-pieces.onnx dosyasını içeren klasöre ayarlayın.
 	The piece model couldn't be loaded: {e}	Taş modeli yüklenemedi: {e}
 	No diagrams found.	Diyagram bulunamadı.
 	This page couldn't be scanned: {e}	Bu sayfa taranamadı: {e}
@@ -2846,7 +2845,6 @@ chess undo step	Clear drawings	çizimleri temizleme
 	OCR area	OCR alanı
 	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	Bu sayfanın metin katmanı yok veya güvenilir değil, bu yüzden sürüklemek satranç OCR ile okunacak bir alan çizer. Bunun yerine metin seçmek için tıklayın.
 	A drag draws an area to read with chess OCR. Click to select text instead.	Sürüklemek satranç OCR ile okunacak bir alan çizer. Bunun yerine metin seçmek için tıklayın.
-	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	Satranç OCR için chess-glyphs modeli gerekir. PDFCRAFT_MODELS değişkenini chess-glyphs.onnx dosyasını içeren klasöre ayarlayın.
 	The area is too large to read at once: draw a smaller one.	Alan bir kerede okunamayacak kadar büyük: daha küçük bir alan çizin.
 	The area couldn't be read: {e}	Alan okunamadı: {e}
 	The area read was dropped: the document was edited.	Alan okuması bırakıldı: belge düzenlendi.
@@ -2881,3 +2879,25 @@ chess undo step	Clear drawings	çizimleri temizleme
 	They are saved unencrypted, in the folder you chose for retraining.	Yeniden eğitim için seçtiğiniz klasöre şifrelenmeden kaydedilirler.
 	Collecting stopped: {n} character samples were saved this session.	Toplama durdu: bu oturumda {n} karakter örneği kaydedildi.
 	Couldn't save a character sample: {e}	Bir karakter örneği kaydedilemedi: {e}
+	loaded	yüklendi
+	not found	bulunamadı
+	couldn't be loaded: {e}	yüklenemedi: {e}
+	Chess models: piece model {pieces}; glyph model {glyphs}.	Satranç modelleri: taş modeli {pieces}; glif modeli {glyphs}.
+	Chess models	Satranç modelleri
+	Choose the model files (chess-pieces.onnx and .json, chess-glyphs.onnx and .json) to use them until this page is closed. Each file may be up to {mb} MB.	Bu sayfa kapanana kadar kullanmak için model dosyalarını (chess-pieces.onnx ve .json, chess-glyphs.onnx ve .json) seçin. Her dosya en fazla {mb} MB olabilir.
+	No folder chosen: PDFCRAFT_MODELS, then beside the program	Klasör seçilmedi: PDFCRAFT_MODELS, sonra programın yanı
+	Models folder	Model klasörü
+	This folder holds no chess model, or is gone: the models are looked for in PDFCRAFT_MODELS, then beside the program.	Bu klasörde satranç modeli yok veya klasör artık yok: modeller PDFCRAFT_MODELS içinde, sonra programın yanında aranır.
+	Piece model: {state}	Taş modeli: {state}
+	Glyph model: {state}	Glif modeli: {state}
+	Found in {folder} instead.	Bunun yerine {folder} içinde bulundu.
+	Not model files, left out: {names}	Model dosyası değil, dışarıda bırakıldı: {names}
+	Chess models…	Satranç modelleri…
+	Forget	Unut
+	Look for the models as when none were chosen.	Modelleri hiçbiri seçilmemiş gibi ara.
+	Choose the chess models folder	Satranç modelleri klasörünü seçin
+	{folder} can't be used as the chess models folder.	{folder} satranç modelleri klasörü olarak kullanılamaz.
+	Choose the chess model files	Satranç modeli dosyalarını seçin
+	Choose the piece and glyph models that read diagrams and chess text.	Diyagramları ve satranç metnini okuyan taş ve glif modellerini seçin.
+	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	Taş modeli yok: yalnızca satranç yazı tipiyle dizilmiş diyagramlar okunur. Uygulamaya chess-pieces.onnx vermek için Satranç modelleri… kullanın.
+	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	Satranç OCR’ı chess-glyphs modeline ihtiyaç duyar. Uygulamaya chess-glyphs.onnx vermek için satranç panelindeki Satranç modelleri… kullanın.

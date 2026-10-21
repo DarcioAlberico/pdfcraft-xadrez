@@ -2451,7 +2451,6 @@ animation effects	Off	Izklopljeni
 	Scanning for diagrams… page {d} of {t}	Iskanje diagramov… stran {d} od {t}
 	Scan this page or all pages to find the chess diagrams in this document.	Preiščite to stran ali vse strani, da najdete šahovske diagrame v tem dokumentu.
 	The document changed since the scan. Scan again to update the diagrams.	Dokument se je po iskanju spremenil. Ponovno iščite, da posodobite diagrame.
-	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	Ni modela figur: berejo se le diagrami, postavljeni s šahovsko pisavo. PDFCRAFT_MODELS nastavite na mapo z datoteko chess-pieces.onnx.
 	The piece model couldn't be loaded: {e}	Modela figur ni bilo mogoče naložiti: {e}
 	No diagrams found.	Ni najdenih diagramov.
 	This page couldn't be scanned: {e}	Te strani ni bilo mogoče preiskati: {e}
@@ -2855,7 +2854,6 @@ chess undo step	Clear drawings	odstranjevanje risb
 	OCR area	Območje OCR
 	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	Besedilna plast te strani manjka ali ji ni mogoče zaupati, zato vlečenje nariše območje za branje s šahovskim OCR. Kliknite, če želite namesto tega izbirati besedilo.
 	A drag draws an area to read with chess OCR. Click to select text instead.	Vlečenje nariše območje za branje s šahovskim OCR. Kliknite, če želite namesto tega izbirati besedilo.
-	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	Šahovski OCR potrebuje model chess-glyphs. PDFCRAFT_MODELS nastavite na mapo, ki vsebuje chess-glyphs.onnx.
 	The area is too large to read at once: draw a smaller one.	Območje je preveliko za branje naenkrat: narišite manjše.
 	The area couldn't be read: {e}	Območja ni bilo mogoče prebrati: {e}
 	The area read was dropped: the document was edited.	Branje območja je bilo zavrženo: dokument je bil urejen.
@@ -2890,3 +2888,25 @@ chess undo step	Clear drawings	odstranjevanje risb
 	They are saved unencrypted, in the folder you chose for retraining.	Shranijo se nešifrirani v mapo, ki ste jo izbrali za ponovno učenje.
 	Collecting stopped: {n} character samples were saved this session.	Zbiranje ustavljeno: v tej seji je bilo shranjenih vzorcev znakov: {n}.
 	Couldn't save a character sample: {e}	Vzorca znaka ni bilo mogoče shraniti: {e}
+	loaded	naložen
+	not found	ni najden
+	couldn't be loaded: {e}	ni ga bilo mogoče naložiti: {e}
+	Chess models: piece model {pieces}; glyph model {glyphs}.	Šahovski modeli: model figur {pieces}; model glifov {glyphs}.
+	Chess models	Šahovski modeli
+	Choose the model files (chess-pieces.onnx and .json, chess-glyphs.onnx and .json) to use them until this page is closed. Each file may be up to {mb} MB.	Izberite datoteke modelov (chess-pieces.onnx in .json, chess-glyphs.onnx in .json), da se uporabljajo do zaprtja te strani. Vsaka datoteka ima lahko največ {mb} MB.
+	No folder chosen: PDFCRAFT_MODELS, then beside the program	Nobena mapa ni izbrana: PDFCRAFT_MODELS, nato poleg programa
+	Models folder	Mapa modelov
+	This folder holds no chess model, or is gone: the models are looked for in PDFCRAFT_MODELS, then beside the program.	Ta mapa ne vsebuje nobenega šahovskega modela ali ne obstaja več: modeli se iščejo v PDFCRAFT_MODELS, nato poleg programa.
+	Piece model: {state}	Model figur: {state}
+	Glyph model: {state}	Model glifov: {state}
+	Found in {folder} instead.	Namesto tega najdeni v {folder}.
+	Not model files, left out: {names}	Niso datoteke modelov, izpuščene: {names}
+	Chess models…	Šahovski modeli …
+	Forget	Pozabi
+	Look for the models as when none were chosen.	Iskanje modelov, kot da ni izbran noben.
+	Choose the chess models folder	Izberite mapo šahovskih modelov
+	{folder} can't be used as the chess models folder.	{folder} ni mogoče uporabiti kot mapo šahovskih modelov.
+	Choose the chess model files	Izberite datoteke šahovskih modelov
+	Choose the piece and glyph models that read diagrams and chess text.	Izberite modela figur in glifov, ki bereta diagrame in šahovsko besedilo.
+	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	Ni modela figur: berejo se le diagrami, postavljeni v šahovski pisavi. Z ukazom Šahovski modeli … aplikaciji podajte chess-pieces.onnx.
+	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	Šahovski OCR potrebuje model chess-glyphs. Z ukazom Šahovski modeli … v šahovskem podoknu aplikaciji podajte chess-glyphs.onnx.

@@ -2700,7 +2700,6 @@ key	Space	Space
 	Scanning for diagrams… page {d} of {t}	Đang tìm sơ đồ… trang {d} trên {t}
 	Scan this page or all pages to find the chess diagrams in this document.	Hãy tìm trên trang này hoặc trên mọi trang để thấy các sơ đồ cờ vua trong tài liệu này.
 	The document changed since the scan. Scan again to update the diagrams.	Tài liệu đã thay đổi sau khi tìm. Hãy tìm lại để cập nhật các sơ đồ.
-	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	Không có mô hình quân cờ: chỉ đọc được các sơ đồ dựng bằng phông chữ cờ vua. Hãy đặt PDFCRAFT_MODELS là thư mục chứa chess-pieces.onnx.
 	The piece model couldn't be loaded: {e}	Không tải được mô hình quân cờ: {e}
 	No diagrams found.	Không tìm thấy sơ đồ nào.
 	This page couldn't be scanned: {e}	Không thể kiểm tra trang này: {e}
@@ -3104,7 +3103,6 @@ chess undo step	Clear drawings	xóa hình vẽ
 	OCR area	Vùng OCR
 	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	Lớp văn bản của trang này bị thiếu hoặc không đáng tin, nên kéo sẽ vẽ một vùng để đọc bằng OCR cờ vua. Bấm để chọn văn bản thay vào đó.
 	A drag draws an area to read with chess OCR. Click to select text instead.	Kéo sẽ vẽ một vùng để đọc bằng OCR cờ vua. Bấm để chọn văn bản thay vào đó.
-	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	OCR cờ vua cần mô hình chess-glyphs. Đặt PDFCRAFT_MODELS là thư mục chứa chess-glyphs.onnx.
 	The area is too large to read at once: draw a smaller one.	Vùng quá lớn để đọc một lần: hãy vẽ vùng nhỏ hơn.
 	The area couldn't be read: {e}	Không đọc được vùng: {e}
 	The area read was dropped: the document was edited.	Kết quả đọc vùng đã bị bỏ: tài liệu đã được chỉnh sửa.
@@ -3139,3 +3137,25 @@ chess undo step	Clear drawings	xóa hình vẽ
 	They are saved unencrypted, in the folder you chose for retraining.	Chúng được lưu không mã hóa, trong thư mục bạn đã chọn để huấn luyện lại.
 	Collecting stopped: {n} character samples were saved this session.	Đã dừng thu thập: đã lưu {n} mẫu ký tự trong phiên này.
 	Couldn't save a character sample: {e}	Không thể lưu mẫu ký tự: {e}
+	loaded	đã nạp
+	not found	không tìm thấy
+	couldn't be loaded: {e}	không nạp được: {e}
+	Chess models: piece model {pieces}; glyph model {glyphs}.	Mô hình cờ vua: mô hình quân cờ {pieces}; mô hình ký tự {glyphs}.
+	Chess models	Mô hình cờ vua
+	Choose the model files (chess-pieces.onnx and .json, chess-glyphs.onnx and .json) to use them until this page is closed. Each file may be up to {mb} MB.	Chọn các tệp mô hình (chess-pieces.onnx và .json, chess-glyphs.onnx và .json) để dùng cho đến khi đóng trang này. Mỗi tệp tối đa {mb} MB.
+	No folder chosen: PDFCRAFT_MODELS, then beside the program	Chưa chọn thư mục: PDFCRAFT_MODELS, rồi bên cạnh chương trình
+	Models folder	Thư mục mô hình
+	This folder holds no chess model, or is gone: the models are looked for in PDFCRAFT_MODELS, then beside the program.	Thư mục này không chứa mô hình cờ vua nào, hoặc không còn tồn tại: mô hình được tìm trong PDFCRAFT_MODELS, rồi bên cạnh chương trình.
+	Piece model: {state}	Mô hình quân cờ: {state}
+	Glyph model: {state}	Mô hình ký tự: {state}
+	Found in {folder} instead.	Thay vào đó tìm thấy trong {folder}.
+	Not model files, left out: {names}	Không phải tệp mô hình, đã bỏ qua: {names}
+	Chess models…	Mô hình cờ vua…
+	Forget	Quên
+	Look for the models as when none were chosen.	Tìm mô hình như khi chưa chọn mô hình nào.
+	Choose the chess models folder	Chọn thư mục mô hình cờ vua
+	{folder} can't be used as the chess models folder.	Không thể dùng {folder} làm thư mục mô hình cờ vua.
+	Choose the chess model files	Chọn các tệp mô hình cờ vua
+	Choose the piece and glyph models that read diagrams and chess text.	Chọn mô hình quân cờ và mô hình ký tự để đọc sơ đồ và văn bản cờ vua.
+	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	Không có mô hình quân cờ: chỉ đọc các sơ đồ dàn bằng phông cờ vua. Dùng Mô hình cờ vua… để cung cấp chess-pieces.onnx cho ứng dụng.
+	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	OCR cờ vua cần mô hình chess-glyphs. Dùng Mô hình cờ vua… trong bảng cờ vua để cung cấp chess-glyphs.onnx cho ứng dụng.

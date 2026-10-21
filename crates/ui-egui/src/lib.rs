@@ -40,6 +40,7 @@ mod chess_collection;
 mod chess_correct;
 mod chess_editor;
 mod chess_history;
+mod chess_models;
 mod chess_ocr_area;
 mod chess_samples;
 pub use chess_ocr_area::AreaQuery;
@@ -2346,6 +2347,8 @@ impl PdfCraftApp {
         v["chess_glyph_samples"] = self.chess.capture.samples.to_json();
         // The analysis board's engine: the program picked and the lines shown (U7).
         v["chess_engine"] = self.chess.study.to_json();
+        // The chess models folder chosen (U4; the desktop).
+        v["chess_models"] = self.chess.models.to_json();
         v.to_string()
     }
 
@@ -2460,6 +2463,7 @@ impl PdfCraftApp {
         }
         self.chess.capture.samples.restore(&v["chess_glyph_samples"]);
         self.chess.study.restore(&v["chess_engine"]);
+        self.chess.models.restore(&v["chess_models"]);
         // Per-tool comment styles (#340): each field goes through its clamping setter, so a
         // malformed or hostile entry is clamped or ignored rather than trusted.
         if let Some(styles) = v["comment_styles"].as_array() {
@@ -3080,6 +3084,8 @@ impl eframe::App for PdfCraftApp {
         }
         #[cfg(target_arch = "wasm32")]
         self.process_signature_images();
+        #[cfg(target_arch = "wasm32")]
+        self.poll_chess_models();
         let dropped = ctx.input(|i| i.raw.dropped_files.clone());
         #[cfg(not(target_arch = "wasm32"))]
         let dropped = self.drop_on_signature_pad(dropped);

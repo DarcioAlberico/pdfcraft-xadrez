@@ -2452,7 +2452,6 @@ animation effects	Off	Ανενεργά
 	Scanning for diagrams… page {d} of {t}	Αναζήτηση διαγραμμάτων… σελίδα {d} από {t}
 	Scan this page or all pages to find the chess diagrams in this document.	Αναζητήστε σε αυτή τη σελίδα ή σε όλες τις σελίδες για να βρείτε τα σκακιστικά διαγράμματα του εγγράφου.
 	The document changed since the scan. Scan again to update the diagrams.	Το έγγραφο άλλαξε μετά την αναζήτηση. Αναζητήστε ξανά για να ενημερωθούν τα διαγράμματα.
-	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	Δεν υπάρχει μοντέλο κομματιών: διαβάζονται μόνο διαγράμματα στοιχειοθετημένα με γραμματοσειρά σκακιού. Ορίστε στο PDFCRAFT_MODELS τον φάκελο που περιέχει το chess-pieces.onnx.
 	The piece model couldn't be loaded: {e}	Δεν ήταν δυνατή η φόρτωση του μοντέλου κομματιών: {e}
 	No diagrams found.	Δεν βρέθηκαν διαγράμματα.
 	This page couldn't be scanned: {e}	Δεν ήταν δυνατή η εξέταση αυτής της σελίδας: {e}
@@ -2856,7 +2855,6 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	OCR area	Περιοχή OCR
 	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	Το επίπεδο κειμένου αυτής της σελίδας λείπει ή δεν είναι αξιόπιστο, οπότε η μεταφορά σχεδιάζει μια περιοχή για ανάγνωση με OCR σκακιού. Κάντε κλικ για να επιλέγετε κείμενο αντί γι' αυτό.
 	A drag draws an area to read with chess OCR. Click to select text instead.	Η μεταφορά σχεδιάζει μια περιοχή για ανάγνωση με OCR σκακιού. Κάντε κλικ για να επιλέγετε κείμενο αντί γι' αυτό.
-	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	Το OCR σκακιού χρειάζεται το μοντέλο chess-glyphs. Ορίστε στο PDFCRAFT_MODELS τον φάκελο που περιέχει το chess-glyphs.onnx.
 	The area is too large to read at once: draw a smaller one.	Η περιοχή είναι πολύ μεγάλη για να διαβαστεί με μία φορά: σχεδιάστε μια μικρότερη.
 	The area couldn't be read: {e}	Δεν ήταν δυνατή η ανάγνωση της περιοχής: {e}
 	The area read was dropped: the document was edited.	Η ανάγνωση της περιοχής απορρίφθηκε: το έγγραφο επεξεργάστηκε.
@@ -2891,3 +2889,25 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	They are saved unencrypted, in the folder you chose for retraining.	Αποθηκεύονται χωρίς κρυπτογράφηση, στον φάκελο που επιλέξατε για την επανεκπαίδευση.
 	Collecting stopped: {n} character samples were saved this session.	Η συλλογή σταμάτησε: σε αυτήν την περίοδο λειτουργίας αποθηκεύτηκαν {n} δείγματα χαρακτήρων.
 	Couldn't save a character sample: {e}	Δεν ήταν δυνατή η αποθήκευση δείγματος χαρακτήρα: {e}
+	loaded	φορτώθηκε
+	not found	δεν βρέθηκε
+	couldn't be loaded: {e}	δεν ήταν δυνατή η φόρτωση: {e}
+	Chess models: piece model {pieces}; glyph model {glyphs}.	Μοντέλα σκακιού: μοντέλο κομματιών {pieces}· μοντέλο γλυφών {glyphs}.
+	Chess models	Μοντέλα σκακιού
+	Choose the model files (chess-pieces.onnx and .json, chess-glyphs.onnx and .json) to use them until this page is closed. Each file may be up to {mb} MB.	Επιλέξτε τα αρχεία των μοντέλων (chess-pieces.onnx και .json, chess-glyphs.onnx και .json) για να χρησιμοποιούνται μέχρι να κλείσει αυτή η σελίδα. Κάθε αρχείο έως {mb} MB.
+	No folder chosen: PDFCRAFT_MODELS, then beside the program	Δεν επιλέχθηκε φάκελος: PDFCRAFT_MODELS, έπειτα δίπλα στο πρόγραμμα
+	Models folder	Φάκελος μοντέλων
+	This folder holds no chess model, or is gone: the models are looked for in PDFCRAFT_MODELS, then beside the program.	Αυτός ο φάκελος δεν περιέχει μοντέλο σκακιού ή δεν υπάρχει πια: τα μοντέλα αναζητούνται στο PDFCRAFT_MODELS, έπειτα δίπλα στο πρόγραμμα.
+	Piece model: {state}	Μοντέλο κομματιών: {state}
+	Glyph model: {state}	Μοντέλο γλυφών: {state}
+	Found in {folder} instead.	Βρέθηκαν αντί γι’ αυτό στο {folder}.
+	Not model files, left out: {names}	Δεν είναι αρχεία μοντέλων, παραλείφθηκαν: {names}
+	Chess models…	Μοντέλα σκακιού…
+	Forget	Ξέχασέ το
+	Look for the models as when none were chosen.	Αναζήτηση των μοντέλων όπως όταν δεν έχει επιλεγεί κανένα.
+	Choose the chess models folder	Επιλέξτε τον φάκελο των μοντέλων σκακιού
+	{folder} can't be used as the chess models folder.	Ο φάκελος {folder} δεν μπορεί να χρησιμοποιηθεί ως φάκελος μοντέλων σκακιού.
+	Choose the chess model files	Επιλέξτε τα αρχεία των μοντέλων σκακιού
+	Choose the piece and glyph models that read diagrams and chess text.	Επιλέξτε τα μοντέλα κομματιών και γλυφών που διαβάζουν διαγράμματα και κείμενο σκακιού.
+	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	Χωρίς μοντέλο κομματιών: διαβάζονται μόνο διαγράμματα στοιχειοθετημένα με γραμματοσειρά σκακιού. Με τα Μοντέλα σκακιού… δώστε στην εφαρμογή το chess-pieces.onnx.
+	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	Το OCR σκακιού χρειάζεται το μοντέλο chess-glyphs. Δώστε στην εφαρμογή το chess-glyphs.onnx με τα Μοντέλα σκακιού… στον πίνακα σκακιού.

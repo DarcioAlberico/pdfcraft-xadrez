@@ -2445,7 +2445,6 @@ animation effects	Off	Ki
 	Scanning for diagrams… page {d} of {t}	Diagramok keresése… {d}. oldal / {t}
 	Scan this page or all pages to find the chess diagrams in this document.	Keress ezen az oldalon vagy minden oldalon, hogy megtaláld a dokumentum sakkdiagramjait.
 	The document changed since the scan. Scan again to update the diagrams.	A dokumentum a keresés óta megváltozott. Keress újra a diagramok frissítéséhez.
-	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	Nincs bábumodell: csak a sakkbetűtípussal szedett diagramok olvashatók be. Állítsd a PDFCRAFT_MODELS értékét a chess-pieces.onnx fájlt tartalmazó mappára.
 	The piece model couldn't be loaded: {e}	A bábumodell nem tölthető be: {e}
 	No diagrams found.	Nem található diagram.
 	This page couldn't be scanned: {e}	Ez az oldal nem vizsgálható át: {e}
@@ -2849,7 +2848,6 @@ chess undo step	Clear drawings	rajzok törlése
 	OCR area	OCR-terület
 	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	Ennek az oldalnak a szövegrétege hiányzik vagy nem megbízható, ezért a húzás sakk-OCR-rel olvasandó területet rajzol. Kattintson, ha inkább szöveget jelölne ki.
 	A drag draws an area to read with chess OCR. Click to select text instead.	A húzás sakk-OCR-rel olvasandó területet rajzol. Kattintson, ha inkább szöveget jelölne ki.
-	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	A sakk-OCR-hez a chess-glyphs modell kell. Állítsa a PDFCRAFT_MODELS változót a chess-glyphs.onnx fájlt tartalmazó mappára.
 	The area is too large to read at once: draw a smaller one.	A terület túl nagy ahhoz, hogy egyszerre beolvasható legyen: rajzoljon kisebbet.
 	The area couldn't be read: {e}	A területet nem sikerült beolvasni: {e}
 	The area read was dropped: the document was edited.	A terület beolvasása elvetve: a dokumentumot szerkesztették.
@@ -2884,3 +2882,25 @@ chess undo step	Clear drawings	rajzok törlése
 	They are saved unencrypted, in the folder you chose for retraining.	Titkosítás nélkül mentődnek az újratanításhoz választott mappába.
 	Collecting stopped: {n} character samples were saved this session.	A gyűjtés leállt: ebben a munkamenetben {n} karakterminta lett mentve.
 	Couldn't save a character sample: {e}	Nem sikerült menteni egy karaktermintát: {e}
+	loaded	betöltve
+	not found	nem található
+	couldn't be loaded: {e}	nem sikerült betölteni: {e}
+	Chess models: piece model {pieces}; glyph model {glyphs}.	Sakkmodellek: bábumodell {pieces}; jelmodell {glyphs}.
+	Chess models	Sakkmodellek
+	Choose the model files (chess-pieces.onnx and .json, chess-glyphs.onnx and .json) to use them until this page is closed. Each file may be up to {mb} MB.	Válassza ki a modellfájlokat (chess-pieces.onnx és .json, chess-glyphs.onnx és .json), hogy az oldal bezárásáig használja őket. Egy fájl legfeljebb {mb} MB lehet.
+	No folder chosen: PDFCRAFT_MODELS, then beside the program	Nincs kiválasztott mappa: PDFCRAFT_MODELS, majd a program mellett
+	Models folder	Modellek mappája
+	This folder holds no chess model, or is gone: the models are looked for in PDFCRAFT_MODELS, then beside the program.	Ez a mappa nem tartalmaz sakkmodellt, vagy már nem létezik: a modelleket a PDFCRAFT_MODELS-ben, majd a program mellett keresi.
+	Piece model: {state}	Bábumodell: {state}
+	Glyph model: {state}	Jelmodell: {state}
+	Found in {folder} instead.	Helyette itt található: {folder}.
+	Not model files, left out: {names}	Nem modellfájlok, kihagyva: {names}
+	Chess models…	Sakkmodellek…
+	Forget	Elfelejtés
+	Look for the models as when none were chosen.	A modellek keresése úgy, mintha egy sem lenne kiválasztva.
+	Choose the chess models folder	Válassza ki a sakkmodellek mappáját
+	{folder} can't be used as the chess models folder.	A(z) {folder} nem használható a sakkmodellek mappájaként.
+	Choose the chess model files	Válassza ki a sakkmodellek fájljait
+	Choose the piece and glyph models that read diagrams and chess text.	A diagramokat és a sakkszöveget olvasó bábu- és jelmodell kiválasztása.
+	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	Nincs bábumodell: csak a sakkbetűtípussal szedett diagramokat olvassa. A Sakkmodellek… paranccsal adja meg az alkalmazásnak a chess-pieces.onnx fájlt.
+	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	A sakk-OCR-hez a chess-glyphs modell kell. A sakkpanel Sakkmodellek… gombjával adja meg az alkalmazásnak a chess-glyphs.onnx fájlt.

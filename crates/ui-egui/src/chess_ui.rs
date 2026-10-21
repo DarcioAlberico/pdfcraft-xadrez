@@ -15,7 +15,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use egui::{Color32, CornerRadius, Pos2, Stroke};
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::pdfcraft_chessvision::board::{BoardReading, Unreadable};
-use pdfcraft_engine::chess::{ChessModels, ChessPage, ChessScan, ChessScanJob, ChessScanSettings, ModelState, ScanStamp};
+use pdfcraft_engine::chess::{ChessModels, ChessPage, ChessScan, ChessScanJob, ModelState, ScanStamp};
 use pdfcraft_render::DocInfo;
 
 use crate::canvas::PageXform;
@@ -83,6 +83,8 @@ pub struct ChessState {
     pub capture: crate::chess_capture::CaptureState,
     /// Follow, and the move's place last shown on the page (T8).
     pub source: crate::chess_source::SourceState,
+    /// Where the chess models come from: the folder chosen, or the files picked on the web (U4).
+    pub models: crate::chess_models::ModelsPref,
 }
 
 /// What scanning found in one document.
@@ -201,6 +203,8 @@ pub enum PanelAction {
     Text(crate::chess_text_ui::TextAction),
     /// Put the chess window's panel back in the main window (T13b).
     DockWindow,
+    /// Chess models…: choose where the models come from (U4).
+    Models,
 }
 
 /// One diagram's state: its label and colour.
@@ -344,6 +348,9 @@ pub(crate) fn tab_contents(
         {
             action = Some(PanelAction::ShowBoard);
         }
+        if ui.button(tl!("Chess models…")).on_hover_text(tl!("Choose the piece and glyph models that read diagrams and chess text.")).clicked() {
+            action = Some(PanelAction::Models);
+        }
     });
     if let Some((done, total)) = running {
         ui.add_space(4.0);
@@ -380,7 +387,7 @@ pub(crate) fn tab_contents(
         ModelNote::Missing => {
             ui.label(
                 egui::RichText::new(tl!(
-                    "No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx."
+                    "No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx."
                 ))
                 .small()
                 .color(t.text_muted),
@@ -500,7 +507,7 @@ impl PdfCraftApp {
         let Some(count) = self.session.get(id).map(|d| d.info.pages.len()) else { return };
         let pages: Vec<usize> =
             if all { (0..count).collect() } else { self.views.get(vi).map(|v| v.current).filter(|p| *p < count).into_iter().collect() };
-        let settings = ChessScanSettings::default();
+        let settings = self.chess_scan_settings();
         // `chunks` needs a batch size above zero: PAGES_PER_JOB is 8.
         let jobs: Vec<ChessScanJob> = pages.chunks(PAGES_PER_JOB).filter_map(|c| self.session.chess_scan_job(id, c, &settings, true)).collect();
         // Results for another document, or for this one before it changed, give way.
@@ -681,6 +688,7 @@ impl PdfCraftApp {
             PanelAction::Editor(a) => self.chess_editor_action(a),
             PanelAction::Text(a) => self.chess_text_action(a),
             PanelAction::DockWindow => self.set_chess_window_detached(false),
+            PanelAction::Models => self.choose_chess_models(),
         }
     }
 
@@ -749,7 +757,7 @@ impl PdfCraftApp {
             placement: ed.position.placement,
             style: pdfcraft_engine::chess::pdfcraft_chess::draw::BoardStyle { flipped: ed.flipped, ..Default::default() },
             pieces,
-            scan: ChessScanSettings::default(),
+            scan: self.chess_scan_settings(),
         };
         if self.apply_edit(pdfcraft_engine::Edit::ReplaceDiagram(Box::new(replacement))) {
             self.chess.editor = None;
@@ -766,7 +774,8 @@ impl PdfCraftApp {
             only: Some(pdfcraft_engine::chess::LinkTarget { page, index, fen }),
             ..pdfcraft_engine::chess::LinkSettings::default()
         };
-        match self.session.chess_link_plan(id, &[], &ChessScanSettings::default(), &settings) {
+        let scan = self.chess_scan_settings();
+        match self.session.chess_link_plan(id, &[], &scan, &settings) {
             Ok(plan) => match plan.edit {
                 Some(edit) => {
                     if self.apply_edit(edit) {

@@ -8,14 +8,17 @@
 //!   figurines, Informator symbols, digits, letters and ligatures.
 //!
 //! The weights stay on the user's machine (blueprint decision D2). On the desktop they are found
-//! in `$PDFCRAFT_MODELS` or beside the executable; in the browser there is no file system, so
-//! the page passes the files' bytes to [`PieceModel::from_bytes`] and [`GlyphModel::from_bytes`].
-//! Without a model, detection still works and reading reports [`ModelState::Missing`].
+//! in the folder chosen in the app (Chess models…), then `$PDFCRAFT_MODELS`, then beside the
+//! executable ([`ChessModels::locate`]); in the browser there is no file system, so the user
+//! picks the files and the page passes their bytes to [`ChessModels::from_files`] (each at most
+//! [`MAX_PICKED_FILE_BYTES`]). Without a model, detection still works and reading reports
+//! [`ModelState::Missing`].
 //!
 //! The description and the model are both checked when they are loaded, against each other and
 //! against what this crate feeds them, so a mismatched pair fails with a message naming what
 //! differs instead of reading the wrong thing.
 
+use std::ffi::OsString;
 use std::fmt;
 use std::path::{Path, PathBuf};
 
@@ -39,6 +42,11 @@ pub const GLYPH_SIDE: usize = 32;
 const MAX_META_BYTES: usize = 1 << 20;
 /// Largest model file accepted.
 const MAX_MODEL_BYTES: usize = 256 << 20;
+/// Largest model file accepted when the files are picked one by one and read into memory (the
+/// web app): the real models are about 3 MB (pieces) and 9 MB (glyphs).
+pub const MAX_PICKED_FILE_BYTES: usize = 64 << 20;
+/// Most names of picked files that are not model files kept for the report.
+const MAX_IGNORED_NAMES: usize = 32;
 /// Most glyph classes accepted.
 const MAX_GLYPH_CLASSES: usize = 4096;
 /// Most images classified in one call; larger batches are split by the caller.
@@ -74,6 +82,10 @@ pub enum ModelError {
     OutputShape { found: Vec<usize>, count: usize, classes: usize },
     #[error("the model returned a value that is not a finite number")]
     NotFinite,
+    #[error("{0} is missing: choose both files of a model together")]
+    NotChosen(String),
+    #[error("{name} could not be read: {why}")]
+    Picked { name: String, why: String },
 }
 
 /// Whether a model is available.
@@ -285,13 +297,28 @@ pub struct ChessModels {
 }
 
 impl ChessModels {
+    /// No model at all.
+    pub fn none() -> ChessModels {
+        ChessModels { pieces: ModelState::Missing, glyphs: ModelState::Missing, folder: None }
+    }
+
     /// Look for the models in `$PDFCRAFT_MODELS`, then beside the executable. In the browser
     /// there is no such folder and both are missing.
     pub fn find() -> ChessModels {
-        match model_folders().into_iter().find(|d| d.join(format!("{PIECES}.onnx")).is_file() || d.join(format!("{GLYPHS}.onnx")).is_file()) {
+        match ChessModels::locate(None) {
             Some(dir) => ChessModels::load_from(&dir),
-            None => ChessModels { pieces: ModelState::Missing, glyphs: ModelState::Missing, folder: None },
+            None => ChessModels::none(),
         }
+    }
+
+    /// The folder the models are loaded from: `chosen` (the folder picked in the app) when it
+    /// holds a model, else the first of `$PDFCRAFT_MODELS`, `models` beside the executable and
+    /// the executable's own folder that does. A chosen folder that is gone or holds no model
+    /// falls back to the search; the caller can tell by comparing. `None` when no folder holds
+    /// one (always in the browser).
+    pub fn locate(chosen: Option<&Path>) -> Option<PathBuf> {
+        let exe = std::env::current_exe().ok();
+        locate_in(chosen, std::env::var_os("PDFCRAFT_MODELS"), exe.as_deref())
     }
 
     /// Load whatever models `dir` holds.
@@ -302,20 +329,89 @@ impl ChessModels {
             folder: Some(dir.to_path_buf()),
         }
     }
+
+    /// The models in files the user picked (the web app, where there is no folder to look in):
+    /// each file's name and its bytes, or why it could not be read. Files are known by name
+    /// (`chess-pieces.onnx`, `chess-pieces.json`, `chess-glyphs.onnx`, `chess-glyphs.json`, in
+    /// any case, any folder part ignored); a model with only one of its two files is invalid and
+    /// says which is missing, and a file over [`MAX_PICKED_FILE_BYTES`] is not loaded. Returns
+    /// the models (no folder) and the names of the files that are not model files (the first 32).
+    pub fn from_files(files: Vec<(String, Result<Vec<u8>, String>)>) -> (ChessModels, Vec<String>) {
+        type Slot = Option<Result<Vec<u8>, ModelError>>;
+        let (mut pieces_onnx, mut pieces_meta, mut glyphs_onnx, mut glyphs_meta): (Slot, Slot, Slot, Slot) = (None, None, None, None);
+        let mut ignored = Vec::new();
+        for (name, bytes) in files {
+            let base = name.rsplit(['/', '\\']).next().unwrap_or(&name).to_ascii_lowercase();
+            let slot = match base.as_str() {
+                "chess-pieces.onnx" => &mut pieces_onnx,
+                "chess-pieces.json" => &mut pieces_meta,
+                "chess-glyphs.onnx" => &mut glyphs_onnx,
+                "chess-glyphs.json" => &mut glyphs_meta,
+                _ => {
+                    if ignored.len() < MAX_IGNORED_NAMES {
+                        ignored.push(name);
+                    }
+                    continue;
+                }
+            };
+            *slot = Some(match bytes {
+                Ok(b) if b.len() > MAX_PICKED_FILE_BYTES => {
+                    Err(ModelError::TooLarge { what: "a model file", size: b.len(), limit: MAX_PICKED_FILE_BYTES })
+                }
+                Ok(b) => Ok(b),
+                Err(why) => Err(ModelError::Picked { name: base, why }),
+            });
+        }
+        let models = ChessModels {
+            pieces: picked_pair(PIECES, pieces_onnx, pieces_meta, PieceModel::from_bytes),
+            glyphs: picked_pair(GLYPHS, glyphs_onnx, glyphs_meta, GlyphModel::from_bytes),
+            folder: None,
+        };
+        (models, ignored)
+    }
 }
 
-fn model_folders() -> Vec<PathBuf> {
-    let mut dirs = Vec::new();
-    if let Some(dir) = std::env::var_os("PDFCRAFT_MODELS") {
+/// Whether `dir` holds a chess model (`chess-pieces.onnx` or `chess-glyphs.onnx`).
+pub fn holds_models(dir: &Path) -> bool {
+    dir.join(format!("{PIECES}.onnx")).is_file() || dir.join(format!("{GLYPHS}.onnx")).is_file()
+}
+
+/// The folders looked in, in order: the one chosen in the app, `$PDFCRAFT_MODELS` (`env`), then
+/// `models` beside the executable `exe` and the executable's own folder.
+fn search_order(chosen: Option<&Path>, env: Option<OsString>, exe: Option<&Path>) -> Vec<PathBuf> {
+    let mut dirs: Vec<PathBuf> = chosen.map(Path::to_path_buf).into_iter().collect();
+    if let Some(dir) = env.filter(|d| !d.is_empty()) {
         dirs.push(PathBuf::from(dir));
     }
-    if let Ok(exe) = std::env::current_exe()
-        && let Some(parent) = exe.parent()
-    {
+    if let Some(parent) = exe.and_then(Path::parent) {
         dirs.push(parent.join("models"));
         dirs.push(parent.to_path_buf());
     }
     dirs
+}
+
+/// [`ChessModels::locate`] with `$PDFCRAFT_MODELS` and the executable given.
+fn locate_in(chosen: Option<&Path>, env: Option<OsString>, exe: Option<&Path>) -> Option<PathBuf> {
+    search_order(chosen, env, exe).into_iter().find(|d| holds_models(d))
+}
+
+/// One model from picked files: missing when neither file was picked.
+fn picked_pair<T>(
+    name: &str,
+    onnx: Option<Result<Vec<u8>, ModelError>>,
+    meta: Option<Result<Vec<u8>, ModelError>>,
+    load: impl Fn(Vec<u8>, &[u8]) -> Result<T, ModelError>,
+) -> ModelState<T> {
+    let result = match (onnx, meta) {
+        (None, None) => return ModelState::Missing,
+        (Some(_), None) => Err(ModelError::NotChosen(format!("{name}.json"))),
+        (None, Some(_)) => Err(ModelError::NotChosen(format!("{name}.onnx"))),
+        (Some(onnx), Some(meta)) => onnx.and_then(|model| load(model, &meta?)),
+    };
+    match result {
+        Ok(m) => ModelState::Loaded(m),
+        Err(e) => ModelState::Invalid(e.to_string()),
+    }
 }
 
 fn load_pair<T>(dir: &Path, name: &str, load: impl Fn(Vec<u8>, &[u8]) -> Result<T, ModelError>) -> ModelState<T> {
@@ -389,6 +485,79 @@ mod tests {
         let found = ChessModels::load_from(&dir);
         assert!(matches!(found.pieces, ModelState::Missing));
         assert!(matches!(found.glyphs, ModelState::Missing));
+    }
+
+    /// A fresh, empty folder for one test.
+    fn scratch(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("pdfcraft-chessvision-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    /// U4: the folder chosen in the app comes first, then `$PDFCRAFT_MODELS`, then `models`
+    /// beside the executable, then the executable's folder; a folder is used only when it holds a
+    /// model, so a chosen folder that is gone or empty falls back to the search.
+    #[test]
+    fn the_chosen_folder_comes_before_the_environment_and_the_executable() {
+        let root = scratch("precedence");
+        let [chosen, env, exe_dir] = ["chosen", "env", "bin"].map(|d| root.join(d));
+        let exe = exe_dir.join("pdfcraft.exe");
+        for dir in [&chosen, &env, &exe_dir.join("models"), &exe_dir] {
+            std::fs::create_dir_all(dir).unwrap();
+            std::fs::write(dir.join(format!("{GLYPHS}.onnx")), b"not a model").unwrap();
+        }
+        let env_var = || Some(OsString::from(&env));
+        assert_eq!(locate_in(Some(&chosen), env_var(), Some(&exe)), Some(chosen.clone()));
+        assert_eq!(locate_in(None, env_var(), Some(&exe)), Some(env.clone()));
+        assert_eq!(locate_in(None, None, Some(&exe)), Some(exe_dir.join("models")));
+        std::fs::remove_dir_all(exe_dir.join("models")).unwrap();
+        assert_eq!(locate_in(None, Some(OsString::new()), Some(&exe)), Some(exe_dir.clone()), "an empty PDFCRAFT_MODELS is no folder");
+        // A chosen folder without a model, or gone, gives way to the search.
+        let empty = root.join("empty");
+        std::fs::create_dir_all(&empty).unwrap();
+        assert_eq!(locate_in(Some(&empty), env_var(), Some(&exe)), Some(env.clone()));
+        assert_eq!(locate_in(Some(&root.join("gone")), env_var(), Some(&exe)), Some(env.clone()));
+        assert_eq!(locate_in(Some(&empty), None, None), None);
+        // A pieces model alone counts too, and the folder's models are loaded and judged.
+        std::fs::write(empty.join(format!("{PIECES}.onnx")), b"not a model").unwrap();
+        assert_eq!(locate_in(Some(&empty), env_var(), Some(&exe)), Some(empty.clone()));
+        let found = ChessModels::load_from(&empty);
+        assert!(matches!(&found.pieces, ModelState::Invalid(why) if why.contains("chess-pieces.json")), "{:?}", found.pieces);
+        assert!(matches!(found.glyphs, ModelState::Missing));
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    /// U4, the web: models from picked files, known by name; one file of a pair alone, a file
+    /// too large or unreadable, and a broken model each say why, and other files are listed.
+    #[test]
+    fn picked_files_become_models_or_say_why_not() {
+        let meta = |m: &str| Ok(m.as_bytes().to_vec());
+        let glyph_meta = r#"{"kind":"chess-glyphs","input":{"name":"glyphs"},"output":{"name":"logits","classes":["a"]}}"#;
+        let (models, ignored) = ChessModels::from_files(vec![
+            ("C:\\fakepath\\Chess-Pieces.ONNX".into(), Ok(b"garbage".to_vec())),
+            ("chess-pieces.json".into(), meta(PIECE_META)),
+            ("models/chess-glyphs.json".into(), meta(glyph_meta)),
+            ("notes.txt".into(), Ok(Vec::new())),
+        ]);
+        assert!(matches!(&models.pieces, ModelState::Invalid(why) if why.contains("could not be loaded")), "{:?}", models.pieces);
+        assert!(matches!(&models.glyphs, ModelState::Invalid(why) if why.contains("chess-glyphs.onnx is missing")), "{:?}", models.glyphs);
+        assert_eq!(ignored, ["notes.txt"]);
+        assert!(models.folder.is_none());
+
+        let (models, _) = ChessModels::from_files(vec![
+            ("chess-glyphs.onnx".into(), Ok(vec![0; MAX_PICKED_FILE_BYTES + 1])),
+            ("chess-glyphs.json".into(), meta(glyph_meta)),
+        ]);
+        assert!(matches!(&models.glyphs, ModelState::Invalid(why) if why.contains("more than")), "{:?}", models.glyphs);
+        assert!(matches!(models.pieces, ModelState::Missing));
+        let (models, _) = ChessModels::from_files(vec![
+            ("chess-pieces.onnx".into(), Err("the browser refused".into())),
+            ("chess-pieces.json".into(), meta(PIECE_META)),
+        ]);
+        assert!(matches!(&models.pieces, ModelState::Invalid(why) if why.contains("the browser refused")), "{:?}", models.pieces);
+        let (models, ignored) = ChessModels::from_files(Vec::new());
+        assert!(matches!((models.pieces, models.glyphs), (ModelState::Missing, ModelState::Missing)) && ignored.is_empty());
     }
 
     /// Runs the user's real exported models when `PDFCRAFT_CHESS_TEST_MODELS` points at their

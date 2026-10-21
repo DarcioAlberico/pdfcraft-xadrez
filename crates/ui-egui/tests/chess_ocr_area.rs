@@ -249,7 +249,7 @@ fn no_model_and_nothing_read_are_said() {
     assert!(h.state_mut().execute("chess.tool.capture"));
     support::wait_until(&mut h, "the OCR area switching on", |app| app.chess.capture.area.on);
     draw_area(&mut h);
-    assert!(toast(&h).contains("chess-glyphs") && toast(&h).contains("PDFCRAFT_MODELS"), "{}", toast(&h));
+    assert!(toast(&h).contains("chess-glyphs") && toast(&h).contains("Chess models…"), "{}", toast(&h));
     let asked: Asked = Arc::default();
     h.state_mut().set_chess_area_reader(Some(reader("", 0, &asked)));
     draw_area(&mut h);

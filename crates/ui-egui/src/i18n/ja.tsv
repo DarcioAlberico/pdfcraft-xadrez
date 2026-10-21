@@ -2448,7 +2448,6 @@ animation effects	Off	オフ
 	Scanning for diagrams… page {d} of {t}	局面図を検索中… ページ {d} / {t}
 	Scan this page or all pages to find the chess diagrams in this document.	このページまたはすべてのページを検索して、この文書のチェスの局面図を見つけます。
 	The document changed since the scan. Scan again to update the diagrams.	検索後に文書が変更されました。局面図を更新するには、もう一度検索してください。
-	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	駒モデルがありません。チェスフォントで組まれた局面図だけを読み取ります。PDFCRAFT_MODELS に chess-pieces.onnx があるフォルダーを設定してください。
 	The piece model couldn't be loaded: {e}	駒モデルを読み込めませんでした: {e}
 	No diagrams found.	局面図は見つかりませんでした。
 	This page couldn't be scanned: {e}	このページを検索できませんでした: {e}
@@ -2852,7 +2851,6 @@ chess undo step	Clear drawings	描画の消去
 	OCR area	OCR 範囲
 	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	このページのテキストレイヤーがないか信頼できないため、ドラッグでチェス OCR で読み取る範囲を描きます。代わりにテキストを選択するにはクリックします。
 	A drag draws an area to read with chess OCR. Click to select text instead.	ドラッグでチェス OCR で読み取る範囲を描きます。代わりにテキストを選択するにはクリックします。
-	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	チェス OCR には chess-glyphs モデルが必要です。PDFCRAFT_MODELS に chess-glyphs.onnx があるフォルダーを設定してください。
 	The area is too large to read at once: draw a smaller one.	範囲が大きすぎて一度に読み取れません。小さい範囲を描いてください。
 	The area couldn't be read: {e}	範囲を読み取れませんでした: {e}
 	The area read was dropped: the document was edited.	範囲の読み取りを破棄しました: 文書が編集されました。
@@ -2887,3 +2885,25 @@ chess undo step	Clear drawings	描画の消去
 	They are saved unencrypted, in the folder you chose for retraining.	再学習用に選んだフォルダーに暗号化せずに保存されます。
 	Collecting stopped: {n} character samples were saved this session.	収集を停止しました: このセッションで {n} 件の文字サンプルを保存しました。
 	Couldn't save a character sample: {e}	文字サンプルを保存できませんでした: {e}
+	loaded	読み込み済み
+	not found	見つかりません
+	couldn't be loaded: {e}	読み込めませんでした: {e}
+	Chess models: piece model {pieces}; glyph model {glyphs}.	チェスモデル: 駒モデル {pieces}、グリフモデル {glyphs}。
+	Chess models	チェスモデル
+	Choose the model files (chess-pieces.onnx and .json, chess-glyphs.onnx and .json) to use them until this page is closed. Each file may be up to {mb} MB.	モデルファイル (chess-pieces.onnx と .json、chess-glyphs.onnx と .json) を選ぶと、このページを閉じるまで使われます。各ファイルは {mb} MB まで。
+	No folder chosen: PDFCRAFT_MODELS, then beside the program	フォルダー未選択: PDFCRAFT_MODELS、次にプログラムの隣
+	Models folder	モデルフォルダー
+	This folder holds no chess model, or is gone: the models are looked for in PDFCRAFT_MODELS, then beside the program.	このフォルダーにはチェスモデルがないか、存在しません。モデルは PDFCRAFT_MODELS、次にプログラムの隣で探されます。
+	Piece model: {state}	駒モデル: {state}
+	Glyph model: {state}	グリフモデル: {state}
+	Found in {folder} instead.	代わりに {folder} で見つかりました。
+	Not model files, left out: {names}	モデルファイルではないため除外: {names}
+	Chess models…	チェスモデル…
+	Forget	選択を解除
+	Look for the models as when none were chosen.	何も選ばれていないときと同じ場所でモデルを探します。
+	Choose the chess models folder	チェスモデルのフォルダーを選択
+	{folder} can't be used as the chess models folder.	{folder} はチェスモデルのフォルダーとして使えません。
+	Choose the chess model files	チェスモデルのファイルを選択
+	Choose the piece and glyph models that read diagrams and chess text.	図とチェスのテキストを読む駒モデルとグリフモデルを選びます。
+	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	駒モデルがありません: チェスフォントで組まれた図だけを読みます。チェスモデル… で chess-pieces.onnx を指定してください。
+	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	チェス OCR には chess-glyphs モデルが必要です。チェスパネルのチェスモデル… で chess-glyphs.onnx を指定してください。

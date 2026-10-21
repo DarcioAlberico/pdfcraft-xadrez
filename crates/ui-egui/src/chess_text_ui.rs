@@ -22,12 +22,12 @@ use std::sync::{Arc, Mutex};
 
 use egui::{Color32, FontId, TextureHandle};
 use pdfcraft_engine::DocId;
+use pdfcraft_engine::chess::ScanStamp;
 use pdfcraft_engine::chess::document::{BookOrigin, OcrMode, OcrOptions};
 use pdfcraft_engine::chess::export::{ChessExportOptions, ChessFormat};
 use pdfcraft_engine::chess::pdfcraft_chess::draw::BoardStyle;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::html::{Figurines, plain_text_with};
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, ChessDoc, Inline, MoveStatus, NodeRef, UserRect};
-use pdfcraft_engine::chess::{ChessScanSettings, ScanStamp};
 
 use crate::theme::Tokens;
 use crate::{PdfCraftApp, theme};
@@ -416,9 +416,10 @@ impl PdfCraftApp {
         let ocr = ocr || origin == BookOrigin::Scanned;
         let mode = if ocr { OcrMode::All } else { OcrMode::Off };
         let book = self.chess_cipher(id);
+        let settings = self.chess_scan_settings();
         self.start_chess_job(id, JobKind::Read { page, stamp, origin, ocr }, move |s, id| {
             let options = OcrOptions { mode, glyphs: None, general: true, book: book.as_ref() };
-            JobDone::Read(s.chess_document_with(id, &[page], &ChessScanSettings::default(), None, &options))
+            JobDone::Read(s.chess_document_with(id, &[page], &settings, None, &options))
         });
     }
 

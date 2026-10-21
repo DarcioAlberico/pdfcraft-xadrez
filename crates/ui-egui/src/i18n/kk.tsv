@@ -2444,7 +2444,6 @@ animation effects	Off	Өшірулі
 	Scanning for diagrams… page {d} of {t}	Диаграммалар ізделуде… бет {d}/{t}
 	Scan this page or all pages to find the chess diagrams in this document.	Құжаттағы шахмат диаграммаларын табу үшін осы беттен немесе барлық беттерден іздеңіз.
 	The document changed since the scan. Scan again to update the diagrams.	Іздеуден кейін құжат өзгерді. Диаграммаларды жаңарту үшін қайта іздеңіз.
-	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	Фигуралар моделі жоқ: тек шахмат қаріпімен терілген диаграммалар оқылады. PDFCRAFT_MODELS мәніне chess-pieces.onnx бар қалтаны орнатыңыз.
 	The piece model couldn't be loaded: {e}	Фигуралар моделін жүктеу мүмкін болмады: {e}
 	No diagrams found.	Диаграмма табылмады.
 	This page couldn't be scanned: {e}	Бұл бетті тексеру мүмкін болмады: {e}
@@ -2848,7 +2847,6 @@ chess undo step	Clear drawings	суреттерді өшіру
 	OCR area	OCR аймағы
 	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	Бұл беттің мәтін қабаты жоқ немесе оған сенуге болмайды, сондықтан сүйреу шахмат OCR арқылы оқылатын аймақ сызады. Оның орнына мәтін таңдау үшін басыңыз.
 	A drag draws an area to read with chess OCR. Click to select text instead.	Сүйреу шахмат OCR арқылы оқылатын аймақ сызады. Оның орнына мәтін таңдау үшін басыңыз.
-	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	Шахмат OCR үшін chess-glyphs моделі қажет. PDFCRAFT_MODELS айнымалысына chess-glyphs.onnx бар қалтаны орнатыңыз.
 	The area is too large to read at once: draw a smaller one.	Аймақ бір рет оқу үшін тым үлкен: кішірегін сызыңыз.
 	The area couldn't be read: {e}	Аймақты оқу мүмкін болмады: {e}
 	The area read was dropped: the document was edited.	Аймақты оқу тасталды: құжат өңделді.
@@ -2883,3 +2881,25 @@ chess undo step	Clear drawings	суреттерді өшіру
 	They are saved unencrypted, in the folder you chose for retraining.	Олар қайта оқыту үшін таңдалған қалтаға шифрлаусыз сақталады.
 	Collecting stopped: {n} character samples were saved this session.	Жинау тоқтатылды: осы сеанста {n} таңба үлгісі сақталды.
 	Couldn't save a character sample: {e}	Таңба үлгісін сақтау мүмкін болмады: {e}
+	loaded	жүктелді
+	not found	табылмады
+	couldn't be loaded: {e}	жүктелмеді: {e}
+	Chess models: piece model {pieces}; glyph model {glyphs}.	Шахмат модельдері: фигуралар моделі — {pieces}; глифтер моделі — {glyphs}.
+	Chess models	Шахмат модельдері
+	Choose the model files (chess-pieces.onnx and .json, chess-glyphs.onnx and .json) to use them until this page is closed. Each file may be up to {mb} MB.	Модель файлдарын (chess-pieces.onnx және .json, chess-glyphs.onnx және .json) таңдаңыз, олар осы бет жабылғанша қолданылады. Әр файл {mb} МБ-тан аспауы керек.
+	No folder chosen: PDFCRAFT_MODELS, then beside the program	Қалта таңдалмаған: PDFCRAFT_MODELS, содан кейін бағдарлама жанында
+	Models folder	Модельдер қалтасы
+	This folder holds no chess model, or is gone: the models are looked for in PDFCRAFT_MODELS, then beside the program.	Бұл қалтада шахмат моделі жоқ немесе ол енді жоқ: модельдер PDFCRAFT_MODELS ішінде, содан кейін бағдарлама жанында ізделеді.
+	Piece model: {state}	Фигуралар моделі: {state}
+	Glyph model: {state}	Глифтер моделі: {state}
+	Found in {folder} instead.	Оның орнына {folder} ішінде табылды.
+	Not model files, left out: {names}	Модель файлдары емес, қалдырылды: {names}
+	Chess models…	Шахмат модельдері…
+	Forget	Ұмыту
+	Look for the models as when none were chosen.	Модельдерді ештеңе таңдалмағандағыдай іздеу.
+	Choose the chess models folder	Шахмат модельдерінің қалтасын таңдаңыз
+	{folder} can't be used as the chess models folder.	{folder} шахмат модельдерінің қалтасы ретінде қолданыла алмайды.
+	Choose the chess model files	Шахмат модельдерінің файлдарын таңдаңыз
+	Choose the piece and glyph models that read diagrams and chess text.	Диаграммалар мен шахмат мәтінін оқитын фигуралар мен глифтер модельдерін таңдау.
+	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	Фигуралар моделі жоқ: тек шахмат қарпімен терілген диаграммалар оқылады. Қолданбаға chess-pieces.onnx беру үшін «Шахмат модельдері…» пайдаланыңыз.
+	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	Шахмат OCR-ына chess-glyphs моделі керек. Қолданбаға chess-glyphs.onnx беру үшін шахмат панеліндегі «Шахмат модельдері…» пайдаланыңыз.

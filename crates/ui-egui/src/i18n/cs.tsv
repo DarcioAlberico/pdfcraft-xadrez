@@ -2520,7 +2520,6 @@ animation effects	Off	Vypnuto
 	Scanning for diagrams… page {d} of {t}	Hledání diagramů… stránka {d} z {t}
 	Scan this page or all pages to find the chess diagrams in this document.	Spusťte hledání na této stránce nebo na všech stránkách a najděte šachové diagramy v tomto dokumentu.
 	The document changed since the scan. Scan again to update the diagrams.	Dokument se od hledání změnil. Spusťte hledání znovu, aby se diagramy aktualizovaly.
-	No piece model: only diagrams set in a chess font are read. Set PDFCRAFT_MODELS to the folder that holds chess-pieces.onnx.	Chybí model figur: čtou se jen diagramy vysázené šachovým písmem. Nastavte PDFCRAFT_MODELS na složku se souborem chess-pieces.onnx.
 	The piece model couldn't be loaded: {e}	Model figur se nepodařilo načíst: {e}
 	No diagrams found.	Nebyly nalezeny žádné diagramy.
 	This page couldn't be scanned: {e}	Tuto stránku se nepodařilo prohledat: {e}
@@ -2924,7 +2923,6 @@ chess undo step	Clear drawings	smazání kreseb
 	OCR area	Oblast OCR
 	This page's text layer is missing or can't be trusted, so a drag draws an area to read with chess OCR. Click to select text instead.	Textová vrstva této stránky chybí nebo jí nelze věřit, takže tažením nakreslíte oblast ke čtení šachovým OCR. Klepnutím místo toho vyberete text.
 	A drag draws an area to read with chess OCR. Click to select text instead.	Tažením nakreslíte oblast ke čtení šachovým OCR. Klepnutím místo toho vyberete text.
-	Chess OCR needs the chess-glyphs model. Set PDFCRAFT_MODELS to the folder that holds chess-glyphs.onnx.	Šachové OCR potřebuje model chess-glyphs. Nastavte PDFCRAFT_MODELS na složku, která obsahuje chess-glyphs.onnx.
 	The area is too large to read at once: draw a smaller one.	Oblast je příliš velká na přečtení najednou: nakreslete menší.
 	The area couldn't be read: {e}	Oblast nelze přečíst: {e}
 	The area read was dropped: the document was edited.	Čtení oblasti bylo zahozeno: dokument byl upraven.
@@ -2959,3 +2957,25 @@ chess undo step	Clear drawings	smazání kreseb
 	They are saved unencrypted, in the folder you chose for retraining.	Ukládají se nešifrované do složky, kterou jste vybrali pro přeučení.
 	Collecting stopped: {n} character samples were saved this session.	Sběr zastaven: v této relaci bylo uloženo {n} vzorků znaků.
 	Couldn't save a character sample: {e}	Vzorek znaku nelze uložit: {e}
+	loaded	načten
+	not found	nenalezen
+	couldn't be loaded: {e}	nepodařilo se načíst: {e}
+	Chess models: piece model {pieces}; glyph model {glyphs}.	Šachové modely: model figur {pieces}; model glyfů {glyphs}.
+	Chess models	Šachové modely
+	Choose the model files (chess-pieces.onnx and .json, chess-glyphs.onnx and .json) to use them until this page is closed. Each file may be up to {mb} MB.	Vyberte soubory modelů (chess-pieces.onnx a .json, chess-glyphs.onnx a .json), aby se používaly do zavření této stránky. Každý soubor smí mít nejvýše {mb} MB.
+	No folder chosen: PDFCRAFT_MODELS, then beside the program	Žádná složka nevybrána: PDFCRAFT_MODELS, pak vedle programu
+	Models folder	Složka modelů
+	This folder holds no chess model, or is gone: the models are looked for in PDFCRAFT_MODELS, then beside the program.	Tato složka neobsahuje žádný šachový model, nebo už neexistuje: modely se hledají v PDFCRAFT_MODELS, pak vedle programu.
+	Piece model: {state}	Model figur: {state}
+	Glyph model: {state}	Model glyfů: {state}
+	Found in {folder} instead.	Nalezeny místo toho v {folder}.
+	Not model files, left out: {names}	Nejsou to soubory modelů, vynechány: {names}
+	Chess models…	Šachové modely…
+	Forget	Zapomenout
+	Look for the models as when none were chosen.	Hledat modely, jako by žádný nebyl vybrán.
+	Choose the chess models folder	Vyberte složku šachových modelů
+	{folder} can't be used as the chess models folder.	{folder} nelze použít jako složku šachových modelů.
+	Choose the chess model files	Vyberte soubory šachových modelů
+	Choose the piece and glyph models that read diagrams and chess text.	Vybrat modely figur a glyfů, které čtou diagramy a šachový text.
+	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	Žádný model figur: čtou se jen diagramy sázené šachovým písmem. Pomocí Šachové modely… dejte aplikaci chess-pieces.onnx.
+	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	Šachové OCR potřebuje model chess-glyphs. Pomocí Šachové modely… v šachovém panelu dejte aplikaci chess-glyphs.onnx.
