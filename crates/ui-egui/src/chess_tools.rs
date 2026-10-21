@@ -553,9 +553,19 @@ pub(crate) fn scope_key(key: Key, m: Modifiers) -> bool {
 /// taken for a capture (`chess_capture`) whenever the scope is on, rail or not.
 pub(crate) fn take_scope_keys(chess: &mut ChessState, ctx: &egui::Context, raw: &mut egui::RawInput, blocked: bool) {
     chess.tools.keys.clear();
+    chess.games.drop_list_keys();
     let shown = std::mem::take(&mut chess.tools.rail_shown);
     // Enter applies a capture waiting for the user, before anything else can use it (T7b).
     crate::chess_capture::take_enter(chess, &mut raw.events, blocked || ctx.text_edit_focused());
+    // A focused row of the games list (T14) has its own keys, scope or not: its Delete deletes
+    // no variation (nor a page or an annotation).
+    if !blocked && !ctx.text_edit_focused() && !egui::Popup::is_any_open(ctx) && chess.games.list_has_focus(ctx) {
+        chess.games.take_list_keys(&mut raw.events);
+        if chess.in_scope() {
+            crate::chess_capture::take_paste(chess, &mut raw.events);
+        }
+        return;
+    }
     if blocked || !chess.in_scope() || ctx.text_edit_focused() || egui::Popup::is_any_open(ctx) {
         return;
     }
@@ -596,12 +606,20 @@ pub(crate) struct MainScope {
 pub(crate) fn take_window_keys(chess: &mut ChessState, ctx: &egui::Context) -> MainScope {
     let main = MainScope { rail_shown: chess.tools.rail_shown, keys: std::mem::take(&mut chess.tools.keys) };
     if !ctx.text_edit_focused() && !egui::Popup::is_any_open(ctx) {
+        // A focused row of the window's games list has its own keys (T14), as in the main window.
+        let listed = chess.games.list_has_focus(ctx);
         // A paste in the chess window goes to the game (T7a), and Enter applies a capture
         // waiting for the user before the window's rail can use it (T7b).
         ctx.input_mut(|i| {
             crate::chess_capture::take_enter(chess, &mut i.events, false);
             crate::chess_capture::take_paste(chess, &mut i.events);
+            if listed {
+                chess.games.take_list_keys(&mut i.events);
+            }
         });
+        if listed {
+            return main;
+        }
         // As in the main window's scope: Enter only while nothing has focus, and typed glyphs.
         let focused = ctx.memory(|m| m.focused().is_some());
         let tools = &mut chess.tools;

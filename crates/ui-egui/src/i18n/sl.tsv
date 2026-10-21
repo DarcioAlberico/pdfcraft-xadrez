@@ -2808,3 +2808,14 @@ animation effects	Off	Izklopljeni
 	Moves left off the board (more than it holds): {n}	Poteze, ki so ostale zunaj šahovnice (več, kot jih sprejme): {n}
 	Double-click to open this game on the board.	Dvokliknite, da odprete to partijo na šahovnici.
 	Open this game on the board	Odpri to partijo na šahovnici
+# Chess ▸ PGN toolbar: T14, the list of games (a game's menu and row buttons, the delete question, a new game from a position). "New game from this position", "Duplicate game", "Rename game…" and "Delete game…" are command names too.
+	Rename…	Preimenuj…
+	Duplicate	Podvoji
+	Delete…	Izbriši…
+	Rename game…	Preimenuj partijo…
+	Duplicate game	Podvoji partijo
+	Delete game…	Izbriši partijo…
+	New game from this position	Nova partija iz tega položaja
+	Delete this game? It can't be undone.	Želite izbrisati to partijo? Tega ni mogoče razveljaviti.
+	An illegal position can't start a game: correct it in the diagram editor first.	Z nelegalnim položajem ni mogoče začeti partije: najprej ga popravite v urejevalniku diagrama.
+	Games not saved (an illegal position has no PGN): {n}	Neshranjene partije (neveljavna pozicija nima PGN): {n}

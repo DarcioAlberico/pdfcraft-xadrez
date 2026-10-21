@@ -3015,3 +3015,14 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Moves left off the board (more than it holds): {n}	Mosse rimaste fuori dalla scacchiera (più di quante ne contenga): {n}
 	Double-click to open this game on the board.	Fai doppio clic per aprire questa partita sulla scacchiera.
 	Open this game on the board	Apri questa partita sulla scacchiera
+# Chess ▸ PGN toolbar: T14, the list of games (a game's menu and row buttons, the delete question, a new game from a position). "New game from this position", "Duplicate game", "Rename game…" and "Delete game…" are command names too.
+	Rename…	Rinomina…
+	Duplicate	Duplica
+	Delete…	Elimina…
+	Rename game…	Rinomina partita…
+	Duplicate game	Duplica partita
+	Delete game…	Elimina partita…
+	New game from this position	Nuova partita da questa posizione
+	Delete this game? It can't be undone.	Eliminare questa partita? Non si può annullare.
+	An illegal position can't start a game: correct it in the diagram editor first.	Una posizione illegale non può iniziare una partita: correggila prima nell'editor del diagramma.
+	Games not saved (an illegal position has no PGN): {n}	Partite non salvate (una posizione illegale non ha PGN): {n}

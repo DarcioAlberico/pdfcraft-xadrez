@@ -2799,3 +2799,14 @@ animation effects	Off	Kapalı
 	Moves left off the board (more than it holds): {n}	Tahtaya alınmayan hamleler (tahtanın alabileceğinden fazla): {n}
 	Double-click to open this game on the board.	Bu oyunu tahtada açmak için çift tıklayın.
 	Open this game on the board	Bu oyunu tahtada aç
+# Chess ▸ PGN toolbar: T14, the list of games (a game's menu and row buttons, the delete question, a new game from a position). "New game from this position", "Duplicate game", "Rename game…" and "Delete game…" are command names too.
+	Rename…	Yeniden Adlandır…
+	Duplicate	Çoğalt
+	Delete…	Sil…
+	Rename game…	Oyunu yeniden adlandır…
+	Duplicate game	Oyunu çoğalt
+	Delete game…	Oyunu sil…
+	New game from this position	Bu konumdan yeni oyun
+	Delete this game? It can't be undone.	Bu oyun silinsin mi? Geri alınamaz.
+	An illegal position can't start a game: correct it in the diagram editor first.	Geçersiz bir konumla oyun başlatılamaz: önce diyagram düzenleyicisinde düzeltin.
+	Games not saved (an illegal position has no PGN): {n}	Kaydedilmeyen oyunlar (geçersiz bir konumun PGN'si yoktur): {n}

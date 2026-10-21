@@ -300,7 +300,7 @@ pub(crate) fn panel(
         // tool rail is beside it, as beside the Board panel's (the two merge in T5c).
         let pieces = crate::chess_editor::board_piece_set(&mut state.board_pieces);
         return crate::chess_tools::with_rail(ui, state, |ui, state| {
-            let games = crate::chess_collection::games_section(ui, t, &state.games).map(PanelAction::Games);
+            let games = crate::chess_collection::games_section(ui, t, &mut state.games).map(PanelAction::Games);
             let study = crate::chess_study_ui::study_tab(ui, t, &mut state.study, state.games.board_mut(), &pieces).map(PanelAction::Study);
             games.or(study)
         });

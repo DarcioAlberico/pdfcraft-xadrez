@@ -346,6 +346,12 @@ pub const COMMANDS: &[CommandSpec] = &[
     c("chess.pgn.open", "Open PGN…", None, None, Nothing, "folder-open"),
     c("chess.pgn.save", "Save PGN…", None, None, Nothing, "save"),
     c("chess.pgn.save_all", "Save all games as PGN…", None, None, Nothing, "save"),
+    // The game shown in the list of games (T14): a new game from its current position, a copy,
+    // and the name editor and delete question of the list.
+    c("chess.game.new_from_here", "New game from this position", None, None, Nothing, "file-plus"),
+    c("chess.game.duplicate", "Duplicate game", None, None, Nothing, "copy-plus"),
+    c("chess.game.rename", "Rename game…", None, None, Nothing, "pencil"),
+    c("chess.game.delete", "Delete game…", None, None, Nothing, "trash-2"),
     // The chess board and the chess panel's tabs in their own window, or back (T13a, T13b): a toggle.
     c("chess.window.detach", "Chess in its own window", None, None, Nothing, "app-window"),
     // The chess board's PGN tool rail (T5b). No shortcut here: their keys are the chess panel's

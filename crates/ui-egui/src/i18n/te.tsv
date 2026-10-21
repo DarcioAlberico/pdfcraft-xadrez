@@ -2712,3 +2712,14 @@ animation effects	Off	ఆఫ్
 	Moves left off the board (more than it holds): {n}	బోర్డుకు వెలుపల మిగిలిన ఎత్తులు (అది పట్టే దానికంటే ఎక్కువ): {n}
 	Double-click to open this game on the board.	ఈ ఆటను బోర్డుపై తెరవడానికి రెండుసార్లు క్లిక్ చేయండి.
 	Open this game on the board	ఈ ఆటను బోర్డుపై తెరువు
+# Chess ▸ PGN toolbar: T14, the list of games (a game's menu and row buttons, the delete question, a new game from a position). "New game from this position", "Duplicate game", "Rename game…" and "Delete game…" are command names too.
+	Rename…	పేరు మార్చు…
+	Duplicate	నకలు చేయి
+	Delete…	తొలగించు…
+	Rename game…	ఆట పేరు మార్చు…
+	Duplicate game	ఆటను నకలు చేయి
+	Delete game…	ఆటను తొలగించు…
+	New game from this position	ఈ స్థితి నుండి కొత్త ఆట
+	Delete this game? It can't be undone.	ఈ ఆటను తొలగించాలా? దీన్ని రద్దు చేయలేరు.
+	An illegal position can't start a game: correct it in the diagram editor first.	చెల్లని స్థితితో ఆట ప్రారంభించలేరు: ముందుగా డయాగ్రామ్ ఎడిటర్‌లో సరిచేయండి.
+	Games not saved (an illegal position has no PGN): {n}	సేవ్ కాని ఆటలు (చెల్లని స్థితికి PGN లేదు): {n}

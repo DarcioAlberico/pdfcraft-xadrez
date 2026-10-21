@@ -2803,3 +2803,14 @@ animation effects	Off	Désactivés
 	Moves left off the board (more than it holds): {n}	Coups laissés hors de l'échiquier (plus qu'il n'en contient) : {n}
 	Double-click to open this game on the board.	Double-cliquez pour ouvrir cette partie sur l'échiquier.
 	Open this game on the board	Ouvrir cette partie sur l'échiquier
+# Chess ▸ PGN toolbar: T14, the list of games (a game's menu and row buttons, the delete question, a new game from a position). "New game from this position", "Duplicate game", "Rename game…" and "Delete game…" are command names too.
+	Rename…	Renommer…
+	Duplicate	Dupliquer
+	Delete…	Supprimer…
+	Rename game…	Renommer la partie…
+	Duplicate game	Dupliquer la partie
+	Delete game…	Supprimer la partie…
+	New game from this position	Nouvelle partie à partir de cette position
+	Delete this game? It can't be undone.	Supprimer cette partie ? Cette action est irréversible.
+	An illegal position can't start a game: correct it in the diagram editor first.	Une position illégale ne peut pas commencer une partie : corrigez-la d'abord dans l'éditeur de diagramme.
+	Games not saved (an illegal position has no PGN): {n}	Parties non enregistrées (une position illégale n'a pas de PGN) : {n}

@@ -8,9 +8,15 @@
 //!   replaces the game on the board (only a blank, untouched game gives way to it, and opening
 //!   the same untouched diagram twice shows the game already there). Loading the PGN field still
 //!   replaces the game shown, as one undo step; Open PGN… adds the file's games.
-//! - **The list.** "Games in this document" in the board panels lists them by their players, the
-//!   diagram they came from, or their number; a click shows one (that is walking, not an undo
-//!   step), and New game adds a blank one. Renaming, duplicating and deleting come later (T14).
+//! - **The list.** "Games in this document" in the board panels lists them by their players, their
+//!   event, the diagram they came from, or their number; a click shows one (that is walking, not
+//!   an undo step), and New game adds a blank one. Each game can be renamed (its White, Black and
+//!   Event tags, so the name is in its PGN; one undo step of that game), duplicated, deleted
+//!   (after a question: the list has no undo; deleting the last game leaves a blank one) and
+//!   moved up or down, from its menu, the buttons shown on the row under the pointer, or the keys
+//!   of a focused row (F2, Delete, Alt+↑/↓; Enter shows it). "New game from this position" starts
+//!   a game at the move shown, or at a move of the notation, keeping the diagram it came from.
+//!   The list's order is the order the collection is exported and autosaved in.
 //! - **Kept across sessions** ([`crate::chess_autosave`]): two seconds after the last change, on
 //!   exit and when a document closes, each collection is written under its document's keys
 //!   ([`DocKeys`]), and found again by them when the document is opened. Saving the document can
@@ -18,8 +24,9 @@
 //!   right after every save ([`PdfCraftApp::rekey_chess_games`]). A protected document's games
 //!   (encrypted, or copying not allowed) are written only once the user allows it, asked once
 //!   per document and session.
-//! - **PGN files.** Save PGN… writes the game shown, Save all games… the whole collection, to a
-//!   file the user chooses (a download on the web); Open PGN… adds every game of a file.
+//! - **PGN files.** Save PGN… writes the game shown, Export… (Save all games as PGN…) the whole
+//!   collection in list order, to a file the user chooses (a download on the web); Open PGN… adds
+//!   every game of a file.
 //!
 //! Each game's undo history ([`crate::chess_history`]) is its own, and is not kept across
 //! sessions. Where each move was read on a page (`NodeSource`) lives only in the game's moves.
@@ -27,13 +34,15 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use egui::{Event, Key, Modifiers};
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::DocKeys;
-use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, NodePath};
+use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, NodeId, NodePath};
 
 use crate::PdfCraftApp;
 use crate::chess_autosave::{self, Blocked, Store};
 use crate::chess_board_ui::{BoardState, Source};
+use crate::chess_history::ChessEdit;
 use crate::chess_ui::ChessState;
 use crate::theme::Tokens;
 
@@ -91,13 +100,17 @@ impl GameEntry {
     }
 
     /// The game's name in the list, `number` being its place (1-based): "White–Black" from its
-    /// details, else the diagram it came from, else "Game {number}".
+    /// details, else its event, else the diagram it came from, else "Game {number}".
     pub fn name(&self, number: usize) -> String {
-        let tag = |t: &str| self.board.game.tag(t).map(str::trim).filter(|v| !v.is_empty() && *v != "?").map(str::to_owned);
-        match (tag("White"), tag("Black")) {
+        let names = self.names();
+        let known = |v: String| Some(v).filter(|v| !v.is_empty());
+        match (known(names.white), known(names.black)) {
             (Some(w), Some(b)) => return format!("{w}–{b}"),
             (Some(one), None) | (None, Some(one)) => return one,
             (None, None) => {}
+        }
+        if let Some(event) = known(names.event) {
+            return event;
         }
         match self.board.source {
             Some(s) => crate::i18n::fmt(
@@ -106,6 +119,49 @@ impl GameEntry {
             ),
             None => crate::i18n::fmt(tl!("Game {n}"), &[("n", &number.to_string())]),
         }
+    }
+
+    /// What the game is named by: its White, Black and Event tags (empty when unknown, `?`
+    /// included).
+    pub fn names(&self) -> GameNames {
+        let tag = |t: &str| self.board.game.tag(t).map(str::trim).filter(|v| *v != "?").unwrap_or_default().to_owned();
+        GameNames { white: tag("White"), black: tag("Black"), event: tag("Event") }
+    }
+
+    /// Name the game: its White, Black and Event tags take `names` (an empty name removes its
+    /// tag), as one undo step of the game ("Edit game details"). Whether anything changed.
+    fn rename(&mut self, names: &GameNames) -> bool {
+        let now = self.names();
+        let changes: Vec<(&str, String)> =
+            [("White", &now.white, &names.white), ("Black", &now.black, &names.black), ("Event", &now.event, &names.event)]
+                .into_iter()
+                .filter(|(_, old, new)| old.trim() != new.trim())
+                .map(|(tag, _, new)| (tag, new.trim().to_owned()))
+                .collect();
+        if changes.is_empty() {
+            return false;
+        }
+        self.board.edit(|s| {
+            for (tag, value) in &changes {
+                // The three names are valid tag names; a game whose tags are full refuses a new
+                // one, and the others still change.
+                let _ = s.game.set_tag(tag, value);
+            }
+            s.refresh_fields(true);
+            Some(ChessEdit::GameDetails)
+        })
+    }
+
+    /// A copy, as a game of its own: the same moves, move shown, illegal position, side and
+    /// diagram; a history of its own, empty.
+    fn copy(&self) -> GameEntry {
+        let mut board = BoardState::default();
+        board.game = self.board.game.clone();
+        board.illegal = self.board.illegal.clone();
+        board.source = self.board.source;
+        board.flipped = self.board.flipped;
+        board.refresh_fields(true);
+        GameEntry::new(board)
     }
 
     /// Moves of the main line, counted as a scoresheet does (a move each side).
@@ -126,6 +182,14 @@ impl GameEntry {
     pub(crate) fn untouched(&self) -> bool {
         self.board.history.undo_edit().is_none() && self.board.history.redo_edit().is_none()
     }
+}
+
+/// What a game is named by in the list (its PGN tags).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct GameNames {
+    pub white: String,
+    pub black: String,
+    pub event: String,
 }
 
 /// When a collection was last changed and written.
@@ -266,6 +330,122 @@ impl ChessCollection {
         true
     }
 
+    /// Game `index` (0-based).
+    pub fn get(&self, index: usize) -> Option<&GameEntry> {
+        self.iter().nth(index)
+    }
+
+    fn get_mut(&mut self, index: usize) -> Option<&mut GameEntry> {
+        let at = self.active_index();
+        match index.cmp(&at) {
+            std::cmp::Ordering::Less => self.before.get_mut(index),
+            std::cmp::Ordering::Equal => Some(&mut self.active),
+            std::cmp::Ordering::Greater => self.after.get_mut(index.saturating_sub(at).saturating_sub(1)),
+        }
+    }
+
+    /// The place of the game whose id is `uid`.
+    fn position(&self, uid: u64) -> Option<usize> {
+        self.iter().position(|e| e.uid == uid)
+    }
+
+    /// Change the list as one vector, `change` given the games in order and the place of the
+    /// game shown (which it keeps pointing at the game to show). An empty list gets a blank game;
+    /// a place past the end shows the last game.
+    fn rearrange(&mut self, change: impl FnOnce(&mut Vec<GameEntry>, &mut usize)) {
+        let mut at = self.active_index();
+        // A stand-in while the games are one vector: replaced below, never shown or written.
+        let shown = std::mem::replace(&mut self.active, GameEntry { board: BoardState::default(), uid: 0 });
+        let mut all = std::mem::take(&mut self.before);
+        all.push(shown);
+        all.append(&mut self.after);
+        change(&mut all, &mut at);
+        if all.is_empty() {
+            all.push(GameEntry::new(BoardState::default()));
+        }
+        let at = at.min(all.len().saturating_sub(1));
+        self.after = all.split_off(at.saturating_add(1).min(all.len()));
+        self.active = all.pop().unwrap_or_else(|| GameEntry::new(BoardState::default()));
+        self.before = all;
+        for e in self.before.iter_mut().chain(self.after.iter_mut()) {
+            e.board.release_textures();
+        }
+    }
+
+    /// Move game `index` one place up (towards the start) or down; the game shown stays shown.
+    /// Whether it moved.
+    pub(crate) fn move_game(&mut self, index: usize, up: bool) -> bool {
+        let len = self.len();
+        let other = if up { index.checked_sub(1) } else { index.checked_add(1) };
+        let Some(other) = other.filter(|&j| j < len && index < len) else { return false };
+        self.rearrange(|all, at| {
+            // Both places are in the list: checked above, and `all` has `len` games.
+            all.swap(index, other);
+            if *at == index {
+                *at = other;
+            } else if *at == other {
+                *at = index;
+            }
+        });
+        true
+    }
+
+    /// Put `entry` right after game `index` and show it.
+    fn insert_after(&mut self, index: usize, entry: GameEntry) {
+        self.rearrange(|all, at| {
+            let place = index.saturating_add(1).min(all.len());
+            all.insert(place, entry);
+            *at = place;
+        });
+    }
+
+    /// A copy of game `index`, right after it, shown. Whether there is such a game.
+    pub(crate) fn duplicate(&mut self, index: usize) -> bool {
+        let Some(copy) = self.get(index).map(GameEntry::copy) else { return false };
+        self.insert_after(index, copy);
+        true
+    }
+
+    /// Delete game `index`. The game shown stays shown; when it is the one deleted, the game
+    /// after it is shown (the one before, at the end of the list), and deleting the last game
+    /// leaves a blank one. Whether there was such a game.
+    pub(crate) fn delete(&mut self, index: usize) -> bool {
+        if index >= self.len() {
+            return false;
+        }
+        self.rearrange(|all, at| {
+            if index < all.len() {
+                all.remove(index);
+            }
+            if index < *at {
+                *at = at.saturating_sub(1);
+            } else if index == *at {
+                *at = index.min(all.len().saturating_sub(1));
+            }
+        });
+        true
+    }
+
+    /// A new game starting at the position of move `node` of the game shown (the move shown when
+    /// `None`, or when the game has no such move), on the same side and from the same diagram,
+    /// right after it and shown. Its PGN gets the position as its `SetUp`/`FEN` tags. Refused for
+    /// an illegal position, which can't start a game; the error says why.
+    pub(crate) fn new_from(&mut self, node: Option<NodeId>) -> Result<(), String> {
+        let b = &self.active.board;
+        if b.illegal.is_some() {
+            return Err(tl!("An illegal position can't start a game: correct it in the diagram editor first.").to_string());
+        }
+        let fen = node.and_then(|n| b.game.fen_at(n)).unwrap_or_else(|| b.game.fen());
+        let game = Game::from_fen(&fen).map_err(|e| crate::i18n::fmt(tl!("The FEN couldn't be read: {e}"), &[("e", &e.to_string())]))?;
+        let mut board = BoardState::default();
+        board.game = game;
+        board.source = b.source;
+        board.flipped = b.flipped;
+        board.refresh_fields(true);
+        self.insert_after(self.active_index(), GameEntry::new(board));
+        Ok(())
+    }
+
     /// Add `entry` at the end and show it. A blank game alone in the collection gives way to it.
     pub(crate) fn add(&mut self, entry: GameEntry) {
         if self.len() == 1 && self.active.is_blank() {
@@ -325,6 +505,8 @@ pub struct ChessGames {
     said: HashSet<String>,
     /// Notices for the user, shown at the next frame.
     notes: Vec<String>,
+    /// The list's question or name editor open, and its keyboard focus.
+    list: ListState,
     /// PGN files read by the browser, imported at the next frame.
     #[cfg(target_arch = "wasm32")]
     uploads: std::sync::Arc<std::sync::Mutex<Vec<(String, Vec<u8>)>>>,
@@ -364,6 +546,42 @@ impl ChessGames {
     /// The document shown, or none.
     pub fn current_doc(&self) -> Option<DocId> {
         self.current
+    }
+
+    /// Open the name editor of the game shown in the list (Chess ▸ Rename game…), or ask whether
+    /// to delete it (Delete game…). The keyboard goes to the editor's first field, or to the
+    /// question's Delete button.
+    pub(crate) fn ask_about_shown(&mut self, rename: bool) {
+        let shown = self.collection().active();
+        let (uid, names) = (shown.uid, shown.names());
+        self.list.ask(uid, names, rename, true, false);
+    }
+
+    /// Whether a row of the games list, or a button of the list, has the keyboard focus (as the
+    /// last pass left it): the list's keys are its own then, and the chess key scope takes none.
+    pub(crate) fn list_has_focus(&self, ctx: &egui::Context) -> bool {
+        self.list.focused.is_some_and(|id| ctx.memory(|m| m.has_focus(id)))
+    }
+
+    /// Take the keys of a focused row of the list out of `events` (Delete, Backspace, F2, Alt+↑,
+    /// Alt+↓), so nothing else sees them: Delete there deletes no variation, page or annotation.
+    /// Only presses are taken, as for the chess key scope.
+    pub(crate) fn take_list_keys(&mut self, events: &mut Vec<Event>) {
+        let keys = &mut self.list.keys;
+        events.retain(|event| match event {
+            Event::Key { key, pressed: true, modifiers, .. } if list_key(*key, *modifiers) => {
+                if keys.len() < MAX_LIST_KEYS {
+                    keys.push((*key, *modifiers));
+                }
+                false
+            }
+            _ => true,
+        });
+    }
+
+    /// Forget the list's keys a previous frame took and no row used.
+    pub(crate) fn drop_list_keys(&mut self) {
+        self.list.keys.clear();
     }
 
     /// Whether games are autosaved at all (a store is set).
@@ -622,17 +840,174 @@ pub enum GamesAction {
     SaveAll,
     /// The answer to "Save chess games for this protected document?".
     Consent(bool),
+    /// Name game `n` (its White, Black and Event tags).
+    Rename(usize, GameNames),
+    /// A copy of game `n`, after it.
+    Duplicate(usize),
+    /// Delete game `n` (the user said yes).
+    Delete(usize),
+    /// Move game `n` one place up (`true`) or down.
+    Move(usize, bool),
+    /// A new game from the position of a move of the game shown (`None`: the move shown).
+    NewFrom(Option<NodeId>),
+}
+
+/// Most list keys kept between two frames.
+const MAX_LIST_KEYS: usize = 16;
+
+/// The most height the list of games takes before it scrolls.
+const LIST_HEIGHT: f32 = 180.0;
+
+/// The size of the buttons on a row under the pointer.
+const ROW_BUTTON: f32 = 20.0;
+
+/// Whether a focused row of the list acts on `key` pressed with `m`.
+fn list_key(key: Key, m: Modifiers) -> bool {
+    match key {
+        Key::Delete | Key::Backspace | Key::F2 => m.is_none(),
+        Key::ArrowUp | Key::ArrowDown => m == Modifiers::ALT,
+        _ => false,
+    }
+}
+
+/// A game being renamed: the names typed so far.
+struct Renaming {
+    uid: u64,
+    names: GameNames,
+    /// Give the first field the keyboard at the next frame.
+    focus: bool,
+    /// Started from the keyboard on its row: the row gets the keyboard back when done.
+    refocus: bool,
+    /// Scroll the editor into view at the next frame.
+    reveal: bool,
+}
+
+/// A game the user asked to delete, until they say yes or no.
+struct Deleting {
+    uid: u64,
+    /// Give the Delete button the keyboard at the next frame.
+    focus: bool,
+    /// Scroll the question into view at the next frame.
+    reveal: bool,
+}
+
+/// What the list is in the middle of, and where its keyboard focus is.
+#[derive(Default)]
+struct ListState {
+    renaming: Option<Renaming>,
+    deleting: Option<Deleting>,
+    /// The row (by game id) to give the keyboard, from the pass after the one that asked (a row's
+    /// widgets are named by their place, which the change asked with it may move).
+    focus_row: Option<(u64, u64)>,
+    /// The last of the list's widgets seen with the keyboard focus.
+    focused: Option<egui::Id>,
+    /// Keys taken for a focused row before the frame ([`ChessGames::take_list_keys`]).
+    keys: Vec<(Key, Modifiers)>,
+    /// What to scroll into view in the panel this frame, once the list's own scroll area is
+    /// drawn (a scroll area takes the requests made inside it: the panel's never sees them).
+    reveal: Option<egui::Rect>,
+}
+
+impl ListState {
+    /// Rename (or ask about deleting) game `uid`, named `names` now. `focus`: give the editor or
+    /// the question the keyboard; `refocus`: give it back to the row afterwards.
+    fn ask(&mut self, uid: u64, names: GameNames, rename: bool, focus: bool, refocus: bool) {
+        if rename {
+            self.renaming = Some(Renaming { uid, names, focus, refocus, reveal: true });
+            self.deleting = None;
+        } else {
+            self.deleting = Some(Deleting { uid, focus, reveal: true });
+            self.renaming = None;
+        }
+    }
+
+    /// Scroll `rect` into view: in the list now, and in the panel once the list is drawn.
+    fn reveal(&mut self, ui: &egui::Ui, rect: egui::Rect) {
+        ui.scroll_to_rect_animation(rect, None, egui::style::ScrollAnimation::none());
+        self.reveal = Some(self.reveal.map_or(rect, |r| r.union(rect)));
+    }
+
+    /// Give the row of game `uid` the keyboard from the next pass (none: nothing).
+    fn focus_later(&mut self, ctx: &egui::Context, uid: Option<u64>) {
+        self.focus_row = uid.map(|u| (u, ctx.cumulative_pass_nr()));
+    }
+
+    /// Note `r` as one of the list's widgets: while it has the keyboard, the list's keys are its own.
+    fn see(&mut self, r: &egui::Response) -> bool {
+        let focused = r.has_focus();
+        if focused {
+            self.focused = Some(r.id);
+        }
+        focused
+    }
+
+    /// Whether `key` (with `m`) was pressed for the row with the keyboard: taken before the frame,
+    /// or still in the frame's input (then consumed).
+    fn pressed(&mut self, ui: &egui::Ui, key: Key, m: Modifiers) -> bool {
+        let at = self.keys.iter().position(|&k| k == (key, m));
+        if let Some(i) = at {
+            self.keys.remove(i);
+            return true;
+        }
+        ui.input_mut(|i| i.consume_key(m, key))
+    }
+}
+
+/// What a game's menu (or its row's buttons) chose.
+enum RowChoice {
+    Rename,
+    Duplicate,
+    Up,
+    Down,
+    Delete,
+}
+
+/// The menu of game `index` of `len`.
+fn row_menu(ui: &mut egui::Ui, index: usize, len: usize) -> Option<RowChoice> {
+    let mut choice = None;
+    if ui.button(tl!("Rename…")).clicked() {
+        choice = Some(RowChoice::Rename);
+    }
+    if ui.button(tl!("Duplicate")).clicked() {
+        choice = Some(RowChoice::Duplicate);
+    }
+    if ui.add_enabled(index > 0, egui::Button::new(tl!("Move up"))).clicked() {
+        choice = Some(RowChoice::Up);
+    }
+    if ui.add_enabled(index.saturating_add(1) < len, egui::Button::new(tl!("Move down"))).clicked() {
+        choice = Some(RowChoice::Down);
+    }
+    ui.separator();
+    if ui.button(tl!("Delete…")).clicked() {
+        choice = Some(RowChoice::Delete);
+    }
+    if choice.is_some() {
+        ui.close();
+    }
+    choice
 }
 
 /// The games of the document shown: the list, what can be done with them, and why they aren't
 /// autosaved when they aren't.
-pub(crate) fn games_section(ui: &mut egui::Ui, t: &Tokens, games: &ChessGames) -> Option<GamesAction> {
-    let c = games.collection();
+pub(crate) fn games_section(ui: &mut egui::Ui, t: &Tokens, games: &mut ChessGames) -> Option<GamesAction> {
+    let ChessGames { docs, none, current, store, consent, list, .. } = games;
+    let c: &ChessCollection = current.and_then(|id| docs.get(&id)).unwrap_or(none);
+    // A question about a game that is gone (deleted, or another document shown) is dropped.
+    if list.renaming.as_ref().is_some_and(|r| c.position(r.uid).is_none()) {
+        list.renaming = None;
+    }
+    if list.deleting.as_ref().is_some_and(|d| c.position(d.uid).is_none()) {
+        list.deleting = None;
+    }
     let mut action = None;
     let n = c.len().to_string();
-    let title = if games.current.is_some() { tl!("Games in this document ({n})") } else { tl!("Games ({n})") };
-    egui::CollapsingHeader::new(crate::i18n::fmt(title, &[("n", &n)])).id_salt("chess-games").default_open(true).show(ui, |ui| {
-        if c.autosave.protected && games.store.is_on() && c.has_content() && !games.consent.contains_key(&c.cid) {
+    let title = if current.is_some() { tl!("Games in this document ({n})") } else { tl!("Games ({n})") };
+    let mut header = egui::CollapsingHeader::new(crate::i18n::fmt(title, &[("n", &n)])).id_salt("chess-games").default_open(true);
+    if list.renaming.is_some() || list.deleting.is_some() {
+        header = header.open(Some(true));
+    }
+    header.show(ui, |ui| {
+        if c.autosave.protected && store.is_on() && c.has_content() && !consent.contains_key(&c.cid) {
             ui.label(egui::RichText::new(tl!("Save chess games for this protected document?")).small().strong());
             ui.label(
                 egui::RichText::new(tl!("They are kept in the app's own folder, unencrypted, so they come back when the document is opened again."))
@@ -657,14 +1032,46 @@ pub(crate) fn games_section(ui: &mut egui::Ui, t: &Tokens, games: &ChessGames) -
         if let Some(why) = why {
             ui.label(egui::RichText::new(why).small().color(t.text_muted));
         }
-        egui::ScrollArea::vertical().id_salt("chess-games-list").max_height(140.0).auto_shrink([false, true]).show(ui, |ui| {
-            for (i, e) in c.iter().enumerate() {
-                let name = e.name(i.saturating_add(1));
-                if ui.selectable_label(i == c.active_index(), name).clicked() && i != c.active_index() {
-                    action = Some(GamesAction::Switch(i));
+        // The list's header: every game, in this order, to one PGN file.
+        ui.horizontal(|ui| {
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                let r = ui.small_button(tl!("Export…")).on_hover_text(tl!("Save all games as PGN…"));
+                list.see(&r);
+                if r.clicked() {
+                    action = Some(GamesAction::SaveAll);
                 }
-            }
+            });
         });
+        list.reveal = None;
+        // At least the rows' height (as the last frame measured it), up to the list's own: the
+        // panel's notation takes the height left, which would otherwise leave the list a row.
+        let tall_id = ui.id().with("chess-games-list-height");
+        let tall = ui.ctx().data(|d| d.get_temp::<f32>(tall_id)).filter(|h| h.is_finite()).unwrap_or(0.0).clamp(0.0, LIST_HEIGHT);
+        let shown = egui::ScrollArea::vertical()
+            .id_salt("chess-games-list")
+            .max_height(LIST_HEIGHT)
+            .min_scrolled_height(tall)
+            .auto_shrink([false, true])
+            .show(ui, |ui| {
+                for (i, e) in c.iter().enumerate() {
+                    // The row's state (under the pointer or not) follows its game, not its place.
+                    if let Some(a) = ui.push_id(("chess-game", e.uid), |ui| game_row(ui, list, c, i, e)).inner {
+                        action = Some(a);
+                    }
+                }
+            });
+        let measured = shown.content_size.y;
+        if measured.is_finite() && (measured - tall).abs() > 0.5 && (measured < LIST_HEIGHT || tall < LIST_HEIGHT) {
+            ui.ctx().data_mut(|d| d.insert_temp(tall_id, measured));
+            ui.ctx().request_repaint();
+        }
+        if let Some(a) = pending(ui, t, list, c) {
+            action = Some(a);
+        }
+        // The panel scrolls too, to what the list scrolled to.
+        if let Some(rect) = list.reveal.take() {
+            ui.scroll_to_rect_animation(rect, None, egui::style::ScrollAnimation::none());
+        }
         ui.horizontal_wrapped(|ui| {
             if ui.small_button(tl!("New game")).clicked() {
                 action = Some(GamesAction::New);
@@ -675,12 +1082,195 @@ pub(crate) fn games_section(ui: &mut egui::Ui, t: &Tokens, games: &ChessGames) -
             if ui.small_button(tl!("Save PGN…")).clicked() {
                 action = Some(GamesAction::Save);
             }
-            if ui.small_button(tl!("Save all games as PGN…")).clicked() {
-                action = Some(GamesAction::SaveAll);
-            }
         });
     });
     action
+}
+
+/// Game `i` of `c` in the list: its name (a click or Enter shows it), its menu, the keys of the
+/// focused row and the buttons of the row under the pointer.
+fn game_row(ui: &mut egui::Ui, list: &mut ListState, c: &ChessCollection, i: usize, e: &GameEntry) -> Option<GamesAction> {
+    let mut action = None;
+    let (uid, len, active) = (e.uid, c.len(), i == c.active_index());
+    let name = e.name(i.saturating_add(1));
+    // The row's buttons show while the pointer is on the row (as the last frame left it) or the
+    // keyboard is on the row or its buttons.
+    let lit_id = ui.id().with("chess-game-row");
+    let lit = ui.ctx().data(|d| d.get_temp::<bool>(lit_id)).unwrap_or(false);
+    let mut chosen = None;
+    let mut focused = false;
+    let mut by_keys = false;
+    let row = ui.horizontal(|ui| {
+        let r = ui.selectable_label(active, name.as_str());
+        if list.focus_row.is_some_and(|(u, asked)| u == uid && ui.ctx().cumulative_pass_nr() > asked) {
+            r.request_focus();
+            list.reveal(ui, r.rect);
+            list.focus_row = None;
+        }
+        if r.clicked() && !active {
+            action = Some(GamesAction::Switch(i));
+        }
+        r.context_menu(|ui| {
+            chosen = row_menu(ui, i, len);
+        });
+        if list.see(&r) {
+            focused = true;
+            by_keys = true;
+            if list.pressed(ui, Key::F2, Modifiers::NONE) {
+                chosen = Some(RowChoice::Rename);
+            } else if list.pressed(ui, Key::Delete, Modifiers::NONE) || list.pressed(ui, Key::Backspace, Modifiers::NONE) {
+                chosen = Some(RowChoice::Delete);
+            } else if list.pressed(ui, Key::ArrowUp, Modifiers::ALT) {
+                chosen = Some(RowChoice::Up);
+            } else if list.pressed(ui, Key::ArrowDown, Modifiers::ALT) {
+                chosen = Some(RowChoice::Down);
+            }
+        }
+        let spacing = ui.spacing().item_spacing.x;
+        let needed = 3.0 * ROW_BUTTON + 2.0 * spacing;
+        let room = ui.available_width();
+        if (lit || focused) && room.is_finite() && room >= needed {
+            ui.add_space(room - needed);
+            for (icon, label, what) in [
+                ("pencil", tl!("Rename game…"), RowChoice::Rename),
+                ("copy-plus", tl!("Duplicate game"), RowChoice::Duplicate),
+                ("trash-2", tl!("Delete game…"), RowChoice::Delete),
+            ] {
+                let b = crate::icons::button(ui, icon, ROW_BUTTON, false, label);
+                let has = list.see(&b);
+                focused |= has;
+                if b.clicked() {
+                    by_keys = has;
+                    chosen = Some(what);
+                }
+            }
+        }
+    });
+    let lit_now = ui.rect_contains_pointer(row.response.rect) || focused;
+    if lit_now != lit {
+        ui.ctx().data_mut(|d| d.insert_temp(lit_id, lit_now));
+        ui.ctx().request_repaint();
+    }
+    match chosen {
+        Some(RowChoice::Rename) => list.ask(uid, e.names(), true, true, by_keys),
+        Some(RowChoice::Delete) => list.ask(uid, e.names(), false, by_keys, false),
+        Some(RowChoice::Duplicate) => action = Some(GamesAction::Duplicate(i)),
+        Some(RowChoice::Up) if i > 0 => {
+            action = Some(GamesAction::Move(i, true));
+            list.focus_later(ui.ctx(), by_keys.then_some(uid));
+        }
+        Some(RowChoice::Down) if i.saturating_add(1) < len => {
+            action = Some(GamesAction::Move(i, false));
+            list.focus_later(ui.ctx(), by_keys.then_some(uid));
+        }
+        Some(RowChoice::Up | RowChoice::Down) | None => {}
+    }
+    action
+}
+
+/// The question about deleting a game, or its name editor, when one is open: under the list
+/// (not inside its scroll area, which would clip it and keep the panel from scrolling to it),
+/// headed by the game's name.
+fn pending(ui: &mut egui::Ui, t: &Tokens, list: &mut ListState, c: &ChessCollection) -> Option<GamesAction> {
+    let deleting = list.deleting.as_ref().and_then(|d| c.position(d.uid));
+    let renaming = list.renaming.as_ref().and_then(|r| c.position(r.uid));
+    let i = deleting.or(renaming)?;
+    let name = c.get(i).map(|e| e.name(i.saturating_add(1))).unwrap_or_default();
+    let mut action = None;
+    egui::Frame::group(ui.style()).inner_margin(egui::Margin::same(6)).show(ui, |ui| {
+        ui.label(egui::RichText::new(name).strong());
+        action = if deleting.is_some() { delete_question(ui, t, list, c, i) } else { name_editor(ui, list, i) };
+    });
+    action
+}
+
+/// "Delete this game? It can't be undone." about game `i`, with Delete and Cancel (or Esc).
+fn delete_question(ui: &mut egui::Ui, t: &Tokens, list: &mut ListState, c: &ChessCollection, i: usize) -> Option<GamesAction> {
+    let mut action = None;
+    let uid = c.get(i).map(|e| e.uid);
+    {
+        ui.label(egui::RichText::new(tl!("Delete this game? It can't be undone.")).small().color(t.text_muted));
+        ui.horizontal(|ui| {
+            let yes = ui.small_button(tl!("Delete"));
+            let no = ui.small_button(tl!("Cancel"));
+            if list.deleting.as_mut().is_some_and(|d| std::mem::take(&mut d.focus)) {
+                yes.request_focus();
+            }
+            // The question may open at the bottom of the panel: shown whole.
+            if list.deleting.as_mut().is_some_and(|d| std::mem::take(&mut d.reveal)) {
+                list.reveal(ui, yes.rect.union(no.rect));
+            }
+            let keys = list.see(&yes) | list.see(&no);
+            // Esc takes the keyboard from the button before the frame: it was on one of them.
+            let esc = (yes.lost_focus() || no.lost_focus()) && ui.input(|inp| inp.key_pressed(Key::Escape));
+            if yes.clicked() {
+                // The keyboard goes to the game that takes the deleted one's place.
+                let next = c.get(i.saturating_add(1)).or_else(|| i.checked_sub(1).and_then(|j| c.get(j))).map(|e| e.uid);
+                list.focus_later(ui.ctx(), if keys { next } else { None });
+                list.deleting = None;
+                action = Some(GamesAction::Delete(i));
+            } else if no.clicked() || esc {
+                list.focus_later(ui.ctx(), if keys || esc { uid } else { None });
+                list.deleting = None;
+            }
+        });
+    }
+    action
+}
+
+/// The name editor of game `i`: White, Black and Event, then Rename (or Enter) and Cancel (or
+/// Esc).
+fn name_editor(ui: &mut egui::Ui, list: &mut ListState, i: usize) -> Option<GamesAction> {
+    let r = list.renaming.as_mut()?;
+    let (mut commit, mut cancel) = (false, false);
+    let mut seen = None;
+    // The editor's top, and whether a field just got the keyboard: the whole editor is then
+    // scrolled into view, so its buttons never hide under the panel's edge.
+    let (mut top, mut gained, mut reveal) = (None::<egui::Rect>, false, None);
+    ui.scope(|ui| {
+        egui::Grid::new(("chess-game-names", r.uid)).num_columns(2).spacing([6.0, 3.0]).show(ui, |ui| {
+            let focus = std::mem::take(&mut r.focus);
+            let GameNames { white, black, event } = &mut r.names;
+            for (k, (label, value)) in [(tl!("White"), white), (tl_ctx!("chess side", "Black"), black), (tl!("Event"), event)].into_iter().enumerate()
+            {
+                let l = ui.label(label);
+                let f = ui.add(egui::TextEdit::singleline(value).desired_width(150.0)).labelled_by(l.id);
+                if k == 0 && focus {
+                    f.request_focus();
+                }
+                top = Some(top.map_or(f.rect, |t| t.union(f.rect)));
+                gained |= f.gained_focus();
+                if f.lost_focus() {
+                    let (enter, esc) = ui.input(|inp| (inp.key_pressed(Key::Enter), inp.key_pressed(Key::Escape)));
+                    commit |= enter;
+                    cancel |= esc;
+                }
+                ui.end_row();
+            }
+        });
+        ui.horizontal(|ui| {
+            let ok = ui.small_button(tl!("Rename"));
+            let no = ui.small_button(tl!("Cancel"));
+            if std::mem::take(&mut r.reveal) || gained {
+                reveal = Some(top.map_or(ok.rect, |t| t.union(ok.rect)).union(no.rect));
+            }
+            seen = [&ok, &no].into_iter().find(|b| b.has_focus()).map(|b| b.id);
+            commit |= ok.clicked();
+            cancel |= no.clicked();
+        });
+    });
+    if seen.is_some() {
+        list.focused = seen;
+    }
+    if let Some(rect) = reveal {
+        list.reveal(ui, rect);
+    }
+    if !(commit || cancel) {
+        return None;
+    }
+    let r = list.renaming.take()?;
+    list.focus_later(ui.ctx(), r.refocus.then_some(r.uid));
+    (commit && !cancel).then_some(GamesAction::Rename(i, r.names))
 }
 
 /// The games of a PGN file, one text each: a tag line after moves starts the next game (a `[`
@@ -723,6 +1313,24 @@ pub(crate) fn split_pgn(text: &str, max: usize) -> Vec<&str> {
     games
 }
 
+/// `message`, then ` · note` when there is one.
+fn with_note(message: String, note: Option<String>) -> String {
+    match note {
+        Some(note) => format!("{message} · {note}"),
+        None => message,
+    }
+}
+
+/// Ask for a new game from the position of move `node` of the game shown (a move's menu in the
+/// notation): the app makes it at the next frame.
+pub(crate) fn ask_new_game_from(ctx: &egui::Context, node: NodeId) {
+    ctx.data_mut(|d| d.insert_temp(egui::Id::new(NEW_GAME_FROM), node));
+    ctx.request_repaint();
+}
+
+/// Where [`ask_new_game_from`] leaves its request.
+const NEW_GAME_FROM: &str = "chess-new-game-from";
+
 /// A name for a file: the characters file systems refuse replaced.
 fn file_stem(name: &str) -> String {
     let clean: String = name.chars().map(|c| if c.is_control() || "\\/:*?\"<>|".contains(c) { '_' } else { c }).take(100).collect();
@@ -736,6 +1344,11 @@ impl PdfCraftApp {
     pub(crate) fn chess_games_tick(&mut self) {
         let now = self.ctx.as_ref().map_or(0.0, |c| c.input(|i| i.time));
         self.sync_chess_docs();
+        // "New game from this position" in a move's menu.
+        let asked = self.ctx.as_ref().and_then(|c| c.data_mut(|d| d.remove_temp::<NodeId>(egui::Id::new(NEW_GAME_FROM))));
+        if let Some(node) = asked {
+            self.chess_games_action(GamesAction::NewFrom(Some(node)));
+        }
         self.chess.games.autosave(Some(now));
         #[cfg(target_arch = "wasm32")]
         self.take_chess_uploads();
@@ -881,6 +1494,36 @@ impl PdfCraftApp {
                 self.chess.study.setup = None;
                 self.chess.enter_scope();
             }
+            GamesAction::Rename(i, names) => {
+                if let Some(e) = self.chess.games.collection_mut().get_mut(i) {
+                    e.rename(&names);
+                }
+                self.chess.enter_scope();
+            }
+            GamesAction::Duplicate(i) => {
+                if self.chess.games.collection_mut().duplicate(i) {
+                    self.chess.study.setup = None;
+                    self.chess.enter_scope();
+                }
+            }
+            GamesAction::Delete(i) => {
+                let c = self.chess.games.collection_mut();
+                let shown = c.active().uid;
+                if c.delete(i) && c.active().uid != shown {
+                    self.chess.study.setup = None;
+                }
+                self.chess.enter_scope();
+            }
+            GamesAction::Move(i, up) => {
+                self.chess.games.collection_mut().move_game(i, up);
+            }
+            GamesAction::NewFrom(node) => match self.chess.games.collection_mut().new_from(node) {
+                Ok(()) => {
+                    self.chess.study.setup = None;
+                    self.chess.enter_scope();
+                }
+                Err(why) => self.notify(why),
+            },
             GamesAction::Open => self.open_chess_pgn(),
             GamesAction::Save => self.save_chess_pgn(false),
             GamesAction::SaveAll => self.save_chess_pgn(true),
@@ -897,14 +1540,37 @@ impl PdfCraftApp {
         }
     }
 
-    /// The PGN of the game shown (`all`: of every game of the document shown), unless the games
-    /// come from a document that doesn't allow copying (the user is told). `None` when there is
-    /// nothing to write (only illegal positions, which have no PGN).
-    fn chess_pgn_text(&mut self, all: bool) -> Option<String> {
+    /// Chess ▸ Rename game…, Duplicate game, Delete game… and New game from this position, on the
+    /// game shown. Renaming and deleting show the board panel's list, where the name editor or
+    /// the question waits.
+    pub(crate) fn chess_game_command(&mut self, id: &str) {
+        self.sync_chess_docs();
+        match id {
+            "chess.game.new_from_here" => self.chess_games_action(GamesAction::NewFrom(None)),
+            "chess.game.duplicate" => {
+                let i = self.chess.games.collection().active_index();
+                self.chess_games_action(GamesAction::Duplicate(i));
+            }
+            "chess.game.rename" | "chess.game.delete" => {
+                self.chess.games.ask_about_shown(id == "chess.game.rename");
+                self.show_chess_board();
+                self.chess.enter_scope();
+            }
+            _ => {}
+        }
+    }
+
+    /// The PGN of the game shown (`all`: of every game of the document shown, in list order, a
+    /// blank line between two), and how many games were left out (illegal positions have no
+    /// PGN). `None`, the user told why, when the games come from a document that doesn't allow
+    /// copying, or there is nothing to write.
+    fn chess_pgn_text(&mut self, all: bool) -> Option<(String, usize)> {
         let c = self.chess.games.collection();
         let boards: Vec<&BoardState> = if all { c.iter().map(|e| &e.board).collect() } else { vec![&c.active().board] };
         let docs: HashSet<DocId> = boards.iter().filter_map(|b| b.source.map(|s| s.doc)).collect();
+        // Each game's PGN ends with a line break: joined by another, a blank line parts them.
         let text: Vec<String> = boards.iter().filter(|b| b.illegal.is_none()).map(|b| b.game.pgn()).collect();
+        let skipped = boards.len().saturating_sub(text.len());
         for doc in docs {
             if self.session.get(doc).is_some() && !self.may_copy(doc) {
                 return None;
@@ -914,13 +1580,16 @@ impl PdfCraftApp {
             self.notify(tl!("Nothing to save: an illegal position has no PGN.").to_string());
             return None;
         }
-        Some(text.join("\n"))
+        Some((text.join("\n"), skipped))
     }
 
-    /// Chess ▸ Save PGN… (`all`: Save all games as PGN…): write the game shown, or the document's
-    /// games, to a `.pgn` file the user chooses (downloaded on the web).
+    /// Chess ▸ Save PGN… (`all`: Save all games as PGN…, the list's Export…): write the game
+    /// shown, or the document's games in list order, to a `.pgn` file the user chooses
+    /// (downloaded on the web). Games that couldn't be written (illegal positions) are said.
     pub fn save_chess_pgn(&mut self, all: bool) {
-        let Some(text) = self.chess_pgn_text(all) else { return };
+        let Some((text, skipped)) = self.chess_pgn_text(all) else { return };
+        let left_out =
+            (skipped > 0).then(|| crate::i18n::fmt(tl!("Games not saved (an illegal position has no PGN): {n}"), &[("n", &skipped.to_string())]));
         let stem = if all {
             self.active_ids().and_then(|(_, id)| self.session.get(id)).map_or_else(
                 || "games".to_owned(),
@@ -942,14 +1611,14 @@ impl PdfCraftApp {
             self.ask_one(crate::pickers::Ask::Save(dialog), None, move |app, dest| {
                 let shown = dest.file_name().map_or_else(|| name.clone(), |n| n.to_string_lossy().into_owned());
                 match crate::editing::write_atomically(&dest.to_string_lossy(), text.as_bytes()) {
-                    Ok(()) => app.notify_fmt("Saved {name}", &[("name", &shown)]),
+                    Ok(()) => app.notify(with_note(crate::i18n::fmt(tl!("Saved {name}"), &[("name", &shown)]), left_out)),
                     Err(e) => app.notify_fmt("Couldn't save {name}: {e}", &[("name", &shown), ("e", &e.to_string())]),
                 }
             });
         }
         #[cfg(target_arch = "wasm32")]
         match crate::editing::download(&name, text.as_bytes()) {
-            Ok(()) => self.notify_fmt("Downloaded {name}", &[("name", &name)]),
+            Ok(()) => self.notify(with_note(crate::i18n::fmt(tl!("Downloaded {name}"), &[("name", &name)]), left_out)),
             Err(e) => self.notify_fmt("Couldn't download {name}: {e}", &[("name", &name), ("e", &e)]),
         }
     }
@@ -1103,6 +1772,83 @@ mod tests {
         assert!(!c.switch_to(3));
         assert!(!c.switch_to(usize::MAX));
         assert_eq!(names(&c), ["1. e4", "1. d4", "1. c4"]);
+    }
+
+    #[test]
+    fn moving_duplicating_and_deleting_keep_the_order_and_the_game_shown() {
+        let mut c = ChessCollection::new(DocKeys::default(), "c".into());
+        for m in ["e2e4", "d2d4", "c2c4"] {
+            c.add(GameEntry::new(board_with(&[m])));
+        }
+        assert!(c.switch_to(1));
+        assert!(c.move_game(1, true));
+        assert_eq!((names(&c), c.active_index()), (vec!["1. d4".to_owned(), "1. e4".into(), "1. c4".into()], 0), "the game shown moved with it");
+        for (index, up) in [(0, true), (2, false), (3, true), (usize::MAX, false), (usize::MAX, true)] {
+            assert!(!c.move_game(index, up), "{index} {up}");
+        }
+        assert!(c.move_game(2, true));
+        assert_eq!((names(&c), c.active_index()), (vec!["1. d4".to_owned(), "1. c4".into(), "1. e4".into()], 0));
+        assert!(c.duplicate(1));
+        assert_eq!(
+            (names(&c), c.active_index()),
+            (vec!["1. d4".to_owned(), "1. c4".into(), "1. c4".into(), "1. e4".into()], 2),
+            "the copy after it, shown"
+        );
+        let uids: HashSet<u64> = c.iter().map(|e| e.uid).collect();
+        assert_eq!(uids.len(), 4, "the copy is a game of its own");
+        assert!(!c.duplicate(4));
+        assert!(c.delete(0));
+        assert_eq!((names(&c), c.active_index()), (vec!["1. c4".to_owned(), "1. c4".into(), "1. e4".into()], 1), "the game shown stays shown");
+        assert!(c.delete(1));
+        assert_eq!((names(&c), c.active_index()), (vec!["1. c4".to_owned(), "1. e4".into()], 1), "the game after it is shown");
+        assert!(c.delete(1));
+        assert_eq!((names(&c), c.active_index()), (vec!["1. c4".to_owned()], 0), "at the end, the one before");
+        assert!(!c.delete(1) && !c.delete(usize::MAX));
+        assert!(c.delete(0));
+        assert_eq!((names(&c), c.active_index()), (vec![String::new()], 0));
+        assert!(c.active().is_blank(), "deleting the last game leaves a blank one");
+    }
+
+    #[test]
+    fn renaming_sets_the_three_tags_in_one_undo_step() {
+        let mut e = GameEntry::new(board_with(&["e2e4"]));
+        let names = GameNames { white: " Werle ".into(), black: "Jianu".into(), event: "Wijk aan Zee".into() };
+        assert!(e.rename(&names));
+        assert_eq!(e.name(1), "Werle–Jianu");
+        assert_eq!(e.names(), GameNames { white: "Werle".into(), black: "Jianu".into(), event: "Wijk aan Zee".into() });
+        assert_eq!(e.board.undo_label().as_deref(), Some("Edit game details"));
+        assert!(!e.rename(&names), "the same names change nothing");
+        assert!(e.board.undo());
+        assert_eq!(e.name(1), "Game 1", "one step took all three back");
+        assert!(e.rename(&GameNames { event: "Training".into(), ..GameNames::default() }));
+        assert_eq!(e.name(1), "Training", "named by its event without players");
+        assert!(e.rename(&GameNames::default()));
+        assert!(e.board.game.tags().is_empty(), "empty names remove the tags");
+    }
+
+    #[test]
+    fn a_new_game_from_here_starts_at_the_position_and_refuses_an_illegal_one() {
+        let mut c = ChessCollection::new(DocKeys::default(), "c".into());
+        c.active_mut().board = board_with(&["e2e4", "e7e5"]);
+        c.active_mut().board.source = Some(Source { doc: DocId(3), page: 1, index: 0 });
+        let after_e4 = c.active().board.game.main_line()[1];
+        assert!(c.new_from(None).is_ok());
+        assert_eq!(c.active_index(), 1);
+        assert_eq!(c.active().board.game.start_fen(), c.get(0).unwrap().board.game.fen());
+        assert_eq!(c.active().origin(), Some(Source { doc: DocId(3), page: 1, index: 0 }));
+        assert!(c.switch_to(0));
+        assert!(c.new_from(Some(after_e4)).is_ok());
+        assert_eq!(c.active().board.game.start_fen(), c.get(0).unwrap().board.game.fen_at(after_e4).unwrap());
+        assert_eq!(names(&c), ["1. e4 e5", "", ""], "after the game it came from");
+        // A move the game doesn't have: the move shown.
+        assert!(c.switch_to(0));
+        assert!(c.new_from(Some(usize::MAX)).is_ok());
+        assert_eq!(c.active().board.game.start_fen(), c.get(0).unwrap().board.game.fen());
+        let placement = c.active().board.placement();
+        c.active_mut().board.illegal = Some((placement, "8/8/8/8/8/8/8/8 w - - 0 1".into()));
+        let before = c.len();
+        assert!(c.new_from(None).is_err());
+        assert_eq!(c.len(), before);
     }
 
     #[test]
