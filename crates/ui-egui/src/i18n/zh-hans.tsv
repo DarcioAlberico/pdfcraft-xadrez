@@ -2757,3 +2757,13 @@ animation effects	Off	关
 	The capture was closed: the document was edited.	提取已关闭：文档已被编辑。
 	The rest is too long to keep as a comment; it is still on the page.	剩余部分太长，无法作为注释保留；它仍在页面上。
 	Nothing new: the moves are in the game already.	没有新内容：这些着法已在对局中。
+
+# Chess ▸ PGN toolbar: T8, a game of the book on the board, and Show in PDF / Follow.
+	Follow the move on the page	在页面上跟随着法
+	Follow the move on the page: this move has no place on the page	在页面上跟随着法：此着法在页面上没有位置
+	Show in PDF	在 PDF 中显示
+	This move has no place on the page.	此着法在页面上没有位置。
+	This game can't go on the board: its start position isn't legal.	此对局无法放到棋盘上：其起始局面不合法。
+	Moves left off the board (more than it holds): {n}	未放到棋盘上的着法（超出棋盘容量）：{n}
+	Double-click to open this game on the board.	双击以在棋盘上打开此对局。
+	Open this game on the board	在棋盘上打开此对局

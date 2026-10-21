@@ -39,6 +39,7 @@ mod chess_capture;
 mod chess_collection;
 mod chess_editor;
 mod chess_history;
+mod chess_source;
 mod chess_study_ui;
 mod chess_text_ui;
 mod chess_tools;

@@ -160,6 +160,14 @@ fn every_registered_command_is_implemented() {
             game.go_to_node(game.node_at(&NodePath::new(vec![0, 1, 0])).unwrap());
             app.chess.board_mut().game = game;
         }
+        // Show in PDF needs a move read from a page.
+        if spec.id == "chess.source.show" {
+            use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, NodeSource};
+            let mut game = Game::standard();
+            game.play_san("e4").unwrap();
+            assert!(game.set_source(game.current(), Some(NodeSource { page: 0, rect_user: [60.0, 700.0, 80.0, 712.0] })));
+            app.chess.board_mut().game = game;
+        }
         // The cover toggle needs two-page view first (it is disabled elsewhere).
         if spec.id == "view.layout.cover" {
             app.set_option("layout", "two-up").unwrap();

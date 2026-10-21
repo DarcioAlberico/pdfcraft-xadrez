@@ -68,6 +68,8 @@
 //!   (an assumed lost bracket, moves in prose, sibling separators, more results, a lone
 //!   ellipsis); a whole book reads with [`WalkRules::BOOK`], and [`Walker::fragment`] reads one
 //!   game from a given position with all of them ([`super::fragment`]).
+//! - **On the chess board.** [`to_game`] makes a score the chess board's game, and
+//!   [`super::ChessDoc::board_game`] does it with each move's place on its page.
 //!
 //! Everything is bounded: [`MAX_GAME_NODES`] moves a game, [`MAX_VARIATION_DEPTH`] nested
 //! variations, [`MAX_COMMENT_CHARS`] a comment, [`MAX_GAMES`] games a document.
@@ -78,6 +80,10 @@ use pdfcraft_chess::san::{San, SanBody, SanError};
 use serde::{Deserialize, Serialize};
 
 use super::{MoveNumber, MoveStatus, ReviewFlag, UserRect};
+
+mod board;
+
+pub use board::{BoardGame, to_game};
 
 /// Most moves in one game, variations included.
 pub const MAX_GAME_NODES: usize = 4096;

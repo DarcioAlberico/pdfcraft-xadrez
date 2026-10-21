@@ -2706,3 +2706,13 @@ animation effects	Off	Выкл
 	The capture was closed: the document was edited.	Захват закрыт: документ был изменён.
 	The rest is too long to keep as a comment; it is still on the page.	Остаток слишком длинный для комментария; он остаётся на странице.
 	Nothing new: the moves are in the game already.	Ничего нового: ходы уже есть в партии.
+
+# Chess ▸ PGN toolbar: T8, a game of the book on the board, and Show in PDF / Follow.
+	Follow the move on the page	Следить за ходом на странице
+	Follow the move on the page: this move has no place on the page	Следить за ходом на странице: у этого хода нет места на странице
+	Show in PDF	Показать в PDF
+	This move has no place on the page.	У этого хода нет места на странице.
+	This game can't go on the board: its start position isn't legal.	Эту партию нельзя поставить на доску: её начальная позиция недопустима.
+	Moves left off the board (more than it holds): {n}	Ходы, не вошедшие на доску (больше, чем она вмещает): {n}
+	Double-click to open this game on the board.	Дважды щёлкните, чтобы открыть эту партию на доске.
+	Open this game on the board	Открыть эту партию на доске

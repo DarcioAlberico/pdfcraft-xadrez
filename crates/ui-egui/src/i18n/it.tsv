@@ -3005,3 +3005,13 @@ certificate	SHA-256 digest	Impronta SHA-256
 	The capture was closed: the document was edited.	L'acquisizione è stata chiusa: il documento è stato modificato.
 	The rest is too long to keep as a comment; it is still on the page.	Il resto è troppo lungo per un commento; è ancora sulla pagina.
 	Nothing new: the moves are in the game already.	Niente di nuovo: le mosse sono già nella partita.
+
+# Chess ▸ PGN toolbar: T8, a game of the book on the board, and Show in PDF / Follow.
+	Follow the move on the page	Segui la mossa sulla pagina
+	Follow the move on the page: this move has no place on the page	Segui la mossa sulla pagina: questa mossa non ha un posto sulla pagina
+	Show in PDF	Mostra nel PDF
+	This move has no place on the page.	Questa mossa non ha un posto sulla pagina.
+	This game can't go on the board: its start position isn't legal.	Questa partita non può andare sulla scacchiera: la sua posizione iniziale non è legale.
+	Moves left off the board (more than it holds): {n}	Mosse rimaste fuori dalla scacchiera (più di quante ne contenga): {n}
+	Double-click to open this game on the board.	Fai doppio clic per aprire questa partita sulla scacchiera.
+	Open this game on the board	Apri questa partita sulla scacchiera

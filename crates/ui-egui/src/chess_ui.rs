@@ -80,6 +80,8 @@ pub struct ChessState {
     pub tools: crate::chess_tools::ToolState,
     /// Text captured from the page or the clipboard (T7a).
     pub capture: crate::chess_capture::CaptureState,
+    /// Follow, and the move's place last shown on the page (T8).
+    pub source: crate::chess_source::SourceState,
 }
 
 /// What scanning found in one document.
@@ -570,6 +572,7 @@ impl PdfCraftApp {
         self.chess_games_tick();
         self.poll_chess_job();
         self.poll_chess_capture();
+        self.chess_source_tick();
         // A closed document takes its results with it.
         if self.chess.results.as_ref().is_some_and(|r| self.session.get(r.doc).is_none()) {
             self.chess.results = None;

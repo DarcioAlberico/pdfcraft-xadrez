@@ -3070,3 +3070,13 @@ certificate	Version	الإصدار
 	The capture was closed: the document was edited.	أُغلق الالتقاط: عُدِّل المستند.
 	The rest is too long to keep as a comment; it is still on the page.	الباقي أطول من أن يُحفظ كتعليق؛ ما يزال في الصفحة.
 	Nothing new: the moves are in the game already.	لا جديد: النقلات موجودة في المباراة بالفعل.
+
+# Chess ▸ PGN toolbar: T8, a game of the book on the board, and Show in PDF / Follow.
+	Follow the move on the page	تتبّع النقلة على الصفحة
+	Follow the move on the page: this move has no place on the page	تتبّع النقلة على الصفحة: ليس لهذه النقلة مكان على الصفحة
+	Show in PDF	إظهار في PDF
+	This move has no place on the page.	ليس لهذه النقلة مكان على الصفحة.
+	This game can't go on the board: its start position isn't legal.	لا يمكن وضع هذه المباراة على الرقعة: وضعها الابتدائي غير قانوني.
+	Moves left off the board (more than it holds): {n}	نقلات بقيت خارج الرقعة (أكثر مما تتسع له): {n}
+	Double-click to open this game on the board.	انقر نقرًا مزدوجًا لفتح هذه المباراة على الرقعة.
+	Open this game on the board	فتح هذه المباراة على الرقعة

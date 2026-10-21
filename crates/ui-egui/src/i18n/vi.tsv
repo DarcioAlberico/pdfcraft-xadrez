@@ -3048,3 +3048,13 @@ chess side	Black	Đen
 	The capture was closed: the document was edited.	Lần ghi đã đóng: tài liệu đã bị chỉnh sửa.
 	The rest is too long to keep as a comment; it is still on the page.	Phần còn lại quá dài để làm bình luận; nó vẫn còn trên trang.
 	Nothing new: the moves are in the game already.	Không có gì mới: các nước đi đã có trong ván cờ.
+
+# Chess ▸ PGN toolbar: T8, a game of the book on the board, and Show in PDF / Follow.
+	Follow the move on the page	Theo dõi nước đi trên trang
+	Follow the move on the page: this move has no place on the page	Theo dõi nước đi trên trang: nước đi này không có vị trí trên trang
+	Show in PDF	Hiện trong PDF
+	This move has no place on the page.	Nước đi này không có vị trí trên trang.
+	This game can't go on the board: its start position isn't legal.	Không thể đưa ván này lên bàn cờ: thế cờ ban đầu của nó không hợp lệ.
+	Moves left off the board (more than it holds): {n}	Nước đi bị bỏ ngoài bàn cờ (nhiều hơn mức bàn cờ chứa được): {n}
+	Double-click to open this game on the board.	Nhấp đúp để mở ván này trên bàn cờ.
+	Open this game on the board	Mở ván này trên bàn cờ

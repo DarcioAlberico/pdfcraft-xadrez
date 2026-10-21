@@ -4,7 +4,8 @@
 //! **The rail** is drawn from [`RAIL`], a static list of sections with a separator between them.
 //! A section holds [`Entry`]s: a [`Tool`] or a [`Group`] of tools. A tool is either a mode
 //! ([`Kind::Mode`]: armed until Esc or another mode, see [`PgnTool`]) or an action
-//! ([`Kind::Action`]: it acts once on the board). A group shows one of its members, the last
+//! ([`Kind::Action`]: it acts once on the board), or a switch ([`Kind::Switch`]: Follow, on until
+//! pressed again, `chess_source`). A group shows one of its members, the last
 //! used, with a small triangle in its corner; a long press (at least [`LONG_PRESS`]), a right
 //! click, or Enter or Down arrow while it has the keyboard focus opens the others, and Shift with
 //! the group's letter switches the member shown. Later steps add tools by adding entries: the
@@ -196,6 +197,8 @@ pub(crate) enum Kind {
     Command(&'static str),
     /// Puts glyph `code` (White's code) on the move shown, or takes it off.
     Glyph(u16),
+    /// Switches something of the chess panels on or off (Follow, `chess_source`).
+    Switch(fn(&mut ChessState)),
 }
 
 /// A tool of the rail.
@@ -224,9 +227,9 @@ pub(crate) struct Tool {
     pub heads: Option<fn(&Game) -> Vec<NodeId>>,
     /// In a move's context menu: what it would act on for that move, or why it can't.
     pub on_move: Option<OnMove>,
-    /// Whether it shows as on: a panel it opened is open (modes are on while armed, glyphs while
-    /// the move shown has them).
-    pub on: Option<fn(&BoardState) -> bool>,
+    /// Whether it shows as on: a panel it opened is open, a switch is on (modes are on while
+    /// armed, glyphs while the move shown has them).
+    pub on: Option<fn(&ChessState) -> bool>,
 }
 
 /// Tools that share one place on the rail.
@@ -249,6 +252,7 @@ pub(crate) static RAIL: &[&[Entry]] = &[
     &[Entry::Group(STRUCTURE)],
     &[Entry::Group(crate::chess_capture::CAPTURE), Entry::Tool(crate::chess_capture::COMMENT)],
     &[Entry::Group(MOVE_GLYPHS), Entry::Group(EVALUATION_GLYPHS), Entry::Group(OTHER_GLYPHS), Entry::Tool(COMMENT), Entry::Tool(PALETTE)],
+    &[Entry::Tool(crate::chess_source::FOLLOW), Entry::Tool(crate::chess_source::SHOW)],
     &[Entry::Tool(UNDO), Entry::Tool(REDO)],
     &[Entry::Tool(WINDOW)],
 ];
@@ -428,7 +432,7 @@ const COMMENT: Tool = Tool {
     visible: |_| true,
     heads: None,
     on_move: None,
-    on: Some(|b| b.comment_open),
+    on: Some(|c| c.board().comment_open),
 };
 
 const PALETTE: Tool = Tool {
@@ -442,7 +446,7 @@ const PALETTE: Tool = Tool {
     visible: |_| true,
     heads: None,
     on_move: None,
-    on: Some(|b| b.palette_open),
+    on: Some(|c| c.board().palette_open),
 };
 
 const UNDO: Tool = Tool {
@@ -634,12 +638,13 @@ fn label(tool: &Tool, board: &BoardState) -> String {
     }
 }
 
-/// Whether a tool shows as on: the mode armed, a glyph the move shown has, a panel it opened.
+/// Whether a tool shows as on: the mode armed, a glyph the move shown has, a panel it opened, a
+/// switch on.
 fn is_on(tool: &Tool, chess: &ChessState) -> bool {
     match tool.kind {
         Kind::Mode(m) => m.same(chess.tools.tool),
         Kind::Glyph(code) => chess_annotate::has_glyph(chess.board(), code),
-        Kind::Action(_) | Kind::Command(_) => tool.on.is_some_and(|on| on(chess.board())),
+        Kind::Action(_) | Kind::Command(_) | Kind::Switch(_) => tool.on.is_some_and(|on| on(chess)),
     }
 }
 
@@ -722,6 +727,7 @@ fn activate(chess: &mut ChessState, tool: &Tool, target: Target) {
             }
         }
         Kind::Glyph(code) => chess_annotate::toggle_glyph(chess.board_mut(), code),
+        Kind::Switch(flip) => flip(chess),
     }
 }
 
@@ -789,6 +795,12 @@ fn rail(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) -> Option<egui::I
                     let on = is_on(tool, chess);
                     let enabled = (tool.enabled)(chess.board());
                     let r = ui.push_id(tool.id, |ui| ui.add_enabled_ui(enabled, |ui| tool_button(ui, tool, on, &name)).inner).inner;
+                    // Off: why, as a move's menu says it (Show in PDF: no place on the page).
+                    let game = &chess.board().game;
+                    let r = match tool.on_move.map(|on_move| on_move(game, game.current())) {
+                        Some(Err(why)) if !enabled => r.on_disabled_hover_text(why),
+                        _ => r,
+                    };
                     any_focus |= r.has_focus();
                     if r.clicked() {
                         activate(chess, tool, Target::Current);
@@ -1318,7 +1330,9 @@ mod tests {
             }
         }
         let rail = |id: &str| {
-            ["chess.tool.", "chess.variation.", "chess.moves.", "chess.nag.", "chess.comment.", "chess.palette."].iter().any(|p| id.starts_with(p))
+            ["chess.tool.", "chess.variation.", "chess.moves.", "chess.nag.", "chess.comment.", "chess.palette.", "chess.source."]
+                .iter()
+                .any(|p| id.starts_with(p))
         };
         for spec in COMMANDS.iter().filter(|c| rail(c.id)) {
             assert!(is_tool_command(spec.id), "{} runs no rail tool", spec.id);

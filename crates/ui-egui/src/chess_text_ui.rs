@@ -11,7 +11,8 @@
 //! read as it is, with a note) or Scanned (every page and export read with chess OCR). It is kept
 //! with the document like its book cipher.
 //! Clicking a move, a paragraph or a diagram outlines where it is on the page; a diagram also
-//! opens in the editor. Figurines are shown when the interface's fonts have them, else the
+//! opens in the editor, and a double-click on a move opens its game on the board
+//! (`chess_source`). Figurines are shown when the interface's fonts have them, else the
 //! moves as printed.
 //!
 //! **Export…** writes the whole document as HTML, EPUB, Word, RTF, Markdown (with its diagram
@@ -25,7 +26,7 @@ use pdfcraft_engine::chess::document::{BookOrigin, OcrMode, OcrOptions};
 use pdfcraft_engine::chess::export::{ChessExportOptions, ChessFormat};
 use pdfcraft_engine::chess::pdfcraft_chess::draw::BoardStyle;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::html::{Figurines, plain_text_with};
-use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, ChessDoc, Inline, MoveStatus, UserRect};
+use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, ChessDoc, Inline, MoveStatus, NodeRef, UserRect};
 use pdfcraft_engine::chess::{ChessScanSettings, ScanStamp};
 
 use crate::theme::Tokens;
@@ -119,6 +120,8 @@ pub enum TextAction {
     Show(usize, [f32; 4]),
     /// Open diagram `index` of `page` in the editor.
     Diagram(usize, usize),
+    /// Put the page's game the move belongs to on the board, at that move (`chess_source`).
+    OpenGame(NodeRef),
     Export(ChessFormat),
     /// Say where the document's pages came from.
     Origin(BookOrigin),
@@ -294,16 +297,33 @@ pub fn text_tab(
                                 if let Some(fen) = &m.fen {
                                     tip = format!("{tip}\n{fen}");
                                 }
+                                if m.game.is_some() {
+                                    tip = format!("{tip}\n{}", tl!("Double-click to open this game on the board."));
+                                }
                                 let r = ui
                                     .add(
                                         egui::Label::new(egui::RichText::new(shown).color(status_colour(m.status)).strong())
                                             .sense(egui::Sense::click()),
                                     )
                                     .on_hover_text(tip);
-                                if r.clicked()
+                                // A click outlines the move on the page; a double-click (its first
+                                // click outlined it) opens its game on the board.
+                                if r.double_clicked()
+                                    && let Some(at) = m.game
+                                {
+                                    action = Some(TextAction::OpenGame(at));
+                                } else if r.clicked()
                                     && let Some(rect) = rect_of(m.source_rect)
                                 {
                                     action = Some(TextAction::Show(page, rect));
+                                }
+                                if let Some(at) = m.game {
+                                    r.context_menu(|ui| {
+                                        if ui.button(tl!("Open this game on the board")).clicked() {
+                                            action = Some(TextAction::OpenGame(at));
+                                            ui.close();
+                                        }
+                                    });
                                 }
                             }
                             other => {
@@ -530,6 +550,7 @@ impl PdfCraftApp {
                 self.select_chess_diagram(page, index, true);
                 self.show_chess_tab(ChessTab::Diagrams);
             }
+            TextAction::OpenGame(at) => self.open_book_game(at),
             TextAction::Export(format) => self.export_chess_dialog(format),
             // The page shown is read again under the new origin (the tab sees it is not current).
             TextAction::Origin(origin) => {

@@ -2799,3 +2799,13 @@ animation effects	Off	Ανενεργά
 	The capture was closed: the document was edited.	Η καταγραφή έκλεισε: το έγγραφο επεξεργάστηκε.
 	The rest is too long to keep as a comment; it is still on the page.	Το υπόλοιπο είναι πολύ μεγάλο για σχόλιο· παραμένει στη σελίδα.
 	Nothing new: the moves are in the game already.	Τίποτα νέο: οι κινήσεις υπάρχουν ήδη στην παρτίδα.
+
+# Chess ▸ PGN toolbar: T8, a game of the book on the board, and Show in PDF / Follow.
+	Follow the move on the page	Παρακολούθηση της κίνησης στη σελίδα
+	Follow the move on the page: this move has no place on the page	Παρακολούθηση της κίνησης στη σελίδα: αυτή η κίνηση δεν έχει θέση στη σελίδα
+	Show in PDF	Εμφάνιση στο PDF
+	This move has no place on the page.	Αυτή η κίνηση δεν έχει θέση στη σελίδα.
+	This game can't go on the board: its start position isn't legal.	Αυτή η παρτίδα δεν μπορεί να μπει στη σκακιέρα: η αρχική της θέση δεν είναι νόμιμη.
+	Moves left off the board (more than it holds): {n}	Κινήσεις που έμειναν εκτός σκακιέρας (περισσότερες απ' όσες χωρά): {n}
+	Double-click to open this game on the board.	Κάντε διπλό κλικ για να ανοίξετε αυτή την παρτίδα στη σκακιέρα.
+	Open this game on the board	Άνοιγμα αυτής της παρτίδας στη σκακιέρα

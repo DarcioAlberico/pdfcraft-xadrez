@@ -2867,3 +2867,13 @@ animation effects	Off	Vypnuto
 	The capture was closed: the document was edited.	Zachycení bylo zavřeno: dokument byl upraven.
 	The rest is too long to keep as a comment; it is still on the page.	Zbytek je na komentář příliš dlouhý; zůstává na stránce.
 	Nothing new: the moves are in the game already.	Nic nového: tahy už v partii jsou.
+
+# Chess ▸ PGN toolbar: T8, a game of the book on the board, and Show in PDF / Follow.
+	Follow the move on the page	Sledovat tah na stránce
+	Follow the move on the page: this move has no place on the page	Sledovat tah na stránce: tento tah na stránce nemá místo
+	Show in PDF	Zobrazit v PDF
+	This move has no place on the page.	Tento tah na stránce nemá místo.
+	This game can't go on the board: its start position isn't legal.	Tuto partii nelze dát na šachovnici: její výchozí pozice není platná.
+	Moves left off the board (more than it holds): {n}	Tahy, které zůstaly mimo šachovnici (víc, než pojme): {n}
+	Double-click to open this game on the board.	Dvojitým kliknutím otevřete tuto partii na šachovnici.
+	Open this game on the board	Otevřít tuto partii na šachovnici
