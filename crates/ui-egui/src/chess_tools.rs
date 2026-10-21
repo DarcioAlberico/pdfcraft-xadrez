@@ -242,6 +242,9 @@ pub(crate) enum Kind {
     Glyph(u16),
     /// Switches something of the chess panels on or off (Follow, `chess_source`).
     Switch(fn(&mut ChessState)),
+    /// Undo (`true`) or Redo in the chess scope: the game shown's last change or the list of
+    /// games' last delete or move, whichever is the newer (`ChessState::history_step`).
+    History(bool),
 }
 
 /// A tool of the rail.
@@ -577,9 +580,7 @@ const UNDO: Tool = Tool {
     label: |b| b.command_text(true).unwrap_or_else(|| tl!("Undo").to_owned()),
     keys: &[],
     command: Some("edit.undo"),
-    kind: Kind::Action(|b, _| {
-        b.undo();
-    }),
+    kind: Kind::History(true),
     enabled: |b| b.history.undo_edit().is_some(),
     heads: None,
     visible: |_| true,
@@ -593,9 +594,7 @@ const REDO: Tool = Tool {
     label: |b| b.command_text(false).unwrap_or_else(|| tl!("Redo").to_owned()),
     keys: &[],
     command: Some("edit.redo"),
-    kind: Kind::Action(|b, _| {
-        b.redo();
-    }),
+    kind: Kind::History(false),
     enabled: |b| b.history.redo_edit().is_some(),
     heads: None,
     visible: |_| true,
@@ -778,6 +777,23 @@ fn label(tool: &Tool, board: &BoardState) -> String {
     }
 }
 
+/// A tool's label where the whole chess state is known: Undo's and Redo's name the step they
+/// would take, of the game or of its list.
+fn tool_label(tool: &Tool, chess: &ChessState) -> String {
+    match tool.kind {
+        Kind::History(undo) => chess.games.step_text(undo).unwrap_or_else(|| if undo { tl!("Undo") } else { tl!("Redo") }.to_owned()),
+        _ => label(tool, chess.board()),
+    }
+}
+
+/// Whether a tool can act now: Undo and Redo when the game or its list has a step to take.
+fn can_act(tool: &Tool, chess: &ChessState) -> bool {
+    match tool.kind {
+        Kind::History(undo) => chess.games.can_step(undo),
+        _ => (tool.enabled)(chess.board()),
+    }
+}
+
 /// Whether a tool shows as on: the mode armed, a glyph the move shown has, a panel it opened, a
 /// switch on.
 fn is_on(tool: &Tool, chess: &ChessState) -> bool {
@@ -788,7 +804,7 @@ fn is_on(tool: &Tool, chess: &ChessState) -> bool {
             Some(brush) => brush == code,
             None => chess_annotate::has_glyph(chess.board(), code),
         },
-        Kind::Action(_) | Kind::Command(_) | Kind::Switch(_) => tool.on.is_some_and(|on| on(chess)),
+        Kind::Action(_) | Kind::Command(_) | Kind::Switch(_) | Kind::History(_) => tool.on.is_some_and(|on| on(chess)),
     }
 }
 
@@ -805,8 +821,8 @@ fn tool_button(ui: &mut egui::Ui, tool: &Tool, on: bool, name: &str) -> egui::Re
 }
 
 /// The name a tool is known by: its label and its key ("Demote (Ctrl+↓)").
-fn name(ctx: &egui::Context, tool: &Tool, board: &BoardState) -> String {
-    let label = label(tool, board);
+fn name(ctx: &egui::Context, tool: &Tool, chess: &ChessState) -> String {
+    let label = tool_label(tool, chess);
     let key = match (tool.keys.first(), tool.command) {
         (Some(k), _) => k.label(ctx),
         (None, Some(id)) => crate::commands::command_shortcut_label(ctx, id),
@@ -836,7 +852,7 @@ pub(crate) fn is_tool_command(id: &str) -> bool {
 
 /// Whether the rail tool of command `id` can act now (`None`: not a rail tool's command).
 pub(crate) fn command_enabled(chess: &ChessState, id: &str) -> Option<bool> {
-    command_tool(id).map(|(tool, _)| (tool.enabled)(chess.board()))
+    command_tool(id).map(|(tool, _)| can_act(tool, chess))
 }
 
 /// The chess panel's key for the rail tool of command `id`, as written on this platform: the
@@ -850,7 +866,7 @@ pub(crate) fn command_key(ctx: &egui::Context, id: &str) -> Option<String> {
 /// Returns whether `id` is a rail tool's command and it could act.
 pub(crate) fn run_command(chess: &mut ChessState, id: &str) -> bool {
     let Some((tool, place)) = command_tool(id) else { return false };
-    if !(tool.enabled)(chess.board()) {
+    if !can_act(tool, chess) {
         return false;
     }
     if let Some((group, i)) = place {
@@ -886,6 +902,9 @@ fn activate(chess: &mut ChessState, tool: &Tool, target: Target) {
             }
         }
         Kind::Switch(flip) => flip(chess),
+        Kind::History(undo) => {
+            chess.history_step(undo);
+        }
     }
 }
 
@@ -952,9 +971,9 @@ fn rail(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) -> Option<egui::I
         for entry in section.iter().filter(|entry| visible(entry)) {
             match entry {
                 Entry::Tool(tool) => {
-                    let name = name(ui.ctx(), tool, chess.board());
+                    let name = name(ui.ctx(), tool, chess);
                     let on = is_on(tool, chess);
-                    let enabled = (tool.enabled)(chess.board());
+                    let enabled = can_act(tool, chess);
                     let r = ui.push_id(tool.id, |ui| ui.add_enabled_ui(enabled, |ui| tool_button(ui, tool, on, &name)).inner).inner;
                     // Off: why, as a move's menu says it (Show in PDF: no place on the page).
                     let game = &chess.board().game;
@@ -993,9 +1012,9 @@ fn group_button(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, group: &'
     let ctx = ui.ctx().clone();
     let shown = chess.tools.shown(group.id).min(group.members.len().saturating_sub(1));
     let tool = group.members.get(shown);
-    let name = tool.map(|tool| name(&ctx, tool, chess.board())).unwrap_or_default();
+    let name = tool.map(|tool| name(&ctx, tool, chess)).unwrap_or_default();
     let on = tool.is_some_and(|tool| is_on(tool, chess));
-    let enabled = group.members.iter().any(|m| (m.enabled)(chess.board()));
+    let enabled = group.members.iter().any(|m| can_act(m, chess));
     let r = ui
         .add_enabled_ui(enabled, |ui| match tool {
             Some(tool) => tool_button(ui, tool, on, &name),
@@ -1038,7 +1057,7 @@ fn group_button(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, group: &'
         && !after_long_press
         && !enter
         && let Some(tool) = tool
-        && (tool.enabled)(chess.board())
+        && can_act(tool, chess)
     {
         activate(chess, tool, Target::Current);
     }
@@ -1054,7 +1073,7 @@ fn group_button(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, group: &'
             ui.set_min_width(200.0);
             ui.label(egui::RichText::new((group.label)()).small().color(t.text_muted));
             for (i, tool) in group.members.iter().enumerate() {
-                let label = label(tool, chess.board());
+                let label = tool_label(tool, chess);
                 let key = tool.keys.first().map(|k| k.label(&ctx)).unwrap_or_default();
                 let button = match tool.kind {
                     // A glyph: its sign, then its name; ticked while the move shown has it.
@@ -1065,7 +1084,7 @@ fn group_button(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, group: &'
                     }
                     _ => egui::Button::image_and_text(icons::image(tool.icon, 16.0, t.icon), label.as_str()).shortcut_text(key),
                 };
-                let b = ui.add_enabled((tool.enabled)(chess.board()), button);
+                let b = ui.add_enabled(can_act(tool, chess), button);
                 b.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, b.enabled(), i == shown, &label));
                 if i == 0 && std::mem::take(&mut chess.tools.focus_popup) {
                     b.request_focus();
@@ -1076,7 +1095,7 @@ fn group_button(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, group: &'
                 }
                 // Several variations it could act on: each is a choice ("Demote: 20.fxg6 · 18…Qd8").
                 let game = &chess.board().game;
-                if (tool.enabled)(chess.board())
+                if can_act(tool, chess)
                     && let Some(head) = head_choices(ui, t, game, tool, &label, game.current())
                 {
                     chosen = Some((i, Target::Head(head)));
@@ -1139,7 +1158,7 @@ fn handle_key(ctx: &egui::Context, chess: &mut ChessState, key: Key, m: Modifier
         let next = chess.tools.shown(group.id).saturating_add(1) % group.members.len().max(1);
         chess.tools.show(group.id, next);
         // A group of modes (Capture) arms the tool it switched to.
-        if let Some(tool) = group.members.get(next).filter(|tool| matches!(tool.kind, Kind::Mode(_)) && (tool.enabled)(chess.board())) {
+        if let Some(tool) = group.members.get(next).filter(|tool| matches!(tool.kind, Kind::Mode(_)) && can_act(tool, chess)) {
             activate(chess, tool, Target::Current);
         }
         return;
@@ -1150,7 +1169,7 @@ fn handle_key(ctx: &egui::Context, chess: &mut ChessState, key: Key, m: Modifier
             Entry::Group(group) => (Some(group.id), group.members),
         };
         if let Some((i, tool)) = members.iter().enumerate().find(|(_, tool)| tool.keys.iter().any(|k| k.matches(key, m))) {
-            if (tool.enabled)(chess.board()) {
+            if can_act(tool, chess) {
                 if let Some(id) = group {
                     chess.tools.show(id, i);
                 }

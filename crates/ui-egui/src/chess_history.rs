@@ -15,6 +15,7 @@
 //! to the document puts them back on the document. See [`ChessState::in_scope`].
 
 use std::collections::VecDeque;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, Token};
 use pdfcraft_engine::chess::pdfcraft_chess::placement::Placement;
@@ -84,6 +85,10 @@ pub enum ChessEdit {
     StandardStart,
     /// Text from the page or the clipboard captured into the game (T7a).
     Capture(crate::chess_capture::Captured),
+    /// A game deleted from the document's list of games (a step of the list, wave 10 U2).
+    DeleteGame,
+    /// A game moved in the document's list of games (a step of the list).
+    MoveGame,
 }
 
 impl ChessEdit {
@@ -115,6 +120,8 @@ impl ChessEdit {
             ChessEdit::SetUp => tl!("Position set-up").to_string(),
             ChessEdit::StandardStart => tl!("Reset to the start position").to_string(),
             ChessEdit::Capture(kind) => kind.text().to_string(),
+            ChessEdit::DeleteGame => tl!("Delete game").to_string(),
+            ChessEdit::MoveGame => tl!("Move game").to_string(),
         }
     }
 
@@ -167,18 +174,27 @@ impl Estimate for Snapshot {
     }
 }
 
-/// One step: what it did, and the state on the far side of it (before it on the undo side, after
-/// it on the redo side).
+/// A number for a step put on either side of a history, larger than any before it in the process:
+/// when Undo has a step of the game shown and one of the document's list of games, it takes the
+/// newer ([`crate::chess_collection`]).
+pub(crate) fn next_seq() -> u64 {
+    static NEXT: AtomicU64 = AtomicU64::new(1);
+    NEXT.fetch_add(1, Ordering::Relaxed)
+}
+
+/// One step: what it did, the state on the far side of it (before it on the undo side, after it
+/// on the redo side), and when it was put on its side ([`next_seq`]).
 struct Step<S> {
     edit: ChessEdit,
     state: S,
     bytes: usize,
+    seq: u64,
 }
 
 impl<S: Estimate> Step<S> {
     fn new(edit: ChessEdit, state: S) -> Step<S> {
         let bytes = state.bytes();
-        Step { edit, state, bytes }
+        Step { edit, state, bytes, seq: next_seq() }
     }
 }
 
@@ -261,6 +277,16 @@ impl<S> History<S> {
     /// What Redo would redo.
     pub(crate) fn redo_edit(&self) -> Option<&ChessEdit> {
         self.future.last().map(|s| &s.edit)
+    }
+
+    /// When the step Undo (`undo`) or Redo would take was put on its side ([`next_seq`]).
+    pub(crate) fn seq(&self, undo: bool) -> Option<u64> {
+        if undo { self.past.back().map(|s| s.seq) } else { self.future.last().map(|s| s.seq) }
+    }
+
+    /// The memory every step kept takes, as the caps count it.
+    pub(crate) fn bytes(&self) -> usize {
+        self.bytes
     }
 
     /// Note a game revision shown.

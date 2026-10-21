@@ -14,13 +14,11 @@
 //!
 //! **Where.** `<folder>/<class folder>/<confidence>_<document>_p<page>_<n>.png`, the layout of
 //! ChessVisionOFF's review queue (`revisao_ocr`), so its review and promotion steps take the files
-//! as they are:
-//! - the class folder is the corrected character's name as ChessVisionOFF names its classes
-//!   ([`class_folder`], reimplemented from that rule, not copied);
-//! - the name starts with the model's confidence in what it had read, in thousandths and four
-//!   digits, so the most doubtful come first in name order;
-//! - the document is a 16-digit hash of its bytes, the page is 1-based, and `n` counts up from 1
-//!   past any file already there: nothing is ever overwritten.
+//! as they are: the class folder named as ChessVisionOFF names its classes, the name starting with
+//! the model's confidence in thousandths (the most doubtful first), the document a 16-digit hash
+//! of its bytes, the page 1-based, and `n` counting up past any file already there (nothing is
+//! ever overwritten). The names and places are the engine's ([`pdfcraft_engine::chess::samples`]),
+//! which the automation tool `chess_glyph_sample` uses too (wave 10, U3).
 //!
 //! **Rules.** Saving is extraction: a document that doesn't allow copying never gives samples
 //! (it can't be read by the OCR area anyway), and an encrypted one is asked about first, once per
@@ -30,10 +28,11 @@
 //! app, and nothing leaves the computer.
 
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use egui::RichText;
 use pdfcraft_engine::DocId;
+use pdfcraft_engine::chess::samples;
 
 use crate::chess_ui::ChessState;
 use crate::theme::Tokens;
@@ -42,8 +41,6 @@ use crate::theme::Tokens;
 pub const MAX_SAMPLES: usize = 2000;
 /// Most corrections waiting to be saved, or waiting for the user's answer.
 const MAX_WAITING: usize = 256;
-/// Most names tried for one sample (`_1`, `_2`, …) before giving up.
-const MAX_COLLISIONS: u32 = 10_000;
 /// Longest folder kept from the settings.
 const MAX_FOLDER_LEN: usize = 4096;
 
@@ -129,58 +126,13 @@ impl Samples {
     }
 }
 
-/// The folder ChessVisionOFF keeps a character's class in: `upper_A`, `lower_a`, `digit_1` for
-/// ASCII letters and digits, `sym_<code point>` for any other character (`sym_9812` is ♔), and for
-/// a box read as several characters `ligature_<text>` when they are ASCII letters, digits, `+` or
-/// `-`, else `ligature_hex_` and each code point in at least four hexadecimal digits. Reimplemented
-/// from the naming rule of ChessVisionOFF's `text/classes.py` (`char_to_folder`), the user's
-/// project, so that its training base reads the folders as its own.
-pub fn class_folder(text: &str) -> String {
-    let chars: Vec<char> = text.chars().collect();
-    match chars.as_slice() {
-        [] => "unknown".to_owned(),
-        [c] if c.is_ascii_uppercase() => format!("upper_{c}"),
-        [c] if c.is_ascii_lowercase() => format!("lower_{c}"),
-        [c] if c.is_ascii_digit() => format!("digit_{c}"),
-        [c] => format!("sym_{}", u32::from(*c)),
-        many if many.iter().all(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '-')) => format!("ligature_{text}"),
-        many => format!("ligature_hex_{}", many.iter().map(|c| format!("{:04x}", u32::from(*c))).collect::<String>()),
+/// Write one sample file atomically, making its folder first.
+fn write_file(path: &std::path::Path, png: &[u8]) -> std::io::Result<()> {
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir)?;
     }
-}
-
-/// A sample's name without its count: the confidence in thousandths (four digits), the document's
-/// hash and the page (1-based).
-fn base_name(confidence: f32, doc: &str, page: usize) -> String {
-    let permille = if confidence.is_finite() { (confidence.clamp(0.0, 1.0) * 1000.0).round() as u32 } else { 0 };
-    format!("{permille:04}_{doc}_p{:04}", page.saturating_add(1))
-}
-
-/// Write `png` as `<folder>/<class>/<base>_<n>.png`, `n` the first count from 1 that names no file
-/// yet (nothing is overwritten). Returns the path written.
-pub(crate) fn write_sample(folder: &Path, class: &str, base: &str, png: &[u8]) -> std::io::Result<PathBuf> {
-    let dir = folder.join(class);
-    std::fs::create_dir_all(&dir)?;
-    for n in 1..=MAX_COLLISIONS {
-        let path = dir.join(format!("{base}_{n}.png"));
-        if path.exists() {
-            continue;
-        }
-        let text = path.to_str().ok_or_else(|| std::io::Error::other("the folder's path is not valid Unicode"))?;
-        crate::editing::write_atomically(text, png)?;
-        return Ok(path);
-    }
-    Err(std::io::Error::other("too many samples of the same name"))
-}
-
-/// A 64-bit FNV-1a hash of `bytes`, in 16 hexadecimal digits: a document's name in sample files
-/// (its file name could be personal; the hash only tells documents apart).
-fn hash_hex(bytes: &[u8]) -> String {
-    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
-    for b in bytes {
-        h ^= u64::from(*b);
-        h = h.wrapping_mul(0x0100_0000_01b3);
-    }
-    format!("{h:016x}")
+    let text = path.to_str().ok_or_else(|| std::io::Error::other("the folder's path is not valid Unicode"))?;
+    crate::editing::write_atomically(text, png)
 }
 
 // ─── The interface ───────────────────────────────────────────────────────────────────────────
@@ -292,13 +244,13 @@ impl crate::PdfCraftApp {
         let hash = match self.chess.capture.samples.hashes.get(&fix.doc) {
             Some(h) => h.clone(),
             None => {
-                let h = self.session.get(fix.doc).map(|d| hash_hex(&d.bytes)).unwrap_or_default();
+                let h = self.session.get(fix.doc).map(|d| samples::doc_hash(&d.bytes)).unwrap_or_default();
                 self.chess.capture.samples.hashes.insert(fix.doc, h.clone());
                 h
             }
         };
-        let base = base_name(fix.confidence, &hash, fix.page);
-        match write_sample(&folder, &class_folder(&fix.text), &base, &png) {
+        let base = samples::base_name(fix.confidence, &hash, fix.page);
+        match samples::write_sample(&folder, &samples::class_folder(&fix.text), &base, &png, write_file) {
             Ok(_) => self.chess.capture.samples.written = self.chess.capture.samples.written.saturating_add(1),
             Err(e) => self.notify(crate::i18n::fmt(tl!("Couldn't save a character sample: {e}"), &[("e", &e.to_string())])),
         }
@@ -308,36 +260,6 @@ impl crate::PdfCraftApp {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn class_folders_follow_chessvisionoffs_names() {
-        assert_eq!(class_folder("♔"), "sym_9812");
-        assert_eq!(class_folder("N"), "upper_N");
-        assert_eq!(class_folder("f"), "lower_f");
-        assert_eq!(class_folder("3"), "digit_3");
-        assert_eq!(class_folder("+"), "sym_43");
-        assert_eq!(class_folder("ä"), "sym_228");
-        assert_eq!(class_folder("f7"), "ligature_f7");
-        assert_eq!(class_folder("-g"), "ligature_-g");
-        assert_eq!(class_folder("♘f"), "ligature_hex_26580066");
-        assert_eq!(class_folder("a\u{1F600}"), "ligature_hex_00611f600");
-        assert_eq!(class_folder(""), "unknown");
-    }
-
-    #[test]
-    fn names_start_with_the_confidence_and_never_overwrite() {
-        assert_eq!(base_name(0.5, "00ff", 0), "0500_00ff_p0001");
-        assert_eq!(base_name(f32::NAN, "x", 67), "0000_x_p0068");
-        assert_eq!(base_name(7.0, "x", usize::MAX), format!("1000_x_p{}", usize::MAX));
-        let dir = std::env::temp_dir().join(format!("pdfcraft-samples-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        let first = write_sample(&dir, "digit_3", "0500_00ff_p0001", b"one").unwrap();
-        let second = write_sample(&dir, "digit_3", "0500_00ff_p0001", b"two").unwrap();
-        assert_eq!(first.file_name().unwrap(), "0500_00ff_p0001_1.png");
-        assert_eq!(second.file_name().unwrap(), "0500_00ff_p0001_2.png");
-        assert_eq!(std::fs::read(&first).unwrap(), b"one", "the first is not overwritten");
-        let _ = std::fs::remove_dir_all(&dir);
-    }
 
     #[test]
     fn only_collecting_takes_corrections_and_a_declined_document_gives_none() {

@@ -864,6 +864,7 @@ impl ChessScan {
 #[cfg(not(target_arch = "wasm32"))]
 pub mod analysis;
 pub mod capture;
+pub mod collection;
 pub mod document;
 pub mod epub;
 pub mod export;
@@ -871,6 +872,7 @@ pub mod keys;
 pub mod links;
 pub mod office;
 pub mod replace;
+pub mod samples;
 pub mod text_ocr;
 
 #[cfg(test)]

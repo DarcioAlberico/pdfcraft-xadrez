@@ -2779,7 +2779,10 @@ chess undo step	Clear drawings	清除标记
 	Duplicate game	复制对局
 	Delete game…	删除对局…
 	New game from this position	从此局面新建对局
-	Delete this game? It can't be undone.	删除此对局？此操作无法撤销。
+# Wave 10 U2: a delete or a move of the list of games is a step Undo takes (after "Undo", as the other steps).
+	Delete this game? You can undo it.	删除此对局？可以撤销。
+	Delete game	删除对局
+	Move game	移动对局
 	An illegal position can't start a game: correct it in the diagram editor first.	非法局面不能开始对局：请先在图表编辑器中更正。
 	Games not saved (an illegal position has no PGN): {n}	未保存的对局（非法局面没有 PGN）：{n}
 # Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).

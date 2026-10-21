@@ -1376,6 +1376,48 @@ pub fn tools() -> Vec<ToolDef> {
                 }),
                 &["ops"],
             )),
+        t("chess_glyph_sample", "Save a corrected chess character for retraining", "Chess ▸ PGN toolbar ▸ Collect corrected characters for retraining, without the interface: render the box rect of page again (from the top-left of the displayed page, in points, as chess_read_area's alternatives give a character's box; at most 72 pt a side) at dpi (300 by default, kept between 100 and 300), padded with white to a square and scaled to a 32 x 32 gray PNG (the picture the app saves), and write it as <folder>/<class folder>/<confidence in thousandths, 4 digits>_<16-digit hash of the document's bytes>_p<page, 4 digits>_<n>.png, the layout of ChessVisionOFF's review queue (revisao_ocr): the class folder is text's class as ChessVisionOFF names it (upper_A, lower_a, digit_1, sym_<code point> for any other character such as sym_9816 for a knight figurine, ligature_<text> or ligature_hex_<code points> for several), n counts up from 1 past the files there (nothing is overwritten), and the file is written atomically. text is the corrected reading (1 to 16 characters); confidence is the model's probability for what it had read, 0 to 1 (0 by default). Refused for a document that does not allow copying, and for an encrypted one unless allow_encrypted (the sample is written unencrypted). folder is confined to --root, and so is the file finally written. Returns path, class, name, side (32) and bytes. Nothing is trained and the document is not changed.")
+            .with(schema(
+                json!({
+                    "doc": doc(),
+                    "page": { "type": "integer", "minimum": 1 },
+                    "rect": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4, "description": "[x0, y0, x1, y1]: the character's box in points from the top-left of the displayed page." },
+                    "text": { "type": "string", "minLength": 1, "maxLength": 64, "description": "What the character is (the corrected reading), 1 to 16 characters." },
+                    "confidence": { "type": "number", "minimum": 0, "maximum": 1, "description": "The model's probability for its first reading (default 0): the most doubtful sort first." },
+                    "dpi": { "type": "number", "minimum": 72, "maximum": 600, "description": "The resolution the area was read at (default 300; kept between 100 and 300)." },
+                    "folder": { "type": "string", "description": "A file path to the folder of samples, the review queue's root (relative to --root when set)." },
+                    "allow_encrypted": { "type": "boolean", "description": "Write a sample of an encrypted document (unencrypted). Default false." },
+                }),
+                &["doc", "page", "rect", "text", "folder"],
+            )),
+        t("chess_games", "Edit a collection of chess games", "Chess ▸ Board ▸ Games in this document, without the interface: start from a collection of games in PGN, inline in pgn or read from the .pgn file path (not both; one blank game without either; at most 256 games and 32 MiB, split at the tag line that follows moves; a game that cannot be read at all is refused, never left out), game active shown (0-based, the first by default), and apply ops in order, as the app's list does: list (the games); set_active {game}; rename {game?, white?, black?, event?} (sets those tags, so the name is in the PGN; an empty value removes the tag; the others are kept); duplicate {game?} (a copy right after it, shown); delete {game?} (the game shown stays shown; deleting it shows the one after it, the one before at the end; deleting the last game leaves a blank one); move {game?, to} (to its place once moved, any place; the game shown stays shown); new_from {game?, at?} (a game starting at the position of move at of that game, an address as in chess_pgn_edit, the main line's last move by default, with SetUp/FEN tags, right after it and shown); export {game?} (that game's PGN, or the whole collection's). game is 0-based and defaults to the game shown. Each op adds a report entry with ok and active (the game shown after it); a refused op adds ok: false with the error, changes nothing and stops the list. Returns games (index, name: White–Black, else the player, else the event, or null; white, black, event, moves counted as a scoresheet does, start_fen, shown, pgn_stopped: the first move of its PGN that could not be played), active, count, pgn (every game in list order, a blank line between two), report, applied, and written: the file out the collection was written to (atomically; only when every op was applied), else null. The app's own autosaved collections are not read or changed.")
+            .with(schema(
+                json!({
+                    "pgn": { "type": "string", "maxLength": 33554432, "description": "The games in PGN. Not with path." },
+                    "path": { "type": "string", "description": "A file path to a .pgn file to read the games from (relative to --root when set). Not with pgn." },
+                    "active": { "type": "integer", "minimum": 0, "maximum": 255, "description": "The game shown at the start (0-based; default 0)." },
+                    "out": { "type": "string", "description": "A file path to write the collection to as PGN, in list order, once every op was applied (relative to --root when set). Omit to only return it." },
+                    "ops": {
+                        "type": "array",
+                        "maxItems": crate::chess_games::MAX_OPS,
+                        "description": "The operations, applied in order.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "op": { "type": "string", "enum": ["list", "set_active", "rename", "duplicate", "delete", "move", "new_from", "export"] },
+                                "game": { "type": "integer", "minimum": 0, "maximum": 255, "description": "The game acted on (0-based). Default: the game shown (export: every game)." },
+                                "to": { "type": "integer", "minimum": 0, "maximum": 255, "description": "move: the game's place once moved (0-based)." },
+                                "at": { "type": "string", "maxLength": 65536, "description": "new_from: main:<half-move> or path:<i.j.k> in the game (default: its main line's last move)." },
+                                "white": { "type": "string", "maxLength": 1024, "description": "rename: the White tag (empty removes it)." },
+                                "black": { "type": "string", "maxLength": 1024, "description": "rename: the Black tag (empty removes it)." },
+                                "event": { "type": "string", "maxLength": 1024, "description": "rename: the Event tag (empty removes it)." },
+                            },
+                            "required": ["op"],
+                        },
+                    },
+                }),
+                &[],
+            )),
         t("content_draw", "Draw content operators", "Draw a fragment of PDF content-stream operators (ISO 32000-2 §8–9) on top of a page, in its default user space (points, y up, origin at the media box's corner; /Rotate is not applied), as page content of its own wrapped in q … Q. Checked first and refused with the reason: at most 4 MiB; q/Q, BT/ET and marked content balanced (q at most 28 deep); operand counts and finite numbers; only path, clipping, device colour (g, rg, k, and cs/CS with DeviceGray, DeviceRGB or DeviceCMYK), general graphics state, text and marked-content operators with inline property lists; nothing that needs a page resource (Do, gs, sh, inline images, patterns). Text may use /PCHelv, /PCTimes or /PCCour (standard fonts, WinAnsi), which are added for it. One undo step.")
             .with(schema(
                 json!({

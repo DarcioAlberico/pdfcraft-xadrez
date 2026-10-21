@@ -2813,7 +2813,10 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Duplicate game	Партияның көшірмесін жасау
 	Delete game…	Партияны жою…
 	New game from this position	Осы позициядан жаңа партия
-	Delete this game? It can't be undone.	Бұл партияны жою керек пе? Мұны болдырмау мүмкін емес.
+# Wave 10 U2: a delete or a move of the list of games is a step Undo takes (after "Undo", as the other steps).
+	Delete this game? You can undo it.	Бұл партияны жою керек пе? Мұны болдырмауға болады.
+	Delete game	партияны жою
+	Move game	партияны жылжыту
 	An illegal position can't start a game: correct it in the diagram editor first.	Заңсыз позициядан партия бастау мүмкін емес: алдымен оны диаграмма редакторында түзетіңіз.
 	Games not saved (an illegal position has no PGN): {n}	Сақталмаған партиялар (жарамсыз позицияның PGN-і жоқ): {n}
 # Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).

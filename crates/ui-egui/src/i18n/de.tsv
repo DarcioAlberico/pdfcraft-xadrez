@@ -2816,7 +2816,10 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	Duplicate game	Partie duplizieren
 	Delete game…	Partie löschen…
 	New game from this position	Neue Partie ab dieser Stellung
-	Delete this game? It can't be undone.	Diese Partie löschen? Das lässt sich nicht rückgängig machen.
+# Wave 10 U2: a delete or a move of the list of games is a step Undo takes (after "Undo", as the other steps).
+	Delete this game? You can undo it.	Diese Partie löschen? Das lässt sich rückgängig machen.
+	Delete game	Partie löschen
+	Move game	Partie verschieben
 	An illegal position can't start a game: correct it in the diagram editor first.	Mit einer ungültigen Stellung kann keine Partie beginnen: zuerst im Diagrammeditor korrigieren.
 	Games not saved (an illegal position has no PGN): {n}	Nicht gespeicherte Partien (eine ungültige Stellung hat kein PGN): {n}
 # Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).

@@ -371,6 +371,12 @@ impl BoardState {
         true
     }
 
+    /// The memory the board's game and its history take, as the history's caps count it (a game
+    /// deleted from the list is kept for Undo with its history).
+    pub(crate) fn bytes(&self) -> usize {
+        crate::chess_history::Estimate::bytes(&self.snapshot()).saturating_add(self.history.bytes())
+    }
+
     /// Undo the last change to the game. Whether there was one.
     pub fn undo(&mut self) -> bool {
         self.restore(true)

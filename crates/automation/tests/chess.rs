@@ -1437,3 +1437,258 @@ fn chess_read_area_reads_and_plans_with_the_users_model() {
     assert!(r["capture"]["reasons"].is_array());
     let _ = std::fs::remove_dir_all(base);
 }
+
+// ─── chess_games (PGN toolbar wave 10, U2) ────────────────────────────────────────────────────
+
+const ABC: &str = "[Event \"A\"]\n\n1. e4 *\n\n[Event \"B\"]\n\n1. d4 *\n\n[Event \"C\"]\n\n1. c4 *\n";
+
+fn events_of(r: &Value) -> Vec<String> {
+    r["games"].as_array().unwrap().iter().map(|g| g["event"].as_str().unwrap().to_owned()).collect()
+}
+
+/// Every operation of the list, as the app's list does it: the order, the game shown after each
+/// change, the names written as tags, a game from a position, and the export in list order.
+#[test]
+fn chess_games_renames_duplicates_deletes_moves_and_starts_games_from_a_position() {
+    let mut a = Automation::new();
+    let r = ok(
+        &mut a,
+        "chess_games",
+        json!({ "pgn": ABC, "active": 1, "ops": [
+            { "op": "list" },
+            { "op": "rename", "game": 2, "white": "Werle", "black": "Jianu" },
+            { "op": "duplicate", "game": 0 },
+            { "op": "move", "game": 3, "to": 0 },
+            { "op": "delete", "game": 2 },
+            { "op": "new_from", "game": 0, "at": "main:1" },
+            { "op": "set_active", "game": 3 },
+            { "op": "export", "game": 0 },
+        ] }),
+    );
+    let report = r["report"].as_array().unwrap();
+    assert_eq!(r["applied"], 8, "{r:#}");
+    assert_eq!(report[0]["games"].as_array().unwrap().len(), 3);
+    assert_eq!((report[0]["active"].as_u64(), report[0]["games"][1]["shown"].as_bool()), (Some(1), Some(true)));
+    assert_eq!(report[1]["name"], "Werle–Jianu");
+    assert_eq!((report[2]["game"].as_u64(), report[2]["active"].as_u64()), (Some(1), Some(1)), "the copy right after it, shown");
+    // A, copy of A (shown), B, C; then C moved first: C, A, copy (shown), B.
+    assert_eq!(report[3]["active"], 2);
+    // The copy (shown) deleted: the one after it, B, is shown.
+    assert_eq!((report[4]["deleted"].is_null(), report[4]["active"].as_u64()), (false, Some(2)), "{:#}", report[4]);
+    assert_eq!((report[5]["game"].as_u64(), report[5]["active"].as_u64()), (Some(1), Some(1)));
+    assert_eq!(report[6]["active"], 3);
+    assert!(report[7]["pgn"].as_str().unwrap().contains("[White \"Werle\"]"), "{:#}", report[7]);
+    assert_eq!(events_of(&r), ["C", "", "A", "B"]);
+    assert_eq!(r["count"], 4);
+    let games = r["games"].as_array().unwrap();
+    assert_eq!(games[0]["name"], "Werle–Jianu");
+    assert_eq!(games[1]["start_fen"], "rnbqkbnr/pppppppp/8/8/2P5/8/PP1PPPPP/RNBQKBNR b KQkq c3 0 1", "after 1. c4 of game 0 (C)");
+    assert_eq!((games[0]["moves"].as_u64(), games[3]["shown"].as_bool()), (Some(1), Some(true)));
+    let pgn = r["pgn"].as_str().unwrap();
+    assert!(pgn.contains("[SetUp \"1\"]") && pgn.contains("1. c4 *\n\n["), "a blank line between two games: {pgn}");
+    // Read back: the same list.
+    let again = ok(&mut a, "chess_games", json!({ "pgn": pgn }));
+    assert_eq!(events_of(&again), events_of(&r));
+    assert_eq!(again["pgn"], r["pgn"]);
+}
+
+/// A refused operation adds an error entry, changes nothing and stops the list; `out` is then not
+/// written. Bad collections and arguments are refused with what is allowed.
+#[test]
+fn chess_games_refuses_what_the_list_does_not_allow() {
+    let (base, root) = workdir("games-refused");
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let r = ok(
+        &mut a,
+        "chess_games",
+        json!({ "pgn": ABC, "out": "games.pgn", "ops": [
+            { "op": "move", "game": 0, "to": 2 },
+            { "op": "delete", "game": 3 },
+            { "op": "rename", "white": "never" },
+        ] }),
+    );
+    assert_eq!(r["applied"], 1);
+    assert_eq!(r["report"][1]["ok"], false);
+    assert!(r["report"][1]["error"].as_str().unwrap().contains("0 to 2"), "{r:#}");
+    assert_eq!(r["report"].as_array().unwrap().len(), 2, "the list stopped there");
+    assert_eq!(events_of(&r), ["B", "C", "A"], "the move before it stays");
+    assert!(r["written"].is_null() && !root.join("games.pgn").exists(), "nothing written after a refusal");
+    for (op, says) in [
+        (json!({ "op": "move", "game": 0, "to": 3 }), "to is"),
+        (json!({ "op": "new_from", "at": "main:9" }), "no move there"),
+        (json!({ "op": "new_from", "at": "nowhere" }), "an address"),
+        (json!({ "op": "rename", "white": 3 }), "white is a string"),
+        (json!({ "op": "sort" }), "op \"sort\""),
+        (json!({ "op": "set_active", "game": 99 }), "the list has games 0 to 2"),
+    ] {
+        let r = ok(&mut a, "chess_games", json!({ "pgn": ABC, "ops": [op] }));
+        assert_eq!(r["report"][0]["ok"], false, "{r:#}");
+        assert!(r["report"][0]["error"].as_str().unwrap().contains(says), "{says}: {r:#}");
+        assert_eq!(events_of(&r), ["A", "B", "C"], "unchanged");
+    }
+    let refused = |a: &mut Automation, args: Value| match a.call("chess_games", &args) {
+        Err(ToolError::Failed(m) | ToolError::InvalidArgs(m)) => m,
+        other => panic!("chess_games accepted {args}: {other:?}"),
+    };
+    assert!(refused(&mut a, json!({ "pgn": ABC, "path": "x.pgn" })).contains("not both"));
+    assert!(refused(&mut a, json!({ "pgn": ABC, "active": 3 })).contains("0 to 2"));
+    assert!(refused(&mut a, json!({ "pgn": "[Event \"x\"]\n1. e4 *\n".repeat(257) })).contains("at most 256 games"));
+    assert!(refused(&mut a, json!({ "path": "missing.pgn" })).contains("missing.pgn"));
+    // Nothing given: one blank game, and deleting it leaves a blank one.
+    let blank = ok(&mut a, "chess_games", json!({ "ops": [{ "op": "delete" }] }));
+    assert_eq!((blank["count"].as_u64(), blank["games"][0]["moves"].as_u64()), (Some(1), Some(0)));
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// The collection read from a file and written to another, both inside the root; either path
+/// outside it is refused before anything is read or written. The control call, the same with
+/// both paths inside, succeeds, so the refusals can only come from resolving the paths.
+#[test]
+fn chess_games_reads_and_writes_pgn_files_inside_the_root_only() {
+    let (base, root) = workdir("games-files");
+    std::fs::write(root.join("abc.pgn"), ABC).unwrap();
+    std::fs::write(base.join("outside").join("abc.pgn"), ABC).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let ops = json!([{ "op": "move", "game": 2, "to": 0 }]);
+    let outside = base.join("outside");
+    for (key, path) in [
+        ("path", "../outside/abc.pgn".to_owned()),
+        ("path", outside.join("abc.pgn").to_string_lossy().into_owned()),
+        ("out", "../outside/written.pgn".to_owned()),
+        ("out", outside.join("written.pgn").to_string_lossy().into_owned()),
+    ] {
+        let mut args = json!({ "path": "abc.pgn", "out": "cab.pgn", "ops": ops });
+        args[key] = json!(path);
+        match a.call("chess_games", &args) {
+            Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{key} {path}: {m}"),
+            other => panic!("chess_games accepted {key} {path}: {other:?}"),
+        }
+    }
+    assert!(!outside.join("written.pgn").exists(), "nothing written outside the root");
+    assert!(!root.join("cab.pgn").exists(), "nor inside, for a refused call");
+    // The control: both inside.
+    let r = ok(&mut a, "chess_games", json!({ "path": "abc.pgn", "out": "cab.pgn", "ops": ops }));
+    assert_eq!(events_of(&r), ["C", "A", "B"]);
+    let written = std::fs::read_to_string(root.join("cab.pgn")).unwrap();
+    assert_eq!(written, r["pgn"].as_str().unwrap());
+    assert!(r["written"].as_str().unwrap().ends_with("cab.pgn"));
+    // Edited in place: the file read is the file written.
+    let r = ok(&mut a, "chess_games", json!({ "path": "cab.pgn", "out": "cab.pgn", "ops": [{ "op": "delete", "game": 0 }] }));
+    assert_eq!(events_of(&r), ["A", "B"]);
+    assert_eq!(std::fs::read_to_string(root.join("cab.pgn")).unwrap(), r["pgn"].as_str().unwrap());
+    let _ = std::fs::remove_dir_all(base);
+}
+
+// ─── chess_glyph_sample (PGN toolbar wave 10, U3) ─────────────────────────────────────────────
+
+/// The width and height a PNG's header gives.
+fn png_size(bytes: &[u8]) -> (u32, u32) {
+    assert!(bytes.starts_with(b"\x89PNG\r\n\x1a\n"), "a PNG");
+    let be = |at: usize| u32::from_be_bytes([bytes[at], bytes[at + 1], bytes[at + 2], bytes[at + 3]]);
+    (be(16), be(20))
+}
+
+/// The box of the first characters ("1.e4") of the line `text_pdf` sets, from the top left.
+const FIRST_CHARS: [f64; 4] = [58.0, 288.0, 70.0, 302.0];
+
+/// A corrected character becomes a 32 × 32 sample in ChessVisionOFF's review-queue layout inside
+/// the root: `<folder>/<class>/<confidence>_<hash>_p<page>_<n>.png`, never overwritten.
+#[test]
+fn chess_glyph_sample_writes_the_review_queue_layout_inside_the_root() {
+    let (base, root) = workdir("sample");
+    std::fs::write(root.join("moves.pdf"), text_pdf("1.e4 e5 2.Nf3 Nc6")).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let doc = ok(&mut a, "doc_open", json!({ "path": "moves.pdf" }))["doc"].as_u64().unwrap();
+    let args = json!({ "doc": doc, "page": 1, "rect": FIRST_CHARS, "text": "1", "confidence": 0.42, "folder": "samples" });
+    let first = ok(&mut a, "chess_glyph_sample", args.clone());
+    assert_eq!((first["class"].as_str(), first["side"].as_u64()), (Some("digit_1"), Some(32)), "{first:#}");
+    let name = first["name"].as_str().unwrap();
+    assert!(name.starts_with("0420_") && name.ends_with("_p0001_1.png") && name.len() == "0420_".len() + 16 + "_p0001_1.png".len(), "{name}");
+    let written = root.join("samples").join("digit_1").join(name);
+    assert_eq!(png_size(&std::fs::read(&written).unwrap()), (32, 32));
+    let second = ok(&mut a, "chess_glyph_sample", args);
+    assert!(second["name"].as_str().unwrap().ends_with("_p0001_2.png"), "{second:#}");
+    assert!(written.exists(), "the first is not overwritten");
+    // A figurine goes to its code point's folder.
+    let knight = ok(&mut a, "chess_glyph_sample", json!({ "doc": doc, "page": 1, "rect": FIRST_CHARS, "text": "♘", "folder": "samples" }));
+    assert_eq!(knight["class"], "sym_9816");
+    assert!(knight["name"].as_str().unwrap().starts_with("0000_"), "no confidence given: 0");
+    // Refused: what the sample cannot be made of.
+    for (bad, says) in [
+        (json!({ "text": "" }), "text"),
+        (json!({ "text": "x".repeat(17) }), "text"),
+        (json!({ "text": "a\nb" }), "text"),
+        (json!({ "confidence": 1.5 }), "confidence"),
+        (json!({ "rect": [70, 288, 58, 302] }), "not a rectangle"),
+        (json!({ "rect": [0, 0, 100, 10] }), "not a rectangle"),
+        (json!({ "page": 2 }), "out of range"),
+    ] {
+        let mut args = json!({ "doc": doc, "page": 1, "rect": FIRST_CHARS, "text": "1", "folder": "samples" });
+        for (k, v) in bad.as_object().unwrap() {
+            args[k] = v.clone();
+        }
+        match a.call("chess_glyph_sample", &args) {
+            Err(ToolError::Failed(m) | ToolError::InvalidArgs(m)) => assert!(m.contains(says), "{bad}: {m}"),
+            other => panic!("chess_glyph_sample accepted {bad}: {other:?}"),
+        }
+    }
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// `folder` is confined to `--root`. The document, page, box and text are valid, and the same call
+/// with the folder inside the root writes the sample, so the refusal can only come from resolving
+/// the path (with confinement switched off, the outside calls write there and this test fails).
+#[test]
+fn a_glyph_sample_folder_outside_the_root_is_refused() {
+    let (base, root) = workdir("sample-confined");
+    std::fs::write(root.join("moves.pdf"), text_pdf("1.e4 e5 2.Nf3 Nc6")).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let doc = ok(&mut a, "doc_open", json!({ "path": "moves.pdf" }))["doc"].as_u64().unwrap();
+    let outside = base.join("outside");
+    for dir in ["../outside".to_string(), outside.to_string_lossy().into_owned(), "samples/../../outside".to_string()] {
+        let args = json!({ "doc": doc, "page": 1, "rect": FIRST_CHARS, "text": "1", "folder": dir });
+        match a.call("chess_glyph_sample", &args) {
+            Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{dir}: {m}"),
+            other => panic!("chess_glyph_sample accepted folder {dir}: {other:?}"),
+        }
+    }
+    assert_eq!(std::fs::read_dir(&outside).unwrap().count(), 0, "nothing written outside the root");
+    // The control: the same call, with the folder inside the root.
+    let r = ok(&mut a, "chess_glyph_sample", json!({ "doc": doc, "page": 1, "rect": FIRST_CHARS, "text": "1", "folder": "samples" }));
+    assert!(root.join("samples").join("digit_1").join(r["name"].as_str().unwrap()).exists());
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// An encrypted document gives a sample only when allowed (it is written unencrypted), as the app
+/// asks first; a document that does not allow copying never gives one.
+#[test]
+fn an_encrypted_document_gives_a_sample_only_when_allowed() {
+    let (base, root) = workdir("sample-encrypted");
+    std::fs::write(root.join("moves.pdf"), text_pdf("1.e4 e5 2.Nf3 Nc6")).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let doc = ok(&mut a, "doc_open", json!({ "path": "moves.pdf" }))["doc"].as_u64().unwrap();
+    ok(&mut a, "doc_protect", json!({ "doc": doc, "open_password": "open", "permissions_password": "boss" }));
+    ok(&mut a, "doc_save", json!({ "doc": doc, "path": "locked.pdf" }));
+    let mut b = Automation::new().with_root(&root).unwrap();
+    let owner = ok(&mut b, "doc_open", json!({ "path": "locked.pdf", "password": "boss" }))["doc"].as_u64().unwrap();
+    let args = json!({ "doc": owner, "page": 1, "rect": FIRST_CHARS, "text": "1", "folder": "samples" });
+    match b.call("chess_glyph_sample", &args) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("allow_encrypted"), "{m}"),
+        other => panic!("an encrypted document gave a sample unasked: {other:?}"),
+    }
+    assert!(!root.join("samples").exists(), "nothing written");
+    let mut allowed = args.clone();
+    allowed["allow_encrypted"] = json!(true);
+    ok(&mut b, "chess_glyph_sample", allowed);
+    // Opened with the open password only: copying is not allowed.
+    let mut c = Automation::new().with_root(&root).unwrap();
+    let user = ok(&mut c, "doc_open", json!({ "path": "locked.pdf", "password": "open" }))["doc"].as_u64().unwrap();
+    let mut no_copy = args;
+    no_copy["doc"] = json!(user);
+    no_copy["allow_encrypted"] = json!(true);
+    match c.call("chess_glyph_sample", &no_copy) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("copying"), "{m}"),
+        other => panic!("a document that forbids copying gave a sample: {other:?}"),
+    }
+    let _ = std::fs::remove_dir_all(base);
+}
