@@ -41,7 +41,7 @@ const FORMAT: &str = "pdfcraft-chess-games";
 pub(crate) const VERSION: u32 = 1;
 
 /// Most games autosaved for one document.
-pub(crate) const MAX_GAMES: usize = 256;
+pub(crate) const MAX_GAMES: usize = pdfcraft_engine::chess::collection::MAX_GAMES;
 
 /// Largest body autosaved for one document.
 pub(crate) const MAX_BODY_BYTES: usize = 32 << 20;

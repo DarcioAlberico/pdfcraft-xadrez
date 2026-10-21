@@ -143,3 +143,36 @@ fn chess_tools_run_from_a_script_with_a_page_render() {
     assert!(std::fs::read(root.join("page1.png")).unwrap().starts_with(b"\x89PNG"));
     let _ = std::fs::remove_dir_all(base);
 }
+
+/// `chess_games` through `run --script` (wave 10, U2): a PGN file in the root reordered and
+/// renamed into another, read back by the next step; a step writing outside the root fails the
+/// run and writes nothing.
+#[test]
+fn chess_games_runs_from_a_script_inside_the_root() {
+    let base = sandbox("games");
+    let root = base.join("root");
+    let abc = "[Event \"A\"]\n\n1. e4 *\n\n[Event \"B\"]\n\n1. d4 *\n\n[Event \"C\"]\n\n1. c4 *\n";
+    std::fs::write(root.join("abc.pgn"), abc).unwrap();
+    let steps = serde_json::json!([
+        { "tool": "chess_games", "args": { "path": "abc.pgn", "out": "cab.pgn", "ops": [
+            { "op": "move", "game": 2, "to": 0 },
+            { "op": "rename", "game": 0, "white": "Werle", "black": "Jianu" },
+        ] } },
+        { "tool": "chess_games", "args": { "path": "cab.pgn", "ops": [{ "op": "list" }] } },
+    ]);
+    std::fs::write(root.join("steps.json"), steps.to_string()).unwrap();
+    let o = cli(&base, &["run", "--script", root.join("steps.json").to_str().unwrap(), "--root", root.to_str().unwrap(), "--report"]);
+    assert!(o.status.success(), "{}", text(&o.stderr));
+    let written = std::fs::read_to_string(root.join("cab.pgn")).unwrap();
+    let events: Vec<&str> = written.lines().filter_map(|l| l.strip_prefix("[Event \"").and_then(|r| r.strip_suffix("\"]"))).collect();
+    assert_eq!(events, ["C", "A", "B"], "{written}");
+    assert!(written.contains("[White \"Werle\"]"), "{written}");
+    assert!(text(&o.stdout).contains("Werle–Jianu"), "the second step read the file the first wrote: {}", text(&o.stdout));
+    let escape = serde_json::json!([{ "tool": "chess_games", "args": { "path": "abc.pgn", "out": "../outside/escaped.pgn" } }]);
+    std::fs::write(root.join("escape.json"), escape.to_string()).unwrap();
+    let o = cli(&base, &["run", "--script", root.join("escape.json").to_str().unwrap(), "--root", root.to_str().unwrap()]);
+    assert!(!o.status.success(), "{}", text(&o.stdout));
+    assert!(text(&o.stderr).contains("outside the allowed directory"), "{}", text(&o.stderr));
+    assert!(!base.join("outside").join("escaped.pgn").exists());
+    let _ = std::fs::remove_dir_all(base);
+}

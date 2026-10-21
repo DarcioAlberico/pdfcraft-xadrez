@@ -1376,6 +1376,34 @@ pub fn tools() -> Vec<ToolDef> {
                 }),
                 &["ops"],
             )),
+        t("chess_games", "Edit a collection of chess games", "Chess ▸ Board ▸ Games in this document, without the interface: start from a collection of games in PGN, inline in pgn or read from the .pgn file path (not both; one blank game without either; at most 256 games and 32 MiB, split at the tag line that follows moves; a game that cannot be read at all is refused, never left out), game active shown (0-based, the first by default), and apply ops in order, as the app's list does: list (the games); set_active {game}; rename {game?, white?, black?, event?} (sets those tags, so the name is in the PGN; an empty value removes the tag; the others are kept); duplicate {game?} (a copy right after it, shown); delete {game?} (the game shown stays shown; deleting it shows the one after it, the one before at the end; deleting the last game leaves a blank one); move {game?, to} (to its place once moved, any place; the game shown stays shown); new_from {game?, at?} (a game starting at the position of move at of that game, an address as in chess_pgn_edit, the main line's last move by default, with SetUp/FEN tags, right after it and shown); export {game?} (that game's PGN, or the whole collection's). game is 0-based and defaults to the game shown. Each op adds a report entry with ok and active (the game shown after it); a refused op adds ok: false with the error, changes nothing and stops the list. Returns games (index, name: White–Black, else the player, else the event, or null; white, black, event, moves counted as a scoresheet does, start_fen, shown, pgn_stopped: the first move of its PGN that could not be played), active, count, pgn (every game in list order, a blank line between two), report, applied, and written: the file out the collection was written to (atomically; only when every op was applied), else null. The app's own autosaved collections are not read or changed.")
+            .with(schema(
+                json!({
+                    "pgn": { "type": "string", "maxLength": 33554432, "description": "The games in PGN. Not with path." },
+                    "path": { "type": "string", "description": "A file path to a .pgn file to read the games from (relative to --root when set). Not with pgn." },
+                    "active": { "type": "integer", "minimum": 0, "maximum": 255, "description": "The game shown at the start (0-based; default 0)." },
+                    "out": { "type": "string", "description": "A file path to write the collection to as PGN, in list order, once every op was applied (relative to --root when set). Omit to only return it." },
+                    "ops": {
+                        "type": "array",
+                        "maxItems": crate::chess_games::MAX_OPS,
+                        "description": "The operations, applied in order.",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "op": { "type": "string", "enum": ["list", "set_active", "rename", "duplicate", "delete", "move", "new_from", "export"] },
+                                "game": { "type": "integer", "minimum": 0, "maximum": 255, "description": "The game acted on (0-based). Default: the game shown (export: every game)." },
+                                "to": { "type": "integer", "minimum": 0, "maximum": 255, "description": "move: the game's place once moved (0-based)." },
+                                "at": { "type": "string", "maxLength": 65536, "description": "new_from: main:<half-move> or path:<i.j.k> in the game (default: its main line's last move)." },
+                                "white": { "type": "string", "maxLength": 1024, "description": "rename: the White tag (empty removes it)." },
+                                "black": { "type": "string", "maxLength": 1024, "description": "rename: the Black tag (empty removes it)." },
+                                "event": { "type": "string", "maxLength": 1024, "description": "rename: the Event tag (empty removes it)." },
+                            },
+                            "required": ["op"],
+                        },
+                    },
+                }),
+                &[],
+            )),
         t("content_draw", "Draw content operators", "Draw a fragment of PDF content-stream operators (ISO 32000-2 §8–9) on top of a page, in its default user space (points, y up, origin at the media box's corner; /Rotate is not applied), as page content of its own wrapped in q … Q. Checked first and refused with the reason: at most 4 MiB; q/Q, BT/ET and marked content balanced (q at most 28 deep); operand counts and finite numbers; only path, clipping, device colour (g, rg, k, and cs/CS with DeviceGray, DeviceRGB or DeviceCMYK), general graphics state, text and marked-content operators with inline property lists; nothing that needs a page resource (Do, gs, sh, inline images, patterns). Text may use /PCHelv, /PCTimes or /PCCour (standard fonts, WinAnsi), which are added for it. One undo step.")
             .with(schema(
                 json!({

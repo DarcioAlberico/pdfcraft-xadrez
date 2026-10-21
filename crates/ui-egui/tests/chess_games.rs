@@ -263,11 +263,11 @@ fn deleting_asks_first_and_the_last_delete_leaves_a_blank_game() {
     row_menu(&mut h, "B");
     h.get_by_label("Delete…").click();
     h.run_steps(4);
-    h.get_by_label("Delete this game? It can't be undone.");
+    h.get_by_label("Delete this game? You can undo it.");
     assert_eq!(listed(h.state()).0.len(), 3, "nothing deleted before the answer");
     h.get_by_label("Cancel").click();
     h.run_steps(2);
-    assert!(h.query_by_label("Delete this game? It can't be undone.").is_none());
+    assert!(h.query_by_label("Delete this game? You can undo it.").is_none());
     assert_eq!(listed(h.state()).0.len(), 3);
     // Yes: B goes; A stays shown.
     row_menu(&mut h, "B");
@@ -405,7 +405,7 @@ fn delete_on_a_focused_row_is_the_lists_and_on_the_board_the_games() {
     focus_row(&mut h, "B");
     host_key(&mut h, Modifiers::NONE, Key::Delete);
     assert_eq!(movetexts(h.state())[0], "1. e4 e5 (1... c5) (1... e6) 2. Nf3", "no variation deleted");
-    h.get_by_label("Delete this game? It can't be undone.");
+    h.get_by_label("Delete this game? You can undo it.");
     // The question's Delete button has the keyboard: Delete again deletes nothing either.
     assert!(h.get_by_label("Delete").is_focused());
     host_key(&mut h, Modifiers::NONE, Key::Delete);
@@ -413,7 +413,7 @@ fn delete_on_a_focused_row_is_the_lists_and_on_the_board_the_games() {
     assert_eq!(listed(h.state()).0.len(), 3);
     // Esc says no, and the row gets the keyboard back.
     host_key(&mut h, Modifiers::NONE, Key::Escape);
-    assert!(h.query_by_label("Delete this game? It can't be undone.").is_none());
+    assert!(h.query_by_label("Delete this game? You can undo it.").is_none());
     assert_eq!(listed(h.state()).0.len(), 3);
     assert!(h.get_by_label("B").is_focused());
     // Backspace too, then Enter on the focused Delete button deletes B.
@@ -439,7 +439,7 @@ fn delete_on_a_focused_row_is_the_lists_and_on_the_board_the_games() {
     host_key(&mut h, Modifiers::NONE, Key::Delete);
     assert_eq!(movetexts(h.state())[0], "1. e4 e5 (1... c5) 2. Nf3", "the variation 1... e6 went");
     assert_eq!(listed(h.state()).0.len(), 2, "no game deleted");
-    assert!(h.query_by_label("Delete this game? It can't be undone.").is_none(), "and nothing asked");
+    assert!(h.query_by_label("Delete this game? You can undo it.").is_none(), "and nothing asked");
 }
 
 /// The order and the names come back in the next session (autosave).
@@ -487,4 +487,67 @@ fn the_order_and_the_names_come_back_in_the_next_session() {
     let h = session(&store);
     assert_eq!((listed(h.state()), movetexts(h.state())), expected);
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Drag the row named `from` and drop it on the top (`above`) or bottom half of the row named `to`,
+/// as a mouse does: press, move past the drag threshold, move over the target, release there.
+fn drag_row(h: &mut Harness<'static, PdfCraftApp>, from: &str, to: &str, above: bool) {
+    h.state_mut().toast = None;
+    h.run_steps(1);
+    let start = h.get_by_label(from).rect().center();
+    let target = h.get_by_label(to).rect();
+    let end = egui::pos2(target.center().x, if above { target.top() + 2.0 } else { target.bottom() - 2.0 });
+    h.hover_at(start);
+    h.run_steps(1);
+    h.drag_at(start);
+    h.run_steps(1);
+    for k in 1..=4 {
+        h.hover_at(start + (end - start) * (k as f32 / 4.0));
+        h.run_steps(1);
+    }
+    h.event(egui::Event::PointerButton { pos: end, button: egui::PointerButton::Primary, pressed: false, modifiers: Modifiers::NONE });
+    h.run_steps(1);
+    h.remove_cursor();
+    h.run_steps(2);
+}
+
+/// Wave 10 U2: a delete and a move of the list are steps Undo takes back in the chess scope (the
+/// menu's and Ctrl+Z's Undo name them), and a row dragged onto another goes there, which Undo
+/// takes back too; the game shown stays shown.
+#[test]
+fn undo_takes_back_a_delete_and_a_move_and_rows_can_be_dragged() {
+    let mut h = harness();
+    three_games(&mut h);
+    row_menu(&mut h, "B");
+    h.get_by_label("Delete…").click();
+    h.run_steps(4);
+    h.get_by_label("Delete").click();
+    h.run_steps(3);
+    assert_eq!(listed(h.state()), (vec!["A".to_owned(), "C".to_owned()], 0));
+    assert!(h.state().chess.in_scope(), "Undo is the chess game's after a change to its list");
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(2);
+    assert_eq!(listed(h.state()), (vec!["A".to_owned(), "B".to_owned(), "C".to_owned()], 0), "B is back where it was");
+    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Undid Delete game"));
+    assert!(h.state_mut().execute("edit.redo"));
+    h.run_steps(2);
+    assert_eq!(listed(h.state()).0, ["A", "C"]);
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(2);
+    // C dragged onto the top half of A goes first; A stays shown.
+    drag_row(&mut h, "C", "A", true);
+    assert_eq!(listed(h.state()), (vec!["C".to_owned(), "A".to_owned(), "B".to_owned()], 1));
+    // A dragged onto the bottom half of B goes last.
+    drag_row(&mut h, "A", "B", false);
+    assert_eq!(listed(h.state()), (vec!["C".to_owned(), "B".to_owned(), "A".to_owned()], 2));
+    // Dropped on itself: nothing moves.
+    drag_row(&mut h, "B", "B", true);
+    assert_eq!(listed(h.state()).0, ["C", "B", "A"]);
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(2);
+    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Undid Move game"));
+    assert_eq!(listed(h.state()), (vec!["C".to_owned(), "A".to_owned(), "B".to_owned()], 1));
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(2);
+    assert_eq!(listed(h.state()), (vec!["A".to_owned(), "B".to_owned(), "C".to_owned()], 0));
 }

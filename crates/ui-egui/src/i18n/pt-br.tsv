@@ -2832,7 +2832,10 @@ chess undo step	Clear drawings	remoção dos desenhos
 	Duplicate game	Duplicar partida
 	Delete game…	Excluir partida…
 	New game from this position	Nova partida a partir desta posição
-	Delete this game? It can't be undone.	Excluir esta partida? Não é possível desfazer.
+# Wave 10 U2: a delete or a move of the list of games is a step Undo takes (after "Undo", as the other steps).
+	Delete this game? You can undo it.	Excluir esta partida? É possível desfazer.
+	Delete game	exclusão de partida
+	Move game	movimentação de partida
 	An illegal position can't start a game: correct it in the diagram editor first.	Uma posição ilegal não pode iniciar uma partida: corrija-a antes no editor de diagrama.
 	Games not saved (an illegal position has no PGN): {n}	Partidas não salvas (uma posição ilegal não tem PGN): {n}
 # Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).

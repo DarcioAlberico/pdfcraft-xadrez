@@ -2778,7 +2778,10 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Duplicate game	Дублирай партията
 	Delete game…	Изтрий партията…
 	New game from this position	Нова партия от тази позиция
-	Delete this game? It can't be undone.	Да се изтрие ли тази партия? Това не може да се отмени.
+# Wave 10 U2: a delete or a move of the list of games is a step Undo takes (after "Undo", as the other steps).
+	Delete this game? You can undo it.	Да се изтрие ли тази партия? Можете да го отмените.
+	Delete game	изтриването на партия
+	Move game	преместването на партия
 	An illegal position can't start a game: correct it in the diagram editor first.	Незаконна позиция не може да започне партия: първо я поправете в редактора на диаграми.
 	Games not saved (an illegal position has no PGN): {n}	Незаписани партии (невъзможната позиция няма PGN): {n}
 # Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).

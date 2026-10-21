@@ -2724,7 +2724,10 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Duplicate game	ఆటను నకలు చేయి
 	Delete game…	ఆటను తొలగించు…
 	New game from this position	ఈ స్థితి నుండి కొత్త ఆట
-	Delete this game? It can't be undone.	ఈ ఆటను తొలగించాలా? దీన్ని రద్దు చేయలేరు.
+# Wave 10 U2: a delete or a move of the list of games is a step Undo takes (after "Undo", as the other steps).
+	Delete this game? You can undo it.	ఈ ఆటను తొలగించాలా? దీన్ని రద్దు చేయవచ్చు.
+	Delete game	ఆట తొలగింపు
+	Move game	ఆటను జరపడం
 	An illegal position can't start a game: correct it in the diagram editor first.	చెల్లని స్థితితో ఆట ప్రారంభించలేరు: ముందుగా డయాగ్రామ్ ఎడిటర్‌లో సరిచేయండి.
 	Games not saved (an illegal position has no PGN): {n}	సేవ్ కాని ఆటలు (చెల్లని స్థితికి PGN లేదు): {n}
 # Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).

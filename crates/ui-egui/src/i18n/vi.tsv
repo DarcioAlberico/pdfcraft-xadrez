@@ -3069,7 +3069,10 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Duplicate game	Nhân bản ván cờ
 	Delete game…	Xóa ván cờ…
 	New game from this position	Ván mới từ thế cờ này
-	Delete this game? It can't be undone.	Xóa ván cờ này? Không thể hoàn tác.
+# Wave 10 U2: a delete or a move of the list of games is a step Undo takes (after "Undo", as the other steps).
+	Delete this game? You can undo it.	Xóa ván cờ này? Bạn có thể hoàn tác.
+	Delete game	xóa ván cờ
+	Move game	di chuyển ván cờ
 	An illegal position can't start a game: correct it in the diagram editor first.	Không thể bắt đầu ván cờ từ thế cờ không hợp lệ: hãy sửa trước trong trình chỉnh sửa sơ đồ.
 	Games not saved (an illegal position has no PGN): {n}	Ván cờ chưa được lưu (thế cờ không hợp lệ không có PGN): {n}
 # Chess ▸ PGN toolbar: T5c, the Board panel as the study board (the title of its Analysis section; the last is a command name).

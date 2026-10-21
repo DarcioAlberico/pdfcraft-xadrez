@@ -1437,3 +1437,144 @@ fn chess_read_area_reads_and_plans_with_the_users_model() {
     assert!(r["capture"]["reasons"].is_array());
     let _ = std::fs::remove_dir_all(base);
 }
+
+// ─── chess_games (PGN toolbar wave 10, U2) ────────────────────────────────────────────────────
+
+const ABC: &str = "[Event \"A\"]\n\n1. e4 *\n\n[Event \"B\"]\n\n1. d4 *\n\n[Event \"C\"]\n\n1. c4 *\n";
+
+fn events_of(r: &Value) -> Vec<String> {
+    r["games"].as_array().unwrap().iter().map(|g| g["event"].as_str().unwrap().to_owned()).collect()
+}
+
+/// Every operation of the list, as the app's list does it: the order, the game shown after each
+/// change, the names written as tags, a game from a position, and the export in list order.
+#[test]
+fn chess_games_renames_duplicates_deletes_moves_and_starts_games_from_a_position() {
+    let mut a = Automation::new();
+    let r = ok(
+        &mut a,
+        "chess_games",
+        json!({ "pgn": ABC, "active": 1, "ops": [
+            { "op": "list" },
+            { "op": "rename", "game": 2, "white": "Werle", "black": "Jianu" },
+            { "op": "duplicate", "game": 0 },
+            { "op": "move", "game": 3, "to": 0 },
+            { "op": "delete", "game": 2 },
+            { "op": "new_from", "game": 0, "at": "main:1" },
+            { "op": "set_active", "game": 3 },
+            { "op": "export", "game": 0 },
+        ] }),
+    );
+    let report = r["report"].as_array().unwrap();
+    assert_eq!(r["applied"], 8, "{r:#}");
+    assert_eq!(report[0]["games"].as_array().unwrap().len(), 3);
+    assert_eq!((report[0]["active"].as_u64(), report[0]["games"][1]["shown"].as_bool()), (Some(1), Some(true)));
+    assert_eq!(report[1]["name"], "Werle–Jianu");
+    assert_eq!((report[2]["game"].as_u64(), report[2]["active"].as_u64()), (Some(1), Some(1)), "the copy right after it, shown");
+    // A, copy of A (shown), B, C; then C moved first: C, A, copy (shown), B.
+    assert_eq!(report[3]["active"], 2);
+    // The copy (shown) deleted: the one after it, B, is shown.
+    assert_eq!((report[4]["deleted"].is_null(), report[4]["active"].as_u64()), (false, Some(2)), "{:#}", report[4]);
+    assert_eq!((report[5]["game"].as_u64(), report[5]["active"].as_u64()), (Some(1), Some(1)));
+    assert_eq!(report[6]["active"], 3);
+    assert!(report[7]["pgn"].as_str().unwrap().contains("[White \"Werle\"]"), "{:#}", report[7]);
+    assert_eq!(events_of(&r), ["C", "", "A", "B"]);
+    assert_eq!(r["count"], 4);
+    let games = r["games"].as_array().unwrap();
+    assert_eq!(games[0]["name"], "Werle–Jianu");
+    assert_eq!(games[1]["start_fen"], "rnbqkbnr/pppppppp/8/8/2P5/8/PP1PPPPP/RNBQKBNR b KQkq c3 0 1", "after 1. c4 of game 0 (C)");
+    assert_eq!((games[0]["moves"].as_u64(), games[3]["shown"].as_bool()), (Some(1), Some(true)));
+    let pgn = r["pgn"].as_str().unwrap();
+    assert!(pgn.contains("[SetUp \"1\"]") && pgn.contains("1. c4 *\n\n["), "a blank line between two games: {pgn}");
+    // Read back: the same list.
+    let again = ok(&mut a, "chess_games", json!({ "pgn": pgn }));
+    assert_eq!(events_of(&again), events_of(&r));
+    assert_eq!(again["pgn"], r["pgn"]);
+}
+
+/// A refused operation adds an error entry, changes nothing and stops the list; `out` is then not
+/// written. Bad collections and arguments are refused with what is allowed.
+#[test]
+fn chess_games_refuses_what_the_list_does_not_allow() {
+    let (base, root) = workdir("games-refused");
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let r = ok(
+        &mut a,
+        "chess_games",
+        json!({ "pgn": ABC, "out": "games.pgn", "ops": [
+            { "op": "move", "game": 0, "to": 2 },
+            { "op": "delete", "game": 3 },
+            { "op": "rename", "white": "never" },
+        ] }),
+    );
+    assert_eq!(r["applied"], 1);
+    assert_eq!(r["report"][1]["ok"], false);
+    assert!(r["report"][1]["error"].as_str().unwrap().contains("0 to 2"), "{r:#}");
+    assert_eq!(r["report"].as_array().unwrap().len(), 2, "the list stopped there");
+    assert_eq!(events_of(&r), ["B", "C", "A"], "the move before it stays");
+    assert!(r["written"].is_null() && !root.join("games.pgn").exists(), "nothing written after a refusal");
+    for (op, says) in [
+        (json!({ "op": "move", "game": 0, "to": 3 }), "to is"),
+        (json!({ "op": "new_from", "at": "main:9" }), "no move there"),
+        (json!({ "op": "new_from", "at": "nowhere" }), "an address"),
+        (json!({ "op": "rename", "white": 3 }), "white is a string"),
+        (json!({ "op": "sort" }), "op \"sort\""),
+        (json!({ "op": "set_active", "game": 99 }), "the list has games 0 to 2"),
+    ] {
+        let r = ok(&mut a, "chess_games", json!({ "pgn": ABC, "ops": [op] }));
+        assert_eq!(r["report"][0]["ok"], false, "{r:#}");
+        assert!(r["report"][0]["error"].as_str().unwrap().contains(says), "{says}: {r:#}");
+        assert_eq!(events_of(&r), ["A", "B", "C"], "unchanged");
+    }
+    let refused = |a: &mut Automation, args: Value| match a.call("chess_games", &args) {
+        Err(ToolError::Failed(m) | ToolError::InvalidArgs(m)) => m,
+        other => panic!("chess_games accepted {args}: {other:?}"),
+    };
+    assert!(refused(&mut a, json!({ "pgn": ABC, "path": "x.pgn" })).contains("not both"));
+    assert!(refused(&mut a, json!({ "pgn": ABC, "active": 3 })).contains("0 to 2"));
+    assert!(refused(&mut a, json!({ "pgn": "[Event \"x\"]\n1. e4 *\n".repeat(257) })).contains("at most 256 games"));
+    assert!(refused(&mut a, json!({ "path": "missing.pgn" })).contains("missing.pgn"));
+    // Nothing given: one blank game, and deleting it leaves a blank one.
+    let blank = ok(&mut a, "chess_games", json!({ "ops": [{ "op": "delete" }] }));
+    assert_eq!((blank["count"].as_u64(), blank["games"][0]["moves"].as_u64()), (Some(1), Some(0)));
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// The collection read from a file and written to another, both inside the root; either path
+/// outside it is refused before anything is read or written. The control call, the same with
+/// both paths inside, succeeds, so the refusals can only come from resolving the paths.
+#[test]
+fn chess_games_reads_and_writes_pgn_files_inside_the_root_only() {
+    let (base, root) = workdir("games-files");
+    std::fs::write(root.join("abc.pgn"), ABC).unwrap();
+    std::fs::write(base.join("outside").join("abc.pgn"), ABC).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let ops = json!([{ "op": "move", "game": 2, "to": 0 }]);
+    let outside = base.join("outside");
+    for (key, path) in [
+        ("path", "../outside/abc.pgn".to_owned()),
+        ("path", outside.join("abc.pgn").to_string_lossy().into_owned()),
+        ("out", "../outside/written.pgn".to_owned()),
+        ("out", outside.join("written.pgn").to_string_lossy().into_owned()),
+    ] {
+        let mut args = json!({ "path": "abc.pgn", "out": "cab.pgn", "ops": ops });
+        args[key] = json!(path);
+        match a.call("chess_games", &args) {
+            Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{key} {path}: {m}"),
+            other => panic!("chess_games accepted {key} {path}: {other:?}"),
+        }
+    }
+    assert!(!outside.join("written.pgn").exists(), "nothing written outside the root");
+    assert!(!root.join("cab.pgn").exists(), "nor inside, for a refused call");
+    // The control: both inside.
+    let r = ok(&mut a, "chess_games", json!({ "path": "abc.pgn", "out": "cab.pgn", "ops": ops }));
+    assert_eq!(events_of(&r), ["C", "A", "B"]);
+    let written = std::fs::read_to_string(root.join("cab.pgn")).unwrap();
+    assert_eq!(written, r["pgn"].as_str().unwrap());
+    assert!(r["written"].as_str().unwrap().ends_with("cab.pgn"));
+    // Edited in place: the file read is the file written.
+    let r = ok(&mut a, "chess_games", json!({ "path": "cab.pgn", "out": "cab.pgn", "ops": [{ "op": "delete", "game": 0 }] }));
+    assert_eq!(events_of(&r), ["A", "B"]);
+    assert_eq!(std::fs::read_to_string(root.join("cab.pgn")).unwrap(), r["pgn"].as_str().unwrap());
+    let _ = std::fs::remove_dir_all(base);
+}

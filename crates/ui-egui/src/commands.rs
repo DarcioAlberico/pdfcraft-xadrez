@@ -84,8 +84,7 @@ impl PdfCraftApp {
         // (D12), first: with nothing to undo there, they are off rather than reaching for the
         // document's history.
         if self.chess.in_scope() && matches!(spec.id, "edit.undo" | "edit.redo") {
-            let history = &self.chess.board().history;
-            return if spec.id == "edit.undo" { history.undo_edit().is_some() } else { history.redo_edit().is_some() };
+            return self.chess.games.can_step(spec.id == "edit.undo");
         }
         // The chess board's rail tools: as their buttons are.
         if let Some(enabled) = crate::chess_tools::command_enabled(&self.chess, spec.id) {
@@ -123,7 +122,7 @@ impl PdfCraftApp {
         if !self.chess.in_scope() {
             return None;
         }
-        Some(self.chess.board().command_text(undo).unwrap_or_else(|| crate::i18n::command_label(spec.label)))
+        Some(self.chess.games.step_text(undo).unwrap_or_else(|| crate::i18n::command_label(spec.label)))
     }
 
     /// Run a registered command by id. Returns `false` when the id is unknown or the command
