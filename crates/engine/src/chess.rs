@@ -872,6 +872,7 @@ pub mod keys;
 pub mod links;
 pub mod office;
 pub mod replace;
+pub mod samples;
 pub mod text_ocr;
 
 #[cfg(test)]

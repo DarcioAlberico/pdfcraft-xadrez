@@ -176,3 +176,23 @@ fn chess_games_runs_from_a_script_inside_the_root() {
     assert!(!base.join("outside").join("escaped.pgn").exists());
     let _ = std::fs::remove_dir_all(base);
 }
+
+/// `chess_glyph_sample` through `run --script` (wave 10, U3): a character's box saved as a sample
+/// in the review queue's layout inside the root.
+#[test]
+fn chess_glyph_sample_runs_from_a_script_inside_the_root() {
+    let base = sandbox("sample");
+    let root = base.join("root");
+    let steps = serde_json::json!([
+        { "tool": "doc_open", "args": { "path": "board.pdf" } },
+        { "tool": "chess_glyph_sample", "args": { "doc": 1, "page": 1, "rect": [60, 60, 80, 80], "text": "N", "confidence": 0.5, "folder": "samples" } },
+    ]);
+    std::fs::write(root.join("steps.json"), steps.to_string()).unwrap();
+    let o = cli(&base, &["run", "--script", root.join("steps.json").to_str().unwrap(), "--root", root.to_str().unwrap(), "--report"]);
+    assert!(o.status.success(), "{}", text(&o.stderr));
+    let written: Vec<_> =
+        std::fs::read_dir(root.join("samples").join("upper_N")).unwrap().flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect();
+    assert_eq!(written.len(), 1, "{written:?}");
+    assert!(written[0].starts_with("0500_") && written[0].ends_with("_p0001_1.png"), "{written:?}");
+    let _ = std::fs::remove_dir_all(base);
+}

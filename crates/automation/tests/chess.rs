@@ -1578,3 +1578,117 @@ fn chess_games_reads_and_writes_pgn_files_inside_the_root_only() {
     assert_eq!(std::fs::read_to_string(root.join("cab.pgn")).unwrap(), r["pgn"].as_str().unwrap());
     let _ = std::fs::remove_dir_all(base);
 }
+
+// ─── chess_glyph_sample (PGN toolbar wave 10, U3) ─────────────────────────────────────────────
+
+/// The width and height a PNG's header gives.
+fn png_size(bytes: &[u8]) -> (u32, u32) {
+    assert!(bytes.starts_with(b"\x89PNG\r\n\x1a\n"), "a PNG");
+    let be = |at: usize| u32::from_be_bytes([bytes[at], bytes[at + 1], bytes[at + 2], bytes[at + 3]]);
+    (be(16), be(20))
+}
+
+/// The box of the first characters ("1.e4") of the line `text_pdf` sets, from the top left.
+const FIRST_CHARS: [f64; 4] = [58.0, 288.0, 70.0, 302.0];
+
+/// A corrected character becomes a 32 × 32 sample in ChessVisionOFF's review-queue layout inside
+/// the root: `<folder>/<class>/<confidence>_<hash>_p<page>_<n>.png`, never overwritten.
+#[test]
+fn chess_glyph_sample_writes_the_review_queue_layout_inside_the_root() {
+    let (base, root) = workdir("sample");
+    std::fs::write(root.join("moves.pdf"), text_pdf("1.e4 e5 2.Nf3 Nc6")).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let doc = ok(&mut a, "doc_open", json!({ "path": "moves.pdf" }))["doc"].as_u64().unwrap();
+    let args = json!({ "doc": doc, "page": 1, "rect": FIRST_CHARS, "text": "1", "confidence": 0.42, "folder": "samples" });
+    let first = ok(&mut a, "chess_glyph_sample", args.clone());
+    assert_eq!((first["class"].as_str(), first["side"].as_u64()), (Some("digit_1"), Some(32)), "{first:#}");
+    let name = first["name"].as_str().unwrap();
+    assert!(name.starts_with("0420_") && name.ends_with("_p0001_1.png") && name.len() == "0420_".len() + 16 + "_p0001_1.png".len(), "{name}");
+    let written = root.join("samples").join("digit_1").join(name);
+    assert_eq!(png_size(&std::fs::read(&written).unwrap()), (32, 32));
+    let second = ok(&mut a, "chess_glyph_sample", args);
+    assert!(second["name"].as_str().unwrap().ends_with("_p0001_2.png"), "{second:#}");
+    assert!(written.exists(), "the first is not overwritten");
+    // A figurine goes to its code point's folder.
+    let knight = ok(&mut a, "chess_glyph_sample", json!({ "doc": doc, "page": 1, "rect": FIRST_CHARS, "text": "♘", "folder": "samples" }));
+    assert_eq!(knight["class"], "sym_9816");
+    assert!(knight["name"].as_str().unwrap().starts_with("0000_"), "no confidence given: 0");
+    // Refused: what the sample cannot be made of.
+    for (bad, says) in [
+        (json!({ "text": "" }), "text"),
+        (json!({ "text": "x".repeat(17) }), "text"),
+        (json!({ "text": "a\nb" }), "text"),
+        (json!({ "confidence": 1.5 }), "confidence"),
+        (json!({ "rect": [70, 288, 58, 302] }), "not a rectangle"),
+        (json!({ "rect": [0, 0, 100, 10] }), "not a rectangle"),
+        (json!({ "page": 2 }), "out of range"),
+    ] {
+        let mut args = json!({ "doc": doc, "page": 1, "rect": FIRST_CHARS, "text": "1", "folder": "samples" });
+        for (k, v) in bad.as_object().unwrap() {
+            args[k] = v.clone();
+        }
+        match a.call("chess_glyph_sample", &args) {
+            Err(ToolError::Failed(m) | ToolError::InvalidArgs(m)) => assert!(m.contains(says), "{bad}: {m}"),
+            other => panic!("chess_glyph_sample accepted {bad}: {other:?}"),
+        }
+    }
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// `folder` is confined to `--root`. The document, page, box and text are valid, and the same call
+/// with the folder inside the root writes the sample, so the refusal can only come from resolving
+/// the path (with confinement switched off, the outside calls write there and this test fails).
+#[test]
+fn a_glyph_sample_folder_outside_the_root_is_refused() {
+    let (base, root) = workdir("sample-confined");
+    std::fs::write(root.join("moves.pdf"), text_pdf("1.e4 e5 2.Nf3 Nc6")).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let doc = ok(&mut a, "doc_open", json!({ "path": "moves.pdf" }))["doc"].as_u64().unwrap();
+    let outside = base.join("outside");
+    for dir in ["../outside".to_string(), outside.to_string_lossy().into_owned(), "samples/../../outside".to_string()] {
+        let args = json!({ "doc": doc, "page": 1, "rect": FIRST_CHARS, "text": "1", "folder": dir });
+        match a.call("chess_glyph_sample", &args) {
+            Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{dir}: {m}"),
+            other => panic!("chess_glyph_sample accepted folder {dir}: {other:?}"),
+        }
+    }
+    assert_eq!(std::fs::read_dir(&outside).unwrap().count(), 0, "nothing written outside the root");
+    // The control: the same call, with the folder inside the root.
+    let r = ok(&mut a, "chess_glyph_sample", json!({ "doc": doc, "page": 1, "rect": FIRST_CHARS, "text": "1", "folder": "samples" }));
+    assert!(root.join("samples").join("digit_1").join(r["name"].as_str().unwrap()).exists());
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// An encrypted document gives a sample only when allowed (it is written unencrypted), as the app
+/// asks first; a document that does not allow copying never gives one.
+#[test]
+fn an_encrypted_document_gives_a_sample_only_when_allowed() {
+    let (base, root) = workdir("sample-encrypted");
+    std::fs::write(root.join("moves.pdf"), text_pdf("1.e4 e5 2.Nf3 Nc6")).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let doc = ok(&mut a, "doc_open", json!({ "path": "moves.pdf" }))["doc"].as_u64().unwrap();
+    ok(&mut a, "doc_protect", json!({ "doc": doc, "open_password": "open", "permissions_password": "boss" }));
+    ok(&mut a, "doc_save", json!({ "doc": doc, "path": "locked.pdf" }));
+    let mut b = Automation::new().with_root(&root).unwrap();
+    let owner = ok(&mut b, "doc_open", json!({ "path": "locked.pdf", "password": "boss" }))["doc"].as_u64().unwrap();
+    let args = json!({ "doc": owner, "page": 1, "rect": FIRST_CHARS, "text": "1", "folder": "samples" });
+    match b.call("chess_glyph_sample", &args) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("allow_encrypted"), "{m}"),
+        other => panic!("an encrypted document gave a sample unasked: {other:?}"),
+    }
+    assert!(!root.join("samples").exists(), "nothing written");
+    let mut allowed = args.clone();
+    allowed["allow_encrypted"] = json!(true);
+    ok(&mut b, "chess_glyph_sample", allowed);
+    // Opened with the open password only: copying is not allowed.
+    let mut c = Automation::new().with_root(&root).unwrap();
+    let user = ok(&mut c, "doc_open", json!({ "path": "locked.pdf", "password": "open" }))["doc"].as_u64().unwrap();
+    let mut no_copy = args;
+    no_copy["doc"] = json!(user);
+    no_copy["allow_encrypted"] = json!(true);
+    match c.call("chess_glyph_sample", &no_copy) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("copying"), "{m}"),
+        other => panic!("a document that forbids copying gave a sample: {other:?}"),
+    }
+    let _ = std::fs::remove_dir_all(base);
+}
