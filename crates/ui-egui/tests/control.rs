@@ -1804,3 +1804,37 @@ fn shortcuts_follow_the_focused_window() {
     ok(&mut h, &c, "ui.key", json!({ "key": "H" }));
     assert!(h.state().quick_tool == pdfcraft_ui_egui::QuickTool::Hand, "the main window has the keyboard again");
 }
+
+/// Wave 10 U5: `ui.state` reports the chess window's geometry, so a check across monitors can be
+/// recorded by script (`pdfcraft-cli ui --control FILE state`): docked, nothing shown; out (drawn
+/// inside the main window here, as on the web), its inner size, outer rectangle and pixels per
+/// point; docked again, nothing shown.
+#[test]
+fn ui_state_reports_the_chess_windows_geometry() {
+    let (mut h, c) = harness();
+    let w = ok(&mut h, &c, "ui.state", json!({}))["chess_window"].clone();
+    assert_eq!(w["detached"], false, "{w}");
+    assert_eq!(w["embedded"], true, "{w}");
+    assert_eq!(w["shown"], Value::Null, "{w}");
+    assert_eq!(w["size"], json!([960.0, 760.0]), "{w}");
+    h.state_mut().set_chess_window_detached(true);
+    h.run_steps(6);
+    let w = ok(&mut h, &c, "ui.state", json!({}))["chess_window"].clone();
+    assert_eq!(w["detached"], true, "{w}");
+    let shown = &w["shown"];
+    assert_eq!(shown["native"], false, "{w}");
+    assert_eq!(shown["pixels_per_point"], 1.0, "{w}");
+    assert_eq!(shown["inner_size"], w["size"], "the size kept is what the contents get: {w}");
+    let number = |v: &Value| v.as_f64().unwrap_or(f64::NAN);
+    let outer: Vec<f64> = shown["outer_rect"].as_array().map(|a| a.iter().map(number).collect()).unwrap_or_default();
+    let inner: Vec<f64> = shown["inner_size"].as_array().map(|a| a.iter().map(number).collect()).unwrap_or_default();
+    assert!(outer.len() == 4 && inner.len() == 2, "{w}");
+    assert!(outer[2] - outer[0] > inner[0] && outer[3] - outer[1] > inner[1], "the outer rectangle holds the inner size: {w}");
+    // Only a native window has a place on the desktop and monitors to go by.
+    assert_eq!((&w["place"], &w["opened_at"], &shown["outer_px"]), (&Value::Null, &Value::Null, &Value::Null), "{w}");
+    assert_eq!(w["monitors"], json!([]), "{w}");
+    h.state_mut().set_chess_window_detached(false);
+    h.run_steps(3);
+    let w = ok(&mut h, &c, "ui.state", json!({}))["chess_window"].clone();
+    assert_eq!((&w["detached"], &w["shown"]), (&json!(false), &Value::Null), "{w}");
+}

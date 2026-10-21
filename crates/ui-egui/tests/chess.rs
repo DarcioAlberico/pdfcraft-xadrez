@@ -2071,14 +2071,114 @@ fn the_chess_panel_moves_to_the_window_and_the_inspector_says_so() {
     h.run_steps(3);
     assert!(!h.state().chess_window_detached());
     assert!(h.query_by_label("Dock").is_none(), "the window is gone");
-    // The board is back in its tab beside the Inspector, in front; the Inspector's tab has the
-    // list again.
+    // The board is back in its tab beside the Inspector, behind it (U5: the user is looking at
+    // the Inspector), whose Chess panel has the list again.
     assert!(h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Board));
-    assert_eq!(h.get_all_by_label_contains("Board: ").count(), 1);
-    h.get_by_label("Inspector").click();
-    h.run_steps(3);
     assert!(h.query_by_label("The chess panel is in its own window.").is_none());
     assert_eq!(h.get_all_by_label("Diagram 1 · Position read").count(), 1, "back in the Inspector");
+    pdfcraft_ui_egui::docking::command(h.state_mut(), false, &serde_json::json!({"operation": "activate", "panel": "board"})).unwrap();
+    h.run_steps(3);
+    assert_eq!(h.get_all_by_label_contains("Board: ").count(), 1);
+}
+
+/// The tab in front of the dock group that holds `panel`.
+fn front_of(app: &PdfCraftApp, panel: pdfcraft_ui_egui::docking::Panel) -> Option<pdfcraft_ui_egui::docking::Panel> {
+    use craft_ui::docking::Node;
+    let mut nodes: Vec<&Node<_>> = app.docking.layout.root.iter().collect();
+    while let Some(node) = nodes.pop() {
+        match node {
+            Node::Split { first, second, .. } => nodes.extend([&**first, &**second]),
+            Node::Tabs { panels, active } if panels.contains(&panel) => return panels.get(*active).copied(),
+            _ => {}
+        }
+    }
+    None
+}
+
+/// Wave 10 U5: docking the board back puts it in its place (its group, and its place in the
+/// group), and in front only where it was in front when it left. Bring it back, pressed in the
+/// Inspector, leaves the Inspector in front, its Chess panel showing the Diagrams again; the
+/// window's Dock puts the board in front as it was; a board that left from behind the
+/// Inspector comes back behind it; a board in another group goes back there, in front.
+#[test]
+fn docking_back_returns_the_board_to_its_group_without_covering_the_inspector() {
+    use pdfcraft_ui_egui::docking::{self, Panel};
+    let (board, inspector) = (Panel::Board, Panel::Inspector);
+    let mut h = harness();
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    let place = h.state().docking.layout.location(&board).expect("docked");
+    assert_eq!(front_of(h.state(), inspector), Some(board), "the board in front of the Inspector, in its group");
+    let out = |h: &mut Harness<'static, PdfCraftApp>| {
+        h.state_mut().set_chess_window_detached(true);
+        h.run_steps(3);
+        assert!(h.state().chess_window_detached());
+        assert_eq!(front_of(h.state(), inspector), Some(inspector));
+    };
+
+    // Bring it back, from the Inspector the user is looking at.
+    out(&mut h);
+    h.get_by_label("Bring it back").click_accesskit();
+    h.run_steps(3);
+    assert!(!h.state().chess_window_detached());
+    assert_eq!(h.state().docking.layout.location(&board).ok(), Some(place.clone()), "in its group, where it was in it");
+    assert_eq!(front_of(h.state(), board), Some(inspector), "behind the Inspector");
+    assert_eq!(h.get_all_by_label("Diagram 1 · Position read").count(), 1, "the Inspector shows the list again");
+    assert!(h.query_by_label_contains("Board: ").is_none());
+
+    // In front, out, the window's Dock: in front again, as it left.
+    docking::command(h.state_mut(), false, &serde_json::json!({"operation": "activate", "panel": "board"})).unwrap();
+    h.run_steps(2);
+    out(&mut h);
+    h.get_by_label("Dock").click();
+    h.run_steps(3);
+    assert_eq!(h.state().docking.layout.location(&board).ok(), Some(place.clone()));
+    assert_eq!(front_of(h.state(), board), Some(board));
+
+    // Out from behind the Inspector (the command, or the Board tab's menu on a tab behind):
+    // back behind it.
+    docking::command(h.state_mut(), false, &serde_json::json!({"operation": "activate", "panel": "inspector"})).unwrap();
+    h.run_steps(2);
+    out(&mut h);
+    h.get_by_label("Dock").click();
+    h.run_steps(3);
+    assert_eq!(h.state().docking.layout.location(&board).ok(), Some(place));
+    assert_eq!(front_of(h.state(), board), Some(inspector));
+
+    // In the Tools' group instead: back there, in front, even by Bring it back, and the
+    // Inspector stays as it is.
+    docking::command(h.state_mut(), false, &serde_json::json!({"operation": "move", "panel": "board", "target": "tools", "zone": "center"})).unwrap();
+    docking::command(h.state_mut(), false, &serde_json::json!({"operation": "activate", "panel": "board"})).unwrap();
+    h.run_steps(2);
+    let place = h.state().docking.layout.location(&board).expect("docked");
+    assert_eq!(front_of(h.state(), Panel::Tools), Some(board));
+    h.state_mut().set_chess_window_detached(true);
+    h.run_steps(3);
+    h.get_by_label("Bring it back").click_accesskit();
+    h.run_steps(3);
+    assert_eq!(h.state().docking.layout.location(&board).ok(), Some(place));
+    assert_eq!(front_of(h.state(), Panel::Tools), Some(board), "back with the Tools, in front");
+    assert_eq!(front_of(h.state(), inspector), Some(inspector));
+}
+
+/// Wave 10 U5: the embedded window keeps the size its contents get, as the native one does
+/// (its frame and title bar are added around it), so going from one to the other keeps it.
+#[test]
+fn the_embedded_window_keeps_the_inner_size_as_the_native_one_does() {
+    let mut h = harness_restoring(window_settings(serde_json::json!({"detached": true, "size": [900.0, 640.0]})));
+    h.run_steps(4);
+    let [w, ht] = h.state().chess_window_size();
+    assert!((w - 900.0).abs() < 1.0 && (ht - 640.0).abs() < 1.0, "the size kept: {w} × {ht}");
+    let dock = h.get_by_label("Dock").rect().center();
+    let window = h.get_all_by_label("Chess").map(|n| n.rect()).find(|r| r.contains(dock)).expect("the chess window");
+    assert!(window.width() > 904.0 && window.height() > 660.0, "the frame and title bar around the 900 × 640 contents: {window:?}");
+    // Saved and opened again: the same.
+    let saved = h.state().persist();
+    let h = harness_restoring(saved);
+    let [w2, h2] = h.state().chess_window_size();
+    assert!((w2 - w).abs() < 0.5 && (h2 - ht).abs() < 0.5, "{w2} × {h2} after {w} × {ht}");
 }
 
 /// T13b: a narrow chess window shows the board, the Diagrams or the Text, chosen on a strip. A

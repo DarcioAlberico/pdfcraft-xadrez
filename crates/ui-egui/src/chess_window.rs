@@ -2,8 +2,13 @@
 //!
 //! `chess.window.detach` moves the Board panel out of the docking workspace into a window of its
 //! own and back. While it is out, the panel is closed in the workspace with its place kept (a
-//! hidden `Location`), so its slot collapses and docking it again puts it back where it was; the
+//! hidden `Location`), so its slot collapses and docking it again puts it back where it was, in
+//! front only if it was then (and never in front of the Inspector after its Bring it back); the
 //! Read-mode board panel, which shows only while the panel is in the workspace, is gone too.
+//!
+//! Geometry (wave 10, U5): the size kept is the inner size in points, what the contents get, for
+//! the native window and the embedded one alike; the native window's place is kept in pixels of
+//! the desktop with its monitor, and opens by the rules of [`crate::window_place`].
 //!
 //! The window holds the Inspector Chess panel's Diagrams and Text tabs too (T13b): from 760 pt
 //! wide beside the board, narrower behind a Board | Diagrams | Text strip. Meanwhile the
@@ -39,21 +44,31 @@
 //! stays whole), and docks the board back with the app's usual "That didn't work" notice.
 
 use craft_ui::docking::Action;
-use egui::{Pos2, Vec2, ViewportId, vec2};
+use egui::{Pos2, Rect, Vec2, ViewportId, vec2};
 use serde_json::{Value, json};
 
 use crate::chess_board_ui::{self, Sizing};
 use crate::chess_text_ui::ChessTab;
 use crate::docking::Panel;
 use crate::theme::Tokens;
+use crate::window_place::{MainWindow, Monitor, Place, Target};
 use crate::{PdfCraftApp, RightPanel};
 
-/// The window's size the first time, in points: wide enough for the tabs beside the board.
+/// The window's inner size the first time, in points: wide enough for the tabs beside the board.
 const DEFAULT_SIZE: Vec2 = vec2(960.0, 760.0);
-/// The smallest window.
+/// The smallest window (inner size).
 const MIN_SIZE: Vec2 = vec2(320.0, 360.0);
-/// Saved sizes and positions beyond this many points are not believed.
+/// Saved sizes beyond this many points are not believed.
 const MAX_SAVED: f32 = 16_384.0;
+/// The monitors are read again at most this often while the window is out, in seconds.
+#[cfg(not(target_arch = "wasm32"))]
+const MONITORS_EVERY: f64 = 1.0;
+/// A native window that opened more than this many pixels from where it was asked to is moved
+/// there once (see [`Opened`]).
+const OFF_BY: f32 = 2.0;
+/// What an embedded window's frame and title bar add to its inner size is believed up to this
+/// many points each way.
+const MAX_CHROME: f32 = 400.0;
 /// From this width the window has the Diagrams and Text tabs beside the board, and the board's
 /// column the moves, notes and fields beside the board (§4.1).
 const WIDE_FROM: f32 = 760.0;
@@ -70,8 +85,6 @@ const MAX_PX: u32 = 2_048;
 const CONTROLS: f32 = 150.0;
 /// The narrowest right-hand column of the wide layout.
 const NOTES_MIN: f32 = 300.0;
-/// Part of a saved position's window that must be on the monitor for the position to be used.
-const ON_SCREEN: Vec2 = vec2(48.0, 48.0);
 
 /// The windows whose surface couldn't be configured since it was last asked (the patched
 /// egui-wgpu's `take_surface_failures`), oldest first.
@@ -102,16 +115,86 @@ impl ChessWindowTab {
     }
 }
 
+/// How a window was opened: the viewport builder stays the same while it is shown, or eframe
+/// would resize the window to it on every change.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct Opened {
+    /// The inner size asked for, in points.
+    inner: Vec2,
+    /// Native: where it was asked to go (none: where the system puts it).
+    target: Option<Target>,
+    /// Native: its place was compared with `target` once it showed, and corrected if it was off
+    /// (the position given at creation is converted at the scale of the monitor the system first
+    /// makes the window on, which may not be the one it goes to). Embedded: what its frame and
+    /// title bar add was measured.
+    checked: bool,
+    /// Embedded: the window was made again once with the measured frame (its first size was
+    /// off), and is not made again.
+    retried: bool,
+}
+
+impl Opened {
+    fn new(inner: Vec2, target: Option<Target>) -> Opened {
+        Opened { inner, target, checked: false, retried: false }
+    }
+}
+
+/// The window as it showed in the last frame, for the control channel (`ui.state.chess_window`).
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct Shown {
+    native: bool,
+    /// Its outer rectangle, in points of its own (native) or of the main window (embedded).
+    outer: Rect,
+    /// What its contents got, in points.
+    inner: Vec2,
+    pixels_per_point: f32,
+    /// Native only: its monitor's scale, and the monitor's size in points.
+    native_pixels_per_point: Option<f32>,
+    monitor_size: Option<Vec2>,
+}
+
+impl Shown {
+    fn to_json(self) -> Value {
+        let px = Rect::from_min_size(self.outer.min * self.pixels_per_point, self.outer.size() * self.pixels_per_point);
+        json!({
+            "native": self.native,
+            "outer_rect": [self.outer.min.x, self.outer.min.y, self.outer.max.x, self.outer.max.y],
+            "inner_size": [self.inner.x, self.inner.y],
+            "pixels_per_point": self.pixels_per_point,
+            "native_pixels_per_point": self.native_pixels_per_point,
+            "monitor_size": self.monitor_size.map(|m| [m.x, m.y]),
+            // On the desktop, in pixels (a native window's only).
+            "outer_px": (self.native && px.is_finite()).then(|| [px.min.x, px.min.y, px.width(), px.height()]),
+        })
+    }
+}
+
 /// The chess board window's state: whether it is out, its geometry, and what was asked of it.
 pub struct ChessWindow {
     detached: bool,
-    /// The window's inner size, in points: kept up to date while it is shown, and saved.
+    /// The window's inner size, in points: what its contents get, native or embedded (so going
+    /// from one to the other keeps it). Kept up to date while it is shown, and saved.
     size: Vec2,
-    /// Where the native window's outer top-left corner is on the desktop, in points, when known.
-    position: Option<Pos2>,
-    /// The size and position the window was opened with: the viewport builder stays the same
-    /// while it is shown, or eframe would resize the window to it on every change.
-    opened: Option<(Vec2, Option<Pos2>)>,
+    /// Where the native window is on the desktop, and its monitor (saved).
+    place: Option<Place>,
+    /// The board was the front tab of its dock group when it left: docking back puts it in front
+    /// again only then (saved).
+    docked_front: bool,
+    /// Docking back keeps the front tab of the group the board goes into (the Inspector's Bring
+    /// it back: the user is looking at the Inspector).
+    dock_behind: bool,
+    /// How the window was opened, while it is out.
+    opened: Option<Opened>,
+    /// The desktop's monitors (desktop only), and when they were read (input time).
+    monitors: Vec<Monitor>,
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+    monitors_read: Option<f64>,
+    /// Embedded: what the frame and title bar add to the inner size, as measured (none yet:
+    /// estimated), and the window's generation (part of its egui id: a window made again is new).
+    chrome: Option<Vec2>,
+    generation: u32,
+    /// The window as it showed in the last frame it was drawn.
+    last_shown: Option<Shown>,
     /// Out (`true`) or back in the dock (`false`), at the start of the next frame: a request
     /// may come from inside the docking workspace, which holds the layout while it draws.
     request: Option<bool>,
@@ -137,8 +220,15 @@ impl Default for ChessWindow {
         ChessWindow {
             detached: false,
             size: DEFAULT_SIZE,
-            position: None,
+            place: None,
+            docked_front: true,
+            dock_behind: false,
             opened: None,
+            monitors: Vec::new(),
+            monitors_read: None,
+            chrome: None,
+            generation: 0,
+            last_shown: None,
             request: None,
             raise: false,
             failed: false,
@@ -156,7 +246,8 @@ impl std::fmt::Debug for ChessWindow {
         f.debug_struct("ChessWindow")
             .field("detached", &self.detached)
             .field("size", &self.size)
-            .field("position", &self.position)
+            .field("place", &self.place)
+            .field("docked_front", &self.docked_front)
             .field("failed", &self.failed)
             .field("wide", &self.wide)
             .field("tab", &self.tab)
@@ -165,13 +256,16 @@ impl std::fmt::Debug for ChessWindow {
 }
 
 impl ChessWindow {
-    /// The settings value (`docking_detached`): `{detached, size: [w, h], position: [x, y] |
-    /// null, tab: "board" | "diagrams" | "text"}`.
+    /// The settings value (`docking_detached`): `{detached, size: [w, h], place: {outer: [x, y,
+    /// w, h], scale, monitor: {rect: [x, y, w, h], scale} | null} | null, docked_front, tab:
+    /// "board" | "diagrams" | "text"}`. `size` is the inner size in points, `place` is in pixels
+    /// of the desktop ([`crate::window_place`]).
     pub(crate) fn to_json(&self) -> Value {
         json!({
             "detached": self.detached,
             "size": [self.size.x, self.size.y],
-            "position": self.position.map(|p| [p.x, p.y]),
+            "place": self.place.map(Place::to_json),
+            "docked_front": self.docked_front,
             "tab": self.tab.key(),
         })
     }
@@ -192,15 +286,18 @@ impl ChessWindow {
 
     /// Take saved settings. Anything not as written by [`ChessWindow::to_json`] is ignored: a
     /// size that is not two finite numbers between 1 and 16,384 points (a smaller one is raised
-    /// to the smallest window), a position that is not two finite numbers within ±16,384, a tab
-    /// that is not one of the three (settings saved before T13b have none: the board).
-    /// Whether the position is on screen is checked when the window opens.
+    /// to the smallest window), a place [`Place::from_json`] refuses, a `docked_front` that is not
+    /// a boolean (in front), a tab that is not one of the three (settings saved before T13b have
+    /// none: the board). The `position` of settings saved before U5 (points of whichever monitor
+    /// the window was on) is not used: such a window opens beside the main window once. Whether
+    /// the place is on a monitor is checked when the window opens.
     fn restore(&mut self, v: &Value) {
         self.detached = v.get("detached").and_then(Value::as_bool).unwrap_or(false);
         if let Some([w, h]) = pair(v.get("size")).filter(|[w, h]| (1.0..=MAX_SAVED).contains(w) && (1.0..=MAX_SAVED).contains(h)) {
             self.size = vec2(w, h).max(MIN_SIZE);
         }
-        self.position = pair(v.get("position")).filter(|p| p.iter().all(|c| c.abs() <= MAX_SAVED)).map(|[x, y]| Pos2::new(x, y));
+        self.place = v.get("place").and_then(Place::from_json);
+        self.docked_front = v.get("docked_front").and_then(Value::as_bool).unwrap_or(true);
         if let Some(tab) = v.get("tab").and_then(Value::as_str).and_then(ChessWindowTab::from_key) {
             self.tab = tab;
         }
@@ -286,6 +383,14 @@ impl PdfCraftApp {
         self.chess_window.request = Some(detach);
     }
 
+    /// The Inspector's Bring it back: the board back in the dock at the start of the next frame,
+    /// in its place but not in front of the Inspector the user is looking at (whose Chess panel
+    /// gets its Diagrams and Text back).
+    pub(crate) fn bring_back_chess_window(&mut self) {
+        self.chess_window.request = Some(false);
+        self.chess_window.dock_behind = true;
+    }
+
     /// Put the board in its own window (`true`) or back in the dock, at the start of the next
     /// frame, whatever the platform: where native windows can't be opened it is a window drawn
     /// inside the main one. For hosts and tests; the command and the rail offer it only where
@@ -306,28 +411,99 @@ impl PdfCraftApp {
     }
 
     fn detach_chess_board(&mut self) {
+        self.chess_window.dock_behind = false;
         if self.chess_window.detached {
             return;
         }
-        // The panel's place is kept while it is closed, for docking back.
-        if let Err(error) = self.docking.set_visible(Panel::Board, false) {
+        let board = Panel::Board;
+        let front = !self.docking.layout.contains(&board) || self.docking.exposed(board);
+        // The panel's place (its group, and where in it) is kept while it is closed, as a hidden
+        // `Location` of the workspace, for docking back.
+        if let Err(error) = self.docking.set_visible(board, false) {
             self.notify_fmt("Panel move was not applied: {error}", &[("error", &error)]);
             return;
         }
+        self.chess_window.docked_front = front;
         self.chess_window.detached = true;
         self.chess_window.opened = None;
     }
 
+    /// The board back in the dock where it was when it left (the workspace's hidden `Location`:
+    /// its group, and its place in it; if that group is gone, at the end of the Inspector's
+    /// group or else right of the page, as when it is first opened). It is the front tab of its
+    /// group again only if it was when it left, and never in front of the Inspector after Bring
+    /// it back (pressed there, where the user is looking); every other group keeps its front tab.
     fn dock_chess_board(&mut self) {
+        let behind_inspector = std::mem::take(&mut self.chess_window.dock_behind);
         if !self.chess_window.detached {
             return;
         }
         self.chess_window.detached = false;
         self.chess_window.opened = None;
+        self.chess_window.last_shown = None;
         let panel = Panel::Board;
-        if let Err(error) = self.docking.set_visible(panel, true).and_then(|()| self.docking.apply(Action::Activate { panel })) {
+        let front = self.chess_window.docked_front;
+        // The tabs in front now that keep the front.
+        let keep: Vec<Panel> = Panel::ALL
+            .iter()
+            .copied()
+            .filter(|p| *p != panel && self.docking.exposed(*p) && (!front || (behind_inspector && *p == Panel::Inspector)))
+            .collect();
+        let docking = &mut self.docking;
+        let docked = docking.set_visible(panel, true).and_then(|()| {
+            if front {
+                docking.apply(Action::Activate { panel })?;
+            }
+            // Restoring makes the board its group's front tab: the front goes back where it stays.
+            for p in keep {
+                if !docking.exposed(p) {
+                    docking.apply(Action::Activate { panel: p })?;
+                }
+            }
+            Ok(())
+        });
+        if let Err(error) = docked {
             self.notify_fmt("Panel move was not applied: {error}", &[("error", &error)]);
         }
+    }
+
+    /// Read the desktop's monitors while the board is out in a native window: when it opens, then
+    /// at most once a second (it may have moved to another one). From `logic`, which has eframe's
+    /// main window.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn read_chess_window_monitors(&mut self, ctx: &egui::Context, frame: &eframe::Frame) {
+        let w = &mut self.chess_window;
+        if !w.request.unwrap_or(w.detached) || ctx.embed_viewports() {
+            return;
+        }
+        let now = ctx.input(|i| i.time);
+        let fresh = w.monitors_read.is_some_and(|t| (t..t + MONITORS_EVERY).contains(&now));
+        if w.opened.is_some() && fresh {
+            return;
+        }
+        if let Some(monitors) = crate::window_place::read_monitors(frame) {
+            w.monitors = monitors;
+        }
+        w.monitors_read = Some(now);
+    }
+
+    /// The chess window's geometry for the control channel (`ui.state.chess_window`), so a check
+    /// across monitors can be recorded by script: whether it is out and how it is drawn, its inner
+    /// size (points, saved), its saved place and the place it was opened at (pixels of the
+    /// desktop), the monitors read, and the window as it last showed (outer rectangle in points,
+    /// pixels per point, its monitor's scale and size, its outer rectangle in pixels).
+    pub(crate) fn chess_window_report(&self) -> Value {
+        let w = &self.chess_window;
+        json!({
+            "detached": self.chess_window_detached(),
+            "embedded": self.ctx.as_ref().is_none_or(egui::Context::embed_viewports),
+            "size": [w.size.x, w.size.y],
+            "place": w.place.map(Place::to_json),
+            "opened_at": w.opened.and_then(|o| o.target).map(Target::to_json),
+            "shown": w.last_shown.map(Shown::to_json),
+            "monitors": w.monitors.iter().map(|m| m.to_json()).collect::<Vec<_>>(),
+            "docked_front": w.docked_front,
+        })
     }
 
     /// The window failed: back in the dock for the rest of the session, said once.
@@ -388,6 +564,8 @@ pub(crate) fn frame(app: &mut PdfCraftApp, ctx: &egui::Context) {
     if app.docking.layout.contains(&Panel::Board) {
         app.chess_window.detached = false;
         app.chess_window.opened = None;
+        app.chess_window.last_shown = None;
+        app.chess_window.dock_behind = false;
         return;
     }
     if ctx.embed_viewports() {
@@ -404,17 +582,25 @@ struct Pass {
     close: bool,
     /// The board's code panicked (the message).
     panic: Option<String>,
-    /// The window's inner rectangle and outer top-left corner on the desktop.
-    inner: Option<egui::Rect>,
-    outer: Option<Pos2>,
+    /// The window's inner and outer rectangles on the desktop, in its points.
+    inner: Option<Rect>,
+    outer: Option<Rect>,
+    /// Its pixels per point, its monitor's scale (without the zoom) and its monitor's size.
+    pixels_per_point: f32,
+    native_pixels_per_point: Option<f32>,
+    monitor_size: Option<Vec2>,
 }
 
 /// The native window.
 fn native(app: &mut PdfCraftApp, ctx: &egui::Context) {
     let id = crate::viewports::chess();
-    let (size, position) = *app.chess_window.opened.get_or_insert_with(|| open_geometry(ctx, app.chess_window.size, app.chess_window.position));
-    let mut builder = egui::ViewportBuilder::default().with_title(tl!("Chess")).with_inner_size(size).with_min_inner_size(MIN_SIZE);
-    if let Some(p) = position {
+    let zoom = usable_zoom(ctx.zoom_factor());
+    let opened = match app.chess_window.opened {
+        Some(opened) => opened,
+        None => *app.chess_window.opened.insert(open_native(ctx, &app.chess_window)),
+    };
+    let mut builder = egui::ViewportBuilder::default().with_title(tl!("Chess")).with_inner_size(opened.inner).with_min_inner_size(MIN_SIZE);
+    if let Some(p) = opened.target.and_then(|t| t.pos_in_points(t.scale * zoom)) {
         builder = builder.with_position(p);
     }
     if std::mem::take(&mut app.chess_window.raise) {
@@ -423,9 +609,14 @@ fn native(app: &mut PdfCraftApp, ctx: &egui::Context) {
     let mut pass = Pass::default();
     let shown = pdfcraft_engine::guard(|| {
         ctx.show_viewport_immediate(id, builder, |ui, _class| {
-            pass.close = ui.input(|i| i.viewport().close_requested());
-            pass.inner = ui.input(|i| i.viewport().inner_rect);
-            pass.outer = ui.input(|i| i.viewport().outer_rect.map(|r| r.min));
+            ui.input(|i| {
+                pass.close = i.viewport().close_requested();
+                pass.inner = i.viewport().inner_rect;
+                pass.outer = i.viewport().outer_rect;
+                pass.pixels_per_point = i.pixels_per_point;
+                pass.native_pixels_per_point = i.viewport().native_pixels_per_point;
+                pass.monitor_size = i.viewport().monitor_size;
+            });
             // The chess keys first: the window's keys are its own, and the app's shortcuts
             // (Delete on a selected annotation) must not take them.
             let main = crate::chess_tools::take_window_keys(&mut app.chess, ui.ctx());
@@ -457,61 +648,144 @@ fn native(app: &mut PdfCraftApp, ctx: &egui::Context) {
         app.dock_chess_board();
         return;
     }
-    if let Some(inner) = pass.inner.filter(|r| r.is_finite() && r.width() >= 1.0 && r.height() >= 1.0) {
-        app.chess_window.size = inner.size().max(MIN_SIZE);
-    }
-    if let Some(outer) = pass.outer.filter(|p| p.is_finite()) {
-        app.chess_window.position = Some(outer);
-    }
+    keep_native_geometry(&mut app.chess_window, ctx, &pass, zoom);
     if pass.close {
         app.dock_chess_board();
     }
 }
 
-/// The size and position to open the window at: the saved size within the main window's
-/// monitor, and the saved position only if the window would be on that monitor. egui knows only
-/// that monitor's size, not where it is on the desktop, so a position is used only when the
-/// main window is on the monitor at the desktop's origin (the primary one) and the position is
-/// too; otherwise the system places the window.
-fn open_geometry(ctx: &egui::Context, size: Vec2, position: Option<Pos2>) -> (Vec2, Option<Pos2>) {
-    let (monitor, main) = ctx.input(|i| (i.viewport().monitor_size, i.viewport().outer_rect));
-    let Some(monitor) = monitor.filter(|m| m.is_finite() && m.x >= 1.0 && m.y >= 1.0) else { return (size, None) };
-    let screen = egui::Rect::from_min_size(Pos2::ZERO, monitor);
-    let size = size.min(monitor).max(MIN_SIZE);
-    let main_here = main.is_none_or(|r| screen.contains(r.center()));
-    let position = position.filter(|p| main_here && screen.contains(*p) && screen.contains(*p + ON_SCREEN));
-    (size, position)
+/// After a native window's pass: its inner size and its place on the desktop are kept (saved),
+/// and the first time it shows, a window that isn't where it was asked to go is moved there.
+fn keep_native_geometry(w: &mut ChessWindow, ctx: &egui::Context, pass: &Pass, zoom: f32) {
+    let inner = pass.inner.filter(|r| r.is_finite() && r.width() >= 1.0 && r.height() >= 1.0);
+    if let Some(inner) = inner {
+        w.size = inner.size().max(MIN_SIZE);
+    }
+    let ppp = pass.pixels_per_point;
+    let Some(outer) = pass.outer.filter(|r| r.is_finite() && r.is_positive()) else { return };
+    if !(ppp.is_finite() && ppp > 0.0) {
+        return;
+    }
+    let scale = pass.native_pixels_per_point.filter(|s| s.is_finite() && *s > 0.0).unwrap_or(ppp / zoom);
+    if let Some(place) = Place::of(outer, ppp, scale, &w.monitors) {
+        w.place = Some(place);
+    }
+    w.last_shown = Some(Shown {
+        native: true,
+        outer,
+        inner: inner.map_or(w.size, |r| r.size()),
+        pixels_per_point: ppp,
+        native_pixels_per_point: pass.native_pixels_per_point,
+        monitor_size: pass.monitor_size,
+    });
+    let Some(opened) = w.opened.as_mut().filter(|o| !o.checked) else { return };
+    opened.checked = true;
+    // The position given at creation is converted at the scale of the monitor the system first
+    // made the window on: on another monitor's scale it lands elsewhere. Moved once, in this
+    // window's points now.
+    if let Some(at) = opened.target.and_then(|t| t.pos_in_points(ppp))
+        && (outer.min - at).length() * ppp > OFF_BY
+    {
+        ctx.send_viewport_cmd_to(crate::viewports::chess(), egui::ViewportCommand::OuterPosition(at));
+    }
+}
+
+/// How to open the native window ([`crate::window_place::target`]): at its saved place on the
+/// monitor it was on, else beside the main window, with the saved inner size shrunk to fit. When
+/// neither the monitors nor the main window are known, the saved size within the main window's
+/// monitor, where the system puts it.
+fn open_native(ctx: &egui::Context, w: &ChessWindow) -> Opened {
+    let zoom = usable_zoom(ctx.zoom_factor());
+    let (outer, ppp, native, monitor) =
+        ctx.input(|i| (i.viewport().outer_rect, i.pixels_per_point, i.viewport().native_pixels_per_point, i.viewport().monitor_size));
+    let scale = native.filter(|s| s.is_finite() && *s > 0.0).unwrap_or(ppp / zoom);
+    let main = outer.and_then(|r| MainWindow::of(r, ppp, scale));
+    if let Some(target) = crate::window_place::target(w.place.as_ref(), w.size, MIN_SIZE, zoom, &w.monitors, main.as_ref()) {
+        return Opened::new(target.inner, Some(target));
+    }
+    let size = monitor.filter(|m| m.is_finite() && m.x >= 1.0 && m.y >= 1.0).map_or(w.size, |m| w.size.min(m)).max(MIN_SIZE);
+    Opened { checked: true, ..Opened::new(size, None) }
+}
+
+fn usable_zoom(zoom: f32) -> f32 {
+    if zoom.is_finite() && zoom > 0.0 { zoom } else { 1.0 }
+}
+
+/// What an embedded window's frame and title bar add to its inner size, before it has been
+/// measured: an estimate from the style (the first window is made again, once, if it is off).
+fn chrome_estimate(ctx: &egui::Context) -> Vec2 {
+    let margin = ctx.global_style().spacing.window_margin.sum();
+    let estimate = margin * 2.0 + vec2(2.0, 30.0);
+    if estimate.is_finite() { estimate.clamp(Vec2::ZERO, Vec2::splat(MAX_CHROME)) } else { vec2(16.0, 40.0) }
 }
 
 /// The window drawn inside the main one, where native windows aren't available (the web,
-/// kittest, the `shot` example).
+/// kittest, the `shot` example). Its size is kept as the native window's is, as what its
+/// contents get: egui's window sizes are outer sizes (frame and title bar included), so what
+/// those add is measured and added.
 fn embedded(app: &mut PdfCraftApp, ctx: &egui::Context) {
     let mut open = true;
-    let id = egui::Id::new("pdfcraft-chess-window");
-    if std::mem::take(&mut app.chess_window.raise) {
+    let w = &mut app.chess_window;
+    let wanted = w.size;
+    let opened = *w.opened.get_or_insert_with(|| Opened::new(wanted, None));
+    let chrome = w.chrome.unwrap_or_else(|| chrome_estimate(ctx));
+    let id = egui::Id::new(("pdfcraft-chess-window", w.generation));
+    if std::mem::take(&mut w.raise) {
         ctx.move_to_top(egui::LayerId::new(egui::Order::Middle, id));
     }
     // At first on the right, over the Inspector (whose Chess panel now only says where its tabs
-    // are), leaving the page in view. `default_size` is the whole window's, title bar included:
-    // so is the size kept.
+    // are), leaving the page in view.
+    let outer = opened.inner + chrome;
     let screen = ctx.content_rect();
-    let right = Pos2::new(screen.right() - app.chess_window.size.x - 8.0, screen.top() + 96.0).max(screen.left_top());
+    let right = Pos2::new(screen.right() - outer.x - 8.0, screen.top() + 96.0).max(screen.left_top());
+    let mut inner_now = None;
     let window = egui::Window::new(tl!("Chess"))
         .id(id)
         .default_pos(if right.is_finite() { right } else { Pos2::ZERO })
-        .default_size(app.chess_window.size)
-        .min_size(MIN_SIZE)
+        .default_size(outer)
+        .min_size(MIN_SIZE + chrome)
         .resizable(true)
         .collapsible(false)
         .open(&mut open)
-        .show(ctx, |ui| contents(app, ui));
+        .show(ctx, |ui| {
+            // What the contents get: the inner size (not in the invisible pass that sizes a new
+            // window).
+            if !ui.is_sizing_pass() {
+                inner_now = Some(ui.available_size());
+            }
+            contents(app, ui)
+        });
     app.chess_window.shown = true;
-    if let Some(s) = window.map(|w| w.response.rect.size()).filter(|s| s.is_finite() && s.x >= 1.0 && s.y >= 1.0) {
-        app.chess_window.size = s.max(MIN_SIZE);
+    let rect = window.map(|w| w.response.rect).filter(|r| r.is_finite());
+    if let (Some(inner), Some(rect)) = (inner_now.filter(|s| s.is_finite() && s.x >= 1.0 && s.y >= 1.0), rect) {
+        keep_embedded_geometry(&mut app.chess_window, inner, rect, ctx.pixels_per_point());
     }
     if !open {
         app.dock_chess_board();
     }
+}
+
+/// After an embedded window was drawn with `inner` for its contents in an outer `rect`: what its
+/// frame adds is measured, and the first time, a window whose contents didn't get the size asked
+/// for (the frame was estimated) is made again with the frame measured, once. Then its inner
+/// size is kept (saved).
+fn keep_embedded_geometry(w: &mut ChessWindow, inner: Vec2, rect: Rect, pixels_per_point: f32) {
+    let measured = rect.size() - inner;
+    if measured.is_finite() && measured.min_elem() >= 0.0 && measured.max_elem() <= MAX_CHROME {
+        w.chrome = Some(measured);
+    }
+    if let Some(o) = w.opened.as_mut().filter(|o| !o.checked) {
+        if (inner - o.inner).abs().max_elem() > 0.5 && !o.retried {
+            o.retried = true;
+            w.generation = w.generation.wrapping_add(1);
+        } else {
+            o.checked = true;
+        }
+    }
+    if w.opened.is_some_and(|o| o.checked) {
+        w.size = inner.max(MIN_SIZE);
+    }
+    w.last_shown = Some(Shown { native: false, outer: rect, inner, pixels_per_point, native_pixels_per_point: None, monitor_size: None });
 }
 
 /// The open document, for the Diagrams and Text tabs.
@@ -739,7 +1013,8 @@ mod tests {
         let mut w = ChessWindow {
             detached: true,
             size: vec2(900.0, 700.0),
-            position: Some(Pos2::new(40.0, 60.0)),
+            place: Some(place()),
+            docked_front: false,
             tab: ChessWindowTab::Text,
             ..ChessWindow::default()
         };
@@ -748,7 +1023,8 @@ mod tests {
         back.restore(&saved);
         assert!(back.detached);
         assert_eq!(back.size, vec2(900.0, 700.0));
-        assert_eq!(back.position, Some(Pos2::new(40.0, 60.0)));
+        assert_eq!(back.place, Some(place()));
+        assert!(!back.docked_front);
         assert_eq!(back.tab, ChessWindowTab::Text);
         // A tab not one of the three, or none (saved before T13b): the board.
         for tab in [json!("Text"), json!("moves"), json!(1), json!(null)] {
@@ -757,17 +1033,21 @@ mod tests {
             assert_eq!(back.tab, ChessWindowTab::Board, "{tab}");
         }
         // Each bad value is ignored on its own; the others are kept.
-        for (bad, size, position) in [
-            (json!({"detached": true, "size": [-5.0, 700.0], "position": [1.0, 2.0]}), DEFAULT_SIZE, Some(Pos2::new(1.0, 2.0))),
-            (json!({"detached": true, "size": [1e9, 700.0], "position": null}), DEFAULT_SIZE, None),
-            (json!({"detached": true, "size": ["wide", 700.0], "position": [1e30, 2.0]}), DEFAULT_SIZE, None),
-            (json!({"detached": true, "size": [800.0], "position": [1.0, 2.0, 3.0]}), DEFAULT_SIZE, None),
-            (json!({"detached": true, "size": [10.0, 10.0], "position": "here"}), MIN_SIZE, None),
+        let good = place().to_json();
+        for (bad, size, kept) in [
+            (json!({"detached": true, "size": [-5.0, 700.0], "place": good}), DEFAULT_SIZE, Some(place())),
+            (json!({"detached": true, "size": [1e9, 700.0], "place": null}), DEFAULT_SIZE, None),
+            (json!({"detached": true, "size": ["wide", 700.0], "place": {"outer": [1e30, 2.0, 800.0, 600.0], "scale": 1.0}}), DEFAULT_SIZE, None),
+            (json!({"detached": true, "size": [800.0], "place": {"outer": [1.0, 2.0, 800.0, 600.0], "scale": f64::NAN}}), DEFAULT_SIZE, None),
+            (json!({"detached": true, "size": [10.0, 10.0], "place": "here"}), MIN_SIZE, None),
+            // Settings from before U5: a position in points of an unknown monitor is not used.
+            (json!({"detached": true, "size": [900.0, 700.0], "position": [40.0, 60.0]}), vec2(900.0, 700.0), None),
         ] {
             w = ChessWindow::default();
             w.restore(&bad);
             assert!(w.detached);
-            assert_eq!((w.size, w.position), (size, position), "{bad}");
+            assert!(w.docked_front, "in front unless saved otherwise");
+            assert_eq!((w.size, w.place), (size, kept), "{bad}");
         }
         // Not an object at all: nothing out, nothing changed.
         for bad in [json!(null), json!(7), json!("detached"), json!({"detached": "yes"})] {
@@ -778,24 +1058,42 @@ mod tests {
         }
     }
 
-    /// PGN toolbar T16: random JSON in place of `docking_detached`, or in any of its fields, never
-    /// panics, and what is kept is always a usable window: a size within the limits, a position
-    /// within ±16,384 points, a tab of the three, written back as it was read. Through the app
-    /// too, where a window restored out of the dock takes the Board panel out of the workspace.
+    /// A place on the 150% monitor of two.
+    fn place() -> Place {
+        let monitor = Monitor::new(1920.0, -200.0, 3440.0, 1440.0, 1.5);
+        Place { outer: Rect::from_min_size(Pos2::new(2400.0, 0.0), vec2(1464.0, 1200.0)), scale: 1.5, monitor }
+    }
+
+    /// PGN toolbar T16, U5: random JSON in place of `docking_detached`, or in any of its fields
+    /// (the place's too), never panics, and what is kept is always a usable window: a size within
+    /// the limits, a place of finite pixels within ±65,536 and a scale within 0.25-8, a tab of the
+    /// three, written back as it was read; and where the window would open is always a finite
+    /// place wholly on a monitor. Through the app too, where a window restored out of the dock
+    /// takes the Board panel out of the workspace.
     #[test]
     fn random_saved_settings_never_panic_and_only_usable_values_are_kept() {
         use crate::chess_autosave::tests::{Rng, random_value};
         let mut rng = Rng(0x7E16_0D0C);
-        let fields = ["detached", "size", "position", "tab"];
+        let fields = ["detached", "size", "place", "docked_front", "tab"];
+        let place_fields = ["outer", "scale", "monitor"];
+        let monitors = [Monitor::new(0.0, 0.0, 1920.0, 1080.0, 1.0).unwrap(), place().monitor.unwrap()];
+        let main = MainWindow { outer: Rect::from_min_size(Pos2::new(100.0, 50.0), vec2(1200.0, 900.0)), scale: 1.0 };
         let mut app = PdfCraftApp::new();
         for round in 0..2000 {
             let v = if round % 2 == 0 {
                 random_value(&mut rng, 3)
             } else {
                 // A good value with one or more fields replaced.
-                let mut v = ChessWindow { detached: true, position: Some(Pos2::new(5.0, 6.0)), ..ChessWindow::default() }.to_json();
+                let mut v = ChessWindow { detached: true, place: Some(place()), ..ChessWindow::default() }.to_json();
                 for _ in 0..1 + rng.below(3) {
-                    v[fields[rng.below(fields.len())]] = random_value(&mut rng, 2);
+                    let field = rng.below(place_fields.len());
+                    let value = random_value(&mut rng, 2);
+                    match v.get_mut("place").and_then(Value::as_object_mut) {
+                        Some(place) if rng.below(2) == 0 => {
+                            place.insert(place_fields[field].to_owned(), value);
+                        }
+                        _ => v[fields[rng.below(fields.len())]] = value,
+                    }
                 }
                 v
             };
@@ -803,11 +1101,28 @@ mod tests {
             w.restore(&v);
             assert!(w.size.x.is_finite() && w.size.y.is_finite(), "{v}");
             assert!((MIN_SIZE.x..=MAX_SAVED).contains(&w.size.x) && (MIN_SIZE.y..=MAX_SAVED).contains(&w.size.y), "{v}: {:?}", w.size);
-            assert!(w.position.is_none_or(|p| p.x.abs() <= MAX_SAVED && p.y.abs() <= MAX_SAVED), "{v}: {:?}", w.position);
+            assert!(
+                w.place.is_none_or(|p| p.outer.is_finite()
+                    && p.outer.min.x.abs() <= 65_536.0
+                    && p.outer.min.y.abs() <= 65_536.0
+                    && (0.25..=8.0).contains(&p.scale)),
+                "{v}: {:?}",
+                w.place
+            );
             assert_eq!(w.detached, v.get("detached").and_then(Value::as_bool).unwrap_or(false), "{v}");
             let mut again = ChessWindow::default();
             again.restore(&w.to_json());
-            assert_eq!((again.detached, again.size, again.position, again.tab), (w.detached, w.size, w.position, w.tab), "{v}");
+            assert_eq!(
+                (again.detached, again.size, again.place, again.docked_front, again.tab),
+                (w.detached, w.size, w.place, w.docked_front, w.tab),
+                "{v}"
+            );
+            for monitors in [&monitors[..], &monitors[..1]] {
+                let t = crate::window_place::target(w.place.as_ref(), w.size, MIN_SIZE, 1.0, monitors, Some(&main)).expect("a place");
+                let on =
+                    monitors.iter().any(|m| m.rect.contains(t.pos) && m.rect.contains(t.pos + (t.inner + crate::window_place::CHROME) * m.scale));
+                assert!(t.pos.is_finite() && on, "{v}: {t:?}");
+            }
             if round % 20 == 0 {
                 app.restore_chess_window(&v);
                 assert!(!app.chess_window.detached || !app.docking.layout.contains(&Panel::Board), "{v}");
@@ -892,5 +1207,59 @@ mod tests {
         // Tiny, or not a size at all: the smallest board, and nothing that could make `clamp` panic.
         assert_eq!(sizing(vec2(10.0, 10.0)).max_side, 160.0);
         assert!(sizing(vec2(f32::NAN, f32::INFINITY)).max_side.is_finite());
+    }
+
+    /// Wave 10 U5: the native window and the embedded one keep the same size, what their contents
+    /// get, so going from one to the other neither grows nor shrinks the window. The embedded
+    /// window's frame is measured; a first one made with a wrong estimate is made again, once.
+    #[test]
+    fn the_size_kept_is_the_inner_size_native_or_embedded() {
+        let ctx = egui::Context::default();
+        let mut w = ChessWindow { size: vec2(900.0, 640.0), ..ChessWindow::default() };
+        // Native, on a 150% monitor: its inner rectangle is kept, and its place in pixels.
+        let inner = Rect::from_min_size(Pos2::new(1608.0, -70.0), vec2(900.0, 640.0));
+        let outer = Rect::from_min_max(Pos2::new(1600.0, -100.0), inner.max + vec2(8.0, 8.0));
+        let pass = Pass {
+            inner: Some(inner),
+            outer: Some(outer),
+            pixels_per_point: 1.5,
+            native_pixels_per_point: Some(1.5),
+            monitor_size: Some(vec2(2293.3, 960.0)),
+            ..Pass::default()
+        };
+        w.opened = Some(Opened::new(w.size, None));
+        keep_native_geometry(&mut w, &ctx, &pass, 1.0);
+        assert_eq!(w.size, vec2(900.0, 640.0));
+        assert_eq!(w.place.map(|p| (p.outer.min, p.scale)), Some((Pos2::new(2400.0, -150.0), 1.5)));
+        // Embedded: asked for that inner size, with a frame of 12 × 36 points; first estimated
+        // as 20 × 30, so its contents first got 892 × 646: made again, and that size not kept.
+        w.opened = Some(Opened::new(w.size, None));
+        let generation = w.generation;
+        keep_embedded_geometry(&mut w, vec2(892.0, 646.0), Rect::from_min_size(Pos2::ZERO, vec2(904.0, 682.0)), 1.0);
+        assert_eq!(w.generation, generation.wrapping_add(1), "made again");
+        assert_eq!(w.chrome, Some(vec2(12.0, 36.0)), "with its frame measured");
+        assert_eq!(w.size, vec2(900.0, 640.0), "the size it got first is not kept");
+        // Made again with the frame measured: the size asked for, kept as it was.
+        keep_embedded_geometry(&mut w, vec2(900.0, 640.0), Rect::from_min_size(Pos2::ZERO, vec2(912.0, 676.0)), 1.0);
+        assert_eq!(w.size, vec2(900.0, 640.0));
+        assert_eq!(w.generation, generation.wrapping_add(1), "only once");
+        // Resized by the user: the contents' size is kept, never the outer one.
+        keep_embedded_geometry(&mut w, vec2(1000.0, 700.0), Rect::from_min_size(Pos2::ZERO, vec2(1012.0, 736.0)), 1.0);
+        assert_eq!(w.size, vec2(1000.0, 700.0));
+        // A second wrong first frame is lived with (no loop): the size it got is kept.
+        w.opened = Some(Opened { retried: true, ..Opened::new(vec2(1000.0, 700.0), None) });
+        keep_embedded_geometry(&mut w, vec2(990.0, 690.0), Rect::from_min_size(Pos2::ZERO, vec2(1002.0, 726.0)), 1.0);
+        assert_eq!(w.generation, generation.wrapping_add(1));
+        assert_eq!(w.size, vec2(990.0, 690.0));
+        // Back to native: it opens at that inner size.
+        let opened = open_native(&ctx, &w);
+        assert_eq!(opened.inner, vec2(990.0, 690.0));
+        // Nonsense from the backend is ignored.
+        let before = (w.size, w.place);
+        let bad = Pass { inner: Some(Rect::NAN), outer: Some(Rect::NAN), pixels_per_point: f32::NAN, ..Pass::default() };
+        keep_native_geometry(&mut w, &ctx, &bad, 1.0);
+        let zero = Pass { outer: Some(outer), pixels_per_point: 0.0, ..Pass::default() };
+        keep_native_geometry(&mut w, &ctx, &zero, 1.0);
+        assert_eq!((w.size, w.place), before);
     }
 }

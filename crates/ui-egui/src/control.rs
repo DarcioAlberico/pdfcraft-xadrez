@@ -13,7 +13,11 @@
 //!
 //! Methods (JSON in, JSON out):
 //! - `ui.state`: open documents, active document, page, zoom, page errors, mode, panels, dialog,
-//!   notice and observed window dimensions in logical points.
+//!   notice and observed window dimensions in logical points; `chess_window`, the chess window's
+//!   geometry (whether it is out and embedded, its inner size, its saved place and the place it
+//!   opened at in pixels of the desktop, the monitors read, and `shown`: its outer rectangle,
+//!   pixels per point, monitor scale and size as it last showed), so a check across monitors can
+//!   be recorded by script.
 //! - `ui.inspect {query?, role?, focused?, limit?}`: widgets in tree order with `id` (a string), `role`, `label`,
 //!   `value`, `rect` (points), `enabled`, `toggled`, `selected`, `clickable`, `focusable`, `focused`, `depth`.
 //! - `ui.click {id}` | `{label}` | `{x, y, button?}`: click a widget (by its AccessKit action) or a
@@ -793,7 +797,7 @@ impl Host for crate::PdfCraftApp {
             self.pending_opens.iter().map(|pending| json!({ "token": pending.token, "name": pending.name, "path": pending.path })).collect();
         #[cfg(target_arch = "wasm32")]
         let pending_opens: Vec<Value> = Vec::new();
-        json!({
+        let mut state = json!({
             "docking": self.docking,
             "documents": docs,
             "pending_opens": pending_opens,
@@ -864,7 +868,10 @@ impl Host for crate::PdfCraftApp {
             "progress": self.progress_notice.as_ref().map(|p| json!({ "label": p.label, "fraction": p.fraction })),
             "password_prompt": self.password_prompt.is_some(),
             "close_prompt": self.close_request.is_some(),
-        })
+        });
+        // The chess window's geometry (U5), for a check across monitors recorded by script.
+        state["chess_window"] = self.chess_window_report();
+        state
     }
 
     fn command(&mut self, id: &str) -> Reply {
