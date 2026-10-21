@@ -321,3 +321,21 @@ fn a_narrow_gutter_is_cut_before_the_columns_are_read() {
     );
     assert!(moves.iter().all(|(_, st)| *st == MoveStatus::Valid), "{moves:?}");
 }
+
+/// A book set with ISChess (Quality Chess, Chess Informant): its letters are signs and pieces.
+/// `1.e4 e5 2.` then `C` (a white knight) `f3` and `O` (±) read as 2.Nf3 with White clearly better.
+#[test]
+fn ischess_pieces_and_signs_are_read_from_the_text_layer() {
+    let content = format!(
+        "{}BT /F2 10 Tf 50 550 Td (1.e4 e5 2.) Tj /F3 10 Tf (C) Tj /F2 10 Tf (f3) Tj /F3 10 Tf (O) Tj ET\n",
+        super::font_board(50.0, 50.0, super::MERIDA_START)
+    );
+    let (mut s, id) = open(super::pdf_fonts(&content, &["ChessMerida", "Times-Roman", "ISChess"], None, ""));
+    let read = s.chess_document(id, &[], &no_model(), None).unwrap();
+    let inlines: Vec<&Inline> = read.doc.pages[0].blocks.iter().flat_map(|b| b.inlines()).collect();
+    let moves: Vec<(&str, MoveStatus)> =
+        inlines.iter().filter_map(|i| if let Inline::Move(m) = i { Some((m.san.as_str(), m.status)) } else { None }).collect();
+    assert_eq!(moves, vec![("e4", MoveStatus::Valid), ("e5", MoveStatus::Valid), ("Nf3", MoveStatus::Valid)], "{:#?}", read.doc);
+    let nags: Vec<u16> = inlines.iter().filter_map(|i| if let Inline::Nag { code, .. } = i { Some(*code) } else { None }).collect();
+    assert_eq!(nags, vec![16], "{:#?}", read.doc);
+}

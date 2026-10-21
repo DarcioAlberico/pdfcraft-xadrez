@@ -244,6 +244,24 @@ fn informator_symbol_font_signs_are_mapped() {
 }
 
 #[test]
+fn ischess_signs_and_coloured_pieces_are_read() {
+    // ISChess draws its signs on letters: O is ±, Q is +-, a is !?.
+    let page = Page::new().text("23.Rxe8").text_in("a", "ABCDEF+ISChess").text(" Kxe8 24.Qh5").text_in("O", "ISChess");
+    assert_eq!(
+        runs(&page.read(None)),
+        vec![vec![white(23), mv("Rxe8", "Rxe8"), ChessRun::Nag(5), mv("Kxe8", "Kxe8"), white(24), mv("Qh5", "Qh5"), ChessRun::Nag(16)]]
+    );
+    let winning = Page::new().text("31.Rd7").text_in("Q", "ISChess");
+    assert_eq!(runs(&winning.read(None)), vec![vec![white(31), mv("Rd7", "Rd7"), ChessRun::Nag(18)]]);
+    // The pieces sit on A–L in White/Black pairs: C is a white knight, J a black queen.
+    let pieces = Page::new().text("12.").text_in("C", "ISChess").text("f3 ").text_in("J", "ISChess").text("d6");
+    assert_eq!(runs(&pieces.read(None)), vec![vec![white(12), mv("Nf3", "♘f3"), mv("Qd6", "♛d6")]]);
+    // A symbol-cmap ISChess (codes at U+F0xx) reads the same.
+    let symbol = Page::new().text("Nf3").text_in("\u{F04F}", "ISChess");
+    assert_eq!(runs(&symbol.read(None)), vec![vec![mv("Nf3", "Nf3"), ChessRun::Nag(16)]]);
+}
+
+#[test]
 fn annotations_and_checks_split() {
     let read = Page::new().text("23.Rxe8+! Kxe8?? 24.Qh5+- ±").read(None);
     assert_eq!(
@@ -455,7 +473,7 @@ mod soup {
 
     use super::*;
 
-    const FONTS: &[&str] = &["Times-Roman", "SemFig", "ChessMerida", "Informator", "ChessUnknown", "", "FigurineCB-Time"];
+    const FONTS: &[&str] = &["Times-Roman", "SemFig", "ChessMerida", "Informator", "ChessUnknown", "", "FigurineCB-Time", "ISChess"];
     const CHARS: &str = "KQRBNPkqrbnpxabcdefgh12345678.…-+#!?=²³¹µ()[]{} ,;:♔♕♖♗♘♙♚♛♜♝♞♟⩲⩱±∓∞©N0Oo\u{FFFD}\u{0}\u{E000}\u{F04E}é中";
 
     fn glyph_strategy() -> impl Strategy<Value = (String, usize, Option<u32>, [f32; 4], u32, bool)> {

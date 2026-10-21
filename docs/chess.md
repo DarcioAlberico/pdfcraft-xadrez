@@ -30,6 +30,8 @@ PdfCraft looks for the models in the folder named by `PDFCRAFT_MODELS`, then bes
 
 HTML embeds the fonts (the file stays self-contained); an EPUB carries them as files of the book. A diagram font in the same `fonts` folder is for the pieces. A diagram drawn with Merida or cburnett pieces, and a book exported with SemFig or ISChess, carry those fonts into what you export. That is fine for personal use, but not for publishing.
 
+**Reading books set in ISChess.** Quality Chess and Chess Informant books often set their signs, and sometimes their figurines, in ISChess, whose letters stand for something else (`O` is ±, `Q` is +−, `a` is !?, `C` a white knight, `J` a black queen). PdfCraft reads the font by its name, so a page in it reads as the signs and pieces the book prints: `2.Cf3O` in the text layer becomes 2.♘f3 ±, an annotation of the move. The pieces sit on `A`–`L` in White/Black pairs; the other letters are signs, those with a PGN code read as that annotation. No font file is needed for reading.
+
 ## In the app
 
 Open the **Chess diagrams** panel (`chess.panel`), or run **Chess ▸ Scan** (`chess.scan`).

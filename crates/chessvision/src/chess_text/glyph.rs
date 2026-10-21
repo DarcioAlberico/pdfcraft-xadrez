@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use pdfcraft_chess::catalog::{self, FontKind};
-use pdfcraft_chess::placement::PieceKind;
+use pdfcraft_chess::placement::{Color, PieceKind};
 use pdfcraft_chess::san::{FigurineSet, figurine, figurine_piece};
 use pdfcraft_render::text::TextGlyph;
 
@@ -30,6 +30,9 @@ enum FontClass {
     Figurine,
     /// A Chess Informant symbol font: evaluation signs on Latin-1 code points.
     Informator,
+    /// ISChess: signs and coloured pieces on letters ([`catalog::ischess_sign`],
+    /// [`catalog::ischess_piece`]).
+    IsChess,
     /// A catalogued chess diagram font: a position, not text.
     Diagram,
     /// Looks like a chess font but is not catalogued.
@@ -38,6 +41,9 @@ enum FontClass {
 
 fn classify(name: &str) -> FontClass {
     let bare = catalog::normalize_font_name(name);
+    if catalog::is_ischess(name) {
+        return FontClass::IsChess;
+    }
     if bare.contains("informator") || bare.contains("informant") {
         return FontClass::Informator;
     }
@@ -228,6 +234,24 @@ impl GlyphMapper {
                     out.push(cell(informator(c)));
                 } else {
                     self.count_bad(&chars, g.code);
+                }
+            }
+            FontClass::IsChess => {
+                // The text map is believed when it is healthy (a producer may already map a glyph
+                // to its sign), else the code; each letter becomes what the font draws.
+                let letters: Vec<char> = if health(&chars) == Health::Ok { chars.clone() } else { code.into_iter().collect() };
+                if letters.is_empty() {
+                    self.count_bad(&chars, g.code);
+                }
+                for c in letters {
+                    if let Some(p) = catalog::ischess_piece(c) {
+                        let set = if p.color == Color::White { FigurineSet::Outline } else { FigurineSet::Solid };
+                        out.push(cell(figurine(p.kind, set)));
+                    } else if let Some(sign) = catalog::ischess_sign(c) {
+                        out.extend(sign.chars().map(cell));
+                    } else {
+                        out.push(cell(c));
+                    }
                 }
             }
             FontClass::UnknownChess | FontClass::Plain => {
