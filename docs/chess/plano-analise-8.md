@@ -1,6 +1,6 @@
-# Plano de implantação — Análise PDFCraft 8.0 (testador) · v4 (final)
+# Plano de implantação — Análise PDFCraft 8.0 (testador) · v5
 
-**Status:** v4 · 2026-10-21 · **final**, após três revisões: interface gráfica, usabilidade, exportações e engenharia (§9).
+**Status:** v5 · 2026-10-21 · três revisões (interface gráfica, usabilidade, exportações e engenharia) mais a revisão 4, das variantes (§7, §9).
 **Origem:** `Analise_PDFCraft_8.pdf`, 13 sugestões de um testador que usou um executável antigo (0.8.0). Cada sugestão foi conferida contra o `main` de 2026-10-21 (`14d57da`, PRs até #97) por três auditorias de código e por capturas do app real dirigido pelo canal de controle (`--control`; cliente em `D:\Python-Chess2\PdfCraft\ux\ui.py`).
 **Repositório:** `DarcioAlberico/pdfcraft-xadrez` (Rust, egui). Crates: `chess` (L0), `chessvision`, `export`, `engine` (L6), `ui-egui`, `automation`.
 **Público de cada passo:** uma sessão de agente que começa do zero; cada passo traz contexto, tarefas, verificação, critério de saída e reversão.
@@ -12,7 +12,7 @@
 
 - **Regras da casa:** `AGENTS.md`/`CLAUDE.md` — sem pânico; camadas (`cargo xtask layers`); `chess`/`chessvision`/`engine` compilam para wasm (sem IO de arquivo direto no engine); **toda função nova tem ferramenta headless** e entrada em `parity/acrobat-features.toml`; ferramentas respeitam `--root`. Portões de `docs/chess/blueprint.md` §4.
 - **Tela de referência: 1366 × 768** (a janela do usuário abre com 1360 × 705 pontos lógicos). Tudo o que um fluxo exige fica visível sem rolar; 1920 × 1080 é o segundo alvo; claro e escuro.
-- **Coordenação com a onda 10:** outra sessão faz a U6 em `chess_ui.rs`, `chess_board_ui.rs`, `chess_window.rs`. Os passos que tocam esses arquivos (P1b, P2a, P4, P6, P3b2) só começam **depois do merge da U6**; P1a, P1c, P3a1, P3b1 e P8a podem começar já. Todo passo parte de um `main` atualizado e se atualiza antes do PR.
+- **Coordenação com a onda 10:** outra sessão faz a U6 em `chess_ui.rs`, `chess_board_ui.rs`, `chess_window.rs`. Os passos que tocam esses arquivos (V2b, P1b, P2a, P4, P6, P3b2, V3) só começam **depois do merge da U6**; P1a, P1c, P3a1, P3b1, P8a, V1, V2a e V5 podem começar já. Todo passo parte de um `main` atualizado e se atualiza antes do PR.
 - **Textos:** string nova no `tl!()` (inglês é a fonte) e em `pt-br.tsv`, `ja.tsv`, `lt.tsv`, `vi.tsv`; textos pt-BR de §2.2.
 - **Ícones:** só Lucide do projeto; ícone novo pelo `ATTRIBUTION.toml` + `cargo xtask assets`. Nunca caracteres soltos (✕ ◀ ▶ ⏮ ● ▲ ○ ⋯) em botões.
 - **Fontes do usuário** (SemFig, ISChess, Merida) nunca entram no repositório; testes usam Inter de `assets/fonts` com o papel forçado ou arquivos sintéticos.
@@ -174,10 +174,13 @@ P1c + P2a + P3b2 ─► P4 navegação
 P8a PgnOrigin + etiquetas aditivas ─► P8b posições (unused, $220, skipped) ; P3a3 ─► P8b
 P9a export::flow (Word/RTF) ∥ P9b HTML/EPUB acessíveis ; P2a + P3a3 ─► P9c menu, aviso de pendências, Abrir pasta ; P9d Markdown
 P7 depende de P3b2
+V1 navegação (chess) ; V2a proteções fora da U6 ∥ V5 lixeira de lances
+U6 ─► V2b proteções no tabuleiro ─► P1b ─► P6 ─► V3 lista em árvore e bifurcações (precisa de V1)
+P8a ─► V4 PGN sem perdas
 tudo ─► P10
 ```
 
-**Podem começar já** (não tocam a interface nem os arquivos da U6): P1a, P1c, P3a1, P3b1, P8a, P9a, P9d.
+**Podem começar já** (não tocam os arquivos da U6): P1a, P1c, P3a1, P3b1, P8a, P9a, P9d e, das variantes (§7.5), V1, V2a e V5. **V2b é o primeiro passo depois da U6** (perda de dados).
 
 ### 3.2 Passos
 
@@ -259,6 +262,7 @@ Cada passo: **Contexto** (o que ler) · **Tarefas** · **Verificação** · **Sa
 | e) Voltar ao diagrama | Ctrl+[ só se mudou de página | 1 |
 | f) Exportar com origem | 3; página física em `Pdf*` | 3 + aviso + "Abrir pasta"; origem legível em qualquer programa |
 | g) Zoom e página impressa | escondidos | visíveis |
+| h) Estudar uma variante e voltar (§7) | ◀/▶ perdem a variante de vista; Backspace e o botão sob a lista apagam | ◀◀◀▶▶▶ volta ao mesmo lance; só comandos de apagar mudam a contagem de nós; o apagado se recupera após reiniciar |
 
 E ainda: zero correções perdidas; 100 % das ações principais visíveis a 1366 × 768; nenhum glifo ausente; nenhum texto colorido abaixo de 4,5:1; trilho sem interseção; jornadas a)–g) possíveis só com teclado; lista de 2000 diagramas ≤ 4 ms/quadro; HTML de 548 diagramas ≤ 15 MB; EPUB sem erros no `epubcheck`; DOCX sem reparo; PGN reimportado sem perda (próprio leitor e python-chess); ≥ 90 % de sucesso sem ajuda no teste com 3 usuários e 5 tarefas.
 
@@ -275,8 +279,170 @@ E ainda: zero correções perdidas; 100 % das ações principais visíveis a 136
 | Fonte restrita embutida | Baixa | Alto | Checagem de `fsType` |
 | Layout de encaixe salvo quebrar com a aba nova | Média | Médio | Migração no P3b2; teste com layout antigo |
 | Nova aba confundir quem usa o editor antigo | Baixa | Médio | Configuração por uma versão; nota de versão |
+| Backspace mudar de sentido surpreender quem apagava com ele | Média | Baixo | Nota de versão; Delete continua apagando, com Desfazer |
+| Lixeira de lances crescer demais | Baixa | Médio | 10 por jogo, 256 KB, a mais antiga sai primeiro |
+| Lista em árvore pesar em jogos enormes | Média | Médio | `show_viewport`; medição com 10 000 nós |
+| "Concluir" criar jogo novo confundir quem esperava substituir | Baixa | Baixo | O botão diz "Novo jogo"; substituir é a 2ª opção |
 
 Reversão: interface por `git revert`; P3a1 só cria arquivos (build revertido não os lê nem apaga); P3b2 atrás de configuração; P8a só adiciona etiquetas.
+
+## 7. Variantes e subvariantes no Tabuleiro e no PGN
+
+**Pedido do usuário (2026-10-21):** "quando retrocedo os lances tudo vai se perdendo". **Meta:** nenhum lance some sem um pedido explícito, e esse pedido sempre se desfaz, mesmo depois de reiniciar o app. Estudar uma variante e voltar a ela fica tão fácil quanto seguir a linha principal.
+
+### 7.1 Diagnóstico (main `14d57da`, código e app real)
+
+**O que já funciona.** Pelo canal de controle (`ux/tour4.py`, capturas `09-variante.png` e `10-avancou.png`), o roteiro foi: 1.e4 e5 2.Cf3 Cc6 3.Bb5, ◀◀, depois 2…Cf6 3.Bc4. O resultado é a variante "(2… Cf6 3. Bc4)", e a linha principal fica intacta. `Game::push_step` (`game.rs:448-493`) nunca apaga respostas: segue a que já existe ou acrescenta uma variante. O tabuleiro do painel, o de estudo e a janela destacada passam por ele, e também as linhas do motor e a captura "como linha" (que rebaixa a linha antiga e mostra uma prévia). No executável 0.8.0 do testador, anterior às variantes (#48), o lance novo substituía a continuação.
+
+**Onde os lances se perdem hoje**, do mais provável ao menos provável:
+
+| Id | Sev. | Caminho | Evidência |
+|---|---|---|---|
+| A8-W1 | C | **Botão "Apagar os lances depois deste"** logo abaixo da lista. Só aparece depois de voltar, exatamente quando o usuário quer jogar outro lance, e apaga também todas as variantes desse ponto, sem aviso. Shift+Delete faz o mesmo. | `chess_board_ui.rs:1292-1297`; `game.rs:496-503`; `chess_tools.rs:431-443` |
+| A8-W2 | C | **Backspace = "Apagar variante".** Quem aperta Backspace para "voltar" dentro de uma variante perde a variante inteira, subvariantes incluídas. | `chess_tools.rs:396` |
+| A8-W3 | C | **Enter no campo FEN.** Depois de voltar, o campo mostra a posição atual. Enter recarrega o FEN mesmo sem mudança e troca o jogo por um vazio: perde os lances antes e depois. | `chess_board_ui.rs:1311-1316`; `put_fen` `:303` |
+| A8-W4 | C | **"Concluir" na montagem de posição.** A dica diz "como um jogo novo", mas o botão substitui o jogo atual. O mesmo vale para "Posição inicial padrão". | `chess_study_ui.rs:423-424`; `chess_board_ui.rs:1329` |
+| A8-W5 | I | **Armadilha do ▶.** Dentro da variante, ◀◀◀ e depois ▶▶▶ seguem a linha principal, não a variante de onde se veio. A variante "some" da vista (confirmado em `10-avancou.png`). Para entrar numa variante é preciso → e depois ↓, o que ninguém descobre. No fim de uma variante, ▶ fica desabilitado sem explicação. | `game.rs:282-290`; `chess_tools.rs:1216-1232` |
+| A8-W6 | I | **Campo PGN.** Qualquer passo na lista reescreve o texto que o usuário digitava e ainda não carregou. "Carregar PGN" pula para o fim da linha principal, perde onde cada lance estava impresso na página, e a dica fala em "linha principal", sugerindo que as variantes se vão. | `refresh_fields` `chess_board_ui.rs:432-442`; `:1337-1344`; `game.rs:1021` |
+| A8-W7 | I | **Desfazer limitado.** Ctrl+Z só chega ao jogo quando as teclas de xadrez estão ativas. O histórico não é salvo, mas o autosave já gravou o jogo cortado, então reiniciar torna a perda definitiva. | `chess_history.rs:321-325`; `chess_autosave.rs:230` |
+| A8-W8 | I | **Leitura de PGN.** Um `(` sem lance antes dele na linha (`((…))`, ou uma variante antes do 1º lance) pula a variante inteira em silêncio. Os outros erros são relatados. | `game.rs:949` |
+| A8-W9 | P | **Variantes em letra pequena** no painel, sem recolher, sem indicação de bifurcação nem de "onde estou". A variante nova vai para o fim, longe de onde o olhar está. | `09-variante.png`; `rows()` `chess_board_ui.rs:916-944` |
+
+Limites que **não** apagam, e precisam continuar assim: `MAX_NODES` = 10 000 e `MAX_DEPTH` = 32 recusam o lance novo. A mensagem "jogo longo demais" serve para os dois casos e passa a distinguir "variantes aninhadas demais (máx. 32)".
+
+### 7.2 Princípios
+
+1. **Jogar nunca apaga.** Um lance diferente cria variante. Apagar é sempre um comando com nome, ícone (`scissors`, `trash-2`) e lugar no menu do lance, nunca um botão solto ao lado da lista.
+2. **Apagar sempre se desfaz.** Toda remoção mostra um aviso "14 lances apagados (2 variantes) · Desfazer" (≥ 8 s, §2.3) e guarda uma cópia que sobrevive a reiniciar (V5).
+3. **Substituir o jogo é criar outro jogo.** FEN novo, montagem e posição inicial abrem um jogo novo na coleção (`ChessCollection::new_from`). Substituir o jogo atual existe, mas como segunda opção, com nome claro.
+4. **A navegação lembra o caminho.** ▶ segue a linha de onde se voltou. Nas bifurcações, as continuações aparecem como fichas clicáveis. Nunca é preciso adivinhar um atalho.
+5. **O PGN é o jogo inteiro.** Variantes, subvariantes, comentários (antes e depois) e NAGs entram e saem sem perda. O que não se lê é relatado, nunca descartado em silêncio.
+
+### 7.3 Especificação de interface
+
+**Lista de lances em árvore** (painel, tabuleiro de estudo e janela destacada; um único `moves_column`):
+- Linha principal no corpo normal, em negrito no lance atual.
+- Variantes 1 pt menores (nunca `small`), recuadas 12 pt por nível (até 8 níveis visuais; além disso fica o recuo do nível 8 com o nível escrito: "N9").
+- Uma barra vertical de 2 pt à esquerda de cada variante, com o token `border.strong` claro/escuro, sem cor por nível: cor não é a única pista (§2).
+- Cada variante começa com um botão `chevron-down`/`chevron-right` (Recolher/Expandir; alvo de 24 pt). A variante recolhida mostra "(2… Cf6 — 3 lances)".
+- No cabeçalho da lista, um menu `list-tree` com "Expandir todas", "Recolher todas" e "Mostrar só a linha principal". A escolha fica lembrada por jogo.
+- A lista rola até o lance atual e expande automaticamente a variante em que ele está.
+
+**Onde estou.** Uma trilha acima da lista: "Linha principal › 2… Cf6 › 3. Bc4". Cada segmento é clicável e leva ao início daquela linha. O leitor de tela anuncia "Variante 1 de 2 depois de 2. Cf3, lance 3. Bc4".
+
+**Bifurcações.** Quando o lance atual tem mais de uma continuação, aparecem fichas abaixo do tabuleiro: "Continuações: **2… Cc6** · 2… Cf6". A ficha da linha lembrada fica em destaque. Clique ou ↑/↓ escolhe, e → entra. A opção "Ao avançar numa bifurcação: seguir a linha lembrada (padrão) · perguntar" abre, no segundo caso, uma lista pequena (estilo ChessBase: ↑/↓, Enter, Esc = principal).
+
+**Fim de linha.** ▶ desabilitado ganha a dica "Fim desta variante — ⏭ vai ao fim da linha principal". ⏭ vai ao fim da linha atual; Shift+⏭ vai ao fim da principal.
+
+**Jogar um lance diferente.** Cria a variante e mostra o aviso "Variante criada: 2… Cf6 · Tornar principal · Desfazer". A opção "Ao jogar um lance diferente: criar variante (padrão) · perguntar · substituir a continuação" decide o comportamento. "Perguntar" abre o diálogo com Nova variante / Nova linha principal / Substituir (apaga, com aviso e Desfazer) / Cancelar.
+
+**Menu do lance** (clique direito ou `ellipsis`; também pelo teclado: tecla Menu ou Shift+F10), com os comandos que já existem em `chess_tools.rs`, agora juntos:
+- Tornar linha principal · Subir variante · Descer variante
+- Apagar variante · Apagar daqui em diante
+- Copiar esta linha (PGN) · Copiar a partir daqui
+- Comentário antes / depois · Sinal (NAG)
+- Abrir como jogo novo
+
+**Teclado** (entra na tabela de atalhos de P1c):
+
+| Tecla | Ação |
+|---|---|
+| ←/→ | Volta/avança; → segue a linha lembrada |
+| ↑/↓ | Troca entre as continuações irmãs (já existe) |
+| Home/End | Início/fim da linha atual |
+| Shift+End | Fim da linha principal |
+| Alt+↑/↓ | Sobe/desce a variante (já existe) |
+| Delete | Apagar variante, com aviso e Desfazer |
+| Shift+Delete | Apagar daqui em diante, com aviso e Desfazer |
+| **Backspace** | **Volta um lance; deixa de apagar** |
+| Ctrl+Z/Ctrl+Shift+Z | Desfaz/refaz no jogo sempre que o foco ou o ponteiro estiver no tabuleiro ou na lista |
+
+**Campos FEN e PGN:**
+- **FEN.** Enter só age se o texto mudou. Se o jogo tem lances, Enter abre a escolha "Novo jogo com esta posição" (padrão) ou "Substituir este jogo".
+- **PGN, enquanto o usuário edita.** O campo não é reescrito. Aparece a faixa "PGN editado · Carregar · Descartar".
+- **"Carregar PGN".** Dica nova: "Carrega o PGN acima no tabuleiro, com variantes e comentários". Se o jogo carregado é o mesmo (mesmas etiquetas e linha principal), o lance atual se mantém pelo caminho, e as origens na página (`source`) também se mantêm.
+
+**Textos pt-BR (§2.2):**
+- Apagar daqui em diante · Apagar variante
+- {n} lances apagados ({v} variantes) · Desfazer
+- Variante criada · Tornar principal
+- Continuações · Fim desta variante
+- Novo jogo com esta posição · Substituir este jogo
+- PGN editado · Recuperar lances apagados
+- Variantes aninhadas demais (máximo 32)
+
+### 7.4 Especificação do PGN
+
+**Leitura:**
+- RAV aninhado até `MAX_DEPTH`, comentários `{}` antes e depois, NAGs `$n` e sinais (`!?`, `±`, os da ISChess já mapeados) em qualquer nível.
+- A variante vazia ou sem lance antes dela **é relatada** e não descartada. Vira um aviso no relatório da leitura (`PgnWarning::OrphanVariation { at }`), e o texto vai para um comentário no lugar.
+- Profundidade acima de 32: o aviso é "variante aninhada demais, lida até o nível 32", nunca silêncio.
+
+**Escrita:**
+- Um único escritor, o de `game.rs`, como em A8-E1/P8a.
+- Formato: variante entre parênteses, com o número de lance repetido depois de cada variante que interrompe as pretas (`3… Cc6` depois de `(…)`). Isso já existe e passa a ter golden.
+
+**Opções de exportação e cópia** (diálogo de exportação, "Copiar PGN" e `chess_export_pgn`/`chess_pgn_edit`): `variations = all` (padrão), `main` (só a linha principal) ou `depth:N`. Também `comments = all|none` e `nags = all|none`.
+
+**Prova de ida e volta:**
+- Ler → escrever → ler dá a mesma árvore (nós, ordem das irmãs, comentários, NAGs), testado com o leitor próprio e com o python-chess como oráculo (como em P8a).
+- Corpus de testes: subvariantes em 3 níveis; variante na primeira jogada das pretas; comentário antes de variante; NAG dentro de variante; profundidade 32 exata e 33; `((…))`.
+
+### 7.5 Passos
+
+Branches `feat/chess-a8-<id>`, com as mesmas regras de §3.2 (teste visto falhando, ferramenta headless, `parity/`, i18n).
+
+**V1 — Navegação que lembra a linha, no crate `chess` (pode começar já).**
+- `Game` guarda, por nó, o último filho visitado (transitório, fora do PGN). `forward()` segue esse filho; sem lembrança, segue o primeiro.
+- Novos `continuations(node)`, `line_label(node)` (para a trilha) e `end_of_main()`.
+- `GameError::TooDeep` separado de `TooLong`.
+- Ferramenta: `chess_pgn_edit` ganha as operações `back {n}`, `forward {n}` e `choose {index}`, que devolvem `current_path`.
+- *Verificação:* o teste reproduz o roteiro de `10-avancou.png` (◀◀◀▶▶▶ volta para 3.Bc4) e passa em wasm.
+- *Reversão:* revert.
+
+**V2a — Proteções fora dos arquivos da U6 (pode começar já)** (`chess_tools.rs`, `chess_study_ui.rs`, `chess_history.rs`, `chess_collection.rs`).
+- Backspace deixa de apagar e passa a voltar um lance.
+- Delete e Shift+Delete apagam com o aviso "{n} lances apagados · Desfazer".
+- "Concluir" na montagem cria um jogo novo com `new_from`; "Substituir o jogo atual" fica como opção secundária.
+- Ctrl+Z chega ao jogo quando o foco ou o ponteiro está no tabuleiro ou na lista.
+- *Verificação:* testes de UI para cada caminho, mostrando que o número de lances não muda sem um comando de apagar.
+- *Reversão:* revert.
+
+**V5 — Lixeira de lances no autosave (pode começar já)** (`chess_autosave.rs`).
+- Antes de cada remoção, guarda o jogo inteiro: as 10 últimas por jogo, ≤ 256 KB por jogo, dentro do orçamento do autosave, com o web medido à parte.
+- Novo comando "Recuperar lances apagados…": lista com data, quantidade de lances e prévia da linha; restaura como jogo novo ou substituindo o atual.
+- Ferramentas `chess_trash_list` e `chess_trash_restore`.
+- *Verificação:* apagar, reiniciar e recuperar.
+- *Reversão:* só arquivos novos.
+
+**V2b — Proteções no tabuleiro (depois da U6, antes de P1b)** (`chess_board_ui.rs`).
+- O botão "Apagar os lances depois deste" sai de baixo da lista e vai para o menu do lance.
+- FEN: Enter só age com texto mudado, e oferece "Novo jogo com esta posição".
+- "Posição inicial padrão" cria um jogo novo quando há lances.
+- Campo PGN com estado "editado". "Carregar PGN" mantém o caminho e as origens; dica nova.
+- *Verificação:* testes de UI para A8-W1, W3, W4 e W6; roteiro do canal de controle (`ux/tour5.py`) que tenta perder lances por todos os caminhos de 7.1 e confere a contagem de nós por `ui.inspect`.
+- *Reversão:* revert.
+
+**V3 — Lista em árvore, trilha e bifurcações (depois de P6 e V1)** (`chess_board_ui.rs`, `chess_window.rs`, novo `chess_moves_tree.rs`).
+- Tudo de §7.3: recolher/expandir, trilha, fichas de continuação, dica de fim de linha, aviso "Variante criada", menu do lance e as duas opções de comportamento.
+- Ícones `chevron-right`/`chevron-down`/`list-tree` pelo `ATTRIBUTION.toml`.
+- *Verificação:*
+  - Desempenho: jogo de 10 000 nós com 32 níveis, quadro ≤ 4 ms, desenhando só o visível (`show_viewport`).
+  - Testes de UI de recolher, de seguir e de escolher na bifurcação.
+  - Nomes AccessKit inspecionados.
+  - Capturas a 1366 × 768, nos temas claro e escuro.
+- *Reversão:* revert; a opção de bifurcação fica com "seguir a linha lembrada".
+
+**V4 — PGN sem perdas (depois de P8a: ambos tocam `automation/tools.rs` e o escritor)** (`chess/game.rs`, `export`, `automation/tools.rs`, diálogo de exportação).
+- Leitura: o aviso `OrphanVariation` e o aviso de profundidade.
+- Escrita: opções `variations`/`comments`/`nags` na exportação, no "Copiar PGN" e nas ferramentas.
+- Golden e ida e volta com python-chess sobre o corpus de 7.4.
+- *Verificação:* zero diferença de árvore no corpus.
+- *Reversão:* revert; as opções têm padrão igual ao comportamento atual.
+
+**Grafo, métrica e riscos:** em §3.1, §5 (jornada h) e §6.
+- **Prioridade:** V2a, V5 e V1 entram na primeira leva. V2b é o primeiro passo depois da U6.
+- **Teste de propriedade** no crate `chess`, com gerador próprio e sem dependência nova: 10 000 sequências aleatórias de navegar, jogar, promover e rebaixar nunca diminuem a contagem de nós.
 
 ## 9. Revisões
 
@@ -288,3 +454,20 @@ Incorporado: A8-U1 (correções persistentes), A8-U2 (navegação pelo filtro, "
 
 ### Revisão 3 — exportações e engenharia (2026-10-21)
 Incorporado: A8-E1–E9; contrato de `PdfPage` preservado (só adição); `PgnOrigin` único com teste de equivalência; Event só em jogos de posição; comentário no idioma do livro; opção de posições e `$220`; acessibilidade do SVG, metadados e `page-list` do EPUB; `fsType`; `export::flow` para Word/RTF; Markdown; chave por `DocKeys` + impressão digital + IoU; trait de store respeitando wasm e `--root`; concorrência, migração, esquema e privacidade; cache por página como passo próprio; `show_viewport` em vez de `show_rows`; grafo corrigido (paralelismos falsos removidos, arestas faltantes, passos divididos, U6 como pré-requisito); critérios de saída por passo; riscos e reversão; portões completos.
+
+### Revisão 4 — variantes e subvariantes (2026-10-21)
+Pedido do usuário: os lances "se perdem ao retroceder". O código foi auditado nos três tabuleiros, na captura, no motor, no PGN, no desfazer e no autosave, e o roteiro foi reproduzido no app real (`ux/tour4.py`).
+
+Conclusão: jogar depois de voltar já cria variante. A perda vem de quatro comandos de apagar ou substituir que estão à mão (A8-W1–W4) e da armadilha do ▶ (A8-W5).
+
+Incorporado:
+- §7 inteiro e os passos V1–V5;
+- a jornada h);
+- a prioridade de V2b logo depois da U6;
+- a lixeira persistente, porque o desfazer não sobrevive a reiniciar;
+- a variante órfã relatada na leitura;
+- as opções de variantes, comentários e NAGs na exportação.
+
+Rejeitado:
+- perguntar a cada lance diferente como padrão (é interrupção demais; fica como opção);
+- cor por nível de variante (a cor não pode ser a única pista).
