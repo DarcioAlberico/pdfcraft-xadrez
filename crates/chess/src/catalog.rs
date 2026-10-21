@@ -668,6 +668,89 @@ pub fn figurine_letter(c: char) -> Option<PieceKind> {
     })
 }
 
+/// Whether a font is ISChess, a symbol font in the Chess Informant tradition: every letter draws
+/// a sign or a piece ([`ischess_piece`], [`ischess_sign`]).
+pub fn is_ischess(font_name: &str) -> bool {
+    normalize_font_name(font_name).contains("ischess")
+}
+
+/// The piece an ISChess letter draws: the pieces sit on `A`–`L` in White/Black pairs (`A` ♙,
+/// `B` ♟, `C` ♘ … `K` ♔, `L` ♚), so the font tells the colours apart.
+pub fn ischess_piece(c: char) -> Option<Piece> {
+    let (kind, color) = match normalize_char(c) {
+        'A' => (PieceKind::Pawn, Color::White),
+        'B' => (PieceKind::Pawn, Color::Black),
+        'C' => (PieceKind::Knight, Color::White),
+        'D' => (PieceKind::Knight, Color::Black),
+        'E' => (PieceKind::Bishop, Color::White),
+        'F' => (PieceKind::Bishop, Color::Black),
+        'G' => (PieceKind::Rook, Color::White),
+        'H' => (PieceKind::Rook, Color::Black),
+        'I' => (PieceKind::Queen, Color::White),
+        'J' => (PieceKind::Queen, Color::Black),
+        'K' => (PieceKind::King, Color::White),
+        'L' => (PieceKind::King, Color::Black),
+        _ => return None,
+    };
+    Some(Piece::new(color, kind))
+}
+
+/// What the other ISChess letters draw. Signs with a PGN annotation code are written as the
+/// annotation table ([`crate::nag`]) writes them, so they read back as that annotation (`O` ±,
+/// `Q` +-); the rest are the nearest Unicode signs. Read off the glyph table printed in the font
+/// itself, as the PDFimport plugin by Wagner Escorcio records it (used with his permission,
+/// `docs/chess/provenance.md`), and checked against the font file (`IS-TT-01.TTF`, family
+/// ISChess).
+const ISCHESS_SIGNS: &[(char, &str)] = &[
+    ('a', "!?"),
+    ('b', "?!"),
+    ('c', "∆"),
+    ('d', "□"),
+    ('e', "⌓"),
+    ('f', "⇔"),
+    ('g', "⇗"),
+    ('h', "⊞"),
+    ('i', "⟫"),
+    ('j', "⟪"),
+    ('k', "×"),
+    ('l', "⊥"),
+    ('m', "⧉"),
+    ('n', "□■"),
+    ('o', "■■"),
+    ('p', "○○"),
+    ('q', "○‥○"),
+    ('r', "⁰₀"),
+    ('s', "⫰"),
+    ('t', ">"),
+    ('u', "⨁"),
+    ('v', "∟"),
+    ('w', "⨀"),
+    ('x', "‖"),
+    ('y', "−"),
+    ('z', "▲"),
+    ('M', "⩲"),
+    ('N', "⩱"),
+    ('O', "±"),
+    ('P', "∓"),
+    ('Q', "+-"),
+    ('R', "-+"),
+    ('S', "="),
+    ('T', "∞"),
+    ('U', "©"),
+    ('V', "⟳"),
+    ('W', "⨀"),
+    ('X', "→"),
+    ('Y', "↑"),
+    ('Z', "⇆"),
+];
+
+/// The sign an ISChess letter draws, as text ([`ISCHESS_SIGNS`]); `None` for a piece letter or
+/// anything else.
+pub fn ischess_sign(c: char) -> Option<&'static str> {
+    let c = normalize_char(c);
+    ISCHESS_SIGNS.iter().find(|(l, _)| *l == c).map(|(_, s)| *s)
+}
+
 /// Check that every piece string of every layout lists exactly six distinct characters. Part of
 /// the tests; public so a caller adding a layout can run it too.
 pub fn layout_is_well_formed(layout: &Layout) -> bool {
@@ -797,6 +880,26 @@ mod tests {
             for f in FAMILIES {
                 let _ = f.role(c);
             }
+        }
+    }
+
+    #[test]
+    fn ischess_letters() {
+        assert!(is_ischess("ABCDEF+ISChess") && is_ischess("IS-Chess") && !is_ischess("SemFig"));
+        // Pieces in White/Black pairs on A–L.
+        assert_eq!(ischess_piece('A'), Some(Piece::new(Color::White, PieceKind::Pawn)));
+        assert_eq!(ischess_piece('D'), Some(Piece::new(Color::Black, PieceKind::Knight)));
+        assert_eq!(ischess_piece('L'), Some(Piece::new(Color::Black, PieceKind::King)));
+        assert_eq!(ischess_piece('M'), None);
+        // Every other letter is a sign, and no letter is both.
+        for c in ('a'..='z').chain('M'..='Z') {
+            assert!(ischess_sign(c).is_some() && ischess_piece(c).is_none(), "{c}");
+        }
+        assert_eq!(ischess_sign('O'), Some("±"));
+        assert_eq!(ischess_sign('\u{F04F}'), Some("±"), "symbol cmap");
+        // Signs with an annotation code are spelled as the annotation table spells them.
+        for (letter, code) in [('a', 5), ('d', 7), ('M', 14), ('Q', 18), ('R', 19), ('U', 44), ('W', 22), ('Z', 132), ('u', 138), ('c', 140)] {
+            assert_eq!(ischess_sign(letter), crate::nag::by_code(code).map(|n| n.glyph), "{letter}");
         }
     }
 }

@@ -349,9 +349,11 @@ mod tests {
         assert_eq!(ischess_letter(41), Some('X'), "Black's attack too");
         assert_eq!(ischess_letter(7), Some('d'));
         assert_eq!(ischess_letter(1), None, "! is a plain character");
-        // Every code is a known annotation.
-        for (code, _) in ISCHESS_SIGNS {
-            assert!(pdfcraft_chess::nag::by_code(*code).is_some(), "${code}");
+        // Every code is a known annotation, and reading the letter back gives that annotation.
+        for (code, letter) in ISCHESS_SIGNS {
+            let nag = pdfcraft_chess::nag::by_code(*code).unwrap_or_else(|| panic!("${code}"));
+            let read = pdfcraft_chess::catalog::ischess_sign(*letter).unwrap_or_else(|| panic!("{letter}"));
+            assert!(nag.glyph == read || nag.aliases.contains(&read), "${code}: {letter} reads {read}");
         }
     }
 
