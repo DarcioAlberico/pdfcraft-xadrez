@@ -3104,3 +3104,21 @@ chess side	Black	Đen
 	Chess OCR read nothing in the area.	OCR cờ vua không đọc được gì trong vùng.
 	Reading the area…	Đang đọc vùng…
 	Chess OCR corrected or doubted some words: check the moves.	OCR cờ vua đã sửa hoặc nghi ngờ một số từ: hãy kiểm tra các nước đi.
+# Chess ▸ PGN toolbar: T10, correcting a move of the capture preview that did not play (the OCR's readings of its characters, the legal moves near it, the correction field and the full glyph palette; "Ellipsis" names a palette character).
+	Correct this move	Sửa nước đi này
+	Ellipsis	Dấu ba chấm
+	Correct {move}	Sửa {move}
+	Character {glyph}	Ký tự {glyph}
+	Character {glyph}, doubtful	Ký tự {glyph}, đáng ngờ
+	Characters read (underlined: doubtful)	Ký tự đã đọc (gạch chân: đáng ngờ)
+	Read the character as {glyph}	Đọc ký tự là {glyph}
+	Read it as	Đọc là
+	Legal moves near it	Nước đi hợp lệ gần đó
+	No legal move is near it.	Không có nước đi hợp lệ nào gần đó.
+	Not reached: correct the move that stopped before it first.	Chưa tới: hãy sửa trước nước đi mà việc đọc đã dừng lại trước đó.
+	Read as {move}	Đọc là {move}
+	Correction	Sửa lại
+	Read again	Đọc lại
+	Read the text again with the move corrected	Đọc lại văn bản với nước đi đã sửa
+	The correction couldn't be made: the move wasn't found in the text.	Không thể sửa: không tìm thấy nước đi trong văn bản.
+	The corrected text fits nowhere: nothing was changed.	Văn bản đã sửa không khớp ở đâu cả: không có gì thay đổi.

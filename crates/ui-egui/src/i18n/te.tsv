@@ -2759,3 +2759,21 @@ animation effects	Off	ఆఫ్
 	Chess OCR read nothing in the area.	చదరంగం OCR ప్రాంతంలో ఏదీ చదవలేదు.
 	Reading the area…	ప్రాంతాన్ని చదువుతోంది…
 	Chess OCR corrected or doubted some words: check the moves.	చదరంగం OCR కొన్ని పదాలను సరిదిద్దింది లేదా వాటిపై సందేహించింది: ఎత్తులను తనిఖీ చేయండి.
+# Chess ▸ PGN toolbar: T10, correcting a move of the capture preview that did not play (the OCR's readings of its characters, the legal moves near it, the correction field and the full glyph palette; "Ellipsis" names a palette character).
+	Correct this move	ఈ ఎత్తును సరిదిద్దు
+	Ellipsis	మూడు చుక్కలు
+	Correct {move}	{move} ను సరిదిద్దు
+	Character {glyph}	అక్షరం {glyph}
+	Character {glyph}, doubtful	అక్షరం {glyph}, సందేహాస్పదం
+	Characters read (underlined: doubtful)	చదివిన అక్షరాలు (అండర్‌లైన్: సందేహాస్పదం)
+	Read the character as {glyph}	అక్షరాన్ని {glyph} గా చదువు
+	Read it as	ఇలా చదువు
+	Legal moves near it	సమీపంలోని చెల్లుబాటు అయ్యే ఎత్తులు
+	No legal move is near it.	సమీపంలో చెల్లుబాటు అయ్యే ఎత్తు లేదు.
+	Not reached: correct the move that stopped before it first.	చేరలేదు: ముందుగా చదవడం దీని కంటే ముందు ఆగిన ఎత్తును సరిదిద్దండి.
+	Read as {move}	{move} గా చదువు
+	Correction	సవరణ
+	Read again	మళ్లీ చదువు
+	Read the text again with the move corrected	సరిదిద్దిన ఎత్తుతో పాఠ్యాన్ని మళ్లీ చదువు
+	The correction couldn't be made: the move wasn't found in the text.	సవరణ చేయలేకపోయాము: పాఠ్యంలో ఎత్తు కనుగొనబడలేదు.
+	The corrected text fits nowhere: nothing was changed.	సవరించిన పాఠ్యం ఎక్కడా సరిపోలేదు: ఏమీ మార్చబడలేదు.

@@ -17,6 +17,7 @@
 mod a11y;
 mod batch;
 mod chess;
+mod chess_area;
 mod chess_pgn;
 mod comments;
 mod content;
@@ -808,6 +809,7 @@ impl Automation {
             "ocr_recognize_files" => self.ocr_recognize_files(&a)?,
             "chess_detect" => self.chess_detect(&a)?,
             "chess_read" => self.chess_read(&a)?,
+            "chess_read_area" => self.chess_read_area(&a)?,
             "chess_status" => self.chess_status(&a)?,
             "chess_game" => self.chess_game(&a)?,
             "chess_pgn_edit" => self.chess_pgn_edit(&a)?,

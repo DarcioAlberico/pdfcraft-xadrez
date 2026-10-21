@@ -406,3 +406,51 @@ fn plan_cost_on_the_scenario() {
         assert!(ms < 500.0, "{name}: {ms} ms");
     }
 }
+
+// ─── T10: the legal moves near a move that did not play ─────────────────────────────────────
+
+use crate::chess::capture::{move_word, nearby_moves, stopped_moves};
+
+/// A move the reader could not play is a stopped move with the position it was tried in, and
+/// the legal moves near it there (never played: the plan is unchanged by asking).
+#[test]
+fn a_stopped_move_offers_the_legal_moves_near_it() {
+    let g = scenario_game();
+    // 19.Nxe6+ is not legal: the knight on d5 takes on e7 or f6.
+    let p = plan_at(&g, 0, CaptureMode::Line, "18.Nd5 Qxe1 19.Nxe6+ Kh7");
+    let c = p.chosen().unwrap();
+    assert_eq!(c.played, 2);
+    let stopped = stopped_moves(c, Lang::En);
+    let first = stopped.first().expect("the illegal move is a stop");
+    assert_eq!((first.text.as_str(), first.word.as_str(), first.graft), ("19.Nxe6+", "Nxe6+", false));
+    let fen = first.fen.as_deref().expect("tried after 18...Qxe1");
+    assert!(fen.starts_with("2r2rk1/1p2ppb1/p2p1npp/3N1P2/P1b1P2B/3B4/1PP3PP/R3qR1K w"), "{fen}");
+    let near: Vec<String> = first.near.iter().map(|s| s.to_english()).collect();
+    assert_eq!(near.first().map(String::as_str), Some("Nxe7+"), "{near:?}");
+    assert!(near.len() <= 3 && near.contains(&"Nxf6+".to_owned()), "{near:?}");
+    // Kh7, after it, was never reached: no position, nothing offered.
+    assert!(stopped.iter().skip(1).all(|s| s.fen.is_none() && s.near.is_empty()), "{stopped:?}");
+    // Read in Portuguese, the same move with Portuguese letters is found.
+    let near = nearby_moves(fen, "Cxe6+", Lang::Pt);
+    assert_eq!(near.first().map(|s| s.to_english()).as_deref(), Some("Nxe7+"));
+    // An ambiguous move: the moves it fits.
+    let near: Vec<String> = nearby_moves("4k3/8/8/8/8/8/4K3/R6R w - - 0 1", "Rd1", Lang::En).iter().map(|s| s.to_english()).collect();
+    assert_eq!(near, ["Rad1", "Rhd1"]);
+    // A position that is not legal offers nothing; the input is never trusted.
+    assert!(nearby_moves("not a fen", "Nf3", Lang::En).is_empty());
+    assert!(nearby_moves(fen, "", Lang::En).len() <= 3);
+    assert!(nearby_moves(fen, &"x".repeat(10_000), Lang::En).len() <= 3);
+}
+
+#[test]
+fn the_move_number_is_not_part_of_the_word() {
+    assert_eq!(move_word("19.Nxe6+"), "Nxe6+");
+    assert_eq!(move_word("19...Qd8"), "Qd8");
+    assert_eq!(move_word("19\u{2026}Qd8"), "Qd8");
+    assert_eq!(move_word("19. \u{2026}Qd8"), "Qd8");
+    assert_eq!(move_word(" 0-0 "), "0-0");
+    assert_eq!(move_word("0-0-0"), "0-0-0");
+    assert_eq!(move_word("Nf3"), "Nf3");
+    assert_eq!(move_word("19."), "");
+    assert_eq!(move_word(""), "");
+}

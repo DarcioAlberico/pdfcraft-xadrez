@@ -2867,3 +2867,21 @@ chess side	Black	Pretas
 	Chess OCR read nothing in the area.	O OCR de xadrez não leu nada na área.
 	Reading the area…	Lendo a área…
 	Chess OCR corrected or doubted some words: check the moves.	O OCR de xadrez corrigiu ou ficou em dúvida sobre algumas palavras: confira os lances.
+# Chess ▸ PGN toolbar: T10, correcting a move of the capture preview that did not play (the OCR's readings of its characters, the legal moves near it, the correction field and the full glyph palette; "Ellipsis" names a palette character).
+	Correct this move	Corrigir este lance
+	Ellipsis	Reticências
+	Correct {move}	Corrigir {move}
+	Character {glyph}	Caractere {glyph}
+	Character {glyph}, doubtful	Caractere {glyph}, duvidoso
+	Characters read (underlined: doubtful)	Caracteres lidos (sublinhados: duvidosos)
+	Read the character as {glyph}	Ler o caractere como {glyph}
+	Read it as	Ler como
+	Legal moves near it	Lances legais próximos
+	No legal move is near it.	Nenhum lance legal está próximo.
+	Not reached: correct the move that stopped before it first.	Não alcançado: corrija primeiro o lance em que a leitura parou antes dele.
+	Read as {move}	Ler como {move}
+	Correction	Correção
+	Read again	Ler de novo
+	Read the text again with the move corrected	Ler o texto de novo com o lance corrigido
+	The correction couldn't be made: the move wasn't found in the text.	Não foi possível fazer a correção: o lance não foi encontrado no texto.
+	The corrected text fits nowhere: nothing was changed.	O texto corrigido não se encaixa em lugar nenhum: nada foi alterado.

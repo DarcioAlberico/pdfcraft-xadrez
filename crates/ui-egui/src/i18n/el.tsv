@@ -2856,3 +2856,21 @@ animation effects	Off	Ανενεργά
 	Chess OCR read nothing in the area.	Το OCR σκακιού δεν διάβασε τίποτα στην περιοχή.
 	Reading the area…	Ανάγνωση της περιοχής…
 	Chess OCR corrected or doubted some words: check the moves.	Το OCR σκακιού διόρθωσε ή αμφισβήτησε ορισμένες λέξεις: ελέγξτε τις κινήσεις.
+# Chess ▸ PGN toolbar: T10, correcting a move of the capture preview that did not play (the OCR's readings of its characters, the legal moves near it, the correction field and the full glyph palette; "Ellipsis" names a palette character).
+	Correct this move	Διόρθωση αυτής της κίνησης
+	Ellipsis	Αποσιωπητικά
+	Correct {move}	Διόρθωση {move}
+	Character {glyph}	Χαρακτήρας {glyph}
+	Character {glyph}, doubtful	Χαρακτήρας {glyph}, αμφίβολος
+	Characters read (underlined: doubtful)	Χαρακτήρες που διαβάστηκαν (υπογραμμισμένοι: αμφίβολοι)
+	Read the character as {glyph}	Ανάγνωση του χαρακτήρα ως {glyph}
+	Read it as	Ανάγνωση ως
+	Legal moves near it	Κοντινές κανονικές κινήσεις
+	No legal move is near it.	Δεν υπάρχει κοντινή κανονική κίνηση.
+	Not reached: correct the move that stopped before it first.	Δεν επιτεύχθηκε: διορθώστε πρώτα την κίνηση όπου η ανάγνωση σταμάτησε νωρίτερα.
+	Read as {move}	Ανάγνωση ως {move}
+	Correction	Διόρθωση
+	Read again	Νέα ανάγνωση
+	Read the text again with the move corrected	Νέα ανάγνωση του κειμένου με τη διορθωμένη κίνηση
+	The correction couldn't be made: the move wasn't found in the text.	Η διόρθωση δεν έγινε: η κίνηση δεν βρέθηκε στο κείμενο.
+	The corrected text fits nowhere: nothing was changed.	Το διορθωμένο κείμενο δεν ταιριάζει πουθενά: δεν άλλαξε τίποτα.

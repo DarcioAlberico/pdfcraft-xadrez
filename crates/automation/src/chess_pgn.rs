@@ -22,7 +22,7 @@
 use pdfcraft_engine::chess::capture::{self, Candidate, CaptureMode, CapturePlan, CaptureText};
 use pdfcraft_engine::chess::pdfcraft_chess::fragment::FragmentItem;
 use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, GraftMode, GraftReport, GraftStopReason, MAX_COMMENT_LEN, NodeId, NodePath, Shift};
-use pdfcraft_engine::chess::pdfcraft_chess::san::{Lang, San};
+use pdfcraft_engine::chess::pdfcraft_chess::san::{Lang, San, Style};
 use serde_json::{Map, Value, json};
 
 use crate::{Args, Automation, Result, ToolError};
@@ -190,7 +190,7 @@ fn apply(game: &mut Game, op: &Value) -> std::result::Result<Map<String, Value>,
             entry.insert("graft".into(), graft_json(&graft));
         }
         "capture" => {
-            let plan = capture_plan(game, at, obj)?;
+            let (plan, lang) = capture_plan(game, at, obj)?;
             let apply = match obj.get("apply").and_then(Value::as_str) {
                 None | Some("chosen") => plan.chosen.is_some(),
                 Some("auto") => plan.chosen.is_some() && !plan.needs_preview,
@@ -202,7 +202,7 @@ fn apply(game: &mut Game, op: &Value) -> std::result::Result<Map<String, Value>,
             if !applied {
                 game.go_to_node(at);
             }
-            entry.insert("capture".into(), capture_json(&plan, applied));
+            entry.insert("capture".into(), capture_json(&plan, applied, lang));
         }
         other => return Err(format!("unknown op {other:?}")),
     }
@@ -211,22 +211,15 @@ fn apply(game: &mut Game, op: &Value) -> std::result::Result<Map<String, Value>,
 }
 
 /// The plan of a `capture` op: `text` read in `lang` (English by default) after `at` in `mode`
-/// (auto by default), the characters in `bold_runs` (`[start, end]` pairs) set in bold.
-fn capture_plan(game: &Game, at: NodeId, obj: &Map<String, Value>) -> std::result::Result<CapturePlan, Refusal> {
+/// (auto by default), the characters in `bold_runs` (`[start, end]` pairs) set in bold; with the
+/// language.
+fn capture_plan(game: &Game, at: NodeId, obj: &Map<String, Value>) -> std::result::Result<(CapturePlan, Lang), Refusal> {
     let text = obj.get("text").and_then(Value::as_str).ok_or("text is missing")?;
     let lang = match obj.get("lang").filter(|l| !l.is_null()) {
         None => Lang::En,
         Some(l) => l.as_str().and_then(Lang::from_tag).ok_or("lang is a language tag such as en or pt")?,
     };
-    let mode = match obj.get("mode").and_then(Value::as_str) {
-        None | Some("auto") => CaptureMode::Auto,
-        Some("line") => CaptureMode::Line,
-        Some("variation") => CaptureMode::Variation,
-        Some("subvariation") => CaptureMode::SubVariation,
-        Some("comment") => CaptureMode::Comment { before: false },
-        Some("comment_before") => CaptureMode::Comment { before: true },
-        Some(other) => return Err(format!("mode {other:?} is auto, line, variation, subvariation, comment or comment_before")),
-    };
+    let mode = capture_mode(obj.get("mode").and_then(Value::as_str))?;
     let bold = match obj.get("bold_runs").filter(|b| !b.is_null()) {
         None => None,
         Some(runs) => {
@@ -250,12 +243,36 @@ fn capture_plan(game: &Game, at: NodeId, obj: &Map<String, Value>) -> std::resul
         Some(bold) => CaptureText::Styled { text, bold },
         None => CaptureText::Plain(text),
     };
-    Ok(capture::plan(game, at, mode, text, lang))
+    Ok((capture::plan(game, at, mode, text, lang), lang))
 }
 
-/// A capture plan as the reply gives it: every candidate, the chosen one and whether it was applied.
-fn capture_json(plan: &CapturePlan, applied: bool) -> Value {
+/// A capture mode by its name (`auto` when none is given).
+pub(crate) fn capture_mode(name: Option<&str>) -> std::result::Result<CaptureMode, Refusal> {
+    Ok(match name {
+        None | Some("auto") => CaptureMode::Auto,
+        Some("line") => CaptureMode::Line,
+        Some("variation") => CaptureMode::Variation,
+        Some("subvariation") => CaptureMode::SubVariation,
+        Some("comment") => CaptureMode::Comment { before: false },
+        Some("comment_before") => CaptureMode::Comment { before: true },
+        Some(other) => return Err(format!("mode {other:?} is auto, line, variation, subvariation, comment or comment_before")),
+    })
+}
+
+/// A capture plan as the reply gives it: every candidate, the chosen one and whether it was applied,
+/// and the moves of the chosen one that did not play with the legal moves near each (T10), read in
+/// `lang`: offered, never applied.
+pub(crate) fn capture_json(plan: &CapturePlan, applied: bool, lang: Lang) -> Value {
+    let stopped = plan.chosen().map(|c| capture::stopped_moves(c, lang)).unwrap_or_default();
     json!({
+        "stopped": stopped.iter().map(|s| json!({
+            "text": s.text,
+            "word": s.word,
+            "fen": s.fen,
+            "near": s.near.iter().map(San::to_english).collect::<Vec<_>>(),
+            "near_as_printed": s.near.iter().map(|n| n.write(lang, Style::Letters)).collect::<Vec<_>>(),
+            "graft": s.graft,
+        })).collect::<Vec<_>>(),
         "applied": applied,
         "needs_preview": plan.needs_preview,
         "reasons": plan.reasons.iter().map(|r| r.name()).collect::<Vec<_>>(),
@@ -309,7 +326,7 @@ fn make_main(game: &mut Game, at: NodeId) -> std::result::Result<(), Refusal> {
 }
 
 /// The move at an address, or why there is none.
-fn resolve(game: &Game, at: &str) -> std::result::Result<NodeId, Refusal> {
+pub(crate) fn resolve(game: &Game, at: &str) -> std::result::Result<NodeId, Refusal> {
     if at.len() > MAX_ADDRESS_LEN {
         return Err("at is too long".into());
     }
@@ -336,7 +353,7 @@ fn resolve(game: &Game, at: &str) -> std::result::Result<NodeId, Refusal> {
 }
 
 /// `path:<i.j.k>` for a move (`path:` for the start).
-fn address_of(game: &Game, node: NodeId) -> String {
+pub(crate) fn address_of(game: &Game, node: NodeId) -> String {
     path_text(&game.path_of(node).unwrap_or_default())
 }
 

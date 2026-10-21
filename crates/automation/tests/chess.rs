@@ -1338,3 +1338,102 @@ fn chess_pgn_edit_survives_random_operation_lists() {
     let heavy = vec![json!({ "op": "play", "at": "path:", "moves": moves }); 6];
     assert!(auto.call("chess_pgn_edit", &json!({ "fen": SCENARIO, "ops": heavy })).is_err());
 }
+
+// ─── chess_read_area (PGN toolbar T10) ────────────────────────────────────────────────────────
+
+/// A 600 × 800 pt page with `text` in 14 pt Helvetica, its baseline 300 pt from the top.
+fn text_pdf(text: &str) -> Vec<u8> {
+    let content = format!("BT /F1 14 Tf 60 500 Td ({text}) Tj ET\n");
+    let objs = [
+        "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 600 800] >>".to_string(),
+        "<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>".to_string(),
+        format!("<< /Length {} >>\nstream\n{content}\nendstream", content.len()),
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>".to_string(),
+    ];
+    let mut out = b"%PDF-1.7\n".to_vec();
+    let mut offsets = Vec::new();
+    for (i, o) in objs.iter().enumerate() {
+        offsets.push(out.len());
+        out.extend_from_slice(format!("{} 0 obj\n{o}\nendobj\n", i + 1).as_bytes());
+    }
+    let xref = out.len();
+    out.extend_from_slice(format!("xref\n0 {}\n0000000000 65535 f \n", objs.len() + 1).as_bytes());
+    for o in offsets {
+        out.extend_from_slice(format!("{o:010} 00000 n \n").as_bytes());
+    }
+    out.extend_from_slice(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objs.len() + 1).as_bytes());
+    out
+}
+
+fn refused(a: &mut Automation, args: Value) -> String {
+    match a.call("chess_read_area", &args) {
+        Err(ToolError::Failed(m) | ToolError::InvalidArgs(m)) => m,
+        other => panic!("chess_read_area accepted {args}: {other:?}"),
+    }
+}
+
+/// Without the glyph model the area is not read and the reply says what to install; a degenerate
+/// area, a page the document lacks, a bad language or game, and a models folder outside the root
+/// are refused, each saying why.
+#[test]
+fn chess_read_area_says_what_it_needs_and_stays_in_the_root() {
+    let (base, root) = workdir("area");
+    std::fs::write(root.join("moves.pdf"), text_pdf("1.e4 e5 2.Nf3 Nc6")).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let doc = ok(&mut a, "doc_open", json!({ "path": "moves.pdf" }))["doc"].as_u64().unwrap();
+    let area = json!([50, 480, 400, 520]);
+    let m = refused(&mut a, json!({ "doc": doc, "page": 1, "rect": area, "models_dir": "models" }));
+    assert!(m.contains("chess-glyphs") && m.contains("PDFCRAFT_MODELS"), "{m}");
+    let m = refused(&mut a, json!({ "doc": doc, "page": 1, "rect": [50, 480, 51, 481], "models_dir": "models" }));
+    assert!(m.contains("not a rectangle"), "{m}");
+    let m = refused(&mut a, json!({ "doc": doc, "page": 1, "rect": [-900, -900, -800, -800], "models_dir": "models" }));
+    assert!(m.contains("not a rectangle"), "off the page: {m}");
+    let m = refused(&mut a, json!({ "doc": doc, "page": 2, "rect": area, "models_dir": "models" }));
+    assert!(m.contains("out of range"), "{m}");
+    let m = refused(&mut a, json!({ "doc": doc, "page": 1, "rect": [1, 2, 3], "models_dir": "models" }));
+    assert!(m.contains("rect"), "{m}");
+    let m = refused(&mut a, json!({ "doc": doc, "page": 1, "rect": area, "lang": "xx", "models_dir": "models" }));
+    assert!(m.contains("lang"), "{m}");
+    let m = refused(&mut a, json!({ "doc": doc, "page": 1, "rect": area, "fen": "nonsense", "models_dir": "models" }));
+    assert!(m.starts_with("fen"), "the game is checked before reading: {m}");
+    let m = refused(&mut a, json!({ "doc": doc, "page": 1, "rect": area, "at": "main:0", "models_dir": "models" }));
+    assert!(m.contains("fen or pgn"), "{m}");
+    let m = refused(&mut a, json!({ "doc": doc, "page": 1, "rect": area, "pgn": "1. e4", "at": "main:9", "models_dir": "models" }));
+    assert!(m.contains("no move there"), "{m}");
+    for dir in ["../outside".to_string(), base.join("outside").to_string_lossy().into_owned()] {
+        let m = refused(&mut a, json!({ "doc": doc, "page": 1, "rect": area, "models_dir": dir }));
+        assert!(m.contains("is outside the allowed directory"), "{dir}: {m}");
+    }
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// With `PDFCRAFT_CHESS_TEST_MODELS` naming the folder of the user's models, the glyph model reads
+/// the moves of a printed line and the capture is planned from the start position. Printed, and
+/// asserted only loosely: this measures the model, not the plumbing.
+#[test]
+fn chess_read_area_reads_and_plans_with_the_users_model() {
+    let Some(models) = std::env::var_os("PDFCRAFT_CHESS_TEST_MODELS") else {
+        eprintln!("skipped: set PDFCRAFT_CHESS_TEST_MODELS to the folder of the chess models");
+        return;
+    };
+    let (base, root) = workdir("area-model");
+    std::fs::write(root.join("moves.pdf"), text_pdf("1.e4 e5 2.Nf3 Nc6")).unwrap();
+    let mut a = Automation::new();
+    let path = root.join("moves.pdf").to_string_lossy().into_owned();
+    let doc = ok(&mut a, "doc_open", json!({ "path": path }))["doc"].as_u64().unwrap();
+    let r = ok(
+        &mut a,
+        "chess_read_area",
+        json!({
+            "doc": doc, "page": 1, "rect": [50, 480, 400, 520], "general_ocr": false,
+            "models_dir": std::path::PathBuf::from(models).to_string_lossy(),
+            "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "at": "path:",
+        }),
+    );
+    eprintln!("read: {} | moves: {} | capture: {}", r["text"], r["moves"], r["capture"]["candidates"]);
+    assert_eq!(r["lines"], 1);
+    assert!(!r["alternatives"].as_array().unwrap().is_empty());
+    assert!(r["capture"]["reasons"].is_array());
+    let _ = std::fs::remove_dir_all(base);
+}

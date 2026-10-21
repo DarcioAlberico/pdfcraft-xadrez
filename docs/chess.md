@@ -145,6 +145,16 @@ The preview shows where the text goes ("Variation of 18…Qxe1"), **Fit at** to 
 
 A document that doesn't allow copying doesn't allow capturing either. At most 64 KiB of text is captured at once; a selection over 4 KiB is planned off the interface thread.
 
+### Correcting a move that did not play
+
+In the preview, a ✗ chip (a move that could not be played where it was read, or where the graft stopped) is a button: it opens a panel under the chips (step T10).
+
+- **Legal moves near it**: what the legality repair makes of the move in the position it was to be played in: the one reading it settles on, the moves an ambiguous reading fits (`Rd1`: `Rad1`, `Rhd1`), or the three closest legal moves. They are written in the language the text is read in and are **never applied until you click one** (guessing a move goes wrong). A move after one that stopped was never reached, so it has none: correct the first one first.
+- **Correction**: a field holding the move as printed, with the **Glyph palette** (the rail's characters plus the ellipsis) inserting at its cursor; Enter or **Read again** takes it.
+- **The OCR's readings** (text from the OCR area of a scan): the move's characters, a doubtful one underlined (its top two readings within a margin of 0.5); a click lists the reader's top three readings, and picking one puts it in place of the character.
+
+Each correction rewrites the move where it was printed (the page's glyphs keep their place and weight) and reads the whole text again, so the preview shows what the corrected text reads as; nothing goes into the game until **Apply**. A correction that fits nowhere is refused and the text stays as it was.
+
 ### Glyphs
 
 The 28 glyphs of the PGN standard's table that books use are in three groups on the rail, each named for its meaning ("Good move", "White is slightly better"), never read out as a sign:
@@ -278,6 +288,7 @@ Every feature is also a tool (`pdfcraft-cli tools`; the MCP server is opt-in):
 | `chess_add_lichess_links` | a label and link under every legal, accepted diagram |
 | `chess_game` | the board without a document: a game from a FEN or a PGN, moves in SAN or UCI, the position at a ply with its legal moves, and the game as PGN |
 | `chess_pgn_edit` | a game's moves without the board: play, a null move, comment (after or before a move), glyphs, a diagram mark, promote one level, make main line, demote, move a variation up or down, delete a variation, cut, and graft move text as a variation, as the line or as a comment, at a main-line half-move (`main:35`) or a reply path (`path:0.1`), with a report per operation; `capture` plans where a selection of move text goes (see [Capturing text](#capturing-text)) and applies it, reporting every candidate place; inline only (the game in the arguments and the reply, no path) |
+| `chess_read_area` | read a rectangle of a page with chess OCR (the user's glyph model): text, moves, each character's top readings; with a game, the capture plan and the legal moves near each move that did not play (offered, never applied) |
 | `chess_export_html`, `_epub`, `_docx`, `_rtf`, `_markdown`, `_pgn` | the exports |
 
 `pdfcraft-cli chess scan FILE` prints the diagrams found. All paths are confined to `--root`.

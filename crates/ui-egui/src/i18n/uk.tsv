@@ -2872,3 +2872,21 @@ animation effects	Off	Вимкнено
 	Chess OCR read nothing in the area.	Шахове OCR нічого не прочитало в області.
 	Reading the area…	Читання області…
 	Chess OCR corrected or doubted some words: check the moves.	Шахове OCR виправило деякі слова або сумнівається в них: перевірте ходи.
+# Chess ▸ PGN toolbar: T10, correcting a move of the capture preview that did not play (the OCR's readings of its characters, the legal moves near it, the correction field and the full glyph palette; "Ellipsis" names a palette character).
+	Correct this move	Виправити цей хід
+	Ellipsis	Три крапки
+	Correct {move}	Виправити {move}
+	Character {glyph}	Символ {glyph}
+	Character {glyph}, doubtful	Символ {glyph}, сумнівний
+	Characters read (underlined: doubtful)	Прочитані символи (підкреслено сумнівні)
+	Read the character as {glyph}	Читати символ як {glyph}
+	Read it as	Читати як
+	Legal moves near it	Можливі ходи поруч
+	No legal move is near it.	Можливих ходів поруч немає.
+	Not reached: correct the move that stopped before it first.	Не досягнуто: спершу виправте хід, на якому читання зупинилося раніше.
+	Read as {move}	Читати як {move}
+	Correction	Виправлення
+	Read again	Прочитати знову
+	Read the text again with the move corrected	Прочитати текст знову з виправленим ходом
+	The correction couldn't be made: the move wasn't found in the text.	Не вдалося виправити: хід не знайдено в тексті.
+	The corrected text fits nowhere: nothing was changed.	Виправлений текст нікуди не підходить: нічого не змінено.

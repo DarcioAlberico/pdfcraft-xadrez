@@ -2849,3 +2849,21 @@ animation effects	Off	Ki
 	Chess OCR read nothing in the area.	A sakk-OCR semmit sem olvasott a területen.
 	Reading the area…	A terület olvasása…
 	Chess OCR corrected or doubted some words: check the moves.	A sakk-OCR néhány szót kijavított vagy kétségesnek talált: ellenőrizze a lépéseket.
+# Chess ▸ PGN toolbar: T10, correcting a move of the capture preview that did not play (the OCR's readings of its characters, the legal moves near it, the correction field and the full glyph palette; "Ellipsis" names a palette character).
+	Correct this move	A lépés javítása
+	Ellipsis	Három pont
+	Correct {move}	{move} javítása
+	Character {glyph}	{glyph} karakter
+	Character {glyph}, doubtful	{glyph} karakter, kétes
+	Characters read (underlined: doubtful)	Beolvasott karakterek (aláhúzva: kétes)
+	Read the character as {glyph}	A karakter olvasása így: {glyph}
+	Read it as	Olvasás így
+	Legal moves near it	Közeli szabályos lépések
+	No legal move is near it.	Nincs közeli szabályos lépés.
+	Not reached: correct the move that stopped before it first.	Nem érte el: előbb javítsa azt a lépést, amelynél az olvasás korábban megállt.
+	Read as {move}	Olvasás így: {move}
+	Correction	Javítás
+	Read again	Újraolvasás
+	Read the text again with the move corrected	A szöveg újraolvasása a javított lépéssel
+	The correction couldn't be made: the move wasn't found in the text.	A javítás nem végezhető el: a lépés nem található a szövegben.
+	The corrected text fits nowhere: nothing was changed.	A javított szöveg sehová sem illeszkedik: semmi sem változott.

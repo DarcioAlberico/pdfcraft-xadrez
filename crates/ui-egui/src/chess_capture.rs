@@ -26,13 +26,14 @@
 //! as one undo step ("Capture variation"), with the chess scope on, so Ctrl+Z undoes it even with
 //! the pointer still on the page; the moves keep where they were printed (`NodeSource`). Any
 //! other plan waits for the user ([`CaptureState::pending`]). A plan made on a game that changed
-//! since is made again, once.
+//! since is made again, once. A move of a waiting plan that did not play is corrected in the
+//! preview (T10, [`crate::chess_correct`]).
 
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use egui::{Key, Modifiers, Rect, RichText, pos2};
 use pdfcraft_engine::DocId;
-use pdfcraft_engine::chess::capture::{self, Candidate, CaptureError, CaptureMode, CapturePlan, CaptureText, PreviewReason};
+use pdfcraft_engine::chess::capture::{self, Candidate, CaptureError, CaptureMode, CapturePlan, CaptureText, PreviewReason, StoppedMove};
 use pdfcraft_engine::chess::pdfcraft_chess::fragment::FragmentItem;
 use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, GraftMode, GraftStopReason, MAX_COMMENT_LEN, NodeId, NodePath, Token};
 use pdfcraft_engine::chess::pdfcraft_chess::san::Lang;
@@ -124,6 +125,13 @@ pub struct CaptureState {
     pub area: crate::chess_ocr_area::AreaState,
 }
 
+impl CaptureState {
+    /// Tell the user `text` at the next tick.
+    pub(crate) fn note(&mut self, text: String) {
+        self.notes.push(text);
+    }
+}
+
 /// The notice after a capture went in: what it did, and Undo. It stays (no timeout: WCAG 2.2.1)
 /// while the game is as the capture left it.
 pub struct Toast {
@@ -176,6 +184,28 @@ pub struct Pending {
     pub plan: CapturePlan,
     /// The candidate chosen (the plan's best, until the user picks another).
     pub choice: Option<usize>,
+    /// The moves of the candidate chosen that did not play, with the legal moves near each
+    /// (T10): worked out once per candidate, as each is a replay.
+    pub(crate) stopped: Vec<StoppedMove>,
+    /// The correction panel of one of them, when its chip was clicked (T10).
+    pub(crate) fix: Option<crate::chess_correct::Fix>,
+}
+
+impl Pending {
+    /// `plan` of `request`, its best candidate chosen.
+    pub(crate) fn new(request: Request, plan: CapturePlan) -> Pending {
+        let choice = plan.chosen;
+        let mut p = Pending { request, plan, choice, stopped: Vec::new(), fix: None };
+        p.choose(choice);
+        p
+    }
+
+    /// Choose candidate `choice`: its stopped moves are worked out, and a correction panel closes.
+    fn choose(&mut self, choice: Option<usize>) {
+        self.choice = choice;
+        self.stopped = candidate(&self.plan, choice).map(|c| capture::stopped_moves(c, self.request.lang)).unwrap_or_default();
+        self.fix = None;
+    }
 }
 
 /// What is captured, how, and into which game.
@@ -437,7 +467,7 @@ pub(crate) fn document_lang(chess: &ChessState, doc: Option<DocId>) -> Lang {
 }
 
 /// Plan `request` on `game`, after the move it shows.
-fn plan_for(game: &Game, request: &Request) -> CapturePlan {
+pub(crate) fn plan_for(game: &Game, request: &Request) -> CapturePlan {
     let current = game.current();
     let text = match &request.text {
         Text::Page { page, glyphs, geometry, read, .. } => {
@@ -657,8 +687,7 @@ impl PdfCraftApp {
             return;
         }
         if plan.needs_preview || request.text.review() {
-            let choice = plan.chosen;
-            self.chess.capture.pending = Some(Pending { request, plan, choice });
+            self.chess.capture.pending = Some(Pending::new(request, plan));
             self.chess.enter_scope();
             return;
         }
@@ -914,10 +943,11 @@ pub(crate) fn page_overlay(
             PreviewAction::Cancel => chess.capture.pending = None,
             PreviewAction::Choose(i) => {
                 if let Some(p) = chess.capture.pending.as_mut() {
-                    p.choice = Some(i);
+                    p.choose(Some(i));
                 }
             }
             PreviewAction::Lang(lang) => relang(chess, lang),
+            PreviewAction::Correct(change) => crate::chess_correct::correct(chess, change),
         }
     }
     if let Some(toast) = chess.capture.toast.as_ref() {
@@ -955,6 +985,8 @@ enum PreviewAction {
     Choose(usize),
     /// Read the text again in another language.
     Lang(Lang),
+    /// Read the text again with a move that did not play corrected (T10).
+    Correct(crate::chess_correct::Change),
 }
 
 /// The language names the preview offers, each in its own language.
@@ -990,8 +1022,7 @@ fn relang(chess: &mut ChessState, lang: Lang) {
     }
     p.request.lang = lang;
     let plan = plan_for(&chess.board().game, &p.request);
-    let choice = plan.chosen;
-    chess.capture.pending = Some(Pending { request: p.request, plan, choice });
+    chess.capture.pending = Some(Pending::new(p.request, plan));
 }
 
 /// Where the preview goes: beside the last piece of the selection while it is on screen, else
@@ -1013,9 +1044,10 @@ fn preview_place(area: Rect, p: &Pending, view: &crate::canvas::DocView) -> (egu
 /// The preview popover of the capture waiting (§4.3.4): where it goes ("Variation of 18…Qxe1")
 /// and the other places it fits, the language it is read in, its moves as chips (✓ played, ✗
 /// stopped with why, grey not read; the main line's in bold), why it is shown, and Apply, Apply
-/// and keep the rest as a comment, Cancel.
-fn preview_area(ctx: &egui::Context, t: &Tokens, area: Rect, chess: &ChessState, view: &crate::canvas::DocView) -> Option<PreviewAction> {
-    let p = chess.capture.pending.as_ref()?;
+/// and keep the rest as a comment, Cancel. A stopped move's chip opens its correction panel
+/// (T10, `chess_correct`).
+fn preview_area(ctx: &egui::Context, t: &Tokens, area: Rect, chess: &mut ChessState, view: &crate::canvas::DocView) -> Option<PreviewAction> {
+    let p = chess.capture.pending.as_mut()?;
     let (pivot, at) = preview_place(area, p, view);
     let mut action = None;
     egui::Area::new(egui::Id::new("chess-capture-preview")).order(egui::Order::Foreground).pivot(pivot).fixed_pos(at).show(ctx, |ui| {
@@ -1027,8 +1059,9 @@ fn preview_area(ctx: &egui::Context, t: &Tokens, area: Rect, chess: &ChessState,
     action
 }
 
-fn preview(ui: &mut egui::Ui, t: &Tokens, p: &Pending) -> Option<PreviewAction> {
+fn preview(ui: &mut egui::Ui, t: &Tokens, p: &mut Pending) -> Option<PreviewAction> {
     let mut action = None;
+    let mut toggle = None;
     let c = candidate(&p.plan, p.choice);
     let title = c.map_or_else(|| tl!("No move of the text fits the game here.").to_owned(), |c| headline(c, captured_by(c, p.request.mode)));
     ui.label(RichText::new(title).font(crate::theme::semibold(14.0)));
@@ -1062,10 +1095,31 @@ fn preview(ui: &mut egui::Ui, t: &Tokens, p: &Pending) -> Option<PreviewAction> 
         egui::ScrollArea::vertical().id_salt("chess-capture-chips").max_height(160.0).show(ui, |ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.spacing_mut().item_spacing = egui::vec2(4.0, 3.0);
-                chips(ui, t, c);
+                if let Some(k) = chips(ui, t, c, &p.stopped, p.fix.as_ref().map(|f| f.stop)) {
+                    toggle = Some(k);
+                }
             });
         });
     }
+    if let Some(k) = toggle {
+        p.fix = match (&p.fix, p.stopped.get(k)) {
+            (Some(f), _) if f.stop == k => None,
+            (_, Some(s)) => Some(crate::chess_correct::Fix::open(k, s)),
+            (_, None) => None,
+        };
+    }
+    let lang = p.request.lang;
+    let read = match &p.request.text {
+        Text::Page { read: Some(read), geometry, .. } => Some((read.clone(), *geometry)),
+        _ => None,
+    };
+    if let Some(fix) = p.fix.as_mut()
+        && let Some(s) = p.stopped.get(fix.stop)
+        && let Some(change) = crate::chess_correct::panel(ui, t, fix, s, lang, read.as_ref().map(|(r, g)| (&**r, g.as_ref())))
+    {
+        action = Some(PreviewAction::Correct(change));
+    }
+    let c = candidate(&p.plan, p.choice);
     let reasons: &[PreviewReason] = match c {
         Some(c) if p.choice != p.plan.chosen => &c.reasons,
         _ => &p.plan.reasons,
@@ -1099,8 +1153,21 @@ const MAX_CHIPS: usize = 160;
 
 /// The candidate's items as chips: each move ✓ played, ✗ where the graft stopped (and why), or
 /// grey when not read, bold when printed bold; glyphs, comments and brackets as they read; then
-/// the printed moves the reader could not play, ✗ with why. Colour is never the only sign.
-fn chips(ui: &mut egui::Ui, t: &Tokens, c: &Candidate) {
+/// the printed moves the reader could not play, ✗ with why. Colour is never the only sign. A ✗
+/// chip is a button: it opens (or closes) the correction panel of that move of `stopped`, which
+/// `open` is; returns the one clicked.
+fn chips(ui: &mut egui::Ui, t: &Tokens, c: &Candidate, stopped: &[StoppedMove], open: Option<usize>) -> Option<usize> {
+    let mut clicked = None;
+    let mut stop_chip = |ui: &mut egui::Ui, k: Option<usize>, rich: RichText| {
+        let Some(k) = k else {
+            ui.label(rich);
+            return;
+        };
+        let r = ui.selectable_label(open == Some(k), rich).on_hover_text(tl!("Correct this move"));
+        if r.clicked() {
+            clicked = Some(k);
+        }
+    };
     const PLAYED: egui::Color32 = egui::Color32::from_rgb(0x2D, 0x9D, 0x5B);
     const STOPPED: egui::Color32 = egui::Color32::from_rgb(0xE0, 0x3E, 0x3E);
     let stop = c.report.stop.as_ref();
@@ -1109,7 +1176,7 @@ fn chips(ui: &mut egui::Ui, t: &Tokens, c: &Candidate) {
     for (k, item) in c.read.items.iter().enumerate() {
         if shown >= MAX_CHIPS {
             ui.label(RichText::new("…").color(t.text_faint));
-            return;
+            return clicked;
         }
         shown = shown.saturating_add(1);
         match item {
@@ -1123,10 +1190,14 @@ fn chips(ui: &mut egui::Ui, t: &Tokens, c: &Candidate) {
                 if *bold == Some(true) {
                     rich = rich.strong();
                 }
-                let r = ui.label(rich);
-                if let Some(why) = why {
-                    r.on_hover_text(why);
-                    ui.label(RichText::new(why).small().color(STOPPED));
+                match why {
+                    Some(why) => {
+                        stop_chip(ui, stopped.iter().position(|s| s.graft), rich);
+                        ui.label(RichText::new(why).small().color(STOPPED));
+                    }
+                    None => {
+                        ui.label(rich);
+                    }
                 }
             }
             FragmentItem::Nag(code) => {
@@ -1146,9 +1217,11 @@ fn chips(ui: &mut egui::Ui, t: &Tokens, c: &Candidate) {
             FragmentItem::Result => {}
         }
     }
-    for s in &c.read.stops {
-        ui.label(RichText::new(format!("✗ {} — {}", s.text, status_text(s.status))).small().color(STOPPED));
+    for (k, s) in c.read.stops.iter().enumerate() {
+        let rich = RichText::new(format!("✗ {} — {}", s.text, status_text(s.status))).small().color(STOPPED);
+        stop_chip(ui, (k < stopped.len()).then_some(k), rich);
     }
+    clicked
 }
 
 /// A glyph as the notation shows it.

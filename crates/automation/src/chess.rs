@@ -261,7 +261,7 @@ impl Automation {
     }
 
     /// `models_dir`, confined to the root like every other path.
-    fn models_dir(&self, a: &Args) -> Result<Option<std::path::PathBuf>> {
+    pub(crate) fn models_dir(&self, a: &Args) -> Result<Option<std::path::PathBuf>> {
         let Some(dir) = a.opt_str("models_dir")? else { return Ok(None) };
         let path = self.resolve(dir, false)?;
         if !path.is_dir() {

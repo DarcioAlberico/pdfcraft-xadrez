@@ -95,6 +95,10 @@ pub struct GraftStop {
     /// up from a diagram never allows that (its FEN has no en passant square), which is the
     /// likely reason it is illegal.
     pub maybe_en_passant: bool,
+    /// The position the move was to be played in, as a FEN, when it was a move that could not be
+    /// played there (illegal, ambiguous, unreadable or a null move in check): where the legal
+    /// moves near it are looked for (PGN toolbar T10). `None` for a limit or a missing anchor.
+    pub fen: Option<String>,
 }
 
 /// What a graft did. Paths are in the grafted game.
@@ -157,6 +161,7 @@ impl Game {
                 reason: GraftStopReason::NoAnchor,
                 text: items.first().map(FragmentItem::text).unwrap_or_default(),
                 maybe_en_passant: false,
+                fen: None,
             });
             report.rest_from = (!items.is_empty()).then_some(0);
             report.leftover_text = leftover_text(items, &[], report.rest_from);
@@ -298,7 +303,9 @@ impl Game {
                         (_, Some(node)) => node,
                         (Err(reason), None) => {
                             let ep = reason == GraftStopReason::Illegal && cur == 0 && reads_as_en_passant(self, san);
-                            report.stop = Some(stop_at(index, item, reason, ep));
+                            let mut stop = stop_at(index, item, reason, ep);
+                            stop.fen = Some(self.node(cur).board.to_string());
+                            report.stop = Some(stop);
                             report.rest_from = Some(index);
                             break;
                         }
@@ -442,7 +449,7 @@ fn side_code(code: u16, white_moved: bool) -> u16 {
 }
 
 fn stop_at(index: usize, item: &FragmentItem, reason: GraftStopReason, maybe_en_passant: bool) -> GraftStop {
-    GraftStop { index, reason, text: item.text(), maybe_en_passant }
+    GraftStop { index, reason, text: item.text(), maybe_en_passant, fen: None }
 }
 
 /// Whether `san` reads as a pawn taking en passant from the start position: a pawn capture onto

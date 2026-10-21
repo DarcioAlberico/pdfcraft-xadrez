@@ -2852,3 +2852,21 @@ animation effects	Off	オフ
 	Chess OCR read nothing in the area.	チェス OCR は範囲内で何も読み取れませんでした。
 	Reading the area…	範囲を読み取っています…
 	Chess OCR corrected or doubted some words: check the moves.	チェス OCR が一部の語を修正したか判断できませんでした。指し手を確認してください。
+# Chess ▸ PGN toolbar: T10, correcting a move of the capture preview that did not play (the OCR's readings of its characters, the legal moves near it, the correction field and the full glyph palette; "Ellipsis" names a palette character).
+	Correct this move	この指し手を修正
+	Ellipsis	省略記号
+	Correct {move}	{move} を修正
+	Character {glyph}	文字 {glyph}
+	Character {glyph}, doubtful	文字 {glyph}（疑わしい）
+	Characters read (underlined: doubtful)	読み取った文字（下線: 疑わしい）
+	Read the character as {glyph}	文字を {glyph} として読む
+	Read it as	読み替え
+	Legal moves near it	近くの合法手
+	No legal move is near it.	近くに合法手はありません。
+	Not reached: correct the move that stopped before it first.	未到達: 先に、読み取りがそれより前で止まった指し手を修正してください。
+	Read as {move}	{move} として読む
+	Correction	修正
+	Read again	再読み取り
+	Read the text again with the move corrected	指し手を修正してテキストを再読み取り
+	The correction couldn't be made: the move wasn't found in the text.	修正できませんでした: テキスト内に指し手が見つかりません。
+	The corrected text fits nowhere: nothing was changed.	修正したテキストはどこにも当てはまりません: 何も変更されていません。

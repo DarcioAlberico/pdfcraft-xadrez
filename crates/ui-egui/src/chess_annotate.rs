@@ -32,7 +32,8 @@
 //! ‡` into the text field that had the keyboard when it was clicked (the comment fields, FEN,
 //! PGN), at its cursor, or, when none had, at the end of the move's comment. Figurines are
 //! inserted as the Unicode characters; their buttons show the piece letters where the interface
-//! fonts lack the figurines.
+//! fonts lack the figurines. The full palette (T10) is the same with the ellipsis, in the correction
+//! field of a capture's preview ([`palette_buttons`]).
 
 use egui::Id;
 use pdfcraft_engine::chess::pdfcraft_chess::game::NodeId;
@@ -356,6 +357,13 @@ impl Typing {
 pub(crate) fn insert_pending(ui: &egui::Ui, typing: &mut Typing, field: Field, id: Id, text: &mut String) -> bool {
     typing.seen(field, id);
     let Some((_, insert)) = typing.pending.take_if(|(target, _)| *target == id) else { return false };
+    insert_at_cursor(ui, id, text, &insert)
+}
+
+/// Put `insert` into text field `id` holding `text`, at its cursor (over its selection; at the
+/// end when it has none), move the cursor after it and give the field the keyboard. Returns
+/// whether `text` changed.
+pub(crate) fn insert_at_cursor(ui: &egui::Ui, id: Id, text: &mut String, insert: &str) -> bool {
     let mut state = egui::TextEdit::load_state(ui.ctx(), id).unwrap_or_default();
     let chars = text.chars().count();
     let (start, end) = state.cursor.char_range().map_or((chars, chars), |r| {
@@ -367,7 +375,7 @@ pub(crate) fn insert_pending(ui: &egui::Ui, typing: &mut Typing, field: Field, i
     if from > to || !text.is_char_boundary(from) || !text.is_char_boundary(to) {
         return false;
     }
-    text.replace_range(from..to, &insert);
+    text.replace_range(from..to, insert);
     let after = start.saturating_add(insert.chars().count());
     state.cursor.set_char_range(Some(egui::text::CCursorRange::one(egui::text::CCursor::new(after))));
     state.store(ui.ctx(), id);
@@ -422,7 +430,6 @@ fn marks() -> [(&'static str, &'static str); 5] {
 /// closed.
 pub(crate) fn palette(ui: &mut egui::Ui, t: &crate::theme::Tokens, board: &mut BoardState) -> bool {
     let mut closed = false;
-    let ctx = ui.ctx().clone();
     egui::Frame::group(ui.style()).inner_margin(6).show(ui, |ui| {
         ui.horizontal(|ui| {
             ui.label(egui::RichText::new(tl!("Glyph palette")).small().strong());
@@ -437,39 +444,50 @@ pub(crate) fn palette(ui: &mut egui::Ui, t: &crate::theme::Tokens, board: &mut B
                 .small()
                 .color(t.text_muted),
         );
-        let mut chosen = None;
-        let mut button = |ui: &mut egui::Ui, shown: &str, insert: &str, name: &str| {
-            let r = ui.add(egui::Button::new(egui::RichText::new(shown).monospace()).min_size(egui::vec2(26.0, 24.0)));
-            r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name));
-            let r = r.on_hover_text(name);
-            if r.clicked() {
-                chosen = Some(insert.to_owned());
-            }
-        };
-        ui.horizontal_wrapped(|ui| {
-            ui.spacing_mut().item_spacing = egui::vec2(2.0, 2.0);
-            let figurines = drawable(&ctx, "♔♕♖♗♘♙♚♛♜♝♞♟");
-            for (figurine, letter, color, kind) in FIGURINES {
-                let name = crate::chess_editor::piece_name(Piece { color, kind });
-                button(ui, if figurines { figurine } else { letter }, figurine, name);
-            }
-        });
-        ui.horizontal_wrapped(|ui| {
-            ui.spacing_mut().item_spacing = egui::vec2(2.0, 2.0);
-            for code in MOVE_GLYPHS.iter().chain(&EVALUATION_GLYPHS).chain(&OTHER_GLYPHS) {
-                let Some(n) = nag::by_code(*code) else { continue };
-                let shown = face(*code, |s| drawable(&ctx, s));
-                button(ui, &shown, &n.insert_text(), nag_name(*code).unwrap_or(n.name));
-            }
-            for (mark, name) in marks() {
-                button(ui, mark, mark, name);
-            }
-        });
-        if let Some(text) = chosen {
+        if let Some(text) = palette_buttons(ui, false) {
             palette_insert(board, &text);
         }
     });
     closed
+}
+
+/// The palette's buttons, one per character and each named for what it is: the figurines, the
+/// glyphs and `½ – × † ‡`; with `full` (the correction field of a capture, T10) also the ellipsis
+/// Black's moves are printed with. Returns the text of the one clicked.
+pub(crate) fn palette_buttons(ui: &mut egui::Ui, full: bool) -> Option<String> {
+    let ctx = ui.ctx().clone();
+    let mut chosen = None;
+    let mut button = |ui: &mut egui::Ui, shown: &str, insert: &str, name: &str| {
+        let r = ui.add(egui::Button::new(egui::RichText::new(shown).monospace()).min_size(egui::vec2(26.0, 24.0)));
+        r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name));
+        let r = r.on_hover_text(name);
+        if r.clicked() {
+            chosen = Some(insert.to_owned());
+        }
+    };
+    ui.horizontal_wrapped(|ui| {
+        ui.spacing_mut().item_spacing = egui::vec2(2.0, 2.0);
+        let figurines = drawable(&ctx, "♔♕♖♗♘♙♚♛♜♝♞♟");
+        for (figurine, letter, color, kind) in FIGURINES {
+            let name = crate::chess_editor::piece_name(Piece { color, kind });
+            button(ui, if figurines { figurine } else { letter }, figurine, name);
+        }
+    });
+    ui.horizontal_wrapped(|ui| {
+        ui.spacing_mut().item_spacing = egui::vec2(2.0, 2.0);
+        for code in MOVE_GLYPHS.iter().chain(&EVALUATION_GLYPHS).chain(&OTHER_GLYPHS) {
+            let Some(n) = nag::by_code(*code) else { continue };
+            let shown = face(*code, |s| drawable(&ctx, s));
+            button(ui, &shown, &n.insert_text(), nag_name(*code).unwrap_or(n.name));
+        }
+        for (mark, name) in marks() {
+            button(ui, mark, mark, name);
+        }
+        if full {
+            button(ui, "\u{2026}", "\u{2026}", tl!("Ellipsis"));
+        }
+    });
+    chosen
 }
 
 /// The comment fields of the move shown: the one before it while the comment editor is open

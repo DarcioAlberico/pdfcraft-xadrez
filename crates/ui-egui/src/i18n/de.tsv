@@ -2851,3 +2851,21 @@ animation effects	Off	Aus
 	Chess OCR read nothing in the area.	Die Schach-OCR hat im Bereich nichts gelesen.
 	Reading the area…	Bereich wird gelesen…
 	Chess OCR corrected or doubted some words: check the moves.	Die Schach-OCR hat einige Wörter korrigiert oder angezweifelt: Prüfen Sie die Züge.
+# Chess ▸ PGN toolbar: T10, correcting a move of the capture preview that did not play (the OCR's readings of its characters, the legal moves near it, the correction field and the full glyph palette; "Ellipsis" names a palette character).
+	Correct this move	Diesen Zug korrigieren
+	Ellipsis	Auslassungspunkte
+	Correct {move}	{move} korrigieren
+	Character {glyph}	Schriftzeichen {glyph}
+	Character {glyph}, doubtful	Schriftzeichen {glyph}, zweifelhaft
+	Characters read (underlined: doubtful)	Gelesene Schriftzeichen (unterstrichen: zweifelhaft)
+	Read the character as {glyph}	Schriftzeichen als {glyph} lesen
+	Read it as	Lesen als
+	Legal moves near it	Legale Züge in der Nähe
+	No legal move is near it.	Kein legaler Zug in der Nähe.
+	Not reached: correct the move that stopped before it first.	Nicht erreicht: zuerst den Zug korrigieren, an dem das Lesen davor angehalten hat.
+	Read as {move}	Als {move} lesen
+	Correction	Korrektur
+	Read again	Neu lesen
+	Read the text again with the move corrected	Den Text mit dem korrigierten Zug neu lesen
+	The correction couldn't be made: the move wasn't found in the text.	Die Korrektur war nicht möglich: Der Zug wurde im Text nicht gefunden.
+	The corrected text fits nowhere: nothing was changed.	Der korrigierte Text passt nirgends: Es wurde nichts geändert.

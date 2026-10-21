@@ -2855,3 +2855,21 @@ animation effects	Off	Izklopljeni
 	Chess OCR read nothing in the area.	Šahovski OCR v območju ni prebral ničesar.
 	Reading the area…	Branje območja …
 	Chess OCR corrected or doubted some words: check the moves.	Šahovski OCR je nekatere besede popravil ali o njih dvomi: preverite poteze.
+# Chess ▸ PGN toolbar: T10, correcting a move of the capture preview that did not play (the OCR's readings of its characters, the legal moves near it, the correction field and the full glyph palette; "Ellipsis" names a palette character).
+	Correct this move	Popravi to potezo
+	Ellipsis	Tropičje
+	Correct {move}	Popravi {move}
+	Character {glyph}	Znak {glyph}
+	Character {glyph}, doubtful	Znak {glyph}, dvomljiv
+	Characters read (underlined: doubtful)	Prebrani znaki (podčrtani: dvomljivi)
+	Read the character as {glyph}	Preberi znak kot {glyph}
+	Read it as	Preberi kot
+	Legal moves near it	Legalne poteze v bližini
+	No legal move is near it.	V bližini ni nobene legalne poteze.
+	Not reached: correct the move that stopped before it first.	Ni doseženo: najprej popravite potezo, pri kateri se je branje ustavilo prej.
+	Read as {move}	Preberi kot {move}
+	Correction	Popravek
+	Read again	Preberi znova
+	Read the text again with the move corrected	Znova preberi besedilo s popravljeno potezo
+	The correction couldn't be made: the move wasn't found in the text.	Popravka ni bilo mogoče narediti: poteze v besedilu ni bilo mogoče najti.
+	The corrected text fits nowhere: nothing was changed.	Popravljeno besedilo ne ustreza nikjer: nič ni bilo spremenjeno.

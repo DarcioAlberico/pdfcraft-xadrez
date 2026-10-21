@@ -51,11 +51,12 @@ use std::ops::Range;
 use std::sync::Arc;
 
 use pdfcraft_chess::fen;
-use pdfcraft_chess::fragment::ply_of;
+use pdfcraft_chess::fragment::{FragmentItem, ply_of};
 use pdfcraft_chess::game::{Game, GraftMode, GraftReport, GraftStop, GraftStopReason, MAX_COMMENT_LEN, MAX_DEPTH, NodeId, NodePath};
 use pdfcraft_chess::nag;
 use pdfcraft_chess::placement::Color;
-use pdfcraft_chess::san::{Lang, figurine_piece};
+use pdfcraft_chess::repair::{self, CipherMap, GameContext, MAX_NEAR_MISSES, Outcome, ReadToken};
+use pdfcraft_chess::san::{Lang, San, figurine_piece};
 use pdfcraft_chessvision::chess_text::{ChessPageText, ChessRun};
 use pdfcraft_chessvision::coords::PageGeometry;
 use pdfcraft_chessvision::doc::ReviewFlag;
@@ -504,7 +505,7 @@ fn comment_candidate(game: &Game, current: NodeId, chess: &ChessPageText, before
         if !existing.contains(text.as_str()) {
             let joined = if existing.is_empty() { text.clone() } else { format!("{existing} {text}") };
             if joined.len() > MAX_COMMENT_LEN {
-                report.stop = Some(GraftStop { index: 0, reason: GraftStopReason::TooLong, text: text.clone(), maybe_en_passant: false });
+                report.stop = Some(GraftStop { index: 0, reason: GraftStopReason::TooLong, text: text.clone(), maybe_en_passant: false, fen: None });
                 report.rest_from = Some(0);
                 report.leftover_text = text;
                 reasons.push(PreviewReason::Incomplete);
@@ -562,6 +563,98 @@ fn glyph_text(code: u16) -> String {
         Some(n) if n.safe_glyph => n.glyph.to_owned(),
         _ => format!("${code}"),
     }
+}
+
+// ─── Correcting a move that did not play (PGN toolbar T10) ──────────────────────────────────
+
+/// Most moves of one candidate that [`stopped_moves`] looks at: each is a replay on one board.
+pub const MAX_STOPPED: usize = 64;
+
+/// A move of a candidate's text that did not play, with the legal moves near it.
+#[derive(Clone, Debug, PartialEq)]
+pub struct StoppedMove {
+    /// The move as printed, with its number (`19.Nxe6+`).
+    pub text: String,
+    /// The move alone, as printed (`Nxe6+`): what a correction replaces.
+    pub word: String,
+    /// Where it was printed, in user space, when the text was on a page.
+    pub rect: Option<[f32; 4]>,
+    /// The position it was to be played in, as a FEN; `None` when it was never reached (a move
+    /// out of sequence, or after one that did not play).
+    pub fen: Option<String>,
+    /// The legal moves near it in that position, at most [`MAX_NEAR_MISSES`]: the one reading
+    /// the legality repair settles on, the moves an ambiguous reading fits, or the closest legal
+    /// moves. Offered for a click, **never applied** here (the lesson of 2026-10-19: guessing a
+    /// move goes wrong).
+    pub near: Vec<San>,
+    /// The graft stopped at it (else the reader did not play it).
+    pub graft: bool,
+}
+
+/// The moves of candidate `c` that did not play, read in `lang`: the reader's, in reading order,
+/// then the one the graft stopped at. At most [`MAX_STOPPED`].
+pub fn stopped_moves(c: &Candidate, lang: Lang) -> Vec<StoppedMove> {
+    let mut out: Vec<StoppedMove> = c
+        .read
+        .stops
+        .iter()
+        .take(MAX_STOPPED)
+        .map(|s| {
+            let word = move_word(&s.text).to_owned();
+            let near = s.fen.as_deref().map(|fen| nearby_moves(fen, &word, lang)).unwrap_or_default();
+            StoppedMove { text: s.text.clone(), word, rect: s.rect, fen: s.fen.clone(), near, graft: false }
+        })
+        .collect();
+    if let Some(stop) = c.report.stop.as_ref()
+        && out.len() < MAX_STOPPED
+        && let Some(FragmentItem::Move { text, rect, .. }) = c.read.items.get(stop.index)
+    {
+        let word = move_word(text).to_owned();
+        let near = stop.fen.as_deref().map(|fen| nearby_moves(fen, &word, lang)).unwrap_or_default();
+        out.push(StoppedMove { text: text.clone(), word, rect: *rect, fen: stop.fen.clone(), near, graft: true });
+    }
+    out
+}
+
+/// The legal moves near `word` (a move as printed, read in `lang`) in the position `fen`: what
+/// the legality repair (`pdfcraft_chess::repair`, with the OCR confusion table) makes of it
+/// alone: the one move it settles on, the moves an ambiguous reading fits, or the closest legal
+/// moves when nothing settles; the move itself when it is legal there. At most
+/// [`MAX_NEAR_MISSES`], each once; none for a position that is not legal.
+pub fn nearby_moves(fen: &str, word: &str, lang: Lang) -> Vec<San> {
+    let Some(ctx) = GameContext::from_fen(fen) else { return Vec::new() };
+    let replay = repair::repair(&ctx, &[ReadToken::plain(word.trim())], lang, &CipherMap::new());
+    let found = match replay.outcomes.into_iter().next() {
+        Some(Outcome::Kept(san)) => vec![san],
+        Some(Outcome::Repaired(r)) => vec![r.san],
+        Some(Outcome::Ambiguous { candidates }) => candidates,
+        Some(Outcome::Unresolved { near }) => near,
+        Some(Outcome::NotReached) | None => Vec::new(),
+    };
+    let mut out: Vec<San> = Vec::new();
+    for san in found {
+        if out.len() >= MAX_NEAR_MISSES {
+            break;
+        }
+        if !out.iter().any(|o| o.to_english() == san.to_english()) {
+            out.push(san);
+        }
+    }
+    out
+}
+
+/// `text` without the move number it starts with (`19.`, `19...`, `19…`, `19. `): the move as
+/// printed. A castling written with zeros (`0-0`) has no number.
+pub fn move_word(text: &str) -> &str {
+    let trimmed = text.trim();
+    let digits = trimmed.chars().take_while(char::is_ascii_digit).count();
+    // Digits are ASCII, so `digits` is a char boundary.
+    let Some(after) = trimmed.get(digits..) else { return trimmed };
+    let marks: Vec<char> = after.chars().take_while(|c| matches!(c, '.' | '\u{2026}') || c.is_whitespace()).collect();
+    if digits == 0 || !marks.iter().any(|c| matches!(c, '.' | '\u{2026}')) {
+        return trimmed;
+    }
+    after.get(marks.iter().map(|c| c.len_utf8()).sum::<usize>()..).unwrap_or(trimmed)
 }
 
 /// The text as chess text, with how to read it and the page its moves were printed on.

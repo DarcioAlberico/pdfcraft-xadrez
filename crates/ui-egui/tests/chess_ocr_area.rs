@@ -286,3 +286,68 @@ fn esc_drops_an_area_being_read() {
     assert_eq!(movetext(&h), "", "the dropped read is not captured");
     assert!(h.state().chess.capture.pending.is_none());
 }
+
+// ─── T10: the OCR's readings of a move that did not play ─────────────────────────────────────
+
+use pdfcraft_engine::chess::text_ocr::GlyphAlternatives;
+
+/// A reader that reads `text`, every glyph sure of itself except the `8`, which it nearly took
+/// for a `3`.
+fn doubtful_reader(text: &'static str) -> impl Fn(&AreaQuery) -> Result<AreaRead, AreaError> + Send + Sync + 'static {
+    move |q: &AreaQuery| {
+        let glyphs = glyphs_in(text, q.rect_view);
+        let alternatives = glyphs
+            .iter()
+            .map(|g| {
+                let (margin, choices) = match g.text.as_str() {
+                    "8" => (0.1, vec![("8".to_owned(), 0.5), ("3".to_owned(), 0.45), ("5".to_owned(), 0.05)]),
+                    t => (0.95, vec![(t.to_owned(), 0.97)]),
+                };
+                GlyphAlternatives { rect: g.rect, text: g.text.clone(), margin, choices }
+            })
+            .collect();
+        Ok(AreaRead {
+            page: q.page,
+            rect_user: q.rect_user,
+            rect_view: q.rect_view,
+            dpi: 300.0,
+            text: pdfcraft_render::text::layout(glyphs),
+            alternatives,
+            lines: 1,
+            ..AreaRead::default()
+        })
+    }
+}
+
+/// A move read from a scan that did not play lists its glyphs, the doubtful one underlined; its
+/// readings are offered, and picking one rewrites the glyph and reads the area's text again. The
+/// game changes only with Apply.
+#[test]
+fn an_ocr_reading_picked_rewrites_the_glyph_and_reads_again() {
+    let mut h = harness(scan(false));
+    h.state_mut().set_chess_area_reader(Some(doubtful_reader("1.e4 e5 2.Nf8 Nc6")));
+    assert!(h.state_mut().execute("chess.tool.capture"));
+    support::wait_until(&mut h, "the OCR area switching on", |app| app.chess.capture.area.on);
+    draw_area(&mut h);
+    assert!(h.state().chess.capture.pending.is_some(), "2.Nf8 does not play: shown first");
+    h.get_by_label("✗ 2.Nf8 — Illegal move").click();
+    h.run_steps(2);
+    h.get_by_label("Character N");
+    h.get_by_label("Character f");
+    h.get_by_label("Character 8, doubtful").click();
+    h.run_steps(2);
+    h.get_by_label("Read the character as 5");
+    h.get_by_label("Read the character as 3").click();
+    h.run_steps(3);
+    assert_eq!(movetext(&h), "", "read again, not applied");
+    let p = h.state().chess.capture.pending.as_ref().expect("still waiting");
+    let c = p.plan.candidates.get(p.choice.unwrap()).unwrap();
+    assert_eq!((c.played, c.read.stops.len()), (4, 0), "{:?}", c.read.stops);
+    h.get_by_label_contains("Apply").click();
+    h.run_steps(3);
+    assert_eq!(movetext(&h), "1. e4 e5 2. Nf3 Nc6");
+    // The move keeps where it was printed.
+    let board = h.state().chess.board();
+    let nf3 = board.game.node_at(&pdfcraft_engine::chess::pdfcraft_chess::game::NodePath::new(vec![0, 0, 0])).unwrap();
+    assert!(board.game.source(nf3).is_some());
+}

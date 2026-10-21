@@ -2848,3 +2848,21 @@ animation effects	Off	Өшірулі
 	Chess OCR read nothing in the area.	Шахмат OCR аймақта ештеңе оқымады.
 	Reading the area…	Аймақ оқылуда…
 	Chess OCR corrected or doubted some words: check the moves.	Шахмат OCR кейбір сөздерді түзетті немесе күмәнданды: жүрістерді тексеріңіз.
+# Chess ▸ PGN toolbar: T10, correcting a move of the capture preview that did not play (the OCR's readings of its characters, the legal moves near it, the correction field and the full glyph palette; "Ellipsis" names a palette character).
+	Correct this move	Бұл жүрісті түзету
+	Ellipsis	Көп нүкте
+	Correct {move}	{move} түзету
+	Character {glyph}	{glyph} таңбасы
+	Character {glyph}, doubtful	{glyph} таңбасы, күмәнді
+	Characters read (underlined: doubtful)	Оқылған таңбалар (асты сызылғаны: күмәнді)
+	Read the character as {glyph}	Таңбаны {glyph} деп оқу
+	Read it as	Былай оқу
+	Legal moves near it	Жақын ережеге сай жүрістер
+	No legal move is near it.	Жақын жерде ережеге сай жүріс жоқ.
+	Not reached: correct the move that stopped before it first.	Жетпеді: алдымен оқу одан бұрын тоқтаған жүрісті түзетіңіз.
+	Read as {move}	{move} деп оқу
+	Correction	Түзету
+	Read again	Қайта оқу
+	Read the text again with the move corrected	Мәтінді түзетілген жүріспен қайта оқу
+	The correction couldn't be made: the move wasn't found in the text.	Түзету мүмкін болмады: жүріс мәтіннен табылмады.
+	The corrected text fits nowhere: nothing was changed.	Түзетілген мәтін еш жерге сәйкес келмейді: ештеңе өзгертілмеді.
