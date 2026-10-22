@@ -98,8 +98,13 @@ impl Automation {
 fn apply(game: &mut Game, op: &Value) -> std::result::Result<Map<String, Value>, Refusal> {
     let obj = op.as_object().ok_or("an operation is an object")?;
     let name = obj.get("op").and_then(Value::as_str).ok_or("op is missing")?;
-    let at_text = obj.get("at").and_then(Value::as_str).ok_or("at is missing (main:<half-move> or path:<i.j.k>)")?;
-    let at = resolve(game, at_text)?;
+    // Stepping through the game starts from the move shown unless `at` names another.
+    let steps = matches!(name, "back" | "forward" | "choose");
+    let at = match obj.get("at").and_then(Value::as_str) {
+        Some(at_text) => resolve(game, at_text)?,
+        None if steps => game.current(),
+        None => return Err("at is missing (main:<half-move> or path:<i.j.k>)".into()),
+    };
     let text = || obj.get("text").and_then(Value::as_str).ok_or("text is missing");
     let mut entry = Map::new();
     match name {
@@ -165,6 +170,30 @@ fn apply(game: &mut Game, op: &Value) -> std::result::Result<Map<String, Value>,
         "demote" => game.demote(at).map_err(|e| e.to_string())?,
         "delete_variation" => game.delete_variation(at).map_err(|e| e.to_string())?,
         "make_main" => make_main(game, at)?,
+        "back" | "forward" => {
+            let n = match obj.get("n") {
+                None => 1,
+                Some(v) => v
+                    .as_u64()
+                    .and_then(|n| usize::try_from(n).ok())
+                    .filter(|n| (1..=MAX_STEPS).contains(n))
+                    .ok_or(format!("n is a number of moves, 1-{MAX_STEPS}"))?,
+            };
+            game.go_to_node(at);
+            let mut moved = 0usize;
+            while moved < n && if name == "back" { game.back() } else { game.forward() } {
+                moved += 1;
+            }
+            entry.insert("moved".into(), json!(moved));
+        }
+        "choose" => {
+            let index = obj.get("index").and_then(Value::as_u64).ok_or("index is the reply to step into (0: the line, 1: its first variation…)")?;
+            game.go_to_node(at);
+            let replies = game.replies(at).len();
+            if !usize::try_from(index).is_ok_and(|i| game.forward_to(i)) {
+                return Err(format!("the move has {replies} replies, so there is no reply {index}"));
+            }
+        }
         "cut" => {
             game.go_to_node(at);
             game.truncate();

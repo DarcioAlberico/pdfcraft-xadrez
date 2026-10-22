@@ -432,7 +432,7 @@ proptest::proptest! {
                     moves.dedup();
                     if !moves.is_empty() {
                         match g.play_san(&moves[b % moves.len()]) {
-                            Ok(()) | Err(GameError::TooLong) => {}
+                            Ok(()) | Err(GameError::TooLong | GameError::TooDeep) => {}
                             Err(e) => proptest::prop_assert!(false, "{e:?}"),
                         }
                     }
@@ -505,7 +505,7 @@ proptest::proptest! {
                     match g.play_null() {
                         Ok(()) => proptest::prop_assert!(!in_check && g.is_null(g.current())),
                         Err(GameError::IllegalMove) => proptest::prop_assert!(in_check),
-                        Err(GameError::TooLong) => {}
+                        Err(GameError::TooLong | GameError::TooDeep) => {}
                         Err(e) => proptest::prop_assert!(false, "{e:?}"),
                     }
                 }

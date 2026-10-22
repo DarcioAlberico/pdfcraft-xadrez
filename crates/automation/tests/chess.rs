@@ -710,6 +710,39 @@ const MAIN: &str = "18. Nd5 Qxe1 19. Nxe7+ Kh7 20. Raxe1";
 const WITH_VARIATION: &str =
     "18. Nd5 Qxe1 (18... Qd8 19. Bxf6 Bxf6 20. fxg6 (20. Nxf6+ exf6 21. Bxc4 Rxc4) 20... fxg6 21. Qg3 Kh7 22. e5) 19. Nxe7+ Kh7 20. Raxe1";
 
+/// chess_pgn_edit steps through the game: back out of a variation and forward again returns into
+/// it, and choose picks a reply by its index (the board's ◀, ▶ and continuations).
+#[test]
+fn chess_pgn_edit_steps_back_and_forward_along_the_line_last_seen() {
+    let (_base, root) = workdir("pgn-steps");
+    let mut auto = Automation::new().with_root(&root).unwrap();
+    let pgn = "1. e4 e5 2. Nf3 Nc6 (2... Nf6 3. Bc4) 3. Bb5 *";
+    let ops = json!([
+        { "op": "back", "at": "path:0.0.0.1.0", "n": 3 },
+        { "op": "forward", "n": 3 },
+        { "op": "forward" },
+        { "op": "choose", "at": "path:0.0.0", "index": 0 },
+        { "op": "back", "n": 99 },
+        { "op": "choose", "at": "path:0.0.0", "index": 2 }
+    ]);
+    let r = ok(&mut auto, "chess_pgn_edit", json!({ "pgn": pgn, "ops": ops }));
+    let report = r["report"].as_array().unwrap();
+    assert_eq!((report[0]["path"].as_str(), report[0]["moved"].as_u64()), (Some("path:0.0"), Some(3)));
+    // Forward retraces the variation, not the main line.
+    assert_eq!((report[1]["path"].as_str(), report[1]["moved"].as_u64()), (Some("path:0.0.0.1.0"), Some(3)));
+    assert_eq!(report[2]["moved"], 0, "the end of the variation");
+    assert_eq!(report[3]["path"], "path:0.0.0.0");
+    assert_eq!((report[4]["path"].as_str(), report[4]["moved"].as_u64()), (Some("path:"), Some(4)));
+    assert_eq!(report[5]["ok"], false);
+    assert!(report[5]["error"].as_str().unwrap().contains("2 replies"), "{}", report[5]);
+    assert_eq!(r["applied"], 5);
+    // Nothing was lost on the way.
+    assert_eq!(r["movetext"], "1. e4 e5 2. Nf3 Nc6 (2... Nf6 3. Bc4) 3. Bb5");
+    // Other ops still need at.
+    let r = ok(&mut auto, "chess_pgn_edit", json!({ "pgn": pgn, "ops": [{ "op": "cut" }] }));
+    assert!(r["report"][0]["error"].as_str().unwrap().contains("at is missing"));
+}
+
 /// chess_pgn_edit plays, comments, sets glyphs, reshapes variations and grafts fragments, each
 /// at a main-line half-move or a path, and reports every operation.
 #[test]
