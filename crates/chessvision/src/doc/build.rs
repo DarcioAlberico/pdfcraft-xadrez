@@ -151,9 +151,9 @@ fn caption_text(line: &ChessLine) -> Option<String> {
 /// and a diagram takes its nearest caption.
 ///
 /// Also the page's trailing label: one with its word or `№` (not a bare number, which may be the
-/// page's number) that went to no diagram and has none below it. It is the caption of the next
-/// page's first diagram (Construa Seu Xadrez sets `Exercício 7` at the foot of the page and its
-/// diagram at the top of the next).
+/// page's number), standing alone ([`solution_label`]), that went to no diagram, with no diagram below it and no line after it but the
+/// page's number. It is the caption of the next page's first diagram (Construa Seu Xadrez sets
+/// `Exercício 7` at the foot of the page and its diagram at the top of the next).
 fn caption_numbers(lines: &[&ChessLine], diagrams: &[Option<ViewRect>]) -> (Vec<Option<u32>>, Option<u32>) {
     // (bare, gap, number, line) per diagram: a caption with its `№` wins over a bare number.
     let mut best: Vec<Option<(bool, f32, u32, usize)>> = vec![None; diagrams.len()];
@@ -166,7 +166,8 @@ fn caption_numbers(lines: &[&ChessLine], diagrams: &[Option<ViewRect>]) -> (Vec<
             (None, Some(n)) => (n, true),
             (None, None) => continue,
         };
-        if !bare {
+        // Standing alone, as a solution's label must: `Exercício 2 mostra o mate` is prose.
+        if !bare && solution_label(&text).is_some() {
             labelled.push((li, n));
         }
         let gap_to = |d: &ViewRect| {
@@ -198,8 +199,14 @@ fn caption_numbers(lines: &[&ChessLine], diagrams: &[Option<ViewRect>]) -> (Vec<
         .filter_map(|&(li, n)| lines.get(li).map(|l| (l.rect.y0, n)))
         .filter(|(y, _)| diagrams.iter().flatten().all(|d| d.y0 < *y))
         .max_by(|a, b| a.0.total_cmp(&b.0))
+        .filter(|(y, _)| lines.iter().filter(|o| o.rect.y0 > *y + 1.0).all(|o| is_page_number(o)))
         .map(|(_, n)| n);
     (best.into_iter().map(|b| b.map(|(_, _, n, _)| n)).collect(), trailing)
+}
+
+/// Whether `line` is only a number: a page's number under the text.
+fn is_page_number(line: &ChessLine) -> bool {
+    caption_text(line).is_some_and(|t| !t.trim().is_empty() && t.trim().chars().all(|c| c.is_ascii_digit()))
 }
 
 /// The line's text, when it holds only text and move numbers.
@@ -517,20 +524,17 @@ fn blocks(input: &PageInput<'_>, carried: Option<u32>) -> (Vec<Block>, Option<u3
     let page_width = input.geometry.view_size().0;
     let split = gutter(&kept, page_width);
     let ordered = column_order(&kept, split);
-    let (mut puzzles, trailing) = caption_numbers(&kept, &diagram_views);
-    let first = diagram_views.iter().enumerate().filter_map(|(k, d)| d.map(|d| (k, d.y0))).min_by(|a, b| a.1.total_cmp(&b.1)).map(|(k, _)| k);
-    if let (Some(n), Some(k)) = (carried, first)
-        && let Some(slot @ None) = puzzles.get_mut(k)
-    {
-        *slot = Some(n);
-    }
+    let (puzzles, trailing) = caption_numbers(&kept, &diagram_views);
+    // The previous page's trailing label is the first diagram's in reading order.
+    let mut carried = carried;
     for item in interleave(&ordered, &diagram_views, split.unwrap_or(page_width * 0.5)) {
         match item {
             Item::Diagram(i) => {
                 flush(&mut blocks, &mut group, key);
                 if let Some(reading) = input.diagrams.get(i) {
                     let mut block = DiagramBlock::from_reading(i, reading);
-                    block.puzzle = puzzles.get(i).copied().flatten();
+                    block.puzzle = puzzles.get(i).copied().flatten().or(carried.take());
+                    carried = None;
                     blocks.push(Block::Diagram(block));
                 }
             }

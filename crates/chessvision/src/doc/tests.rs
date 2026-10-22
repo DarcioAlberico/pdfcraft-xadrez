@@ -866,6 +866,20 @@ fn a_caption_at_the_foot_of_a_page_numbers_the_next_pages_first_diagram() {
     let numbers: Vec<Option<u32>> =
         doc.pages.iter().flat_map(|p| p.blocks.iter()).filter_map(|b| if let Block::Diagram(d) = b { Some(d.puzzle) } else { None }).collect();
     assert_eq!(numbers, [Some(1), None]);
+    // A label followed by more text is not the page's last line: it is not carried. The page's
+    // number under it does not count.
+    let prose =
+        page_text(vec![line(45.0, "Exercício 1 ★△"), line(700.0, "Exercício 2 ★★△"), line(720.0, "Exercício 2 mostra o mate."), line(790.0, "36")]);
+    let numbered = page_text(vec![line(45.0, "Exercício 1 ★△"), line(700.0, "Exercício 2 ★★△"), line(790.0, "36")]);
+    for (p0, want) in [(prose, None), (numbered, Some(2))] {
+        let mut b = DocBuilder::new();
+        b.add_page(&input(0, &p0, &[reading(0, 60.0, SCHOLAR, true, false)], &[], &[]));
+        b.add_page(&input(1, &p1, &[reading(0, 60.0, rook, true, false)], &heading, &[]));
+        let doc = b.finish();
+        let numbers: Vec<Option<u32>> =
+            doc.pages.iter().flat_map(|p| p.blocks.iter()).filter_map(|b| if let Block::Diagram(d) = b { Some(d.puzzle) } else { None }).collect();
+        assert_eq!(numbers, [Some(1), want]);
+    }
 }
 
 /// A solution that prints its game from move 1 before it reaches the exercise's position: its
