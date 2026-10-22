@@ -327,20 +327,15 @@ enum Item<'a> {
     Diagram(usize),
 }
 
-/// Whether diagram `d` comes before line `l` (view space): `l` is below `d`'s middle under it, in
-/// a column to its right, or wholly below it on its side of `split` (the gutter, or the page's
-/// middle on a page without one). A diagram or line across `split` is on both sides: a short line
-/// under a centred diagram is read after it, however far left it starts, while a left-column line
-/// below a right-column diagram is still read before it.
+/// Whether diagram `d` comes before line `l` (view space): `l` is below `d`'s middle under it or
+/// beside it on its side of `split` (the gutter, or the page's middle on a page without one), in
+/// a column to its right, or wholly below it on its side of `split`. A diagram or line across
+/// `split` is on both sides: a short line under a centred diagram is read after it, however far
+/// left it starts, while a left-column line below a right-column diagram is still read before
+/// it. A line right of a board narrower than its column, on the board's side of the gutter, is
+/// in the board's column (a scan's row cut at a word gap leaves a piece there): it is read by its
+/// height, not as a column to the right.
 fn diagram_before(d: ViewRect, l: ViewRect, split: f32) -> bool {
-    let same_column = d.x0 < l.x1 && l.x0 < d.x1;
-    if same_column {
-        return (l.y0 + l.y1) * 0.5 >= (d.y0 + d.y1) * 0.5;
-    }
-    if l.x0 >= d.x1 {
-        return true;
-    }
-    // `l` is to the left of `d`.
     let side = |r: ViewRect| {
         if r.x1 <= split {
             Some(false)
@@ -351,6 +346,15 @@ fn diagram_before(d: ViewRect, l: ViewRect, split: f32) -> bool {
         }
     };
     let (sd, sl) = (side(d), side(l));
+    let same_column = d.x0 < l.x1 && l.x0 < d.x1;
+    let beside = l.x0 >= d.x1 && sd.is_some() && sd == sl;
+    if same_column || beside {
+        return (l.y0 + l.y1) * 0.5 >= (d.y0 + d.y1) * 0.5;
+    }
+    if l.x0 >= d.x1 {
+        return true;
+    }
+    // `l` is to the left of `d`.
     l.y0 >= d.y1 && (sd.is_none() || sl.is_none() || sd == sl)
 }
 

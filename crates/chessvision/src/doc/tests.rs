@@ -954,6 +954,27 @@ fn diagrams_interleave_by_column_and_keep_their_numbers() {
     assert_eq!(kinds(&doc.pages[0]), vec!["P:only text above", "D0"]);
 }
 
+/// A two-column scan (Pinski): the left column's first row is cut at a word gap into two pieces,
+/// the second right of the board below, which is narrower than its column. That piece is in the
+/// board's column and above it: the board comes after both pieces, not between them.
+#[test]
+fn a_piece_of_a_row_beside_a_narrow_board_is_read_before_it() {
+    let mut d0 = reading(0, 60.0, SCHOLAR, true, false);
+    d0.bbox_user = user_box(60.0, 80.0, 180.0, 200.0);
+    let mut lines = vec![line_at(40.0, 40.0, "first piece"), line_at(185.0, 40.0, "second")];
+    for (k, y) in [60.0, 220.0, 240.0, 260.0].into_iter().enumerate() {
+        lines.push(line_at(40.0, y, &format!("left column line {k} with more words")));
+    }
+    for (k, y) in [40.0, 60.0, 220.0, 240.0, 260.0].into_iter().enumerate() {
+        lines.push(line_at(320.0, y, &format!("right column line {k}")));
+    }
+    let doc = build_page(&input(0, &page_text(lines), &[d0], &[], &[]));
+    let kinds = kinds(&doc.pages[0]);
+    let at = |s: &str| kinds.iter().position(|k| k.contains(s)).unwrap_or_else(|| panic!("{s} in {kinds:?}"));
+    assert!(at("second") < at("D0"), "{kinds:?}");
+    assert!(at("left column line 0") < at("D0") && at("D0") < at("left column line 1"), "{kinds:?}");
+}
+
 /// A diagram centred on the page goes before a short line below it, even one that lies entirely
 /// to its left (Fischer pt-BR p.47: `19 … ♗xd5` under a centred diagram).
 #[test]
