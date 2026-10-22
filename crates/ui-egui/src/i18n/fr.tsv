@@ -2913,3 +2913,10 @@ chess undo step	Clear drawings	l'effacement des dessins
 	Replace this game	Remplacer cette partie
 @plural	{n} move deleted|{n} moves deleted	{n} coup supprimé|{n} coups supprimés
 @plural	({n} variation)|({n} variations)	({n} variante)|({n} variantes)
+# Chess: deleted moves kept with the autosave (plan A8 §7, V5)
+	Those deleted moves are no longer kept.	Ces coups supprimés ne sont plus conservés.
+	Deleted moves ({n})…	Coups supprimés ({n})…
+	Games as they were before moves were deleted from them, kept with the autosave. Open one as a new game.	Les parties telles qu’elles étaient avant que des coups en soient supprimés, conservées avec l’enregistrement automatique. Ouvrez-en une comme nouvelle partie.
+	Open as a new game	Ouvrir comme nouvelle partie
+@plural	{n} move|{n} moves	{n} coup|{n} coups
+	…and {n} older	…et {n} plus anciennes

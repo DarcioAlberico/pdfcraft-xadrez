@@ -2915,3 +2915,10 @@ chess undo step	Clear drawings	描画の消去
 	Replace this game	この対局を置き換える
 	Play from this position in place of the game on the board: its moves are deleted (Undo brings them back).	盤上の対局の代わりにこの局面から指します。その手順は削除されます（取り消しで戻せます）。
 	Play from this position.	この局面から指します。
+# Chess: deleted moves kept with the autosave (plan A8 §7, V5)
+@plural	{n} move|{n} moves	{n} 手
+	Those deleted moves are no longer kept.	その削除した手はもう保存されていません。
+	Deleted moves ({n})…	削除した手 ({n})…
+	Games as they were before moves were deleted from them, kept with the autosave. Open one as a new game.	手が削除される前の対局で、自動保存と一緒に保存されています。新しい対局として開けます。
+	Open as a new game	新しい対局として開く
+	…and {n} older	…ほかに古いもの {n} 件

@@ -3189,3 +3189,10 @@ chess undo step	Clear drawings	مسح الرسوم
 	Replace this game	استبدال هذه المباراة
 @plural	{n} move deleted|{n} moves deleted	حُذفت {n} نقلة|حُذفت {n} نقلة|حُذفت {n} نقلتان|حُذفت {n} نقلات|حُذفت {n} نقلة|حُذفت {n} نقلة
 @plural	({n} variation)|({n} variations)	({n} خط فرعي)|({n} خط فرعي)|({n} خطان فرعيان)|({n} خطوط فرعية)|({n} خطًا فرعيًا)|({n} خط فرعي)
+# Chess: deleted moves kept with the autosave (plan A8 §7, V5)
+	Those deleted moves are no longer kept.	لم تعد تلك النقلات المحذوفة محفوظة.
+	Deleted moves ({n})…	النقلات المحذوفة ({n})…
+	Games as they were before moves were deleted from them, kept with the autosave. Open one as a new game.	المباريات كما كانت قبل حذف نقلات منها، محفوظة مع الحفظ التلقائي. افتح إحداها كمباراة جديدة.
+	Open as a new game	فتح كمباراة جديدة
+@plural	{n} move|{n} moves	{n} نقلة|{n} نقلة|{n} نقلتان|{n} نقلات|{n} نقلة|{n} نقلة
+	…and {n} older	…و{n} أقدم

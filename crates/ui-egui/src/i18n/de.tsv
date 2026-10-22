@@ -2914,3 +2914,10 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	Replace this game	Diese Partie ersetzen
 @plural	{n} move deleted|{n} moves deleted	{n} Zug gelöscht|{n} Züge gelöscht
 @plural	({n} variation)|({n} variations)	({n} Variante)|({n} Varianten)
+# Chess: deleted moves kept with the autosave (plan A8 §7, V5)
+	Those deleted moves are no longer kept.	Diese gelöschten Züge werden nicht mehr aufbewahrt.
+	Deleted moves ({n})…	Gelöschte Züge ({n})…
+	Games as they were before moves were deleted from them, kept with the autosave. Open one as a new game.	Partien, wie sie waren, bevor Züge daraus gelöscht wurden, mit der automatischen Sicherung aufbewahrt. Öffnen Sie eine als neue Partie.
+	Open as a new game	Als neue Partie öffnen
+@plural	{n} move|{n} moves	{n} Zug|{n} Züge
+	…and {n} older	…und {n} ältere

@@ -2919,3 +2919,10 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Replace this game	Αντικατάσταση αυτής της παρτίδας
 @plural	{n} move deleted|{n} moves deleted	Διαγράφηκε {n} κίνηση|Διαγράφηκαν {n} κινήσεις
 @plural	({n} variation)|({n} variations)	({n} παραλλαγή)|({n} παραλλαγές)
+# Chess: deleted moves kept with the autosave (plan A8 §7, V5)
+	Those deleted moves are no longer kept.	Αυτές οι διαγραμμένες κινήσεις δεν φυλάσσονται πια.
+	Deleted moves ({n})…	Διαγραμμένες κινήσεις ({n})…
+	Games as they were before moves were deleted from them, kept with the autosave. Open one as a new game.	Παρτίδες όπως ήταν πριν διαγραφούν κινήσεις από αυτές, φυλαγμένες με την αυτόματη αποθήκευση. Ανοίξτε μία ως νέα παρτίδα.
+	Open as a new game	Άνοιγμα ως νέα παρτίδα
+@plural	{n} move|{n} moves	{n} κίνηση|{n} κινήσεις
+	…and {n} older	…και άλλες {n} παλαιότερες

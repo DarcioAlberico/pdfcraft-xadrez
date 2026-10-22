@@ -2935,3 +2935,10 @@ chess undo step	Clear drawings	видалення малюнків
 	Replace this game	Замінити цю партію
 @plural	{n} move deleted|{n} moves deleted	Видалено {n} хід|Видалено {n} ходи|Видалено {n} ходів
 @plural	({n} variation)|({n} variations)	({n} варіант)|({n} варіанти)|({n} варіантів)
+# Chess: deleted moves kept with the autosave (plan A8 §7, V5)
+	Those deleted moves are no longer kept.	Ці видалені ходи більше не зберігаються.
+	Deleted moves ({n})…	Видалені ходи ({n})…
+	Games as they were before moves were deleted from them, kept with the autosave. Open one as a new game.	Партії такими, якими вони були до видалення ходів, зберігаються разом з автозбереженням. Відкрийте одну як нову партію.
+	Open as a new game	Відкрити як нову партію
+@plural	{n} move|{n} moves	{n} хід|{n} ходи|{n} ходів
+	…and {n} older	…і ще старіших: {n}

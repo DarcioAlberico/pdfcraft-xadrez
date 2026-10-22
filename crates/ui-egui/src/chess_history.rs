@@ -274,6 +274,11 @@ impl<S> History<S> {
         self.past.back().map(|s| &s.edit)
     }
 
+    /// The state before the step Undo would undo.
+    pub(crate) fn undo_state(&self) -> Option<&S> {
+        self.past.back().map(|s| &s.state)
+    }
+
     /// What Redo would redo.
     pub(crate) fn redo_edit(&self) -> Option<&ChessEdit> {
         self.future.last().map(|s| &s.edit)

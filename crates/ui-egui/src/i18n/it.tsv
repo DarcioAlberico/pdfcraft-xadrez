@@ -3125,3 +3125,10 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	Replace this game	Sostituisci questa partita
 @plural	{n} move deleted|{n} moves deleted	{n} mossa eliminata|{n} mosse eliminate
 @plural	({n} variation)|({n} variations)	({n} variante)|({n} varianti)
+# Chess: deleted moves kept with the autosave (plan A8 §7, V5)
+	Those deleted moves are no longer kept.	Quelle mosse eliminate non sono più conservate.
+	Deleted moves ({n})…	Mosse eliminate ({n})…
+	Games as they were before moves were deleted from them, kept with the autosave. Open one as a new game.	Partite com’erano prima che ne fossero eliminate delle mosse, conservate con il salvataggio automatico. Aprine una come nuova partita.
+	Open as a new game	Apri come nuova partita
+@plural	{n} move|{n} moves	{n} mossa|{n} mosse
+	…and {n} older	…e altre {n} più vecchie

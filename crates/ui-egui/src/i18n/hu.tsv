@@ -2912,3 +2912,10 @@ chess undo step	Clear drawings	rajzok törlése
 	Replace this game	A játszma cseréje
 @plural	{n} move deleted|{n} moves deleted	{n} lépés törölve|{n} lépés törölve
 @plural	({n} variation)|({n} variations)	({n} változat)|({n} változat)
+# Chess: deleted moves kept with the autosave (plan A8 §7, V5)
+	Those deleted moves are no longer kept.	Ezek a törölt lépések már nincsenek megőrizve.
+	Deleted moves ({n})…	Törölt lépések ({n})…
+	Games as they were before moves were deleted from them, kept with the autosave. Open one as a new game.	A játszmák olyan állapotban, ahogy a lépések törlése előtt voltak, az automatikus mentéssel együtt megőrizve. Nyisson meg egyet új játszmaként.
+	Open as a new game	Megnyitás új játszmaként
+@plural	{n} move|{n} moves	{n} lépés|{n} lépés
+	…and {n} older	…és még {n} régebbi

@@ -2822,3 +2822,10 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Replace this game	ఈ ఆటను మార్చు
 @plural	{n} move deleted|{n} moves deleted	{n} ఎత్తు తొలగించబడింది|{n} ఎత్తులు తొలగించబడ్డాయి
 @plural	({n} variation)|({n} variations)	({n} ఉపవరుస)|({n} ఉపవరుసలు)
+# Chess: deleted moves kept with the autosave (plan A8 §7, V5)
+	Those deleted moves are no longer kept.	ఆ తొలగించిన ఎత్తులు ఇక భద్రపరచబడలేదు.
+	Deleted moves ({n})…	తొలగించిన ఎత్తులు ({n})…
+	Games as they were before moves were deleted from them, kept with the autosave. Open one as a new game.	ఎత్తులు తొలగించబడక ముందు ఉన్నట్లుగా ఆటలు, స్వయంచాలక భద్రపరచడంతో పాటు ఉంచబడ్డాయి. ఒకదాన్ని కొత్త ఆటగా తెరవండి.
+	Open as a new game	కొత్త ఆటగా తెరువు
+@plural	{n} move|{n} moves	{n} ఎత్తు|{n} ఎత్తులు
+	…and {n} older	…మరియు మరో {n} పాతవి
