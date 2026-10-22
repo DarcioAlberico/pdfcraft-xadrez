@@ -3,6 +3,7 @@
 use std::process::ExitCode;
 
 mod assets;
+mod chess_bench;
 mod corpus;
 mod demo_pdf;
 mod fuzz;
@@ -41,6 +42,11 @@ const COMMANDS: &[(&str, &str, Command)] = &[
     ("screenshots", "Regenerate the README screenshots in docs/images/ and their ATTRIBUTION entries", screenshots::run),
     ("models", "Fetch the OCR models (ATTRIBUTION.toml kind = \"model\") into assets/models/, verified by SHA-256", assets::models),
     ("demo-pdf", "Build dist/demo/pdfcraft-showcase.pdf (needs Google Chrome or Chromium)", demo_pdf::run),
+    (
+        "chess-bench",
+        "Read chess books (--dir DIR with books/*.pdf, --tag NAME, --models DIR) and compare the moves with --baseline TAG; fails on lost valid moves",
+        chess_bench::run,
+    ),
 ];
 
 fn version_cmd(args: &[String]) -> anyhow::Result<()> {
