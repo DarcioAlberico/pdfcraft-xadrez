@@ -2524,6 +2524,7 @@ animation effects	Off	Ανενεργά
 	To move:	Παίζουν:
 	Move number:	Αριθμός κίνησης:
 	The move the diagram stands at: 35 with Black to move is 35…	Η κίνηση στην οποία βρίσκεται το διάγραμμα: 35 με τα μαύρα να παίζουν είναι 35…
+	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Η κίνηση από την οποία αρχίζει η παρτίδα, για διόρθωση όταν δεν διαβάστηκε: 35 με τα μαύρα να παίζουν είναι 35…
 	Use the second reading	Χρήση της δεύτερης ανάγνωσης
 	{n} to review	Για έλεγχο: {n}
 	◀ Previous to review	◀ Προηγούμενο για έλεγχο
@@ -2605,6 +2606,7 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Edit move comment	επεξεργασίας σχολίου
 	Edit game details	επεξεργασίας στοιχείων παρτίδας
 	Change side to move	αλλαγής πλευράς που παίζει
+	Change the move number	αλλαγής αριθμού κίνησης
 	Load the FEN	φόρτωσης FEN
 	Load the PGN	φόρτωσης PGN
 	Load the diagram	φόρτωσης διαγράμματος

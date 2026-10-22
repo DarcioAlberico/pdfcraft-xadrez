@@ -2517,6 +2517,7 @@ animation effects	Off	Ki
 	To move:	Lép:
 	Move number:	Lépésszám:
 	The move the diagram stands at: 35 with Black to move is 35…	A lépés, amelynél a diagram áll: 35, sötét lépésével 35…
+	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	A lépés, amellyel a játszma kezdődik, javításhoz, ha nem sikerült beolvasni: 35, sötét lépésével 35…
 	Use the second reading	A második olvasat használata
 	{n} to review	Ellenőrizendő: {n}
 	◀ Previous to review	◀ Előző ellenőrizendő
@@ -2598,6 +2599,7 @@ chess undo step	Clear drawings	rajzok törlése
 	Edit move comment	megjegyzés szerkesztése
 	Edit game details	játszmaadatok szerkesztése
 	Change side to move	lépő fél módosítása
+	Change the move number	lépésszám módosítása
 	Load the FEN	FEN betöltése
 	Load the PGN	PGN betöltése
 	Load the diagram	diagram betöltése

@@ -73,6 +73,8 @@ pub enum ChessEdit {
     GameDetails,
     /// Whose move it is at the start.
     SideToMove,
+    /// The number of the move the game starts at, corrected.
+    MoveNumber,
     /// A FEN typed in the FEN field.
     LoadFen,
     /// The PGN field read into the board.
@@ -114,6 +116,7 @@ impl ChessEdit {
             ChessEdit::ClearDrawings => tl_ctx!("chess undo step", "Clear drawings").to_string(),
             ChessEdit::GameDetails => tl!("Edit game details").to_string(),
             ChessEdit::SideToMove => tl!("Change side to move").to_string(),
+            ChessEdit::MoveNumber => tl!("Change the move number").to_string(),
             ChessEdit::LoadFen => tl!("Load the FEN").to_string(),
             ChessEdit::LoadPgn => tl!("Load the PGN").to_string(),
             ChessEdit::LoadDiagram => tl!("Load the diagram").to_string(),

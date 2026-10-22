@@ -2481,6 +2481,7 @@ animation effects	Off	Изключени
 	To move:	На ход:
 	Move number:	Номер на хода:
 	The move the diagram stands at: 35 with Black to move is 35…	Ходът, на който е диаграмата: 35 с черните на ход е 35…
+	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Ходът, от който започва партията, за да го поправите, когато не е разчетен: 35 с черните на ход е 35…
 	Use the second reading	Използване на второто разчитане
 	{n} to review	За проверка: {n}
 	◀ Previous to review	◀ Предишна за проверка
@@ -2562,6 +2563,7 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Edit move comment	редакцията на коментара
 	Edit game details	редакцията на данните за партията
 	Change side to move	смяната на страната на ход
+	Change the move number	смяната на номера на хода
 	Load the FEN	зареждането на FEN
 	Load the PGN	зареждането на PGN
 	Load the diagram	зареждането на диаграмата

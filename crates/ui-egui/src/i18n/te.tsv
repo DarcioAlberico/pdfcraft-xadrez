@@ -2427,6 +2427,7 @@ animation effects	Off	ఆఫ్
 	To move:	ఎత్తు:
 	Move number:	ఎత్తు సంఖ్య:
 	The move the diagram stands at: 35 with Black to move is 35…	రేఖాచిత్రం ఉన్న ఎత్తు: నలుపు ఆడాల్సిన 35 అంటే 35…
+	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	ఆట మొదలయ్యే ఎత్తు, చదవనప్పుడు సరిచేయడానికి: నలుపు ఆడాల్సిన 35 అంటే 35…
 	Use the second reading	రెండవ పఠనాన్ని ఉపయోగించు
 	{n} to review	సమీక్షకు: {n}
 	◀ Previous to review	◀ మునుపటి సమీక్ష
@@ -2508,6 +2509,7 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Edit move comment	వ్యాఖ్య సవరణ
 	Edit game details	ఆట వివరాల సవరణ
 	Change side to move	ఎత్తు వేసే పక్షం మార్పు
+	Change the move number	ఎత్తు సంఖ్య మార్పు
 	Load the FEN	FEN లోడ్
 	Load the PGN	PGN లోడ్
 	Load the diagram	రేఖాచిత్రం లోడ్

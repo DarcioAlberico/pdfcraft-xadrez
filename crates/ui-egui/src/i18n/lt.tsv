@@ -2770,6 +2770,7 @@ theme	Appearance	Išvaizda
 	To move:	Ėjimas:
 	Move number:	Ėjimo numeris:
 	The move the diagram stands at: 35 with Black to move is 35…	Ėjimas, ties kuriuo yra diagrama: 35, kai eina juodieji, yra 35…
+	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Ėjimas, nuo kurio prasideda partija, pataisyti, kai jis nebuvo nuskaitytas: 35, kai eina juodieji, yra 35…
 chess side	Black	Juodieji
 	Use the second reading	Naudoti antrąjį atpažinimą
 	{n} to review	Tikrintinų: {n}
@@ -2852,6 +2853,7 @@ chess undo step	Clear drawings	piešinių valymą
 	Edit move comment	komentaro taisymą
 	Edit game details	partijos duomenų taisymą
 	Change side to move	ėjimo eilės keitimą
+	Change the move number	ėjimo numerio keitimą
 	Load the FEN	FEN įkėlimą
 	Load the PGN	PGN įkėlimą
 	Load the diagram	diagramos įkėlimą

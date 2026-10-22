@@ -2494,6 +2494,7 @@ animation effects	Off	Wyłączone
 	To move:	Ruch:
 	Move number:	Numer ruchu:
 	The move the diagram stands at: 35 with Black to move is 35…	Ruch, na którym stoi diagram: 35 z ruchem czarnych to 35…
+	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Ruch, od którego zaczyna się partia, do poprawienia, gdy nie został odczytany: 35 z ruchem czarnych to 35…
 	Use the second reading	Użyj drugiego odczytu
 	{n} to review	Do sprawdzenia: {n}
 	◀ Previous to review	◀ Poprzedni do sprawdzenia
@@ -2575,6 +2576,7 @@ chess undo step	Clear drawings	usunięcie rysunków
 	Edit move comment	edycję komentarza
 	Edit game details	edycję danych partii
 	Change side to move	zmianę strony na posunięciu
+	Change the move number	zmianę numeru posunięcia
 	Load the FEN	wczytanie FEN
 	Load the PGN	wczytanie PGN
 	Load the diagram	wczytanie diagramu

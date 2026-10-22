@@ -2772,6 +2772,7 @@ key	Space	Space
 	To move:	Lượt đi:
 	Move number:	Số nước đi:
 	The move the diagram stands at: 35 with Black to move is 35…	Nước đi mà sơ đồ đang ở: 35 với Đen đi là 35…
+	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Nước đi mà ván cờ bắt đầu, để sửa khi chưa đọc được: 35 với Đen đi là 35…
 chess side	Black	Đen
 	Use the second reading	Dùng kết quả đọc thứ hai
 	{n} to review	Cần xem lại: {n}
@@ -2854,6 +2855,7 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Edit move comment	sửa bình luận
 	Edit game details	sửa thông tin ván cờ
 	Change side to move	đổi lượt đi
+	Change the move number	đổi số nước đi
 	Load the FEN	tải FEN
 	Load the PGN	tải PGN
 	Load the diagram	tải sơ đồ

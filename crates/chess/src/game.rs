@@ -30,6 +30,9 @@ pub use structure::{NodePath, NodeSource, Shift, StructureError};
 /// Most moves a game holds, variations included. Real annotated games are under 3,000.
 pub const MAX_NODES: usize = 10_000;
 
+/// The highest number a game's first move can be given ([`Game::set_first_move_number`]).
+pub const MAX_MOVE_NUMBER: u32 = 999;
+
 /// Deepest nesting of variations (a variation inside a variation…).
 pub const MAX_DEPTH: usize = 32;
 
@@ -361,6 +364,31 @@ impl Game {
     /// The FEN of the start.
     pub fn start_fen(&self) -> String {
         self.node(0).board.to_string()
+    }
+
+    /// The number of the move the start stands at (its FEN's move number): 35 for a game that
+    /// starts at 35. or 35…
+    pub fn first_move_number(&self) -> u32 {
+        u32::from(self.node(0).board.fullmove_number())
+    }
+
+    /// Number the game from `number` (the move the start stands at, as the book prints it), when
+    /// its reading missed or misread it: every move keeps its place and is renumbered with the
+    /// start. `number` is kept within 1..=[`MAX_MOVE_NUMBER`]. Returns whether anything changed.
+    pub fn set_first_move_number(&mut self, number: u32) -> bool {
+        let number = number.clamp(1, MAX_MOVE_NUMBER);
+        let old = self.first_move_number();
+        if number == old {
+            return false;
+        }
+        for n in &mut self.nodes {
+            // A move's number only grows from the start's; checked anyway, never below 1.
+            let after = u32::from(n.board.fullmove_number()).saturating_sub(old);
+            let renumbered = u16::try_from(number.saturating_add(after)).unwrap_or(u16::MAX).max(1);
+            n.board.set_fullmove_number(renumbered);
+        }
+        self.revision = self.revision.wrapping_add(1);
+        true
     }
 
     /// The FEN of the position after move `node` (the start's for node 0), whatever move is
@@ -1351,6 +1379,48 @@ mod tests {
         assert_eq!(g.last_move(), Some((sq("g1"), sq("f3"))));
         assert_eq!(g.side_to_move(), Color::Black);
         assert_eq!(g.play(sq("e5"), sq("e3"), None), Err(GameError::IllegalMove));
+    }
+
+    #[test]
+    fn the_first_move_number_renumbers_every_move_and_variation() {
+        // A diagram read without its move number: Black to move, numbered 1.
+        let mut g = Game::from_fen("4k3/8/8/8/8/8/4P3/4K3 b - - 0 1").unwrap();
+        g.play_san("Kd7").unwrap();
+        g.play_san("e4").unwrap();
+        g.go_to(1);
+        g.play_san("Ke1").unwrap_err();
+        g.play_san("Kf2").unwrap();
+        assert_eq!(g.movetext(), "1... Kd7 2. e4 (2. Kf2)");
+        assert!(g.set_first_move_number(35));
+        assert_eq!(g.first_move_number(), 35);
+        assert_eq!(g.movetext(), "35... Kd7 36. e4 (36. Kf2)");
+        assert_eq!(g.start_fen(), "4k3/8/8/8/8/8/4P3/4K3 b - - 0 35");
+        assert!(g.pgn().contains("[FEN \"4k3/8/8/8/8/8/4P3/4K3 b - - 0 35\"]"), "{}", g.pgn());
+        // Moves played after it are numbered on from the new number.
+        g.go_to_main_end();
+        g.play_san("Ke6").unwrap();
+        assert_eq!(g.movetext(), "35... Kd7 36. e4 (36. Kf2) 36... Ke6");
+        // The same number changes nothing; out of range is kept within 1..=999.
+        assert!(!g.set_first_move_number(35));
+        assert!(g.set_first_move_number(0));
+        assert_eq!(g.first_move_number(), 1);
+        g.set_first_move_number(u32::MAX);
+        assert_eq!(g.first_move_number(), MAX_MOVE_NUMBER);
+        assert_eq!(g.movetext(), "999... Kd7 1000. e4 (1000. Kf2) 1000... Ke6");
+        // The game reads back from its PGN with the number.
+        let (back, stopped) = Game::from_pgn(&g.pgn()).unwrap();
+        assert_eq!((back.movetext(), stopped), (g.movetext(), None));
+    }
+
+    #[test]
+    fn the_standard_start_renumbered_writes_its_fen() {
+        let mut g = Game::standard();
+        let revision = g.revision();
+        assert!(g.set_first_move_number(12));
+        assert!(g.revision() > revision);
+        g.play_san("e4").unwrap();
+        assert_eq!(g.movetext(), "12. e4");
+        assert!(g.pgn().contains("[SetUp \"1\"]"));
     }
 
     #[test]

@@ -2516,6 +2516,7 @@ animation effects	Off	Өшірулі
 	To move:	Жүріс:
 	Move number:	Жүріс нөмірі:
 	The move the diagram stands at: 35 with Black to move is 35…	Диаграмма тұрған жүріс: қаралар жүретін 35 — 35…
+	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Партия басталатын жүріс, оқылмаған кезде түзету үшін: қаралар жүретін 35 — 35…
 	Use the second reading	Екінші оқылуды пайдалану
 	{n} to review	Тексерілетін: {n}
 	◀ Previous to review	◀ Алдыңғы тексерілетін
@@ -2597,6 +2598,7 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Edit move comment	түсініктемені өңдеу
 	Edit game details	партия деректерін өңдеу
 	Change side to move	жүріс кезегін ауыстыру
+	Change the move number	жүріс нөмірін ауыстыру
 	Load the FEN	FEN жүктеу
 	Load the PGN	PGN жүктеу
 	Load the diagram	диаграмма жүктеу

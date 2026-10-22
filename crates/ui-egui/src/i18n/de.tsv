@@ -2519,6 +2519,7 @@ animation effects	Off	Aus
 	To move:	Am Zug:
 	Move number:	Zugnummer:
 	The move the diagram stands at: 35 with Black to move is 35…	Der Zug, bei dem das Diagramm steht: 35 mit Schwarz am Zug ist 35…
+	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Der Zug, mit dem die Partie beginnt, zum Berichtigen, wenn er nicht gelesen wurde: 35 mit Schwarz am Zug ist 35…
 	Use the second reading	Zweite Lesung verwenden
 	{n} to review	{n} zu prüfen
 	◀ Previous to review	◀ Vorheriges zu prüfen
@@ -2600,6 +2601,7 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	Edit move comment	Zugkommentar bearbeiten
 	Edit game details	Partiedaten bearbeiten
 	Change side to move	Seite am Zug ändern
+	Change the move number	Zugnummer ändern
 	Load the FEN	FEN laden
 	Load the PGN	PGN laden
 	Load the diagram	Diagramm laden

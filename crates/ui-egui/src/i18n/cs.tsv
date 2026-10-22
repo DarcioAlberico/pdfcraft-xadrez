@@ -2592,6 +2592,7 @@ animation effects	Off	Vypnuto
 	To move:	Na tahu:
 	Move number:	Číslo tahu:
 	The move the diagram stands at: 35 with Black to move is 35…	Tah, u kterého diagram stojí: 35 s černým na tahu je 35…
+	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Tah, kterým partie začíná, k opravě, když nebyl přečten: 35 s černým na tahu je 35…
 	Use the second reading	Použít druhé čtení
 	{n} to review	Ke kontrole: {n}
 	◀ Previous to review	◀ Předchozí ke kontrole
@@ -2673,6 +2674,7 @@ chess undo step	Clear drawings	smazání kreseb
 	Edit move comment	úprava komentáře
 	Edit game details	úprava údajů o partii
 	Change side to move	změna strany na tahu
+	Change the move number	změna čísla tahu
 	Load the FEN	načtení FEN
 	Load the PGN	načtení PGN
 	Load the diagram	načtení diagramu

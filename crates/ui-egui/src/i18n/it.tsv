@@ -2730,6 +2730,7 @@ certificate	SHA-256 digest	Impronta SHA-256
 	To move:	Tratto:
 	Move number:	Numero della mossa:
 	The move the diagram stands at: 35 with Black to move is 35…	La mossa a cui si trova il diagramma: 35 con il tratto al Nero è 35…
+	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	La mossa da cui parte la partita, da correggere quando non è stata letta: 35 con il tratto al Nero è 35…
 	Use the second reading	Usa la seconda lettura
 	{n} to review	{n} da rivedere
 	◀ Previous to review	◀ Precedente da rivedere
@@ -2811,6 +2812,7 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	Edit move comment	modifica del commento
 	Edit game details	modifica dei dati della partita
 	Change side to move	cambio del tratto
+	Change the move number	cambio del numero di mossa
 	Load the FEN	caricamento del FEN
 	Load the PGN	caricamento del PGN
 	Load the diagram	caricamento del diagramma
