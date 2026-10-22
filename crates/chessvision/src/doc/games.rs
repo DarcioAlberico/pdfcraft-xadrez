@@ -60,9 +60,11 @@
 //!   before the weight was kept) are read as above.
 //! - **Comments and NAGs.** Prose inside a game is the comment of the move before it. An annotation
 //!   glyph belongs to the move it follows.
-//! - **Puzzles.** A diagram whose caption gives a number (`№185.`) is remembered by it. A
-//!   solution that names it (`№185. Teichmann – Lasker 1...Qh4`), however many pages on, closes
-//!   the open game and starts its moves from that diagram (tagged `PdfPuzzle`).
+//! - **Puzzles.** A diagram whose caption gives a number (`№185.`, `Exercício 12`) is remembered
+//!   by it. A solution that names it (`№185. Teichmann – Lasker 1...Qh4`, a heading `Ex. 6–12`),
+//!   however many pages on, closes the open game and starts its moves from that diagram (tagged
+//!   `PdfPuzzle`); headings between the name and the first move (the players, the event) keep
+//!   it.
 //! - **Where a game ends.** At the next diagram, at a heading, at a result (`1-0`, `0-1`, `½-½`,
 //!   `1/2-1/2`) outside variations, and at a new `1.` when the game started from the initial
 //!   position. Paragraphs and page breaks do not end a game. A diagram does not end it when it
@@ -750,6 +752,9 @@ pub(crate) struct Walker {
     /// The words just before the move about to be read, after a diagram no move has settled yet,
     /// end in a "position after" cue ([`after_cue`]).
     caption: bool,
+    /// The diagram (page, index) a solution named ([`Walker::puzzle`]) while it waits for its
+    /// first move: the headings before that move (the players, the event) keep it.
+    named: Option<(u32, usize)>,
 }
 
 /// A separator between sibling variations, waiting for the move after it.
@@ -1146,6 +1151,7 @@ impl Walker {
             return;
         }
         self.close();
+        self.named = Some((seed.page, seed.diagram));
         self.anchor = Anchor::Seed(seed);
     }
 
@@ -1161,8 +1167,17 @@ impl Walker {
         }
     }
 
-    /// A heading: the open game ends, and no diagram waits.
+    /// A heading: the open game ends, and no diagram waits, except the one a solution named
+    /// while no move has been read from it yet (`Ex. 6–12`, then `A. Yusupov — D. Shapiro` set as
+    /// a heading).
     pub fn heading(&mut self) {
+        if self.open.is_none()
+            && let Anchor::Seed(seed) = &self.anchor
+            && self.named == Some((seed.page, seed.diagram))
+        {
+            return;
+        }
+        self.named = None;
         self.close();
         self.anchor = Anchor::None;
         self.spare.clear();
@@ -1386,6 +1401,8 @@ impl Walker {
     pub fn play(&mut self, number: Option<MoveNumber>, san: &San, text: &str, bold: bool, loc: Loc) -> MoveOutcome {
         let printed = format!("{}{}", number.map(|n| n.text()).unwrap_or_default(), text);
         let mut number = number;
+        // The solution's moves have begun: a heading after them ends it.
+        self.named = None;
         // The move a "position after" caption names: not played, it settles the diagram's side
         // and number.
         if std::mem::take(&mut self.caption)

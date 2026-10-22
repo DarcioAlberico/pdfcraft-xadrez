@@ -671,6 +671,12 @@ fn puzzle_labels() {
         ("No. 12 Smith", 12),
         ("Nr 7)", 7),
         ("#42:", 42),
+        ("Exercício 12 ★△", 12),
+        ("Exercicio 3", 3),
+        ("Exercise 5: White to play", 5),
+        ("Ex. 6–12", 12),
+        ("Ex. 24-3", 3),
+        ("Ex. 7", 7),
     ] {
         assert_eq!(puzzle_label(text, false), Some(want), "{text}");
     }
@@ -680,7 +686,24 @@ fn puzzle_labels() {
     assert_eq!(puzzle_label("1675 ", true), Some(1675));
     assert_eq!(puzzle_label("1675", false), None);
     assert_eq!(puzzle_label("2.2 Combinations #2 (451-3514)", true), None, "a section number");
-    for text in ["1996 was a good year", "6.", "6. ±", "N9", "No way", "Nothing 12.", "№0.", "№123456.", "the №5 is", ""] {
+    for text in [
+        "1996 was a good year",
+        "6.",
+        "6. ±",
+        "N9",
+        "No way",
+        "Nothing 12.",
+        "№0.",
+        "№123456.",
+        "the №5 is",
+        "",
+        "Exercises 1.165-1.168",
+        "Ex. 6–",
+        "Ex. 6–0",
+        "Ex. 6–12a",
+        "Example 5",
+        "Exercício",
+    ] {
         assert_eq!(puzzle_label(text, true), None, "{text}");
     }
 }
@@ -745,6 +768,50 @@ fn bare_numbers_link_solutions_to_diagrams() {
         doc.games.iter().map(|g| g.origin).collect::<Vec<_>>(),
         [GameOrigin::Diagram { page: 0, diagram: 1, accepted: true }, GameOrigin::Diagram { page: 0, diagram: 0, accepted: true }]
     );
+}
+
+/// A workbook's chapter: "Exercício N" under each diagram, then the solutions, each headed by
+/// the chapter and the exercise (`Ex. 6–2`) with the players and the event on the lines (and
+/// headings) after it. Each solution is played from the exercise it names.
+#[test]
+fn exercise_labels_link_solutions_to_diagrams() {
+    let rook = "8/8/4k3/8/8/4K3/r7/7R w - - 0 1";
+    let p0 = page_text(vec![line(215.0, "Exercício 1 ★△"), line(415.0, "Exercício 2 ★★△")]);
+    let d0 = [reading(0, 60.0, SCHOLAR, true, false), reading(1, 260.0, rook, true, false)];
+    let p1 = page_text(vec![
+        line(100.0, "Ex. 6–2"),
+        line(120.0, "A. Smith — B. Jones"),
+        line(140.0, "Wijk aan Zee 1999"),
+        line(160.0, "1.Rh6+ Kd5 2.Rh5+"),
+        line(200.0, "Ex. 6–1"),
+        line(220.0, "C. Brown — D. Green"),
+        line(240.0, "3.Qh5 Nf6 4.Qxf7#"),
+    ]);
+    let heading = |top: f32| BlockHint { kind: HintKind::Heading { level: 2 }, rect: user_box(30.0, top - 5.0, 300.0, top + 15.0) };
+    let hints = [heading(100.0), heading(120.0), heading(200.0), heading(220.0)];
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &d0, &[], &[]));
+    b.add_page(&input(1, &p1, &[], &hints, &[]));
+    let doc = b.finish();
+    assert_eq!(kinds(&doc.pages[1]).iter().filter(|k| k.starts_with("H:")).count(), 4, "{:?}", kinds(&doc.pages[1]));
+    let numbers: Vec<Option<u32>> =
+        doc.pages[0].blocks.iter().filter_map(|b| if let Block::Diagram(d) = b { Some(d.puzzle) } else { None }).collect();
+    assert_eq!(numbers, [Some(1), Some(2)]);
+    assert!(moves(&doc.pages[1]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[1]));
+    assert_eq!(
+        doc.games.iter().map(|g| g.origin).collect::<Vec<_>>(),
+        [GameOrigin::Diagram { page: 0, diagram: 1, accepted: true }, GameOrigin::Diagram { page: 0, diagram: 0, accepted: true }]
+    );
+}
+
+/// A heading that names no puzzle still ends the game and lets go of the diagram waiting.
+#[test]
+fn a_heading_after_a_diagram_still_lets_it_go() {
+    let rook = "8/8/4k3/8/8/4K3/r7/7R w - - 0 1";
+    let p0 = page_text(vec![line(215.0, "Chapter 7"), line(240.0, "1.Rh6+ Kd5")]);
+    let hints = [BlockHint { kind: HintKind::Heading { level: 1 }, rect: user_box(30.0, 210.0, 300.0, 230.0) }];
+    let doc = build_page(&input(0, &p0, &[reading(0, 60.0, rook, true, false)], &hints, &[]));
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s != MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
 }
 
 /// A caption under the diagram gives its number too; one with no number gives none.

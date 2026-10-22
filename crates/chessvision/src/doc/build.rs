@@ -46,13 +46,26 @@ pub const MAX_BARE_CAPTION_CHARS: usize = 80;
 /// Largest puzzle number read.
 pub const MAX_PUZZLE: u32 = 99_999;
 
+/// The words that number a workbook's exercises, before the number: `Exercício 12` under the
+/// diagram, `Ex. 6–12` (chapter 6, exercise 12) over its solution.
+const EXERCISE_WORDS: [&str; 9] = ["Exercício", "Exercicio", "Exercise", "Exercice", "Ejercicio", "Esercizio", "Aufgabe", "Übung", "Ex."];
+
 /// The puzzle number a text starts with: `№185.`, `N!!185.` (how text layers extract `№`),
-/// `N9191.` (how OCR reads it), `No. 12`, `Nr. 12`, `#12`, followed by a full stop, a bracket,
-/// a colon or a space. With `bare`, also a caption that is the number alone (`1675`) or the
-/// number, a full stop and a name (`185. Teichmann`).
+/// `N9191.` (how OCR reads it), `No. 12`, `Nr. 12`, `#12`, an exercise (`Exercício 12`), followed
+/// by a full stop, a bracket, a colon or a space. A chapter's number before it (`Ex. 6–12`, `Ex.
+/// 24-3`) is left out: the number is the exercise's within its chapter, and a solution finds
+/// the last diagram that number was given to, which is its own chapter's while the solutions
+/// follow their chapter's exercises. With `bare`, also a caption that is the number alone
+/// (`1675`) or the number, a full stop and a name (`185. Teichmann`).
 pub(crate) fn puzzle_label(text: &str, bare: bool) -> Option<u32> {
     let t = text.trim_start();
-    let prefixed = ["№", "N!!", "N°", "Nº", "No.", "Nr.", "N9", "No", "Nr", "#"].iter().find_map(|p| t.strip_prefix(p)).map(str::trim_start);
+    let prefixed = ["№", "N!!", "N°", "Nº", "No.", "Nr.", "N9", "No", "Nr", "#"]
+        .iter()
+        .chain(EXERCISE_WORDS.iter())
+        .find_map(|p| t.strip_prefix(p))
+        // `Exercises 1.165-1.168` is a section's title, not an exercise.
+        .filter(|rest| rest.starts_with(|c: char| c.is_whitespace() || c.is_ascii_digit()))
+        .map(str::trim_start);
     let rest = match prefixed {
         Some(rest) => rest,
         None if bare && t.chars().count() <= MAX_BARE_CAPTION_CHARS => t,
@@ -62,6 +75,19 @@ pub(crate) fn puzzle_label(text: &str, bare: bool) -> Option<u32> {
     if digits == 0 || digits > 5 {
         return None;
     }
+    // `6–12`: the exercise after the chapter. Digits and the dashes are one char each in `rest`
+    // as `get` slices them, at char boundaries.
+    let chapter_dash = rest.get(digits..).and_then(|r| r.strip_prefix(['–', '-']));
+    let (rest, digits) = match chapter_dash {
+        Some(after) if prefixed.is_some() => {
+            let n = after.chars().take_while(char::is_ascii_digit).count();
+            if n == 0 || n > 5 {
+                return None;
+            }
+            (after, n)
+        }
+        _ => (rest, digits),
+    };
     // Digits are ASCII, so `digits` is a char boundary.
     let after = rest.get(digits..)?.chars().next();
     let ends = match (prefixed.is_some(), after) {
@@ -519,7 +545,15 @@ pub(crate) fn walk(page: u32, blocks: &mut [Block], walker: &mut Walker) {
                     side_assumed: r.is_some_and(|r| r.side_assumed),
                 });
             }
-            Block::Heading { .. } => walker.heading(),
+            Block::Heading { inlines, .. } => {
+                walker.heading();
+                // A solution's heading names its exercise (`Ex. 6–12`): its moves start from it.
+                let text: String =
+                    inlines.iter().filter_map(|i| if let Inline::Text { text, .. } = i { Some(text.as_str()) } else { None }).collect();
+                if let Some(n) = puzzle_label(&text, false) {
+                    walker.puzzle(n);
+                }
+            }
             Block::Paragraph { inlines, .. } => {
                 // A number alone just before a first move (`1675 1.Rd3+`) names a puzzle too.
                 let solutions: Vec<Option<u32>> = (0..inlines.len())
