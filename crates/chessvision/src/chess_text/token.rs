@@ -223,11 +223,32 @@ fn reads_as_move(cells: &[Cell], lang: Lang) -> bool {
     chars.get(p.core).and_then(|core| parse_move(core, lang)).is_some()
 }
 
+/// A word that reads as a move once the stray marks inside its squares are dropped: a full stop
+/// or comma between a file and a rank (`bxc.3`, `♔b,6`, `e,6`), where a scan's speck or a book
+/// set from an old OCR put one. SAN never has one there, and a word that already reads as a move
+/// is left alone.
+fn without_square_marks(cells: &[Cell], lang: Lang) -> Option<Vec<Cell>> {
+    let stray = |i: usize| {
+        let at = |k: usize| cells.get(k).map(|c| c.ch);
+        i > 0
+            && at(i).is_some_and(|c| c == '.' || c == ',')
+            && at(i - 1).is_some_and(|c| ('a'..='h').contains(&c))
+            && at(i + 1).is_some_and(|c| ('1'..='8').contains(&c))
+    };
+    if !(0..cells.len()).any(stray) || reads_as_move(cells, lang) {
+        return None;
+    }
+    let kept: Vec<Cell> = cells.iter().enumerate().filter(|(i, _)| !stray(*i)).map(|(_, c)| *c).collect();
+    reads_as_move(&kept, lang).then_some(kept)
+}
+
 /// Step 2b: put back together a move that OCR cut with spaces. A lone figurine and the one or
 /// two words after it (`♖ e1`, `♖ e 1`) join when together they read as a move; so do a move to
 /// the last rank and a promotion written apart (`f1 =♕`). A figurine in prose (`the ♗ pair`)
-/// joins nothing.
+/// joins nothing. Stray marks inside a square are dropped ([`without_square_marks`]), from a
+/// word and from the words joined, so `bxc.3` is `bxc3` and `♕ xc.3` is `♕xc3`.
 pub(crate) fn join_split_moves(words: Vec<Vec<Cell>>, lang: Lang) -> Vec<Vec<Cell>> {
+    let words: Vec<Vec<Cell>> = words.into_iter().map(|w| without_square_marks(&w, lang).unwrap_or(w)).collect();
     let mut out: Vec<Vec<Cell>> = Vec::with_capacity(words.len());
     let mut i = 0;
     while let Some(word) = words.get(i) {
@@ -243,6 +264,7 @@ pub(crate) fn join_split_moves(words: Vec<Vec<Cell>>, lang: Lang) -> Vec<Vec<Cel
         let joined = spans.iter().find_map(|&n| {
             let rest = words.get(i + 1..=i + n)?;
             let cells: Vec<Cell> = std::iter::once(word).chain(rest).flatten().copied().collect();
+            let cells = without_square_marks(&cells, lang).unwrap_or(cells);
             (cells.len() <= MAX_WORD_CHARS && reads_as_move(&cells, lang)).then_some((cells, n))
         });
         match joined {

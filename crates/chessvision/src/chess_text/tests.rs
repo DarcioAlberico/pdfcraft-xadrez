@@ -216,6 +216,18 @@ fn moves_cut_by_spaces_are_joined() {
     assert!(read.lines[0].spans.iter().any(|s| s.run == ChessRun::Figurine(PieceKind::Bishop)));
 }
 
+/// A scan's speck, or a book set from an old OCR, puts a full stop or comma inside a square:
+/// `bxc.3`, `♕ xc.3`, `♔b,6`. It is dropped when the word then reads as a move; prose and
+/// abbreviations (`e.g.`, `a.m.`), and numbers (`1.e4`), keep theirs.
+#[test]
+fn a_stray_mark_inside_a_square_is_dropped() {
+    let read = Page::new().text("20 bxc.3 ♕ xc.3 21.♔b,6 e.g. a.m. 1.e4").read(Some(Lang::En));
+    let sans: Vec<String> =
+        read.lines[0].spans.iter().filter_map(|s| if let ChessRun::Move { san, .. } = &s.run { Some(san.to_english()) } else { None }).collect();
+    assert_eq!(sans, ["bxc3", "Qxc3", "Kb6", "e4"]);
+    assert!(read.lines[0].spans.iter().any(|s| s.run == ChessRun::Text("e.g. a.m.".into())), "{:?}", read.lines[0].spans);
+}
+
 #[test]
 fn novelty_after_a_move_is_nag_146() {
     let read = Page::new().text("12.Nf4N").read(None);
