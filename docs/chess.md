@@ -75,7 +75,7 @@ Open the **Chess diagrams** panel (`chess.panel`), or run **Chess ▸ Scan** (`c
   - A diagram whose position is not legal is shown in a red frame and cannot be played until it is corrected in the editor.
   - **Draw on the board** with the right button, as on lichess: a click circles a square, a drag draws an arrow. Hold Shift for red, Alt for blue or Ctrl for yellow; green otherwise. Drawing the same thing again takes it off. Drawings belong to the move shown, so they come back when you return to it, and each one is an undo step. They are written into the PGN in the move's comment, in the convention ChessBase and lichess use: `{[%csl Gd5][%cal Rg1f3] the rest of the comment}` (squares, then arrows; G, R, Y and B for green, red, yellow and blue). A PGN with them shows them on the board, and the rest of its comment, other `[%…]` commands such as `[%clk]` and `[%eval]` included, is kept. An entry the board can't draw (another colour letter, a square that is not one, more than 64 on a move) stays in the comment as text. Moving a piece leaves the drawings; **Clear drawings** in the Analysis section takes them off the move shown. A position that is not legal has no game, so its drawings are kept beside it and not written anywhere.
 - The board is also the **study board**, with more for studying a position (the Chess panel's tabs are **Diagrams** and **Text**). **Open on the board** in the list or the editor loads a diagram there and brings the board forward, docked or in its own window.
-  - **Set up a position**, a tool of the rail beside the board, puts the set-up in the board's place, with pieces from a palette: click a square to put the chosen piece there, click it again or right-click it to empty it. **Standard start position** and **Empty board** start over; set who is to move and the castling rights (a right the pieces no longer allow is taken off). The panel says at once whether the position is legal, and **Done** plays from it as a new game (one undo step). **Cancel**, Esc, another tool or another game leaves the set-up.
+  - **Set up a position**, a tool of the rail beside the board, puts the set-up in the board's place, with pieces from a palette: click a square to put the chosen piece there, click it again or right-click it to empty it. **Standard start position** and **Empty board** start over; set who is to move and the castling rights (a right the pieces no longer allow is taken off). The panel says at once whether the position is legal, and **Done** plays from it (one undo step). When the game on the board has moves, the choice is **New game from this position** (a new game after it in the list; the game keeps its moves) or **Replace this game** (its moves go, told with Undo). **Cancel**, Esc, another tool or another game leaves the set-up.
   - The **Analysis** section under the board, closed until you open it, holds the rest. **Engine analysis** runs a UCI chess engine you installed, such as Stockfish. None comes with PdfCraft. It is found through the `PDFCRAFT_CHESS_ENGINE` environment variable (the program's path) or the program in an `engine` folder beside PdfCraft, or you pick one with **Choose engine…**. The program you pick and the number of lines are remembered in the settings (`chess_engine`) for the next session; analysis itself starts only when you switch it on. A remembered program that is no longer there is ignored, and the engine is looked for again.
     - It analyses the position shown, to depth 30, and starts again whenever the position changes. It stops while the board is not shown (another tab in front of it, the panel closed, Home), docked or in its own window, and goes on when it is back.
     - A thin **evaluation bar** beside the board shows who is better, and the best move is drawn as a blue arrow.
@@ -95,7 +95,7 @@ The rail is a column of 28 pt buttons beside the board, in sections. Each button
 |---|---|---|
 | **Navigate** | Esc | A click on a move goes to it. Esc also puts down any other tool. |
 | **Set up a position** | | The set-up view in the board's place (see the board, above). |
-| **Structure** group | Shift+S switches | Promote one level (Ctrl+↑), Make this the main line (Ctrl+Shift+↑), Demote (Ctrl+↓), Delete variation (Delete or Backspace), Move variation up (Alt+↑), Move variation down (Alt+↓), Cut after this move (Shift+Delete), Threat (null move). |
+| **Structure** group | Shift+S switches | Promote one level (Ctrl+↑), Make this the main line (Ctrl+Shift+↑), Demote (Ctrl+↓), Delete variation (Delete), Move variation up (Alt+↑), Move variation down (Alt+↓), Cut after this move (Shift+Delete), Threat (null move). |
 | **Capture** group | X; Shift+X switches | Capture (automatic), Capture as the line, as a variation, as a sub-variation: armed, a text selection on the page goes into the game. |
 | **Capture as a comment** | C | Armed, a text selection on the page becomes the move's comment. |
 | **OCR area** | O | On a scanned page, capture what chess OCR reads in a rectangle (step T9). |
@@ -194,8 +194,10 @@ Each operation is one undo step, and can be undone exactly: promote one level th
 - **Make this the main line** (Ctrl+Shift+↑): promote all the way.
 - **Demote** (Ctrl+↓): a move that continues its line becomes the first variation, and the variation that was first continues the line instead; the inverse of promoting.
 - **Move variation up / down** (Alt+↑ / Alt+↓): among the variations at the same fork. The line itself never moves.
-- **Delete variation** (Delete, Backspace): the variation and its moves; the move shown goes back to the fork.
+- **Delete variation** (Delete): the variation and its moves; the move shown goes back to the fork.
 - **Cut after this move** (Shift+Delete): every move after the move shown, variations included.
+
+Whatever takes moves out of the game (these tools, a move's menu, the button under the notation, a position put in the game's place) is told at the bottom of the panel, "5 moves deleted (2 variations)", with **Undo**; the notice stays until the game changes again. Backspace only goes back a move: it deletes nothing.
 - **Threat (null move)**: the side to move passes, and the moves after show what the other side threatens, as books do (`12... --`). Written `--` in PGN and read back (also as `Z0` or `0000`); refused when the side to move is in check.
 - **Copy line with figurines / (letters)** in a move's menu copies the line up to it as book text (`18.♘d5! ♕xe1 19.♘xe7+`), from the start of its variation or of the game.
 
@@ -264,7 +266,8 @@ These work while the chess scope is on (a click in the chess panels), and not wh
 | Shift+S | switch the Structure group's tool |
 | Ctrl+↑, Ctrl+Shift+↑, Ctrl+↓ | promote one level, make the main line, demote |
 | Alt+↑, Alt+↓ | move the variation up, down |
-| Delete, Backspace | delete the variation |
+| Delete | delete the variation |
+| Backspace | back a move (like ←) |
 | Shift+Delete | cut after the move shown |
 | `!` `?` `=` `+` `-` `/` `~` | type a glyph; `0` takes them off |
 | Ctrl+Z, Ctrl+Shift+Z | undo, redo the game |

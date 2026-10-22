@@ -38,6 +38,7 @@ mod chess_board_ui;
 mod chess_capture;
 mod chess_collection;
 mod chess_correct;
+mod chess_deleted;
 mod chess_editor;
 mod chess_history;
 mod chess_models;

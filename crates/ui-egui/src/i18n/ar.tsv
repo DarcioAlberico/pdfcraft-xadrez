@@ -3181,3 +3181,11 @@ chess undo step	Clear drawings	مسح الرسوم
 	Choose the piece and glyph models that read diagrams and chess text.	اختر نموذجَي القطع والرموز اللذين يقرآن المخططات ونص الشطرنج.
 	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	لا يوجد نموذج للقطع: تُقرأ فقط المخططات المصفوفة بخط شطرنج. استخدم نماذج الشطرنج… لتزويد التطبيق بالملف chess-pieces.onnx.
 	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	يحتاج التعرّف الضوئي على الشطرنج إلى النموذج chess-glyphs. استخدم نماذج الشطرنج… في لوحة الشطرنج لتزويد التطبيق بالملف chess-glyphs.onnx.
+# Chess board: moves deleted, told with Undo; a position set up is a new game (plan A8 §7, V2a)
+	Bring the deleted moves back	استعادة النقلات المحذوفة
+	Play from this position as a new game. The game on the board stays in the list with its moves.	العب من هذه الوضعية كمباراة جديدة. تبقى المباراة التي على الرقعة في القائمة بنقلاتها.
+	Play from this position in place of the game on the board: its moves are deleted (Undo brings them back).	العب من هذه الوضعية بدلًا من المباراة التي على الرقعة: تُحذف نقلاتها (التراجع يعيدها).
+	Play from this position.	العب من هذه الوضعية.
+	Replace this game	استبدال هذه المباراة
+@plural	{n} move deleted|{n} moves deleted	حُذفت {n} نقلة|حُذفت {n} نقلة|حُذفت {n} نقلتان|حُذفت {n} نقلات|حُذفت {n} نقلة|حُذفت {n} نقلة
+@plural	({n} variation)|({n} variations)	({n} خط فرعي)|({n} خط فرعي)|({n} خطان فرعيان)|({n} خطوط فرعية)|({n} خطًا فرعيًا)|({n} خط فرعي)

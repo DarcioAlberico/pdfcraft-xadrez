@@ -338,10 +338,22 @@ fn palette_button(ui: &mut egui::Ui, sprites: Option<&TextureHandle>, piece: Pie
     response.on_hover_text(name)
 }
 
-/// The set-up view: its board, the palette and the position's fields. Whether it is finished
-/// (Done or Cancel).
-fn setup_view(ui: &mut egui::Ui, t: &Tokens, setup: &mut Setup, board: &mut BoardState, pieces: &PieceSet) -> bool {
-    let mut finished = false;
+/// How the set-up view ends.
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum SetupEnd {
+    /// Cancel: nothing changes.
+    Cancel,
+    /// Play from the position (its FEN) as a new game; the game on the board keeps its moves.
+    NewGame(String),
+    /// Play from the position in the game's place (one undo step).
+    Replace(String),
+}
+
+/// The set-up view: its board, the palette and the position's fields. How it ended, when it did.
+/// With moves on the board, Done is a new game and replacing the game is the second choice
+/// (plan A8 §7, V2a: Done used to take the game's moves away).
+fn setup_view(ui: &mut egui::Ui, t: &Tokens, setup: &mut Setup, board: &mut BoardState, pieces: &PieceSet) -> Option<SetupEnd> {
+    let mut finished = None;
     ui.label(egui::RichText::new(tl!("Set up a position")).strong());
     let side = (ui.available_width() - SCROLL_BAR_ROOM).clamp(160.0, 480.0);
     if let Some(tex) = setup_texture(ui.ctx(), setup, board.flipped, pieces) {
@@ -419,13 +431,22 @@ fn setup_view(ui: &mut egui::Ui, t: &Tokens, setup: &mut Setup, board: &mut Boar
         (tl!("Not a legal position"), Color32::from_rgb(0xE0, 0x3E, 0x3E))
     };
     ui.label(egui::RichText::new(text).small().color(colour));
-    ui.horizontal(|ui| {
-        if ui.add_enabled(legal, egui::Button::new(tl!("Done"))).on_hover_text(tl!("Play from this position, as a new game.")).clicked() {
-            board.load_fen_as(crate::chess_history::ChessEdit::SetUp, &fen, board.flipped, None);
-            finished = true;
+    let has_moves = !board.game.is_empty();
+    ui.horizontal_wrapped(|ui| {
+        if has_moves {
+            let tip = tl!("Play from this position as a new game. The game on the board stays in the list with its moves.");
+            if ui.add_enabled(legal, egui::Button::new(tl!("New game from this position"))).on_hover_text(tip).clicked() {
+                finished = Some(SetupEnd::NewGame(fen.clone()));
+            }
+            let tip = tl!("Play from this position in place of the game on the board: its moves are deleted (Undo brings them back).");
+            if ui.add_enabled(legal, egui::Button::new(tl!("Replace this game"))).on_hover_text(tip).clicked() {
+                finished = Some(SetupEnd::Replace(fen.clone()));
+            }
+        } else if ui.add_enabled(legal, egui::Button::new(tl!("Done"))).on_hover_text(tl!("Play from this position.")).clicked() {
+            finished = Some(SetupEnd::Replace(fen.clone()));
         }
         if ui.button(tl!("Cancel")).clicked() {
-            finished = true;
+            finished = Some(SetupEnd::Cancel);
         }
     });
     finished
@@ -669,7 +690,8 @@ fn engine_view(ui: &mut egui::Ui, t: &Tokens, study: &mut StudyState, board: &mu
 }
 
 /// The rail's Set up tool is armed: the set-up view in the board's place, and `true`. Done
-/// plays from the position set up (one undo step) and Cancel leaves it; either, or Esc, goes
+/// plays from the position set up (one undo step), as a new game after the one on the board when
+/// that has moves (Replace this game is the other choice then), and Cancel leaves it; either, or Esc, goes
 /// back to Navigate. A set-up taken away from outside while it showed (another game put on the
 /// board) ends the mode too. It also notes that the board is drawn in this frame and gives the
 /// engine the position shown, so it is called wherever the Board panel is drawn, first.
@@ -683,7 +705,16 @@ pub(crate) fn setup_in_place(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessSta
     if shown {
         let board = chess.games.board_mut();
         let setup = study.setup.get_or_insert_with(|| Setup::from_fen(&board.current_fen()));
-        if setup_view(ui, t, setup, board, pieces) {
+        if let Some(end) = setup_view(ui, t, setup, board, pieces) {
+            match end {
+                SetupEnd::Cancel => {}
+                SetupEnd::Replace(fen) => board.load_fen_as(crate::chess_history::ChessEdit::SetUp, &fen, board.flipped, None),
+                SetupEnd::NewGame(fen) => {
+                    if let Err(why) = chess.games.collection_mut().new_at(&fen) {
+                        chess.games.board_mut().message = Some(why);
+                    }
+                }
+            }
             study.setup = None;
             chess.tools.tool = PgnTool::Navigate;
         }

@@ -2903,3 +2903,11 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Choose the piece and glyph models that read diagrams and chess text.	Диаграммалар мен шахмат мәтінін оқитын фигуралар мен глифтер модельдерін таңдау.
 	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	Фигуралар моделі жоқ: тек шахмат қарпімен терілген диаграммалар оқылады. Қолданбаға chess-pieces.onnx беру үшін «Шахмат модельдері…» пайдаланыңыз.
 	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	Шахмат OCR-ына chess-glyphs моделі керек. Қолданбаға chess-glyphs.onnx беру үшін шахмат панеліндегі «Шахмат модельдері…» пайдаланыңыз.
+# Chess board: moves deleted, told with Undo; a position set up is a new game (plan A8 §7, V2a)
+	Bring the deleted moves back	Жойылған жүрістерді қайтару
+	Play from this position as a new game. The game on the board stays in the list with its moves.	Осы позициядан жаңа партия ретінде ойнау. Тақтадағы партия өз жүрістерімен тізімде қалады.
+	Play from this position in place of the game on the board: its moves are deleted (Undo brings them back).	Осы позициядан тақтадағы партияның орнына ойнау: оның жүрістері жойылады (Болдырмау оларды қайтарады).
+	Play from this position.	Осы позициядан ойнау.
+	Replace this game	Осы партияны ауыстыру
+@plural	{n} move deleted|{n} moves deleted	{n} жүріс жойылды|{n} жүріс жойылды
+@plural	({n} variation)|({n} variations)	({n} нұсқа)|({n} нұсқа)

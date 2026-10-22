@@ -258,6 +258,12 @@ fn apply(list: &mut GameList<Entry>, op: &Value) -> std::result::Result<Map<Stri
             let game = collection::game_from(from, node).map_err(|e| e.to_string())?;
             entry.insert("game".into(), json!(list.insert_after(g, Entry { game, stopped: None })));
         }
+        "new_at" => {
+            let g = game_of(list, obj)?;
+            let fen = opt_text(obj, "fen")?.ok_or("fen is missing: the position the new game starts at")?;
+            let game = Game::from_fen(fen).map_err(|e| format!("fen: {e}"))?;
+            entry.insert("game".into(), json!(list.insert_after(g, Entry { game, stopped: None })));
+        }
         "export" => {
             let only = match obj.get("game") {
                 None | Some(Value::Null) => None,
@@ -265,7 +271,7 @@ fn apply(list: &mut GameList<Entry>, op: &Value) -> std::result::Result<Map<Stri
             };
             entry.insert("pgn".into(), json!(export(list, only)));
         }
-        other => return Err(format!("op {other:?} is list, set_active, rename, duplicate, delete, move, new_from or export")),
+        other => return Err(format!("op {other:?} is list, set_active, rename, duplicate, delete, move, new_from, new_at or export")),
     }
     Ok(entry)
 }

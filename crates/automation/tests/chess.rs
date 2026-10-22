@@ -1492,6 +1492,25 @@ fn chess_games_renames_duplicates_deletes_moves_and_starts_games_from_a_position
     assert_eq!(again["pgn"], r["pgn"]);
 }
 
+/// new_at starts a game at a position set up, right after the game, which keeps its moves (the
+/// board's Set up a position over a game with moves, plan A8 §7, V2a).
+#[test]
+fn chess_games_starts_a_game_at_a_position_set_up() {
+    let mut a = Automation::new();
+    let fen = "4k3/8/8/8/8/8/8/R3K3 w - - 0 1";
+    let r = ok(
+        &mut a,
+        "chess_games",
+        json!({ "pgn": "1. d4 *", "ops": [{ "op": "new_at", "fen": fen }, { "op": "new_at", "fen": "8/8/8/8/8/8/8/8 w - - 0 1" }] }),
+    );
+    let report = r["report"].as_array().unwrap();
+    assert_eq!((report[0]["game"].as_u64(), report[0]["active"].as_u64()), (Some(1), Some(1)));
+    assert_eq!(report[1]["ok"], false, "a position without kings starts no game");
+    assert_eq!(r["applied"], 1);
+    let games = r["games"].as_array().unwrap();
+    assert_eq!((games[0]["moves"].as_u64(), games[1]["start_fen"].as_str()), (Some(1), Some(fen)));
+}
+
 /// A refused operation adds an error entry, changes nothing and stops the list; `out` is then not
 /// written. Bad collections and arguments are refused with what is allowed.
 #[test]

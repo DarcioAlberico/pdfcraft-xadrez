@@ -3117,3 +3117,11 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	Choose the piece and glyph models that read diagrams and chess text.	Scegli i modelli dei pezzi e dei glifi che leggono diagrammi e testo scacchistico.
 	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	Nessun modello dei pezzi: si leggono solo i diagrammi composti in un font scacchistico. Usa Modelli scacchistici… per fornire all’app chess-pieces.onnx.
 	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	L’OCR scacchistico richiede il modello chess-glyphs. Usa Modelli scacchistici… nel pannello degli scacchi per fornire all’app chess-glyphs.onnx.
+# Chess board: moves deleted, told with Undo; a position set up is a new game (plan A8 §7, V2a)
+	Bring the deleted moves back	Recupera le mosse eliminate
+	Play from this position as a new game. The game on the board stays in the list with its moves.	Gioca da questa posizione come nuova partita. La partita sulla scacchiera resta nell’elenco con le sue mosse.
+	Play from this position in place of the game on the board: its moves are deleted (Undo brings them back).	Gioca da questa posizione al posto della partita sulla scacchiera: le sue mosse vengono eliminate (Annulla le recupera).
+	Play from this position.	Gioca da questa posizione.
+	Replace this game	Sostituisci questa partita
+@plural	{n} move deleted|{n} moves deleted	{n} mossa eliminata|{n} mosse eliminate
+@plural	({n} variation)|({n} variations)	({n} variante)|({n} varianti)
