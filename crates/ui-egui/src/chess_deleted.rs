@@ -5,9 +5,8 @@
 //! the game shown has fewer moves. So whatever took them (Delete, Shift+Delete, a move's menu, the
 //! button under the notation, a FEN or a set-up put in the game's place) gets the notice, and Undo
 //! or Redo, which go back to steps already seen, do not. It stays, with no timeout (WCAG 2.2.1),
-//! while the game is as the deletion left it.
+//! while the game is as the deletion left it, until it is dismissed.
 
-use egui::{Align2, Rect, pos2};
 use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, Token};
 
 use crate::chess_board_ui::BoardState;
@@ -90,26 +89,29 @@ impl DeleteWatch {
         self.notice.as_ref().map(|n| n.text.as_str())
     }
 
-    /// Draw the notice at the bottom of `area`, over the panel. Whether its Undo was clicked.
-    pub(crate) fn show(&self, ctx: &egui::Context, t: &Tokens, area: Rect) -> bool {
-        let Some(text) = self.text() else { return false };
-        let mut undo = false;
-        egui::Area::new(egui::Id::new("chess-deleted-notice"))
-            .order(egui::Order::Foreground)
-            .pivot(Align2::CENTER_BOTTOM)
-            .fixed_pos(pos2(area.center().x, area.bottom() - 12.0))
-            .show(ctx, |ui| {
-                egui::Frame::popup(ui.style()).show(ui, |ui| {
-                    ui.set_max_width((area.width() - 24.0).max(120.0));
-                    ui.horizontal_wrapped(|ui| {
-                        ui.add(icons::image("trash-2", 14.0, t.text_muted));
-                        ui.label(text);
-                        let r = ui.button(tl!("Undo"));
-                        r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, tl!("Bring the deleted moves back")));
-                        undo = r.clicked();
-                    });
+    /// Draw the notice across the top of the panel, in the flow: it covers nothing (the panel
+    /// moves down while it shows). Undo, and Dismiss to take it away. Whether Undo was clicked.
+    pub(crate) fn show(&mut self, ui: &mut egui::Ui, t: &Tokens) -> bool {
+        let Some(text) = self.text().map(str::to_owned) else { return false };
+        let (mut undo, mut dismiss) = (false, false);
+        egui::Frame::NONE
+            .fill(t.card)
+            .stroke(egui::Stroke::new(1.0, t.border))
+            .corner_radius(egui::CornerRadius::same(t.radius))
+            .inner_margin(egui::Margin::symmetric(8, 4))
+            .show(ui, |ui| {
+                ui.horizontal_wrapped(|ui| {
+                    ui.add(icons::image("trash-2", 14.0, t.text_muted));
+                    ui.label(text);
+                    let r = ui.button(tl!("Undo"));
+                    r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, tl!("Bring the deleted moves back")));
+                    undo = r.clicked();
+                    dismiss = icons::button(ui, "x", 22.0, false, tl!("Dismiss")).clicked();
                 });
             });
+        if undo || dismiss {
+            self.notice = None;
+        }
         undo
     }
 }

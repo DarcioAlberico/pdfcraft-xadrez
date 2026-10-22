@@ -197,7 +197,7 @@ Each operation is one undo step, and can be undone exactly: promote one level th
 - **Delete variation** (Delete): the variation and its moves; the move shown goes back to the fork.
 - **Cut after this move** (Shift+Delete): every move after the move shown, variations included.
 
-Whatever takes moves out of the game (these tools, a move's menu, the button under the notation, a position put in the game's place) is told at the bottom of the panel, "5 moves deleted (2 variations)", with **Undo**; the notice stays until the game changes again. Backspace only goes back a move: it deletes nothing.
+Whatever takes moves out of the game (these tools, a move's menu, the button under the notation, a position put in the game's place) is told in a strip at the top of the panel, "5 moves deleted (2 variations)", with **Undo**; the notice stays until the game changes again or it is dismissed (✕). Backspace only goes back a move: it deletes nothing.
 - **Threat (null move)**: the side to move passes, and the moves after show what the other side threatens, as books do (`12... --`). Written `--` in PGN and read back (also as `Z0` or `0000`); refused when the side to move is in check.
 - **Copy line with figurines / (letters)** in a move's menu copies the line up to it as book text (`18.♘d5! ♕xe1 19.♘xe7+`), from the start of its variation or of the game.
 

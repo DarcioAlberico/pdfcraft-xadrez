@@ -929,16 +929,22 @@ pub(crate) fn with_rail<R>(ui: &mut egui::Ui, chess: &mut ChessState, body: impl
         handle_key(ui.ctx(), chess, key, m, focused_group);
     }
     typed_glyphs(ui, chess);
-    let body_rect = Rect::from_min_max(pos2(area.min.x + RAIL_WIDTH + 1.0, area.min.y), area.max);
-    let mut body_ui = ui.new_child(UiBuilder::new().id_salt("chess-rail-body").max_rect(body_rect).layout(*ui.layout()));
-    let out = body(&mut body_ui, chess);
-    // Moves that left the game: how many, and Undo, at the bottom of the panel in view.
+    // Moves that left the game (the keys just handled, or the panel last frame): how many, and
+    // Undo, in a strip at the top of the panel that pushes it down rather than cover it.
     let game = chess.games.scope_stamp().0;
     chess.tools.deleted.see(game, chess.games.board());
-    let shown = if bounded { area } else { area.intersect(ui.clip_rect()) };
-    if chess.tools.deleted.show(ui.ctx(), &t, shown) {
-        chess.board_mut().undo();
+    let mut top = area.min.y;
+    if chess.tools.deleted.text().is_some() {
+        let strip = Rect::from_min_max(pos2(area.min.x + RAIL_WIDTH + 5.0, area.min.y + 4.0), pos2(area.max.x - 4.0, area.max.y));
+        let mut notice_ui = ui.new_child(UiBuilder::new().id_salt("chess-deleted").max_rect(strip).layout(Layout::top_down(Align::Min)));
+        if chess.tools.deleted.show(&mut notice_ui, &t) {
+            chess.board_mut().undo();
+        }
+        top = notice_ui.min_rect().bottom() + 4.0;
     }
+    let body_rect = Rect::from_min_max(pos2(area.min.x + RAIL_WIDTH + 1.0, top), area.max);
+    let mut body_ui = ui.new_child(UiBuilder::new().id_salt("chess-rail-body").max_rect(body_rect).layout(*ui.layout()));
+    let out = body(&mut body_ui, chess);
     // The glyph palette floats over the window the rail is in (U1).
     let anchor = chess.tools.palette_anchor;
     chess_annotate::palette_window(ui.ctx(), chess, anchor);
