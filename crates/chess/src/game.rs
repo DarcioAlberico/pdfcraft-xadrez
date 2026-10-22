@@ -67,8 +67,10 @@ pub enum GameError {
     IllegalMove,
     /// A pawn reaches the last rank: say what it becomes.
     NeedsPromotion,
-    /// The game holds as many moves, or variations nest as deep, as a game may.
+    /// The game holds as many moves as a game may.
     TooLong,
+    /// The move would start a variation nested deeper than [`MAX_DEPTH`].
+    TooDeep,
     /// The PGN is longer than [`MAX_PGN_LEN`].
     PgnTooLong,
     /// A tag name that PGN does not allow (letters, digits and `_` only), or one too long.
@@ -83,6 +85,7 @@ impl fmt::Display for GameError {
             GameError::IllegalMove => write!(f, "that move is not legal"),
             GameError::NeedsPromotion => write!(f, "the pawn needs a piece to become"),
             GameError::TooLong => write!(f, "the game is too long"),
+            GameError::TooDeep => write!(f, "variations would nest too deep (at most {MAX_DEPTH})"),
             GameError::PgnTooLong => write!(f, "the PGN is too long"),
             GameError::BadTag => write!(f, "a tag name has letters, digits and _ only"),
         }
@@ -184,6 +187,10 @@ pub struct Game {
     tags: Vec<(String, String)>,
     /// Counts the changes to the moves, comments, glyphs and tags (not to the move shown).
     revision: u64,
+    /// The furthest move of the line last stepped back along: while it comes after the move
+    /// shown, a step forward goes towards it rather than along the first reply, so stepping back
+    /// out of a variation and forward again returns into it. Not part of the PGN.
+    tip: NodeId,
 }
 
 impl Default for Game {
@@ -199,7 +206,7 @@ impl Game {
     }
 
     fn from_board(board: Board) -> Game {
-        Game { nodes: vec![Node::start(board)], current: 0, tags: Vec::new(), revision: 0 }
+        Game { nodes: vec![Node::start(board)], current: 0, tags: Vec::new(), revision: 0, tip: 0 }
     }
 
     /// A game from `position`, `side` to move when the position does not say.
@@ -243,9 +250,15 @@ impl Game {
         }
     }
 
-    /// The line shown: the moves from the start to the move shown, then on along each first reply.
+    /// The line shown: the moves from the start to the move shown, then on to the line's
+    /// remembered move (see [`Game::forward`]) and along each first reply after it.
     fn line(&self) -> Vec<NodeId> {
-        self.line_of(self.current)
+        self.line_of(if self.remembers(self.current) { self.tip } else { self.current })
+    }
+
+    /// Whether the remembered move comes after move `node` (not `node` itself).
+    fn remembers(&self, node: NodeId) -> bool {
+        self.tip != node && self.tip < self.nodes.len() && self.is_after(self.tip, node)
     }
 
     /// Moves from the start to the move shown.
@@ -271,21 +284,67 @@ impl Game {
         }
     }
 
-    /// One move back; `false` at the start.
+    /// One move back; `false` at the start. The line stepped back along is remembered, for
+    /// [`Game::forward`].
     pub fn back(&mut self) -> bool {
-        let moved = self.current != 0;
+        if self.current == 0 {
+            return false;
+        }
+        if !self.is_after(self.tip, self.current) {
+            self.tip = self.current;
+        }
         self.current = self.node(self.current).parent;
-        moved
+        true
     }
 
-    /// One move forward along the line; `false` at its end.
+    /// One move forward; `false` at the end of the line. After stepping back, forward retraces
+    /// the moves stepped back over (into a variation, when that is where they were); otherwise
+    /// it takes the first reply.
     pub fn forward(&mut self) -> bool {
-        match self.node(self.current).children.first() {
-            Some(&next) => {
+        match self.next_reply(self.current) {
+            Some(next) => {
                 self.current = next;
                 true
             }
             None => false,
+        }
+    }
+
+    /// The reply a step forward from move `node` takes: the one towards the remembered move
+    /// when that comes after `node`, else the first. `None` at the end of a line.
+    pub fn next_reply(&self, node: NodeId) -> Option<NodeId> {
+        if self.remembers(node) {
+            let mut at = self.tip;
+            // `is_after` walked this way already, so it reaches `node`.
+            while self.node(at).parent != node && at != 0 {
+                at = self.node(at).parent;
+            }
+            return Some(at);
+        }
+        self.nodes.get(node)?.children.first().copied()
+    }
+
+    /// The replies to move `node`, in order: the first continues its line, the others are
+    /// variations. Empty at the end of a line and for a move not in the game.
+    pub fn replies(&self, node: NodeId) -> &[NodeId] {
+        self.nodes.get(node).map_or(&[], |n| n.children.as_slice())
+    }
+
+    /// Step forward into reply `index` of the move shown (0: the line, 1: its first variation…)
+    /// and remember that line; `false` when there is no such reply.
+    pub fn forward_to(&mut self, index: usize) -> bool {
+        let Some(&next) = self.node(self.current).children.get(index) else { return false };
+        if !self.is_after(self.tip, next) {
+            self.tip = next;
+        }
+        self.current = next;
+        true
+    }
+
+    /// Show the last move of the main line.
+    pub fn go_to_main_end(&mut self) {
+        if let Some(&last) = self.main_line().last() {
+            self.current = last;
         }
     }
 
@@ -454,7 +513,10 @@ impl Game {
         }
         let parent = self.node(here);
         let depth = parent.depth.saturating_add(usize::from(!parent.children.is_empty()));
-        if self.nodes.len() >= MAX_NODES || depth > MAX_DEPTH {
+        if depth > MAX_DEPTH {
+            return Err(GameError::TooDeep);
+        }
+        if self.nodes.len() >= MAX_NODES {
             return Err(GameError::TooLong);
         }
         let board = &parent.board;
@@ -591,6 +653,7 @@ impl Game {
             }
         }
         self.current = map(self.current).unwrap_or(0);
+        self.tip = map(self.tip).unwrap_or(self.current);
         self.nodes = nodes;
         self.revision = self.revision.wrapping_add(1);
     }
@@ -1354,8 +1417,14 @@ mod tests {
         assert_eq!(g.movetext(), "1. e4 e5 (1... c5 2. Nf3) 2. Nf3");
         assert_eq!(g.ply(), 3);
         assert_eq!(g.len(), 3, "the line shown is the variation's");
-        // Forward follows each move's first reply, as on lichess.
+        // Forward retraces the moves stepped back over, into the variation, until another
+        // line is chosen.
         g.back();
+        g.back();
+        g.forward();
+        assert_eq!(g.san(g.current()), "c5");
+        g.back();
+        g.forward_to(0);
         g.back();
         g.forward();
         assert_eq!(g.san(g.current()), "e5");
@@ -1547,7 +1616,7 @@ mod tests {
             g.go_to_node(here);
             match g.play_san(&moves[1]) {
                 Ok(()) => {}
-                Err(GameError::TooLong) => return true,
+                Err(GameError::TooDeep) => return true,
                 Err(e) => panic!("{e:?}"),
             }
         }
@@ -1594,6 +1663,151 @@ mod tests {
         let d4 = h.current();
         h.promote(d4);
         assert!(h.movetext().starts_with("1. d4 (1. e4)"), "{}", h.movetext());
+    }
+
+    /// 1. e4 e5 2. Nf3 Nc6 (2... Nf6 3. Bc4) 3. Bb5, shown at 3. Bc4 in the variation.
+    fn variation_shown() -> Game {
+        let mut g = Game::standard();
+        play(&mut g, &[("e2", "e4"), ("e7", "e5"), ("g1", "f3"), ("b8", "c6"), ("f1", "b5")]);
+        g.back();
+        g.back();
+        play(&mut g, &[("g8", "f6"), ("f1", "c4")]);
+        g
+    }
+
+    #[test]
+    fn stepping_back_out_of_a_variation_and_forward_again_returns_into_it() {
+        let mut g = variation_shown();
+        assert_eq!(g.movetext(), "1. e4 e5 2. Nf3 Nc6 (2... Nf6 3. Bc4) 3. Bb5");
+        let bc4 = g.current();
+        for _ in 0..3 {
+            assert!(g.back());
+        }
+        assert_eq!(g.san(g.current()), "e5");
+        // The line shown is the one stepped back along, so its length and its end are too.
+        assert_eq!(g.len(), 5);
+        for _ in 0..3 {
+            assert!(g.forward());
+        }
+        assert_eq!(g.current(), bc4);
+        assert!(!g.forward());
+        // Nothing was lost on the way.
+        assert_eq!(g.movetext(), "1. e4 e5 2. Nf3 Nc6 (2... Nf6 3. Bc4) 3. Bb5");
+        // The end of the line is the remembered one's; the main line's end is a step of its own.
+        g.go_to(0);
+        g.go_to(usize::MAX);
+        assert_eq!(g.current(), bc4);
+        g.go_to_main_end();
+        assert_eq!(g.san(g.current()), "Bb5");
+    }
+
+    #[test]
+    fn a_move_shown_off_the_remembered_line_steps_forward_along_its_first_reply() {
+        let mut g = variation_shown();
+        g.back();
+        g.back();
+        // Nc6 is not on the way to the remembered 3. Bc4: forward follows the main line.
+        let nf3 = g.current();
+        let nc6 = g.replies(nf3)[0];
+        g.go_to_node(nc6);
+        assert!(g.forward());
+        assert_eq!(g.san(g.current()), "Bb5");
+        // Stepping back from Bb5 remembers the main line instead.
+        g.back();
+        g.back();
+        assert_eq!(g.next_reply(nf3), Some(nc6));
+        assert!(g.forward());
+        assert_eq!(g.san(g.current()), "Nc6");
+    }
+
+    #[test]
+    fn a_reply_is_chosen_by_its_index_and_remembered() {
+        let mut g = variation_shown();
+        for _ in 0..3 {
+            g.back();
+        }
+        let nf3 = g.replies(g.current())[0];
+        g.go_to_node(nf3);
+        assert_eq!(g.replies(nf3).len(), 2);
+        assert!(!g.forward_to(2));
+        assert!(g.forward_to(0));
+        assert_eq!(g.san(g.current()), "Nc6");
+        g.back();
+        assert!(g.forward_to(1));
+        assert_eq!(g.san(g.current()), "Nf6");
+        g.back();
+        assert!(g.forward());
+        assert_eq!(g.san(g.current()), "Nf6");
+        assert!(g.forward());
+        assert_eq!(g.san(g.current()), "Bc4");
+        assert_eq!(g.replies(g.current()), &[] as &[NodeId]);
+        assert_eq!(g.replies(9999), &[] as &[NodeId]);
+    }
+
+    #[test]
+    fn the_remembered_line_survives_a_change_to_the_tree() {
+        let mut g = variation_shown();
+        for _ in 0..3 {
+            g.back();
+        }
+        // A comment and a new variation elsewhere renumber nothing that matters: forward still
+        // goes back into 2... Nf6.
+        let e5 = g.current();
+        g.go_to_node(0);
+        g.play_san("d4").unwrap();
+        g.delete(g.current());
+        g.go_to_node(e5);
+        g.forward();
+        g.forward();
+        assert_eq!(g.san(g.current()), "Nf6");
+    }
+
+    #[test]
+    fn nesting_too_deep_is_told_apart_from_a_game_too_long() {
+        let mut g = Game::standard();
+        assert!(nest(&mut g));
+        let mut moves = g.legal_moves();
+        moves.dedup();
+        let here = g.current();
+        g.play_san(&moves[0]).unwrap();
+        g.go_to_node(here);
+        assert_eq!(g.play_san(&moves[1]), Err(GameError::TooDeep));
+        assert!(GameError::TooDeep.to_string().contains("32"));
+    }
+
+    proptest::proptest! {
+        /// Only a command that deletes takes moves away: stepping through the game, choosing a
+        /// reply, going to a move and playing never lose one.
+        #[test]
+        fn moving_around_and_playing_never_lose_a_move(ops in proptest::collection::vec((0usize..7, 0usize..64), 0..120)) {
+            let mut g = Game::standard();
+            for (op, n) in ops {
+                let before = (g.nodes.len(), g.movetext().len());
+                match op {
+                    0 => { g.back(); }
+                    1 => { g.forward(); }
+                    2 => { g.forward_to(n % 3); }
+                    3 => g.go_to_node(n % g.nodes.len()),
+                    4 => g.go_to(n),
+                    5 => g.go_to_main_end(),
+                    _ => {
+                        let mut moves = g.legal_moves();
+                        moves.dedup();
+                        if !moves.is_empty() {
+                            let _ = g.play_san(&moves[n % moves.len()]);
+                        }
+                    }
+                }
+                proptest::prop_assert!(g.nodes.len() >= before.0);
+                if op < 6 {
+                    proptest::prop_assert_eq!(g.movetext().len(), before.1);
+                }
+                proptest::prop_assert!(g.ply() <= g.len());
+                if let Some(next) = g.next_reply(g.current()) {
+                    proptest::prop_assert!(g.replies(g.current()).contains(&next));
+                }
+            }
+        }
     }
 
     proptest::proptest! {
