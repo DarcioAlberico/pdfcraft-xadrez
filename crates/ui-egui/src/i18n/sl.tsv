@@ -2522,6 +2522,7 @@ animation effects	Off	Izklopljeni
 	To move:	Na potezi:
 	Move number:	Številka poteze:
 	The move the diagram stands at: 35 with Black to move is 35…	Poteza, pri kateri je diagram: 35 s črnim na potezi je 35…
+	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Poteza, s katero se partija začne, za popravek, ko ni bila prebrana: 35 s črnim na potezi je 35…
 	Use the second reading	Uporabi drugo branje
 	{n} to review	Za pregled: {n}
 	◀ Previous to review	◀ Prejšnji za pregled
@@ -2603,6 +2604,7 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Edit move comment	urejanje komentarja
 	Edit game details	urejanje podatkov o partiji
 	Change side to move	menjavo strani na potezi
+	Change the move number	menjavo številke poteze
 	Load the FEN	nalaganje FEN
 	Load the PGN	nalaganje PGN
 	Load the diagram	nalaganje diagrama

@@ -620,6 +620,39 @@ fn open_on_the_board_from_the_panel() {
     assert_eq!(h.state().chess.board().game.movetext(), "1. e4");
 }
 
+/// The move number beside "To move:" on the Board panel corrects a game whose diagram was read
+/// without its number: every move is renumbered, in one undo step, and moves can be played on.
+#[test]
+fn the_board_panel_corrects_the_move_number() {
+    let mut h = harness();
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    h.get_all_by_label("Open on the board").next().expect("diagram 1 has a position").click();
+    h.run_steps(3);
+    click_square(&mut h, "e2");
+    click_square(&mut h, "e4");
+    click_square(&mut h, "e7");
+    click_square(&mut h, "e5");
+    assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5");
+    h.get_by_label("Move number:");
+    // Clicked where it is drawn: the field is in view, not under the panel's edge.
+    h.get_by_role(egui::accesskit::Role::SpinButton).click();
+    h.run_steps(2);
+    h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::A);
+    h.get_by_role(egui::accesskit::Role::SpinButton).type_text("35");
+    h.key_press(egui::Key::Enter);
+    h.run_steps(3);
+    assert_eq!(h.state().chess.board().game.movetext(), "35. e4 e5");
+    assert_eq!(h.state().chess.board().game.start_fen(), START_FEN.replace(" 0 1", " 0 35"));
+    click_square(&mut h, "g1");
+    click_square(&mut h, "f3");
+    assert_eq!(h.state().chess.board().game.movetext(), "35. e4 e5 36. Nf3");
+    // Undo the move, then the number: typing it was one step.
+    assert!(h.state_mut().chess.board_mut().undo());
+    assert!(h.state_mut().chess.board_mut().undo());
+    assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5");
+}
+
 /// The same with the chess panel in its own window (narrow, on its Diagrams tab): Open on the
 /// board shows the window's board, not a tab of the Inspector.
 #[test]
@@ -1356,6 +1389,17 @@ fn the_games_come_back_exactly_in_the_next_session() {
     assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Chess games restored: 2"));
     // The diagram the first game came from is in this document.
     h.state_mut().show_chess_board();
+    h.run_steps(3);
+    // The list of games is under the board, at the window's bottom: scrolled into view first.
+    let list = h.get_by_label("Werle–Jianu").rect().center();
+    h.hover_at(egui::pos2(list.x, 900.0));
+    h.run_steps(1);
+    h.event(egui::Event::MouseWheel {
+        unit: egui::MouseWheelUnit::Point,
+        delta: egui::vec2(0.0, -200.0),
+        phase: egui::TouchPhase::Move,
+        modifiers: egui::Modifiers::NONE,
+    });
     h.run_steps(3);
     h.get_by_label("Werle–Jianu").click();
     h.run_steps(2);

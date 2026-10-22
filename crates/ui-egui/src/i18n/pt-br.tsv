@@ -2533,6 +2533,7 @@ animation effects	Off	Desativados
 	To move:	Vez:
 	Move number:	Lance nº:
 	The move the diagram stands at: 35 with Black to move is 35…	O lance em que o diagrama está: 35 com as pretas a jogar é 35…
+	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	O lance em que a partida começa, para corrigir quando não foi reconhecido: 35 com as pretas a jogar é 35…
 chess side	Black	Pretas
 	Use the second reading	Usar a segunda leitura
 	{n} to review	{n} a revisar
@@ -2615,6 +2616,7 @@ chess undo step	Clear drawings	remoção dos desenhos
 	Edit move comment	edição do comentário
 	Edit game details	edição dos dados da partida
 	Change side to move	troca do lado que joga
+	Change the move number	troca do número do lance
 	Load the FEN	carregamento da FEN
 	Load the PGN	carregamento do PGN
 	Load the diagram	carregamento do diagrama
