@@ -44,7 +44,7 @@ const COMMANDS: &[(&str, &str, Command)] = &[
     ("demo-pdf", "Build dist/demo/pdfcraft-showcase.pdf (needs Google Chrome or Chromium)", demo_pdf::run),
     (
         "chess-bench",
-        "Read chess books (--dir DIR with books/*.pdf, --tag NAME) and compare the moves with --baseline TAG; fails on lost valid moves",
+        "Read chess books (--dir DIR with books/*.pdf, --tag NAME, --models DIR) and compare the moves with --baseline TAG; fails on lost valid moves",
         chess_bench::run,
     ),
 ];

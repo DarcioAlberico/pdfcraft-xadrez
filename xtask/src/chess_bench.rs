@@ -1,5 +1,5 @@
 //! `cargo xtask chess-bench --dir DIR --tag NAME [--pages N] [--jobs N] [--baseline TAG]
-//! [--allow-lost N] [--cli PATH]`: read chess books with `pdfcraft-cli` and compare the moves with
+//! [--allow-lost N] [--cli PATH] [--models DIR]`: read chess books with `pdfcraft-cli` and compare the moves with
 //! an earlier run, so a change to the game reader shows what it gained and what it lost.
 //!
 //! `DIR` holds the books as `books/*.pdf` (they are never committed: books are copyrighted) and
@@ -7,6 +7,10 @@
 //! quarter of the way in (20 by default; 0 reads every page). With `--baseline`, every move is
 //! matched with the same move (page, place, text) of that run: the moves that were valid there
 //! and are not now are listed, and more than `--allow-lost` of them (0 by default) fails.
+//!
+//! The piece models come from `--models` (else `PDFCRAFT_MODELS` or wherever `pdfcraft-cli`
+//! finds them). Without them only diagrams set in a chess font are read, and a run compared with
+//! one made with them loses most of its moves.
 //!
 //! A move counts as valid "from a diagram" when its game starts from a diagram: a book's moves
 //! read from the initial position are valid by accident when the reader missed the diagram they
@@ -41,6 +45,7 @@ pub fn run(args: &[String]) -> anyhow::Result<()> {
     let jobs: usize = opt("--jobs").map_or(Ok(2), |j| j.parse()).context("--jobs N")?;
     let allow: usize = opt("--allow-lost").map_or(Ok(0), |n| n.parse()).context("--allow-lost N")?;
     let baseline = opt("--baseline");
+    let models = opt("--models").map(PathBuf::from);
     let cli = match opt("--cli") {
         Some(c) => PathBuf::from(c),
         None => {
@@ -68,7 +73,7 @@ pub fn run(args: &[String]) -> anyhow::Result<()> {
         for _ in 0..jobs.max(1) {
             s.spawn(|| {
                 while let Some(book) = books.get(next.fetch_add(1, Ordering::Relaxed)) {
-                    if let Err(e) = read_book(&cli, &dir, &tag, book, pages) {
+                    if let Err(e) = read_book(&cli, models.as_deref(), &dir, &tag, book, pages) {
                         failures.lock().unwrap_or_else(std::sync::PoisonError::into_inner).push(format!("{book}: {e:#}"));
                     }
                 }
@@ -120,11 +125,11 @@ pub fn run(args: &[String]) -> anyhow::Result<()> {
 }
 
 /// Read one book's sample of pages into `out/<tag>/<stem>.json`.
-fn read_book(cli: &Path, dir: &Path, tag: &str, book: &str, pages: u64) -> anyhow::Result<()> {
+fn read_book(cli: &Path, models: Option<&Path>, dir: &Path, tag: &str, book: &str, pages: u64) -> anyhow::Result<()> {
     let stem = book.trim_end_matches(".pdf").trim_end_matches(".PDF");
     let out = dir.join("out").join(tag);
     let open = json!({"tool": "doc_open", "args": {"path": format!("books/{book}")}});
-    let report = script(cli, dir, &out.join(format!("{stem}.open.json")), &json!([open]))?;
+    let report = script(cli, models, dir, &out.join(format!("{stem}.open.json")), &json!([open]))?;
     let count = report["steps"][0]["result"][0]["pages"].as_u64().context("doc_open gave no page count")?;
     let list: Vec<u64> = if pages == 0 {
         (1..=count).collect()
@@ -133,14 +138,18 @@ fn read_book(cli: &Path, dir: &Path, tag: &str, book: &str, pages: u64) -> anyho
         (start..=count.min(start.saturating_add(pages.saturating_sub(1)))).collect()
     };
     let read = json!({"tool": "chess_document", "args": {"doc": 1, "pages": list, "out": format!("out/{tag}/{stem}.json")}});
-    script(cli, dir, &out.join(format!("{stem}.steps.json")), &json!([open, read]))?;
+    script(cli, models, dir, &out.join(format!("{stem}.steps.json")), &json!([open, read]))?;
     Ok(())
 }
 
 /// Run a script of automation steps with `dir` as the root; its report.
-fn script(cli: &Path, dir: &Path, path: &Path, steps: &Value) -> anyhow::Result<Value> {
+fn script(cli: &Path, models: Option<&Path>, dir: &Path, path: &Path, steps: &Value) -> anyhow::Result<Value> {
     std::fs::write(path, serde_json::to_string_pretty(steps)?)?;
-    let out = Command::new(cli)
+    let mut command = Command::new(cli);
+    if let Some(models) = models {
+        command.env("PDFCRAFT_MODELS", models);
+    }
+    let out = command
         .arg("run")
         .arg("--script")
         .arg(path)
