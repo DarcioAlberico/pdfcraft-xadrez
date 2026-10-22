@@ -2846,6 +2846,97 @@ chess undo step	Clear drawings	borrado de los dibujos
 	Better is	Mejor es
 	Worse is	Peor es
 	Editorial comment	Comentario editorial
+# Every NAG of the PGN standard and the ChessPad extension: the names of the glyphs added to the 28 (most have no printed sign), then the glyph palette's positional row and its list of the assessments without a sign.
+	Singular move	Jugada forzada
+	Worst move	Peor jugada
+	Equivalent move	Jugada equivalente
+	Equal chances, quiet position	Igualdad, posición tranquila
+	Equal chances, active position	Igualdad, posición activa
+	White has a crushing advantage	Las blancas tienen una ventaja aplastante
+	Black has a crushing advantage	Las negras tienen una ventaja aplastante
+	Insufficient compensation for the material	Compensación insuficiente por el material
+	More than enough compensation for the material	Compensación más que suficiente por el material
+	Slight development advantage	Ligera ventaja en desarrollo
+	Decisive development advantage	Ventaja decisiva en desarrollo
+	Lasting initiative	Iniciativa duradera
+	Slight counterplay	Ligero contrajuego
+	Decisive counterplay	Contrajuego decisivo
+	Moderate time pressure	Apuros de tiempo moderados
+	Slight space advantage	Ligera ventaja de espacio
+	Moderate space advantage	Ventaja de espacio moderada
+	Decisive space advantage	Ventaja de espacio decisiva
+	Slight control of the center	Ligero control del centro
+	Moderate control of the center	Control moderado del centro
+	Decisive control of the center	Control decisivo del centro
+	Slight control of the kingside	Ligero control del flanco de rey
+	Moderate control of the kingside	Control moderado del flanco de rey
+	Decisive control of the kingside	Control decisivo del flanco de rey
+	Slight control of the queenside	Ligero control del flanco de dama
+	Moderate control of the queenside	Control moderado del flanco de dama
+	Decisive control of the queenside	Control decisivo del flanco de dama
+	Vulnerable first rank	Primera fila vulnerable
+	Well protected first rank	Primera fila bien protegida
+	Poorly protected king	Rey mal protegido
+	Well protected king	Rey bien protegido
+	Poorly placed king	Rey mal situado
+	Well placed king	Rey bien situado
+	Very weak pawn structure	Estructura de peones muy débil
+	Moderately weak pawn structure	Estructura de peones moderadamente débil
+	Moderately strong pawn structure	Estructura de peones moderadamente fuerte
+	Very strong pawn structure	Estructura de peones muy fuerte
+	Poor knight placement	Caballo mal situado
+	Good knight placement	Caballo bien situado
+	Poor bishop placement	Alfil mal situado
+	Good bishop placement	Alfil bien situado
+	Poor rook placement	Torre mal situada
+	Good rook placement	Torre bien situada
+	Poor queen placement	Dama mal situada
+	Good queen placement	Dama bien situada
+	Poor piece coordination	Mala coordinación de las piezas
+	Good piece coordination	Buena coordinación de las piezas
+	Very poorly played opening	Apertura muy mal jugada
+	Poorly played opening	Apertura mal jugada
+	Well played opening	Apertura bien jugada
+	Very well played opening	Apertura muy bien jugada
+	Very poorly played middlegame	Medio juego muy mal jugado
+	Poorly played middlegame	Medio juego mal jugado
+	Well played middlegame	Medio juego bien jugado
+	Very well played middlegame	Medio juego muy bien jugado
+	Very poorly played endgame	Final muy mal jugado
+	Poorly played endgame	Final mal jugado
+	Well played endgame	Final bien jugado
+	Very well played endgame	Final muy bien jugado
+	Space advantage	Ventaja de espacio
+	Play along the file	Juego por la columna
+	Play along the diagonal	Juego por la diagonal
+	Play in the center	Juego en el centro
+	Play on the kingside	Juego en el flanco de rey
+	Play on the queenside	Juego en el flanco de dama
+	Weak point	Punto débil
+	Endgame	Final
+	Pair of bishops	Pareja de alfiles
+	Bishops of opposite colors	Alfiles de distinto color
+	Bishops of the same color	Alfiles del mismo color
+	Connected pawns	Peones unidos
+	Isolated pawns	Peones aislados
+	Doubled pawns	Peones doblados
+	Passed pawn	Peón pasado
+	Pawn majority	Mayoría de peones
+	With	Con
+	Without	Sin
+	Positional glyphs	Signos posicionales
+	More assessments	Más valoraciones
+	Filter assessments	Filtrar valoraciones
+	No assessment matches the filter.	Ninguna valoración coincide con el filtro.
+	These have no printed sign: PGN writes them as a number ($n).	Estas no tienen signo impreso: PGN las escribe como un número ($n).
+	Move quality	Calidad de la jugada
+	Evaluation	Valoración
+	Initiative and time	Iniciativa y tiempo
+	Space and control	Espacio y control
+	King safety	Seguridad del rey
+	Pawns	Peones
+	Pieces	Piezas
+	Phases of the game	Fases de la partida
 	Choose a move first: glyphs go on a move.	Elija primero una jugada: los signos van en una jugada.
 	Not added: this move has as many glyphs as it can take.	No añadido: esta jugada ya tiene todos los signos que admite.
 	One half	Un medio

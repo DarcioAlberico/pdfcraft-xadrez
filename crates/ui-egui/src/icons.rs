@@ -52,6 +52,15 @@ pub fn text_button(ui: &mut egui::Ui, text: &str, box_size: f32, selected: bool,
     resp.on_hover_text(name)
 }
 
+/// [`button`] with a face `paint` draws (painter, the face's square, colour): a chess sign no
+/// font has. `name` is what it is called and its tooltip.
+pub fn painted_button(ui: &mut egui::Ui, box_size: f32, selected: bool, name: &str, paint: impl FnOnce(&egui::Painter, Rect, Color32)) -> Response {
+    let resp = framed(ui, name, box_size, selected, |ui, rect, size, tint| {
+        paint(ui.painter(), Rect::from_center_size(rect.center(), Vec2::splat(size * 1.3)), tint);
+    });
+    resp.on_hover_text(name)
+}
+
 /// The square button both kinds share: `face` paints its middle (rect, size, colour).
 fn framed(ui: &mut egui::Ui, label: &str, box_size: f32, selected: bool, face: impl FnOnce(&egui::Ui, Rect, f32, Color32)) -> Response {
     let t = Tokens::get(ui.ctx());

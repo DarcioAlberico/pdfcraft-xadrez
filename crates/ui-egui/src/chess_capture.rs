@@ -1230,9 +1230,9 @@ fn chips(ui: &mut egui::Ui, t: &Tokens, c: &Candidate, stopped: &[StoppedMove], 
     clicked
 }
 
-/// A glyph as the notation shows it.
+/// A glyph as the notation shows it, in text: a painted sign or an assessment without one by name.
 fn glyph_text(code: u16) -> String {
-    pdfcraft_engine::chess::pdfcraft_chess::nag::by_code(code).map_or_else(|| format!("${code}"), |n| n.glyph.to_owned())
+    crate::chess_board_ui::nag_text(code)
 }
 
 /// Why the graft stopped at a move, in words.

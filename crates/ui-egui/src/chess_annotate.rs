@@ -1,8 +1,10 @@
 //! Chess ▸ PGN toolbar (T6): the annotation glyphs on the rail, glyphs typed on the keyboard, the
 //! comment before and after a move, and the basic glyph palette.
 //!
-//! **Glyphs** (spec §4.4) are the 28 of `pdfcraft_chess::nag::NAGS`, in three rail groups: the
-//! move's quality, the evaluation, and the others. A glyph goes on the move shown with the code
+//! **Glyphs** (spec §4.4) are the entries of `pdfcraft_chess::nag::NAGS`: every code of the PGN
+//! standard and of the ChessPad extension. The rail has the 28 common ones in three groups (the
+//! move's quality, the evaluation, and the others); the palette has them all. A glyph goes on the
+//! move shown with the code
 //! for the side that made it (zugzwang: the side to move after it), and a click on a glyph the
 //! move has takes it off. A quality glyph replaces the move's other one, and an evaluation the
 //! other evaluation (`Game::set_nag`); the others add up. Each change is one undo step. Their
@@ -31,11 +33,15 @@
 //! **The glyph palette** (the rail's Glyph palette, or G; U1) is a small floating window, kept
 //! within the window it is drawn in (the main one or the chess board's own), that the user can
 //! drag about: egui keeps where it was put for the session, and the rail whether it is open. Esc,
-//! its close button, the rail's button and G close it. It holds the figurines, `½ – × † ‡` and the
-//! 28 glyphs in the rail's three groups. A glyph clicked goes on the move shown, or comes off it,
+//! its close button, the rail's button and G close it. It holds the figurines, `½ – × † ‡`, the
+//! rail's three groups of glyphs (the move row with ChessPad's `==` too), a row of the positional
+//! signs ([`POSITIONAL_GLYPHS`]), and, folded under "More assessments", the assessments that have
+//! no printed sign ("slight space advantage"), by name, in sections by subject or narrowed by a
+//! filter field ([`more_assessments`]). A glyph clicked goes on the move shown, or comes off it,
 //! as the rail's do (one undo step); the other characters go at the end of the move's comment (one
 //! undo step). While a text field had the keyboard when it was clicked (the comment fields, FEN,
-//! PGN), any character, a glyph's sign too, goes into that field at its cursor instead. Figurines
+//! PGN), any character, a glyph's sign too, goes into that field at its cursor instead; an
+//! assessment without a sign always goes on the move (as text it would only be `$n`). Figurines
 //! are inserted as the Unicode characters; their buttons show the piece letters where the
 //! interface fonts lack the figurines. A click in the palette puts the chess key scope on, as a
 //! click in the panel does. The correction field of a capture's preview (T10) has the same
@@ -43,22 +49,38 @@
 //!
 //! **A move's context menu** offers the six move-quality glyphs, the evaluations and "Remove all
 //! glyphs" ([`glyph_menu`]): the same changes as the rail's glyphs, on the move clicked, without
-//! going to it (as with the glyph brush).
+//! going to it (as with the glyph brush). Only these common ones: the rest would make the menu a
+//! wall, and the palette has them.
+//!
+//! **Signs no font draws.** The interface's fonts (Inter, JetBrains Mono and egui's own) lack a
+//! few chess signs (measured with egui's own font lookup: `every_glyph_is_drawn_by_a_bundled_font_or_painted`):
+//! `⌓`, ChessPad's diagonal `⇗`, pawn signs `⯺ ⯻ ⯼ ⯽`, with `∟` and without `⯾`; and the three bishop signs
+//! have no Unicode character at all (their glyphs are stand-ins, `⧉ □■ ■■`). Those are painted ([`GlyphIcon`]) in the palette, on the rail
+//! and in the notation, so none shows as `$n`; PGN and copied text keep the character or `$n`. An
+//! assessment without a sign shows in the notation as its name, small and muted after the move,
+//! with its `$n` as the tooltip: a reader learns nothing from `$24`, and these are rare enough in a
+//! game for the words not to crowd it.
 
 use egui::Id;
 use pdfcraft_engine::chess::pdfcraft_chess::game::NodeId;
-use pdfcraft_engine::chess::pdfcraft_chess::nag;
+use pdfcraft_engine::chess::pdfcraft_chess::nag::{self, NagGroup};
 use pdfcraft_engine::chess::pdfcraft_chess::placement::{Color, Piece, PieceKind};
 
 use crate::chess_board_ui::BoardState;
 use crate::chess_history::ChessEdit;
 use crate::chess_ui::ChessState;
 
-/// The rail's glyph groups (spec §4.2), by PGN code (White's, for the side-dependent ones). The
-/// three hold the 28 glyphs of `NAGS` once each.
-pub(crate) const MOVE_GLYPHS: [u16; 8] = [1, 2, 3, 4, 5, 6, 7, 146];
+/// The rail's glyph groups (spec §4.2), by PGN code (White's, for the side-dependent ones), as the
+/// palette shows them; the palette's move row has ChessPad's `==` (`$144`) after the rail's eight.
+/// With [`POSITIONAL_GLYPHS`] and the assessments without a sign they hold `NAGS` once each.
+pub(crate) const MOVE_GLYPHS: [u16; 9] = [1, 2, 3, 4, 5, 6, 7, 146, 144];
 pub(crate) const EVALUATION_GLYPHS: [u16; 9] = [10, 13, 14, 15, 16, 17, 18, 19, 44];
 pub(crate) const OTHER_GLYPHS: [u16; 11] = [32, 36, 40, 132, 140, 141, 22, 138, 142, 143, 145];
+
+/// The palette's positional signs (not on the rail): the standard's ring for space, ChessPad's
+/// signs for space, where the play is, a weak point and the ending, its pawn and bishop signs, and
+/// "with" and "without".
+pub(crate) const POSITIONAL_GLYPHS: [u16; 18] = [26, 238, 239, 240, 241, 242, 243, 244, 245, 249, 250, 251, 252, 246, 247, 248, 254, 255];
 
 /// How long a typed sign waits for the next character of a longer one, in seconds.
 pub(crate) const TYPED_WAIT: f64 = 0.6;
@@ -89,7 +111,7 @@ pub(crate) const CLEAR: u16 = 0;
 const MAX_TYPED: usize = 64;
 
 /// Glyph `code`'s name in the interface language (either side's code), or `None` for a code not
-/// in the table.
+/// in the table. One arm a name, so the catalogues' checks see every one.
 pub(crate) fn nag_name(code: u16) -> Option<&'static str> {
     Some(match nag::by_code(code)?.code {
         1 => tl!("Good move"),
@@ -100,6 +122,9 @@ pub(crate) fn nag_name(code: u16) -> Option<&'static str> {
         6 => tl!("Dubious move"),
         7 => tl!("Only move"),
         146 => tl!("Novelty"),
+        144 => tl!("Equivalent move"),
+        8 => tl!("Singular move"),
+        9 => tl!("Worst move"),
         10 => tl!("Equal position"),
         13 => tl!("Unclear position"),
         14 => tl!("White is slightly better"),
@@ -109,24 +134,98 @@ pub(crate) fn nag_name(code: u16) -> Option<&'static str> {
         18 => tl!("White is winning"),
         19 => tl!("Black is winning"),
         44 => tl!("Compensation for the material"),
+        11 => tl!("Equal chances, quiet position"),
+        12 => tl!("Equal chances, active position"),
+        20 => tl!("White has a crushing advantage"),
+        21 => tl!("Black has a crushing advantage"),
+        42 => tl!("Insufficient compensation for the material"),
+        46 => tl!("More than enough compensation for the material"),
         22 => tl!("Zugzwang"),
         32 => tl!("Development advantage"),
         36 => tl!("With the initiative"),
         40 => tl!("With an attack"),
         132 => tl!("With counterplay"),
         138 => tl!("Time trouble"),
+        30 => tl!("Slight development advantage"),
+        34 => tl!("Decisive development advantage"),
+        38 => tl!("Lasting initiative"),
+        130 => tl!("Slight counterplay"),
+        134 => tl!("Decisive counterplay"),
+        136 => tl!("Moderate time pressure"),
         140 => tl!("With the idea"),
         141 => tl!("Aimed against"),
         142 => tl!("Better is"),
         143 => tl!("Worse is"),
         145 => tl!("Editorial comment"),
+        254 => tl!("With"),
+        255 => tl!("Without"),
+        26 => tl!("Moderate space advantage"),
+        238 => tl!("Space advantage"),
+        239 => tl!("Play along the file"),
+        240 => tl!("Play along the diagonal"),
+        241 => tl!("Play in the center"),
+        242 => tl!("Play on the kingside"),
+        243 => tl!("Play on the queenside"),
+        244 => tl!("Weak point"),
+        245 => tl!("Endgame"),
+        24 => tl!("Slight space advantage"),
+        28 => tl!("Decisive space advantage"),
+        48 => tl!("Slight control of the center"),
+        50 => tl!("Moderate control of the center"),
+        52 => tl!("Decisive control of the center"),
+        54 => tl!("Slight control of the kingside"),
+        56 => tl!("Moderate control of the kingside"),
+        58 => tl!("Decisive control of the kingside"),
+        60 => tl!("Slight control of the queenside"),
+        62 => tl!("Moderate control of the queenside"),
+        64 => tl!("Decisive control of the queenside"),
+        66 => tl!("Vulnerable first rank"),
+        68 => tl!("Well protected first rank"),
+        70 => tl!("Poorly protected king"),
+        72 => tl!("Well protected king"),
+        74 => tl!("Poorly placed king"),
+        76 => tl!("Well placed king"),
+        249 => tl!("Connected pawns"),
+        250 => tl!("Isolated pawns"),
+        251 => tl!("Doubled pawns"),
+        252 => tl!("Passed pawn"),
+        253 => tl!("Pawn majority"),
+        78 => tl!("Very weak pawn structure"),
+        80 => tl!("Moderately weak pawn structure"),
+        82 => tl!("Moderately strong pawn structure"),
+        84 => tl!("Very strong pawn structure"),
+        246 => tl!("Pair of bishops"),
+        247 => tl!("Bishops of opposite colors"),
+        248 => tl!("Bishops of the same color"),
+        86 => tl!("Poor knight placement"),
+        88 => tl!("Good knight placement"),
+        90 => tl!("Poor bishop placement"),
+        92 => tl!("Good bishop placement"),
+        94 => tl!("Poor rook placement"),
+        96 => tl!("Good rook placement"),
+        98 => tl!("Poor queen placement"),
+        100 => tl!("Good queen placement"),
+        102 => tl!("Poor piece coordination"),
+        104 => tl!("Good piece coordination"),
+        106 => tl!("Very poorly played opening"),
+        108 => tl!("Poorly played opening"),
+        110 => tl!("Well played opening"),
+        112 => tl!("Very well played opening"),
+        114 => tl!("Very poorly played middlegame"),
+        116 => tl!("Poorly played middlegame"),
+        118 => tl!("Well played middlegame"),
+        120 => tl!("Very well played middlegame"),
+        122 => tl!("Very poorly played endgame"),
+        124 => tl!("Poorly played endgame"),
+        126 => tl!("Well played endgame"),
+        128 => tl!("Very well played endgame"),
         _ => return None,
     })
 }
 
 /// How glyph `code` is shown, where `drawable` says whether the interface fonts have a text's
 /// characters: its sign; else a sign books use for it that they draw (`+=`, `=+`, `⊕`, `⇄`);
-/// else `$code`.
+/// else `$code` (an assessment without a sign too: [`seen`] says how to show those).
 pub(crate) fn face(code: u16, mut drawable: impl FnMut(&str) -> bool) -> String {
     let Some(n) = nag::by_code(code) else { return format!("${code}") };
     let others: &[&str] = match n.code {
@@ -136,7 +235,140 @@ pub(crate) fn face(code: u16, mut drawable: impl FnMut(&str) -> bool) -> String 
         138 => &["⊕"],
         _ => &[],
     };
-    std::iter::once(n.glyph).chain(others.iter().copied()).find(|s| drawable(s)).map_or_else(|| format!("${}", n.code), str::to_owned)
+    n.glyph.into_iter().chain(others.iter().copied()).find(|s| drawable(s)).map_or_else(|| format!("${code}"), str::to_owned)
+}
+
+/// How glyph `code` is seen in the interface: as text ([`face`]), painted ([`GlyphIcon`]), or,
+/// for an assessment without a sign, by its name in the interface language.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum Seen {
+    Text(String),
+    Icon(GlyphIcon),
+    Name(&'static str),
+}
+
+/// [`Seen`] for `code`, with the fonts `drawable` describes. A code not in the table is text
+/// (`$code`).
+pub(crate) fn seen(code: u16, drawable: impl FnMut(&str) -> bool) -> Seen {
+    if let Some(icon) = glyph_icon(code) {
+        return Seen::Icon(icon);
+    }
+    match nag::by_code(code) {
+        Some(n) if n.glyph.is_none() => Seen::Name(nag_name(code).unwrap_or(n.name)),
+        _ => Seen::Text(face(code, drawable)),
+    }
+}
+
+/// The signs painted because no interface font draws them (or no character exists).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum GlyphIcon {
+    /// `⌓` better is: a circle's segment.
+    BetterIs,
+    /// `⯺` connected pawns: two rings joined.
+    ConnectedPawns,
+    /// `⯻` isolated pawns: two rings kept apart by a bar.
+    IsolatedPawns,
+    /// `⯼` doubled pawns: two rings one above the other.
+    DoubledPawns,
+    /// `⯽` passed pawn: a ring with an arrow up.
+    PassedPawn,
+    /// `⯾` without: a right angle open to the top left.
+    Without,
+    /// `∟` with: a right angle open to the top right.
+    With,
+    /// `⇗` play along the diagonal: a double arrow up to the right.
+    Diagonal,
+    /// The pair of bishops: two bishops in outline.
+    BishopPair,
+    /// Bishops of opposite colors: one in outline, one solid.
+    OppositeBishops,
+    /// Bishops of the same color: two solid.
+    SameBishops,
+}
+
+/// The painted sign of glyph `code` (either side's), if it has one.
+pub(crate) fn glyph_icon(code: u16) -> Option<GlyphIcon> {
+    Some(match nag::by_code(code)?.code {
+        142 => GlyphIcon::BetterIs,
+        249 => GlyphIcon::ConnectedPawns,
+        250 => GlyphIcon::IsolatedPawns,
+        251 => GlyphIcon::DoubledPawns,
+        252 => GlyphIcon::PassedPawn,
+        255 => GlyphIcon::Without,
+        254 => GlyphIcon::With,
+        240 => GlyphIcon::Diagonal,
+        246 => GlyphIcon::BishopPair,
+        247 => GlyphIcon::OppositeBishops,
+        248 => GlyphIcon::SameBishops,
+        _ => return None,
+    })
+}
+
+/// Paint `icon` in `rect` (it takes the largest square in the middle) in `color`.
+pub(crate) fn paint_icon(painter: &egui::Painter, rect: egui::Rect, color: egui::Color32, icon: GlyphIcon) {
+    use egui::{Pos2, Shape, Stroke, pos2, vec2};
+    let side = rect.width().min(rect.height());
+    if !side.is_finite() || side <= 0.0 {
+        return;
+    }
+    let sq = egui::Rect::from_center_size(rect.center(), vec2(side, side));
+    // A point by its place in the square, 0–1 from the top left.
+    let at = |x: f32, y: f32| pos2(sq.left() + x * side, sq.top() + y * side);
+    let stroke = Stroke::new((side / 11.0).clamp(1.0, 2.0), color);
+    let ring = |c: Pos2, r: f32| Shape::circle_stroke(c, r * side, stroke);
+    let line = |a: Pos2, b: Pos2| Shape::line_segment([a, b], stroke);
+    // A bishop: a body narrowing to the top, a head, a base; solid or in outline.
+    let bishop = |x: f32, solid: bool| -> Vec<Shape> {
+        let body = vec![at(x - 0.17, 0.82), at(x + 0.17, 0.82), at(x + 0.06, 0.38), at(x - 0.06, 0.38)];
+        let base = vec![at(x - 0.22, 0.92), at(x + 0.22, 0.92), at(x + 0.22, 0.84), at(x - 0.22, 0.84)];
+        let head = at(x, 0.27);
+        if solid {
+            vec![
+                Shape::convex_polygon(body, color, Stroke::NONE),
+                Shape::convex_polygon(base, color, Stroke::NONE),
+                Shape::circle_filled(head, 0.1 * side, color),
+            ]
+        } else {
+            vec![Shape::closed_line(body, stroke), Shape::closed_line(base, stroke), Shape::circle_stroke(head, 0.1 * side, stroke)]
+        }
+    };
+    let shapes: Vec<Shape> = match icon {
+        GlyphIcon::BetterIs => {
+            // The arc over its chord.
+            let (c, r) = (at(0.5, 0.7), 0.38 * side);
+            let arc: Vec<Pos2> = (0..=16)
+                .map(|i| c + r * vec2((std::f32::consts::PI * i as f32 / 16.0).cos(), -(std::f32::consts::PI * i as f32 / 16.0).sin()))
+                .collect();
+            vec![Shape::line(arc, stroke), line(at(0.1, 0.7), at(0.9, 0.7))]
+        }
+        GlyphIcon::ConnectedPawns => vec![ring(at(0.25, 0.5), 0.15), ring(at(0.75, 0.5), 0.15), line(at(0.4, 0.5), at(0.6, 0.5))],
+        GlyphIcon::IsolatedPawns => vec![ring(at(0.2, 0.5), 0.14), ring(at(0.8, 0.5), 0.14), line(at(0.5, 0.25), at(0.5, 0.75))],
+        GlyphIcon::DoubledPawns => vec![ring(at(0.5, 0.27), 0.15), ring(at(0.5, 0.73), 0.15)],
+        GlyphIcon::PassedPawn => {
+            vec![ring(at(0.5, 0.75), 0.15), line(at(0.5, 0.58), at(0.5, 0.1)), line(at(0.5, 0.1), at(0.33, 0.27)), line(at(0.5, 0.1), at(0.67, 0.27))]
+        }
+        GlyphIcon::Without => vec![line(at(0.75, 0.15), at(0.75, 0.8)), line(at(0.2, 0.8), at(0.75, 0.8))],
+        GlyphIcon::With => vec![line(at(0.25, 0.15), at(0.25, 0.8)), line(at(0.25, 0.8), at(0.8, 0.8))],
+        GlyphIcon::Diagonal => {
+            // Two strokes side by side, up to the right, and the arrowhead over both.
+            let (a, b) = (vec2(-0.06, 0.06) * side, vec2(0.06, -0.06) * side);
+            let (from, to) = (at(0.2, 0.8), at(0.75, 0.25));
+            vec![line(from + a, to + a), line(from + b, to + b), line(at(0.8, 0.2), at(0.45, 0.2)), line(at(0.8, 0.2), at(0.8, 0.55))]
+        }
+        GlyphIcon::BishopPair => [bishop(0.28, false), bishop(0.72, false)].concat(),
+        GlyphIcon::OppositeBishops => [bishop(0.28, false), bishop(0.72, true)].concat(),
+        GlyphIcon::SameBishops => [bishop(0.28, true), bishop(0.72, true)].concat(),
+    };
+    painter.extend(shapes);
+}
+
+/// A painted sign inline (`size` points square), named `name` for assistive technology and in
+/// its tooltip.
+pub(crate) fn icon_label(ui: &mut egui::Ui, icon: GlyphIcon, size: f32, color: egui::Color32, name: &str) -> egui::Response {
+    let (rect, r) = ui.allocate_exact_size(egui::vec2(size, size), egui::Sense::hover());
+    paint_icon(ui.painter(), rect, color, icon);
+    r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, name));
+    r.on_hover_text(name)
 }
 
 /// Whether the interface's monospace fonts (the glyphs' face) draw every character of `text`.
@@ -452,11 +684,14 @@ const PALETTE_ID: &str = "chess-glyph-palette";
 /// The palette window's content width, in points: the figurines and signs in one row.
 const PALETTE_WIDTH: f32 = 340.0;
 
-/// What a palette button puts in: `text`, and for a glyph its code (White's).
+/// What a palette button puts in: `text`, and for a glyph its code (White's). `on_move`: the
+/// glyph goes on the move even while a text field had the keyboard (an assessment without a
+/// sign, which as text would only be `$n`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Pick {
     pub(crate) text: String,
     pub(crate) glyph: Option<u16>,
+    pub(crate) on_move: bool,
 }
 
 /// The glyph palette (U1), when the rail has it open: a floating window that can be dragged
@@ -477,7 +712,7 @@ pub(crate) fn palette_window(ctx: &egui::Context, chess: &mut ChessState, anchor
     let t = crate::theme::Tokens::get(ctx);
     let board = chess.board();
     // The glyphs the move shown has, ticked in the palette.
-    let on: Vec<u16> = MOVE_GLYPHS.iter().chain(&EVALUATION_GLYPHS).chain(&OTHER_GLYPHS).copied().filter(|&c| has_glyph(board, c)).collect();
+    let on: Vec<u16> = nag::NAGS.iter().map(|n| n.code).filter(|&c| has_glyph(board, c)).collect();
     let mut window = egui::Window::new(tl!("Glyph palette"))
         .id(Id::new(PALETTE_ID))
         .title_bar(false)
@@ -508,6 +743,9 @@ pub(crate) fn palette_window(ctx: &egui::Context, chess: &mut ChessState, anchor
         let hint = tl!("Glyphs go on the move shown and the other characters at the end of its comment, or all into the field you were typing in.");
         ui.add(egui::Label::new(egui::RichText::new(hint).small().color(t.text_muted)).selectable(false));
         pick = palette_buttons(ui, false, |c| on.contains(&c));
+        if let Some(code) = more_assessments(ui, |c| on.contains(&c)) {
+            pick = Some(Pick { text: format!("${code}"), glyph: Some(code), on_move: true });
+        }
     });
     let pressed = shown.is_some_and(|w| w.response.contains_pointer()) && ctx.input(|i| i.pointer.any_pressed());
     if pressed || pick.is_some() {
@@ -520,22 +758,32 @@ pub(crate) fn palette_window(ctx: &egui::Context, chess: &mut ChessState, anchor
     let Some(pick) = pick else { return };
     let board = chess.board_mut();
     match pick.glyph {
-        // No field had the keyboard: a glyph is the move's.
-        Some(code) if board.typing.last.is_none() => toggle_glyph(board, code),
+        // No field had the keyboard, or the glyph has no sign: a glyph is the move's.
+        Some(code) if board.typing.last.is_none() || pick.on_move => toggle_glyph(board, code),
         _ => palette_insert(board, &pick.text),
     }
 }
 
 /// The palette's buttons, one per character and each named for what it is: the figurines and
-/// `½ – × † ‡`, then the glyphs in the rail's three groups. For the correction field of a
-/// capture (T10, `correction`) also the ellipsis Black's moves are printed with, and no headings.
-/// `on` says which glyphs show as ticked. Returns what the one clicked puts in.
+/// `½ – × † ‡`, then the glyphs in the rail's three groups and the positional signs, those no
+/// font draws painted ([`GlyphIcon`]). For the correction field of a capture (T10,
+/// `correction`) also the ellipsis Black's moves are printed with, no headings, and only the signs
+/// that are characters. `on` says which glyphs show as ticked. Returns what the one clicked puts
+/// in.
 pub(crate) fn palette_buttons(ui: &mut egui::Ui, correction: bool, on: impl Fn(u16) -> bool) -> Option<Pick> {
     let ctx = ui.ctx().clone();
     let muted = crate::theme::Tokens::get(&ctx).text_muted;
     let mut chosen = None;
-    let mut button = |ui: &mut egui::Ui, shown: &str, pick: Pick, name: &str, selected: bool| {
-        let r = ui.add(egui::Button::new(egui::RichText::new(shown).monospace()).min_size(egui::vec2(26.0, 24.0)).selected(selected));
+    let mut button = |ui: &mut egui::Ui, shown: Seen, pick: Pick, name: &str, selected: bool| {
+        let text = match &shown {
+            Seen::Text(s) => s.as_str(),
+            Seen::Icon(_) | Seen::Name(_) => "",
+        };
+        let r = ui.add(egui::Button::new(egui::RichText::new(text).monospace()).min_size(egui::vec2(26.0, 24.0)).selected(selected));
+        if let Seen::Icon(icon) = shown {
+            let color = ui.style().interact_selectable(&r, selected).fg_stroke.color;
+            paint_icon(ui.painter(), egui::Rect::from_center_size(r.rect.center(), egui::vec2(14.0, 14.0)), color, icon);
+        }
         r.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, selected, name));
         if r.on_hover_text(name).clicked() {
             chosen = Some(pick);
@@ -546,35 +794,133 @@ pub(crate) fn palette_buttons(ui: &mut egui::Ui, correction: bool, on: impl Fn(u
             ui.add(egui::Label::new(egui::RichText::new(text).small().color(muted)).selectable(false));
         }
     };
-    let text = |s: &str| Pick { text: s.to_owned(), glyph: None };
+    let text = |s: &str| Pick { text: s.to_owned(), glyph: None, on_move: false };
     heading(ui, tl!("Figurines and signs"));
     ui.horizontal_wrapped(|ui| {
         ui.spacing_mut().item_spacing = egui::vec2(2.0, 2.0);
         let figurines = drawable(&ctx, "♔♕♖♗♘♙♚♛♜♝♞♟");
         for (figurine, letter, color, kind) in FIGURINES {
             let name = crate::chess_editor::piece_name(Piece { color, kind });
-            button(ui, if figurines { figurine } else { letter }, text(figurine), name, false);
+            button(ui, Seen::Text(if figurines { figurine } else { letter }.to_owned()), text(figurine), name, false);
         }
         for (mark, name) in marks() {
-            button(ui, mark, text(mark), name, false);
+            button(ui, Seen::Text(mark.to_owned()), text(mark), name, false);
         }
         if correction {
-            button(ui, "\u{2026}", text("\u{2026}"), tl!("Ellipsis"), false);
+            button(ui, Seen::Text("\u{2026}".to_owned()), text("\u{2026}"), tl!("Ellipsis"), false);
         }
     });
-    let groups: [(&str, &[u16]); 3] =
-        [(tl!("Move glyphs"), &MOVE_GLYPHS), (tl!("Evaluation glyphs"), &EVALUATION_GLYPHS), (tl!("Other glyphs"), &OTHER_GLYPHS)];
+    let groups: [(&str, &[u16]); 4] = [
+        (tl!("Move glyphs"), &MOVE_GLYPHS),
+        (tl!("Evaluation glyphs"), &EVALUATION_GLYPHS),
+        (tl!("Other glyphs"), &OTHER_GLYPHS),
+        (tl!("Positional glyphs"), &POSITIONAL_GLYPHS),
+    ];
     for (title, codes) in groups {
         heading(ui, title);
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing = egui::vec2(2.0, 2.0);
             for &code in codes {
                 let Some(n) = nag::by_code(code) else { continue };
-                let shown = face(code, |s| drawable(&ctx, s));
-                button(ui, &shown, Pick { text: n.insert_text(), glyph: Some(code) }, nag_name(code).unwrap_or(n.name), on(code));
+                // A correction is text: a sign without a character has nothing to type.
+                if correction && n.glyph.is_none() {
+                    continue;
+                }
+                let pick = Pick { text: n.insert_text(), glyph: Some(code), on_move: n.glyph.is_none() };
+                button(ui, seen(code, |s| drawable(&ctx, s)), pick, nag_name(code).unwrap_or(n.name), on(code));
             }
         });
     }
+    chosen
+}
+
+/// The sections of the assessments without a sign, in the palette's list.
+fn assessment_sections() -> [(&'static str, NagGroup); 8] {
+    [
+        (tl!("Move quality"), NagGroup::Move),
+        (tl!("Evaluation"), NagGroup::Evaluation),
+        (tl!("Initiative and time"), NagGroup::Dynamics),
+        (tl!("Space and control"), NagGroup::Space),
+        (tl!("King safety"), NagGroup::King),
+        (tl!("Pawns"), NagGroup::Pawns),
+        (tl!("Pieces"), NagGroup::Pieces),
+        (tl!("Phases of the game"), NagGroup::Phases),
+    ]
+}
+
+/// The assessments without a sign and without a painted one: the palette's list.
+pub(crate) fn assessments() -> impl Iterator<Item = &'static nag::Nag> {
+    nag::NAGS.iter().filter(|n| n.glyph.is_none() && glyph_icon(n.code).is_none())
+}
+
+/// Whether assessment `n` matches the filter `filter` (lower case, trimmed): by its name in the
+/// interface language or in English, or by its code (`24`, `$25`).
+fn matches_filter(n: &nag::Nag, filter: &str) -> bool {
+    let code = filter.strip_prefix('$').unwrap_or(filter);
+    let by_code = !code.is_empty()
+        && code.chars().all(|c| c.is_ascii_digit())
+        && (n.code.to_string() == code || n.black_code.is_some_and(|b| b.to_string() == code));
+    by_code || nag_name(n.code).unwrap_or(n.name).to_lowercase().contains(filter) || n.name.to_lowercase().contains(filter)
+}
+
+/// The most characters of the list's filter kept.
+const MAX_FILTER: usize = 64;
+
+/// "More assessments" in the palette: the assessments that have no printed sign, folded away,
+/// in sections by subject, or narrowed to those whose name (or `$n`) has the filter's text. Each
+/// is its name, ticked while the move shown has it (`on`, White's code). Returns the one clicked
+/// (White's code).
+pub(crate) fn more_assessments(ui: &mut egui::Ui, on: impl Fn(u16) -> bool) -> Option<u16> {
+    let muted = crate::theme::Tokens::get(ui.ctx()).text_muted;
+    let mut chosen = None;
+    let mut row = |ui: &mut egui::Ui, n: &nag::Nag| {
+        let name = nag_name(n.code).unwrap_or(n.name);
+        let codes = match n.black_code {
+            Some(black) => format!("${} / ${black}", n.code),
+            None => format!("${}", n.code),
+        };
+        let selected = on(n.code);
+        let r = ui.selectable_label(selected, name);
+        // Ticked for assistive technology as the palette's buttons are.
+        r.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, selected, name));
+        if r.on_hover_text(codes).clicked() {
+            chosen = Some(n.code);
+        }
+    };
+    egui::CollapsingHeader::new(tl!("More assessments")).id_salt("chess-palette-more").show(ui, |ui| {
+        ui.add(
+            egui::Label::new(egui::RichText::new(tl!("These have no printed sign: PGN writes them as a number ($n).")).small().color(muted))
+                .selectable(false),
+        );
+        let id = ui.make_persistent_id("chess-palette-filter");
+        let mut filter: String = ui.data_mut(|d| d.get_temp(id)).unwrap_or_default();
+        let hint = tl!("Filter assessments");
+        let r = ui.add(egui::TextEdit::singleline(&mut filter).hint_text(hint).desired_width(f32::INFINITY).char_limit(MAX_FILTER));
+        labeled(&r, hint);
+        let wanted = filter.trim().to_lowercase();
+        ui.data_mut(|d| d.insert_temp(id, filter));
+        // No scroll area of its own: the palette scrolls once it is as tall as the window allows.
+        {
+            if wanted.is_empty() {
+                for (title, group) in assessment_sections() {
+                    egui::CollapsingHeader::new(title).id_salt(("chess-palette-section", title)).show(ui, |ui| {
+                        for n in assessments().filter(|n| n.group == group) {
+                            row(ui, n);
+                        }
+                    });
+                }
+            } else {
+                let mut any = false;
+                for n in assessments().filter(|n| matches_filter(n, &wanted)) {
+                    any = true;
+                    row(ui, n);
+                }
+                if !any {
+                    ui.label(egui::RichText::new(tl!("No assessment matches the filter.")).small().color(muted));
+                }
+            }
+        }
+    });
     chosen
 }
 
@@ -706,15 +1052,19 @@ mod tests {
     }
 
     #[test]
-    fn the_three_groups_hold_every_glyph_once_with_its_name() {
-        let mut codes: Vec<u16> = MOVE_GLYPHS.iter().chain(&EVALUATION_GLYPHS).chain(&OTHER_GLYPHS).copied().collect();
+    fn the_palette_holds_every_glyph_once_with_its_name() {
+        let mut codes: Vec<u16> = MOVE_GLYPHS.iter().chain(&EVALUATION_GLYPHS).chain(&OTHER_GLYPHS).chain(&POSITIONAL_GLYPHS).copied().collect();
+        let rows = codes.len();
+        codes.extend(assessments().map(|n| n.code));
         let all = codes.len();
         codes.sort_unstable();
         codes.dedup();
         assert_eq!(codes.len(), all, "no glyph twice");
         let mut table: Vec<u16> = nag::NAGS.iter().map(|n| n.code).collect();
         table.sort_unstable();
-        assert_eq!(codes, table, "the 28 of NAGS");
+        assert_eq!(codes, table, "every entry of NAGS");
+        assert_eq!(rows, 47, "the rows have the signs; the list the assessments without one");
+        assert!(assessments().all(|n| assessment_sections().iter().any(|(_, g)| *g == n.group)), "every assessment in a section");
         let previous = crate::i18n::current();
         crate::i18n::set_current(crate::i18n::Lang::EN);
         for n in nag::NAGS {
@@ -725,6 +1075,16 @@ mod tests {
         }
         crate::i18n::set_current(previous);
         assert_eq!(nag_name(999), None);
+    }
+
+    #[test]
+    fn the_filter_finds_assessments_by_name_and_code() {
+        let names = |filter: &str| assessments().filter(|n| matches_filter(n, filter)).map(|n| n.code).collect::<Vec<_>>();
+        assert_eq!(names("space"), [24, 28]);
+        assert_eq!(names("$25"), [24], "Black's code finds the pair");
+        assert_eq!(names("24"), [24]);
+        assert_eq!(names("$"), [] as [u16; 0], "no code: no name has a dollar");
+        assert!(names("opening").len() == 4);
     }
 
     #[test]
@@ -739,5 +1099,51 @@ mod tests {
         assert_eq!(face(138, |s| s != "⨁"), "⊕");
         assert_eq!(face(133, |s| s == "↔"), "↔", "Black's counterplay, in the sign the fonts have");
         assert_eq!(face(999, all), "$999");
+        assert_eq!(face(25, all), "$25", "no sign");
+        assert_eq!(seen(142, ascii), Seen::Icon(GlyphIcon::BetterIs));
+        assert_eq!(seen(247, all), Seen::Icon(GlyphIcon::OppositeBishops), "no character at all");
+        assert_eq!(seen(27, all), Seen::Text("○".to_owned()));
+        let previous = crate::i18n::current();
+        crate::i18n::set_current(crate::i18n::Lang::EN);
+        assert_eq!(seen(25, all), Seen::Name("Slight space advantage"));
+        crate::i18n::set_current(previous);
+        assert_eq!(seen(999, all), Seen::Text("$999".to_owned()));
+    }
+
+    /// Every glyph in the table is seen as something a reader can tell: a sign the interface's own
+    /// fonts draw (or the way books set it in plain text), a painted sign, or its name. Never
+    /// `$n`, never a character the fonts lack.
+    #[test]
+    fn every_glyph_is_drawn_by_a_bundled_font_or_painted() {
+        let ctx = egui::Context::default();
+        ctx.set_fonts(crate::theme::font_definitions());
+        // The fonts load with the first pass; its texture upload is not needed here.
+        ctx.run_ui(egui::RawInput::default(), |_| {}).textures_delta.clear();
+        let mut painted = Vec::new();
+        for n in nag::NAGS {
+            for code in [Some(n.code), n.black_code].into_iter().flatten() {
+                match seen(code, |s| drawable(&ctx, s)) {
+                    Seen::Text(t) => assert!(!t.starts_with('$') && drawable(&ctx, &t), "${code} shows as {t}"),
+                    Seen::Icon(icon) => painted.push((n.code, icon)),
+                    Seen::Name(name) => assert!(n.glyph.is_none() && !name.is_empty(), "${code}"),
+                }
+            }
+        }
+        painted.dedup();
+        let codes: Vec<u16> = painted.iter().map(|(c, _)| *c).collect();
+        assert_eq!(codes, [142, 254, 255, 240, 249, 250, 251, 252, 246, 247, 248]);
+        // A painted sign is one no bundled font draws, or a bishop sign, whose glyph is only a
+        // stand-in (no character exists).
+        for code in codes.into_iter().filter(|c| !(246..=248).contains(c)) {
+            let n = nag::by_code(code).unwrap();
+            assert!(n.glyph.is_none_or(|g| !drawable(&ctx, g)), "${code} could be text");
+        }
+        // Painting never panics, whatever the box.
+        let painter = ctx.layer_painter(egui::LayerId::background());
+        for (_, icon) in painted {
+            for rect in [egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(14.0, 14.0)), egui::Rect::NOTHING, egui::Rect::EVERYTHING] {
+                paint_icon(&painter, rect, egui::Color32::WHITE, icon);
+            }
+        }
     }
 }

@@ -2701,6 +2701,97 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Better is	Daha iyisi
 	Worse is	Daha kötüsü
 	Editorial comment	Editör yorumu
+# Every NAG of the PGN standard and the ChessPad extension: the names of the glyphs added to the 28 (most have no printed sign), then the glyph palette's positional row and its list of the assessments without a sign.
+	Singular move	Tek makul hamle
+	Worst move	En kötü hamle
+	Equivalent move	Eşdeğer hamle
+	Equal chances, quiet position	Eşit şanslar, sakin konum
+	Equal chances, active position	Eşit şanslar, aktif konum
+	White has a crushing advantage	Beyaz ezici üstünlükte
+	Black has a crushing advantage	Siyah ezici üstünlükte
+	Insufficient compensation for the material	Malzemeye karşılık yetersiz telafi
+	More than enough compensation for the material	Malzemeye karşılık fazlasıyla telafi
+	Slight development advantage	Hafif gelişim üstünlüğü
+	Decisive development advantage	Belirleyici gelişim üstünlüğü
+	Lasting initiative	Kalıcı inisiyatif
+	Slight counterplay	Hafif karşı oyun
+	Decisive counterplay	Belirleyici karşı oyun
+	Moderate time pressure	Orta düzeyde zaman sıkıntısı
+	Slight space advantage	Hafif alan üstünlüğü
+	Moderate space advantage	Orta düzeyde alan üstünlüğü
+	Decisive space advantage	Belirleyici alan üstünlüğü
+	Slight control of the center	Merkezde hafif kontrol
+	Moderate control of the center	Merkezde orta düzeyde kontrol
+	Decisive control of the center	Merkezde belirleyici kontrol
+	Slight control of the kingside	Şah kanadında hafif kontrol
+	Moderate control of the kingside	Şah kanadında orta düzeyde kontrol
+	Decisive control of the kingside	Şah kanadında belirleyici kontrol
+	Slight control of the queenside	Vezir kanadında hafif kontrol
+	Moderate control of the queenside	Vezir kanadında orta düzeyde kontrol
+	Decisive control of the queenside	Vezir kanadında belirleyici kontrol
+	Vulnerable first rank	Savunmasız birinci sıra
+	Well protected first rank	İyi korunan birinci sıra
+	Poorly protected king	Zayıf korunan şah
+	Well protected king	İyi korunan şah
+	Poorly placed king	Kötü yerleşmiş şah
+	Well placed king	İyi yerleşmiş şah
+	Very weak pawn structure	Çok zayıf piyon yapısı
+	Moderately weak pawn structure	Orta düzeyde zayıf piyon yapısı
+	Moderately strong pawn structure	Orta düzeyde güçlü piyon yapısı
+	Very strong pawn structure	Çok güçlü piyon yapısı
+	Poor knight placement	Kötü at yerleşimi
+	Good knight placement	İyi at yerleşimi
+	Poor bishop placement	Kötü fil yerleşimi
+	Good bishop placement	İyi fil yerleşimi
+	Poor rook placement	Kötü kale yerleşimi
+	Good rook placement	İyi kale yerleşimi
+	Poor queen placement	Kötü vezir yerleşimi
+	Good queen placement	İyi vezir yerleşimi
+	Poor piece coordination	Zayıf taş koordinasyonu
+	Good piece coordination	İyi taş koordinasyonu
+	Very poorly played opening	Çok kötü oynanmış açılış
+	Poorly played opening	Kötü oynanmış açılış
+	Well played opening	İyi oynanmış açılış
+	Very well played opening	Çok iyi oynanmış açılış
+	Very poorly played middlegame	Çok kötü oynanmış oyun ortası
+	Poorly played middlegame	Kötü oynanmış oyun ortası
+	Well played middlegame	İyi oynanmış oyun ortası
+	Very well played middlegame	Çok iyi oynanmış oyun ortası
+	Very poorly played endgame	Çok kötü oynanmış oyun sonu
+	Poorly played endgame	Kötü oynanmış oyun sonu
+	Well played endgame	İyi oynanmış oyun sonu
+	Very well played endgame	Çok iyi oynanmış oyun sonu
+	Space advantage	Alan üstünlüğü
+	Play along the file	Hat boyunca oyun
+	Play along the diagonal	Çapraz boyunca oyun
+	Play in the center	Merkezde oyun
+	Play on the kingside	Şah kanadında oyun
+	Play on the queenside	Vezir kanadında oyun
+	Weak point	Zayıf kare
+	Endgame	Oyun sonu
+	Pair of bishops	Fil çifti
+	Bishops of opposite colors	Zıt renkli filler
+	Bishops of the same color	Aynı renkli filler
+	Connected pawns	Bağlı piyonlar
+	Isolated pawns	İzole piyonlar
+	Doubled pawns	Katmerli piyonlar
+	Passed pawn	Geçer piyon
+	Pawn majority	Piyon çoğunluğu
+	With	İle
+	Without	Olmadan
+	Positional glyphs	Konumsal işaretler
+	More assessments	Diğer değerlendirmeler
+	Filter assessments	Değerlendirmeleri filtrele
+	No assessment matches the filter.	Filtreyle eşleşen değerlendirme yok.
+	These have no printed sign: PGN writes them as a number ($n).	Bunların basılı bir işareti yok: PGN bunları bir sayı olarak yazar ($n).
+	Move quality	Hamle kalitesi
+	Evaluation	Değerlendirme
+	Initiative and time	İnisiyatif ve zaman
+	Space and control	Alan ve kontrol
+	King safety	Şah güvenliği
+	Pawns	Piyonlar
+	Pieces	Taşlar
+	Phases of the game	Oyunun evreleri
 	Choose a move first: glyphs go on a move.	Önce bir hamle seçin: işaretler bir hamleye konur.
 	Not added: this move has as many glyphs as it can take.	Eklenmedi: bu hamlede alabileceği kadar işaret var.
 	One half	Bir bölü iki

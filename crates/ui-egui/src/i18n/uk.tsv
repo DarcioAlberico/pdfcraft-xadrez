@@ -2727,6 +2727,97 @@ chess undo step	Clear drawings	видалення малюнків
 	Better is	Краще
 	Worse is	Гірше
 	Editorial comment	Редакційний коментар
+# Every NAG of the PGN standard and the ChessPad extension: the names of the glyphs added to the 28 (most have no printed sign), then the glyph palette's positional row and its list of the assessments without a sign.
+	Singular move	Єдино розумний хід
+	Worst move	Найгірший хід
+	Equivalent move	Рівноцінний хід
+	Equal chances, quiet position	Рівні шанси, спокійна позиція
+	Equal chances, active position	Рівні шанси, активна позиція
+	White has a crushing advantage	У білих нищівна перевага
+	Black has a crushing advantage	У чорних нищівна перевага
+	Insufficient compensation for the material	Недостатня компенсація за матеріал
+	More than enough compensation for the material	Більш ніж достатня компенсація за матеріал
+	Slight development advantage	Невелика перевага в розвитку
+	Decisive development advantage	Вирішальна перевага в розвитку
+	Lasting initiative	Стійка ініціатива
+	Slight counterplay	Невелика контргра
+	Decisive counterplay	Вирішальна контргра
+	Moderate time pressure	Невеликий цейтнот
+	Slight space advantage	Невелика перевага в просторі
+	Moderate space advantage	Помітна перевага в просторі
+	Decisive space advantage	Вирішальна перевага в просторі
+	Slight control of the center	Невеликий контроль над центром
+	Moderate control of the center	Помітний контроль над центром
+	Decisive control of the center	Вирішальний контроль над центром
+	Slight control of the kingside	Невеликий контроль над королівським флангом
+	Moderate control of the kingside	Помітний контроль над королівським флангом
+	Decisive control of the kingside	Вирішальний контроль над королівським флангом
+	Slight control of the queenside	Невеликий контроль над ферзевим флангом
+	Moderate control of the queenside	Помітний контроль над ферзевим флангом
+	Decisive control of the queenside	Вирішальний контроль над ферзевим флангом
+	Vulnerable first rank	Вразлива перша горизонталь
+	Well protected first rank	Добре захищена перша горизонталь
+	Poorly protected king	Погано захищений король
+	Well protected king	Добре захищений король
+	Poorly placed king	Погано розташований король
+	Well placed king	Добре розташований король
+	Very weak pawn structure	Дуже слабка пішакова структура
+	Moderately weak pawn structure	Досить слабка пішакова структура
+	Moderately strong pawn structure	Досить міцна пішакова структура
+	Very strong pawn structure	Дуже міцна пішакова структура
+	Poor knight placement	Погане розташування коня
+	Good knight placement	Добре розташування коня
+	Poor bishop placement	Погане розташування слона
+	Good bishop placement	Добре розташування слона
+	Poor rook placement	Погане розташування тури
+	Good rook placement	Добре розташування тури
+	Poor queen placement	Погане розташування ферзя
+	Good queen placement	Добре розташування ферзя
+	Poor piece coordination	Погана координація фігур
+	Good piece coordination	Добра координація фігур
+	Very poorly played opening	Дуже погано зіграний дебют
+	Poorly played opening	Погано зіграний дебют
+	Well played opening	Добре зіграний дебют
+	Very well played opening	Дуже добре зіграний дебют
+	Very poorly played middlegame	Дуже погано зіграний мітельшпіль
+	Poorly played middlegame	Погано зіграний мітельшпіль
+	Well played middlegame	Добре зіграний мітельшпіль
+	Very well played middlegame	Дуже добре зіграний мітельшпіль
+	Very poorly played endgame	Дуже погано зіграний ендшпіль
+	Poorly played endgame	Погано зіграний ендшпіль
+	Well played endgame	Добре зіграний ендшпіль
+	Very well played endgame	Дуже добре зіграний ендшпіль
+	Space advantage	Перевага в просторі
+	Play along the file	Гра по вертикалі
+	Play along the diagonal	Гра по діагоналі
+	Play in the center	Гра в центрі
+	Play on the kingside	Гра на королівському фланзі
+	Play on the queenside	Гра на ферзевому фланзі
+	Weak point	Слабкий пункт
+	Endgame	Ендшпіль
+	Pair of bishops	Два слони
+	Bishops of opposite colors	Різнопольні слони
+	Bishops of the same color	Однопольні слони
+	Connected pawns	Зв'язані пішаки
+	Isolated pawns	Ізольовані пішаки
+	Doubled pawns	Здвоєні пішаки
+	Passed pawn	Прохідний пішак
+	Pawn majority	Пішакова більшість
+	With	З
+	Without	Без
+	Positional glyphs	Позиційні знаки
+	More assessments	Інші оцінки
+	Filter assessments	Фільтр оцінок
+	No assessment matches the filter.	Жодна оцінка не відповідає фільтру.
+	These have no printed sign: PGN writes them as a number ($n).	Ці оцінки не мають друкованого знака: PGN записує їх числом ($n).
+	Move quality	Якість ходу
+	Evaluation	Оцінка
+	Initiative and time	Ініціатива і час
+	Space and control	Простір і контроль
+	King safety	Безпека короля
+	Pawns	Пішаки
+	Pieces	Фігури
+	Phases of the game	Стадії партії
 	Choose a move first: glyphs go on a move.	Спершу виберіть хід: знаки ставляться на хід.
 	Not added: this move has as many glyphs as it can take.	Не додано: цей хід уже має стільки знаків, скільки можна.
 	One half	Одна друга

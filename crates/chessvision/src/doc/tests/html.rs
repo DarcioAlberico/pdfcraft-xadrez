@@ -191,11 +191,16 @@ fn the_sign_font_draws_the_annotation_glyphs_it_has() {
     // White is clearly better (±): ISChess draws it on the letter O.
     let para = doc.pages[0].blocks.iter_mut().find_map(|b| if let Block::Paragraph { inlines, .. } = b { Some(inlines) } else { None }).unwrap();
     para.push(Inline::Nag { code: 16, source_rect: None, review: Vec::new() });
+    // Zugzwang is its ringed dot (`[`), and a bishop sign, which no Unicode character has, its letter.
+    para.push(Inline::Nag { code: 23, source_rect: None, review: Vec::new() });
+    para.push(Inline::Nag { code: 247, source_rect: None, review: Vec::new() });
     let ischess = role_font(FontRole::Signs);
     let html = write(&doc, &HtmlOptions { sign_font: Some(&ischess), ..options(&pieces) });
     assert!(html.contains("@font-face{font-family:\"PdfCraft Signs\""), "{html}");
     assert!(html.contains(".sign{font-family:\"PdfCraft Signs\"}"));
     assert!(html.contains("<span class=\"nag sign\" data-nag=\"16\" title=\"White is clearly better\">O</span>"), "{html}");
+    assert!(html.contains("<span class=\"nag sign\" data-nag=\"23\" title=\"Zugzwang\">[</span>"), "{html}");
+    assert!(html.contains("<span class=\"nag sign\" data-nag=\"247\" title=\"Bishops of opposite colors\">n</span>"), "{html}");
     // Glyphs ISChess has no letter for (! and ??) stay as they are.
     assert!(html.contains("<span class=\"nag\" data-nag=\"1\""), "{html}");
     // Without the sign font, ± is written as itself.

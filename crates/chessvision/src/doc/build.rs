@@ -90,7 +90,7 @@ fn caption_text(line: &ChessLine) -> Option<String> {
             ChessRun::Text(t) => out.push_str(t),
             // Read as a move number (`1675` before a move-like word); the caption is the number.
             ChessRun::MoveNumber { number, .. } => out.push_str(&number.to_string()),
-            ChessRun::Nag(code) => out.push_str(pdfcraft_chess::nag::by_code(*code).map_or("", |n| n.glyph)),
+            ChessRun::Nag(code) => out.push_str(pdfcraft_chess::nag::by_code(*code).and_then(|n| n.glyph).unwrap_or("")),
             ChessRun::Figurine(_) => {}
             _ => return None,
         }

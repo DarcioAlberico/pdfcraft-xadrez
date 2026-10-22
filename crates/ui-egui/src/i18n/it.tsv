@@ -2917,6 +2917,97 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	Better is	Meglio è
 	Worse is	Peggio è
 	Editorial comment	Commento editoriale
+# Every NAG of the PGN standard and the ChessPad extension: the names of the glyphs added to the 28 (most have no printed sign), then the glyph palette's positional row and its list of the assessments without a sign.
+	Singular move	Mossa obbligata
+	Worst move	Mossa peggiore
+	Equivalent move	Mossa equivalente
+	Equal chances, quiet position	Possibilità pari, posizione tranquilla
+	Equal chances, active position	Possibilità pari, posizione attiva
+	White has a crushing advantage	Il Bianco ha un vantaggio schiacciante
+	Black has a crushing advantage	Il Nero ha un vantaggio schiacciante
+	Insufficient compensation for the material	Compenso insufficiente per il materiale
+	More than enough compensation for the material	Compenso più che sufficiente per il materiale
+	Slight development advantage	Leggero vantaggio di sviluppo
+	Decisive development advantage	Vantaggio di sviluppo decisivo
+	Lasting initiative	Iniziativa duratura
+	Slight counterplay	Leggero controgioco
+	Decisive counterplay	Controgioco decisivo
+	Moderate time pressure	Zeitnot moderato
+	Slight space advantage	Leggero vantaggio di spazio
+	Moderate space advantage	Vantaggio di spazio moderato
+	Decisive space advantage	Vantaggio di spazio decisivo
+	Slight control of the center	Leggero controllo del centro
+	Moderate control of the center	Controllo moderato del centro
+	Decisive control of the center	Controllo decisivo del centro
+	Slight control of the kingside	Leggero controllo dell'ala di re
+	Moderate control of the kingside	Controllo moderato dell'ala di re
+	Decisive control of the kingside	Controllo decisivo dell'ala di re
+	Slight control of the queenside	Leggero controllo dell'ala di donna
+	Moderate control of the queenside	Controllo moderato dell'ala di donna
+	Decisive control of the queenside	Controllo decisivo dell'ala di donna
+	Vulnerable first rank	Prima traversa vulnerabile
+	Well protected first rank	Prima traversa ben protetta
+	Poorly protected king	Re mal protetto
+	Well protected king	Re ben protetto
+	Poorly placed king	Re mal piazzato
+	Well placed king	Re ben piazzato
+	Very weak pawn structure	Struttura pedonale molto debole
+	Moderately weak pawn structure	Struttura pedonale abbastanza debole
+	Moderately strong pawn structure	Struttura pedonale abbastanza solida
+	Very strong pawn structure	Struttura pedonale molto solida
+	Poor knight placement	Cavallo mal piazzato
+	Good knight placement	Cavallo ben piazzato
+	Poor bishop placement	Alfiere mal piazzato
+	Good bishop placement	Alfiere ben piazzato
+	Poor rook placement	Torre mal piazzata
+	Good rook placement	Torre ben piazzata
+	Poor queen placement	Donna mal piazzata
+	Good queen placement	Donna ben piazzata
+	Poor piece coordination	Scarsa coordinazione dei pezzi
+	Good piece coordination	Buona coordinazione dei pezzi
+	Very poorly played opening	Apertura giocata molto male
+	Poorly played opening	Apertura giocata male
+	Well played opening	Apertura giocata bene
+	Very well played opening	Apertura giocata molto bene
+	Very poorly played middlegame	Mediogioco giocato molto male
+	Poorly played middlegame	Mediogioco giocato male
+	Well played middlegame	Mediogioco giocato bene
+	Very well played middlegame	Mediogioco giocato molto bene
+	Very poorly played endgame	Finale giocato molto male
+	Poorly played endgame	Finale giocato male
+	Well played endgame	Finale giocato bene
+	Very well played endgame	Finale giocato molto bene
+	Space advantage	Vantaggio di spazio
+	Play along the file	Gioco sulla colonna
+	Play along the diagonal	Gioco sulla diagonale
+	Play in the center	Gioco al centro
+	Play on the kingside	Gioco sull'ala di re
+	Play on the queenside	Gioco sull'ala di donna
+	Weak point	Punto debole
+	Endgame	Finale
+	Pair of bishops	Coppia degli alfieri
+	Bishops of opposite colors	Alfieri di colore contrario
+	Bishops of the same color	Alfieri dello stesso colore
+	Connected pawns	Pedoni collegati
+	Isolated pawns	Pedoni isolati
+	Doubled pawns	Pedoni doppiati
+	Passed pawn	Pedone passato
+	Pawn majority	Maggioranza di pedoni
+	With	Con
+	Without	Senza
+	Positional glyphs	Segni posizionali
+	More assessments	Altre valutazioni
+	Filter assessments	Filtra le valutazioni
+	No assessment matches the filter.	Nessuna valutazione corrisponde al filtro.
+	These have no printed sign: PGN writes them as a number ($n).	Queste non hanno un segno stampato: PGN le scrive come numero ($n).
+	Move quality	Qualità della mossa
+	Evaluation	Valutazione
+	Initiative and time	Iniziativa e tempo
+	Space and control	Spazio e controllo
+	King safety	Sicurezza del re
+	Pawns	Pedoni
+	Pieces	Pezzi
+	Phases of the game	Fasi della partita
 	Choose a move first: glyphs go on a move.	Scegli prima una mossa: i segni vanno su una mossa.
 	Not added: this move has as many glyphs as it can take.	Non aggiunto: questa mossa ha già tutti i segni che può avere.
 	One half	Un mezzo

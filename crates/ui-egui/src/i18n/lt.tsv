@@ -2958,6 +2958,97 @@ chess undo step	Clear drawings	piešinių valymą
 	Better is	Geriau
 	Worse is	Blogiau
 	Editorial comment	Redakcinis komentaras
+# Every NAG of the PGN standard and the ChessPad extension: the names of the glyphs added to the 28 (most have no printed sign), then the glyph palette's positional row and its list of the assessments without a sign.
+	Singular move	Vienintelis protingas ėjimas
+	Worst move	Blogiausias ėjimas
+	Equivalent move	Lygiavertis ėjimas
+	Equal chances, quiet position	Lygios galimybės, rami pozicija
+	Equal chances, active position	Lygios galimybės, aktyvi pozicija
+	White has a crushing advantage	Baltieji turi triuškinamą pranašumą
+	Black has a crushing advantage	Juodieji turi triuškinamą pranašumą
+	Insufficient compensation for the material	Nepakankama kompensacija už medžiagą
+	More than enough compensation for the material	Daugiau nei pakankama kompensacija už medžiagą
+	Slight development advantage	Nedidelis pranašumas vystyme
+	Decisive development advantage	Lemiamas pranašumas vystyme
+	Lasting initiative	Ilgalaikė iniciatyva
+	Slight counterplay	Nedidelis kontržaidimas
+	Decisive counterplay	Lemiamas kontržaidimas
+	Moderate time pressure	Vidutinė laiko stoka
+	Slight space advantage	Nedidelis erdvės pranašumas
+	Moderate space advantage	Vidutinis erdvės pranašumas
+	Decisive space advantage	Lemiamas erdvės pranašumas
+	Slight control of the center	Nedidelė centro kontrolė
+	Moderate control of the center	Vidutinė centro kontrolė
+	Decisive control of the center	Lemiama centro kontrolė
+	Slight control of the kingside	Nedidelė karaliaus flango kontrolė
+	Moderate control of the kingside	Vidutinė karaliaus flango kontrolė
+	Decisive control of the kingside	Lemiama karaliaus flango kontrolė
+	Slight control of the queenside	Nedidelė valdovės flango kontrolė
+	Moderate control of the queenside	Vidutinė valdovės flango kontrolė
+	Decisive control of the queenside	Lemiama valdovės flango kontrolė
+	Vulnerable first rank	Pažeidžiama pirmoji horizontalė
+	Well protected first rank	Gerai apsaugota pirmoji horizontalė
+	Poorly protected king	Prastai apsaugotas karalius
+	Well protected king	Gerai apsaugotas karalius
+	Poorly placed king	Prastai pastatytas karalius
+	Well placed king	Gerai pastatytas karalius
+	Very weak pawn structure	Labai silpna pėstininkų struktūra
+	Moderately weak pawn structure	Vidutiniškai silpna pėstininkų struktūra
+	Moderately strong pawn structure	Vidutiniškai stipri pėstininkų struktūra
+	Very strong pawn structure	Labai stipri pėstininkų struktūra
+	Poor knight placement	Prastai pastatytas žirgas
+	Good knight placement	Gerai pastatytas žirgas
+	Poor bishop placement	Prastai pastatytas rikis
+	Good bishop placement	Gerai pastatytas rikis
+	Poor rook placement	Prastai pastatytas bokštas
+	Good rook placement	Gerai pastatytas bokštas
+	Poor queen placement	Prastai pastatyta valdovė
+	Good queen placement	Gerai pastatyta valdovė
+	Poor piece coordination	Prasta figūrų koordinacija
+	Good piece coordination	Gera figūrų koordinacija
+	Very poorly played opening	Labai prastai sužaistas debiutas
+	Poorly played opening	Prastai sužaistas debiutas
+	Well played opening	Gerai sužaistas debiutas
+	Very well played opening	Labai gerai sužaistas debiutas
+	Very poorly played middlegame	Labai prastai sužaistas viduržaidis
+	Poorly played middlegame	Prastai sužaistas viduržaidis
+	Well played middlegame	Gerai sužaistas viduržaidis
+	Very well played middlegame	Labai gerai sužaistas viduržaidis
+	Very poorly played endgame	Labai prastai sužaistas endšpilis
+	Poorly played endgame	Prastai sužaistas endšpilis
+	Well played endgame	Gerai sužaistas endšpilis
+	Very well played endgame	Labai gerai sužaistas endšpilis
+	Space advantage	Erdvės pranašumas
+	Play along the file	Žaidimas vertikale
+	Play along the diagonal	Žaidimas įstrižaine
+	Play in the center	Žaidimas centre
+	Play on the kingside	Žaidimas karaliaus flange
+	Play on the queenside	Žaidimas valdovės flange
+	Weak point	Silpnas laukas
+	Endgame	Endšpilis
+	Pair of bishops	Rikių pora
+	Bishops of opposite colors	Skirtingaspalviai rikiai
+	Bishops of the same color	Vienspalviai rikiai
+	Connected pawns	Sujungti pėstininkai
+	Isolated pawns	Izoliuoti pėstininkai
+	Doubled pawns	Sudvejinti pėstininkai
+	Passed pawn	Praeinamasis pėstininkas
+	Pawn majority	Pėstininkų persvara
+	With	Su
+	Without	Be
+	Positional glyphs	Poziciniai ženklai
+	More assessments	Daugiau įvertinimų
+	Filter assessments	Filtruoti įvertinimus
+	No assessment matches the filter.	Nė vienas įvertinimas neatitinka filtro.
+	These have no printed sign: PGN writes them as a number ($n).	Šie neturi spausdinamo ženklo: PGN juos rašo skaičiumi ($n).
+	Move quality	Ėjimo kokybė
+	Evaluation	Įvertinimas
+	Initiative and time	Iniciatyva ir laikas
+	Space and control	Erdvė ir kontrolė
+	King safety	Karaliaus saugumas
+	Pawns	Pėstininkai
+	Pieces	Figūros
+	Phases of the game	Partijos stadijos
 	Choose a move first: glyphs go on a move.	Pirmiausia pasirinkite ėjimą: ženklai dedami prie ėjimo.
 	Not added: this move has as many glyphs as it can take.	Nepridėta: šis ėjimas jau turi tiek ženklų, kiek gali.
 	One half	Viena antroji

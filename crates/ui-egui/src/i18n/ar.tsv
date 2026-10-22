@@ -2982,6 +2982,97 @@ chess undo step	Clear drawings	مسح الرسوم
 	Better is	الأفضل هو
 	Worse is	الأسوأ هو
 	Editorial comment	تعليق تحريري
+# Every NAG of the PGN standard and the ChessPad extension: the names of the glyphs added to the 28 (most have no printed sign), then the glyph palette's positional row and its list of the assessments without a sign.
+	Singular move	النقلة المعقولة الوحيدة
+	Worst move	أسوأ نقلة
+	Equivalent move	نقلة مكافئة
+	Equal chances, quiet position	فرص متكافئة، موقف هادئ
+	Equal chances, active position	فرص متكافئة، موقف حيوي
+	White has a crushing advantage	للأبيض تفوق ساحق
+	Black has a crushing advantage	للأسود تفوق ساحق
+	Insufficient compensation for the material	تعويض غير كافٍ عن المادة
+	More than enough compensation for the material	تعويض أكثر من كافٍ عن المادة
+	Slight development advantage	تفوق طفيف في التطوير
+	Decisive development advantage	تفوق حاسم في التطوير
+	Lasting initiative	مبادرة دائمة
+	Slight counterplay	لعب مضاد طفيف
+	Decisive counterplay	لعب مضاد حاسم
+	Moderate time pressure	ضيق وقت معتدل
+	Slight space advantage	تفوق طفيف في المساحة
+	Moderate space advantage	تفوق معتدل في المساحة
+	Decisive space advantage	تفوق حاسم في المساحة
+	Slight control of the center	سيطرة طفيفة على المركز
+	Moderate control of the center	سيطرة معتدلة على المركز
+	Decisive control of the center	سيطرة حاسمة على المركز
+	Slight control of the kingside	سيطرة طفيفة على جناح الملك
+	Moderate control of the kingside	سيطرة معتدلة على جناح الملك
+	Decisive control of the kingside	سيطرة حاسمة على جناح الملك
+	Slight control of the queenside	سيطرة طفيفة على جناح الوزير
+	Moderate control of the queenside	سيطرة معتدلة على جناح الوزير
+	Decisive control of the queenside	سيطرة حاسمة على جناح الوزير
+	Vulnerable first rank	صف أول ضعيف
+	Well protected first rank	صف أول محمي جيدًا
+	Poorly protected king	ملك ضعيف الحماية
+	Well protected king	ملك محمي جيدًا
+	Poorly placed king	ملك في موقع سيئ
+	Well placed king	ملك في موقع جيد
+	Very weak pawn structure	بنية بيادق ضعيفة جدًا
+	Moderately weak pawn structure	بنية بيادق ضعيفة نوعًا ما
+	Moderately strong pawn structure	بنية بيادق قوية نوعًا ما
+	Very strong pawn structure	بنية بيادق قوية جدًا
+	Poor knight placement	تمركز سيئ للحصان
+	Good knight placement	تمركز جيد للحصان
+	Poor bishop placement	تمركز سيئ للفيل
+	Good bishop placement	تمركز جيد للفيل
+	Poor rook placement	تمركز سيئ للرخ
+	Good rook placement	تمركز جيد للرخ
+	Poor queen placement	تمركز سيئ للوزير
+	Good queen placement	تمركز جيد للوزير
+	Poor piece coordination	تنسيق سيئ بين القطع
+	Good piece coordination	تنسيق جيد بين القطع
+	Very poorly played opening	الافتتاح لُعب بشكل سيئ جدًا
+	Poorly played opening	الافتتاح لُعب بشكل سيئ
+	Well played opening	الافتتاح لُعب بشكل جيد
+	Very well played opening	الافتتاح لُعب بشكل جيد جدًا
+	Very poorly played middlegame	وسط اللعب لُعب بشكل سيئ جدًا
+	Poorly played middlegame	وسط اللعب لُعب بشكل سيئ
+	Well played middlegame	وسط اللعب لُعب بشكل جيد
+	Very well played middlegame	وسط اللعب لُعب بشكل جيد جدًا
+	Very poorly played endgame	النهاية لُعب بشكل سيئ جدًا
+	Poorly played endgame	النهاية لُعب بشكل سيئ
+	Well played endgame	النهاية لُعب بشكل جيد
+	Very well played endgame	النهاية لُعب بشكل جيد جدًا
+	Space advantage	تفوق في المساحة
+	Play along the file	اللعب على العمود
+	Play along the diagonal	اللعب على القطر
+	Play in the center	اللعب في المركز
+	Play on the kingside	اللعب على جناح الملك
+	Play on the queenside	اللعب على جناح الوزير
+	Weak point	نقطة ضعف
+	Endgame	النهاية
+	Pair of bishops	زوج الفيلة
+	Bishops of opposite colors	فيلان مختلفا اللون
+	Bishops of the same color	فيلان من اللون نفسه
+	Connected pawns	بيادق متصلة
+	Isolated pawns	بيادق معزولة
+	Doubled pawns	بيادق مزدوجة
+	Passed pawn	بيدق حر
+	Pawn majority	أغلبية بيادق
+	With	مع
+	Without	بدون
+	Positional glyphs	رموز موضعية
+	More assessments	مزيد من التقييمات
+	Filter assessments	تصفية التقييمات
+	No assessment matches the filter.	لا يوجد تقييم يطابق عامل التصفية.
+	These have no printed sign: PGN writes them as a number ($n).	ليس لهذه التقييمات علامة مطبوعة: يكتبها PGN كرقم ($n).
+	Move quality	جودة النقلة
+	Evaluation	تقييم الموقف
+	Initiative and time	المبادرة والوقت
+	Space and control	المساحة والسيطرة
+	King safety	سلامة الملك
+	Pawns	البيادق
+	Pieces	القطع
+	Phases of the game	مراحل المباراة
 	Choose a move first: glyphs go on a move.	اختر نقلة أولًا: الرموز توضع على نقلة.
 	Not added: this move has as many glyphs as it can take.	لم تُضف: هذه النقلة تحمل أقصى عدد من الرموز.
 	One half	نصف

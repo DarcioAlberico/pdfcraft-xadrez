@@ -2704,6 +2704,97 @@ chess undo step	Clear drawings	rajzok törlése
 	Better is	Jobb
 	Worse is	Rosszabb
 	Editorial comment	Szerkesztői megjegyzés
+# Every NAG of the PGN standard and the ChessPad extension: the names of the glyphs added to the 28 (most have no printed sign), then the glyph palette's positional row and its list of the assessments without a sign.
+	Singular move	Egyetlen értelmes lépés
+	Worst move	Legrosszabb lépés
+	Equivalent move	Egyenértékű lépés
+	Equal chances, quiet position	Egyenlő esélyek, nyugodt állás
+	Equal chances, active position	Egyenlő esélyek, aktív állás
+	White has a crushing advantage	Világos elsöprő előnyben van
+	Black has a crushing advantage	Sötét elsöprő előnyben van
+	Insufficient compensation for the material	Elégtelen ellenérték az anyagért
+	More than enough compensation for the material	Több mint elegendő ellenérték az anyagért
+	Slight development advantage	Csekély fejlődési előny
+	Decisive development advantage	Döntő fejlődési előny
+	Lasting initiative	Tartós kezdeményezés
+	Slight counterplay	Csekély ellenjáték
+	Decisive counterplay	Döntő ellenjáték
+	Moderate time pressure	Mérsékelt időzavar
+	Slight space advantage	Csekély térelőny
+	Moderate space advantage	Mérsékelt térelőny
+	Decisive space advantage	Döntő térelőny
+	Slight control of the center	A centrum csekély ellenőrzése
+	Moderate control of the center	A centrum mérsékelt ellenőrzése
+	Decisive control of the center	A centrum döntő ellenőrzése
+	Slight control of the kingside	A királyszárny csekély ellenőrzése
+	Moderate control of the kingside	A királyszárny mérsékelt ellenőrzése
+	Decisive control of the kingside	A királyszárny döntő ellenőrzése
+	Slight control of the queenside	A vezérszárny csekély ellenőrzése
+	Moderate control of the queenside	A vezérszárny mérsékelt ellenőrzése
+	Decisive control of the queenside	A vezérszárny döntő ellenőrzése
+	Vulnerable first rank	Sebezhető alapsor
+	Well protected first rank	Jól védett alapsor
+	Poorly protected king	Gyengén védett király
+	Well protected king	Jól védett király
+	Poorly placed king	Rosszul álló király
+	Well placed king	Jól álló király
+	Very weak pawn structure	Nagyon gyenge gyalogszerkezet
+	Moderately weak pawn structure	Mérsékelten gyenge gyalogszerkezet
+	Moderately strong pawn structure	Mérsékelten erős gyalogszerkezet
+	Very strong pawn structure	Nagyon erős gyalogszerkezet
+	Poor knight placement	Rosszul álló huszár
+	Good knight placement	Jól álló huszár
+	Poor bishop placement	Rosszul álló futó
+	Good bishop placement	Jól álló futó
+	Poor rook placement	Rosszul álló bástya
+	Good rook placement	Jól álló bástya
+	Poor queen placement	Rosszul álló vezér
+	Good queen placement	Jól álló vezér
+	Poor piece coordination	A figurák gyenge összjátéka
+	Good piece coordination	A figurák jó összjátéka
+	Very poorly played opening	Nagyon rosszul játszott megnyitás
+	Poorly played opening	Rosszul játszott megnyitás
+	Well played opening	Jól játszott megnyitás
+	Very well played opening	Nagyon jól játszott megnyitás
+	Very poorly played middlegame	Nagyon rosszul játszott középjáték
+	Poorly played middlegame	Rosszul játszott középjáték
+	Well played middlegame	Jól játszott középjáték
+	Very well played middlegame	Nagyon jól játszott középjáték
+	Very poorly played endgame	Nagyon rosszul játszott végjáték
+	Poorly played endgame	Rosszul játszott végjáték
+	Well played endgame	Jól játszott végjáték
+	Very well played endgame	Nagyon jól játszott végjáték
+	Space advantage	Térelőny
+	Play along the file	Játék a vonalon
+	Play along the diagonal	Játék az átlón
+	Play in the center	Játék a centrumban
+	Play on the kingside	Játék a királyszárnyon
+	Play on the queenside	Játék a vezérszárnyon
+	Weak point	Gyenge pont
+	Endgame	Végjáték
+	Pair of bishops	Futópár
+	Bishops of opposite colors	Ellenszínű futók
+	Bishops of the same color	Azonos színű futók
+	Connected pawns	Összefüggő gyalogok
+	Isolated pawns	Elszigetelt gyalogok
+	Doubled pawns	Duplagyalogok
+	Passed pawn	Szabadgyalog
+	Pawn majority	Gyalogtöbbség
+	With	-val/-vel
+	Without	Nélkül
+	Positional glyphs	Pozíciós jelek
+	More assessments	További értékelések
+	Filter assessments	Értékelések szűrése
+	No assessment matches the filter.	Egyik értékelés sem felel meg a szűrőnek.
+	These have no printed sign: PGN writes them as a number ($n).	Ezeknek nincs nyomtatott jelük: a PGN számként írja őket ($n).
+	Move quality	A lépés minősége
+	Evaluation	Értékelés
+	Initiative and time	Kezdeményezés és idő
+	Space and control	Tér és ellenőrzés
+	King safety	A király biztonsága
+	Pawns	Gyalogok
+	Pieces	Figurák
+	Phases of the game	A játszma szakaszai
 	Choose a move first: glyphs go on a move.	Előbb válasszon lépést: a jelek egy lépéshez tartoznak.
 	Not added: this move has as many glyphs as it can take.	Nincs hozzáadva: ennek a lépésnek már annyi jele van, amennyi lehet.
 	One half	Egy ketted

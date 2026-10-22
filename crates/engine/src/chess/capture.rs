@@ -541,7 +541,7 @@ fn comment_text(chess: &ChessPageText) -> String {
         let (piece, glued) = match &span.run {
             ChessRun::MoveNumber { number, black } => (if *black { format!("{number}...") } else { format!("{number}.") }, false),
             ChessRun::Move { san, .. } => (san.to_english(), glue),
-            ChessRun::Nag(code) => (glyph_text(*code), true),
+            ChessRun::Nag(code) => (nag::printed(*code), true),
             ChessRun::Figurine(kind) => (kind.letter().to_string(), glue),
             ChessRun::Text(t) => (t.trim().chars().map(|c| figurine_piece(c).map_or(c, |k| k.letter())).collect::<String>(), false),
         };
@@ -555,14 +555,6 @@ fn comment_text(chess: &ChessPageText) -> String {
         out.push_str(&piece);
     }
     out
-}
-
-/// A glyph as printed when that is safe alone, else `$code`.
-fn glyph_text(code: u16) -> String {
-    match nag::by_code(code) {
-        Some(n) if n.safe_glyph => n.glyph.to_owned(),
-        _ => format!("${code}"),
-    }
 }
 
 // ─── Correcting a move that did not play (PGN toolbar T10) ──────────────────────────────────

@@ -697,7 +697,11 @@ pub fn ischess_piece(c: char) -> Option<Piece> {
 
 /// What the other ISChess letters draw. Signs with a PGN annotation code are written as the
 /// annotation table ([`crate::nag`]) writes them, so they read back as that annotation (`O` ±,
-/// `Q` +-); the rest are the nearest Unicode signs. Read off the glyph table printed in the font
+/// `Q` +-, `p` ⯺ connected pawns); the three bishop signs, which have no Unicode character, as
+/// the table's stand-ins for them (`m` ⧉, `n` □■, `o` ■■); the rest are the nearest Unicode
+/// signs. `!` draws `∞` over `=`, which the user identified with compensation from a book's own
+/// key to symbols (black-box, 2026-10-22): it is `⯹`, which reads as `©`, so a book's `!` after a
+/// move is compensation, never "good move". Read off the glyph table printed in the font
 /// itself, as the PDFimport plugin by Wagner Escorcio records it (used with his permission,
 /// `docs/chess/provenance.md`), and checked against the font file (`IS-TT-01.TTF`, family
 /// ISChess).
@@ -712,19 +716,19 @@ const ISCHESS_SIGNS: &[(char, &str)] = &[
     ('h', "⊞"),
     ('i', "⟫"),
     ('j', "⟪"),
-    ('k', "×"),
+    ('k', "✕"),
     ('l', "⊥"),
     ('m', "⧉"),
     ('n', "□■"),
     ('o', "■■"),
-    ('p', "○○"),
-    ('q', "○‥○"),
-    ('r', "⁰₀"),
-    ('s', "⫰"),
+    ('p', "⯺"),
+    ('q', "⯻"),
+    ('r', "⯼"),
+    ('s', "⯽"),
     ('t', ">"),
     ('u', "⨁"),
     ('v', "∟"),
-    ('w', "⨀"),
+    ('w', "⯾"),
     ('x', "‖"),
     ('y', "−"),
     ('z', "▲"),
@@ -738,10 +742,13 @@ const ISCHESS_SIGNS: &[(char, &str)] = &[
     ('T', "∞"),
     ('U', "©"),
     ('V', "⟳"),
-    ('W', "⨀"),
+    ('W', "○"),
     ('X', "→"),
     ('Y', "↑"),
     ('Z', "⇆"),
+    ('[', "⨀"),
+    // `∞` over `=`: compensation, as the user identified it (see above), not the plain `!`.
+    ('!', "⯹"),
 ];
 
 /// The sign an ISChess letter draws, as text ([`ISCHESS_SIGNS`]); `None` for a piece letter or
@@ -898,8 +905,21 @@ mod tests {
         assert_eq!(ischess_sign('O'), Some("±"));
         assert_eq!(ischess_sign('\u{F04F}'), Some("±"), "symbol cmap");
         // Signs with an annotation code are spelled as the annotation table spells them.
-        for (letter, code) in [('a', 5), ('d', 7), ('M', 14), ('Q', 18), ('R', 19), ('U', 44), ('W', 22), ('Z', 132), ('u', 138), ('c', 140)] {
-            assert_eq!(ischess_sign(letter), crate::nag::by_code(code).map(|n| n.glyph), "{letter}");
+        for (letter, code) in [('a', 5), ('d', 7), ('M', 14), ('Q', 18), ('R', 19), ('U', 44), ('Z', 132), ('u', 138), ('c', 140)] {
+            assert_eq!(ischess_sign(letter), crate::nag::by_code(code).and_then(|n| n.glyph), "{letter}");
         }
+        // Checked against the font's drawings: the ring is space, zugzwang the ringed dot, the
+        // ChessPad signs on their letters (the cross a weak point, never the capture sign).
+        let chesspad = [('W', 26), ('[', 22), ('e', 142), ('f', 239), ('g', 240), ('h', 241), ('i', 242), ('j', 243), ('k', 244), ('l', 245)];
+        let pawns_and_bishops = [('m', 246), ('n', 247), ('o', 248), ('p', 249), ('q', 250), ('r', 251), ('s', 252), ('v', 254), ('w', 255)];
+        for (letter, code) in chesspad.into_iter().chain(pawns_and_bishops) {
+            let sign = ischess_sign(letter).unwrap();
+            assert_eq!(Some(sign), crate::nag::by_code(code).and_then(|n| n.glyph), "{letter}");
+            assert_eq!(crate::nag::by_glyph(sign).map(|n| n.code), Some(code), "{letter} reads back");
+        }
+        assert_eq!(ischess_sign('k'), Some("✕"), "not ×");
+        assert_eq!(ischess_sign('!'), Some("⯹"), "∞ over =: compensation, not good move");
+        assert_eq!(ischess_sign('\u{F021}'), Some("⯹"), "symbol cmap");
+        assert_eq!(crate::nag::nags_from_suffix(ischess_sign('!').unwrap_or("!"), false), [45]);
     }
 }

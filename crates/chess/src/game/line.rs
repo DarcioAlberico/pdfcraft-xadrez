@@ -87,10 +87,7 @@ impl Game {
                 if !(1..=6).contains(&code) {
                     out.push(' ');
                 }
-                match nag::by_code(code) {
-                    Some(entry) => out.push_str(entry.glyph),
-                    None => out.push_str(&format!("${code}")),
-                }
+                out.push_str(&nag::shown(code));
             }
         }
         out

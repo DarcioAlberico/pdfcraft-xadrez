@@ -2960,6 +2960,97 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Better is	Tốt hơn là
 	Worse is	Tệ hơn là
 	Editorial comment	Bình luận của biên tập
+# Every NAG of the PGN standard and the ChessPad extension: the names of the glyphs added to the 28 (most have no printed sign), then the glyph palette's positional row and its list of the assessments without a sign.
+	Singular move	Nước bắt buộc
+	Worst move	Nước tệ nhất
+	Equivalent move	Nước tương đương
+	Equal chances, quiet position	Cơ hội ngang nhau, thế yên tĩnh
+	Equal chances, active position	Cơ hội ngang nhau, thế sôi động
+	White has a crushing advantage	Trắng có ưu thế áp đảo
+	Black has a crushing advantage	Đen có ưu thế áp đảo
+	Insufficient compensation for the material	Bù đắp cho quân không đủ
+	More than enough compensation for the material	Bù đắp cho quân dư thừa
+	Slight development advantage	Ưu thế phát triển nhẹ
+	Decisive development advantage	Ưu thế phát triển quyết định
+	Lasting initiative	Thế chủ động lâu dài
+	Slight counterplay	Phản công nhẹ
+	Decisive counterplay	Phản công quyết định
+	Moderate time pressure	Hơi thiếu thời gian
+	Slight space advantage	Ưu thế không gian nhẹ
+	Moderate space advantage	Ưu thế không gian đáng kể
+	Decisive space advantage	Ưu thế không gian quyết định
+	Slight control of the center	Kiểm soát nhẹ trung tâm
+	Moderate control of the center	Kiểm soát đáng kể trung tâm
+	Decisive control of the center	Kiểm soát quyết định trung tâm
+	Slight control of the kingside	Kiểm soát nhẹ cánh Vua
+	Moderate control of the kingside	Kiểm soát đáng kể cánh Vua
+	Decisive control of the kingside	Kiểm soát quyết định cánh Vua
+	Slight control of the queenside	Kiểm soát nhẹ cánh Hậu
+	Moderate control of the queenside	Kiểm soát đáng kể cánh Hậu
+	Decisive control of the queenside	Kiểm soát quyết định cánh Hậu
+	Vulnerable first rank	Hàng cuối yếu
+	Well protected first rank	Hàng cuối được bảo vệ tốt
+	Poorly protected king	Vua được bảo vệ kém
+	Well protected king	Vua được bảo vệ tốt
+	Poorly placed king	Vua ở vị trí kém
+	Well placed king	Vua ở vị trí tốt
+	Very weak pawn structure	Cấu trúc Tốt rất yếu
+	Moderately weak pawn structure	Cấu trúc Tốt khá yếu
+	Moderately strong pawn structure	Cấu trúc Tốt khá mạnh
+	Very strong pawn structure	Cấu trúc Tốt rất mạnh
+	Poor knight placement	Vị trí Mã kém
+	Good knight placement	Vị trí Mã tốt
+	Poor bishop placement	Vị trí Tượng kém
+	Good bishop placement	Vị trí Tượng tốt
+	Poor rook placement	Vị trí Xe kém
+	Good rook placement	Vị trí Xe tốt
+	Poor queen placement	Vị trí Hậu kém
+	Good queen placement	Vị trí Hậu tốt
+	Poor piece coordination	Phối hợp quân kém
+	Good piece coordination	Phối hợp quân tốt
+	Very poorly played opening	Khai cuộc chơi rất kém
+	Poorly played opening	Khai cuộc chơi kém
+	Well played opening	Khai cuộc chơi tốt
+	Very well played opening	Khai cuộc chơi rất tốt
+	Very poorly played middlegame	Trung cuộc chơi rất kém
+	Poorly played middlegame	Trung cuộc chơi kém
+	Well played middlegame	Trung cuộc chơi tốt
+	Very well played middlegame	Trung cuộc chơi rất tốt
+	Very poorly played endgame	Tàn cuộc chơi rất kém
+	Poorly played endgame	Tàn cuộc chơi kém
+	Well played endgame	Tàn cuộc chơi tốt
+	Very well played endgame	Tàn cuộc chơi rất tốt
+	Space advantage	Ưu thế không gian
+	Play along the file	Chơi trên cột
+	Play along the diagonal	Chơi trên đường chéo
+	Play in the center	Chơi ở trung tâm
+	Play on the kingside	Chơi ở cánh Vua
+	Play on the queenside	Chơi ở cánh Hậu
+	Weak point	Điểm yếu
+	Endgame	Tàn cuộc
+	Pair of bishops	Cặp Tượng
+	Bishops of opposite colors	Tượng khác màu
+	Bishops of the same color	Tượng cùng màu
+	Connected pawns	Tốt liên kết
+	Isolated pawns	Tốt cô lập
+	Doubled pawns	Tốt chồng
+	Passed pawn	Tốt thông
+	Pawn majority	Đa số Tốt
+	With	Với
+	Without	Không có
+	Positional glyphs	Ký hiệu thế cờ
+	More assessments	Thêm đánh giá
+	Filter assessments	Lọc đánh giá
+	No assessment matches the filter.	Không có đánh giá nào khớp với bộ lọc.
+	These have no printed sign: PGN writes them as a number ($n).	Các mục này không có ký hiệu in: PGN ghi chúng dưới dạng số ($n).
+	Move quality	Chất lượng nước đi
+	Evaluation	Đánh giá thế cờ
+	Initiative and time	Chủ động và thời gian
+	Space and control	Không gian và kiểm soát
+	King safety	An toàn của Vua
+	Pawns	Tốt
+	Pieces	Quân cờ
+	Phases of the game	Các giai đoạn ván cờ
 	Choose a move first: glyphs go on a move.	Hãy chọn một nước trước: ký hiệu được gắn vào một nước.
 	Not added: this move has as many glyphs as it can take.	Chưa thêm: nước này đã có đủ số ký hiệu tối đa.
 	One half	Một phần hai

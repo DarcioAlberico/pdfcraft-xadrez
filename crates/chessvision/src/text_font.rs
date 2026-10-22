@@ -59,8 +59,10 @@ const ISCHESS_SIGNS: &[(u16, char)] = &[
     (17, 'P'), // ∓
     (18, 'Q'), // +−
     (19, 'R'), // −+
-    (22, 'W'), // ⊙ zugzwang
-    (23, 'W'),
+    (22, '['), // ⨀ zugzwang
+    (23, '['),
+    (26, 'W'), // ○ space
+    (27, 'W'),
     (32, 'V'), // ⟳ development
     (33, 'V'),
     (36, 'Y'), // ↑ initiative
@@ -75,6 +77,22 @@ const ISCHESS_SIGNS: &[(u16, char)] = &[
     (139, 'u'),
     (140, 'c'), // △ with the idea
     (142, 'e'), // ⌓ better is
+    (239, 'f'), // ⇔ file
+    (240, 'g'), // ⇗ diagonal
+    (241, 'h'), // ⊞ centre
+    (242, 'i'), // ⟫ kingside
+    (243, 'j'), // ⟪ queenside
+    (244, 'k'), // ✕ weak point
+    (245, 'l'), // ⊥ endgame
+    (246, 'm'), // pair of bishops
+    (247, 'n'), // bishops of opposite colours
+    (248, 'o'), // bishops of the same colour
+    (249, 'p'), // ⯺ connected pawns
+    (250, 'q'), // ⯻ isolated pawns
+    (251, 'r'), // ⯼ doubled pawns
+    (252, 's'), // ⯽ passed pawn
+    (254, 'v'), // ∟ with
+    (255, 'w'), // ⯾ without
 ];
 
 /// The ISChess letter that draws annotation `code`, if the font has it.
@@ -348,12 +366,16 @@ mod tests {
         assert_eq!(ischess_letter(19), Some('R'));
         assert_eq!(ischess_letter(41), Some('X'), "Black's attack too");
         assert_eq!(ischess_letter(7), Some('d'));
+        // Checked against the font's drawings: zugzwang is the ringed dot, the plain ring space.
+        assert_eq!(ischess_letter(23), Some('['));
+        assert_eq!(ischess_letter(27), Some('W'));
+        assert_eq!(ischess_letter(247), Some('n'), "a bishop sign, written in the font");
         assert_eq!(ischess_letter(1), None, "! is a plain character");
         // Every code is a known annotation, and reading the letter back gives that annotation.
         for (code, letter) in ISCHESS_SIGNS {
             let nag = pdfcraft_chess::nag::by_code(*code).unwrap_or_else(|| panic!("${code}"));
             let read = pdfcraft_chess::catalog::ischess_sign(*letter).unwrap_or_else(|| panic!("{letter}"));
-            assert!(nag.glyph == read || nag.aliases.contains(&read), "${code}: {letter} reads {read}");
+            assert!(nag.glyph == Some(read) || nag.aliases.contains(&read), "${code}: {letter} reads {read}");
         }
     }
 

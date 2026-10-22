@@ -2655,6 +2655,97 @@ chess undo step	Clear drawings	清除標記
 	Better is	更好的是
 	Worse is	更差的是
 	Editorial comment	編者註
+# Every NAG of the PGN standard and the ChessPad extension: the names of the glyphs added to the 28 (most have no printed sign), then the glyph palette's positional row and its list of the assessments without a sign.
+	Singular move	唯一合理著法
+	Worst move	最差著法
+	Equivalent move	等效著法
+	Equal chances, quiet position	均勢，局面平穩
+	Equal chances, active position	均勢，局面活躍
+	White has a crushing advantage	白方壓倒性優勢
+	Black has a crushing advantage	黑方壓倒性優勢
+	Insufficient compensation for the material	子力補償不足
+	More than enough compensation for the material	子力補償有餘
+	Slight development advantage	稍有出子優勢
+	Decisive development advantage	決定性出子優勢
+	Lasting initiative	持久的主動權
+	Slight counterplay	稍有反擊
+	Decisive counterplay	決定性反擊
+	Moderate time pressure	時間較緊迫
+	Slight space advantage	稍有空間優勢
+	Moderate space advantage	較大空間優勢
+	Decisive space advantage	決定性空間優勢
+	Slight control of the center	略微控制中心
+	Moderate control of the center	較大程度控制中心
+	Decisive control of the center	決定性控制中心
+	Slight control of the kingside	略微控制王翼
+	Moderate control of the kingside	較大程度控制王翼
+	Decisive control of the kingside	決定性控制王翼
+	Slight control of the queenside	略微控制后翼
+	Moderate control of the queenside	較大程度控制后翼
+	Decisive control of the queenside	決定性控制后翼
+	Vulnerable first rank	底線薄弱
+	Well protected first rank	底線防守穩固
+	Poorly protected king	王的防護薄弱
+	Well protected king	王的防護良好
+	Poorly placed king	王的位置不佳
+	Well placed king	王的位置良好
+	Very weak pawn structure	兵型非常弱
+	Moderately weak pawn structure	兵型較弱
+	Moderately strong pawn structure	兵型較強
+	Very strong pawn structure	兵型非常強
+	Poor knight placement	馬的位置不佳
+	Good knight placement	馬的位置良好
+	Poor bishop placement	象的位置不佳
+	Good bishop placement	象的位置良好
+	Poor rook placement	車的位置不佳
+	Good rook placement	車的位置良好
+	Poor queen placement	后的位置不佳
+	Good queen placement	后的位置良好
+	Poor piece coordination	子力配合不佳
+	Good piece coordination	子力配合良好
+	Very poorly played opening	開局下得很差
+	Poorly played opening	開局下得較差
+	Well played opening	開局下得好
+	Very well played opening	開局下得很好
+	Very poorly played middlegame	中局下得很差
+	Poorly played middlegame	中局下得較差
+	Well played middlegame	中局下得好
+	Very well played middlegame	中局下得很好
+	Very poorly played endgame	殘局下得很差
+	Poorly played endgame	殘局下得較差
+	Well played endgame	殘局下得好
+	Very well played endgame	殘局下得很好
+	Space advantage	空間優勢
+	Play along the file	沿直線作戰
+	Play along the diagonal	沿斜線作戰
+	Play in the center	中心作戰
+	Play on the kingside	王翼作戰
+	Play on the queenside	后翼作戰
+	Weak point	弱點
+	Endgame	殘局
+	Pair of bishops	雙象
+	Bishops of opposite colors	異色格象
+	Bishops of the same color	同色格象
+	Connected pawns	連兵
+	Isolated pawns	孤兵
+	Doubled pawns	疊兵
+	Passed pawn	通路兵
+	Pawn majority	兵數優勢
+	With	有
+	Without	無
+	Positional glyphs	局面符號
+	More assessments	更多評估
+	Filter assessments	篩選評估
+	No assessment matches the filter.	沒有符合篩選條件的評估。
+	These have no printed sign: PGN writes them as a number ($n).	這些沒有印刷符號：PGN 將其寫為數字 ($n)。
+	Move quality	著法品質
+	Evaluation	局面評估
+	Initiative and time	主動權與時間
+	Space and control	空間與控制
+	King safety	王的安全
+	Pawns	兵
+	Pieces	棋子
+	Phases of the game	對局階段
 	Choose a move first: glyphs go on a move.	請先選擇一步著法：符號要標在著法上。
 	Not added: this move has as many glyphs as it can take.	未新增：此著法已有可容納的全部符號。
 	One half	二分之一

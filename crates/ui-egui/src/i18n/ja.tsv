@@ -2707,6 +2707,97 @@ chess undo step	Clear drawings	描画の消去
 	Better is	より良いのは
 	Worse is	より悪いのは
 	Editorial comment	編集者の注釈
+# Every NAG of the PGN standard and the ChessPad extension: the names of the glyphs added to the 28 (most have no printed sign), then the glyph palette's positional row and its list of the assessments without a sign.
+	Singular move	唯一の妥当な手
+	Worst move	最悪手
+	Equivalent move	同等の手
+	Equal chances, quiet position	互角、静かな局面
+	Equal chances, active position	互角、動きのある局面
+	White has a crushing advantage	白が圧倒的優勢
+	Black has a crushing advantage	黒が圧倒的優勢
+	Insufficient compensation for the material	駒損の代償が不十分
+	More than enough compensation for the material	駒損の代償が十分以上
+	Slight development advantage	展開でやや優位
+	Decisive development advantage	展開で決定的に優位
+	Lasting initiative	持続的な主導権
+	Slight counterplay	わずかな反撃
+	Decisive counterplay	決定的な反撃
+	Moderate time pressure	やや時間切迫
+	Slight space advantage	スペースでやや優位
+	Moderate space advantage	スペースでかなり優位
+	Decisive space advantage	スペースで決定的に優位
+	Slight control of the center	中央をやや支配
+	Moderate control of the center	中央をかなり支配
+	Decisive control of the center	中央を決定的に支配
+	Slight control of the kingside	キングサイドをやや支配
+	Moderate control of the kingside	キングサイドをかなり支配
+	Decisive control of the kingside	キングサイドを決定的に支配
+	Slight control of the queenside	クイーンサイドをやや支配
+	Moderate control of the queenside	クイーンサイドをかなり支配
+	Decisive control of the queenside	クイーンサイドを決定的に支配
+	Vulnerable first rank	第1ランクが弱い
+	Well protected first rank	第1ランクの守りが堅い
+	Poorly protected king	キングの守りが薄い
+	Well protected king	キングの守りが堅い
+	Poorly placed king	キングの位置が悪い
+	Well placed king	キングの位置が良い
+	Very weak pawn structure	ポーン構造が非常に弱い
+	Moderately weak pawn structure	ポーン構造がやや弱い
+	Moderately strong pawn structure	ポーン構造がやや強い
+	Very strong pawn structure	ポーン構造が非常に強い
+	Poor knight placement	ナイトの配置が悪い
+	Good knight placement	ナイトの配置が良い
+	Poor bishop placement	ビショップの配置が悪い
+	Good bishop placement	ビショップの配置が良い
+	Poor rook placement	ルークの配置が悪い
+	Good rook placement	ルークの配置が良い
+	Poor queen placement	クイーンの配置が悪い
+	Good queen placement	クイーンの配置が良い
+	Poor piece coordination	駒の連携が悪い
+	Good piece coordination	駒の連携が良い
+	Very poorly played opening	序盤の指し回しが非常に悪い
+	Poorly played opening	序盤の指し回しが悪い
+	Well played opening	序盤の指し回しが良い
+	Very well played opening	序盤の指し回しが非常に良い
+	Very poorly played middlegame	中盤の指し回しが非常に悪い
+	Poorly played middlegame	中盤の指し回しが悪い
+	Well played middlegame	中盤の指し回しが良い
+	Very well played middlegame	中盤の指し回しが非常に良い
+	Very poorly played endgame	終盤の指し回しが非常に悪い
+	Poorly played endgame	終盤の指し回しが悪い
+	Well played endgame	終盤の指し回しが良い
+	Very well played endgame	終盤の指し回しが非常に良い
+	Space advantage	スペースの優位
+	Play along the file	ファイル沿いのプレー
+	Play along the diagonal	ダイアゴナル沿いのプレー
+	Play in the center	中央でのプレー
+	Play on the kingside	キングサイドでのプレー
+	Play on the queenside	クイーンサイドでのプレー
+	Weak point	弱点
+	Endgame	終盤
+	Pair of bishops	ビショップペア
+	Bishops of opposite colors	異色ビショップ
+	Bishops of the same color	同色ビショップ
+	Connected pawns	連結ポーン
+	Isolated pawns	孤立ポーン
+	Doubled pawns	ダブルポーン
+	Passed pawn	パスポーン
+	Pawn majority	ポーンマジョリティ
+	With	あり
+	Without	なし
+	Positional glyphs	局面の記号
+	More assessments	その他の評価
+	Filter assessments	評価を絞り込み
+	No assessment matches the filter.	絞り込みに一致する評価はありません。
+	These have no printed sign: PGN writes them as a number ($n).	これらには印刷される記号がありません: PGN では番号 ($n) で書かれます。
+	Move quality	手の質
+	Evaluation	形勢評価
+	Initiative and time	主導権と時間
+	Space and control	スペースと支配
+	King safety	キングの安全
+	Pawns	ポーン
+	Pieces	駒
+	Phases of the game	対局の段階
 	Choose a move first: glyphs go on a move.	先に手を選んでください: 記号は手に付けます。
 	Not added: this move has as many glyphs as it can take.	追加されませんでした: この手にはこれ以上記号を付けられません。
 	One half	2 分の 1

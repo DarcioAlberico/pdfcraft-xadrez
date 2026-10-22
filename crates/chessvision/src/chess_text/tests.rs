@@ -262,6 +262,28 @@ fn ischess_signs_and_coloured_pieces_are_read() {
 }
 
 #[test]
+fn ischess_draws_the_chesspad_signs() {
+    // Checked against the font's drawings. The ring (`W`) is space, by the side that moved; the
+    // ringed dot (`[`) zugzwang.
+    let page = Page::new().text("7.Nf3").text_in("W", "ISChess").text(" h6").text_in("W", "ISChess").text(" 8.Kf1").text_in("[", "ISChess");
+    assert_eq!(
+        runs(&page.read(None)),
+        vec![vec![white(7), mv("Nf3", "Nf3"), ChessRun::Nag(26), mv("h6", "h6"), ChessRun::Nag(27), white(8), mv("Kf1", "Kf1"), ChessRun::Nag(22)]]
+    );
+    // The cross `k` is a weak point, and the capture before it stays a capture.
+    let page = Page::new().text("19.Nxe5").text_in("k", "ISChess");
+    assert_eq!(runs(&page.read(None)), vec![vec![white(19), mv("Nxe5", "Nxe5"), ChessRun::Nag(244)]]);
+    // `!` draws `∞` over `=`: compensation by the side that moved, never "good move".
+    let page = Page::new().text("9.Rd1").text_in("!", "ISChess").text(" Qxa2").text_in("!", "ISChess");
+    assert_eq!(runs(&page.read(None)), vec![vec![white(9), mv("Rd1", "Rd1"), ChessRun::Nag(44), mv("Qxa2", "Qxa2"), ChessRun::Nag(45)]]);
+    // The pawn signs, without (`w`, the partner of `v` with) and a bishop sign.
+    for (letter, code) in [('p', 249), ('q', 250), ('r', 251), ('s', 252), ('v', 254), ('w', 255), ('m', 246), ('n', 247), ('o', 248)] {
+        let page = Page::new().text("20.b4").text_in(&letter.to_string(), "ISChess");
+        assert_eq!(runs(&page.read(None)), vec![vec![white(20), mv("b4", "b4"), ChessRun::Nag(code)]], "{letter}");
+    }
+}
+
+#[test]
 fn annotations_and_checks_split() {
     let read = Page::new().text("23.Rxe8+! Kxe8?? 24.Qh5+- ±").read(None);
     assert_eq!(
@@ -278,6 +300,39 @@ fn annotations_and_checks_split() {
             ChessRun::Nag(16),
         ]]
     );
+}
+
+#[test]
+fn chesspad_and_space_signs_are_read_and_kept_apart() {
+    // The space ring by the side that moved; ChessPad's signs, glued on or alone.
+    let read = Page::new().text("14.Nf3○ c5○ 15.Rd1⇔ ⊞ ✕").read(None);
+    assert_eq!(
+        runs(&read),
+        vec![vec![
+            white(14),
+            mv("Nf3", "Nf3"),
+            ChessRun::Nag(26),
+            mv("c5", "c5"),
+            ChessRun::Nag(27),
+            white(15),
+            mv("Rd1", "Rd1"),
+            ChessRun::Nag(239),
+            ChessRun::Nag(241),
+            ChessRun::Nag(244)
+        ]]
+    );
+    // The bishop stand-ins, glued after a move: `□■` is one sign, not the only move.
+    let read = Page::new().text("16.Bb2□■").read(None);
+    assert_eq!(runs(&read), vec![vec![white(16), mv("Bb2", "Bb2"), ChessRun::Nag(247)]]);
+    // `==` is one sign; `=` stays equality and a promotion stays the move's.
+    let read = Page::new().text("17.e8=Q == 18.Kh2 =").read(None);
+    assert_eq!(runs(&read), vec![vec![white(17), mv("e8=Q", "e8=Q"), ChessRun::Nag(144), white(18), mv("Kh2", "Kh2"), ChessRun::Nag(10)]]);
+    // The capture sign is the move's; the weak point's cross is a sign.
+    let read = Page::new().text("19.N×e5 ✕").read(None);
+    assert_eq!(runs(&read), vec![vec![white(19), mv("Nxe5", "N×e5"), ChessRun::Nag(244)]]);
+    // A file is not counterplay.
+    let read = Page::new().text("20.Rc1⇄").read(None);
+    assert_eq!(runs(&read), vec![vec![white(20), mv("Rc1", "Rc1"), ChessRun::Nag(132)]]);
 }
 
 #[test]
