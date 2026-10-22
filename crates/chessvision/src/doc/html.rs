@@ -133,6 +133,7 @@ fn status_word(s: MoveStatus) -> &'static str {
         MoveStatus::OutOfSequence => "out_of_sequence",
         MoveStatus::NotReached => "not_reached",
         MoveStatus::Unchecked => "unchecked",
+        MoveStatus::Caption => "caption",
     }
 }
 

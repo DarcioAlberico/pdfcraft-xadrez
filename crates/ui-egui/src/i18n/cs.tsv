@@ -2555,6 +2555,7 @@ animation effects	Off	Vypnuto
 	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	Odkud stránky knihy pocházejí. Automaticky věří textové vrstvě každé stránky, pokud nevypadá chybně; Původně digitální nikdy nepoužívá šachové OCR; Skenovaná čte každou stránku šachovým OCR (vyžaduje model chess-glyphs).
 	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	Textová vrstva této stránky vypadá špatně ({e}); byla přečtena tak, jak je, protože kniha je původně digitální.
 	Unchecked: no position to play it from	Neověřeno: chybí pozice, z níž jej zahrát
+	Caption: the move that led to the diagram, which gives it its side to move and move number	Popisek: tah, který vedl k diagramu; určuje stranu na tahu a číslo tahu
 	Valid move	Platný tah
 	Diagram replaced	Diagram nahrazen
 	Lichess link added	Odkaz na lichess přidán

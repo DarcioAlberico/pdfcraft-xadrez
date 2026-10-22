@@ -2693,6 +2693,7 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	Da dove provengono le pagine del libro. Automatico si fida del livello di testo di ogni pagina a meno che non sembri errato; Nativo digitale non usa mai l'OCR scacchistico; Scansionato legge ogni pagina con l'OCR scacchistico (serve il modello chess-glyphs).
 	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	Il livello di testo di questa pagina sembra scadente ({e}); è stato letto così com'è, perché il libro è nativo digitale.
 	Unchecked: no position to play it from	Non verificata: nessuna posizione da cui giocarla
+	Caption: the move that led to the diagram, which gives it its side to move and move number	Didascalia: la mossa che ha portato al diagramma, che gli dà il tratto e il numero di mossa
 	Valid move	Mossa valida
 	Diagram replaced	Diagramma sostituito
 	Lichess link added	Link lichess aggiunto

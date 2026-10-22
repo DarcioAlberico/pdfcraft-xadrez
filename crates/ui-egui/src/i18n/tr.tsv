@@ -2477,6 +2477,7 @@ animation effects	Off	Kapalı
 	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	Kitabın sayfalarının nereden geldiği. Otomatik, yanlış görünmedikçe her sayfanın metin katmanına güvenir; Doğrudan dijital hiçbir zaman satranç OCR kullanmaz; Taranmış her sayfayı satranç OCR ile okur (chess-glyphs modeli gerekir).
 	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	Bu sayfanın metin katmanı kötü görünüyor ({e}); kitap doğrudan dijital olduğu için olduğu gibi okundu.
 	Unchecked: no position to play it from	Denetlenmedi: oynanacağı bir konum yok
+	Caption: the move that led to the diagram, which gives it its side to move and move number	Altyazı: diyagrama götüren hamle; hamle sırasını ve hamle numarasını belirler
 	Valid move	Geçerli hamle
 	Diagram replaced	Diyagram değiştirildi
 	Lichess link added	Lichess bağlantısı eklendi

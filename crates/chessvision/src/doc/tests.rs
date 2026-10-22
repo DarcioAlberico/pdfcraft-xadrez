@@ -290,6 +290,80 @@ fn moves_after_an_unreadable_diagram_stay_unchecked() {
 }
 
 #[test]
+fn a_position_after_caption_sets_the_side_and_number_and_is_not_played() {
+    // Read with White to move, assumed, at move 1; the caption names the move that led to it.
+    let fen = "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/8/PPPP1PPP/RNBQK1NR b KQkq - 0 1";
+    let text = page_text(vec![line(230.0, "Position after: 2...Nc6"), line(250.0, "3.Qh5 Nf6 4.Qxf7#")]);
+    let doc = build_page(&input(0, &text, &[reading(0, 60.0, fen, true, true)], &[], &[]));
+    use MoveStatus::*;
+    assert_eq!(moves(&doc.pages[0]), vec![("2...Nc6".into(), Caption), ("3.Qh5".into(), Valid), ("Nf6".into(), Valid), ("4.Qxf7#".into(), Valid)]);
+    let game = &doc.games[0];
+    assert_eq!(game.score.start_fen.as_deref(), Some("r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/8/PPPP1PPP/RNBQK1NR w KQkq - 0 3"));
+    assert!(game.flags.is_empty(), "{:?}", game.flags);
+    assert!(pgn::write_game(&game.score).contains("3. Qh5 Nf6 4. Qxf7#"));
+    // In Portuguese, without a colon, after a White move: Black to move at the same number.
+    let fen = "rnbqkbnr/pppp1ppp/8/4p3/2B1P3/5Q2/PPPP1PPP/RNB1K1NR w KQkq - 0 1";
+    let text = page_text(vec![line(230.0, "Posição após 3.Qf3"), line(250.0, "3...Nc6")]);
+    let doc = build_page(&input(0, &text, &[reading(0, 60.0, fen, true, true)], &[], &[]));
+    assert_eq!(moves(&doc.pages[0]), vec![("3.Qf3".into(), Caption), ("3...Nc6".into(), Valid)]);
+    assert_eq!(doc.games[0].score.start_fen.as_deref(), Some("rnbqkbnr/pppp1ppp/8/4p3/2B1P3/5Q2/PPPP1PPP/RNB1K1NR b KQkq - 0 3"));
+}
+
+#[test]
+fn a_caption_keeps_en_passant_and_the_castling_rights_its_move_left() {
+    // After 1...d5 the e4 pawn takes en passant: the caption leaves the square passed.
+    let fen = "rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1";
+    let text = page_text(vec![line(230.0, "Position after: 2...d5"), line(250.0, "3.exd6")]);
+    let doc = build_page(&input(0, &text, &[reading(0, 60.0, fen, true, true)], &[], &[]));
+    assert_eq!(moves(&doc.pages[0]), vec![("2...d5".into(), MoveStatus::Caption), ("3.exd6".into(), MoveStatus::Valid)]);
+    assert_eq!(doc.games[0].score.start_fen.as_deref(), Some("rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3"));
+    // After Black castles, Black's rights go and White's stay: White can still castle.
+    let fen = "rnbq1rk1/ppppbppp/5n2/4p3/4P3/5N2/PPPPBPPP/RNBQK2R w KQkq - 0 1";
+    let text = page_text(vec![line(230.0, "Position after: 4...O-O"), line(250.0, "5.O-O")]);
+    let doc = build_page(&input(0, &text, &[reading(0, 60.0, fen, true, true)], &[], &[]));
+    assert_eq!(moves(&doc.pages[0]), vec![("4...O-O".into(), MoveStatus::Caption), ("5.O-O".into(), MoveStatus::Valid)]);
+    assert_eq!(doc.games[0].score.start_fen.as_deref(), Some("rnbq1rk1/ppppbppp/5n2/4p3/4P3/5N2/PPPPBPPP/RNBQK2R w KQ - 0 5"));
+}
+
+#[test]
+fn a_caption_that_is_the_open_games_next_move_is_played() {
+    // The game reaches 2.Bc4; the diagram reprints the position after Black's reply, captioned
+    // with it: the reply is the game's move, and the game goes on past the diagram.
+    let text = page_text(vec![line(20.0, "1.e4 e5 2.Bc4"), line(230.0, "Position after: 2...Nc6"), line(250.0, "3.Qh5 Nf6 4.Qxf7#")]);
+    let doc = build_page(&input(0, &text, &[reading(0, 60.0, SCHOLAR, true, true)], &[], &[]));
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    assert_eq!(doc.games.len(), 1);
+    assert!(pgn::write_game(&doc.games[0].score).contains("1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7#"));
+}
+
+#[test]
+fn a_caption_needs_its_cue_its_piece_in_place_and_an_agreeing_side() {
+    let fen = "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/8/PPPP1PPP/RNBQK1NR w KQkq - 0 1";
+    let caption = |words: &str, assumed: bool| {
+        let text = page_text(vec![line(230.0, &format!("{words} 2...Nc6")), line(250.0, "3.Qh5")]);
+        let doc = build_page(&input(0, &text, &[reading(0, 60.0, fen, true, assumed)], &[], &[]));
+        moves(&doc.pages[0]).first().map(|(_, s)| *s)
+    };
+    assert_eq!(caption("Position after:", true), Some(MoveStatus::Caption));
+    assert_eq!(caption("Stellung nach", true), Some(MoveStatus::Caption));
+    // No cue: the move is read as the game's first, which it cannot be.
+    assert_eq!(caption("Black played", true), Some(MoveStatus::Illegal));
+    assert_eq!(caption("Thereafter", true), Some(MoveStatus::Illegal));
+    // The reading said White to move, not assumed, and the caption agrees: only the number.
+    assert_eq!(caption("Position after:", false), Some(MoveStatus::Caption));
+    // A move still to come is never a caption: its piece is not on its square yet.
+    let text = page_text(vec![line(230.0, "Position after: 3.Qh5"), line(250.0, "3...Nf6")]);
+    let doc = build_page(&input(0, &text, &[reading(0, 60.0, fen, true, true)], &[], &[]));
+    assert_eq!(moves(&doc.pages[0]).first().map(|(_, s)| *s), Some(MoveStatus::Valid));
+    // Black to move, said by the reading (not assumed): a caption that leaves White to move is
+    // not believed.
+    let black = "r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/8/PPPP1PPP/RNBQK1NR b KQkq - 0 1";
+    let text = page_text(vec![line(230.0, "Position after: 2...Nc6")]);
+    let doc = build_page(&input(0, &text, &[reading(0, 60.0, black, true, false)], &[], &[]));
+    assert_eq!(moves(&doc.pages[0]).first().map(|(_, s)| *s), Some(MoveStatus::Illegal));
+}
+
+#[test]
 fn the_first_moves_number_sets_an_assumed_side_and_the_move_number() {
     // A rook ending read with White to move, assumed; the text says Black moves at move 41.
     let fen = "8/8/4k3/8/8/4K3/r7/7R w - - 0 1";

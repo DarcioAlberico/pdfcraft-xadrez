@@ -2482,6 +2482,7 @@ animation effects	Off	Aus
 	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	Woher die Seiten des Buchs stammen. Automatisch vertraut der Textebene jeder Seite, sofern sie nicht falsch aussieht; Digital erstellt verwendet nie Schach-OCR; Gescannt liest jede Seite mit Schach-OCR (braucht das Modell chess-glyphs).
 	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	Die Textebene dieser Seite wirkt mangelhaft ({e}); sie wurde unverändert gelesen, da das Buch digital erstellt ist.
 	Unchecked: no position to play it from	Nicht geprüft: keine Stellung, von der aus er gespielt werden kann
+	Caption: the move that led to the diagram, which gives it its side to move and move number	Bildunterschrift: der Zug, der zum Diagramm geführt hat; er gibt die Seite am Zug und die Zugnummer an
 	Valid move	Gültiger Zug
 	Diagram replaced	Diagramm ersetzt
 	Lichess link added	Lichess-Link hinzugefügt

@@ -2486,6 +2486,7 @@ animation effects	Off	Izklopljeni
 	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	Od kod izvirajo strani knjige. Samodejno zaupa besedilni plasti vsake strani, razen če je videti napačna; Izvorno digitalna nikoli ne uporablja šahovskega OCR; Skenirana prebere vsako stran s šahovskim OCR (potreben je model chess-glyphs).
 	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	Besedilna plast te strani je videti slaba ({e}); prebrana je bila takšna, kot je, ker je knjiga izvorno digitalna.
 	Unchecked: no position to play it from	Nepreverjeno: ni položaja, iz katerega bi jo odigrali
+	Caption: the move that led to the diagram, which gives it its side to move and move number	Napis: poteza, ki je vodila do diagrama; določa stran na potezi in številko poteze
 	Valid move	Veljavna poteza
 	Diagram replaced	Diagram zamenjan
 	Lichess link added	Povezava na lichess dodana

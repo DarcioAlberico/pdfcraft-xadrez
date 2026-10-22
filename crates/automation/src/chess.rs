@@ -414,6 +414,7 @@ impl Automation {
             "moves": moves.len(),
             "valid_moves": moves.iter().filter(|m| m.status == MoveStatus::Valid).count(),
             "flagged_moves": moves.iter().filter(|m| matches!(m.status, MoveStatus::Illegal | MoveStatus::Ambiguous)).count(),
+            "caption_moves": moves.iter().filter(|m| m.status == MoveStatus::Caption).count(),
             "needs_ocr": read.needs_ocr.iter().map(|(p, why)| json!({ "page": p + 1, "reason": why })).collect::<Vec<_>>(),
             "ocr_pages": read.ocr_pages.iter().map(|o| json!({ "page": o.page + 1, "lines": o.lines, "repaired": o.edits, "unsettled": o.flags, "general_ocr": o.general_ocr })).collect::<Vec<_>>(),
             "cipher": cipher,

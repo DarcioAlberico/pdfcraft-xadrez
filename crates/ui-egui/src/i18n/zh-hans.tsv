@@ -2445,6 +2445,7 @@ animation effects	Off	关
 	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	书页的来源。“自动”会信任每页的文本层，除非它看起来有误；“数字原生”从不使用国际象棋 OCR；“扫描件”用国际象棋 OCR 读取每一页（需要 chess-glyphs 模型）。
 	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	此页的文本层质量似乎较差（{e}）；由于本书是数字原生，已按原样读取。
 	Unchecked: no position to play it from	未检查：没有可走此着的局面
+	Caption: the move that led to the diagram, which gives it its side to move and move number	图注：导致该图局面的着法，给出轮走方和回合数
 	Valid move	有效着法
 	Diagram replaced	已替换局面图
 	Lichess link added	已添加 lichess 链接

@@ -24,6 +24,13 @@
 //!   move when the reading only assumed it (`1...Kd7` under a diagram read as White to move, if the
 //!   position allows Black to move; flagged [`ReviewFlag::SideFromMoveNumber`]). A reading that
 //!   disagrees otherwise is kept and flagged [`ReviewFlag::SideConflict`].
+//! - **"Position after" captions.** Books caption a diagram with the move that led to it
+//!   (`Position after: 11...Ba6`, `Posição após 23.Nf5`). After a diagram whose next words say so,
+//!   a numbered move that cannot be played from it and whose piece already stands on its square
+//!   is that caption: it is not played again but gives the diagram its side to move and number
+//!   (White to move at 12 after `11...Ba6`), and is [`MoveStatus::Caption`]. A reading whose side
+//!   was not assumed and says otherwise keeps its side, and the move is read as any other; so is
+//!   one the open game can play (a diagram reprinting the game's position names its next move).
 //! - **Trust.** Only an accepted reading is trusted (blueprint §2). A legal reading that did not
 //!   pass the gate (including one the decoder repaired) still seeds its game, so its moves are
 //!   checked against the best position there is, but the game is marked untrusted and flagged
@@ -740,6 +747,9 @@ pub(crate) struct Walker {
     separator: Separator,
     /// In fragment mode, the text after the result that ended the game.
     rest: Option<String>,
+    /// The words just before the move about to be read, after a diagram no move has settled yet,
+    /// end in a "position after" cue ([`after_cue`]).
+    caption: bool,
 }
 
 /// A separator between sibling variations, waiting for the move after it.
@@ -977,6 +987,93 @@ fn is_label(text: &str) -> bool {
     matches!(rev.next(), Some('a'..='h')) && rev.next().is_none_or(char::is_whitespace)
 }
 
+/// The words a caption puts before the move that led to its diagram, lower case, in the languages
+/// books are read in. `after` alone is enough: the move must also be the one the diagram shows
+/// played ([`led_to`]), which a move still to come never is.
+const AFTER_CUES: [&str; 12] = ["after", "após", "apos", "depois de", "nach", "après", "apres", "después de", "despues de", "tras", "dopo", "na"];
+
+/// Whether `text` (the words before a move) ends in a "position after" cue: `Position after:`,
+/// `Posição após`, `Stellung nach`, with or without a colon.
+fn after_cue(text: &str) -> bool {
+    let lower = text.trim().trim_end_matches([':', '\u{a0}']).trim_end().to_lowercase();
+    AFTER_CUES.iter().any(|cue| {
+        lower.strip_suffix(cue).is_some_and(|before| before.is_empty() || before.ends_with(|c: char| c.is_whitespace() || c == '(' || c == '['))
+    })
+}
+
+/// Whether `san`, played by Black when `black`, is the move that led to the position `fen`: the
+/// piece it moves stands on its square (after castling, the king and the rook on theirs). A move
+/// still to be played never is: no move ends on a square its own side holds.
+fn led_to(fen: &str, san: &San, black: bool) -> bool {
+    use pdfcraft_chess::placement::{Color as Side, Piece, PieceKind, Square};
+    use pdfcraft_chess::san::Castle;
+    let Ok(placement) = pdfcraft_chess::fen::parse_placement(placement_of(fen)) else { return false };
+    let color = if black { Side::Black } else { Side::White };
+    let holds = |file: u8, rank: u8, kind: PieceKind| Square::new(file, rank).and_then(|sq| placement.get(sq)) == Some(Piece { color, kind });
+    let home = if black { 7 } else { 0 };
+    match &san.body {
+        SanBody::Castle(Castle::Short) => holds(6, home, PieceKind::King) && holds(5, home, PieceKind::Rook),
+        SanBody::Castle(Castle::Long) => holds(2, home, PieceKind::King) && holds(3, home, PieceKind::Rook),
+        SanBody::Move { piece, to, promotion, .. } => holds(to.file(), to.rank(), promotion.or(*piece).unwrap_or(PieceKind::Pawn)),
+        SanBody::Null => false,
+    }
+}
+
+/// The castling field `castling` without the rights the caption move `san` (Black's when `black`)
+/// took away: castling or a king move takes both of its side's, a rook arriving on its own corner
+/// that corner's (it was away from it). `-` when none is left.
+fn rights_after(castling: &str, san: &San, black: bool) -> String {
+    use pdfcraft_chess::placement::PieceKind;
+    let (short, long) = if black { ('k', 'q') } else { ('K', 'Q') };
+    let home = if black { 7 } else { 0 };
+    let lost: &[char] = match &san.body {
+        SanBody::Castle(_) | SanBody::Move { piece: Some(PieceKind::King), .. } => &[short, long],
+        SanBody::Move { piece: Some(PieceKind::Rook), to, .. } if to.rank() == home && to.file() == 7 => &[short],
+        SanBody::Move { piece: Some(PieceKind::Rook), to, .. } if to.rank() == home && to.file() == 0 => &[long],
+        _ => &[],
+    };
+    let kept: String = castling.chars().filter(|c| *c != '-' && !lost.contains(c)).collect();
+    if kept.is_empty() { "-".to_owned() } else { kept }
+}
+
+/// The en passant square the caption move `san` (Black's when `black`) leaves in `placement`, when
+/// it is a pawn's step to its fourth rank that could have been a two-square step (the square it
+/// passed and the one it left are empty). A one-square step looks the same; the square only
+/// matters to a capture en passant printed next, which a one-square step would not allow.
+fn passed_square(placement: &str, san: &San, black: bool) -> Option<String> {
+    use pdfcraft_chess::placement::Square;
+    let SanBody::Move { piece: None, capture: false, to, promotion: None, .. } = &san.body else { return None };
+    let (fourth, passed, start) = if black { (4, 5, 6) } else { (3, 2, 1) };
+    let board = pdfcraft_chess::fen::parse_placement(placement).ok()?;
+    let empty = |rank: u8| Square::new(to.file(), rank).is_some_and(|sq| board.get(sq).is_none());
+    (to.rank() == fourth && empty(passed) && empty(start)).then(|| Square::new(to.file(), passed).map(|sq| sq.to_string())).flatten()
+}
+
+/// `seed` as it stands after its caption `san`, numbered `number` ([`led_to`]): the other side to
+/// move, at the move after it, without the castling rights the move took away and with the en
+/// passant square a two-square pawn step leaves. `None` when the caption does not fit: the move is
+/// not the one the diagram shows played, the reading says the side and it is not the one after the
+/// caption, or the position is not legal with that side to move.
+fn after_caption(seed: &Seed, number: MoveNumber, san: &San) -> Option<Seed> {
+    let fen = seed.fen.as_deref()?;
+    let fields: Vec<&str> = fen.split_whitespace().collect();
+    let [placement, side, castling, _, halfmove, _] = fields.as_slice() else { return None };
+    let next = number_of(ply_of(number).checked_add(1)?);
+    if !led_to(fen, san, number.black) || (!seed.side_assumed && (*side == "b") != next.black) {
+        return None;
+    }
+    let number = next.number.to_string();
+    let rights = rights_after(castling, san, !next.black);
+    let ep = passed_square(placement, san, !next.black).unwrap_or_else(|| "-".to_owned());
+    // Rights the reading guessed from the placement can still be wrong for the other side, and
+    // an en passant square needs a pawn to take it: the most that makes a legal FEN is kept.
+    let fen = [(rights.as_str(), ep.as_str()), (rights.as_str(), "-"), ("-", "-")]
+        .into_iter()
+        .map(|(c, e)| compose(placement, next.black, c, e, halfmove, &number))
+        .find(|f| Board::from_fen(f, false).is_ok())?;
+    Some(Seed { fen: Some(fen), side_assumed: false, ..seed.clone() })
+}
+
 impl Walker {
     /// A walker for a whole document that reads with `rules`.
     pub fn with_rules(rules: WalkRules) -> Walker {
@@ -994,6 +1091,15 @@ impl Walker {
         walker.games.push(Game { origin: GameOrigin::Initial, trusted: true, page: 0, score, flags: Vec::new() });
         walker.remaps.push(Vec::new());
         Some(walker)
+    }
+
+    /// Whether the open game can play `san`, numbered `number`, on the line being read: a
+    /// diagram that reprints the game's position names the game's next move as its caption, and
+    /// that move is the game's.
+    fn open_plays(&self, number: Option<MoveNumber>, san: &San) -> bool {
+        self.open.as_ref().is_some_and(|open| {
+            self.games.get(open.game).is_some_and(|game| open.lines.last().is_some_and(|line| playable(&game.score, line, number, san)))
+        })
     }
 
     /// Whether a game is being read.
@@ -1025,6 +1131,7 @@ impl Walker {
         }
         self.held = self.open.is_some();
         self.anchor = Anchor::Seed(seed);
+        self.caption = false;
     }
 
     /// A solution names puzzle `n`: the open game ends and the next moves start from that
@@ -1279,6 +1386,18 @@ impl Walker {
     pub fn play(&mut self, number: Option<MoveNumber>, san: &San, text: &str, bold: bool, loc: Loc) -> MoveOutcome {
         let printed = format!("{}{}", number.map(|n| n.text()).unwrap_or_default(), text);
         let mut number = number;
+        // The move a "position after" caption names: not played, it settles the diagram's side
+        // and number.
+        if std::mem::take(&mut self.caption)
+            && !self.fragment
+            && !self.open_plays(number, san)
+            && let (Anchor::Seed(seed), Some(n)) = (&self.anchor, number)
+            && !seed_fits(seed, number, san)
+            && let Some(settled) = after_caption(seed, n, san)
+        {
+            self.anchor = Anchor::Seed(settled);
+            return MoveOutcome::status(MoveStatus::Caption);
+        }
         if !self.fragment {
             self.split(number, san, loc);
         }
@@ -1501,6 +1620,11 @@ impl Walker {
 
     /// Prose, punctuation and brackets between moves.
     pub fn text(&mut self, text: &str) {
+        // Words between a diagram and the move that settles it: a "position after" cue names the
+        // move that led to the diagram.
+        if matches!(self.anchor, Anchor::Seed(_)) && !text.trim().is_empty() {
+            self.caption = after_cue(text);
+        }
         // Captions and prose between a diagram and the move that settles it belong to neither.
         if self.held {
             return;

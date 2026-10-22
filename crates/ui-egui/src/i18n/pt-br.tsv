@@ -2497,6 +2497,7 @@ animation effects	Off	Desativados
 	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	De onde vêm as páginas do livro. Automático confia na camada de texto de cada página, a menos que ela pareça errada; Nativo digital nunca usa OCR de xadrez; Escaneado lê todas as páginas com OCR de xadrez (precisa do modelo chess-glyphs).
 	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	A camada de texto desta página parece ruim ({e}); ela foi lida como está, pois o livro é nativo digital.
 	Unchecked: no position to play it from	Não verificado: não há posição de onde jogá-lo
+	Caption: the move that led to the diagram, which gives it its side to move and move number	Legenda: o lance que levou ao diagrama, que lhe dá a vez de jogar e o número do lance
 	Valid move	Lance válido
 	Diagram replaced	Diagrama substituído
 	Lichess link added	Link do lichess adicionado

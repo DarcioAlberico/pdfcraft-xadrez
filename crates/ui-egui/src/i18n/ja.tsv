@@ -2483,6 +2483,7 @@ animation effects	Off	オフ
 	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	本のページの出所です。自動は、誤って見えない限り各ページのテキストレイヤーを信頼します。デジタル原本はチェス OCR を使いません。スキャンは全ページをチェス OCR で読み取ります (chess-glyphs モデルが必要)。
 	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	このページのテキストレイヤーは品質が低いようです ({e})。本がデジタル原本のため、そのまま読み取りました。
 	Unchecked: no position to play it from	未検証: 指せる局面がありません
+	Caption: the move that led to the diagram, which gives it its side to move and move number	キャプション: 図に至った指し手。手番と手数を決めます
 	Valid move	有効な指し手
 	Diagram replaced	局面図を置換しました
 	Lichess link added	lichess へのリンクを追加しました
