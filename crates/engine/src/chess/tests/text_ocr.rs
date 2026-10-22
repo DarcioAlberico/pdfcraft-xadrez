@@ -473,3 +473,17 @@ fn a_character_becomes_a_32_pixel_gray_sample() {
     }
     assert_eq!(s.chess_glyph_sample(id, 7, [58.0, 288.0, 70.0, 302.0], 300.0), Err(AreaError::NoPage(7)));
 }
+
+/// A diagram is painted out with a margin: a scan's frame a pixel past the detected board goes
+/// with it, and the text a little farther away stays.
+#[test]
+fn a_diagram_is_painted_out_with_its_frame() {
+    let image = GrayImage::new(100, 100, vec![0; 100 * 100]).unwrap();
+    let board = PixelRect { x0: 20, y0: 20, x1: 60, y1: 60 };
+    let out = crate::chess::text_ocr::masked(&image, &[board]).unwrap();
+    let at = |x: usize, y: usize| out.data()[y * 100 + x];
+    assert_eq!(at(19, 40), 255, "the frame just left of the board");
+    assert_eq!(at(60, 40), 255, "and just right of it");
+    assert_eq!(at(40, 40), 255, "the board");
+    assert_eq!(at(10, 40), 0, "text farther away");
+}

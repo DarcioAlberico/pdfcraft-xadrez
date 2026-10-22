@@ -327,20 +327,17 @@ enum Item<'a> {
     Diagram(usize),
 }
 
-/// Whether diagram `d` comes before line `l` (view space): `l` is below `d`'s middle under it, in
-/// a column to its right, or wholly below it on its side of `split` (the gutter, or the page's
-/// middle on a page without one). A diagram or line across `split` is on both sides: a short line
-/// under a centred diagram is read after it, however far left it starts, while a left-column line
-/// below a right-column diagram is still read before it.
-fn diagram_before(d: ViewRect, l: ViewRect, split: f32) -> bool {
-    let same_column = d.x0 < l.x1 && l.x0 < d.x1;
-    if same_column {
-        return (l.y0 + l.y1) * 0.5 >= (d.y0 + d.y1) * 0.5;
-    }
-    if l.x0 >= d.x1 {
-        return true;
-    }
-    // `l` is to the left of `d`.
+/// Whether diagram `d` comes before line `l` (view space): `l` is below `d`'s middle under it or
+/// beside it on its side of `split` (the gutter, or the page's middle on a page without one), in
+/// a column to its right, or wholly below it on its side of `split`. A diagram or line across
+/// `split` is on both sides: a short line under a centred diagram is read after it, however far
+/// left it starts, while a left-column line below a right-column diagram is still read before
+/// it. A line right of a board is its text beside it (Chess Tactics: the board on the left, the
+/// solution on the right) and comes after it, except a piece of a row a scan cut at a word gap:
+/// on a page with a `gutter` (columns found, not the page's middle), on the board's side of it,
+/// and with another piece of its row over the board's columns (`row_over_board`), the line is in
+/// the board's column and is read by its height.
+fn diagram_before(d: ViewRect, l: ViewRect, split: f32, gutter: bool, row_over_board: bool) -> bool {
     let side = |r: ViewRect| {
         if r.x1 <= split {
             Some(false)
@@ -351,15 +348,29 @@ fn diagram_before(d: ViewRect, l: ViewRect, split: f32) -> bool {
         }
     };
     let (sd, sl) = (side(d), side(l));
+    let same_column = d.x0 < l.x1 && l.x0 < d.x1;
+    let beside = gutter && row_over_board && l.x0 >= d.x1 && sd.is_some() && sd == sl;
+    if same_column || beside {
+        return (l.y0 + l.y1) * 0.5 >= (d.y0 + d.y1) * 0.5;
+    }
+    if l.x0 >= d.x1 {
+        return true;
+    }
+    // `l` is to the left of `d`.
     l.y0 >= d.y1 && (sd.is_none() || sl.is_none() || sd == sl)
 }
 
-fn interleave<'a>(lines: &[&'a ChessLine], diagrams: &[Option<ViewRect>], split: f32) -> Vec<Item<'a>> {
+fn interleave<'a>(lines: &[&'a ChessLine], diagrams: &[Option<ViewRect>], split: f32, gutter: bool) -> Vec<Item<'a>> {
     let mut items = Vec::with_capacity(lines.len().saturating_add(diagrams.len()));
     let mut next = 0usize;
     for &line in lines {
         while let Some(d) = diagrams.get(next) {
-            if !d.is_some_and(|d| diagram_before(d, line.rect, split)) {
+            // Another line of this one's row over the board's columns: a row cut into pieces.
+            let row_over = |d: ViewRect| {
+                let mid = (line.rect.y0 + line.rect.y1) * 0.5;
+                lines.iter().any(|o| !std::ptr::eq(*o, line) && o.rect.y0 <= mid && mid <= o.rect.y1 && o.rect.x0 < d.x1 && d.x0 < o.rect.x1)
+            };
+            if !d.is_some_and(|d| diagram_before(d, line.rect, split, gutter, row_over(d))) {
                 break;
             }
             items.push(Item::Diagram(next));
@@ -527,7 +538,7 @@ fn blocks(input: &PageInput<'_>, carried: Option<u32>) -> (Vec<Block>, Option<u3
     let (puzzles, trailing) = caption_numbers(&kept, &diagram_views);
     // The previous page's trailing label is the first diagram's in reading order.
     let mut carried = carried;
-    for item in interleave(&ordered, &diagram_views, split.unwrap_or(page_width * 0.5)) {
+    for item in interleave(&ordered, &diagram_views, split.unwrap_or(page_width * 0.5), split.is_some()) {
         match item {
             Item::Diagram(i) => {
                 flush(&mut blocks, &mut group, key);
