@@ -240,9 +240,17 @@ pub fn radio_value<'a, V: PartialEq>(ui: &mut egui::Ui, current: &mut V, alterna
     response
 }
 
-/// The longest word of a label, which a wrapping row must have room for.
+/// The longest word of a label, which a wrapping row must have room for. Chinese, Japanese and
+/// Korean text wraps between any two characters, so a word with them in it needs the room of one.
 fn longest_word(atoms: &egui::Atoms<'_>) -> Option<String> {
-    atoms.text().and_then(|t| t.split_whitespace().max_by_key(|w| w.chars().count()).map(str::to_owned))
+    let text = atoms.text()?;
+    let word = text.split_whitespace().max_by_key(|w| w.chars().count())?;
+    if word.chars().any(wraps_anywhere) { word.chars().next().map(String::from) } else { Some(word.to_owned()) }
+}
+
+/// Whether text wraps around `c` with no space: the CJK ideographs, kana and Hangul.
+fn wraps_anywhere(c: char) -> bool {
+    matches!(c, '\u{1100}'..='\u{11FF}' | '\u{2E80}'..='\u{9FFF}' | '\u{AC00}'..='\u{D7AF}' | '\u{F900}'..='\u{FAFF}' | '\u{FF00}'..='\u{FFEF}')
 }
 
 /// The box of a checkbox or the circle of a radio button. egui draws it with the widgets' visuals
@@ -259,14 +267,21 @@ fn longest_word(atoms: &egui::Atoms<'_>) -> Option<String> {
 /// letters ("Bl", "ac", "k").
 fn toggle<'a>(widget: impl egui::Widget + 'a, radius: Option<u8>, word: Option<String>) -> impl egui::Widget + 'a {
     move |ui: &mut egui::Ui| {
-        if ui.layout().main_wrap
-            && ui.layout().is_horizontal()
+        let layout = *ui.layout();
+        if layout.main_wrap
+            && layout.is_horizontal()
+            && !layout.main_justify
             && let Some(word) = word
         {
             let width =
                 egui::WidgetText::from(word).into_galley(ui, Some(egui::TextWrapMode::Extend), f32::INFINITY, egui::FontSelection::Default).size().x;
             let needed = width + ui.spacing().icon_width + ui.spacing().icon_spacing;
-            let starts_line = ui.cursor().min.x <= ui.max_rect().min.x + 0.5;
+            // A row starts at the left edge, or the right one in a right-to-left layout.
+            let starts_line = if layout.main_dir == egui::Direction::RightToLeft {
+                ui.cursor().max.x >= ui.max_rect().max.x - 0.5
+            } else {
+                ui.cursor().min.x <= ui.max_rect().min.x + 0.5
+            };
             if !starts_line && ui.available_size_before_wrap().x < needed {
                 ui.end_row();
             }
@@ -622,6 +637,42 @@ mod tests {
             assert!(r.right() <= edge, "{name} ends inside the row: {r:?}, edge {edge}");
         }
         assert!(h.get_by_label("Black").rect().top() > white.top(), "Black went to the next row");
+    }
+
+    /// In a right-to-left wrapping row, as in a left-to-right one, a radio button that does not
+    /// fit moves to the next row whole, and the first one of a row stays on it.
+    #[test]
+    fn right_to_left_rows_move_a_radio_that_does_not_fit() {
+        use egui_kittest::kittest::Queryable;
+        let mut side = 0;
+        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(170.0, 120.0)).build_ui(move |ui| {
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Min).with_main_wrap(true), |ui| {
+                ui.label("To move:");
+                radio_value(ui, &mut side, 0, "White");
+                radio_value(ui, &mut side, 1, "Black");
+            });
+        });
+        h.run();
+        let (white, black) = (h.get_by_label("White").rect(), h.get_by_label("Black").rect());
+        assert!(white.top() < 20.0, "White is on the first row: {white:?}");
+        assert!(black.height() <= white.height() + 0.5 && black.top() > white.top(), "Black went to the next row whole: {black:?}");
+    }
+
+    /// Chinese, Japanese and Korean labels wrap between characters: the room for one is enough to
+    /// stay on the line.
+    #[test]
+    fn a_cjk_label_stays_on_its_line() {
+        use egui_kittest::kittest::Queryable;
+        let mut side = 0;
+        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(170.0, 160.0)).build_ui(move |ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.label("To move:");
+                radio_value(ui, &mut side, 1, "黒番に変更する黒番に変更する");
+            });
+        });
+        h.run();
+        let (label, cjk) = (h.get_by_label("To move:").rect(), h.get_by_label("黒番に変更する黒番に変更する").rect());
+        assert!((cjk.top() - label.top()).abs() < 4.0, "beside its label: {cjk:?} {label:?}");
     }
 
     #[test]
