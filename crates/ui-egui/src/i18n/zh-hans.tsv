@@ -2481,6 +2481,7 @@ animation effects	Off	关
 	To move:	轮到：
 	Move number:	回合数:
 	The move the diagram stands at: 35 with Black to move is 35…	图所处的回合：黑方走的第 35 回合写作 35…
+	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	对局开始的回合，未能识别时可在此更正：黑方走的第 35 回合写作 35…
 	Use the second reading	使用第二识别结果
 	{n} to review	待复核 {n} 个
 	◀ Previous to review	◀ 上一个待复核
@@ -2562,6 +2563,7 @@ chess undo step	Clear drawings	清除标记
 	Edit move comment	编辑评论
 	Edit game details	编辑对局信息
 	Change side to move	更改轮走方
+	Change the move number	更改回合数
 	Load the FEN	载入 FEN
 	Load the PGN	载入 PGN
 	Load the diagram	载入棋图

@@ -32,7 +32,7 @@ use std::collections::HashMap;
 use egui::{Color32, Key, PointerButton, Pos2, Rect, Stroke, TextureHandle, vec2};
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::pdfcraft_chess::draw::{BoardStyle, PieceSet, Rgb};
-use pdfcraft_engine::chess::pdfcraft_chess::game::{DrawColor, Drawing, Game, GameError, NodeId, Outcome, Token};
+use pdfcraft_engine::chess::pdfcraft_chess::game::{DrawColor, Drawing, Game, GameError, MAX_MOVE_NUMBER, NodeId, Outcome, Token};
 use pdfcraft_engine::chess::pdfcraft_chess::placement::{Color, Piece, PieceKind, Placement, Square};
 
 use crate::chess_history::{ChessEdit, GameHistory, Snapshot};
@@ -1243,7 +1243,7 @@ fn details(ui: &mut egui::Ui, state: &mut BoardState) {
     });
 }
 
-/// Flip, and whose move it is (before the first move).
+/// Flip, whose move it is (before the first move) and the number of the move the game starts at.
 pub(crate) fn view_controls(ui: &mut egui::Ui, state: &mut BoardState) {
     ui.horizontal_wrapped(|ui| {
         if ui.small_button(tl!("Flip board")).clicked() {
@@ -1259,7 +1259,42 @@ pub(crate) fn view_controls(ui: &mut egui::Ui, state: &mut BoardState) {
                 state.set_first_side(side);
             }
         });
+        // The move number, when the reading missed or misread it: at any time, every move is
+        // renumbered with it. Beside "To move:" when the row has room for the label and its field
+        // whole, else at the start of the next row. The room is what is visible: the panel's
+        // content can be wider than the panel (it scrolls), and a field past its edge would sit
+        // under the side rail.
+        let label =
+            egui::WidgetText::from(tl!("Move number:")).into_galley(ui, Some(egui::TextWrapMode::Extend), f32::INFINITY, egui::TextStyle::Body);
+        let needed = label.size().x + 2.0 * ui.spacing().item_spacing.x + ui.spacing().interact_size.x;
+        let room = (ui.clip_rect().right() - ui.cursor().min.x).min(ui.available_width());
+        if room < needed || room.is_nan() {
+            ui.end_row();
+        }
+        ui.add_enabled_ui(state.illegal.is_none(), |ui| move_number(ui, state, label));
     });
+}
+
+/// The number of the move the game starts at. Typing or dragging it is one undo step until the
+/// field lets go.
+fn move_number(ui: &mut egui::Ui, state: &mut BoardState, label: std::sync::Arc<egui::Galley>) {
+    const KEY: &str = "move number";
+    let mut recorded = state.draft.as_ref().is_some_and(|d| d.key == KEY && d.recorded);
+    let mut number = state.game.first_move_number();
+    ui.label(label);
+    let r = ui
+        .add(egui::DragValue::new(&mut number).range(1..=MAX_MOVE_NUMBER).speed(0.2))
+        .on_hover_text(tl!("The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…"));
+    if number != state.game.first_move_number() {
+        recorded = state.type_in(recorded, ChessEdit::MoveNumber, |game| {
+            game.set_first_move_number(number);
+        });
+    }
+    if r.has_focus() || r.dragged() {
+        state.draft = Some(Draft { key: KEY.to_owned(), text: String::new(), recorded });
+    } else if state.draft.as_ref().is_some_and(|d| d.key == KEY) {
+        state.draft = None;
+    }
 }
 
 /// The pieces a pawn reaching the last rank can become, while one waits.

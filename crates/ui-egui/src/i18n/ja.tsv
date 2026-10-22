@@ -2519,6 +2519,7 @@ animation effects	Off	オフ
 	To move:	手番:
 	Move number:	手数:
 	The move the diagram stands at: 35 with Black to move is 35…	図の局面の手数。黒番の35手目の書き方: 35…
+	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	棋譜が始まる手数。読み取れなかったときに直します。黒番の35手目の書き方: 35…
 	Use the second reading	第 2 候補を使う
 	{n} to review	確認待ち {n} 件
 	◀ Previous to review	◀ 前の確認対象
@@ -2600,6 +2601,7 @@ chess undo step	Clear drawings	描画の消去
 	Edit move comment	コメントの編集
 	Edit game details	対局情報の編集
 	Change side to move	手番の変更
+	Change the move number	手数の変更
 	Load the FEN	FEN の読み込み
 	Load the PGN	PGN の読み込み
 	Load the diagram	局面図の読み込み

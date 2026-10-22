@@ -2517,6 +2517,7 @@ animation effects	Off	Désactivés
 	To move:	Trait :
 	Move number:	Numéro du coup :
 	The move the diagram stands at: 35 with Black to move is 35…	Le coup où en est le diagramme : 35 avec le trait aux Noirs s'écrit 35…
+	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Le coup où commence la partie, à corriger quand il n'a pas été lu : 35 avec le trait aux Noirs s'écrit 35…
 	Use the second reading	Utiliser la deuxième lecture
 	{n} to review	{n} à revoir
 	◀ Previous to review	◀ Précédent à revoir
@@ -2598,6 +2599,7 @@ chess undo step	Clear drawings	l'effacement des dessins
 	Edit move comment	la modification du commentaire
 	Edit game details	la modification des détails de la partie
 	Change side to move	le changement du camp au trait
+	Change the move number	le changement du numéro du coup
 	Load the FEN	le chargement du FEN
 	Load the PGN	le chargement du PGN
 	Load the diagram	le chargement du diagramme

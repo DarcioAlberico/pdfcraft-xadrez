@@ -2539,6 +2539,7 @@ animation effects	Off	Вимкнено
 	To move:	Хід:
 	Move number:	Номер ходу:
 	The move the diagram stands at: 35 with Black to move is 35…	Хід, на якому стоїть діаграма: 35 з ходом чорних — це 35…
+	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Хід, з якого починається партія, — виправте, якщо його не розпізнано: 35 з ходом чорних — це 35…
 	Use the second reading	Взяти другий варіант
 	{n} to review	Для перевірки: {n}
 	◀ Previous to review	◀ Попередня для перевірки
@@ -2620,6 +2621,7 @@ chess undo step	Clear drawings	видалення малюнків
 	Edit move comment	редагування коментаря
 	Edit game details	редагування даних партії
 	Change side to move	зміну черговості ходу
+	Change the move number	зміну номера ходу
 	Load the FEN	завантаження FEN
 	Load the PGN	завантаження PGN
 	Load the diagram	завантаження діаграми
