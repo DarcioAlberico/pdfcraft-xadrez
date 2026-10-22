@@ -388,3 +388,46 @@ fn the_palette_lists_the_assessments_without_a_sign() {
         h.render().unwrap().save(std::path::Path::new(&dir).join("glyph-palette-assessments.png")).unwrap();
     }
 }
+
+/// Ask for the palette's control named `label` to be scrolled into view (as assistive technology
+/// does), at most `max` times, until it is inside the palette. Returns whether it got there.
+fn scroll_to(h: &mut Harness<'static, PdfCraftApp>, label: &str, max: usize) -> bool {
+    for _ in 0..max {
+        let window = palette(h).expect("the palette is open");
+        let found = h.query_all_by_label(label).find(|n| n.accesskit_node().role() != Role::Label);
+        let Some(node) = found else { return false };
+        if window.shrink(2.0).contains(node.rect().center()) {
+            return true;
+        }
+        node.scroll_to_me();
+        h.run_steps(3);
+    }
+    false
+}
+
+/// In a short window the palette never runs past its bottom: with More assessments open it moves
+/// up and its list scrolls, and the last section's last assessment can be scrolled to and put on
+/// the move.
+#[test]
+fn the_palette_stays_in_a_short_window_and_its_list_scrolls() {
+    let mut h = harness_of(egui::vec2(1024.0, 600.0));
+    put_game(&mut h, "1. e4 e5 2. Nf3 *", &[0, 0]);
+    click_board_title(&mut h);
+    host_key(&mut h, Modifiers::NONE, Key::G);
+    let viewport = h.ctx.content_rect();
+    assert!(viewport.contains_rect(palette(&h).expect("G opened the palette")));
+    named_in_palette(&h, "More assessments").expect("the list's header").click();
+    h.run_steps(4);
+    let open = palette(&h).unwrap();
+    assert!(viewport.contains_rect(open), "{open:?} within {viewport:?}");
+    // The list scrolls: to the last section, open it, and to its last row.
+    assert!(scroll_to(&mut h, "Phases of the game", 10), "the last section is reachable");
+    named_in_palette(&h, "Phases of the game").unwrap().click();
+    h.run_steps(3);
+    assert!(viewport.contains_rect(palette(&h).unwrap()), "still within with the section open");
+    assert!(scroll_to(&mut h, "Very well played endgame", 10), "its last assessment is reachable");
+    named_in_palette(&h, "Very well played endgame").unwrap().click();
+    h.run_steps(2);
+    assert_eq!(glyphs_at(&h, &[0, 0]), [129], "Black's code");
+    assert!(viewport.contains_rect(palette(&h).unwrap()));
+}

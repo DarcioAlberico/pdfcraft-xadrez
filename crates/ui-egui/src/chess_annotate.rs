@@ -37,7 +37,9 @@
 //! rail's three groups of glyphs (the move row with ChessPad's `==` too), a row of the positional
 //! signs ([`POSITIONAL_GLYPHS`]), and, folded under "More assessments", the assessments that have
 //! no printed sign ("slight space advantage"), by name, in sections by subject or narrowed by a
-//! filter field ([`more_assessments`]). A glyph clicked goes on the move shown, or comes off it,
+//! filter field ([`more_assessments`]), scrolled in the room left above the bottom of the window
+//! the palette floats in: the palette never runs past it, and moves up when the list opens too
+//! low to have room. A glyph clicked goes on the move shown, or comes off it,
 //! as the rail's do (one undo step); the other characters go at the end of the move's comment (one
 //! undo step). While a text field had the keyboard when it was clicked (the comment fields, FEN,
 //! PGN), any character, a glyph's sign too, goes into that field at its cursor instead; an
@@ -726,6 +728,21 @@ pub(crate) fn palette_window(ctx: &egui::Context, chess: &mut ChessState, anchor
     if let Some(at) = anchor.filter(|p| p.is_finite()) {
         window = window.default_pos(at);
     }
+    // Never past the bottom of the window it floats in: its list takes the room left there
+    // ([`more_assessments`]), and when that was short of [`MIN_LIST`] last frame (the list just
+    // opened low in the window) the palette moves up by what was missing, as far as the top. A
+    // palette that still ended below the window moves up too. Once the list has its room it stays.
+    let viewport = ctx.content_rect();
+    let shortfall = ctx.data_mut(|d| d.remove_temp::<f32>(Id::new(SHORTFALL_ID))).unwrap_or(0.0);
+    if let Some(last) = ctx.memory(|m| m.area_rect(Id::new(PALETTE_ID)))
+        && last.is_finite()
+    {
+        let up = shortfall.max(last.bottom() - viewport.bottom());
+        if up.is_finite() && up > 0.0 && last.top() > viewport.top() {
+            let top = (last.top() - up).max(viewport.top());
+            window = window.current_pos(egui::pos2(last.left(), top));
+        }
+    }
     let mut closed = false;
     let mut pick = None;
     let shown = window.show(ctx, |ui| {
@@ -863,6 +880,20 @@ fn matches_filter(n: &nag::Nag, filter: &str) -> bool {
     by_code || nag_name(n.code).unwrap_or(n.name).to_lowercase().contains(filter) || n.name.to_lowercase().contains(filter)
 }
 
+/// The list of assessments' height in the palette, in points: the palette moves up to give it at
+/// least [`MIN_LIST`], it is never taller than [`MAX_LIST`], and never shorter than
+/// [`FLOOR_LIST`] even where the window is too short for the palette.
+const MIN_LIST: f32 = 120.0;
+const MAX_LIST: f32 = 320.0;
+const FLOOR_LIST: f32 = 24.0;
+
+/// Where the list leaves, for the next frame, how many points it lacks of [`MIN_LIST`].
+const SHORTFALL_ID: &str = "chess-glyph-palette-shortfall";
+
+/// Room kept under the list for the palette's own bottom edge, in points: more than the window's
+/// inner margin and frame, so a list as tall as the room leaves the palette inside the window.
+const BOTTOM_MARGIN: f32 = 24.0;
+
 /// The most characters of the list's filter kept.
 const MAX_FILTER: usize = 64;
 
@@ -899,8 +930,17 @@ pub(crate) fn more_assessments(ui: &mut egui::Ui, on: impl Fn(u16) -> bool) -> O
         labeled(&r, hint);
         let wanted = filter.trim().to_lowercase();
         ui.data_mut(|d| d.insert_temp(id, filter));
-        // No scroll area of its own: the palette scrolls once it is as tall as the window allows.
-        {
+        // The list scrolls in the room left between here and the bottom of the window the palette
+        // floats in, so the palette never runs past it; with less than [`MIN_LIST`] of room the
+        // palette moves up next frame by what is missing (`palette_window`).
+        let room = ui.ctx().content_rect().bottom() - ui.cursor().top() - BOTTOM_MARGIN;
+        let room = if room.is_finite() { room } else { MIN_LIST };
+        let height = room.clamp(FLOOR_LIST, MAX_LIST);
+        ui.data_mut(|d| d.insert_temp(Id::new(SHORTFALL_ID), (MIN_LIST - room).max(0.0)));
+        // As tall as that when it has more (a window that does not resize would otherwise keep it at its
+        // first height), shorter when it has less.
+        let area = egui::ScrollArea::vertical().id_salt("chess-palette-more-list");
+        area.max_height(height).min_scrolled_height(height).show(ui, |ui| {
             if wanted.is_empty() {
                 for (title, group) in assessment_sections() {
                     egui::CollapsingHeader::new(title).id_salt(("chess-palette-section", title)).show(ui, |ui| {
@@ -919,7 +959,7 @@ pub(crate) fn more_assessments(ui: &mut egui::Ui, on: impl Fn(u16) -> bool) -> O
                     ui.label(egui::RichText::new(tl!("No assessment matches the filter.")).small().color(muted));
                 }
             }
-        }
+        });
     });
     chosen
 }
