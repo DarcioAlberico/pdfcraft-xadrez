@@ -248,11 +248,14 @@ pub fn editor_ui(ui: &mut egui::Ui, t: &Tokens, ed: &mut DiagramEditor, pieces: 
             }
         });
     }
-    // Move number, side to move, castling, view.
+    // Move number, side to move, castling, view. The side to move has a row of its own, so its
+    // label and its two choices stay together when the panel is narrow.
     ui.horizontal_wrapped(|ui| {
         ui.label(tl!("Move number:"));
         ui.add(egui::DragValue::new(&mut ed.position.fullmove_number).range(1..=MAX_MOVE_NUMBER).speed(0.2))
             .on_hover_text(tl!("The move the diagram stands at: 35 with Black to move is 35…"));
+    });
+    ui.horizontal_wrapped(|ui| {
         let mut side = ed.position.side_to_move.unwrap_or(Color::White);
         ui.label(tl!("To move:"));
         crate::widgets::radio_value(ui, &mut side, Color::White, tl!("White"));
@@ -326,7 +329,7 @@ pub fn editor_ui(ui: &mut egui::Ui, t: &Tokens, ed: &mut DiagramEditor, pieces: 
             action = Some(EditorAction::OpenBoard);
         }
     });
-    ui.horizontal(|ui| {
+    ui.horizontal_wrapped(|ui| {
         ui.add_enabled_ui(queue > 0, |ui| {
             if ui.small_button(tl!("◀ Previous to review")).clicked() {
                 action = Some(EditorAction::Previous);
@@ -335,7 +338,8 @@ pub fn editor_ui(ui: &mut egui::Ui, t: &Tokens, ed: &mut DiagramEditor, pieces: 
                 action = Some(EditorAction::Next);
             }
         });
-        ui.label(egui::RichText::new(crate::i18n::fmt(tl!("{n} to review"), &[("n", &queue.to_string())])).small().color(t.text_muted));
+        let left = egui::RichText::new(crate::i18n::fmt(tl!("{n} to review"), &[("n", &queue.to_string())])).small().color(t.text_muted);
+        ui.add(egui::Label::new(left).wrap_mode(egui::TextWrapMode::Extend));
     });
     action
 }
