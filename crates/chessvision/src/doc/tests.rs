@@ -671,6 +671,12 @@ fn puzzle_labels() {
         ("No. 12 Smith", 12),
         ("Nr 7)", 7),
         ("#42:", 42),
+        ("Exercício 12 ★△", 12),
+        ("Exercicio 3", 3),
+        ("Exercise 5: White to play", 5),
+        ("Ex. 6–12", 12),
+        ("Ex. 24-3", 3),
+        ("Ex. 7", 7),
     ] {
         assert_eq!(puzzle_label(text, false), Some(want), "{text}");
     }
@@ -680,7 +686,24 @@ fn puzzle_labels() {
     assert_eq!(puzzle_label("1675 ", true), Some(1675));
     assert_eq!(puzzle_label("1675", false), None);
     assert_eq!(puzzle_label("2.2 Combinations #2 (451-3514)", true), None, "a section number");
-    for text in ["1996 was a good year", "6.", "6. ±", "N9", "No way", "Nothing 12.", "№0.", "№123456.", "the №5 is", ""] {
+    for text in [
+        "1996 was a good year",
+        "6.",
+        "6. ±",
+        "N9",
+        "No way",
+        "Nothing 12.",
+        "№0.",
+        "№123456.",
+        "the №5 is",
+        "",
+        "Exercises 1.165-1.168",
+        "Ex. 6–",
+        "Ex. 6–0",
+        "Ex. 6–12a",
+        "Example 5",
+        "Exercício",
+    ] {
         assert_eq!(puzzle_label(text, true), None, "{text}");
     }
 }
@@ -745,6 +768,145 @@ fn bare_numbers_link_solutions_to_diagrams() {
         doc.games.iter().map(|g| g.origin).collect::<Vec<_>>(),
         [GameOrigin::Diagram { page: 0, diagram: 1, accepted: true }, GameOrigin::Diagram { page: 0, diagram: 0, accepted: true }]
     );
+}
+
+/// A workbook's chapter: "Exercício N" under each diagram, then the solutions, each headed by
+/// the chapter and the exercise (`Ex. 6–2`) with the players and the event on the lines (and
+/// headings) after it. Each solution is played from the exercise it names.
+#[test]
+fn exercise_labels_link_solutions_to_diagrams() {
+    let rook = "8/8/4k3/8/8/4K3/r7/7R w - - 0 1";
+    let p0 = page_text(vec![line(215.0, "Exercício 1 ★△"), line(415.0, "Exercício 2 ★★△")]);
+    let d0 = [reading(0, 60.0, SCHOLAR, true, false), reading(1, 260.0, rook, true, false)];
+    let p1 = page_text(vec![
+        line(100.0, "Ex. 6–2"),
+        line(120.0, "A. Smith — B. Jones"),
+        line(140.0, "Wijk aan Zee 1999"),
+        line(160.0, "1.Rh6+ Kd5 2.Rh5+"),
+        line(200.0, "Ex. 6–1"),
+        line(220.0, "C. Brown — D. Green"),
+        line(240.0, "3.Qh5 Nf6 4.Qxf7#"),
+    ]);
+    let heading = |top: f32| BlockHint { kind: HintKind::Heading { level: 2 }, rect: user_box(30.0, top - 5.0, 300.0, top + 15.0) };
+    let hints = [heading(100.0), heading(120.0), heading(200.0), heading(220.0)];
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &d0, &[], &[]));
+    b.add_page(&input(1, &p1, &[], &hints, &[]));
+    let doc = b.finish();
+    assert_eq!(kinds(&doc.pages[1]).iter().filter(|k| k.starts_with("H:")).count(), 4, "{:?}", kinds(&doc.pages[1]));
+    let numbers: Vec<Option<u32>> =
+        doc.pages[0].blocks.iter().filter_map(|b| if let Block::Diagram(d) = b { Some(d.puzzle) } else { None }).collect();
+    assert_eq!(numbers, [Some(1), Some(2)]);
+    assert!(moves(&doc.pages[1]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[1]));
+    assert_eq!(
+        doc.games.iter().map(|g| g.origin).collect::<Vec<_>>(),
+        [GameOrigin::Diagram { page: 0, diagram: 1, accepted: true }, GameOrigin::Diagram { page: 0, diagram: 0, accepted: true }]
+    );
+}
+
+/// An exercise's label names a solution only standing alone: prose that starts with the word and
+/// a number does not, and the `№` labels keep their names after the number.
+#[test]
+fn solution_labels() {
+    use crate::doc::build::solution_label;
+    for (text, want) in [("Ex. 6–12", Some(12)), ("Exercício 3 ★△", Some(3)), ("Ex. 7.", Some(7)), ("№191. Lasker – Steinitz", Some(191))]
+    {
+        assert_eq!(solution_label(text), want, "{text}");
+    }
+    for text in ["Exercise 5 was difficult", "Ex. 6 is discussed below", "Ex. 5: examples from the previous chapter", "185. Teichmann"] {
+        assert_eq!(solution_label(text), None, "{text}");
+    }
+}
+
+/// The headings a solution's label keeps its diagram through are the players' and the event's:
+/// a third heading is a new section's, and moves after it are not read from the exercise.
+#[test]
+fn a_section_heading_after_an_exercise_label_lets_it_go() {
+    let rook = "8/8/4k3/8/8/4K3/r7/7R w - - 0 1";
+    let p0 = page_text(vec![line(215.0, "Exercício 1 ★△")]);
+    let p1 = page_text(vec![
+        line(100.0, "Ex. 6–1"),
+        line(120.0, "A. Smith — B. Jones"),
+        line(140.0, "Wijk aan Zee 1999"),
+        line(160.0, "Chapter 7"),
+        line(180.0, "1.e4 e5 2.Nf3"),
+    ]);
+    let heading = |top: f32| BlockHint { kind: HintKind::Heading { level: 2 }, rect: user_box(30.0, top - 5.0, 300.0, top + 15.0) };
+    let hints = [heading(100.0), heading(120.0), heading(140.0), heading(160.0)];
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[reading(0, 60.0, rook, true, false)], &[], &[]));
+    b.add_page(&input(1, &p1, &[], &hints, &[]));
+    let doc = b.finish();
+    assert!(moves(&doc.pages[1]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[1]));
+    assert_eq!(doc.games.last().map(|g| g.origin), Some(GameOrigin::Initial));
+}
+
+/// Construa Seu Xadrez sets each exercise's caption above its diagram, and the last caption of a
+/// page at its foot, with the diagram at the top of the next page: that diagram takes it, and the
+/// solution naming it is played from it. Only the very next page takes it.
+#[test]
+fn a_caption_at_the_foot_of_a_page_numbers_the_next_pages_first_diagram() {
+    let rook = "8/8/4k3/8/8/4K3/r7/7R w - - 0 1";
+    let p0 = page_text(vec![line(45.0, "Exercício 1 ★△"), line(700.0, "Exercício 2 ★★△")]);
+    let p1 = page_text(vec![line(300.0, "Ex. 6–2"), line(320.0, "1.Rh6+ Kd5 2.Rh5+")]);
+    let heading = [BlockHint { kind: HintKind::Heading { level: 2 }, rect: user_box(30.0, 295.0, 300.0, 315.0) }];
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[reading(0, 60.0, SCHOLAR, true, false)], &[], &[]));
+    b.add_page(&input(1, &p1, &[reading(0, 60.0, rook, true, false)], &heading, &[]));
+    let doc = b.finish();
+    let numbers: Vec<Option<u32>> =
+        doc.pages.iter().flat_map(|p| p.blocks.iter()).filter_map(|b| if let Block::Diagram(d) = b { Some(d.puzzle) } else { None }).collect();
+    assert_eq!(numbers, [Some(1), Some(2)]);
+    assert!(moves(&doc.pages[1]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[1]));
+    // Page 0, then page 2: the caption is not carried past the page after it.
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[reading(0, 60.0, SCHOLAR, true, false)], &[], &[]));
+    b.add_page(&input(2, &p1, &[reading(0, 60.0, rook, true, false)], &heading, &[]));
+    let doc = b.finish();
+    let numbers: Vec<Option<u32>> =
+        doc.pages.iter().flat_map(|p| p.blocks.iter()).filter_map(|b| if let Block::Diagram(d) = b { Some(d.puzzle) } else { None }).collect();
+    assert_eq!(numbers, [Some(1), None]);
+    // A label followed by more text is not the page's last line: it is not carried. The page's
+    // number under it does not count.
+    let prose =
+        page_text(vec![line(45.0, "Exercício 1 ★△"), line(700.0, "Exercício 2 ★★△"), line(720.0, "Exercício 2 mostra o mate."), line(790.0, "36")]);
+    let numbered = page_text(vec![line(45.0, "Exercício 1 ★△"), line(700.0, "Exercício 2 ★★△"), line(790.0, "36")]);
+    for (p0, want) in [(prose, None), (numbered, Some(2))] {
+        let mut b = DocBuilder::new();
+        b.add_page(&input(0, &p0, &[reading(0, 60.0, SCHOLAR, true, false)], &[], &[]));
+        b.add_page(&input(1, &p1, &[reading(0, 60.0, rook, true, false)], &heading, &[]));
+        let doc = b.finish();
+        let numbers: Vec<Option<u32>> =
+            doc.pages.iter().flat_map(|p| p.blocks.iter()).filter_map(|b| if let Block::Diagram(d) = b { Some(d.puzzle) } else { None }).collect();
+        assert_eq!(numbers, [Some(1), want]);
+    }
+}
+
+/// A solution that prints its game from move 1 before it reaches the exercise's position: its
+/// first move does not start from the exercise, so it is read from the initial position, as
+/// without the label.
+#[test]
+fn a_solution_from_move_one_is_not_read_from_its_exercise() {
+    let rook = "8/8/4k3/8/8/4K3/r7/7R w - - 0 1";
+    let p0 = page_text(vec![line(45.0, "Exercício 1 ★△")]);
+    let p1 = page_text(vec![line(100.0, "Ex. 6–1"), line(120.0, "1.e4 e5 2.Nf3 Nc6")]);
+    let hints = [BlockHint { kind: HintKind::Heading { level: 2 }, rect: user_box(30.0, 95.0, 300.0, 115.0) }];
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[reading(0, 60.0, rook, true, false)], &[], &[]));
+    b.add_page(&input(1, &p1, &[], &hints, &[]));
+    let doc = b.finish();
+    assert!(moves(&doc.pages[1]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[1]));
+    assert_eq!(doc.games.last().map(|g| g.origin), Some(GameOrigin::Initial));
+}
+
+/// A heading that names no puzzle still ends the game and lets go of the diagram waiting.
+#[test]
+fn a_heading_after_a_diagram_still_lets_it_go() {
+    let rook = "8/8/4k3/8/8/4K3/r7/7R w - - 0 1";
+    let p0 = page_text(vec![line(215.0, "Chapter 7"), line(240.0, "1.Rh6+ Kd5")]);
+    let hints = [BlockHint { kind: HintKind::Heading { level: 1 }, rect: user_box(30.0, 210.0, 300.0, 230.0) }];
+    let doc = build_page(&input(0, &p0, &[reading(0, 60.0, rook, true, false)], &hints, &[]));
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s != MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
 }
 
 /// A caption under the diagram gives its number too; one with no number gives none.

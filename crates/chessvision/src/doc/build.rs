@@ -46,32 +46,77 @@ pub const MAX_BARE_CAPTION_CHARS: usize = 80;
 /// Largest puzzle number read.
 pub const MAX_PUZZLE: u32 = 99_999;
 
+/// The words that number a workbook's exercises, before the number: `Exercício 12` under the
+/// diagram, `Ex. 6–12` (chapter 6, exercise 12) over its solution.
+const EXERCISE_WORDS: [&str; 9] = ["Exercício", "Exercicio", "Exercise", "Exercice", "Ejercicio", "Esercizio", "Aufgabe", "Übung", "Ex."];
+
 /// The puzzle number a text starts with: `№185.`, `N!!185.` (how text layers extract `№`),
-/// `N9191.` (how OCR reads it), `No. 12`, `Nr. 12`, `#12`, followed by a full stop, a bracket,
-/// a colon or a space. With `bare`, also a caption that is the number alone (`1675`) or the
-/// number, a full stop and a name (`185. Teichmann`).
+/// `N9191.` (how OCR reads it), `No. 12`, `Nr. 12`, `#12`, an exercise (`Exercício 12`), followed
+/// by a full stop, a bracket, a colon or a space. A chapter's number before it (`Ex. 6–12`, `Ex.
+/// 24-3`) is left out: the number is the exercise's within its chapter, and a solution finds
+/// the last diagram that number was given to, which is its own chapter's while the solutions
+/// follow their chapter's exercises (a book that prints every chapter's exercises before all the
+/// solutions links them to the last chapter's, where the moves then fail as without the link).
+/// With `bare`, also a caption that is the number alone (`1675`) or the number, a full stop and
+/// a name (`185. Teichmann`).
 pub(crate) fn puzzle_label(text: &str, bare: bool) -> Option<u32> {
+    label(text, bare).map(|l| l.number)
+}
+
+/// The puzzle a solution names ([`puzzle_label`], never bare). An exercise's label must stand
+/// alone, with no word after its number (`Ex. 6–12`, `Exercício 3 ★△`): `Exercise 5 was hard` and
+/// `Ex. 5: examples from the last chapter` are prose.
+pub(crate) fn solution_label(text: &str) -> Option<u32> {
+    label(text, false).filter(|l| !l.exercise || !l.after.chars().any(char::is_alphabetic)).map(|l| l.number)
+}
+
+/// A puzzle label: its number, whether an exercise word gave it, and the text after the number.
+struct Label<'a> {
+    number: u32,
+    exercise: bool,
+    after: &'a str,
+}
+
+fn label(text: &str, bare: bool) -> Option<Label<'_>> {
     let t = text.trim_start();
-    let prefixed = ["№", "N!!", "N°", "Nº", "No.", "Nr.", "N9", "No", "Nr", "#"].iter().find_map(|p| t.strip_prefix(p)).map(str::trim_start);
-    let rest = match prefixed {
-        Some(rest) => rest,
-        None if bare && t.chars().count() <= MAX_BARE_CAPTION_CHARS => t,
+    let numbered = ["№", "N!!", "N°", "Nº", "No.", "Nr.", "N9", "No", "Nr", "#"].iter().map(|p| (p, false));
+    let prefixed = numbered
+        .chain(EXERCISE_WORDS.iter().map(|p| (p, true)))
+        .find_map(|(p, exercise)| t.strip_prefix(p).map(|rest| (rest, exercise)))
+        // `Exercises 1.165-1.168` is a section's title, not an exercise.
+        .filter(|(rest, _)| rest.starts_with(|c: char| c.is_whitespace() || c.is_ascii_digit()))
+        .map(|(rest, exercise)| (rest.trim_start(), exercise));
+    let (rest, exercise) = match prefixed {
+        Some(found) => found,
+        None if bare && t.chars().count() <= MAX_BARE_CAPTION_CHARS => (t, false),
         None => return None,
     };
     let digits = rest.chars().take_while(char::is_ascii_digit).count();
     if digits == 0 || digits > 5 {
         return None;
     }
+    // `6–12`: the exercise after the chapter. Digits and the dashes are one char each in `rest`
+    // as `get` slices them, at char boundaries.
+    let chapter_dash = rest.get(digits..).and_then(|r| r.strip_prefix(['–', '-']));
+    let (rest, digits) = match chapter_dash {
+        Some(after) if prefixed.is_some() => {
+            let n = after.chars().take_while(char::is_ascii_digit).count();
+            if n == 0 || n > 5 {
+                return None;
+            }
+            (after, n)
+        }
+        _ => (rest, digits),
+    };
     // Digits are ASCII, so `digits` is a char boundary.
-    let after = rest.get(digits..)?.chars().next();
-    let ends = match (prefixed.is_some(), after) {
+    let after = rest.get(digits..)?;
+    let ends = match (prefixed.is_some(), after.chars().next()) {
         // A bare number stands alone (`1675`) or ends in a full stop, a space and a name
         // (`185. Teichmann`): `1996 was` is prose, `6.` a mark under a diagram and `2.2
         // Combinations` a section.
         (false, _) => {
-            let rem = rest.get(digits..).unwrap_or_default();
-            let named = rem.strip_prefix('.').is_some_and(|r| r.starts_with(char::is_whitespace) && r.chars().any(char::is_alphabetic));
-            rem.trim().is_empty() || named
+            let named = after.strip_prefix('.').is_some_and(|r| r.starts_with(char::is_whitespace) && r.chars().any(char::is_alphabetic));
+            after.trim().is_empty() || named
         }
         (true, None) => true,
         (true, Some(c)) => matches!(c, '.' | ')' | ':') || c.is_whitespace(),
@@ -79,7 +124,8 @@ pub(crate) fn puzzle_label(text: &str, bare: bool) -> Option<u32> {
     if !ends {
         return None;
     }
-    rest.get(..digits)?.parse().ok().filter(|n| *n > 0 && *n <= MAX_PUZZLE)
+    let number = rest.get(..digits)?.parse().ok().filter(|n| *n > 0 && *n <= MAX_PUZZLE)?;
+    Some(Label { number, exercise, after })
 }
 
 /// A caption line's text, or `None` for a line with moves in it.
@@ -103,16 +149,27 @@ fn caption_text(line: &ChessLine) -> Option<String> {
 /// it, in its column, that starts with one. A caption goes to the one diagram it is nearest (the
 /// line between two diagrams stacked in a column is the lower one's caption, or the upper one's),
 /// and a diagram takes its nearest caption.
-fn caption_numbers(lines: &[&ChessLine], diagrams: &[Option<ViewRect>]) -> Vec<Option<u32>> {
-    // (bare, gap, number) per diagram: a caption with its `№` wins over a bare number.
-    let mut best: Vec<Option<(bool, f32, u32)>> = vec![None; diagrams.len()];
-    for l in lines {
+///
+/// Also the page's trailing label: one with its word or `№` (not a bare number, which may be the
+/// page's number), standing alone ([`solution_label`]), that went to no diagram, with no diagram below it and no line after it but the
+/// page's number. It is the caption of the next page's first diagram (Construa Seu Xadrez sets
+/// `Exercício 7` at the foot of the page and its diagram at the top of the next).
+fn caption_numbers(lines: &[&ChessLine], diagrams: &[Option<ViewRect>]) -> (Vec<Option<u32>>, Option<u32>) {
+    // (bare, gap, number, line) per diagram: a caption with its `№` wins over a bare number.
+    let mut best: Vec<Option<(bool, f32, u32, usize)>> = vec![None; diagrams.len()];
+    // The labels with a word or `№`: (line, number).
+    let mut labelled: Vec<(usize, u32)> = Vec::new();
+    for (li, l) in lines.iter().enumerate() {
         let Some(text) = caption_text(l) else { continue };
         let (n, bare) = match (puzzle_label(&text, false), puzzle_label(&text, true)) {
             (Some(n), _) => (n, false),
             (None, Some(n)) => (n, true),
             (None, None) => continue,
         };
+        // Standing alone, as a solution's label must: `Exercício 2 mostra o mate` is prose.
+        if !bare && solution_label(&text).is_some() {
+            labelled.push((li, n));
+        }
         let gap_to = |d: &ViewRect| {
             if !(l.rect.x0 < d.x1 && d.x0 < l.rect.x1) {
                 return None;
@@ -130,12 +187,26 @@ fn caption_numbers(lines: &[&ChessLine], diagrams: &[Option<ViewRect>]) -> Vec<O
         let nearest = diagrams.iter().enumerate().filter_map(|(k, d)| Some((k, gap_to(d.as_ref()?)?))).min_by(|a, b| a.1.total_cmp(&b.1));
         if let Some((k, gap)) = nearest
             && let Some(slot) = best.get_mut(k)
-            && slot.is_none_or(|(b, g, _)| (bare, gap) < (b, g))
+            && slot.is_none_or(|(b, g, _, _)| (bare, gap) < (b, g))
         {
-            *slot = Some((bare, gap, n));
+            *slot = Some((bare, gap, n, li));
         }
     }
-    best.into_iter().map(|b| b.map(|(_, _, n)| n)).collect()
+    let used: Vec<usize> = best.iter().flatten().map(|(_, _, _, li)| *li).collect();
+    let trailing = labelled
+        .iter()
+        .filter(|(li, _)| !used.contains(li))
+        .filter_map(|&(li, n)| lines.get(li).map(|l| (l.rect.y0, n)))
+        .filter(|(y, _)| diagrams.iter().flatten().all(|d| d.y0 < *y))
+        .max_by(|a, b| a.0.total_cmp(&b.0))
+        .filter(|(y, _)| lines.iter().filter(|o| o.rect.y0 > *y + 1.0).all(|o| is_page_number(o)))
+        .map(|(_, n)| n);
+    (best.into_iter().map(|b| b.map(|(_, _, n, _)| n)).collect(), trailing)
+}
+
+/// Whether `line` is only a number: a page's number under the text.
+fn is_page_number(line: &ChessLine) -> bool {
+    caption_text(line).is_some_and(|t| !t.trim().is_empty() && t.trim().chars().all(|c| c.is_ascii_digit()))
 }
 
 /// The line's text, when it holds only text and move numbers.
@@ -433,7 +504,9 @@ fn text_block(kind: Option<HintKind>, lines: &[&ChessLine], geometry: &PageGeome
     }
 }
 
-fn blocks(input: &PageInput<'_>) -> Vec<Block> {
+/// The page's blocks, and its trailing caption label ([`caption_numbers`]). `carried` is the
+/// previous page's, for this page's first diagram when no caption numbers it.
+fn blocks(input: &PageInput<'_>, carried: Option<u32>) -> (Vec<Block>, Option<u32>) {
     let g = &input.geometry;
     let diagram_views: Vec<Option<ViewRect>> = input.diagrams.iter().map(|d| g.user_to_view(d.bbox_user)).collect();
     let hints: Vec<(HintKind, Option<ViewRect>)> = input.hints.iter().map(|h| (h.kind, g.user_to_view(h.rect))).collect();
@@ -451,14 +524,17 @@ fn blocks(input: &PageInput<'_>) -> Vec<Block> {
     let page_width = input.geometry.view_size().0;
     let split = gutter(&kept, page_width);
     let ordered = column_order(&kept, split);
-    let puzzles = caption_numbers(&kept, &diagram_views);
+    let (puzzles, trailing) = caption_numbers(&kept, &diagram_views);
+    // The previous page's trailing label is the first diagram's in reading order.
+    let mut carried = carried;
     for item in interleave(&ordered, &diagram_views, split.unwrap_or(page_width * 0.5)) {
         match item {
             Item::Diagram(i) => {
                 flush(&mut blocks, &mut group, key);
                 if let Some(reading) = input.diagrams.get(i) {
                     let mut block = DiagramBlock::from_reading(i, reading);
-                    block.puzzle = puzzles.get(i).copied().flatten();
+                    block.puzzle = puzzles.get(i).copied().flatten().or(carried.take());
+                    carried = None;
                     blocks.push(Block::Diagram(block));
                 }
             }
@@ -474,7 +550,7 @@ fn blocks(input: &PageInput<'_>) -> Vec<Block> {
         }
     }
     flush(&mut blocks, &mut group, key);
-    blocks
+    (blocks, trailing)
 }
 
 /// Give each text review to the inline it overlaps most; the rest to the page.
@@ -519,7 +595,15 @@ pub(crate) fn walk(page: u32, blocks: &mut [Block], walker: &mut Walker) {
                     side_assumed: r.is_some_and(|r| r.side_assumed),
                 });
             }
-            Block::Heading { .. } => walker.heading(),
+            Block::Heading { inlines, .. } => {
+                walker.heading();
+                // A solution's heading names its exercise (`Ex. 6–12`): its moves start from it.
+                let text: String =
+                    inlines.iter().filter_map(|i| if let Inline::Text { text, .. } = i { Some(text.as_str()) } else { None }).collect();
+                if let Some(n) = solution_label(&text) {
+                    walker.puzzle(n);
+                }
+            }
             Block::Paragraph { inlines, .. } => {
                 // A number alone just before a first move (`1675 1.Rd3+`) names a puzzle too.
                 let solutions: Vec<Option<u32>> = (0..inlines.len())
@@ -536,7 +620,7 @@ pub(crate) fn walk(page: u32, blocks: &mut [Block], walker: &mut Walker) {
                         Inline::Text { text, .. } | Inline::Link { text, .. } => {
                             // A solution names its puzzle (`№191. Lasker – Steinitz`): its moves
                             // start from that puzzle's diagram.
-                            if let Some(n) = puzzle_label(text, false) {
+                            if let Some(n) = solution_label(text) {
                                 walker.puzzle(n);
                             } else if let Some(n) = solutions.get(k).copied().flatten() {
                                 walker.solution(n);
@@ -573,13 +657,17 @@ fn poor_reason(reason: &PoorReason) -> String {
     }
 }
 
-pub(crate) fn page(input: &PageInput<'_>, walker: &mut Walker) -> ChessPage {
-    let mut blocks = blocks(input);
+/// One page, with the caption label `carried` from the page before it ([`blocks`]); also the
+/// label this page leaves for the next.
+pub(crate) fn page(input: &PageInput<'_>, walker: &mut Walker, carried: Option<u32>) -> (ChessPage, Option<u32>) {
+    let (mut blocks, trailing) = blocks(input, carried);
     let mut review: Vec<ReviewFlag> = input.text.unknown_chess_fonts.iter().map(|f| ReviewFlag::UnknownChessFont { font: f.to_string() }).collect();
     if let TextQuality::Poor { reason } = &input.text.quality {
         review.push(ReviewFlag::PoorTextLayer { reason: poor_reason(reason) });
     }
     attach_reviews(input, &mut blocks, &mut review);
     walk(input.index, &mut blocks, walker);
-    ChessPage { index: input.index, lang: input.text.lang.lang.code().to_owned(), text_layer: (&input.text.quality).into(), blocks, review }
+    let page =
+        ChessPage { index: input.index, lang: input.text.lang.lang.code().to_owned(), text_layer: (&input.text.quality).into(), blocks, review };
+    (page, trailing)
 }
