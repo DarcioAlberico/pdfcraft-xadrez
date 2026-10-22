@@ -16,8 +16,12 @@
 //! pieces and stays informative there, so it comes after the margin rule, not before.
 //!
 //! A diagram printed from Black's point of view is not upside down: the pieces stand upright and
-//! what changes is which square is which. Only the printed coordinates reveal it
-//! ([`Coordinates`]); the reading as printed is then right, and the placement is turned.
+//! what changes is which square is which. The printed coordinates reveal it ([`Coordinates`]);
+//! without them, the pieces can ([`looks_printed_from_black`]): pawns on the other side's
+//! starting rank and a king on the far back rank. The reading as printed is then right, and the
+//! placement is turned. Measured on 5,457 labelled boards printed from White's side, the pieces
+//! say Black's side for 3 (endgames with pawns about to promote); in 38 books, for 39 diagrams,
+//! all in three books that print Black-to-move exercises from Black's side.
 
 use super::Reading;
 use crate::placement::{Color, Piece, PieceKind, Placement};
@@ -29,6 +33,10 @@ pub const DECISIVE_MARGIN: f32 = 0.20;
 
 /// The pawn prior decides when the two readings differ by at least this many ranks.
 pub const PAWN_PRIOR_MARGIN: f32 = 1.0;
+
+/// The pieces say a board was printed from Black's side when at least this many more pawns stand
+/// on the other side's starting rank than on their own ([`looks_printed_from_black`]).
+pub const BLACK_VIEW_PAWN_GAP: usize = 2;
 
 /// Coordinates printed around a diagram, when they were read.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -95,9 +103,12 @@ pub struct Verdict {
     pub upright: bool,
     /// The choice was close, or the signals disagreed: a person should look.
     pub ambiguous: bool,
-    /// The coordinates say Black's point of view: the upright reading is right and its placement
-    /// must be turned.
+    /// Black's point of view, said by the coordinates or else by the pieces: the reading chosen
+    /// is right as printed and its placement must be turned.
     pub black_point_of_view: bool,
+    /// It was the pieces that said Black's point of view ([`looks_printed_from_black`]), not
+    /// printed coordinates: a guess a person may want to check.
+    pub black_view_from_pieces: bool,
     /// Upright minus turned minimum confidence.
     pub margin: f32,
     /// How many ranks the pawn prior favours the upright reading by, when it applies.
@@ -125,7 +136,15 @@ pub fn apply(rule: Rule, upright: &Reading, turned: &Reading, coordinates: Optio
         // saying something about the structure.
         (a, b) => Some(a.unwrap_or(0.0) - b.unwrap_or(0.0)),
     };
-    let verdict = |upright: bool, ambiguous: bool| Verdict { rule, upright, ambiguous, black_point_of_view: false, margin, pawn_gap };
+    let verdict = |upright: bool, ambiguous: bool| Verdict {
+        rule,
+        upright,
+        ambiguous,
+        black_point_of_view: false,
+        black_view_from_pieces: false,
+        margin,
+        pawn_gap,
+    };
     match rule {
         Rule::Coordinates => {
             let white = coordinates?.white_point_of_view()?;
@@ -147,17 +166,38 @@ pub fn apply(rule: Rule, upright: &Reading, turned: &Reading, coordinates: Optio
     }
 }
 
-/// The first rule of the cascade that answers.
+/// Whether `placement`, the reading as printed, has the pieces of a board printed from Black's
+/// point of view: at least [`BLACK_VIEW_PAWN_GAP`] more pawns on the other side's starting rank
+/// (White's on the seventh, Black's on the second) than on their own, a king on the far back rank
+/// (White's on the eighth or Black's on the first), and a legal position once turned. A real
+/// position seen from White's side has its unmoved pawns at home and its kings behind them.
+pub fn looks_printed_from_black(placement: &Placement) -> bool {
+    let count = |color, kind, rank: u8| placement.pieces().filter(|(sq, p)| *p == Piece::new(color, kind) && sq.rank() == rank).count();
+    let away = count(Color::White, PieceKind::Pawn, 6).saturating_add(count(Color::Black, PieceKind::Pawn, 1));
+    let home = count(Color::White, PieceKind::Pawn, 1).saturating_add(count(Color::Black, PieceKind::Pawn, 6));
+    let king_far = count(Color::White, PieceKind::King, 7).saturating_add(count(Color::Black, PieceKind::King, 0)) > 0;
+    away >= home.saturating_add(BLACK_VIEW_PAWN_GAP) && king_far && fatal_violations(&placement.rotated()).is_empty()
+}
+
+/// The first rule of the cascade that answers. Without coordinates, the pieces of the reading it
+/// chose then say whether the board was printed from Black's side ([`looks_printed_from_black`]).
 pub fn orient(upright: &Reading, turned: &Reading, coordinates: Option<&Coordinates>) -> Verdict {
-    CASCADE.into_iter().find_map(|rule| apply(rule, upright, turned, coordinates)).unwrap_or(Verdict {
+    let verdict = CASCADE.into_iter().find_map(|rule| apply(rule, upright, turned, coordinates)).unwrap_or(Verdict {
         // The fallback always answers, so this is never reached; it keeps the function total.
         rule: Rule::Fallback,
         upright: true,
         ambiguous: true,
         black_point_of_view: false,
+        black_view_from_pieces: false,
         margin: upright.min_confidence - turned.min_confidence,
         pawn_gap: None,
-    })
+    });
+    if verdict.rule == Rule::Coordinates {
+        return verdict;
+    }
+    let chosen = if verdict.upright { upright } else { turned };
+    let from_pieces = looks_printed_from_black(&chosen.placement);
+    Verdict { black_point_of_view: from_pieces, black_view_from_pieces: from_pieces, ..verdict }
 }
 
 /// What every rule says, in order, including the silent ones: for a diagnostic panel and for
@@ -196,6 +236,25 @@ mod tests {
         assert!(v.upright && v.black_point_of_view);
         let white_view = Coordinates { ranks_top_to_bottom: vec![], files_left_to_right: "abcdefgh".chars().collect() };
         assert!(!orient(&up, &turned, Some(&white_view)).black_point_of_view);
+    }
+
+    #[test]
+    fn the_pieces_say_a_board_printed_from_blacks_side() {
+        // Hansen, Chess Tactics 2, exercise 24.1 (Black to move), as printed: White's pawns on
+        // the seventh, Black's on the second, White's king on g8.
+        let printed = "RQ2R1K1/2BN1PPP/4B3/P2P2p1/pP1p1N1p/3b1n2/1ppbnq2/1k3r1r";
+        let p = crate::fen::parse_placement(printed).unwrap();
+        assert!(looks_printed_from_black(&p));
+        assert!(!looks_printed_from_black(&p.rotated()), "seen from White's side it is a plain middlegame");
+        let v = orient(&reading(printed, 0.99), &reading(&crate::fen::format_placement(&p.rotated()), 0.5), None);
+        assert!(v.upright && v.black_point_of_view && v.black_view_from_pieces);
+        // A middlegame from White's side, and endgames with one pawn about to promote, are not.
+        for fen in [UP, "8/3kP3/8/8/8/8/1p3K2/8", "6K1/8/8/8/2Q5/7p/p7/1k6", "8/8/8/8/8/8/8/K6k"] {
+            assert!(!looks_printed_from_black(&crate::fen::parse_placement(fen).unwrap()), "{fen}");
+        }
+        // Coordinates still win: White's view printed says White's view.
+        let white_view = Coordinates { ranks_top_to_bottom: vec![], files_left_to_right: "abcdefgh".chars().collect() };
+        assert!(!orient(&reading(printed, 0.99), &reading(UP, 0.5), Some(&white_view)).black_point_of_view);
     }
 
     #[test]

@@ -318,9 +318,10 @@ fn model_position(probabilities: &[f32]) -> Result<ReadPosition, Unreadable> {
     let limits = Limits::default();
     let upright = Reading::new(&Probabilities::new(upright).map_err(Unreadable::Probabilities)?, &limits);
     let turned = Reading::new(&Probabilities::new(turned).map_err(Unreadable::Probabilities)?, &limits);
-    // No printed coordinates are read yet, so the verdict never asks for Black's point of view.
+    // No printed coordinates are read yet: Black's point of view comes from the pieces alone.
     let verdict = orient(&upright, &turned, None);
     let chosen = if verdict.upright { upright } else { turned };
+    let chosen = if verdict.black_point_of_view { chosen.seen_from_white() } else { chosen };
     let accepted = chosen.accepted();
     let Reading { placement, min_confidence, uncertain, decoded, legality, .. } = chosen;
     Ok(finish(placement, legality, Some(verdict), min_confidence, uncertain, decoded.changes, accepted))

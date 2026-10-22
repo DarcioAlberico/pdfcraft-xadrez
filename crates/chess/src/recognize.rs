@@ -222,6 +222,24 @@ impl Reading {
         Reading { cells, placement, confidences, min_confidence, uncertain, decoded, legality }
     }
 
+    /// The reading of a board printed from Black's point of view, seen from White's: every square
+    /// turned half a circle with what stands on it (the pieces keep their colours), the uncertain
+    /// squares and the decoder's changes with them, and the legality checked again.
+    pub fn seen_from_white(self) -> Reading {
+        let Reading { mut cells, placement, mut confidences, min_confidence, uncertain, mut decoded, .. } = self;
+        // Reading order runs a8 … h1, so a square turned half a circle is index 63 − i.
+        cells.reverse();
+        confidences.reverse();
+        decoded.cells.reverse();
+        for change in &mut decoded.changes {
+            change.square = change.square.rotated();
+        }
+        let uncertain = uncertain.into_iter().rev().map(|u| Uncertain { square: u.square.rotated(), ..u }).collect();
+        let placement = placement.rotated();
+        let legality = check_position(&placement);
+        Reading { cells, placement, confidences, min_confidence, uncertain, decoded, legality }
+    }
+
     /// Whether the reading can be exported without review: legal for some side to move and
     /// with every square at or above [`ACCEPT_MIN_CONFIDENCE`].
     pub fn accepted(&self) -> bool {
@@ -272,6 +290,23 @@ pub(crate) mod testing {
 mod tests {
     use super::testing::*;
     use super::*;
+
+    #[test]
+    fn a_reading_seen_from_white_turns_every_square_with_what_is_known_of_it() {
+        // Printed from Black's side, with the rook on a8 (as printed) unsure: a queen maybe.
+        let printed = "RQ2R1K1/2BN1PPP/4B3/P2P2p1/pP1p1N1p/3b1n2/1ppbnq2/1k3r1r";
+        let mut v = matrix(printed, 0.99);
+        set(&mut v, "a8", piece('R'), 0.5, piece('Q'), 0.4);
+        let as_printed = Reading::new(&Probabilities::new(&v).unwrap(), &decode::Limits::default());
+        let seen = as_printed.clone().seen_from_white();
+        assert_eq!(seen.placement, as_printed.placement.rotated());
+        assert_eq!(crate::fen::format_placement(&seen.placement), "r1r3k1/2qnbpp1/2n1b3/p1N1p1Pp/1p2P2P/3B4/PPP1NB2/1K1R2QR");
+        assert_eq!(seen.uncertain.iter().map(|u| (u.square.to_string(), u.alternative)).collect::<Vec<_>>(), vec![("h1".to_owned(), piece('Q'))]);
+        assert_eq!((seen.cells[0], seen.cells[63]), (as_printed.cells[63], as_printed.cells[0]));
+        assert_eq!((seen.confidences[63], seen.min_confidence), (as_printed.confidences[0], as_printed.min_confidence));
+        assert!(seen.legality.is_legal_for_some_side());
+        assert_eq!(seen.clone().seen_from_white().placement, as_printed.placement, "twice is the board as printed");
+    }
 
     #[test]
     fn classes_round_trip() {
