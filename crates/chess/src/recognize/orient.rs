@@ -90,6 +90,9 @@ pub enum Rule {
     PawnPrior,
     /// Nothing decided: the more confident reading, marked ambiguous.
     Fallback,
+    /// A diagram set in a chess font: its squares are exact and it is upright, so only the pieces
+    /// can say it was printed from Black's side ([`font_verdict`]). Not part of the cascade.
+    Font,
 }
 
 /// The cascade, in order.
@@ -163,6 +166,7 @@ pub fn apply(rule: Rule, upright: &Reading, turned: &Reading, coordinates: Optio
             (gap.abs() >= PAWN_PRIOR_MARGIN).then(|| verdict(gap > 0.0, false))
         }
         Rule::Fallback => Some(verdict(margin >= 0.0, true)),
+        Rule::Font => None,
     }
 }
 
@@ -177,6 +181,20 @@ pub fn looks_printed_from_black(placement: &Placement) -> bool {
     let home = count(Color::White, PieceKind::Pawn, 1).saturating_add(count(Color::Black, PieceKind::Pawn, 6));
     let king_far = count(Color::White, PieceKind::King, 7).saturating_add(count(Color::Black, PieceKind::King, 0)) > 0;
     away >= home.saturating_add(BLACK_VIEW_PAWN_GAP) && king_far && fatal_violations(&placement.rotated()).is_empty()
+}
+
+/// For a diagram set in a chess font, read exactly as printed: a verdict only when the pieces say
+/// it was printed from Black's side ([`looks_printed_from_black`]), its placement then to be turned.
+pub fn font_verdict(placement: &Placement) -> Option<Verdict> {
+    looks_printed_from_black(placement).then_some(Verdict {
+        rule: Rule::Font,
+        upright: true,
+        ambiguous: false,
+        black_point_of_view: true,
+        black_view_from_pieces: true,
+        margin: 0.0,
+        pawn_gap: None,
+    })
 }
 
 /// The first rule of the cascade that answers. Without coordinates, the pieces of the reading it
