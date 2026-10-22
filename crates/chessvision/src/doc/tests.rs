@@ -310,6 +310,22 @@ fn a_position_after_caption_sets_the_side_and_number_and_is_not_played() {
 }
 
 #[test]
+fn a_caption_keeps_en_passant_and_the_castling_rights_its_move_left() {
+    // After 1...d5 the e4 pawn takes en passant: the caption leaves the square passed.
+    let fen = "rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1";
+    let text = page_text(vec![line(230.0, "Position after: 2...d5"), line(250.0, "3.exd6")]);
+    let doc = build_page(&input(0, &text, &[reading(0, 60.0, fen, true, true)], &[], &[]));
+    assert_eq!(moves(&doc.pages[0]), vec![("2...d5".into(), MoveStatus::Caption), ("3.exd6".into(), MoveStatus::Valid)]);
+    assert_eq!(doc.games[0].score.start_fen.as_deref(), Some("rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3"));
+    // After Black castles, Black's rights go and White's stay: White can still castle.
+    let fen = "rnbq1rk1/ppppbppp/5n2/4p3/4P3/5N2/PPPPBPPP/RNBQK2R w KQkq - 0 1";
+    let text = page_text(vec![line(230.0, "Position after: 4...O-O"), line(250.0, "5.O-O")]);
+    let doc = build_page(&input(0, &text, &[reading(0, 60.0, fen, true, true)], &[], &[]));
+    assert_eq!(moves(&doc.pages[0]), vec![("4...O-O".into(), MoveStatus::Caption), ("5.O-O".into(), MoveStatus::Valid)]);
+    assert_eq!(doc.games[0].score.start_fen.as_deref(), Some("rnbq1rk1/ppppbppp/5n2/4p3/4P3/5N2/PPPPBPPP/RNBQK2R w KQ - 0 5"));
+}
+
+#[test]
 fn a_caption_that_is_the_open_games_next_move_is_played() {
     // The game reaches 2.Bc4; the diagram reprints the position after Black's reply, captioned
     // with it: the reply is the game's move, and the game goes on past the diagram.

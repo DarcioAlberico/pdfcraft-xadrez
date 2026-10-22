@@ -1019,10 +1019,41 @@ fn led_to(fen: &str, san: &San, black: bool) -> bool {
     }
 }
 
+/// The castling field `castling` without the rights the caption move `san` (Black's when `black`)
+/// took away: castling or a king move takes both of its side's, a rook arriving on its own corner
+/// that corner's (it was away from it). `-` when none is left.
+fn rights_after(castling: &str, san: &San, black: bool) -> String {
+    use pdfcraft_chess::placement::PieceKind;
+    let (short, long) = if black { ('k', 'q') } else { ('K', 'Q') };
+    let home = if black { 7 } else { 0 };
+    let lost: &[char] = match &san.body {
+        SanBody::Castle(_) | SanBody::Move { piece: Some(PieceKind::King), .. } => &[short, long],
+        SanBody::Move { piece: Some(PieceKind::Rook), to, .. } if to.rank() == home && to.file() == 7 => &[short],
+        SanBody::Move { piece: Some(PieceKind::Rook), to, .. } if to.rank() == home && to.file() == 0 => &[long],
+        _ => &[],
+    };
+    let kept: String = castling.chars().filter(|c| *c != '-' && !lost.contains(c)).collect();
+    if kept.is_empty() { "-".to_owned() } else { kept }
+}
+
+/// The en passant square the caption move `san` (Black's when `black`) leaves in `placement`, when
+/// it is a pawn's step to its fourth rank that could have been a two-square step (the square it
+/// passed and the one it left are empty). A one-square step looks the same; the square only
+/// matters to a capture en passant printed next, which a one-square step would not allow.
+fn passed_square(placement: &str, san: &San, black: bool) -> Option<String> {
+    use pdfcraft_chess::placement::Square;
+    let SanBody::Move { piece: None, capture: false, to, promotion: None, .. } = &san.body else { return None };
+    let (fourth, passed, start) = if black { (4, 5, 6) } else { (3, 2, 1) };
+    let board = pdfcraft_chess::fen::parse_placement(placement).ok()?;
+    let empty = |rank: u8| Square::new(to.file(), rank).is_some_and(|sq| board.get(sq).is_none());
+    (to.rank() == fourth && empty(passed) && empty(start)).then(|| Square::new(to.file(), passed).map(|sq| sq.to_string())).flatten()
+}
+
 /// `seed` as it stands after its caption `san`, numbered `number` ([`led_to`]): the other side to
-/// move, at the move after it. `None` when the caption does not fit: the move is not the one the
-/// diagram shows played, the reading says the side and it is not the one after the caption, or the
-/// position is not legal with that side to move.
+/// move, at the move after it, without the castling rights the move took away and with the en
+/// passant square a two-square pawn step leaves. `None` when the caption does not fit: the move is
+/// not the one the diagram shows played, the reading says the side and it is not the one after the
+/// caption, or the position is not legal with that side to move.
 fn after_caption(seed: &Seed, number: MoveNumber, san: &San) -> Option<Seed> {
     let fen = seed.fen.as_deref()?;
     let fields: Vec<&str> = fen.split_whitespace().collect();
@@ -1032,10 +1063,13 @@ fn after_caption(seed: &Seed, number: MoveNumber, san: &San) -> Option<Seed> {
         return None;
     }
     let number = next.number.to_string();
-    // Castling rights the reading guessed may not survive the side change: then none.
-    let fen = [*castling, "-"]
+    let rights = rights_after(castling, san, !next.black);
+    let ep = passed_square(placement, san, !next.black).unwrap_or_else(|| "-".to_owned());
+    // Rights the reading guessed from the placement can still be wrong for the other side, and
+    // an en passant square needs a pawn to take it: the most that makes a legal FEN is kept.
+    let fen = [(rights.as_str(), ep.as_str()), (rights.as_str(), "-"), ("-", "-")]
         .into_iter()
-        .map(|c| compose(placement, next.black, c, "-", halfmove, &number))
+        .map(|(c, e)| compose(placement, next.black, c, e, halfmove, &number))
         .find(|f| Board::from_fen(f, false).is_ok())?;
     Some(Seed { fen: Some(fen), side_assumed: false, ..seed.clone() })
 }
