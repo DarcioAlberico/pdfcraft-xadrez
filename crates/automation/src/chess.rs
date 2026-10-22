@@ -131,6 +131,7 @@ fn position(p: &ReadPosition) -> Value {
             "rule": format!("{:?}", v.rule),
             "ambiguous": v.ambiguous,
             "black_point_of_view": v.black_point_of_view,
+            "black_view_from_pieces": v.black_view_from_pieces,
         })),
         "min_confidence": round(p.min_confidence),
         "accepted": p.accepted,

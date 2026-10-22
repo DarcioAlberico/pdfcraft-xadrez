@@ -552,3 +552,36 @@ fn the_position_overrules_a_declared_side() {
     assert_eq!((p.side.color, p.side.source, p.side.conflicting), (Color::Black, SideSource::Legality, true));
     assert!(p.fen.ends_with(" b - - 0 1"), "{}", p.fen);
 }
+
+/// Hansen, Chess Tactics 2, exercise 24.1 as printed (Black to move, from Black's side): the
+/// reading is turned square by square, flagged as told by the pieces, and linked from Black's side.
+#[test]
+fn a_board_printed_from_blacks_side_is_read_from_whites() {
+    let printed = "RQ2R1K1/2BN1PPP/4B3/P2P2p1/pP1p1N1p/3b1n2/1ppbnq2/1k3r1r";
+    let page = Page::new(300, 300);
+    let geometry = page.geometry(Rotation::R0);
+    let model = Fixed::new(matrix(printed, 0.99));
+    let readings = read(&page.image(), &geometry, DPI, &[box_candidate(&geometry, 20.0, 40.0)], Some(&model));
+    assert_eq!(placement_of(&readings[0]), "r1r3k1/2qnbpp1/2n1b3/p1N1p1Pp/1p2P2P/3B4/PPP1NB2/1K1R2QR");
+    let position = readings[0].position().unwrap();
+    let verdict = position.orientation.unwrap();
+    assert!(verdict.upright && verdict.black_point_of_view && verdict.black_view_from_pieces);
+    assert!(position.accepted);
+    assert!(position.lichess_url().unwrap().ends_with("?color=black"), "{:?}", position.lichess_url());
+}
+
+/// The same board set in a chess font: exact, and turned the same way.
+#[test]
+fn a_font_board_printed_from_blacks_side_is_read_from_whites() {
+    let printed = "RQ2R1K1/2BN1PPP/4B3/P2P2p1/pP1p1N1p/3b1n2/1ppbnq2/1k3r1r";
+    let page = Page::new(100, 100);
+    let geometry = page.geometry(Rotation::R0);
+    let given =
+        [candidate(PageRect::new(0.0, 0.0, 30.0, 30.0), None, Some(printed)), candidate(PageRect::new(0.0, 0.0, 30.0, 30.0), None, Some(MIDDLE))];
+    let readings = read(&page.image(), &geometry, DPI, &given, None);
+    assert_eq!(placement_of(&readings[0]), "r1r3k1/2qnbpp1/2n1b3/p1N1p1Pp/1p2P2P/3B4/PPP1NB2/1K1R2QR");
+    let verdict = readings[0].position().unwrap().orientation.unwrap();
+    assert!(verdict.black_point_of_view && verdict.black_view_from_pieces);
+    // A board from White's side keeps no verdict, as before.
+    assert_eq!((placement_of(&readings[1]).as_str(), readings[1].position().unwrap().orientation), (MIDDLE, None));
+}

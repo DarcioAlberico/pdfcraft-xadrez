@@ -110,6 +110,9 @@ pub enum ReviewFlag {
     UncertainSquares { squares: Vec<UncertainSquare> },
     /// Nothing said who is to move: White was assumed.
     SideAssumed,
+    /// The pieces say the board was printed from Black's side (no printed coordinates were read):
+    /// its squares were turned half a circle. A guess to check.
+    PrintedFromBlack,
     /// What the page said about the side to move and what the position allows disagree.
     SideConflict,
     /// Moves follow the diagram but its reading cannot be replayed from (unreadable or illegal),
@@ -487,6 +490,9 @@ fn position_flags(p: &ReadPosition, legal: bool) -> Vec<ReviewFlag> {
             })
             .collect();
         flags.push(ReviewFlag::UncertainSquares { squares });
+    }
+    if p.orientation.is_some_and(|v| v.black_view_from_pieces) {
+        flags.push(ReviewFlag::PrintedFromBlack);
     }
     if p.side.is_assumed() {
         flags.push(ReviewFlag::SideAssumed);

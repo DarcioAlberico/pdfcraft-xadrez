@@ -31,7 +31,7 @@
 
 use pdfcraft_chess::placement::{Color, Placement};
 use pdfcraft_chess::recognize::decode::{Change, Limits};
-use pdfcraft_chess::recognize::orient::{Verdict, orient};
+use pdfcraft_chess::recognize::orient::{Verdict, font_verdict, orient};
 use pdfcraft_chess::recognize::side::{SideSource, SideToMove, compose_position, infer_side_to_move};
 use pdfcraft_chess::recognize::{CLASS_COUNT, Probabilities, ProbabilityError, Reading, Uncertain};
 use pdfcraft_chess::rules::{Legality, check_position};
@@ -305,10 +305,13 @@ impl Batch {
 }
 
 /// The position a diagram font gave: exact, so every square is certain and only legality gates.
+/// Turned when the pieces say it was printed from Black's side ([`font_verdict`]).
 fn font_position(placement: Placement) -> ReadPosition {
+    let orientation = font_verdict(&placement);
+    let placement = if orientation.is_some() { placement.rotated() } else { placement };
     let legality = check_position(&placement);
     let accepted = legality.is_legal_for_some_side();
-    finish(placement, legality, None, 1.0, Vec::new(), Vec::new(), accepted)
+    finish(placement, legality, orientation, 1.0, Vec::new(), Vec::new(), accepted)
 }
 
 /// The position from one board's 128 rows of probabilities: 64 as printed, then 64 turned.
@@ -318,9 +321,10 @@ fn model_position(probabilities: &[f32]) -> Result<ReadPosition, Unreadable> {
     let limits = Limits::default();
     let upright = Reading::new(&Probabilities::new(upright).map_err(Unreadable::Probabilities)?, &limits);
     let turned = Reading::new(&Probabilities::new(turned).map_err(Unreadable::Probabilities)?, &limits);
-    // No printed coordinates are read yet, so the verdict never asks for Black's point of view.
+    // No printed coordinates are read yet: Black's point of view comes from the pieces alone.
     let verdict = orient(&upright, &turned, None);
     let chosen = if verdict.upright { upright } else { turned };
+    let chosen = if verdict.black_point_of_view { chosen.seen_from_white() } else { chosen };
     let accepted = chosen.accepted();
     let Reading { placement, min_confidence, uncertain, decoded, legality, .. } = chosen;
     Ok(finish(placement, legality, Some(verdict), min_confidence, uncertain, decoded.changes, accepted))
