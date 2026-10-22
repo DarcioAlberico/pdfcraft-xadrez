@@ -55,20 +55,40 @@ const EXERCISE_WORDS: [&str; 9] = ["Exercício", "Exercicio", "Exercise", "Exerc
 /// by a full stop, a bracket, a colon or a space. A chapter's number before it (`Ex. 6–12`, `Ex.
 /// 24-3`) is left out: the number is the exercise's within its chapter, and a solution finds
 /// the last diagram that number was given to, which is its own chapter's while the solutions
-/// follow their chapter's exercises. With `bare`, also a caption that is the number alone
-/// (`1675`) or the number, a full stop and a name (`185. Teichmann`).
+/// follow their chapter's exercises (a book that prints every chapter's exercises before all the
+/// solutions links them to the last chapter's, where the moves then fail as without the link).
+/// With `bare`, also a caption that is the number alone (`1675`) or the number, a full stop and
+/// a name (`185. Teichmann`).
 pub(crate) fn puzzle_label(text: &str, bare: bool) -> Option<u32> {
+    label(text, bare).map(|l| l.number)
+}
+
+/// The puzzle a solution names ([`puzzle_label`], never bare). An exercise's label must stand
+/// alone, with no word after its number (`Ex. 6–12`, `Exercício 3 ★△`): `Exercise 5 was hard` and
+/// `Ex. 5: examples from the last chapter` are prose.
+pub(crate) fn solution_label(text: &str) -> Option<u32> {
+    label(text, false).filter(|l| !l.exercise || !l.after.chars().any(char::is_alphabetic)).map(|l| l.number)
+}
+
+/// A puzzle label: its number, whether an exercise word gave it, and the text after the number.
+struct Label<'a> {
+    number: u32,
+    exercise: bool,
+    after: &'a str,
+}
+
+fn label(text: &str, bare: bool) -> Option<Label<'_>> {
     let t = text.trim_start();
-    let prefixed = ["№", "N!!", "N°", "Nº", "No.", "Nr.", "N9", "No", "Nr", "#"]
-        .iter()
-        .chain(EXERCISE_WORDS.iter())
-        .find_map(|p| t.strip_prefix(p))
+    let numbered = ["№", "N!!", "N°", "Nº", "No.", "Nr.", "N9", "No", "Nr", "#"].iter().map(|p| (p, false));
+    let prefixed = numbered
+        .chain(EXERCISE_WORDS.iter().map(|p| (p, true)))
+        .find_map(|(p, exercise)| t.strip_prefix(p).map(|rest| (rest, exercise)))
         // `Exercises 1.165-1.168` is a section's title, not an exercise.
-        .filter(|rest| rest.starts_with(|c: char| c.is_whitespace() || c.is_ascii_digit()))
-        .map(str::trim_start);
-    let rest = match prefixed {
-        Some(rest) => rest,
-        None if bare && t.chars().count() <= MAX_BARE_CAPTION_CHARS => t,
+        .filter(|(rest, _)| rest.starts_with(|c: char| c.is_whitespace() || c.is_ascii_digit()))
+        .map(|(rest, exercise)| (rest.trim_start(), exercise));
+    let (rest, exercise) = match prefixed {
+        Some(found) => found,
+        None if bare && t.chars().count() <= MAX_BARE_CAPTION_CHARS => (t, false),
         None => return None,
     };
     let digits = rest.chars().take_while(char::is_ascii_digit).count();
@@ -89,15 +109,14 @@ pub(crate) fn puzzle_label(text: &str, bare: bool) -> Option<u32> {
         _ => (rest, digits),
     };
     // Digits are ASCII, so `digits` is a char boundary.
-    let after = rest.get(digits..)?.chars().next();
-    let ends = match (prefixed.is_some(), after) {
+    let after = rest.get(digits..)?;
+    let ends = match (prefixed.is_some(), after.chars().next()) {
         // A bare number stands alone (`1675`) or ends in a full stop, a space and a name
         // (`185. Teichmann`): `1996 was` is prose, `6.` a mark under a diagram and `2.2
         // Combinations` a section.
         (false, _) => {
-            let rem = rest.get(digits..).unwrap_or_default();
-            let named = rem.strip_prefix('.').is_some_and(|r| r.starts_with(char::is_whitespace) && r.chars().any(char::is_alphabetic));
-            rem.trim().is_empty() || named
+            let named = after.strip_prefix('.').is_some_and(|r| r.starts_with(char::is_whitespace) && r.chars().any(char::is_alphabetic));
+            after.trim().is_empty() || named
         }
         (true, None) => true,
         (true, Some(c)) => matches!(c, '.' | ')' | ':') || c.is_whitespace(),
@@ -105,7 +124,8 @@ pub(crate) fn puzzle_label(text: &str, bare: bool) -> Option<u32> {
     if !ends {
         return None;
     }
-    rest.get(..digits)?.parse().ok().filter(|n| *n > 0 && *n <= MAX_PUZZLE)
+    let number = rest.get(..digits)?.parse().ok().filter(|n| *n > 0 && *n <= MAX_PUZZLE)?;
+    Some(Label { number, exercise, after })
 }
 
 /// A caption line's text, or `None` for a line with moves in it.
@@ -550,7 +570,7 @@ pub(crate) fn walk(page: u32, blocks: &mut [Block], walker: &mut Walker) {
                 // A solution's heading names its exercise (`Ex. 6–12`): its moves start from it.
                 let text: String =
                     inlines.iter().filter_map(|i| if let Inline::Text { text, .. } = i { Some(text.as_str()) } else { None }).collect();
-                if let Some(n) = puzzle_label(&text, false) {
+                if let Some(n) = solution_label(&text) {
                     walker.puzzle(n);
                 }
             }
@@ -570,7 +590,7 @@ pub(crate) fn walk(page: u32, blocks: &mut [Block], walker: &mut Walker) {
                         Inline::Text { text, .. } | Inline::Link { text, .. } => {
                             // A solution names its puzzle (`№191. Lasker – Steinitz`): its moves
                             // start from that puzzle's diagram.
-                            if let Some(n) = puzzle_label(text, false) {
+                            if let Some(n) = solution_label(text) {
                                 walker.puzzle(n);
                             } else if let Some(n) = solutions.get(k).copied().flatten() {
                                 walker.solution(n);

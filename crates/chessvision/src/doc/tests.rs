@@ -804,6 +804,43 @@ fn exercise_labels_link_solutions_to_diagrams() {
     );
 }
 
+/// An exercise's label names a solution only standing alone: prose that starts with the word and
+/// a number does not, and the `№` labels keep their names after the number.
+#[test]
+fn solution_labels() {
+    use crate::doc::build::solution_label;
+    for (text, want) in [("Ex. 6–12", Some(12)), ("Exercício 3 ★△", Some(3)), ("Ex. 7.", Some(7)), ("№191. Lasker – Steinitz", Some(191))]
+    {
+        assert_eq!(solution_label(text), want, "{text}");
+    }
+    for text in ["Exercise 5 was difficult", "Ex. 6 is discussed below", "Ex. 5: examples from the previous chapter", "185. Teichmann"] {
+        assert_eq!(solution_label(text), None, "{text}");
+    }
+}
+
+/// The headings a solution's label keeps its diagram through are the players' and the event's:
+/// a third heading is a new section's, and moves after it are not read from the exercise.
+#[test]
+fn a_section_heading_after_an_exercise_label_lets_it_go() {
+    let rook = "8/8/4k3/8/8/4K3/r7/7R w - - 0 1";
+    let p0 = page_text(vec![line(215.0, "Exercício 1 ★△")]);
+    let p1 = page_text(vec![
+        line(100.0, "Ex. 6–1"),
+        line(120.0, "A. Smith — B. Jones"),
+        line(140.0, "Wijk aan Zee 1999"),
+        line(160.0, "Chapter 7"),
+        line(180.0, "1.e4 e5 2.Nf3"),
+    ]);
+    let heading = |top: f32| BlockHint { kind: HintKind::Heading { level: 2 }, rect: user_box(30.0, top - 5.0, 300.0, top + 15.0) };
+    let hints = [heading(100.0), heading(120.0), heading(140.0), heading(160.0)];
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[reading(0, 60.0, rook, true, false)], &[], &[]));
+    b.add_page(&input(1, &p1, &[], &hints, &[]));
+    let doc = b.finish();
+    assert!(moves(&doc.pages[1]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[1]));
+    assert_eq!(doc.games.last().map(|g| g.origin), Some(GameOrigin::Initial));
+}
+
 /// A heading that names no puzzle still ends the game and lets go of the diagram waiting.
 #[test]
 fn a_heading_after_a_diagram_still_lets_it_go() {

@@ -108,6 +108,10 @@ pub const MAX_GAMES: usize = 4096;
 pub const MAX_LISTED_MOVES: usize = 8;
 /// Most diagrams kept that no game started from, to be matched by a later first move.
 pub const MAX_SPARE_DIAGRAMS: usize = 6;
+/// Headings between a solution's label and its first move that keep the diagram it named: the
+/// players' line and the event's, in books that set them as headings.
+pub const MAX_NAMED_HEADINGS: u8 = 2;
+
 /// Most numbered puzzle diagrams remembered for their solutions.
 pub const MAX_PUZZLES: usize = 20_000;
 
@@ -753,8 +757,9 @@ pub(crate) struct Walker {
     /// end in a "position after" cue ([`after_cue`]).
     caption: bool,
     /// The diagram (page, index) a solution named ([`Walker::puzzle`]) while it waits for its
-    /// first move: the headings before that move (the players, the event) keep it.
-    named: Option<(u32, usize)>,
+    /// first move, and how many headings kept it since: the players and the event before that
+    /// move keep it, up to [`MAX_NAMED_HEADINGS`].
+    named: Option<(u32, usize, u8)>,
 }
 
 /// A separator between sibling variations, waiting for the move after it.
@@ -1151,7 +1156,7 @@ impl Walker {
             return;
         }
         self.close();
-        self.named = Some((seed.page, seed.diagram));
+        self.named = Some((seed.page, seed.diagram, 0));
         self.anchor = Anchor::Seed(seed);
     }
 
@@ -1169,12 +1174,15 @@ impl Walker {
 
     /// A heading: the open game ends, and no diagram waits, except the one a solution named
     /// while no move has been read from it yet (`Ex. 6–12`, then `A. Yusupov — D. Shapiro` set as
-    /// a heading).
+    /// a heading), for [`MAX_NAMED_HEADINGS`] headings: a third is a new section's.
     pub fn heading(&mut self) {
         if self.open.is_none()
             && let Anchor::Seed(seed) = &self.anchor
-            && self.named == Some((seed.page, seed.diagram))
+            && let Some((page, diagram, kept)) = self.named
+            && (page, diagram) == (seed.page, seed.diagram)
+            && kept < MAX_NAMED_HEADINGS
         {
+            self.named = Some((page, diagram, kept.saturating_add(1)));
             return;
         }
         self.named = None;
