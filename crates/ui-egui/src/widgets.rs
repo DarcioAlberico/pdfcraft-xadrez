@@ -205,25 +205,29 @@ const CHECKBOX_RADIUS: u8 = 3;
 /// A checkbox whose box is an outlined rounded square, never mistaken for a radio button. Every
 /// checkbox goes through here: clippy.toml disallows `ui.checkbox` and `egui::Checkbox`.
 pub fn checkbox<'a>(checked: &'a mut bool, atoms: impl egui::IntoAtoms<'a>) -> impl egui::Widget + 'a {
+    let atoms = atoms.into_atoms();
+    let word = longest_word(&atoms);
     #[expect(clippy::disallowed_methods, reason = "the one place that styles the box")]
     let widget = egui::Checkbox::new(checked, atoms);
-    toggle(widget, Some(CHECKBOX_RADIUS))
+    toggle(widget, Some(CHECKBOX_RADIUS), word)
 }
 
 /// [`checkbox`] without a label: the selection box on Organize Pages thumbnails.
 pub fn checkbox_without_text(checked: &mut bool) -> impl egui::Widget + '_ {
     #[expect(clippy::disallowed_methods, reason = "the one place that styles the box")]
     let widget = egui::Checkbox::without_text(checked);
-    toggle(widget, Some(CHECKBOX_RADIUS))
+    toggle(widget, Some(CHECKBOX_RADIUS), None)
 }
 
 /// A radio button with an outline and a fill, like [`checkbox`]. Every radio button goes through
 /// here or [`radio_value`]: clippy.toml disallows `ui.radio`, `ui.radio_value` and
 /// `egui::RadioButton`.
 pub fn radio<'a>(selected: bool, atoms: impl egui::IntoAtoms<'a>) -> impl egui::Widget + 'a {
+    let atoms = atoms.into_atoms();
+    let word = longest_word(&atoms);
     #[expect(clippy::disallowed_methods, reason = "the one place that styles the circle")]
     let widget = egui::RadioButton::new(selected, atoms);
-    toggle(widget, None)
+    toggle(widget, None, word)
 }
 
 /// [`radio`] selected while `*current == alternative`; a click selects it (`Ui::radio_value`).
@@ -236,6 +240,19 @@ pub fn radio_value<'a, V: PartialEq>(ui: &mut egui::Ui, current: &mut V, alterna
     response
 }
 
+/// The longest word of a label, which a wrapping row must have room for. Chinese, Japanese and
+/// Korean text wraps between any two characters, so a word with them in it needs the room of one.
+fn longest_word(atoms: &egui::Atoms<'_>) -> Option<String> {
+    let text = atoms.text()?;
+    let word = text.split_whitespace().max_by_key(|w| w.chars().count())?;
+    if word.chars().any(wraps_anywhere) { word.chars().next().map(String::from) } else { Some(word.to_owned()) }
+}
+
+/// Whether text wraps around `c` with no space: the CJK ideographs, kana and Hangul.
+fn wraps_anywhere(c: char) -> bool {
+    matches!(c, '\u{1100}'..='\u{11FF}' | '\u{2E80}'..='\u{9FFF}' | '\u{AC00}'..='\u{D7AF}' | '\u{F900}'..='\u{FAFF}' | '\u{FF00}'..='\u{FFEF}')
+}
+
 /// The box of a checkbox or the circle of a radio button. egui draws it with the widgets' visuals
 /// and has no style of its own for it, so it is set in a scope around the widget, keeping what
 /// the caller set (dialogs and the search panel already outline theirs):
@@ -243,8 +260,32 @@ pub fn radio_value<'a, V: PartialEq>(ui: &mut egui::Ui, current: &mut V, alterna
 /// - on the light theme, the plain fill (`Tokens::hover`), as dialogs have: the field colour is
 ///   the panels' white, so the box would vanish;
 /// - for a checkbox, a corner radius small enough to keep the box square.
-fn toggle<'a>(widget: impl egui::Widget + 'a, radius: Option<u8>) -> impl egui::Widget + 'a {
+///
+/// In a wrapping row (`horizontal_wrapped`) the scope is as wide as the room left on the line,
+/// and the label wraps in it. Where that room cannot hold the label's longest `word` beside the
+/// box, the widget starts the next line instead: egui would break the word into a column of
+/// letters ("Bl", "ac", "k").
+fn toggle<'a>(widget: impl egui::Widget + 'a, radius: Option<u8>, word: Option<String>) -> impl egui::Widget + 'a {
     move |ui: &mut egui::Ui| {
+        let layout = *ui.layout();
+        if layout.main_wrap
+            && layout.is_horizontal()
+            && !layout.main_justify
+            && let Some(word) = word
+        {
+            let width =
+                egui::WidgetText::from(word).into_galley(ui, Some(egui::TextWrapMode::Extend), f32::INFINITY, egui::FontSelection::Default).size().x;
+            let needed = width + ui.spacing().icon_width + ui.spacing().icon_spacing;
+            // A row starts at the left edge, or the right one in a right-to-left layout.
+            let starts_line = if layout.main_dir == egui::Direction::RightToLeft {
+                ui.cursor().max.x >= ui.max_rect().max.x - 0.5
+            } else {
+                ui.cursor().min.x <= ui.max_rect().min.x + 0.5
+            };
+            if !starts_line && ui.available_size_before_wrap().x < needed {
+                ui.end_row();
+            }
+        }
         ui.scope(|ui| {
             let t = Tokens::get(ui.ctx());
             let w = &mut ui.visuals_mut().widgets;
@@ -572,6 +613,67 @@ pub fn icon_pill(ui: &mut egui::Ui, icon: &str, label: &str, primary: bool) -> R
 mod tests {
     use super::*;
     use egui::Pos2;
+
+    /// A radio button that does not fit on its row of a wrapping row moves to the next row whole:
+    /// its word is not broken into a column of letters, nor drawn past the row's edge.
+    #[test]
+    fn a_radio_that_does_not_fit_moves_to_the_next_row_whole() {
+        use egui_kittest::kittest::Queryable;
+        let mut side = 0;
+        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(170.0, 120.0)).build_ui(move |ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.label("To move:");
+                radio_value(ui, &mut side, 0, "White");
+                radio_value(ui, &mut side, 1, "Black");
+                ui.add(checkbox(&mut true, "Castling"));
+            });
+        });
+        h.run();
+        let edge = h.ctx.content_rect().right();
+        let white = h.get_by_label("White").rect();
+        for name in ["White", "Black", "Castling"] {
+            let r = h.get_by_label(name).rect();
+            assert!(r.height() <= white.height() + 0.5, "{name} is on one line: {r:?}");
+            assert!(r.right() <= edge, "{name} ends inside the row: {r:?}, edge {edge}");
+        }
+        assert!(h.get_by_label("Black").rect().top() > white.top(), "Black went to the next row");
+    }
+
+    /// In a right-to-left wrapping row, as in a left-to-right one, a radio button that does not
+    /// fit moves to the next row whole, and the first one of a row stays on it.
+    #[test]
+    fn right_to_left_rows_move_a_radio_that_does_not_fit() {
+        use egui_kittest::kittest::Queryable;
+        let mut side = 0;
+        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(170.0, 120.0)).build_ui(move |ui| {
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Min).with_main_wrap(true), |ui| {
+                ui.label("To move:");
+                radio_value(ui, &mut side, 0, "White");
+                radio_value(ui, &mut side, 1, "Black");
+            });
+        });
+        h.run();
+        let (white, black) = (h.get_by_label("White").rect(), h.get_by_label("Black").rect());
+        assert!(white.top() < 20.0, "White is on the first row: {white:?}");
+        assert!(black.height() <= white.height() + 0.5 && black.top() > white.top(), "Black went to the next row whole: {black:?}");
+    }
+
+    /// Chinese, Japanese and Korean labels wrap between characters: the room for one is enough to
+    /// stay on the line.
+    #[test]
+    fn a_cjk_label_stays_on_its_line() {
+        use egui_kittest::kittest::Queryable;
+        let mut side = 0;
+        let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(170.0, 160.0)).build_ui(move |ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.label("To move:");
+                radio_value(ui, &mut side, 1, "黒番に変更する黒番に変更する");
+            });
+        });
+        h.run();
+        let (label, cjk) = (h.get_by_label("To move:").rect(), h.get_by_label("黒番に変更する黒番に変更する").rect());
+        assert!((cjk.top() - label.top()).abs() < 4.0, "beside its label: {cjk:?} {label:?}");
+    }
 
     #[test]
     fn search_placeholder_never_overlaps_the_shortcut() {

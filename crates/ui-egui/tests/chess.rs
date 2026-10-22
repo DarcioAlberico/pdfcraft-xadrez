@@ -248,6 +248,32 @@ fn the_editor_edits_the_selected_diagrams_position() {
     h.get_by_label("Not a legal position");
 }
 
+/// The editor's labels stay whole in the panel: a radio button that does not fit on its row
+/// moves to the next one instead of wrapping its word into a column of letters, and nothing is
+/// drawn past the panel's visible edge.
+#[test]
+fn the_editors_labels_are_not_broken_into_letters() {
+    let mut h = harness();
+    scan_and_edit_second(&mut h);
+    let (white, black) = (h.get_by_label("White").rect(), h.get_by_label("Black").rect());
+    assert!(black.height() <= white.height() + 0.5, "Black is on one line: {black:?} against {white:?}");
+    let board = h.get_by_label_contains("Board: ").rect();
+    // The panel ends where the rail of panels on its right begins.
+    let rail = h.get_by_label("Comments").rect().left();
+    assert!(rail > board.right(), "the rail is right of the panel: {rail}");
+    for name in ["Move number:", "To move:", "White", "Black", "Castling:", "Flip board", "1 to review"] {
+        let r = h.get_by_label(name).rect();
+        assert!(r.width() >= r.height(), "{name} is wider than tall: {r:?}");
+        assert!(r.left() >= board.left() - 1.0 && r.right() < rail - 4.0, "{name} is inside the panel: {r:?}, from {} to {rail}", board.left());
+    }
+    // The side to move keeps its label: To move:, White and Black on one row.
+    let (to_move, white) = (h.get_by_label("To move:").rect(), h.get_by_label("White").rect());
+    assert!((to_move.center().y - black.center().y).abs() < 1.0 && (white.center().y - black.center().y).abs() < 1.0, "{to_move:?} {black:?}");
+    if let Ok(dir) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
+        h.render().unwrap().save(std::path::Path::new(&dir).join("diagram-editor.png")).unwrap();
+    }
+}
+
 /// The move number is a field of its own: 35 with Black to move is `b … 35` in the FEN.
 #[test]
 fn the_editor_sets_the_move_number() {

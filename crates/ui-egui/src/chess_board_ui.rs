@@ -1260,14 +1260,15 @@ pub(crate) fn view_controls(ui: &mut egui::Ui, state: &mut BoardState) {
             }
         });
         // The move number, when the reading missed or misread it: at any time, every move is
-        // renumbered with it. Beside "To move:" when the row has room for the label and its field
-        // whole, else at the start of the next row. The room is what is visible: the panel's
-        // content can be wider than the panel (it scrolls), and a field past its edge would sit
-        // under the side rail.
+        // renumbered with it. Beside "To move:" when the room left on the row holds the label and
+        // its field whole, else at the start of the next row. Measured here because they sit in a
+        // scope (`add_enabled_ui`), which is as wide as the room left and breaks the label into
+        // letters in a narrow one. The room left is `available_size_before_wrap`: in a wrapping
+        // row `available_width` is the whole row's.
         let label =
             egui::WidgetText::from(tl!("Move number:")).into_galley(ui, Some(egui::TextWrapMode::Extend), f32::INFINITY, egui::TextStyle::Body);
         let needed = label.size().x + 2.0 * ui.spacing().item_spacing.x + ui.spacing().interact_size.x;
-        let room = (ui.clip_rect().right() - ui.cursor().min.x).min(ui.available_width());
+        let room = ui.available_size_before_wrap().x;
         if room < needed || room.is_nan() {
             ui.end_row();
         }
