@@ -2618,6 +2618,97 @@ chess undo step	Clear drawings	удаление рисунков
 	Better is	Лучше
 	Worse is	Хуже
 	Editorial comment	Редакционный комментарий
+# Every NAG of the PGN standard and the ChessPad extension: the names of the glyphs added to the 28 (most have no printed sign), then the glyph palette's positional row and its list of the assessments without a sign.
+	Singular move	Единственно разумный ход
+	Worst move	Худший ход
+	Equivalent move	Равноценный ход
+	Equal chances, quiet position	Равные шансы, спокойная позиция
+	Equal chances, active position	Равные шансы, активная позиция
+	White has a crushing advantage	У белых подавляющий перевес
+	Black has a crushing advantage	У чёрных подавляющий перевес
+	Insufficient compensation for the material	Недостаточная компенсация за материал
+	More than enough compensation for the material	Более чем достаточная компенсация за материал
+	Slight development advantage	Небольшой перевес в развитии
+	Decisive development advantage	Решающий перевес в развитии
+	Lasting initiative	Прочная инициатива
+	Slight counterplay	Небольшая контригра
+	Decisive counterplay	Решающая контригра
+	Moderate time pressure	Небольшой цейтнот
+	Slight space advantage	Небольшое преимущество в пространстве
+	Moderate space advantage	Заметное преимущество в пространстве
+	Decisive space advantage	Решающее преимущество в пространстве
+	Slight control of the center	Небольшой контроль над центром
+	Moderate control of the center	Заметный контроль над центром
+	Decisive control of the center	Решающий контроль над центром
+	Slight control of the kingside	Небольшой контроль над королевским флангом
+	Moderate control of the kingside	Заметный контроль над королевским флангом
+	Decisive control of the kingside	Решающий контроль над королевским флангом
+	Slight control of the queenside	Небольшой контроль над ферзевым флангом
+	Moderate control of the queenside	Заметный контроль над ферзевым флангом
+	Decisive control of the queenside	Решающий контроль над ферзевым флангом
+	Vulnerable first rank	Уязвимая первая горизонталь
+	Well protected first rank	Хорошо защищённая первая горизонталь
+	Poorly protected king	Плохо защищённый король
+	Well protected king	Хорошо защищённый король
+	Poorly placed king	Плохо расположенный король
+	Well placed king	Хорошо расположенный король
+	Very weak pawn structure	Очень слабая пешечная структура
+	Moderately weak pawn structure	Довольно слабая пешечная структура
+	Moderately strong pawn structure	Довольно прочная пешечная структура
+	Very strong pawn structure	Очень прочная пешечная структура
+	Poor knight placement	Плохое расположение коня
+	Good knight placement	Хорошее расположение коня
+	Poor bishop placement	Плохое расположение слона
+	Good bishop placement	Хорошее расположение слона
+	Poor rook placement	Плохое расположение ладьи
+	Good rook placement	Хорошее расположение ладьи
+	Poor queen placement	Плохое расположение ферзя
+	Good queen placement	Хорошее расположение ферзя
+	Poor piece coordination	Плохая координация фигур
+	Good piece coordination	Хорошая координация фигур
+	Very poorly played opening	Очень плохо сыгранный дебют
+	Poorly played opening	Плохо сыгранный дебют
+	Well played opening	Хорошо сыгранный дебют
+	Very well played opening	Очень хорошо сыгранный дебют
+	Very poorly played middlegame	Очень плохо сыгранный миттельшпиль
+	Poorly played middlegame	Плохо сыгранный миттельшпиль
+	Well played middlegame	Хорошо сыгранный миттельшпиль
+	Very well played middlegame	Очень хорошо сыгранный миттельшпиль
+	Very poorly played endgame	Очень плохо сыгранный эндшпиль
+	Poorly played endgame	Плохо сыгранный эндшпиль
+	Well played endgame	Хорошо сыгранный эндшпиль
+	Very well played endgame	Очень хорошо сыгранный эндшпиль
+	Space advantage	Преимущество в пространстве
+	Play along the file	Игра по вертикали
+	Play along the diagonal	Игра по диагонали
+	Play in the center	Игра в центре
+	Play on the kingside	Игра на королевском фланге
+	Play on the queenside	Игра на ферзевом фланге
+	Weak point	Слабый пункт
+	Endgame	Эндшпиль
+	Pair of bishops	Два слона
+	Bishops of opposite colors	Разноцветные слоны
+	Bishops of the same color	Одноцветные слоны
+	Connected pawns	Связанные пешки
+	Isolated pawns	Изолированные пешки
+	Doubled pawns	Сдвоенные пешки
+	Passed pawn	Проходная пешка
+	Pawn majority	Пешечное большинство
+	With	С
+	Without	Без
+	Positional glyphs	Позиционные знаки
+	More assessments	Другие оценки
+	Filter assessments	Фильтр оценок
+	No assessment matches the filter.	Ни одна оценка не подходит под фильтр.
+	These have no printed sign: PGN writes them as a number ($n).	У этих оценок нет печатного знака: PGN записывает их числом ($n).
+	Move quality	Качество хода
+	Evaluation	Оценка
+	Initiative and time	Инициатива и время
+	Space and control	Пространство и контроль
+	King safety	Безопасность короля
+	Pawns	Пешки
+	Pieces	Фигуры
+	Phases of the game	Стадии партии
 	Choose a move first: glyphs go on a move.	Сначала выберите ход: знаки ставятся на ход.
 	Not added: this move has as many glyphs as it can take.	Не добавлено: у этого хода уже столько знаков, сколько можно.
 	One half	Одна вторая

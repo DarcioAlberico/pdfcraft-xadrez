@@ -2703,6 +2703,97 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Better is	Жақсырағы
 	Worse is	Нашарырағы
 	Editorial comment	Редакция түсініктемесі
+# Every NAG of the PGN standard and the ChessPad extension: the names of the glyphs added to the 28 (most have no printed sign), then the glyph palette's positional row and its list of the assessments without a sign.
+	Singular move	Жалғыз орынды жүріс
+	Worst move	Ең нашар жүріс
+	Equivalent move	Тең құнды жүріс
+	Equal chances, quiet position	Тең мүмкіндіктер, тыныш позиция
+	Equal chances, active position	Тең мүмкіндіктер, белсенді позиция
+	White has a crushing advantage	Ақтардың жойқын басымдығы
+	Black has a crushing advantage	Қаралардың жойқын басымдығы
+	Insufficient compensation for the material	Материалдың өтемі жеткіліксіз
+	More than enough compensation for the material	Материалдың өтемі артығымен жеткілікті
+	Slight development advantage	Дамудағы шамалы басымдық
+	Decisive development advantage	Дамудағы шешуші басымдық
+	Lasting initiative	Тұрақты бастама
+	Slight counterplay	Шамалы қарсы ойын
+	Decisive counterplay	Шешуші қарсы ойын
+	Moderate time pressure	Орташа уақыт тапшылығы
+	Slight space advantage	Кеңістіктегі шамалы басымдық
+	Moderate space advantage	Кеңістіктегі орташа басымдық
+	Decisive space advantage	Кеңістіктегі шешуші басымдық
+	Slight control of the center	Орталықты шамалы бақылау
+	Moderate control of the center	Орталықты орташа бақылау
+	Decisive control of the center	Орталықты шешуші бақылау
+	Slight control of the kingside	Патша қанатын шамалы бақылау
+	Moderate control of the kingside	Патша қанатын орташа бақылау
+	Decisive control of the kingside	Патша қанатын шешуші бақылау
+	Slight control of the queenside	Уәзір қанатын шамалы бақылау
+	Moderate control of the queenside	Уәзір қанатын орташа бақылау
+	Decisive control of the queenside	Уәзір қанатын шешуші бақылау
+	Vulnerable first rank	Осал бірінші горизонталь
+	Well protected first rank	Жақсы қорғалған бірінші горизонталь
+	Poorly protected king	Нашар қорғалған патша
+	Well protected king	Жақсы қорғалған патша
+	Poorly placed king	Нашар орналасқан патша
+	Well placed king	Жақсы орналасқан патша
+	Very weak pawn structure	Өте әлсіз пешка құрылымы
+	Moderately weak pawn structure	Біршама әлсіз пешка құрылымы
+	Moderately strong pawn structure	Біршама берік пешка құрылымы
+	Very strong pawn structure	Өте берік пешка құрылымы
+	Poor knight placement	Аттың нашар орналасуы
+	Good knight placement	Аттың жақсы орналасуы
+	Poor bishop placement	Пілдің нашар орналасуы
+	Good bishop placement	Пілдің жақсы орналасуы
+	Poor rook placement	Тураның нашар орналасуы
+	Good rook placement	Тураның жақсы орналасуы
+	Poor queen placement	Уәзірдің нашар орналасуы
+	Good queen placement	Уәзірдің жақсы орналасуы
+	Poor piece coordination	Фигуралардың нашар үйлесімі
+	Good piece coordination	Фигуралардың жақсы үйлесімі
+	Very poorly played opening	Өте нашар ойналған дебют
+	Poorly played opening	Нашар ойналған дебют
+	Well played opening	Жақсы ойналған дебют
+	Very well played opening	Өте жақсы ойналған дебют
+	Very poorly played middlegame	Өте нашар ойналған миттельшпиль
+	Poorly played middlegame	Нашар ойналған миттельшпиль
+	Well played middlegame	Жақсы ойналған миттельшпиль
+	Very well played middlegame	Өте жақсы ойналған миттельшпиль
+	Very poorly played endgame	Өте нашар ойналған эндшпиль
+	Poorly played endgame	Нашар ойналған эндшпиль
+	Well played endgame	Жақсы ойналған эндшпиль
+	Very well played endgame	Өте жақсы ойналған эндшпиль
+	Space advantage	Кеңістіктегі басымдық
+	Play along the file	Вертикаль бойынша ойын
+	Play along the diagonal	Диагональ бойынша ойын
+	Play in the center	Орталықтағы ойын
+	Play on the kingside	Патша қанатындағы ойын
+	Play on the queenside	Уәзір қанатындағы ойын
+	Weak point	Әлсіз нүкте
+	Endgame	Эндшпиль
+	Pair of bishops	Екі піл
+	Bishops of opposite colors	Әр түсті пілдер
+	Bishops of the same color	Бір түсті пілдер
+	Connected pawns	Байланысқан пешкалар
+	Isolated pawns	Оқшау пешкалар
+	Doubled pawns	Қосарланған пешкалар
+	Passed pawn	Өтпелі пешка
+	Pawn majority	Пешка көпшілігі
+	With	Бірге
+	Without	Онсыз
+	Positional glyphs	Позициялық белгілер
+	More assessments	Басқа бағалаулар
+	Filter assessments	Бағалауларды сүзу
+	No assessment matches the filter.	Сүзгіге сәйкес бағалау жоқ.
+	These have no printed sign: PGN writes them as a number ($n).	Бұл бағалаулардың басылған белгісі жоқ: PGN оларды сан ретінде жазады ($n).
+	Move quality	Жүріс сапасы
+	Evaluation	Бағалау
+	Initiative and time	Бастама және уақыт
+	Space and control	Кеңістік және бақылау
+	King safety	Патшаның қауіпсіздігі
+	Pawns	Пешкалар
+	Pieces	Фигуралар
+	Phases of the game	Партия кезеңдері
 	Choose a move first: glyphs go on a move.	Алдымен жүрісті таңдаңыз: белгілер жүріске қойылады.
 	Not added: this move has as many glyphs as it can take.	Қосылмады: бұл жүрісте болуы мүмкін белгілердің бәрі бар.
 	One half	Екіден бір

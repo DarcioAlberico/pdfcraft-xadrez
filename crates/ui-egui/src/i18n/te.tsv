@@ -2614,6 +2614,97 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Better is	మెరుగైనది
 	Worse is	అధ్వాన్నమైనది
 	Editorial comment	సంపాదకీయ వ్యాఖ్య
+# Every NAG of the PGN standard and the ChessPad extension: the names of the glyphs added to the 28 (most have no printed sign), then the glyph palette's positional row and its list of the assessments without a sign.
+	Singular move	అనివార్య ఎత్తు
+	Worst move	అత్యంత చెడ్డ ఎత్తు
+	Equivalent move	సమాన విలువ గల ఎత్తు
+	Equal chances, quiet position	సమాన అవకాశాలు, ప్రశాంత స్థితి
+	Equal chances, active position	సమాన అవకాశాలు, చురుకైన స్థితి
+	White has a crushing advantage	తెలుపుకు అఖండ ఆధిక్యం
+	Black has a crushing advantage	నలుపుకు అఖండ ఆధిక్యం
+	Insufficient compensation for the material	బలానికి సరిపోని పరిహారం
+	More than enough compensation for the material	బలానికి సరిపడినదానికంటే ఎక్కువ పరిహారం
+	Slight development advantage	అభివృద్ధిలో స్వల్ప ఆధిక్యం
+	Decisive development advantage	అభివృద్ధిలో నిర్ణయాత్మక ఆధిక్యం
+	Lasting initiative	దీర్ఘకాల చొరవ
+	Slight counterplay	స్వల్ప ప్రతిదాడి
+	Decisive counterplay	నిర్ణయాత్మక ప్రతిదాడి
+	Moderate time pressure	మోస్తరు సమయ ఒత్తిడి
+	Slight space advantage	స్థలంలో స్వల్ప ఆధిక్యం
+	Moderate space advantage	స్థలంలో మోస్తరు ఆధిక్యం
+	Decisive space advantage	స్థలంలో నిర్ణయాత్మక ఆధిక్యం
+	Slight control of the center	కేంద్రంపై స్వల్ప నియంత్రణ
+	Moderate control of the center	కేంద్రంపై మోస్తరు నియంత్రణ
+	Decisive control of the center	కేంద్రంపై నిర్ణయాత్మక నియంత్రణ
+	Slight control of the kingside	రాజు వైపున స్వల్ప నియంత్రణ
+	Moderate control of the kingside	రాజు వైపున మోస్తరు నియంత్రణ
+	Decisive control of the kingside	రాజు వైపున నిర్ణయాత్మక నియంత్రణ
+	Slight control of the queenside	మంత్రి వైపున స్వల్ప నియంత్రణ
+	Moderate control of the queenside	మంత్రి వైపున మోస్తరు నియంత్రణ
+	Decisive control of the queenside	మంత్రి వైపున నిర్ణయాత్మక నియంత్రణ
+	Vulnerable first rank	బలహీనమైన మొదటి అడ్డు వరుస
+	Well protected first rank	బాగా రక్షించబడిన మొదటి అడ్డు వరుస
+	Poorly protected king	సరిగా రక్షణ లేని రాజు
+	Well protected king	బాగా రక్షించబడిన రాజు
+	Poorly placed king	రాజుకు చెడ్డ స్థానం
+	Well placed king	రాజుకు మంచి స్థానం
+	Very weak pawn structure	చాలా బలహీనమైన బంటు నిర్మాణం
+	Moderately weak pawn structure	కొంత బలహీనమైన బంటు నిర్మాణం
+	Moderately strong pawn structure	కొంత బలమైన బంటు నిర్మాణం
+	Very strong pawn structure	చాలా బలమైన బంటు నిర్మాణం
+	Poor knight placement	గుర్రానికి చెడ్డ స్థానం
+	Good knight placement	గుర్రానికి మంచి స్థానం
+	Poor bishop placement	శకటానికి చెడ్డ స్థానం
+	Good bishop placement	శకటానికి మంచి స్థానం
+	Poor rook placement	ఏనుగుకు చెడ్డ స్థానం
+	Good rook placement	ఏనుగుకు మంచి స్థానం
+	Poor queen placement	మంత్రికి చెడ్డ స్థానం
+	Good queen placement	మంత్రికి మంచి స్థానం
+	Poor piece coordination	పావుల మధ్య బలహీన సమన్వయం
+	Good piece coordination	పావుల మధ్య మంచి సమన్వయం
+	Very poorly played opening	చాలా పేలవంగా ఆడిన ప్రారంభ దశ
+	Poorly played opening	పేలవంగా ఆడిన ప్రారంభ దశ
+	Well played opening	బాగా ఆడిన ప్రారంభ దశ
+	Very well played opening	చాలా బాగా ఆడిన ప్రారంభ దశ
+	Very poorly played middlegame	చాలా పేలవంగా ఆడిన మధ్య దశ
+	Poorly played middlegame	పేలవంగా ఆడిన మధ్య దశ
+	Well played middlegame	బాగా ఆడిన మధ్య దశ
+	Very well played middlegame	చాలా బాగా ఆడిన మధ్య దశ
+	Very poorly played endgame	చాలా పేలవంగా ఆడిన ముగింపు దశ
+	Poorly played endgame	పేలవంగా ఆడిన ముగింపు దశ
+	Well played endgame	బాగా ఆడిన ముగింపు దశ
+	Very well played endgame	చాలా బాగా ఆడిన ముగింపు దశ
+	Space advantage	స్థలంలో ఆధిక్యం
+	Play along the file	నిలువు వరుస వెంట ఆట
+	Play along the diagonal	వికర్ణం వెంట ఆట
+	Play in the center	కేంద్రంలో ఆట
+	Play on the kingside	రాజు వైపున ఆట
+	Play on the queenside	మంత్రి వైపున ఆట
+	Weak point	బలహీన స్థానం
+	Endgame	ముగింపు దశ
+	Pair of bishops	శకటాల జంట
+	Bishops of opposite colors	వేర్వేరు రంగుల శకటాలు
+	Bishops of the same color	ఒకే రంగు శకటాలు
+	Connected pawns	అనుసంధానిత బంటులు
+	Isolated pawns	ఒంటరి బంటులు
+	Doubled pawns	రెట్టింపు బంటులు
+	Passed pawn	స్వేచ్ఛా బంటు
+	Pawn majority	బంటుల ఆధిక్యం
+	With	సహా
+	Without	లేకుండా
+	Positional glyphs	స్థాన గుర్తులు
+	More assessments	మరిన్ని మూల్యాంకనాలు
+	Filter assessments	మూల్యాంకనాలను ఫిల్టర్ చేయి
+	No assessment matches the filter.	ఫిల్టర్‌కు సరిపోయే మూల్యాంకనం ఏదీ లేదు.
+	These have no printed sign: PGN writes them as a number ($n).	వీటికి ముద్రిత గుర్తు లేదు: PGN వీటిని ఒక సంఖ్యగా ($n) రాస్తుంది.
+	Move quality	ఎత్తు నాణ్యత
+	Evaluation	స్థితి మూల్యాంకనం
+	Initiative and time	చొరవ మరియు సమయం
+	Space and control	స్థలం మరియు నియంత్రణ
+	King safety	రాజు భద్రత
+	Pawns	బంటులు
+	Pieces	పావులు
+	Phases of the game	ఆట దశలు
 	Choose a move first: glyphs go on a move.	ముందుగా ఒక ఎత్తును ఎంచుకోండి: గుర్తులు ఎత్తుకు వేస్తారు.
 	Not added: this move has as many glyphs as it can take.	జోడించలేదు: ఈ ఎత్తుకు ఉండగలిగినన్ని గుర్తులు ఇప్పటికే ఉన్నాయి.
 	One half	సగం

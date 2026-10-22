@@ -2705,6 +2705,97 @@ chess undo step	Clear drawings	l'effacement des dessins
 	Better is	Meilleur est
 	Worse is	Moins bon est
 	Editorial comment	Commentaire éditorial
+# Every NAG of the PGN standard and the ChessPad extension: the names of the glyphs added to the 28 (most have no printed sign), then the glyph palette's positional row and its list of the assessments without a sign.
+	Singular move	Coup forcé
+	Worst move	Pire coup
+	Equivalent move	Coup équivalent
+	Equal chances, quiet position	Chances égales, position calme
+	Equal chances, active position	Chances égales, position active
+	White has a crushing advantage	Les Blancs ont un avantage écrasant
+	Black has a crushing advantage	Les Noirs ont un avantage écrasant
+	Insufficient compensation for the material	Compensation insuffisante pour le matériel
+	More than enough compensation for the material	Compensation plus que suffisante pour le matériel
+	Slight development advantage	Légère avance de développement
+	Decisive development advantage	Avance de développement décisive
+	Lasting initiative	Initiative durable
+	Slight counterplay	Léger contre-jeu
+	Decisive counterplay	Contre-jeu décisif
+	Moderate time pressure	Zeitnot modéré
+	Slight space advantage	Léger avantage d'espace
+	Moderate space advantage	Avantage d'espace modéré
+	Decisive space advantage	Avantage d'espace décisif
+	Slight control of the center	Léger contrôle du centre
+	Moderate control of the center	Contrôle modéré du centre
+	Decisive control of the center	Contrôle décisif du centre
+	Slight control of the kingside	Léger contrôle de l'aile roi
+	Moderate control of the kingside	Contrôle modéré de l'aile roi
+	Decisive control of the kingside	Contrôle décisif de l'aile roi
+	Slight control of the queenside	Léger contrôle de l'aile dame
+	Moderate control of the queenside	Contrôle modéré de l'aile dame
+	Decisive control of the queenside	Contrôle décisif de l'aile dame
+	Vulnerable first rank	Première rangée vulnérable
+	Well protected first rank	Première rangée bien protégée
+	Poorly protected king	Roi mal protégé
+	Well protected king	Roi bien protégé
+	Poorly placed king	Roi mal placé
+	Well placed king	Roi bien placé
+	Very weak pawn structure	Structure de pions très faible
+	Moderately weak pawn structure	Structure de pions assez faible
+	Moderately strong pawn structure	Structure de pions assez solide
+	Very strong pawn structure	Structure de pions très solide
+	Poor knight placement	Cavalier mal placé
+	Good knight placement	Cavalier bien placé
+	Poor bishop placement	Fou mal placé
+	Good bishop placement	Fou bien placé
+	Poor rook placement	Tour mal placée
+	Good rook placement	Tour bien placée
+	Poor queen placement	Dame mal placée
+	Good queen placement	Dame bien placée
+	Poor piece coordination	Mauvaise coordination des pièces
+	Good piece coordination	Bonne coordination des pièces
+	Very poorly played opening	Ouverture très mal jouée
+	Poorly played opening	Ouverture mal jouée
+	Well played opening	Ouverture bien jouée
+	Very well played opening	Ouverture très bien jouée
+	Very poorly played middlegame	Milieu de partie très mal joué
+	Poorly played middlegame	Milieu de partie mal joué
+	Well played middlegame	Milieu de partie bien joué
+	Very well played middlegame	Milieu de partie très bien joué
+	Very poorly played endgame	Finale très mal jouée
+	Poorly played endgame	Finale mal jouée
+	Well played endgame	Finale bien jouée
+	Very well played endgame	Finale très bien jouée
+	Space advantage	Avantage d'espace
+	Play along the file	Jeu sur la colonne
+	Play along the diagonal	Jeu sur la diagonale
+	Play in the center	Jeu au centre
+	Play on the kingside	Jeu sur l'aile roi
+	Play on the queenside	Jeu sur l'aile dame
+	Weak point	Point faible
+	Endgame	Finale
+	Pair of bishops	Paire de fous
+	Bishops of opposite colors	Fous de couleurs opposées
+	Bishops of the same color	Fous de même couleur
+	Connected pawns	Pions liés
+	Isolated pawns	Pions isolés
+	Doubled pawns	Pions doublés
+	Passed pawn	Pion passé
+	Pawn majority	Majorité de pions
+	With	Avec
+	Without	Sans
+	Positional glyphs	Signes positionnels
+	More assessments	Autres évaluations
+	Filter assessments	Filtrer les évaluations
+	No assessment matches the filter.	Aucune évaluation ne correspond au filtre.
+	These have no printed sign: PGN writes them as a number ($n).	Celles-ci n'ont pas de signe imprimé : PGN les écrit sous forme de nombre ($n).
+	Move quality	Qualité du coup
+	Evaluation	Évaluation
+	Initiative and time	Initiative et temps
+	Space and control	Espace et contrôle
+	King safety	Sécurité du roi
+	Pawns	Pions
+	Pieces	Pièces
+	Phases of the game	Phases de la partie
 	Choose a move first: glyphs go on a move.	Choisissez d'abord un coup : les signes vont sur un coup.
 	Not added: this move has as many glyphs as it can take.	Non ajouté : ce coup a déjà autant de signes qu'il peut en porter.
 	One half	Un demi

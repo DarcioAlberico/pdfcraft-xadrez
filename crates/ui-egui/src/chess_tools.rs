@@ -813,13 +813,19 @@ fn is_on(tool: &Tool, chess: &ChessState) -> bool {
     }
 }
 
-/// A tool's button on the rail: its icon, or for a glyph its sign as the fonts can show it.
+/// A tool's button on the rail: its icon, or for a glyph its sign as the fonts can show it (or
+/// painted, where none can: `⌓`).
 fn tool_button(ui: &mut egui::Ui, tool: &Tool, on: bool, name: &str) -> egui::Response {
     match tool.kind {
         Kind::Glyph(code) => {
             let ctx = ui.ctx().clone();
-            let face = chess_annotate::face(code, |s| chess_annotate::drawable(&ctx, s));
-            icons::text_button(ui, &face, BUTTON, on, name)
+            match chess_annotate::seen(code, |s| chess_annotate::drawable(&ctx, s)) {
+                chess_annotate::Seen::Icon(icon) => {
+                    icons::painted_button(ui, BUTTON, on, name, |painter, rect, tint| chess_annotate::paint_icon(painter, rect, tint, icon))
+                }
+                chess_annotate::Seen::Text(face) => icons::text_button(ui, &face, BUTTON, on, name),
+                chess_annotate::Seen::Name(_) => icons::text_button(ui, &chess_annotate::face(code, |_| true), BUTTON, on, name),
+            }
         }
         _ => icons::button(ui, tool.icon, BUTTON, on, name),
     }
@@ -1094,18 +1100,32 @@ fn group_button(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, group: &'
             ui.set_min_width(200.0);
             ui.label(egui::RichText::new((group.label)()).small().color(t.text_muted));
             for (i, tool) in group.members.iter().enumerate() {
+                let mut glyph_icon = None;
                 let label = tool_label(tool, chess);
                 let key = tool.keys.first().map(|k| k.label(&ctx)).unwrap_or_default();
                 let button = match tool.kind {
                     // A glyph: its sign, then its name; ticked while the move shown has it.
                     Kind::Glyph(code) => {
-                        let face = chess_annotate::face(code, |s| chess_annotate::drawable(&ctx, s));
+                        // A painted sign is drawn over the room its text would take.
+                        let face = match chess_annotate::seen(code, |s| chess_annotate::drawable(&ctx, s)) {
+                            chess_annotate::Seen::Text(face) => face,
+                            chess_annotate::Seen::Icon(icon) => {
+                                glyph_icon = Some(icon);
+                                String::new()
+                            }
+                            chess_annotate::Seen::Name(_) => chess_annotate::face(code, |_| true),
+                        };
                         let mark = if is_on(tool, chess) { "✓" } else { "" };
                         egui::Button::new(egui::RichText::new(format!("{face:<4} {label}"))).shortcut_text(mark)
                     }
                     _ => egui::Button::image_and_text(icons::image(tool.icon, 16.0, t.icon), label.as_str()).shortcut_text(key),
                 };
                 let b = ui.add_enabled(can_act(tool, chess), button);
+                if let Some(icon) = glyph_icon.take() {
+                    let at = b.rect.left_center() + egui::vec2(ui.spacing().button_padding.x + 7.0, 0.0);
+                    let color = ui.style().interact(&b).fg_stroke.color;
+                    chess_annotate::paint_icon(ui.painter(), egui::Rect::from_center_size(at, egui::vec2(13.0, 13.0)), color, icon);
+                }
                 b.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, b.enabled(), i == shown, &label));
                 if i == 0 && std::mem::take(&mut chess.tools.focus_popup) {
                     b.request_focus();

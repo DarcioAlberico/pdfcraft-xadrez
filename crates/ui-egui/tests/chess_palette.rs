@@ -33,7 +33,12 @@ fn blank() -> Vec<u8> {
 
 /// The app on [`blank`], the Board panel shown.
 fn harness() -> Harness<'static, PdfCraftApp> {
-    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).build_eframe(|_cc| {
+    harness_of(egui::vec2(1400.0, 1000.0))
+}
+
+/// [`harness`] in a window `size` points large.
+fn harness_of(size: egui::Vec2) -> Harness<'static, PdfCraftApp> {
+    let mut h = Harness::builder().with_size(size).build_eframe(|_cc| {
         let mut app = PdfCraftApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("blank.pdf", None, blank()).unwrap();
@@ -311,4 +316,118 @@ fn a_moves_menu_lists_the_variations_a_tool_could_act_on() {
     undo(&mut h);
     move_menu(&mut h, "Nc6", "Promote one level");
     assert_eq!(movetext(&h), "1. e4 e5 (1... c5 2. Nf3 Nc6 (2... d6 3. d4))", "the entry: the nearest");
+}
+
+/// The control named `label` inside the palette's window (a section's header, a list row, the
+/// filter field), not text the palette floats over (the notation's).
+fn named_in_palette<'a>(h: &'a Harness<'static, PdfCraftApp>, label: &'a str) -> Option<egui_kittest::Node<'a>> {
+    let window = palette(h).expect("the palette is open");
+    h.query_all_by_label(label).find(|n| window.contains(n.rect().center()) && n.accesskit_node().role() != Role::Label)
+}
+
+/// The assessments without a printed sign are in the palette, folded under "More assessments" in
+/// sections, or found with its filter: one clicked goes on the move shown with the code of the side
+/// that made it (one undo step) and is ticked in the list, and the notation names it after the
+/// move. It goes on the move even while a comment field had the keyboard (as text it would only be
+/// `$n`). The positional row's painted signs go on the move as the other glyphs do.
+#[test]
+fn the_palette_lists_the_assessments_without_a_sign() {
+    // A window tall enough for the palette with its list open (a shorter one scrolls the palette).
+    let mut h = harness_of(egui::vec2(1400.0, 1600.0));
+    put_game(&mut h, "1. e4 e5 2. Nf3 *", &[0, 0]);
+    click_board_title(&mut h);
+    host_key(&mut h, Modifiers::NONE, Key::G);
+    assert!(named_in_palette(&h, "Slight space advantage").is_none(), "folded away at first");
+    named_in_palette(&h, "More assessments").expect("the list's header").click();
+    h.run_steps(2);
+    named_in_palette(&h, "Space and control").expect("its section").click();
+    h.run_steps(2);
+    // On Black's move, Black's code.
+    named_in_palette(&h, "Slight space advantage").expect("the assessment").click();
+    h.run_steps(2);
+    assert_eq!(glyphs_at(&h, &[0, 0]), [25]);
+    assert_eq!(undo_label(&h).as_deref(), Some("Glyph Slight space advantage"));
+    assert_eq!(named_in_palette(&h, "Slight space advantage").unwrap().accesskit_node().toggled(), Some(Toggled::True));
+    // The notation names it after the move, as text.
+    assert!(h.get_all_by_label("Slight space advantage").any(|n| n.accesskit_node().role() == Role::Label), "named in the notation");
+    assert!(h.state().chess.board().pgn_text.contains("e5 $25"), "{}", h.state().chess.board().pgn_text);
+    // A second click takes it off; one undo step puts it back.
+    named_in_palette(&h, "Slight space advantage").unwrap().click();
+    h.run_steps(2);
+    assert_eq!(glyphs_at(&h, &[0, 0]), [] as [u16; 0]);
+    undo(&mut h);
+    assert_eq!(glyphs_at(&h, &[0, 0]), [25]);
+    // The filter narrows the list to the names with its text; White's move gets White's code.
+    put_game(&mut h, "1. e4 e5 2. Nf3 *", &[0, 0, 0]);
+    let filter = named_in_palette(&h, "Filter assessments").expect("the filter field");
+    filter.click();
+    h.run_steps(1);
+    h.get_by_label("Filter assessments").type_text("knight");
+    h.run_steps(2);
+    assert!(named_in_palette(&h, "Slight space advantage").is_none(), "filtered out");
+    assert!(named_in_palette(&h, "Poor knight placement").is_some());
+    named_in_palette(&h, "Good knight placement").unwrap().click();
+    h.run_steps(2);
+    assert_eq!(glyphs_at(&h, &[0, 0, 0]), [88]);
+    // With the comment field taking the keyboard, an assessment still goes on the move, not into
+    // the comment.
+    h.get_by_label("Comment on this move").click();
+    h.run_steps(2);
+    named_in_palette(&h, "Poor knight placement").unwrap().click();
+    h.run_steps(2);
+    assert_eq!(glyphs_at(&h, &[0, 0, 0]), [86, 88]);
+    assert_eq!(h.state().chess.board().game.comment(h.state().chess.board().game.current()), "");
+    // A painted sign of the positional row: a button like the other glyphs (the comment field
+    // gives up the keyboard first, or the sign would go into it).
+    click_board_title(&mut h);
+    in_palette(&h, "Passed pawn").click();
+    h.run_steps(2);
+    assert_eq!(glyphs_at(&h, &[0, 0, 0]), [86, 88, 252]);
+    assert!(h.state().chess.board().pgn_text.contains("Nf3 $86 $88 $252"), "{}", h.state().chess.board().pgn_text);
+    if let Ok(dir) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
+        h.render().unwrap().save(std::path::Path::new(&dir).join("glyph-palette-assessments.png")).unwrap();
+    }
+}
+
+/// Ask for the palette's control named `label` to be scrolled into view (as assistive technology
+/// does), at most `max` times, until it is inside the palette. Returns whether it got there.
+fn scroll_to(h: &mut Harness<'static, PdfCraftApp>, label: &str, max: usize) -> bool {
+    for _ in 0..max {
+        let window = palette(h).expect("the palette is open");
+        let found = h.query_all_by_label(label).find(|n| n.accesskit_node().role() != Role::Label);
+        let Some(node) = found else { return false };
+        if window.shrink(2.0).contains(node.rect().center()) {
+            return true;
+        }
+        node.scroll_to_me();
+        h.run_steps(3);
+    }
+    false
+}
+
+/// In a short window the palette never runs past its bottom: with More assessments open it moves
+/// up and its list scrolls, and the last section's last assessment can be scrolled to and put on
+/// the move.
+#[test]
+fn the_palette_stays_in_a_short_window_and_its_list_scrolls() {
+    let mut h = harness_of(egui::vec2(1024.0, 600.0));
+    put_game(&mut h, "1. e4 e5 2. Nf3 *", &[0, 0]);
+    click_board_title(&mut h);
+    host_key(&mut h, Modifiers::NONE, Key::G);
+    let viewport = h.ctx.content_rect();
+    assert!(viewport.contains_rect(palette(&h).expect("G opened the palette")));
+    named_in_palette(&h, "More assessments").expect("the list's header").click();
+    h.run_steps(4);
+    let open = palette(&h).unwrap();
+    assert!(viewport.contains_rect(open), "{open:?} within {viewport:?}");
+    // The list scrolls: to the last section, open it, and to its last row.
+    assert!(scroll_to(&mut h, "Phases of the game", 10), "the last section is reachable");
+    named_in_palette(&h, "Phases of the game").unwrap().click();
+    h.run_steps(3);
+    assert!(viewport.contains_rect(palette(&h).unwrap()), "still within with the section open");
+    assert!(scroll_to(&mut h, "Very well played endgame", 10), "its last assessment is reachable");
+    named_in_palette(&h, "Very well played endgame").unwrap().click();
+    h.run_steps(2);
+    assert_eq!(glyphs_at(&h, &[0, 0]), [129], "Black's code");
+    assert!(viewport.contains_rect(palette(&h).unwrap()));
 }

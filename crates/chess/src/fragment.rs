@@ -51,7 +51,7 @@ impl FragmentItem {
         match self {
             FragmentItem::Move { san, text, .. } if text.trim().is_empty() => san.to_english(),
             FragmentItem::Move { text, .. } => text.trim().to_owned(),
-            FragmentItem::Nag(code) => glyph_text(*code),
+            FragmentItem::Nag(code) => nag::printed(*code),
             FragmentItem::Comment { text, .. } => text.trim().to_owned(),
             FragmentItem::Open => "(".to_owned(),
             FragmentItem::Close => ")".to_owned(),
@@ -65,14 +65,6 @@ impl FragmentItem {
 /// game reaches; number 0 counts as 1.
 pub fn ply_of(number: u32, black: bool) -> u32 {
     number.saturating_sub(1).saturating_mul(2).saturating_add(u32::from(black))
-}
-
-/// `code` as printed: its glyph when that is safe to show alone, else `$code`.
-fn glyph_text(code: u16) -> String {
-    match nag::by_code(code) {
-        Some(n) if n.safe_glyph => n.glyph.to_owned(),
-        _ => format!("${code}"),
-    }
 }
 
 /// `items` as one line of text: the pieces joined by spaces, with none after `(` or before `)`.

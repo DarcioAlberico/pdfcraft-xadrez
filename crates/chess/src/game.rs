@@ -1810,6 +1810,24 @@ mod tests {
         }
     }
 
+    #[test]
+    fn every_glyph_code_round_trips_through_pgn() {
+        let mut checked = 0;
+        for n in crate::nag::NAGS {
+            for code in [Some(n.code), n.black_code].into_iter().flatten() {
+                let mut g = Game::standard();
+                play(&mut g, &[("e2", "e4")]);
+                g.toggle_nag(g.current(), code);
+                let pgn = g.pgn();
+                assert!(pgn.contains(&format!("e4 ${code}")), "{pgn}");
+                let (back, _) = Game::from_pgn(&pgn).unwrap();
+                assert_eq!(back.nags(back.main_line()[1]), &[code], "{pgn}");
+                checked += 1;
+            }
+        }
+        assert_eq!(checked, 164, "codes 1–146 and 238–255");
+    }
+
     proptest::proptest! {
         #[test]
         fn pgn_reader_never_panics(text in "\\PC{0,300}") {

@@ -2681,6 +2681,97 @@ chess undo step	Clear drawings	usunięcie rysunków
 	Better is	Lepiej
 	Worse is	Gorzej
 	Editorial comment	Komentarz redakcyjny
+# Every NAG of the PGN standard and the ChessPad extension: the names of the glyphs added to the 28 (most have no printed sign), then the glyph palette's positional row and its list of the assessments without a sign.
+	Singular move	Ruch wymuszony
+	Worst move	Najgorszy ruch
+	Equivalent move	Ruch równorzędny
+	Equal chances, quiet position	Równe szanse, spokojna pozycja
+	Equal chances, active position	Równe szanse, aktywna pozycja
+	White has a crushing advantage	Białe mają miażdżącą przewagę
+	Black has a crushing advantage	Czarne mają miażdżącą przewagę
+	Insufficient compensation for the material	Niewystarczająca rekompensata za materiał
+	More than enough compensation for the material	Więcej niż wystarczająca rekompensata za materiał
+	Slight development advantage	Niewielka przewaga w rozwoju
+	Decisive development advantage	Decydująca przewaga w rozwoju
+	Lasting initiative	Trwała inicjatywa
+	Slight counterplay	Niewielka kontrgra
+	Decisive counterplay	Decydująca kontrgra
+	Moderate time pressure	Umiarkowany niedoczas
+	Slight space advantage	Niewielka przewaga przestrzenna
+	Moderate space advantage	Umiarkowana przewaga przestrzenna
+	Decisive space advantage	Decydująca przewaga przestrzenna
+	Slight control of the center	Niewielka kontrola centrum
+	Moderate control of the center	Umiarkowana kontrola centrum
+	Decisive control of the center	Decydująca kontrola centrum
+	Slight control of the kingside	Niewielka kontrola skrzydła królewskiego
+	Moderate control of the kingside	Umiarkowana kontrola skrzydła królewskiego
+	Decisive control of the kingside	Decydująca kontrola skrzydła królewskiego
+	Slight control of the queenside	Niewielka kontrola skrzydła hetmańskiego
+	Moderate control of the queenside	Umiarkowana kontrola skrzydła hetmańskiego
+	Decisive control of the queenside	Decydująca kontrola skrzydła hetmańskiego
+	Vulnerable first rank	Słaba pierwsza linia
+	Well protected first rank	Dobrze chroniona pierwsza linia
+	Poorly protected king	Słabo chroniony król
+	Well protected king	Dobrze chroniony król
+	Poorly placed king	Źle ustawiony król
+	Well placed king	Dobrze ustawiony król
+	Very weak pawn structure	Bardzo słaba struktura pionów
+	Moderately weak pawn structure	Dość słaba struktura pionów
+	Moderately strong pawn structure	Dość mocna struktura pionów
+	Very strong pawn structure	Bardzo mocna struktura pionów
+	Poor knight placement	Źle ustawiony skoczek
+	Good knight placement	Dobrze ustawiony skoczek
+	Poor bishop placement	Źle ustawiony goniec
+	Good bishop placement	Dobrze ustawiony goniec
+	Poor rook placement	Źle ustawiona wieża
+	Good rook placement	Dobrze ustawiona wieża
+	Poor queen placement	Źle ustawiony hetman
+	Good queen placement	Dobrze ustawiony hetman
+	Poor piece coordination	Słaba koordynacja figur
+	Good piece coordination	Dobra koordynacja figur
+	Very poorly played opening	Bardzo źle rozegrany debiut
+	Poorly played opening	Źle rozegrany debiut
+	Well played opening	Dobrze rozegrany debiut
+	Very well played opening	Bardzo dobrze rozegrany debiut
+	Very poorly played middlegame	Bardzo źle rozegrana gra środkowa
+	Poorly played middlegame	Źle rozegrana gra środkowa
+	Well played middlegame	Dobrze rozegrana gra środkowa
+	Very well played middlegame	Bardzo dobrze rozegrana gra środkowa
+	Very poorly played endgame	Bardzo źle rozegrana końcówka
+	Poorly played endgame	Źle rozegrana końcówka
+	Well played endgame	Dobrze rozegrana końcówka
+	Very well played endgame	Bardzo dobrze rozegrana końcówka
+	Space advantage	Przewaga przestrzenna
+	Play along the file	Gra na linii
+	Play along the diagonal	Gra na przekątnej
+	Play in the center	Gra w centrum
+	Play on the kingside	Gra na skrzydle królewskim
+	Play on the queenside	Gra na skrzydle hetmańskim
+	Weak point	Słabe pole
+	Endgame	Końcówka
+	Pair of bishops	Para gońców
+	Bishops of opposite colors	Gońce różnopolowe
+	Bishops of the same color	Gońce jednopolowe
+	Connected pawns	Piony połączone
+	Isolated pawns	Piony izolowane
+	Doubled pawns	Piony zdwojone
+	Passed pawn	Wolny pion
+	Pawn majority	Przewaga pionów
+	With	Z
+	Without	Bez
+	Positional glyphs	Znaki pozycyjne
+	More assessments	Więcej ocen
+	Filter assessments	Filtruj oceny
+	No assessment matches the filter.	Żadna ocena nie pasuje do filtra.
+	These have no printed sign: PGN writes them as a number ($n).	Te nie mają drukowanego znaku: PGN zapisuje je jako liczbę ($n).
+	Move quality	Jakość ruchu
+	Evaluation	Ocena
+	Initiative and time	Inicjatywa i czas
+	Space and control	Przestrzeń i kontrola
+	King safety	Bezpieczeństwo króla
+	Pawns	Piony
+	Pieces	Figury
+	Phases of the game	Fazy partii
 	Choose a move first: glyphs go on a move.	Najpierw wybierz ruch: znaki stawia się przy ruchu.
 	Not added: this move has as many glyphs as it can take.	Nie dodano: ten ruch ma już tyle znaków, ile może mieć.
 	One half	Jedna druga

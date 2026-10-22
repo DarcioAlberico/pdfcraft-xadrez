@@ -1005,6 +1005,7 @@ pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, he
                                 if *node == current && reveal {
                                     r.scroll_to_me_animation(None, egui::style::ScrollAnimation::none());
                                 }
+                                glyphs_after(ui, t, nags, small);
                                 if state.game.has_diagram(*node) {
                                     let name = crate::i18n::fmt(
                                         tl!("Diagram after {move}"),
@@ -1105,28 +1106,55 @@ pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, he
     action
 }
 
-/// How glyph `code` is named in an undo step (whatever the fonts). The slight advantages (⩲ ⩱)
-/// are written `+=` and `=+`, as books set them in text: the interface fonts lack the two signs.
+/// How glyph `code` is named in an undo step or a capture's chips (whatever the fonts). The
+/// slight advantages (⩲ ⩱) are written `+=` and `=+`, as books set them in text: the interface
+/// fonts lack the two signs. A painted sign, and an assessment without one, by its name.
 pub(crate) fn nag_text(code: u16) -> String {
     match code {
         14 => "+=".to_owned(),
         15 => "=+".to_owned(),
-        _ => pdfcraft_engine::chess::pdfcraft_chess::nag::by_code(code).map_or_else(|| format!("${code}"), |nag| nag.glyph.to_owned()),
+        _ => match crate::chess_annotate::seen(code, |_| true) {
+            crate::chess_annotate::Seen::Text(text) => text,
+            crate::chess_annotate::Seen::Icon(_) | crate::chess_annotate::Seen::Name(_) => {
+                crate::chess_annotate::nag_name(code).map_or_else(|| format!("${code}"), str::to_owned)
+            }
+        },
     }
 }
 
 /// How a move's glyphs read after it: `!`, `?` and the like glued on, the others after a space;
 /// each as [`crate::chess_annotate::face`] shows it with the fonts `drawable` describes. The
-/// diagram mark is not among them: the notation draws a small board for it.
+/// diagram mark is not among them (the notation draws a small board for it), nor the glyphs
+/// painted or named after the move ([`glyphs_after`]).
 fn glyphs(nags: &[u16], mut drawable: impl FnMut(&str) -> bool) -> String {
     let mut out = String::new();
     for &code in nags.iter().filter(|&&c| !pdfcraft_engine::chess::pdfcraft_chess::nag::is_diagram(c)) {
+        let crate::chess_annotate::Seen::Text(text) = crate::chess_annotate::seen(code, &mut drawable) else { continue };
         if !(1..=6).contains(&code) {
             out.push(' ');
         }
-        out.push_str(&crate::chess_annotate::face(code, &mut drawable));
+        out.push_str(&text);
     }
     out
+}
+
+/// After a move's label in the notation: its painted signs, then its assessments without a sign
+/// by name, small and muted, each with its `$n` as the tooltip (see `chess_annotate`'s notes).
+fn glyphs_after(ui: &mut egui::Ui, t: &Tokens, nags: &[u16], small: bool) {
+    let color = if small { t.text_muted } else { t.text };
+    for &code in nags {
+        match crate::chess_annotate::seen(code, |_| true) {
+            crate::chess_annotate::Seen::Icon(icon) => {
+                let name = crate::chess_annotate::nag_name(code).unwrap_or_default();
+                crate::chess_annotate::icon_label(ui, icon, if small { 11.0 } else { 13.0 }, color, name);
+            }
+            crate::chess_annotate::Seen::Name(name) => {
+                let r = ui.add(egui::Label::new(egui::RichText::new(name).small().color(t.text_muted)).selectable(false));
+                r.on_hover_text(format!("${code}"));
+            }
+            crate::chess_annotate::Seen::Text(_) => {}
+        }
+    }
 }
 
 impl BoardState {
@@ -1434,12 +1462,21 @@ pub(crate) fn moves_column(
 /// The armed glyph brush (T15), over the notation: its glyph, what a click does, and how to stop.
 fn brush_bar(ui: &mut egui::Ui, t: &Tokens, chess: &mut crate::chess_ui::ChessState, code: u16) {
     let ctx = ui.ctx().clone();
-    let face = crate::chess_annotate::face(code, |s| crate::chess_annotate::drawable(&ctx, s));
+    let seen = crate::chess_annotate::seen(code, |s| crate::chess_annotate::drawable(&ctx, s));
     let name = crate::chess_annotate::nag_name(code).unwrap_or_default();
+    // A painted sign is drawn beside the brush, and the text names it only.
+    let face = match &seen {
+        crate::chess_annotate::Seen::Text(text) => text.clone(),
+        crate::chess_annotate::Seen::Icon(_) | crate::chess_annotate::Seen::Name(_) => String::new(),
+    };
     ui.horizontal_wrapped(|ui| {
         ui.add(crate::icons::image("brush", 14.0, t.icon));
+        if let crate::chess_annotate::Seen::Icon(icon) = seen {
+            crate::chess_annotate::icon_label(ui, icon, 14.0, t.icon, name);
+        }
         let text =
-            crate::i18n::fmt(tl!("Glyph brush {glyph} ({name}): click moves to put it on or take it off."), &[("glyph", &face), ("name", name)]);
+            crate::i18n::fmt(tl!("Glyph brush {glyph} ({name}): click moves to put it on or take it off."), &[("glyph", &face), ("name", name)])
+                .replace("  ", " ");
         ui.label(egui::RichText::new(text).small());
         if ui.small_button(tl!("Stop (Esc)")).clicked() {
             chess.tools.tool = crate::chess_tools::PgnTool::Navigate;
@@ -1562,6 +1599,8 @@ mod tests {
 
     #[test]
     fn glyphs_read_as_books_print_them() {
+        let previous = crate::i18n::current();
+        crate::i18n::set_current(crate::i18n::Lang::EN);
         // Fonts without the slight-advantage signs, as the interface's own.
         let fonts = |s: &str| !s.contains(['⩲', '⩱']);
         assert_eq!(glyphs(&[1], fonts), "!");
@@ -1569,6 +1608,13 @@ mod tests {
         assert_eq!(glyphs(&[15, 18], fonts), " =+ +-");
         assert_eq!(glyphs(&[999], fonts), " $999");
         assert_eq!(glyphs(&[14], |_| true), " ⩲", "a font with the sign shows it");
+        // Painted signs and assessments without one come after the label, not in it.
+        assert_eq!(glyphs(&[1, 142, 24, 26], |_| true), "! ○");
+        assert_eq!(nag_text(142), "Better is");
+        assert_eq!(nag_text(25), "Slight space advantage");
+        assert_eq!(nag_text(27), "○");
+        assert_eq!(nag_text(14), "+=");
+        crate::i18n::set_current(previous);
     }
 
     #[test]

@@ -2711,6 +2711,97 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Better is	Καλύτερο είναι
 	Worse is	Χειρότερο είναι
 	Editorial comment	Σχόλιο της σύνταξης
+# Every NAG of the PGN standard and the ChessPad extension: the names of the glyphs added to the 28 (most have no printed sign), then the glyph palette's positional row and its list of the assessments without a sign.
+	Singular move	Μοναδική λογική κίνηση
+	Worst move	Η χειρότερη κίνηση
+	Equivalent move	Ισοδύναμη κίνηση
+	Equal chances, quiet position	Ίσες πιθανότητες, ήρεμη θέση
+	Equal chances, active position	Ίσες πιθανότητες, ενεργή θέση
+	White has a crushing advantage	Τα λευκά έχουν συντριπτικό πλεονέκτημα
+	Black has a crushing advantage	Τα μαύρα έχουν συντριπτικό πλεονέκτημα
+	Insufficient compensation for the material	Ανεπαρκές αντιστάθμισμα για το υλικό
+	More than enough compensation for the material	Υπεραρκετό αντιστάθμισμα για το υλικό
+	Slight development advantage	Μικρό πλεονέκτημα ανάπτυξης
+	Decisive development advantage	Αποφασιστικό πλεονέκτημα ανάπτυξης
+	Lasting initiative	Διαρκής πρωτοβουλία
+	Slight counterplay	Ελαφρά αντεπίθεση
+	Decisive counterplay	Αποφασιστική αντεπίθεση
+	Moderate time pressure	Μέτρια πίεση χρόνου
+	Slight space advantage	Μικρό πλεονέκτημα χώρου
+	Moderate space advantage	Μέτριο πλεονέκτημα χώρου
+	Decisive space advantage	Αποφασιστικό πλεονέκτημα χώρου
+	Slight control of the center	Μικρός έλεγχος του κέντρου
+	Moderate control of the center	Μέτριος έλεγχος του κέντρου
+	Decisive control of the center	Αποφασιστικός έλεγχος του κέντρου
+	Slight control of the kingside	Μικρός έλεγχος της πτέρυγας του βασιλιά
+	Moderate control of the kingside	Μέτριος έλεγχος της πτέρυγας του βασιλιά
+	Decisive control of the kingside	Αποφασιστικός έλεγχος της πτέρυγας του βασιλιά
+	Slight control of the queenside	Μικρός έλεγχος της πτέρυγας της βασίλισσας
+	Moderate control of the queenside	Μέτριος έλεγχος της πτέρυγας της βασίλισσας
+	Decisive control of the queenside	Αποφασιστικός έλεγχος της πτέρυγας της βασίλισσας
+	Vulnerable first rank	Ευάλωτη πρώτη οριζόντια
+	Well protected first rank	Καλά προστατευμένη πρώτη οριζόντια
+	Poorly protected king	Ανεπαρκώς προστατευμένος βασιλιάς
+	Well protected king	Καλά προστατευμένος βασιλιάς
+	Poorly placed king	Κακοτοποθετημένος βασιλιάς
+	Well placed king	Καλά τοποθετημένος βασιλιάς
+	Very weak pawn structure	Πολύ αδύναμη δομή πιονιών
+	Moderately weak pawn structure	Μετρίως αδύναμη δομή πιονιών
+	Moderately strong pawn structure	Μετρίως ισχυρή δομή πιονιών
+	Very strong pawn structure	Πολύ ισχυρή δομή πιονιών
+	Poor knight placement	Κακή τοποθέτηση ίππου
+	Good knight placement	Καλή τοποθέτηση ίππου
+	Poor bishop placement	Κακή τοποθέτηση αξιωματικού
+	Good bishop placement	Καλή τοποθέτηση αξιωματικού
+	Poor rook placement	Κακή τοποθέτηση πύργου
+	Good rook placement	Καλή τοποθέτηση πύργου
+	Poor queen placement	Κακή τοποθέτηση βασίλισσας
+	Good queen placement	Καλή τοποθέτηση βασίλισσας
+	Poor piece coordination	Κακός συντονισμός κομματιών
+	Good piece coordination	Καλός συντονισμός κομματιών
+	Very poorly played opening	Πολύ κακοπαιγμένο άνοιγμα
+	Poorly played opening	Κακοπαιγμένο άνοιγμα
+	Well played opening	Καλοπαιγμένο άνοιγμα
+	Very well played opening	Πολύ καλοπαιγμένο άνοιγμα
+	Very poorly played middlegame	Πολύ κακοπαιγμένο μέσο παιχνίδι
+	Poorly played middlegame	Κακοπαιγμένο μέσο παιχνίδι
+	Well played middlegame	Καλοπαιγμένο μέσο παιχνίδι
+	Very well played middlegame	Πολύ καλοπαιγμένο μέσο παιχνίδι
+	Very poorly played endgame	Πολύ κακοπαιγμένο φινάλε
+	Poorly played endgame	Κακοπαιγμένο φινάλε
+	Well played endgame	Καλοπαιγμένο φινάλε
+	Very well played endgame	Πολύ καλοπαιγμένο φινάλε
+	Space advantage	Πλεονέκτημα χώρου
+	Play along the file	Παιχνίδι στη στήλη
+	Play along the diagonal	Παιχνίδι στη διαγώνιο
+	Play in the center	Παιχνίδι στο κέντρο
+	Play on the kingside	Παιχνίδι στην πτέρυγα του βασιλιά
+	Play on the queenside	Παιχνίδι στην πτέρυγα της βασίλισσας
+	Weak point	Αδύναμο τετράγωνο
+	Endgame	Φινάλε
+	Pair of bishops	Ζεύγος αξιωματικών
+	Bishops of opposite colors	Αξιωματικοί αντίθετου χρώματος
+	Bishops of the same color	Αξιωματικοί ίδιου χρώματος
+	Connected pawns	Συνδεδεμένα πιόνια
+	Isolated pawns	Απομονωμένα πιόνια
+	Doubled pawns	Διπλά πιόνια
+	Passed pawn	Ελεύθερο πιόνι
+	Pawn majority	Πλειοψηφία πιονιών
+	With	Με
+	Without	Χωρίς
+	Positional glyphs	Θεσιακά σημεία
+	More assessments	Περισσότερες αξιολογήσεις
+	Filter assessments	Φιλτράρισμα αξιολογήσεων
+	No assessment matches the filter.	Καμία αξιολόγηση δεν ταιριάζει με το φίλτρο.
+	These have no printed sign: PGN writes them as a number ($n).	Αυτές δεν έχουν τυπωμένο σημείο: το PGN τις γράφει ως αριθμό ($n).
+	Move quality	Ποιότητα κίνησης
+	Evaluation	Αξιολόγηση
+	Initiative and time	Πρωτοβουλία και χρόνος
+	Space and control	Χώρος και έλεγχος
+	King safety	Ασφάλεια του βασιλιά
+	Pawns	Πιόνια
+	Pieces	Κομμάτια
+	Phases of the game	Φάσεις της παρτίδας
 	Choose a move first: glyphs go on a move.	Επιλέξτε πρώτα μια κίνηση: τα σημεία μπαίνουν σε κίνηση.
 	Not added: this move has as many glyphs as it can take.	Δεν προστέθηκε: αυτή η κίνηση έχει ήδη όσα σημεία μπορεί.
 	One half	Ένα δεύτερο

@@ -1495,7 +1495,7 @@ impl Walker {
             }
             return;
         }
-        let glyph = pdfcraft_chess::nag::by_code(code).map_or_else(|| format!("${code}"), |n| n.glyph.to_owned());
+        let glyph = pdfcraft_chess::nag::shown(code);
         comment(game, open, &glyph);
     }
 

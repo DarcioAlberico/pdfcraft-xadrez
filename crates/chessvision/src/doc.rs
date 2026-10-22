@@ -341,7 +341,7 @@ impl Inline {
         match self {
             Inline::Text { text, .. } | Inline::Link { text, .. } => text.clone(),
             Inline::Move(m) => format!("{}{}", m.number.map(|n| n.text()).unwrap_or_default(), m.text),
-            Inline::Nag { code, .. } => pdfcraft_chess::nag::by_code(*code).map_or_else(|| format!("${code}"), |n| n.glyph.to_owned()),
+            Inline::Nag { code, .. } => pdfcraft_chess::nag::shown(*code),
         }
     }
 }

@@ -2668,6 +2668,97 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Better is	По-добре е
 	Worse is	По-лошо е
 	Editorial comment	Редакционен коментар
+# Every NAG of the PGN standard and the ChessPad extension: the names of the glyphs added to the 28 (most have no printed sign), then the glyph palette's positional row and its list of the assessments without a sign.
+	Singular move	Единствен разумен ход
+	Worst move	Най-лош ход
+	Equivalent move	Равностоен ход
+	Equal chances, quiet position	Равни шансове, спокойна позиция
+	Equal chances, active position	Равни шансове, активна позиция
+	White has a crushing advantage	Белите имат съкрушително превъзходство
+	Black has a crushing advantage	Черните имат съкрушително превъзходство
+	Insufficient compensation for the material	Недостатъчна компенсация за материала
+	More than enough compensation for the material	Повече от достатъчна компенсация за материала
+	Slight development advantage	Малка преднина в развитието
+	Decisive development advantage	Решаваща преднина в развитието
+	Lasting initiative	Трайна инициатива
+	Slight counterplay	Малка контраигра
+	Decisive counterplay	Решаваща контраигра
+	Moderate time pressure	Умерен цайтнот
+	Slight space advantage	Малко превъзходство в пространството
+	Moderate space advantage	Осезаемо превъзходство в пространството
+	Decisive space advantage	Решаващо превъзходство в пространството
+	Slight control of the center	Лек контрол над центъра
+	Moderate control of the center	Осезаем контрол над центъра
+	Decisive control of the center	Решаващ контрол над центъра
+	Slight control of the kingside	Лек контрол над царското крило
+	Moderate control of the kingside	Осезаем контрол над царското крило
+	Decisive control of the kingside	Решаващ контрол над царското крило
+	Slight control of the queenside	Лек контрол над дамското крило
+	Moderate control of the queenside	Осезаем контрол над дамското крило
+	Decisive control of the queenside	Решаващ контрол над дамското крило
+	Vulnerable first rank	Уязвима първа хоризонтала
+	Well protected first rank	Добре защитена първа хоризонтала
+	Poorly protected king	Слабо защитен цар
+	Well protected king	Добре защитен цар
+	Poorly placed king	Лошо разположен цар
+	Well placed king	Добре разположен цар
+	Very weak pawn structure	Много слаба пешечна структура
+	Moderately weak pawn structure	Доста слаба пешечна структура
+	Moderately strong pawn structure	Доста здрава пешечна структура
+	Very strong pawn structure	Много здрава пешечна структура
+	Poor knight placement	Лошо разположение на коня
+	Good knight placement	Добро разположение на коня
+	Poor bishop placement	Лошо разположение на офицера
+	Good bishop placement	Добро разположение на офицера
+	Poor rook placement	Лошо разположение на топа
+	Good rook placement	Добро разположение на топа
+	Poor queen placement	Лошо разположение на дамата
+	Good queen placement	Добро разположение на дамата
+	Poor piece coordination	Лоша координация на фигурите
+	Good piece coordination	Добра координация на фигурите
+	Very poorly played opening	Много зле изигран дебют
+	Poorly played opening	Зле изигран дебют
+	Well played opening	Добре изигран дебют
+	Very well played opening	Много добре изигран дебют
+	Very poorly played middlegame	Много зле изигран мителшпил
+	Poorly played middlegame	Зле изигран мителшпил
+	Well played middlegame	Добре изигран мителшпил
+	Very well played middlegame	Много добре изигран мителшпил
+	Very poorly played endgame	Много зле изигран ендшпил
+	Poorly played endgame	Зле изигран ендшпил
+	Well played endgame	Добре изигран ендшпил
+	Very well played endgame	Много добре изигран ендшпил
+	Space advantage	Превъзходство в пространството
+	Play along the file	Игра по линията
+	Play along the diagonal	Игра по диагонала
+	Play in the center	Игра в центъра
+	Play on the kingside	Игра на царското крило
+	Play on the queenside	Игра на дамското крило
+	Weak point	Слаб пункт
+	Endgame	Ендшпил
+	Pair of bishops	Двойка офицери
+	Bishops of opposite colors	Разноцветни офицери
+	Bishops of the same color	Едноцветни офицери
+	Connected pawns	Свързани пешки
+	Isolated pawns	Изолирани пешки
+	Doubled pawns	Сдвоени пешки
+	Passed pawn	Проходна пешка
+	Pawn majority	Пешечно мнозинство
+	With	С
+	Without	Без
+	Positional glyphs	Позиционни знаци
+	More assessments	Още оценки
+	Filter assessments	Филтриране на оценките
+	No assessment matches the filter.	Няма оценка, която да отговаря на филтъра.
+	These have no printed sign: PGN writes them as a number ($n).	Тези оценки нямат печатен знак: PGN ги записва като число ($n).
+	Move quality	Качество на хода
+	Evaluation	Оценка
+	Initiative and time	Инициатива и време
+	Space and control	Пространство и контрол
+	King safety	Безопасност на царя
+	Pawns	Пешки
+	Pieces	Фигури
+	Phases of the game	Етапи на партията
 	Choose a move first: glyphs go on a move.	Първо изберете ход: знаците се поставят на ход.
 	Not added: this move has as many glyphs as it can take.	Не е добавен: този ход вече има толкова знаци, колкото може.
 	One half	Една втора

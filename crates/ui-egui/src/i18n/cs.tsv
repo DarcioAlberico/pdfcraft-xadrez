@@ -2779,6 +2779,97 @@ chess undo step	Clear drawings	smazání kreseb
 	Better is	Lepší je
 	Worse is	Horší je
 	Editorial comment	Redakční komentář
+# Every NAG of the PGN standard and the ChessPad extension: the names of the glyphs added to the 28 (most have no printed sign), then the glyph palette's positional row and its list of the assessments without a sign.
+	Singular move	Jediný rozumný tah
+	Worst move	Nejhorší tah
+	Equivalent move	Rovnocenný tah
+	Equal chances, quiet position	Vyrovnané šance, klidná pozice
+	Equal chances, active position	Vyrovnané šance, aktivní pozice
+	White has a crushing advantage	Bílý má drtivou převahu
+	Black has a crushing advantage	Černý má drtivou převahu
+	Insufficient compensation for the material	Nedostatečná kompenzace za materiál
+	More than enough compensation for the material	Více než dostatečná kompenzace za materiál
+	Slight development advantage	Malý náskok ve vývinu
+	Decisive development advantage	Rozhodující náskok ve vývinu
+	Lasting initiative	Trvalá iniciativa
+	Slight counterplay	Mírná protihra
+	Decisive counterplay	Rozhodující protihra
+	Moderate time pressure	Mírná časová tíseň
+	Slight space advantage	Malá prostorová převaha
+	Moderate space advantage	Znatelná prostorová převaha
+	Decisive space advantage	Rozhodující prostorová převaha
+	Slight control of the center	Mírná kontrola centra
+	Moderate control of the center	Znatelná kontrola centra
+	Decisive control of the center	Rozhodující kontrola centra
+	Slight control of the kingside	Mírná kontrola královského křídla
+	Moderate control of the kingside	Znatelná kontrola královského křídla
+	Decisive control of the kingside	Rozhodující kontrola královského křídla
+	Slight control of the queenside	Mírná kontrola dámského křídla
+	Moderate control of the queenside	Znatelná kontrola dámského křídla
+	Decisive control of the queenside	Rozhodující kontrola dámského křídla
+	Vulnerable first rank	Zranitelná první řada
+	Well protected first rank	Dobře chráněná první řada
+	Poorly protected king	Špatně chráněný král
+	Well protected king	Dobře chráněný král
+	Poorly placed king	Špatně postavený král
+	Well placed king	Dobře postavený král
+	Very weak pawn structure	Velmi slabá pěšcová struktura
+	Moderately weak pawn structure	Poměrně slabá pěšcová struktura
+	Moderately strong pawn structure	Poměrně pevná pěšcová struktura
+	Very strong pawn structure	Velmi pevná pěšcová struktura
+	Poor knight placement	Špatné postavení jezdce
+	Good knight placement	Dobré postavení jezdce
+	Poor bishop placement	Špatné postavení střelce
+	Good bishop placement	Dobré postavení střelce
+	Poor rook placement	Špatné postavení věže
+	Good rook placement	Dobré postavení věže
+	Poor queen placement	Špatné postavení dámy
+	Good queen placement	Dobré postavení dámy
+	Poor piece coordination	Špatná souhra figur
+	Good piece coordination	Dobrá souhra figur
+	Very poorly played opening	Velmi špatně sehrané zahájení
+	Poorly played opening	Špatně sehrané zahájení
+	Well played opening	Dobře sehrané zahájení
+	Very well played opening	Velmi dobře sehrané zahájení
+	Very poorly played middlegame	Velmi špatně sehraná střední hra
+	Poorly played middlegame	Špatně sehraná střední hra
+	Well played middlegame	Dobře sehraná střední hra
+	Very well played middlegame	Velmi dobře sehraná střední hra
+	Very poorly played endgame	Velmi špatně sehraná koncovka
+	Poorly played endgame	Špatně sehraná koncovka
+	Well played endgame	Dobře sehraná koncovka
+	Very well played endgame	Velmi dobře sehraná koncovka
+	Space advantage	Prostorová převaha
+	Play along the file	Hra po sloupci
+	Play along the diagonal	Hra po diagonále
+	Play in the center	Hra v centru
+	Play on the kingside	Hra na královském křídle
+	Play on the queenside	Hra na dámském křídle
+	Weak point	Slabé pole
+	Endgame	Koncovka
+	Pair of bishops	Dvojice střelců
+	Bishops of opposite colors	Nestejnobarevní střelci
+	Bishops of the same color	Stejnobarevní střelci
+	Connected pawns	Spojení pěšci
+	Isolated pawns	Izolovaní pěšci
+	Doubled pawns	Zdvojení pěšci
+	Passed pawn	Volný pěšec
+	Pawn majority	Pěšcová převaha
+	With	S
+	Without	Bez
+	Positional glyphs	Poziční značky
+	More assessments	Další hodnocení
+	Filter assessments	Filtrovat hodnocení
+	No assessment matches the filter.	Filtru neodpovídá žádné hodnocení.
+	These have no printed sign: PGN writes them as a number ($n).	Tato hodnocení nemají tištěnou značku: PGN je zapisuje jako číslo ($n).
+	Move quality	Kvalita tahu
+	Evaluation	Hodnocení
+	Initiative and time	Iniciativa a čas
+	Space and control	Prostor a kontrola
+	King safety	Bezpečnost krále
+	Pawns	Pěšci
+	Pieces	Figury
+	Phases of the game	Fáze partie
 	Choose a move first: glyphs go on a move.	Nejprve vyberte tah: značky patří k tahu.
 	Not added: this move has as many glyphs as it can take.	Nepřidáno: tento tah už má tolik značek, kolik může mít.
 	One half	Jedna polovina

@@ -2706,6 +2706,97 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	Better is	Besser ist
 	Worse is	Schlechter ist
 	Editorial comment	Redaktioneller Kommentar
+# Every NAG of the PGN standard and the ChessPad extension: the names of the glyphs added to the 28 (most have no printed sign), then the glyph palette's positional row and its list of the assessments without a sign.
+	Singular move	Erzwungener Zug
+	Worst move	Schlechtester Zug
+	Equivalent move	Gleichwertiger Zug
+	Equal chances, quiet position	Gleiche Chancen, ruhige Stellung
+	Equal chances, active position	Gleiche Chancen, aktive Stellung
+	White has a crushing advantage	Weiß hat erdrückenden Vorteil
+	Black has a crushing advantage	Schwarz hat erdrückenden Vorteil
+	Insufficient compensation for the material	Ungenügende Kompensation für das Material
+	More than enough compensation for the material	Mehr als genug Kompensation für das Material
+	Slight development advantage	Leichter Entwicklungsvorsprung
+	Decisive development advantage	Entscheidender Entwicklungsvorsprung
+	Lasting initiative	Anhaltende Initiative
+	Slight counterplay	Leichtes Gegenspiel
+	Decisive counterplay	Entscheidendes Gegenspiel
+	Moderate time pressure	Mäßige Zeitnot
+	Slight space advantage	Leichter Raumvorteil
+	Moderate space advantage	Mäßiger Raumvorteil
+	Decisive space advantage	Entscheidender Raumvorteil
+	Slight control of the center	Leichte Kontrolle des Zentrums
+	Moderate control of the center	Mäßige Kontrolle des Zentrums
+	Decisive control of the center	Entscheidende Kontrolle des Zentrums
+	Slight control of the kingside	Leichte Kontrolle des Königsflügels
+	Moderate control of the kingside	Mäßige Kontrolle des Königsflügels
+	Decisive control of the kingside	Entscheidende Kontrolle des Königsflügels
+	Slight control of the queenside	Leichte Kontrolle des Damenflügels
+	Moderate control of the queenside	Mäßige Kontrolle des Damenflügels
+	Decisive control of the queenside	Entscheidende Kontrolle des Damenflügels
+	Vulnerable first rank	Verwundbare Grundreihe
+	Well protected first rank	Gut geschützte Grundreihe
+	Poorly protected king	Schlecht geschützter König
+	Well protected king	Gut geschützter König
+	Poorly placed king	Schlecht postierter König
+	Well placed king	Gut postierter König
+	Very weak pawn structure	Sehr schwache Bauernstruktur
+	Moderately weak pawn structure	Ziemlich schwache Bauernstruktur
+	Moderately strong pawn structure	Ziemlich starke Bauernstruktur
+	Very strong pawn structure	Sehr starke Bauernstruktur
+	Poor knight placement	Schlecht postierter Springer
+	Good knight placement	Gut postierter Springer
+	Poor bishop placement	Schlecht postierter Läufer
+	Good bishop placement	Gut postierter Läufer
+	Poor rook placement	Schlecht postierter Turm
+	Good rook placement	Gut postierter Turm
+	Poor queen placement	Schlecht postierte Dame
+	Good queen placement	Gut postierte Dame
+	Poor piece coordination	Schlechte Figurenkoordination
+	Good piece coordination	Gute Figurenkoordination
+	Very poorly played opening	Sehr schlecht gespielte Eröffnung
+	Poorly played opening	Schlecht gespielte Eröffnung
+	Well played opening	Gut gespielte Eröffnung
+	Very well played opening	Sehr gut gespielte Eröffnung
+	Very poorly played middlegame	Sehr schlecht gespieltes Mittelspiel
+	Poorly played middlegame	Schlecht gespieltes Mittelspiel
+	Well played middlegame	Gut gespieltes Mittelspiel
+	Very well played middlegame	Sehr gut gespieltes Mittelspiel
+	Very poorly played endgame	Sehr schlecht gespieltes Endspiel
+	Poorly played endgame	Schlecht gespieltes Endspiel
+	Well played endgame	Gut gespieltes Endspiel
+	Very well played endgame	Sehr gut gespieltes Endspiel
+	Space advantage	Raumvorteil
+	Play along the file	Spiel auf der Linie
+	Play along the diagonal	Spiel auf der Diagonale
+	Play in the center	Spiel im Zentrum
+	Play on the kingside	Spiel am Königsflügel
+	Play on the queenside	Spiel am Damenflügel
+	Weak point	Schwaches Feld
+	Endgame	Endspiel
+	Pair of bishops	Läuferpaar
+	Bishops of opposite colors	Ungleichfarbige Läufer
+	Bishops of the same color	Gleichfarbige Läufer
+	Connected pawns	Verbundene Bauern
+	Isolated pawns	Isolierte Bauern
+	Doubled pawns	Doppelbauern
+	Passed pawn	Freibauer
+	Pawn majority	Bauernmehrheit
+	With	Mit
+	Without	Ohne
+	Positional glyphs	Positionelle Zeichen
+	More assessments	Weitere Bewertungen
+	Filter assessments	Bewertungen filtern
+	No assessment matches the filter.	Keine Bewertung passt zum Filter.
+	These have no printed sign: PGN writes them as a number ($n).	Diese haben kein gedrucktes Zeichen: PGN schreibt sie als Zahl ($n).
+	Move quality	Zugqualität
+	Evaluation	Bewertung
+	Initiative and time	Initiative und Zeit
+	Space and control	Raum und Kontrolle
+	King safety	Königssicherheit
+	Pawns	Bauern
+	Pieces	Figuren
+	Phases of the game	Partiephasen
 	Choose a move first: glyphs go on a move.	Wählen Sie zuerst einen Zug: Zeichen gehören zu einem Zug.
 	Not added: this move has as many glyphs as it can take.	Nicht hinzugefügt: Dieser Zug hat schon so viele Zeichen, wie er tragen kann.
 	One half	Ein Halb

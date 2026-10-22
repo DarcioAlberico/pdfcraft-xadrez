@@ -8,7 +8,7 @@
 use std::ops::Range;
 use std::sync::OnceLock;
 
-use pdfcraft_chess::nag::{self, NAGS};
+use pdfcraft_chess::nag::{self, NAGS, Nag};
 use pdfcraft_chess::placement::PieceKind;
 use pdfcraft_chess::san::{Lang, MAX_SAN_LEN, San, SanBody, figurine_piece};
 
@@ -124,7 +124,9 @@ fn symbols(standalone: bool) -> &'static [&'static str] {
     static AFTER_MOVE: OnceLock<Vec<&'static str>> = OnceLock::new();
     static STANDALONE: OnceLock<Vec<&'static str>> = OnceLock::new();
     let build = || {
-        let mut v: Vec<&'static str> = NAGS.iter().filter(|n| n.safe_glyph || (n.suffix_only && !standalone)).map(|n| n.glyph).collect();
+        // Signs only (`read_glyph`): an assessment without one is never looked for.
+        let mut v: Vec<&'static str> =
+            NAGS.iter().filter(|n| n.safe_glyph || (n.suffix_only && !standalone)).filter_map(Nag::read_glyph).filter(|g| !g.is_empty()).collect();
         v.sort_by_key(|s| std::cmp::Reverse(s.chars().count()));
         v
     };

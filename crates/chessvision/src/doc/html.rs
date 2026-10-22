@@ -156,9 +156,8 @@ fn inline_html(inline: &Inline, o: &HtmlOptions<'_>) -> (String, String) {
             (format!("<span class=\"move{review}\"{attrs}>{body}</span>"), shown)
         }
         Inline::Nag { code, .. } => {
-            let (glyph, name) =
-                pdfcraft_chess::nag::by_code(*code).map_or_else(|| (format!("${code}"), String::new()), |n| (n.glyph.to_owned(), n.name.to_owned()));
-            let title = if name.is_empty() { String::new() } else { format!(" title=\"{}\"", esc(&name)) };
+            let (glyph, name) = (pdfcraft_chess::nag::shown(*code), pdfcraft_chess::nag::by_code(*code).map_or("", |n| n.name));
+            let title = if name.is_empty() { String::new() } else { format!(" title=\"{}\"", esc(name)) };
             // With the sign font, the glyph is its letter (the title still names it).
             if o.sign_font.is_some()
                 && let Some(letter) = text_font::ischess_letter(*code)

@@ -2710,6 +2710,97 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Better is	Bolje je
 	Worse is	Slabše je
 	Editorial comment	Uredniški komentar
+# Every NAG of the PGN standard and the ChessPad extension: the names of the glyphs added to the 28 (most have no printed sign), then the glyph palette's positional row and its list of the assessments without a sign.
+	Singular move	Edina smiselna poteza
+	Worst move	Najslabša poteza
+	Equivalent move	Enakovredna poteza
+	Equal chances, quiet position	Enake možnosti, miren položaj
+	Equal chances, active position	Enake možnosti, aktiven položaj
+	White has a crushing advantage	Beli ima uničujočo prednost
+	Black has a crushing advantage	Črni ima uničujočo prednost
+	Insufficient compensation for the material	Nezadostno nadomestilo za material
+	More than enough compensation for the material	Več kot zadostno nadomestilo za material
+	Slight development advantage	Rahla prednost v razvoju
+	Decisive development advantage	Odločilna prednost v razvoju
+	Lasting initiative	Trajna iniciativa
+	Slight counterplay	Rahla protiigra
+	Decisive counterplay	Odločilna protiigra
+	Moderate time pressure	Zmerna časovna stiska
+	Slight space advantage	Rahla prostorska prednost
+	Moderate space advantage	Zmerna prostorska prednost
+	Decisive space advantage	Odločilna prostorska prednost
+	Slight control of the center	Rahel nadzor nad centrom
+	Moderate control of the center	Zmeren nadzor nad centrom
+	Decisive control of the center	Odločilen nadzor nad centrom
+	Slight control of the kingside	Rahel nadzor nad kraljevim krilom
+	Moderate control of the kingside	Zmeren nadzor nad kraljevim krilom
+	Decisive control of the kingside	Odločilen nadzor nad kraljevim krilom
+	Slight control of the queenside	Rahel nadzor nad daminim krilom
+	Moderate control of the queenside	Zmeren nadzor nad daminim krilom
+	Decisive control of the queenside	Odločilen nadzor nad daminim krilom
+	Vulnerable first rank	Ranljiva prva vrsta
+	Well protected first rank	Dobro zaščitena prva vrsta
+	Poorly protected king	Slabo zaščiten kralj
+	Well protected king	Dobro zaščiten kralj
+	Poorly placed king	Slabo postavljen kralj
+	Well placed king	Dobro postavljen kralj
+	Very weak pawn structure	Zelo šibka kmečka struktura
+	Moderately weak pawn structure	Zmerno šibka kmečka struktura
+	Moderately strong pawn structure	Zmerno močna kmečka struktura
+	Very strong pawn structure	Zelo močna kmečka struktura
+	Poor knight placement	Slabo postavljen skakač
+	Good knight placement	Dobro postavljen skakač
+	Poor bishop placement	Slabo postavljen lovec
+	Good bishop placement	Dobro postavljen lovec
+	Poor rook placement	Slabo postavljena trdnjava
+	Good rook placement	Dobro postavljena trdnjava
+	Poor queen placement	Slabo postavljena dama
+	Good queen placement	Dobro postavljena dama
+	Poor piece coordination	Slaba koordinacija figur
+	Good piece coordination	Dobra koordinacija figur
+	Very poorly played opening	Zelo slabo odigrana otvoritev
+	Poorly played opening	Slabo odigrana otvoritev
+	Well played opening	Dobro odigrana otvoritev
+	Very well played opening	Zelo dobro odigrana otvoritev
+	Very poorly played middlegame	Zelo slabo odigrana središčnica
+	Poorly played middlegame	Slabo odigrana središčnica
+	Well played middlegame	Dobro odigrana središčnica
+	Very well played middlegame	Zelo dobro odigrana središčnica
+	Very poorly played endgame	Zelo slabo odigrana končnica
+	Poorly played endgame	Slabo odigrana končnica
+	Well played endgame	Dobro odigrana končnica
+	Very well played endgame	Zelo dobro odigrana končnica
+	Space advantage	Prostorska prednost
+	Play along the file	Igra po liniji
+	Play along the diagonal	Igra po diagonali
+	Play in the center	Igra v centru
+	Play on the kingside	Igra na kraljevem krilu
+	Play on the queenside	Igra na daminem krilu
+	Weak point	Šibko polje
+	Endgame	Končnica
+	Pair of bishops	Par lovcev
+	Bishops of opposite colors	Raznobarvna lovca
+	Bishops of the same color	Istobarvna lovca
+	Connected pawns	Povezani kmeti
+	Isolated pawns	Osamljeni kmeti
+	Doubled pawns	Podvojeni kmeti
+	Passed pawn	Prosti kmet
+	Pawn majority	Kmečka večina
+	With	Z
+	Without	Brez
+	Positional glyphs	Pozicijski znaki
+	More assessments	Več ocen
+	Filter assessments	Filtriraj ocene
+	No assessment matches the filter.	Nobena ocena ne ustreza filtru.
+	These have no printed sign: PGN writes them as a number ($n).	Ti nimajo natisnjenega znaka: PGN jih zapiše kot število ($n).
+	Move quality	Kakovost poteze
+	Evaluation	Ocena
+	Initiative and time	Iniciativa in čas
+	Space and control	Prostor in nadzor
+	King safety	Varnost kralja
+	Pawns	Kmeti
+	Pieces	Figure
+	Phases of the game	Faze partije
 	Choose a move first: glyphs go on a move.	Najprej izberite potezo: znaki gredo na potezo.
 	Not added: this move has as many glyphs as it can take.	Ni dodano: ta poteza ima že toliko znakov, kolikor jih lahko.
 	One half	Ena polovica
