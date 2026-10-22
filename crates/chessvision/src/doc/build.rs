@@ -332,10 +332,12 @@ enum Item<'a> {
 /// a column to its right, or wholly below it on its side of `split`. A diagram or line across
 /// `split` is on both sides: a short line under a centred diagram is read after it, however far
 /// left it starts, while a left-column line below a right-column diagram is still read before
-/// it. A line right of a board narrower than its column, on the board's side of the gutter, is
-/// in the board's column (a scan's row cut at a word gap leaves a piece there): it is read by its
-/// height, not as a column to the right.
-fn diagram_before(d: ViewRect, l: ViewRect, split: f32) -> bool {
+/// it. On a page with a `gutter` (columns found, not the page's middle), a line right of a board
+/// narrower than its column, on the board's side of the gutter, is in the board's column (a scan's
+/// row cut at a word gap leaves a piece there): it is read by its height, not as a column to the
+/// right. Without one, a line right of a board is its text beside it (Chess Tactics: the board on
+/// the left, the solution on the right) and comes after it.
+fn diagram_before(d: ViewRect, l: ViewRect, split: f32, gutter: bool) -> bool {
     let side = |r: ViewRect| {
         if r.x1 <= split {
             Some(false)
@@ -347,7 +349,7 @@ fn diagram_before(d: ViewRect, l: ViewRect, split: f32) -> bool {
     };
     let (sd, sl) = (side(d), side(l));
     let same_column = d.x0 < l.x1 && l.x0 < d.x1;
-    let beside = l.x0 >= d.x1 && sd.is_some() && sd == sl;
+    let beside = gutter && l.x0 >= d.x1 && sd.is_some() && sd == sl;
     if same_column || beside {
         return (l.y0 + l.y1) * 0.5 >= (d.y0 + d.y1) * 0.5;
     }
@@ -358,12 +360,12 @@ fn diagram_before(d: ViewRect, l: ViewRect, split: f32) -> bool {
     l.y0 >= d.y1 && (sd.is_none() || sl.is_none() || sd == sl)
 }
 
-fn interleave<'a>(lines: &[&'a ChessLine], diagrams: &[Option<ViewRect>], split: f32) -> Vec<Item<'a>> {
+fn interleave<'a>(lines: &[&'a ChessLine], diagrams: &[Option<ViewRect>], split: f32, gutter: bool) -> Vec<Item<'a>> {
     let mut items = Vec::with_capacity(lines.len().saturating_add(diagrams.len()));
     let mut next = 0usize;
     for &line in lines {
         while let Some(d) = diagrams.get(next) {
-            if !d.is_some_and(|d| diagram_before(d, line.rect, split)) {
+            if !d.is_some_and(|d| diagram_before(d, line.rect, split, gutter)) {
                 break;
             }
             items.push(Item::Diagram(next));
@@ -531,7 +533,7 @@ fn blocks(input: &PageInput<'_>, carried: Option<u32>) -> (Vec<Block>, Option<u3
     let (puzzles, trailing) = caption_numbers(&kept, &diagram_views);
     // The previous page's trailing label is the first diagram's in reading order.
     let mut carried = carried;
-    for item in interleave(&ordered, &diagram_views, split.unwrap_or(page_width * 0.5)) {
+    for item in interleave(&ordered, &diagram_views, split.unwrap_or(page_width * 0.5), split.is_some()) {
         match item {
             Item::Diagram(i) => {
                 flush(&mut blocks, &mut group, key);
