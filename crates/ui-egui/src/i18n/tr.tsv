@@ -2901,3 +2901,11 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Choose the piece and glyph models that read diagrams and chess text.	Diyagramları ve satranç metnini okuyan taş ve glif modellerini seçin.
 	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	Taş modeli yok: yalnızca satranç yazı tipiyle dizilmiş diyagramlar okunur. Uygulamaya chess-pieces.onnx vermek için Satranç modelleri… kullanın.
 	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	Satranç OCR’ı chess-glyphs modeline ihtiyaç duyar. Uygulamaya chess-glyphs.onnx vermek için satranç panelindeki Satranç modelleri… kullanın.
+# Chess board: moves deleted, told with Undo; a position set up is a new game (plan A8 §7, V2a)
+	Bring the deleted moves back	Silinen hamleleri geri getir
+	Play from this position as a new game. The game on the board stays in the list with its moves.	Bu konumdan yeni bir oyun olarak oyna. Tahtadaki oyun hamleleriyle birlikte listede kalır.
+	Play from this position in place of the game on the board: its moves are deleted (Undo brings them back).	Bu konumdan tahtadaki oyunun yerine oyna: onun hamleleri silinir (Geri al onları geri getirir).
+	Play from this position.	Bu konumdan oyna.
+	Replace this game	Bu oyunu değiştir
+@plural	{n} move deleted|{n} moves deleted	{n} hamle silindi
+@plural	({n} variation)|({n} variations)	({n} varyant)

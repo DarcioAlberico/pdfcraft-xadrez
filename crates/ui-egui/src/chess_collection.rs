@@ -445,13 +445,28 @@ impl ChessCollection {
         }
         let game =
             collection::game_from(&b.game, node).map_err(|e| crate::i18n::fmt(tl!("The FEN couldn't be read: {e}"), &[("e", &e.to_string())]))?;
+        let source = b.source;
+        self.insert_new(game, source);
+        Ok(())
+    }
+
+    /// A new game from position `fen` (one set up on the board), on the side of the game shown,
+    /// right after it and shown; the game shown keeps its moves (plan A8 §7, V2a). Refused for a
+    /// FEN that can't start a game; the error says why.
+    pub(crate) fn new_at(&mut self, fen: &str) -> Result<(), String> {
+        let game = Game::from_fen(fen).map_err(|e| crate::i18n::fmt(tl!("The FEN couldn't be read: {e}"), &[("e", &e.to_string())]))?;
+        self.insert_new(game, None);
+        Ok(())
+    }
+
+    /// `game` as a new game right after the one shown, on its side, and shown.
+    fn insert_new(&mut self, game: Game, source: Option<Source>) {
         let mut board = BoardState::default();
         board.game = game;
-        board.source = b.source;
-        board.flipped = b.flipped;
+        board.source = source;
+        board.flipped = self.active().board.flipped;
         board.refresh_fields(true);
         self.insert_after(self.active_index(), GameEntry::new(board));
-        Ok(())
     }
 
     /// Add `entry` at the end and show it. A blank game alone in the collection gives way to it.
@@ -1947,6 +1962,22 @@ mod tests {
         let before = c.len();
         assert!(c.new_from(None).is_err());
         assert_eq!(c.len(), before);
+    }
+
+    #[test]
+    fn a_position_set_up_is_a_new_game_and_the_game_shown_keeps_its_moves() {
+        let mut c = ChessCollection::new(DocKeys::default(), "c".into());
+        c.active_mut().board = board_with(&["e2e4", "e7e5"]);
+        c.active_mut().board.flipped = true;
+        let fen = "4k3/8/8/8/8/8/4P3/4K3 b - - 0 40";
+        assert!(c.new_at(fen).is_ok());
+        assert_eq!((c.len(), c.active_index()), (2, 1));
+        assert_eq!(c.active().board.game.start_fen(), fen);
+        assert!(c.active().board.flipped, "on the side of the game it came from");
+        assert_eq!(c.active().origin(), None, "a position set up comes from no diagram");
+        assert_eq!(c.get(0).unwrap().board.game.movetext(), "1. e4 e5");
+        assert!(c.new_at("not a fen").is_err());
+        assert_eq!(c.len(), 2);
     }
 
     #[test]

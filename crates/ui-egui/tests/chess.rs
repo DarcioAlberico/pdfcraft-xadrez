@@ -696,9 +696,13 @@ fn the_board_panel_sets_up_a_position_and_draws_on_it() {
         click_square(&mut h, square);
     }
     h.get_by_label("Legal position");
-    h.get_by_label("Done").click();
+    // With moves on the board, Done is a new game; replacing the game is said in so many words.
+    assert!(h.query_by_label("Done").is_none());
+    h.get_by_label("Replace this game").click();
     h.run_steps(2);
     assert!(h.state().chess.study.setup.is_none());
+    // The move it took away is told, with Undo.
+    assert_eq!(h.state().chess.tools.deleted.text(), Some("1 move deleted"));
     assert_eq!(format!("{:?}", h.state().chess.tools.tool), "Navigate", "back to Navigate");
     assert_eq!(h.state().chess.board().game.fen(), "4k3/8/8/8/8/8/8/R3K3 w - - 0 1");
     // One undo step, named for the set-up, takes the game back as it was.
@@ -1639,14 +1643,17 @@ fn the_chess_keys_edit_and_walk_the_game() {
     assert_eq!(movetext(&h), "1. e4 c5 (1... e5 2. Nf3) 2. c3 (2. Nf3 d6)");
     assert_eq!(h.state().chess.board().undo_label().as_deref(), Some("Make main line"));
     put_game(&mut h, FORKS, &[0, 1, 0, 0]);
-    // Delete and Backspace delete the nearest variation, and the move shown goes to its fork.
-    for key in [Key::Delete, Key::Backspace] {
-        host_key(&mut h, Modifiers::NONE, key);
-        assert_eq!(movetext(&h), "1. e4 e5 2. Nf3", "{key:?}");
-        assert_eq!(shown(&h), "e4");
-        assert_eq!(h.state().chess.board().undo_label().as_deref(), Some("Delete a variation"));
-        undo(&mut h);
-    }
+    // Delete deletes the nearest variation, and the move shown goes to its fork.
+    host_key(&mut h, Modifiers::NONE, Key::Delete);
+    assert_eq!(movetext(&h), "1. e4 e5 2. Nf3");
+    assert_eq!(shown(&h), "e4");
+    assert_eq!(h.state().chess.board().undo_label().as_deref(), Some("Delete a variation"));
+    undo(&mut h);
+    // Backspace goes back a move and deletes nothing (plan A8 §7, V2a).
+    let before = movetext(&h);
+    host_key(&mut h, Modifiers::NONE, Key::Backspace);
+    assert_eq!(movetext(&h), before);
+    assert_eq!(shown(&h), "Nf3", "back from 2... d6, in the variation");
     // Home, End and the arrows walk the line of the move shown; Down and Up switch the reply at
     // a fork.
     put_game(&mut h, FORKS, &[0, 1, 0, 0]);
@@ -1728,8 +1735,36 @@ fn three_pages() -> Vec<u8> {
     out
 }
 
+/// A position set up over a game with moves is a new game after it: the game keeps its moves.
+#[test]
+fn a_position_set_up_over_a_game_with_moves_is_a_new_game() {
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    click_square(&mut h, "d2");
+    click_square(&mut h, "d4");
+    h.get_by_label("Set up a position").click();
+    h.run_steps(2);
+    h.get_by_label("Empty board").click();
+    h.run_steps(2);
+    for (piece, square) in [("White king", "e1"), ("Black king", "e8")] {
+        h.get_by_label(piece).click();
+        h.run_steps(1);
+        click_square(&mut h, square);
+    }
+    h.get_by_label("New game from this position").click();
+    h.run_steps(2);
+    let games = h.state().chess.games.collection();
+    assert_eq!((games.len(), games.active_index()), (2, 1));
+    assert_eq!(h.state().chess.board().game.fen(), "4k3/8/8/8/8/8/8/4K3 b - - 0 1");
+    assert_eq!(games.get(0).unwrap().board.game.movetext(), "1. d4", "the game keeps its moves");
+    assert_eq!(h.state().chess.tools.deleted.text(), None, "nothing was deleted");
+    assert_eq!(format!("{:?}", h.state().chess.tools.tool), "Navigate");
+}
+
 /// Delete and Backspace with the chess scope on act on the game only: not on the pages selected
-/// in the page grid, nor on the annotation selected on the page (§4.2). The keys leave the input
+/// in the page grid, nor on the annotation selected on the page (§4.2). Delete takes a variation
+/// and says so with Undo; Backspace only goes back a move (plan A8 §7, V2a). The keys leave the input
 /// in `raw_input_hook`, before the page grid and the annotation layer can see them.
 #[test]
 fn delete_and_backspace_in_the_chess_scope_touch_only_the_game() {
@@ -1759,10 +1794,14 @@ fn delete_and_backspace_in_the_chess_scope_touch_only_the_game() {
     host_key(&mut h, Modifiers::NONE, Key::Delete);
     assert_eq!(pages(&h), 3, "Delete removed no page");
     assert_eq!(movetext(&h), "1. e4 e5 (1... c5) (1... e6) 2. Nf3", "the game's variation went");
+    // The deletion is told, with Undo.
+    assert_eq!(h.state().chess.tools.deleted.text(), Some("1 move deleted (1 variation)"));
     put_game(&mut h, "1. e4 e5 (1... c5) (1... e6) 2. Nf3 *", &[0, 2]);
+    // Backspace goes back a move and deletes nothing (A8-W2).
     host_key(&mut h, Modifiers::NONE, Key::Backspace);
     assert_eq!(pages(&h), 3, "Backspace removed no page");
-    assert_eq!(movetext(&h), "1. e4 e5 (1... c5) 2. Nf3");
+    assert_eq!(movetext(&h), "1. e4 e5 (1... c5) (1... e6) 2. Nf3");
+    assert_eq!(h.state().chess.board().game.ply(), 1, "back to 1. e4");
     assert_eq!(h.state().views[0].target_pages(), [1], "the page selection is untouched");
 
     // The page, with the rectangle selected.
@@ -1777,7 +1816,11 @@ fn delete_and_backspace_in_the_chess_scope_touch_only_the_game() {
     put_game(&mut h, "1. e4 e5 (1... c5) 2. Nf3 *", &[0, 1]);
     host_key(&mut h, Modifiers::NONE, Key::Backspace);
     assert_eq!(annotations(&h), 1, "the selected rectangle is still there");
-    assert_eq!(movetext(&h), "1. e4 e5 2. Nf3", "both variations went");
+    assert_eq!(movetext(&h), "1. e4 e5 (1... c5) 2. Nf3", "Backspace deleted nothing");
+    put_game(&mut h, "1. e4 e5 (1... c5) 2. Nf3 *", &[0, 1]);
+    host_key(&mut h, Modifiers::NONE, Key::Delete);
+    assert_eq!(movetext(&h), "1. e4 e5 2. Nf3", "Delete took the variation");
+    assert_eq!(annotations(&h), 1, "the selected rectangle is still there");
     assert_eq!(pages(&h), 3);
 }
 

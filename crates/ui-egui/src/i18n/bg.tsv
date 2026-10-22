@@ -2868,3 +2868,11 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Choose the piece and glyph models that read diagrams and chess text.	Изберете моделите на фигурите и глифовете, които четат диаграми и шахматен текст.
 	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	Няма модел на фигурите: четат се само диаграми, набрани с шахматен шрифт. Използвайте Шахматни модели…, за да дадете на приложението chess-pieces.onnx.
 	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	Шахматното OCR се нуждае от модела chess-glyphs. Използвайте Шахматни модели… в шахматния панел, за да дадете на приложението chess-glyphs.onnx.
+# Chess board: moves deleted, told with Undo; a position set up is a new game (plan A8 §7, V2a)
+	Bring the deleted moves back	Връщане на изтритите ходове
+	Play from this position as a new game. The game on the board stays in the list with its moves.	Игра от тази позиция като нова партия. Партията на дъската остава в списъка с ходовете си.
+	Play from this position in place of the game on the board: its moves are deleted (Undo brings them back).	Игра от тази позиция на мястото на партията на дъската: ходовете ѝ се изтриват (Отмени ги връща).
+	Play from this position.	Игра от тази позиция.
+	Replace this game	Замяна на тази партия
+@plural	{n} move deleted|{n} moves deleted	Изтрит е {n} ход|Изтрити са {n} хода
+@plural	({n} variation)|({n} variations)	({n} вариант)|({n} варианта)

@@ -3159,3 +3159,11 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Choose the piece and glyph models that read diagrams and chess text.	Chọn mô hình quân cờ và mô hình ký tự để đọc sơ đồ và văn bản cờ vua.
 	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	Không có mô hình quân cờ: chỉ đọc các sơ đồ dàn bằng phông cờ vua. Dùng Mô hình cờ vua… để cung cấp chess-pieces.onnx cho ứng dụng.
 	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	OCR cờ vua cần mô hình chess-glyphs. Dùng Mô hình cờ vua… trong bảng cờ vua để cung cấp chess-glyphs.onnx cho ứng dụng.
+# Chess board: moves deleted, told with Undo; a position set up is a new game (plan A8 §7, V2a)
+@plural	{n} move deleted|{n} moves deleted	Đã xóa {n} nước
+@plural	({n} variation)|({n} variations)	({n} biến)
+	Bring the deleted moves back	Khôi phục các nước đã xóa
+	Play from this position as a new game. The game on the board stays in the list with its moves.	Chơi từ thế cờ này như một ván mới. Ván trên bàn cờ vẫn ở trong danh sách cùng các nước của nó.
+	Replace this game	Thay thế ván này
+	Play from this position in place of the game on the board: its moves are deleted (Undo brings them back).	Chơi từ thế cờ này thay cho ván trên bàn cờ: các nước của ván đó bị xóa (Hoàn tác sẽ khôi phục chúng).
+	Play from this position.	Chơi từ thế cờ này.

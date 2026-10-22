@@ -2869,3 +2869,11 @@ chess undo step	Clear drawings	清除标记
 	Choose the piece and glyph models that read diagrams and chess text.	选择用于读取棋图和棋谱文字的棋子模型和字形模型。
 	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	没有棋子模型：只读取用国际象棋字体排版的棋图。请用“国际象棋模型…”为应用提供 chess-pieces.onnx。
 	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	国际象棋 OCR 需要 chess-glyphs 模型。请用国际象棋面板中的“国际象棋模型…”为应用提供 chess-glyphs.onnx。
+# Chess board: moves deleted, told with Undo; a position set up is a new game (plan A8 §7, V2a)
+	Bring the deleted moves back	恢复已删除的着法
+	Play from this position as a new game. The game on the board stays in the list with its moves.	从此局面作为新对局开始。棋盘上的对局连同其着法保留在列表中。
+	Play from this position in place of the game on the board: its moves are deleted (Undo brings them back).	从此局面开始，替换棋盘上的对局：其着法将被删除（撤销可恢复）。
+	Play from this position.	从此局面开始。
+	Replace this game	替换此对局
+@plural	{n} move deleted|{n} moves deleted	已删除 {n} 步着法
+@plural	({n} variation)|({n} variations)	（{n} 个变化）

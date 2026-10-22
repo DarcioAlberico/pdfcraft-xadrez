@@ -2910,3 +2910,11 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Choose the piece and glyph models that read diagrams and chess text.	Izberite modela figur in glifov, ki bereta diagrame in šahovsko besedilo.
 	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	Ni modela figur: berejo se le diagrami, postavljeni v šahovski pisavi. Z ukazom Šahovski modeli … aplikaciji podajte chess-pieces.onnx.
 	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	Šahovski OCR potrebuje model chess-glyphs. Z ukazom Šahovski modeli … v šahovskem podoknu aplikaciji podajte chess-glyphs.onnx.
+# Chess board: moves deleted, told with Undo; a position set up is a new game (plan A8 §7, V2a)
+	Bring the deleted moves back	Vrni izbrisane poteze
+	Play from this position as a new game. The game on the board stays in the list with its moves.	Igraj iz tega položaja kot novo partijo. Partija na šahovnici ostane na seznamu s svojimi potezami.
+	Play from this position in place of the game on the board: its moves are deleted (Undo brings them back).	Igraj iz tega položaja namesto partije na šahovnici: njene poteze se izbrišejo (Razveljavi jih vrne).
+	Play from this position.	Igraj iz tega položaja.
+	Replace this game	Zamenjaj to partijo
+@plural	{n} move deleted|{n} moves deleted	Izbrisana {n} poteza|Izbrisani {n} potezi|Izbrisane {n} poteze|Izbrisanih {n} potez
+@plural	({n} variation)|({n} variations)	({n} varianta)|({n} varianti)|({n} variante)|({n} variant)

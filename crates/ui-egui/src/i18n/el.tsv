@@ -2911,3 +2911,11 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Choose the piece and glyph models that read diagrams and chess text.	Επιλέξτε τα μοντέλα κομματιών και γλυφών που διαβάζουν διαγράμματα και κείμενο σκακιού.
 	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	Χωρίς μοντέλο κομματιών: διαβάζονται μόνο διαγράμματα στοιχειοθετημένα με γραμματοσειρά σκακιού. Με τα Μοντέλα σκακιού… δώστε στην εφαρμογή το chess-pieces.onnx.
 	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	Το OCR σκακιού χρειάζεται το μοντέλο chess-glyphs. Δώστε στην εφαρμογή το chess-glyphs.onnx με τα Μοντέλα σκακιού… στον πίνακα σκακιού.
+# Chess board: moves deleted, told with Undo; a position set up is a new game (plan A8 §7, V2a)
+	Bring the deleted moves back	Επαναφορά των διαγραμμένων κινήσεων
+	Play from this position as a new game. The game on the board stays in the list with its moves.	Παίξτε από αυτή τη θέση ως νέα παρτίδα. Η παρτίδα της σκακιέρας μένει στη λίστα με τις κινήσεις της.
+	Play from this position in place of the game on the board: its moves are deleted (Undo brings them back).	Παίξτε από αυτή τη θέση αντί για την παρτίδα της σκακιέρας: οι κινήσεις της διαγράφονται (η Αναίρεση τις επαναφέρει).
+	Play from this position.	Παίξτε από αυτή τη θέση.
+	Replace this game	Αντικατάσταση αυτής της παρτίδας
+@plural	{n} move deleted|{n} moves deleted	Διαγράφηκε {n} κίνηση|Διαγράφηκαν {n} κινήσεις
+@plural	({n} variation)|({n} variations)	({n} παραλλαγή)|({n} παραλλαγές)

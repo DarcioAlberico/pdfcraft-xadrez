@@ -2922,3 +2922,11 @@ chess undo step	Clear drawings	remoção dos desenhos
 	Choose the piece and glyph models that read diagrams and chess text.	Escolha os modelos de peças e de glifos que leem diagramas e texto de xadrez.
 	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	Sem modelo de peças: só são lidos os diagramas compostos em fonte de xadrez. Use Modelos de xadrez… para dar ao app o chess-pieces.onnx.
 	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	O OCR de xadrez precisa do modelo chess-glyphs. Use Modelos de xadrez… no painel de xadrez para dar ao app o chess-glyphs.onnx.
+# Chess board: moves deleted, told with Undo; a position set up is a new game (plan A8 §7, V2a)
+@plural	{n} move deleted|{n} moves deleted	{n} lance apagado|{n} lances apagados
+@plural	({n} variation)|({n} variations)	({n} variante)|({n} variantes)
+	Bring the deleted moves back	Trazer de volta os lances apagados
+	Play from this position as a new game. The game on the board stays in the list with its moves.	Jogar a partir desta posição como uma nova partida. A partida do tabuleiro continua na lista com seus lances.
+	Replace this game	Substituir esta partida
+	Play from this position in place of the game on the board: its moves are deleted (Undo brings them back).	Jogar a partir desta posição no lugar da partida do tabuleiro: os lances dela são apagados (Desfazer os traz de volta).
+	Play from this position.	Jogar a partir desta posição.

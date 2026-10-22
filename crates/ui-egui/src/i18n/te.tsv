@@ -2814,3 +2814,11 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Choose the piece and glyph models that read diagrams and chess text.	డయాగ్రామ్‌లను, చదరంగం పాఠ్యాన్ని చదివే పావుల, గ్లిఫ్ మోడళ్లను ఎంచుకోండి.
 	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	పావుల మోడల్ లేదు: చదరంగం ఫాంట్‌లో కూర్చిన డయాగ్రామ్‌లు మాత్రమే చదువుతాం. యాప్‌కు chess-pieces.onnx ఇవ్వడానికి చదరంగం మోడళ్లు… వాడండి.
 	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	చదరంగం OCR కు chess-glyphs మోడల్ కావాలి. యాప్‌కు chess-glyphs.onnx ఇవ్వడానికి చదరంగం ప్యానెల్‌లోని చదరంగం మోడళ్లు… వాడండి.
+# Chess board: moves deleted, told with Undo; a position set up is a new game (plan A8 §7, V2a)
+	Bring the deleted moves back	తొలగించిన ఎత్తులను తిరిగి తెచ్చు
+	Play from this position as a new game. The game on the board stays in the list with its moves.	ఈ స్థితి నుండి కొత్త ఆటగా ఆడండి. బోర్డుపై ఉన్న ఆట దాని ఎత్తులతో జాబితాలోనే ఉంటుంది.
+	Play from this position in place of the game on the board: its moves are deleted (Undo brings them back).	బోర్డుపై ఉన్న ఆట స్థానంలో ఈ స్థితి నుండి ఆడండి: దాని ఎత్తులు తొలగించబడతాయి (రద్దు చేయి వాటిని తిరిగి తెస్తుంది).
+	Play from this position.	ఈ స్థితి నుండి ఆడండి.
+	Replace this game	ఈ ఆటను మార్చు
+@plural	{n} move deleted|{n} moves deleted	{n} ఎత్తు తొలగించబడింది|{n} ఎత్తులు తొలగించబడ్డాయి
+@plural	({n} variation)|({n} variations)	({n} ఉపవరుస)|({n} ఉపవరుసలు)

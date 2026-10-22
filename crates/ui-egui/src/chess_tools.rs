@@ -118,6 +118,8 @@ pub struct ToolState {
     pub(crate) palette_drawn: Option<(egui::ViewportId, u64)>,
     /// Where the palette first opens: beside the rail's button, as last drawn.
     palette_anchor: Option<egui::Pos2>,
+    /// Moves that left the game, told with Undo (plan A8 §7, V2a).
+    pub deleted: crate::chess_deleted::DeleteWatch,
 }
 
 impl ToolState {
@@ -393,7 +395,8 @@ const STRUCTURE: Group = Group {
             id: "delete-variation",
             icon: "trash-2",
             label: |_| tl!("Delete variation").to_owned(),
-            keys: &[ChessKey::plain(Key::Delete), ChessKey::plain(Key::Backspace)],
+            // Not Backspace, which steps back (A8-W2: pressed to go back, it deleted the line).
+            keys: &[ChessKey::plain(Key::Delete)],
             command: Some("chess.variation.delete"),
             kind: Kind::Action(|b, t| structure(b, Op::DeleteVariation, t)),
             enabled: has_moves,
@@ -633,9 +636,11 @@ enum Nav {
     End,
 }
 
-const NAV_KEYS: [(ChessKey, Nav); 7] = [
+const NAV_KEYS: [(ChessKey, Nav); 8] = [
     (ESC, Nav::Escape),
     (ChessKey::plain(Key::ArrowLeft), Nav::Back),
+    // Backspace goes back a move, as it goes back in a browser; it deletes nothing.
+    (ChessKey::plain(Key::Backspace), Nav::Back),
     (ChessKey::plain(Key::ArrowRight), Nav::Forward),
     (ChessKey::plain(Key::ArrowUp), Nav::Up),
     (ChessKey::plain(Key::ArrowDown), Nav::Down),
@@ -924,7 +929,20 @@ pub(crate) fn with_rail<R>(ui: &mut egui::Ui, chess: &mut ChessState, body: impl
         handle_key(ui.ctx(), chess, key, m, focused_group);
     }
     typed_glyphs(ui, chess);
-    let body_rect = Rect::from_min_max(pos2(area.min.x + RAIL_WIDTH + 1.0, area.min.y), area.max);
+    // Moves that left the game (the keys just handled, or the panel last frame): how many, and
+    // Undo, in a strip at the top of the panel that pushes it down rather than cover it.
+    let game = chess.games.scope_stamp().0;
+    chess.tools.deleted.see(game, chess.games.board());
+    let mut top = area.min.y;
+    if chess.tools.deleted.text().is_some() {
+        let strip = Rect::from_min_max(pos2(area.min.x + RAIL_WIDTH + 5.0, area.min.y + 4.0), pos2(area.max.x - 4.0, area.max.y));
+        let mut notice_ui = ui.new_child(UiBuilder::new().id_salt("chess-deleted").max_rect(strip).layout(Layout::top_down(Align::Min)));
+        if chess.tools.deleted.show(&mut notice_ui, &t) {
+            chess.board_mut().undo();
+        }
+        top = notice_ui.min_rect().bottom() + 4.0;
+    }
+    let body_rect = Rect::from_min_max(pos2(area.min.x + RAIL_WIDTH + 1.0, top), area.max);
     let mut body_ui = ui.new_child(UiBuilder::new().id_salt("chess-rail-body").max_rect(body_rect).layout(*ui.layout()));
     let out = body(&mut body_ui, chess);
     // The glyph palette floats over the window the rail is in (U1).

@@ -2907,3 +2907,11 @@ chess undo step	Clear drawings	描画の消去
 	Choose the piece and glyph models that read diagrams and chess text.	図とチェスのテキストを読む駒モデルとグリフモデルを選びます。
 	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	駒モデルがありません: チェスフォントで組まれた図だけを読みます。チェスモデル… で chess-pieces.onnx を指定してください。
 	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	チェス OCR には chess-glyphs モデルが必要です。チェスパネルのチェスモデル… で chess-glyphs.onnx を指定してください。
+# Chess board: moves deleted, told with Undo; a position set up is a new game (plan A8 §7, V2a)
+@plural	{n} move deleted|{n} moves deleted	{n} 手を削除しました
+@plural	({n} variation)|({n} variations)	(変化 {n} 個)
+	Bring the deleted moves back	削除した手を元に戻す
+	Play from this position as a new game. The game on the board stays in the list with its moves.	この局面から新しい対局として指します。盤上の対局は手順ごと一覧に残ります。
+	Replace this game	この対局を置き換える
+	Play from this position in place of the game on the board: its moves are deleted (Undo brings them back).	盤上の対局の代わりにこの局面から指します。その手順は削除されます（取り消しで戻せます）。
+	Play from this position.	この局面から指します。

@@ -2904,3 +2904,11 @@ chess undo step	Clear drawings	rajzok törlése
 	Choose the piece and glyph models that read diagrams and chess text.	A diagramokat és a sakkszöveget olvasó bábu- és jelmodell kiválasztása.
 	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	Nincs bábumodell: csak a sakkbetűtípussal szedett diagramokat olvassa. A Sakkmodellek… paranccsal adja meg az alkalmazásnak a chess-pieces.onnx fájlt.
 	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	A sakk-OCR-hez a chess-glyphs modell kell. A sakkpanel Sakkmodellek… gombjával adja meg az alkalmazásnak a chess-glyphs.onnx fájlt.
+# Chess board: moves deleted, told with Undo; a position set up is a new game (plan A8 §7, V2a)
+	Bring the deleted moves back	Törölt lépések visszahozása
+	Play from this position as a new game. The game on the board stays in the list with its moves.	Játék ebből az állásból új játszmaként. A táblán lévő játszma a lépéseivel együtt a listában marad.
+	Play from this position in place of the game on the board: its moves are deleted (Undo brings them back).	Játék ebből az állásból a táblán lévő játszma helyett: annak lépései törlődnek (a Visszavonás visszahozza őket).
+	Play from this position.	Játék ebből az állásból.
+	Replace this game	A játszma cseréje
+@plural	{n} move deleted|{n} moves deleted	{n} lépés törölve|{n} lépés törölve
+@plural	({n} variation)|({n} variations)	({n} változat)|({n} változat)

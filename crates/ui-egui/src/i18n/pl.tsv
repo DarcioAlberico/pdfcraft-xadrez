@@ -2881,3 +2881,11 @@ chess undo step	Clear drawings	usunięcie rysunków
 	Choose the piece and glyph models that read diagrams and chess text.	Wybierz modele bierek i glifów, które odczytują diagramy i tekst szachowy.
 	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	Brak modelu bierek: odczytywane są tylko diagramy złożone czcionką szachową. Użyj Modele szachowe…, aby podać aplikacji chess-pieces.onnx.
 	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	Szachowy OCR potrzebuje modelu chess-glyphs. Użyj Modele szachowe… w panelu szachowym, aby podać aplikacji chess-glyphs.onnx.
+# Chess board: moves deleted, told with Undo; a position set up is a new game (plan A8 §7, V2a)
+	Bring the deleted moves back	Przywróć usunięte ruchy
+	Play from this position as a new game. The game on the board stays in the list with its moves.	Graj z tej pozycji jako nowa partia. Partia na szachownicy zostaje na liście ze swoimi ruchami.
+	Play from this position in place of the game on the board: its moves are deleted (Undo brings them back).	Graj z tej pozycji zamiast partii na szachownicy: jej ruchy zostaną usunięte (Cofnij je przywróci).
+	Play from this position.	Graj z tej pozycji.
+	Replace this game	Zastąp tę partię
+@plural	{n} move deleted|{n} moves deleted	Usunięto {n} ruch|Usunięto {n} ruchy|Usunięto {n} ruchów
+@plural	({n} variation)|({n} variations)	({n} wariant)|({n} warianty)|({n} wariantów)

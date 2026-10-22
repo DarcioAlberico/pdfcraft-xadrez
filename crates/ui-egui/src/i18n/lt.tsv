@@ -3157,3 +3157,11 @@ chess undo step	Clear drawings	piešinių valymą
 	Choose the piece and glyph models that read diagrams and chess text.	Pasirinkti figūrų ir glifų modelius, kurie skaito diagramas ir šachmatų tekstą.
 	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	Nėra figūrų modelio: skaitomos tik šachmatų šriftu surinktos diagramos. Naudodami Šachmatų modeliai… nurodykite programai chess-pieces.onnx.
 	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	Šachmatų OCR reikia modelio chess-glyphs. Naudodami Šachmatų modeliai… šachmatų skydelyje nurodykite programai chess-glyphs.onnx.
+# Chess board: moves deleted, told with Undo; a position set up is a new game (plan A8 §7, V2a)
+@plural	{n} move deleted|{n} moves deleted	{n} ėjimas ištrintas|{n} ėjimai ištrinti|{n} ėjimų ištrinta
+@plural	({n} variation)|({n} variations)	({n} variantas)|({n} variantai)|({n} variantų)
+	Bring the deleted moves back	Grąžinti ištrintus ėjimus
+	Play from this position as a new game. The game on the board stays in the list with its moves.	Žaisti iš šios pozicijos kaip naują partiją. Lentos partija lieka sąraše su savo ėjimais.
+	Replace this game	Pakeisti šią partiją
+	Play from this position in place of the game on the board: its moves are deleted (Undo brings them back).	Žaisti iš šios pozicijos vietoj lentos partijos: jos ėjimai ištrinami (Anuliuoti juos grąžina).
+	Play from this position.	Žaisti iš šios pozicijos.
