@@ -122,6 +122,9 @@ pub(crate) struct Body {
     pub active: usize,
     #[serde(default)]
     pub games: Vec<GameRecord>,
+    /// The games as they were before moves left them (plan A8 §7, V5); older files have none.
+    #[serde(default)]
+    pub trash: Vec<crate::chess_trash::Trashed>,
 }
 
 /// One game as stored.
@@ -259,12 +262,18 @@ pub(crate) fn restore(record: &GameRecord, doc: Option<DocId>) -> Option<BoardSt
 }
 
 /// The first line and the second of a document's file. `Err(TooBig)` above the caps.
-pub(crate) fn encode(keys: &DocKeys, active: usize, boards: &[&BoardState], instance: Option<String>) -> Result<(Header, String), Blocked> {
+pub(crate) fn encode(
+    keys: &DocKeys,
+    active: usize,
+    boards: &[&BoardState],
+    trash: &[crate::chess_trash::Trashed],
+    instance: Option<String>,
+) -> Result<(Header, String), Blocked> {
     if boards.len() > MAX_GAMES {
         return Err(Blocked::TooBig);
     }
     let games = boards.iter().map(|b| record(b)).collect::<Option<Vec<_>>>().ok_or(Blocked::TooBig)?;
-    let body = serde_json::to_string(&Body { active, games }).map_err(|e| Blocked::Io(e.to_string()))?;
+    let body = serde_json::to_string(&Body { active, games, trash: trash.to_vec() }).map_err(|e| Blocked::Io(e.to_string()))?;
     if body.len() > MAX_BODY_BYTES {
         return Err(Blocked::TooBig);
     }
@@ -321,11 +330,18 @@ impl Store {
     }
 
     /// Store a document's games under `cid`.
-    pub(crate) fn write(&mut self, cid: &str, keys: &DocKeys, active: usize, boards: &[&BoardState]) -> Result<(), Blocked> {
+    pub(crate) fn write(
+        &mut self,
+        cid: &str,
+        keys: &DocKeys,
+        active: usize,
+        boards: &[&BoardState],
+        trash: &[crate::chess_trash::Trashed],
+    ) -> Result<(), Blocked> {
         match self {
             Store::Off => Ok(()),
-            Store::Files(f) => f.write(cid, keys, active, boards),
-            Store::Memory(m) => m.write(cid, keys, active, boards),
+            Store::Files(f) => f.write(cid, keys, active, boards, trash),
+            Store::Memory(m) => m.write(cid, keys, active, boards, trash),
         }
     }
 
@@ -445,12 +461,19 @@ impl FileStore {
         found
     }
 
-    fn write(&mut self, cid: &str, keys: &DocKeys, active: usize, boards: &[&BoardState]) -> Result<(), Blocked> {
+    fn write(
+        &mut self,
+        cid: &str,
+        keys: &DocKeys,
+        active: usize,
+        boards: &[&BoardState],
+        trash: &[crate::chess_trash::Trashed],
+    ) -> Result<(), Blocked> {
         if !plain_cid(cid) {
             return Err(Blocked::Io(format!("bad collection id {cid:?}")));
         }
         let Some(instance) = self.recovery.instance() else { return Err(Blocked::NoLock) };
-        let (header, body) = encode(keys, active, boards, Some(instance.clone()))?;
+        let (header, body) = encode(keys, active, boards, trash, Some(instance.clone()))?;
         let path = self.path(cid);
         match FileStore::header(&path) {
             Ok(Some(h)) => {
@@ -549,8 +572,15 @@ impl MemoryStore {
         found
     }
 
-    fn write(&mut self, cid: &str, keys: &DocKeys, active: usize, boards: &[&BoardState]) -> Result<(), Blocked> {
-        let (header, body) = encode(keys, active, boards, None)?;
+    fn write(
+        &mut self,
+        cid: &str,
+        keys: &DocKeys,
+        active: usize,
+        boards: &[&BoardState],
+        trash: &[crate::chess_trash::Trashed],
+    ) -> Result<(), Blocked> {
+        let (header, body) = encode(keys, active, boards, trash, None)?;
         let others: usize = self.entries.iter().filter(|e| e.cid != cid).map(|e| e.body.len().saturating_add(512)).sum();
         if others.saturating_add(body.len()) > WEB_MAX_BYTES {
             return Err(Blocked::TooBig);
@@ -744,14 +774,15 @@ pub(crate) mod tests {
     fn caps_hold_and_bad_records_are_counted() {
         let one = BoardState::default();
         let many: Vec<&BoardState> = std::iter::repeat_n(&one, MAX_GAMES + 1).collect();
-        assert_eq!(encode(&keys(), 0, &many, None).err(), Some(Blocked::TooBig));
-        assert!(encode(&keys(), 0, &many[..MAX_GAMES], None).is_ok());
+        assert_eq!(encode(&keys(), 0, &many, &[], None).err(), Some(Blocked::TooBig));
+        assert!(encode(&keys(), 0, &many[..MAX_GAMES], &[], None).is_ok());
         let body = Body {
             active: 0,
             games: vec![
                 GameRecord { pgn: "1. e4 e5".into(), ..GameRecord::default() },
                 GameRecord { illegal_fen: Some("junk".into()), ..GameRecord::default() },
             ],
+            trash: Vec::new(),
         };
         let (boards, lost) = decode(&body, None);
         assert_eq!((boards.len(), lost), (1, 1));
@@ -775,7 +806,8 @@ pub(crate) mod tests {
         let (mut m, bad) = MemoryStore::load(None);
         assert!(!bad);
         let board = annotated();
-        m.write("abc-1", &keys(), 0, &[&board]).unwrap();
+        let trash = vec![crate::chess_trash::Trashed { pgn: "1. e4 e5 *".into(), name: "Game 1".into(), moves: 2, deleted: 1, at: 7 }];
+        m.write("abc-1", &keys(), 0, &[&board], &trash).unwrap();
         let value = m.take_value().unwrap();
         assert_eq!(m.take_value(), None, "taken once per change");
         let (mut m, bad) = MemoryStore::load(Some(&value));
@@ -784,6 +816,7 @@ pub(crate) mod tests {
         let (cid, body) = found.games.unwrap();
         assert_eq!(cid, "abc-1");
         same(&board, &decode(&body, None).0[0]);
+        assert_eq!(body.trash, trash, "the deleted moves kept come back too");
         // Taken by another open document: not found again.
         assert!(m.find(&keys(), &HashSet::from(["abc-1".to_owned()])).games.is_none());
         // Over the web's cap: refused, nothing evicted.
@@ -797,7 +830,7 @@ pub(crate) mod tests {
         for _ in 0..MAX_GAMES {
             boards.push(&big);
         }
-        assert_eq!(m.write("abc-2", &keys(), 0, &boards), Err(Blocked::TooBig));
+        assert_eq!(m.write("abc-2", &keys(), 0, &boards, &[]), Err(Blocked::TooBig));
         assert!(m.find(&keys(), &HashSet::new()).games.is_some(), "the first document's games are still there");
         // A value that can't be read is kept aside and the store starts empty.
         for junk in ["{not json", "{\"format\":\"pdfcraft-chess-games\",\"version\":99,\"entries\":[]}"] {
@@ -815,7 +848,7 @@ pub(crate) mod tests {
         let recovery = crate::RecoveryStore::new(dir.join("recovery"));
         recovery.claim();
         let mut store = FileStore::new(dir.join("chess"), recovery);
-        store.write("abc-1", &keys(), 1, &[&annotated(), &BoardState::default()]).unwrap();
+        store.write("abc-1", &keys(), 1, &[&annotated(), &BoardState::default()], &[]).unwrap();
         let path = store.path("abc-1");
         let valid = std::fs::read(&path).unwrap();
         (dir, store, path, valid)

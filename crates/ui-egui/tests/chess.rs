@@ -1735,6 +1735,35 @@ fn three_pages() -> Vec<u8> {
     out
 }
 
+/// Moves deleted go into the document's trash, which outlives Undo: Deleted moves… under the list
+/// of games opens the game as it was as a new game (plan A8 §7, V5).
+#[test]
+fn deleted_moves_are_kept_and_open_again_as_a_new_game() {
+    use egui::{Key, Modifiers};
+    let mut h = harness();
+    // Tall enough for the list of games under the board to be on screen.
+    h.set_size(egui::vec2(1400.0, 1600.0));
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, "1. e4 e5 (1... c5 2. Nf3) 2. Nf3 *", &[0, 1]);
+    click_board_title(&mut h);
+    assert!(h.query_by_label_contains("Deleted moves").is_none(), "nothing kept yet");
+    host_key(&mut h, Modifiers::NONE, Key::Delete);
+    h.run_steps(2);
+    assert_eq!(movetext(&h), "1. e4 e5 2. Nf3");
+    assert_eq!(h.state().chess.games.collection().trash().len(), 1);
+    h.get_by_label("Deleted moves (1)…").click();
+    h.run_steps(2);
+    h.get_by_label_contains("5 moves · 2 moves deleted");
+    h.get_by_label("Open as a new game").click();
+    h.run_steps(2);
+    let games = h.state().chess.games.collection();
+    assert_eq!((games.len(), games.active_index()), (2, 1));
+    assert_eq!(movetext(&h), "1. e4 e5 (1... c5 2. Nf3) 2. Nf3", "the game as it was");
+    assert_eq!(games.get(0).unwrap().board.game.movetext(), "1. e4 e5 2. Nf3");
+    assert!(games.trash().is_empty(), "taken out of the trash");
+}
+
 /// A position set up over a game with moves is a new game after it: the game keeps its moves.
 #[test]
 fn a_position_set_up_over_a_game_with_moves_is_a_new_game() {

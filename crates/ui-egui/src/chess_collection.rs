@@ -311,6 +311,8 @@ pub struct ChessCollection {
     /// The collection's id in the store.
     cid: String,
     autosave: Autosave,
+    /// The games as they were before moves left them, kept with the games (plan A8 §7, V5).
+    trash: crate::chess_trash::Trash,
 }
 
 impl Default for ChessCollection {
@@ -323,7 +325,14 @@ impl Default for ChessCollection {
 impl ChessCollection {
     /// One blank game.
     fn new(keys: DocKeys, cid: String) -> ChessCollection {
-        let mut c = ChessCollection { keys, games: GameList::new(), history: ListHistory::default(), cid, autosave: Autosave::default() };
+        let mut c = ChessCollection {
+            keys,
+            games: GameList::new(),
+            history: ListHistory::default(),
+            cid,
+            autosave: Autosave::default(),
+            trash: crate::chess_trash::Trash::default(),
+        };
         c.settle();
         c
     }
@@ -459,6 +468,32 @@ impl ChessCollection {
         Ok(())
     }
 
+    /// The deleted moves kept.
+    pub fn trash(&self) -> &crate::chess_trash::Trash {
+        &self.trash
+    }
+
+    /// `deleted` moves just left the game shown: the game as it was (the state its last undo
+    /// step goes back to) goes into the trash.
+    pub(crate) fn trash_deleted(&mut self, deleted: usize) {
+        let number = self.active_index().saturating_add(1);
+        let entry = self.active();
+        let name = entry.name(number);
+        if let Some(before) = entry.board.history.undo_state() {
+            let game = before.game.clone();
+            self.trash.keep(&game, &name, deleted);
+        }
+    }
+
+    /// Open game `index` of the trash as a new game, right after the one shown, and take it out
+    /// of the trash. Refused when it can't be read back.
+    pub(crate) fn restore_trashed(&mut self, index: usize) -> Result<(), String> {
+        let item = self.trash.take(index).ok_or_else(|| tl!("Those deleted moves are no longer kept.").to_string())?;
+        let (game, _) = Game::from_pgn(&item.pgn).map_err(|e| crate::i18n::fmt(tl!("The PGN couldn't be read: {e}"), &[("e", &e.to_string())]))?;
+        self.insert_new(game, None);
+        Ok(())
+    }
+
     /// `game` as a new game right after the one shown, on its side, and shown.
     fn insert_new(&mut self, game: Game, source: Option<Source>) {
         let mut board = BoardState::default();
@@ -519,6 +554,7 @@ impl ChessCollection {
         let mut h = std::collections::hash_map::DefaultHasher::new();
         self.active_index().hash(&mut h);
         self.active().board.game.current().hash(&mut h);
+        self.trash.stamp().hash(&mut h);
         for e in self.iter() {
             e.uid.hash(&mut h);
             e.board.history.edits().hash(&mut h);
@@ -716,6 +752,7 @@ impl ChessGames {
         if let Some((cid, body)) = found.games {
             let (boards, lost) = chess_autosave::decode(&body, None);
             let mut c = ChessCollection::from_boards(DocKeys::default(), cid, boards, body.active);
+            c.trash = crate::chess_trash::Trash::from_stored(body.trash);
             c.autosave.stored = true;
             self.none = c;
             if lost > 0 {
@@ -756,6 +793,7 @@ impl ChessGames {
                 if let Some((cid, body)) = found.games {
                     let (boards, lost) = chess_autosave::decode(&body, Some(id));
                     let mut c = ChessCollection::from_boards(keys.clone(), cid, boards, body.active);
+                    c.trash = crate::chess_trash::Trash::from_stored(body.trash);
                     c.autosave.stored = true;
                     restored = Some((c, lost));
                 }
@@ -871,7 +909,7 @@ impl Writer<'_> {
         }
         let keys = ChessGames::store_keys(c);
         let boards: Vec<&BoardState> = c.iter().map(|e| &e.board).collect();
-        match self.store.write(&c.cid, &keys, c.active_index(), &boards) {
+        match self.store.write(&c.cid, &keys, c.active_index(), &boards, &c.trash.stored()) {
             Ok(()) => {
                 c.autosave.saved = fp;
                 c.autosave.stored = true;
@@ -965,6 +1003,55 @@ pub enum GamesAction {
     MoveTo(usize, usize),
     /// A new game from the position of a move of the game shown (`None`: the move shown).
     NewFrom(Option<NodeId>),
+    /// Open game `n` of the trash (deleted moves kept) as a new game (plan A8 §7, V5).
+    Restore(usize),
+}
+
+/// Most deleted games the menu lists (the newest).
+const MENU_TRASHED: usize = 10;
+
+/// **Deleted moves (n)…** under the list, while the document's trash holds games: its popup
+/// lists them, newest first (name, moves, how many went, when, the first moves), each with
+/// **Open as a new game** (plan A8 §7, V5).
+fn trash_button(ui: &mut egui::Ui, t: &Tokens, c: &ChessCollection) -> Option<GamesAction> {
+    let trash = c.trash();
+    if trash.is_empty() {
+        return None;
+    }
+    let label = crate::i18n::fmt(tl!("Deleted moves ({n})…"), &[("n", &trash.len().to_string())]);
+    let mut action = None;
+    ui.menu_button(label, |ui| {
+        ui.set_max_width(320.0);
+        // What these are, said in the menu (a tooltip on the button would lie over the menu).
+        let what = tl!("Games as they were before moves were deleted from them, kept with the autosave. Open one as a new game.");
+        ui.label(egui::RichText::new(what).small().color(t.text_muted));
+        ui.separator();
+        let lang = crate::i18n::current();
+        let count = |n: usize| u64::try_from(n).unwrap_or(u64::MAX);
+        for (index, item) in trash.newest_first().take(MENU_TRASHED) {
+            ui.push_id(("chess-trash", index), |ui| {
+                let moves = crate::i18n::trn(lang, count(item.moves), "{n} move", "{n} moves");
+                let gone = crate::i18n::trn(lang, count(item.deleted), "{n} move deleted", "{n} moves deleted");
+                ui.label(egui::RichText::new(&item.name).strong());
+                let when = crate::chess_trash::ago(item.at);
+                let detail = if when.is_empty() { format!("{moves} · {gone}") } else { format!("{moves} · {gone} · {when}") };
+                ui.label(egui::RichText::new(detail).small().color(t.text_muted));
+                let preview = crate::chess_trash::preview(item);
+                if !preview.is_empty() {
+                    ui.label(egui::RichText::new(preview).small().monospace());
+                }
+                if ui.button(tl!("Open as a new game")).clicked() {
+                    action = Some(GamesAction::Restore(index));
+                }
+                ui.separator();
+            });
+        }
+        let more = trash.len().saturating_sub(MENU_TRASHED);
+        if more > 0 {
+            ui.label(egui::RichText::new(crate::i18n::fmt(tl!("…and {n} older"), &[("n", &more.to_string())])).small().color(t.text_muted));
+        }
+    });
+    action
 }
 
 /// Most list keys kept between two frames.
@@ -1209,6 +1296,9 @@ pub(crate) fn games_section(ui: &mut egui::Ui, t: &Tokens, games: &mut ChessGame
             }
             if ui.small_button(tl!("Save PGN…")).clicked() {
                 action = Some(GamesAction::Save);
+            }
+            if let Some(a) = trash_button(ui, t, c) {
+                action = Some(a);
             }
         });
     });
@@ -1631,6 +1721,13 @@ impl PdfCraftApp {
                 }
             }
             GamesAction::NewFrom(node) => match self.chess.games.collection_mut().new_from(node) {
+                Ok(()) => {
+                    self.chess.study.setup = None;
+                    self.chess.enter_scope();
+                }
+                Err(why) => self.notify(why),
+            },
+            GamesAction::Restore(index) => match self.chess.games.collection_mut().restore_trashed(index) {
                 Ok(()) => {
                     self.chess.study.setup = None;
                     self.chess.enter_scope();

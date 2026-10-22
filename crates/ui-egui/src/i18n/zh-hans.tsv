@@ -2877,3 +2877,10 @@ chess undo step	Clear drawings	清除标记
 	Replace this game	替换此对局
 @plural	{n} move deleted|{n} moves deleted	已删除 {n} 步着法
 @plural	({n} variation)|({n} variations)	（{n} 个变化）
+# Chess: deleted moves kept with the autosave (plan A8 §7, V5)
+	Those deleted moves are no longer kept.	这些已删除的着法已不再保留。
+	Deleted moves ({n})…	已删除的着法（{n}）…
+	Games as they were before moves were deleted from them, kept with the autosave. Open one as a new game.	删除着法之前的对局，随自动保存一起保留。可将其中一个作为新对局打开。
+	Open as a new game	作为新对局打开
+@plural	{n} move|{n} moves	{n} 步
+	…and {n} older	…以及更早的 {n} 个

@@ -2876,3 +2876,10 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Replace this game	Замяна на тази партия
 @plural	{n} move deleted|{n} moves deleted	Изтрит е {n} ход|Изтрити са {n} хода
 @plural	({n} variation)|({n} variations)	({n} вариант)|({n} варианта)
+# Chess: deleted moves kept with the autosave (plan A8 §7, V5)
+	Those deleted moves are no longer kept.	Тези изтрити ходове вече не се пазят.
+	Deleted moves ({n})…	Изтрити ходове ({n})…
+	Games as they were before moves were deleted from them, kept with the autosave. Open one as a new game.	Партии такива, каквито бяха, преди да се изтрият ходове от тях, пазени с автоматичното запазване. Отворете една като нова партия.
+	Open as a new game	Отваряне като нова партия
+@plural	{n} move|{n} moves	{n} ход|{n} хода
+	…and {n} older	…и още по-стари: {n}

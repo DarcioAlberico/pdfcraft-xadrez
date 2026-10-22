@@ -49,6 +49,7 @@ mod chess_source;
 mod chess_study_ui;
 mod chess_text_ui;
 mod chess_tools;
+mod chess_trash;
 mod chess_ui;
 mod chess_window;
 pub use chess_window::{ChessWindowTab, SurfaceFailuresFn};

@@ -3167,3 +3167,10 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Replace this game	Thay thế ván này
 	Play from this position in place of the game on the board: its moves are deleted (Undo brings them back).	Chơi từ thế cờ này thay cho ván trên bàn cờ: các nước của ván đó bị xóa (Hoàn tác sẽ khôi phục chúng).
 	Play from this position.	Chơi từ thế cờ này.
+# Chess: deleted moves kept with the autosave (plan A8 §7, V5)
+@plural	{n} move|{n} moves	{n} nước
+	Those deleted moves are no longer kept.	Các nước đã xóa đó không còn được lưu giữ.
+	Deleted moves ({n})…	Nước đã xóa ({n})…
+	Games as they were before moves were deleted from them, kept with the autosave. Open one as a new game.	Các ván như trước khi bị xóa nước, được lưu cùng bản tự động lưu. Mở một ván như một ván mới.
+	Open as a new game	Mở như một ván mới
+	…and {n} older	…và {n} ván cũ hơn

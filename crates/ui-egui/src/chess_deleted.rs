@@ -59,8 +59,10 @@ fn text(moves: usize, variations: usize) -> String {
 }
 
 impl DeleteWatch {
-    /// Look at the board of game `game` (its id in the collection), once a frame.
-    pub(crate) fn see(&mut self, game: u64, board: &BoardState) {
+    /// Look at the board of game `game` (its id in the collection), once a frame. How many moves
+    /// left it, when that is new this frame.
+    pub(crate) fn see(&mut self, game: u64, board: &BoardState) -> Option<usize> {
+        let mut deleted = None;
         let revision = board.game.revision();
         let step = board.history.seq(true).unwrap_or(0);
         let fresh = step > self.newest_step;
@@ -75,6 +77,7 @@ impl DeleteWatch {
                 {
                     let text = text(before.moves - moves, before.variations.saturating_sub(variations));
                     self.notice = Some(Notice { text, game, revision });
+                    deleted = Some(before.moves - moves);
                 }
                 self.seen = Some(Seen { game, revision, moves, variations });
             }
@@ -82,6 +85,7 @@ impl DeleteWatch {
         if self.notice.as_ref().is_some_and(|n| n.game != game || n.revision != revision) {
             self.notice = None;
         }
+        deleted
     }
 
     /// The notice's text, while it shows.
@@ -140,10 +144,11 @@ mod tests {
             s.game.truncate();
             Some(ChessEdit::DeleteMoves)
         });
-        w.see(1, &b);
+        assert_eq!(w.see(1, &b), Some(5));
         assert_eq!(w.text(), Some("5 moves deleted (2 variations)"));
-        // Still shown while the game is as the deletion left it; gone once it changes.
-        w.see(1, &b);
+        // Still shown while the game is as the deletion left it (and told once); gone once it
+        // changes.
+        assert_eq!(w.see(1, &b), None);
         assert!(w.text().is_some());
         assert!(b.undo());
         w.see(1, &b);

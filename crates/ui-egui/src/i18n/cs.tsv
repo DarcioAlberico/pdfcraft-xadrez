@@ -2987,3 +2987,10 @@ chess undo step	Clear drawings	smazání kreseb
 	Replace this game	Nahradit tuto partii
 @plural	{n} move deleted|{n} moves deleted	Smazán {n} tah|Smazány {n} tahy|Smazáno {n} tahů
 @plural	({n} variation)|({n} variations)	({n} varianta)|({n} varianty)|({n} variant)
+# Chess: deleted moves kept with the autosave (plan A8 §7, V5)
+	Those deleted moves are no longer kept.	Tyto smazané tahy už nejsou uložené.
+	Deleted moves ({n})…	Smazané tahy ({n})…
+	Games as they were before moves were deleted from them, kept with the autosave. Open one as a new game.	Partie tak, jak byly před smazáním tahů, uložené spolu s automatickým ukládáním. Otevřete jednu jako novou partii.
+	Open as a new game	Otevřít jako novou partii
+@plural	{n} move|{n} moves	{n} tah|{n} tahy|{n} tahů
+	…and {n} older	…a starších: {n}

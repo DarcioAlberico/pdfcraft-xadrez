@@ -2930,3 +2930,10 @@ chess undo step	Clear drawings	remoção dos desenhos
 	Replace this game	Substituir esta partida
 	Play from this position in place of the game on the board: its moves are deleted (Undo brings them back).	Jogar a partir desta posição no lugar da partida do tabuleiro: os lances dela são apagados (Desfazer os traz de volta).
 	Play from this position.	Jogar a partir desta posição.
+# Chess: deleted moves kept with the autosave (plan A8 §7, V5)
+@plural	{n} move|{n} moves	{n} lance|{n} lances
+	Those deleted moves are no longer kept.	Esses lances apagados não estão mais guardados.
+	Deleted moves ({n})…	Lances apagados ({n})…
+	Games as they were before moves were deleted from them, kept with the autosave. Open one as a new game.	Partidas como eram antes de lances serem apagados delas, guardadas com o salvamento automático. Abra uma como nova partida.
+	Open as a new game	Abrir como nova partida
+	…and {n} older	…e mais {n} antigas

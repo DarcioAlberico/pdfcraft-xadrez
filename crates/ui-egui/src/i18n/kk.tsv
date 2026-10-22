@@ -2911,3 +2911,10 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Replace this game	Осы партияны ауыстыру
 @plural	{n} move deleted|{n} moves deleted	{n} жүріс жойылды|{n} жүріс жойылды
 @plural	({n} variation)|({n} variations)	({n} нұсқа)|({n} нұсқа)
+# Chess: deleted moves kept with the autosave (plan A8 §7, V5)
+	Those deleted moves are no longer kept.	Бұл жойылған жүрістер енді сақталмайды.
+	Deleted moves ({n})…	Жойылған жүрістер ({n})…
+	Games as they were before moves were deleted from them, kept with the autosave. Open one as a new game.	Жүрістері жойылғанға дейінгі күйіндегі партиялар автосақтаумен бірге сақталады. Біреуін жаңа партия ретінде ашыңыз.
+	Open as a new game	Жаңа партия ретінде ашу
+@plural	{n} move|{n} moves	{n} жүріс|{n} жүріс
+	…and {n} older	…және тағы ескілері: {n}

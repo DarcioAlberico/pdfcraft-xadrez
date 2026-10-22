@@ -2889,3 +2889,10 @@ chess undo step	Clear drawings	usunięcie rysunków
 	Replace this game	Zastąp tę partię
 @plural	{n} move deleted|{n} moves deleted	Usunięto {n} ruch|Usunięto {n} ruchy|Usunięto {n} ruchów
 @plural	({n} variation)|({n} variations)	({n} wariant)|({n} warianty)|({n} wariantów)
+# Chess: deleted moves kept with the autosave (plan A8 §7, V5)
+	Those deleted moves are no longer kept.	Te usunięte ruchy nie są już przechowywane.
+	Deleted moves ({n})…	Usunięte ruchy ({n})…
+	Games as they were before moves were deleted from them, kept with the autosave. Open one as a new game.	Partie w postaci sprzed usunięcia z nich ruchów, przechowywane razem z autozapisem. Otwórz jedną jako nową partię.
+	Open as a new game	Otwórz jako nową partię
+@plural	{n} move|{n} moves	{n} ruch|{n} ruchy|{n} ruchów
+	…and {n} older	…i starszych: {n}

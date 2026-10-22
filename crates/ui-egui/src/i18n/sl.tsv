@@ -2918,3 +2918,10 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Replace this game	Zamenjaj to partijo
 @plural	{n} move deleted|{n} moves deleted	Izbrisana {n} poteza|Izbrisani {n} potezi|Izbrisane {n} poteze|Izbrisanih {n} potez
 @plural	({n} variation)|({n} variations)	({n} varianta)|({n} varianti)|({n} variante)|({n} variant)
+# Chess: deleted moves kept with the autosave (plan A8 §7, V5)
+	Those deleted moves are no longer kept.	Te izbrisane poteze niso več shranjene.
+	Deleted moves ({n})…	Izbrisane poteze ({n})…
+	Games as they were before moves were deleted from them, kept with the autosave. Open one as a new game.	Partije, kakršne so bile, preden so bile iz njih izbrisane poteze, shranjene skupaj s samodejnim shranjevanjem. Odprite eno kot novo partijo.
+	Open as a new game	Odpri kot novo partijo
+@plural	{n} move|{n} moves	{n} poteza|{n} potezi|{n} poteze|{n} potez
+	…and {n} older	…in starejših: {n}
