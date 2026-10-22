@@ -569,6 +569,8 @@ pub struct PageInput<'a> {
 pub struct DocBuilder {
     pages: Vec<ChessPage>,
     walker: games::Walker,
+    /// The last page added (its index) and the caption label it left for the page after it.
+    carry: Option<(u32, u32)>,
 }
 
 impl DocBuilder {
@@ -579,12 +581,15 @@ impl DocBuilder {
     /// A builder whose game walker reads with `rules` (see [`WalkRules`]; [`DocBuilder::new`]
     /// uses [`WalkRules::BOOK`]).
     pub fn with_rules(rules: WalkRules) -> DocBuilder {
-        DocBuilder { pages: Vec::new(), walker: games::Walker::with_rules(rules) }
+        DocBuilder { pages: Vec::new(), walker: games::Walker::with_rules(rules), carry: None }
     }
 
     /// Add the next page. Pages are taken in the order added.
     pub fn add_page(&mut self, input: &PageInput<'_>) {
-        let page = build::page(input, &mut self.walker);
+        // A caption at the foot of a page is the next page's, not a later one's.
+        let carried = self.carry.take().filter(|(index, _)| index.checked_add(1) == Some(input.index)).map(|(_, n)| n);
+        let (page, trailing) = build::page(input, &mut self.walker, carried);
+        self.carry = trailing.map(|n| (input.index, n));
         self.pages.push(page);
     }
 
@@ -592,6 +597,7 @@ impl DocBuilder {
     /// moves are judged again, in order with the other pages, from what is printed. What the last
     /// walk wrote on them (status, position, node, the diagrams' missing-start flags) is replaced.
     pub fn add_read_page(&mut self, mut page: ChessPage) {
+        self.carry = None;
         for block in &mut page.blocks {
             match block {
                 Block::Heading { inlines, .. } | Block::Paragraph { inlines, .. } => {

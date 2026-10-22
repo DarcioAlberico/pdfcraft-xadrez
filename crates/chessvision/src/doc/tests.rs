@@ -841,6 +841,33 @@ fn a_section_heading_after_an_exercise_label_lets_it_go() {
     assert_eq!(doc.games.last().map(|g| g.origin), Some(GameOrigin::Initial));
 }
 
+/// Construa Seu Xadrez sets each exercise's caption above its diagram, and the last caption of a
+/// page at its foot, with the diagram at the top of the next page: that diagram takes it, and the
+/// solution naming it is played from it. Only the very next page takes it.
+#[test]
+fn a_caption_at_the_foot_of_a_page_numbers_the_next_pages_first_diagram() {
+    let rook = "8/8/4k3/8/8/4K3/r7/7R w - - 0 1";
+    let p0 = page_text(vec![line(45.0, "Exercício 1 ★△"), line(700.0, "Exercício 2 ★★△")]);
+    let p1 = page_text(vec![line(300.0, "Ex. 6–2"), line(320.0, "1.Rh6+ Kd5 2.Rh5+")]);
+    let heading = [BlockHint { kind: HintKind::Heading { level: 2 }, rect: user_box(30.0, 295.0, 300.0, 315.0) }];
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[reading(0, 60.0, SCHOLAR, true, false)], &[], &[]));
+    b.add_page(&input(1, &p1, &[reading(0, 60.0, rook, true, false)], &heading, &[]));
+    let doc = b.finish();
+    let numbers: Vec<Option<u32>> =
+        doc.pages.iter().flat_map(|p| p.blocks.iter()).filter_map(|b| if let Block::Diagram(d) = b { Some(d.puzzle) } else { None }).collect();
+    assert_eq!(numbers, [Some(1), Some(2)]);
+    assert!(moves(&doc.pages[1]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[1]));
+    // Page 0, then page 2: the caption is not carried past the page after it.
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[reading(0, 60.0, SCHOLAR, true, false)], &[], &[]));
+    b.add_page(&input(2, &p1, &[reading(0, 60.0, rook, true, false)], &heading, &[]));
+    let doc = b.finish();
+    let numbers: Vec<Option<u32>> =
+        doc.pages.iter().flat_map(|p| p.blocks.iter()).filter_map(|b| if let Block::Diagram(d) = b { Some(d.puzzle) } else { None }).collect();
+    assert_eq!(numbers, [Some(1), None]);
+}
+
 /// A heading that names no puzzle still ends the game and lets go of the diagram waiting.
 #[test]
 fn a_heading_after_a_diagram_still_lets_it_go() {

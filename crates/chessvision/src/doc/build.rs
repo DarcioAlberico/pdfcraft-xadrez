@@ -149,16 +149,26 @@ fn caption_text(line: &ChessLine) -> Option<String> {
 /// it, in its column, that starts with one. A caption goes to the one diagram it is nearest (the
 /// line between two diagrams stacked in a column is the lower one's caption, or the upper one's),
 /// and a diagram takes its nearest caption.
-fn caption_numbers(lines: &[&ChessLine], diagrams: &[Option<ViewRect>]) -> Vec<Option<u32>> {
-    // (bare, gap, number) per diagram: a caption with its `№` wins over a bare number.
-    let mut best: Vec<Option<(bool, f32, u32)>> = vec![None; diagrams.len()];
-    for l in lines {
+///
+/// Also the page's trailing label: one with its word or `№` (not a bare number, which may be the
+/// page's number) that went to no diagram and has none below it. It is the caption of the next
+/// page's first diagram (Construa Seu Xadrez sets `Exercício 7` at the foot of the page and its
+/// diagram at the top of the next).
+fn caption_numbers(lines: &[&ChessLine], diagrams: &[Option<ViewRect>]) -> (Vec<Option<u32>>, Option<u32>) {
+    // (bare, gap, number, line) per diagram: a caption with its `№` wins over a bare number.
+    let mut best: Vec<Option<(bool, f32, u32, usize)>> = vec![None; diagrams.len()];
+    // The labels with a word or `№`: (line, number).
+    let mut labelled: Vec<(usize, u32)> = Vec::new();
+    for (li, l) in lines.iter().enumerate() {
         let Some(text) = caption_text(l) else { continue };
         let (n, bare) = match (puzzle_label(&text, false), puzzle_label(&text, true)) {
             (Some(n), _) => (n, false),
             (None, Some(n)) => (n, true),
             (None, None) => continue,
         };
+        if !bare {
+            labelled.push((li, n));
+        }
         let gap_to = |d: &ViewRect| {
             if !(l.rect.x0 < d.x1 && d.x0 < l.rect.x1) {
                 return None;
@@ -176,12 +186,20 @@ fn caption_numbers(lines: &[&ChessLine], diagrams: &[Option<ViewRect>]) -> Vec<O
         let nearest = diagrams.iter().enumerate().filter_map(|(k, d)| Some((k, gap_to(d.as_ref()?)?))).min_by(|a, b| a.1.total_cmp(&b.1));
         if let Some((k, gap)) = nearest
             && let Some(slot) = best.get_mut(k)
-            && slot.is_none_or(|(b, g, _)| (bare, gap) < (b, g))
+            && slot.is_none_or(|(b, g, _, _)| (bare, gap) < (b, g))
         {
-            *slot = Some((bare, gap, n));
+            *slot = Some((bare, gap, n, li));
         }
     }
-    best.into_iter().map(|b| b.map(|(_, _, n)| n)).collect()
+    let used: Vec<usize> = best.iter().flatten().map(|(_, _, _, li)| *li).collect();
+    let trailing = labelled
+        .iter()
+        .filter(|(li, _)| !used.contains(li))
+        .filter_map(|&(li, n)| lines.get(li).map(|l| (l.rect.y0, n)))
+        .filter(|(y, _)| diagrams.iter().flatten().all(|d| d.y0 < *y))
+        .max_by(|a, b| a.0.total_cmp(&b.0))
+        .map(|(_, n)| n);
+    (best.into_iter().map(|b| b.map(|(_, _, n, _)| n)).collect(), trailing)
 }
 
 /// The line's text, when it holds only text and move numbers.
@@ -479,7 +497,9 @@ fn text_block(kind: Option<HintKind>, lines: &[&ChessLine], geometry: &PageGeome
     }
 }
 
-fn blocks(input: &PageInput<'_>) -> Vec<Block> {
+/// The page's blocks, and its trailing caption label ([`caption_numbers`]). `carried` is the
+/// previous page's, for this page's first diagram when no caption numbers it.
+fn blocks(input: &PageInput<'_>, carried: Option<u32>) -> (Vec<Block>, Option<u32>) {
     let g = &input.geometry;
     let diagram_views: Vec<Option<ViewRect>> = input.diagrams.iter().map(|d| g.user_to_view(d.bbox_user)).collect();
     let hints: Vec<(HintKind, Option<ViewRect>)> = input.hints.iter().map(|h| (h.kind, g.user_to_view(h.rect))).collect();
@@ -497,7 +517,13 @@ fn blocks(input: &PageInput<'_>) -> Vec<Block> {
     let page_width = input.geometry.view_size().0;
     let split = gutter(&kept, page_width);
     let ordered = column_order(&kept, split);
-    let puzzles = caption_numbers(&kept, &diagram_views);
+    let (mut puzzles, trailing) = caption_numbers(&kept, &diagram_views);
+    let first = diagram_views.iter().enumerate().filter_map(|(k, d)| d.map(|d| (k, d.y0))).min_by(|a, b| a.1.total_cmp(&b.1)).map(|(k, _)| k);
+    if let (Some(n), Some(k)) = (carried, first)
+        && let Some(slot @ None) = puzzles.get_mut(k)
+    {
+        *slot = Some(n);
+    }
     for item in interleave(&ordered, &diagram_views, split.unwrap_or(page_width * 0.5)) {
         match item {
             Item::Diagram(i) => {
@@ -520,7 +546,7 @@ fn blocks(input: &PageInput<'_>) -> Vec<Block> {
         }
     }
     flush(&mut blocks, &mut group, key);
-    blocks
+    (blocks, trailing)
 }
 
 /// Give each text review to the inline it overlaps most; the rest to the page.
@@ -627,13 +653,17 @@ fn poor_reason(reason: &PoorReason) -> String {
     }
 }
 
-pub(crate) fn page(input: &PageInput<'_>, walker: &mut Walker) -> ChessPage {
-    let mut blocks = blocks(input);
+/// One page, with the caption label `carried` from the page before it ([`blocks`]); also the
+/// label this page leaves for the next.
+pub(crate) fn page(input: &PageInput<'_>, walker: &mut Walker, carried: Option<u32>) -> (ChessPage, Option<u32>) {
+    let (mut blocks, trailing) = blocks(input, carried);
     let mut review: Vec<ReviewFlag> = input.text.unknown_chess_fonts.iter().map(|f| ReviewFlag::UnknownChessFont { font: f.to_string() }).collect();
     if let TextQuality::Poor { reason } = &input.text.quality {
         review.push(ReviewFlag::PoorTextLayer { reason: poor_reason(reason) });
     }
     attach_reviews(input, &mut blocks, &mut review);
     walk(input.index, &mut blocks, walker);
-    ChessPage { index: input.index, lang: input.text.lang.lang.code().to_owned(), text_layer: (&input.text.quality).into(), blocks, review }
+    let page =
+        ChessPage { index: input.index, lang: input.text.lang.lang.code().to_owned(), text_layer: (&input.text.quality).into(), blocks, review };
+    (page, trailing)
 }
