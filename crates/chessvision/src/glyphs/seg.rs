@@ -21,6 +21,10 @@ const BAR_MAX_HEIGHT: f64 = 0.55;
 const DOT_MAX_GAP: f64 = 0.40;
 /// Least share of a dot's width that must sit over its stem.
 const DOT_MIN_OVERLAP: f64 = 0.55;
+/// A box taller than this many scales, and more than [`MAX_ASPECT`] times taller than wide, is a
+/// vertical rule (a diagram's frame left on a scan, a column rule), never a character: `l`, `1`
+/// and `|` are about one scale tall.
+const RULE_MIN_HEIGHT: f64 = 2.0;
 /// A stem this many times taller than wide is measured for an italic slant.
 const NARROW_STEM: f64 = 2.0;
 
@@ -255,7 +259,7 @@ pub(crate) fn scale(comps: &[Comp], image_px: usize) -> i64 {
 
 /// Character boxes (`caixas_de_caractere`) and bar candidates (`empilhados.barras`). A component
 /// whose box sits inside a bigger component's box, with less ink, is inner detail (the inside
-/// of an outlined figurine) and dropped. Quadratic in the components: the caller caps them.
+/// of an outlined figurine) and dropped, and so are rules, flat or upright. Quadratic in the components: the caller caps them.
 pub(crate) fn char_boxes(comps: &[Comp], scale: i64) -> (Vec<Bx>, Vec<Bx>) {
     let s = scale as f64;
     let floor = MIN_AREA_GLYPH * s * s;
@@ -277,6 +281,10 @@ pub(crate) fn char_boxes(comps: &[Comp], scale: i64) -> (Vec<Bx>, Vec<Bx>) {
             if w <= BAR_MAX_WIDTH * s && h <= BAR_MAX_HEIGHT * s {
                 bars.push(c.b);
             }
+            continue;
+        }
+        // A box that tall would also join every line beside it into one.
+        if h / w > MAX_ASPECT && h > RULE_MIN_HEIGHT * s {
             continue;
         }
         boxes.push(c.b);

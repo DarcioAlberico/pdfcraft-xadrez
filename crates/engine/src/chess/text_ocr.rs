@@ -4,7 +4,8 @@
 //! The page is rendered once, whole, at one resolution, so that the glyph reader's boxes, the
 //! general OCR's words and the view-space text all share one pixel grid:
 //!
-//! 1. the page's diagrams are painted out (a board read as glyphs is noise);
+//! 1. the page's diagrams are painted out, with a margin for a scan's frame (a board read as
+//!    glyphs is noise);
 //! 2. the glyph reader (`chessvision::glyphs`, the user's `chess-glyphs` model) reads every line;
 //!    the general OCR (`ocrs`, when its models are installed) reads the words;
 //! 3. the two are bucketed by line ([`bucket`]: `fuse_line` groups by columns only) and fused:
@@ -110,11 +111,21 @@ pub fn bucket(glyph_lines: &[GlyphLine], ocr: &[OcrWord]) -> Vec<FusedLine> {
     out
 }
 
-/// `image` with `rects` painted white.
-fn masked(image: &GrayImage, rects: &[PixelRect]) -> Option<GrayImage> {
+/// Share of a diagram's longer side painted out around it, and the least margin in pixels: a
+/// scan's frame sticks out a pixel or two past the detected board, and a frame side left on the
+/// page reads as one glyph as tall as the board, which joins every line beside it into one.
+pub(crate) const MASK_PAD_SHARE: f32 = 0.015;
+pub(crate) const MASK_MIN_PAD: u32 = 4;
+
+/// `image` with `rects` painted white, each with a margin ([`MASK_PAD_SHARE`]).
+pub(crate) fn masked(image: &GrayImage, rects: &[PixelRect]) -> Option<GrayImage> {
     let (w, h) = (image.width(), image.height());
     let mut data = image.data().to_vec();
     for r in rects {
+        let side = r.x1.saturating_sub(r.x0).max(r.y1.saturating_sub(r.y0));
+        // Finite and non-negative: `as` saturates.
+        let pad = ((side as f32 * MASK_PAD_SHARE).ceil() as u32).max(MASK_MIN_PAD);
+        let r = PixelRect { x0: r.x0.saturating_sub(pad), y0: r.y0.saturating_sub(pad), x1: r.x1.saturating_add(pad), y1: r.y1.saturating_add(pad) };
         for y in r.y0.min(h)..r.y1.min(h) {
             let row = usize::try_from(y).ok()?.checked_mul(usize::try_from(w).ok()?)?;
             let (x0, x1) = (usize::try_from(r.x0.min(w)).ok()?, usize::try_from(r.x1.min(w)).ok()?);

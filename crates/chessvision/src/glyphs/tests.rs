@@ -365,6 +365,16 @@ fn a_broken_outlined_figurine_is_merged() {
     assert_eq!(reader(&model, &halves).merge_broken(&ordered, SCALE).unwrap(), ordered);
 }
 
+/// A frame's side left on a scan (2 × 60 px at a 20 px scale) is no character, and it would join
+/// every line beside it; an `l` (3 × 20 px), as thin but one scale tall, stays.
+#[test]
+fn an_upright_rule_is_not_a_character() {
+    let mut c = Canvas::new(120, 100);
+    c.rect(10, 20, 12, 80).rect(40, 40, 43, 60);
+    let (boxes, _) = c.boxes(SCALE);
+    assert_eq!(boxes, vec![Bx { x0: 40, y0: 40, x1: 43, y1: 60 }]);
+}
+
 /// A scan's letter cut at its hairline: the bowl and the stem of a `d`, 1 px apart (0.05 scales),
 /// are read as one when the union reads well and the pieces do not. The same pieces at the
 /// distance of two letters of a word (3 px, 0.15 scales) are never offered to the arbiter.
