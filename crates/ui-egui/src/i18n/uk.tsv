@@ -2503,6 +2503,7 @@ animation effects	Off	Вимкнено
 	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	Звідки походять сторінки книги. «Автоматично» довіряє текстовому шару кожної сторінки, якщо він не виглядає хибним; «Початково цифрова» ніколи не використовує шаховий OCR; «Сканована» читає кожну сторінку шаховим OCR (потрібна модель chess-glyphs).
 	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	Текстовий шар цієї сторінки виглядає поганим ({e}); його прочитано як є, бо книга початково цифрова.
 	Unchecked: no position to play it from	Не перевірено: немає позиції, з якої його зіграти
+	Caption: the move that led to the diagram, which gives it its side to move and move number	Підпис: хід, що привів до діаграми; задає черговість ходу і номер ходу
 	Valid move	Допустимий хід
 	Diagram replaced	Діаграму замінено
 	Lichess link added	Посилання на lichess додано

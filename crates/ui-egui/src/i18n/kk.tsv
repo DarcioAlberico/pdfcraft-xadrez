@@ -2479,6 +2479,7 @@ animation effects	Off	Өшірулі
 	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	Кітап беттерінің қайдан келгені. Автоматты әр беттің мәтін қабатына, қате көрінбесе, сенеді; Бастапқыда цифрлық шахмат OCR-ын ешқашан қолданбайды; Сканерленген әр бетті шахмат OCR арқылы оқиды (chess-glyphs моделі қажет).
 	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	Бұл беттің мәтін қабаты сапасыз көрінеді ({e}); кітап бастапқыда цифрлық болғандықтан, ол сол күйінде оқылды.
 	Unchecked: no position to play it from	Тексерілмеген: ойнайтын позиция жоқ
+	Caption: the move that led to the diagram, which gives it its side to move and move number	Жазба: диаграммаға әкелген жүріс; жүріс кезегі мен жүріс нөмірін береді
 	Valid move	Дұрыс жүріс
 	Diagram replaced	Диаграмма ауыстырылды
 	Lichess link added	lichess сілтемесі қосылды

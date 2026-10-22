@@ -2480,6 +2480,7 @@ animation effects	Off	Ki
 	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	Honnan származnak a könyv oldalai. Az Automatikus minden oldal szövegrétegében megbízik, hacsak nem tűnik hibásnak; az Eredetileg digitális soha nem használ sakk-OCR-t; a Szkennelt minden oldalt sakk-OCR-rel olvas (a chess-glyphs modell kell hozzá).
 	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	Ennek az oldalnak a szövegrétege gyengének tűnik ({e}); úgy olvastuk, ahogy van, mert a könyv eredetileg digitális.
 	Unchecked: no position to play it from	Ellenőrizetlen: nincs állás, ahonnan megtehető
+	Caption: the move that led to the diagram, which gives it its side to move and move number	Képaláírás: a diagramhoz vezető lépés, amely megadja a lépő felet és a lépésszámot
 	Valid move	Érvényes lépés
 	Diagram replaced	Diagram lecserélve
 	Lichess link added	Lichess-hivatkozás hozzáadva

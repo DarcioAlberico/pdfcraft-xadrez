@@ -2733,6 +2733,7 @@ theme	Appearance	Išvaizda
 	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	Iš kur kilę knygos puslapiai. Automatiškai pasitiki kiekvieno puslapio teksto sluoksniu, nebent jis atrodo klaidingas; Iš pradžių skaitmeninė niekada nenaudoja šachmatų OCR; Nuskenuota kiekvieną puslapį skaito šachmatų OCR (reikia chess-glyphs modelio).
 	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	Šio puslapio teksto sluoksnis atrodo prastas ({e}); jis perskaitytas toks, koks yra, nes knyga iš pradžių skaitmeninė.
 	Unchecked: no position to play it from	Nepatikrinta: nėra pozicijos, iš kurios jį sužaisti
+	Caption: the move that led to the diagram, which gives it its side to move and move number	Antraštė: ėjimas, atvedęs į diagramą; nurodo ėjimo eilę ir ėjimo numerį
 	Valid move	Galiojantis ėjimas
 	Diagram replaced	Diagrama pakeista
 	Lichess link added	Pridėta lichess nuoroda

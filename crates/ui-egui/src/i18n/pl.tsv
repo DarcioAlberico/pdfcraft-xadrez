@@ -2457,6 +2457,7 @@ animation effects	Off	Wyłączone
 	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	Skąd pochodzą strony książki. Automatycznie ufa warstwie tekstu każdej strony, chyba że wygląda na błędną; Natywnie cyfrowa nigdy nie używa OCR-u szachowego; Zeskanowana odczytuje każdą stronę OCR-em szachowym (wymaga modelu chess-glyphs).
 	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	Warstwa tekstu tej strony wygląda na słabą ({e}); odczytano ją bez zmian, bo książka jest natywnie cyfrowa.
 	Unchecked: no position to play it from	Niesprawdzony: brak pozycji, z której można go zagrać
+	Caption: the move that led to the diagram, which gives it its side to move and move number	Podpis: posunięcie, które doprowadziło do diagramu; wyznacza stronę na posunięciu i numer posunięcia
 	Valid move	Prawidłowy ruch
 	Diagram replaced	Diagram zastąpiony
 	Lichess link added	Dodano link do lichess

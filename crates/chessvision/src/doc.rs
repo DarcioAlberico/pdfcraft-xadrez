@@ -259,6 +259,10 @@ pub enum MoveStatus {
     /// No position to judge it from: a move in prose with no game around it, in a heading, or
     /// after a diagram that could not be read.
     Unchecked,
+    /// The move a "position after" caption names (`Position after: 11...Ba6`): the diagram
+    /// before it shows it played, so it is not played again; it gives the diagram its side to
+    /// move and number.
+    Caption,
 }
 
 /// One piece of a text block.

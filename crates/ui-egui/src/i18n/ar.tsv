@@ -2758,6 +2758,7 @@ certificate	Version	الإصدار
 	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	مصدر صفحات الكتاب. يثق الوضع التلقائي بطبقة النص في كل صفحة ما لم تبدُ خاطئة؛ ولا يستخدم وضع الرقمي أصلًا التعرف الضوئي للشطرنج أبدًا؛ ويقرأ وضع الممسوح ضوئيًا كل صفحة بالتعرف الضوئي للشطرنج (يتطلب نموذج chess-glyphs).
 	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	تبدو طبقة النص في هذه الصفحة رديئة ({e})؛ قُرئت كما هي لأن الكتاب رقمي أصلًا.
 	Unchecked: no position to play it from	غير مُتحقق منها: لا يوجد وضع تُلعب منه
+	Caption: the move that led to the diagram, which gives it its side to move and move number	تعليق: النقلة التي أدت إلى المخطط، وتحدد الطرف صاحب الدور ورقم النقلة
 	Valid move	نقلة صحيحة
 	Diagram replaced	تم استبدال المخطط
 	Lichess link added	أُضيف رابط lichess

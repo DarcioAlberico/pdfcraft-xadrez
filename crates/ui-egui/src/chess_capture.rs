@@ -1257,6 +1257,7 @@ fn status_text(status: MoveStatus) -> &'static str {
         MoveStatus::OutOfSequence => tl!("Move out of sequence"),
         MoveStatus::NotReached => tl!("Not reached: an earlier move failed"),
         MoveStatus::Unchecked => tl!("Unchecked: no position to play it from"),
+        MoveStatus::Caption => tl!("Caption: the move that led to the diagram, which gives it its side to move and move number"),
     }
 }
 

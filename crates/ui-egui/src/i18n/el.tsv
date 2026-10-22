@@ -2487,6 +2487,7 @@ animation effects	Off	Ανενεργά
 	Where the book's pages came from. Auto believes each page's text layer unless it looks wrong; Born digital never uses chess OCR; Scanned reads every page with chess OCR (needs the chess-glyphs model).	Από πού προέρχονται οι σελίδες του βιβλίου. Το Αυτόματα εμπιστεύεται το επίπεδο κειμένου κάθε σελίδας, εκτός αν φαίνεται λάθος· το Εξαρχής ψηφιακό δεν χρησιμοποιεί ποτέ OCR σκακιού· το Σαρωμένο διαβάζει κάθε σελίδα με OCR σκακιού (χρειάζεται το μοντέλο chess-glyphs).
 	This page's text layer looks poor ({e}); it was read as it is, as the book is born digital.	Το επίπεδο κειμένου αυτής της σελίδας φαίνεται κακό ({e})· διαβάστηκε όπως είναι, επειδή το βιβλίο είναι εξαρχής ψηφιακό.
 	Unchecked: no position to play it from	Μη ελεγμένη: καμία θέση από την οποία να παιχτεί
+	Caption: the move that led to the diagram, which gives it its side to move and move number	Λεζάντα: η κίνηση που οδήγησε στο διάγραμμα· δίνει την πλευρά που παίζει και τον αριθμό κίνησης
 	Valid move	Έγκυρη κίνηση
 	Diagram replaced	Το διάγραμμα αντικαταστάθηκε
 	Lichess link added	Προστέθηκε σύνδεσμος lichess

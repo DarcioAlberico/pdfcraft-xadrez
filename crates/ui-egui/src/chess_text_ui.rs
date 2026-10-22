@@ -162,6 +162,7 @@ fn status_colour(s: MoveStatus) -> Color32 {
         MoveStatus::Illegal | MoveStatus::Ambiguous => Color32::from_rgb(0xE0, 0x3E, 0x3E),
         MoveStatus::OutOfSequence | MoveStatus::NotReached => Color32::from_rgb(0xE0, 0x8A, 0x1A),
         MoveStatus::Unchecked => Color32::GRAY,
+        MoveStatus::Caption => Color32::from_rgb(0x3B, 0x82, 0xC4),
     }
 }
 
@@ -173,6 +174,7 @@ fn status_label(s: MoveStatus) -> &'static str {
         MoveStatus::OutOfSequence => tl!("Move out of sequence"),
         MoveStatus::NotReached => tl!("Not reached: an earlier move failed"),
         MoveStatus::Unchecked => tl!("Unchecked: no position to play it from"),
+        MoveStatus::Caption => tl!("Caption: the move that led to the diagram, which gives it its side to move and move number"),
     }
 }
 
