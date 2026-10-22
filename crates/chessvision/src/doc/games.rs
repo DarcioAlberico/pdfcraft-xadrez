@@ -1409,8 +1409,18 @@ impl Walker {
     pub fn play(&mut self, number: Option<MoveNumber>, san: &San, text: &str, bold: bool, loc: Loc) -> MoveOutcome {
         let printed = format!("{}{}", number.map(|n| n.text()).unwrap_or_default(), text);
         let mut number = number;
-        // The solution's moves have begun: a heading after them ends it.
-        self.named = None;
+        // The solution's moves have begun: a heading after them ends it. When its first move does
+        // not start from the exercise it named (the game from move 1, printed before it reaches
+        // the exercise's position), it is read as the heading left it: from no diagram.
+        if let Some((page, diagram, _)) = self.named.take()
+            && self.open.is_none()
+            && let Anchor::Seed(seed) = &self.anchor
+            && (seed.page, seed.diagram) == (page, diagram)
+            && !seed_fits(seed, number, san)
+        {
+            self.anchor = Anchor::None;
+            self.spare.clear();
+        }
         // The move a "position after" caption names: not played, it settles the diagram's side
         // and number.
         if std::mem::take(&mut self.caption)

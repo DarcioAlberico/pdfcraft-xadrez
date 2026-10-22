@@ -868,6 +868,23 @@ fn a_caption_at_the_foot_of_a_page_numbers_the_next_pages_first_diagram() {
     assert_eq!(numbers, [Some(1), None]);
 }
 
+/// A solution that prints its game from move 1 before it reaches the exercise's position: its
+/// first move does not start from the exercise, so it is read from the initial position, as
+/// without the label.
+#[test]
+fn a_solution_from_move_one_is_not_read_from_its_exercise() {
+    let rook = "8/8/4k3/8/8/4K3/r7/7R w - - 0 1";
+    let p0 = page_text(vec![line(45.0, "Exercício 1 ★△")]);
+    let p1 = page_text(vec![line(100.0, "Ex. 6–1"), line(120.0, "1.e4 e5 2.Nf3 Nc6")]);
+    let hints = [BlockHint { kind: HintKind::Heading { level: 2 }, rect: user_box(30.0, 95.0, 300.0, 115.0) }];
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[reading(0, 60.0, rook, true, false)], &[], &[]));
+    b.add_page(&input(1, &p1, &[], &hints, &[]));
+    let doc = b.finish();
+    assert!(moves(&doc.pages[1]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[1]));
+    assert_eq!(doc.games.last().map(|g| g.origin), Some(GameOrigin::Initial));
+}
+
 /// A heading that names no puzzle still ends the game and lets go of the diagram waiting.
 #[test]
 fn a_heading_after_a_diagram_still_lets_it_go() {
