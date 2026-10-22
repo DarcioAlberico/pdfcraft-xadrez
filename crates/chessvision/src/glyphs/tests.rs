@@ -366,13 +366,15 @@ fn a_broken_outlined_figurine_is_merged() {
 }
 
 /// A frame's side left on a scan (2 × 60 px at a 20 px scale) is no character, and it would join
-/// every line beside it; an `l` (3 × 20 px), as thin but one scale tall, stays.
+/// every line beside it; an `l` (3 × 20 px), as thin but one scale tall, stays, and so does a
+/// tall bracket (5 × 50 px, ten times taller than wide).
 #[test]
 fn an_upright_rule_is_not_a_character() {
     let mut c = Canvas::new(120, 100);
-    c.rect(10, 20, 12, 80).rect(40, 40, 43, 60);
-    let (boxes, _) = c.boxes(SCALE);
-    assert_eq!(boxes, vec![Bx { x0: 40, y0: 40, x1: 43, y1: 60 }]);
+    c.rect(10, 20, 12, 80).rect(40, 40, 43, 60).rect(70, 30, 75, 80);
+    let (mut boxes, _) = c.boxes(SCALE);
+    boxes.sort_by_key(|b| b.x0);
+    assert_eq!(boxes, vec![Bx { x0: 40, y0: 40, x1: 43, y1: 60 }, Bx { x0: 70, y0: 30, x1: 75, y1: 80 }]);
 }
 
 /// A scan's letter cut at its hairline: the bowl and the stem of a `d`, 1 px apart (0.05 scales),

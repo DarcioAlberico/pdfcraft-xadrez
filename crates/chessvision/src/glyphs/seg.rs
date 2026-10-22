@@ -21,10 +21,12 @@ const BAR_MAX_HEIGHT: f64 = 0.55;
 const DOT_MAX_GAP: f64 = 0.40;
 /// Least share of a dot's width that must sit over its stem.
 const DOT_MIN_OVERLAP: f64 = 0.55;
-/// A box taller than this many scales, and more than [`MAX_ASPECT`] times taller than wide, is a
-/// vertical rule (a diagram's frame left on a scan, a column rule), never a character: `l`, `1`
-/// and `|` are about one scale tall.
+/// A box taller than this many scales, and more than [`RULE_MIN_ASPECT`] times taller than wide,
+/// is a vertical rule (a diagram's frame left on a scan: 100 times taller than wide; a column
+/// rule), never a character: `l`, `1` and `|` are about one scale tall, and a tall bracket or a
+/// heading's `I` is at most about five times taller than wide.
 const RULE_MIN_HEIGHT: f64 = 2.0;
+const RULE_MIN_ASPECT: f64 = 12.0;
 /// A stem this many times taller than wide is measured for an italic slant.
 const NARROW_STEM: f64 = 2.0;
 
@@ -284,7 +286,7 @@ pub(crate) fn char_boxes(comps: &[Comp], scale: i64) -> (Vec<Bx>, Vec<Bx>) {
             continue;
         }
         // A box that tall would also join every line beside it into one.
-        if h / w > MAX_ASPECT && h > RULE_MIN_HEIGHT * s {
+        if h / w > RULE_MIN_ASPECT && h > RULE_MIN_HEIGHT * s {
             continue;
         }
         boxes.push(c.b);

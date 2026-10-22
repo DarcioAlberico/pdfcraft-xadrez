@@ -218,10 +218,11 @@ fn moves_cut_by_spaces_are_joined() {
 
 /// A scan's speck, or a book set from an old OCR, puts a full stop or comma inside a square:
 /// `bxc.3`, `♕ xc.3`, `♔b,6`. It is dropped when the word then reads as a move; prose and
-/// abbreviations (`e.g.`, `a.m.`), and numbers (`1.e4`), keep theirs.
+/// abbreviations (`e.g.`, `a.m.`), numbers (`1.e4`) and a bare square in a reference
+/// (`Appendix b.6`, `see c.4`) keep theirs.
 #[test]
 fn a_stray_mark_inside_a_square_is_dropped() {
-    let read = Page::new().text("20 bxc.3 ♕ xc.3 21.♔b,6 e.g. a.m. 1.e4").read(Some(Lang::En));
+    let read = Page::new().text("20 bxc.3 ♕ xc.3 21.♔b,6 e.g. a.m. 1.e4 Appendix b.6 see c.4").read(Some(Lang::En));
     let sans: Vec<String> =
         read.lines[0].spans.iter().filter_map(|s| if let ChessRun::Move { san, .. } = &s.run { Some(san.to_english()) } else { None }).collect();
     assert_eq!(sans, ["bxc3", "Qxc3", "Kb6", "e4"]);

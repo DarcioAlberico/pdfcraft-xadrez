@@ -968,11 +968,19 @@ fn a_piece_of_a_row_beside_a_narrow_board_is_read_before_it() {
     for (k, y) in [40.0, 60.0, 220.0, 240.0, 260.0].into_iter().enumerate() {
         lines.push(line_at(320.0, y, &format!("right column line {k}")));
     }
+    let doc = build_page(&input(0, &page_text(lines.clone()), &[d0.clone()], &[], &[]));
+    let cut = kinds(&doc.pages[0]);
+    let at = |s: &str| cut.iter().position(|k| k.contains(s)).unwrap_or_else(|| panic!("{s} in {cut:?}"));
+    assert!(at("second") < at("D0"), "{cut:?}");
+    assert!(at("left column line 0") < at("D0") && at("D0") < at("left column line 1"), "{cut:?}");
+    // Text beside the board, level with its top, with nothing of its row over the board, is the
+    // board's text on the same page with columns: read after it.
+    lines.retain(|l| l.rect.y0 != 40.0 || l.rect.x0 > 300.0);
+    lines.push(line_at(185.0, 85.0, "beside"));
     let doc = build_page(&input(0, &page_text(lines), &[d0], &[], &[]));
-    let kinds = kinds(&doc.pages[0]);
-    let at = |s: &str| kinds.iter().position(|k| k.contains(s)).unwrap_or_else(|| panic!("{s} in {kinds:?}"));
-    assert!(at("second") < at("D0"), "{kinds:?}");
-    assert!(at("left column line 0") < at("D0") && at("D0") < at("left column line 1"), "{kinds:?}");
+    let beside = kinds(&doc.pages[0]);
+    let at = |s: &str| beside.iter().position(|k| k.contains(s)).unwrap_or_else(|| panic!("{s} in {beside:?}"));
+    assert!(at("D0") < at("beside"), "{beside:?}");
 }
 
 /// Chess Tactics' solutions: the board on the left, its solution beside it on the right, on a

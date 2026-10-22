@@ -332,12 +332,12 @@ enum Item<'a> {
 /// a column to its right, or wholly below it on its side of `split`. A diagram or line across
 /// `split` is on both sides: a short line under a centred diagram is read after it, however far
 /// left it starts, while a left-column line below a right-column diagram is still read before
-/// it. On a page with a `gutter` (columns found, not the page's middle), a line right of a board
-/// narrower than its column, on the board's side of the gutter, is in the board's column (a scan's
-/// row cut at a word gap leaves a piece there): it is read by its height, not as a column to the
-/// right. Without one, a line right of a board is its text beside it (Chess Tactics: the board on
-/// the left, the solution on the right) and comes after it.
-fn diagram_before(d: ViewRect, l: ViewRect, split: f32, gutter: bool) -> bool {
+/// it. A line right of a board is its text beside it (Chess Tactics: the board on the left, the
+/// solution on the right) and comes after it, except a piece of a row a scan cut at a word gap:
+/// on a page with a `gutter` (columns found, not the page's middle), on the board's side of it,
+/// and with another piece of its row over the board's columns (`row_over_board`), the line is in
+/// the board's column and is read by its height.
+fn diagram_before(d: ViewRect, l: ViewRect, split: f32, gutter: bool, row_over_board: bool) -> bool {
     let side = |r: ViewRect| {
         if r.x1 <= split {
             Some(false)
@@ -349,7 +349,7 @@ fn diagram_before(d: ViewRect, l: ViewRect, split: f32, gutter: bool) -> bool {
     };
     let (sd, sl) = (side(d), side(l));
     let same_column = d.x0 < l.x1 && l.x0 < d.x1;
-    let beside = gutter && l.x0 >= d.x1 && sd.is_some() && sd == sl;
+    let beside = gutter && row_over_board && l.x0 >= d.x1 && sd.is_some() && sd == sl;
     if same_column || beside {
         return (l.y0 + l.y1) * 0.5 >= (d.y0 + d.y1) * 0.5;
     }
@@ -365,7 +365,12 @@ fn interleave<'a>(lines: &[&'a ChessLine], diagrams: &[Option<ViewRect>], split:
     let mut next = 0usize;
     for &line in lines {
         while let Some(d) = diagrams.get(next) {
-            if !d.is_some_and(|d| diagram_before(d, line.rect, split, gutter)) {
+            // Another line of this one's row over the board's columns: a row cut into pieces.
+            let row_over = |d: ViewRect| {
+                let mid = (line.rect.y0 + line.rect.y1) * 0.5;
+                lines.iter().any(|o| !std::ptr::eq(*o, line) && o.rect.y0 <= mid && mid <= o.rect.y1 && o.rect.x0 < d.x1 && d.x0 < o.rect.x1)
+            };
+            if !d.is_some_and(|d| diagram_before(d, line.rect, split, gutter, row_over(d))) {
                 break;
             }
             items.push(Item::Diagram(next));

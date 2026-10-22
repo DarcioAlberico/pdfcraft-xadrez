@@ -224,9 +224,10 @@ fn reads_as_move(cells: &[Cell], lang: Lang) -> bool {
 }
 
 /// A word that reads as a move once the stray marks inside its squares are dropped: a full stop
-/// or comma between a file and a rank (`bxc.3`, `♔b,6`, `e,6`), where a scan's speck or a book
-/// set from an old OCR put one. SAN never has one there, and a word that already reads as a move
-/// is left alone.
+/// or comma between a file and a rank (`bxc.3`, `♔b,6`, `13.e,6`), where a scan's speck or a book
+/// set from an old OCR put one. SAN never has one there. The word without the mark is read as any
+/// other: a bare square in prose (`Appendix b.6`) is no move, as `b6` there is none. A word that
+/// already reads as a move is left alone.
 fn without_square_marks(cells: &[Cell], lang: Lang) -> Option<Vec<Cell>> {
     let stray = |i: usize| {
         let at = |k: usize| cells.get(k).map(|c| c.ch);
