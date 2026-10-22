@@ -16,6 +16,14 @@ const GLUED_MIN_WIDTH: f64 = 1.35;
 /// A broken glyph's union is at most this tall and this wide, in scales.
 const BROKEN_MAX_HEIGHT: f64 = 1.5;
 const BROKEN_MAX_WIDTH: f64 = 1.6;
+/// Neighbours this close, in scales, are also tried as one broken letter: a scan's hairlines lost
+/// to the threshold cut `d` into `(` and `1`, `b` into `l` and `)`, `o` into `(` and `)`, about
+/// 0.05 scales apart, where two letters of a word stand 0.1 or more apart.
+const BROKEN_MAX_GAP: f64 = 0.07;
+/// A letter rejoined across a gap is at most this wide, in scales: one letter, not two.
+const BROKEN_LETTER_WIDTH: f64 = 0.9;
+/// Least share of the shorter part's height the two parts of a letter share: the same line.
+const BROKEN_MIN_ROWS: f64 = 0.5;
 
 /// One classified box: the chosen class, its probability and the whole row.
 #[derive(Clone, Debug)]
@@ -164,16 +172,25 @@ impl Reader<'_> {
         Ok(out)
     }
 
-    /// The opposite of [`Self::split_glued`]: neighbours in reading order whose columns overlap
-    /// merge when the classifier reads the union better than the parts. Rejoins outlined
-    /// figurines whose inner strokes came apart.
+    /// The opposite of [`Self::split_glued`]: neighbours in reading order merge when the
+    /// classifier reads the union better than the parts. Tried for neighbours whose columns
+    /// overlap (outlined figurines whose inner strokes came apart) and for neighbours on one line
+    /// no more than [`BROKEN_MAX_GAP`] apart whose union is one letter wide (a scan's letters cut
+    /// at their hairlines).
     pub fn merge_broken(&self, boxes: &[Bx], scale: i64) -> Result<Vec<Bx>, GlyphError> {
         let s = scale as f64;
         let mut out: Vec<Bx> = Vec::with_capacity(boxes.len());
         for b in boxes {
             if let Some(last) = out.last_mut() {
                 let u = last.union(b);
-                if last.common_x(b) > 0 && (u.h() as f64) <= BROKEN_MAX_HEIGHT * s && (u.w() as f64) <= BROKEN_MAX_WIDTH * s {
+                let rows = (last.y1.min(b.y1) - last.y0.max(b.y0)) as f64;
+                let shorter = last.h().min(b.h()).max(1) as f64;
+                let cut_letter = last.common_x(b) <= 0
+                    && (-last.common_x(b) as f64) <= BROKEN_MAX_GAP * s
+                    && (u.w() as f64) <= BROKEN_LETTER_WIDTH * s
+                    && rows >= BROKEN_MIN_ROWS * shorter;
+                let overlapping = last.common_x(b) > 0 && (u.w() as f64) <= BROKEN_MAX_WIDTH * s;
+                if (overlapping || cut_letter) && (u.h() as f64) <= BROKEN_MAX_HEIGHT * s {
                     let reads = self.read(&[*last, *b, u])?;
                     if let [l, r, whole] = reads.as_slice()
                         && whole.p > Self::confidence(l, r) + ARBITER_GAIN
