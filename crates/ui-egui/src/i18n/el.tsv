@@ -3026,3 +3026,5 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 @plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	Προστέθηκε {n} ακόμη παρτίδα στη λίστα παρτίδων.|Προστέθηκαν {n} ακόμη παρτίδες στη λίστα παρτίδων.
 	Reading the pages around the game…	Ανάγνωση των σελίδων γύρω από την παρτίδα…
 	No game was found for this move, on its page or the pages around it.	Δεν βρέθηκε παρτίδα για αυτή την κίνηση, ούτε στη σελίδα της ούτε στις γύρω σελίδες.
+	Renumber	Επαναρίθμηση
+	The text's move numbers give way to the game's: {printed} is played as {played}.	Οι αριθμοί κινήσεων του κειμένου δίνουν τη θέση τους σε αυτούς της παρτίδας: το {printed} παίζεται ως {played}.

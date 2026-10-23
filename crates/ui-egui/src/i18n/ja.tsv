@@ -3022,3 +3022,5 @@ chess undo step	Clear drawings	描画の消去
 @plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	さらに {n} 局を対局リストに追加しました。
 	Reading the pages around the game…	対局の前後のページを読み取り中…
 	No game was found for this move, on its page or the pages around it.	この手の対局は、そのページにも前後のページにも見つかりませんでした。
+	Renumber	番号を振り直す
+	The text's move numbers give way to the game's: {printed} is played as {played}.	テキストの手数番号は棋譜の番号に置き換わります: {printed} は {played} として指されます。

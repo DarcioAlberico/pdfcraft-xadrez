@@ -3016,3 +3016,5 @@ chess undo step	Clear drawings	çizimleri temizleme
 @plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	Oyun listesine {n} oyun daha eklendi.
 	Reading the pages around the game…	Oyunun çevresindeki sayfalar okunuyor…
 	No game was found for this move, on its page or the pages around it.	Bu hamle için ne kendi sayfasında ne de çevresindeki sayfalarda bir oyun bulundu.
+	Renumber	Yeniden numarala
+	The text's move numbers give way to the game's: {printed} is played as {played}.	Metnin hamle numaraları yerini oyununkilere bırakır: {printed}, {played} olarak oynanır.

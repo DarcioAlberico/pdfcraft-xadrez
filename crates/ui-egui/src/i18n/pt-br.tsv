@@ -3037,3 +3037,5 @@ chess undo step	Clear drawings	remoção dos desenhos
 @plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	Mais {n} partida foi adicionada à lista de partidas.|Mais {n} partidas foram adicionadas à lista de partidas.
 	Reading the pages around the game…	Lendo as páginas em torno da partida…
 	No game was found for this move, on its page or the pages around it.	Nenhuma partida foi encontrada para este lance, nem na página dele nem nas páginas ao redor.
+	Renumber	Renumerar
+	The text's move numbers give way to the game's: {printed} is played as {played}.	Os números de lance do texto dão lugar aos da partida: {printed} é jogado como {played}.

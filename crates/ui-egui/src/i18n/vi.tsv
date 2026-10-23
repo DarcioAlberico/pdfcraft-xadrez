@@ -3274,3 +3274,5 @@ chess undo step	Clear drawings	xóa hình vẽ
 @plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	Đã thêm {n} ván nữa vào danh sách ván.
 	Reading the pages around the game…	Đang đọc các trang quanh ván cờ…
 	No game was found for this move, on its page or the pages around it.	Không tìm thấy ván cờ nào cho nước đi này, trên trang của nó hay các trang xung quanh.
+	Renumber	Đánh số lại
+	The text's move numbers give way to the game's: {printed} is played as {played}.	Số nước đi của văn bản nhường chỗ cho số của ván cờ: {printed} được đi thành {played}.
