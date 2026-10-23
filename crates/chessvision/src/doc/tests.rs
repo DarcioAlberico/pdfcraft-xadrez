@@ -1568,3 +1568,19 @@ fn a_diagrams_printed_coordinates_are_not_text() {
     let k = kinds(&doc.pages[0]);
     assert_eq!(k, ["D0", "P:3.Qh5 Nf6 4.Qxf7#", "P:a b c"], "{k:?}");
 }
+
+/// A diagram with White to move whose text first gives the alternative to Black's move before it
+/// (Catastrophes & Tactics: `A dreadful blunder.`, then `the correct way: 7...d3`, then the bold
+/// game `8.Nxe4 fxe4`). That move is Black's and cannot be played from the diagram, but its
+/// number still says which White move comes next: the bold line is played from the diagram.
+#[test]
+fn a_move_before_the_diagram_numbers_the_moves_after_it() {
+    let text = page_text(vec![line(230.0, "Better was 2...Nf6 3.d3 Bc5 with equality."), line(250.0, "*3.Qh5 *Nf6"), line(270.0, "*4.Qxf7#")]);
+    let diagrams = [reading(0, 60.0, SCHOLAR, true, false)];
+    let doc = build_page(&input(0, &text, &diagrams, &[], &[]));
+    let statuses: Vec<MoveStatus> = moves(&doc.pages[0]).into_iter().map(|(_, s)| s).collect();
+    assert_eq!(statuses[0], MoveStatus::Illegal);
+    assert!(statuses[3..].iter().all(|s| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    assert_eq!(mainline(&doc), ["Qh5", "Nf6", "Qxf7#"]);
+    assert_eq!(doc.games[0].score.start_fen.as_deref(), Some("r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/8/PPPP1PPP/RNBQK1NR w KQkq - 2 3"));
+}

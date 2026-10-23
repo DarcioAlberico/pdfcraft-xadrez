@@ -958,7 +958,11 @@ fn seed_score(seed: &Seed, number: Option<MoveNumber>) -> Option<(GameScore, Vec
                 honour = false;
             }
         }
-        if let Ok(b) = Board::from_fen(&compose(placement, black, castling, ep, halfmove, &n.number.to_string()), false) {
+        // A number for the other side is a move before the diagram, so the diagram's own number
+        // follows from it: after Black's `7...d3`, White plays move 8; after White's `8.Nxe4`,
+        // Black plays move 8.
+        let fullmove = if n.black && !black { n.number.saturating_add(1) } else { n.number };
+        if let Ok(b) = Board::from_fen(&compose(placement, black, castling, ep, halfmove, &fullmove.to_string()), false) {
             board = b;
         }
     }
