@@ -995,6 +995,57 @@ fn a_solution_beside_its_board_is_read_after_it() {
     assert_eq!(kinds(&doc.pages[0]), vec!["P:Exercise solution", "D0", "P:Solution"]);
 }
 
+/// Chess Tactics' page: the label and the board on the left, the solutions on the right, no
+/// gutter. The text at the top right, well above the board, ends the previous solution and is
+/// read before the board; the solution starting level with the label, just above the board, is
+/// the board's and is read after it.
+#[test]
+fn text_well_above_a_board_beside_it_is_read_before_it() {
+    let mut d0 = reading(0, 60.0, SCHOLAR, true, false);
+    d0.bbox_user = user_box(40.0, 200.0, 140.0, 300.0);
+    let text = page_text(vec![
+        line_at(160.0, 60.0, "Previous"),
+        line_at(40.0, 175.0, "Label"),
+        line_at(160.0, 175.0, "Solution"),
+        line_at(160.0, 230.0, "More"),
+    ]);
+    let doc = build_page(&input(0, &text, &[d0], &[], &[]));
+    assert_eq!(kinds(&doc.pages[0]), vec!["P:Previous", "P:Label", "D0", "P:Solution", "P:More"]);
+}
+
+/// Two boards stacked in the left column, no gutter, a line right of them between the two: the
+/// board above it is in another column, so it does not count as the line's own board; the line
+/// is read after the first board and before the second, as it lies (Codex's case).
+#[test]
+fn a_line_between_two_stacked_boards_beside_them_is_read_between() {
+    let board = |k: usize, top: f32| {
+        let mut d = reading(k, 60.0, SCHOLAR, true, false);
+        d.bbox_user = user_box(40.0, top, 140.0, top + 100.0);
+        d
+    };
+    let text = page_text(vec![line_at(160.0, 250.0, "Between")]);
+    let doc = build_page(&input(0, &text, &[board(0, 100.0), board(1, 300.0)], &[], &[]));
+    assert_eq!(kinds(&doc.pages[0]), vec!["D0", "P:Between", "D1"]);
+}
+
+/// A Workbook's exercise page: four boards in a 2 × 2 grid, found column by column (top left,
+/// bottom left, top right, bottom right; the blocks keep that order), a question under the
+/// top-right board, and too few lines for a gutter. The question, right of the bottom-left board
+/// and well above it, is under the top-right board in its own column: it is read after that
+/// board, not before the bottom-left one.
+#[test]
+fn a_question_under_a_board_in_a_grid_waits_for_it() {
+    let board = |k: usize, x: f32, top: f32| {
+        let mut d = reading(k, 60.0, SCHOLAR, true, false);
+        d.bbox_user = user_box(x, top, x + 180.0, top + 180.0);
+        d
+    };
+    let boards = [board(0, 60.0, 60.0), board(1, 60.0, 340.0), board(2, 300.0, 60.0), board(3, 300.0, 340.0)];
+    let text = page_text(vec![line_at(300.0, 260.0, "Question for the top right")]);
+    let doc = build_page(&input(0, &text, &boards, &[], &[]));
+    assert_eq!(kinds(&doc.pages[0]), vec!["D0", "D1", "D2", "P:Question for the top right", "D3"]);
+}
+
 /// A diagram centred on the page goes before a short line below it, even one that lies entirely
 /// to its left (Fischer pt-BR p.47: `19 … ♗xd5` under a centred diagram).
 #[test]
