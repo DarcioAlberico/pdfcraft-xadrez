@@ -260,6 +260,53 @@ fn a_move_number_split_by_ocr_is_joined() {
     assert_eq!(numbers, [(21, false), (18, false), (31, true), (8, false)], "{:?}", read.lines[0].spans);
 }
 
+/// The moves of a page's first line, as read.
+fn moves_of(read: &ChessPageText) -> Vec<String> {
+    read.lines[0].spans.iter().filter_map(|s| if let ChessRun::Move { text, .. } = &s.run { Some(text.clone()) } else { None }).collect()
+}
+
+/// The move numbers of a page's first line, and whether each is Black's.
+fn numbers_of(read: &ChessPageText) -> Vec<(u16, bool)> {
+    read.lines[0].spans.iter().filter_map(|s| if let ChessRun::MoveNumber { number, black } = s.run { Some((number, black)) } else { None }).collect()
+}
+
+#[test]
+fn an_old_ocr_layers_letters_for_digits_are_read_again() {
+    let read = Page::new().text("27.Rg5 Kh7 2S.Kh2 dxcS 29.Rfl Qxel 17.Rdel e8=Q 3").split().text("1 .Kbl").read(Some(Lang::En));
+    assert_eq!(moves_of(&read), ["Rg5", "Kh7", "Kh2", "dxc5", "Rf1", "Qxe1", "Rde1", "e8=Q", "Kb1"], "{:?}", read.lines[0].spans);
+    // `2S` between 27 and 29 can only be 28; a pawn's `S` is a 5, for it reaches the 8th rank
+    // only promoting.
+    let numbers: Vec<u16> = numbers_of(&read).into_iter().map(|(n, _)| n).collect();
+    assert_eq!(numbers, [27, 28, 29, 17, 31]);
+    let read = Page::new().text("24.Qg6 Kh8 2S.Rae1 Re8 26.Rxe8").read(Some(Lang::En));
+    assert_eq!(numbers_of(&read), [(24, false), (25, false), (26, false)], "{:?}", read.lines[0].spans);
+    // A piece's `S` could be on either rank, and a number with no other beside it either digit.
+    let read = Page::new().text("RbS 2S.Qg4").read(Some(Lang::En));
+    assert!(moves_of(&read).is_empty(), "{:?}", read.lines[0].spans);
+    // An `l` with nothing else saying the word is notation stays a letter: German `Tal`, `Dahl`.
+    let read = Page::new().text("im Tal Dahl Del").read(Some(Lang::De));
+    assert!(moves_of(&read).is_empty(), "{:?}", read.lines[0].spans);
+    // An `S` after a capital is an abbreviation's (`BS`, `HS`), not a rank.
+    let read = Page::new().text("a BS and HS").read(Some(Lang::En));
+    assert!(moves_of(&read).is_empty(), "{:?}", read.lines[0].spans);
+}
+
+#[test]
+fn blacks_move_split_from_its_number_by_an_old_ocr_is_joined() {
+    let read = Page::new().text("24. ..b xc5 25 ...c xb4 31.. .R g2 36. ..Q xb3 32 ••.R b8 1").split().text("7 ...d xe5").read(Some(Lang::En));
+    assert_eq!(moves_of(&read), ["bxc5", "cxb4", "Rg2", "Qxb3", "Rb8", "dxe5"], "{:?}", read.lines[0].spans);
+    assert_eq!(numbers_of(&read), [(24, true), (25, true), (31, true), (36, true), (32, true), (17, true)]);
+    // A lone square with an `S` may be a piece's set apart, on either rank: `R bS` stays unread.
+    let read = Page::new().text("32 ••.R bS").read(Some(Lang::En));
+    assert!(moves_of(&read).is_empty(), "{:?}", read.lines[0].spans);
+    // A number with no full stop before a whole move is as often a number that lost a digit.
+    let read = Page::new().text("1 ...Nef6").read(Some(Lang::En));
+    assert!(moves_of(&read).is_empty(), "{:?}", read.lines[0].spans);
+    // A bullet that starts a list item stays one.
+    let read = Page::new().text("• Rb8 wins").read(Some(Lang::En));
+    assert_eq!(read.lines[0].spans.first().map(|s| s.run.clone()), Some(ChessRun::Text("•".into())), "{:?}", read.lines[0].spans);
+}
+
 #[test]
 fn novelty_after_a_move_is_nag_146() {
     let read = Page::new().text("12.Nf4N").read(None);
