@@ -358,6 +358,7 @@ mod tests {
 
     fn sample_page() -> Page {
         Page {
+            links: Vec::new(),
             width: 720.0,
             height: 540.0,
             blocks: vec![
@@ -511,6 +512,7 @@ mod tests {
             rotation: 0.0,
         };
         let table_page = Page {
+            links: Vec::new(),
             width: 612.0,
             height: 792.0,
             blocks: vec![
@@ -619,7 +621,7 @@ mod tests {
         let images = (0..40)
             .map(|k| Image { ext: "png", bytes: vec![0; 4], rect: [0.0, -1e300, 1e-300, 1e300 - k as f64], size: [1.0, 1.0], rotation: 0.0 })
             .collect();
-        let p = Page { width: f64::MAX, height: f64::NAN, blocks, images };
+        let p = Page { links: Vec::new(), width: f64::MAX, height: f64::NAN, blocks, images };
         let bytes = pptx(&[p], "Hostile");
         let slide = part(&bytes, "ppt/slides/slide1.xml");
         assert!(slide.contains("Title") && slide.contains("<p:pic>"), "the slide is still written");
@@ -676,6 +678,7 @@ mod tests {
             rotation: 0.0,
         };
         let p = Page {
+            links: Vec::new(),
             width: 720.0,
             height: 540.0,
             blocks: vec![

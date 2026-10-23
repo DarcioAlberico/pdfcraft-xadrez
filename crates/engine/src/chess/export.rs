@@ -163,11 +163,21 @@ impl Session {
             ChessFormat::Html => html::write(&read.doc, &options).into_bytes(),
             ChessFormat::Epub => {
                 let doc = self.get(id).ok_or("no such document")?;
+                // The cover is the book's first page; a book without one is still a book.
+                let first = read.doc.pages.first().and_then(|p| usize::try_from(p.index).ok()).unwrap_or(0);
+                let cover = match super::epub::cover_png(doc.export_source(), first) {
+                    Ok(png) => Some(png),
+                    Err(e) => {
+                        notes.push(format!("the book has no cover: {e}"));
+                        None
+                    }
+                };
                 let meta = super::epub::EpubMeta {
                     title: o.title.clone(),
                     lang: read.lang.lang.code().to_owned(),
                     identifier: super::epub::identifier(&doc.bytes),
                     modified: super::epub::modified_at(self.now_secs()),
+                    cover,
                 };
                 super::epub::epub(&read.doc, &options, &meta)?
             }
