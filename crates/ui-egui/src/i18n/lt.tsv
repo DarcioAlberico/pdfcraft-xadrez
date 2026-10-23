@@ -3266,3 +3266,4 @@ chess undo step	Clear drawings	piešinių valymą
 	Games as they were before moves were deleted from them, kept with the autosave. Open one as a new game.	Partijos tokios, kokios buvo prieš ištrinant iš jų ėjimus, saugomos kartu su automatiniu įrašymu. Atverkite vieną kaip naują partiją.
 	Open as a new game	Atverti kaip naują partiją
 	…and {n} older	…ir dar {n} senesnių
+	No chess diagram was found here.	Čia šachmatų diagramos nerasta.

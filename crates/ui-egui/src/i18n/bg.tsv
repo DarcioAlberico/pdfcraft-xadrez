@@ -2977,3 +2977,4 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Open as a new game	Отваряне като нова партия
 @plural	{n} move|{n} moves	{n} ход|{n} хода
 	…and {n} older	…и още по-стари: {n}
+	No chess diagram was found here.	Тук не е намерена шахматна диаграма.

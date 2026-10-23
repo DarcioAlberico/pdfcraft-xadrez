@@ -3015,3 +3015,4 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	Open as a new game	Als neue Partie öffnen
 @plural	{n} move|{n} moves	{n} Zug|{n} Züge
 	…and {n} older	…und {n} ältere
+	No chess diagram was found here.	Hier wurde kein Schachdiagramm gefunden.

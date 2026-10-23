@@ -2964,3 +2964,4 @@ chess undo step	Clear drawings	清除標記
 	Open as a new game	以新對局開啟
 @plural	{n} move|{n} moves	{n} 步
 	…and {n} older	…以及更早的 {n} 個
+	No chess diagram was found here.	此處找不到西洋棋棋圖。

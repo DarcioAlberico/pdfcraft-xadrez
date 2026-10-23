@@ -3268,3 +3268,4 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Games as they were before moves were deleted from them, kept with the autosave. Open one as a new game.	Các ván như trước khi bị xóa nước, được lưu cùng bản tự động lưu. Mở một ván như một ván mới.
 	Open as a new game	Mở như một ván mới
 	…and {n} older	…và {n} ván cũ hơn
+	No chess diagram was found here.	Không tìm thấy sơ đồ cờ vua nào ở đây.

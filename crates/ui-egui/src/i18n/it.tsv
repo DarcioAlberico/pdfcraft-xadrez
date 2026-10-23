@@ -3226,3 +3226,4 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	Open as a new game	Apri come nuova partita
 @plural	{n} move|{n} moves	{n} mossa|{n} mosse
 	…and {n} older	…e altre {n} più vecchie
+	No chess diagram was found here.	Nessun diagramma di scacchi trovato qui.

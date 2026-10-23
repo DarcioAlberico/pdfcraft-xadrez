@@ -2927,3 +2927,4 @@ chess undo step	Clear drawings	удаление рисунков
 	Open as a new game	Открыть как новую партию
 @plural	{n} move|{n} moves	{n} ход|{n} хода|{n} ходов
 	…and {n} older	…и ещё более старых: {n}
+	No chess diagram was found here.	Здесь не найдено шахматной диаграммы.

@@ -9,6 +9,8 @@ use egui_kittest::kittest::{NodeT, Queryable};
 use pdfcraft_engine::{Edit, NewAnnotation, Shape, Style};
 use pdfcraft_ui_egui::{PdfCraftApp, RightPanel};
 
+mod support;
+
 const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 /// The start position in the Chess Merida layout, top rank first: light squares lower case, dark
 /// upper case; empty light ' ', empty dark '+'.
@@ -17,7 +19,13 @@ const MERIDA_START: [&str; 8] = ["tMvWlVmT", "OoOoOoOo", " + + + +", "+ + + + ",
 /// A 600 × 800 pt page with the start position in a diagram font, top left (x 60..220, y
 /// 580..740 in user space), and a board of filled squares under it (x 60..220, y 240..400).
 fn boards() -> Vec<u8> {
-    let mut content = String::from("BT /F1 20 Tf 60 724 Td ");
+    boards_with("")
+}
+
+/// [`boards`] with a line of `moves` in Helvetica between the two boards (y 540).
+fn boards_with(moves: &str) -> Vec<u8> {
+    let mut content = if moves.is_empty() { String::new() } else { format!("BT /F2 11 Tf 60 540 Td ({moves}) Tj ET\n") };
+    content.push_str("BT /F1 20 Tf 60 724 Td ");
     for (i, line) in MERIDA_START.iter().enumerate() {
         if i > 0 {
             content.push_str("0 -20 Td ");
@@ -37,9 +45,10 @@ fn boards() -> Vec<u8> {
     let objs = [
         "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
         "<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 600 800] >>".to_string(),
-        "<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>".to_string(),
+        "<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>".to_string(),
         format!("<< /Length {} >>\nstream\n{content}\nendstream", content.len()),
         format!("<< /Type /Font /Subtype /Type1 /BaseFont /ChessMerida /FirstChar 32 /LastChar 126 /Widths [{widths}] >>"),
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>".to_string(),
     ];
     let mut out = b"%PDF-1.7\n".to_vec();
     let mut offsets = Vec::new();
@@ -62,10 +71,15 @@ fn harness() -> Harness<'static, PdfCraftApp> {
 
 /// The harness, with frames `step_dt` seconds apart (kittest's default is 0.25 s).
 fn harness_stepping(step_dt: f32) -> Harness<'static, PdfCraftApp> {
-    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).with_step_dt(step_dt).build_eframe(|_cc| {
+    harness_on(boards(), step_dt)
+}
+
+/// The harness on the PDF `bytes`.
+fn harness_on(bytes: Vec<u8>, step_dt: f32) -> Harness<'static, PdfCraftApp> {
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).with_step_dt(step_dt).build_eframe(move |_cc| {
         let mut app = PdfCraftApp::new();
         app.set_option("language", "en").unwrap();
-        app.open_bytes("boards.pdf", None, boards()).unwrap();
+        app.open_bytes("boards.pdf", None, bytes).unwrap();
         app.run_inline = true;
         app
     });
@@ -620,6 +634,78 @@ fn double_clicking_a_diagram_puts_it_on_the_board_to_play() {
     h.run_steps(2);
     let node = h.state().chess.board().game.current();
     assert_eq!(h.state().chess.board().game.comment(node), "good move");
+}
+
+/// Two clicks at `at`, a frame apart: a double-click (with frames under egui's 0.3 s delay).
+fn double_click_at(h: &mut Harness<'static, PdfCraftApp>, at: Pos2) {
+    h.hover_at(at);
+    h.run_steps(1);
+    for _ in 0..2 {
+        for pressed in [true, false] {
+            h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed, modifiers: egui::Modifiers::NONE });
+        }
+        h.step();
+    }
+    h.run_steps(3);
+}
+
+/// A double-click on a diagram of a page not scanned yet scans the page, then puts the diagram
+/// on the board: there is no Chess tool to arm first. The scan is quiet (the board is what it
+/// was for); a double-click beside the diagrams scans the page, opens nothing and says so, and
+/// one that selected a word says nothing (selecting it may be all it was for).
+#[test]
+fn double_clicking_a_diagram_not_scanned_yet_scans_its_page_and_puts_it_on_the_board() {
+    let board = pdfcraft_ui_egui::docking::Panel::Board;
+    let mut h = harness_stepping(0.05);
+    assert!(h.state().chess.results.is_none(), "nothing scanned yet");
+    let at = on_page(&h, 140.0, 660.0);
+    double_click_at(&mut h, at);
+    assert!(h.state().chess.run.is_none(), "the scan ran inline and finished");
+    assert_eq!(diagrams(&h), 2, "the page was scanned");
+    assert!(h.state().docking.layout.contains(&board), "the double-click opened the board");
+    assert_eq!(h.state().chess.board().game.fen(), START_FEN);
+    assert_eq!(h.state().chess.board().source.map(|s| (s.page, s.index)), Some((0, 0)));
+    assert!(h.state().chess.board_at.is_none(), "the double-click was dealt with");
+    assert_ne!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Diagrams found: 2"), "a quiet scan");
+
+    // Beside the diagrams (white space on the right): the page is scanned, nothing opens.
+    let mut h = harness_stepping(0.05);
+    let at = on_page(&h, 450.0, 500.0);
+    double_click_at(&mut h, at);
+    assert_eq!(diagrams(&h), 2, "the page was scanned");
+    assert!(!h.state().docking.layout.contains(&board), "no diagram there");
+    assert!(h.state().chess.board_at.is_none());
+    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("No chess diagram was found here."));
+
+    // On a word of the text: the word is selected, the page scanned, and nothing is said.
+    let mut h = harness_on(boards_with("12...e5 13.Nf3 Nc6"), 0.05);
+    support::wait_until(&mut h, "the page's text layer", |app| app.views[0].glyph_screen_pos(0, 0).is_some());
+    let at = on_page(&h, 66.0, 544.0);
+    double_click_at(&mut h, at);
+    assert_eq!(h.state().views[0].selected_text().as_deref(), Some("12...e5"), "the double-click selected a word");
+    assert_eq!(diagrams(&h), 2, "the page was scanned");
+    assert!(!h.state().docking.layout.contains(&board));
+    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), None);
+}
+
+/// A diagram opened on the board after its page was read in the Text tab starts at the move the
+/// moves under it give it: the reading assumed White to move at 1, `12...e5` makes it Black at 12.
+#[test]
+fn a_diagram_on_the_board_takes_the_side_and_move_number_its_moves_give_it() {
+    let mut h = harness_on(boards_with("12...e5 13.Nf3 Nc6"), 0.1);
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    let read = h.state().chess.results.as_ref().and_then(|r| r.diagram(0, 0)).and_then(|d| d.1.map(str::to_owned));
+    assert_eq!(read.as_deref(), Some(START_FEN), "the reading alone knows no better");
+    h.get_by_label("Text").click();
+    h.run_steps(4);
+    h.get_by_label("Recognised text of page 1");
+    h.get_by_label("Diagrams").click();
+    h.run_steps(2);
+    h.get_all_by_label("Open on the board").next().expect("diagram 1 has a position").click();
+    h.run_steps(3);
+    assert_eq!(h.state().chess.board().game.fen(), "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 12");
+    assert_eq!(h.state().chess.board().game.first_move_number(), 12, "the Move number field shows it");
 }
 
 /// Open on the board, in the Chess diagrams panel, puts that diagram on the Board panel and

@@ -3036,3 +3036,4 @@ chess undo step	Clear drawings	видалення малюнків
 	Open as a new game	Відкрити як нову партію
 @plural	{n} move|{n} moves	{n} хід|{n} ходи|{n} ходів
 	…and {n} older	…і ще старіших: {n}
+	No chess diagram was found here.	Тут не знайдено шахової діаграми.

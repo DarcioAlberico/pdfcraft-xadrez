@@ -3012,3 +3012,4 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Open as a new game	Жаңа партия ретінде ашу
 @plural	{n} move|{n} moves	{n} жүріс|{n} жүріс
 	…and {n} older	…және тағы ескілері: {n}
+	No chess diagram was found here.	Мұнда шахмат диаграммасы табылмады.

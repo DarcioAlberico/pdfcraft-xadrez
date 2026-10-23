@@ -3013,3 +3013,4 @@ chess undo step	Clear drawings	rajzok törlése
 	Open as a new game	Megnyitás új játszmaként
 @plural	{n} move|{n} moves	{n} lépés|{n} lépés
 	…and {n} older	…és még {n} régebbi
+	No chess diagram was found here.	Itt nem található sakkdiagram.

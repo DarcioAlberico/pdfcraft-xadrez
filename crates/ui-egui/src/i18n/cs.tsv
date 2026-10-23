@@ -3088,3 +3088,4 @@ chess undo step	Clear drawings	smazání kreseb
 	Open as a new game	Otevřít jako novou partii
 @plural	{n} move|{n} moves	{n} tah|{n} tahy|{n} tahů
 	…and {n} older	…a starších: {n}
+	No chess diagram was found here.	Zde nebyl nalezen žádný šachový diagram.
