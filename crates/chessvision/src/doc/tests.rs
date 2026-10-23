@@ -1090,6 +1090,30 @@ fn a_heading_after_a_diagram_still_lets_it_go() {
     assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s != MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
 }
 
+/// A book's page number under a diagram at the foot of the page is not its caption: a bare
+/// number alone at the head or foot of the page, as far from the page's index as the page
+/// numbers of the pages before it, is the page's number. Another bare number there still numbers
+/// the diagram, and so does that number with a line below it, or the page's number on a book's
+/// first page read, with none before it.
+#[test]
+fn a_page_number_under_a_diagram_does_not_number_it() {
+    let numbers = |doc: &ChessDoc| -> Vec<Option<u32>> {
+        doc.pages.iter().flat_map(|p| p.blocks.iter()).filter_map(|b| if let Block::Diagram(d) = b { Some(d.puzzle) } else { None }).collect()
+    };
+    let p0 = page_text(vec![line(100.0, "Some prose."), line(780.0, "36")]);
+    let at_foot = |n: &str| page_text(vec![line(100.0, "More prose."), line(780.0, n)]);
+    let diagram = [reading(0, 620.0, SCHOLAR, true, false)];
+    let not_at_foot = page_text(vec![line(100.0, "More prose."), line(780.0, "37"), line(795.0, "A note.")]);
+    for (p1, want) in [(at_foot("37"), None), (at_foot("52"), Some(52)), (not_at_foot, Some(37))] {
+        let mut b = DocBuilder::new();
+        b.add_page(&input(0, &p0, &[], &[], &[]));
+        b.add_page(&input(1, &p1, &diagram, &[], &[]));
+        assert_eq!(numbers(&b.finish()), [want], "{:?}", p1.lines.len());
+    }
+    let p1 = at_foot("37");
+    assert_eq!(numbers(&build_page(&input(1, &p1, &diagram, &[], &[]))), [Some(37)]);
+}
+
 /// A caption under the diagram gives its number too; one with no number gives none.
 #[test]
 fn a_caption_below_gives_the_puzzle_number() {

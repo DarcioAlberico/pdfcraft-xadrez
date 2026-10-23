@@ -211,11 +211,13 @@ fn caption_text(line: &ChessLine) -> Option<String> {
 /// line between two diagrams stacked in a column is the lower one's caption, or the upper one's),
 /// and a diagram takes its nearest caption.
 ///
+/// A bare number on one of the lines `folios` lists is the page's number, not a caption.
+///
 /// Also the page's trailing label: one with its word or `№` (not a bare number, which may be the
 /// page's number), standing alone ([`solution_label`]), that went to no diagram, with no diagram below it and no line after it but the
 /// page's number. It is the caption of the next page's first diagram (Construa Seu Xadrez sets
 /// `Exercício 7` at the foot of the page and its diagram at the top of the next).
-fn caption_numbers(lines: &[&ChessLine], diagrams: &[Option<ViewRect>]) -> (Vec<Option<u32>>, Option<u32>) {
+fn caption_numbers(lines: &[&ChessLine], diagrams: &[Option<ViewRect>], folios: &[usize]) -> (Vec<Option<u32>>, Option<u32>) {
     // (bare, gap, number, line) per diagram: a caption with its `№` wins over a bare number.
     let mut best: Vec<Option<(bool, f32, u32, usize)>> = vec![None; diagrams.len()];
     // The labels with a word or `№`: (line, number).
@@ -227,6 +229,9 @@ fn caption_numbers(lines: &[&ChessLine], diagrams: &[Option<ViewRect>]) -> (Vec<
             (None, Some(n)) => (n, true),
             (None, None) => continue,
         };
+        if bare && folios.contains(&li) {
+            continue;
+        }
         // Standing alone, as a solution's label must: `Exercício 2 mostra o mate` is prose.
         if !bare && solution_label(&text).is_some() {
             labelled.push((li, n));
@@ -268,6 +273,39 @@ fn caption_numbers(lines: &[&ChessLine], diagrams: &[Option<ViewRect>]) -> (Vec<
 /// Whether `line` is only a number: a page's number under the text.
 fn is_page_number(line: &ChessLine) -> bool {
     caption_text(line).is_some_and(|t| !t.trim().is_empty() && t.trim().chars().all(|c| c.is_ascii_digit()))
+}
+
+/// Most page-number offsets a document remembers ([`folio_offsets`]).
+pub const MAX_FOLIO_OFFSETS: usize = 4;
+
+/// The page's lines that may be its printed number (its folio): a number alone at the head or the
+/// foot of the page (no line above it, or none below it). Each with the offset of its number
+/// from the page's index, the same on every page of a book that numbers its pages there.
+fn folio_offsets(lines: &[&ChessLine], index: u32) -> Vec<(usize, i64)> {
+    let mut out = Vec::new();
+    for (li, l) in lines.iter().enumerate() {
+        let head = lines.iter().all(|o| o.rect.y1 > l.rect.y0 || std::ptr::eq(*o, *l));
+        let foot = lines.iter().all(|o| o.rect.y0 < l.rect.y1 || std::ptr::eq(*o, *l));
+        if !(head || foot) || !is_page_number(l) {
+            continue;
+        }
+        let number = caption_text(l).and_then(|t| t.trim().parse::<u32>().ok());
+        if let Some(n) = number {
+            out.push((li, i64::from(n) - i64::from(index)));
+        }
+    }
+    out
+}
+
+/// Remember the page-number `offsets` of a page ([`folio_offsets`]), newest last.
+pub(crate) fn remember_folios(known: &mut Vec<i64>, offsets: &[i64]) {
+    for &o in offsets {
+        known.retain(|k| *k != o);
+        if known.len() >= MAX_FOLIO_OFFSETS {
+            known.remove(0);
+        }
+        known.push(o);
+    }
 }
 
 /// The line's text, when it holds only text and move numbers.
@@ -605,9 +643,12 @@ fn titled(inlines: &[Inline]) -> bool {
     moves == 0 || (moves <= MAX_HEADING_MOVES && letters >= moves.saturating_mul(HEADING_LETTERS_PER_MOVE))
 }
 
-/// The page's blocks, and its trailing caption label ([`caption_numbers`]). `carried` is the
-/// previous page's, for this page's first diagram when no caption numbers it.
-fn blocks(input: &PageInput<'_>, carried: Option<u32>) -> (Vec<Block>, Option<u32>) {
+/// The page's blocks, its trailing caption label ([`caption_numbers`]) and its page-number
+/// offsets ([`folio_offsets`]). `carried` is the previous page's label, for this page's first
+/// diagram when no caption numbers it. A bare number at the head or foot of the page whose offset
+/// from the page's index is one of `folios` (seen on pages before) is the page's number, not a
+/// caption.
+fn blocks(input: &PageInput<'_>, carried: Option<u32>, folios: &[i64]) -> (Vec<Block>, Option<u32>, Vec<i64>) {
     let g = &input.geometry;
     let diagram_views: Vec<Option<ViewRect>> = input.diagrams.iter().map(|d| g.user_to_view(d.bbox_user)).collect();
     let hints: Vec<(HintKind, Option<ViewRect>)> = input.hints.iter().map(|h| (h.kind, g.user_to_view(h.rect))).collect();
@@ -625,7 +666,9 @@ fn blocks(input: &PageInput<'_>, carried: Option<u32>) -> (Vec<Block>, Option<u3
     let page_width = input.geometry.view_size().0;
     let split = gutter(&kept, page_width);
     let ordered = column_order(&kept, split);
-    let (puzzles, trailing) = caption_numbers(&kept, &diagram_views);
+    let offsets = folio_offsets(&kept, input.index);
+    let folio_lines: Vec<usize> = offsets.iter().filter(|(_, o)| folios.contains(o)).map(|(li, _)| *li).collect();
+    let (puzzles, trailing) = caption_numbers(&kept, &diagram_views, &folio_lines);
     // The previous page's trailing label is the first diagram's in reading order.
     let mut carried = carried;
     for item in interleave(&ordered, &diagram_views, split.unwrap_or(page_width * 0.5), split.is_some()) {
@@ -651,7 +694,7 @@ fn blocks(input: &PageInput<'_>, carried: Option<u32>) -> (Vec<Block>, Option<u3
         }
     }
     flush(&mut blocks, &mut group, key);
-    (blocks, trailing)
+    (blocks, trailing, offsets.into_iter().map(|(_, o)| o).collect())
 }
 
 /// Give each text review to the inline it overlaps most; the rest to the page.
@@ -771,10 +814,11 @@ fn poor_reason(reason: &PoorReason) -> String {
     }
 }
 
-/// One page, with the caption label `carried` from the page before it ([`blocks`]); also the
-/// label this page leaves for the next.
-pub(crate) fn page(input: &PageInput<'_>, walker: &mut Walker, carried: Option<u32>) -> (ChessPage, Option<u32>) {
-    let (mut blocks, trailing) = blocks(input, carried);
+/// One page, with the caption label `carried` from the page before it and the page-number
+/// offsets `folios` seen before ([`blocks`]); also the label this page leaves for the next, and
+/// its own page-number offsets.
+pub(crate) fn page(input: &PageInput<'_>, walker: &mut Walker, carried: Option<u32>, folios: &[i64]) -> (ChessPage, Option<u32>, Vec<i64>) {
+    let (mut blocks, trailing, offsets) = blocks(input, carried, folios);
     let mut review: Vec<ReviewFlag> = input.text.unknown_chess_fonts.iter().map(|f| ReviewFlag::UnknownChessFont { font: f.to_string() }).collect();
     if let TextQuality::Poor { reason } = &input.text.quality {
         review.push(ReviewFlag::PoorTextLayer { reason: poor_reason(reason) });
@@ -783,5 +827,5 @@ pub(crate) fn page(input: &PageInput<'_>, walker: &mut Walker, carried: Option<u
     walk(input.index, &mut blocks, walker, trailing);
     let page =
         ChessPage { index: input.index, lang: input.text.lang.lang.code().to_owned(), text_layer: (&input.text.quality).into(), blocks, review };
-    (page, trailing)
+    (page, trailing, offsets)
 }
