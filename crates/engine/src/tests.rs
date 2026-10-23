@@ -3973,6 +3973,42 @@ trailer <</Root 1 0 R>>
 }
 
 #[test]
+fn exporting_office_files_makes_uri_links_hyperlinks() {
+    // A paragraph under a web link, one under a `javascript:` URI link, one under none.
+    let pdf = b"%PDF-1.4
+1 0 obj <</Type/Catalog/Pages 2 0 R>> endobj
+2 0 obj <</Type/Pages/Kids[3 0 R]/Count 1>> endobj
+3 0 obj <</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]/Resources<</Font<</F1 4 0 R>>>>/Contents 5 0 R/Annots[6 0 R 7 0 R]>> endobj
+4 0 obj <</Type/Font/Subtype/Type1/BaseFont/Helvetica/Encoding/WinAnsiEncoding>> endobj
+5 0 obj <</Length 120>> stream
+BT /F1 12 Tf 72 760 Td (Read the rules online) Tj ET
+BT /F1 12 Tf 72 600 Td (Run a script) Tj ET
+BT /F1 12 Tf 72 400 Td (Plain words) Tj ET
+endstream endobj
+6 0 obj <</Type/Annot/Subtype/Link/Rect[70 750 300 780]/Border[0 0 0]/A<</S/URI/URI(https://example.org/rules?a=1&b=2)>>>> endobj
+7 0 obj <</Type/Annot/Subtype/Link/Rect[70 590 300 620]/Border[0 0 0]/A<</S/URI/URI(javascript:app.alert)>>>> endobj
+trailer <</Root 1 0 R>>
+%%EOF
+";
+    let mut s = Session::new();
+    let id = s.open("links.pdf", None, Arc::new(pdf.to_vec()), None).unwrap();
+    let d = s.get(id).unwrap();
+    let page = &d.export_pages()[0];
+    let uris: Vec<&str> = page.links.iter().map(|l| l.uri.as_str()).collect();
+    assert_eq!(uris, ["https://example.org/rules?a=1&b=2", "javascript:app.alert"]);
+    // Visible page coordinates (y up), as the blocks are.
+    let rect = page.links[0].rect;
+    assert!(rect.iter().zip([70.0, 750.0, 300.0, 780.0]).all(|(a, b)| (a - b).abs() < 0.01), "{rect:?}");
+    let rtf = String::from_utf8(d.export_office(compare::OfficeFormat::Rtf)).unwrap();
+    assert!(rtf.contains("{\\field{\\*\\fldinst{HYPERLINK \"https://example.org/rules?a=1&b=2\"}}{\\fldrslt{\\ul Read the rules online}}}"), "{rtf}");
+    // The writers refuse the `javascript:` address: its paragraph stays plain text.
+    assert_eq!(rtf.matches("HYPERLINK").count(), 1, "{rtf}");
+    assert!(rtf.contains(" Plain words\\par") && rtf.contains(" Run a script\\par"), "{rtf}");
+    let html = String::from_utf8(d.export_office(compare::OfficeFormat::Html)).unwrap();
+    assert!(html.contains("<a href=\"https://example.org/rules?a=1&amp;b=2\">Read the rules online</a>"), "{html}");
+}
+
+#[test]
 fn exporting_office_files_keeps_text_colour() {
     // #526: a dark green heading came out black in Word.
     let content = "BT /F1 24 Tf 0.05 0.23 0.18 rg 72 700 Td (Annual Report) Tj ET \
