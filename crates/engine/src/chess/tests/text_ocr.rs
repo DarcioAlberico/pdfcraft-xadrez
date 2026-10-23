@@ -547,3 +547,122 @@ fn a_boards_border_beyond_the_mask_goes_with_what_it_holds() {
     assert_eq!(read.ocr_pages[0].lines, 1, "only the moves ({:#?})", read.doc.pages[0].blocks);
     assert!(!read.doc.pages[0].blocks.iter().any(|b| matches!(b, pdfcraft_chessvision::doc::Block::Heading { .. })));
 }
+
+/// A line of `count` glyphs `height` pixels tall, `top` pixels down, from `x` across.
+fn glyph_line(top: u32, x: u32, height: u32, count: u32) -> pdfcraft_chessvision::glyphs::GlyphLine {
+    use pdfcraft_chessvision::glyphs::{Glyph, GlyphLine, GlyphWord};
+    let words: Vec<GlyphWord> = (0..count)
+        .map(|i| {
+            let rect = PixelRect { x0: x + i * 20, y0: top, x1: x + i * 20 + 12, y1: top + height };
+            GlyphWord { text: "a".into(), rect, glyphs: vec![Glyph { rect, text: "a".into(), p: 0.9, alternatives: Vec::new(), margin: 0.5 }] }
+        })
+        .collect();
+    GlyphLine { words, rect: PixelRect { x0: x, y0: top, x1: x + count * 20, y1: top + height } }
+}
+
+/// The lines set at least 1.4 times as tall as the page's body are its titles (Pinski's stand 1.5
+/// over the body): not the moves with figurines a little taller (1.27), nor a box read as one
+/// glyph, nor anything on a page whose title holds most of the glyphs. (Fails at a ratio of 1.2:
+/// the moves; without the glyph floor: the box.)
+#[test]
+fn larger_lines_are_the_titles_over_the_body() {
+    use crate::chess::text_ocr::larger_lines;
+    let mut lines: Vec<_> = (0..4).map(|k| glyph_line(400 + k * 50, 100, 30, 30)).collect();
+    lines.push(glyph_line(100, 100, 45, 15));
+    lines.push(glyph_line(200, 100, 38, 20));
+    lines.push(glyph_line(300, 100, 196, 1));
+    let found = larger_lines(&lines, 300.0);
+    assert_eq!(found.len(), 1, "{found:?}");
+    assert!((found[0].ratio - 1.5).abs() < 1e-6);
+    assert!((found[0].rect.y0 - 24.0).abs() < 1e-3, "view space: 100 px at 300 dpi is 24 pt ({found:?})");
+    assert!(larger_lines(&[glyph_line(100, 100, 45, 15), glyph_line(200, 100, 30, 5)], 300.0).is_empty(), "the title is the page's body");
+    assert!(larger_lines(&[], 300.0).is_empty());
+}
+
+/// A chess line of prose `text` at view `rect`.
+fn chess_line(text: &str, rect: ViewRect) -> pdfcraft_chessvision::chess_text::ChessLine {
+    use pdfcraft_chessvision::chess_text::{ChessLine, ChessRun, ChessSpan};
+    ChessLine { spans: vec![ChessSpan { run: ChessRun::Text(text.into()), rect, bold: false }], rect }
+}
+
+fn chess_page(lines: Vec<pdfcraft_chessvision::chess_text::ChessLine>) -> pdfcraft_chessvision::chess_text::ChessPageText {
+    use pdfcraft_chessvision::chess_text::{ChessPageText, LangGuess, LangTally, TextQuality};
+    ChessPageText {
+        lines,
+        lang: LangGuess { lang: pdfcraft_chess::san::Lang::En, confidence: 1.0 },
+        quality: TextQuality::Good,
+        hidden: 0.0,
+        unknown_chess_fonts: Vec::new(),
+        lang_tally: LangTally::default(),
+    }
+}
+
+/// A title's larger lines one under the other are one heading, level 1 from 1.5 times the body;
+/// one a blank line farther down is another, level 2 under 1.5. A title with a line of body size
+/// inside its box (another column's, beside a one-line title's two lines) is none, nor is a
+/// title holding too much text. (Fails without the join: three hints; without the body-size
+/// check: a heading over the other column's line.)
+#[test]
+fn larger_lines_join_into_titles_and_a_column_beside_them_is_kept_out() {
+    use crate::chess::document::size_hints;
+    use crate::chess::text_ocr::LargerLine;
+    use pdfcraft_chessvision::doc::HintKind;
+    let geometry = PageGeometry::new(PageRect::new(0.0, 0.0, 600.0, 800.0), pdfcraft_chessvision::coords::Rotation::R0).unwrap();
+    let r = |x0: f32, y0: f32, x1: f32, y1: f32| ViewRect::new(x0, y0, x1, y1);
+    let title = [r(60.0, 100.0, 260.0, 116.0), r(60.0, 120.0, 220.0, 136.0)];
+    let section = r(60.0, 200.0, 200.0, 212.0);
+    let larger: Vec<LargerLine> =
+        vec![LargerLine { rect: title[0], ratio: 1.6 }, LargerLine { rect: title[1], ratio: 1.5 }, LargerLine { rect: section, ratio: 1.42 }];
+    let text = chess_page(vec![
+        chess_line("The Italian Regretted:", title[0]),
+        chess_line("White Plays 5 d3", title[1]),
+        chess_line("Summary", section),
+        chess_line("Black should equalise", r(60.0, 300.0, 280.0, 310.0)),
+    ]);
+    let hints = size_hints(&larger, &text, &geometry);
+    let levels: Vec<HintKind> = hints.iter().map(|h| h.kind).collect();
+    assert_eq!(levels, vec![HintKind::Heading { level: 1 }, HintKind::Heading { level: 2 }]);
+    let first = geometry.user_to_view(hints[0].rect).unwrap();
+    assert!((first.y0 - 100.0).abs() < 1e-3 && (first.y1 - 136.0).abs() < 1e-3, "both lines: {first:?}");
+
+    // A line of the other column beside the title's short second line, under its wide first one.
+    let wide = r(60.0, 100.0, 460.0, 116.0);
+    let beside = chess_page(vec![
+        chess_line("The Italian Regretted: White", wide),
+        chess_line("who plays this line", r(300.0, 121.0, 500.0, 131.0)),
+        chess_line("Plays 5 d3", title[1]),
+    ]);
+    let two = [LargerLine { rect: wide, ratio: 1.6 }, larger[1]];
+    assert!(size_hints(&two, &beside, &geometry).is_empty());
+    // A larger text too long for a heading.
+    let long = chess_page(vec![chess_line(&"word ".repeat(41), title[0])]);
+    assert!(size_hints(&larger[..1], &long, &geometry).is_empty());
+    assert!(size_hints(&[], &text, &geometry).is_empty());
+}
+
+/// A chapter title set larger than a scanned page's text, with no frame around it, is a heading
+/// over its two lines; the same words at the body's size are a paragraph. (Fails without the size
+/// hints: no heading.)
+#[test]
+fn a_larger_title_on_a_scan_is_a_heading() {
+    let templates = Templates::learn("1.e4526Nf3cTheItalnRgrdWPsy", 14.0);
+    let headings = |size: f32| {
+        let mut lines = vec![("The Italian Regretted", size, 100.0), ("White Plays", size, 100.0 + size * 1.25)];
+        lines.extend((0..4).map(|k| (MOVES, 14.0, 200.0 + 20.0 * k as f32)));
+        let (mut s, id) = open(scanned_pdf(&lines, ""));
+        let read = s.chess_document_with(id, &[], &no_model(), Some(pdfcraft_chess::san::Lang::En), &options(&templates)).unwrap();
+        assert_eq!(read.ocr_pages.len(), 1, "{:?}", read.notes);
+        read.doc.pages[0]
+            .blocks
+            .iter()
+            .filter_map(|b| match b {
+                pdfcraft_chessvision::doc::Block::Heading { level, inlines, .. } => Some((*level, inlines.len())),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+    };
+    let large = headings(24.0);
+    assert_eq!(large.len(), 1, "one heading over both lines: {large:?}");
+    assert_eq!(large[0].0, 1, "24 pt over 14 pt is a title");
+    assert!(headings(14.0).is_empty(), "the same words at the body's size");
+}

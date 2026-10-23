@@ -15,7 +15,8 @@
 //!    page's lines, from the diagram the page shows (or the game start at `1.`); what they change
 //!    or cannot settle becomes a review flag on the text;
 //! 5. the lines become the same `ChessPageText` a text layer gives, and the frames drawn around
-//!    text (a game's header box) are kept for the headings.
+//!    text (a game's header box) and the lines set larger than the page's body (a chapter title,
+//!    [`larger_lines`]) are kept for the headings.
 //!
 //! Reading order is top to bottom by line: a two-column page is read across both columns.
 //!
@@ -72,6 +73,56 @@ pub struct OcrText {
     /// The frames drawn around text on the page (view space): a game's header box, a chapter
     /// title's. A page read with OCR has no other layout to tell a heading by.
     pub frames: Vec<ViewRect>,
+    /// The lines set larger than the page's body ([`larger_lines`]): a chapter title without a
+    /// frame.
+    pub larger: Vec<LargerLine>,
+}
+
+/// A line at least this many times as tall as the page's body text is set larger, as a title is.
+/// Pinski's chapter titles stand 1.5 to 1.6 times over their scanned body, and the chapter number
+/// above them 2.8; the tallest body lines, moves with figurines, 1.3.
+pub const LARGER_LINE_RATIO: f32 = 1.4;
+/// A shorter line (a drop capital, a symbol, a box read as one glyph) is no title.
+pub const LARGER_LINE_MIN_GLYPHS: usize = 3;
+
+/// A line set larger than its page's body, in view space, and how many times as tall.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LargerLine {
+    pub rect: ViewRect,
+    pub ratio: f32,
+}
+
+/// The lines of a page (`dpi`) set at least [`LARGER_LINE_RATIO`] times as tall as its body text:
+/// the height ([`GlyphLine::height`]) most of the page's glyphs are on. A page whose larger lines
+/// hold most of its glyphs has nothing larger than its body.
+pub fn larger_lines(lines: &[GlyphLine], dpi: f32) -> Vec<LargerLine> {
+    let mut heights: Vec<(u32, usize)> = lines.iter().filter_map(|l| l.height().map(|h| (h, l.glyphs().count()))).collect();
+    heights.sort_unstable();
+    let total = heights.iter().fold(0usize, |acc, &(_, n)| acc.saturating_add(n));
+    let mut seen = 0usize;
+    let Some(body) = heights
+        .iter()
+        .find(|&&(_, n)| {
+            seen = seen.saturating_add(n);
+            seen.saturating_mul(2) >= total
+        })
+        .map(|&(h, _)| h)
+        .filter(|&h| h > 0)
+    else {
+        return Vec::new();
+    };
+    lines
+        .iter()
+        .filter(|l| l.glyphs().count() >= LARGER_LINE_MIN_GLYPHS)
+        .filter_map(|l| {
+            // Heights are pixel counts on one page, exact in `f32`.
+            let ratio = l.height()? as f32 / body as f32;
+            if ratio < LARGER_LINE_RATIO {
+                return None;
+            }
+            Some(LargerLine { rect: pixels_to_view(l.rect, dpi)?, ratio })
+        })
+        .collect()
 }
 
 /// The vertical overlap of two pixel spans, as a share of the shorter.
@@ -182,6 +233,7 @@ pub fn read_page(
     }
     let image = if boards.is_empty() { image } else { masked(&image, &boards).ok_or("the page image could not be prepared")? };
     let lines = read(&image, None, scale, glyphs, &GlyphOptions::default()).map_err(|e| e.to_string())?;
+    let larger = larger_lines(&lines, dpi);
     let frames: Vec<ViewRect> = frames.into_iter().filter_map(|r| pixels_to_view(r, dpi)).collect();
     let fused = match ocr {
         Some(words) => bucket(&lines, words),
@@ -201,6 +253,7 @@ pub fn read_page(
         flags: repaired.flags.len(),
         general_ocr: ocr.is_some(),
         frames,
+        larger,
     })
 }
 
