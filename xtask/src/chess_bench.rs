@@ -5,7 +5,8 @@
 //! `DIR` holds the books as `books/*.pdf` (they are never committed: books are copyrighted) and
 //! gets each run's documents in `out/<tag>/<book>.json`. Each book is read on `N` pages from a
 //! quarter of the way in (20 by default; 0 reads every page). With `--baseline`, every move is
-//! matched with the same move (page, place, text) of that run: the moves that were valid there
+//! matched with the same move (page and text, its place within a few points, or as many times
+//! valid on its page) of that run: the moves that were valid there
 //! and are not now are listed, and more than `--allow-lost` of them (0 by default) fails.
 //!
 //! The piece models come from `--models` (else `PDFCRAFT_MODELS` or wherever `pdfcraft-cli`
@@ -182,9 +183,35 @@ fn statuses(doc: &Value) -> BTreeMap<Key, String> {
 }
 
 /// The moves valid in `now` and not in `then`.
+///
+/// A move is the same move in both runs when its page and text are and its place differs by at
+/// most [`SAME_PLACE`] points either way: a change to the reader can move a move's box a little
+/// (OCR measures its glyphs against another text scale), and that is not a move lost. A move
+/// matched nowhere near counts only when its page has more valid moves with its text in `now`
+/// than in `then`: its box was wrong in one run (a line inflated by a frame read as a glyph) and
+/// right in the other, and the move is the same.
 fn newly_valid<'a>(now: &'a BTreeMap<Key, String>, then: &BTreeMap<Key, String>) -> Vec<&'a Key> {
-    now.iter().filter(|(k, s)| s.as_str() == "valid" && then.get(*k).map(String::as_str) != Some("valid")).map(|(k, _)| k).collect()
+    let valid_on_page = |map: &BTreeMap<Key, String>, k: &Key| {
+        map.range((k.0, i64::MIN, i64::MIN, String::new())..)
+            .take_while(|(o, _)| o.0 == k.0)
+            .filter(|(o, st)| st.as_str() == "valid" && o.3 == k.3)
+            .count()
+    };
+    now.iter()
+        .filter(|(k, s)| {
+            s.as_str() == "valid"
+                && !then
+                    .range((k.0, i64::MIN, i64::MIN, String::new())..)
+                    .take_while(|(o, _)| o.0 == k.0)
+                    .any(|(o, st)| st.as_str() == "valid" && o.3 == k.3 && (o.1 - k.1).abs() <= SAME_PLACE && (o.2 - k.2).abs() <= SAME_PLACE)
+                && valid_on_page(now, k) > valid_on_page(then, k)
+        })
+        .map(|(k, _)| k)
+        .collect()
 }
+
+/// How far, in points, a move's place may move between runs and still be the same move.
+const SAME_PLACE: i64 = 4;
 
 fn tally(doc: &Value) -> Tally {
     let mut t = Tally::default();
@@ -250,5 +277,27 @@ mod tests {
         let after = statuses(&doc(&[("e4", "valid", 0), ("e5", "illegal", 0)]));
         assert_eq!(newly_valid(&before, &after), [&(0, 30, 100, "e5".to_owned())]);
         assert!(newly_valid(&after, &before).is_empty());
+    }
+
+    /// A move whose box moved a few points between runs (OCR measured it against another text
+    /// scale) is the same move, still valid; another move, or the move on another page, is not.
+    #[test]
+    fn a_move_a_few_points_away_is_the_same_move() {
+        let at = |x: i64, y: i64, text: &str| -> BTreeMap<Key, String> { [((0, x, y, text.to_owned()), "valid".to_owned())].into() };
+        assert!(newly_valid(&at(100, 200, "Nf3"), &at(103, 197, "Nf3")).is_empty());
+        assert_eq!(newly_valid(&at(100, 200, "Nf3"), &at(100, 200, "Nc3")).len(), 1);
+        let other_page: BTreeMap<Key, String> = [((1, 100, 200, "Nf3".to_owned()), "valid".to_owned())].into();
+        assert_eq!(newly_valid(&at(100, 200, "Nf3"), &other_page).len(), 1);
+    }
+
+    /// A move far from where it was, but as many times valid on its page, was displaced (its box
+    /// was wrong in one run), not lost; one valid fewer times on its page is lost.
+    #[test]
+    fn a_move_displaced_on_its_page_is_not_lost() {
+        let before: BTreeMap<Key, String> = [((0, 100, 391, "Nf1".to_owned()), "valid".to_owned())].into();
+        let after: BTreeMap<Key, String> = [((0, 100, 425, "Nf1".to_owned()), "valid".to_owned())].into();
+        assert!(newly_valid(&before, &after).is_empty());
+        let after: BTreeMap<Key, String> = [((0, 100, 425, "Nf1".to_owned()), "illegal".to_owned())].into();
+        assert_eq!(newly_valid(&before, &after).len(), 1);
     }
 }
