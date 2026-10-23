@@ -3014,3 +3014,5 @@ chess undo step	Clear drawings	çizimleri temizleme
 # Chess: Undo of games added to the list (a changed one is kept in the trash), and the PGN field's games after its first.
 @plural	{n} changed game was kept in Deleted moves.|{n} changed games were kept in Deleted moves.	Değiştirilen {n} oyun «Silinen hamleler» içinde saklandı.
 @plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	Oyun listesine {n} oyun daha eklendi.
+	Reading the pages around the game…	Oyunun çevresindeki sayfalar okunuyor…
+	No game was found for this move, on its page or the pages around it.	Bu hamle için ne kendi sayfasında ne de çevresindeki sayfalarda bir oyun bulundu.

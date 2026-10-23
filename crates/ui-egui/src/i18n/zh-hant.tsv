@@ -2968,3 +2968,5 @@ chess undo step	Clear drawings	清除標記
 # Chess: Undo of games added to the list (a changed one is kept in the trash), and the PGN field's games after its first.
 @plural	{n} changed game was kept in Deleted moves.|{n} changed games were kept in Deleted moves.	已將 {n} 局改動過的對局保存在「已刪除的著法」中。
 @plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	又有 {n} 局對局加入對局清單。
+	Reading the pages around the game…	正在讀取對局前後的頁面…
+	No game was found for this move, on its page or the pages around it.	在此著法所在頁及其前後頁面中均未找到對局。

@@ -3230,3 +3230,5 @@ chess undo step	Clear drawings	cancellazione dei disegni
 # Chess: Undo of games added to the list (a changed one is kept in the trash), and the PGN field's games after its first.
 @plural	{n} changed game was kept in Deleted moves.|{n} changed games were kept in Deleted moves.	{n} partita modificata è stata conservata in «Mosse eliminate».|{n} partite modificate sono state conservate in «Mosse eliminate».
 @plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	È stata aggiunta {n} altra partita all'elenco delle partite.|Sono state aggiunte altre {n} partite all'elenco delle partite.
+	Reading the pages around the game…	Lettura delle pagine attorno alla partita…
+	No game was found for this move, on its page or the pages around it.	Nessuna partita trovata per questa mossa, né nella sua pagina né in quelle vicine.

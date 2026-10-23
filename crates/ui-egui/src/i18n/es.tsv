@@ -3159,3 +3159,5 @@ chess undo step	Clear drawings	borrado de los dibujos
 # Chess: Undo of games added to the list (a changed one is kept in the trash), and the PGN field's games after its first.
 @plural	{n} changed game was kept in Deleted moves.|{n} changed games were kept in Deleted moves.	{n} partida modificada se guardó en «Jugadas borradas».|{n} partidas modificadas se guardaron en «Jugadas borradas».
 @plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	Se añadió {n} partida más a la lista de partidas.|Se añadieron {n} partidas más a la lista de partidas.
+	Reading the pages around the game…	Leyendo las páginas en torno a la partida…
+	No game was found for this move, on its page or the pages around it.	No se encontró ninguna partida para esta jugada, ni en su página ni en las páginas cercanas.
