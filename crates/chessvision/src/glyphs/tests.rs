@@ -365,6 +365,55 @@ fn a_broken_outlined_figurine_is_merged() {
     assert_eq!(reader(&model, &halves).merge_broken(&ordered, SCALE).unwrap(), ordered);
 }
 
+/// An `o` or `0` whose hairlines a scan lost: two arcs 3 px apart (0.15 scales), each read as a
+/// bracket at full confidence, so `merge_broken` keeps them; read as one letter here. The same
+/// arcs 6 px apart (0.3 scales) are two glyphs, and real brackets around a letter are left alone.
+#[test]
+fn an_empty_pair_of_brackets_is_a_round_letter_cut_in_two() {
+    let arcs = |c: &mut Canvas, x: i64, gap: i64| {
+        c.rect(x, 30, x + 3, 60).rect(x, 30, x + 6, 33).rect(x, 57, x + 6, 60);
+        let r = x + 6 + gap;
+        c.rect(r + 3, 30, r + 6, 60).rect(r, 30, r + 6, 33).rect(r, 57, r + 6, 60);
+    };
+    let (mut left, mut right, mut oval) = (Canvas::new(40, 90), Canvas::new(40, 90), Canvas::new(40, 90));
+    left.rect(10, 30, 13, 60).rect(10, 30, 16, 33).rect(10, 57, 16, 60);
+    right.rect(13, 30, 16, 60).rect(10, 30, 16, 33).rect(10, 57, 16, 60);
+    arcs(&mut oval, 10, 3);
+    let mut x = Canvas::new(40, 90);
+    x.rect(10, 40, 22, 60);
+    let model = Templates::new(&["(", ")", "O", "x"]).learn("(", &left).learn(")", &right).learn("O", &oval).learn("x", &x);
+    for (gap, joined) in [(3, true), (6, false)] {
+        let mut c = Canvas::new(120, 90);
+        arcs(&mut c, 20, gap);
+        let (boxes, _) = c.boxes(SCALE);
+        let ordered = seg::order_in_strip(&boxes);
+        assert_eq!(ordered.len(), 2, "gap {gap}: {ordered:?}");
+        let r = reader(&model, &c);
+        assert_eq!(r.merge_broken(&ordered, SCALE).unwrap(), ordered, "gap {gap}: the arcs read as brackets");
+        let reads = r.read(&ordered).unwrap();
+        let (line, reads) = r.join_bracket_pairs(ordered.clone(), reads, SCALE).unwrap();
+        let names: Vec<&str> = reads.iter().map(|r| model.names[r.class].as_str()).collect();
+        if joined {
+            assert_eq!(line, vec![Bx { x0: 20, y0: 30, x1: 35, y1: 60 }], "gap {gap}");
+            assert_eq!(names, ["O"]);
+        } else {
+            assert_eq!(line, ordered, "gap {gap}");
+            assert_eq!(names, ["(", ")"]);
+        }
+    }
+    // `(x)`: the brackets hold a letter, so no pair stands side by side.
+    let mut c = Canvas::new(160, 90);
+    c.rect(20, 30, 23, 60).rect(20, 30, 26, 33).rect(20, 57, 26, 60);
+    c.rect(32, 40, 44, 60);
+    c.rect(53, 30, 56, 60).rect(50, 30, 56, 33).rect(50, 57, 56, 60);
+    let (boxes, _) = c.boxes(SCALE);
+    let ordered = seg::order_in_strip(&boxes);
+    let r = reader(&model, &c);
+    let reads = r.read(&ordered).unwrap();
+    let (line, _) = r.join_bracket_pairs(ordered.clone(), reads, SCALE).unwrap();
+    assert_eq!(line, ordered);
+}
+
 /// A frame's side left on a scan (2 × 60 px at a 20 px scale) is no character, and it would join
 /// every line beside it; an `l` (3 × 20 px), as thin but one scale tall, stays, and so does a
 /// tall bracket (5 × 50 px, ten times taller than wide).
@@ -502,6 +551,15 @@ fn a_split_move_number_is_joined_on_notation_lines_only() {
     let mut prose = vec![gw("In", 0, 20), gw("1", 30, 40), gw("9", 44, 54), gw("games", 60, 120)];
     fix::join_move_numbers(&mut prose);
     assert_eq!(prose.len(), 4);
+    // The `0` of `10` read as a letter once a scan cut it and the book's wide figures set it off.
+    let mut oval = vec![gw("1", 0, 10), gw("O...♕e7", 16, 90), gw("1", 100, 110), gw("O", 116, 126), gw("♘xc4", 130, 160)];
+    fix::join_move_numbers(&mut oval);
+    assert_eq!(oval.iter().map(|w| w.text.as_str()).collect::<Vec<_>>(), vec!["10...♕e7", "10", "♘xc4"]);
+    assert_eq!(oval[0].glyphs.iter().map(|g| g.text.as_str()).collect::<String>(), "10...♕e7");
+    // Castling after a number stays apart: `5 O-O` is move 5.
+    let mut castle = vec![gw("5", 0, 10), gw("O-O", 16, 50), gw("♘f6", 60, 90)];
+    fix::join_move_numbers(&mut castle);
+    assert_eq!(castle.len(), 3);
     // Four digits are a year, not a move number.
     let mut year = vec![gw("1", 0, 10), gw("984", 14, 50), gw("♘f3", 60, 90)];
     fix::join_move_numbers(&mut year);
