@@ -976,6 +976,7 @@ impl PdfCraftApp {
                 }
             }
             BoardAction::ChooseEngine => self.choose_chess_engine(),
+            BoardAction::AddGames { texts, more } => self.add_pgn_field_games(&texts, more),
         }
     }
 

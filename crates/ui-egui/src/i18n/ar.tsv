@@ -3291,3 +3291,6 @@ chess undo step	Clear drawings	مسح الرسوم
 @plural	{n} move|{n} moves	{n} نقلة|{n} نقلة|{n} نقلتان|{n} نقلات|{n} نقلة|{n} نقلة
 	…and {n} older	…و{n} أقدم
 	No chess diagram was found here.	لم يُعثر على مخطط شطرنج هنا.
+# Chess: Undo of games added to the list (a changed one is kept in the trash), and the PGN field's games after its first.
+@plural	{n} changed game was kept in Deleted moves.|{n} changed games were kept in Deleted moves.	احتُفظ بالمباريات المعدّلة في «النقلات المحذوفة»: {n}|احتُفظ بالمباريات المعدّلة في «النقلات المحذوفة»: {n}|احتُفظ بالمباريات المعدّلة في «النقلات المحذوفة»: {n}|احتُفظ بالمباريات المعدّلة في «النقلات المحذوفة»: {n}|احتُفظ بالمباريات المعدّلة في «النقلات المحذوفة»: {n}|احتُفظ بالمباريات المعدّلة في «النقلات المحذوفة»: {n}
+@plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	مباريات أخرى أُضيفت إلى قائمة المباريات: {n}|مباريات أخرى أُضيفت إلى قائمة المباريات: {n}|مباريات أخرى أُضيفت إلى قائمة المباريات: {n}|مباريات أخرى أُضيفت إلى قائمة المباريات: {n}|مباريات أخرى أُضيفت إلى قائمة المباريات: {n}|مباريات أخرى أُضيفت إلى قائمة المباريات: {n}

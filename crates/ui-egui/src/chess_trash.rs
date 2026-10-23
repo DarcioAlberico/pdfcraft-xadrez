@@ -71,8 +71,16 @@ impl Trash {
     /// Keep `before` (the game before `deleted` of its moves went), named `name`. Whether it
     /// was kept: not when its PGN is too long.
     pub fn keep(&mut self, before: &Game, name: &str, deleted: usize) -> bool {
-        let moves = before.tokens().iter().filter(|t| matches!(t, pdfcraft_engine::chess::pdfcraft_chess::game::Token::Move { .. })).count();
-        self.push(Trashed { pgn: before.pgn(), name: name.to_owned(), moves, deleted, at: now() })
+        self.keep_item(before, name, Some(deleted)).is_some()
+    }
+
+    /// Keep `game`, named `name`, as [`Trash::keep`] does, `deleted` of its moves gone (all of
+    /// them when `None`: the whole game left the list). What was kept, to find it again
+    /// ([`Trash::take_item`]); `None` when its PGN is too long.
+    pub fn keep_item(&mut self, game: &Game, name: &str, deleted: Option<usize>) -> Option<Trashed> {
+        let moves = game.tokens().iter().filter(|t| matches!(t, pdfcraft_engine::chess::pdfcraft_chess::game::Token::Move { .. })).count();
+        let item = Trashed { pgn: game.pgn(), name: name.to_owned(), moves, deleted: deleted.unwrap_or(moves), at: now() };
+        self.push(item.clone()).then_some(item)
     }
 
     fn push(&mut self, item: Trashed) -> bool {
@@ -99,9 +107,32 @@ impl Trash {
         self.items.iter().enumerate().rev()
     }
 
+    /// Game `index` (as [`Trash::newest_first`] numbers it).
+    pub fn get(&self, index: usize) -> Option<&Trashed> {
+        self.items.get(index)
+    }
+
     /// Take game `index` out of the trash.
     pub fn take(&mut self, index: usize) -> Option<Trashed> {
         self.items.remove(index)
+    }
+
+    /// Put `item`, which [`Trash::take`] took from place `index`, back there (at the end when the
+    /// trash is shorter now); the oldest goes when the trash is full.
+    pub fn put_back(&mut self, index: usize, item: Trashed) {
+        if item.pgn.len() > MAX_TRASHED_PGN {
+            return;
+        }
+        self.items.insert(index.min(self.items.len()), item);
+        while self.items.len() > MAX_TRASHED {
+            self.items.pop_front();
+        }
+    }
+
+    /// Take the newest game equal to `item` out of the trash. Its place, when it was there.
+    pub fn take_item(&mut self, item: &Trashed) -> Option<usize> {
+        let index = self.items.iter().rposition(|t| t == item)?;
+        self.items.remove(index).map(|_| index)
     }
 
     /// As the autosave stores it, oldest first.
@@ -184,5 +215,24 @@ mod tests {
         assert_eq!(t.take(index).map(|item| item.name), Some("B".to_owned()));
         assert_eq!(t.len(), 1);
         assert_eq!(t.take(7), None);
+    }
+
+    #[test]
+    fn a_game_taken_out_goes_back_to_its_place_and_is_found_again() {
+        let mut t = Trash::default();
+        t.keep(&game("1. e4 *"), "A", 1);
+        let b = t.keep_item(&game("1. d4 d5 *"), "B", None).unwrap();
+        assert_eq!((b.moves, b.deleted), (2, 2), "the whole game left the list");
+        t.keep(&game("1. c4 *"), "C", 1);
+        assert_eq!(t.take_item(&b), Some(1));
+        assert_eq!(t.take_item(&b), None, "taken once");
+        t.put_back(1, b.clone());
+        assert_eq!(t.stored().iter().map(|i| i.name.as_str()).collect::<Vec<_>>(), ["A", "B", "C"]);
+        t.put_back(usize::MAX, b.clone());
+        assert_eq!(t.stored().last().map(|i| i.name.as_str()), Some("B"), "past the end: at the end");
+        for _ in 0..MAX_TRASHED {
+            t.put_back(0, b.clone());
+        }
+        assert_eq!(t.len(), MAX_TRASHED, "capped");
     }
 }
