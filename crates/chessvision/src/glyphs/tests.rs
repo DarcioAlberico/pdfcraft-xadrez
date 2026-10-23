@@ -377,6 +377,23 @@ fn an_upright_rule_is_not_a_character() {
     assert_eq!(boxes, vec![Bx { x0: 40, y0: 40, x1: 43, y1: 60 }, Bx { x0: 70, y0: 30, x1: 75, y1: 80 }]);
 }
 
+/// A frame drawn around a header (8 × 4 scales, a 2 px outline) is no glyph, and the letter it
+/// holds is read, not dropped as the frame's inner detail. An outlined figurine, as hollow but one
+/// scale across, is still one glyph with its inner strokes dropped.
+#[test]
+fn a_frame_around_text_is_no_glyph_and_its_text_is_read() {
+    let mut c = Canvas::new(240, 120);
+    c.rect(20, 20, 180, 22).rect(20, 98, 180, 100).rect(20, 20, 22, 100).rect(178, 20, 180, 100);
+    c.rect(60, 50, 74, 70);
+    // An outlined figurine: a 20 px square ring with a stroke inside.
+    c.rect(200, 50, 220, 53).rect(200, 67, 220, 70).rect(200, 50, 203, 70).rect(217, 50, 220, 70).rect(208, 56, 212, 64);
+    let (mut boxes, _) = c.boxes(SCALE);
+    boxes.sort_by_key(|b| b.x0);
+    assert_eq!(boxes, vec![Bx { x0: 60, y0: 50, x1: 74, y1: 70 }, Bx { x0: 200, y0: 50, x1: 220, y1: 70 }]);
+    let frames = crate::glyphs::frames(&c.image(), None, Some(SCALE as u32)).unwrap();
+    assert_eq!(frames, vec![PixelRect { x0: 20, y0: 20, x1: 180, y1: 100 }]);
+}
+
 /// A scan's letter cut at its hairline: the bowl and the stem of a `d`, 1 px apart (0.05 scales),
 /// are read as one when the union reads well and the pieces do not. The same pieces at the
 /// distance of two letters of a word (3 px, 0.15 scales) are never offered to the arbiter.

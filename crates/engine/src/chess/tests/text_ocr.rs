@@ -487,3 +487,63 @@ fn a_diagram_is_painted_out_with_its_frame() {
     assert_eq!(at(40, 40), 255, "the board");
     assert_eq!(at(10, 40), 0, "text farther away");
 }
+
+/// A game's header in a box on a scanned page (Pinski: `Game 12`, the players, the place and
+/// year, framed at the foot of a column) is a heading, which ends the game before it; the frame
+/// itself is not read. The same text with no box around it is a paragraph, and so is the text
+/// inside a border around the whole page, which does not hug it; a header box inside such a
+/// border is still one heading.
+#[test]
+fn a_framed_header_on_a_scan_is_a_heading() {
+    let templates = Templates::learn("Game12SithJonsLd04-", 14.0);
+    let header = [("Game 12", 14.0, 300.0), ("Smith-Jones", 14.0, 318.0), ("London 2004", 14.0, 336.0)];
+    let headings = |extra: &str| {
+        let (mut s, id) = open(scanned_pdf(&header, extra));
+        let read = s.chess_document_with(id, &[], &no_model(), Some(pdfcraft_chess::san::Lang::En), &options(&templates)).unwrap();
+        assert_eq!(read.ocr_pages.len(), 1, "{:?}", read.notes);
+        read.doc.pages[0].blocks.iter().filter(|b| matches!(b, pdfcraft_chessvision::doc::Block::Heading { .. })).count()
+    };
+    let header_box = "1.5 w 50 455 120 63 re S
+";
+    let page_border = "1.5 w 20 20 560 760 re S
+";
+    assert_eq!(headings(header_box), 1, "the framed header");
+    assert_eq!(headings(""), 0, "the same text unframed");
+    assert_eq!(headings(page_border), 0, "a page's border");
+    assert_eq!(headings(&format!("{page_border}{header_box}")), 1, "a header box inside a page's border");
+}
+
+/// A box around a board and the moves under it is no board border: what it holds is read, and
+/// it is no heading.
+#[test]
+fn a_box_around_a_board_and_its_moves_keeps_the_moves() {
+    let templates = Templates::learn("1.e4526Nf3c", 14.0);
+    let board = vector_board(60.0, 100.0);
+    let content = format!(
+        "q 600 0 0 800 0 0 cm /Im1 Do Q
+{board}0 g 1.5 w 40 80 420 450 re S
+"
+    );
+    let bytes = pdf(&content, "Helvetica", Some(scan_image(&[(MOVES, 14.0, 300.0)])), "");
+    let (mut s, id) = open(bytes);
+    let read = s.chess_document_with(id, &[], &no_model(), Some(pdfcraft_chess::san::Lang::En), &options(&templates)).unwrap();
+    assert_eq!(read.ocr_pages.len(), 1, "{:?}", read.notes);
+    assert_eq!(read.ocr_pages[0].lines, 1, "the moves ({:#?})", read.doc.pages[0].blocks);
+    assert!(!read.doc.pages[0].blocks.iter().any(|b| matches!(b, pdfcraft_chessvision::doc::Block::Heading { .. })));
+}
+
+/// A board's outer border beyond the mask (20 pt out), with ink left inside it (pieces of a
+/// scan the mask missed): the border touches the diagram, so it goes with what it holds. No
+/// heading, and only the moves are read.
+#[test]
+fn a_boards_border_beyond_the_mask_goes_with_what_it_holds() {
+    let templates = Templates::learn("1.e4526Nf3c", 14.0);
+    let board = vector_board(60.0, 100.0);
+    let border = "0 g 1.5 w 40 80 200 200 re S 226 150 6 9 re f 226 175 6 9 re f\n";
+    let bytes = pdf(&format!("q 600 0 0 800 0 0 cm /Im1 Do Q\n{board}{border}"), "Helvetica", Some(scan_image(&[(MOVES, 14.0, 300.0)])), "");
+    let (mut s, id) = open(bytes);
+    let read = s.chess_document_with(id, &[], &no_model(), Some(pdfcraft_chess::san::Lang::En), &options(&templates)).unwrap();
+    assert_eq!(read.ocr_pages.len(), 1, "{:?}", read.notes);
+    assert_eq!(read.ocr_pages[0].lines, 1, "only the moves ({:#?})", read.doc.pages[0].blocks);
+    assert!(!read.doc.pages[0].blocks.iter().any(|b| matches!(b, pdfcraft_chessvision::doc::Block::Heading { .. })));
+}
