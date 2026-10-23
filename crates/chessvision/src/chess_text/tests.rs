@@ -63,6 +63,14 @@ impl Page {
         self.text_in(s, BODY)
     }
 
+    /// A word gap tighter than a space (0.15 of a glyph's height): an old OCR's split inside a
+    /// number.
+    fn split(mut self) -> Self {
+        self.space = true;
+        self.x += 1.5;
+        self
+    }
+
     fn newline(mut self) -> Self {
         self.line += 1;
         self.x = 0.0;
@@ -227,6 +235,29 @@ fn a_stray_mark_inside_a_square_is_dropped() {
         read.lines[0].spans.iter().filter_map(|s| if let ChessRun::Move { san, .. } = &s.run { Some(san.to_english()) } else { None }).collect();
     assert_eq!(sans, ["bxc3", "Qxc3", "Kb6", "e4"]);
     assert!(read.lines[0].spans.iter().any(|s| s.run == ChessRun::Text("e.g. a.m.".into())), "{:?}", read.lines[0].spans);
+}
+
+/// An old OCR layer (Chess Tactics 4) splits a move's number at a space: `2 1 .fxe6` for
+/// 21.fxe6, `1 8.Nf6+` for 18.Nf6+, `3 1 ...Kf6` for 31...Kf6. The digits join when together they
+/// read as a numbered move and stand closer than words do; `Game 1 8.Nf3`, with a space between,
+/// keeps its game number apart.
+#[test]
+fn a_move_number_split_by_ocr_is_joined() {
+    let read = Page::new()
+        .text("after 2")
+        .split()
+        .text("1 .fxe6 Rxf6 1")
+        .split()
+        .text("8.Nf6+ and 3")
+        .split()
+        .text("1 ...Kf6 Game 1 8.Nf3")
+        .read(Some(Lang::En));
+    let numbers: Vec<(u16, bool)> = read.lines[0]
+        .spans
+        .iter()
+        .filter_map(|s| if let ChessRun::MoveNumber { number, black } = s.run { Some((number, black)) } else { None })
+        .collect();
+    assert_eq!(numbers, [(21, false), (18, false), (31, true), (8, false)], "{:?}", read.lines[0].spans);
 }
 
 #[test]

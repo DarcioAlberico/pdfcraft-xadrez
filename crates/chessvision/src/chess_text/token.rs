@@ -243,16 +243,67 @@ fn without_square_marks(cells: &[Cell], lang: Lang) -> Option<Vec<Cell>> {
     reads_as_move(&kept, lang).then_some(kept)
 }
 
+/// Widest gap, as a share of the glyphs' height, between the two digits of a split move number:
+/// Chess Tactics 4's split numbers stand 0.13-0.18 apart, its words 0.20 or more (5th percentile;
+/// median 0.28).
+const SPLIT_NUMBER_GAP: f32 = 0.19;
+
+/// A move whose number an old OCR layer split at a space, from word `i`: a digit, then either the
+/// rest of the number with its move (`1` `8.Nf6+`: 18.Nf6+) or a digit and the move after its
+/// full stop (`2` `1` `.fxe6`: 21.fxe6; `3` `1` `...Kf6`: 31...Kf6). The words joined, and how
+/// many, when together they read as a numbered move and the digits stand closer than words do
+/// ([`SPLIT_NUMBER_GAP`]); the walker still judges the number.
+fn split_number(words: &[Vec<Cell>], i: usize, lang: Lang) -> Option<(Vec<Cell>, usize)> {
+    let digit = |w: Option<&Vec<Cell>>, first: bool| matches!(w.map(Vec::as_slice), Some([c]) if c.ch.is_ascii_digit() && !(first && c.ch == '0'));
+    if !digit(words.get(i), true) {
+        return None;
+    }
+    let next = words.get(i + 1)?;
+    // The digits stand closer than words do: a real space keeps them apart (`Game 1 8.Nf3`).
+    let tight = match (words.get(i).and_then(|w| w.last()), next.first()) {
+        (Some(a), Some(b)) => {
+            let h = (a.rect[3] - a.rect[1]).max(b.rect[3] - b.rect[1]);
+            let gap = b.rect[0] - a.rect[2];
+            h.is_finite() && gap.is_finite() && h > 0.0 && gap <= SPLIT_NUMBER_GAP * h
+        }
+        _ => false,
+    };
+    if !tight {
+        return None;
+    }
+    let spans: &[usize] = if next.first().is_some_and(|c| c.ch.is_ascii_digit()) && next.get(1).is_some_and(|c| c.ch == '.') {
+        &[1]
+    } else if digit(Some(next), false) && words.get(i + 2).and_then(|w| w.first()).is_some_and(|c| c.ch == '.') {
+        &[2]
+    } else {
+        return None;
+    };
+    spans.iter().find_map(|&n| {
+        let cells: Vec<Cell> = words.get(i..=i + n)?.iter().flatten().copied().collect();
+        let numbered = {
+            let chars: Vec<char> = cells.iter().map(|c| c.ch).collect();
+            parts(&chars).number.is_some()
+        };
+        (cells.len() <= MAX_WORD_CHARS && numbered && reads_as_move(&cells, lang)).then_some((cells, n + 1))
+    })
+}
+
 /// Step 2b: put back together a move that OCR cut with spaces. A lone figurine and the one or
 /// two words after it (`♖ e1`, `♖ e 1`) join when together they read as a move; so do a move to
 /// the last rank and a promotion written apart (`f1 =♕`). A figurine in prose (`the ♗ pair`)
 /// joins nothing. Stray marks inside a square are dropped ([`without_square_marks`]), from a
-/// word and from the words joined, so `bxc.3` is `bxc3` and `♕ xc.3` is `♕xc3`.
+/// word and from the words joined, so `bxc.3` is `bxc3` and `♕ xc.3` is `♕xc3`; and a move
+/// number split at a space is put back ([`split_number`]: `2 1 .fxe6`).
 pub(crate) fn join_split_moves(words: Vec<Vec<Cell>>, lang: Lang) -> Vec<Vec<Cell>> {
     let words: Vec<Vec<Cell>> = words.into_iter().map(|w| without_square_marks(&w, lang).unwrap_or(w)).collect();
     let mut out: Vec<Vec<Cell>> = Vec::with_capacity(words.len());
     let mut i = 0;
     while let Some(word) = words.get(i) {
+        if let Some((cells, n)) = split_number(&words, i, lang) {
+            out.push(cells);
+            i += n;
+            continue;
+        }
         let lone_figurine = matches!(word.as_slice(), [c] if figurine_piece(c.ch).is_some());
         let promotion_next = words.get(i + 1).is_some_and(|next| next.first().is_some_and(|c| c.ch == '='));
         let spans: &[usize] = if lone_figurine {
