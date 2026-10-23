@@ -1209,6 +1209,36 @@ fn chess_pgn_edit_capture_reports_ambiguity_renumbering_and_no_fit() {
     assert!(r["movetext"].as_str().unwrap().contains("({a tentativa 20.Nxf6} 19... Kh8)"), "{}", r["movetext"]);
 }
 
+/// The Renumber choice is reported beside the places, never chosen over one that plays, and
+/// applied when asked for: the moves take the game's numbers.
+#[test]
+fn chess_pgn_edit_capture_applies_the_renumber_choice_when_asked() {
+    let (_base, root) = workdir("pgn-capture-renumber");
+    let mut auto = Automation::new().with_root(&root).unwrap();
+    let a = &mut auto;
+    // After 20.Raxe1: 19…Kh8 fits by its number as an alternative to 19…Kh7, and renumbered as
+    // 20…Kh8.
+    let r = pgn_edit(a, true, json!([capture_op("path:0.0.0.0.0", "subvariation", "19…Kh8")]));
+    let c = capture_of(&r, 0);
+    assert_eq!((c["chosen"].as_u64(), c["renumber"].as_u64(), c["needs_preview"].as_bool()), (Some(0), Some(1), Some(false)));
+    assert_eq!(c["candidates"][1]["shifted"], 1);
+    assert_eq!(c["candidates"][1]["renumbering"], json!({ "printed": "19...Kh8", "played": "20...Kh8" }));
+    assert!(c["candidates"][1]["reasons"].as_array().unwrap().contains(&json!("renumber")), "{c}");
+    assert_eq!(r["movetext"], "18. Nd5 Qxe1 19. Nxe7+ Kh7 (19... Kh8) 20. Raxe1");
+    let mut op = capture_op("path:0.0.0.0.0", "subvariation", "19…Kh8");
+    op["apply"] = json!("renumber");
+    let r = pgn_edit(a, true, json!([op]));
+    assert_eq!(capture_of(&r, 0)["applied"], true);
+    assert_eq!(r["movetext"], "18. Nd5 Qxe1 19. Nxe7+ Kh7 20. Raxe1 Kh8");
+    // Without a Renumber choice nothing is applied.
+    let mut op = capture_op("path:0.0.0.0", "subvariation", "19…Kh8");
+    op["apply"] = json!("renumber");
+    let r = pgn_edit(a, true, json!([op]));
+    let c = capture_of(&r, 0);
+    assert_eq!((c["applied"].as_bool(), c["renumber"].is_null()), (Some(false), true));
+    assert_eq!(r["movetext"], MAIN);
+}
+
 /// A capture with a bad mode, language, bold range or apply is refused like any other op.
 #[test]
 fn chess_pgn_edit_capture_refuses_bad_arguments() {
@@ -1224,7 +1254,7 @@ fn chess_pgn_edit_capture_refuses_bad_arguments() {
         (json!({ "op": "capture", "at": "path:0", "text": "18…Qd8", "bold_runs": [[0, -1]] }), "pairs"),
         (json!({ "op": "capture", "at": "path:0", "text": "18…Qd8", "bold_runs": "0-3" }), "an array"),
         (json!({ "op": "capture", "at": "path:0", "text": "18…Qd8", "bold_runs": vec![json!([0, 1]); 4097] }), "at most"),
-        (json!({ "op": "capture", "at": "path:0", "text": "18…Qd8", "apply": "always" }), "chosen, auto or never"),
+        (json!({ "op": "capture", "at": "path:0", "text": "18…Qd8", "apply": "always" }), "chosen, auto, never or renumber"),
     ];
     for (op, needle) in refused {
         let r = pgn_edit(a, true, json!([op]));
@@ -1328,7 +1358,7 @@ fn random_op(rng: &mut Rng) -> Value {
                 "mode": *rng.pick(&["auto", "line", "variation", "subvariation", "comment", "comment_before"]),
                 "lang": *rng.pick(&["en", "pt", "de", "en"]),
                 "bold_runs": if rng.below(2) == 0 { Value::Null } else { Value::Array(runs) },
-                "apply": *rng.pick(&["chosen", "auto", "never", "chosen"]),
+                "apply": *rng.pick(&["chosen", "auto", "never", "renumber"]),
             })
         }
         14 => json!({ "op": *rng.pick(&["unknown", "", "graft"]), "at": at, "items": "x" }),

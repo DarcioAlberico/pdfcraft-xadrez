@@ -5,7 +5,7 @@
 
 use egui::{Modifiers, Pos2};
 use egui_kittest::Harness;
-use egui_kittest::kittest::Queryable;
+use egui_kittest::kittest::{NodeT, Queryable};
 use pdfcraft_ui_egui::{PdfCraftApp, RightPanel};
 
 mod support;
@@ -650,4 +650,117 @@ fn a_page_selection_is_corrected_in_its_glyphs() {
     let nxe7 = game.node_at(&pdfcraft_engine::chess::pdfcraft_chess::game::NodePath::new(vec![0, 0, 0])).unwrap();
     let source = game.source(nxe7).expect("the corrected move keeps its place on the page");
     assert_eq!(source.page, 0);
+}
+
+/// Renumber is a choice of its own beside the place: the place stays as chosen, the choice plays
+/// the moves from where a move without a number goes with the game's numbers and says what
+/// changes; switched off it goes back to the place; applied, it is one undo step.
+#[test]
+fn the_preview_offers_renumbering_as_its_own_choice() {
+    let mut h = harness();
+    play(&mut h, &["Nd5", "Qxe1", "Nxe7+", "Kh7", "Raxe1"]);
+    // 19…Kh8 is an alternative to 19…Kh7 by its number, and 20…Kh8 renumbered; 20.Nxe6 plays in
+    // neither, so the preview is shown.
+    h.state_mut().capture_pasted("19…Kh8 20.Nxe6", Some((CaptureMode::SubVariation, false)));
+    h.run_steps(2);
+    let p = h.state().chess.capture.pending.as_ref().expect("an incomplete capture is shown first");
+    let (place, renumber) = (p.plan.chosen, p.plan.renumber);
+    assert!(renumber.is_some() && place != renumber, "a place, and Renumber beside it");
+    assert_eq!(p.choice, place);
+    h.get_by_label("Variation of 19…Kh7");
+    assert!(h.query_by_label("Fit at").is_none(), "Renumber is not a place to fit at");
+    assert!(h.query_by_label_contains("is played as").is_none());
+    h.get_by_label("Renumber").click();
+    // The popover settles its new width (it is pinned by its right edge).
+    h.run_steps(4);
+    assert_eq!(h.state().chess.capture.pending.as_ref().and_then(|p| p.choice), renumber);
+    h.get_by_label("Line after 20.Raxe1");
+    h.get_by_label("• The text's move numbers give way to the game's: 19...Kh8 is played as 20...Kh8.");
+    h.get_by_label("✓ 20...Kh8");
+    // Off again: back to the place.
+    h.get_by_label("Renumber").click();
+    // The popover settles its new width (it is pinned by its right edge).
+    h.run_steps(4);
+    assert_eq!(h.state().chess.capture.pending.as_ref().and_then(|p| p.choice), place);
+    h.get_by_label("Renumber").click();
+    // The popover settles its new width (it is pinned by its right edge).
+    h.run_steps(4);
+    assert_eq!(movetext(&h), "18. Nd5 Qxe1 19. Nxe7+ Kh7 20. Raxe1", "nothing goes in before Apply");
+    // A correction plans the text again, and Renumber stays chosen.
+    h.get_by_label("✗ 21.Nxe6 — Illegal move").click();
+    h.run_steps(2);
+    let field = h.get_by_label("Correction");
+    field.click();
+    h.run_steps(1);
+    h.key_press(egui::Key::End);
+    for _ in 0..4 {
+        h.key_press(egui::Key::Backspace);
+    }
+    h.get_by_label("Correction").type_text("Nxg6+");
+    h.run_steps(1);
+    h.key_press(egui::Key::Enter);
+    h.run_steps(4);
+    let p = h.state().chess.capture.pending.as_ref().expect("the corrected text waits");
+    assert_eq!(p.choice, p.plan.renumber, "still renumbered");
+    assert_eq!(shown(&h), (2, 0));
+    host_events(
+        &mut h,
+        vec![egui::Event::Key { key: egui::Key::Enter, physical_key: None, pressed: true, repeat: false, modifiers: Modifiers::NONE }],
+    );
+    assert!(h.state().chess.capture.pending.is_none());
+    assert_eq!(movetext(&h), "18. Nd5 Qxe1 19. Nxe7+ Kh7 20. Raxe1 Kh8 21. Nxg6+");
+    assert!(h.state().chess.board().undo_label().is_some_and(|l| l.starts_with("Capture")), "one capture step");
+    assert!(h.state_mut().chess.board_mut().undo());
+    assert_eq!(movetext(&h), "18. Nd5 Qxe1 19. Nxe7+ Kh7 20. Raxe1");
+}
+
+/// The glyph palette's window, if it is open.
+fn palette(h: &Harness<'static, PdfCraftApp>) -> Option<egui::Rect> {
+    h.query_by_role_and_label(egui::accesskit::Role::Window, "Glyph palette").map(|w| w.rect())
+}
+
+/// The button named `label` inside the palette's window.
+fn in_palette<'a>(h: &'a Harness<'static, PdfCraftApp>, label: &'a str) -> egui_kittest::Node<'a> {
+    let window = palette(h).expect("the palette is open");
+    h.get_all_by_label(label)
+        .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Button && window.contains(n.rect().center()))
+        .unwrap_or_else(|| panic!("{label} in the palette"))
+}
+
+/// The board panel's floating glyph palette types into the correction field while it has the
+/// keyboard, a figurine and a glyph's sign alike, instead of annotating the move shown.
+#[test]
+fn the_board_panels_glyph_palette_types_into_the_correction_field() {
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    assert!(h.state_mut().execute("chess.palette.toggle"));
+    h.run_steps(3);
+    assert!(palette(&h).is_some(), "the floating palette is open");
+    h.state_mut().capture_pasted("18.Nd5 Qxe1 19.Nxe6+ Kh7", None);
+    h.run_steps(2);
+    h.get_by_label("✗ 19.Nxe6+ — Illegal move").click();
+    h.run_steps(2);
+    h.get_by_label("Correction").click();
+    h.run_steps(1);
+    h.key_press(egui::Key::End);
+    for _ in 0..5 {
+        h.key_press(egui::Key::Backspace);
+    }
+    h.run_steps(1);
+    in_palette(&h, "White knight").click();
+    h.run_steps(3);
+    assert_eq!(h.get_by_label("Correction").value().as_deref(), Some("♘"));
+    h.get_by_label("Correction").type_text("xe7+");
+    h.run_steps(1);
+    in_palette(&h, "Good move").click();
+    h.run_steps(3);
+    assert_eq!(h.get_by_label("Correction").value().as_deref(), Some("♘xe7+!"));
+    assert_eq!(movetext(&h), "", "nothing went on the game: no glyph, no comment");
+    h.key_press(egui::Key::Enter);
+    h.run_steps(3);
+    assert_eq!(shown(&h), (4, 0), "read again with ♘xe7+!");
+    h.get_by_label_contains("Apply").click();
+    h.run_steps(3);
+    assert_eq!(movetext(&h), "18. Nd5 Qxe1 19. Nxe7+ $1 Kh7");
 }

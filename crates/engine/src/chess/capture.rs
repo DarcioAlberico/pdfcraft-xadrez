@@ -31,20 +31,26 @@
 //! 5. Each place is scored by reading the selection from its position and grafting it on a copy:
 //!    the moves played. Fewer moves that did not play break a tie, then the inner line. Two
 //!    places that play as many moves (with as many stops) are ambiguous.
-//! 6. A game with no moves whose start says move 1 (the number under the diagram was not read)
-//!    gets one more candidate when the first move's number is another one for the same side: the
-//!    same start renumbered to it. It is never applied without the preview.
+//! 6. **Renumber** is a choice of its own, not a place ([`CapturePlan::renumber`]): when the
+//!    first move's printed number does not name the place a move without a number would go (step
+//!    3), the text is read from there as if its numbers had been printed for it. A game with no
+//!    moves whose start says move 1 (the number under the diagram was not read) takes the text's
+//!    number at its start instead (`18.` makes it start at move 18). Otherwise every printed
+//!    number of the text moves by the same amount, so the first is the half-move after the place,
+//!    and the moves take the game's numbers ([`Candidate::shifted`]; [`Candidate::renumbering`]
+//!    says what changed). Only for the same side, only when it plays a move, and it is chosen
+//!    only when no place plays one. It is never applied without the preview.
 //!
 //! **When to ask (decision D6 b).** A plan is applied without the preview only when the reading
 //! is complete, the place is unique and on `L0`, nothing outer is extended, no move is demoted
-//! and the start is not renumbered. Every other case says why in [`CapturePlan::reasons`].
+//! and nothing is renumbered. Every other case says why in [`CapturePlan::reasons`].
 //!
 //! **Comment.** [`CaptureMode::Comment`] reads no moves: the selection becomes the current
 //! move's comment (or comment-before), moves in English SAN (decision D7).
 //!
 //! **Limits.** At most [`MAX_CAPTURE_TEXT`] bytes of text ([`PreviewReason::TooLong`] past it) and
-//! one candidate per line (variations nest at most `MAX_DEPTH` deep), plus two. Nothing here
-//! panics on any text or game.
+//! one candidate per line (variations nest at most `MAX_DEPTH` deep), plus two, plus the Renumber
+//! choice (read from at most two places). Nothing here panics on any text or game.
 
 use std::fmt;
 use std::ops::Range;
@@ -125,7 +131,8 @@ pub enum PreviewReason {
     /// Taken as a variation, it found no move to be an alternative to and extended a line's end
     /// (not the start of a game with no moves, which has no line yet).
     TipExtension,
-    /// The start position is renumbered to the text's first move.
+    /// The numbers do not agree: the start is renumbered to the text's first move, or the text's
+    /// moves take the game's numbers (the Renumber choice).
     Renumber,
     /// A closing bracket the text lacks was assumed.
     ImpliedClose,
@@ -165,6 +172,9 @@ pub struct Candidate {
     pub mode_used: GraftMode,
     /// The move number the start was renumbered to, for a renumbered start.
     pub renumbered: Option<u32>,
+    /// For the Renumber choice on a game with moves: how many moves every printed number of the
+    /// text was moved by (negative: back), so that its moves take the game's numbers.
+    pub shifted: Option<i32>,
     /// The game with the text grafted: applying the candidate is taking this game.
     pub game: Game,
     /// What the graft did.
@@ -184,8 +194,13 @@ pub struct Candidate {
 pub struct CapturePlan {
     /// The game's [`Game::revision`] when planned: applying checks it is still the same.
     pub base_revision: u64,
-    /// Every place tried, innermost line first.
+    /// Every place tried, innermost line first, then the Renumber choice when there is one.
     pub candidates: Vec<Candidate>,
+    /// The Renumber choice, an index into `candidates`: the text read from the place a move
+    /// without a number goes, its numbers made to agree with the game's (see the
+    /// [module](self), step 6). Not a place: it is not among the places chosen between, and is
+    /// chosen only when no place plays a move.
+    pub renumber: Option<usize>,
     /// The best candidate, when one plays a move (or, as a comment, has text).
     pub chosen: Option<usize>,
     /// Show the preview rather than apply (`reasons` is not empty).
@@ -232,8 +247,20 @@ impl CapturePlan {
         Ok(())
     }
 
+    /// The places: every candidate but the Renumber choice, with their indices.
+    pub fn places(&self) -> impl Iterator<Item = (usize, &Candidate)> {
+        self.candidates.iter().enumerate().filter(move |(i, _)| Some(*i) != self.renumber)
+    }
+
     fn empty(game: &Game, reason: PreviewReason) -> CapturePlan {
-        CapturePlan { base_revision: game.revision(), candidates: Vec::new(), chosen: None, needs_preview: true, reasons: vec![reason] }
+        CapturePlan {
+            base_revision: game.revision(),
+            candidates: Vec::new(),
+            renumber: None,
+            chosen: None,
+            needs_preview: true,
+            reasons: vec![reason],
+        }
     }
 }
 
@@ -247,7 +274,14 @@ pub fn plan(game: &Game, current: NodeId, mode: CaptureMode, text: CaptureText<'
         return CapturePlan::empty(game, PreviewReason::NoFit);
     }
     let (chess, opts, page) = chess_text(text, lang);
-    let mut out = CapturePlan { base_revision: game.revision(), candidates: Vec::new(), chosen: None, needs_preview: true, reasons: Vec::new() };
+    let mut out = CapturePlan {
+        base_revision: game.revision(),
+        candidates: Vec::new(),
+        renumber: None,
+        chosen: None,
+        needs_preview: true,
+        reasons: Vec::new(),
+    };
     if let CaptureMode::Comment { before } = mode {
         let candidate = comment_candidate(game, current, &chess, before);
         out.chosen = (!candidate.reasons.contains(&PreviewReason::NoFit)).then_some(0);
@@ -255,7 +289,11 @@ pub fn plan(game: &Game, current: NodeId, mode: CaptureMode, text: CaptureText<'
         return finish(out);
     }
     let start_ply = game.abs_ply(0).unwrap_or(0);
-    let Some(first) = first_move(&chess, start_ply) else {
+    let first = first_move(&chess, start_ply);
+    // The first numbered move, wherever its number puts it (before the game's start too): what
+    // the Renumber choice moves the numbers by.
+    let numbered = first.filter(|f| f.ply.is_some()).or_else(|| first_numbered(&chess));
+    let Some(lead) = first.or(numbered) else {
         return finish(out);
     };
     // As the line or as a variation, and on which lines.
@@ -263,13 +301,19 @@ pub fn plan(game: &Game, current: NodeId, mode: CaptureMode, text: CaptureText<'
         CaptureMode::Line => (GraftMode::Line, false, false),
         CaptureMode::Variation => (GraftMode::Follow, true, true),
         CaptureMode::SubVariation => (GraftMode::Follow, false, true),
-        CaptureMode::Auto if first.bold => (GraftMode::Line, true, false),
+        CaptureMode::Auto if lead.bold => (GraftMode::Line, true, false),
         CaptureMode::Auto | CaptureMode::Comment { .. } => (GraftMode::Follow, false, true),
     };
     let ctx = Context { chess: &chess, opts, page, graft_mode, variation };
     let mut points: Vec<(NodeId, usize)> = Vec::new();
-    match first.ply {
-        Some(ply) => {
+    // Where a move without a number goes: after the current move, and as a variation also as an
+    // alternative to it.
+    let mut unnumbered = vec![current];
+    if variation && let Some(parent) = parent_of(game, current) {
+        unnumbered.push(parent);
+    }
+    match first.map(|f| f.ply) {
+        Some(Some(ply)) => {
             let lines = candidate_lines(game, current);
             let last = lines.len().saturating_sub(1);
             for (index, line) in lines.iter().enumerate() {
@@ -283,24 +327,23 @@ pub fn plan(game: &Game, current: NodeId, mode: CaptureMode, text: CaptureText<'
                 }
             }
         }
-        None => {
-            points.push((current, 0));
-            if variation && let Some(parent) = parent_of(game, current) {
-                points.push((parent, 0));
-            }
-        }
+        Some(None) => points.extend(unnumbered.iter().map(|&at| (at, 0))),
+        // Every number is before the game's start: only the Renumber choice can take it.
+        None => {}
     }
     for (at, line) in points {
-        if let Some(candidate) = ctx.try_at(game, at, line, None) {
+        if let Some(candidate) = ctx.try_at(game, at, line, false) {
             out.candidates.push(candidate);
         }
     }
-    if let Some(candidate) = renumbered(game, first, &ctx) {
+    let renumber = numbered.and_then(|n| renumbered_start(game, n, &ctx).or_else(|| renumbered_text(game, n, &ctx, &unnumbered)));
+    if let Some(candidate) = renumber.filter(|c| c.played > 0) {
+        out.renumber = Some(out.candidates.len());
         out.candidates.push(candidate);
     }
-    out.chosen = best(&out.candidates);
+    out.chosen = best(&out);
     if let (Some(chosen), Some(c)) = (out.chosen, out.chosen.and_then(|i| out.candidates.get(i)))
-        && out.candidates.iter().enumerate().any(|(i, o)| i != chosen && o.played == c.played && o.stops == c.stops)
+        && out.places().any(|(i, o)| i != chosen && o.played == c.played && o.stops == c.stops)
     {
         out.reasons.push(PreviewReason::Ambiguous);
     }
@@ -323,15 +366,14 @@ fn finish(mut plan: CapturePlan) -> CapturePlan {
     plan
 }
 
-/// The best candidate: the most moves played, then the fewest stops, then the innermost line,
-/// then the first tried. `None` when none plays a move.
-fn best(candidates: &[Candidate]) -> Option<usize> {
-    candidates
-        .iter()
-        .enumerate()
+/// The best place: the most moves played, then the fewest stops, then the innermost line, then
+/// the first tried; the Renumber choice when no place plays a move. `None` when none plays one.
+fn best(plan: &CapturePlan) -> Option<usize> {
+    plan.places()
         .filter(|(_, c)| c.played > 0)
         .max_by(|(i, a), (j, b)| a.played.cmp(&b.played).then(b.stops.cmp(&a.stops)).then(b.line.cmp(&a.line)).then(j.cmp(i)))
         .map(|(i, _)| i)
+        .or(plan.renumber)
 }
 
 /// What every candidate of one plan is read and grafted with.
@@ -345,9 +387,9 @@ struct Context<'a> {
 }
 
 impl Context<'_> {
-    /// Read the text from the position after `at` and graft it there; `renumbered`: `game` is
-    /// the renumbered start. `None` when `game` has no move `at`.
-    fn try_at(&self, game: &Game, at: NodeId, line: usize, renumbered: Option<u32>) -> Option<Candidate> {
+    /// Read the text from the position after `at` and graft it there; `renumber`: for the
+    /// Renumber choice. `None` when `game` has no move `at`.
+    fn try_at(&self, game: &Game, at: NodeId, line: usize, renumber: bool) -> Option<Candidate> {
         let fen = game.fen_at(at)?;
         let read = fragment::read(self.chess, &fen, &self.opts);
         let (grafted, report) = game.graft(at, self.graft_mode, &read.items, self.page);
@@ -365,7 +407,7 @@ impl Context<'_> {
         if self.variation && report.extended_tip && !game.is_empty() {
             reasons.push(PreviewReason::TipExtension);
         }
-        if renumbered.is_some() {
+        if renumber {
             reasons.push(PreviewReason::Renumber);
         }
         if read.flags.iter().any(|f| matches!(f, ReviewFlag::ImpliedClose { .. })) {
@@ -378,7 +420,8 @@ impl Context<'_> {
             anchor: game.path_of(at)?,
             line,
             mode_used: self.graft_mode,
-            renumbered,
+            renumbered: None,
+            shifted: None,
             played: report.played,
             stops,
             game: grafted,
@@ -432,6 +475,25 @@ fn first_move(text: &ChessPageText, start_ply: u32) -> Option<FirstMove> {
     None
 }
 
+/// The first move of `text` with a number before it, whatever the number: `None` when there is
+/// none.
+fn first_numbered(text: &ChessPageText) -> Option<FirstMove> {
+    let mut number: Option<(u16, bool)> = None;
+    for span in text.lines.iter().flat_map(|l| &l.spans) {
+        match &span.run {
+            ChessRun::MoveNumber { number: n, black } => number = Some((*n, *black)),
+            ChessRun::Move { .. } => {
+                if let Some((n, black)) = number {
+                    return Some(FirstMove { ply: Some(ply_of(u32::from(n), black)), bold: span.bold });
+                }
+            }
+            ChessRun::Text(t) if t.chars().any(char::is_alphanumeric) => number = None,
+            ChessRun::Text(_) | ChessRun::Nag(_) | ChessRun::Figurine(_) => {}
+        }
+    }
+    None
+}
+
 /// The candidate lines from move `current`: `L0`, the line through it, then each line the one
 /// before branched from, to the main line. At most `MAX_DEPTH + 1`.
 fn candidate_lines(game: &Game, current: NodeId) -> Vec<Vec<NodeId>> {
@@ -462,9 +524,9 @@ fn parent_of(game: &Game, node: NodeId) -> Option<NodeId> {
     game.node_at(&NodePath::new(up.to_vec()))
 }
 
-/// The renumbered-start candidate: `game` has no moves and starts at move 1, and the first move
-/// is numbered otherwise for the side to move.
-fn renumbered(game: &Game, first: FirstMove, ctx: &Context<'_>) -> Option<Candidate> {
+/// The Renumber choice of a game with no moves that starts at move 1, when the first move is
+/// numbered otherwise for the side to move: the start renumbered to it.
+fn renumbered_start(game: &Game, first: FirstMove, ctx: &Context<'_>) -> Option<Candidate> {
     let ply = first.ply?;
     let start = game.abs_ply(0)?;
     if !game.is_empty() || start > 1 || ply == start || ply % 2 != start % 2 {
@@ -483,10 +545,71 @@ fn renumbered(game: &Game, first: FirstMove, ctx: &Context<'_>) -> Option<Candid
     if again.abs_ply(0) != Some(ply) {
         return None;
     }
-    let mut candidate = ctx.try_at(&again, 0, 0, Some(number))?;
+    let mut candidate = ctx.try_at(&again, 0, 0, true)?;
+    candidate.renumbered = Some(number);
     // The renumbered game is a new one; its revision must not look like the planned game's.
     candidate.game.bump_revision(game.revision());
     Some(candidate)
+}
+
+/// The Renumber choice of any other game: the text read from each place of `places` (where a
+/// move without a number goes) whose position has the first move's side to move but whose
+/// half-move is not the printed one, every printed number moved by the same amount so that the
+/// first names that place. The one that plays the most moves (then has the fewest stops, then
+/// comes first).
+fn renumbered_text(game: &Game, first: FirstMove, ctx: &Context<'_>, places: &[NodeId]) -> Option<Candidate> {
+    let printed = i64::from(first.ply?);
+    let mut best: Option<Candidate> = None;
+    for &at in places {
+        let Some(here) = game.abs_ply(at).map(i64::from) else { continue };
+        let plies = here.saturating_sub(printed);
+        // The other side to move, or the place the number names already (a place of its own).
+        if plies == 0 || plies % 2 != 0 {
+            continue;
+        }
+        let Ok(moves) = i32::try_from(plies / 2) else { continue };
+        let chess = shift_numbers(ctx.chess, moves);
+        let shifted = Context { chess: &chess, ..*ctx };
+        let Some(mut candidate) = shifted.try_at(game, at, 0, true) else { continue };
+        candidate.shifted = Some(moves);
+        let better = |b: &Candidate| candidate.played > b.played || (candidate.played == b.played && candidate.stops < b.stops);
+        if best.as_ref().is_none_or(better) {
+            best = Some(candidate);
+        }
+    }
+    best
+}
+
+/// `text` with every printed move number moved by `moves`, kept within `0..=u16::MAX`: a number
+/// moved below 1 is before any game, and reads as prose.
+fn shift_numbers(text: &ChessPageText, moves: i32) -> ChessPageText {
+    let mut out = text.clone();
+    for span in out.lines.iter_mut().flat_map(|l| l.spans.iter_mut()) {
+        if let ChessRun::MoveNumber { number, .. } = &mut span.run {
+            let moved = i64::from(*number).saturating_add(i64::from(moves)).clamp(0, i64::from(u16::MAX));
+            *number = u16::try_from(moved).unwrap_or(0);
+        }
+    }
+    out
+}
+
+impl Candidate {
+    /// What the Renumber choice changed on a game with moves: the text's first numbered move as
+    /// printed (`18.Nd5`) and as it is played (`13.Nd5`). `None` for any other candidate.
+    pub fn renumbering(&self) -> Option<(String, String)> {
+        let shift = i64::from(self.shifted?);
+        self.read.items.iter().find_map(|item| match item {
+            FragmentItem::Move { ply: Some(_), text, .. } => {
+                let text = text.trim();
+                let digits = text.chars().take_while(char::is_ascii_digit).count();
+                // Digits are ASCII, so `digits` is a char boundary.
+                let number: i64 = text.get(..digits)?.parse().ok()?;
+                let rest = text.get(digits..)?;
+                Some((format!("{}{rest}", number.saturating_sub(shift)), text.to_owned()))
+            }
+            _ => None,
+        })
+    }
 }
 
 /// The comment candidate: the text, moves in English SAN, on `current`'s comment (or
@@ -522,6 +645,7 @@ fn comment_candidate(game: &Game, current: NodeId, chess: &ChessPageText, before
         line: 0,
         mode_used: GraftMode::Comment,
         renumbered: None,
+        shifted: None,
         game: g,
         stops: usize::from(report.stop.is_some()),
         report,

@@ -184,8 +184,11 @@ impl Fresh {
 pub struct Pending {
     pub(crate) request: Request,
     pub plan: CapturePlan,
-    /// The candidate chosen (the plan's best, until the user picks another).
+    /// The candidate chosen (the plan's best, until the user picks another): a place, or the
+    /// plan's Renumber choice.
     pub choice: Option<usize>,
+    /// The place last chosen: where Renumber, switched off, goes back to.
+    place: Option<usize>,
     /// The moves of the candidate chosen that did not play, with the legal moves near each
     /// (T10): worked out once per candidate, as each is a replay.
     pub(crate) stopped: Vec<StoppedMove>,
@@ -197,14 +200,33 @@ impl Pending {
     /// `plan` of `request`, its best candidate chosen.
     pub(crate) fn new(request: Request, plan: CapturePlan) -> Pending {
         let choice = plan.chosen;
-        let mut p = Pending { request, plan, choice, stopped: Vec::new(), fix: None };
+        // Renumber chosen (no place plays a move): the place to go back to plays the most.
+        let place = choice.filter(|&c| Some(c) != plan.renumber).or_else(|| plan.places().max_by_key(|(_, c)| c.played).map(|(i, _)| i));
+        let mut p = Pending { request, plan, choice, place, stopped: Vec::new(), fix: None };
         p.choose(choice);
         p
+    }
+
+    /// `self`, with its plan's Renumber choice chosen when `on` and it has one: a plan made again
+    /// (a correction, another language) keeps Renumber when it was chosen.
+    pub(crate) fn renumbered_if(mut self, on: bool) -> Pending {
+        if on && self.plan.renumber.is_some() {
+            self.choose(self.plan.renumber);
+        }
+        self
+    }
+
+    /// Whether the Renumber choice is the one chosen.
+    pub(crate) fn renumbering(&self) -> bool {
+        self.choice.is_some() && self.choice == self.plan.renumber
     }
 
     /// Choose candidate `choice`: its stopped moves are worked out, and a correction panel closes.
     fn choose(&mut self, choice: Option<usize>) {
         self.choice = choice;
+        if choice.is_some() && choice != self.plan.renumber {
+            self.place = choice;
+        }
         self.stopped = candidate(&self.plan, choice).map(|c| capture::stopped_moves(c, self.request.lang)).unwrap_or_default();
         self.fix = None;
     }
@@ -1028,7 +1050,8 @@ fn relang(chess: &mut ChessState, lang: Lang) {
     }
     p.request.lang = lang;
     let plan = plan_for(&chess.board().game, &p.request);
-    chess.capture.pending = Some(Pending::new(p.request, plan));
+    let renumbering = p.renumbering();
+    chess.capture.pending = Some(Pending::new(p.request, plan).renumbered_if(renumbering));
 }
 
 /// Where the preview goes: beside the last piece of the selection while it is on screen, else
@@ -1048,35 +1071,43 @@ fn preview_place(area: Rect, p: &Pending, view: &crate::canvas::DocView) -> (egu
 }
 
 /// The preview popover of the capture waiting (§4.3.4): where it goes ("Variation of 18…Qxe1")
-/// and the other places it fits, the language it is read in, its moves as chips (✓ played, ✗
-/// stopped with why, grey not read; the main line's in bold), why it is shown, and Apply, Apply
-/// and keep the rest as a comment, Cancel. A stopped move's chip opens its correction panel
+/// and the other places it fits, Renumber when the plan has that choice (with what it changes),
+/// the language it is read in, its moves as chips (✓ played, ✗ stopped with why, grey not read;
+/// the main line's in bold), why it is shown, and Apply, Apply and keep the rest as a comment,
+/// Cancel. A stopped move's chip opens its correction panel
 /// (T10, `chess_correct`).
 fn preview_area(ctx: &egui::Context, t: &Tokens, area: Rect, chess: &mut ChessState, view: &crate::canvas::DocView) -> Option<PreviewAction> {
-    let p = chess.capture.pending.as_mut()?;
-    let (pivot, at) = preview_place(area, p, view);
-    let mut action = None;
-    egui::Area::new(egui::Id::new("chess-capture-preview")).order(egui::Order::Foreground).pivot(pivot).fixed_pos(at).show(ctx, |ui| {
-        egui::Frame::popup(ui.style()).show(ui, |ui| {
-            ui.set_max_width(440.0);
-            action = preview(ui, t, p);
+    chess.capture.pending.as_ref()?;
+    // The board's record of the text fields the glyph palette types into: the correction field
+    // is one of them (U1), so the palette's characters go there while it has the keyboard.
+    let mut typing = std::mem::take(&mut chess.board_mut().typing);
+    let action = chess.capture.pending.as_mut().and_then(|p| {
+        let (pivot, at) = preview_place(area, p, view);
+        let mut action = None;
+        egui::Area::new(egui::Id::new("chess-capture-preview")).order(egui::Order::Foreground).pivot(pivot).fixed_pos(at).show(ctx, |ui| {
+            egui::Frame::popup(ui.style()).show(ui, |ui| {
+                ui.set_max_width(440.0);
+                action = preview(ui, t, p, &mut typing);
+            });
         });
+        action
     });
+    chess.board_mut().typing = typing;
     action
 }
 
-fn preview(ui: &mut egui::Ui, t: &Tokens, p: &mut Pending) -> Option<PreviewAction> {
+fn preview(ui: &mut egui::Ui, t: &Tokens, p: &mut Pending, typing: &mut crate::chess_annotate::Typing) -> Option<PreviewAction> {
     let mut action = None;
     let mut toggle = None;
     let c = candidate(&p.plan, p.choice);
     let title = c.map_or_else(|| tl!("No move of the text fits the game here.").to_owned(), |c| headline(c, captured_by(c, p.request.mode)));
     ui.label(RichText::new(title).font(crate::theme::semibold(14.0)));
     ui.horizontal_wrapped(|ui| {
-        if p.plan.candidates.len() > 1 {
+        if p.plan.places().nth(1).is_some() {
             let label = ui.label(RichText::new(tl!("Fit at")).small().color(t.text_muted));
             let shown = c.map(|c| headline(c, captured_by(c, p.request.mode))).unwrap_or_default();
             let combo = egui::ComboBox::from_id_salt("chess-capture-fit").selected_text(shown).show_ui(ui, |ui| {
-                for (i, other) in p.plan.candidates.iter().enumerate() {
+                for (i, other) in p.plan.places() {
                     let moves = crate::i18n::fmt(tl!("moves: {n}"), &[("n", &other.played.to_string())]);
                     let label = format!("{} · {moves}", headline(other, captured_by(other, p.request.mode)));
                     if ui.selectable_label(p.choice == Some(i), label).clicked() {
@@ -1085,6 +1116,16 @@ fn preview(ui: &mut egui::Ui, t: &Tokens, p: &mut Pending) -> Option<PreviewActi
                 }
             });
             combo.response.labelled_by(label.id);
+        }
+        // Renumber: not a place but a choice, back to the place last chosen when switched off.
+        if let Some(renumber) = p.plan.renumber {
+            let on = p.renumbering();
+            let back = p.place.filter(|_| on);
+            let r = ui.add_enabled_ui(!on || back.is_some(), |ui| ui.selectable_label(on, tl!("Renumber"))).inner;
+            r.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, true, on, tl!("Renumber")));
+            if r.clicked() {
+                action = Some(PreviewAction::Choose(if on { back.unwrap_or(renumber) } else { renumber }));
+            }
         }
         let label = ui.label(RichText::new(tl!("Language")).small().color(t.text_muted));
         let combo = egui::ComboBox::from_id_salt("chess-capture-lang").selected_text(endonym(p.request.lang)).show_ui(ui, |ui| {
@@ -1121,7 +1162,7 @@ fn preview(ui: &mut egui::Ui, t: &Tokens, p: &mut Pending) -> Option<PreviewActi
     };
     if let Some(fix) = p.fix.as_mut()
         && let Some(s) = p.stopped.get(fix.stop)
-        && let Some(change) = crate::chess_correct::panel(ui, t, fix, s, lang, read.as_ref().map(|(r, g)| (&**r, g.as_ref())))
+        && let Some(change) = crate::chess_correct::panel(ui, t, fix, s, lang, read.as_ref().map(|(r, g)| (&**r, g.as_ref())), typing)
     {
         action = Some(PreviewAction::Correct(change));
     }
@@ -1130,8 +1171,17 @@ fn preview(ui: &mut egui::Ui, t: &Tokens, p: &mut Pending) -> Option<PreviewActi
         Some(c) if p.choice != p.plan.chosen => &c.reasons,
         _ => &p.plan.reasons,
     };
+    // What Renumber changes, said with the reason.
+    let renumbering = c.and_then(Candidate::renumbering);
     for reason in reasons {
-        ui.label(RichText::new(format!("• {}", reason_text(*reason))).small());
+        let text = match (reason, &renumbering) {
+            (PreviewReason::Renumber, Some((printed, played))) => crate::i18n::fmt(
+                tl!("The text's move numbers give way to the game's: {printed} is played as {played}."),
+                &[("printed", printed), ("played", played)],
+            ),
+            _ => reason_text(*reason).to_owned(),
+        };
+        ui.label(RichText::new(format!("• {text}")).small());
     }
     if p.request.text.review() {
         ui.label(RichText::new(format!("• {}", tl!("Chess OCR corrected or doubted some words: check the moves."))).small());

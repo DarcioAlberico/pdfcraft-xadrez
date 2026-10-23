@@ -2929,3 +2929,5 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 @plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	ఆటల జాబితాకు మరో {n} ఆట జోడించబడింది.|ఆటల జాబితాకు మరో {n} ఆటలు జోడించబడ్డాయి.
 	Reading the pages around the game…	ఆట చుట్టూ ఉన్న పేజీలను చదువుతోంది…
 	No game was found for this move, on its page or the pages around it.	ఈ ఎత్తుకు దాని పేజీలో గానీ చుట్టూ ఉన్న పేజీలలో గానీ ఆట కనబడలేదు.
+	Renumber	మళ్లీ సంఖ్యలు వేయి
+	The text's move numbers give way to the game's: {printed} is played as {played}.	పాఠ్యంలోని ఎత్తుల సంఖ్యలకు బదులు ఆట సంఖ్యలు వస్తాయి: {printed} ను {played} గా ఆడతారు.
