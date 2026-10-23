@@ -1,13 +1,15 @@
 //! Chess ▸ Export ▸ EPUB on the chapter page of `document`: the package's structure (OCF
 //! container, package document, navigation, one content document per page), every XML file
-//! well-formed, every reference resolving, and the archive's first entry as OCF requires.
+//! well-formed, every reference resolving, the archive's first entry as OCF requires, and the
+//! cover drawn from the first page.
 
 use pdfcraft_chess::draw::{BoardStyle, PieceSet};
 use pdfcraft_chessvision::doc::html::{DiagramMode, Figurines, HtmlOptions};
 use pdfcraft_chessvision::doc::{ChessDoc, ChessPage, TextLayer};
 
 use super::*;
-use crate::chess::epub::{EpubEntry, EpubMeta, MAX_PAGES, entries, epub, identifier, modified, modified_at};
+use crate::chess::epub::{EpubEntry, EpubMeta, MAX_COVER_PX, MAX_PAGES, cover_png, entries, epub, identifier, modified, modified_at};
+use crate::chess::export::{ChessExportOptions, ChessFormat};
 
 fn options(pieces: &PieceSet) -> HtmlOptions<'_> {
     HtmlOptions {
@@ -24,7 +26,109 @@ fn options(pieces: &PieceSet) -> HtmlOptions<'_> {
 }
 
 fn meta() -> EpubMeta {
-    EpubMeta { title: "Chess & <Book>".into(), lang: "en".into(), identifier: identifier(b"pdf"), modified: modified("D:20261018120000Z") }
+    EpubMeta {
+        title: "Chess & <Book>".into(),
+        lang: "en".into(),
+        identifier: identifier(b"pdf"),
+        modified: modified("D:20261018120000Z"),
+        cover: None,
+    }
+}
+
+/// Every XML file of the package parses (the cover is the one file that is not XML).
+fn assert_xml_well_formed(files: &[EpubEntry]) {
+    for e in files.iter().filter(|e| e.name != "mimetype" && !e.name.ends_with(".png")) {
+        let text = std::str::from_utf8(&e.data).unwrap();
+        if let Err(err) = roxmltree::Document::parse_with_options(text, roxmltree::ParsingOptions { allow_dtd: true, ..Default::default() }) {
+            panic!("{} is not well-formed: {err}\n{text}", e.name);
+        }
+    }
+}
+
+/// The (id, href) of each manifest item whose properties include `cover-image`.
+fn cover_items(opf: &str) -> Vec<(String, String)> {
+    roxmltree::Document::parse(opf)
+        .unwrap()
+        .descendants()
+        .filter(|n| n.has_tag_name("item") && n.attribute("properties").is_some_and(|p| p.split_whitespace().any(|p| p == "cover-image")))
+        .map(|n| (n.attribute("id").unwrap_or_default().to_owned(), n.attribute("href").unwrap_or_default().to_owned()))
+        .collect()
+}
+
+/// A PNG's pixel size.
+fn png_size(png: &[u8]) -> (u32, u32) {
+    let info = png::Decoder::new(std::io::Cursor::new(png)).read_info().unwrap().info().clone();
+    (info.width, info.height)
+}
+
+/// One entry of a zip archive (stored or deflated).
+fn zip_entry(zip: &[u8], name: &str) -> Vec<u8> {
+    let at = |i: usize, n: usize| zip[i..i + n].iter().rev().fold(0usize, |v, b| v << 8 | *b as usize);
+    let mut i = 0;
+    while zip[i..].starts_with(b"PK\x03\x04") {
+        let (method, size, name_len, extra) = (at(i + 8, 2), at(i + 18, 4), at(i + 26, 2), at(i + 28, 2));
+        let data = i + 30 + name_len + extra;
+        if &zip[i + 30..i + 30 + name_len] == name.as_bytes() {
+            let raw = &zip[data..data + size];
+            if method == 0 {
+                return raw.to_vec();
+            }
+            let mut out = Vec::new();
+            std::io::Read::read_to_end(&mut flate2::read::DeflateDecoder::new(raw), &mut out).unwrap();
+            return out;
+        }
+        i = data + size;
+    }
+    panic!("{name} missing")
+}
+
+#[test]
+fn the_cover_is_one_manifest_item_that_resolves_to_the_first_page() {
+    let (mut s, id) = open(super::document::chapter());
+    let doc = s.chess_document(id, &[], &no_model(), None).unwrap().doc;
+    let png = cover_png(s.get(id).unwrap().export_source(), 0).unwrap();
+    let (w, h) = png_size(&png);
+    assert!(w.max(h) <= MAX_COVER_PX && w.max(h) >= MAX_COVER_PX - 2, "{w}×{h}");
+    let pieces = PieceSet::geometric();
+    let files = entries(&doc, &options(&pieces), &EpubMeta { cover: Some(png.clone()), ..meta() }).unwrap();
+    assert_xml_well_formed(&files);
+    let opf = file(&files, "OEBPS/content.opf");
+    let covers = cover_items(opf);
+    assert_eq!(covers.len(), 1, "{opf}");
+    let (cover_id, href) = &covers[0];
+    let stored = files.iter().find(|e| e.name == format!("OEBPS/{href}")).expect("the cover file");
+    assert_eq!(stored.data, png);
+    assert!(!stored.compress, "a PNG is stored");
+    // EPUB 2 readers find it by <meta name="cover">.
+    let package = roxmltree::Document::parse(opf).unwrap();
+    let named: Vec<&str> = package
+        .descendants()
+        .filter(|n| n.has_tag_name("meta") && n.attribute("name") == Some("cover"))
+        .filter_map(|n| n.attribute("content"))
+        .collect();
+    assert_eq!(named, [cover_id.as_str()]);
+    // Without a cover (or an empty one) the book has none.
+    for cover in [None, Some(Vec::new())] {
+        let plain = entries(&doc, &options(&pieces), &EpubMeta { cover, ..meta() }).unwrap();
+        let opf = file(&plain, "OEBPS/content.opf");
+        assert!(cover_items(opf).is_empty() && !opf.contains("name=\"cover\""), "{opf}");
+        assert!(!plain.iter().any(|e| e.name.ends_with(".png")));
+    }
+    // A page that does not exist has no cover.
+    assert!(cover_png(s.get(id).unwrap().export_source(), 7).unwrap_err().contains("does not exist"));
+}
+
+#[test]
+fn chess_export_writes_the_book_with_its_cover() {
+    let (mut s, id) = open(super::document::chapter());
+    let out = s.chess_export(id, ChessFormat::Epub, &ChessExportOptions::new("Chapter")).unwrap();
+    assert!(out.notes.is_empty(), "{:?}", out.notes);
+    let opf = String::from_utf8(zip_entry(&out.bytes, "OEBPS/content.opf")).unwrap();
+    let covers = cover_items(&opf);
+    assert_eq!(covers.len(), 1, "{opf}");
+    let png = zip_entry(&out.bytes, &format!("OEBPS/{}", covers[0].1));
+    let (w, h) = png_size(&png);
+    assert!(w.max(h) <= MAX_COVER_PX && w > 0 && h > 0, "{w}×{h}");
 }
 
 fn chapter_doc() -> ChessDoc {

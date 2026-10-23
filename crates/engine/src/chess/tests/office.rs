@@ -109,3 +109,56 @@ fn an_unread_diagram_is_said_in_words() {
     assert!(pages[0].images.is_empty());
     assert_eq!(pages[0].blocks.iter().map(|b| b.text.as_str()).collect::<Vec<_>>(), ["[Diagram 1 not read]"]);
 }
+
+/// One part of a package the export crate's `Zip` wrote, inflated.
+fn zip_part(zip: &[u8], name: &str) -> String {
+    let at = |i: usize, n: usize| zip[i..i + n].iter().rev().fold(0usize, |v, b| v << 8 | *b as usize);
+    let mut i = 0;
+    while zip[i..].starts_with(b"PK\x03\x04") {
+        let (size, name_len) = (at(i + 18, 4), at(i + 26, 2));
+        let data = i + 30 + name_len;
+        if &zip[i + 30..data] == name.as_bytes() {
+            let mut s = String::new();
+            std::io::Read::read_to_string(&mut flate2::read::DeflateDecoder::new(&zip[data..data + size]), &mut s).unwrap();
+            return s;
+        }
+        i = data + size;
+    }
+    panic!("{name} missing")
+}
+
+#[test]
+fn the_lichess_address_is_a_real_hyperlink_in_word_and_rtf() {
+    let (mut s, id) = open(super::document::chapter());
+    let doc = s.chess_document(id, &[], &no_model(), None).unwrap().doc;
+    let pieces = PieceSet::geometric();
+    let (pages, _) = to_pages(&doc, &options(&pieces), &mut Vec::new());
+    let url = pages[0].blocks.iter().find_map(|b| b.text.strip_prefix("Analyze on lichess: ")).unwrap().to_owned();
+    assert!(url.starts_with("https://lichess.org/analysis/"), "{url}");
+
+    let docx = pdfcraft_export::docx(&pages, "Chess");
+    let xml = zip_part(&docx, "word/document.xml");
+    let rels = zip_part(&docx, "word/_rels/document.xml.rels");
+    let body = roxmltree::Document::parse(&xml).unwrap();
+    let rel_doc = roxmltree::Document::parse(&rels).unwrap();
+    const R: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+    let links: Vec<(String, String)> = body
+        .descendants()
+        .filter(|n| n.has_tag_name("hyperlink"))
+        .map(|h| {
+            let rel = rel_doc.descendants().find(|n| n.attribute("Id") == h.attribute((R, "id"))).unwrap();
+            assert_eq!(rel.attribute("TargetMode"), Some("External"));
+            assert!(rel.attribute("Type").unwrap().ends_with("/relationships/hyperlink"));
+            (rel.attribute("Target").unwrap().to_owned(), h.descendants().filter(|n| n.is_text()).filter_map(|n| n.text()).collect())
+        })
+        .collect();
+    assert_eq!(links, [(url.clone(), format!("Analyze on lichess: {url}"))]);
+
+    let rtf = pdfcraft_export::rtf(&pages);
+    assert!(rtf.contains(&format!("{{\\field{{\\*\\fldinst{{HYPERLINK \"{url}\"}}}}{{\\fldrslt{{\\ul Analyze on lichess: {url}}}}}}}")), "{rtf}");
+
+    // Without the addresses, no link either.
+    let (pages, _) = to_pages(&doc, &OfficeOptions { links: false, ..options(&pieces) }, &mut Vec::new());
+    assert!(pages[0].links.is_empty());
+    assert!(!zip_part(&pdfcraft_export::docx(&pages, "Chess"), "word/document.xml").contains("w:hyperlink"));
+}

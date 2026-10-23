@@ -12,3 +12,7 @@ workspace = true
 
 [dependencies]
 flate2.workspace = true
+
+[dev-dependencies]
+# Checks that the Word parts are well-formed XML and that links resolve (MIT OR Apache-2.0).
+roxmltree = "0.20"
