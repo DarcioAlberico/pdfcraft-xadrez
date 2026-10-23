@@ -612,7 +612,7 @@ impl DocBuilder {
                 Block::Diagram(d) => d.review.retain(|f| !matches!(f, ReviewFlag::NoStartPosition)),
             }
         }
-        build::walk(page.index, &mut page.blocks, &mut self.walker);
+        build::walk(page.index, &mut page.blocks, &mut self.walker, None);
         self.pages.push(page);
     }
 
