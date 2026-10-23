@@ -203,6 +203,9 @@ fn castle_core(t: &[char]) -> Option<(usize, usize)> {
 /// The trunk's `juntar_numero_de_lance`, as the spike simplified it: on a line that carries
 /// notation, a lone digit followed by a word that starts with digits (at most three in all) and
 /// goes on with nothing or dots is one move number the segmentation split (`1 9...` → `19...`).
+/// The word after the digit may start with an oval instead, a `0` read as a letter once it stood
+/// apart (`1 O...♕e7` → `10...♕e7`, where a scan cut the `0` and a book's wide figures set it
+/// off): joined to the digit, it is the digit it is.
 pub(crate) fn join_move_numbers(words: &mut Vec<GlyphWord>) {
     let line: String = words.iter().map(|w| w.text.as_str()).collect::<Vec<_>>().join(" ");
     if !line.chars().any(is_figurine) && !has_move(&fold(&line)) {
@@ -211,16 +214,21 @@ pub(crate) fn join_move_numbers(words: &mut Vec<GlyphWord>) {
     let mut i = 0;
     while i + 1 < words.len() {
         let (Some(a), Some(b)) = (words.get(i), words.get(i + 1)) else { break };
-        let lead = b.text.chars().take_while(char::is_ascii_digit).count();
-        // `lead` ASCII digits are `lead` bytes, so this is a char boundary.
-        let rest = b.text.get(lead..).unwrap_or("");
+        let lead = b.text.chars().take_while(|c| c.is_ascii_digit() || *c == 'O' || *c == 'o').count();
+        // `lead` ASCII digits and ovals are `lead` bytes, so this is a char boundary.
+        let rest = b.text.get(lead..).unwrap_or("").to_owned();
         let ok = a.text.chars().count() == 1
             && a.text.chars().all(|c| c.is_ascii_digit())
             && lead > 0
             && lead < MAX_MOVE_NUMBER_DIGITS
             && (rest.is_empty() || rest.starts_with('.') || rest.starts_with('…'));
         if ok {
-            let b = words.remove(i + 1);
+            let mut b = words.remove(i + 1);
+            let zero = |t: &str| t.chars().map(|c| if c == 'O' || c == 'o' { '0' } else { c }).collect::<String>();
+            b.text = format!("{}{rest}", zero(b.text.get(..lead).unwrap_or("")));
+            for g in b.glyphs.iter_mut().take(lead) {
+                g.text = zero(&g.text);
+            }
             if let Some(a) = words.get_mut(i) {
                 a.text.push_str(&b.text);
                 a.rect = union_rect(a.rect, b.rect);
