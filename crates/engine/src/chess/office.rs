@@ -7,7 +7,8 @@
 //! with the page renderer. [`to_pages`] then lays the document out as the export writers take
 //! it: one [`Page`] per PDF page, blocks stacked top to bottom in reading order (headings set
 //! larger, so the writers make them headings), each diagram an image with its lichess address
-//! under it. Nothing overlaps, so the Word writer keeps every page flowing.
+//! under it, a link over that line so Word and RTF make it a real hyperlink. Nothing overlaps, so
+//! the Word writer keeps every page flowing.
 //!
 //! Text is set with Unicode figurines by default; whether a reader shows ♞ depends on its fonts.
 
@@ -17,7 +18,7 @@ use pdfcraft_chess::draw::{BoardStyle, PieceSet, board};
 use pdfcraft_chess::placement::Placement;
 use pdfcraft_chessvision::doc::html::{Figurines, plain_text_with};
 use pdfcraft_chessvision::doc::{Block as DocBlock, ChessDoc};
-use pdfcraft_export::{Block, Image, Page};
+use pdfcraft_export::{Block, Image, Link, Page};
 /// The writers [`to_pages`] feeds.
 pub use pdfcraft_export::{docx, rtf};
 use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest};
@@ -114,7 +115,13 @@ fn one_page_pdf(side: f64, ops: &[u8]) -> Vec<u8> {
 
 /// One thing to stack on a page.
 enum Part {
-    Text { text: String, size: f64, bold: bool },
+    /// `link`: the address the paragraph links to.
+    Text {
+        text: String,
+        size: f64,
+        bold: bool,
+        link: Option<String>,
+    },
     Picture(Vec<u8>),
 }
 
@@ -137,14 +144,14 @@ pub fn to_pages(doc: &ChessDoc, o: &OfficeOptions<'_>, notes: &mut Vec<String>) 
             match block {
                 DocBlock::Heading { level, inlines, .. } => {
                     let size = if *level <= 1 { H1 } else { H2 };
-                    parts.push(Part::Text { text: plain_text_with(inlines, o.figurines), size, bold: true });
+                    parts.push(Part::Text { text: plain_text_with(inlines, o.figurines), size, bold: true, link: None });
                 }
                 DocBlock::Paragraph { inlines, .. } => {
-                    parts.push(Part::Text { text: plain_text_with(inlines, o.figurines), size: BODY, bold: false })
+                    parts.push(Part::Text { text: plain_text_with(inlines, o.figurines), size: BODY, bold: false, link: None })
                 }
                 DocBlock::Diagram(d) => {
                     let Some(reading) = &d.reading else {
-                        parts.push(Part::Text { text: format!("[Diagram {} not read]", d.number + 1), size: BODY, bold: false });
+                        parts.push(Part::Text { text: format!("[Diagram {} not read]", d.number + 1), size: BODY, bold: false, link: None });
                         continue;
                     };
                     let png = pdfcraft_chess::fen::parse(&reading.fen)
@@ -159,11 +166,11 @@ pub fn to_pages(doc: &ChessDoc, o: &OfficeOptions<'_>, notes: &mut Vec<String>) 
                             notes.push(format!("page {}, diagram {}: {e}; its FEN was set instead", u64::from(page.index) + 1, d.number + 1));
                         }
                     }
-                    parts.push(Part::Text { text: format!("FEN: {}", reading.fen), size: 8.0, bold: false });
+                    parts.push(Part::Text { text: format!("FEN: {}", reading.fen), size: 8.0, bold: false, link: None });
                     if o.links
                         && let Some(url) = &d.lichess_url
                     {
-                        parts.push(Part::Text { text: format!("{}: {url}", o.link_text), size: 8.0, bold: false });
+                        parts.push(Part::Text { text: format!("{}: {url}", o.link_text), size: 8.0, bold: false, link: Some(url.clone()) });
                     }
                 }
             }
@@ -178,11 +185,17 @@ pub fn to_pages(doc: &ChessDoc, o: &OfficeOptions<'_>, notes: &mut Vec<String>) 
             .collect();
         let height = (heights.iter().map(|h| h + GAP).sum::<f64>() + 144.0).max(842.0);
         let mut top = height - 72.0;
-        let mut out = Page { width: WIDTH, height, blocks: Vec::new(), images: Vec::new() };
+        let mut out = Page { links: Vec::new(), width: WIDTH, height, blocks: Vec::new(), images: Vec::new() };
         for (part, h) in parts.into_iter().zip(heights) {
             let rect = [LEFT, top - h, if matches!(part, Part::Picture(_)) { LEFT + DIAGRAM_PT } else { RIGHT }, top];
             match part {
-                Part::Text { text, size, bold } => out.blocks.push(Block { text, rect, size, bold, italic: false, color: [0.0; 3], rotation: 0.0 }),
+                Part::Text { text, size, bold, link } => {
+                    // The link's area is the paragraph's box, so the writers make it a hyperlink.
+                    if let Some(uri) = link {
+                        out.links.push(Link { rect, uri });
+                    }
+                    out.blocks.push(Block { text, rect, size, bold, italic: false, color: [0.0; 3], rotation: 0.0 })
+                }
                 Part::Picture(bytes) => out.images.push(Image { ext: "png", bytes, rect, size: [DIAGRAM_PT, DIAGRAM_PT], rotation: 0.0 }),
             }
             top -= h + GAP;

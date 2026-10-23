@@ -43,12 +43,24 @@ pub struct Image {
     pub rotation: f64,
 }
 
+/// A link area of a page: clicking there goes to `uri`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Link {
+    /// [x0, y0, x1, y1] on the displayed page in points (y up), as [`Block::rect`].
+    pub rect: [f64; 4],
+    pub uri: String,
+}
+
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Page {
     pub width: f64,
     pub height: f64,
     pub blocks: Vec<Block>,
     pub images: Vec<Image>,
+    /// The page's link areas. A paragraph whose box has its centre inside one is written as a
+    /// hyperlink to it (Word, RTF, HTML), when [`link_target`] accepts the address; table cells
+    /// and PowerPoint stay plain text.
+    pub links: Vec<Link>,
 }
 
 /// One cell of a detected table. `span` is how many grid columns the cell covers (a header
@@ -75,7 +87,8 @@ pub struct Table {
 
 /// What goes into the output, in order.
 enum Item<'a> {
-    Para(&'a Block, u8),
+    /// A paragraph, its heading level, and the address it links to.
+    Para(&'a Block, u8, Option<String>),
     /// Owned: tables are detected per page inside [`items`], so they cannot borrow.
     Table(Table),
     Img(&'a Image),
@@ -332,6 +345,59 @@ pub(crate) fn tables(blocks: &[Block]) -> (Vec<Table>, Vec<bool>) {
     (out, consumed)
 }
 
+/// Most links of a page that are looked at: bounds the blocks × links test on a hostile page.
+const MAX_PAGE_LINKS: usize = 500;
+/// Longest address written as a link.
+const MAX_URI: usize = 2048;
+
+/// The address a link is written with: an `http`, `https` or `mailto` URI, trimmed, with every
+/// byte outside printable ASCII and every character that may not stand bare in a URI or inside an
+/// RTF field instruction (space `"` `\` `{` `}` `<` `>` `^` `` ` `` `|`) percent-encoded, so the
+/// result needs no escaping beyond XML's. Anything else (`javascript:`, `file:`, a relative or
+/// empty address, one longer than [`MAX_URI`] or holding control characters) is `None`, and the
+/// text is written plain.
+pub fn link_target(uri: &str) -> Option<String> {
+    let uri = uri.trim();
+    if uri.len() > MAX_URI || uri.chars().any(char::is_control) {
+        return None;
+    }
+    let (scheme, rest) = uri.split_once(':')?;
+    let ok = match scheme.to_ascii_lowercase().as_str() {
+        "http" | "https" => rest.strip_prefix("//").is_some_and(|host| !host.is_empty()),
+        "mailto" => !rest.is_empty(),
+        _ => false,
+    };
+    if !ok {
+        return None;
+    }
+    let mut out = String::with_capacity(uri.len());
+    for b in uri.bytes() {
+        if (0x21..=0x7e).contains(&b) && !b"\"\\{}<>^`|".contains(&b) {
+            out.push(char::from(b));
+        } else {
+            out.push_str(&format!("%{b:02X}"));
+        }
+    }
+    Some(out)
+}
+
+/// Per block of `page`, the address it links to: the first acceptable link (of the first
+/// [`MAX_PAGE_LINKS`]) whose area holds the centre of the block's box.
+fn block_links(page: &Page) -> Vec<Option<String>> {
+    let targets: Vec<([f64; 4], String)> = page.links.iter().take(MAX_PAGE_LINKS).filter_map(|l| Some((l.rect, link_target(&l.uri)?))).collect();
+    let inside = |r: [f64; 4], (x, y): (f64, f64)| r[0].min(r[2]) <= x && x <= r[0].max(r[2]) && r[1].min(r[3]) <= y && y <= r[1].max(r[3]);
+    page.blocks
+        .iter()
+        .map(|b| {
+            if targets.is_empty() {
+                return None;
+            }
+            let centre = ((b.rect[0] + b.rect[2]) / 2.0, (b.rect[1] + b.rect[3]) / 2.0);
+            targets.iter().find(|(r, _)| inside(*r, centre)).map(|(_, t)| t.clone())
+        })
+        .collect()
+}
+
 fn items(pages: &[Page]) -> Vec<Item<'_>> {
     let body = body_size(pages);
     let mut out = Vec::new();
@@ -340,13 +406,14 @@ fn items(pages: &[Page]) -> Vec<Item<'_>> {
             out.push(Item::PageBreak);
         }
         let (tables, consumed) = tables(&p.blocks);
+        let mut links = block_links(p);
         // Blocks and images by their top edge, top to bottom.
         let mut parts: Vec<(f64, f64, Item)> = p
             .blocks
             .iter()
             .enumerate()
             .filter(|(bi, _)| !consumed.get(*bi).copied().unwrap_or(false))
-            .map(|(_, b)| (b.rect[3], b.rect[0], Item::Para(b, level(b, body))))
+            .map(|(bi, b)| (b.rect[3], b.rect[0], Item::Para(b, level(b, body), links.get_mut(bi).and_then(Option::take))))
             .collect();
         parts.extend(tables.into_iter().map(|t| (t.rect[3], t.rect[0], Item::Table(t))));
         parts.extend(p.images.iter().map(|im| (im.rect[3], im.rect[0], Item::Img(im))));
@@ -401,8 +468,11 @@ table{{border-collapse:collapse;margin:1em 0}}td,th{{border:1px solid #999;paddi
     );
     for it in items(pages) {
         match it {
-            Item::Para(b, lvl) => {
+            Item::Para(b, lvl, link) => {
                 let mut t = esc(&b.text);
+                if let Some(href) = link {
+                    t = format!("<a href=\"{}\">{t}</a>", esc(&href));
+                }
                 if b.italic {
                     t = format!("<em>{t}</em>");
                 }
@@ -460,7 +530,17 @@ pub(crate) fn hex(c: [f64; 3]) -> Option<String> {
 
 /// A formatted text run (shared by paragraphs and table cells).
 fn run_xml(text: &str, size: f64, bold: bool, italic: bool, color: [f64; 3]) -> String {
-    let mut rpr = String::new();
+    styled_run_xml(text, size, bold, italic, color, false)
+}
+
+/// A paragraph's run; a link's run takes the `Hyperlink` character style (blue, underlined).
+fn block_run(b: &Block, link: bool) -> String {
+    styled_run_xml(&b.text, b.size, b.bold, b.italic, b.color, link)
+}
+
+fn styled_run_xml(text: &str, size: f64, bold: bool, italic: bool, color: [f64; 3], link: bool) -> String {
+    // `rStyle` comes first in `w:rPr` (OOXML CT_RPr order).
+    let mut rpr = String::from(if link { "<w:rStyle w:val=\"Hyperlink\"/>" } else { "" });
     if bold {
         rpr.push_str("<w:b/>");
     }
@@ -585,13 +665,15 @@ fn picture_xml(n: usize, name: &str, (cx, cy): (i64, i64), rotation: Option<f64>
     )
 }
 
-fn positioned_page<'a>(page: &'a Page, media: &mut Vec<(String, &'a Image)>, shape_id: &mut usize) -> String {
+fn positioned_page<'a>(page: &'a Page, media: &mut Vec<(String, &'a Image)>, shape_id: &mut usize, links: &mut Vec<String>) -> String {
     // One 1 pt paragraph anchors the whole page. Shapes never reserve body space, so even a
     // page-sized watermark cannot push the invoice footer onto another page.
     let mut s = String::from("<w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\" w:line=\"20\" w:lineRule=\"exact\"/></w:pPr>");
     let body = body_size(std::slice::from_ref(page)).max(1.0);
-    for b in &page.blocks {
+    let targets = block_links(page);
+    for (bi, b) in page.blocks.iter().enumerate() {
         *shape_id = shape_id.saturating_add(1);
+        let target = targets.get(bi).and_then(Option::as_deref);
         let rotation = layout_number(-b.rotation).rem_euclid(360.0);
         let (sin, cos) = rotation.to_radians().sin_cos();
         let (bw, bh) = (layout_number(b.rect[2] - b.rect[0]).max(1.0), layout_number(b.rect[3] - b.rect[1]).max(1.0));
@@ -613,7 +695,8 @@ fn positioned_page<'a>(page: &'a Page, media: &mut Vec<(String, &'a Image)>, sha
         );
         s.push_str(&format!(
             "<w:r><w:pict><v:rect id=\"Text{}\" style=\"{style}\" filled=\"f\" stroked=\"f\"><v:textbox inset=\"0,0,0,0\" style=\"mso-fit-shape-to-text:t\"><w:txbxContent><w:p><w:pPr><w:spacing w:before=\"0\" w:after=\"0\"/></w:pPr>{}</w:p></w:txbxContent></v:textbox><w10:wrap type=\"none\"/></v:rect></w:pict></w:r>",
-            shape_id, run_xml(&b.text, b.size, b.bold, b.italic, b.color)
+            shape_id,
+            hyperlink(block_run(b, target.is_some()), target, links)
         ));
     }
     for im in &page.images {
@@ -647,6 +730,24 @@ fn positioned_page<'a>(page: &'a Page, media: &mut Vec<(String, &'a Image)>, sha
     s
 }
 
+/// Most distinct link addresses a Word export gives a relationship; past it, links are plain text.
+const MAX_LINKS: usize = 10_000;
+
+/// `run` as a hyperlink to `target` (an address [`link_target`] made), its relationship added to
+/// `links` once per address; `run` alone without a target or past [`MAX_LINKS`].
+fn hyperlink(run: String, target: Option<&str>, links: &mut Vec<String>) -> String {
+    let Some(target) = target else { return run };
+    let n = match links.iter().position(|l| l == target) {
+        Some(i) => i,
+        None if links.len() < MAX_LINKS => {
+            links.push(target.to_owned());
+            links.len() - 1
+        }
+        None => return run,
+    };
+    format!("<w:hyperlink r:id=\"rIdLink{}\" w:history=\"1\">{run}</w:hyperlink>", n + 1)
+}
+
 fn word_page_size(page: &Page) -> (i64, i64) {
     let twips = |pt: f64| if pt.is_finite() { (pt * 20.0).round().clamp(144.0, 31680.0) as i64 } else { 12240 };
     (twips(page.width), twips(page.height))
@@ -669,24 +770,25 @@ pub fn docx(pages: &[Page], title: &str) -> Vec<u8> {
     let mut media: Vec<(String, &Image)> = Vec::new();
     // Word needs a paragraph between adjacent tables and after the last one in the body.
     let mut after_table = false;
-    let run = |b: &Block| run_xml(&b.text, b.size, b.bold, b.italic, b.color);
+    let mut links: Vec<String> = Vec::new();
     let mut shape_id = 0usize;
     for (page_index, page) in pages.iter().enumerate() {
         let (pw, _) = word_page_size(page);
         let text_w = (pw - 2 * (pw / 8).min(1440)) as f64 / 20.0;
         if positioned(page) {
-            body.push_str(&positioned_page(page, &mut media, &mut shape_id));
+            body.push_str(&positioned_page(page, &mut media, &mut shape_id, &mut links));
             after_table = false;
         } else {
             for it in items(std::slice::from_ref(page)) {
                 match &it {
-                    Item::Para(b, lvl) => {
+                    Item::Para(b, lvl, link) => {
                         let style = match lvl {
                             1 => "<w:pPr><w:pStyle w:val=\"Heading1\"/></w:pPr>",
                             2 => "<w:pPr><w:pStyle w:val=\"Heading2\"/></w:pPr>",
                             _ => "",
                         };
-                        body.push_str(&format!("<w:p>{style}{}</w:p>", run(b)));
+                        let run = hyperlink(block_run(b, link.is_some()), link.as_deref(), &mut links);
+                        body.push_str(&format!("<w:p>{style}{run}</w:p>"));
                     }
                     Item::Table(t) => {
                         if after_table {
@@ -756,11 +858,19 @@ xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawin
             i + 1
         ));
     }
+    for (i, target) in links.iter().enumerate() {
+        doc_rels.push_str(&format!(
+            "<Relationship Id=\"rIdLink{}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink\" Target=\"{}\" TargetMode=\"External\"/>",
+            i + 1,
+            esc(target)
+        ));
+    }
     doc_rels.push_str("</Relationships>");
     let styles = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<w:styles xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">\
 <w:style w:type=\"paragraph\" w:default=\"1\" w:styleId=\"Normal\"><w:name w:val=\"Normal\"/><w:pPr><w:spacing w:after=\"120\"/></w:pPr></w:style>\
 <w:style w:type=\"paragraph\" w:styleId=\"Heading1\"><w:name w:val=\"heading 1\"/><w:basedOn w:val=\"Normal\"/><w:next w:val=\"Normal\"/><w:pPr><w:keepNext/><w:spacing w:before=\"240\"/><w:outlineLvl w:val=\"0\"/></w:pPr><w:rPr><w:b/></w:rPr></w:style>\
 <w:style w:type=\"paragraph\" w:styleId=\"Heading2\"><w:name w:val=\"heading 2\"/><w:basedOn w:val=\"Normal\"/><w:next w:val=\"Normal\"/><w:pPr><w:keepNext/><w:spacing w:before=\"200\"/><w:outlineLvl w:val=\"1\"/></w:pPr><w:rPr><w:b/></w:rPr></w:style>\
+<w:style w:type=\"character\" w:styleId=\"Hyperlink\"><w:name w:val=\"Hyperlink\"/><w:rPr><w:color w:val=\"0563C1\"/><w:u w:val=\"single\"/></w:rPr></w:style>\
 </w:styles>";
     let core = format!(
         "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<cp:coreProperties xmlns:cp=\"http://schemas.openxmlformats.org/package/2006/metadata/core-properties\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\"><dc:title>{}</dc:title></cp:coreProperties>",
@@ -845,7 +955,7 @@ pub fn rtf(pages: &[Page]) -> String {
     };
     for it in &items {
         match it {
-            Item::Para(b, _) => note(b.color),
+            Item::Para(b, _, _) => note(b.color),
             Item::Table(t) => t.rows.iter().flatten().for_each(|c| note(c.color)),
             Item::Img(_) | Item::PageBreak => {}
         }
@@ -865,7 +975,7 @@ pub fn rtf(pages: &[Page]) -> String {
     }
     for it in items {
         match it {
-            Item::Para(b, _) => {
+            Item::Para(b, _, link) => {
                 let mut fmt = format!("\\fs{}", (b.size * 2.0).round() as i64);
                 if b.bold {
                     fmt.push_str("\\b");
@@ -874,7 +984,14 @@ pub fn rtf(pages: &[Page]) -> String {
                     fmt.push_str("\\i");
                 }
                 fmt.push_str(&cf(b.color));
-                s.push_str(&format!("{{\\pard{fmt} {}\\par}}\n", rtf_text(&b.text)));
+                let text = rtf_text(&b.text);
+                // A link is a HYPERLINK field; `link_target` left nothing in the address that RTF
+                // or the field's quotes would read.
+                let text = match link {
+                    Some(url) => format!("{{\\field{{\\*\\fldinst{{HYPERLINK \"{url}\"}}}}{{\\fldrslt{{\\ul {text}}}}}}}"),
+                    None => text,
+                };
+                s.push_str(&format!("{{\\pard{fmt} {text}\\par}}\n"));
             }
             Item::Table(t) => {
                 let mut edges = t.cols.clone();
@@ -928,6 +1045,7 @@ mod tests {
             rotation: 0.0,
         };
         Page {
+            links: Vec::new(),
             width: 612.0,
             height: 792.0,
             blocks: vec![
@@ -1163,6 +1281,7 @@ mod tests {
             rotation: 0.0,
         };
         Page {
+            links: Vec::new(),
             width: 612.0,
             height: 792.0,
             blocks: vec![
@@ -1248,6 +1367,7 @@ mod tests {
     fn word_opens_tables_up_to_its_column_limit() {
         // Rows of short numbers on a regular grid, n columns wide.
         let grid = |n: usize| Page {
+            links: Vec::new(),
             width: 1500.0,
             height: 792.0,
             blocks: (0..3)
@@ -1284,6 +1404,7 @@ mod tests {
     fn a_link_inside_a_sentence_is_not_a_table_column() {
         let blue = |t: &str, x0: f64, y0: f64, x1: f64, y1: f64| Block { color: [0.02, 0.388, 0.757], ..block(t, x0, y0, x1, y1) };
         let p = Page {
+            links: Vec::new(),
             width: 612.0,
             height: 792.0,
             blocks: vec![
@@ -1320,7 +1441,7 @@ mod tests {
             blocks.push(block(lead, 72.0, y, 211.0, y + 12.0));
             blocks.push(blue("https://example.org/event", 212.5, y, 360.0, y + 12.0));
         }
-        let p = Page { width: 612.0, height: 792.0, blocks, images: Vec::new() };
+        let p = Page { links: Vec::new(), width: 612.0, height: 792.0, blocks, images: Vec::new() };
         let h = html(std::slice::from_ref(&p), "Event");
         assert!(!h.contains("<table>"), "sentences became a table: {h}");
         assert_eq!(h.matches("https://example.org/event").count(), 3, "{h}");
@@ -1337,7 +1458,7 @@ mod tests {
             blocks.push(Block { size: 8.0, ..block(sup, 106.0, y + 5.0, 113.0, y + 13.0) });
             blocks.push(block(&format!("{},000", 30 - 5 * n), 300.0, y, 340.0, y + 12.0));
         }
-        let p = Page { width: 612.0, height: 792.0, blocks, images: Vec::new() };
+        let p = Page { links: Vec::new(), width: 612.0, height: 792.0, blocks, images: Vec::new() };
         let h = html(std::slice::from_ref(&p), "Prizes");
         assert!(h.contains("<table>"), "the prize table was lost: {h}");
         assert!(h.contains("30,000") && h.contains("15,000"), "{h}");
@@ -1355,6 +1476,7 @@ mod tests {
             rotation: 0.0,
         };
         let p = Page {
+            links: Vec::new(),
             width: 612.0,
             height: 792.0,
             blocks: vec![
@@ -1405,5 +1527,134 @@ mod tests {
         let zip = docx(&[p], "T");
         let rels = part(&zip, "word/_rels/document.xml.rels");
         assert_eq!(rels.matches("relationships/image\"").count(), MAX_MEDIA);
+    }
+
+    #[test]
+    fn link_target_accepts_only_web_and_mail_addresses() {
+        assert_eq!(link_target(" https://lichess.org/analysis/8/8 ").as_deref(), Some("https://lichess.org/analysis/8/8"));
+        assert_eq!(link_target("HTTP://a.example/x?q=1&r=2").as_deref(), Some("HTTP://a.example/x?q=1&r=2"));
+        assert_eq!(link_target("mailto:someone@example.org").as_deref(), Some("mailto:someone@example.org"));
+        // What RTF, a field's quotes or a URI cannot hold bare is percent-encoded.
+        assert_eq!(link_target("https://e.example/a b\"{}\\é").as_deref(), Some("https://e.example/a%20b%22%7B%7D%5C%C3%A9"));
+        for refused in [
+            "javascript:alert(1)",
+            "JavaScript:alert(1)",
+            "file:///etc/passwd",
+            "data:text/html,x",
+            "/relative",
+            "",
+            "https:",
+            "https://",
+            "mailto:",
+            "https://a\n.example",
+        ] {
+            assert_eq!(link_target(refused), None, "{refused:?}");
+        }
+        assert_eq!(link_target(&format!("https://e.example/{}", "a".repeat(MAX_URI))), None);
+    }
+
+    /// A page with a lichess address under a link, an address in a `javascript:` link and one
+    /// whose URI needs escaping in every format.
+    fn linked_page() -> Page {
+        let b = |t: &str, y: f64| Block {
+            text: t.into(),
+            rect: [72.0, y, 500.0, y + 10.0],
+            size: 10.0,
+            bold: false,
+            italic: false,
+            color: [0.0; 3],
+            rotation: 0.0,
+        };
+        Page {
+            width: 612.0,
+            height: 792.0,
+            blocks: vec![
+                b("Analyze on lichess: https://lichess.org/analysis/8/8/8/8/8/8/8/8_w_-_-_0_1", 700.0),
+                b("Click me for a surprise", 650.0),
+                b("Quoted <address> & more", 600.0),
+                b("Plain text under no link", 550.0),
+            ],
+            images: Vec::new(),
+            links: vec![
+                Link { rect: [70.0, 695.0, 510.0, 715.0], uri: "https://lichess.org/analysis/8/8/8/8/8/8/8/8_w_-_-_0_1".into() },
+                Link { rect: [70.0, 645.0, 510.0, 665.0], uri: "javascript:alert(1)".into() },
+                Link { rect: [510.0, 615.0, 70.0, 595.0], uri: "https://e.example/?a=1&b=\"<q>\"".into() },
+            ],
+        }
+    }
+
+    /// The `Target` of every hyperlink of a Word package's body, through its relationship, after
+    /// checking that both parts are well-formed and every relationship is external.
+    fn word_link_targets(zip: &[u8]) -> Vec<(String, String)> {
+        let xml = part(zip, "word/document.xml");
+        let rels = part(zip, "word/_rels/document.xml.rels");
+        let doc = roxmltree::Document::parse(&xml).unwrap_or_else(|e| panic!("document.xml: {e}\n{xml}"));
+        let rel_doc = roxmltree::Document::parse(&rels).unwrap_or_else(|e| panic!("rels: {e}\n{rels}"));
+        const R: &str = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+        doc.descendants()
+            .filter(|n| n.has_tag_name("hyperlink"))
+            .map(|h| {
+                let id = h.attribute((R, "id")).unwrap_or_else(|| panic!("a hyperlink without r:id in {xml}"));
+                let rel = rel_doc.descendants().find(|n| n.attribute("Id") == Some(id)).unwrap_or_else(|| panic!("no relationship {id} in {rels}"));
+                assert_eq!(rel.attribute("Type"), Some("http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"));
+                assert_eq!(rel.attribute("TargetMode"), Some("External"));
+                let text: String = h.descendants().filter(|n| n.has_tag_name("t")).filter_map(|n| n.text()).collect();
+                (rel.attribute("Target").unwrap_or_default().to_owned(), text)
+            })
+            .collect()
+    }
+
+    #[test]
+    fn word_writes_links_as_hyperlinks_with_external_relationships() {
+        let zip = docx(&[linked_page()], "Links");
+        let links = word_link_targets(&zip);
+        assert_eq!(
+            links,
+            [
+                (
+                    "https://lichess.org/analysis/8/8/8/8/8/8/8/8_w_-_-_0_1".to_owned(),
+                    "Analyze on lichess: https://lichess.org/analysis/8/8/8/8/8/8/8/8_w_-_-_0_1".to_owned()
+                ),
+                ("https://e.example/?a=1&b=%22%3Cq%3E%22".to_owned(), "Quoted <address> & more".to_owned()),
+            ]
+        );
+        let xml = part(&zip, "word/document.xml");
+        assert!(xml.contains("<w:rStyle w:val=\"Hyperlink\"/>"), "{xml}");
+        assert!(part(&zip, "word/styles.xml").contains("w:styleId=\"Hyperlink\""));
+        // The javascript: link is refused: its text stays, plain, and the address is nowhere.
+        assert!(xml.contains("Click me for a surprise"));
+        assert!(!zip.windows(10).any(|w| w.eq_ignore_ascii_case(b"javascript")));
+        assert!(!part(&zip, "word/_rels/document.xml.rels").to_ascii_lowercase().contains("javascript"));
+        // One relationship per address, however many paragraphs link to it.
+        let twice = Page { blocks: [linked_page().blocks, linked_page().blocks].concat(), ..linked_page() };
+        let rels = part(&docx(&[twice], "Links"), "word/_rels/document.xml.rels");
+        assert_eq!(rels.matches("relationships/hyperlink\"").count(), 2, "{rels}");
+    }
+
+    #[test]
+    fn word_keeps_links_on_positioned_pages() {
+        let mut p = linked_page();
+        p.blocks.push(Block { rotation: 30.0, rect: [100.0, 100.0, 200.0, 150.0], ..p.blocks[3].clone() });
+        assert!(positioned(&p));
+        let zip = docx(&[p], "Links");
+        assert!(part(&zip, "word/document.xml").contains("<v:textbox"));
+        assert_eq!(word_link_targets(&zip).len(), 2);
+    }
+
+    #[test]
+    fn rtf_and_html_write_links_as_hyperlinks() {
+        let r = rtf(&[linked_page()]);
+        assert!(
+            r.contains(
+                "{\\field{\\*\\fldinst{HYPERLINK \"https://lichess.org/analysis/8/8/8/8/8/8/8/8_w_-_-_0_1\"}}{\\fldrslt{\\ul Analyze on lichess: https://lichess.org/analysis/8/8/8/8/8/8/8/8_w_-_-_0_1}}}"
+            ),
+            "{r}"
+        );
+        assert!(r.contains("{\\field{\\*\\fldinst{HYPERLINK \"https://e.example/?a=1&b=%22%3Cq%3E%22\"}}"), "{r}");
+        assert!(r.contains("\\fs20 Click me for a surprise\\par") && !r.to_ascii_lowercase().contains("javascript"), "{r}");
+        assert_eq!(r.matches('{').count(), r.matches('}').count(), "{r}");
+        let h = html(&[linked_page()], "Links");
+        assert!(h.contains("<a href=\"https://e.example/?a=1&amp;b=%22%3Cq%3E%22\">Quoted &lt;address&gt; &amp; more</a>"), "{h}");
+        assert!(!h.to_ascii_lowercase().contains("javascript"));
     }
 }
