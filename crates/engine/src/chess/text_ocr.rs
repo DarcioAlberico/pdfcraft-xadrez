@@ -159,12 +159,16 @@ pub fn read_page(
 ) -> Result<OcrText, String> {
     let image = masked(gray, diagrams).ok_or("the page image could not be prepared")?;
     let scale = text_scale(&image, &[]).map_err(|e| e.to_string())?;
-    let lines = read(&image, None, scale, glyphs, &GlyphOptions::default()).map_err(|e| e.to_string())?;
-    let frames: Vec<ViewRect> = pdfcraft_chessvision::glyphs::frames(&image, None, scale)
+    // A frame that touches a diagram is the board's border the mask missed: it goes, with what it
+    // holds (pieces the mask missed too, which a frame no longer hides as its inner detail). The
+    // other frames are around text: a game's header box, a chapter title's.
+    let (boards, frames): (Vec<PixelRect>, Vec<PixelRect>) = pdfcraft_chessvision::glyphs::frames(&image, None, scale)
         .map_err(|e| e.to_string())?
         .into_iter()
-        .filter_map(|r| pixels_to_view(r, dpi))
-        .collect();
+        .partition(|f| diagrams.iter().any(|d| f.x0 < d.x1 && d.x0 < f.x1 && f.y0 < d.y1 && d.y0 < f.y1));
+    let image = if boards.is_empty() { image } else { masked(&image, &boards).ok_or("the page image could not be prepared")? };
+    let lines = read(&image, None, scale, glyphs, &GlyphOptions::default()).map_err(|e| e.to_string())?;
+    let frames: Vec<ViewRect> = frames.into_iter().filter_map(|r| pixels_to_view(r, dpi)).collect();
     let fused = match ocr {
         Some(words) => bucket(&lines, words),
         None => glyphs_only(&lines),

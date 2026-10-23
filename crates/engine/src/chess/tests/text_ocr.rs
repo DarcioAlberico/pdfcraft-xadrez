@@ -507,3 +507,19 @@ fn a_framed_header_on_a_scan_is_a_heading() {
     assert_eq!(headings("1.5 w 50 470 140 60 re S\n"), 1, "the framed header");
     assert_eq!(headings(""), 0, "the same text unframed");
 }
+
+/// A board's outer border beyond the mask (20 pt out), with ink left inside it (pieces of a
+/// scan the mask missed): the border touches the diagram, so it goes with what it holds. No
+/// heading, and only the moves are read.
+#[test]
+fn a_boards_border_beyond_the_mask_goes_with_what_it_holds() {
+    let templates = Templates::learn("1.e4526Nf3c", 14.0);
+    let board = vector_board(60.0, 100.0);
+    let border = "0 g 1.5 w 40 80 200 200 re S 226 150 6 9 re f 226 175 6 9 re f\n";
+    let bytes = pdf(&format!("q 600 0 0 800 0 0 cm /Im1 Do Q\n{board}{border}"), "Helvetica", Some(scan_image(&[(MOVES, 14.0, 300.0)])), "");
+    let (mut s, id) = open(bytes);
+    let read = s.chess_document_with(id, &[], &no_model(), Some(pdfcraft_chess::san::Lang::En), &options(&templates)).unwrap();
+    assert_eq!(read.ocr_pages.len(), 1, "{:?}", read.notes);
+    assert_eq!(read.ocr_pages[0].lines, 1, "only the moves ({:#?})", read.doc.pages[0].blocks);
+    assert!(!read.doc.pages[0].blocks.iter().any(|b| matches!(b, pdfcraft_chessvision::doc::Block::Heading { .. })));
+}
