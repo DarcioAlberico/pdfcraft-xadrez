@@ -26,8 +26,8 @@
 //! Read-only: nothing here changes a document.
 
 use pdfcraft_chess::san::Lang;
-use pdfcraft_chessvision::chess_text::{self, ChessPageText, LangGuess, LangTally, TextQuality};
-use pdfcraft_chessvision::coords::PageRect;
+use pdfcraft_chessvision::chess_text::{self, ChessLine, ChessPageText, ChessRun, LangGuess, LangTally, TextQuality};
+use pdfcraft_chessvision::coords::{PageGeometry, PageRect, ViewRect};
 use pdfcraft_chessvision::doc::{BlockHint, ChessDoc, DocBuilder, HintKind, PageInput};
 use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind};
 
@@ -189,9 +189,58 @@ pub fn block_hints(blocks: &[pdfcraft_edit::TextBlock], body: Option<f64>) -> Ve
         .collect()
 }
 
+/// Most lines a header box holds (Pinski's: the game's number, the players, the place and year).
+pub const FRAME_MAX_LINES: usize = 4;
+/// Least share of a header box's width and height its text spans: it hugs its text.
+pub const FRAME_MIN_FILL_X: f32 = 0.4;
+pub const FRAME_MIN_FILL_Y: f32 = 0.5;
+
+/// The headings of a page read with OCR: each frame drawn around text (`frames`, view space: a
+/// game's header box, a chapter title's) that holds a short text, at most
+/// [`HEADING_MAX_CHARS`] of `text`'s characters on at most [`FRAME_MAX_LINES`] lines, and hugs it
+/// ([`FRAME_MIN_FILL_X`], [`FRAME_MIN_FILL_Y`]), is a heading (level 2). A frame around a longer
+/// text (a sidebar) or a page's border is no heading, and a framed line with moves is never one
+/// (the builder's rule).
+pub fn frame_hints(frames: &[ViewRect], text: &ChessPageText, geometry: &PageGeometry) -> Vec<BlockHint> {
+    frames
+        .iter()
+        .filter_map(|f| {
+            let inside: Vec<&ChessLine> = text
+                .lines
+                .iter()
+                .filter(|l| {
+                    let (cx, cy) = ((l.rect.x0 + l.rect.x1) * 0.5, (l.rect.y0 + l.rect.y1) * 0.5);
+                    cx >= f.x0 && cx <= f.x1 && cy >= f.y0 && cy <= f.y1
+                })
+                .collect();
+            let chars: usize = inside.iter().flat_map(|l| &l.spans).map(|s| span_chars(&s.run)).sum();
+            if chars == 0 || chars > HEADING_MAX_CHARS || inside.len() > FRAME_MAX_LINES {
+                return None;
+            }
+            // A header box hugs its text; a page's or a table's border holds a little text in a
+            // large box.
+            let held = inside.iter().map(|l| l.rect).reduce(|a, b| ViewRect::new(a.x0.min(b.x0), a.y0.min(b.y0), a.x1.max(b.x1), a.y1.max(b.y1)))?;
+            if held.width() < FRAME_MIN_FILL_X * f.width() || held.height() < FRAME_MIN_FILL_Y * f.height() {
+                return None;
+            }
+            geometry.view_to_user(*f).map(|rect| BlockHint { kind: HintKind::Heading { level: 2 }, rect })
+        })
+        .collect()
+}
+
+/// The characters a span of chess text stands for: its text, a move as printed, one for a sign.
+fn span_chars(run: &ChessRun) -> usize {
+    match run {
+        ChessRun::Text(t) => t.chars().filter(|c| !c.is_whitespace()).count(),
+        ChessRun::Move { text, .. } => text.chars().count(),
+        _ => 1,
+    }
+}
+
 /// The hints for a page from its reading blocks, and a note when they could not be read. A page
-/// read with OCR gets none: its blocks are the layer that was not believed (an earlier OCR
-/// program's invisible text, whose sizes say nothing), so its lines are grouped by spacing.
+/// read with OCR gets none here: its blocks are the layer that was not believed (an earlier OCR
+/// program's invisible text, whose sizes say nothing), so its lines are grouped by spacing, and
+/// its headings come from the frames OCR found ([`frame_hints`]).
 pub fn page_hints(
     blocks: Option<&Result<Vec<pdfcraft_edit::TextBlock>, String>>,
     body: Option<f64>,
@@ -312,6 +361,7 @@ impl Session {
             let mut text = layer_text;
             let mut reviews: Vec<TextReview> = Vec::new();
             let ocr_text;
+            let mut ocr_frames: Vec<ViewRect> = Vec::new();
             notes.extend(page.notes.iter().map(|n| (page.page, n.clone())));
             if let Some(e) = &page.error {
                 notes.push((page.page, e.clone()));
@@ -357,6 +407,7 @@ impl Session {
                                     general_ocr: read.general_ocr,
                                 });
                                 reviews = read.reviews;
+                                ocr_frames = read.frames;
                                 ocr_text = read.text;
                                 text = &ocr_text;
                             }
@@ -399,7 +450,10 @@ impl Session {
                 continue;
             };
             let read_by_ocr = !std::ptr::eq(text, layer_text);
-            let (hints, note) = page_hints(blocks.as_ref(), body, read_by_ocr);
+            let (mut hints, note) = page_hints(blocks.as_ref(), body, read_by_ocr);
+            if read_by_ocr {
+                hints = frame_hints(&ocr_frames, text, &geometry);
+            }
             notes.extend(note.map(|n| (page.page, n)));
             let diagrams = readings;
             if page.readings.is_none() && !page.diagrams.is_empty() {

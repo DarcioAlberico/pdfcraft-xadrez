@@ -214,6 +214,22 @@ pub fn text_scale(image: &GrayImage, exclude: &[PixelRect]) -> Result<Option<u32
     Ok(u32::try_from(s).ok().filter(|&s| s > 0))
 }
 
+/// The frames drawn around text in `region` of `image` (all of it when `None`), in `image`'s
+/// pixels: a game's header box, a chapter title's. [`read`] reads the text inside them and leaves
+/// the frames out; a page read with OCR has no layout but these to tell a heading by. `scale` as
+/// for [`read`].
+pub fn frames(image: &GrayImage, region: Option<PixelRect>, scale: Option<u32>) -> Result<Vec<PixelRect>, GlyphError> {
+    let Some(region) = clamp_region(image, region) else { return Ok(Vec::new()) };
+    let (w, h, px) = crop(image, region)?;
+    let bin = seg::binarize(&Gray { w, h, px: &px });
+    let comps = seg::components(&bin, MAX_COMPONENTS).ok_or(GlyphError::TooManyComponents { max: MAX_COMPONENTS })?;
+    let scale = scale.filter(|&s| s > 0).map_or_else(|| seg::scale(&comps, w.saturating_mul(h)), i64::from);
+    if scale <= 0 {
+        return Ok(Vec::new());
+    }
+    Ok(comps.iter().filter(|c| seg::is_frame(c, scale)).map(|c| to_image(&c.b, region)).collect())
+}
+
 /// Read the glyphs of `region` of `image` (all of it when `None`) into lines of words, with
 /// boxes in `image`'s pixels. `scale` is the page's text scale ([`text_scale`]); `None` (or 0)
 /// measures it from the region, which is right for a crop of one line or a whole page.
