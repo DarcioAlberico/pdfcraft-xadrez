@@ -229,6 +229,20 @@ fn a_stray_mark_inside_a_square_is_dropped() {
     assert!(read.lines[0].spans.iter().any(|s| s.run == ChessRun::Text("e.g. a.m.".into())), "{:?}", read.lines[0].spans);
 }
 
+/// An old OCR layer (Chess Tactics 4) splits a move's number at a space: `2 1 .fxe6` for
+/// 21.fxe6, `1 8.Nf6+` for 18.Nf6+, `3 1 ...Kf6` for 31...Kf6. The digits join when together they
+/// read as a numbered move.
+#[test]
+fn a_move_number_split_by_ocr_is_joined() {
+    let read = Page::new().text("after 2 1 .fxe6 Rxf6 1 8.Nf6+ and 3 1 ...Kf6").read(Some(Lang::En));
+    let numbers: Vec<(u16, bool)> = read.lines[0]
+        .spans
+        .iter()
+        .filter_map(|s| if let ChessRun::MoveNumber { number, black } = s.run { Some((number, black)) } else { None })
+        .collect();
+    assert_eq!(numbers, [(21, false), (18, false), (31, true)], "{:?}", read.lines[0].spans);
+}
+
 #[test]
 fn novelty_after_a_move_is_nag_146() {
     let read = Page::new().text("12.Nf4N").read(None);
