@@ -243,19 +243,163 @@ fn without_square_marks(cells: &[Cell], lang: Lang) -> Option<Vec<Cell>> {
     reads_as_move(&kept, lang).then_some(kept)
 }
 
+/// A word an old OCR layer misread where a digit belongs, read again: `l` for a 1 after a file
+/// (`Rfl`, `Qxel`), and `S` for a 5 or an 8 after one (`dxcS`, `fxeS`: a pawn reaches the last
+/// rank only promoting, so it is a 5; `e8=Q` keeps its 8). SAN never has a letter there. Either
+/// is read only where the word is notation whatever its last letter: it has a capture, or a move
+/// number or a split number's full stop before it (`27.Rfl`, `.Kbl`); `Tal`, `Dahl` and `del`
+/// stay words, and so does a lone `bS`, which may be the square of a piece set apart (`R bS`).
+/// An `S` is read only when one digit alone makes a move of the word: a piece's `RxbS` could be
+/// on either rank and stays a word. A word that already reads as a move is left alone.
+fn misread_digits(cells: &[Cell], lang: Lang) -> Option<Vec<Cell>> {
+    let at = |k: usize| cells.get(k).map(|c| c.ch);
+    let file = |k: Option<usize>| k.and_then(at).is_some_and(|c| ('a'..='h').contains(&c));
+    let ends = |k: usize| at(k + 1).is_none_or(|c| !c.is_alphanumeric());
+    let notation = cells.iter().any(|c| c.ch == 'x') || at(0).is_some_and(|c| c.is_ascii_digit() || c == '.');
+    let rank = |i: usize| match at(i) {
+        Some('S') => notation && file(i.checked_sub(1)) && ends(i),
+        Some('l') => notation && file(i.checked_sub(1)) && ends(i),
+        _ => false,
+    };
+    if !(0..cells.len()).any(rank) || reads_as_move(cells, lang) {
+        return None;
+    }
+    let read = |s: char| -> Vec<Cell> {
+        cells
+            .iter()
+            .enumerate()
+            .map(|(i, c)| match c.ch {
+                'S' if rank(i) => Cell { ch: s, ..*c },
+                'l' if rank(i) => Cell { ch: '1', ..*c },
+                _ => *c,
+            })
+            .collect()
+    };
+    // Only an `S` has two readings: a word with none is read once.
+    let digits: &[char] = if (0..cells.len()).any(|i| at(i) == Some('S') && rank(i)) { &['5', '8'] } else { &['1'] };
+    let mut moves = digits.iter().map(|&s| read(s)).filter(|r| reads_as_move(r, lang));
+    match (moves.next(), moves.next()) {
+        (Some(only), None) => Some(only),
+        _ => None,
+    }
+}
+
+/// The move numbers of a line an old OCR layer set with an `S` for a 5 or an 8 (`2S.Rae1`,
+/// `2S ...`), read again from the numbers around them on the line: the one digit that makes the
+/// number the one before it or the next (`24.Qg6 dxc5 2S.Rae1`: 25; `27.Rg5 Rg8 2S.Kf1`: 28)
+/// and fits the number after it too. A number with no move number beside it on its line, or
+/// that both digits or neither fit, is left alone.
+fn misread_numbers(words: &mut [Vec<Cell>]) {
+    let number_of = |w: &[Cell]| {
+        let chars: Vec<char> = w.iter().map(|c| c.ch).collect();
+        parts(&chars).number.map(|(n, _, _)| n)
+    };
+    for i in 0..words.len() {
+        let Some(word) = words.get(i) else { break };
+        let run = word.iter().take_while(|c| c.ch.is_ascii_digit() || c.ch == 'S').count();
+        let number = word.get(..run).unwrap_or(&[]);
+        if run > MAX_NUMBER_DIGITS || !number.iter().any(|c| c.ch == 'S') || !number.first().is_some_and(|c| c.ch.is_ascii_digit()) {
+            continue;
+        }
+        if !word.get(run).is_none_or(|c| c.ch == '.') {
+            continue;
+        }
+        let before = words.get(..i).and_then(|w| w.iter().rev().find_map(|w| number_of(w)));
+        let after = words.get(i + 1..).and_then(|w| w.iter().find_map(|w| number_of(w)));
+        if before.is_none() && after.is_none() {
+            continue;
+        }
+        let fits =
+            |n: u16| before.is_none_or(|b| n == b || Some(n) == b.checked_add(1)) && after.is_none_or(|a| n == a || Some(n) == a.checked_sub(1));
+        let read = |s: char| -> Option<(u16, Vec<Cell>)> {
+            let digits: String = number.iter().map(|c| if c.ch == 'S' { s } else { c.ch }).collect();
+            let n: u16 = digits.parse().ok()?;
+            let cells = word.iter().enumerate().map(|(k, c)| if k < run && c.ch == 'S' { Cell { ch: s, ..*c } } else { *c }).collect();
+            fits(n).then_some((n, cells))
+        };
+        let mut fitting = ['5', '8'].into_iter().filter_map(read);
+        if let (Some((_, cells)), None) = (fitting.next(), fitting.next())
+            && let Some(slot) = words.get_mut(i)
+        {
+            *slot = cells;
+        }
+    }
+}
+
+/// An ellipsis an old OCR layer set with bullets (`••.`, `•..`), after a move number or alone:
+/// the bullets are full stops. The run is two or three long and holds a full stop, so a bullet
+/// that starts a list item stays one.
+fn bullet_dots(cells: &[Cell]) -> Option<Vec<Cell>> {
+    let digits = cells.iter().take_while(|c| c.ch.is_ascii_digit()).count();
+    let run = cells.get(digits..)?.iter().take_while(|c| c.ch == '.' || c.ch == '•').count();
+    let dots = cells.get(digits..digits + run)?;
+    if !(2..=3).contains(&run) || !dots.iter().any(|c| c.ch == '•') || !dots.iter().any(|c| c.ch == '.') {
+        return None;
+    }
+    Some(cells.iter().enumerate().map(|(i, c)| if (digits..digits + run).contains(&i) { Cell { ch: '.', ..*c } } else { *c }).collect())
+}
+
+/// A word cleaned of what an old OCR layer or a scan's speck put in it: bullets for full stops
+/// ([`bullet_dots`]), a mark inside a square ([`without_square_marks`]) and letters for digits
+/// ([`misread_digits`]).
+fn cleaned(word: Vec<Cell>, lang: Lang) -> Vec<Cell> {
+    let word = bullet_dots(&word).unwrap_or(word);
+    let word = without_square_marks(&word, lang).unwrap_or(word);
+    misread_digits(&word, lang).unwrap_or(word)
+}
+
+/// Black's move an old OCR layer split at its spaces, from word `i`: the number apart from the
+/// ellipsis (`25` `...cxb4`, `31..` `.Rg2`), and maybe the piece or file apart from the rest of
+/// the move too (`24.` `..b` `xc5`, `36.` `..Q` `xb3`). The words joined, and how many, when
+/// together they read as Black's numbered move; the walker still judges the number.
+fn split_ellipsis(words: &[Vec<Cell>], i: usize, lang: Lang) -> Option<(Vec<Cell>, usize)> {
+    let number = words.get(i)?;
+    let digits = number.iter().take_while(|c| c.ch.is_ascii_digit()).count();
+    if digits == 0 || digits > MAX_NUMBER_DIGITS || !number.iter().skip(digits).all(|c| c.ch == '.') {
+        return None;
+    }
+    let next = words.get(i + 1)?;
+    if !next.first().is_some_and(|c| c.ch == '.') {
+        return None;
+    }
+    // The piece or file left alone after the dots: `..b`, `..Q`.
+    let lone_letter = {
+        let dots = next.iter().take_while(|c| c.ch == '.').count();
+        matches!(next.get(dots..), Some([c]) if c.ch.is_ascii_alphabetic())
+    };
+    // A number with no full stop before a whole move glued to its dots (`1 ...Nef6`) is as often
+    // a number that lost a digit as Black's move set apart; the move split too is the old OCR's.
+    let dotted = number.len() > digits;
+    let spans: &[usize] = if lone_letter {
+        &[2]
+    } else if dotted {
+        &[1]
+    } else {
+        return None;
+    };
+    spans.iter().find_map(|&n| {
+        let cells: Vec<Cell> = words.get(i..=i + n)?.iter().flatten().copied().collect();
+        let cells = cleaned(cells, lang);
+        let black = {
+            let chars: Vec<char> = cells.iter().map(|c| c.ch).collect();
+            parts(&chars).number.is_some_and(|(_, black, _)| black)
+        };
+        (cells.len() <= MAX_WORD_CHARS && black && reads_as_move(&cells, lang)).then_some((cells, n + 1))
+    })
+}
+
 /// Widest gap, as a share of the glyphs' height, between the two digits of a split move number:
 /// Chess Tactics 4's split numbers stand 0.13-0.18 apart, its words 0.20 or more (5th percentile;
 /// median 0.28).
 const SPLIT_NUMBER_GAP: f32 = 0.19;
 
-/// A move whose number an old OCR layer split at a space, from word `i`: a digit, then either the
-/// rest of the number with its move (`1` `8.Nf6+`: 18.Nf6+) or a digit and the move after its
-/// full stop (`2` `1` `.fxe6`: 21.fxe6; `3` `1` `...Kf6`: 31...Kf6). The words joined, and how
-/// many, when together they read as a numbered move and the digits stand closer than words do
-/// ([`SPLIT_NUMBER_GAP`]); the walker still judges the number.
+/// A move whose number an old OCR layer split at a space, from word `i`: a digit, then the rest
+/// of the number and its move in up to three words (`1` `8.Nf6+`: 18.Nf6+; `2` `1` `.fxe6`:
+/// 21.fxe6; `3` `1` `...Kf6`: 31...Kf6; `1` `7` `...d` `xe5`: 17...dxe5). The fewest words
+/// joined, and how many, that together read as a numbered move, when the digits stand closer
+/// than words do ([`SPLIT_NUMBER_GAP`]); the walker still judges the number.
 fn split_number(words: &[Vec<Cell>], i: usize, lang: Lang) -> Option<(Vec<Cell>, usize)> {
-    let digit = |w: Option<&Vec<Cell>>, first: bool| matches!(w.map(Vec::as_slice), Some([c]) if c.ch.is_ascii_digit() && !(first && c.ch == '0'));
-    if !digit(words.get(i), true) {
+    if !matches!(words.get(i).map(Vec::as_slice), Some([c]) if c.ch.is_ascii_digit() && c.ch != '0') {
         return None;
     }
     let next = words.get(i + 1)?;
@@ -271,15 +415,12 @@ fn split_number(words: &[Vec<Cell>], i: usize, lang: Lang) -> Option<(Vec<Cell>,
     if !tight {
         return None;
     }
-    let spans: &[usize] = if next.first().is_some_and(|c| c.ch.is_ascii_digit()) && next.get(1).is_some_and(|c| c.ch == '.') {
-        &[1]
-    } else if digit(Some(next), false) && words.get(i + 2).and_then(|w| w.first()).is_some_and(|c| c.ch == '.') {
-        &[2]
-    } else {
+    if !next.first().is_some_and(|c| c.ch.is_ascii_digit()) {
         return None;
-    };
-    spans.iter().find_map(|&n| {
+    }
+    (1..=3).find_map(|n| {
         let cells: Vec<Cell> = words.get(i..=i + n)?.iter().flatten().copied().collect();
+        let cells = cleaned(cells, lang);
         let numbered = {
             let chars: Vec<char> = cells.iter().map(|c| c.ch).collect();
             parts(&chars).number.is_some()
@@ -291,15 +432,18 @@ fn split_number(words: &[Vec<Cell>], i: usize, lang: Lang) -> Option<(Vec<Cell>,
 /// Step 2b: put back together a move that OCR cut with spaces. A lone figurine and the one or
 /// two words after it (`♖ e1`, `♖ e 1`) join when together they read as a move; so do a move to
 /// the last rank and a promotion written apart (`f1 =♕`). A figurine in prose (`the ♗ pair`)
-/// joins nothing. Stray marks inside a square are dropped ([`without_square_marks`]), from a
-/// word and from the words joined, so `bxc.3` is `bxc3` and `♕ xc.3` is `♕xc3`; and a move
-/// number split at a space is put back ([`split_number`]: `2 1 .fxe6`).
+/// joins nothing. Each word is first cleaned of an old OCR's misreadings ([`misread_numbers`],
+/// [`cleaned`]), and so are the words joined, so `bxc.3` is `bxc3`, `♕ xc.3` is `♕xc3` and
+/// `Qxel` is `Qxe1`; a move number split at a space is put back ([`split_number`]: `2 1 .fxe6`),
+/// and so is Black's move split from its number ([`split_ellipsis`]: `24. ..b xc5`).
 pub(crate) fn join_split_moves(words: Vec<Vec<Cell>>, lang: Lang) -> Vec<Vec<Cell>> {
-    let words: Vec<Vec<Cell>> = words.into_iter().map(|w| without_square_marks(&w, lang).unwrap_or(w)).collect();
+    let mut words: Vec<Vec<Cell>> = words.into_iter().map(|w| bullet_dots(&w).unwrap_or(w)).collect();
+    misread_numbers(&mut words);
+    let words: Vec<Vec<Cell>> = words.into_iter().map(|w| cleaned(w, lang)).collect();
     let mut out: Vec<Vec<Cell>> = Vec::with_capacity(words.len());
     let mut i = 0;
     while let Some(word) = words.get(i) {
-        if let Some((cells, n)) = split_number(&words, i, lang) {
+        if let Some((cells, n)) = split_number(&words, i, lang).or_else(|| split_ellipsis(&words, i, lang)) {
             out.push(cells);
             i += n;
             continue;
@@ -316,7 +460,7 @@ pub(crate) fn join_split_moves(words: Vec<Vec<Cell>>, lang: Lang) -> Vec<Vec<Cel
         let joined = spans.iter().find_map(|&n| {
             let rest = words.get(i + 1..=i + n)?;
             let cells: Vec<Cell> = std::iter::once(word).chain(rest).flatten().copied().collect();
-            let cells = without_square_marks(&cells, lang).unwrap_or(cells);
+            let cells = cleaned(cells, lang);
             (cells.len() <= MAX_WORD_CHARS && reads_as_move(&cells, lang)).then_some((cells, n))
         });
         match joined {
