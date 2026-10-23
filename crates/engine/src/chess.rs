@@ -947,6 +947,7 @@ pub mod links;
 pub mod office;
 pub mod replace;
 pub mod samples;
+pub mod span;
 pub mod text_ocr;
 
 #[cfg(test)]
