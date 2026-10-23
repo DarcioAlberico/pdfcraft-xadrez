@@ -933,6 +933,153 @@ fn a_solution_from_move_one_is_not_read_from_its_exercise() {
     assert_eq!(doc.games.last().map(|g| g.origin), Some(GameOrigin::Initial));
 }
 
+/// A page of a workbook ([`workbook`]): two exercises numbered 1 and 2 under a chapter's heading
+/// (when there is one), or solutions, one line each, those starting with `#` set as headings.
+enum WorkbookPage<'a> {
+    Exercises(Option<&'a str>, [&'a str; 2]),
+    Solutions(&'a [&'a str]),
+}
+
+const ROOK: &str = "8/8/4k3/8/8/4K3/r7/7R w - - 0 1";
+/// The solutions of the Scholar's position and of the rook's: each fails from the other.
+const SCHOLAR_MATE: &str = "3.Qh5 Nf6 4.Qxf7#";
+const ROOK_CHECKS: &str = "1.Rh6+ Kd5 2.Rh5+";
+
+fn workbook(pages: &[WorkbookPage<'_>]) -> ChessDoc {
+    let heading = |top: f32| BlockHint { kind: HintKind::Heading { level: 1 }, rect: user_box(30.0, top - 5.0, 300.0, top + 15.0) };
+    let mut b = DocBuilder::new();
+    for (index, page) in pages.iter().enumerate() {
+        let (mut lines, mut hints, mut diagrams) = (Vec::new(), Vec::new(), Vec::new());
+        match page {
+            WorkbookPage::Exercises(title, fens) => {
+                if let Some(t) = title {
+                    lines.push(line(20.0, t));
+                    hints.push(heading(20.0));
+                }
+                lines.extend([line(215.0, "Exercise 1"), line(415.0, "Exercise 2")]);
+                diagrams = vec![reading(0, 60.0, fens[0], true, false), reading(1, 260.0, fens[1], true, false)];
+            }
+            WorkbookPage::Solutions(texts) => {
+                for (k, t) in texts.iter().enumerate() {
+                    let y = 40.0 + 20.0 * k as f32;
+                    match t.strip_prefix('#') {
+                        Some(h) => {
+                            lines.push(line(y, h));
+                            hints.push(heading(y));
+                        }
+                        None => lines.push(line(y, t)),
+                    }
+                }
+            }
+        }
+        let text = page_text(lines);
+        b.add_page(&input(index as u32, &text, &diagrams, &hints, &[]));
+    }
+    b.finish()
+}
+
+/// Every move of the document's solution pages is valid, and the games start from these
+/// diagrams (page, diagram), in order.
+fn assert_solved(doc: &ChessDoc, solution_pages: &[usize], origins: &[(u32, usize)]) {
+    for &p in solution_pages {
+        assert!(moves(&doc.pages[p]).iter().all(|(_, s)| *s == MoveStatus::Valid), "page {p}: {:?}", moves(&doc.pages[p]));
+    }
+    let want: Vec<GameOrigin> = origins.iter().map(|&(page, diagram)| GameOrigin::Diagram { page, diagram, accepted: true }).collect();
+    assert_eq!(doc.games.iter().map(|g| g.origin).collect::<Vec<_>>(), want);
+}
+
+/// A workbook that numbers each chapter's exercises from 1 and prints all the solutions after
+/// them: each solution is played from the exercise of its own chapter, found from the structure.
+/// The two chapters set their positions the other way round, so a solution read from the other
+/// chapter's exercise fails.
+#[test]
+fn solutions_after_every_chapter_link_to_their_own_chapters_exercises() {
+    use WorkbookPage::{Exercises, Solutions};
+    let chapters = |a: &'static str, b: &'static str| [Exercises(Some(a), [SCHOLAR, ROOK]), Exercises(Some(b), [ROOK, SCHOLAR])];
+    // The label gives the chapter (`Ex. 2–1`); the solutions are printed last chapter first.
+    let [c1, c2] = chapters("Chapter 1", "Chapter 2");
+    let doc = workbook(&[c1, c2, Solutions(&["#Ex. 2–1", ROOK_CHECKS, "#Ex. 2–2", SCHOLAR_MATE, "#Ex. 1–1", SCHOLAR_MATE, "#Ex. 1–2", ROOK_CHECKS])]);
+    assert_solved(&doc, &[2], &[(1, 0), (1, 1), (0, 0), (0, 1)]);
+    // Each chapter's solutions under a heading that numbers it (in another language, or in
+    // Roman numerals), last chapter first.
+    let [c1, c2] = chapters("CAPÍTULO 1", "Capítulo 2 – Garfos");
+    let doc = workbook(&[
+        c1,
+        c2,
+        Solutions(&[
+            "#Solutions",
+            "#Solutions to Chapter II",
+            "Exercise 1",
+            ROOK_CHECKS,
+            "Exercise 2",
+            SCHOLAR_MATE,
+            "#Chapter 1",
+            "Exercise 1",
+            SCHOLAR_MATE,
+            "Exercise 2",
+            ROOK_CHECKS,
+        ]),
+    ]);
+    assert_solved(&doc, &[2], &[(1, 0), (1, 1), (0, 0), (0, 1)]);
+    // Under a heading that names the chapter: its title, repeated.
+    let [c1, c2] = chapters("Pins", "Forks");
+    let doc = workbook(&[
+        c1,
+        c2,
+        Solutions(&["#Solutions", "#Forks", "Exercise 1", ROOK_CHECKS, "Exercise 2", SCHOLAR_MATE, "#Pins", "Exercise 1", SCHOLAR_MATE]),
+    ]);
+    assert_solved(&doc, &[2], &[(1, 0), (1, 1), (0, 0)]);
+    // In the chapters' order, with no heading to tell them apart: the solutions number again
+    // for each chapter.
+    let doc = workbook(&[
+        Exercises(None, [SCHOLAR, ROOK]),
+        Exercises(None, [ROOK, SCHOLAR]),
+        Solutions(&["#Solutions", "Exercise 1", SCHOLAR_MATE, "Exercise 2", ROOK_CHECKS, "Exercise 1", ROOK_CHECKS, "Exercise 2", SCHOLAR_MATE]),
+    ]);
+    assert_solved(&doc, &[2], &[(0, 0), (0, 1), (1, 0), (1, 1)]);
+}
+
+/// Solutions printed after each chapter's own exercises still link to them, with or without
+/// the chapter in their labels.
+#[test]
+fn solutions_after_their_own_chapter_link_to_it() {
+    use WorkbookPage::{Exercises, Solutions};
+    for labels in [["Exercise 1", "Exercise 2", "Exercise 1", "Exercise 2"], ["Ex. 1–1", "Ex. 1–2", "Ex. 2–1", "Ex. 2–2"]] {
+        let doc = workbook(&[
+            Exercises(Some("Chapter 1"), [SCHOLAR, ROOK]),
+            Solutions(&[labels[0], SCHOLAR_MATE, labels[1], ROOK_CHECKS]),
+            Exercises(Some("Chapter 2"), [ROOK, SCHOLAR]),
+            Solutions(&[labels[2], ROOK_CHECKS, labels[3], SCHOLAR_MATE]),
+        ]);
+        assert_solved(&doc, &[1, 3], &[(0, 0), (0, 1), (2, 0), (2, 1)]);
+    }
+}
+
+#[test]
+fn chapter_headings() {
+    use crate::doc::build::{chapter_number, heading_keys};
+    use crate::doc::games::Key;
+    for (text, want) in [
+        ("Chapter 6", Some(6)),
+        ("CAPÍTULO 7", Some(7)),
+        ("Solutions to Chapter IV", Some(4)),
+        ("Soluções do capítulo 12.", Some(12)),
+        ("Kapitel XL: Endspiele", Some(40)),
+        ("Chapter", None),
+        ("Chapter one", None),
+        ("Chapter 0", None),
+        ("Chapter 1234", None),
+        ("Chapter IIII", None),
+        ("The chapter on pins", None),
+        ("6 Pins", None),
+    ] {
+        assert_eq!(chapter_number(text), want, "{text}");
+    }
+    assert_eq!(heading_keys("Capítulo 2 – Garfos"), [Key::Chapter(2), Key::Title("capítulo 2 garfos".to_owned())]);
+    assert!(heading_keys("Ex. 6–12").is_empty(), "a solution's label");
+    assert!(heading_keys(&"Long ".repeat(40)).iter().all(|k| !matches!(k, Key::Title(_))));
+}
+
 /// A heading that names no puzzle still ends the game and lets go of the diagram waiting.
 #[test]
 fn a_heading_after_a_diagram_still_lets_it_go() {
@@ -941,6 +1088,30 @@ fn a_heading_after_a_diagram_still_lets_it_go() {
     let hints = [BlockHint { kind: HintKind::Heading { level: 1 }, rect: user_box(30.0, 210.0, 300.0, 230.0) }];
     let doc = build_page(&input(0, &p0, &[reading(0, 60.0, rook, true, false)], &hints, &[]));
     assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s != MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+}
+
+/// A book's page number under a diagram at the foot of the page is not its caption: a bare
+/// number alone at the head or foot of the page, as far from the page's index as the page
+/// numbers of the pages before it, is the page's number. Another bare number there still numbers
+/// the diagram, and so does that number with a line below it, or the page's number on a book's
+/// first page read, with none before it.
+#[test]
+fn a_page_number_under_a_diagram_does_not_number_it() {
+    let numbers = |doc: &ChessDoc| -> Vec<Option<u32>> {
+        doc.pages.iter().flat_map(|p| p.blocks.iter()).filter_map(|b| if let Block::Diagram(d) = b { Some(d.puzzle) } else { None }).collect()
+    };
+    let p0 = page_text(vec![line(100.0, "Some prose."), line(780.0, "36")]);
+    let at_foot = |n: &str| page_text(vec![line(100.0, "More prose."), line(780.0, n)]);
+    let diagram = [reading(0, 620.0, SCHOLAR, true, false)];
+    let not_at_foot = page_text(vec![line(100.0, "More prose."), line(780.0, "37"), line(795.0, "A note.")]);
+    for (p1, want) in [(at_foot("37"), None), (at_foot("52"), Some(52)), (not_at_foot, Some(37))] {
+        let mut b = DocBuilder::new();
+        b.add_page(&input(0, &p0, &[], &[], &[]));
+        b.add_page(&input(1, &p1, &diagram, &[], &[]));
+        assert_eq!(numbers(&b.finish()), [want], "{:?}", p1.lines.len());
+    }
+    let p1 = at_foot("37");
+    assert_eq!(numbers(&build_page(&input(1, &p1, &diagram, &[], &[]))), [Some(37)]);
 }
 
 /// A caption under the diagram gives its number too; one with no number gives none.
