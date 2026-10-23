@@ -1,7 +1,9 @@
 //! `chess_pgn_edit`: reshape a game's moves without the interface, inline only.
 //!
 //! The game comes in the arguments (a PGN or a FEN) and goes back in the reply; no file and no
-//! document is read or written, so the tool takes no path. A list of operations is applied in
+//! document is read or written, so the tool takes no path. A PGN may hold several games: `game`
+//! (0-based, the first by default) picks the one edited, cut as `chess_games` cuts them, and the
+//! reply says how many there are (`games`); only that game comes back. A list of operations is applied in
 //! order, each at an address: `main:<n>` is the main-line move after which the absolute
 //! half-move is `n` (the start's when nothing has been played: `main:0` from the standard start,
 //! `main:35` from a FEN `… b - - 0 18`), and `path:<i.j.k>` the move reached by those reply
@@ -20,6 +22,7 @@
 //! was before it, and stops the list there.
 
 use pdfcraft_engine::chess::capture::{self, Candidate, CaptureMode, CapturePlan, CaptureText};
+use pdfcraft_engine::chess::collection::{self, MAX_GAMES};
 use pdfcraft_engine::chess::pdfcraft_chess::fragment::FragmentItem;
 use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, GraftMode, GraftReport, GraftStopReason, MAX_COMMENT_LEN, NodeId, NodePath, Shift};
 use pdfcraft_engine::chess::pdfcraft_chess::san::{Lang, San, Style};
@@ -48,11 +51,21 @@ type Refusal = String;
 impl Automation {
     pub(crate) fn chess_pgn_edit(&self, a: &Args) -> Result<Value> {
         let (fen, pgn) = (a.opt_str("fen")?, a.opt_str("pgn")?);
+        let chosen = a.opt_int("game")?;
+        if chosen.is_some() && pgn.is_none() {
+            return Err(ToolError::InvalidArgs("game picks a game of pgn: give pgn".into()));
+        }
+        // How many games the PGN holds, said in the reply (none without one).
+        let mut games = 0usize;
         // The first move of the PGN that could not be played (its line ends there), said in the reply.
         let (mut game, stopped) = match (fen, pgn) {
             (Some(_), Some(_)) => return Err(ToolError::InvalidArgs("give fen or pgn, not both".into())),
             (Some(fen), None) => (Game::from_fen(fen).map_err(|e| ToolError::InvalidArgs(format!("fen: {e}")))?, None),
-            (None, Some(pgn)) => Game::from_pgn(pgn).map_err(|e| ToolError::InvalidArgs(format!("pgn: {e}")))?,
+            (None, Some(pgn)) => {
+                let (text, count) = pick_game(pgn, chosen)?;
+                games = count;
+                Game::from_pgn(text).map_err(|e| ToolError::InvalidArgs(format!("pgn: {e}")))?
+            }
             (None, None) => (Game::standard(), None),
         };
         let ops = a.get("ops").and_then(Value::as_array).ok_or_else(|| Args::wrong("ops", "an array of operations"))?;
@@ -90,8 +103,35 @@ impl Automation {
             "applied": applied,
             "pgn_stopped": stopped,
             "current_path": address_of(&game, game.current()),
+            "games": games,
+            "game": chosen.unwrap_or(0),
         }))
     }
+}
+
+/// Game `chosen` (0-based, the first when `None`) of a PGN that may hold several, cut as the app's
+/// Open PGN… and `chess_games` cut it ([`collection::split_pgn`]), and how many games it holds. A
+/// PGN with no game in it (empty, or only blank lines) is one blank game. Refused past the last
+/// game, and for more than [`MAX_GAMES`] games (only that many and one more are cut).
+fn pick_game(pgn: &str, chosen: Option<i64>) -> Result<(&str, usize)> {
+    let chunks = collection::split_pgn(pgn, MAX_GAMES);
+    if chunks.len() > MAX_GAMES {
+        return Err(Args::wrong("pgn", &format!("at most {MAX_GAMES} games")));
+    }
+    let count = chunks.len().max(1);
+    let index = chosen.unwrap_or(0);
+    let text = match usize::try_from(index) {
+        Ok(0) if chunks.is_empty() => pgn,
+        Ok(i) => chunks.get(i).copied().ok_or_else(|| {
+            ToolError::InvalidArgs(format!(
+                "game {index}: the PGN holds {count} game{}, 0 to {}",
+                if count == 1 { "" } else { "s" },
+                count.saturating_sub(1)
+            ))
+        })?,
+        Err(_) => return Err(Args::wrong("game", "a game of the PGN, 0 or more")),
+    };
+    Ok((text, count))
 }
 
 /// Apply one operation; the game is unchanged when it is refused.

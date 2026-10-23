@@ -952,6 +952,47 @@ fn chess_pgn_edit_refuses_what_the_game_does_not_allow() {
     }
 }
 
+/// chess_pgn_edit edits any game of a PGN that holds several: `game` (0-based, the first by
+/// default) picks it, only that game comes back, the reply says how many the PGN holds, and an
+/// index past the last (or a PGN with more games than a collection takes) is refused.
+#[test]
+fn chess_pgn_edit_edits_the_game_it_is_given_of_several() {
+    let mut auto = Automation::new();
+    let a = &mut auto;
+    let three = "[White \"A\"]\n\n1. e4 e5 *\n\n[White \"B\"]\n\n1. d4 d5 *\n\n[White \"C\"]\n\n1. c4 { a comment\n[split] over two lines } *\n";
+    let first = ok(a, "chess_pgn_edit", json!({ "pgn": three, "ops": [] }));
+    assert_eq!((first["games"].as_u64(), first["game"].as_u64()), (Some(3), Some(0)), "{first:#}");
+    assert!(first["movetext"].as_str().unwrap().starts_with("1. e4 e5"), "{first:#}");
+    let second = ok(a, "chess_pgn_edit", json!({ "pgn": three, "game": 1, "ops": [{ "op": "play", "at": "main:2", "moves": ["Nc3"] }] }));
+    assert_eq!((second["games"].as_u64(), second["game"].as_u64(), second["applied"].as_u64()), (Some(3), Some(1), Some(1)), "{second:#}");
+    assert!(second["movetext"].as_str().unwrap().starts_with("1. d4 d5 2. Nc3"), "{second:#}");
+    let pgn = second["pgn"].as_str().unwrap();
+    assert!(pgn.contains("[White \"B\"]") && !pgn.contains("[White \"A\"]") && !pgn.contains("[White \"C\"]"), "only game 1 comes back: {pgn}");
+    let last = ok(a, "chess_pgn_edit", json!({ "pgn": three, "game": 2, "ops": [] }));
+    assert!(last["pgn"].as_str().unwrap().contains("[White \"C\"]"), "a line of a comment starting with [ does not start a game: {last:#}");
+    // One game, and no game at all (one blank game, as a collection reads it).
+    for (pgn, games) in [("1. e4 *", 1), ("", 1)] {
+        let r = ok(a, "chess_pgn_edit", json!({ "pgn": pgn, "game": 0, "ops": [] }));
+        assert_eq!(r["games"].as_u64(), Some(games), "{pgn:?}: {r:#}");
+    }
+    assert_eq!(ok(a, "chess_pgn_edit", json!({ "ops": [] }))["games"].as_u64(), Some(0), "no pgn, no games");
+    let many: String = (0..257).map(|i| format!("[Round \"{i}\"]\n\n1. e4 *\n\n")).collect();
+    for (bad, says) in [
+        (json!({ "pgn": three, "game": 3, "ops": [] }), "holds 3 games, 0 to 2"),
+        (json!({ "pgn": "1. e4 *", "game": 1, "ops": [] }), "holds 1 game, 0 to 0"),
+        (json!({ "pgn": three, "game": -1, "ops": [] }), "game must be"),
+        (json!({ "pgn": three, "game": "1", "ops": [] }), "game must be"),
+        (json!({ "fen": SCENARIO, "game": 0, "ops": [] }), "give pgn"),
+        (json!({ "game": 0, "ops": [] }), "give pgn"),
+        (json!({ "pgn": many, "game": 0, "ops": [] }), "at most 256 games"),
+    ] {
+        match a.call("chess_pgn_edit", &bad) {
+            Err(ToolError::InvalidArgs(m)) => assert!(m.contains(says), "{says}: {m}"),
+            other => panic!("chess_pgn_edit accepted {says}: {other:?}"),
+        }
+    }
+}
+
 /// chess_pgn_edit works only on the game in its arguments: it is read-only and no argument, at
 /// any depth of its schema, is a path (so it needs no --root confinement).
 #[test]
