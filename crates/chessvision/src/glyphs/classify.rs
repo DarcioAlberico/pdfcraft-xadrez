@@ -24,6 +24,13 @@ const BROKEN_MAX_GAP: f64 = 0.07;
 const BROKEN_LETTER_WIDTH: f64 = 0.9;
 /// Least share of the shorter part's height the two parts of a letter share: the same line.
 const BROKEN_MIN_ROWS: f64 = 0.5;
+/// A `(` and a `)` side by side this close, in scales, are a round letter cut in two: a scan that
+/// lost the hairlines at the top and bottom of an `o` or a `0` leaves its two arcs 0.03-0.17
+/// scales apart (Pinski 2005), each read as a bracket at full confidence. Print never sets an
+/// empty pair of brackets.
+const BRACKETS_MAX_GAP: f64 = 0.25;
+/// Least confidence for the union of two arcs to be taken as the letter it reads as.
+const BRACKETS_MIN_P: f32 = 0.5;
 
 /// One classified box: the chosen class, its probability and the whole row.
 #[derive(Clone, Debug)]
@@ -203,5 +210,46 @@ impl Reader<'_> {
             out.push(*b);
         }
         Ok(out)
+    }
+
+    /// A line's classified boxes with each empty pair of brackets read again as the letter it was
+    /// before the scan cut it in two (`()` for `o` or `0`, see [`BRACKETS_MAX_GAP`]): a `(` with a
+    /// `)` straight after it, at most a letter wide, on the same rows, whose union the classifier
+    /// reads as a letter or a digit. The arcs each read as a bracket at full confidence, so
+    /// [`Reader::merge_broken`] (which asks the union to read better) keeps them apart.
+    pub fn join_bracket_pairs(&self, line: Vec<Bx>, reads: Vec<Read>, scale: i64) -> Result<(Vec<Bx>, Vec<Read>), GlyphError> {
+        let s = scale as f64;
+        let is = |r: &Read, name: &str| self.classes.names.get(r.class).is_some_and(|n| n == name);
+        let mut boxes = Vec::with_capacity(line.len());
+        let mut out = Vec::with_capacity(reads.len());
+        let mut i = 0;
+        while let (Some(b), Some(r)) = (line.get(i), reads.get(i)) {
+            if let (Some(next), Some(nr)) = (line.get(i + 1), reads.get(i + 1))
+                && is(r, "(")
+                && is(nr, ")")
+            {
+                let u = b.union(next);
+                let rows = (b.y1.min(next.y1) - b.y0.max(next.y0)) as f64;
+                let shorter = b.h().min(next.h()).max(1) as f64;
+                let close = (-b.common_x(next) as f64) <= BRACKETS_MAX_GAP * s;
+                if close
+                    && (u.w() as f64) <= BROKEN_LETTER_WIDTH * s
+                    && (u.h() as f64) <= BROKEN_MAX_HEIGHT * s
+                    && rows >= BROKEN_MIN_ROWS * shorter
+                    && let Some(whole) = self.read(&[u])?.pop()
+                    && whole.p >= BRACKETS_MIN_P
+                    && self.classes.names.get(whole.class).is_some_and(|n| n.chars().all(char::is_alphanumeric) && !n.is_empty())
+                {
+                    boxes.push(u);
+                    out.push(whole);
+                    i += 2;
+                    continue;
+                }
+            }
+            boxes.push(*b);
+            out.push(r.clone());
+            i += 1;
+        }
+        Ok((boxes, out))
     }
 }

@@ -288,7 +288,8 @@ pub fn read(
     let boxes = if options.merge_broken { reader.merge_broken(&boxes, scale)? } else { boxes };
     let mut out = Vec::new();
     for line in seg::break_lines(&seg::order_in_strip(&boxes), scale) {
-        let mut reads = reader.read(&line)?;
+        let reads = reader.read(&line)?;
+        let (line, mut reads) = if options.merge_broken { reader.join_bracket_pairs(line, reads, scale)? } else { (line, reads) };
         fix::stacked(&mut reads, &line, &reader.classes);
         let ink: Vec<Bx> = line.iter().map(|b| seg::tighten(&bin, b)).collect();
         fix::square_dots(&mut reads, &ink, &reader.classes);
