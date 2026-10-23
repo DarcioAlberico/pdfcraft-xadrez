@@ -177,6 +177,13 @@ impl crate::Document {
     fn export_pages_checked(&self) -> (Vec<pdfcraft_export::Page>, Vec<usize>) {
         let Some(cos) = self.editor.as_ref().map(|e| &e.cos) else { return (Vec::new(), Vec::new()) };
         let mut truncated = Vec::new();
+        // URI link annotations by page, so the writers make their paragraphs real hyperlinks.
+        let mut uri_links: Vec<Vec<&pdfcraft_annot::links::LinkItem>> = vec![Vec::new(); self.info.pages.len()];
+        for l in self.links() {
+            if let (Some(on_page), pdfcraft_annot::links::LinkAction::Uri(_)) = (uri_links.get_mut(l.page), &l.action) {
+                on_page.push(l);
+            }
+        }
         let pages = self
             .info
             .pages
@@ -228,7 +235,16 @@ impl crate::Document {
                         })
                     })
                     .collect();
-                pdfcraft_export::Page { width: info.width as f64, height: info.height as f64, blocks, images }
+                let links = uri_links
+                    .get(i)
+                    .into_iter()
+                    .flatten()
+                    .filter_map(|l| match &l.action {
+                        pdfcraft_annot::links::LinkAction::Uri(uri) => Some(pdfcraft_export::Link { rect: visible_rect(l.rect), uri: uri.clone() }),
+                        _ => None,
+                    })
+                    .collect();
+                pdfcraft_export::Page { width: info.width as f64, height: info.height as f64, blocks, images, links }
             })
             .collect();
         (pages, truncated)

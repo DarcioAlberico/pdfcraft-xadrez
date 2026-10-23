@@ -4155,6 +4155,7 @@ version = "0.9.0"
 dependencies = [
  "chrono",
  "craft-docpath",
+ "flate2",
  "icu_properties",
  "idna",
  "image",
@@ -4199,6 +4200,7 @@ name = "pdfcraft-export"
 version = "0.9.0"
 dependencies = [
  "flate2",
+ "roxmltree",
 ]
 
 [[package]]

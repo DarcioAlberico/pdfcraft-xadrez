@@ -6,13 +6,25 @@
 //! the container. `mimetype` comes first and is stored, as OCF requires. Nothing is fetched and
 //! nothing runs: no script, no remote resource. No font is embedded: figurines use the reader's
 //! own fonts (an embedded face waits for one with figurines in craft-fonts).
+//!
+//! The cover is the book's first page drawn by the page renderer ([`cover_png`]), at most
+//! [`MAX_COVER_PX`] on its long side: the manifest item has `properties="cover-image"` (EPUB 3),
+//! and `<meta name="cover"/>` names it for EPUB 2 readers.
 
 use pdfcraft_chessvision::doc::ChessDoc;
 use pdfcraft_chessvision::doc::html::{HtmlOptions, epub_font_href, escape, toc, xhtml_page};
 use pdfcraft_export::Zip;
+use pdfcraft_render::{PageRenderer, RenderRequest};
+
+use crate::export::{ExportSource, encode_png};
 
 /// The most pages a book holds (each is a file in the archive, whose count is 16-bit).
 pub const MAX_PAGES: usize = 60_000;
+/// The longest side of the cover image, in pixels.
+pub const MAX_COVER_PX: u32 = 1600;
+/// The cover's file in the package, and its manifest id.
+const COVER_FILE: &str = "cover.png";
+const COVER_ID: &str = "cover-image";
 
 /// What the package says about the book.
 #[derive(Clone, Debug, PartialEq)]
@@ -24,6 +36,8 @@ pub struct EpubMeta {
     pub identifier: String,
     /// `dcterms:modified`, `CCYY-MM-DDThh:mm:ssZ`: see [`modified`].
     pub modified: String,
+    /// The cover, a PNG ([`cover_png`]); `None` (or empty) writes a book without one.
+    pub cover: Option<Vec<u8>>,
 }
 
 /// One file of the package.
@@ -63,6 +77,27 @@ pub fn modified_at(secs: i64) -> String {
     modified(&pdfcraft_cos::pdf_date(secs))
 }
 
+/// Page `page` (0-based) of `src` as a PNG whose long side is [`MAX_COVER_PX`] pixels (fewer when
+/// the renderer's size limits ask): the book's cover.
+pub fn cover_png(src: ExportSource, page: usize) -> Result<Vec<u8>, String> {
+    let &(w, h) = src.sizes.get(page).ok_or_else(|| format!("page {} does not exist", page.saturating_add(1)))?;
+    let long = w.max(h);
+    if !(long.is_finite() && long > 0.0) {
+        return Err(format!("page {} has no size to draw", page.saturating_add(1)));
+    }
+    // Half a pixel short, so the renderer's rounding up stays within the limit.
+    let scale = (MAX_COVER_PX as f32 - 0.5) / long;
+    let mut renderer = PageRenderer::new(src.bytes, src.config);
+    let shot = renderer.render(RenderRequest { page, scale, ..Default::default() });
+    if let Some(e) = shot.error {
+        return Err(format!("page {}: {e}", page.saturating_add(1)));
+    }
+    if shot.width.max(shot.height) > MAX_COVER_PX || shot.width == 0 || shot.height == 0 {
+        return Err(format!("page {} drew at {}×{} pixels", page.saturating_add(1), shot.width, shot.height));
+    }
+    encode_png(shot.width, shot.height, &shot.rgba)
+}
+
 fn page_file(n: usize) -> String {
     format!("page-{:05}.xhtml", n + 1)
 }
@@ -96,6 +131,12 @@ pub fn entries(doc: &ChessDoc, o: &HtmlOptions<'_>, meta: &EpubMeta) -> Result<V
             manifest.push_str(&format!("<item id=\"{id}\" href=\"{}\" media-type=\"{}\"/>\n", epub_font_href(font), font.format.mime()));
         }
     }
+    let cover = meta.cover.as_deref().filter(|png| !png.is_empty());
+    let mut cover_meta = "";
+    if cover.is_some() {
+        manifest.push_str(&format!("<item id=\"{COVER_ID}\" href=\"{COVER_FILE}\" media-type=\"image/png\" properties=\"cover-image\"/>\n"));
+        cover_meta = "<meta name=\"cover\" content=\"cover-image\"/>\n";
+    }
 
     // The table of contents: the headings, flat (each links to its anchor), else the pages.
     let headings = toc(doc);
@@ -126,7 +167,7 @@ pub fn entries(doc: &ChessDoc, o: &HtmlOptions<'_>, meta: &EpubMeta) -> Result<V
     out.push(entry(
         "OEBPS/content.opf",
         format!(
-            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" unique-identifier=\"book-id\" xml:lang=\"{l}\">\n<metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n<dc:identifier id=\"book-id\">{id}</dc:identifier>\n<dc:title>{t}</dc:title>\n<dc:language>{l}</dc:language>\n<meta property=\"dcterms:modified\">{m}</meta>\n</metadata>\n<manifest>\n{manifest}</manifest>\n<spine>\n{spine}</spine>\n</package>\n",
+            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" unique-identifier=\"book-id\" xml:lang=\"{l}\">\n<metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n<dc:identifier id=\"book-id\">{id}</dc:identifier>\n<dc:title>{t}</dc:title>\n<dc:language>{l}</dc:language>\n<meta property=\"dcterms:modified\">{m}</meta>\n{cover_meta}</metadata>\n<manifest>\n{manifest}</manifest>\n<spine>\n{spine}</spine>\n</package>\n",
             l = escape(lang),
             id = escape(&meta.identifier),
             t = escape(&meta.title),
@@ -137,6 +178,10 @@ pub fn entries(doc: &ChessDoc, o: &HtmlOptions<'_>, meta: &EpubMeta) -> Result<V
     // The fonts the pages' style loads (`html::epub_font_href`).
     for font in [o.text_font, o.sign_font].into_iter().flatten() {
         out.push(EpubEntry { name: format!("OEBPS/{}", epub_font_href(font)), data: font.bytes.clone(), compress: true });
+    }
+    // A PNG is compressed already.
+    if let Some(png) = cover {
+        out.push(EpubEntry { name: format!("OEBPS/{COVER_FILE}"), data: png.to_vec(), compress: false });
     }
     Ok(out)
 }
