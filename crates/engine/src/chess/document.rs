@@ -26,7 +26,7 @@
 //! Read-only: nothing here changes a document.
 
 use pdfcraft_chess::san::Lang;
-use pdfcraft_chessvision::chess_text::{self, ChessPageText, ChessRun, LangGuess, LangTally, TextQuality};
+use pdfcraft_chessvision::chess_text::{self, ChessLine, ChessPageText, ChessRun, LangGuess, LangTally, TextQuality};
 use pdfcraft_chessvision::coords::{PageGeometry, PageRect, ViewRect};
 use pdfcraft_chessvision::doc::{BlockHint, ChessDoc, DocBuilder, HintKind, PageInput};
 use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind};
@@ -189,20 +189,38 @@ pub fn block_hints(blocks: &[pdfcraft_edit::TextBlock], body: Option<f64>) -> Ve
         .collect()
 }
 
+/// Most lines a header box holds (Pinski's: the game's number, the players, the place and year).
+pub const FRAME_MAX_LINES: usize = 4;
+/// Least share of a header box's width and height its text spans: it hugs its text.
+pub const FRAME_MIN_FILL_X: f32 = 0.4;
+pub const FRAME_MIN_FILL_Y: f32 = 0.5;
+
 /// The headings of a page read with OCR: each frame drawn around text (`frames`, view space: a
 /// game's header box, a chapter title's) that holds a short text, at most
-/// [`HEADING_MAX_CHARS`] of `text`'s characters, is a heading (level 2). A frame around a longer
-/// text (a sidebar) is no heading, and a framed line with moves is never one (the builder's rule).
+/// [`HEADING_MAX_CHARS`] of `text`'s characters on at most [`FRAME_MAX_LINES`] lines, and hugs it
+/// ([`FRAME_MIN_FILL_X`], [`FRAME_MIN_FILL_Y`]), is a heading (level 2). A frame around a longer
+/// text (a sidebar) or a page's border is no heading, and a framed line with moves is never one
+/// (the builder's rule).
 pub fn frame_hints(frames: &[ViewRect], text: &ChessPageText, geometry: &PageGeometry) -> Vec<BlockHint> {
     frames
         .iter()
         .filter_map(|f| {
-            let inside = text.lines.iter().filter(|l| {
-                let (cx, cy) = ((l.rect.x0 + l.rect.x1) * 0.5, (l.rect.y0 + l.rect.y1) * 0.5);
-                cx >= f.x0 && cx <= f.x1 && cy >= f.y0 && cy <= f.y1
-            });
-            let chars: usize = inside.flat_map(|l| &l.spans).map(|s| span_chars(&s.run)).sum();
-            if chars == 0 || chars > HEADING_MAX_CHARS {
+            let inside: Vec<&ChessLine> = text
+                .lines
+                .iter()
+                .filter(|l| {
+                    let (cx, cy) = ((l.rect.x0 + l.rect.x1) * 0.5, (l.rect.y0 + l.rect.y1) * 0.5);
+                    cx >= f.x0 && cx <= f.x1 && cy >= f.y0 && cy <= f.y1
+                })
+                .collect();
+            let chars: usize = inside.iter().flat_map(|l| &l.spans).map(|s| span_chars(&s.run)).sum();
+            if chars == 0 || chars > HEADING_MAX_CHARS || inside.len() > FRAME_MAX_LINES {
+                return None;
+            }
+            // A header box hugs its text; a page's or a table's border holds a little text in a
+            // large box.
+            let held = inside.iter().map(|l| l.rect).reduce(|a, b| ViewRect::new(a.x0.min(b.x0), a.y0.min(b.y0), a.x1.max(b.x1), a.y1.max(b.y1)))?;
+            if held.width() < FRAME_MIN_FILL_X * f.width() || held.height() < FRAME_MIN_FILL_Y * f.height() {
                 return None;
             }
             geometry.view_to_user(*f).map(|rect| BlockHint { kind: HintKind::Heading { level: 2 }, rect })

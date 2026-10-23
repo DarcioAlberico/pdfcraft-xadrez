@@ -49,6 +49,11 @@ use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind, Ti
 use super::document::OcrOptions;
 use crate::{DocId, Session};
 
+/// Largest area, against the diagram's, of a frame around a diagram that is the board's own
+/// border: a 20 pt border around a 160 pt board is about 1.6 times its area, a box around the board
+/// and its caption far more.
+pub const BOARD_FRAME_AREA: f64 = 1.6;
+
 /// The resolution pages are read at for chess OCR.
 pub const OCR_DPI: f32 = 300.0;
 
@@ -159,13 +164,22 @@ pub fn read_page(
 ) -> Result<OcrText, String> {
     let image = masked(gray, diagrams).ok_or("the page image could not be prepared")?;
     let scale = text_scale(&image, &[]).map_err(|e| e.to_string())?;
-    // A frame that touches a diagram is the board's border the mask missed: it goes, with what it
-    // holds (pieces the mask missed too, which a frame no longer hides as its inner detail). The
-    // other frames are around text: a game's header box, a chapter title's.
-    let (boards, frames): (Vec<PixelRect>, Vec<PixelRect>) = pdfcraft_chessvision::glyphs::frames(&image, None, scale)
-        .map_err(|e| e.to_string())?
-        .into_iter()
-        .partition(|f| diagrams.iter().any(|d| f.x0 < d.x1 && d.x0 < f.x1 && f.y0 < d.y1 && d.y0 < f.y1));
+    // A frame that hugs a diagram (at most [`BOARD_FRAME_AREA`] times its area) is the board's
+    // border the mask missed: it goes, with what it holds (pieces the mask missed too, which a
+    // frame no longer hides as its inner detail). A larger frame around a diagram is a box around
+    // the board and its caption: its text is read, and it is no heading. The other frames are
+    // around text: a game's header box, a chapter title's.
+    let area = |r: &PixelRect| f64::from(r.x1.saturating_sub(r.x0)) * f64::from(r.y1.saturating_sub(r.y0));
+    let mut boards = Vec::new();
+    let mut frames = Vec::new();
+    for f in pdfcraft_chessvision::glyphs::frames(&image, None, scale).map_err(|e| e.to_string())? {
+        let touched: Vec<&PixelRect> = diagrams.iter().filter(|d| f.x0 < d.x1 && d.x0 < f.x1 && f.y0 < d.y1 && d.y0 < f.y1).collect();
+        if touched.is_empty() {
+            frames.push(f);
+        } else if touched.iter().any(|d| area(&f) <= BOARD_FRAME_AREA * area(d)) {
+            boards.push(f);
+        }
+    }
     let image = if boards.is_empty() { image } else { masked(&image, &boards).ok_or("the page image could not be prepared")? };
     let lines = read(&image, None, scale, glyphs, &GlyphOptions::default()).map_err(|e| e.to_string())?;
     let frames: Vec<ViewRect> = frames.into_iter().filter_map(|r| pixels_to_view(r, dpi)).collect();
