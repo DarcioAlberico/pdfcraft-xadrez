@@ -3017,3 +3017,5 @@ chess undo step	Clear drawings	rajzok törlése
 # Chess: Undo of games added to the list (a changed one is kept in the trash), and the PGN field's games after its first.
 @plural	{n} changed game was kept in Deleted moves.|{n} changed games were kept in Deleted moves.	{n} módosított játszma a Törölt lépések között maradt.|{n} módosított játszma a Törölt lépések között maradt.
 @plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	További {n} játszma került a játszmák listájába.|További {n} játszma került a játszmák listájába.
+	Reading the pages around the game…	A játszma körüli oldalak olvasása…
+	No game was found for this move, on its page or the pages around it.	Ehhez a lépéshez nem található játszma sem az oldalán, sem a körülötte lévő oldalakon.

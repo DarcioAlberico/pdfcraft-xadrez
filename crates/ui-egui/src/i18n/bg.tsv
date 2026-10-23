@@ -2981,3 +2981,5 @@ chess undo step	Clear drawings	изчистването на рисунките
 # Chess: Undo of games added to the list (a changed one is kept in the trash), and the PGN field's games after its first.
 @plural	{n} changed game was kept in Deleted moves.|{n} changed games were kept in Deleted moves.	{n} променена партия е запазена в „Изтрити ходове“.|{n} променени партии са запазени в „Изтрити ходове“.
 @plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	Още {n} партия е добавена към списъка с партии.|Още {n} партии са добавени към списъка с партии.
+	Reading the pages around the game…	Четене на страниците около партията…
+	No game was found for this move, on its page or the pages around it.	Не е намерена партия за този ход нито на страницата му, нито на страниците около нея.

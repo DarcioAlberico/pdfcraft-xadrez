@@ -19,13 +19,18 @@ const MOVETEXT: &str = "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6";
 /// Two 600 × 800 pt pages: a heading and the game near the top of the first, a line of prose on
 /// the second.
 fn book() -> Vec<u8> {
-    let pages = [
+    pdf(&[
         format!("BT /F1 24 Tf 60 760 Td (Chapter 1) Tj ET\nBT /F1 11 Tf 60 730 Td ({MOVES}) Tj ET\n"),
         "BT /F1 11 Tf 60 730 Td (The end of the chapter.) Tj ET\n".to_string(),
-    ];
+    ])
+}
+
+/// 600 × 800 pt pages with these contents, `F1` Helvetica.
+fn pdf(pages: &[String]) -> Vec<u8> {
+    let kids: Vec<String> = (0..pages.len()).map(|i| format!("{} 0 R", 4 + 2 * i)).collect();
     let mut objs = vec![
         "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
-        "<< /Type /Pages /Kids [4 0 R 6 0 R] /Count 2 /MediaBox [0 0 600 800] >>".to_string(),
+        format!("<< /Type /Pages /Kids [{}] /Count {} /MediaBox [0 0 600 800] >>", kids.join(" "), pages.len()),
         "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>".to_string(),
     ];
     for (i, content) in pages.iter().enumerate() {
@@ -51,10 +56,15 @@ fn book() -> Vec<u8> {
 /// The app on the book, the Chess panel open on its Text tab, page 1 read. Frames are 0.1 s
 /// apart, so two clicks a frame apart are a double-click.
 fn harness() -> Harness<'static, PdfCraftApp> {
-    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).with_step_dt(0.1).build_eframe(|_cc| {
+    harness_on(book())
+}
+
+/// [`harness`] on the PDF `bytes`.
+fn harness_on(bytes: Vec<u8>) -> Harness<'static, PdfCraftApp> {
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).with_step_dt(0.1).build_eframe(move |_cc| {
         let mut app = PdfCraftApp::new();
         app.set_option("language", "en").unwrap();
-        app.open_bytes("book.pdf", None, book()).unwrap();
+        app.open_bytes("book.pdf", None, bytes).unwrap();
         app.set_option("left", "closed").unwrap();
         app.run_inline = true;
         app
@@ -190,6 +200,61 @@ fn a_move_of_the_text_tab_opens_its_game_on_the_board() {
     h.run_steps(3);
     assert_eq!(games(&h), 2, "the changed game is kept, the book's opened beside it");
     assert_eq!((movetext(&h).as_str(), shown(&h).as_str()), (MOVETEXT, "e5"));
+}
+
+/// The page each move of the board's game was printed on, in PGN order.
+fn move_pages(h: &Harness<'static, PdfCraftApp>) -> Vec<Option<u32>> {
+    use pdfcraft_engine::chess::pdfcraft_chess::game::Token;
+    let game = &h.state().chess.board().game;
+    game.tokens().into_iter().filter_map(|t| if let Token::Move { node, .. } = t { Some(game.source(node).map(|s| s.page)) } else { None }).collect()
+}
+
+/// A game the book runs on onto the next page comes whole: a double-click on a move of page 1
+/// reads page 2 too, and the board has the game to its last move there, each move keeping its
+/// page. On page 2, whose moves have no position alone (the game began on page 1), a
+/// double-click on one reads page 1 and opens the same game, at that move.
+#[test]
+fn a_game_running_on_to_the_next_page_opens_whole() {
+    const WHOLE: &str = "1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. Nxd4 Nf6 5. Nc3 d6";
+    let mut h = harness_on(pdf(&[
+        "BT /F1 24 Tf 60 760 Td (Chapter 1) Tj ET\nBT /F1 11 Tf 60 730 Td (1.e4 e5 2.Nf3 Nc6 3.d4 exd4) Tj ET\n".to_string(),
+        "BT /F1 11 Tf 60 730 Td (4.Nxd4 Nf6 5.Nc3 d6) Tj ET\n".to_string(),
+    ]));
+    let at = text_move(&h, "e5").rect().center();
+    double_click_at(&mut h, at);
+    assert_eq!(movetext(&h), WHOLE, "the game runs on to page 2");
+    assert_eq!((shown(&h).as_str(), games(&h)), ("e5", 1));
+    let pages: Vec<Option<u32>> = [0, 0, 0, 0, 0, 0, 1, 1, 1, 1].into_iter().map(Some).collect();
+    assert_eq!(move_pages(&h), pages, "each move keeps its page");
+
+    // Page 2 alone: its moves go on from page 1, so they have no position there.
+    back_to_text(&mut h);
+    h.state_mut().views[0].go_to_page(1);
+    h.run_steps(4);
+    h.get_by_label("Recognised text of page 2");
+    assert!(h.state().chess.text.as_ref().is_some_and(|t| t.chess.games.is_empty()), "no game on page 2 alone");
+    let at = text_move(&h, "d6").rect().center();
+    double_click_at(&mut h, at);
+    assert_eq!((movetext(&h).as_str(), shown(&h).as_str()), (WHOLE, "d6"));
+    assert_eq!(games(&h), 1, "the same game, untouched, shown again");
+    assert_eq!(move_pages(&h), pages);
+}
+
+/// A move in prose with no game, on its page or the pages around it, opens nothing and says so.
+#[test]
+fn a_move_with_no_game_around_it_says_so() {
+    let mut h = harness_on(pdf(&[
+        "BT /F1 11 Tf 60 730 Td (A page of prose.) Tj ET\n".to_string(),
+        "BT /F1 11 Tf 60 730 Td (Black should answer 23...d5 at once.) Tj ET\n".to_string(),
+    ]));
+    h.state_mut().views[0].go_to_page(1);
+    h.run_steps(4);
+    h.get_by_label("Recognised text of page 2");
+    let at = h.get_all_by_label_contains("d5").find(|n| n.accesskit_node().role() == Role::Label).expect("the move").rect().center();
+    double_click_at(&mut h, at);
+    assert_eq!(games(&h), 1);
+    assert!(h.state().chess.board().game.is_empty(), "nothing was opened");
+    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("No game was found for this move, on its page or the pages around it."));
 }
 
 /// With Follow on, walking the book's game walks the book: each move shown scrolls the page to
