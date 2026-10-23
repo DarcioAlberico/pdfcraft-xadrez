@@ -2924,5 +2924,8 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 @plural	{n} move|{n} moves	{n} ఎత్తు|{n} ఎత్తులు
 	…and {n} older	…మరియు మరో {n} పాతవి
 	No chess diagram was found here.	ఇక్కడ చదరంగం రేఖాచిత్రం ఏదీ కనబడలేదు.
+# Chess: Undo of games added to the list (a changed one is kept in the trash), and the PGN field's games after its first.
+@plural	{n} changed game was kept in Deleted moves.|{n} changed games were kept in Deleted moves.	మార్చిన {n} ఆట «తొలగించిన ఎత్తులు»లో ఉంచబడింది.|మార్చిన {n} ఆటలు «తొలగించిన ఎత్తులు»లో ఉంచబడ్డాయి.
+@plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	ఆటల జాబితాకు మరో {n} ఆట జోడించబడింది.|ఆటల జాబితాకు మరో {n} ఆటలు జోడించబడ్డాయి.
 	Reading the pages around the game…	ఆట చుట్టూ ఉన్న పేజీలను చదువుతోంది…
 	No game was found for this move, on its page or the pages around it.	ఈ ఎత్తుకు దాని పేజీలో గానీ చుట్టూ ఉన్న పేజీలలో గానీ ఆట కనబడలేదు.

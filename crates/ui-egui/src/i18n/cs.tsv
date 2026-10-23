@@ -3089,5 +3089,8 @@ chess undo step	Clear drawings	smazání kreseb
 @plural	{n} move|{n} moves	{n} tah|{n} tahy|{n} tahů
 	…and {n} older	…a starších: {n}
 	No chess diagram was found here.	Zde nebyl nalezen žádný šachový diagram.
+# Chess: Undo of games added to the list (a changed one is kept in the trash), and the PGN field's games after its first.
+@plural	{n} changed game was kept in Deleted moves.|{n} changed games were kept in Deleted moves.	{n} změněná partie zůstala v nabídce Smazané tahy.|{n} změněné partie zůstaly v nabídce Smazané tahy.|{n} změněných partií zůstalo v nabídce Smazané tahy.
+@plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	Do seznamu partií byla přidána další {n} partie.|Do seznamu partií byly přidány další {n} partie.|Do seznamu partií bylo přidáno dalších {n} partií.
 	Reading the pages around the game…	Čtení stránek kolem partie…
 	No game was found for this move, on its page or the pages around it.	Pro tento tah nebyla nalezena žádná partie na jeho stránce ani na stránkách kolem ní.

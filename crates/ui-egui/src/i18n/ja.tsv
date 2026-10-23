@@ -3017,5 +3017,8 @@ chess undo step	Clear drawings	描画の消去
 	Open as a new game	新しい対局として開く
 	…and {n} older	…ほかに古いもの {n} 件
 	No chess diagram was found here.	ここにチェスの図は見つかりませんでした。
+# Chess: Undo of games added to the list (a changed one is kept in the trash), and the PGN field's games after its first.
+@plural	{n} changed game was kept in Deleted moves.|{n} changed games were kept in Deleted moves.	変更した対局 {n} 件を「削除した手」に保管しました。
+@plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	さらに {n} 局を対局リストに追加しました。
 	Reading the pages around the game…	対局の前後のページを読み取り中…
 	No game was found for this move, on its page or the pages around it.	この手の対局は、そのページにも前後のページにも見つかりませんでした。

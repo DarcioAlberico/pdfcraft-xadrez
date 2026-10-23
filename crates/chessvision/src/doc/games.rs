@@ -64,7 +64,9 @@
 //!   by it. A solution that names it (`№185. Teichmann – Lasker 1...Qh4`, a heading `Ex. 6–12`),
 //!   however many pages on, closes the open game and starts its moves from that diagram (tagged
 //!   `PdfPuzzle`); headings between the name and the first move (the players, the event) keep
-//!   it.
+//!   it. When several chapters number their exercises from 1, the solution's chapter is found
+//!   from the structure: the chapter its label gives, a heading over it that numbers or names
+//!   one chapter, or else the chapters' order ([`puzzles`]).
 //! - **Where a game ends.** At the next diagram, at a heading, at a result (`1-0`, `0-1`, `½-½`,
 //!   `1/2-1/2`) outside variations, and at a new `1.` when the game started from the initial
 //!   position. Paragraphs and page breaks do not end a game. A diagram does not end it when it
@@ -91,8 +93,10 @@ use serde::{Deserialize, Serialize};
 use super::{MoveNumber, MoveStatus, ReviewFlag, UserRect};
 
 mod board;
+mod puzzles;
 
 pub use board::{BoardGame, to_game};
+pub(crate) use puzzles::{Key, Name};
 
 /// Most moves in one game, variations included.
 pub const MAX_GAME_NODES: usize = 4096;
@@ -738,8 +742,9 @@ pub(crate) struct Walker {
     spare: Vec<Seed>,
     /// The next game starts from a spare diagram its first move matched.
     matched: bool,
-    /// Numbered puzzle diagrams, for the solutions that name them; at most [`MAX_PUZZLES`].
-    puzzles: Vec<Seed>,
+    /// Numbered puzzle diagrams, by chapter, for the solutions that name them; at most
+    /// [`MAX_PUZZLES`].
+    puzzles: puzzles::Puzzles,
     blocked: Vec<(u32, usize)>,
     /// The reading rules beyond the walker's own.
     rules: WalkRules,
@@ -1125,17 +1130,7 @@ impl Walker {
     /// A diagram: the next moves start from it, unless they continue the open game (see
     /// [`Walker::resolve_held`]). A diagram before it that no game started from is kept spare.
     pub fn diagram(&mut self, seed: Seed) {
-        if let Some(n) = seed.puzzle {
-            match self.puzzles.iter().position(|s| s.puzzle == Some(n)) {
-                Some(i) => {
-                    if let Some(old) = self.puzzles.get_mut(i) {
-                        *old = seed.clone();
-                    }
-                }
-                None if self.puzzles.len() < MAX_PUZZLES => self.puzzles.push(seed.clone()),
-                None => {}
-            }
-        }
+        self.puzzles.keep(&seed);
         if let Anchor::Seed(old) = std::mem::take(&mut self.anchor) {
             self.keep_spare(old);
         }
@@ -1144,11 +1139,12 @@ impl Walker {
         self.caption = false;
     }
 
-    /// A solution names puzzle `n`: the open game ends and the next moves start from that
-    /// puzzle's diagram, however far back it was. Nothing happens for a number no diagram
-    /// gave, or when that diagram's moves are being read already (a caption under it).
-    pub fn puzzle(&mut self, n: u32) {
-        let Some(seed) = self.puzzles.iter().find(|s| s.puzzle == Some(n)).cloned() else { return };
+    /// A solution names a puzzle: the open game ends and the next moves start from that
+    /// puzzle's diagram, however far back it was, in the chapter the structure gives
+    /// ([`puzzles`]). Nothing happens for a number no diagram gave, or when that diagram's moves
+    /// are being read already (a caption under it).
+    pub fn puzzle(&mut self, name: Name) {
+        let Some(seed) = self.puzzles.find(name) else { return };
         let same = |s: &Seed| s.page == seed.page && s.diagram == seed.diagram;
         let waiting = matches!(&self.anchor, Anchor::Seed(s) if same(s));
         let playing = self.open.as_ref().is_some_and(|o| o.seed.as_ref().is_some_and(same));
@@ -1163,19 +1159,21 @@ impl Walker {
     /// A solution whose number stands alone before its first move (`1675 1.Rd3+`): as
     /// [`Walker::puzzle`], and for a number no diagram gave, the open game still ends and the
     /// moves stay unchecked, rather than being read into whatever game was open.
-    pub fn solution(&mut self, n: u32) {
-        if self.puzzles.iter().any(|s| s.puzzle == Some(n)) {
-            self.puzzle(n);
+    pub fn solution(&mut self, name: Name) {
+        if self.puzzles.has(name.number) {
+            self.puzzle(name);
         } else {
             self.close();
             self.anchor = Anchor::Blocked;
         }
     }
 
-    /// A heading: the open game ends, and no diagram waits, except the one a solution named
-    /// while no move has been read from it yet (`Ex. 6–12`, then `A. Yusupov — D. Shapiro` set as
-    /// a heading), for [`MAX_NAMED_HEADINGS`] headings: a third is a new section's.
-    pub fn heading(&mut self) {
+    /// A heading, with what it says about its chapter ([`Key`]): the open game ends, and no
+    /// diagram waits, except the one a solution named while no move has been read from it yet
+    /// (`Ex. 6–12`, then `A. Yusupov — D. Shapiro` set as a heading), for [`MAX_NAMED_HEADINGS`]
+    /// headings: a third is a new section's.
+    pub fn heading(&mut self, keys: Vec<Key>) {
+        self.puzzles.heading(keys);
         if self.open.is_none()
             && let Anchor::Seed(seed) = &self.anchor
             && let Some((page, diagram, kept)) = self.named

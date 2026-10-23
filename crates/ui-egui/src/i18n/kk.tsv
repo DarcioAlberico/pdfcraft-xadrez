@@ -3013,5 +3013,8 @@ chess undo step	Clear drawings	суреттерді өшіру
 @plural	{n} move|{n} moves	{n} жүріс|{n} жүріс
 	…and {n} older	…және тағы ескілері: {n}
 	No chess diagram was found here.	Мұнда шахмат диаграммасы табылмады.
+# Chess: Undo of games added to the list (a changed one is kept in the trash), and the PGN field's games after its first.
+@plural	{n} changed game was kept in Deleted moves.|{n} changed games were kept in Deleted moves.	Өзгертілген {n} партия «Жойылған жүрістер» ішінде сақталды.|Өзгертілген {n} партия «Жойылған жүрістер» ішінде сақталды.
+@plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	Партиялар тізіміне тағы {n} партия қосылды.|Партиялар тізіміне тағы {n} партия қосылды.
 	Reading the pages around the game…	Партия маңындағы беттер оқылуда…
 	No game was found for this move, on its page or the pages around it.	Бұл жүрістің партиясы оның бетінен де, маңындағы беттерден де табылмады.

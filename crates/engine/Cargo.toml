@@ -55,6 +55,8 @@ unicode-segmentation = "1.13"
 pdfcraft-content = { workspace = true }
 # Checks that every XML file of an exported EPUB is well-formed (MIT OR Apache-2.0).
 roxmltree = "0.20"
+# Reads the parts of an exported Word package.
+flate2.workspace = true
 proptest.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

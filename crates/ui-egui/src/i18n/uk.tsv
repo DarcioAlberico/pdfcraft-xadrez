@@ -3037,5 +3037,8 @@ chess undo step	Clear drawings	видалення малюнків
 @plural	{n} move|{n} moves	{n} хід|{n} ходи|{n} ходів
 	…and {n} older	…і ще старіших: {n}
 	No chess diagram was found here.	Тут не знайдено шахової діаграми.
+# Chess: Undo of games added to the list (a changed one is kept in the trash), and the PGN field's games after its first.
+@plural	{n} changed game was kept in Deleted moves.|{n} changed games were kept in Deleted moves.	{n} змінену партію збережено в меню «Видалені ходи».|{n} змінені партії збережено в меню «Видалені ходи».|{n} змінених партій збережено в меню «Видалені ходи».
+@plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	До списку партій додано ще {n} партію.|До списку партій додано ще {n} партії.|До списку партій додано ще {n} партій.
 	Reading the pages around the game…	Читання сторінок навколо партії…
 	No game was found for this move, on its page or the pages around it.	Партію для цього ходу не знайдено ні на його сторінці, ні на сусідніх сторінках.

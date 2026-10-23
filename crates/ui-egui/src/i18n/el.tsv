@@ -3021,5 +3021,8 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 @plural	{n} move|{n} moves	{n} κίνηση|{n} κινήσεις
 	…and {n} older	…και άλλες {n} παλαιότερες
 	No chess diagram was found here.	Δεν βρέθηκε διάγραμμα σκακιού εδώ.
+# Chess: Undo of games added to the list (a changed one is kept in the trash), and the PGN field's games after its first.
+@plural	{n} changed game was kept in Deleted moves.|{n} changed games were kept in Deleted moves.	{n} τροποποιημένη παρτίδα κρατήθηκε στις «Διαγραμμένες κινήσεις».|{n} τροποποιημένες παρτίδες κρατήθηκαν στις «Διαγραμμένες κινήσεις».
+@plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	Προστέθηκε {n} ακόμη παρτίδα στη λίστα παρτίδων.|Προστέθηκαν {n} ακόμη παρτίδες στη λίστα παρτίδων.
 	Reading the pages around the game…	Ανάγνωση των σελίδων γύρω από την παρτίδα…
 	No game was found for this move, on its page or the pages around it.	Δεν βρέθηκε παρτίδα για αυτή την κίνηση, ούτε στη σελίδα της ούτε στις γύρω σελίδες.

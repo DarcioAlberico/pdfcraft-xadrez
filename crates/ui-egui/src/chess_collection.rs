@@ -17,10 +17,13 @@
 //!   Delete, Alt+↑/↓; Enter shows it), or dragged to another place. "New game from this position"
 //!   starts a game at the move shown, or at a move of the notation, keeping the diagram it came
 //!   from. The list's order is the order the collection is exported and autosaved in.
-//! - **Undo of the list** (wave 10, U2). A delete or a move is a step of the list's own history
-//!   ([`ListHistory`], this session only), which Undo takes in the chess scope (D12) when it is
-//!   newer than the last change to the game shown; undoing a delete puts the game back where it
-//!   was, with its own history, and shows it if it was shown.
+//! - **Undo of the list** (wave 10, U2). A delete, a move or an add (New game, Duplicate, New
+//!   game from this position, Open PGN…, the PGN field's other games, a game opened from the
+//!   trash) is a step of the list's own history ([`ListHistory`], this session only), which Undo
+//!   takes in the chess scope (D12) when it is newer than the last change to the game shown;
+//!   undoing a delete puts the game back where it was, with its own history, and shows it if it
+//!   was shown. Undoing an add takes the games back out; one changed since it was added also
+//!   goes into the trash, so no change is lost when the redo step goes.
 //! - **The model below** ([`pdfcraft_engine::chess::collection`]): the order, the game shown after
 //!   each change, the names and the PGN split are the engine's [`GameList`], which the automation
 //!   tool `chess_games` uses too; this module keeps the boards, the undo and the autosave.
@@ -53,6 +56,7 @@ use crate::PdfCraftApp;
 use crate::chess_autosave::{self, Blocked, Store};
 use crate::chess_board_ui::{BoardState, Source};
 use crate::chess_history::{self, ChessEdit};
+use crate::chess_trash::Trashed;
 use crate::chess_ui::ChessState;
 use crate::theme::Tokens;
 
@@ -214,8 +218,9 @@ struct Autosave {
     protected: bool,
 }
 
-/// A change to the list of games that Undo takes back (wave 10, U2): a game deleted or moved.
-/// Games are named by their id, so a step still finds its game after other changes to the list.
+/// A change to the list of games that Undo takes back (wave 10, U2): a game deleted, moved or
+/// added. Games are named by their id, so a step still finds its game after other changes to the
+/// list.
 enum ListChange {
     /// Game `entry` was deleted from place `index`; `shown`: it was the game shown; `left_blank`:
     /// it was the only game, and a blank one took its place.
@@ -224,6 +229,31 @@ enum ListChange {
     Restored { uid: u64 },
     /// Game `uid` was moved from place `from` to place `to`.
     Moved { uid: u64, from: usize, to: usize },
+    /// Games `uids` were added (New game, Duplicate, New game from this position, Open PGN…, the
+    /// PGN field's games after its first, a game of the trash opened), `edit` saying how, while
+    /// game `before` was shown; `restored`: the trash item a game was opened from, and its place
+    /// in the trash.
+    Added { uids: Vec<u64>, edit: ChessEdit, before: u64, restored: Option<(usize, Trashed)> },
+    /// Added games Undo took back out: redoing puts them back.
+    Removed(Box<Removed>),
+}
+
+/// Added games Undo took back out ([`ListChange::Removed`]).
+struct Removed {
+    /// Each with its place, in list order.
+    games: Vec<(usize, GameEntry)>,
+    /// How they were added.
+    edit: ChessEdit,
+    /// The game shown before they were added.
+    before: u64,
+    /// The game shown when Undo took them out.
+    shown: u64,
+    /// They were all the list had, and a blank game took their place.
+    left_blank: bool,
+    /// The trash item a game was opened from, and its place in the trash.
+    restored: Option<(usize, Trashed)>,
+    /// What the ones changed since they were added left in the trash.
+    kept: Vec<Trashed>,
 }
 
 impl ListChange {
@@ -232,14 +262,26 @@ impl ListChange {
         match self {
             ListChange::Deleted { .. } | ListChange::Restored { .. } => ChessEdit::DeleteGame,
             ListChange::Moved { .. } => ChessEdit::MoveGame,
+            ListChange::Added { edit, .. } => edit.clone(),
+            ListChange::Removed(r) => r.edit.clone(),
         }
     }
 
-    /// The memory it keeps, as the caps count it (a deleted game with its own history).
+    /// The memory it keeps, as the caps count it (games taken out, each with its own history,
+    /// and the trash items it holds).
     fn bytes(&self) -> usize {
+        let item = |t: &Trashed| t.pgn.len().saturating_add(t.name.len());
         match self {
             ListChange::Deleted { entry, .. } => entry.board.bytes(),
             ListChange::Restored { .. } | ListChange::Moved { .. } => 0,
+            ListChange::Added { restored, .. } => restored.as_ref().map_or(0, |(_, t)| item(t)),
+            ListChange::Removed(r) => r
+                .games
+                .iter()
+                .map(|(_, e)| e.board.bytes())
+                .chain(r.kept.iter().map(item))
+                .chain(r.restored.iter().map(|(_, t)| item(t)))
+                .fold(0usize, usize::saturating_add),
         }
     }
 }
@@ -259,7 +301,7 @@ impl ListStep {
     }
 }
 
-/// The list's own history: deletes and moves to undo (oldest first) and to redo (next last),
+/// The list's own history: deletes, moves and adds to undo (oldest first) and to redo (next last),
 /// capped as a game's history is ([`chess_history::MAX_STEPS`] steps and
 /// [`chess_history::MAX_BYTES`]). It lives with the list, for this session only.
 #[derive(Default)]
@@ -306,7 +348,7 @@ pub struct ChessCollection {
     /// What names the document's file (see [`DocKeys`]); empty until it is known.
     pub keys: DocKeys,
     games: GameList<GameEntry>,
-    /// Deletes and moves to undo.
+    /// Deletes, moves and adds to undo.
     history: ListHistory,
     /// The collection's id in the store.
     cid: String,
@@ -428,8 +470,51 @@ impl ChessCollection {
     /// A copy of game `index`, right after it, shown. Whether there is such a game.
     pub(crate) fn duplicate(&mut self, index: usize) -> bool {
         let Some(copy) = self.get(index).map(GameEntry::copy) else { return false };
+        let (before, uid) = (self.active().uid, copy.uid);
         self.insert_after(index, copy);
+        self.added(vec![uid], ChessEdit::DuplicateGame, before, None);
         true
+    }
+
+    /// A blank game at the end, shown (one undo step of the list). A blank game alone in the
+    /// list stays as it is: there is nothing to add.
+    pub(crate) fn new_game(&mut self) {
+        if self.len() == 1 && self.active().is_blank() {
+            return;
+        }
+        let (before, entry) = (self.active().uid, GameEntry::new(BoardState::default()));
+        let uid = entry.uid;
+        self.games.add(entry);
+        self.added(vec![uid], ChessEdit::NewGame, before, None);
+    }
+
+    /// Add `boards` at the end, the first of them shown (`show`; else the game shown stays
+    /// shown), as one undo step of the list named `edit`; a blank game alone in the list gives
+    /// way to them. How many were added.
+    pub(crate) fn add_games(&mut self, boards: Vec<BoardState>, edit: ChessEdit, show: bool) -> usize {
+        if boards.is_empty() {
+            return 0;
+        }
+        let before = self.active().uid;
+        let first = if self.len() == 1 && self.active().is_blank() { 0 } else { self.len() };
+        let mut uids = Vec::with_capacity(boards.len());
+        for board in boards {
+            let entry = GameEntry::new(board);
+            uids.push(entry.uid);
+            self.games.add(entry);
+        }
+        let shown = if show { Some(first) } else { self.position(before) };
+        if let Some(at) = shown {
+            self.games.switch_to(at);
+        }
+        let added = uids.len();
+        self.added(uids, edit, before, None);
+        added
+    }
+
+    /// Games `uids` were just added while game `before` was shown: one undo step of the list.
+    fn added(&mut self, uids: Vec<u64>, edit: ChessEdit, before: u64, restored: Option<(usize, Trashed)>) {
+        self.history.record(ListChange::Added { uids, edit, before, restored });
     }
 
     /// Delete game `index`. The game shown stays shown; when it is the one deleted, the game
@@ -455,7 +540,7 @@ impl ChessCollection {
         let game =
             collection::game_from(&b.game, node).map_err(|e| crate::i18n::fmt(tl!("The FEN couldn't be read: {e}"), &[("e", &e.to_string())]))?;
         let source = b.source;
-        self.insert_new(game, source);
+        self.insert_new(game, source, None);
         Ok(())
     }
 
@@ -464,7 +549,7 @@ impl ChessCollection {
     /// FEN that can't start a game; the error says why.
     pub(crate) fn new_at(&mut self, fen: &str) -> Result<(), String> {
         let game = Game::from_fen(fen).map_err(|e| crate::i18n::fmt(tl!("The FEN couldn't be read: {e}"), &[("e", &e.to_string())]))?;
-        self.insert_new(game, None);
+        self.insert_new(game, None, None);
         Ok(())
     }
 
@@ -486,22 +571,30 @@ impl ChessCollection {
     }
 
     /// Open game `index` of the trash as a new game, right after the one shown, and take it out
-    /// of the trash. Refused when it can't be read back.
+    /// of the trash: one undo step of the list, which puts it back in the trash. Refused when it
+    /// can't be read back (it stays in the trash then).
     pub(crate) fn restore_trashed(&mut self, index: usize) -> Result<(), String> {
-        let item = self.trash.take(index).ok_or_else(|| tl!("Those deleted moves are no longer kept.").to_string())?;
+        let item = self.trash.get(index).cloned().ok_or_else(|| tl!("Those deleted moves are no longer kept.").to_string())?;
         let (game, _) = Game::from_pgn(&item.pgn).map_err(|e| crate::i18n::fmt(tl!("The PGN couldn't be read: {e}"), &[("e", &e.to_string())]))?;
-        self.insert_new(game, None);
+        self.trash.take(index);
+        self.insert_new(game, None, Some((index, item)));
         Ok(())
     }
 
-    /// `game` as a new game right after the one shown, on its side, and shown.
-    fn insert_new(&mut self, game: Game, source: Option<Source>) {
+    /// `game` as a new game right after the one shown, on its side, and shown: one undo step of
+    /// the list ("New game from this position", or "Open as a new game" when it was `restored`
+    /// from the trash, the item and its place there).
+    fn insert_new(&mut self, game: Game, source: Option<Source>, restored: Option<(usize, Trashed)>) {
         let mut board = BoardState::default();
         board.game = game;
         board.source = source;
         board.flipped = self.active().board.flipped;
         board.refresh_fields(true);
-        self.insert_after(self.active_index(), GameEntry::new(board));
+        let (before, entry) = (self.active().uid, GameEntry::new(board));
+        let uid = entry.uid;
+        self.insert_after(self.active_index(), entry);
+        let edit = if restored.is_some() { ChessEdit::RestoreGame } else { ChessEdit::NewGameFromHere };
+        self.added(vec![uid], edit, before, restored);
     }
 
     /// Add `entry` at the end and show it. A blank game alone in the collection gives way to it.
@@ -509,11 +602,13 @@ impl ChessCollection {
         self.games.add(entry);
     }
 
-    /// Undo (`undo`) or redo the list's last delete or move. What it was, when there was one
-    /// whose game is still in the list.
-    fn list_step(&mut self, undo: bool) -> Option<ChessEdit> {
+    /// Undo (`undo`) or redo the list's last change. What it was, when there was one whose game
+    /// is still in the list, and how many games it put into the trash (added games taken back
+    /// out after they were changed).
+    fn list_step(&mut self, undo: bool) -> Option<(ChessEdit, usize)> {
         let step = if undo { self.history.past.pop() } else { self.history.future.pop() }?;
         let edit = step.change.edit();
+        let mut trashed = 0;
         let back = match step.change {
             ListChange::Deleted { index, entry, shown, left_blank } => {
                 let uid = entry.uid;
@@ -536,6 +631,12 @@ impl ChessCollection {
                 self.games.move_to(at, if undo { from } else { to });
                 ListChange::Moved { uid, from, to }
             }
+            ListChange::Added { uids, edit, before, restored } => {
+                let removed = self.take_out(&uids, edit, before, restored)?;
+                trashed = removed.kept.len();
+                ListChange::Removed(Box::new(removed))
+            }
+            ListChange::Removed(removed) => self.put_back(*removed),
         };
         let step = ListStep::new(back);
         if undo {
@@ -544,7 +645,67 @@ impl ChessCollection {
             self.history.past.push(step);
         }
         self.history.fit();
-        Some(edit)
+        Some((edit, trashed))
+    }
+
+    /// Undo of an add: take games `uids` back out of the list and show game `before` again; a game
+    /// opened from the trash (`restored`) goes back there. A game changed since it was added (it
+    /// has undo or redo steps) also goes into the trash, so its changes outlive the redo step,
+    /// which the next change to the list drops. `None` when none of the games is in the list any
+    /// more.
+    fn take_out(&mut self, uids: &[u64], edit: ChessEdit, before: u64, restored: Option<(usize, Trashed)>) -> Option<Removed> {
+        let mut places: Vec<usize> = uids.iter().filter_map(|&uid| self.position(uid)).collect();
+        if places.is_empty() {
+            return None;
+        }
+        places.sort_unstable();
+        let shown = self.active().uid;
+        let (mut games, mut kept, mut left_blank) = (Vec::with_capacity(places.len()), Vec::new(), false);
+        // The last place first, so each game keeps the place it had among the others.
+        for &index in places.iter().rev() {
+            left_blank = self.len() == 1;
+            let name = self.get(index).map(|e| e.name(index.saturating_add(1))).unwrap_or_default();
+            let Some(entry) = self.games.delete(index) else { continue };
+            // An illegal position has no game to keep: it stays on the redo side only.
+            if !entry.untouched()
+                && entry.board.illegal.is_none()
+                && let Some(item) = self.trash.keep_item(&entry.board.game, &name, None)
+            {
+                kept.push(item);
+            }
+            games.push((index, entry));
+        }
+        games.reverse();
+        if let Some((at, item)) = &restored {
+            self.trash.put_back(*at, item.clone());
+        }
+        if let Some(at) = self.position(before) {
+            self.games.switch_to(at);
+        }
+        Some(Removed { games, edit, before, shown, left_blank, restored, kept })
+    }
+
+    /// Redo of an add Undo took back: the games go back to their places, the game shown then is
+    /// shown again, and what the undo put in the trash comes out of it.
+    fn put_back(&mut self, removed: Removed) -> ListChange {
+        let Removed { games, edit, before, shown, left_blank, restored, kept } = removed;
+        let uids = games.iter().map(|(_, e)| e.uid).collect();
+        for (k, (index, entry)) in games.into_iter().enumerate() {
+            if k == 0 && left_blank && self.len() == 1 && self.active().is_blank() {
+                // The blank game the undo left gives way to them again.
+                *self.games.active_mut() = entry;
+            } else {
+                self.games.insert(index, entry, false);
+            }
+        }
+        if let Some(at) = self.position(shown) {
+            self.games.switch_to(at);
+        }
+        for item in &kept {
+            self.trash.take_item(item);
+        }
+        let restored = restored.map(|(at, item)| (self.trash.take_item(&item).unwrap_or(at), item));
+        ListChange::Added { uids, edit, before, restored }
     }
 
     /// What the store keeps of the collection, summed up: the games, their changes, the one shown
@@ -619,6 +780,11 @@ impl ChessGames {
         }
     }
 
+    /// The notices waiting for the next frame, taken (to say them now).
+    pub(crate) fn take_notes(&mut self) -> Vec<String> {
+        std::mem::take(&mut self.notes)
+    }
+
     /// The board shown: the active game of the document shown.
     pub fn board(&self) -> &BoardState {
         &self.collection().active().board
@@ -645,7 +811,7 @@ impl ChessGames {
         }
     }
 
-    /// What Undo (`undo`) or Redo would take back in the chess scope: a delete or move of the list
+    /// What Undo (`undo`) or Redo would take back in the chess scope: a change to the list
     /// of games, or a change to the game shown, whichever is the newer.
     pub(crate) fn step_edit(&self, undo: bool) -> Option<ChessEdit> {
         if self.list_turn(undo) {
@@ -666,11 +832,21 @@ impl ChessGames {
         self.step_edit(undo).map(|e| chess_history::command_text(undo, &e))
     }
 
-    /// Undo (`undo`) or redo in the chess scope: the list's last delete or move, or the game
+    /// Undo (`undo`) or redo in the chess scope: the list's last change, or the game
     /// shown's last change, whichever is the newer. The step's name when one was taken.
     pub(crate) fn history_step(&mut self, undo: bool) -> Option<String> {
         if self.list_turn(undo) {
-            return self.collection_mut().list_step(undo).map(|e| e.text());
+            let (edit, trashed) = self.collection_mut().list_step(undo)?;
+            if trashed > 0 {
+                let count = u64::try_from(trashed).unwrap_or(u64::MAX);
+                self.notes.push(crate::i18n::trn(
+                    crate::i18n::current(),
+                    count,
+                    "{n} changed game was kept in Deleted moves.",
+                    "{n} changed games were kept in Deleted moves.",
+                ));
+            }
+            return Some(edit.text());
         }
         let board = self.board_mut();
         let label = if undo { board.undo_label() } else { board.redo_label() };
@@ -957,7 +1133,7 @@ fn restored_note(c: &ChessCollection, lost: usize) -> String {
 
 impl ChessState {
     /// Undo (`undo`) or redo in the chess scope ([`ChessGames::history_step`]): the list's last
-    /// delete or move, or the game shown's last change. When another game is shown after it (a
+    /// change, or the game shown's last change. When another game is shown after it (a
     /// deleted one back, or the one after it), the scope stays on the chess side for the next
     /// Undo, and a set-up begun was the other game's. The step's name when one was taken.
     pub(crate) fn history_step(&mut self, undo: bool) -> Option<String> {
@@ -1686,7 +1862,7 @@ impl PdfCraftApp {
                 }
             }
             GamesAction::New => {
-                self.chess.games.collection_mut().add(GameEntry::new(BoardState::default()));
+                self.chess.games.collection_mut().new_game();
                 self.chess.study.setup = None;
                 self.chess.enter_scope();
             }
@@ -1893,32 +2069,13 @@ impl PdfCraftApp {
         let text = String::from_utf8_lossy(bytes);
         let chunks = split_pgn(&text, chess_autosave::MAX_GAMES);
         let more = chunks.len() > chess_autosave::MAX_GAMES;
-        let mut boards = Vec::new();
-        let mut failed = 0usize;
-        for chunk in chunks.iter().take(chess_autosave::MAX_GAMES) {
-            match Game::from_pgn(chunk) {
-                Ok((game, stopped)) => {
-                    let mut board = BoardState::default();
-                    board.game = game;
-                    board.message =
-                        stopped.map(|m| crate::i18n::fmt(tl!("Reading stopped at {move}: it is not a legal move there."), &[("move", &m)]));
-                    board.refresh_fields(true);
-                    boards.push(board);
-                }
-                Err(_) => failed = failed.saturating_add(1),
-            }
-        }
+        let (boards, failed) = pgn_boards(chunks.iter().take(chess_autosave::MAX_GAMES).copied());
         let added = boards.len();
         if added == 0 {
             self.notify_fmt("Couldn't read {name}: {e}", &[("name", name), ("e", tl!("no game could be read"))]);
             return 0;
         }
-        let c = self.chess.games.collection_mut();
-        let first = if c.len() == 1 && c.active().is_blank() { 0 } else { c.len() };
-        for board in boards {
-            c.add(GameEntry::new(board));
-        }
-        c.switch_to(first);
+        self.chess.games.collection_mut().add_games(boards, ChessEdit::LoadPgn, true);
         self.chess.study.setup = None;
         self.chess.enter_scope();
         let mut note = crate::i18n::fmt(tl!("Games read from {name}: {n}"), &[("n", &added.to_string()), ("name", name)]);
@@ -1933,6 +2090,55 @@ impl PdfCraftApp {
         self.notify(note);
         added
     }
+}
+
+impl PdfCraftApp {
+    /// The PGN field's games after its first (`texts`; `more`: the field had more than the
+    /// cap), its first just loaded on the board: added to the document's games after the others,
+    /// the game shown staying shown, as one undo step of the list ("Load the PGN"). The user is
+    /// told how many, and about the ones that couldn't be read or didn't fit.
+    pub(crate) fn add_pgn_field_games(&mut self, texts: &[String], more: bool) {
+        self.sync_chess_docs();
+        let (boards, failed) = pgn_boards(texts.iter().map(String::as_str));
+        let added = self.chess.games.collection_mut().add_games(boards, ChessEdit::LoadPgn, false);
+        self.chess.enter_scope();
+        let count = u64::try_from(added).unwrap_or(u64::MAX);
+        let mut note = crate::i18n::trn(
+            crate::i18n::current(),
+            count,
+            "{n} more game was added to the list of games.",
+            "{n} more games were added to the list of games.",
+        );
+        if failed > 0 {
+            note.push_str(" · ");
+            note.push_str(&crate::i18n::fmt(tl!("Not read: {n}"), &[("n", &failed.to_string())]));
+        }
+        if more {
+            note.push_str(" · ");
+            note.push_str(&crate::i18n::fmt(tl!("Only the first {n} were read."), &[("n", &chess_autosave::MAX_GAMES.to_string())]));
+        }
+        self.notify(note);
+    }
+}
+
+/// The games of PGN texts (one game each), each on a board of its own, and how many couldn't be
+/// read. A game whose reading stopped at a move that can't be played says so on its board.
+fn pgn_boards<'a>(texts: impl Iterator<Item = &'a str>) -> (Vec<BoardState>, usize) {
+    let mut boards = Vec::new();
+    let mut failed = 0usize;
+    for text in texts {
+        match Game::from_pgn(text) {
+            Ok((game, stopped)) => {
+                let mut board = BoardState::default();
+                board.game = game;
+                board.message = stopped.map(|m| crate::i18n::fmt(tl!("Reading stopped at {move}: it is not a legal move there."), &[("move", &m)]));
+                board.refresh_fields(true);
+                boards.push(board);
+            }
+            Err(_) => failed = failed.saturating_add(1),
+        }
+    }
+    (boards, failed)
 }
 
 /// A file's bytes, refused above [`MAX_PGN_FILE_BYTES`].
@@ -2169,6 +2375,129 @@ mod tests {
         // A step whose game is gone does nothing.
         c.history.past.push(ListStep::new(ListChange::Moved { uid: u64::MAX, from: 0, to: 1 }));
         assert_eq!(c.list_step(true), None);
+        let order = names(&c);
+        c.history.past.push(ListStep::new(ListChange::Added { uids: vec![u64::MAX], edit: ChessEdit::NewGame, before: 0, restored: None }));
+        assert_eq!(c.list_step(true), None);
+        assert_eq!(names(&c), order);
+    }
+
+    /// The uids of the games, in list order.
+    fn uids(c: &ChessCollection) -> Vec<u64> {
+        c.iter().map(|e| e.uid).collect()
+    }
+
+    /// New game and Duplicate are steps of the list: Undo takes the game back out and shows the
+    /// game shown before; Redo puts the same game back. A game changed after it was added goes
+    /// into the trash too (said once), and Redo takes it out of the trash with its history.
+    #[test]
+    fn undo_takes_back_new_and_duplicated_games_and_keeps_a_changed_one() {
+        let mut games = ChessGames::default();
+        let c = games.collection_mut();
+        // A diagram opened on the board is not a step of the list.
+        c.add(GameEntry::new(board_with(&["e2e4"])));
+        assert!(!games.can_step(true));
+        let c = games.collection_mut();
+        c.new_game();
+        let blank = c.active().uid;
+        assert_eq!((names(c), c.active_index()), (vec!["1. e4".to_owned(), String::new()], 1));
+        assert_eq!(games.step_text(true).as_deref(), Some("Undo New game"));
+        assert_eq!(games.history_step(true).as_deref(), Some("New game"));
+        assert_eq!((names(games.collection()), games.collection().active_index()), (vec!["1. e4".to_owned()], 0));
+        assert!(games.collection().trash().is_empty(), "an untouched game is not kept");
+        assert_eq!(games.history_step(false).as_deref(), Some("New game"));
+        assert_eq!(games.collection().active().uid, blank, "the same game is back, shown");
+        // A copy changed while it was shown, then the original shown: Undo is the list's.
+        let c = games.collection_mut();
+        assert!(c.switch_to(0) && c.duplicate(0));
+        let copy = c.active().uid;
+        play(c, "e7e5");
+        assert!(c.switch_to(0));
+        assert_eq!(games.step_text(true).as_deref(), Some("Undo Duplicate game"));
+        assert_eq!(games.history_step(true).as_deref(), Some("Duplicate game"));
+        let c = games.collection();
+        assert_eq!((names(c), c.active_index()), (vec!["1. e4".to_owned(), String::new()], 0));
+        let kept = c.trash().newest_first().next().map(|(_, t)| t.clone()).expect("the changed copy is in the trash");
+        assert_eq!((kept.name.as_str(), kept.moves, kept.deleted), ("Game 2", 2, 2));
+        assert!(kept.pgn.contains("1. e4 e5"), "{}", kept.pgn);
+        assert_eq!(games.take_notes(), ["1 changed game was kept in Deleted moves."]);
+        // Redo: the copy is back where it was, with its history, and out of the trash.
+        assert_eq!(games.history_step(false).as_deref(), Some("Duplicate game"));
+        let c = games.collection();
+        assert_eq!(names(c), ["1. e4", "1. e4 e5", ""]);
+        assert_eq!(c.get(1).map(|e| e.uid), Some(copy));
+        assert_eq!(c.get(1).and_then(|e| e.board.undo_label()).as_deref(), Some("Play e7e5"));
+        assert!(c.trash().is_empty(), "taken out of the trash again");
+        assert!(games.take_notes().is_empty());
+        // A new change to the list drops the redo step; the trash still has the changed game.
+        assert!(games.history_step(true).is_some());
+        games.collection_mut().new_game();
+        assert!(!games.can_step(false));
+        assert_eq!(games.collection().trash().len(), 1);
+    }
+
+    /// The games of a PGN are one step of the list: Undo takes them all out (a blank game they
+    /// gave way to comes back), Redo puts them all back in order, the first shown.
+    #[test]
+    fn the_games_of_a_pgn_are_one_step_of_the_list() {
+        let mut games = ChessGames::default();
+        let c = games.collection_mut();
+        let three = vec![board_with(&["e2e4"]), board_with(&["d2d4"]), board_with(&["c2c4"])];
+        assert_eq!(c.add_games(three, ChessEdit::LoadPgn, true), 3);
+        let added = uids(c);
+        assert_eq!((names(c), c.active_index()), (vec!["1. e4".to_owned(), "1. d4".into(), "1. c4".into()], 0));
+        assert_eq!(games.step_text(true).as_deref(), Some("Undo Load the PGN"));
+        assert!(games.history_step(true).is_some());
+        let c = games.collection();
+        assert!(c.len() == 1 && c.active().is_blank(), "a blank game is left");
+        assert!(games.history_step(false).is_some());
+        let c = games.collection();
+        assert_eq!((uids(c), c.active_index()), (added.clone(), 0), "the same games, in order, the first shown");
+        // Added after the games there, the game shown before is shown again after Undo.
+        let c = games.collection_mut();
+        assert!(c.switch_to(1));
+        assert_eq!(c.add_games(vec![board_with(&["g1f3"]), board_with(&["b2b3"])], ChessEdit::LoadPgn, true), 2);
+        assert_eq!((names(c).len(), c.active_index()), (5, 3));
+        assert_eq!(c.add_games(Vec::new(), ChessEdit::LoadPgn, true), 0);
+        assert!(games.history_step(true).is_some());
+        let c = games.collection();
+        assert_eq!((uids(c), c.active_index()), (added, 1));
+        assert!(games.history_step(false).is_some());
+        assert_eq!(names(games.collection()), ["1. e4", "1. d4", "1. c4", "1. Nf3", "1. b3"]);
+        // The PGN field's other games: added at the end, the game shown stays shown.
+        let c = games.collection_mut();
+        assert!(c.switch_to(0));
+        assert_eq!(c.add_games(vec![board_with(&["a2a3"])], ChessEdit::LoadPgn, false), 1);
+        assert_eq!((c.len(), c.active_index()), (6, 0));
+        assert!(games.history_step(true).is_some());
+        assert_eq!((games.collection().len(), games.collection().active_index()), (5, 0));
+    }
+
+    /// A game of the trash opened as a new game is a step of the list: Undo puts the item back at
+    /// its place in the trash, Redo takes it out again. A position set up is a step too.
+    #[test]
+    fn undo_puts_a_restored_game_back_in_the_trash() {
+        let mut games = ChessGames::default();
+        let c = games.collection_mut();
+        c.add(GameEntry::new(board_with(&["e2e4", "e7e5"])));
+        let old = |moves: &[&str]| board_with(moves).game;
+        c.trash.keep(&old(&["d2d4"]), "A", 1);
+        c.trash.keep(&old(&["c2c4"]), "B", 1);
+        let trashed = |c: &ChessCollection| c.trash().stored().into_iter().map(|t| t.name).collect::<Vec<_>>();
+        assert!(c.restore_trashed(0).is_ok());
+        assert_eq!((names(c), trashed(c)), (vec!["1. e4 e5".to_owned(), "1. d4".into()], vec!["B".to_owned()]));
+        assert!(c.restore_trashed(7).is_err());
+        assert_eq!(games.step_text(true).as_deref(), Some("Undo Open as a new game"));
+        assert!(games.history_step(true).is_some());
+        let c = games.collection();
+        assert_eq!((names(c), trashed(c)), (vec!["1. e4 e5".to_owned()], vec!["A".to_owned(), "B".into()]), "back at its place");
+        assert!(games.history_step(false).is_some());
+        let c = games.collection();
+        assert_eq!((names(c), trashed(c)), (vec!["1. e4 e5".to_owned(), "1. d4".into()], vec!["B".to_owned()]));
+        // A position set up, as a new game.
+        assert!(games.collection_mut().new_at("4k3/8/8/8/8/8/4P3/4K3 w - - 0 1").is_ok());
+        assert_eq!(games.step_text(true).as_deref(), Some("Undo New game from this position"));
+        assert!(games.history_step(true).is_some());
+        assert_eq!(games.collection().len(), 2);
     }
 
     #[test]

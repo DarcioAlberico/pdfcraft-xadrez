@@ -3020,5 +3020,8 @@ chess undo step	Clear drawings	odstranjevanje risb
 @plural	{n} move|{n} moves	{n} poteza|{n} potezi|{n} poteze|{n} potez
 	…and {n} older	…in starejših: {n}
 	No chess diagram was found here.	Tukaj ni bilo najdenega šahovskega diagrama.
+# Chess: Undo of games added to the list (a changed one is kept in the trash), and the PGN field's games after its first.
+@plural	{n} changed game was kept in Deleted moves.|{n} changed games were kept in Deleted moves.	{n} spremenjena partija je shranjena v »Izbrisane poteze«.|{n} spremenjeni partiji sta shranjeni v »Izbrisane poteze«.|{n} spremenjene partije so shranjene v »Izbrisane poteze«.|{n} spremenjenih partij je shranjenih v »Izbrisane poteze«.
+@plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	Na seznam partij je dodana še {n} partija.|Na seznam partij sta dodani še {n} partiji.|Na seznam partij so dodane še {n} partije.|Na seznam partij je dodanih še {n} partij.
 	Reading the pages around the game…	Branje strani okoli partije…
 	No game was found for this move, on its page or the pages around it.	Za to potezo ni bilo najdene partije ne na njeni strani ne na straneh okoli nje.
