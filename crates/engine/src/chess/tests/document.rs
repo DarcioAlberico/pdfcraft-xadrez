@@ -339,3 +339,135 @@ fn ischess_pieces_and_signs_are_read_from_the_text_layer() {
     let nags: Vec<u16> = inlines.iter().filter_map(|i| if let Inline::Nag { code, .. } = i { Some(*code) } else { None }).collect();
     assert_eq!(nags, vec![16], "{:#?}", read.doc);
 }
+
+/// `pages` Helvetica pages, page `k` holding the moves `2k+1.Nf3 Nf6 2k+2.Ng1 Ng8` (one game
+/// running on over all of them, from `1.Nf3` on the first), then `last` on the last page.
+fn knight_shuffle(pages: usize, last: &str) -> Vec<u8> {
+    let contents: Vec<String> = (0..pages)
+        .map(|k| {
+            let mut c = helv(60.0, 11.0, &format!("{}.Nf3 Nf6 {}.Ng1 Ng8", 2 * k + 1, 2 * k + 2));
+            if k + 1 == pages {
+                c.push_str(&helv(90.0, 11.0, last));
+            }
+            c
+        })
+        .collect();
+    helvetica_pages(&contents)
+}
+
+/// Page `page` of `id` read alone (as the Text tab reads it), and where its first move is.
+fn page_alone(s: &mut Session, id: DocId, page: usize) -> (pdfcraft_chessvision::doc::ChessPage, crate::chess::span::MoveAt) {
+    let read = s.chess_document(id, &[page], &no_model(), Some(pdfcraft_chess::san::Lang::En)).unwrap();
+    let centre = read.doc.pages.into_iter().next().unwrap();
+    let (block, inline) = centre
+        .blocks
+        .iter()
+        .enumerate()
+        .find_map(|(b, block)| block.inlines().iter().position(|i| matches!(i, Inline::Move(_))).map(|i| (b, i)))
+        .unwrap();
+    (centre, crate::chess::span::MoveAt { page, block, inline })
+}
+
+fn options() -> crate::chess::document::OcrOptions<'static> {
+    crate::chess::document::OcrOptions { mode: crate::chess::document::OcrMode::Off, ..Default::default() }
+}
+
+/// A move at the top of a page that goes on from the page before has no game on its own page:
+/// read with the pages around it, it is a move of the game begun two pages back, which runs on
+/// to the page after; the result there ends it, so the page after that is not read.
+#[test]
+fn a_game_is_read_on_across_the_pages_around_a_move() {
+    let mut contents: Vec<String> = Vec::new();
+    for k in 0..4 {
+        let mut c = helv(60.0, 11.0, &format!("{}.Nf3 Nf6 {}.Ng1 Ng8", 2 * k + 1, 2 * k + 2));
+        if k == 3 {
+            c.push_str(&helv(90.0, 11.0, "1-0"));
+        }
+        contents.push(c);
+    }
+    contents.push(helv(60.0, 11.0, "1.e4 e5 2.Nf3 Nc6"));
+    let (mut s, id) = open(helvetica_pages(&contents));
+    let (centre, at) = page_alone(&mut s, id, 2);
+    assert!(
+        centre.blocks.iter().flat_map(|b| b.inlines()).all(|i| !matches!(i, Inline::Move(m) if m.game.is_some())),
+        "alone, page 3's moves have no position"
+    );
+    let read = s.chess_game_span(id, centre, at, &no_model(), &options()).unwrap();
+    let span = read.span;
+    assert_eq!(span.pages, (0, 3), "back to the game's first page, on to its result");
+    let at = span.at.expect("the move is in the game");
+    let game = &span.doc.games[at.game];
+    assert_eq!(game.score.mainline().len(), 16, "four pages of four moves");
+    assert_eq!(game.score.nodes[at.node].san, "Nf3");
+    let board = span.doc.board_game(at.game).unwrap();
+    assert_eq!(board.game.first_move_number(), 1);
+}
+
+/// The pages read are bounded: four each way. A move whose game starts further back than that
+/// stays in no game; one whose game runs on further is cut after four pages.
+#[test]
+fn a_game_span_reads_at_most_four_pages_each_way() {
+    let (mut s, id) = open(knight_shuffle(10, ""));
+    let (centre, at) = page_alone(&mut s, id, 5);
+    let span = s.chess_game_span(id, centre, at, &no_model(), &options()).unwrap().span;
+    assert_eq!((span.pages, span.at), ((1, 5), None), "four pages back, no game start among them");
+
+    let (centre, at) = page_alone(&mut s, id, 1);
+    let span = s.chess_game_span(id, centre, at, &no_model(), &options()).unwrap().span;
+    assert_eq!(span.pages, (0, 5));
+    let at = span.at.unwrap();
+    assert_eq!(span.doc.games[at.game].score.mainline().len(), 24);
+    assert_eq!(span.doc.games[at.game].score.nodes[at.node].san, "Nf3");
+}
+
+/// A page that cannot be read ends the run there; the page read keeps its own game.
+#[test]
+fn a_page_that_cannot_be_read_ends_the_span() {
+    let (mut s, id) = open(knight_shuffle(3, ""));
+    let (centre, at) = page_alone(&mut s, id, 0);
+    let mut asked = Vec::new();
+    let span = crate::chess::span::span_game(centre, at, 3, |p| {
+        asked.push(p);
+        None
+    });
+    assert_eq!(asked, [1], "only the page after: page 1 has no page before");
+    assert_eq!(span.pages, (0, 0));
+    let at = span.at.unwrap();
+    assert_eq!(span.doc.games[at.game].score.mainline().len(), 4);
+}
+
+/// A game that starts at `1.` is not read back from, and one whose result is printed is not
+/// read on from: a page holding a whole game reads no other page. Without its result, the page
+/// after is read, but holds none of its moves: it is not kept, and its prose is not the game's
+/// comment.
+#[test]
+fn a_whole_game_on_its_page_reads_no_other_page() {
+    let contents = [helv(60.0, 11.0, "Prose."), helv(60.0, 11.0, "1.e4 e5 2.Nf3 Nc6 1-0"), helv(60.0, 11.0, "Prose.")];
+    let (mut s, id) = open(helvetica_pages(&contents));
+    let (centre, at) = page_alone(&mut s, id, 1);
+    let mut asked = Vec::new();
+    let span = crate::chess::span::span_game(centre, at, 3, |p| {
+        asked.push(p);
+        None
+    });
+    assert!(asked.is_empty(), "{asked:?}");
+    assert_eq!(span.pages, (1, 1));
+    assert!(span.at.is_some());
+
+    let contents = [helv(60.0, 11.0, "Prose."), helv(60.0, 11.0, "1.e4 e5 2.Nf3 Nc6"), helv(60.0, 11.0, "Prose.")];
+    let (mut s, id) = open(helvetica_pages(&contents));
+    let (centre, at) = page_alone(&mut s, id, 1);
+    let mut asked = Vec::new();
+    let read = |p: usize| {
+        asked.push(p);
+        let doc = s.chess_document(id, &[p], &no_model(), Some(pdfcraft_chess::san::Lang::En)).unwrap().doc;
+        doc.pages.into_iter().next()
+    };
+    let span = crate::chess::span::span_game(centre, at, 3, read);
+    assert_eq!(asked, [2], "the page after was read: the game had no result");
+    assert_eq!(span.pages, (1, 1), "and not kept");
+    let at = span.at.unwrap();
+    let score = &span.doc.games[at.game].score;
+    assert_eq!(score.mainline().len(), 4);
+    assert!(score.nodes.iter().all(|n| n.comment.is_empty()), "{:?}", score.nodes.last().map(|n| &n.comment));
+}

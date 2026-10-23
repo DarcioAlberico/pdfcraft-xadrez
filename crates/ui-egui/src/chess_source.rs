@@ -1,15 +1,18 @@
 //! Chess ▸ PGN toolbar ▸ Source (T8, spec §4.2 and §4.10 step 8): a book's game on the board,
 //! and the board's moves back on the page.
 //!
-//! - **A book's game on the board.** In the Text tab, a move the walker played belongs to one of
-//!   the page's games. A double-click on it, or "Open this game on the board" in its menu, puts
-//!   that game on the board ([`PdfCraftApp::open_book_game`]): built move by move from the
-//!   walker's score (`ChessDoc::board_game`), with every comment, glyph and variation, each move
-//!   keeping where it was printed, shown at the move clicked. It is a new game of the document's
-//!   collection (from the diagram it started from, when it did); the same game opened again
-//!   while untouched is shown again rather than added twice. The rail's tools are then the way
-//!   to correct what the walker made of the book. A single click still only outlines the move
-//!   on the page.
+//! - **A book's game on the board.** In the Text tab, a move belongs to one of the book's games.
+//!   A double-click on it, or "Open this game on the board" in its menu, puts that game on the
+//!   board ([`PdfCraftApp::read_book_game`], then [`PdfCraftApp::put_book_game`]): the pages
+//!   around the page are read too (`engine::chess::span`, up to four each way, off the interface
+//!   thread), so a game the book runs on from the page before or onto the page after comes whole,
+//!   and a move at the top of a page that goes on from the page before (no position on its page
+//!   alone) finds its game there. It is built move by move from the walker's score
+//!   (`ChessDoc::board_game`), with every comment, glyph and variation, each move keeping where it
+//!   was printed, shown at the move clicked. It is a new game of the document's collection (from
+//!   the diagram it started from, when it did); the same game opened again while untouched is
+//!   shown again rather than added twice. The rail's tools are then the way to correct what the
+//!   walker made of the book. A single click still only outlines the move on the page.
 //! - **Show in PDF** (the rail, a move's menu, `chess.source.show`) scrolls the page to where the
 //!   move was printed, unless it is on screen already, and outlines it as the Text tab does.
 //! - **Follow** (F, `chess.source.follow`) does that whenever the move shown changes: walking the
@@ -19,8 +22,9 @@
 //!   the switch's name says so.
 
 use egui::Key;
+use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, NodePath, NodeSource, Token};
-use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{GameOrigin, NodeRef};
+use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{ChessDoc, GameOrigin, NodeRef};
 use pdfcraft_render::DestView;
 
 use crate::PdfCraftApp;
@@ -187,18 +191,19 @@ impl PdfCraftApp {
         true
     }
 
-    /// Put game `at.game` of the page the Text tab read on the board, at move `at.node`, with the
-    /// place of each move on the page, and show the board. A new game of the document's
-    /// collection, unless the same one was opened before and is untouched since: that one is
-    /// shown again.
-    pub(crate) fn open_book_game(&mut self, at: NodeRef) {
-        let Some((_, id)) = self.active_ids() else { return };
-        let Some(text) = self.chess.text.as_ref().filter(|t| t.doc == id) else { return };
-        let Some(book) = text.chess.board_game(at.game) else {
+    /// Put game `at.game` of `read` (pages of document `id` read as chess text) on the board, at
+    /// move `at.node`, with the place of each move on its page, and show the board. A new game of
+    /// the document's collection, unless the same one was opened before and is untouched since:
+    /// that one is shown again. Only while `id` is the document shown.
+    pub(crate) fn put_book_game(&mut self, id: DocId, read: &ChessDoc, at: NodeRef) {
+        if self.active_ids().map(|(_, active)| active) != Some(id) {
+            return;
+        }
+        let Some(book) = read.board_game(at.game) else {
             self.notify(tl!("This game can't go on the board: its start position isn't legal.").to_string());
             return;
         };
-        let source = match text.chess.games.get(at.game).map(|g| g.origin) {
+        let source = match read.games.get(at.game).map(|g| g.origin) {
             Some(GameOrigin::Diagram { page, diagram, .. }) => usize::try_from(page).ok().map(|page| Source { doc: id, page, index: diagram }),
             _ => None,
         };

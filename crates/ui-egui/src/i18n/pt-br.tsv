@@ -3032,5 +3032,10 @@ chess undo step	Clear drawings	remoção dos desenhos
 	Open as a new game	Abrir como nova partida
 	…and {n} older	…e mais {n} antigas
 	No chess diagram was found here.	Nenhum diagrama de xadrez foi encontrado aqui.
+# Chess: Undo of games added to the list (a changed one is kept in the trash), and the PGN field's games after its first.
+@plural	{n} changed game was kept in Deleted moves.|{n} changed games were kept in Deleted moves.	{n} partida alterada foi guardada em “Lances apagados”.|{n} partidas alteradas foram guardadas em “Lances apagados”.
+@plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	Mais {n} partida foi adicionada à lista de partidas.|Mais {n} partidas foram adicionadas à lista de partidas.
+	Reading the pages around the game…	Lendo as páginas em torno da partida…
+	No game was found for this move, on its page or the pages around it.	Nenhuma partida foi encontrada para este lance, nem na página dele nem nas páginas ao redor.
 	Renumber	Renumerar
 	The text's move numbers give way to the game's: {printed} is played as {played}.	Os números de lance do texto dão lugar aos da partida: {printed} é jogado como {played}.

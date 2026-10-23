@@ -49,6 +49,10 @@ pub struct ChessState {
     /// A double-click on a page not scanned yet: the diagram there goes onto the board once the
     /// page is scanned ([`PdfCraftApp::chess_board_at_tick`]).
     pub board_at: Option<BoardAt>,
+    /// A diagram put on the board before the Text tab read its page: the page is read, and the
+    /// moves under the diagram give the game its side to move and move number if nothing was
+    /// done on it meanwhile ([`PdfCraftApp::chess_board_text_tick`]).
+    pub board_text: Option<BoardText>,
     /// The chess games, per document: the board panels show the open document's active one
     /// ([`ChessState::board`]).
     pub games: crate::chess_collection::ChessGames,
@@ -101,6 +105,18 @@ pub struct BoardAt {
     /// there is not said.
     pub on_text: bool,
     /// The scan of the page was started for it.
+    pub started: bool,
+}
+
+/// A diagram put on the board (diagram `index` of `page` of `doc`, its game started from `fen`)
+/// whose page the Text tab had not read.
+#[derive(Clone, Debug, PartialEq)]
+pub struct BoardText {
+    pub doc: DocId,
+    pub page: usize,
+    pub index: usize,
+    pub fen: String,
+    /// The page's reading was started for it.
     pub started: bool,
 }
 
@@ -618,6 +634,7 @@ impl PdfCraftApp {
     pub(crate) fn poll_chess(&mut self) {
         self.poll_chess_scan();
         self.chess_board_at_tick();
+        self.chess_board_text_tick();
     }
 
     fn poll_chess_scan(&mut self) {
@@ -923,8 +940,79 @@ impl PdfCraftApp {
             self.notify(tl!("This diagram hasn't been read: scan its page first, or set its position in the editor.").to_string());
             return false;
         };
-        let fen = if changed { fen } else { self.chess_text_start(id, page, index, &fen).unwrap_or(fen) };
-        self.open_chess_game(&fen, flipped, Some(source))
+        let text_start = if changed { None } else { self.chess_text_start(id, page, index, &fen) };
+        let read = self.chess_text_read(id, page);
+        let fen = text_start.unwrap_or(fen);
+        if !self.open_chess_game(&fen, flipped, Some(source)) {
+            return false;
+        }
+        // The page's moves were not read yet: they are (`chess_board_text_tick`), and may still
+        // give the game its side to move and number.
+        let board = self.chess.board();
+        self.chess.board_text = (!changed && !read && board.illegal.is_none() && board.source == Some(source)).then(|| BoardText {
+            doc: id,
+            page,
+            index,
+            fen: board.game.start_fen(),
+            started: false,
+        });
+        true
+    }
+
+    /// Whether the Text tab's reading of `page` of document `id` is of the document as it is.
+    fn chess_text_read(&self, id: DocId, page: usize) -> bool {
+        let stamp = self.session.chess_stamp(id);
+        self.chess.text.as_ref().is_some_and(|t| t.doc == id && t.page == page && Some(t.stamp) == stamp)
+    }
+
+    /// A diagram put on the board before its page was read as text ([`BoardText`]): read the page
+    /// (off the interface thread, as the Text tab does, after any reading running), then give the
+    /// game the side to move and move number the moves under the diagram give it, when nothing
+    /// was done on the game meanwhile (no move played, nothing changed: opening it is not a step
+    /// to undo, and neither is this). Dropped when its document is no longer the one shown, or
+    /// when the reading did not come (the document changed meanwhile).
+    pub(crate) fn chess_board_text_tick(&mut self) {
+        let Some(mut want) = self.chess.board_text.clone() else { return };
+        if self.active_ids().map(|(_, id)| id) != Some(want.doc) {
+            self.chess.board_text = None;
+            return;
+        }
+        if self.chess_text_read(want.doc, want.page) {
+            self.chess.board_text = None;
+            self.apply_chess_text_start(&want);
+            return;
+        }
+        if self.chess.job.is_some() {
+            return;
+        }
+        if want.started {
+            self.chess.board_text = None;
+            return;
+        }
+        want.started = true;
+        let page = want.page;
+        self.chess.board_text = Some(want);
+        self.read_chess_text(page, false);
+    }
+
+    /// Give the game shown, when it was started from `want`'s diagram and is untouched, the start
+    /// the Text tab's reading of its page gives it ([`Self::chess_text_start`]).
+    fn apply_chess_text_start(&mut self, want: &BoardText) {
+        let Some(start) = self.chess_text_start(want.doc, want.page, want.index, &want.fen) else { return };
+        if start == want.fen {
+            return;
+        }
+        let source = Some(crate::chess_board_ui::Source { doc: want.doc, page: want.page, index: want.index });
+        self.sync_chess_docs();
+        let e = self.chess.games.collection_mut().active_mut();
+        let waiting =
+            e.untouched() && e.board.source == source && e.board.illegal.is_none() && e.board.game.is_empty() && e.board.game.start_fen() == want.fen;
+        if waiting {
+            let flipped = e.board.flipped;
+            e.board.load_fen(&start, flipped, source);
+            // As when it was opened: not a step to undo.
+            e.board.history = Default::default();
+        }
     }
 
     /// The start of the game the Text tab's reading of `page` begins at diagram `index`, when it
@@ -976,6 +1064,7 @@ impl PdfCraftApp {
                 }
             }
             BoardAction::ChooseEngine => self.choose_chess_engine(),
+            BoardAction::AddGames { texts, more } => self.add_pgn_field_games(&texts, more),
         }
     }
 

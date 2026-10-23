@@ -12,8 +12,11 @@
 //! with the document like its book cipher.
 //! Clicking a move, a paragraph or a diagram outlines where it is on the page; a diagram also
 //! opens in the editor, and a double-click on a move opens its game on the board
-//! (`chess_source`). Figurines are shown when the interface's fonts have them, else the
-//! moves as printed.
+//! (`chess_source`): the pages around it are read for that too, off the interface thread
+//! (`engine::chess::span`), so a game the book runs on from the page before or onto the page
+//! after comes whole. A move with no position on its page alone (the top of a page going on
+//! from the page before) opens the game the pages before give it. Figurines are shown when the
+//! interface's fonts have them, else the moves as printed.
 //!
 //! **Export…** writes the whole document as HTML, EPUB, Word, RTF, Markdown (with its diagram
 //! images in a folder beside it) or PGN, through the engine's `chess_export`.
@@ -27,7 +30,8 @@ use pdfcraft_engine::chess::document::{BookOrigin, OcrMode, OcrOptions};
 use pdfcraft_engine::chess::export::{ChessExportOptions, ChessFormat};
 use pdfcraft_engine::chess::pdfcraft_chess::draw::BoardStyle;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::html::{Figurines, plain_text_with};
-use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, ChessDoc, Inline, MoveStatus, NodeRef, UserRect};
+use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, ChessDoc, Inline, MoveStatus, UserRect};
+use pdfcraft_engine::chess::span::{GameSpanRead, MoveAt};
 
 use crate::theme::Tokens;
 use crate::{PdfCraftApp, theme};
@@ -76,6 +80,11 @@ pub enum JobKind {
         origin: BookOrigin,
         ocr: bool,
     },
+    /// The game of a move of the page read, with the pages around it (`chess_source`).
+    Game {
+        at: MoveAt,
+        stamp: ScanStamp,
+    },
     #[cfg(not(target_arch = "wasm32"))]
     Export {
         format: ChessFormat,
@@ -91,6 +100,7 @@ pub enum JobKind {
 
 enum JobDone {
     Read(Result<pdfcraft_engine::chess::document::ChessDocument, String>),
+    Game(Result<GameSpanRead, String>),
     Export(Result<pdfcraft_engine::chess::export::ChessExport, String>),
 }
 
@@ -100,6 +110,7 @@ impl ChessJob {
         match self.kind {
             JobKind::Read { ocr: true, .. } => tl!("Reading the page with chess OCR…"),
             JobKind::Read { .. } => tl!("Reading the page…"),
+            JobKind::Game { .. } => tl!("Reading the pages around the game…"),
             JobKind::Export { .. } => tl!("Exporting the chess document…"),
         }
     }
@@ -119,8 +130,9 @@ pub enum TextAction {
     Show(usize, [f32; 4]),
     /// Open diagram `index` of `page` in the editor.
     Diagram(usize, usize),
-    /// Put the page's game the move belongs to on the board, at that move (`chess_source`).
-    OpenGame(NodeRef),
+    /// Put the game the move belongs to on the board, at that move, the pages around its page
+    /// read too (`chess_source`).
+    OpenGame(MoveAt),
     Export(ChessFormat),
     /// Say where the document's pages came from.
     Origin(BookOrigin),
@@ -298,9 +310,13 @@ pub fn text_tab(
                                 if let Some(fen) = &m.fen {
                                     tip = format!("{tip}\n{fen}");
                                 }
-                                if m.game.is_some() {
+                                // A move with no position on its page alone may go on from the
+                                // page before: its game is looked for there.
+                                let opens = m.game.is_some() || m.status == MoveStatus::Unchecked;
+                                if opens {
                                     tip = format!("{tip}\n{}", tl!("Double-click to open this game on the board."));
                                 }
+                                let at = MoveAt { page, block: bi, inline: k };
                                 let r = ui
                                     .add(
                                         egui::Label::new(egui::RichText::new(shown).color(status_colour(m.status)).strong())
@@ -309,16 +325,14 @@ pub fn text_tab(
                                     .on_hover_text(tip);
                                 // A click outlines the move on the page; a double-click (its first
                                 // click outlined it) opens its game on the board.
-                                if r.double_clicked()
-                                    && let Some(at) = m.game
-                                {
+                                if r.double_clicked() && opens {
                                     action = Some(TextAction::OpenGame(at));
                                 } else if r.clicked()
                                     && let Some(rect) = rect_of(m.source_rect)
                                 {
                                     action = Some(TextAction::Show(page, rect));
                                 }
-                                if let Some(at) = m.game {
+                                if opens {
                                     r.context_menu(|ui| {
                                         if ui.button(tl!("Open this game on the board")).clicked() {
                                             action = Some(TextAction::OpenGame(at));
@@ -425,6 +439,28 @@ impl PdfCraftApp {
         });
     }
 
+    /// Open the game of the move `at` of the page the Text tab read on the board
+    /// ([`Self::put_book_game`]), with the pages around that page read too, off the interface
+    /// thread, so the game comes whole when the book runs it on across the page's edges
+    /// (`engine::chess::span`). The pages around are read as the page was: with chess OCR when it
+    /// was.
+    pub(crate) fn read_book_game(&mut self, at: MoveAt) {
+        let Some((_, id)) = self.active_ids() else { return };
+        let Some(stamp) = self.session.chess_stamp(id) else { return };
+        let Some(text) = self.chess.text.as_ref().filter(|t| t.doc == id && t.page == at.page && t.stamp == stamp) else { return };
+        let Some(centre) = text.chess.pages.first().filter(|p| usize::try_from(p.index).ok() == Some(at.page)).cloned() else { return };
+        let mode = if text.ocr { OcrMode::All } else { OcrMode::Off };
+        if self.chess.job.is_some() {
+            return self.notify(tl!("A chess document is already being read or exported").to_string());
+        }
+        let book = self.chess_cipher(id);
+        let settings = self.chess_scan_settings();
+        self.start_chess_job(id, JobKind::Game { at, stamp }, move |s, id| {
+            let options = OcrOptions { mode, glyphs: None, general: true, book: book.as_ref() };
+            JobDone::Game(s.chess_game_span(id, centre, at, &settings, &options))
+        });
+    }
+
     /// The book cipher learned so far for document `id`, if any.
     fn chess_cipher(&self, id: DocId) -> Option<pdfcraft_engine::chess::pdfcraft_chessvision::cipher::BookCipher> {
         self.chess.cipher.as_ref().filter(|(d, _)| *d == id).map(|(_, c)| c.clone())
@@ -509,6 +545,17 @@ impl PdfCraftApp {
                     },
                 });
             }
+            (JobKind::Game { stamp, .. }, JobDone::Game(Ok(read))) => {
+                // The document changed meanwhile: the move may be gone.
+                if self.session.chess_stamp(job.doc) != Some(stamp) {
+                    return;
+                }
+                self.chess.cipher = Some((job.doc, read.cipher));
+                match read.span.at {
+                    Some(node) => self.put_book_game(job.doc, &read.span.doc, node),
+                    None => self.notify(tl!("No game was found for this move, on its page or the pages around it.").to_string()),
+                }
+            }
             #[cfg(not(target_arch = "wasm32"))]
             (JobKind::Export { path, image_dir, .. }, JobDone::Export(made)) => {
                 if let Ok(m) = &made {
@@ -525,7 +572,7 @@ impl PdfCraftApp {
                 }
                 Err(e) => self.notify(e),
             },
-            (_, JobDone::Read(Err(e)) | JobDone::Export(Err(e))) => self.notify(e),
+            (_, JobDone::Read(Err(e)) | JobDone::Game(Err(e)) | JobDone::Export(Err(e))) => self.notify(e),
             _ => {}
         }
     }
@@ -552,7 +599,7 @@ impl PdfCraftApp {
                 self.select_chess_diagram(page, index, true);
                 self.show_chess_tab(ChessTab::Diagrams);
             }
-            TextAction::OpenGame(at) => self.open_book_game(at),
+            TextAction::OpenGame(at) => self.read_book_game(at),
             TextAction::Export(format) => self.export_chess_dialog(format),
             // The page shown is read again under the new origin (the tab sees it is not current).
             TextAction::Origin(origin) => {

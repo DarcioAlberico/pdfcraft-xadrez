@@ -708,6 +708,35 @@ fn a_diagram_on_the_board_takes_the_side_and_move_number_its_moves_give_it() {
     assert_eq!(h.state().chess.board().game.first_move_number(), 12, "the Move number field shows it");
 }
 
+/// A double-click on a diagram whose page the Text tab has not read reads it (off the interface
+/// thread, inline here), and the moves under the diagram give the game on the board its side to
+/// move and move number, with nothing to undo: on a page scanned already, and on one the
+/// double-click scans first.
+#[test]
+fn a_double_clicked_diagram_reads_its_page_for_the_move_number() {
+    const AT_12: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 12";
+    for scanned in [true, false] {
+        let mut h = harness_on(boards_with("12...e5 13.Nf3 Nc6"), 0.05);
+        if scanned {
+            assert!(h.state_mut().execute("chess.scan"));
+            h.run_steps(3);
+        }
+        assert!(h.state().chess.text.is_none(), "the Text tab has read nothing");
+        let at = on_page(&h, 140.0, 660.0);
+        double_click_at(&mut h, at);
+        h.run_steps(3);
+        assert_eq!(h.state().chess.board().source.map(|s| (s.page, s.index)), Some((0, 0)));
+        assert_eq!(h.state().chess.board().game.fen(), AT_12, "scanned first: {scanned}");
+        assert_eq!(h.state().chess.board().game.first_move_number(), 12);
+        assert_eq!(h.state().chess.board().undo_label(), None, "opening the diagram is not a step to undo");
+        assert!(h.state().chess.board_text.is_none(), "dealt with");
+        // Played on from there: Black's move.
+        click_square(&mut h, "e7");
+        click_square(&mut h, "e5");
+        assert_eq!(h.state().chess.board().game.movetext(), "12... e5");
+    }
+}
+
 /// Open on the board, in the Chess diagrams panel, puts that diagram on the Board panel and
 /// brings it forward (T5c: the Board panel is the study board; the panel has no Study tab).
 #[test]
@@ -1142,12 +1171,13 @@ fn analysis_pauses_while_the_board_panel_is_hidden() {
     h.state_mut().docking.set_visible(board, false).unwrap();
     assert!(wait_for(&mut h, |_| log.lock().unwrap().iter().any(|c| c == "stop")), "the engine stops: {:?}", log.lock().unwrap());
     assert!(h.state().chess.study.analysis, "analysis stays on, to go on when the board is back");
-    // Back, on a new position: analysed.
+    // Back, on the position it was stopped on: it searches on.
     h.state_mut().show_chess_board();
-    h.run_steps(3);
+    assert!(wait_for(&mut h, |_| searching(&log) == 2), "the engine searches on: {:?}", log.lock().unwrap());
+    // On a new position: analysed.
     click_square(&mut h, "e2");
     click_square(&mut h, "e4");
-    assert!(wait_for(&mut h, |_| searching(&log) == 2), "{:?}", log.lock().unwrap());
+    assert!(wait_for(&mut h, |_| searching(&log) == 3), "{:?}", log.lock().unwrap());
     let after_e4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
     assert!(log.lock().unwrap().iter().any(|c| c == &format!("position fen {after_e4}")));
 }

@@ -3156,5 +3156,10 @@ chess undo step	Clear drawings	borrado de los dibujos
 @plural	{n} move|{n} moves	{n} jugada|{n} jugadas
 	…and {n} older	…y {n} más antiguas
 	No chess diagram was found here.	No se encontró ningún diagrama de ajedrez aquí.
+# Chess: Undo of games added to the list (a changed one is kept in the trash), and the PGN field's games after its first.
+@plural	{n} changed game was kept in Deleted moves.|{n} changed games were kept in Deleted moves.	{n} partida modificada se guardó en «Jugadas borradas».|{n} partidas modificadas se guardaron en «Jugadas borradas».
+@plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	Se añadió {n} partida más a la lista de partidas.|Se añadieron {n} partidas más a la lista de partidas.
+	Reading the pages around the game…	Leyendo las páginas en torno a la partida…
+	No game was found for this move, on its page or the pages around it.	No se encontró ninguna partida para esta jugada, ni en su página ni en las páginas cercanas.
 	Renumber	Renumerar
 	The text's move numbers give way to the game's: {printed} is played as {played}.	Los números de jugada del texto ceden ante los de la partida: {printed} se juega como {played}.
