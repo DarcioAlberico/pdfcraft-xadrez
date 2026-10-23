@@ -3269,3 +3269,6 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Open as a new game	Mở như một ván mới
 	…and {n} older	…và {n} ván cũ hơn
 	No chess diagram was found here.	Không tìm thấy sơ đồ cờ vua nào ở đây.
+# Chess: Undo of games added to the list (a changed one is kept in the trash), and the PGN field's games after its first.
+@plural	{n} changed game was kept in Deleted moves.|{n} changed games were kept in Deleted moves.	Đã giữ {n} ván đã sửa trong «Nước đã xóa».
+@plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	Đã thêm {n} ván nữa vào danh sách ván.

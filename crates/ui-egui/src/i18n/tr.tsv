@@ -3011,3 +3011,6 @@ chess undo step	Clear drawings	çizimleri temizleme
 @plural	{n} move|{n} moves	{n} hamle
 	…and {n} older	…ve {n} daha eski
 	No chess diagram was found here.	Burada satranç diyagramı bulunamadı.
+# Chess: Undo of games added to the list (a changed one is kept in the trash), and the PGN field's games after its first.
+@plural	{n} changed game was kept in Deleted moves.|{n} changed games were kept in Deleted moves.	Değiştirilen {n} oyun «Silinen hamleler» içinde saklandı.
+@plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	Oyun listesine {n} oyun daha eklendi.

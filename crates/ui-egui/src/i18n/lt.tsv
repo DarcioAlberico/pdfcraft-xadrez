@@ -3267,3 +3267,6 @@ chess undo step	Clear drawings	piešinių valymą
 	Open as a new game	Atverti kaip naują partiją
 	…and {n} older	…ir dar {n} senesnių
 	No chess diagram was found here.	Čia šachmatų diagramos nerasta.
+# Chess: Undo of games added to the list (a changed one is kept in the trash), and the PGN field's games after its first.
+@plural	{n} changed game was kept in Deleted moves.|{n} changed games were kept in Deleted moves.	{n} pakeista partija išsaugota skiltyje „Ištrinti ėjimai“.|{n} pakeistos partijos išsaugotos skiltyje „Ištrinti ėjimai“.|{n} pakeistų partijų išsaugota skiltyje „Ištrinti ėjimai“.
+@plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	Į partijų sąrašą pridėta dar {n} partija.|Į partijų sąrašą pridėtos dar {n} partijos.|Į partijų sąrašą pridėta dar {n} partijų.
