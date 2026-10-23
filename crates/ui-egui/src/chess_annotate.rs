@@ -42,8 +42,9 @@
 //! low to have room. A glyph clicked goes on the move shown, or comes off it,
 //! as the rail's do (one undo step); the other characters go at the end of the move's comment (one
 //! undo step). While a text field had the keyboard when it was clicked (the comment fields, FEN,
-//! PGN), any character, a glyph's sign too, goes into that field at its cursor instead; an
-//! assessment without a sign always goes on the move (as text it would only be `$n`). Figurines
+//! PGN, a capture's correction field), any character, a glyph's sign too, goes into that field at
+//! its cursor instead; an assessment without a sign always goes on the move (as text it would only
+//! be `$n`). Figurines
 //! are inserted as the Unicode characters; their buttons show the piece letters where the
 //! interface fonts lack the figurines. A click in the palette puts the chess key scope on, as a
 //! click in the panel does. The correction field of a capture's preview (T10) has the same
@@ -568,6 +569,8 @@ pub(crate) enum Field {
     CommentBefore,
     Fen,
     Pgn,
+    /// The correction field of a capture's preview (T10).
+    Correction,
 }
 
 /// Where the glyph palette types: the text field with the keyboard when it was clicked, and what

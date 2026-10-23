@@ -3017,3 +3017,5 @@ chess undo step	Clear drawings	描画の消去
 	Open as a new game	新しい対局として開く
 	…and {n} older	…ほかに古いもの {n} 件
 	No chess diagram was found here.	ここにチェスの図は見つかりませんでした。
+	Renumber	番号を振り直す
+	The text's move numbers give way to the game's: {printed} is played as {played}.	テキストの手数番号は棋譜の番号に置き換わります: {printed} は {played} として指されます。

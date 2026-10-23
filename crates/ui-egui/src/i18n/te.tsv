@@ -2924,3 +2924,5 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 @plural	{n} move|{n} moves	{n} ఎత్తు|{n} ఎత్తులు
 	…and {n} older	…మరియు మరో {n} పాతవి
 	No chess diagram was found here.	ఇక్కడ చదరంగం రేఖాచిత్రం ఏదీ కనబడలేదు.
+	Renumber	మళ్లీ సంఖ్యలు వేయి
+	The text's move numbers give way to the game's: {printed} is played as {played}.	పాఠ్యంలోని ఎత్తుల సంఖ్యలకు బదులు ఆట సంఖ్యలు వస్తాయి: {printed} ను {played} గా ఆడతారు.

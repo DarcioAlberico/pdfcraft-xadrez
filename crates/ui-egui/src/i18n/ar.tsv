@@ -3291,3 +3291,5 @@ chess undo step	Clear drawings	مسح الرسوم
 @plural	{n} move|{n} moves	{n} نقلة|{n} نقلة|{n} نقلتان|{n} نقلات|{n} نقلة|{n} نقلة
 	…and {n} older	…و{n} أقدم
 	No chess diagram was found here.	لم يُعثر على مخطط شطرنج هنا.
+	Renumber	إعادة الترقيم
+	The text's move numbers give way to the game's: {printed} is played as {played}.	تُستبدل أرقام نقلات النص بأرقام المباراة: تُلعب {printed} على أنها {played}.

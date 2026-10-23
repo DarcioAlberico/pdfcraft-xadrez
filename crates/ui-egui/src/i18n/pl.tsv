@@ -2991,3 +2991,5 @@ chess undo step	Clear drawings	usunięcie rysunków
 @plural	{n} move|{n} moves	{n} ruch|{n} ruchy|{n} ruchów
 	…and {n} older	…i starszych: {n}
 	No chess diagram was found here.	Nie znaleziono tu diagramu szachowego.
+	Renumber	Przenumeruj
+	The text's move numbers give way to the game's: {printed} is played as {played}.	Numery posunięć z tekstu ustępują numerom partii: {printed} zostaje zagrane jako {played}.

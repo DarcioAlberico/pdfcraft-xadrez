@@ -3015,3 +3015,5 @@ chess undo step	Clear drawings	l'effacement des dessins
 @plural	{n} move|{n} moves	{n} coup|{n} coups
 	…and {n} older	…et {n} plus anciennes
 	No chess diagram was found here.	Aucun diagramme d’échecs n’a été trouvé ici.
+	Renumber	Renuméroter
+	The text's move numbers give way to the game's: {printed} is played as {played}.	Les numéros de coups du texte cèdent la place à ceux de la partie : {printed} est joué comme {played}.

@@ -3020,3 +3020,5 @@ chess undo step	Clear drawings	odstranjevanje risb
 @plural	{n} move|{n} moves	{n} poteza|{n} potezi|{n} poteze|{n} potez
 	…and {n} older	…in starejših: {n}
 	No chess diagram was found here.	Tukaj ni bilo najdenega šahovskega diagrama.
+	Renumber	Preštevilči
+	The text's move numbers give way to the game's: {printed} is played as {played}.	Številke potez v besedilu se umaknejo številkam partije: {printed} se odigra kot {played}.

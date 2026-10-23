@@ -3011,3 +3011,5 @@ chess undo step	Clear drawings	çizimleri temizleme
 @plural	{n} move|{n} moves	{n} hamle
 	…and {n} older	…ve {n} daha eski
 	No chess diagram was found here.	Burada satranç diyagramı bulunamadı.
+	Renumber	Yeniden numarala
+	The text's move numbers give way to the game's: {printed} is played as {played}.	Metnin hamle numaraları yerini oyununkilere bırakır: {printed}, {played} olarak oynanır.

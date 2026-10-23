@@ -3269,3 +3269,5 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Open as a new game	Mở như một ván mới
 	…and {n} older	…và {n} ván cũ hơn
 	No chess diagram was found here.	Không tìm thấy sơ đồ cờ vua nào ở đây.
+	Renumber	Đánh số lại
+	The text's move numbers give way to the game's: {printed} is played as {played}.	Số nước đi của văn bản nhường chỗ cho số của ván cờ: {printed} được đi thành {played}.

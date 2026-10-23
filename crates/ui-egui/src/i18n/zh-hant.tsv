@@ -2965,3 +2965,5 @@ chess undo step	Clear drawings	清除標記
 @plural	{n} move|{n} moves	{n} 步
 	…and {n} older	…以及更早的 {n} 個
 	No chess diagram was found here.	此處找不到西洋棋棋圖。
+	Renumber	重新編號
+	The text's move numbers give way to the game's: {printed} is played as {played}.	文字的著法編號讓位於棋局的編號：{printed} 按 {played} 走。

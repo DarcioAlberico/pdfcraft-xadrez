@@ -3156,3 +3156,5 @@ chess undo step	Clear drawings	borrado de los dibujos
 @plural	{n} move|{n} moves	{n} jugada|{n} jugadas
 	…and {n} older	…y {n} más antiguas
 	No chess diagram was found here.	No se encontró ningún diagrama de ajedrez aquí.
+	Renumber	Renumerar
+	The text's move numbers give way to the game's: {printed} is played as {played}.	Los números de jugada del texto ceden ante los de la partida: {printed} se juega como {played}.

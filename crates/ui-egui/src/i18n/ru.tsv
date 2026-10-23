@@ -2928,3 +2928,5 @@ chess undo step	Clear drawings	удаление рисунков
 @plural	{n} move|{n} moves	{n} ход|{n} хода|{n} ходов
 	…and {n} older	…и ещё более старых: {n}
 	No chess diagram was found here.	Здесь не найдено шахматной диаграммы.
+	Renumber	Перенумеровать
+	The text's move numbers give way to the game's: {printed} is played as {played}.	Номера ходов текста уступают номерам партии: {printed} играется как {played}.
