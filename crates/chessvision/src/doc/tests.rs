@@ -1013,6 +1013,24 @@ fn text_well_above_a_board_beside_it_is_read_before_it() {
     assert_eq!(kinds(&doc.pages[0]), vec!["P:Previous", "P:Label", "D0", "P:Solution", "P:More"]);
 }
 
+/// A Workbook's exercise page: four boards in a 2 × 2 grid, found column by column (top left,
+/// bottom left, top right, bottom right; the blocks keep that order), a question under the
+/// top-right board, and too few lines for a gutter. The question, right of the bottom-left board
+/// and well above it, is under the top-right board in its own column: it is read after that
+/// board, not before the bottom-left one.
+#[test]
+fn a_question_under_a_board_in_a_grid_waits_for_it() {
+    let board = |k: usize, x: f32, top: f32| {
+        let mut d = reading(k, 60.0, SCHOLAR, true, false);
+        d.bbox_user = user_box(x, top, x + 180.0, top + 180.0);
+        d
+    };
+    let boards = [board(0, 60.0, 60.0), board(1, 60.0, 340.0), board(2, 300.0, 60.0), board(3, 300.0, 340.0)];
+    let text = page_text(vec![line_at(300.0, 260.0, "Question for the top right")]);
+    let doc = build_page(&input(0, &text, &boards, &[], &[]));
+    assert_eq!(kinds(&doc.pages[0]), vec!["D0", "D1", "D2", "P:Question for the top right", "D3"]);
+}
+
 /// A diagram centred on the page goes before a short line below it, even one that lies entirely
 /// to its left (Fischer pt-BR p.47: `19 … ♗xd5` under a centred diagram).
 #[test]

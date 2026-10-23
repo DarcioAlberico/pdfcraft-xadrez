@@ -342,9 +342,9 @@ pub const BESIDE_ABOVE_SHARE: f32 = 0.3;
 /// on a page with a `gutter` (columns found, not the page's middle), on the board's side of it,
 /// and with another piece of its row over the board's columns (`row_over_board`), the line is in
 /// the board's column and is read by its height. On a page with no gutter, a line right of a board
-/// that ends more than [`BESIDE_ABOVE_SHARE`] of the board's height above its top is the text
-/// before it and is read first.
-fn diagram_before(d: ViewRect, l: ViewRect, split: f32, gutter: bool, row_over_board: bool) -> bool {
+/// that ends more than [`BESIDE_ABOVE_SHARE`] of the board's height above its top, with no other
+/// board above it in its own column (`under_a_board`), is the text before it and is read first.
+fn diagram_before(d: ViewRect, l: ViewRect, split: f32, gutter: bool, row_over_board: bool, under_a_board: bool) -> bool {
     let side = |r: ViewRect| {
         if r.x1 <= split {
             Some(false)
@@ -363,8 +363,10 @@ fn diagram_before(d: ViewRect, l: ViewRect, split: f32, gutter: bool, row_over_b
     if l.x0 >= d.x1 {
         // On a page with no columns, read top down, a line right of the board that ends well above
         // it is the text before it (Chess Tactics: the end of the previous solution at the top of
-        // the page), not the board's own solution, which starts level with its label.
-        return gutter || l.y1 >= d.y0 - BESIDE_ABOVE_SHARE * d.height();
+        // the page), not the board's own solution, which starts level with its label. A line under
+        // another board in its own column is that board's (a grid of boards, found column by
+        // column): it waits for that board, which comes after this one.
+        return gutter || under_a_board || l.y1 >= d.y0 - BESIDE_ABOVE_SHARE * d.height();
     }
     // `l` is to the left of `d`.
     l.y0 >= d.y1 && (sd.is_none() || sl.is_none() || sd == sl)
@@ -374,13 +376,16 @@ fn interleave<'a>(lines: &[&'a ChessLine], diagrams: &[Option<ViewRect>], split:
     let mut items = Vec::with_capacity(lines.len().saturating_add(diagrams.len()));
     let mut next = 0usize;
     for &line in lines {
+        // Another board above this line in its own column: the line is that board's text.
+        let under_a_board =
+            |d: ViewRect| diagrams.iter().flatten().any(|e| *e != d && e.x0 < line.rect.x1 && line.rect.x0 < e.x1 && e.y1 <= line.rect.y0);
         while let Some(d) = diagrams.get(next) {
             // Another line of this one's row over the board's columns: a row cut into pieces.
             let row_over = |d: ViewRect| {
                 let mid = (line.rect.y0 + line.rect.y1) * 0.5;
                 lines.iter().any(|o| !std::ptr::eq(*o, line) && o.rect.y0 <= mid && mid <= o.rect.y1 && o.rect.x0 < d.x1 && d.x0 < o.rect.x1)
             };
-            if !d.is_some_and(|d| diagram_before(d, line.rect, split, gutter, row_over(d))) {
+            if !d.is_some_and(|d| diagram_before(d, line.rect, split, gutter, row_over(d), under_a_board(d))) {
                 break;
             }
             items.push(Item::Diagram(next));
