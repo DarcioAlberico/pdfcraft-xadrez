@@ -123,6 +123,8 @@ pub struct Automation {
     renderers: HashMap<DocId, (Arc<Vec<u8>>, PageRenderer)>,
     /// Extracted page text, under one memory budget across all open documents.
     texts: TextCache,
+    /// What `chess_glyph_sample` has written this session, held to its caps.
+    glyph_samples: chess_sample::SampleBudget,
 }
 
 impl Default for Automation {
@@ -133,7 +135,14 @@ impl Default for Automation {
 
 impl Automation {
     pub fn new() -> Self {
-        Self { session: Session::new(), root: None, roots: None, renderers: HashMap::new(), texts: TextCache::default() }
+        Self {
+            session: Session::new(),
+            root: None,
+            roots: None,
+            renderers: HashMap::new(),
+            texts: TextCache::default(),
+            glyph_samples: Default::default(),
+        }
     }
 
     /// Confine every path the tools read or write to `root` (relative paths resolve inside it).
