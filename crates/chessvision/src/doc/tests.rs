@@ -995,6 +995,24 @@ fn a_solution_beside_its_board_is_read_after_it() {
     assert_eq!(kinds(&doc.pages[0]), vec!["P:Exercise solution", "D0", "P:Solution"]);
 }
 
+/// Chess Tactics' page: the label and the board on the left, the solutions on the right, no
+/// gutter. The text at the top right, well above the board, ends the previous solution and is
+/// read before the board; the solution starting level with the label, just above the board, is
+/// the board's and is read after it.
+#[test]
+fn text_well_above_a_board_beside_it_is_read_before_it() {
+    let mut d0 = reading(0, 60.0, SCHOLAR, true, false);
+    d0.bbox_user = user_box(40.0, 200.0, 140.0, 300.0);
+    let text = page_text(vec![
+        line_at(160.0, 60.0, "Previous"),
+        line_at(40.0, 175.0, "Label"),
+        line_at(160.0, 175.0, "Solution"),
+        line_at(160.0, 230.0, "More"),
+    ]);
+    let doc = build_page(&input(0, &text, &[d0], &[], &[]));
+    assert_eq!(kinds(&doc.pages[0]), vec!["P:Previous", "P:Label", "D0", "P:Solution", "P:More"]);
+}
+
 /// A diagram centred on the page goes before a short line below it, even one that lies entirely
 /// to its left (Fischer pt-BR p.47: `19 … ♗xd5` under a centred diagram).
 #[test]

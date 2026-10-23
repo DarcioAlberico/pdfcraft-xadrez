@@ -327,6 +327,11 @@ enum Item<'a> {
     Diagram(usize),
 }
 
+/// How far above a board, as a share of its height, a line to its right may end and still be the
+/// board's own text (its solution starting level with the label above it): Chess Tactics' first
+/// solution line ends 14 pt above a 100 pt board, the previous solution's last 52 pt above.
+pub const BESIDE_ABOVE_SHARE: f32 = 0.3;
+
 /// Whether diagram `d` comes before line `l` (view space): `l` is below `d`'s middle under it or
 /// beside it on its side of `split` (the gutter, or the page's middle on a page without one), in
 /// a column to its right, or wholly below it on its side of `split`. A diagram or line across
@@ -336,7 +341,9 @@ enum Item<'a> {
 /// solution on the right) and comes after it, except a piece of a row a scan cut at a word gap:
 /// on a page with a `gutter` (columns found, not the page's middle), on the board's side of it,
 /// and with another piece of its row over the board's columns (`row_over_board`), the line is in
-/// the board's column and is read by its height.
+/// the board's column and is read by its height. On a page with no gutter, a line right of a board
+/// that ends more than [`BESIDE_ABOVE_SHARE`] of the board's height above its top is the text
+/// before it and is read first.
 fn diagram_before(d: ViewRect, l: ViewRect, split: f32, gutter: bool, row_over_board: bool) -> bool {
     let side = |r: ViewRect| {
         if r.x1 <= split {
@@ -354,7 +361,10 @@ fn diagram_before(d: ViewRect, l: ViewRect, split: f32, gutter: bool, row_over_b
         return (l.y0 + l.y1) * 0.5 >= (d.y0 + d.y1) * 0.5;
     }
     if l.x0 >= d.x1 {
-        return true;
+        // On a page with no columns, read top down, a line right of the board that ends well above
+        // it is the text before it (Chess Tactics: the end of the previous solution at the top of
+        // the page), not the board's own solution, which starts level with its label.
+        return gutter || l.y1 >= d.y0 - BESIDE_ABOVE_SHARE * d.height();
     }
     // `l` is to the left of `d`.
     l.y0 >= d.y1 && (sd.is_none() || sl.is_none() || sd == sl)
