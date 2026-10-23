@@ -3155,3 +3155,4 @@ chess undo step	Clear drawings	borrado de los dibujos
 	Open as a new game	Abrir como partida nueva
 @plural	{n} move|{n} moves	{n} jugada|{n} jugadas
 	…and {n} older	…y {n} más antiguas
+	No chess diagram was found here.	No se encontró ningún diagrama de ajedrez aquí.

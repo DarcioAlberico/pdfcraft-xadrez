@@ -2990,3 +2990,4 @@ chess undo step	Clear drawings	usunięcie rysunków
 	Open as a new game	Otwórz jako nową partię
 @plural	{n} move|{n} moves	{n} ruch|{n} ruchy|{n} ruchów
 	…and {n} older	…i starszych: {n}
+	No chess diagram was found here.	Nie znaleziono tu diagramu szachowego.

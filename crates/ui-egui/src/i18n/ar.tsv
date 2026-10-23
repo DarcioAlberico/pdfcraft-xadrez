@@ -3290,3 +3290,4 @@ chess undo step	Clear drawings	مسح الرسوم
 	Open as a new game	فتح كمباراة جديدة
 @plural	{n} move|{n} moves	{n} نقلة|{n} نقلة|{n} نقلتان|{n} نقلات|{n} نقلة|{n} نقلة
 	…and {n} older	…و{n} أقدم
+	No chess diagram was found here.	لم يُعثر على مخطط شطرنج هنا.

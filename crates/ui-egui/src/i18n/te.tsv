@@ -2923,3 +2923,4 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Open as a new game	కొత్త ఆటగా తెరువు
 @plural	{n} move|{n} moves	{n} ఎత్తు|{n} ఎత్తులు
 	…and {n} older	…మరియు మరో {n} పాతవి
+	No chess diagram was found here.	ఇక్కడ చదరంగం రేఖాచిత్రం ఏదీ కనబడలేదు.

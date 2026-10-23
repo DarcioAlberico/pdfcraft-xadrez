@@ -3014,3 +3014,4 @@ chess undo step	Clear drawings	l'effacement des dessins
 	Open as a new game	Ouvrir comme nouvelle partie
 @plural	{n} move|{n} moves	{n} coup|{n} coups
 	…and {n} older	…et {n} plus anciennes
+	No chess diagram was found here.	Aucun diagramme d’échecs n’a été trouvé ici.

@@ -2842,6 +2842,9 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     // Chess diagrams found in this document, while it is as it was scanned.
     let chess_shown = crate::chess_ui::shown(&app.chess, view.id, app.session.chess_stamp(view.id));
     let mut chess_pick: Option<(usize, usize)> = None;
+    // A double-click on a page not scanned for diagrams: the page, the point in user space and
+    // whether it selected a word.
+    let mut chess_board_at: Option<(usize, [f32; 2], bool)> = None;
     // A selection let go with a capture tool armed, or sent to the game from a menu (T7a).
     let mut chess_release = false;
     let mut chess_send: Option<(pdfcraft_engine::chess::capture::CaptureMode, bool)> = None;
@@ -3572,6 +3575,21 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
                     chess_pick = Some((i, d));
                 }
             }
+            // On a page not scanned yet, a double-click scans it and puts the diagram there on the
+            // board (`chess_ui::BoardAt`): no Chess tool to arm first.
+            if resp.double_clicked()
+                && tool == QuickTool::Select
+                && !consumed
+                && !page_covered
+                && !crate::chess_ui::page_scanned(chess_shown, i)
+                && let Some(p) = resp.interact_pointer_pos().filter(|p| xf.rect.contains(*p))
+                && let Some(page) = info.pages.get(i)
+            {
+                let (vx, vy) = xf.screen_to_view(p);
+                // The text layer took the double-click first: a word selected is under it.
+                let on_text = view.selection.is_some_and(|s| s.page == i);
+                chess_board_at = Some((i, page.view_to_user(vx, vy), on_text));
+            }
             for (mp, mr, mc) in &view.compare_marks {
                 if *mp == i {
                     let sr = xf.user_rect(info, i, *mr).expand(1.5);
@@ -4022,6 +4040,9 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
         app.chess.to_board |= again;
         app.chess.last_pick = (!again).then_some((pick, now));
         app.chess.picked = chess_pick;
+    }
+    if let Some((page, point, on_text)) = chess_board_at {
+        app.chess.board_at = Some(crate::chess_ui::BoardAt { doc: view.id, page, point, on_text, started: false });
     }
     match clicked_link {
         Some(LinkTarget::Page(p, dest)) => view.go_to_dest(p, dest, info),

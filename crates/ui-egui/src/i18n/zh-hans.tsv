@@ -2978,3 +2978,4 @@ chess undo step	Clear drawings	清除标记
 	Open as a new game	作为新对局打开
 @plural	{n} move|{n} moves	{n} 步
 	…and {n} older	…以及更早的 {n} 个
+	No chess diagram was found here.	此处未找到国际象棋棋图。

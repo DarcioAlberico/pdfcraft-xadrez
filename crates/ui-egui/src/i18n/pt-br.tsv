@@ -3031,3 +3031,4 @@ chess undo step	Clear drawings	remoção dos desenhos
 	Games as they were before moves were deleted from them, kept with the autosave. Open one as a new game.	Partidas como eram antes de lances serem apagados delas, guardadas com o salvamento automático. Abra uma como nova partida.
 	Open as a new game	Abrir como nova partida
 	…and {n} older	…e mais {n} antigas
+	No chess diagram was found here.	Nenhum diagrama de xadrez foi encontrado aqui.

@@ -46,6 +46,9 @@ pub struct ChessState {
     pub to_board: bool,
     /// The last diagram clicked on the page and when (egui's input time), to tell a double-click.
     pub last_pick: Option<((usize, usize), f64)>,
+    /// A double-click on a page not scanned yet: the diagram there goes onto the board once the
+    /// page is scanned ([`PdfCraftApp::chess_board_at_tick`]).
+    pub board_at: Option<BoardAt>,
     /// The chess games, per document: the board panels show the open document's active one
     /// ([`ChessState::board`]).
     pub games: crate::chess_collection::ChessGames,
@@ -85,6 +88,20 @@ pub struct ChessState {
     pub source: crate::chess_source::SourceState,
     /// Where the chess models come from: the folder chosen, or the files picked on the web (U4).
     pub models: crate::chess_models::ModelsPref,
+}
+
+/// A double-click at `point` (user space) on `page` of `doc`, whose diagrams were not looked
+/// for yet.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct BoardAt {
+    pub doc: DocId,
+    pub page: usize,
+    pub point: [f32; 2],
+    /// The double-click selected a word: it may have been for that alone, so finding no diagram
+    /// there is not said.
+    pub on_text: bool,
+    /// The scan of the page was started for it.
+    pub started: bool,
 }
 
 /// What scanning found in one document.
@@ -164,6 +181,9 @@ pub struct ChessProgress {
 
 pub struct ChessRun {
     pub doc: DocId,
+    /// Started by a double-click on the page (`BoardAt`): the board shows what came of it, so the
+    /// scan neither brings the Chess panel forward nor announces the count of diagrams found.
+    pub quiet: bool,
     pub progress: Arc<Mutex<ChessProgress>>,
     /// Diagrams in the batches shown so far.
     pub found: usize,
@@ -216,6 +236,29 @@ fn status(reading: Option<&BoardReading>) -> (String, Color32) {
         Some(Err(e)) => (crate::i18n::fmt(tl!("Couldn't be read: {e}"), &[("e", &e.to_string())]), FAILED),
         None => (tl!("Not read").to_string(), FOUND),
     }
+}
+
+/// Whether `page` (0-based) is among the pages scanned in `results`.
+pub(crate) fn page_scanned(results: Option<&ChessResults>, page: usize) -> bool {
+    results.is_some_and(|r| r.pages.iter().any(|p| p.page == page))
+}
+
+/// The diagram of `page` whose box holds `point` (user space): the smallest one, when boxes
+/// overlap.
+pub(crate) fn diagram_at(page: &ChessPage, point: [f32; 2]) -> Option<usize> {
+    let [x, y] = point;
+    page.diagrams
+        .iter()
+        .enumerate()
+        .filter_map(|(i, d)| {
+            let b = d.candidate.bbox_user;
+            let (x0, x1, y0, y1) = (b.x0.min(b.x1), b.x0.max(b.x1), b.y0.min(b.y1), b.y0.max(b.y1));
+            let area = (x1 - x0) * (y1 - y0);
+            // A box that is not finite holds no point (NaN fails every comparison).
+            (x0 <= x && x <= x1 && y0 <= y && y <= y1 && area.is_finite()).then_some((i, area))
+        })
+        .min_by(|a, b| a.1.total_cmp(&b.1))
+        .map(|(i, _)| i)
 }
 
 /// The results to show for document `id`: none for another document, and none once it changed
@@ -496,17 +539,28 @@ impl PdfCraftApp {
     /// the background and show the Chess diagrams panel.
     pub fn start_chess_scan(&mut self, all: bool) {
         let Some((vi, id)) = self.active_ids() else { return };
+        let Some(count) = self.session.get(id).map(|d| d.info.pages.len()) else { return };
+        let pages: Vec<usize> =
+            if all { (0..count).collect() } else { self.views.get(vi).map(|v| v.current).filter(|p| *p < count).into_iter().collect() };
+        self.start_chess_scan_pages(pages, false);
+    }
+
+    /// Scan `pages` of the active document. `quiet`: for a double-click on a page (`BoardAt`),
+    /// which neither shows the Chess panel nor announces what was found.
+    fn start_chess_scan_pages(&mut self, pages: Vec<usize>, quiet: bool) {
+        let Some((_, id)) = self.active_ids() else { return };
         if self.chess.run.is_some() {
             self.notify(tl!("Diagrams are already being scanned").to_string());
             return;
         }
-        // Reading positions out of a document copies its content.
-        if !self.may_copy(id) {
+        // Reading positions out of a document copies its content. A double-click's scan is
+        // refused in silence: the double-click may only have been selecting a word.
+        let allowed = if quiet { self.session.get(id).is_none_or(pdfcraft_engine::Document::allows_copying) } else { self.may_copy(id) };
+        if !allowed {
             return;
         }
         let Some(count) = self.session.get(id).map(|d| d.info.pages.len()) else { return };
-        let pages: Vec<usize> =
-            if all { (0..count).collect() } else { self.views.get(vi).map(|v| v.current).filter(|p| *p < count).into_iter().collect() };
+        let pages: Vec<usize> = pages.into_iter().filter(|p| *p < count).collect();
         let settings = self.chess_scan_settings();
         // `chunks` needs a batch size above zero: PAGES_PER_JOB is 8.
         let jobs: Vec<ChessScanJob> = pages.chunks(PAGES_PER_JOB).filter_map(|c| self.session.chess_scan_job(id, c, &settings, true)).collect();
@@ -546,8 +600,10 @@ impl PdfCraftApp {
         }
         #[cfg(target_arch = "wasm32")]
         work();
-        self.chess.run = Some(ChessRun { doc: id, progress, found: 0, stale: false });
-        self.reveal_chess_diagrams();
+        self.chess.run = Some(ChessRun { doc: id, quiet, progress, found: 0, stale: false });
+        if !quiet {
+            self.reveal_chess_diagrams();
+        }
         self.poll_chess();
     }
 
@@ -560,6 +616,11 @@ impl PdfCraftApp {
 
     /// Show the batches the worker finished; report the scan once it is done.
     pub(crate) fn poll_chess(&mut self) {
+        self.poll_chess_scan();
+        self.chess_board_at_tick();
+    }
+
+    fn poll_chess_scan(&mut self) {
         self.chess_games_tick();
         self.poll_chess_job();
         self.poll_chess_capture();
@@ -600,10 +661,49 @@ impl PdfCraftApp {
             return;
         }
         let Some(run) = self.chess.run.take() else { return };
-        if !run.stale {
+        if !run.stale && !run.quiet {
             let n = run.found;
             self.notify(crate::i18n::fmt(tl!("Diagrams found: {n}"), &[("n", &n.to_string())]));
         }
+    }
+
+    /// A double-click on a page not scanned yet (`BoardAt`): scan the page (after the scan
+    /// running, if one is), then put the diagram under the double-click on the board. A point with
+    /// no diagram says so, unless the double-click selected a word there (which may be all it was
+    /// for). Dropped when its document is no longer the one shown.
+    pub(crate) fn chess_board_at_tick(&mut self) {
+        let Some(mut at) = self.chess.board_at else { return };
+        if self.active_ids().map(|(_, id)| id) != Some(at.doc) {
+            self.chess.board_at = None;
+            return;
+        }
+        let stamp = self.session.chess_stamp(at.doc);
+        let scanned = shown(&self.chess, at.doc, stamp).and_then(|r| r.pages.iter().find(|p| p.page == at.page)).cloned();
+        if let Some(page) = scanned {
+            self.chess.board_at = None;
+            match diagram_at(&page, at.point) {
+                Some(index) => {
+                    self.select_chess_diagram(at.page, index, false);
+                    self.open_chess_board(at.page, index);
+                }
+                None if !at.on_text => self.notify(tl!("No chess diagram was found here.").to_string()),
+                None => {}
+            }
+            return;
+        }
+        if self.chess.run.is_some() {
+            return;
+        }
+        // The scan ended without the page: cancelled, or the document changed meanwhile.
+        if at.started {
+            self.chess.board_at = None;
+            return;
+        }
+        at.started = true;
+        self.chess.board_at = Some(at);
+        // A scan that does not start (the document forbids copying its content, say) leaves no
+        // run: the next tick drops the double-click.
+        self.start_chess_scan_pages(vec![at.page], true);
     }
 
     /// Add one batch to the results. Returns `false` when the document changed since the batch
@@ -811,11 +911,35 @@ impl PdfCraftApp {
             let pos = reading.position()?;
             Some((pos.fen.clone(), pos.orientation.is_some_and(|o| o.black_point_of_view)))
         };
+        // The editor is open on the diagram picked, changed or not: changed, its position is the
+        // user's and goes on the board as it is.
+        let changed = self
+            .chess
+            .editor
+            .as_ref()
+            .filter(|e| (e.doc, e.page, e.index) == (id, page, index))
+            .is_some_and(|e| e.original.as_deref() != Some(e.fen().as_str()));
         let Some((fen, flipped)) = edited.or_else(read) else {
             self.notify(tl!("This diagram hasn't been read: scan its page first, or set its position in the editor.").to_string());
             return false;
         };
+        let fen = if changed { fen } else { self.chess_text_start(id, page, index, &fen).unwrap_or(fen) };
         self.open_chess_game(&fen, flipped, Some(source))
+    }
+
+    /// The start of the game the Text tab's reading of `page` begins at diagram `index`, when it
+    /// has the pieces of `fen`: the moves after the diagram (their first number, a "position
+    /// after" caption) settle its side to move and move number better than the reading alone.
+    fn chess_text_start(&self, id: DocId, page: usize, index: usize, fen: &str) -> Option<String> {
+        use pdfcraft_engine::chess::pdfcraft_chessvision::doc::GameOrigin;
+        let stamp = self.session.chess_stamp(id)?;
+        let text = self.chess.text.as_ref().filter(|t| t.doc == id && t.page == page && t.stamp == stamp)?;
+        let game = text.chess.games.iter().find(
+            |g| matches!(g.origin, GameOrigin::Diagram { page: p, diagram, .. } if usize::try_from(p).ok() == Some(page) && diagram == index),
+        )?;
+        let start = game.score.start_fen.as_deref()?;
+        // The walker settles the side and the number, never the pieces.
+        (start.split_whitespace().next() == fen.split_whitespace().next()).then(|| start.to_owned())
     }
 
     /// Open the chess board panel and bring it to the front. The docking workspace does it when it

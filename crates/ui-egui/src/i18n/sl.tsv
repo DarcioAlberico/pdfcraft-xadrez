@@ -3019,3 +3019,4 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Open as a new game	Odpri kot novo partijo
 @plural	{n} move|{n} moves	{n} poteza|{n} potezi|{n} poteze|{n} potez
 	…and {n} older	…in starejših: {n}
+	No chess diagram was found here.	Tukaj ni bilo najdenega šahovskega diagrama.

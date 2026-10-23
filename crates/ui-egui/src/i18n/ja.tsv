@@ -3016,3 +3016,4 @@ chess undo step	Clear drawings	描画の消去
 	Games as they were before moves were deleted from them, kept with the autosave. Open one as a new game.	手が削除される前の対局で、自動保存と一緒に保存されています。新しい対局として開けます。
 	Open as a new game	新しい対局として開く
 	…and {n} older	…ほかに古いもの {n} 件
+	No chess diagram was found here.	ここにチェスの図は見つかりませんでした。
