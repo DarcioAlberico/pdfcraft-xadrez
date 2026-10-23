@@ -1013,6 +1013,21 @@ fn text_well_above_a_board_beside_it_is_read_before_it() {
     assert_eq!(kinds(&doc.pages[0]), vec!["P:Previous", "P:Label", "D0", "P:Solution", "P:More"]);
 }
 
+/// Two boards stacked in the left column, no gutter, a line right of them between the two: the
+/// board above it is in another column, so it does not count as the line's own board; the line
+/// is read after the first board and before the second, as it lies (Codex's case).
+#[test]
+fn a_line_between_two_stacked_boards_beside_them_is_read_between() {
+    let board = |k: usize, top: f32| {
+        let mut d = reading(k, 60.0, SCHOLAR, true, false);
+        d.bbox_user = user_box(40.0, top, 140.0, top + 100.0);
+        d
+    };
+    let text = page_text(vec![line_at(160.0, 250.0, "Between")]);
+    let doc = build_page(&input(0, &text, &[board(0, 100.0), board(1, 300.0)], &[], &[]));
+    assert_eq!(kinds(&doc.pages[0]), vec!["D0", "P:Between", "D1"]);
+}
+
 /// A Workbook's exercise page: four boards in a 2 × 2 grid, found column by column (top left,
 /// bottom left, top right, bottom right; the blocks keep that order), a question under the
 /// top-right board, and too few lines for a gutter. The question, right of the bottom-left board
