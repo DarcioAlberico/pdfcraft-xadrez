@@ -54,6 +54,8 @@ pub struct DiagramEditor {
     pub flipped: bool,
     pub brush: Brush,
     texture: Option<(String, TextureHandle)>,
+    /// The palette's pieces, cut out once (`Some(None)`: they could not be).
+    sprites: Option<Option<TextureHandle>>,
     /// Why the board could not be drawn, once.
     draw_error: Option<String>,
 }
@@ -76,6 +78,7 @@ impl DiagramEditor {
             flipped: read.and_then(|p| p.orientation).is_some_and(|o| o.black_point_of_view),
             brush: Brush::Put(Piece { color: Color::White, kind: PieceKind::Queen }),
             texture: None,
+            sprites: None,
             draw_error: None,
         }
     }
@@ -168,6 +171,57 @@ pub(crate) fn piece_name(p: Piece) -> &'static str {
 
 const KINDS: [PieceKind; 6] = [PieceKind::King, PieceKind::Queen, PieceKind::Rook, PieceKind::Bishop, PieceKind::Knight, PieceKind::Pawn];
 
+/// A palette button's side, in points, and its piece's.
+const PALETTE_BUTTON: f32 = 30.0;
+const PALETTE_PIECE: f32 = 24.0;
+
+/// A palette button: the piece's picture when the pieces could be cut out, else its letter. The
+/// picture sits on the board's light square, so Black's pieces show in the dark theme too; the
+/// chosen piece is outlined in the accent colour.
+fn palette_button(ui: &mut egui::Ui, sprites: Option<&TextureHandle>, piece: Piece, on: bool) -> egui::Response {
+    let name = piece_name(piece);
+    let response = match sprites {
+        Some(tex) => {
+            let t = Tokens::get(ui.ctx());
+            let light = BoardStyle::default().light;
+            let stroke = if on { egui::Stroke::new(2.0, t.accent) } else { egui::Stroke::new(1.0, t.border) };
+            ui.add(
+                egui::Button::image(
+                    egui::Image::new(tex).uv(crate::chess_board_ui::sprite_uv(piece)).fit_to_exact_size(egui::Vec2::splat(PALETTE_PIECE)),
+                )
+                .fill(Color32::from_rgb(light.0, light.1, light.2))
+                .stroke(stroke)
+                .min_size(egui::Vec2::splat(PALETTE_BUTTON)),
+            )
+        }
+        None => ui.selectable_label(on, egui::RichText::new(piece_letter(piece)).monospace().strong()),
+    };
+    response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, on, name));
+    response.on_hover_text(name)
+}
+
+/// The piece palette the diagram editor and the study's set-up share: White's pieces on a row,
+/// Black's on the next with the eraser, each piece as it is drawn on the board (`sprites`, from
+/// [`crate::chess_board_ui::cut_sprites`]; its letter when there are none).
+pub(crate) fn palette(ui: &mut egui::Ui, sprites: Option<&TextureHandle>, brush: &mut Brush) {
+    for color in [Color::White, Color::Black] {
+        ui.horizontal_wrapped(|ui| {
+            ui.spacing_mut().item_spacing.x = 2.0;
+            // Six pieces and the eraser on a row at 330 pt.
+            ui.spacing_mut().button_padding = egui::vec2(3.0, 3.0);
+            for kind in KINDS {
+                let piece = Piece { color, kind };
+                if palette_button(ui, sprites, piece, *brush == Brush::Put(piece)).clicked() {
+                    *brush = Brush::Put(piece);
+                }
+            }
+            if color == Color::Black && crate::icons::button(ui, "eraser", PALETTE_BUTTON, *brush == Brush::Erase, tl!("Erase")).clicked() {
+                *brush = Brush::Erase;
+            }
+        });
+    }
+}
+
 /// The board image for the editor's position, redrawn when the position or the view changes.
 fn board_texture(ui: &egui::Ui, ed: &mut DiagramEditor, pieces: &PieceSet) -> Option<TextureHandle> {
     let key = format!("{}|{}", ed.fen(), ed.flipped);
@@ -233,21 +287,9 @@ pub fn editor_ui(ui: &mut egui::Ui, t: &Tokens, ed: &mut DiagramEditor, pieces: 
     } else if let Some(e) = &ed.draw_error {
         ui.label(egui::RichText::new(crate::i18n::fmt(tl!("The board couldn't be drawn: {e}"), &[("e", e)])).small().color(t.text_muted));
     }
-    // The palette: white pieces, black pieces, the eraser.
-    for color in [Color::White, Color::Black] {
-        ui.horizontal(|ui| {
-            for kind in KINDS {
-                let p = Piece { color, kind };
-                let on = ed.brush == Brush::Put(p);
-                if ui.selectable_label(on, egui::RichText::new(piece_letter(p)).monospace().strong()).on_hover_text(piece_name(p)).clicked() {
-                    ed.brush = Brush::Put(p);
-                }
-            }
-            if color == Color::Black && ui.selectable_label(ed.brush == Brush::Erase, tl!("Erase")).clicked() {
-                ed.brush = Brush::Erase;
-            }
-        });
-    }
+    // The palette: the pieces as the board draws them, and the eraser.
+    let sprites = ed.sprites.get_or_insert_with(|| crate::chess_board_ui::cut_sprites(ui.ctx(), pieces, "chess-editor-pieces")).clone();
+    palette(ui, sprites.as_ref(), &mut ed.brush);
     // Move number, side to move, castling, view. The side to move has a row of its own, so its
     // label and its two choices stay together when the panel is narrow.
     ui.horizontal_wrapped(|ui| {
