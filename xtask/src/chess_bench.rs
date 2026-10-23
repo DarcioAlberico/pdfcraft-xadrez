@@ -5,7 +5,7 @@
 //! `DIR` holds the books as `books/*.pdf` (they are never committed: books are copyrighted) and
 //! gets each run's documents in `out/<tag>/<book>.json`. Each book is read on `N` pages from a
 //! quarter of the way in (20 by default; 0 reads every page). With `--baseline`, every move is
-//! matched with the same move (page, place, text) of that run: the moves that were valid there
+//! matched with the same move (page and text, its place within a few points) of that run: the moves that were valid there
 //! and are not now are listed, and more than `--allow-lost` of them (0 by default) fails.
 //!
 //! The piece models come from `--models` (else `PDFCRAFT_MODELS` or wherever `pdfcraft-cli`
@@ -182,9 +182,25 @@ fn statuses(doc: &Value) -> BTreeMap<Key, String> {
 }
 
 /// The moves valid in `now` and not in `then`.
+///
+/// A move is the same move in both runs when its page and text are and its place differs by at
+/// most [`SAME_PLACE`] points either way: a change to the reader can move a move's box a little
+/// (OCR measures its glyphs against another text scale), and that is not a move lost.
 fn newly_valid<'a>(now: &'a BTreeMap<Key, String>, then: &BTreeMap<Key, String>) -> Vec<&'a Key> {
-    now.iter().filter(|(k, s)| s.as_str() == "valid" && then.get(*k).map(String::as_str) != Some("valid")).map(|(k, _)| k).collect()
+    now.iter()
+        .filter(|(k, s)| {
+            s.as_str() == "valid"
+                && !then
+                    .range((k.0, i64::MIN, i64::MIN, String::new())..)
+                    .take_while(|(o, _)| o.0 == k.0)
+                    .any(|(o, st)| st.as_str() == "valid" && o.3 == k.3 && (o.1 - k.1).abs() <= SAME_PLACE && (o.2 - k.2).abs() <= SAME_PLACE)
+        })
+        .map(|(k, _)| k)
+        .collect()
 }
+
+/// How far, in points, a move's place may move between runs and still be the same move.
+const SAME_PLACE: i64 = 4;
 
 fn tally(doc: &Value) -> Tally {
     let mut t = Tally::default();
@@ -250,5 +266,17 @@ mod tests {
         let after = statuses(&doc(&[("e4", "valid", 0), ("e5", "illegal", 0)]));
         assert_eq!(newly_valid(&before, &after), [&(0, 30, 100, "e5".to_owned())]);
         assert!(newly_valid(&after, &before).is_empty());
+    }
+
+    /// A move whose box moved a few points between runs (OCR measured it against another text
+    /// scale) is the same move, still valid; one that moved farther, or another move, is not.
+    #[test]
+    fn a_move_a_few_points_away_is_the_same_move() {
+        let at = |x: i64, y: i64, text: &str| -> BTreeMap<Key, String> { [((0, x, y, text.to_owned()), "valid".to_owned())].into() };
+        assert!(newly_valid(&at(100, 200, "Nf3"), &at(103, 197, "Nf3")).is_empty());
+        assert_eq!(newly_valid(&at(100, 200, "Nf3"), &at(110, 200, "Nf3")).len(), 1);
+        assert_eq!(newly_valid(&at(100, 200, "Nf3"), &at(100, 200, "Nc3")).len(), 1);
+        let other_page: BTreeMap<Key, String> = [((1, 100, 200, "Nf3".to_owned()), "valid".to_owned())].into();
+        assert_eq!(newly_valid(&at(100, 200, "Nf3"), &other_page).len(), 1);
     }
 }
