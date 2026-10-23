@@ -2979,3 +2979,6 @@ chess undo step	Clear drawings	清除标记
 @plural	{n} move|{n} moves	{n} 步
 	…and {n} older	…以及更早的 {n} 个
 	No chess diagram was found here.	此处未找到国际象棋棋图。
+# Chess: Undo of games added to the list (a changed one is kept in the trash), and the PGN field's games after its first.
+@plural	{n} changed game was kept in Deleted moves.|{n} changed games were kept in Deleted moves.	已将 {n} 局改动过的对局保存在“已删除的着法”中。
+@plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	又有 {n} 局对局添加到对局列表。

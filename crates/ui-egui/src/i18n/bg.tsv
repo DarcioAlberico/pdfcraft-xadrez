@@ -2978,3 +2978,6 @@ chess undo step	Clear drawings	изчистването на рисунките
 @plural	{n} move|{n} moves	{n} ход|{n} хода
 	…and {n} older	…и още по-стари: {n}
 	No chess diagram was found here.	Тук не е намерена шахматна диаграма.
+# Chess: Undo of games added to the list (a changed one is kept in the trash), and the PGN field's games after its first.
+@plural	{n} changed game was kept in Deleted moves.|{n} changed games were kept in Deleted moves.	{n} променена партия е запазена в „Изтрити ходове“.|{n} променени партии са запазени в „Изтрити ходове“.
+@plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	Още {n} партия е добавена към списъка с партии.|Още {n} партии са добавени към списъка с партии.

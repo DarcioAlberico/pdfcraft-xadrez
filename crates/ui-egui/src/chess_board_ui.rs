@@ -263,6 +263,12 @@ pub enum BoardAction {
     /// Pick the engine program for analysis (desktop only).
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     ChooseEngine,
+    /// The PGN field's games after the first, which went on the board: add them to the
+    /// document's games; `more`: the field had more than the cap.
+    AddGames {
+        texts: Vec<String>,
+        more: bool,
+    },
 }
 
 impl BoardState {
@@ -311,9 +317,19 @@ impl BoardState {
         true
     }
 
-    /// Read the PGN field into the board (one undo step).
-    fn load_pgn(&mut self) {
-        self.edit(|s| match Game::from_pgn(&s.pgn_text) {
+    /// Read the PGN field into the board (one undo step): its first game, when it holds several
+    /// (split at tag lines, as Open PGN… splits a file). Returns the games after it as texts, at
+    /// most [`crate::chess_autosave::MAX_GAMES`] games in all, and whether the field had more;
+    /// none when the first could not be read.
+    pub(crate) fn load_pgn(&mut self) -> (Vec<String>, bool) {
+        let max = crate::chess_autosave::MAX_GAMES;
+        let (first, rest, more) = {
+            let chunks = pdfcraft_engine::chess::collection::split_pgn(&self.pgn_text, max);
+            let first = chunks.first().map_or_else(|| self.pgn_text.clone(), |c| (*c).to_owned());
+            let rest: Vec<String> = chunks.iter().skip(1).take(max.saturating_sub(1)).map(|c| (*c).to_owned()).collect();
+            (first, rest, chunks.len() > max)
+        };
+        let loaded = self.edit(|s| match Game::from_pgn(&first) {
             Ok((game, stopped)) => {
                 s.game = game;
                 s.illegal = None;
@@ -328,6 +344,7 @@ impl BoardState {
                 None
             }
         });
+        if loaded { (rest, more) } else { (Vec::new(), false) }
     }
 
     /// Back to the standard start position, as a new game (one undo step).
@@ -1404,7 +1421,10 @@ pub(crate) fn sections(ui: &mut egui::Ui, state: &mut BoardState) -> Option<Boar
                 action = Some(BoardAction::CopyPgn(state.game.pgn()));
             }
             if ui.small_button(tl!("Load PGN")).on_hover_text(tl!("Play the main line of the PGN above on the board.")).clicked() {
-                state.load_pgn();
+                let (texts, more) = state.load_pgn();
+                if !texts.is_empty() || more {
+                    action = Some(BoardAction::AddGames { texts, more });
+                }
             }
         });
     });
@@ -1663,6 +1683,28 @@ mod tests {
         assert_eq!(s.square_at(f32::NAN, 0.5), None);
         let r = s.square_rect(Rect::from_min_size(Pos2::ZERO, vec2(80.0, 80.0)), sq("h8"));
         assert_eq!(r.min, Pos2::new(0.0, 70.0));
+    }
+
+    /// Several games in the field: the first goes on the board, the others come back as texts
+    /// for the list, capped as Open PGN… caps a file.
+    #[test]
+    fn the_pgn_field_loads_its_first_game_and_hands_back_the_others() {
+        let three = "[Event \"A\"]\n\n1. e4 *\n\n[Event \"B\"]\n\n1. d4 *\n\n[Event \"C\"]\n\n1. c4 *\n";
+        let mut s = BoardState { pgn_text: three.into(), ..BoardState::default() };
+        let (rest, more) = s.load_pgn();
+        assert_eq!(s.game.movetext(), "1. e4");
+        assert_eq!(s.game.tag("Event"), Some("A"));
+        assert_eq!(rest.len(), 2);
+        assert!(rest[0].contains("1. d4") && rest[1].contains("1. c4") && !more);
+        assert_eq!(s.undo_label().as_deref(), Some("Load the PGN"), "one step of the game");
+        // One game: nothing more.
+        s.pgn_text = "1. d4 d5 *".into();
+        assert_eq!(s.load_pgn(), (Vec::new(), false));
+        // Past the cap: as many as Open PGN… reads, and said.
+        let max = crate::chess_autosave::MAX_GAMES;
+        s.pgn_text = (0..max + 5).map(|i| format!("[Round \"{i}\"]\n\n1. e4 *\n\n")).collect();
+        let (rest, more) = s.load_pgn();
+        assert_eq!((rest.len(), more), (max - 1, true));
     }
 
     #[test]

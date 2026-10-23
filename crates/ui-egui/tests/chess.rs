@@ -1142,12 +1142,13 @@ fn analysis_pauses_while_the_board_panel_is_hidden() {
     h.state_mut().docking.set_visible(board, false).unwrap();
     assert!(wait_for(&mut h, |_| log.lock().unwrap().iter().any(|c| c == "stop")), "the engine stops: {:?}", log.lock().unwrap());
     assert!(h.state().chess.study.analysis, "analysis stays on, to go on when the board is back");
-    // Back, on a new position: analysed.
+    // Back, on the position it was stopped on: it searches on.
     h.state_mut().show_chess_board();
-    h.run_steps(3);
+    assert!(wait_for(&mut h, |_| searching(&log) == 2), "the engine searches on: {:?}", log.lock().unwrap());
+    // On a new position: analysed.
     click_square(&mut h, "e2");
     click_square(&mut h, "e4");
-    assert!(wait_for(&mut h, |_| searching(&log) == 2), "{:?}", log.lock().unwrap());
+    assert!(wait_for(&mut h, |_| searching(&log) == 3), "{:?}", log.lock().unwrap());
     let after_e4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
     assert!(log.lock().unwrap().iter().any(|c| c == &format!("position fen {after_e4}")));
 }
