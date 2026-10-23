@@ -172,6 +172,40 @@ fn showcase() -> (ChessPageText, Vec<BoardReading>, Vec<BlockHint>) {
     (text, diagrams, hints)
 }
 
+/// A chapter title that names a move in its words (Pinski: `The Italian Regretted: White Plays
+/// 5 d3`) is a heading: the game before it ends there, its move is left unplayed, and the
+/// introduction's moves after it replay from the start. A line of moves set large under a heading
+/// hint is a main line, a paragraph, and so is a hint over a game's moves with a word or two.
+#[test]
+fn a_title_that_names_a_move_is_a_heading_and_a_main_line_is_not() {
+    let text = page_text(vec![
+        line(20.0, "1.e4 e5 2.Nf3 Nc6 3.Bc4 Bc5"),
+        line(60.0, "The Italian Regretted: White Plays 5.d3"),
+        line(100.0, "Black should equalise after 1.e4 e5 2.Nf3 Nc6"),
+        line(140.0, "1.d4 d5 2.c4"),
+        line(180.0, "Game 5 1.e4 e5"),
+    ]);
+    let hints: Vec<BlockHint> = [60.0, 140.0, 180.0]
+        .iter()
+        .map(|y| BlockHint { kind: HintKind::Heading { level: 1 }, rect: user_box(30.0, y - 5.0, 560.0, y + 15.0) })
+        .collect();
+    let doc = build_page(&input(0, &text, &[], &hints, &[]));
+    let page = &doc.pages[0];
+    assert_eq!(
+        kinds(page),
+        vec![
+            "P:1.e4 e5 2.Nf3 Nc6 3.Bc4 Bc5",
+            "H:The Italian Regretted: White Plays 5.d3",
+            "P:Black should equalise after 1.e4 e5 2.Nf3 Nc6",
+            "P:1.d4 d5 2.c4",
+            "P:Game 5 1.e4 e5",
+        ]
+    );
+    let statuses = moves(page);
+    assert_eq!(statuses.get(6), Some(&("5.d3".to_owned(), MoveStatus::Unchecked)), "the title's move is not played");
+    assert!(statuses.get(7..11).is_some_and(|after| after.iter().all(|(_, s)| *s == MoveStatus::Valid)), "{statuses:?}");
+}
+
 #[test]
 fn the_showcase_page_becomes_the_expected_doc() {
     let (text, diagrams, hints) = showcase();
