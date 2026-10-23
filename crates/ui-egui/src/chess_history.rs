@@ -77,7 +77,8 @@ pub enum ChessEdit {
     MoveNumber,
     /// A FEN typed in the FEN field.
     LoadFen,
-    /// The PGN field read into the board.
+    /// The PGN field read into the board; as a step of the list of games, the games of a PGN
+    /// (Open PGN…, or the PGN field's games after its first) added to it.
     LoadPgn,
     /// A diagram of the document put on the board.
     LoadDiagram,
@@ -91,6 +92,14 @@ pub enum ChessEdit {
     DeleteGame,
     /// A game moved in the document's list of games (a step of the list).
     MoveGame,
+    /// A blank game added to the list of games (a step of the list).
+    NewGame,
+    /// A copy of a game put after it in the list (a step of the list).
+    DuplicateGame,
+    /// A game started at a move's position, or at a position set up (a step of the list).
+    NewGameFromHere,
+    /// A game of the trash (deleted moves kept) opened as a new game (a step of the list).
+    RestoreGame,
 }
 
 impl ChessEdit {
@@ -125,6 +134,10 @@ impl ChessEdit {
             ChessEdit::Capture(kind) => kind.text().to_string(),
             ChessEdit::DeleteGame => tl!("Delete game").to_string(),
             ChessEdit::MoveGame => tl!("Move game").to_string(),
+            ChessEdit::NewGame => tl!("New game").to_string(),
+            ChessEdit::DuplicateGame => tl!("Duplicate game").to_string(),
+            ChessEdit::NewGameFromHere => tl!("New game from this position").to_string(),
+            ChessEdit::RestoreGame => tl!("Open as a new game").to_string(),
         }
     }
 

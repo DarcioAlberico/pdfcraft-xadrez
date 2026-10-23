@@ -49,7 +49,12 @@ const WINDOW_HEIGHT: f32 = 1300.0;
 
 /// The app on [`boards`], the Board panel shown.
 fn harness() -> Harness<'static, PdfCraftApp> {
-    let mut h = Harness::builder().with_size(egui::vec2(1400.0, WINDOW_HEIGHT)).with_step_dt(0.05).build_eframe(|_cc| {
+    harness_of(WINDOW_HEIGHT)
+}
+
+/// [`harness`] in a window `height` points tall.
+fn harness_of(height: f32) -> Harness<'static, PdfCraftApp> {
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, height)).with_step_dt(0.05).build_eframe(|_cc| {
         let mut app = PdfCraftApp::new();
         app.set_option("language", "en").unwrap();
         app.open_bytes("boards.pdf", None, boards()).unwrap();
@@ -550,4 +555,92 @@ fn undo_takes_back_a_delete_and_a_move_and_rows_can_be_dragged() {
     assert!(h.state_mut().execute("edit.undo"));
     h.run_steps(2);
     assert_eq!(listed(h.state()), (vec!["A".to_owned(), "B".to_owned(), "C".to_owned()], 0));
+}
+
+/// New game, Duplicate and Open PGN… are steps Undo takes back, and Redo puts back. A game
+/// changed after it was added is kept in Deleted moves when Undo takes it out (and said), comes
+/// out of it again with Redo, and a game opened from there goes back there with Undo.
+#[test]
+fn undo_takes_back_games_added_and_keeps_a_changed_one() {
+    let mut h = harness();
+    three_games(&mut h);
+    let toast = |h: &Harness<'static, PdfCraftApp>| h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    // Open PGN… is one step.
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(2);
+    assert_eq!(toast(&h), "Undid Load the PGN");
+    assert_eq!(listed(h.state()), (vec!["Game 1".to_owned()], 0), "a blank game is left");
+    assert!(h.state_mut().execute("edit.redo"));
+    h.run_steps(2);
+    assert_eq!(listed(h.state()), (vec!["A".to_owned(), "B".to_owned(), "C".to_owned()], 0));
+    // New game, from the list's button: Undo shows the game shown before again.
+    h.get_by_label("New game").click();
+    h.run_steps(3);
+    assert_eq!(listed(h.state()), (vec!["A".to_owned(), "B".to_owned(), "C".to_owned(), "Game 4".to_owned()], 3));
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(2);
+    assert_eq!(toast(&h), "Undid New game");
+    assert_eq!(listed(h.state()), (vec!["A".to_owned(), "B".to_owned(), "C".to_owned()], 0));
+    // A copy of B, changed, then A shown: Undo takes the copy out, into Deleted moves.
+    row_menu(&mut h, "B");
+    h.get_by_label("Duplicate").click();
+    h.run_steps(3);
+    assert_eq!(listed(h.state()).1, 2);
+    h.state_mut().chess.board_mut().play_uci_line(&["d7d5".into()]);
+    h.run_steps(2);
+    h.state_mut().toast = None;
+    h.run_steps(1);
+    h.get_by_label("A").click();
+    h.run_steps(2);
+    assert_eq!(listed(h.state()).1, 0);
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(2);
+    assert_eq!(toast(&h), "Undid Duplicate game · 1 changed game was kept in Deleted moves.");
+    assert_eq!(listed(h.state()), (vec!["A".to_owned(), "B".to_owned(), "C".to_owned()], 0));
+    h.get_by_label("Deleted moves (1)…");
+    // Redo: the copy is back with its move, and no longer in Deleted moves.
+    assert!(h.state_mut().execute("edit.redo"));
+    h.run_steps(2);
+    assert_eq!(movetexts(h.state()), ["1. e4", "1. d4", "1. d4 d5", "1. c4"]);
+    assert!(h.query_by_label("Deleted moves (1)…").is_none());
+    // Taken out again, then opened from Deleted moves: Undo puts it back there.
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(2);
+    h.state_mut().toast = None;
+    h.get_by_label("Deleted moves (1)…").click();
+    h.run_steps(2);
+    h.get_by_label("Open as a new game").click();
+    h.run_steps(3);
+    assert_eq!(movetexts(h.state()), ["1. e4", "1. d4 d5", "1. d4", "1. c4"], "after the game shown");
+    assert!(h.query_by_label("Deleted moves (1)…").is_none());
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(2);
+    assert_eq!(toast(&h), "Undid Open as a new game");
+    assert_eq!(movetexts(h.state()), ["1. e4", "1. d4", "1. c4"]);
+    h.get_by_label("Deleted moves (1)…");
+}
+
+/// The PGN field's Load PGN puts the first game of the field on the board and adds the others to
+/// the list after it, said; Undo takes the games added back first, then the game loaded.
+#[test]
+fn the_pgn_field_puts_its_first_game_on_the_board_and_adds_the_others() {
+    // Tall enough for the PGN section under the list of games.
+    let mut h = harness_of(1700.0);
+    h.get_by_label("PGN").click();
+    h.run_steps(3);
+    h.state_mut().chess.board_mut().pgn_text = "[Event \"A\"]\n\n1. e4 *\n\n[Event \"B\"]\n\n1. d4 *\n\n[Event \"C\"]\n\n1. c4 *\n".into();
+    // The notation gives the opened section its room over a few frames.
+    h.run_steps(10);
+    h.get_by_label("Load PGN").click();
+    h.run_steps(3);
+    assert_eq!(listed(h.state()), (vec!["A".to_owned(), "B".to_owned(), "C".to_owned()], 0), "the first on the board, shown");
+    assert_eq!(movetexts(h.state()), ["1. e4", "1. d4", "1. c4"]);
+    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("2 more games were added to the list of games."));
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(2);
+    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Undid Load the PGN"));
+    assert_eq!(listed(h.state()), (vec!["A".to_owned()], 0));
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(2);
+    assert_eq!(listed(h.state()), (vec!["Game 1".to_owned()], 0), "then the game loaded");
 }

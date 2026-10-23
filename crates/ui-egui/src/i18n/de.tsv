@@ -3016,3 +3016,6 @@ chess undo step	Clear drawings	Zeichnungen löschen
 @plural	{n} move|{n} moves	{n} Zug|{n} Züge
 	…and {n} older	…und {n} ältere
 	No chess diagram was found here.	Hier wurde kein Schachdiagramm gefunden.
+# Chess: Undo of games added to the list (a changed one is kept in the trash), and the PGN field's games after its first.
+@plural	{n} changed game was kept in Deleted moves.|{n} changed games were kept in Deleted moves.	{n} geänderte Partie wurde in „Gelöschte Züge“ aufbewahrt.|{n} geänderte Partien wurden in „Gelöschte Züge“ aufbewahrt.
+@plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	{n} weitere Partie wurde der Partienliste hinzugefügt.|{n} weitere Partien wurden der Partienliste hinzugefügt.

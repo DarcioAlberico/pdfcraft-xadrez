@@ -224,16 +224,22 @@ impl PdfCraftApp {
         }
     }
 
-    /// Undo or redo a change to the chess game, or a delete or move in its list of games, whichever
-    /// is the newer. With nothing to undo, nothing happens: Undo does not fall through to the
+    /// Undo or redo a change to the chess game, or a change to its list of games, whichever is
+    /// the newer. With nothing to undo, nothing happens: Undo does not fall through to the
     /// document, whose change the user may not even see from the chess panels (the command is
-    /// disabled then, see `command_enabled`).
+    /// disabled then, see `command_enabled`). What the step left to say (a changed game kept in
+    /// the trash) follows the step's name.
     fn chess_history_step(&mut self, undo: bool) {
         let Some(label) = self.chess.history_step(undo) else { return };
         if undo {
             self.notify_fmt("Undid {label}", &[("label", &label)]);
         } else {
             self.notify_fmt("Redid {label}", &[("label", &label)]);
+        }
+        let notes = self.chess.games.take_notes();
+        if let (false, Some((text, _))) = (notes.is_empty(), &self.toast) {
+            let text = format!("{text} · {}", notes.join(" · "));
+            self.notify(text);
         }
     }
 
