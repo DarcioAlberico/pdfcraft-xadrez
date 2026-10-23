@@ -3294,3 +3294,7 @@ chess undo step	Clear drawings	مسح الرسوم
 # Chess: Undo of games added to the list (a changed one is kept in the trash), and the PGN field's games after its first.
 @plural	{n} changed game was kept in Deleted moves.|{n} changed games were kept in Deleted moves.	احتُفظ بالمباريات المعدّلة في «النقلات المحذوفة»: {n}|احتُفظ بالمباريات المعدّلة في «النقلات المحذوفة»: {n}|احتُفظ بالمباريات المعدّلة في «النقلات المحذوفة»: {n}|احتُفظ بالمباريات المعدّلة في «النقلات المحذوفة»: {n}|احتُفظ بالمباريات المعدّلة في «النقلات المحذوفة»: {n}|احتُفظ بالمباريات المعدّلة في «النقلات المحذوفة»: {n}
 @plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	مباريات أخرى أُضيفت إلى قائمة المباريات: {n}|مباريات أخرى أُضيفت إلى قائمة المباريات: {n}|مباريات أخرى أُضيفت إلى قائمة المباريات: {n}|مباريات أخرى أُضيفت إلى قائمة المباريات: {n}|مباريات أخرى أُضيفت إلى قائمة المباريات: {n}|مباريات أخرى أُضيفت إلى قائمة المباريات: {n}
+	Reading the pages around the game…	جارٍ قراءة الصفحات المحيطة بالمباراة…
+	No game was found for this move, on its page or the pages around it.	لم يُعثر على مباراة لهذه النقلة في صفحتها ولا في الصفحات المحيطة بها.
+	Renumber	إعادة الترقيم
+	The text's move numbers give way to the game's: {printed} is played as {played}.	تُستبدل أرقام نقلات النص بأرقام المباراة: تُلعب {printed} على أنها {played}.

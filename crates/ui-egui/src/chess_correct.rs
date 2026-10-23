@@ -13,7 +13,9 @@
 //!   language the text is read in. They are **never applied without a click**: guessing a move
 //!   goes wrong (the lesson of 2026-10-19).
 //! - **A correction field**, holding the move as printed, with the full glyph palette inserting
-//!   at its cursor; Enter (or Read again) takes it.
+//!   at its cursor; Enter (or Read again) takes it. The board panel's floating glyph palette (U1)
+//!   types into it too while it has the keyboard, a glyph's sign as well
+//!   (`chess_annotate::palette_insert`), instead of annotating the move shown.
 //!
 //! Every correction rewrites the move in the captured text itself (the glyphs of a page or of an
 //! OCR area, keeping where they were printed; or the pasted text) and plans the capture again, so
@@ -30,6 +32,7 @@ use pdfcraft_engine::chess::pdfcraft_chessvision::coords::{PageGeometry, PageRec
 use pdfcraft_engine::chess::text_ocr::AreaRead;
 use pdfcraft_render::text::{PageText, TextGlyph};
 
+use crate::chess_annotate::{Field, Typing, insert_pending};
 use crate::chess_capture::{Pending, Request, Text};
 use crate::chess_samples::GlyphFix;
 use crate::chess_ui::ChessState;
@@ -107,6 +110,7 @@ pub(crate) fn panel(
     s: &StoppedMove,
     lang: Lang,
     read: Option<(&AreaRead, Option<&PageGeometry>)>,
+    typing: &mut Typing,
 ) -> Option<Change> {
     let mut change = None;
     ui.separator();
@@ -173,6 +177,12 @@ pub(crate) fn panel(
     }
     // (c) The correction field, with the glyph palette.
     let id = ui.make_persistent_id("chess-capture-correction");
+    // What the board panel's glyph palette typed while the field had the keyboard, at its cursor;
+    // nothing past the field's limit.
+    let before = fix.field.clone();
+    if insert_pending(ui, typing, Field::Correction, id, &mut fix.field) && fix.field.chars().count() > MAX_FIELD_CHARS {
+        fix.field = before;
+    }
     ui.horizontal(|ui| {
         let label = ui.label(RichText::new(tl!("Correction")).small().color(t.text_muted));
         let r = ui
@@ -205,6 +215,7 @@ pub(crate) fn panel(
 /// nowhere.
 pub(crate) fn correct(chess: &mut ChessState, change: Change) {
     let Some(p) = chess.capture.pending.as_ref() else { return };
+    let renumbering = p.renumbering();
     let Some((request, fixes)) = rewrite(p, &change) else {
         chess.capture.note(tl!("The correction couldn't be made: the move wasn't found in the text.").to_owned());
         return;
@@ -214,7 +225,7 @@ pub(crate) fn correct(chess: &mut ChessState, change: Change) {
         chess.capture.note(tl!("The corrected text fits nowhere: nothing was changed.").to_owned());
         return;
     }
-    chess.capture.pending = Some(Pending::new(request, plan));
+    chess.capture.pending = Some(Pending::new(request, plan).renumbered_if(renumbering));
     // The characters corrected by hand, for retraining (T11: only when the user collects them).
     chess.capture.samples.collect(fixes);
 }

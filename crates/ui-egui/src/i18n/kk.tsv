@@ -3016,3 +3016,7 @@ chess undo step	Clear drawings	суреттерді өшіру
 # Chess: Undo of games added to the list (a changed one is kept in the trash), and the PGN field's games after its first.
 @plural	{n} changed game was kept in Deleted moves.|{n} changed games were kept in Deleted moves.	Өзгертілген {n} партия «Жойылған жүрістер» ішінде сақталды.|Өзгертілген {n} партия «Жойылған жүрістер» ішінде сақталды.
 @plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	Партиялар тізіміне тағы {n} партия қосылды.|Партиялар тізіміне тағы {n} партия қосылды.
+	Reading the pages around the game…	Партия маңындағы беттер оқылуда…
+	No game was found for this move, on its page or the pages around it.	Бұл жүрістің партиясы оның бетінен де, маңындағы беттерден де табылмады.
+	Renumber	Қайта нөмірлеу
+	The text's move numbers give way to the game's: {printed} is played as {played}.	Мәтіндегі жүріс нөмірлері партияның нөмірлеріне ауысады: {printed} {played} ретінде ойналады.

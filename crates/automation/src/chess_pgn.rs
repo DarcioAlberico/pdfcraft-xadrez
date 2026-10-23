@@ -15,7 +15,8 @@
 //! diagram (`$220`) or takes the mark off.
 //!
 //! `capture` plans where a selection of move text goes (`pdfcraft_engine::chess::capture`) and
-//! applies the chosen place unless told otherwise; its entry lists every candidate place.
+//! applies the chosen place unless told otherwise (`apply: renumber` takes the Renumber choice);
+//! its entry lists every candidate place.
 //!
 //! Each operation adds an entry to the report. One that is refused (a bad address, an illegal
 //! move, a structure change the tree does not allow) adds an error entry, leaves the game as it
@@ -260,14 +261,16 @@ fn apply(game: &mut Game, op: &Value) -> std::result::Result<Map<String, Value>,
         }
         "capture" => {
             let (plan, lang) = capture_plan(game, at, obj)?;
-            let apply = match obj.get("apply").and_then(Value::as_str) {
-                None | Some("chosen") => plan.chosen.is_some(),
-                Some("auto") => plan.chosen.is_some() && !plan.needs_preview,
-                Some("never") => false,
-                Some(other) => return Err(format!("apply {other:?} is chosen, auto or never")),
+            let (apply, choice) = match obj.get("apply").and_then(Value::as_str) {
+                None | Some("chosen") => (plan.chosen.is_some(), None),
+                Some("auto") => (plan.chosen.is_some() && !plan.needs_preview, None),
+                Some("never") => (false, None),
+                // The Renumber choice, when the plan has one.
+                Some("renumber") => (plan.renumber.is_some(), plan.renumber),
+                Some(other) => return Err(format!("apply {other:?} is chosen, auto, never or renumber")),
             };
             // Planned on this very game, so only a missing candidate can refuse it.
-            let applied = apply && plan.apply(game, None).is_ok();
+            let applied = apply && plan.apply(game, choice).is_ok();
             if !applied {
                 game.go_to_node(at);
             }
@@ -346,6 +349,7 @@ pub(crate) fn capture_json(plan: &CapturePlan, applied: bool, lang: Lang) -> Val
         "needs_preview": plan.needs_preview,
         "reasons": plan.reasons.iter().map(|r| r.name()).collect::<Vec<_>>(),
         "chosen": plan.chosen,
+        "renumber": plan.renumber,
         "base_revision": plan.base_revision,
         "candidates": plan.candidates.iter().map(candidate_json).collect::<Vec<_>>(),
     })
@@ -362,6 +366,8 @@ fn candidate_json(c: &Candidate) -> Value {
         },
         "renumbered": c.renumbered,
         "start_fen": c.renumbered.map(|_| c.game.start_fen()),
+        "shifted": c.shifted,
+        "renumbering": c.renumbering().map(|(printed, played)| json!({ "printed": printed, "played": played })),
         "played": c.played,
         "stops": c.stops,
         "reasons": c.reasons.iter().map(|r| r.name()).collect::<Vec<_>>(),

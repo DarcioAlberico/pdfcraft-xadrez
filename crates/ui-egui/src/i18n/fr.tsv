@@ -3018,3 +3018,7 @@ chess undo step	Clear drawings	l'effacement des dessins
 # Chess: Undo of games added to the list (a changed one is kept in the trash), and the PGN field's games after its first.
 @plural	{n} changed game was kept in Deleted moves.|{n} changed games were kept in Deleted moves.	{n} partie modifiée a été gardée dans « Coups supprimés ».|{n} parties modifiées ont été gardées dans « Coups supprimés ».
 @plural	{n} more game was added to the list of games.|{n} more games were added to the list of games.	{n} partie de plus a été ajoutée à la liste des parties.|{n} parties de plus ont été ajoutées à la liste des parties.
+	Reading the pages around the game…	Lecture des pages autour de la partie…
+	No game was found for this move, on its page or the pages around it.	Aucune partie n’a été trouvée pour ce coup, ni sur sa page ni sur les pages voisines.
+	Renumber	Renuméroter
+	The text's move numbers give way to the game's: {printed} is played as {played}.	Les numéros de coups du texte cèdent la place à ceux de la partie : {printed} est joué comme {played}.
