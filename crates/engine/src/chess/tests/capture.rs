@@ -218,6 +218,67 @@ fn a_start_at_move_one_is_offered_renumbered() {
     assert!(plan_at(&ChessGame::from_fen(&unnumbered).unwrap(), 0, CaptureMode::Auto, "1.Nd5").candidates.iter().all(|c| c.renumbered.is_none()));
 }
 
+/// Numbers that name no place in the game are offered the Renumber choice: read from where a
+/// move without a number goes, the moves take the game's numbers, never silently.
+#[test]
+fn numbers_that_fit_nowhere_are_offered_renumbered() {
+    // A game with moves; the book numbers the same moves from 12.
+    let mut g = scenario_game();
+    for m in ["Nd5", "Qxe1", "Nxe7+", "Kh7"] {
+        g.play_san(m).unwrap();
+    }
+    let kh7 = at(&g, &[0, 0, 0, 0]);
+    let p = plan_at(&g, kh7, CaptureMode::Line, "12.Raxe1 Rc7");
+    assert_eq!(p.renumber, Some(0), "no place: the Renumber choice alone");
+    assert_eq!(p.chosen, p.renumber, "chosen when no place plays a move");
+    let c = p.chosen().unwrap();
+    assert_eq!((c.renumbered, c.shifted, c.played, c.line), (None, Some(8), 2, 0));
+    assert_eq!(p.reasons, vec![PreviewReason::Renumber]);
+    assert!(p.needs_preview);
+    assert_eq!(c.renumbering(), Some(("12.Raxe1".to_owned(), "20.Raxe1".to_owned())));
+    assert!(c.report.ply_mismatches.is_empty(), "{:?}", c.report.ply_mismatches);
+    let mut applied = g.clone();
+    p.apply(&mut applied, None).unwrap();
+    assert_eq!(applied.movetext(), "18. Nd5 Qxe1 19. Nxe7+ Kh7 20. Raxe1 Rc7");
+    // A game with no moves that does not start at move 1 keeps its start: the text takes its
+    // numbers, forward as well as back.
+    let p = plan_at(&scenario_game(), 0, CaptureMode::Auto, "5.Nd5 Qxe1 6.Nxe7+ Kh7");
+    let c = p.chosen().unwrap();
+    assert_eq!((p.renumber, c.renumbered, c.shifted, c.played), (Some(0), None, Some(13), 4));
+    assert_eq!(c.renumbering(), Some(("5.Nd5".to_owned(), "18.Nd5".to_owned())));
+    assert_eq!(c.game.movetext(), "18. Nd5 Qxe1 19. Nxe7+ Kh7");
+    let p = plan_at(&scenario_game(), 0, CaptureMode::Auto, "40.Nd5 Qxe1");
+    assert_eq!((p.chosen().unwrap().shifted, p.chosen().unwrap().played), (Some(-22), 2));
+    // The other side's number is no renumbering: Black's move cannot be White's.
+    assert!(plan_at(&scenario_game(), 0, CaptureMode::Auto, "5…Qxe1").renumber.is_none());
+    // Nor is a move without a number, nor a renumbering that plays nothing.
+    assert!(plan_at(&g, kh7, CaptureMode::Line, "Raxe1 Rc7").renumber.is_none());
+    assert!(plan_at(&g, kh7, CaptureMode::Line, "12.Qh5").renumber.is_none());
+}
+
+/// The Renumber choice is not a place: beside a place that plays as well it is neither chosen
+/// nor a reason for the preview, nor does it make the place ambiguous.
+#[test]
+fn the_renumber_choice_stands_beside_the_places() {
+    let g = main_line_game();
+    let raxe1 = at(&g, &[0, 0, 0, 0, 0]);
+    // 19…Kh8 fits as an alternative to 19…Kh7 by its number, and as 20…Kh8 after 20.Raxe1.
+    let p = plan_at(&g, raxe1, CaptureMode::SubVariation, "19…Kh8");
+    assert_eq!((p.chosen, p.renumber), (Some(0), Some(1)));
+    assert_eq!(p.places().map(|(i, _)| i).collect::<Vec<_>>(), vec![0]);
+    assert!(p.reasons.is_empty(), "{:?}", p.reasons);
+    assert!(!p.needs_preview);
+    let r = &p.candidates[1];
+    assert_eq!((r.shifted, r.played), (Some(1), 1));
+    assert!(r.reasons.contains(&PreviewReason::Renumber), "{:?}", r.reasons);
+    assert_eq!(r.renumbering(), Some(("19...Kh8".to_owned(), "20...Kh8".to_owned())));
+    assert_eq!(moves_only(&r.game.movetext()), "18. Nd5 Qxe1 19. Nxe7+ Kh7 20. Raxe1 Kh8");
+    // Applied by its index, one change of the game like any place.
+    let mut applied = g.clone();
+    p.apply(&mut applied, p.renumber).unwrap();
+    assert_eq!(moves_only(&applied.movetext()), "18. Nd5 Qxe1 19. Nxe7+ Kh7 20. Raxe1 Kh8");
+}
+
 /// Without a number the line goes after the current move; a variation is an alternative to the
 /// move after it, then to it.
 #[test]
