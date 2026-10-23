@@ -2979,3 +2979,5 @@ chess undo step	Clear drawings	清除标记
 @plural	{n} move|{n} moves	{n} 步
 	…and {n} older	…以及更早的 {n} 个
 	No chess diagram was found here.	此处未找到国际象棋棋图。
+	Reading the pages around the game…	正在读取对局前后的页面…
+	No game was found for this move, on its page or the pages around it.	在此着法所在页及其前后页面中均未找到对局。

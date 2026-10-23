@@ -3021,3 +3021,5 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 @plural	{n} move|{n} moves	{n} κίνηση|{n} κινήσεις
 	…and {n} older	…και άλλες {n} παλαιότερες
 	No chess diagram was found here.	Δεν βρέθηκε διάγραμμα σκακιού εδώ.
+	Reading the pages around the game…	Ανάγνωση των σελίδων γύρω από την παρτίδα…
+	No game was found for this move, on its page or the pages around it.	Δεν βρέθηκε παρτίδα για αυτή την κίνηση, ούτε στη σελίδα της ούτε στις γύρω σελίδες.

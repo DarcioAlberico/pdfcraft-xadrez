@@ -3269,3 +3269,5 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Open as a new game	Mở như một ván mới
 	…and {n} older	…và {n} ván cũ hơn
 	No chess diagram was found here.	Không tìm thấy sơ đồ cờ vua nào ở đây.
+	Reading the pages around the game…	Đang đọc các trang quanh ván cờ…
+	No game was found for this move, on its page or the pages around it.	Không tìm thấy ván cờ nào cho nước đi này, trên trang của nó hay các trang xung quanh.

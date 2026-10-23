@@ -2978,3 +2978,5 @@ chess undo step	Clear drawings	изчистването на рисунките
 @plural	{n} move|{n} moves	{n} ход|{n} хода
 	…and {n} older	…и още по-стари: {n}
 	No chess diagram was found here.	Тук не е намерена шахматна диаграма.
+	Reading the pages around the game…	Четене на страниците около партията…
+	No game was found for this move, on its page or the pages around it.	Не е намерена партия за този ход нито на страницата му, нито на страниците около нея.

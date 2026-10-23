@@ -3015,3 +3015,5 @@ chess undo step	Clear drawings	l'effacement des dessins
 @plural	{n} move|{n} moves	{n} coup|{n} coups
 	…and {n} older	…et {n} plus anciennes
 	No chess diagram was found here.	Aucun diagramme d’échecs n’a été trouvé ici.
+	Reading the pages around the game…	Lecture des pages autour de la partie…
+	No game was found for this move, on its page or the pages around it.	Aucune partie n’a été trouvée pour ce coup, ni sur sa page ni sur les pages voisines.

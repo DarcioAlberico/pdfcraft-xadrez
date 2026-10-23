@@ -3089,3 +3089,5 @@ chess undo step	Clear drawings	smazání kreseb
 @plural	{n} move|{n} moves	{n} tah|{n} tahy|{n} tahů
 	…and {n} older	…a starších: {n}
 	No chess diagram was found here.	Zde nebyl nalezen žádný šachový diagram.
+	Reading the pages around the game…	Čtení stránek kolem partie…
+	No game was found for this move, on its page or the pages around it.	Pro tento tah nebyla nalezena žádná partie na jeho stránce ani na stránkách kolem ní.

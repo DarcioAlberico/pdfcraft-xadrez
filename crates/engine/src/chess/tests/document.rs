@@ -438,7 +438,8 @@ fn a_page_that_cannot_be_read_ends_the_span() {
 
 /// A game that starts at `1.` is not read back from, and one whose result is printed is not
 /// read on from: a page holding a whole game reads no other page. Without its result, the page
-/// after is read, and gives it nothing.
+/// after is read, but holds none of its moves: it is not kept, and its prose is not the game's
+/// comment.
 #[test]
 fn a_whole_game_on_its_page_reads_no_other_page() {
     let contents = [helv(60.0, 11.0, "Prose."), helv(60.0, 11.0, "1.e4 e5 2.Nf3 Nc6 1-0"), helv(60.0, 11.0, "Prose.")];
@@ -456,8 +457,17 @@ fn a_whole_game_on_its_page_reads_no_other_page() {
     let contents = [helv(60.0, 11.0, "Prose."), helv(60.0, 11.0, "1.e4 e5 2.Nf3 Nc6"), helv(60.0, 11.0, "Prose.")];
     let (mut s, id) = open(helvetica_pages(&contents));
     let (centre, at) = page_alone(&mut s, id, 1);
-    let span = s.chess_game_span(id, centre, at, &no_model(), &options()).unwrap().span;
-    assert_eq!(span.pages, (1, 2), "the page after was read: the game had no result");
+    let mut asked = Vec::new();
+    let read = |p: usize| {
+        asked.push(p);
+        let doc = s.chess_document(id, &[p], &no_model(), Some(pdfcraft_chess::san::Lang::En)).unwrap().doc;
+        doc.pages.into_iter().next()
+    };
+    let span = crate::chess::span::span_game(centre, at, 3, read);
+    assert_eq!(asked, [2], "the page after was read: the game had no result");
+    assert_eq!(span.pages, (1, 1), "and not kept");
     let at = span.at.unwrap();
-    assert_eq!(span.doc.games[at.game].score.mainline().len(), 4);
+    let score = &span.doc.games[at.game].score;
+    assert_eq!(score.mainline().len(), 4);
+    assert!(score.nodes.iter().all(|n| n.comment.is_empty()), "{:?}", score.nodes.last().map(|n| &n.comment));
 }

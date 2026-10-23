@@ -20,7 +20,8 @@
 //!   run's last page.
 //!
 //! A page that cannot be read ends the run there, and so does a page that would take the move
-//! out of the game it was in. Read-only.
+//! out of the game it was in or that holds none of the game's moves (prose after a game's last
+//! move, on the next page, is not taken for its comment). Read-only.
 
 use pdfcraft_chess::san::Lang;
 use pdfcraft_chessvision::doc::{Block, ChessDoc, ChessPage, DocBuilder, GameOrigin, GameResult, Inline, NodeRef};
@@ -90,6 +91,11 @@ fn games_on(doc: &ChessDoc, page: usize) -> impl Iterator<Item = usize> + '_ {
         .flat_map(|p| p.blocks.iter().flat_map(Block::inlines).filter_map(|i| if let Inline::Move(m) = i { m.game.map(|r| r.game) } else { None }))
 }
 
+/// Whether game `game` has a move on page `page`.
+fn touches(doc: &ChessDoc, game: usize, page: usize) -> bool {
+    games_on(doc, page).any(|g| g == game)
+}
+
 /// Whether game `game` may have begun before page `first`: its first move is the page's first
 /// move of a game, and it did not start at a `1.`.
 fn may_go_back(doc: &ChessDoc, game: usize, first: usize) -> bool {
@@ -129,8 +135,9 @@ pub fn span_game(centre: ChessPage, at: MoveAt, pages: usize, mut read: impl FnM
                 Some(page) => {
                     before.push(page);
                     let (d, n) = join(&before, &centre, &after, at);
-                    // A page that takes the move out of its game is not the game's.
-                    if node.is_some() && n.is_none() {
+                    // A page that takes the move out of its game, or adds none of its moves, is
+                    // not the game's (while the move has no game yet, the pages are searched).
+                    if node.is_some() && n.is_none_or(|n| !touches(&d, n.game, p)) {
                         before.pop();
                         back_open = false;
                     } else {
@@ -146,7 +153,9 @@ pub fn span_game(centre: ChessPage, at: MoveAt, pages: usize, mut read: impl FnM
             Some(page) => {
                 after.push(page);
                 let (d, n) = join(&before, &centre, &after, at);
-                if n.is_none() {
+                // Prose after the game's last move is not its comment unless the game goes on
+                // there.
+                if n.is_none_or(|n| !touches(&d, n.game, p)) {
                     after.pop();
                     on_open = false;
                 } else {

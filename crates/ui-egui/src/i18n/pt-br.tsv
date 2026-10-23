@@ -3032,3 +3032,5 @@ chess undo step	Clear drawings	remoção dos desenhos
 	Open as a new game	Abrir como nova partida
 	…and {n} older	…e mais {n} antigas
 	No chess diagram was found here.	Nenhum diagrama de xadrez foi encontrado aqui.
+	Reading the pages around the game…	Lendo as páginas em torno da partida…
+	No game was found for this move, on its page or the pages around it.	Nenhuma partida foi encontrada para este lance, nem na página dele nem nas páginas ao redor.

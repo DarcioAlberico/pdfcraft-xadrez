@@ -3011,3 +3011,5 @@ chess undo step	Clear drawings	çizimleri temizleme
 @plural	{n} move|{n} moves	{n} hamle
 	…and {n} older	…ve {n} daha eski
 	No chess diagram was found here.	Burada satranç diyagramı bulunamadı.
+	Reading the pages around the game…	Oyunun çevresindeki sayfalar okunuyor…
+	No game was found for this move, on its page or the pages around it.	Bu hamle için ne kendi sayfasında ne de çevresindeki sayfalarda bir oyun bulundu.

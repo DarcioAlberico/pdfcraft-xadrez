@@ -2928,3 +2928,5 @@ chess undo step	Clear drawings	удаление рисунков
 @plural	{n} move|{n} moves	{n} ход|{n} хода|{n} ходов
 	…and {n} older	…и ещё более старых: {n}
 	No chess diagram was found here.	Здесь не найдено шахматной диаграммы.
+	Reading the pages around the game…	Чтение страниц вокруг партии…
+	No game was found for this move, on its page or the pages around it.	Партия для этого хода не найдена ни на его странице, ни на соседних страницах.

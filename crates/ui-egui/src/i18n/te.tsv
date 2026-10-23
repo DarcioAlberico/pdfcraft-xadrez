@@ -2924,3 +2924,5 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 @plural	{n} move|{n} moves	{n} ఎత్తు|{n} ఎత్తులు
 	…and {n} older	…మరియు మరో {n} పాతవి
 	No chess diagram was found here.	ఇక్కడ చదరంగం రేఖాచిత్రం ఏదీ కనబడలేదు.
+	Reading the pages around the game…	ఆట చుట్టూ ఉన్న పేజీలను చదువుతోంది…
+	No game was found for this move, on its page or the pages around it.	ఈ ఎత్తుకు దాని పేజీలో గానీ చుట్టూ ఉన్న పేజీలలో గానీ ఆట కనబడలేదు.

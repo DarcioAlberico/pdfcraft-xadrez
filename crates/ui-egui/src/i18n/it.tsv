@@ -3227,3 +3227,5 @@ chess undo step	Clear drawings	cancellazione dei disegni
 @plural	{n} move|{n} moves	{n} mossa|{n} mosse
 	…and {n} older	…e altre {n} più vecchie
 	No chess diagram was found here.	Nessun diagramma di scacchi trovato qui.
+	Reading the pages around the game…	Lettura delle pagine attorno alla partita…
+	No game was found for this move, on its page or the pages around it.	Nessuna partita trovata per questa mossa, né nella sua pagina né in quelle vicine.

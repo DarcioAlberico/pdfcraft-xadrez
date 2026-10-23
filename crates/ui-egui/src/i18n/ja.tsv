@@ -3017,3 +3017,5 @@ chess undo step	Clear drawings	描画の消去
 	Open as a new game	新しい対局として開く
 	…and {n} older	…ほかに古いもの {n} 件
 	No chess diagram was found here.	ここにチェスの図は見つかりませんでした。
+	Reading the pages around the game…	対局の前後のページを読み取り中…
+	No game was found for this move, on its page or the pages around it.	この手の対局は、そのページにも前後のページにも見つかりませんでした。

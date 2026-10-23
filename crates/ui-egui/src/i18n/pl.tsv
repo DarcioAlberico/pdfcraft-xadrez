@@ -2991,3 +2991,5 @@ chess undo step	Clear drawings	usunięcie rysunków
 @plural	{n} move|{n} moves	{n} ruch|{n} ruchy|{n} ruchów
 	…and {n} older	…i starszych: {n}
 	No chess diagram was found here.	Nie znaleziono tu diagramu szachowego.
+	Reading the pages around the game…	Czytanie stron wokół partii…
+	No game was found for this move, on its page or the pages around it.	Nie znaleziono partii dla tego posunięcia ani na jego stronie, ani na stronach wokół niej.

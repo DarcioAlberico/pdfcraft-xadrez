@@ -3016,3 +3016,5 @@ chess undo step	Clear drawings	Zeichnungen löschen
 @plural	{n} move|{n} moves	{n} Zug|{n} Züge
 	…and {n} older	…und {n} ältere
 	No chess diagram was found here.	Hier wurde kein Schachdiagramm gefunden.
+	Reading the pages around the game…	Seiten um die Partie werden gelesen…
+	No game was found for this move, on its page or the pages around it.	Für diesen Zug wurde weder auf seiner Seite noch auf den Seiten um sie herum eine Partie gefunden.

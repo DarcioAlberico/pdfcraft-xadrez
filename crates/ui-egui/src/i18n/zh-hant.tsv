@@ -2965,3 +2965,5 @@ chess undo step	Clear drawings	清除標記
 @plural	{n} move|{n} moves	{n} 步
 	…and {n} older	…以及更早的 {n} 個
 	No chess diagram was found here.	此處找不到西洋棋棋圖。
+	Reading the pages around the game…	正在讀取對局前後的頁面…
+	No game was found for this move, on its page or the pages around it.	在此著法所在頁及其前後頁面中均未找到對局。
