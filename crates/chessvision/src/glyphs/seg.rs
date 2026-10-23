@@ -27,6 +27,14 @@ const DOT_MIN_OVERLAP: f64 = 0.55;
 /// heading's `I` is at most about five times taller than wide.
 const RULE_MIN_HEIGHT: f64 = 2.0;
 const RULE_MIN_ASPECT: f64 = 12.0;
+/// A component at least this many scales wide and tall, inked on at most [`FRAME_MAX_INK`] of its
+/// box, is a frame drawn around text (a game's header box, a chapter title's), not a glyph: an
+/// outlined figurine is about one scale, and a large hollow letter is inked far more densely.
+const FRAME_MIN_SIDE: f64 = 3.0;
+const FRAME_MAX_INK: f64 = 0.12;
+/// Fewest pixels each way of a component left out of the text scale as an outline: below it, a
+/// box is too small for its ink share to say anything.
+const HOLLOW_MIN_SIDE: f64 = 40.0;
 /// A stem this many times taller than wide is measured for an italic slant.
 const NARROW_STEM: f64 = 2.0;
 
@@ -237,9 +245,12 @@ pub(crate) fn components(bin: &Bin, cap: usize) -> Option<Vec<Comp>> {
 /// big ones are the text, and all components count.
 pub(crate) fn scale(comps: &[Comp], image_px: usize) -> i64 {
     let lim = image_px as f64 * 0.01;
-    let mut sel: Vec<&Comp> = comps.iter().filter(|c| (c.b.w() as f64 * c.b.h() as f64) <= lim).collect();
+    // A frame around a header is no text: on a crop of the header, or a page with little text,
+    // its outline would be most of the ink and the scale its height.
+    let comps: Vec<&Comp> = comps.iter().filter(|c| !is_hollow(c)).collect();
+    let mut sel: Vec<&Comp> = comps.iter().copied().filter(|c| (c.b.w() as f64 * c.b.h() as f64) <= lim).collect();
     let mass = |v: &[&Comp]| v.iter().map(|c| c.area).sum::<i64>();
-    let all: Vec<&Comp> = comps.iter().collect();
+    let all: Vec<&Comp> = comps;
     if mass(&sel).saturating_mul(2) < mass(&all) {
         sel = all;
     }
@@ -259,9 +270,24 @@ pub(crate) fn scale(comps: &[Comp], image_px: usize) -> i64 {
     sel.last().map_or(0, |c| c.b.h())
 }
 
+/// Whether `c` is a frame around text ([`FRAME_MIN_SIDE`]).
+pub(crate) fn is_frame(c: &Comp, scale: i64) -> bool {
+    let s = scale as f64;
+    let (w, h) = (c.b.w() as f64, c.b.h() as f64);
+    w >= FRAME_MIN_SIDE * s && h >= FRAME_MIN_SIDE * s && is_hollow(c)
+}
+
+/// An outline: a component at least [`HOLLOW_MIN_SIDE`] pixels each way inked on at most
+/// [`FRAME_MAX_INK`] of its box. Letters are inked far more densely.
+fn is_hollow(c: &Comp) -> bool {
+    let (w, h) = (c.b.w() as f64, c.b.h() as f64);
+    w >= HOLLOW_MIN_SIDE && h >= HOLLOW_MIN_SIDE && (c.area as f64) <= FRAME_MAX_INK * w * h
+}
+
 /// Character boxes (`caixas_de_caractere`) and bar candidates (`empilhados.barras`). A component
 /// whose box sits inside a bigger component's box, with less ink, is inner detail (the inside
-/// of an outlined figurine) and dropped, and so are rules, flat or upright. Quadratic in the components: the caller caps them.
+/// of an outlined figurine) and dropped, and so are rules, flat or upright. A frame around text
+/// ([`is_frame`]) is no glyph either, and what it holds is text, not its inner detail. Quadratic in the components: the caller caps them.
 pub(crate) fn char_boxes(comps: &[Comp], scale: i64) -> (Vec<Bx>, Vec<Bx>) {
     let s = scale as f64;
     let floor = MIN_AREA_GLYPH * s * s;
@@ -269,8 +295,18 @@ pub(crate) fn char_boxes(comps: &[Comp], scale: i64) -> (Vec<Bx>, Vec<Bx>) {
     let mut bars = Vec::new();
     for (i, c) in comps.iter().enumerate() {
         let c_area = c.b.w() * c.b.h();
+        if is_frame(c, scale) {
+            continue;
+        }
         let inside = comps.iter().enumerate().any(|(j, o)| {
-            j != i && o.area > c.area && o.b.x0 <= c.b.x0 && o.b.y0 <= c.b.y0 && o.b.x1 >= c.b.x1 && o.b.y1 >= c.b.y1 && o.b.w() * o.b.h() > c_area
+            j != i
+                && o.area > c.area
+                && o.b.x0 <= c.b.x0
+                && o.b.y0 <= c.b.y0
+                && o.b.x1 >= c.b.x1
+                && o.b.y1 >= c.b.y1
+                && o.b.w() * o.b.h() > c_area
+                && !is_frame(o, scale)
         });
         if inside {
             continue;

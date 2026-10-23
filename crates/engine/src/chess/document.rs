@@ -26,8 +26,8 @@
 //! Read-only: nothing here changes a document.
 
 use pdfcraft_chess::san::Lang;
-use pdfcraft_chessvision::chess_text::{self, ChessPageText, LangGuess, LangTally, TextQuality};
-use pdfcraft_chessvision::coords::PageRect;
+use pdfcraft_chessvision::chess_text::{self, ChessPageText, ChessRun, LangGuess, LangTally, TextQuality};
+use pdfcraft_chessvision::coords::{PageGeometry, PageRect, ViewRect};
 use pdfcraft_chessvision::doc::{BlockHint, ChessDoc, DocBuilder, HintKind, PageInput};
 use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind};
 
@@ -189,9 +189,40 @@ pub fn block_hints(blocks: &[pdfcraft_edit::TextBlock], body: Option<f64>) -> Ve
         .collect()
 }
 
+/// The headings of a page read with OCR: each frame drawn around text (`frames`, view space: a
+/// game's header box, a chapter title's) that holds a short text, at most
+/// [`HEADING_MAX_CHARS`] of `text`'s characters, is a heading (level 2). A frame around a longer
+/// text (a sidebar) is no heading, and a framed line with moves is never one (the builder's rule).
+pub fn frame_hints(frames: &[ViewRect], text: &ChessPageText, geometry: &PageGeometry) -> Vec<BlockHint> {
+    frames
+        .iter()
+        .filter_map(|f| {
+            let inside = text.lines.iter().filter(|l| {
+                let (cx, cy) = ((l.rect.x0 + l.rect.x1) * 0.5, (l.rect.y0 + l.rect.y1) * 0.5);
+                cx >= f.x0 && cx <= f.x1 && cy >= f.y0 && cy <= f.y1
+            });
+            let chars: usize = inside.flat_map(|l| &l.spans).map(|s| span_chars(&s.run)).sum();
+            if chars == 0 || chars > HEADING_MAX_CHARS {
+                return None;
+            }
+            geometry.view_to_user(*f).map(|rect| BlockHint { kind: HintKind::Heading { level: 2 }, rect })
+        })
+        .collect()
+}
+
+/// The characters a span of chess text stands for: its text, a move as printed, one for a sign.
+fn span_chars(run: &ChessRun) -> usize {
+    match run {
+        ChessRun::Text(t) => t.chars().filter(|c| !c.is_whitespace()).count(),
+        ChessRun::Move { text, .. } => text.chars().count(),
+        _ => 1,
+    }
+}
+
 /// The hints for a page from its reading blocks, and a note when they could not be read. A page
-/// read with OCR gets none: its blocks are the layer that was not believed (an earlier OCR
-/// program's invisible text, whose sizes say nothing), so its lines are grouped by spacing.
+/// read with OCR gets none here: its blocks are the layer that was not believed (an earlier OCR
+/// program's invisible text, whose sizes say nothing), so its lines are grouped by spacing, and
+/// its headings come from the frames OCR found ([`frame_hints`]).
 pub fn page_hints(
     blocks: Option<&Result<Vec<pdfcraft_edit::TextBlock>, String>>,
     body: Option<f64>,
@@ -312,6 +343,7 @@ impl Session {
             let mut text = layer_text;
             let mut reviews: Vec<TextReview> = Vec::new();
             let ocr_text;
+            let mut ocr_frames: Vec<ViewRect> = Vec::new();
             notes.extend(page.notes.iter().map(|n| (page.page, n.clone())));
             if let Some(e) = &page.error {
                 notes.push((page.page, e.clone()));
@@ -357,6 +389,7 @@ impl Session {
                                     general_ocr: read.general_ocr,
                                 });
                                 reviews = read.reviews;
+                                ocr_frames = read.frames;
                                 ocr_text = read.text;
                                 text = &ocr_text;
                             }
@@ -399,7 +432,10 @@ impl Session {
                 continue;
             };
             let read_by_ocr = !std::ptr::eq(text, layer_text);
-            let (hints, note) = page_hints(blocks.as_ref(), body, read_by_ocr);
+            let (mut hints, note) = page_hints(blocks.as_ref(), body, read_by_ocr);
+            if read_by_ocr {
+                hints = frame_hints(&ocr_frames, text, &geometry);
+            }
             notes.extend(note.map(|n| (page.page, n)));
             let diagrams = readings;
             if page.readings.is_none() && !page.diagrams.is_empty() {

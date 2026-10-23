@@ -14,7 +14,8 @@
 //! 4. the book's cipher and the legality repair (`chessvision::cipher::repair_lines`) run over the
 //!    page's lines, from the diagram the page shows (or the game start at `1.`); what they change
 //!    or cannot settle becomes a review flag on the text;
-//! 5. the lines become the same `ChessPageText` a text layer gives.
+//! 5. the lines become the same `ChessPageText` a text layer gives, and the frames drawn around
+//!    text (a game's header box) are kept for the headings.
 //!
 //! Reading order is top to bottom by line: a two-column page is read across both columns.
 //!
@@ -63,6 +64,9 @@ pub struct OcrText {
     pub flags: usize,
     /// Whether the general OCR read the prose (otherwise the glyph reader read everything).
     pub general_ocr: bool,
+    /// The frames drawn around text on the page (view space): a game's header box, a chapter
+    /// title's. A page read with OCR has no other layout to tell a heading by.
+    pub frames: Vec<ViewRect>,
 }
 
 /// The vertical overlap of two pixel spans, as a share of the shorter.
@@ -156,6 +160,11 @@ pub fn read_page(
     let image = masked(gray, diagrams).ok_or("the page image could not be prepared")?;
     let scale = text_scale(&image, &[]).map_err(|e| e.to_string())?;
     let lines = read(&image, None, scale, glyphs, &GlyphOptions::default()).map_err(|e| e.to_string())?;
+    let frames: Vec<ViewRect> = pdfcraft_chessvision::glyphs::frames(&image, None, scale)
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .filter_map(|r| pixels_to_view(r, dpi))
+        .collect();
     let fused = match ocr {
         Some(words) => bucket(&lines, words),
         None => glyphs_only(&lines),
@@ -173,6 +182,7 @@ pub fn read_page(
         edits: repaired.edits.len(),
         flags: repaired.flags.len(),
         general_ocr: ocr.is_some(),
+        frames,
     })
 }
 
