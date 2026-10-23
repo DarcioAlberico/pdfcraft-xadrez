@@ -12,9 +12,15 @@
 //! process. Commands go through a writer thread, so an engine that stops reading cannot hold up
 //! the interface.
 //!
+//! The lines found for the last [`MAX_KEPT`] positions are kept for the session: back on one of
+//! them (or on the position it was stopped on), the analyser shows them at once and searches on,
+//! showing them until the new search goes deeper; a position searched to the depth asked for is
+//! not searched again.
+//!
 //! Only the interface starts an engine. No automation tool does: a tool that runs a program
 //! named in its arguments would let any MCP client run any program.
 
+use std::collections::VecDeque;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
@@ -44,6 +50,9 @@ const QUIT_GRACE: Duration = Duration::from_millis(400);
 
 /// Moves of a line turned into SAN (the rest stay in UCI).
 const MAX_SAN: usize = 24;
+
+/// Positions whose lines are kept for when the board comes back to them.
+pub const MAX_KEPT: usize = 64;
 
 /// The engine program to use: `$PDFCRAFT_CHESS_ENGINE` when it names a file, else the program
 /// in an `engine` folder beside the executable.
@@ -147,6 +156,14 @@ impl AnalysisOptions {
 /// Called after the engine said something new (the interface repaints).
 pub type Notify = Arc<dyn Fn() + Send + Sync>;
 
+/// The lines found for a position the analyser left.
+struct Kept {
+    fen: String,
+    lines: Vec<Line>,
+    /// The search reached the depth asked for (it was not stopped).
+    done: bool,
+}
+
 struct Shared {
     name: Option<String>,
     ready: bool,
@@ -156,8 +173,18 @@ struct Shared {
     side: Color,
     /// A position asked for before the handshake finished.
     pending: Option<String>,
+    /// The lines of the search running (or last run) on the position.
     lines: Vec<Line>,
+    /// Lines kept from an earlier search of the position, shown instead of [`Shared::lines`]
+    /// until the search's best line is deeper.
+    seed: Vec<Line>,
     searching: bool,
+    /// The search was told to stop, to keep what it found (not to start another).
+    stopping: bool,
+    /// The last search of the position reached the depth asked for.
+    done: bool,
+    /// The lines of positions left, the newest last, at most [`MAX_KEPT`].
+    kept: VecDeque<Kept>,
     /// Searches stopped whose `bestmove` has not arrived yet: until it does, the engine's lines
     /// are about an earlier position.
     stale: u32,
@@ -221,7 +248,11 @@ impl Analyser {
             side: Color::White,
             pending: None,
             lines: Vec::new(),
+            seed: Vec::new(),
             searching: false,
+            stopping: false,
+            done: false,
+            kept: VecDeque::new(),
             stale: 0,
             nodes: None,
             nps: None,
@@ -244,8 +275,10 @@ impl Analyser {
         Analyser { shared, commands, child: None, started: Instant::now() }
     }
 
-    /// Analyse `fen`, dropping what was found for the position before. A position with no legal
-    /// move (mate, stalemate) or that cannot be played is not sent: its lines are empty.
+    /// Analyse `fen`; what was found for the position before is kept for when it comes back. A
+    /// position searched before shows the lines found then at once, and is searched on unless
+    /// that search reached the depth asked for. A position with no legal move (mate, stalemate)
+    /// or that cannot be played is not sent: its lines are empty.
     pub fn analyse(&self, fen: &str) {
         let mut s = lock(&self.shared);
         // The engine is given the FEN as the rules wrote it back, never the text as received: a
@@ -253,11 +286,12 @@ impl Analyser {
         let fen = Game::from_fen(fen).ok().filter(|g| !g.legal_moves().is_empty()).map(|g| g.fen());
         let Some(fen) = fen else {
             stop_search(&mut s, &self.commands, true);
+            remember(&mut s);
             s.fen = None;
-            s.lines.clear();
             return;
         };
-        if s.fen.as_deref() == Some(fen.as_str()) && (s.searching || !s.lines.is_empty()) {
+        // Already searching it, or searched to the depth asked for.
+        if s.fen.as_deref() == Some(fen.as_str()) && ((s.searching && !s.stopping) || (!s.searching && s.done)) {
             return;
         }
         if s.ready {
@@ -274,7 +308,8 @@ impl Analyser {
         stop_search(&mut s, &self.commands, false);
     }
 
-    /// Change the options, starting the position again when they changed.
+    /// Change the options, starting the position again when they changed. The lines kept are
+    /// dropped: they were found with the old ones.
     pub fn set_options(&self, options: AnalysisOptions) {
         let mut s = lock(&self.shared);
         let options = options.sanitized();
@@ -282,12 +317,16 @@ impl Analyser {
             return;
         }
         s.options = options;
+        s.kept.clear();
+        s.seed.clear();
+        s.done = false;
         if !s.ready {
             return;
         }
-        let again = s.fen.clone().filter(|_| s.searching);
+        let again = s.fen.clone();
         // UCI allows setoption only between searches.
         stop_search(&mut s, &self.commands, true);
+        s.lines.clear();
         let _ = self.commands.send(format!("setoption name MultiPV value {}", options.lines));
         if let Some(fen) = again {
             start_search(&mut s, &self.commands, fen);
@@ -302,7 +341,7 @@ impl Analyser {
             name: s.name.clone(),
             ready: s.ready,
             fen: s.fen.clone(),
-            lines: s.lines.clone(),
+            lines: shown(&s).to_vec(),
             searching: s.searching,
             nodes: s.nodes,
             nps: s.nps,
@@ -341,21 +380,61 @@ fn stop_search(s: &mut Shared, commands: &Sender<String>, drop_result: bool) {
         if drop_result {
             s.stale = s.stale.saturating_add(1);
             s.searching = false;
+        } else {
+            s.stopping = true;
         }
     }
 }
 
+/// The lines shown: those kept from an earlier search while there are any, else the search's.
+fn shown(s: &Shared) -> &[Line] {
+    if s.seed.is_empty() { &s.lines } else { &s.seed }
+}
+
+/// Keep the lines shown for the position analysed, for when it comes back; the position has none
+/// shown after.
+fn remember(s: &mut Shared) {
+    let lines = if s.seed.is_empty() { std::mem::take(&mut s.lines) } else { std::mem::take(&mut s.seed) };
+    s.lines.clear();
+    let Some(fen) = s.fen.clone() else { return };
+    if lines.is_empty() {
+        return;
+    }
+    s.kept.retain(|k| k.fen != fen);
+    s.kept.push_back(Kept { fen, lines, done: s.done });
+    while s.kept.len() > MAX_KEPT {
+        s.kept.pop_front();
+    }
+}
+
+/// Analyse `fen` (written back by the rules): what was found for the position before is kept, and
+/// what was kept for this one is shown while the engine searches on, or instead of searching
+/// when that search reached the depth asked for.
 fn start_search(s: &mut Shared, commands: &Sender<String>, fen: String) {
     stop_search(s, commands, true);
-    let _ = commands.send(format!("position fen {fen}"));
-    let _ = commands.send(format!("go depth {}", s.options.depth));
+    remember(s);
+    let kept = s.kept.iter().position(|k| k.fen == fen).and_then(|at| s.kept.remove(at));
     s.side = if fen.split_ascii_whitespace().nth(1) == Some("b") { Color::Black } else { Color::White };
-    s.fen = Some(fen);
     s.pending = None;
-    s.lines.clear();
     s.nodes = None;
     s.nps = None;
-    s.searching = true;
+    s.stopping = false;
+    match kept {
+        Some(k) if k.done => {
+            s.fen = Some(fen);
+            s.lines = k.lines;
+            s.done = true;
+            s.searching = false;
+        }
+        kept => {
+            let _ = commands.send(format!("position fen {fen}"));
+            let _ = commands.send(format!("go depth {}", s.options.depth));
+            s.fen = Some(fen);
+            s.seed = kept.map(|k| k.lines).unwrap_or_default();
+            s.done = false;
+            s.searching = true;
+        }
+    }
 }
 
 /// The reader thread: the engine's lines into the shared state, until its output closes.
@@ -448,6 +527,11 @@ fn take_message(s: &mut Shared, commands: &Sender<String>, message: Message) -> 
                 None => s.lines.push(line),
             }
             s.lines.sort_by_key(|l| l.multipv);
+            // The lines kept from before give way once the search's best line is deeper.
+            let best = |lines: &[Line]| lines.iter().find(|l| l.multipv == 1).map_or(0, |l| l.depth);
+            if !s.seed.is_empty() && best(&s.lines) > best(&s.seed) {
+                s.seed.clear();
+            }
         }
         Message::BestMove(_) => {
             if s.stale > 0 {
@@ -455,6 +539,7 @@ fn take_message(s: &mut Shared, commands: &Sender<String>, message: Message) -> 
                 return false;
             }
             s.searching = false;
+            s.done = !std::mem::take(&mut s.stopping);
         }
         Message::ReadyOk | Message::Other => return false,
     }
@@ -471,13 +556,16 @@ mod tests {
     const QUIET: &str = "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1";
 
     /// A pretend engine on the other end of two pipes. For each `go depth N` it reports depths
-    /// 1..=min(N, 3) with a line legal in the position it was given; asked deeper, it then waits
+    /// 1..=min(N, top) with a line legal in the position it was given, `top` being 3 the first
+    /// time it searches the position and two more each time after; asked deeper, it then waits
     /// for `stop` and sends one more (late) line before its `bestmove`, as a real engine
     /// interrupted mid-search does. On a position without castling rights it reports nothing.
     /// It records every command.
     fn fake_engine(commands: PipeReader, mut out: PipeWriter, log: Arc<Mutex<Vec<String>>>) {
         let mut position = String::new();
         let mut waiting = false;
+        let mut searched: std::collections::HashMap<String, u32> = std::collections::HashMap::new();
+        let mut top = 3;
         for line in BufReader::new(commands).lines() {
             let Ok(line) = line else { break };
             log.lock().unwrap().push(line.clone());
@@ -495,11 +583,14 @@ mod tests {
                 Some("go") => {
                     let depth: u32 = line.split_whitespace().last().and_then(|d| d.parse().ok()).unwrap_or(1);
                     let silent = !position.contains("KQkq");
-                    for d in (1..=depth.min(3)).filter(|_| !silent) {
+                    let times = searched.entry(position.clone()).or_insert(0);
+                    top = 3 + 2 * *times;
+                    *times += 1;
+                    for d in (1..=depth.min(top)).filter(|_| !silent) {
                         say(&format!("info depth {d} multipv 1 score cp {} nodes {} nps 1000 pv {mv}", 10 * d, 100 * d));
                         say(&format!("info depth {d} multipv 2 score cp -5 pv {mv}"));
                     }
-                    if depth <= 3 || silent {
+                    if depth <= top || silent {
                         say(&format!("bestmove {mv}"));
                     } else {
                         waiting = true;
@@ -507,7 +598,7 @@ mod tests {
                 }
                 Some("stop") if waiting => {
                     waiting = false;
-                    say(&format!("info depth 4 multipv 1 score cp 999 pv {mv}"));
+                    say(&format!("info depth {} multipv 1 score cp 999 pv {mv}", top + 1));
                     say(&format!("bestmove {mv}"));
                 }
                 Some("quit") => break,
@@ -584,6 +675,66 @@ mod tests {
         let s = wait(&a, |s| s.fen.as_deref() == Some(START) && !s.searching && s.lines.len() == 2);
         assert_eq!(s.lines.len(), 2);
         assert!(log.lock().unwrap().iter().any(|c| c == "setoption name MultiPV value 2"));
+    }
+
+    /// The number of searches started.
+    fn searches(log: &Mutex<Vec<String>>) -> usize {
+        log.lock().unwrap().iter().filter(|c| c.starts_with("go ")).count()
+    }
+
+    /// Back on a position it had searched, the analyser shows the lines it had at once and
+    /// searches on, showing them until the new search goes deeper; so too on the position it was
+    /// stopped on (the board hidden, then shown again).
+    #[test]
+    fn a_position_searched_before_shows_its_lines_at_once_and_is_searched_deeper() {
+        let (a, log) = connect(AnalysisOptions { lines: 1, depth: 20 });
+        a.analyse(START);
+        wait(&a, |s| s.lines.first().is_some_and(|l| l.depth == 3));
+        a.analyse(AFTER_E4);
+        let s = wait(&a, |s| s.fen.as_deref() == Some(AFTER_E4) && s.lines.first().is_some_and(|l| l.depth == 3));
+        assert_eq!(s.lines[0].san, ["e5"]);
+        a.analyse(START);
+        let s = a.snapshot();
+        assert_eq!(s.fen.as_deref(), Some(START));
+        let first = s.lines.first().expect("the lines it had, at once");
+        assert!(first.depth >= 3 && first.san == ["e4"], "{first:?}");
+        assert!(s.searching, "and it searches on");
+        let s = wait(&a, |s| s.lines.first().is_some_and(|l| l.depth == 5));
+        assert_eq!((s.lines[0].depth, searches(&log)), (5, 3), "the new search's lines once deeper");
+        // Stopped (the board hidden), then asked again: searched on from the lines it had.
+        a.stop();
+        let s = wait(&a, |s| !s.searching);
+        assert_eq!(s.lines[0].depth, 6, "the line the engine sent as it stopped");
+        a.analyse(START);
+        let s = a.snapshot();
+        assert_eq!(s.lines.first().map(|l| l.depth), Some(6), "shown at once");
+        let s = wait(&a, |s| s.lines.first().is_some_and(|l| l.depth == 7));
+        assert_eq!((s.lines[0].depth, searches(&log)), (7, 4));
+    }
+
+    /// A position searched to the depth asked for is not searched again: its lines come back.
+    #[test]
+    fn a_position_searched_to_the_depth_asked_is_not_searched_again() {
+        let (a, log) = connect(AnalysisOptions { lines: 2, depth: 3 });
+        a.analyse(START);
+        wait(&a, |s| !s.searching && s.lines.len() == 2);
+        a.analyse(AFTER_E4);
+        wait(&a, |s| s.fen.as_deref() == Some(AFTER_E4) && !s.searching && s.lines.len() == 2);
+        a.analyse(START);
+        let s = a.snapshot();
+        assert_eq!((s.fen.as_deref(), s.searching, s.lines.len()), (Some(START), false, 2));
+        assert_eq!(s.lines[0].depth, 3);
+        std::thread::sleep(Duration::from_millis(50));
+        assert_eq!(searches(&log), 2, "{:?}", log.lock().unwrap());
+        // Other options: the position shown is searched again, and what was found with the old
+        // ones is not shown.
+        a.set_options(AnalysisOptions { lines: 1, depth: 3 });
+        let s = wait(&a, |s| !s.searching && s.lines.len() == 1);
+        assert_eq!((s.fen.as_deref(), searches(&log)), (Some(START), 3));
+        a.analyse(AFTER_E4);
+        let s = wait(&a, |s| s.fen.as_deref() == Some(AFTER_E4) && !s.searching && !s.lines.is_empty());
+        assert_eq!(s.lines.len(), 1);
+        assert_eq!(searches(&log), 4);
     }
 
     #[test]
