@@ -37,7 +37,7 @@ use pdfcraft_chessvision::doc::TextReview;
 use pdfcraft_chessvision::glyphs::GlyphClassifier;
 
 use super::ChessScanSettings;
-use super::text_ocr::{self, OCR_DPI};
+use super::text_ocr::{self, LargerLine, OCR_DPI};
 use crate::{DocId, Session};
 
 /// A block at least this many times the body size is a heading (a game collection's 18 pt titles
@@ -205,27 +205,87 @@ pub fn frame_hints(frames: &[ViewRect], text: &ChessPageText, geometry: &PageGeo
     frames
         .iter()
         .filter_map(|f| {
-            let inside: Vec<&ChessLine> = text
-                .lines
-                .iter()
-                .filter(|l| {
-                    let (cx, cy) = ((l.rect.x0 + l.rect.x1) * 0.5, (l.rect.y0 + l.rect.y1) * 0.5);
-                    cx >= f.x0 && cx <= f.x1 && cy >= f.y0 && cy <= f.y1
-                })
-                .collect();
-            let chars: usize = inside.iter().flat_map(|l| &l.spans).map(|s| span_chars(&s.run)).sum();
-            if chars == 0 || chars > HEADING_MAX_CHARS || inside.len() > FRAME_MAX_LINES {
+            let inside = lines_inside(text, *f);
+            if !short_heading(&inside) {
                 return None;
             }
             // A header box hugs its text; a page's or a table's border holds a little text in a
             // large box.
-            let held = inside.iter().map(|l| l.rect).reduce(|a, b| ViewRect::new(a.x0.min(b.x0), a.y0.min(b.y0), a.x1.max(b.x1), a.y1.max(b.y1)))?;
+            let held = inside.iter().map(|l| l.rect).reduce(cover)?;
             if held.width() < FRAME_MIN_FILL_X * f.width() || held.height() < FRAME_MIN_FILL_Y * f.height() {
                 return None;
             }
             geometry.view_to_user(*f).map(|rect| BlockHint { kind: HintKind::Heading { level: 2 }, rect })
         })
         .collect()
+}
+
+/// Largest gap between two larger lines of one title, as a share of the taller line: a two-line
+/// chapter title is set with ordinary leading; the chapter's number above it stands a blank line
+/// or more away.
+pub const LARGER_LINE_GAP_SHARE: f32 = 1.0;
+
+/// The headings of a page read with OCR from its lines set larger than its body (`larger`, view
+/// space: a chapter title without a frame). Larger lines one under the other, at most
+/// [`LARGER_LINE_GAP_SHARE`] of a line apart, are one title. A title is a heading when it holds a
+/// short text (at most [`HEADING_MAX_CHARS`] of `text`'s characters on at most
+/// [`FRAME_MAX_LINES`] lines) and no line of body size (another column's line beside it): level 1
+/// at [`TITLE_RATIO`] times the body or more, else level 2. A larger line of moves is a main line
+/// set large, not a title (the builder's rule).
+pub fn size_hints(larger: &[LargerLine], text: &ChessPageText, geometry: &PageGeometry) -> Vec<BlockHint> {
+    let mut lines: Vec<LargerLine> = larger.iter().copied().filter(|l| l.ratio.is_finite()).collect();
+    lines.sort_by(|a, b| a.rect.y0.total_cmp(&b.rect.y0));
+    // Each title, and its last line.
+    let mut titles: Vec<(LargerLine, ViewRect)> = Vec::new();
+    for line in lines {
+        match titles.last_mut() {
+            Some((title, last))
+                if last.x0 < line.rect.x1
+                    && line.rect.x0 < last.x1
+                    && line.rect.y0 - last.y1 <= LARGER_LINE_GAP_SHARE * last.height().max(line.rect.height()) =>
+            {
+                title.rect = cover(title.rect, line.rect);
+                title.ratio = title.ratio.max(line.ratio);
+                *last = line.rect;
+            }
+            _ => titles.push((line, line.rect)),
+        }
+    }
+    titles
+        .iter()
+        .filter_map(|(title, _)| {
+            let inside = lines_inside(text, title.rect);
+            let body_size = |l: &&ChessLine| !larger.iter().any(|g| centre_in(l.rect, g.rect));
+            if !short_heading(&inside) || inside.iter().any(body_size) {
+                return None;
+            }
+            let level = if f64::from(title.ratio) >= TITLE_RATIO { 1 } else { 2 };
+            geometry.view_to_user(title.rect).map(|rect| BlockHint { kind: HintKind::Heading { level }, rect })
+        })
+        .collect()
+}
+
+/// Whether the centre of `line` is within `rect`.
+fn centre_in(line: ViewRect, rect: ViewRect) -> bool {
+    let (cx, cy) = ((line.x0 + line.x1) * 0.5, (line.y0 + line.y1) * 0.5);
+    cx >= rect.x0 && cx <= rect.x1 && cy >= rect.y0 && cy <= rect.y1
+}
+
+/// The lines of `text` whose centre is within `rect`: the lines the builder gives a hint there.
+fn lines_inside(text: &ChessPageText, rect: ViewRect) -> Vec<&ChessLine> {
+    text.lines.iter().filter(|l| centre_in(l.rect, rect)).collect()
+}
+
+/// Whether `lines` are short enough for a heading: some text, at most [`HEADING_MAX_CHARS`]
+/// characters on at most [`FRAME_MAX_LINES`] lines.
+fn short_heading(lines: &[&ChessLine]) -> bool {
+    let chars: usize = lines.iter().flat_map(|l| &l.spans).map(|s| span_chars(&s.run)).sum();
+    chars > 0 && chars <= HEADING_MAX_CHARS && lines.len() <= FRAME_MAX_LINES
+}
+
+/// The smallest box covering both.
+fn cover(a: ViewRect, b: ViewRect) -> ViewRect {
+    ViewRect::new(a.x0.min(b.x0), a.y0.min(b.y0), a.x1.max(b.x1), a.y1.max(b.y1))
 }
 
 /// The characters a span of chess text stands for: its text, a move as printed, one for a sign.
@@ -240,7 +300,8 @@ fn span_chars(run: &ChessRun) -> usize {
 /// The hints for a page from its reading blocks, and a note when they could not be read. A page
 /// read with OCR gets none here: its blocks are the layer that was not believed (an earlier OCR
 /// program's invisible text, whose sizes say nothing), so its lines are grouped by spacing, and
-/// its headings come from the frames OCR found ([`frame_hints`]).
+/// its headings come from the frames and the larger lines OCR found ([`frame_hints`],
+/// [`size_hints`]).
 pub fn page_hints(
     blocks: Option<&Result<Vec<pdfcraft_edit::TextBlock>, String>>,
     body: Option<f64>,
@@ -362,6 +423,7 @@ impl Session {
             let mut reviews: Vec<TextReview> = Vec::new();
             let ocr_text;
             let mut ocr_frames: Vec<ViewRect> = Vec::new();
+            let mut ocr_larger: Vec<LargerLine> = Vec::new();
             notes.extend(page.notes.iter().map(|n| (page.page, n.clone())));
             if let Some(e) = &page.error {
                 notes.push((page.page, e.clone()));
@@ -408,6 +470,7 @@ impl Session {
                                 });
                                 reviews = read.reviews;
                                 ocr_frames = read.frames;
+                                ocr_larger = read.larger;
                                 ocr_text = read.text;
                                 text = &ocr_text;
                             }
@@ -452,7 +515,9 @@ impl Session {
             let read_by_ocr = !std::ptr::eq(text, layer_text);
             let (mut hints, note) = page_hints(blocks.as_ref(), body, read_by_ocr);
             if read_by_ocr {
+                // A frame's heading comes first: a title inside a box is the box's.
                 hints = frame_hints(&ocr_frames, text, &geometry);
+                hints.extend(size_hints(&ocr_larger, text, &geometry));
             }
             notes.extend(note.map(|n| (page.page, n)));
             let diagrams = readings;

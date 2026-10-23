@@ -158,10 +158,32 @@ pub struct GlyphLine {
     pub rect: PixelRect,
 }
 
+/// Where among a line's glyph heights, shortest first, [`GlyphLine::height`] is taken: above the
+/// x-height letters, below the brackets and the odd glyph merged with its neighbour.
+pub const LINE_HEIGHT_RANK: f32 = 0.8;
+
 impl GlyphLine {
     /// The line's words joined by spaces.
     pub fn text(&self) -> String {
         self.words.iter().map(|w| w.text.as_str()).collect::<Vec<_>>().join(" ")
+    }
+
+    /// The line's glyphs.
+    pub fn glyphs(&self) -> impl Iterator<Item = &Glyph> {
+        self.words.iter().flat_map(|w| &w.glyphs)
+    }
+
+    /// The line's text height: its glyphs' box height at [`LINE_HEIGHT_RANK`] of them, tallest
+    /// last. That is the capitals' and ascenders' height whatever the line holds: a line of
+    /// moves (digits and figurines, all capital height) and a line of prose (mostly x-height
+    /// letters) of one size measure alike, and a line set larger measures larger. `None` for a
+    /// line without glyphs.
+    pub fn height(&self) -> Option<u32> {
+        let mut heights: Vec<u32> = self.glyphs().map(|g| g.rect.y1.saturating_sub(g.rect.y0)).filter(|&h| h > 0).collect();
+        heights.sort_unstable();
+        // The rank is a share in [0, 1], so the index is within the list.
+        let at = (heights.len().saturating_sub(1) as f32 * LINE_HEIGHT_RANK) as usize;
+        heights.get(at).copied()
     }
 }
 

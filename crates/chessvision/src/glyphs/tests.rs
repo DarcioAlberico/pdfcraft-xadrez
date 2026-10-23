@@ -744,3 +744,34 @@ proptest! {
         let _ = notation::has_move(&notation::fold(&s));
     }
 }
+
+/// A line of `(height, count)` glyphs, each its own word.
+fn line_of(heights: &[(u32, usize)]) -> GlyphLine {
+    let words: Vec<GlyphWord> = heights
+        .iter()
+        .flat_map(|&(h, n)| std::iter::repeat_n(h, n))
+        .enumerate()
+        .map(|(i, h)| {
+            let x0 = u32::try_from(i).unwrap() * 20;
+            let rect = PixelRect { x0, y0: 100 - h, x1: x0 + 12, y1: 100 };
+            GlyphWord { text: "a".into(), rect, glyphs: vec![Glyph { rect, text: "a".into(), p: 0.9, alternatives: Vec::new(), margin: 0.5 }] }
+        })
+        .collect();
+    GlyphLine { words, rect: PixelRect { x0: 0, y0: 60, x1: 400, y1: 100 } }
+}
+
+/// A line's height is its capitals' and ascenders': a line of prose (mostly x-height letters, a
+/// few ascenders, a comma) and a line of moves (digits and figurines, all capital height) of one
+/// size measure alike; a title set larger measures larger; an empty line has none. (Fails with
+/// the median: the prose line measures its x-height, 20 against 30.)
+#[test]
+fn a_lines_height_is_its_capitals_whatever_it_holds() {
+    let prose = line_of(&[(6, 2), (20, 22), (30, 9), (38, 1)]);
+    let moves = line_of(&[(30, 14), (8, 3)]);
+    let title = line_of(&[(30, 10), (45, 6)]);
+    assert_eq!(prose.height(), Some(30));
+    assert_eq!(moves.height(), Some(30));
+    assert_eq!(title.height(), Some(45));
+    assert_eq!(line_of(&[]).height(), None);
+    assert_eq!(line_of(&[(0, 3)]).height(), None, "glyphs without height");
+}

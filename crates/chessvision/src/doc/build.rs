@@ -522,12 +522,26 @@ pub(crate) fn inlines(lines: &[&ChessLine], geometry: Option<&PageGeometry>) -> 
 fn text_block(kind: Option<HintKind>, lines: &[&ChessLine], geometry: &PageGeometry) -> Block {
     let source_rect = lines.iter().map(|l| user(l.rect, geometry)).fold(None, union);
     let inlines = inlines(lines, Some(geometry));
-    // A block with moves in it is never a heading: books set their main lines larger and bold.
-    let moves = inlines.iter().any(|i| matches!(i, Inline::Move(_)));
     match kind {
-        Some(HintKind::Heading { level }) if !moves => Block::Heading { level, inlines, source_rect },
+        Some(HintKind::Heading { level }) if titled(&inlines) => Block::Heading { level, inlines, source_rect },
         _ => Block::Paragraph { inlines, source_rect },
     }
+}
+
+/// Most moves a heading names (`The Evans Gambit: 4...Bb6 5 a4`).
+pub const MAX_HEADING_MOVES: usize = 2;
+/// Fewest letters of words a heading holds for each move it names.
+pub const HEADING_LETTERS_PER_MOVE: usize = 12;
+
+/// Whether a block a hint calls a heading reads as one. Books set their main lines larger and
+/// bold, so a block of moves is a paragraph; a title names a move or two in its words
+/// (`The Italian Regretted: White Plays 5 d3`): at most [`MAX_HEADING_MOVES`], with
+/// [`HEADING_LETTERS_PER_MOVE`] letters each.
+fn titled(inlines: &[Inline]) -> bool {
+    let moves = inlines.iter().filter(|i| matches!(i, Inline::Move(_))).count();
+    let letters: usize =
+        inlines.iter().map(|i| if let Inline::Text { text, .. } = i { text.chars().filter(|c| c.is_alphabetic()).count() } else { 0 }).sum();
+    moves == 0 || (moves <= MAX_HEADING_MOVES && letters >= moves.saturating_mul(HEADING_LETTERS_PER_MOVE))
 }
 
 /// The page's blocks, and its trailing caption label ([`caption_numbers`]). `carried` is the
