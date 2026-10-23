@@ -243,16 +243,34 @@ fn without_square_marks(cells: &[Cell], lang: Lang) -> Option<Vec<Cell>> {
     reads_as_move(&kept, lang).then_some(kept)
 }
 
+/// Widest gap, as a share of the glyphs' height, between the two digits of a split move number:
+/// Chess Tactics 4's split numbers stand 0.13-0.18 apart, its words 0.20 or more (5th percentile;
+/// median 0.28).
+const SPLIT_NUMBER_GAP: f32 = 0.19;
+
 /// A move whose number an old OCR layer split at a space, from word `i`: a digit, then either the
 /// rest of the number with its move (`1` `8.Nf6+`: 18.Nf6+) or a digit and the move after its
 /// full stop (`2` `1` `.fxe6`: 21.fxe6; `3` `1` `...Kf6`: 31...Kf6). The words joined, and how
-/// many, when together they read as a numbered move; the walker still judges the number.
+/// many, when together they read as a numbered move and the digits stand closer than words do
+/// ([`SPLIT_NUMBER_GAP`]); the walker still judges the number.
 fn split_number(words: &[Vec<Cell>], i: usize, lang: Lang) -> Option<(Vec<Cell>, usize)> {
     let digit = |w: Option<&Vec<Cell>>, first: bool| matches!(w.map(Vec::as_slice), Some([c]) if c.ch.is_ascii_digit() && !(first && c.ch == '0'));
     if !digit(words.get(i), true) {
         return None;
     }
     let next = words.get(i + 1)?;
+    // The digits stand closer than words do: a real space keeps them apart (`Game 1 8.Nf3`).
+    let tight = match (words.get(i).and_then(|w| w.last()), next.first()) {
+        (Some(a), Some(b)) => {
+            let h = (a.rect[3] - a.rect[1]).max(b.rect[3] - b.rect[1]);
+            let gap = b.rect[0] - a.rect[2];
+            h.is_finite() && gap.is_finite() && h > 0.0 && gap <= SPLIT_NUMBER_GAP * h
+        }
+        _ => false,
+    };
+    if !tight {
+        return None;
+    }
     let spans: &[usize] = if next.first().is_some_and(|c| c.ch.is_ascii_digit()) && next.get(1).is_some_and(|c| c.ch == '.') {
         &[1]
     } else if digit(Some(next), false) && words.get(i + 2).and_then(|w| w.first()).is_some_and(|c| c.ch == '.') {
