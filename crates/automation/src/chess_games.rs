@@ -4,7 +4,7 @@
 //! game shown (`active`), and goes back as a PGN in list order, with the list; with `out` it is
 //! also written to that file (atomically, and only when every operation was applied). A list of
 //! operations is applied in order, as the games list of the app does them: `list`, `set_active`,
-//! `rename` (the White, Black and Event tags), `duplicate`, `delete`, `move` (to any place),
+//! `rename` (the White, Black, Event, Site, Date and Round tags), `duplicate`, `delete`, `move` (to any place),
 //! `new_from` (a game from a move's position, after its game) and `export` (one game's PGN, or the
 //! whole collection's).
 //!
@@ -170,6 +170,9 @@ fn list_json(list: &GameList<Entry>) -> Value {
                     "white": names.white,
                     "black": names.black,
                     "event": names.event,
+                    "site": names.site,
+                    "date": names.date,
+                    "round": names.round,
                     "moves": collection::scoresheet_moves(&e.game),
                     "start_fen": e.game.start_fen(),
                     "shown": i == shown,
@@ -217,10 +220,23 @@ fn apply(list: &mut GameList<Entry>, op: &Value) -> std::result::Result<Map<Stri
             let g = game_of(list, obj)?;
             let game = &mut list.get_mut(g).ok_or("no such game")?.game;
             let mut names = GameNames::of(game);
-            for (key, field) in [("white", &mut names.white), ("black", &mut names.black), ("event", &mut names.event)] {
+            for (key, field) in [
+                ("white", &mut names.white),
+                ("black", &mut names.black),
+                ("event", &mut names.event),
+                ("site", &mut names.site),
+                ("date", &mut names.date),
+                ("round", &mut names.round),
+            ] {
                 if let Some(value) = opt_text(obj, key)? {
                     *field = value.to_owned();
                 }
+            }
+            // A date given must be one PGN reads; one the game had is kept as it was.
+            if let Some(date) = opt_text(obj, "date")?
+                && !collection::pgn_date_ok(date)
+            {
+                return Err(format!("date {:?} is not a PGN date: YYYY.MM.DD, ? for each unknown digit (1992.??.??)", date.trim()));
             }
             let changed = collection::rename(game, &names);
             entry.insert("changed".into(), json!(changed));

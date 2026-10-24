@@ -1258,6 +1258,14 @@ fn details(ui: &mut egui::Ui, state: &mut BoardState) {
             ui.end_row();
         }
     });
+    // A date PGN can't read is kept as typed, and said once the field lets go (the games list's
+    // editor refuses one).
+    let typing = state.draft.as_ref().is_some_and(|d| d.key == "tag Date");
+    if !typing && !pdfcraft_engine::chess::collection::pgn_date_ok(state.game.tag("Date").unwrap_or_default()) {
+        ui.label(
+            egui::RichText::new(tl!("A date is written YYYY.MM.DD, with ? for each digit not known.")).small().color(ui.visuals().error_fg_color),
+        );
+    }
 }
 
 /// Flip, whose move it is (before the first move) and the number of the move the game starts at.

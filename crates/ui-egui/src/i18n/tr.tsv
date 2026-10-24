@@ -2906,6 +2906,8 @@ chess undo step	Clear drawings	çizimleri temizleme
 	New game from this position	Bu konumdan yeni oyun
 # Wave 10 U2: a delete or a move of the list of games is a step Undo takes (after "Undo", as the other steps).
 	Delete this game? You can undo it.	Bu oyun silinsin mi? Geri alabilirsiniz.
+	Delete these games? You can undo it.	Bu oyunlar silinsin mi? Geri alabilirsiniz.
+	A date is written YYYY.MM.DD, with ? for each digit not known.	Tarih YYYY.AA.GG (YYYY.MM.DD) biçiminde yazılır, bilinmeyen her rakam için ? kullanılır.
 	Delete game	oyun silme
 	Move game	oyun taşıma
 	An illegal position can't start a game: correct it in the diagram editor first.	Geçersiz bir konumla oyun başlatılamaz: önce diyagram düzenleyicisinde düzeltin.

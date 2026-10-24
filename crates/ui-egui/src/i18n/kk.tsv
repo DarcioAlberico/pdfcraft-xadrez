@@ -2908,6 +2908,8 @@ chess undo step	Clear drawings	суреттерді өшіру
 	New game from this position	Осы позициядан жаңа партия
 # Wave 10 U2: a delete or a move of the list of games is a step Undo takes (after "Undo", as the other steps).
 	Delete this game? You can undo it.	Бұл партияны жою керек пе? Мұны болдырмауға болады.
+	Delete these games? You can undo it.	Бұл партияларды жою керек пе? Мұны болдырмауға болады.
+	A date is written YYYY.MM.DD, with ? for each digit not known.	Күн ЖЖЖЖ.АА.КК (YYYY.MM.DD) түрінде жазылады, белгісіз әр цифр орнына ? қойылады.
 	Delete game	партияны жою
 	Move game	партияны жылжыту
 	An illegal position can't start a game: correct it in the diagram editor first.	Заңсыз позициядан партия бастау мүмкін емес: алдымен оны диаграмма редакторында түзетіңіз.
