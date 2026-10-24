@@ -80,7 +80,8 @@ pub enum ChessEdit {
     /// The PGN field read into the board; as a step of the list of games, the games of a PGN
     /// (Open PGN…, or the PGN field's games after its first) added to it.
     LoadPgn,
-    /// A diagram of the document put on the board.
+    /// A diagram of the document put on the board; as a step of the list of games, a diagram
+    /// opened on the board as a new game (double-click, Open on the board).
     LoadDiagram,
     /// A position set up on the study board.
     SetUp,
@@ -100,6 +101,9 @@ pub enum ChessEdit {
     NewGameFromHere,
     /// A game of the trash (deleted moves kept) opened as a new game (a step of the list).
     RestoreGame,
+    /// A game of the book, read in the Text tab, opened on the board as a new game (a step of the
+    /// list).
+    OpenBookGame,
 }
 
 impl ChessEdit {
@@ -138,6 +142,7 @@ impl ChessEdit {
             ChessEdit::DuplicateGame => tl!("Duplicate game").to_string(),
             ChessEdit::NewGameFromHere => tl!("New game from this position").to_string(),
             ChessEdit::RestoreGame => tl!("Open as a new game").to_string(),
+            ChessEdit::OpenBookGame => tl!("Open this game on the board").to_string(),
         }
     }
 
