@@ -122,7 +122,7 @@ fn reading(index: usize, top: f32, fen: &str, accepted: bool, assumed: bool) -> 
 }
 
 fn input<'a>(index: u32, text: &'a ChessPageText, diagrams: &'a [BoardReading], hints: &'a [BlockHint], reviews: &'a [TextReview]) -> PageInput<'a> {
-    PageInput { index, geometry: geometry(), text, diagrams, hints, reviews }
+    PageInput { index, geometry: geometry(), text, diagrams, hints, reviews, ocr: false }
 }
 
 fn kinds(page: &ChessPage) -> Vec<String> {
@@ -1819,4 +1819,47 @@ fn a_move_before_the_diagram_numbers_the_moves_after_it() {
     assert!(statuses[3..].iter().all(|s| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
     assert_eq!(mainline(&doc), ["Qh5", "Nf6", "Qxf7#"]);
     assert_eq!(doc.games[0].score.start_fen.as_deref(), Some("r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/8/PPPP1PPP/RNBQK1NR w KQkq - 2 3"));
+}
+
+/// On a page read by OCR, an illegal move that one misread file letter explains is played as that
+/// reading, and the move says so (a scan loses the bar of an `e`: `cxd4` for `exd4`); a text
+/// layer's move stays illegal, and so does one whose reading two moves fit.
+#[test]
+fn a_misread_file_letter_is_read_again_on_a_page_read_by_ocr() {
+    fn played(doc: &ChessDoc) -> Vec<&MoveInline> {
+        doc.pages
+            .iter()
+            .flat_map(|p| &p.blocks)
+            .flat_map(|b| b.inlines())
+            .filter_map(|i| if let Inline::Move(m) = i { Some(m) } else { None })
+            .collect()
+    }
+    let text = page_text(vec![line(230.0, "1.e4 e5 2.d4 cxd4+ 3.Qxd4 Nc6 4.Qe3")]);
+    let read = |ocr: bool| build_page(&PageInput { ocr, ..input(0, &text, &[], &[], &[]) });
+    let doc = read(true);
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    assert_eq!(mainline(&doc), ["e4", "e5", "d4", "exd4", "Qxd4", "Nc6", "Qe3"]);
+    let flags: Vec<(&str, &ReviewFlag)> = played(&doc).into_iter().flat_map(|m| m.review.iter().map(|f| (m.san.as_str(), f))).collect();
+    assert!(matches!(flags.as_slice(), [("exd4", ReviewFlag::TextRepaired { from, to, .. })] if from == "cxd4+" && to == "exd4"), "{flags:?}");
+    assert!(doc.pages[0].ocr);
+    // Judged again from its JSON, the move keeps its reading and its flag.
+    let mut builder = DocBuilder::new();
+    for page in doc.pages.clone() {
+        builder.add_read_page(page);
+    }
+    assert_eq!(builder.finish(), doc);
+    // The book's own text layer printed what it meant.
+    let layer = read(false);
+    let statuses: Vec<MoveStatus> = moves(&layer.pages[0]).into_iter().map(|(_, s)| s).collect();
+    assert_eq!(statuses[3], MoveStatus::Illegal);
+    assert!(played(&layer).iter().all(|m| m.review.is_empty()));
+    // `Ne4` is the only reading, but both knights reach e4.
+    let text = page_text(vec![line(230.0, "1.Nc3 a6 2.Nf3 a5 3.Ng5 a4 4.Nc4")]);
+    let doc = build_page(&PageInput { ocr: true, ..input(0, &text, &[], &[], &[]) });
+    assert_eq!(moves(&doc.pages[0]).last().map(|(_, s)| *s), Some(MoveStatus::Illegal));
+    // Black's queens on e7 and c1: `Qee5` and `Qcc5` are both legal readings of `Qce5`.
+    let text = page_text(vec![line(230.0, "40...Qce5")]);
+    let diagrams = [reading(0, 60.0, "5br1/3kqpp1/1p6/1b1P3p/1P1P3P/5N1R/5K2/r1q4R b - - 4 40", true, false)];
+    let doc = build_page(&PageInput { ocr: true, ..input(0, &text, &diagrams, &[], &[]) });
+    assert_eq!(moves(&doc.pages[0]), [("40...Qce5".to_owned(), MoveStatus::Illegal)]);
 }

@@ -205,7 +205,8 @@ fn the_archive_starts_with_the_stored_mimetype() {
 
 #[test]
 fn a_book_without_headings_lists_its_pages_and_limits_hold() {
-    let empty = ChessPage { index: 4, lang: "en".into(), text_layer: TextLayer::Missing, blocks: Vec::new(), review: Vec::new(), trailing: None };
+    let empty =
+        ChessPage { index: 4, lang: "en".into(), text_layer: TextLayer::Missing, ocr: false, blocks: Vec::new(), review: Vec::new(), trailing: None };
     let doc = ChessDoc { format: 1, pages: vec![empty.clone()], games: Vec::new() };
     let pieces = PieceSet::geometric();
     let files = entries(&doc, &options(&pieces), &EpubMeta { lang: String::new(), ..meta() }).unwrap();
