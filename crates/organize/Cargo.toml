@@ -15,4 +15,5 @@ thiserror = { workspace = true }
 
 [dev-dependencies]
 pdfcraft-oracle = { workspace = true }
+proptest = { workspace = true }
 hayro-syntax = { workspace = true }

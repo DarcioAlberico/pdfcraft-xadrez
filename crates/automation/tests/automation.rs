@@ -3445,6 +3445,37 @@ fn erasing_content_through_tools() {
     assert!(matches!(a.call("page_erase", &json!({ "doc": doc, "page": 1, "rects": area, "rule": "any" })), Err(ToolError::InvalidArgs(_))));
 }
 
+/// The Knife through the tools: a spread cut in the middle (as a fraction) is two pages, each half
+/// as wide, and the result says where the parts went; Undo puts the page back.
+#[test]
+fn cutting_pages_through_tools() {
+    let dir = workdir("cut");
+    std::fs::write(dir.join("spread.pdf"), fixture(2)).unwrap();
+    let mut a = auto(&dir);
+    let doc = ok(&mut a, "doc_open", json!({ "path": "spread.pdf" }))["doc"].as_u64().unwrap();
+    let out = ok(&mut a, "page_cut", json!({ "doc": doc, "pages": [2], "axis": "vertical", "at": [0.5], "units": "fraction" }));
+    assert_eq!(out["cut"], json!([{ "page": 2, "parts": [2, 3] }]), "{out}");
+    let info = ok(&mut a, "doc_info", json!({ "doc": doc }));
+    let pages = info["pages"].as_array().unwrap();
+    assert_eq!(pages.len(), 3);
+    let width = |p: &Value| p["width"].as_f64().unwrap();
+    assert_eq!((width(&pages[0]), width(&pages[1]), width(&pages[2])), (200.0, 100.0, 100.0), "{info}");
+    assert_eq!(ok(&mut a, "edit_undo", json!({ "doc": doc }))["undone"], "Cut page");
+    assert_eq!(ok(&mut a, "doc_info", json!({ "doc": doc }))["pages"].as_array().unwrap().len(), 2);
+    // In points, two cuts.
+    let out = ok(&mut a, "page_cut", json!({ "doc": doc, "pages": [1], "axis": "horizontal", "at": [100, 200] }));
+    assert_eq!(out["cut"], json!([{ "page": 1, "parts": [1, 2, 3] }]));
+    for bad in [
+        json!({ "doc": doc, "pages": [1], "axis": "diagonal", "at": [10] }),
+        json!({ "doc": doc, "pages": [1], "axis": "vertical", "at": [] }),
+        json!({ "doc": doc, "pages": [1], "axis": "vertical", "at": [1.5], "units": "fraction" }),
+        json!({ "doc": doc, "pages": [9], "axis": "vertical", "at": [10] }),
+    ] {
+        assert!(matches!(a.call("page_cut", &bad), Err(ToolError::InvalidArgs(_))), "{bad}");
+    }
+    assert!(a.call("page_cut", &json!({ "doc": doc, "pages": [1], "axis": "vertical", "at": [500] })).is_err(), "past the edge");
+}
+
 #[test]
 fn redacting_with_codes_through_tools() {
     let dir = workdir("redact-codes");
