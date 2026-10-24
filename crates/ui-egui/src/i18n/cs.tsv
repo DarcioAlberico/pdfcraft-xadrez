@@ -3098,3 +3098,8 @@ chess undo step	Clear drawings	smazání kreseb
 	No game was found for this move, on its page or the pages around it.	Pro tento tah nebyla nalezena žádná partie na jeho stránce ani na stránkách kolem ní.
 	Renumber	Přečíslovat
 	The text's move numbers give way to the game's: {printed} is played as {played}.	Čísla tahů v textu ustupují číslům partie: {printed} se hraje jako {played}.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	Seznam tahů
+	Move list beside the page	Seznam tahů vedle stránky
+	Side of the page	Umístění vedle stránky

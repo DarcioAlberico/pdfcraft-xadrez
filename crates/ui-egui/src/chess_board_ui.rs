@@ -269,6 +269,8 @@ pub enum BoardAction {
         texts: Vec<String>,
         more: bool,
     },
+    /// Show the Move list beside the page, or close it while it shows.
+    ToggleMoveList,
 }
 
 impl BoardState {
@@ -1448,8 +1450,9 @@ pub(crate) fn sections(ui: &mut egui::Ui, state: &mut BoardState) -> Option<Boar
     action
 }
 
-/// The panel's title, and the diagram the board was loaded from as a link to it.
-pub(crate) fn title(ui: &mut egui::Ui, state: &BoardState, source_label: Option<String>) -> Option<BoardAction> {
+/// The panel's title, the diagram the board was loaded from as a link to it, and the Move list
+/// beside the page (`beside`: it shows) as a toggle.
+pub(crate) fn title(ui: &mut egui::Ui, t: &Tokens, state: &BoardState, source_label: Option<String>, beside: bool) -> Option<BoardAction> {
     let mut action = None;
     ui.horizontal(|ui| {
         ui.label(egui::RichText::new(tl!("Chess board")).font(theme::semibold(15.5)));
@@ -1458,6 +1461,14 @@ pub(crate) fn title(ui: &mut egui::Ui, state: &BoardState, source_label: Option<
         {
             action = Some(BoardAction::ShowSource(source));
         }
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            let name = tl!("Move list beside the page");
+            let r = ui.add(egui::Button::image(crate::icons::image("list-ordered", 14.0, t.icon)).selected(beside)).on_hover_text(name);
+            r.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, beside, name));
+            if r.clicked() {
+                action = Some(BoardAction::ToggleMoveList);
+            }
+        });
     });
     action
 }
@@ -1478,7 +1489,7 @@ pub(crate) fn panel_body(
     viewport: f32,
 ) -> (Option<BoardAction>, Option<crate::chess_collection::GamesAction>) {
     let top = ui.cursor().top();
-    let action = title(ui, chess.board(), source_label);
+    let action = title(ui, t, chess.board(), source_label, chess.moves_beside);
     ui.add_space(4.0);
     if crate::chess_study_ui::setup_in_place(ui, t, chess, pieces) {
         return (action, None);
@@ -1500,13 +1511,18 @@ pub(crate) fn panel_body(
 /// details sections: under the board in one column, or the right-hand column of the chess
 /// window's wide layout (`chess_window`). What goes under the notation is measured each frame
 /// and set aside the next, so opening a section shrinks the notation (down to its least height,
-/// then the column scrolls).
+/// then the column scrolls). While the Move list shows beside the page, the notation and the
+/// move's notes are there ([`moves_list`]), and only the games and sections are here.
 pub(crate) fn moves_column(
     ui: &mut egui::Ui,
     t: &Tokens,
     chess: &mut crate::chess_ui::ChessState,
     room: f32,
 ) -> (Option<BoardAction>, Option<crate::chess_collection::GamesAction>) {
+    if chess.moves_beside {
+        let games = crate::chess_collection::games_section(ui, t, &mut chess.games);
+        return (sections(ui, chess.board_mut()), games);
+    }
     let below_id = ui.id().with("chess-board-below");
     let below = ui.ctx().data(|d| d.get_temp::<f32>(below_id)).unwrap_or(0.0);
     let height = notation_height(room, 0.0, below);
@@ -1521,12 +1537,37 @@ pub(crate) fn moves_column(
     ui.add_space(4.0);
     let games = crate::chess_collection::games_section(ui, t, &mut chess.games);
     let fields = sections(ui, chess.board_mut());
-    let measured = ui.cursor().top() - below_top;
-    if measured.is_finite() && (measured - below).abs() > 0.5 {
-        ui.ctx().data_mut(|d| d.insert_temp(below_id, measured));
+    set_aside(ui, below_id, ui.cursor().top() - below_top, below);
+    (copied.or(fields), games)
+}
+
+/// The Move list beside the page (`chess_ui::moves_panel`): the glyph brush's bar while it is
+/// armed, the notation in the `room` points left, and the glyphs and comment of the move shown
+/// under it, measured as in [`moves_column`].
+pub(crate) fn moves_list(ui: &mut egui::Ui, t: &Tokens, chess: &mut crate::chess_ui::ChessState, room: f32) -> Option<BoardAction> {
+    let below_id = ui.id().with("chess-moves-below");
+    let below = ui.ctx().data(|d| d.get_temp::<f32>(below_id)).unwrap_or(0.0);
+    let top = ui.cursor().top();
+    let brush = chess.tools.brush();
+    if let Some(code) = brush {
+        brush_bar(ui, t, chess, code);
+    }
+    let height = notation_height(room, ui.cursor().top() - top, below);
+    let state = chess.board_mut();
+    let action = notation(ui, t, state, Some(height), brush);
+    let below_top = ui.cursor().top();
+    notes(ui, t, state);
+    set_aside(ui, below_id, ui.cursor().top() - below_top, below);
+    action
+}
+
+/// Keep `measured` points (what went under the notation) for the next frame under `id`, and draw
+/// that frame when it differs from the `kept` ones.
+fn set_aside(ui: &egui::Ui, id: egui::Id, measured: f32, kept: f32) {
+    if measured.is_finite() && (measured - kept).abs() > 0.5 {
+        ui.ctx().data_mut(|d| d.insert_temp(id, measured));
         ui.ctx().request_repaint();
     }
-    (copied.or(fields), games)
 }
 
 /// The armed glyph brush (T15), over the notation: its glyph, what a click does, and how to stop.

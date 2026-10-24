@@ -356,6 +356,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     c("chess.game.delete", "Delete game…", None, None, Nothing, "trash-2"),
     // The chess board and the chess panel's tabs in their own window, or back (T13a, T13b): a toggle.
     c("chess.window.detach", "Chess in its own window", None, None, Nothing, "app-window"),
+    // The board's game as a list beside the page, at the page's left or right edge: a toggle.
+    c("chess.move_list", "Move list beside the page", None, None, Nothing, "list-ordered"),
     // The chess board's PGN tool rail (T5b). No shortcut here: their keys are the chess panel's
     // own, taken only while its key scope is on (ui-egui `chess_tools`), and the palette shows them.
     c("chess.tool.navigate", "Chess board: Navigate", None, None, Nothing, "mouse-pointer-2"),

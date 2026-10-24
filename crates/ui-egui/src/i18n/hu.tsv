@@ -3023,3 +3023,8 @@ chess undo step	Clear drawings	rajzok törlése
 	No game was found for this move, on its page or the pages around it.	Ehhez a lépéshez nem található játszma sem az oldalán, sem a körülötte lévő oldalakon.
 	Renumber	Újraszámozás
 	The text's move numbers give way to the game's: {printed} is played as {played}.	A szöveg lépésszámai helyett a játszmáé érvényes: {printed} {played} lépésként kerül be.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	Lépéslista
+	Move list beside the page	Lépéslista az oldal mellett
+	Side of the page	Az oldal széle
