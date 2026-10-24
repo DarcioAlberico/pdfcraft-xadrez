@@ -2514,6 +2514,16 @@ animation effects	Off	关
 	Show this diagram on the page	在页面上显示此图表
 	Stalemate	逼和
 	Standard start position	标准初始局面
+	The game on the board has moves. Put this position:	棋盘上的对局已有着法。放置此局面：
+	New game with this position	用此局面新建对局
+	The game on the board keeps its moves.	棋盘上的对局保留其着法。
+	Its moves are deleted (Undo brings them back).	其着法会被删除（撤销可恢复）。
+	Start again from the standard position.	从标准初始局面重新开始。
+	A new game from the standard position; the game on the board keeps its moves.	从标准初始局面新建对局；棋盘上的对局保留其着法。
+	PGN edited	PGN 已编辑
+	Load	载入
+	Show the game on the board again.	重新显示棋盘上的对局。
+	Load the PGN above on the board, with its variations and comments.	将上方的 PGN 连同变着和注释载入棋盘。
 	Start (Home)	开头 (Home)
 	That side can't be to move: the other king is in check.	该方不能走棋：对方的王正被将军。
 	The FEN couldn't be read: {e}	无法读取 FEN：{e}

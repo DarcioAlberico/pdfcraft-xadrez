@@ -178,6 +178,13 @@ pub struct BoardState {
     pub pgn_text: String,
     /// What the fields were last filled from, so typing in them is not overwritten.
     shown: String,
+    /// The PGN field was typed in since it was last filled from the game: a step on the board
+    /// leaves it as typed until it is loaded or the edit discarded (plan A8, W6).
+    pub(crate) pgn_edited: bool,
+    /// A FEN typed while the game has moves, waiting for New game or Replace (plan A8, W3), and
+    /// whether New game takes the keyboard when it is drawn next.
+    pub(crate) fen_choice: Option<String>,
+    focus_fen_choice: bool,
     /// Why the last load or move did not work.
     pub message: Option<String>,
     /// The board picture, the position and view it shows, and its side in pixels.
@@ -231,6 +238,9 @@ impl Default for BoardState {
             fen_text: String::new(),
             pgn_text: String::new(),
             shown: String::new(),
+            pgn_edited: false,
+            fen_choice: None,
+            focus_fen_choice: false,
             message: None,
             texture: None,
             draw_error: None,
@@ -271,6 +281,9 @@ pub enum BoardAction {
     },
     /// Show the Move list beside the page, or close it while it shows.
     ToggleMoveList,
+    /// Open a new game from position `fen` after the one shown, which keeps its moves (plan A8,
+    /// W3 and W4: a FEN typed, or the standard start, while the game has moves).
+    NewGameAt(String),
 }
 
 impl BoardState {
@@ -311,6 +324,7 @@ impl BoardState {
         self.game = game;
         self.illegal = illegal;
         self.message = message;
+        self.fen_choice = None;
         self.selected = None;
         self.promotion = None;
         self.flipped = flipped;
@@ -320,7 +334,9 @@ impl BoardState {
     }
 
     /// Read the PGN field into the board (one undo step): its first game, when it holds several
-    /// (split at tag lines, as Open PGN… splits a file). Returns the games after it as texts, at
+    /// (split at tag lines, as Open PGN… splits a file). The same game read again (an edited
+    /// comment or variation) keeps the move shown and where its moves are on the page
+    /// ([`carry_place`]). Returns the games after it as texts, at
     /// most [`crate::chess_autosave::MAX_GAMES`] games in all, and whether the field had more;
     /// none when the first could not be read.
     pub(crate) fn load_pgn(&mut self) -> (Vec<String>, bool) {
@@ -332,7 +348,8 @@ impl BoardState {
             (first, rest, chunks.len() > max)
         };
         let loaded = self.edit(|s| match Game::from_pgn(&first) {
-            Ok((game, stopped)) => {
+            Ok((mut game, stopped)) => {
+                carry_place(&s.game, &mut game);
                 s.game = game;
                 s.illegal = None;
                 s.selected = None;
@@ -349,7 +366,8 @@ impl BoardState {
         if loaded { (rest, more) } else { (Vec::new(), false) }
     }
 
-    /// Back to the standard start position, as a new game (one undo step).
+    /// Back to the standard start position in the game's place (one undo step). With moves on
+    /// the board the panel opens a new game instead ([`BoardAction::NewGameAt`]).
     fn standard_start(&mut self) {
         self.edit(|s| {
             s.game = Game::standard();
@@ -455,7 +473,12 @@ impl BoardState {
         };
         if force || key != self.shown {
             self.fen_text = self.current_fen();
-            self.pgn_text = if self.illegal.is_some() { String::new() } else { self.game.pgn() };
+            // Text typed in the PGN field stays until it is loaded or discarded; a new game put on
+            // the board (`force`) replaces it.
+            if force || !self.pgn_edited {
+                self.pgn_text = if self.illegal.is_some() { String::new() } else { self.game.pgn() };
+                self.pgn_edited = false;
+            }
             self.shown = key;
         }
     }
@@ -687,6 +710,31 @@ impl BoardState {
 
 /// The pieces in the order of the sprite image's columns.
 const KINDS: [PieceKind; 6] = [PieceKind::King, PieceKind::Queen, PieceKind::Rook, PieceKind::Bishop, PieceKind::Knight, PieceKind::Pawn];
+
+/// When `new` is the game `old` was, read again (the same start, tags and main line), the move
+/// shown and where its moves are printed on the page carry over to it by their paths (plan A8,
+/// W6): loading the PGN field after editing a comment or a variation keeps the board where it
+/// was. A different game is left as read.
+fn carry_place(old: &Game, new: &mut Game) {
+    let main = |g: &Game| g.main_line().into_iter().map(|n| g.san(n).to_owned()).collect::<Vec<_>>();
+    if old.start_fen() != new.start_fen() || old.tags() != new.tags() || main(old) != main(new) {
+        return;
+    }
+    // Every move of the old game, from the start; a tree, so each is seen once.
+    let mut stack = vec![0];
+    while let Some(node) = stack.pop() {
+        stack.extend_from_slice(old.replies(node));
+        if let Some(source) = old.source(node)
+            && let Some(at) = old.path_of(node).and_then(|p| new.node_at(&p))
+            && new.san(at) == old.san(node)
+        {
+            new.set_source(at, Some(source));
+        }
+    }
+    if let Some(at) = old.path_of(old.current()).and_then(|p| new.node_at(&p)) {
+        new.go_to_node(at);
+    }
+}
 
 /// Where `piece` is in the sprite image (texture coordinates).
 pub(crate) fn sprite_uv(piece: Piece) -> Rect {
@@ -1378,20 +1426,15 @@ pub(crate) fn navigation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) 
     }
 }
 
-/// Under the notation: cutting the moves after the move shown and its comments (the one before
-/// it while the comment editor is open). The glyph palette floats (`chess_annotate`, U1).
+/// Under the notation: the comments of the move shown (the one before it while the comment
+/// editor is open). Deleting moves is a command of the move's menu, not a button beside the list
+/// (plan A8, W1). The glyph palette floats (`chess_annotate`, U1).
 pub(crate) fn notes(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) {
     if state.illegal.is_some() {
         return;
     }
     // Before any field is drawn: which one had the keyboard, for the palette.
     state.typing.track(ui);
-    if state.game.ply() < state.game.len() && ui.small_button(tl!("Delete the moves after this one")).clicked() {
-        state.edit(|s| {
-            s.game.truncate();
-            Some(ChessEdit::DeleteMoves)
-        });
-    }
     let (editor, focus) = (state.comment_open, std::mem::take(&mut state.focus_comment));
     crate::chess_annotate::comments(ui, t, state, editor, focus);
 }
@@ -1406,10 +1449,40 @@ pub(crate) fn sections(ui: &mut egui::Ui, state: &mut BoardState) -> Option<Boar
         let id = ui.make_persistent_id("chess-fen-field");
         crate::chess_annotate::insert_pending(ui, &mut state.typing, crate::chess_annotate::Field::Fen, id, &mut state.fen_text);
         let r = ui.add(egui::TextEdit::singleline(&mut state.fen_text).id(id).font(egui::TextStyle::Monospace).desired_width(f32::INFINITY));
-        if r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
-            let fen = state.fen_text.clone();
-            let flipped = state.flipped;
-            state.load_fen(&fen, flipped, None);
+        // Enter puts a changed FEN on the board; with moves in the game it asks first, New game
+        // taking the keyboard (plan A8, W3).
+        if r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) && state.fen_text.trim() != state.current_fen() {
+            let fen = state.fen_text.trim().to_owned();
+            if state.game.is_empty() {
+                let flipped = state.flipped;
+                state.load_fen(&fen, flipped, None);
+            } else {
+                state.fen_choice = Some(fen);
+                state.focus_fen_choice = true;
+            }
+        }
+        if let Some(fen) = state.fen_choice.clone() {
+            ui.label(egui::RichText::new(tl!("The game on the board has moves. Put this position:")).small());
+            ui.horizontal_wrapped(|ui| {
+                let new = ui.button(tl!("New game with this position")).on_hover_text(tl!("The game on the board keeps its moves."));
+                if std::mem::take(&mut state.focus_fen_choice) {
+                    new.request_focus();
+                }
+                if new.clicked() {
+                    action = Some(BoardAction::NewGameAt(fen.clone()));
+                    state.fen_choice = None;
+                }
+                let tip = tl!("Its moves are deleted (Undo brings them back).");
+                if ui.small_button(tl!("Replace this game")).on_hover_text(tip).clicked() {
+                    let flipped = state.flipped;
+                    state.load_fen(&fen, flipped, None);
+                    state.fen_choice = None;
+                }
+                if ui.small_button(tl!("Cancel")).clicked() {
+                    state.fen_choice = None;
+                    state.fen_text = state.current_fen();
+                }
+            });
         }
         ui.horizontal_wrapped(|ui| {
             if ui.small_button(tl!("Copy FEN")).clicked() {
@@ -1423,26 +1496,56 @@ pub(crate) fn sections(ui: &mut egui::Ui, state: &mut BoardState) -> Option<Boar
                     action = Some(BoardAction::OpenLichess(url));
                 }
             }
-            if ui.small_button(tl!("Standard start position")).clicked() {
-                state.standard_start();
+            // With moves on the board the start position is a new game (plan A8, W4).
+            let tip = if state.game.is_empty() {
+                tl!("Start again from the standard position.")
+            } else {
+                tl!("A new game from the standard position; the game on the board keeps its moves.")
+            };
+            if ui.small_button(tl!("Standard start position")).on_hover_text(tip).clicked() {
+                if state.game.is_empty() {
+                    state.standard_start();
+                } else {
+                    action = Some(BoardAction::NewGameAt(Game::standard().fen()));
+                }
             }
         });
     });
     egui::CollapsingHeader::new("PGN").id_salt("chess-board-pgn").default_open(false).show(ui, |ui| {
         let id = ui.make_persistent_id("chess-pgn-field");
         crate::chess_annotate::insert_pending(ui, &mut state.typing, crate::chess_annotate::Field::Pgn, id, &mut state.pgn_text);
-        ui.add(egui::TextEdit::multiline(&mut state.pgn_text).id(id).font(egui::TextStyle::Monospace).desired_rows(5).desired_width(f32::INFINITY));
+        let r = ui
+            .add(egui::TextEdit::multiline(&mut state.pgn_text).id(id).font(egui::TextStyle::Monospace).desired_rows(5).desired_width(f32::INFINITY));
+        if r.changed() {
+            state.pgn_edited = true;
+        }
+        let mut load = false;
+        // Typed and not loaded yet: said, with what can be done with it (plan A8, W6).
+        if state.pgn_edited {
+            ui.horizontal_wrapped(|ui| {
+                ui.label(egui::RichText::new(tl!("PGN edited")).small().strong());
+                load = ui.small_button(tl!("Load")).clicked();
+                if ui.small_button(tl!("Discard")).on_hover_text(tl!("Show the game on the board again.")).clicked() {
+                    state.pgn_edited = false;
+                    state.refresh_fields(true);
+                }
+            });
+        }
         ui.horizontal_wrapped(|ui| {
             if ui.add_enabled(state.illegal.is_none(), egui::Button::new(tl!("Copy PGN")).small()).clicked() {
                 action = Some(BoardAction::CopyPgn(state.game.pgn()));
             }
-            if ui.small_button(tl!("Load PGN")).on_hover_text(tl!("Play the main line of the PGN above on the board.")).clicked() {
-                let (texts, more) = state.load_pgn();
-                if !texts.is_empty() || more {
-                    action = Some(BoardAction::AddGames { texts, more });
-                }
+            let tip = tl!("Load the PGN above on the board, with its variations and comments.");
+            if ui.small_button(tl!("Load PGN")).on_hover_text(tip).clicked() {
+                load = true;
             }
         });
+        if load {
+            let (texts, more) = state.load_pgn();
+            if !texts.is_empty() || more {
+                action = Some(BoardAction::AddGames { texts, more });
+            }
+        }
     });
     if state.illegal.is_none() {
         egui::CollapsingHeader::new(tl!("Game details")).id_salt("chess-board-details").default_open(false).show(ui, |ui| details(ui, state));
@@ -1609,6 +1712,50 @@ mod tests {
 
     fn sq(name: &str) -> Square {
         Square::parse(name).unwrap()
+    }
+
+    /// The PGN field loaded with the same game (a comment and a variation added) keeps the move
+    /// shown and where the moves are on the page; a different game is left as read (plan A8, W6).
+    #[test]
+    fn loading_the_same_game_keeps_the_move_shown_and_the_sources() {
+        use pdfcraft_engine::chess::pdfcraft_chess::game::{NodePath, NodeSource};
+        let mut s = BoardState { pgn_text: "1. e4 e5 2. Nf3 Nc6 *".into(), ..BoardState::default() };
+        s.load_pgn();
+        let e5 = s.game.node_at(&NodePath::new(vec![0, 0])).unwrap();
+        let printed = NodeSource { page: 4, rect_user: [10.0, 20.0, 30.0, 40.0] };
+        assert!(s.game.set_source(e5, Some(printed)));
+        s.game.go_to_node(e5);
+        s.pgn_text = "1. e4 e5 {Open game} (1... c5) 2. Nf3 Nc6 *".into();
+        s.pgn_edited = true;
+        s.load_pgn();
+        assert_eq!(s.game.movetext(), "1. e4 e5 {Open game} (1... c5) 2. Nf3 Nc6");
+        let e5 = s.game.node_at(&NodePath::new(vec![0, 0])).unwrap();
+        assert_eq!(s.game.current(), e5, "the move shown is kept");
+        assert_eq!(s.game.source(e5), Some(printed), "and where it is printed");
+        assert!(!s.pgn_edited, "loaded");
+        // Another main line is another game: read from its end, without the old sources.
+        s.pgn_text = "1. d4 d5 *".into();
+        s.load_pgn();
+        assert_eq!(s.game.ply(), 2);
+        assert_eq!(s.game.source(s.game.node_at(&NodePath::new(vec![0, 0])).unwrap()), None);
+    }
+
+    /// Typing in the PGN field survives a step on the board until the field is loaded or the
+    /// edit discarded (plan A8, W6).
+    #[test]
+    fn typed_pgn_is_kept_while_the_board_moves() {
+        let mut s = BoardState { pgn_text: "1. e4 e5 *".into(), ..BoardState::default() };
+        s.load_pgn();
+        s.refresh_fields(false);
+        s.pgn_text = "1. e4 e5 2. Nf3 *".into();
+        s.pgn_edited = true;
+        s.game.go_to(1);
+        s.refresh_fields(false);
+        assert_eq!(s.pgn_text, "1. e4 e5 2. Nf3 *", "a step leaves the typed text");
+        assert_ne!(s.fen_text, "", "the FEN follows the board");
+        s.pgn_edited = false;
+        s.refresh_fields(true);
+        assert!(s.pgn_text.ends_with("1. e4 e5 *\n"), "discarded: the game again: {}", s.pgn_text);
     }
 
     #[test]

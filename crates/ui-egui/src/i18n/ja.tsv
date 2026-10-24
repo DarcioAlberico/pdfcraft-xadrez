@@ -2552,6 +2552,16 @@ animation effects	Off	オフ
 	Show this diagram on the page	この図面をページ上で表示
 	Stalemate	ステイルメイト
 	Standard start position	標準の初期配置
+	The game on the board has moves. Put this position:	盤上の対局には指し手があります。この局面を：
+	New game with this position	この局面で新しい対局
+	The game on the board keeps its moves.	盤上の対局の指し手はそのまま残ります。
+	Its moves are deleted (Undo brings them back).	その指し手は削除されます（元に戻すで戻せます）。
+	Start again from the standard position.	標準の初期配置からやり直します。
+	A new game from the standard position; the game on the board keeps its moves.	標準の初期配置から新しい対局を作ります。盤上の対局の指し手はそのまま残ります。
+	PGN edited	PGN 編集済み
+	Load	読み込む
+	Show the game on the board again.	盤上の対局をもう一度表示します。
+	Load the PGN above on the board, with its variations and comments.	上の PGN を変化手順とコメントごと盤に読み込みます。
 	Start (Home)	最初 (Home)
 	That side can't be to move: the other king is in check.	その手番にはできません：相手のキングがチェックされています。
 	The FEN couldn't be read: {e}	FEN を読み取れませんでした: {e}

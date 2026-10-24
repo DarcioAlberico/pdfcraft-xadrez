@@ -2803,6 +2803,16 @@ chess side	Black	Juodieji
 	Show this diagram on the page	Rodyti šią diagramą puslapyje
 	Stalemate	Patas
 	Standard start position	Standartinė pradinė pozicija
+	The game on the board has moves. Put this position:	Lentos partija turi ėjimų. Šią poziciją:
+	New game with this position	Nauja partija su šia pozicija
+	The game on the board keeps its moves.	Lentos partija išlaiko savo ėjimus.
+	Its moves are deleted (Undo brings them back).	Jos ėjimai ištrinami (Anuliuoti juos grąžina).
+	Start again from the standard position.	Pradėti iš naujo nuo standartinės pradinės pozicijos.
+	A new game from the standard position; the game on the board keeps its moves.	Nauja partija nuo standartinės pradinės pozicijos; lentos partija išlaiko savo ėjimus.
+	PGN edited	PGN pakeistas
+	Load	Įkelti
+	Show the game on the board again.	Vėl rodyti lentos partiją.
+	Load the PGN above on the board, with its variations and comments.	Įkelti aukščiau esantį PGN į lentą su variantais ir komentarais.
 	Start (Home)	Pradžia (Home)
 	That side can't be to move: the other king is in check.	Ši pusė negali eiti: kitam karaliui skelbiamas šachas.
 	The FEN couldn't be read: {e}	Nepavyko perskaityti FEN: {e}

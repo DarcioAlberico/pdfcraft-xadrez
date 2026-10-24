@@ -2548,6 +2548,16 @@ animation effects	Off	Өшірулі
 	Show this diagram on the page	Бұл диаграмманы бетте көрсету
 	Stalemate	Пат
 	Standard start position	Стандартты бастапқы позиция
+	The game on the board has moves. Put this position:	Тақтадағы партияда жүрістер бар. Осы позицияны қою:
+	New game with this position	Осы позициямен жаңа партия
+	The game on the board keeps its moves.	Тақтадағы партия өз жүрістерін сақтайды.
+	Its moves are deleted (Undo brings them back).	Оның жүрістері жойылады (Болдырмау оларды қайтарады).
+	Start again from the standard position.	Стандартты бастапқы позициядан қайта бастау.
+	A new game from the standard position; the game on the board keeps its moves.	Стандартты бастапқы позициядан жаңа партия; тақтадағы партия өз жүрістерін сақтайды.
+	PGN edited	PGN өзгертілді
+	Load	Жүктеу
+	Show the game on the board again.	Тақтадағы партияны қайта көрсету.
+	Load the PGN above on the board, with its variations and comments.	Жоғарыдағы PGN-ді нұсқалары мен түсіндірмелерімен бірге тақтаға жүктейді.
 	Start (Home)	Басы (Home)
 	That side can't be to move: the other king is in check.	Бұл жақтың жүрісі бола алмайды: екінші патшаға шах.
 	The FEN couldn't be read: {e}	FEN оқылмады: {e}

@@ -2827,6 +2827,16 @@ certificate	Version	الإصدار
 	Show this diagram on the page	إظهار هذا المخطط في الصفحة
 	Stalemate	تعادل بالجمود
 	Standard start position	وضع البداية القياسي
+	The game on the board has moves. Put this position:	المباراة على الرقعة فيها نقلات. ضع هذه الوضعية:
+	New game with this position	مباراة جديدة بهذه الوضعية
+	The game on the board keeps its moves.	تحتفظ المباراة على الرقعة بنقلاتها.
+	Its moves are deleted (Undo brings them back).	تُحذف نقلاتها (التراجع يعيدها).
+	Start again from the standard position.	البدء من جديد من وضع البداية القياسي.
+	A new game from the standard position; the game on the board keeps its moves.	مباراة جديدة من وضع البداية القياسي؛ تحتفظ المباراة على الرقعة بنقلاتها.
+	PGN edited	تم تعديل PGN
+	Load	تحميل
+	Show the game on the board again.	عرض المباراة التي على الرقعة مرة أخرى.
+	Load the PGN above on the board, with its variations and comments.	تحميل PGN أعلاه على الرقعة، مع تفريعاته وتعليقاته.
 	Start (Home)	البداية (Home)
 	That side can't be to move: the other king is in check.	لا يمكن أن يكون الدور لهذا الطرف: الملك الآخر في كش.
 	The FEN couldn't be read: {e}	تعذرت قراءة FEN: {e}

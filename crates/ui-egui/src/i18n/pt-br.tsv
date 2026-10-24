@@ -2567,6 +2567,16 @@ chess side	Black	Pretas
 	Show this diagram on the page	Mostrar este diagrama na página
 	Stalemate	Afogamento
 	Standard start position	Posição inicial padrão
+	The game on the board has moves. Put this position:	A partida no tabuleiro tem lances. Pôr esta posição:
+	New game with this position	Nova partida com esta posição
+	The game on the board keeps its moves.	A partida no tabuleiro mantém os seus lances.
+	Its moves are deleted (Undo brings them back).	Os lances dela são apagados (Desfazer os traz de volta).
+	Start again from the standard position.	Recomeçar da posição inicial padrão.
+	A new game from the standard position; the game on the board keeps its moves.	Uma partida nova a partir da posição inicial padrão; a partida no tabuleiro mantém os seus lances.
+	PGN edited	PGN editado
+	Load	Carregar
+	Show the game on the board again.	Mostrar de novo a partida do tabuleiro.
+	Load the PGN above on the board, with its variations and comments.	Carrega o PGN acima no tabuleiro, com variantes e comentários.
 	Start (Home)	Início (Home)
 	That side can't be to move: the other king is in check.	Esse lado não pode ter a vez: o outro rei está em xeque.
 	The FEN couldn't be read: {e}	Não foi possível ler a FEN: {e}

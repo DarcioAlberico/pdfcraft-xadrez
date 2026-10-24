@@ -2551,6 +2551,16 @@ animation effects	Off	Aus
 	Show this diagram on the page	Dieses Diagramm auf der Seite zeigen
 	Stalemate	Patt
 	Standard start position	Grundstellung
+	The game on the board has moves. Put this position:	Die Partie auf dem Brett hat Züge. Diese Stellung setzen:
+	New game with this position	Neue Partie mit dieser Stellung
+	The game on the board keeps its moves.	Die Partie auf dem Brett behält ihre Züge.
+	Its moves are deleted (Undo brings them back).	Ihre Züge werden gelöscht (Rückgängig holt sie zurück).
+	Start again from the standard position.	Von der Grundstellung neu beginnen.
+	A new game from the standard position; the game on the board keeps its moves.	Eine neue Partie ab der Grundstellung; die Partie auf dem Brett behält ihre Züge.
+	PGN edited	PGN bearbeitet
+	Load	Laden
+	Show the game on the board again.	Die Partie auf dem Brett wieder anzeigen.
+	Load the PGN above on the board, with its variations and comments.	Lädt die PGN oben aufs Brett, mit ihren Varianten und Kommentaren.
 	Start (Home)	Anfang (Pos1)
 	That side can't be to move: the other king is in check.	Diese Seite kann nicht am Zug sein: der andere König steht im Schach.
 	The FEN couldn't be read: {e}	Die FEN konnte nicht gelesen werden: {e}

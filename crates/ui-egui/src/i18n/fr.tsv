@@ -2550,6 +2550,16 @@ animation effects	Off	Désactivés
 	Show this diagram on the page	Afficher ce diagramme sur la page
 	Stalemate	Pat
 	Standard start position	Position de départ standard
+	The game on the board has moves. Put this position:	La partie sur l’échiquier a des coups. Placer cette position :
+	New game with this position	Nouvelle partie avec cette position
+	The game on the board keeps its moves.	La partie sur l’échiquier garde ses coups.
+	Its moves are deleted (Undo brings them back).	Ses coups sont supprimés (Annuler les rétablit).
+	Start again from the standard position.	Recommencer depuis la position de départ standard.
+	A new game from the standard position; the game on the board keeps its moves.	Une nouvelle partie depuis la position de départ standard ; la partie sur l’échiquier garde ses coups.
+	PGN edited	PGN modifié
+	Load	Charger
+	Show the game on the board again.	Réafficher la partie de l’échiquier.
+	Load the PGN above on the board, with its variations and comments.	Charge le PGN ci-dessus sur l’échiquier, avec ses variantes et ses commentaires.
 	Start (Home)	Début (Origine)
 	That side can't be to move: the other king is in check.	Ce camp ne peut pas avoir le trait : l'autre roi est en échec.
 	The FEN couldn't be read: {e}	Impossible de lire la FEN : {e}
