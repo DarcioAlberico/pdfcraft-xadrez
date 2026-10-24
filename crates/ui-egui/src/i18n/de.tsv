@@ -3025,3 +3025,8 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	No game was found for this move, on its page or the pages around it.	Für diesen Zug wurde weder auf seiner Seite noch auf den Seiten um sie herum eine Partie gefunden.
 	Renumber	Neu nummerieren
 	The text's move numbers give way to the game's: {printed} is played as {played}.	Die Zugnummern des Texts weichen denen der Partie: {printed} wird als {played} gespielt.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	Zugliste
+	Move list beside the page	Zugliste neben der Seite
+	Side of the page	Seitenrand

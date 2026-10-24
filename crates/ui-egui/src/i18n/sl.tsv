@@ -3029,3 +3029,8 @@ chess undo step	Clear drawings	odstranjevanje risb
 	No game was found for this move, on its page or the pages around it.	Za to potezo ni bilo najdene partije ne na njeni strani ne na straneh okoli nje.
 	Renumber	Preštevilči
 	The text's move numbers give way to the game's: {printed} is played as {played}.	Številke potez v besedilu se umaknejo številkam partije: {printed} se odigra kot {played}.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	Seznam potez
+	Move list beside the page	Seznam potez ob strani
+	Side of the page	Postavitev ob strani

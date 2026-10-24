@@ -3276,3 +3276,8 @@ chess undo step	Clear drawings	piešinių valymą
 	No game was found for this move, on its page or the pages around it.	Šiam ėjimui partija nerasta nei jo puslapyje, nei aplinkiniuose puslapiuose.
 	Renumber	Pernumeruoti
 	The text's move numbers give way to the game's: {printed} is played as {played}.	Teksto ėjimų numeriai užleidžia vietą partijos numeriams: {printed} žaidžiamas kaip {played}.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	Ėjimų sąrašas
+	Move list beside the page	Ėjimų sąrašas šalia puslapio
+	Side of the page	Puslapio pusė

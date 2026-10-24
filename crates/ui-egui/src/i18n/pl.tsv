@@ -3000,3 +3000,8 @@ chess undo step	Clear drawings	usunięcie rysunków
 	No game was found for this move, on its page or the pages around it.	Nie znaleziono partii dla tego posunięcia ani na jego stronie, ani na stronach wokół niej.
 	Renumber	Przenumeruj
 	The text's move numbers give way to the game's: {printed} is played as {played}.	Numery posunięć z tekstu ustępują numerom partii: {printed} zostaje zagrane jako {played}.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	Lista ruchów
+	Move list beside the page	Lista ruchów obok strony
+	Side of the page	Położenie obok strony

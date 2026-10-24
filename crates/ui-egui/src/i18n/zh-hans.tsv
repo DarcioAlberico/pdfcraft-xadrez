@@ -2988,3 +2988,8 @@ chess undo step	Clear drawings	清除标记
 	No game was found for this move, on its page or the pages around it.	在此着法所在页及其前后页面中均未找到对局。
 	Renumber	重新编号
 	The text's move numbers give way to the game's: {printed} is played as {played}.	文本的着法编号让位于棋局的编号：{printed} 按 {played} 走。
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	着法列表
+	Move list beside the page	页面旁的着法列表
+	Side of the page	页面侧边

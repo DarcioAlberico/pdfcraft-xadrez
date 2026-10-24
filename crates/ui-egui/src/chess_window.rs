@@ -924,7 +924,7 @@ fn board_column(
     ui.horizontal_top(|ui| {
         ui.allocate_ui_with_layout(vec2(side, ui.available_height()), egui::Layout::top_down(egui::Align::Min), |ui| {
             ui.set_width(side);
-            asked.board = chess_board_ui::title(ui, chess.board(), source_label);
+            asked.board = chess_board_ui::title(ui, t, chess.board(), source_label, chess.moves_beside);
             ui.add_space(4.0);
             if chess.tools.tool == crate::chess_tools::PgnTool::Setup {
                 // The set-up view is taller than the board's controls: it scrolls.

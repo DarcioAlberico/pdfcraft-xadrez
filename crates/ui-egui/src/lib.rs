@@ -2682,6 +2682,11 @@ impl PdfCraftApp {
                 "right" => true,
                 _ => return Err("tools-side must be left or right".into()),
             })?,
+            ("moves-side", _) => self.docking.set_moves_side(match value {
+                "left" => true,
+                "right" => false,
+                _ => return Err("moves-side must be left or right".into()),
+            })?,
             ("organize", Some(v)) => {
                 if value == "off" {
                     v.organize = false;
@@ -3220,6 +3225,8 @@ impl eframe::App for PdfCraftApp {
         for view in &mut self.views {
             view.begin_render_frame();
         }
+        // The Move list: what was asked of it, and whether the notation is there this frame.
+        self.settle_move_list();
         // The chess board's own window, every frame while it is out: before full screen returns.
         chess_window::frame(self, &ctx);
         // The window shows the active document's name (or title, if it asks for that).
@@ -3280,6 +3287,17 @@ impl eframe::App for PdfCraftApp {
                     .size_range(260.0..=520.0)
                     .frame(egui::Frame::NONE)
                     .show(ui, |ui| chess_ui::board_panel(self, ui));
+            }
+            // The Move list last, so it stands against the page, on the side it was put.
+            if self.mode == Mode::Read && self.chess.moves_beside {
+                let id = "read_moves_panel";
+                let panel = if self.chess.moves_left { egui::Panel::left(id) } else { egui::Panel::right(id) };
+                panel
+                    .resizable(true)
+                    .default_size(docking::MOVES_WIDTH)
+                    .size_range(180.0..=480.0)
+                    .frame(egui::Frame::NONE)
+                    .show(ui, |ui| chess_ui::moves_panel(self, ui));
             }
         }
         let t = theme::Tokens::get(&ctx);
