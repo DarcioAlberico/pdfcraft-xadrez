@@ -53,9 +53,6 @@ const SCROLL_BAR_ROOM: f32 = 10.0;
 #[cfg(not(target_arch = "wasm32"))]
 const BAR_PT: f32 = 14.0;
 
-/// The pieces in the palette's order.
-const KINDS: [PieceKind; 6] = [PieceKind::King, PieceKind::Queen, PieceKind::Rook, PieceKind::Bishop, PieceKind::Knight, PieceKind::Pawn];
-
 /// A position being set up.
 pub struct Setup {
     pub position: Position,
@@ -323,21 +320,6 @@ fn setup_texture(ctx: &egui::Context, setup: &mut Setup, flipped: bool, pieces: 
     }
 }
 
-/// A palette button: the piece's picture when the pieces could be cut out, else its letter.
-fn palette_button(ui: &mut egui::Ui, sprites: Option<&TextureHandle>, piece: Piece, on: bool) -> egui::Response {
-    let name = crate::chess_editor::piece_name(piece);
-    let response = match sprites {
-        Some(tex) => ui.add(
-            egui::Button::image(egui::Image::new(tex).uv(chess_board_ui::sprite_uv(piece)).fit_to_exact_size(vec2(24.0, 24.0)))
-                .selected(on)
-                .min_size(vec2(30.0, 30.0)),
-        ),
-        None => ui.selectable_label(on, egui::RichText::new(crate::chess_editor::piece_letter(piece)).monospace().strong()),
-    };
-    response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, on, name));
-    response.on_hover_text(name)
-}
-
 /// How the set-up view ends.
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum SetupEnd {
@@ -377,22 +359,7 @@ fn setup_view(ui: &mut egui::Ui, t: &Tokens, setup: &mut Setup, board: &mut Boar
     }
     // The palette: White's pieces, Black's, and the eraser.
     let sprites = board.sprites(ui.ctx(), pieces);
-    for color in [Color::White, Color::Black] {
-        ui.horizontal_wrapped(|ui| {
-            ui.spacing_mut().item_spacing.x = 2.0;
-            // Six pieces and the eraser on a row at 330 pt.
-            ui.spacing_mut().button_padding = vec2(3.0, 3.0);
-            for kind in KINDS {
-                let piece = Piece { color, kind };
-                if palette_button(ui, sprites.as_ref(), piece, setup.brush == Brush::Put(piece)).clicked() {
-                    setup.brush = Brush::Put(piece);
-                }
-            }
-            if color == Color::Black && ui.selectable_label(setup.brush == Brush::Erase, tl!("Erase")).clicked() {
-                setup.brush = Brush::Erase;
-            }
-        });
-    }
+    crate::chess_editor::palette(ui, sprites.as_ref(), &mut setup.brush, false);
     ui.horizontal_wrapped(|ui| {
         if ui.small_button(tl!("Standard start position")).clicked() {
             setup.set_placement(Placement::standard(), true);

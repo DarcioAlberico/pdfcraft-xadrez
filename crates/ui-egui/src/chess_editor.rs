@@ -54,6 +54,8 @@ pub struct DiagramEditor {
     pub flipped: bool,
     pub brush: Brush,
     texture: Option<(String, TextureHandle)>,
+    /// The palette's pieces, cut out once (`Some(None)`: they could not be).
+    sprites: Option<Option<TextureHandle>>,
     /// Why the board could not be drawn, once.
     draw_error: Option<String>,
 }
@@ -76,6 +78,7 @@ impl DiagramEditor {
             flipped: read.and_then(|p| p.orientation).is_some_and(|o| o.black_point_of_view),
             brush: Brush::Put(Piece { color: Color::White, kind: PieceKind::Queen }),
             texture: None,
+            sprites: None,
             draw_error: None,
         }
     }
@@ -168,6 +171,84 @@ pub(crate) fn piece_name(p: Piece) -> &'static str {
 
 const KINDS: [PieceKind; 6] = [PieceKind::King, PieceKind::Queen, PieceKind::Rook, PieceKind::Bishop, PieceKind::Knight, PieceKind::Pawn];
 
+/// A palette button's side, in points, and its piece's.
+const PALETTE_BUTTON: f32 = 30.0;
+const PALETTE_PIECE: f32 = 24.0;
+
+/// A palette button: the piece's picture when the pieces could be cut out, else its letter. The
+/// picture sits on the board's light square, so Black's pieces show in the dark theme too; the
+/// chosen piece is outlined in the accent colour.
+fn palette_button(ui: &mut egui::Ui, sprites: Option<&TextureHandle>, piece: Piece, on: bool) -> egui::Response {
+    let name = piece_name(piece);
+    let response = match sprites {
+        Some(tex) => {
+            let t = Tokens::get(ui.ctx());
+            let light = BoardStyle::default().light;
+            let stroke = if on { egui::Stroke::new(2.0, t.accent) } else { egui::Stroke::new(1.0, t.border) };
+            ui.add(
+                egui::Button::image(
+                    egui::Image::new(tex).uv(crate::chess_board_ui::sprite_uv(piece)).fit_to_exact_size(egui::Vec2::splat(PALETTE_PIECE)),
+                )
+                .fill(Color32::from_rgb(light.0, light.1, light.2))
+                .stroke(stroke)
+                .min_size(egui::Vec2::splat(PALETTE_BUTTON)),
+            )
+        }
+        None => ui.selectable_label(on, egui::RichText::new(piece_letter(piece)).monospace().strong()),
+    };
+    response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, on, name));
+    response.on_hover_text(name)
+}
+
+/// The space between palette buttons, in points.
+const PALETTE_GAP: f32 = 2.0;
+
+/// The upright palette's width, in points: a white and a black piece side by side.
+const PALETTE_COLUMN: f32 = 2.0 * PALETTE_BUTTON + PALETTE_GAP;
+
+/// The smallest the editor's board gets to keep the palette beside it, in points.
+const MIN_BOARD_PT: f32 = 160.0;
+
+/// The piece palette the diagram editor and the study's set-up share, each piece as it is drawn
+/// on the board (`sprites`, from [`crate::chess_board_ui::cut_sprites`]; its letter when there
+/// are none). `upright`: a column beside the board, a row per kind with White's piece and
+/// Black's, then the eraser; else White's pieces on a row and Black's on the next with the eraser.
+pub(crate) fn palette(ui: &mut egui::Ui, sprites: Option<&TextureHandle>, brush: &mut Brush, upright: bool) {
+    let pick = |ui: &mut egui::Ui, brush: &mut Brush, piece: Piece| {
+        if palette_button(ui, sprites, piece, *brush == Brush::Put(piece)).clicked() {
+            *brush = Brush::Put(piece);
+        }
+    };
+    if upright {
+        egui::Grid::new("chess-palette").spacing(egui::Vec2::splat(PALETTE_GAP)).show(ui, |ui| {
+            ui.spacing_mut().button_padding = egui::vec2(3.0, 3.0);
+            for kind in KINDS {
+                pick(ui, brush, Piece { color: Color::White, kind });
+                pick(ui, brush, Piece { color: Color::Black, kind });
+                ui.end_row();
+            }
+        });
+        ui.add_space(PALETTE_GAP);
+        if crate::icons::button(ui, "eraser", PALETTE_BUTTON, *brush == Brush::Erase, tl!("Erase")).clicked() {
+            *brush = Brush::Erase;
+        }
+        return;
+    }
+    for color in [Color::White, Color::Black] {
+        ui.horizontal_wrapped(|ui| {
+            ui.spacing_mut().item_spacing.x = PALETTE_GAP;
+            // Six pieces and the eraser on a row at 330 pt.
+            ui.spacing_mut().button_padding = egui::vec2(3.0, 3.0);
+            for kind in KINDS {
+                pick(ui, brush, Piece { color, kind });
+            }
+            if color == Color::Black && crate::icons::button(ui, "eraser", PALETTE_BUTTON, *brush == Brush::Erase, tl!("Erase")).clicked() {
+                *brush = Brush::Erase;
+            }
+        });
+    }
+}
+
 /// The board image for the editor's position, redrawn when the position or the view changes.
 fn board_texture(ui: &egui::Ui, ed: &mut DiagramEditor, pieces: &PieceSet) -> Option<TextureHandle> {
     let key = format!("{}|{}", ed.fen(), ed.flipped);
@@ -207,47 +288,38 @@ pub fn editor_ui(ui: &mut egui::Ui, t: &Tokens, ed: &mut DiagramEditor, pieces: 
             action = Some(EditorAction::Close);
         }
     });
-    // The board.
-    if let Some(tex) = board_texture(ui, ed, pieces) {
-        let response = ui.add(egui::Image::new(&tex).fit_to_exact_size(egui::vec2(BOARD_PT, BOARD_PT)).sense(egui::Sense::click()));
-        let response = response.on_hover_text(tl!("Click a square to put the chosen piece there; click it again to empty it."));
-        // Its accessible name: what the board is, and the position on it.
-        let board_name = crate::i18n::fmt(tl!("Board: {fen}"), &[("fen", &ed.fen())]);
-        response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &board_name));
-        if response.clicked()
-            && let Some(pos) = response.interact_pointer_pos()
-        {
-            let r = response.rect;
-            if let Some(sq) = ed.square_at((pos.x - r.min.x) / r.width().max(1.0), (pos.y - r.min.y) / r.height().max(1.0)) {
-                ed.paint(sq);
-            }
-        }
-        // The squares the model was unsure of, outlined.
-        for u in &ed.uncertain {
-            let (file, rank) = (f32::from(u.square.file()), f32::from(u.square.rank()));
-            let (col, row) = if ed.flipped { (7.0 - file, rank) } else { (file, 7.0 - rank) };
-            let cell = response.rect.width() / 8.0;
-            let sq = egui::Rect::from_min_size(response.rect.min + egui::vec2(col * cell, row * cell), egui::vec2(cell, cell));
-            ui.painter().rect_stroke(sq.shrink(1.0), 1.0, egui::Stroke::new(2.0, Color32::from_rgb(0xE0, 0x8A, 0x1A)), egui::StrokeKind::Inside);
-        }
-    } else if let Some(e) = &ed.draw_error {
-        ui.label(egui::RichText::new(crate::i18n::fmt(tl!("The board couldn't be drawn: {e}"), &[("e", e)])).small().color(t.text_muted));
-    }
-    // The palette: white pieces, black pieces, the eraser.
-    for color in [Color::White, Color::Black] {
-        ui.horizontal(|ui| {
-            for kind in KINDS {
-                let p = Piece { color, kind };
-                let on = ed.brush == Brush::Put(p);
-                if ui.selectable_label(on, egui::RichText::new(piece_letter(p)).monospace().strong()).on_hover_text(piece_name(p)).clicked() {
-                    ed.brush = Brush::Put(p);
+    // The board, and the palette beside it: the pieces as the board draws them, and the eraser.
+    // In a narrow panel the board gets smaller (to `MIN_BOARD_PT`) to keep the palette there.
+    let sprites = ed.sprites.get_or_insert_with(|| crate::chess_board_ui::cut_sprites(ui.ctx(), pieces, "chess-editor-pieces")).clone();
+    ui.horizontal_top(|ui| {
+        let side = (ui.available_width() - PALETTE_COLUMN - ui.spacing().item_spacing.x).clamp(MIN_BOARD_PT, BOARD_PT);
+        if let Some(tex) = board_texture(ui, ed, pieces) {
+            let response = ui.add(egui::Image::new(&tex).fit_to_exact_size(egui::vec2(side, side)).sense(egui::Sense::click()));
+            let response = response.on_hover_text(tl!("Click a square to put the chosen piece there; click it again to empty it."));
+            // Its accessible name: what the board is, and the position on it.
+            let board_name = crate::i18n::fmt(tl!("Board: {fen}"), &[("fen", &ed.fen())]);
+            response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &board_name));
+            if response.clicked()
+                && let Some(pos) = response.interact_pointer_pos()
+            {
+                let r = response.rect;
+                if let Some(sq) = ed.square_at((pos.x - r.min.x) / r.width().max(1.0), (pos.y - r.min.y) / r.height().max(1.0)) {
+                    ed.paint(sq);
                 }
             }
-            if color == Color::Black && ui.selectable_label(ed.brush == Brush::Erase, tl!("Erase")).clicked() {
-                ed.brush = Brush::Erase;
+            // The squares the model was unsure of, outlined.
+            for u in &ed.uncertain {
+                let (file, rank) = (f32::from(u.square.file()), f32::from(u.square.rank()));
+                let (col, row) = if ed.flipped { (7.0 - file, rank) } else { (file, 7.0 - rank) };
+                let cell = response.rect.width() / 8.0;
+                let sq = egui::Rect::from_min_size(response.rect.min + egui::vec2(col * cell, row * cell), egui::vec2(cell, cell));
+                ui.painter().rect_stroke(sq.shrink(1.0), 1.0, egui::Stroke::new(2.0, Color32::from_rgb(0xE0, 0x8A, 0x1A)), egui::StrokeKind::Inside);
             }
-        });
-    }
+        } else if let Some(e) = &ed.draw_error {
+            ui.label(egui::RichText::new(crate::i18n::fmt(tl!("The board couldn't be drawn: {e}"), &[("e", e)])).small().color(t.text_muted));
+        }
+        ui.vertical(|ui| palette(ui, sprites.as_ref(), &mut ed.brush, true));
+    });
     // Move number, side to move, castling, view. The side to move has a row of its own, so its
     // label and its two choices stay together when the panel is narrow.
     ui.horizontal_wrapped(|ui| {
