@@ -950,7 +950,8 @@ impl Game {
     }
 
     /// The game as PGN: the seven tags, the others, the start position when it is not the
-    /// standard one, and the moves wrapped under 80 columns.
+    /// standard one, and the moves on one line: pasted elsewhere, a comment is not cut where
+    /// the 80th column fell.
     pub fn pgn(&self) -> String {
         let result = self.result();
         let mut out = String::new();
@@ -974,7 +975,7 @@ impl Game {
         out.push('\n');
         let moves = self.movetext();
         let text = if moves.is_empty() { result } else { format!("{moves} {result}") };
-        out.push_str(&wrap(&text, 79));
+        out.push_str(&text);
         out.push('\n');
         out
     }
@@ -1202,25 +1203,6 @@ fn tidy_comment(text: &str) -> String {
 fn split_glyphs(word: &str) -> (&str, &str) {
     let end = word.trim_end_matches(['!', '?']).len();
     (word.get(..end).unwrap_or(word), word.get(end..).unwrap_or_default())
-}
-
-/// Wrap `text` at spaces, lines at most `width` characters (a longer word stays whole).
-fn wrap(text: &str, width: usize) -> String {
-    let mut out = String::new();
-    let mut col = 0;
-    for word in text.split(' ').filter(|w| !w.is_empty()) {
-        let n = word.chars().count();
-        if col > 0 && col + 1 + n > width {
-            out.push('\n');
-            col = 0;
-        } else if col > 0 {
-            out.push(' ');
-            col += 1;
-        }
-        out.push_str(word);
-        col += n;
-    }
-    out
 }
 
 /// A piece of PGN.
@@ -1648,12 +1630,17 @@ mod tests {
     }
 
     #[test]
-    fn long_move_text_is_wrapped() {
+    fn long_move_text_stays_on_one_line() {
         let mut g = Game::standard();
         for _ in 0..10 {
             play(&mut g, &[("g1", "f3"), ("g8", "f6"), ("f3", "g1"), ("f6", "g8")]);
         }
-        assert!(g.pgn().lines().all(|l| l.chars().count() <= 79));
+        let node = g.current();
+        g.set_comment(node, "A comment long enough to have been cut at the eightieth column\nof the line");
+        let pgn = g.pgn();
+        let moves = pgn.split("\n\n").nth(1).unwrap_or_default();
+        assert_eq!(moves.trim_end().lines().count(), 1, "{pgn}");
+        assert!(moves.contains("eightieth column of the line} *"), "{pgn}");
     }
 
     #[test]
