@@ -590,7 +590,10 @@ impl Session {
             if let Some(&(prev, label)) = carried.iter().find(|(prev, _)| prev.checked_add(1) == Some(page.page)) {
                 builder.carry_caption(u32::try_from(prev).unwrap_or(u32::MAX), label);
             }
-            builder.add_page(&PageInput { index, geometry, text, diagrams, hints: &hints, reviews: &reviews });
+            // Read from the page's picture: by the chess OCR, or by the program whose invisible
+            // layer this is.
+            let ocr = read_by_ocr || text.hidden > pdfcraft_chessvision::chess_text::quality::MAX_HIDDEN_RATIO;
+            builder.add_page(&PageInput { index, geometry, text, diagrams, hints: &hints, reviews: &reviews, ocr });
         }
         Ok(ChessDocument { doc: builder.finish(), lang: chosen, lang_given: lang.is_some(), needs_ocr, ocr_pages, cipher, notes })
     }
