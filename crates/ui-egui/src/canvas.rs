@@ -2765,7 +2765,7 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     let selects_text = match tool {
         QuickTool::Comment(t) => t.markup().is_some() || t == comments::CommentTool::ReplaceText,
         QuickTool::Select => !preparing,
-        QuickTool::Redact | QuickTool::ColumnSelect => true,
+        QuickTool::Redact | QuickTool::Erase | QuickTool::ColumnSelect => true,
         QuickTool::Hand
         | QuickTool::Measure(_)
         | QuickTool::Crop
@@ -3195,8 +3195,10 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
                 };
                 (field == FieldPointer::Owned, field == FieldPointer::Over)
             };
-            // Redact draws boxes off text; so does Highlight (an area highlight, as in Acrobat).
-            let area_tool = tool == QuickTool::Redact && can_modify || tool == QuickTool::Comment(comments::CommentTool::Highlight) && allowed;
+            // Redact draws boxes off text, and so does the Eraser; so does Highlight (an area
+            // highlight, as in Acrobat).
+            let area_tool = matches!(tool, QuickTool::Redact | QuickTool::Erase) && can_modify
+                || tool == QuickTool::Comment(comments::CommentTool::Highlight) && allowed;
             let boxing = area_tool && {
                 let text = view.page_text(i);
                 let over_text = |p: Pos2| {
@@ -3476,7 +3478,7 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
             crate::image_pick::drop_stale(doc, view);
             crate::image_pick::paint(painter, &xf, i, info, view);
             comments::page_after_text(&resp, &pcx, view);
-            if tool == QuickTool::Redact && can_modify {
+            if matches!(tool, QuickTool::Redact | QuickTool::Erase) && can_modify {
                 crate::redact_ui::after_text(&resp, i, info, view);
             }
             if area_tool {
@@ -4107,7 +4109,9 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     }
     if let Some((page, quads)) = app.views[index].pending_redaction.take() {
         let author = app.comment_prefs.author.clone();
-        app.views[index].pending_edit = Some(if app.quick_tool == QuickTool::Comment(comments::CommentTool::Highlight) {
+        app.views[index].pending_edit = Some(if app.quick_tool == QuickTool::Erase {
+            erase_edit(page, &quads, app.erase_prefs)
+        } else if app.quick_tool == QuickTool::Comment(comments::CommentTool::Highlight) {
             // An area highlight: a highlight over the box.
             let style = app.comment_prefs.style(comments::CommentTool::Highlight);
             pdfcraft_engine::Edit::AddAnnotation(pdfcraft_engine::NewAnnotation {
@@ -5416,6 +5420,21 @@ fn grayscale(mut img: egui::ColorImage) -> egui::ColorImage {
         *c = Color32::from_rgba_premultiplied(gray, gray, gray, a);
     }
     img
+}
+
+/// The Eraser's edit for a text selection's or a box's quads (user space) on `page`: each quad's
+/// bounding box is an area.
+pub fn erase_edit(page: usize, quads: &[[f64; 8]], options: pdfcraft_engine::EraseOptions) -> pdfcraft_engine::Edit {
+    let areas = quads
+        .iter()
+        .map(|q| {
+            let (xs, ys) = ([q[0], q[2], q[4], q[6]], [q[1], q[3], q[5], q[7]]);
+            let min = |v: [f64; 4]| v.into_iter().fold(f64::INFINITY, f64::min);
+            let max = |v: [f64; 4]| v.into_iter().fold(f64::NEG_INFINITY, f64::max);
+            [min(xs), min(ys), max(xs), max(ys)]
+        })
+        .collect();
+    pdfcraft_engine::Edit::EraseContent { page, areas, options }
 }
 
 #[cfg(test)]
