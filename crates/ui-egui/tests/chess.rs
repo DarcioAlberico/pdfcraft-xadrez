@@ -262,6 +262,44 @@ fn the_editor_edits_the_selected_diagrams_position() {
     h.get_by_label("Not a legal position");
 }
 
+/// The palette shows the pieces as the board draws them, in a column beside the board, each
+/// button named for its piece (not a letter such as `n`): Black knight puts a black knight on the square clicked, and the eraser
+/// empties it again.
+#[test]
+fn the_editors_palette_is_the_pieces_pictures() {
+    let mut h = harness();
+    scan_and_edit_second(&mut h);
+    // (K, Q, k and q are the castling boxes.)
+    for letter in ["N", "n", "B", "b", "P", "p"] {
+        assert!(h.query_by_label(letter).is_none(), "no {letter} in the palette");
+    }
+    let board = h.get_by_label_contains("Board: ").rect();
+    // The palette is a column on the board's right, White's piece and Black's on a row.
+    let (white, black, erase) = (h.get_by_label("White knight").rect(), h.get_by_label("Black knight").rect(), h.get_by_label("Erase").rect());
+    assert!(white.left() > board.right() && white.bottom() <= board.bottom() + 1.0, "beside the board: {white:?}, {board:?}");
+    assert!((white.center().y - black.center().y).abs() < 1.0 && black.left() > white.right(), "{white:?} {black:?}");
+    assert!(erase.top() > black.bottom() && erase.left() > board.right(), "the eraser under the pieces: {erase:?}");
+    // d5 from White's side: column 3, row 3 from the top.
+    let d5 = board.min + egui::vec2(board.width() * 3.5 / 8.0, board.height() * 3.5 / 8.0);
+    let click_d5 = |h: &mut Harness<'static, PdfCraftApp>| {
+        h.hover_at(d5);
+        h.run_steps(1);
+        for pressed in [true, false] {
+            h.event(egui::Event::PointerButton { pos: d5, button: egui::PointerButton::Primary, pressed, modifiers: egui::Modifiers::NONE });
+        }
+        h.run_steps(3);
+    };
+    let fen = |h: &Harness<'static, PdfCraftApp>| h.state().chess.editor.as_ref().map(|e| e.fen());
+    h.get_by_label("Black knight").click();
+    h.run_steps(2);
+    click_d5(&mut h);
+    assert_eq!(fen(&h).as_deref(), Some("4k3/8/8/3n4/8/8/8/R3K3 w Q - 0 1"), "a black knight on d5");
+    h.get_by_label("Erase").click();
+    h.run_steps(2);
+    click_d5(&mut h);
+    assert_eq!(fen(&h).as_deref(), Some("4k3/8/8/8/8/8/8/R3K3 w Q - 0 1"), "d5 is empty again");
+}
+
 /// The editor's labels stay whole in the panel: a radio button that does not fit on its row
 /// moves to the next one instead of wrapping its word into a column of letters, and nothing is
 /// drawn past the panel's visible edge.
