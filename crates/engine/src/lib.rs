@@ -146,6 +146,7 @@ pub use pdfcraft_annot::{
 };
 pub use pdfcraft_forms::detect;
 pub use pdfcraft_optimize as optimize;
+pub use pdfcraft_organize::{Axis as CutAxis, Cut, MAX_PARTS as MAX_CUT_PARTS, MIN_PART as MIN_CUT_PART};
 pub use pdfcraft_preflight as pdfa;
 pub use pdfcraft_print as print;
 pub use pdfcraft_redact::codes::{CODE_SETS as REDACTION_CODE_SETS, CodeSet as RedactionCodeSet};
@@ -1301,6 +1302,13 @@ pub enum Edit {
         pages: Vec<usize>,
         at: Option<usize>,
     },
+    /// The Knife: cut pages into parts, each part a page of its own right after the original
+    /// ([`pdfcraft_organize::cut_pages`]). `right_to_left` puts each page's right (or bottom)
+    /// part first.
+    CutPages {
+        cuts: Vec<pdfcraft_organize::Cut>,
+        right_to_left: bool,
+    },
     /// Replace Pages: the content of `pages` is replaced by `src_pages` of another PDF; the
     /// pages' links, comments and bookmarks stay.
     ReplacePages {
@@ -1994,6 +2002,7 @@ impl Edit {
             Edit::ReversePages { .. } => Label::of("Reverse pages"),
             Edit::InsertBlankPage { .. } => Label::of("Insert blank page"),
             Edit::DuplicatePages { pages, .. } => plural("Duplicate page", "Duplicate pages", pages.len()),
+            Edit::CutPages { cuts, .. } => plural("Cut page", "Cut pages", cuts.len()),
             Edit::ReplacePages { pages, .. } => plural("Replace page", "Replace pages", pages.len()),
             Edit::SetPageBox { pages, which: PageBox::Crop, .. } => plural("Crop page", "Crop pages", pages.len()),
             Edit::SetPageBox { .. } => Label::of("Set page boxes"),
@@ -2171,6 +2180,7 @@ fn check_permission(edit: &Edit, p: &pdfcraft_cos::Permissions) -> Result<(), Ed
         | Edit::ReversePages { .. }
         | Edit::InsertBlankPage { .. }
         | Edit::DuplicatePages { .. }
+        | Edit::CutPages { .. }
         | Edit::ReplacePages { .. }
         | Edit::SetPageBox { .. }
         | Edit::SetTransition { .. }
@@ -2389,6 +2399,9 @@ fn run_edit(doc: &mut pdfcraft_cos::Document, edit: &Edit, cx: &mut EditCtx) -> 
         }
         Edit::SetInfo { key, value } => pdfcraft_organize::set_info(doc, key, value)?,
         Edit::DuplicatePages { pages, at } => pdfcraft_organize::duplicate_pages(doc, pages, *at)?,
+        Edit::CutPages { cuts, right_to_left } => {
+            pdfcraft_organize::cut_pages(doc, cuts, *right_to_left)?;
+        }
         Edit::ReplacePages { pages, name, bytes, src_pages } => {
             let src = open_source(name, bytes)?;
             pdfcraft_organize::replace_pages(doc, pages, &src, src_pages)?;
