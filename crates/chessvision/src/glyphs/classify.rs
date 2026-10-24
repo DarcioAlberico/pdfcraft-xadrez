@@ -31,6 +31,15 @@ const BROKEN_MIN_ROWS: f64 = 0.5;
 const BRACKETS_MAX_GAP: f64 = 0.25;
 /// Least confidence for the union of two arcs to be taken as the letter it reads as.
 const BRACKETS_MIN_P: f32 = 0.5;
+/// A fragment of its neighbour's letter lies in at least this share of its own columns over the
+/// neighbour's, is at most this share of the neighbour's height, and stays within the
+/// neighbour's rows give or take this many scales: the ear of a `g` that a scan cut off (Pinski
+/// 2005: 10 of its 11 columns over the `g`'s, half its height, read `y` at 0.96, so `g5` read
+/// `gy5`), a piece of an `e`'s eye (read `)`). A letter of its own stands beside its neighbour,
+/// not over it.
+const FRAGMENT_MIN_COLUMNS: f64 = 0.75;
+const FRAGMENT_MAX_HEIGHT: f64 = 0.7;
+const FRAGMENT_ROW_SLACK: f64 = 0.1;
 
 /// One classified box: the chosen class, its probability and the whole row.
 #[derive(Clone, Debug)]
@@ -245,6 +254,42 @@ impl Reader<'_> {
                     i += 2;
                     continue;
                 }
+            }
+            boxes.push(*b);
+            out.push(r.clone());
+            i += 1;
+        }
+        Ok((boxes, out))
+    }
+
+    /// A line's classified boxes with each fragment of a neighbour's letter ([`FRAGMENT_MIN_COLUMNS`])
+    /// joined to it, when their union reads as a letter or a digit at [`BRACKETS_MIN_P`] or more:
+    /// the union is then read as the one glyph. Both parts read at full confidence (the `g` and
+    /// its ear as `y`), so [`Reader::merge_broken`], which asks the union to read better than the
+    /// parts, keeps them apart.
+    pub fn join_fragments(&self, line: Vec<Bx>, reads: Vec<Read>, scale: i64) -> Result<(Vec<Bx>, Vec<Read>), GlyphError> {
+        let slack = FRAGMENT_ROW_SLACK * scale as f64;
+        let fragment_of = |f: &Bx, host: &Bx| {
+            f.w() < host.w()
+                && (f.h() as f64) <= FRAGMENT_MAX_HEIGHT * host.h() as f64
+                && (f.common_x(host) as f64) >= FRAGMENT_MIN_COLUMNS * f.w() as f64
+                && (f.y0 as f64) >= host.y0 as f64 - slack
+                && (f.y1 as f64) <= host.y1 as f64 + slack
+        };
+        let mut boxes = Vec::with_capacity(line.len());
+        let mut out = Vec::with_capacity(reads.len());
+        let mut i = 0;
+        while let (Some(b), Some(r)) = (line.get(i), reads.get(i)) {
+            if let Some(next) = line.get(i + 1)
+                && (fragment_of(next, b) || fragment_of(b, next))
+                && let Some(whole) = self.read(&[b.union(next)])?.pop()
+                && whole.p >= BRACKETS_MIN_P
+                && self.classes.names.get(whole.class).is_some_and(|n| n.chars().all(char::is_alphanumeric) && !n.is_empty())
+            {
+                boxes.push(b.union(next));
+                out.push(whole);
+                i += 2;
+                continue;
             }
             boxes.push(*b);
             out.push(r.clone());
