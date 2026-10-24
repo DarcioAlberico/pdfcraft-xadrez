@@ -710,8 +710,9 @@ fn a_diagram_on_the_board_takes_the_side_and_move_number_its_moves_give_it() {
 
 /// A double-click on a diagram whose page the Text tab has not read reads it (off the interface
 /// thread, inline here), and the moves under the diagram give the game on the board its side to
-/// move and move number, with nothing to undo: on a page scanned already, and on one the
-/// double-click scans first.
+/// move and move number, as no step of its own (opening the diagram is one step of the list,
+/// which Undo takes back whole): on a page scanned already, and on one the double-click scans
+/// first.
 #[test]
 fn a_double_clicked_diagram_reads_its_page_for_the_move_number() {
     const AT_12: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 12";
@@ -728,8 +729,17 @@ fn a_double_clicked_diagram_reads_its_page_for_the_move_number() {
         assert_eq!(h.state().chess.board().source.map(|s| (s.page, s.index)), Some((0, 0)));
         assert_eq!(h.state().chess.board().game.fen(), AT_12, "scanned first: {scanned}");
         assert_eq!(h.state().chess.board().game.first_move_number(), 12);
-        assert_eq!(h.state().chess.board().undo_label(), None, "opening the diagram is not a step to undo");
+        assert_eq!(h.state().chess.board().undo_label(), None, "the move number is not a step of the game");
         assert!(h.state().chess.board_text.is_none(), "dealt with");
+        // Opening it is a step of the list: Undo takes the game out, Redo puts it back with the
+        // start its page's moves gave it.
+        assert!(h.state_mut().execute("edit.undo"));
+        h.run_steps(2);
+        assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Undid Load the diagram"));
+        assert_eq!((h.state().chess.games.collection().len(), h.state().chess.board().source), (1, None), "a blank game is left");
+        assert!(h.state_mut().execute("edit.redo"));
+        h.run_steps(2);
+        assert_eq!(h.state().chess.board().game.fen(), AT_12);
         // Played on from there: Black's move.
         click_square(&mut h, "e7");
         click_square(&mut h, "e5");

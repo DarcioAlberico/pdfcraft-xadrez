@@ -35,6 +35,18 @@ const FRAME_MAX_INK: f64 = 0.12;
 /// Fewest pixels each way of a component left out of the text scale as an outline: below it, a
 /// box is too small for its ink share to say anything.
 const HOLLOW_MIN_SIDE: f64 = 40.0;
+/// A box with a drop shadow (a thin outline with a thicker edge offset on two sides: Pinski's
+/// `CHAPTER FOUR`, 12.4% inked) is a frame when inked on at most this share of its box and it is a
+/// ring ([`Comp::ring`]).
+const RING_MAX_INK: f64 = 0.3;
+/// A ring's band along each side of its box, as a share of the box's shorter side: none of its
+/// ink lies further in. Pinski's shadow and outline are 9% of the box's height deep; a round
+/// letter's bowl reaches inside this band at its diagonals.
+const RING_BAND: f64 = 0.15;
+/// Least share of each side of its box a ring's band inks: an `L` or a `U` leaves a side open.
+const RING_MIN_SIDE: f64 = 0.9;
+/// Most pixels of one component kept to tell a ring by; a larger one is no ring.
+const RING_MAX_PIXELS: usize = 2_000_000;
 /// A stem this many times taller than wide is measured for an italic slant.
 const NARROW_STEM: f64 = 2.0;
 
@@ -191,6 +203,41 @@ fn adaptive(g: &Gray) -> Vec<bool> {
 pub(crate) struct Comp {
     pub b: Bx,
     pub area: i64,
+    /// Whether it is a closed box's outline, however thick its edges: at least [`HOLLOW_MIN_SIDE`]
+    /// pixels each way, with all its ink within [`RING_BAND`] of its box's sides and each side's
+    /// band inked along at least [`RING_MIN_SIDE`] of it ([`ring`]).
+    pub ring: bool,
+}
+
+/// Whether the pixels `px` (indices into a `w`-wide image) of a component boxed by `b` are a
+/// ring ([`Comp::ring`]).
+fn ring(px: &[usize], w: usize, b: &Bx) -> bool {
+    let (bw, bh) = (b.w(), b.h());
+    if (bw as f64) < HOLLOW_MIN_SIDE || (bh as f64) < HOLLOW_MIN_SIDE || w == 0 {
+        return false;
+    }
+    // At least one pixel deep, and less than half the shorter side.
+    let band = ((bw.min(bh) as f64 * RING_BAND) as i64).max(1);
+    let (Ok(cols), Ok(rows)) = (usize::try_from(bw), usize::try_from(bh)) else { return false };
+    let (mut top, mut bottom) = (vec![false; cols], vec![false; cols]);
+    let (mut left, mut right) = (vec![false; rows], vec![false; rows]);
+    for &i in px {
+        // Within the image, so both fit `i64`.
+        let (x, y) = ((i % w) as i64 - b.x0, (i / w) as i64 - b.y0);
+        let (Ok(cx), Ok(ry)) = (usize::try_from(x), usize::try_from(y)) else { return false };
+        let (near_top, near_bottom) = (y < band, y >= bh - band);
+        let (near_left, near_right) = (x < band, x >= bw - band);
+        if !(near_top || near_bottom || near_left || near_right) {
+            return false;
+        }
+        for (side, near, at) in [(&mut top, near_top, cx), (&mut bottom, near_bottom, cx), (&mut left, near_left, ry), (&mut right, near_right, ry)] {
+            if near && let Some(v) = side.get_mut(at) {
+                *v = true;
+            }
+        }
+    }
+    let covered = |v: &[bool]| v.iter().filter(|&&b| b).count() as f64 >= RING_MIN_SIDE * v.len() as f64;
+    covered(&top) && covered(&bottom) && covered(&left) && covered(&right)
 }
 
 /// The 8-connected components of the ink, or `None` past `cap` components. Iterative flood
@@ -199,6 +246,8 @@ pub(crate) fn components(bin: &Bin, cap: usize) -> Option<Vec<Comp>> {
     let mut left = bin.ink.clone();
     let mut out = Vec::new();
     let mut stack: Vec<(usize, usize)> = Vec::new();
+    // The current component's pixels, for [`ring`]; emptied past [`RING_MAX_PIXELS`].
+    let mut pixels: Vec<usize> = Vec::new();
     let idx = |x: usize, y: usize| y.checked_mul(bin.w).and_then(|r| r.checked_add(x));
     for y in 0..bin.h {
         for x in 0..bin.w {
@@ -214,8 +263,16 @@ pub(crate) fn components(bin: &Bin, cap: usize) -> Option<Vec<Comp>> {
             let (xi, yi) = (x as i64, y as i64);
             let mut b = Bx { x0: xi, y0: yi, x1: xi + 1, y1: yi + 1 };
             let mut area = 0i64;
+            let mut keep = true;
+            pixels.clear();
             while let Some((cx, cy)) = stack.pop() {
                 area += 1;
+                if keep {
+                    match idx(cx, cy) {
+                        Some(i) if pixels.len() < RING_MAX_PIXELS => pixels.push(i),
+                        _ => keep = false,
+                    }
+                }
                 let (cxi, cyi) = (cx as i64, cy as i64);
                 b = b.union(&Bx { x0: cxi, y0: cyi, x1: cxi + 1, y1: cyi + 1 });
                 for ny in cy.saturating_sub(1)..=(cy + 1).min(bin.h.saturating_sub(1)) {
@@ -229,7 +286,8 @@ pub(crate) fn components(bin: &Bin, cap: usize) -> Option<Vec<Comp>> {
                     }
                 }
             }
-            out.push(Comp { b, area });
+            let ring = keep && ring(&pixels, bin.w, &b);
+            out.push(Comp { b, area, ring });
         }
     }
     Some(out)
@@ -278,10 +336,13 @@ pub(crate) fn is_frame(c: &Comp, scale: i64) -> bool {
 }
 
 /// An outline: a component at least [`HOLLOW_MIN_SIDE`] pixels each way inked on at most
-/// [`FRAME_MAX_INK`] of its box. Letters are inked far more densely.
+/// [`FRAME_MAX_INK`] of its box, or a ring ([`Comp::ring`]: a box with a drop shadow) inked on
+/// at most [`RING_MAX_INK`]. Letters are inked far more densely, and a round or open one is no
+/// ring.
 fn is_hollow(c: &Comp) -> bool {
     let (w, h) = (c.b.w() as f64, c.b.h() as f64);
-    w >= HOLLOW_MIN_SIDE && h >= HOLLOW_MIN_SIDE && (c.area as f64) <= FRAME_MAX_INK * w * h
+    let ink = c.area as f64;
+    w >= HOLLOW_MIN_SIDE && h >= HOLLOW_MIN_SIDE && (ink <= FRAME_MAX_INK * w * h || (c.ring && ink <= RING_MAX_INK * w * h))
 }
 
 /// Character boxes (`caixas_de_caractere`) and bar candidates (`empilhados.barras`). A component

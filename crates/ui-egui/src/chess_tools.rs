@@ -11,8 +11,9 @@
 //! the group's letter switches the member shown. Later steps add tools by adding entries: the
 //! rail, the keys the scope takes, the key hints in the names and the move list's context menu
 //! all follow from the list. The annotation tools (T6) are there too: the three glyph groups,
-//! whose buttons show their glyph as text and are named for it, the comment editor and the glyph
-//! palette (`chess_annotate`). T15 adds the glyph brush (a mode: a click on a move in the
+//! whose buttons show their glyph as text and are named for it (while a text field the palette
+//! types into had the keyboard, a glyph with a sign goes there instead, as from the palette), the
+//! comment editor and the glyph palette (`chess_annotate`). T15 adds the glyph brush (a mode: a click on a move in the
 //! notation puts the brush's glyph on that move or takes it off, instead of going to it), moving a
 //! variation up or down among the others at its fork (Alt+↑, Alt+↓) and the threat (a null move)
 //! to the Structure group.
@@ -795,6 +796,8 @@ fn tool_label(tool: &Tool, chess: &ChessState) -> String {
 fn can_act(tool: &Tool, chess: &ChessState) -> bool {
     match tool.kind {
         Kind::History(undo) => chess.games.can_step(undo),
+        // While a text field had the keyboard, a glyph with a sign types it there, move or not.
+        Kind::Glyph(code) => (tool.enabled)(chess.board()) || chess_annotate::glyph_typed(chess.board(), code).is_some(),
         _ => (tool.enabled)(chess.board()),
     }
 }
@@ -906,10 +909,13 @@ fn activate(chess: &mut ChessState, tool: &Tool, target: Target) {
         Kind::Glyph(code) => {
             chess.tools.last_glyph = code;
             // With the brush armed, a glyph chosen is the brush's glyph, not a change to the move.
+            // Else, as in the palette, it goes into the text field that had the keyboard (the
+            // correction field of a capture, a comment, FEN or PGN) when it has a sign, or on the
+            // move shown.
             if chess.tools.brush().is_some() {
                 chess.tools.tool = PgnTool::GlyphBrush(code);
             } else {
-                chess_annotate::toggle_glyph(chess.board_mut(), code);
+                chess_annotate::pick_glyph(chess.board_mut(), code);
             }
         }
         Kind::Switch(flip) => flip(chess),

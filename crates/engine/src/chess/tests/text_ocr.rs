@@ -666,3 +666,34 @@ fn a_larger_title_on_a_scan_is_a_heading() {
     assert_eq!(large[0].0, 1, "24 pt over 14 pt is a title");
     assert!(headings(14.0).is_empty(), "the same words at the body's size");
 }
+
+/// A section's title set in bold at the body's size, a blank line under the text before it, is a
+/// heading on a scan (level 2); the same word set regular is a paragraph, and so is the bold word
+/// at the leading under the text before it (a main line in bold). (Fails without the bold hints:
+/// no heading.)
+#[test]
+fn a_bolder_title_standing_alone_on_a_scan_is_a_heading() {
+    let text = "Black should equalise";
+    let templates = Templates::learn("SummaryBlckshoudeqi", 14.0);
+    let headings = |bold: bool, top: f32| {
+        let mut lines = vec![(text, 14.0, 100.0), (text, 14.0, 120.0)];
+        lines.extend((1..4).map(|k| (text, 14.0, top + 20.0 * k as f32)));
+        // In its own graphics state: the rendering mode would carry over to the lines after it.
+        let weight = if bold { "2 Tr 0.9 w" } else { "" };
+        let extra = format!("q BT /F2 14 Tf {weight} 60 {} Td (Summary) Tj ET Q\n", 800.0 - top);
+        let (mut s, id) = open(scanned_pdf(&lines, &extra));
+        let read = s.chess_document_with(id, &[], &no_model(), Some(pdfcraft_chess::san::Lang::En), &options(&templates)).unwrap();
+        assert_eq!(read.ocr_pages.len(), 1, "{:?}", read.notes);
+        read.doc.pages[0]
+            .blocks
+            .iter()
+            .filter_map(|b| match b {
+                pdfcraft_chessvision::doc::Block::Heading { level, inlines, .. } => Some((*level, inlines.len())),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(headings(true, 160.0), vec![(2, 1)], "the bold title alone");
+    assert!(headings(false, 160.0).is_empty(), "the same word set regular");
+    assert!(headings(true, 140.0).is_empty(), "bold at the leading");
+}
