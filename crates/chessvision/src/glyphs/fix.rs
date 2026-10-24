@@ -1,6 +1,6 @@
 //! Corrections after classification (the trunk's `empilhados.corrigir`, `caixa_alta.decidir`,
-//! `numero.corrigir`), the word rule, and the move-number join. A 32 × 32 cell has lost the
-//! glyph's size and proportion; these put back what geometry and context still know.
+//! `numero.corrigir`), the word rule, the move-number join and the capture's `x`. A 32 × 32 cell
+//! has lost the glyph's size and proportion; these put back what geometry and context still know.
 
 use super::classify::{Classes, Read};
 use super::notation::{fold, has_move, is_figurine};
@@ -198,6 +198,41 @@ fn castle_core(t: &[char]) -> Option<(usize, usize)> {
         _ => false,
     };
     ok.then_some((a, b))
+}
+
+/// A `u` between a file, a rank or a figurine and a square (`guf6`, `♘uf3`) is a capture's `x`:
+/// notation never sets a `u` there, nor does a word of prose put a square straight after one. A
+/// scan's `x` glued to the `g` before it reads as the model's `gu` pair (Pinski 2005: `gxf6` read
+/// `guf6`), and an `x` alone may read `u` as well.
+pub(crate) fn capture_x(words: &mut [GlyphWord]) {
+    let before = |c: &char| matches!(c, 'a'..='h' | '1'..='8') || is_figurine(*c);
+    for w in words.iter_mut() {
+        let chars: Vec<char> = w.glyphs.iter().flat_map(|g| g.text.chars()).collect();
+        let at: Vec<usize> = (1..chars.len())
+            .filter(|&i| {
+                chars.get(i) == Some(&'u')
+                    && chars.get(i - 1).is_some_and(before)
+                    && chars.get(i + 1).is_some_and(|c| matches!(c, 'a'..='h'))
+                    && chars.get(i + 2).is_some_and(|c| matches!(c, '1'..='8'))
+            })
+            .collect();
+        if at.is_empty() {
+            continue;
+        }
+        let mut i = 0;
+        for g in &mut w.glyphs {
+            g.text = g
+                .text
+                .chars()
+                .map(|c| {
+                    let x = if at.contains(&i) { 'x' } else { c };
+                    i += 1;
+                    x
+                })
+                .collect();
+        }
+        w.text = w.glyphs.iter().map(|g| g.text.as_str()).collect();
+    }
 }
 
 /// The trunk's `juntar_numero_de_lance`, as the spike simplified it: on a line that carries
