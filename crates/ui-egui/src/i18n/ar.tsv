@@ -3315,3 +3315,9 @@ chess undo step	Clear drawings	مسح الرسوم
 	Move list	قائمة النقلات
 	Move list beside the page	قائمة النقلات بجانب الصفحة
 	Side of the page	جانب الصفحة
+	Drawing eraser	ممحاة الرسومات
+	Drag across text or draw a box to erase what lies under it	اسحب عبر النص أو ارسم مربعًا لمحو ما تحته
+	Drawings and shapes	الرسومات والأشكال
+	Comments, links and form fields	التعليقات والروابط وحقول النماذج
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	المحو تعديل: قد تحتفظ نسخة سابقة من الملف بما مُحي. استخدم حجب لإزالته نهائيًا.
+	Erase content	محو المحتوى

@@ -3038,3 +3038,9 @@ chess undo step	Clear drawings	rajzok törlése
 	Move list	Lépéslista
 	Move list beside the page	Lépéslista az oldal mellett
 	Side of the page	Az oldal széle
+	Drawing eraser	Rajzradír
+	Drag across text or draw a box to erase what lies under it	Húzzon a szövegen át, vagy rajzoljon keretet az alatta lévő tartalom törléséhez
+	Drawings and shapes	Rajzok és alakzatok
+	Comments, links and form fields	Megjegyzések, hivatkozások és űrlapmezők
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	A törlés szerkesztés: a fájl egy korábbi változata még tartalmazhatja a törölt részt. A végleges eltávolításhoz használja a Kitakarást.
+	Erase content	Tartalom törlése

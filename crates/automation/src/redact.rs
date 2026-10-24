@@ -203,6 +203,57 @@ impl Automation {
         Ok(out)
     }
 
+    /// `page_cut`: the Knife. Each page is cut at the same places, in points or as fractions of
+    /// the page as shown.
+    pub(crate) fn page_cut(&mut self, a: &Args) -> Result<Value> {
+        let pages = self.pages(a, "pages")?;
+        let axis = match a.str("axis")? {
+            "vertical" => pdfcraft_engine::CutAxis::Vertical,
+            "horizontal" => pdfcraft_engine::CutAxis::Horizontal,
+            other => return Err(ToolError::InvalidArgs(format!("unknown axis {other:?}; allowed: vertical, horizontal"))),
+        };
+        let at: Vec<f64> = a.get("at").and_then(Value::as_array).map(|v| v.iter().filter_map(Value::as_f64).collect()).unwrap_or_default();
+        let count = a.get("at").and_then(Value::as_array).map_or(0, Vec::len);
+        if at.is_empty() || at.len() != count || at.len() >= pdfcraft_engine::MAX_CUT_PARTS {
+            return Err(ToolError::InvalidArgs(format!("at must be 1 to {} numbers", pdfcraft_engine::MAX_CUT_PARTS - 1)));
+        }
+        let fraction = match a.opt_str("units")? {
+            None | Some("pt") => false,
+            Some("fraction") => true,
+            Some(other) => return Err(ToolError::InvalidArgs(format!("unknown units {other:?}; allowed: pt, fraction"))),
+        };
+        if fraction && !at.iter().all(|v| *v > 0.0 && *v < 1.0) {
+            return Err(ToolError::InvalidArgs("fractions must lie between 0 and 1".into()));
+        }
+        let info = self.doc(a)?.info.clone();
+        let cuts: Vec<pdfcraft_engine::Cut> = pages
+            .iter()
+            .map(|&page| {
+                let p = &info.pages[page];
+                // The page as shown, in points.
+                let extent = f64::from(if axis == pdfcraft_engine::CutAxis::Vertical { p.width } else { p.height });
+                let at = if fraction { at.iter().map(|f| f * extent).collect() } else { at.clone() };
+                pdfcraft_engine::Cut { page, axis, at }
+            })
+            .collect();
+        let before = info.pages.len();
+        let right_to_left = a.opt_bool("right_to_left")?.unwrap_or(false);
+        let mut out = self.apply(a, Edit::CutPages { cuts: cuts.clone(), right_to_left })?;
+        // Where each page's parts went (1-based, in the order given).
+        let mut sorted: Vec<usize> = pages.clone();
+        sorted.sort_unstable();
+        let mut offset = 0usize;
+        let mut parts = Vec::new();
+        for page in sorted {
+            let n = cuts.iter().find(|c| c.page == page).map_or(1, |c| c.at.len() + 1);
+            parts.push(json!({ "page": page + 1, "parts": (0..n).map(|k| page + offset + k + 1).collect::<Vec<_>>() }));
+            offset += n - 1;
+        }
+        out["cut"] = json!(parts);
+        out["pages_before"] = json!(before);
+        Ok(out)
+    }
+
     pub(crate) fn redact_clear(&mut self, a: &Args) -> Result<Value> {
         if self.doc(a)?.redaction_marks() == 0 {
             return Err(failed("there are no redaction marks"));

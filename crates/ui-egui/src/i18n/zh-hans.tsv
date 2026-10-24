@@ -3003,3 +3003,9 @@ chess undo step	Clear drawings	清除标记
 	Move list	着法列表
 	Move list beside the page	页面旁的着法列表
 	Side of the page	页面侧边
+	Drawing eraser	绘图橡皮擦
+	Drag across text or draw a box to erase what lies under it	在文本上拖动或画一个框，擦除其下方的内容
+	Drawings and shapes	绘图和形状
+	Comments, links and form fields	注释、链接和表单字段
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	擦除是一次编辑：文件的早期版本可能仍保留被擦除的内容。要彻底删除，请使用密文。
+	Erase content	擦除内容

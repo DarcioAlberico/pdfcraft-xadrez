@@ -3039,3 +3039,9 @@ chess undo step	Clear drawings	l'effacement des dessins
 	Move list	Liste des coups
 	Move list beside the page	Liste des coups à côté de la page
 	Side of the page	Côté de la page
+	Drawing eraser	Gomme à dessins
+	Drag across text or draw a box to erase what lies under it	Faites glisser sur du texte ou tracez un cadre pour effacer ce qui se trouve dessous
+	Drawings and shapes	Dessins et formes
+	Comments, links and form fields	Commentaires, liens et champs de formulaire
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Effacer est une modification : une version antérieure du fichier peut encore contenir ce qui a été effacé. Utilisez Biffer pour le supprimer définitivement.
+	Erase content	Effacer le contenu

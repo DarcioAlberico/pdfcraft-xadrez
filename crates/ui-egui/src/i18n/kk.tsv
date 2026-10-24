@@ -3037,3 +3037,9 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Move list	Жүрістер тізімі
 	Move list beside the page	Беттің жанындағы жүрістер тізімі
 	Side of the page	Беттің жағы
+	Drawing eraser	Сурет өшіргіші
+	Drag across text or draw a box to erase what lies under it	Астындағыны өшіру үшін мәтін үстімен сүйреңіз немесе жақтау сызыңыз
+	Drawings and shapes	Суреттер мен пішіндер
+	Comments, links and form fields	Түсініктемелер, сілтемелер және пішін өрістері
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Өшіру — өңдеу: файлдың бұрынғы нұсқасында өшірілгені әлі сақталуы мүмкін. Біржола жою үшін Жасыруды пайдаланыңыз.
+	Erase content	Мазмұнды өшіру

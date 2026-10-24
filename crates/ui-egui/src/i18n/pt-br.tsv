@@ -3056,3 +3056,9 @@ chess undo step	Clear drawings	remoção dos desenhos
 	Move list	Lista de lances
 	Move list beside the page	Lista de lances ao lado da página
 	Side of the page	Lado da página
+	Drawing eraser	Borracha de desenhos
+	Drag across text or draw a box to erase what lies under it	Arraste sobre o texto ou desenhe uma caixa para apagar o que está embaixo
+	Drawings and shapes	Desenhos e formas
+	Comments, links and form fields	Comentários, links e campos de formulário
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Apagar é uma edição: uma versão anterior do arquivo ainda pode conter o que foi apagado. Use Ocultar dados para removê-lo de vez.
+	Erase content	Apagar conteúdo

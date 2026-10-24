@@ -3035,3 +3035,9 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Move list	Hamle listesi
 	Move list beside the page	Sayfanın yanında hamle listesi
 	Side of the page	Sayfanın kenarı
+	Drawing eraser	Çizim silgisi
+	Drag across text or draw a box to erase what lies under it	Altındakini silmek için metnin üzerinde sürükleyin veya bir kutu çizin
+	Drawings and shapes	Çizimler ve şekiller
+	Comments, links and form fields	Yorumlar, bağlantılar ve form alanları
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Silmek bir düzenlemedir: dosyanın önceki bir sürümü silineni hâlâ içerebilir. Kalıcı olarak kaldırmak için Karart'ı kullanın.
+	Erase content	İçeriği sil

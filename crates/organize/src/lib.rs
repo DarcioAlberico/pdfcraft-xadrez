@@ -14,6 +14,7 @@
 use pdfcraft_cos::{Dict, Document, ObjRef, Object, PdfString, XrefEntry};
 
 mod boxes;
+mod cut;
 mod dedupe;
 mod import;
 mod labels;
@@ -25,6 +26,7 @@ pub mod view;
 mod xmp;
 
 pub use boxes::{BoxSpec, PageBox, page_boxes, set_page_box};
+pub use cut::{Axis, Cut, CutOutcome, MAX_PAGES_AFTER_CUT, MAX_PARTS, MIN_PART, cut_pages};
 pub use dedupe::dedupe_resources;
 pub use import::{
     CombineOutcome, Combiner, FieldConflicts, ImportOutcome, Run, SplitBy, combine, combine_field_conflicts, combine_grouped, combine_grouped_with,
