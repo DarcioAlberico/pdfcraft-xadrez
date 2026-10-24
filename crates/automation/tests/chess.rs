@@ -1560,7 +1560,7 @@ fn chess_games_renames_duplicates_deletes_moves_and_starts_games_from_a_position
         "chess_games",
         json!({ "pgn": ABC, "active": 1, "ops": [
             { "op": "list" },
-            { "op": "rename", "game": 2, "white": "Werle", "black": "Jianu" },
+            { "op": "rename", "game": 2, "white": "Werle", "black": "Jianu", "site": "Wijk aan Zee NED", "date": "2025.01.??", "round": "6" },
             { "op": "duplicate", "game": 0 },
             { "op": "move", "game": 3, "to": 0 },
             { "op": "delete", "game": 2 },
@@ -1586,6 +1586,8 @@ fn chess_games_renames_duplicates_deletes_moves_and_starts_games_from_a_position
     assert_eq!(r["count"], 4);
     let games = r["games"].as_array().unwrap();
     assert_eq!(games[0]["name"], "Werle–Jianu");
+    assert_eq!((&games[0]["site"], &games[0]["date"], &games[0]["round"]), (&json!("Wijk aan Zee NED"), &json!("2025.01.??"), &json!("6")));
+    assert_eq!((&games[2]["site"], &games[2]["date"]), (&json!(""), &json!("")), "an unknown site and date are empty");
     assert_eq!(games[1]["start_fen"], "rnbqkbnr/pppppppp/8/8/2P5/8/PP1PPPPP/RNBQKBNR b KQkq c3 0 1", "after 1. c4 of game 0 (C)");
     assert_eq!((games[0]["moves"].as_u64(), games[3]["shown"].as_bool()), (Some(1), Some(true)));
     let pgn = r["pgn"].as_str().unwrap();
@@ -1641,6 +1643,8 @@ fn chess_games_refuses_what_the_list_does_not_allow() {
         (json!({ "op": "new_from", "at": "main:9" }), "no move there"),
         (json!({ "op": "new_from", "at": "nowhere" }), "an address"),
         (json!({ "op": "rename", "white": 3 }), "white is a string"),
+        (json!({ "op": "rename", "white": "W", "date": "2025.04.31" }), "not a PGN date"),
+        (json!({ "op": "rename", "date": "18/01/2025" }), "YYYY.MM.DD"),
         (json!({ "op": "sort" }), "op \"sort\""),
         (json!({ "op": "set_active", "game": 99 }), "the list has games 0 to 2"),
     ] {
