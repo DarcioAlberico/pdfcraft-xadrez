@@ -336,13 +336,50 @@ pub fn apply(doc: &mut Document, pages: Option<&[usize]>) -> Result<Report, Reda
     // `marks` visits pages in order. Keep slices of that order for appearance generation,
     // content rewriting and verification instead of scanning all marks for every page.
     let groups: Vec<_> = chosen.chunk_by(|a, b| a.page == b.page).filter_map(|group| group.first().map(|mark| (mark.page, group))).collect();
-    let by_page: Vec<_> = groups.iter().map(|(page, _)| *page).collect();
     // Budget failures must leave even a direct library caller's document untouched.
     let mut remaining = overlay::MAX_BYTES;
     let overlays = groups
         .iter()
         .map(|&(pi, page_marks)| overlay::content(page_marks, &mut remaining).map(|content| (pi, content)))
         .collect::<Result<Vec<_>, _>>()?;
+    let areas: Vec<PageAreas> = groups
+        .iter()
+        .map(|&(page, page_marks)| PageAreas {
+            page,
+            rects: page_marks.iter().flat_map(|m| m.rects.iter().copied()).collect(),
+            marks: page_marks.iter().map(|m| m.obj).collect(),
+        })
+        .collect();
+    remove_under(doc, &areas, &mut report)?;
+
+    // 4. The boxes.
+    for (pi, content) in overlays {
+        if !content.is_empty() {
+            pdfcraft_edit::stamp(doc, pi, "Redaction", content)?;
+        }
+    }
+
+    verify_removed(doc, &areas)?;
+    // The previous revision still holds the removed content: the next save must rewrite.
+    doc.require_full_save();
+    Ok(report)
+}
+
+/// What [`remove_under`] takes away from one page (0-based): everything under `rects`, and the
+/// Redact annotations in `marks` (the marks being applied) wherever they lie.
+struct PageAreas {
+    page: usize,
+    rects: Vec<[f64; 4]>,
+    marks: Vec<ObjRef>,
+}
+
+/// Remove, for good, what lies under each page's areas: content (also inside form XObjects),
+/// annotations with their pop-ups and replies, form fields with a widget there, and an XFA form's
+/// data. Redact annotations other than the page's `marks` stay. Counts go into `report`.
+///
+/// Not transactional: an error may leave `doc` partly changed (see [`apply`]).
+fn remove_under(doc: &mut Document, areas: &[PageAreas], report: &mut Report) -> Result<(), RedactError> {
+    let by_page: Vec<_> = areas.iter().map(|a| a.page).collect();
     report.pages = by_page.len();
     localize_resources(doc, &by_page)?;
     let mut doomed_fields: Vec<String> = Vec::new();
@@ -352,15 +389,15 @@ pub fn apply(doc: &mut Document, pages: Option<&[usize]>) -> Result<Report, Reda
     let widget_owner: Vec<(ObjRef, String)> =
         pdfcraft_forms::fields(doc).into_iter().flat_map(|f| f.widgets.iter().map(|w| (w.obj, f.name.clone())).collect::<Vec<_>>()).collect();
 
-    for &(pi, page_marks) in &groups {
-        let page = pdfcraft_model::pages(doc).swap_remove(pi);
-        let rects: Vec<[f64; 4]> = page_marks.iter().flat_map(|m| m.rects.iter().copied()).collect();
+    for area in areas {
+        let (pi, rects) = (area.page, &area.rects);
+        let page = pdfcraft_model::pages(doc).into_iter().nth(pi).ok_or(RedactError::Unreadable(pi + 1))?;
 
         // 1. Content.
         let (list, data) = page_streams(doc, &page.dict, pi)?;
         let resources = page.dict.get(b"Resources").and_then(|r| doc.resolve(r).as_dict().cloned()).unwrap_or_default();
         let out = {
-            let mut scope = Scope::new(&rects, Mode::Apply, &mut report);
+            let mut scope = Scope::new(rects, Mode::Apply, report);
             process(doc, &mut scope, &data, &resources, pdfcraft_content::Matrix::IDENTITY)
         };
         // Fail closed: the interpreter lays vertical-writing text out horizontally, so it cannot
@@ -378,9 +415,9 @@ pub fn apply(doc: &mut Document, pages: Option<&[usize]>) -> Result<Report, Reda
         retired_properties.extend(out.retired_properties);
         let mut new_list = list.clone();
         let mut changed = false;
-        for (i, new) in out.streams.into_iter().enumerate() {
+        for (slot, new) in new_list.iter_mut().zip(out.streams) {
             let Some(bytes) = new else { continue };
-            let mut dict = match &*doc.resolve(&list[i]) {
+            let mut dict = match &*doc.resolve(slot) {
                 Object::Stream(s) => s.dict.clone(),
                 _ => Dict::new(),
             };
@@ -390,7 +427,7 @@ pub fn apply(doc: &mut Document, pages: Option<&[usize]>) -> Result<Report, Reda
             // as plain drawn content but is no longer editable.
             dict.remove(b"PCAdded");
             // A new object: the original may be shared with other pages.
-            new_list[i] = Object::Ref(doc.add(Object::Stream(Stream::flate(dict, &bytes))));
+            *slot = Object::Ref(doc.add(Object::Stream(Stream::flate(dict, &bytes))));
             changed = true;
         }
         if changed || !out.xobjects.is_empty() || !out.replaced.is_empty() {
@@ -447,7 +484,7 @@ pub fn apply(doc: &mut Document, pages: Option<&[usize]>) -> Result<Report, Reda
             let Some(d) = obj.as_dict() else { continue };
             let subtype = d.name(b"Subtype").unwrap_or(b"");
             if subtype == b"Redact" {
-                if page_marks.iter().any(|m| m.obj == r) {
+                if area.marks.contains(&r) {
                     removed.push(r);
                 }
                 continue;
@@ -534,24 +571,19 @@ pub fn apply(doc: &mut Document, pages: Option<&[usize]>) -> Result<Report, Reda
         report.xfa_removed = !r.packets.is_empty();
     }
 
-    // 4. The boxes.
-    for (pi, content) in overlays {
-        if !content.is_empty() {
-            pdfcraft_edit::stamp(doc, pi, "Redaction", content)?;
-        }
-    }
-
     // A removed image or form must not stay reachable through another resource dictionary (an
     // inherited or shared /Resources): a full save keeps whatever is still referenced.
-    interp::unlink_doomed(doc, &doomed_xobjects, &retired_properties)?;
+    interp::unlink_doomed(doc, &doomed_xobjects, &retired_properties)
+}
 
-    // 5. Verify: nothing readable may remain under a region.
+/// Step 5, verify: nothing readable may remain under an area. Redaction boxes (`/PCMark /Redaction`
+/// streams) draw text of their own, the overlay label, so they are not read.
+fn verify_removed(doc: &mut Document, areas: &[PageAreas]) -> Result<(), RedactError> {
     let mut residue = 0;
-    for &(pi, page_marks) in &groups {
-        let page = pdfcraft_model::pages(doc).swap_remove(pi);
-        let rects: Vec<[f64; 4]> = page_marks.iter().flat_map(|m| m.rects.iter().copied()).collect();
+    for area in areas {
+        let pi = area.page;
+        let page = pdfcraft_model::pages(doc).into_iter().nth(pi).ok_or(RedactError::Unreadable(pi + 1))?;
         let (list, data) = page_streams(doc, &page.dict, pi)?;
-        // The overlay stream (last) draws text of its own: the overlay label is allowed.
         let original: Vec<Vec<u8>> = list
             .iter()
             .zip(data)
@@ -560,15 +592,13 @@ pub fn apply(doc: &mut Document, pages: Option<&[usize]>) -> Result<Report, Reda
             .collect();
         let resources = page.dict.get(b"Resources").and_then(|r| doc.resolve(r).as_dict().cloned()).unwrap_or_default();
         let mut scratch = Report::default();
-        let mut scope = Scope::new(&rects, Mode::Verify, &mut scratch);
+        let mut scope = Scope::new(&area.rects, Mode::Verify, &mut scratch);
         residue += process(doc, &mut scope, &original, &resources, pdfcraft_content::Matrix::IDENTITY).residue;
     }
     if residue > 0 {
         return Err(RedactError::Residue(residue));
     }
-    // The previous revision still holds the removed content: the next save must rewrite.
-    doc.require_full_save();
-    Ok(report)
+    Ok(())
 }
 
 /// Remove redaction marks without applying them (`None` = all).
