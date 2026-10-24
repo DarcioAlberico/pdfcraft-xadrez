@@ -3247,3 +3247,10 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	Comments, links and form fields	Commenti, collegamenti e campi modulo
 	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Cancellare è una modifica: una versione precedente del file può ancora contenere ciò che è stato cancellato. Usa Oscura per rimuoverlo definitivamente.
 	Erase content	Cancella contenuto
+	Knife (cut pages)	Coltello (taglia pagine)
+	Click to place a cut, right-click to take one away, Enter to cut	Fai clic per mettere un taglio, clic destro per toglierne uno, Invio per tagliare
+	Up and down	Dall'alto in basso
+	Across	Di traverso
+	Hold Shift for the other direction.	Tieni premuto Maiusc per l'altra direzione.
+	Right part first	Prima la parte destra
+	Nothing is erased: each part shows its piece of the page.	Non si cancella nulla: ogni parte mostra il suo pezzo di pagina.

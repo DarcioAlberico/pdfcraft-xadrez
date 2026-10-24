@@ -3109,3 +3109,10 @@ chess undo step	Clear drawings	smazání kreseb
 	Comments, links and form fields	Komentáře, odkazy a pole formulářů
 	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Mazání je úprava: starší verze souboru může vymazaný obsah stále obsahovat. Pro trvalé odstranění použijte Začernění.
 	Erase content	Vymazat obsah
+	Knife (cut pages)	Nůž (rozřezat stránky)
+	Click to place a cut, right-click to take one away, Enter to cut	Kliknutím umístíte řez, pravým kliknutím jeden odeberete, Enter rozřízne
+	Up and down	Shora dolů
+	Across	Napříč
+	Hold Shift for the other direction.	Pro druhý směr podržte Shift.
+	Right part first	Nejprve pravá část
+	Nothing is erased: each part shows its piece of the page.	Nic se nemaže: každá část ukazuje svůj kus stránky.
