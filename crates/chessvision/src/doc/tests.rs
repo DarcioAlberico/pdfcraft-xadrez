@@ -1821,6 +1821,33 @@ fn a_move_before_the_diagram_numbers_the_moves_after_it() {
     assert_eq!(doc.games[0].score.start_fen.as_deref(), Some("r1bqkbnr/pppp1ppp/2n5/4p3/2B1P3/8/PPPP1PPP/RNBQK1NR w KQkq - 2 3"));
 }
 
+/// A bracket between two small letters is part of a word: an OCR's broken `o` (`m(nre` for
+/// `move`) opens no variation, a broken `e` (`ourc)d`) closes none, and `move(s)` is a word.
+/// (Fails with the rule off: Pinski 2005's stray brackets put a variation's moves on the main
+/// line.)
+#[test]
+fn a_bracket_inside_a_word_is_no_variation() {
+    let pgn = |t: &str| {
+        let text = page_text(vec![line(230.0, t)]);
+        let doc = build_page(&PageInput { ocr: true, ..input(0, &text, &[], &[], &[]) });
+        assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{t}: {:?}", moves(&doc.pages[0]));
+        assert!(doc.games[0].flags.is_empty(), "{t}: {:?}", doc.games[0].flags);
+        pgn::write_game(&doc.games[0].score).split_whitespace().collect::<Vec<_>>().join(" ")
+    };
+    let got = pgn("1.e4 e5 2.Nf3 Nc6 3.Bc4 a simple m(nre with no plan. 3...Bc5 4.c3");
+    assert!(got.contains("3. Bc4 {a simple m(nre with no plan.} 3... Bc5 4. c3"), "{got}");
+    let got = pgn("1.e4 e5 2.Nf3 ( 2.Bc4 Nf6 3.d3 with ourc)d bishops 3...Bc5 ) 2...Nc6 3.Bb5");
+    assert!(got.contains("2. Nf3 (2. Bc4 Nf6 3. d3 {with ourc)d bishops} 3... Bc5) 2... Nc6 3. Bb5"), "{got}");
+    let got = pgn("1.e4 e5 2.Nf3 the best move(s) here 2...Nc6 3.Bb5");
+    assert!(got.contains("2. Nf3 {the best move(s) here} 2... Nc6 3. Bb5"), "{got}");
+    // Pinski's case: a stray bracket left open made the labels below separators inside it.
+    let got = pgn("1.e4 e5 2.Nf3 Nc6 3.Bc4 a m(nre. Instead: a) 3.Bb5 a6 b) 3.d4 exd4 4.Nxd4");
+    assert!(got.contains("3. Bc4 {a m(nre. Instead: a)} (3. Bb5 a6 {b)}) (3. d4 exd4 4. Nxd4)"), "{got}");
+    // A variation's bracket after a word is one.
+    let got = pgn("1.e4 e5 2.Nf3 better ( 2.Bc4 Nf6 ) 2...Nc6");
+    assert!(got.contains("2. Nf3 {better} (2. Bc4 Nf6) 2... Nc6"), "{got}");
+}
+
 /// On a page read by OCR, an illegal move that one misread file letter explains is played as that
 /// reading, and the move says so (a scan loses the bar of an `e`: `cxd4` for `exd4`); a text
 /// layer's move stays illegal, and so does one whose reading two moves fit.
