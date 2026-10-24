@@ -916,6 +916,67 @@ fn a_caption_at_the_foot_of_a_page_numbers_the_next_pages_first_diagram() {
     }
 }
 
+/// The same book read a page at a time (the Text tab, and a game read across the pages around a
+/// move): page 1 read alone does not know the caption at the foot of page 0. Walked again after
+/// page 0 ([`DocBuilder::add_read_page`]), or told it by a look at page 0
+/// ([`DocBuilder::carry_caption`], [`trailing_label`]), its first diagram takes it, and the
+/// solution naming it is played from it, as when the whole book is read.
+#[test]
+fn a_page_read_alone_takes_the_caption_at_the_foot_of_the_page_before() {
+    let rook = "8/8/4k3/8/8/4K3/r7/7R w - - 0 1";
+    let p0 = page_text(vec![line(45.0, "Exercício 1 ★△"), line(700.0, "Exercício 2 ★★△")]);
+    let p1 = page_text(vec![line(300.0, "Ex. 6–2"), line(320.0, "1.Rh6+ Kd5 2.Rh5+")]);
+    let heading = [BlockHint { kind: HintKind::Heading { level: 2 }, rect: user_box(30.0, 295.0, 300.0, 315.0) }];
+    let d0 = [reading(0, 60.0, SCHOLAR, true, false)];
+    let d1 = [reading(0, 60.0, rook, true, false)];
+    let numbers = |doc: &ChessDoc| -> Vec<Option<u32>> {
+        doc.pages.iter().flat_map(|p| p.blocks.iter()).filter_map(|b| if let Block::Diagram(d) = b { Some(d.puzzle) } else { None }).collect()
+    };
+    let alone0 = build_page(&input(0, &p0, &d0, &[], &[]));
+    let alone1 = build_page(&input(1, &p1, &d1, &heading, &[]));
+    assert_eq!(numbers(&alone1), [None], "alone, page 1 cannot know");
+    assert_eq!(alone0.pages[0].trailing, Some(2));
+    let json = alone0.to_json().unwrap();
+    assert_eq!(json.matches("\"trailing\":2").count(), 1, "{json}");
+    assert_eq!(ChessDoc::from_json(&json).unwrap(), alone0);
+    assert!(!alone1.to_json().unwrap().contains("trailing"));
+    // Walked again in order: page 1's diagram is exercise 2, and its solution is played from it.
+    let mut b = DocBuilder::new();
+    b.add_read_page(ChessDoc::from_json(&json).unwrap().pages.remove(0));
+    b.add_read_page(alone1.pages[0].clone());
+    let doc = b.finish();
+    assert_eq!(numbers(&doc), [Some(1), Some(2)]);
+    assert!(moves(&doc.pages[1]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[1]));
+    // Not past the page after it.
+    let mut later = alone1.pages[0].clone();
+    later.index = 2;
+    let mut b = DocBuilder::new();
+    b.add_read_page(alone0.pages[0].clone());
+    b.add_read_page(later);
+    assert_eq!(numbers(&b.finish()), [Some(1), None]);
+    // A look at page 0 alone gives the same label to page 1 read on its own.
+    let boxes: Vec<PageRect> = d0.iter().map(|d| d.bbox_user).collect();
+    assert_eq!(trailing_label(&p0, &geometry(), &boxes), Some(2));
+    let mut b = DocBuilder::new();
+    b.carry_caption(0, 2);
+    b.add_page(&input(1, &p1, &d1, &heading, &[]));
+    assert_eq!(numbers(&b.finish()), [Some(2)]);
+    let mut b = DocBuilder::new();
+    b.carry_caption(0, 2);
+    b.add_page(&input(3, &p1, &d1, &heading, &[]));
+    assert_eq!(numbers(&b.finish()), [None], "only the very next page takes it");
+    // The whole book read, then walked again page by page, is the same document.
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &d0, &[], &[]));
+    b.add_page(&input(1, &p1, &d1, &heading, &[]));
+    let whole = b.finish();
+    let mut b = DocBuilder::new();
+    for page in whole.pages.clone() {
+        b.add_read_page(page);
+    }
+    assert_eq!(b.finish(), whole);
+}
+
 /// A solution that prints its game from move 1 before it reaches the exercise's position: its
 /// first move does not start from the exercise, so it is read from the initial position, as
 /// without the label.
@@ -986,6 +1047,34 @@ fn assert_solved(doc: &ChessDoc, solution_pages: &[usize], origins: &[(u32, usiz
     }
     let want: Vec<GameOrigin> = origins.iter().map(|&(page, diagram)| GameOrigin::Diagram { page, diagram, accepted: true }).collect();
     assert_eq!(doc.games.iter().map(|g| g.origin).collect::<Vec<_>>(), want);
+}
+
+/// A workbook read in the chapters' order, whose second chapter's last caption (`Exercise 2`)
+/// is set at the foot of a page, with its board on the next. That caption is not a solution: it
+/// does not mark the first chapter solved, so the solutions still go to the chapters in order,
+/// both when the book is read and when its pages are walked again ([`DocBuilder::add_read_page`]).
+#[test]
+fn a_caption_at_the_foot_is_not_a_solution_when_the_pages_are_walked_again() {
+    let p0 = page_text(vec![line(215.0, "Exercise 1"), line(415.0, "Exercise 2")]);
+    let d0 = [reading(0, 60.0, SCHOLAR, true, false), reading(1, 260.0, ROOK, true, false)];
+    let p1 = page_text(vec![line(215.0, "Exercise 1"), line(760.0, "Exercise 2")]);
+    let d1 = [reading(0, 60.0, ROOK, true, false)];
+    let p2 = page_text(Vec::new());
+    let d2 = [reading(0, 60.0, SCHOLAR, true, false)];
+    let solutions = ["Exercise 1", SCHOLAR_MATE, "Exercise 2", ROOK_CHECKS, "Exercise 1", ROOK_CHECKS, "Exercise 2", SCHOLAR_MATE];
+    let p3 = page_text(solutions.iter().enumerate().map(|(k, t)| line(40.0 + 20.0 * k as f32, t)).collect());
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &d0, &[], &[]));
+    b.add_page(&input(1, &p1, &d1, &[], &[]));
+    b.add_page(&input(2, &p2, &d2, &[], &[]));
+    b.add_page(&input(3, &p3, &[], &[], &[]));
+    let doc = b.finish();
+    assert_solved(&doc, &[3], &[(0, 0), (0, 1), (1, 0), (2, 0)]);
+    let mut b = DocBuilder::new();
+    for page in doc.pages.clone() {
+        b.add_read_page(page);
+    }
+    assert_eq!(b.finish(), doc);
 }
 
 /// A workbook that numbers each chapter's exercises from 1 and prints all the solutions after
@@ -1276,12 +1365,45 @@ fn a_diagram_in_the_right_column_waits_for_the_left_one() {
         lines.push(line_at(330.0, 270.0 + 40.0 * k as f32, &format!("Right {k}, a fairly long line.")));
     }
     let refs: Vec<&ChessLine> = lines.iter().collect();
-    assert!(crate::doc::build::gutter(&refs, 600.0).is_some(), "two columns");
+    assert!(crate::doc::build::columns(&refs, 600.0).gutters().first().copied().is_some(), "two columns");
     let doc = build_page(&input(0, &page_text(lines), &[d0], &[], &[]));
     let kinds = kinds(&doc.pages[0]);
     let at = kinds.iter().position(|k| k == "D0").unwrap();
     assert!(kinds[..at].iter().any(|k| k.contains("Left 5")), "{kinds:?}");
     assert!(kinds[at + 1..].iter().all(|k| k.contains("Right")), "{kinds:?}");
+}
+
+/// A page with no gutter: a diagram set wholly on the right half of the page, and a short line
+/// below it wholly on the left half (a move at the margin under a diagram set to the right). The
+/// page is read top down, so the diagram comes before the line. On a page of short lines, which
+/// may be two columns too short for a gutter, the line still comes first
+/// (`diagrams_interleave_by_column_and_keep_their_numbers`).
+#[test]
+fn a_diagram_on_one_side_of_a_one_column_page_goes_before_a_line_below_it() {
+    let mut d0 = reading(0, 100.0, SCHOLAR, true, false);
+    d0.bbox_user = user_box(330.0, 100.0, 480.0, 250.0);
+    let above = "A line of text set across the whole page, as the body is";
+    let text = page_text(vec![line(40.0, above), line(60.0, above), line(270.0, "short"), line(290.0, "and on")]);
+    let doc = build_page(&input(0, &text, &[d0.clone()], &[], &[]));
+    assert_eq!(kinds(&doc.pages[0]), vec![format!("P:{above} {above}"), "D0".into(), "P:short and on".into()]);
+    // The game goes on from the diagram, not from before it.
+    let text = page_text(vec![line(40.0, above), line(60.0, "White to play, a line across the page here."), line(270.0, "3.Qh5 Nf6 4.Qxf7#")]);
+    let doc = build_page(&input(0, &text, &[d0], &[], &[]));
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+}
+
+/// Two boards side by side on a page with no gutter, a caption under the left one: the right
+/// board does not jump before the left board's caption, which is under a board in its own column.
+#[test]
+fn a_caption_under_the_left_board_of_a_row_is_read_before_the_right_board() {
+    let board = |k: usize, x: f32| {
+        let mut d = reading(k, 60.0, SCHOLAR, true, false);
+        d.bbox_user = user_box(x, 60.0, x + 180.0, 240.0);
+        d
+    };
+    let text = page_text(vec![line_at(60.0, 250.0, "Left caption"), line_at(330.0, 250.0, "Right caption")]);
+    let doc = build_page(&input(0, &text, &[board(0, 60.0), board(1, 330.0)], &[], &[]));
+    assert_eq!(kinds(&doc.pages[0]), vec!["D0", "P:Left caption", "D1", "P:Right caption"]);
 }
 
 #[test]
@@ -1417,6 +1539,25 @@ proptest! {
     }
 
     #[test]
+    fn columns_are_capped_and_their_order_keeps_every_line(
+        lines in proptest::collection::vec((-50.0f32..2050.0, -50.0f32..900.0, 1usize..60), 0..80),
+        width in prop_oneof![Just(600.0f32), Just(2000.0f32), Just(f32::NAN), Just(0.0f32)],
+    ) {
+        let lines: Vec<ChessLine> = lines.iter().map(|(x, y, n)| line_at(*x, *y, &"w".repeat(*n))).collect();
+        let refs: Vec<&ChessLine> = lines.iter().collect();
+        let columns = crate::doc::build::columns(&refs, width);
+        let gutters = columns.gutters();
+        prop_assert!(gutters.len() < crate::doc::build::MAX_COLUMNS);
+        prop_assert!(gutters.windows(2).all(|w| w[0] < w[1]), "{:?}", gutters);
+        let order = crate::doc::build::column_order(&refs, &columns);
+        let mut got: Vec<*const ChessLine> = order.iter().map(|l| std::ptr::from_ref::<ChessLine>(l)).collect();
+        let mut want: Vec<*const ChessLine> = refs.iter().map(|l| std::ptr::from_ref::<ChessLine>(l)).collect();
+        got.sort();
+        want.sort();
+        prop_assert_eq!(got, want);
+    }
+
+    #[test]
     fn hostile_json_never_panics(text in "\\PC{0,300}") {
         if let Ok(doc) = ChessDoc::from_json(&text) {
             let _ = doc.pgn();
@@ -1492,9 +1633,9 @@ fn a_column_with_a_score_table_is_still_a_column() {
         lines.push(line_at(460.0, y, "ef"));
     }
     let refs: Vec<&ChessLine> = lines.iter().collect();
-    let x = crate::doc::build::gutter(&refs, 600.0).expect("a gutter between the columns");
+    let x = crate::doc::build::columns(&refs, 600.0).gutters().first().copied().expect("a gutter between the columns");
     assert!((290.0..330.0).contains(&x), "{x}");
-    let order = crate::doc::build::column_order(&refs, crate::doc::build::gutter(&refs, 600.0));
+    let order = crate::doc::build::column_order(&refs, &crate::doc::build::columns(&refs, 600.0));
     assert!(order[..8].iter().all(|l| l.rect.x0 < 100.0), "the left column first");
 }
 
@@ -1502,7 +1643,7 @@ fn a_column_with_a_score_table_is_still_a_column() {
 fn columns_need_a_real_gutter_and_full_width_lines_cut_bands() {
     let one = [line_at(30.0, 100.0, "1.e4 e5 2.Nf3 Nc6"), line_at(30.0, 120.0, "3.Bb5 a6 4.Ba4 Nf6"), line_at(30.0, 140.0, "5.O-O Be7")];
     let refs: Vec<&ChessLine> = one.iter().collect();
-    assert!(crate::doc::build::gutter(&refs, 600.0).is_none(), "one column, all on the left");
+    assert!(crate::doc::build::columns(&refs, 600.0).gutters().first().copied().is_none(), "one column, all on the left");
     // Band 1: two columns; a full-width line; band 2: two columns.
     let rows = [
         (100.0, "Left one, a fairly long line.", "Right one, a fairly long line."),
@@ -1520,7 +1661,7 @@ fn columns_need_a_real_gutter_and_full_width_lines_cut_bands() {
         lines.push(line_at(320.0, y + 100.0, &r.replace("one", "four").replace("two", "five").replace("three", "six")));
     }
     let refs: Vec<&ChessLine> = lines.iter().collect();
-    let order: Vec<String> = crate::doc::build::column_order(&refs, crate::doc::build::gutter(&refs, 600.0))
+    let order: Vec<String> = crate::doc::build::column_order(&refs, &crate::doc::build::columns(&refs, 600.0))
         .iter()
         .map(|l| {
             l.spans
@@ -1553,6 +1694,101 @@ fn columns_need_a_real_gutter_and_full_width_lines_cut_bands() {
             "Rightsix"
         ]
     );
+}
+
+/// The first word of each line, for checking an order.
+fn first_words(lines: &[&ChessLine]) -> Vec<String> {
+    lines
+        .iter()
+        .map(|l| match l.spans.first().map(|s| &s.run) {
+            Some(ChessRun::Text(t)) => t.split(' ').next().unwrap_or("").to_owned(),
+            Some(ChessRun::MoveNumber { number, .. }) => format!("{number}."),
+            _ => String::new(),
+        })
+        .collect()
+}
+
+/// A three-column page whose lines come interleaved (the layout reads across): each column is
+/// read down in turn, left to right, and each column's game replays in its own order.
+#[test]
+fn a_three_column_page_is_read_column_by_column() {
+    let cols = [
+        ["The open game here.", "1.e4 e5 2.Nf3 Nc6", "3.Bb5 a6 and so on."],
+        ["The closed game here.", "1.d4 d5 2.c4 e6", "3.Nc3 Nf6 is calm."],
+        ["The flank game here.", "1.c4 e5 2.Nc3 Nf6", "3.g3 d5 is sharp."],
+    ];
+    let mut lines = Vec::new();
+    for row in 0..3 {
+        for (c, col) in cols.iter().enumerate() {
+            lines.push(line_at(30.0 + 190.0 * c as f32, 100.0 + 20.0 * row as f32, col[row]));
+        }
+    }
+    let refs: Vec<&ChessLine> = lines.iter().collect();
+    let columns = crate::doc::build::columns(&refs, 600.0);
+    assert_eq!(columns.gutters().len(), 2, "{columns:?}");
+    let doc = build_page(&input(0, &page_text(lines), &[], &[], &[]));
+    use MoveStatus::*;
+    let got = moves(&doc.pages[0]);
+    assert_eq!(
+        got.iter().map(|(m, _)| m.as_str()).collect::<Vec<_>>(),
+        ["1.e4", "e5", "2.Nf3", "Nc6", "3.Bb5", "a6", "1.d4", "d5", "2.c4", "e6", "3.Nc3", "Nf6", "1.c4", "e5", "2.Nc3", "Nf6", "3.g3", "d5"],
+        "left column first, then the middle, then the right"
+    );
+    assert!(got.iter().all(|(_, s)| *s == Valid), "{got:?}");
+    assert_eq!(doc.games.len(), 3);
+}
+
+/// On a three-column page, a line across the whole page cuts every column into bands, and a line
+/// across the two right columns only cuts those two: the left column reads on past it.
+#[test]
+fn lines_across_some_of_three_columns_cut_only_those_into_bands() {
+    let mut lines = Vec::new();
+    for (k, y) in [100.0, 120.0, 140.0, 200.0, 220.0, 240.0].into_iter().enumerate() {
+        lines.push(line_at(30.0, y, &format!("L{k} in the left column")));
+        lines.push(line_at(220.0, y, &format!("M{k} in the mid column")));
+        lines.push(line_at(410.0, y, &format!("R{k} in the right col")));
+    }
+    // Across the middle and right columns, between their two bands.
+    lines.push(line_at(220.0, 170.0, "Across the middle and the right columns here"));
+    // Across the whole page, under everything.
+    lines.push(line_at(30.0, 300.0, "Across the whole page from one margin to the other margin of it"));
+    for (k, y) in [320.0, 340.0, 360.0].into_iter().enumerate() {
+        lines.push(line_at(30.0, y, &format!("l{k} in the left column")));
+        lines.push(line_at(220.0, y, &format!("m{k} in the mid column")));
+        lines.push(line_at(410.0, y, &format!("r{k} in the right col")));
+    }
+    let refs: Vec<&ChessLine> = lines.iter().collect();
+    let columns = crate::doc::build::columns(&refs, 600.0);
+    assert_eq!(columns.gutters().len(), 2, "{columns:?}");
+    let order = first_words(&crate::doc::build::column_order(&refs, &columns));
+    assert_eq!(
+        order,
+        [
+            "L0", "L1", "L2", "L3", "L4", "L5", "M0", "M1", "M2", "R0", "R1", "R2", "Across", "M3", "M4", "M5", "R3", "R4", "R5", "Across", "l0",
+            "l1", "l2", "m0", "m1", "m2", "r0", "r1", "r2"
+        ]
+    );
+}
+
+/// A diagram in the middle column of three goes after the left column's lines below it and before
+/// the middle column's lines under it; the right column's lines come after.
+#[test]
+fn a_diagram_in_the_middle_of_three_columns_waits_for_the_left_one() {
+    let mut d0 = reading(0, 100.0, SCHOLAR, true, false);
+    d0.bbox_user = user_box(220.0, 100.0, 370.0, 250.0);
+    let mut lines = Vec::new();
+    for k in 0..8 {
+        let y = 100.0 + 25.0 * k as f32;
+        lines.push(line_at(30.0, y, &format!("Left {k}, a line in it.")));
+        lines.push(line_at(410.0, y, &format!("Right {k}, a line in it.")));
+    }
+    for k in 0..3 {
+        lines.push(line_at(220.0, 270.0 + 25.0 * k as f32, &format!("Mid {k}, a line in it.")));
+    }
+    let doc = build_page(&input(0, &page_text(lines), &[d0], &[], &[]));
+    let kinds = kinds(&doc.pages[0]);
+    let at = |s: &str| kinds.iter().position(|k| k.contains(s)).unwrap_or_else(|| panic!("{s} in {kinds:?}"));
+    assert!(at("Left 7") < at("D0") && at("D0") < at("Mid 0") && at("Mid 2") < at("Right 0"), "{kinds:?}");
 }
 
 /// The coordinates printed around a diagram are left out; the same letters elsewhere stay.

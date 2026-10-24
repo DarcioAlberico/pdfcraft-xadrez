@@ -28,7 +28,7 @@
 use pdfcraft_chess::san::Lang;
 use pdfcraft_chessvision::chess_text::{self, ChessLine, ChessPageText, ChessRun, LangGuess, LangTally, TextQuality};
 use pdfcraft_chessvision::coords::{PageGeometry, PageRect, ViewRect};
-use pdfcraft_chessvision::doc::{BlockHint, ChessDoc, DocBuilder, HintKind, PageInput};
+use pdfcraft_chessvision::doc::{BlockHint, ChessDoc, DocBuilder, HintKind, PageInput, trailing_label};
 use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind};
 
 use pdfcraft_chess::repair::GameContext;
@@ -386,6 +386,21 @@ impl Session {
         ocr: &OcrOptions<'_>,
     ) -> Result<ChessDocument, String> {
         let scanned = self.chess_scan(id, pages, settings, true)?;
+        // A page with diagrams whose page before is not read with it (the Text tab reads one
+        // page): a caption at the foot of that page numbers its first diagram. That page is only
+        // looked at, not read: where its diagrams are, not what they hold, and its text layer.
+        let before: Vec<usize> = scanned
+            .iter()
+            .enumerate()
+            .filter(|(_, p)| !p.diagrams.is_empty())
+            .filter_map(|(k, p)| {
+                let prev = p.page.checked_sub(1)?;
+                let read_with_it = k.checked_sub(1).and_then(|j| scanned.get(j)).is_some_and(|q| q.page == prev);
+                (!read_with_it).then_some(prev)
+            })
+            .collect();
+        // Leniently: a page before that cannot be scanned leaves its page without the caption.
+        let looked_at = if before.is_empty() { Vec::new() } else { self.chess_scan(id, &before, settings, false).unwrap_or_default() };
         let doc = self.get(id).ok_or("no such document")?;
         let config = RenderConfig { password: doc.password.as_deref().map(std::sync::Arc::from), ..Default::default() };
         let mut renderer = PageRenderer::new(doc.bytes.clone(), config);
@@ -422,6 +437,17 @@ impl Session {
                 (guess, texts)
             }
         };
+        // The captions the pages before left at their feet: (that page, the label).
+        let carried: Vec<(usize, u32)> = looked_at
+            .iter()
+            .filter_map(|prev| {
+                let geometry = prev.geometry?;
+                let r = renderer.render(RenderRequest { page: prev.page, kind: RequestKind::Text, scale: 1.0, ..Default::default() });
+                let text = chess_text::from_page_text(r.text.as_deref()?, Some(chosen.lang));
+                let boxes: Vec<PageRect> = prev.diagrams.iter().map(|d| d.candidate.bbox_user).collect();
+                trailing_label(&text, &geometry, &boxes).map(|n| (prev.page, n))
+            })
+            .collect();
         // A layer mostly drawn invisibly over a picture of the page is another program's OCR.
         // Only such layers ask whether images cover the page.
         for (page, text) in scanned.iter().zip(&mut chess_texts) {
@@ -561,6 +587,9 @@ impl Session {
                 notes.push((page.page, "the page's diagrams could not be read; they are left out".into()));
             }
             let index = u32::try_from(page.page).unwrap_or(u32::MAX);
+            if let Some(&(prev, label)) = carried.iter().find(|(prev, _)| prev.checked_add(1) == Some(page.page)) {
+                builder.carry_caption(u32::try_from(prev).unwrap_or(u32::MAX), label);
+            }
             builder.add_page(&PageInput { index, geometry, text, diagrams, hints: &hints, reviews: &reviews });
         }
         Ok(ChessDocument { doc: builder.finish(), lang: chosen, lang_given: lang.is_some(), needs_ocr, ocr_pages, cipher, notes })
