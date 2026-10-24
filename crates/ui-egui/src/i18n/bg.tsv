@@ -2987,3 +2987,8 @@ chess undo step	Clear drawings	изчистването на рисунките
 	No game was found for this move, on its page or the pages around it.	Не е намерена партия за този ход нито на страницата му, нито на страниците около нея.
 	Renumber	Преномериране
 	The text's move numbers give way to the game's: {printed} is played as {played}.	Номерата на ходовете в текста отстъпват на тези от партията: {printed} се играе като {played}.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	Списък с ходове
+	Move list beside the page	Списък с ходове до страницата
+	Side of the page	Страна на страницата

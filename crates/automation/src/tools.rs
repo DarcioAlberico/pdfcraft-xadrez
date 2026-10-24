@@ -547,6 +547,22 @@ pub fn tools() -> Vec<ToolDef> {
             .destructive()
             .with(schema(json!({ "doc": doc() }), &["doc"])),
         t(
+            "page_erase",
+            "Erase content",
+            "Erase the page's content under rects ([x0, y0, x1, y1] each, points from the top-left of the displayed page): glyphs are cut out of their lines with the rest in place, images and vectors removed or clipped. kinds: any of text, images, vectors (the default, all three) and annotations (comments, links and fields there; off by default). rule: centre (default: a glyph goes when its centre is inside, as a selection takes it) or overlap (any real overlap, as redaction). No box is drawn and nothing is marked. An ordinary edit, undoable and saved incrementally, so an earlier revision still holds the content: use redact_mark and redact_apply to remove it for good. Returns erased: how many glyphs, images and path parts went.",
+        )
+        .destructive()
+        .with(schema(
+            json!({
+                "doc": doc(),
+                "page": { "type": "integer", "minimum": 1 },
+                "rects": { "type": "array", "items": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 }, "minItems": 1, "maxItems": 4096 },
+                "kinds": { "type": "array", "items": { "type": "string", "enum": ["text", "images", "vectors", "annotations"] }, "minItems": 1 },
+                "rule": { "type": "string", "enum": ["centre", "overlap"] },
+            }),
+            &["doc", "page", "rects"],
+        )),
+        t(
             "doc_hidden_info",
             "Find hidden information",
             "What Remove Hidden Information would remove, by category (metadata, attachments, comments, form-fields, hidden-text, hidden-layers, bookmarks, links-actions-scripts, private-data) with counts.",

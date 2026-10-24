@@ -3024,3 +3024,8 @@ chess undo step	Clear drawings	l'effacement des dessins
 	No game was found for this move, on its page or the pages around it.	Aucune partie n’a été trouvée pour ce coup, ni sur sa page ni sur les pages voisines.
 	Renumber	Renuméroter
 	The text's move numbers give way to the game's: {printed} is played as {played}.	Les numéros de coups du texte cèdent la place à ceux de la partie : {printed} est joué comme {played}.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	Liste des coups
+	Move list beside the page	Liste des coups à côté de la page
+	Side of the page	Côté de la page

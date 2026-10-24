@@ -14,16 +14,19 @@ pub enum Panel {
     Inspector,
     /// Chess ▸ Board: the analysis board, a tab beside the Inspector.
     Board,
+    /// The board's game as a list of moves, against the page's left or right edge.
+    Moves,
 }
 
 impl Panel {
-    pub const ALL: &[Self] = &[Self::Canvas, Self::Tools, Self::Inspector, Self::Board];
+    pub const ALL: &[Self] = &[Self::Canvas, Self::Tools, Self::Inspector, Self::Board, Self::Moves];
     pub fn id(self) -> &'static str {
         match self {
             Self::Canvas => "canvas",
             Self::Tools => "tools",
             Self::Inspector => "inspector",
             Self::Board => "board",
+            Self::Moves => "moves",
         }
     }
     fn label(self) -> &'static str {
@@ -32,13 +35,14 @@ impl Panel {
             Self::Tools => "Tools",
             Self::Inspector => "Inspector",
             Self::Board => "Chess board",
+            Self::Moves => "Move list",
         }
     }
     fn default_side(self) -> Zone {
         match self {
             Self::Canvas => Zone::Right,
             Self::Tools => Zone::Left,
-            Self::Inspector | Self::Board => Zone::Right,
+            Self::Inspector | Self::Board | Self::Moves => Zone::Right,
         }
     }
     fn parse(id: &str) -> Result<Self, String> {
@@ -48,6 +52,17 @@ impl Panel {
 
 fn permissions(panel: &Panel) -> Permissions {
     if *panel == Panel::Canvas { Permissions::PROTECTED } else { Permissions::default() }
+}
+
+/// The Move list's width when it opens beside the page, in points.
+pub(crate) const MOVES_WIDTH: f32 = 260.0;
+
+/// What was asked of the Move list in a frame, done where the layout is not being drawn
+/// ([`drain_moves`]): shown or closed, or put against the page's left (`true`) or right edge.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum MovesRequest {
+    Show(bool),
+    Side { left: bool },
 }
 
 fn tabs(panel: Panel) -> Node<Panel> {
@@ -104,6 +119,52 @@ impl Workspace {
             self.set_visible(Panel::Tools, false)?;
         }
         Ok(())
+    }
+
+    /// Whether the Move list is at the page's left edge, including its saved place while closed.
+    pub fn moves_on_left(&self) -> bool {
+        let location = self
+            .layout
+            .location(&Panel::Moves)
+            .ok()
+            .or_else(|| self.hidden.iter().find(|(panel, _)| *panel == Panel::Moves).map(|(_, location)| location.clone()));
+        location.is_some_and(|location| matches!(location.placement, Placement::Split(Zone::Left)))
+    }
+
+    /// Put the Move list against the page's left or right edge, [`MOVES_WIDTH`] wide, open or
+    /// closed as it was.
+    pub fn set_moves_side(&mut self, left: bool) -> Result<(), String> {
+        let was_open = self.layout.contains(&Panel::Moves);
+        self.set_visible(Panel::Moves, true)?;
+        let placement = Placement::Split(if left { Zone::Left } else { Zone::Right });
+        self.apply(Action::Move { panel: Panel::Moves, anchor: Panel::Canvas, placement })?;
+        self.fit_moves();
+        if !was_open {
+            self.set_visible(Panel::Moves, false)?;
+        }
+        Ok(())
+    }
+
+    /// The split holding the Move list alone on one side gives it [`MOVES_WIDTH`]: a new split
+    /// would give it half the page.
+    fn fit_moves(&mut self) {
+        // A valid tree has a level per panel at most: the depth only bounds a damaged one.
+        fn fit(node: &mut Node<Panel>, depth: usize) -> bool {
+            let Node::Split { axis, size, first, second } = node else { return false };
+            let alone = |node: &Node<Panel>| matches!(node, Node::Tabs { panels, .. } if panels.as_slice() == [Panel::Moves]);
+            if *axis == SplitAxis::Horizontal && alone(first) {
+                *size = SplitSize::FixedFirst(MOVES_WIDTH);
+                return true;
+            }
+            if *axis == SplitAxis::Horizontal && alone(second) {
+                *size = SplitSize::FixedSecond(MOVES_WIDTH);
+                return true;
+            }
+            depth < 32 && (fit(first, depth + 1) || fit(second, depth + 1))
+        }
+        if let Some(root) = &mut self.layout.root {
+            fit(root, 0);
+        }
     }
 
     pub fn validate(&self) -> Result<(), String> {
@@ -167,22 +228,7 @@ impl Workspace {
 
     /// Whether a panel's body is exposed by its selected tab or open stack entry.
     pub(crate) fn exposed(&self, panel: Panel) -> bool {
-        if self.layout.floating.iter().any(|group| group.panels.get(group.active) == Some(&panel)) {
-            return true;
-        }
-        let mut pending: Vec<_> = self.layout.root.iter().collect();
-        while let Some(node) = pending.pop() {
-            match node {
-                Node::Split { first, second, .. } => {
-                    pending.push(first);
-                    pending.push(second);
-                }
-                Node::Tabs { panels, active } if panels.get(*active) == Some(&panel) => return true,
-                Node::Stack { entries } if entries.iter().any(|entry| entry.panel == panel && entry.open) => return true,
-                _ => {}
-            }
-        }
-        false
+        exposed_in(&self.layout, panel)
     }
 
     pub fn set_visible(&mut self, panel: Panel, visible: bool) -> Result<(), String> {
@@ -223,6 +269,9 @@ impl Workspace {
                     permissions,
                 )
                 .map_err(|error| error.to_string())?;
+            if panel == Panel::Moves {
+                next.fit_moves();
+            }
         }
         next.validate()?;
         *self = next;
@@ -309,6 +358,39 @@ impl Workspace {
     }
 }
 
+/// Whether `panel`'s body is exposed in `layout` by its selected tab or open stack entry.
+fn exposed_in(layout: &Layout<Panel>, panel: Panel) -> bool {
+    if layout.floating.iter().any(|group| group.panels.get(group.active) == Some(&panel)) {
+        return true;
+    }
+    let mut pending: Vec<_> = layout.root.iter().collect();
+    while let Some(node) = pending.pop() {
+        match node {
+            Node::Split { first, second, .. } => {
+                pending.push(first);
+                pending.push(second);
+            }
+            Node::Tabs { panels, active } if panels.get(*active) == Some(&panel) => return true,
+            Node::Stack { entries } if entries.iter().any(|entry| entry.panel == panel && entry.open) => return true,
+            _ => {}
+        }
+    }
+    false
+}
+
+/// What was asked of the Move list since the layout was last drawn, done on `workspace`.
+pub(crate) fn drain_moves(workspace: &mut Workspace, request: Option<MovesRequest>) -> Result<(), String> {
+    match request {
+        None => Ok(()),
+        Some(MovesRequest::Show(false)) => workspace.set_visible(Panel::Moves, false),
+        Some(MovesRequest::Show(true)) => {
+            workspace.set_visible(Panel::Moves, true)?;
+            workspace.apply(Action::Activate { panel: Panel::Moves })
+        }
+        Some(MovesRequest::Side { left }) => workspace.set_moves_side(left),
+    }
+}
+
 fn sync(workspace: &mut Workspace, app: &crate::PdfCraftApp) -> Result<(), String> {
     workspace.set_visible(Panel::Tools, app.left_open)?;
     workspace.set_visible(Panel::Inspector, app.right.is_some())
@@ -316,8 +398,9 @@ fn sync(workspace: &mut Workspace, app: &crate::PdfCraftApp) -> Result<(), Strin
 
 fn drain_reveals(workspace: &mut Workspace, app: &mut crate::PdfCraftApp) {
     for panel in std::mem::take(&mut app.pending_panel_reveals) {
-        // The board's visibility is its own (the others follow the app's state): revealing opens it.
-        if panel == Panel::Board
+        // The board's and the move list's visibility is their own (the others follow the app's
+        // state): revealing opens them.
+        if matches!(panel, Panel::Board | Panel::Moves)
             && let Err(error) = workspace.set_visible(panel, true)
         {
             app.notify_fmt("Panel move was not applied: {error}", &[("error", &error)]);
@@ -417,6 +500,8 @@ pub fn show(app: &mut crate::PdfCraftApp, ui: &mut egui::Ui) {
         // Availability is a render projection: the saved group, selection and width survive Home.
         let _ = rendered.apply(Action::Close { panel: Panel::Inspector });
     }
+    // The notation is drawn in one place: the Move list while it shows, else under the board.
+    app.chess.moves_beside = exposed_in(&rendered, Panel::Moves);
     let output = DockArea::new(egui::Id::new("pdfcraft-docking")).show_customized(
         ui,
         &rendered,
@@ -472,12 +557,17 @@ impl DockContent<Panel> for Content<'_> {
                 crate::panels::right_panel(app, ui);
             }
             Panel::Board => crate::chess_ui::board_panel(app, ui),
+            Panel::Moves => crate::chess_ui::moves_panel(app, ui),
         }
     }
 
     fn panel_menu(&mut self, ui: &mut egui::Ui, panel: &Panel) {
         // The Board tab: the board in its own window (T13a).
         crate::chess_window::dock_menu(self.app, ui, *panel);
+        // The Move list's tab: the page's edge it stands against.
+        if *panel == Panel::Moves {
+            crate::chess_ui::moves_side_menu(self.app, ui);
+        }
     }
 }
 
@@ -486,6 +576,7 @@ fn panel_limits(panel: &Panel) -> PanelLimits {
         Panel::Canvas => (egui::vec2(160.0, 160.0), 1_000_000.0),
         Panel::Tools => (egui::vec2(240.0, 120.0), 520.0),
         Panel::Inspector | Panel::Board => (egui::vec2(260.0, 120.0), 520.0),
+        Panel::Moves => (egui::vec2(180.0, 120.0), 480.0),
     };
     PanelLimits { min, max: egui::vec2(max_width, 1_000_000.0) }
 }
@@ -500,6 +591,40 @@ mod tests {
         for panel in Panel::ALL {
             assert_ne!(crate::i18n::tr(lang, panel.label()), panel.label(), "{} remains untranslated", panel.id());
         }
+    }
+
+    #[test]
+    fn move_list_opens_against_the_page_at_either_edge_and_keeps_its_side_closed() {
+        // The width the split gives the list, and the side of the page it stands on.
+        fn width(node: &Node<Panel>) -> Option<SplitSize> {
+            let Node::Split { size, first, second, .. } = node else { return None };
+            let alone = |node: &Node<Panel>| matches!(node, Node::Tabs { panels, .. } if panels.as_slice() == [Panel::Moves]);
+            if alone(first) || alone(second) { Some(*size) } else { width(first).or_else(|| width(second)) }
+        }
+        let beside = |workspace: &Workspace, zone: Zone| {
+            let location = workspace.layout.location(&Panel::Moves).unwrap();
+            location.anchor == Some(Panel::Canvas) && location.placement == Placement::Split(zone)
+        };
+        let mut workspace = Workspace::default();
+        workspace.set_visible(Panel::Moves, true).unwrap();
+        assert!(workspace.exposed(Panel::Moves) && !workspace.moves_on_left());
+        assert!(beside(&workspace, Zone::Right), "{:?}", workspace.layout);
+        assert_eq!(workspace.layout.root.as_ref().and_then(width), Some(SplitSize::FixedSecond(MOVES_WIDTH)), "not half the page");
+        workspace.set_moves_side(true).unwrap();
+        assert!(workspace.moves_on_left() && beside(&workspace, Zone::Left), "{:?}", workspace.layout);
+        assert_eq!(workspace.layout.root.as_ref().and_then(width), Some(SplitSize::FixedFirst(MOVES_WIDTH)));
+        assert!(workspace.layout.contains(&Panel::Tools) && workspace.layout.contains(&Panel::Inspector), "the others stay");
+        // Closed, it keeps its side; moved while closed, it opens there.
+        drain_moves(&mut workspace, Some(MovesRequest::Show(false))).unwrap();
+        assert!(!workspace.layout.contains(&Panel::Moves) && workspace.moves_on_left());
+        drain_moves(&mut workspace, Some(MovesRequest::Show(true))).unwrap();
+        assert!(beside(&workspace, Zone::Left));
+        workspace.set_visible(Panel::Moves, false).unwrap();
+        drain_moves(&mut workspace, Some(MovesRequest::Side { left: false })).unwrap();
+        assert!(!workspace.layout.contains(&Panel::Moves) && !workspace.moves_on_left());
+        workspace.set_visible(Panel::Moves, true).unwrap();
+        assert!(beside(&workspace, Zone::Right));
+        workspace.validate().unwrap();
     }
 
     #[test]

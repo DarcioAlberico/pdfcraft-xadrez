@@ -3165,3 +3165,8 @@ chess undo step	Clear drawings	borrado de los dibujos
 	No game was found for this move, on its page or the pages around it.	No se encontró ninguna partida para esta jugada, ni en su página ni en las páginas cercanas.
 	Renumber	Renumerar
 	The text's move numbers give way to the game's: {printed} is played as {played}.	Los números de jugada del texto ceden ante los de la partida: {printed} se juega como {played}.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	Lista de jugadas
+	Move list beside the page	Lista de jugadas junto a la página
+	Side of the page	Lado de la página

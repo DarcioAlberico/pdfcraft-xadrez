@@ -3300,3 +3300,8 @@ chess undo step	Clear drawings	مسح الرسوم
 	No game was found for this move, on its page or the pages around it.	لم يُعثر على مباراة لهذه النقلة في صفحتها ولا في الصفحات المحيطة بها.
 	Renumber	إعادة الترقيم
 	The text's move numbers give way to the game's: {printed} is played as {played}.	تُستبدل أرقام نقلات النص بأرقام المباراة: تُلعب {printed} على أنها {played}.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	قائمة النقلات
+	Move list beside the page	قائمة النقلات بجانب الصفحة
+	Side of the page	جانب الصفحة

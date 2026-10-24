@@ -3022,3 +3022,8 @@ chess undo step	Clear drawings	суреттерді өшіру
 	No game was found for this move, on its page or the pages around it.	Бұл жүрістің партиясы оның бетінен де, маңындағы беттерден де табылмады.
 	Renumber	Қайта нөмірлеу
 	The text's move numbers give way to the game's: {printed} is played as {played}.	Мәтіндегі жүріс нөмірлері партияның нөмірлеріне ауысады: {printed} {played} ретінде ойналады.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	Жүрістер тізімі
+	Move list beside the page	Беттің жанындағы жүрістер тізімі
+	Side of the page	Беттің жағы

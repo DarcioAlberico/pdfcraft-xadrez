@@ -748,6 +748,7 @@ impl Automation {
             "redact_mark" => self.redact_mark(&a)?,
             "redact_apply" => self.redact_apply(&a)?,
             "redact_clear" => self.redact_clear(&a)?,
+            "page_erase" => self.page_erase(&a)?,
             "doc_hidden_info" => self.doc_hidden_info(&a)?,
             "printers" => self.printers()?,
             "printer_options" => self.printer_options(&a)?,
