@@ -916,6 +916,67 @@ fn a_caption_at_the_foot_of_a_page_numbers_the_next_pages_first_diagram() {
     }
 }
 
+/// The same book read a page at a time (the Text tab, and a game read across the pages around a
+/// move): page 1 read alone does not know the caption at the foot of page 0. Walked again after
+/// page 0 ([`DocBuilder::add_read_page`]), or told it by a look at page 0
+/// ([`DocBuilder::carry_caption`], [`trailing_label`]), its first diagram takes it, and the
+/// solution naming it is played from it, as when the whole book is read.
+#[test]
+fn a_page_read_alone_takes_the_caption_at_the_foot_of_the_page_before() {
+    let rook = "8/8/4k3/8/8/4K3/r7/7R w - - 0 1";
+    let p0 = page_text(vec![line(45.0, "Exercício 1 ★△"), line(700.0, "Exercício 2 ★★△")]);
+    let p1 = page_text(vec![line(300.0, "Ex. 6–2"), line(320.0, "1.Rh6+ Kd5 2.Rh5+")]);
+    let heading = [BlockHint { kind: HintKind::Heading { level: 2 }, rect: user_box(30.0, 295.0, 300.0, 315.0) }];
+    let d0 = [reading(0, 60.0, SCHOLAR, true, false)];
+    let d1 = [reading(0, 60.0, rook, true, false)];
+    let numbers = |doc: &ChessDoc| -> Vec<Option<u32>> {
+        doc.pages.iter().flat_map(|p| p.blocks.iter()).filter_map(|b| if let Block::Diagram(d) = b { Some(d.puzzle) } else { None }).collect()
+    };
+    let alone0 = build_page(&input(0, &p0, &d0, &[], &[]));
+    let alone1 = build_page(&input(1, &p1, &d1, &heading, &[]));
+    assert_eq!(numbers(&alone1), [None], "alone, page 1 cannot know");
+    assert_eq!(alone0.pages[0].trailing, Some(2));
+    let json = alone0.to_json().unwrap();
+    assert_eq!(json.matches("\"trailing\":2").count(), 1, "{json}");
+    assert_eq!(ChessDoc::from_json(&json).unwrap(), alone0);
+    assert!(!alone1.to_json().unwrap().contains("trailing"));
+    // Walked again in order: page 1's diagram is exercise 2, and its solution is played from it.
+    let mut b = DocBuilder::new();
+    b.add_read_page(ChessDoc::from_json(&json).unwrap().pages.remove(0));
+    b.add_read_page(alone1.pages[0].clone());
+    let doc = b.finish();
+    assert_eq!(numbers(&doc), [Some(1), Some(2)]);
+    assert!(moves(&doc.pages[1]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[1]));
+    // Not past the page after it.
+    let mut later = alone1.pages[0].clone();
+    later.index = 2;
+    let mut b = DocBuilder::new();
+    b.add_read_page(alone0.pages[0].clone());
+    b.add_read_page(later);
+    assert_eq!(numbers(&b.finish()), [Some(1), None]);
+    // A look at page 0 alone gives the same label to page 1 read on its own.
+    let boxes: Vec<PageRect> = d0.iter().map(|d| d.bbox_user).collect();
+    assert_eq!(trailing_label(&p0, &geometry(), &boxes), Some(2));
+    let mut b = DocBuilder::new();
+    b.carry_caption(0, 2);
+    b.add_page(&input(1, &p1, &d1, &heading, &[]));
+    assert_eq!(numbers(&b.finish()), [Some(2)]);
+    let mut b = DocBuilder::new();
+    b.carry_caption(0, 2);
+    b.add_page(&input(3, &p1, &d1, &heading, &[]));
+    assert_eq!(numbers(&b.finish()), [None], "only the very next page takes it");
+    // The whole book read, then walked again page by page, is the same document.
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &d0, &[], &[]));
+    b.add_page(&input(1, &p1, &d1, &heading, &[]));
+    let whole = b.finish();
+    let mut b = DocBuilder::new();
+    for page in whole.pages.clone() {
+        b.add_read_page(page);
+    }
+    assert_eq!(b.finish(), whole);
+}
+
 /// A solution that prints its game from move 1 before it reaches the exercise's position: its
 /// first move does not start from the exercise, so it is read from the initial position, as
 /// without the label.
@@ -986,6 +1047,34 @@ fn assert_solved(doc: &ChessDoc, solution_pages: &[usize], origins: &[(u32, usiz
     }
     let want: Vec<GameOrigin> = origins.iter().map(|&(page, diagram)| GameOrigin::Diagram { page, diagram, accepted: true }).collect();
     assert_eq!(doc.games.iter().map(|g| g.origin).collect::<Vec<_>>(), want);
+}
+
+/// A workbook read in the chapters' order, whose second chapter's last caption (`Exercise 2`)
+/// is set at the foot of a page, with its board on the next. That caption is not a solution: it
+/// does not mark the first chapter solved, so the solutions still go to the chapters in order,
+/// both when the book is read and when its pages are walked again ([`DocBuilder::add_read_page`]).
+#[test]
+fn a_caption_at_the_foot_is_not_a_solution_when_the_pages_are_walked_again() {
+    let p0 = page_text(vec![line(215.0, "Exercise 1"), line(415.0, "Exercise 2")]);
+    let d0 = [reading(0, 60.0, SCHOLAR, true, false), reading(1, 260.0, ROOK, true, false)];
+    let p1 = page_text(vec![line(215.0, "Exercise 1"), line(760.0, "Exercise 2")]);
+    let d1 = [reading(0, 60.0, ROOK, true, false)];
+    let p2 = page_text(Vec::new());
+    let d2 = [reading(0, 60.0, SCHOLAR, true, false)];
+    let solutions = ["Exercise 1", SCHOLAR_MATE, "Exercise 2", ROOK_CHECKS, "Exercise 1", ROOK_CHECKS, "Exercise 2", SCHOLAR_MATE];
+    let p3 = page_text(solutions.iter().enumerate().map(|(k, t)| line(40.0 + 20.0 * k as f32, t)).collect());
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &d0, &[], &[]));
+    b.add_page(&input(1, &p1, &d1, &[], &[]));
+    b.add_page(&input(2, &p2, &d2, &[], &[]));
+    b.add_page(&input(3, &p3, &[], &[], &[]));
+    let doc = b.finish();
+    assert_solved(&doc, &[3], &[(0, 0), (0, 1), (1, 0), (2, 0)]);
+    let mut b = DocBuilder::new();
+    for page in doc.pages.clone() {
+        b.add_read_page(page);
+    }
+    assert_eq!(b.finish(), doc);
 }
 
 /// A workbook that numbers each chapter's exercises from 1 and prints all the solutions after

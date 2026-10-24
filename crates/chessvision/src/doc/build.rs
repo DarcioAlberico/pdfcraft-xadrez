@@ -778,6 +778,15 @@ fn blocks(input: &PageInput<'_>, carried: Option<u32>, folios: &[i64]) -> (Vec<B
     (blocks, trailing, offsets.into_iter().map(|(_, o)| o).collect())
 }
 
+/// The page's trailing caption label ([`caption_numbers`]) from its text and its diagrams' boxes
+/// (user space), as [`blocks`] finds it. Folios do not matter: a bare number is never a trailing
+/// label, and a caption with its word or `№` wins over a bare number for a diagram.
+pub(crate) fn trailing_label(text: &crate::chess_text::ChessPageText, geometry: &PageGeometry, diagrams: &[crate::coords::PageRect]) -> Option<u32> {
+    let views: Vec<Option<ViewRect>> = diagrams.iter().map(|d| geometry.user_to_view(*d)).collect();
+    let kept: Vec<&ChessLine> = text.lines.iter().filter(|l| !is_coordinates(l, &views)).collect();
+    caption_numbers(&kept, &views, &[]).1
+}
+
 /// Give each text review to the inline it overlaps most; the rest to the page.
 fn attach_reviews(input: &PageInput<'_>, blocks: &mut [Block], page: &mut Vec<ReviewFlag>) {
     for review in input.reviews {
@@ -906,7 +915,13 @@ pub(crate) fn page(input: &PageInput<'_>, walker: &mut Walker, carried: Option<u
     }
     attach_reviews(input, &mut blocks, &mut review);
     walk(input.index, &mut blocks, walker, trailing);
-    let page =
-        ChessPage { index: input.index, lang: input.text.lang.lang.code().to_owned(), text_layer: (&input.text.quality).into(), blocks, review };
+    let page = ChessPage {
+        index: input.index,
+        lang: input.text.lang.lang.code().to_owned(),
+        text_layer: (&input.text.quality).into(),
+        blocks,
+        review,
+        trailing,
+    };
     (page, trailing, offsets)
 }
