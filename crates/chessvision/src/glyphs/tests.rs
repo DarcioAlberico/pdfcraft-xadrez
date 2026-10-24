@@ -414,6 +414,61 @@ fn an_empty_pair_of_brackets_is_a_round_letter_cut_in_two() {
     assert_eq!(line, ordered);
 }
 
+/// A `g` whose ear a scan cut off: the ear (6 × 6 px) stands over the `g`'s columns but one, and
+/// reads `y` at full confidence, so `merge_broken` keeps it; joined to the `g` here. The same ear
+/// beside the `g`, or a stroke 23 px tall over its columns, is a glyph of its own, even where
+/// their union reads `g`. (Fails with the join, its column rule or its height rule off.)
+#[test]
+fn a_fragment_over_its_letter_is_joined_to_it() {
+    let g = |c: &mut Canvas, x: i64| {
+        c.rect(x, 40, x + 8, 70).rect(x, 66, x + 16, 70);
+    };
+    let ear = |c: &mut Canvas, x: i64| {
+        c.rect(x, 40, x + 6, 46);
+    };
+    let stem = |c: &mut Canvas, x: i64| {
+        c.rect(x, 40, x + 6, 63);
+    };
+    let (mut whole, mut alone, mut beside, mut tall) = (Canvas::new(60, 90), Canvas::new(40, 90), Canvas::new(60, 90), Canvas::new(60, 90));
+    g(&mut whole, 10);
+    ear(&mut whole, 21);
+    ear(&mut alone, 10);
+    g(&mut beside, 10);
+    ear(&mut beside, 28);
+    g(&mut tall, 10);
+    stem(&mut tall, 21);
+    let model = Templates::new(&["g", "y"]).learn("g", &whole).learn("y", &alone).learn("g", &beside).learn("g", &tall);
+    let mut c = Canvas::new(120, 90);
+    g(&mut c, 20);
+    ear(&mut c, 31);
+    let (boxes, _) = c.boxes(SCALE);
+    let ordered = seg::order_in_strip(&boxes);
+    assert_eq!(ordered, vec![bx(20, 40, 36, 70), bx(31, 40, 37, 46)]);
+    let r = reader(&model, &c);
+    let reads = r.read(&ordered).unwrap();
+    assert_eq!(reads.iter().map(|r| model.names[r.class].as_str()).collect::<Vec<_>>(), ["g", "y"]);
+    let (line, reads) = r.join_fragments(ordered, reads, SCALE).unwrap();
+    assert_eq!(line, vec![bx(20, 40, 37, 70)]);
+    assert_eq!(reads.iter().map(|r| model.names[r.class].as_str()).collect::<Vec<_>>(), ["g"]);
+    // The ear set beside the `g`, and a stem too tall to be a piece of it over its columns.
+    for (other, tall) in [(38, false), (31, true)] {
+        let mut c = Canvas::new(120, 90);
+        g(&mut c, 20);
+        if tall {
+            stem(&mut c, other);
+        } else {
+            ear(&mut c, other);
+        }
+        let (boxes, _) = c.boxes(SCALE);
+        let ordered = seg::order_in_strip(&boxes);
+        assert_eq!(ordered.len(), 2, "{ordered:?}");
+        let r = reader(&model, &c);
+        let reads = r.read(&ordered).unwrap();
+        let (line, _) = r.join_fragments(ordered.clone(), reads, SCALE).unwrap();
+        assert_eq!(line, ordered, "at {other}, tall {tall}");
+    }
+}
+
 /// A frame's side left on a scan (2 × 60 px at a 20 px scale) is no character, and it would join
 /// every line beside it; an `l` (3 × 20 px), as thin but one scale tall, stays, and so does a
 /// tall bracket (5 × 50 px, ten times taller than wide).
@@ -597,6 +652,25 @@ fn a_split_move_number_is_joined_on_notation_lines_only() {
     let mut year = vec![gw("1", 0, 10), gw("984", 14, 50), gw("♘f3", 60, 90)];
     fix::join_move_numbers(&mut year);
     assert_eq!(year.len(), 3);
+}
+
+/// A `u` between a file, a rank or a figurine and a square is the capture's `x`, in a pair class
+/// (`gu` for a glued `gx`) as alone; prose and a `u` before no square keep theirs. (Fails with
+/// the correction off.)
+#[test]
+fn a_u_before_a_square_is_the_captures_x() {
+    let mut glued = gw("f6", 30, 50);
+    glued.glyphs.insert(0, Glyph { text: "gu".into(), ..glued.glyphs[0].clone() });
+    glued.text = "guf6".into();
+    let mut words = vec![glued, gw("♘uf3", 60, 100), gw("15", 110, 130), gw("guf4!", 140, 190), gw("Nbud2", 200, 260)];
+    let prose = ["gume", "Bauhaus", "guf", "u5", "plug4"];
+    words.extend(prose.iter().enumerate().map(|(i, t)| gw(t, 300 + i as u32 * 60, 340 + i as u32 * 60)));
+    fix::capture_x(&mut words);
+    let texts: Vec<&str> = words.iter().map(|w| w.text.as_str()).collect();
+    assert_eq!(texts[..5], ["gxf6", "♘xf3", "15", "gxf4!", "Nbxd2"]);
+    assert_eq!(texts[5..], prose);
+    assert_eq!(words[0].glyphs.iter().map(|g| g.text.as_str()).collect::<Vec<_>>(), ["gx", "f", "6"]);
+    assert!(words.iter().all(|w| w.text == w.glyphs.iter().map(|g| g.text.as_str()).collect::<String>()));
 }
 
 #[test]
