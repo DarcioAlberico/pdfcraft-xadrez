@@ -276,6 +276,7 @@ fn scope_of(edit: &Edit) -> Scope {
         // Page content, resources and added content/marks only: the page tree, annotations,
         // fields, links and document metadata are untouched (see `refresh_content`).
         Edit::MoveObjects { .. }
+        | Edit::DeleteObjects { .. }
         | Edit::EditTextLine { .. }
         | Edit::EditTextBlock { .. }
         | Edit::EditPageImage { .. }
@@ -1619,6 +1620,12 @@ pub enum Edit {
         objects: Vec<ObjectTarget>,
         offset: [f64; 2],
     },
+    /// Edit text & images ▸ Delete: remove mixed existing and added objects together
+    /// ([`pdfcraft_edit::delete_objects`]); references resolve before any change.
+    DeleteObjects {
+        page: usize,
+        objects: Vec<ObjectTarget>,
+    },
     /// Edit text in a paragraph box: replace paragraph `block` (from `Document::text_blocks`),
     /// rewrapped to the box's width.
     EditTextBlock {
@@ -2082,6 +2089,7 @@ impl Edit {
             Edit::EditTextLine { .. } | Edit::EditTextBlock { .. } => Label::of("Edit text"),
             Edit::RegisterTextFont { .. } => Label::of("Load document font"),
             Edit::MoveObjects { objects, .. } => plural("Move object", "Move objects", objects.len()),
+            Edit::DeleteObjects { objects, .. } => plural("Delete object", "Delete objects", objects.len()),
             Edit::EditPageImage { change, .. } => Label::of(match change {
                 ImageEdit::Move(_) => "Move image",
                 ImageEdit::Rotate(_) => "Rotate image",
@@ -2251,6 +2259,7 @@ fn check_permission(edit: &Edit, p: &pdfcraft_cos::Permissions) -> Result<(), Ed
         | Edit::ReplaceDiagram(_)
         | Edit::UpdateContent { .. }
         | Edit::MoveObjects { .. }
+        | Edit::DeleteObjects { .. }
         | Edit::DeleteContent { .. }
         | Edit::ReplaceImage { .. }
         | Edit::ClearRedactions
@@ -2627,6 +2636,9 @@ fn run_edit(doc: &mut pdfcraft_cos::Document, edit: &Edit, cx: &mut EditCtx) -> 
             pdfcraft_edit::change_image(doc, *page, *index, &c)?;
         }
         Edit::MoveObjects { page, objects, offset } => pdfcraft_edit::move_objects(doc, *page, objects, *offset)?,
+        Edit::DeleteObjects { page, objects } => {
+            pdfcraft_edit::delete_objects(doc, *page, objects)?;
+        }
         Edit::AddContent { page, ops } => pdfcraft_edit::add_operators(doc, *page, ops)?,
         Edit::RemoveTextLines { page, lines } => {
             if pdfcraft_edit::remove_lines(doc, *page, lines)? == 0 {
@@ -4061,7 +4073,7 @@ impl Session {
             matches!(
                 e,
                 Edit::AddText { .. } | Edit::AddImage { .. } | Edit::UpdateContent { .. } | Edit::DeleteContent { .. } | Edit::ReplaceImage { .. }
-            ) || matches!(e, Edit::MoveObjects { objects, .. } if objects.iter().any(|o| o.kind == ObjectKind::Added))
+            ) || matches!(e, Edit::MoveObjects { objects, .. } | Edit::DeleteObjects { objects, .. } if objects.iter().any(|o| o.kind == ObjectKind::Added))
         });
         let touches_marks = edit.is_none_or(|e| {
             matches!(e, Edit::AddHeaderFooter { .. } | Edit::AddWatermark { .. } | Edit::AddBackground { .. } | Edit::RemoveMarks { .. })

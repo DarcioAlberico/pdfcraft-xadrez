@@ -223,33 +223,8 @@ impl Automation {
     }
 
     pub(crate) fn object_move(&mut self, a: &Args) -> Result<Value> {
-        use pdfcraft_engine::{MAX_MOVE_OBJECTS, ObjectKind, ObjectTarget};
         let page = self.page(a)?;
-        let rows = a
-            .get("objects")
-            .and_then(Value::as_array)
-            .filter(|r| !r.is_empty() && r.len() <= MAX_MOVE_OBJECTS)
-            .ok_or_else(|| bad("objects must contain 1–1000 references from object_list"))?;
-        let mut targets = Vec::with_capacity(rows.len());
-        for row in rows {
-            let row = row.as_object().ok_or_else(|| bad("each object must contain kind and index"))?;
-            if row.keys().any(|k| k != "kind" && k != "index") {
-                return Err(bad("an object reference accepts only kind and index"));
-            }
-            let kind = match row.get("kind").and_then(Value::as_str) {
-                Some("added") => ObjectKind::Added,
-                Some("text") => ObjectKind::Text,
-                Some("image") => ObjectKind::Image,
-                _ => return Err(bad("object kind must be added, text or image (see object_list)")),
-            };
-            let index = row
-                .get("index")
-                .and_then(Value::as_u64)
-                .and_then(|i| i.checked_sub(1))
-                .and_then(|i| usize::try_from(i).ok())
-                .ok_or_else(|| bad("object index must be a positive integer from object_list"))?;
-            targets.push(ObjectTarget { kind, index });
-        }
+        let targets = object_targets(a)?;
         let delta = a
             .get("offset")
             .and_then(Value::as_array)
@@ -270,4 +245,52 @@ impl Automation {
         result["moved"] = json!(count);
         Ok(result)
     }
+
+    /// `object_delete`: Edit text & images ▸ Delete on references from `object_list`.
+    pub(crate) fn object_delete(&mut self, a: &Args) -> Result<Value> {
+        let page = self.page(a)?;
+        let targets = object_targets(a)?;
+        let doc = self.doc(a)?;
+        if let Some(g) = a.get("generation") {
+            let g = g.as_u64().ok_or_else(|| bad("generation must be a non-negative integer from object_list"))?;
+            if g != doc.edit_generation() {
+                return Err(failed("the document changed; call object_list again before deleting"));
+            }
+        }
+        let count = targets.len();
+        let mut result = self.apply(a, Edit::DeleteObjects { page, objects: targets })?;
+        result["deleted"] = json!(count);
+        Ok(result)
+    }
+}
+
+/// `objects`: 1–1000 references `{ kind, index }` from `object_list` (1-based indexes).
+fn object_targets(a: &Args) -> Result<Vec<pdfcraft_engine::ObjectTarget>> {
+    use pdfcraft_engine::{MAX_MOVE_OBJECTS, ObjectKind, ObjectTarget};
+    let rows = a
+        .get("objects")
+        .and_then(Value::as_array)
+        .filter(|r| !r.is_empty() && r.len() <= MAX_MOVE_OBJECTS)
+        .ok_or_else(|| bad("objects must contain 1–1000 references from object_list"))?;
+    let mut targets = Vec::with_capacity(rows.len());
+    for row in rows {
+        let row = row.as_object().ok_or_else(|| bad("each object must contain kind and index"))?;
+        if row.keys().any(|k| k != "kind" && k != "index") {
+            return Err(bad("an object reference accepts only kind and index"));
+        }
+        let kind = match row.get("kind").and_then(Value::as_str) {
+            Some("added") => ObjectKind::Added,
+            Some("text") => ObjectKind::Text,
+            Some("image") => ObjectKind::Image,
+            _ => return Err(bad("object kind must be added, text or image (see object_list)")),
+        };
+        let index = row
+            .get("index")
+            .and_then(Value::as_u64)
+            .and_then(|i| i.checked_sub(1))
+            .and_then(|i| usize::try_from(i).ok())
+            .ok_or_else(|| bad("object index must be a positive integer from object_list"))?;
+        targets.push(ObjectTarget { kind, index });
+    }
+    Ok(targets)
 }
