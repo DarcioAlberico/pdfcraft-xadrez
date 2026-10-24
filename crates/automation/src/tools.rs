@@ -555,7 +555,7 @@ pub fn tools() -> Vec<ToolDef> {
         t(
             "page_cut",
             "Cut pages (Knife)",
-            "Cut pages into parts, each part a page of its own right after the original: axis vertical (side by side, left first) or horizontal (one above the other, top first), at the given places measured on the page as shown (units pt from the left or top edge, the default, or fraction of its width or height), the same on every page in pages. right_to_left: true puts the right (or bottom) part first, for books read that way. Nothing is erased: each part shows its part through its media and crop boxes. Annotations go to the part holding their centre. Returns cut: each page's parts, 1-based. Undoable.",
+            "Cut pages into parts, each part a page of its own right after the original: axis vertical (side by side, left first) or horizontal (one above the other, top first), at the given places measured on the page as shown (units pt from the left or top edge, the default, or fraction of its width or height), the same on every page in pages. right_to_left: true puts the right (or bottom) part first, for books read that way. Each part shows its part through its media and crop boxes; nothing is erased unless trim_outside: true, which erases each part's text, images and drawings outside it (as page_erase does), so a half's text is its own. Annotations go to the part holding their centre. Returns cut: each page's parts, 1-based. Undoable.",
         )
         .with(schema(
             json!({
@@ -565,6 +565,7 @@ pub fn tools() -> Vec<ToolDef> {
                 "at": { "type": "array", "items": { "type": "number" }, "minItems": 1, "maxItems": 15 },
                 "units": { "type": "string", "enum": ["pt", "fraction"] },
                 "right_to_left": { "type": "boolean" },
+                "trim_outside": { "type": "boolean" },
             }),
             &["doc", "pages", "axis", "at"],
         )),

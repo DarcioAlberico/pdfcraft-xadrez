@@ -3006,3 +3006,6 @@ chess undo step	Clear drawings	清除标记
 	Hold Shift for the other direction.	按住 Shift 切换方向。
 	Right part first	右侧部分在前
 	Nothing is erased: each part shows its piece of the page.	不会擦除任何内容：每个部分显示页面中属于它的那一块。
+	Remove what lies outside each part	删除每部分之外的内容
+	Split double pages	拆分跨页
+	No double pages were found: none is wider than tall	未找到跨页：没有页面宽度大于高度

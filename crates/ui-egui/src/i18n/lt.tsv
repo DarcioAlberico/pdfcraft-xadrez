@@ -3294,3 +3294,6 @@ chess undo step	Clear drawings	piešinių valymą
 	Hold Shift for the other direction.	Laikykite Shift kitai krypčiai.
 	Right part first	Pirmiausia dešinioji dalis
 	Nothing is erased: each part shows its piece of the page.	Niekas neištrinama: kiekviena dalis rodo savo puslapio gabalą.
+	Remove what lies outside each part	Pašalinti tai, kas už kiekvienos dalies
+	Split double pages	Padalyti dvigubus puslapius
+	No double pages were found: none is wider than tall	Dvigubų puslapių nerasta: nė vienas nėra platesnis nei aukštesnis

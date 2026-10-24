@@ -5,9 +5,10 @@ use egui_kittest::Harness;
 use pdfcraft_engine::CutAxis;
 use pdfcraft_ui_egui::{PdfCraftApp, QuickTool};
 
-/// One 400 × 300 pt spread: `Left page` at the left, `Right page` at the right.
+/// One 400 × 300 pt spread: `Left page` at the left, `Right page` at the right, with no text
+/// between 120 and 280 pt, so the gap between them is the middle.
 fn fixture() -> Vec<u8> {
-    let body = "BT /F1 18 Tf 20 150 Td (Left page) Tj ET BT /F1 18 Tf 230 150 Td (Right page) Tj ET";
+    let body = "BT /F1 18 Tf 20 150 Td (Left page) Tj ET BT /F1 18 Tf 290 150 Td (Right page) Tj ET";
     let objs = [
         "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
         "<< /Type /Pages /Kids [4 0 R] /Count 1 /MediaBox [0 0 400 300] >>".to_string(),
@@ -109,4 +110,22 @@ fn shift_cuts_across() {
     h.key_press(egui::Key::Enter);
     h.run_steps(4);
     assert_eq!(pages(&h), [(400.0, 150.0), (400.0, 150.0)]);
+}
+
+/// Split double pages cuts every page wider than tall at the gap between its columns, as one undo
+/// step; with Remove what lies outside each part, each half keeps only its own text. (Fails with
+/// the trim not passed on.)
+#[test]
+fn split_double_pages_cuts_spreads_and_trims_them() {
+    let mut h = harness();
+    h.state_mut().knife_prefs.trim_outside = true;
+    assert!(h.state_mut().execute("page.split_spreads"));
+    h.run_steps(4);
+    assert_eq!(pages(&h), [(200.0, 300.0), (200.0, 300.0)]);
+    let s = h.state();
+    let doc = s.session.get(s.views[0].id).unwrap();
+    assert_eq!(doc.can_undo(), Some("Cut page"));
+    let text = |p: usize| doc.text_lines(p).iter().map(|l| l.text.clone()).collect::<Vec<_>>().join(" ");
+    assert!(text(0).contains("Left page") && !text(0).contains("Right"), "{}", text(0));
+    assert!(text(1).contains("Right page") && !text(1).contains("Left"), "{}", text(1));
 }

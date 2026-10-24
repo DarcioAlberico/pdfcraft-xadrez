@@ -3040,3 +3040,6 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Hold Shift for the other direction.	Басқа бағыт үшін Shift пернесін басып тұрыңыз.
 	Right part first	Алдымен оң жақ бөлік
 	Nothing is erased: each part shows its piece of the page.	Ештеңе өшірілмейді: әр бөлік беттің өз бөлігін көрсетеді.
+	Remove what lies outside each part	Әр бөліктен тыс жатқанды жою
+	Split double pages	Қос беттерді бөлу
+	No double pages were found: none is wider than tall	Қос беттер табылмады: ешбір бет биіктігінен кең емес
