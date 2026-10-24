@@ -359,7 +359,7 @@ fn setup_view(ui: &mut egui::Ui, t: &Tokens, setup: &mut Setup, board: &mut Boar
     }
     // The palette: White's pieces, Black's, and the eraser.
     let sprites = board.sprites(ui.ctx(), pieces);
-    crate::chess_editor::palette(ui, sprites.as_ref(), &mut setup.brush);
+    crate::chess_editor::palette(ui, sprites.as_ref(), &mut setup.brush, false);
     ui.horizontal_wrapped(|ui| {
         if ui.small_button(tl!("Standard start position")).clicked() {
             setup.set_placement(Placement::standard(), true);

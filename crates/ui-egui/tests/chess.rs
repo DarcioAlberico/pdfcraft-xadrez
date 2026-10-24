@@ -262,8 +262,8 @@ fn the_editor_edits_the_selected_diagrams_position() {
     h.get_by_label("Not a legal position");
 }
 
-/// The palette shows the pieces as the board draws them, each button named for its piece (not a
-/// letter such as `n`): Black knight puts a black knight on the square clicked, and the eraser
+/// The palette shows the pieces as the board draws them, in a column beside the board, each
+/// button named for its piece (not a letter such as `n`): Black knight puts a black knight on the square clicked, and the eraser
 /// empties it again.
 #[test]
 fn the_editors_palette_is_the_pieces_pictures() {
@@ -274,6 +274,11 @@ fn the_editors_palette_is_the_pieces_pictures() {
         assert!(h.query_by_label(letter).is_none(), "no {letter} in the palette");
     }
     let board = h.get_by_label_contains("Board: ").rect();
+    // The palette is a column on the board's right, White's piece and Black's on a row.
+    let (white, black, erase) = (h.get_by_label("White knight").rect(), h.get_by_label("Black knight").rect(), h.get_by_label("Erase").rect());
+    assert!(white.left() > board.right() && white.bottom() <= board.bottom() + 1.0, "beside the board: {white:?}, {board:?}");
+    assert!((white.center().y - black.center().y).abs() < 1.0 && black.left() > white.right(), "{white:?} {black:?}");
+    assert!(erase.top() > black.bottom() && erase.left() > board.right(), "the eraser under the pieces: {erase:?}");
     // d5 from White's side: column 3, row 3 from the top.
     let d5 = board.min + egui::vec2(board.width() * 3.5 / 8.0, board.height() * 3.5 / 8.0);
     let click_d5 = |h: &mut Harness<'static, PdfCraftApp>| {
