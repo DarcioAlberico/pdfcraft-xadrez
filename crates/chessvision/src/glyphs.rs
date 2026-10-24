@@ -20,7 +20,8 @@
 //!    better (an outlined figurine in pieces).
 //! 6. **Lines** and **cells**: 32 × 32 bilinear, as the model was trained.
 //! 7. **Corrections**: `=`/`:` by proportion, `0`/`o` inside numbers and castling, the case of
-//!    `cosuvwxz` by height, and a move number the segmentation split (`1 9...`) joined.
+//!    `cosuvwxz` by height, a move number the segmentation split (`1 9...`) joined, and a `u`
+//!    before a square read as the capture's `x`.
 //!
 //! [`fuse`] then routes each group of overlapping words: notation to the glyph reader, prose to
 //! the general OCR, and [`fuse::to_chess_text`] turns the result into the same
@@ -112,11 +113,13 @@ pub struct GlyphOptions {
     pub case_by_height: bool,
     /// Join a move number the segmentation split, on lines with notation.
     pub join_move_numbers: bool,
+    /// Read a `u` between a file, a rank or a figurine and a square as the capture's `x`.
+    pub capture_x: bool,
 }
 
 impl Default for GlyphOptions {
     fn default() -> Self {
-        GlyphOptions { split_glued: true, merge_broken: true, case_by_height: true, join_move_numbers: true }
+        GlyphOptions { split_glued: true, merge_broken: true, case_by_height: true, join_move_numbers: true, capture_x: true }
     }
 }
 
@@ -296,7 +299,8 @@ pub fn read(
     let mut out = Vec::new();
     for line in seg::break_lines(&seg::order_in_strip(&boxes), scale) {
         let reads = reader.read(&line)?;
-        let (line, mut reads) = if options.merge_broken { reader.join_bracket_pairs(line, reads, scale)? } else { (line, reads) };
+        let (line, reads) = if options.merge_broken { reader.join_bracket_pairs(line, reads, scale)? } else { (line, reads) };
+        let (line, mut reads) = if options.merge_broken { reader.join_fragments(line, reads, scale)? } else { (line, reads) };
         fix::stacked(&mut reads, &line, &reader.classes);
         let ink: Vec<Bx> = line.iter().map(|b| seg::tighten(&bin, b)).collect();
         fix::square_dots(&mut reads, &ink, &reader.classes);
@@ -317,6 +321,9 @@ pub fn read(
         }
         if options.join_move_numbers {
             fix::join_move_numbers(&mut words);
+        }
+        if options.capture_x {
+            fix::capture_x(&mut words);
         }
         if let Some(rect) = words.iter().map(|w| w.rect).reduce(union_rect) {
             out.push(GlyphLine { words, rect });
