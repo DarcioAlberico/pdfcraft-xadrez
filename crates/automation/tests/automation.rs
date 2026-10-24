@@ -6230,6 +6230,28 @@ fn mixed_objects_move_through_tools_with_generation_and_one_undo() {
     assert!(page_text(&mut a, reopened)[0].contains("Added label"));
 }
 
+/// Delete objects through the tools: the added label and the page's paragraph go together, as one
+/// undo step; a stale generation or a bad reference changes nothing.
+#[test]
+fn objects_are_deleted_through_tools() {
+    let dir = workdir("object-delete");
+    let mut a = auto(&dir);
+    let doc = ok(&mut a, "doc_open", json!({"path":"a.pdf"}))["doc"].as_u64().unwrap();
+    ok(&mut a, "page_add_text", json!({"doc":doc,"page":1,"text":"Added label","rect":[20,20,130,45]}));
+    let inventory = ok(&mut a, "object_list", json!({"doc":doc,"page":1}));
+    assert_eq!(inventory["count"], 2);
+    let objects: Vec<_> = inventory["objects"].as_array().unwrap().iter().map(|o| json!({"kind":o["kind"],"index":o["index"]})).collect();
+    assert!(a.call("object_delete", &json!({"doc":doc,"page":1,"generation":999,"objects":objects})).is_err(), "stale");
+    assert!(a.call("object_delete", &json!({"doc":doc,"page":1,"objects":[{"kind":"image","index":9}]})).is_err());
+    assert_eq!(ok(&mut a, "object_list", json!({"doc":doc,"page":1})), inventory, "refusals change nothing");
+    let out = ok(&mut a, "object_delete", json!({"doc":doc,"page":1,"generation":inventory["generation"],"objects":objects}));
+    assert_eq!(out["deleted"], 2);
+    assert_eq!(ok(&mut a, "object_list", json!({"doc":doc,"page":1}))["count"], 0);
+    assert!(page_text(&mut a, doc)[0].is_empty(), "{:?}", page_text(&mut a, doc));
+    assert_eq!(ok(&mut a, "edit_undo", json!({"doc":doc}))["undone"], "Delete objects");
+    assert_eq!(ok(&mut a, "object_list", json!({"doc":doc,"page":1}))["objects"], inventory["objects"]);
+}
+
 #[test]
 fn object_move_rejects_invalid_nested_references_without_any_change() {
     let dir = workdir("object-move-refusals");
