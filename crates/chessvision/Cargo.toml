@@ -21,22 +21,22 @@ pdfcraft-geom = { workspace = true }
 pdfcraft-render = { workspace = true }
 # Same inference runtime as pdfcraft-ocr: pure Rust, builds for wasm32. `onnx_format` loads the
 # user's exported .onnx models directly (no conversion step).
-rten = { version = "0.26.0", default-features = false, features = ["rten_format", "onnx_format"] }
-rten-tensor = "0.26.0"
+rten = { version = "0.27.0", default-features = false, features = ["rten_format", "onnx_format"] }
+rten-tensor = "0.27.0"
 # Glyph outlines of the user's chess diagram font, for drawn diagrams (same version as pdfcraft-fonts).
-skrifa = "0.44"
+skrifa = "0.47"
 # The user's piece images (`pieces::images`), traced into outlines; pure Rust, builds for wasm32.
 # Also decodes the prototype's PNG boards in the board-reading benchmark (`examples/read_bench.rs`).
 png = "0.18"
 # The figurine font as a data URL in HTML exports (`text_font`); pure Rust, builds for wasm32.
-base64 = "0.22"
+base64 = "0.23"
 # SVG piece images (`pieces::svg`): their paths, resolved. Already in the tree (egui_extras > resvg);
 # without text, pure Rust, builds for wasm32.
-usvg = { version = "0.45", default-features = false }
+usvg = { version = "0.48", default-features = false }
 serde.workspace = true
 serde_json.workspace = true
 # Contours, polygon simplification and minimum-area rectangles for the page detector (no OpenCV).
-rten-imageproc = { version = "0.26.0", default-features = false }
+rten-imageproc = { version = "0.27.0", default-features = false }
 thiserror.workspace = true
 
 [dev-dependencies]
