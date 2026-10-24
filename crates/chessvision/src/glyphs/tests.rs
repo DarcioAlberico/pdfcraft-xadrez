@@ -443,6 +443,39 @@ fn a_frame_around_text_is_no_glyph_and_its_text_is_read() {
     assert_eq!(frames, vec![PixelRect { x0: 20, y0: 20, x1: 180, y1: 100 }]);
 }
 
+/// A box with a drop shadow (Pinski's `CHAPTER FOUR`: a 2 px outline, an 8 px edge offset under
+/// it and right of it) is inked on 19% of its box, more than a plain frame, and is a frame all
+/// the same: no glyph, and the letter it holds is read. A display letter as large and as inked
+/// that is no closed box, an `L` (sides open) or an `O` (its bowl inside the band at its
+/// diagonals), stays a glyph. (Fails without the ring rule: the box is one glyph and the letter
+/// inside it its inner detail.)
+#[test]
+fn a_box_with_a_drop_shadow_is_a_frame_and_its_text_is_read() {
+    let mut c = Canvas::new(480, 140);
+    c.rect(20, 20, 180, 22).rect(20, 98, 180, 100).rect(20, 20, 22, 100).rect(178, 20, 180, 100);
+    c.rect(28, 100, 188, 108).rect(180, 28, 188, 108);
+    c.rect(60, 50, 74, 70);
+    // An `L`, 90 px with 10 px strokes: 21% inked.
+    c.rect(220, 20, 230, 110).rect(220, 100, 310, 110);
+    // An `O`, 90 px across with a 7 px stroke: 22% inked.
+    for y in 20..110i64 {
+        for x in 340..430i64 {
+            let (dx, dy) = (x as f64 + 0.5 - 385.0, y as f64 + 0.5 - 65.0);
+            if (38.0..=45.0).contains(&dx.hypot(dy)) {
+                c.ink(x, y);
+            }
+        }
+    }
+    let (mut boxes, _) = c.boxes(SCALE);
+    boxes.sort_by_key(|b| b.x0);
+    assert_eq!(
+        boxes,
+        vec![Bx { x0: 60, y0: 50, x1: 74, y1: 70 }, Bx { x0: 220, y0: 20, x1: 310, y1: 110 }, Bx { x0: 340, y0: 20, x1: 430, y1: 110 }]
+    );
+    let frames = crate::glyphs::frames(&c.image(), None, Some(SCALE as u32)).unwrap();
+    assert_eq!(frames, vec![PixelRect { x0: 20, y0: 20, x1: 188, y1: 108 }]);
+}
+
 /// A scan's letter cut at its hairline: the bowl and the stem of a `d`, 1 px apart (0.05 scales),
 /// are read as one when the union reads well and the pieces do not. The same pieces at the
 /// distance of two letters of a word (3 px, 0.15 scales) are never offered to the arbiter.
@@ -832,4 +865,88 @@ fn a_lines_height_is_its_capitals_whatever_it_holds() {
     assert_eq!(title.height(), Some(45));
     assert_eq!(line_of(&[]).height(), None);
     assert_eq!(line_of(&[(0, 3)]).height(), None, "glyphs without height");
+}
+
+/// `n` letters drawn on `c` from `x`, top `y`, each two upright stems `stem` px wide and 20 px
+/// tall, every 16 px; and the glyph reader's word for them.
+fn stems(c: &mut Canvas, x: u32, y: u32, n: u32, stem: u32) -> GlyphWord {
+    let glyphs: Vec<Glyph> = (0..n)
+        .map(|i| {
+            let x0 = x + i * 16;
+            let (a, b) = (i64::from(x0), i64::from(x0 + stem + 3));
+            c.rect(a, i64::from(y), a + i64::from(stem), i64::from(y + 20)).rect(b, i64::from(y), b + i64::from(stem), i64::from(y + 20));
+            let rect = PixelRect { x0, y0: y, x1: x0 + 2 * stem + 3, y1: y + 20 };
+            Glyph { rect, text: "n".into(), p: 0.9, alternatives: Vec::new(), margin: 0.5 }
+        })
+        .collect();
+    let rect = glyphs.iter().map(|g| g.rect).reduce(union_rect).unwrap();
+    GlyphWord { text: "n".repeat(n as usize), rect, glyphs }
+}
+
+fn line_of_words(words: Vec<GlyphWord>) -> GlyphLine {
+    let rect = words.iter().map(|w| w.rect).reduce(union_rect).unwrap();
+    GlyphLine { words, rect }
+}
+
+/// A heading set at the body's size in bold (stems 5 px wide against the body's 3: 1.5 times the
+/// stroke) with a blank line above it is found, as its own run when a line of the other column
+/// stands beside it. A bold line inside a paragraph (at the leading under the line before), the
+/// last line of the column and the first one (a running head) are none, nor is a bold run of two
+/// glyphs. Two bold lines one under the other at the leading are one heading, and four are a
+/// paragraph set in bold. (Fails with the gap above not asked for: the bold line in the
+/// paragraph; without the runs: the heading, measured with the other column's line beside it.)
+#[test]
+fn a_bolder_line_standing_alone_is_a_heading() {
+    let mut c = Canvas::new(500, 640);
+    let mut lines = Vec::new();
+    let body = |c: &mut Canvas, y: u32| line_of_words(vec![stems(c, 20, y, 15, 3)]);
+    lines.push(line_of_words(vec![stems(&mut c, 20, 10, 8, 5)]));
+    for y in [50, 80] {
+        lines.push(body(&mut c, y));
+    }
+    // The heading, with the other column's line beside it.
+    lines.push(line_of_words(vec![stems(&mut c, 20, 140, 6, 5), stems(&mut c, 300, 140, 10, 3)]));
+    for y in [170, 200] {
+        lines.push(body(&mut c, y));
+    }
+    // Bold at the leading: a main line in a paragraph.
+    lines.push(line_of_words(vec![stems(&mut c, 20, 230, 6, 5)]));
+    lines.push(body(&mut c, 260));
+    // A bold pair of glyphs alone.
+    lines.push(line_of_words(vec![stems(&mut c, 20, 320, 2, 5)]));
+    lines.push(body(&mut c, 350));
+    // A title on two lines.
+    lines.push(line_of_words(vec![stems(&mut c, 20, 410, 6, 5)]));
+    lines.push(line_of_words(vec![stems(&mut c, 20, 440, 4, 5)]));
+    lines.push(body(&mut c, 470));
+    // Bold alone at the column's foot.
+    lines.push(line_of_words(vec![stems(&mut c, 20, 560, 6, 5)]));
+    let found = crate::glyphs::bolder_lines(&c.image(), &lines, &[]).unwrap();
+    assert_eq!(
+        found,
+        vec![PixelRect { x0: 20, y0: 140, x1: 20 + 5 * 16 + 13, y1: 160 }, PixelRect { x0: 20, y0: 410, x1: 20 + 5 * 16 + 13, y1: 460 }]
+    );
+
+    // Four bold lines at the leading are a paragraph set in bold.
+    let mut c = Canvas::new(500, 400);
+    let mut lines = vec![body(&mut c, 20)];
+    lines.extend([80, 110, 140, 170].map(|y| line_of_words(vec![stems(&mut c, 20, y, 6, 5)])));
+    lines.push(body(&mut c, 200));
+    assert!(crate::glyphs::bolder_lines(&c.image(), &lines, &[]).unwrap().is_empty());
+    assert!(crate::glyphs::bolder_lines(&c.image(), &[], &[]).unwrap().is_empty());
+
+    // A bold caption under a board and one over another, each with a blank space on its other
+    // side: the board's captions, not headings, with a speck between the first and its board.
+    // (Fails without the boards: both; with the speck a line: the first.)
+    let mut c = Canvas::new(500, 600);
+    let mut lines = vec![body(&mut c, 20)];
+    // A speck between the board and its caption is no line.
+    lines.push(line_of_words(vec![stems(&mut c, 100, 196, 1, 3)]));
+    lines.push(line_of_words(vec![stems(&mut c, 20, 250, 6, 5)]));
+    lines.push(body(&mut c, 300));
+    lines.push(line_of_words(vec![stems(&mut c, 20, 360, 6, 5)]));
+    lines.push(body(&mut c, 560));
+    let boards = [PixelRect { x0: 20, y0: 50, x1: 200, y1: 190 }, PixelRect { x0: 20, y0: 390, x1: 200, y1: 530 }];
+    assert_eq!(crate::glyphs::bolder_lines(&c.image(), &lines, &[]).unwrap().len(), 2);
+    assert!(crate::glyphs::bolder_lines(&c.image(), &lines, &boards).unwrap().is_empty());
 }
