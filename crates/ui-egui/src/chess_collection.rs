@@ -11,10 +11,17 @@
 //! - **The list.** "Games in this document" in the board panels lists them by their players, their
 //!   event, the diagram they came from, or their number; a click shows one (that is walking, not
 //!   an undo step), and New game adds a blank one. Each game can be renamed (its White, Black and
-//!   Event tags, so the name is in its PGN; one undo step of that game), duplicated, deleted
-//!   (after a question; deleting the last game leaves a blank one) and moved up or down, from its
-//!   menu, the buttons shown on the row under the pointer, or the keys of a focused row (F2,
-//!   Delete, Alt+↑/↓; Enter shows it), or dragged to another place. "New game from this position"
+//!   Event tags, so the name is in its PGN, with its Site, Date and Round; one undo step of that
+//!   game, and a date PGN can't read is refused), duplicated, deleted (after a question; deleting
+//!   the last game leaves a blank one) and moved up or down, from its menu, the buttons shown on
+//!   the row under the pointer, or the keys of a focused row (F2, Delete, Alt+↑/↓; Enter shows
+//!   it), or dragged to another place.
+//! - **Several games at once.** Ctrl+click adds a game to the selection or takes it out, Shift+click
+//!   selects the games from the last one clicked, and on a focused row Shift+↑/↓ selects on,
+//!   Ctrl+A selects every game and Ctrl+Space picks one ([`Selection`]); the game shown stays
+//!   shown. A selected row's menu, buttons and keys then act on every game selected, as one step
+//!   of the list: Delete… (one question), Duplicate, Move up/down and dragging (as a block, in
+//!   their order), and Save PGN… (the games selected, in list order). "New game from this position"
 //!   starts a game at the move shown, or at a move of the notation, keeping the diagram it came
 //!   from. The list's order is the order the collection is exported and autosaved in.
 //! - **Undo of the list** (wave 10, U2). A delete, a move or an add (New game, Duplicate, New
@@ -149,8 +156,10 @@ impl GameEntry {
         GameNames::of(&self.board.game)
     }
 
-    /// Name the game: its White, Black and Event tags take `names` (an empty name removes its
-    /// tag), as one undo step of the game ("Edit game details"). Whether anything changed.
+    /// Name the game: its White, Black, Event, Site, Date and Round tags take `names` (an empty
+    /// name removes its tag), as one undo step of the game ("Edit game details"). Whether anything
+    /// changed. The list's editor lets no date through that PGN can't read
+    /// ([`collection::pgn_date_ok`]).
     fn rename(&mut self, names: &GameNames) -> bool {
         let changes = names.changes_from(&self.names());
         if changes.is_empty() {
@@ -158,7 +167,7 @@ impl GameEntry {
         }
         self.board.edit(|s| {
             for (tag, value) in &changes {
-                // The three names are valid tag names; a game whose tags are full refuses a new
+                // The six names are valid tag names; a game whose tags are full refuses a new
                 // one, and the others still change.
                 let _ = s.game.set_tag(tag, value);
             }
@@ -222,13 +231,15 @@ struct Autosave {
 /// added. Games are named by their id, so a step still finds its game after other changes to the
 /// list.
 enum ListChange {
-    /// Game `entry` was deleted from place `index`; `shown`: it was the game shown; `left_blank`:
-    /// it was the only game, and a blank one took its place.
-    Deleted { index: usize, entry: Box<GameEntry>, shown: bool, left_blank: bool },
-    /// The game a delete took (game `uid`) is back: redoing deletes it again.
-    Restored { uid: u64 },
+    /// Games were deleted, one or several at once (a selection).
+    Deleted(Box<Deleted>),
+    /// The games a delete took (games `uids`) are back: redoing deletes them again.
+    Restored { uids: Vec<u64> },
     /// Game `uid` was moved from place `from` to place `to`.
     Moved { uid: u64, from: usize, to: usize },
+    /// Several games were moved at once (a selection, as a block): the order of the whole list
+    /// before and after, by game id.
+    Arranged { before: Vec<u64>, after: Vec<u64> },
     /// Games `uids` were added (New game, Duplicate, New game from this position, Open PGN…, the
     /// PGN field's games after its first, a game of the trash opened, a diagram or a game of the
     /// book opened on the board), `edit` saying how, while
@@ -237,6 +248,16 @@ enum ListChange {
     Added { uids: Vec<u64>, edit: ChessEdit, before: u64, restored: Option<(usize, Trashed)> },
     /// Added games Undo took back out: redoing puts them back.
     Removed(Box<Removed>),
+}
+
+/// Games a delete took ([`ListChange::Deleted`]).
+struct Deleted {
+    /// Each with its place before the delete, in list order.
+    games: Vec<(usize, GameEntry)>,
+    /// The game shown, when it was one of them.
+    shown: Option<u64>,
+    /// They were all the list had, and a blank game took their place.
+    left_blank: bool,
 }
 
 /// Added games Undo took back out ([`ListChange::Removed`]).
@@ -261,8 +282,8 @@ impl ListChange {
     /// What Undo and Redo call it.
     fn edit(&self) -> ChessEdit {
         match self {
-            ListChange::Deleted { .. } | ListChange::Restored { .. } => ChessEdit::DeleteGame,
-            ListChange::Moved { .. } => ChessEdit::MoveGame,
+            ListChange::Deleted(_) | ListChange::Restored { .. } => ChessEdit::DeleteGame,
+            ListChange::Moved { .. } | ListChange::Arranged { .. } => ChessEdit::MoveGame,
             ListChange::Added { edit, .. } => edit.clone(),
             ListChange::Removed(r) => r.edit.clone(),
         }
@@ -273,8 +294,10 @@ impl ListChange {
     fn bytes(&self) -> usize {
         let item = |t: &Trashed| t.pgn.len().saturating_add(t.name.len());
         match self {
-            ListChange::Deleted { entry, .. } => entry.board.bytes(),
-            ListChange::Restored { .. } | ListChange::Moved { .. } => 0,
+            ListChange::Deleted(d) => d.games.iter().map(|(_, e)| e.board.bytes()).fold(0usize, usize::saturating_add),
+            ListChange::Restored { uids } => uids.len().saturating_mul(std::mem::size_of::<u64>()),
+            ListChange::Arranged { before, after } => before.len().saturating_add(after.len()).saturating_mul(std::mem::size_of::<u64>()),
+            ListChange::Moved { .. } => 0,
             ListChange::Added { restored, .. } => restored.as_ref().map_or(0, |(_, t)| item(t)),
             ListChange::Removed(r) => r
                 .games
@@ -523,10 +546,147 @@ impl ChessCollection {
     /// leaves a blank one. One undo step of the list, which puts the game back with its own
     /// history. Whether there was such a game.
     pub(crate) fn delete(&mut self, index: usize) -> bool {
-        let (shown, left_blank) = (index == self.active_index(), self.len() == 1);
-        let Some(entry) = self.games.delete(index) else { return false };
-        self.history.record(ListChange::Deleted { index, entry: Box::new(entry), shown, left_blank });
+        self.delete_many(&[index]) > 0
+    }
+
+    /// Delete games `indices` (a selection; places that are no game are left out) as one undo step
+    /// of the list, which puts them all back where they were. The game shown stays shown; when it
+    /// is one of them, the game after it that stays is shown (the one before, at the end of the
+    /// list), and deleting every game leaves a blank one. How many were deleted.
+    pub(crate) fn delete_many(&mut self, indices: &[usize]) -> usize {
+        let Some(deleted) = self.take_places(indices) else { return 0 };
+        let count = deleted.games.len();
+        self.history.record(ListChange::Deleted(Box::new(deleted)));
+        count
+    }
+
+    /// Take games `indices` out of the list (the last first, so each keeps the place it had among
+    /// the others): what a delete keeps to undo it. `None` when none is a game of the list.
+    fn take_places(&mut self, indices: &[usize]) -> Option<Deleted> {
+        let places = self.places(indices);
+        if places.is_empty() {
+            return None;
+        }
+        let shown = places.contains(&self.active_index()).then(|| self.active().uid);
+        let left_blank = places.len() == self.len();
+        let mut games = Vec::with_capacity(places.len());
+        for &index in places.iter().rev() {
+            if let Some(entry) = self.games.delete(index) {
+                games.push((index, entry));
+            }
+        }
+        games.reverse();
+        Some(Deleted { games, shown, left_blank })
+    }
+
+    /// Undo of a delete: the games go back to their places (a blank game the delete left gives
+    /// way to the first), and the game shown then is shown again.
+    fn put_places(&mut self, deleted: Deleted) -> ListChange {
+        let Deleted { games, shown, left_blank } = deleted;
+        let uids = games.iter().map(|(_, e)| e.uid).collect();
+        for (k, (index, entry)) in games.into_iter().enumerate() {
+            if k == 0 && left_blank && self.len() == 1 && self.active().is_blank() {
+                *self.games.active_mut() = entry;
+            } else {
+                self.games.insert(index, entry, false);
+            }
+        }
+        if let Some(at) = shown.and_then(|uid| self.position(uid)) {
+            self.games.switch_to(at);
+        }
+        ListChange::Restored { uids }
+    }
+
+    /// `indices` that are places of games, in order, each once.
+    fn places(&self, indices: &[usize]) -> Vec<usize> {
+        let mut places: Vec<usize> = indices.iter().copied().filter(|&i| i < self.len()).collect();
+        places.sort_unstable();
+        places.dedup();
+        places
+    }
+
+    /// The games' ids, in list order.
+    fn order(&self) -> Vec<u64> {
+        self.iter().map(|e| e.uid).collect()
+    }
+
+    /// Put the games in `order` (by id; ids no longer in the list are passed over, and games it
+    /// does not name keep their order after the ones it does). The game shown stays shown.
+    fn arrange(&mut self, order: &[u64]) {
+        let mut k = 0usize;
+        for &uid in order {
+            let Some(at) = self.position(uid) else { continue };
+            if at != k {
+                self.games.move_to(at, k);
+            }
+            k = k.saturating_add(1);
+        }
+    }
+
+    /// Put the games in `after` (by id, every game once), as one undo step of the list. Whether
+    /// the order changed.
+    fn rearranged(&mut self, after: Vec<u64>) -> bool {
+        let before = self.order();
+        if after == before || after.len() != before.len() {
+            return false;
+        }
+        self.arrange(&after);
+        self.history.record(ListChange::Arranged { before, after });
         true
+    }
+
+    /// Move games `indices` (a selection) one place up (towards the start) or down, as a block:
+    /// each keeps its order among them, and each game between two of them stays between them.
+    /// Refused when the first of them is first (going up) or the last is last (going down). One
+    /// undo step of the list; whether they moved.
+    pub(crate) fn move_many(&mut self, indices: &[usize], up: bool) -> bool {
+        let places = self.places(indices);
+        let mut order = self.order();
+        match (places.first().copied(), places.last().copied()) {
+            (Some(first), _) if up && first > 0 => {
+                for &i in &places {
+                    order.swap(i.saturating_sub(1), i);
+                }
+            }
+            (_, Some(last)) if !up && last.saturating_add(1) < order.len() => {
+                for &i in places.iter().rev() {
+                    order.swap(i, i.saturating_add(1));
+                }
+            }
+            _ => return false,
+        }
+        self.rearranged(order)
+    }
+
+    /// Move games `indices` (a selection) into gap `gap` of the list as it is (0: before the
+    /// first game, `len`: after the last), together and in their order: a block dragged and
+    /// dropped. One undo step of the list; whether the order changed.
+    pub(crate) fn move_many_to(&mut self, indices: &[usize], gap: usize) -> bool {
+        let order = block_order(&self.order(), &self.places(indices), gap);
+        self.rearranged(order)
+    }
+
+    /// A copy of each of games `indices` (a selection) right after it, the first copy shown: one
+    /// undo step of the list. How many copies were made.
+    pub(crate) fn duplicate_many(&mut self, indices: &[usize]) -> usize {
+        let places = self.places(indices);
+        let before = self.active().uid;
+        let mut uids = Vec::with_capacity(places.len());
+        // The last first, so the places of the others stay as they are.
+        for &i in places.iter().rev() {
+            let Some(copy) = self.get(i).map(GameEntry::copy) else { continue };
+            uids.push(copy.uid);
+            self.insert_after(i, copy);
+        }
+        uids.reverse();
+        if let Some(at) = uids.first().and_then(|&uid| self.position(uid)) {
+            self.games.switch_to(at);
+        }
+        let count = uids.len();
+        if count > 0 {
+            self.added(uids, ChessEdit::DuplicateGame, before, None);
+        }
+        count
     }
 
     /// A new game starting at the position of move `node` of the game shown (the move shown when
@@ -613,26 +773,22 @@ impl ChessCollection {
         let edit = step.change.edit();
         let mut trashed = 0;
         let back = match step.change {
-            ListChange::Deleted { index, entry, shown, left_blank } => {
-                let uid = entry.uid;
-                if left_blank && self.len() == 1 && self.active().is_blank() {
-                    // The blank game the delete left gives way to the game again.
-                    *self.games.active_mut() = *entry;
-                } else {
-                    self.games.insert(index, *entry, shown);
-                }
-                ListChange::Restored { uid }
-            }
-            ListChange::Restored { uid } => {
-                let index = self.position(uid)?;
-                let (shown, left_blank) = (index == self.active_index(), self.len() == 1);
-                let entry = Box::new(self.games.delete(index)?);
-                ListChange::Deleted { index, entry, shown, left_blank }
+            ListChange::Deleted(deleted) => self.put_places(*deleted),
+            ListChange::Restored { uids } => {
+                let places: Vec<usize> = uids.iter().filter_map(|&uid| self.position(uid)).collect();
+                ListChange::Deleted(Box::new(self.take_places(&places)?))
             }
             ListChange::Moved { uid, from, to } => {
                 let at = self.position(uid)?;
                 self.games.move_to(at, if undo { from } else { to });
                 ListChange::Moved { uid, from, to }
+            }
+            ListChange::Arranged { before, after } => {
+                if !before.iter().any(|&uid| self.position(uid).is_some()) {
+                    return None;
+                }
+                self.arrange(if undo { &before } else { &after });
+                ListChange::Arranged { before, after }
             }
             ListChange::Added { uids, edit, before, restored } => {
                 let removed = self.take_out(&uids, edit, before, restored)?;
@@ -877,15 +1033,18 @@ impl ChessGames {
         self.list.focused.is_some_and(|id| ctx.memory(|m| m.has_focus(id)))
     }
 
-    /// Take the keys of a focused row of the list out of `events` (Delete, Backspace, F2, Alt+↑,
-    /// Alt+↓), so nothing else sees them: Delete there deletes no variation, page or annotation.
-    /// Only presses are taken, as for the chess key scope.
+    /// Take the keys of a focused row of the list out of `events` (Delete, Backspace, F2, Alt+↑/↓,
+    /// Shift+↑/↓, Ctrl+A, Ctrl+Space: [`list_key`]), so nothing else sees them: Delete there
+    /// deletes no variation, page or annotation, and Ctrl+A selects no page text. Only presses are
+    /// taken, as for the chess key scope.
     pub(crate) fn take_list_keys(&mut self, events: &mut Vec<Event>) {
         let keys = &mut self.list.keys;
         events.retain(|event| match event {
-            Event::Key { key, pressed: true, modifiers, .. } if list_key(*key, *modifiers) => {
-                if keys.len() < MAX_LIST_KEYS {
-                    keys.push((*key, *modifiers));
+            Event::Key { key, pressed: true, modifiers, .. } if list_key(*key, *modifiers).is_some() => {
+                if keys.len() < MAX_LIST_KEYS
+                    && let Some(m) = list_key(*key, *modifiers)
+                {
+                    keys.push((*key, m));
                 }
                 false
             }
@@ -1180,6 +1339,17 @@ pub enum GamesAction {
     Move(usize, bool),
     /// Move game `from` to place `to` (its place once moved): a row dragged and dropped.
     MoveTo(usize, usize),
+    /// Delete the games selected, at these places (the user said yes): one undo step.
+    DeleteMany(Vec<usize>),
+    /// A copy of each game selected, after it: one undo step.
+    DuplicateMany(Vec<usize>),
+    /// Move the games selected one place up (`true`) or down, as a block: one undo step.
+    MoveMany(Vec<usize>, bool),
+    /// Move the games selected into a gap of the list (0: before the first game), together: rows
+    /// dragged and dropped, one undo step.
+    MoveManyTo(Vec<usize>, usize),
+    /// Save the games selected, in list order, as one PGN file.
+    SaveMany(Vec<usize>),
     /// A new game from the position of a move of the game shown (`None`: the move shown).
     NewFrom(Option<NodeId>),
     /// Open game `n` of the trash (deleted moves kept) as a new game (plan A8 §7, V5).
@@ -1242,13 +1412,18 @@ const LIST_HEIGHT: f32 = 180.0;
 /// The size of the buttons on a row under the pointer.
 const ROW_BUTTON: f32 = 20.0;
 
-/// Whether a focused row of the list acts on `key` pressed with `m`.
-fn list_key(key: Key, m: Modifiers) -> bool {
-    match key {
+/// Whether a focused row of the list acts on `key` pressed with `m`: the modifiers as the row
+/// looks for them (Ctrl and ⌘ as [`Modifiers::COMMAND`]) when it does. Delete, Backspace, F2;
+/// Alt+↑/↓ move, Shift+↑/↓ select on; Ctrl+A selects every game, Ctrl+Space picks one.
+fn list_key(key: Key, m: Modifiers) -> Option<Modifiers> {
+    let m = if m.command_only() { Modifiers::COMMAND } else { m };
+    let acts = match key {
         Key::Delete | Key::Backspace | Key::F2 => m.is_none(),
-        Key::ArrowUp | Key::ArrowDown => m == Modifiers::ALT,
+        Key::ArrowUp | Key::ArrowDown => m == Modifiers::ALT || m == Modifiers::SHIFT,
+        Key::A | Key::Space => m == Modifiers::COMMAND,
         _ => false,
-    }
+    };
+    acts.then_some(m)
 }
 
 /// What a row being dragged carries: its game's id.
@@ -1262,6 +1437,104 @@ fn drop_place(from: usize, i: usize, above: bool) -> Option<usize> {
     let gap = if above { i } else { i.saturating_add(1) };
     let to = if from < gap { gap.saturating_sub(1) } else { gap };
     (to != from).then_some(to)
+}
+
+/// The list `order` with the games at `places` (in order, each once) taken out and put back
+/// together, in their order, into gap `gap` of the list as it was (0: before the first game).
+fn block_order(order: &[u64], places: &[usize], gap: usize) -> Vec<u64> {
+    let picked = |i: usize| places.binary_search(&i).is_ok();
+    let block: Vec<u64> = places.iter().filter_map(|&i| order.get(i).copied()).collect();
+    let mut out = Vec::with_capacity(order.len());
+    for (i, &uid) in order.iter().enumerate() {
+        if i == gap {
+            out.extend_from_slice(&block);
+        }
+        if !picked(i) {
+            out.push(uid);
+        }
+    }
+    if gap >= order.len() {
+        out.extend_from_slice(&block);
+    }
+    out
+}
+
+/// How a click (or a key) picks games in the list.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Pick {
+    /// That game alone (a plain click: it is shown too).
+    Only,
+    /// That game added or taken out (Ctrl+click, Ctrl+Space).
+    Toggle,
+    /// Every game from the anchor to that one (Shift+click, Shift+↑/↓).
+    Range,
+    /// Every game (Ctrl+A).
+    All,
+}
+
+/// The games selected in the list, beyond the one shown: what Delete, Duplicate, Move and Save
+/// PGN act on when there are several. Kept by game id, so it follows the games when they move;
+/// ids no longer in the list count for nothing.
+#[derive(Default)]
+struct Selection {
+    picked: HashSet<u64>,
+    /// Where Shift+click and Shift+↑/↓ select from: the last game clicked or picked.
+    anchor: Option<u64>,
+}
+
+impl Selection {
+    /// Whether any game picked is still in `c` (else the selection is the game shown).
+    fn any(&self, c: &ChessCollection) -> bool {
+        c.iter().any(|e| self.picked.contains(&e.uid))
+    }
+
+    /// Whether game `uid` of `c` is selected: picked, or shown when none is picked.
+    fn contains(&self, c: &ChessCollection, uid: u64) -> bool {
+        if self.any(c) { self.picked.contains(&uid) } else { c.active().uid == uid }
+    }
+
+    /// The places of the games selected in `c`, in list order (the game shown alone when none is
+    /// picked).
+    fn places(&self, c: &ChessCollection) -> Vec<usize> {
+        if !self.any(c) {
+            return vec![c.active_index()];
+        }
+        c.iter().enumerate().filter(|(_, e)| self.picked.contains(&e.uid)).map(|(i, _)| i).collect()
+    }
+
+    /// Pick game `uid` of `c` as `how` says.
+    fn pick(&mut self, c: &ChessCollection, uid: u64, how: Pick) {
+        let order: Vec<u64> = c.iter().map(|e| e.uid).collect();
+        match how {
+            Pick::Only => {
+                self.picked.clear();
+                self.anchor = Some(uid);
+            }
+            Pick::Toggle => {
+                if !self.any(c) {
+                    self.picked = std::iter::once(c.active().uid).collect();
+                }
+                if !self.picked.remove(&uid) {
+                    self.picked.insert(uid);
+                }
+                self.anchor = Some(uid);
+            }
+            Pick::Range => {
+                let from = self.anchor.filter(|a| order.contains(a)).unwrap_or(c.active().uid);
+                self.anchor = Some(from);
+                let (Some(a), Some(b)) = (order.iter().position(|&u| u == from), order.iter().position(|&u| u == uid)) else { return };
+                self.picked = order.get(a.min(b)..=a.max(b)).unwrap_or_default().iter().copied().collect();
+            }
+            Pick::All => self.picked = order.into_iter().collect(),
+        }
+    }
+
+    /// The places a row's menu, buttons or keys act on: the games selected when there are several
+    /// and row `i` (game `uid`) is one of them, else that row alone.
+    fn targets(&self, c: &ChessCollection, i: usize, uid: u64) -> Vec<usize> {
+        let places = self.places(c);
+        if places.len() > 1 && self.contains(c, uid) { places } else { vec![i] }
+    }
 }
 
 /// A game being renamed: the names typed so far.
@@ -1279,6 +1552,8 @@ struct Renaming {
 /// A game the user asked to delete, until they say yes or no.
 struct Deleting {
     uid: u64,
+    /// The games selected, when the question is about several (`uid` is the first of them).
+    many: Vec<u64>,
     /// Give the Delete button the keyboard at the next frame.
     focus: bool,
     /// Scroll the question into view at the next frame.
@@ -1300,6 +1575,8 @@ struct ListState {
     /// What to scroll into view in the panel this frame, once the list's own scroll area is
     /// drawn (a scroll area takes the requests made inside it: the panel's never sees them).
     reveal: Option<egui::Rect>,
+    /// The games selected beyond the one shown.
+    sel: Selection,
 }
 
 impl ListState {
@@ -1310,9 +1587,17 @@ impl ListState {
             self.renaming = Some(Renaming { uid, names, focus, refocus, reveal: true });
             self.deleting = None;
         } else {
-            self.deleting = Some(Deleting { uid, focus, reveal: true });
+            self.deleting = Some(Deleting { uid, many: Vec::new(), focus, reveal: true });
             self.renaming = None;
         }
+    }
+
+    /// Ask whether to delete games `uids` (a selection of several). `focus`: give the question
+    /// the keyboard.
+    fn ask_many(&mut self, uids: Vec<u64>, focus: bool) {
+        let Some(&uid) = uids.first() else { return };
+        self.deleting = Some(Deleting { uid, many: uids, focus, reveal: true });
+        self.renaming = None;
     }
 
     /// Scroll `rect` into view: in the list now, and in the panel once the list is drawn.
@@ -1347,29 +1632,35 @@ impl ListState {
     }
 }
 
-/// What a game's menu (or its row's buttons) chose.
+/// What a game's menu (or its row's buttons or keys) chose.
 enum RowChoice {
     Rename,
     Duplicate,
     Up,
     Down,
     Delete,
+    Save,
 }
 
-/// The menu of game `index` of `len`.
-fn row_menu(ui: &mut egui::Ui, index: usize, len: usize) -> Option<RowChoice> {
+/// The menu of a row, acting on the games at `targets` (the row's game, or the games selected
+/// with it) of `len`: Rename… for one game, Save PGN… for several.
+fn row_menu(ui: &mut egui::Ui, targets: &[usize], len: usize) -> Option<RowChoice> {
     let mut choice = None;
-    if ui.button(tl!("Rename…")).clicked() {
+    let many = targets.len() > 1;
+    if !many && ui.button(tl!("Rename…")).clicked() {
         choice = Some(RowChoice::Rename);
     }
     if ui.button(tl!("Duplicate")).clicked() {
         choice = Some(RowChoice::Duplicate);
     }
-    if ui.add_enabled(index > 0, egui::Button::new(tl!("Move up"))).clicked() {
+    if ui.add_enabled(targets.first().is_some_and(|&i| i > 0), egui::Button::new(tl!("Move up"))).clicked() {
         choice = Some(RowChoice::Up);
     }
-    if ui.add_enabled(index.saturating_add(1) < len, egui::Button::new(tl!("Move down"))).clicked() {
+    if ui.add_enabled(targets.last().is_some_and(|&i| i.saturating_add(1) < len), egui::Button::new(tl!("Move down"))).clicked() {
         choice = Some(RowChoice::Down);
+    }
+    if many && ui.button(tl!("Save PGN…")).clicked() {
+        choice = Some(RowChoice::Save);
     }
     ui.separator();
     if ui.button(tl!("Delete…")).clicked() {
@@ -1393,6 +1684,8 @@ pub(crate) fn games_section(ui: &mut egui::Ui, t: &Tokens, games: &mut ChessGame
     if list.deleting.as_ref().is_some_and(|d| c.position(d.uid).is_none()) {
         list.deleting = None;
     }
+    // Games no longer in the list (deleted, or another document's) are no longer selected.
+    list.sel.picked.retain(|&uid| c.position(uid).is_some());
     let mut action = None;
     let n = c.len().to_string();
     let title = if current.is_some() { tl!("Games in this document ({n})") } else { tl!("Games ({n})") };
@@ -1481,15 +1774,24 @@ pub(crate) fn games_section(ui: &mut egui::Ui, t: &Tokens, games: &mut ChessGame
             }
         });
     });
+    // Games deleted or copied leave nothing selected (the first copy is shown), and a game added
+    // is shown alone.
+    if matches!(action, Some(GamesAction::DeleteMany(_) | GamesAction::DuplicateMany(_) | GamesAction::New | GamesAction::Restore(_))) {
+        list.sel = Selection::default();
+    }
     action
 }
 
-/// Game `i` of `c` in the list: its name (a click or Enter shows it), its menu, the keys of the
-/// focused row and the buttons of the row under the pointer.
+/// Game `i` of `c` in the list: its name (a click or Enter shows it; Ctrl+click and Shift+click
+/// select it with others), its menu, the keys of the focused row and the buttons of the row under
+/// the pointer. A row's state, selected or not, is the button's (screen readers say it).
 fn game_row(ui: &mut egui::Ui, list: &mut ListState, c: &ChessCollection, i: usize, e: &GameEntry) -> Option<GamesAction> {
     let mut action = None;
     let (uid, len, active) = (e.uid, c.len(), i == c.active_index());
+    let selected = list.sel.contains(c, uid);
     let name = e.name(i.saturating_add(1));
+    // The game shown, while other games are selected without it, in bold.
+    let text = if active && !selected { egui::RichText::new(name.as_str()).strong() } else { egui::RichText::new(name.as_str()) };
     // The row's buttons show while the pointer is on the row (as the last frame left it) or the
     // keyboard is on the row or its buttons.
     let lit_id = ui.id().with("chess-game-row");
@@ -1499,18 +1801,28 @@ fn game_row(ui: &mut egui::Ui, list: &mut ListState, c: &ChessCollection, i: usi
     let mut by_keys = false;
     let row = ui.horizontal(|ui| {
         // Clicked to show the game, or dragged to another place in the list.
-        let r = ui.add(egui::Button::selectable(active, name.as_str()).sense(egui::Sense::click_and_drag()));
+        let r = ui.add(egui::Button::selectable(selected, text).sense(egui::Sense::click_and_drag()));
         r.dnd_set_drag_payload(DraggedGame(uid));
         if list.focus_row.is_some_and(|(u, asked)| u == uid && ui.ctx().cumulative_pass_nr() > asked) {
             r.request_focus();
             list.reveal(ui, r.rect);
             list.focus_row = None;
         }
-        if r.clicked() && !active {
-            action = Some(GamesAction::Switch(i));
+        if r.clicked() {
+            let m = ui.input(|i| i.modifiers);
+            if m.command {
+                list.sel.pick(c, uid, Pick::Toggle);
+            } else if m.shift {
+                list.sel.pick(c, uid, Pick::Range);
+            } else {
+                list.sel.pick(c, uid, Pick::Only);
+                if !active {
+                    action = Some(GamesAction::Switch(i));
+                }
+            }
         }
         r.context_menu(|ui| {
-            chosen = row_menu(ui, i, len);
+            chosen = row_menu(ui, &list.sel.targets(c, i, uid), len);
         });
         if list.see(&r) {
             focused = true;
@@ -1523,6 +1835,27 @@ fn game_row(ui: &mut egui::Ui, list: &mut ListState, c: &ChessCollection, i: usi
                 chosen = Some(RowChoice::Up);
             } else if list.pressed(ui, Key::ArrowDown, Modifiers::ALT) {
                 chosen = Some(RowChoice::Down);
+            } else if list.pressed(ui, Key::A, Modifiers::COMMAND) {
+                list.sel.pick(c, uid, Pick::All);
+            } else if list.pressed(ui, Key::Space, Modifiers::COMMAND) {
+                list.sel.pick(c, uid, Pick::Toggle);
+            } else {
+                // Shift+↑/↓: the keyboard goes to the next row up or down, and the selection runs
+                // from the anchor (this row, when there is none) to it.
+                let next = if list.pressed(ui, Key::ArrowUp, Modifiers::SHIFT) {
+                    i.checked_sub(1)
+                } else if list.pressed(ui, Key::ArrowDown, Modifiers::SHIFT) {
+                    i.checked_add(1)
+                } else {
+                    None
+                };
+                if let Some(to) = next.and_then(|n| c.get(n)).map(|n| n.uid) {
+                    if !list.sel.anchor.is_some_and(|a| c.position(a).is_some()) {
+                        list.sel.anchor = Some(uid);
+                    }
+                    list.sel.pick(c, to, Pick::Range);
+                    list.focus_later(ui.ctx(), Some(to));
+                }
             }
         }
         let spacing = ui.spacing().item_spacing.x;
@@ -1545,37 +1878,44 @@ fn game_row(ui: &mut egui::Ui, list: &mut ListState, c: &ChessCollection, i: usi
             }
         }
     });
-    // A row dragged over this one: a line where it would go; dropped, it goes there.
+    // A row dragged over this one: a line where it would go; dropped, it goes there (with the
+    // games selected with it, as a block).
+    let rect = row.response.rect;
+    let above = || ui.input(|i| i.pointer.interact_pos()).is_some_and(|p| p.y < rect.center().y);
     if let Some(dragged) = row.response.dnd_hover_payload::<DraggedGame>() {
-        let rect = row.response.rect;
-        let above = ui.input(|i| i.pointer.interact_pos()).is_some_and(|p| p.y < rect.center().y);
-        if c.position(dragged.0).and_then(|from| drop_place(from, i, above)).is_some() {
+        let above = above();
+        if dropped_move(list, c, dragged.0, i, above).is_some() {
             let y = if above { rect.top() } else { rect.bottom() };
             ui.painter().hline(rect.x_range(), y, ui.visuals().selection.stroke);
         }
     }
-    if let Some(dropped) = row.response.dnd_release_payload::<DraggedGame>() {
-        let rect = row.response.rect;
-        let above = ui.input(|i| i.pointer.interact_pos()).is_some_and(|p| p.y < rect.center().y);
-        if let Some((from, to)) = c.position(dropped.0).and_then(|from| drop_place(from, i, above).map(|to| (from, to))) {
-            action = Some(GamesAction::MoveTo(from, to));
-        }
+    if let Some(dropped) = row.response.dnd_release_payload::<DraggedGame>()
+        && let Some(a) = dropped_move(list, c, dropped.0, i, above())
+    {
+        action = Some(a);
     }
     let lit_now = ui.rect_contains_pointer(row.response.rect) || focused;
     if lit_now != lit {
         ui.ctx().data_mut(|d| d.insert_temp(lit_id, lit_now));
         ui.ctx().request_repaint();
     }
+    let targets = list.sel.targets(c, i, uid);
+    let many = targets.len() > 1;
+    let first = targets.first().copied().unwrap_or(i);
+    let last = targets.last().copied().unwrap_or(i);
     match chosen {
         Some(RowChoice::Rename) => list.ask(uid, e.names(), true, true, by_keys),
+        Some(RowChoice::Delete) if many => list.ask_many(targets.iter().filter_map(|&k| c.get(k)).map(|g| g.uid).collect(), by_keys),
         Some(RowChoice::Delete) => list.ask(uid, e.names(), false, by_keys, false),
+        Some(RowChoice::Duplicate) if many => action = Some(GamesAction::DuplicateMany(targets)),
         Some(RowChoice::Duplicate) => action = Some(GamesAction::Duplicate(i)),
-        Some(RowChoice::Up) if i > 0 => {
-            action = Some(GamesAction::Move(i, true));
+        Some(RowChoice::Save) => action = Some(GamesAction::SaveMany(targets)),
+        Some(RowChoice::Up) if first > 0 => {
+            action = Some(if many { GamesAction::MoveMany(targets, true) } else { GamesAction::Move(i, true) });
             list.focus_later(ui.ctx(), by_keys.then_some(uid));
         }
-        Some(RowChoice::Down) if i.saturating_add(1) < len => {
-            action = Some(GamesAction::Move(i, false));
+        Some(RowChoice::Down) if last.saturating_add(1) < len => {
+            action = Some(if many { GamesAction::MoveMany(targets, false) } else { GamesAction::Move(i, false) });
             list.focus_later(ui.ctx(), by_keys.then_some(uid));
         }
         Some(RowChoice::Up | RowChoice::Down) | None => {}
@@ -1583,58 +1923,86 @@ fn game_row(ui: &mut egui::Ui, list: &mut ListState, c: &ChessCollection, i: usi
     action
 }
 
-/// The question about deleting a game, or its name editor, when one is open: under the list
-/// (not inside its scroll area, which would clip it and keep the panel from scrolling to it),
-/// headed by the game's name.
+/// What dropping game `dragged` on row `i`, in its top half (`above`) or its bottom half, does:
+/// the game goes into that gap, or the games selected with it go there together; `None` when
+/// nothing would move.
+fn dropped_move(list: &ListState, c: &ChessCollection, dragged: u64, i: usize, above: bool) -> Option<GamesAction> {
+    let from = c.position(dragged)?;
+    let targets = list.sel.targets(c, from, dragged);
+    if targets.len() > 1 {
+        let gap = if above { i } else { i.saturating_add(1) };
+        let order: Vec<u64> = c.iter().map(|e| e.uid).collect();
+        return (block_order(&order, &targets, gap) != order).then_some(GamesAction::MoveManyTo(targets, gap));
+    }
+    drop_place(from, i, above).map(|to| GamesAction::MoveTo(from, to))
+}
+
+/// The question about deleting a game (or the games selected), or a game's name editor, when one
+/// is open: under the list (not inside its scroll area, which would clip it and keep the panel
+/// from scrolling to it), headed by the game's name (or how many are selected).
 fn pending(ui: &mut egui::Ui, t: &Tokens, list: &mut ListState, c: &ChessCollection) -> Option<GamesAction> {
     let deleting = list.deleting.as_ref().and_then(|d| c.position(d.uid));
     let renaming = list.renaming.as_ref().and_then(|r| c.position(r.uid));
     let i = deleting.or(renaming)?;
-    let name = c.get(i).map(|e| e.name(i.saturating_add(1))).unwrap_or_default();
+    let many: Vec<usize> = match (&list.deleting, deleting) {
+        (Some(d), Some(_)) => d.many.iter().filter_map(|&uid| c.position(uid)).collect(),
+        _ => Vec::new(),
+    };
+    let name = if many.len() > 1 {
+        crate::i18n::fmt(tl!("{n} selected"), &[("n", &many.len().to_string())])
+    } else {
+        c.get(i).map(|e| e.name(i.saturating_add(1))).unwrap_or_default()
+    };
     let mut action = None;
     egui::Frame::group(ui.style()).inner_margin(egui::Margin::same(6)).show(ui, |ui| {
         ui.label(egui::RichText::new(name).strong());
-        action = if deleting.is_some() { delete_question(ui, t, list, c, i) } else { name_editor(ui, list, i) };
+        action = if deleting.is_some() { delete_question(ui, t, list, c, i, many) } else { name_editor(ui, list, i) };
     });
     action
 }
 
-/// "Delete this game? It can't be undone." about game `i`, with Delete and Cancel (or Esc).
-fn delete_question(ui: &mut egui::Ui, t: &Tokens, list: &mut ListState, c: &ChessCollection, i: usize) -> Option<GamesAction> {
+/// "Delete this game? You can undo it." about game `i` (or "Delete these games?" about the games
+/// at `many`, when there are several), with Delete and Cancel (or Esc).
+fn delete_question(ui: &mut egui::Ui, t: &Tokens, list: &mut ListState, c: &ChessCollection, i: usize, many: Vec<usize>) -> Option<GamesAction> {
     let mut action = None;
     let uid = c.get(i).map(|e| e.uid);
-    {
-        ui.label(egui::RichText::new(tl!("Delete this game? You can undo it.")).small().color(t.text_muted));
-        ui.horizontal(|ui| {
-            let yes = ui.small_button(tl!("Delete"));
-            let no = ui.small_button(tl!("Cancel"));
-            if list.deleting.as_mut().is_some_and(|d| std::mem::take(&mut d.focus)) {
-                yes.request_focus();
-            }
-            // The question may open at the bottom of the panel: shown whole.
-            if list.deleting.as_mut().is_some_and(|d| std::mem::take(&mut d.reveal)) {
-                list.reveal(ui, yes.rect.union(no.rect));
-            }
-            let keys = list.see(&yes) | list.see(&no);
-            // Esc takes the keyboard from the button before the frame: it was on one of them.
-            let esc = (yes.lost_focus() || no.lost_focus()) && ui.input(|inp| inp.key_pressed(Key::Escape));
-            if yes.clicked() {
-                // The keyboard goes to the game that takes the deleted one's place.
-                let next = c.get(i.saturating_add(1)).or_else(|| i.checked_sub(1).and_then(|j| c.get(j))).map(|e| e.uid);
-                list.focus_later(ui.ctx(), if keys { next } else { None });
-                list.deleting = None;
-                action = Some(GamesAction::Delete(i));
-            } else if no.clicked() || esc {
-                list.focus_later(ui.ctx(), if keys || esc { uid } else { None });
-                list.deleting = None;
-            }
-        });
-    }
+    let several = many.len() > 1;
+    let question = if several { tl!("Delete these games? You can undo it.") } else { tl!("Delete this game? You can undo it.") };
+    ui.label(egui::RichText::new(question).small().color(t.text_muted));
+    ui.horizontal(|ui| {
+        let yes = ui.small_button(tl!("Delete"));
+        let no = ui.small_button(tl!("Cancel"));
+        if list.deleting.as_mut().is_some_and(|d| std::mem::take(&mut d.focus)) {
+            yes.request_focus();
+        }
+        // The question may open at the bottom of the panel: shown whole.
+        if list.deleting.as_mut().is_some_and(|d| std::mem::take(&mut d.reveal)) {
+            list.reveal(ui, yes.rect.union(no.rect));
+        }
+        let keys = list.see(&yes) | list.see(&no);
+        // Esc takes the keyboard from the button before the frame: it was on one of them.
+        let esc = (yes.lost_focus() || no.lost_focus()) && ui.input(|inp| inp.key_pressed(Key::Escape));
+        if yes.clicked() {
+            // The keyboard goes to the game that takes the deleted ones' place: the first after
+            // them that stays, else the last before them.
+            let gone = if several { many.clone() } else { vec![i] };
+            let stays = |k: &usize| !gone.contains(k);
+            let after = gone.last().map_or(i, |&l| l.saturating_add(1));
+            let next = (after..c.len()).find(stays).or_else(|| (0..gone.first().copied().unwrap_or(i)).rev().find(stays));
+            list.focus_later(ui.ctx(), if keys { next.and_then(|k| c.get(k)).map(|e| e.uid) } else { None });
+            list.deleting = None;
+            action = Some(if several { GamesAction::DeleteMany(many) } else { GamesAction::Delete(i) });
+        } else if no.clicked() || esc {
+            list.focus_later(ui.ctx(), if keys || esc { uid } else { None });
+            list.deleting = None;
+        }
+    });
     action
 }
 
-/// The name editor of game `i`: White, Black and Event, then Rename (or Enter) and Cancel (or
-/// Esc).
+/// The name editor of game `i`: White, Black, Event, Site, Date and Round (as Game details names
+/// them), then Rename (or Enter) and Cancel (or Esc). A date PGN can't read is said under the
+/// fields, and keeps Rename from applying.
 fn name_editor(ui: &mut egui::Ui, list: &mut ListState, i: usize) -> Option<GamesAction> {
     let r = list.renaming.as_mut()?;
     let (mut commit, mut cancel) = (false, false);
@@ -1645,9 +2013,16 @@ fn name_editor(ui: &mut egui::Ui, list: &mut ListState, i: usize) -> Option<Game
     ui.scope(|ui| {
         egui::Grid::new(("chess-game-names", r.uid)).num_columns(2).spacing([6.0, 3.0]).show(ui, |ui| {
             let focus = std::mem::take(&mut r.focus);
-            let GameNames { white, black, event } = &mut r.names;
-            for (k, (label, value)) in [(tl!("White"), white), (tl_ctx!("chess side", "Black"), black), (tl!("Event"), event)].into_iter().enumerate()
-            {
+            let GameNames { white, black, event, site, date, round } = &mut r.names;
+            let fields = [
+                (tl!("White"), white),
+                (tl_ctx!("chess side", "Black"), black),
+                (tl!("Event"), event),
+                (tl!("Site"), site),
+                (tl!("Date"), date),
+                (tl!("Round"), round),
+            ];
+            for (k, (label, value)) in fields.into_iter().enumerate() {
                 let l = ui.label(label);
                 let f = ui.add(egui::TextEdit::singleline(value).desired_width(150.0)).labelled_by(l.id);
                 if k == 0 && focus {
@@ -1663,8 +2038,15 @@ fn name_editor(ui: &mut egui::Ui, list: &mut ListState, i: usize) -> Option<Game
                 ui.end_row();
             }
         });
+        let date_ok = collection::pgn_date_ok(&r.names.date);
+        if !date_ok {
+            ui.label(
+                egui::RichText::new(tl!("A date is written YYYY.MM.DD, with ? for each digit not known.")).small().color(ui.visuals().error_fg_color),
+            );
+            commit = false;
+        }
         ui.horizontal(|ui| {
-            let ok = ui.small_button(tl!("Rename"));
+            let ok = ui.add_enabled(date_ok, egui::Button::new(tl!("Rename")).small());
             let no = ui.small_button(tl!("Cancel"));
             if std::mem::take(&mut r.reveal) || gained {
                 reveal = Some(top.map_or(ok.rect, |t| t.union(ok.rect)).union(no.rect));
@@ -1705,6 +2087,16 @@ pub(crate) fn ask_new_game_from(ctx: &egui::Context, node: NodeId) {
 
 /// Where [`ask_new_game_from`] leaves its request.
 const NEW_GAME_FROM: &str = "chess-new-game-from";
+
+/// Which games of the document shown go into a PGN file.
+enum PgnGames {
+    /// The game shown (Save PGN…).
+    Shown,
+    /// Every game (Export…, Save all games as PGN…).
+    All,
+    /// The games selected in the list, by place (a row's Save PGN… with several selected).
+    These(Vec<usize>),
+}
 
 /// A name for a file: the characters file systems refuse replaced.
 fn file_stem(name: &str) -> String {
@@ -1902,6 +2294,31 @@ impl PdfCraftApp {
                     self.chess.enter_scope();
                 }
             }
+            GamesAction::DeleteMany(places) => {
+                let c = self.chess.games.collection_mut();
+                let shown = c.active().uid;
+                if c.delete_many(&places) > 0 && c.active().uid != shown {
+                    self.chess.study.setup = None;
+                }
+                self.chess.enter_scope();
+            }
+            GamesAction::DuplicateMany(places) => {
+                if self.chess.games.collection_mut().duplicate_many(&places) > 0 {
+                    self.chess.study.setup = None;
+                    self.chess.enter_scope();
+                }
+            }
+            GamesAction::MoveMany(places, up) => {
+                if self.chess.games.collection_mut().move_many(&places, up) {
+                    self.chess.enter_scope();
+                }
+            }
+            GamesAction::MoveManyTo(places, gap) => {
+                if self.chess.games.collection_mut().move_many_to(&places, gap) {
+                    self.chess.enter_scope();
+                }
+            }
+            GamesAction::SaveMany(places) => self.save_chess_games_pgn(PgnGames::These(places)),
             GamesAction::NewFrom(node) => match self.chess.games.collection_mut().new_from(node) {
                 Ok(()) => {
                     self.chess.study.setup = None;
@@ -1917,8 +2334,8 @@ impl PdfCraftApp {
                 Err(why) => self.notify(why),
             },
             GamesAction::Open => self.open_chess_pgn(),
-            GamesAction::Save => self.save_chess_pgn(false),
-            GamesAction::SaveAll => self.save_chess_pgn(true),
+            GamesAction::Save => self.save_chess_games_pgn(PgnGames::Shown),
+            GamesAction::SaveAll => self.save_chess_games_pgn(PgnGames::All),
             GamesAction::Consent(yes) => {
                 let games = &mut self.chess.games;
                 let cid = games.collection().cid.clone();
@@ -1952,13 +2369,17 @@ impl PdfCraftApp {
         }
     }
 
-    /// The PGN of the game shown (`all`: of every game of the document shown, in list order, a
-    /// blank line between two), and how many games were left out (illegal positions have no
-    /// PGN). `None`, the user told why, when the games come from a document that doesn't allow
-    /// copying, or there is nothing to write.
-    fn chess_pgn_text(&mut self, all: bool) -> Option<(String, usize)> {
+    /// The PGN of `which` games of the document shown (in list order, a blank line between two),
+    /// and how many games were left out (illegal positions have no PGN). `None`, the user told
+    /// why, when the games come from a document that doesn't allow copying, or there is nothing
+    /// to write.
+    fn chess_pgn_text(&mut self, which: &PgnGames) -> Option<(String, usize)> {
         let c = self.chess.games.collection();
-        let boards: Vec<&BoardState> = if all { c.iter().map(|e| &e.board).collect() } else { vec![&c.active().board] };
+        let boards: Vec<&BoardState> = match which {
+            PgnGames::Shown => vec![&c.active().board],
+            PgnGames::All => c.iter().map(|e| &e.board).collect(),
+            PgnGames::These(places) => c.iter().enumerate().filter(|(i, _)| places.contains(i)).map(|(_, e)| &e.board).collect(),
+        };
         let docs: HashSet<DocId> = boards.iter().filter_map(|b| b.source.map(|s| s.doc)).collect();
         // Each game's PGN ends with a line break: joined by another, a blank line parts them.
         let text: Vec<String> = boards.iter().filter(|b| b.illegal.is_none()).map(|b| b.game.pgn()).collect();
@@ -1979,7 +2400,14 @@ impl PdfCraftApp {
     /// shown, or the document's games in list order, to a `.pgn` file the user chooses
     /// (downloaded on the web). Games that couldn't be written (illegal positions) are said.
     pub fn save_chess_pgn(&mut self, all: bool) {
-        let Some((text, skipped)) = self.chess_pgn_text(all) else { return };
+        self.save_chess_games_pgn(if all { PgnGames::All } else { PgnGames::Shown });
+    }
+
+    /// [`Self::save_chess_pgn`] of `which` games: the game shown, every game, or the games
+    /// selected in the list (named as every game is: "<document> games.pgn").
+    fn save_chess_games_pgn(&mut self, which: PgnGames) {
+        let Some((text, skipped)) = self.chess_pgn_text(&which) else { return };
+        let all = !matches!(which, PgnGames::Shown);
         let left_out =
             (skipped > 0).then(|| crate::i18n::fmt(tl!("Games not saved (an illegal position has no PGN): {n}"), &[("n", &skipped.to_string())]));
         let stem = if all {
@@ -2232,12 +2660,12 @@ mod tests {
     }
 
     #[test]
-    fn renaming_sets_the_three_tags_in_one_undo_step() {
+    fn renaming_sets_the_names_and_the_other_tags_in_one_undo_step() {
         let mut e = GameEntry::new(board_with(&["e2e4"]));
-        let names = GameNames { white: " Werle ".into(), black: "Jianu".into(), event: "Wijk aan Zee".into() };
+        let names = GameNames { white: " Werle ".into(), black: "Jianu".into(), event: "Wijk aan Zee".into(), ..GameNames::default() };
         assert!(e.rename(&names));
         assert_eq!(e.name(1), "Werle–Jianu");
-        assert_eq!(e.names(), GameNames { white: "Werle".into(), black: "Jianu".into(), event: "Wijk aan Zee".into() });
+        assert_eq!(e.names(), GameNames { white: "Werle".into(), black: "Jianu".into(), event: "Wijk aan Zee".into(), ..GameNames::default() });
         assert_eq!(e.board.undo_label().as_deref(), Some("Edit game details"));
         assert!(!e.rename(&names), "the same names change nothing");
         assert!(e.board.undo());
@@ -2246,6 +2674,180 @@ mod tests {
         assert_eq!(e.name(1), "Training", "named by its event without players");
         assert!(e.rename(&GameNames::default()));
         assert!(e.board.game.tags().is_empty(), "empty names remove the tags");
+        // Site, Date and Round, from the list, with the names: one step for all of them.
+        let placed = GameNames {
+            white: "Werle".into(),
+            site: "Wijk aan Zee NED".into(),
+            date: "2025.01.??".into(),
+            round: "6".into(),
+            ..GameNames::default()
+        };
+        assert!(e.rename(&placed));
+        let game = &e.board.game;
+        assert_eq!(
+            (game.tag("White"), game.tag("Site"), game.tag("Date"), game.tag("Round")),
+            (Some("Werle"), Some("Wijk aan Zee NED"), Some("2025.01.??"), Some("6"))
+        );
+        assert_eq!(e.names(), placed, "the editor opens with what the game has");
+        assert!(e.board.undo());
+        assert!(e.board.game.tags().is_empty(), "one step took all four back");
+    }
+
+    /// Several games deleted at once are one step of the list: Undo puts each back where it was
+    /// and shows the game shown before; the game after the last one deleted is shown meanwhile.
+    #[test]
+    fn several_games_deleted_are_one_step_and_come_back_where_they_were() {
+        let mut games = ChessGames::default();
+        let c = games.collection_mut();
+        for m in ["e2e4", "d2d4", "c2c4", "g1f3"] {
+            c.add(GameEntry::new(board_with(&[m])));
+        }
+        let all = uids(c);
+        assert!(c.switch_to(1));
+        assert_eq!(c.delete_many(&[3, 1, 1, 99]), 2, "places that are no game, or twice, count once or not at all");
+        assert_eq!((names(c), c.active_index()), (vec!["1. e4".to_owned(), "1. c4".into()], 1), "the game after the shown one is shown");
+        assert_eq!(games.step_text(true).as_deref(), Some("Undo Delete game"));
+        assert!(games.history_step(true).is_some());
+        let c = games.collection();
+        assert_eq!((uids(c), c.active_index()), (all.clone(), 1), "each back at its place, the game shown before shown");
+        assert_eq!(c.active().board.game.movetext(), "1. d4");
+        assert!(games.history_step(false).is_some());
+        assert_eq!(names(games.collection()), ["1. e4", "1. c4"]);
+        assert!(games.history_step(true).is_some());
+        // Every game at once: a blank one is left, and Undo puts them all back in its place.
+        let c = games.collection_mut();
+        assert_eq!(c.delete_many(&[0, 1, 2, 3]), 4);
+        assert!(c.len() == 1 && c.active().is_blank());
+        assert_eq!(c.delete_many(&[]), 0);
+        assert!(games.history_step(true).is_some());
+        assert_eq!(uids(games.collection()), all);
+        assert!(!games.collection().iter().any(GameEntry::is_blank), "the blank game gave way");
+    }
+
+    /// A selection moves up or down a place as a block, each game keeping its order among them,
+    /// and dragged into a gap together; each is one step of the list.
+    #[test]
+    fn a_selection_moves_as_a_block_keeping_its_order() {
+        let mut games = ChessGames::default();
+        let c = games.collection_mut();
+        for m in ["a2a3", "b2b3", "c2c3", "d2d3", "e2e3"] {
+            c.add(GameEntry::new(board_with(&[m])));
+        }
+        let first = |c: &ChessCollection| c.iter().map(|e| e.board.game.movetext().chars().nth(3).unwrap_or('-')).collect::<String>();
+        assert!(c.switch_to(3));
+        assert!(c.move_many(&[1, 3], true));
+        assert_eq!((first(c), c.active_index()), ("badce".to_owned(), 2), "the game shown moved with them");
+        assert!(!c.move_many(&[0, 2], true), "the first of them is first");
+        assert!(!c.move_many(&[3, 4], false), "the last is last");
+        assert!(!c.move_many(&[], true) && !c.move_many(&[usize::MAX], false));
+        assert!(c.move_many(&[0, 1], false));
+        assert_eq!(first(c), "dbace");
+        assert_eq!(games.step_text(true).as_deref(), Some("Undo Move game"));
+        assert!(games.history_step(true).is_some());
+        assert_eq!(first(games.collection()), "badce");
+        assert!(games.history_step(false).is_some());
+        assert_eq!(first(games.collection()), "dbace");
+        // Dragged: b and c (places 1 and 3) into the gap after e, then before d.
+        let c = games.collection_mut();
+        assert!(c.move_many_to(&[1, 3], 5));
+        assert_eq!(first(c), "daebc");
+        assert!(c.move_many_to(&[3, 4], 0));
+        assert_eq!(first(c), "bcdae");
+        assert!(!c.move_many_to(&[0, 1], 1), "dropped next to themselves, they stay");
+        assert!(!c.move_many_to(&[0, 1], 0));
+        assert!(games.history_step(true).is_some());
+        assert_eq!(first(games.collection()), "daebc");
+        assert!(games.history_step(true).is_some());
+        assert_eq!(first(games.collection()), "dbace");
+    }
+
+    #[test]
+    fn a_block_goes_into_the_gap_it_was_dropped_in() {
+        let order = [10, 11, 12, 13, 14];
+        assert_eq!(block_order(&order, &[1, 3], 0), [11, 13, 10, 12, 14]);
+        assert_eq!(block_order(&order, &[1, 3], 5), [10, 12, 14, 11, 13]);
+        assert_eq!(block_order(&order, &[1, 3], usize::MAX), [10, 12, 14, 11, 13]);
+        assert_eq!(block_order(&order, &[1, 3], 3), [10, 12, 11, 13, 14], "a gap among them: they close up there");
+        assert_eq!(block_order(&order, &[0, 1], 2), order, "next to themselves: nothing moves");
+        assert_eq!(block_order(&order, &[], 2), order);
+        assert_eq!(block_order(&[], &[0], 0), Vec::<u64>::new());
+    }
+
+    /// Duplicating a selection copies each game right after it, the first copy shown, as one step
+    /// of the list that Undo takes back whole.
+    #[test]
+    fn duplicating_several_copies_each_after_it_in_one_step() {
+        let mut games = ChessGames::default();
+        let c = games.collection_mut();
+        for m in ["e2e4", "d2d4", "c2c4"] {
+            c.add(GameEntry::new(board_with(&[m])));
+        }
+        let before = uids(c);
+        assert_eq!(c.duplicate_many(&[2, 0]), 2);
+        assert_eq!((names(c), c.active_index()), (vec!["1. e4".to_owned(), "1. e4".into(), "1. d4".into(), "1. c4".into(), "1. c4".into()], 1));
+        assert_eq!(uids(c).iter().collect::<HashSet<_>>().len(), 5, "each copy a game of its own");
+        assert_eq!(c.duplicate_many(&[usize::MAX]), 0);
+        assert_eq!(games.step_text(true).as_deref(), Some("Undo Duplicate game"));
+        assert!(games.history_step(true).is_some());
+        let c = games.collection();
+        assert_eq!((uids(c), c.active_index()), (before, 2), "both copies out, the game shown before shown");
+        assert!(!games.can_step(true));
+    }
+
+    /// A plain click picks one game, Ctrl+click adds or takes one out (starting from the game
+    /// shown), Shift+click picks the games from the anchor, Ctrl+A all; games deleted count for
+    /// nothing, and with none picked the selection is the game shown.
+    #[test]
+    fn the_selection_follows_clicks_ctrl_shift_and_select_all() {
+        let mut c = ChessCollection::new(DocKeys::default(), "c".into());
+        for m in ["a2a3", "b2b3", "c2c3", "d2d3", "e2e3"] {
+            c.add(GameEntry::new(board_with(&[m])));
+        }
+        assert!(c.switch_to(1));
+        let u = uids(&c);
+        let mut s = Selection::default();
+        assert_eq!(s.places(&c), [1], "nothing picked: the game shown");
+        assert!(s.contains(&c, u[1]) && !s.contains(&c, u[0]));
+        s.pick(&c, u[3], Pick::Toggle);
+        assert_eq!(s.places(&c), [1, 3], "Ctrl+click adds to the game shown");
+        assert_eq!(s.targets(&c, 3, u[3]), [1, 3], "a row selected acts with the others");
+        assert_eq!(s.targets(&c, 4, u[4]), [4], "a row not selected acts alone");
+        s.pick(&c, u[1], Pick::Toggle);
+        assert_eq!(s.places(&c), [3], "and takes one out");
+        assert!(!s.contains(&c, u[1]), "the game shown is not selected then");
+        assert_eq!(s.targets(&c, 3, u[3]), [3]);
+        s.pick(&c, u[0], Pick::Range);
+        assert_eq!(s.places(&c), [0, 1], "Shift+click: from the anchor, the game last clicked");
+        s.pick(&c, u[4], Pick::Range);
+        assert_eq!(s.places(&c), [1, 2, 3, 4], "the anchor stays where it was");
+        s.pick(&c, u[2], Pick::All);
+        assert_eq!(s.places(&c), [0, 1, 2, 3, 4]);
+        s.pick(&c, u[2], Pick::Only);
+        assert_eq!(s.places(&c), [1], "a plain click: that game alone, which the list then shows");
+        // Shift+click with no anchor: from the game shown.
+        let mut s = Selection::default();
+        s.pick(&c, u[3], Pick::Range);
+        assert_eq!(s.places(&c), [1, 2, 3]);
+        // Games deleted are selected no more; none left: the game shown.
+        assert_eq!(c.delete_many(&[1, 2, 3]), 3);
+        assert_eq!(s.places(&c), [c.active_index()]);
+        s.pick(&c, u64::MAX, Pick::Range);
+        assert_eq!(s.places(&c), [c.active_index()], "a game that is not there picks nothing");
+    }
+
+    #[test]
+    fn the_rows_keys_say_which_modifiers_they_want() {
+        assert_eq!(list_key(Key::Delete, Modifiers::NONE), Some(Modifiers::NONE));
+        assert_eq!(list_key(Key::Delete, Modifiers::SHIFT), None);
+        assert_eq!(list_key(Key::ArrowUp, Modifiers::ALT), Some(Modifiers::ALT));
+        assert_eq!(list_key(Key::ArrowDown, Modifiers::SHIFT), Some(Modifiers::SHIFT));
+        assert_eq!(list_key(Key::ArrowDown, Modifiers::NONE), None, "plain arrows are not the list's");
+        // Ctrl on Windows and Linux, ⌘ on a Mac: both are the command key.
+        assert_eq!(list_key(Key::A, Modifiers::CTRL | Modifiers::COMMAND), Some(Modifiers::COMMAND));
+        assert_eq!(list_key(Key::A, Modifiers::MAC_CMD | Modifiers::COMMAND), Some(Modifiers::COMMAND));
+        assert_eq!(list_key(Key::Space, Modifiers::COMMAND), Some(Modifiers::COMMAND));
+        assert_eq!(list_key(Key::A, Modifiers::NONE), None, "a letter typed is not the list's");
+        assert_eq!(list_key(Key::A, Modifiers::COMMAND | Modifiers::SHIFT), None);
     }
 
     #[test]

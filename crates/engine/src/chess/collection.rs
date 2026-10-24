@@ -13,7 +13,8 @@
 //!   is deleted, the game after it is shown (the one before, at the end of the list).
 //! - **Adding to a list that holds only a blank game** puts the new game in its place.
 //!
-//! A game is named by its White, Black and Event tags ([`GameNames`]), so its name is in its PGN.
+//! A game is named by its White, Black and Event tags, and placed by its Site, Date and Round
+//! ([`GameNames`]), so its name is in its PGN; [`pgn_date_ok`] says whether a date is one PGN reads.
 //! [`split_pgn`] cuts a PGN file into its games, and [`game_from`] starts a new game at a move of
 //! another ("New game from this position").
 
@@ -278,30 +279,42 @@ impl<T: ListedGame> GameList<T> {
     }
 }
 
-/// What a game is named by in a list: its White, Black and Event tags (empty when unknown, `?`
-/// included).
+/// What a game is named by in a list (its White, Black and Event tags) and the other tags of the
+/// Seven Tag Roster a list edits with them (Site, Date, Round): empty when unknown (`?`, and the
+/// date `????.??.??`, included).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct GameNames {
     pub white: String,
     pub black: String,
     pub event: String,
+    pub site: String,
+    /// `YYYY.MM.DD`, `?` for each unknown digit ([`pgn_date_ok`]).
+    pub date: String,
+    pub round: String,
 }
 
 impl GameNames {
     /// The names `game` has.
     pub fn of(game: &Game) -> GameNames {
-        let tag = |t: &str| game.tag(t).map(str::trim).filter(|v| *v != "?").unwrap_or_default().to_owned();
-        GameNames { white: tag("White"), black: tag("Black"), event: tag("Event") }
+        let tag = |t: &str| game.tag(t).map(str::trim).filter(|v| *v != "?" && *v != UNKNOWN_DATE).unwrap_or_default().to_owned();
+        GameNames { white: tag("White"), black: tag("Black"), event: tag("Event"), site: tag("Site"), date: tag("Date"), round: tag("Round") }
     }
 
     /// The tags to set so that a game named `now` is named `self`: each tag that changes with its
     /// new value (trimmed; empty removes the tag).
     pub fn changes_from(&self, now: &GameNames) -> Vec<(&'static str, String)> {
-        [("White", &now.white, &self.white), ("Black", &now.black, &self.black), ("Event", &now.event, &self.event)]
-            .into_iter()
-            .filter(|(_, old, new)| old.trim() != new.trim())
-            .map(|(tag, _, new)| (tag, new.trim().to_owned()))
-            .collect()
+        [
+            ("White", &now.white, &self.white),
+            ("Black", &now.black, &self.black),
+            ("Event", &now.event, &self.event),
+            ("Site", &now.site, &self.site),
+            ("Date", &now.date, &self.date),
+            ("Round", &now.round, &self.round),
+        ]
+        .into_iter()
+        .filter(|(_, old, new)| old.trim() != new.trim())
+        .map(|(tag, _, new)| (tag, new.trim().to_owned()))
+        .collect()
     }
 
     /// The name these make, when they make one: "White–Black", else the player known, else the
@@ -316,12 +329,59 @@ impl GameNames {
     }
 }
 
-/// Name `game` `names` (its White, Black and Event tags; an empty name removes its tag). Whether
-/// anything changed. A game whose tags are full refuses a new one, and the others still change.
+/// The date PGN writes when nothing of it is known.
+const UNKNOWN_DATE: &str = "????.??.??";
+
+/// Whether `date` (trimmed) is a date as PGN writes one, `YYYY.MM.DD` with `?` for each unknown
+/// digit (`1992.??.??`, `19??.??.??`), or empty (no date). A month or a day is known whole or not
+/// at all, and a known one is a real one: `04.31` is not, `02.29` only in a leap year or an
+/// unknown one.
+pub fn pgn_date_ok(date: &str) -> bool {
+    let date = date.trim();
+    if date.is_empty() {
+        return true;
+    }
+    let b = date.as_bytes();
+    if b.len() != 10 || b.get(4) != Some(&b'.') || b.get(7) != Some(&b'.') {
+        return false;
+    }
+    let (Some(year), Some(month), Some(day)) = (b.get(0..4), b.get(5..7), b.get(8..10)) else { return false };
+    if !year.iter().all(|c| c.is_ascii_digit() || *c == b'?') {
+        return false;
+    }
+    let (Some(month), Some(day)) = (date_part(month), date_part(day)) else { return false };
+    // Four ASCII digits: at most 9999.
+    let known_year = year.iter().all(u8::is_ascii_digit).then(|| year.iter().fold(0u32, |n, c| n * 10 + u32::from(c - b'0')));
+    let leap = known_year.is_none_or(|y| (y % 4 == 0 && y % 100 != 0) || y % 400 == 0);
+    let longest = match month {
+        None => 31,
+        Some(2) if leap => 29,
+        Some(2) => 28,
+        Some(4 | 6 | 9 | 11) => 30,
+        Some(1..=12) => 31,
+        Some(_) => return false,
+    };
+    day.is_none_or(|d| (1..=longest).contains(&d))
+}
+
+/// A month or a day of a PGN date: `Some(None)` when unknown (`??`), `None` when half known or
+/// not digits.
+fn date_part(p: &[u8]) -> Option<Option<u32>> {
+    match p {
+        [b'?', b'?'] => Some(None),
+        // Two ASCII digits: at most 99.
+        [a, b] if a.is_ascii_digit() && b.is_ascii_digit() => Some(Some(u32::from(a - b'0') * 10 + u32::from(b - b'0'))),
+        _ => None,
+    }
+}
+
+/// Name `game` `names` (its White, Black, Event, Site, Date and Round tags; an empty name removes
+/// its tag). Whether anything changed. A game whose tags are full refuses a new one, and the
+/// others still change. The date is set as given: check it with [`pgn_date_ok`] first.
 pub fn rename(game: &mut Game, names: &GameNames) -> bool {
     let changes = names.changes_from(&GameNames::of(game));
     for (tag, value) in &changes {
-        // The three names are valid tag names; only a full set of tags refuses one.
+        // The six names are valid tag names; only a full set of tags refuses one.
         let _ = game.set_tag(tag, value);
     }
     !changes.is_empty()
@@ -480,7 +540,7 @@ mod tests {
         let mut g = game(&["e2e4"]);
         assert_eq!(GameNames::of(&g), GameNames::default());
         assert_eq!(GameNames::default().display(), None);
-        let names = GameNames { white: " Werle ".into(), black: "Jianu".into(), event: "Wijk aan Zee".into() };
+        let names = GameNames { white: " Werle ".into(), black: "Jianu".into(), event: "Wijk aan Zee".into(), ..GameNames::default() };
         assert!(rename(&mut g, &names));
         assert_eq!(GameNames::of(&g).display().as_deref(), Some("Werle–Jianu"));
         assert!(!rename(&mut g, &names), "the same names change nothing");
@@ -491,6 +551,44 @@ mod tests {
         assert!(g.tags().is_empty(), "empty names remove the tags");
         g.set_tag("White", "?").unwrap();
         assert_eq!(GameNames::of(&g).white, "", "an unknown player is no name");
+        // Site, Date and Round go with them, in one rename.
+        let placed = GameNames { site: "Wijk aan Zee NED".into(), date: "2025.01.18".into(), round: " 6 ".into(), ..GameNames::default() };
+        assert_eq!(placed.changes_from(&GameNames::of(&g)).len(), 3);
+        assert!(rename(&mut g, &placed));
+        assert_eq!((g.tag("Site"), g.tag("Date"), g.tag("Round")), (Some("Wijk aan Zee NED"), Some("2025.01.18"), Some("6")));
+        assert_eq!(GameNames::of(&g).display(), None, "they name no game");
+        g.set_tag("Date", "????.??.??").unwrap();
+        assert_eq!(GameNames::of(&g).date, "", "an unknown date is no date");
+    }
+
+    #[test]
+    fn a_pgn_date_is_year_month_day_with_question_marks_for_what_is_unknown() {
+        for ok in
+            ["", "  ", "2025.01.18", " 1992.??.?? ", "19??.??.??", "????.??.??", "????.02.29", "2000.02.29", "2024.02.29", "1999.12.31", "2025.??.31"]
+        {
+            assert!(pgn_date_ok(ok), "{ok:?}");
+        }
+        for bad in [
+            "2025-01-18",
+            "2025.1.18",
+            "25.01.18",
+            "2025.01.180",
+            "2025.13.01",
+            "2025.00.10",
+            "2025.01.00",
+            "2025.01.32",
+            "2025.04.31",
+            "1900.02.29",
+            "2023.02.29",
+            "2025.0?.10",
+            "2025.01.1?",
+            "20x5.01.01",
+            "２０２５.01.18",
+            "2025.٠١.18",
+            "yesterday",
+        ] {
+            assert!(!pgn_date_ok(bad), "{bad:?}");
+        }
     }
 
     #[test]

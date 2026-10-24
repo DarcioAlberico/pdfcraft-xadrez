@@ -238,6 +238,71 @@ startxref
     out
 }
 
+/// Pages with `F1` a Merida diagram font and `F2` Helvetica ([`two_font_pdf`]), one content
+/// stream each.
+fn two_font_pages(contents: &[String]) -> Vec<u8> {
+    let widths = vec!["1000"; 95].join(" ");
+    let n = contents.len();
+    let kids: Vec<String> = (0..n).map(|i| format!("{} 0 R", 5 + 2 * i)).collect();
+    let mut objs: Vec<Vec<u8>> = vec![
+        b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(),
+        format!("<< /Type /Pages /Kids [{}] /Count {n} /MediaBox [0 0 600 800] >>", kids.join(" ")).into_bytes(),
+        format!("<< /Type /Font /Subtype /Type1 /BaseFont /ChessMerida /FirstChar 32 /LastChar 126 /Widths [{widths}] >>").into_bytes(),
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>".to_vec(),
+    ];
+    for (i, c) in contents.iter().enumerate() {
+        objs.push(
+            format!("<< /Type /Page /Parent 2 0 R /Contents {} 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>", 6 + 2 * i).into_bytes(),
+        );
+        objs.push(format!("<< /Length {} >>\nstream\n{c}\nendstream", c.len()).into_bytes());
+    }
+    let mut out = b"%PDF-1.7\n".to_vec();
+    let mut offsets = Vec::new();
+    for (i, o) in objs.iter().enumerate() {
+        offsets.push(out.len());
+        out.extend_from_slice(format!("{} 0 obj\n", i + 1).as_bytes());
+        out.extend_from_slice(o);
+        out.extend_from_slice(b"\nendobj\n");
+    }
+    let xref = out.len();
+    out.extend_from_slice(format!("xref\n0 {}\n0000000000 65535 f \n", objs.len() + 1).as_bytes());
+    for o in offsets {
+        out.extend_from_slice(format!("{o:010} 00000 n \n").as_bytes());
+    }
+    out.extend_from_slice(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objs.len() + 1).as_bytes());
+    out
+}
+
+/// A workbook sets each exercise's caption above its board, and a page's last caption at its
+/// foot, with the board at the top of the next page. Read alone (as the Text tab reads it), the
+/// next page's board still takes that number from a look at the page before; read with the page
+/// before, as before. A page whose page before ends in prose takes none.
+#[test]
+fn a_page_read_alone_takes_the_caption_at_the_foot_of_the_page_before() {
+    let mut first = helv(45.0, 11.0, "Exercise 1");
+    first.push_str(&font_board(60.0, 60.0, MERIDA_START));
+    first.push_str(&helv(760.0, 11.0, "Exercise 2"));
+    let mut second = font_board(60.0, 60.0, MERIDA_START);
+    second.push_str(&helv(280.0, 11.0, "1.e4 e5 2.Nf3 Nc6"));
+    let puzzles = |doc: &pdfcraft_chessvision::doc::ChessDoc| -> Vec<Option<u32>> {
+        doc.pages.iter().flat_map(|p| &p.blocks).filter_map(|b| if let Block::Diagram(d) = b { Some(d.puzzle) } else { None }).collect()
+    };
+    let (mut s, id) = open(two_font_pages(&[first, second.clone()]));
+    let alone = s.chess_document(id, &[1], &no_model(), Some(pdfcraft_chess::san::Lang::En)).unwrap();
+    assert_eq!(puzzles(&alone.doc), [Some(2)], "{:#?}", alone.doc);
+    let both = s.chess_document(id, &[0, 1], &no_model(), Some(pdfcraft_chess::san::Lang::En)).unwrap();
+    assert_eq!(puzzles(&both.doc), [Some(1), Some(2)]);
+    assert_eq!(both.doc.pages[0].trailing, Some(2));
+    // The label must stand at the foot: prose after it keeps it on its page.
+    let mut prose = helv(45.0, 11.0, "Exercise 1");
+    prose.push_str(&font_board(60.0, 60.0, MERIDA_START));
+    prose.push_str(&helv(740.0, 11.0, "Exercise 2"));
+    prose.push_str(&helv(760.0, 11.0, "is the next one, overleaf."));
+    let (mut s, id) = open(two_font_pages(&[prose, second]));
+    let alone = s.chess_document(id, &[1], &no_model(), Some(pdfcraft_chess::san::Lang::En)).unwrap();
+    assert_eq!(puzzles(&alone.doc), [None]);
+}
+
 /// A game book whose game text is 13 pt and whose introductions are 9 pt: a page that opens with
 /// a long introduction has more 9 pt text than 13 pt, but the body is the book's, so the game's
 /// notes there are not headings and the game goes on across the page.

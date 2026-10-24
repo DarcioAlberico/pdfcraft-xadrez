@@ -2912,6 +2912,8 @@ chess undo step	Clear drawings	描画の消去
 	New game from this position	この局面から新しい対局
 # Wave 10 U2: a delete or a move of the list of games is a step Undo takes (after "Undo", as the other steps).
 	Delete this game? You can undo it.	この対局を削除しますか？元に戻せます。
+	Delete these games? You can undo it.	これらの対局を削除しますか？元に戻せます。
+	A date is written YYYY.MM.DD, with ? for each digit not known.	日付は YYYY.MM.DD の形式で書き、わからない桁は ? にします。
 	Delete game	対局の削除
 	Move game	対局の移動
 	An illegal position can't start a game: correct it in the diagram editor first.	不正な局面からは対局を始められません：先に図面エディターで修正してください。
