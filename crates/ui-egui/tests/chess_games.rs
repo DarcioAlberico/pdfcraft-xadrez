@@ -620,6 +620,52 @@ fn undo_takes_back_games_added_and_keeps_a_changed_one() {
     h.get_by_label("Deleted moves (1)…");
 }
 
+/// A diagram opened on the board is a step of the list too: Undo takes its game back out and
+/// shows the game shown before, Redo puts it back; changed after it was opened, it is kept in
+/// Deleted moves when Undo takes it out, and Redo takes it out of there again.
+#[test]
+fn undo_takes_back_a_diagram_opened_on_the_board() {
+    let mut h = harness();
+    three_games(&mut h);
+    let toast = |h: &Harness<'static, PdfCraftApp>| h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    h.state_mut().open_chess_board(0, 0);
+    h.run_steps(3);
+    let opened = || (vec!["A".to_owned(), "B".to_owned(), "C".to_owned(), "Diagram 1, p. 1".to_owned()], 3);
+    assert_eq!(listed(h.state()), opened());
+    assert_eq!(h.query_all_by_label_contains("Undo Load the diagram (").count(), 1, "the rail's Undo names it");
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(2);
+    assert_eq!(toast(&h), "Undid Load the diagram");
+    assert_eq!(listed(h.state()), (vec!["A".to_owned(), "B".to_owned(), "C".to_owned()], 0), "A, shown before, is shown again");
+    assert!(h.state_mut().execute("edit.redo"));
+    h.run_steps(2);
+    assert_eq!(listed(h.state()), opened());
+    // Opened again while untouched: shown again, and no step of its own.
+    h.get_by_label("A").click();
+    h.run_steps(2);
+    h.state_mut().open_chess_board(0, 0);
+    h.run_steps(3);
+    assert_eq!(listed(h.state()), opened());
+    // Changed, then A shown: Undo takes it out into Deleted moves, and says so.
+    h.state_mut().chess.board_mut().play_uci_line(&["e2e4".into()]);
+    h.run_steps(2);
+    h.state_mut().toast = None;
+    h.run_steps(1);
+    h.get_by_label("A").click();
+    h.run_steps(2);
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(2);
+    assert_eq!(toast(&h), "Undid Load the diagram · 1 changed game was kept in Deleted moves.");
+    assert_eq!(listed(h.state()), (vec!["A".to_owned(), "B".to_owned(), "C".to_owned()], 0));
+    h.get_by_label("Deleted moves (1)…");
+    assert!(h.state_mut().execute("edit.redo"));
+    h.run_steps(2);
+    assert_eq!(movetexts(h.state()), ["1. e4", "1. d4", "1. c4", "1. e4"]);
+    assert!(h.query_by_label("Deleted moves (1)…").is_none());
+}
+
 /// The PGN field's Load PGN puts the first game of the field on the board and adds the others to
 /// the list after it, said; Undo takes the games added back first, then the game loaded.
 #[test]

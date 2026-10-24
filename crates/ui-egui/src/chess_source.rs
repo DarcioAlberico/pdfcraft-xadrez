@@ -10,8 +10,8 @@
 //!   alone) finds its game there. It is built move by move from the walker's score
 //!   (`ChessDoc::board_game`), with every comment, glyph and variation, each move keeping where it
 //!   was printed, shown at the move clicked. It is a new game of the document's collection (from
-//!   the diagram it started from, when it did); the same game opened again while untouched is
-//!   shown again rather than added twice. The rail's tools are then the way to correct what the
+//!   the diagram it started from, when it did), which Undo takes back out as a step of the list;
+//!   the same game opened again while untouched is shown again rather than added twice. The rail's tools are then the way to correct what the
 //!   walker made of the book. A single click still only outlines the move on the page.
 //! - **Show in PDF** (the rail, a move's menu, `chess.source.show`) scrolls the page to where the
 //!   move was printed, unless it is on screen already, and outlines it as the Text tab does.
@@ -29,7 +29,7 @@ use pdfcraft_render::DestView;
 
 use crate::PdfCraftApp;
 use crate::chess_board_ui::{BoardState, Source};
-use crate::chess_collection::GameEntry;
+use crate::chess_history::ChessEdit;
 use crate::chess_tools::{ChessKey, Kind, Target, Tool};
 
 /// Room left above a move the page is scrolled to, in points.
@@ -193,8 +193,9 @@ impl PdfCraftApp {
 
     /// Put game `at.game` of `read` (pages of document `id` read as chess text) on the board, at
     /// move `at.node`, with the place of each move on its page, and show the board. A new game of
-    /// the document's collection, unless the same one was opened before and is untouched since:
-    /// that one is shown again. Only while `id` is the document shown.
+    /// the document's collection, one undo step of the list ("Open this game on the board"),
+    /// unless the same one was opened before and is untouched since: that one is shown again (no
+    /// step). Only while `id` is the document shown.
     pub(crate) fn put_book_game(&mut self, id: DocId, read: &ChessDoc, at: NodeRef) {
         if self.active_ids().map(|(_, active)| active) != Some(id) {
             return;
@@ -234,7 +235,9 @@ impl PdfCraftApp {
                     game.go_to_node(node);
                 }
             }
-            None => c.add(GameEntry::new(board)),
+            None => {
+                c.add_games(vec![board], ChessEdit::OpenBookGame, true);
+            }
         }
         if dropped > 0 {
             self.notify(crate::i18n::fmt(tl!("Moves left off the board (more than it holds): {n}"), &[("n", &dropped.to_string())]));

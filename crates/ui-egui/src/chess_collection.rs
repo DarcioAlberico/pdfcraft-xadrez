@@ -230,7 +230,8 @@ enum ListChange {
     /// Game `uid` was moved from place `from` to place `to`.
     Moved { uid: u64, from: usize, to: usize },
     /// Games `uids` were added (New game, Duplicate, New game from this position, Open PGN…, the
-    /// PGN field's games after its first, a game of the trash opened), `edit` saying how, while
+    /// PGN field's games after its first, a game of the trash opened, a diagram or a game of the
+    /// book opened on the board), `edit` saying how, while
     /// game `before` was shown; `restored`: the trash item a game was opened from, and its place
     /// in the trash.
     Added { uids: Vec<u64>, edit: ChessEdit, before: u64, restored: Option<(usize, Trashed)> },
@@ -597,7 +598,9 @@ impl ChessCollection {
         self.added(vec![uid], edit, before, restored);
     }
 
-    /// Add `entry` at the end and show it. A blank game alone in the collection gives way to it.
+    /// Add `entry` at the end and show it, as no step of the list (the tests build lists so). A
+    /// blank game alone in the collection gives way to it.
+    #[cfg(test)]
     pub(crate) fn add(&mut self, entry: GameEntry) {
         self.games.add(entry);
     }
@@ -1816,9 +1819,10 @@ impl PdfCraftApp {
     }
 
     /// Put a new game on the board: the position `fen` (from Black's side when `flipped`), from
-    /// diagram `source`. It is added to the document's games and shown; the game shown before
-    /// stays as it was. The same diagram, opened before and untouched since, is shown again
-    /// instead. Whether the position could be read (else the user is told why).
+    /// diagram `source`. It is added to the document's games and shown, one undo step of the list
+    /// ("Load the diagram"); the game shown before stays as it was. The same diagram, opened
+    /// before and untouched since, is shown again instead (no step: switching games is none).
+    /// Whether the position could be read (else the user is told why).
     pub(crate) fn open_chess_game(&mut self, fen: &str, flipped: bool, source: Option<Source>) -> bool {
         self.sync_chess_docs();
         let mut board = BoardState::default();
@@ -1830,7 +1834,7 @@ impl PdfCraftApp {
             }
             return false;
         }
-        // A new game: loading it is not a step to undo.
+        // A new game: its own history starts empty (opening it is a step of the list's).
         board.history = Default::default();
         let c = self.chess.games.collection_mut();
         let same = c.iter().position(|e| {
@@ -1844,7 +1848,9 @@ impl PdfCraftApp {
             Some(i) => {
                 c.switch_to(i);
             }
-            None => c.add(GameEntry::new(board)),
+            None => {
+                c.add_games(vec![board], ChessEdit::LoadDiagram, true);
+            }
         }
         self.chess.study.setup = None;
         self.chess.enter_scope();
@@ -2393,7 +2399,7 @@ mod tests {
     fn undo_takes_back_new_and_duplicated_games_and_keeps_a_changed_one() {
         let mut games = ChessGames::default();
         let c = games.collection_mut();
-        // A diagram opened on the board is not a step of the list.
+        // A game put in the list as the tests set one up is no step of it.
         c.add(GameEntry::new(board_with(&["e2e4"])));
         assert!(!games.can_step(true));
         let c = games.collection_mut();

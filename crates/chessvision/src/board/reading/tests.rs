@@ -426,7 +426,7 @@ fn squares_go_to_the_model_in_batches_of_whole_boards() {
     // Past the cap, boards are not read; font diagrams still are.
     let mut capped = given[..3].to_vec();
     capped.insert(1, candidate(PageRect::new(0.0, 0.0, 9.0, 9.0), None, Some(OPENING)));
-    let readings = read_capped(&page.image(), &geometry, DPI, &capped, Some(&model), 2);
+    let readings = read_capped(&page.image(), &geometry, DPI, &capped, Some(&model), 2, Preprocessing::DEFAULT);
     let outcomes: Vec<bool> = readings.iter().map(|r| r.outcome.is_ok()).collect();
     assert_eq!(outcomes, [true, true, true, false]);
     assert_eq!(readings[3].outcome, Err(Unreadable::TooMany));
@@ -584,4 +584,78 @@ fn a_font_board_printed_from_blacks_side_is_read_from_whites() {
     assert!(verdict.black_point_of_view && verdict.black_view_from_pieces);
     // A board from White's side keeps no verdict, as before.
     assert_eq!((placement_of(&readings[1]).as_str(), readings[1].position().unwrap().orientation), (MIDDLE, None));
+}
+
+/// The page with the empty dark squares of the board drawn by `placed(x, y, 0)` stippled as some
+/// scanned books print them: a checker of 2 px dots `amplitude` levels either side of the square's
+/// colour, so each square still averages to it.
+fn stippled(page: &mut Page, x: f32, y: f32, fen: &str, amplitude: u8) {
+    let dark = luma(style().dark);
+    let cells = parse_placement(fen).unwrap().reading_order();
+    let square = SIDE / 8.0;
+    let mut changed = 0;
+    for py in 0..page.height {
+        for px in 0..page.width {
+            let (u, v) = ((px as f32 + 0.5 - x) / square, (py as f32 + 0.5 - y) / square);
+            if !(0.0..8.0).contains(&u) || !(0.0..8.0).contains(&v) {
+                continue;
+            }
+            let (column, row) = (u as usize, v as usize);
+            let value = &mut page.data[py * page.width + px];
+            if (row + column) % 2 == 1 && cells[row * 8 + column].is_none() && *value == dark {
+                *value = if (px / 2 + py / 2) % 2 == 0 { dark - amplitude } else { dark + amplitude };
+                changed += 1;
+            }
+        }
+    }
+    assert!(changed > 0);
+}
+
+/// [`Nearest`], unsure of every square with a fine texture, as the piece model is of stippled
+/// squares (it reads them as kings, at a confidence the gate refuses).
+struct Fussy(Nearest);
+
+impl SquareClassifier for Fussy {
+    fn classify(&self, squares: &[f32], count: usize) -> Result<Vec<f32>, ModelError> {
+        let mut out = self.0.classify(squares, count)?;
+        for (square, probabilities) in squares.chunks(SQUARE_VALUES).zip(out.chunks_mut(CLASS_COUNT)) {
+            // Neighbours a tenth of the gray range apart: a few along a piece's outline, most
+            // pairs in a stipple.
+            let jumps = square.windows(2).filter(|w| (w[0] - w[1]).abs() > 0.1).count();
+            if jumps * 4 > square.len() {
+                probabilities.fill(0.0);
+                probabilities[0] = 0.5;
+                probabilities[6] = 0.5;
+            }
+        }
+        Ok(out)
+    }
+}
+
+#[test]
+fn a_stippled_board_is_read_on_the_retry() {
+    let mut page = Page::new(240, 240);
+    page.draw(ENDGAME, placed(20.0, 20.0, 0.0));
+    stippled(&mut page, 20.0, 20.0, ENDGAME, 70);
+    let geometry = page.geometry(Rotation::R0);
+    let given = [box_candidate(&geometry, 20.0, 20.0)];
+    let model = Fussy(Nearest::trained());
+    // As printed, the stipple keeps the board from the gate.
+    let plain = Preprocessing::from_letters("0").unwrap();
+    let first = &read_with(&page.image(), &geometry, DPI, &given, Some(&model), plain)[0];
+    assert!(!first.accepted(), "{first:?}");
+    // The retry flattens the empty stippled squares, and its reading is the board's.
+    let retry = Preprocessing::from_letters("0>h").unwrap();
+    model.0.calls.borrow_mut().clear();
+    let second = &read_with(&page.image(), &geometry, DPI, &given, Some(&model), retry)[0];
+    assert_eq!(placement_of(second), ENDGAME);
+    assert!(second.accepted(), "{second:?}");
+    assert_eq!(*model.0.calls.borrow(), [SQUARES_PER_BOARD, SQUARES_PER_BOARD], "one call to read, one to retry");
+    // A board the gate accepts is never retried.
+    let mut clean = Page::new(240, 240);
+    clean.draw(ENDGAME, placed(20.0, 20.0, 0.0));
+    model.0.calls.borrow_mut().clear();
+    let accepted = &read_with(&clean.image(), &geometry, DPI, &given, Some(&model), retry)[0];
+    assert!(accepted.accepted(), "{accepted:?}");
+    assert_eq!(*model.0.calls.borrow(), [SQUARES_PER_BOARD]);
 }
