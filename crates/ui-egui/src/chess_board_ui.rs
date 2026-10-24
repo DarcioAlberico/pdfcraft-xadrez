@@ -634,42 +634,12 @@ impl BoardState {
         }
     }
 
-    /// The twelve pieces cut out of their squares, in one image: White's king, queen, rook,
-    /// bishop, knight and pawn on the top row, Black's on the second (see [`sprite_uv`]). Each
-    /// is drawn on white and on black; where the two differ the piece is see-through, so the
-    /// difference is its alpha and the drawing on black its premultiplied colour.
+    /// The twelve pieces cut out of their squares ([`cut_sprites`]), once.
     pub(crate) fn sprites(&mut self, ctx: &egui::Context, pieces: &PieceSet) -> Option<TextureHandle> {
         if let Some(tex) = &self.sprites {
             return Some(tex.clone());
         }
-        let mut placement = Placement::empty();
-        for (row, color) in [(7u8, Color::White), (6u8, Color::Black)] {
-            for (file, kind) in (0u8..).zip(KINDS) {
-                if let Some(sq) = Square::new(file, row) {
-                    placement.set(sq, Some(Piece { color, kind }));
-                }
-            }
-        }
-        let style = |c: Rgb| BoardStyle { border: 0.0, coordinates: false, flipped: false, light: c, dark: c, ..BoardStyle::default() };
-        let draw = |c: Rgb| pdfcraft_engine::chess::office::diagram_rgba(&placement, pieces, &style(c), BOARD_PX).ok();
-        let (w, h, on_white) = draw(Rgb(255, 255, 255))?;
-        let (w2, h2, on_black) = draw(Rgb(0, 0, 0))?;
-        let (w, h) = (usize::try_from(w).ok()?, usize::try_from(h).ok()?);
-        if (w, h) != (usize::try_from(w2).ok()?, usize::try_from(h2).ok()?)
-            || on_white.len() != w.checked_mul(h)?.checked_mul(4)?
-            || on_black.len() != on_white.len()
-        {
-            return None;
-        }
-        let mut rgba = Vec::with_capacity(on_white.len());
-        for (wp, bp) in on_white.as_chunks::<4>().0.iter().zip(on_black.as_chunks::<4>().0) {
-            let diff: u16 = wp.iter().zip(bp).take(3).map(|(a, b)| u16::from(a.saturating_sub(*b))).sum::<u16>() / 3;
-            let alpha = 255u8.saturating_sub(u8::try_from(diff).unwrap_or(255));
-            // Premultiplied: the colour on black is colour × alpha, never above alpha.
-            rgba.extend(bp.iter().take(3).map(|c| (*c).min(alpha)));
-            rgba.push(alpha);
-        }
-        let tex = ctx.load_texture("chess-analysis-pieces", egui::ColorImage::from_rgba_premultiplied([w, h], &rgba), egui::TextureOptions::LINEAR);
+        let tex = cut_sprites(ctx, pieces, "chess-analysis-pieces")?;
         self.sprites = Some(tex.clone());
         Some(tex)
     }
@@ -721,6 +691,42 @@ pub(crate) fn sprite_uv(piece: Piece) -> Rect {
     let col = KINDS.iter().position(|k| *k == piece.kind).unwrap_or(0) as f32;
     let row = if piece.color == Color::White { 0.0 } else { 1.0 };
     Rect::from_min_size(egui::pos2(col / 8.0, row / 8.0), vec2(1.0 / 8.0, 1.0 / 8.0))
+}
+
+/// The twelve pieces cut out of their squares, in one image (`name` is the texture's): White's
+/// king, queen, rook, bishop, knight and pawn on the top row, Black's on the second (see
+/// [`sprite_uv`]). Each is drawn on white and on black; where the two differ the piece is
+/// see-through, so the difference is its alpha and the drawing on black its premultiplied colour.
+/// The pieces' own fills are the same on both, so they stay opaque.
+pub(crate) fn cut_sprites(ctx: &egui::Context, pieces: &PieceSet, name: &str) -> Option<TextureHandle> {
+    let mut placement = Placement::empty();
+    for (row, color) in [(7u8, Color::White), (6u8, Color::Black)] {
+        for (file, kind) in (0u8..).zip(KINDS) {
+            if let Some(sq) = Square::new(file, row) {
+                placement.set(sq, Some(Piece { color, kind }));
+            }
+        }
+    }
+    let style = |c: Rgb| BoardStyle { border: 0.0, coordinates: false, flipped: false, light: c, dark: c, ..BoardStyle::default() };
+    let draw = |c: Rgb| pdfcraft_engine::chess::office::diagram_rgba(&placement, pieces, &style(c), BOARD_PX).ok();
+    let (w, h, on_white) = draw(Rgb(255, 255, 255))?;
+    let (w2, h2, on_black) = draw(Rgb(0, 0, 0))?;
+    let (w, h) = (usize::try_from(w).ok()?, usize::try_from(h).ok()?);
+    if (w, h) != (usize::try_from(w2).ok()?, usize::try_from(h2).ok()?)
+        || on_white.len() != w.checked_mul(h)?.checked_mul(4)?
+        || on_black.len() != on_white.len()
+    {
+        return None;
+    }
+    let mut rgba = Vec::with_capacity(on_white.len());
+    for (wp, bp) in on_white.as_chunks::<4>().0.iter().zip(on_black.as_chunks::<4>().0) {
+        let diff: u16 = wp.iter().zip(bp).take(3).map(|(a, b)| u16::from(a.saturating_sub(*b))).sum::<u16>() / 3;
+        let alpha = 255u8.saturating_sub(u8::try_from(diff).unwrap_or(255));
+        // Premultiplied: the colour on black is colour × alpha, never above alpha.
+        rgba.extend(bp.iter().take(3).map(|c| (*c).min(alpha)));
+        rgba.push(alpha);
+    }
+    Some(ctx.load_texture(name, egui::ColorImage::from_rgba_premultiplied([w, h], &rgba), egui::TextureOptions::LINEAR))
 }
 
 /// The colours drawn over the board.

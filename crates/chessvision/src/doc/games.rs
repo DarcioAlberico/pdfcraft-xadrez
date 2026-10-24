@@ -1057,6 +1057,20 @@ fn bracketed_result(text: &str) -> Option<(GameResult, usize)> {
     Some((result, end.saturating_add(1)))
 }
 
+/// Most letters of a word's optional ending in brackets (`move(s)`, `piece(s)`).
+const MAX_OPTIONAL_ENDING: usize = 3;
+
+/// The bytes of `rest` (the text after a word's `(`) through its `)` when it is a word's optional
+/// ending: at most [`MAX_OPTIONAL_ENDING`] small letters and the `)`.
+fn optional_ending(rest: &str) -> Option<usize> {
+    let letters = rest.chars().take_while(|c| c.is_lowercase()).take(MAX_OPTIONAL_ENDING.saturating_add(1)).collect::<Vec<_>>();
+    if letters.len() > MAX_OPTIONAL_ENDING {
+        return None;
+    }
+    let len: usize = letters.iter().map(|c| c.len_utf8()).sum();
+    (rest.get(len..)?.starts_with(')')).then_some(len.saturating_add(1))
+}
+
 /// Whether `text` (the text before a `)`) ends in a label: one letter `a` to `h` alone.
 fn is_label(text: &str) -> bool {
     let mut rev = text.chars().rev();
@@ -1752,6 +1766,22 @@ impl Walker {
                 continue;
             }
             let after = i.saturating_add(ch.len_utf8());
+            // A bracket between two small letters is part of a word, not of the notation: an
+            // OCR's reading of a broken letter (`m(nre` for `move`, `ourc)d` for `oured`), or a
+            // word's optional ending (`move(s)`), read whole. No move ends in a small letter, and
+            // print sets a space before a variation's bracket.
+            if matches!(ch, '(' | ')' | '[' | ']')
+                && text.get(..i).and_then(|t| t.chars().next_back()).is_some_and(char::is_lowercase)
+                && let Some(rest) = text.get(after..)
+                && rest.chars().next().is_some_and(char::is_lowercase)
+            {
+                if ch == '('
+                    && let Some(end) = optional_ending(rest)
+                {
+                    skip_to = after.saturating_add(end);
+                }
+                continue;
+            }
             match ch {
                 '(' | '[' => {
                     if self.prose_until(text, start, i) {
