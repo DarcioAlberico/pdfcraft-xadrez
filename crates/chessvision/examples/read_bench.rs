@@ -2,7 +2,7 @@
 //!
 //! ```text
 //! cargo run --release -p pdfcraft-chessvision --example read_bench -- \
-//!     <prototype data folder> <models folder> [split=test] [--misses] [--splits=<file>]
+//!     <prototype data folder> <models folder> [split=test] [--misses] [--splits=<file>] [--steps=<letters>]
 //! ```
 //!
 //! Reads the prototype's `labels.csv` (file name and FEN of each board image), `splits.csv` (the
@@ -15,6 +15,9 @@
 //! - **read**: the image as a page with one box candidate, through [`board::read`]: crop,
 //!   both orientations, decoding, orientation and the gate.
 //! - **read 180°**: the same with the image turned half a circle, which orientation must undo.
+//!
+//! `--steps=` reads with another board preprocessing than the reader's default (letters as
+//! [`board::Preprocessing::from_letters`] takes them: `0` none, `0>h` hatch suppression on a retry).
 //!
 //! The boards and the models are the user's own and stay outside the repository; nothing derived
 //! from them is written anywhere.
@@ -82,7 +85,7 @@ fn gray_png(path: &Path) -> Result<GrayImage, Error> {
 }
 
 /// The image as a page at 72 DPI (one pixel a point) with one box candidate over all of it.
-fn read_whole(image: &GrayImage, model: &PieceModel) -> Option<board::BoardReading> {
+fn read_whole(image: &GrayImage, model: &PieceModel, steps: board::Preprocessing) -> Option<board::BoardReading> {
     let (w, h) = (image.width() as f32, image.height() as f32);
     let geometry = PageGeometry::new(PageRect::new(0.0, 0.0, w, h), Rotation::R0)?;
     let candidate = DiagramCandidate {
@@ -93,7 +96,7 @@ fn read_whole(image: &GrayImage, model: &PieceModel) -> Option<board::BoardReadi
         placement: None,
         corners: None,
     };
-    board::read(image, &geometry, 72.0, &[candidate], Some(model)).pop()
+    board::read_with(image, &geometry, 72.0, &[candidate], Some(model), steps).pop()
 }
 
 #[derive(Default)]
@@ -134,11 +137,15 @@ impl Tally {
 
 fn main() -> Result<(), Error> {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let usage = "usage: read_bench <prototype data folder> <models folder> [split=test] [--misses] [--splits=<file>]";
+    let usage = "usage: read_bench <prototype data folder> <models folder> [split=test] [--misses] [--splits=<file>] [--steps=<letters>]";
     let data = Path::new(args.first().ok_or(usage)?);
     let models = ChessModels::load_from(Path::new(args.get(1).ok_or(usage)?));
     let split = args.get(2).filter(|a| !a.starts_with("--")).map_or("test", String::as_str);
     let misses = args.iter().any(|a| a == "--misses");
+    let steps = match args.iter().find_map(|a| a.strip_prefix("--steps=")) {
+        Some(letters) => board::Preprocessing::from_letters(letters).ok_or("unknown --steps letters")?,
+        None => board::Preprocessing::DEFAULT,
+    };
     let splits_file = args.iter().find_map(|a| a.strip_prefix("--splits=")).map_or_else(|| data.join("splits.csv"), Into::into);
     let model = match &models.pieces {
         ModelState::Loaded(m) => m,
@@ -183,10 +190,10 @@ fn main() -> Result<(), Error> {
         cells.accepted += usize::from(reading.accepted());
         cells.accepted_wrong += usize::from(reading.accepted() && !cell_exact);
 
-        let read = read_whole(&image, model);
+        let read = read_whole(&image, model, steps);
         let read_exact = upright.add(read.as_ref(), label);
         let flipped = GrayImage::new(image.width(), image.height(), image.data().iter().rev().copied().collect())?;
-        let turned_exact = turned.add(read_whole(&flipped, model).as_ref(), label);
+        let turned_exact = turned.add(read_whole(&flipped, model, steps).as_ref(), label);
         if misses && !(cell_exact && read_exact && turned_exact) {
             let got = read.as_ref().and_then(|r| r.position()).map(|p| (format_placement(&p.placement), p.min_confidence));
             println!("miss {file}: label {label}  cells {}  read {:?}  180° {}", format_placement(&reading.placement), got, turned_exact);
