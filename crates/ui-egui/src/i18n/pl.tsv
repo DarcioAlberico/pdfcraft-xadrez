@@ -3018,3 +3018,6 @@ chess undo step	Clear drawings	usunięcie rysunków
 	Hold Shift for the other direction.	Przytrzymaj Shift, aby zmienić kierunek.
 	Right part first	Najpierw prawa część
 	Nothing is erased: each part shows its piece of the page.	Nic nie jest usuwane: każda część pokazuje swój kawałek strony.
+	Remove what lies outside each part	Usuń to, co leży poza każdą częścią
+	Split double pages	Podziel strony podwójne
+	No double pages were found: none is wider than tall	Nie znaleziono stron podwójnych: żadna nie jest szersza niż wyższa

@@ -3328,3 +3328,6 @@ chess undo step	Clear drawings	مسح الرسوم
 	Hold Shift for the other direction.	اضغط Shift باستمرار للاتجاه الآخر.
 	Right part first	الجزء الأيمن أولًا
 	Nothing is erased: each part shows its piece of the page.	لا يُمحى شيء: كل جزء يعرض قطعته من الصفحة.
+	Remove what lies outside each part	إزالة ما يقع خارج كل جزء
+	Split double pages	تقسيم الصفحات المزدوجة
+	No double pages were found: none is wider than tall	لم يُعثر على صفحات مزدوجة: لا توجد صفحة أعرض من طولها

@@ -3057,3 +3057,6 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Hold Shift for the other direction.	Za drugo smer držite Shift.
 	Right part first	Najprej desni del
 	Nothing is erased: each part shows its piece of the page.	Nič se ne izbriše: vsak del prikazuje svoj kos strani.
+	Remove what lies outside each part	Odstrani, kar je zunaj vsakega dela
+	Split double pages	Razdeli dvojne strani
+	No double pages were found: none is wider than tall	Ni dvojnih strani: nobena ni širša kot višja

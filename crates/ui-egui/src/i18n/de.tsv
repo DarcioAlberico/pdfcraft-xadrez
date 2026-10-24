@@ -3053,3 +3053,6 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	Hold Shift for the other direction.	Umschalt halten für die andere Richtung.
 	Right part first	Rechter Teil zuerst
 	Nothing is erased: each part shows its piece of the page.	Nichts wird gelöscht: Jeder Teil zeigt sein Stück der Seite.
+	Remove what lies outside each part	Entfernen, was außerhalb jedes Teils liegt
+	Split double pages	Doppelseiten teilen
+	No double pages were found: none is wider than tall	Keine Doppelseiten gefunden: Keine Seite ist breiter als hoch

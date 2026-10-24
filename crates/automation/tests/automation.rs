@@ -3476,6 +3476,36 @@ fn cutting_pages_through_tools() {
     assert!(a.call("page_cut", &json!({ "doc": doc, "pages": [1], "axis": "vertical", "at": [500] })).is_err(), "past the edge");
 }
 
+/// trim_outside: a spread of two columns cut in the middle leaves each half its own text. Without
+/// it, both halves still hold all of it. (Fails with the trim off.)
+#[test]
+fn cutting_with_trim_leaves_each_part_its_own_text() {
+    let dir = workdir("cut-trim");
+    let mut a = auto(&dir);
+    let doc = ok(&mut a, "doc_create", json!({ "from": "blank", "width": 400, "height": 300 }))["doc"].as_u64().unwrap();
+    ok(&mut a, "page_add_text", json!({ "doc": doc, "page": 1, "text": "Left words", "rect": [20, 100, 180, 130] }));
+    ok(&mut a, "page_add_text", json!({ "doc": doc, "page": 1, "text": "Right words", "rect": [220, 100, 380, 130] }));
+    let cut = |a: &mut Automation, trim: bool| {
+        ok(a, "page_cut", json!({ "doc": doc, "pages": [1], "axis": "vertical", "at": [200], "trim_outside": trim }));
+        let text = page_text(a, doc);
+        ok(a, "edit_undo", json!({ "doc": doc }));
+        text
+    };
+    let kept = cut(&mut a, false);
+    assert!(kept.iter().all(|t| t.contains("Left words") && t.contains("Right words")), "{kept:?}");
+    let trimmed = cut(&mut a, true);
+    assert_eq!(trimmed.len(), 2);
+    assert!(trimmed[0].contains("Left words") && !trimmed[0].contains("Right"), "{trimmed:?}");
+    assert!(trimmed[1].contains("Right words") && !trimmed[1].contains("Left"), "{trimmed:?}");
+    // A part with nothing outside it to erase is fine: only the left half has text here.
+    let one = ok(&mut a, "doc_create", json!({ "from": "blank", "width": 400, "height": 300 }))["doc"].as_u64().unwrap();
+    ok(&mut a, "page_add_text", json!({ "doc": one, "page": 1, "text": "Only left", "rect": [20, 100, 180, 130] }));
+    ok(&mut a, "page_cut", json!({ "doc": one, "pages": [1], "axis": "vertical", "at": [200], "trim_outside": true }));
+    let text = page_text(&mut a, one);
+    assert_eq!(text.len(), 2);
+    assert!(text[0].contains("Only left") && text[1].is_empty(), "{text:?}");
+}
+
 #[test]
 fn redacting_with_codes_through_tools() {
     let dir = workdir("redact-codes");

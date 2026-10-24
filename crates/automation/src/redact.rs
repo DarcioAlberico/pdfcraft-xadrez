@@ -238,7 +238,8 @@ impl Automation {
             .collect();
         let before = info.pages.len();
         let right_to_left = a.opt_bool("right_to_left")?.unwrap_or(false);
-        let mut out = self.apply(a, Edit::CutPages { cuts: cuts.clone(), right_to_left })?;
+        let trim_outside = a.opt_bool("trim_outside")?.unwrap_or(false);
+        let mut out = self.apply(a, Edit::CutPages { cuts: cuts.clone(), right_to_left, trim_outside })?;
         // Where each page's parts went (1-based, in the order given).
         let mut sorted: Vec<usize> = pages.clone();
         sorted.sort_unstable();

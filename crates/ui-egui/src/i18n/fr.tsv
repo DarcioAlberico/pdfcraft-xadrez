@@ -3052,3 +3052,6 @@ chess undo step	Clear drawings	l'effacement des dessins
 	Hold Shift for the other direction.	Maintenez Maj pour l'autre sens.
 	Right part first	Partie droite d'abord
 	Nothing is erased: each part shows its piece of the page.	Rien n'est effacé : chaque partie montre son morceau de la page.
+	Remove what lies outside each part	Retirer ce qui se trouve hors de chaque partie
+	Split double pages	Séparer les doubles pages
+	No double pages were found: none is wider than tall	Aucune double page trouvée : aucune n'est plus large que haute

@@ -3051,3 +3051,6 @@ chess undo step	Clear drawings	rajzok törlése
 	Hold Shift for the other direction.	A másik irányhoz tartsa lenyomva a Shiftet.
 	Right part first	A jobb rész először
 	Nothing is erased: each part shows its piece of the page.	Semmi sem törlődik: minden rész az oldal saját darabját mutatja.
+	Remove what lies outside each part	Az egyes részeken kívül esők eltávolítása
+	Split double pages	Dupla oldalak szétválasztása
+	No double pages were found: none is wider than tall	Nincsenek dupla oldalak: egyik sem szélesebb, mint magas

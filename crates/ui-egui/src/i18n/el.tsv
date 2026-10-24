@@ -3048,3 +3048,6 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Hold Shift for the other direction.	Κρατήστε το Shift για την άλλη κατεύθυνση.
 	Right part first	Πρώτα το δεξί μέρος
 	Nothing is erased: each part shows its piece of the page.	Τίποτα δεν σβήνεται: κάθε μέρος δείχνει το δικό του κομμάτι της σελίδας.
+	Remove what lies outside each part	Αφαίρεση ό,τι βρίσκεται έξω από κάθε μέρος
+	Split double pages	Διαχωρισμός διπλών σελίδων
+	No double pages were found: none is wider than tall	Δεν βρέθηκαν διπλές σελίδες: καμία δεν είναι φαρδύτερη από ψηλή

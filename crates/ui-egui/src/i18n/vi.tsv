@@ -3306,3 +3306,6 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Hold Shift for the other direction.	Giữ Shift để đổi hướng.
 	Right part first	Phần bên phải trước
 	Nothing is erased: each part shows its piece of the page.	Không có gì bị xóa: mỗi phần hiển thị mảnh trang của nó.
+	Remove what lies outside each part	Xóa phần nằm ngoài mỗi phần
+	Split double pages	Tách trang đôi
+	No double pages were found: none is wider than tall	Không tìm thấy trang đôi: không trang nào rộng hơn cao
