@@ -160,9 +160,9 @@ fn last_shown(h: &Harness<'static, PdfCraftApp>) -> Option<(usize, [f32; 4], boo
 }
 
 /// A double-click on a move of the Text tab opens the book's game on the board at that move,
-/// with every move keeping where it was printed; opening the same untouched game again shows it
-/// again rather than adding it twice, at the move clicked; once the game was changed, it is
-/// opened as a new game. The context menu does the same.
+/// with every move keeping where it was printed, as a step of the list Undo takes back; opening
+/// the same untouched game again shows it again rather than adding it twice, at the move clicked;
+/// once the game was changed, it is opened as a new game. The context menu does the same.
 #[test]
 fn a_move_of_the_text_tab_opens_its_game_on_the_board() {
     let mut h = harness();
@@ -177,8 +177,17 @@ fn a_move_of_the_text_tab_opens_its_game_on_the_board() {
         let game = &h.state().chess.board().game;
         let source = game.source(game.current()).expect("the move keeps its place");
         assert_eq!((source.page as usize, source.rect_user), printed(&h, "a6"));
-        assert_eq!(h.state().chess.board().undo_label(), None, "opening a game is not a step to undo");
+        assert_eq!(h.state().chess.board().undo_label(), None, "opening a game is no step of the game");
     }
+    // It is a step of the list: Undo takes it back out (the blank game is back), Redo puts it
+    // back at the move clicked.
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(2);
+    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Undid Open this game on the board"));
+    assert_eq!((games(&h), movetext(&h).as_str()), (1, ""));
+    assert!(h.state_mut().execute("edit.redo"));
+    h.run_steps(2);
+    assert_eq!((movetext(&h).as_str(), shown(&h).as_str()), (MOVETEXT, "a6"));
     // The first click of the double-click outlined the move on the page.
     assert_eq!(h.state().views[0].flash.map(|f| (f.0, f.1)), Some(printed(&h, "a6")));
     // The board's notation names the move shown.

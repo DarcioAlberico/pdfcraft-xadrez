@@ -661,6 +661,24 @@ pub(crate) fn palette_insert(board: &mut BoardState, text: &str) {
     });
 }
 
+/// What glyph `code`, chosen in the palette or on the rail, types into the text field that had
+/// the keyboard: its sign, when a field had it and the glyph has one. `None`: the glyph goes on
+/// the move shown (an assessment without a sign, which as text would only be `$n`, always does).
+pub(crate) fn glyph_typed(board: &BoardState, code: u16) -> Option<String> {
+    board.typing.last?;
+    nag::by_code(code).filter(|n| n.glyph.is_some()).map(|n| n.insert_text())
+}
+
+/// Glyph `code` chosen in the palette or on the rail: its sign goes into the text field that had
+/// the keyboard ([`glyph_typed`], at its cursor), or else the glyph goes on the move shown or
+/// comes off it (one undo step).
+pub(crate) fn pick_glyph(board: &mut BoardState, code: u16) {
+    match glyph_typed(board, code) {
+        Some(text) => palette_insert(board, &text),
+        None => toggle_glyph(board, code),
+    }
+}
+
 /// The basic palette's characters: the figurines (inserted as themselves, shown as `face` where
 /// the fonts lack them), the glyphs, then `½ – × † ‡`.
 const FIGURINES: [(&str, &str, Color, PieceKind); 12] = [
@@ -689,14 +707,12 @@ const PALETTE_ID: &str = "chess-glyph-palette";
 /// The palette window's content width, in points: the figurines and signs in one row.
 const PALETTE_WIDTH: f32 = 340.0;
 
-/// What a palette button puts in: `text`, and for a glyph its code (White's). `on_move`: the
-/// glyph goes on the move even while a text field had the keyboard (an assessment without a
-/// sign, which as text would only be `$n`).
+/// What a palette button puts in: `text`, and for a glyph its code (White's), which goes where
+/// [`pick_glyph`] says.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Pick {
     pub(crate) text: String,
     pub(crate) glyph: Option<u16>,
-    pub(crate) on_move: bool,
 }
 
 /// The glyph palette (U1), when the rail has it open: a floating window that can be dragged
@@ -764,7 +780,7 @@ pub(crate) fn palette_window(ctx: &egui::Context, chess: &mut ChessState, anchor
         ui.add(egui::Label::new(egui::RichText::new(hint).small().color(t.text_muted)).selectable(false));
         pick = palette_buttons(ui, false, |c| on.contains(&c));
         if let Some(code) = more_assessments(ui, |c| on.contains(&c)) {
-            pick = Some(Pick { text: format!("${code}"), glyph: Some(code), on_move: true });
+            pick = Some(Pick { text: format!("${code}"), glyph: Some(code) });
         }
     });
     let pressed = shown.is_some_and(|w| w.response.contains_pointer()) && ctx.input(|i| i.pointer.any_pressed());
@@ -778,9 +794,8 @@ pub(crate) fn palette_window(ctx: &egui::Context, chess: &mut ChessState, anchor
     let Some(pick) = pick else { return };
     let board = chess.board_mut();
     match pick.glyph {
-        // No field had the keyboard, or the glyph has no sign: a glyph is the move's.
-        Some(code) if board.typing.last.is_none() || pick.on_move => toggle_glyph(board, code),
-        _ => palette_insert(board, &pick.text),
+        Some(code) => pick_glyph(board, code),
+        None => palette_insert(board, &pick.text),
     }
 }
 
@@ -814,7 +829,7 @@ pub(crate) fn palette_buttons(ui: &mut egui::Ui, correction: bool, on: impl Fn(u
             ui.add(egui::Label::new(egui::RichText::new(text).small().color(muted)).selectable(false));
         }
     };
-    let text = |s: &str| Pick { text: s.to_owned(), glyph: None, on_move: false };
+    let text = |s: &str| Pick { text: s.to_owned(), glyph: None };
     heading(ui, tl!("Figurines and signs"));
     ui.horizontal_wrapped(|ui| {
         ui.spacing_mut().item_spacing = egui::vec2(2.0, 2.0);
@@ -846,7 +861,7 @@ pub(crate) fn palette_buttons(ui: &mut egui::Ui, correction: bool, on: impl Fn(u
                 if correction && n.glyph.is_none() {
                     continue;
                 }
-                let pick = Pick { text: n.insert_text(), glyph: Some(code), on_move: n.glyph.is_none() };
+                let pick = Pick { text: n.insert_text(), glyph: Some(code) };
                 button(ui, seen(code, |s| drawable(&ctx, s)), pick, nag_name(code).unwrap_or(n.name), on(code));
             }
         });
