@@ -3,8 +3,9 @@
 //! S7b brings the geometry the reader starts from:
 //! - [`warp`] turns a detected quad (four corners on the page raster) into an upright square
 //!   board, [`consts::BOARD_SIZE`] pixels a side by default, so S8 can cut it into 64 squares;
-//! - [`fit_inner_board`] and [`tighten`] trim the frame a contour sometimes includes, so the
-//!   8 × 8 grid sits on the squares;
+//! - [`fit_inner_board`], [`checker_fit`] and [`tighten`] trim what a contour sometimes takes
+//!   along (a frame, the paper inside it, the printed coordinates), so the 8 × 8 grid sits on
+//!   the squares;
 //! - [`checker_score`] and [`texture_score`] measure how much a crop looks like a board. The
 //!   contour detector ranks and filters its quads with them.
 //!
@@ -15,6 +16,7 @@
 //! Ported from the Python prototype `ChessVisionOFF_Puro` (`board_detection.py`, relicensed
 //! MIT/Apache by its author), with its measured constants in [`consts`].
 
+pub mod checker_fit;
 pub mod preprocess;
 pub mod reading;
 
@@ -86,6 +88,14 @@ pub mod consts {
     /// Smallest board side, in pixels, [`super::fit_inner_board`] works on: below it the
     /// smoothing and the inset search have nothing to work with. A guard, not a measurement.
     pub const MIN_FIT_SIDE: usize = 16;
+
+    /// [`super::tighten`] keeps [`super::checker_fit`]'s box when the checker contrast of its grid
+    /// (not clipped at 1) beats the whole crop's (or 0, when that is negative) by at least this. Measured on the
+    /// prototype's field set (113 labelled boards found, 220 dpi, read with the hatch retry):
+    /// exact / accepted 95 / 94 without the fit, 94 / 94 at 0, 98 / 97 at 0.02, 97 / 97 at 0.03,
+    /// 98 / 98 at 0.05 and 96 / 97 at 0.08. Below it the fit moves crops that were right by a
+    /// pixel or two of the plane and costs boards, as edge energy did.
+    pub const CHECKER_FIT_MIN_GAIN: f64 = 0.05;
 }
 
 use consts::*;
@@ -343,12 +353,32 @@ pub fn fit_inner_board(board: &GrayImage) -> Option<PixelRect> {
     Some(PixelRect { x0: u32::try_from(x0).ok()?, y0: u32::try_from(y0).ok()?, x1: u32::try_from(x1).ok()?, y1: u32::try_from(y1).ok()? })
 }
 
-/// The board cut to [`fit_inner_board`]'s box and stretched back to its size, when that raises
-/// its checker contrast enough ([`consts::INNER_GRID_MIN_CHECKER_GAIN`],
-/// [`consts::INNER_GRID_MIN_CHECKER_RATIO`]); otherwise a copy of `board` (`tighten_board`). A
-/// crop that was already right comes back unchanged, which is why every board can go through it.
+/// The board trimmed to its 64 squares and stretched back to its size (`tighten_board`, then
+/// [`checker_fit`]); a crop that was already right comes back unchanged, which is why every
+/// board can go through it.
+///
+/// Two trims, in turn, each kept only when it makes the board more of a board:
+/// 1. [`fit_inner_board`]'s box, when it raises the checker contrast enough
+///    ([`consts::INNER_GRID_MIN_CHECKER_GAIN`], [`consts::INNER_GRID_MIN_CHECKER_RATIO`]): a
+///    double frame.
+/// 2. [`checker_fit::fit_checker_board`]'s box, when its grid alternates more than the whole
+///    crop's by [`consts::CHECKER_FIT_MIN_GAIN`]: the frame, the paper inside it and the printed
+///    coordinates that the edge fit misses on hatched squares or beside a strip of letters.
 pub fn tighten(board: &GrayImage) -> GrayImage {
-    tightened(board).unwrap_or_else(|| board.clone())
+    let framed = tightened(board).unwrap_or_else(|| board.clone());
+    fit_squares(&framed).unwrap_or(framed)
+}
+
+/// The board cut to [`checker_fit::fit_checker_board`]'s box and stretched back to its size, or
+/// `None` when the fit gains too little.
+fn fit_squares(board: &GrayImage) -> Option<GrayImage> {
+    let (rect, fitted, whole) = checker_fit::fit_checker_board(board)?;
+    // Measured from 0, as the checker score is clipped: a less negative contrast is still no
+    // board, and a table's grid lines inside a frame would otherwise win on spread alone.
+    if fitted < whole.max(0.0) + CHECKER_FIT_MIN_GAIN {
+        return None;
+    }
+    resize_bilinear(&crop(board, rect)?, board.width(), board.height())
 }
 
 fn tightened(board: &GrayImage) -> Option<GrayImage> {
