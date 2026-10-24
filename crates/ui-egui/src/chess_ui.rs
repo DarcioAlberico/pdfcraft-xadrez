@@ -968,8 +968,9 @@ impl PdfCraftApp {
     /// A diagram put on the board before its page was read as text ([`BoardText`]): read the page
     /// (off the interface thread, as the Text tab does, after any reading running), then give the
     /// game the side to move and move number the moves under the diagram give it, when nothing
-    /// was done on the game meanwhile (no move played, nothing changed: opening it is not a step
-    /// to undo, and neither is this). Dropped when its document is no longer the one shown, or
+    /// was done on the game meanwhile (no move played, nothing changed). This is no step of its
+    /// own: opening the diagram was the list's ("Load the diagram"), which takes the game, start
+    /// and all, back out. Dropped when its document is no longer the one shown, or
     /// when the reading did not come (the document changed meanwhile).
     pub(crate) fn chess_board_text_tick(&mut self) {
         let Some(mut want) = self.chess.board_text.clone() else { return };
@@ -1010,7 +1011,7 @@ impl PdfCraftApp {
         if waiting {
             let flipped = e.board.flipped;
             e.board.load_fen(&start, flipped, source);
-            // As when it was opened: not a step to undo.
+            // As when it was opened: its own history starts empty.
             e.board.history = Default::default();
         }
     }

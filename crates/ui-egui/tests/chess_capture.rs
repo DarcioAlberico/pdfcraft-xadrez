@@ -714,6 +714,42 @@ fn the_preview_offers_renumbering_as_its_own_choice() {
     assert_eq!(movetext(&h), "18. Nd5 Qxe1 19. Nxe7+ Kh7 20. Raxe1");
 }
 
+/// The rail's glyph buttons type into the correction field while it has the keyboard, as the
+/// palette does, instead of annotating the move shown; the game has no move yet, and the button
+/// is on all the same. Once the field lost the keyboard, the button is the move's again (off
+/// without a move).
+#[test]
+fn the_rails_glyph_buttons_type_into_the_correction_field() {
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    let good = |h: &Harness<'static, PdfCraftApp>| h.get_by_label("Good move").accesskit_node().is_disabled();
+    assert!(good(&h), "no move shown: the rail's Good move is off");
+    let undo = h.state().chess.board().undo_label();
+    h.state_mut().capture_pasted("18.Nd5 Qxe1 19.Nxe6+ Kh7", None);
+    h.run_steps(2);
+    h.get_by_label("✗ 19.Nxe6+ — Illegal move").click();
+    h.run_steps(2);
+    h.get_by_label("Correction").click();
+    h.run_steps(1);
+    h.key_press(egui::Key::End);
+    h.key_press(egui::Key::Backspace);
+    h.key_press(egui::Key::Backspace);
+    h.run_steps(1);
+    h.get_by_label("Correction").type_text("7+");
+    h.run_steps(2);
+    assert_eq!(h.get_by_label("Correction").value().as_deref(), Some("Nxe7+"));
+    assert!(!good(&h), "the field has the keyboard: the button types its sign");
+    h.get_by_label("Good move").click();
+    h.run_steps(3);
+    assert_eq!(h.get_by_label("Correction").value().as_deref(), Some("Nxe7+!"));
+    assert_eq!(movetext(&h), "", "nothing went on the game: no glyph, no comment");
+    assert_eq!(h.state().chess.board().undo_label(), undo, "no step on the game");
+    h.key_press(egui::Key::Enter);
+    h.run_steps(3);
+    assert_eq!(shown(&h), (4, 0), "read again with Nxe7+!");
+}
+
 /// The glyph palette's window, if it is open.
 fn palette(h: &Harness<'static, PdfCraftApp>) -> Option<egui::Rect> {
     h.query_by_role_and_label(egui::accesskit::Role::Window, "Glyph palette").map(|w| w.rect())
