@@ -116,6 +116,13 @@ impl ObjectSelection {
         Edit::MoveObjects { page, objects: self.selected.iter().map(|o| o.target).collect(), offset }
     }
 
+    /// Delete the whole selection (Delete or Backspace); the selection goes with it.
+    fn delete(&mut self, page: usize) -> Edit {
+        let objects = self.selected.iter().map(|o| o.target).collect();
+        self.clear();
+        Edit::DeleteObjects { page, objects }
+    }
+
     fn inventory(&mut self, doc: &Document, page: usize) -> Result<Vec<EditableObject>, String> {
         if self.cache.len() >= 8 && !self.cache.contains_key(&page) {
             self.cache.clear();
@@ -336,7 +343,8 @@ fn on_frame(r: Rect, p: Pos2) -> bool {
 const FRAME_REACH: f32 = 6.0;
 
 /// The arrow keys move the selected image or objects a point, Shift and an arrow ten points,
-/// as in Acrobat. They are taken before the view turns the page with them.
+/// as in Acrobat. They are taken before the view turns the page with them. Delete or Backspace
+/// deletes the selected objects.
 pub(crate) fn nudge_keys(ctx: &egui::Context, view: &mut DocView, doc: &Document) {
     if ctx.egui_wants_keyboard_input() || view.pending_edit.is_some() {
         return;
@@ -344,8 +352,14 @@ pub(crate) fn nudge_keys(ctx: &egui::Context, view: &mut DocView, doc: &Document
     let image = view.image_selection.as_ref().filter(|s| !s.dragging()).map(|s| (s.page, s.index));
     let objects = view.objects.page.filter(|_| !view.objects.selected.is_empty() && view.objects.gesture.is_none());
     let Some(page) = objects.or(image.map(|(page, _)| page)) else { return };
-    let Some(xf) = view.page_xform(page) else { return };
     use egui::{Key, Modifiers};
+    if let Some(page) = objects
+        && ctx.input_mut(|i| i.consume_key(Modifiers::NONE, Key::Delete) || i.consume_key(Modifiers::NONE, Key::Backspace))
+    {
+        view.pending_edit = Some(view.objects.delete(page));
+        return;
+    }
+    let Some(xf) = view.page_xform(page) else { return };
     let mut step = egui::Vec2::ZERO;
     ctx.input_mut(|i| {
         for (key, direction) in [

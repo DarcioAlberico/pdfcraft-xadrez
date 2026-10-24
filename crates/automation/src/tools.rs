@@ -259,6 +259,12 @@ pub fn tools() -> Vec<ToolDef> {
             }), &["doc", "page"])),
         t("object_list", "List editable objects", "List existing paragraphs, Image/Form artwork and added content once, with source kind/index references, displayed rectangles and document generation. Indexes change when content changes; use generation in object_move to reject stale references.")
             .ro().with(schema(json!({"doc":doc(),"page":{"type":"integer","minimum":1}}), &["doc","page"])),
+        t("object_delete", "Delete objects", "Edit text & images ▸ Delete: remove 1–1000 mixed references from object_list together. A paragraph's lines are taken out of their text with the text around them in place, an image's or Form's drawing is removed, added content goes with its stream. Success is one undo step; a bad or stale reference (generation) refuses the whole deletion.")
+            .destructive()
+            .with(schema(json!({"doc":doc(),"page":{"type":"integer","minimum":1},
+                "objects":{"type":"array","minItems":1,"maxItems":1000,"uniqueItems":true,"items":{
+                    "type":"object","properties":{"kind":{"type":"string","enum":["added","text","image"]},"index":{"type":"integer","minimum":1}},"required":["kind","index"],"additionalProperties":false}},
+                "generation":{"type":"integer","minimum":0}}), &["doc","page","objects"])),
         t("object_move", "Move objects together", "Atomically translate 1–1000 mixed references from object_list by [dx, dy] in displayed points (right/down). Preserves glyph codes, fonts, image data and relative spacing; success is one undo step. Clipping and vertical text are refused. A bad/stale reference refuses the entire move.")
             .with(schema(json!({"doc":doc(),"page":{"type":"integer","minimum":1},
                 "objects":{"type":"array","minItems":1,"maxItems":1000,"uniqueItems":true,"items":{

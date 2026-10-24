@@ -2644,6 +2644,19 @@ pub(crate) fn reveal_ops(block: &TextBlock, lines: &[TextLine], style: &BlockSty
 }
 
 /// Existing paragraph indexes, excluding streams owned by an added-content item.
+/// The lines (indexes into [`text_lines`]) of paragraphs `blocks` (indexes into their grouping, as
+/// [`selectable_blocks`] numbers them), in order.
+pub(crate) fn block_lines(doc: &Document, page: usize, blocks: &[usize]) -> Result<Vec<usize>, EditError> {
+    let lines = text_lines(doc, page)?;
+    let groups = group_blocks(&lines);
+    let mut out = std::collections::BTreeSet::new();
+    for b in blocks {
+        let group = groups.get(*b).ok_or_else(|| EditError::Invalid("a selected paragraph no longer exists".into()))?;
+        out.extend(group.lines.iter().copied());
+    }
+    Ok(out.into_iter().collect())
+}
+
 pub(crate) fn selectable_blocks(
     doc: &Document,
     page: usize,
