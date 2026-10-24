@@ -2999,3 +2999,10 @@ chess undo step	Clear drawings	清除标记
 	Comments, links and form fields	注释、链接和表单字段
 	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	擦除是一次编辑：文件的早期版本可能仍保留被擦除的内容。要彻底删除，请使用密文。
 	Erase content	擦除内容
+	Knife (cut pages)	刀（切分页面）
+	Click to place a cut, right-click to take one away, Enter to cut	单击放置切线，右键单击移除一条，按 Enter 切分
+	Up and down	竖向
+	Across	横向
+	Hold Shift for the other direction.	按住 Shift 切换方向。
+	Right part first	右侧部分在前
+	Nothing is erased: each part shows its piece of the page.	不会擦除任何内容：每个部分显示页面中属于它的那一块。
