@@ -378,7 +378,24 @@ Measured on the user's models (2026-10-23, release, Windows 11 on an AMD desktop
 
 Deskew (a search of ±3° for the sharpest grid), flat-field (division by the board blurred over two squares) and CLAHE (one tile a square, clip 2) are written too, and measured first and on the retry. On the field set none changes an accepted reading (CLAHE first reads one more board exactly, still refused); on the test split flat-field changes nothing, CLAHE reads one board fewer exactly, and deskew accepts 3 boards fewer, 2 of them wrong. The model's training already varied brightness and contrast, and the detector's warp leaves no turn. They are off. Painting the hatch flat on every board, first, rather than on a retry, costs more than it gains (test split 1145 → 1132 exact, accepted but wrong 10 → 13; field set 4 accepted but wrong).
 
-Still misread: pieces on hatched squares (Euwe and Kramer's pawns read as bishops), and Chernev's Capablanca, whose boards the detector cuts with the file letters above them and without the first rank.
+Still misread: pieces on hatched squares (Euwe and Kramer's pawns read as bishops; Chernev's Capablanca, whose boards are now cut to their squares, below, and whose pawns and rooks on hatched squares still keep every board from the gate).
+
+### Boards cut to their squares
+
+A contour can close on a diagram's frame, or on an outer border with the coordinates printed inside it (`a`–`h` under the board, `1`–`8` beside it, as Chernev's Capablanca prints them). The warp then takes along the frame, the paper between it and the squares, and the coordinates, and the 64 cells drift off the squares: a strip of letters becomes a rank, and on hatched boards the retry above no longer finds the empty dark squares, whose cells now hold paper or a neighbour (on the first Capablanca board it flattened a handful of them, and every one once the board was cut to its squares). The edge fit that trimmed double frames before cannot see this on hatched squares, where every square is all edges.
+
+Each warped board is now also cut to the 8 × 8 grid that alternates most: each side of the grid moves, within 12 % of the crop, to where the difference between the two colours' squares, less the spread within each, is largest (on the board averaged down to 200 px, every second position, then every position near the best), and the cut is kept when it beats the whole crop by 0.05. No margin imitates the alternation, so the cut stops on the squares whatever is printed around them. It is not applied to an embedded image's box, which its own trims already cut to the grid. It costs about 20 ms a board with the edge fit.
+
+Measured on the user's models (2026-10-24, release, Windows 11 on an AMD desktop):
+
+| Measure | Before | After |
+|---|---|---|
+| The prototype's field set at 220 dpi, 113 labelled diagrams found: exact / accepted / accepted but wrong | 95 / 94 / 1 | 98 / 98 / 3 |
+| The prototype's test split (1,170 boxes, not refitted): exact / accepted / accepted but wrong | 1145 / 1149 / 10 | the same |
+| 38 books, 20 pages each: valid moves / diagrams accepted | 25,247 / 850 of 1,097 | 25,250 / 875 |
+| Gallagher, Euwe and Kramer (1956, 1958), Reinfeld, Koblenz, Chernev's Capablanca: diagrams accepted | 114 of 220 | 113 |
+
+Of the two boards accepted but wrong, one is read as printed and its label is wrong (Niemeijer, *Zwarte Magie*, p. 21: the pawn and knight stand on f5 and g5), and the other has its white rook on h1 read as Black's at a confidence of 0.801, just over the gate. The diagrams gained are framed boards in born-digital books (Hansen's *Catastrophes & Tactics* 13 → 20 of 20, Kotronias's *London Files* 18 → 26 of 26, Jones's *Coffeehouse Repertoire*). The 11 moves lost are in *Meu Sistema* (pp. 77–78), whose contour straddles two diagrams set side by side, before and after: two wrong readings, neither accepted, of which the earlier one let a few king moves play. Euwe and Kramer 1956 accepts 9 of 12 instead of 11, two boards whose pieces on hatched squares now read below the gate (0.65 and 0.24); fitting on a 400 px board keeps them but accepts 3 fewer on the field set. Valid moves are the same on those six books (103). Reading the coordinates to tell which side a board is printed from is not done: the pieces tell it (see the parity note).
 
 ### A puzzle book: Karpov, *Chess Combinations – World Champions 1*
 
