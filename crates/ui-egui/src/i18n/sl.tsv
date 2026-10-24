@@ -2915,6 +2915,8 @@ chess undo step	Clear drawings	odstranjevanje risb
 	New game from this position	Nova partija iz tega položaja
 # Wave 10 U2: a delete or a move of the list of games is a step Undo takes (after "Undo", as the other steps).
 	Delete this game? You can undo it.	Želite izbrisati to partijo? To lahko razveljavite.
+	Delete these games? You can undo it.	Želite izbrisati te partije? To lahko razveljavite.
+	A date is written YYYY.MM.DD, with ? for each digit not known.	Datum se piše LLLL.MM.DD (YYYY.MM.DD), z ? za vsako neznano števko.
 	Delete game	brisanje partije
 	Move game	premik partije
 	An illegal position can't start a game: correct it in the diagram editor first.	Z nelegalnim položajem ni mogoče začeti partije: najprej ga popravite v urejevalniku diagrama.

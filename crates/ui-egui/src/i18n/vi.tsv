@@ -3164,6 +3164,8 @@ chess undo step	Clear drawings	xóa hình vẽ
 	New game from this position	Ván mới từ thế cờ này
 # Wave 10 U2: a delete or a move of the list of games is a step Undo takes (after "Undo", as the other steps).
 	Delete this game? You can undo it.	Xóa ván cờ này? Bạn có thể hoàn tác.
+	Delete these games? You can undo it.	Xóa các ván cờ này? Bạn có thể hoàn tác.
+	A date is written YYYY.MM.DD, with ? for each digit not known.	Ngày được viết theo dạng YYYY.MM.DD, dùng ? cho mỗi chữ số chưa biết.
 	Delete game	xóa ván cờ
 	Move game	di chuyển ván cờ
 	An illegal position can't start a game: correct it in the diagram editor first.	Không thể bắt đầu ván cờ từ thế cờ không hợp lệ: hãy sửa trước trong trình chỉnh sửa sơ đồ.
