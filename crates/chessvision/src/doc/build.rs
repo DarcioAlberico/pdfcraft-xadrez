@@ -2,7 +2,8 @@
 //!
 //! 0. **Columns.** Lines are read column by column ([`column_order`]): on a page whose lines
 //!    leave a gutter free (a two-column book), each band between full-width lines is read down its
-//!    left column, then down its right one. The coordinates printed around a diagram (`a b c … h`,
+//!    left column, then down its right one; each side may be cut again by a gutter of its own, up
+//!    to [`MAX_COLUMNS`] columns ([`columns`]). The coordinates printed around a diagram (`a b c … h`,
 //!    `8 … 1`) are not text and are left out ([`is_coordinates`]).
 //! 1. **Diagrams among the lines.** Lines keep their reading order and diagrams theirs; a diagram
 //!    goes before the first line below it in its column, or in a column to its right, or wholly
@@ -341,17 +342,22 @@ pub(crate) fn is_coordinates(line: &ChessLine, diagrams: &[Option<ViewRect>]) ->
     })
 }
 
-/// The x of a gutter that splits the page's lines into two columns, if there is one: the middle
-/// of the widest run of positions (between 30% and 70% of the page) that the fewest lines cross,
-/// with enough lines on both sides, wide enough on average or with enough wide ones among them
-/// ([`MIN_WIDE_COLUMN_LINES`]).
-pub(crate) fn gutter(lines: &[&ChessLine], page_width: f32) -> Option<f32> {
-    if !(page_width.is_finite() && page_width > 0.0) || lines.len() < 2 * MIN_COLUMN_LINES {
+/// Most columns a page is read in: a page that seems to have more is read as this many at most.
+pub const MAX_COLUMNS: usize = 4;
+
+/// The x of a gutter that splits `lines` into two columns, if there is one: the middle of the
+/// widest run of positions (between 30% and 70% of the way from `lo` to `hi`) that the fewest
+/// lines cross, with enough lines on both sides, wide enough on average or with enough wide ones
+/// among them ([`MIN_WIDE_COLUMN_LINES`]). A column must be as wide as on the whole page
+/// ([`MIN_COLUMN_SHARE`] of `page_width`) wherever it is.
+fn gutter_between(lines: &[&ChessLine], page_width: f32, lo: f32, hi: f32) -> Option<f32> {
+    let finite = [page_width, lo, hi].iter().all(|v| v.is_finite());
+    if !finite || page_width <= 0.0 || hi <= lo || lines.len() < 2 * MIN_COLUMN_LINES {
         return None;
     }
     let max_crossing = ((lines.len() as f32) * MAX_CROSSING_SHARE).floor() as usize;
     // Candidate positions, one point apart; bounded by the page width (at most a few thousand).
-    let (lo, hi) = (page_width * 0.3, page_width * 0.7);
+    let (lo, hi) = (lo + (hi - lo) * 0.3, lo + (hi - lo) * 0.7);
     let steps = ((hi - lo).max(0.0) as usize).min(20_000);
     let mut best: Option<(usize, usize, usize)> = None; // (crossings, run length, run start)
     let mut run: Option<(usize, usize)> = None; // (start, crossings)
@@ -391,34 +397,93 @@ pub(crate) fn gutter(lines: &[&ChessLine], page_width: f32) -> Option<f32> {
     best.map(|(_, len, start)| lo + start as f32 + len as f32 / 2.0)
 }
 
-/// The lines in reading order, column by column: lines that cross the [`gutter`] (if any) cut the
-/// page into bands, and each band is read down its left column, then down its right one. Without a
-/// gutter, the lines keep their order.
-pub(crate) fn column_order<'a>(lines: &[&'a ChessLine], gutter: Option<f32>) -> Vec<&'a ChessLine> {
-    let Some(x) = gutter else { return lines.to_vec() };
+/// How a page's lines fall into columns: one column, or two sides of a gutter, each of which may
+/// be cut again (a page of three columns is a column and a pair of columns beside it).
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) enum Columns {
+    One,
+    Split { x: f32, left: Box<Columns>, right: Box<Columns> },
+}
+
+impl Columns {
+    /// The gutters, left to right.
+    pub(crate) fn gutters(&self) -> Vec<f32> {
+        let mut out = Vec::new();
+        self.push_gutters(&mut out);
+        out
+    }
+
+    fn push_gutters(&self, out: &mut Vec<f32>) {
+        if let Columns::Split { x, left, right } = self {
+            left.push_gutters(out);
+            out.push(*x);
+            right.push_gutters(out);
+        }
+    }
+}
+
+/// The page's columns: a gutter across the whole page ([`gutter_between`]), then a gutter again among the lines on
+/// each side of it (found the same way, between that side's edges), and so on, up to
+/// [`MAX_COLUMNS`] columns. A page with no gutter is one column; one whose sides cannot be cut
+/// again is read in two, as before.
+pub(crate) fn columns(lines: &[&ChessLine], page_width: f32) -> Columns {
+    let mut cuts = MAX_COLUMNS.saturating_sub(1);
+    split_columns(lines, page_width, 0.0, page_width, &mut cuts)
+}
+
+/// [`columns`] among `lines`, between `lo` and `hi`, with at most `cuts` gutters left to find.
+/// Each call that recurses uses one of them up, so the depth is at most [`MAX_COLUMNS`].
+fn split_columns(lines: &[&ChessLine], page_width: f32, lo: f32, hi: f32, cuts: &mut usize) -> Columns {
+    if *cuts == 0 {
+        return Columns::One;
+    }
+    let Some(x) = gutter_between(lines, page_width, lo, hi) else { return Columns::One };
+    *cuts -= 1;
+    let left: Vec<&ChessLine> = lines.iter().copied().filter(|l| l.rect.x1 <= x).collect();
+    let right: Vec<&ChessLine> = lines.iter().copied().filter(|l| l.rect.x0 >= x).collect();
+    let left = split_columns(&left, page_width, lo, x, cuts);
+    let right = split_columns(&right, page_width, x, hi, cuts);
+    Columns::Split { x, left: Box::new(left), right: Box::new(right) }
+}
+
+/// The lines in reading order, column by column: lines that cross a gutter cut the columns on
+/// both sides of it into bands, and each band is read down its left side, then down its right
+/// one, each side read the same way by its own gutter. On one column, the lines keep their order.
+pub(crate) fn column_order<'a>(lines: &[&'a ChessLine], columns: &Columns) -> Vec<&'a ChessLine> {
+    let Columns::Split { .. } = columns else { return lines.to_vec() };
     let top = |l: &&ChessLine| l.rect.y0;
-    let mut out = Vec::with_capacity(lines.len());
-    let mut left: Vec<&ChessLine> = Vec::new();
-    let mut right: Vec<&ChessLine> = Vec::new();
     let mut sorted: Vec<&ChessLine> = lines.to_vec();
     sorted.sort_by(|a, b| top(a).total_cmp(&top(b)).then(a.rect.x0.total_cmp(&b.rect.x0)));
-    let flush = |out: &mut Vec<&'a ChessLine>, left: &mut Vec<&'a ChessLine>, right: &mut Vec<&'a ChessLine>| {
-        out.append(left);
-        out.append(right);
+    let mut out = Vec::with_capacity(lines.len());
+    bands(&sorted, columns, &mut out);
+    out
+}
+
+/// [`column_order`] of `sorted` (top down), by `columns`, onto `out`. Each level of `columns` is
+/// one level of recursion, so the depth is at most [`MAX_COLUMNS`].
+fn bands<'a>(sorted: &[&'a ChessLine], columns: &Columns, out: &mut Vec<&'a ChessLine>) {
+    let Columns::Split { x, left: lc, right: rc } = columns else {
+        out.extend_from_slice(sorted);
+        return;
     };
-    for line in sorted {
-        if line.rect.x1 <= x {
+    let mut left: Vec<&ChessLine> = Vec::new();
+    let mut right: Vec<&ChessLine> = Vec::new();
+    for &line in sorted {
+        if line.rect.x1 <= *x {
             left.push(line);
-        } else if line.rect.x0 >= x {
+        } else if line.rect.x0 >= *x {
             right.push(line);
         } else {
-            // A full-width line: what is above it is read first.
-            flush(&mut out, &mut left, &mut right);
+            // A line across the gutter: what is above it is read first.
+            bands(&left, lc, out);
+            bands(&right, rc, out);
+            left.clear();
+            right.clear();
             out.push(line);
         }
     }
-    flush(&mut out, &mut left, &mut right);
-    out
+    bands(&left, lc, out);
+    bands(&right, rc, out);
 }
 
 enum Item<'a> {
@@ -432,30 +497,25 @@ enum Item<'a> {
 pub const BESIDE_ABOVE_SHARE: f32 = 0.3;
 
 /// Whether diagram `d` comes before line `l` (view space): `l` is below `d`'s middle under it or
-/// beside it on its side of `split` (the gutter, or the page's middle on a page without one), in
-/// a column to its right, or wholly below it on its side of `split`. A diagram or line across
-/// `split` is on both sides: a short line under a centred diagram is read after it, however far
-/// left it starts, while a left-column line below a right-column diagram is still read before
-/// it. A line right of a board is its text beside it (Chess Tactics: the board on the left, the
+/// beside it in its column between the `splits` (the gutters, left to right, or the page's middle
+/// on a page without them), in a column to its right, or wholly below it in a column it shares
+/// ([`sides`]). A diagram or line across a split is in the columns on both sides: a short line
+/// under a centred diagram is read after it, however far left it starts, while a left-column line
+/// below a right-column diagram is still read before it. On a page of `one_column` (no gutter,
+/// and at least half of its lines across the middle: [`one_column`]), a line wholly below a
+/// diagram is read after it on either side of the middle, unless it is under another board in its
+/// own column (`under_a_board`: a row of boards, each with its caption). A page of short lines
+/// with no gutter may be two columns too short to find one, and keeps the sides apart. A line right of a board is its text beside it (Chess Tactics: the board on the left, the
 /// solution on the right) and comes after it, except a piece of a row a scan cut at a word gap:
 /// on a page with a `gutter` (columns found, not the page's middle), on the board's side of it,
 /// and with another piece of its row over the board's columns (`row_over_board`), the line is in
 /// the board's column and is read by its height. On a page with no gutter, a line right of a board
 /// that ends more than [`BESIDE_ABOVE_SHARE`] of the board's height above its top, with no other
 /// board above it in its own column (`under_a_board`), is the text before it and is read first.
-fn diagram_before(d: ViewRect, l: ViewRect, split: f32, gutter: bool, row_over_board: bool, under_a_board: bool) -> bool {
-    let side = |r: ViewRect| {
-        if r.x1 <= split {
-            Some(false)
-        } else if r.x0 >= split {
-            Some(true)
-        } else {
-            None
-        }
-    };
-    let (sd, sl) = (side(d), side(l));
+fn diagram_before(d: ViewRect, l: ViewRect, splits: &[f32], gutter: bool, one_column: bool, row_over_board: bool, under_a_board: bool) -> bool {
+    let (sd, sl) = (sides(d, splits), sides(l, splits));
     let same_column = d.x0 < l.x1 && l.x0 < d.x1;
-    let beside = gutter && row_over_board && l.x0 >= d.x1 && sd.is_some() && sd == sl;
+    let beside = gutter && row_over_board && l.x0 >= d.x1 && sd.0 == sd.1 && sd == sl;
     if same_column || beside {
         return (l.y0 + l.y1) * 0.5 >= (d.y0 + d.y1) * 0.5;
     }
@@ -467,11 +527,29 @@ fn diagram_before(d: ViewRect, l: ViewRect, split: f32, gutter: bool, row_over_b
         // column): it waits for that board, which comes after this one.
         return gutter || under_a_board || l.y1 >= d.y0 - BESIDE_ABOVE_SHARE * d.height();
     }
-    // `l` is to the left of `d`.
-    l.y0 >= d.y1 && (sd.is_none() || sl.is_none() || sd == sl)
+    // `l` is to the left of `d`. On a page of one column, read top down, a line wholly below the
+    // board comes after it on either side of the middle, unless it is under another board in its
+    // own column (a row of boards: it is that board's caption).
+    l.y0 >= d.y1 && ((sd.0 <= sl.1 && sl.0 <= sd.1) || (one_column && !under_a_board))
 }
 
-fn interleave<'a>(lines: &[&'a ChessLine], diagrams: &[Option<ViewRect>], split: f32, gutter: bool) -> Vec<Item<'a>> {
+/// The columns `r` lies in, first and last (0-based, left to right), between the gutters
+/// `splits` (sorted): a box across a gutter is in the columns on both sides of it.
+fn sides(r: ViewRect, splits: &[f32]) -> (usize, usize) {
+    let first = splits.iter().filter(|s| **s <= r.x0).count();
+    let last = splits.iter().filter(|s| **s < r.x1).count();
+    (first, last.max(first))
+}
+
+/// Whether a page with no gutter is one column: at least half of its `lines` cross its middle
+/// `split` (two columns too short for a gutter have none that do).
+fn one_column(lines: &[&ChessLine], split: f32) -> bool {
+    let across = lines.iter().filter(|l| l.rect.x0 < split && split < l.rect.x1).count();
+    !lines.is_empty() && across.saturating_mul(2) >= lines.len()
+}
+
+fn interleave<'a>(lines: &[&'a ChessLine], diagrams: &[Option<ViewRect>], splits: &[f32], gutter: bool) -> Vec<Item<'a>> {
+    let one_column = !gutter && splits.first().is_some_and(|s| one_column(lines, *s));
     let mut items = Vec::with_capacity(lines.len().saturating_add(diagrams.len()));
     let mut next = 0usize;
     for &line in lines {
@@ -484,7 +562,7 @@ fn interleave<'a>(lines: &[&'a ChessLine], diagrams: &[Option<ViewRect>], split:
                 let mid = (line.rect.y0 + line.rect.y1) * 0.5;
                 lines.iter().any(|o| !std::ptr::eq(*o, line) && o.rect.y0 <= mid && mid <= o.rect.y1 && o.rect.x0 < d.x1 && d.x0 < o.rect.x1)
             };
-            if !d.is_some_and(|d| diagram_before(d, line.rect, split, gutter, row_over(d), under_a_board(d))) {
+            if !d.is_some_and(|d| diagram_before(d, line.rect, splits, gutter, one_column, row_over(d), under_a_board(d))) {
                 break;
             }
             items.push(Item::Diagram(next));
@@ -664,14 +742,17 @@ fn blocks(input: &PageInput<'_>, carried: Option<u32>, folios: &[i64]) -> (Vec<B
     };
     let kept: Vec<&ChessLine> = input.text.lines.iter().filter(|l| !is_coordinates(l, &diagram_views)).collect();
     let page_width = input.geometry.view_size().0;
-    let split = gutter(&kept, page_width);
-    let ordered = column_order(&kept, split);
+    let columns = columns(&kept, page_width);
+    let ordered = column_order(&kept, &columns);
+    let gutters = columns.gutters();
     let offsets = folio_offsets(&kept, input.index);
     let folio_lines: Vec<usize> = offsets.iter().filter(|(_, o)| folios.contains(o)).map(|(li, _)| *li).collect();
     let (puzzles, trailing) = caption_numbers(&kept, &diagram_views, &folio_lines);
     // The previous page's trailing label is the first diagram's in reading order.
     let mut carried = carried;
-    for item in interleave(&ordered, &diagram_views, split.unwrap_or(page_width * 0.5), split.is_some()) {
+    // Without a gutter, the page's middle stands for one.
+    let splits = if gutters.is_empty() { vec![page_width * 0.5] } else { gutters.clone() };
+    for item in interleave(&ordered, &diagram_views, &splits, !gutters.is_empty()) {
         match item {
             Item::Diagram(i) => {
                 flush(&mut blocks, &mut group, key);
@@ -695,6 +776,15 @@ fn blocks(input: &PageInput<'_>, carried: Option<u32>, folios: &[i64]) -> (Vec<B
     }
     flush(&mut blocks, &mut group, key);
     (blocks, trailing, offsets.into_iter().map(|(_, o)| o).collect())
+}
+
+/// The page's trailing caption label ([`caption_numbers`]) from its text and its diagrams' boxes
+/// (user space), as [`blocks`] finds it. Folios do not matter: a bare number is never a trailing
+/// label, and a caption with its word or `№` wins over a bare number for a diagram.
+pub(crate) fn trailing_label(text: &crate::chess_text::ChessPageText, geometry: &PageGeometry, diagrams: &[crate::coords::PageRect]) -> Option<u32> {
+    let views: Vec<Option<ViewRect>> = diagrams.iter().map(|d| geometry.user_to_view(*d)).collect();
+    let kept: Vec<&ChessLine> = text.lines.iter().filter(|l| !is_coordinates(l, &views)).collect();
+    caption_numbers(&kept, &views, &[]).1
 }
 
 /// Give each text review to the inline it overlaps most; the rest to the page.
@@ -825,7 +915,13 @@ pub(crate) fn page(input: &PageInput<'_>, walker: &mut Walker, carried: Option<u
     }
     attach_reviews(input, &mut blocks, &mut review);
     walk(input.index, &mut blocks, walker, trailing);
-    let page =
-        ChessPage { index: input.index, lang: input.text.lang.lang.code().to_owned(), text_layer: (&input.text.quality).into(), blocks, review };
+    let page = ChessPage {
+        index: input.index,
+        lang: input.text.lang.lang.code().to_owned(),
+        text_layer: (&input.text.quality).into(),
+        blocks,
+        review,
+        trailing,
+    };
     (page, trailing, offsets)
 }

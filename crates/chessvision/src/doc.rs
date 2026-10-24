@@ -204,6 +204,12 @@ pub struct ChessPage {
     /// Flags that belong to the page rather than to one block.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub review: Vec<ReviewFlag>,
+    /// The puzzle label captioned at the page's foot, after its last diagram, which numbers the
+    /// next page's first diagram (Construa Seu Xadrez sets `Exercício 7` at the foot of a page
+    /// and its diagram at the top of the next). Kept so that a page read alone and walked again
+    /// with the page after it ([`DocBuilder::add_read_page`]) still passes it on.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub trailing: Option<u32>,
 }
 
 /// A block of the page, in reading order.
@@ -599,8 +605,18 @@ impl DocBuilder {
     /// Add a page read before (from a document's JSON, or after its moves were corrected): its
     /// moves are judged again, in order with the other pages, from what is printed. What the last
     /// walk wrote on them (status, position, node, the diagrams' missing-start flags) is replaced.
+    ///
+    /// A page read alone did not see the page before it: when the page added just before it is
+    /// the one before it in the book and left a caption at its foot ([`ChessPage::trailing`]),
+    /// the page's first diagram takes that number unless a caption of its own numbers it, as the
+    /// whole-document reader gives it ([`DocBuilder::add_page`]).
     pub fn add_read_page(&mut self, mut page: ChessPage) {
-        self.carry = None;
+        let carried = self.carry.take().filter(|(index, _)| index.checked_add(1) == Some(page.index)).map(|(_, n)| n);
+        if let Some(Block::Diagram(first)) = page.blocks.iter_mut().find(|b| matches!(b, Block::Diagram(_)))
+            && first.puzzle.is_none()
+        {
+            first.puzzle = carried;
+        }
         for block in &mut page.blocks {
             match block {
                 Block::Heading { inlines, .. } | Block::Paragraph { inlines, .. } => {
@@ -615,8 +631,16 @@ impl DocBuilder {
                 Block::Diagram(d) => d.review.retain(|f| !matches!(f, ReviewFlag::NoStartPosition)),
             }
         }
-        build::walk(page.index, &mut page.blocks, &mut self.walker, None);
+        build::walk(page.index, &mut page.blocks, &mut self.walker, page.trailing);
+        self.carry = page.trailing.map(|n| (page.index, n));
         self.pages.push(page);
+    }
+
+    /// The page before the next one added, page `page`, was not added, but was looked at on its
+    /// own: it left the caption `label` at its foot ([`trailing_label`]). The next page's first
+    /// diagram takes it (unless a caption of its own numbers it) when that page is `page + 1`.
+    pub fn carry_caption(&mut self, page: u32, label: u32) {
+        self.carry = Some((page, label));
     }
 
     /// The document: every open game is closed and every move's node reference made final.
@@ -643,6 +667,14 @@ impl DocBuilder {
         }
         ChessDoc { format: FORMAT_VERSION, pages, games: done.games }
     }
+}
+
+/// The puzzle label a page leaves at its foot for the next page's first diagram
+/// ([`ChessPage::trailing`]), from its text and where its diagrams are (`diagrams`, user space),
+/// without reading them: the cheap look at the page before a page read alone
+/// ([`DocBuilder::carry_caption`]).
+pub fn trailing_label(text: &ChessPageText, geometry: &PageGeometry, diagrams: &[PageRect]) -> Option<u32> {
+    build::trailing_label(text, geometry, diagrams)
 }
 
 /// A one-page document.
