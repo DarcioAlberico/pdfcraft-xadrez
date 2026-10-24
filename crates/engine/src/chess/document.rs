@@ -265,6 +265,39 @@ pub fn size_hints(larger: &[LargerLine], text: &ChessPageText, geometry: &PageGe
         .collect()
 }
 
+/// Fewest letters of words a heading set only bolder holds (`Summary`).
+pub const BOLD_MIN_LETTERS: usize = 4;
+/// Least share of a heading set only bolder that is letters of words: a bold main line misread
+/// (`7...aC)`, `S Nxcs`) is mostly figures, signs and moves.
+pub const BOLD_LETTER_SHARE: f32 = 0.6;
+
+/// The headings of a page read with OCR from its lines set bolder than its body at its size and
+/// standing alone (`bolder`, view space: a section's title, `glyphs::bolder_lines`). A bolder line
+/// is a heading (level 2) when it holds a short text ([`short_heading`]) that reads as words: at
+/// least [`BOLD_MIN_LETTERS`] letters, [`BOLD_LETTER_SHARE`] of its characters. Books set their
+/// main lines in bold, so a bolder line of moves is a paragraph, and the builder's rule still
+/// allows a heading two moves at most.
+pub fn bold_hints(bolder: &[ViewRect], text: &ChessPageText, geometry: &PageGeometry) -> Vec<BlockHint> {
+    bolder
+        .iter()
+        .filter_map(|r| {
+            let inside = lines_inside(text, *r);
+            if !short_heading(&inside) {
+                return None;
+            }
+            let spans = || inside.iter().flat_map(|l| &l.spans);
+            let chars: usize = spans().map(|s| span_chars(&s.run)).sum();
+            let letters: usize =
+                spans().map(|s| if let ChessRun::Text(t) = &s.run { t.chars().filter(|c| c.is_alphabetic()).count() } else { 0 }).sum();
+            // Character counts of a short text, exact in `f32`.
+            if letters < BOLD_MIN_LETTERS || (letters as f32) < BOLD_LETTER_SHARE * chars as f32 {
+                return None;
+            }
+            geometry.view_to_user(*r).map(|rect| BlockHint { kind: HintKind::Heading { level: 2 }, rect })
+        })
+        .collect()
+}
+
 /// Whether the centre of `line` is within `rect`.
 fn centre_in(line: ViewRect, rect: ViewRect) -> bool {
     let (cx, cy) = ((line.x0 + line.x1) * 0.5, (line.y0 + line.y1) * 0.5);
@@ -300,8 +333,8 @@ fn span_chars(run: &ChessRun) -> usize {
 /// The hints for a page from its reading blocks, and a note when they could not be read. A page
 /// read with OCR gets none here: its blocks are the layer that was not believed (an earlier OCR
 /// program's invisible text, whose sizes say nothing), so its lines are grouped by spacing, and
-/// its headings come from the frames and the larger lines OCR found ([`frame_hints`],
-/// [`size_hints`]).
+/// its headings come from the frames, the larger lines and the bolder lines OCR found
+/// ([`frame_hints`], [`size_hints`], [`bold_hints`]).
 pub fn page_hints(
     blocks: Option<&Result<Vec<pdfcraft_edit::TextBlock>, String>>,
     body: Option<f64>,
@@ -424,6 +457,7 @@ impl Session {
             let ocr_text;
             let mut ocr_frames: Vec<ViewRect> = Vec::new();
             let mut ocr_larger: Vec<LargerLine> = Vec::new();
+            let mut ocr_bolder: Vec<ViewRect> = Vec::new();
             notes.extend(page.notes.iter().map(|n| (page.page, n.clone())));
             if let Some(e) = &page.error {
                 notes.push((page.page, e.clone()));
@@ -471,6 +505,7 @@ impl Session {
                                 reviews = read.reviews;
                                 ocr_frames = read.frames;
                                 ocr_larger = read.larger;
+                                ocr_bolder = read.bolder;
                                 ocr_text = read.text;
                                 text = &ocr_text;
                             }
@@ -518,6 +553,7 @@ impl Session {
                 // A frame's heading comes first: a title inside a box is the box's.
                 hints = frame_hints(&ocr_frames, text, &geometry);
                 hints.extend(size_hints(&ocr_larger, text, &geometry));
+                hints.extend(bold_hints(&ocr_bolder, text, &geometry));
             }
             notes.extend(note.map(|n| (page.page, n)));
             let diagrams = readings;

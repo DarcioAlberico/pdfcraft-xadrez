@@ -15,8 +15,9 @@
 //!    page's lines, from the diagram the page shows (or the game start at `1.`); what they change
 //!    or cannot settle becomes a review flag on the text;
 //! 5. the lines become the same `ChessPageText` a text layer gives, and the frames drawn around
-//!    text (a game's header box) and the lines set larger than the page's body (a chapter title,
-//!    [`larger_lines`]) are kept for the headings.
+//!    text (a game's header box), the lines set larger than the page's body (a chapter title,
+//!    [`larger_lines`]) and those set bolder at its size, standing alone (a section's title,
+//!    `glyphs::bolder_lines`), are kept for the headings.
 //!
 //! Reading order is top to bottom by line: a two-column page is read across both columns.
 //!
@@ -42,7 +43,7 @@ use pdfcraft_chessvision::cipher::{BookCipher, repair_lines};
 use pdfcraft_chessvision::coords::{PageGeometry, PageRect, PixelRect, ViewRect, pixels_to_view};
 use pdfcraft_chessvision::doc::TextReview;
 use pdfcraft_chessvision::glyphs::fuse::{FusedLine, OcrWord, fuse_line, glyphs_only, to_chess_text, to_page_text};
-use pdfcraft_chessvision::glyphs::{GlyphClassifier, GlyphLine, GlyphOptions, read, text_scale};
+use pdfcraft_chessvision::glyphs::{GlyphClassifier, GlyphLine, GlyphOptions, bolder_lines, read, text_scale};
 use pdfcraft_chessvision::raster::GrayImage;
 use pdfcraft_render::text::PageText;
 use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind, Tile};
@@ -76,6 +77,9 @@ pub struct OcrText {
     /// The lines set larger than the page's body ([`larger_lines`]): a chapter title without a
     /// frame.
     pub larger: Vec<LargerLine>,
+    /// The lines set bolder than the page's body at its size, standing alone (view space,
+    /// `glyphs::bolder_lines`): a section's title.
+    pub bolder: Vec<ViewRect>,
 }
 
 /// A line at least this many times as tall as the page's body text is set larger, as a title is.
@@ -234,6 +238,10 @@ pub fn read_page(
     let image = if boards.is_empty() { image } else { masked(&image, &boards).ok_or("the page image could not be prepared")? };
     let lines = read(&image, None, scale, glyphs, &GlyphOptions::default()).map_err(|e| e.to_string())?;
     let larger = larger_lines(&lines, dpi);
+    // A caption beside a board, bold or not, is the board's, not a heading.
+    let board_boxes: Vec<PixelRect> = diagrams.iter().chain(&boards).copied().collect();
+    let bolder: Vec<ViewRect> =
+        bolder_lines(&image, &lines, &board_boxes).map_err(|e| e.to_string())?.into_iter().filter_map(|r| pixels_to_view(r, dpi)).collect();
     let frames: Vec<ViewRect> = frames.into_iter().filter_map(|r| pixels_to_view(r, dpi)).collect();
     let fused = match ocr {
         Some(words) => bucket(&lines, words),
@@ -254,6 +262,7 @@ pub fn read_page(
         general_ocr: ocr.is_some(),
         frames,
         larger,
+        bolder,
     })
 }
 

@@ -35,6 +35,7 @@ mod fix;
 pub mod fuse;
 mod notation;
 mod seg;
+mod weight;
 
 #[cfg(test)]
 mod tests;
@@ -45,6 +46,7 @@ use crate::raster::GrayImage;
 
 use classify::{Classes, Read, Reader};
 use seg::{Bx, Gray};
+pub use weight::{BOLD_GAP_ABOVE, BOLD_LEADING, BOLD_MAX_LINES, BOLD_MAX_SIZE, BOLD_MIN_GLYPHS, BOLD_RATIO, RUN_GAP, bolder_lines};
 
 /// Most pixels read at once: 40 megapixels, a letter page at 600 DPI. A larger raster is
 /// refused; read it in strips.
@@ -179,12 +181,17 @@ impl GlyphLine {
     /// letters) of one size measure alike, and a line set larger measures larger. `None` for a
     /// line without glyphs.
     pub fn height(&self) -> Option<u32> {
-        let mut heights: Vec<u32> = self.glyphs().map(|g| g.rect.y1.saturating_sub(g.rect.y0)).filter(|&h| h > 0).collect();
-        heights.sort_unstable();
-        // The rank is a share in [0, 1], so the index is within the list.
-        let at = (heights.len().saturating_sub(1) as f32 * LINE_HEIGHT_RANK) as usize;
-        heights.get(at).copied()
+        rank_height(self.glyphs())
     }
+}
+
+/// The height of `glyphs` as [`GlyphLine::height`] takes it.
+pub(crate) fn rank_height<'a>(glyphs: impl Iterator<Item = &'a Glyph>) -> Option<u32> {
+    let mut heights: Vec<u32> = glyphs.map(|g| g.rect.y1.saturating_sub(g.rect.y0)).filter(|&h| h > 0).collect();
+    heights.sort_unstable();
+    // The rank is a share in [0, 1], so the index is within the list.
+    let at = (heights.len().saturating_sub(1) as f32 * LINE_HEIGHT_RANK) as usize;
+    heights.get(at).copied()
 }
 
 /// The smallest box covering both.
