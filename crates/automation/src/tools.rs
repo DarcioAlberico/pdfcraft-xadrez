@@ -547,6 +547,22 @@ pub fn tools() -> Vec<ToolDef> {
             .destructive()
             .with(schema(json!({ "doc": doc() }), &["doc"])),
         t(
+            "page_cut",
+            "Cut pages (Knife)",
+            "Cut pages into parts, each part a page of its own right after the original: axis vertical (side by side, left first) or horizontal (one above the other, top first), at the given places measured on the page as shown (units pt from the left or top edge, the default, or fraction of its width or height), the same on every page in pages. right_to_left: true puts the right (or bottom) part first, for books read that way. Nothing is erased: each part shows its part through its media and crop boxes. Annotations go to the part holding their centre. Returns cut: each page's parts, 1-based. Undoable.",
+        )
+        .with(schema(
+            json!({
+                "doc": doc(),
+                "pages": pages("to cut"),
+                "axis": { "type": "string", "enum": ["vertical", "horizontal"] },
+                "at": { "type": "array", "items": { "type": "number" }, "minItems": 1, "maxItems": 15 },
+                "units": { "type": "string", "enum": ["pt", "fraction"] },
+                "right_to_left": { "type": "boolean" },
+            }),
+            &["doc", "pages", "axis", "at"],
+        )),
+        t(
             "page_erase",
             "Erase content",
             "Erase the page's content under rects ([x0, y0, x1, y1] each, points from the top-left of the displayed page): glyphs are cut out of their lines with the rest in place, images and vectors removed or clipped. kinds: any of text, images, vectors (the default, all three) and annotations (comments, links and fields there; off by default). rule: centre (default: a glyph goes when its centre is inside, as a selection takes it) or overlap (any real overlap, as redaction). No box is drawn and nothing is marked. An ordinary edit, undoable and saved incrementally, so an earlier revision still holds the content: use redact_mark and redact_apply to remove it for good. Returns erased: how many glyphs, images and path parts went.",
