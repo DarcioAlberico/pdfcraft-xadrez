@@ -3415,6 +3415,36 @@ fn redacting_through_tools() {
     assert!(matches!(a.call("redact_mark", &json!({ "doc": doc })), Err(ToolError::InvalidArgs(_))));
 }
 
+/// Erase what lies under a rectangle of the displayed page: the text there leaves the page's
+/// text, the rest stays where it was, the edit undoes, and the saved file reopens without it.
+#[test]
+fn erasing_content_through_tools() {
+    let dir = workdir("erase");
+    std::fs::write(dir.join("memo.txt"), "Keep this line\nErase this line\nKeep that line").unwrap();
+    let mut a = auto(&dir);
+    let doc = ok(&mut a, "doc_create", json!({ "from": "text", "path": "memo.txt" }))["doc"].as_u64().unwrap();
+    let words = ok(&mut a, "text_find", json!({ "doc": doc, "query": "Erase this line" }));
+    let area = json!([words["matches"][0]["rects"][0]]);
+    let out = ok(&mut a, "page_erase", json!({ "doc": doc, "page": 1, "rects": area }));
+    assert_eq!(out["erased"].as_u64(), Some("Erase this line".len() as u64), "the spaces are glyphs too: {out}");
+    let text = page_text(&mut a, doc)[0].clone();
+    assert!(!text.contains("Erase") && text.contains("Keep this line") && text.contains("Keep that line"), "{text}");
+    assert_eq!(ok(&mut a, "edit_undo", json!({ "doc": doc }))["undone"], "Erase content");
+    assert!(page_text(&mut a, doc)[0].contains("Erase this line"));
+    ok(&mut a, "page_erase", json!({ "doc": doc, "page": 1, "rects": area, "kinds": ["text"], "rule": "overlap" }));
+    ok(&mut a, "doc_save", json!({ "doc": doc, "path": "memo.pdf" }));
+    let again = ok(&mut a, "doc_open", json!({ "path": "memo.pdf" }))["doc"].as_u64().unwrap();
+    assert!(!page_text(&mut a, again)[0].contains("Erase"));
+    // Nothing there, and arguments that are no rectangles.
+    assert!(matches!(a.call("page_erase", &json!({ "doc": doc, "page": 1, "rects": [[0, 0, 1, 1]] })), Err(ToolError::Failed(_))));
+    for bad in [json!([]), json!([[0, 0, 1]]), json!([[0, 0, 0, 10]])] {
+        assert!(a.call("page_erase", &json!({ "doc": doc, "page": 1, "rects": bad })).is_err(), "{bad}");
+    }
+    assert!(matches!(a.call("page_erase", &json!({ "doc": doc, "page": 2, "rects": area })), Err(ToolError::InvalidArgs(_))));
+    assert!(matches!(a.call("page_erase", &json!({ "doc": doc, "page": 1, "rects": area, "kinds": ["ink"] })), Err(ToolError::InvalidArgs(_))));
+    assert!(matches!(a.call("page_erase", &json!({ "doc": doc, "page": 1, "rects": area, "rule": "any" })), Err(ToolError::InvalidArgs(_))));
+}
+
 #[test]
 fn redacting_with_codes_through_tools() {
     let dir = workdir("redact-codes");

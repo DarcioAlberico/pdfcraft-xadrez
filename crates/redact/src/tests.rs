@@ -1772,3 +1772,162 @@ fn unused_descriptions_in_shared_or_inherited_resources_are_retired() {
 }
 
 mod property_retirement;
+
+// ---------------------------------------------------------------- erase
+
+/// The comment eraser's counterpart for content: the glyphs under the area go with the rest of
+/// the line in place, and unlike redaction no box is drawn, no annotation is involved, and the
+/// edit may be saved incrementally. (Fails with the erase entry point off.)
+#[test]
+fn erase_takes_the_area_away_draws_no_box_and_saves_incrementally() {
+    let mut doc = one_page(b"BT /F1 10 Tf 10 100 Td (AB1234CD) Tj ET", "", vec![]);
+    let r = erase(&mut doc, 0, &[[20.0, 95.0, 40.0, 110.0]], &EraseOptions::default()).unwrap();
+    assert_eq!(r.glyphs, 4, "{r:?}");
+    let c = content(&doc, 0);
+    assert!(c.contains("[(AB) -2000 (CD)] TJ"), "{c}");
+    assert!(!c.contains(" re f") && !c.contains("rg"), "no box: {c}");
+    assert!(!doc.full_save_required(), "an ordinary edit");
+    assert_eq!(under(&mut doc, 0, &[[40.0, 95.0, 50.0, 110.0]]), 2, "C and D are where they were");
+    let doc = reopen(&doc);
+    assert!(!content(&doc, 0).contains("1234"));
+}
+
+/// A selection takes the glyphs whose centres it holds, and erasing it by the centre rule takes
+/// exactly those; redaction's overlap rule also takes the two glyphs the area only clips.
+/// (Fails with the centre rule off.)
+#[test]
+fn the_centre_rule_takes_what_a_selection_shows() {
+    // 1 spans x 20–25 and 4 spans 35–40: the area clips 1.5 pt of each, short of their centres.
+    let area = [[23.5, 95.0, 36.5, 110.0]];
+    let mut centre = one_page(b"BT /F1 10 Tf 10 100 Td (AB1234CD) Tj ET", "", vec![]);
+    assert_eq!(erase(&mut centre, 0, &area, &EraseOptions::default()).unwrap().glyphs, 2);
+    assert!(content(&centre, 0).contains("[(AB1) -1000 (4CD)] TJ"), "{}", content(&centre, 0));
+    let mut overlap = one_page(b"BT /F1 10 Tf 10 100 Td (AB1234CD) Tj ET", "", vec![]);
+    let options = EraseOptions { rule: GlyphRule::Overlap, ..EraseOptions::default() };
+    assert_eq!(erase(&mut overlap, 0, &area, &options).unwrap().glyphs, 4);
+}
+
+/// Text, images and vectors each go only when asked for, and the preview lists what would go
+/// without changing anything. (Fails with any kind's switch ignored.)
+#[test]
+fn erase_takes_only_the_kinds_asked_for_and_the_preview_lists_them() {
+    let img = stream("/Type /XObject /Subtype /Image /Width 1 /Height 1 /ColorSpace /DeviceGray /BitsPerComponent 8", [0]);
+    let src = b"BT /F1 10 Tf 10 100 Td (AB) Tj ET q 10 0 0 10 10 50 cm /Im1 Do Q 0 g 10 10 20 20 re f";
+    let page = || one_page(src, "/XObject << /Im1 7 0 R >>", vec![img.clone()]);
+    let all = [[0.0, 0.0, 300.0, 300.0]];
+    let only = |text: bool, images: bool, vectors: bool| EraseOptions { text, images, vectors, ..EraseOptions::default() };
+    for (options, glyphs, images, paths) in [
+        (only(true, false, false), 2, 0, 0),
+        (only(false, true, false), 0, 1, 0),
+        (only(false, false, true), 0, 0, 1),
+        (only(true, true, true), 2, 1, 1),
+    ] {
+        let mut doc = page();
+        let found = erase_preview(&doc, 0, &all, &options).unwrap();
+        assert_eq!(found.len(), glyphs + images + paths, "{options:?}: {found:?}");
+        assert_eq!(content(&doc, 0), String::from_utf8_lossy(src), "the preview changes nothing");
+        let r = erase(&mut doc, 0, &all, &options).unwrap();
+        assert_eq!((r.glyphs, r.images_removed, r.paths_removed), (glyphs, images, paths), "{options:?}");
+        let c = content(&doc, 0);
+        assert_eq!(c.contains("(AB)"), glyphs == 0, "{c}");
+        assert_eq!(c.contains("/Im1 Do"), images == 0, "{c}");
+        assert_eq!(c.contains("10 10 20 20 re"), paths == 0, "{c}");
+    }
+    // The preview gives each glyph's box: B at x 15–20, from the descent to the ascent.
+    let found = erase_preview(&page(), 0, &[[15.0, 95.0, 20.0, 110.0]], &only(true, false, false)).unwrap();
+    assert_eq!(found, [[15.0, 98.0, 20.0, 108.0]]);
+}
+
+/// Comments, links and fields stay unless asked for: the comment eraser is for those.
+/// (Fails with the annotations switch ignored.)
+#[test]
+fn erase_leaves_comments_and_fields_unless_asked() {
+    let annotated = || {
+        let mut doc = one_page(b"0 g 5 5 10 10 re f", "", vec![]);
+        let square = Shape::Rectangle { rect: [20.0, 20.0, 40.0, 40.0] };
+        add_annotation(
+            &mut doc,
+            &NewAnnotation { page: 0, style: Style::default_for(&square), shape: square, contents: "x".into(), author: "a".into() },
+            &Meta::default(),
+        )
+        .unwrap();
+        pdfcraft_forms::add_field(&mut doc, 0, [10.0, 50.0, 100.0, 70.0], &pdfcraft_forms::NewField::Text { multiline: false }, Some("name"))
+            .unwrap();
+        doc
+    };
+    let area = [[0.0, 0.0, 120.0, 80.0]];
+    let mut doc = annotated();
+    let r = erase(&mut doc, 0, &area, &EraseOptions::default()).unwrap();
+    assert_eq!((r.paths_removed, r.annotations, r.fields), (1, 0, 0), "{r:?}");
+    assert_eq!(pdfcraft_forms::fields(&doc).len(), 1);
+    assert_eq!(annots_of(&doc, &pdfcraft_model::pages(&doc).swap_remove(0).dict).len(), 2, "the comment and the widget stay");
+    let mut doc = annotated();
+    let r = erase(&mut doc, 0, &area, &EraseOptions { annotations: true, ..EraseOptions::default() }).unwrap();
+    assert_eq!((r.annotations, r.fields), (1, 1), "{r:?}");
+    assert!(pdfcraft_forms::fields(&doc).is_empty());
+}
+
+/// A form XObject two pages draw is copied before it changes: the other page keeps its text.
+#[test]
+fn erasing_a_shared_form_leaves_the_other_page_alone() {
+    let form =
+        stream("/Type /XObject /Subtype /Form /BBox [0 0 300 300] /Resources << /Font << /F1 5 0 R >> >>", b"BT /F1 10 Tf 10 100 Td (SECRET) Tj ET");
+    let mut doc = pdf(vec![
+        b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(),
+        b"<< /Type /Pages /Kids [3 0 R 8 0 R] /Count 2 /MediaBox [0 0 300 300] /Resources << /XObject << /Fm 7 0 R >> >> >>".to_vec(),
+        b"<< /Type /Page /Parent 2 0 R /Contents 4 0 R >>".to_vec(),
+        stream("", b"/Fm Do"),
+        FONT.replace("95 0 R", "6 0 R").into_bytes(),
+        widths(),
+        form,
+        b"<< /Type /Page /Parent 2 0 R /Contents 4 0 R >>".to_vec(),
+    ]);
+    let r = erase(&mut doc, 0, &[[0.0, 90.0, 300.0, 120.0]], &EraseOptions::default()).unwrap();
+    assert_eq!((r.glyphs, r.forms_rewritten), (6, 1), "{r:?}");
+    assert_eq!(content(&doc, 1), "/Fm Do");
+    assert_eq!(under(&mut doc, 1, &[[0.0, 90.0, 300.0, 120.0]]), 6);
+    assert_eq!(under(&mut doc, 0, &[[0.0, 90.0, 300.0, 120.0]]), 0);
+}
+
+/// Areas that are no rectangles on a page, and areas over nothing, are refused with a reason.
+#[test]
+fn erase_refuses_bad_areas_and_empty_ground() {
+    let doc = one_page(b"BT /F1 10 Tf 10 100 Td (AB) Tj ET", "", vec![]);
+    let bad = |page: usize, areas: &[[f64; 4]]| {
+        let mut d = doc.clone();
+        matches!(erase(&mut d, page, areas, &EraseOptions::default()), Err(RedactError::BadArea(_)))
+            && matches!(erase_preview(&doc, page, areas, &EraseOptions::default()), Err(RedactError::BadArea(_)))
+    };
+    assert!(bad(1, &[[0.0, 0.0, 10.0, 10.0]]), "no page 2");
+    assert!(bad(0, &[]), "no area");
+    assert!(bad(0, &vec![[0.0, 0.0, 10.0, 10.0]; MAX_ERASE_AREAS + 1]), "too many");
+    assert!(bad(0, &[[f64::NAN, 0.0, 10.0, 10.0]]), "not finite");
+    assert!(bad(0, &[[0.0, 0.0, f64::INFINITY, 10.0]]), "not finite");
+    assert!(bad(0, &[[5.0, 0.0, 5.0, 10.0]]), "no width");
+    let mut d = doc.clone();
+    assert_eq!(erase(&mut d, 0, &[[200.0, 200.0, 250.0, 250.0]], &EraseOptions::default()), Err(RedactError::NothingToErase));
+    // Corners in any order are one rectangle.
+    let mut d = doc.clone();
+    assert_eq!(erase(&mut d, 0, &[[20.0, 110.0, 10.0, 95.0]], &EraseOptions::default()).map(|r| r.glyphs), Ok(2));
+}
+
+proptest::proptest! {
+    #![proptest_config(proptest::prelude::ProptestConfig::with_cases(64))]
+    /// Any areas on any page, finite or not, are a report or an error, never a panic.
+    #[test]
+    fn erasing_arbitrary_areas_never_panics(
+        page in 0usize..3,
+        areas in proptest::collection::vec(proptest::array::uniform4(proptest::prelude::any::<f64>()), 0..6),
+        rule in proptest::prelude::any::<bool>(),
+        kinds in proptest::array::uniform4(proptest::prelude::any::<bool>()),
+    ) {
+        let src = b"BT /F1 10 Tf 10 100 Td (AB1234CD) Tj ET q 10 0 0 10 10 50 cm BI /W 1 /H 1 /CS /G /BPC 8 ID \x80 EI Q 0 g 10 10 20 20 re f";
+        let mut doc = one_page(src, "", vec![]);
+        let options = EraseOptions {
+            rule: if rule { GlyphRule::Centre } else { GlyphRule::Overlap },
+            text: kinds[0], images: kinds[1], vectors: kinds[2], annotations: kinds[3],
+        };
+        let _ = erase_preview(&doc, page, &areas, &options);
+        let _ = erase(&mut doc, page, &areas, &options);
+    }
+}

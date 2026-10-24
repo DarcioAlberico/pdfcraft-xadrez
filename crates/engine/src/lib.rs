@@ -153,6 +153,7 @@ pub use pdfcraft_redact::patterns::{
     MAX_WORDS as REDACT_MAX_WORDS, PATTERNS as REDACT_PATTERNS, Pattern as RedactPattern, find as find_pattern, word_list as redact_word_list,
 };
 pub use pdfcraft_redact::sanitize::{HIDDEN, Hidden};
+pub use pdfcraft_redact::{EraseOptions, GlyphRule, MAX_ERASE_AREAS};
 pub use pdfcraft_sign as sign;
 pub use pdfcraft_sign::{SignOptions, SignatureInfo, Status as SignatureStatus, TrustStore};
 pub use pdfcraft_xfdf::Format as DataFormat;
@@ -824,6 +825,14 @@ impl Document {
     pub fn audit_redactions(&self) -> Result<Vec<pdfcraft_audit::AuditFinding>, String> {
         let editor = self.editor.as_ref().ok_or("the document can't be read")?;
         pdfcraft_audit::audit_redactions(&editor.cos).map_err(|e| e.to_string())
+    }
+
+    /// What [`Edit::EraseContent`] would remove under `areas` (user space) on `page` (0-based):
+    /// each glyph's box, and the covered part of each image and path
+    /// ([`pdfcraft_redact::erase_preview`]). Changes nothing.
+    pub fn erase_preview(&self, page: usize, areas: &[[f64; 4]], options: &EraseOptions) -> Result<Vec<[f64; 4]>, String> {
+        let editor = self.editor.as_ref().ok_or("the document can't be read")?;
+        pdfcraft_redact::erase_preview(&editor.cos, page, areas, options).map_err(|e| e.to_string())
     }
 
     /// Every page's media, crop, bleed, trim and art boxes (user space), for Set Page Boxes.
@@ -1699,6 +1708,14 @@ pub enum Edit {
     },
     /// Remove redaction marks without applying them.
     ClearRedactions,
+    /// Edit a PDF ▸ Eraser: remove what `options` names under `areas` (user space) on `page`
+    /// ([`pdfcraft_redact::erase`]). An ordinary edit, saved incrementally like the others: Redact
+    /// is the secure removal.
+    EraseContent {
+        page: usize,
+        areas: Vec<[f64; 4]>,
+        options: pdfcraft_redact::EraseOptions,
+    },
     /// Edit a PDF ▸ Link: a new link over `rect` (user space).
     AddLink {
         page: usize,
@@ -2083,6 +2100,7 @@ impl Edit {
             Edit::ReplaceImage { .. } => Label::of("Replace image"),
             Edit::ApplyRedactions { .. } => Label::of("Apply redactions"),
             Edit::ClearRedactions => Label::of("Remove redaction marks"),
+            Edit::EraseContent { .. } => Label::of("Erase content"),
             Edit::RemoveHidden { .. } => Label::of("Remove hidden information"),
             Edit::ImportData { name, .. } => Label::with("Import {name}", name.as_str()),
             Edit::AddLink { .. } => Label::of("Add link"),
@@ -2226,6 +2244,7 @@ fn check_permission(edit: &Edit, p: &pdfcraft_cos::Permissions) -> Result<(), Ed
         | Edit::DeleteContent { .. }
         | Edit::ReplaceImage { .. }
         | Edit::ClearRedactions
+        | Edit::EraseContent { .. }
         | Edit::RemoveHidden { .. }
         | Edit::ImportData { .. }
         | Edit::AddLink { .. }
@@ -2674,6 +2693,9 @@ fn run_edit(doc: &mut pdfcraft_cos::Document, edit: &Edit, cx: &mut EditCtx) -> 
         }
         Edit::ClearRedactions => {
             pdfcraft_redact::clear_marks(doc, None)?;
+        }
+        Edit::EraseContent { page, areas, options } => {
+            pdfcraft_redact::erase(doc, *page, areas, options)?;
         }
         Edit::AddLink { page, rect, action, style } => {
             pdfcraft_annot::links::add(doc, *page, *rect, action, style)?;
