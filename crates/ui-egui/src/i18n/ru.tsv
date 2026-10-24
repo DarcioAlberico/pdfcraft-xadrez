@@ -2463,6 +2463,16 @@ animation effects	Off	Выкл
 	Show this diagram on the page	Показать эту диаграмму на странице
 	Stalemate	Пат
 	Standard start position	Стандартная начальная позиция
+	The game on the board has moves. Put this position:	В партии на доске есть ходы. Поставить эту позицию:
+	New game with this position	Новая партия с этой позицией
+	The game on the board keeps its moves.	Партия на доске сохраняет свои ходы.
+	Its moves are deleted (Undo brings them back).	Её ходы удаляются (Отменить вернёт их).
+	Start again from the standard position.	Начать заново со стандартной начальной позиции.
+	A new game from the standard position; the game on the board keeps its moves.	Новая партия со стандартной начальной позиции; партия на доске сохраняет свои ходы.
+	PGN edited	PGN изменён
+	Load	Загрузить
+	Show the game on the board again.	Снова показать партию с доски.
+	Load the PGN above on the board, with its variations and comments.	Загружает PGN выше на доску вместе с вариантами и комментариями.
 	Start (Home)	Начало (Home)
 	That side can't be to move: the other king is in check.	Эта сторона не может ходить: другой король под шахом.
 	The FEN couldn't be read: {e}	Не удалось прочитать FEN: {e}

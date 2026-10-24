@@ -1099,6 +1099,11 @@ impl PdfCraftApp {
             BoardAction::ChooseEngine => self.choose_chess_engine(),
             BoardAction::AddGames { texts, more } => self.add_pgn_field_games(&texts, more),
             BoardAction::ToggleMoveList => self.toggle_move_list(),
+            BoardAction::NewGameAt(fen) => {
+                if let Err(why) = self.chess.games.collection_mut().new_at(&fen) {
+                    self.chess.games.board_mut().message = Some(why);
+                }
+            }
         }
     }
 

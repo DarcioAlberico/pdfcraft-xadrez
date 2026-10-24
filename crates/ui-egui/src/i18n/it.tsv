@@ -2762,6 +2762,16 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Show this diagram on the page	Mostra questo diagramma nella pagina
 	Stalemate	Stallo
 	Standard start position	Posizione iniziale standard
+	The game on the board has moves. Put this position:	La partita sulla scacchiera ha delle mosse. Metti questa posizione:
+	New game with this position	Nuova partita con questa posizione
+	The game on the board keeps its moves.	La partita sulla scacchiera mantiene le sue mosse.
+	Its moves are deleted (Undo brings them back).	Le sue mosse vengono eliminate (Annulla le riporta).
+	Start again from the standard position.	Ricomincia dalla posizione iniziale standard.
+	A new game from the standard position; the game on the board keeps its moves.	Una nuova partita dalla posizione iniziale standard; la partita sulla scacchiera mantiene le sue mosse.
+	PGN edited	PGN modificato
+	Load	Carica
+	Show the game on the board again.	Mostra di nuovo la partita della scacchiera.
+	Load the PGN above on the board, with its variations and comments.	Carica il PGN qui sopra sulla scacchiera, con varianti e commenti.
 	Start (Home)	Inizio (Home)
 	That side can't be to move: the other king is in check.	Quel lato non può avere il tratto: l'altro re è sotto scacco.
 	The FEN couldn't be read: {e}	Impossibile leggere la FEN: {e}

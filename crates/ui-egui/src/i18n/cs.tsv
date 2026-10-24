@@ -2624,6 +2624,16 @@ animation effects	Off	Vypnuto
 	Show this diagram on the page	Zobrazit tento diagram na stránce
 	Stalemate	Pat
 	Standard start position	Výchozí postavení
+	The game on the board has moves. Put this position:	Partie na šachovnici má tahy. Umístit tuto pozici:
+	New game with this position	Nová partie s touto pozicí
+	The game on the board keeps its moves.	Partie na šachovnici si ponechá své tahy.
+	Its moves are deleted (Undo brings them back).	Její tahy se smažou (Zpět je vrátí).
+	Start again from the standard position.	Začít znovu z výchozího postavení.
+	A new game from the standard position; the game on the board keeps its moves.	Nová partie z výchozího postavení; partie na šachovnici si ponechá své tahy.
+	PGN edited	PGN upraveno
+	Load	Načíst
+	Show the game on the board again.	Znovu zobrazit partii ze šachovnice.
+	Load the PGN above on the board, with its variations and comments.	Načte PGN výše na šachovnici i s variantami a komentáři.
 	Start (Home)	Začátek (Home)
 	That side can't be to move: the other king is in check.	Tato strana nemůže být na tahu: druhý král je v šachu.
 	The FEN couldn't be read: {e}	FEN nelze přečíst: {e}
