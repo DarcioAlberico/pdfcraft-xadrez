@@ -1,7 +1,8 @@
 //! Chess ▸ the document's games list in the real shell (egui_kittest), PGN toolbar spec T14:
 //! renaming a game through its tags, duplicating, deleting after a question, reordering (the
-//! order the collection is exported and autosaved in), a new game from a position, and the keys
-//! of a focused row, which never reach the chess key scope.
+//! order the collection is exported and autosaved in), a new game from a position, the keys
+//! of a focused row, which never reach the chess key scope, and several games selected (Ctrl+click,
+//! Shift+click, Shift+arrows, Ctrl+A) acted on together.
 
 use egui::accesskit::Role;
 use egui::{Key, Modifiers, Pos2};
@@ -689,4 +690,177 @@ fn the_pgn_field_puts_its_first_game_on_the_board_and_adds_the_others() {
     assert!(h.state_mut().execute("edit.undo"));
     h.run_steps(2);
     assert_eq!(listed(h.state()), (vec!["Game 1".to_owned()], 0), "then the game loaded");
+}
+
+/// Four games read from a PGN file: events A, B, C and D, A shown.
+fn four_games(h: &mut Harness<'static, PdfCraftApp>) {
+    let pgn = "[Event \"A\"]\n\n1. e4 *\n\n[Event \"B\"]\n\n1. d4 *\n\n[Event \"C\"]\n\n1. c4 *\n\n[Event \"D\"]\n\n1. Nf3 *\n";
+    assert_eq!(h.state_mut().import_chess_pgn("abcd.pgn", pgn.as_bytes()), 4);
+    h.run_steps(3);
+    assert_eq!(listed(h.state()), (vec!["A".to_owned(), "B".to_owned(), "C".to_owned(), "D".to_owned()], 0));
+}
+
+/// Click the row named `name` with `modifiers` held (Ctrl is [`Modifiers::COMMAND`]), as a mouse
+/// does: the modifiers are down during the frame of the click.
+fn click_with(h: &mut Harness<'static, PdfCraftApp>, name: &str, modifiers: Modifiers) {
+    h.state_mut().toast = None;
+    h.run_steps(1);
+    let at = h.get_by_label(name).rect().center();
+    h.hover_at(at);
+    h.run_steps(1);
+    h.event(egui::Event::ModifiersChanged(modifiers));
+    for pressed in [true, false] {
+        h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed, modifiers });
+    }
+    h.run_steps(1);
+    h.event(egui::Event::ModifiersChanged(Modifiers::NONE));
+    h.run_steps(2);
+}
+
+/// The names of the rows a screen reader is told are selected, in list order.
+fn selected(h: &Harness<'static, PdfCraftApp>) -> Vec<String> {
+    use egui::accesskit::Toggled;
+    listed(h.state()).0.into_iter().filter(|name| h.get_by_label(name).accesskit_node().toggled() == Some(Toggled::True)).collect()
+}
+
+/// Ctrl+click adds a game to the selection and Shift+click selects a run of games, without
+/// changing the game shown; a row's menu then acts on all of them as one step of the list:
+/// Delete… (one question), Move up, Save PGN…, and dragging moves them as a block. A plain click
+/// shows one game, alone.
+#[test]
+fn games_selected_with_ctrl_and_shift_are_deleted_moved_and_saved_together() {
+    let mut h = harness();
+    four_games(&mut h);
+    assert_eq!(selected(&h), ["A"], "the game shown is the selection");
+    click_with(&mut h, "C", Modifiers::COMMAND);
+    assert_eq!((selected(&h), listed(h.state()).1), (vec!["A".to_owned(), "C".to_owned()], 0), "Ctrl+click adds C; A stays shown");
+    // The menu of a selected row acts on both: no Rename…, one question.
+    row_menu(&mut h, "C");
+    assert!(h.query_by_label("Rename…").is_none(), "a selection has no single name");
+    h.get_by_label("Delete…").click();
+    h.run_steps(4);
+    h.get_by_label("Delete these games? You can undo it.");
+    h.get_by_label("2 selected");
+    assert_eq!(listed(h.state()).0.len(), 4, "nothing deleted before the answer");
+    h.get_by_label("Delete").click();
+    h.run_steps(3);
+    assert_eq!(listed(h.state()), (vec!["B".to_owned(), "D".to_owned()], 0), "both gone; the game after A is shown");
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(2);
+    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Undid Delete game"), "one step");
+    assert_eq!(listed(h.state()), (vec!["A".to_owned(), "B".to_owned(), "C".to_owned(), "D".to_owned()], 0), "each back at its place");
+    assert_eq!(selected(&h), ["A"], "a delete leaves nothing selected");
+    // A plain click shows B alone; Shift+click on D selects B to D, B still shown.
+    click_with(&mut h, "B", Modifiers::NONE);
+    assert_eq!((selected(&h), listed(h.state()).1), (vec!["B".to_owned()], 1));
+    click_with(&mut h, "D", Modifiers::SHIFT);
+    assert_eq!((selected(&h), listed(h.state()).1), (vec!["B".to_owned(), "C".to_owned(), "D".to_owned()], 1));
+    row_menu(&mut h, "C");
+    h.get_by_label("Move up").click();
+    h.run_steps(3);
+    assert_eq!(listed(h.state()), (vec!["B".to_owned(), "C".to_owned(), "D".to_owned(), "A".to_owned()], 0), "a block, in its order");
+    assert_eq!(selected(&h), ["B", "C", "D"], "the selection moved with them");
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(2);
+    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Undid Move game"));
+    assert_eq!(listed(h.state()).0, ["A", "B", "C", "D"]);
+    // Save PGN… in a selected row's menu writes the games selected, in list order.
+    let dir = temp_dir("selection");
+    let path = dir.join("some.pgn");
+    let bar = h.get_by_label("Save PGN…").rect();
+    row_menu(&mut h, "D");
+    h.state_mut().pick_override = Some(vec![path.to_string_lossy().into_owned()]);
+    h.get_all_by_label("Save PGN…").find(|n| n.rect() != bar).expect("the menu's Save PGN…").click();
+    h.run_steps(4);
+    h.state_mut().pick_override = None;
+    let pgn = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("saved to {}: {e}; toast {:?}", path.display(), h.state().toast));
+    assert_eq!(events(&pgn), ["B", "C", "D"]);
+    // Dragged by one of them, the selection goes together to where it is dropped.
+    drag_row(&mut h, "D", "A", true);
+    assert_eq!(listed(h.state()), (vec!["B".to_owned(), "C".to_owned(), "D".to_owned(), "A".to_owned()], 0));
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(2);
+    assert_eq!(listed(h.state()).0, ["A", "B", "C", "D"]);
+    // Ctrl+click on a selected game takes it out.
+    click_with(&mut h, "C", Modifiers::COMMAND);
+    assert_eq!(selected(&h), ["B", "D"]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// From the keyboard, on a focused row: Shift+↓ selects on to the next row (which takes the
+/// keyboard), Alt+↓ moves the selection as a block, Ctrl+A selects every game, Ctrl+Space takes
+/// one out, and Delete asks about the games selected.
+#[test]
+fn the_keys_of_a_focused_row_select_and_act_on_several_games() {
+    let mut h = harness();
+    four_games(&mut h);
+    focus_row(&mut h, "A");
+    host_key(&mut h, Modifiers::SHIFT, Key::ArrowDown);
+    assert_eq!(selected(&h), ["A", "B"]);
+    assert!(h.get_by_label("B").is_focused(), "the keyboard went on to B");
+    host_key(&mut h, Modifiers::ALT, Key::ArrowDown);
+    assert_eq!(listed(h.state()), (vec!["C".to_owned(), "A".to_owned(), "B".to_owned(), "D".to_owned()], 1), "A and B one place down");
+    assert!(h.get_by_label("B").is_focused(), "the moved row keeps the keyboard");
+    host_key(&mut h, Modifiers::COMMAND, Key::A);
+    assert_eq!(selected(&h), ["C", "A", "B", "D"], "Ctrl+A: every game");
+    host_key(&mut h, Modifiers::COMMAND, Key::Space);
+    assert_eq!(selected(&h), ["C", "A", "D"], "Ctrl+Space takes the focused row out");
+    focus_row(&mut h, "D");
+    host_key(&mut h, Modifiers::NONE, Key::Delete);
+    h.get_by_label("Delete these games? You can undo it.");
+    h.get_by_label("3 selected");
+    assert!(h.get_by_label("Delete").is_focused(), "the question has the keyboard");
+    h.get_by_label("Delete").click();
+    h.run_steps(3);
+    assert_eq!(listed(h.state()).0, ["B"]);
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(2);
+    assert_eq!(listed(h.state()).0, ["C", "A", "B", "D"]);
+}
+
+/// The list's Rename… edits Site, Date and Round with the names, as Game details does, in one
+/// undo step; a date PGN can't read is said, and Rename waits until it is one.
+#[test]
+fn the_list_renames_site_date_and_round_and_refuses_a_date_pgn_cannot_read() {
+    let mut h = harness();
+    h.state_mut().chess.board_mut().play_uci_line(&["e2e4".into()]);
+    h.run_steps(2);
+    row_menu(&mut h, "Game 1");
+    h.get_by_label("Rename…").click();
+    h.run_steps(4);
+    let hint = "A date is written YYYY.MM.DD, with ? for each digit not known.";
+    assert!(h.query_by_label(hint).is_none());
+    for (label, text) in [("White", "Werle"), ("Site", "Wijk aan Zee NED"), ("Date", "2025.01.1"), ("Round", "6")] {
+        field(&h, label).focus();
+        h.run_steps(1);
+        field(&h, label).type_text(text);
+        h.run_steps(1);
+    }
+    h.get_by_label(hint);
+    assert!(h.get_by_label("Rename").accesskit_node().is_disabled(), "Rename waits for a date PGN can read");
+    field(&h, "Date").focus();
+    h.run_steps(1);
+    h.key_press_modifiers(Modifiers::COMMAND, Key::A);
+    h.run_steps(1);
+    field(&h, "Date").type_text("2025.01.18");
+    h.run_steps(2);
+    assert!(h.query_by_label(hint).is_none());
+    h.get_by_label("Rename").click();
+    h.run_steps(3);
+    let game = &h.state().chess.board().game;
+    assert_eq!(
+        (game.tag("White"), game.tag("Site"), game.tag("Date"), game.tag("Round")),
+        (Some("Werle"), Some("Wijk aan Zee NED"), Some("2025.01.18"), Some("6"))
+    );
+    assert_eq!(listed(h.state()).0, ["Werle"]);
+    assert_eq!(h.state().chess.board().undo_label().as_deref(), Some("Edit game details"));
+    assert!(h.state_mut().chess.board_mut().undo());
+    h.run_steps(2);
+    assert!(h.state().chess.board().game.tags().is_empty(), "one undo step took them all back");
+    // The editor opens with the game's tags.
+    assert!(h.state_mut().chess.board_mut().redo());
+    assert!(h.state_mut().execute("chess.game.rename"));
+    h.run_steps(4);
+    assert_eq!(field(&h, "Round").value().as_deref(), Some("6"));
+    assert_eq!(field(&h, "Date").value().as_deref(), Some("2025.01.18"));
 }
