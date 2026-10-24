@@ -738,6 +738,12 @@ impl PdfCraftApp {
                 self.dialog = Some(Dialog::RotatePages);
             }
             "page.split" => self.dialog = Some(Dialog::Split),
+            "page.knife" => {
+                self.quick_tool = crate::QuickTool::Knife;
+                self.left = crate::LeftPanel::Tool("edit");
+                self.reveal_tools();
+                self.notify_tr("Click to place a cut, right-click to take one away, Enter to cut");
+            }
             "help.shortcuts" => self.dialog = Some(Dialog::Shortcuts),
             "help.about" => self.dialog = Some(Dialog::About),
             "help.check_updates" => self.check_for_updates(),

@@ -3041,3 +3041,10 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Comments, links and form fields	Yorumlar, bağlantılar ve form alanları
 	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Silmek bir düzenlemedir: dosyanın önceki bir sürümü silineni hâlâ içerebilir. Kalıcı olarak kaldırmak için Karart'ı kullanın.
 	Erase content	İçeriği sil
+	Knife (cut pages)	Bıçak (sayfaları kes)
+	Click to place a cut, right-click to take one away, Enter to cut	Kesik koymak için tıklayın, birini kaldırmak için sağ tıklayın, kesmek için Enter
+	Up and down	Yukarıdan aşağıya
+	Across	Enine
+	Hold Shift for the other direction.	Diğer yön için Shift'i basılı tutun.
+	Right part first	Önce sağ parça
+	Nothing is erased: each part shows its piece of the page.	Hiçbir şey silinmez: her parça sayfanın kendi parçasını gösterir.

@@ -528,6 +528,9 @@ pub struct DocView {
     pub pending_redaction: Option<(usize, Vec<[f64; 8]>)>,
     /// A crop rectangle being dragged (Crop tool).
     pub crop_drag: crate::crop::CropDrag,
+    /// The Knife: the cuts placed, and the line under the pointer (page, axis, share).
+    pub knife: crate::knife::KnifeView,
+    pub knife_hover: Option<(usize, pdfcraft_engine::CutAxis, f32)>,
     /// Enhance ▸ Camera image: the quadrilateral being placed.
     pub camera: Option<crate::camera_ui::CameraQuad>,
     /// Enhance ▸ Camera image: the page just enhanced, while the bar offers rotate, crop and
@@ -810,6 +813,8 @@ impl DocView {
             redact_drag: None,
             pending_redaction: None,
             crop_drag: None,
+            knife: Default::default(),
+            knife_hover: None,
             camera: None,
             camera_done: None,
             sign: Default::default(),
@@ -2766,6 +2771,7 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
         QuickTool::Comment(t) => t.markup().is_some() || t == comments::CommentTool::ReplaceText,
         QuickTool::Select => !preparing,
         QuickTool::Redact | QuickTool::Erase | QuickTool::ColumnSelect => true,
+        QuickTool::Knife => false,
         QuickTool::Hand
         | QuickTool::Measure(_)
         | QuickTool::Crop
@@ -2783,6 +2789,9 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     } && !chess_area;
     let prefs = &app.comment_prefs;
     let redact_mark = (app.redact_prefs.hover_fill, app.redact_prefs.opacity);
+    let knife_prefs = app.knife_prefs;
+    // The Knife's line follows the pointer: it is drawn on the page under it, this frame only.
+    view.knife_hover = None;
     let units = app.units;
     let allowed = doc.allows_annotation();
     let can_copy = doc.allows_copying();
@@ -3169,6 +3178,9 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
             if tool == QuickTool::EnhanceCamera {
                 crate::camera_ui::page_input(ui, &resp, &xf, i, view, can_modify);
             }
+            if tool == QuickTool::Knife && can_crop {
+                crate::knife::page_input(ui, &resp, &xf, i, &knife_prefs, view);
+            }
             if tool == QuickTool::Crop && crate::crop::page_input(ui, &resp, &xf, i, info, view, can_crop) {
                 view.current = i;
                 open_boxes = true;
@@ -3493,6 +3505,9 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
             }
             if tool == QuickTool::EnhanceCamera {
                 crate::camera_ui::paint(painter, &xf, i, view);
+            }
+            if tool == QuickTool::Knife {
+                crate::knife::paint(painter, &xf, i, view);
             }
             if tool == QuickTool::Link {
                 crate::link_ui::paint(ui, painter, &xf, i, info, &doc_links, view);

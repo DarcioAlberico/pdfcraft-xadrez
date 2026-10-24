@@ -132,6 +132,44 @@ pub fn move_objects(doc: &mut Document, page: usize, targets: &[ObjectTarget], o
     Ok(())
 }
 
+/// Delete selected mixed objects as one operation (Edit text & images ▸ Delete): a paragraph's
+/// lines are taken out of their text with the text around them in place, an image's or a Form's
+/// drawing is removed, an added item goes with its stream. All targets refer to the original
+/// inventories ([`editable_objects`]); a bad or stale one refuses the whole deletion, and a refusal
+/// leaves the document unchanged. Returns how many objects went.
+pub fn delete_objects(doc: &mut Document, page: usize, targets: &[ObjectTarget]) -> Result<usize, EditError> {
+    if targets.is_empty() || targets.len() > MAX_MOVE_OBJECTS {
+        return Err(EditError::Invalid("select between 1 and 1000 objects to delete".into()));
+    }
+    let inventory: BTreeSet<ObjectTarget> = editable_objects(doc, page)?.into_iter().map(|o| o.target).collect();
+    let mut unique = BTreeSet::new();
+    for target in targets {
+        if !unique.insert(*target) {
+            return Err(EditError::Invalid("an object was selected more than once".into()));
+        }
+        if !inventory.contains(target) {
+            return Err(EditError::Invalid("a selected object no longer exists; select the objects again".into()));
+        }
+    }
+    let indexes = |kind| unique.iter().filter(|t| t.kind == kind).map(|t| t.index).collect::<Vec<_>>();
+    let mut work = doc.clone();
+    // Paragraphs first: blanking their text keeps every image and added item where it was.
+    let blocks = indexes(ObjectKind::Text);
+    if !blocks.is_empty() {
+        let lines = crate::text::block_lines(&work, page, &blocks)?;
+        crate::remove_lines(&mut work, page, &lines)?;
+    }
+    // Images and added items last first, so the earlier indexes still name the same items.
+    for index in indexes(ObjectKind::Image).into_iter().rev() {
+        crate::change_image(&mut work, page, index, &crate::ImageChange::Delete)?;
+    }
+    for index in indexes(ObjectKind::Added).into_iter().rev() {
+        crate::delete_content(&mut work, page, index)?;
+    }
+    *doc = work;
+    Ok(unique.len())
+}
+
 struct AddedGeometry {
     rect: [f64; 4],
     local_rect: [f64; 4],

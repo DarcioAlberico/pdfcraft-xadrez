@@ -3047,3 +3047,10 @@ chess undo step	Clear drawings	描画の消去
 	Comments, links and form fields	コメント、リンク、フォームフィールド
 	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	消去は編集です。ファイルの以前のバージョンに消去した内容が残る場合があります。完全に削除するには墨消しを使用してください。
 	Erase content	内容を消去
+	Knife (cut pages)	ナイフ（ページを分割）
+	Click to place a cut, right-click to take one away, Enter to cut	クリックで切れ目を置き、右クリックで1本取り除き、Enterで分割します
+	Up and down	縦
+	Across	横
+	Hold Shift for the other direction.	Shiftを押している間は反対の向きになります。
+	Right part first	右側を先にする
+	Nothing is erased: each part shows its piece of the page.	何も消去されません。各部分はページの自分の部分を表示します。

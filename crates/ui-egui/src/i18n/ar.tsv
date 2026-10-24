@@ -3321,3 +3321,10 @@ chess undo step	Clear drawings	مسح الرسوم
 	Comments, links and form fields	التعليقات والروابط وحقول النماذج
 	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	المحو تعديل: قد تحتفظ نسخة سابقة من الملف بما مُحي. استخدم حجب لإزالته نهائيًا.
 	Erase content	محو المحتوى
+	Knife (cut pages)	سكين (قص الصفحات)
+	Click to place a cut, right-click to take one away, Enter to cut	انقر لوضع قطع، وانقر بزر الماوس الأيمن لإزالة قطع، واضغط Enter للقص
+	Up and down	من أعلى إلى أسفل
+	Across	بالعرض
+	Hold Shift for the other direction.	اضغط Shift باستمرار للاتجاه الآخر.
+	Right part first	الجزء الأيمن أولًا
+	Nothing is erased: each part shows its piece of the page.	لا يُمحى شيء: كل جزء يعرض قطعته من الصفحة.

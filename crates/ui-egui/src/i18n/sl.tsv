@@ -3050,3 +3050,10 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Comments, links and form fields	Komentarji, povezave in polja obrazcev
 	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Brisanje je urejanje: starejša različica datoteke lahko izbrisano še vsebuje. Za trajno odstranitev uporabite Počrni.
 	Erase content	Izbriši vsebino
+	Knife (cut pages)	Nož (razreži strani)
+	Click to place a cut, right-click to take one away, Enter to cut	Kliknite, da postavite rez, desni klik odstrani enega, Enter razreže
+	Up and down	Od zgoraj navzdol
+	Across	Počez
+	Hold Shift for the other direction.	Za drugo smer držite Shift.
+	Right part first	Najprej desni del
+	Nothing is erased: each part shows its piece of the page.	Nič se ne izbriše: vsak del prikazuje svoj kos strani.

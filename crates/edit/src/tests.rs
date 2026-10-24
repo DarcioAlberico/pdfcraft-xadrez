@@ -3264,6 +3264,70 @@ fn mixed_object_inventory_does_not_select_added_content_twice() {
     assert_eq!(doc.get(image).clone(), original_image, "pixel data is shared, not recompressed");
 }
 
+/// Delete selected objects: each kind goes alone and the others stay where they were; a mixed
+/// selection goes as one change; the result saves and reopens. (Fails with any kind's deletion
+/// skipped.)
+#[test]
+fn selected_objects_are_deleted_and_the_rest_stays_put() {
+    let page = || {
+        let mut doc =
+            image_page_with("q 200 0 0 100 100 100 cm /Im0 Do Q BT /F1 12 Tf 72 700 Td (Caption) Tj ET BT /F1 12 Tf 72 500 Td (Other words) Tj ET");
+        add_content(&mut doc, 0, &Content::Text(AddedText { text: "Added label".into(), rect: [50.0, 350.0, 200.0, 380.0], ..AddedText::default() }))
+            .unwrap();
+        doc
+    };
+    let inventory = editable_objects(&page(), 0).unwrap();
+    assert_eq!(inventory.len(), 4, "{inventory:?}");
+    let find = |pred: &dyn Fn(&EditableObject) -> bool| inventory.iter().find(|o| pred(o)).unwrap().clone();
+    let caption = find(&|o| o.text.as_deref() == Some("Caption"));
+    let added = find(&|o| o.target.kind == ObjectKind::Added);
+    let image = find(&|o| o.target.kind == ObjectKind::Image);
+    let other = find(&|o| o.text.as_deref() == Some("Other words"));
+    for gone in [vec![caption.clone()], vec![image.clone()], vec![added.clone()], vec![caption.clone(), image.clone(), added.clone()]] {
+        let mut doc = page();
+        let targets: Vec<ObjectTarget> = gone.iter().map(|o| o.target).collect();
+        assert_eq!(delete_objects(&mut doc, 0, &targets).unwrap(), gone.len());
+        let doc = reopen(&doc);
+        let left = editable_objects(&doc, 0).unwrap();
+        assert_eq!(left.len(), inventory.len() - gone.len(), "{gone:?}: {left:?}");
+        for kept in inventory.iter().filter(|o| !gone.iter().any(|g| g.target == o.target)) {
+            assert!(left.iter().any(|o| o.text == kept.text && close(o.rect, kept.rect)), "{kept:?} stays where it was: {left:?}");
+        }
+        assert!(left.iter().any(|o| o.text == other.text), "the other paragraph stays");
+    }
+}
+
+/// Two images deleted together: each index names the image it named before the other went.
+/// (Fails with the images deleted first to last.)
+#[test]
+fn several_images_are_deleted_together() {
+    let mut doc = image_page_with("q 100 0 0 50 50 50 cm /Im0 Do Q q 100 0 0 50 300 300 cm /Im0 Do Q q 100 0 0 50 50 600 cm /Im0 Do Q");
+    let images: Vec<ObjectTarget> = editable_objects(&doc, 0).unwrap().into_iter().map(|o| o.target).collect();
+    assert_eq!(images.len(), 3);
+    delete_objects(&mut doc, 0, &images[1..]).unwrap();
+    let left = images::page_images(&reopen(&doc), 0).unwrap();
+    assert_eq!(left.len(), 1);
+    assert!(close(left[0].rect, [50.0, 50.0, 150.0, 100.0]), "the first image stays: {:?}", left[0].rect);
+}
+
+/// A bad, repeated or stale reference refuses the whole deletion and changes nothing.
+#[test]
+fn object_deletion_refusals_leave_the_document_untouched() {
+    let mut doc = image_page();
+    let target = editable_objects(&doc, 0).unwrap()[0].target;
+    let original = pdfcraft_cos::write_full(&doc, &SaveOptions::default()).unwrap();
+    for targets in [
+        vec![],
+        vec![target, target],
+        vec![target, ObjectTarget { kind: ObjectKind::Image, index: usize::MAX }],
+        vec![ObjectTarget { kind: ObjectKind::Added, index: 0 }],
+        vec![target; MAX_MOVE_OBJECTS + 1],
+    ] {
+        assert!(delete_objects(&mut doc, 0, &targets).is_err(), "{targets:?}");
+        assert_eq!(pdfcraft_cos::write_full(&doc, &SaveOptions::default()).unwrap(), original);
+    }
+}
+
 #[test]
 fn group_move_refusals_leave_the_object_graph_untouched() {
     let mut doc = image_page();

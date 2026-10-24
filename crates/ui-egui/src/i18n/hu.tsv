@@ -3044,3 +3044,10 @@ chess undo step	Clear drawings	rajzok törlése
 	Comments, links and form fields	Megjegyzések, hivatkozások és űrlapmezők
 	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	A törlés szerkesztés: a fájl egy korábbi változata még tartalmazhatja a törölt részt. A végleges eltávolításhoz használja a Kitakarást.
 	Erase content	Tartalom törlése
+	Knife (cut pages)	Kés (oldalak vágása)
+	Click to place a cut, right-click to take one away, Enter to cut	Kattintással vágást helyez el, jobb kattintással egyet elvesz, Enterrel vág
+	Up and down	Fentről lefelé
+	Across	Keresztben
+	Hold Shift for the other direction.	A másik irányhoz tartsa lenyomva a Shiftet.
+	Right part first	A jobb rész először
+	Nothing is erased: each part shows its piece of the page.	Semmi sem törlődik: minden rész az oldal saját darabját mutatja.

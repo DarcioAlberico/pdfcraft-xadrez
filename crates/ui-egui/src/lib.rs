@@ -75,6 +75,7 @@ mod crop;
 mod drag_pointer;
 mod export_ui;
 mod js_ui;
+pub mod knife;
 mod marks_ui;
 mod measure_ui;
 mod ocr_ui;
@@ -255,6 +256,8 @@ pub enum QuickTool {
     /// Edit a PDF ▸ Eraser: erase the page's content under a text selection or a box (drag across
     /// text, or draw a box), as [`PdfCraftApp::erase_prefs`] say.
     Erase,
+    /// The Knife: place cuts across pages, then cut them into parts ([`knife`]).
+    Knife,
     /// Edit a PDF ▸ Add content ▸ Text.
     AddText,
     /// Edit a PDF ▸ Edit text: click a line of existing text to edit it.
@@ -829,6 +832,8 @@ pub struct PdfCraftApp {
     /// Eraser: what it erases (text, images, vectors, comments) and the glyph rule (by centre, as
     /// a selection shows). For this run.
     pub erase_prefs: pdfcraft_engine::EraseOptions,
+    /// The Knife's choices (axis, pages, order), for this run.
+    pub knife_prefs: knife::KnifePrefs,
     /// The Redaction Tool Properties kept for the next run (what the last OK with "Make
     /// properties default" ticked left), and the values before the dialog opened, for Cancel.
     pub redact_defaults: RedactPrefs,
@@ -1110,6 +1115,7 @@ impl PdfCraftApp {
             bulk_field_props: None,
             redact_prefs: RedactPrefs::default(),
             erase_prefs: pdfcraft_engine::EraseOptions::default(),
+            knife_prefs: knife::KnifePrefs::default(),
             redact_defaults: RedactPrefs::default(),
             redact_before: None,
             redact_pages_draft: RedactPagesDraft::default(),
@@ -2755,6 +2761,7 @@ impl PdfCraftApp {
                     "enhance-camera" => QuickTool::EnhanceCamera,
                     "redact" => QuickTool::Redact,
                     "erase" => QuickTool::Erase,
+                    "knife" => QuickTool::Knife,
                     "add-text" => QuickTool::AddText,
                     "edit-text" => QuickTool::EditText,
                     "link" => QuickTool::Link,
@@ -3003,6 +3010,15 @@ impl PdfCraftApp {
         }
         if !free || !plain {
             return;
+        }
+        // The Knife: Enter cuts, Esc lets go of the cuts placed.
+        if self.quick_tool == QuickTool::Knife {
+            if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, Key::Enter)) {
+                self.knife_cut();
+            }
+            if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, Key::Escape)) {
+                self.views[i].knife.clear();
+            }
         }
         if ctx.input(|input| input.key_pressed(Key::V)) {
             self.quick_tool = QuickTool::Select;

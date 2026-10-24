@@ -3297,3 +3297,10 @@ chess undo step	Clear drawings	piešinių valymą
 	Comments, links and form fields	Komentarai, nuorodos ir formų laukai
 	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Trynimas yra taisymas: ankstesnėje failo versijoje ištrintas turinys gali likti. Kad pašalintumėte visam laikui, naudokite Pašalinti konfidencialią informaciją.
 	Erase content	Ištrinti turinį
+	Knife (cut pages)	Peilis (pjaustyti puslapius)
+	Click to place a cut, right-click to take one away, Enter to cut	Spustelėkite, kad įdėtumėte pjūvį, dešiniuoju mygtuku – kad pašalintumėte, Enter – kad perpjautumėte
+	Up and down	Iš viršaus žemyn
+	Across	Skersai
+	Hold Shift for the other direction.	Laikykite Shift kitai krypčiai.
+	Right part first	Pirmiausia dešinioji dalis
+	Nothing is erased: each part shows its piece of the page.	Niekas neištrinama: kiekviena dalis rodo savo puslapio gabalą.
