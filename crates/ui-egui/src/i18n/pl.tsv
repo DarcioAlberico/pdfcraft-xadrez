@@ -3005,3 +3005,19 @@ chess undo step	Clear drawings	usunięcie rysunków
 	Move list	Lista ruchów
 	Move list beside the page	Lista ruchów obok strony
 	Side of the page	Położenie obok strony
+	Drawing eraser	Gumka do rysunków
+	Drag across text or draw a box to erase what lies under it	Przeciągnij po tekście lub narysuj prostokąt, aby wymazać to, co jest pod nim
+	Drawings and shapes	Rysunki i kształty
+	Comments, links and form fields	Komentarze, łącza i pola formularzy
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Wymazywanie jest edycją: wcześniejsza wersja pliku może nadal zawierać wymazaną treść. Aby usunąć ją na stałe, użyj Utajnij.
+	Erase content	Wymaż zawartość
+	Knife (cut pages)	Nóż (cięcie stron)
+	Click to place a cut, right-click to take one away, Enter to cut	Kliknij, aby wstawić cięcie, prawym przyciskiem usuń jedno, Enter tnie
+	Up and down	Z góry na dół
+	Across	W poprzek
+	Hold Shift for the other direction.	Przytrzymaj Shift, aby zmienić kierunek.
+	Right part first	Najpierw prawa część
+	Nothing is erased: each part shows its piece of the page.	Nic nie jest usuwane: każda część pokazuje swój kawałek strony.
+	Remove what lies outside each part	Usuń to, co leży poza każdą częścią
+	Split double pages	Podziel strony podwójne
+	No double pages were found: none is wider than tall	Nie znaleziono stron podwójnych: żadna nie jest szersza niż wyższa

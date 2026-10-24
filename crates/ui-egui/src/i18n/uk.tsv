@@ -3051,3 +3051,19 @@ chess undo step	Clear drawings	видалення малюнків
 	Move list	Список ходів
 	Move list beside the page	Список ходів поруч зі сторінкою
 	Side of the page	Бік сторінки
+	Drawing eraser	Гумка для малюнків
+	Drag across text or draw a box to erase what lies under it	Проведіть по тексту або намалюйте рамку, щоб стерти те, що під нею
+	Drawings and shapes	Малюнки та фігури
+	Comments, links and form fields	Коментарі, посилання та поля форм
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Стирання — це редагування: попередня версія файлу може ще містити стерте. Щоб видалити його остаточно, скористайтеся «Вилучити вміст».
+	Erase content	Стерти вміст
+	Knife (cut pages)	Ніж (розрізати сторінки)
+	Click to place a cut, right-click to take one away, Enter to cut	Клацніть, щоб поставити розріз, правою кнопкою — щоб прибрати, Enter — щоб розрізати
+	Up and down	Згори вниз
+	Across	Поперек
+	Hold Shift for the other direction.	Утримуйте Shift для іншого напрямку.
+	Right part first	Спочатку права частина
+	Nothing is erased: each part shows its piece of the page.	Нічого не стирається: кожна частина показує свій шматок сторінки.
+	Remove what lies outside each part	Вилучити те, що поза кожною частиною
+	Split double pages	Розділити розвороти
+	No double pages were found: none is wider than tall	Розворотів не знайдено: жодна сторінка не ширша за висоту

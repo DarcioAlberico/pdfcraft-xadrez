@@ -508,6 +508,23 @@ impl PdfCraftApp {
                     }
                 }
             }
+            "edit.erase" => {
+                self.quick_tool = crate::QuickTool::Erase;
+                self.left = crate::LeftPanel::Tool("edit");
+                self.reveal_tools();
+                // A text selection made first is erased right away.
+                let selection = active.and_then(|i| {
+                    let doc = self.session.get(self.views[i].id)?;
+                    let quads = self.views[i].selection_quads(&doc.info)?;
+                    Some((i, quads))
+                });
+                if let Some((i, (page, quads))) = selection {
+                    self.views[i].clear_selection();
+                    self.apply_edit(crate::canvas::erase_edit(page, &quads, self.erase_prefs));
+                } else {
+                    self.notify_tr("Drag across text or draw a box to erase what lies under it");
+                }
+            }
             "redact.pages" => {
                 if let Some(i) = active {
                     let n = self.session.get(self.views[i].id).map_or(1, |d| d.info.pages.len());
@@ -721,6 +738,15 @@ impl PdfCraftApp {
                 self.dialog = Some(Dialog::RotatePages);
             }
             "page.split" => self.dialog = Some(Dialog::Split),
+            "page.split_spreads" => {
+                self.split_spreads();
+            }
+            "page.knife" => {
+                self.quick_tool = crate::QuickTool::Knife;
+                self.left = crate::LeftPanel::Tool("edit");
+                self.reveal_tools();
+                self.notify_tr("Click to place a cut, right-click to take one away, Enter to cut");
+            }
             "help.shortcuts" => self.dialog = Some(Dialog::Shortcuts),
             "help.about" => self.dialog = Some(Dialog::About),
             "help.check_updates" => self.check_for_updates(),

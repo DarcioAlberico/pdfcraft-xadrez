@@ -146,6 +146,7 @@ pub use pdfcraft_annot::{
 };
 pub use pdfcraft_forms::detect;
 pub use pdfcraft_optimize as optimize;
+pub use pdfcraft_organize::{Axis as CutAxis, Cut, MAX_PARTS as MAX_CUT_PARTS, MIN_PART as MIN_CUT_PART};
 pub use pdfcraft_preflight as pdfa;
 pub use pdfcraft_print as print;
 pub use pdfcraft_redact::codes::{CODE_SETS as REDACTION_CODE_SETS, CodeSet as RedactionCodeSet};
@@ -275,6 +276,7 @@ fn scope_of(edit: &Edit) -> Scope {
         // Page content, resources and added content/marks only: the page tree, annotations,
         // fields, links and document metadata are untouched (see `refresh_content`).
         Edit::MoveObjects { .. }
+        | Edit::DeleteObjects { .. }
         | Edit::EditTextLine { .. }
         | Edit::EditTextBlock { .. }
         | Edit::EditPageImage { .. }
@@ -1301,6 +1303,15 @@ pub enum Edit {
         pages: Vec<usize>,
         at: Option<usize>,
     },
+    /// The Knife: cut pages into parts, each part a page of its own right after the original
+    /// ([`pdfcraft_organize::cut_pages`]). `right_to_left` puts each page's right (or bottom)
+    /// part first. `trim_outside` then erases what lies outside each part
+    /// ([`pdfcraft_redact::erase`]), so a part's text, images and drawings are its own.
+    CutPages {
+        cuts: Vec<pdfcraft_organize::Cut>,
+        right_to_left: bool,
+        trim_outside: bool,
+    },
     /// Replace Pages: the content of `pages` is replaced by `src_pages` of another PDF; the
     /// pages' links, comments and bookmarks stay.
     ReplacePages {
@@ -1610,6 +1621,12 @@ pub enum Edit {
         page: usize,
         objects: Vec<ObjectTarget>,
         offset: [f64; 2],
+    },
+    /// Edit text & images ▸ Delete: remove mixed existing and added objects together
+    /// ([`pdfcraft_edit::delete_objects`]); references resolve before any change.
+    DeleteObjects {
+        page: usize,
+        objects: Vec<ObjectTarget>,
     },
     /// Edit text in a paragraph box: replace paragraph `block` (from `Document::text_blocks`),
     /// rewrapped to the box's width.
@@ -1994,6 +2011,7 @@ impl Edit {
             Edit::ReversePages { .. } => Label::of("Reverse pages"),
             Edit::InsertBlankPage { .. } => Label::of("Insert blank page"),
             Edit::DuplicatePages { pages, .. } => plural("Duplicate page", "Duplicate pages", pages.len()),
+            Edit::CutPages { cuts, .. } => plural("Cut page", "Cut pages", cuts.len()),
             Edit::ReplacePages { pages, .. } => plural("Replace page", "Replace pages", pages.len()),
             Edit::SetPageBox { pages, which: PageBox::Crop, .. } => plural("Crop page", "Crop pages", pages.len()),
             Edit::SetPageBox { .. } => Label::of("Set page boxes"),
@@ -2073,6 +2091,7 @@ impl Edit {
             Edit::EditTextLine { .. } | Edit::EditTextBlock { .. } => Label::of("Edit text"),
             Edit::RegisterTextFont { .. } => Label::of("Load document font"),
             Edit::MoveObjects { objects, .. } => plural("Move object", "Move objects", objects.len()),
+            Edit::DeleteObjects { objects, .. } => plural("Delete object", "Delete objects", objects.len()),
             Edit::EditPageImage { change, .. } => Label::of(match change {
                 ImageEdit::Move(_) => "Move image",
                 ImageEdit::Rotate(_) => "Rotate image",
@@ -2162,6 +2181,37 @@ fn unrestricted(p: &pdfcraft_cos::Permissions) -> bool {
     p.owner || p.bits & ALL == ALL
 }
 
+/// The Knife's "remove what lies outside each part": on every part of every page cut, erase the
+/// page's content (text, images, drawings; comments were given out by the cut) in the strips of
+/// its old visible box outside the part. A part with nothing outside it is left as it is.
+fn trim_parts(doc: &mut pdfcraft_cos::Document, before: &[[[f64; 4]; 5]], outcome: &pdfcraft_organize::CutOutcome) -> Result<(), EditError> {
+    let after = pdfcraft_organize::page_boxes(doc)?;
+    let options = pdfcraft_redact::EraseOptions { annotations: false, ..pdfcraft_redact::EraseOptions::default() };
+    for (old, parts) in &outcome.parts {
+        let Some(vis) = before.get(*old).map(|b| b[1]) else { continue };
+        for &k in parts {
+            let Some(part) = after.get(k).map(|b| b[1]) else { continue };
+            let strips: Vec<[f64; 4]> = [
+                [vis[0], vis[1], part[0], vis[3]],
+                [part[2], vis[1], vis[2], vis[3]],
+                [part[0], vis[1], part[2], part[1]],
+                [part[0], part[3], part[2], vis[3]],
+            ]
+            .into_iter()
+            .filter(|r| r[2] - r[0] > 0.0 && r[3] - r[1] > 0.0)
+            .collect();
+            if strips.is_empty() {
+                continue;
+            }
+            match pdfcraft_redact::erase(doc, k, &strips, &options) {
+                Ok(_) | Err(pdfcraft_redact::RedactError::NothingToErase) => {}
+                Err(e) => return Err(e.into()),
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Whether the opening password allows an edit (§7.6.4.2, Table 22).
 fn check_permission(edit: &Edit, p: &pdfcraft_cos::Permissions) -> Result<(), EditError> {
     match edit {
@@ -2171,6 +2221,7 @@ fn check_permission(edit: &Edit, p: &pdfcraft_cos::Permissions) -> Result<(), Ed
         | Edit::ReversePages { .. }
         | Edit::InsertBlankPage { .. }
         | Edit::DuplicatePages { .. }
+        | Edit::CutPages { .. }
         | Edit::ReplacePages { .. }
         | Edit::SetPageBox { .. }
         | Edit::SetTransition { .. }
@@ -2241,6 +2292,7 @@ fn check_permission(edit: &Edit, p: &pdfcraft_cos::Permissions) -> Result<(), Ed
         | Edit::ReplaceDiagram(_)
         | Edit::UpdateContent { .. }
         | Edit::MoveObjects { .. }
+        | Edit::DeleteObjects { .. }
         | Edit::DeleteContent { .. }
         | Edit::ReplaceImage { .. }
         | Edit::ClearRedactions
@@ -2389,6 +2441,13 @@ fn run_edit(doc: &mut pdfcraft_cos::Document, edit: &Edit, cx: &mut EditCtx) -> 
         }
         Edit::SetInfo { key, value } => pdfcraft_organize::set_info(doc, key, value)?,
         Edit::DuplicatePages { pages, at } => pdfcraft_organize::duplicate_pages(doc, pages, *at)?,
+        Edit::CutPages { cuts, right_to_left, trim_outside } => {
+            let before = if *trim_outside { pdfcraft_organize::page_boxes(doc)? } else { Vec::new() };
+            let outcome = pdfcraft_organize::cut_pages(doc, cuts, *right_to_left)?;
+            if *trim_outside {
+                trim_parts(doc, &before, &outcome)?;
+            }
+        }
         Edit::ReplacePages { pages, name, bytes, src_pages } => {
             let src = open_source(name, bytes)?;
             pdfcraft_organize::replace_pages(doc, pages, &src, src_pages)?;
@@ -2614,6 +2673,9 @@ fn run_edit(doc: &mut pdfcraft_cos::Document, edit: &Edit, cx: &mut EditCtx) -> 
             pdfcraft_edit::change_image(doc, *page, *index, &c)?;
         }
         Edit::MoveObjects { page, objects, offset } => pdfcraft_edit::move_objects(doc, *page, objects, *offset)?,
+        Edit::DeleteObjects { page, objects } => {
+            pdfcraft_edit::delete_objects(doc, *page, objects)?;
+        }
         Edit::AddContent { page, ops } => pdfcraft_edit::add_operators(doc, *page, ops)?,
         Edit::RemoveTextLines { page, lines } => {
             if pdfcraft_edit::remove_lines(doc, *page, lines)? == 0 {
@@ -4048,7 +4110,7 @@ impl Session {
             matches!(
                 e,
                 Edit::AddText { .. } | Edit::AddImage { .. } | Edit::UpdateContent { .. } | Edit::DeleteContent { .. } | Edit::ReplaceImage { .. }
-            ) || matches!(e, Edit::MoveObjects { objects, .. } if objects.iter().any(|o| o.kind == ObjectKind::Added))
+            ) || matches!(e, Edit::MoveObjects { objects, .. } | Edit::DeleteObjects { objects, .. } if objects.iter().any(|o| o.kind == ObjectKind::Added))
         });
         let touches_marks = edit.is_none_or(|e| {
             matches!(e, Edit::AddHeaderFooter { .. } | Edit::AddWatermark { .. } | Edit::AddBackground { .. } | Edit::RemoveMarks { .. })

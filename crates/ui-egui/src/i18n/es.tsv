@@ -3170,3 +3170,19 @@ chess undo step	Clear drawings	borrado de los dibujos
 	Move list	Lista de jugadas
 	Move list beside the page	Lista de jugadas junto a la página
 	Side of the page	Lado de la página
+	Drawing eraser	Borrador de dibujos
+	Drag across text or draw a box to erase what lies under it	Arrastre sobre el texto o dibuje un recuadro para borrar lo que hay debajo
+	Drawings and shapes	Dibujos y formas
+	Comments, links and form fields	Comentarios, vínculos y campos de formulario
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Borrar es una edición: una versión anterior del archivo aún puede contener lo borrado. Use Censurar para eliminarlo definitivamente.
+	Erase content	Borrar contenido
+	Knife (cut pages)	Cuchilla (cortar páginas)
+	Click to place a cut, right-click to take one away, Enter to cut	Haga clic para poner un corte, clic derecho para quitar uno, Intro para cortar
+	Up and down	De arriba abajo
+	Across	A lo ancho
+	Hold Shift for the other direction.	Mantenga Mayús para la otra dirección.
+	Right part first	Primero la parte derecha
+	Nothing is erased: each part shows its piece of the page.	No se borra nada: cada parte muestra su trozo de la página.
+	Remove what lies outside each part	Quitar lo que queda fuera de cada parte
+	Split double pages	Dividir páginas dobles
+	No double pages were found: none is wider than tall	No se encontraron páginas dobles: ninguna es más ancha que alta

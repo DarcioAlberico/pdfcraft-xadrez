@@ -2938,3 +2938,19 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Move list	ఎత్తుల జాబితా
 	Move list beside the page	పేజీ పక్కన ఎత్తుల జాబితా
 	Side of the page	పేజీ వైపు
+	Drawing eraser	డ్రాయింగ్ ఎరేజర్
+	Drag across text or draw a box to erase what lies under it	కింద ఉన్నదాన్ని చెరిపివేయడానికి వచనంపై లాగండి లేదా పెట్టె గీయండి
+	Drawings and shapes	డ్రాయింగ్‌లు మరియు ఆకారాలు
+	Comments, links and form fields	వ్యాఖ్యలు, లింక్‌లు మరియు ఫారమ్ ఫీల్డ్‌లు
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	చెరిపివేయడం ఒక సవరణ: ఫైల్ యొక్క మునుపటి సంస్కరణలో చెరిపినది ఇంకా ఉండవచ్చు. శాశ్వతంగా తొలగించడానికి రెడాక్ట్ చేయిని ఉపయోగించండి.
+	Erase content	కంటెంట్‌ను చెరిపివేయి
+	Knife (cut pages)	కత్తి (పేజీలను కత్తిరించు)
+	Click to place a cut, right-click to take one away, Enter to cut	కోత పెట్టడానికి క్లిక్ చేయండి, ఒకటి తీసివేయడానికి కుడి-క్లిక్ చేయండి, కత్తిరించడానికి Enter
+	Up and down	పై నుండి కిందకు
+	Across	అడ్డంగా
+	Hold Shift for the other direction.	మరో దిశ కోసం Shift పట్టుకోండి.
+	Right part first	ముందు కుడి భాగం
+	Nothing is erased: each part shows its piece of the page.	ఏదీ చెరిపివేయబడదు: ప్రతి భాగం పేజీలో తన ముక్కను చూపుతుంది.
+	Remove what lies outside each part	ప్రతి భాగం బయట ఉన్నదాన్ని తీసివేయి
+	Split double pages	జంట పేజీలను విభజించు
+	No double pages were found: none is wider than tall	జంట పేజీలు కనబడలేదు: ఏ పేజీ ఎత్తు కంటే వెడల్పుగా లేదు

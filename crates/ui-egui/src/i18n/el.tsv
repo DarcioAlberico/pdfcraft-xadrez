@@ -3035,3 +3035,19 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Move list	Λίστα κινήσεων
 	Move list beside the page	Λίστα κινήσεων δίπλα στη σελίδα
 	Side of the page	Πλευρά της σελίδας
+	Drawing eraser	Γόμα σχεδίων
+	Drag across text or draw a box to erase what lies under it	Σύρετε πάνω από κείμενο ή σχεδιάστε ένα πλαίσιο για να σβήσετε ό,τι βρίσκεται από κάτω
+	Drawings and shapes	Σχέδια και σχήματα
+	Comments, links and form fields	Σχόλια, σύνδεσμοι και πεδία φορμών
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Το σβήσιμο είναι επεξεργασία: μια προηγούμενη έκδοση του αρχείου μπορεί να περιέχει ακόμη ό,τι σβήστηκε. Χρησιμοποιήστε την Απόκρυψη ευαίσθητου περιεχομένου για οριστική αφαίρεση.
+	Erase content	Σβήσιμο περιεχομένου
+	Knife (cut pages)	Μαχαίρι (κόψιμο σελίδων)
+	Click to place a cut, right-click to take one away, Enter to cut	Κάντε κλικ για να βάλετε ένα κόψιμο, δεξί κλικ για να αφαιρέσετε ένα, Enter για να κόψετε
+	Up and down	Από πάνω προς τα κάτω
+	Across	Οριζόντια
+	Hold Shift for the other direction.	Κρατήστε το Shift για την άλλη κατεύθυνση.
+	Right part first	Πρώτα το δεξί μέρος
+	Nothing is erased: each part shows its piece of the page.	Τίποτα δεν σβήνεται: κάθε μέρος δείχνει το δικό του κομμάτι της σελίδας.
+	Remove what lies outside each part	Αφαίρεση ό,τι βρίσκεται έξω από κάθε μέρος
+	Split double pages	Διαχωρισμός διπλών σελίδων
+	No double pages were found: none is wider than tall	Δεν βρέθηκαν διπλές σελίδες: καμία δεν είναι φαρδύτερη από ψηλή

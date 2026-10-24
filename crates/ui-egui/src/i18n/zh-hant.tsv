@@ -2979,3 +2979,19 @@ chess undo step	Clear drawings	清除標記
 	Move list	著法列表
 	Move list beside the page	頁面旁的著法列表
 	Side of the page	頁面側邊
+	Drawing eraser	繪圖橡皮擦
+	Drag across text or draw a box to erase what lies under it	在文字上拖曳或畫一個方框，擦除其下方的內容
+	Drawings and shapes	繪圖與形狀
+	Comments, links and form fields	註解、連結與表單欄位
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	擦除是一項編輯：檔案的較早版本可能仍保有被擦除的內容。若要永久移除，請使用遮蔽。
+	Erase content	擦除內容
+	Knife (cut pages)	刀（切分頁面）
+	Click to place a cut, right-click to take one away, Enter to cut	按一下放置切線，按右鍵移除一條，按 Enter 切分
+	Up and down	直向
+	Across	橫向
+	Hold Shift for the other direction.	按住 Shift 切換方向。
+	Right part first	右側部分在前
+	Nothing is erased: each part shows its piece of the page.	不會擦除任何內容：每個部分顯示頁面中屬於它的那一塊。
+	Remove what lies outside each part	刪除每部分之外的內容
+	Split double pages	拆分跨頁
+	No double pages were found: none is wider than tall	未找到跨頁：沒有頁面寬度大於高度

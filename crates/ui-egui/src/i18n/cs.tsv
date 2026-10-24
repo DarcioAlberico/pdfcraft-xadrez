@@ -3103,3 +3103,19 @@ chess undo step	Clear drawings	smazání kreseb
 	Move list	Seznam tahů
 	Move list beside the page	Seznam tahů vedle stránky
 	Side of the page	Umístění vedle stránky
+	Drawing eraser	Guma na kresby
+	Drag across text or draw a box to erase what lies under it	Přetažením přes text nebo nakreslením rámečku vymažete, co je pod ním
+	Drawings and shapes	Kresby a tvary
+	Comments, links and form fields	Komentáře, odkazy a pole formulářů
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Mazání je úprava: starší verze souboru může vymazaný obsah stále obsahovat. Pro trvalé odstranění použijte Začernění.
+	Erase content	Vymazat obsah
+	Knife (cut pages)	Nůž (rozřezat stránky)
+	Click to place a cut, right-click to take one away, Enter to cut	Kliknutím umístíte řez, pravým kliknutím jeden odeberete, Enter rozřízne
+	Up and down	Shora dolů
+	Across	Napříč
+	Hold Shift for the other direction.	Pro druhý směr podržte Shift.
+	Right part first	Nejprve pravá část
+	Nothing is erased: each part shows its piece of the page.	Nic se nemaže: každá část ukazuje svůj kus stránky.
+	Remove what lies outside each part	Odstranit, co leží mimo každou část
+	Split double pages	Rozdělit dvojstrany
+	No double pages were found: none is wider than tall	Nenalezeny žádné dvojstrany: žádná stránka není širší než vyšší

@@ -3025,3 +3025,19 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Move list	Hamle listesi
 	Move list beside the page	Sayfanın yanında hamle listesi
 	Side of the page	Sayfanın kenarı
+	Drawing eraser	Çizim silgisi
+	Drag across text or draw a box to erase what lies under it	Altındakini silmek için metnin üzerinde sürükleyin veya bir kutu çizin
+	Drawings and shapes	Çizimler ve şekiller
+	Comments, links and form fields	Yorumlar, bağlantılar ve form alanları
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Silmek bir düzenlemedir: dosyanın önceki bir sürümü silineni hâlâ içerebilir. Kalıcı olarak kaldırmak için Karart'ı kullanın.
+	Erase content	İçeriği sil
+	Knife (cut pages)	Bıçak (sayfaları kes)
+	Click to place a cut, right-click to take one away, Enter to cut	Kesik koymak için tıklayın, birini kaldırmak için sağ tıklayın, kesmek için Enter
+	Up and down	Yukarıdan aşağıya
+	Across	Enine
+	Hold Shift for the other direction.	Diğer yön için Shift'i basılı tutun.
+	Right part first	Önce sağ parça
+	Nothing is erased: each part shows its piece of the page.	Hiçbir şey silinmez: her parça sayfanın kendi parçasını gösterir.
+	Remove what lies outside each part	Her parçanın dışında kalanı kaldır
+	Split double pages	Çift sayfaları böl
+	No double pages were found: none is wider than tall	Çift sayfa bulunamadı: hiçbiri yüksekliğinden geniş değil

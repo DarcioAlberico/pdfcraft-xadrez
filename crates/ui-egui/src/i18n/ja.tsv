@@ -3031,3 +3031,19 @@ chess undo step	Clear drawings	描画の消去
 	Move list	指し手リスト
 	Move list beside the page	ページ横の指し手リスト
 	Side of the page	ページの横の位置
+	Drawing eraser	描画用消しゴム
+	Drag across text or draw a box to erase what lies under it	テキストの上をドラッグするか枠を描いて、その下にあるものを消去します
+	Drawings and shapes	描画と図形
+	Comments, links and form fields	コメント、リンク、フォームフィールド
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	消去は編集です。ファイルの以前のバージョンに消去した内容が残る場合があります。完全に削除するには墨消しを使用してください。
+	Erase content	内容を消去
+	Knife (cut pages)	ナイフ（ページを分割）
+	Click to place a cut, right-click to take one away, Enter to cut	クリックで切れ目を置き、右クリックで1本取り除き、Enterで分割します
+	Up and down	縦
+	Across	横
+	Hold Shift for the other direction.	Shiftを押している間は反対の向きになります。
+	Right part first	右側を先にする
+	Nothing is erased: each part shows its piece of the page.	何も消去されません。各部分はページの自分の部分を表示します。
+	Remove what lies outside each part	各部分の外側にあるものを削除
+	Split double pages	見開きページを分割
+	No double pages were found: none is wider than tall	見開きページが見つかりません。横長のページはありません

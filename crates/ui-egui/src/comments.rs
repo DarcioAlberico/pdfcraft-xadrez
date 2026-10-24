@@ -134,7 +134,7 @@ impl CommentTool {
             Self::Caret => "Insert text",
             Self::ReplaceText => "Replace text",
             Self::Attach => "Attach file",
-            Self::Eraser => "Eraser",
+            Self::Eraser => "Drawing eraser",
         }
     }
 

@@ -3028,3 +3028,19 @@ chess undo step	Clear drawings	rajzok törlése
 	Move list	Lépéslista
 	Move list beside the page	Lépéslista az oldal mellett
 	Side of the page	Az oldal széle
+	Drawing eraser	Rajzradír
+	Drag across text or draw a box to erase what lies under it	Húzzon a szövegen át, vagy rajzoljon keretet az alatta lévő tartalom törléséhez
+	Drawings and shapes	Rajzok és alakzatok
+	Comments, links and form fields	Megjegyzések, hivatkozások és űrlapmezők
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	A törlés szerkesztés: a fájl egy korábbi változata még tartalmazhatja a törölt részt. A végleges eltávolításhoz használja a Kitakarást.
+	Erase content	Tartalom törlése
+	Knife (cut pages)	Kés (oldalak vágása)
+	Click to place a cut, right-click to take one away, Enter to cut	Kattintással vágást helyez el, jobb kattintással egyet elvesz, Enterrel vág
+	Up and down	Fentről lefelé
+	Across	Keresztben
+	Hold Shift for the other direction.	A másik irányhoz tartsa lenyomva a Shiftet.
+	Right part first	A jobb rész először
+	Nothing is erased: each part shows its piece of the page.	Semmi sem törlődik: minden rész az oldal saját darabját mutatja.
+	Remove what lies outside each part	Az egyes részeken kívül esők eltávolítása
+	Split double pages	Dupla oldalak szétválasztása
+	No double pages were found: none is wider than tall	Nincsenek dupla oldalak: egyik sem szélesebb, mint magas

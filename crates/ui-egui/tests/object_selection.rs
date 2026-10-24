@@ -152,6 +152,26 @@ fn marquee_and_mixed_group_drag_move_once_and_undo_together() {
     assert_eq!(objects(&h), after);
 }
 
+/// Delete removes the selected objects as one undo step; what was not selected stays. (Fails
+/// with the key not deleting.)
+#[test]
+fn delete_removes_the_selected_objects_once_and_undo_brings_them_back() {
+    let mut h = harness();
+    let before = objects(&h);
+    marquee(&mut h);
+    h.get_by_label("3 objects selected");
+    h.key_press(Key::Delete);
+    h.run_steps(4);
+    let after = objects(&h);
+    assert_eq!(after.len(), before.len() - 3, "{after:?}");
+    assert!(after.iter().any(|o| o.text.as_deref() == Some("Keep here")), "{after:?}");
+    let app = h.state();
+    assert_eq!(app.session.get(app.views[0].id).unwrap().can_undo(), Some("Delete objects"));
+    h.key_press_modifiers(Modifiers::COMMAND, Key::Z);
+    h.run_steps(4);
+    assert_eq!(objects(&h).len(), before.len());
+}
+
 #[test]
 fn modifier_clicks_extend_an_ordinary_selection_and_toggle_objects() {
     let mut h = harness();

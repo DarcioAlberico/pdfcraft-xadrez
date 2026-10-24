@@ -3027,3 +3027,19 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Move list	Жүрістер тізімі
 	Move list beside the page	Беттің жанындағы жүрістер тізімі
 	Side of the page	Беттің жағы
+	Drawing eraser	Сурет өшіргіші
+	Drag across text or draw a box to erase what lies under it	Астындағыны өшіру үшін мәтін үстімен сүйреңіз немесе жақтау сызыңыз
+	Drawings and shapes	Суреттер мен пішіндер
+	Comments, links and form fields	Түсініктемелер, сілтемелер және пішін өрістері
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Өшіру — өңдеу: файлдың бұрынғы нұсқасында өшірілгені әлі сақталуы мүмкін. Біржола жою үшін Жасыруды пайдаланыңыз.
+	Erase content	Мазмұнды өшіру
+	Knife (cut pages)	Пышақ (беттерді кесу)
+	Click to place a cut, right-click to take one away, Enter to cut	Кесік қою үшін басыңыз, біреуін алу үшін оң жақ батырманы басыңыз, кесу үшін Enter
+	Up and down	Жоғарыдан төмен
+	Across	Көлденең
+	Hold Shift for the other direction.	Басқа бағыт үшін Shift пернесін басып тұрыңыз.
+	Right part first	Алдымен оң жақ бөлік
+	Nothing is erased: each part shows its piece of the page.	Ештеңе өшірілмейді: әр бөлік беттің өз бөлігін көрсетеді.
+	Remove what lies outside each part	Әр бөліктен тыс жатқанды жою
+	Split double pages	Қос беттерді бөлу
+	No double pages were found: none is wider than tall	Қос беттер табылмады: ешбір бет биіктігінен кең емес

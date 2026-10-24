@@ -2942,3 +2942,19 @@ chess undo step	Clear drawings	удаление рисунков
 	Move list	Список ходов
 	Move list beside the page	Список ходов рядом со страницей
 	Side of the page	Сторона страницы
+	Drawing eraser	Ластик для рисунков
+	Drag across text or draw a box to erase what lies under it	Проведите по тексту или нарисуйте рамку, чтобы стереть то, что под ней
+	Drawings and shapes	Рисунки и фигуры
+	Comments, links and form fields	Комментарии, ссылки и поля форм
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Стирание — это правка: в более ранней версии файла стёртое может сохраниться. Чтобы удалить его окончательно, используйте «Скрыть».
+	Erase content	Стереть содержимое
+	Knife (cut pages)	Нож (разрезать страницы)
+	Click to place a cut, right-click to take one away, Enter to cut	Щелчок ставит разрез, правый щелчок убирает один, Enter разрезает
+	Up and down	Сверху вниз
+	Across	Поперёк
+	Hold Shift for the other direction.	Удерживайте Shift для другого направления.
+	Right part first	Сначала правая часть
+	Nothing is erased: each part shows its piece of the page.	Ничего не стирается: каждая часть показывает свой кусок страницы.
+	Remove what lies outside each part	Удалить то, что вне каждой части
+	Split double pages	Разделить развороты
+	No double pages were found: none is wider than tall	Развороты не найдены: нет страниц шире своей высоты
