@@ -11,6 +11,10 @@
 //!
 //! A verification pass then re-reads every redacted page; if any glyph or inline image is still
 //! under a region the whole operation fails (callers keep the previous document: fail-closed).
+//!
+//! [`erase`] removes content under areas of one page the same way, without marks or boxes and as
+//! an ordinary edit (an incremental save keeps the earlier revision: it is not a secure removal);
+//! [`erase_preview`] lists what it would remove.
 
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
@@ -36,6 +40,11 @@ pub type Rgb = [f64; 3];
 pub enum RedactError {
     #[error("there are no redaction marks to apply")]
     NothingToApply,
+    #[error("there is nothing to erase there")]
+    NothingToErase,
+    /// An area to erase that is no rectangle on the page: not finite, empty, or too many.
+    #[error("{0}")]
+    BadArea(String),
     #[error("page {0} has content that can't be read, so it can't be redacted safely")]
     Unreadable(usize),
     #[error("redaction could not be verified: {0} item(s) were still found under the marks, so nothing was changed")]
@@ -111,6 +120,45 @@ fn overlay_look(doc: &Document, d: &Dict) -> pdfcraft_annot::OverlayLook {
     look.repeat = matches!(d.get(b"Repeat"), Some(Object::Bool(true)));
     look
 }
+
+/// When a glyph counts as under an area.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GlyphRule {
+    /// Any real overlap (more than a fifth of the glyph, or a point): redaction's rule, which
+    /// leaves nothing partly covered.
+    Overlap,
+    /// Its centre is inside: what a selection takes, so erasing a selection removes exactly the
+    /// glyphs shown selected.
+    Centre,
+}
+
+/// What [`erase`] removes under its areas.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct EraseOptions {
+    pub rule: GlyphRule,
+    pub text: bool,
+    pub images: bool,
+    /// Paths and shadings.
+    pub vectors: bool,
+    /// Comments, links and form fields whose rectangle overlaps an area.
+    pub annotations: bool,
+}
+
+impl EraseOptions {
+    /// Redaction's: everything, by overlap.
+    pub const REDACT: EraseOptions = EraseOptions { rule: GlyphRule::Overlap, text: true, images: true, vectors: true, annotations: true };
+}
+
+impl Default for EraseOptions {
+    /// The page's content (text, images and vectors) by the glyphs' centres; comments and fields
+    /// stay (the comment eraser is for those).
+    fn default() -> Self {
+        EraseOptions { rule: GlyphRule::Centre, text: true, images: true, vectors: true, annotations: false }
+    }
+}
+
+/// Most areas one [`erase`] takes.
+pub const MAX_ERASE_AREAS: usize = 4096;
 
 /// What [`apply`] removed.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -348,9 +396,10 @@ pub fn apply(doc: &mut Document, pages: Option<&[usize]>) -> Result<Report, Reda
             page,
             rects: page_marks.iter().flat_map(|m| m.rects.iter().copied()).collect(),
             marks: page_marks.iter().map(|m| m.obj).collect(),
+            options: EraseOptions::REDACT,
         })
         .collect();
-    remove_under(doc, &areas, &mut report)?;
+    remove_under(doc, &areas, true, &mut report)?;
 
     // 4. The boxes.
     for (pi, content) in overlays {
@@ -365,20 +414,22 @@ pub fn apply(doc: &mut Document, pages: Option<&[usize]>) -> Result<Report, Reda
     Ok(report)
 }
 
-/// What [`remove_under`] takes away from one page (0-based): everything under `rects`, and the
-/// Redact annotations in `marks` (the marks being applied) wherever they lie.
+/// What [`remove_under`] takes away from one page (0-based): what `options` names under `rects`,
+/// and the Redact annotations in `marks` (the marks being applied) wherever they lie.
 struct PageAreas {
     page: usize,
     rects: Vec<[f64; 4]>,
     marks: Vec<ObjRef>,
+    options: EraseOptions,
 }
 
-/// Remove, for good, what lies under each page's areas: content (also inside form XObjects),
-/// annotations with their pop-ups and replies, form fields with a widget there, and an XFA form's
-/// data. Redact annotations other than the page's `marks` stay. Counts go into `report`.
+/// Remove what lies under each page's areas, as its options say: content (also inside form
+/// XObjects), annotations with their pop-ups and replies, form fields with a widget there. Redact
+/// annotations other than the page's `marks` stay. With `secure` (redaction), an XFA form's data
+/// goes in any case; otherwise only when a field went. Counts go into `report`.
 ///
 /// Not transactional: an error may leave `doc` partly changed (see [`apply`]).
-fn remove_under(doc: &mut Document, areas: &[PageAreas], report: &mut Report) -> Result<(), RedactError> {
+fn remove_under(doc: &mut Document, areas: &[PageAreas], secure: bool, report: &mut Report) -> Result<(), RedactError> {
     let by_page: Vec<_> = areas.iter().map(|a| a.page).collect();
     report.pages = by_page.len();
     localize_resources(doc, &by_page)?;
@@ -398,6 +449,7 @@ fn remove_under(doc: &mut Document, areas: &[PageAreas], report: &mut Report) ->
         let resources = page.dict.get(b"Resources").and_then(|r| doc.resolve(r).as_dict().cloned()).unwrap_or_default();
         let out = {
             let mut scope = Scope::new(rects, Mode::Apply, report);
+            scope.options = area.options;
             process(doc, &mut scope, &data, &resources, pdfcraft_content::Matrix::IDENTITY)
         };
         // Fail closed: the interpreter lays vertical-writing text out horizontally, so it cannot
@@ -489,7 +541,7 @@ fn remove_under(doc: &mut Document, areas: &[PageAreas], report: &mut Report) ->
                 }
                 continue;
             }
-            if subtype == b"Popup" {
+            if subtype == b"Popup" || !area.options.annotations {
                 continue;
             }
             if rect_of(doc, d.get(b"Rect")).is_some_and(|b| rects.iter().any(|x| pdfcraft_content::overlaps(*x, b, 0.0))) {
@@ -566,7 +618,7 @@ fn remove_under(doc: &mut Document, areas: &[PageAreas], report: &mut Report) ->
     // applied the form stops being XFA: the packets, /NeedsRendering, the layout mark and the
     // rest go (pdfcraft_xfa::strip), leaving a plain already-laid-out AcroForm that neither the
     // saved file nor a relayout can restore from.
-    if pdfcraft_xfa::xfa_shape(doc).is_some() {
+    if (secure || !doomed_fields.is_empty()) && pdfcraft_xfa::xfa_shape(doc).is_some() {
         let r = pdfcraft_xfa::strip(doc).map_err(|e| pdfcraft_edit::EditError::Invalid(e.to_string()))?;
         report.xfa_removed = !r.packets.is_empty();
     }
@@ -593,12 +645,91 @@ fn verify_removed(doc: &mut Document, areas: &[PageAreas]) -> Result<(), RedactE
         let resources = page.dict.get(b"Resources").and_then(|r| doc.resolve(r).as_dict().cloned()).unwrap_or_default();
         let mut scratch = Report::default();
         let mut scope = Scope::new(&area.rects, Mode::Verify, &mut scratch);
+        scope.options = area.options;
         residue += process(doc, &mut scope, &original, &resources, pdfcraft_content::Matrix::IDENTITY).residue;
     }
     if residue > 0 {
         return Err(RedactError::Residue(residue));
     }
     Ok(())
+}
+
+/// The areas to erase on page `page` (0-based), as rectangles with their corners in order, or why
+/// they cannot be: a page that does not exist, more than [`MAX_ERASE_AREAS`], or an area that is
+/// not finite or has no width or height.
+fn erase_areas(doc: &Document, page: usize, areas: &[[f64; 4]], options: EraseOptions) -> Result<PageAreas, RedactError> {
+    if page >= pdfcraft_model::pages(doc).len() {
+        return Err(RedactError::BadArea(format!("there is no page {}", page.saturating_add(1))));
+    }
+    if areas.is_empty() || areas.len() > MAX_ERASE_AREAS {
+        return Err(RedactError::BadArea(format!("give between 1 and {MAX_ERASE_AREAS} areas to erase, not {}", areas.len())));
+    }
+    let mut rects = Vec::with_capacity(areas.len());
+    for a in areas {
+        let r = [a[0].min(a[2]), a[1].min(a[3]), a[0].max(a[2]), a[1].max(a[3])];
+        if !r.iter().all(|v| v.is_finite()) || r[2] - r[0] <= 0.0 || r[3] - r[1] <= 0.0 {
+            return Err(RedactError::BadArea(format!("the area {a:?} is not a rectangle with a width and a height")));
+        }
+        rects.push(r);
+    }
+    Ok(PageAreas { page, rects, marks: Vec::new(), options })
+}
+
+/// Erase what `options` names under `areas` (user space) on page `page` (0-based): glyphs cut out
+/// of their lines with the rest in place, images and vectors removed or clipped, form XObjects
+/// rewritten as new objects (other pages keep theirs), and with `options.annotations` the
+/// comments, links and fields there. No box is drawn. Unlike [`apply`] this is an ordinary edit:
+/// the next save may be incremental, so the erased content stays in the file's earlier revision
+/// until a full save; redact for a secure removal.
+///
+/// # Errors
+///
+/// [`RedactError::BadArea`] for areas that are no rectangles on a page, and
+/// [`RedactError::NothingToErase`] when nothing lies under them. Like [`apply`] this is not
+/// transactional (vertical text fails closed, [`RedactError::VerticalText`], after other pages'
+/// work): call it on a working clone and keep the clone only on success.
+pub fn erase(doc: &mut Document, page: usize, areas: &[[f64; 4]], options: &EraseOptions) -> Result<Report, RedactError> {
+    let area = erase_areas(doc, page, areas, *options)?;
+    let mut report = Report::default();
+    let areas = [area];
+    remove_under(doc, &areas, false, &mut report)?;
+    let removed = report.glyphs
+        + report.images_removed
+        + report.images_cleared
+        + report.paths_removed
+        + report.paths_clipped
+        + report.forms_removed
+        + report.annotations
+        + report.fields;
+    if removed == 0 {
+        return Err(RedactError::NothingToErase);
+    }
+    verify_removed(doc, &areas)?;
+    Ok(report)
+}
+
+/// The boxes (user space) of what [`erase`] would remove under `areas` on page `page`: each glyph
+/// whole, and the covered part of each image and path. Comments are not listed. Changes nothing.
+///
+/// # Errors
+///
+/// [`RedactError::BadArea`] as for [`erase`], and a page whose content cannot be read.
+pub fn erase_preview(doc: &Document, page: usize, areas: &[[f64; 4]], options: &EraseOptions) -> Result<Vec<[f64; 4]>, RedactError> {
+    let area = erase_areas(doc, page, areas, *options)?;
+    let p = pdfcraft_model::pages(doc).into_iter().nth(page).ok_or(RedactError::Unreadable(page.saturating_add(1)))?;
+    let (_, data) = page_streams(doc, &p.dict, page)?;
+    let resources = p.dict.get(b"Resources").and_then(|r| doc.resolve(r).as_dict().cloned()).unwrap_or_default();
+    // Find mode writes nothing, but the interpreter takes the document mutably: read a clone
+    // (cheap: the objects are shared).
+    let mut scratch_doc = doc.clone();
+    let mut scratch = Report::default();
+    let mut scope = Scope::new(&area.rects, Mode::Find, &mut scratch);
+    scope.options = area.options;
+    let out = process(&mut scratch_doc, &mut scope, &data, &resources, pdfcraft_content::Matrix::IDENTITY);
+    if let Some(error) = out.error {
+        return Err(error.into());
+    }
+    Ok(std::mem::take(&mut scope.found))
 }
 
 /// Remove redaction marks without applying them (`None` = all).
