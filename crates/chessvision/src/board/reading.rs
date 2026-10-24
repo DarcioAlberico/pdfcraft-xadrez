@@ -18,6 +18,10 @@
 //!    least `ACCEPT_MIN_CONFIDENCE` = 0.80; squares at or below `UNCERTAIN_SQUARE_THRESHOLD` =
 //!    0.90 are listed). A reading the decoder repaired has a square at most 0.5 and never passes:
 //!    a person confirms it.
+//! 6. A board the gate refused is read once more, in one more call for the batch, after the
+//!    retry's preprocessing ([`Preprocessing`]: by default its empty hatched or stippled dark
+//!    squares painted flat, see [`super::preprocess`]); the second reading replaces the first only
+//!    when the gate accepts it.
 //!
 //! A board that cannot be read, or reads as an illegal position, is a value
 //! ([`Unreadable`], [`ReadPosition::legality`]), never an error or a panic.
@@ -38,6 +42,7 @@ use pdfcraft_chess::rules::{Legality, check_position};
 use pdfcraft_geom::PageRect;
 
 use super::consts::BOARD_SIZE;
+use super::preprocess::{Preprocessing, Steps, preprocess};
 use super::{tighten, warp};
 use crate::coords::{PageGeometry, PixelRect, pt_to_px, view_to_pixels};
 use crate::detect::DiagramCandidate;
@@ -213,7 +218,20 @@ pub fn read(
     candidates: &[DiagramCandidate],
     model: Option<&dyn SquareClassifier>,
 ) -> Vec<BoardReading> {
-    read_capped(page, geometry, dpi, candidates, model, MAX_MODEL_BOARDS_PER_PAGE)
+    read_with(page, geometry, dpi, candidates, model, Preprocessing::DEFAULT)
+}
+
+/// [`read`] with the board preprocessing chosen ([`Preprocessing`]) instead of
+/// [`Preprocessing::DEFAULT`]: the benchmarks measure each step with it.
+pub fn read_with(
+    page: &GrayImage,
+    geometry: &PageGeometry,
+    dpi: f32,
+    candidates: &[DiagramCandidate],
+    model: Option<&dyn SquareClassifier>,
+    preprocessing: Preprocessing,
+) -> Vec<BoardReading> {
+    read_capped(page, geometry, dpi, candidates, model, MAX_MODEL_BOARDS_PER_PAGE, preprocessing)
 }
 
 /// [`read`] with the cap on model boards as a parameter, so tests can reach it cheaply.
@@ -224,11 +242,12 @@ fn read_capped(
     candidates: &[DiagramCandidate],
     model: Option<&dyn SquareClassifier>,
     max_model_boards: usize,
+    preprocessing: Preprocessing,
 ) -> Vec<BoardReading> {
     let mut readings = Vec::with_capacity(candidates.len());
     let per_call = model.map_or(1, boards_per_call);
     // The squares of the boards waiting for the model, and their slots in `readings`.
-    let mut batch = Batch { squares: Vec::new(), slots: Vec::new() };
+    let mut batch = Batch { squares: Vec::new(), slots: Vec::new(), boards: Vec::new(), retry: preprocessing.retry };
     let mut model_boards = 0_usize;
     for (index, candidate) in candidates.iter().enumerate() {
         let (source, outcome) = match (&candidate.placement, model) {
@@ -240,12 +259,18 @@ fn read_capped(
                 } else {
                     model_boards = model_boards.saturating_add(1);
                     // `squares` fails only on an empty board, which `board_image` never returns.
-                    board_image(page, geometry, dpi, candidate).and_then(|board| model_squares(&board).ok_or(Unreadable::OffPage))
+                    board_image(page, geometry, dpi, candidate).and_then(|board| {
+                        let board = preprocessed(board, preprocessing.first);
+                        model_squares(&board).map(|squares| (squares, board)).ok_or(Unreadable::OffPage)
+                    })
                 };
                 match outcome {
-                    Ok(squares) => {
+                    Ok((squares, board)) => {
                         batch.squares.extend(squares);
                         batch.slots.push(readings.len());
+                        if !batch.retry.is_none() {
+                            batch.boards.push(board);
+                        }
                         // Filled in when the batch runs.
                         (ReadingSource::Model, Err(Unreadable::NoModel))
                     }
@@ -266,42 +291,81 @@ fn read_capped(
     readings
 }
 
+/// The board after `steps`; the board itself, with no copy, when there is none.
+fn preprocessed(board: GrayImage, steps: Steps) -> GrayImage {
+    if steps.is_none() { board } else { preprocess(&board, steps) }
+}
+
 /// Boards cut and waiting for one model call.
 struct Batch {
     squares: Vec<f32>,
     slots: Vec<usize>,
+    /// The boards as read, kept for the retry; empty when there is none.
+    boards: Vec<GrayImage>,
+    retry: Steps,
 }
 
 impl Batch {
-    /// Classify the waiting boards in one call and fill in their readings.
+    /// Classify the waiting boards in one call and fill in their readings; then read again, in
+    /// one more call, the boards the gate refused that the retry's steps change, and keep a
+    /// second reading only when the gate accepts it.
     fn run(&mut self, model: &dyn SquareClassifier, readings: &mut [BoardReading]) {
         if self.slots.is_empty() {
             return;
         }
-        let count = self.slots.len().saturating_mul(SQUARES_PER_BOARD);
-        let per_board = SQUARES_PER_BOARD * CLASS_COUNT;
-        let result = model.classify(&self.squares, count).and_then(|p| {
-            let expected = count.saturating_mul(CLASS_COUNT);
-            if p.len() == expected { Ok(p) } else { Err(ModelError::BatchSize { expected, count, got: p.len() }) }
-        });
-        for (k, &slot) in self.slots.iter().enumerate() {
-            let outcome = match &result {
-                Ok(p) => {
-                    let start = k.saturating_mul(per_board);
-                    match p.get(start..start.saturating_add(per_board)) {
-                        Some(board) => model_position(board),
-                        None => Err(Unreadable::Model("the model returned too few values".to_owned())),
-                    }
+        let outcomes = classify_boards(model, &self.squares, self.slots.len());
+        let (mut squares, mut slots) = (Vec::new(), Vec::new());
+        for (k, (&slot, outcome)) in self.slots.iter().zip(outcomes).enumerate() {
+            let refused = outcome.as_ref().is_ok_and(|p| !p.accepted);
+            if refused && let Some(board) = self.boards.get(k) {
+                let other = preprocess(board, self.retry);
+                if other != *board
+                    && let Some(retried) = model_squares(&other)
+                {
+                    squares.extend(retried);
+                    slots.push(slot);
                 }
-                Err(e) => Err(Unreadable::Model(e.to_string())),
-            };
+            }
             if let Some(reading) = readings.get_mut(slot) {
                 reading.outcome = outcome;
             }
         }
+        if !slots.is_empty() {
+            for (&slot, outcome) in slots.iter().zip(classify_boards(model, &squares, slots.len())) {
+                if outcome.as_ref().is_ok_and(|p| p.accepted)
+                    && let Some(reading) = readings.get_mut(slot)
+                {
+                    reading.outcome = outcome;
+                }
+            }
+        }
         self.squares.clear();
         self.slots.clear();
+        self.boards.clear();
     }
+}
+
+/// The readings of `boards` boards, whose [`SQUARES_PER_BOARD`] squares each are in `squares`, in
+/// one model call; every board gets the model's error when the call fails.
+fn classify_boards(model: &dyn SquareClassifier, squares: &[f32], boards: usize) -> Vec<Result<ReadPosition, Unreadable>> {
+    let count = boards.saturating_mul(SQUARES_PER_BOARD);
+    let per_board = SQUARES_PER_BOARD * CLASS_COUNT;
+    let result = model.classify(squares, count).and_then(|p| {
+        let expected = count.saturating_mul(CLASS_COUNT);
+        if p.len() == expected { Ok(p) } else { Err(ModelError::BatchSize { expected, count, got: p.len() }) }
+    });
+    (0..boards)
+        .map(|k| match &result {
+            Ok(p) => {
+                let start = k.saturating_mul(per_board);
+                match p.get(start..start.saturating_add(per_board)) {
+                    Some(board) => model_position(board),
+                    None => Err(Unreadable::Model("the model returned too few values".to_owned())),
+                }
+            }
+            Err(e) => Err(Unreadable::Model(e.to_string())),
+        })
+        .collect()
 }
 
 /// The position a diagram font gave: exact, so every square is certain and only legality gates.

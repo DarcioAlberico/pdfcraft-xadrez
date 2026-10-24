@@ -393,6 +393,163 @@ pub(crate) fn warp_plane(image: &GrayImage, quad: [[f64; 2]; 4], size: usize) ->
     Some(Plane { width: size, height: size, data })
 }
 
+/// Samples `plane` at `(x, y)` bilinearly, with the border replicated (OpenCV's
+/// `BORDER_REPLICATE`); 0 for a non-finite position or an empty plane.
+fn sample_replicate(plane: &Plane, x: f64, y: f64) -> f32 {
+    if !(x.is_finite() && y.is_finite()) || plane.width == 0 || plane.height == 0 {
+        return 0.0;
+    }
+    let (last_x, last_y) = ((plane.width - 1) as f64, (plane.height - 1) as f64);
+    let (x, y) = (x.clamp(0.0, last_x), y.clamp(0.0, last_y));
+    let (fx, fy) = (x.floor(), y.floor());
+    let (ax, ay) = ((x - fx) as f32, (y - fy) as f32);
+    // Both are within 0..=last after the clamp, so they fit a usize.
+    let (x0, y0) = (fx as usize, fy as usize);
+    let (x1, y1) = ((x0 + 1).min(plane.width - 1), (y0 + 1).min(plane.height - 1));
+    let px = |x: usize, y: usize| plane.row(y).get(x).copied().unwrap_or(0.0);
+    let top = px(x0, y0) * (1.0 - ax) + px(x1, y0) * ax;
+    let bottom = px(x0, y1) * (1.0 - ax) + px(x1, y1) * ax;
+    top * (1.0 - ay) + bottom * ay
+}
+
+/// `plane` turned `degrees` about its centre, counter-clockwise as seen on the screen for a
+/// positive angle (OpenCV's `getRotationMatrix2D` + `warpAffine`, bilinear, border replicated).
+/// The same size as `plane`; `None` for a non-finite angle.
+pub(crate) fn rotate_plane(plane: &Plane, degrees: f64) -> Option<Plane> {
+    if !degrees.is_finite() {
+        return None;
+    }
+    let (sin, cos) = degrees.to_radians().sin_cos();
+    let (cx, cy) = (plane.width as f64 / 2.0, plane.height as f64 / 2.0);
+    let mut data = Vec::with_capacity(plane.data.len());
+    for y in 0..plane.height {
+        for x in 0..plane.width {
+            // Destination → source, the inverse turn: with y down, the source of a pixel turned
+            // counter-clockwise by θ lies at its offset turned clockwise by θ.
+            let (dx, dy) = (x as f64 - cx, y as f64 - cy);
+            data.push(sample_replicate(plane, cx + dx * cos - dy * sin, cy + dx * sin + dy * cos));
+        }
+    }
+    Some(Plane { width: plane.width, height: plane.height, data })
+}
+
+/// Most taps on either side of a Gaussian's centre: a safety cap, not a measurement.
+const MAX_GAUSSIAN_RADIUS: usize = 1024;
+
+/// `plane` blurred by a Gaussian of standard deviation `sigma` pixels, separably, over
+/// `±⌈3σ⌉` taps (at most [`MAX_GAUSSIAN_RADIUS`]) with the border mirrored
+/// (`BORDER_REFLECT_101`; clamped where the kernel is wider than the plane). `None` for a
+/// non-finite or non-positive `sigma`.
+pub(crate) fn gaussian_blur_plane(plane: &Plane, sigma: f64) -> Option<Plane> {
+    if !(sigma.is_finite() && sigma > 0.0) {
+        return None;
+    }
+    let radius = ((3.0 * sigma).ceil() as usize).clamp(1, MAX_GAUSSIAN_RADIUS);
+    let weights: Vec<f64> = (0..=2 * radius).map(|i| (-((i as f64 - radius as f64).powi(2)) / (2.0 * sigma * sigma)).exp()).collect();
+    let total: f64 = weights.iter().sum();
+    let taps: Vec<(isize, f32)> = weights.iter().enumerate().map(|(i, w)| (i as isize - radius as isize, (w / total) as f32)).collect();
+    let (width, height) = (plane.width, plane.height);
+    let mut across = Vec::with_capacity(plane.data.len());
+    for y in 0..height {
+        let row = plane.row(y);
+        for x in 0..width {
+            across.push(taps.iter().map(|&(d, w)| w * row.get(reflect101(x as isize + d, width)).copied().unwrap_or(0.0)).sum::<f32>());
+        }
+    }
+    let mut data = Vec::with_capacity(plane.data.len());
+    for y in 0..height {
+        let rows: Vec<(&[f32], f32)> = taps.iter().map(|&(d, w)| (sub_row(&across, reflect101(y as isize + d, height), width), w)).collect();
+        for x in 0..width {
+            data.push(rows.iter().map(|&(row, w)| w * row.get(x).copied().unwrap_or(0.0)).sum::<f32>());
+        }
+    }
+    Some(Plane { width, height, data })
+}
+
+/// Contrast-limited adaptive histogram equalisation (Zuiderveld, *Graphics Gems IV*, 1994),
+/// written from the published description.
+///
+/// The image is cut into `tiles` × `tiles` contextual regions. Each region's histogram is clipped
+/// at `clip` times its mean bin height (at least one pixel a level), the clipped excess spread
+/// evenly over all 256 levels, and its running sum, scaled to 0..=255, is the region's mapping. A
+/// pixel's new level is the bilinear blend of the mappings of the four regions whose centres
+/// surround it (two along the image's edges, one in its corners).
+///
+/// `None` for `tiles` 0, a non-finite `clip`, or an image narrower or shorter than `tiles`
+/// pixels.
+pub(crate) fn clahe(image: &GrayImage, tiles: usize, clip: f64) -> Option<GrayImage> {
+    let (width, height) = dims(image);
+    if tiles == 0 || width < tiles || height < tiles || !clip.is_finite() {
+        return None;
+    }
+    // Region `i` along an axis of `n` pixels covers `bound(i)..bound(i + 1)`; n is within the
+    // gray-image cap and i ≤ tiles ≤ n, so the product fits (saturating all the same).
+    let bound = |i: usize, n: usize| i.saturating_mul(n) / tiles;
+    let mut maps = vec![[0_u8; 256]; tiles.checked_mul(tiles)?];
+    for ty in 0..tiles {
+        for tx in 0..tiles {
+            let mut histogram = [0_u64; 256];
+            for y in bound(ty, height)..bound(ty + 1, height) {
+                for &v in sub_row(image.data(), y, width).get(bound(tx, width)..bound(tx + 1, width)).unwrap_or(&[]) {
+                    if let Some(bin) = histogram.get_mut(usize::from(v)) {
+                        *bin += 1;
+                    }
+                }
+            }
+            let pixels: u64 = histogram.iter().sum();
+            if pixels == 0 {
+                continue;
+            }
+            let limit = ((clip * pixels as f64 / 256.0) as u64).max(1);
+            let mut excess = 0_u64;
+            for bin in &mut histogram {
+                if *bin > limit {
+                    excess += *bin - limit;
+                    *bin = limit;
+                }
+            }
+            // The excess spread over every level: an even share each, the remainder one more to
+            // the first levels.
+            let (share, rest) = (excess / 256, excess % 256);
+            for (level, bin) in (0_u64..).zip(histogram.iter_mut()) {
+                *bin += share + u64::from(level < rest);
+            }
+            let Some(map) = maps.get_mut(ty * tiles + tx) else { continue };
+            let mut running = 0_u64;
+            for (slot, &count) in map.iter_mut().zip(&histogram) {
+                running += count;
+                // running ≤ pixels, so the quotient is at most 255.
+                *slot = u8::try_from((running * 255 + pixels / 2) / pixels).unwrap_or(u8::MAX);
+            }
+        }
+    }
+    // Along one axis: the two regions whose centres surround pixel `p`, and the second's weight.
+    let neighbours = |p: usize, n: usize| -> (usize, usize, f32) {
+        let centre = |i: usize| (bound(i, n) + bound(i + 1, n)) as f32 / 2.0;
+        let p = p as f32 + 0.5;
+        match (0..tiles).find(|&i| centre(i) > p) {
+            Some(0) => (0, 0, 0.0),
+            None => (tiles - 1, tiles - 1, 0.0),
+            Some(after) => {
+                let (a, b) = (centre(after - 1), centre(after));
+                (after - 1, after, if b > a { (p - a) / (b - a) } else { 0.0 })
+            }
+        }
+    };
+    let columns: Vec<(usize, usize, f32)> = (0..width).map(|x| neighbours(x, width)).collect();
+    let mut data = Vec::with_capacity(image.data().len());
+    for y in 0..height {
+        let (ty0, ty1, fy) = neighbours(y, height);
+        for (&v, &(tx0, tx1, fx)) in sub_row(image.data(), y, width).iter().zip(&columns) {
+            let level = |ty: usize, tx: usize| maps.get(ty * tiles + tx).and_then(|m| m.get(usize::from(v))).map_or(0.0, |&m| f32::from(m));
+            let top = level(ty0, tx0) * (1.0 - fx) + level(ty0, tx1) * fx;
+            let bottom = level(ty1, tx0) * (1.0 - fx) + level(ty1, tx1) * fx;
+            data.push(to_level(top * (1.0 - fy) + bottom * fy));
+        }
+    }
+    GrayImage::new(image.width(), image.height(), data).ok()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -507,5 +664,65 @@ mod tests {
         assert_eq!(resize_region_bilinear(&image, region, 9, 13), resize_bilinear(&copy, 9, 13));
         assert!(resize_region_bilinear(&image, PixelRect { x1: 8, ..region }, 9, 13).is_none());
         assert!(resize_region_bilinear(&image, PixelRect { x1: 2, ..region }, 9, 13).is_none());
+    }
+
+    #[test]
+    fn rotation_turns_counter_clockwise_and_keeps_the_size() {
+        // A bright pixel right of the centre of a 9 × 9 plane goes above it after a quarter turn.
+        let mut data = vec![0.0_f32; 81];
+        data[4 * 9 + 6] = 200.0;
+        let plane = Plane { width: 9, height: 9, data };
+        let turned = rotate_plane(&plane, 90.0).unwrap();
+        assert_eq!((turned.width, turned.height), (9, 9));
+        // The centre is (4.5, 4.5), as OpenCV puts it at half the size: pixel (6, 4), 1.5 right of
+        // it and 0.5 above, lands 1.5 above it and 0.5 left, on pixel (4, 3).
+        let brightest = turned.data.iter().enumerate().max_by(|a, b| a.1.total_cmp(b.1)).unwrap().0;
+        assert_eq!((brightest % 9, brightest / 9), (4, 3), "{:?}", turned.data);
+        // A turn of 0 is the identity; a non-finite angle is refused; an empty plane stays empty.
+        assert_eq!(rotate_plane(&plane, 0.0).unwrap(), plane);
+        assert!(rotate_plane(&plane, f64::NAN).is_none());
+        assert_eq!(rotate_plane(&Plane { width: 0, height: 0, data: vec![] }, 3.0).unwrap().data.len(), 0);
+    }
+
+    #[test]
+    fn gaussian_blur_keeps_flat_planes_flat_and_the_mean_of_a_step() {
+        let flat = gaussian_blur_plane(&Plane { width: 5, height: 3, data: vec![80.0; 15] }, 40.0).unwrap();
+        assert!(flat.data.iter().all(|v| (v - 80.0).abs() < 1e-3), "{:?}", flat.data);
+        // A step from 0 to 100 is 50 at its edge, by symmetry, and smooth on both sides.
+        let step = Plane { width: 40, height: 1, data: (0..40).map(|x| if x < 20 { 0.0 } else { 100.0 }).collect() };
+        let blurred = gaussian_blur_plane(&step, 3.0).unwrap();
+        let mid = (blurred.data[19] + blurred.data[20]) / 2.0;
+        assert!((mid - 50.0).abs() < 0.5, "{mid}");
+        assert!(blurred.data.windows(2).all(|w| w[1] >= w[0] - 1e-4));
+        assert!(gaussian_blur_plane(&step, 0.0).is_none());
+        assert!(gaussian_blur_plane(&step, f64::INFINITY).is_none());
+        // A sigma far wider than the plane is capped, never an allocation the size of the sigma.
+        assert!(gaussian_blur_plane(&step, 1e12).is_some());
+    }
+
+    #[test]
+    fn clahe_stretches_a_dim_tile_but_limits_its_contrast() {
+        // One tile of two close levels: plain equalisation would spread them to 0 and 255; the
+        // clip keeps them close, in the middle, and in order.
+        let data: Vec<u8> = (0..64).map(|i| if i % 2 == 0 { 100 } else { 104 }).collect();
+        let image = gray(8, 8, data);
+        let out = clahe(&image, 1, 2.0).unwrap();
+        let (low, high) = (out.data()[0], out.data()[1]);
+        assert!(low < high, "{low} {high}");
+        assert!(high - low < 40, "{low} {high}");
+        // With no clip it is plain equalisation: the two levels end far apart.
+        let plain = clahe(&image, 1, 1e9).unwrap();
+        assert!(plain.data()[1] - plain.data()[0] > 100, "{:?}", &plain.data()[..2]);
+        // Flat stays flat. Each tile's mapping keeps the order of levels (CLAHE is local: across
+        // tiles it need not), seen where a corner tile's mapping is used alone.
+        let flat = clahe(&gray(16, 16, vec![30; 256]), 4, 2.0).unwrap();
+        assert!(flat.data().windows(2).all(|w| w[0] == w[1]));
+        let ramp = gray(64, 1, (0..64).map(|x| (x * 4) as u8).collect());
+        assert!(clahe(&ramp, 2, 2.0).is_none(), "an image shorter than the tiles is refused");
+        let ramp = gray(64, 8, (0..512).map(|i| ((i % 64) * 4) as u8).collect());
+        let out = clahe(&ramp, 8, 2.0).unwrap();
+        assert!(out.data()[..4].windows(2).all(|w| w[1] > w[0]), "{:?}", &out.data()[..4]);
+        assert!(clahe(&image, 0, 2.0).is_none());
+        assert!(clahe(&image, 1, f64::NAN).is_none());
     }
 }
