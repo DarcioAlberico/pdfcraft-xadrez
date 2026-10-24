@@ -92,6 +92,14 @@ pub struct ChessState {
     pub source: crate::chess_source::SourceState,
     /// Where the chess models come from: the folder chosen, or the files picked on the web (U4).
     pub models: crate::chess_models::ModelsPref,
+    /// The Move list shows beside the page this frame: the notation is drawn there, not under
+    /// the board (in the dock or in the chess window).
+    pub(crate) moves_beside: bool,
+    /// The Move list stands against the page's left edge (else its right one), as of this frame.
+    pub(crate) moves_left: bool,
+    /// What was asked of the Move list, done at the start of the next frame, when the layout is
+    /// not being drawn (`docking::drain_moves`).
+    pub(crate) moves_request: Option<crate::docking::MovesRequest>,
 }
 
 /// A double-click at `point` (user space) on `page` of `doc`, whose diagrams were not looked
@@ -1050,6 +1058,30 @@ impl PdfCraftApp {
         }
     }
 
+    /// `chess.move_list`: the Move list beside the page, or closed when it shows.
+    pub fn toggle_move_list(&mut self) {
+        self.ask_move_list(crate::docking::MovesRequest::Show(!self.chess.moves_beside));
+    }
+
+    /// Ask the Move list for `request`, done at the start of the next frame.
+    pub(crate) fn ask_move_list(&mut self, request: crate::docking::MovesRequest) {
+        self.chess.moves_request = Some(request);
+        if let Some(ctx) = &self.ctx {
+            ctx.request_repaint();
+        }
+    }
+
+    /// What was asked of the Move list, and where it shows this frame. Called before anything is
+    /// drawn: the docking workspace settles `moves_beside` again from what it draws.
+    pub(crate) fn settle_move_list(&mut self) {
+        if let Err(error) = crate::docking::drain_moves(&mut self.docking, self.chess.moves_request.take()) {
+            self.notify_fmt("Panel move was not applied: {error}", &[("error", &error)]);
+        }
+        let drawn = !(self.full_screen && self.active.is_some()) && (self.mode != crate::Mode::Read || self.active.is_some());
+        self.chess.moves_beside = drawn && self.docking.exposed(crate::docking::Panel::Moves);
+        self.chess.moves_left = self.docking.moves_on_left();
+    }
+
     /// What the chess board panel asked for.
     pub(crate) fn chess_board_action(&mut self, action: crate::chess_board_ui::BoardAction) {
         use crate::chess_board_ui::BoardAction;
@@ -1066,6 +1098,7 @@ impl PdfCraftApp {
             }
             BoardAction::ChooseEngine => self.choose_chess_engine(),
             BoardAction::AddGames { texts, more } => self.add_pgn_field_games(&texts, more),
+            BoardAction::ToggleMoveList => self.toggle_move_list(),
         }
     }
 
@@ -1132,6 +1165,57 @@ pub(crate) fn board_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     }
     if let Some(mode) = paste {
         app.chess_paste_as(mode, crate::chess_capture::clipboard_text());
+    }
+}
+
+/// The Move list beside the page (in the docking workspace, or in Read mode): the board's game,
+/// each move a click away, and the move's glyphs and comment under it.
+pub(crate) fn moves_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
+    let t = Tokens::get(ui.ctx());
+    // A click in the list puts Undo and Redo on the game, as in the Board panel (D12).
+    if crate::chess_history::pressed_in(ui) {
+        app.chess.enter_scope();
+    }
+    let mut action = None;
+    let mut side = None;
+    egui::Frame::NONE.fill(t.panel).stroke(Stroke::new(1.0, t.divider)).show(ui, |ui| {
+        egui::Frame::NONE.inner_margin(egui::Margin { left: 10, right: 10, top: 10, bottom: 8 }).show(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.label(egui::RichText::new(tl!("Move list")).font(theme::semibold(15.5)));
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    // Right to left: the right edge's button first.
+                    for (left, icon, name) in [(false, "panel-right", tl!("Right")), (true, "panel-left", tl!("Left"))] {
+                        let r = ui
+                            .add(egui::Button::image(crate::icons::image(icon, 14.0, t.icon)).selected(app.chess.moves_left == left))
+                            .on_hover_text(name);
+                        r.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, app.chess.moves_left == left, name));
+                        if r.clicked() && app.chess.moves_left != left {
+                            side = Some(left);
+                        }
+                    }
+                });
+            });
+            ui.add_space(4.0);
+            let room = ui.available_height();
+            action = crate::chess_board_ui::moves_list(ui, &t, &mut app.chess, room);
+        });
+    });
+    if let Some(a) = action {
+        app.chess_board_action(a);
+    }
+    if let Some(left) = side {
+        app.ask_move_list(crate::docking::MovesRequest::Side { left });
+    }
+}
+
+/// The Move list tab's menu: the page's edge it stands against.
+pub(crate) fn moves_side_menu(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
+    ui.label(egui::RichText::new(tl!("Side of the page")).small());
+    for (left, name) in [(true, tl!("Left")), (false, tl!("Right"))] {
+        if ui.add(egui::Button::new(name).selected(app.chess.moves_left == left)).clicked() {
+            app.ask_move_list(crate::docking::MovesRequest::Side { left });
+            ui.close();
+        }
     }
 }
 

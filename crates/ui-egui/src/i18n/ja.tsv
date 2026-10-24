@@ -3026,3 +3026,8 @@ chess undo step	Clear drawings	描画の消去
 	No game was found for this move, on its page or the pages around it.	この手の対局は、そのページにも前後のページにも見つかりませんでした。
 	Renumber	番号を振り直す
 	The text's move numbers give way to the game's: {printed} is played as {played}.	テキストの手数番号は棋譜の番号に置き換わります: {printed} は {played} として指されます。
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	指し手リスト
+	Move list beside the page	ページ横の指し手リスト
+	Side of the page	ページの横の位置

@@ -468,6 +468,7 @@ impl PdfCraftApp {
             "chess.pgn.save" => self.save_chess_pgn(false),
             "chess.pgn.save_all" => self.save_chess_pgn(true),
             "chess.window.detach" => self.toggle_chess_window(),
+            "chess.move_list" => self.toggle_move_list(),
             "chess.moves.copy_figurines" => self.copy_chess_line(true),
             "chess.moves.copy_letters" => self.copy_chess_line(false),
             "chess.pgn.paste_as" => {

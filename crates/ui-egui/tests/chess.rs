@@ -2857,3 +2857,56 @@ fn the_glyph_palette_types_at_the_cursor_of_the_field_that_had_the_keyboard() {
     h.run_steps(3);
     assert_eq!(h.state().chess.board().game.comment(e4), "a♞× b", "after the knight: the cursor moved past it");
 }
+
+/// The Move list beside the page: the board's toggle opens it against the page's right edge and
+/// the notation is drawn there alone, the board keeping its sections; its own buttons put it
+/// against the left edge, where it opens again; a move clicked in it is shown on the board.
+/// Closed, the notation is back under the board. Read mode draws it on the same side.
+#[test]
+fn the_move_list_stands_beside_the_page_on_either_side() {
+    use pdfcraft_ui_egui::docking::Panel;
+    let mut h = tall_window(1000.0);
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, FORKS, &[0, 1, 0, 0]);
+    let under_board = |h: &Harness<'static, PdfCraftApp>| {
+        let (moves, board) = (h.get_by_label("Moves").rect(), h.get_by_label_contains("Board: ").rect());
+        moves.min.y > board.max.y && moves.min.x < board.max.x
+    };
+    assert!(under_board(&h));
+    h.get_by_label("Move list beside the page").click();
+    h.run_steps(3);
+    assert!(h.state().docking.layout.contains(&Panel::Moves));
+    assert_eq!(h.get_all_by_label("Moves").count(), 1, "the notation in one place");
+    let page = h.state().views[0].page_screen_rect(0).expect("page 1 on screen");
+    let (moves, board) = (h.get_by_label("Moves").rect(), h.get_by_label_contains("Board: ").rect());
+    assert!(moves.min.x >= page.max.x && moves.max.x <= board.min.x, "between the page and the board: {moves:?} {page:?} {board:?}");
+    assert!(moves.height() > 400.0, "the list's height: {moves:?}");
+    h.get_by_label("PGN");
+    h.get_by_label("Left").click();
+    h.run_steps(4);
+    assert!(h.state().docking.moves_on_left());
+    let page = h.state().views[0].page_screen_rect(0).expect("page 1 on screen");
+    let moves = h.get_by_label("Moves").rect();
+    assert!(moves.max.x <= page.min.x, "against the page's left edge: {moves:?} {page:?}");
+    // 1. e4 from 2. Nf3 in the variation: the board follows the list.
+    h.get_by_label("e4").click();
+    h.run_steps(2);
+    let game = &h.state().chess.board().game;
+    assert_eq!(game.san(game.current()), "e4");
+    h.get_by_label("Move list beside the page").click();
+    h.run_steps(3);
+    assert!(!h.state().docking.layout.contains(&Panel::Moves));
+    assert_eq!(h.get_all_by_label("Moves").count(), 1);
+    assert!(under_board(&h), "back under the board");
+    // The command opens it again where it was; Read mode keeps the side.
+    assert!(h.state_mut().execute("chess.move_list"));
+    h.run_steps(3);
+    let page = h.state().views[0].page_screen_rect(0).expect("page 1 on screen");
+    assert!(h.get_by_label("Moves").rect().max.x <= page.min.x);
+    h.state_mut().mode = pdfcraft_ui_egui::Mode::Read;
+    h.run_steps(4);
+    let page = h.state().views[0].page_screen_rect(0).expect("page 1 on screen");
+    assert_eq!(h.get_all_by_label("Moves").count(), 1);
+    assert!(h.get_by_label("Moves").rect().max.x <= page.min.x, "Read mode: on the left too");
+}
