@@ -3281,3 +3281,9 @@ chess undo step	Clear drawings	piešinių valymą
 	Move list	Ėjimų sąrašas
 	Move list beside the page	Ėjimų sąrašas šalia puslapio
 	Side of the page	Puslapio pusė
+	Drawing eraser	Brėžinių trintukas
+	Drag across text or draw a box to erase what lies under it	Vilkite per tekstą arba nubrėžkite rėmelį, kad ištrintumėte tai, kas po juo
+	Drawings and shapes	Brėžiniai ir figūros
+	Comments, links and form fields	Komentarai, nuorodos ir formų laukai
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Trynimas yra taisymas: ankstesnėje failo versijoje ištrintas turinys gali likti. Kad pašalintumėte visam laikui, naudokite Pašalinti konfidencialią informaciją.
+	Erase content	Ištrinti turinį

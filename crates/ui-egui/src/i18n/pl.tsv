@@ -3005,3 +3005,9 @@ chess undo step	Clear drawings	usunięcie rysunków
 	Move list	Lista ruchów
 	Move list beside the page	Lista ruchów obok strony
 	Side of the page	Położenie obok strony
+	Drawing eraser	Gumka do rysunków
+	Drag across text or draw a box to erase what lies under it	Przeciągnij po tekście lub narysuj prostokąt, aby wymazać to, co jest pod nim
+	Drawings and shapes	Rysunki i kształty
+	Comments, links and form fields	Komentarze, łącza i pola formularzy
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Wymazywanie jest edycją: wcześniejsza wersja pliku może nadal zawierać wymazaną treść. Aby usunąć ją na stałe, użyj Utajnij.
+	Erase content	Wymaż zawartość

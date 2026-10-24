@@ -3034,3 +3034,9 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Move list	Seznam potez
 	Move list beside the page	Seznam potez ob strani
 	Side of the page	Postavitev ob strani
+	Drawing eraser	Radirka za risbe
+	Drag across text or draw a box to erase what lies under it	Povlecite čez besedilo ali narišite okvir, da izbrišete, kar je pod njim
+	Drawings and shapes	Risbe in oblike
+	Comments, links and form fields	Komentarji, povezave in polja obrazcev
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Brisanje je urejanje: starejša različica datoteke lahko izbrisano še vsebuje. Za trajno odstranitev uporabite Počrni.
+	Erase content	Izbriši vsebino
