@@ -42,11 +42,13 @@ pub struct KnifePrefs {
     pub axis: CutAxis,
     pub pages: KnifePages,
     pub right_to_left: bool,
+    /// Erase what lies outside each part (B3).
+    pub trim_outside: bool,
 }
 
 impl Default for KnifePrefs {
     fn default() -> Self {
-        KnifePrefs { axis: CutAxis::Vertical, pages: KnifePages::This, right_to_left: false }
+        KnifePrefs { axis: CutAxis::Vertical, pages: KnifePages::This, right_to_left: false, trim_outside: false }
     }
 }
 
@@ -175,7 +177,7 @@ pub(crate) fn paint(painter: &egui::Painter, xf: &PageXform, page: usize, view: 
 
 /// The edit for the cuts placed: at the same shares on `pages` (0-based), measured on each page
 /// as shown. `None` when no cut is placed.
-pub fn cut_edit(knife: &KnifeView, info: &DocInfo, pages: &[usize], right_to_left: bool) -> Option<Edit> {
+pub fn cut_edit(knife: &KnifeView, info: &DocInfo, pages: &[usize], prefs: &KnifePrefs) -> Option<Edit> {
     let axis = knife.axis?;
     if knife.at.is_empty() {
         return None;
@@ -191,7 +193,7 @@ pub fn cut_edit(knife: &KnifeView, info: &DocInfo, pages: &[usize], right_to_lef
             Some(Cut { page, axis, at: knife.at.iter().map(|a| f64::from(*a) * extent).collect() })
         })
         .collect();
-    (!cuts.is_empty()).then_some(Edit::CutPages { cuts, right_to_left })
+    (!cuts.is_empty()).then_some(Edit::CutPages { cuts, right_to_left: prefs.right_to_left, trim_outside: prefs.trim_outside })
 }
 
 impl crate::PdfCraftApp {
@@ -209,12 +211,43 @@ impl crate::PdfCraftApp {
             KnifePages::Selected => vec![page],
             KnifePages::All => (0..n).collect(),
         };
-        let Some(edit) = cut_edit(&view.knife, &doc.info, &pages, self.knife_prefs.right_to_left) else { return false };
+        let Some(edit) = cut_edit(&view.knife, &doc.info, &pages, &self.knife_prefs) else { return false };
         let done = self.apply_edit(edit);
         if done {
             self.views[i].knife.clear();
         }
         done
+    }
+
+    /// Split double pages: every page shown wider than tall (or the selected pages) is cut once,
+    /// upright, at the gap between its columns of text when its text is known, else at its middle.
+    /// Returns how many pages were cut.
+    pub fn split_spreads(&mut self) -> usize {
+        let Some((i, id)) = self.active_ids() else { return 0 };
+        let Some(doc) = self.session.get(id) else { return 0 };
+        let view = &self.views[i];
+        let n = doc.info.pages.len();
+        let pages: Vec<usize> = if view.selected.len() > 1 {
+            view.selected.iter().copied().filter(|p| *p < n).collect()
+        } else {
+            (0..n).filter(|p| doc.info.pages.get(*p).is_some_and(|q| q.width > q.height)).collect()
+        };
+        let cuts: Vec<Cut> = pages
+            .iter()
+            .filter_map(|&page| {
+                let p = doc.info.pages.get(page)?;
+                let glyphs: Vec<[f32; 4]> = view.page_text(page).map(|t| t.glyphs.iter().map(|g| g.rect).collect()).unwrap_or_default();
+                let share = gutter(&glyphs, [p.width, p.height], CutAxis::Vertical).unwrap_or(0.5);
+                Some(Cut { page, axis: CutAxis::Vertical, at: vec![f64::from(share) * f64::from(p.width)] })
+            })
+            .collect();
+        if cuts.is_empty() {
+            self.notify_tr("No double pages were found: none is wider than tall");
+            return 0;
+        }
+        let count = cuts.len();
+        let edit = Edit::CutPages { cuts, right_to_left: self.knife_prefs.right_to_left, trim_outside: self.knife_prefs.trim_outside };
+        if self.apply_edit(edit) { count } else { 0 }
     }
 }
 
@@ -239,6 +272,8 @@ pub(crate) fn panel(app: &mut crate::PdfCraftApp, ui: &mut egui::Ui) {
         }
     }
     ui.add(widgets::checkbox(&mut p.right_to_left, tl!("Right part first")));
+    ui.add(widgets::checkbox(&mut p.trim_outside, tl!("Remove what lies outside each part")));
+    let trim = p.trim_outside;
     let placed = app.active_ids().map_or(0, |(i, _)| app.views[i].knife.at.len());
     ui.horizontal(|ui| {
         if ui.add_enabled_ui(placed > 0, |ui| widgets::pill_button(ui, tl!("Cut"), true)).inner.clicked() {
@@ -250,7 +285,12 @@ pub(crate) fn panel(app: &mut crate::PdfCraftApp, ui: &mut egui::Ui) {
             app.views[i].knife.clear();
         }
     });
-    ui.label(egui::RichText::new(tl!("Nothing is erased: each part shows its piece of the page.")).small());
+    if !trim {
+        ui.label(egui::RichText::new(tl!("Nothing is erased: each part shows its piece of the page.")).small());
+    }
+    if widgets::pill_button(ui, tl!("Split double pages"), false).clicked() {
+        app.split_spreads();
+    }
     ui.add_space(6.0);
 }
 

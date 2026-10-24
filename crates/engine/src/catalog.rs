@@ -201,6 +201,7 @@ pub static TOOL_GROUPS: &[ToolGroup] = &[
                     item("Replace", "replace", "page.replace", Ready),
                     item("Split", "scissors", "page.split", Ready),
                     item("Knife (cut pages)", "columns-2", "page.knife", Ready),
+                    item("Split double pages", "columns-2", "page.split_spreads", Ready),
                 ],
             },
             ToolSection {

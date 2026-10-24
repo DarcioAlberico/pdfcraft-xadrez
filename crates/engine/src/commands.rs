@@ -429,6 +429,7 @@ pub const COMMANDS: &[CommandSpec] = &[
     c("page.extract", "Extract pages…", PAGES, None, Assembly, "file-output"),
     c("page.split", "Split document…", PAGES, None, Assembly, "scissors"),
     c("page.knife", "Knife (cut pages)", PAGES, None, Assembly, "columns-2"),
+    c("page.split_spreads", "Split double pages", PAGES, None, Assembly, "columns-2"),
     c("page.number", "Number pages…", PAGES, None, Assembly, "hash"),
     c("help.shortcuts", "Keyboard shortcuts", HELP, None, Nothing, "circle-help"),
     c("help.discord", "Join the ArtCraft Discord", HELP, None, Nothing, "messages-square"),

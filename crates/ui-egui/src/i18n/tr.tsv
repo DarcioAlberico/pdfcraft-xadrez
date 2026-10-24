@@ -3038,3 +3038,6 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Hold Shift for the other direction.	Diğer yön için Shift'i basılı tutun.
 	Right part first	Önce sağ parça
 	Nothing is erased: each part shows its piece of the page.	Hiçbir şey silinmez: her parça sayfanın kendi parçasını gösterir.
+	Remove what lies outside each part	Her parçanın dışında kalanı kaldır
+	Split double pages	Çift sayfaları böl
+	No double pages were found: none is wider than tall	Çift sayfa bulunamadı: hiçbiri yüksekliğinden geniş değil
