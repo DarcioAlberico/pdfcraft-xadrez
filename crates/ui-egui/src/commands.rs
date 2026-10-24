@@ -508,6 +508,23 @@ impl PdfCraftApp {
                     }
                 }
             }
+            "edit.erase" => {
+                self.quick_tool = crate::QuickTool::Erase;
+                self.left = crate::LeftPanel::Tool("edit");
+                self.reveal_tools();
+                // A text selection made first is erased right away.
+                let selection = active.and_then(|i| {
+                    let doc = self.session.get(self.views[i].id)?;
+                    let quads = self.views[i].selection_quads(&doc.info)?;
+                    Some((i, quads))
+                });
+                if let Some((i, (page, quads))) = selection {
+                    self.views[i].clear_selection();
+                    self.apply_edit(crate::canvas::erase_edit(page, &quads, self.erase_prefs));
+                } else {
+                    self.notify_tr("Drag across text or draw a box to erase what lies under it");
+                }
+            }
             "redact.pages" => {
                 if let Some(i) = active {
                     let n = self.session.get(self.views[i].id).map_or(1, |d| d.info.pages.len());

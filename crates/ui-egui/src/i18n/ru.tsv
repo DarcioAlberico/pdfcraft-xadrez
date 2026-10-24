@@ -2942,3 +2942,9 @@ chess undo step	Clear drawings	удаление рисунков
 	Move list	Список ходов
 	Move list beside the page	Список ходов рядом со страницей
 	Side of the page	Сторона страницы
+	Drawing eraser	Ластик для рисунков
+	Drag across text or draw a box to erase what lies under it	Проведите по тексту или нарисуйте рамку, чтобы стереть то, что под ней
+	Drawings and shapes	Рисунки и фигуры
+	Comments, links and form fields	Комментарии, ссылки и поля форм
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Стирание — это правка: в более ранней версии файла стёртое может сохраниться. Чтобы удалить его окончательно, используйте «Скрыть».
+	Erase content	Стереть содержимое

@@ -3170,3 +3170,9 @@ chess undo step	Clear drawings	borrado de los dibujos
 	Move list	Lista de jugadas
 	Move list beside the page	Lista de jugadas junto a la página
 	Side of the page	Lado de la página
+	Drawing eraser	Borrador de dibujos
+	Drag across text or draw a box to erase what lies under it	Arrastre sobre el texto o dibuje un recuadro para borrar lo que hay debajo
+	Drawings and shapes	Dibujos y formas
+	Comments, links and form fields	Comentarios, vínculos y campos de formulario
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Borrar es una edición: una versión anterior del archivo aún puede contener lo borrado. Use Censurar para eliminarlo definitivamente.
+	Erase content	Borrar contenido

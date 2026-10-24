@@ -3103,3 +3103,9 @@ chess undo step	Clear drawings	smazání kreseb
 	Move list	Seznam tahů
 	Move list beside the page	Seznam tahů vedle stránky
 	Side of the page	Umístění vedle stránky
+	Drawing eraser	Guma na kresby
+	Drag across text or draw a box to erase what lies under it	Přetažením přes text nebo nakreslením rámečku vymažete, co je pod ním
+	Drawings and shapes	Kresby a tvary
+	Comments, links and form fields	Komentáře, odkazy a pole formulářů
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Mazání je úprava: starší verze souboru může vymazaný obsah stále obsahovat. Pro trvalé odstranění použijte Začernění.
+	Erase content	Vymazat obsah

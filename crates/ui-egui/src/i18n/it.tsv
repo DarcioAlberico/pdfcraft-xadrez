@@ -3241,3 +3241,9 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	Move list	Elenco delle mosse
 	Move list beside the page	Elenco delle mosse accanto alla pagina
 	Side of the page	Lato della pagina
+	Drawing eraser	Gomma per disegni
+	Drag across text or draw a box to erase what lies under it	Trascina sul testo o disegna un riquadro per cancellare ciò che sta sotto
+	Drawings and shapes	Disegni e forme
+	Comments, links and form fields	Commenti, collegamenti e campi modulo
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Cancellare è una modifica: una versione precedente del file può ancora contenere ciò che è stato cancellato. Usa Oscura per rimuoverlo definitivamente.
+	Erase content	Cancella contenuto
