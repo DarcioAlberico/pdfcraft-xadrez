@@ -3289,3 +3289,10 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Comments, links and form fields	Bình luận, liên kết và trường biểu mẫu
 	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Xóa là một thao tác chỉnh sửa: phiên bản trước của tệp vẫn có thể chứa nội dung đã xóa. Dùng Xóa nội dung nhạy cảm để loại bỏ vĩnh viễn.
 	Erase content	Xóa nội dung
+	Knife (cut pages)	Dao (cắt trang)
+	Click to place a cut, right-click to take one away, Enter to cut	Nhấp để đặt một đường cắt, nhấp chuột phải để bỏ một đường, Enter để cắt
+	Up and down	Từ trên xuống
+	Across	Theo chiều ngang
+	Hold Shift for the other direction.	Giữ Shift để đổi hướng.
+	Right part first	Phần bên phải trước
+	Nothing is erased: each part shows its piece of the page.	Không có gì bị xóa: mỗi phần hiển thị mảnh trang của nó.

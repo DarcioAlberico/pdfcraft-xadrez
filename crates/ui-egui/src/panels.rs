@@ -197,6 +197,9 @@ fn tool_detail(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens, g: &'static
             }
             ui.add_space(6.0);
         }
+        if app.quick_tool == crate::QuickTool::Knife {
+            crate::knife::panel(app, ui);
+        }
         if app.quick_tool == crate::QuickTool::Erase {
             widgets::section_title(ui, tl!("Eraser"));
             ui.label(tl!("Drag across text or draw a box to erase what lies under it"));

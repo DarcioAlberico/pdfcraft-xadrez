@@ -3052,3 +3052,10 @@ chess undo step	Clear drawings	remoção dos desenhos
 	Comments, links and form fields	Comentários, links e campos de formulário
 	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Apagar é uma edição: uma versão anterior do arquivo ainda pode conter o que foi apagado. Use Ocultar dados para removê-lo de vez.
 	Erase content	Apagar conteúdo
+	Knife (cut pages)	Faca (cortar páginas)
+	Click to place a cut, right-click to take one away, Enter to cut	Clique para pôr um corte, clique com o botão direito para tirar um, Enter para cortar
+	Up and down	De cima a baixo
+	Across	Na horizontal
+	Hold Shift for the other direction.	Segure Shift para a outra direção.
+	Right part first	Parte direita primeiro
+	Nothing is erased: each part shows its piece of the page.	Nada é apagado: cada parte mostra o seu pedaço da página.

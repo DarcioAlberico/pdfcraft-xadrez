@@ -3036,3 +3036,10 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	Comments, links and form fields	Kommentare, Links und Formularfelder
 	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Radieren ist eine Bearbeitung: Eine frühere Version der Datei kann das Radierte noch enthalten. Mit Schwärzen entfernen Sie es endgültig.
 	Erase content	Inhalt radieren
+	Knife (cut pages)	Messer (Seiten zerschneiden)
+	Click to place a cut, right-click to take one away, Enter to cut	Klicken setzt einen Schnitt, Rechtsklick nimmt einen weg, Eingabe schneidet
+	Up and down	Senkrecht
+	Across	Waagerecht
+	Hold Shift for the other direction.	Umschalt halten für die andere Richtung.
+	Right part first	Rechter Teil zuerst
+	Nothing is erased: each part shows its piece of the page.	Nichts wird gelöscht: Jeder Teil zeigt sein Stück der Seite.

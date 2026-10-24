@@ -136,6 +136,7 @@ pub static TOOL_GROUPS: &[ToolGroup] = &[
                     item("Delete pages", "trash-2", "page.delete", Ready),
                     item("Extract pages", "file-output", "page.extract", Ready),
                     item("Organize pages", "layout-grid", "page.organize", Ready),
+                    item("Knife (cut pages)", "columns-2", "page.knife", Ready),
                 ],
             },
             ToolSection {
@@ -199,6 +200,7 @@ pub static TOOL_GROUPS: &[ToolGroup] = &[
                     item("Insert", "file-plus-2", "page.insert", Ready),
                     item("Replace", "replace", "page.replace", Ready),
                     item("Split", "scissors", "page.split", Ready),
+                    item("Knife (cut pages)", "columns-2", "page.knife", Ready),
                 ],
             },
             ToolSection {

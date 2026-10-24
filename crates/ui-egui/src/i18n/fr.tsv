@@ -3035,3 +3035,10 @@ chess undo step	Clear drawings	l'effacement des dessins
 	Comments, links and form fields	Commentaires, liens et champs de formulaire
 	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Effacer est une modification : une version antérieure du fichier peut encore contenir ce qui a été effacé. Utilisez Biffer pour le supprimer définitivement.
 	Erase content	Effacer le contenu
+	Knife (cut pages)	Couteau (découper les pages)
+	Click to place a cut, right-click to take one away, Enter to cut	Cliquez pour placer une coupe, clic droit pour en retirer une, Entrée pour découper
+	Up and down	De haut en bas
+	Across	En travers
+	Hold Shift for the other direction.	Maintenez Maj pour l'autre sens.
+	Right part first	Partie droite d'abord
+	Nothing is erased: each part shows its piece of the page.	Rien n'est effacé : chaque partie montre son morceau de la page.

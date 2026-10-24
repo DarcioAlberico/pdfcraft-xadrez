@@ -2998,3 +2998,10 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Comments, links and form fields	Коментари, връзки и полета на формуляри
 	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Изтриването е редакция: по-ранна версия на файла може още да съдържа изтритото. Използвайте Заличаване, за да го премахнете окончателно.
 	Erase content	Изтриване на съдържание
+	Knife (cut pages)	Нож (разрязване на страници)
+	Click to place a cut, right-click to take one away, Enter to cut	Щракнете, за да поставите разрез, щракнете с десния бутон, за да махнете един, Enter за разрязване
+	Up and down	Отгоре надолу
+	Across	Напряко
+	Hold Shift for the other direction.	Задръжте Shift за другата посока.
+	Right part first	Първо дясната част
+	Nothing is erased: each part shows its piece of the page.	Нищо не се изтрива: всяка част показва своето парче от страницата.

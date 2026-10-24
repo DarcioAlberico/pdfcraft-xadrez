@@ -3033,3 +3033,10 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Comments, links and form fields	Түсініктемелер, сілтемелер және пішін өрістері
 	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Өшіру — өңдеу: файлдың бұрынғы нұсқасында өшірілгені әлі сақталуы мүмкін. Біржола жою үшін Жасыруды пайдаланыңыз.
 	Erase content	Мазмұнды өшіру
+	Knife (cut pages)	Пышақ (беттерді кесу)
+	Click to place a cut, right-click to take one away, Enter to cut	Кесік қою үшін басыңыз, біреуін алу үшін оң жақ батырманы басыңыз, кесу үшін Enter
+	Up and down	Жоғарыдан төмен
+	Across	Көлденең
+	Hold Shift for the other direction.	Басқа бағыт үшін Shift пернесін басып тұрыңыз.
+	Right part first	Алдымен оң жақ бөлік
+	Nothing is erased: each part shows its piece of the page.	Ештеңе өшірілмейді: әр бөлік беттің өз бөлігін көрсетеді.
