@@ -659,3 +659,86 @@ fn a_stippled_board_is_read_on_the_retry() {
     assert!(accepted.accepted(), "{accepted:?}");
     assert_eq!(*model.0.calls.borrow(), [SQUARES_PER_BOARD]);
 }
+
+/// Paints the box `x0..x1` × `y0..y1` of the page `value`.
+fn fill(page: &mut Page, (x0, y0): (usize, usize), (x1, y1): (usize, usize), value: u8) {
+    for y in y0..y1.min(page.height) {
+        for x in x0..x1.min(page.width) {
+            page.data[y * page.width + x] = value;
+        }
+    }
+}
+
+/// A frame of `width` px whose outer edge is the box `x0..x1` × `y0..y1`.
+fn frame(page: &mut Page, (x0, y0): (usize, usize), (x1, y1): (usize, usize), width: usize) {
+    fill(page, (x0, y0), (x1, y0 + width), 0);
+    fill(page, (x0, y1 - width), (x1, y1), 0);
+    fill(page, (x0, y0), (x0 + width, y1), 0);
+    fill(page, (x1 - width, y0), (x1, y1), 0);
+}
+
+/// Glyph-sized marks where a book prints the coordinates of the board drawn by `placed(x, y, 0)`:
+/// a letter-like ring under each file and a digit-like stroke left of each rank, a third of a
+/// square tall, in the half square beside the board.
+fn printed_coordinates(page: &mut Page, x: usize, y: usize) {
+    let square = SIDE as usize / 8;
+    let glyph = square / 3;
+    for k in 0..8 {
+        // `a`–`h`: a ring centred under the file.
+        let (cx, top) = (x + k * square + square / 2, y + SIDE as usize + square / 4 - glyph / 2);
+        frame(page, (cx - glyph / 2, top), (cx + glyph / 2, top + glyph), 2);
+        // `8`–`1`: a stem with a foot, centred left of the rank.
+        let (left, cy) = (x - square / 4 - glyph / 4, y + k * square + square / 2);
+        fill(page, (left + glyph / 4 - 1, cy - glyph / 2), (left + glyph / 4 + 1, cy + glyph / 2), 0);
+        fill(page, (left, cy + glyph / 2 - 2), (left + glyph / 2, cy + glyph / 2), 0);
+    }
+}
+
+#[test]
+fn a_board_with_printed_coordinates_is_cut_to_its_squares() {
+    // The board at (80, 60), its coordinates in the half square below and left of it, and an
+    // outer border around all of them, as Chernev's Capablanca prints its boards.
+    let (x, y) = (80_usize, 60_usize);
+    let mut page = Page::new(360, 360);
+    page.draw(MIDDLE, placed(x as f32, y as f32, 0.0));
+    printed_coordinates(&mut page, x, y);
+    let outer = ((x - 20, y - 8), (x + SIDE as usize + 8, y + SIDE as usize + 20));
+    frame(&mut page, outer.0, outer.1, 3);
+    let geometry = page.geometry(Rotation::R0);
+    let image = page.image();
+    let model = Nearest::trained();
+    // A contour that closed on the outer border: the warp takes the coordinates along, a strip
+    // of glyphs under the board and one left of it, and the edge fit alone misreads the board.
+    let reading = &read(&image, &geometry, DPI, &[box_quad_candidate(&geometry, outer)], Some(&model))[0];
+    assert_eq!(placement_of(reading), MIDDLE);
+    assert!(reading.accepted(), "{reading:?}");
+}
+
+/// The candidate for a contour that closed on the box `x0..x1` × `y0..y1` of the page.
+fn box_quad_candidate(geometry: &PageGeometry, ((x0, y0), (x1, y1)): ((usize, usize), (usize, usize))) -> DiagramCandidate {
+    let user = |(px, py): (usize, usize)| {
+        let [ux, uy] = geometry.view_to_user_point(px_to_pt(px as f32, DPI).unwrap(), px_to_pt(py as f32, DPI).unwrap()).unwrap();
+        (f64::from(ux), f64::from(uy))
+    };
+    let corners = [user((x0, y0)), user((x1 - 1, y0)), user((x1 - 1, y1 - 1)), user((x0, y1 - 1))];
+    let rect = PixelRect { x0: x0 as u32, y0: y0 as u32, x1: x1 as u32, y1: y1 as u32 };
+    candidate(geometry.view_to_user(pixels_to_view(rect, DPI).unwrap()).unwrap(), Some(corners), None)
+}
+
+#[test]
+fn a_stippled_board_in_a_frame_is_read_on_the_retry() {
+    // A frame 3 px wide with 5 px of paper inside it, the contour on its outer edge: the 64 cells
+    // cut from the crop drift up to a sixth of a square off the squares, the retry's test for an
+    // empty stippled square sees paper or a neighbour in its blocks, and the board stays refused.
+    let (x, y) = (20_usize, 20_usize);
+    let mut page = Page::new(240, 240);
+    page.draw(ENDGAME, placed(x as f32, y as f32, 0.0));
+    stippled(&mut page, x as f32, y as f32, ENDGAME, 70);
+    let outer = ((x - 8, y - 8), (x + SIDE as usize + 8, y + SIDE as usize + 8));
+    frame(&mut page, outer.0, outer.1, 3);
+    let geometry = page.geometry(Rotation::R0);
+    let model = Fussy(Nearest::trained());
+    let reading = &read(&page.image(), &geometry, DPI, &[box_quad_candidate(&geometry, outer)], Some(&model))[0];
+    assert_eq!(placement_of(reading), ENDGAME);
+    assert!(reading.accepted(), "{reading:?}");
+}
