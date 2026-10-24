@@ -4353,6 +4353,7 @@ dependencies = [
  "pdfcraft-model",
  "pdfcraft-testkit",
  "pdfcraft-xfa",
+ "proptest",
  "thiserror 2.0.21",
 ]
 

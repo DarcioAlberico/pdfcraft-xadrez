@@ -2194,6 +2194,18 @@ evidence = ["crates/ui-egui/tests/object_selection.rs::marquee_and_mixed_group_d
 notes = "Same-page mixed selection (#844): Shift/Ctrl/Command-click toggles, empty-space marquee (additive with modifiers), drag previews and one atomic undo step for existing paragraphs, Image/Form XObjects and added text/images. Source glyph bytes, fonts and kerning retained; unselected text and shared Form resources stay put. Generation-scoped references with optional automation guard; count and geometry bounded; unsupported vertical/clipping text refused without partial changes. Still missing: arbitrary paths, inline images, cross-page movement, group resizing, arrange/align and a general object editor. See docs/editing-multiple-objects.md."
 
 [[feature]]
+id = "edit.erase-content"
+title = "Erase a page's content under an area (content eraser)"
+area = "C"
+tier = "P2"
+milestone = "none"
+status = "partial"
+commands = []
+tools = ["page_erase"]
+evidence = ["crates/redact/src/tests.rs::erase_takes_the_area_away_draws_no_box_and_saves_incrementally", "crates/redact/src/tests.rs::the_centre_rule_takes_what_a_selection_shows", "crates/redact/src/tests.rs::erase_takes_only_the_kinds_asked_for_and_the_preview_lists_them", "crates/redact/src/tests.rs::erase_leaves_comments_and_fields_unless_asked", "crates/redact/src/tests.rs::erasing_a_shared_form_leaves_the_other_page_alone", "crates/redact/src/tests.rs::erase_refuses_bad_areas_and_empty_ground", "crates/automation/tests/automation.rs::erasing_content_through_tools"]
+notes = "Beyond Acrobat, which erases with Delete in Edit PDF or with Redact (plan/borracha-e-faca.md A2, decisions D1-D3). pdfcraft_redact::erase removes what lies under areas of one page with redaction's interpreter, without marks or boxes: glyphs cut out of their lines with the rest in place, images removed or their covered pixels cleared, paths removed or clipped, form XObjects rewritten as copies so other pages keep theirs, and a verification pass after. Options: text, images, vectors (all by default) and annotations (comments, links and fields there; off by default, the comment eraser is for those); a glyph goes when its centre is inside (what a selection shows) or, as redaction, on any real overlap. An ordinary edit (Edit::EraseContent, Erase content), undoable and saved incrementally: the earlier revision keeps the content until a full save, so it is no secure removal (redact for that). erase_preview lists the boxes of what would go without changing anything. Headless: page_erase (rects in points from the top-left of the displayed page, kinds, rule; returns erased). Missing: the canvas tool (rectangle, brush, Delete on a text selection, the red preview; A3), Delete on selected objects in Edit text and images (A4), vertical-writing text (refused, as in redaction), and fonts without reliable widths are measured as redaction measures them."
+
+[[feature]]
 id = "edit.object-properties"
 title = "Object properties (colour space, font, convert colour)"
 area = "C"
