@@ -3122,6 +3122,8 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	New game from this position	Nuova partita da questa posizione
 # Wave 10 U2: a delete or a move of the list of games is a step Undo takes (after "Undo", as the other steps).
 	Delete this game? You can undo it.	Eliminare questa partita? Si può annullare.
+	Delete these games? You can undo it.	Eliminare queste partite? Si può annullare.
+	A date is written YYYY.MM.DD, with ? for each digit not known.	Una data si scrive AAAA.MM.GG (YYYY.MM.DD), con ? per ogni cifra non nota.
 	Delete game	eliminazione della partita
 	Move game	spostamento della partita
 	An illegal position can't start a game: correct it in the diagram editor first.	Una posizione illegale non può iniziare una partita: correggila prima nell'editor del diagramma.

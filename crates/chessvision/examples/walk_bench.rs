@@ -11,7 +11,7 @@
 //! move. `--plain` forgets which moves were printed in bold first, as a document read before the
 //! weight was kept (or from OCR) has it, so the weight's part is measured on the same reading.
 //! `--rules=` reads with other [`WalkRules`] than the book's: `none`, `all`, or a comma-separated
-//! list of `implied_close`, `prose_moves`, `separators`, `results`, `ellipsis`, so each rule's
+//! list of `implied_close`, `prose_moves`, `separators`, `results`, `ellipsis`, `misread_files`, so each rule's
 //! effect on whole books is measured before it is turned on for them.
 //!
 //! The documents come from the user's own books and stay outside the repository.
@@ -45,6 +45,7 @@ fn rules(spec: &str) -> Result<WalkRules, String> {
             "separators" => r.separators = true,
             "results" => r.results = true,
             "ellipsis" => r.ellipsis = true,
+            "misread_files" => r.misread_files = true,
             other => return Err(format!("unknown rule {other}")),
         }
     }

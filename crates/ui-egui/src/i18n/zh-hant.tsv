@@ -2860,6 +2860,8 @@ chess undo step	Clear drawings	清除標記
 	New game from this position	從此局面新增對局
 # Wave 10 U2: a delete or a move of the list of games is a step Undo takes (after "Undo", as the other steps).
 	Delete this game? You can undo it.	刪除此對局？可以復原。
+	Delete these games? You can undo it.	刪除這些對局？可以復原。
+	A date is written YYYY.MM.DD, with ? for each digit not known.	日期寫作 YYYY.MM.DD，未知的每一位數字用 ? 表示。
 	Delete game	刪除對局
 	Move game	移動對局
 	An illegal position can't start a game: correct it in the diagram editor first.	不合法的局面不能開始對局：請先在圖表編輯器中更正。
