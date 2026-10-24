@@ -3183,3 +3183,6 @@ chess undo step	Clear drawings	borrado de los dibujos
 	Hold Shift for the other direction.	Mantenga Mayús para la otra dirección.
 	Right part first	Primero la parte derecha
 	Nothing is erased: each part shows its piece of the page.	No se borra nada: cada parte muestra su trozo de la página.
+	Remove what lies outside each part	Quitar lo que queda fuera de cada parte
+	Split double pages	Dividir páginas dobles
+	No double pages were found: none is wider than tall	No se encontraron páginas dobles: ninguna es más ancha que alta

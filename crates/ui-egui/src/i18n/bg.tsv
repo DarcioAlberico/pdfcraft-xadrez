@@ -3005,3 +3005,6 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Hold Shift for the other direction.	Задръжте Shift за другата посока.
 	Right part first	Първо дясната част
 	Nothing is erased: each part shows its piece of the page.	Нищо не се изтрива: всяка част показва своето парче от страницата.
+	Remove what lies outside each part	Премахване на това извън всяка част
+	Split double pages	Разделяне на двойни страници
+	No double pages were found: none is wider than tall	Не са намерени двойни страници: никоя не е по-широка, отколкото висока

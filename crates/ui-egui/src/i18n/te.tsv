@@ -2951,3 +2951,6 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Hold Shift for the other direction.	మరో దిశ కోసం Shift పట్టుకోండి.
 	Right part first	ముందు కుడి భాగం
 	Nothing is erased: each part shows its piece of the page.	ఏదీ చెరిపివేయబడదు: ప్రతి భాగం పేజీలో తన ముక్కను చూపుతుంది.
+	Remove what lies outside each part	ప్రతి భాగం బయట ఉన్నదాన్ని తీసివేయి
+	Split double pages	జంట పేజీలను విభజించు
+	No double pages were found: none is wider than tall	జంట పేజీలు కనబడలేదు: ఏ పేజీ ఎత్తు కంటే వెడల్పుగా లేదు

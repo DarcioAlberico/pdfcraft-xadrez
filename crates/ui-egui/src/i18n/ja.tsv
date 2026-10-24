@@ -3044,3 +3044,6 @@ chess undo step	Clear drawings	描画の消去
 	Hold Shift for the other direction.	Shiftを押している間は反対の向きになります。
 	Right part first	右側を先にする
 	Nothing is erased: each part shows its piece of the page.	何も消去されません。各部分はページの自分の部分を表示します。
+	Remove what lies outside each part	各部分の外側にあるものを削除
+	Split double pages	見開きページを分割
+	No double pages were found: none is wider than tall	見開きページが見つかりません。横長のページはありません

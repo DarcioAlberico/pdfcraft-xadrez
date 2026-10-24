@@ -3064,3 +3064,6 @@ chess undo step	Clear drawings	видалення малюнків
 	Hold Shift for the other direction.	Утримуйте Shift для іншого напрямку.
 	Right part first	Спочатку права частина
 	Nothing is erased: each part shows its piece of the page.	Нічого не стирається: кожна частина показує свій шматок сторінки.
+	Remove what lies outside each part	Вилучити те, що поза кожною частиною
+	Split double pages	Розділити розвороти
+	No double pages were found: none is wider than tall	Розворотів не знайдено: жодна сторінка не ширша за висоту

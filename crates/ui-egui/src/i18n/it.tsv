@@ -3254,3 +3254,6 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	Hold Shift for the other direction.	Tieni premuto Maiusc per l'altra direzione.
 	Right part first	Prima la parte destra
 	Nothing is erased: each part shows its piece of the page.	Non si cancella nulla: ogni parte mostra il suo pezzo di pagina.
+	Remove what lies outside each part	Rimuovi ciò che sta fuori da ogni parte
+	Split double pages	Dividi le pagine doppie
+	No double pages were found: none is wider than tall	Nessuna pagina doppia trovata: nessuna è più larga che alta

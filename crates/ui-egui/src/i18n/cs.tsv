@@ -3116,3 +3116,6 @@ chess undo step	Clear drawings	smazání kreseb
 	Hold Shift for the other direction.	Pro druhý směr podržte Shift.
 	Right part first	Nejprve pravá část
 	Nothing is erased: each part shows its piece of the page.	Nic se nemaže: každá část ukazuje svůj kus stránky.
+	Remove what lies outside each part	Odstranit, co leží mimo každou část
+	Split double pages	Rozdělit dvojstrany
+	No double pages were found: none is wider than tall	Nenalezeny žádné dvojstrany: žádná stránka není širší než vyšší
