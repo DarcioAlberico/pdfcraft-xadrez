@@ -3098,3 +3098,5 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Imported: {sets}. Their licence is not known: use them for personal use only.	İçe aktarıldı: {sets}. Lisansları bilinmiyor: yalnızca kişisel kullanım için kullanın.
 	Already in the pieces folder: {sets}. Replace them?	Zaten taşlar klasöründe: {sets}. Değiştirilsin mi?
 	The pieces cannot be imported: {reason}	Taşlar içe aktarılamıyor: {reason}
+	round {round}	{round}. tur
+	Result: {result}	Sonuç: {result}

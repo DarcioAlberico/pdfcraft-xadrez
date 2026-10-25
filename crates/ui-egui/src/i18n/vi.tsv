@@ -3356,3 +3356,5 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Imported: {sets}. Their licence is not known: use them for personal use only.	Đã nhập: {sets}. Giấy phép của chúng không rõ: chỉ dùng cho mục đích cá nhân.
 	Already in the pieces folder: {sets}. Replace them?	Đã có trong thư mục quân cờ: {sets}. Thay thế chúng?
 	The pieces cannot be imported: {reason}	Không thể nhập quân cờ: {reason}
+	round {round}	ván {round}
+	Result: {result}	Kết quả: {result}

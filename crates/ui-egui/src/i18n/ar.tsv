@@ -3378,3 +3378,5 @@ chess undo step	Clear drawings	مسح الرسوم
 	Imported: {sets}. Their licence is not known: use them for personal use only.	تم الاستيراد: {sets}. ترخيصها غير معروف: استخدمها للاستخدام الشخصي فقط.
 	Already in the pieces folder: {sets}. Replace them?	موجودة بالفعل في مجلد القطع: {sets}. هل تريد استبدالها؟
 	The pieces cannot be imported: {reason}	تعذر استيراد القطع: {reason}
+	round {round}	الجولة {round}
+	Result: {result}	النتيجة: {result}

@@ -3119,3 +3119,5 @@ chess undo step	Clear drawings	remoção dos desenhos
 	Imported: {sets}. Their licence is not known: use them for personal use only.	Importados: {sets}. A licença deles não é conhecida: use-os só para uso pessoal.
 	Already in the pieces folder: {sets}. Replace them?	Já estão na pasta de peças: {sets}. Substituir?
 	The pieces cannot be imported: {reason}	As peças não podem ser importadas: {reason}
+	round {round}	rodada {round}
+	Result: {result}	Resultado: {result}

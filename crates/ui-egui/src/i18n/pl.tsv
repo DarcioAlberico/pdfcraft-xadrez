@@ -3044,3 +3044,5 @@ chess undo step	Clear drawings	usunięcie rysunków
 	Imported: {sets}. Their licence is not known: use them for personal use only.	Zaimportowano: {sets}. Ich licencja nie jest znana: używaj ich tylko do użytku osobistego.
 	Already in the pieces folder: {sets}. Replace them?	Już są w folderze bierek: {sets}. Zastąpić je?
 	The pieces cannot be imported: {reason}	Nie można zaimportować bierek: {reason}
+	round {round}	runda {round}
+	Result: {result}	Wynik: {result}

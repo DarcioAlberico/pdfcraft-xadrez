@@ -3314,3 +3314,5 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	Imported: {sets}. Their licence is not known: use them for personal use only.	Importati: {sets}. La loro licenza non è nota: usali solo per uso personale.
 	Already in the pieces folder: {sets}. Replace them?	Già nella cartella dei pezzi: {sets}. Sostituirli?
 	The pieces cannot be imported: {reason}	Impossibile importare i pezzi: {reason}
+	round {round}	turno {round}
+	Result: {result}	Risultato: {result}

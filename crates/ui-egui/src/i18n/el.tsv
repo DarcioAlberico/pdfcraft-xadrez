@@ -3074,3 +3074,5 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Imported: {sets}. Their licence is not known: use them for personal use only.	Εισήχθησαν: {sets}. Η άδειά τους δεν είναι γνωστή: χρησιμοποιήστε τα μόνο για προσωπική χρήση.
 	Already in the pieces folder: {sets}. Replace them?	Υπάρχουν ήδη στον φάκελο πεσσών: {sets}. Να αντικατασταθούν;
 	The pieces cannot be imported: {reason}	Οι πεσσοί δεν μπορούν να εισαχθούν: {reason}
+	round {round}	γύρος {round}
+	Result: {result}	Αποτέλεσμα: {result}

@@ -3354,3 +3354,5 @@ chess undo step	Clear drawings	piešinių valymą
 	Imported: {sets}. Their licence is not known: use them for personal use only.	Importuota: {sets}. Jų licencija nežinoma: naudokite tik asmeniniam naudojimui.
 	Already in the pieces folder: {sets}. Replace them?	Jau yra figūrų aplanke: {sets}. Pakeisti?
 	The pieces cannot be imported: {reason}	Figūrų importuoti nepavyko: {reason}
+	round {round}	{round} turas
+	Result: {result}	Rezultatas: {result}

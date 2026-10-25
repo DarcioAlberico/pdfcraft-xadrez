@@ -3124,3 +3124,5 @@ chess undo step	Clear drawings	видалення малюнків
 	Imported: {sets}. Their licence is not known: use them for personal use only.	Імпортовано: {sets}. Їхня ліцензія невідома: використовуйте їх лише для особистих потреб.
 	Already in the pieces folder: {sets}. Replace them?	Уже є в теці фігур: {sets}. Замінити?
 	The pieces cannot be imported: {reason}	Не вдалося імпортувати фігури: {reason}
+	round {round}	тур {round}
+	Result: {result}	Результат: {result}

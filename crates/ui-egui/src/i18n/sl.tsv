@@ -3107,3 +3107,5 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Imported: {sets}. Their licence is not known: use them for personal use only.	Uvoženo: {sets}. Njihova licenca ni znana: uporabljajte jih le za osebno rabo.
 	Already in the pieces folder: {sets}. Replace them?	Že v mapi figur: {sets}. Jih zamenjam?
 	The pieces cannot be imported: {reason}	Figur ni mogoče uvoziti: {reason}
+	round {round}	{round}. krog
+	Result: {result}	Rezultat: {result}

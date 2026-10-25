@@ -208,6 +208,8 @@ pub struct BoardState {
     revealed: Option<(NodeId, u64)>,
     /// The comment editor (the comment before the move too) is open.
     pub(crate) comment_open: bool,
+    /// Game details opens when it is drawn next (a click on the game's header, plan HC10).
+    pub(crate) open_details: bool,
     /// The comment field takes the keyboard when it is drawn next.
     pub(crate) focus_comment: bool,
     /// Where the glyph palette types.
@@ -252,6 +254,7 @@ impl Default for BoardState {
             history: GameHistory::default(),
             revealed: None,
             comment_open: false,
+            open_details: false,
             focus_comment: false,
             typing: Default::default(),
             fresh: Default::default(),
@@ -1047,6 +1050,11 @@ pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, he
     }
     let tokens = state.game.tokens();
     let width = ui.available_width();
+    let above = ui.cursor().top();
+    if game_header(ui, t, &state.game) {
+        state.open_details = true;
+    }
+    let height = height.map(|h| (h - (ui.cursor().top() - above)).max(MIN_NOTATION / 2.0));
     // The area as one named region, for assistive technology (and the tests, which measure it).
     if let Some(h) = height {
         let region = Rect::from_min_size(ui.cursor().min, vec2(width, h));
@@ -1068,7 +1076,10 @@ pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, he
             return;
         }
         ui.spacing_mut().item_spacing.y = 2.0;
-        for row in rows(&tokens) {
+        let rows = rows(&tokens);
+        let ends_main = rows.last().is_some_and(|r| r.depth == 0);
+        let last = rows.len().saturating_sub(1);
+        for (i, row) in rows.into_iter().enumerate() {
             let indent = i8::try_from(row.depth.min(MAX_INDENT).saturating_mul(INDENT)).unwrap_or(i8::MAX);
             egui::Frame::NONE.inner_margin(egui::Margin { left: indent, ..egui::Margin::ZERO }).show(ui, |ui| {
                 ui.horizontal_wrapped(|ui| {
@@ -1163,8 +1174,16 @@ pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, he
                             }
                         }
                     }
+                    if i == last && ends_main {
+                        result_label(ui, t, &state.game);
+                    }
                 });
             });
+        }
+        // The result, after the main line (plan HC10), on a row of its own when a variation ends
+        // the notation.
+        if !ends_main {
+            result_label(ui, t, &state.game);
         }
     });
     state.revealed = Some((current, state.game.revision()));
@@ -1193,6 +1212,87 @@ pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, he
         }
     }
     action
+}
+
+/// The result after the main line, named for assistive technology.
+fn result_label(ui: &mut egui::Ui, t: &Tokens, game: &Game) {
+    let result = result_text(game);
+    let r = ui.label(egui::RichText::new(&result).monospace().strong().color(t.text));
+    r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, crate::i18n::fmt(tl!("Result: {result}"), &[("result", &result)])));
+}
+
+/// The game's result as books print it: `1-0`, `0-1`, `½-½` or `*`.
+pub(crate) fn result_text(game: &Game) -> String {
+    match game.result().as_str() {
+        "1/2-1/2" => "½-½".to_owned(),
+        other => other.to_owned(),
+    }
+}
+
+/// A tag's value when it says something: not empty, not PGN's `?` for "not known", and a date
+/// only as far as it is known (`1972.??.??` is `1972`).
+fn known_tag<'a>(game: &'a Game, name: &str) -> Option<&'a str> {
+    let value = game.tag(name)?.trim();
+    let value = if name.ends_with("Date") {
+        let known: Vec<&str> = value.split('.').take_while(|part| !part.is_empty() && part.chars().all(|c| c.is_ascii_digit())).collect();
+        let len = known.iter().map(|p| p.len()).sum::<usize>() + known.len().saturating_sub(1);
+        value.get(..len)?
+    } else {
+        value
+    };
+    (!value.is_empty() && !value.chars().all(|c| matches!(c, '?' | '-' | '.' | ' '))).then_some(value)
+}
+
+/// The game's header (plan HC10): the players, each with their Elo, then the event, site, date
+/// and round, each only when it is known. No line when nothing is.
+pub(crate) fn header_lines(game: &Game) -> Vec<String> {
+    let player = |side: &str| {
+        known_tag(game, side).map(|name| match known_tag(game, &format!("{side}Elo")) {
+            Some(elo) => format!("{name} ({elo})"),
+            None => name.to_owned(),
+        })
+    };
+    let mut lines = Vec::new();
+    match (player("White"), player("Black")) {
+        (Some(w), Some(b)) => lines.push(format!("{w} – {b}")),
+        (Some(one), None) | (None, Some(one)) => lines.push(one),
+        (None, None) => {}
+    }
+    let round = known_tag(game, "Round").map(|r| crate::i18n::fmt(tl!("round {round}"), &[("round", r)]));
+    let place: Vec<String> =
+        [known_tag(game, "Event"), known_tag(game, "Site"), known_tag(game, "Date")].into_iter().flatten().map(str::to_owned).chain(round).collect();
+    if !place.is_empty() {
+        lines.push(place.join(" · "));
+    }
+    lines
+}
+
+/// The header above the notation, when the game has one: a click opens Game details. Whether it
+/// was clicked.
+fn game_header(ui: &mut egui::Ui, t: &Tokens, game: &Game) -> bool {
+    let lines = header_lines(game);
+    if lines.is_empty() {
+        return false;
+    }
+    // Painted, not labels: the header is one control, named once for assistive technology.
+    let width = ui.available_width();
+    let fonts: Vec<(egui::FontId, Color32)> =
+        (0..lines.len()).map(|i| if i == 0 { (theme::semibold(13.0), t.text) } else { (egui::FontId::proportional(11.5), t.text_muted) }).collect();
+    let heights: Vec<f32> = fonts.iter().map(|(f, _)| ui.fonts_mut(|fo| fo.row_height(f)) + 1.0).collect();
+    let (rect, r) = ui.allocate_exact_size(vec2(width, heights.iter().sum()), egui::Sense::click());
+    let mut y = rect.top();
+    for ((line, (font, colour)), h) in lines.iter().zip(&fonts).zip(&heights) {
+        crate::widgets::paint_left(ui, egui::pos2(rect.left(), y + h / 2.0), line, font.clone(), *colour, width);
+        y += h;
+    }
+    let r = r.on_hover_text(tl!("Game details"));
+    let spoken = format!("{}: {}", tl!("Game details"), lines.join(". "));
+    r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &spoken));
+    if r.hovered() {
+        ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+    }
+    ui.add_space(2.0);
+    r.clicked()
 }
 
 /// How glyph `code` is named in an undo step or a capture's chips (whatever the fonts). The
@@ -1564,7 +1664,15 @@ pub(crate) fn sections(ui: &mut egui::Ui, state: &mut BoardState) -> Option<Boar
         }
     });
     if state.illegal.is_none() {
-        egui::CollapsingHeader::new(tl!("Game details")).id_salt("chess-board-details").default_open(false).show(ui, |ui| details(ui, state));
+        let open = std::mem::take(&mut state.open_details).then_some(true);
+        let r = egui::CollapsingHeader::new(tl!("Game details"))
+            .id_salt("chess-board-details")
+            .default_open(false)
+            .open(open)
+            .show(ui, |ui| details(ui, state));
+        if open.is_some() {
+            r.header_response.scroll_to_me(Some(egui::Align::Min));
+        }
     }
     action
 }
@@ -1725,6 +1833,33 @@ fn notation_height(viewport: f32, above: f32, below: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_header_says_only_what_is_known() {
+        let game = |tags: &[(&str, &str)]| {
+            let mut g = Game::standard();
+            for (name, value) in tags {
+                g.set_tag(name, value).unwrap();
+            }
+            g
+        };
+        assert!(header_lines(&game(&[])).is_empty());
+        assert!(header_lines(&game(&[("White", "?"), ("Event", "?"), ("Date", "????.??.??"), ("Round", "-")])).is_empty());
+        assert_eq!(header_lines(&game(&[("Black", "Polgar"), ("BlackElo", "2735")])), ["Polgar (2735)"]);
+        let full = game(&[
+            ("White", "Carlsen"),
+            ("WhiteElo", "2882"),
+            ("Black", "Caruana"),
+            ("Event", "WCh"),
+            ("Site", "London"),
+            ("Date", "2018.11.?? "),
+            ("Round", "12"),
+        ]);
+        assert_eq!(header_lines(&full), ["Carlsen (2882) – Caruana", "WCh · London · 2018.11 · round 12"]);
+        assert_eq!(result_text(&game(&[("Result", "1/2-1/2")])), "½-½");
+        assert_eq!(result_text(&game(&[("Result", "1-0")])), "1-0");
+        assert_eq!(result_text(&game(&[])), "*");
+    }
 
     /// A new piece set makes the board's pictures stale: the pieces cut out and the board itself
     /// are drawn again, and kept while nothing changes.

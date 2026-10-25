@@ -3100,3 +3100,5 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Imported: {sets}. Their licence is not known: use them for personal use only.	Импортталды: {sets}. Лицензиясы белгісіз: тек жеке пайдалану үшін қолданыңыз.
 	Already in the pieces folder: {sets}. Replace them?	Фигуралар бумасында бар: {sets}. Ауыстыру керек пе?
 	The pieces cannot be imported: {reason}	Фигураларды импорттау мүмкін емес: {reason}
+	round {round}	{round}-тур
+	Result: {result}	Нәтиже: {result}

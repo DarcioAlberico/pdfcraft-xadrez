@@ -3104,3 +3104,5 @@ chess undo step	Clear drawings	描画の消去
 	Imported: {sets}. Their licence is not known: use them for personal use only.	読み込みました: {sets}。ライセンスが不明なため、個人的な利用に限ってください。
 	Already in the pieces folder: {sets}. Replace them?	駒フォルダーにすでにあります: {sets}。置き換えますか？
 	The pieces cannot be imported: {reason}	駒を読み込めません: {reason}
+	round {round}	第{round}ラウンド
+	Result: {result}	結果: {result}

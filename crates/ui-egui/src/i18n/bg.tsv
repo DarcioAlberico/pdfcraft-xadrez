@@ -3065,3 +3065,5 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Imported: {sets}. Their licence is not known: use them for personal use only.	Импортирани: {sets}. Лицензът им не е известен: използвайте ги само за лична употреба.
 	Already in the pieces folder: {sets}. Replace them?	Вече са в папката с фигури: {sets}. Да бъдат ли заменени?
 	The pieces cannot be imported: {reason}	Фигурите не могат да бъдат импортирани: {reason}
+	round {round}	кръг {round}
+	Result: {result}	Резултат: {result}
