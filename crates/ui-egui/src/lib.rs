@@ -2375,6 +2375,7 @@ impl PdfCraftApp {
         v["chess_pieces_diagrams"] = serde_json::Value::String(self.chess.diagram_piece_choice.token());
         // The boards' theme (HC4).
         v["chess_board_theme"] = serde_json::Value::String(self.board_theme().id.to_owned());
+        v["chess_board_look"] = self.chess.board_look.to_json();
         v.to_string()
     }
 
@@ -2424,6 +2425,9 @@ impl PdfCraftApp {
         }
         if let Some(theme) = v["chess_board_theme"].as_str().and_then(pdfcraft_engine::chess::pdfcraft_chess::theme::by_id) {
             self.set_board_theme(theme);
+        }
+        if v["chess_board_look"].is_object() {
+            self.set_board_look(chess_theme::BoardLook::from_json(&v["chess_board_look"]));
         }
         self.pinned.restore(&v["pinned_folders"]);
         if let Ok(preference) = serde_json::from_value::<ThemePreference>(v["theme"].clone()) {
@@ -2588,6 +2592,11 @@ impl PdfCraftApp {
                     format!("board-theme must be one of {}", ids.join(", "))
                 })?;
                 self.set_board_theme(theme);
+            }
+            (part @ ("board-coordinates" | "board-frame" | "board-squares" | "board-turn-dot"), _) => {
+                let mut look = self.chess.board_look;
+                look.set(part.trim_start_matches("board-"), value)?;
+                self.set_board_look(look);
             }
             ("theme", _) => {
                 let preference = match value {
@@ -3103,6 +3112,7 @@ impl eframe::App for PdfCraftApp {
     fn logic(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         self.ctx = Some(ctx.clone());
         chess_theme::set(ctx, self.board_theme());
+        chess_theme::set_look(ctx, self.chess.board_look);
         #[cfg(not(target_arch = "wasm32"))]
         {
             self.window_state.repair(ctx);

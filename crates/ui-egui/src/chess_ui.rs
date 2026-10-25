@@ -75,6 +75,8 @@ pub struct ChessState {
     /// The boards' theme chosen in Preferences or the board's menu (plan HC4); `None` is the
     /// default, brown.
     pub board_theme: Option<&'static pdfcraft_engine::chess::pdfcraft_chess::theme::BoardTheme>,
+    /// How the boards are laid out (plan HC6).
+    pub board_look: crate::chess_theme::BoardLook,
     /// Preferences' piece picker while it is shown.
     pub(crate) piece_picker: Option<crate::chess_pieces_ui::PiecePicker>,
     /// The panel's tab: the diagrams or the page's recognised text (S16).
@@ -1160,6 +1162,7 @@ impl PdfCraftApp {
             BoardAction::AddGames { texts, more } => self.add_pgn_field_games(&texts, more),
             BoardAction::ToggleMoveList => self.toggle_move_list(),
             BoardAction::BoardTheme(theme) => self.set_board_theme(theme),
+            BoardAction::BoardLook(look) => self.set_board_look(look),
             BoardAction::NewGameAt(fen) => {
                 if let Err(why) = self.chess.games.collection_mut().new_at(&fen) {
                     self.chess.games.board_mut().message = Some(why);

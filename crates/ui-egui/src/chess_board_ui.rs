@@ -289,6 +289,8 @@ pub enum BoardAction {
     NewGameAt(String),
     /// Draw the boards in this theme (plan HC4).
     BoardTheme(&'static pdfcraft_engine::chess::pdfcraft_chess::theme::BoardTheme),
+    /// Lay the boards out so (plan HC6).
+    BoardLook(crate::chess_theme::BoardLook),
 }
 
 impl BoardState {
@@ -806,12 +808,28 @@ const CHECK: Color32 = Color32::from_rgb(0xE0, 0x3E, 0x3E);
 
 /// An arrow from the centre of `mark.from` to the centre of `mark.to` (a ring when they are the
 /// same square).
-fn paint_mark(painter: &egui::Painter, state: &BoardState, board: Rect, mark: Mark) {
+fn paint_mark(
+    painter: &egui::Painter,
+    state: &BoardState,
+    board: Rect,
+    mark: Mark,
+    theme: &pdfcraft_engine::chess::pdfcraft_chess::theme::BoardTheme,
+    look: crate::chess_theme::BoardLook,
+) {
     let (a, b) = (state.square_rect(board, mark.from), state.square_rect(board, mark.to));
     let cell = a.width();
-    let color = mark.color.color32();
+    let base = mark.color.color32();
+    // The hand-made drawings take the theme's opacity; the engine's arrow stays lighter.
+    let color = if mark.color == MarkColor::Engine { base } else { Color32::from_rgba_unmultiplied(base.r(), base.g(), base.b(), theme.arrow_alpha) };
     if mark.from == mark.to {
-        painter.circle_stroke(a.center(), cell * 0.44, Stroke::new(cell * 0.07, color));
+        match look.squares {
+            crate::chess_theme::SquareMarks::Ring => {
+                painter.circle_stroke(a.center(), cell * 0.44, Stroke::new(cell * 0.07, color));
+            }
+            crate::chess_theme::SquareMarks::Fill => {
+                painter.rect_filled(a, 0.0, color.gamma_multiply(0.55));
+            }
+        }
         return;
     }
     let (start, end) = (a.center(), b.center());
@@ -824,8 +842,20 @@ fn paint_mark(painter: &egui::Painter, state: &BoardState, board: Rect, mark: Ma
     let tip = end - dir * cell * 0.12;
     let base = tip - dir * head;
     let normal = vec2(-dir.y, dir.x);
-    painter.line_segment([start + dir * cell * 0.18, base], Stroke::new(cell * 0.17, color));
+    let weight = f32::from(theme.arrow_weight) / 100.0;
+    painter.line_segment([start + dir * cell * 0.18, base], Stroke::new(cell * weight, color));
     painter.add(egui::Shape::convex_polygon(vec![tip, base + normal * head * 0.55, base - normal * head * 0.55], color, Stroke::NONE));
+}
+
+/// A dot at the edge of the side to move (plan HC6): white or black, ringed in the other.
+fn turn_dot(painter: &egui::Painter, state: &BoardState, board: Rect) {
+    let white = state.game.side_to_move() == Color::White;
+    let bottom = white != state.flipped;
+    let radius = (board.width() / 64.0).clamp(3.0, 7.0);
+    let y = if bottom { board.bottom() - radius - 3.0 } else { board.top() + radius + 3.0 };
+    let at = egui::pos2(board.right() - radius - 3.0, y);
+    let (fill, ring) = if white { (Color32::WHITE, Color32::BLACK) } else { (Color32::BLACK, Color32::WHITE) };
+    painter.circle(at, radius, fill, Stroke::new(1.5, ring));
 }
 
 /// The board itself within `sizing`'s limits, with its marks, taking clicks and drags. `overlay`
@@ -839,10 +869,13 @@ pub(crate) fn board_view_sized(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardS
         }
         return;
     };
-    let response = ui.add(egui::Image::new(&tex).fit_to_exact_size(vec2(side, side)).sense(egui::Sense::click_and_drag()));
+    let look = crate::chess_theme::look(ui.ctx());
+    let (outer, _) = ui.allocate_exact_size(vec2(side, side), egui::Sense::hover());
+    let rect = look.board_rect(outer);
+    let response = ui.interact(rect, ui.id().with("chess-board-squares"), egui::Sense::click_and_drag());
+    ui.painter().image(tex.id(), rect, Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)), Color32::WHITE);
     let board_name = crate::i18n::fmt(tl!("Board: {fen}"), &[("fen", &state.current_fen())]);
     response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &board_name));
-    let rect = response.rect;
     let at = |state: &BoardState, p: Pos2| state.square_at((p.x - rect.min.x) / rect.width().max(1.0), (p.y - rect.min.y) / rect.height().max(1.0));
     if response.drag_started_by(PointerButton::Primary)
         && let Some(sq) = response.interact_pointer_pos().and_then(|p| at(state, p))
@@ -924,9 +957,35 @@ pub(crate) fn board_view_sized(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardS
             }
         }
     }
-    // Coordinates in the corner squares, as on an analysis board.
+    crate::chess_theme::paint_frame(ui, t, look, rect);
+    if look.turn_dot && state.illegal.is_none() {
+        turn_dot(&painter, state, rect);
+    }
+    // Coordinates in the corner squares, as on an analysis board; or beside the board; or none.
     let font = theme::semibold((side / 40.0).clamp(8.0, 12.0));
-    for i in 0u8..8 {
+    if look.coordinates == crate::chess_theme::Coordinates::Outside {
+        let outside = ui.painter_at(outer);
+        for i in 0u8..8 {
+            let (file_sq, rank_sq) =
+                if state.flipped { (Square::new(7 - i, 7), Square::new(0, 7 - i)) } else { (Square::new(i, 0), Square::new(7, 7 - i)) };
+            if let Some(sq) = file_sq {
+                let r = state.square_rect(rect, sq);
+                let letter = char::from(b'a'.saturating_add(sq.file())).to_string();
+                outside.text(egui::pos2(r.center().x, outer.bottom()), egui::Align2::CENTER_BOTTOM, letter, font.clone(), t.text_muted);
+            }
+            if let Some(sq) = rank_sq {
+                let r = state.square_rect(rect, sq);
+                outside.text(
+                    egui::pos2(outer.left(), r.center().y),
+                    egui::Align2::LEFT_CENTER,
+                    (sq.rank() + 1).to_string(),
+                    font.clone(),
+                    t.text_muted,
+                );
+            }
+        }
+    }
+    for i in (0u8..8).filter(|_| look.coordinates == crate::chess_theme::Coordinates::Inside) {
         let (file_sq, rank_sq) =
             if state.flipped { (Square::new(7 - i, 7), Square::new(0, 7 - i)) } else { (Square::new(i, 0), Square::new(7, 7 - i)) };
         let ink = |sq: Square| crate::chess_theme::rgb(palette.coordinate_ink(sq.is_light()));
@@ -942,12 +1001,12 @@ pub(crate) fn board_view_sized(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardS
     }
     // The drawings: the overlay, the position's own, and the arrow being drawn.
     for mark in overlay.iter().copied().chain(state.marks()) {
-        paint_mark(&painter, state, rect, mark);
+        paint_mark(&painter, state, rect, mark, palette, look);
     }
     if response.dragged_by(PointerButton::Secondary)
         && let (Some(from), Some(to)) = (state.drawing, response.interact_pointer_pos().and_then(|p| at(state, p)))
     {
-        paint_mark(&painter, state, rect, Mark { from, to, color: MarkColor::from_modifiers(modifiers) });
+        paint_mark(&painter, state, rect, Mark { from, to, color: MarkColor::from_modifiers(modifiers) }, palette, look);
     }
     if state.illegal.is_some() {
         painter.rect_stroke(rect, 0.0, Stroke::new(2.0, CHECK), egui::StrokeKind::Inside);
@@ -1693,11 +1752,13 @@ pub(crate) fn title(ui: &mut egui::Ui, t: &Tokens, state: &BoardState, source_la
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let theme_name = tl!("Board theme");
             let menu = egui::containers::menu::MenuButton::from_button(egui::Button::image(crate::icons::image("palette", 14.0, t.icon)));
-            let (r, picked) = menu.ui(ui, |ui| crate::chess_theme::menu_items(ui, crate::chess_theme::current(ui.ctx())));
+            let (r, picked) = menu.ui(ui, crate::chess_theme::menu_items);
             let r = r.on_hover_text(theme_name);
             r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, theme_name));
-            if let Some(theme) = picked.and_then(|p| p.inner) {
-                action = Some(BoardAction::BoardTheme(theme));
+            match picked.and_then(|p| p.inner) {
+                Some(crate::chess_theme::MenuPick::Theme(theme)) => action = Some(BoardAction::BoardTheme(theme)),
+                Some(crate::chess_theme::MenuPick::Look(look)) => action = Some(BoardAction::BoardLook(look)),
+                None => {}
             }
             let name = tl!("Move list beside the page");
             let r = ui.add(egui::Button::image(crate::icons::image("list-ordered", 14.0, t.icon)).selected(beside)).on_hover_text(name);
