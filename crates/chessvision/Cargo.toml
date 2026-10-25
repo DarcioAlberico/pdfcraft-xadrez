@@ -40,6 +40,8 @@ rten-imageproc = { version = "0.26.0", default-features = false }
 thiserror.workspace = true
 
 [dev-dependencies]
+# A compressed (svgz) piece in the SVG tests.
+flate2.workspace = true
 proptest.workspace = true
 # The OCR benchmark (`examples/ocr_bench.rs`) only: the general OCR whose words the glyph reader is
 # fused with (the engine passes them in; `pdfcraft-ocr` is the same layer, so the example uses the
