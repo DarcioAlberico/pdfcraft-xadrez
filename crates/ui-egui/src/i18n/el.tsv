@@ -3051,3 +3051,9 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Remove what lies outside each part	Αφαίρεση ό,τι βρίσκεται έξω από κάθε μέρος
 	Split double pages	Διαχωρισμός διπλών σελίδων
 	No double pages were found: none is wider than tall	Δεν βρέθηκαν διπλές σελίδες: καμία δεν είναι φαρδύτερη από ψηλή
+	Chess pieces	Πιόνια σκακιού
+	Plain shapes	Απλά σχήματα
+	Missing: {pieces}	Λείπουν: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	Η PDFCRAFT_CHESS_PIECES έχει οριστεί και υπερισχύει αυτής της επιλογής.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Σκακιέρα: οι σκακιέρες ανάλυσης και μελέτης. Διαγράμματα: σχεδιασμένα ξανά στη σελίδα, στον επεξεργαστή και στις εξαγωγές.
+	These pieces cannot be used: {reason}	Αυτά τα πιόνια δεν μπορούν να χρησιμοποιηθούν: {reason}

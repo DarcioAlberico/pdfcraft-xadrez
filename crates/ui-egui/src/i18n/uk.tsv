@@ -3101,3 +3101,9 @@ chess undo step	Clear drawings	видалення малюнків
 	Remove what lies outside each part	Вилучити те, що поза кожною частиною
 	Split double pages	Розділити розвороти
 	No double pages were found: none is wider than tall	Розворотів не знайдено: жодна сторінка не ширша за висоту
+	Chess pieces	Шахові фігури
+	Plain shapes	Прості фігури
+	Missing: {pieces}	Бракує: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	Задано PDFCRAFT_CHESS_PIECES, і вона має перевагу над цим вибором.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Дошка: дошки аналізу та вивчення. Діаграми: перемальовані на сторінці, у редакторі та під час експорту.
+	These pieces cannot be used: {reason}	Ці фігури не можна використати: {reason}

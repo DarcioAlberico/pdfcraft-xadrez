@@ -817,7 +817,7 @@ fn contents(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     if crate::chess_history::pressed_in(ui) {
         app.chess.enter_scope();
     }
-    let pieces = crate::chess_editor::board_piece_set(&mut app.chess.board_pieces);
+    let pieces = app.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Board);
     let source_label = crate::chess_ui::board_source_label(app);
     let open = app.active_ids().and_then(|(vi, id)| {
         let page = app.views.get(vi)?.current;

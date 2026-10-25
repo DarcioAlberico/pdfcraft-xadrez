@@ -3220,3 +3220,9 @@ chess undo step	Clear drawings	borrado de los dibujos
 	Remove what lies outside each part	Quitar lo que queda fuera de cada parte
 	Split double pages	Dividir páginas dobles
 	No double pages were found: none is wider than tall	No se encontraron páginas dobles: ninguna es más ancha que alta
+	Chess pieces	Piezas de ajedrez
+	Plain shapes	Formas simples
+	Missing: {pieces}	Faltan: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES está definida y tiene prioridad sobre esta elección.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Tablero: los tableros de análisis y de estudio. Diagramas: redibujados en la página, en el editor y en las exportaciones.
+	These pieces cannot be used: {reason}	No se pueden usar estas piezas: {reason}

@@ -3042,3 +3042,9 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Remove what lies outside each part	Премахване на това извън всяка част
 	Split double pages	Разделяне на двойни страници
 	No double pages were found: none is wider than tall	Не са намерени двойни страници: никоя не е по-широка, отколкото висока
+	Chess pieces	Шахматни фигури
+	Plain shapes	Прости форми
+	Missing: {pieces}	Липсват: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES е зададена и има предимство пред този избор.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Дъска: дъските за анализ и за изучаване. Диаграми: преначертани на страницата, в редактора и при експорт.
+	These pieces cannot be used: {reason}	Тези фигури не могат да се използват: {reason}

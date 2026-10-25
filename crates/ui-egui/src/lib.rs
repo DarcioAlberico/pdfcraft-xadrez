@@ -43,6 +43,7 @@ mod chess_editor;
 mod chess_history;
 mod chess_models;
 mod chess_ocr_area;
+mod chess_pieces_ui;
 mod chess_samples;
 pub use chess_ocr_area::AreaQuery;
 mod chess_source;
@@ -2365,6 +2366,9 @@ impl PdfCraftApp {
         v["chess_engine"] = self.chess.study.to_json();
         // The chess models folder chosen (U4; the desktop).
         v["chess_models"] = self.chess.models.to_json();
+        // The piece sets chosen in Preferences (HC2).
+        v["chess_pieces_board"] = serde_json::Value::String(self.chess.board_piece_choice.token());
+        v["chess_pieces_diagrams"] = serde_json::Value::String(self.chess.diagram_piece_choice.token());
         v.to_string()
     }
 
@@ -2404,6 +2408,13 @@ impl PdfCraftApp {
         }
         if let Some(on) = v["reload_changed_files"].as_bool() {
             self.reload_changed_files = on;
+        }
+        use pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::PieceChoice;
+        if let Some(choice) = v["chess_pieces_board"].as_str().and_then(PieceChoice::from_token) {
+            self.chess.board_piece_choice = choice;
+        }
+        if let Some(choice) = v["chess_pieces_diagrams"].as_str().and_then(PieceChoice::from_token) {
+            self.chess.diagram_piece_choice = choice;
         }
         self.pinned.restore(&v["pinned_folders"]);
         if let Ok(preference) = serde_json::from_value::<ThemePreference>(v["theme"].clone()) {

@@ -15,6 +15,7 @@
 //! them, and Previous / Next walk them in the one reading order.
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use egui::{Color32, TextureHandle};
 use pdfcraft_engine::DocId;
@@ -25,6 +26,7 @@ use pdfcraft_engine::chess::pdfcraft_chess::recognize::Uncertain;
 use pdfcraft_engine::chess::pdfcraft_chess::repair::GameContext;
 use pdfcraft_engine::chess::pdfcraft_chess::rules::{Violation, position_violations};
 use pdfcraft_engine::chess::pdfcraft_chessvision::board::BoardReading;
+use pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::{PieceChoice, Role, resolve};
 
 use crate::theme::Tokens;
 
@@ -56,7 +58,7 @@ pub struct DiagramEditor {
     pub brush: Brush,
     texture: Option<(String, TextureHandle)>,
     /// The palette's pieces, cut out once (`Some(None)`: they could not be).
-    sprites: Option<Option<TextureHandle>>,
+    sprites: Option<(u64, Option<TextureHandle>)>,
     /// Why the board could not be drawn, once.
     draw_error: Option<String>,
 }
@@ -295,7 +297,7 @@ pub(crate) fn palette(ui: &mut egui::Ui, sprites: Option<&TextureHandle>, brush:
 
 /// The board image for the editor's position, redrawn when the position or the view changes.
 fn board_texture(ui: &egui::Ui, ed: &mut DiagramEditor, pieces: &PieceSet) -> Option<TextureHandle> {
-    let key = format!("{}|{}", ed.fen(), ed.flipped);
+    let key = format!("{}|{}|{}", ed.fen(), ed.flipped, pieces_generation());
     if let Some((k, tex)) = &ed.texture
         && *k == key
     {
@@ -334,7 +336,12 @@ pub fn editor_ui(ui: &mut egui::Ui, t: &Tokens, ed: &mut DiagramEditor, pieces: 
     });
     // The board, and the palette beside it: the pieces as the board draws them, and the eraser.
     // In a narrow panel the board gets smaller (to `MIN_BOARD_PT`) to keep the palette there.
-    let sprites = ed.sprites.get_or_insert_with(|| crate::chess_board_ui::cut_sprites(ui.ctx(), pieces, "chess-editor-pieces")).clone();
+    let generation = pieces_generation();
+    if ed.sprites.as_ref().is_some_and(|(drawn, _)| *drawn != generation) {
+        ed.sprites = None;
+    }
+    let sprites =
+        ed.sprites.get_or_insert_with(|| (generation, crate::chess_board_ui::cut_sprites(ui.ctx(), pieces, "chess-editor-pieces"))).1.clone();
     ui.horizontal_top(|ui| {
         let side = (ui.available_width() - PALETTE_COLUMN - ui.spacing().item_spacing.x).clamp(MIN_BOARD_PT, BOARD_PT);
         if let Some(tex) = board_texture(ui, ed, pieces) {
@@ -467,12 +474,36 @@ pub fn needs_review(reading: Option<&BoardReading>) -> bool {
     !reading.is_some_and(BoardReading::accepted)
 }
 
-/// The piece set the editor draws with, found once.
-pub fn piece_set(slot: &mut Option<Arc<PieceSet>>) -> Arc<PieceSet> {
-    slot.get_or_insert_with(|| Arc::new(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::find().0)).clone()
+/// The piece set diagrams, exports and the editor draw with (the choice in Preferences), found
+/// once; why the chosen set could not be used goes to `error`.
+pub fn piece_set(slot: &mut Option<Arc<PieceSet>>, choice: &PieceChoice, error: &mut Option<String>) -> Arc<PieceSet> {
+    found(slot, choice, Role::Diagrams, error)
 }
 
-/// The piece set the analysis board draws with, found once.
-pub fn board_piece_set(slot: &mut Option<Arc<PieceSet>>) -> Arc<PieceSet> {
-    slot.get_or_insert_with(|| Arc::new(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::find_for_board().0)).clone()
+/// The piece set the analysis board draws with (the choice in Preferences), found once.
+pub fn board_piece_set(slot: &mut Option<Arc<PieceSet>>, choice: &PieceChoice, error: &mut Option<String>) -> Arc<PieceSet> {
+    found(slot, choice, Role::Board, error)
+}
+
+fn found(slot: &mut Option<Arc<PieceSet>>, choice: &PieceChoice, role: Role, error: &mut Option<String>) -> Arc<PieceSet> {
+    slot.get_or_insert_with(|| {
+        let (set, _, why) = resolve(choice, role);
+        *error = why.map(|e| e.to_string());
+        Arc::new(set)
+    })
+    .clone()
+}
+
+/// How many times a piece choice has changed: every picture of pieces keeps the count it was
+/// drawn at and is drawn again when it differs.
+static PIECES_GENERATION: AtomicU64 = AtomicU64::new(0);
+
+/// The pieces changed: pictures drawn with the old ones are stale.
+pub(crate) fn pieces_changed() {
+    PIECES_GENERATION.fetch_add(1, Ordering::Relaxed);
+}
+
+/// The count pictures of pieces are drawn at.
+pub(crate) fn pieces_generation() -> u64 {
+    PIECES_GENERATION.load(Ordering::Relaxed)
 }

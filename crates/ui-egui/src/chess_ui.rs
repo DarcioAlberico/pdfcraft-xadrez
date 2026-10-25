@@ -15,6 +15,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use egui::{Color32, CornerRadius, Pos2, Stroke};
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::pdfcraft_chessvision::board::{BoardReading, Unreadable};
+use pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::{PieceChoice, Role};
 use pdfcraft_engine::chess::{ChessModels, ChessPage, ChessScan, ChessScanJob, ModelState, ScanStamp};
 use pdfcraft_render::DocInfo;
 
@@ -64,6 +65,15 @@ pub struct ChessState {
     pub pieces: Option<Arc<pdfcraft_engine::chess::pdfcraft_chess::draw::PieceSet>>,
     /// The pieces the analysis board draws with, found once (the user's piece pictures first).
     pub board_pieces: Option<Arc<pdfcraft_engine::chess::pdfcraft_chess::draw::PieceSet>>,
+    /// The piece sets chosen in Preferences (plan HC2): the boards', and the diagrams' and
+    /// exports' (which the editor draws too).
+    pub board_piece_choice: PieceChoice,
+    pub diagram_piece_choice: PieceChoice,
+    /// Why the set chosen for the boards, and for diagrams, could not be used, when it could not.
+    pub board_piece_error: Option<String>,
+    pub diagram_piece_error: Option<String>,
+    /// Preferences' piece picker while it is shown.
+    pub(crate) piece_picker: Option<crate::chess_pieces_ui::PiecePicker>,
     /// The panel's tab: the diagrams or the page's recognised text (S16).
     pub tab: crate::chess_text_ui::ChessTab,
     /// What the Board panel adds as the study board: set-up, engine analysis (the board itself
@@ -100,6 +110,32 @@ pub struct ChessState {
     /// What was asked of the Move list, done at the start of the next frame, when the layout is
     /// not being drawn (`docking::drain_moves`).
     pub(crate) moves_request: Option<crate::docking::MovesRequest>,
+}
+
+impl ChessState {
+    /// The piece set chosen for `role`.
+    pub(crate) fn piece_choice(&self, role: Role) -> &PieceChoice {
+        match role {
+            Role::Board => &self.board_piece_choice,
+            Role::Diagrams => &self.diagram_piece_choice,
+        }
+    }
+
+    /// Why the set chosen for `role` could not be used, when it could not.
+    pub(crate) fn piece_error(&self, role: Role) -> Option<&str> {
+        match role {
+            Role::Board => self.board_piece_error.as_deref(),
+            Role::Diagrams => self.diagram_piece_error.as_deref(),
+        }
+    }
+
+    /// `role`'s pieces, found once (and why the chosen set could not be used, kept).
+    pub(crate) fn role_pieces(&mut self, role: Role) -> Arc<pdfcraft_engine::chess::pdfcraft_chess::draw::PieceSet> {
+        match role {
+            Role::Board => crate::chess_editor::board_piece_set(&mut self.board_pieces, &self.board_piece_choice, &mut self.board_piece_error),
+            Role::Diagrams => crate::chess_editor::piece_set(&mut self.pieces, &self.diagram_piece_choice, &mut self.diagram_piece_error),
+        }
+    }
 }
 
 /// A double-click at `point` (user space) on `page` of `doc`, whose diagrams were not looked
@@ -474,7 +510,7 @@ pub(crate) fn tab_contents(
     let queue = results.review_queue();
     if let Some(ed) = state.editor.as_mut().filter(|e| e.doc == id && Some(results.stamp) == current) {
         ui.separator();
-        let pieces = crate::chess_editor::piece_set(&mut state.pieces);
+        let pieces = crate::chess_editor::piece_set(&mut state.pieces, &state.diagram_piece_choice, &mut state.diagram_piece_error);
         if let Some(a) = crate::chess_editor::editor_ui(ui, t, ed, &pieces, queue.len()) {
             action = Some(PanelAction::Editor(a));
         }
@@ -870,11 +906,32 @@ impl PdfCraftApp {
         }
     }
 
+    /// Use `choice` for `role`'s pieces from now on: the set is loaded at once (so a set that
+    /// cannot be used says why in Preferences), and every board, the page text's diagrams
+    /// included, is drawn again with it.
+    pub(crate) fn set_piece_choice(&mut self, role: Role, choice: PieceChoice) {
+        if *self.chess.piece_choice(role) == choice {
+            return;
+        }
+        match role {
+            Role::Board => (self.chess.board_piece_choice, self.chess.board_pieces) = (choice, None),
+            Role::Diagrams => (self.chess.diagram_piece_choice, self.chess.pieces) = (choice, None),
+        }
+        self.chess.role_pieces(role);
+        crate::chess_editor::pieces_changed();
+        if role == Role::Diagrams
+            && let (Some(ctx), Some(pieces), Some(text)) = (self.ctx.as_ref(), self.chess.pieces.clone(), self.chess.text.as_mut())
+        {
+            text.redraw_boards(ctx, &pieces);
+        }
+    }
+
     /// Draw the editor's position over its diagram on the page, then scan that page again.
     pub fn replace_chess_diagram(&mut self) {
         let Some(ed) = self.chess.editor.as_ref() else { return };
         let Some(generation) = self.session.get(ed.doc).map(|d| d.edit_generation()) else { return };
-        let pieces = crate::chess_editor::piece_set(&mut self.chess.pieces);
+        // The fields apart: the editor is borrowed.
+        let pieces = crate::chess_editor::piece_set(&mut self.chess.pieces, &self.chess.diagram_piece_choice, &mut self.chess.diagram_piece_error);
         let replacement = pdfcraft_engine::chess::DiagramReplacement {
             page: ed.page,
             index: ed.index,
@@ -1142,7 +1199,7 @@ pub(crate) fn board_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     if crate::chess_history::pressed_in(ui) {
         app.chess.enter_scope();
     }
-    let pieces = crate::chess_editor::board_piece_set(&mut app.chess.board_pieces);
+    let pieces = app.chess.role_pieces(Role::Board);
     let source_label = board_source_label(app);
     let mut action = None;
     let mut games = None;

@@ -383,6 +383,13 @@ pub fn text_tab(
     action
 }
 
+impl PageText {
+    /// Draw the page's diagrams again, with other pieces.
+    pub(crate) fn redraw_boards(&mut self, ctx: &egui::Context, pieces: &pdfcraft_engine::chess::pdfcraft_chess::draw::PieceSet) {
+        self.boards = boards(ctx, &self.chess, pieces);
+    }
+}
+
 /// Small boards for the page's diagrams.
 fn boards(ctx: &egui::Context, chess: &ChessDoc, pieces: &pdfcraft_engine::chess::pdfcraft_chess::draw::PieceSet) -> Vec<(usize, TextureHandle)> {
     let Some(page) = chess.pages.first() else { return Vec::new() };
@@ -523,7 +530,7 @@ impl PdfCraftApp {
                 self.chess.text = Some(match read {
                     Ok(read) => {
                         self.chess.cipher = Some((job.doc, read.cipher.clone()));
-                        let pieces = crate::chess_editor::piece_set(&mut self.chess.pieces);
+                        let pieces = self.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Diagrams);
                         let boards = self.ctx.as_ref().map(|ctx| boards(ctx, &read.doc, &pieces)).unwrap_or_default();
                         let needs_ocr = read.needs_ocr.first().map(|(_, why)| why.clone());
                         let mut notes: Vec<String> = read.notes.into_iter().map(|(_, n)| n).collect();
@@ -636,7 +643,7 @@ impl PdfCraftApp {
         #[cfg(target_arch = "wasm32")]
         {
             let mut options = ChessExportOptions::new(&stem);
-            options.pieces = crate::chess_editor::piece_set(&mut self.chess.pieces);
+            options.pieces = self.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Diagrams);
             options.book = self.chess_cipher(id);
             options.ocr = self.chess_origin(id).ocr_mode();
             self.start_chess_job(id, JobKind::Export { format, name: format!("{stem}.{ext}") }, move |s, id| {
@@ -654,7 +661,7 @@ impl PdfCraftApp {
         let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "document".into());
         let mut options = ChessExportOptions::new(&stem);
         options.image_dir = format!("{stem}_diagrams");
-        options.pieces = crate::chess_editor::piece_set(&mut self.chess.pieces);
+        options.pieces = self.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Diagrams);
         options.book = self.chess_cipher(id);
         options.ocr = self.chess_origin(id).ocr_mode();
         let kind = JobKind::Export { format, path: path.to_path_buf(), image_dir: options.image_dir.clone() };

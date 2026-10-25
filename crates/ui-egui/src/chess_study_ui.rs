@@ -287,7 +287,7 @@ impl StudyState {
 
 /// The set-up board's image, redrawn when the pieces or the view change.
 fn setup_texture(ctx: &egui::Context, setup: &mut Setup, flipped: bool, pieces: &PieceSet) -> Option<TextureHandle> {
-    let key = format!("{}|{flipped}", setup.fen());
+    let key = format!("{}|{flipped}|{}", setup.fen(), crate::chess_editor::pieces_generation());
     if let Some((k, tex)) = &setup.texture
         && *k == key
     {
