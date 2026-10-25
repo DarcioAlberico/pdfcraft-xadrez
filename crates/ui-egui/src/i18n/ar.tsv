@@ -3355,6 +3355,12 @@ chess undo step	Clear drawings	مسح الرسوم
 	Remove what lies outside each part	إزالة ما يقع خارج كل جزء
 	Split double pages	تقسيم الصفحات المزدوجة
 	No double pages were found: none is wider than tall	لم يُعثر على صفحات مزدوجة: لا توجد صفحة أعرض من طولها
+	Box or selection	مربع أو تحديد
+	Brush	فرشاة
+	Brush size	حجم الفرشاة
+	Rub over what you want to erase; letting go erases it	امسح فوق ما تريد محوه؛ تحرير الزر يمحوه
+	What will go is tinted red while you draw.	ما سيُمحى يظهر باللون الأحمر أثناء الرسم.
+	Erase the selected words from the page	امحُ الكلمات المحددة من الصفحة
 	Chess pieces	قطع الشطرنج
 	Plain shapes	أشكال بسيطة
 	Missing: {pieces}	ناقصة: {pieces}

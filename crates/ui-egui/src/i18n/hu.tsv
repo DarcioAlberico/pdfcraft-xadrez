@@ -3078,6 +3078,12 @@ chess undo step	Clear drawings	rajzok törlése
 	Remove what lies outside each part	Az egyes részeken kívül esők eltávolítása
 	Split double pages	Dupla oldalak szétválasztása
 	No double pages were found: none is wider than tall	Nincsenek dupla oldalak: egyik sem szélesebb, mint magas
+	Box or selection	Keret vagy kijelölés
+	Brush	Ecset
+	Brush size	Ecsetméret
+	Rub over what you want to erase; letting go erases it	Húzza át, amit törölni szeretne; elengedéskor törlődik
+	What will go is tinted red while you draw.	Ami eltűnik, rajzolás közben pirosan látszik.
+	Erase the selected words from the page	A kijelölt szavak törlése az oldalról
 	Chess pieces	Sakkfigurák
 	Plain shapes	Egyszerű formák
 	Missing: {pieces}	Hiányzik: {pieces}

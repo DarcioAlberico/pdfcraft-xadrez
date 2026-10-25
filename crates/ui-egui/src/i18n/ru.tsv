@@ -2992,6 +2992,12 @@ chess undo step	Clear drawings	удаление рисунков
 	Remove what lies outside each part	Удалить то, что вне каждой части
 	Split double pages	Разделить развороты
 	No double pages were found: none is wider than tall	Развороты не найдены: нет страниц шире своей высоты
+	Box or selection	Рамка или выделение
+	Brush	Кисть
+	Brush size	Размер кисти
+	Rub over what you want to erase; letting go erases it	Проведите по тому, что нужно стереть; отпустите — и оно сотрётся
+	What will go is tinted red while you draw.	То, что исчезнет, подсвечивается красным, пока вы рисуете.
+	Erase the selected words from the page	Стереть выделенные слова со страницы
 	Chess pieces	Шахматные фигуры
 	Plain shapes	Простые фигуры
 	Missing: {pieces}	Не хватает: {pieces}

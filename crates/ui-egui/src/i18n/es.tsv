@@ -3220,6 +3220,12 @@ chess undo step	Clear drawings	borrado de los dibujos
 	Remove what lies outside each part	Quitar lo que queda fuera de cada parte
 	Split double pages	Dividir páginas dobles
 	No double pages were found: none is wider than tall	No se encontraron páginas dobles: ninguna es más ancha que alta
+	Box or selection	Recuadro o selección
+	Brush	Pincel
+	Brush size	Tamaño del pincel
+	Rub over what you want to erase; letting go erases it	Frote sobre lo que quiera borrar; al soltar se borra
+	What will go is tinted red while you draw.	Lo que se borrará se tiñe de rojo mientras dibuja.
+	Erase the selected words from the page	Borrar de la página las palabras seleccionadas
 	Chess pieces	Piezas de ajedrez
 	Plain shapes	Formas simples
 	Missing: {pieces}	Faltan: {pieces}

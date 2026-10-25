@@ -3081,6 +3081,12 @@ chess undo step	Clear drawings	描画の消去
 	Remove what lies outside each part	各部分の外側にあるものを削除
 	Split double pages	見開きページを分割
 	No double pages were found: none is wider than tall	見開きページが見つかりません。横長のページはありません
+	Box or selection	枠または選択範囲
+	Brush	ブラシ
+	Brush size	ブラシのサイズ
+	Rub over what you want to erase; letting go erases it	消したい部分をこすってください。離すと消去されます
+	What will go is tinted red while you draw.	消える部分は描いている間赤く表示されます。
+	Erase the selected words from the page	選択した語をページから消去
 	Chess pieces	チェスの駒
 	Plain shapes	単純な図形
 	Missing: {pieces}	不足: {pieces}

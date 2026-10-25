@@ -3333,6 +3333,12 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Remove what lies outside each part	Xóa phần nằm ngoài mỗi phần
 	Split double pages	Tách trang đôi
 	No double pages were found: none is wider than tall	Không tìm thấy trang đôi: không trang nào rộng hơn cao
+	Box or selection	Khung hoặc vùng chọn
+	Brush	Cọ
+	Brush size	Cỡ cọ
+	Rub over what you want to erase; letting go erases it	Chà lên những gì muốn xóa; thả ra là xóa
+	What will go is tinted red while you draw.	Những gì sẽ bị xóa được tô đỏ khi bạn vẽ.
+	Erase the selected words from the page	Xóa các từ đã chọn khỏi trang
 	Chess pieces	Quân cờ vua
 	Plain shapes	Hình đơn giản
 	Missing: {pieces}	Thiếu: {pieces}

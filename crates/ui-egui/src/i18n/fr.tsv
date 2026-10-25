@@ -3079,6 +3079,12 @@ chess undo step	Clear drawings	l'effacement des dessins
 	Remove what lies outside each part	Retirer ce qui se trouve hors de chaque partie
 	Split double pages	Séparer les doubles pages
 	No double pages were found: none is wider than tall	Aucune double page trouvée : aucune n'est plus large que haute
+	Box or selection	Cadre ou sélection
+	Brush	Pinceau
+	Brush size	Taille du pinceau
+	Rub over what you want to erase; letting go erases it	Frottez ce que vous voulez effacer ; relâcher l'efface
+	What will go is tinted red while you draw.	Ce qui partira est teinté de rouge pendant que vous tracez.
+	Erase the selected words from the page	Effacer de la page les mots sélectionnés
 	Chess pieces	Pièces d'échecs
 	Plain shapes	Formes simples
 	Missing: {pieces}	Manquantes : {pieces}

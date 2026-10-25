@@ -2954,6 +2954,12 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Remove what lies outside each part	ప్రతి భాగం బయట ఉన్నదాన్ని తీసివేయి
 	Split double pages	జంట పేజీలను విభజించు
 	No double pages were found: none is wider than tall	జంట పేజీలు కనబడలేదు: ఏ పేజీ ఎత్తు కంటే వెడల్పుగా లేదు
+	Box or selection	పెట్టె లేదా ఎంపిక
+	Brush	బ్రష్
+	Brush size	బ్రష్ పరిమాణం
+	Rub over what you want to erase; letting go erases it	చెరిపివేయాలనుకున్నదానిపై రుద్దండి; వదిలితే చెరిపివేయబడుతుంది
+	What will go is tinted red while you draw.	గీస్తున్నప్పుడు తొలగేది ఎరుపు రంగులో కనిపిస్తుంది.
+	Erase the selected words from the page	ఎంచుకున్న పదాలను పేజీ నుండి చెరిపివేయి
 	Chess pieces	చదరంగం పావులు
 	Plain shapes	సాధారణ ఆకారాలు
 	Missing: {pieces}	లేనివి: {pieces}

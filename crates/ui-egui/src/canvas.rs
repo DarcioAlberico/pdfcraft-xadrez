@@ -528,6 +528,10 @@ pub struct DocView {
     pub pending_redaction: Option<(usize, Vec<[f64; 8]>)>,
     /// A crop rectangle being dragged (Crop tool).
     pub crop_drag: crate::crop::CropDrag,
+    /// Eraser: the brush's squares being rubbed (page, user-space squares), and the preview of
+    /// what would go.
+    pub erase_brush: Option<(usize, Vec<[f64; 4]>)>,
+    pub erase_preview: crate::erase_ui::ErasePreview,
     /// The Knife: the cuts placed, and the line under the pointer (page, axis, share).
     pub knife: crate::knife::KnifeView,
     pub knife_hover: Option<(usize, pdfcraft_engine::CutAxis, f32)>,
@@ -813,6 +817,8 @@ impl DocView {
             redact_drag: None,
             pending_redaction: None,
             crop_drag: None,
+            erase_brush: None,
+            erase_preview: Default::default(),
             knife: Default::default(),
             knife_hover: None,
             camera: None,
@@ -2770,7 +2776,9 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     let selects_text = match tool {
         QuickTool::Comment(t) => t.markup().is_some() || t == comments::CommentTool::ReplaceText,
         QuickTool::Select => !preparing,
-        QuickTool::Redact | QuickTool::Erase | QuickTool::ColumnSelect => true,
+        QuickTool::Redact | QuickTool::ColumnSelect => true,
+        // The brush rubs; only the box mode selects text.
+        QuickTool::Erase => app.erase_prefs.mode == crate::erase_ui::EraseMode::Box,
         QuickTool::Knife => false,
         QuickTool::Hand
         | QuickTool::Measure(_)
@@ -2790,6 +2798,7 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     let prefs = &app.comment_prefs;
     let redact_mark = (app.redact_prefs.hover_fill, app.redact_prefs.opacity);
     let knife_prefs = app.knife_prefs;
+    let erase_prefs = app.erase_prefs;
     // The Knife's line follows the pointer: it is drawn on the page under it, this frame only.
     view.knife_hover = None;
     let units = app.units;
@@ -3209,7 +3218,8 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
             };
             // Redact draws boxes off text, and so does the Eraser; so does Highlight (an area
             // highlight, as in Acrobat).
-            let area_tool = matches!(tool, QuickTool::Redact | QuickTool::Erase) && can_modify
+            let area_tool = (tool == QuickTool::Redact || tool == QuickTool::Erase && erase_prefs.mode == crate::erase_ui::EraseMode::Box)
+                && can_modify
                 || tool == QuickTool::Comment(comments::CommentTool::Highlight) && allowed;
             let boxing = area_tool && {
                 let text = view.page_text(i);
@@ -3495,6 +3505,9 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
             }
             if area_tool {
                 crate::redact_ui::paint(ui, painter, i, view);
+            }
+            if tool == QuickTool::Erase && can_modify {
+                crate::erase_ui::page(ui, &resp, painter, &xf, i, info, doc, &erase_prefs, view);
             }
             comments::paint_page(ui, painter, &pcx, view);
             if editing_content {
@@ -3829,7 +3842,8 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     view.auto_scroll.paint(ui, avail);
     // With a capture tool armed, letting go of the selection captured it: no action bar.
     if unobstructed && matches!(tool, QuickTool::Select | QuickTool::ColumnSelect) && !capture_armed {
-        let (copy, send) = selection_actions(ui, avail, view, info, prefs, allowed && !comments_hidden, can_copy);
+        let (copy, send) =
+            selection_actions(ui, avail, view, info, prefs, allowed && !comments_hidden, can_copy, can_modify.then_some(erase_prefs.options));
         copy_selected |= copy;
         chess_send = chess_send.or(send);
     }
@@ -4125,7 +4139,7 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     if let Some((page, quads)) = app.views[index].pending_redaction.take() {
         let author = app.comment_prefs.author.clone();
         app.views[index].pending_edit = Some(if app.quick_tool == QuickTool::Erase {
-            erase_edit(page, &quads, app.erase_prefs)
+            erase_edit(page, &quads, app.erase_prefs.options)
         } else if app.quick_tool == QuickTool::Comment(comments::CommentTool::Highlight) {
             // An area highlight: a highlight over the box.
             let style = app.comment_prefs.style(comments::CommentTool::Highlight);
@@ -4202,9 +4216,12 @@ enum SelectionAction {
     Markup(comments::CommentTool),
     Replace,
     Copy,
+    /// Erase the selected words from the page (the Eraser's choices).
+    Erase,
 }
 
 /// Actions on an existing text selection, next to the selected words.
+#[allow(clippy::too_many_arguments)]
 fn selection_actions(
     ui: &mut egui::Ui,
     viewport: Rect,
@@ -4213,6 +4230,7 @@ fn selection_actions(
     prefs: &comments::CommentPrefs,
     can_comment: bool,
     can_copy: bool,
+    erase: Option<pdfcraft_engine::EraseOptions>,
 ) -> (bool, Option<(pdfcraft_engine::chess::capture::CaptureMode, bool)>) {
     if ui.input(|input| input.pointer.is_decidedly_dragging()) {
         return (false, None);
@@ -4261,6 +4279,9 @@ fn selection_actions(
                     if ui.add_enabled(can_copy, egui::Button::new(tl!("Copy"))).clicked() {
                         chosen = Some(SelectionAction::Copy);
                     }
+                    if erase.is_some() && ui.button(tl!("Erase")).on_hover_text(tl!("Erase the selected words from the page")).clicked() {
+                        chosen = Some(SelectionAction::Erase);
+                    }
                     send = crate::chess_capture::send_menu(ui).or(send);
                 });
             });
@@ -4287,6 +4308,11 @@ fn selection_actions(
                 text: String::new(),
                 focus: true,
             });
+        }
+        SelectionAction::Erase => {
+            if let Some(options) = erase {
+                view.pending_edit = Some(erase_edit(page, &quads, options));
+            }
         }
         SelectionAction::Markup(tool) => {
             // Every markup button carries a markup tool; anything else adds nothing.

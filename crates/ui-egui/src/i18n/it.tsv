@@ -3291,6 +3291,12 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	Remove what lies outside each part	Rimuovi ciò che sta fuori da ogni parte
 	Split double pages	Dividi le pagine doppie
 	No double pages were found: none is wider than tall	Nessuna pagina doppia trovata: nessuna è più larga che alta
+	Box or selection	Riquadro o selezione
+	Brush	Pennello
+	Brush size	Dimensione del pennello
+	Rub over what you want to erase; letting go erases it	Strofina su ciò che vuoi cancellare; rilasciando si cancella
+	What will go is tinted red while you draw.	Ciò che sparirà è tinto di rosso mentre disegni.
+	Erase the selected words from the page	Cancella dalla pagina le parole selezionate
 	Chess pieces	Pezzi degli scacchi
 	Plain shapes	Forme semplici
 	Missing: {pieces}	Mancano: {pieces}

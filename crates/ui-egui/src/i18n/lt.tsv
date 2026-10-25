@@ -3331,6 +3331,12 @@ chess undo step	Clear drawings	piešinių valymą
 	Remove what lies outside each part	Pašalinti tai, kas už kiekvienos dalies
 	Split double pages	Padalyti dvigubus puslapius
 	No double pages were found: none is wider than tall	Dvigubų puslapių nerasta: nė vienas nėra platesnis nei aukštesnis
+	Box or selection	Rėmelis arba žymėjimas
+	Brush	Teptukas
+	Brush size	Teptuko dydis
+	Rub over what you want to erase; letting go erases it	Braukite per tai, ką norite ištrinti; atleidus ištrinama
+	What will go is tinted red while you draw.	Kas bus ištrinta, piešiant nuspalvinama raudonai.
+	Erase the selected words from the page	Ištrinti pažymėtus žodžius iš puslapio
 	Chess pieces	Šachmatų figūros
 	Plain shapes	Paprastos formos
 	Missing: {pieces}	Trūksta: {pieces}

@@ -74,6 +74,7 @@ mod create_ui;
 mod credits;
 mod crop;
 mod drag_pointer;
+pub mod erase_ui;
 mod export_ui;
 mod js_ui;
 pub mod knife;
@@ -830,9 +831,9 @@ pub struct PdfCraftApp {
     pub field_props: Option<prepare::FieldDraft>,
     pub bulk_field_props: Option<bulk_fields::Draft>,
     pub redact_prefs: RedactPrefs,
-    /// Eraser: what it erases (text, images, vectors, comments) and the glyph rule (by centre, as
-    /// a selection shows). For this run.
-    pub erase_prefs: pdfcraft_engine::EraseOptions,
+    /// Eraser: what it erases (text, images, vectors, comments), the glyph rule (by centre, as a
+    /// selection shows), box or brush, and the brush's size. Kept between runs.
+    pub erase_prefs: erase_ui::ErasePrefs,
     /// The Knife's choices (axis, pages, order), for this run.
     pub knife_prefs: knife::KnifePrefs,
     /// The Redaction Tool Properties kept for the next run (what the last OK with "Make
@@ -1115,7 +1116,7 @@ impl PdfCraftApp {
             field_props: None,
             bulk_field_props: None,
             redact_prefs: RedactPrefs::default(),
-            erase_prefs: pdfcraft_engine::EraseOptions::default(),
+            erase_prefs: erase_ui::ErasePrefs::default(),
             knife_prefs: knife::KnifePrefs::default(),
             redact_defaults: RedactPrefs::default(),
             redact_before: None,
@@ -2355,6 +2356,8 @@ impl PdfCraftApp {
         });
         // Set apart: one more key inside the macro above passes serde_json's recursion limit.
         v["redact_prefs"] = self.redact_defaults.to_json();
+        v["erase_prefs"] = self.erase_prefs.to_json();
+        v["knife_prefs"] = self.knife_prefs.to_json();
         // Set outside json! above, which is at serde_json's macro recursion limit.
         v["hide_empty_highlight_hover"] = serde_json::Value::Bool(self.comment_prefs.hide_empty_highlight_hover);
         // The chess board in its own window: {detached, size, position}.
@@ -2455,6 +2458,12 @@ impl PdfCraftApp {
         }
         if let Some(size) = v["fill_text_size"].as_f64().and_then(fill_sign::valid_text_size) {
             self.fill_text_size = size;
+        }
+        if let Some(prefs) = erase_ui::ErasePrefs::from_json(&v["erase_prefs"]) {
+            self.erase_prefs = prefs;
+        }
+        if let Some(prefs) = knife::KnifePrefs::from_json(&v["knife_prefs"]) {
+            self.knife_prefs = prefs;
         }
         if let Some(prefs) = RedactPrefs::from_json(&v["redact_prefs"]) {
             self.redact_prefs = prefs.clone();
