@@ -2805,6 +2805,16 @@ chess side	Black	Đen
 	Show this diagram on the page	Hiện sơ đồ này trên trang
 	Stalemate	Hết nước đi (hòa pat)
 	Standard start position	Thế cờ ban đầu chuẩn
+	The game on the board has moves. Put this position:	Ván trên bàn cờ đã có nước đi. Đặt thế cờ này:
+	New game with this position	Ván mới với thế cờ này
+	The game on the board keeps its moves.	Ván trên bàn cờ giữ nguyên các nước đi.
+	Its moves are deleted (Undo brings them back).	Các nước đi của ván bị xóa (Hoàn tác sẽ khôi phục).
+	Start again from the standard position.	Bắt đầu lại từ thế cờ ban đầu chuẩn.
+	A new game from the standard position; the game on the board keeps its moves.	Một ván mới từ thế cờ ban đầu chuẩn; ván trên bàn cờ giữ nguyên các nước đi.
+	PGN edited	Đã sửa PGN
+	Load	Tải
+	Show the game on the board again.	Hiển thị lại ván trên bàn cờ.
+	Load the PGN above on the board, with its variations and comments.	Tải PGN ở trên vào bàn cờ, cùng các biến và chú thích.
 	Start (Home)	Đầu (Home)
 	That side can't be to move: the other king is in check.	Bên đó không thể đến lượt: vua bên kia đang bị chiếu.
 	The FEN couldn't be read: {e}	Không đọc được FEN: {e}

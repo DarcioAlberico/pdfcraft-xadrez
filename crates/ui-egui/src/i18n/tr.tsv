@@ -2546,6 +2546,16 @@ animation effects	Off	Kapalı
 	Show this diagram on the page	Bu diyagramı sayfada göster
 	Stalemate	Pat
 	Standard start position	Standart başlangıç konumu
+	The game on the board has moves. Put this position:	Tahtadaki oyunda hamleler var. Bu konumu koy:
+	New game with this position	Bu konumla yeni oyun
+	The game on the board keeps its moves.	Tahtadaki oyun hamlelerini korur.
+	Its moves are deleted (Undo brings them back).	Hamleleri silinir (Geri al onları geri getirir).
+	Start again from the standard position.	Standart başlangıç konumundan yeniden başla.
+	A new game from the standard position; the game on the board keeps its moves.	Standart başlangıç konumundan yeni bir oyun; tahtadaki oyun hamlelerini korur.
+	PGN edited	PGN düzenlendi
+	Load	Yükle
+	Show the game on the board again.	Tahtadaki oyunu yeniden göster.
+	Load the PGN above on the board, with its variations and comments.	Yukarıdaki PGN'yi varyantları ve yorumlarıyla birlikte tahtaya yükler.
 	Start (Home)	Başa (Home)
 	That side can't be to move: the other king is in check.	Hamle o tarafta olamaz: diğer şah tehdit altında.
 	The FEN couldn't be read: {e}	FEN okunamadı: {e}
