@@ -1,6 +1,6 @@
 # Plano — Peças, tabuleiros e lista de lances (a partir de cursos em HTML) · v3
 
-**Status:** v3 · 2026-10-25 · **HC0 feito** (§5.2) · decisões D13–D16 **aceitas** pelo usuário em 2026-10-25 (§4).
+**Status:** v3 · 2026-10-25 · **HC0 e HC1 feitos** (§5.2) · decisões D13–D16 **aceitas** pelo usuário em 2026-10-25 (§4).
 **Escopo (decisão do usuário, 2026-10-25):** melhorar o tabuleiro com **mais designs de tabuleiro e mais conjuntos de peças**, e **melhorar a lista de lances**. Fora: modo treino, perguntas `[%tqu]`, progresso, importação de cursos e puzzles como partidas, exportação de cursos (§2.5).
 **Origem:** três páginas HTML de cursos de xadrez salvas pelo usuário (pasta local `pasta-html-teste/`, **fora do repositório**: são conteúdo de terceiros, nunca entram em commit, fixture, teste ou documento). Análise de 2026-10-25, só dos **dados** que as páginas carregam e do que elas mostram na tela (servidas em `127.0.0.1` e olhadas no navegador). O código JavaScript delas não foi lido para copiar e não será.
 **Repositório:** `DarcioAlberico/pdfcraft-xadrez` (Rust, egui), `main` `959ddf1f`.
@@ -187,7 +187,7 @@ Cada passo: **Contexto** · **Tarefas** · **Verificação** · **Saída** · **
 - *Verificação:* SVGs sintéticos com `<image href="C:/…">`, `href` para arquivo inexistente, SVG aninhado em `data:`, 10 MB: nenhum lê o disco (provado com um caminho que, lido, falharia de forma visível), nenhum pânico; as pastas sintéticas de hoje leem igual.
 - *Saída:* nenhum SVG de peças lê arquivo além dele mesmo. *Reversão:* revert.
 
-**HC1 — Conjuntos abertos no programa** (`assets/chess/pieces/`, `ATTRIBUTION.toml`, `NOTICE`, `chessvision/src/pieces/bundled.rs`; depois de D13 e HC0).
+**HC1 — Conjuntos abertos no programa** (`assets/chess/pieces/`, `ATTRIBUTION.toml`, `NOTICE`, `chessvision/src/pieces/bundled.rs`; depois de D13 e HC0). ✅ 2026-10-25: **oito** conjuntos (chessnut, rhosgfx, kiwen-suwi, firi, fantasy, spatial, celtic, shapes), 96 SVGs (≈ 220 KB) do lichess no commit `aa97d4e2`, licença conferida na fonte de cada autor e o texto dela ao lado dos arquivos. **Papercut e totoy ficaram de fora:** o `COPYING.md` do lichess os põe entre os "não livres" apesar da CC BY 4.0, a página do autor do papercut não mostra o conjunto nem licença, e o totoy não tem fonte do autor. Usáveis já por id em `PDFCRAFT_CHESS_PIECES` e no `pieces` das ferramentas; os gradientes saem planos, na cor da primeira parada (cores conferidas contra os originais).
 - *Tarefas:* trazer os conjuntos de §2.1 da fonte (commit fixo), um por um, com licença conferida; `bundled::sets() -> &[(id, name, author, license, files)]`; `PieceSet` de cada um pelo mesmo leitor SVG; `cargo xtask assets --write`.
 - *Verificação:* `cargo xtask assets` verde; teste que carrega os 10 × 12 SVGs e confere caixas não vazias; peso do binário antes/depois registrado; um conjunto com licença não permitida faz o `xtask` falhar (provado).
 - *Saída:* `chess_pieces` (HC2) lista 10 conjuntos embutidos. *Reversão:* revert (só assets e um módulo).

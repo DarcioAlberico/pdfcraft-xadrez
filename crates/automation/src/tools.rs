@@ -22,6 +22,12 @@ pub struct ToolDef {
     pub command: Option<&'static str>,
 }
 
+/// What a tool's `pieces` takes: installed, geometric, or a set PdfCraft ships by its id.
+fn pieces_values() -> Vec<&'static str> {
+    let shipped = pdfcraft_engine::chess::pdfcraft_chessvision::pieces::bundled::SETS.iter().map(|s| s.id);
+    ["installed", "geometric"].into_iter().chain(shipped).collect()
+}
+
 fn doc() -> Value {
     json!({ "type": "integer", "minimum": 1, "description": "Document id from doc_open or doc_list." })
 }
@@ -112,7 +118,7 @@ fn chess_replace_props() -> Value {
             "border_color": color(),
             "coordinates": { "type": "boolean", "description": "Print a-h and 1-8 around the board (default false)." },
             "flipped": { "type": "boolean", "description": "Draw from Black's side (default false)." },
-            "pieces": { "type": "string", "enum": ["installed", "geometric"], "description": "installed (default): PDFCRAFT_CHESS_PIECES (a font or a folder of piece images), a diagram font in the fonts folder beside the executable, an installed Chess Merida or a pieces folder beside the executable, else plain geometric pieces; geometric: always the plain pieces." },
+            "pieces": { "type": "string", "enum": pieces_values(), "description": "installed (default): PDFCRAFT_CHESS_PIECES (a font or a folder of piece images), a diagram font in the fonts folder beside the executable, an installed Chess Merida or a pieces folder beside the executable, else plain geometric pieces; geometric: always the plain pieces; any other value is a set PdfCraft ships, by id (chessnut…)." },
             "dry_run": { "type": "boolean", "description": "Only say what would be done; change nothing (default false)." },
         });
         if let Value::Object(extra) = extra {
@@ -155,7 +161,7 @@ fn chess_export_schema() -> Value {
                     "link_text".into(),
                     json!({ "type": "string", "maxLength": 80, "description": "The links' text (default \"Analyze on lichess\")." }),
                 );
-                o.insert("pieces".into(), json!({ "type": "string", "enum": ["installed", "geometric"], "description": "installed (default): PDFCRAFT_CHESS_PIECES (a font or a folder of piece images), a diagram font in the fonts folder beside the executable, an installed Chess Merida or a pieces folder beside the executable, else geometric; geometric: always the plain pieces." }));
+                o.insert("pieces".into(), json!({ "type": "string", "enum": pieces_values(), "description": "installed (default): PDFCRAFT_CHESS_PIECES (a font or a folder of piece images), a diagram font in the fonts folder beside the executable, an installed Chess Merida or a pieces folder beside the executable, else geometric; geometric: always the plain pieces; any other value is a set PdfCraft ships, by id (chessnut…)." }));
             }
             props
         },

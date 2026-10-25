@@ -47,6 +47,12 @@ fn ocr_options(a: &Args) -> Result<OcrOptions<'static>> {
 
 use crate::{Args, Automation, Result, ToolError, comments, failed};
 
+/// What `pieces` takes, for the error that refuses anything else.
+fn pieces_expected() -> String {
+    let ids: Vec<&str> = pieces::bundled::SETS.iter().map(|s| s.id).collect();
+    format!("\"installed\", \"geometric\" or a set PdfCraft ships ({})", ids.join(", "))
+}
+
 /// Two decimals: enough for points, and stable in test output.
 fn round(v: f32) -> f64 {
     (f64::from(v) * 100.0).round() / 100.0
@@ -327,7 +333,7 @@ impl Automation {
         let (pieces, source, error) = match a.opt_str("pieces")? {
             None | Some("installed") => pieces::find(),
             Some("geometric") => (PieceSet::geometric(), PieceSource::Geometric, None),
-            Some(_) => return Err(Args::wrong("pieces", "\"installed\" or \"geometric\"")),
+            Some(id) => pieces::from_bundled(pieces::bundled::by_id(id).ok_or_else(|| Args::wrong("pieces", &pieces_expected()))?),
         };
         let mut settings = self.chess_settings(a)?;
         settings.models_dir = None;
@@ -361,6 +367,7 @@ impl Automation {
             "pieces": match source {
                 PieceSource::Font { family, .. } => json!({ "source": "font", "family": family, "error": Value::Null }),
                 PieceSource::Images { dir } => json!({ "source": "images", "family": dir.to_string_lossy(), "error": Value::Null }),
+                PieceSource::Bundled { id } => json!({ "source": "bundled", "family": id, "error": Value::Null }),
                 PieceSource::Geometric => json!({ "source": "geometric", "family": Value::Null, "error": error.map(|e| e.to_string()) }),
             },
             "notes": plan.notes,
@@ -530,7 +537,7 @@ impl Automation {
         let (pieces, source, error) = match a.opt_str("pieces")? {
             None | Some("installed") => pieces::find(),
             Some("geometric") => (PieceSet::geometric(), PieceSource::Geometric, None),
-            Some(_) => return Err(Args::wrong("pieces", "\"installed\" or \"geometric\"")),
+            Some(id) => pieces::from_bundled(pieces::bundled::by_id(id).ok_or_else(|| Args::wrong("pieces", &pieces_expected()))?),
         };
         let link_text = a.opt_str("link_text")?.unwrap_or(chess::links::DEFAULT_TEXT).to_owned();
         if link_text.trim().is_empty() || link_text.chars().count() > 80 {
@@ -613,6 +620,7 @@ impl Automation {
             "pieces": match source {
                 PieceSource::Font { family, .. } => json!({ "source": "font", "family": family, "error": Value::Null }),
                 PieceSource::Images { dir } => json!({ "source": "images", "family": dir.to_string_lossy(), "error": Value::Null }),
+                PieceSource::Bundled { id } => json!({ "source": "bundled", "family": id, "error": Value::Null }),
                 PieceSource::Geometric => json!({ "source": "geometric", "family": Value::Null, "error": error.map(|e| e.to_string()) }),
             },
             "needs_ocr": read.needs_ocr.iter().map(|(p, why)| json!({ "page": p + 1, "reason": why })).collect::<Vec<_>>(),
@@ -709,6 +717,7 @@ impl Automation {
                 json!({ "source": "font", "family": family, "path": path.map(|p| p.to_string_lossy().into_owned()) })
             }
             PieceSource::Images { dir } => json!({ "source": "images", "family": Value::Null, "path": dir.to_string_lossy() }),
+            PieceSource::Bundled { id } => json!({ "source": "bundled", "family": id, "path": Value::Null }),
             PieceSource::Geometric => json!({ "source": "geometric", "family": Value::Null, "path": Value::Null }),
         };
         if let Some(o) = piece_set.as_object_mut() {
