@@ -168,6 +168,8 @@ pub struct Report {
     pub glyphs: usize,
     pub images_removed: usize,
     pub images_cleared: usize,
+    /// Images the eraser clipped (left in the file, the erased part hidden).
+    pub images_clipped: usize,
     pub paths_removed: usize,
     pub paths_clipped: usize,
     pub forms_rewritten: usize,
@@ -408,7 +410,7 @@ pub fn apply(doc: &mut Document, pages: Option<&[usize]>) -> Result<Report, Reda
         }
     }
 
-    verify_removed(doc, &areas)?;
+    verify_removed(doc, &areas, true)?;
     // The previous revision still holds the removed content: the next save must rewrite.
     doc.require_full_save();
     Ok(report)
@@ -450,6 +452,7 @@ fn remove_under(doc: &mut Document, areas: &[PageAreas], secure: bool, report: &
         let out = {
             let mut scope = Scope::new(rects, Mode::Apply, report);
             scope.options = area.options;
+            scope.secure = secure;
             process(doc, &mut scope, &data, &resources, pdfcraft_content::Matrix::IDENTITY)
         };
         // Fail closed: the interpreter lays vertical-writing text out horizontally, so it cannot
@@ -630,7 +633,7 @@ fn remove_under(doc: &mut Document, areas: &[PageAreas], secure: bool, report: &
 
 /// Step 5, verify: nothing readable may remain under an area. Redaction boxes (`/PCMark /Redaction`
 /// streams) draw text of their own, the overlay label, so they are not read.
-fn verify_removed(doc: &mut Document, areas: &[PageAreas]) -> Result<(), RedactError> {
+fn verify_removed(doc: &mut Document, areas: &[PageAreas], secure: bool) -> Result<(), RedactError> {
     let mut residue = 0;
     for area in areas {
         let pi = area.page;
@@ -646,6 +649,7 @@ fn verify_removed(doc: &mut Document, areas: &[PageAreas]) -> Result<(), RedactE
         let mut scratch = Report::default();
         let mut scope = Scope::new(&area.rects, Mode::Verify, &mut scratch);
         scope.options = area.options;
+        scope.secure = secure;
         residue += process(doc, &mut scope, &original, &resources, pdfcraft_content::Matrix::IDENTITY).residue;
     }
     if residue > 0 {
@@ -678,7 +682,8 @@ fn erase_areas(doc: &Document, page: usize, areas: &[[f64; 4]], options: EraseOp
 /// Erase what `options` names under `areas` (user space) on page `page` (0-based): glyphs cut out
 /// of their lines with the rest in place, images and vectors removed or clipped, form XObjects
 /// rewritten as new objects (other pages keep theirs), and with `options.annotations` the
-/// comments, links and fields there. No box is drawn. Unlike [`apply`] this is an ordinary edit:
+/// comments, links and fields there. An image the areas only partly cover is clipped, whatever
+/// its codec: its data stays in the file, shared as before (redaction clears or removes it). No box is drawn. Unlike [`apply`] this is an ordinary edit:
 /// the next save may be incremental, so the erased content stays in the file's earlier revision
 /// until a full save; redact for a secure removal.
 ///
@@ -696,6 +701,7 @@ pub fn erase(doc: &mut Document, page: usize, areas: &[[f64; 4]], options: &Eras
     let removed = report.glyphs
         + report.images_removed
         + report.images_cleared
+        + report.images_clipped
         + report.paths_removed
         + report.paths_clipped
         + report.forms_removed
@@ -704,7 +710,7 @@ pub fn erase(doc: &mut Document, page: usize, areas: &[[f64; 4]], options: &Eras
     if removed == 0 {
         return Err(RedactError::NothingToErase);
     }
-    verify_removed(doc, &areas)?;
+    verify_removed(doc, &areas, false)?;
     Ok(report)
 }
 
