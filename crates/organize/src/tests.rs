@@ -3036,6 +3036,40 @@ fn destinations_go_to_the_part_holding_their_point() {
     assert_eq!(page_count(&doc).unwrap(), 2);
 }
 
+/// An annotation crossing the cut shows on both halves: the half holding its centre keeps it,
+/// the other gets a copy aimed at its own page, with a copy of its pop-up. A field's widget
+/// crossing the cut is not copied: the field keeps one widget. (Fails with the copies off.)
+#[test]
+fn an_annotation_crossing_the_cut_is_on_both_parts() {
+    let mut doc = knife_doc(
+        &["/MediaBox [0 0 400 300] /Annots [5 0 R 6 0 R 7 0 R]"],
+        &[
+            "<< /Type /Annot /Subtype /Square /Rect [150 100 230 140] /P 3 0 R /Popup 6 0 R /Contents (over the gutter) >>",
+            "<< /Type /Annot /Subtype /Popup /Rect [10 10 150 100] /Parent 5 0 R /P 3 0 R >>",
+            "<< /Type /Annot /Subtype /Widget /FT /Tx /T (name) /Rect [150 200 250 220] /P 3 0 R >>",
+            "<< /Fields [7 0 R] >>",
+        ],
+    );
+    doc.update_dict(doc.root().unwrap(), |d| d.set(b"AcroForm".to_vec(), Object::Ref(ObjRef::new(8, 0)))).unwrap();
+    cut_pages(&mut doc, &[cut(0, Axis::Vertical, &[200.0])], false).unwrap();
+    let (left, right) = (annots_on(&doc, 0), annots_on(&doc, 1));
+    let count = |list: &[(String, Option<usize>)], s: &str| list.iter().filter(|(t, _)| t == s).count();
+    assert_eq!((count(&left, "Square"), count(&right, "Square")), (1, 1), "{left:?} {right:?}");
+    assert_eq!((count(&left, "Popup"), count(&right, "Popup")), (1, 1), "each square has its pop-up");
+    assert!(right.iter().all(|(_, p)| *p == Some(1)), "the copies belong to the right half: {right:?}");
+    assert_eq!(count(&left, "Widget") + count(&right, "Widget"), 1, "the widget is not copied");
+    // The right half's pop-up opens from the right half's square.
+    let all = pages(&doc).unwrap();
+    let right_annots = doc.get(all[1].obj).as_dict().and_then(|d| d.get(b"Annots").cloned()).unwrap();
+    let list = doc.resolve(&right_annots).as_array().cloned().unwrap();
+    let square =
+        list.iter().filter_map(Object::as_ref).find(|r| doc.get(*r).as_dict().is_some_and(|d| d.name(b"Subtype") == Some(b"Square"))).unwrap();
+    let popup = doc.get(square).as_dict().and_then(|d| d.reference(b"Popup")).unwrap();
+    assert_eq!(doc.get(popup).as_dict().and_then(|d| d.reference(b"Parent")), Some(square));
+    let doc = save_and_reopen(&doc);
+    assert_eq!(page_count(&doc).unwrap(), 2);
+}
+
 proptest::proptest! {
     #![proptest_config(proptest::prelude::ProptestConfig::with_cases(64))]
     /// Any cuts are a result or an error, never a panic, and a result has as many pages as parts.
