@@ -3092,3 +3092,14 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES ist gesetzt und hat Vorrang vor dieser Auswahl.
 	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Brett: das Analyse- und das Studienbrett. Diagramme: neu gezeichnet auf der Seite, im Editor und in Exporten.
 	These pieces cannot be used: {reason}	Diese Figuren können nicht verwendet werden: {reason}
+	Import a folder…	Ordner importieren…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	Kopiert einen Ordner mit zwölf Figurenbildern (wK bis bP, SVG oder PNG) in den Figurenordner.
+	Import from a web page…	Aus einer Webseite importieren…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	Übernimmt die Figurensätze, die eine gespeicherte Webseite in sich trägt, in den Figurenordner.
+	Choose a folder of piece images	Ordner mit Figurenbildern wählen
+	Choose a saved web page	Gespeicherte Webseite wählen
+	Web pages	Webseiten
+	There is no pieces folder beside the program to import into.	Neben dem Programm gibt es keinen Figurenordner, in den importiert werden kann.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	Importiert: {sets}. Ihre Lizenz ist nicht bekannt: nur für den persönlichen Gebrauch verwenden.
+	Already in the pieces folder: {sets}. Replace them?	Schon im Figurenordner: {sets}. Ersetzen?
+	The pieces cannot be imported: {reason}	Die Figuren können nicht importiert werden: {reason}

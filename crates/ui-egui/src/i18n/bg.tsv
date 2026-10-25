@@ -3054,3 +3054,14 @@ chess undo step	Clear drawings	изчистването на рисунките
 	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES е зададена и има предимство пред този избор.
 	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Дъска: дъските за анализ и за изучаване. Диаграми: преначертани на страницата, в редактора и при експорт.
 	These pieces cannot be used: {reason}	Тези фигури не могат да се използват: {reason}
+	Import a folder…	Импортиране на папка…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	Копира папка с дванадесет изображения на фигури (от wK до bP, SVG или PNG) в папката с фигури.
+	Import from a web page…	Импортиране от уеб страница…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	Взема комплектите фигури, които съхранена уеб страница носи в себе си, в папката с фигури.
+	Choose a folder of piece images	Изберете папка с изображения на фигури
+	Choose a saved web page	Изберете съхранена уеб страница
+	Web pages	Уеб страници
+	There is no pieces folder beside the program to import into.	До програмата няма папка с фигури, в която да се импортира.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	Импортирани: {sets}. Лицензът им не е известен: използвайте ги само за лична употреба.
+	Already in the pieces folder: {sets}. Replace them?	Вече са в папката с фигури: {sets}. Да бъдат ли заменени?
+	The pieces cannot be imported: {reason}	Фигурите не могат да бъдат импортирани: {reason}

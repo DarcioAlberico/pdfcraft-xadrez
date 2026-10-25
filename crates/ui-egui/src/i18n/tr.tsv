@@ -3087,3 +3087,14 @@ chess undo step	Clear drawings	çizimleri temizleme
 	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES ayarlı ve bu seçimden önce gelir.
 	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Tahta: analiz ve çalışma tahtaları. Diyagramlar: sayfada, düzenleyicide ve dışa aktarımlarda yeniden çizilir.
 	These pieces cannot be used: {reason}	Bu taşlar kullanılamıyor: {reason}
+	Import a folder…	Klasör içe aktar…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	On iki taş görselinden (wK'den bP'ye, SVG veya PNG) oluşan bir klasörü taşlar klasörüne kopyalar.
+	Import from a web page…	Web sayfasından içe aktar…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	Kaydedilmiş bir web sayfasının içinde taşıdığı taş takımlarını taşlar klasörüne alır.
+	Choose a folder of piece images	Taş görselleri klasörü seçin
+	Choose a saved web page	Kaydedilmiş bir web sayfası seçin
+	Web pages	Web sayfaları
+	There is no pieces folder beside the program to import into.	Programın yanında içe aktarılacak bir taşlar klasörü yok.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	İçe aktarıldı: {sets}. Lisansları bilinmiyor: yalnızca kişisel kullanım için kullanın.
+	Already in the pieces folder: {sets}. Replace them?	Zaten taşlar klasöründe: {sets}. Değiştirilsin mi?
+	The pieces cannot be imported: {reason}	Taşlar içe aktarılamıyor: {reason}

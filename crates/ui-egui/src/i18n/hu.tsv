@@ -3090,3 +3090,14 @@ chess undo step	Clear drawings	rajzok törlése
 	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	A PDFCRAFT_CHESS_PIECES be van állítva, és elsőbbséget élvez ezzel a választással szemben.
 	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Tábla: az elemző és a tanuló tábla. Diagramok: újrarajzolva az oldalon, a szerkesztőben és az exportokban.
 	These pieces cannot be used: {reason}	Ezek a figurák nem használhatók: {reason}
+	Import a folder…	Mappa importálása…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	Tizenkét bábuképet (wK–bP, SVG vagy PNG) tartalmazó mappát másol a bábuk mappájába.
+	Import from a web page…	Importálás weboldalról…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	Egy mentett weboldalban lévő bábukészleteket a bábuk mappájába teszi.
+	Choose a folder of piece images	Válasszon bábuképeket tartalmazó mappát
+	Choose a saved web page	Válasszon mentett weboldalt
+	Web pages	Weboldalak
+	There is no pieces folder beside the program to import into.	A program mellett nincs bábuk mappája, ahová importálni lehetne.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	Importálva: {sets}. Licencük nem ismert: csak személyes használatra.
+	Already in the pieces folder: {sets}. Replace them?	Már a bábuk mappájában vannak: {sets}. Lecseréli őket?
+	The pieces cannot be imported: {reason}	A bábuk nem importálhatók: {reason}

@@ -3343,3 +3343,14 @@ chess undo step	Clear drawings	piešinių valymą
 	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	Nustatytas PDFCRAFT_CHESS_PIECES ir jis svarbesnis už šį pasirinkimą.
 	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Lenta: analizės ir studijų lentos. Diagramos: perpieštos puslapyje, rengyklėje ir eksportuojant.
 	These pieces cannot be used: {reason}	Šių figūrų naudoti negalima: {reason}
+	Import a folder…	Importuoti aplanką…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	Nukopijuoja aplanką su dvylika figūrų paveikslėlių (nuo wK iki bP, SVG ar PNG) į figūrų aplanką.
+	Import from a web page…	Importuoti iš tinklalapio…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	Perkelia figūrų rinkinius, kuriuos išsaugotas tinklalapis turi savyje, į figūrų aplanką.
+	Choose a folder of piece images	Pasirinkite figūrų paveikslėlių aplanką
+	Choose a saved web page	Pasirinkite išsaugotą tinklalapį
+	Web pages	Tinklalapiai
+	There is no pieces folder beside the program to import into.	Šalia programos nėra figūrų aplanko, į kurį būtų galima importuoti.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	Importuota: {sets}. Jų licencija nežinoma: naudokite tik asmeniniam naudojimui.
+	Already in the pieces folder: {sets}. Replace them?	Jau yra figūrų aplanke: {sets}. Pakeisti?
+	The pieces cannot be imported: {reason}	Figūrų importuoti nepavyko: {reason}

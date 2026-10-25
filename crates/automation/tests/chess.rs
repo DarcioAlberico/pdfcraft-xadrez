@@ -313,6 +313,58 @@ fn chess_pieces_lists_the_sets_preferences_offers() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// A page of ours carrying one set of twelve squares, as a script's JSON with percent-encoded
+/// values.
+fn piece_page() -> String {
+    let svg = r#"<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><path d="M2 2 H8 V8 H2 Z" fill="black"/></svg>"#;
+    let value = format!("data:image/svg+xml,{}", svg.replace('<', "%3C").replace('>', "%3E").replace('"', "%22"));
+    let keys = ["wK", "wQ", "wR", "wB", "wN", "wP", "bK", "bQ", "bR", "bB", "bN", "bP"];
+    let entries: Vec<String> = keys.iter().map(|k| format!("\"{k}\": \"{value}\"")).collect();
+    format!("<html><script>var sets = {{\"squares\": {{{}}}}};</script></html>", entries.join(", "))
+}
+
+/// `chess_pieces_import` takes a page's sets into a folder inside the root, says what it wrote and
+/// refuses to replace it unless asked; a page or folder outside the root is refused, as is a
+/// target outside it, and nothing is written there. The controls pass the same page from inside.
+#[test]
+fn chess_pieces_import_is_confined_to_the_root() {
+    let (base, root) = workdir("pieces-import");
+    std::fs::write(root.join("course.html"), piece_page()).unwrap();
+    let outside = base.join("outside");
+    std::fs::create_dir_all(&outside).unwrap();
+    std::fs::write(outside.join("course.html"), piece_page()).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let outside_page = outside.join("course.html").to_string_lossy().into_owned();
+    let outside_dir = outside.join("pieces").to_string_lossy().into_owned();
+    for args in [
+        json!({ "from": outside_page, "into": "pieces" }),
+        json!({ "from": "../outside/course.html", "into": "pieces" }),
+        json!({ "from": "course.html", "into": outside_dir }),
+        json!({ "from": "course.html", "into": "../outside/pieces" }),
+    ] {
+        match a.call("chess_pieces_import", &args) {
+            Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{args}: {m}"),
+            other => panic!("accepted {args}: {other:?}"),
+        }
+    }
+    assert!(!outside.join("pieces").exists(), "nothing written outside the root");
+    assert!(!root.join("pieces").exists());
+    // Without into, a confined call does not fall back to the folder beside the executable.
+    assert!(a.call("chess_pieces_import", &json!({ "from": "course.html" })).is_err());
+    let done = ok(&mut a, "chess_pieces_import", json!({ "from": "course.html", "into": "pieces" }));
+    assert_eq!(done["imported"][0]["name"], "squares", "{done:#}");
+    assert!(done["imported"][0]["token"].as_str().is_some_and(|t| t.starts_with("folder:")), "{done:#}");
+    assert!(root.join("pieces/squares/wK.svg").is_file() && root.join("pieces/squares/ORIGIN.txt").is_file());
+    let again = ok(&mut a, "chess_pieces_import", json!({ "from": "course.html", "into": "pieces" }));
+    assert_eq!((again["imported"].as_array().map(Vec::len), again["exists"].as_array().map(Vec::len)), (Some(0), Some(1)), "{again:#}");
+    let replaced = ok(&mut a, "chess_pieces_import", json!({ "from": "course.html", "into": "pieces", "replace": true }));
+    assert_eq!(replaced["imported"][0]["name"], "squares");
+    // A folder inside the root is copied too.
+    ok(&mut a, "chess_pieces_import", json!({ "from": "pieces/squares", "into": "more" }));
+    assert!(root.join("more/squares/bP.svg").is_file());
+    let _ = std::fs::remove_dir_all(base);
+}
+
 /// A set PdfCraft ships is chosen by its id, whatever its case, and the result says it came from
 /// the shipped sets.
 #[test]

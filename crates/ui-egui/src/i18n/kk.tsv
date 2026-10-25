@@ -3089,3 +3089,14 @@ chess undo step	Clear drawings	суреттерді өшіру
 	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES орнатылған және бұл таңдаудан басым.
 	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Тақта: талдау және оқу тақталары. Диаграммалар: бетте, редакторда және экспортта қайта салынады.
 	These pieces cannot be used: {reason}	Бұл фигураларды пайдалану мүмкін емес: {reason}
+	Import a folder…	Буманы импорттау…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	Он екі фигура суреті бар буманы (wK-тен bP-ге дейін, SVG не PNG) фигуралар бумасына көшіреді.
+	Import from a web page…	Веб беттен импорттау…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	Сақталған веб бет ішінде алып жүрген фигуралар жиынтықтарын фигуралар бумасына алады.
+	Choose a folder of piece images	Фигура суреттері бар буманы таңдаңыз
+	Choose a saved web page	Сақталған веб бетті таңдаңыз
+	Web pages	Веб беттер
+	There is no pieces folder beside the program to import into.	Бағдарламаның жанында импорттайтын фигуралар бумасы жоқ.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	Импортталды: {sets}. Лицензиясы белгісіз: тек жеке пайдалану үшін қолданыңыз.
+	Already in the pieces folder: {sets}. Replace them?	Фигуралар бумасында бар: {sets}. Ауыстыру керек пе?
+	The pieces cannot be imported: {reason}	Фигураларды импорттау мүмкін емес: {reason}

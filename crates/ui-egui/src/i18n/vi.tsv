@@ -3345,3 +3345,14 @@ chess undo step	Clear drawings	xóa hình vẽ
 	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES đã được đặt và được ưu tiên hơn lựa chọn này.
 	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Bàn cờ: bàn cờ phân tích và bàn cờ nghiên cứu. Sơ đồ: được vẽ lại trên trang, trong trình chỉnh sửa và khi xuất.
 	These pieces cannot be used: {reason}	Không thể dùng các quân cờ này: {reason}
+	Import a folder…	Nhập thư mục…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	Sao chép một thư mục gồm mười hai hình quân cờ (wK đến bP, SVG hoặc PNG) vào thư mục quân cờ.
+	Import from a web page…	Nhập từ trang web…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	Đưa các bộ quân cờ mà một trang web đã lưu mang bên trong vào thư mục quân cờ.
+	Choose a folder of piece images	Chọn thư mục hình quân cờ
+	Choose a saved web page	Chọn một trang web đã lưu
+	Web pages	Trang web
+	There is no pieces folder beside the program to import into.	Không có thư mục quân cờ bên cạnh chương trình để nhập vào.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	Đã nhập: {sets}. Giấy phép của chúng không rõ: chỉ dùng cho mục đích cá nhân.
+	Already in the pieces folder: {sets}. Replace them?	Đã có trong thư mục quân cờ: {sets}. Thay thế chúng?
+	The pieces cannot be imported: {reason}	Không thể nhập quân cờ: {reason}

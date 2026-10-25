@@ -826,6 +826,7 @@ impl Automation {
             "chess_read_area" => self.chess_read_area(&a)?,
             "chess_status" => self.chess_status(&a)?,
             "chess_pieces" => self.chess_pieces()?,
+            "chess_pieces_import" => self.chess_pieces_import(&a)?,
             "chess_game" => self.chess_game(&a)?,
             "chess_pgn_edit" => self.chess_pgn_edit(&a)?,
             "chess_games" => self.chess_games(&a)?,

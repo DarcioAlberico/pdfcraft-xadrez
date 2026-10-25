@@ -32,6 +32,7 @@ use std::path::{Path, PathBuf};
 pub mod bundled;
 pub mod choice;
 pub mod images;
+pub mod import;
 mod svg;
 
 pub use images::{from_image_dir, is_piece_folder, missing_pieces};
@@ -244,6 +245,12 @@ fn from_folder(dir: PathBuf) -> (PieceSet, PieceSource, Option<PieceError>) {
         Ok(set) => (set, PieceSource::Images { dir }, None),
         Err(e) => (PieceSet::geometric(), PieceSource::Geometric, Some(e)),
     }
+}
+
+/// The `pieces` folder beside the executable, where [`choice::candidates`] looks for folders of
+/// piece images and [`import::import`] puts the sets it imports.
+pub fn pieces_folder() -> Option<PathBuf> {
+    beside_executable()
 }
 
 /// The `pieces` folder beside the executable, as the models are looked for there.

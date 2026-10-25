@@ -2966,3 +2966,14 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES సెట్ చేయబడింది, ఇది ఈ ఎంపిక కంటే ముందు వర్తిస్తుంది.
 	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	బోర్డు: విశ్లేషణ, అధ్యయన బోర్డులు. రేఖాచిత్రాలు: పేజీలో, ఎడిటర్‌లో, ఎగుమతుల్లో మళ్లీ గీసినవి.
 	These pieces cannot be used: {reason}	ఈ పావులను ఉపయోగించలేరు: {reason}
+	Import a folder…	ఫోల్డర్‌ను దిగుమతి చేయి…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	పన్నెండు పావుల చిత్రాల ఫోల్డర్‌ను (wK నుండి bP, SVG లేదా PNG) పావుల ఫోల్డర్‌లోకి కాపీ చేస్తుంది.
+	Import from a web page…	వెబ్ పేజీ నుండి దిగుమతి చేయి…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	సేవ్ చేసిన వెబ్ పేజీ తనలో ఉంచుకున్న పావుల సెట్‌లను పావుల ఫోల్డర్‌లోకి తీసుకుంటుంది.
+	Choose a folder of piece images	పావుల చిత్రాల ఫోల్డర్‌ను ఎంచుకోండి
+	Choose a saved web page	సేవ్ చేసిన వెబ్ పేజీని ఎంచుకోండి
+	Web pages	వెబ్ పేజీలు
+	There is no pieces folder beside the program to import into.	దిగుమతి చేయడానికి ప్రోగ్రామ్ పక్కన పావుల ఫోల్డర్ లేదు.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	దిగుమతి అయ్యాయి: {sets}. వాటి లైసెన్స్ తెలియదు: వ్యక్తిగత ఉపయోగానికి మాత్రమే వాడండి.
+	Already in the pieces folder: {sets}. Replace them?	ఇప్పటికే పావుల ఫోల్డర్‌లో ఉన్నాయి: {sets}. వాటిని భర్తీ చేయాలా?
+	The pieces cannot be imported: {reason}	పావులను దిగుమతి చేయలేము: {reason}
