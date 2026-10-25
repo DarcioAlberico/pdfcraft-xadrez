@@ -1,6 +1,6 @@
 # Plano — Peças, tabuleiros e lista de lances (a partir de cursos em HTML) · v3
 
-**Status:** v3 · 2026-10-25 · nenhum passo começado · decisões D13–D16 pendentes (§4).
+**Status:** v3 · 2026-10-25 · nenhum passo começado · decisões D13–D16 **aceitas** pelo usuário em 2026-10-25 (§4).
 **Escopo (decisão do usuário, 2026-10-25):** melhorar o tabuleiro com **mais designs de tabuleiro e mais conjuntos de peças**, e **melhorar a lista de lances**. Fora: modo treino, perguntas `[%tqu]`, progresso, importação de cursos e puzzles como partidas, exportação de cursos (§2.5).
 **Origem:** três páginas HTML de cursos de xadrez salvas pelo usuário (pasta local `pasta-html-teste/`, **fora do repositório**: são conteúdo de terceiros, nunca entram em commit, fixture, teste ou documento). Análise de 2026-10-25, só dos **dados** que as páginas carregam e do que elas mostram na tela (servidas em `127.0.0.1` e olhadas no navegador). O código JavaScript delas não foi lido para copiar e não será.
 **Repositório:** `DarcioAlberico/pdfcraft-xadrez` (Rust, egui), `main` `959ddf1f`.
@@ -147,14 +147,14 @@ Modo treino (jogar a linha, dicas, resultado, revisão espaçada), leitura da pe
 5. **Só por adição** nos contratos públicos (campos novos nas ferramentas, padrão igual ao de hoje).
 6. Caber em 1366 × 768, teclado completo (A8 §2).
 
-## 4. Decisões pendentes (do usuário)
+## 4. Decisões (aceitas pelo usuário em 2026-10-25, como recomendadas)
 
-| Id | Pergunta | Recomendação |
+| Id | Pergunta | Decisão |
 |---|---|---|
-| **D13** | Rever D4 e trazer **junto do programa** os conjuntos de licença aberta de §2.1 (chessnut, rhosgfx, fantasy, spatial, celtic, kiwen-suwi, firi, totoy, papercut, shapes)? | **Sim:** é o que dá "mais conjuntos" sem depender do que o usuário tem na máquina; todos dentro da política de assets. As peças do usuário continuam funcionando. |
-| **D14** | Texturas de tabuleiro geradas por código (madeira, mármore, papel, impressão de livro)? | **Sim:** arte nossa, sem licença de terceiros, em qualquer resolução. |
-| **D15** | Figurinhas na lista: padrão figurinhas do conjunto, letras pt-BR ou letras inglesas? | **Figurinhas do conjunto**, com as outras duas como opção. |
-| **D16** | Tema padrão continua Marrom (tela e exportações)? | **Sim** na tela e nas ferramentas headless; o usuário escolhe outro nas preferências. |
+| **D13** | Rever D4 e trazer **junto do programa** os conjuntos de licença aberta de §2.1 (chessnut, rhosgfx, fantasy, spatial, celtic, kiwen-suwi, firi, totoy, papercut, shapes)? | ✅ **Sim** (revê D4): é o que dá "mais conjuntos" sem depender do que o usuário tem na máquina; todos dentro da política de assets. As peças do usuário continuam funcionando. |
+| **D14** | Texturas de tabuleiro geradas por código (madeira, mármore, papel, impressão de livro)? | ✅ **Sim:** arte nossa, sem licença de terceiros, em qualquer resolução. |
+| **D15** | Figurinhas na lista: padrão figurinhas do conjunto, letras pt-BR ou letras inglesas? | ✅ **Figurinhas do conjunto**, com as outras duas como opção. |
+| **D16** | Tema padrão continua Marrom (tela e exportações)? | ✅ **Sim** na tela e nas ferramentas headless; o usuário escolhe outro nas preferências. |
 
 ## 5. Passos
 
@@ -175,7 +175,7 @@ Lista:      HC2 ─► HC8 figurinhas na tela (D15)
             HC4 + HC12 ─► HC13 prévia ao passar o mouse
 ```
 
-**Podem começar já:** HC0, HC10. **Depois de D13:** HC1. **Contestados** (um de cada vez, a partir do `main` atualizado): HC4–HC6, HC8–HC13 e A8 V3.
+**Podem começar já:** HC0, HC10; HC1 depois de HC0 (D13 aceita). **Contestados** (um de cada vez, a partir do `main` atualizado): HC4–HC6, HC8–HC13 e A8 V3.
 
 ### 5.2 Passos
 
@@ -274,4 +274,5 @@ Cada passo: **Contexto** · **Tarefas** · **Verificação** · **Saída** · **
 
 - **v1 (2026-10-25):** análise dos três HTMLs (dados e tela), comparação com o `main`, licenças das peças conferidas no `COPYING.md` do lichess.
 - **v2 (2026-10-25):** revisão adversarial (código e dados medidos de novo): limites reais do modelo, quem treina nas partidas do TS29, `[%tqu]` como vista só de leitura, camadas, leitor de SVG que lê o disco (HC0), conflitos com A8.
+- **v3.1 (2026-10-25):** D13–D16 aceitas pelo usuário como recomendadas.
 - **v3 (2026-10-25):** escopo reduzido pelo usuário a peças, tabuleiros e lista de lances; treino, `[%tqu]` e importação de cursos saem (§2.5). Novos: conjuntos abertos no programa (lista completa do `COPYING.md` filtrada pela política de assets), temas com paleta completa, texturas geradas por código, coordenadas/moldura/desenhos, figurinhas na tela, colunas, cabeçalho, variante anterior/próxima, marcas e prévia, sem repetir A8 V3. Passos renumerados HC0–HC13.
