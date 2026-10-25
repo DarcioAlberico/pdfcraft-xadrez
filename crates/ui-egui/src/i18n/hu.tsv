@@ -2549,6 +2549,16 @@ animation effects	Off	Ki
 	Show this diagram on the page	Ennek a diagramnak a megjelenítése az oldalon
 	Stalemate	Patt
 	Standard start position	Szabványos kezdőállás
+	The game on the board has moves. Put this position:	A táblán lévő játszmában vannak lépések. Ez az állás kerüljön:
+	New game with this position	Új játszma ezzel az állással
+	The game on the board keeps its moves.	A táblán lévő játszma megtartja a lépéseit.
+	Its moves are deleted (Undo brings them back).	A lépései törlődnek (a Visszavonás visszahozza őket).
+	Start again from the standard position.	Újrakezdés a szabványos kezdőállásból.
+	A new game from the standard position; the game on the board keeps its moves.	Új játszma a szabványos kezdőállásból; a táblán lévő játszma megtartja a lépéseit.
+	PGN edited	PGN szerkesztve
+	Load	Betöltés
+	Show the game on the board again.	A táblán lévő játszma újbóli megjelenítése.
+	Load the PGN above on the board, with its variations and comments.	Betölti a fenti PGN-t a táblára, a változataival és megjegyzéseivel együtt.
 	Start (Home)	Eleje (Home)
 	That side can't be to move: the other king is in check.	Ez a fél nem lehet lépésen: a másik király sakkban áll.
 	The FEN couldn't be read: {e}	A FEN nem olvasható: {e}

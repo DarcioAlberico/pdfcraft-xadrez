@@ -2691,6 +2691,16 @@ animation effects	Off	Desactivados
 	Show this diagram on the page	Mostrar este diagrama en la página
 	Stalemate	Ahogado
 	Standard start position	Posición inicial estándar
+	The game on the board has moves. Put this position:	La partida del tablero tiene jugadas. Poner esta posición:
+	New game with this position	Nueva partida con esta posición
+	The game on the board keeps its moves.	La partida del tablero conserva sus jugadas.
+	Its moves are deleted (Undo brings them back).	Sus jugadas se borran (Deshacer las devuelve).
+	Start again from the standard position.	Empezar de nuevo desde la posición inicial estándar.
+	A new game from the standard position; the game on the board keeps its moves.	Una partida nueva desde la posición inicial estándar; la partida del tablero conserva sus jugadas.
+	PGN edited	PGN editado
+	Load	Cargar
+	Show the game on the board again.	Volver a mostrar la partida del tablero.
+	Load the PGN above on the board, with its variations and comments.	Carga el PGN de arriba en el tablero, con sus variantes y comentarios.
 	Start (Home)	Inicio (Inicio)
 	That side can't be to move: the other king is in check.	Ese bando no puede tener el turno: el otro rey está en jaque.
 	The FEN couldn't be read: {e}	No se pudo leer la FEN: {e}

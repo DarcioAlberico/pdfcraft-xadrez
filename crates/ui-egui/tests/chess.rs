@@ -2025,6 +2025,102 @@ fn a_position_set_up_over_a_game_with_moves_is_a_new_game() {
     assert_eq!(format!("{:?}", h.state().chess.tools.tool), "Navigate");
 }
 
+/// Plan A8 §7, V2b: nothing beside the notation deletes moves (W1); Enter in the FEN field with the
+/// FEN as shown does nothing, and a FEN typed over a game with moves asks first, New game being
+/// the choice Enter takes, so the game keeps its moves (W3).
+#[test]
+fn the_fen_field_never_takes_the_games_moves() {
+    use egui::{Key, Modifiers};
+    const KINGS: &str = "4k3/8/8/8/8/8/8/4K3 w - - 0 1";
+    let mut h = tall_window(1600.0);
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, FORKS, &[0]);
+    assert!(h.query_by_label("Delete the moves after this one").is_none(), "no delete button beside the notation");
+    h.get_by_label("FEN").click();
+    h.run_steps(3);
+    let fen = h.state().chess.board().fen_text.clone();
+    // The field, not the position's FEN shown elsewhere.
+    let field = || egui_kittest::kittest::By::new().role(egui::accesskit::Role::TextInput).value(&fen);
+    h.get(field()).focus();
+    h.run_steps(1);
+    h.key_press(Key::Enter);
+    h.run_steps(2);
+    assert_eq!(movetext(&h), FORKS_TEXT, "the FEN as shown reloads nothing");
+    assert!(h.query_by_label("New game with this position").is_none(), "nor asks");
+    h.get(field()).focus();
+    h.run_steps(1);
+    h.key_press_modifiers(Modifiers::COMMAND, Key::A);
+    h.get(field()).type_text(KINGS);
+    h.key_press(Key::Enter);
+    h.run_steps(2);
+    assert_eq!(movetext(&h), FORKS_TEXT, "asked first");
+    h.get_by_label("Replace this game");
+    if let Ok(dir) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
+        h.render().unwrap().save(std::path::Path::new(&dir).join("board-fen-choice.png")).unwrap();
+    }
+    // New game has the keyboard: Enter takes it.
+    h.key_press(Key::Enter);
+    h.run_steps(3);
+    let games = h.state().chess.games.collection();
+    assert_eq!((games.len(), games.active_index()), (2, 1));
+    assert_eq!(h.state().chess.board().game.fen(), KINGS);
+    assert_eq!(games.get(0).unwrap().board.game.movetext(), FORKS_TEXT, "the game keeps its moves");
+    assert!(h.query_by_label("New game with this position").is_none(), "answered");
+}
+
+/// Plan A8 §7, V2b (W4): the standard start position over a game with moves is a new game; on a
+/// game without moves it starts that game again.
+#[test]
+fn the_standard_start_over_moves_is_a_new_game() {
+    let mut h = tall_window(1600.0);
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, FORKS, &[0]);
+    h.get_by_label("FEN").click();
+    h.run_steps(3);
+    h.get_by_label("Standard start position").click();
+    h.run_steps(3);
+    let games = h.state().chess.games.collection();
+    assert_eq!((games.len(), games.active_index()), (2, 1));
+    assert_eq!(games.get(0).unwrap().board.game.movetext(), FORKS_TEXT, "the game keeps its moves");
+    assert_eq!(movetext(&h), "", "a new game from the start");
+    h.get_by_label("Standard start position").click();
+    h.run_steps(3);
+    assert_eq!(h.state().chess.games.collection().len(), 2, "no moves: no other game");
+}
+
+/// Plan A8 §7, V2b (W6): text typed in the PGN field outlives a step on the board and says it is
+/// edited; Load reads it keeping the move shown.
+#[test]
+fn typed_pgn_outlives_a_step_and_loads_in_place() {
+    use egui::{Key, Modifiers};
+    const COMMENTED: &str = "1. e4 {King's pawn} e5 2. Nf3 *";
+    let mut h = tall_window(1600.0);
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, "1. e4 e5 2. Nf3 *", &[0, 0]);
+    h.get_by_label("PGN").click();
+    h.run_steps(3);
+    assert!(h.query_by_label("PGN edited").is_none());
+    let pgn = h.state().chess.board().pgn_text.clone();
+    h.get_by_value(&pgn).click();
+    h.run_steps(1);
+    h.key_press_modifiers(Modifiers::COMMAND, Key::A);
+    h.get_by_value(&pgn).type_text(COMMENTED);
+    h.run_steps(2);
+    h.get_by_label("PGN edited");
+    // A step back on the board (1. e4 shown) leaves the field as typed.
+    h.state_mut().chess.board_mut().game.go_to(1);
+    h.run_steps(2);
+    assert_eq!(h.state().chess.board().pgn_text, COMMENTED);
+    h.get_by_label("Load").click();
+    h.run_steps(2);
+    assert_eq!(movetext(&h), "1. e4 {King's pawn} 1... e5 2. Nf3");
+    assert_eq!(shown(&h), "e4", "the move shown is kept");
+    assert!(h.query_by_label("PGN edited").is_none(), "loaded");
+}
+
 /// Delete and Backspace with the chess scope on act on the game only: not on the pages selected
 /// in the page grid, nor on the annotation selected on the page (§4.2). Delete takes a variation
 /// and says so with Undo; Backspace only goes back a move (plan A8 §7, V2a). The keys leave the input
