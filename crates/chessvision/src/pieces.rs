@@ -14,7 +14,8 @@
 //!
 //! Where the pieces of **diagrams** come from (redrawn on the page, in the editor and in every
 //! export), in order ([`find`]):
-//! 1. `$PDFCRAFT_CHESS_PIECES`, the path of a chess diagram font or of a folder of piece images;
+//! 1. `$PDFCRAFT_CHESS_PIECES`, the path of a chess diagram font or of a folder of piece images,
+//!    or the id of a set PdfCraft ships ([`bundled`], `chessnut`…) when no such path exists;
 //! 2. a chess diagram font (Chess Merida…) in the `fonts` folder beside the executable;
 //! 3. Chess Merida among the fonts installed on this machine;
 //! 4. a `pieces` folder of piece images beside the executable.
@@ -22,10 +23,12 @@
 //! The analysis **board** looks for the `pieces` folder first ([`find_for_board`]): a book's
 //! diagrams in its diagram font, the board to play on in the user's own pictures.
 //!
-//! Without either, [`PieceSet::geometric`] draws plain shapes and the caller says so.
+//! Without either, [`PieceSet::geometric`] draws plain shapes and the caller says so. The shipped
+//! sets are only used when named: choosing one by default is the piece picker's (plan HC2).
 
 use std::path::{Path, PathBuf};
 
+pub mod bundled;
 pub mod images;
 mod svg;
 
@@ -62,6 +65,8 @@ pub enum PieceError {
     MissingImage { dir: PathBuf, name: String },
     #[error("cannot use the piece image {path}: {reason}")]
     Image { path: PathBuf, reason: String },
+    #[error("the shipped piece set {id} cannot read {name}: {reason}")]
+    Bundled { id: &'static str, name: &'static str, reason: String },
 }
 
 /// Where a piece set came from, to tell the user.
@@ -71,6 +76,8 @@ pub enum PieceSource {
     Font { path: Option<PathBuf>, family: String },
     /// A folder of twelve piece images.
     Images { dir: PathBuf },
+    /// A set PdfCraft ships ([`bundled::SETS`]), by its id.
+    Bundled { id: &'static str },
     /// No font was found; plain shapes drawn in code.
     Geometric,
 }
@@ -151,11 +158,17 @@ pub fn from_font_file(path: &Path) -> Result<PieceSet, PieceError> {
     from_font_bytes(&bytes, hint).map(|(set, _)| set)
 }
 
-/// The user's piece set: `$PDFCRAFT_CHESS_PIECES` (a font or a folder of images), then a
-/// `pieces` folder beside the executable, then an installed Chess Merida, else the geometric
-/// set. Configured pieces that fail are reported, not silently replaced.
+/// The user's piece set: `$PDFCRAFT_CHESS_PIECES` (a font or a folder of images, or a shipped
+/// set's id), then a `pieces` folder beside the executable, then an installed Chess Merida, else
+/// the geometric set. Configured pieces that fail are reported, not silently replaced.
 pub fn find() -> (PieceSet, PieceSource, Option<PieceError>) {
     if let Some(path) = std::env::var_os("PDFCRAFT_CHESS_PIECES").map(PathBuf::from) {
+        // A path that exists wins over a shipped set of the same name.
+        if !path.exists()
+            && let Some(set) = path.to_str().and_then(bundled::by_id)
+        {
+            return from_bundled(set);
+        }
         if path.is_dir() {
             return from_folder(path);
         }
@@ -211,6 +224,15 @@ fn diagram_font_in(dir: &Path) -> Option<(PieceSet, PieceSource, Option<PieceErr
         let family = set.name.clone();
         Some((set, PieceSource::Font { path: Some(path), family }, None))
     })
+}
+
+/// A shipped set's pieces; one that cannot be read (a broken build) is reported, and plain pieces
+/// drawn instead.
+pub fn from_bundled(set: &bundled::Bundled) -> (PieceSet, PieceSource, Option<PieceError>) {
+    match set.load() {
+        Ok(pieces) => (pieces, PieceSource::Bundled { id: set.id }, None),
+        Err(e) => (PieceSet::geometric(), PieceSource::Geometric, Some(e)),
+    }
 }
 
 fn from_folder(dir: PathBuf) -> (PieceSet, PieceSource, Option<PieceError>) {

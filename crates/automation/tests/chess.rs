@@ -272,7 +272,7 @@ fn chess_replace_diagram_refuses_what_it_cannot_place() {
         (json!({ "index": 1, "placement": SICILIAN, "fen": "8/8/8/8/8/8/8/8 w - - 0 1" }), "give either fen or placement"),
         (json!({ "index": 1, "placement": "not a board" }), "placement"),
         (json!({ "index": 1, "placement": SICILIAN, "border": 2 }), "border"),
-        (json!({ "index": 1, "placement": SICILIAN, "pieces": "merida" }), "pieces"),
+        (json!({ "index": 1, "placement": SICILIAN, "pieces": "merida" }), "a set PdfCraft ships (chessnut"),
         (json!({ "index": 1, "placement": SICILIAN, "generation": generation + 1 }), ""),
     ] {
         let mut args = json!({ "doc": doc, "page": 1, "generation": generation });
@@ -283,6 +283,23 @@ fn chess_replace_diagram_refuses_what_it_cannot_place() {
         assert!(e.to_string().contains(needle), "{extra}: {e}");
     }
     assert_eq!(ok(&mut a, "doc_list", json!({}))["documents"][0]["dirty"], false, "nothing was changed");
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// A set PdfCraft ships is chosen by its id, whatever its case, and the result says it came from
+/// the shipped sets.
+#[test]
+fn chess_replace_diagram_draws_with_a_shipped_piece_set() {
+    let (base, root) = workdir("replace-shipped");
+    let (mut a, doc) = opened(&root);
+    let generation = ok(&mut a, "chess_detect", json!({ "doc": doc }))["generation"].as_u64().unwrap();
+    for id in ["chessnut", "Kiwen-Suwi", "shapes"] {
+        let args = json!({ "doc": doc, "page": 1, "index": 1, "generation": generation, "placement": SICILIAN, "pieces": id, "dry_run": true });
+        let dry = ok(&mut a, "chess_replace_diagram", args);
+        assert_eq!(dry["pieces"]["source"], "bundled", "{dry:#}");
+        assert_eq!(dry["pieces"]["family"].as_str(), Some(id.to_ascii_lowercase().as_str()), "{dry:#}");
+        assert!(dry["pieces"]["error"].is_null(), "{dry:#}");
+    }
     let _ = std::fs::remove_dir_all(base);
 }
 
