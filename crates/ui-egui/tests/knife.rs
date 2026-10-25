@@ -164,3 +164,94 @@ fn knife_choices_are_kept() {
     assert_eq!(KnifePrefs::from_json(&serde_json::json!({ "axis": 3, "pages": "some" })), Some(KnifePrefs::default()));
     assert_eq!(KnifePrefs::from_json(&serde_json::json!([])), None);
 }
+
+/// A spread with no text layer (lines drawn as bars, as a scan's would show) whose gap between
+/// blocks is off the middle: Split double pages finds it in the page's picture. (Fails with the
+/// picture not looked at: it would cut at the middle.)
+#[test]
+fn split_double_pages_finds_a_scans_gutter() {
+    // Bars of "text" from 20 to 140 pt and from 200 to 380 pt: the gap is 140-200, its middle 170.
+    let mut body = String::from(
+        "0 g
+",
+    );
+    for y in (20..280).step_by(10) {
+        body.push_str(&format!(
+            "20 {y} 120 3 re f 200 {y} 180 3 re f
+"
+        ));
+    }
+    let objs = [
+        "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 400 300] >>".to_string(),
+        "<< /Type /Page /Parent 2 0 R /Contents 4 0 R >>".to_string(),
+        format!(
+            "<< /Length {} >>
+stream
+{body}
+endstream",
+            body.len()
+        ),
+    ];
+    let mut out = b"%PDF-1.7
+"
+    .to_vec();
+    let mut offs = Vec::new();
+    for (i, o) in objs.iter().enumerate() {
+        offs.push(out.len());
+        out.extend_from_slice(
+            format!(
+                "{} 0 obj
+{o}
+endobj
+",
+                i + 1
+            )
+            .as_bytes(),
+        );
+    }
+    let x = out.len();
+    out.extend_from_slice(
+        format!(
+            "xref
+0 {}
+0000000000 65535 f 
+",
+            objs.len() + 1
+        )
+        .as_bytes(),
+    );
+    for o in offs {
+        out.extend_from_slice(
+            format!(
+                "{o:010} 00000 n 
+"
+            )
+            .as_bytes(),
+        );
+    }
+    out.extend_from_slice(
+        format!(
+            "trailer
+<< /Size {} /Root 1 0 R >>
+startxref
+{x}
+%%EOF
+",
+            objs.len() + 1
+        )
+        .as_bytes(),
+    );
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 900.0)).build_eframe(move |_cc| {
+        let mut app = PdfCraftApp::new();
+        app.set_option("language", "en").unwrap();
+        app.open_bytes("scan.pdf", None, out.clone()).unwrap();
+        app
+    });
+    h.run_steps(4);
+    assert!(h.state_mut().execute("page.split_spreads"));
+    h.run_steps(4);
+    let widths: Vec<f32> = pages(&h).iter().map(|p| p.0).collect();
+    assert_eq!(widths.len(), 2);
+    assert!((widths[0] - 170.0).abs() < 4.0, "cut in the gap, not at the middle: {widths:?}");
+}

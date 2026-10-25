@@ -158,6 +158,63 @@ pub fn gutter(glyphs: &[[f32; 4]], size: [f32; 2], axis: CutAxis) -> Option<f32>
     best.map(|(a, b)| (a + b) / 2.0)
 }
 
+/// Most changes between ink and paper a gutter's column may have going down, as a share of the
+/// image's height: text crosses a column many times, a margin or the spine's shadow hardly ever.
+const QUIET_COLUMN: f32 = 0.02;
+/// The scale (pixels per point) a page without text is rendered at to find its gutter.
+pub const GUTTER_SCALE: f32 = 0.3;
+
+/// The gutter of a page image with no text layer (a scan): the middle of the widest run of
+/// columns, in the middle 30–70% of the width, that ink seldom crosses going down. That is the
+/// margin between a spread's two pages whether the scan shows it white or as the spine's dark
+/// shadow, which a lightest-column rule would miss. `lum` is `w` × `h` gray values (0 dark),
+/// row-major. A share of the width; `None` without such a run.
+pub fn raster_gutter(lum: &[u8], w: usize, h: usize) -> Option<f32> {
+    if w < 8 || h < 8 || lum.len() < w.checked_mul(h)? {
+        return None;
+    }
+    let limit = ((h as f32 * QUIET_COLUMN) as usize).max(2);
+    let quiet = |x: usize| {
+        let mut changes = 0usize;
+        let mut prev: Option<bool> = None;
+        for y in 0..h {
+            let dark = lum.get(y.saturating_mul(w).saturating_add(x)).is_some_and(|v| *v < 128);
+            if prev.is_some_and(|p| p != dark) {
+                changes += 1;
+            }
+            prev = Some(dark);
+        }
+        changes <= limit
+    };
+    let (from, to) = ((w as f32 * GUTTER_SEARCH.0) as usize, ((w as f32 * GUTTER_SEARCH.1) as usize).min(w));
+    let least = ((w as f32 * GUTTER_MIN) as usize).max(1);
+    let mut best: Option<(usize, usize)> = None;
+    let mut start: Option<usize> = None;
+    for x in from..=to {
+        let q = x < to && quiet(x);
+        match (q, start) {
+            (true, None) => start = Some(x),
+            (false, Some(s)) => {
+                if x - s >= least && best.is_none_or(|(b0, b1)| x - s > b1 - b0) {
+                    best = Some((s, x));
+                }
+                start = None;
+            }
+            _ => {}
+        }
+    }
+    best.map(|(a, b)| (a + b) as f32 / 2.0 / w as f32)
+}
+
+/// Gray values (0 dark) of premultiplied RGBA pixels; a pixel left transparent is paper.
+pub fn luminance(rgba: &[u8]) -> Vec<u8> {
+    rgba.as_chunks::<4>()
+        .0
+        .iter()
+        .map(|&[r, g, b, a]| if a > 0 { ((u32::from(r) * 299 + u32::from(g) * 587 + u32::from(b) * 114) / 1000) as u8 } else { 255 })
+        .collect()
+}
+
 /// The share a line at `p` snaps to: the middle, or the gutter, when close enough on screen.
 fn snapped(xf: &PageXform, axis: CutAxis, p: Pos2, gutter: Option<f32>) -> f32 {
     let s = share(xf, axis, p);
@@ -278,7 +335,8 @@ impl crate::PdfCraftApp {
     }
 
     /// Split double pages: every page shown wider than tall (or the selected pages) is cut once,
-    /// upright, at the gap between its columns of text when its text is known, else at its middle.
+    /// upright, at the gap between its columns of text when its text is known, else at the gutter
+    /// of its picture ([`raster_gutter`], a scan), else at its middle.
     /// Returns how many pages were cut.
     pub fn split_spreads(&mut self) -> usize {
         let Some((i, id)) = self.active_ids() else { return 0 };
@@ -290,12 +348,30 @@ impl crate::PdfCraftApp {
         } else {
             (0..n).filter(|p| doc.info.pages.get(*p).is_some_and(|q| q.width > q.height)).collect()
         };
+        // Pages whose text is not at hand are rendered small to find their gutter.
+        let mut renderer: Option<pdfcraft_render::PageRenderer> = None;
+        let mut scan_gutter = |page: usize| {
+            let r = renderer.get_or_insert_with(|| {
+                let config = pdfcraft_render::RenderConfig { password: doc.password.as_deref().map(std::sync::Arc::from), ..Default::default() };
+                pdfcraft_render::PageRenderer::new(doc.bytes.clone(), config)
+            });
+            let out = r.render(pdfcraft_render::RenderRequest {
+                page,
+                kind: pdfcraft_render::RequestKind::Pixels,
+                scale: GUTTER_SCALE,
+                ..Default::default()
+            });
+            if out.error.is_some() {
+                return None;
+            }
+            raster_gutter(&luminance(&out.rgba), out.width as usize, out.height as usize)
+        };
         let cuts: Vec<Cut> = pages
             .iter()
             .filter_map(|&page| {
                 let p = doc.info.pages.get(page)?;
                 let glyphs: Vec<[f32; 4]> = view.page_text(page).map(|t| t.glyphs.iter().map(|g| g.rect).collect()).unwrap_or_default();
-                let share = gutter(&glyphs, [p.width, p.height], CutAxis::Vertical).unwrap_or(0.5);
+                let share = gutter(&glyphs, [p.width, p.height], CutAxis::Vertical).or_else(|| scan_gutter(page)).unwrap_or(0.5);
                 Some(Cut { page, axis: CutAxis::Vertical, at: vec![f64::from(share) * f64::from(p.width)] })
             })
             .collect();
@@ -355,6 +431,47 @@ pub(crate) fn panel(app: &mut crate::PdfCraftApp, ui: &mut egui::Ui) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A page picture: lines of text (rows of short dark dashes) in two blocks, from `a` to `b`
+    /// and from `c` to `d` of the width, with a dark band (the spine's shadow) from `s` to `t`.
+    fn spread(w: usize, h: usize, blocks: [(f32, f32); 2], shadow: Option<(f32, f32)>) -> Vec<u8> {
+        let mut px = vec![255u8; w * h];
+        for (from, to) in blocks {
+            for y in (10..h - 10).step_by(6) {
+                for x in (w as f32 * from) as usize..(w as f32 * to) as usize {
+                    if x % 7 != 0 {
+                        px[y * w + x] = 0;
+                        px[(y + 1) * w + x] = 0;
+                    }
+                }
+            }
+        }
+        if let Some((s, t)) = shadow {
+            for y in 0..h {
+                for x in (w as f32 * s) as usize..(w as f32 * t) as usize {
+                    px[y * w + x] = 40;
+                }
+            }
+        }
+        px
+    }
+
+    /// A scan's gutter is the widest run of columns text does not cross, white margin and dark
+    /// spine shadow alike; text across the middle has none; a lightest-column rule would land in
+    /// the margin beside the shadow. (Fails with columns judged by their darkness.)
+    #[test]
+    fn a_scans_gutter_is_found_without_text() {
+        let (w, h) = (200, 120);
+        let g = raster_gutter(&spread(w, h, [(0.05, 0.40), (0.60, 0.95)], None), w, h).unwrap();
+        assert!((g - 0.5).abs() < 0.01, "a white gutter: {g}");
+        let g = raster_gutter(&spread(w, h, [(0.05, 0.40), (0.60, 0.95)], Some((0.48, 0.52))), w, h).unwrap();
+        assert!((g - 0.5).abs() < 0.01, "a dark spine between white margins: {g}");
+        let g = raster_gutter(&spread(w, h, [(0.05, 0.35), (0.50, 0.95)], None), w, h).unwrap();
+        assert!((g - 0.425).abs() < 0.01, "off the middle: {g}");
+        assert_eq!(raster_gutter(&spread(w, h, [(0.05, 0.95), (0.0, 0.0)], None), w, h), None, "one column of text");
+        assert_eq!(raster_gutter(&[], 0, 0), None);
+        assert_eq!(raster_gutter(&[0; 10], 100, 100), None, "too short a buffer");
+    }
 
     /// Two columns of text with a gap from 45% to 55% of the width: the gutter is its middle.
     /// A page with no gap near the middle, or no text, has none.
