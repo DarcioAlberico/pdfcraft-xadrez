@@ -2827,6 +2827,30 @@ certificate	Version	الإصدار
 	Show this diagram on the page	إظهار هذا المخطط في الصفحة
 	Stalemate	تعادل بالجمود
 	Standard start position	وضع البداية القياسي
+	the board is empty	الرقعة فارغة
+	White's king is missing	الملك الأبيض مفقود
+	Black's king is missing	الملك الأسود مفقود
+	White has more than one king	للأبيض أكثر من ملك واحد
+	Black has more than one king	للأسود أكثر من ملك واحد
+	White has more than 8 pawns	للأبيض أكثر من 8 بيادق
+	Black has more than 8 pawns	للأسود أكثر من 8 بيادق
+	White has more than 16 pieces	للأبيض أكثر من 16 قطعة
+	Black has more than 16 pieces	للأسود أكثر من 16 قطعة
+	a pawn stands on the first or the eighth rank	يوجد بيدق في الصف الأول أو الثامن
+	White has more extra pieces than missing pawns to promote	للأبيض قطع إضافية أكثر من البيادق المفقودة التي يمكن ترقيتها
+	Black has more extra pieces than missing pawns to promote	للأسود قطع إضافية أكثر من البيادق المفقودة التي يمكن ترقيتها
+	the kings stand next to each other	الملكان متجاوران
+	White is in check, but it is Black's turn	الأبيض في حالة كش، لكن الدور للأسود
+	Black is in check, but it is White's turn	الأسود في حالة كش، لكن الدور للأبيض
+	White's king is in check from more than two pieces	الملك الأبيض في كش من أكثر من قطعتين
+	Black's king is in check from more than two pieces	الملك الأسود في كش من أكثر من قطعتين
+	White's king is in a double check no move could give	الملك الأبيض في كش مزدوج لا يمكن لأي نقلة أن تعطيه
+	Black's king is in a double check no move could give	الملك الأسود في كش مزدوج لا يمكن لأي نقلة أن تعطيه
+	White may castle, but its king or rook has left its square	يحق للأبيض التبييت، لكن ملكه أو رخه غادر مربعه
+	Black may castle, but its king or rook has left its square	يحق للأسود التبييت، لكن ملكه أو رخه غادر مربعه
+	the en-passant square does not fit the pawns	مربع الأخذ بالتجاوز لا يتوافق مع البيادق
+	Not a legal position: {reason}	ليس وضعًا قانونيًا: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	ليس وضعًا قانونيًا ({reason}): صحّحه في محرر المخطط للعب نقلات عليه.
 	The game on the board has moves. Put this position:	المباراة على الرقعة فيها نقلات. ضع هذه الوضعية:
 	New game with this position	مباراة جديدة بهذه الوضعية
 	The game on the board keeps its moves.	تحتفظ المباراة على الرقعة بنقلاتها.

@@ -2805,6 +2805,30 @@ chess side	Black	Đen
 	Show this diagram on the page	Hiện sơ đồ này trên trang
 	Stalemate	Hết nước đi (hòa pat)
 	Standard start position	Thế cờ ban đầu chuẩn
+	the board is empty	bàn cờ trống
+	White's king is missing	thiếu vua Trắng
+	Black's king is missing	thiếu vua Đen
+	White has more than one king	Trắng có nhiều hơn một vua
+	Black has more than one king	Đen có nhiều hơn một vua
+	White has more than 8 pawns	Trắng có hơn 8 tốt
+	Black has more than 8 pawns	Đen có hơn 8 tốt
+	White has more than 16 pieces	Trắng có hơn 16 quân
+	Black has more than 16 pieces	Đen có hơn 16 quân
+	a pawn stands on the first or the eighth rank	có tốt đứng ở hàng 1 hoặc hàng 8
+	White has more extra pieces than missing pawns to promote	Trắng có nhiều quân thừa hơn số tốt bị thiếu để phong cấp
+	Black has more extra pieces than missing pawns to promote	Đen có nhiều quân thừa hơn số tốt bị thiếu để phong cấp
+	the kings stand next to each other	hai vua đứng cạnh nhau
+	White is in check, but it is Black's turn	Trắng đang bị chiếu, nhưng đến lượt Đen
+	Black is in check, but it is White's turn	Đen đang bị chiếu, nhưng đến lượt Trắng
+	White's king is in check from more than two pieces	vua Trắng bị hơn hai quân chiếu
+	Black's king is in check from more than two pieces	vua Đen bị hơn hai quân chiếu
+	White's king is in a double check no move could give	vua Trắng bị chiếu đôi theo cách không nước đi nào tạo ra được
+	Black's king is in a double check no move could give	vua Đen bị chiếu đôi theo cách không nước đi nào tạo ra được
+	White may castle, but its king or rook has left its square	Trắng được nhập thành, nhưng vua hoặc xe đã rời ô của mình
+	Black may castle, but its king or rook has left its square	Đen được nhập thành, nhưng vua hoặc xe đã rời ô của mình
+	the en-passant square does not fit the pawns	ô bắt tốt qua đường không khớp với các tốt
+	Not a legal position: {reason}	Thế cờ không hợp lệ: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Thế cờ không hợp lệ ({reason}): hãy sửa trong trình chỉnh sửa sơ đồ để đi quân trên đó.
 	The game on the board has moves. Put this position:	Ván trên bàn cờ đã có nước đi. Đặt thế cờ này:
 	New game with this position	Ván mới với thế cờ này
 	The game on the board keeps its moves.	Ván trên bàn cờ giữ nguyên các nước đi.
