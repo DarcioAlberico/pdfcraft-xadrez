@@ -78,3 +78,51 @@ fn plain_shapes_and_auto_are_offered_and_a_stale_token_is_ignored() {
     press(&mut h, "Auto");
     assert_eq!(h.state().chess.board_piece_choice, PieceChoice::Auto);
 }
+
+/// A page of ours carrying one set of twelve squares, percent-encoded in a script's JSON.
+fn piece_page() -> String {
+    let svg = r#"<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><path d="M2 2 H8 V8 H2 Z" fill="black"/></svg>"#;
+    let value = format!("data:image/svg+xml,{}", svg.replace('<', "%3C").replace('>', "%3E").replace('"', "%22"));
+    let keys = ["wK", "wQ", "wR", "wB", "wN", "wP", "bK", "bQ", "bR", "bB", "bN", "bP"];
+    let entries: Vec<String> = keys.iter().map(|k| format!("\"{k}\": \"{value}\"")).collect();
+    format!("<html><script>var sets = {{\"squares\": {{{}}}}};</script></html>", entries.join(", "))
+}
+
+/// Plan HC3: the import buttons are offered; an import says what it wrote and that its licence
+/// is unknown, and a second one asks before replacing, Cancel keeping what is there.
+#[test]
+fn imported_sets_are_reported_and_replaced_only_when_asked() {
+    let dir = std::env::temp_dir().join(format!("pdfcraft-ui-piece-import-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let page = dir.join("course.html");
+    std::fs::write(&page, piece_page()).unwrap();
+    let into = dir.join("pieces");
+    let mut h = harness("");
+    assert!(h.query_by_label("Import a folder…").is_some() && h.query_by_label("Import from a web page…").is_some());
+    h.state_mut().import_pieces_into(page.clone(), into.clone(), false);
+    h.run_steps(3);
+    assert!(h.query_by_label_contains("Imported: squares. Their licence is not known").is_some());
+    assert!(into.join("squares/wK.svg").is_file());
+    let first = std::fs::metadata(into.join("squares/ORIGIN.txt")).unwrap().modified().unwrap();
+    // Again: nothing is written until Replace.
+    std::fs::write(into.join("squares/wK.svg"), "mine").unwrap();
+    h.state_mut().import_pieces_into(page.clone(), into.clone(), false);
+    h.run_steps(3);
+    assert!(h.query_by_label_contains("Already in the pieces folder: squares. Replace them?").is_some());
+    press(&mut h, "Cancel");
+    assert!(h.query_by_label_contains("Already in the pieces folder").is_none());
+    assert_eq!(std::fs::read_to_string(into.join("squares/wK.svg")).unwrap(), "mine");
+    h.state_mut().import_pieces_into(page.clone(), into.clone(), false);
+    h.run_steps(3);
+    press(&mut h, "Replace");
+    assert!(h.query_by_label_contains("Imported: squares.").is_some());
+    assert_ne!(std::fs::read_to_string(into.join("squares/wK.svg")).unwrap(), "mine");
+    assert!(std::fs::metadata(into.join("squares/ORIGIN.txt")).unwrap().modified().unwrap() >= first);
+    // A page with no sets says so.
+    std::fs::write(dir.join("empty.html"), "<html></html>").unwrap();
+    h.state_mut().import_pieces_into(dir.join("empty.html"), into, false);
+    h.run_steps(3);
+    assert!(h.query_by_label_contains("The pieces cannot be imported:").is_some());
+    let _ = std::fs::remove_dir_all(&dir);
+}

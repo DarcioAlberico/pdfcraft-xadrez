@@ -3033,3 +3033,14 @@ chess undo step	Clear drawings	usunięcie rysunków
 	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	Ustawiono PDFCRAFT_CHESS_PIECES i ma ona pierwszeństwo przed tym wyborem.
 	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Szachownica: szachownice analizy i nauki. Diagramy: rysowane od nowa na stronie, w edytorze i w eksportach.
 	These pieces cannot be used: {reason}	Nie można użyć tych bierek: {reason}
+	Import a folder…	Importuj folder…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	Kopiuje folder z dwunastoma obrazami bierek (wK do bP, SVG lub PNG) do folderu bierek.
+	Import from a web page…	Importuj ze strony internetowej…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	Przenosi do folderu bierek zestawy bierek, które zapisana strona internetowa ma w sobie.
+	Choose a folder of piece images	Wybierz folder z obrazami bierek
+	Choose a saved web page	Wybierz zapisaną stronę internetową
+	Web pages	Strony internetowe
+	There is no pieces folder beside the program to import into.	Obok programu nie ma folderu bierek, do którego można importować.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	Zaimportowano: {sets}. Ich licencja nie jest znana: używaj ich tylko do użytku osobistego.
+	Already in the pieces folder: {sets}. Replace them?	Już są w folderze bierek: {sets}. Zastąpić je?
+	The pieces cannot be imported: {reason}	Nie można zaimportować bierek: {reason}

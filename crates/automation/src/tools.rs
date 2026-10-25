@@ -1360,6 +1360,15 @@ pub fn tools() -> Vec<ToolDef> {
         t("chess_pieces", "Chess piece sets", "The piece sets that can be chosen on this machine, as Preferences ▸ Chess pieces lists them: automatic, the sets PdfCraft ships (with author and licence), diagram fonts in the fonts folder beside the executable and an installed Chess Merida, folders of piece images in the pieces folder beside the executable (a folder missing pieces says which), and plain shapes. Each has its preferences token and, where the chess tools take it, the value of their pieces argument. environment says whether PDFCRAFT_CHESS_PIECES is set, which takes precedence over any choice.")
             .ro()
             .with(schema(json!({}), &[])),
+        t("chess_pieces_import", "Import chess piece sets", "Preferences ▸ Chess pieces ▸ Import: copies a folder of twelve piece images (wK to bP, SVG or PNG) or the piece sets a saved web page carries inside it (data:image/svg+xml values keyed wK to bP, plain or base64; a page that fetches its pieces from the web has none) into into, one folder per set (default: the pieces folder beside the executable; needed with --root), each with an ORIGIN.txt saying where it came from and that its licence is unknown, for personal use only. Every piece is read first (an SVG may not point at another file) and nothing is written unless all read. A set of that name already there is replaced only with replace; otherwise the reply lists it under exists and imports nothing. Returns imported (name, folder and the preferences token of each).")
+            .with(schema(
+                json!({
+                    "from": path_arg(),
+                    "into": { "type": "string", "description": "The folder to import into (relative to --root when set)." },
+                    "replace": { "type": "boolean", "description": "Replace sets of the same name already in into (default false)." },
+                }),
+                &["from"],
+            )),
         t("chess_game", "Play through a chess game", "Chess ▸ Board without the interface: set up a game from fen (a position; the standard start without it) or pgn (its first game: tags, moves, variations, comments and glyphs; a FEN tag gives its start), play moves (SAN as books print it, or UCI such as e2e4 and e7e8q) after the end of its main line, then show the position at ply (moves from the start along the main line; default its end). An illegal move stops the moves there and is returned as stopped (the first one, in pgn or moves). Returns the position shown (fen, side_to_move, in_check, outcome: ongoing, checkmate, stalemate or fifty_moves, legal_moves in SAN), start_fen, ply, plies (the main line's length), movetext and the game as pgn. No document is read or changed.")
             .ro()
             .with(schema(

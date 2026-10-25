@@ -3063,3 +3063,14 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	Η PDFCRAFT_CHESS_PIECES έχει οριστεί και υπερισχύει αυτής της επιλογής.
 	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Σκακιέρα: οι σκακιέρες ανάλυσης και μελέτης. Διαγράμματα: σχεδιασμένα ξανά στη σελίδα, στον επεξεργαστή και στις εξαγωγές.
 	These pieces cannot be used: {reason}	Αυτά τα πιόνια δεν μπορούν να χρησιμοποιηθούν: {reason}
+	Import a folder…	Εισαγωγή φακέλου…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	Αντιγράφει έναν φάκελο με δώδεκα εικόνες πεσσών (wK έως bP, SVG ή PNG) στον φάκελο πεσσών.
+	Import from a web page…	Εισαγωγή από ιστοσελίδα…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	Παίρνει τα σετ πεσσών που περιέχει μια αποθηκευμένη ιστοσελίδα στον φάκελο πεσσών.
+	Choose a folder of piece images	Επιλέξτε φάκελο με εικόνες πεσσών
+	Choose a saved web page	Επιλέξτε αποθηκευμένη ιστοσελίδα
+	Web pages	Ιστοσελίδες
+	There is no pieces folder beside the program to import into.	Δεν υπάρχει φάκελος πεσσών δίπλα στο πρόγραμμα για εισαγωγή.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	Εισήχθησαν: {sets}. Η άδειά τους δεν είναι γνωστή: χρησιμοποιήστε τα μόνο για προσωπική χρήση.
+	Already in the pieces folder: {sets}. Replace them?	Υπάρχουν ήδη στον φάκελο πεσσών: {sets}. Να αντικατασταθούν;
+	The pieces cannot be imported: {reason}	Οι πεσσοί δεν μπορούν να εισαχθούν: {reason}

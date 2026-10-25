@@ -3367,3 +3367,14 @@ chess undo step	Clear drawings	مسح الرسوم
 	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	المتغير PDFCRAFT_CHESS_PIECES معيَّن وله الأولوية على هذا الاختيار.
 	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	الرقعة: رقعتا التحليل والدراسة. المخططات: تُعاد رسمها على الصفحة وفي المحرر وفي التصدير.
 	These pieces cannot be used: {reason}	لا يمكن استخدام هذه القطع: {reason}
+	Import a folder…	استيراد مجلد…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	انسخ مجلدًا من اثنتي عشرة صورة للقطع (من wK إلى bP، بصيغة SVG أو PNG) إلى مجلد القطع.
+	Import from a web page…	استيراد من صفحة ويب…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	خذ مجموعات القطع التي تحملها صفحة ويب محفوظة داخلها إلى مجلد القطع.
+	Choose a folder of piece images	اختر مجلدًا لصور القطع
+	Choose a saved web page	اختر صفحة ويب محفوظة
+	Web pages	صفحات الويب
+	There is no pieces folder beside the program to import into.	لا يوجد مجلد قطع بجانب البرنامج للاستيراد إليه.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	تم الاستيراد: {sets}. ترخيصها غير معروف: استخدمها للاستخدام الشخصي فقط.
+	Already in the pieces folder: {sets}. Replace them?	موجودة بالفعل في مجلد القطع: {sets}. هل تريد استبدالها؟
+	The pieces cannot be imported: {reason}	تعذر استيراد القطع: {reason}

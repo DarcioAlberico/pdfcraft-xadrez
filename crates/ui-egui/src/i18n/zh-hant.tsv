@@ -3007,3 +3007,14 @@ chess undo step	Clear drawings	清除標記
 	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	已設定 PDFCRAFT_CHESS_PIECES，它優先於此選擇。
 	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	棋盤：分析棋盤和研究棋盤。局面圖：在頁面、編輯器和匯出中重新繪製的圖。
 	These pieces cannot be used: {reason}	無法使用這些棋子：{reason}
+	Import a folder…	匯入資料夾…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	將包含十二張棋子圖片（wK 至 bP，SVG 或 PNG）的資料夾複製到棋子資料夾。
+	Import from a web page…	從網頁匯入…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	將已儲存網頁中自帶的棋子套組放入棋子資料夾。
+	Choose a folder of piece images	選擇棋子圖片資料夾
+	Choose a saved web page	選擇已儲存的網頁
+	Web pages	網頁
+	There is no pieces folder beside the program to import into.	程式旁邊沒有可匯入的棋子資料夾。
+	Imported: {sets}. Their licence is not known: use them for personal use only.	已匯入：{sets}。其授權不明：僅供個人使用。
+	Already in the pieces folder: {sets}. Replace them?	棋子資料夾中已有：{sets}。要取代嗎？
+	The pieces cannot be imported: {reason}	無法匯入棋子：{reason}

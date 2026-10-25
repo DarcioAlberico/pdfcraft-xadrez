@@ -3091,3 +3091,14 @@ chess undo step	Clear drawings	l'effacement des dessins
 	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES est définie et l'emporte sur ce choix.
 	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Échiquier : les échiquiers d'analyse et d'étude. Diagrammes : redessinés sur la page, dans l'éditeur et dans les exportations.
 	These pieces cannot be used: {reason}	Impossible d'utiliser ces pièces : {reason}
+	Import a folder…	Importer un dossier…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	Copie un dossier de douze images de pièces (wK à bP, SVG ou PNG) dans le dossier des pièces.
+	Import from a web page…	Importer depuis une page web…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	Prend les jeux de pièces qu'une page web enregistrée contient pour les mettre dans le dossier des pièces.
+	Choose a folder of piece images	Choisir un dossier d'images de pièces
+	Choose a saved web page	Choisir une page web enregistrée
+	Web pages	Pages web
+	There is no pieces folder beside the program to import into.	Il n'y a pas de dossier de pièces à côté du programme où importer.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	Importés : {sets}. Leur licence n'est pas connue : réservez-les à un usage personnel.
+	Already in the pieces folder: {sets}. Replace them?	Déjà dans le dossier des pièces : {sets}. Les remplacer ?
+	The pieces cannot be imported: {reason}	Les pièces ne peuvent pas être importées : {reason}

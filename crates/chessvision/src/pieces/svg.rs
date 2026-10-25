@@ -17,7 +17,7 @@ use usvg::tiny_skia_path::{PathSegment, Transform};
 const MAX_SEGMENTS: usize = 20_000;
 
 /// Largest SVG read as a piece, in bytes (a set's pieces are a few kilobytes each).
-const MAX_SVG_BYTES: usize = 8 << 20;
+pub(crate) const MAX_SVG_BYTES: usize = 8 << 20;
 
 /// Most XML nodes read from one piece.
 const MAX_NODES: u32 = 200_000;

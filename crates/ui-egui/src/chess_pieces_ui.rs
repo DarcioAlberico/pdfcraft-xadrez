@@ -3,10 +3,12 @@
 //! (`chessvision::pieces::choice`). A pick is applied at once and kept with the preferences.
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 use egui::{Color32, Rect, Sense, Stroke, TextureHandle, vec2};
 use pdfcraft_engine::chess::pdfcraft_chess::placement::{Color, Piece, PieceKind};
 use pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::{self, Candidate, CandidateKind, PieceChoice, Role};
+use pdfcraft_engine::chess::pdfcraft_chessvision::pieces::{self, import};
 
 use crate::PdfCraftApp;
 use crate::theme::{self, Tokens};
@@ -26,11 +28,15 @@ pub(crate) struct PiecePicker {
     /// Each set's twelve pieces as one picture (`None` when the set cannot be drawn), by
     /// [`preview_key`].
     previews: HashMap<String, Option<TextureHandle>>,
+    /// What the last import did, shown under its buttons.
+    pub(crate) import_note: Option<String>,
+    /// A page or folder whose sets are already in the pieces folder, waiting for Replace.
+    pub(crate) import_pending: Option<(PathBuf, PathBuf)>,
 }
 
 impl PiecePicker {
     fn new() -> PiecePicker {
-        PiecePicker { role: Role::Board, candidates: choice::candidates(), previews: HashMap::new() }
+        PiecePicker { role: Role::Board, candidates: choice::candidates(), previews: HashMap::new(), import_note: None, import_pending: None }
     }
 }
 
@@ -89,9 +95,127 @@ pub(crate) fn preferences_section(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &
         let text = crate::i18n::fmt(tl!("These pieces cannot be used: {reason}"), &[("reason", reason)]);
         ui.label(egui::RichText::new(text).small().color(t.text_muted));
     }
+    let action = import_row(ui, t, &picker);
     app.chess.piece_picker = Some(picker);
     if let Some(choice) = pick {
         app.set_piece_choice(role, choice);
+    }
+    match action {
+        Some(ImportAction::Folder) => app.choose_pieces_to_import(true),
+        Some(ImportAction::Page) => app.choose_pieces_to_import(false),
+        Some(ImportAction::Replace) => {
+            if let Some((from, into)) = app.chess.piece_picker.as_mut().and_then(|p| p.import_pending.take()) {
+                app.import_pieces_into(from, into, true);
+            }
+        }
+        Some(ImportAction::Keep) => {
+            if let Some(p) = app.chess.piece_picker.as_mut() {
+                p.import_pending = None;
+                p.import_note = None;
+            }
+        }
+        None => {}
+    }
+}
+
+/// What the import row asked for.
+enum ImportAction {
+    Folder,
+    Page,
+    Replace,
+    Keep,
+}
+
+/// Import a folder or a saved web page's sets into the pieces folder (plan HC3), and what the
+/// last import did; with sets already there, Replace or Cancel.
+fn import_row(ui: &mut egui::Ui, t: &Tokens, picker: &PiecePicker) -> Option<ImportAction> {
+    if cfg!(target_arch = "wasm32") {
+        return None;
+    }
+    let mut action = None;
+    ui.horizontal_wrapped(|ui| {
+        if ui
+            .button(tl!("Import a folder…"))
+            .on_hover_text(tl!("Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder."))
+            .clicked()
+        {
+            action = Some(ImportAction::Folder);
+        }
+        if ui
+            .button(tl!("Import from a web page…"))
+            .on_hover_text(tl!("Take the piece sets a saved web page carries inside it into the pieces folder."))
+            .clicked()
+        {
+            action = Some(ImportAction::Page);
+        }
+    });
+    if let Some(note) = &picker.import_note {
+        ui.label(egui::RichText::new(note).small().color(t.text_muted));
+    }
+    if picker.import_pending.is_some() {
+        ui.horizontal(|ui| {
+            if ui.button(tl!("Replace")).clicked() {
+                action = Some(ImportAction::Replace);
+            }
+            if ui.button(tl!("Cancel")).clicked() {
+                action = Some(ImportAction::Keep);
+            }
+        });
+    }
+    action
+}
+
+impl PdfCraftApp {
+    /// Ask for a folder of piece images (`folder`) or a saved web page, then import its sets.
+    pub(crate) fn choose_pieces_to_import(&mut self, folder: bool) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let then = |app: &mut PdfCraftApp, path: PathBuf| app.import_pieces(path);
+            if folder {
+                let dialog = rfd::AsyncFileDialog::new().set_title(tl!("Choose a folder of piece images"));
+                self.ask_one(crate::pickers::Ask::Folder(dialog), None, then);
+            } else {
+                let dialog = rfd::AsyncFileDialog::new().set_title(tl!("Choose a saved web page")).add_filter(tl!("Web pages"), &["html", "htm"]);
+                self.ask_one(crate::pickers::Ask::File(dialog), None, then);
+            }
+        }
+        #[cfg(target_arch = "wasm32")]
+        let _ = folder;
+    }
+
+    /// Import the sets in `from` into the pieces folder beside the program.
+    pub fn import_pieces(&mut self, from: PathBuf) {
+        match pieces::pieces_folder() {
+            Some(into) => self.import_pieces_into(from, into, false),
+            None => self.notify(tl!("There is no pieces folder beside the program to import into.")),
+        }
+    }
+
+    /// Import the sets in `from` into `into`, replacing sets of the same name only when
+    /// `replace`; what happened is shown under the import buttons, and the grid lists the sets.
+    pub fn import_pieces_into(&mut self, from: PathBuf, into: PathBuf, replace: bool) {
+        let result = import::import(&from, &into, replace);
+        let picker = self.chess.piece_picker.get_or_insert_with(PiecePicker::new);
+        let names = |dirs: &mut dyn Iterator<Item = &std::path::Path>| {
+            dirs.filter_map(|d| d.file_name()).map(|n| n.to_string_lossy().into_owned()).collect::<Vec<_>>().join(", ")
+        };
+        match result {
+            Ok(sets) => {
+                let list = names(&mut sets.iter().map(|s| s.dir.as_path()));
+                *picker = PiecePicker { role: picker.role, ..PiecePicker::new() };
+                picker.import_note =
+                    Some(crate::i18n::fmt(tl!("Imported: {sets}. Their licence is not known: use them for personal use only."), &[("sets", &list)]));
+            }
+            Err(import::ImportError::Exists(dirs)) => {
+                let list = names(&mut dirs.iter().map(PathBuf::as_path));
+                picker.import_note = Some(crate::i18n::fmt(tl!("Already in the pieces folder: {sets}. Replace them?"), &[("sets", &list)]));
+                picker.import_pending = Some((from, into));
+            }
+            Err(e) => {
+                picker.import_pending = None;
+                picker.import_note = Some(crate::i18n::fmt(tl!("The pieces cannot be imported: {reason}"), &[("reason", &e.to_string())]));
+            }
+        }
     }
 }
 

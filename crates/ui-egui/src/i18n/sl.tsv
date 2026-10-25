@@ -3096,3 +3096,14 @@ chess undo step	Clear drawings	odstranjevanje risb
 	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES je nastavljena in ima prednost pred to izbiro.
 	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Šahovnica: šahovnici za analizo in študij. Diagrami: na novo narisani na strani, v urejevalniku in v izvozih.
 	These pieces cannot be used: {reason}	Teh figur ni mogoče uporabiti: {reason}
+	Import a folder…	Uvozi mapo…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	Kopira mapo z dvanajstimi slikami figur (wK do bP, SVG ali PNG) v mapo figur.
+	Import from a web page…	Uvozi s spletne strani…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	Prenese nabore figur, ki jih shranjena spletna stran nosi v sebi, v mapo figur.
+	Choose a folder of piece images	Izberite mapo s slikami figur
+	Choose a saved web page	Izberite shranjeno spletno stran
+	Web pages	Spletne strani
+	There is no pieces folder beside the program to import into.	Ob programu ni mape figur, v katero bi uvozili.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	Uvoženo: {sets}. Njihova licenca ni znana: uporabljajte jih le za osebno rabo.
+	Already in the pieces folder: {sets}. Replace them?	Že v mapi figur: {sets}. Jih zamenjam?
+	The pieces cannot be imported: {reason}	Figur ni mogoče uvoziti: {reason}

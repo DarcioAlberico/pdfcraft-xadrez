@@ -743,6 +743,35 @@ impl Automation {
         Ok(json!({ "sets": sets, "environment": choice::environment_overrides() }))
     }
 
+    /// Import piece sets from a folder or a saved web page into a pieces folder (plan HC3).
+    pub(crate) fn chess_pieces_import(&self, a: &Args) -> Result<Value> {
+        use pieces::import::{self, ImportError};
+        let from = self.resolve(a.str("from")?, false)?;
+        let into = match a.opt_str("into")? {
+            Some(p) => self.resolve(p, true)?,
+            None if self.root.is_some() => return Err(failed("into is needed when --root is set")),
+            None => pieces::pieces_folder().ok_or_else(|| failed("no pieces folder beside the executable"))?,
+        };
+        let replace = a.opt_bool("replace")?.unwrap_or(false);
+        match import::import(&from, &into, replace) {
+            Ok(sets) => {
+                let sets: Vec<Value> = sets
+                    .into_iter()
+                    .map(
+                        |s| json!({ "name": s.name, "folder": s.dir.to_string_lossy(), "token": pieces::choice::PieceChoice::Folder(s.dir).token() }),
+                    )
+                    .collect();
+                Ok(json!({ "imported": sets, "licence": "unknown: for personal use only" }))
+            }
+            Err(ImportError::Exists(dirs)) => Ok(json!({
+                "imported": [],
+                "exists": dirs.iter().map(|d| d.to_string_lossy().into_owned()).collect::<Vec<_>>(),
+                "refused": "a set of that name is already there; pass replace to replace it",
+            })),
+            Err(e) => Err(failed(e.to_string())),
+        }
+    }
+
     pub(crate) fn chess_status(&self, a: &Args) -> Result<Value> {
         let dir = self.models_dir(a)?;
         let models = chess::models(dir.as_deref());

@@ -3093,3 +3093,14 @@ chess undo step	Clear drawings	描画の消去
 	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES が設定されており、この選択より優先されます。
 	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	盤面: 解析盤と研究盤。図: ページ上、エディター、書き出しで描き直される図。
 	These pieces cannot be used: {reason}	この駒は使用できません: {reason}
+	Import a folder…	フォルダーを読み込む…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	駒の画像12枚（wK〜bP、SVGまたはPNG）のフォルダーを駒フォルダーにコピーします。
+	Import from a web page…	Webページから読み込む…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	保存したWebページに含まれる駒セットを駒フォルダーに取り込みます。
+	Choose a folder of piece images	駒の画像のフォルダーを選択
+	Choose a saved web page	保存したWebページを選択
+	Web pages	Webページ
+	There is no pieces folder beside the program to import into.	読み込み先となる駒フォルダーがプログラムの横にありません。
+	Imported: {sets}. Their licence is not known: use them for personal use only.	読み込みました: {sets}。ライセンスが不明なため、個人的な利用に限ってください。
+	Already in the pieces folder: {sets}. Replace them?	駒フォルダーにすでにあります: {sets}。置き換えますか？
+	The pieces cannot be imported: {reason}	駒を読み込めません: {reason}
