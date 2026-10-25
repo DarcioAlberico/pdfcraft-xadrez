@@ -6,7 +6,9 @@
 //! it. Nothing is erased, so a part's content outside it is still in the file (B3 trims it).
 //! The copies share the original's content, fonts and images, and are made without the page's
 //! annotations; every annotation then goes to the part holding its centre (a pop-up goes with its
-//! parent), so a form field never has a widget on two pages. Links, bookmarks and destinations
+//! parent), so a form field never has a widget on two pages. An annotation crossing a cut is
+//! also copied onto each other part it crosses (with its pop-up), so a highlight over the gutter
+//! shows on both halves. Links, bookmarks and destinations
 //! that pointed at the page go to the part holding the point they open (a `/Fit` one, with no
 //! point, stays on the first part).
 
@@ -18,6 +20,8 @@ use crate::{OrganizeError, duplicate_pages, page_boxes, page_rotation, walk};
 pub const MAX_PARTS: usize = 16;
 /// Most pages a document may have after a cut.
 pub const MAX_PAGES_AFTER_CUT: usize = 100_000;
+/// Most annotation copies one cut makes (an annotation crossing it is copied onto each part).
+pub const MAX_ANNOTATION_COPIES: usize = 10_000;
 /// Least distance, in points, between two cuts and between a cut and the page's edge.
 pub const MIN_PART: f64 = 1.0;
 
@@ -235,6 +239,43 @@ pub fn cut_pages(doc: &mut Document, cuts: &[Cut], right_to_left: bool) -> Resul
                 if let Some(list) = given.get_mut(k) {
                     list.push(a.clone());
                 }
+            }
+        }
+        // An annotation crossing a cut shows on every part it crosses: the part holding its centre
+        // keeps it, each other one gets a copy, with a copy of its pop-up. A form field's widget is
+        // not copied (a field has its widgets where it is filled in), nor is a pop-up by itself.
+        let mut made = 0usize;
+        for a in &annots {
+            let Some(ar) = a.as_ref() else { continue };
+            let Some(d) = doc.get(ar).as_dict().cloned() else { continue };
+            if matches!(d.name(b"Subtype"), Some(b"Popup" | b"Widget")) {
+                continue;
+            }
+            let Some(rect) = rect_of(doc, d.get(b"Rect")) else { continue };
+            let home = owner(doc, a);
+            for (k, part) in parts.iter().enumerate() {
+                let crosses = rect[0] < part[2] && rect[2] > part[0] && rect[1] < part[3] && rect[3] > part[1];
+                let (Some(&target), Some(list)) = (part_refs.get(k), given.get_mut(k)) else { continue };
+                if k == home || !crosses || made >= MAX_ANNOTATION_COPIES {
+                    continue;
+                }
+                let mut copy = d.clone();
+                copy.set(b"P".to_vec(), Object::Ref(target));
+                // The structure tree names the original; a copy has no place in it.
+                copy.remove(b"StructParent");
+                copy.remove(b"Popup");
+                let copied = doc.add(Object::Dict(copy));
+                if let Some(popup) = d.reference(b"Popup")
+                    && let Some(mut p) = doc.get(popup).as_dict().cloned()
+                {
+                    p.set(b"Parent".to_vec(), Object::Ref(copied));
+                    p.set(b"P".to_vec(), Object::Ref(target));
+                    let pr = doc.add(Object::Dict(p));
+                    doc.update_dict(copied, |c| c.set(b"Popup".to_vec(), Object::Ref(pr)))?;
+                    list.push(Object::Ref(pr));
+                }
+                list.push(Object::Ref(copied));
+                made += 1;
             }
         }
         for (k, (r, list)) in part_refs.iter().zip(given).enumerate() {
