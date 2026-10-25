@@ -3020,3 +3020,15 @@ chess undo step	Clear drawings	清除標記
 	The pieces cannot be imported: {reason}	無法匯入棋子：{reason}
 	round {round}	第 {round} 輪
 	Result: {result}	結果：{result}
+	Board theme	棋盤主題
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	用於您下棋和研究的棋盤。頁面上和匯出中的棋圖保持原有顏色。
+	Brown	棕色
+	Light wood	淺色木紋
+	Walnut	胡桃木
+	Ice blue	冰藍
+	Olive	橄欖綠
+	Grey	灰色
+	Graphite	石墨
+	Sand	沙色
+	Coral	珊瑚色
+	High contrast	高對比

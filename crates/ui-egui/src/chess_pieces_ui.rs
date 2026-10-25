@@ -17,9 +17,6 @@ use crate::widgets;
 /// A tile's side and its squares'.
 const TILE: f32 = 96.0;
 const SQUARE: f32 = 26.0;
-/// The squares' colours (the boards' brown).
-const LIGHT: Color32 = Color32::from_rgb(240, 217, 181);
-const DARK: Color32 = Color32::from_rgb(181, 136, 99);
 
 /// The picker while Preferences is open: the sets found and their pictures, drawn one per frame.
 pub(crate) struct PiecePicker {
@@ -251,11 +248,13 @@ fn tile(ui: &mut egui::Ui, t: &Tokens, c: &Candidate, picture: Option<&TextureHa
     let ring = if selected || response.has_focus() { Stroke::new(2.0, t.accent) } else { Stroke::new(1.0, t.border) };
     painter.rect_stroke(rect.shrink(1.0), f32::from(t.radius), ring, egui::StrokeKind::Inside);
     let top = rect.center_top() + vec2(-SQUARE, 8.0);
+    let palette = crate::chess_theme::current(ui.ctx());
+    let (light, dark) = (crate::chess_theme::rgb(palette.light), crate::chess_theme::rgb(palette.dark));
     let cells = [
-        (0.0, 0.0, LIGHT, Piece { color: Color::White, kind: PieceKind::King }),
-        (1.0, 0.0, DARK, Piece { color: Color::Black, kind: PieceKind::Knight }),
-        (0.0, 1.0, DARK, Piece { color: Color::White, kind: PieceKind::Knight }),
-        (1.0, 1.0, LIGHT, Piece { color: Color::Black, kind: PieceKind::King }),
+        (0.0, 0.0, light, Piece { color: Color::White, kind: PieceKind::King }),
+        (1.0, 0.0, dark, Piece { color: Color::Black, kind: PieceKind::Knight }),
+        (0.0, 1.0, dark, Piece { color: Color::White, kind: PieceKind::Knight }),
+        (1.0, 1.0, light, Piece { color: Color::Black, kind: PieceKind::King }),
     ];
     for (x, y, square, piece) in cells {
         let cell = Rect::from_min_size(top + vec2(x * SQUARE, y * SQUARE), vec2(SQUARE, SQUARE));

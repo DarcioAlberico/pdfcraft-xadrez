@@ -3105,3 +3105,15 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	The pieces cannot be imported: {reason}	Die Figuren können nicht importiert werden: {reason}
 	round {round}	Runde {round}
 	Result: {result}	Ergebnis: {result}
+	Board theme	Brettfarben
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	Für die Bretter, auf denen Sie spielen und üben. Diagramme auf der Seite und in Exporten behalten ihre Farben.
+	Brown	Braun
+	Light wood	Helles Holz
+	Walnut	Nussbaum
+	Ice blue	Eisblau
+	Olive	Oliv
+	Grey	Grau
+	Graphite	Graphit
+	Sand	Sand
+	Coral	Koralle
+	High contrast	Hoher Kontrast

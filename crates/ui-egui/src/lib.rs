@@ -45,6 +45,7 @@ mod chess_models;
 mod chess_ocr_area;
 mod chess_pieces_ui;
 mod chess_samples;
+mod chess_theme;
 pub use chess_ocr_area::AreaQuery;
 mod chess_source;
 mod chess_study_ui;
@@ -2372,6 +2373,8 @@ impl PdfCraftApp {
         // The piece sets chosen in Preferences (HC2).
         v["chess_pieces_board"] = serde_json::Value::String(self.chess.board_piece_choice.token());
         v["chess_pieces_diagrams"] = serde_json::Value::String(self.chess.diagram_piece_choice.token());
+        // The boards' theme (HC4).
+        v["chess_board_theme"] = serde_json::Value::String(self.board_theme().id.to_owned());
         v.to_string()
     }
 
@@ -2418,6 +2421,9 @@ impl PdfCraftApp {
         }
         if let Some(choice) = v["chess_pieces_diagrams"].as_str().and_then(PieceChoice::from_token) {
             self.chess.diagram_piece_choice = choice;
+        }
+        if let Some(theme) = v["chess_board_theme"].as_str().and_then(pdfcraft_engine::chess::pdfcraft_chess::theme::by_id) {
+            self.set_board_theme(theme);
         }
         self.pinned.restore(&v["pinned_folders"]);
         if let Ok(preference) = serde_json::from_value::<ThemePreference>(v["theme"].clone()) {
@@ -2575,6 +2581,13 @@ impl PdfCraftApp {
                     format!("language must be one of {}", codes.join(", "))
                 })?;
                 self.language = language.to_string();
+            }
+            ("board-theme", _) => {
+                let theme = pdfcraft_engine::chess::pdfcraft_chess::theme::by_id(value).ok_or_else(|| {
+                    let ids: Vec<&str> = pdfcraft_engine::chess::pdfcraft_chess::theme::THEMES.iter().map(|t| t.id).collect();
+                    format!("board-theme must be one of {}", ids.join(", "))
+                })?;
+                self.set_board_theme(theme);
             }
             ("theme", _) => {
                 let preference = match value {
@@ -3089,6 +3102,7 @@ impl eframe::App for PdfCraftApp {
 
     fn logic(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         self.ctx = Some(ctx.clone());
+        chess_theme::set(ctx, self.board_theme());
         #[cfg(not(target_arch = "wasm32"))]
         {
             self.window_state.repair(ctx);

@@ -3106,3 +3106,15 @@ chess undo step	Clear drawings	描画の消去
 	The pieces cannot be imported: {reason}	駒を読み込めません: {reason}
 	round {round}	第{round}ラウンド
 	Result: {result}	結果: {result}
+	Board theme	盤のテーマ
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	対局や研究に使う盤に適用します。ページ上やエクスポートの図は元の色のままです。
+	Brown	ブラウン
+	Light wood	明るい木目
+	Walnut	ウォールナット
+	Ice blue	アイスブルー
+	Olive	オリーブ
+	Grey	グレー
+	Graphite	グラファイト
+	Sand	サンド
+	Coral	コーラル
+	High contrast	ハイコントラスト

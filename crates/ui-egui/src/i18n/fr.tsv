@@ -3104,3 +3104,15 @@ chess undo step	Clear drawings	l'effacement des dessins
 	The pieces cannot be imported: {reason}	Les pièces ne peuvent pas être importées : {reason}
 	round {round}	ronde {round}
 	Result: {result}	Résultat : {result}
+	Board theme	Thème de l'échiquier
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	Pour les échiquiers où vous jouez et étudiez. Les diagrammes de la page et des exports gardent leurs couleurs.
+	Brown	Brun
+	Light wood	Bois clair
+	Walnut	Noyer
+	Ice blue	Bleu glacier
+	Olive	Olive
+	Grey	Gris
+	Graphite	Graphite
+	Sand	Sable
+	Coral	Corail
+	High contrast	Contraste élevé

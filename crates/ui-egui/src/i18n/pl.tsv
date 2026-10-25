@@ -3046,3 +3046,15 @@ chess undo step	Clear drawings	usunięcie rysunków
 	The pieces cannot be imported: {reason}	Nie można zaimportować bierek: {reason}
 	round {round}	runda {round}
 	Result: {result}	Wynik: {result}
+	Board theme	Motyw szachownicy
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	Dla szachownic, na których grasz i się uczysz. Diagramy na stronie i w eksportach zachowują swoje kolory.
+	Brown	Brązowy
+	Light wood	Jasne drewno
+	Walnut	Orzech
+	Ice blue	Lodowy błękit
+	Olive	Oliwkowy
+	Grey	Szary
+	Graphite	Grafit
+	Sand	Piaskowy
+	Coral	Koralowy
+	High contrast	Wysoki kontrast

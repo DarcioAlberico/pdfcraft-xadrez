@@ -287,13 +287,13 @@ impl StudyState {
 
 /// The set-up board's image, redrawn when the pieces or the view change.
 fn setup_texture(ctx: &egui::Context, setup: &mut Setup, flipped: bool, pieces: &PieceSet) -> Option<TextureHandle> {
-    let key = format!("{}|{flipped}|{}", setup.fen(), crate::chess_editor::pieces_generation());
+    let key = format!("{}|{flipped}|{}|{}", setup.fen(), crate::chess_editor::pieces_generation(), crate::chess_theme::current(ctx).id);
     if let Some((k, tex)) = &setup.texture
         && *k == key
     {
         return Some(tex.clone());
     }
-    let style = BoardStyle { border: 0.0, coordinates: true, flipped, ..BoardStyle::default() };
+    let style = crate::chess_theme::style(ctx, BoardStyle { border: 0.0, coordinates: true, flipped, ..BoardStyle::default() });
     match pdfcraft_engine::chess::office::diagram_rgba(&setup.position.placement, pieces, &style, SETUP_PX) {
         Ok((w, h, rgba)) => {
             let (w, h) = (usize::try_from(w).ok()?, usize::try_from(h).ok()?);

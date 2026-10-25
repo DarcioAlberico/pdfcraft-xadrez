@@ -3017,3 +3017,15 @@ chess undo step	Clear drawings	удаление рисунков
 	The pieces cannot be imported: {reason}	Не удалось импортировать фигуры: {reason}
 	round {round}	тур {round}
 	Result: {result}	Результат: {result}
+	Board theme	Тема доски
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	Для досок, на которых вы играете и занимаетесь. Диаграммы на странице и в экспорте сохраняют свои цвета.
+	Brown	Коричневая
+	Light wood	Светлое дерево
+	Walnut	Орех
+	Ice blue	Ледяная
+	Olive	Оливковая
+	Grey	Серая
+	Graphite	Графит
+	Sand	Песочная
+	Coral	Коралловая
+	High contrast	Высокий контраст
