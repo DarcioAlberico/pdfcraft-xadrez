@@ -2982,6 +2982,60 @@ fn cuts_that_do_not_fit_are_refused() {
     assert!(refused(&[cut(0, Axis::Vertical, &[100.0]), cut(0, Axis::Vertical, &[300.0])]), "the same page twice");
 }
 
+/// Destinations that open a point on the right half go to the right part once the page is cut:
+/// a bookmark's, a link's GoTo action's, a legacy named destination's and a name tree's. One on
+/// the left half, a `/Fit` with no point, and an `/OpenAction /FitH` (its height is in both halves
+/// of an upright cut) stay on the first part. (Fails with the retargeting off.)
+#[test]
+fn destinations_go_to_the_part_holding_their_point() {
+    let mut doc = knife_doc(
+        &["/MediaBox [0 0 400 300] /Annots [5 0 R]"],
+        &[
+            "<< /Type /Annot /Subtype /Link /Rect [10 10 20 20] /A << /S /GoTo /D [3 0 R /FitR 250 100 350 150] >> >>",
+            "<< /Type /Outlines /First 7 0 R /Last 9 0 R /Count 3 >>",
+            "<< /Title (Right) /Parent 6 0 R /Next 8 0 R /Dest [3 0 R /XYZ 300 200 0] >>",
+            "<< /Title (Left) /Parent 6 0 R /Prev 7 0 R /Next 9 0 R /Dest [3 0 R /XYZ 50 200 0] >>",
+            "<< /Title (Whole) /Parent 6 0 R /Prev 8 0 R /Dest [3 0 R /Fit] >>",
+            "<< /Names [(r2) [3 0 R /FitV 390]] >>",
+        ],
+    );
+    let root = doc.root().unwrap();
+    doc.update_dict(root, |c| {
+        c.set(b"Outlines".to_vec(), Object::Ref(ObjRef::new(6, 0)));
+        let mut dests = pdfcraft_cos::Dict::new();
+        dests.set(
+            b"right".to_vec(),
+            Object::Array(vec![Object::Ref(ObjRef::new(3, 0)), Object::name("XYZ"), Object::Real(350.0), Object::Null, Object::Null]),
+        );
+        c.set(b"Dests".to_vec(), Object::Dict(dests));
+        let mut names = pdfcraft_cos::Dict::new();
+        names.set(b"Dests".to_vec(), Object::Ref(ObjRef::new(10, 0)));
+        c.set(b"Names".to_vec(), Object::Dict(names));
+        c.set(b"OpenAction".to_vec(), Object::Array(vec![Object::Ref(ObjRef::new(3, 0)), Object::name("FitH"), Object::Real(100.0)]));
+    })
+    .unwrap();
+    cut_pages(&mut doc, &[cut(0, Axis::Vertical, &[200.0])], false).unwrap();
+    let all = pages(&doc).unwrap();
+    let (left, right) = (all[0].obj, all[1].obj);
+    let first = |o: &Object| doc.resolve(o).as_array().and_then(|a| a.first()).and_then(Object::as_ref);
+    let bookmark = |n: u32| doc.get(ObjRef::new(n, 0)).as_dict().and_then(|d| d.get(b"Dest").cloned()).unwrap();
+    assert_eq!(first(&bookmark(7)), Some(right), "the right bookmark");
+    assert_eq!(first(&bookmark(8)), Some(left), "the left bookmark");
+    assert_eq!(first(&bookmark(9)), Some(left), "a /Fit stays on the first part");
+    let link = doc.get(ObjRef::new(5, 0)).as_dict().cloned().unwrap();
+    let action = doc.resolve(link.get(b"A").unwrap()).as_dict().cloned().unwrap();
+    assert_eq!(first(action.get(b"D").unwrap()), Some(right), "the link's GoTo");
+    let catalog = doc.get(root).as_dict().cloned().unwrap();
+    let dests = doc.resolve(catalog.get(b"Dests").unwrap()).as_dict().cloned().unwrap();
+    assert_eq!(first(dests.get(b"right").unwrap()), Some(right), "the legacy named destination");
+    let tree = doc.get(ObjRef::new(10, 0)).as_dict().cloned().unwrap();
+    let pairs = doc.resolve(tree.get(b"Names").unwrap()).as_array().cloned().unwrap();
+    assert_eq!(first(&pairs[1]), Some(right), "the name tree's destination");
+    assert_eq!(first(catalog.get(b"OpenAction").unwrap()), Some(left), "a /FitH lies in both halves");
+    let doc = save_and_reopen(&doc);
+    assert_eq!(page_count(&doc).unwrap(), 2);
+}
+
 proptest::proptest! {
     #![proptest_config(proptest::prelude::ProptestConfig::with_cases(64))]
     /// Any cuts are a result or an error, never a panic, and a result has as many pages as parts.
