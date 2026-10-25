@@ -24,15 +24,17 @@
 //! diagrams in its diagram font, the board to play on in the user's own pictures.
 //!
 //! Without either, [`PieceSet::geometric`] draws plain shapes and the caller says so. The shipped
-//! sets are only used when named: choosing one by default is the piece picker's (plan HC2).
+//! sets are used when named, and the user's choice in the preferences ([`choice`]) comes before
+//! all of these but the variable.
 
 use std::path::{Path, PathBuf};
 
 pub mod bundled;
+pub mod choice;
 pub mod images;
 mod svg;
 
-pub use images::{from_image_dir, is_piece_folder};
+pub use images::{from_image_dir, is_piece_folder, missing_pieces};
 
 use pdfcraft_chess::catalog::{FontKind, Layout, lookup_family, normalize_font_name};
 use pdfcraft_chess::draw::{Layer, Paint, PieceGlyph, PieceSet, Rgb, Segment, Subpath};
@@ -67,6 +69,8 @@ pub enum PieceError {
     Image { path: PathBuf, reason: String },
     #[error("the shipped piece set {id} cannot read {name}: {reason}")]
     Bundled { id: &'static str, name: &'static str, reason: String },
+    #[error("PdfCraft ships no piece set called {0:?}")]
+    UnknownSet(String),
 }
 
 /// Where a piece set came from, to tell the user.

@@ -3087,3 +3087,9 @@ chess undo step	Clear drawings	描画の消去
 	Rub over what you want to erase; letting go erases it	消したい部分をこすってください。離すと消去されます
 	What will go is tinted red while you draw.	消える部分は描いている間赤く表示されます。
 	Erase the selected words from the page	選択した語をページから消去
+	Chess pieces	チェスの駒
+	Plain shapes	単純な図形
+	Missing: {pieces}	不足: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES が設定されており、この選択より優先されます。
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	盤面: 解析盤と研究盤。図: ページ上、エディター、書き出しで描き直される図。
+	These pieces cannot be used: {reason}	この駒は使用できません: {reason}

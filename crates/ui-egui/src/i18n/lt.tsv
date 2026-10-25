@@ -3337,3 +3337,9 @@ chess undo step	Clear drawings	piešinių valymą
 	Rub over what you want to erase; letting go erases it	Braukite per tai, ką norite ištrinti; atleidus ištrinama
 	What will go is tinted red while you draw.	Kas bus ištrinta, piešiant nuspalvinama raudonai.
 	Erase the selected words from the page	Ištrinti pažymėtus žodžius iš puslapio
+	Chess pieces	Šachmatų figūros
+	Plain shapes	Paprastos formos
+	Missing: {pieces}	Trūksta: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	Nustatytas PDFCRAFT_CHESS_PIECES ir jis svarbesnis už šį pasirinkimą.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Lenta: analizės ir studijų lentos. Diagramos: perpieštos puslapyje, rengyklėje ir eksportuojant.
+	These pieces cannot be used: {reason}	Šių figūrų naudoti negalima: {reason}

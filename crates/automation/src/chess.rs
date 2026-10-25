@@ -708,6 +708,41 @@ impl Automation {
         }))
     }
 
+    /// The piece sets that can be chosen (Preferences ▸ Chess pieces, plan HC2).
+    pub(crate) fn chess_pieces(&self) -> Result<Value> {
+        use pieces::choice::{self, CandidateKind, PieceChoice};
+        let sets: Vec<Value> = choice::candidates()
+            .into_iter()
+            .map(|c| {
+                let kind = match c.kind {
+                    CandidateKind::Auto => "auto",
+                    CandidateKind::Shipped => "shipped",
+                    CandidateKind::Font => "font",
+                    CandidateKind::Folder => "folder",
+                    CandidateKind::Geometric => "geometric",
+                };
+                // What the chess tools' `pieces` takes for this set, when they take it.
+                let argument = match &c.choice {
+                    PieceChoice::Auto => Some("installed".to_owned()),
+                    PieceChoice::Geometric => Some("geometric".to_owned()),
+                    PieceChoice::Bundled(id) => Some(id.clone()),
+                    PieceChoice::Font(_) | PieceChoice::Folder(_) => None,
+                };
+                json!({
+                    "token": c.choice.token(),
+                    "kind": kind,
+                    "name": c.name,
+                    "author": c.author,
+                    "licence": c.licence,
+                    "path": c.path.map(|p| p.to_string_lossy().into_owned()),
+                    "missing": c.missing,
+                    "pieces": argument,
+                })
+            })
+            .collect();
+        Ok(json!({ "sets": sets, "environment": choice::environment_overrides() }))
+    }
+
     pub(crate) fn chess_status(&self, a: &Args) -> Result<Value> {
         let dir = self.models_dir(a)?;
         let models = chess::models(dir.as_deref());

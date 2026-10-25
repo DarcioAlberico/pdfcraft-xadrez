@@ -3081,3 +3081,9 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Rub over what you want to erase; letting go erases it	Silmek istediğinizin üzerinden geçin; bırakınca silinir
 	What will go is tinted red while you draw.	Gidecek olan, siz çizerken kırmızıyla gösterilir.
 	Erase the selected words from the page	Seçili sözcükleri sayfadan sil
+	Chess pieces	Satranç taşları
+	Plain shapes	Basit şekiller
+	Missing: {pieces}	Eksik: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES ayarlı ve bu seçimden önce gelir.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Tahta: analiz ve çalışma tahtaları. Diyagramlar: sayfada, düzenleyicide ve dışa aktarımlarda yeniden çizilir.
+	These pieces cannot be used: {reason}	Bu taşlar kullanılamıyor: {reason}

@@ -3361,3 +3361,9 @@ chess undo step	Clear drawings	مسح الرسوم
 	Rub over what you want to erase; letting go erases it	امسح فوق ما تريد محوه؛ تحرير الزر يمحوه
 	What will go is tinted red while you draw.	ما سيُمحى يظهر باللون الأحمر أثناء الرسم.
 	Erase the selected words from the page	امحُ الكلمات المحددة من الصفحة
+	Chess pieces	قطع الشطرنج
+	Plain shapes	أشكال بسيطة
+	Missing: {pieces}	ناقصة: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	المتغير PDFCRAFT_CHESS_PIECES معيَّن وله الأولوية على هذا الاختيار.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	الرقعة: رقعتا التحليل والدراسة. المخططات: تُعاد رسمها على الصفحة وفي المحرر وفي التصدير.
+	These pieces cannot be used: {reason}	لا يمكن استخدام هذه القطع: {reason}

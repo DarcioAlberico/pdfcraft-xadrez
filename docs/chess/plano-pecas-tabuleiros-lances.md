@@ -1,6 +1,6 @@
 # Plano — Peças, tabuleiros e lista de lances (a partir de cursos em HTML) · v3
 
-**Status:** v3 · 2026-10-25 · **HC0 e HC1 feitos** (§5.2) · decisões D13–D16 **aceitas** pelo usuário em 2026-10-25 (§4).
+**Status:** v3 · 2026-10-25 · **HC0, HC1 e HC2 feitos** (§5.2) · decisões D13–D16 **aceitas** pelo usuário em 2026-10-25 (§4).
 **Escopo (decisão do usuário, 2026-10-25):** melhorar o tabuleiro com **mais designs de tabuleiro e mais conjuntos de peças**, e **melhorar a lista de lances**. Fora: modo treino, perguntas `[%tqu]`, progresso, importação de cursos e puzzles como partidas, exportação de cursos (§2.5).
 **Origem:** três páginas HTML de cursos de xadrez salvas pelo usuário (pasta local `pasta-html-teste/`, **fora do repositório**: são conteúdo de terceiros, nunca entram em commit, fixture, teste ou documento). Análise de 2026-10-25, só dos **dados** que as páginas carregam e do que elas mostram na tela (servidas em `127.0.0.1` e olhadas no navegador). O código JavaScript delas não foi lido para copiar e não será.
 **Repositório:** `DarcioAlberico/pdfcraft-xadrez` (Rust, egui), `main` `959ddf1f`.
@@ -192,7 +192,7 @@ Cada passo: **Contexto** · **Tarefas** · **Verificação** · **Saída** · **
 - *Verificação:* `cargo xtask assets` verde; teste que carrega os 10 × 12 SVGs e confere caixas não vazias; peso do binário antes/depois registrado; um conjunto com licença não permitida faz o `xtask` falhar (provado).
 - *Saída:* `chess_pieces` (HC2) lista 10 conjuntos embutidos. *Reversão:* revert (só assets e um módulo).
 
-**HC2 — Escolher o conjunto** (`chessvision/src/pieces.rs`, preferências do `ui-egui`, ferramenta `chess_pieces`).
+**HC2 — Escolher o conjunto** (`chessvision/src/pieces.rs`, preferências do `ui-egui`, ferramenta `chess_pieces`). ✅ 2026-10-25: `pieces::choice` (`PieceChoice` guardado como token, `resolve`, `candidates`); Preferências ▸ Peças de xadrez, acima dos modelos, com grade de miniaturas por papel (Tabuleiro / Diagramas), autor e licença do escolhido, pasta incompleta listada com o que falta e não escolhível, motivo quando o conjunto não pode ser usado; troca vale na hora (contador de geração nas chaves das texturas, tabuleiros da aba Texto redesenhados); `chess_pieces` lista os conjuntos. Falta: escolher pelas ferramentas uma fonte ou pasta fora dos embutidos (só por `PDFCRAFT_CHESS_PIECES`).
 - *Tarefas:* `pieces::list()` com embutidos, fontes, pastas e Merida instalada; duas escolhas (tabuleiro, diagramas), lembradas; grade de miniaturas com autor e licença; `chess_pieces { list | choose: { board?, diagrams? } }`; `$PDFCRAFT_CHESS_PIECES` continua vencendo.
 - *Verificação:* pastas sintéticas com SVGs nossos; escolha persiste e é aplicada no painel, no estudo, no editor e numa exportação; pasta com 11 peças recusada com motivo; teste kittest da grade pelo teclado.
 - *Reversão:* revert; volta às ordens de hoje.

@@ -3027,3 +3027,9 @@ chess undo step	Clear drawings	usunięcie rysunków
 	Rub over what you want to erase; letting go erases it	Pocieraj to, co chcesz wymazać; puszczenie wymazuje
 	What will go is tinted red while you draw.	To, co zniknie, jest podczas rysowania zabarwione na czerwono.
 	Erase the selected words from the page	Wymaż zaznaczone słowa ze strony
+	Chess pieces	Bierki szachowe
+	Plain shapes	Proste kształty
+	Missing: {pieces}	Brakuje: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	Ustawiono PDFCRAFT_CHESS_PIECES i ma ona pierwszeństwo przed tym wyborem.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Szachownica: szachownice analizy i nauki. Diagramy: rysowane od nowa na stronie, w edytorze i w eksportach.
+	These pieces cannot be used: {reason}	Nie można użyć tych bierek: {reason}

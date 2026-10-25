@@ -46,6 +46,21 @@ pub fn is_piece_folder(dir: &Path) -> bool {
     dir.is_dir() && images_in(dir).contains_key("wk")
 }
 
+/// The pieces a piece-image folder has no image for (`wK`, `bQ`, …), in [`PieceSet`] order.
+pub fn missing_pieces(dir: &Path) -> Vec<String> {
+    let files = images_in(dir);
+    let mut missing = Vec::new();
+    for color in [Color::White, Color::Black] {
+        for kind in PieceKind::ALL {
+            let name = stem(color, kind);
+            if !files.contains_key(&name.to_ascii_lowercase()) {
+                missing.push(name);
+            }
+        }
+    }
+    missing
+}
+
 /// Whether `path` is an SVG file (else a PNG), by its extension.
 fn is_svg(path: &Path) -> bool {
     path.extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("svg"))

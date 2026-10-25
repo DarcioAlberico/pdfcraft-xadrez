@@ -3085,3 +3085,9 @@ chess undo step	Clear drawings	l'effacement des dessins
 	Rub over what you want to erase; letting go erases it	Frottez ce que vous voulez effacer ; relâcher l'efface
 	What will go is tinted red while you draw.	Ce qui partira est teinté de rouge pendant que vous tracez.
 	Erase the selected words from the page	Effacer de la page les mots sélectionnés
+	Chess pieces	Pièces d'échecs
+	Plain shapes	Formes simples
+	Missing: {pieces}	Manquantes : {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES est définie et l'emporte sur ce choix.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Échiquier : les échiquiers d'analyse et d'étude. Diagrammes : redessinés sur la page, dans l'éditeur et dans les exportations.
+	These pieces cannot be used: {reason}	Impossible d'utiliser ces pièces : {reason}

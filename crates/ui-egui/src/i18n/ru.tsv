@@ -2998,3 +2998,9 @@ chess undo step	Clear drawings	удаление рисунков
 	Rub over what you want to erase; letting go erases it	Проведите по тому, что нужно стереть; отпустите — и оно сотрётся
 	What will go is tinted red while you draw.	То, что исчезнет, подсвечивается красным, пока вы рисуете.
 	Erase the selected words from the page	Стереть выделенные слова со страницы
+	Chess pieces	Шахматные фигуры
+	Plain shapes	Простые фигуры
+	Missing: {pieces}	Не хватает: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	Задана PDFCRAFT_CHESS_PIECES, она важнее этого выбора.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Доска: доски анализа и изучения. Диаграммы: перерисованные на странице, в редакторе и при экспорте.
+	These pieces cannot be used: {reason}	Эти фигуры нельзя использовать: {reason}

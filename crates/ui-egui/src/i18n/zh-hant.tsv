@@ -3001,3 +3001,9 @@ chess undo step	Clear drawings	清除標記
 	Rub over what you want to erase; letting go erases it	在要擦除的內容上塗抹；放開即擦除
 	What will go is tinted red while you draw.	繪製時將被擦除的內容以紅色顯示。
 	Erase the selected words from the page	從頁面擦除所選文字
+	Chess pieces	西洋棋棋子
+	Plain shapes	簡單圖形
+	Missing: {pieces}	缺少：{pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	已設定 PDFCRAFT_CHESS_PIECES，它優先於此選擇。
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	棋盤：分析棋盤和研究棋盤。局面圖：在頁面、編輯器和匯出中重新繪製的圖。
+	These pieces cannot be used: {reason}	無法使用這些棋子：{reason}

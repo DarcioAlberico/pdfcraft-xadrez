@@ -3226,3 +3226,9 @@ chess undo step	Clear drawings	borrado de los dibujos
 	Rub over what you want to erase; letting go erases it	Frote sobre lo que quiera borrar; al soltar se borra
 	What will go is tinted red while you draw.	Lo que se borrará se tiñe de rojo mientras dibuja.
 	Erase the selected words from the page	Borrar de la página las palabras seleccionadas
+	Chess pieces	Piezas de ajedrez
+	Plain shapes	Formas simples
+	Missing: {pieces}	Faltan: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES está definida y tiene prioridad sobre esta elección.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Tablero: los tableros de análisis y de estudio. Diagramas: redibujados en la página, en el editor y en las exportaciones.
+	These pieces cannot be used: {reason}	No se pueden usar estas piezas: {reason}

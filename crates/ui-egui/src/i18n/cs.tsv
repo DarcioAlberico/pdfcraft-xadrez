@@ -3159,3 +3159,9 @@ chess undo step	Clear drawings	smazání kreseb
 	Rub over what you want to erase; letting go erases it	Přejeďte přes to, co chcete vymazat; uvolněním se to vymaže
 	What will go is tinted red while you draw.	Co zmizí, je během kreslení podbarveno červeně.
 	Erase the selected words from the page	Vymazat vybraná slova ze stránky
+	Chess pieces	Šachové figurky
+	Plain shapes	Jednoduché tvary
+	Missing: {pieces}	Chybí: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	Je nastavena PDFCRAFT_CHESS_PIECES a má přednost před touto volbou.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Šachovnice: šachovnice pro analýzu a studium. Diagramy: překreslené na stránce, v editoru a v exportech.
+	These pieces cannot be used: {reason}	Tyto figurky nelze použít: {reason}

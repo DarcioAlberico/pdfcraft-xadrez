@@ -3083,3 +3083,9 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Rub over what you want to erase; letting go erases it	Өшіргіңіз келетінді үйкеңіз; жібергенде өшіріледі
 	What will go is tinted red while you draw.	Не өшетіні сызу кезінде қызылмен боялады.
 	Erase the selected words from the page	Таңдалған сөздерді беттен өшіру
+	Chess pieces	Шахмат фигуралары
+	Plain shapes	Қарапайым пішіндер
+	Missing: {pieces}	Жетіспейді: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES орнатылған және бұл таңдаудан басым.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Тақта: талдау және оқу тақталары. Диаграммалар: бетте, редакторда және экспортта қайта салынады.
+	These pieces cannot be used: {reason}	Бұл фигураларды пайдалану мүмкін емес: {reason}

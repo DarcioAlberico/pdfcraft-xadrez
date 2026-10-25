@@ -286,6 +286,33 @@ fn chess_replace_diagram_refuses_what_it_cannot_place() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// `chess_pieces` lists what Preferences offers: automatic first, the shipped sets with author
+/// and licence, plain shapes last; each with its token and, where the tools take it, the value of
+/// their `pieces`.
+#[test]
+fn chess_pieces_lists_the_sets_preferences_offers() {
+    let (base, root) = workdir("pieces-list");
+    let (mut a, _) = opened(&root);
+    let listed = ok(&mut a, "chess_pieces", json!({}));
+    let sets = listed["sets"].as_array().unwrap();
+    assert_eq!(sets.first().map(|s| &s["token"]), Some(&json!("auto")), "{listed:#}");
+    assert_eq!(sets.last().map(|s| &s["pieces"]), Some(&json!("geometric")), "{listed:#}");
+    let shipped: Vec<&Value> = sets.iter().filter(|s| s["kind"] == "shipped").collect();
+    assert_eq!(shipped.len(), 8, "{listed:#}");
+    let chessnut = shipped.iter().find(|s| s["pieces"] == "chessnut").expect("chessnut is listed");
+    assert_eq!((&chessnut["token"], &chessnut["licence"]), (&json!("bundled:chessnut"), &json!("Apache-2.0")));
+    assert!(shipped.iter().all(|s| s["author"].is_string() && s["missing"] == json!([])), "{listed:#}");
+    assert!(listed["environment"].is_boolean());
+    // Every value it gives for `pieces` is one the tools take.
+    let (mut b, doc) = opened(&root);
+    let generation = ok(&mut b, "chess_detect", json!({ "doc": doc }))["generation"].as_u64().unwrap();
+    for pieces in sets.iter().filter_map(|s| s["pieces"].as_str()) {
+        let args = json!({ "doc": doc, "page": 1, "index": 1, "generation": generation, "placement": SICILIAN, "pieces": pieces, "dry_run": true });
+        ok(&mut b, "chess_replace_diagram", args);
+    }
+    let _ = std::fs::remove_dir_all(base);
+}
+
 /// A set PdfCraft ships is chosen by its id, whatever its case, and the result says it came from
 /// the shipped sets.
 #[test]

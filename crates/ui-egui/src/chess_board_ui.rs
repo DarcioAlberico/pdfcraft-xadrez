@@ -191,7 +191,7 @@ pub struct BoardState {
     texture: Option<(String, u32, TextureHandle)>,
     draw_error: Option<String>,
     /// The pieces cut out of their squares, for the one following the pointer in a drag.
-    sprites: Option<TextureHandle>,
+    sprites: Option<(u64, TextureHandle)>,
     /// The comment or game-detail field being typed in. The game keeps comments and tags cleaned
     /// (spaces collapsed, ends trimmed), so a field re-read from it every frame would eat a space
     /// typed at the end.
@@ -655,13 +655,16 @@ impl BoardState {
         }
     }
 
-    /// The twelve pieces cut out of their squares ([`cut_sprites`]), once.
+    /// The twelve pieces cut out of their squares ([`cut_sprites`]), once per piece set.
     pub(crate) fn sprites(&mut self, ctx: &egui::Context, pieces: &PieceSet) -> Option<TextureHandle> {
-        if let Some(tex) = &self.sprites {
+        let generation = crate::chess_editor::pieces_generation();
+        if let Some((drawn, tex)) = &self.sprites
+            && *drawn == generation
+        {
             return Some(tex.clone());
         }
         let tex = cut_sprites(ctx, pieces, "chess-analysis-pieces")?;
-        self.sprites = Some(tex.clone());
+        self.sprites = Some((generation, tex.clone()));
         Some(tex)
     }
 
@@ -676,7 +679,12 @@ impl BoardState {
     /// or a larger one is wanted (a sharper one drawn for the chess window serves the panels).
     fn texture(&mut self, ctx: &egui::Context, pieces: &PieceSet, px: u32) -> Option<TextureHandle> {
         let placement = self.placement();
-        let key = format!("{}|{}", pdfcraft_engine::chess::pdfcraft_chess::fen::format_placement(&placement), self.flipped);
+        let key = format!(
+            "{}|{}|{}",
+            pdfcraft_engine::chess::pdfcraft_chess::fen::format_placement(&placement),
+            self.flipped,
+            crate::chess_editor::pieces_generation()
+        );
         if let Some((k, drawn, tex)) = &self.texture
             && *k == key
             && *drawn >= px
@@ -1717,6 +1725,22 @@ fn notation_height(viewport: f32, above: f32, below: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A new piece set makes the board's pictures stale: the pieces cut out and the board itself
+    /// are drawn again, and kept while nothing changes.
+    #[test]
+    fn a_new_piece_set_draws_the_board_again() {
+        let ctx = egui::Context::default();
+        let pieces = PieceSet::geometric();
+        let mut s = BoardState::default();
+        let sprites = s.sprites(&ctx, &pieces).unwrap().id();
+        let board = s.texture(&ctx, &pieces, 64).unwrap().id();
+        assert_eq!(s.sprites(&ctx, &pieces).unwrap().id(), sprites, "kept");
+        assert_eq!(s.texture(&ctx, &pieces, 64).unwrap().id(), board, "kept");
+        crate::chess_editor::pieces_changed();
+        assert_ne!(s.sprites(&ctx, &pieces).unwrap().id(), sprites, "cut out again");
+        assert_ne!(s.texture(&ctx, &pieces, 64).unwrap().id(), board, "drawn again");
+    }
 
     fn sq(name: &str) -> Square {
         Square::parse(name).unwrap()

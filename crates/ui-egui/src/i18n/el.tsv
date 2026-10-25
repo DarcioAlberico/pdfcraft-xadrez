@@ -3057,3 +3057,9 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Rub over what you want to erase; letting go erases it	Τρίψτε πάνω σε ό,τι θέλετε να σβήσετε· με το άφημα σβήνεται
 	What will go is tinted red while you draw.	Ό,τι θα σβηστεί χρωματίζεται κόκκινο όσο σχεδιάζετε.
 	Erase the selected words from the page	Σβήσιμο των επιλεγμένων λέξεων από τη σελίδα
+	Chess pieces	Πιόνια σκακιού
+	Plain shapes	Απλά σχήματα
+	Missing: {pieces}	Λείπουν: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	Η PDFCRAFT_CHESS_PIECES έχει οριστεί και υπερισχύει αυτής της επιλογής.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Σκακιέρα: οι σκακιέρες ανάλυσης και μελέτης. Διαγράμματα: σχεδιασμένα ξανά στη σελίδα, στον επεξεργαστή και στις εξαγωγές.
+	These pieces cannot be used: {reason}	Αυτά τα πιόνια δεν μπορούν να χρησιμοποιηθούν: {reason}
