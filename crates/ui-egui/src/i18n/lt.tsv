@@ -2803,6 +2803,30 @@ chess side	Black	Juodieji
 	Show this diagram on the page	Rodyti šią diagramą puslapyje
 	Stalemate	Patas
 	Standard start position	Standartinė pradinė pozicija
+	the board is empty	lenta tuščia
+	White's king is missing	trūksta baltųjų karaliaus
+	Black's king is missing	trūksta juodųjų karaliaus
+	White has more than one king	baltieji turi daugiau nei vieną karalių
+	Black has more than one king	juodieji turi daugiau nei vieną karalių
+	White has more than 8 pawns	baltieji turi daugiau nei 8 pėstininkus
+	Black has more than 8 pawns	juodieji turi daugiau nei 8 pėstininkus
+	White has more than 16 pieces	baltieji turi daugiau nei 16 figūrų
+	Black has more than 16 pieces	juodieji turi daugiau nei 16 figūrų
+	a pawn stands on the first or the eighth rank	pėstininkas stovi pirmoje arba aštuntoje eilėje
+	White has more extra pieces than missing pawns to promote	baltieji turi daugiau papildomų figūrų nei trūkstamų pėstininkų joms paversti
+	Black has more extra pieces than missing pawns to promote	juodieji turi daugiau papildomų figūrų nei trūkstamų pėstininkų joms paversti
+	the kings stand next to each other	karaliai stovi vienas šalia kito
+	White is in check, but it is Black's turn	baltiesiems šachas, bet ėjimas juodųjų
+	Black is in check, but it is White's turn	juodiesiems šachas, bet ėjimas baltųjų
+	White's king is in check from more than two pieces	baltųjų karaliui šachą skelbia daugiau nei dvi figūros
+	Black's king is in check from more than two pieces	juodųjų karaliui šachą skelbia daugiau nei dvi figūros
+	White's king is in a double check no move could give	baltųjų karaliui dvigubas šachas, kurio joks ėjimas negalėtų paskelbti
+	Black's king is in a double check no move could give	juodųjų karaliui dvigubas šachas, kurio joks ėjimas negalėtų paskelbti
+	White may castle, but its king or rook has left its square	baltieji gali rokiruotis, bet karalius ar bokštas paliko savo langelį
+	Black may castle, but its king or rook has left its square	juodieji gali rokiruotis, bet karalius ar bokštas paliko savo langelį
+	the en-passant square does not fit the pawns	kirtimo prasilenkiant langelis neatitinka pėstininkų
+	Not a legal position: {reason}	Neteisėta pozicija: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Neteisėta pozicija ({reason}): pataisykite ją diagramos rengyklėje, kad galėtumėte joje daryti ėjimus.
 	The game on the board has moves. Put this position:	Lentos partija turi ėjimų. Šią poziciją:
 	New game with this position	Nauja partija su šia pozicija
 	The game on the board keeps its moves.	Lentos partija išlaiko savo ėjimus.

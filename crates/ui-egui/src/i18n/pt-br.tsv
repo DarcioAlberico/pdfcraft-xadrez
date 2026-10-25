@@ -2567,6 +2567,30 @@ chess side	Black	Pretas
 	Show this diagram on the page	Mostrar este diagrama na página
 	Stalemate	Afogamento
 	Standard start position	Posição inicial padrão
+	the board is empty	o tabuleiro está vazio
+	White's king is missing	falta o rei branco
+	Black's king is missing	falta o rei preto
+	White has more than one king	as brancas têm mais de um rei
+	Black has more than one king	as pretas têm mais de um rei
+	White has more than 8 pawns	as brancas têm mais de 8 peões
+	Black has more than 8 pawns	as pretas têm mais de 8 peões
+	White has more than 16 pieces	as brancas têm mais de 16 peças
+	Black has more than 16 pieces	as pretas têm mais de 16 peças
+	a pawn stands on the first or the eighth rank	há um peão na 1ª ou na 8ª fileira
+	White has more extra pieces than missing pawns to promote	as brancas têm mais peças extras do que peões faltando para promover
+	Black has more extra pieces than missing pawns to promote	as pretas têm mais peças extras do que peões faltando para promover
+	the kings stand next to each other	os reis estão lado a lado
+	White is in check, but it is Black's turn	as brancas estão em xeque, mas a vez é das pretas
+	Black is in check, but it is White's turn	as pretas estão em xeque, mas a vez é das brancas
+	White's king is in check from more than two pieces	o rei branco está em xeque de mais de duas peças
+	Black's king is in check from more than two pieces	o rei preto está em xeque de mais de duas peças
+	White's king is in a double check no move could give	o rei branco está num xeque duplo que nenhum lance poderia dar
+	Black's king is in a double check no move could give	o rei preto está num xeque duplo que nenhum lance poderia dar
+	White may castle, but its king or rook has left its square	as brancas podem rocar, mas o rei ou a torre saiu da sua casa
+	Black may castle, but its king or rook has left its square	as pretas podem rocar, mas o rei ou a torre saiu da sua casa
+	the en-passant square does not fit the pawns	a casa de en passant não combina com os peões
+	Not a legal position: {reason}	Posição ilegal: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Posição ilegal ({reason}): corrija-a no editor de diagrama para jogar lances nela.
 	The game on the board has moves. Put this position:	A partida no tabuleiro tem lances. Pôr esta posição:
 	New game with this position	Nova partida com esta posição
 	The game on the board keeps its moves.	A partida no tabuleiro mantém os seus lances.

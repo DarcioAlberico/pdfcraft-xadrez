@@ -2624,6 +2624,30 @@ animation effects	Off	Vypnuto
 	Show this diagram on the page	Zobrazit tento diagram na stránce
 	Stalemate	Pat
 	Standard start position	Výchozí postavení
+	the board is empty	šachovnice je prázdná
+	White's king is missing	chybí bílý král
+	Black's king is missing	chybí černý král
+	White has more than one king	bílý má více než jednoho krále
+	Black has more than one king	černý má více než jednoho krále
+	White has more than 8 pawns	bílý má více než 8 pěšců
+	Black has more than 8 pawns	černý má více než 8 pěšců
+	White has more than 16 pieces	bílý má více než 16 kamenů
+	Black has more than 16 pieces	černý má více než 16 kamenů
+	a pawn stands on the first or the eighth rank	pěšec stojí na první nebo osmé řadě
+	White has more extra pieces than missing pawns to promote	bílý má víc figur navíc, než kolik chybí pěšců k proměně
+	Black has more extra pieces than missing pawns to promote	černý má víc figur navíc, než kolik chybí pěšců k proměně
+	the kings stand next to each other	králové stojí vedle sebe
+	White is in check, but it is Black's turn	bílý je v šachu, ale na tahu je černý
+	Black is in check, but it is White's turn	černý je v šachu, ale na tahu je bílý
+	White's king is in check from more than two pieces	bílý král je v šachu od více než dvou kamenů
+	Black's king is in check from more than two pieces	černý král je v šachu od více než dvou kamenů
+	White's king is in a double check no move could give	bílý král je ve dvojšachu, který žádný tah nemohl dát
+	Black's king is in a double check no move could give	černý král je ve dvojšachu, který žádný tah nemohl dát
+	White may castle, but its king or rook has left its square	bílý smí rošovat, ale jeho král nebo věž opustil své pole
+	Black may castle, but its king or rook has left its square	černý smí rošovat, ale jeho král nebo věž opustil své pole
+	the en-passant square does not fit the pawns	pole pro braní mimochodem neodpovídá pěšcům
+	Not a legal position: {reason}	Nelegální pozice: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Nelegální pozice ({reason}): opravte ji v editoru diagramu, abyste v ní mohli táhnout.
 	The game on the board has moves. Put this position:	Partie na šachovnici má tahy. Umístit tuto pozici:
 	New game with this position	Nová partie s touto pozicí
 	The game on the board keeps its moves.	Partie na šachovnici si ponechá své tahy.

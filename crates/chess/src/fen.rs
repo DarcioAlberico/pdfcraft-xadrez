@@ -6,7 +6,7 @@
 
 use std::fmt;
 
-use crate::placement::{Color, Piece, Placement, Square};
+use crate::placement::{Color, Piece, PieceKind, Placement, Square};
 
 /// Longest FEN accepted. A full FEN is under 100 bytes; anything far longer is not one.
 pub const MAX_FEN_LEN: usize = 512;
@@ -74,6 +74,22 @@ impl Castling {
             s.push('-');
         }
         s
+    }
+
+    /// The rights `placement` still allows: each needs its side's king on its first square
+    /// (e1, e8) and the rook in that corner.
+    pub fn fitted(self, placement: &Placement) -> Castling {
+        let on = |file: u8, rank: u8, color: Color, kind: PieceKind| {
+            Square::new(file, rank).is_some_and(|sq| placement.get(sq) == Some(Piece::new(color, kind)))
+        };
+        let white_king = on(4, 0, Color::White, PieceKind::King);
+        let black_king = on(4, 7, Color::Black, PieceKind::King);
+        Castling {
+            white_king_side: self.white_king_side && white_king && on(7, 0, Color::White, PieceKind::Rook),
+            white_queen_side: self.white_queen_side && white_king && on(0, 0, Color::White, PieceKind::Rook),
+            black_king_side: self.black_king_side && black_king && on(7, 7, Color::Black, PieceKind::Rook),
+            black_queen_side: self.black_queen_side && black_king && on(0, 7, Color::Black, PieceKind::Rook),
+        }
     }
 
     fn parse(field: &str) -> Result<Castling, FenError> {

@@ -255,11 +255,23 @@ fn the_editor_edits_the_selected_diagrams_position() {
         Some("4k3/8/8/8/4Q3/8/8/R3K3 w Q - 0 1"),
         "the white queen (the default brush) is on e4"
     );
-    // Two white kings is not a position.
+    // Two white kings is not a position, and the panel says which rule it breaks (plan A8, P3b1).
     let ed = h.state_mut().chess.editor.as_mut().unwrap();
     ed.position = pdfcraft_engine::chess::pdfcraft_chess::fen::parse("4K3/8/8/8/8/8/8/R3K3 w - - 0 1").unwrap();
     h.run_steps(2);
-    h.get_by_label("Not a legal position");
+    h.get_by_label("Not a legal position: White has more than one king");
+    // A castling right the pieces don't allow is taken off, as in the set-up: the rook left a1.
+    let ed = h.state_mut().chess.editor.as_mut().unwrap();
+    ed.position = pdfcraft_engine::chess::pdfcraft_chess::fen::parse("4k3/8/8/8/8/8/8/1R2K3 w Q - 0 1").unwrap();
+    h.run_steps(2);
+    assert_eq!(h.state().chess.editor.as_ref().map(|e| e.fen()).as_deref(), Some("4k3/8/8/8/8/8/8/1R2K3 w - - 0 1"));
+    h.get_by_label("Legal position");
+    // The board says why it can't play a position, too.
+    h.state_mut().chess.board_mut().load_fen("4k3/8/8/8/8/8/8/8 w - - 0 1", false, None);
+    assert_eq!(
+        h.state().chess.board().message.as_deref(),
+        Some("Not a legal position (White's king is missing): correct it in the diagram editor to play moves on it.")
+    );
 }
 
 /// The palette shows the pieces as the board draws them, in a column beside the board, each

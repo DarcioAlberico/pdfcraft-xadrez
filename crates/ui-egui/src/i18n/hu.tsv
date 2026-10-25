@@ -2549,6 +2549,30 @@ animation effects	Off	Ki
 	Show this diagram on the page	Ennek a diagramnak a megjelenítése az oldalon
 	Stalemate	Patt
 	Standard start position	Szabványos kezdőállás
+	the board is empty	a tábla üres
+	White's king is missing	hiányzik a világos király
+	Black's king is missing	hiányzik a sötét király
+	White has more than one king	világosnak egynél több királya van
+	Black has more than one king	sötétnek egynél több királya van
+	White has more than 8 pawns	világosnak 8-nál több gyalogja van
+	Black has more than 8 pawns	sötétnek 8-nál több gyalogja van
+	White has more than 16 pieces	világosnak 16-nál több bábuja van
+	Black has more than 16 pieces	sötétnek 16-nál több bábuja van
+	a pawn stands on the first or the eighth rank	gyalog áll az első vagy a nyolcadik soron
+	White has more extra pieces than missing pawns to promote	világosnak több többletbábuja van, mint ahány hiányzó gyalog átváltozhatott
+	Black has more extra pieces than missing pawns to promote	sötétnek több többletbábuja van, mint ahány hiányzó gyalog átváltozhatott
+	the kings stand next to each other	a királyok egymás mellett állnak
+	White is in check, but it is Black's turn	világos sakkban áll, de sötét következik
+	Black is in check, but it is White's turn	sötét sakkban áll, de világos következik
+	White's king is in check from more than two pieces	a világos királyt kettőnél több bábu adja sakkba
+	Black's king is in check from more than two pieces	a sötét királyt kettőnél több bábu adja sakkba
+	White's king is in a double check no move could give	a világos király olyan kettős sakkban áll, amelyet egy lépés sem adhatott
+	Black's king is in a double check no move could give	a sötét király olyan kettős sakkban áll, amelyet egy lépés sem adhatott
+	White may castle, but its king or rook has left its square	világos sáncolhat, de a királya vagy a bástyája elhagyta a mezőjét
+	Black may castle, but its king or rook has left its square	sötét sáncolhat, de a királya vagy a bástyája elhagyta a mezőjét
+	the en-passant square does not fit the pawns	a menet közbeni ütés mezője nem illik a gyalogokhoz
+	Not a legal position: {reason}	Nem szabályos állás: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Nem szabályos állás ({reason}): javítsa ki a diagramszerkesztőben, hogy lépni lehessen benne.
 	The game on the board has moves. Put this position:	A táblán lévő játszmában vannak lépések. Ez az állás kerüljön:
 	New game with this position	Új játszma ezzel az állással
 	The game on the board keeps its moves.	A táblán lévő játszma megtartja a lépéseit.
