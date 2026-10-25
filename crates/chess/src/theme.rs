@@ -39,6 +39,9 @@ pub struct BoardTheme {
     pub target: Tint,
     /// The ring around a king in check.
     pub check: Rgb,
+    /// The drawings' arrows: their shaft's width in hundredths of a square, and their opacity.
+    pub arrow_weight: u8,
+    pub arrow_alpha: u8,
 }
 
 const LAST: Tint = Tint([155, 199, 0, 105]);
@@ -50,7 +53,7 @@ const AMBER: Tint = Tint([170, 120, 0, 120]);
 const BLUE_PICK: Tint = Tint([10, 50, 120, 120]);
 
 const fn theme(id: &'static str, name: &'static str, light: Rgb, dark: Rgb) -> BoardTheme {
-    BoardTheme { id, name, light, dark, last_move: LAST, selected: PICKED, target: TARGET, check: RED }
+    BoardTheme { id, name, light, dark, last_move: LAST, selected: PICKED, target: TARGET, check: RED, arrow_weight: 17, arrow_alpha: 200 }
 }
 
 /// The boards' colours before themes: the default.
@@ -76,6 +79,8 @@ pub const THEMES: [BoardTheme; 14] = [
         selected: Tint([0, 110, 40, 150]),
         target: Tint([0, 110, 40, 170]),
         check: Rgb(200, 0, 0),
+        arrow_weight: 22,
+        arrow_alpha: 240,
         ..theme("high-contrast", "High contrast", Rgb(255, 255, 255), Rgb(120, 120, 120))
     },
 ];
@@ -167,6 +172,7 @@ mod tests {
                 assert!(distance(t.check, square) >= 80.0, "{} check on {light}", t.id);
             }
             assert!(contrast(t.light, t.dark) >= 1.4, "{}: squares apart {:.2}", t.id, contrast(t.light, t.dark));
+            assert!((10..=30).contains(&t.arrow_weight) && t.arrow_alpha >= 160, "{}: arrows", t.id);
         }
     }
 

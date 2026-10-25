@@ -82,3 +82,42 @@ fn the_board_panels_menu_and_the_control_channel_pick_a_theme() {
     assert!(e.contains("brown") && e.contains("coral"), "{e}");
     assert_eq!(h.state().board_theme().id, "high-contrast", "a bad name changes nothing");
 }
+
+/// Click square `name` (`e2`) on the board, wherever its squares are drawn.
+fn click_square(h: &mut Harness<'static, PdfCraftApp>, name: &str) {
+    let b = name.as_bytes();
+    let (file, rank) = (f32::from(b[0] - b'a'), f32::from(b[1] - b'1'));
+    let board = h.get_by_label_contains("Board: ").rect();
+    let at = board.min + egui::vec2(board.width() * (file + 0.5) / 8.0, board.height() * (7.5 - rank) / 8.0);
+    h.hover_at(at);
+    h.run_steps(1);
+    for pressed in [true, false] {
+        h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed, modifiers: egui::Modifiers::NONE });
+    }
+    h.run_steps(2);
+}
+
+/// Plan HC6: with the coordinates beside the board and a double frame the squares move in, and a
+/// click still lands on the square under it; the look is kept with the preferences.
+#[test]
+fn coordinates_beside_the_board_and_a_frame_keep_clicks_on_their_squares() {
+    let mut h = harness("", false);
+    let plain = h.get_by_label_contains("Board: ").rect();
+    for (key, value) in [("board-coordinates", "outside"), ("board-frame", "double"), ("board-squares", "fill"), ("board-turn-dot", "on")] {
+        h.state_mut().set_option(key, value).unwrap();
+    }
+    h.run_steps(3);
+    let framed = h.get_by_label_contains("Board: ").rect();
+    assert!(framed.width() < plain.width() - 10.0 && framed.left() > plain.left() + 10.0, "{plain:?} {framed:?}");
+    assert!((framed.width() - framed.height()).abs() < 0.5, "still square: {framed:?}");
+    click_square(&mut h, "e2");
+    click_square(&mut h, "e4");
+    assert_eq!(h.state().chess.board().game.movetext(), "1. e4");
+    shot(&mut h, "look-outside-double.png");
+    let saved: serde_json::Value = serde_json::from_str(&h.state().persist()).unwrap();
+    assert_eq!(saved["chess_board_look"], serde_json::json!({ "coordinates": "outside", "frame": "double", "squares": "fill", "turn_dot": true }));
+    let h = harness(&saved.to_string(), false);
+    assert_eq!(h.state().chess.board_look.to_json(), saved["chess_board_look"], "read back next time");
+    let mut h = harness("", false);
+    assert!(h.state_mut().set_option("board-frame", "triple").unwrap_err().contains("none, thin or double"));
+}
