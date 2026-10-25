@@ -535,6 +535,9 @@ pub struct DocView {
     /// The Knife: the cuts placed, and the line under the pointer (page, axis, share).
     pub knife: crate::knife::KnifeView,
     pub knife_hover: Option<(usize, pdfcraft_engine::CutAxis, f32)>,
+    /// The Knife: the gutter found in a scanned page's picture, by (page, edit generation,
+    /// upright), so it is rendered once.
+    pub knife_scan: std::collections::HashMap<(usize, u64, bool), Option<f32>>,
     /// Enhance ▸ Camera image: the quadrilateral being placed.
     pub camera: Option<crate::camera_ui::CameraQuad>,
     /// Enhance ▸ Camera image: the page just enhanced, while the bar offers rotate, crop and
@@ -821,6 +824,7 @@ impl DocView {
             erase_preview: Default::default(),
             knife: Default::default(),
             knife_hover: None,
+            knife_scan: Default::default(),
             camera: None,
             camera_done: None,
             sign: Default::default(),
@@ -3188,7 +3192,7 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
                 crate::camera_ui::page_input(ui, &resp, &xf, i, view, can_modify);
             }
             if tool == QuickTool::Knife && can_crop {
-                crate::knife::page_input(ui, &resp, &xf, i, &knife_prefs, view);
+                crate::knife::page_input(ui, &resp, &xf, i, doc, &knife_prefs, view);
             }
             if tool == QuickTool::Crop && crate::crop::page_input(ui, &resp, &xf, i, info, view, can_crop) {
                 view.current = i;

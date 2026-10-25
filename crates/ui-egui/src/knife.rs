@@ -206,6 +206,35 @@ pub fn raster_gutter(lum: &[u8], w: usize, h: usize) -> Option<f32> {
     best.map(|(a, b)| (a + b) as f32 / 2.0 / w as f32)
 }
 
+/// The gutter of page `page`'s picture along `axis` ([`raster_gutter`]; across, the picture is
+/// turned so its rows are read as columns): the page rendered at [`GUTTER_SCALE`].
+pub fn scan_gutter(doc: &pdfcraft_engine::Document, page: usize, axis: CutAxis) -> Option<f32> {
+    let config = pdfcraft_render::RenderConfig { password: doc.password.as_deref().map(std::sync::Arc::from), ..Default::default() };
+    let mut r = pdfcraft_render::PageRenderer::new(doc.bytes.clone(), config);
+    let out =
+        r.render(pdfcraft_render::RenderRequest { page, kind: pdfcraft_render::RequestKind::Pixels, scale: GUTTER_SCALE, ..Default::default() });
+    if out.error.is_some() {
+        return None;
+    }
+    let (w, h) = (out.width as usize, out.height as usize);
+    let lum = luminance(&out.rgba);
+    match axis {
+        CutAxis::Vertical => raster_gutter(&lum, w, h),
+        CutAxis::Horizontal => {
+            // Row y of the page is column y of the turned picture.
+            let mut turned = vec![255u8; lum.len()];
+            for y in 0..h {
+                for x in 0..w {
+                    if let (Some(v), Some(slot)) = (lum.get(y * w + x), turned.get_mut(x * h + y)) {
+                        *slot = *v;
+                    }
+                }
+            }
+            raster_gutter(&turned, h, w)
+        }
+    }
+}
+
 /// Gray values (0 dark) of premultiplied RGBA pixels; a pixel left transparent is paper.
 pub fn luminance(rgba: &[u8]) -> Vec<u8> {
     rgba.as_chunks::<4>()
@@ -223,12 +252,28 @@ fn snapped(xf: &PageXform, axis: CutAxis, p: Pos2, gutter: Option<f32>) -> f32 {
 }
 
 /// Knife gestures on one page: the line under the pointer, clicks and right-clicks.
-pub(crate) fn page_input(ui: &egui::Ui, resp: &egui::Response, xf: &PageXform, page: usize, prefs: &KnifePrefs, view: &mut DocView) {
+pub(crate) fn page_input(
+    ui: &egui::Ui,
+    resp: &egui::Response,
+    xf: &PageXform,
+    page: usize,
+    doc: &pdfcraft_engine::Document,
+    prefs: &KnifePrefs,
+    view: &mut DocView,
+) {
     let Some(p) = ui.input(|i| i.pointer.hover_pos()).filter(|p| xf.rect.contains(*p)) else { return };
     ui.ctx().set_cursor_icon(egui::CursorIcon::Crosshair);
     let axis = axis(ui, prefs);
     let glyphs: Vec<[f32; 4]> = view.page_text(page).map(|t| t.glyphs.iter().map(|g| g.rect).collect()).unwrap_or_default();
-    let at = snapped(xf, axis, p, gutter(&glyphs, [xf.pw, xf.ph], axis));
+    // A page with no text (a scan): the gutter of its picture, found once per page and edit.
+    let gutter = gutter(&glyphs, [xf.pw, xf.ph], axis).or_else(|| {
+        let key = (page, doc.edit_generation(), axis == CutAxis::Vertical);
+        if view.knife_scan.len() > 64 {
+            view.knife_scan.clear();
+        }
+        *view.knife_scan.entry(key).or_insert_with(|| scan_gutter(doc, page, axis))
+    });
+    let at = snapped(xf, axis, p, gutter);
     // A placed cut under the pointer is dragged to where it should be; it snaps as a new one does.
     if view.knife.page == Some(page) && view.knife.axis == Some(axis) {
         // A drag is told from a click once the pointer has moved: look where the button went down.
@@ -349,29 +394,13 @@ impl crate::PdfCraftApp {
             (0..n).filter(|p| doc.info.pages.get(*p).is_some_and(|q| q.width > q.height)).collect()
         };
         // Pages whose text is not at hand are rendered small to find their gutter.
-        let mut renderer: Option<pdfcraft_render::PageRenderer> = None;
-        let mut scan_gutter = |page: usize| {
-            let r = renderer.get_or_insert_with(|| {
-                let config = pdfcraft_render::RenderConfig { password: doc.password.as_deref().map(std::sync::Arc::from), ..Default::default() };
-                pdfcraft_render::PageRenderer::new(doc.bytes.clone(), config)
-            });
-            let out = r.render(pdfcraft_render::RenderRequest {
-                page,
-                kind: pdfcraft_render::RequestKind::Pixels,
-                scale: GUTTER_SCALE,
-                ..Default::default()
-            });
-            if out.error.is_some() {
-                return None;
-            }
-            raster_gutter(&luminance(&out.rgba), out.width as usize, out.height as usize)
-        };
         let cuts: Vec<Cut> = pages
             .iter()
             .filter_map(|&page| {
                 let p = doc.info.pages.get(page)?;
                 let glyphs: Vec<[f32; 4]> = view.page_text(page).map(|t| t.glyphs.iter().map(|g| g.rect).collect()).unwrap_or_default();
-                let share = gutter(&glyphs, [p.width, p.height], CutAxis::Vertical).or_else(|| scan_gutter(page)).unwrap_or(0.5);
+                let share =
+                    gutter(&glyphs, [p.width, p.height], CutAxis::Vertical).or_else(|| scan_gutter(doc, page, CutAxis::Vertical)).unwrap_or(0.5);
                 Some(Cut { page, axis: CutAxis::Vertical, at: vec![f64::from(share) * f64::from(p.width)] })
             })
             .collect();
