@@ -2977,3 +2977,5 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Imported: {sets}. Their licence is not known: use them for personal use only.	దిగుమతి అయ్యాయి: {sets}. వాటి లైసెన్స్ తెలియదు: వ్యక్తిగత ఉపయోగానికి మాత్రమే వాడండి.
 	Already in the pieces folder: {sets}. Replace them?	ఇప్పటికే పావుల ఫోల్డర్‌లో ఉన్నాయి: {sets}. వాటిని భర్తీ చేయాలా?
 	The pieces cannot be imported: {reason}	పావులను దిగుమతి చేయలేము: {reason}
+	round {round}	రౌండ్ {round}
+	Result: {result}	ఫలితం: {result}

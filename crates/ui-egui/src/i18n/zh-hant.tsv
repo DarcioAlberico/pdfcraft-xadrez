@@ -3018,3 +3018,5 @@ chess undo step	Clear drawings	清除標記
 	Imported: {sets}. Their licence is not known: use them for personal use only.	已匯入：{sets}。其授權不明：僅供個人使用。
 	Already in the pieces folder: {sets}. Replace them?	棋子資料夾中已有：{sets}。要取代嗎？
 	The pieces cannot be imported: {reason}	無法匯入棋子：{reason}
+	round {round}	第 {round} 輪
+	Result: {result}	結果：{result}

@@ -3102,3 +3102,5 @@ chess undo step	Clear drawings	l'effacement des dessins
 	Imported: {sets}. Their licence is not known: use them for personal use only.	Importés : {sets}. Leur licence n'est pas connue : réservez-les à un usage personnel.
 	Already in the pieces folder: {sets}. Replace them?	Déjà dans le dossier des pièces : {sets}. Les remplacer ?
 	The pieces cannot be imported: {reason}	Les pièces ne peuvent pas être importées : {reason}
+	round {round}	ronde {round}
+	Result: {result}	Résultat : {result}

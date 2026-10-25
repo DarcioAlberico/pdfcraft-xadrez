@@ -3176,3 +3176,5 @@ chess undo step	Clear drawings	smazání kreseb
 	Imported: {sets}. Their licence is not known: use them for personal use only.	Importováno: {sets}. Jejich licence není známa: používejte je jen pro osobní potřebu.
 	Already in the pieces folder: {sets}. Replace them?	Už jsou ve složce figur: {sets}. Nahradit je?
 	The pieces cannot be imported: {reason}	Figury nelze importovat: {reason}
+	round {round}	kolo {round}
+	Result: {result}	Výsledek: {result}

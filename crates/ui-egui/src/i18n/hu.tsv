@@ -3101,3 +3101,5 @@ chess undo step	Clear drawings	rajzok törlése
 	Imported: {sets}. Their licence is not known: use them for personal use only.	Importálva: {sets}. Licencük nem ismert: csak személyes használatra.
 	Already in the pieces folder: {sets}. Replace them?	Már a bábuk mappájában vannak: {sets}. Lecseréli őket?
 	The pieces cannot be imported: {reason}	A bábuk nem importálhatók: {reason}
+	round {round}	{round}. forduló
+	Result: {result}	Eredmény: {result}

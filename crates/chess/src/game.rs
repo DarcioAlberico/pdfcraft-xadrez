@@ -946,7 +946,7 @@ impl Game {
 
     /// The result: decided by a mate or a draw at the end of the main line, else the Result tag,
     /// else `*`.
-    fn result(&self) -> String {
+    pub fn result(&self) -> String {
         let mut end = 0;
         while let Some(&next) = self.node(end).children.first() {
             end = next;
