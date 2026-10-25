@@ -3043,3 +3043,9 @@ chess undo step	Clear drawings	清除标记
 	Remove what lies outside each part	删除每部分之外的内容
 	Split double pages	拆分跨页
 	No double pages were found: none is wider than tall	未找到跨页：没有页面宽度大于高度
+	Box or selection	方框或选择
+	Brush	画笔
+	Brush size	画笔大小
+	Rub over what you want to erase; letting go erases it	在要擦除的内容上涂抹；松开即擦除
+	What will go is tinted red while you draw.	绘制时将被擦除的内容以红色显示。
+	Erase the selected words from the page	从页面擦除所选文字

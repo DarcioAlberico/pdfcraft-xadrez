@@ -34,6 +34,8 @@ pub struct KnifeView {
     pub page: Option<usize>,
     pub axis: Option<CutAxis>,
     pub at: Vec<f32>,
+    /// The cut being dragged (its index in `at`).
+    pub drag: Option<usize>,
 }
 
 /// The Knife's choices, for this run.
@@ -49,6 +51,41 @@ pub struct KnifePrefs {
 impl Default for KnifePrefs {
     fn default() -> Self {
         KnifePrefs { axis: CutAxis::Vertical, pages: KnifePages::This, right_to_left: false, trim_outside: false }
+    }
+}
+
+impl KnifePrefs {
+    /// As saved between runs (`"knife_prefs"` in the settings file).
+    pub fn to_json(&self) -> serde_json::Value {
+        serde_json::json!({
+            "axis": if self.axis == CutAxis::Horizontal { "across" } else { "upright" },
+            "pages": match self.pages { KnifePages::This => "this", KnifePages::Selected => "selected", KnifePages::All => "all" },
+            "right_to_left": self.right_to_left,
+            "trim_outside": self.trim_outside,
+        })
+    }
+
+    /// Settings are untrusted: each value is taken only when it reads as what it should be.
+    pub fn from_json(v: &serde_json::Value) -> Option<Self> {
+        if !v.is_object() {
+            return None;
+        }
+        let mut p = KnifePrefs::default();
+        if v["axis"].as_str() == Some("across") {
+            p.axis = CutAxis::Horizontal;
+        }
+        p.pages = match v["pages"].as_str() {
+            Some("selected") => KnifePages::Selected,
+            Some("all") => KnifePages::All,
+            _ => KnifePages::This,
+        };
+        if let Some(b) = v["right_to_left"].as_bool() {
+            p.right_to_left = b;
+        }
+        if let Some(b) = v["trim_outside"].as_bool() {
+            p.trim_outside = b;
+        }
+        Some(p)
     }
 }
 
@@ -135,9 +172,30 @@ pub(crate) fn page_input(ui: &egui::Ui, resp: &egui::Response, xf: &PageXform, p
     let axis = axis(ui, prefs);
     let glyphs: Vec<[f32; 4]> = view.page_text(page).map(|t| t.glyphs.iter().map(|g| g.rect).collect()).unwrap_or_default();
     let at = snapped(xf, axis, p, gutter(&glyphs, [xf.pw, xf.ph], axis));
+    // A placed cut under the pointer is dragged to where it should be; it snaps as a new one does.
+    if view.knife.page == Some(page) && view.knife.axis == Some(axis) {
+        // A drag is told from a click once the pointer has moved: look where the button went down.
+        if resp.drag_started() {
+            let origin = ui.input(|i| i.pointer.press_origin()).unwrap_or(p);
+            let near = view.knife.at.iter().position(|a| (ends(xf, axis, *a).0 - ends(xf, axis, share(xf, axis, origin)).0).length() <= SNAP);
+            view.knife.drag = near;
+        }
+        if let Some(i) = view.knife.drag {
+            if let Some(slot) = view.knife.at.get_mut(i) {
+                *slot = at;
+            }
+            if resp.drag_stopped() || !ui.input(|i| i.pointer.primary_down()) {
+                view.knife.drag = None;
+                view.knife.at.sort_by(f32::total_cmp);
+                view.knife.at.dedup_by(|a, b| (*a - *b).abs() < 0.005);
+            }
+            view.knife_hover = None;
+            return;
+        }
+    }
     if view.knife.page != Some(page) || view.knife.axis != Some(axis) {
         if resp.clicked() || resp.secondary_clicked() {
-            view.knife = KnifeView { page: Some(page), axis: Some(axis), at: Vec::new() };
+            view.knife = KnifeView { page: Some(page), axis: Some(axis), at: Vec::new(), drag: None };
         } else {
             view.knife_hover = Some((page, axis, at));
             return;

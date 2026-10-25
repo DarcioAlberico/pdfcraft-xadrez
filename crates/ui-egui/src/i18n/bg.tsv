@@ -3042,3 +3042,9 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Remove what lies outside each part	Премахване на това извън всяка част
 	Split double pages	Разделяне на двойни страници
 	No double pages were found: none is wider than tall	Не са намерени двойни страници: никоя не е по-широка, отколкото висока
+	Box or selection	Правоъгълник или селекция
+	Brush	Четка
+	Brush size	Размер на четката
+	Rub over what you want to erase; letting go erases it	Търкайте върху това, което искате да изтриете; отпускането го изтрива
+	What will go is tinted red while you draw.	Това, което ще бъде изтрито, се оцветява в червено, докато чертаете.
+	Erase the selected words from the page	Изтриване на избраните думи от страницата
