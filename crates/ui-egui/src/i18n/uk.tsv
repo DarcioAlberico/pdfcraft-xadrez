@@ -2572,6 +2572,30 @@ animation effects	Off	Вимкнено
 	Show this diagram on the page	Показати цю діаграму на сторінці
 	Stalemate	Пат
 	Standard start position	Стандартна початкова позиція
+	the board is empty	дошка порожня
+	White's king is missing	немає білого короля
+	Black's king is missing	немає чорного короля
+	White has more than one king	у білих більше одного короля
+	Black has more than one king	у чорних більше одного короля
+	White has more than 8 pawns	у білих більше 8 пішаків
+	Black has more than 8 pawns	у чорних більше 8 пішаків
+	White has more than 16 pieces	у білих більше 16 фігур
+	Black has more than 16 pieces	у чорних більше 16 фігур
+	a pawn stands on the first or the eighth rank	пішак стоїть на першій або восьмій горизонталі
+	White has more extra pieces than missing pawns to promote	у білих більше зайвих фігур, ніж бракує пішаків для перетворення
+	Black has more extra pieces than missing pawns to promote	у чорних більше зайвих фігур, ніж бракує пішаків для перетворення
+	the kings stand next to each other	королі стоять поруч
+	White is in check, but it is Black's turn	білим шах, але хід чорних
+	Black is in check, but it is White's turn	чорним шах, але хід білих
+	White's king is in check from more than two pieces	білому королю шах від понад двох фігур
+	Black's king is in check from more than two pieces	чорному королю шах від понад двох фігур
+	White's king is in a double check no move could give	білому королю подвійний шах, якого не міг дати жоден хід
+	Black's king is in a double check no move could give	чорному королю подвійний шах, якого не міг дати жоден хід
+	White may castle, but its king or rook has left its square	білим дозволено рокіровку, але король або тура покинули своє поле
+	Black may castle, but its king or rook has left its square	чорним дозволено рокіровку, але король або тура покинули своє поле
+	the en-passant square does not fit the pawns	поле взяття на проході не відповідає пішакам
+	Not a legal position: {reason}	Нелегальна позиція: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Нелегальна позиція ({reason}): виправте її в редакторі діаграми, щоб робити в ній ходи.
 	The game on the board has moves. Put this position:	У партії на дошці є ходи. Поставити цю позицію:
 	New game with this position	Нова партія з цією позицією
 	The game on the board keeps its moves.	Партія на дошці зберігає свої ходи.

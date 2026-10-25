@@ -2691,6 +2691,30 @@ animation effects	Off	Desactivados
 	Show this diagram on the page	Mostrar este diagrama en la página
 	Stalemate	Ahogado
 	Standard start position	Posición inicial estándar
+	the board is empty	el tablero está vacío
+	White's king is missing	falta el rey blanco
+	Black's king is missing	falta el rey negro
+	White has more than one king	las blancas tienen más de un rey
+	Black has more than one king	las negras tienen más de un rey
+	White has more than 8 pawns	las blancas tienen más de 8 peones
+	Black has more than 8 pawns	las negras tienen más de 8 peones
+	White has more than 16 pieces	las blancas tienen más de 16 piezas
+	Black has more than 16 pieces	las negras tienen más de 16 piezas
+	a pawn stands on the first or the eighth rank	hay un peón en la primera o en la octava fila
+	White has more extra pieces than missing pawns to promote	las blancas tienen más piezas de sobra que peones que faltan para coronar
+	Black has more extra pieces than missing pawns to promote	las negras tienen más piezas de sobra que peones que faltan para coronar
+	the kings stand next to each other	los reyes están uno junto al otro
+	White is in check, but it is Black's turn	las blancas están en jaque, pero juegan las negras
+	Black is in check, but it is White's turn	las negras están en jaque, pero juegan las blancas
+	White's king is in check from more than two pieces	el rey blanco recibe jaque de más de dos piezas
+	Black's king is in check from more than two pieces	el rey negro recibe jaque de más de dos piezas
+	White's king is in a double check no move could give	el rey blanco está en un jaque doble que ninguna jugada podría dar
+	Black's king is in a double check no move could give	el rey negro está en un jaque doble que ninguna jugada podría dar
+	White may castle, but its king or rook has left its square	las blancas pueden enrocar, pero su rey o su torre dejó su casilla
+	Black may castle, but its king or rook has left its square	las negras pueden enrocar, pero su rey o su torre dejó su casilla
+	the en-passant square does not fit the pawns	la casilla de captura al paso no encaja con los peones
+	Not a legal position: {reason}	Posición ilegal: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Posición ilegal ({reason}): corríjala en el editor de diagramas para jugar en ella.
 	The game on the board has moves. Put this position:	La partida del tablero tiene jugadas. Poner esta posición:
 	New game with this position	Nueva partida con esta posición
 	The game on the board keeps its moves.	La partida del tablero conserva sus jugadas.

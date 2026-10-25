@@ -2546,6 +2546,30 @@ animation effects	Off	Kapalı
 	Show this diagram on the page	Bu diyagramı sayfada göster
 	Stalemate	Pat
 	Standard start position	Standart başlangıç konumu
+	the board is empty	tahta boş
+	White's king is missing	beyaz şah yok
+	Black's king is missing	siyah şah yok
+	White has more than one king	beyazın birden fazla şahı var
+	Black has more than one king	siyahın birden fazla şahı var
+	White has more than 8 pawns	beyazın 8'den fazla piyonu var
+	Black has more than 8 pawns	siyahın 8'den fazla piyonu var
+	White has more than 16 pieces	beyazın 16'dan fazla taşı var
+	Black has more than 16 pieces	siyahın 16'dan fazla taşı var
+	a pawn stands on the first or the eighth rank	birinci ya da sekizinci yatayda bir piyon var
+	White has more extra pieces than missing pawns to promote	beyazın fazladan taşları, terfi edebilecek eksik piyonlarından çok
+	Black has more extra pieces than missing pawns to promote	siyahın fazladan taşları, terfi edebilecek eksik piyonlarından çok
+	the kings stand next to each other	şahlar yan yana duruyor
+	White is in check, but it is Black's turn	beyaz şahta, ama sıra siyahta
+	Black is in check, but it is White's turn	siyah şahta, ama sıra beyazda
+	White's king is in check from more than two pieces	beyaz şaha ikiden fazla taş şah çekiyor
+	Black's king is in check from more than two pieces	siyah şaha ikiden fazla taş şah çekiyor
+	White's king is in a double check no move could give	beyaz şah, hiçbir hamlenin veremeyeceği bir çifte şahta
+	Black's king is in a double check no move could give	siyah şah, hiçbir hamlenin veremeyeceği bir çifte şahta
+	White may castle, but its king or rook has left its square	beyaz rok yapabilir görünüyor, ama şahı ya da kalesi yerinden ayrılmış
+	Black may castle, but its king or rook has left its square	siyah rok yapabilir görünüyor, ama şahı ya da kalesi yerinden ayrılmış
+	the en-passant square does not fit the pawns	geçerken alma karesi piyonlara uymuyor
+	Not a legal position: {reason}	Geçerli bir konum değil: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Geçerli bir konum değil ({reason}): hamle oynamak için diyagram düzenleyicisinde düzeltin.
 	The game on the board has moves. Put this position:	Tahtadaki oyunda hamleler var. Bu konumu koy:
 	New game with this position	Bu konumla yeni oyun
 	The game on the board keeps its moves.	Tahtadaki oyun hamlelerini korur.

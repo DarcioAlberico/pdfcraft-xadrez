@@ -2550,6 +2550,30 @@ animation effects	Off	Désactivés
 	Show this diagram on the page	Afficher ce diagramme sur la page
 	Stalemate	Pat
 	Standard start position	Position de départ standard
+	the board is empty	l’échiquier est vide
+	White's king is missing	le roi blanc manque
+	Black's king is missing	le roi noir manque
+	White has more than one king	les Blancs ont plus d’un roi
+	Black has more than one king	les Noirs ont plus d’un roi
+	White has more than 8 pawns	les Blancs ont plus de 8 pions
+	Black has more than 8 pawns	les Noirs ont plus de 8 pions
+	White has more than 16 pieces	les Blancs ont plus de 16 pièces
+	Black has more than 16 pieces	les Noirs ont plus de 16 pièces
+	a pawn stands on the first or the eighth rank	un pion se trouve sur la première ou la huitième rangée
+	White has more extra pieces than missing pawns to promote	les Blancs ont plus de pièces en trop que de pions manquants à promouvoir
+	Black has more extra pieces than missing pawns to promote	les Noirs ont plus de pièces en trop que de pions manquants à promouvoir
+	the kings stand next to each other	les rois sont côte à côte
+	White is in check, but it is Black's turn	les Blancs sont en échec, mais c’est aux Noirs de jouer
+	Black is in check, but it is White's turn	les Noirs sont en échec, mais c’est aux Blancs de jouer
+	White's king is in check from more than two pieces	le roi blanc est en échec par plus de deux pièces
+	Black's king is in check from more than two pieces	le roi noir est en échec par plus de deux pièces
+	White's king is in a double check no move could give	le roi blanc subit un échec double qu’aucun coup ne pourrait donner
+	Black's king is in a double check no move could give	le roi noir subit un échec double qu’aucun coup ne pourrait donner
+	White may castle, but its king or rook has left its square	les Blancs peuvent roquer, mais leur roi ou leur tour a quitté sa case
+	Black may castle, but its king or rook has left its square	les Noirs peuvent roquer, mais leur roi ou leur tour a quitté sa case
+	the en-passant square does not fit the pawns	la case de prise en passant ne correspond pas aux pions
+	Not a legal position: {reason}	Position illégale : {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Position illégale ({reason}) : corrigez-la dans l'éditeur de diagramme pour y jouer des coups.
 	The game on the board has moves. Put this position:	La partie sur l’échiquier a des coups. Placer cette position :
 	New game with this position	Nouvelle partie avec cette position
 	The game on the board keeps its moves.	La partie sur l’échiquier garde ses coups.

@@ -78,9 +78,21 @@ impl Default for LinkSettings {
 fn confirmed_url(fen: &str) -> Result<String, String> {
     let position = pdfcraft_chess::fen::parse(fen).map_err(|e| format!("the position is not a FEN: {e}"))?;
     if pdfcraft_chess::repair::GameContext::from_fen(fen).is_none() {
-        return Err("the position is not legal".into());
+        return Err(not_legal(fen));
     }
     Ok(pdfcraft_chess::lichess::analysis_url(&position, pdfcraft_chess::placement::Color::White))
+}
+
+/// "the position is not legal", with the first rule FEN `fen` breaks when one is named (plan A8,
+/// P3b1).
+fn not_legal(fen: &str) -> String {
+    let why = pdfcraft_chess::fen::parse(fen)
+        .map(|p| pdfcraft_chess::rules::position_violations(&p, pdfcraft_chess::placement::Color::White))
+        .unwrap_or_default();
+    match why.first() {
+        Some(v) => format!("the position is not legal: {v}"),
+        None => "the position is not legal".into(),
+    }
 }
 
 /// Where a label goes relative to its diagram.
@@ -254,7 +266,9 @@ impl Session {
                     }
                 };
                 let Some(url) = lichess_url(position) else {
-                    skip(index, if position.repaired() { "the reading was repaired, so it needs review first" } else { "the position is not legal" });
+                    let why =
+                        if position.repaired() { "the reading was repaired, so it needs review first".to_owned() } else { not_legal(&position.fen) };
+                    skip(index, &why);
                     continue;
                 };
                 if !position.accepted && !settings.allow_unaccepted {

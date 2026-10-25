@@ -112,15 +112,7 @@ impl Setup {
 
     /// Castling needs the king and that rook on their first squares.
     fn fit_castling(&mut self) {
-        let p = self.position.placement;
-        let on = |name: &str, color: Color, kind: PieceKind| Square::parse(name).is_some_and(|sq| p.get(sq) == Some(Piece { color, kind }));
-        let c = &mut self.position.castling;
-        let white_king = on("e1", Color::White, PieceKind::King);
-        let black_king = on("e8", Color::Black, PieceKind::King);
-        c.white_king_side &= white_king && on("h1", Color::White, PieceKind::Rook);
-        c.white_queen_side &= white_king && on("a1", Color::White, PieceKind::Rook);
-        c.black_king_side &= black_king && on("h8", Color::Black, PieceKind::Rook);
-        c.black_queen_side &= black_king && on("a8", Color::Black, PieceKind::Rook);
+        self.position.castling = self.position.castling.fitted(&self.position.placement);
     }
 }
 
@@ -392,12 +384,14 @@ fn setup_view(ui: &mut egui::Ui, t: &Tokens, setup: &mut Setup, board: &mut Boar
     let fen = setup.fen();
     let legal = setup.legal();
     ui.add(egui::Label::new(egui::RichText::new(&fen).monospace().small()).wrap());
+    // Why not, when it is not (plan A8, P3b1).
     let (text, colour) = if legal {
-        (tl!("Legal position"), Color32::from_rgb(0x2D, 0x9D, 0x5B))
+        (tl!("Legal position").to_string(), Color32::from_rgb(0x2D, 0x9D, 0x5B))
     } else {
-        (tl!("Not a legal position"), Color32::from_rgb(0xE0, 0x3E, 0x3E))
+        let why = pdfcraft_engine::chess::pdfcraft_chess::rules::position_violations(&setup.position, Color::White);
+        (crate::chess_editor::not_legal_text(&why), Color32::from_rgb(0xE0, 0x3E, 0x3E))
     };
-    ui.label(egui::RichText::new(text).small().color(colour));
+    ui.add(egui::Label::new(egui::RichText::new(text).small().color(colour)).wrap());
     let has_moves = !board.game.is_empty();
     ui.horizontal_wrapped(|ui| {
         if has_moves {

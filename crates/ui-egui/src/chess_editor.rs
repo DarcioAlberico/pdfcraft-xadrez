@@ -23,6 +23,7 @@ use pdfcraft_engine::chess::pdfcraft_chess::fen::{Castling, Position};
 use pdfcraft_engine::chess::pdfcraft_chess::placement::{Color, Piece, PieceKind, Placement, Square};
 use pdfcraft_engine::chess::pdfcraft_chess::recognize::Uncertain;
 use pdfcraft_engine::chess::pdfcraft_chess::repair::GameContext;
+use pdfcraft_engine::chess::pdfcraft_chess::rules::{Violation, position_violations};
 use pdfcraft_engine::chess::pdfcraft_chessvision::board::BoardReading;
 
 use crate::theme::Tokens;
@@ -94,6 +95,12 @@ impl DiagramEditor {
         GameContext::from_fen(&self.fen()).is_some()
     }
 
+    /// Why the position is not legal, as the panel says it ("Not a legal position: Black's king is
+    /// missing"); `None` when it is legal (plan A8, P3b1).
+    pub fn illegal_text(&self) -> Option<String> {
+        (!self.legal()).then(|| not_legal_text(&position_violations(&self.position, Color::White)))
+    }
+
     /// Put the brush on `square`; clicking a square that already holds the brush's piece empties it.
     pub fn paint(&mut self, square: Square) {
         let now = self.position.placement.get(square);
@@ -150,6 +157,43 @@ pub(crate) fn piece_letter(p: Piece) -> String {
         PieceKind::Pawn => 'P',
     };
     if p.color == Color::White { c.to_string() } else { c.to_ascii_lowercase().to_string() }
+}
+
+/// What breaking rule `v` means, in the current language.
+pub(crate) fn violation_text(v: Violation) -> &'static str {
+    let white = |c: Color| c == Color::White;
+    match v {
+        Violation::Empty => tl!("the board is empty"),
+        Violation::NoKing(c) if white(c) => tl!("White's king is missing"),
+        Violation::NoKing(_) => tl!("Black's king is missing"),
+        Violation::TooManyKings(c) if white(c) => tl!("White has more than one king"),
+        Violation::TooManyKings(_) => tl!("Black has more than one king"),
+        Violation::TooManyPawns(c) if white(c) => tl!("White has more than 8 pawns"),
+        Violation::TooManyPawns(_) => tl!("Black has more than 8 pawns"),
+        Violation::TooManyPieces(c) if white(c) => tl!("White has more than 16 pieces"),
+        Violation::TooManyPieces(_) => tl!("Black has more than 16 pieces"),
+        Violation::PawnOnBackRank => tl!("a pawn stands on the first or the eighth rank"),
+        Violation::ImpossiblePromotions(c) if white(c) => tl!("White has more extra pieces than missing pawns to promote"),
+        Violation::ImpossiblePromotions(_) => tl!("Black has more extra pieces than missing pawns to promote"),
+        Violation::AdjacentKings => tl!("the kings stand next to each other"),
+        Violation::NotToMoveInCheck(c) if white(c) => tl!("White is in check, but it is Black's turn"),
+        Violation::NotToMoveInCheck(_) => tl!("Black is in check, but it is White's turn"),
+        Violation::TooManyCheckers(c) if white(c) => tl!("White's king is in check from more than two pieces"),
+        Violation::TooManyCheckers(_) => tl!("Black's king is in check from more than two pieces"),
+        Violation::ImpossibleDoubleCheck(c) if white(c) => tl!("White's king is in a double check no move could give"),
+        Violation::ImpossibleDoubleCheck(_) => tl!("Black's king is in a double check no move could give"),
+        Violation::BadCastling(c) if white(c) => tl!("White may castle, but its king or rook has left its square"),
+        Violation::BadCastling(_) => tl!("Black may castle, but its king or rook has left its square"),
+        Violation::BadEnPassant => tl!("the en-passant square does not fit the pawns"),
+    }
+}
+
+/// "Not a legal position: <the first rule `why` names>", or without a reason when it names none.
+pub(crate) fn not_legal_text(why: &[Violation]) -> String {
+    match why.first() {
+        Some(v) => crate::i18n::fmt(tl!("Not a legal position: {reason}"), &[("reason", violation_text(*v))]),
+        None => tl!("Not a legal position").to_string(),
+    }
 }
 
 pub(crate) fn piece_name(p: Piece) -> &'static str {
@@ -341,6 +385,8 @@ pub fn editor_ui(ui: &mut egui::Ui, t: &Tokens, ed: &mut DiagramEditor, pieces: 
         ui.add(crate::widgets::checkbox(&mut c.white_queen_side, "Q"));
         ui.add(crate::widgets::checkbox(&mut c.black_king_side, "k"));
         ui.add(crate::widgets::checkbox(&mut c.black_queen_side, "q"));
+        // A right the pieces do not allow is taken off again, as in the set-up (plan A8, P3b1).
+        *c = c.fitted(&ed.position.placement);
         if ui.small_button(tl!("Flip board")).clicked() {
             ed.flipped = !ed.flipped;
         }
@@ -349,13 +395,12 @@ pub fn editor_ui(ui: &mut egui::Ui, t: &Tokens, ed: &mut DiagramEditor, pieces: 
         }
     });
     let fen = ed.fen();
-    let legal = ed.legal();
+    let illegal = ed.illegal_text();
+    let legal = illegal.is_none();
     ui.add(egui::Label::new(egui::RichText::new(&fen).monospace().small()).wrap());
-    ui.label(egui::RichText::new(if legal { tl!("Legal position") } else { tl!("Not a legal position") }).small().color(if legal {
-        Color32::from_rgb(0x2D, 0x9D, 0x5B)
-    } else {
-        Color32::from_rgb(0xE0, 0x3E, 0x3E)
-    }));
+    let status = illegal.unwrap_or_else(|| tl!("Legal position").to_string());
+    let colour = if legal { Color32::from_rgb(0x2D, 0x9D, 0x5B) } else { Color32::from_rgb(0xE0, 0x3E, 0x3E) };
+    ui.add(egui::Label::new(egui::RichText::new(status).small().color(colour)).wrap());
     // The model's second readings.
     let mut take = None;
     for (k, u) in ed.uncertain.iter().enumerate() {
