@@ -2513,6 +2513,30 @@ animation effects	Off	Изключени
 	Show this diagram on the page	Показване на тази диаграма на страницата
 	Stalemate	Пат
 	Standard start position	Стандартна начална позиция
+	the board is empty	дъската е празна
+	White's king is missing	липсва белият цар
+	Black's king is missing	липсва черният цар
+	White has more than one king	белите имат повече от един цар
+	Black has more than one king	черните имат повече от един цар
+	White has more than 8 pawns	белите имат повече от 8 пешки
+	Black has more than 8 pawns	черните имат повече от 8 пешки
+	White has more than 16 pieces	белите имат повече от 16 фигури
+	Black has more than 16 pieces	черните имат повече от 16 фигури
+	a pawn stands on the first or the eighth rank	пешка стои на първия или осмия ред
+	White has more extra pieces than missing pawns to promote	белите имат повече допълнителни фигури, отколкото липсващи пешки за промоция
+	Black has more extra pieces than missing pawns to promote	черните имат повече допълнителни фигури, отколкото липсващи пешки за промоция
+	the kings stand next to each other	царете стоят един до друг
+	White is in check, but it is Black's turn	белите са в шах, но е ред на черните
+	Black is in check, but it is White's turn	черните са в шах, но е ред на белите
+	White's king is in check from more than two pieces	белият цар е в шах от повече от две фигури
+	Black's king is in check from more than two pieces	черният цар е в шах от повече от две фигури
+	White's king is in a double check no move could give	белият цар е в двоен шах, който никой ход не може да даде
+	Black's king is in a double check no move could give	черният цар е в двоен шах, който никой ход не може да даде
+	White may castle, but its king or rook has left its square	белите могат да рокират, но царят или топът е напуснал полето си
+	Black may castle, but its king or rook has left its square	черните могат да рокират, но царят или топът е напуснал полето си
+	the en-passant square does not fit the pawns	полето за взимане ан пасан не отговаря на пешките
+	Not a legal position: {reason}	Незаконна позиция: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Незаконна позиция ({reason}): поправете я в редактора на диаграми, за да играете ходове в нея.
 	The game on the board has moves. Put this position:	Партията на дъската има ходове. Да се постави тази позиция:
 	New game with this position	Нова партия с тази позиция
 	The game on the board keeps its moves.	Партията на дъската запазва ходовете си.

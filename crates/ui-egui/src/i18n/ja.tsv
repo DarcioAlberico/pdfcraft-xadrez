@@ -2552,6 +2552,30 @@ animation effects	Off	オフ
 	Show this diagram on the page	この図面をページ上で表示
 	Stalemate	ステイルメイト
 	Standard start position	標準の初期配置
+	the board is empty	盤に駒がありません
+	White's king is missing	白のキングがありません
+	Black's king is missing	黒のキングがありません
+	White has more than one king	白のキングが複数あります
+	Black has more than one king	黒のキングが複数あります
+	White has more than 8 pawns	白のポーンが8個を超えています
+	Black has more than 8 pawns	黒のポーンが8個を超えています
+	White has more than 16 pieces	白の駒が16個を超えています
+	Black has more than 16 pieces	黒の駒が16個を超えています
+	a pawn stands on the first or the eighth rank	1段目か8段目にポーンがあります
+	White has more extra pieces than missing pawns to promote	白の追加の駒が、昇格できる欠けたポーンの数より多くなっています
+	Black has more extra pieces than missing pawns to promote	黒の追加の駒が、昇格できる欠けたポーンの数より多くなっています
+	the kings stand next to each other	キング同士が隣り合っています
+	White is in check, but it is Black's turn	白がチェックされていますが、黒の手番です
+	Black is in check, but it is White's turn	黒がチェックされていますが、白の手番です
+	White's king is in check from more than two pieces	白のキングが3個以上の駒からチェックされています
+	Black's king is in check from more than two pieces	黒のキングが3個以上の駒からチェックされています
+	White's king is in a double check no move could give	白のキングが、どの手でも生じ得ないダブルチェックを受けています
+	Black's king is in a double check no move could give	黒のキングが、どの手でも生じ得ないダブルチェックを受けています
+	White may castle, but its king or rook has left its square	白にキャスリング権がありますが、キングかルークが元の位置から動いています
+	Black may castle, but its king or rook has left its square	黒にキャスリング権がありますが、キングかルークが元の位置から動いています
+	the en-passant square does not fit the pawns	アンパッサンのマスがポーンの配置と合いません
+	Not a legal position: {reason}	合法な局面ではありません：{reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	合法な局面ではありません（{reason}）：手を指すには図面エディターで修正してください。
 	The game on the board has moves. Put this position:	盤上の対局には指し手があります。この局面を：
 	New game with this position	この局面で新しい対局
 	The game on the board keeps its moves.	盤上の対局の指し手はそのまま残ります。

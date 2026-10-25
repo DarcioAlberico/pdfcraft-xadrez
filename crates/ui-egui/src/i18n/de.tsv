@@ -2551,6 +2551,30 @@ animation effects	Off	Aus
 	Show this diagram on the page	Dieses Diagramm auf der Seite zeigen
 	Stalemate	Patt
 	Standard start position	Grundstellung
+	the board is empty	das Brett ist leer
+	White's king is missing	der weiße König fehlt
+	Black's king is missing	der schwarze König fehlt
+	White has more than one king	Weiß hat mehr als einen König
+	Black has more than one king	Schwarz hat mehr als einen König
+	White has more than 8 pawns	Weiß hat mehr als 8 Bauern
+	Black has more than 8 pawns	Schwarz hat mehr als 8 Bauern
+	White has more than 16 pieces	Weiß hat mehr als 16 Steine
+	Black has more than 16 pieces	Schwarz hat mehr als 16 Steine
+	a pawn stands on the first or the eighth rank	ein Bauer steht auf der ersten oder achten Reihe
+	White has more extra pieces than missing pawns to promote	Weiß hat mehr zusätzliche Figuren, als fehlende Bauern umgewandelt werden konnten
+	Black has more extra pieces than missing pawns to promote	Schwarz hat mehr zusätzliche Figuren, als fehlende Bauern umgewandelt werden konnten
+	the kings stand next to each other	die Könige stehen nebeneinander
+	White is in check, but it is Black's turn	Weiß steht im Schach, aber Schwarz ist am Zug
+	Black is in check, but it is White's turn	Schwarz steht im Schach, aber Weiß ist am Zug
+	White's king is in check from more than two pieces	der weiße König steht im Schach von mehr als zwei Figuren
+	Black's king is in check from more than two pieces	der schwarze König steht im Schach von mehr als zwei Figuren
+	White's king is in a double check no move could give	der weiße König steht in einem Doppelschach, das kein Zug geben kann
+	Black's king is in a double check no move could give	der schwarze König steht in einem Doppelschach, das kein Zug geben kann
+	White may castle, but its king or rook has left its square	Weiß darf rochieren, aber König oder Turm hat sein Feld verlassen
+	Black may castle, but its king or rook has left its square	Schwarz darf rochieren, aber König oder Turm hat sein Feld verlassen
+	the en-passant square does not fit the pawns	das En-passant-Feld passt nicht zu den Bauern
+	Not a legal position: {reason}	Keine legale Stellung: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Keine legale Stellung ({reason}): im Diagrammeditor korrigieren, um darauf zu ziehen.
 	The game on the board has moves. Put this position:	Die Partie auf dem Brett hat Züge. Diese Stellung setzen:
 	New game with this position	Neue Partie mit dieser Stellung
 	The game on the board keeps its moves.	Die Partie auf dem Brett behält ihre Züge.

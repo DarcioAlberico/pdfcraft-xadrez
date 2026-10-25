@@ -2548,6 +2548,30 @@ animation effects	Off	Өшірулі
 	Show this diagram on the page	Бұл диаграмманы бетте көрсету
 	Stalemate	Пат
 	Standard start position	Стандартты бастапқы позиция
+	the board is empty	тақта бос
+	White's king is missing	ақ патша жоқ
+	Black's king is missing	қара патша жоқ
+	White has more than one king	ақтарда бірден көп патша бар
+	Black has more than one king	қараларда бірден көп патша бар
+	White has more than 8 pawns	ақтарда 8-ден көп пешка бар
+	Black has more than 8 pawns	қараларда 8-ден көп пешка бар
+	White has more than 16 pieces	ақтарда 16-дан көп фигура бар
+	Black has more than 16 pieces	қараларда 16-дан көп фигура бар
+	a pawn stands on the first or the eighth rank	пешка бірінші немесе сегізінші қатарда тұр
+	White has more extra pieces than missing pawns to promote	ақтарда айналдыруға жетіспейтін пешкалардан көп қосымша фигура бар
+	Black has more extra pieces than missing pawns to promote	қараларда айналдыруға жетіспейтін пешкалардан көп қосымша фигура бар
+	the kings stand next to each other	патшалар қатар тұр
+	White is in check, but it is Black's turn	ақтарға шах, бірақ жүріс қаралардікі
+	Black is in check, but it is White's turn	қараларға шах, бірақ жүріс ақтардікі
+	White's king is in check from more than two pieces	ақ патшаға екіден көп фигура шах беріп тұр
+	Black's king is in check from more than two pieces	қара патшаға екіден көп фигура шах беріп тұр
+	White's king is in a double check no move could give	ақ патша ешбір жүріс бере алмайтын қос шахта тұр
+	Black's king is in a double check no move could give	қара патша ешбір жүріс бере алмайтын қос шахта тұр
+	White may castle, but its king or rook has left its square	ақтар рокировка жасай алады, бірақ патшасы не тұрасы өз орнынан кеткен
+	Black may castle, but its king or rook has left its square	қаралар рокировка жасай алады, бірақ патшасы не тұрасы өз орнынан кеткен
+	the en-passant square does not fit the pawns	өтпелі алу шаршысы пешкаларға сәйкес келмейді
+	Not a legal position: {reason}	Заңсыз позиция: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Заңсыз позиция ({reason}): онда жүріс жасау үшін оны диаграмма редакторында түзетіңіз.
 	The game on the board has moves. Put this position:	Тақтадағы партияда жүрістер бар. Осы позицияны қою:
 	New game with this position	Осы позициямен жаңа партия
 	The game on the board keeps its moves.	Тақтадағы партия өз жүрістерін сақтайды.

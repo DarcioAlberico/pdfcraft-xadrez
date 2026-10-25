@@ -2463,6 +2463,30 @@ animation effects	Off	Выкл
 	Show this diagram on the page	Показать эту диаграмму на странице
 	Stalemate	Пат
 	Standard start position	Стандартная начальная позиция
+	the board is empty	доска пуста
+	White's king is missing	нет белого короля
+	Black's king is missing	нет чёрного короля
+	White has more than one king	у белых больше одного короля
+	Black has more than one king	у чёрных больше одного короля
+	White has more than 8 pawns	у белых больше 8 пешек
+	Black has more than 8 pawns	у чёрных больше 8 пешек
+	White has more than 16 pieces	у белых больше 16 фигур
+	Black has more than 16 pieces	у чёрных больше 16 фигур
+	a pawn stands on the first or the eighth rank	пешка стоит на первой или восьмой горизонтали
+	White has more extra pieces than missing pawns to promote	у белых больше лишних фигур, чем недостающих пешек для превращения
+	Black has more extra pieces than missing pawns to promote	у чёрных больше лишних фигур, чем недостающих пешек для превращения
+	the kings stand next to each other	короли стоят рядом
+	White is in check, but it is Black's turn	белым шах, но ход чёрных
+	Black is in check, but it is White's turn	чёрным шах, но ход белых
+	White's king is in check from more than two pieces	белому королю шах от более чем двух фигур
+	Black's king is in check from more than two pieces	чёрному королю шах от более чем двух фигур
+	White's king is in a double check no move could give	белому королю двойной шах, который не мог дать ни один ход
+	Black's king is in a double check no move could give	чёрному королю двойной шах, который не мог дать ни один ход
+	White may castle, but its king or rook has left its square	белым разрешена рокировка, но король или ладья покинули своё поле
+	Black may castle, but its king or rook has left its square	чёрным разрешена рокировка, но король или ладья покинули своё поле
+	the en-passant square does not fit the pawns	поле взятия на проходе не соответствует пешкам
+	Not a legal position: {reason}	Нелегальная позиция: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Нелегальная позиция ({reason}): исправьте её в редакторе диаграммы, чтобы делать в ней ходы.
 	The game on the board has moves. Put this position:	В партии на доске есть ходы. Поставить эту позицию:
 	New game with this position	Новая партия с этой позицией
 	The game on the board keeps its moves.	Партия на доске сохраняет свои ходы.

@@ -309,12 +309,8 @@ impl BoardState {
                 self.message = Some(crate::i18n::fmt(tl!("The FEN couldn't be read: {e}"), &[("e", &e)]));
                 return false;
             }
-            Err(_) => match pdfcraft_engine::chess::pdfcraft_chess::fen::parse_placement(fen) {
-                Ok(placement) => (
-                    Game::standard(),
-                    Some((placement, fen.trim().to_owned())),
-                    Some(tl!("Not a legal position: correct it in the diagram editor to play moves on it.").to_string()),
-                ),
+            Err(e) => match pdfcraft_engine::chess::pdfcraft_chess::fen::parse_placement(fen) {
+                Ok(placement) => (Game::standard(), Some((placement, fen.trim().to_owned())), Some(board_illegal_text(&e))),
                 Err(e) => {
                     self.message = Some(crate::i18n::fmt(tl!("The FEN couldn't be read: {e}"), &[("e", &e.to_string())]));
                     return false;
@@ -710,6 +706,18 @@ impl BoardState {
 
 /// The pieces in the order of the sprite image's columns.
 const KINDS: [PieceKind; 6] = [PieceKind::King, PieceKind::Queen, PieceKind::Rook, PieceKind::Bishop, PieceKind::Knight, PieceKind::Pawn];
+
+/// The board's message for a position it can't play: why, when the rule broken has a name
+/// (plan A8, P3b1), and where to correct it.
+fn board_illegal_text(e: &GameError) -> String {
+    match e {
+        GameError::IllegalPosition(why) if let Some(v) = why.first() => crate::i18n::fmt(
+            tl!("Not a legal position ({reason}): correct it in the diagram editor to play moves on it."),
+            &[("reason", crate::chess_editor::violation_text(*v))],
+        ),
+        _ => tl!("Not a legal position: correct it in the diagram editor to play moves on it.").to_string(),
+    }
+}
 
 /// When `new` is the game `old` was, read again (the same start, tags and main line), the move
 /// shown and where its moves are printed on the page carry over to it by their paths (plan A8,

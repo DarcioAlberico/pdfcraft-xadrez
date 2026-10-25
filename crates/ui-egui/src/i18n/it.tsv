@@ -2762,6 +2762,30 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Show this diagram on the page	Mostra questo diagramma nella pagina
 	Stalemate	Stallo
 	Standard start position	Posizione iniziale standard
+	the board is empty	la scacchiera è vuota
+	White's king is missing	manca il re bianco
+	Black's king is missing	manca il re nero
+	White has more than one king	il Bianco ha più di un re
+	Black has more than one king	il Nero ha più di un re
+	White has more than 8 pawns	il Bianco ha più di 8 pedoni
+	Black has more than 8 pawns	il Nero ha più di 8 pedoni
+	White has more than 16 pieces	il Bianco ha più di 16 pezzi
+	Black has more than 16 pieces	il Nero ha più di 16 pezzi
+	a pawn stands on the first or the eighth rank	un pedone si trova sulla prima o sull'ottava traversa
+	White has more extra pieces than missing pawns to promote	il Bianco ha più pezzi in più che pedoni mancanti da promuovere
+	Black has more extra pieces than missing pawns to promote	il Nero ha più pezzi in più che pedoni mancanti da promuovere
+	the kings stand next to each other	i re sono uno accanto all'altro
+	White is in check, but it is Black's turn	il Bianco è sotto scacco, ma tocca al Nero
+	Black is in check, but it is White's turn	il Nero è sotto scacco, ma tocca al Bianco
+	White's king is in check from more than two pieces	il re bianco è sotto scacco da più di due pezzi
+	Black's king is in check from more than two pieces	il re nero è sotto scacco da più di due pezzi
+	White's king is in a double check no move could give	il re bianco è in uno scacco doppio che nessuna mossa potrebbe dare
+	Black's king is in a double check no move could give	il re nero è in uno scacco doppio che nessuna mossa potrebbe dare
+	White may castle, but its king or rook has left its square	il Bianco può arroccare, ma il suo re o la torre ha lasciato la casa
+	Black may castle, but its king or rook has left its square	il Nero può arroccare, ma il suo re o la torre ha lasciato la casa
+	the en-passant square does not fit the pawns	la casa per la presa en passant non corrisponde ai pedoni
+	Not a legal position: {reason}	Posizione non legale: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Posizione non legale ({reason}): correggila nell'editor del diagramma per giocarci delle mosse.
 	The game on the board has moves. Put this position:	La partita sulla scacchiera ha delle mosse. Metti questa posizione:
 	New game with this position	Nuova partita con questa posizione
 	The game on the board keeps its moves.	La partita sulla scacchiera mantiene le sue mosse.

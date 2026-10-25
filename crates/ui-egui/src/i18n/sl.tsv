@@ -2555,6 +2555,30 @@ animation effects	Off	Izklopljeni
 	Show this diagram on the page	Prikaži ta diagram na strani
 	Stalemate	Pat
 	Standard start position	Standardni začetni položaj
+	the board is empty	šahovnica je prazna
+	White's king is missing	manjka beli kralj
+	Black's king is missing	manjka črni kralj
+	White has more than one king	beli ima več kot enega kralja
+	Black has more than one king	črni ima več kot enega kralja
+	White has more than 8 pawns	beli ima več kot 8 kmetov
+	Black has more than 8 pawns	črni ima več kot 8 kmetov
+	White has more than 16 pieces	beli ima več kot 16 figur
+	Black has more than 16 pieces	črni ima več kot 16 figur
+	a pawn stands on the first or the eighth rank	kmet stoji na prvi ali osmi vrsti
+	White has more extra pieces than missing pawns to promote	beli ima več dodatnih figur, kot je manjkajočih kmetov za promocijo
+	Black has more extra pieces than missing pawns to promote	črni ima več dodatnih figur, kot je manjkajočih kmetov za promocijo
+	the kings stand next to each other	kralja stojita drug ob drugem
+	White is in check, but it is Black's turn	beli je v šahu, a na potezi je črni
+	Black is in check, but it is White's turn	črni je v šahu, a na potezi je beli
+	White's king is in check from more than two pieces	beli kralj je v šahu od več kot dveh figur
+	Black's king is in check from more than two pieces	črni kralj je v šahu od več kot dveh figur
+	White's king is in a double check no move could give	beli kralj je v dvojnem šahu, ki ga ne bi mogla dati nobena poteza
+	Black's king is in a double check no move could give	črni kralj je v dvojnem šahu, ki ga ne bi mogla dati nobena poteza
+	White may castle, but its king or rook has left its square	beli sme rokirati, a njegov kralj ali trdnjava je zapustil svoje polje
+	Black may castle, but its king or rook has left its square	črni sme rokirati, a njegov kralj ali trdnjava je zapustil svoje polje
+	the en-passant square does not fit the pawns	polje za jemanje en passant se ne ujema s kmeti
+	Not a legal position: {reason}	Nelegalen položaj: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Nelegalen položaj ({reason}): popravite ga v urejevalniku diagrama, da boste v njem lahko vlekli poteze.
 	The game on the board has moves. Put this position:	Partija na šahovnici ima poteze. Postavi ta položaj:
 	New game with this position	Nova partija s tem položajem
 	The game on the board keeps its moves.	Partija na šahovnici obdrži svoje poteze.
