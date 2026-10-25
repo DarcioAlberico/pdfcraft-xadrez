@@ -1,6 +1,6 @@
 # Plano — Peças, tabuleiros e lista de lances (a partir de cursos em HTML) · v3
 
-**Status:** v3 · 2026-10-25 · nenhum passo começado · decisões D13–D16 **aceitas** pelo usuário em 2026-10-25 (§4).
+**Status:** v3 · 2026-10-25 · **HC0 feito** (§5.2) · decisões D13–D16 **aceitas** pelo usuário em 2026-10-25 (§4).
 **Escopo (decisão do usuário, 2026-10-25):** melhorar o tabuleiro com **mais designs de tabuleiro e mais conjuntos de peças**, e **melhorar a lista de lances**. Fora: modo treino, perguntas `[%tqu]`, progresso, importação de cursos e puzzles como partidas, exportação de cursos (§2.5).
 **Origem:** três páginas HTML de cursos de xadrez salvas pelo usuário (pasta local `pasta-html-teste/`, **fora do repositório**: são conteúdo de terceiros, nunca entram em commit, fixture, teste ou documento). Análise de 2026-10-25, só dos **dados** que as páginas carregam e do que elas mostram na tela (servidas em `127.0.0.1` e olhadas no navegador). O código JavaScript delas não foi lido para copiar e não será.
 **Repositório:** `DarcioAlberico/pdfcraft-xadrez` (Rust, egui), `main` `959ddf1f`.
@@ -181,7 +181,7 @@ Lista:      HC2 ─► HC8 figurinhas na tela (D15)
 
 Cada passo: **Contexto** · **Tarefas** · **Verificação** · **Saída** · **Reversão**. Em todos: entrada em `parity/` (com o que ainda falta na nota), ferramenta headless quando houver função nova, teste visto falhando com a correção revertida, i18n completo, capturas a 1366 × 768 claro e escuro para o que for visível.
 
-**HC0 — SVG de peças seguro** (`crates/chessvision/src/pieces/svg.rs`).
+**HC0 — SVG de peças seguro** (`crates/chessvision/src/pieces/svg.rs`). ✅ 2026-10-25: `parse` lê o SVG só dos próprios bytes (resolvedor de `href` que não resolve nada, svgz recusado, 8 MiB, 200 000 nós, entidades: sem parâmetro, externa ou aninhada, no máximo 64 e 1 MiB acrescentado); cada parte vista falhando no seu teste com a correção desfeita.
 - *Contexto:* `glyph_from_svg` usa `usvg::Options::default()`; o resolvedor padrão lê `href` do disco sem limite.
 - *Tarefas:* `Options` com resolvedor que recusa todo `href` (imagem, fonte) e sem acesso a arquivos; limite de bytes antes de `Tree::from_data`; erro claro "o SVG aponta para outro arquivo".
 - *Verificação:* SVGs sintéticos com `<image href="C:/…">`, `href` para arquivo inexistente, SVG aninhado em `data:`, 10 MB: nenhum lê o disco (provado com um caminho que, lido, falharia de forma visível), nenhum pânico; as pastas sintéticas de hoje leem igual.

@@ -4045,6 +4045,7 @@ version = "0.9.0"
 dependencies = [
  "base64 0.22.1",
  "cozy-chess",
+ "flate2",
  "ocrs",
  "pdfcraft-chess",
  "pdfcraft-geom",
