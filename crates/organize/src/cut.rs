@@ -7,9 +7,10 @@
 //! The copies share the original's content, fonts and images, and are made without the page's
 //! annotations; every annotation then goes to the part holding its centre (a pop-up goes with its
 //! parent), so a form field never has a widget on two pages. Links, bookmarks and destinations
-//! that pointed at the page point at the first part.
+//! that pointed at the page go to the part holding the point they open (a `/Fit` one, with no
+//! point, stays on the first part).
 
-use pdfcraft_cos::{Document, ObjRef, Object};
+use pdfcraft_cos::{Dict, Document, ObjRef, Object};
 
 use crate::{OrganizeError, duplicate_pages, page_boxes, page_rotation, walk};
 
@@ -249,8 +250,231 @@ pub fn cut_pages(doc: &mut Document, cuts: &[Cut], right_to_left: bool) -> Resul
             }
             doc.update_dict(*r, |d| d.set(b"Annots".to_vec(), Object::Array(list)))?;
         }
+        let aimed: Vec<(ObjRef, [f64; 4])> = part_refs.iter().copied().zip(parts.iter().copied()).collect();
+        retarget_destinations(doc, page_ref, &aimed)?;
         outcome.parts.push((page, (0..parts.len()).map(|k| at.saturating_add(k)).collect()));
         offset = offset.saturating_add(copies);
     }
     Ok(outcome)
+}
+
+/// Most nodes of a name tree or bookmarks walked when destinations are aimed at the parts.
+const MAX_DEST_NODES: usize = 100_000;
+
+/// The point a destination array opens on its page, in user space, as far as it says: `/XYZ`
+/// left and top (either may be null), `/FitH` and `/FitBH` top, `/FitV` and `/FitBV` left, the
+/// middle of a `/FitR`. `None` for `/Fit` and `/FitB`, and anything else.
+fn dest_point(doc: &Document, array: &[Object]) -> Option<(Option<f64>, Option<f64>)> {
+    let num = |i: usize| array.get(i).and_then(|o| doc.resolve(o).as_f64()).filter(|v| v.is_finite());
+    let point = match array.get(1)?.as_name()? {
+        b"XYZ" => (num(2), num(3)),
+        b"FitH" | b"FitBH" => (None, num(2)),
+        b"FitV" | b"FitBV" => (num(2), None),
+        b"FitR" => {
+            let (x0, y0, x1, y1) = (num(2)?, num(3)?, num(4)?, num(5)?);
+            (Some((x0 + x1) / 2.0), Some((y0 + y1) / 2.0))
+        }
+        _ => return None,
+    };
+    (point.0.is_some() || point.1.is_some()).then_some(point)
+}
+
+/// `dest` (a destination array, or a dictionary whose /D is one) aimed at the part holding its
+/// point, when it opens `page` and that point lies in a later part; `None` when it stays as it is.
+fn aim(doc: &Document, dest: &Object, page: ObjRef, parts: &[(ObjRef, [f64; 4])]) -> Option<Object> {
+    if let Some(d) = dest.as_dict() {
+        let inner = d.get(b"D")?;
+        let new = match inner {
+            Object::Ref(_) => return None,
+            other => aim(doc, other, page, parts)?,
+        };
+        let mut d = d.clone();
+        d.set(b"D".to_vec(), new);
+        return Some(Object::Dict(d));
+    }
+    let array = dest.as_array()?;
+    if array.first().and_then(Object::as_ref) != Some(page) {
+        return None;
+    }
+    let (x, y) = dest_point(doc, array)?;
+    let inside = |r: &[f64; 4]| x.is_none_or(|x| x >= r[0] && x <= r[2]) && y.is_none_or(|y| y >= r[1] && y <= r[3]);
+    let k = parts.iter().position(|(_, r)| inside(r))?;
+    let (target, _) = parts.get(k).filter(|_| k > 0)?;
+    let mut array = array.clone();
+    if let Some(first) = array.first_mut() {
+        *first = Object::Ref(*target);
+    }
+    Some(Object::Array(array))
+}
+
+/// Aim the destination held in `value`: one written as its own object is changed there, and
+/// `None` comes back; one written inline comes back changed, for the holder to write.
+fn aim_slot(doc: &mut Document, value: &Object, page: ObjRef, parts: &[(ObjRef, [f64; 4])]) -> Option<Object> {
+    match value {
+        Object::Ref(r) => {
+            let held = doc.get(*r);
+            if let Some(new) = aim(doc, &held, page, parts) {
+                doc.set(*r, new);
+            }
+            None
+        }
+        other => aim(doc, other, page, parts),
+    }
+}
+
+/// After page `page` was cut into `parts` (each part's page and its rectangle), aim every
+/// destination that opens a point in a later part at that part: bookmarks and links (their /Dest,
+/// or a GoTo action's /D), the named destinations (the catalog's /Dests and /Names /Dests) and the
+/// catalog's /OpenAction.
+fn retarget_destinations(doc: &mut Document, page: ObjRef, parts: &[(ObjRef, [f64; 4])]) -> Result<(), OrganizeError> {
+    if parts.len() < 2 {
+        return Ok(());
+    }
+    // Holders of a /Dest or an /A: bookmarks, and the links on every page.
+    let mut holders = crate::outline::items(doc);
+    for (p, _) in walk(doc)? {
+        let annots = match doc.get(p).as_dict().and_then(|d| d.get(b"Annots").cloned()) {
+            Some(a) => doc.resolve(&a).as_array().cloned().unwrap_or_default(),
+            None => Vec::new(),
+        };
+        holders
+            .extend(annots.iter().filter_map(Object::as_ref).filter(|a| doc.get(*a).as_dict().is_some_and(|d| d.name(b"Subtype") == Some(b"Link"))));
+    }
+    holders.truncate(MAX_DEST_NODES);
+    for h in holders {
+        let Some(d) = doc.get(h).as_dict().cloned() else { continue };
+        if let Some(dest) = d.get(b"Dest").cloned()
+            && let Some(new) = aim_slot(doc, &dest, page, parts)
+        {
+            doc.update_dict(h, |d| d.set(b"Dest".to_vec(), new))?;
+        }
+        match d.get(b"A").cloned() {
+            Some(Object::Ref(a)) => {
+                let action = doc.get(a).as_dict().cloned();
+                if let Some(mut action) = action.filter(|a| a.name(b"S") == Some(b"GoTo"))
+                    && let Some(dest) = action.get(b"D").cloned()
+                    && let Some(new) = aim_slot(doc, &dest, page, parts)
+                {
+                    action.set(b"D".to_vec(), new);
+                    doc.set(a, Object::Dict(action));
+                }
+            }
+            Some(Object::Dict(mut action)) if action.name(b"S") == Some(b"GoTo") => {
+                if let Some(dest) = action.get(b"D").cloned()
+                    && let Some(new) = aim_slot(doc, &dest, page, parts)
+                {
+                    action.set(b"D".to_vec(), new);
+                    doc.update_dict(h, |d| d.set(b"A".to_vec(), Object::Dict(action)))?;
+                }
+            }
+            _ => {}
+        }
+    }
+    let Some(root) = doc.root() else { return Ok(()) };
+    let Some(catalog) = doc.get(root).as_dict().cloned() else { return Ok(()) };
+    // The catalog's /OpenAction: a destination array, or a GoTo action.
+    if let Some(open) = catalog.get(b"OpenAction").cloned() {
+        let resolved = (*doc.resolve(&open)).clone();
+        let is_goto = resolved.as_dict().is_some_and(|a| a.name(b"S") == Some(b"GoTo"));
+        if is_goto || resolved.as_array().is_some() {
+            match &open {
+                Object::Ref(r) => {
+                    if let Some(new) = aim(doc, &resolved, page, parts) {
+                        doc.set(*r, new);
+                    }
+                }
+                other => {
+                    if let Some(new) = aim(doc, other, page, parts) {
+                        doc.update_dict(root, |c| c.set(b"OpenAction".to_vec(), new))?;
+                    }
+                }
+            }
+        }
+    }
+    // Named destinations: the legacy /Dests dictionary, and the /Names /Dests tree.
+    match catalog.get(b"Dests").cloned() {
+        Some(Object::Ref(r)) => {
+            if let Some(mut d) = doc.get(r).as_dict().cloned()
+                && aim_dict_values(doc, &mut d, page, parts)
+            {
+                doc.set(r, Object::Dict(d));
+            }
+        }
+        Some(Object::Dict(mut d)) => {
+            if aim_dict_values(doc, &mut d, page, parts) {
+                doc.update_dict(root, |c| c.set(b"Dests".to_vec(), Object::Dict(d)))?;
+            }
+        }
+        _ => {}
+    }
+    let tree = match catalog.get(b"Names").map(|n| doc.resolve(n)).and_then(|n| n.as_dict().cloned()) {
+        Some(names) => names.get(b"Dests").cloned(),
+        None => None,
+    };
+    if let Some(tree) = tree {
+        let mut seen = Vec::new();
+        match tree {
+            Object::Ref(r) => aim_tree(doc, r, page, parts, &mut seen)?,
+            // An inline tree node: its kids held by reference are still reached.
+            Object::Dict(node) => aim_tree_kids(doc, &node, page, parts, &mut seen)?,
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
+/// Aim the values of a legacy /Dests dictionary. True when an inline value changed.
+fn aim_dict_values(doc: &mut Document, dests: &mut Dict, page: ObjRef, parts: &[(ObjRef, [f64; 4])]) -> bool {
+    let entries: Vec<(Vec<u8>, Object)> = dests.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+    let mut changed = false;
+    for (k, v) in entries {
+        if let Some(new) = aim_slot(doc, &v, page, parts) {
+            dests.set(k, new);
+            changed = true;
+        }
+    }
+    changed
+}
+
+/// Aim the destinations in one name-tree node (held by reference) and its kids.
+fn aim_tree(doc: &mut Document, r: ObjRef, page: ObjRef, parts: &[(ObjRef, [f64; 4])], seen: &mut Vec<ObjRef>) -> Result<(), OrganizeError> {
+    if seen.contains(&r) || seen.len() >= MAX_DEST_NODES {
+        return Ok(());
+    }
+    seen.push(r);
+    let Some(mut node) = doc.get(r).as_dict().cloned() else { return Ok(()) };
+    if let Some(pairs) = node.get(b"Names").map(|n| doc.resolve(n)).and_then(|n| n.as_array().cloned()) {
+        let mut changed = false;
+        let mut out = Vec::with_capacity(pairs.len());
+        for pair in pairs.chunks(2) {
+            match pair {
+                [key, value] => {
+                    out.push(key.clone());
+                    match aim_slot(doc, value, page, parts) {
+                        Some(new) => {
+                            out.push(new);
+                            changed = true;
+                        }
+                        None => out.push(value.clone()),
+                    }
+                }
+                other => out.extend_from_slice(other),
+            }
+        }
+        if changed {
+            node.set(b"Names".to_vec(), Object::Array(out));
+            doc.set(r, Object::Dict(node.clone()));
+        }
+    }
+    aim_tree_kids(doc, &node, page, parts, seen)
+}
+
+fn aim_tree_kids(doc: &mut Document, node: &Dict, page: ObjRef, parts: &[(ObjRef, [f64; 4])], seen: &mut Vec<ObjRef>) -> Result<(), OrganizeError> {
+    let kids = node.get(b"Kids").map(|k| doc.resolve(k)).and_then(|k| k.as_array().cloned()).unwrap_or_default();
+    for kid in kids {
+        if let Some(r) = kid.as_ref() {
+            aim_tree(doc, r, page, parts, seen)?;
+        }
+    }
+    Ok(())
 }
