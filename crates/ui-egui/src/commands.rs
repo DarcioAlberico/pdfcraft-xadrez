@@ -520,7 +520,7 @@ impl PdfCraftApp {
                 });
                 if let Some((i, (page, quads))) = selection {
                     self.views[i].clear_selection();
-                    self.apply_edit(crate::canvas::erase_edit(page, &quads, self.erase_prefs));
+                    self.apply_edit(crate::canvas::erase_edit(page, &quads, self.erase_prefs.options));
                 } else {
                     self.notify_tr("Drag across text or draw a box to erase what lies under it");
                 }

@@ -201,20 +201,7 @@ fn tool_detail(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens, g: &'static
             crate::knife::panel(app, ui);
         }
         if app.quick_tool == crate::QuickTool::Erase {
-            widgets::section_title(ui, tl!("Eraser"));
-            ui.label(tl!("Drag across text or draw a box to erase what lies under it"));
-            let o = &mut app.erase_prefs;
-            ui.add(widgets::checkbox(&mut o.text, tl!("Text")));
-            ui.add(widgets::checkbox(&mut o.images, tl!("Images")));
-            ui.add(widgets::checkbox(&mut o.vectors, tl!("Drawings and shapes")));
-            ui.add(widgets::checkbox(&mut o.annotations, tl!("Comments, links and form fields")));
-            ui.label(
-                egui::RichText::new(tl!(
-                    "Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good."
-                ))
-                .small(),
-            );
-            ui.add_space(6.0);
+            crate::erase_ui::panel(app, ui);
         }
         format_section(app, ui, t);
     }

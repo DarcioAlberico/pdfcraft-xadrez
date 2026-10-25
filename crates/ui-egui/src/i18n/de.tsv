@@ -3080,3 +3080,9 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	Remove what lies outside each part	Entfernen, was außerhalb jedes Teils liegt
 	Split double pages	Doppelseiten teilen
 	No double pages were found: none is wider than tall	Keine Doppelseiten gefunden: Keine Seite ist breiter als hoch
+	Box or selection	Rahmen oder Auswahl
+	Brush	Pinsel
+	Brush size	Pinselgröße
+	Rub over what you want to erase; letting go erases it	Fahren Sie über das, was Sie radieren möchten; Loslassen radiert es
+	What will go is tinted red while you draw.	Was verschwindet, wird beim Zeichnen rot getönt.
+	Erase the selected words from the page	Die ausgewählten Wörter von der Seite radieren

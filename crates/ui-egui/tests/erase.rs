@@ -2,6 +2,7 @@
 //! across the text, erases what lies under it as one undoable edit.
 
 use egui_kittest::Harness;
+use egui_kittest::kittest::Queryable;
 use pdfcraft_ui_egui::{PdfCraftApp, QuickTool};
 
 /// One 200 × 300 pt page with `Page one` in 24 pt Helvetica at (20, 150), `Keep me` at (20, 60)
@@ -148,6 +149,60 @@ fn choosing_the_eraser_with_text_selected_erases_it() {
     assert!(undo_label(&h).is_none(), "selecting changes nothing");
     assert!(h.state_mut().execute("edit.erase"));
     h.run_steps(3);
+    assert_eq!(undo_label(&h).as_deref(), Some("Erase content"));
+    assert!(!lines(&h).iter().any(|l| l.contains("age")), "{:?}", lines(&h));
+}
+
+/// While the box is drawn, what would go is listed for the red tint; nothing changes until the
+/// pointer lets go. (Fails with the preview off.)
+#[test]
+fn the_box_previews_what_will_go_before_letting_go() {
+    let mut h = harness();
+    assert!(h.state_mut().execute("edit.erase"));
+    h.run_steps(2);
+    let (a, b) = (at(&h, 5.0, 185.0), at(&h, 195.0, 140.0));
+    h.hover_at(a);
+    h.run_steps(1);
+    h.drag_at(a);
+    h.run_steps(1);
+    for k in 1..=4 {
+        h.hover_at(a + (b - a) * (k as f32 / 4.0));
+        h.run_steps(1);
+    }
+    let found = h.state().views[0].erase_preview.found.len();
+    assert_eq!(found, "Page one".len(), "each glyph of the line, before letting go");
+    assert_eq!(undo_label(&h), None, "nothing erased yet");
+    h.drop_at(b);
+    h.run_steps(4);
+    assert_eq!(undo_label(&h).as_deref(), Some("Erase content"));
+}
+
+/// The brush rubs: a stroke along `Keep me` erases it in one step, and only it. (Fails with the
+/// brush's edit not made.)
+#[test]
+fn the_brush_erases_what_it_rubs() {
+    let mut h = harness();
+    assert!(h.state_mut().execute("edit.erase"));
+    h.state_mut().erase_prefs.mode = pdfcraft_ui_egui::erase_ui::EraseMode::Brush;
+    h.state_mut().erase_prefs.brush = 12.0;
+    h.run_steps(2);
+    let (a, b) = (at(&h, 25.0, 68.0), at(&h, 110.0, 68.0));
+    drag(&mut h, a, b);
+    assert_eq!(undo_label(&h).as_deref(), Some("Erase content"));
+    let after = lines(&h);
+    assert_eq!(after.first().map(String::as_str), Some("Page one"), "{after:?}");
+    assert!(!after.iter().any(|l| l.contains("eep")), "{after:?}");
+}
+
+/// The selection's action bar has Erase: the words selected with the Select tool go.
+#[test]
+fn the_selection_bar_erases_the_selected_words() {
+    let mut h = harness();
+    let (a, b) = (at(&h, 24.0, 158.0), at(&h, 120.0, 158.0));
+    drag(&mut h, a, b);
+    assert!(h.state().views[0].selected_text().is_some());
+    h.get_by_label("Erase").click();
+    h.run_steps(4);
     assert_eq!(undo_label(&h).as_deref(), Some("Erase content"));
     assert!(!lines(&h).iter().any(|l| l.contains("age")), "{:?}", lines(&h));
 }

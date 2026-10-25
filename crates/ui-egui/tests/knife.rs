@@ -129,3 +129,38 @@ fn split_double_pages_cuts_spreads_and_trims_them() {
     assert!(text(0).contains("Left page") && !text(0).contains("Right"), "{}", text(0));
     assert!(text(1).contains("Right page") && !text(1).contains("Left"), "{}", text(1));
 }
+
+/// A cut once placed is dragged to where it should be. (Fails with dragging off.)
+#[test]
+fn a_placed_cut_is_dragged() {
+    let mut h = harness();
+    assert!(h.state_mut().execute("page.knife"));
+    h.run_steps(4);
+    let p = at(&h, 0.5, 0.8);
+    click(&mut h, p, egui::PointerButton::Primary, egui::Modifiers::NONE);
+    assert_eq!(h.state().views[0].knife.at, [0.5]);
+    let (a, b) = (at(&h, 0.5, 0.8), at(&h, 0.25, 0.8));
+    h.hover_at(a);
+    h.run_steps(2);
+    h.drag_at(a);
+    h.run_steps(1);
+    for k in 1..=4 {
+        h.hover_at(a + (b - a) * (k as f32 / 4.0));
+        h.run_steps(1);
+    }
+    h.drop_at(b);
+    h.run_steps(3);
+    let at_now = h.state().views[0].knife.at.clone();
+    assert_eq!(at_now.len(), 1, "{at_now:?}");
+    assert!((at_now[0] - 0.25).abs() < 0.01, "{at_now:?}");
+}
+
+/// The Knife's choices round-trip through the settings; anything else keeps the defaults.
+#[test]
+fn knife_choices_are_kept() {
+    use pdfcraft_ui_egui::knife::{KnifePages, KnifePrefs};
+    let p = KnifePrefs { axis: CutAxis::Horizontal, pages: KnifePages::All, right_to_left: true, trim_outside: true };
+    assert_eq!(KnifePrefs::from_json(&p.to_json()), Some(p));
+    assert_eq!(KnifePrefs::from_json(&serde_json::json!({ "axis": 3, "pages": "some" })), Some(KnifePrefs::default()));
+    assert_eq!(KnifePrefs::from_json(&serde_json::json!([])), None);
+}

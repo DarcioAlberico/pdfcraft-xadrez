@@ -3084,3 +3084,9 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Remove what lies outside each part	Odstrani, kar je zunaj vsakega dela
 	Split double pages	Razdeli dvojne strani
 	No double pages were found: none is wider than tall	Ni dvojnih strani: nobena ni širša kot višja
+	Box or selection	Okvir ali izbor
+	Brush	Čopič
+	Brush size	Velikost čopiča
+	Rub over what you want to erase; letting go erases it	Podrgnite čez tisto, kar želite izbrisati; ob spustu se izbriše
+	What will go is tinted red while you draw.	Kar bo izginilo, je med risanjem obarvano rdeče.
+	Erase the selected words from the page	Izbriši izbrane besede s strani
