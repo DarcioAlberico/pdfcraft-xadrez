@@ -3380,3 +3380,15 @@ chess undo step	Clear drawings	مسح الرسوم
 	The pieces cannot be imported: {reason}	تعذر استيراد القطع: {reason}
 	round {round}	الجولة {round}
 	Result: {result}	النتيجة: {result}
+	Board theme	سمة الرقعة
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	للرقع التي تلعب وتدرس عليها. تحتفظ المخططات على الصفحة وفي التصدير بألوانها.
+	Brown	بني
+	Light wood	خشب فاتح
+	Walnut	جوز
+	Ice blue	أزرق جليدي
+	Olive	زيتوني
+	Grey	رمادي
+	Graphite	غرافيت
+	Sand	رملي
+	Coral	مرجاني
+	High contrast	تباين عالٍ

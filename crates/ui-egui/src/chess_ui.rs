@@ -72,6 +72,9 @@ pub struct ChessState {
     /// Why the set chosen for the boards, and for diagrams, could not be used, when it could not.
     pub board_piece_error: Option<String>,
     pub diagram_piece_error: Option<String>,
+    /// The boards' theme chosen in Preferences or the board's menu (plan HC4); `None` is the
+    /// default, brown.
+    pub board_theme: Option<&'static pdfcraft_engine::chess::pdfcraft_chess::theme::BoardTheme>,
     /// Preferences' piece picker while it is shown.
     pub(crate) piece_picker: Option<crate::chess_pieces_ui::PiecePicker>,
     /// The panel's tab: the diagrams or the page's recognised text (S16).
@@ -1156,6 +1159,7 @@ impl PdfCraftApp {
             BoardAction::ChooseEngine => self.choose_chess_engine(),
             BoardAction::AddGames { texts, more } => self.add_pgn_field_games(&texts, more),
             BoardAction::ToggleMoveList => self.toggle_move_list(),
+            BoardAction::BoardTheme(theme) => self.set_board_theme(theme),
             BoardAction::NewGameAt(fen) => {
                 if let Err(why) = self.chess.games.collection_mut().new_at(&fen) {
                     self.chess.games.board_mut().message = Some(why);

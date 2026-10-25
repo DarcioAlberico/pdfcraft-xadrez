@@ -3109,3 +3109,15 @@ chess undo step	Clear drawings	odstranjevanje risb
 	The pieces cannot be imported: {reason}	Figur ni mogoče uvoziti: {reason}
 	round {round}	{round}. krog
 	Result: {result}	Rezultat: {result}
+	Board theme	Tema šahovnice
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	Za šahovnice, na katerih igrate in se učite. Diagrami na strani in v izvozih ohranijo svoje barve.
+	Brown	Rjava
+	Light wood	Svetel les
+	Walnut	Oreh
+	Ice blue	Ledeno modra
+	Olive	Olivna
+	Grey	Siva
+	Graphite	Grafit
+	Sand	Peščena
+	Coral	Koralna
+	High contrast	Visok kontrast

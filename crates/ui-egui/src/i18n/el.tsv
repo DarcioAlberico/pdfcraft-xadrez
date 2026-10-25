@@ -3076,3 +3076,15 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	The pieces cannot be imported: {reason}	Οι πεσσοί δεν μπορούν να εισαχθούν: {reason}
 	round {round}	γύρος {round}
 	Result: {result}	Αποτέλεσμα: {result}
+	Board theme	Θέμα σκακιέρας
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	Για τις σκακιέρες όπου παίζετε και μελετάτε. Τα διαγράμματα στη σελίδα και στις εξαγωγές κρατούν τα χρώματά τους.
+	Brown	Καφέ
+	Light wood	Ανοιχτό ξύλο
+	Walnut	Καρυδιά
+	Ice blue	Παγωμένο μπλε
+	Olive	Λαδί
+	Grey	Γκρι
+	Graphite	Γραφίτης
+	Sand	Άμμος
+	Coral	Κοραλλί
+	High contrast	Υψηλή αντίθεση

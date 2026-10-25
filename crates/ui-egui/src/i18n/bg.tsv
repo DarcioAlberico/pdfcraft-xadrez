@@ -3067,3 +3067,15 @@ chess undo step	Clear drawings	изчистването на рисунките
 	The pieces cannot be imported: {reason}	Фигурите не могат да бъдат импортирани: {reason}
 	round {round}	кръг {round}
 	Result: {result}	Резултат: {result}
+	Board theme	Тема на дъската
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	За дъските, на които играете и учите. Диаграмите на страницата и в експорта запазват цветовете си.
+	Brown	Кафява
+	Light wood	Светло дърво
+	Walnut	Орех
+	Ice blue	Ледено синя
+	Olive	Маслинена
+	Grey	Сива
+	Graphite	Графит
+	Sand	Пясъчна
+	Coral	Коралова
+	High contrast	Висок контраст

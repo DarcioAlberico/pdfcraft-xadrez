@@ -3178,3 +3178,15 @@ chess undo step	Clear drawings	smazání kreseb
 	The pieces cannot be imported: {reason}	Figury nelze importovat: {reason}
 	round {round}	kolo {round}
 	Result: {result}	Výsledek: {result}
+	Board theme	Motiv šachovnice
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	Pro šachovnice, na kterých hrajete a studujete. Diagramy na stránce a v exportech si ponechají své barvy.
+	Brown	Hnědý
+	Light wood	Světlé dřevo
+	Walnut	Ořech
+	Ice blue	Ledově modrý
+	Olive	Olivový
+	Grey	Šedý
+	Graphite	Grafit
+	Sand	Písková
+	Coral	Korálový
+	High contrast	Vysoký kontrast

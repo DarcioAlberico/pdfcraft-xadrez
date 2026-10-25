@@ -229,7 +229,7 @@ fn palette_button(ui: &mut egui::Ui, sprites: Option<&TextureHandle>, piece: Pie
     let response = match sprites {
         Some(tex) => {
             let t = Tokens::get(ui.ctx());
-            let light = BoardStyle::default().light;
+            let light = crate::chess_theme::current(ui.ctx()).light;
             let stroke = if on { egui::Stroke::new(2.0, t.accent) } else { egui::Stroke::new(1.0, t.border) };
             ui.add(
                 egui::Button::image(
@@ -297,13 +297,13 @@ pub(crate) fn palette(ui: &mut egui::Ui, sprites: Option<&TextureHandle>, brush:
 
 /// The board image for the editor's position, redrawn when the position or the view changes.
 fn board_texture(ui: &egui::Ui, ed: &mut DiagramEditor, pieces: &PieceSet) -> Option<TextureHandle> {
-    let key = format!("{}|{}|{}", ed.fen(), ed.flipped, pieces_generation());
+    let key = format!("{}|{}|{}|{}", ed.fen(), ed.flipped, pieces_generation(), crate::chess_theme::current(ui.ctx()).id);
     if let Some((k, tex)) = &ed.texture
         && *k == key
     {
         return Some(tex.clone());
     }
-    let style = BoardStyle { border: 0.0, coordinates: false, flipped: ed.flipped, ..BoardStyle::default() };
+    let style = crate::chess_theme::style(ui.ctx(), BoardStyle { border: 0.0, coordinates: false, flipped: ed.flipped, ..BoardStyle::default() });
     match pdfcraft_engine::chess::office::diagram_rgba(&ed.position.placement, pieces, &style, BOARD_PX) {
         Ok((w, h, rgba)) => {
             let (w, h) = (usize::try_from(w).ok()?, usize::try_from(h).ok()?);

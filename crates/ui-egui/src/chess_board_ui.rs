@@ -287,6 +287,8 @@ pub enum BoardAction {
     /// Open a new game from position `fen` after the one shown, which keeps its moves (plan A8,
     /// W3 and W4: a FEN typed, or the standard start, while the game has moves).
     NewGameAt(String),
+    /// Draw the boards in this theme (plan HC4).
+    BoardTheme(&'static pdfcraft_engine::chess::pdfcraft_chess::theme::BoardTheme),
 }
 
 impl BoardState {
@@ -683,10 +685,11 @@ impl BoardState {
     fn texture(&mut self, ctx: &egui::Context, pieces: &PieceSet, px: u32) -> Option<TextureHandle> {
         let placement = self.placement();
         let key = format!(
-            "{}|{}|{}",
+            "{}|{}|{}|{}",
             pdfcraft_engine::chess::pdfcraft_chess::fen::format_placement(&placement),
             self.flipped,
-            crate::chess_editor::pieces_generation()
+            crate::chess_editor::pieces_generation(),
+            crate::chess_theme::current(ctx).id
         );
         if let Some((k, drawn, tex)) = &self.texture
             && *k == key
@@ -694,7 +697,7 @@ impl BoardState {
         {
             return Some(tex.clone());
         }
-        let style = BoardStyle { border: 0.0, coordinates: false, flipped: self.flipped, ..BoardStyle::default() };
+        let style = crate::chess_theme::style(ctx, BoardStyle { border: 0.0, coordinates: false, flipped: self.flipped, ..BoardStyle::default() });
         match pdfcraft_engine::chess::office::diagram_rgba(&placement, pieces, &style, px) {
             Ok((w, h, rgba)) => {
                 let (w, h) = (usize::try_from(w).ok()?, usize::try_from(h).ok()?);
@@ -799,9 +802,6 @@ pub(crate) fn cut_sprites(ctx: &egui::Context, pieces: &PieceSet, name: &str) ->
 }
 
 /// The colours drawn over the board.
-const LAST_MOVE: Color32 = Color32::from_rgba_premultiplied(155, 199, 0, 105);
-const PICKED: Color32 = Color32::from_rgba_premultiplied(20, 85, 30, 110);
-const TARGET: Color32 = Color32::from_rgba_premultiplied(20, 85, 30, 120);
 const CHECK: Color32 = Color32::from_rgb(0xE0, 0x3E, 0x3E);
 
 /// An arrow from the centre of `mark.from` to the centre of `mark.to` (a ring when they are the
@@ -877,25 +877,28 @@ pub(crate) fn board_view_sized(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardS
         state.toggle_mark(Mark { from: sq, to: sq, color: MarkColor::from_modifiers(modifiers) });
     }
     let painter = ui.painter_at(rect);
+    let palette = crate::chess_theme::current(ui.ctx());
+    let (last_move, picked, target) =
+        (crate::chess_theme::tint(palette.last_move), crate::chess_theme::tint(palette.selected), crate::chess_theme::tint(palette.target));
     if state.illegal.is_none() {
         if let Some((from, to)) = state.game.last_move() {
-            painter.rect_filled(state.square_rect(rect, from), 0.0, LAST_MOVE);
-            painter.rect_filled(state.square_rect(rect, to), 0.0, LAST_MOVE);
+            painter.rect_filled(state.square_rect(rect, from), 0.0, last_move);
+            painter.rect_filled(state.square_rect(rect, to), 0.0, last_move);
         }
         if state.game.in_check()
             && let Some(king) = state.game.placement().king(state.game.side_to_move())
         {
             let r = state.square_rect(rect, king);
-            painter.circle_stroke(r.center(), r.width() * 0.45, Stroke::new(3.0, CHECK));
+            painter.circle_stroke(r.center(), r.width() * 0.45, Stroke::new(3.0, crate::chess_theme::rgb(palette.check)));
         }
         if let Some(from) = state.selected {
-            painter.rect_filled(state.square_rect(rect, from), 0.0, PICKED);
+            painter.rect_filled(state.square_rect(rect, from), 0.0, picked);
             for to in state.game.targets(from) {
                 let r = state.square_rect(rect, to);
                 if state.game.piece_on(to).is_some() {
-                    painter.circle_stroke(r.center(), r.width() * 0.44, Stroke::new(r.width() * 0.08, TARGET));
+                    painter.circle_stroke(r.center(), r.width() * 0.44, Stroke::new(r.width() * 0.08, target));
                 } else {
-                    painter.circle_filled(r.center(), r.width() * 0.15, TARGET);
+                    painter.circle_filled(r.center(), r.width() * 0.15, target);
                 }
             }
         }
@@ -910,8 +913,7 @@ pub(crate) fn board_view_sized(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardS
             }
             if let (Some(piece), Some(sprites)) = (state.game.piece_on(from), state.sprites(ui.ctx(), pieces)) {
                 let cell = state.square_rect(rect, from);
-                let Rgb(r, g, b) = if from.is_light() { BoardStyle::default().light } else { BoardStyle::default().dark };
-                painter.rect_filled(cell, 0.0, Color32::from_rgb(r, g, b));
+                painter.rect_filled(cell, 0.0, crate::chess_theme::rgb(palette.square(from.is_light())));
                 let ghost = Rect::from_center_size(pointer, cell.size() * 1.1);
                 ui.ctx().layer_painter(egui::LayerId::new(egui::Order::Tooltip, egui::Id::new("chess-board-drag"))).image(
                     sprites.id(),
@@ -927,7 +929,7 @@ pub(crate) fn board_view_sized(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardS
     for i in 0u8..8 {
         let (file_sq, rank_sq) =
             if state.flipped { (Square::new(7 - i, 7), Square::new(0, 7 - i)) } else { (Square::new(i, 0), Square::new(7, 7 - i)) };
-        let ink = |sq: Square| if sq.is_light() { Color32::from_rgb(181, 136, 99) } else { Color32::from_rgb(240, 217, 181) };
+        let ink = |sq: Square| crate::chess_theme::rgb(palette.coordinate_ink(sq.is_light()));
         if let Some(sq) = file_sq {
             let r = state.square_rect(rect, sq);
             let letter = char::from(b'a'.saturating_add(sq.file())).to_string();
@@ -1689,6 +1691,14 @@ pub(crate) fn title(ui: &mut egui::Ui, t: &Tokens, state: &BoardState, source_la
             action = Some(BoardAction::ShowSource(source));
         }
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            let theme_name = tl!("Board theme");
+            let menu = egui::containers::menu::MenuButton::from_button(egui::Button::image(crate::icons::image("palette", 14.0, t.icon)));
+            let (r, picked) = menu.ui(ui, |ui| crate::chess_theme::menu_items(ui, crate::chess_theme::current(ui.ctx())));
+            let r = r.on_hover_text(theme_name);
+            r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, theme_name));
+            if let Some(theme) = picked.and_then(|p| p.inner) {
+                action = Some(BoardAction::BoardTheme(theme));
+            }
             let name = tl!("Move list beside the page");
             let r = ui.add(egui::Button::image(crate::icons::image("list-ordered", 14.0, t.icon)).selected(beside)).on_hover_text(name);
             r.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, beside, name));
@@ -1833,6 +1843,24 @@ fn notation_height(viewport: f32, above: f32, below: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Plan HC4: the board's picture is drawn again in the theme shown, its squares the theme's.
+    #[test]
+    fn the_board_is_drawn_again_in_another_theme() {
+        let ctx = egui::Context::default();
+        let pieces = PieceSet::geometric();
+        let mut state = BoardState::default();
+        state.texture(&ctx, &pieces, 64);
+        let brown = state.texture.as_ref().map(|(k, _, _)| k.clone()).unwrap();
+        assert!(brown.ends_with("|brown"), "{brown}");
+        let blue = pdfcraft_engine::chess::pdfcraft_chess::theme::by_id("blue").unwrap();
+        crate::chess_theme::set(&ctx, blue);
+        state.texture(&ctx, &pieces, 64);
+        let key = state.texture.as_ref().map(|(k, _, _)| k.clone()).unwrap();
+        assert!(key.ends_with("|blue"), "redrawn: {key}");
+        let style = crate::chess_theme::style(&ctx, BoardStyle::default());
+        assert_eq!((style.light, style.dark), (blue.light, blue.dark));
+    }
 
     #[test]
     fn the_header_says_only_what_is_known() {

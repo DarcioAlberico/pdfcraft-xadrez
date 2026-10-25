@@ -3121,3 +3121,15 @@ chess undo step	Clear drawings	remoção dos desenhos
 	The pieces cannot be imported: {reason}	As peças não podem ser importadas: {reason}
 	round {round}	rodada {round}
 	Result: {result}	Resultado: {result}
+	Board theme	Tema do tabuleiro
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	Para os tabuleiros em que você joga e estuda. Os diagramas na página e nas exportações mantêm suas cores.
+	Brown	Marrom
+	Light wood	Madeira clara
+	Walnut	Nogueira
+	Ice blue	Azul-gelo
+	Olive	Verde-oliva
+	Grey	Cinza
+	Graphite	Grafite
+	Sand	Areia
+	Coral	Coral
+	High contrast	Alto contraste
