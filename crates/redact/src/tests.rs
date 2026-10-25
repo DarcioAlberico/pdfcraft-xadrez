@@ -1911,6 +1911,36 @@ fn erase_refuses_bad_areas_and_empty_ground() {
     assert_eq!(erase(&mut d, 0, &[[20.0, 110.0, 10.0, 95.0]], &EraseOptions::default()).map(|r| r.glyphs), Ok(2));
 }
 
+/// A scan is a JPEG the redaction code can't re-encode: redaction removes it whole when a mark
+/// covers part of it, so nothing covered survives. The eraser must not wipe the page: it clips
+/// the area out, the image object untouched and still drawn. A Flate image and an inline one are
+/// clipped too, never cleared into a copy. (Fails with images cleared or removed by the eraser.)
+#[test]
+fn the_eraser_clips_an_image_it_only_partly_covers() {
+    let jpeg = stream(
+        "/Type /XObject /Subtype /Image /Width 2 /Height 2 /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /DCTDecode",
+        [0xFF, 0xD8, 0xFF, 0xD9],
+    );
+    let flate = stream("/Type /XObject /Subtype /Image /Width 4 /Height 1 /ColorSpace /DeviceGray /BitsPerComponent 8", [255, 255, 255, 255]);
+    let src = b"q 200 0 0 100 50 100 cm /Im1 Do Q q 100 0 0 10 50 20 cm /Im2 Do Q q 10 0 0 10 200 50 cm BI /W 1 /H 1 /CS /G /BPC 8 ID \x80 EI Q";
+    let page = || one_page(src, "/XObject << /Im1 7 0 R /Im2 8 0 R >>", vec![jpeg.clone(), flate.clone()]);
+    // The left half of the scan, the left of the flate image, the left of the inline image.
+    let areas = [[0.0, 90.0, 150.0, 210.0], [40.0, 10.0, 100.0, 40.0], [195.0, 45.0, 205.0, 65.0]];
+    let mut doc = page();
+    let r = erase(&mut doc, 0, &areas, &EraseOptions::default()).unwrap();
+    assert_eq!((r.images_clipped, r.images_removed, r.images_cleared), (3, 0, 0), "{r:?}");
+    let c = content(&doc, 0);
+    assert!(c.contains("/Im1 Do") && c.contains("/Im2 Do") && c.contains("BI"), "every image is still drawn: {c}");
+    assert_eq!(c.matches("W*").count(), 3, "each in its clip: {c}");
+    let Object::Stream(s) = &*doc.get(ObjRef::new(7, 0)) else { panic!() };
+    assert_eq!(&s.raw[..], [0xFF, 0xD8, 0xFF, 0xD9], "the scan's bytes are untouched");
+    // Redaction still removes what it cannot clear.
+    let mut doc = page();
+    mark(&mut doc, 0, &[areas[0]], "");
+    assert_eq!(apply(&mut doc, None).unwrap().images_removed, 1);
+    assert!(!content(&doc, 0).contains("/Im1 Do"));
+}
+
 proptest::proptest! {
     #![proptest_config(proptest::prelude::ProptestConfig::with_cases(64))]
     /// Any areas on any page, finite or not, are a report or an error, never a panic.

@@ -100,6 +100,11 @@ pub(crate) struct Scope<'a> {
     /// Find mode: the boxes (user space) of the glyphs, images and paths apply mode would remove,
     /// at most [`MAX_FOUND`].
     pub found: Vec<[f64; 4]>,
+    /// Redaction and sanitizing: an image partly under a region has its pixels cleared, or goes
+    /// whole when its codec can't be re-encoded, so nothing covered survives in the file. The
+    /// eraser (not secure, decision D1) clips the region out of it instead: any codec, the image
+    /// data untouched and still shared with the pages that use it.
+    pub secure: bool,
     fonts: HashMap<Vec<u8>, Rc<Metrics>>,
     used_names: Vec<Vec<u8>>,
     depth: usize,
@@ -116,6 +121,7 @@ impl<'a> Scope<'a> {
             layer_blocks: 0,
             options: EraseOptions::REDACT,
             found: Vec::new(),
+            secure: true,
             fonts: HashMap::new(),
             used_names: Vec::new(),
             depth: 0,
@@ -782,8 +788,16 @@ pub(crate) fn process(doc: &mut Document, scope: &mut Scope<'_>, streams: &[Vec<
                 b"BI" => {
                     let b = gs.ctm.bbox([0.0, 0.0, 1.0, 1.0]);
                     if scope.options.images && scope.hits(b) {
+                        if let Some(clipped) = clip_image(scope, &gs, b, &op) {
+                            changed = true;
+                            ops.extend(clipped);
+                            continue;
+                        }
                         if scope.mode == Mode::Verify {
-                            out.residue += 1;
+                            // The eraser leaves a clipped image in place.
+                            if scope.secure {
+                                out.residue += 1;
+                            }
                         } else if scope.mode == Mode::Find {
                             scope.find(b);
                         } else {
@@ -805,6 +819,15 @@ pub(crate) fn process(doc: &mut Document, scope: &mut Scope<'_>, streams: &[Vec<
                     }
                 }
                 b"Do" => {
+                    if scope.options.images
+                        && let Some(b) = image_box(doc, &op, &gs, &xobjects)
+                        && scope.hits(b)
+                        && let Some(clipped) = clip_image(scope, &gs, b, &op)
+                    {
+                        changed = true;
+                        ops.extend(clipped);
+                        continue;
+                    }
                     if let Some(new) = xobject(doc, scope, &op, &gs, resources, &mut xobjects, &mut out) {
                         changed = true;
                         if let Some(n) = new {
@@ -956,6 +979,32 @@ fn show(scope: &Scope<'_>, gs: &Gs, tm: &mut Matrix, items: &[Object]) -> (Vec<O
         }
     }
     (out, removed)
+}
+
+/// The box (user space) of the image a `Do` draws, when it draws an Image XObject.
+fn image_box(doc: &Document, op: &Op, gs: &Gs, xobjects: &Dict) -> Option<[f64; 4]> {
+    let r = xobjects.get(op.name(0)?)?.as_ref()?;
+    let obj = doc.get(r);
+    let Object::Stream(s) = &*obj else { return None };
+    (s.dict.name(b"Subtype") == Some(b"Image")).then(|| gs.ctm.bbox([0.0, 0.0, 1.0, 1.0]))
+}
+
+/// The eraser's way with an image (box `b`) a region only partly covers: the drawing operator
+/// `op` wrapped in a clip that leaves the regions out, so the image data is untouched (and still
+/// shared). `None` for redaction and sanitizing, which clear or remove (see [`Scope::secure`]),
+/// outside apply mode, and for an image wholly covered, which goes.
+fn clip_image(scope: &mut Scope<'_>, gs: &Gs, b: [f64; 4], op: &Op) -> Option<Vec<Op>> {
+    if scope.secure || scope.mode != Mode::Apply || scope.covered(b) {
+        return None;
+    }
+    let clip = clip_out(scope.rects, &gs.ctm, b)?;
+    scope.report.images_clipped += 1;
+    let mut ops = Vec::with_capacity(clip.len() + 3);
+    ops.push(Op::new("q", vec![]));
+    ops.extend(clip);
+    ops.push(op.clone());
+    ops.push(Op::new("Q", vec![]));
+    Some(ops)
 }
 
 /// `Do`: `None` = leave the operator alone; `Some(None)` = drop it; `Some(Some(op))` = replace it.
