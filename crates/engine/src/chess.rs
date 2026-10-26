@@ -939,6 +939,7 @@ impl ChessScan {
 pub mod analysis;
 pub mod capture;
 pub mod collection;
+pub mod corrections;
 pub mod document;
 pub mod epub;
 pub mod export;

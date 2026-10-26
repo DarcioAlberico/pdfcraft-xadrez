@@ -39,6 +39,10 @@ pdfcraft-geom = { workspace = true }
 pdfcraft-chess = { workspace = true }
 pdfcraft-chessvision = { workspace = true }
 thiserror = { workspace = true }
+# Chess ▸ Diagrams: the corrections file (chess/corrections.rs). Already in the graph through
+# pdfcraft-chessvision.
+serde = { workspace = true }
+serde_json = { workspace = true }
 png = "0.18"
 # Already in the graph (through image and pdfcraft-create): image's TiffEncoder can't set the
 # resolution or the compression of an exported page.
