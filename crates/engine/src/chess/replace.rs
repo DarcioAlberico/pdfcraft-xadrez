@@ -24,7 +24,7 @@
 use std::fmt::Write as _;
 use std::sync::Arc;
 
-use pdfcraft_chess::draw::{BoardStyle, Drawing, Paint, PieceSet, Rgb, Segment, board};
+use pdfcraft_chess::draw::{BoardStyle, Drawing, Paint, PieceSet, Rgb, Segment, board_with};
 use pdfcraft_chess::placement::Placement;
 use pdfcraft_chessvision::coords::{PageGeometry, PageRect, finite_page_rect};
 use pdfcraft_chessvision::detect::Source;
@@ -62,6 +62,8 @@ pub struct DiagramReplacement {
     pub pieces: Arc<PieceSet>,
     /// The scan the diagram was numbered by: its order and detection settings.
     pub scan: ChessScanSettings,
+    /// Arrows and rings drawn over the board (plan HC7).
+    pub drawings: Vec<pdfcraft_chess::game::Drawing>,
 }
 
 /// How a replacement will be made ([`Session::chess_replacement`]): checked against the page
@@ -289,7 +291,7 @@ impl Session {
             }
         }
 
-        let drawing = board(&r.placement, &r.pieces, &r.style);
+        let drawing = board_with(&r.placement, &r.pieces, &r.style, &r.drawings);
         let matrix = placement_matrix(&geometry, bbox, drawing.width).ok_or_else(|| invalid("the diagram's box has no area to draw in"))?;
         let mut ops = Vec::new();
         let cover = deleted_image.is_none().then(|| {

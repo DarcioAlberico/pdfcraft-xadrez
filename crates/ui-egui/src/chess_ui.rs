@@ -938,6 +938,7 @@ impl PdfCraftApp {
         // The fields apart: the editor is borrowed.
         let pieces = crate::chess_editor::piece_set(&mut self.chess.pieces, &self.chess.diagram_piece_choice, &mut self.chess.diagram_piece_error);
         let replacement = pdfcraft_engine::chess::DiagramReplacement {
+            drawings: Vec::new(),
             page: ed.page,
             index: ed.index,
             generation,
