@@ -60,6 +60,9 @@ pub struct Shortcut {
     pub shift: bool,
     /// ⌃ on macOS (in addition to ⌘); unused elsewhere.
     pub mac_ctrl: bool,
+    /// ⌥ (Alt elsewhere). A shortcut fires only with the Alt it names (plan A8 P1c): Ctrl+Alt+S
+    /// is not Ctrl+S.
+    pub alt: bool,
     /// Key name: a letter, a digit, punctuation such as `,`, or `Delete`.
     pub key: &'static str,
 }
@@ -67,12 +70,17 @@ pub struct Shortcut {
 impl Shortcut {
     /// ⌘ (Ctrl elsewhere) and `key`.
     pub const fn cmd(key: &'static str) -> Self {
-        Self { command: true, shift: false, mac_ctrl: false, key }
+        Self { command: true, shift: false, mac_ctrl: false, alt: false, key }
     }
 
     /// ⇧⌘ (Ctrl+Shift elsewhere) and `key`.
     pub const fn cmd_shift(key: &'static str) -> Self {
-        Self { command: true, shift: true, mac_ctrl: false, key }
+        Self { command: true, shift: true, mac_ctrl: false, alt: false, key }
+    }
+
+    /// ⌥ (Alt elsewhere) and `key`.
+    pub const fn alt(key: &'static str) -> Self {
+        Self { command: false, shift: false, mac_ctrl: false, alt: true, key }
     }
 
     /// The command modifier on its own, for text such as "⌘-scroll" / "Ctrl-scroll".
@@ -87,6 +95,9 @@ impl Shortcut {
             if self.mac_ctrl {
                 s.push('⌃');
             }
+            if self.alt {
+                s.push('⌥');
+            }
             if self.shift {
                 s.push('⇧');
             }
@@ -100,6 +111,9 @@ impl Shortcut {
             if self.command || self.mac_ctrl {
                 parts.push("Ctrl");
             }
+            if self.alt {
+                parts.push("Alt");
+            }
             if self.shift {
                 parts.push("Shift");
             }
@@ -110,7 +124,7 @@ impl Shortcut {
 
     /// Number of modifiers (more specific shortcuts are matched first).
     pub fn modifier_count(&self) -> usize {
-        usize::from(self.command) + usize::from(self.shift) + usize::from(self.mac_ctrl)
+        usize::from(self.command) + usize::from(self.shift) + usize::from(self.mac_ctrl) + usize::from(self.alt)
     }
 }
 
@@ -218,12 +232,33 @@ pub const COMMANDS: &[CommandSpec] = &[
     c("edit.column_select", "Column select", EDIT, None, Document, "text-select"),
     c("edit.snapshot", "Take a snapshot", EDIT, None, Copying, "camera"),
     c("view.full_screen", "Full screen mode", VIEW, Some(Shortcut::cmd("L")), Document, "maximize"),
-    c("view.read_mode", "Read mode", VIEW, Some(Shortcut { command: true, shift: false, mac_ctrl: true, key: "H" }), Document, "book-open"),
+    c(
+        "view.read_mode",
+        "Read mode",
+        VIEW,
+        Some(Shortcut { command: true, shift: false, mac_ctrl: true, alt: false, key: "H" }),
+        Document,
+        "book-open",
+    ),
     // Browsers' tab keys (#1542): Ctrl+Tab on every platform, ⌃Tab rather than ⌘Tab on macOS,
     // where the system takes ⌘Tab. They follow the tabs' order on screen and wrap around, and
     // also run from Combine files, which has no document open.
-    c("view.next_tab", "Next tab", VIEW, Some(Shortcut { command: false, shift: false, mac_ctrl: true, key: "Tab" }), Nothing, "chevron-right"),
-    c("view.previous_tab", "Previous tab", VIEW, Some(Shortcut { command: false, shift: true, mac_ctrl: true, key: "Tab" }), Nothing, "chevron-left"),
+    c(
+        "view.next_tab",
+        "Next tab",
+        VIEW,
+        Some(Shortcut { command: false, shift: false, mac_ctrl: true, alt: false, key: "Tab" }),
+        Nothing,
+        "chevron-right",
+    ),
+    c(
+        "view.previous_tab",
+        "Previous tab",
+        VIEW,
+        Some(Shortcut { command: false, shift: true, mac_ctrl: true, alt: false, key: "Tab" }),
+        Nothing,
+        "chevron-left",
+    ),
     // View-local history also appears in the Page navigation section; don't duplicate its menu.
     c("view.previous_view", "Previous view", None, Some(Shortcut::cmd("[")), Document, "chevron-left"),
     c("view.next_view", "Next view", None, Some(Shortcut::cmd("]")), Document, "chevron-right"),
@@ -494,6 +529,16 @@ pub fn current_label(spec: &CommandSpec, session: &Session, active: Option<DocId
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Plan A8 P1c: Alt is part of a shortcut, written and counted with it.
+    #[test]
+    fn alt_is_written_and_counted() {
+        let s = Shortcut::alt("←");
+        assert_eq!((s.label(false), s.label(true)), ("Alt+←".to_owned(), "⌥←".to_owned()));
+        assert_eq!(s.modifier_count(), 1);
+        assert_ne!(s, Shortcut { alt: false, ..s });
+        assert_eq!(Shortcut { command: true, ..s }.label(false), "Ctrl+Alt+←");
+    }
 
     #[test]
     fn ids_and_shortcuts_are_unique() {

@@ -205,7 +205,7 @@ impl ChessKey {
             Key::ArrowRight => "→",
             other => other.name(),
         };
-        let label = crate::commands::shortcut_label(ctx, Shortcut { command: self.command, shift: self.shift, mac_ctrl: false, key });
+        let label = crate::commands::shortcut_label(ctx, Shortcut { command: self.command, shift: self.shift, mac_ctrl: false, alt: false, key });
         match (self.alt, crate::commands::mac_shortcuts(ctx)) {
             (false, _) => label,
             (true, true) => format!("⌥{label}"),
