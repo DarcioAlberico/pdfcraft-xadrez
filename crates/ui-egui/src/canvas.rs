@@ -2333,14 +2333,23 @@ pub fn shortcuts(view: &mut DocView, ctx: &egui::Context, speed: crate::scroll_s
     if key(Key::End) {
         view.go_to_page(usize::MAX);
     }
+    // Alt+← / Alt+→ walk the view history, as a browser's (plan A8 P1c); taken first, so they
+    // never turn the page.
+    if pressed(KeyboardShortcut::new(Modifiers::ALT, Key::ArrowLeft)) {
+        view.view_history(false);
+    }
+    if pressed(KeyboardShortcut::new(Modifiers::ALT, Key::ArrowRight)) {
+        view.view_history(true);
+    }
     // As in Acrobat: → / ← go to the next / previous page in every layout (#185), and so do
-    // ⌘Page Down / ⌘Page Up, or plain Page Down / Page Up in single-page view.
+    // ⌘Page Down / ⌘Page Up, or plain Page Down / Page Up in single-page view. Never with Alt.
     let command = ctx.input(|i| i.modifiers.command);
+    let alt = ctx.input(|i| i.modifiers.alt);
     let scrolls = view.continuous;
-    if key(Key::ArrowRight) || (key(Key::PageDown) && (command || !scrolls)) {
+    if !alt && (key(Key::ArrowRight) || (key(Key::PageDown) && (command || !scrolls))) {
         view.step_page(true);
     }
-    if key(Key::ArrowLeft) || (key(Key::PageUp) && (command || !scrolls)) {
+    if !alt && (key(Key::ArrowLeft) || (key(Key::PageUp) && (command || !scrolls))) {
         view.step_page(false);
     }
     // ↓ / ↑ scroll a line, and Page Down / Page Up a screen where the pages scroll. In

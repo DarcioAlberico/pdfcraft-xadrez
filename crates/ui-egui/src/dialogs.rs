@@ -1092,8 +1092,8 @@ fn dialogs(app: &mut PdfCraftApp, ctx: &egui::Context) {
                 ui.label(egui::RichText::new(tl!("Keyboard shortcuts")).font(theme::semibold(18.0)));
                 ui.add_space(8.0);
                 use crate::commands::{
-                    ACTUAL_SIZE, COPY, FIND_NEXT, FIND_PREV, FIT_WIDTH, PAGE_LEVEL, PAGE_NEXT, PAGE_PREV, ROTATE_CCW, ROTATE_CW, SELECT_ALL, ZOOM_IN,
-                    ZOOM_OUT,
+                    ACTUAL_SIZE, COPY, FIND_NEXT, FIND_PREV, FIT_WIDTH, HISTORY_BACK, HISTORY_FORWARD, PAGE_LEVEL, PAGE_NEXT, PAGE_PREV, ROTATE_CCW,
+                    ROTATE_CW, SELECT_ALL, ZOOM_IN, ZOOM_OUT,
                 };
                 // Registered commands first (always in sync with the real bindings), then the
                 // keys the document view handles itself.
@@ -1123,6 +1123,7 @@ fn dialogs(app: &mut PdfCraftApp, ctx: &egui::Context) {
                     (pair(ROTATE_CW, ROTATE_CCW), tl!("Rotate view").to_string()),
                     (format!("{} / {}", crate::i18n::key_name("Home"), crate::i18n::key_name("End")), tl!("First / last page").to_string()),
                     (format!("← / →, {}", pair(PAGE_PREV, PAGE_NEXT)), tl!("Previous / next page").to_string()),
+                    (pair(HISTORY_BACK, HISTORY_FORWARD), tl!("Previous / next view").to_string()),
                     (named("V"), tl!("Select (V)").to_string()),
                     (named("H / Space (hold)"), tl!("Hand (H)").to_string()),
                     (crate::i18n::key_name("Delete").to_string(), tl!("Delete selected pages (Organize)").to_string()),

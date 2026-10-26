@@ -30,6 +30,31 @@ pub(crate) const COPY: Shortcut = Shortcut::cmd("C");
 pub(crate) const SELECT_ALL: Shortcut = Shortcut::cmd("A");
 pub(crate) const PAGE_PREV: Shortcut = Shortcut::cmd("←");
 pub(crate) const PAGE_NEXT: Shortcut = Shortcut::cmd("→");
+/// The view history, as a browser's (plan A8 P1c): Alt+← and Alt+→ no longer turn the page.
+pub(crate) const HISTORY_BACK: Shortcut = Shortcut::alt("←");
+pub(crate) const HISTORY_FORWARD: Shortcut = Shortcut::alt("→");
+
+/// Every key the document view takes itself, for the collision test. [`PREV_VIEW`] and
+/// [`NEXT_VIEW`] are not among them: they are the `view.previous_view` and `view.next_view`
+/// commands' own keys, written here for the menus.
+#[cfg(test)]
+pub(crate) const VIEW_KEYS: [Shortcut; 15] = [
+    ACTUAL_SIZE,
+    PAGE_LEVEL,
+    FIT_WIDTH,
+    ZOOM_IN,
+    ZOOM_OUT,
+    ROTATE_CW,
+    ROTATE_CCW,
+    FIND_NEXT,
+    FIND_PREV,
+    COPY,
+    SELECT_ALL,
+    PAGE_PREV,
+    PAGE_NEXT,
+    HISTORY_BACK,
+    HISTORY_FORWARD,
+];
 
 /// Whether shortcuts are written the macOS way (`⇧⌘S`) rather than `Ctrl+Shift+S`. egui knows the
 /// platform from the build target, and on the web from the browser's user agent.
@@ -46,6 +71,9 @@ pub(crate) fn shortcut_label(ctx: &egui::Context, s: Shortcut) -> String {
         let mut parts = Vec::new();
         if s.command || s.mac_ctrl {
             parts.push(crate::i18n::key_name("Ctrl"));
+        }
+        if s.alt {
+            parts.push(crate::i18n::key_name("Alt"));
         }
         if s.shift {
             parts.push(crate::i18n::key_name("Shift"));
@@ -802,6 +830,14 @@ impl PdfCraftApp {
             if s.mac_ctrl {
                 m |= Modifiers::CTRL;
             }
+            if s.alt {
+                m |= Modifiers::ALT;
+            }
+            // egui matches Alt "logically" (a pattern without it takes it too): a shortcut fires
+            // only with the Alt it names, so Ctrl+Alt+S is not Ctrl+S (plan A8 P1c).
+            if ctx.input(|i| i.modifiers.alt) != s.alt {
+                continue;
+            }
             if ctx.input_mut(|i| i.consume_shortcut(&KeyboardShortcut::new(m, key))) {
                 if form_typing {
                     // A form field has the keyboard: let it take this frame's typing (and
@@ -897,6 +933,19 @@ pub(crate) fn registry_menu(app: &mut PdfCraftApp, ui: &mut egui::Ui, menu: &str
 mod tests {
     use super::*;
     use egui::os::OperatingSystem;
+
+    /// Plan A8 P1c: no registered command takes a key the document view takes itself, Alt
+    /// included; the history's Alt+arrows are not the page arrows.
+    #[test]
+    fn view_keys_and_command_shortcuts_never_collide() {
+        for (i, k) in VIEW_KEYS.iter().enumerate() {
+            assert!(VIEW_KEYS.iter().skip(i + 1).all(|o| o != k), "{} twice among the view's keys", k.label(false));
+            if let Some(c) = COMMANDS.iter().find(|c| c.shortcut == Some(*k)) {
+                panic!("{} is the view's and {}'s", k.label(false), c.id);
+            }
+        }
+        assert_ne!(HISTORY_BACK, PAGE_PREV);
+    }
 
     #[test]
     fn localized_shortcut_labels_follow_language_and_platform() {

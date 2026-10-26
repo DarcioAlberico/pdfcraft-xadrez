@@ -2012,3 +2012,42 @@ fn go_to_page_brings_the_page_into_view_horizontally() {
     let (r, vp) = (v.page_screen_rect(2).expect("page 3 on screen"), v.viewport_rect());
     assert!(r.left() >= vp.left() && r.right() <= vp.right(), "page 3 at {r:?}, viewport {vp:?}");
 }
+
+/// Press `key` with `modifiers`, as a keyboard sends it.
+fn press_with(h: &mut Harness<'static, PdfCraftApp>, modifiers: egui::Modifiers, key: egui::Key) {
+    for pressed in [true, false] {
+        h.event_modifiers(egui::Event::Key { key, physical_key: None, pressed, repeat: false, modifiers }, modifiers);
+    }
+    h.run_steps(2);
+}
+
+/// Plan A8 P1c: Alt+← and Alt+→ walk the view history and never turn the page; plain → still does.
+#[test]
+fn alt_arrows_walk_the_history_not_the_pages() {
+    let mut h = harness();
+    h.state_mut().active = Some(0);
+    h.run_steps(2);
+    h.state_mut().views[0].go_to_page(3);
+    h.run_steps(2);
+    h.state_mut().views[0].go_to_page(1);
+    h.run_steps(2);
+    press_with(&mut h, egui::Modifiers::ALT, egui::Key::ArrowLeft);
+    assert_eq!(h.state().views[0].current, 3, "back in the history, not the page before");
+    press_with(&mut h, egui::Modifiers::ALT, egui::Key::ArrowRight);
+    assert_eq!(h.state().views[0].current, 1, "forward in the history, not the page after");
+    press_with(&mut h, egui::Modifiers::NONE, egui::Key::ArrowRight);
+    assert_eq!(h.state().views[0].current, 2, "a plain arrow turns the page");
+}
+
+/// Plan A8 P1c: a shortcut fires only with the Alt it names: Ctrl+Alt+H is not Ctrl+H (Read mode).
+#[test]
+fn a_shortcut_does_not_fire_with_an_alt_it_does_not_name() {
+    let mut h = harness();
+    let before = h.state().mode;
+    // Ctrl, as a Windows or Linux keyboard sends it: both ctrl and command.
+    let ctrl = egui::Modifiers::CTRL | egui::Modifiers::COMMAND;
+    press_with(&mut h, ctrl | egui::Modifiers::ALT, egui::Key::H);
+    assert_eq!(h.state().mode, before, "Ctrl+Alt+H runs nothing");
+    press_with(&mut h, ctrl, egui::Key::H);
+    assert_ne!(h.state().mode, before, "Ctrl+H switches to Read mode");
+}

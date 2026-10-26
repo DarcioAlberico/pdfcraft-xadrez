@@ -3172,3 +3172,4 @@ chess undo step	Clear drawings	描画の消去
 	It couldn't be read. Set the position up in the editor.	読み取れませんでした。エディターで局面を配置してください。
 	You checked it and kept the reading.	確認して読み取り結果をそのまま採用しました。
 	You corrected this position.	この局面を修正しました。
+	Previous / next view	前の表示 / 次の表示
