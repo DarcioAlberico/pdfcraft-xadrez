@@ -3413,3 +3413,12 @@ chess undo step	Clear drawings	piešinių valymą
 	Next variation (Page Down)	Kitas variantas (Page Down)
 	A move the pointer rests on shows its position	Ėjimas, ant kurio sustoja žymeklis, parodo savo poziciją
 	Position after {move}	Pozicija po {move}
+	To review	Peržiūrėti
+	With an error	Su klaida
+	Verified	Patikrinta
+	Corrected	Pataisyta
+	Position read with confidence.	Pozicija perskaityta užtikrintai.
+	Some square was in doubt. Check it before using it.	Dėl kurio nors langelio buvo abejonių. Patikrinkite prieš naudodami.
+	It couldn't be read. Set the position up in the editor.	Nepavyko perskaityti. Sudėliokite poziciją rengyklėje.
+	You checked it and kept the reading.	Patikrinote ir palikote perskaitytą.
+	You corrected this position.	Pataisėte šią poziciją.

@@ -3077,3 +3077,12 @@ chess undo step	Clear drawings	清除標記
 	Next variation (Page Down)	下一個變著 (Page Down)
 	A move the pointer rests on shows its position	指標停留的著法顯示其局面
 	Position after {move}	{move} 之後的局面
+	To review	待複核
+	With an error	有錯誤
+	Verified	已確認
+	Corrected	已更正
+	Position read with confidence.	已確信地讀取局面。
+	Some square was in doubt. Check it before using it.	某個格子存在疑問。使用前請檢查。
+	It couldn't be read. Set the position up in the editor.	無法讀取。請在編輯器中擺出局面。
+	You checked it and kept the reading.	您已檢查並保留了讀取結果。
+	You corrected this position.	您已更正此局面。

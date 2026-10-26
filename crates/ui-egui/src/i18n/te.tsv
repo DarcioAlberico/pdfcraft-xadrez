@@ -3036,3 +3036,12 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Next variation (Page Down)	తదుపరి వేరియేషన్ (Page Down)
 	A move the pointer rests on shows its position	పాయింటర్ ఆగిన ఎత్తు దాని స్థితిని చూపుతుంది
 	Position after {move}	{move} తర్వాత స్థితి
+	To review	సమీక్షించాలి
+	With an error	లోపంతో
+	Verified	నిర్ధారించినది
+	Corrected	సరిచేసినది
+	Position read with confidence.	స్థితిని నమ్మకంగా చదివాము.
+	Some square was in doubt. Check it before using it.	ఏదో గడిపై సందేహం ఉంది. వాడే ముందు చూడండి.
+	It couldn't be read. Set the position up in the editor.	చదవలేకపోయాము. ఎడిటర్‌లో స్థితిని అమర్చండి.
+	You checked it and kept the reading.	మీరు చూసి చదివినదాన్నే ఉంచారు.
+	You corrected this position.	మీరు ఈ స్థితిని సరిచేశారు.

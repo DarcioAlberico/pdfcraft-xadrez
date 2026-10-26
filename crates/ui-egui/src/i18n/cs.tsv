@@ -3235,3 +3235,12 @@ chess undo step	Clear drawings	smazání kreseb
 	Next variation (Page Down)	Další varianta (Page Down)
 	A move the pointer rests on shows its position	Tah, na kterém se zastaví ukazatel, ukáže svou pozici
 	Position after {move}	Pozice po {move}
+	To review	K revizi
+	With an error	S chybou
+	Verified	Ověřeno
+	Corrected	Opraveno
+	Position read with confidence.	Pozice přečtena s jistotou.
+	Some square was in doubt. Check it before using it.	U některého pole byla pochybnost. Před použitím ji zkontrolujte.
+	It couldn't be read. Set the position up in the editor.	Nepodařilo se přečíst. Sestavte pozici v editoru.
+	You checked it and kept the reading.	Zkontrolovali jste ji a ponechali čtení.
+	You corrected this position.	Tuto pozici jste opravili.

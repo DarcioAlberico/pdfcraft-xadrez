@@ -64,6 +64,21 @@ pub struct Tokens {
     pub field: Color32,
     pub badge_new: Color32,
     pub page_shadow: Color32,
+    /// States (plan A8 P1a): the mark (icons, bars, strokes), text in that colour (4.5:1 on the
+    /// panels and on its soft fill) and a soft fill behind it. Read, verified, corrected.
+    pub success: Color32,
+    pub success_text: Color32,
+    pub success_soft: Color32,
+    /// To review, a draft.
+    pub warning: Color32,
+    pub warning_text: Color32,
+    pub warning_soft: Color32,
+    /// An error, an illegal position.
+    pub danger: Color32,
+    pub danger_text: Color32,
+    pub danger_soft: Color32,
+    /// Squares the reading doubted.
+    pub attention: Color32,
     pub radius: u8,
 }
 
@@ -92,6 +107,16 @@ impl Tokens {
                 field: Color32::from_rgb(0xFF, 0xFF, 0xFF),
                 badge_new: Color32::from_rgb(0x1B, 0x63, 0xE0),
                 page_shadow: Color32::from_black_alpha(34),
+                success: Color32::from_rgb(0x2D, 0x9D, 0x5B),
+                success_text: Color32::from_rgb(0x1E, 0x7A, 0x43),
+                success_soft: Color32::from_rgb(0xE3, 0xF4, 0xEA),
+                warning: Color32::from_rgb(0xE0, 0x8A, 0x1A),
+                warning_text: Color32::from_rgb(0x9A, 0x5B, 0x00),
+                warning_soft: Color32::from_rgb(0xFD, 0xF0, 0xDC),
+                danger: Color32::from_rgb(0xE0, 0x3E, 0x3E),
+                danger_text: Color32::from_rgb(0xC4, 0x2B, 0x2B),
+                danger_soft: Color32::from_rgb(0xFC, 0xE5, 0xE5),
+                attention: Color32::from_rgb(0x7C, 0x3A, 0xED),
                 radius: 6,
             },
             ThemeKind::Dark => Self {
@@ -116,6 +141,16 @@ impl Tokens {
                 field: Color32::from_rgb(0x1E, 0x1E, 0x22),
                 badge_new: Color32::from_rgb(0x3D, 0x7D, 0xEE),
                 page_shadow: Color32::from_black_alpha(120),
+                success: Color32::from_rgb(0x3F, 0xB8, 0x71),
+                success_text: Color32::from_rgb(0x6B, 0xD3, 0x9A),
+                success_soft: Color32::from_rgb(0x1F, 0x3A, 0x2B),
+                warning: Color32::from_rgb(0xF0, 0xA0, 0x40),
+                warning_text: Color32::from_rgb(0xF5, 0xB9, 0x69),
+                warning_soft: Color32::from_rgb(0x3D, 0x2E, 0x17),
+                danger: Color32::from_rgb(0xF0, 0x64, 0x64),
+                danger_text: Color32::from_rgb(0xF5, 0x8C, 0x8C),
+                danger_soft: Color32::from_rgb(0x43, 0x23, 0x2A),
+                attention: Color32::from_rgb(0xA7, 0x8B, 0xFA),
                 radius: 6,
             },
         }
@@ -746,6 +781,34 @@ mod tests {
         let held = Press { hover: 1.0, down: 1.0 };
         assert_eq!(held.fill(rest, hover, pressed), pressed);
         assert_eq!(held.offset(), Vec2::new(0.0, 1.0));
+    }
+
+    #[test]
+    /// Plan A8 P1a: a state's text reads at 4.5:1 on every panel and on its own soft fill. Its
+    /// mark is at least 2.3:1 (the plan's warning orange is 2.5:1 on white): a state is never
+    /// colour alone, its icon and words carry it. The doubted squares' colour is at 3:1.
+    fn state_colours_read_on_every_surface() {
+        for kind in [ThemeKind::Light, ThemeKind::Dark] {
+            let t = Tokens::for_kind(kind);
+            for (name, mark, text, soft) in [
+                ("success", t.success, t.success_text, t.success_soft),
+                ("warning", t.warning, t.warning_text, t.warning_soft),
+                ("danger", t.danger, t.danger_text, t.danger_soft),
+            ] {
+                for bg in [t.chrome, t.panel, t.card, soft] {
+                    let r = contrast(text, bg);
+                    assert!(r >= 4.5, "{kind:?} {name}_text on {bg:?}: {r:.2}:1");
+                }
+                for bg in [t.chrome, t.panel, t.card] {
+                    let r = contrast(mark, bg);
+                    assert!(r >= 2.3, "{kind:?} {name} on {bg:?}: {r:.2}:1");
+                }
+            }
+            for bg in [t.chrome, t.panel, t.card] {
+                let r = contrast(t.attention, bg);
+                assert!(r >= 3.0, "{kind:?} attention on {bg:?}: {r:.2}:1");
+            }
+        }
     }
 
     #[test]

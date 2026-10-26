@@ -3160,3 +3160,12 @@ chess undo step	Clear drawings	rajzok törlése
 	Next variation (Page Down)	Következő változat (Page Down)
 	A move the pointer rests on shows its position	Az a lépés, amelyen a mutató megáll, megmutatja az állását
 	Position after {move}	Állás {move} után
+	To review	Ellenőrizendő
+	With an error	Hibás
+	Verified	Ellenőrizve
+	Corrected	Javítva
+	Position read with confidence.	Az állás biztosan beolvasva.
+	Some square was in doubt. Check it before using it.	Valamelyik mezőnél kétség merült fel. Használat előtt ellenőrizze.
+	It couldn't be read. Set the position up in the editor.	Nem sikerült beolvasni. Állítsa fel az állást a szerkesztőben.
+	You checked it and kept the reading.	Ellenőrizte, és megtartotta a beolvasást.
+	You corrected this position.	Javította ezt az állást.

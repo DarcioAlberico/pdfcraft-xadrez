@@ -168,11 +168,11 @@ fn origin_menu(ui: &mut egui::Ui, origin: BookOrigin) -> Option<TextAction> {
     action
 }
 
-fn status_colour(s: MoveStatus) -> Color32 {
+fn status_colour(s: MoveStatus, t: &Tokens) -> Color32 {
     match s {
-        MoveStatus::Valid => Color32::from_rgb(0x2D, 0x9D, 0x5B),
-        MoveStatus::Illegal | MoveStatus::Ambiguous => Color32::from_rgb(0xE0, 0x3E, 0x3E),
-        MoveStatus::OutOfSequence | MoveStatus::NotReached => Color32::from_rgb(0xE0, 0x8A, 0x1A),
+        MoveStatus::Valid => t.success_text,
+        MoveStatus::Illegal | MoveStatus::Ambiguous => t.danger_text,
+        MoveStatus::OutOfSequence | MoveStatus::NotReached => t.warning_text,
         MoveStatus::Unchecked => Color32::GRAY,
         MoveStatus::Caption => Color32::from_rgb(0x3B, 0x82, 0xC4),
     }
@@ -319,7 +319,7 @@ pub fn text_tab(
                                 let at = MoveAt { page, block: bi, inline: k };
                                 let r = ui
                                     .add(
-                                        egui::Label::new(egui::RichText::new(shown).color(status_colour(m.status)).strong())
+                                        egui::Label::new(egui::RichText::new(shown).color(status_colour(m.status, &Tokens::get(ui.ctx()))).strong())
                                             .sense(egui::Sense::click()),
                                     )
                                     .on_hover_text(tip);

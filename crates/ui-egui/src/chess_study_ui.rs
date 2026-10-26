@@ -386,10 +386,10 @@ fn setup_view(ui: &mut egui::Ui, t: &Tokens, setup: &mut Setup, board: &mut Boar
     ui.add(egui::Label::new(egui::RichText::new(&fen).monospace().small()).wrap());
     // Why not, when it is not (plan A8, P3b1).
     let (text, colour) = if legal {
-        (tl!("Legal position").to_string(), Color32::from_rgb(0x2D, 0x9D, 0x5B))
+        (tl!("Legal position").to_string(), Tokens::get(ui.ctx()).success_text)
     } else {
         let why = pdfcraft_engine::chess::pdfcraft_chess::rules::position_violations(&setup.position, Color::White);
-        (crate::chess_editor::not_legal_text(&why), Color32::from_rgb(0xE0, 0x3E, 0x3E))
+        (crate::chess_editor::not_legal_text(&why), Tokens::get(ui.ctx()).danger_text)
     };
     ui.add(egui::Label::new(egui::RichText::new(text).small().color(colour)).wrap());
     let has_moves = !board.game.is_empty();
@@ -600,7 +600,7 @@ fn engine_view(ui: &mut egui::Ui, t: &Tokens, study: &mut StudyState, board: &mu
             AnalysisError::NotUci => tl!("That program didn't answer as a UCI chess engine.").to_string(),
             AnalysisError::Stopped => tl!("The engine stopped.").to_string(),
         };
-        ui.label(egui::RichText::new(text).small().color(Color32::from_rgb(0xE0, 0x3E, 0x3E)));
+        ui.label(egui::RichText::new(text).small().color(Tokens::get(ui.ctx()).danger_text));
         return action;
     }
     let Some(snap) = study.snapshot(board) else { return action };

@@ -3166,3 +3166,12 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Next variation (Page Down)	Naslednja varianta (Page Down)
 	A move the pointer rests on shows its position	Poteza, na kateri se ustavi kazalec, pokaže svojo pozicijo
 	Position after {move}	Pozicija po {move}
+	To review	Za pregled
+	With an error	Z napako
+	Verified	Preverjeno
+	Corrected	Popravljeno
+	Position read with confidence.	Pozicija prebrana z gotovostjo.
+	Some square was in doubt. Check it before using it.	Pri nekem polju je bil dvom. Pred uporabo preverite.
+	It couldn't be read. Set the position up in the editor.	Ni bilo mogoče prebrati. Postavite pozicijo v urejevalniku.
+	You checked it and kept the reading.	Preverili ste jo in obdržali branje.
+	You corrected this position.	To pozicijo ste popravili.

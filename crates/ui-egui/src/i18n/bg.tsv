@@ -3124,3 +3124,12 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Next variation (Page Down)	Следващ вариант (Page Down)
 	A move the pointer rests on shows its position	Ход, върху който спре показалецът, показва позицията си
 	Position after {move}	Позиция след {move}
+	To review	За преглед
+	With an error	С грешка
+	Verified	Проверена
+	Corrected	Поправена
+	Position read with confidence.	Позицията е прочетена уверено.
+	Some square was in doubt. Check it before using it.	Имаше съмнение за някое поле. Проверете го, преди да го използвате.
+	It couldn't be read. Set the position up in the editor.	Не може да се прочете. Наредете позицията в редактора.
+	You checked it and kept the reading.	Проверихте я и запазихте прочетеното.
+	You corrected this position.	Поправихте тази позиция.

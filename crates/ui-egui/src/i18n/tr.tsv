@@ -3157,3 +3157,12 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Next variation (Page Down)	Sonraki varyant (Page Down)
 	A move the pointer rests on shows its position	İşaretçinin durduğu hamle konumunu gösterir
 	Position after {move}	{move} sonrası konum
+	To review	Gözden geçirilecek
+	With an error	Hatalı
+	Verified	Doğrulandı
+	Corrected	Düzeltildi
+	Position read with confidence.	Konum güvenle okundu.
+	Some square was in doubt. Check it before using it.	Bir karede şüphe vardı. Kullanmadan önce kontrol edin.
+	It couldn't be read. Set the position up in the editor.	Okunamadı. Konumu düzenleyicide kurun.
+	You checked it and kept the reading.	Kontrol ettiniz ve okumayı korudunuz.
+	You corrected this position.	Bu konumu düzelttiniz.

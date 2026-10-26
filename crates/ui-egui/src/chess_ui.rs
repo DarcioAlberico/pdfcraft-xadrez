@@ -30,12 +30,6 @@ const PAGES_PER_JOB: usize = 8;
 /// Diagrams listed in the panel at most; the page marks show them all.
 const MAX_LISTED: usize = 2000;
 
-/// The colour of a diagram's state, on the page and beside it in the panel.
-const READ: Color32 = Color32::from_rgb(0x2D, 0x9D, 0x5B);
-const REVIEW: Color32 = Color32::from_rgb(0xE0, 0x8A, 0x1A);
-const FOUND: Color32 = Color32::from_rgb(0x3A, 0x6F, 0xE8);
-const FAILED: Color32 = Color32::from_rgb(0xE0, 0x3E, 0x3E);
-
 /// Chess diagrams: the last results and the running scan.
 #[derive(Default)]
 pub struct ChessState {
@@ -301,15 +295,18 @@ pub enum PanelAction {
     Models,
 }
 
-/// One diagram's state: its label and colour.
-fn status(reading: Option<&BoardReading>) -> (String, Color32) {
-    match reading.map(|r| &r.outcome) {
-        Some(Ok(p)) if p.accepted => (tl!("Position read").to_string(), READ),
-        Some(Ok(_)) => (tl!("Needs review").to_string(), REVIEW),
-        Some(Err(Unreadable::NoModel)) => (tl!("Not read: no piece model").to_string(), FOUND),
-        Some(Err(e)) => (crate::i18n::fmt(tl!("Couldn't be read: {e}"), &[("e", &e.to_string())]), FAILED),
-        None => (tl!("Not read").to_string(), FOUND),
-    }
+/// One diagram's state: its label, and its mark's colour from the theme's state tokens (plan A8
+/// P1a).
+fn status(reading: Option<&BoardReading>, t: &Tokens) -> (String, Color32) {
+    let colour = crate::chess_widgets::DiagramState::of(reading, None).colour(t);
+    let label = match reading.map(|r| &r.outcome) {
+        Some(Ok(p)) if p.accepted => tl!("Position read").to_string(),
+        Some(Ok(_)) => tl!("Needs review").to_string(),
+        Some(Err(Unreadable::NoModel)) => tl!("Not read: no piece model").to_string(),
+        Some(Err(e)) => crate::i18n::fmt(tl!("Couldn't be read: {e}"), &[("e", &e.to_string())]),
+        None => tl!("Not read").to_string(),
+    };
+    (label, colour)
 }
 
 /// Whether `page` (0-based) is among the pages scanned in `results`.
@@ -352,6 +349,7 @@ pub(crate) fn paint(
     pointer: Option<Pos2>,
 ) -> Option<(usize, String)> {
     let results = results?;
+    let tokens = Tokens::get(painter.ctx());
     // `user_rect` reads the page's box: never for a page the document does not have.
     info.pages.get(page)?;
     let p = results.pages.iter().find(|p| p.page == page)?;
@@ -363,7 +361,7 @@ pub(crate) fn paint(
         }
         let r = xf.user_rect(info, page, [b.x0, b.y0, b.x1, b.y1]);
         let reading = ChessResults::reading(p, i);
-        let (label, colour) = status(reading);
+        let (label, colour) = status(reading, &tokens);
         let selected = results.selected == Some((page, i));
         painter.rect_filled(r, CornerRadius::same(2), colour.gamma_multiply(0.10));
         painter.rect_stroke(r, CornerRadius::same(2), Stroke::new(if selected { 3.0 } else { 1.5 }, colour), egui::StrokeKind::Outside);
@@ -565,7 +563,7 @@ pub(crate) fn tab_contents(
                 continue;
             }
             listed += 1;
-            let (label, colour) = status(reading);
+            let (label, colour) = status(reading, &Tokens::get(ui.ctx()));
             let position = reading.and_then(BoardReading::position);
             let selected = results.selected == Some((page.page, i));
             let row = ui.push_id((page.page, i), |ui| {
@@ -574,7 +572,14 @@ pub(crate) fn tab_contents(
                     ui.painter().rect_filled(bar, CornerRadius::same(2), colour);
                     ui.vertical(|ui| {
                         let title = crate::i18n::fmt(tl!("Diagram {n}"), &[("n", &(i + 1).to_string())]);
-                        let head = ui.selectable_label(selected, format!("{title} · {label}"));
+                        // The state's icon beside its words: never colour alone (plan A8 P1a).
+                        let state = crate::chess_widgets::DiagramState::of(reading, None);
+                        let head = ui
+                            .horizontal(|ui| {
+                                crate::chess_widgets::state_icon(ui, &Tokens::get(ui.ctx()), state, 14.0);
+                                ui.selectable_label(selected, format!("{title} · {label}"))
+                            })
+                            .inner;
                         if let Some(pos) = position {
                             ui.add(egui::Label::new(egui::RichText::new(&pos.fen).monospace().small()).wrap());
                             ui.horizontal(|ui| {
