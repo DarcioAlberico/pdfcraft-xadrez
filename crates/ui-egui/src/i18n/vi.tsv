@@ -3415,3 +3415,12 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Next variation (Page Down)	Biến thể sau (Page Down)
 	A move the pointer rests on shows its position	Nước đi mà con trỏ dừng lại sẽ hiện thế cờ của nó
 	Position after {move}	Thế cờ sau {move}
+	To review	Cần xem lại
+	With an error	Có lỗi
+	Verified	Đã kiểm tra
+	Corrected	Đã sửa
+	Position read with confidence.	Đã đọc thế cờ một cách chắc chắn.
+	Some square was in doubt. Check it before using it.	Có nghi ngờ ở một ô. Hãy kiểm tra trước khi dùng.
+	It couldn't be read. Set the position up in the editor.	Không đọc được. Hãy xếp thế cờ trong trình chỉnh sửa.
+	You checked it and kept the reading.	Bạn đã kiểm tra và giữ kết quả đọc.
+	You corrected this position.	Bạn đã sửa thế cờ này.

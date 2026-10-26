@@ -3183,3 +3183,12 @@ chess undo step	Clear drawings	видалення малюнків
 	Next variation (Page Down)	Наступний варіант (Page Down)
 	A move the pointer rests on shows its position	Хід, на якому зупинився вказівник, показує свою позицію
 	Position after {move}	Позиція після {move}
+	To review	На перевірку
+	With an error	З помилкою
+	Verified	Перевірено
+	Corrected	Виправлено
+	Position read with confidence.	Позицію прочитано впевнено.
+	Some square was in doubt. Check it before using it.	Було сумнів щодо якогось поля. Перевірте перед використанням.
+	It couldn't be read. Set the position up in the editor.	Не вдалося прочитати. Розставте позицію в редакторі.
+	You checked it and kept the reading.	Ви перевірили й залишили прочитане.
+	You corrected this position.	Ви виправили цю позицію.

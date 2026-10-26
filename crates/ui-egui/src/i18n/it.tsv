@@ -3373,3 +3373,12 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	Next variation (Page Down)	Variante successiva (Pag Giù)
 	A move the pointer rests on shows its position	Una mossa su cui si ferma il puntatore mostra la sua posizione
 	Position after {move}	Posizione dopo {move}
+	To review	Da rivedere
+	With an error	Con errore
+	Verified	Verificato
+	Corrected	Corretto
+	Position read with confidence.	Posizione letta con sicurezza.
+	Some square was in doubt. Check it before using it.	C'era un dubbio su qualche casa. Controllala prima di usarla.
+	It couldn't be read. Set the position up in the editor.	Non è stato possibile leggerla. Imposta la posizione nell'editor.
+	You checked it and kept the reading.	L'hai controllata e hai tenuto la lettura.
+	You corrected this position.	Hai corretto questa posizione.

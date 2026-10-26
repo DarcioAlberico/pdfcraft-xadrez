@@ -3133,3 +3133,12 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Next variation (Page Down)	Επόμενη παραλλαγή (Page Down)
 	A move the pointer rests on shows its position	Η κίνηση όπου σταματά ο δείκτης δείχνει τη θέση της
 	Position after {move}	Θέση μετά το {move}
+	To review	Για έλεγχο
+	With an error	Με σφάλμα
+	Verified	Επαληθευμένο
+	Corrected	Διορθωμένο
+	Position read with confidence.	Η θέση διαβάστηκε με βεβαιότητα.
+	Some square was in doubt. Check it before using it.	Υπήρξε αμφιβολία σε κάποιο τετράγωνο. Ελέγξτε την πριν τη χρησιμοποιήσετε.
+	It couldn't be read. Set the position up in the editor.	Δεν ήταν δυνατή η ανάγνωση. Στήστε τη θέση στον επεξεργαστή.
+	You checked it and kept the reading.	Την ελέγξατε και κρατήσατε την ανάγνωση.
+	You corrected this position.	Διορθώσατε αυτή τη θέση.

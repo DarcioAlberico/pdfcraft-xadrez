@@ -47,6 +47,7 @@ mod chess_ocr_area;
 mod chess_pieces_ui;
 mod chess_samples;
 mod chess_theme;
+mod chess_widgets;
 pub use chess_ocr_area::AreaQuery;
 mod chess_source;
 mod chess_study_ui;

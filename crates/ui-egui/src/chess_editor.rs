@@ -364,7 +364,7 @@ pub fn editor_ui(ui: &mut egui::Ui, t: &Tokens, ed: &mut DiagramEditor, pieces: 
                 let (col, row) = if ed.flipped { (7.0 - file, rank) } else { (file, 7.0 - rank) };
                 let cell = response.rect.width() / 8.0;
                 let sq = egui::Rect::from_min_size(response.rect.min + egui::vec2(col * cell, row * cell), egui::vec2(cell, cell));
-                ui.painter().rect_stroke(sq.shrink(1.0), 1.0, egui::Stroke::new(2.0, Color32::from_rgb(0xE0, 0x8A, 0x1A)), egui::StrokeKind::Inside);
+                ui.painter().rect_stroke(sq.shrink(1.0), 1.0, egui::Stroke::new(2.0, t.attention), egui::StrokeKind::Inside);
             }
         } else if let Some(e) = &ed.draw_error {
             ui.label(egui::RichText::new(crate::i18n::fmt(tl!("The board couldn't be drawn: {e}"), &[("e", e)])).small().color(t.text_muted));
@@ -406,7 +406,7 @@ pub fn editor_ui(ui: &mut egui::Ui, t: &Tokens, ed: &mut DiagramEditor, pieces: 
     let legal = illegal.is_none();
     ui.add(egui::Label::new(egui::RichText::new(&fen).monospace().small()).wrap());
     let status = illegal.unwrap_or_else(|| tl!("Legal position").to_string());
-    let colour = if legal { Color32::from_rgb(0x2D, 0x9D, 0x5B) } else { Color32::from_rgb(0xE0, 0x3E, 0x3E) };
+    let colour = if legal { t.success_text } else { t.danger_text };
     ui.add(egui::Label::new(egui::RichText::new(status).small().color(colour)).wrap());
     // The model's second readings.
     let mut take = None;

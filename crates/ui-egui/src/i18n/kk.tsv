@@ -3159,3 +3159,12 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Next variation (Page Down)	Келесі нұсқа (Page Down)
 	A move the pointer rests on shows its position	Меңзер тоқтаған жүріс өз позициясын көрсетеді
 	Position after {move}	{move} кейінгі позиция
+	To review	Тексеру керек
+	With an error	Қатесі бар
+	Verified	Тексерілді
+	Corrected	Түзетілді
+	Position read with confidence.	Позиция сенімді оқылды.
+	Some square was in doubt. Check it before using it.	Бір шаршы күмәнді болды. Қолданар алдында тексеріңіз.
+	It couldn't be read. Set the position up in the editor.	Оқу мүмкін болмады. Позицияны редакторда құрыңыз.
+	You checked it and kept the reading.	Сіз тексеріп, оқылғанын қалдырдыңыз.
+	You corrected this position.	Сіз бұл позицияны түзеттіңіз.

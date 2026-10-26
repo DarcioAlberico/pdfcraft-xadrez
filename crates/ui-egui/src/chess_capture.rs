@@ -1224,8 +1224,7 @@ fn chips(ui: &mut egui::Ui, t: &Tokens, c: &Candidate, stopped: &[StoppedMove], 
             clicked = Some(k);
         }
     };
-    const PLAYED: egui::Color32 = egui::Color32::from_rgb(0x2D, 0x9D, 0x5B);
-    const STOPPED: egui::Color32 = egui::Color32::from_rgb(0xE0, 0x3E, 0x3E);
+    let (played_ink, stop_ink) = (t.success_text, t.danger_text);
     let stop = c.report.stop.as_ref();
     let rest_from = c.report.rest_from.or(stop.map(|s| s.index));
     let mut shown = 0usize;
@@ -1238,9 +1237,9 @@ fn chips(ui: &mut egui::Ui, t: &Tokens, c: &Candidate, stopped: &[StoppedMove], 
         match item {
             FragmentItem::Move { text, bold, .. } => {
                 let (mark, colour, why) = match (stop, rest_from) {
-                    (Some(s), _) if s.index == k => ("✗", STOPPED, Some(stop_text(s.reason))),
+                    (Some(s), _) if s.index == k => ("✗", stop_ink, Some(stop_text(s.reason))),
                     (_, Some(r)) if k >= r => ("·", t.text_faint, None),
-                    _ => ("✓", PLAYED, None),
+                    _ => ("✓", played_ink, None),
                 };
                 let mut rich = RichText::new(format!("{mark} {text}")).small().color(colour);
                 if *bold == Some(true) {
@@ -1249,7 +1248,7 @@ fn chips(ui: &mut egui::Ui, t: &Tokens, c: &Candidate, stopped: &[StoppedMove], 
                 match why {
                     Some(why) => {
                         stop_chip(ui, stopped.iter().position(|s| s.graft), rich);
-                        ui.label(RichText::new(why).small().color(STOPPED));
+                        ui.label(RichText::new(why).small().color(stop_ink));
                     }
                     None => {
                         ui.label(rich);
@@ -1274,7 +1273,7 @@ fn chips(ui: &mut egui::Ui, t: &Tokens, c: &Candidate, stopped: &[StoppedMove], 
         }
     }
     for (k, s) in c.read.stops.iter().enumerate() {
-        let rich = RichText::new(format!("✗ {} — {}", s.text, status_text(s.status))).small().color(STOPPED);
+        let rich = RichText::new(format!("✗ {} — {}", s.text, status_text(s.status))).small().color(stop_ink);
         stop_chip(ui, (k < stopped.len()).then_some(k), rich);
     }
     clicked

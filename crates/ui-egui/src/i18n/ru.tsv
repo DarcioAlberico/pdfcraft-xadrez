@@ -3074,3 +3074,12 @@ chess undo step	Clear drawings	удаление рисунков
 	Next variation (Page Down)	Следующий вариант (Page Down)
 	A move the pointer rests on shows its position	Ход, на котором задержался указатель, показывает свою позицию
 	Position after {move}	Позиция после {move}
+	To review	На проверку
+	With an error	С ошибкой
+	Verified	Проверено
+	Corrected	Исправлено
+	Position read with confidence.	Позиция прочитана уверенно.
+	Some square was in doubt. Check it before using it.	Было сомнение в каком-то поле. Проверьте перед использованием.
+	It couldn't be read. Set the position up in the editor.	Не удалось прочитать. Расставьте позицию в редакторе.
+	You checked it and kept the reading.	Вы проверили и оставили прочтение.
+	You corrected this position.	Вы исправили эту позицию.

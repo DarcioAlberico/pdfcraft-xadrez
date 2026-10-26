@@ -3163,3 +3163,12 @@ chess undo step	Clear drawings	描画の消去
 	Next variation (Page Down)	次の変化 (Page Down)
 	A move the pointer rests on shows its position	ポインターを止めた手の局面を表示
 	Position after {move}	{move} の後の局面
+	To review	要確認
+	With an error	エラーあり
+	Verified	確認済み
+	Corrected	修正済み
+	Position read with confidence.	局面を確実に読み取りました。
+	Some square was in doubt. Check it before using it.	一部のマスに疑問があります。使う前に確認してください。
+	It couldn't be read. Set the position up in the editor.	読み取れませんでした。エディターで局面を配置してください。
+	You checked it and kept the reading.	確認して読み取り結果をそのまま採用しました。
+	You corrected this position.	この局面を修正しました。

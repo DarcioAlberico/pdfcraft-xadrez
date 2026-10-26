@@ -875,9 +875,6 @@ pub(crate) fn cut_sprites(ctx: &egui::Context, pieces: &PieceSet, name: &str) ->
     Some(ctx.load_texture(name, egui::ColorImage::from_rgba_premultiplied([w, h], &rgba), egui::TextureOptions::LINEAR))
 }
 
-/// The colours drawn over the board.
-const CHECK: Color32 = Color32::from_rgb(0xE0, 0x3E, 0x3E);
-
 /// An arrow from the centre of `mark.from` to the centre of `mark.to` (a ring when they are the
 /// same square).
 fn paint_mark(
@@ -1087,23 +1084,24 @@ pub(crate) fn board_view_sized(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardS
         paint_mark(&painter, state, rect, Mark { from, to, color: MarkColor::from_modifiers(modifiers) }, palette, look);
     }
     if state.illegal.is_some() {
-        painter.rect_stroke(rect, 0.0, Stroke::new(2.0, CHECK), egui::StrokeKind::Inside);
+        painter.rect_stroke(rect, 0.0, Stroke::new(2.0, Tokens::get(ui.ctx()).danger), egui::StrokeKind::Inside);
     }
 }
 
 /// The game's status line: whose move it is, check, mate.
-fn status(state: &BoardState) -> (String, Color32) {
+fn status(state: &BoardState, t: &Tokens) -> (String, Color32) {
+    let check = t.danger_text;
     if state.illegal.is_some() {
-        return (tl!("Not a legal position").to_string(), CHECK);
+        return (tl!("Not a legal position").to_string(), check);
     }
     let side = state.game.side_to_move();
-    let fine = Color32::from_rgb(0x2D, 0x9D, 0x5B);
+    let fine = t.success_text;
     match state.game.outcome() {
-        Outcome::Checkmate => (if side == Color::White { tl!("Checkmate: Black wins") } else { tl!("Checkmate: White wins") }.to_string(), CHECK),
+        Outcome::Checkmate => (if side == Color::White { tl!("Checkmate: Black wins") } else { tl!("Checkmate: White wins") }.to_string(), check),
         Outcome::Stalemate => (tl!("Stalemate").to_string(), fine),
         Outcome::FiftyMoves => (tl!("Draw by the fifty-move rule").to_string(), fine),
         Outcome::Ongoing if state.game.in_check() => {
-            (if side == Color::White { tl!("White to move, in check") } else { tl!("Black to move, in check") }.to_string(), CHECK)
+            (if side == Color::White { tl!("White to move, in check") } else { tl!("Black to move, in check") }.to_string(), check)
         }
         Outcome::Ongoing => (if side == Color::White { tl!("White to move") } else { tl!("Black to move") }.to_string(), fine),
     }
@@ -1983,7 +1981,7 @@ pub(crate) fn navigation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) 
             }
         }
     });
-    let (text, colour) = status(state);
+    let (text, colour) = status(state, t);
     ui.label(egui::RichText::new(text).small().color(colour));
     if let Some(m) = &state.message {
         ui.label(egui::RichText::new(m).small().color(t.text_muted));

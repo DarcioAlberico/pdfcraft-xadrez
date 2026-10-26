@@ -143,7 +143,22 @@ pub fn pill_button(ui: &mut egui::Ui, label: &str, primary: bool) -> Response {
     };
     ui.painter().rect(rect, CornerRadius::same(14), fill, stroke, egui::StrokeKind::Inside);
     ui.painter().text(rect.translate(press.offset()).center(), Align2::CENTER_CENTER, label, font, text);
+    focus_ring(ui, &resp, rect, 14);
     theme::hand(resp)
+}
+
+/// A 2-point ring in the accent colour around `rect` while `resp` has the keyboard focus (plan
+/// A8 P1a): the pills draw their own frame, so egui's focus stroke would not show.
+pub(crate) fn focus_ring(ui: &egui::Ui, resp: &Response, rect: Rect, radius: u8) {
+    if resp.has_focus() {
+        let t = Tokens::get(ui.ctx());
+        ui.painter().rect_stroke(
+            rect.expand(2.0),
+            CornerRadius::same(radius.saturating_add(2)),
+            Stroke::new(2.0, t.accent),
+            egui::StrokeKind::Outside,
+        );
+    }
 }
 
 /// Icon + label, transparent until hovered.
@@ -586,6 +601,8 @@ pub fn split_pill(ui: &mut egui::Ui, icon: &str, label: &str, more: &str) -> (Re
     crate::icons::paint(ui, Rect::from_min_size(body.min + vec2(12.0, 7.0), vec2(16.0, 16.0)), icon, 15.0, t.text);
     ui.painter().text(body.left_center() + vec2(34.0, 0.0), Align2::LEFT_CENTER, label, font, t.text);
     crate::icons::paint(ui, Rect::from_center_size(more_body.center(), vec2(14.0, 14.0)), "chevron-down", 13.0, t.text);
+    focus_ring(ui, &main, main_rect, 15);
+    focus_ring(ui, &arrow, more_rect, 15);
     (theme::hand(main).on_hover_text(label), theme::hand(arrow).on_hover_text(more))
 }
 

@@ -3162,3 +3162,12 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	Next variation (Page Down)	Nächste Variante (Bild ab)
 	A move the pointer rests on shows its position	Ein Zug, auf dem der Zeiger ruht, zeigt seine Stellung
 	Position after {move}	Stellung nach {move}
+	To review	Zu prüfen
+	With an error	Mit Fehler
+	Verified	Geprüft
+	Corrected	Korrigiert
+	Position read with confidence.	Stellung sicher gelesen.
+	Some square was in doubt. Check it before using it.	Bei einem Feld gab es Zweifel. Vor der Verwendung prüfen.
+	It couldn't be read. Set the position up in the editor.	Konnte nicht gelesen werden. Stellen Sie die Stellung im Editor auf.
+	You checked it and kept the reading.	Sie haben sie geprüft und die Lesung behalten.
+	You corrected this position.	Sie haben diese Stellung korrigiert.
