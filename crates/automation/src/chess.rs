@@ -210,8 +210,35 @@ fn page_rect(r: [f64; 4]) -> PageRect {
 }
 
 /// `light`, `dark`, `border`, `border_color`, `coordinates` and `flipped`, over the default style.
+/// The default style in the board theme `board_theme` names (plan HC7): its squares' colours, and
+/// a book's hatched dark squares. Brown, the boards' colours, when not given.
+fn theme_style(a: &Args) -> Result<BoardStyle> {
+    use pdfcraft_engine::chess::pdfcraft_chess::{texture::Texture, theme};
+    let Some(id) = a.opt_str("board_theme")? else { return Ok(BoardStyle::default()) };
+    let t = theme::by_id(id).ok_or_else(|| {
+        let ids: Vec<&str> = theme::THEMES.iter().map(|t| t.id).collect();
+        Args::wrong("board_theme", &ids.join(", "))
+    })?;
+    Ok(BoardStyle { light: t.light, dark: t.dark, hatched: t.texture == Some(Texture::Hatched), ..BoardStyle::default() })
+}
+
+/// The arrows and rings `drawings` names, as PGN comment commands (`[%cal Gb5c7][%csl Re4]`).
+fn drawings_arg(a: &Args) -> Result<Vec<pdfcraft_engine::chess::pdfcraft_chess::game::Drawing>> {
+    use pdfcraft_engine::chess::pdfcraft_chess::game::split_drawings;
+    let Some(text) = a.opt_str("drawings")? else { return Ok(Vec::new()) };
+    let mut drawings = Vec::new();
+    let rest = split_drawings(text, &mut drawings);
+    if !rest.trim().is_empty() {
+        return Err(Args::wrong(
+            "drawings",
+            &format!("[%cal …] and [%csl …] commands only, with G, R, Y or B and square names; not {:?}", rest.trim()),
+        ));
+    }
+    Ok(drawings)
+}
+
 fn board_style(a: &Args) -> Result<BoardStyle> {
-    let mut style = BoardStyle::default();
+    let mut style = theme_style(a)?;
     let colour = |key: &str| -> Result<Option<Rgb>> {
         Ok(a.opt_str(key)?.map(comments::parse_color).transpose()?.map(|c| {
             let [r, g, b] = c.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8);
@@ -354,7 +381,9 @@ impl Automation {
         };
         let mut settings = self.chess_settings(a)?;
         settings.models_dir = None;
-        let replacement = DiagramReplacement { page, index, generation, placement, style, pieces: Arc::new(pieces), scan: settings };
+        let drawings = drawings_arg(a)?;
+        let described = pdfcraft_engine::chess::pdfcraft_chess::draw::describe(&drawings);
+        let replacement = DiagramReplacement { page, index, generation, placement, style, pieces: Arc::new(pieces), scan: settings, drawings };
         let id = self.doc(a)?.id;
         let plan = self.session.chess_replacement(id, &replacement).map_err(failed)?;
         let geometry = self.session.chess_scan(id, &[page], &replacement.scan, false).ok().and_then(|p| p.first().and_then(|p| p.geometry));
@@ -368,6 +397,7 @@ impl Automation {
         };
         let fields = json!({
             "dry_run": dry_run,
+            "drawings": described,
             "page": page + 1,
             "index": index + 1,
             "source": source_name(plan.source),
@@ -606,6 +636,7 @@ impl Automation {
             diagram_px,
             image_dir: image_dir.clone(),
             book,
+            style: theme_style(a)?,
         };
         let made = self.session.chess_export(id, format, &options).map_err(failed)?;
         if let Some(dir) = &folder

@@ -82,6 +82,9 @@ pub struct ChessExportOptions {
     pub image_dir: String,
     /// The book's cipher so far: chess OCR starts from it ([`ChessExport::read`] carries it on).
     pub book: Option<pdfcraft_chessvision::cipher::BookCipher>,
+    /// How the diagrams are drawn: their squares' colours (a board theme's, plan HC7), hatched or
+    /// not. The default is the boards' brown.
+    pub style: BoardStyle,
 }
 
 impl ChessExportOptions {
@@ -105,6 +108,7 @@ impl ChessExportOptions {
             diagram_px: super::office::DEFAULT_DIAGRAM_PX,
             image_dir: format!("{title}_diagrams"),
             book: None,
+            style: BoardStyle::default(),
         }
     }
 }
@@ -145,7 +149,7 @@ impl Session {
         let options = HtmlOptions {
             title: &o.title,
             pieces: &o.pieces,
-            style: BoardStyle::default(),
+            style: o.style,
             diagrams: o.diagrams,
             figurines: o.figurines,
             links: o.links,
@@ -197,7 +201,7 @@ impl Session {
                             let Some(reading) = &d.reading else { continue };
                             let png = pdfcraft_chess::fen::parse(&reading.fen)
                                 .map_err(|e| e.to_string())
-                                .and_then(|f| super::office::diagram_png(&f.placement, &o.pieces, &BoardStyle::default(), o.diagram_px));
+                                .and_then(|f| super::office::diagram_png(&f.placement, &o.pieces, &o.style, o.diagram_px));
                             match png {
                                 Ok(png) => {
                                     images.push((format!("{}/{}", o.image_dir, markdown::image_name(page.index, d.number)), png));
@@ -221,7 +225,7 @@ impl Session {
             ChessFormat::Docx | ChessFormat::Rtf => {
                 let office = super::office::OfficeOptions {
                     pieces: &o.pieces,
-                    style: BoardStyle::default(),
+                    style: o.style,
                     figurines: o.figurines,
                     links: o.links,
                     link_text: &o.link_text,

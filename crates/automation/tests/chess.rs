@@ -365,6 +365,48 @@ fn chess_pieces_import_is_confined_to_the_root() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// Plan HC7: the diagrams' squares take a board theme (book hatches the dark squares), and the
+/// default stays the boards' brown; the replacement draws the drawings asked for and says them in
+/// words. A theme or drawing the tools do not know is refused.
+#[test]
+fn diagrams_take_a_board_theme_and_drawings() {
+    let (base, root) = workdir("theme");
+    let (mut a, doc) = opened(&root);
+    let args = |theme: Option<&str>, out: &str| {
+        let mut v = json!({ "doc": doc, "models_dir": "models", "out": out, "pieces": "geometric" });
+        if let Some(t) = theme {
+            v["board_theme"] = json!(t);
+        }
+        v
+    };
+    ok(&mut a, "chess_export_html", args(None, "brown.html"));
+    ok(&mut a, "chess_export_html", args(Some("blue"), "blue.html"));
+    ok(&mut a, "chess_export_html", args(Some("book"), "book.html"));
+    let read = |name: &str| std::fs::read_to_string(root.join(name)).unwrap();
+    let (brown, blue, book) = (read("brown.html"), read("blue.html"), read("book.html"));
+    assert!(brown.contains("fill=\"#b58863\"") && !brown.contains("#7a96ac"), "brown by default");
+    assert!(blue.contains("fill=\"#7a96ac\"") && !blue.contains("#b58863"), "blue's dark squares");
+    let paths = |html: &str| html.matches("<path").count();
+    assert_eq!(paths(&blue), paths(&brown), "a flat theme changes colours only");
+    assert!(paths(&book) == paths(&brown) && book.len() > brown.len() + 2000, "the book's hatch: {} vs {}", book.len(), brown.len());
+    match a.call("chess_export_html", &args(Some("cburnett"), "x.html")) {
+        Err(ToolError::InvalidArgs(m)) => assert!(m.contains("board_theme") && m.contains("brown"), "{m}"),
+        other => panic!("accepted an unknown theme: {other:?}"),
+    }
+    // The replacement: drawings described in words; bad ones refused.
+    let generation = ok(&mut a, "chess_detect", json!({ "doc": doc }))["generation"].as_u64().unwrap();
+    let replace = |drawings: &str| json!({ "doc": doc, "page": 1, "index": 1, "generation": generation, "placement": SICILIAN, "pieces": "geometric", "board_theme": "green", "drawings": drawings, "dry_run": true });
+    let dry = ok(&mut a, "chess_replace_diagram", replace("[%cal Gb5c7][%csl Re4]"));
+    assert_eq!(dry["drawings"], "red ring on e4, green arrow from b5 to c7", "{dry:#}");
+    for bad in ["[%cal Xb5c7]", "an arrow", "[%csl Re9]"] {
+        match a.call("chess_replace_diagram", &replace(bad)) {
+            Err(ToolError::InvalidArgs(m)) => assert!(m.contains("drawings"), "{bad}: {m}"),
+            other => panic!("accepted drawings {bad:?}: {other:?}"),
+        }
+    }
+    let _ = std::fs::remove_dir_all(base);
+}
+
 /// A set PdfCraft ships is chosen by its id, whatever its case, and the result says it came from
 /// the shipped sets.
 #[test]
