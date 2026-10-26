@@ -3233,3 +3233,5 @@ chess undo step	Clear drawings	smazání kreseb
 	Large	Velká
 	Previous variation (Page Up)	Předchozí varianta (Page Up)
 	Next variation (Page Down)	Další varianta (Page Down)
+	A move the pointer rests on shows its position	Tah, na kterém se zastaví ukazatel, ukáže svou pozici
+	Position after {move}	Pozice po {move}

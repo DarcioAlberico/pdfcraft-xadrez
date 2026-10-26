@@ -83,6 +83,9 @@ pub struct ChessState {
     pub comment_focus: bool,
     /// The move list's layout and text size (plan HC9).
     pub list_look: crate::chess_figurines::ListLook,
+    /// No preview of a move's position when the pointer rests on it (plan HC13; shown by
+    /// default).
+    pub no_move_preview: bool,
     /// Preferences' piece picker while it is shown.
     pub(crate) piece_picker: Option<crate::chess_pieces_ui::PiecePicker>,
     /// The panel's tab: the diagrams or the page's recognised text (S16).

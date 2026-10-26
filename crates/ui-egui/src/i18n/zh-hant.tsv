@@ -3075,3 +3075,5 @@ chess undo step	Clear drawings	清除標記
 	Large	大
 	Previous variation (Page Up)	上一個變著 (Page Up)
 	Next variation (Page Down)	下一個變著 (Page Down)
+	A move the pointer rests on shows its position	指標停留的著法顯示其局面
+	Position after {move}	{move} 之後的局面

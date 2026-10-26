@@ -757,9 +757,15 @@ impl Game {
 
     /// The move that led to the board shown, as (from, to) clicked.
     pub fn last_move(&self) -> Option<(Square, Square)> {
-        let node = self.node(self.current);
-        let mv = node.mv?;
-        Some(click_of(&self.node(node.parent).board, mv))
+        self.move_at(self.current)
+    }
+
+    /// The move that led to the board after `node`, as (from, to) clicked; `None` for the start
+    /// and for a node the game does not have.
+    pub fn move_at(&self, node: NodeId) -> Option<(Square, Square)> {
+        let n = self.nodes.get(node)?;
+        let mv = n.mv?;
+        Some(click_of(&self.nodes.get(n.parent)?.board, mv))
     }
 
     /// The moves of the line shown in SAN, each with its number and whose it was: `(ply, number,

@@ -277,6 +277,10 @@ pub(crate) fn preferences_section(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &
         crate::widgets::radio_value(ui, &mut app.chess.move_pieces, MovePieces::English, tl!("English letters"));
     });
     ui.add(crate::widgets::checkbox(&mut app.chess.comment_focus, tl!("The comment on the move shown, large under the board")));
+    let mut preview = !app.chess.no_move_preview;
+    if ui.add(crate::widgets::checkbox(&mut preview, tl!("A move the pointer rests on shows its position"))).changed() {
+        app.chess.no_move_preview = !preview;
+    }
     // The move list's layout and text size (plan HC9).
     use crate::chess_figurines::{ListLayout, ListSize};
     let look = &mut app.chess.list_look;

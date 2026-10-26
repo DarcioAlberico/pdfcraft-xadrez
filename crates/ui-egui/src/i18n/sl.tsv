@@ -3164,3 +3164,5 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Large	Velika
 	Previous variation (Page Up)	Prejšnja varianta (Page Up)
 	Next variation (Page Down)	Naslednja varianta (Page Down)
+	A move the pointer rests on shows its position	Poteza, na kateri se ustavi kazalec, pokaže svojo pozicijo
+	Position after {move}	Pozicija po {move}

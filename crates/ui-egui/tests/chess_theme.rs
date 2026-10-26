@@ -232,3 +232,31 @@ fn columns_pair_the_moves_and_the_text_size_scales() {
         eprintln!("{layout}: {:?} a frame with 1,000 moves (debug build)", started.elapsed() / 5);
     }
 }
+
+/// Plan HC13: a move the pointer rests on shows its position after the delay, not before, and
+/// the board keeps the move it shows; off in the preferences, nothing shows.
+#[test]
+fn a_move_rested_on_shows_its_position_and_leaves_the_board() {
+    use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
+    let mut h = harness("", false);
+    let (game, _) = Game::from_pgn("1. e4 e5 (1... c5 2. Nf3) 2. Nf3 *").unwrap();
+    h.state_mut().chess.board_mut().game = game;
+    h.run_steps(3);
+    let shown = h.state().chess.board().game.current();
+    h.get_by_label("c5").hover();
+    h.run_steps(2);
+    assert_eq!(h.query_all_by_label_contains("Position after").count(), 0, "not before the delay");
+    for _ in 0..40 {
+        h.step();
+    }
+    h.get_by_label("c5").hover();
+    h.run_steps(2);
+    assert!(h.query_by_label("Position after 1…c5").is_some(), "the variation move's position");
+    assert_eq!(h.state().chess.board().game.current(), shown, "the board keeps its move");
+    shot(&mut h, "move-preview.png");
+    h.state_mut().set_option("move-preview", "off").unwrap();
+    h.run_steps(3);
+    assert_eq!(h.query_all_by_label_contains("Position after").count(), 0, "off");
+    let saved: serde_json::Value = serde_json::from_str(&h.state().persist()).unwrap();
+    assert_eq!(saved["chess_move_preview"], false);
+}
