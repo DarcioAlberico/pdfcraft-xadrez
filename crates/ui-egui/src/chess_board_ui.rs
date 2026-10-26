@@ -1935,7 +1935,7 @@ pub(crate) fn promotion_choice(ui: &mut egui::Ui, state: &mut BoardState) {
                 state.play(from, to, Some(kind));
             }
         }
-        if ui.small_button("✕").on_hover_text(tl!("Cancel")).clicked() {
+        if crate::icons::button(ui, "x", 22.0, false, tl!("Cancel")).clicked() {
             state.promotion = None;
         }
     });
@@ -1945,28 +1945,28 @@ pub(crate) fn promotion_choice(ui: &mut egui::Ui, state: &mut BoardState) {
 pub(crate) fn navigation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) {
     ui.horizontal(|ui| {
         let (ply, len) = (state.game.ply(), state.game.len());
-        let nav = |ui: &mut egui::Ui, on: bool, text: &str, tip: &str| {
-            ui.add_enabled(on, egui::Button::new(text).min_size(vec2(44.0, 24.0))).on_hover_text(tip).clicked()
+        // Lucide icons, named by their tooltips (plan A8 P1b: no loose ⏮ ◀ ▶ ⏭ characters).
+        let nav = |ui: &mut egui::Ui, on: bool, icon: &str, tip: &str| {
+            ui.add_enabled_ui(on, |ui| crate::icons::button(ui, icon, 28.0, false, tip).clicked()).inner
         };
-        if nav(ui, ply > 0, "⏮", tl!("Start (Home)")) {
+        if nav(ui, ply > 0, "chevrons-left", tl!("Start (Home)")) {
             state.game.go_to(0);
             state.selected = None;
         }
-        if nav(ui, ply > 0, "◀", tl!("Previous move (Left arrow)")) {
+        if nav(ui, ply > 0, "chevron-left", tl!("Previous move (Left arrow)")) {
             state.step(false);
         }
-        if nav(ui, ply < len, "▶", tl!("Next move (Right arrow)")) {
+        if nav(ui, ply < len, "chevron-right", tl!("Next move (Right arrow)")) {
             state.step(true);
         }
-        if nav(ui, ply < len, "⏭", tl!("End (End)")) {
+        if nav(ui, ply < len, "chevrons-right", tl!("End (End)")) {
             state.game.go_to(usize::MAX);
             state.selected = None;
         }
         // Variation to variation in reading order (plan HC11).
         let current = state.game.current();
         let (back, next) = (state.game.previous_variation(current), state.game.next_variation(current));
-        for (to, icon, tip) in
-            [(back, "chevrons-left", tl!("Previous variation (Page Up)")), (next, "chevrons-right", tl!("Next variation (Page Down)"))]
+        for (to, icon, tip) in [(back, "chevron-up", tl!("Previous variation (Page Up)")), (next, "chevron-down", tl!("Next variation (Page Down)"))]
         {
             let r = ui
                 .add_enabled(to.is_some(), egui::Button::image(crate::icons::image(icon, 14.0, t.icon)).min_size(vec2(36.0, 24.0)))
