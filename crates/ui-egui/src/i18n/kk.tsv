@@ -2548,6 +2548,40 @@ animation effects	Off	Өшірулі
 	Show this diagram on the page	Бұл диаграмманы бетте көрсету
 	Stalemate	Пат
 	Standard start position	Стандартты бастапқы позиция
+	the board is empty	тақта бос
+	White's king is missing	ақ патша жоқ
+	Black's king is missing	қара патша жоқ
+	White has more than one king	ақтарда бірден көп патша бар
+	Black has more than one king	қараларда бірден көп патша бар
+	White has more than 8 pawns	ақтарда 8-ден көп пешка бар
+	Black has more than 8 pawns	қараларда 8-ден көп пешка бар
+	White has more than 16 pieces	ақтарда 16-дан көп фигура бар
+	Black has more than 16 pieces	қараларда 16-дан көп фигура бар
+	a pawn stands on the first or the eighth rank	пешка бірінші немесе сегізінші қатарда тұр
+	White has more extra pieces than missing pawns to promote	ақтарда айналдыруға жетіспейтін пешкалардан көп қосымша фигура бар
+	Black has more extra pieces than missing pawns to promote	қараларда айналдыруға жетіспейтін пешкалардан көп қосымша фигура бар
+	the kings stand next to each other	патшалар қатар тұр
+	White is in check, but it is Black's turn	ақтарға шах, бірақ жүріс қаралардікі
+	Black is in check, but it is White's turn	қараларға шах, бірақ жүріс ақтардікі
+	White's king is in check from more than two pieces	ақ патшаға екіден көп фигура шах беріп тұр
+	Black's king is in check from more than two pieces	қара патшаға екіден көп фигура шах беріп тұр
+	White's king is in a double check no move could give	ақ патша ешбір жүріс бере алмайтын қос шахта тұр
+	Black's king is in a double check no move could give	қара патша ешбір жүріс бере алмайтын қос шахта тұр
+	White may castle, but its king or rook has left its square	ақтар рокировка жасай алады, бірақ патшасы не тұрасы өз орнынан кеткен
+	Black may castle, but its king or rook has left its square	қаралар рокировка жасай алады, бірақ патшасы не тұрасы өз орнынан кеткен
+	the en-passant square does not fit the pawns	өтпелі алу шаршысы пешкаларға сәйкес келмейді
+	Not a legal position: {reason}	Заңсыз позиция: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Заңсыз позиция ({reason}): онда жүріс жасау үшін оны диаграмма редакторында түзетіңіз.
+	The game on the board has moves. Put this position:	Тақтадағы партияда жүрістер бар. Осы позицияны қою:
+	New game with this position	Осы позициямен жаңа партия
+	The game on the board keeps its moves.	Тақтадағы партия өз жүрістерін сақтайды.
+	Its moves are deleted (Undo brings them back).	Оның жүрістері жойылады (Болдырмау оларды қайтарады).
+	Start again from the standard position.	Стандартты бастапқы позициядан қайта бастау.
+	A new game from the standard position; the game on the board keeps its moves.	Стандартты бастапқы позициядан жаңа партия; тақтадағы партия өз жүрістерін сақтайды.
+	PGN edited	PGN өзгертілді
+	Load	Жүктеу
+	Show the game on the board again.	Тақтадағы партияны қайта көрсету.
+	Load the PGN above on the board, with its variations and comments.	Жоғарыдағы PGN-ді нұсқалары мен түсіндірмелерімен бірге тақтаға жүктейді.
 	Start (Home)	Басы (Home)
 	That side can't be to move: the other king is in check.	Бұл жақтың жүрісі бола алмайды: екінші патшаға шах.
 	The FEN couldn't be read: {e}	FEN оқылмады: {e}
@@ -3022,3 +3056,106 @@ chess undo step	Clear drawings	суреттерді өшіру
 	No game was found for this move, on its page or the pages around it.	Бұл жүрістің партиясы оның бетінен де, маңындағы беттерден де табылмады.
 	Renumber	Қайта нөмірлеу
 	The text's move numbers give way to the game's: {printed} is played as {played}.	Мәтіндегі жүріс нөмірлері партияның нөмірлеріне ауысады: {printed} {played} ретінде ойналады.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	Жүрістер тізімі
+	Move list beside the page	Беттің жанындағы жүрістер тізімі
+	Side of the page	Беттің жағы
+	Drawing eraser	Сурет өшіргіші
+	Drag across text or draw a box to erase what lies under it	Астындағыны өшіру үшін мәтін үстімен сүйреңіз немесе жақтау сызыңыз
+	Drawings and shapes	Суреттер мен пішіндер
+	Comments, links and form fields	Түсініктемелер, сілтемелер және пішін өрістері
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Өшіру — өңдеу: файлдың бұрынғы нұсқасында өшірілгені әлі сақталуы мүмкін. Біржола жою үшін Жасыруды пайдаланыңыз.
+	Erase content	Мазмұнды өшіру
+	Knife (cut pages)	Пышақ (беттерді кесу)
+	Click to place a cut, right-click to take one away, Enter to cut	Кесік қою үшін басыңыз, біреуін алу үшін оң жақ батырманы басыңыз, кесу үшін Enter
+	Up and down	Жоғарыдан төмен
+	Across	Көлденең
+	Hold Shift for the other direction.	Басқа бағыт үшін Shift пернесін басып тұрыңыз.
+	Right part first	Алдымен оң жақ бөлік
+	Nothing is erased: each part shows its piece of the page.	Ештеңе өшірілмейді: әр бөлік беттің өз бөлігін көрсетеді.
+	Remove what lies outside each part	Әр бөліктен тыс жатқанды жою
+	Split double pages	Қос беттерді бөлу
+	No double pages were found: none is wider than tall	Қос беттер табылмады: ешбір бет биіктігінен кең емес
+	Box or selection	Жақтау немесе таңдау
+	Brush	Қылқалам
+	Brush size	Қылқалам өлшемі
+	Rub over what you want to erase; letting go erases it	Өшіргіңіз келетінді үйкеңіз; жібергенде өшіріледі
+	What will go is tinted red while you draw.	Не өшетіні сызу кезінде қызылмен боялады.
+	Erase the selected words from the page	Таңдалған сөздерді беттен өшіру
+	Chess pieces	Шахмат фигуралары
+	Plain shapes	Қарапайым пішіндер
+	Missing: {pieces}	Жетіспейді: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES орнатылған және бұл таңдаудан басым.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Тақта: талдау және оқу тақталары. Диаграммалар: бетте, редакторда және экспортта қайта салынады.
+	These pieces cannot be used: {reason}	Бұл фигураларды пайдалану мүмкін емес: {reason}
+	Import a folder…	Буманы импорттау…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	Он екі фигура суреті бар буманы (wK-тен bP-ге дейін, SVG не PNG) фигуралар бумасына көшіреді.
+	Import from a web page…	Веб беттен импорттау…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	Сақталған веб бет ішінде алып жүрген фигуралар жиынтықтарын фигуралар бумасына алады.
+	Choose a folder of piece images	Фигура суреттері бар буманы таңдаңыз
+	Choose a saved web page	Сақталған веб бетті таңдаңыз
+	Web pages	Веб беттер
+	There is no pieces folder beside the program to import into.	Бағдарламаның жанында импорттайтын фигуралар бумасы жоқ.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	Импортталды: {sets}. Лицензиясы белгісіз: тек жеке пайдалану үшін қолданыңыз.
+	Already in the pieces folder: {sets}. Replace them?	Фигуралар бумасында бар: {sets}. Ауыстыру керек пе?
+	The pieces cannot be imported: {reason}	Фигураларды импорттау мүмкін емес: {reason}
+	round {round}	{round}-тур
+	Result: {result}	Нәтиже: {result}
+	Board theme	Тақта тақырыбы
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	Ойнайтын және зерттейтін тақталарыңыз үшін. Беттегі және экспорттағы диаграммалар түстерін сақтайды.
+	Brown	Қоңыр
+	Light wood	Ашық ағаш
+	Walnut	Жаңғақ
+	Ice blue	Мұзды көк
+	Olive	Зәйтүн
+	Grey	Сұр
+	Graphite	Графит
+	Sand	Құм
+	Coral	Маржан
+	High contrast	Жоғары контраст
+	Coordinates	Координаттар
+	On the squares	Шаршыларда
+	Beside the board	Тақтаның жанында
+	Frame	Жақтау
+	Double	Қос
+	Marked squares	Белгіленген шаршылар
+	Ring	Сақина
+	Filled	Толтырылған
+	A dot on the side to move	Жүріс кезегіндегі жақта нүкте
+	Wood	Ағаш
+	Marble	Мәрмәр
+	Paper	Қағаз
+	Book print	Кітап басылымы
+	king	патша
+	queen	уәзір
+	rook	тура
+	bishop	піл
+	knight	ат
+	pawn	пешка
+	checkmate	мат
+	check	шах
+	castles short	қысқа рокировка
+	castles long	ұзын рокировка
+	takes	алады
+	{move} promotes to {piece}	{move} {piece} болып айналады
+	Pieces in the move list	Жүрістер тізіміндегі фигуралар
+	Figurines	Фигура белгілері
+	Letters in your language	Сіздің тіліңіздегі әріптер
+	English letters	Ағылшын әріптері
+	Shown on the board while the pointer is here	Меңзер осында тұрғанда тақтада көрсетіледі
+	1 arrow	1 нұсқар
+	{n} arrows	{n} нұсқар
+	1 ring	1 сақина
+	{n} rings	{n} сақина
+	The comment on the move shown, large under the board	Көрсетілген жүрістің түсініктемесі тақтаның астында ірі
+	Running text	Тұтас мәтін
+	Columns	Бағандар
+	Text size	Мәтін өлшемі
+	Small	Кіші
+	Normal	Қалыпты
+	Large	Үлкен
+	Previous variation (Page Up)	Алдыңғы нұсқа (Page Up)
+	Next variation (Page Down)	Келесі нұсқа (Page Down)
+	A move the pointer rests on shows its position	Меңзер тоқтаған жүріс өз позициясын көрсетеді
+	Position after {move}	{move} кейінгі позиция

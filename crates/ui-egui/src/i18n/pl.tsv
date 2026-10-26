@@ -3000,3 +3000,106 @@ chess undo step	Clear drawings	usunięcie rysunków
 	No game was found for this move, on its page or the pages around it.	Nie znaleziono partii dla tego posunięcia ani na jego stronie, ani na stronach wokół niej.
 	Renumber	Przenumeruj
 	The text's move numbers give way to the game's: {printed} is played as {played}.	Numery posunięć z tekstu ustępują numerom partii: {printed} zostaje zagrane jako {played}.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	Lista ruchów
+	Move list beside the page	Lista ruchów obok strony
+	Side of the page	Położenie obok strony
+	Drawing eraser	Gumka do rysunków
+	Drag across text or draw a box to erase what lies under it	Przeciągnij po tekście lub narysuj prostokąt, aby wymazać to, co jest pod nim
+	Drawings and shapes	Rysunki i kształty
+	Comments, links and form fields	Komentarze, łącza i pola formularzy
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Wymazywanie jest edycją: wcześniejsza wersja pliku może nadal zawierać wymazaną treść. Aby usunąć ją na stałe, użyj Utajnij.
+	Erase content	Wymaż zawartość
+	Knife (cut pages)	Nóż (cięcie stron)
+	Click to place a cut, right-click to take one away, Enter to cut	Kliknij, aby wstawić cięcie, prawym przyciskiem usuń jedno, Enter tnie
+	Up and down	Z góry na dół
+	Across	W poprzek
+	Hold Shift for the other direction.	Przytrzymaj Shift, aby zmienić kierunek.
+	Right part first	Najpierw prawa część
+	Nothing is erased: each part shows its piece of the page.	Nic nie jest usuwane: każda część pokazuje swój kawałek strony.
+	Remove what lies outside each part	Usuń to, co leży poza każdą częścią
+	Split double pages	Podziel strony podwójne
+	No double pages were found: none is wider than tall	Nie znaleziono stron podwójnych: żadna nie jest szersza niż wyższa
+	Box or selection	Prostokąt lub zaznaczenie
+	Brush	Pędzel
+	Brush size	Rozmiar pędzla
+	Rub over what you want to erase; letting go erases it	Pocieraj to, co chcesz wymazać; puszczenie wymazuje
+	What will go is tinted red while you draw.	To, co zniknie, jest podczas rysowania zabarwione na czerwono.
+	Erase the selected words from the page	Wymaż zaznaczone słowa ze strony
+	Chess pieces	Bierki szachowe
+	Plain shapes	Proste kształty
+	Missing: {pieces}	Brakuje: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	Ustawiono PDFCRAFT_CHESS_PIECES i ma ona pierwszeństwo przed tym wyborem.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Szachownica: szachownice analizy i nauki. Diagramy: rysowane od nowa na stronie, w edytorze i w eksportach.
+	These pieces cannot be used: {reason}	Nie można użyć tych bierek: {reason}
+	Import a folder…	Importuj folder…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	Kopiuje folder z dwunastoma obrazami bierek (wK do bP, SVG lub PNG) do folderu bierek.
+	Import from a web page…	Importuj ze strony internetowej…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	Przenosi do folderu bierek zestawy bierek, które zapisana strona internetowa ma w sobie.
+	Choose a folder of piece images	Wybierz folder z obrazami bierek
+	Choose a saved web page	Wybierz zapisaną stronę internetową
+	Web pages	Strony internetowe
+	There is no pieces folder beside the program to import into.	Obok programu nie ma folderu bierek, do którego można importować.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	Zaimportowano: {sets}. Ich licencja nie jest znana: używaj ich tylko do użytku osobistego.
+	Already in the pieces folder: {sets}. Replace them?	Już są w folderze bierek: {sets}. Zastąpić je?
+	The pieces cannot be imported: {reason}	Nie można zaimportować bierek: {reason}
+	round {round}	runda {round}
+	Result: {result}	Wynik: {result}
+	Board theme	Motyw szachownicy
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	Dla szachownic, na których grasz i się uczysz. Diagramy na stronie i w eksportach zachowują swoje kolory.
+	Brown	Brązowy
+	Light wood	Jasne drewno
+	Walnut	Orzech
+	Ice blue	Lodowy błękit
+	Olive	Oliwkowy
+	Grey	Szary
+	Graphite	Grafit
+	Sand	Piaskowy
+	Coral	Koralowy
+	High contrast	Wysoki kontrast
+	Coordinates	Współrzędne
+	On the squares	Na polach
+	Beside the board	Obok szachownicy
+	Frame	Ramka
+	Double	Podwójna
+	Marked squares	Zaznaczone pola
+	Ring	Pierścień
+	Filled	Wypełnione
+	A dot on the side to move	Kropka po stronie, która ma ruch
+	Wood	Drewno
+	Marble	Marmur
+	Paper	Papier
+	Book print	Druk książkowy
+	king	król
+	queen	hetman
+	rook	wieża
+	bishop	goniec
+	knight	skoczek
+	pawn	pion
+	checkmate	mat
+	check	szach
+	castles short	krótka roszada
+	castles long	długa roszada
+	takes	bije
+	{move} promotes to {piece}	{move} promuje na {piece}
+	Pieces in the move list	Bierki na liście ruchów
+	Figurines	Figurki
+	Letters in your language	Litery w Twoim języku
+	English letters	Litery angielskie
+	Shown on the board while the pointer is here	Widoczne na szachownicy, dopóki wskaźnik jest tutaj
+	1 arrow	1 strzałka
+	{n} arrows	{n} strzałki
+	1 ring	1 pierścień
+	{n} rings	{n} pierścienie
+	The comment on the move shown, large under the board	Komentarz do pokazanego ruchu, duży pod szachownicą
+	Running text	Tekst ciągły
+	Columns	Kolumny
+	Text size	Rozmiar tekstu
+	Small	Mały
+	Normal	Normalny
+	Large	Duży
+	Previous variation (Page Up)	Poprzedni wariant (Page Up)
+	Next variation (Page Down)	Następny wariant (Page Down)
+	A move the pointer rests on shows its position	Ruch, na którym zatrzyma się wskaźnik, pokazuje swoją pozycję
+	Position after {move}	Pozycja po {move}

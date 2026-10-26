@@ -3415,6 +3415,97 @@ fn redacting_through_tools() {
     assert!(matches!(a.call("redact_mark", &json!({ "doc": doc })), Err(ToolError::InvalidArgs(_))));
 }
 
+/// Erase what lies under a rectangle of the displayed page: the text there leaves the page's
+/// text, the rest stays where it was, the edit undoes, and the saved file reopens without it.
+#[test]
+fn erasing_content_through_tools() {
+    let dir = workdir("erase");
+    std::fs::write(dir.join("memo.txt"), "Keep this line\nErase this line\nKeep that line").unwrap();
+    let mut a = auto(&dir);
+    let doc = ok(&mut a, "doc_create", json!({ "from": "text", "path": "memo.txt" }))["doc"].as_u64().unwrap();
+    let words = ok(&mut a, "text_find", json!({ "doc": doc, "query": "Erase this line" }));
+    let area = json!([words["matches"][0]["rects"][0]]);
+    let out = ok(&mut a, "page_erase", json!({ "doc": doc, "page": 1, "rects": area }));
+    assert_eq!(out["erased"].as_u64(), Some("Erase this line".len() as u64), "the spaces are glyphs too: {out}");
+    let text = page_text(&mut a, doc)[0].clone();
+    assert!(!text.contains("Erase") && text.contains("Keep this line") && text.contains("Keep that line"), "{text}");
+    assert_eq!(ok(&mut a, "edit_undo", json!({ "doc": doc }))["undone"], "Erase content");
+    assert!(page_text(&mut a, doc)[0].contains("Erase this line"));
+    ok(&mut a, "page_erase", json!({ "doc": doc, "page": 1, "rects": area, "kinds": ["text"], "rule": "overlap" }));
+    ok(&mut a, "doc_save", json!({ "doc": doc, "path": "memo.pdf" }));
+    let again = ok(&mut a, "doc_open", json!({ "path": "memo.pdf" }))["doc"].as_u64().unwrap();
+    assert!(!page_text(&mut a, again)[0].contains("Erase"));
+    // Nothing there, and arguments that are no rectangles.
+    assert!(matches!(a.call("page_erase", &json!({ "doc": doc, "page": 1, "rects": [[0, 0, 1, 1]] })), Err(ToolError::Failed(_))));
+    for bad in [json!([]), json!([[0, 0, 1]]), json!([[0, 0, 0, 10]])] {
+        assert!(a.call("page_erase", &json!({ "doc": doc, "page": 1, "rects": bad })).is_err(), "{bad}");
+    }
+    assert!(matches!(a.call("page_erase", &json!({ "doc": doc, "page": 2, "rects": area })), Err(ToolError::InvalidArgs(_))));
+    assert!(matches!(a.call("page_erase", &json!({ "doc": doc, "page": 1, "rects": area, "kinds": ["ink"] })), Err(ToolError::InvalidArgs(_))));
+    assert!(matches!(a.call("page_erase", &json!({ "doc": doc, "page": 1, "rects": area, "rule": "any" })), Err(ToolError::InvalidArgs(_))));
+}
+
+/// The Knife through the tools: a spread cut in the middle (as a fraction) is two pages, each half
+/// as wide, and the result says where the parts went; Undo puts the page back.
+#[test]
+fn cutting_pages_through_tools() {
+    let dir = workdir("cut");
+    std::fs::write(dir.join("spread.pdf"), fixture(2)).unwrap();
+    let mut a = auto(&dir);
+    let doc = ok(&mut a, "doc_open", json!({ "path": "spread.pdf" }))["doc"].as_u64().unwrap();
+    let out = ok(&mut a, "page_cut", json!({ "doc": doc, "pages": [2], "axis": "vertical", "at": [0.5], "units": "fraction" }));
+    assert_eq!(out["cut"], json!([{ "page": 2, "parts": [2, 3] }]), "{out}");
+    let info = ok(&mut a, "doc_info", json!({ "doc": doc }));
+    let pages = info["pages"].as_array().unwrap();
+    assert_eq!(pages.len(), 3);
+    let width = |p: &Value| p["width"].as_f64().unwrap();
+    assert_eq!((width(&pages[0]), width(&pages[1]), width(&pages[2])), (200.0, 100.0, 100.0), "{info}");
+    assert_eq!(ok(&mut a, "edit_undo", json!({ "doc": doc }))["undone"], "Cut page");
+    assert_eq!(ok(&mut a, "doc_info", json!({ "doc": doc }))["pages"].as_array().unwrap().len(), 2);
+    // In points, two cuts.
+    let out = ok(&mut a, "page_cut", json!({ "doc": doc, "pages": [1], "axis": "horizontal", "at": [100, 200] }));
+    assert_eq!(out["cut"], json!([{ "page": 1, "parts": [1, 2, 3] }]));
+    for bad in [
+        json!({ "doc": doc, "pages": [1], "axis": "diagonal", "at": [10] }),
+        json!({ "doc": doc, "pages": [1], "axis": "vertical", "at": [] }),
+        json!({ "doc": doc, "pages": [1], "axis": "vertical", "at": [1.5], "units": "fraction" }),
+        json!({ "doc": doc, "pages": [9], "axis": "vertical", "at": [10] }),
+    ] {
+        assert!(matches!(a.call("page_cut", &bad), Err(ToolError::InvalidArgs(_))), "{bad}");
+    }
+    assert!(a.call("page_cut", &json!({ "doc": doc, "pages": [1], "axis": "vertical", "at": [500] })).is_err(), "past the edge");
+}
+
+/// trim_outside: a spread of two columns cut in the middle leaves each half its own text. Without
+/// it, both halves still hold all of it. (Fails with the trim off.)
+#[test]
+fn cutting_with_trim_leaves_each_part_its_own_text() {
+    let dir = workdir("cut-trim");
+    let mut a = auto(&dir);
+    let doc = ok(&mut a, "doc_create", json!({ "from": "blank", "width": 400, "height": 300 }))["doc"].as_u64().unwrap();
+    ok(&mut a, "page_add_text", json!({ "doc": doc, "page": 1, "text": "Left words", "rect": [20, 100, 180, 130] }));
+    ok(&mut a, "page_add_text", json!({ "doc": doc, "page": 1, "text": "Right words", "rect": [220, 100, 380, 130] }));
+    let cut = |a: &mut Automation, trim: bool| {
+        ok(a, "page_cut", json!({ "doc": doc, "pages": [1], "axis": "vertical", "at": [200], "trim_outside": trim }));
+        let text = page_text(a, doc);
+        ok(a, "edit_undo", json!({ "doc": doc }));
+        text
+    };
+    let kept = cut(&mut a, false);
+    assert!(kept.iter().all(|t| t.contains("Left words") && t.contains("Right words")), "{kept:?}");
+    let trimmed = cut(&mut a, true);
+    assert_eq!(trimmed.len(), 2);
+    assert!(trimmed[0].contains("Left words") && !trimmed[0].contains("Right"), "{trimmed:?}");
+    assert!(trimmed[1].contains("Right words") && !trimmed[1].contains("Left"), "{trimmed:?}");
+    // A part with nothing outside it to erase is fine: only the left half has text here.
+    let one = ok(&mut a, "doc_create", json!({ "from": "blank", "width": 400, "height": 300 }))["doc"].as_u64().unwrap();
+    ok(&mut a, "page_add_text", json!({ "doc": one, "page": 1, "text": "Only left", "rect": [20, 100, 180, 130] }));
+    ok(&mut a, "page_cut", json!({ "doc": one, "pages": [1], "axis": "vertical", "at": [200], "trim_outside": true }));
+    let text = page_text(&mut a, one);
+    assert_eq!(text.len(), 2);
+    assert!(text[0].contains("Only left") && text[1].is_empty(), "{text:?}");
+}
+
 #[test]
 fn redacting_with_codes_through_tools() {
     let dir = workdir("redact-codes");
@@ -6167,6 +6258,28 @@ fn mixed_objects_move_through_tools_with_generation_and_one_undo() {
     let reopened = ok(&mut a, "doc_open", json!({"path":"moved.pdf"}))["doc"].as_u64().unwrap();
     assert_eq!(ok(&mut a, "object_list", json!({"doc":reopened,"page":1}))["objects"], after["objects"]);
     assert!(page_text(&mut a, reopened)[0].contains("Added label"));
+}
+
+/// Delete objects through the tools: the added label and the page's paragraph go together, as one
+/// undo step; a stale generation or a bad reference changes nothing.
+#[test]
+fn objects_are_deleted_through_tools() {
+    let dir = workdir("object-delete");
+    let mut a = auto(&dir);
+    let doc = ok(&mut a, "doc_open", json!({"path":"a.pdf"}))["doc"].as_u64().unwrap();
+    ok(&mut a, "page_add_text", json!({"doc":doc,"page":1,"text":"Added label","rect":[20,20,130,45]}));
+    let inventory = ok(&mut a, "object_list", json!({"doc":doc,"page":1}));
+    assert_eq!(inventory["count"], 2);
+    let objects: Vec<_> = inventory["objects"].as_array().unwrap().iter().map(|o| json!({"kind":o["kind"],"index":o["index"]})).collect();
+    assert!(a.call("object_delete", &json!({"doc":doc,"page":1,"generation":999,"objects":objects})).is_err(), "stale");
+    assert!(a.call("object_delete", &json!({"doc":doc,"page":1,"objects":[{"kind":"image","index":9}]})).is_err());
+    assert_eq!(ok(&mut a, "object_list", json!({"doc":doc,"page":1})), inventory, "refusals change nothing");
+    let out = ok(&mut a, "object_delete", json!({"doc":doc,"page":1,"generation":inventory["generation"],"objects":objects}));
+    assert_eq!(out["deleted"], 2);
+    assert_eq!(ok(&mut a, "object_list", json!({"doc":doc,"page":1}))["count"], 0);
+    assert!(page_text(&mut a, doc)[0].is_empty(), "{:?}", page_text(&mut a, doc));
+    assert_eq!(ok(&mut a, "edit_undo", json!({"doc":doc}))["undone"], "Delete objects");
+    assert_eq!(ok(&mut a, "object_list", json!({"doc":doc,"page":1}))["objects"], inventory["objects"]);
 }
 
 #[test]

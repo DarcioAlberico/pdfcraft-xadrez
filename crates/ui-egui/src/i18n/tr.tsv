@@ -2546,6 +2546,40 @@ animation effects	Off	Kapalı
 	Show this diagram on the page	Bu diyagramı sayfada göster
 	Stalemate	Pat
 	Standard start position	Standart başlangıç konumu
+	the board is empty	tahta boş
+	White's king is missing	beyaz şah yok
+	Black's king is missing	siyah şah yok
+	White has more than one king	beyazın birden fazla şahı var
+	Black has more than one king	siyahın birden fazla şahı var
+	White has more than 8 pawns	beyazın 8'den fazla piyonu var
+	Black has more than 8 pawns	siyahın 8'den fazla piyonu var
+	White has more than 16 pieces	beyazın 16'dan fazla taşı var
+	Black has more than 16 pieces	siyahın 16'dan fazla taşı var
+	a pawn stands on the first or the eighth rank	birinci ya da sekizinci yatayda bir piyon var
+	White has more extra pieces than missing pawns to promote	beyazın fazladan taşları, terfi edebilecek eksik piyonlarından çok
+	Black has more extra pieces than missing pawns to promote	siyahın fazladan taşları, terfi edebilecek eksik piyonlarından çok
+	the kings stand next to each other	şahlar yan yana duruyor
+	White is in check, but it is Black's turn	beyaz şahta, ama sıra siyahta
+	Black is in check, but it is White's turn	siyah şahta, ama sıra beyazda
+	White's king is in check from more than two pieces	beyaz şaha ikiden fazla taş şah çekiyor
+	Black's king is in check from more than two pieces	siyah şaha ikiden fazla taş şah çekiyor
+	White's king is in a double check no move could give	beyaz şah, hiçbir hamlenin veremeyeceği bir çifte şahta
+	Black's king is in a double check no move could give	siyah şah, hiçbir hamlenin veremeyeceği bir çifte şahta
+	White may castle, but its king or rook has left its square	beyaz rok yapabilir görünüyor, ama şahı ya da kalesi yerinden ayrılmış
+	Black may castle, but its king or rook has left its square	siyah rok yapabilir görünüyor, ama şahı ya da kalesi yerinden ayrılmış
+	the en-passant square does not fit the pawns	geçerken alma karesi piyonlara uymuyor
+	Not a legal position: {reason}	Geçerli bir konum değil: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Geçerli bir konum değil ({reason}): hamle oynamak için diyagram düzenleyicisinde düzeltin.
+	The game on the board has moves. Put this position:	Tahtadaki oyunda hamleler var. Bu konumu koy:
+	New game with this position	Bu konumla yeni oyun
+	The game on the board keeps its moves.	Tahtadaki oyun hamlelerini korur.
+	Its moves are deleted (Undo brings them back).	Hamleleri silinir (Geri al onları geri getirir).
+	Start again from the standard position.	Standart başlangıç konumundan yeniden başla.
+	A new game from the standard position; the game on the board keeps its moves.	Standart başlangıç konumundan yeni bir oyun; tahtadaki oyun hamlelerini korur.
+	PGN edited	PGN düzenlendi
+	Load	Yükle
+	Show the game on the board again.	Tahtadaki oyunu yeniden göster.
+	Load the PGN above on the board, with its variations and comments.	Yukarıdaki PGN'yi varyantları ve yorumlarıyla birlikte tahtaya yükler.
 	Start (Home)	Başa (Home)
 	That side can't be to move: the other king is in check.	Hamle o tarafta olamaz: diğer şah tehdit altında.
 	The FEN couldn't be read: {e}	FEN okunamadı: {e}
@@ -3020,3 +3054,106 @@ chess undo step	Clear drawings	çizimleri temizleme
 	No game was found for this move, on its page or the pages around it.	Bu hamle için ne kendi sayfasında ne de çevresindeki sayfalarda bir oyun bulundu.
 	Renumber	Yeniden numarala
 	The text's move numbers give way to the game's: {printed} is played as {played}.	Metnin hamle numaraları yerini oyununkilere bırakır: {printed}, {played} olarak oynanır.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	Hamle listesi
+	Move list beside the page	Sayfanın yanında hamle listesi
+	Side of the page	Sayfanın kenarı
+	Drawing eraser	Çizim silgisi
+	Drag across text or draw a box to erase what lies under it	Altındakini silmek için metnin üzerinde sürükleyin veya bir kutu çizin
+	Drawings and shapes	Çizimler ve şekiller
+	Comments, links and form fields	Yorumlar, bağlantılar ve form alanları
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Silmek bir düzenlemedir: dosyanın önceki bir sürümü silineni hâlâ içerebilir. Kalıcı olarak kaldırmak için Karart'ı kullanın.
+	Erase content	İçeriği sil
+	Knife (cut pages)	Bıçak (sayfaları kes)
+	Click to place a cut, right-click to take one away, Enter to cut	Kesik koymak için tıklayın, birini kaldırmak için sağ tıklayın, kesmek için Enter
+	Up and down	Yukarıdan aşağıya
+	Across	Enine
+	Hold Shift for the other direction.	Diğer yön için Shift'i basılı tutun.
+	Right part first	Önce sağ parça
+	Nothing is erased: each part shows its piece of the page.	Hiçbir şey silinmez: her parça sayfanın kendi parçasını gösterir.
+	Remove what lies outside each part	Her parçanın dışında kalanı kaldır
+	Split double pages	Çift sayfaları böl
+	No double pages were found: none is wider than tall	Çift sayfa bulunamadı: hiçbiri yüksekliğinden geniş değil
+	Box or selection	Kutu veya seçim
+	Brush	Fırça
+	Brush size	Fırça boyutu
+	Rub over what you want to erase; letting go erases it	Silmek istediğinizin üzerinden geçin; bırakınca silinir
+	What will go is tinted red while you draw.	Gidecek olan, siz çizerken kırmızıyla gösterilir.
+	Erase the selected words from the page	Seçili sözcükleri sayfadan sil
+	Chess pieces	Satranç taşları
+	Plain shapes	Basit şekiller
+	Missing: {pieces}	Eksik: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES ayarlı ve bu seçimden önce gelir.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Tahta: analiz ve çalışma tahtaları. Diyagramlar: sayfada, düzenleyicide ve dışa aktarımlarda yeniden çizilir.
+	These pieces cannot be used: {reason}	Bu taşlar kullanılamıyor: {reason}
+	Import a folder…	Klasör içe aktar…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	On iki taş görselinden (wK'den bP'ye, SVG veya PNG) oluşan bir klasörü taşlar klasörüne kopyalar.
+	Import from a web page…	Web sayfasından içe aktar…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	Kaydedilmiş bir web sayfasının içinde taşıdığı taş takımlarını taşlar klasörüne alır.
+	Choose a folder of piece images	Taş görselleri klasörü seçin
+	Choose a saved web page	Kaydedilmiş bir web sayfası seçin
+	Web pages	Web sayfaları
+	There is no pieces folder beside the program to import into.	Programın yanında içe aktarılacak bir taşlar klasörü yok.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	İçe aktarıldı: {sets}. Lisansları bilinmiyor: yalnızca kişisel kullanım için kullanın.
+	Already in the pieces folder: {sets}. Replace them?	Zaten taşlar klasöründe: {sets}. Değiştirilsin mi?
+	The pieces cannot be imported: {reason}	Taşlar içe aktarılamıyor: {reason}
+	round {round}	{round}. tur
+	Result: {result}	Sonuç: {result}
+	Board theme	Tahta teması
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	Oynadığınız ve çalıştığınız tahtalar için. Sayfadaki ve dışa aktarımlardaki diyagramlar renklerini korur.
+	Brown	Kahverengi
+	Light wood	Açık ahşap
+	Walnut	Ceviz
+	Ice blue	Buz mavisi
+	Olive	Zeytin
+	Grey	Gri
+	Graphite	Grafit
+	Sand	Kum
+	Coral	Mercan
+	High contrast	Yüksek kontrast
+	Coordinates	Koordinatlar
+	On the squares	Karelerin üstünde
+	Beside the board	Tahtanın yanında
+	Frame	Çerçeve
+	Double	Çift
+	Marked squares	İşaretli kareler
+	Ring	Halka
+	Filled	Dolu
+	A dot on the side to move	Hamle sırası olan tarafta bir nokta
+	Wood	Ahşap
+	Marble	Mermer
+	Paper	Kâğıt
+	Book print	Kitap baskısı
+	king	şah
+	queen	vezir
+	rook	kale
+	bishop	fil
+	knight	at
+	pawn	piyon
+	checkmate	şah mat
+	check	şah
+	castles short	kısa rok
+	castles long	uzun rok
+	takes	alır
+	{move} promotes to {piece}	{move} {piece} olur
+	Pieces in the move list	Hamle listesindeki taşlar
+	Figurines	Taş simgeleri
+	Letters in your language	Kendi dilinizdeki harfler
+	English letters	İngilizce harfler
+	Shown on the board while the pointer is here	İşaretçi burada olduğu sürece tahtada gösterilir
+	1 arrow	1 ok
+	{n} arrows	{n} ok
+	1 ring	1 halka
+	{n} rings	{n} halka
+	The comment on the move shown, large under the board	Gösterilen hamlenin yorumu, tahtanın altında büyük
+	Running text	Akan metin
+	Columns	Sütunlar
+	Text size	Metin boyutu
+	Small	Küçük
+	Normal	Orta
+	Large	Büyük
+	Previous variation (Page Up)	Önceki varyant (Page Up)
+	Next variation (Page Down)	Sonraki varyant (Page Down)
+	A move the pointer rests on shows its position	İşaretçinin durduğu hamle konumunu gösterir
+	Position after {move}	{move} sonrası konum

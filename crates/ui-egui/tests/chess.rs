@@ -255,11 +255,61 @@ fn the_editor_edits_the_selected_diagrams_position() {
         Some("4k3/8/8/8/4Q3/8/8/R3K3 w Q - 0 1"),
         "the white queen (the default brush) is on e4"
     );
-    // Two white kings is not a position.
+    // Two white kings is not a position, and the panel says which rule it breaks (plan A8, P3b1).
     let ed = h.state_mut().chess.editor.as_mut().unwrap();
     ed.position = pdfcraft_engine::chess::pdfcraft_chess::fen::parse("4K3/8/8/8/8/8/8/R3K3 w - - 0 1").unwrap();
     h.run_steps(2);
-    h.get_by_label("Not a legal position");
+    h.get_by_label("Not a legal position: White has more than one king");
+    // A castling right the pieces don't allow is taken off, as in the set-up: the rook left a1.
+    let ed = h.state_mut().chess.editor.as_mut().unwrap();
+    ed.position = pdfcraft_engine::chess::pdfcraft_chess::fen::parse("4k3/8/8/8/8/8/8/1R2K3 w Q - 0 1").unwrap();
+    h.run_steps(2);
+    assert_eq!(h.state().chess.editor.as_ref().map(|e| e.fen()).as_deref(), Some("4k3/8/8/8/8/8/8/1R2K3 w - - 0 1"));
+    h.get_by_label("Legal position");
+    // The board says why it can't play a position, too.
+    h.state_mut().chess.board_mut().load_fen("4k3/8/8/8/8/8/8/8 w - - 0 1", false, None);
+    assert_eq!(
+        h.state().chess.board().message.as_deref(),
+        Some("Not a legal position (White's king is missing): correct it in the diagram editor to play moves on it.")
+    );
+}
+
+/// The palette shows the pieces as the board draws them, in a column beside the board, each
+/// button named for its piece (not a letter such as `n`): Black knight puts a black knight on the square clicked, and the eraser
+/// empties it again.
+#[test]
+fn the_editors_palette_is_the_pieces_pictures() {
+    let mut h = harness();
+    scan_and_edit_second(&mut h);
+    // (K, Q, k and q are the castling boxes.)
+    for letter in ["N", "n", "B", "b", "P", "p"] {
+        assert!(h.query_by_label(letter).is_none(), "no {letter} in the palette");
+    }
+    let board = h.get_by_label_contains("Board: ").rect();
+    // The palette is a column on the board's right, White's piece and Black's on a row.
+    let (white, black, erase) = (h.get_by_label("White knight").rect(), h.get_by_label("Black knight").rect(), h.get_by_label("Erase").rect());
+    assert!(white.left() > board.right() && white.bottom() <= board.bottom() + 1.0, "beside the board: {white:?}, {board:?}");
+    assert!((white.center().y - black.center().y).abs() < 1.0 && black.left() > white.right(), "{white:?} {black:?}");
+    assert!(erase.top() > black.bottom() && erase.left() > board.right(), "the eraser under the pieces: {erase:?}");
+    // d5 from White's side: column 3, row 3 from the top.
+    let d5 = board.min + egui::vec2(board.width() * 3.5 / 8.0, board.height() * 3.5 / 8.0);
+    let click_d5 = |h: &mut Harness<'static, PdfCraftApp>| {
+        h.hover_at(d5);
+        h.run_steps(1);
+        for pressed in [true, false] {
+            h.event(egui::Event::PointerButton { pos: d5, button: egui::PointerButton::Primary, pressed, modifiers: egui::Modifiers::NONE });
+        }
+        h.run_steps(3);
+    };
+    let fen = |h: &Harness<'static, PdfCraftApp>| h.state().chess.editor.as_ref().map(|e| e.fen());
+    h.get_by_label("Black knight").click();
+    h.run_steps(2);
+    click_d5(&mut h);
+    assert_eq!(fen(&h).as_deref(), Some("4k3/8/8/3n4/8/8/8/R3K3 w Q - 0 1"), "a black knight on d5");
+    h.get_by_label("Erase").click();
+    h.run_steps(2);
+    click_d5(&mut h);
+    assert_eq!(fen(&h).as_deref(), Some("4k3/8/8/8/8/8/8/R3K3 w Q - 0 1"), "d5 is empty again");
 }
 
 /// The editor's labels stay whole in the panel: a radio button that does not fit on its row
@@ -1898,7 +1948,7 @@ fn a_moves_menu_deletes_its_variation() {
     h.run_steps(2);
     assert_eq!(movetext(&h), "1. e4 e5 2. Nf3");
     // On the main line there is no variation to delete; after the last move nothing to cut.
-    h.get_by_label("Nf3").click_secondary();
+    h.get_by_label("knight f3").click_secondary();
     h.run_steps(2);
     assert!(h.get_by_label("Delete variation").accesskit_node().is_disabled());
     assert!(h.get_by_label("Cut after this move").accesskit_node().is_disabled());
@@ -1985,6 +2035,102 @@ fn a_position_set_up_over_a_game_with_moves_is_a_new_game() {
     assert_eq!(games.get(0).unwrap().board.game.movetext(), "1. d4", "the game keeps its moves");
     assert_eq!(h.state().chess.tools.deleted.text(), None, "nothing was deleted");
     assert_eq!(format!("{:?}", h.state().chess.tools.tool), "Navigate");
+}
+
+/// Plan A8 §7, V2b: nothing beside the notation deletes moves (W1); Enter in the FEN field with the
+/// FEN as shown does nothing, and a FEN typed over a game with moves asks first, New game being
+/// the choice Enter takes, so the game keeps its moves (W3).
+#[test]
+fn the_fen_field_never_takes_the_games_moves() {
+    use egui::{Key, Modifiers};
+    const KINGS: &str = "4k3/8/8/8/8/8/8/4K3 w - - 0 1";
+    let mut h = tall_window(1600.0);
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, FORKS, &[0]);
+    assert!(h.query_by_label("Delete the moves after this one").is_none(), "no delete button beside the notation");
+    h.get_by_label("FEN").click();
+    h.run_steps(3);
+    let fen = h.state().chess.board().fen_text.clone();
+    // The field, not the position's FEN shown elsewhere.
+    let field = || egui_kittest::kittest::By::new().role(egui::accesskit::Role::TextInput).value(&fen);
+    h.get(field()).focus();
+    h.run_steps(1);
+    h.key_press(Key::Enter);
+    h.run_steps(2);
+    assert_eq!(movetext(&h), FORKS_TEXT, "the FEN as shown reloads nothing");
+    assert!(h.query_by_label("New game with this position").is_none(), "nor asks");
+    h.get(field()).focus();
+    h.run_steps(1);
+    h.key_press_modifiers(Modifiers::COMMAND, Key::A);
+    h.get(field()).type_text(KINGS);
+    h.key_press(Key::Enter);
+    h.run_steps(2);
+    assert_eq!(movetext(&h), FORKS_TEXT, "asked first");
+    h.get_by_label("Replace this game");
+    if let Ok(dir) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
+        h.render().unwrap().save(std::path::Path::new(&dir).join("board-fen-choice.png")).unwrap();
+    }
+    // New game has the keyboard: Enter takes it.
+    h.key_press(Key::Enter);
+    h.run_steps(3);
+    let games = h.state().chess.games.collection();
+    assert_eq!((games.len(), games.active_index()), (2, 1));
+    assert_eq!(h.state().chess.board().game.fen(), KINGS);
+    assert_eq!(games.get(0).unwrap().board.game.movetext(), FORKS_TEXT, "the game keeps its moves");
+    assert!(h.query_by_label("New game with this position").is_none(), "answered");
+}
+
+/// Plan A8 §7, V2b (W4): the standard start position over a game with moves is a new game; on a
+/// game without moves it starts that game again.
+#[test]
+fn the_standard_start_over_moves_is_a_new_game() {
+    let mut h = tall_window(1600.0);
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, FORKS, &[0]);
+    h.get_by_label("FEN").click();
+    h.run_steps(3);
+    h.get_by_label("Standard start position").click();
+    h.run_steps(3);
+    let games = h.state().chess.games.collection();
+    assert_eq!((games.len(), games.active_index()), (2, 1));
+    assert_eq!(games.get(0).unwrap().board.game.movetext(), FORKS_TEXT, "the game keeps its moves");
+    assert_eq!(movetext(&h), "", "a new game from the start");
+    h.get_by_label("Standard start position").click();
+    h.run_steps(3);
+    assert_eq!(h.state().chess.games.collection().len(), 2, "no moves: no other game");
+}
+
+/// Plan A8 §7, V2b (W6): text typed in the PGN field outlives a step on the board and says it is
+/// edited; Load reads it keeping the move shown.
+#[test]
+fn typed_pgn_outlives_a_step_and_loads_in_place() {
+    use egui::{Key, Modifiers};
+    const COMMENTED: &str = "1. e4 {King's pawn} e5 2. Nf3 *";
+    let mut h = tall_window(1600.0);
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, "1. e4 e5 2. Nf3 *", &[0, 0]);
+    h.get_by_label("PGN").click();
+    h.run_steps(3);
+    assert!(h.query_by_label("PGN edited").is_none());
+    let pgn = h.state().chess.board().pgn_text.clone();
+    h.get_by_value(&pgn).click();
+    h.run_steps(1);
+    h.key_press_modifiers(Modifiers::COMMAND, Key::A);
+    h.get_by_value(&pgn).type_text(COMMENTED);
+    h.run_steps(2);
+    h.get_by_label("PGN edited");
+    // A step back on the board (1. e4 shown) leaves the field as typed.
+    h.state_mut().chess.board_mut().game.go_to(1);
+    h.run_steps(2);
+    assert_eq!(h.state().chess.board().pgn_text, COMMENTED);
+    h.get_by_label("Load").click();
+    h.run_steps(2);
+    assert_eq!(movetext(&h), "1. e4 {King's pawn} 1... e5 2. Nf3");
+    assert_eq!(shown(&h), "e4", "the move shown is kept");
+    assert!(h.query_by_label("PGN edited").is_none(), "loaded");
 }
 
 /// Delete and Backspace with the chess scope on act on the game only: not on the pages selected
@@ -2818,4 +2964,83 @@ fn the_glyph_palette_types_at_the_cursor_of_the_field_that_had_the_keyboard() {
     h.get_by_label("Capture sign").click();
     h.run_steps(3);
     assert_eq!(h.state().chess.board().game.comment(e4), "a♞× b", "after the knight: the cursor moved past it");
+}
+
+/// The Move list beside the page: the board's toggle opens it against the page's right edge and
+/// the notation is drawn there alone, the board keeping its sections; its own buttons put it
+/// against the left edge, where it opens again; a move clicked in it is shown on the board.
+/// Closed, the notation is back under the board. Read mode draws it on the same side.
+#[test]
+fn the_move_list_stands_beside_the_page_on_either_side() {
+    use pdfcraft_ui_egui::docking::Panel;
+    let mut h = tall_window(1000.0);
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, FORKS, &[0, 1, 0, 0]);
+    let under_board = |h: &Harness<'static, PdfCraftApp>| {
+        let (moves, board) = (h.get_by_label("Moves").rect(), h.get_by_label_contains("Board: ").rect());
+        moves.min.y > board.max.y && moves.min.x < board.max.x
+    };
+    assert!(under_board(&h));
+    h.get_by_label("Move list beside the page").click();
+    h.run_steps(3);
+    assert!(h.state().docking.layout.contains(&Panel::Moves));
+    assert_eq!(h.get_all_by_label("Moves").count(), 1, "the notation in one place");
+    let page = h.state().views[0].page_screen_rect(0).expect("page 1 on screen");
+    let (moves, board) = (h.get_by_label("Moves").rect(), h.get_by_label_contains("Board: ").rect());
+    assert!(moves.min.x >= page.max.x && moves.max.x <= board.min.x, "between the page and the board: {moves:?} {page:?} {board:?}");
+    assert!(moves.height() > 400.0, "the list's height: {moves:?}");
+    h.get_by_label("PGN");
+    h.get_by_label("Left").click();
+    h.run_steps(4);
+    assert!(h.state().docking.moves_on_left());
+    let page = h.state().views[0].page_screen_rect(0).expect("page 1 on screen");
+    let moves = h.get_by_label("Moves").rect();
+    assert!(moves.max.x <= page.min.x, "against the page's left edge: {moves:?} {page:?}");
+    // 1. e4 from 2. Nf3 in the variation: the board follows the list.
+    h.get_by_label("e4").click();
+    h.run_steps(2);
+    let game = &h.state().chess.board().game;
+    assert_eq!(game.san(game.current()), "e4");
+    h.get_by_label("Move list beside the page").click();
+    h.run_steps(3);
+    assert!(!h.state().docking.layout.contains(&Panel::Moves));
+    assert_eq!(h.get_all_by_label("Moves").count(), 1);
+    assert!(under_board(&h), "back under the board");
+    // The command opens it again where it was; Read mode keeps the side.
+    assert!(h.state_mut().execute("chess.move_list"));
+    h.run_steps(3);
+    let page = h.state().views[0].page_screen_rect(0).expect("page 1 on screen");
+    assert!(h.get_by_label("Moves").rect().max.x <= page.min.x);
+    h.state_mut().mode = pdfcraft_ui_egui::Mode::Read;
+    h.run_steps(4);
+    let page = h.state().views[0].page_screen_rect(0).expect("page 1 on screen");
+    assert_eq!(h.get_all_by_label("Moves").count(), 1);
+    assert!(h.get_by_label("Moves").rect().max.x <= page.min.x, "Read mode: on the left too");
+}
+
+/// Plan HC11: Page Down and Page Up, and the buttons beside the move arrows, go from variation
+/// to variation in reading order; at either end the button is off and the key does nothing.
+#[test]
+fn page_keys_and_buttons_walk_the_variations() {
+    use egui::{Key, Modifiers};
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, FORKS, &[]);
+    click_board_title(&mut h);
+    // FORKS: 1. e4 e5 (1... c5 2. Nf3 (2. c3) d6) 2. Nf3
+    host_key(&mut h, Modifiers::NONE, Key::PageDown);
+    assert_eq!(shown(&h), "c5");
+    host_key(&mut h, Modifiers::NONE, Key::PageDown);
+    assert_eq!(shown(&h), "c3");
+    host_key(&mut h, Modifiers::NONE, Key::PageDown);
+    assert_eq!(shown(&h), "c3", "the last variation: nowhere further");
+    assert!(h.get_by_label("Next variation (Page Down)").accesskit_node().is_disabled());
+    h.get_by_label("Previous variation (Page Up)").click();
+    h.run_steps(2);
+    assert_eq!(shown(&h), "c5");
+    host_key(&mut h, Modifiers::NONE, Key::PageUp);
+    assert_eq!(shown(&h), "c5", "the first variation");
+    assert!(h.get_by_label("Previous variation (Page Up)").accesskit_node().is_disabled());
 }

@@ -5,6 +5,10 @@
 //! its stroke in the file's order (or the other way round where `paint-order` says so). The
 //! image's own size maps to the unit square. A gradient is drawn in its first stop's colour and a
 //! pattern in gray: diagrams are flat.
+//!
+//! The bytes are untrusted (a folder the user points at, a set they import), so the file is read
+//! from its own bytes alone ([`parse`]): no reference leaves it, a compressed (svgz) file is not
+//! inflated, and neither its size nor its XML entities can grow it past fixed limits.
 
 use pdfcraft_chess::draw::{Layer, Paint, PieceGlyph, Rgb, Segment, Subpath};
 use usvg::tiny_skia_path::{PathSegment, Transform};
@@ -12,9 +16,21 @@ use usvg::tiny_skia_path::{PathSegment, Transform};
 /// Most path segments kept for one piece.
 const MAX_SEGMENTS: usize = 20_000;
 
+/// Largest SVG read as a piece, in bytes (a set's pieces are a few kilobytes each).
+pub(crate) const MAX_SVG_BYTES: usize = 8 << 20;
+
+/// Most XML nodes read from one piece.
+const MAX_NODES: u32 = 200_000;
+
+/// Most entities one piece may declare (an exported file declares a handful of namespaces).
+const MAX_ENTITIES: usize = 64;
+
+/// Most bytes the file's own entities may add once expanded.
+const MAX_ENTITY_BYTES: usize = 1 << 20;
+
 /// A piece glyph from an SVG file's bytes.
 pub(crate) fn glyph_from_svg(bytes: &[u8]) -> Result<PieceGlyph, String> {
-    let tree = usvg::Tree::from_data(bytes, &usvg::Options::default()).map_err(|e| e.to_string())?;
+    let tree = parse(bytes)?;
     let size = tree.size();
     let (w, h) = (size.width(), size.height());
     if !(w.is_finite() && h.is_finite() && w > 0.0 && h > 0.0) {
@@ -27,6 +43,70 @@ pub(crate) fn glyph_from_svg(bytes: &[u8]) -> Result<PieceGlyph, String> {
         return Err("the image draws nothing".into());
     }
     Ok(PieceGlyph { layers })
+}
+
+/// The SVG as a tree, from these bytes alone. `usvg::Tree::from_data` would inflate a compressed
+/// file without a limit, expand entities with no limit on the total, and read any file an
+/// `<image>` names; each is closed here before usvg sees the file.
+fn parse(bytes: &[u8]) -> Result<usvg::Tree, String> {
+    if bytes.len() > MAX_SVG_BYTES {
+        return Err(format!("{} bytes, more than the {MAX_SVG_BYTES} accepted", bytes.len()));
+    }
+    if bytes.starts_with(&[0x1f, 0x8b]) {
+        return Err("a compressed SVG (svgz) is not read".into());
+    }
+    let text = std::str::from_utf8(bytes).map_err(|_| "the SVG is not UTF-8 text".to_owned())?;
+    check_entities(text)?;
+    // A DTD is allowed: many exported files carry one, and its entities were bounded above.
+    let xml = usvg::roxmltree::ParsingOptions { allow_dtd: true, nodes_limit: MAX_NODES };
+    let doc = usvg::roxmltree::Document::parse_with_options(text, xml).map_err(|e| e.to_string())?;
+    usvg::Tree::from_xmltree(&doc, &options()).map_err(|e| e.to_string())
+}
+
+/// usvg's options with no way out of the file: an `<image>` (or `feImage`) reference resolves to
+/// nothing, whether a path or a `data:` URL. usvg's default reads any path that exists on disk.
+/// A piece draws its paths only, so an image would be dropped anyway.
+fn options() -> usvg::Options<'static> {
+    usvg::Options {
+        resources_dir: None,
+        image_href_resolver: usvg::ImageHrefResolver { resolve_data: Box::new(|_, _, _| None), resolve_string: Box::new(|_, _| None) },
+        ..usvg::Options::default()
+    }
+}
+
+/// Refuses the XML entities that could make the file larger than it was read: a parameter or
+/// external entity, one made of other entities, more than [`MAX_ENTITIES`], or expansions adding
+/// more than [`MAX_ENTITY_BYTES`] in all. Every reference to a name is counted, wherever it
+/// stands, so the bound is never below what the parser can expand.
+fn check_entities(text: &str) -> Result<(), String> {
+    let mut added = 0_usize;
+    let mut declared = 0_usize;
+    let mut rest = text;
+    while let Some((_, decl)) = rest.split_once("<!ENTITY") {
+        declared += 1;
+        if declared > MAX_ENTITIES {
+            return Err(format!("more than {MAX_ENTITIES} XML entities"));
+        }
+        let decl = decl.trim_start();
+        if decl.starts_with('%') {
+            return Err("a parameter entity is not read".into());
+        }
+        let (name, after) = decl.split_once(char::is_whitespace).ok_or("an XML entity without a value")?;
+        let after = after.trim_start();
+        let quote = after.chars().next().filter(|c| *c == '"' || *c == '\'').ok_or("an external XML entity is not read")?;
+        let (value, tail) = after.strip_prefix(quote).and_then(|v| v.split_once(quote)).ok_or("an XML entity that is not closed")?;
+        // Character references (`&#38;`) are one character each; a named one would nest.
+        if value.split('&').skip(1).any(|r| !r.starts_with('#')) {
+            return Err("an XML entity made of other entities is not read".into());
+        }
+        let uses = text.matches(&format!("&{name};")).count();
+        added = added.saturating_add(uses.saturating_mul(value.len()));
+        if added > MAX_ENTITY_BYTES {
+            return Err(format!("XML entities that would add more than {MAX_ENTITY_BYTES} bytes"));
+        }
+        rest = tail;
+    }
+    Ok(())
 }
 
 fn collect(group: &usvg::Group, size: (f32, f32), layers: &mut Vec<Layer>, budget: &mut usize) {
@@ -172,6 +252,85 @@ mod tests {
         assert_eq!(g.layers[2].paint, Paint::Fill { color: Rgb(255, 0, 0), even_odd: false });
         // The circle's arcs are curves.
         assert!(g.layers[2].subpaths[0].segments.iter().any(|s| matches!(s, Segment::Cubic(..))));
+    }
+
+    /// A piece that draws one black triangle, with `head` before it (a DOCTYPE) and `body` inside.
+    fn piece(head: &str, body: &str) -> Vec<u8> {
+        format!(
+            r#"{head}<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="45" height="45">{body}<path d="M 9 36 L 36 36 L 22.5 9 Z" fill="black"/></svg>"#
+        )
+        .into_bytes()
+    }
+
+    #[test]
+    fn no_image_reference_is_resolved_from_disk_or_a_data_url() {
+        let dir = std::env::temp_dir().join(format!("pdfcraft-svg-href-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let png = dir.join("p.png");
+        let bytes = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR\0\0\0\x01\0\0\0\x01\x08\x06\0\0\0";
+        std::fs::write(&png, bytes).unwrap();
+        let href = png.to_string_lossy().replace('\\', "/");
+        // usvg's default resolver reads this file; the piece's options resolve nothing.
+        let opts = options();
+        assert!((opts.image_href_resolver.resolve_string)(&href, &opts).is_none());
+        let data = std::sync::Arc::new(bytes.to_vec());
+        assert!((opts.image_href_resolver.resolve_data)("image/png", data, &opts).is_none());
+        // The piece still draws its own paths.
+        let g = glyph_from_svg(&piece("", &format!(r#"<image xlink:href="{href}" width="45" height="45"/>"#))).unwrap();
+        assert_eq!(g.layers.len(), 1);
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn a_compressed_svg_is_not_inflated() {
+        use std::io::Write;
+        let mut gz = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+        gz.write_all(&piece("", "")).unwrap();
+        let err = glyph_from_svg(&gz.finish().unwrap()).unwrap_err();
+        assert!(err.contains("svgz"), "{err}");
+    }
+
+    #[test]
+    fn a_file_over_the_size_limit_is_refused() {
+        let pad = format!("<!--{}-->", "x".repeat(MAX_SVG_BYTES));
+        let err = glyph_from_svg(&piece("", &pad)).unwrap_err();
+        assert!(err.contains("accepted"), "{err}");
+    }
+
+    #[test]
+    fn entities_are_read_only_while_they_stay_small() {
+        // A DOCTYPE without entities, and small namespace entities, as exported files carry.
+        let public = r#"<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">"#;
+        assert!(glyph_from_svg(&piece(public, "")).is_ok());
+        let small = r#"<!DOCTYPE svg [<!ENTITY ns_x "http://example.org/x"> <!ENTITY amp2 "&#38;">]>"#;
+        assert!(glyph_from_svg(&piece(small, "<desc>&ns_x; &amp2;</desc>")).is_ok());
+        // One entity used often enough to add more than the limit: the parser alone would take it.
+        let big = format!(r#"<!DOCTYPE svg [<!ENTITY e "{}">]>"#, "x".repeat(4096));
+        let err = glyph_from_svg(&piece(&big, &format!("<desc>{}</desc>", "&e;".repeat(300)))).unwrap_err();
+        assert!(err.contains("would add"), "{err}");
+        for (head, why) in [
+            (r#"<!DOCTYPE svg [<!ENTITY a "x"> <!ENTITY b "&a;&a;">]>"#, "other entities"),
+            (r#"<!DOCTYPE svg [<!ENTITY % p "x">]>"#, "parameter"),
+            (r#"<!DOCTYPE svg [<!ENTITY f SYSTEM "file:///etc/passwd">]>"#, "external"),
+        ] {
+            let err = glyph_from_svg(&piece(head, "")).unwrap_err();
+            assert!(err.contains(why), "{head}: {err}");
+        }
+        // Inside a whole piece a later quote would close it; at the end of the text, nothing does.
+        let err = check_entities(r#"<!DOCTYPE svg [<!ENTITY u "never closed"#).unwrap_err();
+        assert!(err.contains("not closed"), "{err}");
+    }
+
+    proptest::proptest! {
+        #[test]
+        fn any_bytes_are_read_or_refused(bytes in proptest::collection::vec(proptest::prelude::any::<u8>(), 0..2048)) {
+            let _ = glyph_from_svg(&bytes);
+        }
+
+        #[test]
+        fn any_text_inside_a_piece_is_read_or_refused(head in "\\PC{0,200}", body in "\\PC{0,400}") {
+            let _ = glyph_from_svg(&piece(&head, &body));
+        }
     }
 
     #[test]

@@ -22,6 +22,7 @@ fn plain() -> BoardStyle {
 
 fn replacement(s: &Session, id: DocId, index: usize, fen: &str) -> DiagramReplacement {
     DiagramReplacement {
+        drawings: Vec::new(),
         page: 0,
         index,
         generation: s.get(id).unwrap().edit_generation(),
@@ -178,6 +179,33 @@ fn a_vector_diagram_is_covered_and_drawn_over() {
     assert_eq!(page.diagrams.len(), 3);
     let view = page.geometry.unwrap().user_to_view(page.diagrams[1].candidate.bbox_user).unwrap();
     assert_eq!(squares_shown(saved, view), expected(SICILIAN));
+}
+
+/// Plan HC7: drawings asked for go onto the page over the board: a red ring around d5 (an
+/// empty square of the Sicilian) shows red where its line runs, and the square's middle stays
+/// the square.
+#[test]
+fn drawings_go_onto_the_page_over_the_board() {
+    let (mut s, id) = open(three_boards(400));
+    let page = s.chess_page(id, 0, &no_model()).unwrap();
+    let view = page.geometry.unwrap().user_to_view(page.diagrams[1].candidate.bbox_user).unwrap();
+    let mut r = replacement(&s, id, 1, SICILIAN);
+    let d5 = Square::parse("d5").unwrap();
+    r.drawings = vec![pdfcraft_chess::game::Drawing { from: d5, to: d5, color: pdfcraft_chess::game::DrawColor::Red }];
+    s.apply(id, Edit::ReplaceDiagram(Box::new(r))).unwrap();
+    let (_, _, saved) = reopen(&s, id);
+    let scale = 3.0;
+    let (px, w, _) = render(saved, scale);
+    let side = view.width().min(view.height());
+    let (x0, y0) = (view.x0 + (view.width() - side) / 2.0, view.y0 + (view.height() - side) / 2.0);
+    let cell = side / 8.0;
+    // d5 is the fourth column and the fourth row from the top.
+    let (cx, cy) = (x0 + 3.5 * cell, y0 + 3.5 * cell);
+    let at = |x: f32, y: f32| px[(y * scale) as usize * w as usize + (x * scale) as usize];
+    let [r, g, b] = at(cx + 0.435 * cell, cy);
+    assert!(r > 130 && g < 90 && b < 90, "the ring: {:?}", [r, g, b]);
+    let [r, g, b] = at(cx, cy);
+    assert!(!(r > 130 && g < 90 && b < 90), "inside the ring the square shows: {:?}", [r, g, b]);
 }
 
 /// On a page turned by `/Rotate`, the board shows upright as the page is displayed: the eighth
@@ -343,14 +371,14 @@ proptest! {
     #[test]
     fn arbitrary_placements_and_styles_never_panic(
         cells in proptest::collection::vec(0usize..13, 64),
-        square in any::<f32>(), border in any::<f32>(), coordinates in any::<bool>(), flipped in any::<bool>(),
+        square in any::<f32>(), border in any::<f32>(), coordinates in any::<bool>(), flipped in any::<bool>(), hatched in any::<bool>(),
         colours in proptest::collection::vec(any::<u8>(), 9),
         bbox in proptest::array::uniform4(-1e6f32..1e6), turn in 0i64..4, size in any::<f32>(),
     ) {
         let pieces: [Option<pdfcraft_chess::placement::Piece>; 64] = std::array::from_fn(|i| pdfcraft_chess::recognize::piece_of(cells[i] as u8));
         let placement = Placement::from_reading_order(&pieces);
         let rgb = |i: usize| Rgb(colours[i], colours[i + 1], colours[i + 2]);
-        let style = BoardStyle { square, light: rgb(0), dark: rgb(3), border, border_color: rgb(6), coordinates, flipped };
+        let style = BoardStyle { square, light: rgb(0), dark: rgb(3), border, border_color: rgb(6), coordinates, flipped, hatched };
         let drawing: Drawing = board(&placement, &PieceSet::geometric(), &style);
         let ops = drawing_ops(&drawing, [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]);
         prop_assert!(pdfcraft_edit::check_operators(&ops).is_ok(), "{}", String::from_utf8_lossy(&ops));

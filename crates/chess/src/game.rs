@@ -20,11 +20,13 @@ use crate::san::{Lang, San, SanBody, color_from_cozy, kind_from_cozy, square_fro
 
 mod drawing;
 mod graft;
+mod header;
 mod line;
 mod structure;
 
 pub use drawing::{DrawColor, Drawing, MAX_DRAWINGS, drawing_commands, split_drawings};
 pub use graft::{GraftMode, GraftReport, GraftStop, GraftStopReason, MAX_LEFTOVER_LEN};
+pub use header::GameHeader;
 pub use structure::{NodePath, NodeSource, Shift, StructureError};
 
 /// Most moves a game holds, variations included. Real annotated games are under 3,000.
@@ -62,8 +64,9 @@ pub type NodeId = usize;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GameError {
     /// The position is not legal (two kings, the side not to move in check…), so no move can be
-    /// played from it.
-    IllegalPosition,
+    /// played from it. Why, as [`crate::rules::position_violations`] names it (empty when the
+    /// rule broken has no name there).
+    IllegalPosition(Vec<crate::rules::Violation>),
     /// The FEN could not be read.
     BadFen(String),
     /// That move is not legal here.
@@ -83,7 +86,13 @@ pub enum GameError {
 impl fmt::Display for GameError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            GameError::IllegalPosition => write!(f, "the position is not legal"),
+            GameError::IllegalPosition(why) => {
+                write!(f, "the position is not legal")?;
+                for (i, v) in why.iter().enumerate() {
+                    write!(f, "{}{v}", if i == 0 { ": " } else { "; " })?;
+                }
+                Ok(())
+            }
             GameError::BadFen(e) => write!(f, "the FEN could not be read: {e}"),
             GameError::IllegalMove => write!(f, "that move is not legal"),
             GameError::NeedsPromotion => write!(f, "the pawn needs a piece to become"),
@@ -214,7 +223,14 @@ impl Game {
 
     /// A game from `position`, `side` to move when the position does not say.
     pub fn new(position: &Position, side: Color) -> Result<Game, GameError> {
-        let board = position.to_board(side).map_err(|_| GameError::IllegalPosition)?;
+        use crate::rules::{Violation, position_violations};
+        let board = position.to_board(side).map_err(|_| GameError::IllegalPosition(position_violations(position, side)))?;
+        // The board takes castling rights a moved king or rook no longer allows (it reads them as
+        // Chess960's); standard chess does not.
+        let castling: Vec<Violation> = position_violations(position, side).into_iter().filter(|v| matches!(v, Violation::BadCastling(_))).collect();
+        if !castling.is_empty() {
+            return Err(GameError::IllegalPosition(castling));
+        }
         Ok(Game::from_board(board))
     }
 
@@ -741,9 +757,15 @@ impl Game {
 
     /// The move that led to the board shown, as (from, to) clicked.
     pub fn last_move(&self) -> Option<(Square, Square)> {
-        let node = self.node(self.current);
-        let mv = node.mv?;
-        Some(click_of(&self.node(node.parent).board, mv))
+        self.move_at(self.current)
+    }
+
+    /// The move that led to the board after `node`, as (from, to) clicked; `None` for the start
+    /// and for a node the game does not have.
+    pub fn move_at(&self, node: NodeId) -> Option<(Square, Square)> {
+        let n = self.nodes.get(node)?;
+        let mv = n.mv?;
+        Some(click_of(&self.nodes.get(n.parent)?.board, mv))
     }
 
     /// The moves of the line shown in SAN, each with its number and whose it was: `(ply, number,
@@ -932,7 +954,7 @@ impl Game {
 
     /// The result: decided by a mate or a draw at the end of the main line, else the Result tag,
     /// else `*`.
-    fn result(&self) -> String {
+    pub fn result(&self) -> String {
         let mut end = 0;
         while let Some(&next) = self.node(end).children.first() {
             end = next;
@@ -1566,10 +1588,13 @@ mod tests {
 
     #[test]
     fn illegal_positions_are_refused() {
-        assert_eq!(Game::from_fen("8/8/8/8/8/8/8/8 w - - 0 1").err(), Some(GameError::IllegalPosition));
+        use crate::rules::Violation;
+        assert_eq!(Game::from_fen("8/8/8/8/8/8/8/8 w - - 0 1").err(), Some(GameError::IllegalPosition(vec![Violation::Empty])));
         assert!(matches!(Game::from_fen("not a fen"), Err(GameError::BadFen(_))));
-        // White to move with Black in check.
-        assert_eq!(Game::from_fen("4k3/4Q3/8/8/8/8/8/4K3 w - - 0 1").err(), Some(GameError::IllegalPosition));
+        // White to move with Black in check, said so.
+        let e = Game::from_fen("4k3/4Q3/8/8/8/8/8/4K3 w - - 0 1").err();
+        assert_eq!(e, Some(GameError::IllegalPosition(vec![Violation::NotToMoveInCheck(Color::Black)])));
+        assert_eq!(e.unwrap().to_string(), "the position is not legal: Black is in check, but it is the other side's turn");
     }
 
     #[test]

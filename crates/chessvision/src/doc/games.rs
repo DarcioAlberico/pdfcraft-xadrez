@@ -86,7 +86,7 @@
 //! variations, [`MAX_COMMENT_CHARS`] a comment, [`MAX_GAMES`] games a document.
 
 use cozy_chess::{Board, Color, Move};
-use pdfcraft_chess::repair::GameContext;
+use pdfcraft_chess::repair::{CONFIDENCE_ONE_SWAP, GameContext};
 use pdfcraft_chess::san::{San, SanBody, SanError};
 use serde::{Deserialize, Serialize};
 
@@ -284,6 +284,50 @@ fn near(board: &Board, san: &San) -> Vec<String> {
         .map(|s| s.to_english())
         .take(MAX_LISTED_MOVES)
         .collect()
+}
+
+/// File letters an OCR reads for each other: a scan loses the bar of an `e`, and the `c` left
+/// takes it back (`cxf4` for `exf4`); 0-based, `c` is 2 and `e` is 4.
+const MISREAD_FILES: [(u8, u8); 2] = [(2, 4), (4, 2)];
+
+/// The one reading of an illegal `san` that is legal after `at` with one file letter an OCR
+/// mixes up read as the other ([`MISREAD_FILES`]): `None` when no reading is legal, or several
+/// readings fit (a legal move each, or one that several moves fit).
+fn misread(score: &GameScore, at: Option<usize>, san: &San) -> Option<San> {
+    use pdfcraft_chess::placement::Square;
+    let SanBody::Move { piece, from_file, from_rank, capture, to, promotion } = san.body else { return None };
+    let other = |file: u8| MISREAD_FILES.iter().find(|(a, _)| *a == file).map(|(_, b)| *b);
+    let mut readings = Vec::new();
+    if let Some(from) = from_file.and_then(other) {
+        readings.push(SanBody::Move { piece, from_file: Some(from), from_rank, capture, to, promotion });
+    }
+    if let Some(to) = other(to.file()).and_then(|file| Square::new(file, to.rank())) {
+        readings.push(SanBody::Move { piece, from_file, from_rank, capture, to, promotion });
+    }
+    let board = score.board_after(at)?;
+    let mut fitting = readings
+        .into_iter()
+        .map(|body| San { body, suffix: san.suffix.clone() })
+        .filter(|s| matches!(s.to_move(&board), Ok(_) | Err(SanError::Ambiguous(_))));
+    let first = fitting.next()?;
+    (fitting.next().is_none() && first.to_move(&board).is_ok()).then_some(first)
+}
+
+/// Play `san` after `at` ([`GameScore::play`]); with `misreads`, an illegal move that one misread
+/// file letter explains ([`misread`]) is played as that reading, which is returned with its node.
+fn play_read(score: &mut GameScore, at: Option<usize>, san: &San, misreads: bool) -> Result<(usize, Option<San>), PlayError> {
+    match score.play(at, san, true) {
+        Err(PlayError::Illegal(near)) => {
+            if misreads
+                && let Some(reading) = misread(score, at, san)
+                && let Ok(node) = score.play(at, &reading, true)
+            {
+                return Ok((node, Some(reading)));
+            }
+            Err(PlayError::Illegal(near))
+        }
+        played => played.map(|node| (node, None)),
+    }
 }
 
 /// Append `text` to a comment: whitespace collapsed to single spaces, `}` (which would end a PGN
@@ -629,11 +673,15 @@ pub(crate) struct MoveOutcome {
     /// The position an illegal or ambiguous move was tried in, as a FEN (PGN toolbar T10: where
     /// the legal moves near it are looked for).
     pub tried: Option<String>,
+    /// The move was played as another reading of it ([`WalkRules::misread_files`]): the flag
+    /// saying so, for the move's own review list, which a walk of the page read before keeps
+    /// (its SAN is then the reading's, and nothing is read again).
+    pub repaired: Option<ReviewFlag>,
 }
 
 impl MoveOutcome {
     fn status(status: MoveStatus) -> MoveOutcome {
-        MoveOutcome { status, node: None, san: None, fen: None, tried: None }
+        MoveOutcome { status, node: None, san: None, fen: None, tried: None, repaired: None }
     }
 }
 
@@ -750,6 +798,8 @@ pub(crate) struct Walker {
     rules: WalkRules,
     /// Fragment mode ([`Walker::fragment`]): one game from a given position, never split.
     fragment: bool,
+    /// The page being read was read from its picture ([`Walker::read_by_ocr`]).
+    ocr: bool,
     /// Prose words were read since the last move or bracket ([`WalkRules::prose_moves`]).
     prose_seen: bool,
     /// The text since the last move ends in an ellipsis standing alone ([`WalkRules::ellipsis`]).
@@ -799,19 +849,26 @@ pub struct WalkRules {
     /// A move without a number after an ellipsis standing alone (`… Rc7`; the fragment's text
     /// reader splits `…Rc7` so) is Black's.
     pub ellipsis: bool,
+    /// On a page read by OCR ([`Walker::read_by_ocr`]), an illegal move that only one reading
+    /// with a file letter an OCR mixes up makes legal (`cxf4` for `exf4`: a scan loses the bar
+    /// of an `e`) is played as that reading. Flagged [`ReviewFlag::TextRepaired`].
+    pub misread_files: bool,
 }
 
 impl WalkRules {
     /// None of the rules: the walker's own reading.
-    pub const NONE: WalkRules = WalkRules { implied_close: false, prose_moves: false, separators: false, results: false, ellipsis: false };
+    pub const NONE: WalkRules =
+        WalkRules { implied_close: false, prose_moves: false, separators: false, results: false, ellipsis: false, misread_files: false };
     /// Every rule: fragment mode.
-    pub const ALL: WalkRules = WalkRules { implied_close: true, prose_moves: true, separators: true, results: true, ellipsis: true };
+    pub const ALL: WalkRules =
+        WalkRules { implied_close: true, prose_moves: true, separators: true, results: true, ellipsis: true, misread_files: true };
     /// The rules a whole book is read with: those that made no move of ten earlier documents
     /// worse (`walk_bench --rules=`, 2,304 -> 2,327 valid moves, 23 better and none worse, all
     /// from `ellipsis`; the other two changed nothing there). `prose_moves` made 88 worse (books go
     /// on after prose without numbers), and `results` 3, all played into the wrong game before a
     /// result it now reads (`0:1`) ended the right one; both stay for fragments only.
-    pub const BOOK: WalkRules = WalkRules { implied_close: true, prose_moves: false, separators: true, results: false, ellipsis: true };
+    pub const BOOK: WalkRules =
+        WalkRules { implied_close: true, prose_moves: false, separators: true, results: false, ellipsis: true, misread_files: true };
 }
 
 impl Default for WalkRules {
@@ -1000,6 +1057,20 @@ fn bracketed_result(text: &str) -> Option<(GameResult, usize)> {
     Some((result, end.saturating_add(1)))
 }
 
+/// Most letters of a word's optional ending in brackets (`move(s)`, `piece(s)`).
+const MAX_OPTIONAL_ENDING: usize = 3;
+
+/// The bytes of `rest` (the text after a word's `(`) through its `)` when it is a word's optional
+/// ending: at most [`MAX_OPTIONAL_ENDING`] small letters and the `)`.
+fn optional_ending(rest: &str) -> Option<usize> {
+    let letters = rest.chars().take_while(|c| c.is_lowercase()).take(MAX_OPTIONAL_ENDING.saturating_add(1)).collect::<Vec<_>>();
+    if letters.len() > MAX_OPTIONAL_ENDING {
+        return None;
+    }
+    let len: usize = letters.iter().map(|c| c.len_utf8()).sum();
+    (rest.get(len..)?.starts_with(')')).then_some(len.saturating_add(1))
+}
+
 /// Whether `text` (the text before a `)`) ends in a label: one letter `a` to `h` alone.
 fn is_label(text: &str) -> bool {
     let mut rev = text.chars().rev();
@@ -1094,6 +1165,14 @@ fn after_caption(seed: &Seed, number: MoveNumber, san: &San) -> Option<Seed> {
 }
 
 impl Walker {
+    /// Whether the page whose moves come next was read from its picture: only then is a letter
+    /// taken for another ([`WalkRules::misread_files`]). A text layer set by the book's own
+    /// program prints what was meant, and a reading that makes its illegal move legal would be a
+    /// move nobody printed.
+    pub fn read_by_ocr(&mut self, ocr: bool) {
+        self.ocr = ocr;
+    }
+
     /// A walker for a whole document that reads with `rules`.
     pub fn with_rules(rules: WalkRules) -> Walker {
         Walker { rules, ..Walker::default() }
@@ -1450,6 +1529,7 @@ impl Walker {
             }
         }
         let rules = self.rules;
+        let misreads = rules.misread_files && self.ocr;
         let prose_seen = std::mem::take(&mut self.prose_seen);
         let ellipsis = std::mem::take(&mut self.ellipsis);
         let separator = std::mem::take(&mut self.separator);
@@ -1561,8 +1641,16 @@ impl Walker {
             Decision::OutOfSequence(expected) => {
                 (MoveStatus::OutOfSequence, Some(ReviewFlag::OutOfSequence { text: printed.clone(), expected: expected.text() }))
             }
-            Decision::Play(at) => match game.score.play(at, san, true) {
-                Ok(node) => {
+            Decision::Play(at) => match play_read(&mut game.score, at, san, misreads) {
+                Ok((node, reading)) => {
+                    // The move as played, canonical: the printed check mark may not fit it.
+                    let played = |reading: San| game.score.nodes.get(node).map_or_else(|| reading.to_english(), |n| n.san.clone());
+                    let repaired = reading.map(|reading| ReviewFlag::TextRepaired {
+                        from: printed.clone(),
+                        to: format!("{}{}", number.map(|n| n.text()).unwrap_or_default(), played(reading)),
+                        why: "a file letter an OCR mixes up (c for e) read as the other: only that move is legal here".to_owned(),
+                        confidence: CONFIDENCE_ONE_SWAP,
+                    });
                     let pending = open.lines.last_mut().map(|l| std::mem::take(&mut l.pending)).unwrap_or_default();
                     if !pending.is_empty() {
                         open.truncated |= game.score.comment_before(node, &pending);
@@ -1601,6 +1689,7 @@ impl Walker {
                         san: n.map(|n| n.san.clone()),
                         fen: n.map(|n| n.fen.clone()),
                         tried: None,
+                        repaired,
                     };
                 }
                 Err(PlayError::Illegal(near)) => {
@@ -1677,6 +1766,22 @@ impl Walker {
                 continue;
             }
             let after = i.saturating_add(ch.len_utf8());
+            // A bracket between two small letters is part of a word, not of the notation: an
+            // OCR's reading of a broken letter (`m(nre` for `move`, `ourc)d` for `oured`), or a
+            // word's optional ending (`move(s)`), read whole. No move ends in a small letter, and
+            // print sets a space before a variation's bracket.
+            if matches!(ch, '(' | ')' | '[' | ']')
+                && text.get(..i).and_then(|t| t.chars().next_back()).is_some_and(char::is_lowercase)
+                && let Some(rest) = text.get(after..)
+                && rest.chars().next().is_some_and(char::is_lowercase)
+            {
+                if ch == '('
+                    && let Some(end) = optional_ending(rest)
+                {
+                    skip_to = after.saturating_add(end);
+                }
+                continue;
+            }
             match ch {
                 '(' | '[' => {
                     if self.prose_until(text, start, i) {

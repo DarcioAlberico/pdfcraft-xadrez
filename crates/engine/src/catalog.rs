@@ -130,11 +130,13 @@ pub static TOOL_GROUPS: &[ToolGroup] = &[
                 title: "Modify page",
                 items: &[
                     item("Edit text & images", "text-cursor-input", "edit.edit_text", Ready),
+                    item("Eraser", "eraser", "edit.erase", Ready),
                     item("Rotate pages", "rotate-cw", "page.rotate", Ready),
                     item("Insert pages", "file-plus-2", "page.insert", Ready),
                     item("Delete pages", "trash-2", "page.delete", Ready),
                     item("Extract pages", "file-output", "page.extract", Ready),
                     item("Organize pages", "layout-grid", "page.organize", Ready),
+                    item("Knife (cut pages)", "columns-2", "page.knife", Ready),
                 ],
             },
             ToolSection {
@@ -198,6 +200,8 @@ pub static TOOL_GROUPS: &[ToolGroup] = &[
                     item("Insert", "file-plus-2", "page.insert", Ready),
                     item("Replace", "replace", "page.replace", Ready),
                     item("Split", "scissors", "page.split", Ready),
+                    item("Knife (cut pages)", "columns-2", "page.knife", Ready),
+                    item("Split double pages", "columns-2", "page.split_spreads", Ready),
                 ],
             },
             ToolSection {

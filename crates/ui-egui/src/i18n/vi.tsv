@@ -2805,6 +2805,40 @@ chess side	Black	Đen
 	Show this diagram on the page	Hiện sơ đồ này trên trang
 	Stalemate	Hết nước đi (hòa pat)
 	Standard start position	Thế cờ ban đầu chuẩn
+	the board is empty	bàn cờ trống
+	White's king is missing	thiếu vua Trắng
+	Black's king is missing	thiếu vua Đen
+	White has more than one king	Trắng có nhiều hơn một vua
+	Black has more than one king	Đen có nhiều hơn một vua
+	White has more than 8 pawns	Trắng có hơn 8 tốt
+	Black has more than 8 pawns	Đen có hơn 8 tốt
+	White has more than 16 pieces	Trắng có hơn 16 quân
+	Black has more than 16 pieces	Đen có hơn 16 quân
+	a pawn stands on the first or the eighth rank	có tốt đứng ở hàng 1 hoặc hàng 8
+	White has more extra pieces than missing pawns to promote	Trắng có nhiều quân thừa hơn số tốt bị thiếu để phong cấp
+	Black has more extra pieces than missing pawns to promote	Đen có nhiều quân thừa hơn số tốt bị thiếu để phong cấp
+	the kings stand next to each other	hai vua đứng cạnh nhau
+	White is in check, but it is Black's turn	Trắng đang bị chiếu, nhưng đến lượt Đen
+	Black is in check, but it is White's turn	Đen đang bị chiếu, nhưng đến lượt Trắng
+	White's king is in check from more than two pieces	vua Trắng bị hơn hai quân chiếu
+	Black's king is in check from more than two pieces	vua Đen bị hơn hai quân chiếu
+	White's king is in a double check no move could give	vua Trắng bị chiếu đôi theo cách không nước đi nào tạo ra được
+	Black's king is in a double check no move could give	vua Đen bị chiếu đôi theo cách không nước đi nào tạo ra được
+	White may castle, but its king or rook has left its square	Trắng được nhập thành, nhưng vua hoặc xe đã rời ô của mình
+	Black may castle, but its king or rook has left its square	Đen được nhập thành, nhưng vua hoặc xe đã rời ô của mình
+	the en-passant square does not fit the pawns	ô bắt tốt qua đường không khớp với các tốt
+	Not a legal position: {reason}	Thế cờ không hợp lệ: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Thế cờ không hợp lệ ({reason}): hãy sửa trong trình chỉnh sửa sơ đồ để đi quân trên đó.
+	The game on the board has moves. Put this position:	Ván trên bàn cờ đã có nước đi. Đặt thế cờ này:
+	New game with this position	Ván mới với thế cờ này
+	The game on the board keeps its moves.	Ván trên bàn cờ giữ nguyên các nước đi.
+	Its moves are deleted (Undo brings them back).	Các nước đi của ván bị xóa (Hoàn tác sẽ khôi phục).
+	Start again from the standard position.	Bắt đầu lại từ thế cờ ban đầu chuẩn.
+	A new game from the standard position; the game on the board keeps its moves.	Một ván mới từ thế cờ ban đầu chuẩn; ván trên bàn cờ giữ nguyên các nước đi.
+	PGN edited	Đã sửa PGN
+	Load	Tải
+	Show the game on the board again.	Hiển thị lại ván trên bàn cờ.
+	Load the PGN above on the board, with its variations and comments.	Tải PGN ở trên vào bàn cờ, cùng các biến và chú thích.
 	Start (Home)	Đầu (Home)
 	That side can't be to move: the other king is in check.	Bên đó không thể đến lượt: vua bên kia đang bị chiếu.
 	The FEN couldn't be read: {e}	Không đọc được FEN: {e}
@@ -3278,3 +3312,106 @@ chess undo step	Clear drawings	xóa hình vẽ
 	No game was found for this move, on its page or the pages around it.	Không tìm thấy ván cờ nào cho nước đi này, trên trang của nó hay các trang xung quanh.
 	Renumber	Đánh số lại
 	The text's move numbers give way to the game's: {printed} is played as {played}.	Số nước đi của văn bản nhường chỗ cho số của ván cờ: {printed} được đi thành {played}.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	Danh sách nước đi
+	Move list beside the page	Danh sách nước đi bên cạnh trang
+	Side of the page	Phía của trang
+	Drawing eraser	Cục tẩy hình vẽ
+	Drag across text or draw a box to erase what lies under it	Kéo qua văn bản hoặc vẽ một khung để xóa những gì nằm bên dưới
+	Drawings and shapes	Hình vẽ và hình dạng
+	Comments, links and form fields	Bình luận, liên kết và trường biểu mẫu
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Xóa là một thao tác chỉnh sửa: phiên bản trước của tệp vẫn có thể chứa nội dung đã xóa. Dùng Xóa nội dung nhạy cảm để loại bỏ vĩnh viễn.
+	Erase content	Xóa nội dung
+	Knife (cut pages)	Dao (cắt trang)
+	Click to place a cut, right-click to take one away, Enter to cut	Nhấp để đặt một đường cắt, nhấp chuột phải để bỏ một đường, Enter để cắt
+	Up and down	Từ trên xuống
+	Across	Theo chiều ngang
+	Hold Shift for the other direction.	Giữ Shift để đổi hướng.
+	Right part first	Phần bên phải trước
+	Nothing is erased: each part shows its piece of the page.	Không có gì bị xóa: mỗi phần hiển thị mảnh trang của nó.
+	Remove what lies outside each part	Xóa phần nằm ngoài mỗi phần
+	Split double pages	Tách trang đôi
+	No double pages were found: none is wider than tall	Không tìm thấy trang đôi: không trang nào rộng hơn cao
+	Box or selection	Khung hoặc vùng chọn
+	Brush	Cọ
+	Brush size	Cỡ cọ
+	Rub over what you want to erase; letting go erases it	Chà lên những gì muốn xóa; thả ra là xóa
+	What will go is tinted red while you draw.	Những gì sẽ bị xóa được tô đỏ khi bạn vẽ.
+	Erase the selected words from the page	Xóa các từ đã chọn khỏi trang
+	Chess pieces	Quân cờ vua
+	Plain shapes	Hình đơn giản
+	Missing: {pieces}	Thiếu: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES đã được đặt và được ưu tiên hơn lựa chọn này.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Bàn cờ: bàn cờ phân tích và bàn cờ nghiên cứu. Sơ đồ: được vẽ lại trên trang, trong trình chỉnh sửa và khi xuất.
+	These pieces cannot be used: {reason}	Không thể dùng các quân cờ này: {reason}
+	Import a folder…	Nhập thư mục…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	Sao chép một thư mục gồm mười hai hình quân cờ (wK đến bP, SVG hoặc PNG) vào thư mục quân cờ.
+	Import from a web page…	Nhập từ trang web…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	Đưa các bộ quân cờ mà một trang web đã lưu mang bên trong vào thư mục quân cờ.
+	Choose a folder of piece images	Chọn thư mục hình quân cờ
+	Choose a saved web page	Chọn một trang web đã lưu
+	Web pages	Trang web
+	There is no pieces folder beside the program to import into.	Không có thư mục quân cờ bên cạnh chương trình để nhập vào.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	Đã nhập: {sets}. Giấy phép của chúng không rõ: chỉ dùng cho mục đích cá nhân.
+	Already in the pieces folder: {sets}. Replace them?	Đã có trong thư mục quân cờ: {sets}. Thay thế chúng?
+	The pieces cannot be imported: {reason}	Không thể nhập quân cờ: {reason}
+	round {round}	ván {round}
+	Result: {result}	Kết quả: {result}
+	Board theme	Chủ đề bàn cờ
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	Cho các bàn cờ bạn chơi và nghiên cứu. Sơ đồ trên trang và trong bản xuất giữ nguyên màu.
+	Brown	Nâu
+	Light wood	Gỗ sáng
+	Walnut	Óc chó
+	Ice blue	Xanh băng
+	Olive	Ô liu
+	Grey	Xám
+	Graphite	Than chì
+	Sand	Cát
+	Coral	San hô
+	High contrast	Tương phản cao
+	Coordinates	Tọa độ
+	On the squares	Trên các ô
+	Beside the board	Bên cạnh bàn cờ
+	Frame	Khung
+	Double	Đôi
+	Marked squares	Ô được đánh dấu
+	Ring	Vòng
+	Filled	Tô đầy
+	A dot on the side to move	Một chấm ở bên đến lượt đi
+	Wood	Gỗ
+	Marble	Đá cẩm thạch
+	Paper	Giấy
+	Book print	Bản in sách
+	king	vua
+	queen	hậu
+	rook	xe
+	bishop	tượng
+	knight	mã
+	pawn	tốt
+	checkmate	chiếu hết
+	check	chiếu
+	castles short	nhập thành ngắn
+	castles long	nhập thành dài
+	takes	ăn
+	{move} promotes to {piece}	{move} phong thành {piece}
+	Pieces in the move list	Quân cờ trong danh sách nước đi
+	Figurines	Ký hiệu quân
+	Letters in your language	Chữ cái trong ngôn ngữ của bạn
+	English letters	Chữ cái tiếng Anh
+	Shown on the board while the pointer is here	Hiện trên bàn cờ khi con trỏ ở đây
+	1 arrow	1 mũi tên
+	{n} arrows	{n} mũi tên
+	1 ring	1 vòng
+	{n} rings	{n} vòng
+	The comment on the move shown, large under the board	Bình luận của nước đang hiện, chữ lớn dưới bàn cờ
+	Running text	Văn bản liền
+	Columns	Cột
+	Text size	Cỡ chữ
+	Small	Nhỏ
+	Normal	Bình thường
+	Large	Lớn
+	Previous variation (Page Up)	Biến thể trước (Page Up)
+	Next variation (Page Down)	Biến thể sau (Page Down)
+	A move the pointer rests on shows its position	Nước đi mà con trỏ dừng lại sẽ hiện thế cờ của nó
+	Position after {move}	Thế cờ sau {move}

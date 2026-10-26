@@ -3030,3 +3030,106 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	No game was found for this move, on its page or the pages around it.	Δεν βρέθηκε παρτίδα για αυτή την κίνηση, ούτε στη σελίδα της ούτε στις γύρω σελίδες.
 	Renumber	Επαναρίθμηση
 	The text's move numbers give way to the game's: {printed} is played as {played}.	Οι αριθμοί κινήσεων του κειμένου δίνουν τη θέση τους σε αυτούς της παρτίδας: το {printed} παίζεται ως {played}.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	Λίστα κινήσεων
+	Move list beside the page	Λίστα κινήσεων δίπλα στη σελίδα
+	Side of the page	Πλευρά της σελίδας
+	Drawing eraser	Γόμα σχεδίων
+	Drag across text or draw a box to erase what lies under it	Σύρετε πάνω από κείμενο ή σχεδιάστε ένα πλαίσιο για να σβήσετε ό,τι βρίσκεται από κάτω
+	Drawings and shapes	Σχέδια και σχήματα
+	Comments, links and form fields	Σχόλια, σύνδεσμοι και πεδία φορμών
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Το σβήσιμο είναι επεξεργασία: μια προηγούμενη έκδοση του αρχείου μπορεί να περιέχει ακόμη ό,τι σβήστηκε. Χρησιμοποιήστε την Απόκρυψη ευαίσθητου περιεχομένου για οριστική αφαίρεση.
+	Erase content	Σβήσιμο περιεχομένου
+	Knife (cut pages)	Μαχαίρι (κόψιμο σελίδων)
+	Click to place a cut, right-click to take one away, Enter to cut	Κάντε κλικ για να βάλετε ένα κόψιμο, δεξί κλικ για να αφαιρέσετε ένα, Enter για να κόψετε
+	Up and down	Από πάνω προς τα κάτω
+	Across	Οριζόντια
+	Hold Shift for the other direction.	Κρατήστε το Shift για την άλλη κατεύθυνση.
+	Right part first	Πρώτα το δεξί μέρος
+	Nothing is erased: each part shows its piece of the page.	Τίποτα δεν σβήνεται: κάθε μέρος δείχνει το δικό του κομμάτι της σελίδας.
+	Remove what lies outside each part	Αφαίρεση ό,τι βρίσκεται έξω από κάθε μέρος
+	Split double pages	Διαχωρισμός διπλών σελίδων
+	No double pages were found: none is wider than tall	Δεν βρέθηκαν διπλές σελίδες: καμία δεν είναι φαρδύτερη από ψηλή
+	Box or selection	Πλαίσιο ή επιλογή
+	Brush	Πινέλο
+	Brush size	Μέγεθος πινέλου
+	Rub over what you want to erase; letting go erases it	Τρίψτε πάνω σε ό,τι θέλετε να σβήσετε· με το άφημα σβήνεται
+	What will go is tinted red while you draw.	Ό,τι θα σβηστεί χρωματίζεται κόκκινο όσο σχεδιάζετε.
+	Erase the selected words from the page	Σβήσιμο των επιλεγμένων λέξεων από τη σελίδα
+	Chess pieces	Πιόνια σκακιού
+	Plain shapes	Απλά σχήματα
+	Missing: {pieces}	Λείπουν: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	Η PDFCRAFT_CHESS_PIECES έχει οριστεί και υπερισχύει αυτής της επιλογής.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Σκακιέρα: οι σκακιέρες ανάλυσης και μελέτης. Διαγράμματα: σχεδιασμένα ξανά στη σελίδα, στον επεξεργαστή και στις εξαγωγές.
+	These pieces cannot be used: {reason}	Αυτά τα πιόνια δεν μπορούν να χρησιμοποιηθούν: {reason}
+	Import a folder…	Εισαγωγή φακέλου…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	Αντιγράφει έναν φάκελο με δώδεκα εικόνες πεσσών (wK έως bP, SVG ή PNG) στον φάκελο πεσσών.
+	Import from a web page…	Εισαγωγή από ιστοσελίδα…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	Παίρνει τα σετ πεσσών που περιέχει μια αποθηκευμένη ιστοσελίδα στον φάκελο πεσσών.
+	Choose a folder of piece images	Επιλέξτε φάκελο με εικόνες πεσσών
+	Choose a saved web page	Επιλέξτε αποθηκευμένη ιστοσελίδα
+	Web pages	Ιστοσελίδες
+	There is no pieces folder beside the program to import into.	Δεν υπάρχει φάκελος πεσσών δίπλα στο πρόγραμμα για εισαγωγή.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	Εισήχθησαν: {sets}. Η άδειά τους δεν είναι γνωστή: χρησιμοποιήστε τα μόνο για προσωπική χρήση.
+	Already in the pieces folder: {sets}. Replace them?	Υπάρχουν ήδη στον φάκελο πεσσών: {sets}. Να αντικατασταθούν;
+	The pieces cannot be imported: {reason}	Οι πεσσοί δεν μπορούν να εισαχθούν: {reason}
+	round {round}	γύρος {round}
+	Result: {result}	Αποτέλεσμα: {result}
+	Board theme	Θέμα σκακιέρας
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	Για τις σκακιέρες όπου παίζετε και μελετάτε. Τα διαγράμματα στη σελίδα και στις εξαγωγές κρατούν τα χρώματά τους.
+	Brown	Καφέ
+	Light wood	Ανοιχτό ξύλο
+	Walnut	Καρυδιά
+	Ice blue	Παγωμένο μπλε
+	Olive	Λαδί
+	Grey	Γκρι
+	Graphite	Γραφίτης
+	Sand	Άμμος
+	Coral	Κοραλλί
+	High contrast	Υψηλή αντίθεση
+	Coordinates	Συντεταγμένες
+	On the squares	Πάνω στα τετράγωνα
+	Beside the board	Δίπλα στη σκακιέρα
+	Frame	Πλαίσιο
+	Double	Διπλό
+	Marked squares	Σημειωμένα τετράγωνα
+	Ring	Δακτύλιος
+	Filled	Γεμάτα
+	A dot on the side to move	Μια κουκκίδα στην πλευρά που παίζει
+	Wood	Ξύλο
+	Marble	Μάρμαρο
+	Paper	Χαρτί
+	Book print	Τυπωμένο βιβλίο
+	king	βασιλιάς
+	queen	βασίλισσα
+	rook	πύργος
+	bishop	αξιωματικός
+	knight	ίππος
+	pawn	πιόνι
+	checkmate	ματ
+	check	σαχ
+	castles short	μικρό ροκέ
+	castles long	μεγάλο ροκέ
+	takes	παίρνει
+	{move} promotes to {piece}	{move} προάγεται σε {piece}
+	Pieces in the move list	Κομμάτια στη λίστα κινήσεων
+	Figurines	Σύμβολα κομματιών
+	Letters in your language	Γράμματα στη γλώσσα σας
+	English letters	Αγγλικά γράμματα
+	Shown on the board while the pointer is here	Εμφανίζονται στη σκακιέρα όσο ο δείκτης είναι εδώ
+	1 arrow	1 βέλος
+	{n} arrows	{n} βέλη
+	1 ring	1 δακτύλιος
+	{n} rings	{n} δακτύλιοι
+	The comment on the move shown, large under the board	Το σχόλιο της κίνησης που εμφανίζεται, μεγάλο κάτω από τη σκακιέρα
+	Running text	Συνεχές κείμενο
+	Columns	Στήλες
+	Text size	Μέγεθος κειμένου
+	Small	Μικρό
+	Normal	Κανονικό
+	Large	Μεγάλο
+	Previous variation (Page Up)	Προηγούμενη παραλλαγή (Page Up)
+	Next variation (Page Down)	Επόμενη παραλλαγή (Page Down)
+	A move the pointer rests on shows its position	Η κίνηση όπου σταματά ο δείκτης δείχνει τη θέση της
+	Position after {move}	Θέση μετά το {move}

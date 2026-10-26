@@ -821,7 +821,8 @@ fn attach_reviews(input: &PageInput<'_>, blocks: &mut [Block], page: &mut Vec<Re
 /// A label is a diagram's caption, not a solution, when a diagram beside it (the block before or
 /// after) has its number, or when it is the trailing label after the page's last diagram: it
 /// does not count among the solutions ([`Name::caption`]).
-pub(crate) fn walk(page: u32, blocks: &mut [Block], walker: &mut Walker, trailing: Option<u32>) {
+pub(crate) fn walk(page: u32, ocr: bool, blocks: &mut [Block], walker: &mut Walker, trailing: Option<u32>) {
+    walker.read_by_ocr(ocr);
     let numbers: Vec<Option<u32>> = blocks.iter().map(|b| if let Block::Diagram(d) = b { d.puzzle } else { None }).collect();
     let last_diagram = blocks.iter().rposition(|b| matches!(b, Block::Diagram(_)));
     for (bi, block) in blocks.iter_mut().enumerate() {
@@ -885,6 +886,7 @@ pub(crate) fn walk(page: u32, blocks: &mut [Block], walker: &mut Walker, trailin
                             }
                             m.fen = out.fen;
                             m.game = out.node;
+                            m.review.extend(out.repaired);
                         }
                     }
                 }
@@ -914,11 +916,12 @@ pub(crate) fn page(input: &PageInput<'_>, walker: &mut Walker, carried: Option<u
         review.push(ReviewFlag::PoorTextLayer { reason: poor_reason(reason) });
     }
     attach_reviews(input, &mut blocks, &mut review);
-    walk(input.index, &mut blocks, walker, trailing);
+    walk(input.index, input.ocr, &mut blocks, walker, trailing);
     let page = ChessPage {
         index: input.index,
         lang: input.text.lang.lang.code().to_owned(),
         text_layer: (&input.text.quality).into(),
+        ocr: input.ocr,
         blocks,
         review,
         trailing,

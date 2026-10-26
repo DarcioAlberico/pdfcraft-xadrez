@@ -817,7 +817,7 @@ fn contents(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     if crate::chess_history::pressed_in(ui) {
         app.chess.enter_scope();
     }
-    let pieces = crate::chess_editor::board_piece_set(&mut app.chess.board_pieces);
+    let pieces = app.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Board);
     let source_label = crate::chess_ui::board_source_label(app);
     let open = app.active_ids().and_then(|(vi, id)| {
         let page = app.views.get(vi)?.current;
@@ -924,7 +924,7 @@ fn board_column(
     ui.horizontal_top(|ui| {
         ui.allocate_ui_with_layout(vec2(side, ui.available_height()), egui::Layout::top_down(egui::Align::Min), |ui| {
             ui.set_width(side);
-            asked.board = chess_board_ui::title(ui, chess.board(), source_label);
+            asked.board = chess_board_ui::title(ui, t, chess.board(), source_label, chess.moves_beside);
             ui.add_space(4.0);
             if chess.tools.tool == crate::chess_tools::PgnTool::Setup {
                 // The set-up view is taller than the board's controls: it scrolls.
@@ -937,12 +937,16 @@ fn board_column(
             if setting_up {
                 return;
             }
+            let focus = chess.comment_focus;
             let (study, state) = (&chess.study, chess.games.board_mut());
             chess_board_ui::view_controls(ui, state);
             ui.add_space(4.0);
             crate::chess_study_ui::board_with_bar(ui, t, study, state, pieces, sizing);
             chess_board_ui::promotion_choice(ui, state);
             chess_board_ui::navigation(ui, t, state);
+            if focus {
+                chess_board_ui::comment_focus(ui, t, state);
+            }
         });
         ui.separator();
         ui.vertical(|ui| {

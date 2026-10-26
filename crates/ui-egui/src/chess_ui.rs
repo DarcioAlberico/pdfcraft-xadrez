@@ -15,6 +15,7 @@ use std::sync::{Arc, Mutex, MutexGuard};
 use egui::{Color32, CornerRadius, Pos2, Stroke};
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::pdfcraft_chessvision::board::{BoardReading, Unreadable};
+use pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::{PieceChoice, Role};
 use pdfcraft_engine::chess::{ChessModels, ChessPage, ChessScan, ChessScanJob, ModelState, ScanStamp};
 use pdfcraft_render::DocInfo;
 
@@ -64,6 +65,29 @@ pub struct ChessState {
     pub pieces: Option<Arc<pdfcraft_engine::chess::pdfcraft_chess::draw::PieceSet>>,
     /// The pieces the analysis board draws with, found once (the user's piece pictures first).
     pub board_pieces: Option<Arc<pdfcraft_engine::chess::pdfcraft_chess::draw::PieceSet>>,
+    /// The piece sets chosen in Preferences (plan HC2): the boards', and the diagrams' and
+    /// exports' (which the editor draws too).
+    pub board_piece_choice: PieceChoice,
+    pub diagram_piece_choice: PieceChoice,
+    /// Why the set chosen for the boards, and for diagrams, could not be used, when it could not.
+    pub board_piece_error: Option<String>,
+    pub diagram_piece_error: Option<String>,
+    /// The boards' theme chosen in Preferences or the board's menu (plan HC4); `None` is the
+    /// default, brown.
+    pub board_theme: Option<&'static pdfcraft_engine::chess::pdfcraft_chess::theme::BoardTheme>,
+    /// How the boards are laid out (plan HC6).
+    pub board_look: crate::chess_theme::BoardLook,
+    /// How the move list writes the pieces (plan HC8).
+    pub move_pieces: crate::chess_figurines::MovePieces,
+    /// The comment on the move shown, large under the board (plan HC12).
+    pub comment_focus: bool,
+    /// The move list's layout and text size (plan HC9).
+    pub list_look: crate::chess_figurines::ListLook,
+    /// No preview of a move's position when the pointer rests on it (plan HC13; shown by
+    /// default).
+    pub no_move_preview: bool,
+    /// Preferences' piece picker while it is shown.
+    pub(crate) piece_picker: Option<crate::chess_pieces_ui::PiecePicker>,
     /// The panel's tab: the diagrams or the page's recognised text (S16).
     pub tab: crate::chess_text_ui::ChessTab,
     /// What the Board panel adds as the study board: set-up, engine analysis (the board itself
@@ -92,6 +116,40 @@ pub struct ChessState {
     pub source: crate::chess_source::SourceState,
     /// Where the chess models come from: the folder chosen, or the files picked on the web (U4).
     pub models: crate::chess_models::ModelsPref,
+    /// The Move list shows beside the page this frame: the notation is drawn there, not under
+    /// the board (in the dock or in the chess window).
+    pub(crate) moves_beside: bool,
+    /// The Move list stands against the page's left edge (else its right one), as of this frame.
+    pub(crate) moves_left: bool,
+    /// What was asked of the Move list, done at the start of the next frame, when the layout is
+    /// not being drawn (`docking::drain_moves`).
+    pub(crate) moves_request: Option<crate::docking::MovesRequest>,
+}
+
+impl ChessState {
+    /// The piece set chosen for `role`.
+    pub(crate) fn piece_choice(&self, role: Role) -> &PieceChoice {
+        match role {
+            Role::Board => &self.board_piece_choice,
+            Role::Diagrams => &self.diagram_piece_choice,
+        }
+    }
+
+    /// Why the set chosen for `role` could not be used, when it could not.
+    pub(crate) fn piece_error(&self, role: Role) -> Option<&str> {
+        match role {
+            Role::Board => self.board_piece_error.as_deref(),
+            Role::Diagrams => self.diagram_piece_error.as_deref(),
+        }
+    }
+
+    /// `role`'s pieces, found once (and why the chosen set could not be used, kept).
+    pub(crate) fn role_pieces(&mut self, role: Role) -> Arc<pdfcraft_engine::chess::pdfcraft_chess::draw::PieceSet> {
+        match role {
+            Role::Board => crate::chess_editor::board_piece_set(&mut self.board_pieces, &self.board_piece_choice, &mut self.board_piece_error),
+            Role::Diagrams => crate::chess_editor::piece_set(&mut self.pieces, &self.diagram_piece_choice, &mut self.diagram_piece_error),
+        }
+    }
 }
 
 /// A double-click at `point` (user space) on `page` of `doc`, whose diagrams were not looked
@@ -466,7 +524,7 @@ pub(crate) fn tab_contents(
     let queue = results.review_queue();
     if let Some(ed) = state.editor.as_mut().filter(|e| e.doc == id && Some(results.stamp) == current) {
         ui.separator();
-        let pieces = crate::chess_editor::piece_set(&mut state.pieces);
+        let pieces = crate::chess_editor::piece_set(&mut state.pieces, &state.diagram_piece_choice, &mut state.diagram_piece_error);
         if let Some(a) = crate::chess_editor::editor_ui(ui, t, ed, &pieces, queue.len()) {
             action = Some(PanelAction::Editor(a));
         }
@@ -862,12 +920,34 @@ impl PdfCraftApp {
         }
     }
 
+    /// Use `choice` for `role`'s pieces from now on: the set is loaded at once (so a set that
+    /// cannot be used says why in Preferences), and every board, the page text's diagrams
+    /// included, is drawn again with it.
+    pub(crate) fn set_piece_choice(&mut self, role: Role, choice: PieceChoice) {
+        if *self.chess.piece_choice(role) == choice {
+            return;
+        }
+        match role {
+            Role::Board => (self.chess.board_piece_choice, self.chess.board_pieces) = (choice, None),
+            Role::Diagrams => (self.chess.diagram_piece_choice, self.chess.pieces) = (choice, None),
+        }
+        self.chess.role_pieces(role);
+        crate::chess_editor::pieces_changed();
+        if role == Role::Diagrams
+            && let (Some(ctx), Some(pieces), Some(text)) = (self.ctx.as_ref(), self.chess.pieces.clone(), self.chess.text.as_mut())
+        {
+            text.redraw_boards(ctx, &pieces);
+        }
+    }
+
     /// Draw the editor's position over its diagram on the page, then scan that page again.
     pub fn replace_chess_diagram(&mut self) {
         let Some(ed) = self.chess.editor.as_ref() else { return };
         let Some(generation) = self.session.get(ed.doc).map(|d| d.edit_generation()) else { return };
-        let pieces = crate::chess_editor::piece_set(&mut self.chess.pieces);
+        // The fields apart: the editor is borrowed.
+        let pieces = crate::chess_editor::piece_set(&mut self.chess.pieces, &self.chess.diagram_piece_choice, &mut self.chess.diagram_piece_error);
         let replacement = pdfcraft_engine::chess::DiagramReplacement {
+            drawings: Vec::new(),
             page: ed.page,
             index: ed.index,
             generation,
@@ -1050,6 +1130,30 @@ impl PdfCraftApp {
         }
     }
 
+    /// `chess.move_list`: the Move list beside the page, or closed when it shows.
+    pub fn toggle_move_list(&mut self) {
+        self.ask_move_list(crate::docking::MovesRequest::Show(!self.chess.moves_beside));
+    }
+
+    /// Ask the Move list for `request`, done at the start of the next frame.
+    pub(crate) fn ask_move_list(&mut self, request: crate::docking::MovesRequest) {
+        self.chess.moves_request = Some(request);
+        if let Some(ctx) = &self.ctx {
+            ctx.request_repaint();
+        }
+    }
+
+    /// What was asked of the Move list, and where it shows this frame. Called before anything is
+    /// drawn: the docking workspace settles `moves_beside` again from what it draws.
+    pub(crate) fn settle_move_list(&mut self) {
+        if let Err(error) = crate::docking::drain_moves(&mut self.docking, self.chess.moves_request.take()) {
+            self.notify_fmt("Panel move was not applied: {error}", &[("error", &error)]);
+        }
+        let drawn = !(self.full_screen && self.active.is_some()) && (self.mode != crate::Mode::Read || self.active.is_some());
+        self.chess.moves_beside = drawn && self.docking.exposed(crate::docking::Panel::Moves);
+        self.chess.moves_left = self.docking.moves_on_left();
+    }
+
     /// What the chess board panel asked for.
     pub(crate) fn chess_board_action(&mut self, action: crate::chess_board_ui::BoardAction) {
         use crate::chess_board_ui::BoardAction;
@@ -1066,6 +1170,14 @@ impl PdfCraftApp {
             }
             BoardAction::ChooseEngine => self.choose_chess_engine(),
             BoardAction::AddGames { texts, more } => self.add_pgn_field_games(&texts, more),
+            BoardAction::ToggleMoveList => self.toggle_move_list(),
+            BoardAction::BoardTheme(theme) => self.set_board_theme(theme),
+            BoardAction::BoardLook(look) => self.set_board_look(look),
+            BoardAction::NewGameAt(fen) => {
+                if let Err(why) = self.chess.games.collection_mut().new_at(&fen) {
+                    self.chess.games.board_mut().message = Some(why);
+                }
+            }
         }
     }
 
@@ -1104,7 +1216,7 @@ pub(crate) fn board_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     if crate::chess_history::pressed_in(ui) {
         app.chess.enter_scope();
     }
-    let pieces = crate::chess_editor::board_piece_set(&mut app.chess.board_pieces);
+    let pieces = app.chess.role_pieces(Role::Board);
     let source_label = board_source_label(app);
     let mut action = None;
     let mut games = None;
@@ -1132,6 +1244,57 @@ pub(crate) fn board_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     }
     if let Some(mode) = paste {
         app.chess_paste_as(mode, crate::chess_capture::clipboard_text());
+    }
+}
+
+/// The Move list beside the page (in the docking workspace, or in Read mode): the board's game,
+/// each move a click away, and the move's glyphs and comment under it.
+pub(crate) fn moves_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
+    let t = Tokens::get(ui.ctx());
+    // A click in the list puts Undo and Redo on the game, as in the Board panel (D12).
+    if crate::chess_history::pressed_in(ui) {
+        app.chess.enter_scope();
+    }
+    let mut action = None;
+    let mut side = None;
+    egui::Frame::NONE.fill(t.panel).stroke(Stroke::new(1.0, t.divider)).show(ui, |ui| {
+        egui::Frame::NONE.inner_margin(egui::Margin { left: 10, right: 10, top: 10, bottom: 8 }).show(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.label(egui::RichText::new(tl!("Move list")).font(theme::semibold(15.5)));
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    // Right to left: the right edge's button first.
+                    for (left, icon, name) in [(false, "panel-right", tl!("Right")), (true, "panel-left", tl!("Left"))] {
+                        let r = ui
+                            .add(egui::Button::image(crate::icons::image(icon, 14.0, t.icon)).selected(app.chess.moves_left == left))
+                            .on_hover_text(name);
+                        r.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, app.chess.moves_left == left, name));
+                        if r.clicked() && app.chess.moves_left != left {
+                            side = Some(left);
+                        }
+                    }
+                });
+            });
+            ui.add_space(4.0);
+            let room = ui.available_height();
+            action = crate::chess_board_ui::moves_list(ui, &t, &mut app.chess, room);
+        });
+    });
+    if let Some(a) = action {
+        app.chess_board_action(a);
+    }
+    if let Some(left) = side {
+        app.ask_move_list(crate::docking::MovesRequest::Side { left });
+    }
+}
+
+/// The Move list tab's menu: the page's edge it stands against.
+pub(crate) fn moves_side_menu(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
+    ui.label(egui::RichText::new(tl!("Side of the page")).small());
+    for (left, name) in [(true, tl!("Left")), (false, tl!("Right"))] {
+        if ui.add(egui::Button::new(name).selected(app.chess.moves_left == left)).clicked() {
+            app.ask_move_list(crate::docking::MovesRequest::Side { left });
+            ui.close();
+        }
     }
 }
 

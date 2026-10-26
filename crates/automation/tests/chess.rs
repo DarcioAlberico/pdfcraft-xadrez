@@ -272,7 +272,7 @@ fn chess_replace_diagram_refuses_what_it_cannot_place() {
         (json!({ "index": 1, "placement": SICILIAN, "fen": "8/8/8/8/8/8/8/8 w - - 0 1" }), "give either fen or placement"),
         (json!({ "index": 1, "placement": "not a board" }), "placement"),
         (json!({ "index": 1, "placement": SICILIAN, "border": 2 }), "border"),
-        (json!({ "index": 1, "placement": SICILIAN, "pieces": "merida" }), "pieces"),
+        (json!({ "index": 1, "placement": SICILIAN, "pieces": "merida" }), "a set PdfCraft ships (chessnut"),
         (json!({ "index": 1, "placement": SICILIAN, "generation": generation + 1 }), ""),
     ] {
         let mut args = json!({ "doc": doc, "page": 1, "generation": generation });
@@ -283,6 +283,144 @@ fn chess_replace_diagram_refuses_what_it_cannot_place() {
         assert!(e.to_string().contains(needle), "{extra}: {e}");
     }
     assert_eq!(ok(&mut a, "doc_list", json!({}))["documents"][0]["dirty"], false, "nothing was changed");
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// `chess_pieces` lists what Preferences offers: automatic first, the shipped sets with author
+/// and licence, plain shapes last; each with its token and, where the tools take it, the value of
+/// their `pieces`.
+#[test]
+fn chess_pieces_lists_the_sets_preferences_offers() {
+    let (base, root) = workdir("pieces-list");
+    let (mut a, _) = opened(&root);
+    let listed = ok(&mut a, "chess_pieces", json!({}));
+    let sets = listed["sets"].as_array().unwrap();
+    assert_eq!(sets.first().map(|s| &s["token"]), Some(&json!("auto")), "{listed:#}");
+    assert_eq!(sets.last().map(|s| &s["pieces"]), Some(&json!("geometric")), "{listed:#}");
+    let shipped: Vec<&Value> = sets.iter().filter(|s| s["kind"] == "shipped").collect();
+    assert_eq!(shipped.len(), 8, "{listed:#}");
+    let chessnut = shipped.iter().find(|s| s["pieces"] == "chessnut").expect("chessnut is listed");
+    assert_eq!((&chessnut["token"], &chessnut["licence"]), (&json!("bundled:chessnut"), &json!("Apache-2.0")));
+    assert!(shipped.iter().all(|s| s["author"].is_string() && s["missing"] == json!([])), "{listed:#}");
+    assert!(listed["environment"].is_boolean());
+    // Every value it gives for `pieces` is one the tools take.
+    let (mut b, doc) = opened(&root);
+    let generation = ok(&mut b, "chess_detect", json!({ "doc": doc }))["generation"].as_u64().unwrap();
+    for pieces in sets.iter().filter_map(|s| s["pieces"].as_str()) {
+        let args = json!({ "doc": doc, "page": 1, "index": 1, "generation": generation, "placement": SICILIAN, "pieces": pieces, "dry_run": true });
+        ok(&mut b, "chess_replace_diagram", args);
+    }
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// A page of ours carrying one set of twelve squares, as a script's JSON with percent-encoded
+/// values.
+fn piece_page() -> String {
+    let svg = r#"<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><path d="M2 2 H8 V8 H2 Z" fill="black"/></svg>"#;
+    let value = format!("data:image/svg+xml,{}", svg.replace('<', "%3C").replace('>', "%3E").replace('"', "%22"));
+    let keys = ["wK", "wQ", "wR", "wB", "wN", "wP", "bK", "bQ", "bR", "bB", "bN", "bP"];
+    let entries: Vec<String> = keys.iter().map(|k| format!("\"{k}\": \"{value}\"")).collect();
+    format!("<html><script>var sets = {{\"squares\": {{{}}}}};</script></html>", entries.join(", "))
+}
+
+/// `chess_pieces_import` takes a page's sets into a folder inside the root, says what it wrote and
+/// refuses to replace it unless asked; a page or folder outside the root is refused, as is a
+/// target outside it, and nothing is written there. The controls pass the same page from inside.
+#[test]
+fn chess_pieces_import_is_confined_to_the_root() {
+    let (base, root) = workdir("pieces-import");
+    std::fs::write(root.join("course.html"), piece_page()).unwrap();
+    let outside = base.join("outside");
+    std::fs::create_dir_all(&outside).unwrap();
+    std::fs::write(outside.join("course.html"), piece_page()).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let outside_page = outside.join("course.html").to_string_lossy().into_owned();
+    let outside_dir = outside.join("pieces").to_string_lossy().into_owned();
+    for args in [
+        json!({ "from": outside_page, "into": "pieces" }),
+        json!({ "from": "../outside/course.html", "into": "pieces" }),
+        json!({ "from": "course.html", "into": outside_dir }),
+        json!({ "from": "course.html", "into": "../outside/pieces" }),
+    ] {
+        match a.call("chess_pieces_import", &args) {
+            Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{args}: {m}"),
+            other => panic!("accepted {args}: {other:?}"),
+        }
+    }
+    assert!(!outside.join("pieces").exists(), "nothing written outside the root");
+    assert!(!root.join("pieces").exists());
+    // Without into, a confined call does not fall back to the folder beside the executable.
+    assert!(a.call("chess_pieces_import", &json!({ "from": "course.html" })).is_err());
+    let done = ok(&mut a, "chess_pieces_import", json!({ "from": "course.html", "into": "pieces" }));
+    assert_eq!(done["imported"][0]["name"], "squares", "{done:#}");
+    assert!(done["imported"][0]["token"].as_str().is_some_and(|t| t.starts_with("folder:")), "{done:#}");
+    assert!(root.join("pieces/squares/wK.svg").is_file() && root.join("pieces/squares/ORIGIN.txt").is_file());
+    let again = ok(&mut a, "chess_pieces_import", json!({ "from": "course.html", "into": "pieces" }));
+    assert_eq!((again["imported"].as_array().map(Vec::len), again["exists"].as_array().map(Vec::len)), (Some(0), Some(1)), "{again:#}");
+    let replaced = ok(&mut a, "chess_pieces_import", json!({ "from": "course.html", "into": "pieces", "replace": true }));
+    assert_eq!(replaced["imported"][0]["name"], "squares");
+    // A folder inside the root is copied too.
+    ok(&mut a, "chess_pieces_import", json!({ "from": "pieces/squares", "into": "more" }));
+    assert!(root.join("more/squares/bP.svg").is_file());
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// Plan HC7: the diagrams' squares take a board theme (book hatches the dark squares), and the
+/// default stays the boards' brown; the replacement draws the drawings asked for and says them in
+/// words. A theme or drawing the tools do not know is refused.
+#[test]
+fn diagrams_take_a_board_theme_and_drawings() {
+    let (base, root) = workdir("theme");
+    let (mut a, doc) = opened(&root);
+    let args = |theme: Option<&str>, out: &str| {
+        let mut v = json!({ "doc": doc, "models_dir": "models", "out": out, "pieces": "geometric" });
+        if let Some(t) = theme {
+            v["board_theme"] = json!(t);
+        }
+        v
+    };
+    ok(&mut a, "chess_export_html", args(None, "brown.html"));
+    ok(&mut a, "chess_export_html", args(Some("blue"), "blue.html"));
+    ok(&mut a, "chess_export_html", args(Some("book"), "book.html"));
+    let read = |name: &str| std::fs::read_to_string(root.join(name)).unwrap();
+    let (brown, blue, book) = (read("brown.html"), read("blue.html"), read("book.html"));
+    assert!(brown.contains("fill=\"#b58863\"") && !brown.contains("#7a96ac"), "brown by default");
+    assert!(blue.contains("fill=\"#7a96ac\"") && !blue.contains("#b58863"), "blue's dark squares");
+    let paths = |html: &str| html.matches("<path").count();
+    assert_eq!(paths(&blue), paths(&brown), "a flat theme changes colours only");
+    assert!(paths(&book) == paths(&brown) && book.len() > brown.len() + 2000, "the book's hatch: {} vs {}", book.len(), brown.len());
+    match a.call("chess_export_html", &args(Some("cburnett"), "x.html")) {
+        Err(ToolError::InvalidArgs(m)) => assert!(m.contains("board_theme") && m.contains("brown"), "{m}"),
+        other => panic!("accepted an unknown theme: {other:?}"),
+    }
+    // The replacement: drawings described in words; bad ones refused.
+    let generation = ok(&mut a, "chess_detect", json!({ "doc": doc }))["generation"].as_u64().unwrap();
+    let replace = |drawings: &str| json!({ "doc": doc, "page": 1, "index": 1, "generation": generation, "placement": SICILIAN, "pieces": "geometric", "board_theme": "green", "drawings": drawings, "dry_run": true });
+    let dry = ok(&mut a, "chess_replace_diagram", replace("[%cal Gb5c7][%csl Re4]"));
+    assert_eq!(dry["drawings"], "red ring on e4, green arrow from b5 to c7", "{dry:#}");
+    for bad in ["[%cal Xb5c7]", "an arrow", "[%csl Re9]"] {
+        match a.call("chess_replace_diagram", &replace(bad)) {
+            Err(ToolError::InvalidArgs(m)) => assert!(m.contains("drawings"), "{bad}: {m}"),
+            other => panic!("accepted drawings {bad:?}: {other:?}"),
+        }
+    }
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// A set PdfCraft ships is chosen by its id, whatever its case, and the result says it came from
+/// the shipped sets.
+#[test]
+fn chess_replace_diagram_draws_with_a_shipped_piece_set() {
+    let (base, root) = workdir("replace-shipped");
+    let (mut a, doc) = opened(&root);
+    let generation = ok(&mut a, "chess_detect", json!({ "doc": doc }))["generation"].as_u64().unwrap();
+    for id in ["chessnut", "Kiwen-Suwi", "shapes"] {
+        let args = json!({ "doc": doc, "page": 1, "index": 1, "generation": generation, "placement": SICILIAN, "pieces": id, "dry_run": true });
+        let dry = ok(&mut a, "chess_replace_diagram", args);
+        assert_eq!(dry["pieces"]["source"], "bundled", "{dry:#}");
+        assert_eq!(dry["pieces"]["family"].as_str(), Some(id.to_ascii_lowercase().as_str()), "{dry:#}");
+        assert!(dry["pieces"]["error"].is_null(), "{dry:#}");
+    }
     let _ = std::fs::remove_dir_all(base);
 }
 
@@ -636,6 +774,34 @@ fn chess_arguments_out_of_range_are_refused_with_what_is_allowed() {
 
 /// chess_game plays a game without a document: from a FEN or a PGN, with moves in SAN or UCI,
 /// shown at a ply, and stops at the first illegal move.
+/// `chess_game`'s header is what the move list shows (plan HC10): PGN's placeholders are null, a
+/// date reads as far as it is known, and the result is `*` while the game goes on.
+#[test]
+fn chess_game_says_what_the_move_list_header_shows() {
+    let (base, root) = workdir("game-header");
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let pgn = "[Event \"Club ch\"]
+[Site \"?\"]
+[Date \"2026.10.??\"]
+[Round \"-\"]
+[White \"Doe\"]
+[Black \"Roe\"]
+[Result \"*\"]
+[WhiteElo \"2100\"]
+
+1. f3 e5 2. g4 Qh4# *
+";
+    let g = ok(&mut a, "chess_game", json!({ "pgn": pgn }));
+    let h = &g["header"];
+    assert_eq!((&h["white"], &h["white_elo"], &h["black"], &h["black_elo"]), (&json!("Doe"), &json!("2100"), &json!("Roe"), &Value::Null), "{g:#}");
+    assert_eq!((&h["event"], &h["site"], &h["date"], &h["round"]), (&json!("Club ch"), &Value::Null, &json!("2026.10"), &Value::Null), "{g:#}");
+    assert_eq!(h["result"], "0-1", "the mate decides it: {g:#}");
+    let fresh = ok(&mut a, "chess_game", json!({}));
+    let fields = fresh["header"].as_object().unwrap();
+    assert!(fields.iter().all(|(k, v)| if k == "result" { v == "*" } else { v.is_null() }), "{fresh:#}");
+    let _ = std::fs::remove_dir_all(base);
+}
+
 #[test]
 fn chess_game_plays_moves_from_a_fen_or_a_pgn() {
     let (_base, root) = workdir("game");
@@ -709,6 +875,25 @@ fn variation_items() -> Value {
 const MAIN: &str = "18. Nd5 Qxe1 19. Nxe7+ Kh7 20. Raxe1";
 const WITH_VARIATION: &str =
     "18. Nd5 Qxe1 (18... Qd8 19. Bxf6 Bxf6 20. fxg6 (20. Nxf6+ exf6 21. Bxc4 Rxc4) 20... fxg6 21. Qg3 Kh7 22. e5) 19. Nxe7+ Kh7 20. Raxe1";
+
+/// Plan HC11: next_variation and prev_variation walk the variations in reading order, four levels
+/// deep, and say when there is nowhere to go.
+#[test]
+fn chess_pgn_edit_walks_from_variation_to_variation() {
+    let (_base, root) = workdir("pgn-variations");
+    let mut auto = Automation::new().with_root(&root).unwrap();
+    let pgn = "1. e4 e5 (1... c5 2. Nf3 (2. c3 d5 (2... Nf6 3. e5 (3. d3 d5))) d6) (1... e6) 2. Nf3 *";
+    // From the start: a game read from PGN shows the end of its main line.
+    let mut ops = vec![json!({ "op": "next_variation", "at": "path:" })];
+    ops.extend((0..5).map(|_| json!({ "op": "next_variation" })));
+    ops.push(json!({ "op": "prev_variation" }));
+    let r = ok(&mut auto, "chess_pgn_edit", json!({ "pgn": pgn, "ops": ops }));
+    let report = r["report"].as_array().unwrap();
+    let paths: Vec<&str> = report.iter().map(|e| e["path"].as_str().unwrap()).collect();
+    assert_eq!(paths, ["path:0.1", "path:0.1.1", "path:0.1.1.1", "path:0.1.1.1.1", "path:0.2", "path:0.2", "path:0.1.1.1.1"]);
+    let moved: Vec<bool> = report.iter().map(|e| e["moved"].as_bool().unwrap()).collect();
+    assert_eq!(moved, [true, true, true, true, true, false, true]);
+}
 
 /// chess_pgn_edit steps through the game: back out of a variation and forward again returns into
 /// it, and choose picks a reply by its index (the board's ◀, ▶ and continuations).

@@ -2803,6 +2803,40 @@ chess side	Black	Juodieji
 	Show this diagram on the page	Rodyti šią diagramą puslapyje
 	Stalemate	Patas
 	Standard start position	Standartinė pradinė pozicija
+	the board is empty	lenta tuščia
+	White's king is missing	trūksta baltųjų karaliaus
+	Black's king is missing	trūksta juodųjų karaliaus
+	White has more than one king	baltieji turi daugiau nei vieną karalių
+	Black has more than one king	juodieji turi daugiau nei vieną karalių
+	White has more than 8 pawns	baltieji turi daugiau nei 8 pėstininkus
+	Black has more than 8 pawns	juodieji turi daugiau nei 8 pėstininkus
+	White has more than 16 pieces	baltieji turi daugiau nei 16 figūrų
+	Black has more than 16 pieces	juodieji turi daugiau nei 16 figūrų
+	a pawn stands on the first or the eighth rank	pėstininkas stovi pirmoje arba aštuntoje eilėje
+	White has more extra pieces than missing pawns to promote	baltieji turi daugiau papildomų figūrų nei trūkstamų pėstininkų joms paversti
+	Black has more extra pieces than missing pawns to promote	juodieji turi daugiau papildomų figūrų nei trūkstamų pėstininkų joms paversti
+	the kings stand next to each other	karaliai stovi vienas šalia kito
+	White is in check, but it is Black's turn	baltiesiems šachas, bet ėjimas juodųjų
+	Black is in check, but it is White's turn	juodiesiems šachas, bet ėjimas baltųjų
+	White's king is in check from more than two pieces	baltųjų karaliui šachą skelbia daugiau nei dvi figūros
+	Black's king is in check from more than two pieces	juodųjų karaliui šachą skelbia daugiau nei dvi figūros
+	White's king is in a double check no move could give	baltųjų karaliui dvigubas šachas, kurio joks ėjimas negalėtų paskelbti
+	Black's king is in a double check no move could give	juodųjų karaliui dvigubas šachas, kurio joks ėjimas negalėtų paskelbti
+	White may castle, but its king or rook has left its square	baltieji gali rokiruotis, bet karalius ar bokštas paliko savo langelį
+	Black may castle, but its king or rook has left its square	juodieji gali rokiruotis, bet karalius ar bokštas paliko savo langelį
+	the en-passant square does not fit the pawns	kirtimo prasilenkiant langelis neatitinka pėstininkų
+	Not a legal position: {reason}	Neteisėta pozicija: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Neteisėta pozicija ({reason}): pataisykite ją diagramos rengyklėje, kad galėtumėte joje daryti ėjimus.
+	The game on the board has moves. Put this position:	Lentos partija turi ėjimų. Šią poziciją:
+	New game with this position	Nauja partija su šia pozicija
+	The game on the board keeps its moves.	Lentos partija išlaiko savo ėjimus.
+	Its moves are deleted (Undo brings them back).	Jos ėjimai ištrinami (Anuliuoti juos grąžina).
+	Start again from the standard position.	Pradėti iš naujo nuo standartinės pradinės pozicijos.
+	A new game from the standard position; the game on the board keeps its moves.	Nauja partija nuo standartinės pradinės pozicijos; lentos partija išlaiko savo ėjimus.
+	PGN edited	PGN pakeistas
+	Load	Įkelti
+	Show the game on the board again.	Vėl rodyti lentos partiją.
+	Load the PGN above on the board, with its variations and comments.	Įkelti aukščiau esantį PGN į lentą su variantais ir komentarais.
 	Start (Home)	Pradžia (Home)
 	That side can't be to move: the other king is in check.	Ši pusė negali eiti: kitam karaliui skelbiamas šachas.
 	The FEN couldn't be read: {e}	Nepavyko perskaityti FEN: {e}
@@ -3276,3 +3310,106 @@ chess undo step	Clear drawings	piešinių valymą
 	No game was found for this move, on its page or the pages around it.	Šiam ėjimui partija nerasta nei jo puslapyje, nei aplinkiniuose puslapiuose.
 	Renumber	Pernumeruoti
 	The text's move numbers give way to the game's: {printed} is played as {played}.	Teksto ėjimų numeriai užleidžia vietą partijos numeriams: {printed} žaidžiamas kaip {played}.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	Ėjimų sąrašas
+	Move list beside the page	Ėjimų sąrašas šalia puslapio
+	Side of the page	Puslapio pusė
+	Drawing eraser	Brėžinių trintukas
+	Drag across text or draw a box to erase what lies under it	Vilkite per tekstą arba nubrėžkite rėmelį, kad ištrintumėte tai, kas po juo
+	Drawings and shapes	Brėžiniai ir figūros
+	Comments, links and form fields	Komentarai, nuorodos ir formų laukai
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Trynimas yra taisymas: ankstesnėje failo versijoje ištrintas turinys gali likti. Kad pašalintumėte visam laikui, naudokite Pašalinti konfidencialią informaciją.
+	Erase content	Ištrinti turinį
+	Knife (cut pages)	Peilis (pjaustyti puslapius)
+	Click to place a cut, right-click to take one away, Enter to cut	Spustelėkite, kad įdėtumėte pjūvį, dešiniuoju mygtuku – kad pašalintumėte, Enter – kad perpjautumėte
+	Up and down	Iš viršaus žemyn
+	Across	Skersai
+	Hold Shift for the other direction.	Laikykite Shift kitai krypčiai.
+	Right part first	Pirmiausia dešinioji dalis
+	Nothing is erased: each part shows its piece of the page.	Niekas neištrinama: kiekviena dalis rodo savo puslapio gabalą.
+	Remove what lies outside each part	Pašalinti tai, kas už kiekvienos dalies
+	Split double pages	Padalyti dvigubus puslapius
+	No double pages were found: none is wider than tall	Dvigubų puslapių nerasta: nė vienas nėra platesnis nei aukštesnis
+	Box or selection	Rėmelis arba žymėjimas
+	Brush	Teptukas
+	Brush size	Teptuko dydis
+	Rub over what you want to erase; letting go erases it	Braukite per tai, ką norite ištrinti; atleidus ištrinama
+	What will go is tinted red while you draw.	Kas bus ištrinta, piešiant nuspalvinama raudonai.
+	Erase the selected words from the page	Ištrinti pažymėtus žodžius iš puslapio
+	Chess pieces	Šachmatų figūros
+	Plain shapes	Paprastos formos
+	Missing: {pieces}	Trūksta: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	Nustatytas PDFCRAFT_CHESS_PIECES ir jis svarbesnis už šį pasirinkimą.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Lenta: analizės ir studijų lentos. Diagramos: perpieštos puslapyje, rengyklėje ir eksportuojant.
+	These pieces cannot be used: {reason}	Šių figūrų naudoti negalima: {reason}
+	Import a folder…	Importuoti aplanką…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	Nukopijuoja aplanką su dvylika figūrų paveikslėlių (nuo wK iki bP, SVG ar PNG) į figūrų aplanką.
+	Import from a web page…	Importuoti iš tinklalapio…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	Perkelia figūrų rinkinius, kuriuos išsaugotas tinklalapis turi savyje, į figūrų aplanką.
+	Choose a folder of piece images	Pasirinkite figūrų paveikslėlių aplanką
+	Choose a saved web page	Pasirinkite išsaugotą tinklalapį
+	Web pages	Tinklalapiai
+	There is no pieces folder beside the program to import into.	Šalia programos nėra figūrų aplanko, į kurį būtų galima importuoti.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	Importuota: {sets}. Jų licencija nežinoma: naudokite tik asmeniniam naudojimui.
+	Already in the pieces folder: {sets}. Replace them?	Jau yra figūrų aplanke: {sets}. Pakeisti?
+	The pieces cannot be imported: {reason}	Figūrų importuoti nepavyko: {reason}
+	round {round}	{round} turas
+	Result: {result}	Rezultatas: {result}
+	Board theme	Lentos tema
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	Lentoms, kuriomis žaidžiate ir mokotės. Diagramos puslapyje ir eksporte išlaiko savo spalvas.
+	Brown	Ruda
+	Light wood	Šviesi mediena
+	Walnut	Riešutmedis
+	Ice blue	Ledo mėlyna
+	Olive	Alyvuogių
+	Grey	Pilka
+	Graphite	Grafitas
+	Sand	Smėlio
+	Coral	Koralų
+	High contrast	Didelis kontrastas
+	Coordinates	Koordinatės
+	On the squares	Ant langelių
+	Beside the board	Šalia lentos
+	Frame	Rėmelis
+	Double	Dvigubas
+	Marked squares	Pažymėti langeliai
+	Ring	Žiedas
+	Filled	Užpildyti
+	A dot on the side to move	Taškas ėjimą darančios pusės krašte
+	Wood	Mediena
+	Marble	Marmuras
+	Paper	Popierius
+	Book print	Knygos spauda
+	king	karalius
+	queen	valdovė
+	rook	bokštas
+	bishop	rikis
+	knight	žirgas
+	pawn	pėstininkas
+	checkmate	matas
+	check	šachas
+	castles short	trumpoji rokiruotė
+	castles long	ilgoji rokiruotė
+	takes	kerta
+	{move} promotes to {piece}	{move} virsta {piece}
+	Pieces in the move list	Figūros ėjimų sąraše
+	Figurines	Figūrėlės
+	Letters in your language	Raidės jūsų kalba
+	English letters	Anglų raidės
+	Shown on the board while the pointer is here	Rodoma lentoje, kol žymeklis yra čia
+	1 arrow	1 rodyklė
+	{n} arrows	{n} rodyklės
+	1 ring	1 žiedas
+	{n} rings	{n} žiedai
+	The comment on the move shown, large under the board	Rodomo ėjimo komentaras dideliu šriftu po lenta
+	Running text	Ištisinis tekstas
+	Columns	Stulpeliai
+	Text size	Teksto dydis
+	Small	Mažas
+	Normal	Įprastas
+	Large	Didelis
+	Previous variation (Page Up)	Ankstesnis variantas (Page Up)
+	Next variation (Page Down)	Kitas variantas (Page Down)
+	A move the pointer rests on shows its position	Ėjimas, ant kurio sustoja žymeklis, parodo savo poziciją
+	Position after {move}	Pozicija po {move}

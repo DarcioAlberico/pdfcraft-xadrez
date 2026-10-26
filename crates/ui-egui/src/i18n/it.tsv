@@ -2762,6 +2762,40 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Show this diagram on the page	Mostra questo diagramma nella pagina
 	Stalemate	Stallo
 	Standard start position	Posizione iniziale standard
+	the board is empty	la scacchiera è vuota
+	White's king is missing	manca il re bianco
+	Black's king is missing	manca il re nero
+	White has more than one king	il Bianco ha più di un re
+	Black has more than one king	il Nero ha più di un re
+	White has more than 8 pawns	il Bianco ha più di 8 pedoni
+	Black has more than 8 pawns	il Nero ha più di 8 pedoni
+	White has more than 16 pieces	il Bianco ha più di 16 pezzi
+	Black has more than 16 pieces	il Nero ha più di 16 pezzi
+	a pawn stands on the first or the eighth rank	un pedone si trova sulla prima o sull'ottava traversa
+	White has more extra pieces than missing pawns to promote	il Bianco ha più pezzi in più che pedoni mancanti da promuovere
+	Black has more extra pieces than missing pawns to promote	il Nero ha più pezzi in più che pedoni mancanti da promuovere
+	the kings stand next to each other	i re sono uno accanto all'altro
+	White is in check, but it is Black's turn	il Bianco è sotto scacco, ma tocca al Nero
+	Black is in check, but it is White's turn	il Nero è sotto scacco, ma tocca al Bianco
+	White's king is in check from more than two pieces	il re bianco è sotto scacco da più di due pezzi
+	Black's king is in check from more than two pieces	il re nero è sotto scacco da più di due pezzi
+	White's king is in a double check no move could give	il re bianco è in uno scacco doppio che nessuna mossa potrebbe dare
+	Black's king is in a double check no move could give	il re nero è in uno scacco doppio che nessuna mossa potrebbe dare
+	White may castle, but its king or rook has left its square	il Bianco può arroccare, ma il suo re o la torre ha lasciato la casa
+	Black may castle, but its king or rook has left its square	il Nero può arroccare, ma il suo re o la torre ha lasciato la casa
+	the en-passant square does not fit the pawns	la casa per la presa en passant non corrisponde ai pedoni
+	Not a legal position: {reason}	Posizione non legale: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Posizione non legale ({reason}): correggila nell'editor del diagramma per giocarci delle mosse.
+	The game on the board has moves. Put this position:	La partita sulla scacchiera ha delle mosse. Metti questa posizione:
+	New game with this position	Nuova partita con questa posizione
+	The game on the board keeps its moves.	La partita sulla scacchiera mantiene le sue mosse.
+	Its moves are deleted (Undo brings them back).	Le sue mosse vengono eliminate (Annulla le riporta).
+	Start again from the standard position.	Ricomincia dalla posizione iniziale standard.
+	A new game from the standard position; the game on the board keeps its moves.	Una nuova partita dalla posizione iniziale standard; la partita sulla scacchiera mantiene le sue mosse.
+	PGN edited	PGN modificato
+	Load	Carica
+	Show the game on the board again.	Mostra di nuovo la partita della scacchiera.
+	Load the PGN above on the board, with its variations and comments.	Carica il PGN qui sopra sulla scacchiera, con varianti e commenti.
 	Start (Home)	Inizio (Home)
 	That side can't be to move: the other king is in check.	Quel lato non può avere il tratto: l'altro re è sotto scacco.
 	The FEN couldn't be read: {e}	Impossibile leggere la FEN: {e}
@@ -3236,3 +3270,106 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	No game was found for this move, on its page or the pages around it.	Nessuna partita trovata per questa mossa, né nella sua pagina né in quelle vicine.
 	Renumber	Rinumera
 	The text's move numbers give way to the game's: {printed} is played as {played}.	I numeri delle mosse del testo lasciano il posto a quelli della partita: {printed} è giocata come {played}.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	Elenco delle mosse
+	Move list beside the page	Elenco delle mosse accanto alla pagina
+	Side of the page	Lato della pagina
+	Drawing eraser	Gomma per disegni
+	Drag across text or draw a box to erase what lies under it	Trascina sul testo o disegna un riquadro per cancellare ciò che sta sotto
+	Drawings and shapes	Disegni e forme
+	Comments, links and form fields	Commenti, collegamenti e campi modulo
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Cancellare è una modifica: una versione precedente del file può ancora contenere ciò che è stato cancellato. Usa Oscura per rimuoverlo definitivamente.
+	Erase content	Cancella contenuto
+	Knife (cut pages)	Coltello (taglia pagine)
+	Click to place a cut, right-click to take one away, Enter to cut	Fai clic per mettere un taglio, clic destro per toglierne uno, Invio per tagliare
+	Up and down	Dall'alto in basso
+	Across	Di traverso
+	Hold Shift for the other direction.	Tieni premuto Maiusc per l'altra direzione.
+	Right part first	Prima la parte destra
+	Nothing is erased: each part shows its piece of the page.	Non si cancella nulla: ogni parte mostra il suo pezzo di pagina.
+	Remove what lies outside each part	Rimuovi ciò che sta fuori da ogni parte
+	Split double pages	Dividi le pagine doppie
+	No double pages were found: none is wider than tall	Nessuna pagina doppia trovata: nessuna è più larga che alta
+	Box or selection	Riquadro o selezione
+	Brush	Pennello
+	Brush size	Dimensione del pennello
+	Rub over what you want to erase; letting go erases it	Strofina su ciò che vuoi cancellare; rilasciando si cancella
+	What will go is tinted red while you draw.	Ciò che sparirà è tinto di rosso mentre disegni.
+	Erase the selected words from the page	Cancella dalla pagina le parole selezionate
+	Chess pieces	Pezzi degli scacchi
+	Plain shapes	Forme semplici
+	Missing: {pieces}	Mancano: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES è impostata e ha la precedenza su questa scelta.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Scacchiera: le scacchiere di analisi e di studio. Diagrammi: ridisegnati sulla pagina, nell'editor e nelle esportazioni.
+	These pieces cannot be used: {reason}	Impossibile usare questi pezzi: {reason}
+	Import a folder…	Importa una cartella…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	Copia una cartella di dodici immagini di pezzi (da wK a bP, SVG o PNG) nella cartella dei pezzi.
+	Import from a web page…	Importa da una pagina web…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	Porta nella cartella dei pezzi i set di pezzi che una pagina web salvata contiene.
+	Choose a folder of piece images	Scegli una cartella di immagini di pezzi
+	Choose a saved web page	Scegli una pagina web salvata
+	Web pages	Pagine web
+	There is no pieces folder beside the program to import into.	Accanto al programma non c'è una cartella dei pezzi in cui importare.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	Importati: {sets}. La loro licenza non è nota: usali solo per uso personale.
+	Already in the pieces folder: {sets}. Replace them?	Già nella cartella dei pezzi: {sets}. Sostituirli?
+	The pieces cannot be imported: {reason}	Impossibile importare i pezzi: {reason}
+	round {round}	turno {round}
+	Result: {result}	Risultato: {result}
+	Board theme	Tema della scacchiera
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	Per le scacchiere su cui giochi e studi. I diagrammi nella pagina e nelle esportazioni mantengono i loro colori.
+	Brown	Marrone
+	Light wood	Legno chiaro
+	Walnut	Noce
+	Ice blue	Blu ghiaccio
+	Olive	Oliva
+	Grey	Grigio
+	Graphite	Grafite
+	Sand	Sabbia
+	Coral	Corallo
+	High contrast	Contrasto elevato
+	Coordinates	Coordinate
+	On the squares	Sulle case
+	Beside the board	Accanto alla scacchiera
+	Frame	Cornice
+	Double	Doppia
+	Marked squares	Case segnate
+	Ring	Anello
+	Filled	Piene
+	A dot on the side to move	Un punto dal lato che muove
+	Wood	Legno
+	Marble	Marmo
+	Paper	Carta
+	Book print	Stampa da libro
+	king	re
+	queen	donna
+	rook	torre
+	bishop	alfiere
+	knight	cavallo
+	pawn	pedone
+	checkmate	scacco matto
+	check	scacco
+	castles short	arrocco corto
+	castles long	arrocco lungo
+	takes	prende
+	{move} promotes to {piece}	{move} promuove a {piece}
+	Pieces in the move list	Pezzi nella lista delle mosse
+	Figurines	Figurine
+	Letters in your language	Lettere nella tua lingua
+	English letters	Lettere inglesi
+	Shown on the board while the pointer is here	Mostrati sulla scacchiera finché il puntatore è qui
+	1 arrow	1 freccia
+	{n} arrows	{n} frecce
+	1 ring	1 anello
+	{n} rings	{n} anelli
+	The comment on the move shown, large under the board	Il commento della mossa mostrata, grande sotto la scacchiera
+	Running text	Testo continuo
+	Columns	Colonne
+	Text size	Dimensione del testo
+	Small	Piccola
+	Normal	Normale
+	Large	Grande
+	Previous variation (Page Up)	Variante precedente (Pag Su)
+	Next variation (Page Down)	Variante successiva (Pag Giù)
+	A move the pointer rests on shows its position	Una mossa su cui si ferma il puntatore mostra la sua posizione
+	Position after {move}	Posizione dopo {move}

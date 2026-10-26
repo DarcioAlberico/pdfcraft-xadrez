@@ -2974,3 +2974,106 @@ chess undo step	Clear drawings	清除標記
 	No game was found for this move, on its page or the pages around it.	在此著法所在頁及其前後頁面中均未找到對局。
 	Renumber	重新編號
 	The text's move numbers give way to the game's: {printed} is played as {played}.	文字的著法編號讓位於棋局的編號：{printed} 按 {played} 走。
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	著法列表
+	Move list beside the page	頁面旁的著法列表
+	Side of the page	頁面側邊
+	Drawing eraser	繪圖橡皮擦
+	Drag across text or draw a box to erase what lies under it	在文字上拖曳或畫一個方框，擦除其下方的內容
+	Drawings and shapes	繪圖與形狀
+	Comments, links and form fields	註解、連結與表單欄位
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	擦除是一項編輯：檔案的較早版本可能仍保有被擦除的內容。若要永久移除，請使用遮蔽。
+	Erase content	擦除內容
+	Knife (cut pages)	刀（切分頁面）
+	Click to place a cut, right-click to take one away, Enter to cut	按一下放置切線，按右鍵移除一條，按 Enter 切分
+	Up and down	直向
+	Across	橫向
+	Hold Shift for the other direction.	按住 Shift 切換方向。
+	Right part first	右側部分在前
+	Nothing is erased: each part shows its piece of the page.	不會擦除任何內容：每個部分顯示頁面中屬於它的那一塊。
+	Remove what lies outside each part	刪除每部分之外的內容
+	Split double pages	拆分跨頁
+	No double pages were found: none is wider than tall	未找到跨頁：沒有頁面寬度大於高度
+	Box or selection	方框或選取
+	Brush	筆刷
+	Brush size	筆刷大小
+	Rub over what you want to erase; letting go erases it	在要擦除的內容上塗抹；放開即擦除
+	What will go is tinted red while you draw.	繪製時將被擦除的內容以紅色顯示。
+	Erase the selected words from the page	從頁面擦除所選文字
+	Chess pieces	西洋棋棋子
+	Plain shapes	簡單圖形
+	Missing: {pieces}	缺少：{pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	已設定 PDFCRAFT_CHESS_PIECES，它優先於此選擇。
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	棋盤：分析棋盤和研究棋盤。局面圖：在頁面、編輯器和匯出中重新繪製的圖。
+	These pieces cannot be used: {reason}	無法使用這些棋子：{reason}
+	Import a folder…	匯入資料夾…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	將包含十二張棋子圖片（wK 至 bP，SVG 或 PNG）的資料夾複製到棋子資料夾。
+	Import from a web page…	從網頁匯入…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	將已儲存網頁中自帶的棋子套組放入棋子資料夾。
+	Choose a folder of piece images	選擇棋子圖片資料夾
+	Choose a saved web page	選擇已儲存的網頁
+	Web pages	網頁
+	There is no pieces folder beside the program to import into.	程式旁邊沒有可匯入的棋子資料夾。
+	Imported: {sets}. Their licence is not known: use them for personal use only.	已匯入：{sets}。其授權不明：僅供個人使用。
+	Already in the pieces folder: {sets}. Replace them?	棋子資料夾中已有：{sets}。要取代嗎？
+	The pieces cannot be imported: {reason}	無法匯入棋子：{reason}
+	round {round}	第 {round} 輪
+	Result: {result}	結果：{result}
+	Board theme	棋盤主題
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	用於您下棋和研究的棋盤。頁面上和匯出中的棋圖保持原有顏色。
+	Brown	棕色
+	Light wood	淺色木紋
+	Walnut	胡桃木
+	Ice blue	冰藍
+	Olive	橄欖綠
+	Grey	灰色
+	Graphite	石墨
+	Sand	沙色
+	Coral	珊瑚色
+	High contrast	高對比
+	Coordinates	座標
+	On the squares	在格子上
+	Beside the board	在棋盤旁
+	Frame	邊框
+	Double	雙線
+	Marked squares	標記的格子
+	Ring	圓環
+	Filled	填滿
+	A dot on the side to move	在輪到走棋的一方顯示圓點
+	Wood	木紋
+	Marble	大理石
+	Paper	紙張
+	Book print	書籍印刷
+	king	王
+	queen	后
+	rook	車
+	bishop	象
+	knight	馬
+	pawn	兵
+	checkmate	將死
+	check	將軍
+	castles short	短易位
+	castles long	長易位
+	takes	吃
+	{move} promotes to {piece}	{move} 升變為{piece}
+	Pieces in the move list	著法列表中的棋子
+	Figurines	棋子符號
+	Letters in your language	您語言中的字母
+	English letters	英文字母
+	Shown on the board while the pointer is here	指標停在此處時顯示在棋盤上
+	1 arrow	1 個箭頭
+	{n} arrows	{n} 個箭頭
+	1 ring	1 個圓環
+	{n} rings	{n} 個圓環
+	The comment on the move shown, large under the board	在棋盤下方大字顯示目前著法的註解
+	Running text	連續文字
+	Columns	分欄
+	Text size	文字大小
+	Small	小
+	Normal	正常
+	Large	大
+	Previous variation (Page Up)	上一個變著 (Page Up)
+	Next variation (Page Down)	下一個變著 (Page Down)
+	A move the pointer rests on shows its position	指標停留的著法顯示其局面
+	Position after {move}	{move} 之後的局面

@@ -17,6 +17,14 @@ list (author, source, license) is in ATTRIBUTION.md.
   file-text outline and combines it with contributor-original artwork. See
   assets/app-icon/LICENSE-document.txt (ISC AND (MIT OR Apache-2.0)), packaged as
   LICENSE-document.txt beside the Windows executables.
+- Chess piece sets (assets/chess/pieces/<set>/*.svg), the SVG files as lichess publishes them
+  (https://github.com/lichess-org/lila, commit aa97d4e2b760), each under its author's licence:
+  - Chessnut, Copyright 2015 Alexis Luengas — Apache License 2.0. See assets/chess/pieces/chessnut/LICENSE.txt and COPYRIGHT.txt.
+  - RhosGFX — CC0 1.0 (public domain dedication). See assets/chess/pieces/rhosgfx/LICENSE.txt.
+  - kiwen suwi by neverRare — CC BY 4.0. See assets/chess/pieces/kiwen-suwi/LICENSE.txt.
+  - Firi by James Faure — CC BY 4.0. See assets/chess/pieces/firi/LICENSE.txt.
+  - Fantasy, Spatial and Celtic, Copyright (c) Maurizio Monge — MIT License. See assets/chess/pieces/fantasy/LICENSE.txt (same text beside spatial and celtic).
+  - Shapes by flugsio — CC BY-SA 4.0 (the files are shared under the same licence). See assets/chess/pieces/shapes/LICENSE.txt.
 - Inter typeface (assets/fonts/Inter-*.ttf) — SIL Open Font License 1.1. See assets/fonts/OFL-Inter.txt.
 - JetBrains Mono typeface (assets/fonts/JetBrainsMono-*.ttf) — SIL Open Font License 1.1. See assets/fonts/OFL-JetBrainsMono.txt.
 - Dancing Script typeface (assets/fonts/DancingScript.ttf), Copyright 2016 The Dancing Script Project Authors — SIL Open Font License 1.1 (Reserved Font Name "Dancing Script"). See assets/fonts/OFL-DancingScript.txt.

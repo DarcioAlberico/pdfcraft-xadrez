@@ -764,6 +764,18 @@ fn chess_round_trip(bytes: &[u8]) {
             style: Default::default(),
             pieces: options.pieces.clone(),
             scan: scan.clone(),
+            // An arrow and a ring over the board, so the fuzz runs draw them too.
+            drawings: {
+                use pdfcraft_engine::chess::pdfcraft_chess::game::{DrawColor, Drawing};
+                use pdfcraft_engine::chess::pdfcraft_chess::placement::Square;
+                let sq = |n: &str| Square::parse(n);
+                match (sq("e2"), sq("e4"), sq("d5")) {
+                    (Some(e2), Some(e4), Some(d5)) => {
+                        vec![Drawing { from: e2, to: e4, color: DrawColor::Green }, Drawing { from: d5, to: d5, color: DrawColor::Red }]
+                    }
+                    _ => Vec::new(),
+                }
+            },
         };
         let _ = s.apply(id, pdfcraft_engine::Edit::ReplaceDiagram(Box::new(replacement)));
     }

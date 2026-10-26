@@ -2555,6 +2555,40 @@ animation effects	Off	Izklopljeni
 	Show this diagram on the page	Prikaži ta diagram na strani
 	Stalemate	Pat
 	Standard start position	Standardni začetni položaj
+	the board is empty	šahovnica je prazna
+	White's king is missing	manjka beli kralj
+	Black's king is missing	manjka črni kralj
+	White has more than one king	beli ima več kot enega kralja
+	Black has more than one king	črni ima več kot enega kralja
+	White has more than 8 pawns	beli ima več kot 8 kmetov
+	Black has more than 8 pawns	črni ima več kot 8 kmetov
+	White has more than 16 pieces	beli ima več kot 16 figur
+	Black has more than 16 pieces	črni ima več kot 16 figur
+	a pawn stands on the first or the eighth rank	kmet stoji na prvi ali osmi vrsti
+	White has more extra pieces than missing pawns to promote	beli ima več dodatnih figur, kot je manjkajočih kmetov za promocijo
+	Black has more extra pieces than missing pawns to promote	črni ima več dodatnih figur, kot je manjkajočih kmetov za promocijo
+	the kings stand next to each other	kralja stojita drug ob drugem
+	White is in check, but it is Black's turn	beli je v šahu, a na potezi je črni
+	Black is in check, but it is White's turn	črni je v šahu, a na potezi je beli
+	White's king is in check from more than two pieces	beli kralj je v šahu od več kot dveh figur
+	Black's king is in check from more than two pieces	črni kralj je v šahu od več kot dveh figur
+	White's king is in a double check no move could give	beli kralj je v dvojnem šahu, ki ga ne bi mogla dati nobena poteza
+	Black's king is in a double check no move could give	črni kralj je v dvojnem šahu, ki ga ne bi mogla dati nobena poteza
+	White may castle, but its king or rook has left its square	beli sme rokirati, a njegov kralj ali trdnjava je zapustil svoje polje
+	Black may castle, but its king or rook has left its square	črni sme rokirati, a njegov kralj ali trdnjava je zapustil svoje polje
+	the en-passant square does not fit the pawns	polje za jemanje en passant se ne ujema s kmeti
+	Not a legal position: {reason}	Nelegalen položaj: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Nelegalen položaj ({reason}): popravite ga v urejevalniku diagrama, da boste v njem lahko vlekli poteze.
+	The game on the board has moves. Put this position:	Partija na šahovnici ima poteze. Postavi ta položaj:
+	New game with this position	Nova partija s tem položajem
+	The game on the board keeps its moves.	Partija na šahovnici obdrži svoje poteze.
+	Its moves are deleted (Undo brings them back).	Njene poteze se izbrišejo (Razveljavi jih vrne).
+	Start again from the standard position.	Začni znova iz standardnega začetnega položaja.
+	A new game from the standard position; the game on the board keeps its moves.	Nova partija iz standardnega začetnega položaja; partija na šahovnici obdrži svoje poteze.
+	PGN edited	PGN urejen
+	Load	Naloži
+	Show the game on the board again.	Znova pokaži partijo s šahovnice.
+	Load the PGN above on the board, with its variations and comments.	Naloži zgornji PGN na šahovnico, z variantami in komentarji.
 	Start (Home)	Začetek (Home)
 	That side can't be to move: the other king is in check.	Ta stran ne more biti na potezi: drugi kralj je v šahu.
 	The FEN couldn't be read: {e}	FEN-a ni bilo mogoče prebrati: {e}
@@ -3029,3 +3063,106 @@ chess undo step	Clear drawings	odstranjevanje risb
 	No game was found for this move, on its page or the pages around it.	Za to potezo ni bilo najdene partije ne na njeni strani ne na straneh okoli nje.
 	Renumber	Preštevilči
 	The text's move numbers give way to the game's: {printed} is played as {played}.	Številke potez v besedilu se umaknejo številkam partije: {printed} se odigra kot {played}.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	Seznam potez
+	Move list beside the page	Seznam potez ob strani
+	Side of the page	Postavitev ob strani
+	Drawing eraser	Radirka za risbe
+	Drag across text or draw a box to erase what lies under it	Povlecite čez besedilo ali narišite okvir, da izbrišete, kar je pod njim
+	Drawings and shapes	Risbe in oblike
+	Comments, links and form fields	Komentarji, povezave in polja obrazcev
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Brisanje je urejanje: starejša različica datoteke lahko izbrisano še vsebuje. Za trajno odstranitev uporabite Počrni.
+	Erase content	Izbriši vsebino
+	Knife (cut pages)	Nož (razreži strani)
+	Click to place a cut, right-click to take one away, Enter to cut	Kliknite, da postavite rez, desni klik odstrani enega, Enter razreže
+	Up and down	Od zgoraj navzdol
+	Across	Počez
+	Hold Shift for the other direction.	Za drugo smer držite Shift.
+	Right part first	Najprej desni del
+	Nothing is erased: each part shows its piece of the page.	Nič se ne izbriše: vsak del prikazuje svoj kos strani.
+	Remove what lies outside each part	Odstrani, kar je zunaj vsakega dela
+	Split double pages	Razdeli dvojne strani
+	No double pages were found: none is wider than tall	Ni dvojnih strani: nobena ni širša kot višja
+	Box or selection	Okvir ali izbor
+	Brush	Čopič
+	Brush size	Velikost čopiča
+	Rub over what you want to erase; letting go erases it	Podrgnite čez tisto, kar želite izbrisati; ob spustu se izbriše
+	What will go is tinted red while you draw.	Kar bo izginilo, je med risanjem obarvano rdeče.
+	Erase the selected words from the page	Izbriši izbrane besede s strani
+	Chess pieces	Šahovske figure
+	Plain shapes	Preproste oblike
+	Missing: {pieces}	Manjkajo: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES je nastavljena in ima prednost pred to izbiro.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Šahovnica: šahovnici za analizo in študij. Diagrami: na novo narisani na strani, v urejevalniku in v izvozih.
+	These pieces cannot be used: {reason}	Teh figur ni mogoče uporabiti: {reason}
+	Import a folder…	Uvozi mapo…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	Kopira mapo z dvanajstimi slikami figur (wK do bP, SVG ali PNG) v mapo figur.
+	Import from a web page…	Uvozi s spletne strani…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	Prenese nabore figur, ki jih shranjena spletna stran nosi v sebi, v mapo figur.
+	Choose a folder of piece images	Izberite mapo s slikami figur
+	Choose a saved web page	Izberite shranjeno spletno stran
+	Web pages	Spletne strani
+	There is no pieces folder beside the program to import into.	Ob programu ni mape figur, v katero bi uvozili.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	Uvoženo: {sets}. Njihova licenca ni znana: uporabljajte jih le za osebno rabo.
+	Already in the pieces folder: {sets}. Replace them?	Že v mapi figur: {sets}. Jih zamenjam?
+	The pieces cannot be imported: {reason}	Figur ni mogoče uvoziti: {reason}
+	round {round}	{round}. krog
+	Result: {result}	Rezultat: {result}
+	Board theme	Tema šahovnice
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	Za šahovnice, na katerih igrate in se učite. Diagrami na strani in v izvozih ohranijo svoje barve.
+	Brown	Rjava
+	Light wood	Svetel les
+	Walnut	Oreh
+	Ice blue	Ledeno modra
+	Olive	Olivna
+	Grey	Siva
+	Graphite	Grafit
+	Sand	Peščena
+	Coral	Koralna
+	High contrast	Visok kontrast
+	Coordinates	Koordinate
+	On the squares	Na poljih
+	Beside the board	Ob šahovnici
+	Frame	Okvir
+	Double	Dvojen
+	Marked squares	Označena polja
+	Ring	Obroč
+	Filled	Zapolnjena
+	A dot on the side to move	Pika na strani, ki je na potezi
+	Wood	Les
+	Marble	Marmor
+	Paper	Papir
+	Book print	Knjižni tisk
+	king	kralj
+	queen	dama
+	rook	trdnjava
+	bishop	lovec
+	knight	skakač
+	pawn	kmet
+	checkmate	mat
+	check	šah
+	castles short	kratka rokada
+	castles long	dolga rokada
+	takes	vzame
+	{move} promotes to {piece}	{move} se promovira v {piece}
+	Pieces in the move list	Figure v seznamu potez
+	Figurines	Figurice
+	Letters in your language	Črke v vašem jeziku
+	English letters	Angleške črke
+	Shown on the board while the pointer is here	Prikazano na šahovnici, dokler je kazalec tukaj
+	1 arrow	1 puščica
+	{n} arrows	{n} puščic
+	1 ring	1 obroč
+	{n} rings	{n} obročev
+	The comment on the move shown, large under the board	Komentar k prikazani potezi, velik pod šahovnico
+	Running text	Tekoče besedilo
+	Columns	Stolpci
+	Text size	Velikost besedila
+	Small	Majhna
+	Normal	Običajna
+	Large	Velika
+	Previous variation (Page Up)	Prejšnja varianta (Page Up)
+	Next variation (Page Down)	Naslednja varianta (Page Down)
+	A move the pointer rests on shows its position	Poteza, na kateri se ustavi kazalec, pokaže svojo pozicijo
+	Position after {move}	Pozicija po {move}

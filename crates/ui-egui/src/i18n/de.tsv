@@ -2551,6 +2551,40 @@ animation effects	Off	Aus
 	Show this diagram on the page	Dieses Diagramm auf der Seite zeigen
 	Stalemate	Patt
 	Standard start position	Grundstellung
+	the board is empty	das Brett ist leer
+	White's king is missing	der weiße König fehlt
+	Black's king is missing	der schwarze König fehlt
+	White has more than one king	Weiß hat mehr als einen König
+	Black has more than one king	Schwarz hat mehr als einen König
+	White has more than 8 pawns	Weiß hat mehr als 8 Bauern
+	Black has more than 8 pawns	Schwarz hat mehr als 8 Bauern
+	White has more than 16 pieces	Weiß hat mehr als 16 Steine
+	Black has more than 16 pieces	Schwarz hat mehr als 16 Steine
+	a pawn stands on the first or the eighth rank	ein Bauer steht auf der ersten oder achten Reihe
+	White has more extra pieces than missing pawns to promote	Weiß hat mehr zusätzliche Figuren, als fehlende Bauern umgewandelt werden konnten
+	Black has more extra pieces than missing pawns to promote	Schwarz hat mehr zusätzliche Figuren, als fehlende Bauern umgewandelt werden konnten
+	the kings stand next to each other	die Könige stehen nebeneinander
+	White is in check, but it is Black's turn	Weiß steht im Schach, aber Schwarz ist am Zug
+	Black is in check, but it is White's turn	Schwarz steht im Schach, aber Weiß ist am Zug
+	White's king is in check from more than two pieces	der weiße König steht im Schach von mehr als zwei Figuren
+	Black's king is in check from more than two pieces	der schwarze König steht im Schach von mehr als zwei Figuren
+	White's king is in a double check no move could give	der weiße König steht in einem Doppelschach, das kein Zug geben kann
+	Black's king is in a double check no move could give	der schwarze König steht in einem Doppelschach, das kein Zug geben kann
+	White may castle, but its king or rook has left its square	Weiß darf rochieren, aber König oder Turm hat sein Feld verlassen
+	Black may castle, but its king or rook has left its square	Schwarz darf rochieren, aber König oder Turm hat sein Feld verlassen
+	the en-passant square does not fit the pawns	das En-passant-Feld passt nicht zu den Bauern
+	Not a legal position: {reason}	Keine legale Stellung: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Keine legale Stellung ({reason}): im Diagrammeditor korrigieren, um darauf zu ziehen.
+	The game on the board has moves. Put this position:	Die Partie auf dem Brett hat Züge. Diese Stellung setzen:
+	New game with this position	Neue Partie mit dieser Stellung
+	The game on the board keeps its moves.	Die Partie auf dem Brett behält ihre Züge.
+	Its moves are deleted (Undo brings them back).	Ihre Züge werden gelöscht (Rückgängig holt sie zurück).
+	Start again from the standard position.	Von der Grundstellung neu beginnen.
+	A new game from the standard position; the game on the board keeps its moves.	Eine neue Partie ab der Grundstellung; die Partie auf dem Brett behält ihre Züge.
+	PGN edited	PGN bearbeitet
+	Load	Laden
+	Show the game on the board again.	Die Partie auf dem Brett wieder anzeigen.
+	Load the PGN above on the board, with its variations and comments.	Lädt die PGN oben aufs Brett, mit ihren Varianten und Kommentaren.
 	Start (Home)	Anfang (Pos1)
 	That side can't be to move: the other king is in check.	Diese Seite kann nicht am Zug sein: der andere König steht im Schach.
 	The FEN couldn't be read: {e}	Die FEN konnte nicht gelesen werden: {e}
@@ -3025,3 +3059,106 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	No game was found for this move, on its page or the pages around it.	Für diesen Zug wurde weder auf seiner Seite noch auf den Seiten um sie herum eine Partie gefunden.
 	Renumber	Neu nummerieren
 	The text's move numbers give way to the game's: {printed} is played as {played}.	Die Zugnummern des Texts weichen denen der Partie: {printed} wird als {played} gespielt.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	Zugliste
+	Move list beside the page	Zugliste neben der Seite
+	Side of the page	Seitenrand
+	Drawing eraser	Zeichnungsradierer
+	Drag across text or draw a box to erase what lies under it	Ziehen Sie über Text oder einen Rahmen auf, um zu radieren, was darunter liegt
+	Drawings and shapes	Zeichnungen und Formen
+	Comments, links and form fields	Kommentare, Links und Formularfelder
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Radieren ist eine Bearbeitung: Eine frühere Version der Datei kann das Radierte noch enthalten. Mit Schwärzen entfernen Sie es endgültig.
+	Erase content	Inhalt radieren
+	Knife (cut pages)	Messer (Seiten zerschneiden)
+	Click to place a cut, right-click to take one away, Enter to cut	Klicken setzt einen Schnitt, Rechtsklick nimmt einen weg, Eingabe schneidet
+	Up and down	Senkrecht
+	Across	Waagerecht
+	Hold Shift for the other direction.	Umschalt halten für die andere Richtung.
+	Right part first	Rechter Teil zuerst
+	Nothing is erased: each part shows its piece of the page.	Nichts wird gelöscht: Jeder Teil zeigt sein Stück der Seite.
+	Remove what lies outside each part	Entfernen, was außerhalb jedes Teils liegt
+	Split double pages	Doppelseiten teilen
+	No double pages were found: none is wider than tall	Keine Doppelseiten gefunden: Keine Seite ist breiter als hoch
+	Box or selection	Rahmen oder Auswahl
+	Brush	Pinsel
+	Brush size	Pinselgröße
+	Rub over what you want to erase; letting go erases it	Fahren Sie über das, was Sie radieren möchten; Loslassen radiert es
+	What will go is tinted red while you draw.	Was verschwindet, wird beim Zeichnen rot getönt.
+	Erase the selected words from the page	Die ausgewählten Wörter von der Seite radieren
+	Chess pieces	Schachfiguren
+	Plain shapes	Einfache Formen
+	Missing: {pieces}	Fehlen: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES ist gesetzt und hat Vorrang vor dieser Auswahl.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Brett: das Analyse- und das Studienbrett. Diagramme: neu gezeichnet auf der Seite, im Editor und in Exporten.
+	These pieces cannot be used: {reason}	Diese Figuren können nicht verwendet werden: {reason}
+	Import a folder…	Ordner importieren…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	Kopiert einen Ordner mit zwölf Figurenbildern (wK bis bP, SVG oder PNG) in den Figurenordner.
+	Import from a web page…	Aus einer Webseite importieren…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	Übernimmt die Figurensätze, die eine gespeicherte Webseite in sich trägt, in den Figurenordner.
+	Choose a folder of piece images	Ordner mit Figurenbildern wählen
+	Choose a saved web page	Gespeicherte Webseite wählen
+	Web pages	Webseiten
+	There is no pieces folder beside the program to import into.	Neben dem Programm gibt es keinen Figurenordner, in den importiert werden kann.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	Importiert: {sets}. Ihre Lizenz ist nicht bekannt: nur für den persönlichen Gebrauch verwenden.
+	Already in the pieces folder: {sets}. Replace them?	Schon im Figurenordner: {sets}. Ersetzen?
+	The pieces cannot be imported: {reason}	Die Figuren können nicht importiert werden: {reason}
+	round {round}	Runde {round}
+	Result: {result}	Ergebnis: {result}
+	Board theme	Brettfarben
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	Für die Bretter, auf denen Sie spielen und üben. Diagramme auf der Seite und in Exporten behalten ihre Farben.
+	Brown	Braun
+	Light wood	Helles Holz
+	Walnut	Nussbaum
+	Ice blue	Eisblau
+	Olive	Oliv
+	Grey	Grau
+	Graphite	Graphit
+	Sand	Sand
+	Coral	Koralle
+	High contrast	Hoher Kontrast
+	Coordinates	Koordinaten
+	On the squares	Auf den Feldern
+	Beside the board	Neben dem Brett
+	Frame	Rahmen
+	Double	Doppelt
+	Marked squares	Markierte Felder
+	Ring	Ring
+	Filled	Gefüllt
+	A dot on the side to move	Ein Punkt bei der Seite am Zug
+	Wood	Holz
+	Marble	Marmor
+	Paper	Papier
+	Book print	Buchdruck
+	king	König
+	queen	Dame
+	rook	Turm
+	bishop	Läufer
+	knight	Springer
+	pawn	Bauer
+	checkmate	Matt
+	check	Schach
+	castles short	kurze Rochade
+	castles long	lange Rochade
+	takes	schlägt
+	{move} promotes to {piece}	{move} wandelt in {piece} um
+	Pieces in the move list	Figuren in der Zugliste
+	Figurines	Figurinen
+	Letters in your language	Buchstaben Ihrer Sprache
+	English letters	Englische Buchstaben
+	Shown on the board while the pointer is here	Auf dem Brett gezeigt, solange der Zeiger hier ist
+	1 arrow	1 Pfeil
+	{n} arrows	{n} Pfeile
+	1 ring	1 Ring
+	{n} rings	{n} Ringe
+	The comment on the move shown, large under the board	Der Kommentar zum gezeigten Zug groß unter dem Brett
+	Running text	Fließtext
+	Columns	Spalten
+	Text size	Textgröße
+	Small	Klein
+	Normal	Normal
+	Large	Groß
+	Previous variation (Page Up)	Vorherige Variante (Bild auf)
+	Next variation (Page Down)	Nächste Variante (Bild ab)
+	A move the pointer rests on shows its position	Ein Zug, auf dem der Zeiger ruht, zeigt seine Stellung
+	Position after {move}	Stellung nach {move}

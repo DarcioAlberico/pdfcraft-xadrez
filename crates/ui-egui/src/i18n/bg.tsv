@@ -2513,6 +2513,40 @@ animation effects	Off	Изключени
 	Show this diagram on the page	Показване на тази диаграма на страницата
 	Stalemate	Пат
 	Standard start position	Стандартна начална позиция
+	the board is empty	дъската е празна
+	White's king is missing	липсва белият цар
+	Black's king is missing	липсва черният цар
+	White has more than one king	белите имат повече от един цар
+	Black has more than one king	черните имат повече от един цар
+	White has more than 8 pawns	белите имат повече от 8 пешки
+	Black has more than 8 pawns	черните имат повече от 8 пешки
+	White has more than 16 pieces	белите имат повече от 16 фигури
+	Black has more than 16 pieces	черните имат повече от 16 фигури
+	a pawn stands on the first or the eighth rank	пешка стои на първия или осмия ред
+	White has more extra pieces than missing pawns to promote	белите имат повече допълнителни фигури, отколкото липсващи пешки за промоция
+	Black has more extra pieces than missing pawns to promote	черните имат повече допълнителни фигури, отколкото липсващи пешки за промоция
+	the kings stand next to each other	царете стоят един до друг
+	White is in check, but it is Black's turn	белите са в шах, но е ред на черните
+	Black is in check, but it is White's turn	черните са в шах, но е ред на белите
+	White's king is in check from more than two pieces	белият цар е в шах от повече от две фигури
+	Black's king is in check from more than two pieces	черният цар е в шах от повече от две фигури
+	White's king is in a double check no move could give	белият цар е в двоен шах, който никой ход не може да даде
+	Black's king is in a double check no move could give	черният цар е в двоен шах, който никой ход не може да даде
+	White may castle, but its king or rook has left its square	белите могат да рокират, но царят или топът е напуснал полето си
+	Black may castle, but its king or rook has left its square	черните могат да рокират, но царят или топът е напуснал полето си
+	the en-passant square does not fit the pawns	полето за взимане ан пасан не отговаря на пешките
+	Not a legal position: {reason}	Незаконна позиция: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Незаконна позиция ({reason}): поправете я в редактора на диаграми, за да играете ходове в нея.
+	The game on the board has moves. Put this position:	Партията на дъската има ходове. Да се постави тази позиция:
+	New game with this position	Нова партия с тази позиция
+	The game on the board keeps its moves.	Партията на дъската запазва ходовете си.
+	Its moves are deleted (Undo brings them back).	Ходовете ѝ се изтриват (Отмени ги връща).
+	Start again from the standard position.	Започване отначало от стандартната начална позиция.
+	A new game from the standard position; the game on the board keeps its moves.	Нова партия от стандартната начална позиция; партията на дъската запазва ходовете си.
+	PGN edited	PGN е редактиран
+	Load	Зареждане
+	Show the game on the board again.	Показване отново на партията от дъската.
+	Load the PGN above on the board, with its variations and comments.	Зарежда горния PGN на дъската, с вариантите и коментарите му.
 	Start (Home)	Начало (Home)
 	That side can't be to move: the other king is in check.	Тази страна не може да е на ход: другият цар е в шах.
 	The FEN couldn't be read: {e}	FEN не можа да се прочете: {e}
@@ -2987,3 +3021,106 @@ chess undo step	Clear drawings	изчистването на рисунките
 	No game was found for this move, on its page or the pages around it.	Не е намерена партия за този ход нито на страницата му, нито на страниците около нея.
 	Renumber	Преномериране
 	The text's move numbers give way to the game's: {printed} is played as {played}.	Номерата на ходовете в текста отстъпват на тези от партията: {printed} се играе като {played}.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	Списък с ходове
+	Move list beside the page	Списък с ходове до страницата
+	Side of the page	Страна на страницата
+	Drawing eraser	Гумичка за рисунки
+	Drag across text or draw a box to erase what lies under it	Плъзнете през текст или начертайте правоъгълник, за да изтриете това под него
+	Drawings and shapes	Рисунки и фигури
+	Comments, links and form fields	Коментари, връзки и полета на формуляри
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Изтриването е редакция: по-ранна версия на файла може още да съдържа изтритото. Използвайте Заличаване, за да го премахнете окончателно.
+	Erase content	Изтриване на съдържание
+	Knife (cut pages)	Нож (разрязване на страници)
+	Click to place a cut, right-click to take one away, Enter to cut	Щракнете, за да поставите разрез, щракнете с десния бутон, за да махнете един, Enter за разрязване
+	Up and down	Отгоре надолу
+	Across	Напряко
+	Hold Shift for the other direction.	Задръжте Shift за другата посока.
+	Right part first	Първо дясната част
+	Nothing is erased: each part shows its piece of the page.	Нищо не се изтрива: всяка част показва своето парче от страницата.
+	Remove what lies outside each part	Премахване на това извън всяка част
+	Split double pages	Разделяне на двойни страници
+	No double pages were found: none is wider than tall	Не са намерени двойни страници: никоя не е по-широка, отколкото висока
+	Box or selection	Правоъгълник или селекция
+	Brush	Четка
+	Brush size	Размер на четката
+	Rub over what you want to erase; letting go erases it	Търкайте върху това, което искате да изтриете; отпускането го изтрива
+	What will go is tinted red while you draw.	Това, което ще бъде изтрито, се оцветява в червено, докато чертаете.
+	Erase the selected words from the page	Изтриване на избраните думи от страницата
+	Chess pieces	Шахматни фигури
+	Plain shapes	Прости форми
+	Missing: {pieces}	Липсват: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES е зададена и има предимство пред този избор.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Дъска: дъските за анализ и за изучаване. Диаграми: преначертани на страницата, в редактора и при експорт.
+	These pieces cannot be used: {reason}	Тези фигури не могат да се използват: {reason}
+	Import a folder…	Импортиране на папка…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	Копира папка с дванадесет изображения на фигури (от wK до bP, SVG или PNG) в папката с фигури.
+	Import from a web page…	Импортиране от уеб страница…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	Взема комплектите фигури, които съхранена уеб страница носи в себе си, в папката с фигури.
+	Choose a folder of piece images	Изберете папка с изображения на фигури
+	Choose a saved web page	Изберете съхранена уеб страница
+	Web pages	Уеб страници
+	There is no pieces folder beside the program to import into.	До програмата няма папка с фигури, в която да се импортира.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	Импортирани: {sets}. Лицензът им не е известен: използвайте ги само за лична употреба.
+	Already in the pieces folder: {sets}. Replace them?	Вече са в папката с фигури: {sets}. Да бъдат ли заменени?
+	The pieces cannot be imported: {reason}	Фигурите не могат да бъдат импортирани: {reason}
+	round {round}	кръг {round}
+	Result: {result}	Резултат: {result}
+	Board theme	Тема на дъската
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	За дъските, на които играете и учите. Диаграмите на страницата и в експорта запазват цветовете си.
+	Brown	Кафява
+	Light wood	Светло дърво
+	Walnut	Орех
+	Ice blue	Ледено синя
+	Olive	Маслинена
+	Grey	Сива
+	Graphite	Графит
+	Sand	Пясъчна
+	Coral	Коралова
+	High contrast	Висок контраст
+	Coordinates	Координати
+	On the squares	Върху полетата
+	Beside the board	До дъската
+	Frame	Рамка
+	Double	Двойна
+	Marked squares	Отбелязани полета
+	Ring	Кръг
+	Filled	Запълнени
+	A dot on the side to move	Точка откъм страната на хода
+	Wood	Дърво
+	Marble	Мрамор
+	Paper	Хартия
+	Book print	Книжен печат
+	king	цар
+	queen	дама
+	rook	топ
+	bishop	офицер
+	knight	кон
+	pawn	пешка
+	checkmate	мат
+	check	шах
+	castles short	малка рокада
+	castles long	голяма рокада
+	takes	взема
+	{move} promotes to {piece}	{move} се произвежда в {piece}
+	Pieces in the move list	Фигурите в списъка с ходове
+	Figurines	Фигурки
+	Letters in your language	Букви на вашия език
+	English letters	Английски букви
+	Shown on the board while the pointer is here	Показват се на дъската, докато показалецът е тук
+	1 arrow	1 стрелка
+	{n} arrows	{n} стрелки
+	1 ring	1 кръг
+	{n} rings	{n} кръга
+	The comment on the move shown, large under the board	Коментарът към показания ход, едър под дъската
+	Running text	Непрекъснат текст
+	Columns	Колони
+	Text size	Размер на текста
+	Small	Малък
+	Normal	Нормален
+	Large	Голям
+	Previous variation (Page Up)	Предишен вариант (Page Up)
+	Next variation (Page Down)	Следващ вариант (Page Down)
+	A move the pointer rests on shows its position	Ход, върху който спре показалецът, показва позицията си
+	Position after {move}	Позиция след {move}

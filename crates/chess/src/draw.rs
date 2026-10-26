@@ -107,6 +107,41 @@ fn polygon(points: &[(f32, f32)]) -> Subpath {
     Subpath { start, segments: it.map(|&(x, y)| Segment::Line(x, y)).collect(), closed: true }
 }
 
+/// Diagonal lines (`/` as seen) across the square `square`, of side `s`: bands of a seventh of
+/// the side apart, each a twentieth wide, cut to the square.
+fn hatch(square: &Subpath, s: f32) -> Vec<Subpath> {
+    let (x0, y0) = square.start;
+    let corners = [(x0, y0), (x0 + s, y0), (x0 + s, y0 + s), (x0, y0 + s)];
+    let (step, width) = (s / 7.0, s / 20.0);
+    let mut out = Vec::new();
+    // Bands of x + y between c and c + width, relative to the square's corner.
+    for k in 0..15u8 {
+        let c = x0 + y0 + f32::from(k) * step - width / 2.0;
+        let band = clip(&clip(&corners, |(x, y)| x + y - c), |(x, y)| c + width - (x + y));
+        if band.len() >= 3 {
+            out.push(polygon(&band));
+        }
+    }
+    out
+}
+
+/// The convex polygon `points` cut to where `inside` is not negative (Sutherland–Hodgman).
+fn clip(points: &[(f32, f32)], inside: impl Fn((f32, f32)) -> f32) -> Vec<(f32, f32)> {
+    let mut out = Vec::with_capacity(points.len() + 2);
+    for (i, &p) in points.iter().enumerate() {
+        let q = points.get((i + 1) % points.len()).copied().unwrap_or(p);
+        let (dp, dq) = (inside(p), inside(q));
+        if dp >= 0.0 {
+            out.push(p);
+        }
+        if (dp >= 0.0) != (dq >= 0.0) {
+            let t = dp / (dp - dq);
+            out.push((p.0 + (q.0 - p.0) * t, p.1 + (q.1 - p.1) * t));
+        }
+    }
+    out
+}
+
 fn circle(cx: f32, cy: f32, r: f32) -> Subpath {
     // Four cubic arcs; 0.5523 is the usual control-point factor for a quarter circle.
     let k = 0.5523 * r;
@@ -191,6 +226,9 @@ pub struct BoardStyle {
     pub coordinates: bool,
     /// Draw from Black's side: h1 at the top left.
     pub flipped: bool,
+    /// The dark squares hatched in diagonal lines of `dark` over `light`, as printed diagrams
+    /// (plan HC5), instead of filled.
+    pub hatched: bool,
 }
 
 impl Default for BoardStyle {
@@ -203,6 +241,7 @@ impl Default for BoardStyle {
             border_color: Rgb::BLACK,
             coordinates: false,
             flipped: false,
+            hatched: false,
         }
     }
 }
@@ -225,6 +264,89 @@ pub struct Drawing {
     /// Painted in order.
     pub layers: Vec<Layer>,
     pub labels: Vec<Label>,
+}
+
+/// A board drawn by [`board`] with `drawings` over it (plan HC7): a coloured square as a ring,
+/// an arrow with its head, in the colours an analysis board uses. Paths have no opacity here, so
+/// they are drawn solid, as books print them.
+pub fn board_with(placement: &Placement, pieces: &PieceSet, style: &BoardStyle, drawings: &[crate::game::Drawing]) -> Drawing {
+    let mut d = board(placement, pieces, style);
+    let (s, origin) = geometry(style);
+    let centre = |sq: Square| {
+        let (file, rank) = (f32::from(sq.file()), f32::from(sq.rank()));
+        let (col, row) = if style.flipped { (7.0 - file, rank) } else { (file, 7.0 - rank) };
+        (origin + (col + 0.5) * s, origin + (row + 0.5) * s)
+    };
+    for mark in drawings {
+        let color = mark_color(mark.color);
+        let (ax, ay) = centre(mark.from);
+        if !mark.is_arrow() {
+            let (outer, inner) = (s * 0.47, s * 0.40);
+            d.layers.push(Layer { subpaths: vec![circle(ax, ay, outer), circle(ax, ay, inner)], paint: Paint::Fill { color, even_odd: true } });
+            continue;
+        }
+        let (bx, by) = centre(mark.to);
+        let (dx, dy) = (bx - ax, by - ay);
+        let len = (dx * dx + dy * dy).sqrt();
+        if !(len.is_finite() && len > 0.0) {
+            continue;
+        }
+        let (ux, uy) = (dx / len, dy / len);
+        let (nx, ny) = (-uy, ux);
+        let head = s * 0.42;
+        let tip = (bx - ux * s * 0.12, by - uy * s * 0.12);
+        let base = (tip.0 - ux * head, tip.1 - uy * head);
+        let start = (ax + ux * s * 0.18, ay + uy * s * 0.18);
+        let half = s * 0.085;
+        let shaft = polygon(&[
+            (start.0 + nx * half, start.1 + ny * half),
+            (base.0 + nx * half, base.1 + ny * half),
+            (base.0 - nx * half, base.1 - ny * half),
+            (start.0 - nx * half, start.1 - ny * half),
+        ]);
+        let point = polygon(&[tip, (base.0 + nx * head * 0.55, base.1 + ny * head * 0.55), (base.0 - nx * head * 0.55, base.1 - ny * head * 0.55)]);
+        d.layers.push(Layer { subpaths: vec![shaft, point], paint: Paint::Fill { color, even_odd: false } });
+    }
+    d
+}
+
+/// A drawing's colour on paper: the analysis board's, solid.
+fn mark_color(c: crate::game::DrawColor) -> Rgb {
+    use crate::game::DrawColor;
+    match c {
+        DrawColor::Green => Rgb(21, 120, 27),
+        DrawColor::Red => Rgb(170, 30, 30),
+        DrawColor::Blue => Rgb(0, 60, 160),
+        DrawColor::Yellow => Rgb(230, 143, 0),
+    }
+}
+
+/// `drawings` in words, for a diagram's text alternative: "green arrow from b5 to c7, red ring
+/// on e4".
+pub fn describe(drawings: &[crate::game::Drawing]) -> String {
+    use crate::game::DrawColor;
+    let words: Vec<String> = drawings
+        .iter()
+        .map(|m| {
+            let colour = match m.color {
+                DrawColor::Green => "green",
+                DrawColor::Red => "red",
+                DrawColor::Blue => "blue",
+                DrawColor::Yellow => "yellow",
+            };
+            if m.is_arrow() { format!("{colour} arrow from {} to {}", m.from, m.to) } else { format!("{colour} ring on {}", m.from) }
+        })
+        .collect();
+    words.join(", ")
+}
+
+/// A board's square size and where its squares start, as [`board`] lays them out.
+fn geometry(style: &BoardStyle) -> (f32, f32) {
+    let defaults = BoardStyle::default();
+    let s = if style.square.is_finite() && style.square > 0.0 { style.square } else { defaults.square };
+    let border = if style.border.is_finite() && style.border >= 0.0 { style.border.min(1.0) * s } else { 0.0 };
+    let margin = if style.coordinates { LABEL_MARGIN * s } else { 0.0 };
+    (s, margin + border)
 }
 
 /// The coordinate margin, in square widths, when coordinates are printed.
@@ -262,6 +384,7 @@ pub fn board(placement: &Placement, pieces: &PieceSet, style: &BoardStyle) -> Dr
             rect(origin + col * s, origin + row * s, s, s)
         })
         .collect();
+    let dark = if style.hatched { dark.iter().flat_map(|sq| hatch(sq, s)).collect() } else { dark };
     layers.push(Layer { subpaths: dark, paint: Paint::Fill { color: style.dark, even_odd: false } });
 
     for (sq, piece) in placement.pieces() {
@@ -352,6 +475,57 @@ mod tests {
         assert_eq!(d.layers.len(), 2);
         assert_eq!(d.layers[1].subpaths.len(), 32);
         assert!(d.labels.is_empty());
+    }
+
+    /// Plan HC5: hatched dark squares are diagonal bands cut to their square, about a quarter of
+    /// it inked, and the light squares untouched.
+    #[test]
+    fn hatched_dark_squares_are_bands_inside_their_squares() {
+        let d = board(&Placement::empty(), &PieceSet::geometric(), &BoardStyle { border: 0.0, hatched: true, ..BoardStyle::default() });
+        assert_eq!(d.layers.len(), 2);
+        let bands = &d.layers[1].subpaths;
+        assert!(bands.len() > 32 * 10, "{} bands", bands.len());
+        let mut inked = 0.0;
+        for band in bands {
+            let b = bounds(std::slice::from_ref(band)).unwrap();
+            // Each band stays in one 20-unit square.
+            let (col, row) = ((b[0] / 20.0).floor(), (b[1] / 20.0).floor());
+            assert!(b[2] <= (col + 1.0) * 20.0 + 1e-3 && b[3] <= (row + 1.0) * 20.0 + 1e-3, "{b:?}");
+            assert!((col + row) % 2.0 == 1.0, "only dark squares: {b:?}");
+            inked += area(band);
+        }
+        let share = inked / (32.0 * 400.0);
+        assert!((0.15..0.45).contains(&share), "{share}");
+    }
+
+    /// The area of a closed polygon of lines.
+    fn area(path: &Subpath) -> f32 {
+        let mut points = vec![path.start];
+        points.extend(path.segments.iter().filter_map(|s| if let Segment::Line(x, y) = s { Some((*x, *y)) } else { None }));
+        let n = points.len();
+        (0..n).map(|i| points[i].0 * points[(i + 1) % n].1 - points[(i + 1) % n].0 * points[i].1).sum::<f32>().abs() / 2.0
+    }
+
+    /// Plan HC7: drawings go over the board, a ring on its square and an arrow between the two
+    /// squares' centres, inside the board; described in words for the text alternative.
+    #[test]
+    fn drawings_are_drawn_over_the_board_and_described() {
+        use crate::game::{DrawColor, Drawing as Mark};
+        let sq = |n: &str| Square::parse(n).unwrap();
+        let marks = [Mark { from: sq("b5"), to: sq("c7"), color: DrawColor::Green }, Mark { from: sq("e4"), to: sq("e4"), color: DrawColor::Red }];
+        let style = BoardStyle { border: 0.0, ..BoardStyle::default() };
+        let plain = board(&Placement::empty(), &PieceSet::geometric(), &style);
+        let d = board_with(&Placement::empty(), &PieceSet::geometric(), &style, &marks);
+        assert_eq!(d.layers.len(), plain.layers.len() + 2);
+        let arrow = bounds(&d.layers[2].subpaths).unwrap();
+        // b5 is column 1, row 3; c7 column 2, row 1 (20-unit squares).
+        assert!(arrow[0] >= 20.0 && arrow[2] <= 60.0 && arrow[1] >= 20.0 && arrow[3] <= 80.0, "{arrow:?}");
+        let ring = bounds(&d.layers[3].subpaths).unwrap();
+        assert!((ring[0] - 80.6).abs() < 0.1 && (ring[3] - 99.4).abs() < 0.1, "e4's square: {ring:?}");
+        assert!(matches!(d.layers[3].paint, Paint::Fill { even_odd: true, .. }), "a ring, not a disc");
+        assert_eq!(describe(&marks), "green arrow from b5 to c7, red ring on e4");
+        // No drawings: the board as before.
+        assert_eq!(board_with(&Placement::empty(), &PieceSet::geometric(), &style, &[]), plain);
     }
 
     #[test]

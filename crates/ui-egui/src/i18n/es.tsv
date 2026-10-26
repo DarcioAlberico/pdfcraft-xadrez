@@ -2691,6 +2691,40 @@ animation effects	Off	Desactivados
 	Show this diagram on the page	Mostrar este diagrama en la página
 	Stalemate	Ahogado
 	Standard start position	Posición inicial estándar
+	the board is empty	el tablero está vacío
+	White's king is missing	falta el rey blanco
+	Black's king is missing	falta el rey negro
+	White has more than one king	las blancas tienen más de un rey
+	Black has more than one king	las negras tienen más de un rey
+	White has more than 8 pawns	las blancas tienen más de 8 peones
+	Black has more than 8 pawns	las negras tienen más de 8 peones
+	White has more than 16 pieces	las blancas tienen más de 16 piezas
+	Black has more than 16 pieces	las negras tienen más de 16 piezas
+	a pawn stands on the first or the eighth rank	hay un peón en la primera o en la octava fila
+	White has more extra pieces than missing pawns to promote	las blancas tienen más piezas de sobra que peones que faltan para coronar
+	Black has more extra pieces than missing pawns to promote	las negras tienen más piezas de sobra que peones que faltan para coronar
+	the kings stand next to each other	los reyes están uno junto al otro
+	White is in check, but it is Black's turn	las blancas están en jaque, pero juegan las negras
+	Black is in check, but it is White's turn	las negras están en jaque, pero juegan las blancas
+	White's king is in check from more than two pieces	el rey blanco recibe jaque de más de dos piezas
+	Black's king is in check from more than two pieces	el rey negro recibe jaque de más de dos piezas
+	White's king is in a double check no move could give	el rey blanco está en un jaque doble que ninguna jugada podría dar
+	Black's king is in a double check no move could give	el rey negro está en un jaque doble que ninguna jugada podría dar
+	White may castle, but its king or rook has left its square	las blancas pueden enrocar, pero su rey o su torre dejó su casilla
+	Black may castle, but its king or rook has left its square	las negras pueden enrocar, pero su rey o su torre dejó su casilla
+	the en-passant square does not fit the pawns	la casilla de captura al paso no encaja con los peones
+	Not a legal position: {reason}	Posición ilegal: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Posición ilegal ({reason}): corríjala en el editor de diagramas para jugar en ella.
+	The game on the board has moves. Put this position:	La partida del tablero tiene jugadas. Poner esta posición:
+	New game with this position	Nueva partida con esta posición
+	The game on the board keeps its moves.	La partida del tablero conserva sus jugadas.
+	Its moves are deleted (Undo brings them back).	Sus jugadas se borran (Deshacer las devuelve).
+	Start again from the standard position.	Empezar de nuevo desde la posición inicial estándar.
+	A new game from the standard position; the game on the board keeps its moves.	Una partida nueva desde la posición inicial estándar; la partida del tablero conserva sus jugadas.
+	PGN edited	PGN editado
+	Load	Cargar
+	Show the game on the board again.	Volver a mostrar la partida del tablero.
+	Load the PGN above on the board, with its variations and comments.	Carga el PGN de arriba en el tablero, con sus variantes y comentarios.
 	Start (Home)	Inicio (Inicio)
 	That side can't be to move: the other king is in check.	Ese bando no puede tener el turno: el otro rey está en jaque.
 	The FEN couldn't be read: {e}	No se pudo leer la FEN: {e}
@@ -3165,3 +3199,106 @@ chess undo step	Clear drawings	borrado de los dibujos
 	No game was found for this move, on its page or the pages around it.	No se encontró ninguna partida para esta jugada, ni en su página ni en las páginas cercanas.
 	Renumber	Renumerar
 	The text's move numbers give way to the game's: {printed} is played as {played}.	Los números de jugada del texto ceden ante los de la partida: {printed} se juega como {played}.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	Lista de jugadas
+	Move list beside the page	Lista de jugadas junto a la página
+	Side of the page	Lado de la página
+	Drawing eraser	Borrador de dibujos
+	Drag across text or draw a box to erase what lies under it	Arrastre sobre el texto o dibuje un recuadro para borrar lo que hay debajo
+	Drawings and shapes	Dibujos y formas
+	Comments, links and form fields	Comentarios, vínculos y campos de formulario
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Borrar es una edición: una versión anterior del archivo aún puede contener lo borrado. Use Censurar para eliminarlo definitivamente.
+	Erase content	Borrar contenido
+	Knife (cut pages)	Cuchilla (cortar páginas)
+	Click to place a cut, right-click to take one away, Enter to cut	Haga clic para poner un corte, clic derecho para quitar uno, Intro para cortar
+	Up and down	De arriba abajo
+	Across	A lo ancho
+	Hold Shift for the other direction.	Mantenga Mayús para la otra dirección.
+	Right part first	Primero la parte derecha
+	Nothing is erased: each part shows its piece of the page.	No se borra nada: cada parte muestra su trozo de la página.
+	Remove what lies outside each part	Quitar lo que queda fuera de cada parte
+	Split double pages	Dividir páginas dobles
+	No double pages were found: none is wider than tall	No se encontraron páginas dobles: ninguna es más ancha que alta
+	Box or selection	Recuadro o selección
+	Brush	Pincel
+	Brush size	Tamaño del pincel
+	Rub over what you want to erase; letting go erases it	Frote sobre lo que quiera borrar; al soltar se borra
+	What will go is tinted red while you draw.	Lo que se borrará se tiñe de rojo mientras dibuja.
+	Erase the selected words from the page	Borrar de la página las palabras seleccionadas
+	Chess pieces	Piezas de ajedrez
+	Plain shapes	Formas simples
+	Missing: {pieces}	Faltan: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES está definida y tiene prioridad sobre esta elección.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Tablero: los tableros de análisis y de estudio. Diagramas: redibujados en la página, en el editor y en las exportaciones.
+	These pieces cannot be used: {reason}	No se pueden usar estas piezas: {reason}
+	Import a folder…	Importar una carpeta…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	Copia una carpeta de doce imágenes de piezas (wK a bP, SVG o PNG) en la carpeta de piezas.
+	Import from a web page…	Importar de una página web…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	Lleva a la carpeta de piezas los juegos de piezas que una página web guardada trae dentro.
+	Choose a folder of piece images	Elija una carpeta de imágenes de piezas
+	Choose a saved web page	Elija una página web guardada
+	Web pages	Páginas web
+	There is no pieces folder beside the program to import into.	No hay carpeta de piezas junto al programa a la que importar.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	Importados: {sets}. Su licencia no se conoce: úselos solo para uso personal.
+	Already in the pieces folder: {sets}. Replace them?	Ya están en la carpeta de piezas: {sets}. ¿Reemplazarlos?
+	The pieces cannot be imported: {reason}	No se pueden importar las piezas: {reason}
+	round {round}	ronda {round}
+	Result: {result}	Resultado: {result}
+	Board theme	Tema del tablero
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	Para los tableros en los que juega y estudia. Los diagramas de la página y de las exportaciones conservan sus colores.
+	Brown	Marrón
+	Light wood	Madera clara
+	Walnut	Nogal
+	Ice blue	Azul hielo
+	Olive	Oliva
+	Grey	Gris
+	Graphite	Grafito
+	Sand	Arena
+	Coral	Coral
+	High contrast	Alto contraste
+	Coordinates	Coordenadas
+	On the squares	En las casillas
+	Beside the board	Junto al tablero
+	Frame	Marco
+	Double	Doble
+	Marked squares	Casillas marcadas
+	Ring	Anillo
+	Filled	Rellenas
+	A dot on the side to move	Un punto del lado que juega
+	Wood	Madera
+	Marble	Mármol
+	Paper	Papel
+	Book print	Impresión de libro
+	king	rey
+	queen	dama
+	rook	torre
+	bishop	alfil
+	knight	caballo
+	pawn	peón
+	checkmate	jaque mate
+	check	jaque
+	castles short	enroque corto
+	castles long	enroque largo
+	takes	captura
+	{move} promotes to {piece}	{move} corona {piece}
+	Pieces in the move list	Piezas en la lista de jugadas
+	Figurines	Figurines
+	Letters in your language	Letras en su idioma
+	English letters	Letras en inglés
+	Shown on the board while the pointer is here	Se muestran en el tablero mientras el puntero esté aquí
+	1 arrow	1 flecha
+	{n} arrows	{n} flechas
+	1 ring	1 anillo
+	{n} rings	{n} anillos
+	The comment on the move shown, large under the board	El comentario de la jugada mostrada, grande bajo el tablero
+	Running text	Texto corrido
+	Columns	Columnas
+	Text size	Tamaño del texto
+	Small	Pequeño
+	Normal	Normal
+	Large	Grande
+	Previous variation (Page Up)	Variante anterior (Re Pág)
+	Next variation (Page Down)	Variante siguiente (Av Pág)
+	A move the pointer rests on shows its position	Una jugada sobre la que se detiene el puntero muestra su posición
+	Position after {move}	Posición tras {move}

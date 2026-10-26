@@ -2,8 +2,8 @@
 //! (removing what they cover for good) or clear them.
 
 use pdfcraft_engine::{
-    Edit, Hidden, NewAnnotation, REDACT_MAX_WORDS, REDACTION_CODE_SETS, RedactPattern, RedactionCodeSet, Shape, Style, find_pattern, rect_quad,
-    redact_word_list,
+    Edit, EraseOptions, GlyphRule, Hidden, MAX_ERASE_AREAS, NewAnnotation, REDACT_MAX_WORDS, REDACTION_CODE_SETS, RedactPattern, RedactionCodeSet,
+    Shape, Style, find_pattern, rect_quad, redact_word_list,
 };
 use serde_json::{Value, json};
 
@@ -155,6 +155,103 @@ impl Automation {
         let after = self.doc(a)?.redaction_marks();
         out["applied"] = json!(before - after);
         out["marks_pending"] = json!(after);
+        Ok(out)
+    }
+
+    /// `page_erase`: remove the page's content under rectangles of the displayed page, as an
+    /// ordinary edit (no marks, no boxes).
+    pub(crate) fn page_erase(&mut self, a: &Args) -> Result<Value> {
+        let page = self.page(a)?;
+        let rects =
+            a.get("rects").and_then(Value::as_array).ok_or_else(|| ToolError::InvalidArgs("rects must be a list of [x0, y0, x1, y1]".into()))?;
+        if rects.is_empty() || rects.len() > MAX_ERASE_AREAS {
+            return Err(ToolError::InvalidArgs(format!("give between 1 and {MAX_ERASE_AREAS} rects, not {}", rects.len())));
+        }
+        let info = self.doc(a)?.info.pages.get(page).cloned().ok_or_else(|| ToolError::InvalidArgs(format!("no page {}", page + 1)))?;
+        let mut areas = Vec::with_capacity(rects.len());
+        for r in rects {
+            let v: Vec<f64> = r.as_array().map(|x| x.iter().filter_map(Value::as_f64).collect()).unwrap_or_default();
+            let r = <[f64; 4]>::try_from(v).map_err(|_| ToolError::InvalidArgs("each rect must be 4 numbers".into()))?;
+            if !r.iter().all(|v| v.is_finite() && v.abs() <= f64::from(f32::MAX)) {
+                return Err(ToolError::InvalidArgs(format!("the rect {r:?} is not finite")));
+            }
+            let u = info.view_rect_to_user([r[0] as f32, r[1] as f32, r[2] as f32, r[3] as f32]);
+            areas.push(u.map(f64::from));
+        }
+        let mut options = EraseOptions::default();
+        if let Some(kinds) = a.get("kinds") {
+            let kinds = kinds.as_array().ok_or_else(|| ToolError::InvalidArgs("kinds must be a list".into()))?;
+            options = EraseOptions { text: false, images: false, vectors: false, annotations: false, ..options };
+            for k in kinds {
+                match k.as_str() {
+                    Some("text") => options.text = true,
+                    Some("images") => options.images = true,
+                    Some("vectors") => options.vectors = true,
+                    Some("annotations") => options.annotations = true,
+                    _ => return Err(ToolError::InvalidArgs(format!("unknown kind {k}; allowed: text, images, vectors, annotations"))),
+                }
+            }
+        }
+        options.rule = match a.opt_str("rule")? {
+            None | Some("centre") => GlyphRule::Centre,
+            Some("overlap") => GlyphRule::Overlap,
+            Some(other) => return Err(ToolError::InvalidArgs(format!("unknown rule {other:?}; allowed: centre, overlap"))),
+        };
+        let found = self.doc(a)?.erase_preview(page, &areas, &options).map_err(ToolError::Failed)?.len();
+        let mut out = self.apply(a, Edit::EraseContent { page, areas, options })?;
+        out["erased"] = json!(found);
+        Ok(out)
+    }
+
+    /// `page_cut`: the Knife. Each page is cut at the same places, in points or as fractions of
+    /// the page as shown.
+    pub(crate) fn page_cut(&mut self, a: &Args) -> Result<Value> {
+        let pages = self.pages(a, "pages")?;
+        let axis = match a.str("axis")? {
+            "vertical" => pdfcraft_engine::CutAxis::Vertical,
+            "horizontal" => pdfcraft_engine::CutAxis::Horizontal,
+            other => return Err(ToolError::InvalidArgs(format!("unknown axis {other:?}; allowed: vertical, horizontal"))),
+        };
+        let at: Vec<f64> = a.get("at").and_then(Value::as_array).map(|v| v.iter().filter_map(Value::as_f64).collect()).unwrap_or_default();
+        let count = a.get("at").and_then(Value::as_array).map_or(0, Vec::len);
+        if at.is_empty() || at.len() != count || at.len() >= pdfcraft_engine::MAX_CUT_PARTS {
+            return Err(ToolError::InvalidArgs(format!("at must be 1 to {} numbers", pdfcraft_engine::MAX_CUT_PARTS - 1)));
+        }
+        let fraction = match a.opt_str("units")? {
+            None | Some("pt") => false,
+            Some("fraction") => true,
+            Some(other) => return Err(ToolError::InvalidArgs(format!("unknown units {other:?}; allowed: pt, fraction"))),
+        };
+        if fraction && !at.iter().all(|v| *v > 0.0 && *v < 1.0) {
+            return Err(ToolError::InvalidArgs("fractions must lie between 0 and 1".into()));
+        }
+        let info = self.doc(a)?.info.clone();
+        let cuts: Vec<pdfcraft_engine::Cut> = pages
+            .iter()
+            .map(|&page| {
+                let p = &info.pages[page];
+                // The page as shown, in points.
+                let extent = f64::from(if axis == pdfcraft_engine::CutAxis::Vertical { p.width } else { p.height });
+                let at = if fraction { at.iter().map(|f| f * extent).collect() } else { at.clone() };
+                pdfcraft_engine::Cut { page, axis, at }
+            })
+            .collect();
+        let before = info.pages.len();
+        let right_to_left = a.opt_bool("right_to_left")?.unwrap_or(false);
+        let trim_outside = a.opt_bool("trim_outside")?.unwrap_or(false);
+        let mut out = self.apply(a, Edit::CutPages { cuts: cuts.clone(), right_to_left, trim_outside })?;
+        // Where each page's parts went (1-based, in the order given).
+        let mut sorted: Vec<usize> = pages.clone();
+        sorted.sort_unstable();
+        let mut offset = 0usize;
+        let mut parts = Vec::new();
+        for page in sorted {
+            let n = cuts.iter().find(|c| c.page == page).map_or(1, |c| c.at.len() + 1);
+            parts.push(json!({ "page": page + 1, "parts": (0..n).map(|k| page + offset + k + 1).collect::<Vec<_>>() }));
+            offset += n - 1;
+        }
+        out["cut"] = json!(parts);
+        out["pages_before"] = json!(before);
         Ok(out)
     }
 

@@ -2463,6 +2463,40 @@ animation effects	Off	Выкл
 	Show this diagram on the page	Показать эту диаграмму на странице
 	Stalemate	Пат
 	Standard start position	Стандартная начальная позиция
+	the board is empty	доска пуста
+	White's king is missing	нет белого короля
+	Black's king is missing	нет чёрного короля
+	White has more than one king	у белых больше одного короля
+	Black has more than one king	у чёрных больше одного короля
+	White has more than 8 pawns	у белых больше 8 пешек
+	Black has more than 8 pawns	у чёрных больше 8 пешек
+	White has more than 16 pieces	у белых больше 16 фигур
+	Black has more than 16 pieces	у чёрных больше 16 фигур
+	a pawn stands on the first or the eighth rank	пешка стоит на первой или восьмой горизонтали
+	White has more extra pieces than missing pawns to promote	у белых больше лишних фигур, чем недостающих пешек для превращения
+	Black has more extra pieces than missing pawns to promote	у чёрных больше лишних фигур, чем недостающих пешек для превращения
+	the kings stand next to each other	короли стоят рядом
+	White is in check, but it is Black's turn	белым шах, но ход чёрных
+	Black is in check, but it is White's turn	чёрным шах, но ход белых
+	White's king is in check from more than two pieces	белому королю шах от более чем двух фигур
+	Black's king is in check from more than two pieces	чёрному королю шах от более чем двух фигур
+	White's king is in a double check no move could give	белому королю двойной шах, который не мог дать ни один ход
+	Black's king is in a double check no move could give	чёрному королю двойной шах, который не мог дать ни один ход
+	White may castle, but its king or rook has left its square	белым разрешена рокировка, но король или ладья покинули своё поле
+	Black may castle, but its king or rook has left its square	чёрным разрешена рокировка, но король или ладья покинули своё поле
+	the en-passant square does not fit the pawns	поле взятия на проходе не соответствует пешкам
+	Not a legal position: {reason}	Нелегальная позиция: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Нелегальная позиция ({reason}): исправьте её в редакторе диаграммы, чтобы делать в ней ходы.
+	The game on the board has moves. Put this position:	В партии на доске есть ходы. Поставить эту позицию:
+	New game with this position	Новая партия с этой позицией
+	The game on the board keeps its moves.	Партия на доске сохраняет свои ходы.
+	Its moves are deleted (Undo brings them back).	Её ходы удаляются (Отменить вернёт их).
+	Start again from the standard position.	Начать заново со стандартной начальной позиции.
+	A new game from the standard position; the game on the board keeps its moves.	Новая партия со стандартной начальной позиции; партия на доске сохраняет свои ходы.
+	PGN edited	PGN изменён
+	Load	Загрузить
+	Show the game on the board again.	Снова показать партию с доски.
+	Load the PGN above on the board, with its variations and comments.	Загружает PGN выше на доску вместе с вариантами и комментариями.
 	Start (Home)	Начало (Home)
 	That side can't be to move: the other king is in check.	Эта сторона не может ходить: другой король под шахом.
 	The FEN couldn't be read: {e}	Не удалось прочитать FEN: {e}
@@ -2937,3 +2971,106 @@ chess undo step	Clear drawings	удаление рисунков
 	No game was found for this move, on its page or the pages around it.	Партия для этого хода не найдена ни на его странице, ни на соседних страницах.
 	Renumber	Перенумеровать
 	The text's move numbers give way to the game's: {printed} is played as {played}.	Номера ходов текста уступают номерам партии: {printed} играется как {played}.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	Список ходов
+	Move list beside the page	Список ходов рядом со страницей
+	Side of the page	Сторона страницы
+	Drawing eraser	Ластик для рисунков
+	Drag across text or draw a box to erase what lies under it	Проведите по тексту или нарисуйте рамку, чтобы стереть то, что под ней
+	Drawings and shapes	Рисунки и фигуры
+	Comments, links and form fields	Комментарии, ссылки и поля форм
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Стирание — это правка: в более ранней версии файла стёртое может сохраниться. Чтобы удалить его окончательно, используйте «Скрыть».
+	Erase content	Стереть содержимое
+	Knife (cut pages)	Нож (разрезать страницы)
+	Click to place a cut, right-click to take one away, Enter to cut	Щелчок ставит разрез, правый щелчок убирает один, Enter разрезает
+	Up and down	Сверху вниз
+	Across	Поперёк
+	Hold Shift for the other direction.	Удерживайте Shift для другого направления.
+	Right part first	Сначала правая часть
+	Nothing is erased: each part shows its piece of the page.	Ничего не стирается: каждая часть показывает свой кусок страницы.
+	Remove what lies outside each part	Удалить то, что вне каждой части
+	Split double pages	Разделить развороты
+	No double pages were found: none is wider than tall	Развороты не найдены: нет страниц шире своей высоты
+	Box or selection	Рамка или выделение
+	Brush	Кисть
+	Brush size	Размер кисти
+	Rub over what you want to erase; letting go erases it	Проведите по тому, что нужно стереть; отпустите — и оно сотрётся
+	What will go is tinted red while you draw.	То, что исчезнет, подсвечивается красным, пока вы рисуете.
+	Erase the selected words from the page	Стереть выделенные слова со страницы
+	Chess pieces	Шахматные фигуры
+	Plain shapes	Простые фигуры
+	Missing: {pieces}	Не хватает: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	Задана PDFCRAFT_CHESS_PIECES, она важнее этого выбора.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Доска: доски анализа и изучения. Диаграммы: перерисованные на странице, в редакторе и при экспорте.
+	These pieces cannot be used: {reason}	Эти фигуры нельзя использовать: {reason}
+	Import a folder…	Импортировать папку…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	Копирует папку с двенадцатью изображениями фигур (от wK до bP, SVG или PNG) в папку фигур.
+	Import from a web page…	Импортировать с веб-страницы…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	Переносит в папку фигур наборы фигур, которые сохранённая веб-страница несёт в себе.
+	Choose a folder of piece images	Выберите папку с изображениями фигур
+	Choose a saved web page	Выберите сохранённую веб-страницу
+	Web pages	Веб-страницы
+	There is no pieces folder beside the program to import into.	Рядом с программой нет папки фигур для импорта.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	Импортировано: {sets}. Их лицензия неизвестна: используйте их только для личных целей.
+	Already in the pieces folder: {sets}. Replace them?	Уже есть в папке фигур: {sets}. Заменить?
+	The pieces cannot be imported: {reason}	Не удалось импортировать фигуры: {reason}
+	round {round}	тур {round}
+	Result: {result}	Результат: {result}
+	Board theme	Тема доски
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	Для досок, на которых вы играете и занимаетесь. Диаграммы на странице и в экспорте сохраняют свои цвета.
+	Brown	Коричневая
+	Light wood	Светлое дерево
+	Walnut	Орех
+	Ice blue	Ледяная
+	Olive	Оливковая
+	Grey	Серая
+	Graphite	Графит
+	Sand	Песочная
+	Coral	Коралловая
+	High contrast	Высокий контраст
+	Coordinates	Координаты
+	On the squares	На полях
+	Beside the board	Рядом с доской
+	Frame	Рамка
+	Double	Двойная
+	Marked squares	Отмеченные поля
+	Ring	Кольцо
+	Filled	Залитые
+	A dot on the side to move	Точка у стороны, чей ход
+	Wood	Дерево
+	Marble	Мрамор
+	Paper	Бумага
+	Book print	Книжная печать
+	king	король
+	queen	ферзь
+	rook	ладья
+	bishop	слон
+	knight	конь
+	pawn	пешка
+	checkmate	мат
+	check	шах
+	castles short	короткая рокировка
+	castles long	длинная рокировка
+	takes	берёт
+	{move} promotes to {piece}	{move} превращается в {piece}
+	Pieces in the move list	Фигуры в списке ходов
+	Figurines	Фигурки
+	Letters in your language	Буквы вашего языка
+	English letters	Английские буквы
+	Shown on the board while the pointer is here	Показываются на доске, пока указатель здесь
+	1 arrow	1 стрелка
+	{n} arrows	{n} стрелок
+	1 ring	1 кольцо
+	{n} rings	{n} колец
+	The comment on the move shown, large under the board	Комментарий к показанному ходу крупно под доской
+	Running text	Сплошной текст
+	Columns	Столбцы
+	Text size	Размер текста
+	Small	Маленький
+	Normal	Обычный
+	Large	Крупный
+	Previous variation (Page Up)	Предыдущий вариант (Page Up)
+	Next variation (Page Down)	Следующий вариант (Page Down)
+	A move the pointer rests on shows its position	Ход, на котором задержался указатель, показывает свою позицию
+	Position after {move}	Позиция после {move}

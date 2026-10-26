@@ -477,7 +477,12 @@ pub(crate) fn preferences_body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tok
     ui.add_space(8.0);
     date_format(ui, app, t);
     ui.add_space(8.0);
-    // Chess: where the user's chess models come from (U4).
+    // Chess: the boards' theme (HC4), the piece sets (HC2), then where the user's chess models
+    // come from (U4).
+    crate::chess_theme::preferences_section(ui, app, t);
+    ui.add_space(8.0);
+    crate::chess_pieces_ui::preferences_section(ui, app, t);
+    ui.add_space(8.0);
     if let Some(action) = crate::chess_models::section(ui, t, &app.chess.models) {
         app.chess_models_action(action);
     }

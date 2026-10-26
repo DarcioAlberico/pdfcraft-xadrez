@@ -3,7 +3,7 @@
 //! ```text
 //! cargo run --release -p pdfcraft-chessvision --example ocr_bench -- \
 //!     --gt <ground_truth folder> --glyphs <models folder> [--ocrs <ocrs models folder>] \
-//!     [--mode fuse|glyphs|ocrs] [--no-case] [--no-join] [--no-merge] [--no-glued] \
+//!     [--mode fuse|glyphs|ocrs] [--no-case] [--no-join] [--no-merge] [--no-glued] [--no-capture] \
 //!     [--out hyp.jsonl] [--fails N] [--limit N] [--gate]
 //! ```
 //!
@@ -147,6 +147,7 @@ fn main() -> Result<(), Error> {
         merge_broken: !a.flag("no-merge"),
         case_by_height: !a.flag("no-case"),
         join_move_numbers: !a.flag("no-join"),
+        capture_x: !a.flag("no-capture"),
     };
     let model = if mode == "ocrs" { None } else { Some(glyph_model(&a.path("glyphs")?)?) };
     let engine = if mode == "glyphs" { None } else { Some(ocrs_engine(&a.path("ocrs")?)?) };

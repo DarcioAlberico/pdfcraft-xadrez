@@ -6142,3 +6142,46 @@ fn undo_never_makes_an_unsaved_document_clean() {
     s.undo(new).unwrap();
     assert!(!s.get(new).unwrap().dirty, "once saved, undo back to the saved state is clean");
 }
+
+/// A scanned spread is one JPEG over the whole page. Cut in the middle with the outside removed,
+/// each half still shows its half of the scan: the same image object, clipped, not wiped (the
+/// eraser used to remove an image it could not re-encode) and not copied.
+#[test]
+fn cutting_a_scan_with_trim_keeps_its_picture_on_both_halves() {
+    let jpeg: &[u8] = &[0xFF, 0xD8, 0xFF, 0xD9];
+    let objs: Vec<Vec<u8>> = vec![
+        b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(),
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 400 300] >>".to_vec(),
+        b"<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /XObject << /Im1 5 0 R >> >> >>".to_vec(),
+        b"<< /Length 34 >>\nstream\nq 400 0 0 300 0 0 cm /Im1 Do Q\n\nendstream".to_vec(),
+        [
+            format!("<< /Type /XObject /Subtype /Image /Width 2 /Height 2 /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /DCTDecode /Length {} >>\nstream\n", jpeg.len()).as_bytes(),
+            jpeg,
+            b"\nendstream",
+        ]
+        .concat(),
+    ];
+    let mut out = b"%PDF-1.7\n".to_vec();
+    let mut offsets = Vec::new();
+    for (i, o) in objs.iter().enumerate() {
+        offsets.push(out.len());
+        out.extend_from_slice(format!("{} 0 obj\n", i + 1).as_bytes());
+        out.extend_from_slice(o);
+        out.extend_from_slice(b"\nendobj\n");
+    }
+    let xref = out.len();
+    out.extend_from_slice(format!("xref\n0 {}\n0000000000 65535 f \n", objs.len() + 1).as_bytes());
+    for o in offsets {
+        out.extend_from_slice(format!("{o:010} 00000 n \n").as_bytes());
+    }
+    out.extend_from_slice(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objs.len() + 1).as_bytes());
+    let mut s = Session::new().with_clock(|| 1_700_000_000);
+    let id = s.open("scan.pdf", None, Arc::new(out), None).unwrap();
+    let cut = pdfcraft_organize::Cut { page: 0, axis: pdfcraft_organize::Axis::Vertical, at: vec![200.0] };
+    s.apply(id, Edit::CutPages { cuts: vec![cut], right_to_left: false, trim_outside: true }).unwrap();
+    let doc = s.get(id).unwrap();
+    assert_eq!(doc.info.pages.len(), 2);
+    let images: Vec<_> = (0..2).map(|p| doc.page_images(p)).collect();
+    assert!(images.iter().all(|i| i.len() == 1), "each half still draws the scan: {images:?}");
+    assert_eq!(images[0][0].object, images[1][0].object, "one image, shared, not copied");
+}

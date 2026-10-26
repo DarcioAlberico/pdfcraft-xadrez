@@ -2821,3 +2821,271 @@ fn rotate_repeated_indices_accumulate_from_the_current_page_value() {
         }
     }
 }
+
+// ---------------------------------------------------------------- the knife
+
+/// A document from page dictionaries (each gets `/Type /Page /Parent 2 0 R` and a content stream
+/// saying `Page n`) and extra objects numbered after them.
+fn knife_doc(pages: &[&str], extra: &[&str]) -> Document {
+    let n = pages.len();
+    let kids: Vec<String> = (0..n).map(|i| format!("{} 0 R", 3 + 2 * i)).collect();
+    let mut objs: Vec<Vec<u8>> =
+        vec![b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(), format!("<< /Type /Pages /Kids [{}] /Count {n} >>", kids.join(" ")).into_bytes()];
+    for (i, p) in pages.iter().enumerate() {
+        objs.push(format!("<< /Type /Page /Parent 2 0 R /Contents {} 0 R {p} >>", 4 + 2 * i).into_bytes());
+        objs.push(stream(format!("BT 20 20 Td (Page {}) Tj ET", i + 1).as_bytes()));
+    }
+    objs.extend(extra.iter().map(|e| e.as_bytes().to_vec()));
+    let mut out = b"%PDF-1.7\n".to_vec();
+    let mut offsets = Vec::new();
+    for (i, o) in objs.iter().enumerate() {
+        offsets.push(out.len());
+        out.extend_from_slice(format!("{} 0 obj\n", i + 1).as_bytes());
+        out.extend_from_slice(o);
+        out.extend_from_slice(b"\nendobj\n");
+    }
+    let xref = out.len();
+    out.extend_from_slice(format!("xref\n0 {}\n0000000000 65535 f \n", objs.len() + 1).as_bytes());
+    for o in offsets {
+        out.extend_from_slice(format!("{o:010} 00000 n \n").as_bytes());
+    }
+    out.extend_from_slice(format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objs.len() + 1).as_bytes());
+    open(out)
+}
+
+fn cut(page: usize, axis: Axis, at: &[f64]) -> Cut {
+    Cut { page, axis, at: at.to_vec() }
+}
+
+/// The media and crop boxes of every page.
+fn media_crop(doc: &Document) -> Vec<([f64; 4], [f64; 4])> {
+    page_boxes(doc).unwrap().iter().map(|b| (b[0], b[1])).collect()
+}
+
+/// The subtypes and `/P` pages (0-based) of a page's annotations.
+fn annots_on(doc: &Document, page: usize) -> Vec<(String, Option<usize>)> {
+    let all = pages(doc).unwrap();
+    let d = doc.get(all[page].obj).as_dict().cloned().unwrap();
+    let list = d.get(b"Annots").map(|a| doc.resolve(a).as_array().cloned().unwrap_or_default()).unwrap_or_default();
+    list.iter()
+        .map(|a| {
+            let a = doc.resolve(a);
+            let d = a.as_dict().unwrap();
+            let p = d.reference(b"P").and_then(|p| all.iter().position(|x| x.obj == p));
+            (String::from_utf8_lossy(d.name(b"Subtype").unwrap_or(b"")).into_owned(), p)
+        })
+        .collect()
+}
+
+/// A two-page spread cut down the middle is two pages showing its halves, the copy right after
+/// the original; each annotation goes to the half holding its centre (a pop-up with its parent),
+/// the form field keeps its one widget, and the result saves and reopens. (Fails with the parts'
+/// boxes not set, or the annotations left on the first part.)
+#[test]
+fn a_spread_cut_down_the_middle_is_two_pages_with_their_own_annotations() {
+    let mut doc = knife_doc(
+        &["/MediaBox [0 0 400 300] /Annots [5 0 R 6 0 R 7 0 R 8 0 R]"],
+        &[
+            "<< /Type /Annot /Subtype /Square /Rect [40 40 60 60] /P 3 0 R >>",
+            "<< /Type /Annot /Subtype /Text /Rect [340 240 360 260] /P 3 0 R /Popup 7 0 R >>",
+            "<< /Type /Annot /Subtype /Popup /Rect [10 10 150 100] /Parent 6 0 R /P 3 0 R >>",
+            "<< /Type /Annot /Subtype /Widget /FT /Tx /T (name) /Rect [250 100 380 120] /P 3 0 R >>",
+            "<< /Fields [8 0 R] >>",
+        ],
+    );
+    doc.update_dict(doc.root().unwrap(), |d| d.set(b"AcroForm".to_vec(), Object::Ref(ObjRef::new(9, 0)))).unwrap();
+    let out = cut_pages(&mut doc, &[cut(0, Axis::Vertical, &[200.0])], false).unwrap();
+    assert_eq!(out.parts, [(0, vec![0, 1])]);
+    assert_eq!(media_crop(&doc), [([0.0, 0.0, 200.0, 300.0], [0.0, 0.0, 200.0, 300.0]), ([200.0, 0.0, 400.0, 300.0], [200.0, 0.0, 400.0, 300.0])]);
+    assert_eq!(labels(&doc), ["Page 1", "Page 1"]);
+    assert_eq!(annots_on(&doc, 0), [("Square".to_string(), Some(0))]);
+    let right = annots_on(&doc, 1);
+    assert_eq!(right.len(), 3, "{right:?}");
+    assert!(right.iter().all(|(_, p)| *p == Some(1)), "{right:?}");
+    assert!(right.iter().any(|(s, _)| s == "Popup"), "the pop-up goes with its note, wherever it lies");
+    let doc = save_and_reopen(&doc);
+    assert_eq!(page_count(&doc).unwrap(), 2);
+}
+
+/// Cuts are measured on the page as it is shown: a quarter turn swaps the user-space axis a
+/// vertical cut runs along. (Fails with the rotation ignored.)
+#[test]
+fn cuts_follow_the_page_as_shown_whatever_its_rotation() {
+    // 300 × 400 in user space; turned, it shows 400 wide and 300 tall.
+    for (rot, first, second) in [
+        (0, [0.0, 0.0, 100.0, 400.0], [100.0, 0.0, 300.0, 400.0]),
+        (90, [0.0, 0.0, 300.0, 100.0], [0.0, 100.0, 300.0, 400.0]),
+        (180, [200.0, 0.0, 300.0, 400.0], [0.0, 0.0, 200.0, 400.0]),
+        (270, [0.0, 300.0, 300.0, 400.0], [0.0, 0.0, 300.0, 300.0]),
+    ] {
+        let mut doc = knife_doc(&[&format!("/MediaBox [0 0 300 400] /Rotate {rot}")], &[]);
+        cut_pages(&mut doc, &[cut(0, Axis::Vertical, &[100.0])], false).unwrap();
+        let b = media_crop(&doc);
+        assert_eq!((b[0].1, b[1].1), (first, second), "rotation {rot}");
+        assert_eq!(page_rotation(&doc, 1).unwrap(), rot, "the parts keep the turn");
+    }
+}
+
+/// A horizontal cut puts the top first; an existing crop box is what is cut, the trim box is cut
+/// to each part, `/UserUnit` scales the positions, and right to left reverses the order.
+#[test]
+fn crop_trim_user_unit_and_right_to_left_are_honoured() {
+    let mut doc = knife_doc(&["/MediaBox [0 0 300 400] /CropBox [10 10 290 390] /TrimBox [0 0 300 400]"], &[]);
+    cut_pages(&mut doc, &[cut(0, Axis::Horizontal, &[100.0])], false).unwrap();
+    let b = page_boxes(&doc).unwrap();
+    assert_eq!((b[0][1], b[1][1]), ([10.0, 290.0, 290.0, 390.0], [10.0, 10.0, 290.0, 290.0]));
+    // The trim box written on each part is cut to it (not only clipped when read).
+    let raw = |k: usize| -> Vec<f64> {
+        let d = doc.get(pages(&doc).unwrap()[k].obj).as_dict().cloned().unwrap();
+        d.get(b"TrimBox").and_then(Object::as_array).unwrap().iter().filter_map(Object::as_f64).collect()
+    };
+    assert_eq!((raw(0), raw(1)), (vec![10.0, 290.0, 290.0, 390.0], vec![10.0, 10.0, 290.0, 290.0]), "trim cut to each part");
+    // UserUnit 2: the page shows 600 pt wide, so 300 pt is its middle.
+    let mut doc = knife_doc(&["/MediaBox [0 0 300 400] /UserUnit 2"], &[]);
+    cut_pages(&mut doc, &[cut(0, Axis::Vertical, &[300.0])], false).unwrap();
+    assert_eq!(media_crop(&doc)[0].1, [0.0, 0.0, 150.0, 400.0]);
+    let mut doc = knife_doc(&["/MediaBox [0 0 400 300]"], &[]);
+    cut_pages(&mut doc, &[cut(0, Axis::Vertical, &[200.0])], true).unwrap();
+    assert_eq!(media_crop(&doc)[0].1, [200.0, 0.0, 400.0, 300.0], "the right half first");
+}
+
+/// Several pages at once: the page numbers given are the ones before the cut, and the outcome
+/// says where each page's parts went.
+#[test]
+fn several_pages_are_cut_at_once() {
+    let mut doc = knife_doc(&["/MediaBox [0 0 400 300]", "/MediaBox [0 0 400 300]", "/MediaBox [0 0 400 300]"], &[]);
+    let out = cut_pages(&mut doc, &[cut(2, Axis::Vertical, &[100.0, 300.0]), cut(0, Axis::Vertical, &[200.0])], false).unwrap();
+    assert_eq!(out.parts, [(0, vec![0, 1]), (2, vec![3, 4, 5])]);
+    assert_eq!(labels(&doc), ["Page 1", "Page 1", "Page 2", "Page 3", "Page 3", "Page 3"]);
+    assert_eq!(media_crop(&doc)[4].1, [100.0, 0.0, 300.0, 300.0]);
+}
+
+/// Cuts that do not fit are refused before anything changes.
+#[test]
+fn cuts_that_do_not_fit_are_refused() {
+    let doc = knife_doc(&["/MediaBox [0 0 400 300]"], &[]);
+    let refused = |cuts: &[Cut]| {
+        let mut d = doc.clone();
+        let r = cut_pages(&mut d, cuts, false);
+        assert_eq!(page_count(&d).unwrap(), 1, "{cuts:?}");
+        r.is_err()
+    };
+    assert!(refused(&[]));
+    assert!(refused(&[cut(1, Axis::Vertical, &[200.0])]), "no page 2");
+    assert!(refused(&[cut(0, Axis::Vertical, &[])]));
+    assert!(refused(&[cut(0, Axis::Vertical, &[f64::NAN])]));
+    assert!(refused(&[cut(0, Axis::Vertical, &[400.0])]), "on the edge");
+    assert!(refused(&[cut(0, Axis::Vertical, &[0.5])]), "too close to the edge");
+    assert!(refused(&[cut(0, Axis::Horizontal, &[350.0])]), "past the bottom");
+    assert!(refused(&[cut(0, Axis::Vertical, &[100.0, 100.5])]), "too close to each other");
+    assert!(refused(&[cut(0, Axis::Vertical, &(1..=MAX_PARTS).map(|k| k as f64 * 20.0).collect::<Vec<_>>())]), "too many parts");
+    assert!(refused(&[cut(0, Axis::Vertical, &[100.0]), cut(0, Axis::Vertical, &[300.0])]), "the same page twice");
+}
+
+/// Destinations that open a point on the right half go to the right part once the page is cut:
+/// a bookmark's, a link's GoTo action's, a legacy named destination's and a name tree's. One on
+/// the left half, a `/Fit` with no point, and an `/OpenAction /FitH` (its height is in both halves
+/// of an upright cut) stay on the first part. (Fails with the retargeting off.)
+#[test]
+fn destinations_go_to_the_part_holding_their_point() {
+    let mut doc = knife_doc(
+        &["/MediaBox [0 0 400 300] /Annots [5 0 R]"],
+        &[
+            "<< /Type /Annot /Subtype /Link /Rect [10 10 20 20] /A << /S /GoTo /D [3 0 R /FitR 250 100 350 150] >> >>",
+            "<< /Type /Outlines /First 7 0 R /Last 9 0 R /Count 3 >>",
+            "<< /Title (Right) /Parent 6 0 R /Next 8 0 R /Dest [3 0 R /XYZ 300 200 0] >>",
+            "<< /Title (Left) /Parent 6 0 R /Prev 7 0 R /Next 9 0 R /Dest [3 0 R /XYZ 50 200 0] >>",
+            "<< /Title (Whole) /Parent 6 0 R /Prev 8 0 R /Dest [3 0 R /Fit] >>",
+            "<< /Names [(r2) [3 0 R /FitV 390]] >>",
+        ],
+    );
+    let root = doc.root().unwrap();
+    doc.update_dict(root, |c| {
+        c.set(b"Outlines".to_vec(), Object::Ref(ObjRef::new(6, 0)));
+        let mut dests = pdfcraft_cos::Dict::new();
+        dests.set(
+            b"right".to_vec(),
+            Object::Array(vec![Object::Ref(ObjRef::new(3, 0)), Object::name("XYZ"), Object::Real(350.0), Object::Null, Object::Null]),
+        );
+        c.set(b"Dests".to_vec(), Object::Dict(dests));
+        let mut names = pdfcraft_cos::Dict::new();
+        names.set(b"Dests".to_vec(), Object::Ref(ObjRef::new(10, 0)));
+        c.set(b"Names".to_vec(), Object::Dict(names));
+        c.set(b"OpenAction".to_vec(), Object::Array(vec![Object::Ref(ObjRef::new(3, 0)), Object::name("FitH"), Object::Real(100.0)]));
+    })
+    .unwrap();
+    cut_pages(&mut doc, &[cut(0, Axis::Vertical, &[200.0])], false).unwrap();
+    let all = pages(&doc).unwrap();
+    let (left, right) = (all[0].obj, all[1].obj);
+    let first = |o: &Object| doc.resolve(o).as_array().and_then(|a| a.first()).and_then(Object::as_ref);
+    let bookmark = |n: u32| doc.get(ObjRef::new(n, 0)).as_dict().and_then(|d| d.get(b"Dest").cloned()).unwrap();
+    assert_eq!(first(&bookmark(7)), Some(right), "the right bookmark");
+    assert_eq!(first(&bookmark(8)), Some(left), "the left bookmark");
+    assert_eq!(first(&bookmark(9)), Some(left), "a /Fit stays on the first part");
+    let link = doc.get(ObjRef::new(5, 0)).as_dict().cloned().unwrap();
+    let action = doc.resolve(link.get(b"A").unwrap()).as_dict().cloned().unwrap();
+    assert_eq!(first(action.get(b"D").unwrap()), Some(right), "the link's GoTo");
+    let catalog = doc.get(root).as_dict().cloned().unwrap();
+    let dests = doc.resolve(catalog.get(b"Dests").unwrap()).as_dict().cloned().unwrap();
+    assert_eq!(first(dests.get(b"right").unwrap()), Some(right), "the legacy named destination");
+    let tree = doc.get(ObjRef::new(10, 0)).as_dict().cloned().unwrap();
+    let pairs = doc.resolve(tree.get(b"Names").unwrap()).as_array().cloned().unwrap();
+    assert_eq!(first(&pairs[1]), Some(right), "the name tree's destination");
+    assert_eq!(first(catalog.get(b"OpenAction").unwrap()), Some(left), "a /FitH lies in both halves");
+    let doc = save_and_reopen(&doc);
+    assert_eq!(page_count(&doc).unwrap(), 2);
+}
+
+/// An annotation crossing the cut shows on both halves: the half holding its centre keeps it,
+/// the other gets a copy aimed at its own page, with a copy of its pop-up. A field's widget
+/// crossing the cut is not copied: the field keeps one widget. (Fails with the copies off.)
+#[test]
+fn an_annotation_crossing_the_cut_is_on_both_parts() {
+    let mut doc = knife_doc(
+        &["/MediaBox [0 0 400 300] /Annots [5 0 R 6 0 R 7 0 R]"],
+        &[
+            "<< /Type /Annot /Subtype /Square /Rect [150 100 230 140] /P 3 0 R /Popup 6 0 R /Contents (over the gutter) >>",
+            "<< /Type /Annot /Subtype /Popup /Rect [10 10 150 100] /Parent 5 0 R /P 3 0 R >>",
+            "<< /Type /Annot /Subtype /Widget /FT /Tx /T (name) /Rect [150 200 250 220] /P 3 0 R >>",
+            "<< /Fields [7 0 R] >>",
+        ],
+    );
+    doc.update_dict(doc.root().unwrap(), |d| d.set(b"AcroForm".to_vec(), Object::Ref(ObjRef::new(8, 0)))).unwrap();
+    cut_pages(&mut doc, &[cut(0, Axis::Vertical, &[200.0])], false).unwrap();
+    let (left, right) = (annots_on(&doc, 0), annots_on(&doc, 1));
+    let count = |list: &[(String, Option<usize>)], s: &str| list.iter().filter(|(t, _)| t == s).count();
+    assert_eq!((count(&left, "Square"), count(&right, "Square")), (1, 1), "{left:?} {right:?}");
+    assert_eq!((count(&left, "Popup"), count(&right, "Popup")), (1, 1), "each square has its pop-up");
+    assert!(right.iter().all(|(_, p)| *p == Some(1)), "the copies belong to the right half: {right:?}");
+    assert_eq!(count(&left, "Widget") + count(&right, "Widget"), 1, "the widget is not copied");
+    // The right half's pop-up opens from the right half's square.
+    let all = pages(&doc).unwrap();
+    let right_annots = doc.get(all[1].obj).as_dict().and_then(|d| d.get(b"Annots").cloned()).unwrap();
+    let list = doc.resolve(&right_annots).as_array().cloned().unwrap();
+    let square =
+        list.iter().filter_map(Object::as_ref).find(|r| doc.get(*r).as_dict().is_some_and(|d| d.name(b"Subtype") == Some(b"Square"))).unwrap();
+    let popup = doc.get(square).as_dict().and_then(|d| d.reference(b"Popup")).unwrap();
+    assert_eq!(doc.get(popup).as_dict().and_then(|d| d.reference(b"Parent")), Some(square));
+    let doc = save_and_reopen(&doc);
+    assert_eq!(page_count(&doc).unwrap(), 2);
+}
+
+proptest::proptest! {
+    #![proptest_config(proptest::prelude::ProptestConfig::with_cases(64))]
+    /// Any cuts are a result or an error, never a panic, and a result has as many pages as parts.
+    #[test]
+    fn arbitrary_cuts_never_panic(
+        page in 0usize..3,
+        vertical in proptest::prelude::any::<bool>(),
+        at in proptest::collection::vec(proptest::prelude::any::<f64>(), 0..20),
+        rot in 0i64..4,
+        rtl in proptest::prelude::any::<bool>(),
+    ) {
+        let mut doc = knife_doc(&[&format!("/MediaBox [0 0 400 300] /Rotate {}", rot * 90), "/MediaBox [0 0 50 50]"], &[]);
+        let axis = if vertical { Axis::Vertical } else { Axis::Horizontal };
+        if let Ok(out) = cut_pages(&mut doc, &[cut(page, axis, &at)], rtl) {
+            let parts: usize = out.parts.iter().map(|(_, p)| p.len()).sum();
+            proptest::prop_assert_eq!(page_count(&doc).unwrap(), 2 + parts - 1);
+        }
+    }
+}

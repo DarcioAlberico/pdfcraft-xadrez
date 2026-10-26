@@ -864,3 +864,28 @@ fn the_list_renames_site_date_and_round_and_refuses_a_date_pgn_cannot_read() {
     assert_eq!(field(&h, "Round").value().as_deref(), Some("6"));
     assert_eq!(field(&h, "Date").value().as_deref(), Some("2025.01.18"));
 }
+
+/// Plan HC10: the game's header says only what its tags know (a date as far as it is known, no
+/// `?`), a click on it opens Game details, and the result follows the main line. A game with no
+/// tags has no header.
+#[test]
+fn the_games_header_shows_what_is_known_and_opens_its_details() {
+    let mut h = harness();
+    h.state_mut().chess.board_mut().play_uci_line(&["e2e4".into()]);
+    h.run_steps(2);
+    assert!(h.query_by_label("Result: *").is_some());
+    assert_eq!(h.query_all_by_label_contains("Game details: ").count(), 0, "no header without tags");
+    let pgn = "[Event \"Candidates\"]\n[Site \"Curaçao\"]\n[Date \"1962.??.??\"]\n[Round \"?\"]\n[White \"Tal\"]\n[Black \"Fischer\"]\n[WhiteElo \"?\"]\n[BlackElo \"2785\"]\n[Result \"0-1\"]\n\n1. e4 c5 0-1\n";
+    assert_eq!(h.state_mut().import_chess_pgn("g.pgn", pgn.as_bytes()), 1);
+    h.run_steps(3);
+    let header = "Game details: Tal – Fischer (2785). Candidates · Curaçao · 1962";
+    assert!(h.query_by_label(header).is_some(), "the header names what is known");
+    assert!(h.query_by_label("Result: 0-1").is_some());
+    assert_eq!(h.query_all_by_label("Site").count(), 0, "Game details starts closed");
+    h.get_by_label(header).click();
+    h.run_steps(4);
+    assert!(h.query_all_by_label("Site").count() > 0, "a click on the header opens Game details");
+    if let Ok(dir) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
+        h.render().unwrap().save(std::path::Path::new(&dir).join("game-header.png")).unwrap();
+    }
+}

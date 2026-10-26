@@ -140,7 +140,7 @@ fn apply(game: &mut Game, op: &Value) -> std::result::Result<Map<String, Value>,
     let obj = op.as_object().ok_or("an operation is an object")?;
     let name = obj.get("op").and_then(Value::as_str).ok_or("op is missing")?;
     // Stepping through the game starts from the move shown unless `at` names another.
-    let steps = matches!(name, "back" | "forward" | "choose");
+    let steps = matches!(name, "back" | "forward" | "choose" | "next_variation" | "prev_variation");
     let at = match obj.get("at").and_then(Value::as_str) {
         Some(at_text) => resolve(game, at_text)?,
         None if steps => game.current(),
@@ -226,6 +226,11 @@ fn apply(game: &mut Game, op: &Value) -> std::result::Result<Map<String, Value>,
                 moved += 1;
             }
             entry.insert("moved".into(), json!(moved));
+        }
+        "next_variation" | "prev_variation" => {
+            let to = if name == "next_variation" { game.next_variation(at) } else { game.previous_variation(at) };
+            entry.insert("moved".into(), json!(to.is_some()));
+            game.go_to_node(to.unwrap_or(at));
         }
         "choose" => {
             let index = obj.get("index").and_then(Value::as_u64).ok_or("index is the reply to step into (0: the line, 1: its first variation…)")?;

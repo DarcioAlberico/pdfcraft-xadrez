@@ -197,6 +197,12 @@ fn tool_detail(app: &mut PdfCraftApp, ui: &mut egui::Ui, t: &Tokens, g: &'static
             }
             ui.add_space(6.0);
         }
+        if app.quick_tool == crate::QuickTool::Knife {
+            crate::knife::panel(app, ui);
+        }
+        if app.quick_tool == crate::QuickTool::Erase {
+            crate::erase_ui::panel(app, ui);
+        }
         format_section(app, ui, t);
     }
     let mut run = None;

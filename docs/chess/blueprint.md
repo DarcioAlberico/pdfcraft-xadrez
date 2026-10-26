@@ -127,6 +127,8 @@
 
 **D4 — Peças e fontes: usar as atuais (Merida, cburnett) por enquanto.** ✅
 
+> **Revista em 2026-10-25 por D13** (`docs/chess/plano-pecas-tabuleiros-lances.md` §4): conjuntos de licença aberta permitida por `AGENTS.md` §1.2 (chessnut, rhosgfx, fantasy, spatial, celtic, kiwen-suwi, firi, totoy, papercut, shapes) podem vir junto do programa, com `ATTRIBUTION.toml`. Merida e cburnett continuam só da máquina do usuário.
+
 *Como entram sem contaminar a licença:*
 - Merida é proprietária e cburnett é GPL, portanto **nenhuma das duas é commitada ou embutida no binário**.
 - O app as carrega **em tempo de execução, da máquina do usuário**, como o tronco já faz com `CVOFF_MERIDA_FONT` e o pdfcraft com `system_fonts.rs`.

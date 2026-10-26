@@ -47,6 +47,29 @@ fn ocr_options(a: &Args) -> Result<OcrOptions<'static>> {
 
 use crate::{Args, Automation, Result, ToolError, comments, failed};
 
+/// What the move list shows above and after the moves (plan HC10): each tag null when it says
+/// nothing (PGN's `?`, a date as far as it is known), and the result, `*` while the game goes on.
+fn header_json(game: &pdfcraft_engine::chess::pdfcraft_chess::game::Game) -> Value {
+    let h = game.header();
+    json!({
+        "white": h.white,
+        "white_elo": h.white_elo,
+        "black": h.black,
+        "black_elo": h.black_elo,
+        "event": h.event,
+        "site": h.site,
+        "date": h.date,
+        "round": h.round,
+        "result": game.result(),
+    })
+}
+
+/// What `pieces` takes, for the error that refuses anything else.
+fn pieces_expected() -> String {
+    let ids: Vec<&str> = pieces::bundled::SETS.iter().map(|s| s.id).collect();
+    format!("\"installed\", \"geometric\" or a set PdfCraft ships ({})", ids.join(", "))
+}
+
 /// Two decimals: enough for points, and stable in test output.
 fn round(v: f32) -> f64 {
     (f64::from(v) * 100.0).round() / 100.0
@@ -187,8 +210,35 @@ fn page_rect(r: [f64; 4]) -> PageRect {
 }
 
 /// `light`, `dark`, `border`, `border_color`, `coordinates` and `flipped`, over the default style.
+/// The default style in the board theme `board_theme` names (plan HC7): its squares' colours, and
+/// a book's hatched dark squares. Brown, the boards' colours, when not given.
+fn theme_style(a: &Args) -> Result<BoardStyle> {
+    use pdfcraft_engine::chess::pdfcraft_chess::{texture::Texture, theme};
+    let Some(id) = a.opt_str("board_theme")? else { return Ok(BoardStyle::default()) };
+    let t = theme::by_id(id).ok_or_else(|| {
+        let ids: Vec<&str> = theme::THEMES.iter().map(|t| t.id).collect();
+        Args::wrong("board_theme", &ids.join(", "))
+    })?;
+    Ok(BoardStyle { light: t.light, dark: t.dark, hatched: t.texture == Some(Texture::Hatched), ..BoardStyle::default() })
+}
+
+/// The arrows and rings `drawings` names, as PGN comment commands (`[%cal Gb5c7][%csl Re4]`).
+fn drawings_arg(a: &Args) -> Result<Vec<pdfcraft_engine::chess::pdfcraft_chess::game::Drawing>> {
+    use pdfcraft_engine::chess::pdfcraft_chess::game::split_drawings;
+    let Some(text) = a.opt_str("drawings")? else { return Ok(Vec::new()) };
+    let mut drawings = Vec::new();
+    let rest = split_drawings(text, &mut drawings);
+    if !rest.trim().is_empty() {
+        return Err(Args::wrong(
+            "drawings",
+            &format!("[%cal …] and [%csl …] commands only, with G, R, Y or B and square names; not {:?}", rest.trim()),
+        ));
+    }
+    Ok(drawings)
+}
+
 fn board_style(a: &Args) -> Result<BoardStyle> {
-    let mut style = BoardStyle::default();
+    let mut style = theme_style(a)?;
     let colour = |key: &str| -> Result<Option<Rgb>> {
         Ok(a.opt_str(key)?.map(comments::parse_color).transpose()?.map(|c| {
             let [r, g, b] = c.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8);
@@ -327,11 +377,13 @@ impl Automation {
         let (pieces, source, error) = match a.opt_str("pieces")? {
             None | Some("installed") => pieces::find(),
             Some("geometric") => (PieceSet::geometric(), PieceSource::Geometric, None),
-            Some(_) => return Err(Args::wrong("pieces", "\"installed\" or \"geometric\"")),
+            Some(id) => pieces::from_bundled(pieces::bundled::by_id(id).ok_or_else(|| Args::wrong("pieces", &pieces_expected()))?),
         };
         let mut settings = self.chess_settings(a)?;
         settings.models_dir = None;
-        let replacement = DiagramReplacement { page, index, generation, placement, style, pieces: Arc::new(pieces), scan: settings };
+        let drawings = drawings_arg(a)?;
+        let described = pdfcraft_engine::chess::pdfcraft_chess::draw::describe(&drawings);
+        let replacement = DiagramReplacement { page, index, generation, placement, style, pieces: Arc::new(pieces), scan: settings, drawings };
         let id = self.doc(a)?.id;
         let plan = self.session.chess_replacement(id, &replacement).map_err(failed)?;
         let geometry = self.session.chess_scan(id, &[page], &replacement.scan, false).ok().and_then(|p| p.first().and_then(|p| p.geometry));
@@ -345,6 +397,7 @@ impl Automation {
         };
         let fields = json!({
             "dry_run": dry_run,
+            "drawings": described,
             "page": page + 1,
             "index": index + 1,
             "source": source_name(plan.source),
@@ -361,6 +414,7 @@ impl Automation {
             "pieces": match source {
                 PieceSource::Font { family, .. } => json!({ "source": "font", "family": family, "error": Value::Null }),
                 PieceSource::Images { dir } => json!({ "source": "images", "family": dir.to_string_lossy(), "error": Value::Null }),
+                PieceSource::Bundled { id } => json!({ "source": "bundled", "family": id, "error": Value::Null }),
                 PieceSource::Geometric => json!({ "source": "geometric", "family": Value::Null, "error": error.map(|e| e.to_string()) }),
             },
             "notes": plan.notes,
@@ -530,7 +584,7 @@ impl Automation {
         let (pieces, source, error) = match a.opt_str("pieces")? {
             None | Some("installed") => pieces::find(),
             Some("geometric") => (PieceSet::geometric(), PieceSource::Geometric, None),
-            Some(_) => return Err(Args::wrong("pieces", "\"installed\" or \"geometric\"")),
+            Some(id) => pieces::from_bundled(pieces::bundled::by_id(id).ok_or_else(|| Args::wrong("pieces", &pieces_expected()))?),
         };
         let link_text = a.opt_str("link_text")?.unwrap_or(chess::links::DEFAULT_TEXT).to_owned();
         if link_text.trim().is_empty() || link_text.chars().count() > 80 {
@@ -582,6 +636,7 @@ impl Automation {
             diagram_px,
             image_dir: image_dir.clone(),
             book,
+            style: theme_style(a)?,
         };
         let made = self.session.chess_export(id, format, &options).map_err(failed)?;
         if let Some(dir) = &folder
@@ -613,6 +668,7 @@ impl Automation {
             "pieces": match source {
                 PieceSource::Font { family, .. } => json!({ "source": "font", "family": family, "error": Value::Null }),
                 PieceSource::Images { dir } => json!({ "source": "images", "family": dir.to_string_lossy(), "error": Value::Null }),
+                PieceSource::Bundled { id } => json!({ "source": "bundled", "family": id, "error": Value::Null }),
                 PieceSource::Geometric => json!({ "source": "geometric", "family": Value::Null, "error": error.map(|e| e.to_string()) }),
             },
             "needs_ocr": read.needs_ocr.iter().map(|(p, why)| json!({ "page": p + 1, "reason": why })).collect::<Vec<_>>(),
@@ -697,7 +753,72 @@ impl Automation {
             "movetext": game.movetext(),
             "pgn": game.pgn(),
             "stopped": stopped,
+            "header": header_json(&game),
         }))
+    }
+
+    /// The piece sets that can be chosen (Preferences ▸ Chess pieces, plan HC2).
+    pub(crate) fn chess_pieces(&self) -> Result<Value> {
+        use pieces::choice::{self, CandidateKind, PieceChoice};
+        let sets: Vec<Value> = choice::candidates()
+            .into_iter()
+            .map(|c| {
+                let kind = match c.kind {
+                    CandidateKind::Auto => "auto",
+                    CandidateKind::Shipped => "shipped",
+                    CandidateKind::Font => "font",
+                    CandidateKind::Folder => "folder",
+                    CandidateKind::Geometric => "geometric",
+                };
+                // What the chess tools' `pieces` takes for this set, when they take it.
+                let argument = match &c.choice {
+                    PieceChoice::Auto => Some("installed".to_owned()),
+                    PieceChoice::Geometric => Some("geometric".to_owned()),
+                    PieceChoice::Bundled(id) => Some(id.clone()),
+                    PieceChoice::Font(_) | PieceChoice::Folder(_) => None,
+                };
+                json!({
+                    "token": c.choice.token(),
+                    "kind": kind,
+                    "name": c.name,
+                    "author": c.author,
+                    "licence": c.licence,
+                    "path": c.path.map(|p| p.to_string_lossy().into_owned()),
+                    "missing": c.missing,
+                    "pieces": argument,
+                })
+            })
+            .collect();
+        Ok(json!({ "sets": sets, "environment": choice::environment_overrides() }))
+    }
+
+    /// Import piece sets from a folder or a saved web page into a pieces folder (plan HC3).
+    pub(crate) fn chess_pieces_import(&self, a: &Args) -> Result<Value> {
+        use pieces::import::{self, ImportError};
+        let from = self.resolve(a.str("from")?, false)?;
+        let into = match a.opt_str("into")? {
+            Some(p) => self.resolve(p, true)?,
+            None if self.root.is_some() => return Err(failed("into is needed when --root is set")),
+            None => pieces::pieces_folder().ok_or_else(|| failed("no pieces folder beside the executable"))?,
+        };
+        let replace = a.opt_bool("replace")?.unwrap_or(false);
+        match import::import(&from, &into, replace) {
+            Ok(sets) => {
+                let sets: Vec<Value> = sets
+                    .into_iter()
+                    .map(
+                        |s| json!({ "name": s.name, "folder": s.dir.to_string_lossy(), "token": pieces::choice::PieceChoice::Folder(s.dir).token() }),
+                    )
+                    .collect();
+                Ok(json!({ "imported": sets, "licence": "unknown: for personal use only" }))
+            }
+            Err(ImportError::Exists(dirs)) => Ok(json!({
+                "imported": [],
+                "exists": dirs.iter().map(|d| d.to_string_lossy().into_owned()).collect::<Vec<_>>(),
+                "refused": "a set of that name is already there; pass replace to replace it",
+            })),
+            Err(e) => Err(failed(e.to_string())),
+        }
     }
 
     pub(crate) fn chess_status(&self, a: &Args) -> Result<Value> {
@@ -709,6 +830,7 @@ impl Automation {
                 json!({ "source": "font", "family": family, "path": path.map(|p| p.to_string_lossy().into_owned()) })
             }
             PieceSource::Images { dir } => json!({ "source": "images", "family": Value::Null, "path": dir.to_string_lossy() }),
+            PieceSource::Bundled { id } => json!({ "source": "bundled", "family": id, "path": Value::Null }),
             PieceSource::Geometric => json!({ "source": "geometric", "family": Value::Null, "path": Value::Null }),
         };
         if let Some(o) = piece_set.as_object_mut() {

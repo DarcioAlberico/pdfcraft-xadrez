@@ -40,10 +40,13 @@ mod chess_collection;
 mod chess_correct;
 mod chess_deleted;
 mod chess_editor;
+mod chess_figurines;
 mod chess_history;
 mod chess_models;
 mod chess_ocr_area;
+mod chess_pieces_ui;
 mod chess_samples;
+mod chess_theme;
 pub use chess_ocr_area::AreaQuery;
 mod chess_source;
 mod chess_study_ui;
@@ -73,8 +76,10 @@ mod create_ui;
 mod credits;
 mod crop;
 mod drag_pointer;
+pub mod erase_ui;
 mod export_ui;
 mod js_ui;
+pub mod knife;
 mod marks_ui;
 mod measure_ui;
 mod ocr_ui;
@@ -252,6 +257,11 @@ pub enum QuickTool {
     Field(prepare::FieldTool),
     /// Redact text and images (drag across text or draw a box).
     Redact,
+    /// Edit a PDF ▸ Eraser: erase the page's content under a text selection or a box (drag across
+    /// text, or draw a box), as [`PdfCraftApp::erase_prefs`] say.
+    Erase,
+    /// The Knife: place cuts across pages, then cut them into parts ([`knife`]).
+    Knife,
     /// Edit a PDF ▸ Add content ▸ Text.
     AddText,
     /// Edit a PDF ▸ Edit text: click a line of existing text to edit it.
@@ -823,6 +833,11 @@ pub struct PdfCraftApp {
     pub field_props: Option<prepare::FieldDraft>,
     pub bulk_field_props: Option<bulk_fields::Draft>,
     pub redact_prefs: RedactPrefs,
+    /// Eraser: what it erases (text, images, vectors, comments), the glyph rule (by centre, as a
+    /// selection shows), box or brush, and the brush's size. Kept between runs.
+    pub erase_prefs: erase_ui::ErasePrefs,
+    /// The Knife's choices (axis, pages, order), for this run.
+    pub knife_prefs: knife::KnifePrefs,
     /// The Redaction Tool Properties kept for the next run (what the last OK with "Make
     /// properties default" ticked left), and the values before the dialog opened, for Cancel.
     pub redact_defaults: RedactPrefs,
@@ -1103,6 +1118,8 @@ impl PdfCraftApp {
             field_props: None,
             bulk_field_props: None,
             redact_prefs: RedactPrefs::default(),
+            erase_prefs: erase_ui::ErasePrefs::default(),
+            knife_prefs: knife::KnifePrefs::default(),
             redact_defaults: RedactPrefs::default(),
             redact_before: None,
             redact_pages_draft: RedactPagesDraft::default(),
@@ -2341,6 +2358,8 @@ impl PdfCraftApp {
         });
         // Set apart: one more key inside the macro above passes serde_json's recursion limit.
         v["redact_prefs"] = self.redact_defaults.to_json();
+        v["erase_prefs"] = self.erase_prefs.to_json();
+        v["knife_prefs"] = self.knife_prefs.to_json();
         // Set outside json! above, which is at serde_json's macro recursion limit.
         v["hide_empty_highlight_hover"] = serde_json::Value::Bool(self.comment_prefs.hide_empty_highlight_hover);
         // The chess board in its own window: {detached, size, position}.
@@ -2352,6 +2371,16 @@ impl PdfCraftApp {
         v["chess_engine"] = self.chess.study.to_json();
         // The chess models folder chosen (U4; the desktop).
         v["chess_models"] = self.chess.models.to_json();
+        // The piece sets chosen in Preferences (HC2).
+        v["chess_pieces_board"] = serde_json::Value::String(self.chess.board_piece_choice.token());
+        v["chess_pieces_diagrams"] = serde_json::Value::String(self.chess.diagram_piece_choice.token());
+        // The boards' theme (HC4).
+        v["chess_board_theme"] = serde_json::Value::String(self.board_theme().id.to_owned());
+        v["chess_board_look"] = self.chess.board_look.to_json();
+        v["chess_move_pieces"] = serde_json::Value::String(self.chess.move_pieces.token().to_owned());
+        v["chess_comment_focus"] = serde_json::Value::Bool(self.chess.comment_focus);
+        v["chess_move_list"] = self.chess.list_look.to_json();
+        v["chess_move_preview"] = serde_json::Value::Bool(!self.chess.no_move_preview);
         v.to_string()
     }
 
@@ -2392,6 +2421,31 @@ impl PdfCraftApp {
         if let Some(on) = v["reload_changed_files"].as_bool() {
             self.reload_changed_files = on;
         }
+        use pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::PieceChoice;
+        if let Some(choice) = v["chess_pieces_board"].as_str().and_then(PieceChoice::from_token) {
+            self.chess.board_piece_choice = choice;
+        }
+        if let Some(choice) = v["chess_pieces_diagrams"].as_str().and_then(PieceChoice::from_token) {
+            self.chess.diagram_piece_choice = choice;
+        }
+        if let Some(theme) = v["chess_board_theme"].as_str().and_then(pdfcraft_engine::chess::pdfcraft_chess::theme::by_id) {
+            self.set_board_theme(theme);
+        }
+        if let Some(mode) = v["chess_move_pieces"].as_str().and_then(chess_figurines::MovePieces::from_token) {
+            self.chess.move_pieces = mode;
+        }
+        if let Some(on) = v["chess_comment_focus"].as_bool() {
+            self.chess.comment_focus = on;
+        }
+        if let Some(on) = v["chess_move_preview"].as_bool() {
+            self.chess.no_move_preview = !on;
+        }
+        if v["chess_move_list"].is_object() {
+            self.chess.list_look = chess_figurines::ListLook::from_json(&v["chess_move_list"]);
+        }
+        if v["chess_board_look"].is_object() {
+            self.set_board_look(chess_theme::BoardLook::from_json(&v["chess_board_look"]));
+        }
         self.pinned.restore(&v["pinned_folders"]);
         if let Ok(preference) = serde_json::from_value::<ThemePreference>(v["theme"].clone()) {
             self.set_theme_preference(preference);
@@ -2431,6 +2485,12 @@ impl PdfCraftApp {
         }
         if let Some(size) = v["fill_text_size"].as_f64().and_then(fill_sign::valid_text_size) {
             self.fill_text_size = size;
+        }
+        if let Some(prefs) = erase_ui::ErasePrefs::from_json(&v["erase_prefs"]) {
+            self.erase_prefs = prefs;
+        }
+        if let Some(prefs) = knife::KnifePrefs::from_json(&v["knife_prefs"]) {
+            self.knife_prefs = prefs;
         }
         if let Some(prefs) = RedactPrefs::from_json(&v["redact_prefs"]) {
             self.redact_prefs = prefs.clone();
@@ -2542,6 +2602,38 @@ impl PdfCraftApp {
                     format!("language must be one of {}", codes.join(", "))
                 })?;
                 self.language = language.to_string();
+            }
+            ("board-theme", _) => {
+                let theme = pdfcraft_engine::chess::pdfcraft_chess::theme::by_id(value).ok_or_else(|| {
+                    let ids: Vec<&str> = pdfcraft_engine::chess::pdfcraft_chess::theme::THEMES.iter().map(|t| t.id).collect();
+                    format!("board-theme must be one of {}", ids.join(", "))
+                })?;
+                self.set_board_theme(theme);
+            }
+            (part @ ("move-list-layout" | "move-list-size"), _) => {
+                self.chess.list_look.set(part.trim_start_matches("move-list-"), value)?;
+            }
+            ("move-preview", _) => {
+                self.chess.no_move_preview = match value {
+                    "on" => false,
+                    "off" => true,
+                    _ => return Err("move-preview must be on or off".into()),
+                };
+            }
+            ("comment-focus", _) => {
+                self.chess.comment_focus = match value {
+                    "on" => true,
+                    "off" => false,
+                    _ => return Err("comment-focus must be on or off".into()),
+                };
+            }
+            ("move-pieces", _) => {
+                self.chess.move_pieces = chess_figurines::MovePieces::from_token(value).ok_or("move-pieces must be figurines, letters or english")?;
+            }
+            (part @ ("board-coordinates" | "board-frame" | "board-squares" | "board-turn-dot"), _) => {
+                let mut look = self.chess.board_look;
+                look.set(part.trim_start_matches("board-"), value)?;
+                self.set_board_look(look);
             }
             ("theme", _) => {
                 let preference = match value {
@@ -2682,6 +2774,11 @@ impl PdfCraftApp {
                 "right" => true,
                 _ => return Err("tools-side must be left or right".into()),
             })?,
+            ("moves-side", _) => self.docking.set_moves_side(match value {
+                "left" => true,
+                "right" => false,
+                _ => return Err("moves-side must be left or right".into()),
+            })?,
             ("organize", Some(v)) => {
                 if value == "off" {
                     v.organize = false;
@@ -2742,6 +2839,8 @@ impl PdfCraftApp {
                     "crop" => QuickTool::Crop,
                     "enhance-camera" => QuickTool::EnhanceCamera,
                     "redact" => QuickTool::Redact,
+                    "erase" => QuickTool::Erase,
+                    "knife" => QuickTool::Knife,
                     "add-text" => QuickTool::AddText,
                     "edit-text" => QuickTool::EditText,
                     "link" => QuickTool::Link,
@@ -2991,6 +3090,15 @@ impl PdfCraftApp {
         if !free || !plain {
             return;
         }
+        // The Knife: Enter cuts, Esc lets go of the cuts placed.
+        if self.quick_tool == QuickTool::Knife {
+            if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, Key::Enter)) {
+                self.knife_cut();
+            }
+            if ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, Key::Escape)) {
+                self.views[i].knife.clear();
+            }
+        }
         if ctx.input(|input| input.key_pressed(Key::V)) {
             self.quick_tool = QuickTool::Select;
             self.space_hand = None;
@@ -3040,6 +3148,15 @@ impl eframe::App for PdfCraftApp {
 
     fn logic(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         self.ctx = Some(ctx.clone());
+        chess_theme::set(ctx, self.board_theme());
+        chess_theme::set_look(ctx, self.chess.board_look);
+        // The figurines and the previews are the board's pieces: loaded only when the list
+        // shows either.
+        let wanted = self.chess.move_pieces == chess_figurines::MovePieces::Figurines || !self.chess.no_move_preview;
+        let figurines = wanted.then(|| self.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Board));
+        chess_figurines::set_preview(ctx, !self.chess.no_move_preview);
+        chess_figurines::set(ctx, self.chess.move_pieces, figurines);
+        chess_figurines::set_list_look(ctx, self.chess.list_look);
         #[cfg(not(target_arch = "wasm32"))]
         {
             self.window_state.repair(ctx);
@@ -3220,6 +3337,8 @@ impl eframe::App for PdfCraftApp {
         for view in &mut self.views {
             view.begin_render_frame();
         }
+        // The Move list: what was asked of it, and whether the notation is there this frame.
+        self.settle_move_list();
         // The chess board's own window, every frame while it is out: before full screen returns.
         chess_window::frame(self, &ctx);
         // The window shows the active document's name (or title, if it asks for that).
@@ -3280,6 +3399,17 @@ impl eframe::App for PdfCraftApp {
                     .size_range(260.0..=520.0)
                     .frame(egui::Frame::NONE)
                     .show(ui, |ui| chess_ui::board_panel(self, ui));
+            }
+            // The Move list last, so it stands against the page, on the side it was put.
+            if self.mode == Mode::Read && self.chess.moves_beside {
+                let id = "read_moves_panel";
+                let panel = if self.chess.moves_left { egui::Panel::left(id) } else { egui::Panel::right(id) };
+                panel
+                    .resizable(true)
+                    .default_size(docking::MOVES_WIDTH)
+                    .size_range(180.0..=480.0)
+                    .frame(egui::Frame::NONE)
+                    .show(ui, |ui| chess_ui::moves_panel(self, ui));
             }
         }
         let t = theme::Tokens::get(&ctx);

@@ -22,6 +22,12 @@ pub struct ToolDef {
     pub command: Option<&'static str>,
 }
 
+/// What a tool's `pieces` takes: installed, geometric, or a set PdfCraft ships by its id.
+fn pieces_values() -> Vec<&'static str> {
+    let shipped = pdfcraft_engine::chess::pdfcraft_chessvision::pieces::bundled::SETS.iter().map(|s| s.id);
+    ["installed", "geometric"].into_iter().chain(shipped).collect()
+}
+
 fn doc() -> Value {
     json!({ "type": "integer", "minimum": 1, "description": "Document id from doc_open or doc_list." })
 }
@@ -112,7 +118,9 @@ fn chess_replace_props() -> Value {
             "border_color": color(),
             "coordinates": { "type": "boolean", "description": "Print a-h and 1-8 around the board (default false)." },
             "flipped": { "type": "boolean", "description": "Draw from Black's side (default false)." },
-            "pieces": { "type": "string", "enum": ["installed", "geometric"], "description": "installed (default): PDFCRAFT_CHESS_PIECES (a font or a folder of piece images), a diagram font in the fonts folder beside the executable, an installed Chess Merida or a pieces folder beside the executable, else plain geometric pieces; geometric: always the plain pieces." },
+            "pieces": { "type": "string", "enum": pieces_values(), "description": "installed (default): PDFCRAFT_CHESS_PIECES (a font or a folder of piece images), a diagram font in the fonts folder beside the executable, an installed Chess Merida or a pieces folder beside the executable, else plain geometric pieces; geometric: always the plain pieces; any other value is a set PdfCraft ships, by id (chessnut…)." },
+            "board_theme": board_theme(),
+            "drawings": { "type": "string", "maxLength": 2000, "description": "Arrows and rings to draw over the board, as PGN comment commands: [%cal Gb5c7,Rd1h5] for arrows, [%csl Re4] for rings, colours G, R, Y or B. The result describes them in words." },
             "dry_run": { "type": "boolean", "description": "Only say what would be done; change nothing (default false)." },
         });
         if let Value::Object(extra) = extra {
@@ -123,12 +131,19 @@ fn chess_replace_props() -> Value {
 }
 
 /// The arguments of `chess_export_html` and `chess_export_epub`.
+/// A board theme's id, for the squares of drawn diagrams (plan HC7).
+fn board_theme() -> Value {
+    let ids: Vec<&str> = pdfcraft_engine::chess::pdfcraft_chess::theme::THEMES.iter().map(|t| t.id).collect();
+    json!({ "type": "string", "enum": ids, "description": "The squares' colours of the drawn diagrams, as a board theme (default brown, the boards' colours; book hatches the dark squares, as printed diagrams). Wood, marble and paper draw flat in their colours. light and dark, where taken, override it." })
+}
+
 fn chess_export_schema() -> Value {
     schema(
         {
             let mut props = chess_props(true);
             if let Some(o) = props.as_object_mut() {
                 o.insert("out".into(), json!({ "type": "string", "description": "The file to write." }));
+                o.insert("board_theme".into(), board_theme());
                 o.insert("diagram_px".into(), json!({ "type": "integer", "minimum": 32, "maximum": 2400, "description": "Word and RTF: the diagram images' side in pixels (default 480)." }));
                 o.insert(
                     "title".into(),
@@ -155,7 +170,7 @@ fn chess_export_schema() -> Value {
                     "link_text".into(),
                     json!({ "type": "string", "maxLength": 80, "description": "The links' text (default \"Analyze on lichess\")." }),
                 );
-                o.insert("pieces".into(), json!({ "type": "string", "enum": ["installed", "geometric"], "description": "installed (default): PDFCRAFT_CHESS_PIECES (a font or a folder of piece images), a diagram font in the fonts folder beside the executable, an installed Chess Merida or a pieces folder beside the executable, else geometric; geometric: always the plain pieces." }));
+                o.insert("pieces".into(), json!({ "type": "string", "enum": pieces_values(), "description": "installed (default): PDFCRAFT_CHESS_PIECES (a font or a folder of piece images), a diagram font in the fonts folder beside the executable, an installed Chess Merida or a pieces folder beside the executable, else geometric; geometric: always the plain pieces; any other value is a set PdfCraft ships, by id (chessnut…)." }));
             }
             props
         },
@@ -259,6 +274,12 @@ pub fn tools() -> Vec<ToolDef> {
             }), &["doc", "page"])),
         t("object_list", "List editable objects", "List existing paragraphs, Image/Form artwork and added content once, with source kind/index references, displayed rectangles and document generation. Indexes change when content changes; use generation in object_move to reject stale references.")
             .ro().with(schema(json!({"doc":doc(),"page":{"type":"integer","minimum":1}}), &["doc","page"])),
+        t("object_delete", "Delete objects", "Edit text & images ▸ Delete: remove 1–1000 mixed references from object_list together. A paragraph's lines are taken out of their text with the text around them in place, an image's or Form's drawing is removed, added content goes with its stream. Success is one undo step; a bad or stale reference (generation) refuses the whole deletion.")
+            .destructive()
+            .with(schema(json!({"doc":doc(),"page":{"type":"integer","minimum":1},
+                "objects":{"type":"array","minItems":1,"maxItems":1000,"uniqueItems":true,"items":{
+                    "type":"object","properties":{"kind":{"type":"string","enum":["added","text","image"]},"index":{"type":"integer","minimum":1}},"required":["kind","index"],"additionalProperties":false}},
+                "generation":{"type":"integer","minimum":0}}), &["doc","page","objects"])),
         t("object_move", "Move objects together", "Atomically translate 1–1000 mixed references from object_list by [dx, dy] in displayed points (right/down). Preserves glyph codes, fonts, image data and relative spacing; success is one undo step. Clipping and vertical text are refused. A bad/stale reference refuses the entire move.")
             .with(schema(json!({"doc":doc(),"page":{"type":"integer","minimum":1},
                 "objects":{"type":"array","minItems":1,"maxItems":1000,"uniqueItems":true,"items":{
@@ -546,6 +567,39 @@ pub fn tools() -> Vec<ToolDef> {
         t("redact_clear", "Remove redaction marks", "Remove every redaction mark without applying it. Undoable.")
             .destructive()
             .with(schema(json!({ "doc": doc() }), &["doc"])),
+        t(
+            "page_cut",
+            "Cut pages (Knife)",
+            "Cut pages into parts, each part a page of its own right after the original: axis vertical (side by side, left first) or horizontal (one above the other, top first), at the given places measured on the page as shown (units pt from the left or top edge, the default, or fraction of its width or height), the same on every page in pages. right_to_left: true puts the right (or bottom) part first, for books read that way. Each part shows its part through its media and crop boxes; nothing is erased unless trim_outside: true, which erases each part's text, images and drawings outside it (as page_erase does), so a half's text is its own. Annotations go to the part holding their centre. Returns cut: each page's parts, 1-based. Undoable.",
+        )
+        .with(schema(
+            json!({
+                "doc": doc(),
+                "pages": pages("to cut"),
+                "axis": { "type": "string", "enum": ["vertical", "horizontal"] },
+                "at": { "type": "array", "items": { "type": "number" }, "minItems": 1, "maxItems": 15 },
+                "units": { "type": "string", "enum": ["pt", "fraction"] },
+                "right_to_left": { "type": "boolean" },
+                "trim_outside": { "type": "boolean" },
+            }),
+            &["doc", "pages", "axis", "at"],
+        )),
+        t(
+            "page_erase",
+            "Erase content",
+            "Erase the page's content under rects ([x0, y0, x1, y1] each, points from the top-left of the displayed page): glyphs are cut out of their lines with the rest in place, images and vectors removed or clipped. kinds: any of text, images, vectors (the default, all three) and annotations (comments, links and fields there; off by default). rule: centre (default: a glyph goes when its centre is inside, as a selection takes it) or overlap (any real overlap, as redaction). No box is drawn and nothing is marked. An ordinary edit, undoable and saved incrementally, so an earlier revision still holds the content: use redact_mark and redact_apply to remove it for good. Returns erased: how many glyphs, images and path parts went.",
+        )
+        .destructive()
+        .with(schema(
+            json!({
+                "doc": doc(),
+                "page": { "type": "integer", "minimum": 1 },
+                "rects": { "type": "array", "items": { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 }, "minItems": 1, "maxItems": 4096 },
+                "kinds": { "type": "array", "items": { "type": "string", "enum": ["text", "images", "vectors", "annotations"] }, "minItems": 1 },
+                "rule": { "type": "string", "enum": ["centre", "overlap"] },
+            }),
+            &["doc", "page", "rects"],
+        )),
         t(
             "doc_hidden_info",
             "Find hidden information",
@@ -1312,7 +1366,19 @@ pub fn tools() -> Vec<ToolDef> {
         t("chess_status", "Chess model status", "Whether the user's chess models are available (none ship with PdfCraft): the piece model reads drawn and scanned diagrams, the glyph model chess text. Each is loaded, missing or invalid (with the reason). models_dir looks in that folder instead of PDFCRAFT_MODELS and beside the executable. Also says where the piece set for drawing diagrams comes from (PDFCRAFT_CHESS_PIECES, a pieces folder of images beside the executable, an installed Chess Merida, or plain geometric pieces). Diagrams in chess fonts are read without any model.")
             .ro()
             .with(schema(json!({ "models_dir": models_dir() }), &[])),
-        t("chess_game", "Play through a chess game", "Chess ▸ Board without the interface: set up a game from fen (a position; the standard start without it) or pgn (its first game: tags, moves, variations, comments and glyphs; a FEN tag gives its start), play moves (SAN as books print it, or UCI such as e2e4 and e7e8q) after the end of its main line, then show the position at ply (moves from the start along the main line; default its end). An illegal move stops the moves there and is returned as stopped (the first one, in pgn or moves). Returns the position shown (fen, side_to_move, in_check, outcome: ongoing, checkmate, stalemate or fifty_moves, legal_moves in SAN), start_fen, ply, plies (the main line's length), movetext and the game as pgn. No document is read or changed.")
+        t("chess_pieces", "Chess piece sets", "The piece sets that can be chosen on this machine, as Preferences ▸ Chess pieces lists them: automatic, the sets PdfCraft ships (with author and licence), diagram fonts in the fonts folder beside the executable and an installed Chess Merida, folders of piece images in the pieces folder beside the executable (a folder missing pieces says which), and plain shapes. Each has its preferences token and, where the chess tools take it, the value of their pieces argument. environment says whether PDFCRAFT_CHESS_PIECES is set, which takes precedence over any choice.")
+            .ro()
+            .with(schema(json!({}), &[])),
+        t("chess_pieces_import", "Import chess piece sets", "Preferences ▸ Chess pieces ▸ Import: copies a folder of twelve piece images (wK to bP, SVG or PNG) or the piece sets a saved web page carries inside it (data:image/svg+xml values keyed wK to bP, plain or base64; a page that fetches its pieces from the web has none) into into, one folder per set (default: the pieces folder beside the executable; needed with --root), each with an ORIGIN.txt saying where it came from and that its licence is unknown, for personal use only. Every piece is read first (an SVG may not point at another file) and nothing is written unless all read. A set of that name already there is replaced only with replace; otherwise the reply lists it under exists and imports nothing. Returns imported (name, folder and the preferences token of each).")
+            .with(schema(
+                json!({
+                    "from": path_arg(),
+                    "into": { "type": "string", "description": "The folder to import into (relative to --root when set)." },
+                    "replace": { "type": "boolean", "description": "Replace sets of the same name already in into (default false)." },
+                }),
+                &["from"],
+            )),
+        t("chess_game", "Play through a chess game", "Chess ▸ Board without the interface: set up a game from fen (a position; the standard start without it) or pgn (its first game: tags, moves, variations, comments and glyphs; a FEN tag gives its start), play moves (SAN as books print it, or UCI such as e2e4 and e7e8q) after the end of its main line, then show the position at ply (moves from the start along the main line; default its end). An illegal move stops the moves there and is returned as stopped (the first one, in pgn or moves). Returns the position shown (fen, side_to_move, in_check, outcome: ongoing, checkmate, stalemate or fifty_moves, legal_moves in SAN), start_fen, ply, plies (the main line's length), movetext, the game as pgn, and header: what the move list shows above and after the moves (white, white_elo, black, black_elo, event, site, date as far as it is known, round, each null when its tag says nothing, as PGN's ?; and result: 1-0, 0-1, 1/2-1/2, or * while the game goes on). No document is read or changed.")
             .ro()
             .with(schema(
                 json!({
@@ -1323,7 +1389,7 @@ pub fn tools() -> Vec<ToolDef> {
                 }),
                 &[],
             )),
-        t("chess_pgn_edit", "Edit a chess game's moves", "Chess ▸ Board ▸ moves, without the interface: start from game (0-based, 0 by default) of pgn, which may hold several (at most 256, cut as chess_games cuts them; an index past the last is refused), or from fen (the standard start without either) and apply ops in order, each at an address: main:<n> is the main-line move after which the absolute half-move is n (2·(move number−1), plus 1 when Black is to move; the start's own when nothing was played, so main:0 from the standard start and main:35 from a FEN \"… b - - 0 18\"), path:<i.j.k> the move reached by those reply indices from the start (0 continues the line, 1 is the first variation; path: is the start). Ops: play {at, moves: SAN or UCI, a reply already there is followed}; comment {at, text} and comment_before {at, text} (set, at most 4096 bytes); nag {at, code} (set the PGN code as given; ↑ after a Black move is 37); play_null {at} (a null move, written --: the side to move passes, to show the other side's threat; refused in check), move_variation {at, to: up or down} (a variation changes places with the one before or after it at its fork; the line itself never moves), diagram {at, on? (true by default)} (mark the move for a diagram, $220, or take the mark off); promote_one {at} (a variation up one place), make_main {at} (its line becomes the main line), demote {at} (a first reply down to second), delete_variation {at} (a variation and its moves), cut {at} (every move after at); back {at?, n? (1 by default)} and forward {at?, n?} (step through the game from at, the move shown without it: forward retraces the moves last stepped back over, into a variation when that is where they were, and otherwise follows the first reply; the entry says how many moves it moved); choose {at?, index} (step forward into reply index: 0 continues the line, 1 is its first variation; remembered as the line forward follows); graft {at, mode: follow (as a variation, the default), line (a new move becomes the first reply and demotes the old one) or comment (the items as text on at), items: [{item: move, san (English SAN), ply?, bold?} | {item: nag, code (White's; the side's code is applied)} | {item: comment, text, before?} | {item: open} | {item: close} | {item: result}]}, which reports what was played, where it stopped and why, the moves added, parentheses that did not balance, glyphs and comments with no place, and the leftover text; capture {at (the current move), text (a selection of move text as printed: numbers, prose, brackets), lang? (en by default), mode? (auto, the default: bold first move = the main line, else a variation of the nearest line that takes it; line; variation (of the main line); subvariation; comment; comment_before), bold_runs? ([start, end) character ranges of text in bold), apply? (chosen, the default; auto: only when no preview is needed; never; renumber: the Renumber choice)}, which reads the text from every place it could go (on the current move's line and each line outward, at the move its first number names), scores each by the moves played, and reports every candidate (anchor, line, mode, played, stops, reasons, movetext), the chosen one, renumber (the index of the Renumber choice, not a place: when the first printed number names no place where a move without one goes, the text read from there with every number moved alike, so its moves take the game's numbers, its candidate saying shifted (moves) and renumbering {printed, played}; a game with no moves at move 1 takes the text's number at its start instead; chosen only when no place plays a move), needs_preview with its reasons (ambiguous, incomplete, outer_line, tip_extension, renumber, implied_close, demotes, no_fit, too_long) and whether it was applied. Each op adds a report entry with ok and path (the move shown after it); a refused op adds ok: false with the error, changes nothing and stops the list. Returns pgn (the game edited only), movetext, report, applied (the ops done), current_path, games (how many games pgn holds; 0 without pgn), game (the one edited) and pgn_stopped (the first move of that game that could not be played, whose line ends there). No document or file is read or changed.")
+        t("chess_pgn_edit", "Edit a chess game's moves", "Chess ▸ Board ▸ moves, without the interface: start from game (0-based, 0 by default) of pgn, which may hold several (at most 256, cut as chess_games cuts them; an index past the last is refused), or from fen (the standard start without either) and apply ops in order, each at an address: main:<n> is the main-line move after which the absolute half-move is n (2·(move number−1), plus 1 when Black is to move; the start's own when nothing was played, so main:0 from the standard start and main:35 from a FEN \"… b - - 0 18\"), path:<i.j.k> the move reached by those reply indices from the start (0 continues the line, 1 is the first variation; path: is the start). Ops: play {at, moves: SAN or UCI, a reply already there is followed}; comment {at, text} and comment_before {at, text} (set, at most 4096 bytes); nag {at, code} (set the PGN code as given; ↑ after a Black move is 37); play_null {at} (a null move, written --: the side to move passes, to show the other side's threat; refused in check), move_variation {at, to: up or down} (a variation changes places with the one before or after it at its fork; the line itself never moves), diagram {at, on? (true by default)} (mark the move for a diagram, $220, or take the mark off); promote_one {at} (a variation up one place), make_main {at} (its line becomes the main line), demote {at} (a first reply down to second), delete_variation {at} (a variation and its moves), cut {at} (every move after at); back {at?, n? (1 by default)} and forward {at?, n?} (step through the game from at, the move shown without it: forward retraces the moves last stepped back over, into a variation when that is where they were, and otherwise follows the first reply; the entry says how many moves it moved); choose {at?, index} (step forward into reply index: 0 continues the line, 1 is its first variation; remembered as the line forward follows); next_variation {at?} and prev_variation {at?} (go to the first move of the next or previous variation in reading order, the order the notation writes them, into and out of variations and across the main line; prev from inside a variation goes to its first move; the entry says whether it moved); graft {at, mode: follow (as a variation, the default), line (a new move becomes the first reply and demotes the old one) or comment (the items as text on at), items: [{item: move, san (English SAN), ply?, bold?} | {item: nag, code (White's; the side's code is applied)} | {item: comment, text, before?} | {item: open} | {item: close} | {item: result}]}, which reports what was played, where it stopped and why, the moves added, parentheses that did not balance, glyphs and comments with no place, and the leftover text; capture {at (the current move), text (a selection of move text as printed: numbers, prose, brackets), lang? (en by default), mode? (auto, the default: bold first move = the main line, else a variation of the nearest line that takes it; line; variation (of the main line); subvariation; comment; comment_before), bold_runs? ([start, end) character ranges of text in bold), apply? (chosen, the default; auto: only when no preview is needed; never; renumber: the Renumber choice)}, which reads the text from every place it could go (on the current move's line and each line outward, at the move its first number names), scores each by the moves played, and reports every candidate (anchor, line, mode, played, stops, reasons, movetext), the chosen one, renumber (the index of the Renumber choice, not a place: when the first printed number names no place where a move without one goes, the text read from there with every number moved alike, so its moves take the game's numbers, its candidate saying shifted (moves) and renumbering {printed, played}; a game with no moves at move 1 takes the text's number at its start instead; chosen only when no place plays a move), needs_preview with its reasons (ambiguous, incomplete, outer_line, tip_extension, renumber, implied_close, demotes, no_fit, too_long) and whether it was applied. Each op adds a report entry with ok and path (the move shown after it); a refused op adds ok: false with the error, changes nothing and stops the list. Returns pgn (the game edited only), movetext, report, applied (the ops done), current_path, games (how many games pgn holds; 0 without pgn), game (the one edited) and pgn_stopped (the first move of that game that could not be played, whose line ends there). No document or file is read or changed.")
             .ro()
             .with(schema(
                 json!({
@@ -1337,8 +1403,8 @@ pub fn tools() -> Vec<ToolDef> {
                         "items": {
                             "type": "object",
                             "properties": {
-                                "op": { "type": "string", "enum": ["play", "comment", "comment_before", "nag", "play_null", "move_variation", "diagram", "promote_one", "make_main", "demote", "delete_variation", "cut", "back", "forward", "choose", "graft", "capture"] },
-                                "at": { "type": "string", "maxLength": 65536, "description": "main:<half-move> or path:<i.j.k>. Optional for back, forward and choose (the move shown)." },
+                                "op": { "type": "string", "enum": ["play", "comment", "comment_before", "nag", "play_null", "move_variation", "diagram", "promote_one", "make_main", "demote", "delete_variation", "cut", "back", "forward", "choose", "next_variation", "prev_variation", "graft", "capture"] },
+                                "at": { "type": "string", "maxLength": 65536, "description": "main:<half-move> or path:<i.j.k>. Optional for back, forward, choose, next_variation and prev_variation (the move shown)." },
                                 "n": { "type": "integer", "minimum": 1, "description": "back, forward: how many moves (1 by default)." },
                                 "index": { "type": "integer", "minimum": 0, "description": "choose: the reply to step into (0: the line, 1: its first variation…)." },
                                 "moves": { "type": "array", "maxItems": 2000, "items": { "type": "string", "maxLength": 32 } },

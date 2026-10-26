@@ -9,8 +9,14 @@
 //! - **illegal** whoever moves: a king missing, a pawn on the back rank, more pieces than
 //!   promotions could have made. That is a recognition error, not a question of turn.
 //!
+//! A whole position (with its side to move, castling rights and en-passant square) can break two
+//! rules more: [`position_violations`] names them too, for saying why a FEN is not legal.
+//!
 //! The rules come from the laws of chess, not from another implementation.
 
+use std::fmt;
+
+use crate::fen::Position;
 use crate::placement::{Color, Piece, PieceKind, Placement, Square};
 
 /// One reason a position cannot occur in a game.
@@ -40,12 +46,43 @@ pub enum Violation {
     /// `Color` is in double check by pieces that no single move can uncover together: a double
     /// check always involves a line piece whose line was opened.
     ImpossibleDoubleCheck(Color),
+    /// `Color` keeps a castling right its king or that rook no longer allows: the king off its
+    /// first square, or no rook in that corner. Only a whole position has rights.
+    BadCastling(Color),
+    /// The en-passant square is not one the last move's double step passed: no pawn of the side
+    /// that moved stands in front of it, or the square or the one behind it is taken. Only a
+    /// whole position has one.
+    BadEnPassant,
 }
 
 impl Violation {
     /// Whether the violation holds whichever side is to move.
     pub fn is_fatal(self) -> bool {
-        !matches!(self, Violation::NotToMoveInCheck(_) | Violation::TooManyCheckers(_) | Violation::ImpossibleDoubleCheck(_))
+        !matches!(
+            self,
+            Violation::NotToMoveInCheck(_) | Violation::TooManyCheckers(_) | Violation::ImpossibleDoubleCheck(_) | Violation::BadEnPassant
+        )
+    }
+}
+
+impl fmt::Display for Violation {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let side = |c: &Color| if *c == Color::White { "White" } else { "Black" };
+        match self {
+            Violation::Empty => write!(f, "the board is empty"),
+            Violation::NoKing(c) => write!(f, "{}'s king is missing", side(c)),
+            Violation::TooManyKings(c) => write!(f, "{} has more than one king", side(c)),
+            Violation::TooManyPawns(c) => write!(f, "{} has more than 8 pawns", side(c)),
+            Violation::TooManyPieces(c) => write!(f, "{} has more than 16 pieces", side(c)),
+            Violation::PawnOnBackRank => write!(f, "a pawn stands on the first or the eighth rank"),
+            Violation::ImpossiblePromotions(c) => write!(f, "{} has more extra pieces than missing pawns to promote", side(c)),
+            Violation::AdjacentKings => write!(f, "the kings stand next to each other"),
+            Violation::NotToMoveInCheck(c) => write!(f, "{} is in check, but it is the other side's turn", side(c)),
+            Violation::TooManyCheckers(c) => write!(f, "{}'s king is in check from more than two pieces", side(c)),
+            Violation::ImpossibleDoubleCheck(c) => write!(f, "{}'s king is in a double check no move could give", side(c)),
+            Violation::BadCastling(c) => write!(f, "{} may castle, but its king or rook has left its square", side(c)),
+            Violation::BadEnPassant => write!(f, "the en-passant square does not fit the pawns"),
+        }
     }
 }
 
@@ -107,6 +144,44 @@ pub fn violations_with_side(placement: &Placement, side: Color) -> Vec<Violation
         v.extend(turn_violations(placement, side));
     }
     v
+}
+
+/// Every violation of a whole position, with `side` to move when it does not say: its
+/// placement's ([`violations_with_side`]), then castling rights the pieces no longer allow and an
+/// en-passant square no double step could have left. Empty for a legal position; a position
+/// whose board the game refuses for a rule not named here gets none either.
+pub fn position_violations(position: &Position, side: Color) -> Vec<Violation> {
+    let side = position.side_to_move.unwrap_or(side);
+    let mut v = violations_with_side(&position.placement, side);
+    let fitted = position.castling.fitted(&position.placement);
+    let c = position.castling;
+    if (c.white_king_side, c.white_queen_side) != (fitted.white_king_side, fitted.white_queen_side) {
+        v.push(Violation::BadCastling(Color::White));
+    }
+    if (c.black_king_side, c.black_queen_side) != (fitted.black_king_side, fitted.black_queen_side) {
+        v.push(Violation::BadCastling(Color::Black));
+    }
+    if let Some(ep) = position.en_passant
+        && !en_passant_fits(&position.placement, ep, side)
+    {
+        v.push(Violation::BadEnPassant);
+    }
+    v
+}
+
+/// Whether `ep` is the square a pawn of the side not to move (`side` moves) just passed with a
+/// double step: on the third rank from its side, the pawn right in front of it, and the square
+/// and the one it came from empty.
+fn en_passant_fits(placement: &Placement, ep: Square, side: Color) -> bool {
+    let mover = side.opponent();
+    // Ranks from 0: White's double step passes the third rank (2) to the fourth (3); Black's
+    // passes the sixth (5) to the fifth (4).
+    let (passed, landed, left) = if mover == Color::White { (2, 3, 1) } else { (5, 4, 6) };
+    let at = |rank: u8| Square::new(ep.file(), rank);
+    ep.rank() == passed
+        && at(landed).is_some_and(|sq| placement.get(sq) == Some(Piece::new(mover, PieceKind::Pawn)))
+        && placement.get(ep).is_none()
+        && at(left).is_some_and(|sq| placement.get(sq).is_none())
 }
 
 /// The violations that hold whoever is to move.
@@ -328,6 +403,47 @@ mod tests {
             for side in [Color::White, Color::Black] {
                 assert_eq!(legality.allows(side), pos.to_board(side).is_ok(), "{fen} {side:?}");
             }
+        }
+    }
+
+    /// A whole FEN's reasons (plan A8, P3b1): castling rights the pieces no longer allow and an
+    /// en-passant square no double step left are named, besides the placement's violations.
+    #[test]
+    fn whole_positions_say_why_they_are_not_legal() {
+        let why = |fen: &str| position_violations(&crate::fen::parse(fen).unwrap(), Color::White);
+        assert_eq!(why("r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1"), vec![]);
+        assert_eq!(why("r3k2r/8/8/8/8/8/8/R4K1R w KQkq - 0 1"), vec![Violation::BadCastling(Color::White)], "the king left e1");
+        assert_eq!(why("r3k3/8/8/8/8/8/8/R3K2R w KQkq - 0 1"), vec![Violation::BadCastling(Color::Black)], "no rook on h8");
+        assert_eq!(why("4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 2"), vec![], "d7-d5 just played");
+        assert_eq!(why("4k3/8/8/4P3/8/8/8/4K3 w - d6 0 2"), vec![Violation::BadEnPassant], "no black pawn on d5");
+        assert_eq!(why("4k3/8/8/8/3P4/8/8/4K3 b - d3 0 1"), vec![], "d2-d4 just played");
+        assert_eq!(why("4k3/8/8/8/3P4/8/3P4/4K3 b - d3 0 1"), vec![Violation::BadEnPassant], "d2 is taken");
+        assert_eq!(why("8/8/8/8/8/8/8/4K3 w - - 0 1"), vec![Violation::NoKing(Color::Black)]);
+        assert_eq!(why("4k3/4Q3/8/8/8/8/8/4K3 w - - 0 1"), vec![Violation::NotToMoveInCheck(Color::Black)]);
+        // The side from the FEN wins over the one given.
+        assert_eq!(why("4k3/4Q3/8/8/8/8/8/4K3 b - - 0 1"), vec![]);
+        assert_eq!(Violation::NoKing(Color::Black).to_string(), "Black's king is missing");
+    }
+
+    /// The reasons agree with the game's own verdict: a position a game can't start from has one,
+    /// and one it can has none, over positions breaking each named rule.
+    #[test]
+    fn the_reasons_agree_with_the_board() {
+        for fen in [
+            "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+            "r3k2r/8/8/8/8/8/8/R4K1R w KQkq - 0 1",
+            "4k3/8/8/4P3/8/8/8/4K3 w - d6 0 2",
+            "4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 2",
+            "8/8/8/8/8/8/8/4K3 w - - 0 1",
+            "4k3/4Q3/8/8/8/8/8/4K3 w - - 0 1",
+            "4k3/8/8/8/8/8/8/4KK2 w - - 0 1",
+            "P3k3/8/8/8/8/8/8/4K3 w - - 0 1",
+            "8/8/8/8/8/8/8/8 w - - 0 1",
+            "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+        ] {
+            let pos = crate::fen::parse(fen).unwrap();
+            let refused = crate::game::Game::from_fen(fen).is_err();
+            assert_eq!(!position_violations(&pos, Color::White).is_empty(), refused, "{fen}");
         }
     }
 }

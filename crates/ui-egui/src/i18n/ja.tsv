@@ -2552,6 +2552,40 @@ animation effects	Off	オフ
 	Show this diagram on the page	この図面をページ上で表示
 	Stalemate	ステイルメイト
 	Standard start position	標準の初期配置
+	the board is empty	盤に駒がありません
+	White's king is missing	白のキングがありません
+	Black's king is missing	黒のキングがありません
+	White has more than one king	白のキングが複数あります
+	Black has more than one king	黒のキングが複数あります
+	White has more than 8 pawns	白のポーンが8個を超えています
+	Black has more than 8 pawns	黒のポーンが8個を超えています
+	White has more than 16 pieces	白の駒が16個を超えています
+	Black has more than 16 pieces	黒の駒が16個を超えています
+	a pawn stands on the first or the eighth rank	1段目か8段目にポーンがあります
+	White has more extra pieces than missing pawns to promote	白の追加の駒が、昇格できる欠けたポーンの数より多くなっています
+	Black has more extra pieces than missing pawns to promote	黒の追加の駒が、昇格できる欠けたポーンの数より多くなっています
+	the kings stand next to each other	キング同士が隣り合っています
+	White is in check, but it is Black's turn	白がチェックされていますが、黒の手番です
+	Black is in check, but it is White's turn	黒がチェックされていますが、白の手番です
+	White's king is in check from more than two pieces	白のキングが3個以上の駒からチェックされています
+	Black's king is in check from more than two pieces	黒のキングが3個以上の駒からチェックされています
+	White's king is in a double check no move could give	白のキングが、どの手でも生じ得ないダブルチェックを受けています
+	Black's king is in a double check no move could give	黒のキングが、どの手でも生じ得ないダブルチェックを受けています
+	White may castle, but its king or rook has left its square	白にキャスリング権がありますが、キングかルークが元の位置から動いています
+	Black may castle, but its king or rook has left its square	黒にキャスリング権がありますが、キングかルークが元の位置から動いています
+	the en-passant square does not fit the pawns	アンパッサンのマスがポーンの配置と合いません
+	Not a legal position: {reason}	合法な局面ではありません：{reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	合法な局面ではありません（{reason}）：手を指すには図面エディターで修正してください。
+	The game on the board has moves. Put this position:	盤上の対局には指し手があります。この局面を：
+	New game with this position	この局面で新しい対局
+	The game on the board keeps its moves.	盤上の対局の指し手はそのまま残ります。
+	Its moves are deleted (Undo brings them back).	その指し手は削除されます（元に戻すで戻せます）。
+	Start again from the standard position.	標準の初期配置からやり直します。
+	A new game from the standard position; the game on the board keeps its moves.	標準の初期配置から新しい対局を作ります。盤上の対局の指し手はそのまま残ります。
+	PGN edited	PGN 編集済み
+	Load	読み込む
+	Show the game on the board again.	盤上の対局をもう一度表示します。
+	Load the PGN above on the board, with its variations and comments.	上の PGN を変化手順とコメントごと盤に読み込みます。
 	Start (Home)	最初 (Home)
 	That side can't be to move: the other king is in check.	その手番にはできません：相手のキングがチェックされています。
 	The FEN couldn't be read: {e}	FEN を読み取れませんでした: {e}
@@ -3026,3 +3060,106 @@ chess undo step	Clear drawings	描画の消去
 	No game was found for this move, on its page or the pages around it.	この手の対局は、そのページにも前後のページにも見つかりませんでした。
 	Renumber	番号を振り直す
 	The text's move numbers give way to the game's: {printed} is played as {played}.	テキストの手数番号は棋譜の番号に置き換わります: {printed} は {played} として指されます。
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	指し手リスト
+	Move list beside the page	ページ横の指し手リスト
+	Side of the page	ページの横の位置
+	Drawing eraser	描画用消しゴム
+	Drag across text or draw a box to erase what lies under it	テキストの上をドラッグするか枠を描いて、その下にあるものを消去します
+	Drawings and shapes	描画と図形
+	Comments, links and form fields	コメント、リンク、フォームフィールド
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	消去は編集です。ファイルの以前のバージョンに消去した内容が残る場合があります。完全に削除するには墨消しを使用してください。
+	Erase content	内容を消去
+	Knife (cut pages)	ナイフ（ページを分割）
+	Click to place a cut, right-click to take one away, Enter to cut	クリックで切れ目を置き、右クリックで1本取り除き、Enterで分割します
+	Up and down	縦
+	Across	横
+	Hold Shift for the other direction.	Shiftを押している間は反対の向きになります。
+	Right part first	右側を先にする
+	Nothing is erased: each part shows its piece of the page.	何も消去されません。各部分はページの自分の部分を表示します。
+	Remove what lies outside each part	各部分の外側にあるものを削除
+	Split double pages	見開きページを分割
+	No double pages were found: none is wider than tall	見開きページが見つかりません。横長のページはありません
+	Box or selection	枠または選択範囲
+	Brush	ブラシ
+	Brush size	ブラシのサイズ
+	Rub over what you want to erase; letting go erases it	消したい部分をこすってください。離すと消去されます
+	What will go is tinted red while you draw.	消える部分は描いている間赤く表示されます。
+	Erase the selected words from the page	選択した語をページから消去
+	Chess pieces	チェスの駒
+	Plain shapes	単純な図形
+	Missing: {pieces}	不足: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES が設定されており、この選択より優先されます。
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	盤面: 解析盤と研究盤。図: ページ上、エディター、書き出しで描き直される図。
+	These pieces cannot be used: {reason}	この駒は使用できません: {reason}
+	Import a folder…	フォルダーを読み込む…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	駒の画像12枚（wK〜bP、SVGまたはPNG）のフォルダーを駒フォルダーにコピーします。
+	Import from a web page…	Webページから読み込む…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	保存したWebページに含まれる駒セットを駒フォルダーに取り込みます。
+	Choose a folder of piece images	駒の画像のフォルダーを選択
+	Choose a saved web page	保存したWebページを選択
+	Web pages	Webページ
+	There is no pieces folder beside the program to import into.	読み込み先となる駒フォルダーがプログラムの横にありません。
+	Imported: {sets}. Their licence is not known: use them for personal use only.	読み込みました: {sets}。ライセンスが不明なため、個人的な利用に限ってください。
+	Already in the pieces folder: {sets}. Replace them?	駒フォルダーにすでにあります: {sets}。置き換えますか？
+	The pieces cannot be imported: {reason}	駒を読み込めません: {reason}
+	round {round}	第{round}ラウンド
+	Result: {result}	結果: {result}
+	Board theme	盤のテーマ
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	対局や研究に使う盤に適用します。ページ上やエクスポートの図は元の色のままです。
+	Brown	ブラウン
+	Light wood	明るい木目
+	Walnut	ウォールナット
+	Ice blue	アイスブルー
+	Olive	オリーブ
+	Grey	グレー
+	Graphite	グラファイト
+	Sand	サンド
+	Coral	コーラル
+	High contrast	ハイコントラスト
+	Coordinates	座標
+	On the squares	マスの上
+	Beside the board	盤の横
+	Frame	枠
+	Double	二重
+	Marked squares	印を付けたマス
+	Ring	輪
+	Filled	塗りつぶし
+	A dot on the side to move	手番側に点を表示
+	Wood	木目
+	Marble	大理石
+	Paper	紙
+	Book print	書籍印刷
+	king	キング
+	queen	クイーン
+	rook	ルーク
+	bishop	ビショップ
+	knight	ナイト
+	pawn	ポーン
+	checkmate	チェックメイト
+	check	チェック
+	castles short	キングサイドキャスリング
+	castles long	クイーンサイドキャスリング
+	takes	取る
+	{move} promotes to {piece}	{move} {piece}に昇格
+	Pieces in the move list	棋譜リストの駒
+	Figurines	駒の記号
+	Letters in your language	あなたの言語の文字
+	English letters	英語の文字
+	Shown on the board while the pointer is here	ポインターがここにある間、盤に表示します
+	1 arrow	矢印1本
+	{n} arrows	矢印{n}本
+	1 ring	円1つ
+	{n} rings	円{n}つ
+	The comment on the move shown, large under the board	表示中の手のコメントを盤の下に大きく表示
+	Running text	続け書き
+	Columns	列
+	Text size	文字サイズ
+	Small	小
+	Normal	標準
+	Large	大
+	Previous variation (Page Up)	前の変化 (Page Up)
+	Next variation (Page Down)	次の変化 (Page Down)
+	A move the pointer rests on shows its position	ポインターを止めた手の局面を表示
+	Position after {move}	{move} の後の局面

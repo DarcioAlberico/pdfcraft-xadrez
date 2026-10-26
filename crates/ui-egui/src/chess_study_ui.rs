@@ -53,9 +53,6 @@ const SCROLL_BAR_ROOM: f32 = 10.0;
 #[cfg(not(target_arch = "wasm32"))]
 const BAR_PT: f32 = 14.0;
 
-/// The pieces in the palette's order.
-const KINDS: [PieceKind; 6] = [PieceKind::King, PieceKind::Queen, PieceKind::Rook, PieceKind::Bishop, PieceKind::Knight, PieceKind::Pawn];
-
 /// A position being set up.
 pub struct Setup {
     pub position: Position,
@@ -115,15 +112,7 @@ impl Setup {
 
     /// Castling needs the king and that rook on their first squares.
     fn fit_castling(&mut self) {
-        let p = self.position.placement;
-        let on = |name: &str, color: Color, kind: PieceKind| Square::parse(name).is_some_and(|sq| p.get(sq) == Some(Piece { color, kind }));
-        let c = &mut self.position.castling;
-        let white_king = on("e1", Color::White, PieceKind::King);
-        let black_king = on("e8", Color::Black, PieceKind::King);
-        c.white_king_side &= white_king && on("h1", Color::White, PieceKind::Rook);
-        c.white_queen_side &= white_king && on("a1", Color::White, PieceKind::Rook);
-        c.black_king_side &= black_king && on("h8", Color::Black, PieceKind::Rook);
-        c.black_queen_side &= black_king && on("a8", Color::Black, PieceKind::Rook);
+        self.position.castling = self.position.castling.fitted(&self.position.placement);
     }
 }
 
@@ -298,13 +287,13 @@ impl StudyState {
 
 /// The set-up board's image, redrawn when the pieces or the view change.
 fn setup_texture(ctx: &egui::Context, setup: &mut Setup, flipped: bool, pieces: &PieceSet) -> Option<TextureHandle> {
-    let key = format!("{}|{flipped}", setup.fen());
+    let key = format!("{}|{flipped}|{}|{}", setup.fen(), crate::chess_editor::pieces_generation(), crate::chess_theme::current(ctx).id);
     if let Some((k, tex)) = &setup.texture
         && *k == key
     {
         return Some(tex.clone());
     }
-    let style = BoardStyle { border: 0.0, coordinates: true, flipped, ..BoardStyle::default() };
+    let style = crate::chess_theme::style(ctx, BoardStyle { border: 0.0, coordinates: true, flipped, ..BoardStyle::default() });
     match pdfcraft_engine::chess::office::diagram_rgba(&setup.position.placement, pieces, &style, SETUP_PX) {
         Ok((w, h, rgba)) => {
             let (w, h) = (usize::try_from(w).ok()?, usize::try_from(h).ok()?);
@@ -321,21 +310,6 @@ fn setup_texture(ctx: &egui::Context, setup: &mut Setup, flipped: bool, pieces: 
             None
         }
     }
-}
-
-/// A palette button: the piece's picture when the pieces could be cut out, else its letter.
-fn palette_button(ui: &mut egui::Ui, sprites: Option<&TextureHandle>, piece: Piece, on: bool) -> egui::Response {
-    let name = crate::chess_editor::piece_name(piece);
-    let response = match sprites {
-        Some(tex) => ui.add(
-            egui::Button::image(egui::Image::new(tex).uv(chess_board_ui::sprite_uv(piece)).fit_to_exact_size(vec2(24.0, 24.0)))
-                .selected(on)
-                .min_size(vec2(30.0, 30.0)),
-        ),
-        None => ui.selectable_label(on, egui::RichText::new(crate::chess_editor::piece_letter(piece)).monospace().strong()),
-    };
-    response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, on, name));
-    response.on_hover_text(name)
 }
 
 /// How the set-up view ends.
@@ -377,22 +351,7 @@ fn setup_view(ui: &mut egui::Ui, t: &Tokens, setup: &mut Setup, board: &mut Boar
     }
     // The palette: White's pieces, Black's, and the eraser.
     let sprites = board.sprites(ui.ctx(), pieces);
-    for color in [Color::White, Color::Black] {
-        ui.horizontal_wrapped(|ui| {
-            ui.spacing_mut().item_spacing.x = 2.0;
-            // Six pieces and the eraser on a row at 330 pt.
-            ui.spacing_mut().button_padding = vec2(3.0, 3.0);
-            for kind in KINDS {
-                let piece = Piece { color, kind };
-                if palette_button(ui, sprites.as_ref(), piece, setup.brush == Brush::Put(piece)).clicked() {
-                    setup.brush = Brush::Put(piece);
-                }
-            }
-            if color == Color::Black && ui.selectable_label(setup.brush == Brush::Erase, tl!("Erase")).clicked() {
-                setup.brush = Brush::Erase;
-            }
-        });
-    }
+    crate::chess_editor::palette(ui, sprites.as_ref(), &mut setup.brush, false);
     ui.horizontal_wrapped(|ui| {
         if ui.small_button(tl!("Standard start position")).clicked() {
             setup.set_placement(Placement::standard(), true);
@@ -425,12 +384,14 @@ fn setup_view(ui: &mut egui::Ui, t: &Tokens, setup: &mut Setup, board: &mut Boar
     let fen = setup.fen();
     let legal = setup.legal();
     ui.add(egui::Label::new(egui::RichText::new(&fen).monospace().small()).wrap());
+    // Why not, when it is not (plan A8, P3b1).
     let (text, colour) = if legal {
-        (tl!("Legal position"), Color32::from_rgb(0x2D, 0x9D, 0x5B))
+        (tl!("Legal position").to_string(), Color32::from_rgb(0x2D, 0x9D, 0x5B))
     } else {
-        (tl!("Not a legal position"), Color32::from_rgb(0xE0, 0x3E, 0x3E))
+        let why = pdfcraft_engine::chess::pdfcraft_chess::rules::position_violations(&setup.position, Color::White);
+        (crate::chess_editor::not_legal_text(&why), Color32::from_rgb(0xE0, 0x3E, 0x3E))
     };
-    ui.label(egui::RichText::new(text).small().color(colour));
+    ui.add(egui::Label::new(egui::RichText::new(text).small().color(colour)).wrap());
     let has_moves = !board.game.is_empty();
     ui.horizontal_wrapped(|ui| {
         if has_moves {

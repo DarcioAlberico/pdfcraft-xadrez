@@ -2550,6 +2550,40 @@ animation effects	Off	Désactivés
 	Show this diagram on the page	Afficher ce diagramme sur la page
 	Stalemate	Pat
 	Standard start position	Position de départ standard
+	the board is empty	l’échiquier est vide
+	White's king is missing	le roi blanc manque
+	Black's king is missing	le roi noir manque
+	White has more than one king	les Blancs ont plus d’un roi
+	Black has more than one king	les Noirs ont plus d’un roi
+	White has more than 8 pawns	les Blancs ont plus de 8 pions
+	Black has more than 8 pawns	les Noirs ont plus de 8 pions
+	White has more than 16 pieces	les Blancs ont plus de 16 pièces
+	Black has more than 16 pieces	les Noirs ont plus de 16 pièces
+	a pawn stands on the first or the eighth rank	un pion se trouve sur la première ou la huitième rangée
+	White has more extra pieces than missing pawns to promote	les Blancs ont plus de pièces en trop que de pions manquants à promouvoir
+	Black has more extra pieces than missing pawns to promote	les Noirs ont plus de pièces en trop que de pions manquants à promouvoir
+	the kings stand next to each other	les rois sont côte à côte
+	White is in check, but it is Black's turn	les Blancs sont en échec, mais c’est aux Noirs de jouer
+	Black is in check, but it is White's turn	les Noirs sont en échec, mais c’est aux Blancs de jouer
+	White's king is in check from more than two pieces	le roi blanc est en échec par plus de deux pièces
+	Black's king is in check from more than two pieces	le roi noir est en échec par plus de deux pièces
+	White's king is in a double check no move could give	le roi blanc subit un échec double qu’aucun coup ne pourrait donner
+	Black's king is in a double check no move could give	le roi noir subit un échec double qu’aucun coup ne pourrait donner
+	White may castle, but its king or rook has left its square	les Blancs peuvent roquer, mais leur roi ou leur tour a quitté sa case
+	Black may castle, but its king or rook has left its square	les Noirs peuvent roquer, mais leur roi ou leur tour a quitté sa case
+	the en-passant square does not fit the pawns	la case de prise en passant ne correspond pas aux pions
+	Not a legal position: {reason}	Position illégale : {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Position illégale ({reason}) : corrigez-la dans l'éditeur de diagramme pour y jouer des coups.
+	The game on the board has moves. Put this position:	La partie sur l’échiquier a des coups. Placer cette position :
+	New game with this position	Nouvelle partie avec cette position
+	The game on the board keeps its moves.	La partie sur l’échiquier garde ses coups.
+	Its moves are deleted (Undo brings them back).	Ses coups sont supprimés (Annuler les rétablit).
+	Start again from the standard position.	Recommencer depuis la position de départ standard.
+	A new game from the standard position; the game on the board keeps its moves.	Une nouvelle partie depuis la position de départ standard ; la partie sur l’échiquier garde ses coups.
+	PGN edited	PGN modifié
+	Load	Charger
+	Show the game on the board again.	Réafficher la partie de l’échiquier.
+	Load the PGN above on the board, with its variations and comments.	Charge le PGN ci-dessus sur l’échiquier, avec ses variantes et ses commentaires.
 	Start (Home)	Début (Origine)
 	That side can't be to move: the other king is in check.	Ce camp ne peut pas avoir le trait : l'autre roi est en échec.
 	The FEN couldn't be read: {e}	Impossible de lire la FEN : {e}
@@ -3024,3 +3058,106 @@ chess undo step	Clear drawings	l'effacement des dessins
 	No game was found for this move, on its page or the pages around it.	Aucune partie n’a été trouvée pour ce coup, ni sur sa page ni sur les pages voisines.
 	Renumber	Renuméroter
 	The text's move numbers give way to the game's: {printed} is played as {played}.	Les numéros de coups du texte cèdent la place à ceux de la partie : {printed} est joué comme {played}.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	Liste des coups
+	Move list beside the page	Liste des coups à côté de la page
+	Side of the page	Côté de la page
+	Drawing eraser	Gomme à dessins
+	Drag across text or draw a box to erase what lies under it	Faites glisser sur du texte ou tracez un cadre pour effacer ce qui se trouve dessous
+	Drawings and shapes	Dessins et formes
+	Comments, links and form fields	Commentaires, liens et champs de formulaire
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Effacer est une modification : une version antérieure du fichier peut encore contenir ce qui a été effacé. Utilisez Biffer pour le supprimer définitivement.
+	Erase content	Effacer le contenu
+	Knife (cut pages)	Couteau (découper les pages)
+	Click to place a cut, right-click to take one away, Enter to cut	Cliquez pour placer une coupe, clic droit pour en retirer une, Entrée pour découper
+	Up and down	De haut en bas
+	Across	En travers
+	Hold Shift for the other direction.	Maintenez Maj pour l'autre sens.
+	Right part first	Partie droite d'abord
+	Nothing is erased: each part shows its piece of the page.	Rien n'est effacé : chaque partie montre son morceau de la page.
+	Remove what lies outside each part	Retirer ce qui se trouve hors de chaque partie
+	Split double pages	Séparer les doubles pages
+	No double pages were found: none is wider than tall	Aucune double page trouvée : aucune n'est plus large que haute
+	Box or selection	Cadre ou sélection
+	Brush	Pinceau
+	Brush size	Taille du pinceau
+	Rub over what you want to erase; letting go erases it	Frottez ce que vous voulez effacer ; relâcher l'efface
+	What will go is tinted red while you draw.	Ce qui partira est teinté de rouge pendant que vous tracez.
+	Erase the selected words from the page	Effacer de la page les mots sélectionnés
+	Chess pieces	Pièces d'échecs
+	Plain shapes	Formes simples
+	Missing: {pieces}	Manquantes : {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES est définie et l'emporte sur ce choix.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Échiquier : les échiquiers d'analyse et d'étude. Diagrammes : redessinés sur la page, dans l'éditeur et dans les exportations.
+	These pieces cannot be used: {reason}	Impossible d'utiliser ces pièces : {reason}
+	Import a folder…	Importer un dossier…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	Copie un dossier de douze images de pièces (wK à bP, SVG ou PNG) dans le dossier des pièces.
+	Import from a web page…	Importer depuis une page web…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	Prend les jeux de pièces qu'une page web enregistrée contient pour les mettre dans le dossier des pièces.
+	Choose a folder of piece images	Choisir un dossier d'images de pièces
+	Choose a saved web page	Choisir une page web enregistrée
+	Web pages	Pages web
+	There is no pieces folder beside the program to import into.	Il n'y a pas de dossier de pièces à côté du programme où importer.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	Importés : {sets}. Leur licence n'est pas connue : réservez-les à un usage personnel.
+	Already in the pieces folder: {sets}. Replace them?	Déjà dans le dossier des pièces : {sets}. Les remplacer ?
+	The pieces cannot be imported: {reason}	Les pièces ne peuvent pas être importées : {reason}
+	round {round}	ronde {round}
+	Result: {result}	Résultat : {result}
+	Board theme	Thème de l'échiquier
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	Pour les échiquiers où vous jouez et étudiez. Les diagrammes de la page et des exports gardent leurs couleurs.
+	Brown	Brun
+	Light wood	Bois clair
+	Walnut	Noyer
+	Ice blue	Bleu glacier
+	Olive	Olive
+	Grey	Gris
+	Graphite	Graphite
+	Sand	Sable
+	Coral	Corail
+	High contrast	Contraste élevé
+	Coordinates	Coordonnées
+	On the squares	Sur les cases
+	Beside the board	À côté de l'échiquier
+	Frame	Cadre
+	Double	Double
+	Marked squares	Cases marquées
+	Ring	Anneau
+	Filled	Remplies
+	A dot on the side to move	Un point du côté qui a le trait
+	Wood	Bois
+	Marble	Marbre
+	Paper	Papier
+	Book print	Impression de livre
+	king	roi
+	queen	dame
+	rook	tour
+	bishop	fou
+	knight	cavalier
+	pawn	pion
+	checkmate	échec et mat
+	check	échec
+	castles short	petit roque
+	castles long	grand roque
+	takes	prend
+	{move} promotes to {piece}	{move} promu en {piece}
+	Pieces in the move list	Pièces dans la liste des coups
+	Figurines	Figurines
+	Letters in your language	Lettres de votre langue
+	English letters	Lettres anglaises
+	Shown on the board while the pointer is here	Affichés sur l'échiquier tant que le pointeur est ici
+	1 arrow	1 flèche
+	{n} arrows	{n} flèches
+	1 ring	1 anneau
+	{n} rings	{n} anneaux
+	The comment on the move shown, large under the board	Le commentaire du coup affiché, en grand sous l'échiquier
+	Running text	Texte continu
+	Columns	Colonnes
+	Text size	Taille du texte
+	Small	Petite
+	Normal	Normale
+	Large	Grande
+	Previous variation (Page Up)	Variante précédente (Page préc.)
+	Next variation (Page Down)	Variante suivante (Page suiv.)
+	A move the pointer rests on shows its position	Un coup sur lequel s'arrête le pointeur montre sa position
+	Position after {move}	Position après {move}

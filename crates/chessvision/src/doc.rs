@@ -200,6 +200,9 @@ pub struct ChessPage {
     /// The piece-letter language of the page's moves (BCP 47 code).
     pub lang: String,
     pub text_layer: TextLayer,
+    /// The text was read from a picture of the page ([`PageInput::ocr`]).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub ocr: bool,
     pub blocks: Vec<Block>,
     /// Flags that belong to the page rather than to one block.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -568,6 +571,9 @@ pub struct PageInput<'a> {
     pub hints: &'a [BlockHint],
     /// The text repair's edits and flags ([`TextReview::from_edit`], [`TextReview::from_flag`]).
     pub reviews: &'a [TextReview],
+    /// The text was read from a picture of the page, by the chess OCR or by the program whose
+    /// invisible layer it is, so its letters can be misread ([`WalkRules::misread_files`]).
+    pub ocr: bool,
 }
 
 /// Builds a [`ChessDoc`] page by page, carrying open games across page breaks.
@@ -631,7 +637,7 @@ impl DocBuilder {
                 Block::Diagram(d) => d.review.retain(|f| !matches!(f, ReviewFlag::NoStartPosition)),
             }
         }
-        build::walk(page.index, &mut page.blocks, &mut self.walker, page.trailing);
+        build::walk(page.index, page.ocr, &mut page.blocks, &mut self.walker, page.trailing);
         self.carry = page.trailing.map(|n| (page.index, n));
         self.pages.push(page);
     }

@@ -2514,6 +2514,40 @@ animation effects	Off	关
 	Show this diagram on the page	在页面上显示此图表
 	Stalemate	逼和
 	Standard start position	标准初始局面
+	the board is empty	棋盘是空的
+	White's king is missing	缺少白方王
+	Black's king is missing	缺少黑方王
+	White has more than one king	白方有不止一个王
+	Black has more than one king	黑方有不止一个王
+	White has more than 8 pawns	白方的兵多于 8 个
+	Black has more than 8 pawns	黑方的兵多于 8 个
+	White has more than 16 pieces	白方的棋子多于 16 个
+	Black has more than 16 pieces	黑方的棋子多于 16 个
+	a pawn stands on the first or the eighth rank	有兵位于第一或第八横线
+	White has more extra pieces than missing pawns to promote	白方多出的棋子比可升变的缺失兵还多
+	Black has more extra pieces than missing pawns to promote	黑方多出的棋子比可升变的缺失兵还多
+	the kings stand next to each other	两个王相邻
+	White is in check, but it is Black's turn	白方被将军，但轮到黑方走棋
+	Black is in check, but it is White's turn	黑方被将军，但轮到白方走棋
+	White's king is in check from more than two pieces	白方王被两个以上的棋子将军
+	Black's king is in check from more than two pieces	黑方王被两个以上的棋子将军
+	White's king is in a double check no move could give	白方王处于任何着法都无法造成的双将
+	Black's king is in a double check no move could give	黑方王处于任何着法都无法造成的双将
+	White may castle, but its king or rook has left its square	白方可以王车易位，但其王或车已离开原位
+	Black may castle, but its king or rook has left its square	黑方可以王车易位，但其王或车已离开原位
+	the en-passant square does not fit the pawns	吃过路兵的格子与兵的位置不符
+	Not a legal position: {reason}	不合法的局面：{reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	不合法的局面（{reason}）：请在图表编辑器中更正后再走棋。
+	The game on the board has moves. Put this position:	棋盘上的对局已有着法。放置此局面：
+	New game with this position	用此局面新建对局
+	The game on the board keeps its moves.	棋盘上的对局保留其着法。
+	Its moves are deleted (Undo brings them back).	其着法会被删除（撤销可恢复）。
+	Start again from the standard position.	从标准初始局面重新开始。
+	A new game from the standard position; the game on the board keeps its moves.	从标准初始局面新建对局；棋盘上的对局保留其着法。
+	PGN edited	PGN 已编辑
+	Load	载入
+	Show the game on the board again.	重新显示棋盘上的对局。
+	Load the PGN above on the board, with its variations and comments.	将上方的 PGN 连同变着和注释载入棋盘。
 	Start (Home)	开头 (Home)
 	That side can't be to move: the other king is in check.	该方不能走棋：对方的王正被将军。
 	The FEN couldn't be read: {e}	无法读取 FEN：{e}
@@ -2988,3 +3022,106 @@ chess undo step	Clear drawings	清除标记
 	No game was found for this move, on its page or the pages around it.	在此着法所在页及其前后页面中均未找到对局。
 	Renumber	重新编号
 	The text's move numbers give way to the game's: {printed} is played as {played}.	文本的着法编号让位于棋局的编号：{printed} 按 {played} 走。
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	着法列表
+	Move list beside the page	页面旁的着法列表
+	Side of the page	页面侧边
+	Drawing eraser	绘图橡皮擦
+	Drag across text or draw a box to erase what lies under it	在文本上拖动或画一个框，擦除其下方的内容
+	Drawings and shapes	绘图和形状
+	Comments, links and form fields	注释、链接和表单字段
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	擦除是一次编辑：文件的早期版本可能仍保留被擦除的内容。要彻底删除，请使用密文。
+	Erase content	擦除内容
+	Knife (cut pages)	刀（切分页面）
+	Click to place a cut, right-click to take one away, Enter to cut	单击放置切线，右键单击移除一条，按 Enter 切分
+	Up and down	竖向
+	Across	横向
+	Hold Shift for the other direction.	按住 Shift 切换方向。
+	Right part first	右侧部分在前
+	Nothing is erased: each part shows its piece of the page.	不会擦除任何内容：每个部分显示页面中属于它的那一块。
+	Remove what lies outside each part	删除每部分之外的内容
+	Split double pages	拆分跨页
+	No double pages were found: none is wider than tall	未找到跨页：没有页面宽度大于高度
+	Box or selection	方框或选择
+	Brush	画笔
+	Brush size	画笔大小
+	Rub over what you want to erase; letting go erases it	在要擦除的内容上涂抹；松开即擦除
+	What will go is tinted red while you draw.	绘制时将被擦除的内容以红色显示。
+	Erase the selected words from the page	从页面擦除所选文字
+	Chess pieces	国际象棋棋子
+	Plain shapes	简单图形
+	Missing: {pieces}	缺少：{pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	已设置 PDFCRAFT_CHESS_PIECES，它优先于此选择。
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	棋盘：分析棋盘和研究棋盘。局面图：在页面、编辑器和导出中重新绘制的图。
+	These pieces cannot be used: {reason}	无法使用这些棋子：{reason}
+	Import a folder…	导入文件夹…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	将包含十二张棋子图片（wK 至 bP，SVG 或 PNG）的文件夹复制到棋子文件夹。
+	Import from a web page…	从网页导入…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	将已保存网页中自带的棋子套装放入棋子文件夹。
+	Choose a folder of piece images	选择棋子图片文件夹
+	Choose a saved web page	选择已保存的网页
+	Web pages	网页
+	There is no pieces folder beside the program to import into.	程序旁边没有可导入的棋子文件夹。
+	Imported: {sets}. Their licence is not known: use them for personal use only.	已导入：{sets}。其许可证未知：仅供个人使用。
+	Already in the pieces folder: {sets}. Replace them?	棋子文件夹中已有：{sets}。要替换吗？
+	The pieces cannot be imported: {reason}	无法导入棋子：{reason}
+	round {round}	第 {round} 轮
+	Result: {result}	结果：{result}
+	Board theme	棋盘主题
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	用于您下棋和研究的棋盘。页面上和导出中的棋图保持原有颜色。
+	Brown	棕色
+	Light wood	浅色木纹
+	Walnut	胡桃木
+	Ice blue	冰蓝
+	Olive	橄榄绿
+	Grey	灰色
+	Graphite	石墨
+	Sand	沙色
+	Coral	珊瑚色
+	High contrast	高对比度
+	Coordinates	坐标
+	On the squares	在格子上
+	Beside the board	在棋盘旁
+	Frame	边框
+	Double	双线
+	Marked squares	标记的格子
+	Ring	圆环
+	Filled	填充
+	A dot on the side to move	在轮到走棋的一方显示圆点
+	Wood	木纹
+	Marble	大理石
+	Paper	纸张
+	Book print	书籍印刷
+	king	王
+	queen	后
+	rook	车
+	bishop	象
+	knight	马
+	pawn	兵
+	checkmate	将死
+	check	将军
+	castles short	短易位
+	castles long	长易位
+	takes	吃
+	{move} promotes to {piece}	{move} 升变为{piece}
+	Pieces in the move list	着法列表中的棋子
+	Figurines	棋子符号
+	Letters in your language	您语言中的字母
+	English letters	英文字母
+	Shown on the board while the pointer is here	指针停在此处时显示在棋盘上
+	1 arrow	1 个箭头
+	{n} arrows	{n} 个箭头
+	1 ring	1 个圆环
+	{n} rings	{n} 个圆环
+	The comment on the move shown, large under the board	在棋盘下方大字显示当前着法的注释
+	Running text	连续文本
+	Columns	分栏
+	Text size	文字大小
+	Small	小
+	Normal	正常
+	Large	大
+	Previous variation (Page Up)	上一个变着 (Page Up)
+	Next variation (Page Down)	下一个变着 (Page Down)
+	A move the pointer rests on shows its position	指针停留的着法显示其局面
+	Position after {move}	{move} 之后的局面

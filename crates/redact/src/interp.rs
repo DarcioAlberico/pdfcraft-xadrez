@@ -15,7 +15,9 @@
 //!   other pages using the original are untouched).
 //!
 //! In verify mode nothing changes; glyphs and inline images that still overlap a region are
-//! counted.
+//! counted. In find mode nothing changes either; what apply mode would remove is listed, for a
+//! preview. [`EraseOptions`] choose what goes (text, images, vectors) and when a glyph counts as
+//! under a region.
 
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -23,15 +25,19 @@ use std::rc::Rc;
 use pdfcraft_content::{Matrix, Op, Pieces, contains, num, overlaps, serialize_ops, string};
 use pdfcraft_cos::{CosError, Dict, Document, ObjRef, Object, Stream};
 
-use crate::{RedactError, Report, image, page_streams, tags};
+use crate::{EraseOptions, GlyphRule, RedactError, Report, image, page_streams, tags};
 use pdfcraft_fonts::pdf::Metrics;
 
 const MAX_DEPTH: usize = 12;
+/// Most boxes find mode lists.
+pub(crate) const MAX_FOUND: usize = 100_000;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Mode {
     Apply,
     Verify,
+    /// Change nothing; list in [`Scope::found`] the boxes of what apply mode would remove.
+    Find,
 }
 
 #[derive(Clone)]
@@ -89,6 +95,16 @@ pub(crate) struct Scope<'a> {
     pub hidden_layers: Vec<ObjRef>,
     /// Content removed from hidden layers (blocks and XObjects).
     pub layer_blocks: usize,
+    /// What goes under a region, and when a glyph counts as under one.
+    pub options: EraseOptions,
+    /// Find mode: the boxes (user space) of the glyphs, images and paths apply mode would remove,
+    /// at most [`MAX_FOUND`].
+    pub found: Vec<[f64; 4]>,
+    /// Redaction and sanitizing: an image partly under a region has its pixels cleared, or goes
+    /// whole when its codec can't be re-encoded, so nothing covered survives in the file. The
+    /// eraser (not secure, decision D1) clips the region out of it instead: any codec, the image
+    /// data untouched and still shared with the pages that use it.
+    pub secure: bool,
     fonts: HashMap<Vec<u8>, Rc<Metrics>>,
     used_names: Vec<Vec<u8>>,
     depth: usize,
@@ -103,6 +119,9 @@ impl<'a> Scope<'a> {
             hidden_text: None,
             hidden_layers: Vec::new(),
             layer_blocks: 0,
+            options: EraseOptions::REDACT,
+            found: Vec::new(),
+            secure: true,
             fonts: HashMap::new(),
             used_names: Vec::new(),
             depth: 0,
@@ -146,14 +165,29 @@ impl<'a> Scope<'a> {
         self.rects.iter().any(|r| contains(*r, b, 0.01))
     }
 
-    /// Does a glyph box count as under a region? Any real overlap does (more than a fifth of
-    /// the glyph or a point, whichever is less, in both directions), so neighbours that only
-    /// touch an edge survive while partly covered glyphs go. Degenerate boxes (zero-size text)
-    /// count when their origin is inside.
+    /// Find mode: list the parts of `b` under the regions.
+    fn find(&mut self, b: [f64; 4]) {
+        for r in self.rects {
+            let part = [b[0].max(r[0]), b[1].max(r[1]), b[2].min(r[2]), b[3].min(r[3])];
+            if part[0] < part[2] && part[1] < part[3] && self.found.len() < MAX_FOUND {
+                self.found.push(part);
+            }
+        }
+    }
+
+    /// Does a glyph box count as under a region? With [`GlyphRule::Overlap`] any real overlap
+    /// does (more than a fifth of the glyph or a point, whichever is less, in both directions), so
+    /// neighbours that only touch an edge survive while partly covered glyphs go; with
+    /// [`GlyphRule::Centre`] its centre must be inside. Degenerate boxes (zero-size text) count
+    /// when their origin is inside.
     fn glyph_hit(&self, b: [f64; 4], origin: (f64, f64)) -> bool {
+        let inside = |(x, y): (f64, f64)| self.rects.iter().any(|r| x >= r[0] && x <= r[2] && y >= r[1] && y <= r[3]);
         let (gw, gh) = (b[2] - b[0], b[3] - b[1]);
         if gw < 0.01 || gh < 0.01 {
-            return self.rects.iter().any(|r| origin.0 >= r[0] && origin.0 <= r[2] && origin.1 >= r[1] && origin.1 <= r[3]);
+            return inside(origin);
+        }
+        if self.options.rule == GlyphRule::Centre {
+            return inside(((b[0] + b[2]) / 2.0, (b[1] + b[3]) / 2.0));
         }
         let (mx, my) = ((gw * 0.2).min(1.0), (gh * 0.2).min(1.0));
         self.rects.iter().any(|r| {
@@ -495,6 +529,8 @@ struct Glyph {
     /// Advance in unscaled text space (before `Th`).
     advance: f64,
     hit: bool,
+    /// Its box in user space.
+    bbox: [f64; 4],
 }
 
 /// Process a scope's content streams (state flows from one stream to the next).
@@ -586,8 +622,11 @@ pub(crate) fn process(doc: &mut Document, scope: &mut Scope<'_>, streams: &[Vec<
                 let body = std::mem::take(&mut path);
                 let bbox = path_box.take();
                 let clips = std::mem::replace(&mut clip, false);
-                let hit = scope.mode == Mode::Apply && o != b"n" && bbox.is_some_and(|b| scope.hits(b));
-                if !hit {
+                let hit = scope.mode != Mode::Verify && scope.options.vectors && o != b"n" && bbox.is_some_and(|b| scope.hits(b));
+                if !hit || scope.mode == Mode::Find {
+                    if hit && let Some(b) = bbox {
+                        scope.find(b);
+                    }
                     ops.extend(body);
                     ops.push(op);
                     continue;
@@ -708,19 +747,27 @@ pub(crate) fn process(doc: &mut Document, scope: &mut Scope<'_>, streams: &[Vec<
                     // (Full vertical-text removal is a future enhancement.)
                     if gs.vertical
                         && scope.mode == Mode::Apply
+                        && scope.options.text
                         && scope.hidden_text.is_none()
                         && !scope.rects.is_empty()
                         && items.iter().any(|o| matches!(o, Object::String(s) if !s.bytes.is_empty()))
                     {
                         out.vertical = true;
                     }
-                    let (new_items, removed) = show(scope, &gs, &mut tm, &items);
+                    let (new_items, hit_boxes) = show(scope, &gs, &mut tm, &items);
+                    let removed = hit_boxes.len();
                     if removed == 0 {
                         ops.push(op);
                         continue;
                     }
                     if scope.mode == Mode::Verify {
                         out.residue += removed;
+                    }
+                    if scope.mode == Mode::Find {
+                        let room = MAX_FOUND.saturating_sub(scope.found.len());
+                        scope.found.extend(hit_boxes.into_iter().take(room));
+                    }
+                    if scope.mode != Mode::Apply {
                         ops.push(op);
                         continue;
                     }
@@ -740,9 +787,19 @@ pub(crate) fn process(doc: &mut Document, scope: &mut Scope<'_>, streams: &[Vec<
                 }
                 b"BI" => {
                     let b = gs.ctm.bbox([0.0, 0.0, 1.0, 1.0]);
-                    if scope.hits(b) {
+                    if scope.options.images && scope.hits(b) {
+                        if let Some(clipped) = clip_image(scope, &gs, b, &op) {
+                            changed = true;
+                            ops.extend(clipped);
+                            continue;
+                        }
                         if scope.mode == Mode::Verify {
-                            out.residue += 1;
+                            // The eraser leaves a clipped image in place.
+                            if scope.secure {
+                                out.residue += 1;
+                            }
+                        } else if scope.mode == Mode::Find {
+                            scope.find(b);
                         } else {
                             scope.report.images_removed += 1;
                             changed = true;
@@ -750,7 +807,7 @@ pub(crate) fn process(doc: &mut Document, scope: &mut Scope<'_>, streams: &[Vec<
                         }
                     }
                 }
-                b"sh" if scope.mode == Mode::Apply => {
+                b"sh" if scope.mode == Mode::Apply && scope.options.vectors => {
                     // A shading fills the current clip: clip the regions out.
                     if let Some(c) = clip_out(scope.rects, &gs.ctm, [-1e6, -1e6, 1e6, 1e6]) {
                         changed = true;
@@ -762,6 +819,15 @@ pub(crate) fn process(doc: &mut Document, scope: &mut Scope<'_>, streams: &[Vec<
                     }
                 }
                 b"Do" => {
+                    if scope.options.images
+                        && let Some(b) = image_box(doc, &op, &gs, &xobjects)
+                        && scope.hits(b)
+                        && let Some(clipped) = clip_image(scope, &gs, b, &op)
+                    {
+                        changed = true;
+                        ops.extend(clipped);
+                        continue;
+                    }
                     if let Some(new) = xobject(doc, scope, &op, &gs, resources, &mut xobjects, &mut out) {
                         changed = true;
                         if let Some(n) = new {
@@ -841,11 +907,13 @@ fn clean_replacements(doc: &Document, resources: &Dict, original: &[Op], process
 
 /// Lay out a shown string (or `TJ` array) glyph by glyph, advancing `tm`. Returns the `TJ`
 /// items with the glyphs under a region replaced by displacements, and how many were removed.
-fn show(scope: &Scope<'_>, gs: &Gs, tm: &mut Matrix, items: &[Object]) -> (Vec<Object>, usize) {
+/// The items of a text-showing operator without the glyphs under a region (a displacement of the
+/// same width in their place), and the boxes of the glyphs taken out.
+fn show(scope: &Scope<'_>, gs: &Gs, tm: &mut Matrix, items: &[Object]) -> (Vec<Object>, Vec<[f64; 4]>) {
     let f = &gs.font;
     let size = gs.size;
     let mut out: Vec<Object> = Vec::new();
-    let mut removed = 0;
+    let mut removed = Vec::new();
     let push_num = |out: &mut Vec<Object>, v: f64| {
         if v == 0.0 {
             return;
@@ -877,16 +945,16 @@ fn show(scope: &Scope<'_>, gs: &Gs, tm: &mut Matrix, items: &[Object]) -> (Vec<O
                             let degenerate = b[2] - b[0] < 0.01 && b[3] - b[1] < 0.01;
                             matches!(gs.render_mode, 3 | 7) || !(overlaps(page, b, 0.0) || degenerate)
                         }
-                        None => scope.glyph_hit(b, origin),
+                        None => scope.options.text && scope.glyph_hit(b, origin),
                     };
-                    glyphs.push(Glyph { bytes: pos..pos + len, advance, hit });
+                    glyphs.push(Glyph { bytes: pos..pos + len, advance, hit, bbox: b });
                     *tm = Matrix::translate(advance * gs.scale, 0.0).then(tm);
                     pos += len;
                 }
                 let mut run: Vec<u8> = Vec::new();
                 for g in &glyphs {
                     if g.hit {
-                        removed += 1;
+                        removed.push(g.bbox);
                         if !run.is_empty() {
                             out.push(string(std::mem::take(&mut run)));
                         }
@@ -913,6 +981,32 @@ fn show(scope: &Scope<'_>, gs: &Gs, tm: &mut Matrix, items: &[Object]) -> (Vec<O
     (out, removed)
 }
 
+/// The box (user space) of the image a `Do` draws, when it draws an Image XObject.
+fn image_box(doc: &Document, op: &Op, gs: &Gs, xobjects: &Dict) -> Option<[f64; 4]> {
+    let r = xobjects.get(op.name(0)?)?.as_ref()?;
+    let obj = doc.get(r);
+    let Object::Stream(s) = &*obj else { return None };
+    (s.dict.name(b"Subtype") == Some(b"Image")).then(|| gs.ctm.bbox([0.0, 0.0, 1.0, 1.0]))
+}
+
+/// The eraser's way with an image (box `b`) a region only partly covers: the drawing operator
+/// `op` wrapped in a clip that leaves the regions out, so the image data is untouched (and still
+/// shared). `None` for redaction and sanitizing, which clear or remove (see [`Scope::secure`]),
+/// outside apply mode, and for an image wholly covered, which goes.
+fn clip_image(scope: &mut Scope<'_>, gs: &Gs, b: [f64; 4], op: &Op) -> Option<Vec<Op>> {
+    if scope.secure || scope.mode != Mode::Apply || scope.covered(b) {
+        return None;
+    }
+    let clip = clip_out(scope.rects, &gs.ctm, b)?;
+    scope.report.images_clipped += 1;
+    let mut ops = Vec::with_capacity(clip.len() + 3);
+    ops.push(Op::new("q", vec![]));
+    ops.extend(clip);
+    ops.push(op.clone());
+    ops.push(Op::new("Q", vec![]));
+    Some(ops)
+}
+
 /// `Do`: `None` = leave the operator alone; `Some(None)` = drop it; `Some(Some(op))` = replace it.
 fn xobject(
     doc: &mut Document,
@@ -929,7 +1023,7 @@ fn xobject(
     let Object::Stream(s) = &*obj else { return None };
     match s.dict.name(b"Subtype") {
         _ if s.dict.get(b"OC").is_some_and(|oc| scope.layer_hidden(doc, oc)) => {
-            if scope.mode == Mode::Verify {
+            if scope.mode != Mode::Apply {
                 return None;
             }
             scope.layer_blocks += 1;
@@ -939,7 +1033,11 @@ fn xobject(
         }
         Some(b"Image") => {
             let b = gs.ctm.bbox([0.0, 0.0, 1.0, 1.0]);
-            if !scope.hits(b) || scope.mode == Mode::Verify {
+            if !scope.options.images || !scope.hits(b) || scope.mode == Mode::Verify {
+                return None;
+            }
+            if scope.mode == Mode::Find {
+                scope.find(b);
                 return None;
             }
             if scope.covered(b) {
@@ -982,7 +1080,7 @@ fn xobject(
                 return None;
             }
             if scope.depth >= MAX_DEPTH {
-                if scope.mode == Mode::Verify {
+                if scope.mode != Mode::Apply {
                     return None;
                 }
                 scope.report.forms_removed += 1;
@@ -1013,7 +1111,7 @@ fn xobject(
             out.retired_properties.extend(inner.retired_properties);
             out.tag_changes.extend(inner.tag_changes);
             out.error = inner.error.or(out.error.take());
-            if scope.mode == Mode::Verify {
+            if scope.mode != Mode::Apply {
                 return None;
             }
             let new_data = inner.streams.into_iter().next().flatten();

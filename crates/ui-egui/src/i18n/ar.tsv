@@ -2827,6 +2827,40 @@ certificate	Version	الإصدار
 	Show this diagram on the page	إظهار هذا المخطط في الصفحة
 	Stalemate	تعادل بالجمود
 	Standard start position	وضع البداية القياسي
+	the board is empty	الرقعة فارغة
+	White's king is missing	الملك الأبيض مفقود
+	Black's king is missing	الملك الأسود مفقود
+	White has more than one king	للأبيض أكثر من ملك واحد
+	Black has more than one king	للأسود أكثر من ملك واحد
+	White has more than 8 pawns	للأبيض أكثر من 8 بيادق
+	Black has more than 8 pawns	للأسود أكثر من 8 بيادق
+	White has more than 16 pieces	للأبيض أكثر من 16 قطعة
+	Black has more than 16 pieces	للأسود أكثر من 16 قطعة
+	a pawn stands on the first or the eighth rank	يوجد بيدق في الصف الأول أو الثامن
+	White has more extra pieces than missing pawns to promote	للأبيض قطع إضافية أكثر من البيادق المفقودة التي يمكن ترقيتها
+	Black has more extra pieces than missing pawns to promote	للأسود قطع إضافية أكثر من البيادق المفقودة التي يمكن ترقيتها
+	the kings stand next to each other	الملكان متجاوران
+	White is in check, but it is Black's turn	الأبيض في حالة كش، لكن الدور للأسود
+	Black is in check, but it is White's turn	الأسود في حالة كش، لكن الدور للأبيض
+	White's king is in check from more than two pieces	الملك الأبيض في كش من أكثر من قطعتين
+	Black's king is in check from more than two pieces	الملك الأسود في كش من أكثر من قطعتين
+	White's king is in a double check no move could give	الملك الأبيض في كش مزدوج لا يمكن لأي نقلة أن تعطيه
+	Black's king is in a double check no move could give	الملك الأسود في كش مزدوج لا يمكن لأي نقلة أن تعطيه
+	White may castle, but its king or rook has left its square	يحق للأبيض التبييت، لكن ملكه أو رخه غادر مربعه
+	Black may castle, but its king or rook has left its square	يحق للأسود التبييت، لكن ملكه أو رخه غادر مربعه
+	the en-passant square does not fit the pawns	مربع الأخذ بالتجاوز لا يتوافق مع البيادق
+	Not a legal position: {reason}	ليس وضعًا قانونيًا: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	ليس وضعًا قانونيًا ({reason}): صحّحه في محرر المخطط للعب نقلات عليه.
+	The game on the board has moves. Put this position:	المباراة على الرقعة فيها نقلات. ضع هذه الوضعية:
+	New game with this position	مباراة جديدة بهذه الوضعية
+	The game on the board keeps its moves.	تحتفظ المباراة على الرقعة بنقلاتها.
+	Its moves are deleted (Undo brings them back).	تُحذف نقلاتها (التراجع يعيدها).
+	Start again from the standard position.	البدء من جديد من وضع البداية القياسي.
+	A new game from the standard position; the game on the board keeps its moves.	مباراة جديدة من وضع البداية القياسي؛ تحتفظ المباراة على الرقعة بنقلاتها.
+	PGN edited	تم تعديل PGN
+	Load	تحميل
+	Show the game on the board again.	عرض المباراة التي على الرقعة مرة أخرى.
+	Load the PGN above on the board, with its variations and comments.	تحميل PGN أعلاه على الرقعة، مع تفريعاته وتعليقاته.
 	Start (Home)	البداية (Home)
 	That side can't be to move: the other king is in check.	لا يمكن أن يكون الدور لهذا الطرف: الملك الآخر في كش.
 	The FEN couldn't be read: {e}	تعذرت قراءة FEN: {e}
@@ -3300,3 +3334,106 @@ chess undo step	Clear drawings	مسح الرسوم
 	No game was found for this move, on its page or the pages around it.	لم يُعثر على مباراة لهذه النقلة في صفحتها ولا في الصفحات المحيطة بها.
 	Renumber	إعادة الترقيم
 	The text's move numbers give way to the game's: {printed} is played as {played}.	تُستبدل أرقام نقلات النص بأرقام المباراة: تُلعب {printed} على أنها {played}.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	قائمة النقلات
+	Move list beside the page	قائمة النقلات بجانب الصفحة
+	Side of the page	جانب الصفحة
+	Drawing eraser	ممحاة الرسومات
+	Drag across text or draw a box to erase what lies under it	اسحب عبر النص أو ارسم مربعًا لمحو ما تحته
+	Drawings and shapes	الرسومات والأشكال
+	Comments, links and form fields	التعليقات والروابط وحقول النماذج
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	المحو تعديل: قد تحتفظ نسخة سابقة من الملف بما مُحي. استخدم حجب لإزالته نهائيًا.
+	Erase content	محو المحتوى
+	Knife (cut pages)	سكين (قص الصفحات)
+	Click to place a cut, right-click to take one away, Enter to cut	انقر لوضع قطع، وانقر بزر الماوس الأيمن لإزالة قطع، واضغط Enter للقص
+	Up and down	من أعلى إلى أسفل
+	Across	بالعرض
+	Hold Shift for the other direction.	اضغط Shift باستمرار للاتجاه الآخر.
+	Right part first	الجزء الأيمن أولًا
+	Nothing is erased: each part shows its piece of the page.	لا يُمحى شيء: كل جزء يعرض قطعته من الصفحة.
+	Remove what lies outside each part	إزالة ما يقع خارج كل جزء
+	Split double pages	تقسيم الصفحات المزدوجة
+	No double pages were found: none is wider than tall	لم يُعثر على صفحات مزدوجة: لا توجد صفحة أعرض من طولها
+	Box or selection	مربع أو تحديد
+	Brush	فرشاة
+	Brush size	حجم الفرشاة
+	Rub over what you want to erase; letting go erases it	امسح فوق ما تريد محوه؛ تحرير الزر يمحوه
+	What will go is tinted red while you draw.	ما سيُمحى يظهر باللون الأحمر أثناء الرسم.
+	Erase the selected words from the page	امحُ الكلمات المحددة من الصفحة
+	Chess pieces	قطع الشطرنج
+	Plain shapes	أشكال بسيطة
+	Missing: {pieces}	ناقصة: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	المتغير PDFCRAFT_CHESS_PIECES معيَّن وله الأولوية على هذا الاختيار.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	الرقعة: رقعتا التحليل والدراسة. المخططات: تُعاد رسمها على الصفحة وفي المحرر وفي التصدير.
+	These pieces cannot be used: {reason}	لا يمكن استخدام هذه القطع: {reason}
+	Import a folder…	استيراد مجلد…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	انسخ مجلدًا من اثنتي عشرة صورة للقطع (من wK إلى bP، بصيغة SVG أو PNG) إلى مجلد القطع.
+	Import from a web page…	استيراد من صفحة ويب…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	خذ مجموعات القطع التي تحملها صفحة ويب محفوظة داخلها إلى مجلد القطع.
+	Choose a folder of piece images	اختر مجلدًا لصور القطع
+	Choose a saved web page	اختر صفحة ويب محفوظة
+	Web pages	صفحات الويب
+	There is no pieces folder beside the program to import into.	لا يوجد مجلد قطع بجانب البرنامج للاستيراد إليه.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	تم الاستيراد: {sets}. ترخيصها غير معروف: استخدمها للاستخدام الشخصي فقط.
+	Already in the pieces folder: {sets}. Replace them?	موجودة بالفعل في مجلد القطع: {sets}. هل تريد استبدالها؟
+	The pieces cannot be imported: {reason}	تعذر استيراد القطع: {reason}
+	round {round}	الجولة {round}
+	Result: {result}	النتيجة: {result}
+	Board theme	سمة الرقعة
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	للرقع التي تلعب وتدرس عليها. تحتفظ المخططات على الصفحة وفي التصدير بألوانها.
+	Brown	بني
+	Light wood	خشب فاتح
+	Walnut	جوز
+	Ice blue	أزرق جليدي
+	Olive	زيتوني
+	Grey	رمادي
+	Graphite	غرافيت
+	Sand	رملي
+	Coral	مرجاني
+	High contrast	تباين عالٍ
+	Coordinates	الإحداثيات
+	On the squares	على المربعات
+	Beside the board	بجانب الرقعة
+	Frame	الإطار
+	Double	مزدوج
+	Marked squares	المربعات المعلَّمة
+	Ring	حلقة
+	Filled	ممتلئ
+	A dot on the side to move	نقطة عند الطرف الذي عليه الدور
+	Wood	خشب
+	Marble	رخام
+	Paper	ورق
+	Book print	طباعة الكتب
+	king	ملك
+	queen	وزير
+	rook	رخ
+	bishop	فيل
+	knight	حصان
+	pawn	بيدق
+	checkmate	كش مات
+	check	كش
+	castles short	تبييت قصير
+	castles long	تبييت طويل
+	takes	يأخذ
+	{move} promotes to {piece}	{move} يترقى إلى {piece}
+	Pieces in the move list	القطع في قائمة النقلات
+	Figurines	رموز القطع
+	Letters in your language	حروف بلغتك
+	English letters	حروف إنجليزية
+	Shown on the board while the pointer is here	تظهر على الرقعة ما دام المؤشر هنا
+	1 arrow	سهم واحد
+	{n} arrows	{n} أسهم
+	1 ring	حلقة واحدة
+	{n} rings	{n} حلقات
+	The comment on the move shown, large under the board	تعليق النقلة المعروضة بخط كبير تحت الرقعة
+	Running text	نص متصل
+	Columns	أعمدة
+	Text size	حجم النص
+	Small	صغير
+	Normal	عادي
+	Large	كبير
+	Previous variation (Page Up)	التفريع السابق (Page Up)
+	Next variation (Page Down)	التفريع التالي (Page Down)
+	A move the pointer rests on shows its position	النقلة التي يستقر عليها المؤشر تعرض وضعها
+	Position after {move}	الوضع بعد {move}

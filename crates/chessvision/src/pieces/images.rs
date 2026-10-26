@@ -41,9 +41,42 @@ fn stem(color: Color, kind: PieceKind) -> String {
     format!("{c}{}", kind.letter())
 }
 
+/// The twelve file stems of a piece-image folder, in [`PieceSet`] order.
+pub const PIECE_STEMS: [&str; 12] = ["wK", "wQ", "wR", "wB", "wN", "wP", "bK", "bQ", "bR", "bB", "bN", "bP"];
+
+/// Every piece image in `dir` (PNG or SVG named for a piece, either case), by name.
+pub fn piece_files(dir: &Path) -> Vec<PathBuf> {
+    let Ok(entries) = std::fs::read_dir(dir) else { return Vec::new() };
+    let mut out: Vec<PathBuf> = entries
+        .flatten()
+        .take(1_000)
+        .map(|e| e.path())
+        .filter(|p| p.is_file())
+        .filter(|p| p.extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("png") || e.eq_ignore_ascii_case("svg")))
+        .filter(|p| p.file_stem().and_then(|s| s.to_str()).is_some_and(|s| PIECE_STEMS.iter().any(|k| k.eq_ignore_ascii_case(s))))
+        .collect();
+    out.sort();
+    out
+}
+
 /// Whether `dir` looks like a piece-image folder: it holds a white king image.
 pub fn is_piece_folder(dir: &Path) -> bool {
     dir.is_dir() && images_in(dir).contains_key("wk")
+}
+
+/// The pieces a piece-image folder has no image for (`wK`, `bQ`, …), in [`PieceSet`] order.
+pub fn missing_pieces(dir: &Path) -> Vec<String> {
+    let files = images_in(dir);
+    let mut missing = Vec::new();
+    for color in [Color::White, Color::Black] {
+        for kind in PieceKind::ALL {
+            let name = stem(color, kind);
+            if !files.contains_key(&name.to_ascii_lowercase()) {
+                missing.push(name);
+            }
+        }
+    }
+    missing
 }
 
 /// Whether `path` is an SVG file (else a PNG), by its extension.

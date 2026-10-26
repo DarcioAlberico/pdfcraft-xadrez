@@ -966,6 +966,10 @@ fn dialogs(app: &mut PdfCraftApp, ctx: &egui::Context) {
                 // The settings outgrow a short window: scroll them rather than run off the screen.
                 let max = (ui.ctx().content_rect().height() - 120.0).max(200.0);
                 close = egui::ScrollArea::vertical().max_height(max).show(ui, |ui| crate::js_ui::preferences_body(ui, app, &t)).inner;
+                if close {
+                    // Found again next time: sets may have been added since.
+                    app.chess.piece_picker = None;
+                }
                 return;
             }
             Dialog::RecognizeText => {

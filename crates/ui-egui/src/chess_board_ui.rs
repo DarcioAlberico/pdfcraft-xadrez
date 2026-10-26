@@ -34,6 +34,7 @@ use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::pdfcraft_chess::draw::{BoardStyle, PieceSet, Rgb};
 use pdfcraft_engine::chess::pdfcraft_chess::game::{DrawColor, Drawing, Game, GameError, MAX_MOVE_NUMBER, NodeId, Outcome, Token};
 use pdfcraft_engine::chess::pdfcraft_chess::placement::{Color, Piece, PieceKind, Placement, Square};
+use pdfcraft_engine::chess::pdfcraft_chess::texture::Texture;
 
 use crate::chess_history::{ChessEdit, GameHistory, Snapshot};
 use crate::theme::{self, Tokens};
@@ -178,13 +179,23 @@ pub struct BoardState {
     pub pgn_text: String,
     /// What the fields were last filled from, so typing in them is not overwritten.
     shown: String,
+    /// The PGN field was typed in since it was last filled from the game: a step on the board
+    /// leaves it as typed until it is loaded or the edit discarded (plan A8, W6).
+    pub(crate) pgn_edited: bool,
+    /// A FEN typed while the game has moves, waiting for New game or Replace (plan A8, W3), and
+    /// whether New game takes the keyboard when it is drawn next.
+    pub(crate) fen_choice: Option<String>,
+    focus_fen_choice: bool,
     /// Why the last load or move did not work.
     pub message: Option<String>,
     /// The board picture, the position and view it shows, and its side in pixels.
     texture: Option<(String, u32, TextureHandle)>,
     draw_error: Option<String>,
     /// The pieces cut out of their squares, for the one following the pointer in a drag.
-    sprites: Option<TextureHandle>,
+    sprites: Option<(u64, TextureHandle)>,
+    /// A textured theme's squares (plan HC5): its id and size, and the pixels, made once for
+    /// every position drawn at that size.
+    background: Option<Background>,
     /// The comment or game-detail field being typed in. The game keeps comments and tags cleaned
     /// (spaces collapsed, ends trimmed), so a field re-read from it every frame would eat a space
     /// typed at the end.
@@ -201,6 +212,11 @@ pub struct BoardState {
     revealed: Option<(NodeId, u64)>,
     /// The comment editor (the comment before the move too) is open.
     pub(crate) comment_open: bool,
+    /// Game details opens when it is drawn next (a click on the game's header, plan HC10).
+    pub(crate) open_details: bool,
+    /// The move whose drawings mark the pointer is over in the list, and the frame it was seen
+    /// in (plan HC12): the board shows that move's drawings while it is.
+    pub(crate) hovered_drawings: Option<(NodeId, u64)>,
     /// The comment field takes the keyboard when it is drawn next.
     pub(crate) focus_comment: bool,
     /// Where the glyph palette types.
@@ -231,10 +247,14 @@ impl Default for BoardState {
             fen_text: String::new(),
             pgn_text: String::new(),
             shown: String::new(),
+            pgn_edited: false,
+            fen_choice: None,
+            focus_fen_choice: false,
             message: None,
             texture: None,
             draw_error: None,
             sprites: None,
+            background: None,
             draft: None,
             marks: HashMap::new(),
             marked_order: Vec::new(),
@@ -242,6 +262,8 @@ impl Default for BoardState {
             history: GameHistory::default(),
             revealed: None,
             comment_open: false,
+            open_details: false,
+            hovered_drawings: None,
             focus_comment: false,
             typing: Default::default(),
             fresh: Default::default(),
@@ -269,6 +291,15 @@ pub enum BoardAction {
         texts: Vec<String>,
         more: bool,
     },
+    /// Show the Move list beside the page, or close it while it shows.
+    ToggleMoveList,
+    /// Open a new game from position `fen` after the one shown, which keeps its moves (plan A8,
+    /// W3 and W4: a FEN typed, or the standard start, while the game has moves).
+    NewGameAt(String),
+    /// Draw the boards in this theme (plan HC4).
+    BoardTheme(&'static pdfcraft_engine::chess::pdfcraft_chess::theme::BoardTheme),
+    /// Lay the boards out so (plan HC6).
+    BoardLook(crate::chess_theme::BoardLook),
 }
 
 impl BoardState {
@@ -294,12 +325,8 @@ impl BoardState {
                 self.message = Some(crate::i18n::fmt(tl!("The FEN couldn't be read: {e}"), &[("e", &e)]));
                 return false;
             }
-            Err(_) => match pdfcraft_engine::chess::pdfcraft_chess::fen::parse_placement(fen) {
-                Ok(placement) => (
-                    Game::standard(),
-                    Some((placement, fen.trim().to_owned())),
-                    Some(tl!("Not a legal position: correct it in the diagram editor to play moves on it.").to_string()),
-                ),
+            Err(e) => match pdfcraft_engine::chess::pdfcraft_chess::fen::parse_placement(fen) {
+                Ok(placement) => (Game::standard(), Some((placement, fen.trim().to_owned())), Some(board_illegal_text(&e))),
                 Err(e) => {
                     self.message = Some(crate::i18n::fmt(tl!("The FEN couldn't be read: {e}"), &[("e", &e.to_string())]));
                     return false;
@@ -309,6 +336,7 @@ impl BoardState {
         self.game = game;
         self.illegal = illegal;
         self.message = message;
+        self.fen_choice = None;
         self.selected = None;
         self.promotion = None;
         self.flipped = flipped;
@@ -318,7 +346,9 @@ impl BoardState {
     }
 
     /// Read the PGN field into the board (one undo step): its first game, when it holds several
-    /// (split at tag lines, as Open PGN… splits a file). Returns the games after it as texts, at
+    /// (split at tag lines, as Open PGN… splits a file). The same game read again (an edited
+    /// comment or variation) keeps the move shown and where its moves are on the page
+    /// ([`carry_place`]). Returns the games after it as texts, at
     /// most [`crate::chess_autosave::MAX_GAMES`] games in all, and whether the field had more;
     /// none when the first could not be read.
     pub(crate) fn load_pgn(&mut self) -> (Vec<String>, bool) {
@@ -330,7 +360,8 @@ impl BoardState {
             (first, rest, chunks.len() > max)
         };
         let loaded = self.edit(|s| match Game::from_pgn(&first) {
-            Ok((game, stopped)) => {
+            Ok((mut game, stopped)) => {
+                carry_place(&s.game, &mut game);
                 s.game = game;
                 s.illegal = None;
                 s.selected = None;
@@ -347,7 +378,8 @@ impl BoardState {
         if loaded { (rest, more) } else { (Vec::new(), false) }
     }
 
-    /// Back to the standard start position, as a new game (one undo step).
+    /// Back to the standard start position in the game's place (one undo step). With moves on
+    /// the board the panel opens a new game instead ([`BoardAction::NewGameAt`]).
     fn standard_start(&mut self) {
         self.edit(|s| {
             s.game = Game::standard();
@@ -453,7 +485,12 @@ impl BoardState {
         };
         if force || key != self.shown {
             self.fen_text = self.current_fen();
-            self.pgn_text = if self.illegal.is_some() { String::new() } else { self.game.pgn() };
+            // Text typed in the PGN field stays until it is loaded or discarded; a new game put on
+            // the board (`force`) replaces it.
+            if force || !self.pgn_edited {
+                self.pgn_text = if self.illegal.is_some() { String::new() } else { self.game.pgn() };
+                self.pgn_edited = false;
+            }
             self.shown = key;
         }
     }
@@ -583,7 +620,18 @@ impl BoardState {
         if self.illegal.is_some() {
             return self.marks.get(&self.current_fen()).cloned().unwrap_or_default();
         }
-        let drawings = self.game.drawings(self.game.current());
+        self.marks_of(self.game.current())
+    }
+
+    /// The move whose drawings the board shows in place of the move shown's, while the pointer
+    /// is over its mark in the list.
+    pub fn hovered_move(&self) -> Option<NodeId> {
+        self.hovered_drawings.map(|(node, _)| node)
+    }
+
+    /// The drawings on move `node`'s position.
+    pub(crate) fn marks_of(&self, node: NodeId) -> Vec<Mark> {
+        let drawings = self.game.drawings(node);
         drawings.iter().map(|d| Mark { from: d.from, to: d.to, color: MarkColor::from_draw(d.color) }).collect()
     }
 
@@ -634,43 +682,16 @@ impl BoardState {
         }
     }
 
-    /// The twelve pieces cut out of their squares, in one image: White's king, queen, rook,
-    /// bishop, knight and pawn on the top row, Black's on the second (see [`sprite_uv`]). Each
-    /// is drawn on white and on black; where the two differ the piece is see-through, so the
-    /// difference is its alpha and the drawing on black its premultiplied colour.
+    /// The twelve pieces cut out of their squares ([`cut_sprites`]), once per piece set.
     pub(crate) fn sprites(&mut self, ctx: &egui::Context, pieces: &PieceSet) -> Option<TextureHandle> {
-        if let Some(tex) = &self.sprites {
+        let generation = crate::chess_editor::pieces_generation();
+        if let Some((drawn, tex)) = &self.sprites
+            && *drawn == generation
+        {
             return Some(tex.clone());
         }
-        let mut placement = Placement::empty();
-        for (row, color) in [(7u8, Color::White), (6u8, Color::Black)] {
-            for (file, kind) in (0u8..).zip(KINDS) {
-                if let Some(sq) = Square::new(file, row) {
-                    placement.set(sq, Some(Piece { color, kind }));
-                }
-            }
-        }
-        let style = |c: Rgb| BoardStyle { border: 0.0, coordinates: false, flipped: false, light: c, dark: c, ..BoardStyle::default() };
-        let draw = |c: Rgb| pdfcraft_engine::chess::office::diagram_rgba(&placement, pieces, &style(c), BOARD_PX).ok();
-        let (w, h, on_white) = draw(Rgb(255, 255, 255))?;
-        let (w2, h2, on_black) = draw(Rgb(0, 0, 0))?;
-        let (w, h) = (usize::try_from(w).ok()?, usize::try_from(h).ok()?);
-        if (w, h) != (usize::try_from(w2).ok()?, usize::try_from(h2).ok()?)
-            || on_white.len() != w.checked_mul(h)?.checked_mul(4)?
-            || on_black.len() != on_white.len()
-        {
-            return None;
-        }
-        let mut rgba = Vec::with_capacity(on_white.len());
-        for (wp, bp) in on_white.as_chunks::<4>().0.iter().zip(on_black.as_chunks::<4>().0) {
-            let diff: u16 = wp.iter().zip(bp).take(3).map(|(a, b)| u16::from(a.saturating_sub(*b))).sum::<u16>() / 3;
-            let alpha = 255u8.saturating_sub(u8::try_from(diff).unwrap_or(255));
-            // Premultiplied: the colour on black is colour × alpha, never above alpha.
-            rgba.extend(bp.iter().take(3).map(|c| (*c).min(alpha)));
-            rgba.push(alpha);
-        }
-        let tex = ctx.load_texture("chess-analysis-pieces", egui::ColorImage::from_rgba_premultiplied([w, h], &rgba), egui::TextureOptions::LINEAR);
-        self.sprites = Some(tex.clone());
+        let tex = cut_sprites(ctx, pieces, "chess-analysis-pieces")?;
+        self.sprites = Some((generation, tex.clone()));
         Some(tex)
     }
 
@@ -685,15 +706,26 @@ impl BoardState {
     /// or a larger one is wanted (a sharper one drawn for the chess window serves the panels).
     fn texture(&mut self, ctx: &egui::Context, pieces: &PieceSet, px: u32) -> Option<TextureHandle> {
         let placement = self.placement();
-        let key = format!("{}|{}", pdfcraft_engine::chess::pdfcraft_chess::fen::format_placement(&placement), self.flipped);
+        let key = format!(
+            "{}|{}|{}|{}",
+            pdfcraft_engine::chess::pdfcraft_chess::fen::format_placement(&placement),
+            self.flipped,
+            crate::chess_editor::pieces_generation(),
+            crate::chess_theme::current(ctx).id
+        );
         if let Some((k, drawn, tex)) = &self.texture
             && *k == key
             && *drawn >= px
         {
             return Some(tex.clone());
         }
-        let style = BoardStyle { border: 0.0, coordinates: false, flipped: self.flipped, ..BoardStyle::default() };
-        match pdfcraft_engine::chess::office::diagram_rgba(&placement, pieces, &style, px) {
+        let style = crate::chess_theme::style(ctx, BoardStyle { border: 0.0, coordinates: false, flipped: self.flipped, ..BoardStyle::default() });
+        let palette = crate::chess_theme::current(ctx);
+        let drawn = match palette.texture.filter(|t| *t != Texture::Hatched) {
+            Some(kind) => textured_rgba(&placement, pieces, &style, px, kind, palette, &mut self.background),
+            None => pdfcraft_engine::chess::office::diagram_rgba(&placement, pieces, &style, px),
+        };
+        match drawn {
             Ok((w, h, rgba)) => {
                 let (w, h) = (usize::try_from(w).ok()?, usize::try_from(h).ok()?);
                 if rgba.len() != w.checked_mul(h)?.checked_mul(4)? {
@@ -713,8 +745,99 @@ impl BoardState {
     }
 }
 
+/// A textured theme's squares: the theme's id and the picture's size, and its pixels.
+type Background = ((&'static str, u32, u32), Vec<u8>);
+
+/// The pieces of `placement` over `kind`'s squares in `palette`'s colours, `px` wide: the pieces
+/// drawn on white and on black give their coverage, laid over the texture. `background` keeps the
+/// squares for the next position at that size.
+fn textured_rgba(
+    placement: &Placement,
+    pieces: &PieceSet,
+    style: &BoardStyle,
+    px: u32,
+    kind: Texture,
+    palette: &pdfcraft_engine::chess::pdfcraft_chess::theme::BoardTheme,
+    background: &mut Option<Background>,
+) -> Result<(u32, u32, Vec<u8>), String> {
+    let plain = |c: Rgb| BoardStyle { light: c, dark: c, hatched: false, ..*style };
+    let (w, h, on_white) = pdfcraft_engine::chess::office::diagram_rgba(placement, pieces, &plain(Rgb(255, 255, 255)), px)?;
+    let (_, _, on_black) = pdfcraft_engine::chess::office::diagram_rgba(placement, pieces, &plain(Rgb(0, 0, 0)), px)?;
+    let key = (palette.id, w, h);
+    if background.as_ref().is_none_or(|(k, _)| *k != key) {
+        let squares = pdfcraft_engine::chess::pdfcraft_chess::texture::board_rgba(kind, palette.light, palette.dark, w, h);
+        *background = Some((key, squares));
+    }
+    let squares = background.as_ref().map(|(_, s)| s.as_slice()).unwrap_or_default();
+    if on_white.len() != on_black.len() || squares.len() != on_white.len() {
+        return Err("the board's layers have different sizes".into());
+    }
+    let pieces = coverage(&on_white, &on_black);
+    let mut out = Vec::with_capacity(squares.len());
+    for (p, b) in pieces.as_chunks::<4>().0.iter().zip(squares.as_chunks::<4>().0) {
+        let keep = 255 - u16::from(p[3]);
+        for i in 0..3 {
+            // Premultiplied over opaque: the piece's colour plus what shows through.
+            out.push(u8::try_from((u16::from(p[i]) * 255 + u16::from(b[i]) * keep + 127) / 255).unwrap_or(u8::MAX));
+        }
+        out.push(255);
+    }
+    Ok((w, h, out))
+}
+
+/// The pieces of a picture drawn twice, on white and on black, as premultiplied RGBA: where the
+/// two differ the picture let the ground through.
+fn coverage(on_white: &[u8], on_black: &[u8]) -> Vec<u8> {
+    let mut rgba = Vec::with_capacity(on_white.len());
+    for (wp, bp) in on_white.as_chunks::<4>().0.iter().zip(on_black.as_chunks::<4>().0) {
+        let diff: u16 = wp.iter().zip(bp).take(3).map(|(a, b)| u16::from(a.saturating_sub(*b))).sum::<u16>() / 3;
+        let alpha = 255u8.saturating_sub(u8::try_from(diff).unwrap_or(255));
+        // Premultiplied: the colour on black is colour × alpha, never above alpha.
+        rgba.extend(bp.iter().take(3).map(|c| (*c).min(alpha)));
+        rgba.push(alpha);
+    }
+    rgba
+}
+
 /// The pieces in the order of the sprite image's columns.
 const KINDS: [PieceKind; 6] = [PieceKind::King, PieceKind::Queen, PieceKind::Rook, PieceKind::Bishop, PieceKind::Knight, PieceKind::Pawn];
+
+/// The board's message for a position it can't play: why, when the rule broken has a name
+/// (plan A8, P3b1), and where to correct it.
+fn board_illegal_text(e: &GameError) -> String {
+    match e {
+        GameError::IllegalPosition(why) if let Some(v) = why.first() => crate::i18n::fmt(
+            tl!("Not a legal position ({reason}): correct it in the diagram editor to play moves on it."),
+            &[("reason", crate::chess_editor::violation_text(*v))],
+        ),
+        _ => tl!("Not a legal position: correct it in the diagram editor to play moves on it.").to_string(),
+    }
+}
+
+/// When `new` is the game `old` was, read again (the same start, tags and main line), the move
+/// shown and where its moves are printed on the page carry over to it by their paths (plan A8,
+/// W6): loading the PGN field after editing a comment or a variation keeps the board where it
+/// was. A different game is left as read.
+fn carry_place(old: &Game, new: &mut Game) {
+    let main = |g: &Game| g.main_line().into_iter().map(|n| g.san(n).to_owned()).collect::<Vec<_>>();
+    if old.start_fen() != new.start_fen() || old.tags() != new.tags() || main(old) != main(new) {
+        return;
+    }
+    // Every move of the old game, from the start; a tree, so each is seen once.
+    let mut stack = vec![0];
+    while let Some(node) = stack.pop() {
+        stack.extend_from_slice(old.replies(node));
+        if let Some(source) = old.source(node)
+            && let Some(at) = old.path_of(node).and_then(|p| new.node_at(&p))
+            && new.san(at) == old.san(node)
+        {
+            new.set_source(at, Some(source));
+        }
+    }
+    if let Some(at) = old.path_of(old.current()).and_then(|p| new.node_at(&p)) {
+        new.go_to_node(at);
+    }
+}
 
 /// Where `piece` is in the sprite image (texture coordinates).
 pub(crate) fn sprite_uv(piece: Piece) -> Rect {
@@ -723,20 +846,62 @@ pub(crate) fn sprite_uv(piece: Piece) -> Rect {
     Rect::from_min_size(egui::pos2(col / 8.0, row / 8.0), vec2(1.0 / 8.0, 1.0 / 8.0))
 }
 
+/// The twelve pieces cut out of their squares, in one image (`name` is the texture's): White's
+/// king, queen, rook, bishop, knight and pawn on the top row, Black's on the second (see
+/// [`sprite_uv`]). Each is drawn on white and on black; where the two differ the piece is
+/// see-through, so the difference is its alpha and the drawing on black its premultiplied colour.
+/// The pieces' own fills are the same on both, so they stay opaque.
+pub(crate) fn cut_sprites(ctx: &egui::Context, pieces: &PieceSet, name: &str) -> Option<TextureHandle> {
+    let mut placement = Placement::empty();
+    for (row, color) in [(7u8, Color::White), (6u8, Color::Black)] {
+        for (file, kind) in (0u8..).zip(KINDS) {
+            if let Some(sq) = Square::new(file, row) {
+                placement.set(sq, Some(Piece { color, kind }));
+            }
+        }
+    }
+    let style = |c: Rgb| BoardStyle { border: 0.0, coordinates: false, flipped: false, light: c, dark: c, ..BoardStyle::default() };
+    let draw = |c: Rgb| pdfcraft_engine::chess::office::diagram_rgba(&placement, pieces, &style(c), BOARD_PX).ok();
+    let (w, h, on_white) = draw(Rgb(255, 255, 255))?;
+    let (w2, h2, on_black) = draw(Rgb(0, 0, 0))?;
+    let (w, h) = (usize::try_from(w).ok()?, usize::try_from(h).ok()?);
+    if (w, h) != (usize::try_from(w2).ok()?, usize::try_from(h2).ok()?)
+        || on_white.len() != w.checked_mul(h)?.checked_mul(4)?
+        || on_black.len() != on_white.len()
+    {
+        return None;
+    }
+    let rgba = coverage(&on_white, &on_black);
+    Some(ctx.load_texture(name, egui::ColorImage::from_rgba_premultiplied([w, h], &rgba), egui::TextureOptions::LINEAR))
+}
+
 /// The colours drawn over the board.
-const LAST_MOVE: Color32 = Color32::from_rgba_premultiplied(155, 199, 0, 105);
-const PICKED: Color32 = Color32::from_rgba_premultiplied(20, 85, 30, 110);
-const TARGET: Color32 = Color32::from_rgba_premultiplied(20, 85, 30, 120);
 const CHECK: Color32 = Color32::from_rgb(0xE0, 0x3E, 0x3E);
 
 /// An arrow from the centre of `mark.from` to the centre of `mark.to` (a ring when they are the
 /// same square).
-fn paint_mark(painter: &egui::Painter, state: &BoardState, board: Rect, mark: Mark) {
+fn paint_mark(
+    painter: &egui::Painter,
+    state: &BoardState,
+    board: Rect,
+    mark: Mark,
+    theme: &pdfcraft_engine::chess::pdfcraft_chess::theme::BoardTheme,
+    look: crate::chess_theme::BoardLook,
+) {
     let (a, b) = (state.square_rect(board, mark.from), state.square_rect(board, mark.to));
     let cell = a.width();
-    let color = mark.color.color32();
+    let base = mark.color.color32();
+    // The hand-made drawings take the theme's opacity; the engine's arrow stays lighter.
+    let color = if mark.color == MarkColor::Engine { base } else { Color32::from_rgba_unmultiplied(base.r(), base.g(), base.b(), theme.arrow_alpha) };
     if mark.from == mark.to {
-        painter.circle_stroke(a.center(), cell * 0.44, Stroke::new(cell * 0.07, color));
+        match look.squares {
+            crate::chess_theme::SquareMarks::Ring => {
+                painter.circle_stroke(a.center(), cell * 0.44, Stroke::new(cell * 0.07, color));
+            }
+            crate::chess_theme::SquareMarks::Fill => {
+                painter.rect_filled(a, 0.0, color.gamma_multiply(0.55));
+            }
+        }
         return;
     }
     let (start, end) = (a.center(), b.center());
@@ -749,8 +914,20 @@ fn paint_mark(painter: &egui::Painter, state: &BoardState, board: Rect, mark: Ma
     let tip = end - dir * cell * 0.12;
     let base = tip - dir * head;
     let normal = vec2(-dir.y, dir.x);
-    painter.line_segment([start + dir * cell * 0.18, base], Stroke::new(cell * 0.17, color));
+    let weight = f32::from(theme.arrow_weight) / 100.0;
+    painter.line_segment([start + dir * cell * 0.18, base], Stroke::new(cell * weight, color));
     painter.add(egui::Shape::convex_polygon(vec![tip, base + normal * head * 0.55, base - normal * head * 0.55], color, Stroke::NONE));
+}
+
+/// A dot at the edge of the side to move (plan HC6): white or black, ringed in the other.
+fn turn_dot(painter: &egui::Painter, state: &BoardState, board: Rect) {
+    let white = state.game.side_to_move() == Color::White;
+    let bottom = white != state.flipped;
+    let radius = (board.width() / 64.0).clamp(3.0, 7.0);
+    let y = if bottom { board.bottom() - radius - 3.0 } else { board.top() + radius + 3.0 };
+    let at = egui::pos2(board.right() - radius - 3.0, y);
+    let (fill, ring) = if white { (Color32::WHITE, Color32::BLACK) } else { (Color32::BLACK, Color32::WHITE) };
+    painter.circle(at, radius, fill, Stroke::new(1.5, ring));
 }
 
 /// The board itself within `sizing`'s limits, with its marks, taking clicks and drags. `overlay`
@@ -764,10 +941,13 @@ pub(crate) fn board_view_sized(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardS
         }
         return;
     };
-    let response = ui.add(egui::Image::new(&tex).fit_to_exact_size(vec2(side, side)).sense(egui::Sense::click_and_drag()));
+    let look = crate::chess_theme::look(ui.ctx());
+    let (outer, _) = ui.allocate_exact_size(vec2(side, side), egui::Sense::hover());
+    let rect = look.board_rect(outer);
+    let response = ui.interact(rect, ui.id().with("chess-board-squares"), egui::Sense::click_and_drag());
+    ui.painter().image(tex.id(), rect, Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)), Color32::WHITE);
     let board_name = crate::i18n::fmt(tl!("Board: {fen}"), &[("fen", &state.current_fen())]);
     response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &board_name));
-    let rect = response.rect;
     let at = |state: &BoardState, p: Pos2| state.square_at((p.x - rect.min.x) / rect.width().max(1.0), (p.y - rect.min.y) / rect.height().max(1.0));
     if response.drag_started_by(PointerButton::Primary)
         && let Some(sq) = response.interact_pointer_pos().and_then(|p| at(state, p))
@@ -802,25 +982,28 @@ pub(crate) fn board_view_sized(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardS
         state.toggle_mark(Mark { from: sq, to: sq, color: MarkColor::from_modifiers(modifiers) });
     }
     let painter = ui.painter_at(rect);
+    let palette = crate::chess_theme::current(ui.ctx());
+    let (last_move, picked, target) =
+        (crate::chess_theme::tint(palette.last_move), crate::chess_theme::tint(palette.selected), crate::chess_theme::tint(palette.target));
     if state.illegal.is_none() {
         if let Some((from, to)) = state.game.last_move() {
-            painter.rect_filled(state.square_rect(rect, from), 0.0, LAST_MOVE);
-            painter.rect_filled(state.square_rect(rect, to), 0.0, LAST_MOVE);
+            painter.rect_filled(state.square_rect(rect, from), 0.0, last_move);
+            painter.rect_filled(state.square_rect(rect, to), 0.0, last_move);
         }
         if state.game.in_check()
             && let Some(king) = state.game.placement().king(state.game.side_to_move())
         {
             let r = state.square_rect(rect, king);
-            painter.circle_stroke(r.center(), r.width() * 0.45, Stroke::new(3.0, CHECK));
+            painter.circle_stroke(r.center(), r.width() * 0.45, Stroke::new(3.0, crate::chess_theme::rgb(palette.check)));
         }
         if let Some(from) = state.selected {
-            painter.rect_filled(state.square_rect(rect, from), 0.0, PICKED);
+            painter.rect_filled(state.square_rect(rect, from), 0.0, picked);
             for to in state.game.targets(from) {
                 let r = state.square_rect(rect, to);
                 if state.game.piece_on(to).is_some() {
-                    painter.circle_stroke(r.center(), r.width() * 0.44, Stroke::new(r.width() * 0.08, TARGET));
+                    painter.circle_stroke(r.center(), r.width() * 0.44, Stroke::new(r.width() * 0.08, target));
                 } else {
-                    painter.circle_filled(r.center(), r.width() * 0.15, TARGET);
+                    painter.circle_filled(r.center(), r.width() * 0.15, target);
                 }
             }
         }
@@ -835,8 +1018,7 @@ pub(crate) fn board_view_sized(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardS
             }
             if let (Some(piece), Some(sprites)) = (state.game.piece_on(from), state.sprites(ui.ctx(), pieces)) {
                 let cell = state.square_rect(rect, from);
-                let Rgb(r, g, b) = if from.is_light() { BoardStyle::default().light } else { BoardStyle::default().dark };
-                painter.rect_filled(cell, 0.0, Color32::from_rgb(r, g, b));
+                painter.rect_filled(cell, 0.0, crate::chess_theme::rgb(palette.square(from.is_light())));
                 let ghost = Rect::from_center_size(pointer, cell.size() * 1.1);
                 ui.ctx().layer_painter(egui::LayerId::new(egui::Order::Tooltip, egui::Id::new("chess-board-drag"))).image(
                     sprites.id(),
@@ -847,12 +1029,38 @@ pub(crate) fn board_view_sized(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardS
             }
         }
     }
-    // Coordinates in the corner squares, as on an analysis board.
+    crate::chess_theme::paint_frame(ui, t, look, rect);
+    if look.turn_dot && state.illegal.is_none() {
+        turn_dot(&painter, state, rect);
+    }
+    // Coordinates in the corner squares, as on an analysis board; or beside the board; or none.
     let font = theme::semibold((side / 40.0).clamp(8.0, 12.0));
-    for i in 0u8..8 {
+    if look.coordinates == crate::chess_theme::Coordinates::Outside {
+        let outside = ui.painter_at(outer);
+        for i in 0u8..8 {
+            let (file_sq, rank_sq) =
+                if state.flipped { (Square::new(7 - i, 7), Square::new(0, 7 - i)) } else { (Square::new(i, 0), Square::new(7, 7 - i)) };
+            if let Some(sq) = file_sq {
+                let r = state.square_rect(rect, sq);
+                let letter = char::from(b'a'.saturating_add(sq.file())).to_string();
+                outside.text(egui::pos2(r.center().x, outer.bottom()), egui::Align2::CENTER_BOTTOM, letter, font.clone(), t.text_muted);
+            }
+            if let Some(sq) = rank_sq {
+                let r = state.square_rect(rect, sq);
+                outside.text(
+                    egui::pos2(outer.left(), r.center().y),
+                    egui::Align2::LEFT_CENTER,
+                    (sq.rank() + 1).to_string(),
+                    font.clone(),
+                    t.text_muted,
+                );
+            }
+        }
+    }
+    for i in (0u8..8).filter(|_| look.coordinates == crate::chess_theme::Coordinates::Inside) {
         let (file_sq, rank_sq) =
             if state.flipped { (Square::new(7 - i, 7), Square::new(0, 7 - i)) } else { (Square::new(i, 0), Square::new(7, 7 - i)) };
-        let ink = |sq: Square| if sq.is_light() { Color32::from_rgb(181, 136, 99) } else { Color32::from_rgb(240, 217, 181) };
+        let ink = |sq: Square| crate::chess_theme::rgb(palette.coordinate_ink(sq.is_light()));
         if let Some(sq) = file_sq {
             let r = state.square_rect(rect, sq);
             let letter = char::from(b'a'.saturating_add(sq.file())).to_string();
@@ -863,14 +1071,20 @@ pub(crate) fn board_view_sized(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardS
             painter.text(r.right_top() + vec2(-2.0, 1.0), egui::Align2::RIGHT_TOP, (sq.rank() + 1).to_string(), font.clone(), ink(sq));
         }
     }
-    // The drawings: the overlay, the position's own, and the arrow being drawn.
-    for mark in overlay.iter().copied().chain(state.marks()) {
-        paint_mark(&painter, state, rect, mark);
+    // The drawings: the overlay, the position's own (or those of a move whose mark the pointer is
+    // over in the list), and the arrow being drawn.
+    let frame = ui.ctx().cumulative_pass_nr();
+    let shown = match state.hovered_drawings {
+        Some((node, seen)) if frame.saturating_sub(seen) <= 1 && state.illegal.is_none() => state.marks_of(node),
+        _ => state.marks(),
+    };
+    for mark in overlay.iter().copied().chain(shown) {
+        paint_mark(&painter, state, rect, mark, palette, look);
     }
     if response.dragged_by(PointerButton::Secondary)
         && let (Some(from), Some(to)) = (state.drawing, response.interact_pointer_pos().and_then(|p| at(state, p)))
     {
-        paint_mark(&painter, state, rect, Mark { from, to, color: MarkColor::from_modifiers(modifiers) });
+        paint_mark(&painter, state, rect, Mark { from, to, color: MarkColor::from_modifiers(modifiers) }, palette, look);
     }
     if state.illegal.is_some() {
         painter.rect_stroke(rect, 0.0, Stroke::new(2.0, CHECK), egui::StrokeKind::Inside);
@@ -930,7 +1144,7 @@ struct Row<'a> {
 /// The notation's rows: each variation starts a row of its own, one level in, and the line it
 /// branched from goes on in a new row after it. A `)` with nothing before it in its row closes
 /// the row before instead (`(2... Nf6 3. e5))`), rather than standing alone.
-fn rows(tokens: &[Token]) -> Vec<Row<'_>> {
+fn rows<'a>(tokens: impl IntoIterator<Item = &'a Token>) -> Vec<Row<'a>> {
     let mut rows = vec![Row { depth: 0, tokens: Vec::new() }];
     let mut depth = 0usize;
     for token in tokens {
@@ -975,6 +1189,11 @@ pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, he
     }
     let tokens = state.game.tokens();
     let width = ui.available_width();
+    let above = ui.cursor().top();
+    if game_header(ui, t, &state.game) {
+        state.open_details = true;
+    }
+    let height = height.map(|h| (h - (ui.cursor().top() - above)).max(MIN_NOTATION / 2.0));
     // The area as one named region, for assistive technology (and the tests, which measure it).
     if let Some(h) = height {
         let region = Rect::from_min_size(ui.cursor().min, vec2(width, h));
@@ -990,110 +1209,21 @@ pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, he
     let mut action = None;
     let current = state.game.current();
     let reveal = state.revealed != Some((current, state.game.revision()));
+    let look = crate::chess_figurines::list_look(ui.ctx());
     area.show(ui, |ui| {
         if tokens.iter().all(|t| !matches!(t, Token::Move { .. })) {
             ui.label(egui::RichText::new(tl!("Play a move: click a piece, then where it goes, or drag it there.")).small().color(t.text_muted));
             return;
         }
+        look.size.apply(ui.style_mut());
         ui.spacing_mut().item_spacing.y = 2.0;
-        for row in rows(&tokens) {
-            let indent = i8::try_from(row.depth.min(MAX_INDENT).saturating_mul(INDENT)).unwrap_or(i8::MAX);
-            egui::Frame::NONE.inner_margin(egui::Margin { left: indent, ..egui::Margin::ZERO }).show(ui, |ui| {
-                ui.horizontal_wrapped(|ui| {
-                    ui.spacing_mut().item_spacing.x = 4.0;
-                    let small = row.depth > 0;
-                    for token in &row.tokens {
-                        match token {
-                            Token::Move { node, number, color, numbered, san, nags, .. } => {
-                                if *numbered {
-                                    let n = if *color == Color::White { format!("{number}.") } else { format!("{number}...") };
-                                    ui.label(egui::RichText::new(n).small().color(t.text_faint));
-                                }
-                                let ctx = ui.ctx().clone();
-                                let mut rich =
-                                    egui::RichText::new(format!("{san}{}", glyphs(nags, |s| crate::chess_annotate::drawable(&ctx, s)))).monospace();
-                                if small {
-                                    rich = rich.small().color(t.text_muted);
-                                }
-                                if let Some(tint) = state.fresh.tint(&state.game, *node, ui.ctx()) {
-                                    rich = rich.background_color(tint);
-                                }
-                                let r = ui.selectable_label(*node == current, rich);
-                                if *node == current && reveal {
-                                    r.scroll_to_me_animation(None, egui::style::ScrollAnimation::none());
-                                }
-                                glyphs_after(ui, t, nags, small);
-                                if state.game.has_diagram(*node) {
-                                    let name = crate::i18n::fmt(
-                                        tl!("Diagram after {move}"),
-                                        &[("move", &crate::chess_tools::move_name(&state.game, *node))],
-                                    );
-                                    let d =
-                                        ui.add(crate::icons::image("grid-3x3", 12.0, t.text_muted).sense(egui::Sense::hover())).on_hover_text(&name);
-                                    d.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &name));
-                                }
-                                if r.clicked() {
-                                    edit = Some(match brush {
-                                        Some(code) => MoveEdit::Brush(*node, code),
-                                        None => MoveEdit::Go(*node),
-                                    });
-                                }
-                                r.context_menu(|ui| {
-                                    if let Some((run, target)) = crate::chess_tools::move_menu(ui, state, *node) {
-                                        edit = Some(MoveEdit::Tool(run, target));
-                                        ui.close();
-                                    }
-                                    ui.separator();
-                                    // The glyphs, on this move (U1).
-                                    if let Some(code) = crate::chess_annotate::glyph_menu(ui, state, *node) {
-                                        edit = Some(if code == crate::chess_annotate::CLEAR {
-                                            MoveEdit::ClearGlyphs(*node)
-                                        } else {
-                                            MoveEdit::Brush(*node, code)
-                                        });
-                                        ui.close();
-                                    }
-                                    ui.separator();
-                                    let marked = state.game.has_diagram(*node);
-                                    if ui.add(egui::Button::new(tl!("Diagram here")).selected(marked)).clicked() {
-                                        edit = Some(MoveEdit::Diagram(*node));
-                                        ui.close();
-                                    }
-                                    if ui.button(tl!("Copy line with figurines")).clicked() {
-                                        action = Some(BoardAction::CopyLine(state.game.line_text(*node, true)));
-                                        ui.close();
-                                    }
-                                    if ui.button(tl!("Copy line (letters)")).clicked() {
-                                        action = Some(BoardAction::CopyLine(state.game.line_text(*node, false)));
-                                        ui.close();
-                                    }
-                                    ui.separator();
-                                    if ui.button(tl!("Delete from this move")).clicked() {
-                                        edit = Some(MoveEdit::Delete(*node));
-                                        ui.close();
-                                    }
-                                    if ui.button(tl!("New game from this position")).clicked() {
-                                        crate::chess_collection::ask_new_game_from(ui.ctx(), *node);
-                                        ui.close();
-                                    }
-                                });
-                            }
-                            // A comment with only drawings has no text to show.
-                            Token::Comment { text, .. } if text.is_empty() => {}
-                            Token::Comment { text, .. } => {
-                                ui.label(egui::RichText::new(text).italics().small().color(t.text_muted));
-                            }
-                            Token::VariationStart => {
-                                ui.label(egui::RichText::new("(").small().color(t.text_faint));
-                            }
-                            Token::VariationEnd => {
-                                ui.label(egui::RichText::new(")").small().color(t.text_faint));
-                            }
-                        }
-                    }
-                });
-            });
+        let mut cx = MoveCx { current, reveal, brush, edit: None, action: None };
+        match look.layout {
+            crate::chess_figurines::ListLayout::Flow => flow(ui, t, state, &tokens, &mut cx),
+            crate::chess_figurines::ListLayout::Columns => columns(ui, t, state, &tokens, &mut cx),
         }
+        edit = cx.edit;
+        action = cx.action;
     });
     state.revealed = Some((current, state.game.revision()));
     if let Some(e) = edit {
@@ -1121,6 +1251,478 @@ pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, he
         }
     }
     action
+}
+
+/// The result after the main line, named for assistive technology.
+fn result_label(ui: &mut egui::Ui, t: &Tokens, game: &Game) {
+    let result = result_text(game);
+    let r = ui.label(egui::RichText::new(&result).monospace().strong().color(t.text));
+    r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, crate::i18n::fmt(tl!("Result: {result}"), &[("result", &result)])));
+}
+
+/// A move's quality sign as a chip of its colour with the sign on it (plan HC12): never colour
+/// alone. Its name is on hover only: the move's own name already says the sign, and a second
+/// "Good move" would stand beside the glyph palette's.
+fn quality_chip(ui: &mut egui::Ui, code: u16, small: bool) {
+    let Some((fill, ink, sign)) = quality_colors(code) else { return };
+    let font = if small { egui::FontId::monospace(10.5) } else { egui::FontId::monospace(12.0) };
+    let galley = ui.painter().layout_no_wrap(sign.to_owned(), font, ink);
+    let size = galley.size() + vec2(8.0, 2.0);
+    let (rect, r) = ui.allocate_exact_size(size, egui::Sense::hover());
+    ui.painter().rect_filled(rect, 4.0, fill);
+    ui.painter().galley(rect.center() - galley.size() / 2.0, galley, ink);
+    r.on_hover_text(crate::chess_annotate::nag_name(code).unwrap_or(sign));
+}
+
+/// A quality sign's chip: its fill, the sign's colour on it and the sign. Each pair reads at
+/// 4.5:1 or more (tested).
+pub(crate) fn quality_colors(code: u16) -> Option<(Color32, Color32, &'static str)> {
+    let white = Color32::WHITE;
+    let black = Color32::BLACK;
+    Some(match code {
+        1 => (Color32::from_rgb(25, 120, 25), white, "!"),
+        3 => (Color32::from_rgb(0, 90, 0), white, "!!"),
+        5 => (Color32::from_rgb(30, 90, 200), white, "!?"),
+        6 => (Color32::from_rgb(230, 190, 0), black, "?!"),
+        2 => (Color32::from_rgb(230, 110, 0), black, "?"),
+        4 => (Color32::from_rgb(200, 30, 30), white, "??"),
+        _ => return None,
+    })
+}
+
+/// After a move with drawings: a dot of each of their colours (plan HC12), named by how many
+/// arrows and rings they are. Whether the pointer is over it.
+fn drawings_dot(ui: &mut egui::Ui, marks: &[Mark], small: bool) -> bool {
+    let mut colours: Vec<Color32> = Vec::new();
+    for m in marks {
+        let c = m.color.color32();
+        if !colours.contains(&c) {
+            colours.push(c);
+        }
+    }
+    let radius = if small { 3.0 } else { 3.5 };
+    let width = colours.len().max(1) as f32 * (radius * 2.0 + 1.5) + 2.0;
+    let (rect, r) = ui.allocate_exact_size(vec2(width, radius * 2.0 + 4.0), egui::Sense::hover());
+    for (i, c) in colours.iter().enumerate() {
+        let x = rect.left() + 1.0 + radius + i as f32 * (radius * 2.0 + 1.5);
+        ui.painter().circle_filled(egui::pos2(x, rect.center().y), radius, c.to_opaque());
+    }
+    let arrows = marks.iter().filter(|m| m.from != m.to).count();
+    let rings = marks.len() - arrows;
+    let name = drawings_name(arrows, rings);
+    let r = r.on_hover_text(tl!("Shown on the board while the pointer is here"));
+    r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, &name));
+    r.hovered()
+}
+
+/// "2 arrows, 1 ring".
+pub(crate) fn drawings_name(arrows: usize, rings: usize) -> String {
+    let mut parts = Vec::new();
+    match arrows {
+        0 => {}
+        1 => parts.push(tl!("1 arrow").to_owned()),
+        n => parts.push(crate::i18n::fmt(tl!("{n} arrows"), &[("n", &n.to_string())])),
+    }
+    match rings {
+        0 => {}
+        1 => parts.push(tl!("1 ring").to_owned()),
+        n => parts.push(crate::i18n::fmt(tl!("{n} rings"), &[("n", &n.to_string())])),
+    }
+    parts.join(", ")
+}
+
+/// The comment on the move shown, large under the board (plan HC12): for a game told more in
+/// words than in moves.
+pub(crate) fn comment_focus(ui: &mut egui::Ui, t: &Tokens, state: &BoardState) {
+    if state.illegal.is_some() {
+        return;
+    }
+    let current = state.game.current();
+    let comment = state.game.comment(current);
+    if comment.trim().is_empty() {
+        return;
+    }
+    egui::Frame::new().fill(t.hover).corner_radius(egui::CornerRadius::same(6)).inner_margin(egui::Margin::same(8)).show(ui, |ui| {
+        ui.set_width(ui.available_width());
+        ui.label(egui::RichText::new(comment).size(15.0).color(t.text));
+    });
+}
+
+/// The game's result as books print it: `1-0`, `0-1`, `½-½` or `*`.
+pub(crate) fn result_text(game: &Game) -> String {
+    match game.result().as_str() {
+        "1/2-1/2" => "½-½".to_owned(),
+        other => other.to_owned(),
+    }
+}
+
+/// The game's header (plan HC10): the players, each with their Elo, then the event, site, date
+/// and round, each only when it is known ([`Game::header`]). No line when nothing is.
+pub(crate) fn header_lines(game: &Game) -> Vec<String> {
+    let header = game.header();
+    let player = |name: &Option<String>, elo: &Option<String>| {
+        name.as_ref().map(|name| match elo {
+            Some(elo) => format!("{name} ({elo})"),
+            None => name.clone(),
+        })
+    };
+    let mut lines = Vec::new();
+    match (player(&header.white, &header.white_elo), player(&header.black, &header.black_elo)) {
+        (Some(w), Some(b)) => lines.push(format!("{w} – {b}")),
+        (Some(one), None) | (None, Some(one)) => lines.push(one),
+        (None, None) => {}
+    }
+    let round = header.round.as_ref().map(|r| crate::i18n::fmt(tl!("round {round}"), &[("round", r)]));
+    let place: Vec<String> = [header.event, header.site, header.date].into_iter().flatten().chain(round).collect();
+    if !place.is_empty() {
+        lines.push(place.join(" · "));
+    }
+    lines
+}
+
+/// The header above the notation, when the game has one: a click opens Game details. Whether it
+/// was clicked.
+fn game_header(ui: &mut egui::Ui, t: &Tokens, game: &Game) -> bool {
+    let lines = header_lines(game);
+    if lines.is_empty() {
+        return false;
+    }
+    // Painted, not labels: the header is one control, named once for assistive technology.
+    let width = ui.available_width();
+    let fonts: Vec<(egui::FontId, Color32)> =
+        (0..lines.len()).map(|i| if i == 0 { (theme::semibold(13.0), t.text) } else { (egui::FontId::proportional(11.5), t.text_muted) }).collect();
+    let heights: Vec<f32> = fonts.iter().map(|(f, _)| ui.fonts_mut(|fo| fo.row_height(f)) + 1.0).collect();
+    let (rect, r) = ui.allocate_exact_size(vec2(width, heights.iter().sum()), egui::Sense::click());
+    let mut y = rect.top();
+    for ((line, (font, colour)), h) in lines.iter().zip(&fonts).zip(&heights) {
+        crate::widgets::paint_left(ui, egui::pos2(rect.left(), y + h / 2.0), line, font.clone(), *colour, width);
+        y += h;
+    }
+    let r = r.on_hover_text(tl!("Game details"));
+    let spoken = format!("{}: {}", tl!("Game details"), lines.join(". "));
+    r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &spoken));
+    if r.hovered() {
+        ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+    }
+    ui.add_space(2.0);
+    r.clicked()
+}
+
+/// What the notation's moves are drawn with and asked for this frame.
+struct MoveCx {
+    current: NodeId,
+    reveal: bool,
+    brush: Option<u16>,
+    edit: Option<MoveEdit>,
+    action: Option<BoardAction>,
+}
+
+/// The notation as running text: a row per stretch of a line, variations indented by depth.
+fn flow(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, tokens: &[Token], cx: &mut MoveCx) {
+    let rows = rows(tokens);
+    let ends_main = rows.last().is_some_and(|r| r.depth == 0);
+    let last = rows.len().saturating_sub(1);
+    for (i, row) in rows.into_iter().enumerate() {
+        flow_row(ui, t, state, &row, cx, i == last && ends_main);
+    }
+    // The result, after the main line (plan HC10), on a row of its own when a variation ends
+    // the notation.
+    if !ends_main {
+        result_label(ui, t, &state.game);
+    }
+}
+
+/// One row of running text, indented by its depth; `result`: the game's result after it.
+fn flow_row(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, row: &Row<'_>, cx: &mut MoveCx, result: bool) {
+    let indent = i8::try_from(row.depth.min(MAX_INDENT).saturating_mul(INDENT)).unwrap_or(i8::MAX);
+    egui::Frame::NONE.inner_margin(egui::Margin { left: indent, ..egui::Margin::ZERO }).show(ui, |ui| {
+        ui.horizontal_wrapped(|ui| {
+            ui.spacing_mut().item_spacing.x = 4.0;
+            let small = row.depth > 0;
+            for token in &row.tokens {
+                token_item(ui, t, state, token, small, cx);
+            }
+            if result {
+                result_label(ui, t, &state.game);
+            }
+        });
+    });
+}
+
+/// One token of the notation: a move with its number when it has one, a comment, a parenthesis.
+fn token_item(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, token: &Token, small: bool, cx: &mut MoveCx) {
+    match token {
+        Token::Move { node, number, color, numbered, san, nags, .. } => {
+            if *numbered {
+                let n = if *color == Color::White { format!("{number}.") } else { format!("{number}...") };
+                ui.label(egui::RichText::new(n).small().color(t.text_faint));
+            }
+            move_item(ui, t, state, *node, san, nags, small, cx);
+        }
+        // A comment with only drawings has no text to show.
+        Token::Comment { text, .. } if text.is_empty() => {}
+        // A comment before its move (plan HC12): set in, upright and fainter, so it reads apart
+        // from the comment on the move before.
+        Token::Comment { text, before: true, .. } => {
+            ui.add_space(6.0);
+            ui.label(egui::RichText::new(text).small().color(t.text_faint));
+        }
+        Token::Comment { text, .. } => {
+            ui.label(egui::RichText::new(text).italics().small().color(t.text_muted));
+        }
+        Token::VariationStart => {
+            ui.label(egui::RichText::new("(").small().color(t.text_faint));
+        }
+        Token::VariationEnd => {
+            ui.label(egui::RichText::new(")").small().color(t.text_faint));
+        }
+    }
+}
+
+/// A move of the notation: its button (figurine, letters or SAN), its quality chips, its
+/// drawings' dot, its other glyphs and diagram mark; a click goes to it (or brushes a glyph on
+/// it), and its menu has the structure tools, glyphs, the diagram mark, copying and deleting.
+#[allow(clippy::too_many_arguments)]
+fn move_item(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, node: NodeId, san: &str, nags: &[u16], small: bool, cx: &mut MoveCx) {
+    let ctx = ui.ctx().clone();
+    let glyph_text = glyphs(nags, |s| crate::chess_annotate::drawable(&ctx, s));
+    // The move's quality signs go in chips after it (plan HC12); its name keeps them.
+    let others: Vec<u16> = nags.iter().copied().filter(|c| !(1..=6).contains(c)).collect();
+    let shown_glyphs = glyphs(&others, |s| crate::chess_annotate::drawable(&ctx, s));
+    let tint = state.fresh.tint(&state.game, node, ui.ctx());
+    // The piece as a figurine, in letters or as SAN (plan HC8).
+    let r = crate::chess_figurines::move_button(ui, san, &shown_glyphs, &glyph_text, node == cx.current, small, t.text_muted, tint);
+    move_preview(ui, state, node, &r);
+    for &code in nags.iter().filter(|c| (1..=6).contains(*c)) {
+        quality_chip(ui, code, small);
+    }
+    if !state.game.drawings(node).is_empty() && drawings_dot(ui, &state.marks_of(node), small) {
+        state.hovered_drawings = Some((node, ui.ctx().cumulative_pass_nr()));
+    }
+    if node == cx.current && cx.reveal {
+        r.scroll_to_me_animation(None, egui::style::ScrollAnimation::none());
+    }
+    glyphs_after(ui, t, nags, small);
+    if state.game.has_diagram(node) {
+        let name = crate::i18n::fmt(tl!("Diagram after {move}"), &[("move", &crate::chess_tools::move_name(&state.game, node))]);
+        let d = ui.add(crate::icons::image("grid-3x3", 12.0, t.text_muted).sense(egui::Sense::hover())).on_hover_text(&name);
+        d.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &name));
+    }
+    if r.clicked() {
+        cx.edit = Some(match cx.brush {
+            Some(code) => MoveEdit::Brush(node, code),
+            None => MoveEdit::Go(node),
+        });
+    }
+    r.context_menu(|ui| {
+        if let Some((run, target)) = crate::chess_tools::move_menu(ui, state, node) {
+            cx.edit = Some(MoveEdit::Tool(run, target));
+            ui.close();
+        }
+        ui.separator();
+        // The glyphs, on this move (U1).
+        if let Some(code) = crate::chess_annotate::glyph_menu(ui, state, node) {
+            cx.edit = Some(if code == crate::chess_annotate::CLEAR { MoveEdit::ClearGlyphs(node) } else { MoveEdit::Brush(node, code) });
+            ui.close();
+        }
+        ui.separator();
+        let marked = state.game.has_diagram(node);
+        if ui.add(egui::Button::new(tl!("Diagram here")).selected(marked)).clicked() {
+            cx.edit = Some(MoveEdit::Diagram(node));
+            ui.close();
+        }
+        if ui.button(tl!("Copy line with figurines")).clicked() {
+            cx.action = Some(BoardAction::CopyLine(state.game.line_text(node, true)));
+            ui.close();
+        }
+        if ui.button(tl!("Copy line (letters)")).clicked() {
+            cx.action = Some(BoardAction::CopyLine(state.game.line_text(node, false)));
+            ui.close();
+        }
+        ui.separator();
+        if ui.button(tl!("Delete from this move")).clicked() {
+            cx.edit = Some(MoveEdit::Delete(node));
+            ui.close();
+        }
+        if ui.button(tl!("New game from this position")).clicked() {
+            crate::chess_collection::ask_new_game_from(ui.ctx(), node);
+            ui.close();
+        }
+    });
+}
+
+/// How long the pointer rests on a move before its position shows (plan HC13).
+const PREVIEW_DELAY: f64 = 0.4;
+/// The preview's side, in points.
+const PREVIEW_SIDE: f32 = 168.0;
+
+/// The position after move `node` in a tooltip (plan HC13): once the pointer has rested on the
+/// move for [`PREVIEW_DELAY`], or at once while the move has the keyboard focus; in the boards'
+/// theme and pieces, its move marked, the board shown left as it is. Off in Preferences.
+fn move_preview(ui: &egui::Ui, state: &BoardState, node: NodeId, r: &egui::Response) {
+    let ctx = ui.ctx();
+    if !crate::chess_figurines::preview_on(ctx) {
+        return;
+    }
+    let key = egui::Id::new("chess-move-preview-hover");
+    let now = ctx.input(|i| i.time);
+    let hovered_since = ctx.data(|d| d.get_temp::<(NodeId, f64)>(key));
+    let show = if r.hovered() {
+        let since = match hovered_since {
+            Some((n, t)) if n == node => t,
+            _ => {
+                ctx.data_mut(|d| d.insert_temp(key, (node, now)));
+                now
+            }
+        };
+        let waited = now - since;
+        if waited < PREVIEW_DELAY {
+            ctx.request_repaint_after(std::time::Duration::from_secs_f64((PREVIEW_DELAY - waited).max(0.0)));
+        }
+        waited >= PREVIEW_DELAY
+    } else {
+        if hovered_since.is_some_and(|(n, _)| n == node) {
+            ctx.data_mut(|d| d.remove::<(NodeId, f64)>(key));
+        }
+        r.has_focus()
+    };
+    if !show {
+        return;
+    }
+    let Some(tex) = preview_texture(ctx, state, node) else { return };
+    let name = crate::i18n::fmt(tl!("Position after {move}"), &[("move", &crate::chess_tools::move_name(&state.game, node))]);
+    egui::Tooltip::for_widget(r).show(|ui| {
+        let resp = ui.add(egui::Image::new(&tex).fit_to_exact_size(vec2(PREVIEW_SIDE, PREVIEW_SIDE)));
+        if let Some((from, to)) = state.game.move_at(node) {
+            let tint = crate::chess_theme::tint(crate::chess_theme::current(ui.ctx()).last_move);
+            for sq in [from, to] {
+                ui.painter().rect_filled(state.square_rect(resp.rect, sq), 0.0, tint);
+            }
+        }
+        resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &name));
+    });
+}
+
+/// The preview's picture of the position after `node`, drawn once per position, theme, pieces and
+/// side.
+fn preview_texture(ctx: &egui::Context, state: &BoardState, node: NodeId) -> Option<TextureHandle> {
+    let fen = state.game.fen_at(node)?;
+    let pieces = crate::chess_figurines::board_pieces(ctx)?;
+    let palette = crate::chess_theme::current(ctx);
+    let stamp = format!("{fen}|{}|{}|{}", palette.id, crate::chess_editor::pieces_generation(), state.flipped);
+    let cache = egui::Id::new("chess-move-preview-picture");
+    if let Some((s, tex)) = ctx.data(|d| d.get_temp::<(String, TextureHandle)>(cache))
+        && s == stamp
+    {
+        return Some(tex);
+    }
+    let placement = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(&fen).ok()?.placement;
+    let style = crate::chess_theme::style(ctx, BoardStyle { border: 0.0, coordinates: false, flipped: state.flipped, ..BoardStyle::default() });
+    let px = (PREVIEW_SIDE * ctx.pixels_per_point()).round() as u32;
+    let (w, h, rgba) = match palette.texture.filter(|t| *t != Texture::Hatched) {
+        Some(kind) => textured_rgba(&placement, &pieces, &style, px, kind, palette, &mut None).ok()?,
+        None => pdfcraft_engine::chess::office::diagram_rgba(&placement, &pieces, &style, px).ok()?,
+    };
+    let (w, h) = (usize::try_from(w).ok()?, usize::try_from(h).ok()?);
+    (rgba.len() == w.checked_mul(h)?.checked_mul(4)?).then_some(())?;
+    let tex = ctx.load_texture("chess-move-preview", egui::ColorImage::from_rgba_premultiplied([w, h], &rgba), egui::TextureOptions::LINEAR);
+    ctx.data_mut(|d| d.insert_temp(cache, (stamp, tex.clone())));
+    Some(tex)
+}
+
+/// A row of the column layout (plan HC9): a move number with White's and Black's moves, or what
+/// breaks the table (comments and variations), drawn as running text across it.
+enum ColItem<'a> {
+    Pair { number: u32, white: Option<&'a Token>, black: Option<&'a Token> },
+    Break(Vec<&'a Token>),
+}
+
+/// The main line's moves paired by number, and what comes between them as breaks: a comment on
+/// the main line, or a variation with all it holds. A Black move after a break starts its own
+/// pair, with no White move (shown "…").
+fn column_items(tokens: &[Token]) -> Vec<ColItem<'_>> {
+    let mut items: Vec<ColItem<'_>> = Vec::new();
+    let mut held: Vec<&Token> = Vec::new();
+    let mut depth = 0usize;
+    for token in tokens {
+        match token {
+            Token::VariationStart => {
+                depth = depth.saturating_add(1);
+                held.push(token);
+            }
+            Token::VariationEnd => {
+                held.push(token);
+                depth = depth.saturating_sub(1);
+            }
+            Token::Comment { text, .. } if depth == 0 && text.is_empty() => {}
+            Token::Move { number, color, .. } if depth == 0 => {
+                if !held.is_empty() {
+                    items.push(ColItem::Break(std::mem::take(&mut held)));
+                }
+                match (color, items.last_mut()) {
+                    (Color::Black, Some(ColItem::Pair { number: n, white: Some(_), black: b @ None })) if *n == *number => *b = Some(token),
+                    (Color::White, _) => items.push(ColItem::Pair { number: *number, white: Some(token), black: None }),
+                    (Color::Black, _) => items.push(ColItem::Pair { number: *number, white: None, black: Some(token) }),
+                }
+            }
+            _ => held.push(token),
+        }
+    }
+    if !held.is_empty() {
+        items.push(ColItem::Break(held));
+    }
+    items
+}
+
+/// The notation in columns (plan HC9): number, White, Black; a comment or a variation breaks the
+/// table and runs across it, and the table resumes after it.
+fn columns(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, tokens: &[Token], cx: &mut MoveCx) {
+    let items = column_items(tokens);
+    let number_width = ui.text_style_height(&egui::TextStyle::Body) * 2.6;
+    let cell = ((ui.available_width() - number_width) / 2.0).max(48.0);
+    for item in &items {
+        match item {
+            ColItem::Pair { number, white, black } => {
+                let row = ui.horizontal_top(|ui| {
+                    ui.spacing_mut().item_spacing.x = 0.0;
+                    let (r, _) = ui.allocate_exact_size(vec2(number_width, 1.0), egui::Sense::hover());
+                    for side in [white, black] {
+                        // Each cell exactly `cell` wide, its top on the row's top.
+                        ui.allocate_ui_with_layout(vec2(cell, 0.0), egui::Layout::left_to_right(egui::Align::Min), |ui| {
+                            ui.set_min_width(cell);
+                            ui.set_max_width(cell);
+                            ui.spacing_mut().item_spacing.x = 4.0;
+                            match side {
+                                Some(Token::Move { node, san, nags, .. }) => move_item(ui, t, state, *node, san, nags, false, cx),
+                                _ if black.is_some() && white.is_none() => {
+                                    ui.label(egui::RichText::new("…").color(t.text_faint));
+                                }
+                                _ => {}
+                            }
+                        });
+                    }
+                    r.left()
+                });
+                // The number, in the middle of the row's height once the moves are laid out.
+                ui.painter().text(
+                    egui::pos2(row.inner, row.response.rect.center().y),
+                    egui::Align2::LEFT_CENTER,
+                    format!("{number}."),
+                    egui::TextStyle::Small.resolve(ui.style()),
+                    t.text_faint,
+                );
+            }
+            ColItem::Break(held) => {
+                egui::Frame::NONE.inner_margin(egui::Margin { left: 6, top: 2, bottom: 2, ..egui::Margin::ZERO }).show(ui, |ui| {
+                    for row in rows(held.iter().copied()) {
+                        flow_row(ui, t, state, &row, cx, false);
+                    }
+                });
+            }
+        }
+    }
+    // The result on a row of its own, under the table or the break that ends it.
+    result_label(ui, t, &state.game);
 }
 
 /// How glyph `code` is named in an undo step or a capture's chips (whatever the fonts). The
@@ -1362,6 +1964,24 @@ pub(crate) fn navigation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) 
             state.game.go_to(usize::MAX);
             state.selected = None;
         }
+        // Variation to variation in reading order (plan HC11).
+        let current = state.game.current();
+        let (back, next) = (state.game.previous_variation(current), state.game.next_variation(current));
+        for (to, icon, tip) in
+            [(back, "chevrons-left", tl!("Previous variation (Page Up)")), (next, "chevrons-right", tl!("Next variation (Page Down)"))]
+        {
+            let r = ui
+                .add_enabled(to.is_some(), egui::Button::image(crate::icons::image(icon, 14.0, t.icon)).min_size(vec2(36.0, 24.0)))
+                .on_hover_text(tip)
+                .on_disabled_hover_text(tip);
+            r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, to.is_some(), tip));
+            if r.clicked()
+                && let Some(node) = to
+            {
+                state.game.go_to_node(node);
+                state.selected = None;
+            }
+        }
     });
     let (text, colour) = status(state);
     ui.label(egui::RichText::new(text).small().color(colour));
@@ -1370,20 +1990,15 @@ pub(crate) fn navigation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) 
     }
 }
 
-/// Under the notation: cutting the moves after the move shown and its comments (the one before
-/// it while the comment editor is open). The glyph palette floats (`chess_annotate`, U1).
+/// Under the notation: the comments of the move shown (the one before it while the comment
+/// editor is open). Deleting moves is a command of the move's menu, not a button beside the list
+/// (plan A8, W1). The glyph palette floats (`chess_annotate`, U1).
 pub(crate) fn notes(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) {
     if state.illegal.is_some() {
         return;
     }
     // Before any field is drawn: which one had the keyboard, for the palette.
     state.typing.track(ui);
-    if state.game.ply() < state.game.len() && ui.small_button(tl!("Delete the moves after this one")).clicked() {
-        state.edit(|s| {
-            s.game.truncate();
-            Some(ChessEdit::DeleteMoves)
-        });
-    }
     let (editor, focus) = (state.comment_open, std::mem::take(&mut state.focus_comment));
     crate::chess_annotate::comments(ui, t, state, editor, focus);
 }
@@ -1398,10 +2013,40 @@ pub(crate) fn sections(ui: &mut egui::Ui, state: &mut BoardState) -> Option<Boar
         let id = ui.make_persistent_id("chess-fen-field");
         crate::chess_annotate::insert_pending(ui, &mut state.typing, crate::chess_annotate::Field::Fen, id, &mut state.fen_text);
         let r = ui.add(egui::TextEdit::singleline(&mut state.fen_text).id(id).font(egui::TextStyle::Monospace).desired_width(f32::INFINITY));
-        if r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) {
-            let fen = state.fen_text.clone();
-            let flipped = state.flipped;
-            state.load_fen(&fen, flipped, None);
+        // Enter puts a changed FEN on the board; with moves in the game it asks first, New game
+        // taking the keyboard (plan A8, W3).
+        if r.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter)) && state.fen_text.trim() != state.current_fen() {
+            let fen = state.fen_text.trim().to_owned();
+            if state.game.is_empty() {
+                let flipped = state.flipped;
+                state.load_fen(&fen, flipped, None);
+            } else {
+                state.fen_choice = Some(fen);
+                state.focus_fen_choice = true;
+            }
+        }
+        if let Some(fen) = state.fen_choice.clone() {
+            ui.label(egui::RichText::new(tl!("The game on the board has moves. Put this position:")).small());
+            ui.horizontal_wrapped(|ui| {
+                let new = ui.button(tl!("New game with this position")).on_hover_text(tl!("The game on the board keeps its moves."));
+                if std::mem::take(&mut state.focus_fen_choice) {
+                    new.request_focus();
+                }
+                if new.clicked() {
+                    action = Some(BoardAction::NewGameAt(fen.clone()));
+                    state.fen_choice = None;
+                }
+                let tip = tl!("Its moves are deleted (Undo brings them back).");
+                if ui.small_button(tl!("Replace this game")).on_hover_text(tip).clicked() {
+                    let flipped = state.flipped;
+                    state.load_fen(&fen, flipped, None);
+                    state.fen_choice = None;
+                }
+                if ui.small_button(tl!("Cancel")).clicked() {
+                    state.fen_choice = None;
+                    state.fen_text = state.current_fen();
+                }
+            });
         }
         ui.horizontal_wrapped(|ui| {
             if ui.small_button(tl!("Copy FEN")).clicked() {
@@ -1415,35 +2060,74 @@ pub(crate) fn sections(ui: &mut egui::Ui, state: &mut BoardState) -> Option<Boar
                     action = Some(BoardAction::OpenLichess(url));
                 }
             }
-            if ui.small_button(tl!("Standard start position")).clicked() {
-                state.standard_start();
+            // With moves on the board the start position is a new game (plan A8, W4).
+            let tip = if state.game.is_empty() {
+                tl!("Start again from the standard position.")
+            } else {
+                tl!("A new game from the standard position; the game on the board keeps its moves.")
+            };
+            if ui.small_button(tl!("Standard start position")).on_hover_text(tip).clicked() {
+                if state.game.is_empty() {
+                    state.standard_start();
+                } else {
+                    action = Some(BoardAction::NewGameAt(Game::standard().fen()));
+                }
             }
         });
     });
     egui::CollapsingHeader::new("PGN").id_salt("chess-board-pgn").default_open(false).show(ui, |ui| {
         let id = ui.make_persistent_id("chess-pgn-field");
         crate::chess_annotate::insert_pending(ui, &mut state.typing, crate::chess_annotate::Field::Pgn, id, &mut state.pgn_text);
-        ui.add(egui::TextEdit::multiline(&mut state.pgn_text).id(id).font(egui::TextStyle::Monospace).desired_rows(5).desired_width(f32::INFINITY));
+        let r = ui
+            .add(egui::TextEdit::multiline(&mut state.pgn_text).id(id).font(egui::TextStyle::Monospace).desired_rows(5).desired_width(f32::INFINITY));
+        if r.changed() {
+            state.pgn_edited = true;
+        }
+        let mut load = false;
+        // Typed and not loaded yet: said, with what can be done with it (plan A8, W6).
+        if state.pgn_edited {
+            ui.horizontal_wrapped(|ui| {
+                ui.label(egui::RichText::new(tl!("PGN edited")).small().strong());
+                load = ui.small_button(tl!("Load")).clicked();
+                if ui.small_button(tl!("Discard")).on_hover_text(tl!("Show the game on the board again.")).clicked() {
+                    state.pgn_edited = false;
+                    state.refresh_fields(true);
+                }
+            });
+        }
         ui.horizontal_wrapped(|ui| {
             if ui.add_enabled(state.illegal.is_none(), egui::Button::new(tl!("Copy PGN")).small()).clicked() {
                 action = Some(BoardAction::CopyPgn(state.game.pgn()));
             }
-            if ui.small_button(tl!("Load PGN")).on_hover_text(tl!("Play the main line of the PGN above on the board.")).clicked() {
-                let (texts, more) = state.load_pgn();
-                if !texts.is_empty() || more {
-                    action = Some(BoardAction::AddGames { texts, more });
-                }
+            let tip = tl!("Load the PGN above on the board, with its variations and comments.");
+            if ui.small_button(tl!("Load PGN")).on_hover_text(tip).clicked() {
+                load = true;
             }
         });
+        if load {
+            let (texts, more) = state.load_pgn();
+            if !texts.is_empty() || more {
+                action = Some(BoardAction::AddGames { texts, more });
+            }
+        }
     });
     if state.illegal.is_none() {
-        egui::CollapsingHeader::new(tl!("Game details")).id_salt("chess-board-details").default_open(false).show(ui, |ui| details(ui, state));
+        let open = std::mem::take(&mut state.open_details).then_some(true);
+        let r = egui::CollapsingHeader::new(tl!("Game details"))
+            .id_salt("chess-board-details")
+            .default_open(false)
+            .open(open)
+            .show(ui, |ui| details(ui, state));
+        if open.is_some() {
+            r.header_response.scroll_to_me(Some(egui::Align::Min));
+        }
     }
     action
 }
 
-/// The panel's title, and the diagram the board was loaded from as a link to it.
-pub(crate) fn title(ui: &mut egui::Ui, state: &BoardState, source_label: Option<String>) -> Option<BoardAction> {
+/// The panel's title, the diagram the board was loaded from as a link to it, and the Move list
+/// beside the page (`beside`: it shows) as a toggle.
+pub(crate) fn title(ui: &mut egui::Ui, t: &Tokens, state: &BoardState, source_label: Option<String>, beside: bool) -> Option<BoardAction> {
     let mut action = None;
     ui.horizontal(|ui| {
         ui.label(egui::RichText::new(tl!("Chess board")).font(theme::semibold(15.5)));
@@ -1452,6 +2136,24 @@ pub(crate) fn title(ui: &mut egui::Ui, state: &BoardState, source_label: Option<
         {
             action = Some(BoardAction::ShowSource(source));
         }
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            let theme_name = tl!("Board theme");
+            let menu = egui::containers::menu::MenuButton::from_button(egui::Button::image(crate::icons::image("palette", 14.0, t.icon)));
+            let (r, picked) = menu.ui(ui, crate::chess_theme::menu_items);
+            let r = r.on_hover_text(theme_name);
+            r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, theme_name));
+            match picked.and_then(|p| p.inner) {
+                Some(crate::chess_theme::MenuPick::Theme(theme)) => action = Some(BoardAction::BoardTheme(theme)),
+                Some(crate::chess_theme::MenuPick::Look(look)) => action = Some(BoardAction::BoardLook(look)),
+                None => {}
+            }
+            let name = tl!("Move list beside the page");
+            let r = ui.add(egui::Button::image(crate::icons::image("list-ordered", 14.0, t.icon)).selected(beside)).on_hover_text(name);
+            r.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, beside, name));
+            if r.clicked() {
+                action = Some(BoardAction::ToggleMoveList);
+            }
+        });
     });
     action
 }
@@ -1472,17 +2174,21 @@ pub(crate) fn panel_body(
     viewport: f32,
 ) -> (Option<BoardAction>, Option<crate::chess_collection::GamesAction>) {
     let top = ui.cursor().top();
-    let action = title(ui, chess.board(), source_label);
+    let action = title(ui, t, chess.board(), source_label, chess.moves_beside);
     ui.add_space(4.0);
     if crate::chess_study_ui::setup_in_place(ui, t, chess, pieces) {
         return (action, None);
     }
+    let focus = chess.comment_focus;
     let (study, state) = (&mut chess.study, chess.games.board_mut());
     view_controls(ui, state);
     ui.add_space(4.0);
     crate::chess_study_ui::board_with_bar(ui, t, study, state, pieces, sizing);
     promotion_choice(ui, state);
     navigation(ui, t, state);
+    if focus {
+        comment_focus(ui, t, state);
+    }
     let analysis = crate::chess_study_ui::analysis_section(ui, t, study, state, pieces);
     ui.add_space(4.0);
     let (fields, games) = moves_column(ui, t, chess, viewport - (ui.cursor().top() - top));
@@ -1494,13 +2200,18 @@ pub(crate) fn panel_body(
 /// details sections: under the board in one column, or the right-hand column of the chess
 /// window's wide layout (`chess_window`). What goes under the notation is measured each frame
 /// and set aside the next, so opening a section shrinks the notation (down to its least height,
-/// then the column scrolls).
+/// then the column scrolls). While the Move list shows beside the page, the notation and the
+/// move's notes are there ([`moves_list`]), and only the games and sections are here.
 pub(crate) fn moves_column(
     ui: &mut egui::Ui,
     t: &Tokens,
     chess: &mut crate::chess_ui::ChessState,
     room: f32,
 ) -> (Option<BoardAction>, Option<crate::chess_collection::GamesAction>) {
+    if chess.moves_beside {
+        let games = crate::chess_collection::games_section(ui, t, &mut chess.games);
+        return (sections(ui, chess.board_mut()), games);
+    }
     let below_id = ui.id().with("chess-board-below");
     let below = ui.ctx().data(|d| d.get_temp::<f32>(below_id)).unwrap_or(0.0);
     let height = notation_height(room, 0.0, below);
@@ -1515,12 +2226,37 @@ pub(crate) fn moves_column(
     ui.add_space(4.0);
     let games = crate::chess_collection::games_section(ui, t, &mut chess.games);
     let fields = sections(ui, chess.board_mut());
-    let measured = ui.cursor().top() - below_top;
-    if measured.is_finite() && (measured - below).abs() > 0.5 {
-        ui.ctx().data_mut(|d| d.insert_temp(below_id, measured));
+    set_aside(ui, below_id, ui.cursor().top() - below_top, below);
+    (copied.or(fields), games)
+}
+
+/// The Move list beside the page (`chess_ui::moves_panel`): the glyph brush's bar while it is
+/// armed, the notation in the `room` points left, and the glyphs and comment of the move shown
+/// under it, measured as in [`moves_column`].
+pub(crate) fn moves_list(ui: &mut egui::Ui, t: &Tokens, chess: &mut crate::chess_ui::ChessState, room: f32) -> Option<BoardAction> {
+    let below_id = ui.id().with("chess-moves-below");
+    let below = ui.ctx().data(|d| d.get_temp::<f32>(below_id)).unwrap_or(0.0);
+    let top = ui.cursor().top();
+    let brush = chess.tools.brush();
+    if let Some(code) = brush {
+        brush_bar(ui, t, chess, code);
+    }
+    let height = notation_height(room, ui.cursor().top() - top, below);
+    let state = chess.board_mut();
+    let action = notation(ui, t, state, Some(height), brush);
+    let below_top = ui.cursor().top();
+    notes(ui, t, state);
+    set_aside(ui, below_id, ui.cursor().top() - below_top, below);
+    action
+}
+
+/// Keep `measured` points (what went under the notation) for the next frame under `id`, and draw
+/// that frame when it differs from the `kept` ones.
+fn set_aside(ui: &egui::Ui, id: egui::Id, measured: f32, kept: f32) {
+    if measured.is_finite() && (measured - kept).abs() > 0.5 {
+        ui.ctx().data_mut(|d| d.insert_temp(id, measured));
         ui.ctx().request_repaint();
     }
-    (copied.or(fields), games)
 }
 
 /// The armed glyph brush (T15), over the notation: its glyph, what a click does, and how to stop.
@@ -1560,8 +2296,186 @@ fn notation_height(viewport: f32, above: f32, below: f32) -> f32 {
 mod tests {
     use super::*;
 
+    /// Plan HC9: the main line's moves pair by number; a comment or a variation is a break, and
+    /// a Black move after one starts a pair of its own.
+    #[test]
+    fn columns_pair_the_main_line_and_break_for_the_rest() {
+        let (game, _) = Game::from_pgn("1. e4 e5 {A comment.} 2. Nf3 (2. c3 d5) Nc6 3. Bb5 *").unwrap();
+        let tokens = game.tokens();
+        let shape: Vec<String> = column_items(&tokens)
+            .iter()
+            .map(|item| match item {
+                ColItem::Pair { number, white, black } => {
+                    let san = |t: &Option<&Token>| match t {
+                        Some(Token::Move { san, .. }) => san.clone(),
+                        _ => "-".to_owned(),
+                    };
+                    format!("{number}:{}:{}", san(white), san(black))
+                }
+                ColItem::Break(held) => format!("break({})", held.len()),
+            })
+            .collect();
+        assert_eq!(shape, ["1:e4:e5", "break(1)", "2:Nf3:-", "break(4)", "2:-:Nc6", "3:Bb5:-"]);
+        // Nothing to pair: no row.
+        assert!(column_items(&Game::standard().tokens()).is_empty());
+    }
+
+    /// Plan HC12: each quality chip's sign reads on its fill at 4.5:1, and no two chips share a
+    /// fill; drawings are counted in words.
+    #[test]
+    fn quality_chips_read_and_drawings_are_counted() {
+        use pdfcraft_engine::chess::pdfcraft_chess::theme::contrast;
+        let rgb = |c: Color32| Rgb(c.r(), c.g(), c.b());
+        let mut fills = Vec::new();
+        for code in 1..=6u16 {
+            let (fill, ink, sign) = quality_colors(code).unwrap();
+            assert!(contrast(rgb(fill), rgb(ink)) >= 4.5, "{sign}: {:.2}", contrast(rgb(fill), rgb(ink)));
+            assert!(!fills.contains(&fill), "{sign}");
+            fills.push(fill);
+        }
+        assert!(quality_colors(7).is_none() && quality_colors(0).is_none());
+        assert_eq!(drawings_name(2, 1), "2 arrows, 1 ring");
+        assert_eq!(drawings_name(1, 0), "1 arrow");
+        assert_eq!(drawings_name(0, 3), "3 rings");
+    }
+
+    /// Plan HC5: a textured theme draws its squares once per size: another position makes none;
+    /// the picture keeps the texture under the pieces.
+    #[test]
+    fn a_textured_board_makes_its_squares_once_per_size() {
+        let ctx = egui::Context::default();
+        let pieces = PieceSet::geometric();
+        crate::chess_theme::set(&ctx, pdfcraft_engine::chess::pdfcraft_chess::theme::by_id("wood").unwrap());
+        let mut state = BoardState::default();
+        // The squares' buffer: made again, it would be another allocation.
+        let made = |state: &BoardState| state.background.as_ref().map(|(_, v)| v.as_ptr() as usize);
+        assert!(state.texture(&ctx, &pieces, 256).is_some());
+        let first = made(&state);
+        assert!(first.is_some());
+        state.game.play_uci("e2e4").unwrap();
+        assert!(state.texture(&ctx, &pieces, 256).is_some(), "another position");
+        // (Not a smaller board here: the picture's key holds the process-wide piece generation,
+        // which other tests move, and a picture drawn again smaller rightly makes its squares.)
+        assert_eq!(made(&state), first, "the squares were made once");
+        let ((id, w, _), squares) = state.background.clone().unwrap();
+        assert_eq!(id, "wood");
+        // An empty square of the picture is the texture there (a6, the second square of the
+        // third row: no piece on it).
+        let style = BoardStyle { border: 0.0, coordinates: false, ..BoardStyle::default() };
+        let palette = crate::chess_theme::current(&ctx);
+        let (_, _, picture) = textured_rgba(&state.placement(), &pieces, &style, 256, Texture::Wood, palette, &mut state.background).unwrap();
+        let w = w as usize;
+        let at = ((w / 16) * 5 * w + (w / 16) * 3) * 4;
+        assert_eq!(picture.get(at..at + 3), squares.get(at..at + 3));
+    }
+
+    /// Plan HC4: the board's picture is drawn again in the theme shown, its squares the theme's.
+    #[test]
+    fn the_board_is_drawn_again_in_another_theme() {
+        let ctx = egui::Context::default();
+        let pieces = PieceSet::geometric();
+        let mut state = BoardState::default();
+        state.texture(&ctx, &pieces, 64);
+        let brown = state.texture.as_ref().map(|(k, _, _)| k.clone()).unwrap();
+        assert!(brown.ends_with("|brown"), "{brown}");
+        let blue = pdfcraft_engine::chess::pdfcraft_chess::theme::by_id("blue").unwrap();
+        crate::chess_theme::set(&ctx, blue);
+        state.texture(&ctx, &pieces, 64);
+        let key = state.texture.as_ref().map(|(k, _, _)| k.clone()).unwrap();
+        assert!(key.ends_with("|blue"), "redrawn: {key}");
+        let style = crate::chess_theme::style(&ctx, BoardStyle::default());
+        assert_eq!((style.light, style.dark), (blue.light, blue.dark));
+    }
+
+    #[test]
+    fn the_header_says_only_what_is_known() {
+        let game = |tags: &[(&str, &str)]| {
+            let mut g = Game::standard();
+            for (name, value) in tags {
+                g.set_tag(name, value).unwrap();
+            }
+            g
+        };
+        assert!(header_lines(&game(&[])).is_empty());
+        assert!(header_lines(&game(&[("White", "?"), ("Event", "?"), ("Date", "????.??.??"), ("Round", "-")])).is_empty());
+        assert_eq!(header_lines(&game(&[("Black", "Polgar"), ("BlackElo", "2735")])), ["Polgar (2735)"]);
+        let full = game(&[
+            ("White", "Carlsen"),
+            ("WhiteElo", "2882"),
+            ("Black", "Caruana"),
+            ("Event", "WCh"),
+            ("Site", "London"),
+            ("Date", "2018.11.?? "),
+            ("Round", "12"),
+        ]);
+        assert_eq!(header_lines(&full), ["Carlsen (2882) – Caruana", "WCh · London · 2018.11 · round 12"]);
+        assert_eq!(result_text(&game(&[("Result", "1/2-1/2")])), "½-½");
+        assert_eq!(result_text(&game(&[("Result", "1-0")])), "1-0");
+        assert_eq!(result_text(&game(&[])), "*");
+    }
+
+    /// A new piece set makes the board's pictures stale: the pieces cut out and the board itself
+    /// are drawn again, and kept while nothing changes.
+    #[test]
+    fn a_new_piece_set_draws_the_board_again() {
+        let ctx = egui::Context::default();
+        let pieces = PieceSet::geometric();
+        let mut s = BoardState::default();
+        let sprites = s.sprites(&ctx, &pieces).unwrap().id();
+        let board = s.texture(&ctx, &pieces, 64).unwrap().id();
+        assert_eq!(s.sprites(&ctx, &pieces).unwrap().id(), sprites, "kept");
+        assert_eq!(s.texture(&ctx, &pieces, 64).unwrap().id(), board, "kept");
+        crate::chess_editor::pieces_changed();
+        assert_ne!(s.sprites(&ctx, &pieces).unwrap().id(), sprites, "cut out again");
+        assert_ne!(s.texture(&ctx, &pieces, 64).unwrap().id(), board, "drawn again");
+    }
+
     fn sq(name: &str) -> Square {
         Square::parse(name).unwrap()
+    }
+
+    /// The PGN field loaded with the same game (a comment and a variation added) keeps the move
+    /// shown and where the moves are on the page; a different game is left as read (plan A8, W6).
+    #[test]
+    fn loading_the_same_game_keeps_the_move_shown_and_the_sources() {
+        use pdfcraft_engine::chess::pdfcraft_chess::game::{NodePath, NodeSource};
+        let mut s = BoardState { pgn_text: "1. e4 e5 2. Nf3 Nc6 *".into(), ..BoardState::default() };
+        s.load_pgn();
+        let e5 = s.game.node_at(&NodePath::new(vec![0, 0])).unwrap();
+        let printed = NodeSource { page: 4, rect_user: [10.0, 20.0, 30.0, 40.0] };
+        assert!(s.game.set_source(e5, Some(printed)));
+        s.game.go_to_node(e5);
+        s.pgn_text = "1. e4 e5 {Open game} (1... c5) 2. Nf3 Nc6 *".into();
+        s.pgn_edited = true;
+        s.load_pgn();
+        assert_eq!(s.game.movetext(), "1. e4 e5 {Open game} (1... c5) 2. Nf3 Nc6");
+        let e5 = s.game.node_at(&NodePath::new(vec![0, 0])).unwrap();
+        assert_eq!(s.game.current(), e5, "the move shown is kept");
+        assert_eq!(s.game.source(e5), Some(printed), "and where it is printed");
+        assert!(!s.pgn_edited, "loaded");
+        // Another main line is another game: read from its end, without the old sources.
+        s.pgn_text = "1. d4 d5 *".into();
+        s.load_pgn();
+        assert_eq!(s.game.ply(), 2);
+        assert_eq!(s.game.source(s.game.node_at(&NodePath::new(vec![0, 0])).unwrap()), None);
+    }
+
+    /// Typing in the PGN field survives a step on the board until the field is loaded or the
+    /// edit discarded (plan A8, W6).
+    #[test]
+    fn typed_pgn_is_kept_while_the_board_moves() {
+        let mut s = BoardState { pgn_text: "1. e4 e5 *".into(), ..BoardState::default() };
+        s.load_pgn();
+        s.refresh_fields(false);
+        s.pgn_text = "1. e4 e5 2. Nf3 *".into();
+        s.pgn_edited = true;
+        s.game.go_to(1);
+        s.refresh_fields(false);
+        assert_eq!(s.pgn_text, "1. e4 e5 2. Nf3 *", "a step leaves the typed text");
+        assert_ne!(s.fen_text, "", "the FEN follows the board");
+        s.pgn_edited = false;
+        s.refresh_fields(true);
+        assert!(s.pgn_text.ends_with("1. e4 e5 *\n"), "discarded: the game again: {}", s.pgn_text);
     }
 
     #[test]

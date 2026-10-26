@@ -2549,6 +2549,40 @@ animation effects	Off	Ki
 	Show this diagram on the page	Ennek a diagramnak a megjelenítése az oldalon
 	Stalemate	Patt
 	Standard start position	Szabványos kezdőállás
+	the board is empty	a tábla üres
+	White's king is missing	hiányzik a világos király
+	Black's king is missing	hiányzik a sötét király
+	White has more than one king	világosnak egynél több királya van
+	Black has more than one king	sötétnek egynél több királya van
+	White has more than 8 pawns	világosnak 8-nál több gyalogja van
+	Black has more than 8 pawns	sötétnek 8-nál több gyalogja van
+	White has more than 16 pieces	világosnak 16-nál több bábuja van
+	Black has more than 16 pieces	sötétnek 16-nál több bábuja van
+	a pawn stands on the first or the eighth rank	gyalog áll az első vagy a nyolcadik soron
+	White has more extra pieces than missing pawns to promote	világosnak több többletbábuja van, mint ahány hiányzó gyalog átváltozhatott
+	Black has more extra pieces than missing pawns to promote	sötétnek több többletbábuja van, mint ahány hiányzó gyalog átváltozhatott
+	the kings stand next to each other	a királyok egymás mellett állnak
+	White is in check, but it is Black's turn	világos sakkban áll, de sötét következik
+	Black is in check, but it is White's turn	sötét sakkban áll, de világos következik
+	White's king is in check from more than two pieces	a világos királyt kettőnél több bábu adja sakkba
+	Black's king is in check from more than two pieces	a sötét királyt kettőnél több bábu adja sakkba
+	White's king is in a double check no move could give	a világos király olyan kettős sakkban áll, amelyet egy lépés sem adhatott
+	Black's king is in a double check no move could give	a sötét király olyan kettős sakkban áll, amelyet egy lépés sem adhatott
+	White may castle, but its king or rook has left its square	világos sáncolhat, de a királya vagy a bástyája elhagyta a mezőjét
+	Black may castle, but its king or rook has left its square	sötét sáncolhat, de a királya vagy a bástyája elhagyta a mezőjét
+	the en-passant square does not fit the pawns	a menet közbeni ütés mezője nem illik a gyalogokhoz
+	Not a legal position: {reason}	Nem szabályos állás: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Nem szabályos állás ({reason}): javítsa ki a diagramszerkesztőben, hogy lépni lehessen benne.
+	The game on the board has moves. Put this position:	A táblán lévő játszmában vannak lépések. Ez az állás kerüljön:
+	New game with this position	Új játszma ezzel az állással
+	The game on the board keeps its moves.	A táblán lévő játszma megtartja a lépéseit.
+	Its moves are deleted (Undo brings them back).	A lépései törlődnek (a Visszavonás visszahozza őket).
+	Start again from the standard position.	Újrakezdés a szabványos kezdőállásból.
+	A new game from the standard position; the game on the board keeps its moves.	Új játszma a szabványos kezdőállásból; a táblán lévő játszma megtartja a lépéseit.
+	PGN edited	PGN szerkesztve
+	Load	Betöltés
+	Show the game on the board again.	A táblán lévő játszma újbóli megjelenítése.
+	Load the PGN above on the board, with its variations and comments.	Betölti a fenti PGN-t a táblára, a változataival és megjegyzéseivel együtt.
 	Start (Home)	Eleje (Home)
 	That side can't be to move: the other king is in check.	Ez a fél nem lehet lépésen: a másik király sakkban áll.
 	The FEN couldn't be read: {e}	A FEN nem olvasható: {e}
@@ -3023,3 +3057,106 @@ chess undo step	Clear drawings	rajzok törlése
 	No game was found for this move, on its page or the pages around it.	Ehhez a lépéshez nem található játszma sem az oldalán, sem a körülötte lévő oldalakon.
 	Renumber	Újraszámozás
 	The text's move numbers give way to the game's: {printed} is played as {played}.	A szöveg lépésszámai helyett a játszmáé érvényes: {printed} {played} lépésként kerül be.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	Lépéslista
+	Move list beside the page	Lépéslista az oldal mellett
+	Side of the page	Az oldal széle
+	Drawing eraser	Rajzradír
+	Drag across text or draw a box to erase what lies under it	Húzzon a szövegen át, vagy rajzoljon keretet az alatta lévő tartalom törléséhez
+	Drawings and shapes	Rajzok és alakzatok
+	Comments, links and form fields	Megjegyzések, hivatkozások és űrlapmezők
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	A törlés szerkesztés: a fájl egy korábbi változata még tartalmazhatja a törölt részt. A végleges eltávolításhoz használja a Kitakarást.
+	Erase content	Tartalom törlése
+	Knife (cut pages)	Kés (oldalak vágása)
+	Click to place a cut, right-click to take one away, Enter to cut	Kattintással vágást helyez el, jobb kattintással egyet elvesz, Enterrel vág
+	Up and down	Fentről lefelé
+	Across	Keresztben
+	Hold Shift for the other direction.	A másik irányhoz tartsa lenyomva a Shiftet.
+	Right part first	A jobb rész először
+	Nothing is erased: each part shows its piece of the page.	Semmi sem törlődik: minden rész az oldal saját darabját mutatja.
+	Remove what lies outside each part	Az egyes részeken kívül esők eltávolítása
+	Split double pages	Dupla oldalak szétválasztása
+	No double pages were found: none is wider than tall	Nincsenek dupla oldalak: egyik sem szélesebb, mint magas
+	Box or selection	Keret vagy kijelölés
+	Brush	Ecset
+	Brush size	Ecsetméret
+	Rub over what you want to erase; letting go erases it	Húzza át, amit törölni szeretne; elengedéskor törlődik
+	What will go is tinted red while you draw.	Ami eltűnik, rajzolás közben pirosan látszik.
+	Erase the selected words from the page	A kijelölt szavak törlése az oldalról
+	Chess pieces	Sakkfigurák
+	Plain shapes	Egyszerű formák
+	Missing: {pieces}	Hiányzik: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	A PDFCRAFT_CHESS_PIECES be van állítva, és elsőbbséget élvez ezzel a választással szemben.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Tábla: az elemző és a tanuló tábla. Diagramok: újrarajzolva az oldalon, a szerkesztőben és az exportokban.
+	These pieces cannot be used: {reason}	Ezek a figurák nem használhatók: {reason}
+	Import a folder…	Mappa importálása…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	Tizenkét bábuképet (wK–bP, SVG vagy PNG) tartalmazó mappát másol a bábuk mappájába.
+	Import from a web page…	Importálás weboldalról…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	Egy mentett weboldalban lévő bábukészleteket a bábuk mappájába teszi.
+	Choose a folder of piece images	Válasszon bábuképeket tartalmazó mappát
+	Choose a saved web page	Válasszon mentett weboldalt
+	Web pages	Weboldalak
+	There is no pieces folder beside the program to import into.	A program mellett nincs bábuk mappája, ahová importálni lehetne.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	Importálva: {sets}. Licencük nem ismert: csak személyes használatra.
+	Already in the pieces folder: {sets}. Replace them?	Már a bábuk mappájában vannak: {sets}. Lecseréli őket?
+	The pieces cannot be imported: {reason}	A bábuk nem importálhatók: {reason}
+	round {round}	{round}. forduló
+	Result: {result}	Eredmény: {result}
+	Board theme	Táblatéma
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	A táblákhoz, amelyeken játszik és tanul. Az oldalon és az exportokban lévő diagramok megtartják a színeiket.
+	Brown	Barna
+	Light wood	Világos fa
+	Walnut	Dió
+	Ice blue	Jégkék
+	Olive	Olajzöld
+	Grey	Szürke
+	Graphite	Grafit
+	Sand	Homok
+	Coral	Korall
+	High contrast	Nagy kontraszt
+	Coordinates	Koordináták
+	On the squares	A mezőkön
+	Beside the board	A tábla mellett
+	Frame	Keret
+	Double	Dupla
+	Marked squares	Megjelölt mezők
+	Ring	Gyűrű
+	Filled	Kitöltött
+	A dot on the side to move	Pont a lépésre következő oldalon
+	Wood	Fa
+	Marble	Márvány
+	Paper	Papír
+	Book print	Könyvnyomat
+	king	király
+	queen	vezér
+	rook	bástya
+	bishop	futó
+	knight	huszár
+	pawn	gyalog
+	checkmate	matt
+	check	sakk
+	castles short	rövid sánc
+	castles long	hosszú sánc
+	takes	üt
+	{move} promotes to {piece}	{move} átváltozik: {piece}
+	Pieces in the move list	Bábuk a lépéslistában
+	Figurines	Figurák
+	Letters in your language	Betűk az Ön nyelvén
+	English letters	Angol betűk
+	Shown on the board while the pointer is here	A táblán látszik, amíg a mutató itt van
+	1 arrow	1 nyíl
+	{n} arrows	{n} nyíl
+	1 ring	1 gyűrű
+	{n} rings	{n} gyűrű
+	The comment on the move shown, large under the board	A mutatott lépés megjegyzése nagyban a tábla alatt
+	Running text	Folyó szöveg
+	Columns	Oszlopok
+	Text size	Szövegméret
+	Small	Kicsi
+	Normal	Normál
+	Large	Nagy
+	Previous variation (Page Up)	Előző változat (Page Up)
+	Next variation (Page Down)	Következő változat (Page Down)
+	A move the pointer rests on shows its position	Az a lépés, amelyen a mutató megáll, megmutatja az állását
+	Position after {move}	Állás {move} után

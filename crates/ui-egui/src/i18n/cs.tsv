@@ -2624,6 +2624,40 @@ animation effects	Off	Vypnuto
 	Show this diagram on the page	Zobrazit tento diagram na stránce
 	Stalemate	Pat
 	Standard start position	Výchozí postavení
+	the board is empty	šachovnice je prázdná
+	White's king is missing	chybí bílý král
+	Black's king is missing	chybí černý král
+	White has more than one king	bílý má více než jednoho krále
+	Black has more than one king	černý má více než jednoho krále
+	White has more than 8 pawns	bílý má více než 8 pěšců
+	Black has more than 8 pawns	černý má více než 8 pěšců
+	White has more than 16 pieces	bílý má více než 16 kamenů
+	Black has more than 16 pieces	černý má více než 16 kamenů
+	a pawn stands on the first or the eighth rank	pěšec stojí na první nebo osmé řadě
+	White has more extra pieces than missing pawns to promote	bílý má víc figur navíc, než kolik chybí pěšců k proměně
+	Black has more extra pieces than missing pawns to promote	černý má víc figur navíc, než kolik chybí pěšců k proměně
+	the kings stand next to each other	králové stojí vedle sebe
+	White is in check, but it is Black's turn	bílý je v šachu, ale na tahu je černý
+	Black is in check, but it is White's turn	černý je v šachu, ale na tahu je bílý
+	White's king is in check from more than two pieces	bílý král je v šachu od více než dvou kamenů
+	Black's king is in check from more than two pieces	černý král je v šachu od více než dvou kamenů
+	White's king is in a double check no move could give	bílý král je ve dvojšachu, který žádný tah nemohl dát
+	Black's king is in a double check no move could give	černý král je ve dvojšachu, který žádný tah nemohl dát
+	White may castle, but its king or rook has left its square	bílý smí rošovat, ale jeho král nebo věž opustil své pole
+	Black may castle, but its king or rook has left its square	černý smí rošovat, ale jeho král nebo věž opustil své pole
+	the en-passant square does not fit the pawns	pole pro braní mimochodem neodpovídá pěšcům
+	Not a legal position: {reason}	Nelegální pozice: {reason}
+	Not a legal position ({reason}): correct it in the diagram editor to play moves on it.	Nelegální pozice ({reason}): opravte ji v editoru diagramu, abyste v ní mohli táhnout.
+	The game on the board has moves. Put this position:	Partie na šachovnici má tahy. Umístit tuto pozici:
+	New game with this position	Nová partie s touto pozicí
+	The game on the board keeps its moves.	Partie na šachovnici si ponechá své tahy.
+	Its moves are deleted (Undo brings them back).	Její tahy se smažou (Zpět je vrátí).
+	Start again from the standard position.	Začít znovu z výchozího postavení.
+	A new game from the standard position; the game on the board keeps its moves.	Nová partie z výchozího postavení; partie na šachovnici si ponechá své tahy.
+	PGN edited	PGN upraveno
+	Load	Načíst
+	Show the game on the board again.	Znovu zobrazit partii ze šachovnice.
+	Load the PGN above on the board, with its variations and comments.	Načte PGN výše na šachovnici i s variantami a komentáři.
 	Start (Home)	Začátek (Home)
 	That side can't be to move: the other king is in check.	Tato strana nemůže být na tahu: druhý král je v šachu.
 	The FEN couldn't be read: {e}	FEN nelze přečíst: {e}
@@ -3098,3 +3132,106 @@ chess undo step	Clear drawings	smazání kreseb
 	No game was found for this move, on its page or the pages around it.	Pro tento tah nebyla nalezena žádná partie na jeho stránce ani na stránkách kolem ní.
 	Renumber	Přečíslovat
 	The text's move numbers give way to the game's: {printed} is played as {played}.	Čísla tahů v textu ustupují číslům partie: {printed} se hraje jako {played}.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	Seznam tahů
+	Move list beside the page	Seznam tahů vedle stránky
+	Side of the page	Umístění vedle stránky
+	Drawing eraser	Guma na kresby
+	Drag across text or draw a box to erase what lies under it	Přetažením přes text nebo nakreslením rámečku vymažete, co je pod ním
+	Drawings and shapes	Kresby a tvary
+	Comments, links and form fields	Komentáře, odkazy a pole formulářů
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	Mazání je úprava: starší verze souboru může vymazaný obsah stále obsahovat. Pro trvalé odstranění použijte Začernění.
+	Erase content	Vymazat obsah
+	Knife (cut pages)	Nůž (rozřezat stránky)
+	Click to place a cut, right-click to take one away, Enter to cut	Kliknutím umístíte řez, pravým kliknutím jeden odeberete, Enter rozřízne
+	Up and down	Shora dolů
+	Across	Napříč
+	Hold Shift for the other direction.	Pro druhý směr podržte Shift.
+	Right part first	Nejprve pravá část
+	Nothing is erased: each part shows its piece of the page.	Nic se nemaže: každá část ukazuje svůj kus stránky.
+	Remove what lies outside each part	Odstranit, co leží mimo každou část
+	Split double pages	Rozdělit dvojstrany
+	No double pages were found: none is wider than tall	Nenalezeny žádné dvojstrany: žádná stránka není širší než vyšší
+	Box or selection	Rámeček nebo výběr
+	Brush	Štětec
+	Brush size	Velikost štětce
+	Rub over what you want to erase; letting go erases it	Přejeďte přes to, co chcete vymazat; uvolněním se to vymaže
+	What will go is tinted red while you draw.	Co zmizí, je během kreslení podbarveno červeně.
+	Erase the selected words from the page	Vymazat vybraná slova ze stránky
+	Chess pieces	Šachové figurky
+	Plain shapes	Jednoduché tvary
+	Missing: {pieces}	Chybí: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	Je nastavena PDFCRAFT_CHESS_PIECES a má přednost před touto volbou.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	Šachovnice: šachovnice pro analýzu a studium. Diagramy: překreslené na stránce, v editoru a v exportech.
+	These pieces cannot be used: {reason}	Tyto figurky nelze použít: {reason}
+	Import a folder…	Importovat složku…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	Zkopíruje složku s dvanácti obrázky figur (wK až bP, SVG nebo PNG) do složky figur.
+	Import from a web page…	Importovat z webové stránky…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	Převezme sady figur, které uložená webová stránka nese v sobě, do složky figur.
+	Choose a folder of piece images	Vyberte složku s obrázky figur
+	Choose a saved web page	Vyberte uloženou webovou stránku
+	Web pages	Webové stránky
+	There is no pieces folder beside the program to import into.	Vedle programu není žádná složka figur, do které by se dalo importovat.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	Importováno: {sets}. Jejich licence není známa: používejte je jen pro osobní potřebu.
+	Already in the pieces folder: {sets}. Replace them?	Už jsou ve složce figur: {sets}. Nahradit je?
+	The pieces cannot be imported: {reason}	Figury nelze importovat: {reason}
+	round {round}	kolo {round}
+	Result: {result}	Výsledek: {result}
+	Board theme	Motiv šachovnice
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	Pro šachovnice, na kterých hrajete a studujete. Diagramy na stránce a v exportech si ponechají své barvy.
+	Brown	Hnědý
+	Light wood	Světlé dřevo
+	Walnut	Ořech
+	Ice blue	Ledově modrý
+	Olive	Olivový
+	Grey	Šedý
+	Graphite	Grafit
+	Sand	Písková
+	Coral	Korálový
+	High contrast	Vysoký kontrast
+	Coordinates	Souřadnice
+	On the squares	Na polích
+	Beside the board	Vedle šachovnice
+	Frame	Rámeček
+	Double	Dvojitý
+	Marked squares	Označená pole
+	Ring	Kroužek
+	Filled	Vyplněná
+	A dot on the side to move	Tečka u strany, která je na tahu
+	Wood	Dřevo
+	Marble	Mramor
+	Paper	Papír
+	Book print	Knižní tisk
+	king	král
+	queen	dáma
+	rook	věž
+	bishop	střelec
+	knight	jezdec
+	pawn	pěšec
+	checkmate	mat
+	check	šach
+	castles short	malá rošáda
+	castles long	velká rošáda
+	takes	bere
+	{move} promotes to {piece}	{move} proměňuje v {piece}
+	Pieces in the move list	Figury v seznamu tahů
+	Figurines	Figurky
+	Letters in your language	Písmena ve vašem jazyce
+	English letters	Anglická písmena
+	Shown on the board while the pointer is here	Zobrazí se na šachovnici, dokud je zde ukazatel
+	1 arrow	1 šipka
+	{n} arrows	{n} šipek
+	1 ring	1 kroužek
+	{n} rings	{n} kroužků
+	The comment on the move shown, large under the board	Komentář k zobrazenému tahu velkým písmem pod šachovnicí
+	Running text	Souvislý text
+	Columns	Sloupce
+	Text size	Velikost textu
+	Small	Malá
+	Normal	Normální
+	Large	Velká
+	Previous variation (Page Up)	Předchozí varianta (Page Up)
+	Next variation (Page Down)	Další varianta (Page Down)
+	A move the pointer rests on shows its position	Tah, na kterém se zastaví ukazatel, ukáže svou pozici
+	Position after {move}	Pozice po {move}

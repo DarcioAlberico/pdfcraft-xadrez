@@ -2933,3 +2933,106 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	No game was found for this move, on its page or the pages around it.	ఈ ఎత్తుకు దాని పేజీలో గానీ చుట్టూ ఉన్న పేజీలలో గానీ ఆట కనబడలేదు.
 	Renumber	మళ్లీ సంఖ్యలు వేయి
 	The text's move numbers give way to the game's: {printed} is played as {played}.	పాఠ్యంలోని ఎత్తుల సంఖ్యలకు బదులు ఆట సంఖ్యలు వస్తాయి: {printed} ను {played} గా ఆడతారు.
+
+# Chess ▸ Move list: the board's game beside the page, at its left or right edge (the panel, its command, its tab's menu).
+	Move list	ఎత్తుల జాబితా
+	Move list beside the page	పేజీ పక్కన ఎత్తుల జాబితా
+	Side of the page	పేజీ వైపు
+	Drawing eraser	డ్రాయింగ్ ఎరేజర్
+	Drag across text or draw a box to erase what lies under it	కింద ఉన్నదాన్ని చెరిపివేయడానికి వచనంపై లాగండి లేదా పెట్టె గీయండి
+	Drawings and shapes	డ్రాయింగ్‌లు మరియు ఆకారాలు
+	Comments, links and form fields	వ్యాఖ్యలు, లింక్‌లు మరియు ఫారమ్ ఫీల్డ్‌లు
+	Erasing is an edit: an earlier version of the file can still hold what was erased. Use Redact to remove it for good.	చెరిపివేయడం ఒక సవరణ: ఫైల్ యొక్క మునుపటి సంస్కరణలో చెరిపినది ఇంకా ఉండవచ్చు. శాశ్వతంగా తొలగించడానికి రెడాక్ట్ చేయిని ఉపయోగించండి.
+	Erase content	కంటెంట్‌ను చెరిపివేయి
+	Knife (cut pages)	కత్తి (పేజీలను కత్తిరించు)
+	Click to place a cut, right-click to take one away, Enter to cut	కోత పెట్టడానికి క్లిక్ చేయండి, ఒకటి తీసివేయడానికి కుడి-క్లిక్ చేయండి, కత్తిరించడానికి Enter
+	Up and down	పై నుండి కిందకు
+	Across	అడ్డంగా
+	Hold Shift for the other direction.	మరో దిశ కోసం Shift పట్టుకోండి.
+	Right part first	ముందు కుడి భాగం
+	Nothing is erased: each part shows its piece of the page.	ఏదీ చెరిపివేయబడదు: ప్రతి భాగం పేజీలో తన ముక్కను చూపుతుంది.
+	Remove what lies outside each part	ప్రతి భాగం బయట ఉన్నదాన్ని తీసివేయి
+	Split double pages	జంట పేజీలను విభజించు
+	No double pages were found: none is wider than tall	జంట పేజీలు కనబడలేదు: ఏ పేజీ ఎత్తు కంటే వెడల్పుగా లేదు
+	Box or selection	పెట్టె లేదా ఎంపిక
+	Brush	బ్రష్
+	Brush size	బ్రష్ పరిమాణం
+	Rub over what you want to erase; letting go erases it	చెరిపివేయాలనుకున్నదానిపై రుద్దండి; వదిలితే చెరిపివేయబడుతుంది
+	What will go is tinted red while you draw.	గీస్తున్నప్పుడు తొలగేది ఎరుపు రంగులో కనిపిస్తుంది.
+	Erase the selected words from the page	ఎంచుకున్న పదాలను పేజీ నుండి చెరిపివేయి
+	Chess pieces	చదరంగం పావులు
+	Plain shapes	సాధారణ ఆకారాలు
+	Missing: {pieces}	లేనివి: {pieces}
+	PDFCRAFT_CHESS_PIECES is set and takes precedence over this choice.	PDFCRAFT_CHESS_PIECES సెట్ చేయబడింది, ఇది ఈ ఎంపిక కంటే ముందు వర్తిస్తుంది.
+	Board: the analysis and study boards. Diagrams: redrawn on the page, in the editor and in exports.	బోర్డు: విశ్లేషణ, అధ్యయన బోర్డులు. రేఖాచిత్రాలు: పేజీలో, ఎడిటర్‌లో, ఎగుమతుల్లో మళ్లీ గీసినవి.
+	These pieces cannot be used: {reason}	ఈ పావులను ఉపయోగించలేరు: {reason}
+	Import a folder…	ఫోల్డర్‌ను దిగుమతి చేయి…
+	Copy a folder of twelve piece images (wK to bP, SVG or PNG) into the pieces folder.	పన్నెండు పావుల చిత్రాల ఫోల్డర్‌ను (wK నుండి bP, SVG లేదా PNG) పావుల ఫోల్డర్‌లోకి కాపీ చేస్తుంది.
+	Import from a web page…	వెబ్ పేజీ నుండి దిగుమతి చేయి…
+	Take the piece sets a saved web page carries inside it into the pieces folder.	సేవ్ చేసిన వెబ్ పేజీ తనలో ఉంచుకున్న పావుల సెట్‌లను పావుల ఫోల్డర్‌లోకి తీసుకుంటుంది.
+	Choose a folder of piece images	పావుల చిత్రాల ఫోల్డర్‌ను ఎంచుకోండి
+	Choose a saved web page	సేవ్ చేసిన వెబ్ పేజీని ఎంచుకోండి
+	Web pages	వెబ్ పేజీలు
+	There is no pieces folder beside the program to import into.	దిగుమతి చేయడానికి ప్రోగ్రామ్ పక్కన పావుల ఫోల్డర్ లేదు.
+	Imported: {sets}. Their licence is not known: use them for personal use only.	దిగుమతి అయ్యాయి: {sets}. వాటి లైసెన్స్ తెలియదు: వ్యక్తిగత ఉపయోగానికి మాత్రమే వాడండి.
+	Already in the pieces folder: {sets}. Replace them?	ఇప్పటికే పావుల ఫోల్డర్‌లో ఉన్నాయి: {sets}. వాటిని భర్తీ చేయాలా?
+	The pieces cannot be imported: {reason}	పావులను దిగుమతి చేయలేము: {reason}
+	round {round}	రౌండ్ {round}
+	Result: {result}	ఫలితం: {result}
+	Board theme	బోర్డు థీమ్
+	For the boards you play and study on. Diagrams on the page and in exports keep their colours.	మీరు ఆడే మరియు అధ్యయనం చేసే బోర్డుల కోసం. పేజీలోని మరియు ఎగుమతుల్లోని రేఖాచిత్రాలు తమ రంగులనే ఉంచుకుంటాయి.
+	Brown	గోధుమ
+	Light wood	లేత చెక్క
+	Walnut	వాల్‌నట్
+	Ice blue	మంచు నీలం
+	Olive	ఆలివ్
+	Grey	బూడిద
+	Graphite	గ్రాఫైట్
+	Sand	ఇసుక
+	Coral	పగడపు
+	High contrast	అధిక కాంట్రాస్ట్
+	Coordinates	నిరూపకాలు
+	On the squares	గడుల మీద
+	Beside the board	బోర్డు పక్కన
+	Frame	చట్రం
+	Double	రెట్టింపు
+	Marked squares	గుర్తించిన గడులు
+	Ring	ఉంగరం
+	Filled	నింపిన
+	A dot on the side to move	ఆడాల్సిన వైపు ఒక చుక్క
+	Wood	చెక్క
+	Marble	పాలరాయి
+	Paper	కాగితం
+	Book print	పుస్తక ముద్రణ
+	king	రాజు
+	queen	మంత్రి
+	rook	ఏనుగు
+	bishop	శకటం
+	knight	గుర్రం
+	pawn	బంటు
+	checkmate	చెక్‌మేట్
+	check	చెక్
+	castles short	చిన్న క్యాస్లింగ్
+	castles long	పెద్ద క్యాస్లింగ్
+	takes	తీసుకుంటుంది
+	{move} promotes to {piece}	{move} {piece}గా మారుతుంది
+	Pieces in the move list	ఎత్తుల జాబితాలో పావులు
+	Figurines	పావుల బొమ్మలు
+	Letters in your language	మీ భాషలో అక్షరాలు
+	English letters	ఆంగ్ల అక్షరాలు
+	Shown on the board while the pointer is here	పాయింటర్ ఇక్కడ ఉన్నంతవరకు బోర్డుపై చూపబడతాయి
+	1 arrow	1 బాణం
+	{n} arrows	{n} బాణాలు
+	1 ring	1 ఉంగరం
+	{n} rings	{n} ఉంగరాలు
+	The comment on the move shown, large under the board	చూపిన ఎత్తుపై వ్యాఖ్య, బోర్డు కింద పెద్దగా
+	Running text	నిరంతర పాఠం
+	Columns	నిలువు వరుసలు
+	Text size	పాఠం పరిమాణం
+	Small	చిన్నది
+	Normal	సాధారణం
+	Large	పెద్దది
+	Previous variation (Page Up)	మునుపటి వేరియేషన్ (Page Up)
+	Next variation (Page Down)	తదుపరి వేరియేషన్ (Page Down)
+	A move the pointer rests on shows its position	పాయింటర్ ఆగిన ఎత్తు దాని స్థితిని చూపుతుంది
+	Position after {move}	{move} తర్వాత స్థితి

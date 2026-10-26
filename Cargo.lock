@@ -4045,6 +4045,7 @@ version = "0.9.0"
 dependencies = [
  "base64 0.22.1",
  "cozy-chess",
+ "flate2",
  "ocrs",
  "pdfcraft-chess",
  "pdfcraft-geom",
@@ -4305,6 +4306,7 @@ dependencies = [
  "pdfcraft-content",
  "pdfcraft-cos",
  "pdfcraft-oracle",
+ "proptest",
  "thiserror 2.0.21",
 ]
 
@@ -4353,6 +4355,7 @@ dependencies = [
  "pdfcraft-model",
  "pdfcraft-testkit",
  "pdfcraft-xfa",
+ "proptest",
  "thiserror 2.0.21",
 ]
 
