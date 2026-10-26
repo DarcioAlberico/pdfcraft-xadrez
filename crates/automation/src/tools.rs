@@ -100,6 +100,14 @@ fn chess_props(read: bool) -> Value {
     props
 }
 
+/// The diagram corrections a reading tool takes from the corrections folder (plan A8, P3a3).
+fn insert_corrections(props: &mut Value) {
+    if let Some(o) = props.as_object_mut() {
+        o.insert("corrections".into(), json!({ "type": "boolean", "description": "Use the diagram corrections kept for doc in store (default true): a corrected diagram takes the position a person set, whatever it reads as now (chess_correction_set). The reply's corrections says which file was read (kept: how many), each applied (uid, page, index, kind, fen, read_fen: what it reads as now, diverged: the reading changed since it was corrected) and each unmatched (its page was read but its diagram was not found there, and why)." }));
+        o.insert("store".into(), json!({ "type": "string", "description": "A file path to the corrections folder, one file per document (relative to --root when set; default .pdfcraft/chess-corrections)." }));
+    }
+}
+
 /// The arguments of `chess_replace_diagram`: the diagram as `chess_detect` numbered it (and the
 /// scan settings it used), the position and how to draw it.
 fn chess_replace_props() -> Value {
@@ -172,6 +180,7 @@ fn chess_export_schema() -> Value {
                 );
                 o.insert("pieces".into(), json!({ "type": "string", "enum": pieces_values(), "description": "installed (default): PDFCRAFT_CHESS_PIECES (a font or a folder of piece images), a diagram font in the fonts folder beside the executable, an installed Chess Merida or a pieces folder beside the executable, else geometric; geometric: always the plain pieces; any other value is a set PdfCraft ships, by id (chessnut…)." }));
             }
+            insert_corrections(&mut props);
             props
         },
         &["doc", "out"],
@@ -1320,7 +1329,7 @@ pub fn tools() -> Vec<ToolDef> {
                 }),
                 &["doc", "page", "rect"],
             )),
-        t("chess_document", "Recognised chess document", "Chess ▸ Recognised document: read pages into one document of headings, paragraphs of chess text and diagrams in reading order, with the games replayed from the diagram before them (or from the initial position at 1.) into variation trees. Diagrams are found and read as chess_read does (scan settings and models_dir alike). Text comes from the text layer; the piece letters' language is chosen from all the pages unless lang names it. Headings are blocks set larger than the body text. Moves are valid, illegal, ambiguous, out of sequence (flagged and stopping their line, never dropped), not reached, unchecked (before any position) or a caption (the move a \"Position after:\" caption under a diagram names: not played again, it gives the diagram its side to move and number). Returns a summary (pages, lang, headings, paragraphs, diagrams, games, moves and how many are valid, flagged or captions, pages whose text layer needs OCR, notes); include adds the document as JSON (document) and the games as PGN (pgn) to the reply, and out / pgn_out write them to files. The document is not changed.")
+        t("chess_document", "Recognised chess document", "Chess ▸ Recognised document: read pages into one document of headings, paragraphs of chess text and diagrams in reading order, with the games replayed from the diagram before them (or from the initial position at 1.) into variation trees. Diagrams are found and read as chess_read does (scan settings and models_dir alike). Text comes from the text layer; the piece letters' language is chosen from all the pages unless lang names it. Headings are blocks set larger than the body text. Moves are valid, illegal, ambiguous, out of sequence (flagged and stopping their line, never dropped), not reached, unchecked (before any position) or a caption (the move a \"Position after:\" caption under a diagram names: not played again, it gives the diagram its side to move and number). Returns a summary (pages, lang, headings, paragraphs, diagrams, games, moves and how many are valid, flagged or captions, pages whose text layer needs OCR, notes, the corrections used); a diagram corrected in the corrections folder (chess_correction_set) takes the position a person set, read_by user, unless corrections is false; include adds the document as JSON (document) and the games as PGN (pgn) to the reply, and out / pgn_out write them to files. The document is not changed.")
             .with(schema(
                 {
                     let mut props = chess_props(true);
@@ -1333,11 +1342,12 @@ pub fn tools() -> Vec<ToolDef> {
                         o.insert("out".into(), json!({ "type": "string", "description": "Write the document as JSON to this file." }));
                         o.insert("pgn_out".into(), json!({ "type": "string", "description": "Write the games as PGN to this file." }));
                     }
+                    insert_corrections(&mut props);
                     props
                 },
                 &["doc"],
             )),
-        t("chess_add_lichess_links", "Add lichess links", "Chess ▸ Add lichess links: under each diagram whose position is known, a small blue label (Helvetica, default \"Analyze on lichess\", 8 pt) with a link to the position's lichess.org analysis board. Diagrams are found and read as chess_read does. Only a legal position the decoder did not repair is linked, and by default only a reading that passed the gate (allow_unaccepted also takes legal readings with an uncertain square); a page that already links to the same position is skipped. The label goes below the diagram, else to its right, else above it, clear of the page edge and of other diagrams and labels. Returns the links added (page, index, fen, url, side, rect from the top-left of the displayed page, link_user) and the diagrams skipped with the reason. One undo step; the label is added text that can be moved or edited later. dry_run changes nothing. Nothing is fetched: the link opens when a reader clicks it. Needs permission to change the document.")
+        t("chess_add_lichess_links", "Add lichess links", "Chess ▸ Add lichess links: under each diagram whose position is known, a small blue label (Helvetica, default \"Analyze on lichess\", 8 pt) with a link to the position's lichess.org analysis board. Diagrams are found and read as chess_read does. A diagram corrected in the corrections folder (chess_correction_set) is linked to the position a person set, unless corrections is false. Only a legal position the decoder did not repair is linked, and by default only a reading that passed the gate (allow_unaccepted also takes legal readings with an uncertain square); a page that already links to the same position is skipped. The label goes below the diagram, else to its right, else above it, clear of the page edge and of other diagrams and labels. Returns the links added (page, index, fen, url, side, rect from the top-left of the displayed page, link_user) and the diagrams skipped with the reason. One undo step; the label is added text that can be moved or edited later. dry_run changes nothing. Nothing is fetched: the link opens when a reader clicks it. Needs permission to change the document.")
             .with(schema(
                 {
                     let mut props = chess_props(true);
@@ -1347,11 +1357,12 @@ pub fn tools() -> Vec<ToolDef> {
                         o.insert("allow_unaccepted".into(), json!({ "type": "boolean", "description": "Also link legal readings that did not pass the reading gate (default false). Repaired readings are never linked." }));
                         o.insert("dry_run".into(), json!({ "type": "boolean", "description": "Only say what would be done; change nothing (default false)." }));
                     }
+                    insert_corrections(&mut props);
                     props
                 },
                 &["doc"],
             )),
-        t("chess_export_html", "Export chess document as HTML", "Chess ▸ Export ▸ HTML: read pages as chess_document does and write one static HTML file to out (no script, nothing fetched): headings, paragraphs with moves (figurines: unicode ♞f3 by default, letters in letters_lang, or as printed), annotation glyphs, and each diagram redrawn as an inline SVG board (diagrams: svg) or its FEN (fen), with a link to the position on lichess under it (links, default true; link_text). Pieces come from PDFCRAFT_CHESS_PIECES, a pieces folder beside the executable or an installed Chess Merida, else plain geometric ones (pieces: geometric forces them). Figurines and annotation signs use the fonts named by PDFCRAFT_CHESS_TEXT_FONT or found in the fonts folder beside the executable: a figurine font by letters (SemFig) or with Unicode chess symbols, and ISChess for the signs (text_font and sign_font: path, family, role, format, used, error). Readable back: each diagram is a figure with data-fen, each move a span with data-san (and data-fen after it), a diagram that was not read is a figure with class unread; anything to review has class review. Returns out, bytes, pages, lang, diagrams (drawn, unread), games, the piece set used, pages needing OCR and notes. The document is not changed.")
+        t("chess_export_html", "Export chess document as HTML", "Chess ▸ Export ▸ HTML: read pages as chess_document does and write one static HTML file to out (no script, nothing fetched): headings, paragraphs with moves (figurines: unicode ♞f3 by default, letters in letters_lang, or as printed), annotation glyphs, and each diagram redrawn as an inline SVG board (diagrams: svg) or its FEN (fen), with a link to the position on lichess under it (links, default true; link_text). Pieces come from PDFCRAFT_CHESS_PIECES, a pieces folder beside the executable or an installed Chess Merida, else plain geometric ones (pieces: geometric forces them). Figurines and annotation signs use the fonts named by PDFCRAFT_CHESS_TEXT_FONT or found in the fonts folder beside the executable: a figurine font by letters (SemFig) or with Unicode chess symbols, and ISChess for the signs (text_font and sign_font: path, family, role, format, used, error). Readable back: each diagram is a figure with data-fen, each move a span with data-san (and data-fen after it), a diagram that was not read is a figure with class unread; anything to review has class review. Returns out, bytes, pages, lang, diagrams (drawn, unread), games, the piece set used, pages needing OCR, notes and the corrections used: a diagram corrected in the corrections folder (chess_correction_set) is drawn, linked and played from the position a person set, unless corrections is false. The document is not changed.")
             .with(chess_export_schema()),
         t("chess_export_epub", "Export chess document as EPUB", "Chess ▸ Export ▸ EPUB: the chess_export_html document as an EPUB 3 book at out: one XHTML page per PDF page (the same markup and inline SVG boards), a table of contents from the headings (or the pages), the package document with a stable identifier made from the PDF's bytes and the date, and a cover image drawn from the first page (at most 1600 px on its long side; when it cannot be drawn the book has none and the reply's notes say so). No script, nothing fetched, no font embedded (figurines use the reader's fonts). Same options and reply as chess_export_html. The document is not changed.")
             .with(chess_export_schema()),

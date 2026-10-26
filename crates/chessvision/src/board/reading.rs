@@ -105,6 +105,9 @@ pub enum ReadingSource {
     Model,
     /// The detector read the diagram font's characters; exact, no model.
     Font,
+    /// A person set the position: a correction kept for the document replaced the reading
+    /// (plan A8, `pdfcraft_engine::chess::corrections`).
+    User,
 }
 
 /// Why a board could not be read.

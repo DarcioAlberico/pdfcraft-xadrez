@@ -212,7 +212,8 @@ impl Session {
             Some(t) => vec![t.page],
             None => pages.to_vec(),
         };
-        let scanned = self.chess_scan(id, &pages, scan, true)?;
+        // A person's correction wins over the reading: its position is linked.
+        let scanned = self.chess_scan_corrected(id, &pages, scan)?.pages;
         let doc = self.get(id).ok_or("no such document")?;
         let existing = doc.links();
         let size = settings.size as f32;

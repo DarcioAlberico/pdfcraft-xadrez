@@ -500,6 +500,135 @@ pub fn page_fingerprint(cos: &pdfcraft_cos::Document, page: pdfcraft_cos::ObjRef
     format!("fnv:{}", hash_hex(&parts))
 }
 
+/// A correction that replaced a diagram's reading ([`apply`]).
+#[derive(Clone, Debug, PartialEq)]
+pub struct Applied {
+    pub uid: String,
+    /// The page (0-based) and the diagram's index among its readings.
+    pub page: usize,
+    pub index: usize,
+    pub kind: Kind,
+    /// The position that replaced the reading.
+    pub fen: String,
+    /// What the diagram reads as now, when it was read.
+    pub read_fen: Option<String>,
+    /// The reading changed since the correction was made over it (another model, another scan):
+    /// the correction still wins, and this says so.
+    pub diverged: bool,
+}
+
+/// A correction on a page that was read whose diagram was not found there, and why.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Unmatched {
+    pub uid: String,
+    pub page: usize,
+    pub reason: String,
+}
+
+/// What [`apply`] made of the pages.
+#[derive(Clone, Debug, Default)]
+pub struct Corrected {
+    /// The pages, each with its corrected readings (the same `Arc` when nothing changed it).
+    pub pages: Vec<std::sync::Arc<super::ChessPage>>,
+    pub applied: Vec<Applied>,
+    pub unmatched: Vec<Unmatched>,
+}
+
+/// The reading a correction gives: the position as the person set it, legal or not, with the
+/// side to move it says (White when it says none), set by hand, nothing uncertain or repaired.
+/// Accepted when legal with that side. `before`'s orientation is kept, so a board printed from
+/// Black's side links from Black's side still. `None` for a FEN that can't be read.
+pub fn corrected_position(
+    fen: &str,
+    before: Option<&pdfcraft_chessvision::board::ReadPosition>,
+) -> Option<pdfcraft_chessvision::board::ReadPosition> {
+    use pdfcraft_chess::recognize::side::{SideSource, SideToMove};
+    let parsed = crate::chess::pdfcraft_chess::fen::parse(fen).ok()?;
+    let color = parsed.side_to_move.unwrap_or(pdfcraft_chess::placement::Color::White);
+    let legality = pdfcraft_chess::rules::check_position(&parsed.placement);
+    let accepted = legality.allows(color);
+    Some(pdfcraft_chessvision::board::ReadPosition {
+        placement: parsed.placement,
+        fen: fen.trim().to_owned(),
+        legality,
+        side: SideToMove { color, source: SideSource::Manual, conflicting: false },
+        orientation: before.and_then(|p| p.orientation),
+        min_confidence: 1.0,
+        uncertain: Vec::new(),
+        repairs: Vec::new(),
+        accepted,
+    })
+}
+
+/// `pages` with `file`'s corrections in place of their readings, given every page's fingerprint
+/// now. A correction is its page's diagram whose box overlaps its own the most, by
+/// [`MATCH_IOU`] at least, each diagram taking one correction; it wins over the reading whatever
+/// the reading says now. Pages scanned without reading are left as they are; a correction on a
+/// read page whose diagram is not there is listed as unmatched, never dropped silently.
+pub fn apply(pages: &[std::sync::Arc<super::ChessPage>], file: &CorrectionFile, fingerprints: &[String]) -> Corrected {
+    use pdfcraft_chessvision::board::{BoardReading, ReadingSource};
+    let located = file.locate(fingerprints);
+    let mut out = Corrected::default();
+    for page in pages {
+        let here: Vec<&Correction> = located.iter().filter(|(at, _)| at.page() == Some(page.page)).map(|(_, e)| *e).collect();
+        let (Some(readings), false) = (page.readings.as_ref(), here.is_empty()) else {
+            out.pages.push(page.clone());
+            continue;
+        };
+        let unmatched = |e: &Correction, reason: &str| Unmatched { uid: e.uid.clone(), page: page.page, reason: reason.into() };
+        let Some(crop) = page.geometry.map(|g| g.crop_box()) else {
+            out.unmatched.extend(here.iter().map(|e| unmatched(e, "the page has no visible area")));
+            out.pages.push(page.clone());
+            continue;
+        };
+        let boxes: Vec<Option<[f32; 4]>> = readings
+            .iter()
+            .map(|r| normalize([r.bbox_user.x0, r.bbox_user.y0, r.bbox_user.x1, r.bbox_user.y1], [crop.x0, crop.y0, crop.x1, crop.y1]))
+            .collect();
+        let mut taken = vec![false; readings.len()];
+        let mut corrected = (**page).clone();
+        for e in here {
+            let best = boxes
+                .iter()
+                .enumerate()
+                .filter(|(i, _)| !taken.get(*i).copied().unwrap_or(true))
+                .filter_map(|(i, b)| b.map(|b| (i, iou(b, e.rect))))
+                .filter(|(_, overlap)| *overlap >= MATCH_IOU)
+                .max_by(|a, b| a.1.total_cmp(&b.1));
+            let Some((i, _)) = best else {
+                out.unmatched.push(unmatched(e, "no diagram on the page is where it was"));
+                continue;
+            };
+            let Some(reading) = corrected.readings.as_mut().and_then(|r| r.get_mut(i)) else { continue };
+            let before = reading.position().cloned();
+            let Some(position) = corrected_position(&e.fen, before.as_ref()) else {
+                out.unmatched.push(unmatched(e, "its position is not a FEN this build reads"));
+                continue;
+            };
+            if let Some(t) = taken.get_mut(i) {
+                *t = true;
+            }
+            let read_fen = before.map(|p| p.fen);
+            let made_over = e.orig.as_ref().and_then(|o| o.fen.clone());
+            let diverged = e.orig.is_some() && read_fen != made_over;
+            if diverged {
+                let now = read_fen.as_deref().unwrap_or("unread");
+                corrected.notes.push(format!("diagram {}: the reading changed since it was corrected (now {now}); the correction is kept", i + 1));
+            }
+            *reading = BoardReading {
+                index: reading.index,
+                bbox_user: reading.bbox_user,
+                source: ReadingSource::User,
+                dpi: reading.dpi,
+                outcome: Ok(position),
+            };
+            out.applied.push(Applied { uid: e.uid.clone(), page: page.page, index: i, kind: e.kind, fen: e.fen.clone(), read_fen, diverged });
+        }
+        out.pages.push(std::sync::Arc::new(corrected));
+    }
+    out
+}
+
 /// Where a document's corrections are kept: a folder on the desktop and the command line
 /// ([`DirStore`]), memory the web build saves in the browser's storage ([`MemStore`]).
 pub trait CorrectionStore {
@@ -517,6 +646,23 @@ pub trait CorrectionStore {
         pages: usize,
         change: impl FnOnce(&mut CorrectionFile) -> Result<R, CorrectionError>,
     ) -> Result<(R, Loaded), StoreError>;
+
+    /// The document was saved, as itself or as another file: its corrections, found under its
+    /// keys before (`old`), are recorded under the keys it has now (`new`), so they are found
+    /// when the saved file is opened, as a game collection follows its document. Whether there
+    /// were corrections to move; nothing is made for a document that has none, and a file of a
+    /// newer version is left as it is.
+    fn rekey(&self, old: &DocKeys, new: &DocKeys, pages: usize) -> Result<bool, StoreError>;
+}
+
+/// [`CorrectionStore::rekey`] on a loaded file: the bytes to keep under its name, when it has
+/// entries to move.
+fn rekeyed(loaded: &mut Loaded, new: &DocKeys, pages: usize) -> Result<Option<Vec<u8>>, CorrectionError> {
+    if loaded.read_only || loaded.file.entries.is_empty() {
+        return Ok(None);
+    }
+    loaded.file.doc = DocRecord::new(new, pages);
+    loaded.file.to_bytes().map(Some)
 }
 
 /// What a stored file's bytes give for the document named by `keys` (`None`: no file yet), and
@@ -686,6 +832,22 @@ impl CorrectionStore for DirStore {
         write_atomically(&self.dir.join(&loaded.name), &bytes)?;
         Ok((out, loaded))
     }
+
+    /// Without the folder, nothing (it is not made).
+    fn rekey(&self, old: &DocKeys, new: &DocKeys, pages: usize) -> Result<bool, StoreError> {
+        if old == new || !self.dir.is_dir() || file_name(old).is_none() {
+            return Ok(false);
+        }
+        let _lock = self.lock()?;
+        let mut loaded = self.load(old, pages)?;
+        match rekeyed(&mut loaded, new, pages)? {
+            Some(bytes) => {
+                write_atomically(&self.dir.join(&loaded.name), &bytes)?;
+                Ok(true)
+            }
+            None => Ok(false),
+        }
+    }
 }
 
 /// Corrections files kept in memory by name, within a byte budget of their own: the web build's
@@ -772,6 +934,21 @@ impl CorrectionStore for MemStore {
         }
         files.insert(loaded.name.clone(), bytes);
         Ok((out, loaded))
+    }
+
+    fn rekey(&self, old: &DocKeys, new: &DocKeys, pages: usize) -> Result<bool, StoreError> {
+        if old == new || file_name(old).is_none() {
+            return Ok(false);
+        }
+        let mut files = self.guard();
+        let mut loaded = MemStore::load_in(&mut files, old, pages)?;
+        match rekeyed(&mut loaded, new, pages)? {
+            Some(bytes) => {
+                files.insert(loaded.name, bytes);
+                Ok(true)
+            }
+            None => Ok(false),
+        }
     }
 }
 

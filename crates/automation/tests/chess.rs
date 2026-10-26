@@ -2066,3 +2066,64 @@ fn diagram_corrections_are_kept_found_again_and_confined() {
     assert!(std::fs::read_dir(&outside).unwrap().next().is_none(), "nothing written outside");
     let _ = std::fs::remove_dir_all(base);
 }
+
+/// Plan A8, P3a3: a correction kept for the document wins over the reading in the recognised
+/// document, the exports and the lichess links, and is never lost to an edit, an undo, a save,
+/// closing and reopening.
+#[test]
+fn corrections_win_in_readings_exports_and_links_and_are_never_lost() {
+    const START: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    const E4: &str = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+    const KINGS: &str = "4k3/8/8/8/8/8/8/R3K3 w Q - 0 1";
+    let (base, root) = workdir("corrected");
+    let (mut a, doc) = opened(&root);
+    // The font diagram (read) and the vector one (unread without the piece model) corrected.
+    ok(&mut a, "chess_correction_set", json!({ "doc": doc, "page": 1, "index": 1, "fen": E4, "models_dir": "models" }));
+    ok(&mut a, "chess_correction_set", json!({ "doc": doc, "page": 1, "index": 2, "fen": KINGS, "models_dir": "models" }));
+    let fens = |a: &mut Automation, doc: u64, extra: Value| -> (Vec<Value>, Value) {
+        let mut args = json!({ "doc": doc, "models_dir": "models", "include": ["json"], "lang": "en" });
+        args.as_object_mut().unwrap().extend(extra.as_object().unwrap().clone());
+        let read = ok(a, "chess_document", args);
+        let blocks = read["document"]["pages"].as_array().unwrap().iter().flat_map(|p| p["blocks"].as_array().unwrap().clone()).collect::<Vec<_>>();
+        (blocks.iter().filter(|b| b["type"] == "diagram").map(|b| b["reading"]["fen"].clone()).collect(), read["corrections"].clone())
+    };
+    let (read, used) = fens(&mut a, doc, json!({}));
+    assert_eq!(read, [json!(E4), json!(KINGS), Value::Null], "{used:#}");
+    assert_eq!(used["kept"], 2);
+    let applied = used["applied"].as_array().unwrap();
+    assert_eq!((applied[0]["read_fen"].as_str(), applied[0]["diverged"].as_bool()), (Some(START), Some(false)), "{used:#}");
+    assert!(applied[1]["read_fen"].is_null(), "the vector diagram was not read: {used:#}");
+    // Asked not to: what was read.
+    let (plain, none) = fens(&mut a, doc, json!({ "corrections": false }));
+    assert_eq!((plain, none), (vec![json!(START), Value::Null, Value::Null], Value::Null));
+    // The exports and the links take the corrected positions.
+    ok(&mut a, "chess_export_pgn", json!({ "doc": doc, "out": "book.pgn", "models_dir": "models", "lang": "en" }));
+    let pgn = std::fs::read_to_string(root.join("book.pgn")).unwrap();
+    assert!(pgn.contains(E4) && pgn.contains(KINGS) && !pgn.contains(START), "{pgn}");
+    let html = ok(&mut a, "chess_export_html", json!({ "doc": doc, "out": "book.html", "models_dir": "models", "lang": "en" }));
+    assert_eq!((html["diagrams_unread"].as_u64(), html["corrections"]["applied"].as_array().map(Vec::len)), (Some(1), Some(2)), "{html:#}");
+    assert!(std::fs::read_to_string(root.join("book.html")).unwrap().contains(&format!("data-fen=\"{KINGS}\"")));
+    let links = ok(&mut a, "chess_add_lichess_links", json!({ "doc": doc, "models_dir": "models", "dry_run": true }));
+    let linked: Vec<(u64, &str)> =
+        links["links"].as_array().unwrap().iter().map(|l| (l["index"].as_u64().unwrap(), l["fen"].as_str().unwrap())).collect();
+    assert_eq!(linked, [(1, E4), (2, KINGS)], "{links:#}");
+    // An edit that moves the page, its undo, then a save, closing and reopening.
+    ok(&mut a, "page_insert_blank", json!({ "doc": doc, "at": 1 }));
+    let (moved, used) = fens(&mut a, doc, json!({}));
+    assert_eq!((moved, used["applied"][0]["page"].as_u64()), (vec![json!(E4), json!(KINGS), Value::Null], Some(2)), "{used:#}");
+    ok(&mut a, "edit_undo", json!({ "doc": doc }));
+    let (undone, used) = fens(&mut a, doc, json!({}));
+    assert_eq!((undone, used["applied"][0]["page"].as_u64()), (vec![json!(E4), json!(KINGS), Value::Null], Some(1)), "{used:#}");
+    ok(&mut a, "page_insert_blank", json!({ "doc": doc, "at": 1 }));
+    let saved = ok(&mut a, "doc_save", json!({ "doc": doc, "path": "saved.pdf" }));
+    assert_eq!(saved["chess_corrections"], "kept for the saved file", "{saved:#}");
+    ok(&mut a, "doc_close", json!({ "doc": doc }));
+    let (mut b, again) = {
+        let mut b = Automation::new().with_root(&root).unwrap();
+        let d = ok(&mut b, "doc_open", json!({ "path": "saved.pdf" }))["doc"].as_u64().unwrap();
+        (b, d)
+    };
+    let (reopened, used) = fens(&mut b, again, json!({}));
+    assert_eq!((reopened, used["applied"][1]["page"].as_u64()), (vec![json!(E4), json!(KINGS), Value::Null], Some(2)), "{used:#}");
+    let _ = std::fs::remove_dir_all(base);
+}

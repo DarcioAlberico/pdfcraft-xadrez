@@ -260,3 +260,128 @@ fn the_memory_store_keeps_files_within_its_budget() {
     assert_eq!(broken.files(), vec![(format!("{name}.bad"), b"{broken".to_vec())]);
     assert_eq!(MemStore::new(4096).load(&DocKeys::default(), 1).map(|_| ()).map_err(|e| e.to_string()), Err(StoreError::NoKeys.to_string()));
 }
+
+// ─── Applying corrections to readings (P3a3) ──────────────────────────────────────────────────
+
+/// A read page 0 of 600 × 800 pt whose diagrams are at `boxes` (user space), read as `fens`
+/// (`None`: unread).
+fn read_page(boxes: &[[f32; 4]], fens: &[Option<&str>]) -> Arc<crate::chess::ChessPage> {
+    use pdfcraft_chessvision::board::{BoardReading, ReadingSource, Unreadable};
+    use pdfcraft_chessvision::coords::{PageGeometry, PageRect, Rotation};
+    let readings = boxes
+        .iter()
+        .zip(fens)
+        .enumerate()
+        .map(|(index, (b, fen))| BoardReading {
+            index,
+            bbox_user: PageRect::new(b[0], b[1], b[2], b[3]),
+            source: ReadingSource::Font,
+            dpi: 220.0,
+            outcome: fen.and_then(|f| corrected_position(f, None)).ok_or(Unreadable::NoModel),
+        })
+        .collect();
+    Arc::new(crate::chess::ChessPage {
+        page: 0,
+        geometry: PageGeometry::new(PageRect::new(0.0, 0.0, 600.0, 800.0), Rotation::R0),
+        dpi: 220.0,
+        diagrams: Vec::new(),
+        readings: Some(readings),
+        truncated: false,
+        error: None,
+        notes: Vec::new(),
+    })
+}
+
+fn fen_of(page: &crate::chess::ChessPage, i: usize) -> Option<String> {
+    page.readings.as_ref()?.get(i)?.position().map(|p| p.fen.clone())
+}
+
+#[test]
+fn a_correction_replaces_its_diagrams_reading_whatever_it_reads_now() {
+    // Two diagrams: the top one (0.1..0.5 × 0.6..0.9 of the page) read, the bottom one not.
+    let page = read_page(&[[60.0, 480.0, 300.0, 720.0], [60.0, 80.0, 300.0, 320.0]], &[Some(KINGS), None]);
+    let fps = vec!["fnv:p0".to_owned()];
+    let mut f = CorrectionFile::new(DocRecord::default());
+    let made_over = NewCorrection { orig: Some(Original { fen: Some(KINGS.into()), model: None }), ..new(0, "fnv:p0", [0.1, 0.6, 0.5, 0.9], QUEEN) };
+    f.set(made_over, 1).unwrap();
+    f.set(new(0, "fnv:p0", [0.1, 0.1, 0.5, 0.4], KINGS), 1).unwrap();
+    let out = apply(std::slice::from_ref(&page), &f, &fps);
+    let fixed = &out.pages[0];
+    assert_eq!((fen_of(fixed, 0).as_deref(), fen_of(fixed, 1).as_deref()), (Some(QUEEN), Some(KINGS)), "the unread one gets a position too");
+    let r = fixed.readings.as_ref().unwrap();
+    assert!(r.iter().all(|r| r.source == pdfcraft_chessvision::board::ReadingSource::User && r.accepted()), "{r:#?}");
+    assert_eq!(out.applied.iter().map(|a| (a.index, a.diverged)).collect::<Vec<_>>(), vec![(0, false), (1, false)]);
+    assert!(out.unmatched.is_empty() && fixed.notes.is_empty());
+    // The reading changed since (another model): the correction still wins, and it is said.
+    let reread = read_page(&[[60.0, 480.0, 300.0, 720.0], [60.0, 80.0, 300.0, 320.0]], &[Some(START_FEN), None]);
+    let out = apply(&[reread], &f, &fps);
+    assert_eq!(fen_of(&out.pages[0], 0).as_deref(), Some(QUEEN));
+    assert!(
+        out.applied[0].diverged && out.pages[0].notes.iter().any(|n| n.contains("diagram 1") && n.contains("changed")),
+        "{:?}",
+        out.pages[0].notes
+    );
+    // Without corrections for the page, the very same page comes back.
+    let empty = CorrectionFile::new(DocRecord::default());
+    assert!(Arc::ptr_eq(&apply(std::slice::from_ref(&page), &empty, &fps).pages[0], &page));
+}
+
+const START_FEN: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+#[test]
+fn a_correction_without_its_diagram_is_listed_never_dropped() {
+    let page = read_page(&[[60.0, 480.0, 300.0, 720.0]], &[Some(KINGS)]);
+    let fps = vec!["fnv:p0".to_owned()];
+    let mut f = CorrectionFile::new(DocRecord::default());
+    // One where a diagram was before a new detection; one with a FEN edited by hand into the file.
+    f.set(new(0, "fnv:p0", [0.6, 0.1, 0.9, 0.4], QUEEN), 1).unwrap();
+    f.set(new(0, "fnv:p0", [0.1, 0.6, 0.5, 0.9], QUEEN), 1).unwrap();
+    f.entries[1].fen = "not a fen".into();
+    let out = apply(std::slice::from_ref(&page), &f, &fps);
+    let reasons: Vec<&str> = out.unmatched.iter().map(|u| u.reason.as_str()).collect();
+    assert_eq!(reasons, ["no diagram on the page is where it was", "its position is not a FEN this build reads"]);
+    assert_eq!(fen_of(&out.pages[0], 0).as_deref(), Some(KINGS), "the reading stays");
+    // Two corrections over one diagram: the closer one takes it, the other is listed.
+    let mut two = CorrectionFile::new(DocRecord::default());
+    two.set(new(0, "fnv:p0", [0.1, 0.6, 0.5, 0.9], QUEEN), 1).unwrap();
+    two.entries.push(Correction { uid: "second".into(), rect: [0.11, 0.61, 0.51, 0.91], ..two.entries[0].clone() });
+    let out = apply(std::slice::from_ref(&page), &two, &fps);
+    assert_eq!((out.applied.len(), out.unmatched.iter().map(|u| u.uid.as_str()).collect::<Vec<_>>()), (1, vec!["second"]));
+    // A page scanned without reading is left as it is.
+    let unread = Arc::new(crate::chess::ChessPage { readings: None, ..(*page).clone() });
+    let out = apply(std::slice::from_ref(&unread), &f, &fps);
+    assert!(Arc::ptr_eq(&out.pages[0], &unread) && out.unmatched.is_empty());
+}
+
+#[test]
+fn saving_moves_the_corrections_to_the_saved_files_keys() {
+    let saved_as =
+        DocKeys { id0: Some([3; 16]), path: Some("C:/books/Livro corrigido.pdf".into()), name: Some("Livro corrigido.pdf".into()), size: Some(99) };
+    for store in [&MemStore::new(1 << 20) as &dyn Rekey, &DirStore::new(temp_dir("rekey")) as &dyn Rekey] {
+        assert!(!store.rekey_dyn(&keys(), &saved_as), "nothing to move");
+        store.set_dyn(&keys());
+        assert!(store.rekey_dyn(&keys(), &saved_as));
+        assert_eq!(store.count_dyn(&saved_as), 1, "found under the saved file's keys");
+        assert!(!store.rekey_dyn(&saved_as, &saved_as), "the same keys: nothing to do");
+    }
+    let _ = std::fs::remove_dir_all(temp_dir("rekey"));
+}
+
+/// The two stores behind one object-safe face, for the test above.
+trait Rekey {
+    fn rekey_dyn(&self, old: &DocKeys, new: &DocKeys) -> bool;
+    fn set_dyn(&self, keys: &DocKeys);
+    fn count_dyn(&self, keys: &DocKeys) -> usize;
+}
+
+impl<S: CorrectionStore> Rekey for S {
+    fn rekey_dyn(&self, old: &DocKeys, new: &DocKeys) -> bool {
+        self.rekey(old, new, 10).unwrap()
+    }
+    fn set_dyn(&self, keys: &DocKeys) {
+        self.update(keys, 10, |f| f.set(new(1, "fnv:b", [0.1, 0.2, 0.5, 0.6], KINGS), 1)).unwrap();
+    }
+    fn count_dyn(&self, keys: &DocKeys) -> usize {
+        self.load(keys, 10).unwrap().file.live().count()
+    }
+}

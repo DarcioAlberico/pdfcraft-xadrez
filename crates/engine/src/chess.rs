@@ -207,6 +207,9 @@ struct CacheEntry {
 #[derive(Default)]
 pub(crate) struct ChessCache {
     entries: Vec<CacheEntry>,
+    /// Each document's diagram corrections, as its caller loaded them from a store
+    /// ([`Session::set_chess_corrections`]).
+    corrections: Vec<(DocId, Arc<corrections::CorrectionFile>)>,
 }
 
 impl ChessCache {
@@ -236,6 +239,7 @@ impl ChessCache {
     /// Forget every result for `doc` (it was closed).
     pub(crate) fn forget(&mut self, doc: DocId) {
         self.entries.retain(|e| e.doc != doc);
+        self.corrections.retain(|(d, _)| *d != doc);
     }
 
     #[cfg(test)]
@@ -910,6 +914,30 @@ impl Session {
     /// models. See [`Self::chess_scan`].
     pub fn chess_page(&mut self, id: DocId, page: usize, settings: &ChessScanSettings) -> Result<Arc<ChessPage>, String> {
         self.chess_scan(id, &[page], settings, true)?.into_iter().next().ok_or_else(|| "the page could not be scanned".into())
+    }
+
+    /// Give document `id` the diagram corrections `file` holds (loaded from a
+    /// [`corrections::CorrectionStore`] for the document's keys), or none. From then on the
+    /// readings the recognised document, the exports and the lichess links use are the corrected
+    /// ones ([`Self::chess_scan_corrected`]); [`Self::chess_scan`] keeps giving what was read.
+    /// Closing the document forgets them.
+    pub fn set_chess_corrections(&mut self, id: DocId, file: Option<corrections::CorrectionFile>) {
+        self.chess.corrections.retain(|(d, _)| *d != id);
+        if let Some(file) = file.filter(|f| f.live().next().is_some()) {
+            self.chess.corrections.push((id, Arc::new(file)));
+        }
+    }
+
+    /// [`Self::chess_scan`] reading the diagrams, with the document's corrections in place of
+    /// the readings they correct ([`corrections::apply`]): a person's position wins over the
+    /// reading, whatever the reading says now.
+    pub fn chess_scan_corrected(&mut self, id: DocId, pages: &[usize], settings: &ChessScanSettings) -> Result<corrections::Corrected, String> {
+        let scanned = self.chess_scan(id, pages, settings, true)?;
+        let Some(file) = self.chess.corrections.iter().find(|(d, _)| *d == id).map(|(_, f)| f.clone()) else {
+            return Ok(corrections::Corrected { pages: scanned, ..Default::default() });
+        };
+        let fingerprints = self.get(id).ok_or("no such document")?.page_fingerprints();
+        Ok(corrections::apply(&scanned, &file, &fingerprints))
     }
 
     /// The state document `id` is in now, to compare with a scan's [`ChessScan::stamp`]: a

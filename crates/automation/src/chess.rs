@@ -175,7 +175,7 @@ fn reading(r: &BoardReading, geometry: Option<&PageGeometry>) -> Value {
         "index": r.index + 1,
         "rect": view_rect(geometry, r.bbox_user),
         "bbox_user": user_rect(r.bbox_user),
-        "read_by": match r.source { ReadingSource::Font => "font", ReadingSource::Model => "model" },
+        "read_by": match r.source { ReadingSource::Font => "font", ReadingSource::Model => "model", ReadingSource::User => "user" },
         "dpi": round(r.dpi),
     });
     let extra = match &r.outcome {
@@ -450,8 +450,10 @@ impl Automation {
         let id = self.doc(a)?.id;
         let (seed, cipher_out) = self.cipher_args(a)?;
         let ocr = OcrOptions { book: seed.as_ref(), ..ocr_options(a)? };
+        let loaded = self.use_store_corrections(a, id)?;
         let read = self.session.chess_document_with(id, &pages, &settings, lang, &ocr).map_err(failed)?;
         let cipher = Self::cipher_reply(&read.cipher, cipher_out.as_ref())?;
+        let corrections = crate::chess_corrections::corrections_reply(loaded, &read);
         let doc = &read.doc;
         let blocks = doc.pages.iter().flat_map(|p| &p.blocks);
         let count = |f: fn(&Block) -> bool| doc.pages.iter().flat_map(|p| &p.blocks).filter(|b| f(b)).count();
@@ -474,6 +476,7 @@ impl Automation {
             "ocr_pages": read.ocr_pages.iter().map(|o| json!({ "page": o.page + 1, "lines": o.lines, "repaired": o.edits, "unsettled": o.flags, "general_ocr": o.general_ocr })).collect::<Vec<_>>(),
             "cipher": cipher,
             "notes": read.notes.iter().map(|(p, n)| json!({ "page": p + 1, "note": n })).collect::<Vec<_>>(),
+            "corrections": corrections,
         });
         if let Some((shown, path)) = out {
             crate::write_atomic(&path, json_text.as_bytes())?;
@@ -507,6 +510,7 @@ impl Automation {
         settings.allow_unaccepted = a.opt_bool("allow_unaccepted")?.unwrap_or(false);
         let dry_run = a.opt_bool("dry_run")?.unwrap_or(false);
         let id = self.doc(a)?.id;
+        let corrections = self.use_store_corrections(a, id)?;
         let plan = self.session.chess_link_plan(id, &pages, &scan, &settings).map_err(failed)?;
         let mut out = match (&plan.edit, dry_run) {
             (Some(edit), false) => self.apply(a, edit.clone())?,
@@ -525,6 +529,7 @@ impl Automation {
                 "link_user": (l.link_user.map(|v| round(v as f32))),
             })).collect::<Vec<_>>(),
             "skipped": plan.skipped.iter().map(|s| json!({ "page": s.page + 1, "index": s.index + 1, "reason": s.reason })).collect::<Vec<_>>(),
+            "corrections": corrections,
         });
         if let (Some(o), Value::Object(f)) = (out.as_object_mut(), fields) {
             o.extend(f);
@@ -638,6 +643,7 @@ impl Automation {
             book,
             style: theme_style(a)?,
         };
+        let loaded = self.use_store_corrections(a, id)?;
         let made = self.session.chess_export(id, format, &options).map_err(failed)?;
         if let Some(dir) = &folder
             && !made.images.is_empty()
@@ -677,6 +683,7 @@ impl Automation {
             "position_games": made.position_games,
             "cipher": Self::cipher_reply(&made.read.cipher, cipher_out.as_ref())?,
             "image_dir": folder.as_ref().filter(|_| !made.images.is_empty()).map(|_| image_dir),
+            "corrections": crate::chess_corrections::corrections_reply(loaded, read),
         }))
     }
 
