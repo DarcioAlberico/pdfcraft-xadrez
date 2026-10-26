@@ -162,3 +162,29 @@ fn figurines_keep_the_rows_and_moves_are_named_in_words() {
     assert_eq!(saved["chess_move_pieces"], "letters");
     assert!(h.state_mut().set_option("move-pieces", "pictures").is_err());
 }
+
+/// Plan HC12: a quality sign is a chip, the move named with its sign; a move with drawings has a dot named
+/// by them, and the pointer over it shows them on the board; the comment on the move shown can
+/// be large under the board.
+#[test]
+fn marks_on_moves_and_the_comment_large() {
+    use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
+    let mut h = harness("", false);
+    let (game, _) = Game::from_pgn("1. e4 e5 2. Nf3?! { [%cal Gb5c7,Rd1h5] [%csl Re4] A plan. } Nc6 *").unwrap();
+    h.state_mut().chess.board_mut().game = game;
+    h.run_steps(3);
+    assert!(h.query_by_label("knight f3?!").is_some(), "the move keeps its sign in its name");
+    assert!(h.query_by_label("Dubious move").is_none(), "the chip is not a second name beside the palette's");
+    let dot = h.get_by_label("2 arrows, 1 ring");
+    dot.hover();
+    h.run_steps(2);
+    assert!(h.state().chess.board().hovered_move().is_some(), "the board shows that move's drawings");
+    shot(&mut h, "marks-on-moves.png");
+    assert_eq!(h.query_all_by_label("A plan.").count(), 1);
+    h.state_mut().set_option("comment-focus", "on").unwrap();
+    let nf3 = h.state().chess.board().hovered_move().unwrap();
+    h.state_mut().chess.board_mut().game.go_to_node(nf3);
+    h.run_steps(3);
+    assert_eq!(h.query_all_by_label("A plan.").count(), 2, "and large under the board");
+    shot(&mut h, "comment-focus.png");
+}

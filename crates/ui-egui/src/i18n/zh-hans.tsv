@@ -3109,3 +3109,9 @@ chess undo step	Clear drawings	清除标记
 	Figurines	棋子符号
 	Letters in your language	您语言中的字母
 	English letters	英文字母
+	Shown on the board while the pointer is here	指针停在此处时显示在棋盘上
+	1 arrow	1 个箭头
+	{n} arrows	{n} 个箭头
+	1 ring	1 个圆环
+	{n} rings	{n} 个圆环
+	The comment on the move shown, large under the board	在棋盘下方大字显示当前着法的注释

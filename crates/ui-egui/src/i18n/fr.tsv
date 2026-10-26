@@ -3145,3 +3145,9 @@ chess undo step	Clear drawings	l'effacement des dessins
 	Figurines	Figurines
 	Letters in your language	Lettres de votre langue
 	English letters	Lettres anglaises
+	Shown on the board while the pointer is here	Affichés sur l'échiquier tant que le pointeur est ici
+	1 arrow	1 flèche
+	{n} arrows	{n} flèches
+	1 ring	1 anneau
+	{n} rings	{n} anneaux
+	The comment on the move shown, large under the board	Le commentaire du coup affiché, en grand sous l'échiquier

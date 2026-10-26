@@ -3144,3 +3144,9 @@ chess undo step	Clear drawings	rajzok törlése
 	Figurines	Figurák
 	Letters in your language	Betűk az Ön nyelvén
 	English letters	Angol betűk
+	Shown on the board while the pointer is here	A táblán látszik, amíg a mutató itt van
+	1 arrow	1 nyíl
+	{n} arrows	{n} nyíl
+	1 ring	1 gyűrű
+	{n} rings	{n} gyűrű
+	The comment on the move shown, large under the board	A mutatott lépés megjegyzése nagyban a tábla alatt

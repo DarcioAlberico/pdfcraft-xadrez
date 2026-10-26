@@ -2378,6 +2378,7 @@ impl PdfCraftApp {
         v["chess_board_theme"] = serde_json::Value::String(self.board_theme().id.to_owned());
         v["chess_board_look"] = self.chess.board_look.to_json();
         v["chess_move_pieces"] = serde_json::Value::String(self.chess.move_pieces.token().to_owned());
+        v["chess_comment_focus"] = serde_json::Value::Bool(self.chess.comment_focus);
         v.to_string()
     }
 
@@ -2430,6 +2431,9 @@ impl PdfCraftApp {
         }
         if let Some(mode) = v["chess_move_pieces"].as_str().and_then(chess_figurines::MovePieces::from_token) {
             self.chess.move_pieces = mode;
+        }
+        if let Some(on) = v["chess_comment_focus"].as_bool() {
+            self.chess.comment_focus = on;
         }
         if v["chess_board_look"].is_object() {
             self.set_board_look(chess_theme::BoardLook::from_json(&v["chess_board_look"]));
@@ -2597,6 +2601,13 @@ impl PdfCraftApp {
                     format!("board-theme must be one of {}", ids.join(", "))
                 })?;
                 self.set_board_theme(theme);
+            }
+            ("comment-focus", _) => {
+                self.chess.comment_focus = match value {
+                    "on" => true,
+                    "off" => false,
+                    _ => return Err("comment-focus must be on or off".into()),
+                };
             }
             ("move-pieces", _) => {
                 self.chess.move_pieces = chess_figurines::MovePieces::from_token(value).ok_or("move-pieces must be figurines, letters or english")?;

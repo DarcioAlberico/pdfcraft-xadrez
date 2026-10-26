@@ -3147,3 +3147,9 @@ chess undo step	Clear drawings	描画の消去
 	Figurines	駒の記号
 	Letters in your language	あなたの言語の文字
 	English letters	英語の文字
+	Shown on the board while the pointer is here	ポインターがここにある間、盤に表示します
+	1 arrow	矢印1本
+	{n} arrows	矢印{n}本
+	1 ring	円1つ
+	{n} rings	円{n}つ
+	The comment on the move shown, large under the board	表示中の手のコメントを盤の下に大きく表示

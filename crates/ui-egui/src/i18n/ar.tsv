@@ -3421,3 +3421,9 @@ chess undo step	Clear drawings	مسح الرسوم
 	Figurines	رموز القطع
 	Letters in your language	حروف بلغتك
 	English letters	حروف إنجليزية
+	Shown on the board while the pointer is here	تظهر على الرقعة ما دام المؤشر هنا
+	1 arrow	سهم واحد
+	{n} arrows	{n} أسهم
+	1 ring	حلقة واحدة
+	{n} rings	{n} حلقات
+	The comment on the move shown, large under the board	تعليق النقلة المعروضة بخط كبير تحت الرقعة
