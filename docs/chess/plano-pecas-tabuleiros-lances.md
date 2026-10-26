@@ -1,6 +1,6 @@
 # Plano — Peças, tabuleiros e lista de lances (a partir de cursos em HTML) · v3
 
-**Status:** v3 · 2026-10-25 · **HC0, HC1, HC2 e HC10 feitos** (§5.2); HC3 (#180), HC4 (#182), HC5 (#184) e HC6 (#183) entraram por outra sessão, ainda sem nota aqui · decisões D13–D16 **aceitas** pelo usuário em 2026-10-25 (§4).
+**Status:** v3 · 2026-10-26 · **todos os passos feitos (HC0–HC13)** (§5.2): HC3 #180, HC10 #181 e #187, HC4 #182, HC6 #183, HC5 #184, HC7 #185, HC8 #186, HC12 #188, HC9 #189, HC11 #190, HC13 #191; o que falta está nas notas de cada passo e no `parity/` · decisões D13–D16 **aceitas** pelo usuário em 2026-10-25 (§4).
 **Escopo (decisão do usuário, 2026-10-25):** melhorar o tabuleiro com **mais designs de tabuleiro e mais conjuntos de peças**, e **melhorar a lista de lances**. Fora: modo treino, perguntas `[%tqu]`, progresso, importação de cursos e puzzles como partidas, exportação de cursos (§2.5).
 **Origem:** três páginas HTML de cursos de xadrez salvas pelo usuário (pasta local `pasta-html-teste/`, **fora do repositório**: são conteúdo de terceiros, nunca entram em commit, fixture, teste ou documento). Análise de 2026-10-25, só dos **dados** que as páginas carregam e do que elas mostram na tela (servidas em `127.0.0.1` e olhadas no navegador). O código JavaScript delas não foi lido para copiar e não será.
 **Repositório:** `DarcioAlberico/pdfcraft-xadrez` (Rust, egui), `main` `959ddf1f`.
@@ -197,37 +197,37 @@ Cada passo: **Contexto** · **Tarefas** · **Verificação** · **Saída** · **
 - *Verificação:* pastas sintéticas com SVGs nossos; escolha persiste e é aplicada no painel, no estudo, no editor e numa exportação; pasta com 11 peças recusada com motivo; teste kittest da grade pelo teclado.
 - *Reversão:* revert; volta às ordens de hoje.
 
-**HC3 — Importar peças** (depois de HC2).
+**HC3 — Importar peças** (depois de HC2). ✅ 2026-10-25 (#180): Preferências ▸ Peças de xadrez ▸ Importar pasta… / Importar de página web…; a página é lida como texto numa passada (valores `data:image/svg+xml` com chaves `wK`…`bP`, simples ou base64), cada peça lida pelo leitor seguro antes de gravar, substituição só com confirmação, `ORIGIN.txt` com "licença desconhecida: uso pessoal"; `chess_pieces_import` dentro de `--root`. Falta: importar na versão web.
 - *Tarefas:* "Importar peças…" para pasta ou HTML; achar blocos `<script>` com limites de quantidade e bytes, sem parser HTML completo; conjuntos de 12 SVGs embutidos; gravar em `pieces/<nome>/` com aviso e confirmação; `chess_pieces { import: path, into: dir }` dentro de `--root`.
 - *Verificação:* fixture **sintética** (HTML nosso com 2 conjuntos geométricos nossos); SVG com `<script>`/`href` recusado (HC0); confinamento provado com a resolução desligada; bytes arbitrários nunca entram em pânico.
 - *Reversão:* revert.
 
-**HC4 — Temas com paleta completa** (`chess/src/draw.rs` ou `chess/src/theme.rs`, `chess_board_ui.rs`, `chess_editor.rs`, `chess_study_ui.rs`, preferências; depois de A8 P1a).
+**HC4 — Temas com paleta completa** (`chess/src/draw.rs` ou `chess/src/theme.rs`, `chess_board_ui.rs`, `chess_editor.rs`, `chess_study_ui.rs`, preferências; depois de A8 P1a). ✅ 2026-10-25 (#182): `pdfcraft_chess::theme`, 14 paletas nossas (marrom continua padrão) com casas, último lance, peça escolhida, destinos e xeque; tabuleiro, estudo, montagem, editor e miniaturas leem o tema; Preferências, menu da paleta no painel e `board-theme` no canal de controle. Coordenadas a 4,5:1 em todo tema (as do marrom estavam em 2,2:1). Sem dependência de A8 P1a: o tema fica no contexto do egui.
 - *Tarefas:* `BoardTheme` e as 14 paletas (§2.2); todos os pontos de cor fixa de §1.4 lendo o tema; preferência com prévia e menu `ellipsis` no painel; `set board-theme` no canal de controle.
 - *Verificação:* teste de contraste em todas as paletas (coordenadas, último lance, xeque, escolhido); golden SVG de um diagrama por tema; com Marrom, nenhum golden existente muda.
 - *Reversão:* revert.
 
-**HC5 — Texturas por código** (`chess` L0 para a geração, `ui-egui` para o cache de texturas; depois de HC4 e D14).
+**HC5 — Texturas por código** (`chess` L0 para a geração, `ui-egui` para o cache de texturas; depois de HC4 e D14). ✅ 2026-10-25 (#184): madeira, mármore e papel por ruído com semente fixa (`pdfcraft_chess::texture`), sob as peças, feitos uma vez por tema e tamanho (45 ms para 800 px em debug); impressão de livro como hachura em vetor (`BoardStyle::hatched`). Falta: editor, montagem e miniaturas desenham madeira, mármore e papel lisos.
 - *Tarefas:* madeira, mármore, papel e impressão de livro como temas com textura; geração determinística por semente; hachura em vetor para PDF/SVG; cache por tamanho no `ui-egui`.
 - *Verificação:* golden de pixels com semente fixa (tolerância declarada); tempo de geração medido (meta de §2.2) e registrado; redimensionar não refaz a textura a cada quadro (contador de gerações no teste).
 - *Reversão:* revert; os temas lisos ficam.
 
-**HC6 — Coordenadas, moldura e desenhos** (`draw.rs`, `chess_board_ui.rs`; depois de HC4).
+**HC6 — Coordenadas, moldura e desenhos** (`draw.rs`, `chess_board_ui.rs`; depois de HC4). ✅ 2026-10-25 (#183): coordenadas nas casas, ao lado ou nenhuma; moldura nenhuma, fina ou dupla; casa marcada como anel ou pintada; ponto de quem joga; espessura e opacidade das setas por tema. Os cliques continuam caindo na casa certa.
 - *Tarefas:* coordenadas fora/dentro/nenhuma; moldura nenhuma/fina/dupla; espessura e opacidade das setas por tema; casa como anel ou pintada; ponto de "quem joga".
 - *Verificação:* goldens por combinação principal; contraste das coordenadas "dentro" em todos os temas; testes de UI das opções.
 - *Reversão:* revert.
 
-**HC7 — Desenhos e tema nos diagramas exportados** (`chess/src/draw.rs`, `svg.rs`, exportações; depois de HC4 e A8 P9b).
+**HC7 — Desenhos e tema nos diagramas exportados** (`chess/src/draw.rs`, `svg.rs`, exportações; depois de HC4 e A8 P9b). ✅ 2026-10-25 (#185): `draw::board_with` (setas e anéis sólidos) e `draw::describe` (texto alternativo); exportações e `chess_replace_diagram` com `board_theme` (marrom por padrão), a substituição com `drawings` (`[%cal]`/`[%csl]`). Sem dependência de A8 P9b. Falta: exportação e Substituir pela interface continuam em marrom e sem desenhos.
 - *Tarefas:* `draw::board_with(..., drawings)`; setas e anéis no PDF, SVG e PNG; texto alternativo dos desenhos; `board_theme` e `piece_set` nas ferramentas `chess_export_*` e `chess_replace_diagram` (padrão de D16).
 - *Verificação:* golden SVG e PDF com seta e anel; diagrama sem desenhos e com o tema padrão idêntico ao de hoje.
 - *Reversão:* revert.
 
-**HC8 — Figurinhas na tela** (`chess_board_ui.rs` `notation`, `chess_ui.rs` lista ao lado; depois de HC2 e D15).
+**HC8 — Figurinhas na tela** (`chess_board_ui.rs` `notation`, `chess_ui.rs` lista ao lado; depois de HC2 e D15). ✅ 2026-10-25 (#186): figurinhas do conjunto do tabuleiro (padrão), letras do idioma da interface ou letras inglesas; a linha não cresce; todo lance tem nome por extenso ("cavalo f3").
 - *Tarefas:* figurinha inline do conjunto do tabuleiro (imagem do tamanho da fonte, alinhada à linha de base), letras pt-BR ou inglesas por preferência; nome acessível por extenso; mesma escolha em "Copiar linha".
 - *Verificação:* teste kittest mede a altura da linha (figurinha não a aumenta); AccessKit diz "cavalo f3"; captura nos três modos.
 - *Reversão:* revert; volta às letras.
 
-**HC9 — Colunas e tamanho da letra** (`moves_column`; depois de A8 V3).
+**HC9 — Colunas e tamanho da letra** (`moves_column`; depois de A8 V3). ✅ 2026-10-26 (#189): modo colunas (nº | brancas | pretas, quebras por comentário/variante, retomada com "…") e três tamanhos de letra, no painel, na lista ao lado e na janela. Sem A8 V3. Medido: 1.000 lances, ~7 ms por quadro em texto corrido e ~10 ms em colunas (debug). Falta: desenhar só as linhas visíveis.
 - *Tarefas:* modo colunas (nº | brancas | pretas, quebras por comentário/variante, retomada "12… "); tamanho em três passos; escolha lembrada; vale para o painel, a lista ao lado da página e a janela destacada.
 - *Verificação:* jogo sintético de 10 000 nós com variantes: quadro ≤ 4 ms nos dois modos (só o visível); testes de UI das quebras.
 - *Reversão:* revert.
@@ -237,17 +237,17 @@ Cada passo: **Contexto** · **Tarefas** · **Verificação** · **Saída** · **
 - *Verificação:* partida sintética com e sem campos; o cabeçalho cabe a 1366 × 768 em uma ou duas linhas; nome acessível.
 - *Reversão:* revert.
 
-**HC11 — Variante anterior/próxima** (`chess_board_ui.rs`, `automation/src/tools.rs`; depois de A8 P1c).
+**HC11 — Variante anterior/próxima** (`chess_board_ui.rs`, `automation/src/tools.rs`; depois de A8 P1c). ✅ 2026-10-26 (#190): Page Up/Page Down no escopo de xadrez e dois botões ao lado das setas; `Game::next_variation`/`previous_variation`; `chess_pgn_edit` `next_variation`/`prev_variation`. Sem a tabela completa de A8 P1c (Page Up/Down estavam livres).
 - *Tarefas:* botões e atalhos na tabela de P1c; `chess_pgn_edit` `prev_variation`/`next_variation`; ordem de leitura documentada.
 - *Verificação:* tabela de atalhos sem colisão; testes da ferramenta em árvore com 4 níveis.
 - *Reversão:* revert.
 
-**HC12 — Marcas no lance e comentário em destaque** (`notation`; depois de HC8 ou HC9).
+**HC12 — Marcas no lance e comentário em destaque** (`notation`; depois de HC8 ou HC9). ✅ 2026-10-26 (#188): sinais como chips coloridos com o símbolo (contraste 4,5:1), ponto com as cores dos desenhos que os mostra no tabuleiro ao passar o mouse, comentário antes do lance com recuo e estilo próprios, comentário em destaque sob o tabuleiro. Falta: os desenhos do ponto pelo teclado.
 - *Tarefas:* ponto de desenhos com as cores e nome acessível; desenhos mostrados ao passar o mouse; sinais como chips coloridos com o símbolo; comentário antes distinto; quebras de linha; modo "comentário em destaque".
 - *Verificação:* contraste dos chips em claro/escuro; leitor de tela; testes kittest.
 - *Reversão:* revert.
 
-**HC13 — Prévia ao passar o mouse** (`notation`, miniatura com `draw`; depois de HC4 e HC12).
+**HC13 — Prévia ao passar o mouse** (`notation`, miniatura com `draw`; depois de HC4 e HC12). ✅ 2026-10-26 (#191): miniatura da posição depois do lance após 400 ms com o mouse parado, ou com o foco do teclado, no tema e peças escolhidos, lance marcado; desligável.
 - *Tarefas:* miniatura depois de 400 ms (ou com o foco pelo teclado), tema e peças escolhidos, último lance realçado; desligável; respeita movimento reduzido.
 - *Verificação:* a posição mostrada no tabuleiro não muda; teste kittest com tempo simulado; custo da miniatura medido.
 - *Reversão:* revert.
