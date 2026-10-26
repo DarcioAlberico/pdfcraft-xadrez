@@ -107,6 +107,41 @@ fn polygon(points: &[(f32, f32)]) -> Subpath {
     Subpath { start, segments: it.map(|&(x, y)| Segment::Line(x, y)).collect(), closed: true }
 }
 
+/// Diagonal lines (`/` as seen) across the square `square`, of side `s`: bands of a seventh of
+/// the side apart, each a twentieth wide, cut to the square.
+fn hatch(square: &Subpath, s: f32) -> Vec<Subpath> {
+    let (x0, y0) = square.start;
+    let corners = [(x0, y0), (x0 + s, y0), (x0 + s, y0 + s), (x0, y0 + s)];
+    let (step, width) = (s / 7.0, s / 20.0);
+    let mut out = Vec::new();
+    // Bands of x + y between c and c + width, relative to the square's corner.
+    for k in 0..15u8 {
+        let c = x0 + y0 + f32::from(k) * step - width / 2.0;
+        let band = clip(&clip(&corners, |(x, y)| x + y - c), |(x, y)| c + width - (x + y));
+        if band.len() >= 3 {
+            out.push(polygon(&band));
+        }
+    }
+    out
+}
+
+/// The convex polygon `points` cut to where `inside` is not negative (Sutherland–Hodgman).
+fn clip(points: &[(f32, f32)], inside: impl Fn((f32, f32)) -> f32) -> Vec<(f32, f32)> {
+    let mut out = Vec::with_capacity(points.len() + 2);
+    for (i, &p) in points.iter().enumerate() {
+        let q = points.get((i + 1) % points.len()).copied().unwrap_or(p);
+        let (dp, dq) = (inside(p), inside(q));
+        if dp >= 0.0 {
+            out.push(p);
+        }
+        if (dp >= 0.0) != (dq >= 0.0) {
+            let t = dp / (dp - dq);
+            out.push((p.0 + (q.0 - p.0) * t, p.1 + (q.1 - p.1) * t));
+        }
+    }
+    out
+}
+
 fn circle(cx: f32, cy: f32, r: f32) -> Subpath {
     // Four cubic arcs; 0.5523 is the usual control-point factor for a quarter circle.
     let k = 0.5523 * r;
@@ -191,6 +226,9 @@ pub struct BoardStyle {
     pub coordinates: bool,
     /// Draw from Black's side: h1 at the top left.
     pub flipped: bool,
+    /// The dark squares hatched in diagonal lines of `dark` over `light`, as printed diagrams
+    /// (plan HC5), instead of filled.
+    pub hatched: bool,
 }
 
 impl Default for BoardStyle {
@@ -203,6 +241,7 @@ impl Default for BoardStyle {
             border_color: Rgb::BLACK,
             coordinates: false,
             flipped: false,
+            hatched: false,
         }
     }
 }
@@ -262,6 +301,7 @@ pub fn board(placement: &Placement, pieces: &PieceSet, style: &BoardStyle) -> Dr
             rect(origin + col * s, origin + row * s, s, s)
         })
         .collect();
+    let dark = if style.hatched { dark.iter().flat_map(|sq| hatch(sq, s)).collect() } else { dark };
     layers.push(Layer { subpaths: dark, paint: Paint::Fill { color: style.dark, even_odd: false } });
 
     for (sq, piece) in placement.pieces() {
@@ -352,6 +392,35 @@ mod tests {
         assert_eq!(d.layers.len(), 2);
         assert_eq!(d.layers[1].subpaths.len(), 32);
         assert!(d.labels.is_empty());
+    }
+
+    /// Plan HC5: hatched dark squares are diagonal bands cut to their square, about a quarter of
+    /// it inked, and the light squares untouched.
+    #[test]
+    fn hatched_dark_squares_are_bands_inside_their_squares() {
+        let d = board(&Placement::empty(), &PieceSet::geometric(), &BoardStyle { border: 0.0, hatched: true, ..BoardStyle::default() });
+        assert_eq!(d.layers.len(), 2);
+        let bands = &d.layers[1].subpaths;
+        assert!(bands.len() > 32 * 10, "{} bands", bands.len());
+        let mut inked = 0.0;
+        for band in bands {
+            let b = bounds(std::slice::from_ref(band)).unwrap();
+            // Each band stays in one 20-unit square.
+            let (col, row) = ((b[0] / 20.0).floor(), (b[1] / 20.0).floor());
+            assert!(b[2] <= (col + 1.0) * 20.0 + 1e-3 && b[3] <= (row + 1.0) * 20.0 + 1e-3, "{b:?}");
+            assert!((col + row) % 2.0 == 1.0, "only dark squares: {b:?}");
+            inked += area(band);
+        }
+        let share = inked / (32.0 * 400.0);
+        assert!((0.15..0.45).contains(&share), "{share}");
+    }
+
+    /// The area of a closed polygon of lines.
+    fn area(path: &Subpath) -> f32 {
+        let mut points = vec![path.start];
+        points.extend(path.segments.iter().filter_map(|s| if let Segment::Line(x, y) = s { Some((*x, *y)) } else { None }));
+        let n = points.len();
+        (0..n).map(|i| points[i].0 * points[(i + 1) % n].1 - points[(i + 1) % n].0 * points[i].1).sum::<f32>().abs() / 2.0
     }
 
     #[test]

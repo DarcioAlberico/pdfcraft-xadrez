@@ -1,6 +1,6 @@
 # Plano — Peças, tabuleiros e lista de lances (a partir de cursos em HTML) · v3
 
-**Status:** v3 · 2026-10-25 · **HC0, HC1, HC2 e HC10 feitos** (§5.2); HC3 (#180), HC4 (#182) e HC6 (#183) entraram por outra sessão, ainda sem nota aqui · decisões D13–D16 **aceitas** pelo usuário em 2026-10-25 (§4).
+**Status:** v3 · 2026-10-25 · **HC0, HC1, HC2 e HC10 feitos** (§5.2); HC3 (#180), HC4 (#182), HC5 (#184) e HC6 (#183) entraram por outra sessão, ainda sem nota aqui · decisões D13–D16 **aceitas** pelo usuário em 2026-10-25 (§4).
 **Escopo (decisão do usuário, 2026-10-25):** melhorar o tabuleiro com **mais designs de tabuleiro e mais conjuntos de peças**, e **melhorar a lista de lances**. Fora: modo treino, perguntas `[%tqu]`, progresso, importação de cursos e puzzles como partidas, exportação de cursos (§2.5).
 **Origem:** três páginas HTML de cursos de xadrez salvas pelo usuário (pasta local `pasta-html-teste/`, **fora do repositório**: são conteúdo de terceiros, nunca entram em commit, fixture, teste ou documento). Análise de 2026-10-25, só dos **dados** que as páginas carregam e do que elas mostram na tela (servidas em `127.0.0.1` e olhadas no navegador). O código JavaScript delas não foi lido para copiar e não será.
 **Repositório:** `DarcioAlberico/pdfcraft-xadrez` (Rust, egui), `main` `959ddf1f`.
