@@ -635,9 +635,12 @@ enum Nav {
     Down,
     Start,
     End,
+    /// The first move of the previous or the next variation in reading order (plan HC11).
+    PreviousVariation,
+    NextVariation,
 }
 
-const NAV_KEYS: [(ChessKey, Nav); 8] = [
+const NAV_KEYS: [(ChessKey, Nav); 10] = [
     (ESC, Nav::Escape),
     (ChessKey::plain(Key::ArrowLeft), Nav::Back),
     // Backspace goes back a move, as it goes back in a browser; it deletes nothing.
@@ -647,6 +650,8 @@ const NAV_KEYS: [(ChessKey, Nav); 8] = [
     (ChessKey::plain(Key::ArrowDown), Nav::Down),
     (ChessKey::plain(Key::Home), Nav::Start),
     (ChessKey::plain(Key::End), Nav::End),
+    (ChessKey::plain(Key::PageUp), Nav::PreviousVariation),
+    (ChessKey::plain(Key::PageDown), Nav::NextVariation),
 ];
 
 /// Every tool of the rail, groups' members included.
@@ -1262,6 +1267,13 @@ fn navigate(chess: &mut ChessState, nav: Nav) {
         Nav::End => board.game.go_to(usize::MAX),
         Nav::Up | Nav::Down => {
             if let Some(node) = sibling(&board.game, board.game.current(), nav == Nav::Down) {
+                board.game.go_to_node(node);
+            }
+        }
+        Nav::PreviousVariation | Nav::NextVariation => {
+            let current = board.game.current();
+            let to = if nav == Nav::NextVariation { board.game.next_variation(current) } else { board.game.previous_variation(current) };
+            if let Some(node) = to {
                 board.game.go_to_node(node);
             }
         }

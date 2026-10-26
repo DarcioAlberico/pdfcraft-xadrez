@@ -1884,6 +1884,24 @@ pub(crate) fn navigation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) 
             state.game.go_to(usize::MAX);
             state.selected = None;
         }
+        // Variation to variation in reading order (plan HC11).
+        let current = state.game.current();
+        let (back, next) = (state.game.previous_variation(current), state.game.next_variation(current));
+        for (to, icon, tip) in
+            [(back, "chevrons-left", tl!("Previous variation (Page Up)")), (next, "chevrons-right", tl!("Next variation (Page Down)"))]
+        {
+            let r = ui
+                .add_enabled(to.is_some(), egui::Button::image(crate::icons::image(icon, 14.0, t.icon)).min_size(vec2(36.0, 24.0)))
+                .on_hover_text(tip)
+                .on_disabled_hover_text(tip);
+            r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, to.is_some(), tip));
+            if r.clicked()
+                && let Some(node) = to
+            {
+                state.game.go_to_node(node);
+                state.selected = None;
+            }
+        }
     });
     let (text, colour) = status(state);
     ui.label(egui::RichText::new(text).small().color(colour));

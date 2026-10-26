@@ -3018,3 +3018,29 @@ fn the_move_list_stands_beside_the_page_on_either_side() {
     assert_eq!(h.get_all_by_label("Moves").count(), 1);
     assert!(h.get_by_label("Moves").rect().max.x <= page.min.x, "Read mode: on the left too");
 }
+
+/// Plan HC11: Page Down and Page Up, and the buttons beside the move arrows, go from variation
+/// to variation in reading order; at either end the button is off and the key does nothing.
+#[test]
+fn page_keys_and_buttons_walk_the_variations() {
+    use egui::{Key, Modifiers};
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, FORKS, &[]);
+    click_board_title(&mut h);
+    // FORKS: 1. e4 e5 (1... c5 2. Nf3 (2. c3) d6) 2. Nf3
+    host_key(&mut h, Modifiers::NONE, Key::PageDown);
+    assert_eq!(shown(&h), "c5");
+    host_key(&mut h, Modifiers::NONE, Key::PageDown);
+    assert_eq!(shown(&h), "c3");
+    host_key(&mut h, Modifiers::NONE, Key::PageDown);
+    assert_eq!(shown(&h), "c3", "the last variation: nowhere further");
+    assert!(h.get_by_label("Next variation (Page Down)").accesskit_node().is_disabled());
+    h.get_by_label("Previous variation (Page Up)").click();
+    h.run_steps(2);
+    assert_eq!(shown(&h), "c5");
+    host_key(&mut h, Modifiers::NONE, Key::PageUp);
+    assert_eq!(shown(&h), "c5", "the first variation");
+    assert!(h.get_by_label("Previous variation (Page Up)").accesskit_node().is_disabled());
+}
