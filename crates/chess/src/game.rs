@@ -20,11 +20,13 @@ use crate::san::{Lang, San, SanBody, color_from_cozy, kind_from_cozy, square_fro
 
 mod drawing;
 mod graft;
+mod header;
 mod line;
 mod structure;
 
 pub use drawing::{DrawColor, Drawing, MAX_DRAWINGS, drawing_commands, split_drawings};
 pub use graft::{GraftMode, GraftReport, GraftStop, GraftStopReason, MAX_LEFTOVER_LEN};
+pub use header::GameHeader;
 pub use structure::{NodePath, NodeSource, Shift, StructureError};
 
 /// Most moves a game holds, variations included. Real annotated games are under 3,000.

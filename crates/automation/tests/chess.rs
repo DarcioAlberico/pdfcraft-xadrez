@@ -732,6 +732,34 @@ fn chess_arguments_out_of_range_are_refused_with_what_is_allowed() {
 
 /// chess_game plays a game without a document: from a FEN or a PGN, with moves in SAN or UCI,
 /// shown at a ply, and stops at the first illegal move.
+/// `chess_game`'s header is what the move list shows (plan HC10): PGN's placeholders are null, a
+/// date reads as far as it is known, and the result is `*` while the game goes on.
+#[test]
+fn chess_game_says_what_the_move_list_header_shows() {
+    let (base, root) = workdir("game-header");
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let pgn = "[Event \"Club ch\"]
+[Site \"?\"]
+[Date \"2026.10.??\"]
+[Round \"-\"]
+[White \"Doe\"]
+[Black \"Roe\"]
+[Result \"*\"]
+[WhiteElo \"2100\"]
+
+1. f3 e5 2. g4 Qh4# *
+";
+    let g = ok(&mut a, "chess_game", json!({ "pgn": pgn }));
+    let h = &g["header"];
+    assert_eq!((&h["white"], &h["white_elo"], &h["black"], &h["black_elo"]), (&json!("Doe"), &json!("2100"), &json!("Roe"), &Value::Null), "{g:#}");
+    assert_eq!((&h["event"], &h["site"], &h["date"], &h["round"]), (&json!("Club ch"), &Value::Null, &json!("2026.10"), &Value::Null), "{g:#}");
+    assert_eq!(h["result"], "0-1", "the mate decides it: {g:#}");
+    let fresh = ok(&mut a, "chess_game", json!({}));
+    let fields = fresh["header"].as_object().unwrap();
+    assert!(fields.iter().all(|(k, v)| if k == "result" { v == "*" } else { v.is_null() }), "{fresh:#}");
+    let _ = std::fs::remove_dir_all(base);
+}
+
 #[test]
 fn chess_game_plays_moves_from_a_fen_or_a_pgn() {
     let (_base, root) = workdir("game");

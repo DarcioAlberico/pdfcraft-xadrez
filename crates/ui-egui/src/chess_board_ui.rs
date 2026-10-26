@@ -1290,38 +1290,24 @@ pub(crate) fn result_text(game: &Game) -> String {
     }
 }
 
-/// A tag's value when it says something: not empty, not PGN's `?` for "not known", and a date
-/// only as far as it is known (`1972.??.??` is `1972`).
-fn known_tag<'a>(game: &'a Game, name: &str) -> Option<&'a str> {
-    let value = game.tag(name)?.trim();
-    let value = if name.ends_with("Date") {
-        let known: Vec<&str> = value.split('.').take_while(|part| !part.is_empty() && part.chars().all(|c| c.is_ascii_digit())).collect();
-        let len = known.iter().map(|p| p.len()).sum::<usize>() + known.len().saturating_sub(1);
-        value.get(..len)?
-    } else {
-        value
-    };
-    (!value.is_empty() && !value.chars().all(|c| matches!(c, '?' | '-' | '.' | ' '))).then_some(value)
-}
-
 /// The game's header (plan HC10): the players, each with their Elo, then the event, site, date
-/// and round, each only when it is known. No line when nothing is.
+/// and round, each only when it is known ([`Game::header`]). No line when nothing is.
 pub(crate) fn header_lines(game: &Game) -> Vec<String> {
-    let player = |side: &str| {
-        known_tag(game, side).map(|name| match known_tag(game, &format!("{side}Elo")) {
+    let header = game.header();
+    let player = |name: &Option<String>, elo: &Option<String>| {
+        name.as_ref().map(|name| match elo {
             Some(elo) => format!("{name} ({elo})"),
-            None => name.to_owned(),
+            None => name.clone(),
         })
     };
     let mut lines = Vec::new();
-    match (player("White"), player("Black")) {
+    match (player(&header.white, &header.white_elo), player(&header.black, &header.black_elo)) {
         (Some(w), Some(b)) => lines.push(format!("{w} – {b}")),
         (Some(one), None) | (None, Some(one)) => lines.push(one),
         (None, None) => {}
     }
-    let round = known_tag(game, "Round").map(|r| crate::i18n::fmt(tl!("round {round}"), &[("round", r)]));
-    let place: Vec<String> =
-        [known_tag(game, "Event"), known_tag(game, "Site"), known_tag(game, "Date")].into_iter().flatten().map(str::to_owned).chain(round).collect();
+    let round = header.round.as_ref().map(|r| crate::i18n::fmt(tl!("round {round}"), &[("round", r)]));
+    let place: Vec<String> = [header.event, header.site, header.date].into_iter().flatten().chain(round).collect();
     if !place.is_empty() {
         lines.push(place.join(" · "));
     }
