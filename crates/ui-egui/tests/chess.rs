@@ -639,7 +639,7 @@ fn double_clicking_a_diagram_puts_it_on_the_board_to_play() {
     assert_eq!(h.state().chess.board().game.movetext(), "1. e4 e5");
     h.get_by_label("e5");
     // Back one move with the button, then a different move starts a variation.
-    h.get_by_label("◀").click();
+    h.get_by_label("Previous move (Left arrow)").click();
     h.run_steps(2);
     assert_eq!(h.state().chess.board().game.ply(), 1);
     click_square(&mut h, "c7");
@@ -954,10 +954,10 @@ fn the_board_panel_sets_up_a_position_and_draws_on_it() {
     drag_square(&mut h, egui::PointerButton::Secondary, "e8", "d7", egui::Modifiers::SHIFT);
     assert_eq!(marks(&h), ["d4d4Green", "e8d7Red"]);
     // The drawings stay with their position.
-    h.get_by_label("◀").click();
+    h.get_by_label("Previous move (Left arrow)").click();
     h.run_steps(2);
     assert!(marks(&h).is_empty());
-    h.get_by_label("▶").click();
+    h.get_by_label("Next move (Right arrow)").click();
     h.run_steps(2);
     assert_eq!(marks(&h).len(), 2);
     // The Analysis section, closed until opened, clears them and says how they are drawn.
@@ -1032,7 +1032,7 @@ fn drawings_belong_to_the_move_and_go_into_the_pgn() {
     click_square(&mut h, "e5");
     assert_eq!(h.state().chess.board().game.movetext(), "1. e4 {[%csl Gd5][%cal Rg1f3]} 1... e5");
     assert!(marks(&h).is_empty(), "the next move has its own");
-    h.get_by_label("◀").click();
+    h.get_by_label("Previous move (Left arrow)").click();
     h.run_steps(2);
     assert_eq!(marks(&h).len(), 2);
     // Undo takes the move back, then the arrow; redo draws it again.
@@ -1062,7 +1062,7 @@ fn drawings_belong_to_the_move_and_go_into_the_pgn() {
     assert_eq!(game.comment(d4), "Center [%clk 0:10:00]");
     assert_eq!(game.movetext(), "1. d4 {[%csl Yd4][%cal Bc1g5] Center [%clk 0:10:00]} 1... d5");
     assert!(marks(&h).is_empty(), "d5 has none");
-    h.get_by_label("◀").click();
+    h.get_by_label("Previous move (Left arrow)").click();
     h.run_steps(2);
     assert_eq!(marks(&h), ["d4d4Yellow", "c1g5Blue"]);
 }
@@ -3043,4 +3043,20 @@ fn page_keys_and_buttons_walk_the_variations() {
     host_key(&mut h, Modifiers::NONE, Key::PageUp);
     assert_eq!(shown(&h), "c5", "the first variation");
     assert!(h.get_by_label("Previous variation (Page Up)").accesskit_node().is_disabled());
+}
+
+/// Plan A8 P1b: every button of the chess panels has a name the interface fonts can draw (no
+/// loose ⏮ ◀ ▶ ✕ characters that show as boxes), with a game on the board and the editor open.
+#[test]
+fn no_chess_button_has_a_name_the_fonts_cannot_draw() {
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, FORKS, &[0, 1, 0]);
+    h.run_steps(3);
+    let font = egui::FontId::proportional(13.0);
+    let names: Vec<String> = h.get_all_by_role(egui::accesskit::Role::Button).filter_map(|n| n.accesskit_node().label()).collect();
+    assert!(names.iter().any(|n| n == "Previous move (Left arrow)"), "{names:?}");
+    let missing: Vec<&String> = names.iter().filter(|n| !h.ctx.fonts_mut(|f| f.has_glyphs(&font, n))).collect();
+    assert!(missing.is_empty(), "buttons the fonts cannot draw: {missing:?}");
 }

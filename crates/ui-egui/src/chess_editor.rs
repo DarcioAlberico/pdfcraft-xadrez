@@ -330,7 +330,7 @@ pub fn editor_ui(ui: &mut egui::Ui, t: &Tokens, ed: &mut DiagramEditor, pieces: 
     ui.horizontal(|ui| {
         let title = crate::i18n::fmt(tl!("Diagram {n}"), &[("n", &(ed.index + 1).to_string())]);
         ui.label(egui::RichText::new(crate::i18n::fmt(tl!("Edit {d}, page {p}"), &[("d", &title), ("p", &(ed.page + 1).to_string())])).strong());
-        if ui.small_button("✕").on_hover_text(tl!("Close the editor")).clicked() {
+        if crate::icons::button(ui, "x", 22.0, false, tl!("Close the editor")).clicked() {
             action = Some(EditorAction::Close);
         }
     });
