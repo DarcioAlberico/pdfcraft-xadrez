@@ -183,7 +183,8 @@ pub(crate) fn tint(t: Tint) -> Color32 {
 /// `style` with the current theme's squares.
 pub(crate) fn style(ctx: &egui::Context, style: BoardStyle) -> BoardStyle {
     let t = current(ctx);
-    BoardStyle { light: t.light, dark: t.dark, ..style }
+    let hatched = t.texture == Some(pdfcraft_engine::chess::pdfcraft_chess::texture::Texture::Hatched);
+    BoardStyle { light: t.light, dark: t.dark, hatched, ..style }
 }
 
 impl PdfCraftApp {
@@ -228,6 +229,10 @@ pub(crate) fn name(theme: &BoardTheme) -> &'static str {
         "sand" => tl!("Sand"),
         "coral" => tl!("Coral"),
         "high-contrast" => tl!("High contrast"),
+        "wood" => tl!("Wood"),
+        "marble" => tl!("Marble"),
+        "paper" => tl!("Paper"),
+        "book" => tl!("Book print"),
         _ => theme.name,
     }
 }
