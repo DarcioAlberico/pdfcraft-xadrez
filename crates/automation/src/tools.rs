@@ -119,6 +119,8 @@ fn chess_replace_props() -> Value {
             "coordinates": { "type": "boolean", "description": "Print a-h and 1-8 around the board (default false)." },
             "flipped": { "type": "boolean", "description": "Draw from Black's side (default false)." },
             "pieces": { "type": "string", "enum": pieces_values(), "description": "installed (default): PDFCRAFT_CHESS_PIECES (a font or a folder of piece images), a diagram font in the fonts folder beside the executable, an installed Chess Merida or a pieces folder beside the executable, else plain geometric pieces; geometric: always the plain pieces; any other value is a set PdfCraft ships, by id (chessnut…)." },
+            "board_theme": board_theme(),
+            "drawings": { "type": "string", "maxLength": 2000, "description": "Arrows and rings to draw over the board, as PGN comment commands: [%cal Gb5c7,Rd1h5] for arrows, [%csl Re4] for rings, colours G, R, Y or B. The result describes them in words." },
             "dry_run": { "type": "boolean", "description": "Only say what would be done; change nothing (default false)." },
         });
         if let Value::Object(extra) = extra {
@@ -129,12 +131,19 @@ fn chess_replace_props() -> Value {
 }
 
 /// The arguments of `chess_export_html` and `chess_export_epub`.
+/// A board theme's id, for the squares of drawn diagrams (plan HC7).
+fn board_theme() -> Value {
+    let ids: Vec<&str> = pdfcraft_engine::chess::pdfcraft_chess::theme::THEMES.iter().map(|t| t.id).collect();
+    json!({ "type": "string", "enum": ids, "description": "The squares' colours of the drawn diagrams, as a board theme (default brown, the boards' colours; book hatches the dark squares, as printed diagrams). Wood, marble and paper draw flat in their colours. light and dark, where taken, override it." })
+}
+
 fn chess_export_schema() -> Value {
     schema(
         {
             let mut props = chess_props(true);
             if let Some(o) = props.as_object_mut() {
                 o.insert("out".into(), json!({ "type": "string", "description": "The file to write." }));
+                o.insert("board_theme".into(), board_theme());
                 o.insert("diagram_px".into(), json!({ "type": "integer", "minimum": 32, "maximum": 2400, "description": "Word and RTF: the diagram images' side in pixels (default 480)." }));
                 o.insert(
                     "title".into(),
