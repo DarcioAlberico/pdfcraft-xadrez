@@ -3141,3 +3141,9 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Figurines	Taş simgeleri
 	Letters in your language	Kendi dilinizdeki harfler
 	English letters	İngilizce harfler
+	Shown on the board while the pointer is here	İşaretçi burada olduğu sürece tahtada gösterilir
+	1 arrow	1 ok
+	{n} arrows	{n} ok
+	1 ring	1 halka
+	{n} rings	{n} halka
+	The comment on the move shown, large under the board	Gösterilen hamlenin yorumu, tahtanın altında büyük

@@ -185,10 +185,12 @@ pub(crate) fn spoken(san: &str, glyphs: &str) -> String {
 
 /// A move of the list: `san` and its `glyphs` shown as the mode says, selected when it is the
 /// move shown; `small` and `muted` for variations. Named in words.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn move_button(
     ui: &mut egui::Ui,
     san: &str,
     glyphs: &str,
+    spoken_glyphs: &str,
     selected: bool,
     small: bool,
     muted: Color32,
@@ -218,7 +220,7 @@ pub(crate) fn move_button(
         (MovePieces::Letters, _) => ui.selectable_label(selected, style(format!("{}{glyphs}", in_letters(san, interface_lang())))),
         _ => ui.selectable_label(selected, style(format!("{san}{glyphs}"))),
     };
-    let name = spoken(san, glyphs);
+    let name = spoken(san, spoken_glyphs);
     response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, true, selected, &name));
     response
 }

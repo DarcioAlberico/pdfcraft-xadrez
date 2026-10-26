@@ -3117,3 +3117,9 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Figurines	Σύμβολα κομματιών
 	Letters in your language	Γράμματα στη γλώσσα σας
 	English letters	Αγγλικά γράμματα
+	Shown on the board while the pointer is here	Εμφανίζονται στη σκακιέρα όσο ο δείκτης είναι εδώ
+	1 arrow	1 βέλος
+	{n} arrows	{n} βέλη
+	1 ring	1 δακτύλιος
+	{n} rings	{n} δακτύλιοι
+	The comment on the move shown, large under the board	Το σχόλιο της κίνησης που εμφανίζεται, μεγάλο κάτω από τη σκακιέρα

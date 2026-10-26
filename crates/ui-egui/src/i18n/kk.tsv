@@ -3143,3 +3143,9 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Figurines	Фигура белгілері
 	Letters in your language	Сіздің тіліңіздегі әріптер
 	English letters	Ағылшын әріптері
+	Shown on the board while the pointer is here	Меңзер осында тұрғанда тақтада көрсетіледі
+	1 arrow	1 нұсқар
+	{n} arrows	{n} нұсқар
+	1 ring	1 сақина
+	{n} rings	{n} сақина
+	The comment on the move shown, large under the board	Көрсетілген жүрістің түсініктемесі тақтаның астында ірі

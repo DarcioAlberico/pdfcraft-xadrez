@@ -937,12 +937,16 @@ fn board_column(
             if setting_up {
                 return;
             }
+            let focus = chess.comment_focus;
             let (study, state) = (&chess.study, chess.games.board_mut());
             chess_board_ui::view_controls(ui, state);
             ui.add_space(4.0);
             crate::chess_study_ui::board_with_bar(ui, t, study, state, pieces, sizing);
             chess_board_ui::promotion_choice(ui, state);
             chess_board_ui::navigation(ui, t, state);
+            if focus {
+                chess_board_ui::comment_focus(ui, t, state);
+            }
         });
         ui.separator();
         ui.vertical(|ui| {

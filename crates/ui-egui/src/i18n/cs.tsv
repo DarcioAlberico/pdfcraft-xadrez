@@ -3219,3 +3219,9 @@ chess undo step	Clear drawings	smazání kreseb
 	Figurines	Figurky
 	Letters in your language	Písmena ve vašem jazyce
 	English letters	Anglická písmena
+	Shown on the board while the pointer is here	Zobrazí se na šachovnici, dokud je zde ukazatel
+	1 arrow	1 šipka
+	{n} arrows	{n} šipek
+	1 ring	1 kroužek
+	{n} rings	{n} kroužků
+	The comment on the move shown, large under the board	Komentář k zobrazenému tahu velkým písmem pod šachovnicí

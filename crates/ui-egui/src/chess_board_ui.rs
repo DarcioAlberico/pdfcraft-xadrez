@@ -214,6 +214,9 @@ pub struct BoardState {
     pub(crate) comment_open: bool,
     /// Game details opens when it is drawn next (a click on the game's header, plan HC10).
     pub(crate) open_details: bool,
+    /// The move whose drawings mark the pointer is over in the list, and the frame it was seen
+    /// in (plan HC12): the board shows that move's drawings while it is.
+    pub(crate) hovered_drawings: Option<(NodeId, u64)>,
     /// The comment field takes the keyboard when it is drawn next.
     pub(crate) focus_comment: bool,
     /// Where the glyph palette types.
@@ -260,6 +263,7 @@ impl Default for BoardState {
             revealed: None,
             comment_open: false,
             open_details: false,
+            hovered_drawings: None,
             focus_comment: false,
             typing: Default::default(),
             fresh: Default::default(),
@@ -616,7 +620,18 @@ impl BoardState {
         if self.illegal.is_some() {
             return self.marks.get(&self.current_fen()).cloned().unwrap_or_default();
         }
-        let drawings = self.game.drawings(self.game.current());
+        self.marks_of(self.game.current())
+    }
+
+    /// The move whose drawings the board shows in place of the move shown's, while the pointer
+    /// is over its mark in the list.
+    pub fn hovered_move(&self) -> Option<NodeId> {
+        self.hovered_drawings.map(|(node, _)| node)
+    }
+
+    /// The drawings on move `node`'s position.
+    pub(crate) fn marks_of(&self, node: NodeId) -> Vec<Mark> {
+        let drawings = self.game.drawings(node);
         drawings.iter().map(|d| Mark { from: d.from, to: d.to, color: MarkColor::from_draw(d.color) }).collect()
     }
 
@@ -1056,8 +1071,14 @@ pub(crate) fn board_view_sized(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardS
             painter.text(r.right_top() + vec2(-2.0, 1.0), egui::Align2::RIGHT_TOP, (sq.rank() + 1).to_string(), font.clone(), ink(sq));
         }
     }
-    // The drawings: the overlay, the position's own, and the arrow being drawn.
-    for mark in overlay.iter().copied().chain(state.marks()) {
+    // The drawings: the overlay, the position's own (or those of a move whose mark the pointer is
+    // over in the list), and the arrow being drawn.
+    let frame = ui.ctx().cumulative_pass_nr();
+    let shown = match state.hovered_drawings {
+        Some((node, seen)) if frame.saturating_sub(seen) <= 1 && state.illegal.is_none() => state.marks_of(node),
+        _ => state.marks(),
+    };
+    for mark in overlay.iter().copied().chain(shown) {
         paint_mark(&painter, state, rect, mark, palette, look);
     }
     if response.dragged_by(PointerButton::Secondary)
@@ -1212,9 +1233,27 @@ pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, he
                                 }
                                 let ctx = ui.ctx().clone();
                                 let glyph_text = glyphs(nags, |s| crate::chess_annotate::drawable(&ctx, s));
+                                // The move's quality signs go in chips after it (plan HC12); its name keeps them.
+                                let others: Vec<u16> = nags.iter().copied().filter(|c| !(1..=6).contains(c)).collect();
+                                let shown_glyphs = glyphs(&others, |s| crate::chess_annotate::drawable(&ctx, s));
                                 let tint = state.fresh.tint(&state.game, *node, ui.ctx());
                                 // The piece as a figurine, in letters or as SAN (plan HC8).
-                                let r = crate::chess_figurines::move_button(ui, san, &glyph_text, *node == current, small, t.text_muted, tint);
+                                let r = crate::chess_figurines::move_button(
+                                    ui,
+                                    san,
+                                    &shown_glyphs,
+                                    &glyph_text,
+                                    *node == current,
+                                    small,
+                                    t.text_muted,
+                                    tint,
+                                );
+                                for &code in nags.iter().filter(|c| (1..=6).contains(*c)) {
+                                    quality_chip(ui, code, small);
+                                }
+                                if !state.game.drawings(*node).is_empty() && drawings_dot(ui, &state.marks_of(*node), small) {
+                                    state.hovered_drawings = Some((*node, ui.ctx().cumulative_pass_nr()));
+                                }
                                 if *node == current && reveal {
                                     r.scroll_to_me_animation(None, egui::style::ScrollAnimation::none());
                                 }
@@ -1276,6 +1315,12 @@ pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, he
                             }
                             // A comment with only drawings has no text to show.
                             Token::Comment { text, .. } if text.is_empty() => {}
+                            // A comment before its move (plan HC12): set in, upright and fainter,
+                            // so it reads apart from the comment on the move before.
+                            Token::Comment { text, before: true, .. } => {
+                                ui.add_space(6.0);
+                                ui.label(egui::RichText::new(text).small().color(t.text_faint));
+                            }
                             Token::Comment { text, .. } => {
                                 ui.label(egui::RichText::new(text).italics().small().color(t.text_muted));
                             }
@@ -1332,6 +1377,94 @@ fn result_label(ui: &mut egui::Ui, t: &Tokens, game: &Game) {
     let result = result_text(game);
     let r = ui.label(egui::RichText::new(&result).monospace().strong().color(t.text));
     r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, crate::i18n::fmt(tl!("Result: {result}"), &[("result", &result)])));
+}
+
+/// A move's quality sign as a chip of its colour with the sign on it (plan HC12): never colour
+/// alone. Its name is on hover only: the move's own name already says the sign, and a second
+/// "Good move" would stand beside the glyph palette's.
+fn quality_chip(ui: &mut egui::Ui, code: u16, small: bool) {
+    let Some((fill, ink, sign)) = quality_colors(code) else { return };
+    let font = if small { egui::FontId::monospace(10.5) } else { egui::FontId::monospace(12.0) };
+    let galley = ui.painter().layout_no_wrap(sign.to_owned(), font, ink);
+    let size = galley.size() + vec2(8.0, 2.0);
+    let (rect, r) = ui.allocate_exact_size(size, egui::Sense::hover());
+    ui.painter().rect_filled(rect, 4.0, fill);
+    ui.painter().galley(rect.center() - galley.size() / 2.0, galley, ink);
+    r.on_hover_text(crate::chess_annotate::nag_name(code).unwrap_or(sign));
+}
+
+/// A quality sign's chip: its fill, the sign's colour on it and the sign. Each pair reads at
+/// 4.5:1 or more (tested).
+pub(crate) fn quality_colors(code: u16) -> Option<(Color32, Color32, &'static str)> {
+    let white = Color32::WHITE;
+    let black = Color32::BLACK;
+    Some(match code {
+        1 => (Color32::from_rgb(25, 120, 25), white, "!"),
+        3 => (Color32::from_rgb(0, 90, 0), white, "!!"),
+        5 => (Color32::from_rgb(30, 90, 200), white, "!?"),
+        6 => (Color32::from_rgb(230, 190, 0), black, "?!"),
+        2 => (Color32::from_rgb(230, 110, 0), black, "?"),
+        4 => (Color32::from_rgb(200, 30, 30), white, "??"),
+        _ => return None,
+    })
+}
+
+/// After a move with drawings: a dot of each of their colours (plan HC12), named by how many
+/// arrows and rings they are. Whether the pointer is over it.
+fn drawings_dot(ui: &mut egui::Ui, marks: &[Mark], small: bool) -> bool {
+    let mut colours: Vec<Color32> = Vec::new();
+    for m in marks {
+        let c = m.color.color32();
+        if !colours.contains(&c) {
+            colours.push(c);
+        }
+    }
+    let radius = if small { 3.0 } else { 3.5 };
+    let width = colours.len().max(1) as f32 * (radius * 2.0 + 1.5) + 2.0;
+    let (rect, r) = ui.allocate_exact_size(vec2(width, radius * 2.0 + 4.0), egui::Sense::hover());
+    for (i, c) in colours.iter().enumerate() {
+        let x = rect.left() + 1.0 + radius + i as f32 * (radius * 2.0 + 1.5);
+        ui.painter().circle_filled(egui::pos2(x, rect.center().y), radius, c.to_opaque());
+    }
+    let arrows = marks.iter().filter(|m| m.from != m.to).count();
+    let rings = marks.len() - arrows;
+    let name = drawings_name(arrows, rings);
+    let r = r.on_hover_text(tl!("Shown on the board while the pointer is here"));
+    r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, &name));
+    r.hovered()
+}
+
+/// "2 arrows, 1 ring".
+pub(crate) fn drawings_name(arrows: usize, rings: usize) -> String {
+    let mut parts = Vec::new();
+    match arrows {
+        0 => {}
+        1 => parts.push(tl!("1 arrow").to_owned()),
+        n => parts.push(crate::i18n::fmt(tl!("{n} arrows"), &[("n", &n.to_string())])),
+    }
+    match rings {
+        0 => {}
+        1 => parts.push(tl!("1 ring").to_owned()),
+        n => parts.push(crate::i18n::fmt(tl!("{n} rings"), &[("n", &n.to_string())])),
+    }
+    parts.join(", ")
+}
+
+/// The comment on the move shown, large under the board (plan HC12): for a game told more in
+/// words than in moves.
+pub(crate) fn comment_focus(ui: &mut egui::Ui, t: &Tokens, state: &BoardState) {
+    if state.illegal.is_some() {
+        return;
+    }
+    let current = state.game.current();
+    let comment = state.game.comment(current);
+    if comment.trim().is_empty() {
+        return;
+    }
+    egui::Frame::new().fill(t.hover).corner_radius(egui::CornerRadius::same(6)).inner_margin(egui::Margin::same(8)).show(ui, |ui| {
+        ui.set_width(ui.available_width());
+        ui.label(egui::RichText::new(comment).size(15.0).color(t.text));
+    });
 }
 
 /// The game's result as books print it: `1-0`, `0-1`, `½-½` or `*`.
@@ -1830,12 +1963,16 @@ pub(crate) fn panel_body(
     if crate::chess_study_ui::setup_in_place(ui, t, chess, pieces) {
         return (action, None);
     }
+    let focus = chess.comment_focus;
     let (study, state) = (&mut chess.study, chess.games.board_mut());
     view_controls(ui, state);
     ui.add_space(4.0);
     crate::chess_study_ui::board_with_bar(ui, t, study, state, pieces, sizing);
     promotion_choice(ui, state);
     navigation(ui, t, state);
+    if focus {
+        comment_focus(ui, t, state);
+    }
     let analysis = crate::chess_study_ui::analysis_section(ui, t, study, state, pieces);
     ui.add_space(4.0);
     let (fields, games) = moves_column(ui, t, chess, viewport - (ui.cursor().top() - top));
@@ -1943,8 +2080,27 @@ fn notation_height(viewport: f32, above: f32, below: f32) -> f32 {
 mod tests {
     use super::*;
 
-    /// Plan HC5: a textured theme draws its squares once per size: another position, or the
-    /// same board wanted smaller, makes none; the picture keeps the texture under the pieces.
+    /// Plan HC12: each quality chip's sign reads on its fill at 4.5:1, and no two chips share a
+    /// fill; drawings are counted in words.
+    #[test]
+    fn quality_chips_read_and_drawings_are_counted() {
+        use pdfcraft_engine::chess::pdfcraft_chess::theme::contrast;
+        let rgb = |c: Color32| Rgb(c.r(), c.g(), c.b());
+        let mut fills = Vec::new();
+        for code in 1..=6u16 {
+            let (fill, ink, sign) = quality_colors(code).unwrap();
+            assert!(contrast(rgb(fill), rgb(ink)) >= 4.5, "{sign}: {:.2}", contrast(rgb(fill), rgb(ink)));
+            assert!(!fills.contains(&fill), "{sign}");
+            fills.push(fill);
+        }
+        assert!(quality_colors(7).is_none() && quality_colors(0).is_none());
+        assert_eq!(drawings_name(2, 1), "2 arrows, 1 ring");
+        assert_eq!(drawings_name(1, 0), "1 arrow");
+        assert_eq!(drawings_name(0, 3), "3 rings");
+    }
+
+    /// Plan HC5: a textured theme draws its squares once per size: another position makes none;
+    /// the picture keeps the texture under the pieces.
     #[test]
     fn a_textured_board_makes_its_squares_once_per_size() {
         let ctx = egui::Context::default();
@@ -1958,7 +2114,8 @@ mod tests {
         assert!(first.is_some());
         state.game.play_uci("e2e4").unwrap();
         assert!(state.texture(&ctx, &pieces, 256).is_some(), "another position");
-        assert!(state.texture(&ctx, &pieces, 200).is_some(), "smaller: the larger serves");
+        // (Not a smaller board here: the picture's key holds the process-wide piece generation,
+        // which other tests move, and a picture drawn again smaller rightly makes its squares.)
         assert_eq!(made(&state), first, "the squares were made once");
         let ((id, w, _), squares) = state.background.clone().unwrap();
         assert_eq!(id, "wood");

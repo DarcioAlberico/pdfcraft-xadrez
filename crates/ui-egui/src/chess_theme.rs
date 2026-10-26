@@ -276,6 +276,7 @@ pub(crate) fn preferences_section(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &
         crate::widgets::radio_value(ui, &mut app.chess.move_pieces, MovePieces::Letters, tl!("Letters in your language"));
         crate::widgets::radio_value(ui, &mut app.chess.move_pieces, MovePieces::English, tl!("English letters"));
     });
+    ui.add(crate::widgets::checkbox(&mut app.chess.comment_focus, tl!("The comment on the move shown, large under the board")));
 }
 
 /// The look's choices, as radio buttons in a grid.

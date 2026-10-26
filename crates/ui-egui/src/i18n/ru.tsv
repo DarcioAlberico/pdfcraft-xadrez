@@ -3058,3 +3058,9 @@ chess undo step	Clear drawings	удаление рисунков
 	Figurines	Фигурки
 	Letters in your language	Буквы вашего языка
 	English letters	Английские буквы
+	Shown on the board while the pointer is here	Показываются на доске, пока указатель здесь
+	1 arrow	1 стрелка
+	{n} arrows	{n} стрелок
+	1 ring	1 кольцо
+	{n} rings	{n} колец
+	The comment on the move shown, large under the board	Комментарий к показанному ходу крупно под доской

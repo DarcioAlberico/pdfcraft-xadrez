@@ -3397,3 +3397,9 @@ chess undo step	Clear drawings	piešinių valymą
 	Figurines	Figūrėlės
 	Letters in your language	Raidės jūsų kalba
 	English letters	Anglų raidės
+	Shown on the board while the pointer is here	Rodoma lentoje, kol žymeklis yra čia
+	1 arrow	1 rodyklė
+	{n} arrows	{n} rodyklės
+	1 ring	1 žiedas
+	{n} rings	{n} žiedai
+	The comment on the move shown, large under the board	Rodomo ėjimo komentaras dideliu šriftu po lenta

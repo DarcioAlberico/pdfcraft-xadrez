@@ -3108,3 +3108,9 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Figurines	Фигурки
 	Letters in your language	Букви на вашия език
 	English letters	Английски букви
+	Shown on the board while the pointer is here	Показват се на дъската, докато показалецът е тук
+	1 arrow	1 стрелка
+	{n} arrows	{n} стрелки
+	1 ring	1 кръг
+	{n} rings	{n} кръга
+	The comment on the move shown, large under the board	Коментарът към показания ход, едър под дъската
