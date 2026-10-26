@@ -3173,3 +3173,9 @@ chess undo step	Clear drawings	видалення малюнків
 	1 ring	1 кільце
 	{n} rings	{n} кілець
 	The comment on the move shown, large under the board	Коментар до показаного ходу великим під дошкою
+	Running text	Суцільний текст
+	Columns	Стовпці
+	Text size	Розмір тексту
+	Small	Малий
+	Normal	Звичайний
+	Large	Великий

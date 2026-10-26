@@ -3156,3 +3156,9 @@ chess undo step	Clear drawings	odstranjevanje risb
 	1 ring	1 obroč
 	{n} rings	{n} obročev
 	The comment on the move shown, large under the board	Komentar k prikazani potezi, velik pod šahovnico
+	Running text	Tekoče besedilo
+	Columns	Stolpci
+	Text size	Velikost besedila
+	Small	Majhna
+	Normal	Običajna
+	Large	Velika

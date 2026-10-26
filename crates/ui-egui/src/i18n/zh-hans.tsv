@@ -3115,3 +3115,9 @@ chess undo step	Clear drawings	清除标记
 	1 ring	1 个圆环
 	{n} rings	{n} 个圆环
 	The comment on the move shown, large under the board	在棋盘下方大字显示当前着法的注释
+	Running text	连续文本
+	Columns	分栏
+	Text size	文字大小
+	Small	小
+	Normal	正常
+	Large	大

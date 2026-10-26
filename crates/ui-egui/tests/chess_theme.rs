@@ -188,3 +188,47 @@ fn marks_on_moves_and_the_comment_large() {
     assert_eq!(h.query_all_by_label("A plan.").count(), 2, "and large under the board");
     shot(&mut h, "comment-focus.png");
 }
+
+/// Plan HC9: in columns, a move number's two moves share a row; a variation breaks the table and
+/// Black's move after it starts a row of its own with "…"; the large text makes the rows taller;
+/// the choice is kept. A long game is drawn in both layouts, its frame time measured.
+#[test]
+fn columns_pair_the_moves_and_the_text_size_scales() {
+    use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
+    let mut h = harness("", false);
+    let (game, _) = Game::from_pgn("1. e4 e5 2. Nf3 (2. c3 d5) Nc6 3. Bb5 *").unwrap();
+    h.state_mut().chess.board_mut().game = game;
+    h.state_mut().set_option("move-list-layout", "columns").unwrap();
+    h.run_steps(3);
+    let y = |h: &Harness<'static, PdfCraftApp>, name: &str| h.get_by_label(name).rect().center().y;
+    assert!((y(&h, "e4") - y(&h, "e5")).abs() < 1.0, "one row for 1. e4 e5");
+    assert!(y(&h, "knight f3") > y(&h, "e5") + 2.0, "2. Nf3 on the next row");
+    assert!(y(&h, "c3") > y(&h, "knight f3") + 2.0, "the variation under it");
+    assert!(y(&h, "knight c6") > y(&h, "d5") + 2.0, "the table resumes after the variation");
+    assert!(h.query_by_label("…").is_some(), "with … for White's move");
+    assert!((y(&h, "bishop b5") - y(&h, "knight c6")).abs() > 2.0, "3. Bb5 on its own row");
+    let x = |h: &Harness<'static, PdfCraftApp>, name: &str| h.get_by_label(name).rect().left();
+    assert!((x(&h, "e5") - x(&h, "knight c6")).abs() < 1.0, "Black's moves in one column");
+    shot(&mut h, "move-list-columns.png");
+    let normal = h.get_by_label("e4").rect().height();
+    h.state_mut().set_option("move-list-size", "large").unwrap();
+    h.run_steps(3);
+    assert!(h.get_by_label("e4").rect().height() > normal + 2.0, "large text, taller rows");
+    let saved: serde_json::Value = serde_json::from_str(&h.state().persist()).unwrap();
+    assert_eq!(saved["chess_move_list"], serde_json::json!({ "layout": "columns", "size": "large" }));
+    assert!(h.state_mut().set_option("move-list-layout", "table").is_err());
+    // A long game: 1,000 moves of knights going out and back.
+    let mut long = Game::standard();
+    let cycle = ["g1f3", "g8f6", "f3g1", "f6g8"];
+    for i in 0..1000 {
+        long.play_uci(cycle[i % 4]).unwrap();
+    }
+    h.state_mut().chess.board_mut().game = long;
+    for layout in ["flow", "columns"] {
+        h.state_mut().set_option("move-list-layout", layout).unwrap();
+        h.run_steps(2);
+        let started = std::time::Instant::now();
+        h.run_steps(5);
+        eprintln!("{layout}: {:?} a frame with 1,000 moves (debug build)", started.elapsed() / 5);
+    }
+}

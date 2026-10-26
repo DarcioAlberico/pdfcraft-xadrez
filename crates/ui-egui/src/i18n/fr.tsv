@@ -3151,3 +3151,9 @@ chess undo step	Clear drawings	l'effacement des dessins
 	1 ring	1 anneau
 	{n} rings	{n} anneaux
 	The comment on the move shown, large under the board	Le commentaire du coup affiché, en grand sous l'échiquier
+	Running text	Texte continu
+	Columns	Colonnes
+	Text size	Taille du texte
+	Small	Petite
+	Normal	Normale
+	Large	Grande

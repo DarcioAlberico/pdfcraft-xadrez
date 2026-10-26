@@ -3225,3 +3225,9 @@ chess undo step	Clear drawings	smazání kreseb
 	1 ring	1 kroužek
 	{n} rings	{n} kroužků
 	The comment on the move shown, large under the board	Komentář k zobrazenému tahu velkým písmem pod šachovnicí
+	Running text	Souvislý text
+	Columns	Sloupce
+	Text size	Velikost textu
+	Small	Malá
+	Normal	Normální
+	Large	Velká

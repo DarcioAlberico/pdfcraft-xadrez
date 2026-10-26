@@ -37,6 +37,103 @@ impl MovePieces {
     }
 }
 
+/// The move list's layout (plan HC9).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ListLayout {
+    /// Running text, a row per stretch of a line, variations indented.
+    #[default]
+    Flow,
+    /// A table: number, White, Black; comments and variations break it.
+    Columns,
+}
+
+/// The move list's text size (plan HC9).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ListSize {
+    Small,
+    #[default]
+    Normal,
+    Large,
+}
+
+impl ListSize {
+    fn factor(self) -> f32 {
+        match self {
+            ListSize::Small => 0.85,
+            ListSize::Normal => 1.0,
+            ListSize::Large => 1.25,
+        }
+    }
+
+    /// Scale `style`'s text to this size.
+    pub(crate) fn apply(self, style: &mut egui::Style) {
+        let k = self.factor();
+        if k != 1.0 {
+            for font in style.text_styles.values_mut() {
+                font.size *= k;
+            }
+        }
+    }
+}
+
+/// How the move list is laid out and how large its text is.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ListLook {
+    pub layout: ListLayout,
+    pub size: ListSize,
+}
+
+impl ListLook {
+    pub fn to_json(self) -> serde_json::Value {
+        let layout = match self.layout {
+            ListLayout::Flow => "flow",
+            ListLayout::Columns => "columns",
+        };
+        let size = match self.size {
+            ListSize::Small => "small",
+            ListSize::Normal => "normal",
+            ListSize::Large => "large",
+        };
+        serde_json::json!({ "layout": layout, "size": size })
+    }
+
+    pub fn from_json(v: &serde_json::Value) -> ListLook {
+        let mut look = ListLook::default();
+        look.set("layout", v["layout"].as_str().unwrap_or_default()).ok();
+        look.set("size", v["size"].as_str().unwrap_or_default()).ok();
+        look
+    }
+
+    /// Set one part by name, as the control channel names it: `layout` (flow, columns) or `size`
+    /// (small, normal, large).
+    pub fn set(&mut self, part: &str, value: &str) -> Result<(), String> {
+        match (part, value) {
+            ("layout", "flow") => self.layout = ListLayout::Flow,
+            ("layout", "columns") => self.layout = ListLayout::Columns,
+            ("size", "small") => self.size = ListSize::Small,
+            ("size", "normal") => self.size = ListSize::Normal,
+            ("size", "large") => self.size = ListSize::Large,
+            ("layout", _) => return Err("move-list-layout must be flow or columns".into()),
+            ("size", _) => return Err("move-list-size must be small, normal or large".into()),
+            _ => return Err(format!("no move list option {part}")),
+        }
+        Ok(())
+    }
+}
+
+fn list_key() -> egui::Id {
+    egui::Id::new("chess-move-list-look")
+}
+
+/// How the move list is laid out now.
+pub(crate) fn list_look(ctx: &egui::Context) -> ListLook {
+    ctx.data(|d| d.get_temp::<ListLook>(list_key())).unwrap_or_default()
+}
+
+pub(crate) fn set_list_look(ctx: &egui::Context, look: ListLook) {
+    ctx.data_mut(|d| d.insert_temp(list_key(), look));
+}
+
 fn mode_key() -> egui::Id {
     egui::Id::new("chess-move-pieces")
 }

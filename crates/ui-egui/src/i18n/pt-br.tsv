@@ -3168,3 +3168,9 @@ chess undo step	Clear drawings	remoção dos desenhos
 	1 ring	1 anel
 	{n} rings	{n} anéis
 	The comment on the move shown, large under the board	O comentário do lance mostrado, grande sob o tabuleiro
+	Running text	Texto corrido
+	Columns	Colunas
+	Text size	Tamanho do texto
+	Small	Pequeno
+	Normal	Normal
+	Large	Grande

@@ -3067,3 +3067,9 @@ chess undo step	Clear drawings	清除標記
 	1 ring	1 個圓環
 	{n} rings	{n} 個圓環
 	The comment on the move shown, large under the board	在棋盤下方大字顯示目前著法的註解
+	Running text	連續文字
+	Columns	分欄
+	Text size	文字大小
+	Small	小
+	Normal	正常
+	Large	大

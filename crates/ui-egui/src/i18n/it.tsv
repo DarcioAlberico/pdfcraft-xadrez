@@ -3363,3 +3363,9 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	1 ring	1 anello
 	{n} rings	{n} anelli
 	The comment on the move shown, large under the board	Il commento della mossa mostrata, grande sotto la scacchiera
+	Running text	Testo continuo
+	Columns	Colonne
+	Text size	Dimensione del testo
+	Small	Piccola
+	Normal	Normale
+	Large	Grande

@@ -3403,3 +3403,9 @@ chess undo step	Clear drawings	piešinių valymą
 	1 ring	1 žiedas
 	{n} rings	{n} žiedai
 	The comment on the move shown, large under the board	Rodomo ėjimo komentaras dideliu šriftu po lenta
+	Running text	Ištisinis tekstas
+	Columns	Stulpeliai
+	Text size	Teksto dydis
+	Small	Mažas
+	Normal	Įprastas
+	Large	Didelis

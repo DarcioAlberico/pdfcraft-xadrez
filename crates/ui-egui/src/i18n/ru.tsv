@@ -3064,3 +3064,9 @@ chess undo step	Clear drawings	удаление рисунков
 	1 ring	1 кольцо
 	{n} rings	{n} колец
 	The comment on the move shown, large under the board	Комментарий к показанному ходу крупно под доской
+	Running text	Сплошной текст
+	Columns	Столбцы
+	Text size	Размер текста
+	Small	Маленький
+	Normal	Обычный
+	Large	Крупный

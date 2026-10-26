@@ -81,6 +81,8 @@ pub struct ChessState {
     pub move_pieces: crate::chess_figurines::MovePieces,
     /// The comment on the move shown, large under the board (plan HC12).
     pub comment_focus: bool,
+    /// The move list's layout and text size (plan HC9).
+    pub list_look: crate::chess_figurines::ListLook,
     /// Preferences' piece picker while it is shown.
     pub(crate) piece_picker: Option<crate::chess_pieces_ui::PiecePicker>,
     /// The panel's tab: the diagrams or the page's recognised text (S16).
