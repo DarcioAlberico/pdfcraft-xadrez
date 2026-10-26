@@ -197,6 +197,7 @@ Cada passo: **Contexto** (o que ler) · **Tarefas** · **Verificação** · **Sa
 **P2b — Marcas na página e clique com a Mão** (`chess_ui.rs`, `canvas.rs`). §2.1 "Marcas"; clique sem arrasto também com a Mão; "Marcar a página como conferida" (+ ferramenta). *Verificação:* testes de UI de clique com Selecionar e Mão; capturas. *Reversão:* revert.
 
 **P3a1 — Store de correções** (`engine/src/chess/corrections.rs`, trait; implementações no `ui-egui` desktop/web e na CLI dentro de `--root`).
+- ✅ **Feito (2026-10-26):** formato, chave, mesclagem, trava e as três ferramentas; trait `CorrectionStore` com `DirStore` (desktop e CLI) e `MemStore` (web, orçamento próprio). Hash FNV de 128 bits em vez de blake3 (sem dependência nova; só nomeia e compara). A pasta do desktop sob os dados do app e o `MemStore` salvo no navegador entram com quem os usa (P3b2).
 - Chave: `DocKeys` (`/ID[0]`, caminho, nome + tamanho — `engine/src/chess/keys.rs`, estável entre salvamentos) + por entrada: índice da página, **impressão digital da página**, retângulo normalizado na CropBox; casamento por **IoU ≥ 0,7**; páginas inseridas/removidas realocadas pela impressão digital.
 - Esquema v1 em `<dados>/chess/corrections/<hash(DocKeys)>.json` (≤ 20 000 entradas, ≤ 4 MB; web com orçamento próprio, separado dos 4 MB do autosave):
   ```json

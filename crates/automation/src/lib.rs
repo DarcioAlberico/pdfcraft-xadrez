@@ -18,6 +18,7 @@ mod a11y;
 mod batch;
 mod chess;
 mod chess_area;
+mod chess_corrections;
 mod chess_games;
 mod chess_pgn;
 mod chess_sample;
@@ -831,6 +832,9 @@ impl Automation {
             "chess_pgn_edit" => self.chess_pgn_edit(&a)?,
             "chess_games" => self.chess_games(&a)?,
             "chess_glyph_sample" => self.chess_glyph_sample(&a)?,
+            "chess_correction_list" => self.chess_correction_list(&a)?,
+            "chess_correction_set" => self.chess_correction_set(&a)?,
+            "chess_correction_delete" => self.chess_correction_delete(&a)?,
             "chess_replace_diagram" => self.chess_replace_diagram(&a)?,
             "chess_document" => self.chess_document(&a)?,
             "chess_add_lichess_links" => self.chess_add_lichess_links(&a)?,

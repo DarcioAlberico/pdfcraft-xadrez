@@ -2004,3 +2004,65 @@ fn an_encrypted_document_gives_a_sample_only_when_allowed() {
     }
     let _ = std::fs::remove_dir_all(base);
 }
+
+/// Plan A8, P3a1: a correction is kept on disk by the document's keys and the diagram's page
+/// fingerprint and box, found again after reopening, revised in place, deleted with a tombstone,
+/// and only inside the root.
+#[test]
+fn diagram_corrections_are_kept_found_again_and_confined() {
+    const CORRECTED: &str = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+    let (base, root) = workdir("corrections");
+    let (mut a, doc) = opened(&root);
+    let empty = ok(&mut a, "chess_correction_list", json!({ "doc": doc }));
+    assert_eq!((empty["count"].as_u64(), empty["read_only"].as_bool()), (Some(0), Some(false)), "{empty:#}");
+    let set = ok(&mut a, "chess_correction_set", json!({ "doc": doc, "page": 1, "index": 1, "fen": CORRECTED, "models_dir": "models" }));
+    assert_eq!((set["kind"].as_str(), set["legal"].as_bool(), set["rev"].as_u64()), (Some("corrected"), Some(true), Some(1)), "{set:#}");
+    let uid = set["uid"].as_str().unwrap().to_owned();
+    let file = root.join(".pdfcraft/chess-corrections").join(set["file"].as_str().unwrap());
+    assert!(file.is_file(), "written inside the root: {file:?}");
+    // The same diagram again: the next revision of the same correction.
+    let verified = ok(&mut a, "chess_correction_set", json!({ "doc": doc, "page": 1, "index": 1, "kind": "verified", "models_dir": "models" }));
+    assert_eq!((verified["uid"].as_str(), verified["rev"].as_u64()), (Some(uid.as_str()), Some(2)), "{verified:#}");
+    assert_eq!(verified["fen"], "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "verified keeps the reading");
+    // Another session opening the same file finds it, on the same page, unchanged.
+    let (mut b, doc_b) = opened(&root);
+    let listed = ok(&mut b, "chess_correction_list", json!({ "doc": doc_b }));
+    let c = &listed["corrections"][0];
+    assert_eq!(
+        (listed["count"].as_u64(), c["uid"].as_str(), c["page"].as_u64(), c["located"].as_str()),
+        (Some(1), Some(uid.as_str()), Some(1), Some("same")),
+        "{listed:#}"
+    );
+    assert_eq!(c["original_fen"], "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    // A blank page inserted first: the correction moved with its page.
+    ok(&mut b, "page_insert_blank", json!({ "doc": doc_b, "at": 1 }));
+    let moved = ok(&mut b, "chess_correction_list", json!({ "doc": doc_b }));
+    assert_eq!((moved["corrections"][0]["page"].as_u64(), moved["corrections"][0]["located"].as_str()), (Some(2), Some("moved")), "{moved:#}");
+    // Deleted: a tombstone, so it lists no more; a second delete is refused with where to look.
+    let deleted = ok(&mut a, "chess_correction_delete", json!({ "doc": doc, "uid": uid }));
+    assert_eq!(deleted["deleted"], true);
+    assert_eq!(ok(&mut a, "chess_correction_list", json!({ "doc": doc }))["count"], 0);
+    match a.call("chess_correction_delete", &json!({ "doc": doc, "uid": uid })) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("no correction") && m.contains("chess_correction_list"), "{m}"),
+        other => panic!("deleted twice: {other:?}"),
+    }
+    assert!(std::fs::read_to_string(&file).unwrap().contains("\"deleted\":true"), "kept as a tombstone");
+    // Arguments and the root.
+    match a.call("chess_correction_set", &json!({ "doc": doc, "page": 1, "index": 9, "fen": CORRECTED, "models_dir": "models" })) {
+        Err(ToolError::InvalidArgs(m)) => assert!(m.contains("page 1 has 3 diagrams"), "{m}"),
+        other => panic!("index 9 accepted: {other:?}"),
+    }
+    match a.call("chess_correction_set", &json!({ "doc": doc, "page": 1, "index": 2, "models_dir": "models" })) {
+        Err(ToolError::InvalidArgs(m)) => assert!(m.contains("give fen"), "{m}"),
+        other => panic!("corrected without a fen: {other:?}"),
+    }
+    let outside = base.join("outside");
+    for store in ["../outside".to_string(), outside.to_string_lossy().into_owned()] {
+        match a.call("chess_correction_list", &json!({ "doc": doc, "store": store })) {
+            Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{store}: {m}"),
+            other => panic!("store {store} outside the root accepted: {other:?}"),
+        }
+    }
+    assert!(std::fs::read_dir(&outside).unwrap().next().is_none(), "nothing written outside");
+    let _ = std::fs::remove_dir_all(base);
+}

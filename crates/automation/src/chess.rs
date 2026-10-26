@@ -277,7 +277,7 @@ fn model_json<T>(state: &ModelState<T>) -> Value {
 impl Automation {
     /// The scan settings from the arguments. Out-of-range numbers are refused, not clamped, so
     /// the agent learns what is allowed.
-    fn chess_settings(&self, a: &Args) -> Result<ChessScanSettings> {
+    pub(crate) fn chess_settings(&self, a: &Args) -> Result<ChessScanSettings> {
         let mut s = ChessScanSettings::default();
         if let Some(dpi) = a.opt_num("dpi")? {
             if !(f64::from(chess::MIN_DPI)..=f64::from(chess::MAX_DPI)).contains(&dpi) {
