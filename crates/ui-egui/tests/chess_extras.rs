@@ -157,7 +157,7 @@ fn the_glyph_brush_marks_each_move_clicked_and_esc_puts_it_down() {
     assert_eq!(format!("{:?}", h.state().chess.tools.tool), "GlyphBrush(3)");
     assert_eq!(glyphs_at(&h, &[0]), [] as [u16; 0], "choosing the brush's glyph changed no move");
     h.get_by_label_contains("Glyph brush !! (Brilliant move)");
-    for label in ["e5", "Nf3", "Nc6"] {
+    for label in ["e5", "knight f3", "knight c6"] {
         h.get_by_label(label).click();
         h.run_steps(2);
     }
@@ -165,7 +165,7 @@ fn the_glyph_brush_marks_each_move_clicked_and_esc_puts_it_down() {
     assert_eq!(shown(&h), "e4", "the brush does not go to the moves");
     assert_eq!(undo_label(&h).as_deref(), Some("Glyph !!"));
     // A second click takes it off.
-    h.get_by_label("Nc6!!").click();
+    h.get_by_label("knight c6!!").click();
     h.run_steps(2);
     assert_eq!(glyphs_at(&h, &[0, 0, 0, 0]), [] as [u16; 0]);
     // One undo step per click: four steps back to none.
@@ -179,7 +179,7 @@ fn the_glyph_brush_marks_each_move_clicked_and_esc_puts_it_down() {
     host_key(&mut h, Modifiers::NONE, Key::Escape);
     assert_eq!(format!("{:?}", h.state().chess.tools.tool), "Navigate");
     assert!(h.query_by_label_contains("Glyph brush !!").is_none(), "the brush's bar is gone");
-    h.get_by_label("Nf3").click();
+    h.get_by_label("knight f3").click();
     h.run_steps(2);
     assert_eq!((shown(&h), glyphs_at(&h, &[0, 0, 0])), ("Nf3".to_owned(), vec![]));
     // B arms it again from the keyboard, with the glyph last chosen.

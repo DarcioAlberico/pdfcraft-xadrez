@@ -277,7 +277,7 @@ fn follow_scrolls_the_page_to_each_move_shown() {
     assert_eq!(shown(&h), "e5");
     // Off: walking the game leaves the page alone.
     let before = last_shown(&h);
-    notation_move(&h, "Nc6").click();
+    notation_move(&h, "knight c6").click();
     h.run_steps(2);
     assert_eq!((shown(&h).as_str(), last_shown(&h)), ("Nc6", before));
     // On (the rail's switch): the move shown at once, on screen already (the page scrolled a
@@ -296,7 +296,7 @@ fn follow_scrolls_the_page_to_each_move_shown() {
     h.state_mut().views[0].go_to_page(1);
     h.run_steps(4);
     assert_eq!(h.state().views[0].current, 1);
-    notation_move(&h, "Bb5").click();
+    notation_move(&h, "bishop b5").click();
     h.run_steps(4);
     let (page, rect) = printed(&h, "Bb5");
     assert_eq!(last_shown(&h), Some((page, rect, true)), "scrolled to it");
@@ -364,7 +364,7 @@ fn a_captured_game_follows_its_moves_on_the_page() {
     let game = &h.state().chess.board().game;
     let a6 = game.source(game.current()).expect("a captured move keeps its place");
     assert_eq!(last_shown(&h).map(|s| (s.0, s.1)), Some((a6.page as usize, a6.rect_user)));
-    notation_move(&h, "Nf3").click();
+    notation_move(&h, "knight f3").click();
     h.run_steps(3);
     let game = &h.state().chess.board().game;
     let nf3 = game.source(game.current()).expect("a captured move keeps its place");

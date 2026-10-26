@@ -3129,3 +3129,19 @@ chess undo step	Clear drawings	l'effacement des dessins
 	Marble	Marbre
 	Paper	Papier
 	Book print	Impression de livre
+	king	roi
+	queen	dame
+	rook	tour
+	bishop	fou
+	knight	cavalier
+	pawn	pion
+	checkmate	échec et mat
+	check	échec
+	castles short	petit roque
+	castles long	grand roque
+	takes	prend
+	{move} promotes to {piece}	{move} promu en {piece}
+	Pieces in the move list	Pièces dans la liste des coups
+	Figurines	Figurines
+	Letters in your language	Lettres de votre langue
+	English letters	Lettres anglaises

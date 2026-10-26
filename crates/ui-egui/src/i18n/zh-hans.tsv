@@ -3093,3 +3093,19 @@ chess undo step	Clear drawings	清除标记
 	Marble	大理石
 	Paper	纸张
 	Book print	书籍印刷
+	king	王
+	queen	后
+	rook	车
+	bishop	象
+	knight	马
+	pawn	兵
+	checkmate	将死
+	check	将军
+	castles short	短易位
+	castles long	长易位
+	takes	吃
+	{move} promotes to {piece}	{move} 升变为{piece}
+	Pieces in the move list	着法列表中的棋子
+	Figurines	棋子符号
+	Letters in your language	您语言中的字母
+	English letters	英文字母

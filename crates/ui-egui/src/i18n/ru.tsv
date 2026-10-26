@@ -3042,3 +3042,19 @@ chess undo step	Clear drawings	удаление рисунков
 	Marble	Мрамор
 	Paper	Бумага
 	Book print	Книжная печать
+	king	король
+	queen	ферзь
+	rook	ладья
+	bishop	слон
+	knight	конь
+	pawn	пешка
+	checkmate	мат
+	check	шах
+	castles short	короткая рокировка
+	castles long	длинная рокировка
+	takes	берёт
+	{move} promotes to {piece}	{move} превращается в {piece}
+	Pieces in the move list	Фигуры в списке ходов
+	Figurines	Фигурки
+	Letters in your language	Буквы вашего языка
+	English letters	Английские буквы

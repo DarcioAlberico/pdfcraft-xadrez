@@ -268,6 +268,14 @@ pub(crate) fn preferences_section(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &
     if look != app.chess.board_look {
         app.set_board_look(look);
     }
+    // How the move list writes the pieces (plan HC8).
+    use crate::chess_figurines::MovePieces;
+    ui.horizontal_wrapped(|ui| {
+        ui.label(tl!("Pieces in the move list"));
+        crate::widgets::radio_value(ui, &mut app.chess.move_pieces, MovePieces::Figurines, tl!("Figurines"));
+        crate::widgets::radio_value(ui, &mut app.chess.move_pieces, MovePieces::Letters, tl!("Letters in your language"));
+        crate::widgets::radio_value(ui, &mut app.chess.move_pieces, MovePieces::English, tl!("English letters"));
+    });
 }
 
 /// The look's choices, as radio buttons in a grid.

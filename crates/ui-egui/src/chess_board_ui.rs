@@ -733,10 +733,6 @@ impl BoardState {
 /// A textured theme's squares: the theme's id and the picture's size, and its pixels.
 type Background = ((&'static str, u32, u32), Vec<u8>);
 
-/// How many textured squares were made (plan HC5): a test checks a board drawn again at the same
-/// size, or smaller, makes none.
-static BACKGROUNDS_MADE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
-
 /// The pieces of `placement` over `kind`'s squares in `palette`'s colours, `px` wide: the pieces
 /// drawn on white and on black give their coverage, laid over the texture. `background` keeps the
 /// squares for the next position at that size.
@@ -755,7 +751,6 @@ fn textured_rgba(
     let key = (palette.id, w, h);
     if background.as_ref().is_none_or(|(k, _)| *k != key) {
         let squares = pdfcraft_engine::chess::pdfcraft_chess::texture::board_rgba(kind, palette.light, palette.dark, w, h);
-        BACKGROUNDS_MADE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         *background = Some((key, squares));
     }
     let squares = background.as_ref().map(|(_, s)| s.as_slice()).unwrap_or_default();
@@ -1216,15 +1211,10 @@ pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, he
                                     ui.label(egui::RichText::new(n).small().color(t.text_faint));
                                 }
                                 let ctx = ui.ctx().clone();
-                                let mut rich =
-                                    egui::RichText::new(format!("{san}{}", glyphs(nags, |s| crate::chess_annotate::drawable(&ctx, s)))).monospace();
-                                if small {
-                                    rich = rich.small().color(t.text_muted);
-                                }
-                                if let Some(tint) = state.fresh.tint(&state.game, *node, ui.ctx()) {
-                                    rich = rich.background_color(tint);
-                                }
-                                let r = ui.selectable_label(*node == current, rich);
+                                let glyph_text = glyphs(nags, |s| crate::chess_annotate::drawable(&ctx, s));
+                                let tint = state.fresh.tint(&state.game, *node, ui.ctx());
+                                // The piece as a figurine, in letters or as SAN (plan HC8).
+                                let r = crate::chess_figurines::move_button(ui, san, &glyph_text, *node == current, small, t.text_muted, tint);
                                 if *node == current && reveal {
                                     r.scroll_to_me_animation(None, egui::style::ScrollAnimation::none());
                                 }
@@ -1975,14 +1965,15 @@ mod tests {
         let pieces = PieceSet::geometric();
         crate::chess_theme::set(&ctx, pdfcraft_engine::chess::pdfcraft_chess::theme::by_id("wood").unwrap());
         let mut state = BoardState::default();
-        let made = || BACKGROUNDS_MADE.load(std::sync::atomic::Ordering::Relaxed);
-        let before = made();
+        // The squares' buffer: made again, it would be another allocation.
+        let made = |state: &BoardState| state.background.as_ref().map(|(_, v)| v.as_ptr() as usize);
         assert!(state.texture(&ctx, &pieces, 256).is_some());
-        assert_eq!(made(), before + 1);
+        let first = made(&state);
+        assert!(first.is_some());
         state.game.play_uci("e2e4").unwrap();
         assert!(state.texture(&ctx, &pieces, 256).is_some(), "another position");
         assert!(state.texture(&ctx, &pieces, 200).is_some(), "smaller: the larger serves");
-        assert_eq!(made(), before + 1, "the squares were made once");
+        assert_eq!(made(&state), first, "the squares were made once");
         let ((id, w, _), squares) = state.background.clone().unwrap();
         assert_eq!(id, "wood");
         // An empty square of the picture is the texture there (a6, the second square of the

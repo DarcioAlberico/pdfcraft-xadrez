@@ -3151,3 +3151,19 @@ chess undo step	Clear drawings	видалення малюнків
 	Marble	Мармур
 	Paper	Папір
 	Book print	Книжковий друк
+	king	король
+	queen	ферзь
+	rook	тура
+	bishop	слон
+	knight	кінь
+	pawn	пішак
+	checkmate	мат
+	check	шах
+	castles short	коротка рокіровка
+	castles long	довга рокіровка
+	takes	бере
+	{move} promotes to {piece}	{move} перетворюється на {piece}
+	Pieces in the move list	Фігури в списку ходів
+	Figurines	Фігурки
+	Letters in your language	Літери вашої мови
+	English letters	Англійські літери
