@@ -3413,3 +3413,5 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Large	Lớn
 	Previous variation (Page Up)	Biến thể trước (Page Up)
 	Next variation (Page Down)	Biến thể sau (Page Down)
+	A move the pointer rests on shows its position	Nước đi mà con trỏ dừng lại sẽ hiện thế cờ của nó
+	Position after {move}	Thế cờ sau {move}

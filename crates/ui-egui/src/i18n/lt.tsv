@@ -3411,3 +3411,5 @@ chess undo step	Clear drawings	piešinių valymą
 	Large	Didelis
 	Previous variation (Page Up)	Ankstesnis variantas (Page Up)
 	Next variation (Page Down)	Kitas variantas (Page Down)
+	A move the pointer rests on shows its position	Ėjimas, ant kurio sustoja žymeklis, parodo savo poziciją
+	Position after {move}	Pozicija po {move}

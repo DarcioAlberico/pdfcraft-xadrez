@@ -3181,3 +3181,5 @@ chess undo step	Clear drawings	видалення малюнків
 	Large	Великий
 	Previous variation (Page Up)	Попередній варіант (Page Up)
 	Next variation (Page Down)	Наступний варіант (Page Down)
+	A move the pointer rests on shows its position	Хід, на якому зупинився вказівник, показує свою позицію
+	Position after {move}	Позиція після {move}

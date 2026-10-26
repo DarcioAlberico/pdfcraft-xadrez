@@ -1492,6 +1492,7 @@ fn move_item(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, node: NodeId
     let tint = state.fresh.tint(&state.game, node, ui.ctx());
     // The piece as a figurine, in letters or as SAN (plan HC8).
     let r = crate::chess_figurines::move_button(ui, san, &shown_glyphs, &glyph_text, node == cx.current, small, t.text_muted, tint);
+    move_preview(ui, state, node, &r);
     for &code in nags.iter().filter(|c| (1..=6).contains(*c)) {
         quality_chip(ui, code, small);
     }
@@ -1548,6 +1549,85 @@ fn move_item(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, node: NodeId
             ui.close();
         }
     });
+}
+
+/// How long the pointer rests on a move before its position shows (plan HC13).
+const PREVIEW_DELAY: f64 = 0.4;
+/// The preview's side, in points.
+const PREVIEW_SIDE: f32 = 168.0;
+
+/// The position after move `node` in a tooltip (plan HC13): once the pointer has rested on the
+/// move for [`PREVIEW_DELAY`], or at once while the move has the keyboard focus; in the boards'
+/// theme and pieces, its move marked, the board shown left as it is. Off in Preferences.
+fn move_preview(ui: &egui::Ui, state: &BoardState, node: NodeId, r: &egui::Response) {
+    let ctx = ui.ctx();
+    if !crate::chess_figurines::preview_on(ctx) {
+        return;
+    }
+    let key = egui::Id::new("chess-move-preview-hover");
+    let now = ctx.input(|i| i.time);
+    let hovered_since = ctx.data(|d| d.get_temp::<(NodeId, f64)>(key));
+    let show = if r.hovered() {
+        let since = match hovered_since {
+            Some((n, t)) if n == node => t,
+            _ => {
+                ctx.data_mut(|d| d.insert_temp(key, (node, now)));
+                now
+            }
+        };
+        let waited = now - since;
+        if waited < PREVIEW_DELAY {
+            ctx.request_repaint_after(std::time::Duration::from_secs_f64((PREVIEW_DELAY - waited).max(0.0)));
+        }
+        waited >= PREVIEW_DELAY
+    } else {
+        if hovered_since.is_some_and(|(n, _)| n == node) {
+            ctx.data_mut(|d| d.remove::<(NodeId, f64)>(key));
+        }
+        r.has_focus()
+    };
+    if !show {
+        return;
+    }
+    let Some(tex) = preview_texture(ctx, state, node) else { return };
+    let name = crate::i18n::fmt(tl!("Position after {move}"), &[("move", &crate::chess_tools::move_name(&state.game, node))]);
+    egui::Tooltip::for_widget(r).show(|ui| {
+        let resp = ui.add(egui::Image::new(&tex).fit_to_exact_size(vec2(PREVIEW_SIDE, PREVIEW_SIDE)));
+        if let Some((from, to)) = state.game.move_at(node) {
+            let tint = crate::chess_theme::tint(crate::chess_theme::current(ui.ctx()).last_move);
+            for sq in [from, to] {
+                ui.painter().rect_filled(state.square_rect(resp.rect, sq), 0.0, tint);
+            }
+        }
+        resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &name));
+    });
+}
+
+/// The preview's picture of the position after `node`, drawn once per position, theme, pieces and
+/// side.
+fn preview_texture(ctx: &egui::Context, state: &BoardState, node: NodeId) -> Option<TextureHandle> {
+    let fen = state.game.fen_at(node)?;
+    let pieces = crate::chess_figurines::board_pieces(ctx)?;
+    let palette = crate::chess_theme::current(ctx);
+    let stamp = format!("{fen}|{}|{}|{}", palette.id, crate::chess_editor::pieces_generation(), state.flipped);
+    let cache = egui::Id::new("chess-move-preview-picture");
+    if let Some((s, tex)) = ctx.data(|d| d.get_temp::<(String, TextureHandle)>(cache))
+        && s == stamp
+    {
+        return Some(tex);
+    }
+    let placement = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(&fen).ok()?.placement;
+    let style = crate::chess_theme::style(ctx, BoardStyle { border: 0.0, coordinates: false, flipped: state.flipped, ..BoardStyle::default() });
+    let px = (PREVIEW_SIDE * ctx.pixels_per_point()).round() as u32;
+    let (w, h, rgba) = match palette.texture.filter(|t| *t != Texture::Hatched) {
+        Some(kind) => textured_rgba(&placement, &pieces, &style, px, kind, palette, &mut None).ok()?,
+        None => pdfcraft_engine::chess::office::diagram_rgba(&placement, &pieces, &style, px).ok()?,
+    };
+    let (w, h) = (usize::try_from(w).ok()?, usize::try_from(h).ok()?);
+    (rgba.len() == w.checked_mul(h)?.checked_mul(4)?).then_some(())?;
+    let tex = ctx.load_texture("chess-move-preview", egui::ColorImage::from_rgba_premultiplied([w, h], &rgba), egui::TextureOptions::LINEAR);
+    ctx.data_mut(|d| d.insert_temp(cache, (stamp, tex.clone())));
+    Some(tex)
 }
 
 /// A row of the column layout (plan HC9): a move number with White's and Black's moves, or what

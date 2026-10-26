@@ -3157,3 +3157,5 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Large	Үлкен
 	Previous variation (Page Up)	Алдыңғы нұсқа (Page Up)
 	Next variation (Page Down)	Келесі нұсқа (Page Down)
+	A move the pointer rests on shows its position	Меңзер тоқтаған жүріс өз позициясын көрсетеді
+	Position after {move}	{move} кейінгі позиция

@@ -3371,3 +3371,5 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	Large	Grande
 	Previous variation (Page Up)	Variante precedente (Pag Su)
 	Next variation (Page Down)	Variante successiva (Pag Giù)
+	A move the pointer rests on shows its position	Una mossa su cui si ferma il puntatore mostra la sua posizione
+	Position after {move}	Posizione dopo {move}

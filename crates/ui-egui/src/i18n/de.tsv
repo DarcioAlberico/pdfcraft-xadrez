@@ -3160,3 +3160,5 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	Large	Groß
 	Previous variation (Page Up)	Vorherige Variante (Bild auf)
 	Next variation (Page Down)	Nächste Variante (Bild ab)
+	A move the pointer rests on shows its position	Ein Zug, auf dem der Zeiger ruht, zeigt seine Stellung
+	Position after {move}	Stellung nach {move}

@@ -2380,6 +2380,7 @@ impl PdfCraftApp {
         v["chess_move_pieces"] = serde_json::Value::String(self.chess.move_pieces.token().to_owned());
         v["chess_comment_focus"] = serde_json::Value::Bool(self.chess.comment_focus);
         v["chess_move_list"] = self.chess.list_look.to_json();
+        v["chess_move_preview"] = serde_json::Value::Bool(!self.chess.no_move_preview);
         v.to_string()
     }
 
@@ -2435,6 +2436,9 @@ impl PdfCraftApp {
         }
         if let Some(on) = v["chess_comment_focus"].as_bool() {
             self.chess.comment_focus = on;
+        }
+        if let Some(on) = v["chess_move_preview"].as_bool() {
+            self.chess.no_move_preview = !on;
         }
         if v["chess_move_list"].is_object() {
             self.chess.list_look = chess_figurines::ListLook::from_json(&v["chess_move_list"]);
@@ -2608,6 +2612,13 @@ impl PdfCraftApp {
             }
             (part @ ("move-list-layout" | "move-list-size"), _) => {
                 self.chess.list_look.set(part.trim_start_matches("move-list-"), value)?;
+            }
+            ("move-preview", _) => {
+                self.chess.no_move_preview = match value {
+                    "on" => false,
+                    "off" => true,
+                    _ => return Err("move-preview must be on or off".into()),
+                };
             }
             ("comment-focus", _) => {
                 self.chess.comment_focus = match value {
@@ -3139,9 +3150,11 @@ impl eframe::App for PdfCraftApp {
         self.ctx = Some(ctx.clone());
         chess_theme::set(ctx, self.board_theme());
         chess_theme::set_look(ctx, self.chess.board_look);
-        // The figurines are the board's pieces: loaded only when the list shows them.
-        let figurines = (self.chess.move_pieces == chess_figurines::MovePieces::Figurines)
-            .then(|| self.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Board));
+        // The figurines and the previews are the board's pieces: loaded only when the list
+        // shows either.
+        let wanted = self.chess.move_pieces == chess_figurines::MovePieces::Figurines || !self.chess.no_move_preview;
+        let figurines = wanted.then(|| self.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Board));
+        chess_figurines::set_preview(ctx, !self.chess.no_move_preview);
         chess_figurines::set(ctx, self.chess.move_pieces, figurines);
         chess_figurines::set_list_look(ctx, self.chess.list_look);
         #[cfg(not(target_arch = "wasm32"))]

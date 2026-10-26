@@ -3131,3 +3131,5 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Large	Μεγάλο
 	Previous variation (Page Up)	Προηγούμενη παραλλαγή (Page Up)
 	Next variation (Page Down)	Επόμενη παραλλαγή (Page Down)
+	A move the pointer rests on shows its position	Η κίνηση όπου σταματά ο δείκτης δείχνει τη θέση της
+	Position after {move}	Θέση μετά το {move}

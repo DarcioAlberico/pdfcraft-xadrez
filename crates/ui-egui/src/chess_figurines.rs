@@ -163,6 +163,24 @@ pub(crate) fn set(ctx: &egui::Context, mode: MovePieces, pieces: Option<Arc<Piec
     });
 }
 
+/// The board's pieces, when the list needs them (figurines, previews).
+pub(crate) fn board_pieces(ctx: &egui::Context) -> Option<Arc<PieceSet>> {
+    ctx.data(|d| d.get_temp::<Arc<PieceSet>>(pieces_key()))
+}
+
+fn preview_key() -> egui::Id {
+    egui::Id::new("chess-move-preview-on")
+}
+
+/// Whether a move the pointer rests on shows its position (plan HC13).
+pub(crate) fn preview_on(ctx: &egui::Context) -> bool {
+    ctx.data(|d| d.get_temp::<bool>(preview_key())).unwrap_or(true)
+}
+
+pub(crate) fn set_preview(ctx: &egui::Context, on: bool) {
+    ctx.data_mut(|d| d.insert_temp(preview_key(), on));
+}
+
 /// The figurines' picture (the board's twelve pieces, cut as the drag ghost's), made once per
 /// piece set.
 fn atlas(ctx: &egui::Context) -> Option<TextureHandle> {

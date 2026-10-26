@@ -3155,3 +3155,5 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Large	Büyük
 	Previous variation (Page Up)	Önceki varyant (Page Up)
 	Next variation (Page Down)	Sonraki varyant (Page Down)
+	A move the pointer rests on shows its position	İşaretçinin durduğu hamle konumunu gösterir
+	Position after {move}	{move} sonrası konum

@@ -3435,3 +3435,5 @@ chess undo step	Clear drawings	مسح الرسوم
 	Large	كبير
 	Previous variation (Page Up)	التفريع السابق (Page Up)
 	Next variation (Page Down)	التفريع التالي (Page Down)
+	A move the pointer rests on shows its position	النقلة التي يستقر عليها المؤشر تعرض وضعها
+	Position after {move}	الوضع بعد {move}

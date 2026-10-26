@@ -3034,3 +3034,5 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Large	పెద్దది
 	Previous variation (Page Up)	మునుపటి వేరియేషన్ (Page Up)
 	Next variation (Page Down)	తదుపరి వేరియేషన్ (Page Down)
+	A move the pointer rests on shows its position	పాయింటర్ ఆగిన ఎత్తు దాని స్థితిని చూపుతుంది
+	Position after {move}	{move} తర్వాత స్థితి

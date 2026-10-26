@@ -3161,3 +3161,5 @@ chess undo step	Clear drawings	描画の消去
 	Large	大
 	Previous variation (Page Up)	前の変化 (Page Up)
 	Next variation (Page Down)	次の変化 (Page Down)
+	A move the pointer rests on shows its position	ポインターを止めた手の局面を表示
+	Position after {move}	{move} の後の局面

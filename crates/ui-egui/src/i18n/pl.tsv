@@ -3101,3 +3101,5 @@ chess undo step	Clear drawings	usunięcie rysunków
 	Large	Duży
 	Previous variation (Page Up)	Poprzedni wariant (Page Up)
 	Next variation (Page Down)	Następny wariant (Page Down)
+	A move the pointer rests on shows its position	Ruch, na którym zatrzyma się wskaźnik, pokazuje swoją pozycję
+	Position after {move}	Pozycja po {move}
