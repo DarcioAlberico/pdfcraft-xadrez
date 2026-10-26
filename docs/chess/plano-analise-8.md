@@ -214,7 +214,7 @@ Cada passo: **Contexto** (o que ler) · **Tarefas** · **Verificação** · **Sa
 
 **P3a2 — Cache de leituras por página** (`engine/src/chess.rs`). Edições registram `touched_pages`; após edição, mantêm-se as leituras das páginas não tocadas e relê-se só as tocadas; mudanças estruturais remapeiam. *Saída:* editar a pág. 5 de 703 relê 1 página (contador no teste). *Reversão:* revert (volta a reler tudo).
 
-**P3a3 — Correções nas leituras e nas exportações** (`engine/chess.rs`, `ChessPage`, `export.rs`). A correção vence a releitura (divergência registrada na dica); `chess_document_with`/exportações e links usam a posição corrigida. *Verificação:* exportar depois de corrigir usa a correção; zero correções perdidas após editar/desfazer/detectar/salvar/fechar/reabrir. *Reversão:* revert.
+**P3a3 — Correções nas leituras e nas exportações** ✅ *Feito (2026-10-26): `Session::chess_scan_corrected` + `corrections::apply`; documento, exportações e links leem por ele; as ferramentas carregam o store; `doc_save` leva as correções às chaves do arquivo salvo (`CorrectionStore::rekey`). A dica com a divergência fica para o P3b2.* (`engine/chess.rs`, `ChessPage`, `export.rs`). A correção vence a releitura (divergência registrada na dica); `chess_document_with`/exportações e links usam a posição corrigida. *Verificação:* exportar depois de corrigir usa a correção; zero correções perdidas após editar/desfazer/detectar/salvar/fechar/reabrir. *Reversão:* revert.
 
 **P3b1 — Motivo da ilegalidade** (crate `chess`). `IllegalReason` (rei faltando, dois reis, lado que não joga em xeque, peão na 1ª/8ª); `GameContext::from_fen` devolve o motivo; roque ajustado às peças. *Verificação:* testes unitários + wasm. *Reversão:* revert.
 

@@ -5,8 +5,12 @@
 //! one file per document, in the format of `pdfcraft_engine::chess::corrections`; a tool lists and
 //! changes the corrections of the document it is given, never another's.
 
-use pdfcraft_engine::chess::corrections::{CorrectionError, CorrectionStore, DirStore, Kind, Located, NewCorrection, Original, normalize};
+use pdfcraft_engine::DocId;
+use pdfcraft_engine::chess::corrections::{
+    CorrectionError, CorrectionStore, DirStore, Kind, Located, NewCorrection, Original, StoreError, normalize,
+};
 use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
+use pdfcraft_engine::chess::{ChessDocument, DocKeys};
 use serde_json::{Value, json};
 
 use crate::{Args, Automation, Result, ToolError, failed};
@@ -31,6 +35,45 @@ impl Automation {
     fn correction_store(&self, a: &Args) -> Result<DirStore> {
         let store = a.opt_str("store")?.unwrap_or(DEFAULT_STORE);
         Ok(DirStore::new(self.resolve(store, true)?))
+    }
+
+    /// Before a reading tool reads document `id`: give it the corrections `store` keeps for it,
+    /// unless `corrections` is false, so its readings, exports and links take the corrected
+    /// positions (plan A8, P3a3). What was loaded, for the reply; `null` when not asked.
+    pub(crate) fn use_store_corrections(&mut self, a: &Args, id: DocId) -> Result<Value> {
+        if !a.opt_bool("corrections")?.unwrap_or(true) {
+            self.session.set_chess_corrections(id, None);
+            return Ok(Value::Null);
+        }
+        let store = self.correction_store(a)?;
+        let doc = self.session.get(id).ok_or_else(|| failed("no such document"))?;
+        let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
+        let loaded = match store.load(&keys, pages) {
+            Ok(l) => l,
+            // A document with no name, path or identifier has nothing kept under it.
+            Err(StoreError::NoKeys) => {
+                self.session.set_chess_corrections(id, None);
+                return Ok(json!({ "file": Value::Null, "kept": 0 }));
+            }
+            Err(e) => return Err(failed(format!("{e} (pass corrections: false to read without the corrections)"))),
+        };
+        let kept = loaded.file.live().count();
+        let reply = json!({
+            "file": loaded.name,
+            "kept": kept,
+            "read_only": loaded.read_only,
+            "set_aside": loaded.set_aside.map(|(name, why)| json!({ "file": name, "why": why })),
+        });
+        self.session.set_chess_corrections(id, Some(loaded.file));
+        Ok(reply)
+    }
+
+    /// After document `id` was saved: its corrections in the default folder, found under the
+    /// keys it had `before`, recorded under its keys now. Whether there were any.
+    pub(crate) fn rekey_chess_corrections(&self, id: DocId, before: &DocKeys) -> std::result::Result<bool, String> {
+        let Ok(dir) = self.resolve(DEFAULT_STORE, true) else { return Ok(false) };
+        let doc = self.session.get(id).ok_or("no such document")?;
+        DirStore::new(dir).rekey(before, &doc.doc_keys(), doc.info.pages.len()).map_err(|e| e.to_string())
     }
 
     pub(crate) fn chess_correction_list(&self, a: &Args) -> Result<Value> {
@@ -129,4 +172,34 @@ impl Automation {
             Err(e) => Err(failed(format!("{e} (see chess_correction_list)"))),
         }
     }
+}
+
+/// The corrections a reading used, for a reading tool's reply: `loaded` (what
+/// [`Automation::use_store_corrections`] gave) with the corrections applied and those whose
+/// diagram was not found.
+pub(crate) fn corrections_reply(mut loaded: Value, read: &ChessDocument) -> Value {
+    if let Some(o) = loaded.as_object_mut() {
+        o.insert(
+            "applied".into(),
+            read.corrections
+                .iter()
+                .map(|c| {
+                    json!({
+                        "uid": c.uid,
+                        "page": c.page + 1,
+                        "index": c.index + 1,
+                        "kind": kind_name(c.kind),
+                        "fen": c.fen,
+                        "read_fen": c.read_fen,
+                        "diverged": c.diverged,
+                    })
+                })
+                .collect(),
+        );
+        o.insert(
+            "unmatched".into(),
+            read.unmatched_corrections.iter().map(|u| json!({ "uid": u.uid, "page": u.page + 1, "reason": u.reason })).collect(),
+        );
+    }
+    loaded
 }

@@ -1003,9 +1003,20 @@ impl Automation {
         self.session.check_save(id, &bytes).map_err(failed)?;
         write(target, &bytes)?;
         let path = target.to_string_lossy().into_owned();
+        let before = self.session.get(id).map(|d| d.doc_keys());
         self.session.mark_saved(id, bytes.clone(), Some(path.clone())).map_err(failed)?;
         let doc = self.session.get(id).ok_or_else(|| failed("the saved document is no longer open"))?;
-        Ok(json!({ "path": path, "bytes": bytes.len(), "incremental": incremental, "document": summary(doc) }))
+        let mut out = json!({ "path": path, "bytes": bytes.len(), "incremental": incremental, "document": summary(doc) });
+        // The chess diagram corrections follow the saved file (plan A8): the save is done, so
+        // a store that can't be written is said, not failed.
+        if let Some(before) = before {
+            match self.rekey_chess_corrections(id, &before) {
+                Ok(true) => out["chess_corrections"] = json!("kept for the saved file"),
+                Ok(false) => {}
+                Err(e) => out["chess_corrections"] = json!(format!("not kept for the saved file: {e}")),
+            }
+        }
+        Ok(out)
     }
 
     fn doc_revisions(&mut self, a: &Args) -> Result<Value> {

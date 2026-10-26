@@ -66,6 +66,10 @@ pub struct ChessDocument {
     pub cipher: BookCipher,
     /// What the scan and the text reading noted, page by page (0-based), never silent.
     pub notes: Vec<(usize, String)>,
+    /// The document's diagram corrections that replaced readings ([`Session::set_chess_corrections`]).
+    pub corrections: Vec<super::corrections::Applied>,
+    /// Its corrections on the pages read whose diagram was not found.
+    pub unmatched_corrections: Vec<super::corrections::Unmatched>,
 }
 
 /// When to read pages with chess OCR instead of their text layer.
@@ -385,7 +389,8 @@ impl Session {
         lang: Option<Lang>,
         ocr: &OcrOptions<'_>,
     ) -> Result<ChessDocument, String> {
-        let scanned = self.chess_scan(id, pages, settings, true)?;
+        let corrected = self.chess_scan_corrected(id, pages, settings)?;
+        let scanned = corrected.pages;
         // A page with diagrams whose page before is not read with it (the Text tab reads one
         // page): a caption at the foot of that page numbers its first diagram. That page is only
         // looked at, not read: where its diagrams are, not what they hold, and its text layer.
@@ -595,6 +600,19 @@ impl Session {
             let ocr = read_by_ocr || text.hidden > pdfcraft_chessvision::chess_text::quality::MAX_HIDDEN_RATIO;
             builder.add_page(&PageInput { index, geometry, text, diagrams, hints: &hints, reviews: &reviews, ocr });
         }
-        Ok(ChessDocument { doc: builder.finish(), lang: chosen, lang_given: lang.is_some(), needs_ocr, ocr_pages, cipher, notes })
+        for u in &corrected.unmatched {
+            notes.push((u.page, format!("a correction ({}) was not used: {}", u.uid.chars().take(8).collect::<String>(), u.reason)));
+        }
+        Ok(ChessDocument {
+            doc: builder.finish(),
+            lang: chosen,
+            lang_given: lang.is_some(),
+            needs_ocr,
+            ocr_pages,
+            cipher,
+            notes,
+            corrections: corrected.applied,
+            unmatched_corrections: corrected.unmatched,
+        })
     }
 }

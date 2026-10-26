@@ -385,6 +385,8 @@ pub enum DiagramSource {
     Model,
     /// The diagram font's characters were read; exact.
     Font,
+    /// A person set the position (a correction kept for the document).
+    User,
 }
 
 /// A diagram and its reading.
@@ -433,6 +435,7 @@ impl DiagramBlock {
         let source = match reading.source {
             ReadingSource::Model => DiagramSource::Model,
             ReadingSource::Font => DiagramSource::Font,
+            ReadingSource::User => DiagramSource::User,
         };
         let mut block = DiagramBlock {
             number,
