@@ -10,7 +10,7 @@
 //! wherever the PGN goes and comes back as it was; it is left out of the running text, where a
 //! book prints the diagram itself.
 
-use super::{Game, NodeId};
+use super::{Game, NodeId, Token};
 use crate::nag;
 
 /// The figurine for an English piece letter (white figurines for both sides, as books print
@@ -119,6 +119,49 @@ impl Game {
     }
 }
 
+impl Game {
+    /// The first move of every variation, in reading order: the order [`Game::tokens`] writes
+    /// them, a variation's own variations right after the move they branch from.
+    pub fn variation_starts(&self) -> Vec<NodeId> {
+        let mut starts = Vec::new();
+        let mut opened = false;
+        for token in self.tokens() {
+            match token {
+                Token::VariationStart => opened = true,
+                Token::Move { node, .. } if opened => {
+                    starts.push(node);
+                    opened = false;
+                }
+                _ => {}
+            }
+        }
+        starts
+    }
+
+    /// The first move of the next variation after `node` in reading order (plan HC11): into a
+    /// variation, out of one into the next, across the main line. `None` after the last.
+    pub fn next_variation(&self, node: NodeId) -> Option<NodeId> {
+        let order = self.reading_order();
+        let at = order.iter().position(|&n| n == node);
+        let starts = self.variation_starts();
+        order.iter().enumerate().find(|&(i, n)| at.is_none_or(|a| i > a) && starts.contains(n)).map(|(_, &n)| n)
+    }
+
+    /// The first move of the variation before `node` in reading order: the one `node` is in when
+    /// `node` is past its first move, else the one before. `None` before the first.
+    pub fn previous_variation(&self, node: NodeId) -> Option<NodeId> {
+        let order = self.reading_order();
+        let at = order.iter().position(|&n| n == node)?;
+        let starts = self.variation_starts();
+        order.iter().take(at).rev().find(|n| starts.contains(n)).copied()
+    }
+
+    /// Every move in the order the notation reads them.
+    fn reading_order(&self) -> Vec<NodeId> {
+        self.tokens().into_iter().filter_map(|t| if let Token::Move { node, .. } = t { Some(node) } else { None }).collect()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -193,5 +236,39 @@ mod tests {
         assert_eq!(g.movetext(), "1. e4");
         assert!(!g.toggle_diagram(0), "the start has no move to mark");
         assert!(!g.toggle_diagram(99));
+    }
+
+    /// Plan HC11: next and previous variation walk the variations in reading order, four levels
+    /// deep, into and out of them and across the main line.
+    #[test]
+    fn variations_are_walked_in_reading_order() {
+        let pgn = "1. e4 e5 (1... c5 2. Nf3 (2. c3 d5 (2... Nf6 3. e5 (3. d3 d5))) d6) (1... e6) 2. Nf3 (2. Bc4) Nc6 *";
+        let (g, stopped) = Game::from_pgn(pgn).unwrap();
+        assert_eq!(stopped, None);
+        let name = |n: NodeId| g.node(n).san.clone();
+        let starts: Vec<String> = g.variation_starts().into_iter().map(name).collect();
+        assert_eq!(starts, ["c5", "c3", "Nf6", "d3", "e6", "Bc4"]);
+        // Forward from the start, then back from the end.
+        let mut at = 0;
+        let mut seen = Vec::new();
+        while let Some(n) = g.next_variation(at) {
+            seen.push(name(n));
+            at = n;
+        }
+        assert_eq!(seen, starts);
+        let end = g.reading_order().last().copied().unwrap();
+        let mut at = end;
+        let mut back = Vec::new();
+        while let Some(n) = g.previous_variation(at) {
+            back.push(name(n));
+            at = n;
+        }
+        assert_eq!(back, ["Bc4", "e6", "d3", "Nf6", "c3", "c5"]);
+        // Inside a variation, past its first move: previous goes to that first move.
+        let d5 = g.reading_order().into_iter().find(|&n| name(n) == "d5").unwrap();
+        assert_eq!(g.previous_variation(d5).map(name).as_deref(), Some("c3"));
+        // A game with no variation has none to go to.
+        let (plain, _) = Game::from_pgn("1. e4 e5 *").unwrap();
+        assert_eq!((plain.next_variation(0), plain.previous_variation(0)), (None, None));
     }
 }

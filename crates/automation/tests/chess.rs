@@ -876,6 +876,25 @@ const MAIN: &str = "18. Nd5 Qxe1 19. Nxe7+ Kh7 20. Raxe1";
 const WITH_VARIATION: &str =
     "18. Nd5 Qxe1 (18... Qd8 19. Bxf6 Bxf6 20. fxg6 (20. Nxf6+ exf6 21. Bxc4 Rxc4) 20... fxg6 21. Qg3 Kh7 22. e5) 19. Nxe7+ Kh7 20. Raxe1";
 
+/// Plan HC11: next_variation and prev_variation walk the variations in reading order, four levels
+/// deep, and say when there is nowhere to go.
+#[test]
+fn chess_pgn_edit_walks_from_variation_to_variation() {
+    let (_base, root) = workdir("pgn-variations");
+    let mut auto = Automation::new().with_root(&root).unwrap();
+    let pgn = "1. e4 e5 (1... c5 2. Nf3 (2. c3 d5 (2... Nf6 3. e5 (3. d3 d5))) d6) (1... e6) 2. Nf3 *";
+    // From the start: a game read from PGN shows the end of its main line.
+    let mut ops = vec![json!({ "op": "next_variation", "at": "path:" })];
+    ops.extend((0..5).map(|_| json!({ "op": "next_variation" })));
+    ops.push(json!({ "op": "prev_variation" }));
+    let r = ok(&mut auto, "chess_pgn_edit", json!({ "pgn": pgn, "ops": ops }));
+    let report = r["report"].as_array().unwrap();
+    let paths: Vec<&str> = report.iter().map(|e| e["path"].as_str().unwrap()).collect();
+    assert_eq!(paths, ["path:0.1", "path:0.1.1", "path:0.1.1.1", "path:0.1.1.1.1", "path:0.2", "path:0.2", "path:0.1.1.1.1"]);
+    let moved: Vec<bool> = report.iter().map(|e| e["moved"].as_bool().unwrap()).collect();
+    assert_eq!(moved, [true, true, true, true, true, false, true]);
+}
+
 /// chess_pgn_edit steps through the game: back out of a variation and forward again returns into
 /// it, and choose picks a reply by its index (the board's ◀, ▶ and continuations).
 #[test]
