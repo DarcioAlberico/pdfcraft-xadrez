@@ -3381,3 +3381,19 @@ chess undo step	Clear drawings	piešinių valymą
 	Marble	Marmuras
 	Paper	Popierius
 	Book print	Knygos spauda
+	king	karalius
+	queen	valdovė
+	rook	bokštas
+	bishop	rikis
+	knight	žirgas
+	pawn	pėstininkas
+	checkmate	matas
+	check	šachas
+	castles short	trumpoji rokiruotė
+	castles long	ilgoji rokiruotė
+	takes	kerta
+	{move} promotes to {piece}	{move} virsta {piece}
+	Pieces in the move list	Figūros ėjimų sąraše
+	Figurines	Figūrėlės
+	Letters in your language	Raidės jūsų kalba
+	English letters	Anglų raidės

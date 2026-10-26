@@ -3125,3 +3125,19 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Marble	Mermer
 	Paper	Kâğıt
 	Book print	Kitap baskısı
+	king	şah
+	queen	vezir
+	rook	kale
+	bishop	fil
+	knight	at
+	pawn	piyon
+	checkmate	şah mat
+	check	şah
+	castles short	kısa rok
+	castles long	uzun rok
+	takes	alır
+	{move} promotes to {piece}	{move} {piece} olur
+	Pieces in the move list	Hamle listesindeki taşlar
+	Figurines	Taş simgeleri
+	Letters in your language	Kendi dilinizdeki harfler
+	English letters	İngilizce harfler

@@ -3203,3 +3203,19 @@ chess undo step	Clear drawings	smazání kreseb
 	Marble	Mramor
 	Paper	Papír
 	Book print	Knižní tisk
+	king	král
+	queen	dáma
+	rook	věž
+	bishop	střelec
+	knight	jezdec
+	pawn	pěšec
+	checkmate	mat
+	check	šach
+	castles short	malá rošáda
+	castles long	velká rošáda
+	takes	bere
+	{move} promotes to {piece}	{move} proměňuje v {piece}
+	Pieces in the move list	Figury v seznamu tahů
+	Figurines	Figurky
+	Letters in your language	Písmena ve vašem jazyce
+	English letters	Anglická písmena

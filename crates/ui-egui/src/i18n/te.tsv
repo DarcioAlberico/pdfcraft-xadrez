@@ -3004,3 +3004,19 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Marble	పాలరాయి
 	Paper	కాగితం
 	Book print	పుస్తక ముద్రణ
+	king	రాజు
+	queen	మంత్రి
+	rook	ఏనుగు
+	bishop	శకటం
+	knight	గుర్రం
+	pawn	బంటు
+	checkmate	చెక్‌మేట్
+	check	చెక్
+	castles short	చిన్న క్యాస్లింగ్
+	castles long	పెద్ద క్యాస్లింగ్
+	takes	తీసుకుంటుంది
+	{move} promotes to {piece}	{move} {piece}గా మారుతుంది
+	Pieces in the move list	ఎత్తుల జాబితాలో పావులు
+	Figurines	పావుల బొమ్మలు
+	Letters in your language	మీ భాషలో అక్షరాలు
+	English letters	ఆంగ్ల అక్షరాలు

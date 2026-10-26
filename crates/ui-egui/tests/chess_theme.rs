@@ -135,3 +135,30 @@ fn textured_themes_draw_the_board() {
         shot(&mut h, &format!("theme-{id}.png"));
     }
 }
+
+/// Plan HC8: the move list shows the pieces as figurines by default without making its rows
+/// taller, names every move in words, and keeps the choice of letters with the preferences.
+#[test]
+fn figurines_keep_the_rows_and_moves_are_named_in_words() {
+    let mut h = harness("", false);
+    h.state_mut().chess.board_mut().play_uci_line(&["e2e4".into(), "e7e5".into(), "g1f3".into(), "b8c6".into()]);
+    h.run_steps(4);
+    let pawn = h.get_by_label("e4").rect();
+    let knight = h.get_by_label("knight f3").rect();
+    assert!((knight.height() - pawn.height()).abs() < 0.5, "a figurine keeps the row: {pawn:?} {knight:?}");
+    assert!(knight.width() > pawn.width(), "the figurine takes room beside the square: {pawn:?} {knight:?}");
+    shot(&mut h, "move-list-figurines.png");
+    for mode in ["letters", "english"] {
+        h.state_mut().set_option("move-pieces", mode).unwrap();
+        h.run_steps(2);
+        assert!(h.query_by_label("knight c6").is_some(), "{mode}: named in words");
+    }
+    h.state_mut().set_option("language", "pt-BR").unwrap();
+    h.state_mut().set_option("move-pieces", "letters").unwrap();
+    h.run_steps(2);
+    assert!(h.query_by_label("cavalo f3").is_some(), "named in the interface's language");
+    shot(&mut h, "move-list-letters-pt.png");
+    let saved: serde_json::Value = serde_json::from_str(&h.state().persist()).unwrap();
+    assert_eq!(saved["chess_move_pieces"], "letters");
+    assert!(h.state_mut().set_option("move-pieces", "pictures").is_err());
+}

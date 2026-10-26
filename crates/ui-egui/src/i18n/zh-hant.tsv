@@ -3045,3 +3045,19 @@ chess undo step	Clear drawings	清除標記
 	Marble	大理石
 	Paper	紙張
 	Book print	書籍印刷
+	king	王
+	queen	后
+	rook	車
+	bishop	象
+	knight	馬
+	pawn	兵
+	checkmate	將死
+	check	將軍
+	castles short	短易位
+	castles long	長易位
+	takes	吃
+	{move} promotes to {piece}	{move} 升變為{piece}
+	Pieces in the move list	著法列表中的棋子
+	Figurines	棋子符號
+	Letters in your language	您語言中的字母
+	English letters	英文字母

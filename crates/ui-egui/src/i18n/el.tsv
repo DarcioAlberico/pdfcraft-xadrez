@@ -3101,3 +3101,19 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Marble	Μάρμαρο
 	Paper	Χαρτί
 	Book print	Τυπωμένο βιβλίο
+	king	βασιλιάς
+	queen	βασίλισσα
+	rook	πύργος
+	bishop	αξιωματικός
+	knight	ίππος
+	pawn	πιόνι
+	checkmate	ματ
+	check	σαχ
+	castles short	μικρό ροκέ
+	castles long	μεγάλο ροκέ
+	takes	παίρνει
+	{move} promotes to {piece}	{move} προάγεται σε {piece}
+	Pieces in the move list	Κομμάτια στη λίστα κινήσεων
+	Figurines	Σύμβολα κομματιών
+	Letters in your language	Γράμματα στη γλώσσα σας
+	English letters	Αγγλικά γράμματα

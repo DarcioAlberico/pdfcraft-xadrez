@@ -3134,3 +3134,19 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Marble	Marmor
 	Paper	Papir
 	Book print	Knjižni tisk
+	king	kralj
+	queen	dama
+	rook	trdnjava
+	bishop	lovec
+	knight	skakač
+	pawn	kmet
+	checkmate	mat
+	check	šah
+	castles short	kratka rokada
+	castles long	dolga rokada
+	takes	vzame
+	{move} promotes to {piece}	{move} se promovira v {piece}
+	Pieces in the move list	Figure v seznamu potez
+	Figurines	Figurice
+	Letters in your language	Črke v vašem jeziku
+	English letters	Angleške črke

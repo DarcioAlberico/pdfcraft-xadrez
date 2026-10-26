@@ -40,6 +40,7 @@ mod chess_collection;
 mod chess_correct;
 mod chess_deleted;
 mod chess_editor;
+mod chess_figurines;
 mod chess_history;
 mod chess_models;
 mod chess_ocr_area;
@@ -2376,6 +2377,7 @@ impl PdfCraftApp {
         // The boards' theme (HC4).
         v["chess_board_theme"] = serde_json::Value::String(self.board_theme().id.to_owned());
         v["chess_board_look"] = self.chess.board_look.to_json();
+        v["chess_move_pieces"] = serde_json::Value::String(self.chess.move_pieces.token().to_owned());
         v.to_string()
     }
 
@@ -2425,6 +2427,9 @@ impl PdfCraftApp {
         }
         if let Some(theme) = v["chess_board_theme"].as_str().and_then(pdfcraft_engine::chess::pdfcraft_chess::theme::by_id) {
             self.set_board_theme(theme);
+        }
+        if let Some(mode) = v["chess_move_pieces"].as_str().and_then(chess_figurines::MovePieces::from_token) {
+            self.chess.move_pieces = mode;
         }
         if v["chess_board_look"].is_object() {
             self.set_board_look(chess_theme::BoardLook::from_json(&v["chess_board_look"]));
@@ -2592,6 +2597,9 @@ impl PdfCraftApp {
                     format!("board-theme must be one of {}", ids.join(", "))
                 })?;
                 self.set_board_theme(theme);
+            }
+            ("move-pieces", _) => {
+                self.chess.move_pieces = chess_figurines::MovePieces::from_token(value).ok_or("move-pieces must be figurines, letters or english")?;
             }
             (part @ ("board-coordinates" | "board-frame" | "board-squares" | "board-turn-dot"), _) => {
                 let mut look = self.chess.board_look;
@@ -3113,6 +3121,10 @@ impl eframe::App for PdfCraftApp {
         self.ctx = Some(ctx.clone());
         chess_theme::set(ctx, self.board_theme());
         chess_theme::set_look(ctx, self.chess.board_look);
+        // The figurines are the board's pieces: loaded only when the list shows them.
+        let figurines = (self.chess.move_pieces == chess_figurines::MovePieces::Figurines)
+            .then(|| self.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Board));
+        chess_figurines::set(ctx, self.chess.move_pieces, figurines);
         #[cfg(not(target_arch = "wasm32"))]
         {
             self.window_state.repair(ctx);

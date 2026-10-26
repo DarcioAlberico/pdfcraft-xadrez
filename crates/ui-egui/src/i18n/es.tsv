@@ -3270,3 +3270,19 @@ chess undo step	Clear drawings	borrado de los dibujos
 	Marble	Mármol
 	Paper	Papel
 	Book print	Impresión de libro
+	king	rey
+	queen	dama
+	rook	torre
+	bishop	alfil
+	knight	caballo
+	pawn	peón
+	checkmate	jaque mate
+	check	jaque
+	castles short	enroque corto
+	castles long	enroque largo
+	takes	captura
+	{move} promotes to {piece}	{move} corona {piece}
+	Pieces in the move list	Piezas en la lista de jugadas
+	Figurines	Figurines
+	Letters in your language	Letras en su idioma
+	English letters	Letras en inglés

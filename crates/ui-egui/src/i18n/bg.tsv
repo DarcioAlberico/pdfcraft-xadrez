@@ -3092,3 +3092,19 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Marble	Мрамор
 	Paper	Хартия
 	Book print	Книжен печат
+	king	цар
+	queen	дама
+	rook	топ
+	bishop	офицер
+	knight	кон
+	pawn	пешка
+	checkmate	мат
+	check	шах
+	castles short	малка рокада
+	castles long	голяма рокада
+	takes	взема
+	{move} promotes to {piece}	{move} се произвежда в {piece}
+	Pieces in the move list	Фигурите в списъка с ходове
+	Figurines	Фигурки
+	Letters in your language	Букви на вашия език
+	English letters	Английски букви
