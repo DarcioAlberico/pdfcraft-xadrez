@@ -3128,3 +3128,19 @@ chess undo step	Clear drawings	rajzok törlése
 	Marble	Márvány
 	Paper	Papír
 	Book print	Könyvnyomat
+	king	király
+	queen	vezér
+	rook	bástya
+	bishop	futó
+	knight	huszár
+	pawn	gyalog
+	checkmate	matt
+	check	sakk
+	castles short	rövid sánc
+	castles long	hosszú sánc
+	takes	üt
+	{move} promotes to {piece}	{move} átváltozik: {piece}
+	Pieces in the move list	Bábuk a lépéslistában
+	Figurines	Figurák
+	Letters in your language	Betűk az Ön nyelvén
+	English letters	Angol betűk

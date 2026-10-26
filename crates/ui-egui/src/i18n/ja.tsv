@@ -3131,3 +3131,19 @@ chess undo step	Clear drawings	描画の消去
 	Marble	大理石
 	Paper	紙
 	Book print	書籍印刷
+	king	キング
+	queen	クイーン
+	rook	ルーク
+	bishop	ビショップ
+	knight	ナイト
+	pawn	ポーン
+	checkmate	チェックメイト
+	check	チェック
+	castles short	キングサイドキャスリング
+	castles long	クイーンサイドキャスリング
+	takes	取る
+	{move} promotes to {piece}	{move} {piece}に昇格
+	Pieces in the move list	棋譜リストの駒
+	Figurines	駒の記号
+	Letters in your language	あなたの言語の文字
+	English letters	英語の文字

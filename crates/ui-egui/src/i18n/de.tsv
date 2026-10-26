@@ -3130,3 +3130,19 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	Marble	Marmor
 	Paper	Papier
 	Book print	Buchdruck
+	king	König
+	queen	Dame
+	rook	Turm
+	bishop	Läufer
+	knight	Springer
+	pawn	Bauer
+	checkmate	Matt
+	check	Schach
+	castles short	kurze Rochade
+	castles long	lange Rochade
+	takes	schlägt
+	{move} promotes to {piece}	{move} wandelt in {piece} um
+	Pieces in the move list	Figuren in der Zugliste
+	Figurines	Figurinen
+	Letters in your language	Buchstaben Ihrer Sprache
+	English letters	Englische Buchstaben

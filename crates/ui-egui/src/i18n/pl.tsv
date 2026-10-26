@@ -3071,3 +3071,19 @@ chess undo step	Clear drawings	usunięcie rysunków
 	Marble	Marmur
 	Paper	Papier
 	Book print	Druk książkowy
+	king	król
+	queen	hetman
+	rook	wieża
+	bishop	goniec
+	knight	skoczek
+	pawn	pion
+	checkmate	mat
+	check	szach
+	castles short	krótka roszada
+	castles long	długa roszada
+	takes	bije
+	{move} promotes to {piece}	{move} promuje na {piece}
+	Pieces in the move list	Bierki na liście ruchów
+	Figurines	Figurki
+	Letters in your language	Litery w Twoim języku
+	English letters	Litery angielskie

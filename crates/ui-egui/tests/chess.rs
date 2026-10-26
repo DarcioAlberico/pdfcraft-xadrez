@@ -1948,7 +1948,7 @@ fn a_moves_menu_deletes_its_variation() {
     h.run_steps(2);
     assert_eq!(movetext(&h), "1. e4 e5 2. Nf3");
     // On the main line there is no variation to delete; after the last move nothing to cut.
-    h.get_by_label("Nf3").click_secondary();
+    h.get_by_label("knight f3").click_secondary();
     h.run_steps(2);
     assert!(h.get_by_label("Delete variation").accesskit_node().is_disabled());
     assert!(h.get_by_label("Cut after this move").accesskit_node().is_disabled());

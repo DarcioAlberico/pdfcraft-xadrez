@@ -3341,3 +3341,19 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	Marble	Marmo
 	Paper	Carta
 	Book print	Stampa da libro
+	king	re
+	queen	donna
+	rook	torre
+	bishop	alfiere
+	knight	cavallo
+	pawn	pedone
+	checkmate	scacco matto
+	check	scacco
+	castles short	arrocco corto
+	castles long	arrocco lungo
+	takes	prende
+	{move} promotes to {piece}	{move} promuove a {piece}
+	Pieces in the move list	Pezzi nella lista delle mosse
+	Figurines	Figurine
+	Letters in your language	Lettere nella tua lingua
+	English letters	Lettere inglesi

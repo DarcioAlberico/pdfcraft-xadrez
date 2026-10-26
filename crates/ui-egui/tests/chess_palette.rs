@@ -267,20 +267,20 @@ fn move_menu(h: &mut Harness<'static, PdfCraftApp>, label: &str, item: &str) {
 fn a_moves_menu_puts_glyphs_on_it_and_takes_them_off() {
     let mut h = harness();
     put_game(&mut h, NESTED, &[0]);
-    move_menu(&mut h, "Nc6", "Blunder");
+    move_menu(&mut h, "knight c6", "Blunder");
     assert_eq!(glyphs_at(&h, &[0, 1, 0, 1]), [4]);
     assert_eq!(undo_label(&h).as_deref(), Some("Glyph ??"));
     assert_eq!(shown(&h), "e4", "the move shown stays");
-    move_menu(&mut h, "Nc6??", "Black is clearly better");
+    move_menu(&mut h, "knight c6??", "Black is clearly better");
     assert_eq!(glyphs_at(&h, &[0, 1, 0, 1]), [4, 17]);
     // Ticked in the menu; a second click takes it off.
-    h.get_by_label_contains("Nc6?? ").click_secondary();
+    h.get_by_label_contains("knight c6?? ").click_secondary();
     h.run_steps(2);
     assert_eq!(h.get_by_label("Blunder").accesskit_node().toggled(), Some(Toggled::True));
     assert_eq!(h.get_by_label("Dubious move").accesskit_node().toggled(), Some(Toggled::False));
     h.key_press(Key::Escape);
     h.run_steps(2);
-    h.get_by_label_contains("Nc6?? ").click_secondary();
+    h.get_by_label_contains("knight c6?? ").click_secondary();
     h.run_steps(2);
     h.get_by_label("Remove all glyphs").click();
     h.run_steps(2);
@@ -301,7 +301,7 @@ fn a_moves_menu_puts_glyphs_on_it_and_takes_them_off() {
 fn a_moves_menu_lists_the_variations_a_tool_could_act_on() {
     let mut h = harness();
     put_game(&mut h, NESTED, &[0]);
-    h.get_by_label("Nc6").click_secondary();
+    h.get_by_label("knight c6").click_secondary();
     h.run_steps(2);
     let near = h.get_by_label("Promote one level: 2…Nc6");
     let far = h.get_by_label("Promote one level: 1…c5");
@@ -310,11 +310,11 @@ fn a_moves_menu_lists_the_variations_a_tool_could_act_on() {
     assert!(h.query_by_label_contains("Demote:").is_none(), "one variation to demote: no list");
     h.key_press(Key::Escape);
     h.run_steps(2);
-    move_menu(&mut h, "Nc6", "Promote one level: 1…c5");
+    move_menu(&mut h, "knight c6", "Promote one level: 1…c5");
     assert_eq!(movetext(&h), "1. e4 c5 (1... e5) 2. Nf3 d6 (2... Nc6) 3. d4");
     assert_eq!(undo_label(&h).as_deref(), Some("Promote a variation"));
     undo(&mut h);
-    move_menu(&mut h, "Nc6", "Promote one level");
+    move_menu(&mut h, "knight c6", "Promote one level");
     assert_eq!(movetext(&h), "1. e4 e5 (1... c5 2. Nf3 Nc6 (2... d6 3. d4))", "the entry: the nearest");
 }
 

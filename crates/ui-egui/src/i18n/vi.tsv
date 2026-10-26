@@ -3383,3 +3383,19 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Marble	Đá cẩm thạch
 	Paper	Giấy
 	Book print	Bản in sách
+	king	vua
+	queen	hậu
+	rook	xe
+	bishop	tượng
+	knight	mã
+	pawn	tốt
+	checkmate	chiếu hết
+	check	chiếu
+	castles short	nhập thành ngắn
+	castles long	nhập thành dài
+	takes	ăn
+	{move} promotes to {piece}	{move} phong thành {piece}
+	Pieces in the move list	Quân cờ trong danh sách nước đi
+	Figurines	Ký hiệu quân
+	Letters in your language	Chữ cái trong ngôn ngữ của bạn
+	English letters	Chữ cái tiếng Anh

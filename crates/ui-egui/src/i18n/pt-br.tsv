@@ -3146,3 +3146,19 @@ chess undo step	Clear drawings	remoção dos desenhos
 	Marble	Mármore
 	Paper	Papel
 	Book print	Impressão de livro
+	king	rei
+	queen	dama
+	rook	torre
+	bishop	bispo
+	knight	cavalo
+	pawn	peão
+	checkmate	xeque-mate
+	check	xeque
+	castles short	roque pequeno
+	castles long	roque grande
+	takes	captura
+	{move} promotes to {piece}	{move} promove a {piece}
+	Pieces in the move list	Peças na lista de lances
+	Figurines	Figurinhas
+	Letters in your language	Letras no seu idioma
+	English letters	Letras em inglês

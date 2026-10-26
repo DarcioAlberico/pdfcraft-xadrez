@@ -3127,3 +3127,19 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Marble	Мәрмәр
 	Paper	Қағаз
 	Book print	Кітап басылымы
+	king	патша
+	queen	уәзір
+	rook	тура
+	bishop	піл
+	knight	ат
+	pawn	пешка
+	checkmate	мат
+	check	шах
+	castles short	қысқа рокировка
+	castles long	ұзын рокировка
+	takes	алады
+	{move} promotes to {piece}	{move} {piece} болып айналады
+	Pieces in the move list	Жүрістер тізіміндегі фигуралар
+	Figurines	Фигура белгілері
+	Letters in your language	Сіздің тіліңіздегі әріптер
+	English letters	Ағылшын әріптері

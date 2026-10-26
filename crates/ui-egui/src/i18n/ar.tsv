@@ -3405,3 +3405,19 @@ chess undo step	Clear drawings	مسح الرسوم
 	Marble	رخام
 	Paper	ورق
 	Book print	طباعة الكتب
+	king	ملك
+	queen	وزير
+	rook	رخ
+	bishop	فيل
+	knight	حصان
+	pawn	بيدق
+	checkmate	كش مات
+	check	كش
+	castles short	تبييت قصير
+	castles long	تبييت طويل
+	takes	يأخذ
+	{move} promotes to {piece}	{move} يترقى إلى {piece}
+	Pieces in the move list	القطع في قائمة النقلات
+	Figurines	رموز القطع
+	Letters in your language	حروف بلغتك
+	English letters	حروف إنجليزية
