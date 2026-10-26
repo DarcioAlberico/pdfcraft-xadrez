@@ -47,6 +47,23 @@ fn ocr_options(a: &Args) -> Result<OcrOptions<'static>> {
 
 use crate::{Args, Automation, Result, ToolError, comments, failed};
 
+/// What the move list shows above and after the moves (plan HC10): each tag null when it says
+/// nothing (PGN's `?`, a date as far as it is known), and the result, `*` while the game goes on.
+fn header_json(game: &pdfcraft_engine::chess::pdfcraft_chess::game::Game) -> Value {
+    let h = game.header();
+    json!({
+        "white": h.white,
+        "white_elo": h.white_elo,
+        "black": h.black,
+        "black_elo": h.black_elo,
+        "event": h.event,
+        "site": h.site,
+        "date": h.date,
+        "round": h.round,
+        "result": game.result(),
+    })
+}
+
 /// What `pieces` takes, for the error that refuses anything else.
 fn pieces_expected() -> String {
     let ids: Vec<&str> = pieces::bundled::SETS.iter().map(|s| s.id).collect();
@@ -736,6 +753,7 @@ impl Automation {
             "movetext": game.movetext(),
             "pgn": game.pgn(),
             "stopped": stopped,
+            "header": header_json(&game),
         }))
     }
 

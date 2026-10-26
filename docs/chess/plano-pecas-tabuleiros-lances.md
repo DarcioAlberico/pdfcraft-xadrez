@@ -1,6 +1,6 @@
 # Plano — Peças, tabuleiros e lista de lances (a partir de cursos em HTML) · v3
 
-**Status:** v3 · 2026-10-25 · **HC0, HC1 e HC2 feitos** (§5.2) · decisões D13–D16 **aceitas** pelo usuário em 2026-10-25 (§4).
+**Status:** v3 · 2026-10-25 · **HC0, HC1, HC2 e HC10 feitos** (§5.2); HC3 (#180), HC4 (#182), HC5 (#184) e HC6 (#183) entraram por outra sessão, ainda sem nota aqui · decisões D13–D16 **aceitas** pelo usuário em 2026-10-25 (§4).
 **Escopo (decisão do usuário, 2026-10-25):** melhorar o tabuleiro com **mais designs de tabuleiro e mais conjuntos de peças**, e **melhorar a lista de lances**. Fora: modo treino, perguntas `[%tqu]`, progresso, importação de cursos e puzzles como partidas, exportação de cursos (§2.5).
 **Origem:** três páginas HTML de cursos de xadrez salvas pelo usuário (pasta local `pasta-html-teste/`, **fora do repositório**: são conteúdo de terceiros, nunca entram em commit, fixture, teste ou documento). Análise de 2026-10-25, só dos **dados** que as páginas carregam e do que elas mostram na tela (servidas em `127.0.0.1` e olhadas no navegador). O código JavaScript delas não foi lido para copiar e não será.
 **Repositório:** `DarcioAlberico/pdfcraft-xadrez` (Rust, egui), `main` `959ddf1f`.
@@ -232,7 +232,7 @@ Cada passo: **Contexto** · **Tarefas** · **Verificação** · **Saída** · **
 - *Verificação:* jogo sintético de 10 000 nós com variantes: quadro ≤ 4 ms nos dois modos (só o visível); testes de UI das quebras.
 - *Reversão:* revert.
 
-**HC10 — Cabeçalho e resultado** (`chess_board_ui.rs` topo e fim da lista).
+**HC10 — Cabeçalho e resultado** (`chess_board_ui.rs` topo e fim da lista). ✅ 2026-10-25 (#181 e o PR seguinte): cabeçalho pintado acima dos lances, um só controle para leitor de tela ("Dados da partida: …"), jogadores com Elo e depois torneio, local, data (até onde se sabe) e rodada, cada um só quando a etiqueta diz algo; clique abre "Dados da partida"; resultado (`1-0`, `0-1`, `½-½`, `*`) depois do último lance da linha principal, na mesma linha. A leitura das etiquetas é uma só, `Game::header()` no crate `chess`, usada pela tela e pela ferramenta `chess_game`, que devolve `header` (com `result`).
 - *Tarefas:* cabeçalho com os campos preenchidos (sem `?`), clique abre os detalhes; resultado no fim da linha principal.
 - *Verificação:* partida sintética com e sem campos; o cabeçalho cabe a 1366 × 768 em uma ou duas linhas; nome acessível.
 - *Reversão:* revert.
