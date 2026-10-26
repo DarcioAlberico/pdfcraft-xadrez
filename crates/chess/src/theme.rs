@@ -4,6 +4,7 @@
 //! stays the default.
 
 use crate::draw::Rgb;
+use crate::texture::Texture;
 
 /// A colour laid over a square, premultiplied by its alpha: `[r, g, b, a]` with each of r, g and
 /// b already scaled by `a`, as the boards' pictures and egui take it.
@@ -42,6 +43,8 @@ pub struct BoardTheme {
     /// The drawings' arrows: their shaft's width in hundredths of a square, and their opacity.
     pub arrow_weight: u8,
     pub arrow_alpha: u8,
+    /// Squares drawn with a texture over their colours (plan HC5), or flat.
+    pub texture: Option<Texture>,
 }
 
 const LAST: Tint = Tint([155, 199, 0, 105]);
@@ -53,14 +56,30 @@ const AMBER: Tint = Tint([170, 120, 0, 120]);
 const BLUE_PICK: Tint = Tint([10, 50, 120, 120]);
 
 const fn theme(id: &'static str, name: &'static str, light: Rgb, dark: Rgb) -> BoardTheme {
-    BoardTheme { id, name, light, dark, last_move: LAST, selected: PICKED, target: TARGET, check: RED, arrow_weight: 17, arrow_alpha: 200 }
+    BoardTheme {
+        id,
+        name,
+        light,
+        dark,
+        last_move: LAST,
+        selected: PICKED,
+        target: TARGET,
+        check: RED,
+        arrow_weight: 17,
+        arrow_alpha: 200,
+        texture: None,
+    }
 }
 
 /// The boards' colours before themes: the default.
 pub const BROWN: BoardTheme = theme("brown", "Brown", Rgb(240, 217, 181), Rgb(181, 136, 99));
 
-/// Every theme, in the order to offer them; [`BROWN`] first.
-pub const THEMES: [BoardTheme; 14] = [
+const fn textured(id: &'static str, name: &'static str, light: Rgb, dark: Rgb, texture: Texture) -> BoardTheme {
+    BoardTheme { texture: Some(texture), ..theme(id, name, light, dark) }
+}
+
+/// Every theme, in the order to offer them; [`BROWN`] first, the textured ones last.
+pub const THEMES: [BoardTheme; 18] = [
     BROWN,
     theme("light-wood", "Light wood", Rgb(246, 228, 199), Rgb(207, 168, 122)),
     theme("walnut", "Walnut", Rgb(224, 188, 140), Rgb(139, 94, 60)),
@@ -83,6 +102,12 @@ pub const THEMES: [BoardTheme; 14] = [
         arrow_alpha: 240,
         ..theme("high-contrast", "High contrast", Rgb(255, 255, 255), Rgb(120, 120, 120))
     },
+    // A deeper red: the brown's would sit close to the dark wood.
+    BoardTheme { check: Rgb(190, 0, 0), ..textured("wood", "Wood", Rgb(229, 196, 146), Rgb(164, 110, 66), Texture::Wood) },
+    textured("marble", "Marble", Rgb(236, 234, 229), Rgb(126, 134, 131), Texture::Marble),
+    textured("paper", "Paper", Rgb(247, 242, 230), Rgb(198, 188, 168), Texture::Paper),
+    // A book's diagram: white squares, the dark ones hatched in black lines.
+    textured("book", "Book print", Rgb(255, 255, 255), Rgb(40, 40, 40), Texture::Hatched),
 ];
 
 /// The theme `id` names, whatever its case.
@@ -114,11 +139,21 @@ impl BoardTheme {
         if light { self.light } else { self.dark }
     }
 
+    /// The colour a square reads as from afar: its own, or for hatched dark squares, the light
+    /// colour with a quarter of the lines' (what marks and coordinates must stand out from).
+    pub fn ground(&self, light: bool) -> Rgb {
+        if light || self.texture != Some(Texture::Hatched) {
+            return self.square(light);
+        }
+        let mix = |a: u8, b: u8| u8::try_from((u16::from(a) * 3 + u16::from(b)) / 4).unwrap_or(u8::MAX);
+        Rgb(mix(self.light.0, self.dark.0), mix(self.light.1, self.dark.1), mix(self.light.2, self.dark.2))
+    }
+
     /// The coordinates' colour on a `light` square or a dark one: the other square's colour,
     /// darkened or lightened (towards whichever reads better) until it reads at
     /// [`COORDINATE_CONTRAST`].
     pub fn coordinate_ink(&self, light: bool) -> Rgb {
-        let ground = self.square(light);
+        let ground = self.ground(light);
         let start = self.square(!light);
         let (black, white) = (Rgb(0, 0, 0), Rgb(255, 255, 255));
         let toward = if contrast(black, ground) >= contrast(white, ground) { black } else { white };
@@ -162,7 +197,7 @@ mod tests {
     fn every_theme_keeps_its_marks_visible() {
         for t in &THEMES {
             for light in [true, false] {
-                let square = t.square(light);
+                let square = t.ground(light);
                 let ink = t.coordinate_ink(light);
                 assert!(contrast(ink, square) >= COORDINATE_CONTRAST, "{} coordinates on {light}: {:.2}", t.id, contrast(ink, square));
                 for (what, tint) in [("last move", t.last_move), ("selected", t.selected), ("target", t.target)] {
@@ -171,7 +206,7 @@ mod tests {
                 }
                 assert!(distance(t.check, square) >= 80.0, "{} check on {light}", t.id);
             }
-            assert!(contrast(t.light, t.dark) >= 1.4, "{}: squares apart {:.2}", t.id, contrast(t.light, t.dark));
+            assert!(contrast(t.ground(true), t.ground(false)) >= 1.4, "{}: squares apart {:.2}", t.id, contrast(t.ground(true), t.ground(false)));
             assert!((10..=30).contains(&t.arrow_weight) && t.arrow_alpha >= 160, "{}: arrows", t.id);
         }
     }

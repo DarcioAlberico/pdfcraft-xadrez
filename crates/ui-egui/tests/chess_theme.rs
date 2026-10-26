@@ -121,3 +121,17 @@ fn coordinates_beside_the_board_and_a_frame_keep_clicks_on_their_squares() {
     let mut h = harness("", false);
     assert!(h.state_mut().set_option("board-frame", "triple").unwrap_err().contains("none, thin or double"));
 }
+
+/// Plan HC5: every textured theme draws the board (the book's dark squares hatched as paths).
+#[test]
+fn textured_themes_draw_the_board() {
+    let mut h = harness("", false);
+    h.state_mut().chess.board_mut().play_uci_line(&["e2e4".into(), "e7e5".into()]);
+    for id in ["wood", "marble", "paper", "book"] {
+        h.state_mut().set_option("board-theme", id).unwrap();
+        h.run_steps(3);
+        assert!(h.query_by_label_contains("Board: ").is_some(), "{id}: the board is drawn");
+        assert!(h.query_by_label_contains("The board couldn't be drawn").is_none(), "{id}");
+        shot(&mut h, &format!("theme-{id}.png"));
+    }
+}

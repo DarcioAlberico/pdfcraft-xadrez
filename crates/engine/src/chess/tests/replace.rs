@@ -343,14 +343,14 @@ proptest! {
     #[test]
     fn arbitrary_placements_and_styles_never_panic(
         cells in proptest::collection::vec(0usize..13, 64),
-        square in any::<f32>(), border in any::<f32>(), coordinates in any::<bool>(), flipped in any::<bool>(),
+        square in any::<f32>(), border in any::<f32>(), coordinates in any::<bool>(), flipped in any::<bool>(), hatched in any::<bool>(),
         colours in proptest::collection::vec(any::<u8>(), 9),
         bbox in proptest::array::uniform4(-1e6f32..1e6), turn in 0i64..4, size in any::<f32>(),
     ) {
         let pieces: [Option<pdfcraft_chess::placement::Piece>; 64] = std::array::from_fn(|i| pdfcraft_chess::recognize::piece_of(cells[i] as u8));
         let placement = Placement::from_reading_order(&pieces);
         let rgb = |i: usize| Rgb(colours[i], colours[i + 1], colours[i + 2]);
-        let style = BoardStyle { square, light: rgb(0), dark: rgb(3), border, border_color: rgb(6), coordinates, flipped };
+        let style = BoardStyle { square, light: rgb(0), dark: rgb(3), border, border_color: rgb(6), coordinates, flipped, hatched };
         let drawing: Drawing = board(&placement, &PieceSet::geometric(), &style);
         let ops = drawing_ops(&drawing, [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]);
         prop_assert!(pdfcraft_edit::check_operators(&ops).is_ok(), "{}", String::from_utf8_lossy(&ops));

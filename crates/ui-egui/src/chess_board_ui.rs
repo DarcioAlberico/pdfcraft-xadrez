@@ -34,6 +34,7 @@ use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::pdfcraft_chess::draw::{BoardStyle, PieceSet, Rgb};
 use pdfcraft_engine::chess::pdfcraft_chess::game::{DrawColor, Drawing, Game, GameError, MAX_MOVE_NUMBER, NodeId, Outcome, Token};
 use pdfcraft_engine::chess::pdfcraft_chess::placement::{Color, Piece, PieceKind, Placement, Square};
+use pdfcraft_engine::chess::pdfcraft_chess::texture::Texture;
 
 use crate::chess_history::{ChessEdit, GameHistory, Snapshot};
 use crate::theme::{self, Tokens};
@@ -192,6 +193,9 @@ pub struct BoardState {
     draw_error: Option<String>,
     /// The pieces cut out of their squares, for the one following the pointer in a drag.
     sprites: Option<(u64, TextureHandle)>,
+    /// A textured theme's squares (plan HC5): its id and size, and the pixels, made once for
+    /// every position drawn at that size.
+    background: Option<Background>,
     /// The comment or game-detail field being typed in. The game keeps comments and tags cleaned
     /// (spaces collapsed, ends trimmed), so a field re-read from it every frame would eat a space
     /// typed at the end.
@@ -247,6 +251,7 @@ impl Default for BoardState {
             texture: None,
             draw_error: None,
             sprites: None,
+            background: None,
             draft: None,
             marks: HashMap::new(),
             marked_order: Vec::new(),
@@ -700,7 +705,12 @@ impl BoardState {
             return Some(tex.clone());
         }
         let style = crate::chess_theme::style(ctx, BoardStyle { border: 0.0, coordinates: false, flipped: self.flipped, ..BoardStyle::default() });
-        match pdfcraft_engine::chess::office::diagram_rgba(&placement, pieces, &style, px) {
+        let palette = crate::chess_theme::current(ctx);
+        let drawn = match palette.texture.filter(|t| *t != Texture::Hatched) {
+            Some(kind) => textured_rgba(&placement, pieces, &style, px, kind, palette, &mut self.background),
+            None => pdfcraft_engine::chess::office::diagram_rgba(&placement, pieces, &style, px),
+        };
+        match drawn {
             Ok((w, h, rgba)) => {
                 let (w, h) = (usize::try_from(w).ok()?, usize::try_from(h).ok()?);
                 if rgba.len() != w.checked_mul(h)?.checked_mul(4)? {
@@ -718,6 +728,65 @@ impl BoardState {
             }
         }
     }
+}
+
+/// A textured theme's squares: the theme's id and the picture's size, and its pixels.
+type Background = ((&'static str, u32, u32), Vec<u8>);
+
+/// How many textured squares were made (plan HC5): a test checks a board drawn again at the same
+/// size, or smaller, makes none.
+static BACKGROUNDS_MADE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
+/// The pieces of `placement` over `kind`'s squares in `palette`'s colours, `px` wide: the pieces
+/// drawn on white and on black give their coverage, laid over the texture. `background` keeps the
+/// squares for the next position at that size.
+fn textured_rgba(
+    placement: &Placement,
+    pieces: &PieceSet,
+    style: &BoardStyle,
+    px: u32,
+    kind: Texture,
+    palette: &pdfcraft_engine::chess::pdfcraft_chess::theme::BoardTheme,
+    background: &mut Option<Background>,
+) -> Result<(u32, u32, Vec<u8>), String> {
+    let plain = |c: Rgb| BoardStyle { light: c, dark: c, hatched: false, ..*style };
+    let (w, h, on_white) = pdfcraft_engine::chess::office::diagram_rgba(placement, pieces, &plain(Rgb(255, 255, 255)), px)?;
+    let (_, _, on_black) = pdfcraft_engine::chess::office::diagram_rgba(placement, pieces, &plain(Rgb(0, 0, 0)), px)?;
+    let key = (palette.id, w, h);
+    if background.as_ref().is_none_or(|(k, _)| *k != key) {
+        let squares = pdfcraft_engine::chess::pdfcraft_chess::texture::board_rgba(kind, palette.light, palette.dark, w, h);
+        BACKGROUNDS_MADE.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        *background = Some((key, squares));
+    }
+    let squares = background.as_ref().map(|(_, s)| s.as_slice()).unwrap_or_default();
+    if on_white.len() != on_black.len() || squares.len() != on_white.len() {
+        return Err("the board's layers have different sizes".into());
+    }
+    let pieces = coverage(&on_white, &on_black);
+    let mut out = Vec::with_capacity(squares.len());
+    for (p, b) in pieces.as_chunks::<4>().0.iter().zip(squares.as_chunks::<4>().0) {
+        let keep = 255 - u16::from(p[3]);
+        for i in 0..3 {
+            // Premultiplied over opaque: the piece's colour plus what shows through.
+            out.push(u8::try_from((u16::from(p[i]) * 255 + u16::from(b[i]) * keep + 127) / 255).unwrap_or(u8::MAX));
+        }
+        out.push(255);
+    }
+    Ok((w, h, out))
+}
+
+/// The pieces of a picture drawn twice, on white and on black, as premultiplied RGBA: where the
+/// two differ the picture let the ground through.
+fn coverage(on_white: &[u8], on_black: &[u8]) -> Vec<u8> {
+    let mut rgba = Vec::with_capacity(on_white.len());
+    for (wp, bp) in on_white.as_chunks::<4>().0.iter().zip(on_black.as_chunks::<4>().0) {
+        let diff: u16 = wp.iter().zip(bp).take(3).map(|(a, b)| u16::from(a.saturating_sub(*b))).sum::<u16>() / 3;
+        let alpha = 255u8.saturating_sub(u8::try_from(diff).unwrap_or(255));
+        // Premultiplied: the colour on black is colour × alpha, never above alpha.
+        rgba.extend(bp.iter().take(3).map(|c| (*c).min(alpha)));
+        rgba.push(alpha);
+    }
+    rgba
 }
 
 /// The pieces in the order of the sprite image's columns.
@@ -792,14 +861,7 @@ pub(crate) fn cut_sprites(ctx: &egui::Context, pieces: &PieceSet, name: &str) ->
     {
         return None;
     }
-    let mut rgba = Vec::with_capacity(on_white.len());
-    for (wp, bp) in on_white.as_chunks::<4>().0.iter().zip(on_black.as_chunks::<4>().0) {
-        let diff: u16 = wp.iter().zip(bp).take(3).map(|(a, b)| u16::from(a.saturating_sub(*b))).sum::<u16>() / 3;
-        let alpha = 255u8.saturating_sub(u8::try_from(diff).unwrap_or(255));
-        // Premultiplied: the colour on black is colour × alpha, never above alpha.
-        rgba.extend(bp.iter().take(3).map(|c| (*c).min(alpha)));
-        rgba.push(alpha);
-    }
+    let rgba = coverage(&on_white, &on_black);
     Some(ctx.load_texture(name, egui::ColorImage::from_rgba_premultiplied([w, h], &rgba), egui::TextureOptions::LINEAR))
 }
 
@@ -1904,6 +1966,34 @@ fn notation_height(viewport: f32, above: f32, below: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Plan HC5: a textured theme draws its squares once per size: another position, or the
+    /// same board wanted smaller, makes none; the picture keeps the texture under the pieces.
+    #[test]
+    fn a_textured_board_makes_its_squares_once_per_size() {
+        let ctx = egui::Context::default();
+        let pieces = PieceSet::geometric();
+        crate::chess_theme::set(&ctx, pdfcraft_engine::chess::pdfcraft_chess::theme::by_id("wood").unwrap());
+        let mut state = BoardState::default();
+        let made = || BACKGROUNDS_MADE.load(std::sync::atomic::Ordering::Relaxed);
+        let before = made();
+        assert!(state.texture(&ctx, &pieces, 256).is_some());
+        assert_eq!(made(), before + 1);
+        state.game.play_uci("e2e4").unwrap();
+        assert!(state.texture(&ctx, &pieces, 256).is_some(), "another position");
+        assert!(state.texture(&ctx, &pieces, 200).is_some(), "smaller: the larger serves");
+        assert_eq!(made(), before + 1, "the squares were made once");
+        let ((id, w, _), squares) = state.background.clone().unwrap();
+        assert_eq!(id, "wood");
+        // An empty square of the picture is the texture there (a6, the second square of the
+        // third row: no piece on it).
+        let style = BoardStyle { border: 0.0, coordinates: false, ..BoardStyle::default() };
+        let palette = crate::chess_theme::current(&ctx);
+        let (_, _, picture) = textured_rgba(&state.placement(), &pieces, &style, 256, Texture::Wood, palette, &mut state.background).unwrap();
+        let w = w as usize;
+        let at = ((w / 16) * 5 * w + (w / 16) * 3) * 4;
+        assert_eq!(picture.get(at..at + 3), squares.get(at..at + 3));
+    }
 
     /// Plan HC4: the board's picture is drawn again in the theme shown, its squares the theme's.
     #[test]
