@@ -277,6 +277,20 @@ pub(crate) fn preferences_section(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &
         crate::widgets::radio_value(ui, &mut app.chess.move_pieces, MovePieces::English, tl!("English letters"));
     });
     ui.add(crate::widgets::checkbox(&mut app.chess.comment_focus, tl!("The comment on the move shown, large under the board")));
+    // The move list's layout and text size (plan HC9).
+    use crate::chess_figurines::{ListLayout, ListSize};
+    let look = &mut app.chess.list_look;
+    ui.horizontal_wrapped(|ui| {
+        ui.label(tl!("Move list"));
+        crate::widgets::radio_value(ui, &mut look.layout, ListLayout::Flow, tl!("Running text"));
+        crate::widgets::radio_value(ui, &mut look.layout, ListLayout::Columns, tl!("Columns"));
+    });
+    ui.horizontal_wrapped(|ui| {
+        ui.label(tl!("Text size"));
+        crate::widgets::radio_value(ui, &mut look.size, ListSize::Small, tl!("Small"));
+        crate::widgets::radio_value(ui, &mut look.size, ListSize::Normal, tl!("Normal"));
+        crate::widgets::radio_value(ui, &mut look.size, ListSize::Large, tl!("Large"));
+    });
 }
 
 /// The look's choices, as radio buttons in a grid.

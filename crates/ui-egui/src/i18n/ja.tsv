@@ -3153,3 +3153,9 @@ chess undo step	Clear drawings	描画の消去
 	1 ring	円1つ
 	{n} rings	円{n}つ
 	The comment on the move shown, large under the board	表示中の手のコメントを盤の下に大きく表示
+	Running text	続け書き
+	Columns	列
+	Text size	文字サイズ
+	Small	小
+	Normal	標準
+	Large	大

@@ -3150,3 +3150,9 @@ chess undo step	Clear drawings	rajzok törlése
 	1 ring	1 gyűrű
 	{n} rings	{n} gyűrű
 	The comment on the move shown, large under the board	A mutatott lépés megjegyzése nagyban a tábla alatt
+	Running text	Folyó szöveg
+	Columns	Oszlopok
+	Text size	Szövegméret
+	Small	Kicsi
+	Normal	Normál
+	Large	Nagy

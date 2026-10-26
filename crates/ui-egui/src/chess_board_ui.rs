@@ -1144,7 +1144,7 @@ struct Row<'a> {
 /// The notation's rows: each variation starts a row of its own, one level in, and the line it
 /// branched from goes on in a new row after it. A `)` with nothing before it in its row closes
 /// the row before instead (`(2... Nf6 3. e5))`), rather than standing alone.
-fn rows(tokens: &[Token]) -> Vec<Row<'_>> {
+fn rows<'a>(tokens: impl IntoIterator<Item = &'a Token>) -> Vec<Row<'a>> {
     let mut rows = vec![Row { depth: 0, tokens: Vec::new() }];
     let mut depth = 0usize;
     for token in tokens {
@@ -1209,140 +1209,21 @@ pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, he
     let mut action = None;
     let current = state.game.current();
     let reveal = state.revealed != Some((current, state.game.revision()));
+    let look = crate::chess_figurines::list_look(ui.ctx());
     area.show(ui, |ui| {
         if tokens.iter().all(|t| !matches!(t, Token::Move { .. })) {
             ui.label(egui::RichText::new(tl!("Play a move: click a piece, then where it goes, or drag it there.")).small().color(t.text_muted));
             return;
         }
+        look.size.apply(ui.style_mut());
         ui.spacing_mut().item_spacing.y = 2.0;
-        let rows = rows(&tokens);
-        let ends_main = rows.last().is_some_and(|r| r.depth == 0);
-        let last = rows.len().saturating_sub(1);
-        for (i, row) in rows.into_iter().enumerate() {
-            let indent = i8::try_from(row.depth.min(MAX_INDENT).saturating_mul(INDENT)).unwrap_or(i8::MAX);
-            egui::Frame::NONE.inner_margin(egui::Margin { left: indent, ..egui::Margin::ZERO }).show(ui, |ui| {
-                ui.horizontal_wrapped(|ui| {
-                    ui.spacing_mut().item_spacing.x = 4.0;
-                    let small = row.depth > 0;
-                    for token in &row.tokens {
-                        match token {
-                            Token::Move { node, number, color, numbered, san, nags, .. } => {
-                                if *numbered {
-                                    let n = if *color == Color::White { format!("{number}.") } else { format!("{number}...") };
-                                    ui.label(egui::RichText::new(n).small().color(t.text_faint));
-                                }
-                                let ctx = ui.ctx().clone();
-                                let glyph_text = glyphs(nags, |s| crate::chess_annotate::drawable(&ctx, s));
-                                // The move's quality signs go in chips after it (plan HC12); its name keeps them.
-                                let others: Vec<u16> = nags.iter().copied().filter(|c| !(1..=6).contains(c)).collect();
-                                let shown_glyphs = glyphs(&others, |s| crate::chess_annotate::drawable(&ctx, s));
-                                let tint = state.fresh.tint(&state.game, *node, ui.ctx());
-                                // The piece as a figurine, in letters or as SAN (plan HC8).
-                                let r = crate::chess_figurines::move_button(
-                                    ui,
-                                    san,
-                                    &shown_glyphs,
-                                    &glyph_text,
-                                    *node == current,
-                                    small,
-                                    t.text_muted,
-                                    tint,
-                                );
-                                for &code in nags.iter().filter(|c| (1..=6).contains(*c)) {
-                                    quality_chip(ui, code, small);
-                                }
-                                if !state.game.drawings(*node).is_empty() && drawings_dot(ui, &state.marks_of(*node), small) {
-                                    state.hovered_drawings = Some((*node, ui.ctx().cumulative_pass_nr()));
-                                }
-                                if *node == current && reveal {
-                                    r.scroll_to_me_animation(None, egui::style::ScrollAnimation::none());
-                                }
-                                glyphs_after(ui, t, nags, small);
-                                if state.game.has_diagram(*node) {
-                                    let name = crate::i18n::fmt(
-                                        tl!("Diagram after {move}"),
-                                        &[("move", &crate::chess_tools::move_name(&state.game, *node))],
-                                    );
-                                    let d =
-                                        ui.add(crate::icons::image("grid-3x3", 12.0, t.text_muted).sense(egui::Sense::hover())).on_hover_text(&name);
-                                    d.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &name));
-                                }
-                                if r.clicked() {
-                                    edit = Some(match brush {
-                                        Some(code) => MoveEdit::Brush(*node, code),
-                                        None => MoveEdit::Go(*node),
-                                    });
-                                }
-                                r.context_menu(|ui| {
-                                    if let Some((run, target)) = crate::chess_tools::move_menu(ui, state, *node) {
-                                        edit = Some(MoveEdit::Tool(run, target));
-                                        ui.close();
-                                    }
-                                    ui.separator();
-                                    // The glyphs, on this move (U1).
-                                    if let Some(code) = crate::chess_annotate::glyph_menu(ui, state, *node) {
-                                        edit = Some(if code == crate::chess_annotate::CLEAR {
-                                            MoveEdit::ClearGlyphs(*node)
-                                        } else {
-                                            MoveEdit::Brush(*node, code)
-                                        });
-                                        ui.close();
-                                    }
-                                    ui.separator();
-                                    let marked = state.game.has_diagram(*node);
-                                    if ui.add(egui::Button::new(tl!("Diagram here")).selected(marked)).clicked() {
-                                        edit = Some(MoveEdit::Diagram(*node));
-                                        ui.close();
-                                    }
-                                    if ui.button(tl!("Copy line with figurines")).clicked() {
-                                        action = Some(BoardAction::CopyLine(state.game.line_text(*node, true)));
-                                        ui.close();
-                                    }
-                                    if ui.button(tl!("Copy line (letters)")).clicked() {
-                                        action = Some(BoardAction::CopyLine(state.game.line_text(*node, false)));
-                                        ui.close();
-                                    }
-                                    ui.separator();
-                                    if ui.button(tl!("Delete from this move")).clicked() {
-                                        edit = Some(MoveEdit::Delete(*node));
-                                        ui.close();
-                                    }
-                                    if ui.button(tl!("New game from this position")).clicked() {
-                                        crate::chess_collection::ask_new_game_from(ui.ctx(), *node);
-                                        ui.close();
-                                    }
-                                });
-                            }
-                            // A comment with only drawings has no text to show.
-                            Token::Comment { text, .. } if text.is_empty() => {}
-                            // A comment before its move (plan HC12): set in, upright and fainter,
-                            // so it reads apart from the comment on the move before.
-                            Token::Comment { text, before: true, .. } => {
-                                ui.add_space(6.0);
-                                ui.label(egui::RichText::new(text).small().color(t.text_faint));
-                            }
-                            Token::Comment { text, .. } => {
-                                ui.label(egui::RichText::new(text).italics().small().color(t.text_muted));
-                            }
-                            Token::VariationStart => {
-                                ui.label(egui::RichText::new("(").small().color(t.text_faint));
-                            }
-                            Token::VariationEnd => {
-                                ui.label(egui::RichText::new(")").small().color(t.text_faint));
-                            }
-                        }
-                    }
-                    if i == last && ends_main {
-                        result_label(ui, t, &state.game);
-                    }
-                });
-            });
+        let mut cx = MoveCx { current, reveal, brush, edit: None, action: None };
+        match look.layout {
+            crate::chess_figurines::ListLayout::Flow => flow(ui, t, state, &tokens, &mut cx),
+            crate::chess_figurines::ListLayout::Columns => columns(ui, t, state, &tokens, &mut cx),
         }
-        // The result, after the main line (plan HC10), on a row of its own when a variation ends
-        // the notation.
-        if !ends_main {
-            result_label(ui, t, &state.game);
-        }
+        edit = cx.edit;
+        action = cx.action;
     });
     state.revealed = Some((current, state.game.revision()));
     if let Some(e) = edit {
@@ -1525,6 +1406,243 @@ fn game_header(ui: &mut egui::Ui, t: &Tokens, game: &Game) -> bool {
     }
     ui.add_space(2.0);
     r.clicked()
+}
+
+/// What the notation's moves are drawn with and asked for this frame.
+struct MoveCx {
+    current: NodeId,
+    reveal: bool,
+    brush: Option<u16>,
+    edit: Option<MoveEdit>,
+    action: Option<BoardAction>,
+}
+
+/// The notation as running text: a row per stretch of a line, variations indented by depth.
+fn flow(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, tokens: &[Token], cx: &mut MoveCx) {
+    let rows = rows(tokens);
+    let ends_main = rows.last().is_some_and(|r| r.depth == 0);
+    let last = rows.len().saturating_sub(1);
+    for (i, row) in rows.into_iter().enumerate() {
+        flow_row(ui, t, state, &row, cx, i == last && ends_main);
+    }
+    // The result, after the main line (plan HC10), on a row of its own when a variation ends
+    // the notation.
+    if !ends_main {
+        result_label(ui, t, &state.game);
+    }
+}
+
+/// One row of running text, indented by its depth; `result`: the game's result after it.
+fn flow_row(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, row: &Row<'_>, cx: &mut MoveCx, result: bool) {
+    let indent = i8::try_from(row.depth.min(MAX_INDENT).saturating_mul(INDENT)).unwrap_or(i8::MAX);
+    egui::Frame::NONE.inner_margin(egui::Margin { left: indent, ..egui::Margin::ZERO }).show(ui, |ui| {
+        ui.horizontal_wrapped(|ui| {
+            ui.spacing_mut().item_spacing.x = 4.0;
+            let small = row.depth > 0;
+            for token in &row.tokens {
+                token_item(ui, t, state, token, small, cx);
+            }
+            if result {
+                result_label(ui, t, &state.game);
+            }
+        });
+    });
+}
+
+/// One token of the notation: a move with its number when it has one, a comment, a parenthesis.
+fn token_item(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, token: &Token, small: bool, cx: &mut MoveCx) {
+    match token {
+        Token::Move { node, number, color, numbered, san, nags, .. } => {
+            if *numbered {
+                let n = if *color == Color::White { format!("{number}.") } else { format!("{number}...") };
+                ui.label(egui::RichText::new(n).small().color(t.text_faint));
+            }
+            move_item(ui, t, state, *node, san, nags, small, cx);
+        }
+        // A comment with only drawings has no text to show.
+        Token::Comment { text, .. } if text.is_empty() => {}
+        // A comment before its move (plan HC12): set in, upright and fainter, so it reads apart
+        // from the comment on the move before.
+        Token::Comment { text, before: true, .. } => {
+            ui.add_space(6.0);
+            ui.label(egui::RichText::new(text).small().color(t.text_faint));
+        }
+        Token::Comment { text, .. } => {
+            ui.label(egui::RichText::new(text).italics().small().color(t.text_muted));
+        }
+        Token::VariationStart => {
+            ui.label(egui::RichText::new("(").small().color(t.text_faint));
+        }
+        Token::VariationEnd => {
+            ui.label(egui::RichText::new(")").small().color(t.text_faint));
+        }
+    }
+}
+
+/// A move of the notation: its button (figurine, letters or SAN), its quality chips, its
+/// drawings' dot, its other glyphs and diagram mark; a click goes to it (or brushes a glyph on
+/// it), and its menu has the structure tools, glyphs, the diagram mark, copying and deleting.
+#[allow(clippy::too_many_arguments)]
+fn move_item(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, node: NodeId, san: &str, nags: &[u16], small: bool, cx: &mut MoveCx) {
+    let ctx = ui.ctx().clone();
+    let glyph_text = glyphs(nags, |s| crate::chess_annotate::drawable(&ctx, s));
+    // The move's quality signs go in chips after it (plan HC12); its name keeps them.
+    let others: Vec<u16> = nags.iter().copied().filter(|c| !(1..=6).contains(c)).collect();
+    let shown_glyphs = glyphs(&others, |s| crate::chess_annotate::drawable(&ctx, s));
+    let tint = state.fresh.tint(&state.game, node, ui.ctx());
+    // The piece as a figurine, in letters or as SAN (plan HC8).
+    let r = crate::chess_figurines::move_button(ui, san, &shown_glyphs, &glyph_text, node == cx.current, small, t.text_muted, tint);
+    for &code in nags.iter().filter(|c| (1..=6).contains(*c)) {
+        quality_chip(ui, code, small);
+    }
+    if !state.game.drawings(node).is_empty() && drawings_dot(ui, &state.marks_of(node), small) {
+        state.hovered_drawings = Some((node, ui.ctx().cumulative_pass_nr()));
+    }
+    if node == cx.current && cx.reveal {
+        r.scroll_to_me_animation(None, egui::style::ScrollAnimation::none());
+    }
+    glyphs_after(ui, t, nags, small);
+    if state.game.has_diagram(node) {
+        let name = crate::i18n::fmt(tl!("Diagram after {move}"), &[("move", &crate::chess_tools::move_name(&state.game, node))]);
+        let d = ui.add(crate::icons::image("grid-3x3", 12.0, t.text_muted).sense(egui::Sense::hover())).on_hover_text(&name);
+        d.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &name));
+    }
+    if r.clicked() {
+        cx.edit = Some(match cx.brush {
+            Some(code) => MoveEdit::Brush(node, code),
+            None => MoveEdit::Go(node),
+        });
+    }
+    r.context_menu(|ui| {
+        if let Some((run, target)) = crate::chess_tools::move_menu(ui, state, node) {
+            cx.edit = Some(MoveEdit::Tool(run, target));
+            ui.close();
+        }
+        ui.separator();
+        // The glyphs, on this move (U1).
+        if let Some(code) = crate::chess_annotate::glyph_menu(ui, state, node) {
+            cx.edit = Some(if code == crate::chess_annotate::CLEAR { MoveEdit::ClearGlyphs(node) } else { MoveEdit::Brush(node, code) });
+            ui.close();
+        }
+        ui.separator();
+        let marked = state.game.has_diagram(node);
+        if ui.add(egui::Button::new(tl!("Diagram here")).selected(marked)).clicked() {
+            cx.edit = Some(MoveEdit::Diagram(node));
+            ui.close();
+        }
+        if ui.button(tl!("Copy line with figurines")).clicked() {
+            cx.action = Some(BoardAction::CopyLine(state.game.line_text(node, true)));
+            ui.close();
+        }
+        if ui.button(tl!("Copy line (letters)")).clicked() {
+            cx.action = Some(BoardAction::CopyLine(state.game.line_text(node, false)));
+            ui.close();
+        }
+        ui.separator();
+        if ui.button(tl!("Delete from this move")).clicked() {
+            cx.edit = Some(MoveEdit::Delete(node));
+            ui.close();
+        }
+        if ui.button(tl!("New game from this position")).clicked() {
+            crate::chess_collection::ask_new_game_from(ui.ctx(), node);
+            ui.close();
+        }
+    });
+}
+
+/// A row of the column layout (plan HC9): a move number with White's and Black's moves, or what
+/// breaks the table (comments and variations), drawn as running text across it.
+enum ColItem<'a> {
+    Pair { number: u32, white: Option<&'a Token>, black: Option<&'a Token> },
+    Break(Vec<&'a Token>),
+}
+
+/// The main line's moves paired by number, and what comes between them as breaks: a comment on
+/// the main line, or a variation with all it holds. A Black move after a break starts its own
+/// pair, with no White move (shown "…").
+fn column_items(tokens: &[Token]) -> Vec<ColItem<'_>> {
+    let mut items: Vec<ColItem<'_>> = Vec::new();
+    let mut held: Vec<&Token> = Vec::new();
+    let mut depth = 0usize;
+    for token in tokens {
+        match token {
+            Token::VariationStart => {
+                depth = depth.saturating_add(1);
+                held.push(token);
+            }
+            Token::VariationEnd => {
+                held.push(token);
+                depth = depth.saturating_sub(1);
+            }
+            Token::Comment { text, .. } if depth == 0 && text.is_empty() => {}
+            Token::Move { number, color, .. } if depth == 0 => {
+                if !held.is_empty() {
+                    items.push(ColItem::Break(std::mem::take(&mut held)));
+                }
+                match (color, items.last_mut()) {
+                    (Color::Black, Some(ColItem::Pair { number: n, white: Some(_), black: b @ None })) if *n == *number => *b = Some(token),
+                    (Color::White, _) => items.push(ColItem::Pair { number: *number, white: Some(token), black: None }),
+                    (Color::Black, _) => items.push(ColItem::Pair { number: *number, white: None, black: Some(token) }),
+                }
+            }
+            _ => held.push(token),
+        }
+    }
+    if !held.is_empty() {
+        items.push(ColItem::Break(held));
+    }
+    items
+}
+
+/// The notation in columns (plan HC9): number, White, Black; a comment or a variation breaks the
+/// table and runs across it, and the table resumes after it.
+fn columns(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, tokens: &[Token], cx: &mut MoveCx) {
+    let items = column_items(tokens);
+    let number_width = ui.text_style_height(&egui::TextStyle::Body) * 2.6;
+    let cell = ((ui.available_width() - number_width) / 2.0).max(48.0);
+    for item in &items {
+        match item {
+            ColItem::Pair { number, white, black } => {
+                let row = ui.horizontal_top(|ui| {
+                    ui.spacing_mut().item_spacing.x = 0.0;
+                    let (r, _) = ui.allocate_exact_size(vec2(number_width, 1.0), egui::Sense::hover());
+                    for side in [white, black] {
+                        // Each cell exactly `cell` wide, its top on the row's top.
+                        ui.allocate_ui_with_layout(vec2(cell, 0.0), egui::Layout::left_to_right(egui::Align::Min), |ui| {
+                            ui.set_min_width(cell);
+                            ui.set_max_width(cell);
+                            ui.spacing_mut().item_spacing.x = 4.0;
+                            match side {
+                                Some(Token::Move { node, san, nags, .. }) => move_item(ui, t, state, *node, san, nags, false, cx),
+                                _ if black.is_some() && white.is_none() => {
+                                    ui.label(egui::RichText::new("…").color(t.text_faint));
+                                }
+                                _ => {}
+                            }
+                        });
+                    }
+                    r.left()
+                });
+                // The number, in the middle of the row's height once the moves are laid out.
+                ui.painter().text(
+                    egui::pos2(row.inner, row.response.rect.center().y),
+                    egui::Align2::LEFT_CENTER,
+                    format!("{number}."),
+                    egui::TextStyle::Small.resolve(ui.style()),
+                    t.text_faint,
+                );
+            }
+            ColItem::Break(held) => {
+                egui::Frame::NONE.inner_margin(egui::Margin { left: 6, top: 2, bottom: 2, ..egui::Margin::ZERO }).show(ui, |ui| {
+                    for row in rows(held.iter().copied()) {
+                        flow_row(ui, t, state, &row, cx, false);
+                    }
+                });
+            }
+        }
+    }
+    // The result on a row of its own, under the table or the break that ends it.
+    result_label(ui, t, &state.game);
 }
 
 /// How glyph `code` is named in an undo step or a capture's chips (whatever the fonts). The
@@ -2079,6 +2197,30 @@ fn notation_height(viewport: f32, above: f32, below: f32) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Plan HC9: the main line's moves pair by number; a comment or a variation is a break, and
+    /// a Black move after one starts a pair of its own.
+    #[test]
+    fn columns_pair_the_main_line_and_break_for_the_rest() {
+        let (game, _) = Game::from_pgn("1. e4 e5 {A comment.} 2. Nf3 (2. c3 d5) Nc6 3. Bb5 *").unwrap();
+        let tokens = game.tokens();
+        let shape: Vec<String> = column_items(&tokens)
+            .iter()
+            .map(|item| match item {
+                ColItem::Pair { number, white, black } => {
+                    let san = |t: &Option<&Token>| match t {
+                        Some(Token::Move { san, .. }) => san.clone(),
+                        _ => "-".to_owned(),
+                    };
+                    format!("{number}:{}:{}", san(white), san(black))
+                }
+                ColItem::Break(held) => format!("break({})", held.len()),
+            })
+            .collect();
+        assert_eq!(shape, ["1:e4:e5", "break(1)", "2:Nf3:-", "break(4)", "2:-:Nc6", "3:Bb5:-"]);
+        // Nothing to pair: no row.
+        assert!(column_items(&Game::standard().tokens()).is_empty());
+    }
 
     /// Plan HC12: each quality chip's sign reads on its fill at 4.5:1, and no two chips share a
     /// fill; drawings are counted in words.

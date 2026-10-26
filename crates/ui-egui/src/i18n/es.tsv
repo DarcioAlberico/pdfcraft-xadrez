@@ -3292,3 +3292,9 @@ chess undo step	Clear drawings	borrado de los dibujos
 	1 ring	1 anillo
 	{n} rings	{n} anillos
 	The comment on the move shown, large under the board	El comentario de la jugada mostrada, grande bajo el tablero
+	Running text	Texto corrido
+	Columns	Columnas
+	Text size	Tamaño del texto
+	Small	Pequeño
+	Normal	Normal
+	Large	Grande
