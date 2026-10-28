@@ -125,7 +125,11 @@ fn a_long_list_builds_only_what_is_in_sight_and_filters_by_state() {
     h.get_by_label("On this page").click();
     h.run_steps(2);
     h.get_by_label("All 20");
-    assert!(h.query_by_label("Page 2").is_none(), "only the page on screen");
+    // Page 2 on screen: only its diagrams are listed, under its header.
+    h.state_mut().views[0].go_to_page(1);
+    h.run_steps(4);
+    h.get_by_role_and_label(egui::accesskit::Role::Link, "Page 2");
+    assert!(h.query_by_role_and_label(egui::accesskit::Role::Link, "Page 1").is_none(), "only the page on screen");
 }
 
 /// Follow the page brings the page shown to the top of the list.
