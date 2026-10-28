@@ -79,7 +79,7 @@ pub struct ChessSpan {
     pub rect: ViewRect,
     /// Set in a bold font (most of its glyphs). Books print their main line in bold and the
     /// analysis around it in regular type. Prose runs joined from several words keep the first
-    /// word's weight; OCR text is never bold.
+    /// word's weight. OCR text is bold where its ink is ([`crate::glyphs::fuse::set_bold`]).
     pub bold: bool,
 }
 

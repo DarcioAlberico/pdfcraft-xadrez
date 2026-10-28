@@ -17,9 +17,11 @@
 //! 5. the lines become the same `ChessPageText` a text layer gives, and the frames drawn around
 //!    text (a game's header box), the lines set larger than the page's body (a chapter title,
 //!    [`larger_lines`]) and those set bolder at its size, standing alone (a section's title,
-//!    `glyphs::bolder_lines`), are kept for the headings.
+//!    `glyphs::bolder_lines`), are kept for the headings; the words set bolder than the body
+//!    (`glyphs::bold_words`: a book's main line) make their runs bold, as a bold font does in a
+//!    text layer.
 //!
-//! Reading order is top to bottom by line: a two-column page is read across both columns.
+//! Lines are broken column by column (the glyph reader), and the layout orders the columns.
 //!
 //! **An area of a page** (PGN toolbar T9, [`OcrAreaJob`]): the user draws a rectangle on a scan
 //! and only that rectangle is rendered (at [`OCR_DPI`], less for an area too large for one
@@ -42,8 +44,8 @@ use pdfcraft_chessvision::chess_text::{self, ChessPageText, TextQuality};
 use pdfcraft_chessvision::cipher::{BookCipher, repair_lines};
 use pdfcraft_chessvision::coords::{PageGeometry, PageRect, PixelRect, ViewRect, pixels_to_view};
 use pdfcraft_chessvision::doc::TextReview;
-use pdfcraft_chessvision::glyphs::fuse::{FusedLine, OcrWord, fuse_line, glyphs_only, to_chess_text, to_page_text};
-use pdfcraft_chessvision::glyphs::{GlyphClassifier, GlyphLine, GlyphOptions, bolder_lines, read, text_scale};
+use pdfcraft_chessvision::glyphs::fuse::{FusedLine, OcrWord, fuse_line, glyphs_only, set_bold, to_chess_text, to_page_text};
+use pdfcraft_chessvision::glyphs::{GlyphClassifier, GlyphLine, GlyphOptions, bold_words, bolder_lines, read, text_scale};
 use pdfcraft_chessvision::raster::GrayImage;
 use pdfcraft_render::text::PageText;
 use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind, Tile};
@@ -243,6 +245,7 @@ pub fn read_page(
     let bolder: Vec<ViewRect> =
         bolder_lines(&image, &lines, &board_boxes).map_err(|e| e.to_string())?.into_iter().filter_map(|r| pixels_to_view(r, dpi)).collect();
     let frames: Vec<ViewRect> = frames.into_iter().filter_map(|r| pixels_to_view(r, dpi)).collect();
+    let bold: Vec<ViewRect> = bold_words(&image, &lines).map_err(|e| e.to_string())?.into_iter().filter_map(|r| pixels_to_view(r, dpi)).collect();
     let fused = match ocr {
         Some(words) => bucket(&lines, words),
         None => glyphs_only(&lines),
@@ -253,8 +256,10 @@ pub fn read_page(
     }
     let mut reviews: Vec<TextReview> = repaired.edits.iter().filter_map(|e| TextReview::from_edit(e, dpi)).collect();
     reviews.extend(repaired.flags.iter().filter_map(|f| TextReview::from_flag(f, dpi)));
+    let mut text = to_chess_text(&repaired.lines, dpi, Some(lang));
+    set_bold(&mut text, &bold);
     Ok(OcrText {
-        text: to_chess_text(&repaired.lines, dpi, Some(lang)),
+        text,
         reviews,
         lines: repaired.lines.len(),
         edits: repaired.edits.len(),

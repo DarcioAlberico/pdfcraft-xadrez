@@ -18,7 +18,10 @@
 //! 5. **Arbiters**: a wide box is cut at its ink valley when the classifier reads the halves
 //!    better (`x` glued to a figurine); overlapping neighbours merge when it reads the union
 //!    better (an outlined figurine in pieces).
-//! 6. **Lines** and **cells**: 32 × 32 bilinear, as the model was trained.
+//! 6. **Lines** and **cells**: lines are broken column by column, between the gutters of the
+//!    text (two columns whose baselines do not line up would otherwise trade their dots and
+//!    figurines), and lines of different columns on one baseline are joined again; cells are
+//!    32 × 32 bilinear, as the model was trained.
 //! 7. **Corrections**: `=`/`:` by proportion, `0`/`o` inside numbers and castling, the case of
 //!    `cosuvwxz` by height, a move number the segmentation split (`1 9...`) joined, and a `u`
 //!    before a square read as the capture's `x`.
@@ -47,7 +50,10 @@ use crate::raster::GrayImage;
 
 use classify::{Classes, Read, Reader};
 use seg::{Bx, Gray};
-pub use weight::{BOLD_GAP_ABOVE, BOLD_LEADING, BOLD_MAX_LINES, BOLD_MAX_SIZE, BOLD_MIN_GLYPHS, BOLD_RATIO, RUN_GAP, bolder_lines};
+pub use weight::{
+    BOLD_GAP_ABOVE, BOLD_LEADING, BOLD_MAX_LINES, BOLD_MAX_SIZE, BOLD_MIN_GLYPHS, BOLD_RATIO, RUN_GAP, WORD_BOLD_RATIO, WORD_MIN_GLYPHS, bold_words,
+    bolder_lines,
+};
 
 /// Most pixels read at once: 40 megapixels, a letter page at 600 DPI. A larger raster is
 /// refused; read it in strips.
@@ -248,12 +254,13 @@ pub fn text_scale(image: &GrayImage, exclude: &[PixelRect]) -> Result<Option<u32
 
 /// The frames drawn around text in `region` of `image` (all of it when `None`), in `image`'s
 /// pixels: a game's header box, a chapter title's. [`read`] reads the text inside them and leaves
-/// the frames out; a page read with OCR has no layout but these to tell a heading by. `scale` as
-/// for [`read`].
+/// the frames out; a page read with OCR has no layout but these to tell a heading by. A frame is
+/// looked for on lighter ink than the text's (`seg::binarize_light`): a header box ruled in light
+/// gray is still a frame. `scale` as for [`read`].
 pub fn frames(image: &GrayImage, region: Option<PixelRect>, scale: Option<u32>) -> Result<Vec<PixelRect>, GlyphError> {
     let Some(region) = clamp_region(image, region) else { return Ok(Vec::new()) };
     let (w, h, px) = crop(image, region)?;
-    let bin = seg::binarize(&Gray { w, h, px: &px });
+    let bin = seg::binarize_light(&Gray { w, h, px: &px });
     let comps = seg::components(&bin, MAX_COMPONENTS).ok_or(GlyphError::TooManyComponents { max: MAX_COMPONENTS })?;
     let scale = scale.filter(|&s| s > 0).map_or_else(|| seg::scale(&comps, w.saturating_mul(h)), i64::from);
     if scale <= 0 {
@@ -297,7 +304,7 @@ pub fn read(
     let boxes = if options.split_glued { reader.split_glued(&bin, &boxes, scale)? } else { boxes };
     let boxes = if options.merge_broken { reader.merge_broken(&boxes, scale)? } else { boxes };
     let mut out = Vec::new();
-    for line in seg::break_lines(&seg::order_in_strip(&boxes), scale) {
+    for line in seg::lines(&boxes, scale) {
         let reads = reader.read(&line)?;
         let (line, reads) = if options.merge_broken { reader.join_bracket_pairs(line, reads, scale)? } else { (line, reads) };
         let (line, mut reads) = if options.merge_broken { reader.join_fragments(line, reads, scale)? } else { (line, reads) };

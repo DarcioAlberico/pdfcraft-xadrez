@@ -1,8 +1,11 @@
 //! Lines set bolder than a scanned page's body, standing alone: a heading set at the body's size
 //! in bold (Pinski's `Summary`), which neither a frame nor a larger size tells.
 //!
-//! A line is cut into runs at gutters (the glyph reader's lines run across both columns of a
-//! page), and each run's stroke width is measured on the page's ink: twice its ink over its edge
+//! The same measure tells the words set in bold ([`bold_words`]): a book's main line, in bold
+//! among the analysis in regular type, which a text layer tells by its fonts.
+//!
+//! A line is cut into runs at gutters (lines of two columns on one baseline are one line), and
+//! each run's stroke width is measured on the page's ink: twice its ink over its edge
 //! pixels (ink with paper beside it), the width of a long stroke whatever its length. Bold type
 //! measures 1.45 to 1.9 times the body on Pinski's scans, an italic running head 1.2.
 
@@ -82,6 +85,13 @@ fn runs(lines: &[GlyphLine], body: f32) -> Vec<Run> {
 /// The stroke width of the ink in `rect` of `bin` (twice its ink over its edge pixels), and the
 /// pixels looked at.
 fn stroke(bin: &seg::Bin, rect: PixelRect) -> (Option<f32>, u64) {
+    let (ink, edge, looked) = ink_edge(bin, rect);
+    // Pixel counts on one image, exact enough in `f32`.
+    ((edge > 0).then(|| 2.0 * ink as f32 / edge as f32), looked)
+}
+
+/// The ink pixels in `rect` of `bin`, those of them with paper beside them, and the pixels looked at.
+fn ink_edge(bin: &seg::Bin, rect: PixelRect) -> (u64, u64, u64) {
     let (mut ink, mut edge) = (0u64, 0u64);
     for y in i64::from(rect.y0)..i64::from(rect.y1) {
         for x in i64::from(rect.x0)..i64::from(rect.x1) {
@@ -94,8 +104,7 @@ fn stroke(bin: &seg::Bin, rect: PixelRect) -> (Option<f32>, u64) {
         }
     }
     let looked = u64::from(rect.width()).saturating_mul(u64::from(rect.height()));
-    // Pixel counts on one image, exact enough in `f32`.
-    ((edge > 0).then(|| 2.0 * ink as f32 / edge as f32), looked)
+    (ink, edge, looked)
 }
 
 /// The boxes (in `image`'s pixels) of the headings among `lines` (read from `image` with
@@ -196,4 +205,59 @@ pub fn bolder_lines(image: &GrayImage, lines: &[GlyphLine], diagrams: &[PixelRec
         .filter(|(members, valid)| *valid && members.last().is_some_and(|&l| has_below(l)))
         .filter_map(|(members, _)| members.iter().filter_map(|&i| runs.get(i).map(|r| r.rect)).reduce(union_rect))
         .collect())
+}
+
+/// Fewest glyphs of a word measured for its weight: one glyph's strokes say too little.
+pub const WORD_MIN_GLYPHS: usize = 2;
+/// A word whose strokes are at least this many times as wide as the body's is set in bold. Lower
+/// than [`BOLD_RATIO`]: a short bold move (`♗g7`, two letters and a digit measured) measured 1.25
+/// to 1.3 times the body on Ulf the Attacker's pages rendered at 300 dpi, and the regular words at
+/// most 1.15.
+pub const WORD_BOLD_RATIO: f32 = 1.2;
+
+/// Whether a glyph's strokes tell the weight of its word: letters and digits. An outline
+/// figurine is drawn in thin strokes in a bold line too, and dots and signs are too small.
+fn weighs(text: &str) -> bool {
+    !text.is_empty() && text.chars().all(char::is_alphanumeric) && !text.chars().any(|c| ('\u{2654}'..='\u{265F}').contains(&c))
+}
+
+/// The boxes (in `image`'s pixels) of the words of `lines` (read from `image` with
+/// [`super::read`]) set bolder than the page's body: words with at least [`WORD_MIN_GLYPHS`]
+/// letters or digits whose strokes are at least [`WORD_BOLD_RATIO`] times the body's (the stroke most
+/// of the page's measured glyphs are set in). Books print their main line in bold and the analysis
+/// around it in regular type, which a text layer tells by its fonts and a scan only by its ink.
+/// A page set mostly in bold has a bold body, and no word is bolder than it.
+pub fn bold_words(image: &GrayImage, lines: &[GlyphLine]) -> Result<Vec<PixelRect>, GlyphError> {
+    let words: Vec<&super::GlyphWord> = lines.iter().flat_map(|l| &l.words).collect();
+    if words.is_empty() || words.len() > MAX_RUNS.saturating_mul(4) {
+        return Ok(Vec::new());
+    }
+    let Some(region) = clamp_region(image, None) else { return Ok(Vec::new()) };
+    let (w, h, px) = crop(image, region)?;
+    let bin = seg::binarize(&Gray { w, h, px: &px });
+    let budget = (w as u64).saturating_mul(h as u64).saturating_mul(2);
+    let mut looked = 0u64;
+    // (word's box, stroke, glyphs measured)
+    let mut measured: Vec<(PixelRect, f32, usize)> = Vec::new();
+    for word in words {
+        let (mut ink, mut edge, mut n) = (0u64, 0u64, 0usize);
+        for g in word.glyphs.iter().filter(|g| weighs(&g.text)) {
+            let (i, e, l) = ink_edge(&bin, g.rect);
+            looked = looked.saturating_add(l);
+            if looked > budget {
+                return Ok(Vec::new());
+            }
+            ink = ink.saturating_add(i);
+            edge = edge.saturating_add(e);
+            n += 1;
+        }
+        if n >= WORD_MIN_GLYPHS && edge > 0 {
+            // Pixel counts on one image, exact enough in `f32`.
+            measured.push((word.rect, 2.0 * ink as f32 / edge as f32, n));
+        }
+    }
+    let Some(body) = weighted_median(measured.iter().map(|&(_, s, n)| (s, n)).collect()).filter(|&s| s > 0.0) else {
+        return Ok(Vec::new());
+    };
+    Ok(measured.into_iter().filter(|&(_, s, _)| s >= WORD_BOLD_RATIO * body).map(|(r, _, _)| r).collect())
 }

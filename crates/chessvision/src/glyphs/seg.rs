@@ -49,6 +49,26 @@ const RING_MIN_SIDE: f64 = 0.9;
 const RING_MAX_PIXELS: usize = 2_000_000;
 /// A stem this many times taller than wide is measured for an italic slant.
 const NARROW_STEM: f64 = 2.0;
+/// Least width of a gutter between columns of text, in scales: wider than a space between words,
+/// and spaces between words never line up down a column anyway.
+const GUTTER_MIN_WIDTH: f64 = 1.5;
+/// Most text a gutter may hold, as the summed height of the boxes over any of its pixel columns,
+/// in scales: a title or a line set across the page crosses it once or twice.
+const GUTTER_MAX_CROSS: f64 = 3.0;
+/// Fewest text boxes on each side of a gutter: a few words beside a margin are no column.
+const COLUMN_MIN_BOXES: usize = 40;
+/// Text boxes measured for gutters: at least this many scales tall (no dots or specks) and at
+/// most [`COLUMN_TEXT_MAX`] (no titles or leftover drawings).
+const COLUMN_TEXT_MIN: f64 = 0.35;
+const COLUMN_TEXT_MAX: f64 = 3.0;
+/// Widest region looked at for gutters, in pixels (a page at 600 dpi is under 10,000).
+const COLUMN_MAX_WIDTH: i64 = 1 << 16;
+/// Lines of different columns whose baselines are at most this many median box heights apart are
+/// one line of the page (a table's row, columns set on one grid), and stay one line.
+const SAME_BASELINE: f64 = 0.25;
+/// At least this share of the columns' lines on a baseline shared with another column's is a
+/// page set on one grid ([`lines`]).
+const ONE_GRID_SHARE: f64 = 0.5;
 
 /// An 8-bit gray view, 0 = black, row-major.
 #[derive(Clone, Copy)]
@@ -145,6 +165,28 @@ fn otsu(px: &[u8]) -> u8 {
 
 /// The trunk's `binarize(auto)`: Otsu when the ink share is plausible for text, else a local
 /// threshold (pixels 10 levels darker than the mean of their window), for uneven scans.
+/// Ink for finding frames: darker than halfway between Otsu's threshold and the paper (the most
+/// common gray lighter than the threshold), so a box ruled in light gray (Ulf the Attacker's game
+/// headers: a 146 border on 255 paper, a 242 fill, where Otsu cuts near 128) is found while its
+/// fill stays paper. [`binarize`] when that ink share is implausible.
+pub(crate) fn binarize_light(g: &Gray) -> Bin {
+    let t = otsu(g.px);
+    let mut hist = [0u64; 256];
+    for &p in g.px {
+        if let Some(h) = hist.get_mut(usize::from(p)) {
+            *h += 1;
+        }
+    }
+    let paper = (usize::from(t) + 1..256).max_by_key(|&i| hist.get(i).copied().unwrap_or(0)).unwrap_or(255);
+    let light = u8::try_from((usize::from(t) + paper) / 2).unwrap_or(t);
+    let ink: Vec<bool> = g.px.iter().map(|&p| p <= light).collect();
+    let frac = ink.iter().filter(|&&b| b).count() as f64 / ink.len().max(1) as f64;
+    if light > t && PLAUSIBLE_INK.contains(&frac) {
+        return Bin { w: g.w, h: g.h, ink };
+    }
+    binarize(g)
+}
+
 pub(crate) fn binarize(g: &Gray) -> Bin {
     let t = otsu(g.px);
     let ink: Vec<bool> = g.px.iter().map(|&p| p <= t).collect();
@@ -684,6 +726,138 @@ pub(crate) fn order_in_strip(boxes: &[Bx]) -> Vec<Bx> {
         out.extend(g);
     }
     out
+}
+
+/// Where the region's text columns part: the middle of each gutter, left to right, empty for one
+/// column. A gutter is a run of pixel columns at least [`GUTTER_MIN_WIDTH`] scales wide, inside
+/// the text, over which the text boxes stand at most [`GUTTER_MAX_CROSS`] scales tall in all,
+/// with at least [`COLUMN_MIN_BOXES`] text boxes on each side.
+pub(crate) fn column_cuts(boxes: &[Bx], scale: i64) -> Vec<i64> {
+    if scale <= 0 {
+        return Vec::new();
+    }
+    let s = scale as f64;
+    let text: Vec<&Bx> = boxes.iter().filter(|b| (COLUMN_TEXT_MIN * s..=COLUMN_TEXT_MAX * s).contains(&(b.h() as f64))).collect();
+    if text.len() < 2 * COLUMN_MIN_BOXES {
+        return Vec::new();
+    }
+    let (Some(left), Some(right)) = (text.iter().map(|b| b.x0).min(), text.iter().map(|b| b.x1).max()) else { return Vec::new() };
+    let width = right - left;
+    let Ok(len) = usize::try_from(width) else { return Vec::new() };
+    if width <= 0 || width > COLUMN_MAX_WIDTH {
+        return Vec::new();
+    }
+    // How tall the text stands over each pixel column: a difference array, then its sums.
+    let mut diff = vec![0i64; len + 1];
+    for b in &text {
+        let at = |x: i64| usize::try_from(x - left).ok();
+        if let Some(d) = at(b.x0).and_then(|i| diff.get_mut(i)) {
+            *d += b.h();
+        }
+        if let Some(d) = at(b.x1).and_then(|i| diff.get_mut(i)) {
+            *d -= b.h();
+        }
+    }
+    let most = GUTTER_MAX_CROSS * s;
+    let least = GUTTER_MIN_WIDTH * s;
+    let mut cuts = Vec::new();
+    let (mut cover, mut start) = (0i64, None::<i64>);
+    for (x, d) in (0i64..).zip(&diff) {
+        cover += d;
+        if (cover as f64) <= most {
+            start.get_or_insert(x);
+        } else if let Some(s0) = start.take() {
+            // A run touching the text's left edge is a margin, not a gutter.
+            if s0 > 0 && (x - s0) as f64 >= least {
+                cuts.push(left + s0 + (x - s0) / 2);
+            }
+        }
+    }
+    // A side with too little text is no column: drop the cut beside it until every side holds.
+    loop {
+        let mut counts = vec![0usize; cuts.len() + 1];
+        for b in &text {
+            let mid = (b.x0 + b.x1) / 2;
+            let col = cuts.iter().take_while(|&&c| c <= mid).count();
+            if let Some(n) = counts.get_mut(col) {
+                *n += 1;
+            }
+        }
+        let Some(thin) = counts.iter().position(|&n| n < COLUMN_MIN_BOXES) else { break };
+        if cuts.is_empty() {
+            break;
+        }
+        cuts.remove(thin.min(cuts.len() - 1));
+    }
+    cuts
+}
+
+/// A line of one column: the column's index and the line's boxes.
+type ColumnLine = (usize, Vec<Bx>);
+
+/// The region's boxes broken into lines, column by column: each column (between the gutters of
+/// [`column_cuts`]) is banded and broken on its own ([`order_in_strip`], [`break_lines`]), so the
+/// columns' baselines need not line up, then lines of different columns on one baseline (within
+/// [`SAME_BASELINE`]) are joined again, left to right, as one line of the page. Lines come top to
+/// bottom.
+///
+/// A region with one column, or whose columns are set on one grid (at least [`ONE_GRID_SHARE`] of
+/// the columns' lines share a baseline with another column's), is broken exactly as
+/// [`break_lines`] breaks it across the page: there the other column's lines steady the bands (a
+/// speck over a column's line where that column has a frame and the other a line, Pinski p. 49,
+/// would start a band of its own in its column and cut the line under it in two).
+pub(crate) fn lines(boxes: &[Bx], scale: i64) -> Vec<Vec<Bx>> {
+    let cuts = column_cuts(boxes, scale);
+    if cuts.is_empty() {
+        return break_lines(&order_in_strip(boxes), scale);
+    }
+    let mut columns: Vec<Vec<Bx>> = vec![Vec::new(); cuts.len() + 1];
+    for b in boxes {
+        let mid = (b.x0 + b.x1) / 2;
+        if let Some(c) = columns.get_mut(cuts.iter().take_while(|&&c| c <= mid).count()) {
+            c.push(*b);
+        }
+    }
+    let med = median_height(boxes);
+    let short = med * SHORT_BOX;
+    // A line's baseline: the median bottom of its tall boxes (of all, when none is tall), which a
+    // descender (`g3`) or a comma does not move.
+    let base = |line: &[Bx]| {
+        let mut bottoms: Vec<i64> = line.iter().filter(|b| b.h() as f64 >= short).map(|b| b.y1).collect();
+        if bottoms.is_empty() {
+            bottoms = line.iter().map(|b| b.y1).collect();
+        }
+        bottoms.sort_unstable();
+        bottoms.get(bottoms.len() / 2).copied().unwrap_or(0)
+    };
+    // (baseline, column, line), by baseline.
+    let mut all: Vec<(i64, usize, Vec<Bx>)> = Vec::new();
+    for (c, col) in columns.iter().enumerate() {
+        for line in break_lines(&order_in_strip(col), scale) {
+            all.push((base(&line), c, line));
+        }
+    }
+    all.sort_by_key(|(b, c, _)| (*b, *c));
+    // (first baseline, the lines joined on it with their columns)
+    let mut joined: Vec<(i64, Vec<ColumnLine>)> = Vec::new();
+    for (b, c, line) in all {
+        match joined.last_mut() {
+            Some((first, parts)) if ((b - *first) as f64) <= SAME_BASELINE * med && parts.iter().all(|(pc, _)| *pc != c) => parts.push((c, line)),
+            _ => joined.push((b, vec![(c, line)])),
+        }
+    }
+    let shared: usize = joined.iter().filter(|(_, parts)| parts.len() > 1).map(|(_, parts)| parts.len()).sum();
+    let total: usize = joined.iter().map(|(_, parts)| parts.len()).sum();
+    if total > 0 && shared as f64 >= ONE_GRID_SHARE * total as f64 {
+        return break_lines(&order_in_strip(boxes), scale);
+    }
+    joined
+        .into_iter()
+        .map(|(_, mut parts)| {
+            parts.sort_by_key(|(c, _)| *c);
+            parts.into_iter().flat_map(|(_, l)| l).collect()
+        })
+        .collect()
 }
 
 /// `linhas.quebrar_em_linhas` + `duas_linhas.descartar_fragmentos`: a new line when a box drops
