@@ -107,6 +107,10 @@ impl Piece {
 pub struct Square(u8);
 
 impl Square {
+    /// The corners a diagram's top left is: a8 from White's side, h1 from Black's.
+    pub const A8: Square = Square(56);
+    pub const H1: Square = Square(7);
+
     /// The square at `file` (0 = a) and `rank` (0 = first rank), or `None` off the board.
     pub fn new(file: u8, rank: u8) -> Option<Square> {
         (file < 8 && rank < 8).then_some(Square(rank * 8 + file))

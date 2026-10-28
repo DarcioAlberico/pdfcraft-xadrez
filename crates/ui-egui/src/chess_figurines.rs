@@ -247,7 +247,7 @@ pub(crate) fn in_letters(san: &str, lang: Lang) -> String {
 }
 
 /// The interface's piece-letter language: English when it has none of its own.
-fn interface_lang() -> Lang {
+pub(crate) fn interface_lang() -> Lang {
     Lang::from_tag(crate::i18n::current().code()).unwrap_or(Lang::En)
 }
 

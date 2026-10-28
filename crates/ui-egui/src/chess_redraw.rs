@@ -72,6 +72,10 @@ impl PdfCraftApp {
             // The position drawn is the one kept: nothing left to confirm.
             ed.start = fen;
         }
+        // Ctrl+Z in the tab is the document's again: it takes the drawing back.
+        if let Some(ed) = self.chess.editor.as_mut() {
+            ed.forget_history();
+        }
         self.notify(tl!("Diagram redrawn in the PDF").to_string());
         self.carry_chess_results();
         true

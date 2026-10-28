@@ -40,6 +40,7 @@ mod chess_collection;
 mod chess_correct;
 mod chess_corrections_ui;
 mod chess_deleted;
+mod chess_diagram_keys;
 mod chess_diagram_tab;
 mod chess_drafts;
 mod chess_editor;

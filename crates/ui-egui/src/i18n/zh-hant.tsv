@@ -3126,3 +3126,9 @@ chess undo step	Clear drawings	清除標記
 	Don't show again	不再顯示
 	Redraw	重繪
 	Diagram redrawn in the PDF	已在 PDF 中重繪局面圖
+# Plan A8 P3c: the Diagram tab by the keyboard and for screen readers.
+	{square}, empty	{square}，空
+	Arrow keys pick a square; a piece's letter puts it there (with Shift, Black's); Delete empties it.	方向鍵選擇格子；按棋子的字母把它放在那裡（按住 Shift 為黑方）；Delete 清空格子。
+	Diagram {i} of {n} to review, page {p}	待檢查局面圖 {i}/{n}，第 {p} 頁
+	Diagram {n}, page {p}	局面圖 {n}，第 {p} 頁
+@plural	{n} doubtful square|{n} doubtful squares	{n} 個存疑格子

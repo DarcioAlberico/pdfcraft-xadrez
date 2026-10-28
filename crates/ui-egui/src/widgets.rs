@@ -606,12 +606,17 @@ pub fn split_pill(ui: &mut egui::Ui, icon: &str, label: &str, more: &str) -> (Re
     (theme::hand(main).on_hover_text(label), theme::hand(arrow).on_hover_text(more))
 }
 
+/// How wide [`icon_pill`] draws `label`, in points.
+pub fn icon_pill_width(ui: &egui::Ui, label: &str) -> f32 {
+    let t = Tokens::get(ui.ctx());
+    ui.fonts_mut(|f| f.layout_no_wrap(label.to_owned(), theme::medium(12.5), t.text).size().x) + 46.0
+}
+
 /// A pill button with an icon (primary = filled accent).
 pub fn icon_pill(ui: &mut egui::Ui, icon: &str, label: &str, primary: bool) -> Response {
     let t = Tokens::get(ui.ctx());
     let font = theme::medium(12.5);
-    let w = ui.fonts_mut(|f| f.layout_no_wrap(label.to_owned(), font.clone(), t.text).size().x);
-    let (rect, resp) = ui.allocate_exact_size(vec2(w + 46.0, 30.0), Sense::click());
+    let (rect, resp) = ui.allocate_exact_size(vec2(icon_pill_width(ui, label), 30.0), Sense::click());
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), label));
     let press = theme::Press::track(ui, &resp);
     let (fill, stroke, text) = if primary {
