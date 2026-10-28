@@ -3215,3 +3215,7 @@ chess undo step	Clear drawings	rajzok törlése
 	Diagram {i} of {n} to review, page {p}	Ellenőrizendő diagram: {i} / {n}, oldal: {p}
 	Diagram {n}, page {p}	{n}. diagram, oldal: {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} bizonytalan mező|{n} bizonytalan mező
+	Copy the main line only	Csak a főváltozat másolása
+	Copy without comments	Másolás megjegyzések nélkül
+	Copy without annotation glyphs	Másolás értékelő jelek nélkül
+	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	Megjegyzésként megtartott változatok: {n} (nincs előttük lépés, vagy 32 szintnél mélyebbek).

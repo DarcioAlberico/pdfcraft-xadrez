@@ -3188,3 +3188,7 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Diagram {i} of {n} to review, page {p}	Διάγραμμα {i} από {n} για έλεγχο, σελίδα {p}
 	Diagram {n}, page {p}	Διάγραμμα {n}, σελίδα {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} αβέβαιο τετράγωνο|{n} αβέβαια τετράγωνα
+	Copy the main line only	Αντιγραφή μόνο της κύριας γραμμής
+	Copy without comments	Αντιγραφή χωρίς σχόλια
+	Copy without annotation glyphs	Αντιγραφή χωρίς σύμβολα αξιολόγησης
+	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	Παραλλαγές που κρατήθηκαν ως σχόλια: {n} (χωρίς κίνηση πριν από αυτές ή σε βάθος πάνω από 32).

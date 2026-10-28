@@ -7,6 +7,7 @@ use crate::doc::html::Figurines;
 use crate::doc::markdown::{
     MarkdownDiagrams, MarkdownOptions, PgnBook, PgnPositions, SkipReason, SkippedPosition, image_name, pgn_export, pgn_with_diagrams, write,
 };
+use pdfcraft_chess::pgn_style::PgnStyle;
 
 fn options() -> MarkdownOptions<'static> {
     MarkdownOptions {
@@ -95,7 +96,7 @@ fn each_pgn_game_says_where_in_the_book_it_came_from() {
     let readings = vec![reading(0, 60.0, SCHOLAR, true, false), reading(1, 300.0, "4k3/8/8/8/8/8/8/R3K3 w Q - 0 1", true, false)];
     let doc = build_page(&input(0, &text, &readings, &[], &[]));
     let book = PgnBook { title: Some("My  book".to_owned()), labels: vec!["xvii".to_owned()] };
-    let made = pgn_export(&doc, &book, PgnPositions::Unused);
+    let made = pgn_export(&doc, &book, PgnPositions::Unused, PgnStyle::FULL);
     let (pgn, added) = (made.pgn, made.positions);
     assert_eq!(added, 1, "{pgn}");
     let games = pgn::parse(&pgn).unwrap();
@@ -151,15 +152,15 @@ fn the_pgn_positions_option_says_which_diagrams_get_a_game() {
     let skipped = |made: &crate::doc::markdown::PgnExport| made.skipped.iter().map(|s| (s.at.diagram, s.reason)).collect::<Vec<_>>();
     let bad = vec![(2, SkipReason::Illegal), (3, SkipReason::Repaired), (4, SkipReason::NotRead)];
 
-    let unused = pgn_export(&doc, &PgnBook::default(), PgnPositions::Unused);
+    let unused = pgn_export(&doc, &PgnBook::default(), PgnPositions::Unused, PgnStyle::FULL);
     assert_eq!((diagram(&unused.pgn), unused.positions), (vec!["1+moves".to_owned(), "2".to_owned()], 1), "{}", unused.pgn);
     assert_eq!(skipped(&unused), bad);
     // All: the diagram a game starts from also has a game of its own, before that game.
-    let all = pgn_export(&doc, &PgnBook::default(), PgnPositions::All);
+    let all = pgn_export(&doc, &PgnBook::default(), PgnPositions::All, PgnStyle::FULL);
     assert_eq!((diagram(&all.pgn), all.positions), (vec!["1".to_owned(), "1+moves".to_owned(), "2".to_owned()], 2), "{}", all.pgn);
     assert_eq!(skipped(&all), bad);
     // None: only the games, and nothing said to be skipped.
-    let none = pgn_export(&doc, &PgnBook::default(), PgnPositions::None);
+    let none = pgn_export(&doc, &PgnBook::default(), PgnPositions::None, PgnStyle::FULL);
     assert_eq!((diagram(&none.pgn), none.positions), (vec!["1+moves".to_owned()], 0), "{}", none.pgn);
     assert_eq!(none.skipped, Vec::<SkippedPosition>::new());
     assert_eq!(unused.skipped.first().map(|s| s.at), Some(DiagramAt { page: 0, diagram: 2 }));
@@ -179,14 +180,14 @@ fn a_diagram_reprinting_a_game_marks_its_move() {
     b.add_page(&input(1, &page_text(vec![line(230.0, "2...Nc6 3.Bb5")]), &[reading(0, 60.0, after, true, false)], &[], &[]));
     let doc = b.finish();
     assert_eq!(doc.games.len(), 1);
-    let unused = pgn_export(&doc, &PgnBook::default(), PgnPositions::Unused);
+    let unused = pgn_export(&doc, &PgnBook::default(), PgnPositions::Unused, PgnStyle::FULL);
     assert_eq!(unused.positions, 0, "{}", unused.pgn);
     assert!(unused.pgn.contains("2. Nf3 $220 Nc6"), "{}", unused.pgn);
     assert_eq!(pgn::parse(&unused.pgn).unwrap().len(), 1);
     // The reading's own game keeps no mark: the book's text has none.
     assert!(doc.games[0].score.nodes.iter().all(|n| n.nags.is_empty()));
     // All: the position too, and the mark.
-    let all = pgn_export(&doc, &PgnBook::default(), PgnPositions::All);
+    let all = pgn_export(&doc, &PgnBook::default(), PgnPositions::All, PgnStyle::FULL);
     assert_eq!(all.positions, 1, "{}", all.pgn);
     assert!(all.pgn.contains("2. Nf3 $220 Nc6"), "{}", all.pgn);
     // A mark the game has already is not doubled.
@@ -196,6 +197,6 @@ fn a_diagram_reprinting_a_game_marks_its_move() {
             n.nags.push(pdfcraft_chess::nag::DIAGRAM_FROM_BLACK);
         }
     }
-    let once = pgn_export(&marked, &PgnBook::default(), PgnPositions::Unused);
+    let once = pgn_export(&marked, &PgnBook::default(), PgnPositions::Unused, PgnStyle::FULL);
     assert!(once.pgn.contains("2. Nf3 $221 Nc6") && !once.pgn.contains("$220"), "{}", once.pgn);
 }

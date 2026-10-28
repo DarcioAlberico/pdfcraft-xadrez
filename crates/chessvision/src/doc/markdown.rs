@@ -18,6 +18,7 @@
 use std::fmt::Write as _;
 
 use pdfcraft_chess::origin::{PgnOrigin, with_origin_comment, with_origin_tags};
+use pdfcraft_chess::pgn_style::PgnStyle;
 use pdfcraft_chess::san::Lang;
 
 use super::games::{DiagramAt, GameOrigin, GameResult, GameScore, MAX_SHOWN_DIAGRAMS, Tag};
@@ -220,15 +221,16 @@ fn position_game(fen: &str, page: u32, number: usize, puzzle: Option<u32>, accep
 /// the book: page by page, a diagram's game where the diagram is, then the page's other games.
 /// Returns the PGN and how many position-only games were added.
 pub fn pgn_with_diagrams(doc: &ChessDoc) -> (String, usize) {
-    let made = pgn_export(doc, &PgnBook::default(), PgnPositions::Unused);
+    let made = pgn_export(doc, &PgnBook::default(), PgnPositions::Unused, PgnStyle::FULL);
     (made.pgn, made.positions)
 }
 
 /// [`pgn_with_diagrams`], each game saying where in `book` it came from (plan A8 P8a): the
 /// origin's tags, its first comment, and for a position the book's title as its `Event`; with a
 /// game of their own for the diagrams `positions` says (P8b), before the game that starts from
-/// the same diagram, and `$220` on each move whose position a diagram reprints.
-pub fn pgn_export(doc: &ChessDoc, book: &PgnBook, positions: PgnPositions) -> PgnExport {
+/// the same diagram, and `$220` on each move whose position a diagram reprints; the moves
+/// written as `style` says (plan A8 V4).
+pub fn pgn_export(doc: &ChessDoc, book: &PgnBook, positions: PgnPositions, style: PgnStyle) -> PgnExport {
     let mut out: Vec<GameScore> = Vec::new();
     let mut used = vec![false; doc.games.len()];
     let mut made = PgnExport::default();
@@ -289,7 +291,7 @@ pub fn pgn_export(doc: &ChessDoc, book: &PgnBook, positions: PgnPositions) -> Pg
             out.push(with_origin(doc, book, g));
         }
     }
-    made.pgn = super::pgn::write(out.iter());
+    made.pgn = super::pgn::write_with(out.iter(), style);
     made
 }
 

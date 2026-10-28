@@ -3212,3 +3212,7 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Diagram {i} of {n} to review, page {p}	İncelenecek diyagram {i}/{n}, sayfa {p}
 	Diagram {n}, page {p}	Diyagram {n}, sayfa {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} şüpheli kare
+	Copy the main line only	Yalnızca ana hattı kopyala
+	Copy without comments	Yorumlar olmadan kopyala
+	Copy without annotation glyphs	Değerlendirme işaretleri olmadan kopyala
+	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	Yorum olarak tutulan varyantlar: {n} (öncesinde hamle yok ya da 32 düzeyden derin).

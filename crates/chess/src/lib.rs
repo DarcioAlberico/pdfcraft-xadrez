@@ -18,6 +18,7 @@ pub mod game;
 pub mod lichess;
 pub mod nag;
 pub mod origin;
+pub mod pgn_style;
 pub mod placement;
 pub mod recognize;
 pub mod repair;

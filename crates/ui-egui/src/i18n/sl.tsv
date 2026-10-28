@@ -3221,3 +3221,7 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Diagram {i} of {n} to review, page {p}	Diagram {i} od {n} za pregled, stran {p}
 	Diagram {n}, page {p}	Diagram {n}, stran {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} negotovo polje|{n} negotovi polji|{n} negotova polja|{n} negotovih polj
+	Copy the main line only	Kopiraj samo glavno varianto
+	Copy without comments	Kopiraj brez komentarjev
+	Copy without annotation glyphs	Kopiraj brez ocenjevalnih znakov
+	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	Variante, ohranjene kot komentarji: {n} (brez poteze pred njimi ali vgnezdene globlje od 32 ravni).

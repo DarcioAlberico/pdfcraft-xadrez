@@ -3179,3 +3179,7 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Diagram {i} of {n} to review, page {p}	Диаграма {i} от {n} за преглед, страница {p}
 	Diagram {n}, page {p}	Диаграма {n}, страница {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} съмнително поле|{n} съмнителни полета
+	Copy the main line only	Копиране само на основната линия
+	Copy without comments	Копиране без коментари
+	Copy without annotation glyphs	Копиране без оценъчни знаци
+	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	Варианти, запазени като коментари: {n} (без ход преди тях или вложени по-дълбоко от 32).

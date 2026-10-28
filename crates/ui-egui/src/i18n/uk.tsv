@@ -3238,3 +3238,7 @@ chess undo step	Clear drawings	видалення малюнків
 	Diagram {i} of {n} to review, page {p}	Діаграма {i} з {n} на перевірку, сторінка {p}
 	Diagram {n}, page {p}	Діаграма {n}, сторінка {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} сумнівне поле|{n} сумнівні поля|{n} сумнівних полів
+	Copy the main line only	Копіювати лише головну лінію
+	Copy without comments	Копіювати без коментарів
+	Copy without annotation glyphs	Копіювати без знаків оцінки
+	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	Варіанти, збережені як коментарі: {n} (без ходу перед ними або вкладені глибше за 32 рівні).

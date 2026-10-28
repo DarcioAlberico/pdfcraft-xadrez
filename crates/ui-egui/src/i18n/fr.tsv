@@ -3216,3 +3216,7 @@ chess undo step	Clear drawings	l'effacement des dessins
 	Diagram {i} of {n} to review, page {p}	Diagramme {i} sur {n} à vérifier, page {p}
 	Diagram {n}, page {p}	Diagramme {n}, page {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} case douteuse|{n} cases douteuses
+	Copy the main line only	Copier la ligne principale seulement
+	Copy without comments	Copier sans les commentaires
+	Copy without annotation glyphs	Copier sans les signes d'évaluation
+	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	Variantes gardées en commentaire : {n} (sans coup avant elles, ou imbriquées au-delà de 32 niveaux).

@@ -3468,3 +3468,7 @@ chess undo step	Clear drawings	piešinių valymą
 	Diagram {i} of {n} to review, page {p}	Tikrintina diagrama {i} iš {n}, puslapis {p}
 	Diagram {n}, page {p}	Diagrama {n}, puslapis {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} abejotinas langelis|{n} abejotini langeliai|{n} abejotinų langelių
+	Copy the main line only	Kopijuoti tik pagrindinį variantą
+	Copy without comments	Kopijuoti be komentarų
+	Copy without annotation glyphs	Kopijuoti be vertinimo ženklų
+	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	Variantai, palikti kaip komentarai: {n} (prieš juos nėra ėjimo arba įdėti giliau nei 32 lygiai).
