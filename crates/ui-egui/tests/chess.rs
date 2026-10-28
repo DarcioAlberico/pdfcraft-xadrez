@@ -76,9 +76,22 @@ fn harness_stepping(step_dt: f32) -> Harness<'static, PdfCraftApp> {
 
 /// The harness on the PDF `bytes`.
 fn harness_on(bytes: Vec<u8>, step_dt: f32) -> Harness<'static, PdfCraftApp> {
-    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).with_step_dt(step_dt).build_eframe(move |_cc| {
+    harness_with(bytes, step_dt, egui::vec2(1400.0, 1000.0), None)
+}
+
+/// The harness on the PDF `bytes` in a window of `size`.
+fn harness_sized(bytes: Vec<u8>, size: egui::Vec2) -> Harness<'static, PdfCraftApp> {
+    harness_with(bytes, 0.25, size, None)
+}
+
+/// The harness on `bytes`, its diagram corrections kept in `corrections` (a folder) when given.
+fn harness_with(bytes: Vec<u8>, step_dt: f32, size: egui::Vec2, corrections: Option<std::path::PathBuf>) -> Harness<'static, PdfCraftApp> {
+    let mut h = Harness::builder().with_size(size).with_step_dt(step_dt).build_eframe(move |_cc| {
         let mut app = PdfCraftApp::new();
         app.set_option("language", "en").unwrap();
+        if let Some(dir) = corrections {
+            app.chess.corrections.use_folder(dir);
+        }
         app.open_bytes("boards.pdf", None, bytes).unwrap();
         app.run_inline = true;
         app
@@ -239,10 +252,12 @@ fn scan_and_edit_second(h: &mut Harness<'static, PdfCraftApp>) {
 fn the_editor_edits_the_selected_diagrams_position() {
     let mut h = harness();
     scan_and_edit_second(&mut h);
+    h.get_by_label("Details").click();
+    h.run_steps(2);
     h.get_by_label(EDITED);
     h.get_by_label("Legal position");
     // Click e4 on the board (from White's side: file e = column 4, rank 4 = row 4 from the top).
-    let board = h.get_by_label_contains("Board: ").rect();
+    let board = h.get_by_label_contains("Diagram board: ").rect();
     let at = board.min + egui::vec2(board.width() * 4.5 / 8.0, board.height() * 4.5 / 8.0);
     h.hover_at(at);
     h.run_steps(1);
@@ -274,7 +289,7 @@ fn the_editor_edits_the_selected_diagrams_position() {
     );
 }
 
-/// The palette shows the pieces as the board draws them, in a column beside the board, each
+/// The palette shows the pieces as the board draws them, in two rows under the board, each
 /// button named for its piece (not a letter such as `n`): Black knight puts a black knight on the square clicked, and the eraser
 /// empties it again.
 #[test]
@@ -285,12 +300,13 @@ fn the_editors_palette_is_the_pieces_pictures() {
     for letter in ["N", "n", "B", "b", "P", "p"] {
         assert!(h.query_by_label(letter).is_none(), "no {letter} in the palette");
     }
-    let board = h.get_by_label_contains("Board: ").rect();
-    // The palette is a column on the board's right, White's piece and Black's on a row.
+    let board = h.get_by_label_contains("Diagram board: ").rect();
+    // The palette is under the board: White's pieces on a row, Black's and the eraser on the next.
     let (white, black, erase) = (h.get_by_label("White knight").rect(), h.get_by_label("Black knight").rect(), h.get_by_label("Erase").rect());
-    assert!(white.left() > board.right() && white.bottom() <= board.bottom() + 1.0, "beside the board: {white:?}, {board:?}");
-    assert!((white.center().y - black.center().y).abs() < 1.0 && black.left() > white.right(), "{white:?} {black:?}");
-    assert!(erase.top() > black.bottom() && erase.left() > board.right(), "the eraser under the pieces: {erase:?}");
+    assert!(white.top() > board.bottom(), "under the board: {white:?}, {board:?}");
+    assert!(black.top() >= white.bottom() - 1.0 && (white.center().x - black.center().x).abs() < 4.0, "{white:?} {black:?}");
+    let pawn = h.get_by_label("Black pawn").rect();
+    assert!((erase.center().y - pawn.center().y).abs() < 1.0 && erase.left() > pawn.right(), "the eraser ends Black's row: {erase:?}");
     // d5 from White's side: column 3, row 3 from the top.
     let d5 = board.min + egui::vec2(board.width() * 3.5 / 8.0, board.height() * 3.5 / 8.0);
     let click_d5 = |h: &mut Harness<'static, PdfCraftApp>| {
@@ -312,29 +328,29 @@ fn the_editors_palette_is_the_pieces_pictures() {
     assert_eq!(fen(&h).as_deref(), Some("4k3/8/8/8/8/8/8/R3K3 w Q - 0 1"), "d5 is empty again");
 }
 
-/// The editor's labels stay whole in the panel: a radio button that does not fit on its row
-/// moves to the next one instead of wrapping its word into a column of letters, and nothing is
-/// drawn past the panel's visible edge.
+/// The Diagram tab's labels stay whole, inside the tab, and its main button is in sight at
+/// 1366 × 768 (plan A8, P3b2: every main action visible at that size).
 #[test]
 fn the_editors_labels_are_not_broken_into_letters() {
-    let mut h = harness();
+    let mut h = harness_sized(boards(), egui::vec2(1366.0, 768.0));
     scan_and_edit_second(&mut h);
     let (white, black) = (h.get_by_label("White").rect(), h.get_by_label("Black").rect());
     assert!(black.height() <= white.height() + 0.5, "Black is on one line: {black:?} against {white:?}");
-    let board = h.get_by_label_contains("Board: ").rect();
-    // The panel ends where the rail of panels on its right begins.
-    let rail = h.get_by_label("Comments").rect().left();
-    assert!(rail > board.right(), "the rail is right of the panel: {rail}");
-    for name in ["Move number:", "To move:", "White", "Black", "Castling:", "Flip board", "1 to review"] {
+    let board = h.get_by_label_contains("Diagram board: ").rect();
+    let tab = h.get_by_label("Page 1 · diagram 2 of 2").rect();
+    let confirm = h.get_by_label("Confirm and next").rect();
+    let (left, right) = (tab.left().min(board.left()) - 12.0, confirm.right() + 12.0);
+    for name in ["Move number:", "To move:", "White", "Black", "1 of 1 to review", "Details", "Legal position", "Confirm and next", "More actions"] {
         let r = h.get_by_label(name).rect();
         assert!(r.width() >= r.height(), "{name} is wider than tall: {r:?}");
-        assert!(r.left() >= board.left() - 1.0 && r.right() < rail - 4.0, "{name} is inside the panel: {r:?}, from {} to {rail}", board.left());
+        assert!(r.left() >= left && r.right() <= right, "{name} is inside the tab: {r:?}, from {left} to {right}");
     }
+    assert!(confirm.bottom() <= 768.0 && confirm.top() > board.bottom(), "the main button is on screen, under the board: {confirm:?}");
     // The side to move keeps its label: To move:, White and Black on one row.
     let (to_move, white) = (h.get_by_label("To move:").rect(), h.get_by_label("White").rect());
     assert!((to_move.center().y - black.center().y).abs() < 1.0 && (white.center().y - black.center().y).abs() < 1.0, "{to_move:?} {black:?}");
     if let Ok(dir) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
-        h.render().unwrap().save(std::path::Path::new(&dir).join("diagram-editor.png")).unwrap();
+        h.render().unwrap().save(std::path::Path::new(&dir).join("diagram-tab.png")).unwrap();
     }
 }
 
@@ -362,6 +378,8 @@ fn replace_on_the_page_then_undo() {
     let mut h = harness();
     scan_and_edit_second(&mut h);
     let before = h.state().session.get(h.state().active_ids().unwrap().1).unwrap().edit_generation();
+    h.get_by_label("More actions").click();
+    h.run_steps(2);
     h.get_by_label("Replace on the page").click();
     h.run_steps(4);
     assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Diagrams found: 2"), "replaced, then the page was scanned again");
@@ -379,6 +397,8 @@ fn replace_on_the_page_then_undo() {
 fn the_editor_links_the_corrected_position() {
     let mut h = harness();
     scan_and_edit_second(&mut h);
+    h.get_by_label("More actions").click();
+    h.run_steps(2);
     h.get_by_label("Add lichess link").click();
     h.run_steps(3);
     assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Lichess link added"));
@@ -409,7 +429,7 @@ fn the_review_queue_lists_and_walks_the_diagrams_to_review() {
     h.state_mut().chess.editor = None;
     h.state_mut().select_chess_diagram(0, 0, true);
     h.run_steps(2);
-    h.get_by_label("Next to review ▶").click();
+    h.get_by_label("Next to review (Page Down)").click();
     h.run_steps(2);
     assert_eq!(h.state().chess.results.as_ref().and_then(|r| r.selected), Some((0, 1)));
 }
@@ -3059,4 +3079,158 @@ fn no_chess_button_has_a_name_the_fonts_cannot_draw() {
     assert!(names.iter().any(|n| n == "Previous move (Left arrow)"), "{names:?}");
     let missing: Vec<&String> = names.iter().filter(|n| !h.ctx.fonts_mut(|f| f.has_glyphs(&font, n))).collect();
     assert!(missing.is_empty(), "buttons the fonts cannot draw: {missing:?}");
+}
+
+// ─── The Diagram tab and its corrections (plan A8, P3b2) ──────────────────────────────────────
+
+/// An empty folder for one test's diagram corrections.
+fn corrections_dir(test: &str) -> std::path::PathBuf {
+    let dir = std::env::temp_dir().join(format!("pdfcraft-ui-corrections-{test}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    dir
+}
+
+/// The corrections files kept in `dir`.
+fn correction_files(dir: &std::path::Path) -> Vec<String> {
+    std::fs::read_dir(dir)
+        .map(|d| d.flatten().filter_map(|e| e.file_name().to_str().map(str::to_owned)).filter(|n| n.ends_with(".json")).collect())
+        .unwrap_or_default()
+}
+
+/// What the user did with diagram `index` of page 1, as the list and the page marks show it.
+fn kind(h: &Harness<'static, PdfCraftApp>, index: usize) -> Option<String> {
+    h.state().chess.results.as_ref().and_then(|r| r.kind(0, index)).map(|k| format!("{k:?}"))
+}
+
+/// Picking a diagram opens the Diagram tab beside the Inspector, the list still in sight;
+/// Confirm keeps the edited position as a correction on disk, the diagram is Corrected in the list
+/// and off the review queue, and the readings the session gives (the Text tab, exports, links)
+/// take it. Opened again, the document finds it and the tab shows the kept position.
+#[test]
+fn confirming_keeps_the_correction_and_it_comes_back_when_reopened() {
+    let dir = corrections_dir("confirm");
+    {
+        let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), Some(dir.clone()));
+        scan_and_edit_second(&mut h);
+        assert!(h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Diagram), "the Diagram tab opened");
+        h.get_by_label_contains("Diagram 1 · ");
+        let queue = h.state().chess.results.as_ref().unwrap().review_queue();
+        if queue.is_empty() {
+            // With the user's piece model installed the drawn board may be read and accepted.
+            return;
+        }
+        h.get_by_label("Confirm and next").click();
+        h.run_steps(3);
+        assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"));
+        assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Diagram 2, page 1: Corrected"));
+        assert!(h.state().chess.results.as_ref().unwrap().review_queue().is_empty(), "off the review queue");
+        h.get_by_label("Diagram 2 · Corrected");
+        assert_eq!(correction_files(&dir).len(), 1, "kept on disk");
+        let id = h.state().active_ids().unwrap().1;
+        let settings = pdfcraft_engine::chess::ChessScanSettings::default();
+        let corrected = h.state_mut().session.chess_scan_corrected(id, &[0], &settings).unwrap();
+        assert_eq!(corrected.applied.iter().map(|a| (a.index, a.fen.as_str())).collect::<Vec<_>>(), vec![(1, EDITED)], "the session reads it");
+    }
+    let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), Some(dir.clone()));
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"), "found again");
+    h.get_by_label_contains("Diagram 2 · ").click();
+    h.run_steps(3);
+    assert_eq!(h.state().chess.editor.as_ref().map(|e| e.fen()).as_deref(), Some(EDITED), "the tab shows the kept position");
+    // Forgotten: the reading is back, and so is the diagram in the review queue.
+    h.get_by_label("More actions").click();
+    h.run_steps(2);
+    h.get_by_label("Forget the correction").click();
+    h.run_steps(3);
+    assert_eq!(kind(&h, 1), None);
+    assert_eq!(h.state().chess.results.as_ref().unwrap().review_queue(), vec![(0, 1)]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// The font diagram confirmed as read is Verified; Ctrl+Enter over the tab confirms too; the
+/// last way of confirming is the one in front next time.
+#[test]
+fn a_reading_confirmed_as_it_is_is_verified() {
+    let dir = corrections_dir("verified");
+    let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), Some(dir.clone()));
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    h.get_by_label_contains("Diagram 1 · ").click();
+    h.run_steps(3);
+    assert_eq!(h.state().chess.editor.as_ref().map(|e| e.fen()).as_deref(), Some(START_FEN));
+    h.get_by_label("More ways to confirm").click();
+    h.run_steps(2);
+    h.get_by_label("Only confirm").click();
+    h.run_steps(3);
+    assert_eq!(kind(&h, 0).as_deref(), Some("Verified"));
+    assert!(h.state().chess.confirm_only, "remembered");
+    h.get_by_label("Only confirm");
+    // Ctrl+Enter with the pointer over the tab: the drawn board, set and confirmed.
+    h.get_by_label_contains("Diagram 2 · ").click();
+    h.run_steps(3);
+    h.state_mut().chess.editor.as_mut().unwrap().position = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(EDITED).unwrap();
+    h.hover_at(h.get_by_label_contains("Diagram board: ").rect().center());
+    h.run_steps(1);
+    h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Enter);
+    h.run_steps(3);
+    assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Save As takes the corrections along: the saved file, opened again, finds them.
+#[test]
+fn saving_as_keeps_the_corrections_for_the_saved_file() {
+    let dir = corrections_dir("save-as");
+    std::fs::create_dir_all(&dir).unwrap();
+    let out = dir.join("saved copy.pdf");
+    {
+        let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), Some(dir.join("store")));
+        assert!(h.state_mut().execute("chess.scan"));
+        h.run_steps(3);
+        h.get_by_label_contains("Diagram 1 · ").click();
+        h.run_steps(3);
+        h.state_mut().chess.confirm_only = true;
+        h.run_steps(1);
+        h.get_by_label("Only confirm").click();
+        h.run_steps(3);
+        assert_eq!(kind(&h, 0).as_deref(), Some("Verified"));
+        h.state_mut().save_override = Some(out.to_string_lossy().into_owned());
+        assert!(h.state_mut().save_active(pdfcraft_ui_egui::SaveTarget::As));
+    }
+    let bytes = std::fs::read(&out).unwrap();
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).build_eframe({
+        let (out, store) = (out.clone(), dir.join("store"));
+        move |_cc| {
+            let mut app = PdfCraftApp::new();
+            app.set_option("language", "en").unwrap();
+            app.chess.corrections.use_folder(store);
+            app.open_bytes("saved copy.pdf", Some(out.to_string_lossy().into_owned()), bytes).unwrap();
+            app.run_inline = true;
+            app
+        }
+    });
+    h.run_steps(4);
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    assert_eq!(kind(&h, 0).as_deref(), Some("Verified"), "the saved file finds them");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Preferences ▸ Classic diagram editor: the editor stays in the Diagrams panel, and no Diagram
+/// tab opens.
+#[test]
+fn the_classic_editor_stays_in_the_diagrams_panel() {
+    let mut h = harness();
+    h.state_mut().chess.classic_editor = true;
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    h.get_by_label_contains("Diagram 1 · ").click();
+    h.run_steps(3);
+    assert!(!h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Diagram));
+    h.get_by_label("Edit Diagram 1, page 1");
+    let saved = h.state().persist();
+    let mut again = PdfCraftApp::new();
+    again.restore(&saved);
+    assert!(again.chess.classic_editor, "kept with the preferences");
 }

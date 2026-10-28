@@ -3173,3 +3173,26 @@ chess undo step	Clear drawings	描画の消去
 	You checked it and kept the reading.	確認して読み取り結果をそのまま採用しました。
 	You corrected this position.	この局面を修正しました。
 	Previous / next view	前の表示 / 次の表示
+# Plan A8 P3b2: the Diagram tab and its corrections.
+	Diagram	局面図
+	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	保存された局面図の修正を読み込めませんでした ({why})。{name} として退避しました。
+	The diagram corrections couldn't be saved: {e}	局面図の修正を保存できませんでした: {e}
+	Diagram {n}, page {p}: {state}	局面図 {n}、{p} ページ: {state}
+	Page {p} · diagram {n} of {m}	{p} ページ · 局面図 {n}/{m}
+	Show it on the page	ページで表示
+	Next to review (Page Down)	次の確認待ち (Page Down)
+	{i} of {n} to review	確認待ち {i}/{n}
+	Previous to review (Page Up)	前の確認待ち (Page Up)
+	Analyze on the board	盤面で解析
+	Select a diagram in the Diagrams panel, or click one on the page.	「局面図」パネルで局面図を選ぶか、ページ上の局面図をクリックしてください。
+	More ways to confirm	その他の確定方法
+	Confirm and next	確定して次へ
+	Only confirm	確定のみ
+	Keep this position for the diagram, without changing the PDF.	PDF を変更せずに、この局面を局面図の局面として保持します。
+	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	PDF を変更せずに、この局面を局面図の局面として保持し、次の確認待ちを開きます (Ctrl+Enter)。
+	More actions	その他の操作
+	Forget the correction	修正を取り消す
+	Show what was read again; the PDF is not changed.	読み取った局面を再び表示します。PDF は変更されません。
+	Diagram board: {fen}	局面図の盤面: {fen}
+	Classic diagram editor	従来の局面図エディター
+	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	局面図タブ以前と同じく「局面図」パネル内で局面図を編集します。このオプションは今後のバージョンで廃止されます。

@@ -3113,3 +3113,26 @@ chess undo step	Clear drawings	usunięcie rysunków
 	You checked it and kept the reading.	Sprawdziłeś ją i zostawiłeś odczyt.
 	You corrected this position.	Poprawiłeś tę pozycję.
 	Previous / next view	Poprzedni / następny widok
+# Plan A8 P3b2: the Diagram tab and its corrections.
+	Diagram	Diagram
+	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Nie udało się odczytać zapisanych poprawek diagramów ({why}); odłożono je jako {name}.
+	The diagram corrections couldn't be saved: {e}	Nie udało się zapisać poprawek diagramów: {e}
+	Diagram {n}, page {p}: {state}	Diagram {n}, str. {p}: {state}
+	Page {p} · diagram {n} of {m}	Str. {p} · diagram {n} z {m}
+	Show it on the page	Pokaż na stronie
+	Next to review (Page Down)	Następny do sprawdzenia (Page Down)
+	{i} of {n} to review	{i} z {n} do sprawdzenia
+	Previous to review (Page Up)	Poprzedni do sprawdzenia (Page Up)
+	Analyze on the board	Analizuj na szachownicy
+	Select a diagram in the Diagrams panel, or click one on the page.	Wybierz diagram w panelu Diagramy albo kliknij któryś na stronie.
+	More ways to confirm	Inne sposoby potwierdzenia
+	Confirm and next	Potwierdź i dalej
+	Only confirm	Tylko potwierdź
+	Keep this position for the diagram, without changing the PDF.	Zachowaj tę pozycję dla diagramu, bez zmiany pliku PDF.
+	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	Zachowaj tę pozycję dla diagramu, bez zmiany pliku PDF, i otwórz następny do sprawdzenia (Ctrl+Enter).
+	More actions	Więcej działań
+	Forget the correction	Zapomnij poprawkę
+	Show what was read again; the PDF is not changed.	Pokaż znów to, co odczytano; PDF się nie zmienia.
+	Diagram board: {fen}	Szachownica diagramu: {fen}
+	Classic diagram editor	Klasyczny edytor diagramów
+	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Edytuj diagramy w panelu Diagramy, jak przed kartą Diagram. Ta opcja zniknie w jednej z kolejnych wersji.

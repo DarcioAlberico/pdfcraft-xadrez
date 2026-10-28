@@ -3171,3 +3171,26 @@ chess undo step	Clear drawings	l'effacement des dessins
 	You checked it and kept the reading.	Vous l'avez vérifiée et gardé la lecture.
 	You corrected this position.	Vous avez corrigé cette position.
 	Previous / next view	Vue précédente / suivante
+# Plan A8 P3b2: the Diagram tab and its corrections.
+	Diagram	Diagramme
+	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Les corrections de diagrammes enregistrées n’ont pas pu être lues ({why}) ; elles ont été mises de côté sous le nom {name}.
+	The diagram corrections couldn't be saved: {e}	Impossible d’enregistrer les corrections de diagrammes : {e}
+	Diagram {n}, page {p}: {state}	Diagramme {n}, page {p} : {state}
+	Page {p} · diagram {n} of {m}	Page {p} · diagramme {n} sur {m}
+	Show it on the page	Le montrer sur la page
+	Next to review (Page Down)	Suivant à revoir (Page Down)
+	{i} of {n} to review	{i} sur {n} à revoir
+	Previous to review (Page Up)	Précédent à revoir (Page Up)
+	Analyze on the board	Analyser sur l’échiquier
+	Select a diagram in the Diagrams panel, or click one on the page.	Choisissez un diagramme dans le panneau Diagrammes, ou cliquez sur l’un d’eux dans la page.
+	More ways to confirm	Autres façons de confirmer
+	Confirm and next	Confirmer et continuer
+	Only confirm	Confirmer seulement
+	Keep this position for the diagram, without changing the PDF.	Garder cette position pour le diagramme, sans modifier le PDF.
+	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	Garder cette position pour le diagramme, sans modifier le PDF, et ouvrir le suivant à revoir (Ctrl+Entrée).
+	More actions	Plus d’actions
+	Forget the correction	Oublier la correction
+	Show what was read again; the PDF is not changed.	Montrer à nouveau ce qui a été lu ; le PDF n’est pas modifié.
+	Diagram board: {fen}	Échiquier du diagramme : {fen}
+	Classic diagram editor	Éditeur de diagrammes classique
+	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Modifier les diagrammes dans le panneau Diagrammes, comme avant l’onglet Diagramme. Cette option disparaîtra dans une version ultérieure.

@@ -35,7 +35,7 @@ const BOARD_PT: f32 = 248.0;
 const BOARD_PX: u32 = 496;
 
 /// Highest move number the editor takes.
-const MAX_MOVE_NUMBER: u32 = 999;
+pub(crate) const MAX_MOVE_NUMBER: u32 = 999;
 
 /// What a click on the board puts there.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -125,6 +125,15 @@ impl DiagramEditor {
         if self.flipped { Square::new(7 - col, row) } else { Square::new(col, 7 - row) }
     }
 
+    /// Show `fen`, the position the user kept for the diagram, instead of the reading (which
+    /// stays what Back to the reading goes back to).
+    pub fn show_kept(&mut self, fen: &str) {
+        if let Ok(p) = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(fen) {
+            self.position = p;
+            self.uncertain.clear();
+        }
+    }
+
     /// Back to the reading.
     pub fn reset(&mut self) {
         if let Some(fen) = &self.original
@@ -147,6 +156,15 @@ pub enum EditorAction {
     Close,
     /// Put the position on the chess board.
     OpenBoard,
+    /// Keep the position for the diagram without changing the PDF (plan A8, P3b2); `next`: then
+    /// open the next diagram to review.
+    Confirm {
+        next: bool,
+    },
+    /// Forget the correction kept for the diagram: its reading shows again.
+    Forget,
+    /// Go to the diagram on the page and outline it.
+    ShowOnPage,
 }
 
 pub(crate) fn piece_letter(p: Piece) -> String {
@@ -323,6 +341,70 @@ fn board_texture(ui: &egui::Ui, ed: &mut DiagramEditor, pieces: &PieceSet) -> Op
     }
 }
 
+/// The palette's pieces as `pieces` draws them, cut out once per piece choice.
+pub(crate) fn palette_sprites(ui: &egui::Ui, ed: &mut DiagramEditor, pieces: &PieceSet) -> Option<TextureHandle> {
+    let generation = pieces_generation();
+    if ed.sprites.as_ref().is_some_and(|(drawn, _)| *drawn != generation) {
+        ed.sprites = None;
+    }
+    ed.sprites.get_or_insert_with(|| (generation, crate::chess_board_ui::cut_sprites(ui.ctx(), pieces, "chess-editor-pieces"))).1.clone()
+}
+
+/// The editable board, `side` points a side: a click puts the brush on the square under it, and
+/// the squares the model was unsure of are outlined. Its accessible name is "Board: <FEN>", or
+/// "Diagram board: <FEN>" in the Diagram tab (`tab`), apart from the analysis board's.
+pub(crate) fn board_view(ui: &mut egui::Ui, t: &Tokens, ed: &mut DiagramEditor, pieces: &PieceSet, side: f32, tab: bool) {
+    if let Some(tex) = board_texture(ui, ed, pieces) {
+        let response = ui.add(egui::Image::new(&tex).fit_to_exact_size(egui::vec2(side, side)).sense(egui::Sense::click()));
+        let response = response.on_hover_text(tl!("Click a square to put the chosen piece there; click it again to empty it."));
+        // Its accessible name: what the board is, and the position on it.
+        let name = if tab { tl!("Diagram board: {fen}") } else { tl!("Board: {fen}") };
+        let board_name = crate::i18n::fmt(name, &[("fen", &ed.fen())]);
+        response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &board_name));
+        if response.clicked()
+            && let Some(pos) = response.interact_pointer_pos()
+        {
+            let r = response.rect;
+            if let Some(sq) = ed.square_at((pos.x - r.min.x) / r.width().max(1.0), (pos.y - r.min.y) / r.height().max(1.0)) {
+                ed.paint(sq);
+            }
+        }
+        // The squares the model was unsure of, outlined.
+        for u in &ed.uncertain {
+            let (file, rank) = (f32::from(u.square.file()), f32::from(u.square.rank()));
+            let (col, row) = if ed.flipped { (7.0 - file, rank) } else { (file, 7.0 - rank) };
+            let cell = response.rect.width() / 8.0;
+            let sq = egui::Rect::from_min_size(response.rect.min + egui::vec2(col * cell, row * cell), egui::vec2(cell, cell));
+            ui.painter().rect_stroke(sq.shrink(1.0), 1.0, egui::Stroke::new(2.0, t.attention), egui::StrokeKind::Inside);
+        }
+    } else if let Some(e) = &ed.draw_error {
+        ui.label(egui::RichText::new(crate::i18n::fmt(tl!("The board couldn't be drawn: {e}"), &[("e", e)])).small().color(t.text_muted));
+    }
+}
+
+/// The model's second readings of the squares it was unsure of, each one click away.
+pub(crate) fn second_readings(ui: &mut egui::Ui, ed: &mut DiagramEditor) {
+    let mut take = None;
+    for (k, u) in ed.uncertain.iter().enumerate() {
+        ui.horizontal(|ui| {
+            let now = ed.position.placement.get(u.square).map_or_else(|| "·".to_owned(), piece_letter);
+            let second = u.alternative.map_or_else(|| "·".to_owned(), piece_letter);
+            ui.label(
+                egui::RichText::new(format!("{}: {now} {:.0}% · {second} {:.0}%", u.square, u.confidence * 100.0, u.alternative_confidence * 100.0))
+                    .small()
+                    .monospace(),
+            );
+            if ui.small_button(tl!("Use the second reading")).clicked() {
+                take = Some(k);
+            }
+        });
+    }
+    if let Some(u) = take.and_then(|k| ed.uncertain.get(k).cloned()) {
+        ed.position.placement.set(u.square, u.alternative);
+        ed.uncertain.retain(|x| x.square != u.square);
+    }
+}
+
 /// The editor: the board, the palette, the position's fields and the actions. `queue` is the
 /// number of diagrams to review (for Previous / Next).
 pub fn editor_ui(ui: &mut egui::Ui, t: &Tokens, ed: &mut DiagramEditor, pieces: &PieceSet, queue: usize) -> Option<EditorAction> {
@@ -336,39 +418,10 @@ pub fn editor_ui(ui: &mut egui::Ui, t: &Tokens, ed: &mut DiagramEditor, pieces: 
     });
     // The board, and the palette beside it: the pieces as the board draws them, and the eraser.
     // In a narrow panel the board gets smaller (to `MIN_BOARD_PT`) to keep the palette there.
-    let generation = pieces_generation();
-    if ed.sprites.as_ref().is_some_and(|(drawn, _)| *drawn != generation) {
-        ed.sprites = None;
-    }
-    let sprites =
-        ed.sprites.get_or_insert_with(|| (generation, crate::chess_board_ui::cut_sprites(ui.ctx(), pieces, "chess-editor-pieces"))).1.clone();
+    let sprites = palette_sprites(ui, ed, pieces);
     ui.horizontal_top(|ui| {
         let side = (ui.available_width() - PALETTE_COLUMN - ui.spacing().item_spacing.x).clamp(MIN_BOARD_PT, BOARD_PT);
-        if let Some(tex) = board_texture(ui, ed, pieces) {
-            let response = ui.add(egui::Image::new(&tex).fit_to_exact_size(egui::vec2(side, side)).sense(egui::Sense::click()));
-            let response = response.on_hover_text(tl!("Click a square to put the chosen piece there; click it again to empty it."));
-            // Its accessible name: what the board is, and the position on it.
-            let board_name = crate::i18n::fmt(tl!("Board: {fen}"), &[("fen", &ed.fen())]);
-            response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &board_name));
-            if response.clicked()
-                && let Some(pos) = response.interact_pointer_pos()
-            {
-                let r = response.rect;
-                if let Some(sq) = ed.square_at((pos.x - r.min.x) / r.width().max(1.0), (pos.y - r.min.y) / r.height().max(1.0)) {
-                    ed.paint(sq);
-                }
-            }
-            // The squares the model was unsure of, outlined.
-            for u in &ed.uncertain {
-                let (file, rank) = (f32::from(u.square.file()), f32::from(u.square.rank()));
-                let (col, row) = if ed.flipped { (7.0 - file, rank) } else { (file, 7.0 - rank) };
-                let cell = response.rect.width() / 8.0;
-                let sq = egui::Rect::from_min_size(response.rect.min + egui::vec2(col * cell, row * cell), egui::vec2(cell, cell));
-                ui.painter().rect_stroke(sq.shrink(1.0), 1.0, egui::Stroke::new(2.0, t.attention), egui::StrokeKind::Inside);
-            }
-        } else if let Some(e) = &ed.draw_error {
-            ui.label(egui::RichText::new(crate::i18n::fmt(tl!("The board couldn't be drawn: {e}"), &[("e", e)])).small().color(t.text_muted));
-        }
+        board_view(ui, t, ed, pieces, side, false);
         ui.vertical(|ui| palette(ui, sprites.as_ref(), &mut ed.brush, true));
     });
     // Move number, side to move, castling, view. The side to move has a row of its own, so its
@@ -408,26 +461,7 @@ pub fn editor_ui(ui: &mut egui::Ui, t: &Tokens, ed: &mut DiagramEditor, pieces: 
     let status = illegal.unwrap_or_else(|| tl!("Legal position").to_string());
     let colour = if legal { t.success_text } else { t.danger_text };
     ui.add(egui::Label::new(egui::RichText::new(status).small().color(colour)).wrap());
-    // The model's second readings.
-    let mut take = None;
-    for (k, u) in ed.uncertain.iter().enumerate() {
-        ui.horizontal(|ui| {
-            let now = ed.position.placement.get(u.square).map_or_else(|| "·".to_owned(), piece_letter);
-            let second = u.alternative.map_or_else(|| "·".to_owned(), piece_letter);
-            ui.label(
-                egui::RichText::new(format!("{}: {now} {:.0}% · {second} {:.0}%", u.square, u.confidence * 100.0, u.alternative_confidence * 100.0))
-                    .small()
-                    .monospace(),
-            );
-            if ui.small_button(tl!("Use the second reading")).clicked() {
-                take = Some(k);
-            }
-        });
-    }
-    if let Some(u) = take.and_then(|k| ed.uncertain.get(k).cloned()) {
-        ed.position.placement.set(u.square, u.alternative);
-        ed.uncertain.retain(|x| x.square != u.square);
-    }
+    second_readings(ui, ed);
     ui.add_space(4.0);
     ui.horizontal_wrapped(|ui| {
         if ui.button(tl!("Replace on the page")).on_hover_text(tl!("Draw this position over the diagram on the page (one undo step).")).clicked() {

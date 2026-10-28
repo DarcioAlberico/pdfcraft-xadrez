@@ -3135,3 +3135,26 @@ chess undo step	Clear drawings	清除标记
 	You checked it and kept the reading.	您已检查并保留了读取结果。
 	You corrected this position.	您已更正此局面。
 	Previous / next view	上一个 / 下一个视图
+# Plan A8 P3b2: the Diagram tab and its corrections.
+	Diagram	棋图
+	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	无法读取已保存的棋图更正（{why}）；已另存为 {name}。
+	The diagram corrections couldn't be saved: {e}	无法保存棋图更正：{e}
+	Diagram {n}, page {p}: {state}	棋图 {n}，第 {p} 页：{state}
+	Page {p} · diagram {n} of {m}	第 {p} 页 · 棋图 {n}/{m}
+	Show it on the page	在页面上显示
+	Next to review (Page Down)	下一个待复核（Page Down）
+	{i} of {n} to review	待复核 {i}/{n}
+	Previous to review (Page Up)	上一个待复核（Page Up）
+	Analyze on the board	在棋盘上分析
+	Select a diagram in the Diagrams panel, or click one on the page.	请在“棋图”面板中选择一个棋图，或在页面上点击一个。
+	More ways to confirm	其他确认方式
+	Confirm and next	确认并继续
+	Only confirm	仅确认
+	Keep this position for the diagram, without changing the PDF.	为该棋图保留此局面，不更改 PDF。
+	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	为该棋图保留此局面，不更改 PDF，并打开下一个待复核的棋图（Ctrl+Enter）。
+	More actions	更多操作
+	Forget the correction	放弃更正
+	Show what was read again; the PDF is not changed.	重新显示识别结果；PDF 不会更改。
+	Diagram board: {fen}	棋图棋盘：{fen}
+	Classic diagram editor	经典棋图编辑器
+	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	像“棋图”选项卡出现之前一样，在“棋图”面板中编辑棋图。此选项将在以后的版本中移除。

@@ -3447,3 +3447,26 @@ chess undo step	Clear drawings	مسح الرسوم
 	You checked it and kept the reading.	تحققت منه وأبقيت القراءة.
 	You corrected this position.	صححت هذا الوضع.
 	Previous / next view	العرض السابق / التالي
+# Plan A8 P3b2: the Diagram tab and its corrections.
+	Diagram	مخطط
+	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	تعذّرت قراءة تصحيحات المخططات المحفوظة ({why})؛ وُضعت جانبًا باسم {name}.
+	The diagram corrections couldn't be saved: {e}	تعذّر حفظ تصحيحات المخططات: {e}
+	Diagram {n}, page {p}: {state}	المخطط {n}، الصفحة {p}: {state}
+	Page {p} · diagram {n} of {m}	الصفحة {p} · المخطط {n} من {m}
+	Show it on the page	إظهاره في الصفحة
+	Next to review (Page Down)	التالي للمراجعة (Page Down)
+	{i} of {n} to review	{i} من {n} للمراجعة
+	Previous to review (Page Up)	السابق للمراجعة (Page Up)
+	Analyze on the board	التحليل على الرقعة
+	Select a diagram in the Diagrams panel, or click one on the page.	اختر مخططًا في لوحة المخططات، أو انقر على أحدها في الصفحة.
+	More ways to confirm	طرق أخرى للتأكيد
+	Confirm and next	تأكيد ثم التالي
+	Only confirm	تأكيد فقط
+	Keep this position for the diagram, without changing the PDF.	الاحتفاظ بهذا الوضع للمخطط دون تغيير ملف PDF.
+	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	الاحتفاظ بهذا الوضع للمخطط دون تغيير ملف PDF، ثم فتح التالي للمراجعة (Ctrl+Enter).
+	More actions	إجراءات أخرى
+	Forget the correction	نسيان التصحيح
+	Show what was read again; the PDF is not changed.	إظهار ما قُرئ مجددًا؛ لا يتغير ملف PDF.
+	Diagram board: {fen}	رقعة المخطط: {fen}
+	Classic diagram editor	محرر المخططات الكلاسيكي
+	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	تحرير المخططات داخل لوحة المخططات كما كان قبل علامة تبويب المخطط. سيُزال هذا الخيار في إصدار لاحق.

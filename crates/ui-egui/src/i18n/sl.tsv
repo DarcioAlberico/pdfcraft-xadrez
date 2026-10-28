@@ -3176,3 +3176,26 @@ chess undo step	Clear drawings	odstranjevanje risb
 	You checked it and kept the reading.	Preverili ste jo in obdržali branje.
 	You corrected this position.	To pozicijo ste popravili.
 	Previous / next view	Prejšnji / naslednji pogled
+# Plan A8 P3b2: the Diagram tab and its corrections.
+	Diagram	Diagram
+	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Shranjenih popravkov diagramov ni bilo mogoče prebrati ({why}); odloženi so kot {name}.
+	The diagram corrections couldn't be saved: {e}	Popravkov diagramov ni bilo mogoče shraniti: {e}
+	Diagram {n}, page {p}: {state}	Diagram {n}, str. {p}: {state}
+	Page {p} · diagram {n} of {m}	Str. {p} · diagram {n} od {m}
+	Show it on the page	Pokaži na strani
+	Next to review (Page Down)	Naslednji za pregled (Page Down)
+	{i} of {n} to review	{i} od {n} za pregled
+	Previous to review (Page Up)	Prejšnji za pregled (Page Up)
+	Analyze on the board	Analiziraj na šahovnici
+	Select a diagram in the Diagrams panel, or click one on the page.	Izberite diagram v podoknu Diagrami ali kliknite enega na strani.
+	More ways to confirm	Drugi načini potrditve
+	Confirm and next	Potrdi in naprej
+	Only confirm	Samo potrdi
+	Keep this position for the diagram, without changing the PDF.	Obdrži ta položaj za diagram, ne da bi se PDF spremenil.
+	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	Obdrži ta položaj za diagram, ne da bi se PDF spremenil, in odpri naslednjega za pregled (Ctrl+Enter).
+	More actions	Več dejanj
+	Forget the correction	Pozabi popravek
+	Show what was read again; the PDF is not changed.	Znova pokaži prebrano; PDF se ne spremeni.
+	Diagram board: {fen}	Šahovnica diagrama: {fen}
+	Classic diagram editor	Klasični urejevalnik diagramov
+	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Urejaj diagrame v podoknu Diagrami, kot pred zavihkom Diagram. Ta možnost bo v eni od prihodnjih različic izginila.

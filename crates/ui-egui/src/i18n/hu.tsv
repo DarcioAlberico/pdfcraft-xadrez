@@ -3170,3 +3170,26 @@ chess undo step	Clear drawings	rajzok törlése
 	You checked it and kept the reading.	Ellenőrizte, és megtartotta a beolvasást.
 	You corrected this position.	Javította ezt az állást.
 	Previous / next view	Előző / következő nézet
+# Plan A8 P3b2: the Diagram tab and its corrections.
+	Diagram	Diagram
+	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	A mentett diagramjavításokat nem sikerült beolvasni ({why}); félretettük őket ezen a néven: {name}.
+	The diagram corrections couldn't be saved: {e}	A diagramjavításokat nem sikerült menteni: {e}
+	Diagram {n}, page {p}: {state}	{n}. diagram, {p}. oldal: {state}
+	Page {p} · diagram {n} of {m}	{p}. oldal · {n}/{m}. diagram
+	Show it on the page	Megmutatás az oldalon
+	Next to review (Page Down)	Következő ellenőrizendő (Page Down)
+	{i} of {n} to review	{i}/{n} ellenőrizendő
+	Previous to review (Page Up)	Előző ellenőrizendő (Page Up)
+	Analyze on the board	Elemzés a táblán
+	Select a diagram in the Diagrams panel, or click one on the page.	Válasszon egy diagramot a Diagramok panelen, vagy kattintson egyre az oldalon.
+	More ways to confirm	További megerősítési módok
+	Confirm and next	Megerősítés és tovább
+	Only confirm	Csak megerősítés
+	Keep this position for the diagram, without changing the PDF.	Ennek az állásnak a megtartása a diagramhoz, a PDF módosítása nélkül.
+	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	Ennek az állásnak a megtartása a diagramhoz, a PDF módosítása nélkül, majd a következő ellenőrizendő megnyitása (Ctrl+Enter).
+	More actions	További műveletek
+	Forget the correction	Javítás elvetése
+	Show what was read again; the PDF is not changed.	Ismét a beolvasott állás mutatása; a PDF nem változik.
+	Diagram board: {fen}	Diagram táblája: {fen}
+	Classic diagram editor	Klasszikus diagramszerkesztő
+	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Diagramok szerkesztése a Diagramok panelen belül, mint a Diagram lap előtt. Ez a lehetőség egy későbbi verzióban megszűnik.

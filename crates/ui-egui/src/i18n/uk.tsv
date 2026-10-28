@@ -3193,3 +3193,26 @@ chess undo step	Clear drawings	видалення малюнків
 	You checked it and kept the reading.	Ви перевірили й залишили прочитане.
 	You corrected this position.	Ви виправили цю позицію.
 	Previous / next view	Попередній / наступний вигляд
+# Plan A8 P3b2: the Diagram tab and its corrections.
+	Diagram	Діаграма
+	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Не вдалося прочитати збережені виправлення діаграм ({why}); їх відкладено як {name}.
+	The diagram corrections couldn't be saved: {e}	Не вдалося зберегти виправлення діаграм: {e}
+	Diagram {n}, page {p}: {state}	Діаграма {n}, стор. {p}: {state}
+	Page {p} · diagram {n} of {m}	Стор. {p} · діаграма {n} з {m}
+	Show it on the page	Показати на сторінці
+	Next to review (Page Down)	Наступна на перевірку (Page Down)
+	{i} of {n} to review	{i} з {n} на перевірку
+	Previous to review (Page Up)	Попередня на перевірку (Page Up)
+	Analyze on the board	Аналіз на дошці
+	Select a diagram in the Diagrams panel, or click one on the page.	Виберіть діаграму на панелі «Діаграми» або клацніть по ній на сторінці.
+	More ways to confirm	Інші способи підтвердити
+	Confirm and next	Підтвердити й далі
+	Only confirm	Лише підтвердити
+	Keep this position for the diagram, without changing the PDF.	Зберегти цю позицію для діаграми, не змінюючи PDF.
+	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	Зберегти цю позицію для діаграми, не змінюючи PDF, і відкрити наступну на перевірку (Ctrl+Enter).
+	More actions	Інші дії
+	Forget the correction	Забути виправлення
+	Show what was read again; the PDF is not changed.	Знову показати прочитане; PDF не змінюється.
+	Diagram board: {fen}	Дошка діаграми: {fen}
+	Classic diagram editor	Класичний редактор діаграм
+	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Редагувати діаграми на панелі «Діаграми», як до вкладки «Діаграма». Цей параметр зникне в одній із наступних версій.

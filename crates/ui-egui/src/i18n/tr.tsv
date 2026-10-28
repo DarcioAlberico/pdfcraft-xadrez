@@ -3167,3 +3167,26 @@ chess undo step	Clear drawings	çizimleri temizleme
 	You checked it and kept the reading.	Kontrol ettiniz ve okumayı korudunuz.
 	You corrected this position.	Bu konumu düzelttiniz.
 	Previous / next view	Önceki / sonraki görünüm
+# Plan A8 P3b2: the Diagram tab and its corrections.
+	Diagram	Diyagram
+	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Kaydedilmiş diyagram düzeltmeleri okunamadı ({why}); {name} olarak kenara ayrıldı.
+	The diagram corrections couldn't be saved: {e}	Diyagram düzeltmeleri kaydedilemedi: {e}
+	Diagram {n}, page {p}: {state}	Diyagram {n}, sayfa {p}: {state}
+	Page {p} · diagram {n} of {m}	Sayfa {p} · diyagram {n}/{m}
+	Show it on the page	Sayfada göster
+	Next to review (Page Down)	Sonraki gözden geçirilecek (Page Down)
+	{i} of {n} to review	Gözden geçirilecek {i}/{n}
+	Previous to review (Page Up)	Önceki gözden geçirilecek (Page Up)
+	Analyze on the board	Tahtada çözümle
+	Select a diagram in the Diagrams panel, or click one on the page.	Diyagramlar panelinden bir diyagram seçin veya sayfadakilerden birine tıklayın.
+	More ways to confirm	Onaylamanın diğer yolları
+	Confirm and next	Onayla ve sonraki
+	Only confirm	Yalnızca onayla
+	Keep this position for the diagram, without changing the PDF.	Bu konumu PDF'yi değiştirmeden diyagram için sakla.
+	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	Bu konumu PDF'yi değiştirmeden diyagram için sakla ve gözden geçirilecek sonrakini aç (Ctrl+Enter).
+	More actions	Diğer eylemler
+	Forget the correction	Düzeltmeyi unut
+	Show what was read again; the PDF is not changed.	Okunanı yeniden göster; PDF değişmez.
+	Diagram board: {fen}	Diyagram tahtası: {fen}
+	Classic diagram editor	Klasik diyagram düzenleyici
+	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Diyagramları, Diyagram sekmesinden önceki gibi Diyagramlar panelinin içinde düzenle. Bu seçenek ileriki bir sürümde kaldırılacak.

@@ -292,6 +292,9 @@ impl PdfCraftApp {
     pub fn enable_recovery(&mut self, store: RecoveryStore) {
         store.claim();
         self.chess.games.autosave_to_files(&store);
+        // The diagram corrections beside them (plan A8, P3b2; the web keeps them in `Storage`).
+        #[cfg(not(target_arch = "wasm32"))]
+        self.chess.corrections.use_folder(store.dir().join("chess").join("corrections"));
         self.recoverable = store.list();
         if !self.recoverable.is_empty() {
             self.dialog = Some(crate::Dialog::Recovery);

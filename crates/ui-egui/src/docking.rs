@@ -16,10 +16,13 @@ pub enum Panel {
     Board,
     /// The board's game as a list of moves, against the page's left or right edge.
     Moves,
+    /// Chess ▸ Diagrams: the selected diagram's position to check and confirm (plan A8, P3b2),
+    /// a tab beside the Inspector.
+    Diagram,
 }
 
 impl Panel {
-    pub const ALL: &[Self] = &[Self::Canvas, Self::Tools, Self::Inspector, Self::Board, Self::Moves];
+    pub const ALL: &[Self] = &[Self::Canvas, Self::Tools, Self::Inspector, Self::Board, Self::Moves, Self::Diagram];
     pub fn id(self) -> &'static str {
         match self {
             Self::Canvas => "canvas",
@@ -27,6 +30,7 @@ impl Panel {
             Self::Inspector => "inspector",
             Self::Board => "board",
             Self::Moves => "moves",
+            Self::Diagram => "diagram",
         }
     }
     fn label(self) -> &'static str {
@@ -36,13 +40,14 @@ impl Panel {
             Self::Inspector => "Inspector",
             Self::Board => "Chess board",
             Self::Moves => "Move list",
+            Self::Diagram => "Diagram",
         }
     }
     fn default_side(self) -> Zone {
         match self {
             Self::Canvas => Zone::Right,
             Self::Tools => Zone::Left,
-            Self::Inspector | Self::Board | Self::Moves => Zone::Right,
+            Self::Inspector | Self::Board | Self::Moves | Self::Diagram => Zone::Right,
         }
     }
     fn parse(id: &str) -> Result<Self, String> {
@@ -56,6 +61,10 @@ fn permissions(panel: &Panel) -> Permissions {
 
 /// The Move list's width when it opens beside the page, in points.
 pub(crate) const MOVES_WIDTH: f32 = 260.0;
+
+/// The Diagram tab's width when it opens beside the Inspector, in points: a 280 pt board and its
+/// margins.
+pub(crate) const DIAGRAM_WIDTH: f32 = 320.0;
 
 /// What was asked of the Move list in a frame, done where the layout is not being drawn
 /// ([`drain_moves`]): shown or closed, or put against the page's left (`true`) or right edge.
@@ -148,22 +157,27 @@ impl Workspace {
     /// The split holding the Move list alone on one side gives it [`MOVES_WIDTH`]: a new split
     /// would give it half the page.
     fn fit_moves(&mut self) {
+        self.fit_width(Panel::Moves, MOVES_WIDTH);
+    }
+
+    /// Give `panel`, alone in its group at one side of a split across, `width` points.
+    fn fit_width(&mut self, panel: Panel, width: f32) {
         // A valid tree has a level per panel at most: the depth only bounds a damaged one.
-        fn fit(node: &mut Node<Panel>, depth: usize) -> bool {
+        fn fit(node: &mut Node<Panel>, panel: Panel, width: f32, depth: usize) -> bool {
             let Node::Split { axis, size, first, second } = node else { return false };
-            let alone = |node: &Node<Panel>| matches!(node, Node::Tabs { panels, .. } if panels.as_slice() == [Panel::Moves]);
+            let alone = |node: &Node<Panel>| matches!(node, Node::Tabs { panels, .. } if panels.as_slice() == [panel]);
             if *axis == SplitAxis::Horizontal && alone(first) {
-                *size = SplitSize::FixedFirst(MOVES_WIDTH);
+                *size = SplitSize::FixedFirst(width);
                 return true;
             }
             if *axis == SplitAxis::Horizontal && alone(second) {
-                *size = SplitSize::FixedSecond(MOVES_WIDTH);
+                *size = SplitSize::FixedSecond(width);
                 return true;
             }
-            depth < 32 && (fit(first, depth + 1) || fit(second, depth + 1))
+            depth < 32 && (fit(first, panel, width, depth + 1) || fit(second, panel, width, depth + 1))
         }
         if let Some(root) = &mut self.layout.root {
-            fit(root, 0);
+            fit(root, panel, width, 0);
         }
     }
 
@@ -251,6 +265,20 @@ impl Workspace {
             saved.placement = Placement::Tab { before: None };
         }
         let restored = location.as_ref().is_some_and(|location| next.layout.restore(panel, location).is_ok());
+        // The Diagram tab opens between the page and the Inspector, so the diagrams listed there
+        // stay in sight. A layout saved before the tab existed has no place for it, so it opens
+        // there too.
+        let restored = restored
+            || (panel == Panel::Diagram
+                && next.layout.contains(&Panel::Inspector)
+                && next
+                    .layout
+                    .apply_with_permissions(Action::OpenAt { panel, anchor: Panel::Canvas, placement: Placement::Split(Zone::Right) }, permissions)
+                    .is_ok()
+                && {
+                    next.fit_width(Panel::Diagram, DIAGRAM_WIDTH);
+                    true
+                });
         // The board opens as a tab beside the Inspector, where the diagrams it shows are listed.
         let restored = restored
             || (panel == Panel::Board
@@ -400,7 +428,7 @@ fn drain_reveals(workspace: &mut Workspace, app: &mut crate::PdfCraftApp) {
     for panel in std::mem::take(&mut app.pending_panel_reveals) {
         // The board's and the move list's visibility is their own (the others follow the app's
         // state): revealing opens them.
-        if matches!(panel, Panel::Board | Panel::Moves)
+        if matches!(panel, Panel::Board | Panel::Moves | Panel::Diagram)
             && let Err(error) = workspace.set_visible(panel, true)
         {
             app.notify_fmt("Panel move was not applied: {error}", &[("error", &error)]);
@@ -558,6 +586,7 @@ impl DockContent<Panel> for Content<'_> {
             }
             Panel::Board => crate::chess_ui::board_panel(app, ui),
             Panel::Moves => crate::chess_ui::moves_panel(app, ui),
+            Panel::Diagram => crate::chess_diagram_tab::panel(app, ui),
         }
     }
 
@@ -575,7 +604,7 @@ fn panel_limits(panel: &Panel) -> PanelLimits {
     let (min, max_width) = match panel {
         Panel::Canvas => (egui::vec2(160.0, 160.0), 1_000_000.0),
         Panel::Tools => (egui::vec2(240.0, 120.0), 520.0),
-        Panel::Inspector | Panel::Board => (egui::vec2(260.0, 120.0), 520.0),
+        Panel::Inspector | Panel::Board | Panel::Diagram => (egui::vec2(260.0, 120.0), 520.0),
         Panel::Moves => (egui::vec2(180.0, 120.0), 480.0),
     };
     PanelLimits { min, max: egui::vec2(max_width, 1_000_000.0) }

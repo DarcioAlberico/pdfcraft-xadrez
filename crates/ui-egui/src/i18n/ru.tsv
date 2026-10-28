@@ -3084,3 +3084,26 @@ chess undo step	Clear drawings	удаление рисунков
 	You checked it and kept the reading.	Вы проверили и оставили прочтение.
 	You corrected this position.	Вы исправили эту позицию.
 	Previous / next view	Предыдущий / следующий вид
+# Plan A8 P3b2: the Diagram tab and its corrections.
+	Diagram	Диаграмма
+	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Не удалось прочитать сохранённые исправления диаграмм ({why}); они отложены как {name}.
+	The diagram corrections couldn't be saved: {e}	Не удалось сохранить исправления диаграмм: {e}
+	Diagram {n}, page {p}: {state}	Диаграмма {n}, стр. {p}: {state}
+	Page {p} · diagram {n} of {m}	Стр. {p} · диаграмма {n} из {m}
+	Show it on the page	Показать на странице
+	Next to review (Page Down)	Следующая на проверку (Page Down)
+	{i} of {n} to review	{i} из {n} на проверку
+	Previous to review (Page Up)	Предыдущая на проверку (Page Up)
+	Analyze on the board	Анализ на доске
+	Select a diagram in the Diagrams panel, or click one on the page.	Выберите диаграмму на панели «Диаграммы» или щёлкните по ней на странице.
+	More ways to confirm	Другие способы подтвердить
+	Confirm and next	Подтвердить и дальше
+	Only confirm	Только подтвердить
+	Keep this position for the diagram, without changing the PDF.	Сохранить эту позицию для диаграммы, не изменяя PDF.
+	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	Сохранить эту позицию для диаграммы, не изменяя PDF, и открыть следующую на проверку (Ctrl+Enter).
+	More actions	Другие действия
+	Forget the correction	Забыть исправление
+	Show what was read again; the PDF is not changed.	Снова показать прочитанное; PDF не меняется.
+	Diagram board: {fen}	Доска диаграммы: {fen}
+	Classic diagram editor	Классический редактор диаграмм
+	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Редактировать диаграммы на панели «Диаграммы», как до вкладки «Диаграмма». Этот параметр исчезнет в одной из следующих версий.

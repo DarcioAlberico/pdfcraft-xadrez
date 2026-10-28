@@ -3423,3 +3423,26 @@ chess undo step	Clear drawings	piešinių valymą
 	You checked it and kept the reading.	Patikrinote ir palikote perskaitytą.
 	You corrected this position.	Pataisėte šią poziciją.
 	Previous / next view	Ankstesnis / kitas vaizdas
+# Plan A8 P3b2: the Diagram tab and its corrections.
+	Diagram	Diagrama
+	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Nepavyko perskaityti įrašytų diagramų pataisymų ({why}); jie atidėti kaip {name}.
+	The diagram corrections couldn't be saved: {e}	Nepavyko įrašyti diagramų pataisymų: {e}
+	Diagram {n}, page {p}: {state}	Diagrama {n}, {p} psl.: {state}
+	Page {p} · diagram {n} of {m}	{p} psl. · diagrama {n} iš {m}
+	Show it on the page	Rodyti puslapyje
+	Next to review (Page Down)	Kita tikrintina (Page Down)
+	{i} of {n} to review	{i} iš {n} tikrintinų
+	Previous to review (Page Up)	Ankstesnė tikrintina (Page Up)
+	Analyze on the board	Analizuoti lentoje
+	Select a diagram in the Diagrams panel, or click one on the page.	Pasirinkite diagramą skydelyje Diagramos arba spustelėkite vieną puslapyje.
+	More ways to confirm	Kiti patvirtinimo būdai
+	Confirm and next	Patvirtinti ir toliau
+	Only confirm	Tik patvirtinti
+	Keep this position for the diagram, without changing the PDF.	Palikti šią poziciją diagramai, nekeičiant PDF.
+	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	Palikti šią poziciją diagramai, nekeičiant PDF, ir atverti kitą tikrintiną (Ctrl+Enter).
+	More actions	Daugiau veiksmų
+	Forget the correction	Pamiršti pataisymą
+	Show what was read again; the PDF is not changed.	Vėl rodyti, kas perskaityta; PDF nekeičiamas.
+	Diagram board: {fen}	Diagramos lenta: {fen}
+	Classic diagram editor	Klasikinis diagramų redaktorius
+	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Redaguoti diagramas skydelyje Diagramos, kaip iki kortelės Diagrama. Ši parinktis dings vienoje iš būsimų versijų.

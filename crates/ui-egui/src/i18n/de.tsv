@@ -3172,3 +3172,26 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	You checked it and kept the reading.	Sie haben sie geprüft und die Lesung behalten.
 	You corrected this position.	Sie haben diese Stellung korrigiert.
 	Previous / next view	Vorherige / nächste Ansicht
+# Plan A8 P3b2: the Diagram tab and its corrections.
+	Diagram	Diagramm
+	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Gespeicherte Diagrammkorrekturen konnten nicht gelesen werden ({why}); sie wurden als {name} beiseitegelegt.
+	The diagram corrections couldn't be saved: {e}	Die Diagrammkorrekturen konnten nicht gespeichert werden: {e}
+	Diagram {n}, page {p}: {state}	Diagramm {n}, Seite {p}: {state}
+	Page {p} · diagram {n} of {m}	Seite {p} · Diagramm {n} von {m}
+	Show it on the page	Auf der Seite zeigen
+	Next to review (Page Down)	Nächstes zu prüfen (Bild ab)
+	{i} of {n} to review	{i} von {n} zu prüfen
+	Previous to review (Page Up)	Vorheriges zu prüfen (Bild auf)
+	Analyze on the board	Auf dem Brett analysieren
+	Select a diagram in the Diagrams panel, or click one on the page.	Wählen Sie ein Diagramm im Bereich Diagramme oder klicken Sie auf eines auf der Seite.
+	More ways to confirm	Weitere Arten zu bestätigen
+	Confirm and next	Bestätigen und weiter
+	Only confirm	Nur bestätigen
+	Keep this position for the diagram, without changing the PDF.	Diese Stellung für das Diagramm behalten, ohne das PDF zu ändern.
+	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	Diese Stellung für das Diagramm behalten, ohne das PDF zu ändern, und das nächste zu prüfende öffnen (Strg+Eingabe).
+	More actions	Weitere Aktionen
+	Forget the correction	Korrektur verwerfen
+	Show what was read again; the PDF is not changed.	Wieder das Gelesene zeigen; das PDF wird nicht geändert.
+	Diagram board: {fen}	Diagrammbrett: {fen}
+	Classic diagram editor	Klassischer Diagrammeditor
+	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Diagramme im Bereich Diagramme bearbeiten, wie vor dem Reiter Diagramm. Diese Option entfällt in einer späteren Version.

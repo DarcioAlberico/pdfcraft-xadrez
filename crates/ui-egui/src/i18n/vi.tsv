@@ -3425,3 +3425,26 @@ chess undo step	Clear drawings	xóa hình vẽ
 	You checked it and kept the reading.	Bạn đã kiểm tra và giữ kết quả đọc.
 	You corrected this position.	Bạn đã sửa thế cờ này.
 	Previous / next view	Chế độ xem trước / sau
+# Plan A8 P3b2: the Diagram tab and its corrections.
+	Diagram	Sơ đồ
+	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Không đọc được các chỉnh sửa sơ đồ đã lưu ({why}); chúng đã được để riêng với tên {name}.
+	The diagram corrections couldn't be saved: {e}	Không lưu được các chỉnh sửa sơ đồ: {e}
+	Diagram {n}, page {p}: {state}	Sơ đồ {n}, trang {p}: {state}
+	Page {p} · diagram {n} of {m}	Trang {p} · sơ đồ {n}/{m}
+	Show it on the page	Hiện trên trang
+	Next to review (Page Down)	Sơ đồ cần xem lại tiếp theo (Page Down)
+	{i} of {n} to review	{i}/{n} cần xem lại
+	Previous to review (Page Up)	Sơ đồ cần xem lại trước đó (Page Up)
+	Analyze on the board	Phân tích trên bàn cờ
+	Select a diagram in the Diagrams panel, or click one on the page.	Chọn một sơ đồ trong bảng Sơ đồ, hoặc nhấp vào một sơ đồ trên trang.
+	More ways to confirm	Các cách xác nhận khác
+	Confirm and next	Xác nhận và tiếp
+	Only confirm	Chỉ xác nhận
+	Keep this position for the diagram, without changing the PDF.	Giữ thế này cho sơ đồ mà không thay đổi PDF.
+	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	Giữ thế này cho sơ đồ mà không thay đổi PDF, rồi mở sơ đồ cần xem lại tiếp theo (Ctrl+Enter).
+	More actions	Thao tác khác
+	Forget the correction	Bỏ chỉnh sửa
+	Show what was read again; the PDF is not changed.	Hiện lại kết quả đã đọc; PDF không thay đổi.
+	Diagram board: {fen}	Bàn cờ của sơ đồ: {fen}
+	Classic diagram editor	Trình sửa sơ đồ cổ điển
+	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Sửa sơ đồ ngay trong bảng Sơ đồ, như trước khi có thẻ Sơ đồ. Tùy chọn này sẽ bị bỏ trong một phiên bản sau.

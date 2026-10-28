@@ -2140,12 +2140,18 @@ impl PdfCraftApp {
                 storage.set_string(chess_autosave::STORAGE_BAD_KEY, bad);
             }
         }
+        // The diagram corrections, under their own key (plan A8, P3b2).
+        if let Some(value) = self.chess.corrections.storage_value() {
+            storage.set_string(crate::chess_corrections_ui::STORAGE_KEY, value);
+        }
     }
 
     /// The web build: autosave the chess games in eframe's `Storage` (read from it now).
     pub fn chess_games_from_storage(&mut self, storage: Option<&dyn eframe::Storage>) {
         let text = storage.and_then(|s| s.get_string(chess_autosave::STORAGE_KEY));
         self.chess.games.autosave_to_storage(text.as_deref());
+        let corrections = storage.and_then(|s| s.get_string(crate::chess_corrections_ui::STORAGE_KEY));
+        self.chess.corrections.use_storage(corrections.as_deref());
     }
 
     fn show_chess_notes(&mut self) {
