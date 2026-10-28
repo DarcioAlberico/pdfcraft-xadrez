@@ -2468,7 +2468,6 @@ animation effects	Off	Ανενεργά
 	A chess document is already being read or exported	Ένα έγγραφο σκακιού διαβάζεται ή εξάγεται ήδη
 	Ambiguous move	Αμφίσημη κίνηση
 	Chess OCR read nothing on this page.	Το OCR σκακιού δεν διάβασε τίποτα σε αυτή τη σελίδα.
-	Export as {f}	Εξαγωγή ως {f}
 	Illegal move	Αντικανονική κίνηση
 	Move out of sequence	Κίνηση εκτός σειράς
 	No text on this page.	Δεν υπάρχει κείμενο σε αυτή τη σελίδα.
@@ -3219,3 +3218,17 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Nothing on page {p} is left that was read with confidence.	Στη σελίδα {p} δεν έμεινε τίποτα που διαβάστηκε με βεβαιότητα.
 	Page {p}: {done}	Σελίδα {p}: {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} διάγραμμα ελέγχθηκε|{n} διαγράμματα ελέγχθηκαν
+	Export chess book	Εξαγωγή σκακιστικού βιβλίου
+	PGN — games	PGN — παρτίδες
+	EPUB — e-book	EPUB — ηλεκτρονικό βιβλίο
+	HTML — web page	HTML — ιστοσελίδα
+	Diagrams as PGN games	Διαγράμματα ως παρτίδες PGN
+	Only those not in a game	Μόνο όσα δεν ανήκουν σε παρτίδα
+	All of them	Όλα
+	A diagram becomes a game that starts from its position. A diagram a game starts from or prints again is already in that game.	Ένα διάγραμμα γίνεται παρτίδα που ξεκινά από τη θέση του. Ένα διάγραμμα από το οποίο ξεκινά μια παρτίδα, ή που εκείνη ξανατυπώνει, υπάρχει ήδη σε αυτή την παρτίδα.
+	Diagrams not read: {n}	Διαγράμματα που δεν διαβάστηκαν: {n}
+	Diagrams not checked yet: {n}	Διαγράμματα που δεν ελέγχθηκαν ακόμη: {n}
+	They are exported as they were read, and a reading may be wrong. Review first opens the first of them.	Εξάγονται όπως διαβάστηκαν, και μια ανάγνωση μπορεί να είναι λάθος. Το «Πρώτα έλεγχος» ανοίγει το πρώτο από αυτά.
+	Review first	Πρώτα έλεγχος
+	Export anyway	Εξαγωγή παρ' όλα αυτά
+	Open folder	Άνοιγμα φακέλου

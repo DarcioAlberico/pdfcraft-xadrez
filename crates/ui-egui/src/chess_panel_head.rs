@@ -1,12 +1,13 @@
 //! Chess ▸ Diagrams: the panel's header (plan A8, P2a2).
 //!
 //! One 30-point row: Detect diagrams ▾ (the whole book, or this page), and on the right Export…
-//! (`file-output`), the chess board (`layout-grid`) and ⋯ (Chess models…). While a scan runs, a
+//! (`file-output`, the menu of `chess_export_ui`), the chess board (`layout-grid`) and ⋯ (Chess models…). While a scan runs, a
 //! 4-point progress bar and "Detecting… page 75 of 703" (its width kept for the longest number, so
 //! the text does not jump) with × to stop it, the diagrams found so far staying. When a scan has
 //! found diagrams, "548 diagrams · 40 to review" with Review now; before any, what detecting does.
 
 use egui::{Align, Layout, RichText, vec2};
+use pdfcraft_engine::chess::pdfcraft_chessvision::doc::markdown::PgnPositions;
 
 use crate::chess_ui::PanelAction;
 use crate::theme::Tokens;
@@ -17,8 +18,16 @@ const HEAD: f32 = 30.0;
 const BUTTON: f32 = 26.0;
 
 /// The header row. `busy`: a scan runs (for this document or another), so none can start;
-/// `pages`: the document's page count; `running`: this document's scan, pages done of the total.
-pub(crate) fn header(ui: &mut egui::Ui, t: &Tokens, busy: bool, pages: usize, running: Option<(usize, usize)>) -> Option<PanelAction> {
+/// `pages`: the document's page count; `running`: this document's scan, pages done of the total;
+/// `positions`: which diagrams the PGN export gives a game of their own.
+pub(crate) fn header(
+    ui: &mut egui::Ui,
+    t: &Tokens,
+    busy: bool,
+    pages: usize,
+    running: Option<(usize, usize)>,
+    positions: PgnPositions,
+) -> Option<PanelAction> {
     let mut action = None;
     ui.horizontal(|ui| {
         ui.set_min_height(HEAD);
@@ -46,7 +55,7 @@ pub(crate) fn header(ui: &mut egui::Ui, t: &Tokens, busy: bool, pages: usize, ru
         }
         let export = icons::button(ui, "file-output", BUTTON, false, tl!("Export…"));
         egui::Popup::menu(&export).show(|ui| {
-            if let Some(a) = crate::chess_text_ui::export_items(ui) {
+            if let Some(a) = crate::chess_export_ui::items(ui, positions) {
                 action = Some(PanelAction::Text(a));
             }
         });
@@ -132,7 +141,7 @@ mod tests {
                 return;
             }
             let t = Tokens::get(ui.ctx());
-            if let Some(a) = header(ui, &t, true, 703, Some((74, 703))) {
+            if let Some(a) = header(ui, &t, true, 703, Some((74, 703)), PgnPositions::default()) {
                 seen.set(Some(a));
             }
         });

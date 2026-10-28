@@ -2375,7 +2375,6 @@ animation effects	Off	Выкл
 	A chess document is already being read or exported	Шахматный документ уже читается или экспортируется
 	Ambiguous move	Неоднозначный ход
 	Chess OCR read nothing on this page.	Шахматное OCR ничего не прочитало на этой странице.
-	Export as {f}	Экспортировать как {f}
 	Illegal move	Невозможный ход
 	Move out of sequence	Ход вне очереди
 	No text on this page.	На этой странице нет текста.
@@ -3160,3 +3159,17 @@ chess undo step	Clear drawings	удаление рисунков
 	Nothing on page {p} is left that was read with confidence.	На странице {p} не осталось ничего, прочитанного уверенно.
 	Page {p}: {done}	Страница {p}: {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} диаграмма проверена|{n} диаграммы проверены|{n} диаграмм проверено
+	Export chess book	Экспорт шахматной книги
+	PGN — games	PGN — партии
+	EPUB — e-book	EPUB — электронная книга
+	HTML — web page	HTML — веб-страница
+	Diagrams as PGN games	Диаграммы как партии PGN
+	Only those not in a game	Только не входящие в партию
+	All of them	Все
+	A diagram becomes a game that starts from its position. A diagram a game starts from or prints again is already in that game.	Диаграмма становится партией, начинающейся с её позиции. Диаграмма, с которой начинается партия или которую она повторяет, уже есть в этой партии.
+	Diagrams not read: {n}	Не прочитано диаграмм: {n}
+	Diagrams not checked yet: {n}	Ещё не проверено диаграмм: {n}
+	They are exported as they were read, and a reading may be wrong. Review first opens the first of them.	Они экспортируются так, как были прочитаны, а чтение может быть ошибочным. «Сначала проверить» открывает первую из них.
+	Review first	Сначала проверить
+	Export anyway	Всё равно экспортировать
+	Open folder	Открыть папку

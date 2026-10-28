@@ -2716,7 +2716,6 @@ key	Space	Space
 	A chess document is already being read or exported	Một tài liệu cờ vua đang được đọc hoặc xuất
 	Ambiguous move	Nước đi mơ hồ
 	Chess OCR read nothing on this page.	OCR cờ vua không đọc được gì trên trang này.
-	Export as {f}	Xuất dưới dạng {f}
 	Illegal move	Nước đi không hợp lệ
 	Move out of sequence	Nước đi sai thứ tự
 	No text on this page.	Trang này không có văn bản.
@@ -3501,3 +3500,16 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Nothing on page {p} is left that was read with confidence.	Trang {p} không còn sơ đồ nào được đọc chắc chắn.
 	Page {p}: {done}	Trang {p}: {done}
 @plural	{n} diagram checked|{n} diagrams checked	Đã kiểm tra {n} sơ đồ
+	Export chess book	Xuất sách cờ vua
+	PGN — games	PGN — ván cờ
+	EPUB — e-book	EPUB — sách điện tử
+	HTML — web page	HTML — trang web
+	Diagrams as PGN games	Sơ đồ thành ván cờ PGN
+	Only those not in a game	Chỉ những sơ đồ không thuộc ván nào
+	All of them	Tất cả
+	A diagram becomes a game that starts from its position. A diagram a game starts from or prints again is already in that game.	Một sơ đồ trở thành một ván cờ bắt đầu từ thế cờ của nó. Sơ đồ mà một ván bắt đầu từ đó, hoặc được ván đó in lại, đã có trong ván ấy.
+	Diagrams not read: {n}	Sơ đồ chưa đọc được: {n}
+	Diagrams not checked yet: {n}	Sơ đồ chưa kiểm tra: {n}
+	They are exported as they were read, and a reading may be wrong. Review first opens the first of them.	Chúng được xuất đúng như đã đọc, và kết quả đọc có thể sai. Xem lại trước sẽ mở sơ đồ đầu tiên trong số đó.
+	Review first	Xem lại trước
+	Export anyway	Vẫn xuất

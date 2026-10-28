@@ -2460,7 +2460,6 @@ animation effects	Off	Өшірулі
 	A chess document is already being read or exported	Шахмат құжаты әлдеқашан оқылып немесе экспортталып жатыр
 	Ambiguous move	Екіұшты жүріс
 	Chess OCR read nothing on this page.	Шахмат OCR бұл бетте ештеңе оқымады.
-	Export as {f}	{f} ретінде экспорттау
 	Illegal move	Ережеге қайшы жүріс
 	Move out of sequence	Ретінен тыс жүріс
 	No text on this page.	Бұл бетте мәтін жоқ.
@@ -3245,3 +3244,17 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Nothing on page {p} is left that was read with confidence.	{p} бетте сенімді оқылған ештеңе қалмады.
 	Page {p}: {done}	{p} бет: {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} диаграмма тексерілді|{n} диаграмма тексерілді
+	Export chess book	Шахмат кітабын экспорттау
+	PGN — games	PGN — партиялар
+	EPUB — e-book	EPUB — электрондық кітап
+	HTML — web page	HTML — веб-бет
+	Diagrams as PGN games	Диаграммалар PGN партиялары ретінде
+	Only those not in a game	Тек партияда жоқтары
+	All of them	Барлығы
+	A diagram becomes a game that starts from its position. A diagram a game starts from or prints again is already in that game.	Диаграмма өз позициясынан басталатын партияға айналады. Партия басталатын немесе партия қайта басатын диаграмма сол партияда бар.
+	Diagrams not read: {n}	Оқылмаған диаграммалар: {n}
+	Diagrams not checked yet: {n}	Әлі тексерілмеген диаграммалар: {n}
+	They are exported as they were read, and a reading may be wrong. Review first opens the first of them.	Олар оқылғандай экспортталады, ал оқу қате болуы мүмкін. «Алдымен тексеру» олардың біріншісін ашады.
+	Review first	Алдымен тексеру
+	Export anyway	Сонда да экспорттау
+	Open folder	Буманы ашу

@@ -2464,7 +2464,6 @@ animation effects	Off	オフ
 	A chess document is already being read or exported	チェス文書はすでに読み取りまたは書き出し中です
 	Ambiguous move	曖昧な指し手
 	Chess OCR read nothing on this page.	チェス OCR はこのページで何も読み取れませんでした。
-	Export as {f}	{f} として書き出す
 	Illegal move	不正な指し手
 	Move out of sequence	順序外の指し手
 	No text on this page.	このページにテキストはありません。
@@ -3249,3 +3248,17 @@ chess undo step	Clear drawings	描画の消去
 	Nothing on page {p} is left that was read with confidence.	ページ {p} には、確実に読み取れた局面図がもう残っていません。
 	Page {p}: {done}	ページ {p}: {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} 個の局面図を確認済みにしました
+	Export chess book	チェスの本を書き出す
+	PGN — games	PGN — 棋譜
+	EPUB — e-book	EPUB — 電子書籍
+	HTML — web page	HTML — ウェブページ
+	Diagrams as PGN games	局面図を PGN の棋譜にする
+	Only those not in a game	棋譜に含まれないものだけ
+	All of them	すべて
+	A diagram becomes a game that starts from its position. A diagram a game starts from or prints again is already in that game.	局面図はその局面から始まる棋譜になります。棋譜の開始局面や、棋譜の途中で再掲された局面図は、その棋譜にすでに含まれています。
+	Diagrams not read: {n}	読み取れなかった局面図: {n}
+	Diagrams not checked yet: {n}	まだ確認していない局面図: {n}
+	They are exported as they were read, and a reading may be wrong. Review first opens the first of them.	読み取ったとおりに書き出され、読み取りが誤っている可能性があります。「先に確認」で最初の 1 つを開きます。
+	Review first	先に確認
+	Export anyway	このまま書き出す
+	Open folder	フォルダーを開く

@@ -2714,7 +2714,6 @@ theme	Appearance	Išvaizda
 	A chess document is already being read or exported	Šachmatų dokumentas jau skaitomas arba eksportuojamas
 	Ambiguous move	Dviprasmis ėjimas
 	Chess OCR read nothing on this page.	Šachmatų OCR šiame puslapyje nieko neperskaitė.
-	Export as {f}	Eksportuoti kaip {f}
 	Illegal move	Neteisėtas ėjimas
 	Move out of sequence	Ėjimas ne iš eilės
 	No text on this page.	Šiame puslapyje nėra teksto.
@@ -3499,3 +3498,16 @@ chess undo step	Clear drawings	piešinių valymą
 	Nothing on page {p} is left that was read with confidence.	{p} puslapyje neliko nieko, kas perskaityta patikimai.
 	Page {p}: {done}	{p} puslapis: {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} diagrama patikrinta|{n} diagramos patikrintos|{n} diagramų patikrinta
+	Export chess book	Eksportuoti šachmatų knygą
+	PGN — games	PGN — partijos
+	EPUB — e-book	EPUB — el. knyga
+	HTML — web page	HTML — tinklalapis
+	Diagrams as PGN games	Diagramos kaip PGN partijos
+	Only those not in a game	Tik tos, kurios nėra partijoje
+	All of them	Visos
+	A diagram becomes a game that starts from its position. A diagram a game starts from or prints again is already in that game.	Diagrama tampa partija, prasidedančia jos pozicija. Diagrama, nuo kurios prasideda partija arba kurią ji vėl išspausdina, jau yra toje partijoje.
+	Diagrams not read: {n}	Neperskaitytų diagramų: {n}
+	Diagrams not checked yet: {n}	Dar nepatikrintų diagramų: {n}
+	They are exported as they were read, and a reading may be wrong. Review first opens the first of them.	Jos eksportuojamos taip, kaip buvo perskaitytos, o skaitymas gali būti klaidingas. Pirma patikrinti atveria pirmąją iš jų.
+	Review first	Pirma patikrinti
+	Export anyway	Vis tiek eksportuoti

@@ -2739,7 +2739,6 @@ certificate	Version	الإصدار
 	A chess document is already being read or exported	يُقرأ مستند شطرنج أو يُصدَّر بالفعل
 	Ambiguous move	نقلة ملتبسة
 	Chess OCR read nothing on this page.	لم يقرأ التعرف الضوئي للشطرنج شيئًا في هذه الصفحة.
-	Export as {f}	تصدير بتنسيق {f}
 	Illegal move	نقلة غير قانونية
 	Move out of sequence	نقلة خارج التسلسل
 	No text on this page.	لا يوجد نص في هذه الصفحة.
@@ -3523,3 +3522,16 @@ chess undo step	Clear drawings	مسح الرسوم
 	Nothing on page {p} is left that was read with confidence.	لم يبقَ في الصفحة {p} ما قُرئ بثقة.
 	Page {p}: {done}	الصفحة {p}: {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} مخططات مُراجَعة|{n} مخطط مُراجَع|{n} مخططان مُراجَعان|{n} مخططات مُراجَعة|{n} مخططًا مُراجَعًا|{n} مخطط مُراجَع
+	Export chess book	تصدير كتاب الشطرنج
+	PGN — games	PGN — مباريات
+	EPUB — e-book	EPUB — كتاب إلكتروني
+	HTML — web page	HTML — صفحة ويب
+	Diagrams as PGN games	المخططات كمباريات PGN
+	Only those not in a game	التي ليست في مباراة فقط
+	All of them	الكل
+	A diagram becomes a game that starts from its position. A diagram a game starts from or prints again is already in that game.	يصبح المخطط مباراة تبدأ من وضعه. المخطط الذي تبدأ منه مباراة، أو الذي تعيد طباعته، موجود في تلك المباراة بالفعل.
+	Diagrams not read: {n}	مخططات لم تُقرأ: {n}
+	Diagrams not checked yet: {n}	مخططات لم تُراجَع بعد: {n}
+	They are exported as they were read, and a reading may be wrong. Review first opens the first of them.	تُصدَّر كما قُرئت، وقد تكون القراءة خاطئة. «المراجعة أولًا» تفتح أولها.
+	Review first	المراجعة أولًا
+	Export anyway	التصدير على أي حال

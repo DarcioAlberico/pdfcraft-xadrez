@@ -2484,7 +2484,6 @@ animation effects	Off	Вимкнено
 	A chess document is already being read or exported	Шаховий документ уже читається або експортується
 	Ambiguous move	Неоднозначний хід
 	Chess OCR read nothing on this page.	Шахове OCR нічого не прочитало на цій сторінці.
-	Export as {f}	Експортувати як {f}
 	Illegal move	Неможливий хід
 	Move out of sequence	Хід поза чергою
 	No text on this page.	На цій сторінці немає тексту.
@@ -3269,3 +3268,17 @@ chess undo step	Clear drawings	видалення малюнків
 	Nothing on page {p} is left that was read with confidence.	На сторінці {p} не лишилося нічого, прочитаного впевнено.
 	Page {p}: {done}	Сторінка {p}: {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} діаграму перевірено|{n} діаграми перевірено|{n} діаграм перевірено
+	Export chess book	Експорт шахової книги
+	PGN — games	PGN — партії
+	EPUB — e-book	EPUB — електронна книга
+	HTML — web page	HTML — вебсторінка
+	Diagrams as PGN games	Діаграми як партії PGN
+	Only those not in a game	Лише ті, що не входять у партію
+	All of them	Усі
+	A diagram becomes a game that starts from its position. A diagram a game starts from or prints again is already in that game.	Діаграма стає партією, що починається з її позиції. Діаграма, з якої починається партія або яку вона повторює, уже є в цій партії.
+	Diagrams not read: {n}	Не прочитано діаграм: {n}
+	Diagrams not checked yet: {n}	Ще не перевірено діаграм: {n}
+	They are exported as they were read, and a reading may be wrong. Review first opens the first of them.	Їх експортують так, як їх прочитано, а читання може бути помилковим. «Спершу перевірити» відкриває першу з них.
+	Review first	Спершу перевірити
+	Export anyway	Однаково експортувати
+	Open folder	Відкрити теку
