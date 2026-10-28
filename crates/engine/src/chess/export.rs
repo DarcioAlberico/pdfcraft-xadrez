@@ -90,6 +90,9 @@ pub struct ChessExportOptions {
     pub positions: markdown::PgnPositions,
     /// PGN: what the moves leave out (plan A8 V4). The default keeps everything.
     pub pgn_style: pdfcraft_chess::pgn_style::PgnStyle,
+    /// HTML and EPUB: highlight what the reading flagged for review. `None`: on in HTML (a file
+    /// to check), off in EPUB (a book to read; plan A8 P9b).
+    pub review_marks: Option<bool>,
 }
 
 impl ChessExportOptions {
@@ -116,6 +119,7 @@ impl ChessExportOptions {
             style: BoardStyle::default(),
             positions: markdown::PgnPositions::default(),
             pgn_style: pdfcraft_chess::pgn_style::PgnStyle::FULL,
+            review_marks: None,
         }
     }
 }
@@ -169,6 +173,7 @@ impl Session {
             sign_font: o.sign_font.as_deref(),
             lang: read.lang.lang.code(),
             page_labels: &labels,
+            review_marks: o.review_marks.unwrap_or(format != ChessFormat::Epub),
         };
         let mut notes = Vec::new();
         let mut images = Vec::new();
@@ -193,9 +198,12 @@ impl Session {
                 let meta = super::epub::EpubMeta {
                     title: o.title.clone(),
                     lang: read.lang.lang.code().to_owned(),
-                    identifier: super::epub::identifier(&doc.bytes),
+                    // The PDF's own identifier outlives saving; its bytes do not.
+                    identifier: doc.doc_keys().id0.map_or_else(|| super::epub::identifier(&doc.bytes), |id| super::epub::identifier_from_id(&id)),
                     modified: super::epub::modified_at(self.now_secs()),
                     cover,
+                    creator: doc.info.author.clone(),
+                    source: Some(doc.name.clone()).filter(|n| !n.trim().is_empty()),
                 };
                 super::epub::epub(&read.doc, &options, &meta)?
             }

@@ -9,6 +9,13 @@
 //! loads them; without them figurines use the reader's own fonts. The table of contents names
 //! pages in the book's language with their printed numbers (`Pág. xvii`, plan A8 P9b).
 //!
+//! For readers who cannot see the pages (plan A8 P9b): every page starts with a page break
+//! named by its printed number, listed in the navigation's page list; the package says how the
+//! book can be read (`schema:accessMode`, `accessModeSufficient`, `accessibilityFeature`,
+//! `accessibilityHazard`, `accessibilitySummary`), who wrote it (`dc:creator`) and what it was
+//! made from (`dc:source`); the pages share one stylesheet ([`EPUB_CSS`]). The identifier comes
+//! from the PDF's own `/ID` when it has one, so a re-export after saving is the same book.
+//!
 //! The cover is the book's first page drawn by the page renderer ([`cover_png`]), at most
 //! [`MAX_COVER_PX`] on its long side: the manifest item has `properties="cover-image"` (EPUB 3),
 //! and `<meta name="cover"/>` names it for EPUB 2 readers.
@@ -16,7 +23,7 @@
 use pdfcraft_chess::describe;
 use pdfcraft_chess::san::Lang;
 use pdfcraft_chessvision::doc::ChessDoc;
-use pdfcraft_chessvision::doc::html::{HtmlOptions, epub_font_href, escape, toc, xhtml_page};
+use pdfcraft_chessvision::doc::html::{EPUB_CSS, HtmlOptions, epub_css, epub_font_href, escape, page_label, toc, xhtml_page};
 use pdfcraft_export::Zip;
 use pdfcraft_render::{PageRenderer, RenderRequest};
 
@@ -42,7 +49,24 @@ pub struct EpubMeta {
     pub modified: String,
     /// The cover, a PNG ([`cover_png`]); `None` (or empty) writes a book without one.
     pub cover: Option<Vec<u8>>,
+    /// `dc:creator`: the PDF's author, when it says.
+    pub creator: Option<String>,
+    /// `dc:source`: what the book was made from (the PDF's file name).
+    pub source: Option<String>,
 }
+
+/// What the package says about how the book can be read (EPUB Accessibility 1.1, schema.org):
+/// text and pictures, the text alone enough (every diagram is said in words), and what helps.
+const ACCESSIBILITY: &str = "<meta property=\"schema:accessMode\">textual</meta>\n\
+<meta property=\"schema:accessMode\">visual</meta>\n\
+<meta property=\"schema:accessModeSufficient\">textual</meta>\n\
+<meta property=\"schema:accessibilityFeature\">alternativeText</meta>\n\
+<meta property=\"schema:accessibilityFeature\">structuralNavigation</meta>\n\
+<meta property=\"schema:accessibilityFeature\">tableOfContents</meta>\n\
+<meta property=\"schema:accessibilityFeature\">readingOrder</meta>\n\
+<meta property=\"schema:accessibilityFeature\">pageNavigation</meta>\n\
+<meta property=\"schema:accessibilityHazard\">none</meta>\n\
+<meta property=\"schema:accessibilitySummary\">Every chess diagram has a text alternative that names the side to move and each piece on its square; the moves are text. Pages carry the printed page numbers of the source book.</meta>\n";
 
 /// One file of the package.
 #[derive(Clone, Debug, PartialEq)]
@@ -62,6 +86,14 @@ pub fn identifier(pdf: &[u8]) -> String {
         h = h.wrapping_mul(0x0000_0100_0000_01b3);
     }
     format!("urn:pdfcraft:chess:{h:016x}")
+}
+
+/// A stable identifier from the PDF's first file identifier (`/ID[0]`, as
+/// [`super::keys::DocKeys`] keeps it): it survives saving, which changes the bytes [`identifier`]
+/// is made from.
+pub fn identifier_from_id(id0: &[u8; 16]) -> String {
+    let hex: String = id0.iter().map(|b| format!("{b:02x}")).collect();
+    format!("urn:pdfcraft:chess:id:{hex}")
 }
 
 /// `dcterms:modified` from a PDF date (`D:YYYYMMDDHHmmSS…`, as `pdfcraft_cos::pdf_date` makes,
@@ -120,6 +152,7 @@ pub fn entries(doc: &ChessDoc, o: &HtmlOptions<'_>, meta: &EpubMeta) -> Result<V
     ));
 
     let mut manifest = String::from("<item id=\"nav\" href=\"nav.xhtml\" media-type=\"application/xhtml+xml\" properties=\"nav\"/>\n");
+    manifest.push_str(&format!("<item id=\"css\" href=\"{EPUB_CSS}\" media-type=\"text/css\"/>\n"));
     let mut spine = String::new();
     let mut pages = Vec::with_capacity(doc.pages.len());
     for (n, page) in doc.pages.iter().enumerate() {
@@ -145,9 +178,16 @@ pub fn entries(doc: &ChessDoc, o: &HtmlOptions<'_>, meta: &EpubMeta) -> Result<V
     // The table of contents: the headings, flat (each links to its anchor), else the pages, named
     // in the book's language with their printed numbers.
     let book_lang = Lang::from_tag(&meta.lang).unwrap_or(Lang::En);
-    let page_name = |index: u32| {
-        let printed = usize::try_from(index).ok().and_then(|i| o.page_labels.get(i)).map(|l| l.trim()).filter(|l| !l.is_empty());
-        describe::page(&printed.map_or_else(|| (u64::from(index) + 1).to_string(), str::to_owned), book_lang)
+    let page_name = |index: u32| describe::page(&page_label(o, index), book_lang);
+    // The page list: each page's break, by the number the book prints.
+    let mut page_list = String::new();
+    for (n, page) in doc.pages.iter().enumerate() {
+        page_list.push_str(&format!("<li><a href=\"{}#pagebreak\">{}</a></li>\n", page_file(n), escape(&page_label(o, page.index))));
+    }
+    let page_list = if page_list.is_empty() {
+        String::new()
+    } else {
+        format!("<nav epub:type=\"page-list\" id=\"page-list\" hidden=\"hidden\">\n<ol>\n{page_list}</ol>\n</nav>\n")
     };
     let headings = toc(doc);
     let mut items = String::new();
@@ -169,7 +209,7 @@ pub fn entries(doc: &ChessDoc, o: &HtmlOptions<'_>, meta: &EpubMeta) -> Result<V
     out.push(entry(
         "OEBPS/nav.xhtml",
         format!(
-            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE html>\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:epub=\"http://www.idpf.org/2007/ops\" lang=\"{l}\" xml:lang=\"{l}\">\n<head>\n<meta charset=\"utf-8\"/>\n<title>{t}</title>\n</head>\n<body>\n<nav epub:type=\"toc\" id=\"toc\">\n<h1>{t}</h1>\n<ol>\n{items}</ol>\n</nav>\n</body>\n</html>\n",
+            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE html>\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:epub=\"http://www.idpf.org/2007/ops\" lang=\"{l}\" xml:lang=\"{l}\">\n<head>\n<meta charset=\"utf-8\"/>\n<title>{t}</title>\n</head>\n<body>\n<nav epub:type=\"toc\" id=\"toc\">\n<h1>{t}</h1>\n<ol>\n{items}</ol>\n</nav>\n{page_list}</body>\n</html>\n",
             l = escape(lang),
             t = escape(&meta.title),
         ),
@@ -177,13 +217,23 @@ pub fn entries(doc: &ChessDoc, o: &HtmlOptions<'_>, meta: &EpubMeta) -> Result<V
     out.push(entry(
         "OEBPS/content.opf",
         format!(
-            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" unique-identifier=\"book-id\" xml:lang=\"{l}\">\n<metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n<dc:identifier id=\"book-id\">{id}</dc:identifier>\n<dc:title>{t}</dc:title>\n<dc:language>{l}</dc:language>\n<meta property=\"dcterms:modified\">{m}</meta>\n{cover_meta}</metadata>\n<manifest>\n{manifest}</manifest>\n<spine>\n{spine}</spine>\n</package>\n",
+            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" unique-identifier=\"book-id\" xml:lang=\"{l}\">\n<metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n<dc:identifier id=\"book-id\">{id}</dc:identifier>\n<dc:title>{t}</dc:title>\n<dc:language>{l}</dc:language>\n{who}<meta property=\"dcterms:modified\">{m}</meta>\n{ACCESSIBILITY}{cover_meta}</metadata>\n<manifest>\n{manifest}</manifest>\n<spine>\n{spine}</spine>\n</package>\n",
             l = escape(lang),
             id = escape(&meta.identifier),
             t = escape(&meta.title),
             m = escape(&meta.modified),
+            who = {
+                let mut who = String::new();
+                for (tag, value) in [("creator", &meta.creator), ("source", &meta.source)] {
+                    if let Some(v) = value.as_deref().map(str::trim).filter(|v| !v.is_empty()) {
+                        who.push_str(&format!("<dc:{tag}>{}</dc:{tag}>\n", escape(v)));
+                    }
+                }
+                who
+            },
         ),
     ));
+    out.push(entry(&format!("OEBPS/{EPUB_CSS}"), epub_css(o)));
     out.extend(pages);
     // The fonts the pages' style loads (`html::epub_font_href`).
     for font in [o.text_font, o.sign_font].into_iter().flatten() {

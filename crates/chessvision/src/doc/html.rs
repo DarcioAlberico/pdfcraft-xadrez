@@ -76,6 +76,19 @@ pub struct HtmlOptions<'a> {
     /// The number printed on each page, by page index (empty, or an empty label: the page's own
     /// number from 1): diagrams are said with it.
     pub page_labels: &'a [String],
+    /// Highlight what the reading flagged for review (the `review` class's background). A book
+    /// for readers leaves it off; the class stays on the elements either way.
+    pub review_marks: bool,
+}
+
+/// The number printed on page `index` (0-based), when the document gives one.
+fn printed_label<'o>(o: &HtmlOptions<'o>, index: u32) -> Option<&'o str> {
+    usize::try_from(index).ok().and_then(|i| o.page_labels.get(i)).map(|l| l.trim()).filter(|l| !l.is_empty())
+}
+
+/// Page `index` (0-based) as the book numbers it: its printed number, else its own from 1.
+pub fn page_label(o: &HtmlOptions<'_>, index: u32) -> String {
+    printed_label(o, index).map_or_else(|| (u64::from(index) + 1).to_string(), str::to_owned)
 }
 
 /// Escape for text and for attribute values in double quotes.
@@ -224,8 +237,8 @@ fn diagram_html(d: &DiagramBlock, page: &ChessPage, o: &HtmlOptions<'_>) -> Stri
     let id = format!("p{}-d{number}", u64::from(page.index) + 1);
     // Said in the book's language, with the number printed on the page (plan A8 P9b).
     let lang = Lang::from_tag(&page.lang).unwrap_or(Lang::En);
-    let printed = usize::try_from(page.index).ok().and_then(|i| o.page_labels.get(i)).map(|l| l.trim()).filter(|l| !l.is_empty());
-    let label = printed.map_or_else(|| (u64::from(page.index) + 1).to_string(), str::to_owned);
+    let printed = printed_label(o, page.index);
+    let label = page_label(o, page.index);
     let Some(reading) = &d.reading else {
         return format!(
             "<figure class=\"diagram unread review\" id=\"{id}\"><figcaption>{}</figcaption></figure>\n",
@@ -260,6 +273,9 @@ fn diagram_html(d: &DiagramBlock, page: &ChessPage, o: &HtmlOptions<'_>) -> Stri
     format!("<figure class=\"diagram{review}\" id=\"{id}\" data-fen=\"{fen}\">{body}{caption}</figure>\n")
 }
 
+/// The highlight of what was flagged for review ([`HtmlOptions::review_marks`]).
+const REVIEW_RULE: &str = ".review{background:#fff3c4}";
+
 /// The style both outputs share.
 const STYLE: &str = "body{max-width:46em;margin:2em auto;padding:0 1em;font-family:serif;line-height:1.5}\
 .move{white-space:nowrap}.review{background:#fff3c4}\
@@ -276,9 +292,12 @@ pub fn epub_font_href(font: &TextFont) -> String {
 /// in each font family (its `unicode-range` keeps it to the chess symbols, so the prose keeps the
 /// body font); a figurine font by letters and the sign font are used only by the `fig` and `sign`
 /// spans.
-fn style(figurines: Option<(&TextFont, &str)>, signs: Option<(&TextFont, &str)>) -> String {
+fn style(figurines: Option<(&TextFont, &str)>, signs: Option<(&TextFont, &str)>, review_marks: bool) -> String {
     let mut faces = String::new();
     let mut css = STYLE.to_owned();
+    if !review_marks {
+        css = css.replace(REVIEW_RULE, "");
+    }
     if let Some((f, src)) = figurines {
         faces.push_str(&text_font::font_face(f, src));
         if f.role == FontRole::Unicode {
@@ -299,10 +318,15 @@ pub fn heading_id(index: u32, k: usize) -> String {
     format!("p{}-h{}", u64::from(index) + 1, k + 1)
 }
 
-/// One page as a `<section>`.
-fn page_section(page: &ChessPage, o: &HtmlOptions<'_>) -> String {
+/// One page as a `<section>`; with `pagebreak`, it starts with the EPUB page break that names
+/// the page as the book numbers it (`id="pagebreak"`, the target of the package's page list).
+fn page_section(page: &ChessPage, o: &HtmlOptions<'_>, pagebreak: bool) -> String {
     let mut s = String::new();
     let _ = writeln!(s, "<section class=\"page\" data-page=\"{}\">", u64::from(page.index) + 1);
+    if pagebreak {
+        let label = esc(&page_label(o, page.index));
+        let _ = writeln!(s, "<span epub:type=\"pagebreak\" role=\"doc-pagebreak\" id=\"pagebreak\" aria-label=\"{label}\" title=\"{label}\"></span>");
+    }
     let mut k = 0;
     for block in &page.blocks {
         match block {
@@ -330,27 +354,34 @@ pub fn write(doc: &ChessDoc, o: &HtmlOptions<'_>) -> String {
     let mut s = format!(
         "<!DOCTYPE html>\n{html}\n<head>\n<meta charset=\"utf-8\">\n<title>{}</title>\n<style>{}</style>\n</head>\n<body>\n",
         esc(o.title),
-        style(o.text_font.zip(fig_src.as_deref()), o.sign_font.zip(sign_src.as_deref())),
+        style(o.text_font.zip(fig_src.as_deref()), o.sign_font.zip(sign_src.as_deref()), o.review_marks),
     );
     for page in &doc.pages {
-        s.push_str(&page_section(page, o));
+        s.push_str(&page_section(page, o, false));
     }
     s.push_str("</body>\n</html>\n");
     s
 }
 
+/// Where an EPUB's pages find their one stylesheet ([`epub_css`]), relative to them.
+pub const EPUB_CSS: &str = "styles.css";
+
+/// The stylesheet an EPUB's pages share, its fonts loaded from [`epub_font_href`] (plan A8 P9b:
+/// one file in the package, not a copy in every page).
+pub fn epub_css(o: &HtmlOptions<'_>) -> String {
+    let (fig, sign) = (o.text_font.map(epub_font_href), o.sign_font.map(epub_font_href));
+    style(o.text_font.zip(fig.as_deref()), o.sign_font.zip(sign.as_deref()), o.review_marks)
+}
+
 /// One page as a standalone XHTML document (an EPUB 3 content document): well-formed XML, the
-/// same markup as [`write`] inside. `lang` is the book's language tag.
+/// same markup as [`write`] inside, starting with the page break that names the page, and the
+/// package's stylesheet ([`EPUB_CSS`]). `lang` is the book's language tag.
 pub fn xhtml_page(page: &ChessPage, o: &HtmlOptions<'_>, lang: &str) -> String {
     format!(
-        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE html>\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:epub=\"http://www.idpf.org/2007/ops\" lang=\"{l}\" xml:lang=\"{l}\">\n<head>\n<meta charset=\"utf-8\"/>\n<title>{t}</title>\n<style>{css}</style>\n</head>\n<body>\n{body}</body>\n</html>\n",
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE html>\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:epub=\"http://www.idpf.org/2007/ops\" lang=\"{l}\" xml:lang=\"{l}\">\n<head>\n<meta charset=\"utf-8\"/>\n<title>{t}</title>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"{EPUB_CSS}\"/>\n</head>\n<body>\n{body}</body>\n</html>\n",
         l = esc(lang),
         t = esc(o.title),
-        css = {
-            let (fig, sign) = (o.text_font.map(epub_font_href), o.sign_font.map(epub_font_href));
-            style(o.text_font.zip(fig.as_deref()), o.sign_font.zip(sign.as_deref()))
-        },
-        body = page_section(page, o),
+        body = page_section(page, o, true),
     )
 }
 

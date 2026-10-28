@@ -619,6 +619,10 @@ fn chess_export_html_writes_the_diagrams_in_order_and_reads_back() {
         "{done:#}"
     );
     assert_eq!(done["pieces"]["source"], "geometric");
+    // What was flagged for review is highlighted in HTML, unless asked not to (plan A8 P9b).
+    assert!(std::fs::read_to_string(root.join("book.html")).unwrap().contains(".review{background:#fff3c4}"));
+    ok(&mut a, "chess_export_html", json!({ "doc": doc, "out": "clean.html", "pieces": "geometric", "review_marks": false }));
+    assert!(!std::fs::read_to_string(root.join("clean.html")).unwrap().contains(".review{background"));
     // The figurine font is reported: used only when the machine has one configured.
     let font = &done["text_font"];
     assert_eq!(font["used"], font["path"].is_string() || font["format"].is_string(), "{font}");
@@ -677,7 +681,7 @@ fn chess_export_epub_writes_a_book_inside_the_root_only() {
     let bytes = std::fs::read(root.join("book.epub")).unwrap();
     assert_eq!(done["bytes"].as_u64(), Some(bytes.len() as u64));
     assert_eq!(&bytes[30..58], b"mimetypeapplication/epub+zip");
-    for name in ["META-INF/container.xml", "OEBPS/content.opf", "OEBPS/nav.xhtml", "OEBPS/page-00001.xhtml"] {
+    for name in ["META-INF/container.xml", "OEBPS/content.opf", "OEBPS/nav.xhtml", "OEBPS/page-00001.xhtml", "OEBPS/styles.css"] {
         assert!(bytes.windows(name.len()).any(|w| w == name.as_bytes()), "no {name} in the archive");
     }
     for out in ["../outside/x.epub".to_string(), base.join("outside").join("y.epub").to_string_lossy().into_owned()] {
