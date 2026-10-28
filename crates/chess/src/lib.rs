@@ -17,6 +17,7 @@ pub mod fragment;
 pub mod game;
 pub mod lichess;
 pub mod nag;
+pub mod origin;
 pub mod placement;
 pub mod recognize;
 pub mod repair;

@@ -971,8 +971,8 @@ impl Game {
         }
     }
 
-    /// The game as PGN: the seven tags, the others, the start position when it is not the
-    /// standard one, and the moves on one line: pasted elsewhere, a comment is not cut where
+    /// The game as PGN: the seven tags, the start position when it is not the standard one, the
+    /// others, and the moves on one line: pasted elsewhere, a comment is not cut where
     /// the 80th column fell.
     pub fn pgn(&self) -> String {
         let result = self.result();
@@ -986,13 +986,15 @@ impl Game {
             };
             out.push_str(&format!("[{tag} \"{}\"]\n", quote(&value)));
         }
-        for (name, value) in self.tags.iter().filter(|(n, _)| !ROSTER.contains(&n.as_str())) {
-            out.push_str(&format!("[{name} \"{}\"]\n", quote(value)));
-        }
+        // The start position before the other tags, as the document's export writes them (plan
+        // A8 P8a: the same origin gives the same tags in the same order from both writers).
         let start = self.start_fen();
         if start != Board::default().to_string() {
             out.push_str("[SetUp \"1\"]\n");
             out.push_str(&format!("[FEN \"{start}\"]\n"));
+        }
+        for (name, value) in self.tags.iter().filter(|(n, _)| !ROSTER.contains(&n.as_str())) {
+            out.push_str(&format!("[{name} \"{}\"]\n", quote(value)));
         }
         out.push('\n');
         let moves = self.movetext();

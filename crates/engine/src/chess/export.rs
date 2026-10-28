@@ -186,7 +186,13 @@ impl Session {
                 super::epub::epub(&read.doc, &options, &meta)?
             }
             ChessFormat::Pgn => {
-                let (pgn, added) = markdown::pgn_with_diagrams(&read.doc);
+                // Each game says where in the book it came from (plan A8 P8a).
+                let doc = self.get(id).ok_or("no such document")?;
+                let book = markdown::PgnBook {
+                    title: Some(o.title.clone()).filter(|t| !t.trim().is_empty()),
+                    labels: doc.info.pages.iter().map(|p| p.label.clone()).collect(),
+                };
+                let (pgn, added) = markdown::pgn_with_diagrams_in(&read.doc, &book);
                 position_games = Some(added);
                 drawn = 0;
                 pgn.into_bytes()

@@ -217,3 +217,111 @@ proptest! {
         let _ = parse(&text);
     }
 }
+
+/// The synthetic book's game (plan A8 P8a): every castling right, an en passant square, Black's
+/// 23rd move first, a comment holding `}` and `%`, a NAG past 139, tags holding `"` and `\`, and
+/// where in the book it came from.
+fn book_game() -> GameScore {
+    let fen = "r3k2r/pppq1ppp/8/8/3Pp3/8/PPP2PPP/R3K2R b KQkq d3 0 23";
+    let mut g = GameScore::new(Some(Board::from_fen(fen, false).unwrap().to_string()));
+    let origin = pdfcraft_chess::origin::PgnOrigin {
+        book_title: Some("Livro \"um\" \\ dois".to_owned()),
+        page_index: 22,
+        page_label: Some("17".to_owned()),
+        diagram: Some(1),
+        of: Some(2),
+        puzzle: None,
+        lang: Some(Lang::Pt),
+    };
+    g.extra_tags.push(Tag { name: "Annotator".to_owned(), value: String::new() });
+    g.extra_tags.extend(origin.tags().into_iter().map(|(name, value)| Tag { name, value }));
+    g.comment = pdfcraft_chess::origin::with_origin_comment("", &origin);
+    let ep = line(&mut g, None, "exd3").unwrap();
+    crate::doc::games::append_comment(&mut g.nodes[ep].comment, "en passant } then %castle");
+    let long = line(&mut g, Some(ep), "O-O-O").unwrap();
+    g.nodes[long].nags.push(146);
+    line(&mut g, Some(long), "O-O");
+    g
+}
+
+#[test]
+fn the_book_game_is_written_as_the_golden_and_read_back_by_both_readers() {
+    let g = book_game();
+    let pgn = write_game(&g);
+    let golden = r#"[Event "?"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "?"]
+[White "?"]
+[Black "?"]
+[Result "*"]
+[SetUp "1"]
+[FEN "r3k2r/pppq1ppp/8/8/3Pp3/8/PPP2PPP/R3K2R b KQkq d3 0 23"]
+[Annotator ""]
+[PdfPage "23"]
+[PdfPageLabel "17"]
+[PdfDiagram "1"]
+[SourceTitle "Livro \"um\" \\ dois"]
+
+{Pág. 17 · diagrama 1 de 2} 23... exd3 {en passant ) then %castle} 24. O-O-O
+$146 O-O *
+"#;
+    assert!(!pgn.starts_with('\u{feff}') && pgn.lines().all(|l| l.chars().count() <= LINE_WIDTH && !l.starts_with('%')), "{pgn}");
+    assert_eq!(pgn, golden, "{pgn}");
+    assert_eq!(parse(&pgn).unwrap(), vec![g.clone()]);
+    // The board's reader: the same start, moves and tags.
+    let (board, stopped) = pdfcraft_chess::game::Game::from_pgn(&pgn).unwrap();
+    assert_eq!(stopped, None);
+    assert_eq!(board.start_fen(), g.start_fen.clone().unwrap());
+    assert_eq!(board.tag("SourceTitle"), Some("Livro \"um\" \\ dois"));
+    assert_eq!(board.tag("PdfPage"), Some("23"), "the physical page");
+    assert_eq!(board.tag("PdfPageLabel"), Some("17"));
+    // Both writers give the same tags in the same order after the roster (plan A8 P8a). The
+    // board keeps no tag without a value (`Game::set_tag`), so the empty Annotator is not
+    // among them.
+    let after_roster = |text: &str| {
+        text.lines().take_while(|l| l.starts_with('[')).skip(7).filter(|l| !l.ends_with(" \"\"]")).map(str::to_owned).collect::<Vec<_>>()
+    };
+    assert_eq!(after_roster(&board.pgn()), after_roster(&pgn));
+}
+
+#[test]
+fn an_unwritable_san_is_named_again_never_written_as_a_null_move() {
+    let mut g = GameScore::new(None);
+    let e4 = line(&mut g, None, "e4").unwrap();
+    let e5 = line(&mut g, Some(e4), "e5").unwrap();
+    g.nodes[e5].san = "♟??".to_owned();
+    let pgn = write_game(&g);
+    assert!(pgn.contains("1. e4 e5 *") && !pgn.contains("--"), "{pgn}");
+    // No legal move reaches the position after it: the line stops there, and says so.
+    g.nodes[e5].fen = "4k3/8/8/8/8/8/8/4K3 w - - 0 2".to_owned();
+    let pgn = write_game(&g);
+    assert!(pgn.contains("1. e4 {(a move that cannot be written") && !pgn.contains("--"), "{pgn}");
+}
+
+/// python-chess (GPL) as an outside oracle, run as a process only: it reads the book game to the
+/// same start, moves and tags. Skipped without Python or python-chess.
+#[test]
+fn python_chess_reads_the_book_game_the_same() {
+    let pgn = write_game(&book_game());
+    let script = "import sys, chess.pgn\ng = chess.pgn.read_game(sys.stdin)\nprint(g.board().fen())\nprint(' '.join(g.board().variation_san(g.mainline_moves()).split()))\nprint(g.headers.get('SourceTitle'))\nprint(len(g.errors))";
+    let child = std::process::Command::new("python")
+        .args(["-I", "-c", script])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::null())
+        .spawn();
+    let Ok(mut child) = child else { return };
+    if let Some(mut stdin) = child.stdin.take() {
+        use std::io::Write as _;
+        let _ = stdin.write_all(pgn.as_bytes());
+    }
+    let Ok(out) = child.wait_with_output() else { return };
+    if !out.status.success() {
+        return; // no python-chess
+    }
+    let text = String::from_utf8_lossy(&out.stdout).replace('\r', "");
+    let lines: Vec<&str> = text.lines().collect();
+    // python-chess (1.11) gives a tag's value as written, its escapes kept.
+    assert_eq!(lines, ["r3k2r/pppq1ppp/8/8/3Pp3/8/PPP2PPP/R3K2R b KQkq d3 0 23", "23...exd3 24. O-O-O O-O", r#"Livro \"um\" \\ dois"#, "0"], "{pgn}");
+}

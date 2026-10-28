@@ -9,9 +9,15 @@
 //!
 //! **PGN** ([`pgn_with_diagrams`]). The games found in the text, and for every legal diagram
 //! that starts none a game of its own with no moves: `[SetUp "1"]`, `[FEN …]` and the page and
-//! diagram it came from, so a database gets every position of the book.
+//! diagram it came from, so a database gets every position of the book. Each game says where it
+//! came from through [`PgnOrigin`]: its tags, and a first comment in the book's language
+//! (`Pág. 17 · diagrama 1 de 2`), with the book's title and printed page numbers from
+//! [`PgnBook`] when the caller knows them.
 
 use std::fmt::Write as _;
+
+use pdfcraft_chess::origin::{PgnOrigin, with_origin_comment, with_origin_tags};
+use pdfcraft_chess::san::Lang;
 
 use super::games::{GameOrigin, GameResult, GameScore, Tag};
 use super::html::{Figurines, plain_text_with};
@@ -126,11 +132,19 @@ pub fn write(doc: &ChessDoc, o: &MarkdownOptions<'_>) -> String {
     s
 }
 
+/// What the document a PGN is written from knows that its reading does not: the book's title and
+/// the number printed on each page (its page labels, by page index; empty when it has none).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct PgnBook {
+    pub title: Option<String>,
+    pub labels: Vec<String>,
+}
+
 /// A game with no moves for a diagram: its position, and where it came from.
-fn position_game(fen: &str, page: u32, number: usize, accepted: bool) -> GameScore {
+fn position_game(fen: &str, page: u32, number: usize, puzzle: Option<u32>, accepted: bool) -> GameScore {
     let mut g = GameScore::new(Some(fen.to_owned()));
-    g.extra_tags.push(Tag { name: "PdfPage".to_owned(), value: (u64::from(page) + 1).to_string() });
-    g.extra_tags.push(Tag { name: "PdfDiagram".to_owned(), value: (number + 1).to_string() });
+    let origin = PgnOrigin { page_index: page, diagram: Some(number.saturating_add(1)), puzzle, ..PgnOrigin::default() };
+    g.extra_tags.extend(origin.tags().into_iter().map(|(name, value)| Tag { name, value }));
     if !accepted {
         g.comment = "The reading of this diagram did not pass review; check it against the book.".to_owned();
     }
@@ -142,6 +156,12 @@ fn position_game(fen: &str, page: u32, number: usize, accepted: bool) -> GameSco
 /// the book: page by page, a diagram's game where the diagram is, then the page's other games.
 /// Returns the PGN and how many position-only games were added.
 pub fn pgn_with_diagrams(doc: &ChessDoc) -> (String, usize) {
+    pgn_with_diagrams_in(doc, &PgnBook::default())
+}
+
+/// [`pgn_with_diagrams`], each game saying where in `book` it came from (plan A8 P8a): the
+/// origin's tags, its first comment, and for a position the book's title as its `Event`.
+pub fn pgn_with_diagrams_in(doc: &ChessDoc, book: &PgnBook) -> (String, usize) {
     let mut out: Vec<GameScore> = Vec::new();
     let mut used = vec![false; doc.games.len()];
     let mut added = 0;
@@ -155,12 +175,14 @@ pub fn pgn_with_diagrams(doc: &ChessDoc) -> (String, usize) {
             match (from_here, &d.reading) {
                 (Some(i), _) => {
                     if let (Some(g), Some(slot)) = (doc.games.get(i), used.get_mut(i)) {
-                        out.push(g.score.clone());
+                        out.push(with_origin(doc, book, g));
                         *slot = true;
                     }
                 }
                 (None, Some(r)) if r.legal && !r.repaired && GameScore::new(Some(r.fen.clone())).start_board().is_some() => {
-                    out.push(position_game(&r.fen, page.index, d.number, r.accepted));
+                    let game = position_game(&r.fen, page.index, d.number, d.puzzle, r.accepted);
+                    let origin = origin_of(doc, book, page.index, Some(d.number), d.puzzle);
+                    out.push(apply_origin(game, &origin, true));
                     added += 1;
                 }
                 _ => {}
@@ -171,7 +193,7 @@ pub fn pgn_with_diagrams(doc: &ChessDoc) -> (String, usize) {
                 && let Some(slot) = used.get_mut(i)
                 && !*slot
             {
-                out.push(g.score.clone());
+                out.push(with_origin(doc, book, g));
                 *slot = true;
             }
         }
@@ -179,8 +201,47 @@ pub fn pgn_with_diagrams(doc: &ChessDoc) -> (String, usize) {
     // Games whose page is not among the pages (none should be): kept, at the end.
     for (i, g) in doc.games.iter().enumerate() {
         if !used.get(i).copied().unwrap_or(true) {
-            out.push(g.score.clone());
+            out.push(with_origin(doc, book, g));
         }
     }
     (super::pgn::write(out.iter()), added)
+}
+
+/// A game of the document with its origin: the diagram it starts at, else the page of its first
+/// move.
+fn with_origin(doc: &ChessDoc, book: &PgnBook, game: &super::games::Game) -> GameScore {
+    let (page, diagram) = match game.origin {
+        GameOrigin::Diagram { page, diagram, .. } => (page, Some(diagram)),
+        GameOrigin::Initial => (game.page, None),
+    };
+    let puzzle = game.score.extra_tags.iter().find(|t| t.name == "PdfPuzzle").and_then(|t| t.value.parse().ok());
+    apply_origin(game.score.clone(), &origin_of(doc, book, page, diagram, puzzle), false)
+}
+
+/// The origin of page `page`'s diagram `diagram` (counted from 0), or of the page.
+fn origin_of(doc: &ChessDoc, book: &PgnBook, page: u32, diagram: Option<usize>, puzzle: Option<u32>) -> PgnOrigin {
+    let read = doc.pages.iter().find(|p| p.index == page);
+    let diagrams = read.map_or(0, |p| p.blocks.iter().filter(|b| matches!(b, Block::Diagram(_))).count());
+    PgnOrigin {
+        book_title: book.title.clone(),
+        page_index: page,
+        page_label: usize::try_from(page).ok().and_then(|i| book.labels.get(i)).cloned(),
+        diagram: diagram.map(|d| d.saturating_add(1)),
+        of: (diagrams > 0).then_some(diagrams),
+        puzzle,
+        lang: read.and_then(|p| Lang::from_tag(&p.lang)),
+    }
+}
+
+/// The game with the origin's tags in place of its own, the origin's comment first and, for a
+/// position, the book's title as its event.
+fn apply_origin(mut game: GameScore, origin: &PgnOrigin, position: bool) -> GameScore {
+    let tags: Vec<(String, String)> = game.extra_tags.iter().map(|t| (t.name.clone(), t.value.clone())).collect();
+    game.extra_tags = with_origin_tags(&tags, origin).into_iter().map(|(name, value)| Tag { name, value }).collect();
+    game.comment = with_origin_comment(&game.comment, origin);
+    if position && let Some((event, round)) = origin.position_roster() {
+        game.roster.event = event;
+        game.roster.round = round;
+    }
+    game
 }

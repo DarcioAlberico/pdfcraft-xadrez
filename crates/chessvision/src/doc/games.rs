@@ -86,6 +86,7 @@
 //! variations, [`MAX_COMMENT_CHARS`] a comment, [`MAX_GAMES`] games a document.
 
 use cozy_chess::{Board, Color, Move};
+use pdfcraft_chess::origin::PgnOrigin;
 use pdfcraft_chess::repair::{CONFIDENCE_ONE_SWAP, GameContext};
 use pdfcraft_chess::san::{San, SanBody, SanError};
 use serde::{Deserialize, Serialize};
@@ -1024,11 +1025,8 @@ fn seed_score(seed: &Seed, number: Option<MoveNumber>) -> Option<(GameScore, Vec
         }
     }
     let mut score = GameScore::new(Some(board.to_string()));
-    score.extra_tags.push(Tag { name: "PdfPage".to_owned(), value: seed.page.saturating_add(1).to_string() });
-    score.extra_tags.push(Tag { name: "PdfDiagram".to_owned(), value: seed.diagram.saturating_add(1).to_string() });
-    if let Some(n) = seed.puzzle {
-        score.extra_tags.push(Tag { name: "PdfPuzzle".to_owned(), value: n.to_string() });
-    }
+    let origin = PgnOrigin { page_index: seed.page, diagram: Some(seed.diagram.saturating_add(1)), puzzle: seed.puzzle, ..PgnOrigin::default() };
+    score.extra_tags.extend(origin.tags().into_iter().map(|(name, value)| Tag { name, value }));
     Some((score, flags, honour))
 }
 
@@ -1406,7 +1404,8 @@ impl Walker {
             }
             Anchor::None if number == Some(MoveNumber { number: 1, black: false }) => {
                 let mut score = GameScore::new(None);
-                score.extra_tags.push(Tag { name: "PdfPage".to_owned(), value: loc.page.saturating_add(1).to_string() });
+                let origin = PgnOrigin { page_index: loc.page, ..PgnOrigin::default() };
+                score.extra_tags.extend(origin.tags().into_iter().map(|(name, value)| Tag { name, value }));
                 (GameOrigin::Initial, score, Vec::new(), true)
             }
             Anchor::None => return None,

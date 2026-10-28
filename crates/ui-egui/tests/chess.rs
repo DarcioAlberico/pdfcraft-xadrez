@@ -3333,3 +3333,19 @@ fn the_first_time_hint_goes_once_put_away() {
     again.restore(&h.state().persist());
     assert!(again.chess.diagram_hint_seen);
 }
+
+/// A game opened from a diagram says where in the book it came from, with the tags the book's
+/// PGN export gives the diagram's game, in the same order (plan A8 P8a).
+#[test]
+fn a_game_opened_from_a_diagram_has_the_books_origin_tags() {
+    let s = store("origin-tags");
+    let mut h = session(&s, "book.pdf", None, boards());
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    h.state_mut().open_chess_board(0, 0);
+    h.run_steps(2);
+    let pgn = h.state().chess.board().game.pgn();
+    let tags: Vec<&str> = pgn.lines().take_while(|l| l.starts_with('[')).skip(7).collect();
+    // The document's first diagram is the standard start: no SetUp/FEN, which would come first.
+    assert_eq!(tags, ["[PdfPage \"1\"]", "[PdfDiagram \"1\"]", "[SourceTitle \"book\"]"], "{pgn}");
+}

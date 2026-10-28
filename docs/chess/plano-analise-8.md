@@ -234,7 +234,7 @@ Cada passo: **Contexto** (o que ler) · **Tarefas** · **Verificação** · **Sa
 
 **P7 — Motor a um clique.** `cpu` na aba Diagrama, na lista e no tabuleiro; analisa a posição editada; assistente sem motor; lembra a análise. *Verificação:* motor falso (script UCI mínimo).
 
-**P8a — `PgnOrigin` e etiquetas aditivas** (`chess`, `chessvision/doc/pgn.rs`, `markdown.rs`, `chess_board_ui.rs`, `chess_collection.rs`, `automation/tools.rs`). §2.4 PGN, exceto posições. *Verificação:* golden, reimportação, equivalência, oráculo. *Reversão:* revert (etiquetas só adicionadas).
+**P8a — `PgnOrigin` e etiquetas aditivas** ✅ *Feito (2026-10-28): `pdfcraft_chess::origin::PgnOrigin` nos dois escritores (exportação e jogo aberto de um diagrama no tabuleiro); `PdfPageLabel` e `SourceTitle` só adicionadas; comentário inicial no idioma do livro na exportação (o tabuleiro ainda não conhece o idioma: sem comentário); `Event` = título e `Round "-"` só nos jogos de posição; SetUp/FEN antes das outras etiquetas nos dois; `--` substituído pelo lance renomeado a partir das posições; golden + reimportação + python-chess como processo externo. Um token com mais de 79 colunas fica sozinho na linha (o PGN aceita 255).* (`chess`, `chessvision/doc/pgn.rs`, `markdown.rs`, `chess_board_ui.rs`, `chess_collection.rs`, `automation/tools.rs`). §2.4 PGN, exceto posições. *Verificação:* golden, reimportação, equivalência, oráculo. *Reversão:* revert (etiquetas só adicionadas).
 
 **P8b — Jogos de posição** (precisa de P3a3). `positions`, `$220`, `positions_skipped`.
 
