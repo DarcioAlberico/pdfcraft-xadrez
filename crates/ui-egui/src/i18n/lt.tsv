@@ -3446,3 +3446,12 @@ chess undo step	Clear drawings	piešinių valymą
 	Diagram board: {fen}	Diagramos lenta: {fen}
 	Classic diagram editor	Klasikinis diagramų redaktorius
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Redaguoti diagramas skydelyje Diagramos, kaip iki kortelės Diagrama. Ši parinktis dings vienoje iš būsimų versijų.
+# Plan A8 P3b3: drafts and the question about them.
+	Unconfirmed changes	Nepatvirtinti pakeitimai
+	Keep the correction of diagram {n} (page {p})?	Palikti diagramos {n} ({p} psl.) pataisymą?
+	Squares changed: {n}. Not confirmed yet.	Pakeisti langeliai: {n}. Dar nepatvirtinta.
+	The position changed. Not confirmed yet.	Pozicija pasikeitė. Dar nepatvirtinta.
+	Confirm correction	Patvirtinti pataisymą
+	Discard changes	Atmesti pakeitimus
+	Keep editing	Tęsti redagavimą
+	Click a square to put the piece there. Confirm keeps the correction without changing the PDF.	Spustelėkite langelį, kad padėtumėte ten figūrą. Patvirtinti palieka pataisymą nekeičiant PDF.

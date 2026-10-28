@@ -57,7 +57,9 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let label = app.chess_page_label(page);
     let pieces = app.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Diagrams);
     let confirm_only = app.chess.confirm_only;
+    let mut hint = !app.chess.diagram_hint_seen;
     let Some(ed) = app.chess.editor.as_mut() else { return };
+    let dirty = ed.dirty();
 
     let mut action = keys(ui, queue.len());
     let whole = ui.max_rect();
@@ -87,7 +89,7 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                 }
             }
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-                state_icon(ui, &t, state, 16.0);
+                state_icon(ui, &t, state, 16.0, dirty);
                 let title = crate::i18n::fmt(
                     tl!("Page {p} · diagram {n} of {m}"),
                     &[("p", &label), ("n", &(index + 1).to_string()), ("m", &on_page.max(index + 1).to_string())],
@@ -103,6 +105,17 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
 
     ui.scope_builder(UiBuilder::new().max_rect(body_rect.shrink2(egui::vec2(8.0, 0.0))), |ui| {
         egui::ScrollArea::vertical().id_salt("chess-diagram-tab").auto_shrink([false, false]).show(ui, |ui| {
+            // The first time: what a click does, and that Confirm leaves the PDF alone (P3b3).
+            if hint && first_time_hint(ui, &t) {
+                hint = false;
+            }
+            // Changes not confirmed yet (they are kept as a draft when another diagram opens).
+            if dirty {
+                ui.horizontal(|ui| {
+                    ui.add(crate::icons::image("triangle-alert", 14.0, t.warning_text));
+                    ui.label(RichText::new(tl!("Unconfirmed changes")).small().color(t.warning_text));
+                });
+            }
             let side = (ui.available_width() - 24.0).min(body_rect.height() - AROUND_BOARD).clamp(MIN_BOARD, MAX_BOARD);
             let sprites = crate::chess_editor::palette_sprites(ui, ed, &pieces);
             ui.vertical_centered(|ui| crate::chess_editor::board_view(ui, &t, ed, &pieces, side, true));
@@ -140,9 +153,32 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
         });
     });
 
+    if !hint {
+        app.chess.diagram_hint_seen = true;
+    }
     if let Some(a) = action {
         app.chess_editor_action(a);
     }
+}
+
+/// The first-time hint over the board, with a button to put it away. Whether it was put away.
+fn first_time_hint(ui: &mut egui::Ui, t: &Tokens) -> bool {
+    let mut away = false;
+    egui::Frame::new().fill(t.accent_soft).corner_radius(6).inner_margin(8).show(ui, |ui| {
+        ui.horizontal(|ui| {
+            ui.add(
+                egui::Label::new(
+                    RichText::new(tl!("Click a square to put the piece there. Confirm keeps the correction without changing the PDF.")).small(),
+                )
+                .wrap(),
+            );
+            if crate::icons::button(ui, "x", 20.0, false, tl!("Dismiss")).clicked() {
+                away = true;
+            }
+        });
+    });
+    ui.add_space(4.0);
+    away
 }
 
 /// Nothing to edit: how to get a diagram here.

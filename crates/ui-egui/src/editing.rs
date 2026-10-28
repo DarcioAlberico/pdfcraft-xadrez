@@ -818,6 +818,12 @@ impl PdfCraftApp {
 
     /// Close a tab, asking first if it has unsaved changes.
     pub fn request_close_tab(&mut self, index: usize) {
+        // Chess diagrams with unconfirmed changes are asked about first (plan A8, P3b3).
+        if let Some(id) = self.views.get(index).map(|v| v.id)
+            && self.ask_chess_drafts(Some(id), crate::chess_drafts::AfterDrafts::CloseTab(id))
+        {
+            return;
+        }
         // Text typed into a field counts as an unsaved change.
         if self.has_unsaved_work(index)
             && let Some(id) = self.views.get(index).map(|v| v.id)
@@ -830,6 +836,9 @@ impl PdfCraftApp {
 
     /// File ▸ Close all: clean documents close at once; each one with unsaved changes asks.
     pub fn close_all(&mut self) {
+        if self.ask_chess_drafts(None, crate::chess_drafts::AfterDrafts::CloseAll) {
+            return;
+        }
         for i in (0..self.views.len()).rev() {
             if !self.has_unsaved_work(i) {
                 self.close_tab(i);
@@ -931,6 +940,10 @@ impl PdfCraftApp {
     /// Request a normal application exit, preserving every unsaved document until answered.
     /// Returns false while the existing save/discard/cancel prompt needs a decision.
     pub(crate) fn request_quit(&mut self, ctx: &egui::Context) -> bool {
+        if self.ask_chess_drafts(None, crate::chess_drafts::AfterDrafts::Quit) {
+            ctx.request_repaint();
+            return false;
+        }
         if self.first_dirty().is_some() {
             self.close_request = Some(CloseRequest::Quit);
             ctx.request_repaint();
@@ -967,6 +980,11 @@ impl PdfCraftApp {
         }
         self.sync_unsaved_flag();
         if !ctx.input(|i| i.viewport().close_requested()) {
+            return;
+        }
+        // Chess diagrams with unconfirmed changes are asked about first (plan A8, P3b3).
+        if !self.allow_quit && self.ask_chess_drafts(None, crate::chess_drafts::AfterDrafts::Quit) {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
             return;
         }
         // `first_dirty` counts text typed into a field as an unsaved change.

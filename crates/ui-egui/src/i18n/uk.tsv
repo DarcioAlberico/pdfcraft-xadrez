@@ -3216,3 +3216,12 @@ chess undo step	Clear drawings	видалення малюнків
 	Diagram board: {fen}	Дошка діаграми: {fen}
 	Classic diagram editor	Класичний редактор діаграм
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Редагувати діаграми на панелі «Діаграми», як до вкладки «Діаграма». Цей параметр зникне в одній із наступних версій.
+# Plan A8 P3b3: drafts and the question about them.
+	Unconfirmed changes	Непідтверджені зміни
+	Keep the correction of diagram {n} (page {p})?	Зберегти виправлення діаграми {n} (стор. {p})?
+	Squares changed: {n}. Not confirmed yet.	Змінено полів: {n}. Ще не підтверджено.
+	The position changed. Not confirmed yet.	Позицію змінено. Ще не підтверджено.
+	Confirm correction	Підтвердити виправлення
+	Discard changes	Скасувати зміни
+	Keep editing	Продовжити редагування
+	Click a square to put the piece there. Confirm keeps the correction without changing the PDF.	Клацніть поле, щоб поставити на нього фігуру. «Підтвердити» зберігає виправлення, не змінюючи PDF.

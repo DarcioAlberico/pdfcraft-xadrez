@@ -2872,6 +2872,7 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
     let mut captured_drawn = Vec::new();
     // Chess diagrams found in this document, while it is as it was scanned.
     let chess_shown = crate::chess_ui::shown(&app.chess, view.id, app.session.chess_stamp(view.id));
+    let chess_drafts = app.chess.draft_keys(view.id);
     let mut chess_pick: Option<(usize, usize)> = None;
     // A double-click on a page not scanned for diagrams: the page, the point in user space and
     // whether it selected a word.
@@ -3608,7 +3609,7 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
                 }
             }
             crate::chess_capture::paint_captured(painter, &xf, i, info, captured_layer.as_deref().map(Vec::as_slice), &mut captured_drawn);
-            if let Some((d, tip)) = crate::chess_ui::paint(painter, &xf, i, info, chess_shown, pointer.filter(|_| !page_covered)) {
+            if let Some((d, tip)) = crate::chess_ui::paint(painter, &xf, i, info, chess_shown, pointer.filter(|_| !page_covered), &chess_drafts) {
                 if hover_text.is_none()
                     && let Some(p) = pointer
                 {

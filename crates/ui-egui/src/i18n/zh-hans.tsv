@@ -3158,3 +3158,12 @@ chess undo step	Clear drawings	清除标记
 	Diagram board: {fen}	棋图棋盘：{fen}
 	Classic diagram editor	经典棋图编辑器
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	像“棋图”选项卡出现之前一样，在“棋图”面板中编辑棋图。此选项将在以后的版本中移除。
+# Plan A8 P3b3: drafts and the question about them.
+	Unconfirmed changes	未确认的更改
+	Keep the correction of diagram {n} (page {p})?	保留棋图 {n}（第 {p} 页）的更正吗？
+	Squares changed: {n}. Not confirmed yet.	已更改的格子：{n}。尚未确认。
+	The position changed. Not confirmed yet.	局面已更改。尚未确认。
+	Confirm correction	确认更正
+	Discard changes	放弃更改
+	Keep editing	继续编辑
+	Click a square to put the piece there. Confirm keeps the correction without changing the PDF.	点击一个格子即可放置棋子。“确认”会保留更正，而不更改 PDF。

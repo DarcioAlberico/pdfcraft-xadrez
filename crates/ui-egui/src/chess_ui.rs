@@ -62,6 +62,12 @@ pub struct ChessState {
     pub classic_editor: bool,
     /// The Diagram tab's main button is Only confirm (else Confirm and next): the last choice.
     pub confirm_only: bool,
+    /// Changes made in the Diagram tab and not confirmed, per diagram, for the session (P3b3).
+    pub drafts: Vec<crate::chess_drafts::Draft>,
+    /// The question asked about a draft before closing, quitting, exporting or detecting again.
+    pub draft_prompt: Option<crate::chess_drafts::DraftPrompt>,
+    /// The Diagram tab's first-time hint was read (dismissed, or a diagram confirmed).
+    pub diagram_hint_seen: bool,
     /// List only the diagrams to review.
     pub review_only: bool,
     /// The pieces the editor draws with, found once.
@@ -371,6 +377,7 @@ pub(crate) fn paint(
     info: &DocInfo,
     results: Option<&ChessResults>,
     pointer: Option<Pos2>,
+    drafts: &[(usize, usize)],
 ) -> Option<(usize, String)> {
     let results = results?;
     let tokens = Tokens::get(painter.ctx());
@@ -397,10 +404,15 @@ pub(crate) fn paint(
         let tab = egui::Rect::from_min_size(r.left_top(), number.size() + egui::vec2(8.0, 2.0));
         painter.rect_filled(tab, CornerRadius::same(2), colour);
         painter.galley(tab.min + egui::vec2(4.0, 1.0), number, Color32::WHITE);
+        let draft = drafts.contains(&(page, i));
+        if draft {
+            crate::chess_widgets::draft_dot(painter, tab.expand(3.0), &tokens);
+        }
         if hovered.is_none() && pointer.is_some_and(|q| r.contains(q)) {
             let title = crate::i18n::fmt(tl!("Diagram {n}"), &[("n", &(i + 1).to_string())]);
             let kept = results.kinds.get(&(page, i)).map(|(_, fen)| fen.as_str());
             let fen = kept.or_else(|| reading.and_then(BoardReading::position).map(|pos| pos.fen.as_str()));
+            let label = if draft { format!("{label} · {}", tl!("Unconfirmed changes")) } else { label };
             let text = match fen {
                 Some(fen) => format!("{title} · {label}\n{fen}"),
                 None => format!("{title} · {label}"),
@@ -510,6 +522,8 @@ pub(crate) fn tab_contents(
         });
     }
     ui.add_space(6.0);
+    // The diagrams with unconfirmed changes, marked in the list (P3b3).
+    let drafts = state.draft_keys(id);
     let mine = state.results.as_mut().filter(|r| r.doc == id);
     let review_only = state.review_only;
     let Some(results) = mine else {
@@ -602,7 +616,7 @@ pub(crate) fn tab_contents(
                         let state = crate::chess_widgets::DiagramState::of(reading, kind);
                         let head = ui
                             .horizontal(|ui| {
-                                crate::chess_widgets::state_icon(ui, &Tokens::get(ui.ctx()), state, 14.0);
+                                crate::chess_widgets::state_icon(ui, &Tokens::get(ui.ctx()), state, 14.0, drafts.contains(&(page.page, i)));
                                 ui.selectable_label(selected, format!("{title} · {label}"))
                             })
                             .inner;
@@ -644,6 +658,10 @@ impl PdfCraftApp {
     /// the background and show the Chess diagrams panel.
     pub fn start_chess_scan(&mut self, all: bool) {
         let Some((vi, id)) = self.active_ids() else { return };
+        // Detecting again over diagrams with unconfirmed changes asks about them first (P3b3).
+        if self.chess.results.as_ref().is_some_and(|r| r.doc == id) && self.ask_chess_drafts(Some(id), crate::chess_drafts::AfterDrafts::Scan(all)) {
+            return;
+        }
         let Some(count) = self.session.get(id).map(|d| d.info.pages.len()) else { return };
         let pages: Vec<usize> =
             if all { (0..count).collect() } else { self.views.get(vi).map(|v| v.current).filter(|p| *p < count).into_iter().collect() };
@@ -864,15 +882,20 @@ impl PdfCraftApp {
         let Some(results) = self.chess.results.as_mut().filter(|r| r.doc == id) else { return };
         let Some((rect, _)) = results.diagram(page, index) else { return };
         results.selected = Some((page, index));
-        let reading = results.pages.iter().find(|p| p.page == page).and_then(|p| ChessResults::reading(p, index));
         if self.chess.editor.as_ref().is_none_or(|e| (e.doc, e.page, e.index) != (id, page, index)) {
+            // The diagram left keeps its unconfirmed changes as a draft (P3b3).
+            self.park_chess_editor();
+            let Some(results) = self.chess.results.as_ref().filter(|r| r.doc == id) else { return };
+            let reading = results.pages.iter().find(|p| p.page == page).and_then(|p| ChessResults::reading(p, index));
             let mut ed = crate::chess_editor::DiagramEditor::new(id, page, index, reading);
             // A diagram the user confirmed opens on the position kept for it.
             if let Some((_, fen)) = results.kinds.get(&(page, index)) {
                 ed.show_kept(fen);
             }
             self.chess.editor = Some(ed);
+            self.restore_chess_draft();
         }
+        let Some(results) = self.chess.results.as_mut().filter(|r| r.doc == id) else { return };
         results.reveal = !go;
         if go && let Some(view) = self.views.get_mut(vi) {
             view.go_to_page(page);
@@ -951,7 +974,10 @@ impl PdfCraftApp {
         match action {
             EditorAction::CopyFen(fen) => self.chess_action(PanelAction::CopyFen(fen)),
             EditorAction::OpenLichess(url) => self.chess_action(PanelAction::OpenLichess(url)),
-            EditorAction::Close => self.chess.editor = None,
+            EditorAction::Close => {
+                self.park_chess_editor();
+                self.chess.editor = None;
+            }
             EditorAction::Previous | EditorAction::Next => {
                 let Some(results) = self.chess.results.as_ref() else { return };
                 let queue = results.review_queue();

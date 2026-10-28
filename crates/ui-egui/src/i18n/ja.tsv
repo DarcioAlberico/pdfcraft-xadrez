@@ -3196,3 +3196,12 @@ chess undo step	Clear drawings	描画の消去
 	Diagram board: {fen}	局面図の盤面: {fen}
 	Classic diagram editor	従来の局面図エディター
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	局面図タブ以前と同じく「局面図」パネル内で局面図を編集します。このオプションは今後のバージョンで廃止されます。
+# Plan A8 P3b3: drafts and the question about them.
+	Unconfirmed changes	未確定の変更
+	Keep the correction of diagram {n} (page {p})?	局面図 {n} ({p} ページ) の修正を保持しますか?
+	Squares changed: {n}. Not confirmed yet.	変更したマス: {n}。まだ確定していません。
+	The position changed. Not confirmed yet.	局面が変更されました。まだ確定していません。
+	Confirm correction	修正を確定
+	Discard changes	変更を破棄
+	Keep editing	編集を続ける
+	Click a square to put the piece there. Confirm keeps the correction without changing the PDF.	マスをクリックすると駒を置けます。確定すると PDF を変更せずに修正を保持します。

@@ -3470,3 +3470,12 @@ chess undo step	Clear drawings	مسح الرسوم
 	Diagram board: {fen}	رقعة المخطط: {fen}
 	Classic diagram editor	محرر المخططات الكلاسيكي
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	تحرير المخططات داخل لوحة المخططات كما كان قبل علامة تبويب المخطط. سيُزال هذا الخيار في إصدار لاحق.
+# Plan A8 P3b3: drafts and the question about them.
+	Unconfirmed changes	تغييرات غير مؤكدة
+	Keep the correction of diagram {n} (page {p})?	هل تريد الاحتفاظ بتصحيح المخطط {n} (الصفحة {p})؟
+	Squares changed: {n}. Not confirmed yet.	المربعات المغيّرة: {n}. لم يُؤكَّد بعد.
+	The position changed. Not confirmed yet.	تغيّر الوضع. لم يُؤكَّد بعد.
+	Confirm correction	تأكيد التصحيح
+	Discard changes	تجاهل التغييرات
+	Keep editing	متابعة التحرير
+	Click a square to put the piece there. Confirm keeps the correction without changing the PDF.	انقر على مربع لوضع القطعة فيه. يحتفظ «تأكيد» بالتصحيح دون تغيير ملف PDF.

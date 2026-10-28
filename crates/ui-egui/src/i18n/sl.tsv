@@ -3199,3 +3199,12 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Diagram board: {fen}	Šahovnica diagrama: {fen}
 	Classic diagram editor	Klasični urejevalnik diagramov
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Urejaj diagrame v podoknu Diagrami, kot pred zavihkom Diagram. Ta možnost bo v eni od prihodnjih različic izginila.
+# Plan A8 P3b3: drafts and the question about them.
+	Unconfirmed changes	Nepotrjene spremembe
+	Keep the correction of diagram {n} (page {p})?	Obdržim popravek diagrama {n} (str. {p})?
+	Squares changed: {n}. Not confirmed yet.	Spremenjena polja: {n}. Še ni potrjeno.
+	The position changed. Not confirmed yet.	Položaj se je spremenil. Še ni potrjeno.
+	Confirm correction	Potrdi popravek
+	Discard changes	Zavrzi spremembe
+	Keep editing	Nadaljuj z urejanjem
+	Click a square to put the piece there. Confirm keeps the correction without changing the PDF.	Kliknite polje, da nanj postavite figuro. Potrdi obdrži popravek, ne da bi se PDF spremenil.

@@ -3190,3 +3190,12 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Diagram board: {fen}	Diyagram tahtası: {fen}
 	Classic diagram editor	Klasik diyagram düzenleyici
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Diyagramları, Diyagram sekmesinden önceki gibi Diyagramlar panelinin içinde düzenle. Bu seçenek ileriki bir sürümde kaldırılacak.
+# Plan A8 P3b3: drafts and the question about them.
+	Unconfirmed changes	Onaylanmamış değişiklikler
+	Keep the correction of diagram {n} (page {p})?	Diyagram {n} (sayfa {p}) düzeltmesi saklansın mı?
+	Squares changed: {n}. Not confirmed yet.	Değişen kareler: {n}. Henüz onaylanmadı.
+	The position changed. Not confirmed yet.	Konum değişti. Henüz onaylanmadı.
+	Confirm correction	Düzeltmeyi onayla
+	Discard changes	Değişiklikleri at
+	Keep editing	Düzenlemeye devam et
+	Click a square to put the piece there. Confirm keeps the correction without changing the PDF.	Taşı koymak için bir kareye tıklayın. Onayla, düzeltmeyi PDF'yi değiştirmeden saklar.
