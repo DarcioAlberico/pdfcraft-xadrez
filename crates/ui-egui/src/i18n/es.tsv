@@ -3335,3 +3335,12 @@ chess undo step	Clear drawings	borrado de los dibujos
 	Diagram board: {fen}	Tablero del diagrama: {fen}
 	Classic diagram editor	Editor de diagramas clásico
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Editar los diagramas dentro del panel Diagramas, como antes de la pestaña Diagrama. Esta opción desaparecerá en una versión futura.
+# Plan A8 P3b3: drafts and the question about them.
+	Unconfirmed changes	Cambios sin confirmar
+	Keep the correction of diagram {n} (page {p})?	¿Guardar la corrección del diagrama {n} (pág. {p})?
+	Squares changed: {n}. Not confirmed yet.	Casillas cambiadas: {n}. Aún sin confirmar.
+	The position changed. Not confirmed yet.	La posición cambió. Aún sin confirmar.
+	Confirm correction	Confirmar corrección
+	Discard changes	Descartar cambios
+	Keep editing	Seguir editando
+	Click a square to put the piece there. Confirm keeps the correction without changing the PDF.	Haga clic en una casilla para poner la pieza. Confirmar guarda la corrección sin cambiar el PDF.

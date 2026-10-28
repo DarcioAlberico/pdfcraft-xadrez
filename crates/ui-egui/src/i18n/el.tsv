@@ -3166,3 +3166,12 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Diagram board: {fen}	Σκακιέρα διαγράμματος: {fen}
 	Classic diagram editor	Κλασικός επεξεργαστής διαγραμμάτων
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Επεξεργασία διαγραμμάτων μέσα στο πλαίσιο Διαγράμματα, όπως πριν από την καρτέλα Διάγραμμα. Η επιλογή αυτή θα καταργηθεί σε μελλοντική έκδοση.
+# Plan A8 P3b3: drafts and the question about them.
+	Unconfirmed changes	Μη επιβεβαιωμένες αλλαγές
+	Keep the correction of diagram {n} (page {p})?	Να κρατηθεί η διόρθωση του διαγράμματος {n} (σελ. {p});
+	Squares changed: {n}. Not confirmed yet.	Αλλαγμένα τετράγωνα: {n}. Δεν έχει επιβεβαιωθεί ακόμη.
+	The position changed. Not confirmed yet.	Η θέση άλλαξε. Δεν έχει επιβεβαιωθεί ακόμη.
+	Confirm correction	Επιβεβαίωση διόρθωσης
+	Discard changes	Απόρριψη αλλαγών
+	Keep editing	Συνέχεια επεξεργασίας
+	Click a square to put the piece there. Confirm keeps the correction without changing the PDF.	Κάντε κλικ σε ένα τετράγωνο για να βάλετε εκεί το κομμάτι. Η Επιβεβαίωση κρατά τη διόρθωση χωρίς να αλλάξει το PDF.

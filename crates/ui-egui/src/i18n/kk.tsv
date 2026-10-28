@@ -3192,3 +3192,12 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Diagram board: {fen}	Диаграмма тақтасы: {fen}
 	Classic diagram editor	Классикалық диаграмма өңдегіші
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Диаграммаларды «Диаграмма» қойындысына дейінгідей «Диаграммалар» тақтасының ішінде өңдеу. Бұл параметр кейінгі нұсқада алынып тасталады.
+# Plan A8 P3b3: drafts and the question about them.
+	Unconfirmed changes	Расталмаған өзгерістер
+	Keep the correction of diagram {n} (page {p})?	{n}-диаграмманың түзетуі сақталсын ба ({p}-бет)?
+	Squares changed: {n}. Not confirmed yet.	Өзгерген шаршылар: {n}. Әлі расталмаған.
+	The position changed. Not confirmed yet.	Позиция өзгерді. Әлі расталмаған.
+	Confirm correction	Түзетуді растау
+	Discard changes	Өзгерістерден бас тарту
+	Keep editing	Өңдеуді жалғастыру
+	Click a square to put the piece there. Confirm keeps the correction without changing the PDF.	Фигураны қою үшін шаршыны басыңыз. «Растау» түзетуді PDF-ті өзгертпей сақтайды.

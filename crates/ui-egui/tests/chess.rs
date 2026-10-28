@@ -3234,3 +3234,102 @@ fn the_classic_editor_stays_in_the_diagrams_panel() {
     again.restore(&saved);
     assert!(again.chess.classic_editor, "kept with the preferences");
 }
+
+// ─── Drafts and the question before closing, exporting or detecting again (plan A8, P3b3) ─────
+
+/// Change the drawn board's position in the Diagram tab (not confirmed).
+fn draft_second(h: &mut Harness<'static, PdfCraftApp>) {
+    scan_and_edit_second(h);
+    assert!(h.state().chess.editor.as_ref().is_some_and(|e| e.dirty()), "changed, not confirmed");
+}
+
+/// Leaving a diagram with changes keeps them as its draft, marked in the list; opening it again
+/// shows them, with the tab saying they are not confirmed.
+#[test]
+fn a_draft_is_kept_per_diagram_and_marked() {
+    let mut h = harness();
+    draft_second(&mut h);
+    h.get_by_label("Unconfirmed changes");
+    h.get_by_label_contains("Diagram 1 · ").click();
+    h.run_steps(3);
+    assert_eq!(h.state().chess.drafts.len(), 1, "the drawn board's draft");
+    assert!(h.query_by_label("Unconfirmed changes").is_none(), "diagram 1 has none");
+    h.get_by_label_contains("· Unconfirmed changes");
+    h.get_by_label_contains("Diagram 2 · ").click();
+    h.run_steps(3);
+    assert_eq!(h.state().chess.editor.as_ref().map(|e| e.fen()).as_deref(), Some(EDITED), "the draft is back");
+    h.get_by_label("Unconfirmed changes");
+}
+
+/// Closing the document with a draft asks first; Keep editing keeps it open on the diagram,
+/// Discard changes drops the draft and the document closes.
+#[test]
+fn closing_with_a_draft_asks_first() {
+    let mut h = harness();
+    draft_second(&mut h);
+    h.state_mut().request_close_tab(0);
+    h.run_steps(2);
+    h.get_by_label("Keep the correction of diagram 2 (page 1)?");
+    assert_eq!(h.state().views.len(), 1, "still open");
+    h.get_by_label("Keep editing").click();
+    h.run_steps(3);
+    assert!(h.state().chess.draft_prompt.is_none() && h.state().views.len() == 1);
+    assert_eq!(h.state().chess.editor.as_ref().map(|e| (e.page, e.index)), Some((0, 1)));
+    h.state_mut().request_close_tab(0);
+    h.run_steps(2);
+    h.get_by_label("Discard changes").click();
+    h.run_steps(3);
+    assert!(h.state().views.is_empty(), "closed once the draft was answered");
+    assert!(h.state().chess.drafts.is_empty());
+}
+
+/// Exporting with a draft asks first; Confirm correction keeps it, and the export then writes
+/// the corrected position.
+#[test]
+fn exporting_with_a_draft_confirms_it_first() {
+    let dir = corrections_dir("draft-export");
+    let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), Some(dir.join("store")));
+    draft_second(&mut h);
+    std::fs::create_dir_all(&dir).unwrap();
+    let out = dir.join("book.pgn");
+    h.state_mut().save_override = Some(out.to_string_lossy().into_owned());
+    h.state_mut().export_chess_dialog(pdfcraft_engine::chess::export::ChessFormat::Pgn);
+    h.run_steps(2);
+    assert!(!out.exists(), "nothing written before the answer");
+    h.get_by_label("Confirm correction").click();
+    h.run_steps(6);
+    assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"));
+    let pgn = std::fs::read_to_string(&out).expect("exported once answered");
+    assert!(pgn.contains(EDITED), "the corrected position: {pgn}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Detecting again over a draft asks first; Discard changes drops it and the scan runs.
+#[test]
+fn detecting_again_asks_about_drafts() {
+    let mut h = harness();
+    draft_second(&mut h);
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(2);
+    h.get_by_label("Keep the correction of diagram 2 (page 1)?");
+    h.state_mut().toast = None;
+    h.get_by_label("Discard changes").click();
+    h.run_steps(4);
+    assert!(h.state().chess.drafts.is_empty());
+    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Diagrams found: 2"), "then the scan ran");
+}
+
+/// The tab's first-time hint shows until put away, and stays away (kept with the preferences).
+#[test]
+fn the_first_time_hint_goes_once_put_away() {
+    let mut h = harness();
+    scan_and_edit_second(&mut h);
+    let hint = "Click a square to put the piece there. Confirm keeps the correction without changing the PDF.";
+    h.get_by_label(hint);
+    h.get_by_label("Dismiss").click();
+    h.run_steps(2);
+    assert!(h.query_by_label(hint).is_none());
+    let mut again = PdfCraftApp::new();
+    again.restore(&h.state().persist());
+    assert!(again.chess.diagram_hint_seen);
+}

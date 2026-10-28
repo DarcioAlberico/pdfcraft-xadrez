@@ -3448,3 +3448,12 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Diagram board: {fen}	Bàn cờ của sơ đồ: {fen}
 	Classic diagram editor	Trình sửa sơ đồ cổ điển
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Sửa sơ đồ ngay trong bảng Sơ đồ, như trước khi có thẻ Sơ đồ. Tùy chọn này sẽ bị bỏ trong một phiên bản sau.
+# Plan A8 P3b3: drafts and the question about them.
+	Unconfirmed changes	Thay đổi chưa xác nhận
+	Keep the correction of diagram {n} (page {p})?	Giữ chỉnh sửa của sơ đồ {n} (trang {p})?
+	Squares changed: {n}. Not confirmed yet.	Số ô đã đổi: {n}. Chưa xác nhận.
+	The position changed. Not confirmed yet.	Thế cờ đã thay đổi. Chưa xác nhận.
+	Confirm correction	Xác nhận chỉnh sửa
+	Discard changes	Bỏ thay đổi
+	Keep editing	Tiếp tục sửa
+	Click a square to put the piece there. Confirm keeps the correction without changing the PDF.	Nhấp vào một ô để đặt quân vào đó. Xác nhận sẽ giữ chỉnh sửa mà không thay đổi PDF.
