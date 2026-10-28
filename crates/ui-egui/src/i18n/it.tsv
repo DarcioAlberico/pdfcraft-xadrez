@@ -3383,3 +3383,26 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	You checked it and kept the reading.	L'hai controllata e hai tenuto la lettura.
 	You corrected this position.	Hai corretto questa posizione.
 	Previous / next view	Vista precedente / successiva
+# Plan A8 P3b2: the Diagram tab and its corrections.
+	Diagram	Diagramma
+	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Le correzioni dei diagrammi salvate non si sono potute leggere ({why}); sono state messe da parte come {name}.
+	The diagram corrections couldn't be saved: {e}	Impossibile salvare le correzioni dei diagrammi: {e}
+	Diagram {n}, page {p}: {state}	Diagramma {n}, pag. {p}: {state}
+	Page {p} · diagram {n} of {m}	Pag. {p} · diagramma {n} di {m}
+	Show it on the page	Mostralo nella pagina
+	Next to review (Page Down)	Successivo da rivedere (Pag giù)
+	{i} of {n} to review	{i} di {n} da rivedere
+	Previous to review (Page Up)	Precedente da rivedere (Pag su)
+	Analyze on the board	Analizza sulla scacchiera
+	Select a diagram in the Diagrams panel, or click one on the page.	Scegli un diagramma nel pannello Diagrammi o fai clic su uno nella pagina.
+	More ways to confirm	Altri modi di confermare
+	Confirm and next	Conferma e prosegui
+	Only confirm	Conferma soltanto
+	Keep this position for the diagram, without changing the PDF.	Tieni questa posizione per il diagramma, senza modificare il PDF.
+	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	Tieni questa posizione per il diagramma, senza modificare il PDF, e apri il successivo da rivedere (Ctrl+Invio).
+	More actions	Altre azioni
+	Forget the correction	Dimentica la correzione
+	Show what was read again; the PDF is not changed.	Mostra di nuovo ciò che è stato letto; il PDF non cambia.
+	Diagram board: {fen}	Scacchiera del diagramma: {fen}
+	Classic diagram editor	Editor di diagrammi classico
+	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Modifica i diagrammi nel pannello Diagrammi, come prima della scheda Diagramma. Questa opzione sparirà in una versione futura.

@@ -3046,3 +3046,26 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	You checked it and kept the reading.	మీరు చూసి చదివినదాన్నే ఉంచారు.
 	You corrected this position.	మీరు ఈ స్థితిని సరిచేశారు.
 	Previous / next view	మునుపటి / తదుపరి వీక్షణ
+# Plan A8 P3b2: the Diagram tab and its corrections.
+	Diagram	రేఖాచిత్రం
+	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	భద్రపరచిన రేఖాచిత్రాల సవరణలను చదవలేకపోయాం ({why}); వాటిని {name} పేరుతో పక్కన పెట్టాం.
+	The diagram corrections couldn't be saved: {e}	రేఖాచిత్రాల సవరణలను భద్రపరచలేకపోయాం: {e}
+	Diagram {n}, page {p}: {state}	రేఖాచిత్రం {n}, పేజీ {p}: {state}
+	Page {p} · diagram {n} of {m}	పేజీ {p} · రేఖాచిత్రం {n}/{m}
+	Show it on the page	పేజీలో చూపించు
+	Next to review (Page Down)	తర్వాత సమీక్షించాల్సినది (Page Down)
+	{i} of {n} to review	సమీక్షించాల్సినవి {i}/{n}
+	Previous to review (Page Up)	ముందు సమీక్షించాల్సినది (Page Up)
+	Analyze on the board	బోర్డుపై విశ్లేషించు
+	Select a diagram in the Diagrams panel, or click one on the page.	రేఖాచిత్రాలు ప్యానెల్‌లో ఒక రేఖాచిత్రాన్ని ఎంచుకోండి, లేదా పేజీలో ఒకదానిపై క్లిక్ చేయండి.
+	More ways to confirm	నిర్ధారించే ఇతర మార్గాలు
+	Confirm and next	నిర్ధారించి తర్వాతిది
+	Only confirm	నిర్ధారించు మాత్రమే
+	Keep this position for the diagram, without changing the PDF.	PDF ను మార్చకుండా ఈ స్థితిని రేఖాచిత్రం కోసం ఉంచు.
+	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	PDF ను మార్చకుండా ఈ స్థితిని రేఖాచిత్రం కోసం ఉంచి, తర్వాత సమీక్షించాల్సినదాన్ని తెరువు (Ctrl+Enter).
+	More actions	మరిన్ని చర్యలు
+	Forget the correction	సవరణను మర్చిపో
+	Show what was read again; the PDF is not changed.	చదివినదాన్ని మళ్లీ చూపించు; PDF మారదు.
+	Diagram board: {fen}	రేఖాచిత్రం బోర్డు: {fen}
+	Classic diagram editor	సాంప్రదాయ రేఖాచిత్ర ఎడిటర్
+	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	రేఖాచిత్రం ట్యాబ్ రాకముందులాగే రేఖాచిత్రాలు ప్యానెల్‌లోనే రేఖాచిత్రాలను సవరించు. ఈ ఎంపిక తదుపరి వెర్షన్‌లో తొలగించబడుతుంది.

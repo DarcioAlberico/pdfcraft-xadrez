@@ -38,7 +38,9 @@ mod chess_board_ui;
 mod chess_capture;
 mod chess_collection;
 mod chess_correct;
+mod chess_corrections_ui;
 mod chess_deleted;
+mod chess_diagram_tab;
 mod chess_editor;
 mod chess_figurines;
 mod chess_history;
@@ -2382,6 +2384,9 @@ impl PdfCraftApp {
         v["chess_comment_focus"] = serde_json::Value::Bool(self.chess.comment_focus);
         v["chess_move_list"] = self.chess.list_look.to_json();
         v["chess_move_preview"] = serde_json::Value::Bool(!self.chess.no_move_preview);
+        // The Diagram tab or the editor in the Diagrams panel, and its main button (plan A8 P3b2).
+        v["chess_classic_editor"] = serde_json::Value::Bool(self.chess.classic_editor);
+        v["chess_confirm_only"] = serde_json::Value::Bool(self.chess.confirm_only);
         v.to_string()
     }
 
@@ -2440,6 +2445,12 @@ impl PdfCraftApp {
         }
         if let Some(on) = v["chess_move_preview"].as_bool() {
             self.chess.no_move_preview = !on;
+        }
+        if let Some(on) = v["chess_classic_editor"].as_bool() {
+            self.chess.classic_editor = on;
+        }
+        if let Some(on) = v["chess_confirm_only"].as_bool() {
+            self.chess.confirm_only = on;
         }
         if v["chess_move_list"].is_object() {
             self.chess.list_look = chess_figurines::ListLook::from_json(&v["chess_move_list"]);

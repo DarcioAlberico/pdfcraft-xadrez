@@ -3245,3 +3245,26 @@ chess undo step	Clear drawings	smazání kreseb
 	You checked it and kept the reading.	Zkontrolovali jste ji a ponechali čtení.
 	You corrected this position.	Tuto pozici jste opravili.
 	Previous / next view	Předchozí / další zobrazení
+# Plan A8 P3b2: the Diagram tab and its corrections.
+	Diagram	Diagram
+	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Uložené opravy diagramů nebylo možné přečíst ({why}); byly odloženy jako {name}.
+	The diagram corrections couldn't be saved: {e}	Opravy diagramů nebylo možné uložit: {e}
+	Diagram {n}, page {p}: {state}	Diagram {n}, str. {p}: {state}
+	Page {p} · diagram {n} of {m}	Str. {p} · diagram {n} z {m}
+	Show it on the page	Ukázat na stránce
+	Next to review (Page Down)	Další ke kontrole (Page Down)
+	{i} of {n} to review	{i} z {n} ke kontrole
+	Previous to review (Page Up)	Předchozí ke kontrole (Page Up)
+	Analyze on the board	Analyzovat na šachovnici
+	Select a diagram in the Diagrams panel, or click one on the page.	Vyberte diagram v panelu Diagramy nebo na některý klikněte na stránce.
+	More ways to confirm	Další způsoby potvrzení
+	Confirm and next	Potvrdit a dál
+	Only confirm	Jen potvrdit
+	Keep this position for the diagram, without changing the PDF.	Ponechat tuto pozici pro diagram, aniž by se změnilo PDF.
+	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	Ponechat tuto pozici pro diagram, aniž by se změnilo PDF, a otevřít další ke kontrole (Ctrl+Enter).
+	More actions	Další akce
+	Forget the correction	Zapomenout opravu
+	Show what was read again; the PDF is not changed.	Znovu ukázat, co bylo přečteno; PDF se nemění.
+	Diagram board: {fen}	Šachovnice diagramu: {fen}
+	Classic diagram editor	Klasický editor diagramů
+	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Upravovat diagramy v panelu Diagramy jako před kartou Diagram. Tato volba v některé příští verzi zmizí.

@@ -3312,3 +3312,26 @@ chess undo step	Clear drawings	borrado de los dibujos
 	You checked it and kept the reading.	La revisó y mantuvo la lectura.
 	You corrected this position.	Corrigió esta posición.
 	Previous / next view	Vista anterior / siguiente
+# Plan A8 P3b2: the Diagram tab and its corrections.
+	Diagram	Diagrama
+	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	No se pudieron leer las correcciones de diagramas guardadas ({why}); se apartaron como {name}.
+	The diagram corrections couldn't be saved: {e}	No se pudieron guardar las correcciones de diagramas: {e}
+	Diagram {n}, page {p}: {state}	Diagrama {n}, pág. {p}: {state}
+	Page {p} · diagram {n} of {m}	Pág. {p} · diagrama {n} de {m}
+	Show it on the page	Mostrarlo en la página
+	Next to review (Page Down)	Siguiente por revisar (Page Down)
+	{i} of {n} to review	{i} de {n} por revisar
+	Previous to review (Page Up)	Anterior por revisar (Page Up)
+	Analyze on the board	Analizar en el tablero
+	Select a diagram in the Diagrams panel, or click one on the page.	Elija un diagrama en el panel Diagramas o haga clic en uno de la página.
+	More ways to confirm	Otras formas de confirmar
+	Confirm and next	Confirmar y seguir
+	Only confirm	Solo confirmar
+	Keep this position for the diagram, without changing the PDF.	Guardar esta posición para el diagrama, sin cambiar el PDF.
+	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	Guardar esta posición para el diagrama, sin cambiar el PDF, y abrir el siguiente por revisar (Ctrl+Enter).
+	More actions	Más acciones
+	Forget the correction	Olvidar la corrección
+	Show what was read again; the PDF is not changed.	Volver a mostrar lo leído; el PDF no cambia.
+	Diagram board: {fen}	Tablero del diagrama: {fen}
+	Classic diagram editor	Editor de diagramas clásico
+	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Editar los diagramas dentro del panel Diagramas, como antes de la pestaña Diagrama. Esta opción desaparecerá en una versión futura.

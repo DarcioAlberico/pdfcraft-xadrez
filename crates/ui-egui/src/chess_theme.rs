@@ -281,6 +281,9 @@ pub(crate) fn preferences_section(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &
     if ui.add(crate::widgets::checkbox(&mut preview, tl!("A move the pointer rests on shows its position"))).changed() {
         app.chess.no_move_preview = !preview;
     }
+    // The editor in the Diagrams panel, as before the Diagram tab (plan A8, P3b2; for one version).
+    ui.add(crate::widgets::checkbox(&mut app.chess.classic_editor, tl!("Classic diagram editor")))
+        .on_hover_text(tl!("Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version."));
     // The move list's layout and text size (plan HC9).
     use crate::chess_figurines::{ListLayout, ListSize};
     let look = &mut app.chess.list_look;

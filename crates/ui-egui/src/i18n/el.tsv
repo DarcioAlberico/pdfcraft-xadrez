@@ -3143,3 +3143,26 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	You checked it and kept the reading.	Την ελέγξατε και κρατήσατε την ανάγνωση.
 	You corrected this position.	Διορθώσατε αυτή τη θέση.
 	Previous / next view	Προηγούμενη / επόμενη προβολή
+# Plan A8 P3b2: the Diagram tab and its corrections.
+	Diagram	Διάγραμμα
+	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Οι αποθηκευμένες διορθώσεις διαγραμμάτων δεν διαβάστηκαν ({why}); φυλάχτηκαν στην άκρη ως {name}.
+	The diagram corrections couldn't be saved: {e}	Οι διορθώσεις διαγραμμάτων δεν αποθηκεύτηκαν: {e}
+	Diagram {n}, page {p}: {state}	Διάγραμμα {n}, σελ. {p}: {state}
+	Page {p} · diagram {n} of {m}	Σελ. {p} · διάγραμμα {n} από {m}
+	Show it on the page	Εμφάνιση στη σελίδα
+	Next to review (Page Down)	Επόμενο για έλεγχο (Page Down)
+	{i} of {n} to review	{i} από {n} για έλεγχο
+	Previous to review (Page Up)	Προηγούμενο για έλεγχο (Page Up)
+	Analyze on the board	Ανάλυση στη σκακιέρα
+	Select a diagram in the Diagrams panel, or click one on the page.	Επιλέξτε ένα διάγραμμα στο πλαίσιο Διαγράμματα ή κάντε κλικ σε ένα στη σελίδα.
+	More ways to confirm	Άλλοι τρόποι επιβεβαίωσης
+	Confirm and next	Επιβεβαίωση και επόμενο
+	Only confirm	Μόνο επιβεβαίωση
+	Keep this position for the diagram, without changing the PDF.	Κράτηση αυτής της θέσης για το διάγραμμα, χωρίς αλλαγή του PDF.
+	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	Κράτηση αυτής της θέσης για το διάγραμμα, χωρίς αλλαγή του PDF, και άνοιγμα του επόμενου για έλεγχο (Ctrl+Enter).
+	More actions	Περισσότερες ενέργειες
+	Forget the correction	Ξέχασε τη διόρθωση
+	Show what was read again; the PDF is not changed.	Εμφάνιση ξανά όσων διαβάστηκαν· το PDF δεν αλλάζει.
+	Diagram board: {fen}	Σκακιέρα διαγράμματος: {fen}
+	Classic diagram editor	Κλασικός επεξεργαστής διαγραμμάτων
+	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Επεξεργασία διαγραμμάτων μέσα στο πλαίσιο Διαγράμματα, όπως πριν από την καρτέλα Διάγραμμα. Η επιλογή αυτή θα καταργηθεί σε μελλοντική έκδοση.

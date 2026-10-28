@@ -1458,6 +1458,8 @@ mod tests {
             "Index",
             "Metadata",
             "Model",
+            // The Diagram tab (plan A8, P3b2): the same word in Czech.
+            "Diagram",
             "{field}: {e}",
             "{0}: {1}",
             "{month} {y}",

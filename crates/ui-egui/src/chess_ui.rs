@@ -10,10 +10,12 @@
 //! diagrams are: they leave the pages, the panel says so, and the next scan starts afresh.
 //! Nothing here changes the document.
 
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use egui::{Color32, CornerRadius, Pos2, Stroke};
 use pdfcraft_engine::DocId;
+use pdfcraft_engine::chess::corrections::Kind;
 use pdfcraft_engine::chess::pdfcraft_chessvision::board::{BoardReading, Unreadable};
 use pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::{PieceChoice, Role};
 use pdfcraft_engine::chess::{ChessModels, ChessPage, ChessScan, ChessScanJob, ModelState, ScanStamp};
@@ -51,8 +53,15 @@ pub struct ChessState {
     /// The chess games, per document: the board panels show the open document's active one
     /// ([`ChessState::board`]).
     pub games: crate::chess_collection::ChessGames,
-    /// The selected diagram's position being edited (S17).
+    /// The selected diagram's position being edited (S17), in the Diagram tab (plan A8, P3b2).
     pub editor: Option<crate::chess_editor::DiagramEditor>,
+    /// The corrections the user confirmed, and where they are kept (plan A8, P3b2).
+    pub corrections: crate::chess_corrections_ui::Corrections,
+    /// Edit diagrams in the Diagrams panel as before the Diagram tab (a preference, for one
+    /// version).
+    pub classic_editor: bool,
+    /// The Diagram tab's main button is Only confirm (else Confirm and next): the last choice.
+    pub confirm_only: bool,
     /// List only the diagrams to review.
     pub review_only: bool,
     /// The pieces the editor draws with, found once.
@@ -185,6 +194,9 @@ pub struct ChessResults {
     pub reveal: bool,
     /// Whether the piece model could be used.
     pub model: ModelNote,
+    /// What the user did with each diagram (page, index): Verified or Corrected, and the
+    /// position kept ([`PdfCraftApp::refresh_chess_kinds`]).
+    pub kinds: HashMap<(usize, usize), (Kind, String)>,
 }
 
 impl ChessResults {
@@ -193,12 +205,22 @@ impl ChessResults {
         self.pages.iter().map(|p| p.diagrams.len()).sum()
     }
 
-    /// The diagrams to review, in reading order: page, then index.
+    /// The diagrams to review, in reading order: page, then index. A diagram the user confirmed
+    /// (Verified or Corrected) is not among them.
     pub fn review_queue(&self) -> Vec<(usize, usize)> {
         self.pages
             .iter()
-            .flat_map(|p| (0..p.diagrams.len()).filter(|i| crate::chess_editor::needs_review(Self::reading(p, *i))).map(|i| (p.page, i)))
+            .flat_map(|p| {
+                (0..p.diagrams.len())
+                    .filter(|i| !self.kinds.contains_key(&(p.page, *i)) && crate::chess_editor::needs_review(Self::reading(p, *i)))
+                    .map(|i| (p.page, i))
+            })
             .collect()
+    }
+
+    /// What the user did with diagram `index` of `page`, when they confirmed it.
+    pub fn kind(&self, page: usize, index: usize) -> Option<Kind> {
+        self.kinds.get(&(page, index)).map(|(k, _)| *k)
     }
 
     /// The reading of diagram `index` on `page`, when it was read.
@@ -296,10 +318,12 @@ pub enum PanelAction {
 }
 
 /// One diagram's state: its label, and its mark's colour from the theme's state tokens (plan A8
-/// P1a).
-fn status(reading: Option<&BoardReading>, t: &Tokens) -> (String, Color32) {
-    let colour = crate::chess_widgets::DiagramState::of(reading, None).colour(t);
+/// P1a). What the user did with it (`kind`) outranks the reading.
+fn status(reading: Option<&BoardReading>, kind: Option<Kind>, t: &Tokens) -> (String, Color32) {
+    let state = crate::chess_widgets::DiagramState::of(reading, kind);
+    let colour = state.colour(t);
     let label = match reading.map(|r| &r.outcome) {
+        _ if kind.is_some() => state.name().to_string(),
         Some(Ok(p)) if p.accepted => tl!("Position read").to_string(),
         Some(Ok(_)) => tl!("Needs review").to_string(),
         Some(Err(Unreadable::NoModel)) => tl!("Not read: no piece model").to_string(),
@@ -361,7 +385,7 @@ pub(crate) fn paint(
         }
         let r = xf.user_rect(info, page, [b.x0, b.y0, b.x1, b.y1]);
         let reading = ChessResults::reading(p, i);
-        let (label, colour) = status(reading, &tokens);
+        let (label, colour) = status(reading, results.kind(page, i), &tokens);
         let selected = results.selected == Some((page, i));
         painter.rect_filled(r, CornerRadius::same(2), colour.gamma_multiply(0.10));
         painter.rect_stroke(r, CornerRadius::same(2), Stroke::new(if selected { 3.0 } else { 1.5 }, colour), egui::StrokeKind::Outside);
@@ -375,7 +399,8 @@ pub(crate) fn paint(
         painter.galley(tab.min + egui::vec2(4.0, 1.0), number, Color32::WHITE);
         if hovered.is_none() && pointer.is_some_and(|q| r.contains(q)) {
             let title = crate::i18n::fmt(tl!("Diagram {n}"), &[("n", &(i + 1).to_string())]);
-            let fen = reading.and_then(BoardReading::position).map(|pos| pos.fen.as_str());
+            let kept = results.kinds.get(&(page, i)).map(|(_, fen)| fen.as_str());
+            let fen = kept.or_else(|| reading.and_then(BoardReading::position).map(|pos| pos.fen.as_str()));
             let text = match fen {
                 Some(fen) => format!("{title} · {label}\n{fen}"),
                 None => format!("{title} · {label}"),
@@ -520,7 +545,7 @@ pub(crate) fn tab_contents(
     }
     // The selected diagram's editor (S17), above the list.
     let queue = results.review_queue();
-    if let Some(ed) = state.editor.as_mut().filter(|e| e.doc == id && Some(results.stamp) == current) {
+    if let Some(ed) = state.editor.as_mut().filter(|e| state.classic_editor && e.doc == id && Some(results.stamp) == current) {
         ui.separator();
         let pieces = crate::chess_editor::piece_set(&mut state.pieces, &state.diagram_piece_choice, &mut state.diagram_piece_error);
         if let Some(a) = crate::chess_editor::editor_ui(ui, t, ed, &pieces, queue.len()) {
@@ -559,11 +584,12 @@ pub(crate) fn tab_contents(
                 break;
             }
             let reading = ChessResults::reading(page, i);
-            if review_only && !crate::chess_editor::needs_review(reading) {
+            let kind = results.kind(page.page, i);
+            if review_only && (kind.is_some() || !crate::chess_editor::needs_review(reading)) {
                 continue;
             }
             listed += 1;
-            let (label, colour) = status(reading, &Tokens::get(ui.ctx()));
+            let (label, colour) = status(reading, kind, &Tokens::get(ui.ctx()));
             let position = reading.and_then(BoardReading::position);
             let selected = results.selected == Some((page.page, i));
             let row = ui.push_id((page.page, i), |ui| {
@@ -573,7 +599,7 @@ pub(crate) fn tab_contents(
                     ui.vertical(|ui| {
                         let title = crate::i18n::fmt(tl!("Diagram {n}"), &[("n", &(i + 1).to_string())]);
                         // The state's icon beside its words: never colour alone (plan A8 P1a).
-                        let state = crate::chess_widgets::DiagramState::of(reading, None);
+                        let state = crate::chess_widgets::DiagramState::of(reading, kind);
                         let head = ui
                             .horizontal(|ui| {
                                 crate::chess_widgets::state_icon(ui, &Tokens::get(ui.ctx()), state, 14.0);
@@ -710,9 +736,11 @@ impl PdfCraftApp {
             self.chess.results = None;
         }
         if let Some((page, index)) = self.chess.picked.take() {
-            self.select_chess_diagram(page, index, false);
             if std::mem::take(&mut self.chess.to_board) {
+                self.select_chess_diagram(page, index, false);
                 self.open_chess_board(page, index);
+            } else {
+                self.edit_chess_diagram(page, index, false);
             }
         }
         let Some(progress) = self.chess.run.as_ref().map(|r| r.progress.clone()) else { return };
@@ -797,8 +825,15 @@ impl PdfCraftApp {
         self.session.store_chess_scan(&scan);
         let fresh = self.chess.results.as_ref().is_none_or(|r| r.doc != scan.doc || r.stamp != stamp);
         if fresh {
-            self.chess.results =
-                Some(ChessResults { doc: scan.doc, stamp, pages: Vec::new(), selected: None, reveal: false, model: ModelNote::Missing });
+            self.chess.results = Some(ChessResults {
+                doc: scan.doc,
+                stamp,
+                pages: Vec::new(),
+                selected: None,
+                reveal: false,
+                model: ModelNote::Missing,
+                kinds: HashMap::new(),
+            });
         }
         let Some(results) = self.chess.results.as_mut() else { return true };
         if let Some(m) = model {
@@ -817,6 +852,8 @@ impl PdfCraftApp {
         if results.selected.is_some_and(|(p, i)| results.diagram(p, i).is_none()) {
             results.selected = None;
         }
+        // The diagrams the user confirmed, and the corrections given to the session (P3a3).
+        self.refresh_chess_kinds();
         true
     }
 
@@ -829,7 +866,12 @@ impl PdfCraftApp {
         results.selected = Some((page, index));
         let reading = results.pages.iter().find(|p| p.page == page).and_then(|p| ChessResults::reading(p, index));
         if self.chess.editor.as_ref().is_none_or(|e| (e.doc, e.page, e.index) != (id, page, index)) {
-            self.chess.editor = Some(crate::chess_editor::DiagramEditor::new(id, page, index, reading));
+            let mut ed = crate::chess_editor::DiagramEditor::new(id, page, index, reading);
+            // A diagram the user confirmed opens on the position kept for it.
+            if let Some((_, fen)) = results.kinds.get(&(page, index)) {
+                ed.show_kept(fen);
+            }
+            self.chess.editor = Some(ed);
         }
         results.reveal = !go;
         if go && let Some(view) = self.views.get_mut(vi) {
@@ -841,12 +883,26 @@ impl PdfCraftApp {
         }
     }
 
+    /// Pick diagram `index` on `page` to check it: [`Self::select_chess_diagram`], and the
+    /// Diagram tab comes forward with it (plan A8, P3b2) unless the classic editor is chosen.
+    /// Picked on the page (`go` false), the tab comes forward only when it is open already: one
+    /// opening there would move the page under the pointer, and a second click of a double-click
+    /// would miss the diagram.
+    pub fn edit_chess_diagram(&mut self, page: usize, index: usize, go: bool) {
+        self.select_chess_diagram(page, index, go);
+        let picked = self.chess.results.as_ref().and_then(|r| r.selected) == Some((page, index));
+        let open = go || self.docking.layout.contains(&crate::docking::Panel::Diagram);
+        if picked && open && !self.chess.classic_editor {
+            self.pending_panel_reveals.push(crate::docking::Panel::Diagram);
+        }
+    }
+
     pub(crate) fn chess_action(&mut self, action: PanelAction) {
         match action {
             PanelAction::ScanPage => self.start_chess_scan(false),
             PanelAction::ScanAll => self.start_chess_scan(true),
             PanelAction::Cancel => self.cancel_chess_scan(),
-            PanelAction::Select(page, index) => self.select_chess_diagram(page, index, true),
+            PanelAction::Select(page, index) => self.edit_chess_diagram(page, index, true),
             // The Board panel is the study board (T5c): it comes forward, docked or in its window.
             PanelAction::OpenBoard(page, index) => {
                 self.select_chess_diagram(page, index, false);
@@ -890,7 +946,7 @@ impl PdfCraftApp {
     }
 
     /// What the diagram editor asked for.
-    fn chess_editor_action(&mut self, action: crate::chess_editor::EditorAction) {
+    pub(crate) fn chess_editor_action(&mut self, action: crate::chess_editor::EditorAction) {
         use crate::chess_editor::EditorAction;
         match action {
             EditorAction::CopyFen(fen) => self.chess_action(PanelAction::CopyFen(fen)),
@@ -922,6 +978,18 @@ impl PdfCraftApp {
             }
             EditorAction::Replace => self.replace_chess_diagram(),
             EditorAction::Link => self.link_chess_diagram(),
+            EditorAction::Confirm { next } => {
+                self.chess.confirm_only = !next;
+                self.confirm_chess_diagram(next);
+            }
+            EditorAction::Forget => {
+                self.forget_chess_correction();
+            }
+            EditorAction::ShowOnPage => {
+                if let Some((page, index)) = self.chess.editor.as_ref().map(|e| (e.page, e.index)) {
+                    self.select_chess_diagram(page, index, true);
+                }
+            }
         }
     }
 

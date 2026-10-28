@@ -3134,3 +3134,26 @@ chess undo step	Clear drawings	изчистването на рисунките
 	You checked it and kept the reading.	Проверихте я и запазихте прочетеното.
 	You corrected this position.	Поправихте тази позиция.
 	Previous / next view	Предишен / следващ изглед
+# Plan A8 P3b2: the Diagram tab and its corrections.
+	Diagram	Диаграма
+	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Запазените корекции на диаграми не можаха да се прочетат ({why}); оставени са настрана като {name}.
+	The diagram corrections couldn't be saved: {e}	Корекциите на диаграми не можаха да се запазят: {e}
+	Diagram {n}, page {p}: {state}	Диаграма {n}, стр. {p}: {state}
+	Page {p} · diagram {n} of {m}	Стр. {p} · диаграма {n} от {m}
+	Show it on the page	Покажи на страницата
+	Next to review (Page Down)	Следваща за проверка (Page Down)
+	{i} of {n} to review	{i} от {n} за проверка
+	Previous to review (Page Up)	Предишна за проверка (Page Up)
+	Analyze on the board	Анализ на дъската
+	Select a diagram in the Diagrams panel, or click one on the page.	Изберете диаграма в панела „Диаграми“ или щракнете върху някоя на страницата.
+	More ways to confirm	Други начини за потвърждение
+	Confirm and next	Потвърди и напред
+	Only confirm	Само потвърди
+	Keep this position for the diagram, without changing the PDF.	Запази тази позиция за диаграмата, без да се променя PDF.
+	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	Запази тази позиция за диаграмата, без да се променя PDF, и отвори следващата за проверка (Ctrl+Enter).
+	More actions	Още действия
+	Forget the correction	Забрави корекцията
+	Show what was read again; the PDF is not changed.	Покажи отново прочетеното; PDF не се променя.
+	Diagram board: {fen}	Дъска на диаграмата: {fen}
+	Classic diagram editor	Класически редактор на диаграми
+	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Редактиране на диаграмите в панела „Диаграми“, както преди раздела „Диаграма“. Тази опция ще отпадне в бъдеща версия.

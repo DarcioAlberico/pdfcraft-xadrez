@@ -3188,3 +3188,26 @@ chess undo step	Clear drawings	remoção dos desenhos
 	You checked it and kept the reading.	Você conferiu e manteve a leitura.
 	You corrected this position.	Você corrigiu esta posição.
 	Previous / next view	Visualização anterior / seguinte
+# Plan A8 P3b2: the Diagram tab and its corrections.
+	Diagram	Diagrama
+	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	As correções de diagramas guardadas não puderam ser lidas ({why}); foram postas de lado como {name}.
+	The diagram corrections couldn't be saved: {e}	Não foi possível guardar as correções de diagramas: {e}
+	Diagram {n}, page {p}: {state}	Diagrama {n}, pág. {p}: {state}
+	Page {p} · diagram {n} of {m}	Pág. {p} · diagrama {n} de {m}
+	Show it on the page	Mostrar na página
+	Next to review (Page Down)	Próximo a revisar (Page Down)
+	{i} of {n} to review	{i} de {n} a revisar
+	Previous to review (Page Up)	Anterior a revisar (Page Up)
+	Analyze on the board	Analisar no tabuleiro
+	Select a diagram in the Diagrams panel, or click one on the page.	Escolha um diagrama no painel Diagramas ou clique num deles na página.
+	More ways to confirm	Outras formas de confirmar
+	Confirm and next	Confirmar e seguir
+	Only confirm	Só confirmar
+	Keep this position for the diagram, without changing the PDF.	Guardar esta posição para o diagrama, sem mudar o PDF.
+	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	Guardar esta posição para o diagrama, sem mudar o PDF, e abrir o próximo a revisar (Ctrl+Enter).
+	More actions	Mais ações
+	Forget the correction	Esquecer a correção
+	Show what was read again; the PDF is not changed.	Mostrar de novo o que foi lido; o PDF não muda.
+	Diagram board: {fen}	Tabuleiro do diagrama: {fen}
+	Classic diagram editor	Editor de diagramas clássico
+	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Editar os diagramas dentro do painel Diagramas, como antes da aba Diagrama. Esta opção sai numa versão futura.

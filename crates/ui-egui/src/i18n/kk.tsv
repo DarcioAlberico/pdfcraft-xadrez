@@ -3169,3 +3169,26 @@ chess undo step	Clear drawings	суреттерді өшіру
 	You checked it and kept the reading.	Сіз тексеріп, оқылғанын қалдырдыңыз.
 	You corrected this position.	Сіз бұл позицияны түзеттіңіз.
 	Previous / next view	Алдыңғы / келесі көрініс
+# Plan A8 P3b2: the Diagram tab and its corrections.
+	Diagram	Диаграмма
+	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Сақталған диаграмма түзетулерін оқу мүмкін болмады ({why}); олар {name} деп бөлек қойылды.
+	The diagram corrections couldn't be saved: {e}	Диаграмма түзетулерін сақтау мүмкін болмады: {e}
+	Diagram {n}, page {p}: {state}	{n}-диаграмма, {p}-бет: {state}
+	Page {p} · diagram {n} of {m}	{p}-бет · {m} ішінен {n}-диаграмма
+	Show it on the page	Беттен көрсету
+	Next to review (Page Down)	Тексерілетін келесісі (Page Down)
+	{i} of {n} to review	Тексерілетін {n} ішінен {i}
+	Previous to review (Page Up)	Тексерілетін алдыңғысы (Page Up)
+	Analyze on the board	Тақтада талдау
+	Select a diagram in the Diagrams panel, or click one on the page.	«Диаграммалар» тақтасынан диаграмма таңдаңыз немесе беттегі біреуін басыңыз.
+	More ways to confirm	Растаудың басқа жолдары
+	Confirm and next	Растау және келесі
+	Only confirm	Тек растау
+	Keep this position for the diagram, without changing the PDF.	Бұл позицияны PDF-ті өзгертпей диаграмма үшін сақтау.
+	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	Бұл позицияны PDF-ті өзгертпей диаграмма үшін сақтап, тексерілетін келесісін ашу (Ctrl+Enter).
+	More actions	Басқа әрекеттер
+	Forget the correction	Түзетуді ұмыту
+	Show what was read again; the PDF is not changed.	Оқылғанды қайта көрсету; PDF өзгермейді.
+	Diagram board: {fen}	Диаграмма тақтасы: {fen}
+	Classic diagram editor	Классикалық диаграмма өңдегіші
+	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Диаграммаларды «Диаграмма» қойындысына дейінгідей «Диаграммалар» тақтасының ішінде өңдеу. Бұл параметр кейінгі нұсқада алынып тасталады.
