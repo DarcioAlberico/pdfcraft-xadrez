@@ -7,8 +7,8 @@
 //! number (read from the bold move number under the diagram when one is printed there), side to
 //! move, castling and the view from Black's side complete the position, and the panel says at
 //! once whether it is legal. Squares the model was unsure of are listed with its second reading,
-//! one click away. From here the corrected position replaces the diagram on the page (one undo
-//! step), gets a lichess link under it, is copied as FEN or opened on lichess.
+//! one click away. From here the corrected position is redrawn over the diagram in the PDF (one
+//! undo step), gets a lichess link under it, is copied as FEN or opened on lichess.
 //!
 //! The review queue is the diagrams whose reading did not pass the gate (repaired ones
 //! included), those the model could not read, and those not read at all: the panel can list only
@@ -173,7 +173,8 @@ impl DiagramEditor {
 /// What the editor asks for.
 #[derive(Clone, Debug, PartialEq)]
 pub enum EditorAction {
-    Replace,
+    /// Redraw in the PDF… (plan A8, P3b4).
+    Redraw,
     Link,
     CopyFen(String),
     OpenLichess(String),
@@ -490,8 +491,12 @@ pub fn editor_ui(ui: &mut egui::Ui, t: &Tokens, ed: &mut DiagramEditor, pieces: 
     second_readings(ui, ed);
     ui.add_space(4.0);
     ui.horizontal_wrapped(|ui| {
-        if ui.button(tl!("Replace on the page")).on_hover_text(tl!("Draw this position over the diagram on the page (one undo step).")).clicked() {
-            action = Some(EditorAction::Replace);
+        if ui
+            .button(tl!("Redraw in the PDF…"))
+            .on_hover_text(tl!("Draw this position over the original diagram in the PDF (one undo step)."))
+            .clicked()
+        {
+            action = Some(EditorAction::Redraw);
         }
         if ui
             .add_enabled(legal, egui::Button::new(tl!("Add lichess link")))

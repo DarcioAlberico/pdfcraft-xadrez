@@ -259,6 +259,16 @@ impl PdfCraftApp {
     /// Keep `fen` for diagram `target` without changing the PDF: Verified when it is the
     /// reading, else Corrected, and say so. The kind kept, or `None` when it could not be.
     pub(crate) fn keep_chess_correction(&mut self, target: &DiagramTarget, fen: String) -> Option<Kind> {
+        let kind = self.store_chess_correction(target, fen)?;
+        let state = crate::chess_widgets::DiagramState::of(None, Some(kind)).name();
+        let label = self.chess_page_label(target.page);
+        let n = (target.index + 1).to_string();
+        self.notify(crate::i18n::fmt(tl!("Diagram {n}, page {p}: {state}"), &[("n", &n), ("p", &label), ("state", state)]));
+        Some(kind)
+    }
+
+    /// [`Self::keep_chess_correction`] without a word, unless the store fails (which it says).
+    pub(crate) fn store_chess_correction(&mut self, target: &DiagramTarget, fen: String) -> Option<Kind> {
         let DiagramTarget { doc: id, page, index, rect, .. } = *target;
         let kind = if target.read.as_deref() == Some(fen.as_str()) { Kind::Verified } else { Kind::Corrected };
         let page_fp = self.chess_corrections_for(id).and_then(|c| c.fingerprints.as_ref()?.1.get(page).cloned())?;
@@ -278,9 +288,6 @@ impl PdfCraftApp {
         }
         // A draft of it is confirmed too.
         self.chess.drafts.retain(|d| (d.target.doc, d.target.page, d.target.index) != (id, page, index));
-        let state = crate::chess_widgets::DiagramState::of(None, Some(kind)).name();
-        let label = self.chess_page_label(page);
-        self.notify(crate::i18n::fmt(tl!("Diagram {n}, page {p}: {state}"), &[("n", &(index + 1).to_string()), ("p", &label), ("state", state)]));
         Some(kind)
     }
 

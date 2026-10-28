@@ -3208,3 +3208,10 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Discard changes	Zavrzi spremembe
 	Keep editing	Nadaljuj z urejanjem
 	Click a square to put the piece there. Confirm keeps the correction without changing the PDF.	Kliknite polje, da nanj postavite figuro. Potrdi obdrži popravek, ne da bi se PDF spremenil.
+# Plan A8 P3b4: Redraw in the PDF.
+	Redraw in the PDF…	Ponovno nariši v PDF…
+	Draw this position over the original diagram in the PDF (one undo step).	Nariši ta položaj čez izvirni diagram v PDF (en korak razveljavitve).
+	Redraw in the PDF draws the corrected position over the original. This changes the file; you can undo it with Ctrl+Z until you save.	Ponovno risanje v PDF nariše popravljeni položaj čez izvirnik. To spremeni datoteko; dokler ne shranite, lahko to razveljavite s Ctrl+Z.
+	Don't show again	Ne prikaži več
+	Redraw	Ponovno nariši
+	Diagram redrawn in the PDF	Diagram je v PDF ponovno narisan

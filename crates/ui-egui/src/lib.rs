@@ -48,6 +48,7 @@ mod chess_history;
 mod chess_models;
 mod chess_ocr_area;
 mod chess_pieces_ui;
+mod chess_redraw;
 mod chess_samples;
 mod chess_theme;
 mod chess_widgets;
@@ -2389,6 +2390,7 @@ impl PdfCraftApp {
         v["chess_classic_editor"] = serde_json::Value::Bool(self.chess.classic_editor);
         v["chess_confirm_only"] = serde_json::Value::Bool(self.chess.confirm_only);
         v["chess_diagram_hint_seen"] = serde_json::Value::Bool(self.chess.diagram_hint_seen);
+        v["chess_redraw_asked"] = serde_json::Value::Bool(self.chess.redraw_asked);
         v.to_string()
     }
 
@@ -2453,6 +2455,9 @@ impl PdfCraftApp {
         }
         if let Some(on) = v["chess_confirm_only"].as_bool() {
             self.chess.confirm_only = on;
+        }
+        if let Some(on) = v["chess_redraw_asked"].as_bool() {
+            self.chess.redraw_asked = on;
         }
         if let Some(on) = v["chess_diagram_hint_seen"].as_bool() {
             self.chess.diagram_hint_seen = on;
@@ -3384,6 +3389,7 @@ impl eframe::App for PdfCraftApp {
             );
             dialogs::show(self, &ctx);
             chess_drafts::prompt(self, &ctx);
+            chess_redraw::prompt(self, &ctx);
             // Notices too: a refused field value or a failed save must be seen in full screen.
             self.show_progress(&ctx);
             widgets::toast(self, &ctx);
@@ -3448,8 +3454,10 @@ impl eframe::App for PdfCraftApp {
         self.process_pending_edits();
         palette::show(self, &ctx);
         dialogs::show(self, &ctx);
-        // The question about a chess diagram's unconfirmed changes (plan A8, P3b3).
+        // The question about a chess diagram's unconfirmed changes (plan A8, P3b3), and the one
+        // before the first redraw in the PDF (P3b4).
         chess_drafts::prompt(self, &ctx);
+        chess_redraw::prompt(self, &ctx);
         self.show_progress(&ctx);
         widgets::toast(self, &ctx);
         self.finish_render_frame(&ctx);

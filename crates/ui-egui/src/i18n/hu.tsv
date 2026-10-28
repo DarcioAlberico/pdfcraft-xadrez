@@ -3202,3 +3202,10 @@ chess undo step	Clear drawings	rajzok törlése
 	Discard changes	Változások elvetése
 	Keep editing	Szerkesztés folytatása
 	Click a square to put the piece there. Confirm keeps the correction without changing the PDF.	Kattintson egy mezőre, hogy oda tegye a bábut. A Megerősítés megtartja a javítást a PDF módosítása nélkül.
+# Plan A8 P3b4: Redraw in the PDF.
+	Redraw in the PDF…	Újrarajzolás a PDF-ben…
+	Draw this position over the original diagram in the PDF (one undo step).	Ez az állás rajzolódik az eredeti diagram fölé a PDF-ben (egy visszavonási lépés).
+	Redraw in the PDF draws the corrected position over the original. This changes the file; you can undo it with Ctrl+Z until you save.	Az újrarajzolás a PDF-ben a javított állást az eredeti fölé rajzolja. Ez módosítja a fájlt; mentésig a Ctrl+Z billentyűkkel visszavonható.
+	Don't show again	Ne jelenjen meg újra
+	Redraw	Újrarajzolás
+	Diagram redrawn in the PDF	A diagram újrarajzolva a PDF-ben
