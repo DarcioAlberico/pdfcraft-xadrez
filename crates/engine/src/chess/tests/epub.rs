@@ -8,7 +8,9 @@ use pdfcraft_chessvision::doc::html::{DiagramMode, Figurines, HtmlOptions};
 use pdfcraft_chessvision::doc::{ChessDoc, ChessPage, TextLayer};
 
 use super::*;
-use crate::chess::epub::{EpubEntry, EpubMeta, MAX_COVER_PX, MAX_PAGES, cover_png, entries, epub, identifier, modified, modified_at};
+use crate::chess::epub::{
+    EpubEntry, EpubMeta, MAX_COVER_PX, MAX_PAGES, cover_png, entries, epub, identifier, identifier_from_id, modified, modified_at,
+};
 use crate::chess::export::{ChessExportOptions, ChessFormat};
 
 fn options(pieces: &PieceSet) -> HtmlOptions<'_> {
@@ -24,6 +26,7 @@ fn options(pieces: &PieceSet) -> HtmlOptions<'_> {
         sign_font: None,
         lang: "",
         page_labels: &[],
+        review_marks: true,
     }
 }
 
@@ -34,12 +37,14 @@ fn meta() -> EpubMeta {
         identifier: identifier(b"pdf"),
         modified: modified("D:20261018120000Z"),
         cover: None,
+        creator: None,
+        source: None,
     }
 }
 
-/// Every XML file of the package parses (the cover is the one file that is not XML).
+/// Every XML file of the package parses (the cover and the stylesheet are not XML).
 fn assert_xml_well_formed(files: &[EpubEntry]) {
-    for e in files.iter().filter(|e| e.name != "mimetype" && !e.name.ends_with(".png")) {
+    for e in files.iter().filter(|e| e.name != "mimetype" && !e.name.ends_with(".png") && !e.name.ends_with(".css")) {
         let text = std::str::from_utf8(&e.data).unwrap();
         if let Err(err) = roxmltree::Document::parse_with_options(text, roxmltree::ParsingOptions { allow_dtd: true, ..Default::default() }) {
             panic!("{} is not well-formed: {err}\n{text}", e.name);
@@ -126,6 +131,20 @@ fn chess_export_writes_the_book_with_its_cover() {
     let out = s.chess_export(id, ChessFormat::Epub, &ChessExportOptions::new("Chapter")).unwrap();
     assert!(out.notes.is_empty(), "{:?}", out.notes);
     let opf = String::from_utf8(zip_entry(&out.bytes, "OEBPS/content.opf")).unwrap();
+    // Without an /ID the identifier is made from the PDF's bytes; the source is its file name.
+    let doc = s.get(id).unwrap();
+    assert!(doc.doc_keys().id0.is_none());
+    assert!(opf.contains(&format!("<dc:identifier id=\"book-id\">{}</dc:identifier>", identifier(&doc.bytes))), "{opf}");
+    assert!(opf.contains(&format!("<dc:source>{}</dc:source>", doc.name)), "{opf}");
+    // With one, it is the PDF's own /ID, which saving keeps (plan A8 P9b). The trailer comes
+    // after the cross-reference table, so no offset moves.
+    let pdf = String::from_utf8(super::document::chapter()).unwrap();
+    let with_id = pdf.replacen("/Root 1 0 R >>", "/Root 1 0 R /ID [<00112233445566778899aabbccddeeff> <00112233445566778899aabbccddeeff>] >>", 1);
+    assert_ne!(with_id, pdf);
+    let (mut s2, id2) = open(with_id.into_bytes());
+    let out2 = s2.chess_export(id2, ChessFormat::Epub, &ChessExportOptions::new("Chapter")).unwrap();
+    let opf2 = String::from_utf8(zip_entry(&out2.bytes, "OEBPS/content.opf")).unwrap();
+    assert!(opf2.contains("<dc:identifier id=\"book-id\">urn:pdfcraft:chess:id:00112233445566778899aabbccddeeff</dc:identifier>"), "{opf2}");
     let covers = cover_items(&opf);
     assert_eq!(covers.len(), 1, "{opf}");
     let png = zip_entry(&out.bytes, &format!("OEBPS/{}", covers[0].1));
@@ -150,8 +169,8 @@ fn the_package_is_well_formed_and_every_reference_resolves() {
     let files = entries(&doc, &options(&pieces), &meta()).unwrap();
     // mimetype first and stored.
     assert_eq!((files[0].name.as_str(), files[0].data.as_slice(), files[0].compress), ("mimetype", b"application/epub+zip".as_slice(), false));
-    // Every XML file parses.
-    for e in files.iter().filter(|e| e.name != "mimetype") {
+    // Every XML file parses (the stylesheet is CSS).
+    for e in files.iter().filter(|e| e.name != "mimetype" && !e.name.ends_with(".css")) {
         let text = std::str::from_utf8(&e.data).unwrap();
         if let Err(err) = roxmltree::Document::parse_with_options(text, roxmltree::ParsingOptions { allow_dtd: true, ..Default::default() }) {
             panic!("{} is not well-formed: {err}\n{text}", e.name);
@@ -191,6 +210,78 @@ fn the_package_is_well_formed_and_every_reference_resolves() {
     assert!(page.contains(&format!("data-fen=\"{START} w KQkq - 0 1\"")), "{page}");
     assert!(page.contains("<svg") && page.contains("href=\"https://lichess.org/analysis/"));
     assert!(!files.iter().any(|e| String::from_utf8_lossy(&e.data).to_ascii_lowercase().contains("<script")));
+}
+
+/// Plan A8 P9b: the package says how the book can be read, who wrote it and what it was made
+/// from; every page starts with a page break named by its printed number, listed in the page
+/// list; the pages share one stylesheet, which highlights nothing for review unless asked.
+#[test]
+fn the_book_says_how_it_can_be_read_and_where_each_page_is() {
+    let doc = chapter_doc();
+    let pieces = PieceSet::geometric();
+    let labels: Vec<String> = doc.pages.iter().map(|p| format!("x{}", p.index)).collect();
+    let book = EpubMeta { creator: Some("A <Writer>".into()), source: Some("book & co.pdf".into()), ..meta() };
+    let files = entries(&doc, &HtmlOptions { page_labels: &labels, review_marks: false, ..options(&pieces) }, &book).unwrap();
+    assert_xml_well_formed(&files);
+    let opf = file(&files, "OEBPS/content.opf");
+    assert!(opf.contains("<dc:creator>A &lt;Writer&gt;</dc:creator>\n<dc:source>book &amp; co.pdf</dc:source>"), "{opf}");
+    for line in [
+        "<meta property=\"schema:accessMode\">textual</meta>",
+        "<meta property=\"schema:accessMode\">visual</meta>",
+        "<meta property=\"schema:accessModeSufficient\">textual</meta>",
+        "<meta property=\"schema:accessibilityFeature\">alternativeText</meta>",
+        "<meta property=\"schema:accessibilityFeature\">pageNavigation</meta>",
+        "<meta property=\"schema:accessibilityHazard\">none</meta>",
+        "<meta property=\"schema:accessibilitySummary\">",
+    ] {
+        assert!(opf.contains(line), "{line}\n{opf}");
+    }
+    assert!(opf.contains("<item id=\"css\" href=\"styles.css\" media-type=\"text/css\"/>"), "{opf}");
+    // One stylesheet: the pages link it and carry none of their own.
+    let css = file(&files, "OEBPS/styles.css");
+    assert!(css.contains("figure.diagram") && !css.contains(".review{"), "no review highlight in a book: {css}");
+    let pages: Vec<&EpubEntry> = files.iter().filter(|e| e.name.starts_with("OEBPS/page-")).collect();
+    assert_eq!(pages.len(), doc.pages.len());
+    for (e, page) in pages.iter().zip(&doc.pages) {
+        let text = std::str::from_utf8(&e.data).unwrap();
+        assert!(text.contains("<link rel=\"stylesheet\" type=\"text/css\" href=\"styles.css\"/>") && !text.contains("<style>"), "{text}");
+        let label = format!("x{}", page.index);
+        assert!(
+            text.contains(&format!(
+                "<span epub:type=\"pagebreak\" role=\"doc-pagebreak\" id=\"pagebreak\" aria-label=\"{label}\" title=\"{label}\"></span>"
+            )),
+            "{text}"
+        );
+    }
+    // The page list names each page by its printed number and goes to its break.
+    let nav = file(&files, "OEBPS/nav.xhtml");
+    assert!(nav.contains("<nav epub:type=\"page-list\" id=\"page-list\" hidden=\"hidden\">"), "{nav}");
+    for (n, page) in doc.pages.iter().enumerate() {
+        assert!(nav.contains(&format!("<li><a href=\"page-{:05}.xhtml#pagebreak\">x{}</a></li>", n + 1, page.index)), "{nav}");
+    }
+    // Asked for, the highlight is there; nothing is said of an author or a source not given.
+    let checked = entries(&doc, &options(&pieces), &meta()).unwrap();
+    assert!(file(&checked, "OEBPS/styles.css").contains(".review{background:#fff3c4}"));
+    assert!(!file(&checked, "OEBPS/content.opf").contains("dc:creator") && !file(&checked, "OEBPS/content.opf").contains("dc:source"));
+    // The identifier from the PDF's /ID.
+    assert_eq!(identifier_from_id(&[0xab; 16]), format!("urn:pdfcraft:chess:id:{}", "ab".repeat(16)));
+}
+
+/// The package checked by epubcheck, when it is installed (`epubcheck` on the PATH, from
+/// https://www.w3.org/publishing/epubcheck/): `cargo test -p pdfcraft-engine --lib
+/// epubcheck_finds_no_error -- --ignored`. Ignored by default: CI does not have it.
+#[test]
+#[ignore = "needs epubcheck on the PATH"]
+fn epubcheck_finds_no_error() {
+    let pieces = PieceSet::geometric();
+    let labels = vec!["i".to_owned(), "ii".to_owned()];
+    let book = epub(&chapter_doc(), &HtmlOptions { page_labels: &labels, review_marks: false, ..options(&pieces) }, &meta()).unwrap();
+    let path = std::env::temp_dir().join(format!("pdfcraft-epubcheck-{}.epub", std::process::id()));
+    std::fs::write(&path, book).unwrap();
+    let run = std::process::Command::new("epubcheck").arg(&path).output();
+    let _ = std::fs::remove_file(&path);
+    let out = run.expect("epubcheck on the PATH");
+    assert!(out.status.success(), "{}\n{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
 }
 
 #[test]
@@ -244,9 +335,12 @@ fn the_users_figurine_font_travels_in_the_book() {
     assert!(file(&files, "OEBPS/content.opf").contains("<item id=\"font\" href=\"fonts/figurines.woff2\" media-type=\"font/woff2\"/>"));
     let pages: Vec<&EpubEntry> = files.iter().filter(|e| e.name.starts_with("OEBPS/page-")).collect();
     assert!(!pages.is_empty());
+    // The pages' one stylesheet loads it, from beside them (plan A8 P9b).
+    let css = file(&files, "OEBPS/styles.css");
+    assert!(css.contains("src:url(\"fonts/figurines.woff2\") format(\"woff2\")"), "{css}");
     for p in pages {
         let text = std::str::from_utf8(&p.data).unwrap();
-        assert!(text.contains("src:url(\"fonts/figurines.woff2\") format(\"woff2\")"), "{}", p.name);
+        assert!(text.contains("href=\"styles.css\""), "{}", p.name);
         // Still well-formed XML.
         roxmltree::Document::parse_with_options(text, roxmltree::ParsingOptions { allow_dtd: true, ..Default::default() }).unwrap();
     }
@@ -268,9 +362,11 @@ fn a_figurine_font_by_letters_and_the_sign_font_travel_as_two_files() {
     let opf = file(&files, "OEBPS/content.opf");
     assert!(opf.contains("<item id=\"font\" href=\"fonts/figurines.ttf\" media-type=\"font/ttf\"/>"), "{opf}");
     assert!(opf.contains("<item id=\"signs\" href=\"fonts/signs.ttf\" media-type=\"font/ttf\"/>"), "{opf}");
+    let css = file(&files, "OEBPS/styles.css");
+    assert!(css.contains(".fig{font-family:\"PdfCraft Figurines\"}") && css.contains(".sign{font-family:\"PdfCraft Signs\"}"), "{css}");
     for p in files.iter().filter(|e| e.name.starts_with("OEBPS/page-")) {
         let text = std::str::from_utf8(&p.data).unwrap();
-        assert!(text.contains(".fig{font-family:\"PdfCraft Figurines\"}") && text.contains(".sign{font-family:\"PdfCraft Signs\"}"), "{}", p.name);
+        assert!(text.contains("href=\"styles.css\""), "{}", p.name);
         roxmltree::Document::parse_with_options(text, roxmltree::ParsingOptions { allow_dtd: true, ..Default::default() }).unwrap();
     }
 }

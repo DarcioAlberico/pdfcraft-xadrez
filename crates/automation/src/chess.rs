@@ -683,6 +683,7 @@ impl Automation {
             style: theme_style(a)?,
             positions,
             pgn_style,
+            review_marks: a.opt_bool("review_marks")?,
         };
         let loaded = self.use_store_corrections(a, id)?;
         let made = self.session.chess_export(id, format, &options).map_err(failed)?;

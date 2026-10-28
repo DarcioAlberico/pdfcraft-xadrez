@@ -26,6 +26,7 @@
 use std::path::{Path, PathBuf};
 
 use pdfcraft_chess::catalog::{FontKind, lookup_family, normalize_font_name};
+use skrifa::raw::TableProvider;
 use skrifa::string::StringId;
 use skrifa::{FontRef, MetadataProvider};
 
@@ -185,6 +186,16 @@ pub enum TextFontError {
     NotAFont,
     #[error("the font has no chess figurines (U+2654–U+265F) and is not a figurine or sign font PdfCraft knows")]
     NoFigurines,
+    /// Its OS/2 `fsType` says Restricted License embedding: an export must not carry it (plan A8
+    /// P9b).
+    #[error("the font {0:?} may not be embedded: its licence says so (OS/2 fsType: Restricted License)")]
+    Restricted(String),
+}
+
+/// Whether an OS/2 `fsType` forbids embedding: its usage permissions (bits 0–3) say Restricted
+/// License (2) alone. Preview & Print, Editable and Installable fonts may be embedded.
+pub fn restricted(fs_type: u16) -> bool {
+    fs_type & 0x000F == 0x0002
 }
 
 /// The role a font named `name` has by its name alone: ISChess, or a catalogued figurine family.
@@ -208,6 +219,11 @@ pub fn from_bytes(bytes: Vec<u8>, name_hint: &str) -> Result<TextFont, TextFontE
     let (role, family) = if matches!(format, FontFormat::TrueType | FontFormat::OpenType) {
         let font = FontRef::new(&bytes).map_err(|_| TextFontError::NotAFont)?;
         let family = font.localized_strings(StringId::FAMILY_NAME).english_or_first().map(|s| s.to_string()).unwrap_or_default();
+        // An export embeds the font: one whose licence forbids it is refused (a font with no OS/2
+        // table says nothing, and is taken).
+        if font.os2().is_ok_and(|os2| restricted(os2.fs_type())) {
+            return Err(TextFontError::Restricted(family));
+        }
         let named = role_by_name(&family).or_else(|| role_by_name(name_hint));
         let unicode = ('\u{2654}'..='\u{265F}').any(|c| font.charmap().map(c).is_some());
         let role = named.or(unicode.then_some(FontRole::Unicode)).ok_or(TextFontError::NoFigurines)?;
@@ -272,12 +288,15 @@ fn font_files(dir: &Path) -> Vec<PathBuf> {
     files
 }
 
-/// The export fonts in `dir`. Files that are no export font (a diagram font, say) are skipped.
+/// The export fonts in `dir`. Files that are no export font (a diagram font, say) are skipped;
+/// one whose licence forbids embedding is reported, so the user knows why it was not used.
 pub fn from_folder(dir: &Path) -> UserFonts {
     let mut found = UserFonts::default();
     for path in font_files(dir) {
-        if let Ok(font) = from_file(&path) {
-            found.offer(font);
+        match from_file(&path) {
+            Ok(font) => found.offer(font),
+            Err(e @ TextFontError::Restricted(_)) => found.errors.push(e),
+            Err(_) => {}
         }
     }
     found
@@ -344,6 +363,40 @@ mod tests {
         let inter = include_bytes!("../../../assets/fonts/Inter-Regular.ttf").to_vec();
         assert!(matches!(from_bytes(inter, "Inter-Regular"), Err(TextFontError::NoFigurines)));
         assert!(matches!(from_bytes(vec![0; MAX_FONT_BYTES + 1], "x"), Err(TextFontError::TooLarge(_))));
+    }
+
+    /// Inter with its OS/2 fsType set to `fs_type`.
+    fn inter_with_fs_type(fs_type: u16) -> Vec<u8> {
+        let mut bytes = include_bytes!("../../../assets/fonts/Inter-Regular.ttf").to_vec();
+        let tables = usize::from(u16::from_be_bytes([bytes[4], bytes[5]]));
+        let os2 = (0..tables)
+            .map(|i| 12 + 16 * i)
+            .find(|&at| &bytes[at..at + 4] == b"OS/2")
+            .map(|at| u32::from_be_bytes([bytes[at + 8], bytes[at + 9], bytes[at + 10], bytes[at + 11]]) as usize)
+            .expect("Inter has an OS/2 table");
+        bytes[os2 + 8..os2 + 10].copy_from_slice(&fs_type.to_be_bytes());
+        bytes
+    }
+
+    /// Plan A8 P9b: a font whose licence forbids embedding is refused for the exports, which embed
+    /// it, and a folder says why it was not used.
+    #[test]
+    fn a_font_that_may_not_be_embedded_is_refused_and_said() {
+        assert!(restricted(0x0002) && restricted(0x0102), "Restricted License, whatever the other bits");
+        assert!(!restricted(0) && !restricted(0x0004) && !restricted(0x0008), "installable, preview & print, editable");
+        assert!(matches!(from_bytes(inter_with_fs_type(2), "Inter"), Err(TextFontError::Restricted(f)) if f == "Inter"));
+        // The same font with an embeddable licence goes on to the role check.
+        assert!(matches!(from_bytes(inter_with_fs_type(0), "Inter"), Err(TextFontError::NoFigurines)));
+        let dir = std::env::temp_dir().join(format!("pdfcraft-restricted-fonts-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("locked.ttf"), inter_with_fs_type(2)).unwrap();
+        std::fs::write(dir.join("plain.ttf"), inter_with_fs_type(0)).unwrap();
+        let found = from_folder(&dir);
+        assert!(found.figurines.is_none() && found.signs.is_none());
+        assert_eq!(found.errors.len(), 1, "only the restricted one is said: {:?}", found.errors);
+        assert!(found.errors[0].to_string().contains("may not be embedded"), "{}", found.errors[0]);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

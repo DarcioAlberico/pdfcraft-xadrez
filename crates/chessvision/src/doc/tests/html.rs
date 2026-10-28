@@ -20,6 +20,7 @@ fn options(pieces: &PieceSet) -> HtmlOptions<'_> {
         sign_font: None,
         lang: "",
         page_labels: &[],
+        review_marks: true,
     }
 }
 
