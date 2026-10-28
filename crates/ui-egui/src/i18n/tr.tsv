@@ -3236,3 +3236,10 @@ chess undo step	Clear drawings	çizimleri temizleme
 	No diagrams detected yet. PdfCraft finds the diagrams and reads the positions. The whole book takes a few minutes.	Henüz diyagram algılanmadı. PdfCraft diyagramları bulur ve konumları okur. Tüm kitap birkaç dakika sürer.
 @plural	In the whole book ({n} page)|In the whole book ({n} pages)	Tüm kitapta ({n} sayfa)
 @plural	{n} diagram|{n} diagrams	{n} diyagram
+# Plan A8 P2b: the page marks and Mark the page as checked.
+	Mark the page as checked	Sayfayı kontrol edildi olarak işaretle
+	Keep every diagram read with confidence on this page as checked; those to review are left for you.	Bu sayfada güvenle okunan her diyagramı kontrol edildi olarak sakla; incelenecekler size kalır.
+	Detect the diagrams on this page first.	Önce bu sayfadaki diyagramları algılayın.
+	Nothing on page {p} is left that was read with confidence.	{p}. sayfada güvenle okunan bir şey kalmadı.
+	Page {p}: {done}	Sayfa {p}: {done}
+@plural	{n} diagram checked|{n} diagrams checked	{n} diyagram kontrol edildi

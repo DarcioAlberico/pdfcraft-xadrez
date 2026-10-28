@@ -3156,3 +3156,10 @@ chess undo step	Clear drawings	清除標記
 	No diagrams detected yet. PdfCraft finds the diagrams and reads the positions. The whole book takes a few minutes.	尚未偵測到局面圖。PdfCraft 會找出局面圖並讀取局面。整本書需要幾分鐘。
 @plural	In the whole book ({n} page)|In the whole book ({n} pages)	整本書（{n} 頁）
 @plural	{n} diagram|{n} diagrams	{n} 個局面圖
+# Plan A8 P2b: the page marks and Mark the page as checked.
+	Mark the page as checked	將本頁標為已檢查
+	Keep every diagram read with confidence on this page as checked; those to review are left for you.	把本頁每個有把握讀取的局面圖標為已檢查；待檢查的留給你。
+	Detect the diagrams on this page first.	請先偵測本頁的局面圖。
+	Nothing on page {p} is left that was read with confidence.	第 {p} 頁已沒有有把握讀取的局面圖。
+	Page {p}: {done}	第 {p} 頁：{done}
+@plural	{n} diagram checked|{n} diagrams checked	已檢查 {n} 個局面圖

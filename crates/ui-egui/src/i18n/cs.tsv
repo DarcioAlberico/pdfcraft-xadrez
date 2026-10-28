@@ -3314,3 +3314,10 @@ chess undo step	Clear drawings	smazání kreseb
 	No diagrams detected yet. PdfCraft finds the diagrams and reads the positions. The whole book takes a few minutes.	Zatím nebyly nalezeny žádné diagramy. PdfCraft najde diagramy a přečte pozice. Celá kniha trvá několik minut.
 @plural	In the whole book ({n} page)|In the whole book ({n} pages)	V celé knize ({n} strana)|V celé knize ({n} strany)|V celé knize ({n} stran)
 @plural	{n} diagram|{n} diagrams	{n} diagram|{n} diagramy|{n} diagramů
+# Plan A8 P2b: the page marks and Mark the page as checked.
+	Mark the page as checked	Označit stranu jako zkontrolovanou
+	Keep every diagram read with confidence on this page as checked; those to review are left for you.	Každý diagram na této straně přečtený s jistotou uložit jako zkontrolovaný; ty ke kontrole zůstanou na vás.
+	Detect the diagrams on this page first.	Nejdřív najděte diagramy na této straně.
+	Nothing on page {p} is left that was read with confidence.	Na straně {p} nezbylo nic přečteného s jistotou.
+	Page {p}: {done}	Strana {p}: {done}
+@plural	{n} diagram checked|{n} diagrams checked	{n} diagram zkontrolován|{n} diagramy zkontrolovány|{n} diagramů zkontrolováno

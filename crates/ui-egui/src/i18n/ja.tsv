@@ -3242,3 +3242,10 @@ chess undo step	Clear drawings	描画の消去
 	No diagrams detected yet. PdfCraft finds the diagrams and reads the positions. The whole book takes a few minutes.	まだ局面図は検出されていません。PdfCraft が局面図を見つけて局面を読み取ります。本全体では数分かかります。
 @plural	In the whole book ({n} page)|In the whole book ({n} pages)	本全体 ({n} ページ)
 @plural	{n} diagram|{n} diagrams	{n} 個の局面図
+# Plan A8 P2b: the page marks and Mark the page as checked.
+	Mark the page as checked	ページを確認済みにする
+	Keep every diagram read with confidence on this page as checked; those to review are left for you.	このページで確実に読み取れた局面図をすべて確認済みとして保存します。確認が必要なものは残します。
+	Detect the diagrams on this page first.	先にこのページの局面図を検出してください。
+	Nothing on page {p} is left that was read with confidence.	ページ {p} には、確実に読み取れた局面図がもう残っていません。
+	Page {p}: {done}	ページ {p}: {done}
+@plural	{n} diagram checked|{n} diagrams checked	{n} 個の局面図を確認済みにしました

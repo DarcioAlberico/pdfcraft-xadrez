@@ -3239,3 +3239,10 @@ chess undo step	Clear drawings	rajzok törlése
 	No diagrams detected yet. PdfCraft finds the diagrams and reads the positions. The whole book takes a few minutes.	Még nincs felismert diagram. A PdfCraft megkeresi a diagramokat és beolvassa az állásokat. Az egész könyv néhány percig tart.
 @plural	In the whole book ({n} page)|In the whole book ({n} pages)	Az egész könyvben ({n} oldal)|Az egész könyvben ({n} oldal)
 @plural	{n} diagram|{n} diagrams	{n} diagram|{n} diagram
+# Plan A8 P2b: the page marks and Mark the page as checked.
+	Mark the page as checked	Oldal megjelölése ellenőrzöttként
+	Keep every diagram read with confidence on this page as checked; those to review are left for you.	Az oldal minden biztosan beolvasott diagramja ellenőrzöttként marad; az ellenőrizendőket Önre hagyja.
+	Detect the diagrams on this page first.	Előbb ismerje fel a diagramokat ezen az oldalon.
+	Nothing on page {p} is left that was read with confidence.	A(z) {p}. oldalon nem maradt biztosan beolvasott diagram.
+	Page {p}: {done}	{p}. oldal: {done}
+@plural	{n} diagram checked|{n} diagrams checked	{n} diagram ellenőrizve|{n} diagram ellenőrizve
