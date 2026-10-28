@@ -2232,6 +2232,14 @@ impl PdfCraftApp {
             }
             return false;
         }
+        // Where in the book it came from, as PGN tags (plan A8 P8a): the same tags, in the same
+        // order, as the book's PGN export gives the diagram's game.
+        if let Some(src) = source {
+            for (name, value) in self.chess_pgn_origin(src).tags() {
+                // Valid tag names; a value too long is cut by the game.
+                let _ = board.game.set_tag(&name, &value);
+            }
+        }
         // A new game: its own history starts empty (opening it is a step of the list's).
         board.history = Default::default();
         let c = self.chess.games.collection_mut();
@@ -2253,6 +2261,29 @@ impl PdfCraftApp {
         self.chess.study.setup = None;
         self.chess.enter_scope();
         true
+    }
+
+    /// Where diagram `src` is in its book: the physical page, the printed one, the diagram of how
+    /// many on the page (when the page was scanned), and the book's title as the export names it.
+    pub(crate) fn chess_pgn_origin(&self, src: Source) -> pdfcraft_engine::chess::pdfcraft_chess::origin::PgnOrigin {
+        let doc = self.session.get(src.doc);
+        let of = self
+            .chess
+            .results
+            .as_ref()
+            .filter(|r| r.doc == src.doc)
+            .and_then(|r| r.pages.iter().find(|p| p.page == src.page))
+            .map(|p| p.diagrams.len())
+            .filter(|n| *n > 0);
+        pdfcraft_engine::chess::pdfcraft_chess::origin::PgnOrigin {
+            book_title: doc.map(|d| d.name.trim_end_matches(".pdf").trim_end_matches(".PDF").to_string()),
+            page_index: u32::try_from(src.page).unwrap_or(u32::MAX),
+            page_label: doc.and_then(|d| d.info.pages.get(src.page)).map(|p| p.label.clone()),
+            diagram: Some(src.index.saturating_add(1)),
+            of,
+            puzzle: None,
+            lang: None,
+        }
     }
 
     /// What the list of games asked for.

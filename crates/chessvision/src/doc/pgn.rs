@@ -145,10 +145,37 @@ fn push_comment(tokens: &mut Vec<Tok>, text: &str) {
     }
 }
 
-/// A SAN as a single PGN token, whatever a hand-edited document holds.
+/// A SAN as a single PGN token, whatever a hand-edited document holds (empty when nothing in it
+/// is SAN).
 fn san_token(san: &str) -> String {
-    let t: String = san.chars().filter(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '#' | '=' | '-')).collect();
-    if t.is_empty() { "--".to_owned() } else { t }
+    san.chars().filter(|c| c.is_ascii_alphanumeric() || matches!(c, '+' | '#' | '=' | '-')).collect()
+}
+
+/// The move as PGN writes it. A SAN with nothing PGN can write is named again from the positions
+/// before and after the move, never written `--` (PGN's null move, another move altogether, plan
+/// A8 P8a); `None` when no legal move joins the two positions.
+fn move_word(game: &GameScore, node: &super::games::Node) -> Option<String> {
+    let t = san_token(&node.san);
+    if !t.is_empty() {
+        return Some(t);
+    }
+    let before = game.board_after(node.parent)?;
+    let after = Board::from_fen(node.fen.trim(), false).ok()?;
+    let key = |b: &Board| b.to_string().split_whitespace().take(4).collect::<Vec<_>>().join(" ");
+    let want = key(&after);
+    let mut found = None;
+    before.generate_moves(|moves| {
+        for mv in moves {
+            let mut b = before.clone();
+            b.play_unchecked(mv);
+            if key(&b) == want {
+                found = Some(mv);
+                return true;
+            }
+        }
+        false
+    });
+    San::from_move(&before, found?).ok().map(|s| s.to_english())
 }
 
 fn write_line(game: &GameScore, start: usize, alternatives: &[usize], depth: usize, tokens: &mut Vec<Tok>, seen: &mut [bool]) {
@@ -160,6 +187,11 @@ fn write_line(game: &GameScore, start: usize, alternatives: &[usize], depth: usi
             _ => return,
         }
         let Some(node) = game.nodes.get(current) else { return };
+        let Some(word) = move_word(game, node) else {
+            // The line cannot go on past a move that cannot be named: say so where it stops.
+            push_comment(tokens, "(a move that cannot be written: no legal move reaches the position after it)");
+            return;
+        };
         if !node.comment_before.is_empty() {
             push_comment(tokens, &node.comment_before);
             number_black = true;
@@ -170,7 +202,7 @@ fn write_line(game: &GameScore, start: usize, alternatives: &[usize], depth: usi
         } else if number_black {
             tokens.push(Tok::Word(format!("{}...", number.number)));
         }
-        tokens.push(Tok::Word(san_token(&node.san)));
+        tokens.push(Tok::Word(word));
         tokens.extend(node.nags.iter().map(|n| Tok::Word(format!("${n}"))));
         number_black = false;
         if !node.comment.is_empty() {

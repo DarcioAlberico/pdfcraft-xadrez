@@ -3,7 +3,7 @@
 
 use super::*;
 use crate::doc::html::Figurines;
-use crate::doc::markdown::{MarkdownDiagrams, MarkdownOptions, image_name, pgn_with_diagrams, write};
+use crate::doc::markdown::{MarkdownDiagrams, MarkdownOptions, PgnBook, image_name, pgn_with_diagrams, pgn_with_diagrams_in, write};
 
 fn options() -> MarkdownOptions<'static> {
     MarkdownOptions {
@@ -83,4 +83,30 @@ fn the_pgn_has_a_game_for_every_legal_position() {
     assert!(games[1].comment.contains("did not pass review"), "not accepted, so said");
     // Order: the book's.
     assert!(pgn.find("[PdfDiagram \"1\"]").unwrap() < pgn.find("[PdfDiagram \"2\"]").unwrap());
+}
+
+#[test]
+fn each_pgn_game_says_where_in_the_book_it_came_from() {
+    // Diagram 1 starts a game, diagram 2 is a position (plan A8 P8a).
+    let text = page_text(vec![line(230.0, "3.Qh5 Nf6 4.Qxf7#")]);
+    let readings = vec![reading(0, 60.0, SCHOLAR, true, false), reading(1, 300.0, "4k3/8/8/8/8/8/8/R3K3 w Q - 0 1", true, false)];
+    let doc = build_page(&input(0, &text, &readings, &[], &[]));
+    let book = PgnBook { title: Some("My  book".to_owned()), labels: vec!["xvii".to_owned()] };
+    let (pgn, added) = pgn_with_diagrams_in(&doc, &book);
+    assert_eq!(added, 1, "{pgn}");
+    let games = pgn::parse(&pgn).unwrap();
+    let tags = |g: &crate::doc::games::GameScore| g.extra_tags.iter().map(|t| format!("{}={}", t.name, t.value)).collect::<Vec<_>>();
+    assert_eq!(tags(&games[0]), ["PdfPage=1", "PdfPageLabel=xvii", "PdfDiagram=1", "SourceTitle=My book"], "{pgn}");
+    assert!(games[0].comment.starts_with("Page xvii · diagram 1 of 2"), "{pgn}");
+    assert_eq!(games[0].roster.event, "?", "a game keeps its own event");
+    // The position: the book's title as its event, Round "-", its comment after the origin.
+    assert_eq!(tags(&games[1]), ["PdfPage=1", "PdfPageLabel=xvii", "PdfDiagram=2", "SourceTitle=My book"]);
+    assert_eq!((games[1].roster.event.as_str(), games[1].roster.round.as_str()), ("My book", "-"));
+    assert_eq!(games[1].comment, "Page xvii · diagram 2 of 2");
+    // Without a book, only what the reading knows: the physical page and the diagram.
+    let (plain, _) = pgn_with_diagrams(&doc);
+    let games = pgn::parse(&plain).unwrap();
+    assert_eq!(tags(&games[1]), ["PdfPage=1", "PdfDiagram=2"]);
+    assert_eq!(games[1].roster.event, "?");
+    assert!(!plain.contains("PdfPageLabel") && !plain.contains("SourceTitle"), "{plain}");
 }
