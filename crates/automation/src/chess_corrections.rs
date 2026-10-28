@@ -191,7 +191,7 @@ impl Automation {
             let status = if has_kept { None } else { Some(Status::of(reading, None)) };
             let fen = reading.and_then(|r| r.position()).map(|p| p.fen.clone());
             match (status, fen) {
-                (Some(Status::Read), Some(fen)) => {
+                (Some(s), Some(fen)) if s.checked_with_the_page() => {
                     let (uid, rev, name) = self.store_correction(&store, id, page, rect, Some(fen.clone()), fen.clone(), Kind::Verified)?;
                     file = json!(name);
                     verified.push(json!({ "index": index + 1, "uid": uid, "fen": fen, "rev": rev }));

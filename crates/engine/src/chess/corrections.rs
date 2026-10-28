@@ -110,6 +110,13 @@ impl Status {
         }
     }
 
+    /// Whether Mark the page as checked keeps a diagram in this status as Verified: only one read
+    /// with confidence (plan A8, P2b). Those to review, not read or with an error are for a person
+    /// to check one by one; the plan rejects accepting them in bulk.
+    pub fn checked_with_the_page(self) -> bool {
+        self == Status::Read
+    }
+
     /// Whether a diagram in this status is in the review queue: not confirmed, and not read with
     /// confidence.
     pub fn to_review(self) -> bool {

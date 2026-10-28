@@ -309,7 +309,7 @@ impl PdfCraftApp {
             if state.to_review() {
                 left = left.saturating_add(1);
             }
-            if state != Status::Read {
+            if !state.checked_with_the_page() {
                 continue;
             }
             let Some(target) = self.chess_diagram_target(id, page, index) else { continue };
