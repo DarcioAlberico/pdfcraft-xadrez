@@ -3204,3 +3204,10 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	Discard changes	Änderungen verwerfen
 	Keep editing	Weiter bearbeiten
 	Click a square to put the piece there. Confirm keeps the correction without changing the PDF.	Klicken Sie auf ein Feld, um die Figur dorthin zu setzen. Bestätigen behält die Korrektur, ohne das PDF zu ändern.
+# Plan A8 P3b4: Redraw in the PDF.
+	Redraw in the PDF…	Im PDF neu zeichnen…
+	Draw this position over the original diagram in the PDF (one undo step).	Diese Stellung über das ursprüngliche Diagramm im PDF zeichnen (ein Rückgängig-Schritt).
+	Redraw in the PDF draws the corrected position over the original. This changes the file; you can undo it with Ctrl+Z until you save.	Im PDF neu zeichnen legt die korrigierte Stellung über das Original. Das ändert die Datei; bis zum Speichern lässt es sich mit Strg+Z rückgängig machen.
+	Don't show again	Nicht mehr anzeigen
+	Redraw	Neu zeichnen
+	Diagram redrawn in the PDF	Diagramm im PDF neu gezeichnet

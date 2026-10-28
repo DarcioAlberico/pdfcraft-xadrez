@@ -291,8 +291,12 @@ fn more_menu(ui: &mut egui::Ui, ed: &DiagramEditor, legal: bool, kept: bool) -> 
     let button = crate::icons::button(ui, "ellipsis", 26.0, false, tl!("More actions"));
     egui::Popup::menu(&button).show(|ui| {
         let fen = ed.fen();
-        if ui.button(tl!("Replace on the page")).on_hover_text(tl!("Draw this position over the diagram on the page (one undo step).")).clicked() {
-            action = Some(EditorAction::Replace);
+        if ui
+            .button(tl!("Redraw in the PDF…"))
+            .on_hover_text(tl!("Draw this position over the original diagram in the PDF (one undo step)."))
+            .clicked()
+        {
+            action = Some(EditorAction::Redraw);
         }
         if ui.add_enabled(legal, egui::Button::new(tl!("Add lichess link"))).clicked() {
             action = Some(EditorAction::Link);

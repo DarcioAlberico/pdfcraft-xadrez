@@ -6,9 +6,9 @@
 //! changes the corrections of the document it is given, never another's.
 
 use pdfcraft_engine::DocId;
-use pdfcraft_engine::chess::corrections::{
-    CorrectionError, CorrectionStore, DirStore, Kind, Located, NewCorrection, Original, StoreError, normalize,
-};
+#[cfg(not(target_arch = "wasm32"))]
+use pdfcraft_engine::chess::corrections::DirStore;
+use pdfcraft_engine::chess::corrections::{CorrectionError, CorrectionStore, Kind, Located, NewCorrection, Original, StoreError, normalize};
 use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
 use pdfcraft_engine::chess::{ChessDocument, DocKeys};
 use serde_json::{Value, json};
@@ -17,6 +17,13 @@ use crate::{Args, Automation, Result, ToolError, failed};
 
 /// The corrections folder when `store` is not given (relative to `--root` when set).
 pub(crate) const DEFAULT_STORE: &str = ".pdfcraft/chess-corrections";
+
+/// Where the tools keep corrections: a folder. The web build has no folders: there the store is
+/// empty and keeps nothing (a correction set is refused), so the reading tools still read.
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) type FolderStore = DirStore;
+#[cfg(target_arch = "wasm32")]
+pub(crate) type FolderStore = pdfcraft_engine::chess::corrections::MemStore;
 
 /// Seconds since 1970, now.
 fn now() -> u64 {
@@ -32,9 +39,17 @@ fn kind_name(kind: Kind) -> &'static str {
 
 impl Automation {
     /// The corrections folder `store` names, confined to the root.
-    fn correction_store(&self, a: &Args) -> Result<DirStore> {
+    pub(crate) fn correction_store(&self, a: &Args) -> Result<FolderStore> {
         let store = a.opt_str("store")?.unwrap_or(DEFAULT_STORE);
-        Ok(DirStore::new(self.resolve(store, true)?))
+        let dir = self.resolve(store, true)?;
+        #[cfg(not(target_arch = "wasm32"))]
+        let store = DirStore::new(dir);
+        #[cfg(target_arch = "wasm32")]
+        let store = {
+            let _ = dir;
+            FolderStore::new(0)
+        };
+        Ok(store)
     }
 
     /// Before a reading tool reads document `id`: give it the corrections `store` keeps for it,
@@ -73,7 +88,14 @@ impl Automation {
     pub(crate) fn rekey_chess_corrections(&self, id: DocId, before: &DocKeys) -> std::result::Result<bool, String> {
         let Ok(dir) = self.resolve(DEFAULT_STORE, true) else { return Ok(false) };
         let doc = self.session.get(id).ok_or("no such document")?;
-        DirStore::new(dir).rekey(before, &doc.doc_keys(), doc.info.pages.len()).map_err(|e| e.to_string())
+        #[cfg(not(target_arch = "wasm32"))]
+        let store = DirStore::new(dir);
+        #[cfg(target_arch = "wasm32")]
+        let store = {
+            let _ = dir;
+            FolderStore::new(0)
+        };
+        store.rekey(before, &doc.doc_keys(), doc.info.pages.len()).map_err(|e| e.to_string())
     }
 
     pub(crate) fn chess_correction_list(&self, a: &Args) -> Result<Value> {
@@ -119,8 +141,33 @@ impl Automation {
             Some("verified") => Kind::Verified,
             Some(_) => return Err(Args::wrong("kind", "\"corrected\" or \"verified\"")),
         };
-        let settings = self.chess_settings(a)?;
         let id = self.doc(a)?.id;
+        let (rect, read) = self.diagram_target(a, id, page, index)?;
+        // Verified says the reading was right: the reading's position unless fen is given.
+        let fen = match (a.opt_str("fen")?, kind, &read) {
+            (Some(fen), _, _) => fen.trim().to_owned(),
+            (None, Kind::Verified, Some(read)) => read.clone(),
+            (None, Kind::Verified, None) => return Err(failed("the diagram was not read, so there is no reading to verify: give fen")),
+            (None, Kind::Corrected, _) => return Err(ToolError::InvalidArgs("give fen, the corrected position".into())),
+        };
+        let (uid, rev, file) = self.store_correction(&store, id, page, rect, read, fen.clone(), kind)?;
+        Ok(json!({
+            "uid": uid,
+            "page": page + 1,
+            "index": index + 1,
+            "rect": rect,
+            "fen": fen,
+            "kind": kind_name(kind),
+            "legal": Game::from_fen(&fen).is_ok(),
+            "rev": rev,
+            "file": file,
+        }))
+    }
+
+    /// Diagram `index` (0-based) of `page` of document `id` as a scan with `a`'s settings finds
+    /// and reads it: its box as fractions of the page's crop box, and the position read.
+    pub(crate) fn diagram_target(&mut self, a: &Args, id: DocId, page: usize, index: usize) -> Result<([f32; 4], Option<String>)> {
+        let settings = self.chess_settings(a)?;
         let scanned = self.session.chess_scan(id, &[page], &settings, true).map_err(failed)?;
         let found = scanned.first().ok_or_else(|| failed("the page could not be scanned"))?;
         let count = found.diagrams.len();
@@ -133,31 +180,53 @@ impl Automation {
         let rect = normalize([b.x0, b.y0, b.x1, b.y1], [crop.x0, crop.y0, crop.x1, crop.y1])
             .ok_or_else(|| failed("the diagram's box is not on the page"))?;
         let read = found.readings.as_ref().and_then(|r| r.get(index)).and_then(|r| r.position()).map(|p| p.fen.clone());
-        // Verified says the reading was right: the reading's position unless fen is given.
-        let fen = match (a.opt_str("fen")?, kind, &read) {
-            (Some(fen), _, _) => fen.trim().to_owned(),
-            (None, Kind::Verified, Some(read)) => read.clone(),
-            (None, Kind::Verified, None) => return Err(failed("the diagram was not read, so there is no reading to verify: give fen")),
-            (None, Kind::Corrected, _) => return Err(ToolError::InvalidArgs("give fen, the corrected position".into())),
+        Ok((rect, read))
+    }
+
+    /// The correction `a`'s store keeps for the diagram with box `rect` on `page` of document
+    /// `id` as it is now: its uid and position.
+    pub(crate) fn kept_correction(&self, a: &Args, id: DocId, page: usize, rect: [f32; 4]) -> Result<Option<(String, String)>> {
+        let store = self.correction_store(a)?;
+        let doc = self.session.get(id).ok_or_else(|| failed("no such document"))?;
+        let (keys, fingerprints) = (doc.doc_keys(), doc.page_fingerprints());
+        let loaded = match store.load(&keys, fingerprints.len()) {
+            Ok(loaded) => loaded,
+            Err(StoreError::NoKeys) => return Ok(None),
+            Err(e) => return Err(failed(e)),
         };
-        let doc = self.doc(a)?;
+        Ok(loaded.file.find(&fingerprints, page, rect).map(|e| (e.uid.clone(), e.fen.clone())))
+    }
+
+    /// Keep `fen` as the correction of the diagram with box `rect` on `page` of document `id`,
+    /// with the page as it is now (so it follows the page from here): Verified when it is what
+    /// was `read`, else Corrected. For a reply: uid, kind, rev and file.
+    pub(crate) fn keep_correction(&self, a: &Args, id: DocId, page: usize, rect: [f32; 4], read: Option<String>, fen: String) -> Result<Value> {
+        let store = self.correction_store(a)?;
+        let kind = if read.as_deref() == Some(fen.as_str()) { Kind::Verified } else { Kind::Corrected };
+        let (uid, rev, file) = self.store_correction(&store, id, page, rect, read, fen, kind)?;
+        Ok(json!({ "uid": uid, "kind": kind_name(kind), "rev": rev, "file": file }))
+    }
+
+    /// Keep a correction in `store`: its uid, revision and file.
+    #[allow(clippy::too_many_arguments)]
+    fn store_correction(
+        &self,
+        store: &FolderStore,
+        id: DocId,
+        page: usize,
+        rect: [f32; 4],
+        read: Option<String>,
+        fen: String,
+        kind: Kind,
+    ) -> Result<(String, u64, String)> {
+        let doc = self.session.get(id).ok_or_else(|| failed("no such document"))?;
         let (keys, fingerprints) = (doc.doc_keys(), doc.page_fingerprints());
         let page_fp = fingerprints.get(page).cloned().ok_or_else(|| failed("the page's fingerprint could not be made"))?;
-        let new = NewCorrection { page, page_fp, rect, orig: Some(Original { fen: read, model: None }), fen: fen.clone(), kind };
+        let new = NewCorrection { page, page_fp, rect, orig: Some(Original { fen: read, model: None }), fen, kind };
         let at = now();
         let (uid, loaded) = store.update(&keys, fingerprints.len(), |f| f.set(new, at)).map_err(failed)?;
         let rev = loaded.file.entries.iter().find(|e| e.uid == uid).map_or(0, |e| e.rev);
-        Ok(json!({
-            "uid": uid,
-            "page": page + 1,
-            "index": index + 1,
-            "rect": rect,
-            "fen": fen,
-            "kind": kind_name(kind),
-            "legal": Game::from_fen(&fen).is_ok(),
-            "rev": rev,
-            "file": loaded.name,
-        }))
+        Ok((uid, rev, loaded.name))
     }
 
     pub(crate) fn chess_correction_delete(&self, a: &Args) -> Result<Value> {

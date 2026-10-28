@@ -3344,3 +3344,10 @@ chess undo step	Clear drawings	borrado de los dibujos
 	Discard changes	Descartar cambios
 	Keep editing	Seguir editando
 	Click a square to put the piece there. Confirm keeps the correction without changing the PDF.	Haga clic en una casilla para poner la pieza. Confirmar guarda la corrección sin cambiar el PDF.
+# Plan A8 P3b4: Redraw in the PDF.
+	Redraw in the PDF…	Redibujar en el PDF…
+	Draw this position over the original diagram in the PDF (one undo step).	Dibujar esta posición sobre el diagrama original en el PDF (un paso de deshacer).
+	Redraw in the PDF draws the corrected position over the original. This changes the file; you can undo it with Ctrl+Z until you save.	Redibujar en el PDF dibuja la posición corregida sobre la original. Esto cambia el archivo; puede deshacerlo con Ctrl+Z hasta que guarde.
+	Don't show again	No volver a mostrar
+	Redraw	Redibujar
+	Diagram redrawn in the PDF	Diagrama redibujado en el PDF
