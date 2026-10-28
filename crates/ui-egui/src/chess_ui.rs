@@ -70,6 +70,14 @@ pub struct ChessState {
     pub redraw_asked: bool,
     /// The first-time question before Redraw in the PDF, while it is asked.
     pub redraw_prompt: Option<crate::chess_redraw::RedrawPrompt>,
+    /// Which diagrams the PGN export gives a game of their own, for the session (plan A8, P9c).
+    pub pgn_positions: pdfcraft_engine::chess::pdfcraft_chessvision::doc::markdown::PgnPositions,
+    /// The question before exporting while diagrams are still to review (P9c).
+    pub export_prompt: Option<crate::chess_export_ui::PendingPrompt>,
+    /// What the last export said, while it is shown (P9c).
+    pub export_done: Option<crate::chess_export_ui::Done>,
+    /// The file Open folder last showed (what tests see instead of the file manager).
+    pub last_revealed: Option<std::path::PathBuf>,
     /// The Diagram tab's keys and what it says to screen readers (plan A8, P3c).
     pub(crate) diagram_keys: crate::chess_diagram_keys::DiagramKeys,
     /// The Diagrams list's filter, its keyboard and what it follows (plan A8, P2a1).
@@ -529,7 +537,8 @@ pub(crate) fn tab_contents(
     if text {
         let busy = state.job.as_ref().filter(|j| j.doc == id).map(crate::chess_text_ui::ChessJob::label);
         let origin = state.origin.filter(|(d, _)| *d == id).map(|(_, o)| o).unwrap_or_default();
-        return crate::chess_text_ui::text_tab(ui, t, state.text.as_mut(), id, page_now, current, origin, busy).map(PanelAction::Text);
+        let positions = state.pgn_positions;
+        return crate::chess_text_ui::text_tab(ui, t, state.text.as_mut(), id, page_now, current, origin, busy, positions).map(PanelAction::Text);
     }
     let mut action = None;
     let running = state.run.as_ref().filter(|r| r.doc == id).map(|r| {
@@ -537,7 +546,7 @@ pub(crate) fn tab_contents(
         (s.done, s.total)
     });
     // The header: Detect diagrams ▾, the export, board and models buttons, the progress (P2a2).
-    if let Some(a) = crate::chess_panel_head::header(ui, t, state.run.is_some(), info.pages.len(), running) {
+    if let Some(a) = crate::chess_panel_head::header(ui, t, state.run.is_some(), info.pages.len(), running, state.pgn_positions) {
         action = Some(a);
     }
     ui.add_space(6.0);
@@ -944,6 +953,13 @@ impl PdfCraftApp {
         }
     }
 
+    /// Review now: open the first diagram to review.
+    pub(crate) fn review_chess_now(&mut self) {
+        if let Some((page, index)) = self.chess.results.as_ref().and_then(|r| r.review_queue().first().copied()) {
+            self.edit_chess_diagram(page, index, true);
+        }
+    }
+
     pub(crate) fn chess_action(&mut self, action: PanelAction) {
         match action {
             PanelAction::ScanPage => self.start_chess_scan(false),
@@ -975,11 +991,7 @@ impl PdfCraftApp {
             PanelAction::VerifyPage(page) => {
                 self.verify_chess_page(page);
             }
-            PanelAction::ReviewNow => {
-                if let Some((page, index)) = self.chess.results.as_ref().and_then(|r| r.review_queue().first().copied()) {
-                    self.edit_chess_diagram(page, index, true);
-                }
-            }
+            PanelAction::ReviewNow => self.review_chess_now(),
             PanelAction::GoToPage(page) => {
                 if let Some(view) = self.active_ids().and_then(|(vi, _)| self.views.get_mut(vi)) {
                     view.go_to_page(page);

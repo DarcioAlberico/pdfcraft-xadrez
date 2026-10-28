@@ -2603,7 +2603,6 @@ animation effects	Off	Desactivados
 	A chess document is already being read or exported	Ya se está leyendo o exportando un documento de ajedrez
 	Ambiguous move	Jugada ambigua
 	Chess OCR read nothing on this page.	El OCR de ajedrez no leyó nada en esta página.
-	Export as {f}	Exportar como {f}
 	Illegal move	Jugada ilegal
 	Move out of sequence	Jugada fuera de secuencia
 	No text on this page.	No hay texto en esta página.
@@ -3388,3 +3387,17 @@ chess undo step	Clear drawings	borrado de los dibujos
 	Nothing on page {p} is left that was read with confidence.	En la página {p} no queda nada leído con seguridad.
 	Page {p}: {done}	Página {p}: {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} diagrama revisado|{n} diagramas revisados
+	Export chess book	Exportar libro de ajedrez
+	PGN — games	PGN — partidas
+	EPUB — e-book	EPUB — libro electrónico
+	HTML — web page	HTML — página web
+	Diagrams as PGN games	Diagramas como partidas en el PGN
+	Only those not in a game	Solo los que no están en una partida
+	All of them	Todos
+	A diagram becomes a game that starts from its position. A diagram a game starts from or prints again is already in that game.	Un diagrama se convierte en una partida que empieza en su posición. Un diagrama desde el que empieza una partida, o que ella vuelve a imprimir, ya está en esa partida.
+	Diagrams not read: {n}	Diagramas no leídos: {n}
+	Diagrams not checked yet: {n}	Diagramas aún no revisados: {n}
+	They are exported as they were read, and a reading may be wrong. Review first opens the first of them.	Se exportan tal como se leyeron, y una lectura puede estar mal. Revisar primero abre el primero de ellos.
+	Review first	Revisar primero
+	Export anyway	Exportar de todos modos
+	Open folder	Abrir carpeta

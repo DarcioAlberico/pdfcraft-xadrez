@@ -2674,7 +2674,6 @@ certificate	SHA-256 digest	Impronta SHA-256
 	A chess document is already being read or exported	Un documento scacchistico è già in lettura o in esportazione
 	Ambiguous move	Mossa ambigua
 	Chess OCR read nothing on this page.	L'OCR scacchistico non ha letto nulla in questa pagina.
-	Export as {f}	Esporta come {f}
 	Illegal move	Mossa illegale
 	Move out of sequence	Mossa fuori sequenza
 	No text on this page.	Nessun testo in questa pagina.
@@ -3459,3 +3458,17 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	Nothing on page {p} is left that was read with confidence.	Nella pagina {p} non resta nulla letto con sicurezza.
 	Page {p}: {done}	Pagina {p}: {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} diagramma controllato|{n} diagrammi controllati
+	Export chess book	Esporta libro di scacchi
+	PGN — games	PGN — partite
+	EPUB — e-book	EPUB — libro digitale
+	HTML — web page	HTML — pagina web
+	Diagrams as PGN games	Diagrammi come partite PGN
+	Only those not in a game	Solo quelli fuori da una partita
+	All of them	Tutti
+	A diagram becomes a game that starts from its position. A diagram a game starts from or prints again is already in that game.	Un diagramma diventa una partita che inizia dalla sua posizione. Un diagramma da cui parte una partita, o che lei ristampa, è già in quella partita.
+	Diagrams not read: {n}	Diagrammi non letti: {n}
+	Diagrams not checked yet: {n}	Diagrammi non ancora controllati: {n}
+	They are exported as they were read, and a reading may be wrong. Review first opens the first of them.	Vengono esportati come sono stati letti, e una lettura può essere sbagliata. Rivedi prima apre il primo di essi.
+	Review first	Rivedi prima
+	Export anyway	Esporta comunque
+	Open folder	Apri cartella

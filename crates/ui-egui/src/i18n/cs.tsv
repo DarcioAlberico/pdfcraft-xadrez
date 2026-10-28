@@ -2536,7 +2536,6 @@ animation effects	Off	Vypnuto
 	A chess document is already being read or exported	Šachový dokument se už čte nebo exportuje
 	Ambiguous move	Nejednoznačný tah
 	Chess OCR read nothing on this page.	Šachové OCR na této stránce nic nepřečetlo.
-	Export as {f}	Exportovat jako {f}
 	Illegal move	Nelegální tah
 	Move out of sequence	Tah mimo pořadí
 	No text on this page.	Na této stránce není text.
@@ -3321,3 +3320,17 @@ chess undo step	Clear drawings	smazání kreseb
 	Nothing on page {p} is left that was read with confidence.	Na straně {p} nezbylo nic přečteného s jistotou.
 	Page {p}: {done}	Strana {p}: {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} diagram zkontrolován|{n} diagramy zkontrolovány|{n} diagramů zkontrolováno
+	Export chess book	Exportovat šachovou knihu
+	PGN — games	PGN — partie
+	EPUB — e-book	EPUB — e-kniha
+	HTML — web page	HTML — webová stránka
+	Diagrams as PGN games	Diagramy jako partie PGN
+	Only those not in a game	Jen ty mimo partii
+	All of them	Všechny
+	A diagram becomes a game that starts from its position. A diagram a game starts from or prints again is already in that game.	Z diagramu se stane partie začínající jeho pozicí. Diagram, kterým partie začíná nebo který znovu otiskuje, už v té partii je.
+	Diagrams not read: {n}	Nepřečtené diagramy: {n}
+	Diagrams not checked yet: {n}	Dosud nezkontrolované diagramy: {n}
+	They are exported as they were read, and a reading may be wrong. Review first opens the first of them.	Exportují se tak, jak byly přečteny, a čtení může být chybné. Nejdřív zkontrolovat otevře první z nich.
+	Review first	Nejdřív zkontrolovat
+	Export anyway	Přesto exportovat
+	Open folder	Otevřít složku

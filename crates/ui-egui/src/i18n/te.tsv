@@ -2371,7 +2371,6 @@ animation effects	Off	ఆఫ్
 	A chess document is already being read or exported	ఒక చదరంగం పత్రం ఇప్పటికే చదవబడుతోంది లేదా ఎగుమతి అవుతోంది
 	Ambiguous move	అస్పష్టమైన ఎత్తు
 	Chess OCR read nothing on this page.	చదరంగం OCR ఈ పేజీలో ఏదీ చదవలేదు.
-	Export as {f}	{f}గా ఎగుమతి చేయి
 	Illegal move	చెల్లని ఎత్తు
 	Move out of sequence	క్రమం తప్పిన ఎత్తు
 	No text on this page.	ఈ పేజీలో వచనం లేదు.
@@ -3122,3 +3121,17 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Nothing on page {p} is left that was read with confidence.	పేజీ {p}లో నమ్మకంగా చదివినది ఏదీ మిగల్లేదు.
 	Page {p}: {done}	పేజీ {p}: {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} చిత్రం తనిఖీ అయింది|{n} చిత్రాలు తనిఖీ అయ్యాయి
+	Export chess book	చదరంగం పుస్తకాన్ని ఎగుమతి చేయి
+	PGN — games	PGN — ఆటలు
+	EPUB — e-book	EPUB — ఈ-పుస్తకం
+	HTML — web page	HTML — వెబ్ పేజీ
+	Diagrams as PGN games	చిత్రాలను PGN ఆటలుగా
+	Only those not in a game	ఏ ఆటలోనూ లేనివి మాత్రమే
+	All of them	అన్నీ
+	A diagram becomes a game that starts from its position. A diagram a game starts from or prints again is already in that game.	ఒక చిత్రం దాని స్థితి నుండి మొదలయ్యే ఆట అవుతుంది. ఒక ఆట మొదలయ్యే లేదా ఆట మళ్లీ ముద్రించే చిత్రం ఇప్పటికే ఆ ఆటలో ఉంది.
+	Diagrams not read: {n}	చదవని చిత్రాలు: {n}
+	Diagrams not checked yet: {n}	ఇంకా తనిఖీ చేయని చిత్రాలు: {n}
+	They are exported as they were read, and a reading may be wrong. Review first opens the first of them.	అవి చదివినట్లే ఎగుమతి అవుతాయి, చదవడం తప్పు కావచ్చు. ముందు సమీక్షించు వాటిలో మొదటిదాన్ని తెరుస్తుంది.
+	Review first	ముందు సమీక్షించు
+	Export anyway	అయినా ఎగుమతి చేయి
+	Open folder	ఫోల్డర్ తెరువు

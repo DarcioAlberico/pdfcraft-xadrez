@@ -754,20 +754,31 @@ fn the_text_tab_shows_the_page_read_as_chess_text_and_points_back_at_it() {
 }
 
 /// Export… writes the document: PGN with the position's game, and Markdown with its image in a
-/// folder beside it.
+/// folder beside it. The menu names each format by what it makes, under "Export chess book";
+/// once written, a window says where, and Open folder shows the file (plan A8, P9c).
 #[test]
 fn export_writes_pgn_and_markdown_with_images() {
     let dir = std::env::temp_dir().join(format!("pdfcraft-chess-export-ui-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
-    for (format, name) in [("Export as PGN", "book.pgn"), ("Export as Markdown", "book.md")] {
+    for (format, name) in [("PGN — games", "book.pgn"), ("Markdown", "book.md")] {
         let mut h = chapter_harness();
         h.state_mut().save_override = Some(dir.join(name).to_string_lossy().into_owned());
         h.get_by_label("Export…").click();
         h.run_steps(2);
+        h.get_by_label("Export chess book");
+        for other in ["EPUB — e-book", "HTML — web page", "Word (.docx)", "RTF"] {
+            h.get_by_label(other);
+        }
         h.get_by_label(format).click();
         h.run_steps(4);
-        assert!(h.state().toast.as_ref().is_some_and(|t| t.0.starts_with("Exported to")), "{format}: {:?}", h.state().toast);
+        let said = format!("Exported to {}", dir.join(name).display());
+        assert_eq!(h.state().chess.export_done.as_ref().map(|d| d.said.as_str()), Some(said.as_str()), "{format}");
+        h.get_by_label(&said);
+        h.get_by_label("Open folder").click();
+        h.run_steps(2);
+        assert!(h.state().chess.export_done.is_none(), "{format}: the window closes");
+        assert_eq!(h.state().chess.last_revealed.as_deref(), Some(dir.join(name).as_path()), "{format}: the file is shown");
     }
     let pgn = std::fs::read_to_string(dir.join("book.pgn")).unwrap();
     assert!(
@@ -3640,6 +3651,71 @@ fn exporting_with_a_draft_confirms_it_first() {
     assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"));
     let pgn = std::fs::read_to_string(&out).expect("exported once answered");
     assert!(pgn.contains(EDITED), "the corrected position: {pgn}");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Exporting while diagrams are still to review asks first (plan A8, P9c): Review first opens
+/// the first of them and writes nothing; Export anyway writes the file, and the window says
+/// what the export noted.
+#[test]
+fn exporting_with_diagrams_to_review_asks_first() {
+    let dir = corrections_dir("pending-export");
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), Some(dir.join("store")));
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    let queue = h.state().chess.results.as_ref().map(|r| r.review_queue()).unwrap_or_default();
+    assert!(!queue.is_empty(), "the fixture has a diagram to review");
+    let out = dir.join("book.pgn");
+    h.state_mut().save_override = Some(out.to_string_lossy().into_owned());
+    h.state_mut().export_chess_dialog(pdfcraft_engine::chess::export::ChessFormat::Pgn);
+    h.run_steps(2);
+    h.get_by_label(&format!("Diagrams not checked yet: {}", queue.len()));
+    h.get_by_label("Review first").click();
+    h.run_steps(3);
+    assert!(!out.exists(), "nothing written");
+    assert!(h.state().chess.export_prompt.is_none());
+    assert_eq!(h.state().chess.editor.as_ref().map(|e| (e.page, e.index)), queue.first().copied(), "the first to review is open");
+    h.state_mut().export_chess_dialog(pdfcraft_engine::chess::export::ChessFormat::Pgn);
+    h.run_steps(2);
+    h.get_by_label("Export anyway").click();
+    h.run_steps(6);
+    assert!(out.exists(), "written once answered");
+    assert!(h.state().chess.export_done.is_some(), "the window says where");
+    // Esc asks nothing more and writes nothing.
+    let _ = std::fs::remove_file(&out);
+    h.state_mut().chess.export_done = None;
+    h.state_mut().export_chess_dialog(pdfcraft_engine::chess::export::ChessFormat::Pgn);
+    h.run_steps(2);
+    h.key_press(egui::Key::Escape);
+    h.run_steps(3);
+    assert!(h.state().chess.export_prompt.is_none() && !out.exists());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// The menu holds which diagrams the PGN gives a game of their own (plan A8, P8b and P9c): with
+/// All of them, the diagram the game starts from gets a game too; with None, only the game.
+#[test]
+fn the_export_menu_chooses_the_pgns_diagram_games() {
+    let dir = std::env::temp_dir().join(format!("pdfcraft-chess-export-positions-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut games = Vec::new();
+    for (choice, name) in [("All of them", "all.pgn"), ("None", "none.pgn")] {
+        let mut h = chapter_harness();
+        h.get_by_label("Export…").click();
+        h.run_steps(2);
+        h.get_by_label_contains("Diagrams as PGN games").hover();
+        h.run_steps(2);
+        h.get_by_label(choice).click();
+        h.run_steps(2);
+        h.state_mut().save_override = Some(dir.join(name).to_string_lossy().into_owned());
+        h.state_mut().export_chess_dialog(pdfcraft_engine::chess::export::ChessFormat::Pgn);
+        h.run_steps(4);
+        let pgn = std::fs::read_to_string(dir.join(name)).unwrap();
+        games.push(pgn.matches("[Event ").count());
+    }
+    assert_eq!(games, [2, 1], "All of them: the position and the game; None: the game");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

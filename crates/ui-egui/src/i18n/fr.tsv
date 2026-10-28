@@ -2462,7 +2462,6 @@ animation effects	Off	Désactivés
 	A chess document is already being read or exported	Un document d'échecs est déjà en cours de lecture ou d'exportation
 	Ambiguous move	Coup ambigu
 	Chess OCR read nothing on this page.	L'OCR d'échecs n'a rien lu sur cette page.
-	Export as {f}	Exporter en {f}
 	Illegal move	Coup illégal
 	Move out of sequence	Coup hors séquence
 	No text on this page.	Aucun texte sur cette page.
@@ -3247,3 +3246,17 @@ chess undo step	Clear drawings	l'effacement des dessins
 	Nothing on page {p} is left that was read with confidence.	Il ne reste rien sur la page {p} qui ait été lu avec certitude.
 	Page {p}: {done}	Page {p} : {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} diagramme vérifié|{n} diagrammes vérifiés
+	Export chess book	Exporter le livre d'échecs
+	PGN — games	PGN — parties
+	EPUB — e-book	EPUB — livre numérique
+	HTML — web page	HTML — page web
+	Diagrams as PGN games	Diagrammes en parties PGN
+	Only those not in a game	Seulement ceux hors d'une partie
+	All of them	Tous
+	A diagram becomes a game that starts from its position. A diagram a game starts from or prints again is already in that game.	Un diagramme devient une partie qui commence à sa position. Un diagramme d'où part une partie, ou qu'elle réimprime, est déjà dans cette partie.
+	Diagrams not read: {n}	Diagrammes non lus : {n}
+	Diagrams not checked yet: {n}	Diagrammes pas encore vérifiés : {n}
+	They are exported as they were read, and a reading may be wrong. Review first opens the first of them.	Ils sont exportés tels qu'ils ont été lus, et une lecture peut être fausse. Vérifier d'abord ouvre le premier d'entre eux.
+	Review first	Vérifier d'abord
+	Export anyway	Exporter quand même
+	Open folder	Ouvrir le dossier

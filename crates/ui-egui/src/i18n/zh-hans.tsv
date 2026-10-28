@@ -2426,7 +2426,6 @@ animation effects	Off	关
 	A chess document is already being read or exported	已有国际象棋文档正在读取或导出
 	Ambiguous move	有歧义的着法
 	Chess OCR read nothing on this page.	国际象棋 OCR 在此页上没有读到任何内容。
-	Export as {f}	导出为 {f}
 	Illegal move	非法着法
 	Move out of sequence	顺序不符的着法
 	No text on this page.	此页没有文本。
@@ -3211,3 +3210,17 @@ chess undo step	Clear drawings	清除标记
 	Nothing on page {p} is left that was read with confidence.	第 {p} 页已没有有把握读取的局面图。
 	Page {p}: {done}	第 {p} 页：{done}
 @plural	{n} diagram checked|{n} diagrams checked	已检查 {n} 个局面图
+	Export chess book	导出国际象棋书
+	PGN — games	PGN — 棋局
+	EPUB — e-book	EPUB — 电子书
+	HTML — web page	HTML — 网页
+	Diagrams as PGN games	把局面图作为 PGN 棋局
+	Only those not in a game	仅不在棋局中的
+	All of them	全部
+	A diagram becomes a game that starts from its position. A diagram a game starts from or prints again is already in that game.	局面图会成为一局从该局面开始的棋局。作为某局起点或被该局再次印出的局面图，已包含在那一局中。
+	Diagrams not read: {n}	未读取的局面图：{n}
+	Diagrams not checked yet: {n}	尚未检查的局面图：{n}
+	They are exported as they were read, and a reading may be wrong. Review first opens the first of them.	它们将按读取结果导出，读取可能有误。“先检查”会打开其中第一个。
+	Review first	先检查
+	Export anyway	仍然导出
+	Open folder	打开文件夹

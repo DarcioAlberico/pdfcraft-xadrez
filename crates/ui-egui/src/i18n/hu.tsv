@@ -2461,7 +2461,6 @@ animation effects	Off	Ki
 	A chess document is already being read or exported	Egy sakkdokumentum olvasása vagy exportálása már folyamatban van
 	Ambiguous move	Kétértelmű lépés
 	Chess OCR read nothing on this page.	A sakk-OCR semmit sem olvasott ezen az oldalon.
-	Export as {f}	Exportálás: {f}
 	Illegal move	Szabálytalan lépés
 	Move out of sequence	Sorrenden kívüli lépés
 	No text on this page.	Nincs szöveg ezen az oldalon.
@@ -3246,3 +3245,17 @@ chess undo step	Clear drawings	rajzok törlése
 	Nothing on page {p} is left that was read with confidence.	A(z) {p}. oldalon nem maradt biztosan beolvasott diagram.
 	Page {p}: {done}	{p}. oldal: {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} diagram ellenőrizve|{n} diagram ellenőrizve
+	Export chess book	Sakk-könyv exportálása
+	PGN — games	PGN — játszmák
+	EPUB — e-book	EPUB — e-könyv
+	HTML — web page	HTML — weboldal
+	Diagrams as PGN games	Diagramok PGN-játszmaként
+	Only those not in a game	Csak a játszmán kívüliek
+	All of them	Mindegyik
+	A diagram becomes a game that starts from its position. A diagram a game starts from or prints again is already in that game.	A diagramból egy, az állásából induló játszma lesz. Az a diagram, amelyből egy játszma indul, vagy amelyet újra közöl, már benne van abban a játszmában.
+	Diagrams not read: {n}	Be nem olvasott diagramok: {n}
+	Diagrams not checked yet: {n}	Még nem ellenőrzött diagramok: {n}
+	They are exported as they were read, and a reading may be wrong. Review first opens the first of them.	Úgy exportálódnak, ahogy be lettek olvasva, és egy olvasás lehet hibás. Az Előbb ellenőrzés megnyitja közülük az elsőt.
+	Review first	Előbb ellenőrzés
+	Export anyway	Exportálás így is
+	Open folder	Mappa megnyitása

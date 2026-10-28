@@ -2467,7 +2467,6 @@ animation effects	Off	Izklopljeni
 	A chess document is already being read or exported	Šahovski dokument se že bere ali izvaža
 	Ambiguous move	Dvoumna poteza
 	Chess OCR read nothing on this page.	Šahovski OCR na tej strani ni prebral ničesar.
-	Export as {f}	Izvozi kot {f}
 	Illegal move	Nelegalna poteza
 	Move out of sequence	Poteza zunaj zaporedja
 	No text on this page.	Na tej strani ni besedila.
@@ -3252,3 +3251,17 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Nothing on page {p} is left that was read with confidence.	Na strani {p} ni ostalo nič, prebranega z gotovostjo.
 	Page {p}: {done}	Stran {p}: {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} diagram preverjen|{n} diagrama preverjena|{n} diagrami preverjeni|{n} diagramov preverjenih
+	Export chess book	Izvozi šahovsko knjigo
+	PGN — games	PGN — partije
+	EPUB — e-book	EPUB — e-knjiga
+	HTML — web page	HTML — spletna stran
+	Diagrams as PGN games	Diagrami kot partije PGN
+	Only those not in a game	Samo tisti zunaj partije
+	All of them	Vsi
+	A diagram becomes a game that starts from its position. A diagram a game starts from or prints again is already in that game.	Diagram postane partija, ki se začne z njegovo pozicijo. Diagram, s katerim se partija začne ali ki ga ponovno natisne, je že v tej partiji.
+	Diagrams not read: {n}	Neprebrani diagrami: {n}
+	Diagrams not checked yet: {n}	Še nepregledani diagrami: {n}
+	They are exported as they were read, and a reading may be wrong. Review first opens the first of them.	Izvozijo se tako, kot so bili prebrani, branje pa je lahko napačno. Najprej preglej odpre prvega od njih.
+	Review first	Najprej preglej
+	Export anyway	Vseeno izvozi
+	Open folder	Odpri mapo

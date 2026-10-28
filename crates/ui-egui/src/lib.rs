@@ -44,6 +44,7 @@ mod chess_diagram_keys;
 mod chess_diagram_tab;
 mod chess_drafts;
 mod chess_editor;
+mod chess_export_ui;
 mod chess_figurines;
 mod chess_history;
 mod chess_list;
@@ -3393,6 +3394,7 @@ impl eframe::App for PdfCraftApp {
             dialogs::show(self, &ctx);
             chess_drafts::prompt(self, &ctx);
             chess_redraw::prompt(self, &ctx);
+            chess_export_ui::prompt(self, &ctx);
             // Notices too: a refused field value or a failed save must be seen in full screen.
             self.show_progress(&ctx);
             widgets::toast(self, &ctx);
@@ -3458,9 +3460,10 @@ impl eframe::App for PdfCraftApp {
         palette::show(self, &ctx);
         dialogs::show(self, &ctx);
         // The question about a chess diagram's unconfirmed changes (plan A8, P3b3), and the one
-        // before the first redraw in the PDF (P3b4).
+        // before the first redraw in the PDF (P3b4), and the export's (P9c).
         chess_drafts::prompt(self, &ctx);
         chess_redraw::prompt(self, &ctx);
+        chess_export_ui::prompt(self, &ctx);
         self.show_progress(&ctx);
         widgets::toast(self, &ctx);
         self.finish_render_frame(&ctx);

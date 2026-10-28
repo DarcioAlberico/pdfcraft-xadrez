@@ -2458,7 +2458,6 @@ animation effects	Off	Kapalı
 	A chess document is already being read or exported	Bir satranç belgesi zaten okunuyor veya dışa aktarılıyor
 	Ambiguous move	Belirsiz hamle
 	Chess OCR read nothing on this page.	Satranç OCR bu sayfada hiçbir şey okumadı.
-	Export as {f}	{f} olarak dışa aktar
 	Illegal move	Kural dışı hamle
 	Move out of sequence	Sıra dışı hamle
 	No text on this page.	Bu sayfada metin yok.
@@ -3243,3 +3242,17 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Nothing on page {p} is left that was read with confidence.	{p}. sayfada güvenle okunan bir şey kalmadı.
 	Page {p}: {done}	Sayfa {p}: {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} diyagram kontrol edildi
+	Export chess book	Satranç kitabını dışa aktar
+	PGN — games	PGN — oyunlar
+	EPUB — e-book	EPUB — e-kitap
+	HTML — web page	HTML — web sayfası
+	Diagrams as PGN games	Diyagramlar PGN oyunu olarak
+	Only those not in a game	Yalnızca bir oyunda olmayanlar
+	All of them	Hepsi
+	A diagram becomes a game that starts from its position. A diagram a game starts from or prints again is already in that game.	Bir diyagram, kendi konumundan başlayan bir oyun olur. Bir oyunun başladığı ya da oyunun yeniden bastığı diyagram zaten o oyundadır.
+	Diagrams not read: {n}	Okunmamış diyagramlar: {n}
+	Diagrams not checked yet: {n}	Henüz kontrol edilmemiş diyagramlar: {n}
+	They are exported as they were read, and a reading may be wrong. Review first opens the first of them.	Okundukları gibi dışa aktarılırlar ve bir okuma yanlış olabilir. Önce incele, ilkini açar.
+	Review first	Önce incele
+	Export anyway	Yine de dışa aktar
+	Open folder	Klasörü aç
