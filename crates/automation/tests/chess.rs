@@ -2199,6 +2199,31 @@ fn chess_diagram_states_counts_by_the_panels_rule_with_the_corrections() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// Plan A8, P2b: chess_page_verify keeps the page's diagrams read with confidence as verified
+/// and leaves the others, saying why; a second time, the verified one is kept already.
+#[test]
+fn chess_page_verify_checks_only_what_was_read_with_confidence() {
+    let (base, root) = workdir("verify-page");
+    let (mut a, doc) = opened(&root);
+    let first = ok(&mut a, "chess_page_verify", json!({ "doc": doc, "page": 1, "models_dir": "models" }));
+    let verified: Vec<u64> = first["verified"].as_array().unwrap().iter().map(|v| v["index"].as_u64().unwrap()).collect();
+    assert_eq!(verified, [1], "the font diagram, read exactly: {first:#}");
+    assert_eq!(first["verified"][0]["fen"], "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    let left: Vec<(u64, &str)> =
+        first["left"].as_array().unwrap().iter().map(|v| (v["index"].as_u64().unwrap(), v["why"].as_str().unwrap())).collect();
+    assert_eq!(left, [(2, "unread"), (3, "unread")], "no model: never accepted in bulk");
+    let again = ok(&mut a, "chess_page_verify", json!({ "doc": doc, "page": 1, "models_dir": "models" }));
+    assert_eq!(again["verified"].as_array().map(Vec::len), Some(0), "{again:#}");
+    assert_eq!(again["left"][0]["why"], "kept");
+    let states = ok(&mut a, "chess_diagram_states", json!({ "doc": doc, "models_dir": "models" }));
+    assert_eq!((states["states"]["verified"].as_u64(), states["states"]["read"].as_u64()), (Some(1), Some(0)), "{states:#}");
+    match a.call("chess_page_verify", &json!({ "doc": doc, "page": 9 })) {
+        Err(ToolError::InvalidArgs(m)) => assert!(m.contains("page"), "{m}"),
+        other => panic!("page 9 of 1 accepted: {other:?}"),
+    }
+    let _ = std::fs::remove_dir_all(base);
+}
+
 /// Plan A8, P3a3: a correction kept for the document wins over the reading in the recognised
 /// document, the exports and the lichess links, and is never lost to an edit, an undo, a save,
 /// closing and reopening.

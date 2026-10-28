@@ -3516,3 +3516,10 @@ chess undo step	Clear drawings	مسح الرسوم
 	No diagrams detected yet. PdfCraft finds the diagrams and reads the positions. The whole book takes a few minutes.	لم تُكتشف مخططات بعد. يعثر PdfCraft على المخططات ويقرأ الأوضاع. يستغرق الكتاب كله بضع دقائق.
 @plural	In the whole book ({n} page)|In the whole book ({n} pages)	في الكتاب كله ({n} صفحات)|في الكتاب كله ({n} صفحة)|في الكتاب كله ({n} صفحتان)|في الكتاب كله ({n} صفحات)|في الكتاب كله ({n} صفحة)|في الكتاب كله ({n} صفحة)
 @plural	{n} diagram|{n} diagrams	{n} مخططات|{n} مخطط|{n} مخططان|{n} مخططات|{n} مخططًا|{n} مخطط
+# Plan A8 P2b: the page marks and Mark the page as checked.
+	Mark the page as checked	تعليم الصفحة كمُراجَعة
+	Keep every diagram read with confidence on this page as checked; those to review are left for you.	حفظ كل مخطط قُرئ بثقة في هذه الصفحة كمُراجَع؛ وتُترك لك المخططات التي تحتاج إلى مراجعة.
+	Detect the diagrams on this page first.	اكتشف مخططات هذه الصفحة أولًا.
+	Nothing on page {p} is left that was read with confidence.	لم يبقَ في الصفحة {p} ما قُرئ بثقة.
+	Page {p}: {done}	الصفحة {p}: {done}
+@plural	{n} diagram checked|{n} diagrams checked	{n} مخططات مُراجَعة|{n} مخطط مُراجَع|{n} مخططان مُراجَعان|{n} مخططات مُراجَعة|{n} مخططًا مُراجَعًا|{n} مخطط مُراجَع

@@ -566,6 +566,64 @@ fn the_panel_header_detects_and_sums_up() {
     assert!(h.state().chess.results.as_ref().unwrap().all, "the whole book");
 }
 
+/// The marks on the page are picked with a click with the Hand too, as with Select; a drag
+/// with the Hand pans and picks nothing (plan A8, P2b).
+#[test]
+fn a_click_with_the_hand_picks_a_diagram_and_a_drag_does_not() {
+    let mut h = harness();
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    h.state_mut().quick_tool = pdfcraft_ui_egui::QuickTool::Hand;
+    h.run_steps(1);
+    // A drag from the drawn board's middle: the page moves, no diagram is picked.
+    let at = on_page(&h, 140.0, 320.0);
+    h.hover_at(at);
+    h.run_steps(1);
+    h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed: true, modifiers: egui::Modifiers::NONE });
+    for k in 1..=6 {
+        h.event(egui::Event::PointerMoved(at + egui::vec2(0.0, 12.0 * k as f32)));
+        h.step();
+    }
+    let end = at + egui::vec2(0.0, 72.0);
+    h.event(egui::Event::PointerButton { pos: end, button: egui::PointerButton::Primary, pressed: false, modifiers: egui::Modifiers::NONE });
+    h.run_steps(3);
+    assert_eq!(h.state().chess.results.as_ref().and_then(|r| r.selected), None, "a drag picks nothing");
+    // A click: the diagram under it is picked.
+    let at = on_page(&h, 140.0, 320.0);
+    h.hover_at(at);
+    h.run_steps(1);
+    for pressed in [true, false] {
+        h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed, modifiers: egui::Modifiers::NONE });
+    }
+    h.run_steps(3);
+    assert_eq!(h.state().chess.results.as_ref().and_then(|r| r.selected), Some((0, 1)), "the Hand's click picks");
+}
+
+/// Mark the page as checked, in the page header's context menu: the diagram read with
+/// confidence becomes Verified, the one to review is left, and the panel says so (plan A8, P2b).
+#[test]
+fn marking_the_page_as_checked_verifies_only_what_was_read_with_confidence() {
+    let dir = corrections_dir("verify-page");
+    let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), Some(dir.clone()));
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    let to_review = h.state().chess.results.as_ref().unwrap().review_queue().len();
+    h.get_by_role_and_label(egui::accesskit::Role::Link, "Page 1").click_secondary();
+    h.run_steps(2);
+    h.get_by_label("Mark the page as checked").click();
+    h.run_steps(3);
+    assert_eq!(kind(&h, 0).as_deref(), Some("Verified"), "the font diagram");
+    if to_review == 1 {
+        assert_eq!(kind(&h, 1), None, "the drawn board is left to review");
+        assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Page 1: 1 diagram checked · 1 to review"));
+    }
+    // Again, from the command: nothing is left that was read with confidence.
+    assert!(h.state_mut().execute("chess.verify_page"));
+    h.run_steps(2);
+    assert!(h.state().toast.as_ref().is_some_and(|t| t.0.starts_with("Nothing on page 1")), "{:?}", h.state().toast);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// The review queue: only the drawn board (no model read it) needs review; the list can show
 /// only it, and Next goes to it.
 #[test]

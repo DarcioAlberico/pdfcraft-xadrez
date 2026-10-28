@@ -33,6 +33,15 @@ pub fn paint(ui: &egui::Ui, rect: Rect, name: &str, size: f32, tint: Color32) {
     image(name, size, tint).paint_at(ui, Rect::from_center_size(rect.center(), Vec2::splat(size)));
 }
 
+/// [`paint`] with only a painter (the page's marks have no `Ui`): nothing while the icon is still
+/// being loaded, which takes a frame or two.
+pub(crate) fn paint_with(painter: &egui::Painter, rect: Rect, name: &str, size: f32, tint: Color32) {
+    if let Ok(egui::load::TexturePoll::Ready { texture }) = image(name, size, tint).load_for_size(painter.ctx(), Vec2::splat(size)) {
+        let uv = Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0));
+        painter.image(texture.id, Rect::from_center_size(rect.center(), Vec2::splat(size)), uv, tint);
+    }
+}
+
 /// Square icon button: transparent until hovered; `selected` gets the accent treatment.
 pub fn button(ui: &mut egui::Ui, name: &str, box_size: f32, selected: bool, tooltip: &str) -> Response {
     let label = if tooltip.is_empty() { name } else { tooltip };

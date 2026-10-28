@@ -3115,3 +3115,10 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	No diagrams detected yet. PdfCraft finds the diagrams and reads the positions. The whole book takes a few minutes.	ఇంకా చిత్రాలు గుర్తించబడలేదు. PdfCraft చిత్రాలను కనుగొని స్థితులను చదువుతుంది. పుస్తకమంతా కొన్ని నిమిషాలు పడుతుంది.
 @plural	In the whole book ({n} page)|In the whole book ({n} pages)	పుస్తకమంతటిలో ({n} పేజీ)|పుస్తకమంతటిలో ({n} పేజీలు)
 @plural	{n} diagram|{n} diagrams	{n} చిత్రం|{n} చిత్రాలు
+# Plan A8 P2b: the page marks and Mark the page as checked.
+	Mark the page as checked	పేజీని తనిఖీ చేసినట్లు గుర్తించు
+	Keep every diagram read with confidence on this page as checked; those to review are left for you.	ఈ పేజీలో నమ్మకంగా చదివిన ప్రతి చిత్రాన్ని తనిఖీ చేసినట్లు ఉంచు; సమీక్షించాల్సినవి మీకు వదిలేస్తుంది.
+	Detect the diagrams on this page first.	ముందు ఈ పేజీలోని చిత్రాలను గుర్తించండి.
+	Nothing on page {p} is left that was read with confidence.	పేజీ {p}లో నమ్మకంగా చదివినది ఏదీ మిగల్లేదు.
+	Page {p}: {done}	పేజీ {p}: {done}
+@plural	{n} diagram checked|{n} diagrams checked	{n} చిత్రం తనిఖీ అయింది|{n} చిత్రాలు తనిఖీ అయ్యాయి

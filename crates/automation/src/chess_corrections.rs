@@ -8,7 +8,7 @@
 use pdfcraft_engine::DocId;
 #[cfg(not(target_arch = "wasm32"))]
 use pdfcraft_engine::chess::corrections::DirStore;
-use pdfcraft_engine::chess::corrections::{CorrectionError, CorrectionStore, Kind, Located, NewCorrection, Original, StoreError, normalize};
+use pdfcraft_engine::chess::corrections::{CorrectionError, CorrectionStore, Kind, Located, NewCorrection, Original, Status, StoreError, normalize};
 use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
 use pdfcraft_engine::chess::{ChessDocument, DocKeys};
 use serde_json::{Value, json};
@@ -162,6 +162,45 @@ impl Automation {
             "rev": rev,
             "file": file,
         }))
+    }
+
+    /// Chess ▸ Mark the page as checked (plan A8, P2b): keep every diagram of `page` read with
+    /// confidence and not corrected or verified yet as Verified. The others are left, with why:
+    /// kept (a correction is kept already), review, unread or error.
+    pub(crate) fn chess_page_verify(&mut self, a: &Args) -> Result<Value> {
+        let store = self.correction_store(a)?;
+        let page = self.page(a)?;
+        let id = self.doc(a)?.id;
+        let settings = self.chess_settings(a)?;
+        let scanned = self.session.chess_scan(id, &[page], &settings, true).map_err(failed)?;
+        let found = scanned.first().ok_or_else(|| failed("the page could not be scanned"))?.clone();
+        let crop = found.geometry.map(|g| g.crop_box()).ok_or_else(|| failed("the page's crop box could not be read"))?;
+        let doc = self.session.get(id).ok_or_else(|| failed("no such document"))?;
+        let (keys, fingerprints) = (doc.doc_keys(), doc.page_fingerprints());
+        let kept = match store.load(&keys, fingerprints.len()) {
+            Ok(loaded) => Some(loaded.file),
+            Err(StoreError::NoKeys) => None,
+            Err(e) => return Err(failed(e)),
+        };
+        let (mut verified, mut left, mut file) = (Vec::new(), Vec::new(), Value::Null);
+        for (index, d) in found.diagrams.iter().enumerate() {
+            let b = d.candidate.bbox_user;
+            let Some(rect) = normalize([b.x0, b.y0, b.x1, b.y1], [crop.x0, crop.y0, crop.x1, crop.y1]) else { continue };
+            let reading = found.readings.as_ref().and_then(|r| r.iter().find(|r| r.index == index));
+            let has_kept = kept.as_ref().is_some_and(|f| f.find(&fingerprints, page, rect).is_some());
+            let status = if has_kept { None } else { Some(Status::of(reading, None)) };
+            let fen = reading.and_then(|r| r.position()).map(|p| p.fen.clone());
+            match (status, fen) {
+                (Some(Status::Read), Some(fen)) => {
+                    let (uid, rev, name) = self.store_correction(&store, id, page, rect, Some(fen.clone()), fen.clone(), Kind::Verified)?;
+                    file = json!(name);
+                    verified.push(json!({ "index": index + 1, "uid": uid, "fen": fen, "rev": rev }));
+                }
+                (None, _) => left.push(json!({ "index": index + 1, "why": "kept" })),
+                (Some(s), _) => left.push(json!({ "index": index + 1, "why": s.name() })),
+            }
+        }
+        Ok(json!({ "page": page + 1, "verified": verified, "left": left, "file": file }))
     }
 
     /// Diagram `index` (0-based) of `page` of document `id` as a scan with `a`'s settings finds

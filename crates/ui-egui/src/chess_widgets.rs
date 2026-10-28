@@ -59,6 +59,16 @@ impl DiagramState {
         }
     }
 
+    /// Its text colour and the soft fill it reads on at 4.5:1 or more (the page marks' tabs).
+    pub(crate) fn text_on_soft(self, t: &Tokens) -> (Color32, Color32) {
+        match self {
+            DiagramState::Read | DiagramState::Verified | DiagramState::Corrected => (t.success_text, t.success_soft),
+            DiagramState::Review => (t.warning_text, t.warning_soft),
+            DiagramState::Unread => (t.text_muted, t.card),
+            DiagramState::Error => (t.danger_text, t.danger_soft),
+        }
+    }
+
     /// Its name.
     pub(crate) fn name(self) -> &'static str {
         match self {

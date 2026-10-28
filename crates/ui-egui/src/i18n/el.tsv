@@ -3212,3 +3212,10 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	No diagrams detected yet. PdfCraft finds the diagrams and reads the positions. The whole book takes a few minutes.	Δεν έχουν εντοπιστεί ακόμη διαγράμματα. Το PdfCraft βρίσκει τα διαγράμματα και διαβάζει τις θέσεις. Όλο το βιβλίο θέλει λίγα λεπτά.
 @plural	In the whole book ({n} page)|In the whole book ({n} pages)	Σε όλο το βιβλίο ({n} σελίδα)|Σε όλο το βιβλίο ({n} σελίδες)
 @plural	{n} diagram|{n} diagrams	{n} διάγραμμα|{n} διαγράμματα
+# Plan A8 P2b: the page marks and Mark the page as checked.
+	Mark the page as checked	Σήμανση σελίδας ως ελεγμένης
+	Keep every diagram read with confidence on this page as checked; those to review are left for you.	Κάθε διάγραμμα αυτής της σελίδας που διαβάστηκε με βεβαιότητα κρατιέται ως ελεγμένο· όσα θέλουν έλεγχο μένουν για εσάς.
+	Detect the diagrams on this page first.	Εντοπίστε πρώτα τα διαγράμματα αυτής της σελίδας.
+	Nothing on page {p} is left that was read with confidence.	Στη σελίδα {p} δεν έμεινε τίποτα που διαβάστηκε με βεβαιότητα.
+	Page {p}: {done}	Σελίδα {p}: {done}
+@plural	{n} diagram checked|{n} diagrams checked	{n} διάγραμμα ελέγχθηκε|{n} διαγράμματα ελέγχθηκαν

@@ -3262,3 +3262,10 @@ chess undo step	Clear drawings	видалення малюнків
 	No diagrams detected yet. PdfCraft finds the diagrams and reads the positions. The whole book takes a few minutes.	Діаграм ще не знайдено. PdfCraft знаходить діаграми й читає позиції. Уся книжка займає кілька хвилин.
 @plural	In the whole book ({n} page)|In the whole book ({n} pages)	В усій книжці ({n} сторінка)|В усій книжці ({n} сторінки)|В усій книжці ({n} сторінок)
 @plural	{n} diagram|{n} diagrams	{n} діаграма|{n} діаграми|{n} діаграм
+# Plan A8 P2b: the page marks and Mark the page as checked.
+	Mark the page as checked	Позначити сторінку як перевірену
+	Keep every diagram read with confidence on this page as checked; those to review are left for you.	Зберегти як перевірену кожну діаграму цієї сторінки, прочитану впевнено; ті, що треба перевірити, лишаються вам.
+	Detect the diagrams on this page first.	Спершу знайдіть діаграми на цій сторінці.
+	Nothing on page {p} is left that was read with confidence.	На сторінці {p} не лишилося нічого, прочитаного впевнено.
+	Page {p}: {done}	Сторінка {p}: {done}
+@plural	{n} diagram checked|{n} diagrams checked	{n} діаграму перевірено|{n} діаграми перевірено|{n} діаграм перевірено

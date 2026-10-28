@@ -3494,3 +3494,10 @@ chess undo step	Clear drawings	xóa hình vẽ
 	No diagrams detected yet. PdfCraft finds the diagrams and reads the positions. The whole book takes a few minutes.	Chưa phát hiện sơ đồ nào. PdfCraft tìm các sơ đồ và đọc thế cờ. Cả cuốn sách mất vài phút.
 @plural	In the whole book ({n} page)|In the whole book ({n} pages)	Trong cả cuốn sách ({n} trang)
 @plural	{n} diagram|{n} diagrams	{n} sơ đồ
+# Plan A8 P2b: the page marks and Mark the page as checked.
+	Mark the page as checked	Đánh dấu trang là đã kiểm tra
+	Keep every diagram read with confidence on this page as checked; those to review are left for you.	Giữ mọi sơ đồ trên trang này được đọc chắc chắn là đã kiểm tra; các sơ đồ cần xem lại để lại cho bạn.
+	Detect the diagrams on this page first.	Hãy phát hiện sơ đồ trên trang này trước.
+	Nothing on page {p} is left that was read with confidence.	Trang {p} không còn sơ đồ nào được đọc chắc chắn.
+	Page {p}: {done}	Trang {p}: {done}
+@plural	{n} diagram checked|{n} diagrams checked	Đã kiểm tra {n} sơ đồ
