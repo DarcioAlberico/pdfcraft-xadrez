@@ -546,6 +546,7 @@ fn the_panel_header_detects_and_sums_up() {
     h.get_by_label("On this page").click();
     h.run_steps(3);
     assert_eq!(diagrams(&h), 2, "this page was scanned");
+    assert!(!h.state().chess.results.as_ref().unwrap().all, "this page, not the whole book");
     let queue = h.state().chess.results.as_ref().unwrap().review_queue();
     if queue.is_empty() {
         // With the user's piece model installed the drawn board may be read and accepted.
@@ -559,6 +560,10 @@ fn the_panel_header_detects_and_sums_up() {
     let ed = h.state().chess.editor.as_ref().expect("the first to review opens");
     assert_eq!((ed.page, ed.index), (0, 1));
     assert!(h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Diagram), "in the Diagram tab");
+    // The main button detects in the whole book.
+    h.get_by_label("Detect diagrams").click();
+    h.run_steps(3);
+    assert!(h.state().chess.results.as_ref().unwrap().all, "the whole book");
 }
 
 /// The review queue: only the drawn board (no model read it) needs review; the list can show
