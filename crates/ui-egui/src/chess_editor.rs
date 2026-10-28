@@ -53,6 +53,9 @@ pub struct DiagramEditor {
     pub position: Position,
     /// The FEN as read, to go back to (`None`: the diagram was not read).
     pub original: Option<String>,
+    /// The position it opened on (the one kept for it, else the reading): the editor has
+    /// unconfirmed changes when its position is another (plan A8, P3b3).
+    pub start: String,
     pub uncertain: Vec<Uncertain>,
     pub flipped: bool,
     pub brush: Brush,
@@ -71,12 +74,14 @@ impl DiagramEditor {
         let position = read
             .and_then(|p| pdfcraft_engine::chess::pdfcraft_chess::fen::parse(&p.fen).ok())
             .unwrap_or_else(|| Position { side_to_move: Some(Color::White), ..Position::from_placement(Placement::empty()) });
+        let start = position.fen();
         DiagramEditor {
             doc,
             page,
             index,
             position,
             original: read.map(|p| p.fen.clone()),
+            start,
             uncertain: read.map(|p| p.uncertain.clone()).unwrap_or_default(),
             flipped: read.and_then(|p| p.orientation).is_some_and(|o| o.black_point_of_view),
             brush: Brush::Put(Piece { color: Color::White, kind: PieceKind::Queen }),
@@ -131,6 +136,27 @@ impl DiagramEditor {
         if let Ok(p) = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(fen) {
             self.position = p;
             self.uncertain.clear();
+            self.start = self.position.fen();
+        }
+    }
+
+    /// Whether the position differs from the one it opened on: changes not confirmed yet.
+    pub fn dirty(&self) -> bool {
+        self.fen() != self.start
+    }
+
+    /// How many squares differ from the position it opened on.
+    pub fn changed_squares(&self) -> usize {
+        let Ok(start) = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(&self.start) else { return 0 };
+        (0..64usize).filter_map(Square::from_index).filter(|sq| start.placement.get(*sq) != self.position.placement.get(*sq)).count()
+    }
+
+    /// Show `fen` (a draft of this diagram) with the view it was edited in, keeping the
+    /// position it opened on.
+    pub fn show_draft(&mut self, fen: &str, flipped: bool) {
+        if let Ok(p) = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(fen) {
+            self.position = p;
+            self.flipped = flipped;
         }
     }
 

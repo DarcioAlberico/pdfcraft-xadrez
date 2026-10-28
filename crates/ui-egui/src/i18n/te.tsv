@@ -3069,3 +3069,12 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Diagram board: {fen}	రేఖాచిత్రం బోర్డు: {fen}
 	Classic diagram editor	సాంప్రదాయ రేఖాచిత్ర ఎడిటర్
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	రేఖాచిత్రం ట్యాబ్ రాకముందులాగే రేఖాచిత్రాలు ప్యానెల్‌లోనే రేఖాచిత్రాలను సవరించు. ఈ ఎంపిక తదుపరి వెర్షన్‌లో తొలగించబడుతుంది.
+# Plan A8 P3b3: drafts and the question about them.
+	Unconfirmed changes	నిర్ధారించని మార్పులు
+	Keep the correction of diagram {n} (page {p})?	రేఖాచిత్రం {n} (పేజీ {p}) సవరణను ఉంచాలా?
+	Squares changed: {n}. Not confirmed yet.	మార్చిన గడులు: {n}. ఇంకా నిర్ధారించలేదు.
+	The position changed. Not confirmed yet.	స్థితి మారింది. ఇంకా నిర్ధారించలేదు.
+	Confirm correction	సవరణను నిర్ధారించు
+	Discard changes	మార్పులను వదిలేయి
+	Keep editing	సవరించడం కొనసాగించు
+	Click a square to put the piece there. Confirm keeps the correction without changing the PDF.	పావును పెట్టడానికి ఒక గడిపై క్లిక్ చేయండి. నిర్ధారించు PDF ను మార్చకుండా సవరణను ఉంచుతుంది.

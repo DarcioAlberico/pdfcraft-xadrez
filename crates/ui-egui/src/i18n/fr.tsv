@@ -3194,3 +3194,12 @@ chess undo step	Clear drawings	l'effacement des dessins
 	Diagram board: {fen}	Échiquier du diagramme : {fen}
 	Classic diagram editor	Éditeur de diagrammes classique
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Modifier les diagrammes dans le panneau Diagrammes, comme avant l’onglet Diagramme. Cette option disparaîtra dans une version ultérieure.
+# Plan A8 P3b3: drafts and the question about them.
+	Unconfirmed changes	Modifications non confirmées
+	Keep the correction of diagram {n} (page {p})?	Garder la correction du diagramme {n} (page {p}) ?
+	Squares changed: {n}. Not confirmed yet.	Cases modifiées : {n}. Pas encore confirmé.
+	The position changed. Not confirmed yet.	La position a changé. Pas encore confirmé.
+	Confirm correction	Confirmer la correction
+	Discard changes	Abandonner les modifications
+	Keep editing	Continuer à modifier
+	Click a square to put the piece there. Confirm keeps the correction without changing the PDF.	Cliquez sur une case pour y poser la pièce. Confirmer garde la correction sans modifier le PDF.

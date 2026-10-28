@@ -84,6 +84,17 @@ impl Store {
     }
 }
 
+/// A diagram to keep a correction for: its document, page and index in the scan, its box as
+/// fractions of the crop box, and the position read (`None`: not read).
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct DiagramTarget {
+    pub doc: DocId,
+    pub page: usize,
+    pub index: usize,
+    pub rect: [f32; 4],
+    pub read: Option<String>,
+}
+
 /// One open document's corrections.
 pub(crate) struct DocCorrections {
     pub doc: DocId,
@@ -196,6 +207,12 @@ impl PdfCraftApp {
         self.chess.corrections.doc(id)
     }
 
+    /// Document `id`'s corrections, for a reading made in a session of its own (the Text tab's
+    /// and the exports' jobs, P3a3): the same bytes give the same page fingerprints there.
+    pub(crate) fn chess_corrections_file(&mut self, id: DocId) -> Option<CorrectionFile> {
+        self.chess_corrections_for(id).map(|c| c.file.clone()).filter(|f| f.live().next().is_some())
+    }
+
     fn say_corrections_failed(&mut self, why: &str) {
         if !std::mem::replace(&mut self.chess.corrections.said, true) {
             self.notify(crate::i18n::fmt(tl!("The diagram corrections couldn't be saved: {e}"), &[("e", why)]));
@@ -228,23 +245,26 @@ impl PdfCraftApp {
         }
     }
 
-    /// Diagram Confirm: keep the editor's position for its diagram, Verified when it is the
-    /// reading, else Corrected, without changing the PDF; then (`next`) open the next diagram to
-    /// review. Whether it was kept.
-    pub fn confirm_chess_diagram(&mut self, next: bool) -> bool {
-        let Some(ed) = self.chess.editor.as_ref() else { return false };
-        let (id, page, index, fen) = (ed.doc, ed.page, ed.index, ed.fen());
-        let kind = if ed.original.as_deref() == Some(fen.as_str()) { Kind::Verified } else { Kind::Corrected };
-        let Some(results) = self.chess.results.as_ref().filter(|r| r.doc == id) else { return false };
-        let Some(p) = results.pages.iter().find(|p| p.page == page) else { return false };
-        let (Some(d), Some(crop)) = (p.diagrams.get(index), p.geometry.map(|g| g.crop_box())) else { return false };
+    /// Diagram `index` of `page` of `id` as the scan found it: what a correction of it needs.
+    pub(crate) fn chess_diagram_target(&self, id: DocId, page: usize, index: usize) -> Option<DiagramTarget> {
+        let results = self.chess.results.as_ref().filter(|r| r.doc == id)?;
+        let p = results.pages.iter().find(|p| p.page == page)?;
+        let (d, crop) = (p.diagrams.get(index)?, p.geometry?.crop_box());
         let b = d.candidate.bbox_user;
-        let Some(rect) = normalize([b.x0, b.y0, b.x1, b.y1], [crop.x0, crop.y0, crop.x1, crop.y1]) else { return false };
+        let rect = normalize([b.x0, b.y0, b.x1, b.y1], [crop.x0, crop.y0, crop.x1, crop.y1])?;
         let read = crate::chess_ui::ChessResults::reading(p, index).and_then(|r| r.position()).map(|p| p.fen.clone());
-        let Some(page_fp) = self.chess_corrections_for(id).and_then(|c| c.fingerprints.as_ref()?.1.get(page).cloned()) else { return false };
-        let Some(doc) = self.session.get(id) else { return false };
+        Some(DiagramTarget { doc: id, page, index, rect, read })
+    }
+
+    /// Keep `fen` for diagram `target` without changing the PDF: Verified when it is the
+    /// reading, else Corrected, and say so. The kind kept, or `None` when it could not be.
+    pub(crate) fn keep_chess_correction(&mut self, target: &DiagramTarget, fen: String) -> Option<Kind> {
+        let DiagramTarget { doc: id, page, index, rect, .. } = *target;
+        let kind = if target.read.as_deref() == Some(fen.as_str()) { Kind::Verified } else { Kind::Corrected };
+        let page_fp = self.chess_corrections_for(id).and_then(|c| c.fingerprints.as_ref()?.1.get(page).cloned())?;
+        let doc = self.session.get(id)?;
         let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
-        let new = NewCorrection { page, page_fp, rect, orig: Some(Original { fen: read, model: None }), fen, kind };
+        let new = NewCorrection { page, page_fp, rect, orig: Some(Original { fen: target.read.clone(), model: None }), fen, kind };
         let at = now();
         match self.chess.corrections.store.update(&keys, pages, |f| f.set(new, at)) {
             Ok((_, loaded)) => {
@@ -253,12 +273,31 @@ impl PdfCraftApp {
             }
             Err(e) => {
                 self.say_corrections_failed(&e.to_string());
-                return false;
+                return None;
             }
         }
+        // A draft of it is confirmed too.
+        self.chess.drafts.retain(|d| (d.target.doc, d.target.page, d.target.index) != (id, page, index));
         let state = crate::chess_widgets::DiagramState::of(None, Some(kind)).name();
         let label = self.chess_page_label(page);
         self.notify(crate::i18n::fmt(tl!("Diagram {n}, page {p}: {state}"), &[("n", &(index + 1).to_string()), ("p", &label), ("state", state)]));
+        Some(kind)
+    }
+
+    /// Diagram Confirm: keep the editor's position for its diagram ([`Self::keep_chess_correction`]);
+    /// then (`next`) open the next diagram to review. Whether it was kept.
+    pub fn confirm_chess_diagram(&mut self, next: bool) -> bool {
+        let Some(ed) = self.chess.editor.as_ref() else { return false };
+        let (id, page, index, fen) = (ed.doc, ed.page, ed.index, ed.fen());
+        let Some(target) = self.chess_diagram_target(id, page, index) else { return false };
+        if self.keep_chess_correction(&target, fen.clone()).is_none() {
+            return false;
+        }
+        // The editor's position is the one kept now: nothing left to confirm.
+        if let Some(ed) = self.chess.editor.as_mut() {
+            ed.start = fen;
+        }
+        self.chess.diagram_hint_seen = true;
         if next {
             self.chess_editor_action(crate::chess_editor::EditorAction::Next);
         }
@@ -286,10 +325,12 @@ impl PdfCraftApp {
                 return false;
             }
         }
-        // The editor shows the reading again.
+        // The editor shows the reading again, with nothing left to confirm.
         if let Some(ed) = self.chess.editor.as_mut() {
             ed.reset();
+            ed.start = ed.fen();
         }
+        self.chess.drafts.retain(|d| (d.target.doc, d.target.page, d.target.index) != (id, page, index));
         true
     }
 

@@ -82,11 +82,23 @@ impl DiagramState {
     }
 }
 
-/// A state's icon, `size` points, in its colour, named for assistive technology.
-pub(crate) fn state_icon(ui: &mut egui::Ui, t: &Tokens, state: DiagramState, size: f32) -> egui::Response {
-    let r = ui.add(crate::icons::image(state.icon(), size, state.colour(t)).sense(egui::Sense::hover())).on_hover_text(state.hint());
-    r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, state.name()));
+/// A state's icon, `size` points, in its colour, named for assistive technology. `draft`: the
+/// diagram has unconfirmed changes, a warning dot on the icon (plan A8, P3b3).
+pub(crate) fn state_icon(ui: &mut egui::Ui, t: &Tokens, state: DiagramState, size: f32, draft: bool) -> egui::Response {
+    let hint = if draft { format!("{}\n{}", state.hint(), tl!("Unconfirmed changes")) } else { state.hint().to_owned() };
+    let r = ui.add(crate::icons::image(state.icon(), size, state.colour(t)).sense(egui::Sense::hover())).on_hover_text(hint);
+    let name = if draft { format!("{} · {}", state.name(), tl!("Unconfirmed changes")) } else { state.name().to_owned() };
+    r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &name));
+    if draft {
+        draft_dot(ui.painter(), r.rect, t);
+    }
     r
+}
+
+/// The draft dot at the top right of `rect`.
+pub(crate) fn draft_dot(painter: &egui::Painter, rect: egui::Rect, t: &Tokens) {
+    let r = (rect.width().min(rect.height()) * 0.2).max(2.5);
+    painter.circle(rect.right_top() + egui::vec2(-r * 0.5, r * 0.5), r, t.warning, egui::Stroke::new(1.0, t.card));
 }
 
 #[cfg(test)]

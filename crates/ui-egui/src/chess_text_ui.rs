@@ -481,6 +481,8 @@ impl PdfCraftApp {
     /// Run `work` on a session of its own, opened from document `id`'s working bytes, on a
     /// worker thread (inline on the web and in tests); [`Self::poll_chess_job`] picks it up.
     fn start_chess_job(&mut self, id: DocId, kind: JobKind, work: impl FnOnce(&mut pdfcraft_engine::Session, DocId) -> JobDone + Send + 'static) {
+        // The diagram corrections go with the document: the job reads in a session of its own.
+        let corrections = self.chess_corrections_file(id);
         let Some(doc) = self.session.get(id) else { return };
         let (name, bytes, password) = (doc.name.clone(), doc.bytes.clone(), doc.password.clone());
         let result: Arc<Mutex<Option<JobDone>>> = Arc::default();
@@ -489,7 +491,10 @@ impl PdfCraftApp {
         let run = move || {
             let mut s = pdfcraft_engine::Session::new();
             let done = match s.open(name, None, bytes, password.as_deref()) {
-                Ok(job_id) => work(&mut s, job_id),
+                Ok(job_id) => {
+                    s.set_chess_corrections(job_id, corrections);
+                    work(&mut s, job_id)
+                }
                 Err(e) if is_read => JobDone::Read(Err(e.to_string())),
                 Err(e) => JobDone::Export(Err(e.to_string())),
             };
@@ -620,6 +625,10 @@ impl PdfCraftApp {
     /// Chess ▸ Export: ask where (`save_override` in tests), then read the document and write it.
     pub fn export_chess_dialog(&mut self, format: ChessFormat) {
         let Some((_, id)) = self.active_ids() else { return };
+        // Diagrams with unconfirmed changes are asked about first (plan A8, P3b3).
+        if self.ask_chess_drafts(Some(id), crate::chess_drafts::AfterDrafts::Export(format)) {
+            return;
+        }
         if !self.may_copy(id) {
             return;
         }

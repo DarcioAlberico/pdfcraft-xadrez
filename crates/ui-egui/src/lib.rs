@@ -41,6 +41,7 @@ mod chess_correct;
 mod chess_corrections_ui;
 mod chess_deleted;
 mod chess_diagram_tab;
+mod chess_drafts;
 mod chess_editor;
 mod chess_figurines;
 mod chess_history;
@@ -2387,6 +2388,7 @@ impl PdfCraftApp {
         // The Diagram tab or the editor in the Diagrams panel, and its main button (plan A8 P3b2).
         v["chess_classic_editor"] = serde_json::Value::Bool(self.chess.classic_editor);
         v["chess_confirm_only"] = serde_json::Value::Bool(self.chess.confirm_only);
+        v["chess_diagram_hint_seen"] = serde_json::Value::Bool(self.chess.diagram_hint_seen);
         v.to_string()
     }
 
@@ -2451,6 +2453,9 @@ impl PdfCraftApp {
         }
         if let Some(on) = v["chess_confirm_only"].as_bool() {
             self.chess.confirm_only = on;
+        }
+        if let Some(on) = v["chess_diagram_hint_seen"].as_bool() {
+            self.chess.diagram_hint_seen = on;
         }
         if v["chess_move_list"].is_object() {
             self.chess.list_look = chess_figurines::ListLook::from_json(&v["chess_move_list"]);
@@ -3378,6 +3383,7 @@ impl eframe::App for PdfCraftApp {
                 },
             );
             dialogs::show(self, &ctx);
+            chess_drafts::prompt(self, &ctx);
             // Notices too: a refused field value or a failed save must be seen in full screen.
             self.show_progress(&ctx);
             widgets::toast(self, &ctx);
@@ -3442,6 +3448,8 @@ impl eframe::App for PdfCraftApp {
         self.process_pending_edits();
         palette::show(self, &ctx);
         dialogs::show(self, &ctx);
+        // The question about a chess diagram's unconfirmed changes (plan A8, P3b3).
+        chess_drafts::prompt(self, &ctx);
         self.show_progress(&ctx);
         widgets::toast(self, &ctx);
         self.finish_render_frame(&ctx);
