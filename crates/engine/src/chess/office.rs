@@ -1,49 +1,49 @@
-//! Chess ▸ Export ▸ Word and RTF (blueprint S15c): the recognised document through the Office
-//! writers of `pdfcraft-export`.
+//! Chess ▸ Export ▸ Word and RTF (blueprint S15c; plan A8 P9a): the recognised document as a
+//! flowing document, written by `pdfcraft_export::flow` (the PDF ▸ Word export's own path, which
+//! rebuilds pages from their boxes, is left alone).
 //!
-//! Word and RTF have no inline vector drawing a reader can be relied on to show, so each diagram
-//! is a PNG: [`diagram_png`] draws the board with `chess::draw` and the same operators the PDF
-//! replacement uses ([`super::replace::drawing_ops`]) on a one-page PDF made here, and renders it
-//! with the page renderer. [`to_pages`] then lays the document out as the export writers take
-//! it: one [`Page`] per PDF page, blocks stacked top to bottom in reading order (headings set
-//! larger, so the writers make them headings), each diagram an image with its lichess address
-//! under it, a link over that line so Word and RTF make it a real hyperlink. Nothing overlaps, so
-//! the Word writer keeps every page flowing.
+//! [`to_flow`] keeps the book's structure: headings as Word headings, paragraphs as runs, the
+//! moves and annotation glyphs marked so spelling checks skip them (`w:noProof`), piece letters
+//! and signs in the user's figurine font (SemFig) and sign font (ISChess) when the export found
+//! them, as the HTML export sets them ([`spans`]), and the document in the book's language
+//! (`w:lang`). Each diagram is a picture, drawn by [`diagram_png`] at 300 ppi for the
+//! [`DIAGRAM_PT`] it is set at, its text alternative saying the position in words
+//! ([`pdfcraft_chess::describe`]), and a caption under it in Word's `Caption` style: the PGN's
+//! comment for the diagram (`Pág. 17 · diagrama 1 de 2`), its FEN and its lichess link.
 //!
-//! Text is set with Unicode figurines by default; whether a reader shows ♞ depends on its fonts.
+//! [`diagram_png`] draws the board with `chess::draw` and the same operators the PDF replacement
+//! uses ([`super::replace::drawing_ops`]) on a one-page PDF made here, and renders it with the
+//! page renderer.
 
 use std::sync::Arc;
 
+use pdfcraft_chess::describe;
 use pdfcraft_chess::draw::{BoardStyle, PieceSet, board};
+use pdfcraft_chess::origin::PgnOrigin;
 use pdfcraft_chess::placement::Placement;
-use pdfcraft_chessvision::doc::html::{Figurines, plain_text_with};
-use pdfcraft_chessvision::doc::{Block as DocBlock, ChessDoc};
-use pdfcraft_export::{Block, Image, Link, Page};
-/// The writers [`to_pages`] feeds.
-pub use pdfcraft_export::{docx, rtf};
+use pdfcraft_chess::san::Lang;
+use pdfcraft_chessvision::doc::html::{Figurines, Span, SpanFont, spans};
+use pdfcraft_chessvision::doc::{Block as DocBlock, ChessDoc, Inline};
+use pdfcraft_chessvision::text_font::TextFont;
+use pdfcraft_export::flow::{Figure, FlowBlock, FlowDoc, Run};
+/// The writers [`to_flow`] feeds.
+pub use pdfcraft_export::flow::{docx, fonts, rtf};
 use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest};
 
 use super::replace::drawing_ops;
 
-/// The default side of a diagram image, in pixels.
-pub const DEFAULT_DIAGRAM_PX: u32 = 480;
+/// The default side of a diagram image, in pixels: 300 ppi at the [`DIAGRAM_PT`] Word and RTF set
+/// it at.
+pub const DEFAULT_DIAGRAM_PX: u32 = 900;
 /// The largest side of a diagram image, in pixels.
 pub const MAX_DIAGRAM_PX: u32 = 2400;
 /// The side a diagram is set at, in points (three inches).
 pub const DIAGRAM_PT: f64 = 216.0;
-/// The body text size, and the heading sizes the writers recognise as levels 1 and 2.
-const BODY: f64 = 11.0;
-const H1: f64 = 20.0;
-const H2: f64 = 15.0;
-/// The laid-out page: A4 width, with an inch of margin.
-const WIDTH: f64 = 595.0;
-const LEFT: f64 = 72.0;
-const RIGHT: f64 = WIDTH - 72.0;
-const GAP: f64 = 6.0;
 
 /// What the Office exports make.
 #[derive(Clone, Debug)]
 pub struct OfficeOptions<'a> {
+    pub title: &'a str,
     pub pieces: &'a PieceSet,
     pub style: BoardStyle,
     pub figurines: Figurines,
@@ -52,6 +52,15 @@ pub struct OfficeOptions<'a> {
     pub link_text: &'a str,
     /// The diagram images' side in pixels (clamped to 32..=[`MAX_DIAGRAM_PX`]).
     pub diagram_px: u32,
+    /// The user's figurine font: its family is named on the runs that need it.
+    pub text_font: Option<&'a TextFont>,
+    /// The user's sign font (ISChess): the annotation glyphs it draws are written in it.
+    pub sign_font: Option<&'a TextFont>,
+    /// The book's language, as a BCP 47 tag.
+    pub lang: &'a str,
+    /// The number printed on each page, by page index (empty, or an empty label: the page's own
+    /// number from 1).
+    pub page_labels: &'a [String],
 }
 
 /// The board as a PNG of `px` × `px` pixels (clamped to 32..=[`MAX_DIAGRAM_PX`]).
@@ -113,94 +122,93 @@ fn one_page_pdf(side: f64, ops: &[u8]) -> Vec<u8> {
     out
 }
 
-/// One thing to stack on a page.
-enum Part {
-    /// `link`: the address the paragraph links to.
-    Text {
-        text: String,
-        size: f64,
-        bold: bool,
-        link: Option<String>,
-    },
-    Picture(Vec<u8>),
+/// A font's family name, when it has one Word or RTF can name.
+fn family(font: Option<&TextFont>) -> Option<String> {
+    font.map(|f| f.family.trim().to_owned()).filter(|f| !f.is_empty())
 }
 
-/// The height a paragraph of `text` at `size` takes in the text column, roughly: what decides
-/// only where the next block goes, never what the writers print.
-fn text_height(text: &str, size: f64) -> f64 {
-    let per_line = ((RIGHT - LEFT) / (size * 0.5)).max(1.0);
-    let lines = (text.chars().count() as f64 / per_line).ceil().max(1.0);
-    lines * size * 1.3
+/// A paragraph's inlines as runs: moves and glyphs skipped by spelling checks, in the user's
+/// fonts where the HTML export sets them in those fonts.
+fn runs(inlines: &[Inline], o: &OfficeOptions<'_>) -> Vec<Run> {
+    let (figurines, signs) = (family(o.text_font), family(o.sign_font));
+    // A font with no name cannot be named: its runs keep the document's font.
+    let role = o.text_font.filter(|_| figurines.is_some()).map(|f| f.role);
+    spans(inlines, o.figurines, role, signs.is_some())
+        .into_iter()
+        .map(|Span { text, chess, font, link }| Run {
+            text,
+            font: match font {
+                Some(SpanFont::Figurines) => figurines.clone(),
+                Some(SpanFont::Signs) => signs.clone(),
+                None => None,
+            },
+            lang: None,
+            no_proof: chess,
+            link,
+        })
+        .collect()
 }
 
-/// The document as the export writers' pages, and how many diagrams were drawn. A diagram whose
-/// image cannot be made is set as its FEN, and said in `notes`.
-pub fn to_pages(doc: &ChessDoc, o: &OfficeOptions<'_>, notes: &mut Vec<String>) -> (Vec<Page>, usize) {
-    let mut pages = Vec::with_capacity(doc.pages.len());
+/// The document as a flowing document, and how many diagrams were drawn. A diagram whose image
+/// cannot be made is set as text, and said in `notes`.
+pub fn to_flow(doc: &ChessDoc, o: &OfficeOptions<'_>, notes: &mut Vec<String>) -> (FlowDoc, usize) {
+    let mut blocks = Vec::new();
     let mut drawn = 0;
     for page in &doc.pages {
-        let mut parts = Vec::new();
+        let lang = Lang::from_tag(&page.lang).unwrap_or(Lang::En);
+        let printed = usize::try_from(page.index).ok().and_then(|i| o.page_labels.get(i)).map(|l| l.trim()).filter(|l| !l.is_empty());
+        let label = printed.map_or_else(|| (u64::from(page.index) + 1).to_string(), str::to_owned);
+        let of = page.blocks.iter().filter(|b| matches!(b, DocBlock::Diagram(_))).count();
         for block in &page.blocks {
             match block {
-                DocBlock::Heading { level, inlines, .. } => {
-                    let size = if *level <= 1 { H1 } else { H2 };
-                    parts.push(Part::Text { text: plain_text_with(inlines, o.figurines), size, bold: true, link: None });
-                }
-                DocBlock::Paragraph { inlines, .. } => {
-                    parts.push(Part::Text { text: plain_text_with(inlines, o.figurines), size: BODY, bold: false, link: None })
-                }
+                DocBlock::Heading { level, inlines, .. } => blocks.push(FlowBlock::Heading { level: *level, runs: runs(inlines, o) }),
+                DocBlock::Paragraph { inlines, .. } => blocks.push(FlowBlock::Para(runs(inlines, o))),
                 DocBlock::Diagram(d) => {
+                    let number = d.number.saturating_add(1);
                     let Some(reading) = &d.reading else {
-                        parts.push(Part::Text { text: format!("[Diagram {} not read]", d.number + 1), size: BODY, bold: false, link: None });
+                        blocks.push(FlowBlock::Para(vec![Run::text(describe::not_read(number, &label, lang))]));
                         continue;
                     };
+                    // The caption: the PGN's comment for the diagram, its FEN, its link.
+                    let origin = PgnOrigin {
+                        page_index: page.index,
+                        page_label: printed.map(str::to_owned),
+                        diagram: Some(number),
+                        of: Some(of),
+                        lang: Some(lang),
+                        ..PgnOrigin::default()
+                    };
+                    let mut caption =
+                        vec![Run::text(format!("{} · ", origin.comment())), Run { no_proof: true, ..Run::text(format!("FEN {}", reading.fen)) }];
+                    if o.links
+                        && let Some(url) = &d.lichess_url
+                    {
+                        caption.push(Run::text(" · "));
+                        caption.push(Run { link: Some(url.clone()), ..Run::text(o.link_text) });
+                    }
                     let png = pdfcraft_chess::fen::parse(&reading.fen)
                         .map_err(|e| e.to_string())
                         .and_then(|f| diagram_png(&f.placement, o.pieces, &o.style, o.diagram_px));
                     match png {
-                        Ok(bytes) => {
-                            parts.push(Part::Picture(bytes));
+                        Ok(png) => {
+                            let alt = describe::describe(number, &label, &reading.fen, lang);
+                            blocks.push(FlowBlock::Figure(Figure { png, side_pt: DIAGRAM_PT, alt, caption }));
                             drawn += 1;
                         }
                         Err(e) => {
-                            notes.push(format!("page {}, diagram {}: {e}; its FEN was set instead", u64::from(page.index) + 1, d.number + 1));
+                            notes.push(format!("page {}, diagram {number}: {e}; its FEN was set instead", u64::from(page.index) + 1));
+                            blocks.push(FlowBlock::Para(caption));
                         }
                     }
-                    parts.push(Part::Text { text: format!("FEN: {}", reading.fen), size: 8.0, bold: false, link: None });
-                    if o.links
-                        && let Some(url) = &d.lichess_url
-                    {
-                        parts.push(Part::Text { text: format!("{}: {url}", o.link_text), size: 8.0, bold: false, link: Some(url.clone()) });
-                    }
                 }
             }
         }
-        // Stack the parts from the top; the page is as tall as they need.
-        let heights: Vec<f64> = parts
-            .iter()
-            .map(|p| match p {
-                Part::Text { text, size, .. } => text_height(text, *size),
-                Part::Picture(_) => DIAGRAM_PT,
-            })
-            .collect();
-        let height = (heights.iter().map(|h| h + GAP).sum::<f64>() + 144.0).max(842.0);
-        let mut top = height - 72.0;
-        let mut out = Page { links: Vec::new(), width: WIDTH, height, blocks: Vec::new(), images: Vec::new() };
-        for (part, h) in parts.into_iter().zip(heights) {
-            let rect = [LEFT, top - h, if matches!(part, Part::Picture(_)) { LEFT + DIAGRAM_PT } else { RIGHT }, top];
-            match part {
-                Part::Text { text, size, bold, link } => {
-                    // The link's area is the paragraph's box, so the writers make it a hyperlink.
-                    if let Some(uri) = link {
-                        out.links.push(Link { rect, uri });
-                    }
-                    out.blocks.push(Block { text, rect, size, bold, italic: false, color: [0.0; 3], rotation: 0.0 })
-                }
-                Part::Picture(bytes) => out.images.push(Image { ext: "png", bytes, rect, size: [DIAGRAM_PT, DIAGRAM_PT], rotation: 0.0 }),
-            }
-            top -= h + GAP;
-        }
-        pages.push(out);
     }
-    (pages, drawn)
+    let flow = FlowDoc { title: o.title.to_owned(), lang: o.lang.to_owned(), blocks };
+    // Nothing is embedded: a font a run names must be installed where the file is read.
+    let named = fonts(&flow);
+    if !named.is_empty() {
+        notes.push(format!("the document sets text in {}: it shows as meant only where the font is installed", named.join(", ")));
+    }
+    (flow, drawn)
 }

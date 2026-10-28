@@ -213,6 +213,109 @@ fn inlines_html(inlines: &[Inline], o: &HtmlOptions<'_>) -> String {
     out
 }
 
+/// The font a [`Span`] must be set in.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SpanFont {
+    /// The user's figurine font ([`HtmlOptions::text_font`]).
+    Figurines,
+    /// The user's sign font, ISChess ([`HtmlOptions::sign_font`]).
+    Signs,
+}
+
+/// A piece of a paragraph as a document writer sets it (Word and RTF, plan A8 P9a): prose, or
+/// chess (a move or an annotation, which spelling checks should skip), set in a font of its own
+/// when it needs one, or a link.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Span {
+    pub text: String,
+    pub chess: bool,
+    pub font: Option<SpanFont>,
+    pub link: Option<String>,
+}
+
+impl Span {
+    fn prose(text: impl Into<String>) -> Span {
+        Span { text: text.into(), chess: false, font: None, link: None }
+    }
+
+    fn chess(text: impl Into<String>, font: Option<SpanFont>) -> Span {
+        Span { text: text.into(), chess: true, font, link: None }
+    }
+}
+
+/// `spans` with `span` after them, joined to the last one when they read the same way.
+fn push_span(spans: &mut Vec<Span>, span: Span) {
+    if span.text.is_empty() {
+        return;
+    }
+    match spans.last_mut() {
+        Some(last) if last.chess == span.chess && last.font == span.font && last.link == span.link => last.text.push_str(&span.text),
+        _ => spans.push(span),
+    }
+}
+
+/// `inlines` as [`Span`]s, spaced as the HTML export spaces them, moves as `figurines` says:
+/// with a figurine font that draws pieces on letters (SemFig, `text_font` of role
+/// [`FontRole::Letters`]) and Unicode figurines, each piece letter is set in it, as the HTML's
+/// `fig` spans; with a Unicode figurine font, whole moves are; with the sign font, an annotation
+/// is its letter in it.
+pub fn spans(inlines: &[Inline], figurines: Figurines, text_font: Option<FontRole>, sign_font: bool) -> Vec<Span> {
+    let mut out = Vec::new();
+    let mut last = String::new();
+    for inline in inlines {
+        let mut mine = Vec::new();
+        let text = match inline {
+            Inline::Text { text, .. } => {
+                mine.push(Span::prose(text.clone()));
+                text.clone()
+            }
+            Inline::Move(m) => {
+                let letters = figurines == Figurines::Unicode && text_font == Some(FontRole::Letters);
+                match San::read(&m.san, Lang::En) {
+                    Ok(san) if letters => {
+                        let number = m.number.map(|n| n.text()).unwrap_or_default();
+                        let body = san.write(Lang::En, Style::Letters);
+                        push_span(&mut mine, Span::chess(number.clone(), None));
+                        for c in body.chars() {
+                            let font = matches!(c, 'K' | 'Q' | 'R' | 'B' | 'N').then_some(SpanFont::Figurines);
+                            push_span(&mut mine, Span::chess(c.to_string(), font));
+                        }
+                        format!("{number}{body}")
+                    }
+                    _ => {
+                        let shown = move_text(m, figurines);
+                        let unicode = figurines == Figurines::Unicode && text_font == Some(FontRole::Unicode);
+                        mine.push(Span::chess(shown.clone(), unicode.then_some(SpanFont::Figurines)));
+                        shown
+                    }
+                }
+            }
+            Inline::Nag { code, .. } => {
+                let glyph = pdfcraft_chess::nag::shown(*code);
+                match text_font::ischess_letter(*code).filter(|_| sign_font) {
+                    Some(letter) => mine.push(Span::chess(letter.to_string(), Some(SpanFont::Signs))),
+                    None => mine.push(Span::chess(glyph.clone(), None)),
+                }
+                glyph
+            }
+            Inline::Link { url, text, .. } => {
+                let link = safe_url(url).then(|| url.clone());
+                mine.push(Span { text: text.clone(), chess: false, font: None, link });
+                text.clone()
+            }
+        };
+        let glued = matches!(inline, Inline::Nag { .. }) || text.starts_with([')', ']', ',', '.', ';', ':', '!', '?']);
+        if !out.is_empty() && !glued && !last.ends_with(['(', '[', ' ']) {
+            push_span(&mut out, Span::prose(" "));
+        }
+        for span in mine {
+            push_span(&mut out, span);
+        }
+        last = text;
+    }
+    out
+}
+
 /// Inlines as plain text, spaced as [`super::plain_text`], with moves printed as `figurines`
 /// says: the text the Word and RTF exports set.
 pub fn plain_text_with(inlines: &[Inline], figurines: Figurines) -> String {
