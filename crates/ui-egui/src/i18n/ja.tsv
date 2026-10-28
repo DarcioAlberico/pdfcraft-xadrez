@@ -3230,3 +3230,15 @@ chess undo step	Clear drawings	描画の消去
 	· {n} of {m}	· {n}/{m}
 	Go to this page	このページへ移動
 	Diagram actions	局面図の操作
+# Plan A8 P2a2: the Diagrams panel's header.
+	Detect diagrams	局面図を検出
+	Where to detect	検出する範囲
+	Find the diagrams of the whole book and read their positions.	本全体の局面図を見つけて局面を読み取ります。
+	More chess actions	その他のチェス操作
+	Detecting… page {d} of {t}	検出中… {t} ページ中 {d} ページ
+	Stop (those found stay)	停止 (見つかったものは残ります)
+	Review now	今すぐ確認
+	Open the first diagram to review.	確認が必要な最初の局面図を開きます。
+	No diagrams detected yet. PdfCraft finds the diagrams and reads the positions. The whole book takes a few minutes.	まだ局面図は検出されていません。PdfCraft が局面図を見つけて局面を読み取ります。本全体では数分かかります。
+@plural	In the whole book ({n} page)|In the whole book ({n} pages)	本全体 ({n} ページ)
+@plural	{n} diagram|{n} diagrams	{n} 個の局面図

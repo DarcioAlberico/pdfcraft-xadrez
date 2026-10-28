@@ -3226,3 +3226,15 @@ chess undo step	Clear drawings	суреттерді өшіру
 	· {n} of {m}	· {n}/{m}
 	Go to this page	Осы бетке өту
 	Diagram actions	Диаграмма әрекеттері
+# Plan A8 P2a2: the Diagrams panel's header.
+	Detect diagrams	Диаграммаларды анықтау
+	Where to detect	Қай жерден анықтау
+	Find the diagrams of the whole book and read their positions.	Бүкіл кітаптың диаграммаларын тауып, позицияларын оқу.
+	More chess actions	Басқа шахмат әрекеттері
+	Detecting… page {d} of {t}	Анықталуда… бет {d}/{t}
+	Stop (those found stay)	Тоқтату (табылғандары қалады)
+	Review now	Қазір тексеру
+	Open the first diagram to review.	Тексерілетін бірінші диаграмманы ашу.
+	No diagrams detected yet. PdfCraft finds the diagrams and reads the positions. The whole book takes a few minutes.	Әзірге диаграмма анықталған жоқ. PdfCraft диаграммаларды тауып, позицияларды оқиды. Бүкіл кітап бірнеше минут алады.
+@plural	In the whole book ({n} page)|In the whole book ({n} pages)	Бүкіл кітапта ({n} бет)|Бүкіл кітапта ({n} бет)
+@plural	{n} diagram|{n} diagrams	{n} диаграмма|{n} диаграмма

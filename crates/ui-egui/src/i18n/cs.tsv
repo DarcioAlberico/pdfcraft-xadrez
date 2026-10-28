@@ -3302,3 +3302,15 @@ chess undo step	Clear drawings	smazání kreseb
 	· {n} of {m}	· {n} z {m}
 	Go to this page	Přejít na tuto stranu
 	Diagram actions	Akce diagramu
+# Plan A8 P2a2: the Diagrams panel's header.
+	Detect diagrams	Najít diagramy
+	Where to detect	Kde hledat
+	Find the diagrams of the whole book and read their positions.	Najít diagramy v celé knize a přečíst jejich pozice.
+	More chess actions	Další šachové akce
+	Detecting… page {d} of {t}	Hledání… strana {d} z {t}
+	Stop (those found stay)	Zastavit (nalezené zůstanou)
+	Review now	Zkontrolovat teď
+	Open the first diagram to review.	Otevřít první diagram ke kontrole.
+	No diagrams detected yet. PdfCraft finds the diagrams and reads the positions. The whole book takes a few minutes.	Zatím nebyly nalezeny žádné diagramy. PdfCraft najde diagramy a přečte pozice. Celá kniha trvá několik minut.
+@plural	In the whole book ({n} page)|In the whole book ({n} pages)	V celé knize ({n} strana)|V celé knize ({n} strany)|V celé knize ({n} stran)
+@plural	{n} diagram|{n} diagrams	{n} diagram|{n} diagramy|{n} diagramů

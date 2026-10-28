@@ -202,15 +202,18 @@ fn figurines(ctx: &egui::Context) -> Figurines {
 
 /// The Export… menu.
 pub fn export_menu(ui: &mut egui::Ui) -> Option<TextAction> {
+    ui.menu_button(tl!("Export…"), export_items).inner.flatten()
+}
+
+/// The export menu's items, one per format (in a menu that `ui` is).
+pub(crate) fn export_items(ui: &mut egui::Ui) -> Option<TextAction> {
     let mut action = None;
-    ui.menu_button(tl!("Export…"), |ui| {
-        for f in ChessFormat::ALL {
-            if ui.button(crate::i18n::fmt(tl!("Export as {f}"), &[("f", f.name())])).clicked() {
-                action = Some(TextAction::Export(f));
-                ui.close();
-            }
+    for f in ChessFormat::ALL {
+        if ui.button(crate::i18n::fmt(tl!("Export as {f}"), &[("f", f.name())])).clicked() {
+            action = Some(TextAction::Export(f));
+            ui.close();
         }
-    });
+    }
     action
 }
 

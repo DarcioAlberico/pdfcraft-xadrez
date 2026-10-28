@@ -3480,3 +3480,15 @@ chess undo step	Clear drawings	piešinių valymą
 	· {n} of {m}	· {n} iš {m}
 	Go to this page	Eiti į šį puslapį
 	Diagram actions	Diagramos veiksmai
+# Plan A8 P2a2: the Diagrams panel's header.
+	Detect diagrams	Aptikti diagramas
+	Where to detect	Kur aptikti
+	Find the diagrams of the whole book and read their positions.	Rasti visos knygos diagramas ir perskaityti jų pozicijas.
+	More chess actions	Daugiau šachmatų veiksmų
+	Detecting… page {d} of {t}	Aptinkama… {d} puslapis iš {t}
+	Stop (those found stay)	Sustabdyti (rasti lieka)
+	Review now	Peržiūrėti dabar
+	Open the first diagram to review.	Atverti pirmą peržiūrėtiną diagramą.
+	No diagrams detected yet. PdfCraft finds the diagrams and reads the positions. The whole book takes a few minutes.	Diagramų dar neaptikta. PdfCraft randa diagramas ir perskaito pozicijas. Visa knyga užtrunka kelias minutes.
+@plural	In the whole book ({n} page)|In the whole book ({n} pages)	Visoje knygoje ({n} puslapis)|Visoje knygoje ({n} puslapiai)|Visoje knygoje ({n} puslapių)
+@plural	{n} diagram|{n} diagrams	{n} diagrama|{n} diagramos|{n} diagramų

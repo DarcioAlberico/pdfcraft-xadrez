@@ -3227,3 +3227,15 @@ chess undo step	Clear drawings	rajzok törlése
 	· {n} of {m}	· {n} / {m}
 	Go to this page	Ugrás erre az oldalra
 	Diagram actions	Diagram műveletei
+# Plan A8 P2a2: the Diagrams panel's header.
+	Detect diagrams	Diagramok felismerése
+	Where to detect	Hol keressen
+	Find the diagrams of the whole book and read their positions.	Az egész könyv diagramjainak megkeresése és állásaik beolvasása.
+	More chess actions	További sakkműveletek
+	Detecting… page {d} of {t}	Felismerés… {d}. / {t} oldal
+	Stop (those found stay)	Leállítás (a találtak megmaradnak)
+	Review now	Ellenőrzés most
+	Open the first diagram to review.	Az első ellenőrizendő diagram megnyitása.
+	No diagrams detected yet. PdfCraft finds the diagrams and reads the positions. The whole book takes a few minutes.	Még nincs felismert diagram. A PdfCraft megkeresi a diagramokat és beolvassa az állásokat. Az egész könyv néhány percig tart.
+@plural	In the whole book ({n} page)|In the whole book ({n} pages)	Az egész könyvben ({n} oldal)|Az egész könyvben ({n} oldal)
+@plural	{n} diagram|{n} diagrams	{n} diagram|{n} diagram

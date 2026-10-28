@@ -3233,3 +3233,15 @@ chess undo step	Clear drawings	odstranjevanje risb
 	· {n} of {m}	· {n} od {m}
 	Go to this page	Pojdi na to stran
 	Diagram actions	Dejanja diagrama
+# Plan A8 P2a2: the Diagrams panel's header.
+	Detect diagrams	Zaznaj diagrame
+	Where to detect	Kje zaznati
+	Find the diagrams of the whole book and read their positions.	Poišči diagrame v vsej knjigi in preberi njihove pozicije.
+	More chess actions	Več šahovskih dejanj
+	Detecting… page {d} of {t}	Zaznavanje … stran {d} od {t}
+	Stop (those found stay)	Ustavi (najdeni ostanejo)
+	Review now	Preglej zdaj
+	Open the first diagram to review.	Odpri prvi diagram za pregled.
+	No diagrams detected yet. PdfCraft finds the diagrams and reads the positions. The whole book takes a few minutes.	Diagramov še ni zaznanih. PdfCraft najde diagrame in prebere pozicije. Vsa knjiga traja nekaj minut.
+@plural	In the whole book ({n} page)|In the whole book ({n} pages)	V vsej knjigi ({n} stran)|V vsej knjigi ({n} strani)|V vsej knjigi ({n} strani)|V vsej knjigi ({n} strani)
+@plural	{n} diagram|{n} diagrams	{n} diagram|{n} diagrama|{n} diagrami|{n} diagramov

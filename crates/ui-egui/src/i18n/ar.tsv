@@ -3504,3 +3504,15 @@ chess undo step	Clear drawings	مسح الرسوم
 	· {n} of {m}	· {n} من {m}
 	Go to this page	الانتقال إلى هذه الصفحة
 	Diagram actions	إجراءات المخطط
+# Plan A8 P2a2: the Diagrams panel's header.
+	Detect diagrams	اكتشاف المخططات
+	Where to detect	أين يتم الاكتشاف
+	Find the diagrams of the whole book and read their positions.	العثور على مخططات الكتاب كله وقراءة أوضاعها.
+	More chess actions	مزيد من إجراءات الشطرنج
+	Detecting… page {d} of {t}	جارٍ الاكتشاف… الصفحة {d} من {t}
+	Stop (those found stay)	إيقاف (يبقى ما وُجد)
+	Review now	المراجعة الآن
+	Open the first diagram to review.	فتح أول مخطط للمراجعة.
+	No diagrams detected yet. PdfCraft finds the diagrams and reads the positions. The whole book takes a few minutes.	لم تُكتشف مخططات بعد. يعثر PdfCraft على المخططات ويقرأ الأوضاع. يستغرق الكتاب كله بضع دقائق.
+@plural	In the whole book ({n} page)|In the whole book ({n} pages)	في الكتاب كله ({n} صفحات)|في الكتاب كله ({n} صفحة)|في الكتاب كله ({n} صفحتان)|في الكتاب كله ({n} صفحات)|في الكتاب كله ({n} صفحة)|في الكتاب كله ({n} صفحة)
+@plural	{n} diagram|{n} diagrams	{n} مخططات|{n} مخطط|{n} مخططان|{n} مخططات|{n} مخططًا|{n} مخطط

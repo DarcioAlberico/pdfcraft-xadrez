@@ -21,9 +21,9 @@ use pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::{PieceChoice, 
 use pdfcraft_engine::chess::{ChessModels, ChessPage, ChessScan, ChessScanJob, ModelState, ScanStamp};
 use pdfcraft_render::DocInfo;
 
+use crate::PdfCraftApp;
 use crate::canvas::PageXform;
 use crate::theme::{self, Tokens};
-use crate::{PdfCraftApp, widgets};
 
 /// Pages scanned per job. Each job opens the file in its own renderer, so smaller batches show
 /// results sooner and larger ones parse the file fewer times.
@@ -342,6 +342,8 @@ pub enum PanelAction {
     Models,
     /// Go to this page (0-based): its header in the list was clicked (plan A8, P2a1).
     GoToPage(usize),
+    /// Review now: open the first diagram of the review queue (plan A8, P2a2).
+    ReviewNow,
 }
 
 /// One diagram's state: its label, and its mark's colour from the theme's state tokens (plan A8
@@ -505,42 +507,9 @@ pub(crate) fn tab_contents(
         let s = lock(&r.progress);
         (s.done, s.total)
     });
-    ui.horizontal_wrapped(|ui| {
-        ui.add_enabled_ui(state.run.is_none(), |ui| {
-            if widgets::pill_button(ui, tl!("Scan this page"), true).clicked() {
-                action = Some(PanelAction::ScanPage);
-            }
-            if widgets::pill_button(ui, tl!("Scan all pages"), false).clicked() {
-                action = Some(PanelAction::ScanAll);
-            }
-        });
-        if let Some(a) = crate::chess_text_ui::export_menu(ui) {
-            action = Some(PanelAction::Text(a));
-        }
-        if ui.button(tl!("Chess board")).on_hover_text(tl!("Show the analysis board. Double-click a diagram on the page to load it there.")).clicked()
-        {
-            action = Some(PanelAction::ShowBoard);
-        }
-        if ui.button(tl!("Chess models…")).on_hover_text(tl!("Choose the piece and glyph models that read diagrams and chess text.")).clicked() {
-            action = Some(PanelAction::Models);
-        }
-    });
-    if let Some((done, total)) = running {
-        ui.add_space(4.0);
-        ui.horizontal(|ui| {
-            ui.spinner();
-            ui.label(
-                egui::RichText::new(crate::i18n::fmt(
-                    tl!("Scanning for diagrams… page {d} of {t}"),
-                    &[("d", &(done + 1).min(total.max(1)).to_string()), ("t", &total.max(1).to_string())],
-                ))
-                .small()
-                .color(t.text_muted),
-            );
-            if ui.button(tl!("Cancel")).clicked() {
-                action = Some(PanelAction::Cancel);
-            }
-        });
+    // The header: Detect diagrams ▾, the export, board and models buttons, the progress (P2a2).
+    if let Some(a) = crate::chess_panel_head::header(ui, t, state.run.is_some(), info.pages.len(), running) {
+        action = Some(a);
     }
     ui.add_space(6.0);
     // The diagrams with unconfirmed changes, marked in the list (P3b3).
@@ -548,7 +517,7 @@ pub(crate) fn tab_contents(
     let mine = state.results.as_mut().filter(|r| r.doc == id);
     let Some(results) = mine else {
         if running.is_none() {
-            ui.label(egui::RichText::new(tl!("Scan this page or all pages to find the chess diagrams in this document.")).color(t.text_muted));
+            crate::chess_panel_head::empty(ui, t);
         }
         return action;
     };
@@ -577,8 +546,15 @@ pub(crate) fn tab_contents(
         ui.add_space(4.0);
         ui.label(tl!("No diagrams found."));
     }
-    // The selected diagram's editor (S17), above the list.
+    // What the scan found, and Review now (P2a2).
     let queue = results.review_queue();
+    if running.is_none() && results.count() > 0 && Some(results.stamp) == current {
+        ui.add_space(2.0);
+        if let Some(a) = crate::chess_panel_head::summary(ui, t, results.count(), queue.len()) {
+            action = Some(a);
+        }
+    }
+    // The selected diagram's editor (S17), above the list.
     if let Some(ed) = state.editor.as_mut().filter(|e| state.classic_editor && e.doc == id && Some(results.stamp) == current) {
         ui.separator();
         let pieces = crate::chess_editor::piece_set(&mut state.pieces, &state.diagram_piece_choice, &mut state.diagram_piece_error);
@@ -967,6 +943,11 @@ impl PdfCraftApp {
             PanelAction::Text(a) => self.chess_text_action(a),
             PanelAction::DockWindow => self.bring_back_chess_window(),
             PanelAction::Models => self.choose_chess_models(),
+            PanelAction::ReviewNow => {
+                if let Some((page, index)) = self.chess.results.as_ref().and_then(|r| r.review_queue().first().copied()) {
+                    self.edit_chess_diagram(page, index, true);
+                }
+            }
             PanelAction::GoToPage(page) => {
                 if let Some(view) = self.active_ids().and_then(|(vi, _)| self.views.get_mut(vi)) {
                     view.go_to_page(page);

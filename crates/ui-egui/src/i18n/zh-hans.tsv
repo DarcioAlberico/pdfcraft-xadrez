@@ -3192,3 +3192,15 @@ chess undo step	Clear drawings	清除标记
 	· {n} of {m}	· 第 {n} 页，共 {m} 页
 	Go to this page	转到此页
 	Diagram actions	局面图操作
+# Plan A8 P2a2: the Diagrams panel's header.
+	Detect diagrams	检测局面图
+	Where to detect	检测范围
+	Find the diagrams of the whole book and read their positions.	找出整本书的局面图并读取局面。
+	More chess actions	更多国际象棋操作
+	Detecting… page {d} of {t}	正在检测… 第 {d} 页，共 {t} 页
+	Stop (those found stay)	停止（已找到的保留）
+	Review now	立即检查
+	Open the first diagram to review.	打开第一个待检查的局面图。
+	No diagrams detected yet. PdfCraft finds the diagrams and reads the positions. The whole book takes a few minutes.	尚未检测到局面图。PdfCraft 会找出局面图并读取局面。整本书需要几分钟。
+@plural	In the whole book ({n} page)|In the whole book ({n} pages)	整本书（{n} 页）
+@plural	{n} diagram|{n} diagrams	{n} 个局面图

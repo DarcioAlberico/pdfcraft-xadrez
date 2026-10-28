@@ -3482,3 +3482,15 @@ chess undo step	Clear drawings	xóa hình vẽ
 	· {n} of {m}	· {n}/{m}
 	Go to this page	Đi tới trang này
 	Diagram actions	Thao tác sơ đồ
+# Plan A8 P2a2: the Diagrams panel's header.
+	Detect diagrams	Phát hiện sơ đồ
+	Where to detect	Phát hiện ở đâu
+	Find the diagrams of the whole book and read their positions.	Tìm các sơ đồ trong cả cuốn sách và đọc thế cờ của chúng.
+	More chess actions	Thêm thao tác cờ vua
+	Detecting… page {d} of {t}	Đang phát hiện… trang {d}/{t}
+	Stop (those found stay)	Dừng (các sơ đồ đã tìm được vẫn giữ)
+	Review now	Xem lại ngay
+	Open the first diagram to review.	Mở sơ đồ đầu tiên cần xem lại.
+	No diagrams detected yet. PdfCraft finds the diagrams and reads the positions. The whole book takes a few minutes.	Chưa phát hiện sơ đồ nào. PdfCraft tìm các sơ đồ và đọc thế cờ. Cả cuốn sách mất vài phút.
+@plural	In the whole book ({n} page)|In the whole book ({n} pages)	Trong cả cuốn sách ({n} trang)
+@plural	{n} diagram|{n} diagrams	{n} sơ đồ

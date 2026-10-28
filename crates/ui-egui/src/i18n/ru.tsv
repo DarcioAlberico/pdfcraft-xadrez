@@ -3141,3 +3141,15 @@ chess undo step	Clear drawings	удаление рисунков
 	· {n} of {m}	· {n} из {m}
 	Go to this page	Перейти на эту страницу
 	Diagram actions	Действия с диаграммой
+# Plan A8 P2a2: the Diagrams panel's header.
+	Detect diagrams	Найти диаграммы
+	Where to detect	Где искать
+	Find the diagrams of the whole book and read their positions.	Найти диаграммы во всей книге и прочитать их позиции.
+	More chess actions	Другие шахматные действия
+	Detecting… page {d} of {t}	Поиск… страница {d} из {t}
+	Stop (those found stay)	Остановить (найденное остаётся)
+	Review now	Проверить сейчас
+	Open the first diagram to review.	Открыть первую диаграмму для проверки.
+	No diagrams detected yet. PdfCraft finds the diagrams and reads the positions. The whole book takes a few minutes.	Диаграммы ещё не найдены. PdfCraft находит диаграммы и читает позиции. Вся книга занимает несколько минут.
+@plural	In the whole book ({n} page)|In the whole book ({n} pages)	Во всей книге ({n} страница)|Во всей книге ({n} страницы)|Во всей книге ({n} страниц)
+@plural	{n} diagram|{n} diagrams	{n} диаграмма|{n} диаграммы|{n} диаграмм

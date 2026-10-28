@@ -3224,3 +3224,15 @@ chess undo step	Clear drawings	çizimleri temizleme
 	· {n} of {m}	· {n}/{m}
 	Go to this page	Bu sayfaya git
 	Diagram actions	Diyagram eylemleri
+# Plan A8 P2a2: the Diagrams panel's header.
+	Detect diagrams	Diyagramları algıla
+	Where to detect	Nerede algılansın
+	Find the diagrams of the whole book and read their positions.	Tüm kitabın diyagramlarını bul ve konumlarını oku.
+	More chess actions	Diğer satranç eylemleri
+	Detecting… page {d} of {t}	Algılanıyor… sayfa {d}/{t}
+	Stop (those found stay)	Durdur (bulunanlar kalır)
+	Review now	Şimdi incele
+	Open the first diagram to review.	İncelenecek ilk diyagramı aç.
+	No diagrams detected yet. PdfCraft finds the diagrams and reads the positions. The whole book takes a few minutes.	Henüz diyagram algılanmadı. PdfCraft diyagramları bulur ve konumları okur. Tüm kitap birkaç dakika sürer.
+@plural	In the whole book ({n} page)|In the whole book ({n} pages)	Tüm kitapta ({n} sayfa)
+@plural	{n} diagram|{n} diagrams	{n} diyagram
