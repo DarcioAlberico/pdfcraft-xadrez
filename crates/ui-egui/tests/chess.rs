@@ -530,6 +530,42 @@ fn the_editor_links_the_corrected_position() {
     assert_eq!(links[0].action, pdfcraft_engine::LinkAction::Uri("https://lichess.org/analysis/4k3/8/8/8/8/8/8/R3K3%20w%20Q%20-%200%201".into()));
 }
 
+/// The Diagrams panel's header (plan A8, P2a2): before any scan it says what detecting does;
+/// Detect diagrams ▾ offers the whole book (with its page count) or this page; once the scan is
+/// done the panel sums it up ("2 diagrams · 1 to review") and Review now opens the first diagram
+/// to review in the Diagram tab.
+#[test]
+fn the_panel_header_detects_and_sums_up() {
+    let mut h = harness();
+    assert!(h.state_mut().execute("chess.panel"));
+    h.run_steps(2);
+    h.get_by_label_contains("No diagrams detected yet.");
+    h.get_by_label("Where to detect").click();
+    h.run_steps(2);
+    h.get_by_label("In the whole book (1 page)");
+    h.get_by_label("On this page").click();
+    h.run_steps(3);
+    assert_eq!(diagrams(&h), 2, "this page was scanned");
+    assert!(!h.state().chess.results.as_ref().unwrap().all, "this page, not the whole book");
+    let queue = h.state().chess.results.as_ref().unwrap().review_queue();
+    if queue.is_empty() {
+        // With the user's piece model installed the drawn board may be read and accepted.
+        h.get_by_label("2 diagrams");
+        assert!(h.query_by_label("Review now").is_none());
+        return;
+    }
+    h.get_by_label("2 diagrams · 1 to review");
+    h.get_by_label("Review now").click();
+    h.run_steps(3);
+    let ed = h.state().chess.editor.as_ref().expect("the first to review opens");
+    assert_eq!((ed.page, ed.index), (0, 1));
+    assert!(h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Diagram), "in the Diagram tab");
+    // The main button detects in the whole book.
+    h.get_by_label("Detect diagrams").click();
+    h.run_steps(3);
+    assert!(h.state().chess.results.as_ref().unwrap().all, "the whole book");
+}
+
 /// The review queue: only the drawn board (no model read it) needs review; the list can show
 /// only it, and Next goes to it.
 #[test]
@@ -2557,7 +2593,7 @@ fn a_wide_window_has_a_larger_board_beside_the_diagrams() {
     assert!(h.state().chess_window_wide());
     let board = h.get_by_label_contains("Board: ").rect();
     assert!(board.width() > 480.0, "{board:?}");
-    let scan = h.get_by_label("Scan this page").rect();
+    let scan = h.get_by_label("Detect diagrams").rect();
     assert!(scan.min.x > board.max.x && scan.min.y < board.max.y, "the Diagrams tab beside the board: {scan:?} {board:?}");
     let moves = h.get_by_label("Moves").rect();
     assert!(moves.min.y > board.max.y && moves.max.x < scan.min.x, "the moves under the board: {moves:?} {board:?}");
@@ -2570,7 +2606,7 @@ fn a_wide_window_has_a_larger_board_beside_the_diagrams() {
     let moves = h.get_by_label("Moves").rect();
     assert!(moves.min.x > board.max.x && moves.min.y < board.center().y, "the moves beside the board: {moves:?} {board:?}");
     assert!(moves.height() > 300.0, "the notation fills the column: {moves:?}");
-    let scan = h.get_by_label("Scan this page").rect();
+    let scan = h.get_by_label("Detect diagrams").rect();
     assert!(scan.min.x > moves.max.x, "and the Diagrams tab beside them: {scan:?} {moves:?}");
     // The study board's Analysis section heads that column (T5c); the set-up view takes the
     // board's place in its own column, and the moves stay beside it.
@@ -2590,7 +2626,7 @@ fn a_wide_window_has_a_larger_board_beside_the_diagrams() {
     assert!(!h.state().chess_window_wide());
     let board = h.get_by_label_contains("Board: ").rect();
     assert!(board.width() <= 520.0, "{board:?}");
-    assert!(h.query_by_label("Scan this page").is_none(), "one tab at a time");
+    assert!(h.query_by_label("Detect diagrams").is_none(), "one tab at a time");
 }
 
 /// The node labelled `label` in the chess window (the Inspector's Chess panel has some of the
@@ -2617,14 +2653,14 @@ fn the_chess_panel_moves_to_the_window_and_the_inspector_says_so() {
     let item = h.get_by_label("Diagram 1 · Position read").rect();
     assert!(item.min.x > board.max.x, "the list beside the board, once: {item:?} {board:?}");
     h.get_by_label("The chess panel is in its own window.");
-    assert_eq!(h.get_all_by_label("Scan this page").count(), 1, "the Diagrams tab is drawn once");
+    assert_eq!(h.get_all_by_label("Detect diagrams").count(), 1, "the Diagrams tab is drawn once");
     // The Text tab beside the board, chosen in the window.
     in_window(&h, "Text").click();
     h.run_steps(4);
     assert_eq!(h.state().chess_window_tab(), pdfcraft_ui_egui::ChessWindowTab::Text);
     h.get_by_label("Recognised text of page 1");
     h.get_by_label_contains("Board: ");
-    assert!(h.query_by_label("Scan this page").is_none());
+    assert!(h.query_by_label("Detect diagrams").is_none());
     // The Inspector brings it back. (Its button is under the window here, which kittest draws
     // inside the main one: pressed the way a screen reader would.)
     h.get_by_label("Bring it back").click_accesskit();
@@ -2753,7 +2789,7 @@ fn a_narrow_window_switches_tabs_and_follows_the_diagrams_picked_on_the_page() {
     assert!(!h.state().chess_window_wide());
     assert_eq!(h.state().chess_window_tab(), ChessWindowTab::Board);
     h.get_by_label_contains("Board: ");
-    assert!(h.query_by_label("Scan this page").is_none(), "one tab at a time");
+    assert!(h.query_by_label("Detect diagrams").is_none(), "one tab at a time");
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
     assert_ne!(h.state().right, Some(RightPanel::Chess), "the diagrams are in the window, not the Inspector");

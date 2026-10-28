@@ -62,6 +62,61 @@ pub enum Kind {
     Corrected,
 }
 
+/// What became of a diagram, as the Chess diagrams panel shows it and `chess_diagram_states`
+/// counts it (plan A8, P2a2): what the user did with it outranks the reading.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Status {
+    /// Read with confidence (the reading passed the gate).
+    Read,
+    /// Read, with a doubt on some square or a repair: to review.
+    Review,
+    /// Not read yet, or no piece model to read it.
+    Unread,
+    /// The reading failed.
+    Error,
+    /// The user looked and kept the reading.
+    Verified,
+    /// The user changed the position.
+    Corrected,
+}
+
+impl Status {
+    /// Every status, in the order the panel's chips show them.
+    pub const ALL: [Status; 6] = [Status::Read, Status::Review, Status::Verified, Status::Corrected, Status::Unread, Status::Error];
+
+    /// The status of a diagram read as `reading` (`None`: not read), after what the user did
+    /// with it (`kind`).
+    pub fn of(reading: Option<&pdfcraft_chessvision::board::BoardReading>, kind: Option<Kind>) -> Status {
+        use pdfcraft_chessvision::board::Unreadable;
+        match (kind, reading.map(|r| &r.outcome)) {
+            (Some(Kind::Corrected), _) => Status::Corrected,
+            (Some(Kind::Verified), _) => Status::Verified,
+            (None, Some(Ok(p))) if p.accepted => Status::Read,
+            (None, Some(Ok(_))) => Status::Review,
+            (None, Some(Err(Unreadable::NoModel)) | None) => Status::Unread,
+            (None, Some(Err(_))) => Status::Error,
+        }
+    }
+
+    /// Its name in the tools' replies.
+    pub fn name(self) -> &'static str {
+        match self {
+            Status::Read => "read",
+            Status::Review => "review",
+            Status::Unread => "unread",
+            Status::Error => "error",
+            Status::Verified => "verified",
+            Status::Corrected => "corrected",
+        }
+    }
+
+    /// Whether a diagram in this status is in the review queue: not confirmed, and not read with
+    /// confidence.
+    pub fn to_review(self) -> bool {
+        matches!(self, Status::Review | Status::Unread | Status::Error)
+    }
+}
+
 /// The reading a correction replaced.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Original {

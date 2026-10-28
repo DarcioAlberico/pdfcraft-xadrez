@@ -2,8 +2,8 @@
 //! mark and editor shows it with. A state is never colour alone: its icon and its name carry it.
 
 use egui::Color32;
-use pdfcraft_engine::chess::corrections::Kind;
-use pdfcraft_engine::chess::pdfcraft_chessvision::board::{BoardReading, Unreadable};
+use pdfcraft_engine::chess::corrections::{Kind, Status};
+use pdfcraft_engine::chess::pdfcraft_chessvision::board::BoardReading;
 
 use crate::theme::Tokens;
 
@@ -25,15 +25,16 @@ pub(crate) enum DiagramState {
 }
 
 impl DiagramState {
-    /// The state of `reading`, after what the user did with it (`kind`, from the corrections).
+    /// The state of `reading`, after what the user did with it (`kind`, from the corrections):
+    /// the engine's rule ([`Status::of`]), which `chess_diagram_states` counts by too.
     pub(crate) fn of(reading: Option<&BoardReading>, kind: Option<Kind>) -> DiagramState {
-        match (kind, reading.map(|r| &r.outcome)) {
-            (Some(Kind::Corrected), _) => DiagramState::Corrected,
-            (Some(Kind::Verified), _) => DiagramState::Verified,
-            (None, Some(Ok(p))) if p.accepted => DiagramState::Read,
-            (None, Some(Ok(_))) => DiagramState::Review,
-            (None, Some(Err(Unreadable::NoModel)) | None) => DiagramState::Unread,
-            (None, Some(Err(_))) => DiagramState::Error,
+        match Status::of(reading, kind) {
+            Status::Read => DiagramState::Read,
+            Status::Review => DiagramState::Review,
+            Status::Unread => DiagramState::Unread,
+            Status::Error => DiagramState::Error,
+            Status::Verified => DiagramState::Verified,
+            Status::Corrected => DiagramState::Corrected,
         }
     }
 

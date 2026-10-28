@@ -22,6 +22,7 @@ mod chess_corrections;
 mod chess_games;
 mod chess_pgn;
 mod chess_sample;
+mod chess_states;
 mod comments;
 mod content;
 mod conventions;
@@ -824,6 +825,7 @@ impl Automation {
             "ocr_recognize_files" => self.ocr_recognize_files(&a)?,
             "chess_detect" => self.chess_detect(&a)?,
             "chess_read" => self.chess_read(&a)?,
+            "chess_diagram_states" => self.chess_diagram_states(&a)?,
             "chess_read_area" => self.chess_read_area(&a)?,
             "chess_status" => self.chess_status(&a)?,
             "chess_pieces" => self.chess_pieces()?,

@@ -66,6 +66,8 @@ fn the_chosen_models_folder_is_checked_shown_and_remembered() {
     assert!(h.state_mut().execute("chess.panel"));
     h.run_steps(3);
     h.state_mut().pick_override = Some(vec![dir.display().to_string()]);
+    h.get_by_label("More chess actions").click();
+    h.run_steps(2);
     h.get_by_label("Chess models…").click();
     h.run_steps(3);
     assert_eq!(h.state().chess.models.folder.as_deref(), Some(dir.as_path()));

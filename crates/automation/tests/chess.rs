@@ -2165,6 +2165,40 @@ fn diagram_corrections_are_kept_found_again_and_confined() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// Plan A8, P2a2: chess_diagram_states counts the diagrams by the Chess diagrams panel's rule,
+/// with the corrections kept for the document (unless corrections is false), and its store stays
+/// inside the root.
+#[test]
+fn chess_diagram_states_counts_by_the_panels_rule_with_the_corrections() {
+    const KINGS: &str = "4k3/8/8/8/8/8/8/R3K3 w Q - 0 1";
+    let (base, root) = workdir("states");
+    let (mut a, doc) = opened(&root);
+    let states = |v: &Value| ["read", "review", "verified", "corrected", "unread", "error"].map(|s| v["states"][s].as_u64().unwrap_or(99));
+    // No piece model: the font diagram is read, the drawn board and the image are not.
+    let before = ok(&mut a, "chess_diagram_states", json!({ "doc": doc, "models_dir": "models" }));
+    assert_eq!((before["diagrams"].as_u64(), before["to_review"].as_u64()), (Some(3), Some(2)), "{before:#}");
+    assert_eq!(states(&before), [1, 0, 0, 0, 2, 0], "{before:#}");
+    assert_eq!((before["pages"][0]["page"].as_u64(), before["pages"][0]["diagrams"].as_u64()), (Some(1), Some(3)));
+    assert_eq!(before["corrections"]["kept"], 0);
+    // The drawn board corrected and the font diagram verified: the corrections outrank the readings.
+    ok(&mut a, "chess_correction_set", json!({ "doc": doc, "page": 1, "index": 2, "fen": KINGS, "models_dir": "models" }));
+    ok(&mut a, "chess_correction_set", json!({ "doc": doc, "page": 1, "index": 1, "kind": "verified", "models_dir": "models" }));
+    let after = ok(&mut a, "chess_diagram_states", json!({ "doc": doc, "models_dir": "models" }));
+    assert_eq!(states(&after), [0, 0, 1, 1, 1, 0], "{after:#}");
+    assert_eq!((after["to_review"].as_u64(), after["corrections"]["kept"].as_u64()), (Some(1), Some(2)), "{after:#}");
+    assert_eq!(states(&after["pages"][0]), [0, 0, 1, 1, 1, 0]);
+    // Without the corrections, the readings alone.
+    let without = ok(&mut a, "chess_diagram_states", json!({ "doc": doc, "models_dir": "models", "corrections": false }));
+    assert_eq!(states(&without), [1, 0, 0, 0, 2, 0], "{without:#}");
+    let outside = base.join("outside");
+    match a.call("chess_diagram_states", &json!({ "doc": doc, "store": outside.to_string_lossy() })) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{m}"),
+        other => panic!("a store outside the root accepted: {other:?}"),
+    }
+    assert!(std::fs::read_dir(&outside).unwrap().next().is_none(), "nothing written outside");
+    let _ = std::fs::remove_dir_all(base);
+}
+
 /// Plan A8, P3a3: a correction kept for the document wins over the reading in the recognised
 /// document, the exports and the lichess links, and is never lost to an edit, an undo, a save,
 /// closing and reopening.

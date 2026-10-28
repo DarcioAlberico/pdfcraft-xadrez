@@ -3200,3 +3200,15 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	· {n} of {m}	· {n} από {m}
 	Go to this page	Μετάβαση σε αυτή τη σελίδα
 	Diagram actions	Ενέργειες διαγράμματος
+# Plan A8 P2a2: the Diagrams panel's header.
+	Detect diagrams	Εντοπισμός διαγραμμάτων
+	Where to detect	Πού να γίνει ο εντοπισμός
+	Find the diagrams of the whole book and read their positions.	Εύρεση των διαγραμμάτων όλου του βιβλίου και ανάγνωση των θέσεών τους.
+	More chess actions	Περισσότερες ενέργειες σκακιού
+	Detecting… page {d} of {t}	Εντοπισμός… σελίδα {d} από {t}
+	Stop (those found stay)	Διακοπή (όσα βρέθηκαν μένουν)
+	Review now	Έλεγχος τώρα
+	Open the first diagram to review.	Άνοιγμα του πρώτου διαγράμματος για έλεγχο.
+	No diagrams detected yet. PdfCraft finds the diagrams and reads the positions. The whole book takes a few minutes.	Δεν έχουν εντοπιστεί ακόμη διαγράμματα. Το PdfCraft βρίσκει τα διαγράμματα και διαβάζει τις θέσεις. Όλο το βιβλίο θέλει λίγα λεπτά.
+@plural	In the whole book ({n} page)|In the whole book ({n} pages)	Σε όλο το βιβλίο ({n} σελίδα)|Σε όλο το βιβλίο ({n} σελίδες)
+@plural	{n} diagram|{n} diagrams	{n} διάγραμμα|{n} διαγράμματα

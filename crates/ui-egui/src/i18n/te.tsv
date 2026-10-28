@@ -3103,3 +3103,15 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	· {n} of {m}	· {n} / {m}
 	Go to this page	ఈ పేజీకి వెళ్ళు
 	Diagram actions	చిత్రం చర్యలు
+# Plan A8 P2a2: the Diagrams panel's header.
+	Detect diagrams	చిత్రాలను గుర్తించు
+	Where to detect	ఎక్కడ గుర్తించాలి
+	Find the diagrams of the whole book and read their positions.	పుస్తకమంతటిలోని చదరంగ చిత్రాలను కనుగొని వాటి స్థితులను చదువు.
+	More chess actions	మరిన్ని చదరంగ చర్యలు
+	Detecting… page {d} of {t}	గుర్తిస్తోంది… {t} లో పేజీ {d}
+	Stop (those found stay)	ఆపు (కనుగొన్నవి ఉంటాయి)
+	Review now	ఇప్పుడే సమీక్షించు
+	Open the first diagram to review.	సమీక్షించాల్సిన మొదటి చిత్రాన్ని తెరువు.
+	No diagrams detected yet. PdfCraft finds the diagrams and reads the positions. The whole book takes a few minutes.	ఇంకా చిత్రాలు గుర్తించబడలేదు. PdfCraft చిత్రాలను కనుగొని స్థితులను చదువుతుంది. పుస్తకమంతా కొన్ని నిమిషాలు పడుతుంది.
+@plural	In the whole book ({n} page)|In the whole book ({n} pages)	పుస్తకమంతటిలో ({n} పేజీ)|పుస్తకమంతటిలో ({n} పేజీలు)
+@plural	{n} diagram|{n} diagrams	{n} చిత్రం|{n} చిత్రాలు

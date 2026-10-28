@@ -3229,3 +3229,15 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	· {n} of {m}	· {n} von {m}
 	Go to this page	Zu dieser Seite
 	Diagram actions	Diagrammaktionen
+# Plan A8 P2a2: the Diagrams panel's header.
+	Detect diagrams	Diagramme erkennen
+	Where to detect	Wo erkennen
+	Find the diagrams of the whole book and read their positions.	Die Diagramme des ganzen Buchs finden und ihre Stellungen lesen.
+	More chess actions	Weitere Schachaktionen
+	Detecting… page {d} of {t}	Erkennen… Seite {d} von {t}
+	Stop (those found stay)	Anhalten (Gefundenes bleibt)
+	Review now	Jetzt prüfen
+	Open the first diagram to review.	Das erste zu prüfende Diagramm öffnen.
+	No diagrams detected yet. PdfCraft finds the diagrams and reads the positions. The whole book takes a few minutes.	Noch keine Diagramme erkannt. PdfCraft findet die Diagramme und liest die Stellungen. Das ganze Buch dauert einige Minuten.
+@plural	In the whole book ({n} page)|In the whole book ({n} pages)	Im ganzen Buch ({n} Seite)|Im ganzen Buch ({n} Seiten)
+@plural	{n} diagram|{n} diagrams	{n} Diagramm|{n} Diagramme
