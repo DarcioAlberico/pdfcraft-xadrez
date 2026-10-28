@@ -244,7 +244,7 @@ Cada passo: **Contexto** (o que ler) · **Tarefas** · **Verificação** · **Sa
 
 **P9c — Menu, aviso de pendências e "Abrir pasta"** (precisa de P2a e P3a3).
 
-**P9d — Markdown.** §2.4 Markdown.
+**P9d — Markdown.** §2.4 Markdown. ✅ *Feito (2026-10-28): texto alternativo no idioma do livro com o número impresso da página e as peças de cada lado (`pdfcraft_chess::describe`, nos 18 idiomas de letras de peças, pronto para o `<title>`/`<desc>` do P9b); o FEN vai para o título da imagem (`![…](arquivo "FEN")`); diagrama não lido dito do mesmo jeito; front matter YAML com `title` e `lang`; `---` antes de cada capítulo (cada título do nível mais alto que o livro usa), não mais a cada página; pasta de imagens com `<>:"/\|?*` e caracteres de controle trocados por `_` (`markdown::image_folder`, usada pelo app, pela ferramenta e pelo motor).*
 
 **P10 — Textos, guia, aprendizado e medição.** §2.2 em todo o módulo; `docs/chess.md` (estados, cores, atalhos, "Revisar um livro em 5 passos"); dicas de primeira vez; roteiro de capturas e de **medição das jornadas** pelo canal de controle (saída registrada); teste com 3 usuários que não programam.
 

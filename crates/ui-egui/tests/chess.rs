@@ -645,7 +645,7 @@ fn export_writes_pgn_and_markdown_with_images() {
         "{pgn}"
     );
     let md = std::fs::read_to_string(dir.join("book.md")).unwrap();
-    assert!(md.contains("](book_diagrams/diagram-p0001-1.png)"), "{md}");
+    assert!(md.contains("](book_diagrams/diagram-p0001-1.png \""), "{md}");
     assert!(dir.join("book_diagrams").join("diagram-p0001-1.png").exists());
     let _ = std::fs::remove_dir_all(&dir);
 }

@@ -651,7 +651,7 @@ impl Automation {
         // Markdown's images go in a folder beside the file: `book.md` → `book_diagrams/`.
         let out = std::path::Path::new(&shown);
         let stem = out.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "document".into());
-        let image_dir = format!("{stem}_diagrams");
+        let image_dir = markdown::image_folder(&stem);
         let folder = if format == ChessFormat::Markdown && diagrams == DiagramMode::Svg {
             Some(self.resolve(&out.with_file_name(&image_dir).to_string_lossy(), true)?)
         } else {
