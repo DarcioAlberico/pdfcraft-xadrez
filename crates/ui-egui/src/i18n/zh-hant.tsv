@@ -3132,3 +3132,7 @@ chess undo step	Clear drawings	清除標記
 	Diagram {i} of {n} to review, page {p}	待檢查局面圖 {i}/{n}，第 {p} 頁
 	Diagram {n}, page {p}	局面圖 {n}，第 {p} 頁
 @plural	{n} doubtful square|{n} doubtful squares	{n} 個存疑格子
+	Copy the main line only	僅複製主線
+	Copy without comments	複製時不含註解
+	Copy without annotation glyphs	複製時不含評價符號
+	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	作為註解保留的變化：{n}（前面沒有著法，或巢狀超過 32 層）。

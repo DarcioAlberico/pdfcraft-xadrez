@@ -15,6 +15,7 @@
 
 use cozy_chess::Board;
 use pdfcraft_chess::nag::nags_from_suffix;
+use pdfcraft_chess::pgn_style::PgnStyle;
 use pdfcraft_chess::san::{Lang, San};
 
 use super::games::{GameResult, GameScore, MAX_GAME_NODES, MAX_NAGS, MAX_VARIATION_DEPTH, PlayError, Roster, Tag, append_comment, number_of};
@@ -53,18 +54,29 @@ pub enum PgnError {
 
 /// Every game, one after the other, separated by a blank line.
 pub fn write<'a>(games: impl IntoIterator<Item = &'a GameScore>) -> String {
+    write_with(games, PgnStyle::FULL)
+}
+
+/// [`write`] without what `style` leaves out of the moves (plan A8 V4).
+pub fn write_with<'a>(games: impl IntoIterator<Item = &'a GameScore>, style: PgnStyle) -> String {
     let mut out = String::new();
     for game in games {
         if !out.is_empty() {
             out.push('\n');
         }
-        out.push_str(&write_game(game));
+        out.push_str(&write_game_with(game, style));
     }
     out
 }
 
 /// One game: tags, a blank line, the movetext, a newline.
 pub fn write_game(game: &GameScore) -> String {
+    write_game_with(game, PgnStyle::FULL)
+}
+
+/// [`write_game`] without what `style` leaves out of the moves: the variations past its depth,
+/// the comments (the game's first one too), the glyphs. The tags are all written.
+pub fn write_game_with(game: &GameScore, style: PgnStyle) -> String {
     let mut out = String::new();
     let r = &game.roster;
     for (name, value) in [("Event", &r.event), ("Site", &r.site), ("Date", &r.date), ("Round", &r.round), ("White", &r.white), ("Black", &r.black)] {
@@ -82,10 +94,12 @@ pub fn write_game(game: &GameScore) -> String {
     }
     out.push('\n');
     let mut tokens: Vec<Tok> = Vec::new();
-    push_comment(&mut tokens, &game.comment);
+    if style.comments {
+        push_comment(&mut tokens, &game.comment);
+    }
     let mut seen = vec![false; game.nodes.len()];
     if let Some((&first, alternatives)) = game.roots.split_first() {
-        write_line(game, first, alternatives, 0, &mut tokens, &mut seen);
+        write_line(game, first, alternatives, 0, style, &mut tokens, &mut seen);
     }
     tokens.push(Tok::Word(game.result.as_pgn().to_owned()));
     wrap(&tokens, &mut out);
@@ -178,7 +192,7 @@ fn move_word(game: &GameScore, node: &super::games::Node) -> Option<String> {
     San::from_move(&before, found?).ok().map(|s| s.to_english())
 }
 
-fn write_line(game: &GameScore, start: usize, alternatives: &[usize], depth: usize, tokens: &mut Vec<Tok>, seen: &mut [bool]) {
+fn write_line(game: &GameScore, start: usize, alternatives: &[usize], depth: usize, style: PgnStyle, tokens: &mut Vec<Tok>, seen: &mut [bool]) {
     let (mut current, mut alternatives) = (start, alternatives);
     let mut number_black = true;
     loop {
@@ -189,10 +203,12 @@ fn write_line(game: &GameScore, start: usize, alternatives: &[usize], depth: usi
         let Some(node) = game.nodes.get(current) else { return };
         let Some(word) = move_word(game, node) else {
             // The line cannot go on past a move that cannot be named: say so where it stops.
-            push_comment(tokens, "(a move that cannot be written: no legal move reaches the position after it)");
+            if style.comments {
+                push_comment(tokens, "(a move that cannot be written: no legal move reaches the position after it)");
+            }
             return;
         };
-        if !node.comment_before.is_empty() {
+        if style.comments && !node.comment_before.is_empty() {
             push_comment(tokens, &node.comment_before);
             number_black = true;
         }
@@ -203,16 +219,18 @@ fn write_line(game: &GameScore, start: usize, alternatives: &[usize], depth: usi
             tokens.push(Tok::Word(format!("{}...", number.number)));
         }
         tokens.push(Tok::Word(word));
-        tokens.extend(node.nags.iter().map(|n| Tok::Word(format!("${n}"))));
+        if style.nags {
+            tokens.extend(node.nags.iter().map(|n| Tok::Word(format!("${n}"))));
+        }
         number_black = false;
-        if !node.comment.is_empty() {
+        if style.comments && !node.comment.is_empty() {
             push_comment(tokens, &node.comment);
             number_black = true;
         }
-        if depth < MAX_VARIATION_DEPTH {
+        if depth < MAX_VARIATION_DEPTH && style.keeps(depth.saturating_add(1)) {
             for &alt in alternatives {
                 tokens.push(Tok::Open);
-                write_line(game, alt, &[], depth + 1, tokens, seen);
+                write_line(game, alt, &[], depth + 1, style, tokens, seen);
                 tokens.push(Tok::Close);
                 number_black = true;
             }

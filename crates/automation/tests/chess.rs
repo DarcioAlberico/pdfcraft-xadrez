@@ -762,6 +762,12 @@ fn chess_export_markdown_and_pgn_write_inside_the_root() {
     let none = ok(&mut a, "chess_export_pgn", json!({ "doc": doc, "out": "none.pgn", "positions": "none" }));
     assert_eq!((none["position_games"].as_u64(), none["positions_skipped"].as_array().map(Vec::len)), (Some(0), Some(0)), "{none:#}");
     assert!(!std::fs::read_to_string(root.join("none.pgn")).unwrap().contains("[PdfDiagram"));
+    let bare = ok(&mut a, "chess_export_pgn", json!({ "doc": doc, "out": "bare.pgn", "comments": "none", "nags": "none", "variations": "main" }));
+    assert_eq!(bare["position_games"], 1, "{bare:#}");
+    let text = std::fs::read_to_string(root.join("bare.pgn")).unwrap();
+    assert!(games.contains('{') && !text.contains('{') && text.contains("[PdfDiagram \"1\"]"), "{text}");
+    let e = a.call("chess_export_pgn", &json!({ "doc": doc, "out": "x.pgn", "variations": "deep" })).unwrap_err();
+    assert!(e.to_string().contains("variations"), "{e}");
     let e = a.call("chess_export_pgn", &json!({ "doc": doc, "out": "x.pgn", "positions": "some" })).unwrap_err();
     assert!(e.to_string().contains("positions"), "{e}");
     for (tool, out) in [("chess_export_markdown", "../outside/x.md"), ("chess_export_pgn", "../outside/x.pgn")] {
@@ -937,6 +943,35 @@ fn variation_items() -> Value {
 const MAIN: &str = "18. Nd5 Qxe1 19. Nxe7+ Kh7 20. Raxe1";
 const WITH_VARIATION: &str =
     "18. Nd5 Qxe1 (18... Qd8 19. Bxf6 Bxf6 20. fxg6 (20. Nxf6+ exf6 21. Bxc4 Rxc4) 20... fxg6 21. Qg3 Kh7 22. e5) 19. Nxe7+ Kh7 20. Raxe1";
+
+/// Plan A8 V4: chess_pgn_edit says which variations of the PGN it kept as comments, and writes
+/// the game leaving out what variations, comments and nags say.
+#[test]
+fn chess_pgn_edit_says_what_it_kept_as_a_comment_and_writes_as_asked() {
+    let (_base, root) = workdir("pgn-style");
+    let mut auto = Automation::new().with_root(&root).unwrap();
+    let pgn = "1. e4 e5 ((1... d5)) (1... c5 {Sicilian} 2. Nf3 (2. c3 $1)) 2. Nf3 *";
+    let r = ok(&mut auto, "chess_pgn_edit", json!({ "pgn": pgn, "ops": [] }));
+    assert_eq!(r["pgn_warnings"], json!([{ "kind": "orphan_variation", "at": "path:0" }]), "{r:#}");
+    assert!(r["movetext"].as_str().unwrap().contains("(d5)"), "{r:#}");
+    let main = ok(&mut auto, "chess_pgn_edit", json!({ "pgn": pgn, "ops": [], "variations": "main", "comments": "none" }));
+    assert_eq!(main["movetext"], "1. e4 e5 2. Nf3", "{main:#}");
+    assert!(
+        main["pgn"].as_str().unwrap().ends_with(
+            "
+
+1. e4 e5 2. Nf3 *
+"
+        ),
+        "{main:#}"
+    );
+    let one = ok(&mut auto, "chess_pgn_edit", json!({ "pgn": pgn, "ops": [], "variations": "depth:1", "nags": "none" }));
+    assert_eq!(one["movetext"], "1. e4 {(d5)} 1... e5 (1... c5 {Sicilian} 2. Nf3) 2. Nf3", "{one:#}");
+    for (key, value) in [("variations", "depth:x"), ("comments", "some"), ("nags", "")] {
+        let e = auto.call("chess_pgn_edit", &json!({ "pgn": pgn, "ops": [], key: value })).unwrap_err();
+        assert!(e.to_string().contains(key), "{key}: {e}");
+    }
+}
 
 /// Plan HC11: next_variation and prev_variation walk the variations in reading order, four levels
 /// deep, and say when there is nowhere to go.

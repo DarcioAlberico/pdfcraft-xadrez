@@ -3218,3 +3218,7 @@ chess undo step	Clear drawings	描画の消去
 	Diagram {i} of {n} to review, page {p}	確認が必要な局面図 {i}/{n}、ページ {p}
 	Diagram {n}, page {p}	局面図 {n}、ページ {p}
 @plural	{n} doubtful square|{n} doubtful squares	不確かなマス {n} 個
+	Copy the main line only	本手順のみコピー
+	Copy without comments	コメントなしでコピー
+	Copy without annotation glyphs	評価記号なしでコピー
+	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	コメントとして残した変化: {n}(直前に手がない、または32段より深い入れ子)。

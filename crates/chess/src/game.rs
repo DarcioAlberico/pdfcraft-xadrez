@@ -15,6 +15,7 @@ use std::fmt;
 use cozy_chess::{Board, GameStatus, Move};
 
 use crate::fen::Position;
+use crate::pgn_style::PgnStyle;
 use crate::placement::{Color, Piece, PieceKind, Placement, Square};
 use crate::san::{Lang, San, SanBody, color_from_cozy, kind_from_cozy, square_from_cozy, square_to_cozy, to_cozy_kind};
 
@@ -50,6 +51,45 @@ pub const MAX_TAG_LEN: usize = 256;
 
 /// Most annotation glyphs on one move.
 const MAX_NAGS: usize = 8;
+
+/// Most warnings [`Game::from_pgn_report`] gives.
+pub const MAX_PGN_WARNINGS: usize = 64;
+
+/// What reading a PGN noted ([`Game::from_pgn_report`]).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct PgnReport {
+    /// The first move that could not be played: its line ends there.
+    pub stopped: Option<String>,
+    /// The variations kept as comments, in the order read, at most [`MAX_PGN_WARNINGS`].
+    pub warnings: Vec<PgnWarning>,
+}
+
+/// Why a variation was kept as a comment.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PgnWarningKind {
+    /// No move stood before it for it to replace.
+    OrphanVariation,
+    /// It was nested deeper than [`MAX_DEPTH`]: the levels above it were read.
+    TooDeep,
+}
+
+impl PgnWarningKind {
+    /// The kind's name in the tools' replies.
+    pub fn name(self) -> &'static str {
+        match self {
+            PgnWarningKind::OrphanVariation => "orphan_variation",
+            PgnWarningKind::TooDeep => "too_deep",
+        }
+    }
+}
+
+/// A variation kept as a comment, and the move it stood after (0: the start), whose comment, or
+/// whose variation's first move's comment, holds its text.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PgnWarning {
+    pub kind: PgnWarningKind,
+    pub at: NodeId,
+}
 
 /// How a null move is written, in the game and in PGN.
 pub const NULL_SAN: &str = "--";
@@ -858,10 +898,18 @@ impl Game {
     /// PGN reads them back, so the text read and written again is the same (while the two
     /// together fit in [`MAX_COMMENT_LEN`], which is all of a comment the reader keeps).
     pub fn movetext(&self) -> String {
+        self.movetext_with(PgnStyle::FULL)
+    }
+
+    /// [`Game::movetext`] without what `style` leaves out (plan A8 V4): the variations past its
+    /// depth, the comments (with the drawings written in them), the glyphs. A Black move is
+    /// numbered where what is written just before it is not a move, so leaving a comment or a
+    /// variation out leaves no stray `12...`.
+    pub fn movetext_with(&self, style: PgnStyle) -> String {
         let mut out = String::new();
         let mut glue = true; // no space before the next piece
         let mut after_comment = false;
-        for token in self.tokens() {
+        for token in kept_tokens(self.tokens(), style) {
             if let Token::Comment { node, text, before } = &token
                 && after_comment
                 && out.ends_with('}')
@@ -975,6 +1023,12 @@ impl Game {
     /// others, and the moves on one line: pasted elsewhere, a comment is not cut where
     /// the 80th column fell.
     pub fn pgn(&self) -> String {
+        self.pgn_with(PgnStyle::FULL)
+    }
+
+    /// [`Game::pgn`] with [`Game::movetext_with`]'s moves: the tags are all written whatever
+    /// `style` leaves out.
+    pub fn pgn_with(&self, style: PgnStyle) -> String {
         let result = self.result();
         let mut out = String::new();
         let quote = |v: &str| v.replace('\\', "\\\\").replace('"', "\\\"");
@@ -997,7 +1051,7 @@ impl Game {
             out.push_str(&format!("[{name} \"{}\"]\n", quote(value)));
         }
         out.push('\n');
-        let moves = self.movetext();
+        let moves = self.movetext_with(style);
         let text = if moves.is_empty() { result } else { format!("{moves} {result}") };
         out.push_str(&text);
         out.push('\n');
@@ -1008,8 +1062,16 @@ impl Game {
     /// one), its moves with their variations, comments and annotation glyphs. Move numbers and
     /// the result are skipped. A move that is not legal ends its line (the variation it is in, or
     /// the main line); the first such move is returned with the game. The game is shown at the
-    /// end of its main line.
+    /// end of its main line. [`Game::from_pgn_report`] also says what was kept as a comment.
     pub fn from_pgn(text: &str) -> Result<(Game, Option<String>), GameError> {
+        Game::from_pgn_report(text).map(|(game, report)| (game, report.stopped))
+    }
+
+    /// [`Game::from_pgn`], and what the reading noted ([`PgnReport`]). A variation with no move
+    /// before it for it to replace (`((…))`, or one before the first move), or nested deeper than
+    /// [`MAX_DEPTH`], is not dropped: its text becomes a comment where it stood, and a warning
+    /// says so (plan A8 V4).
+    pub fn from_pgn_report(text: &str) -> Result<(Game, PgnReport), GameError> {
         if text.len() > MAX_PGN_LEN {
             return Err(GameError::PgnTooLong);
         }
@@ -1045,7 +1107,57 @@ impl Game {
         // variation's first move, so it waits for that move rather than going to the line's.
         let mut pending: Option<String> = None;
         let mut started = false;
+        // A variation being kept as text ([`Kept`]), and what was kept so.
+        let mut kept: Option<Kept> = None;
+        let mut warnings: Vec<PgnWarning> = Vec::new();
         for t in lexed.into_iter().skip(tags.len()) {
+            if let Some(k) = kept.as_mut() {
+                match &t {
+                    Lexed::Open => {
+                        stack.push((cursor, last));
+                        k.push("(");
+                        continue;
+                    }
+                    Lexed::Close => {
+                        if let Some((c, l)) = stack.pop() {
+                            (cursor, last) = (c, l);
+                        }
+                        k.push(")");
+                        if stack.len() >= k.level {
+                            continue;
+                        }
+                    }
+                    // The next game: the variation was never closed.
+                    Lexed::Tag(..) => {}
+                    Lexed::Move(word) | Lexed::Result(word) => {
+                        k.push(word);
+                        continue;
+                    }
+                    Lexed::Comment(text) => {
+                        k.push(text);
+                        continue;
+                    }
+                    Lexed::Nag(code) => {
+                        k.push(&format!("${code}"));
+                        continue;
+                    }
+                }
+                if let Some(k) = kept.take() {
+                    while stack.len() >= k.level {
+                        if let Some((c, l)) = stack.pop() {
+                            (cursor, last) = (c, l);
+                        }
+                    }
+                    let at = last.unwrap_or(cursor);
+                    keep_comment(&mut game, &mut pending, !stack.is_empty(), last, cursor, k.text);
+                    if warnings.len() < MAX_PGN_WARNINGS {
+                        warnings.push(PgnWarning { kind: k.kind, at });
+                    }
+                }
+                if matches!(t, Lexed::Close) {
+                    continue;
+                }
+            }
             match t {
                 Lexed::Tag(..) if started => break, // the next game
                 Lexed::Tag(..) => {}
@@ -1057,14 +1169,21 @@ impl Game {
                 }
                 Lexed::Result(_) => {}
                 Lexed::Open => {
-                    stack.push((cursor, last));
+                    let saved = (cursor, last);
                     if dead.is_none() {
                         match last {
                             // A variation replaces the move before it.
-                            Some(l) if stack.len() <= MAX_DEPTH => cursor = game.node(l).parent,
-                            _ => dead = Some(stack.len()),
+                            Some(l) if stack.len() < MAX_DEPTH => cursor = game.node(l).parent,
+                            // Nothing for it to replace, or too deep: kept as text, said.
+                            _ => {
+                                let kind = if last.is_none() { PgnWarningKind::OrphanVariation } else { PgnWarningKind::TooDeep };
+                                stack.push(saved);
+                                kept = Some(Kept { level: stack.len(), kind, text: "(".to_owned() });
+                                continue;
+                            }
                         }
                     }
+                    stack.push(saved);
                     last = None;
                 }
                 Lexed::Close => {
@@ -1085,15 +1204,7 @@ impl Game {
                     if dead.is_some() {
                         continue;
                     }
-                    match last {
-                        None if !stack.is_empty() => {
-                            pending = Some(match pending.take() {
-                                Some(before) => format!("{before} {text}"),
-                                None => text,
-                            });
-                        }
-                        _ => append_comment(&mut game, last.unwrap_or(cursor), text),
-                    }
+                    keep_comment(&mut game, &mut pending, !stack.is_empty(), last, cursor, text);
                 }
                 Lexed::Nag(code) => {
                     if dead.is_none()
@@ -1134,9 +1245,25 @@ impl Game {
                 }
             }
         }
+        // A variation never closed, at the end of the text.
+        if let Some(k) = kept.take() {
+            while stack.len() >= k.level {
+                if let Some((c, l)) = stack.pop() {
+                    (cursor, last) = (c, l);
+                }
+            }
+            let at = last.unwrap_or(cursor);
+            keep_comment(&mut game, &mut pending, !stack.is_empty(), last, cursor, k.text);
+            if let Some(text) = pending.take() {
+                append_comment(&mut game, cursor, text);
+            }
+            if warnings.len() < MAX_PGN_WARNINGS {
+                warnings.push(PgnWarning { kind: k.kind, at });
+            }
+        }
         game.current = 0;
         while game.forward() {}
-        Ok((game, stopped))
+        Ok((game, PgnReport { stopped, warnings }))
     }
 }
 
@@ -1147,6 +1274,85 @@ fn append_comment(game: &mut Game, node: NodeId, text: String) {
         before => format!("{before} {text}"),
     };
     game.set_comment(node, &joined);
+}
+
+/// A comment read where the line is at: one that opens a variation (`inside`, no move yet) waits
+/// for the variation's first move in `pending`; any other goes after the last move (or before
+/// the first).
+fn keep_comment(game: &mut Game, pending: &mut Option<String>, inside: bool, last: Option<NodeId>, cursor: NodeId, text: String) {
+    match last {
+        None if inside => {
+            *pending = Some(match pending.take() {
+                Some(before) => format!("{before} {text}"),
+                None => text,
+            });
+        }
+        _ => append_comment(game, last.unwrap_or(cursor), text),
+    }
+}
+
+/// `tokens` without what `style` leaves out ([`Game::movetext_with`]). A Black move is numbered
+/// when what is written just before it is not a move (the start, a comment, a bracket), as PGN
+/// numbers it.
+fn kept_tokens(tokens: Vec<Token>, style: PgnStyle) -> Vec<Token> {
+    let mut out: Vec<Token> = Vec::with_capacity(tokens.len());
+    let mut level = 0usize;
+    // The nesting of the variation being left out, with everything in it.
+    let mut skipping: Option<usize> = None;
+    for token in tokens {
+        match token {
+            Token::VariationStart => {
+                level = level.saturating_add(1);
+                if skipping.is_none() && !style.keeps(level) {
+                    skipping = Some(level);
+                }
+                if skipping.is_none() {
+                    out.push(Token::VariationStart);
+                }
+            }
+            Token::VariationEnd => {
+                let closed = level;
+                level = level.saturating_sub(1);
+                match skipping {
+                    Some(at) if at == closed => skipping = None,
+                    Some(_) => {}
+                    None => out.push(Token::VariationEnd),
+                }
+            }
+            _ if skipping.is_some() => {}
+            Token::Comment { .. } if !style.comments => {}
+            Token::Move { node, number, color, san, mut nags, depth, .. } => {
+                if !style.nags {
+                    nags.clear();
+                }
+                let numbered = color == Color::White || !matches!(out.last(), Some(Token::Move { .. }));
+                out.push(Token::Move { node, number, color, numbered, san, nags, depth });
+            }
+            other => out.push(other),
+        }
+    }
+    out
+}
+
+/// A variation [`Game::from_pgn_report`] keeps as text: the nesting its `(` opened, why, and its
+/// text so far (at most [`MAX_COMMENT_LEN`] bytes: the rest would be cut from the comment).
+struct Kept {
+    level: usize,
+    kind: PgnWarningKind,
+    text: String,
+}
+
+impl Kept {
+    /// Add a token of the variation, spaced as PGN writes it.
+    fn push(&mut self, token: &str) {
+        if self.text.len() > MAX_COMMENT_LEN {
+            return;
+        }
+        if !(self.text.ends_with('(') || token == ")") {
+            self.text.push(' ');
+        }
+        self.text.push_str(token);
+    }
 }
 
 /// Which glyphs exclude each other on one move: 1 for the move-quality glyphs (codes 1–6), 2 for
@@ -1705,6 +1911,148 @@ mod tests {
             }
         }
         false
+    }
+
+    /// The corpus of plan A8 §7.4: variations three deep, one on Black's first move, a comment
+    /// before a variation and after a move, glyphs inside variations.
+    const CORPUS: &str =
+        "1. e4 e5 (1... c5 {Sicilian} 2. Nf3 (2. c3 d5 (2... Nf6 3. e5 $1)) d6) 2. Nf3 {A comment} ({Before} 2. Bc4 $5 Nf6) Nc6 3. Bb5 *";
+
+    /// Every move of the tree in PGN order, with its depth, glyphs and comments: what a round
+    /// trip must keep.
+    fn tree(g: &Game) -> Vec<String> {
+        fn walk(g: &Game, id: NodeId, depth: usize, out: &mut Vec<String>) {
+            for (i, &child) in g.node(id).children.iter().enumerate() {
+                let d = if i == 0 { depth } else { depth + 1 };
+                out.push(format!("{d} {} {:?} [{}] [{}]", g.node(child).san, g.nags(child), g.comment_before(child), g.comment(child)));
+                walk(g, child, d, out);
+            }
+        }
+        let mut out = vec![format!("start [{}]", g.comment(0))];
+        walk(g, 0, 0, &mut out);
+        out
+    }
+
+    #[test]
+    fn the_corpus_reads_back_the_same_tree_and_writes_its_golden() {
+        let (g, report) = Game::from_pgn_report(CORPUS).unwrap();
+        assert_eq!(report, PgnReport::default());
+        let full =
+            "1. e4 e5 (1... c5 {Sicilian} 2. Nf3 (2. c3 d5 (2... Nf6 3. e5 $1)) 2... d6) 2. Nf3 {A comment} ({Before} 2. Bc4 $5 Nf6) 2... Nc6 3. Bb5";
+        assert_eq!(g.movetext(), full);
+        let (back, report) = Game::from_pgn_report(&g.pgn()).unwrap();
+        assert_eq!(report, PgnReport::default());
+        assert_eq!(tree(&back), tree(&g));
+        assert_eq!(back.pgn(), g.pgn());
+    }
+
+    #[test]
+    fn the_writer_leaves_out_what_the_style_says() {
+        use crate::pgn_style::Variations;
+        let (g, _) = Game::from_pgn(CORPUS).unwrap();
+        let style = |variations, comments, nags| PgnStyle { variations, comments, nags };
+        assert_eq!(g.movetext_with(PgnStyle::FULL), g.movetext());
+        // The main line alone: no stray number where a variation was.
+        assert_eq!(g.movetext_with(style(Variations::Depth(0), true, true)), "1. e4 e5 2. Nf3 {A comment} 2... Nc6 3. Bb5");
+        assert_eq!(g.movetext_with(style(Variations::Depth(0), false, true)), "1. e4 e5 2. Nf3 Nc6 3. Bb5");
+        // One level: the main line's variations, without theirs.
+        assert_eq!(
+            g.movetext_with(style(Variations::Depth(1), true, true)),
+            "1. e4 e5 (1... c5 {Sicilian} 2. Nf3 d6) 2. Nf3 {A comment} ({Before} 2. Bc4 $5 Nf6) 2... Nc6 3. Bb5"
+        );
+        assert_eq!(
+            g.movetext_with(style(Variations::All, false, false)),
+            "1. e4 e5 (1... c5 2. Nf3 (2. c3 d5 (2... Nf6 3. e5)) 2... d6) 2. Nf3 (2. Bc4 Nf6) 2... Nc6 3. Bb5"
+        );
+        // The tags are all there whatever is left out, and what is left reads back.
+        let pgn = g.pgn_with(style(Variations::Depth(0), false, false));
+        assert!(pgn.starts_with("[Event \"?\"]") && pgn.ends_with("\n\n1. e4 e5 2. Nf3 Nc6 3. Bb5 *\n"), "{pgn}");
+        let (back, report) = Game::from_pgn_report(&pgn).unwrap();
+        assert_eq!((back.movetext(), report), ("1. e4 e5 2. Nf3 Nc6 3. Bb5".to_owned(), PgnReport::default()));
+    }
+
+    #[test]
+    fn a_variation_with_no_move_before_it_is_kept_as_a_comment_and_said() {
+        // Before the first move: a comment on the start.
+        let (g, report) = Game::from_pgn_report("(1. d4 d5) 1. e4 e5 *").unwrap();
+        assert_eq!(g.comment(0), "(d4 d5)");
+        assert_eq!(g.movetext(), "{(d4 d5)} 1. e4 e5");
+        assert_eq!(report.warnings, [PgnWarning { kind: PgnWarningKind::OrphanVariation, at: 0 }]);
+        // `((…))`: the inner one has no move before it inside the outer one.
+        let (g, report) = Game::from_pgn_report("1. e4 ((1. d4 {Queen's pawn} $1)) e5 2. Nf3 *").unwrap();
+        assert_eq!(report.stopped, None);
+        assert_eq!(report.warnings.len(), 1, "{report:?}");
+        assert_eq!(report.warnings[0].kind, PgnWarningKind::OrphanVariation);
+        assert!(g.movetext().contains("(d4 Queen's pawn $1)"), "{}", g.movetext());
+        assert!(g.movetext().ends_with("1. e4 e5 2. Nf3"), "the main line goes on: {}", g.movetext());
+        // Never closed: kept to the end of the text.
+        let (g, report) = Game::from_pgn_report("1. e4 e5 ((2. Nf3").unwrap();
+        assert_eq!(report.warnings.len(), 1);
+        assert!(g.movetext().contains("(Nf3"), "{}", g.movetext());
+        assert_eq!(g.movetext_with(PgnStyle { comments: false, ..PgnStyle::FULL }), "1. e4 e5");
+    }
+
+    #[test]
+    fn a_variation_nested_past_the_cap_is_kept_as_a_comment_and_said() {
+        // Exactly MAX_DEPTH deep reads as it was written.
+        let mut g = Game::standard();
+        assert!(nest(&mut g));
+        let deepest = g.movetext();
+        let (back, report) = Game::from_pgn_report(&g.pgn()).unwrap();
+        assert_eq!((back.movetext(), report), (deepest.clone(), PgnReport::default()));
+        // One more level: the levels above it read, the last kept as text, said.
+        let at = deepest.find(')').unwrap();
+        let text = format!("{} (Zz9 {{too deep}}){}", &deepest[..at], &deepest[at..]);
+        let (back, report) = Game::from_pgn_report(&format!("{text} *")).unwrap();
+        assert_eq!(report.warnings.len(), 1, "{report:?}");
+        assert_eq!(report.warnings[0].kind, PgnWarningKind::TooDeep);
+        let written = back.movetext();
+        assert_eq!(written.matches('(').count(), MAX_DEPTH + 1, "{written}");
+        assert!(written.contains("{(Zz9 too deep)}"), "{written}");
+        assert_eq!(back.node(report.warnings[0].at).depth, MAX_DEPTH);
+    }
+
+    #[test]
+    fn python_chess_reads_the_corpus_as_the_same_tree() {
+        // python-chess is GPL: an outside process only, and the test skips without it.
+        let (g, _) = Game::from_pgn(CORPUS).unwrap();
+        let script = "import sys, chess.pgn\n\
+            g = chess.pgn.read_game(sys.stdin)\n\
+            def walk(n, d):\n\
+            \x20   for i, c in enumerate(n.variations):\n\
+            \x20       e = d if i == 0 else d + 1\n\
+            \x20       print(e, c.san(), sorted(c.nags))\n\
+            \x20       walk(c, e)\n\
+            walk(g, 0)\n\
+            print(len(g.errors))";
+        let child = std::process::Command::new("python")
+            .args(["-I", "-c", script])
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::null())
+            .spawn();
+        let Ok(mut child) = child else { return };
+        if let Some(mut stdin) = child.stdin.take() {
+            use std::io::Write as _;
+            let _ = stdin.write_all(g.pgn().as_bytes());
+        }
+        let Ok(out) = child.wait_with_output() else { return };
+        if !out.status.success() {
+            return; // no python-chess
+        }
+        let text = String::from_utf8_lossy(&out.stdout).replace('\r', "");
+        let ours: Vec<String> = tree(&g)
+            .iter()
+            .skip(1)
+            .map(|line| {
+                let mut parts = line.splitn(3, ' ');
+                let (d, san) = (parts.next().unwrap_or_default(), parts.next().unwrap_or_default());
+                let nags = parts.next().unwrap_or_default().split(" [").next().unwrap_or_default();
+                format!("{d} {san} {nags}")
+            })
+            .chain(std::iter::once("0".to_owned()))
+            .collect();
+        assert_eq!(text.lines().collect::<Vec<_>>(), ours, "{}", g.pgn());
     }
 
     #[test]

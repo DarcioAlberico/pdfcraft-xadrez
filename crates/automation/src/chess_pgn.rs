@@ -25,7 +25,10 @@
 use pdfcraft_engine::chess::capture::{self, Candidate, CaptureMode, CapturePlan, CaptureText};
 use pdfcraft_engine::chess::collection::{self, MAX_GAMES};
 use pdfcraft_engine::chess::pdfcraft_chess::fragment::FragmentItem;
-use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, GraftMode, GraftReport, GraftStopReason, MAX_COMMENT_LEN, NodeId, NodePath, Shift};
+use pdfcraft_engine::chess::pdfcraft_chess::game::{
+    Game, GraftMode, GraftReport, GraftStopReason, MAX_COMMENT_LEN, NodeId, NodePath, PgnReport, Shift,
+};
+use pdfcraft_engine::chess::pdfcraft_chess::pgn_style::PgnStyle;
 use pdfcraft_engine::chess::pdfcraft_chess::san::{Lang, San, Style};
 use serde_json::{Map, Value, json};
 
@@ -58,17 +61,21 @@ impl Automation {
         }
         // How many games the PGN holds, said in the reply (none without one).
         let mut games = 0usize;
-        // The first move of the PGN that could not be played (its line ends there), said in the reply.
-        let (mut game, stopped) = match (fen, pgn) {
+        let style = pgn_style(a)?;
+        // The first move of the PGN that could not be played (its line ends there), and the
+        // variations kept as comments, said in the reply.
+        let (mut game, read) = match (fen, pgn) {
             (Some(_), Some(_)) => return Err(ToolError::InvalidArgs("give fen or pgn, not both".into())),
-            (Some(fen), None) => (Game::from_fen(fen).map_err(|e| ToolError::InvalidArgs(format!("fen: {e}")))?, None),
+            (Some(fen), None) => (Game::from_fen(fen).map_err(|e| ToolError::InvalidArgs(format!("fen: {e}")))?, PgnReport::default()),
             (None, Some(pgn)) => {
                 let (text, count) = pick_game(pgn, chosen)?;
                 games = count;
-                Game::from_pgn(text).map_err(|e| ToolError::InvalidArgs(format!("pgn: {e}")))?
+                Game::from_pgn_report(text).map_err(|e| ToolError::InvalidArgs(format!("pgn: {e}")))?
             }
-            (None, None) => (Game::standard(), None),
+            (None, None) => (Game::standard(), PgnReport::default()),
         };
+        // Addresses as the PGN read was: the ops may move its moves after.
+        let warnings: Vec<Value> = read.warnings.iter().map(|w| json!({ "kind": w.kind.name(), "at": address_of(&game, w.at) })).collect();
         let ops = a.get("ops").and_then(Value::as_array).ok_or_else(|| Args::wrong("ops", "an array of operations"))?;
         if ops.len() > MAX_OPS {
             return Err(Args::wrong("ops", &format!("at most {MAX_OPS} operations")));
@@ -98,16 +105,33 @@ impl Automation {
         }
         let applied = report.iter().filter(|e| e["ok"] == true).count();
         Ok(json!({
-            "pgn": game.pgn(),
-            "movetext": game.movetext(),
+            "pgn": game.pgn_with(style),
+            "movetext": game.movetext_with(style),
             "report": report,
             "applied": applied,
-            "pgn_stopped": stopped,
+            "pgn_stopped": read.stopped,
+            "pgn_warnings": warnings,
             "current_path": address_of(&game, game.current()),
             "games": games,
             "game": chosen.unwrap_or(0),
         }))
     }
+}
+
+/// The PGN writers' options (plan A8 V4): `variations` (`all`, `main`, `depth:N`), `comments`
+/// and `nags` (`all`, `none`); everything by default.
+pub(crate) fn pgn_style(a: &Args) -> Result<PgnStyle> {
+    let mut style = PgnStyle::FULL;
+    if let Some(name) = a.opt_str("variations")? {
+        style.variations = PgnStyle::variations_from_name(name).ok_or_else(|| Args::wrong("variations", "all, main or depth:N"))?;
+    }
+    if let Some(name) = a.opt_str("comments")? {
+        style.comments = PgnStyle::switch_from_name(name).ok_or_else(|| Args::wrong("comments", "all or none"))?;
+    }
+    if let Some(name) = a.opt_str("nags")? {
+        style.nags = PgnStyle::switch_from_name(name).ok_or_else(|| Args::wrong("nags", "all or none"))?;
+    }
+    Ok(style)
 }
 
 /// Game `chosen` (0-based, the first when `None`) of a PGN that may hold several, cut as the app's

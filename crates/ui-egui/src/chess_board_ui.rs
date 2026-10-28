@@ -32,7 +32,8 @@ use std::collections::HashMap;
 use egui::{Color32, Key, PointerButton, Pos2, Rect, Stroke, TextureHandle, vec2};
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::pdfcraft_chess::draw::{BoardStyle, PieceSet, Rgb};
-use pdfcraft_engine::chess::pdfcraft_chess::game::{DrawColor, Drawing, Game, GameError, MAX_MOVE_NUMBER, NodeId, Outcome, Token};
+use pdfcraft_engine::chess::pdfcraft_chess::game::{DrawColor, Drawing, Game, GameError, MAX_MOVE_NUMBER, NodeId, Outcome, PgnReport, Token};
+use pdfcraft_engine::chess::pdfcraft_chess::pgn_style::{PgnStyle, Variations};
 use pdfcraft_engine::chess::pdfcraft_chess::placement::{Color, Piece, PieceKind, Placement, Square};
 use pdfcraft_engine::chess::pdfcraft_chess::texture::Texture;
 
@@ -359,14 +360,14 @@ impl BoardState {
             let rest: Vec<String> = chunks.iter().skip(1).take(max.saturating_sub(1)).map(|c| (*c).to_owned()).collect();
             (first, rest, chunks.len() > max)
         };
-        let loaded = self.edit(|s| match Game::from_pgn(&first) {
-            Ok((mut game, stopped)) => {
+        let loaded = self.edit(|s| match Game::from_pgn_report(&first) {
+            Ok((mut game, report)) => {
                 carry_place(&s.game, &mut game);
                 s.game = game;
                 s.illegal = None;
                 s.selected = None;
                 s.promotion = None;
-                s.message = stopped.map(|m| crate::i18n::fmt(tl!("Reading stopped at {move}: it is not a legal move there."), &[("move", &m)]));
+                s.message = read_message(&report);
                 s.refresh_fields(true);
                 Some(ChessEdit::LoadPgn)
             }
@@ -2094,9 +2095,24 @@ pub(crate) fn sections(ui: &mut egui::Ui, state: &mut BoardState) -> Option<Boar
             });
         }
         ui.horizontal_wrapped(|ui| {
-            if ui.add_enabled(state.illegal.is_none(), egui::Button::new(tl!("Copy PGN")).small()).clicked() {
+            let copy = ui.add_enabled(state.illegal.is_none(), egui::Button::new(tl!("Copy PGN")).small());
+            if copy.clicked() {
                 action = Some(BoardAction::CopyPgn(state.game.pgn()));
             }
+            // Shorter copies for programs that want less (plan A8 V4); a click copies it all.
+            copy.context_menu(|ui| {
+                let styles = [
+                    (tl!("Copy the main line only"), PgnStyle { variations: Variations::Depth(0), ..PgnStyle::FULL }),
+                    (tl!("Copy without comments"), PgnStyle { comments: false, ..PgnStyle::FULL }),
+                    (tl!("Copy without annotation glyphs"), PgnStyle { nags: false, ..PgnStyle::FULL }),
+                ];
+                for (label, style) in styles {
+                    if ui.button(label).clicked() {
+                        action = Some(BoardAction::CopyPgn(state.game.pgn_with(style)));
+                        ui.close();
+                    }
+                }
+            });
             let tip = tl!("Load the PGN above on the board, with its variations and comments.");
             if ui.small_button(tl!("Load PGN")).on_hover_text(tip).clicked() {
                 load = true;
@@ -2288,6 +2304,20 @@ fn notation_height(viewport: f32, above: f32, below: f32) -> f32 {
     // A little to spare, so rounding never makes the panel scroll by a point.
     let left = viewport - above - below - 4.0;
     if left.is_finite() { left.max(MIN_NOTATION) } else { MIN_NOTATION }
+}
+
+/// What Load PGN says about the text it read: the move it stopped at, and how many variations it
+/// kept as comments where it stood instead of reading them (plan A8 V4).
+fn read_message(report: &PgnReport) -> Option<String> {
+    let mut said = Vec::new();
+    if let Some(m) = &report.stopped {
+        said.push(crate::i18n::fmt(tl!("Reading stopped at {move}: it is not a legal move there."), &[("move", m)]));
+    }
+    if !report.warnings.is_empty() {
+        let n = report.warnings.len().to_string();
+        said.push(crate::i18n::fmt(tl!("Variations kept as comments: {n} (no move before them, or nested deeper than 32)."), &[("n", &n)]));
+    }
+    (!said.is_empty()).then(|| said.join(" "))
 }
 
 #[cfg(test)]
@@ -2625,6 +2655,20 @@ mod tests {
         s.pgn_text = (0..max + 5).map(|i| format!("[Round \"{i}\"]\n\n1. e4 *\n\n")).collect();
         let (rest, more) = s.load_pgn();
         assert_eq!((rest.len(), more), (max - 1, true));
+    }
+
+    /// Plan A8 V4: a variation the PGN could not place is kept as a comment, and Load PGN says
+    /// so, with the move it stopped at when there is one.
+    #[test]
+    fn pgn_field_says_which_variations_it_kept_as_comments() {
+        let mut s = BoardState { pgn_text: "1. e4 e5 ((1... d5)) 2. Nf3 *".into(), ..BoardState::default() };
+        s.load_pgn();
+        assert_eq!(s.game.movetext(), "1. e4 {(d5)} 1... e5 2. Nf3");
+        assert_eq!(s.message.as_deref(), Some("Variations kept as comments: 1 (no move before them, or nested deeper than 32)."));
+        s.pgn_text = "(1. d4) 1. e4 e5 2. Ke3".into();
+        s.load_pgn();
+        let said = s.message.clone().unwrap_or_default();
+        assert!(said.contains("Ke3") && said.contains("Variations kept as comments: 1"), "{said}");
     }
 
     #[test]

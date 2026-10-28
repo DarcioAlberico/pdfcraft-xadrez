@@ -3233,3 +3233,7 @@ chess undo step	Clear drawings	remoção dos desenhos
 	Diagram {i} of {n} to review, page {p}	Diagrama {i} de {n} a revisar, pág. {p}
 	Diagram {n}, page {p}	Diagrama {n}, pág. {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} casa duvidosa|{n} casas duvidosas
+	Copy the main line only	Copiar só a linha principal
+	Copy without comments	Copiar sem comentários
+	Copy without annotation glyphs	Copiar sem sinais de avaliação
+	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	Variantes guardadas como comentário: {n} (sem lance antes delas, ou aninhadas além de 32 níveis).

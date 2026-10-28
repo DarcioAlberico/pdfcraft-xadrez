@@ -636,6 +636,7 @@ impl Automation {
                 .filter(|n| (32..=chess::office::MAX_DIAGRAM_PX).contains(n))
                 .ok_or_else(|| Args::wrong("diagram_px", &format!("from 32 to {}", chess::office::MAX_DIAGRAM_PX)))?,
         };
+        let pgn_style = crate::chess_pgn::pgn_style(a)?;
         let positions = match a.opt_str("positions")? {
             None => markdown::PgnPositions::default(),
             Some(name) => markdown::PgnPositions::from_name(name).ok_or_else(|| Args::wrong("positions", "\"unused\", \"all\" or \"none\""))?,
@@ -681,6 +682,7 @@ impl Automation {
             book,
             style: theme_style(a)?,
             positions,
+            pgn_style,
         };
         let loaded = self.use_store_corrections(a, id)?;
         let made = self.session.chess_export(id, format, &options).map_err(failed)?;

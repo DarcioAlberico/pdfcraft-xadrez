@@ -3091,3 +3091,7 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Diagram {i} of {n} to review, page {p}	సమీక్షించాల్సిన చిత్రం {i} / {n}, పేజీ {p}
 	Diagram {n}, page {p}	చిత్రం {n}, పేజీ {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} సందేహాస్పద గడి|{n} సందేహాస్పద గడులు
+	Copy the main line only	ప్రధాన వరుస మాత్రమే కాపీ చేయి
+	Copy without comments	వ్యాఖ్యలు లేకుండా కాపీ చేయి
+	Copy without annotation glyphs	మూల్యాంకన గుర్తులు లేకుండా కాపీ చేయి
+	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	వ్యాఖ్యలుగా ఉంచిన ఉపవరుసలు: {n} (ముందు ఎత్తు లేదు, లేదా 32 స్థాయిల కంటే లోతుగా ఉన్నాయి).

@@ -3290,3 +3290,7 @@ chess undo step	Clear drawings	smazání kreseb
 	Diagram {i} of {n} to review, page {p}	Diagram {i} z {n} ke kontrole, strana {p}
 	Diagram {n}, page {p}	Diagram {n}, strana {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} nejisté pole|{n} nejistá pole|{n} nejistých polí
+	Copy the main line only	Kopírovat jen hlavní variantu
+	Copy without comments	Kopírovat bez komentářů
+	Copy without annotation glyphs	Kopírovat bez hodnoticích značek
+	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	Varianty uložené jako komentáře: {n} (bez tahu před nimi nebo vnořené hlouběji než 32).

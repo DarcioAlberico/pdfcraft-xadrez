@@ -244,6 +244,50 @@ fn book_game() -> GameScore {
     g
 }
 
+/// The document's writer leaves out what the style says, as the board's does (plan A8 V4): the
+/// tags are all kept, and what is written reads back.
+#[test]
+fn the_style_leaves_out_variations_comments_and_glyphs() {
+    use pdfcraft_chess::pgn_style::{PgnStyle, Variations};
+    let mut g = book_game();
+    let ep = g.roots[0];
+    line(&mut g, Some(ep), "Kf1");
+    let tags = |pgn: &str| {
+        pgn.split(
+            "
+
+",
+        )
+        .next()
+        .unwrap_or_default()
+        .to_owned()
+    };
+    let moves = |pgn: &str| {
+        pgn.split(
+            "
+
+",
+        )
+        .nth(1)
+        .unwrap_or_default()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+    };
+    let full = write_game(&g);
+    assert_eq!(write_game_with(&g, PgnStyle::FULL), full);
+    assert!(moves(&full).contains("(24. Kf1)") && moves(&full).contains("$146") && moves(&full).contains('{'), "{full}");
+    let main = write_game_with(&g, PgnStyle { variations: Variations::Depth(0), ..PgnStyle::FULL });
+    assert_eq!(tags(&main), tags(&full));
+    assert!(!main.contains("Kf1") && moves(&main).contains("24. O-O-O $146 O-O *"), "{main}");
+    let bare = write_game_with(&g, PgnStyle { variations: Variations::Depth(0), comments: false, nags: false });
+    assert_eq!(tags(&bare), tags(&full));
+    assert_eq!(moves(&bare), "23... exd3 24. O-O-O O-O *", "{bare}");
+    let back = parse(&bare).unwrap();
+    assert_eq!(back.len(), 1);
+    assert!(back[0].comment.is_empty() && back[0].nodes.iter().all(|n| n.nags.is_empty() && n.comment.is_empty()));
+}
+
 #[test]
 fn the_book_game_is_written_as_the_golden_and_read_back_by_both_readers() {
     let g = book_game();

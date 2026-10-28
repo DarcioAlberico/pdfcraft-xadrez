@@ -88,6 +88,8 @@ pub struct ChessExportOptions {
     /// PGN: which diagrams get a game of their own (plan A8 P8b). The default is those no game
     /// starts from or reprints.
     pub positions: markdown::PgnPositions,
+    /// PGN: what the moves leave out (plan A8 V4). The default keeps everything.
+    pub pgn_style: pdfcraft_chess::pgn_style::PgnStyle,
 }
 
 impl ChessExportOptions {
@@ -113,6 +115,7 @@ impl ChessExportOptions {
             book: None,
             style: BoardStyle::default(),
             positions: markdown::PgnPositions::default(),
+            pgn_style: pdfcraft_chess::pgn_style::PgnStyle::FULL,
         }
     }
 }
@@ -199,7 +202,7 @@ impl Session {
                     title: Some(o.title.clone()).filter(|t| !t.trim().is_empty()),
                     labels: doc.info.pages.iter().map(|p| p.label.clone()).collect(),
                 };
-                let made = markdown::pgn_export(&read.doc, &book, o.positions);
+                let made = markdown::pgn_export(&read.doc, &book, o.positions, o.pgn_style);
                 position_games = Some(made.positions);
                 positions_skipped = made.skipped;
                 drawn = 0;

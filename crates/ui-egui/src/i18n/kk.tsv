@@ -3214,3 +3214,7 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Diagram {i} of {n} to review, page {p}	Тексерілетін диаграмма {i}/{n}, бет {p}
 	Diagram {n}, page {p}	Диаграмма {n}, бет {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} күмәнді шаршы|{n} күмәнді шаршы
+	Copy the main line only	Тек негізгі желіні көшіру
+	Copy without comments	Түсініктемесіз көшіру
+	Copy without annotation glyphs	Бағалау белгілерінсіз көшіру
+	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	Түсініктеме ретінде сақталған нұсқалар: {n} (алдында жүріс жоқ немесе 32 деңгейден терең).

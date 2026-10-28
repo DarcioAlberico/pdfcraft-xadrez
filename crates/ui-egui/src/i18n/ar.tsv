@@ -3492,3 +3492,7 @@ chess undo step	Clear drawings	مسح الرسوم
 	Diagram {i} of {n} to review, page {p}	المخطط {i} من {n} للمراجعة، الصفحة {p}
 	Diagram {n}, page {p}	المخطط {n}، الصفحة {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} مربعات مشكوك فيها|{n} مربع مشكوك فيه|{n} مربعان مشكوك فيهما|{n} مربعات مشكوك فيها|{n} مربعًا مشكوكًا فيه|{n} مربع مشكوك فيه
+	Copy the main line only	نسخ الخط الرئيسي فقط
+	Copy without comments	نسخ بدون تعليقات
+	Copy without annotation glyphs	نسخ بدون رموز التقييم
+	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	خطوط فرعية محفوظة كتعليقات: {n} (بلا نقلة قبلها، أو متداخلة لأعمق من 32).

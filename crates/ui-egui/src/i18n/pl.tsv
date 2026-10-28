@@ -3158,3 +3158,7 @@ chess undo step	Clear drawings	usunięcie rysunków
 	Diagram {i} of {n} to review, page {p}	Diagram {i} z {n} do sprawdzenia, strona {p}
 	Diagram {n}, page {p}	Diagram {n}, strona {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} niepewne pole|{n} niepewne pola|{n} niepewnych pól
+	Copy the main line only	Kopiuj tylko linię główną
+	Copy without comments	Kopiuj bez komentarzy
+	Copy without annotation glyphs	Kopiuj bez znaków oceny
+	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	Warianty zachowane jako komentarze: {n} (bez ruchu przed nimi lub zagnieżdżone głębiej niż 32).

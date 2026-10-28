@@ -3217,3 +3217,7 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	Diagram {i} of {n} to review, page {p}	Diagramm {i} von {n} zu prüfen, Seite {p}
 	Diagram {n}, page {p}	Diagramm {n}, Seite {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} unsicheres Feld|{n} unsichere Felder
+	Copy the main line only	Nur die Hauptvariante kopieren
+	Copy without comments	Ohne Kommentare kopieren
+	Copy without annotation glyphs	Ohne Bewertungszeichen kopieren
+	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	Als Kommentar behaltene Varianten: {n} (kein Zug davor oder tiefer als 32 verschachtelt).

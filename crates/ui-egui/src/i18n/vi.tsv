@@ -3470,3 +3470,7 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Diagram {i} of {n} to review, page {p}	Sơ đồ {i}/{n} cần xem lại, trang {p}
 	Diagram {n}, page {p}	Sơ đồ {n}, trang {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} ô không chắc chắn
+	Copy the main line only	Chỉ sao chép diễn biến chính
+	Copy without comments	Sao chép không kèm bình luận
+	Copy without annotation glyphs	Sao chép không kèm ký hiệu đánh giá
+	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	Biến được giữ làm bình luận: {n} (không có nước đi trước, hoặc lồng sâu hơn 32 cấp).
