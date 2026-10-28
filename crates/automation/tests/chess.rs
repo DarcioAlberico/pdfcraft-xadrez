@@ -260,6 +260,58 @@ fn chess_replace_diagram_draws_a_vector_board_where_the_font_diagram_was() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// Redraw in the PDF without the interface (plan A8, P3b4): with neither fen nor placement the
+/// position kept for the diagram is drawn, and keep_correction keeps it with the page as it is
+/// after the drawing, so the correction is on its page unchanged rather than on a changed page.
+#[test]
+fn chess_replace_diagram_redraws_the_kept_correction() {
+    const CORRECTED: &str = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+    let (base, root) = workdir("redraw");
+    let (mut a, doc) = opened(&root);
+    let set = ok(&mut a, "chess_correction_set", json!({ "doc": doc, "page": 1, "index": 1, "fen": CORRECTED, "models_dir": "models" }));
+    let generation = ok(&mut a, "chess_detect", json!({ "doc": doc }))["generation"].as_u64().unwrap();
+    let args = json!({ "doc": doc, "page": 1, "index": 1, "generation": generation, "pieces": "geometric", "models_dir": "models" });
+    let mut dry = args.clone();
+    dry["dry_run"] = json!(true);
+    let dry = ok(&mut a, "chess_replace_diagram", dry);
+    assert_eq!(
+        (dry["from_correction"].as_str(), dry["fen"].as_str()),
+        (set["uid"].as_str(), Some("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR")),
+        "{dry:#}"
+    );
+    assert_eq!(dry["correction"], Value::Null, "a dry run keeps nothing");
+    let mut keep = args;
+    keep["keep_correction"] = json!(true);
+    let done = ok(&mut a, "chess_replace_diagram", keep);
+    assert_eq!(done["from_correction"], set["uid"], "{done:#}");
+    assert_eq!(
+        (done["correction"]["uid"].as_str(), done["correction"]["kind"].as_str(), done["correction"]["rev"].as_u64()),
+        (set["uid"].as_str(), Some("corrected"), Some(2)),
+        "{done:#}"
+    );
+    let listed = ok(&mut a, "chess_correction_list", json!({ "doc": doc }));
+    let c = &listed["corrections"][0];
+    assert_eq!((listed["count"].as_u64(), c["located"].as_str(), c["fen"].as_str()), (Some(1), Some("same"), Some(CORRECTED)), "{listed:#}");
+    // The corrections folder stays inside the root, for the position read and the one kept.
+    let generation = ok(&mut a, "chess_detect", json!({ "doc": doc }))["generation"].as_u64().unwrap();
+    let outside = base.join("outside");
+    std::fs::create_dir_all(&outside).unwrap();
+    for store in ["../outside".to_string(), outside.to_string_lossy().into_owned()] {
+        for extra in [json!({}), json!({ "fen": CORRECTED, "keep_correction": true })] {
+            let mut args = json!({ "doc": doc, "page": 1, "index": 1, "generation": generation, "pieces": "geometric", "store": store });
+            if let (Some(o), Value::Object(e)) = (args.as_object_mut(), extra) {
+                o.extend(e);
+            }
+            match a.call("chess_replace_diagram", &args) {
+                Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{store}: {m}"),
+                other => panic!("store {store} outside the root accepted: {other:?}"),
+            }
+        }
+    }
+    assert!(std::fs::read_dir(&outside).unwrap().next().is_none(), "nothing written outside");
+    let _ = std::fs::remove_dir_all(base);
+}
+
 #[test]
 fn chess_replace_diagram_refuses_what_it_cannot_place() {
     let (base, root) = workdir("replace-args");
@@ -268,8 +320,9 @@ fn chess_replace_diagram_refuses_what_it_cannot_place() {
     for (extra, needle) in [
         (json!({ "index": 9, "placement": SICILIAN }), ""),
         (json!({ "index": 0, "placement": SICILIAN }), "index"),
-        (json!({ "index": 1 }), "give either fen or placement"),
-        (json!({ "index": 1, "placement": SICILIAN, "fen": "8/8/8/8/8/8/8/8 w - - 0 1" }), "give either fen or placement"),
+        (json!({ "index": 1 }), "no correction kept"),
+        (json!({ "index": 1, "placement": SICILIAN, "fen": "8/8/8/8/8/8/8/8 w - - 0 1" }), "not both"),
+        (json!({ "index": 1, "placement": SICILIAN, "keep_correction": true }), "give fen, not placement"),
         (json!({ "index": 1, "placement": "not a board" }), "placement"),
         (json!({ "index": 1, "placement": SICILIAN, "border": 2 }), "border"),
         (json!({ "index": 1, "placement": SICILIAN, "pieces": "merida" }), "a set PdfCraft ships (chessnut"),

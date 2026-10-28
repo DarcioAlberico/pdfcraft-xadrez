@@ -176,6 +176,8 @@ struct ScanParams {
     /// content key outlives it ([`ChessCache::get`]).
     generation: u64,
     bytes: usize,
+    /// The document's page count in that state.
+    pages: usize,
     settings: ChessScanSettings,
     /// `None`: detection only.
     model: Option<ModelKey>,
@@ -311,6 +313,16 @@ impl ChessCache {
                 key
             })
             .collect()
+    }
+
+    /// The content key page `page` of `doc` had when it was scanned in state `then`, when an
+    /// entry for it is kept and it had one.
+    fn key_then(&self, doc: DocId, page: usize, then: ScanStamp) -> Option<page_key::PageKey> {
+        self.entries
+            .iter()
+            .rev()
+            .find(|e| e.doc == doc && e.page == page && e.params.generation == then.generation && e.params.bytes == then.bytes)
+            .and_then(|e| e.key)
     }
 
     /// Forget every result for `doc` (it was closed).
@@ -970,7 +982,8 @@ impl Session {
                 PageInputs { page, info: doc.info.pages.get(page).cloned(), images, boxes, notes, key }
             })
             .collect();
-        let params = ScanParams { generation: doc.generation, bytes: doc.bytes.len(), settings: settings.clone(), model: None };
+        let params =
+            ScanParams { generation: doc.generation, bytes: doc.bytes.len(), pages: doc.info.pages.len(), settings: settings.clone(), model: None };
         Some(ChessScanJob { doc: id, bytes: doc.bytes.clone(), password: doc.password.clone(), inputs, params, read, settings })
     }
 
@@ -982,9 +995,9 @@ impl Session {
         if scan.params.model == Some(ModelKey::Supplied) {
             return false;
         }
-        let Some((now, count)) =
-            self.get(scan.doc).map(|d| (ScanParams { generation: d.generation, bytes: d.bytes.len(), ..scan.params.clone() }, d.info.pages.len()))
-        else {
+        let Some((now, count)) = self.get(scan.doc).map(|d| {
+            (ScanParams { generation: d.generation, bytes: d.bytes.len(), pages: d.info.pages.len(), ..scan.params.clone() }, d.info.pages.len())
+        }) else {
             return false;
         };
         let same = scan.params.same_state(&now);
@@ -1024,11 +1037,7 @@ impl Session {
         let pages: Vec<usize> = if pages.is_empty() { (0..all).collect() } else { pages.to_vec() };
         let settings = settings.sanitized();
         let models = read.then(|| models(settings.models_dir.as_deref()));
-        let model = models.as_deref().map(ModelKey::of);
-        let wanted = ScanParams { generation: doc.generation, bytes: doc.bytes.len(), settings: settings.clone(), model };
-        let keys = self.chess_page_keys(id, &pages);
-        let mut found: Vec<Option<Arc<ChessPage>>> =
-            pages.iter().enumerate().map(|(i, &p)| self.chess.get(id, p, keys.get(i).copied().flatten(), &wanted)).collect();
+        let (mut found, keys) = self.chess_lookup(id, &pages, &settings, models.as_deref().map(ModelKey::of));
         let (missing, missing_keys): (Vec<usize>, Vec<Option<page_key::PageKey>>) =
             pages.iter().zip(&keys).zip(&found).filter(|(_, f)| f.is_none()).map(|((p, k), _)| (*p, *k)).unzip();
         if !missing.is_empty() {
@@ -1046,6 +1055,73 @@ impl Session {
             }
         }
         Ok(found.into_iter().flatten().collect())
+    }
+
+    /// What the cache holds for `pages` of document `id` as a scan with `settings` (sanitized)
+    /// and `model` would make them now, and the pages' content keys. What it finds is kept as
+    /// scanned in this state too, so a carry from this state ([`Self::chess_carry`]) finds the
+    /// pages where they were.
+    fn chess_lookup(
+        &mut self,
+        id: DocId,
+        pages: &[usize],
+        settings: &ChessScanSettings,
+        model: Option<ModelKey>,
+    ) -> (Vec<Option<Arc<ChessPage>>>, Vec<Option<page_key::PageKey>>) {
+        let Some(doc) = self.get(id) else { return (vec![None; pages.len()], vec![None; pages.len()]) };
+        let wanted =
+            ScanParams { generation: doc.generation, bytes: doc.bytes.len(), pages: doc.info.pages.len(), settings: settings.clone(), model };
+        let keys = self.chess_page_keys(id, pages);
+        let found: Vec<Option<Arc<ChessPage>>> =
+            pages.iter().enumerate().map(|(i, &p)| self.chess.get(id, p, keys.get(i).copied().flatten(), &wanted)).collect();
+        for ((&p, page), key) in pages.iter().zip(&found).zip(&keys) {
+            if let Some(page) = page {
+                self.chess.put(id, p, *key, wanted.clone(), page.clone());
+            }
+        }
+        (found, keys)
+    }
+
+    /// Carry a scan of `pages` (0-based) of document `id`, made in state `then`, to the state
+    /// the document is in now (plan A8 P3b4: the Chess diagrams panel keeps its list across an
+    /// edit, undo or redo). Each page scanned then is followed to where its content is now
+    /// ([`ChessCarry::follow`]), and the scan covers those pages; with `all` it was of the whole
+    /// document and covers every page now. What the session's cache answers is given; the rest
+    /// is left to scan, so an edit to one page leaves one page to read again. `read` as
+    /// [`Self::chess_scan`] takes it. Nothing is scanned here. Fails when the document does not
+    /// exist or its permissions do not allow copying its content.
+    pub fn chess_carry(
+        &mut self,
+        id: DocId,
+        then: ScanStamp,
+        pages: &[usize],
+        all: bool,
+        settings: &ChessScanSettings,
+        read: bool,
+    ) -> Result<ChessCarry, String> {
+        let doc = self.get(id).ok_or("no such document")?;
+        doc.check_copying().map_err(|e| e.to_string())?;
+        let count = doc.info.pages.len();
+        let stamp = ScanStamp { generation: doc.generation, bytes: doc.bytes.len(), pages: count };
+        let before: Vec<Option<page_key::PageKey>> = pages.iter().map(|&p| self.chess.key_then(id, p, then)).collect();
+        let now = if before.iter().all(Option::is_none) { vec![None; count] } else { self.chess_page_keys(id, &(0..count).collect::<Vec<_>>()) };
+        let same_count = then.pages == count;
+        let follow = follow_pages(pages, &before, &now, same_count);
+        let wanted: Vec<usize> = if all {
+            (0..count).collect()
+        } else {
+            // Where the pages went, and every page drawing what a page scanned then drew (of two
+            // equal pages, one may have gone without saying which).
+            let known: std::collections::HashSet<page_key::PageKey> = before.iter().flatten().copied().collect();
+            let mut wanted: std::collections::BTreeSet<usize> = follow.iter().filter_map(|(_, to)| *to).collect();
+            wanted.extend(now.iter().enumerate().filter(|(_, k)| k.is_some_and(|k| known.contains(&k))).map(|(i, _)| i));
+            wanted.into_iter().collect()
+        };
+        let settings = settings.sanitized();
+        let model = read.then(|| ModelKey::of(&models(settings.models_dir.as_deref())));
+        let (found, _) = self.chess_lookup(id, &wanted, &settings, model);
+        let missing = wanted.iter().zip(&found).filter(|(_, f)| f.is_none()).map(|(p, _)| *p).collect();
+        Ok(ChessCarry { stamp, wanted, pages: found.into_iter().flatten().collect(), missing, follow, same_count })
     }
 
     /// Chess ▸ Scan diagrams on one page: its diagrams in reading order, read with the user's
@@ -1082,7 +1158,7 @@ impl Session {
     /// screen showing a scan's boxes drops them once the two differ. `None` when there is no
     /// such document.
     pub fn chess_stamp(&self, id: DocId) -> Option<ScanStamp> {
-        self.get(id).map(|doc| ScanStamp { generation: doc.generation, bytes: doc.bytes.len() })
+        self.get(id).map(|doc| ScanStamp { generation: doc.generation, bytes: doc.bytes.len(), pages: doc.info.pages.len() })
     }
 }
 
@@ -1092,12 +1168,93 @@ impl Session {
 pub struct ScanStamp {
     generation: u64,
     bytes: usize,
+    /// The page count then.
+    pages: usize,
+}
+
+/// Where each of `pages`, whose content keys were `before`, is now, given the key of every page
+/// now (`now`, one per page): at its own index while it draws the same there; else at the index
+/// its content moved to (the pages of one content are paired in order, when as many pages draw it
+/// now as left their index); else, with as many pages as then (`same_count`), still at its index,
+/// its content changed (an edit to the page); else gone.
+fn follow_pages(
+    pages: &[usize],
+    before: &[Option<page_key::PageKey>],
+    now: &[Option<page_key::PageKey>],
+    same_count: bool,
+) -> Vec<(usize, Option<usize>)> {
+    use std::collections::{HashMap, HashSet};
+    let here = |p: usize, k: &Option<page_key::PageKey>| k.is_some() && now.get(p) == Some(k);
+    // Of each content, the pages scanned then that left their index, and the indices that draw it
+    // now and hold no page that stayed.
+    let mut left: HashMap<page_key::PageKey, Vec<usize>> = HashMap::new();
+    for (&p, k) in pages.iter().zip(before) {
+        if let Some(k) = k.filter(|_| !here(p, k)) {
+            left.entry(k).or_default().push(p);
+        }
+    }
+    let stayed: HashSet<usize> = pages.iter().zip(before).filter(|(p, k)| here(**p, k)).map(|(p, _)| *p).collect();
+    let mut free: HashMap<page_key::PageKey, Vec<usize>> = HashMap::new();
+    for (i, k) in now.iter().enumerate() {
+        if let Some(k) = k.filter(|k| left.contains_key(k) && !stayed.contains(&i)) {
+            free.entry(k).or_default().push(i);
+        }
+    }
+    let mut moved: HashMap<usize, usize> = HashMap::new();
+    for (k, from) in &left {
+        if let Some(to) = free.get(k).filter(|to| to.len() == from.len()) {
+            moved.extend(from.iter().copied().zip(to.iter().copied()));
+        }
+    }
+    pages
+        .iter()
+        .zip(before)
+        .map(|(&p, k)| {
+            let to = if here(p, k) {
+                Some(p)
+            } else if let Some(to) = moved.get(&p) {
+                Some(*to)
+            } else {
+                (same_count && p < now.len()).then_some(p)
+            };
+            (p, to)
+        })
+        .collect()
+}
+
+/// A scan carried to the document's state now ([`Session::chess_carry`]).
+#[derive(Clone, Debug)]
+pub struct ChessCarry {
+    /// The state the pages describe: the document's now.
+    pub stamp: ScanStamp,
+    /// The pages (0-based, ascending) the scan covers now.
+    pub wanted: Vec<usize>,
+    /// The pages of `wanted` whose content was scanned before, by page.
+    pub pages: Vec<Arc<ChessPage>>,
+    /// The pages of `wanted` left to scan.
+    pub missing: Vec<usize>,
+    /// Each page scanned then and where it is now: `None` when it is gone (pages were removed
+    /// and its content is nowhere), or cannot be told from another page that drew the same.
+    pub follow: Vec<(usize, Option<usize>)>,
+    /// The document has as many pages as then.
+    same_count: bool,
+}
+
+impl ChessCarry {
+    /// Where page `then` (0-based) is now: [`Self::follow`] for a page scanned then; another
+    /// stays where it was while the document has as many pages as then.
+    pub fn now_at(&self, then: usize) -> Option<usize> {
+        match self.follow.iter().find(|(p, _)| *p == then) {
+            Some((_, to)) => *to,
+            None => (self.same_count && then < self.stamp.pages).then_some(then),
+        }
+    }
 }
 
 impl ChessScan {
     /// The document state this scan was made from: see [`Session::chess_stamp`].
     pub fn stamp(&self) -> ScanStamp {
-        ScanStamp { generation: self.params.generation, bytes: self.params.bytes }
+        ScanStamp { generation: self.params.generation, bytes: self.params.bytes, pages: self.params.pages }
     }
 }
 

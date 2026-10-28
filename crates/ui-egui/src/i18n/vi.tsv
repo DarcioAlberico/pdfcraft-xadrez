@@ -3457,3 +3457,10 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Discard changes	Bỏ thay đổi
 	Keep editing	Tiếp tục sửa
 	Click a square to put the piece there. Confirm keeps the correction without changing the PDF.	Nhấp vào một ô để đặt quân vào đó. Xác nhận sẽ giữ chỉnh sửa mà không thay đổi PDF.
+# Plan A8 P3b4: Redraw in the PDF.
+	Redraw in the PDF…	Vẽ lại trong PDF…
+	Draw this position over the original diagram in the PDF (one undo step).	Vẽ thế cờ này đè lên sơ đồ gốc trong PDF (một bước hoàn tác).
+	Redraw in the PDF draws the corrected position over the original. This changes the file; you can undo it with Ctrl+Z until you save.	Vẽ lại trong PDF sẽ vẽ thế cờ đã sửa đè lên bản gốc. Việc này thay đổi tệp; bạn có thể hoàn tác bằng Ctrl+Z cho đến khi lưu.
+	Don't show again	Không hiện lại
+	Redraw	Vẽ lại
+	Diagram redrawn in the PDF	Đã vẽ lại sơ đồ trong PDF

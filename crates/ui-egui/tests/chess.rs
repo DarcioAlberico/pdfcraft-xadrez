@@ -3,6 +3,8 @@
 //! the Chess Merida diagram font, read exactly without a model, and a board drawn as filled
 //! squares, which is found and, without the user's piece model, not read.
 
+use std::sync::Arc;
+
 use egui::Pos2;
 use egui_kittest::Harness;
 use egui_kittest::kittest::{NodeT, Queryable};
@@ -167,15 +169,17 @@ fn scanning_lists_the_diagrams_with_their_positions_and_marks_them_on_the_page()
     assert_eq!(h.state().chess.results.as_ref().and_then(|r| r.selected), Some((0, 0)), "the font diagram was clicked");
 }
 
-/// After an edit the boxes may no longer be over the diagrams: the panel says so, and the next
-/// scan starts afresh.
+/// After an edit the list is carried to the document's state now (plan A8, P3b4): the page the
+/// edit changed is read again in the background, its boxes are drawn and picked as before, and
+/// nothing says the document changed.
 #[test]
-fn an_edit_makes_the_scan_stale_until_the_next_one() {
+fn an_edit_keeps_the_scan_and_reads_again_the_page_it_changed() {
     let mut h = harness();
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
     assert_eq!(diagrams(&h), 2);
-    // A comment in a corner: the diagrams stay where they were, but nothing says so.
+    let first = h.state().chess.results.as_ref().unwrap().pages[0].clone();
+    // A comment in a corner: the page changed, its diagrams did not.
     let shape = Shape::Rectangle { rect: [10.0, 10.0, 50.0, 50.0] };
     h.state_mut().apply_edit(Edit::AddAnnotation(NewAnnotation {
         page: 0,
@@ -185,8 +189,11 @@ fn an_edit_makes_the_scan_stale_until_the_next_one() {
         author: String::new(),
     }));
     h.run_steps(3);
-    h.get_by_label("The document changed since the scan. Scan again to update the diagrams.");
-    // The stale boxes are not drawn, and clicking where one was picks nothing.
+    assert!(list_is_current(&h));
+    assert!(!Arc::ptr_eq(&h.state().chess.results.as_ref().unwrap().pages[0], &first), "the page changed is read again");
+    assert_eq!(diagrams(&h), 2);
+    assert!(h.query_by_label("The document changed since the scan. Scan again to update the diagrams.").is_none());
+    // The boxes are there: clicking one picks it.
     let at = on_page(&h, 140.0, 660.0);
     h.hover_at(at);
     h.run_steps(1);
@@ -194,11 +201,7 @@ fn an_edit_makes_the_scan_stale_until_the_next_one() {
         h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed, modifiers: egui::Modifiers::NONE });
     }
     h.run_steps(3);
-    assert_eq!(h.state().chess.results.as_ref().and_then(|r| r.selected), None);
-    h.get_by_label("Scan this page").click();
-    h.run_steps(3);
-    assert!(h.query_by_label("The document changed since the scan. Scan again to update the diagrams.").is_none());
-    assert_eq!(diagrams(&h), 2);
+    assert_eq!(h.state().chess.results.as_ref().and_then(|r| r.selected), Some((0, 0)));
 }
 
 /// A document that does not allow copying its content can't be scanned.
@@ -371,25 +374,132 @@ fn the_editor_sets_the_move_number() {
     assert_eq!(h.state().chess.editor.as_ref().map(|e| e.fen()).as_deref(), Some("4k3/8/8/8/8/8/8/R3K3 b Q - 0 35"));
 }
 
-/// Replace on the page draws the corrected position over the diagram as one undo step and scans
-/// the page again; undo brings the old page back.
-#[test]
-fn replace_on_the_page_then_undo() {
-    let mut h = harness();
-    scan_and_edit_second(&mut h);
-    let before = h.state().session.get(h.state().active_ids().unwrap().1).unwrap().edit_generation();
+/// The document's edit generation now.
+fn generation(h: &Harness<'static, PdfCraftApp>) -> u64 {
+    let id = h.state().active_ids().unwrap().1;
+    h.state().session.get(id).unwrap().edit_generation()
+}
+
+/// The list is in the document's state now (not one before an edit).
+fn list_is_current(h: &Harness<'static, PdfCraftApp>) -> bool {
+    let id = h.state().active_ids().unwrap().1;
+    h.state().chess.results.as_ref().is_some_and(|r| Some(r.stamp) == h.state().session.chess_stamp(id))
+}
+
+/// Opens More actions, then Redraw in the PDF….
+#[track_caller]
+fn ask_redraw(h: &mut Harness<'static, PdfCraftApp>) {
     h.get_by_label("More actions").click();
     h.run_steps(2);
-    h.get_by_label("Replace on the page").click();
-    h.run_steps(4);
-    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Diagrams found: 2"), "replaced, then the page was scanned again");
-    let id = h.state().active_ids().unwrap().1;
-    assert!(h.state().session.get(id).unwrap().edit_generation() > before);
-    assert!(h.state().chess.editor.is_none());
-    assert_eq!(diagrams(&h), 2, "the new board is found where the old one was");
-    assert!(h.state_mut().execute("edit.undo"));
+    h.get_by_label("Redraw in the PDF…").click();
     h.run_steps(2);
-    assert_eq!(h.state().session.get(id).unwrap().can_undo(), None, "back to the opened file");
+}
+
+/// Redraw in the PDF (plan A8, P3b4): the first time a question says what it does, and Cancel
+/// changes nothing. Redraw draws the position over the diagram as one undo step and keeps it as
+/// the diagram's correction; only its page is read again, so the list keeps the other page as it
+/// was. Don't show again puts the question away; undo brings the old page back and the list stays.
+#[test]
+fn redraw_in_the_pdf_asks_first_and_reads_only_its_page_again() {
+    let dir = corrections_dir("redraw");
+    let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), Some(dir.clone()));
+    // A second page like the first, to tell the page redrawn from the others.
+    assert!(h.state_mut().apply_edit(Edit::DuplicatePages { pages: vec![0], at: None }));
+    h.run_steps(2);
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    // Page 1's drawn board (page 2's has the same name in the list).
+    h.get_all_by_label_contains("Diagram 2 · ").next().expect("the drawn board is listed").click();
+    h.run_steps(3);
+    let ed = h.state_mut().chess.editor.as_mut().expect("picking a diagram opens the editor");
+    assert_eq!((ed.page, ed.index), (0, 1));
+    ed.position = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(EDITED).unwrap();
+    h.run_steps(2);
+    assert_eq!(diagrams(&h), 4);
+    let other = h.state().chess.results.as_ref().unwrap().pages[1].clone();
+    let before = generation(&h);
+
+    ask_redraw(&mut h);
+    assert!(h.state().chess.redraw_prompt.is_some(), "the first time asks");
+    h.get_by_label_contains("This changes the file");
+    h.get_by_label("Cancel").click();
+    h.run_steps(2);
+    assert!(h.state().chess.redraw_prompt.is_none());
+    assert_eq!(generation(&h), before, "Cancel changes nothing");
+
+    ask_redraw(&mut h);
+    h.get_by_label("Don't show again").click();
+    h.get_by_label("Redraw").click();
+    h.run_steps(4);
+    assert!(generation(&h) > before, "drawn");
+    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Diagram redrawn in the PDF"));
+    assert!(h.state().chess.redraw_asked);
+    assert!(list_is_current(&h), "the list is carried to the state now");
+    assert_eq!(diagrams(&h), 4, "the new board is found where the old one was");
+    let results = h.state().chess.results.as_ref().unwrap();
+    assert!(Arc::ptr_eq(&results.pages[1], &other), "the other page is not read again");
+    assert_eq!(results.kind(0, 1), Some(pdfcraft_engine::chess::corrections::Kind::Corrected), "kept as the correction");
+    let ed = h.state().chess.editor.as_ref().expect("the editor stays on the diagram");
+    assert_eq!(((ed.page, ed.index), ed.fen(), ed.dirty()), ((0, 1), EDITED.to_string(), false), "nothing left to confirm");
+    assert_eq!(correction_files(&dir).len(), 1, "kept on disk");
+
+    // Undone: the old page is back, the list stays, and the correction too.
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(3);
+    assert!(list_is_current(&h));
+    assert_eq!(diagrams(&h), 4);
+    let results = h.state().chess.results.as_ref().unwrap();
+    assert!(Arc::ptr_eq(&results.pages[1], &other));
+    assert_eq!(results.kind(0, 1), Some(pdfcraft_engine::chess::corrections::Kind::Corrected));
+
+    // Asked no more.
+    let before = generation(&h);
+    ask_redraw(&mut h);
+    assert!(h.state().chess.redraw_prompt.is_none());
+    assert!(generation(&h) > before);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// An edit to the document keeps the list (plan A8, P3b4): a page inserted before the diagrams
+/// moves them, and the diagram picked and the one in the editor, with its changes, follow; undo
+/// moves them back. Nothing says the document changed.
+#[test]
+fn the_list_follows_its_pages_across_an_edit() {
+    let mut h = harness();
+    scan_and_edit_second(&mut h);
+    let box_before = h.state().chess.results.as_ref().unwrap().diagram(0, 1).map(|d| d.0);
+    assert!(h.state_mut().apply_edit(Edit::InsertBlankPage { at: 0, width: 600.0, height: 800.0 }));
+    h.run_steps(3);
+    assert!(list_is_current(&h));
+    let results = h.state().chess.results.as_ref().unwrap();
+    assert_eq!(results.count(), 2);
+    assert_eq!(results.diagram(1, 1).map(|d| d.0), box_before, "the diagrams are on page 2 now");
+    assert_eq!(results.selected, Some((1, 1)), "the diagram picked follows");
+    let ed = h.state().chess.editor.as_ref().unwrap();
+    assert_eq!(((ed.page, ed.index), ed.fen()), ((1, 1), EDITED.to_string()), "the editor follows, its changes kept");
+    assert!(h.state().toast.as_ref().is_none_or(|t| !t.0.contains("changed")), "{:?}", h.state().toast);
+    h.get_by_label_contains("Diagram 2 · ");
+
+    assert!(h.state_mut().execute("edit.undo"));
+    h.run_steps(3);
+    assert!(list_is_current(&h));
+    assert_eq!(h.state().chess.results.as_ref().unwrap().selected, Some((0, 1)));
+    assert_eq!(h.state().chess.editor.as_ref().map(|e| (e.page, e.index)), Some((0, 1)));
+}
+
+/// A page removed takes its diagrams out of the list, and the editor on one of them closes.
+#[test]
+fn a_page_removed_leaves_the_list() {
+    let mut h = harness();
+    assert!(h.state_mut().apply_edit(Edit::InsertBlankPage { at: 1, width: 600.0, height: 800.0 }));
+    h.run_steps(2);
+    scan_and_edit_second(&mut h);
+    assert!(h.state_mut().apply_edit(Edit::DeletePages { pages: vec![0] }));
+    h.run_steps(3);
+    assert!(list_is_current(&h));
+    assert_eq!(diagrams(&h), 0);
+    assert!(h.state().chess.editor.is_none());
+    assert_eq!(h.state().chess.results.as_ref().unwrap().selected, None);
 }
 
 /// Add lichess link puts a link to the corrected position under the diagram.

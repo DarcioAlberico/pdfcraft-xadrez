@@ -222,7 +222,7 @@ Cada passo: **Contexto** (o que ler) · **Tarefas** · **Verificação** · **Sa
 
 **P3b3 — Rascunhos e modal.** ✅ *Feito (2026-10-28): rascunho por diagrama na sessão (ponto `warning` no ícone); pergunta ao fechar, fechar tudo, sair, exportar e detectar de novo; faixa de primeira vez. "Casas mudadas: 2" no lugar de "Você mudou 2 casas" (sem plural nos 22 idiomas). De passagem: os jobs da aba Texto e da exportação passam a receber as correções.* Rascunho por diagrama; modal só ao fechar, exportar ou detectar por cima com rascunhos; faixa de primeira vez. *Verificação:* testes de UI.
 
-**P3b4 — Redesenhar no PDF** (precisa de P3a2). Diálogo da 1ª vez; sem releitura do livro inteiro; ferramenta headless correspondente.
+**P3b4 — Redesenhar no PDF** (precisa de P3a2). ✅ *Feito (2026-10-28): "Redesenhar no PDF…" no ⋯ da aba Diagrama pergunta na 1ª vez (Redesenhar, Cancelar, "Não mostrar de novo" guardado nas preferências); a posição desenhada fica como a correção do diagrama, com a página como ficou depois, e só essa página é relida. O painel passa a manter a lista em toda edição, desfazer ou refazer (`Session::chess_carry`): cada página lida é seguida até onde o conteúdo dela está agora, a seleção, o editor e os rascunhos vão junto, e só as páginas mudadas são relidas, em segundo plano. Headless: `chess_replace_diagram` sem fen/placement desenha a correção guardada, e `keep_correction` guarda a posição desenhada.* Diálogo da 1ª vez; sem releitura do livro inteiro; ferramenta headless correspondente.
 
 **P3c — Teclado e leitor de tela no editor.** §2.3. *Verificação:* corrigir e confirmar só com teclado; nomes AccessKit inspecionados.
 

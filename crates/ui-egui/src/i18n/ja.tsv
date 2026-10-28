@@ -3205,3 +3205,10 @@ chess undo step	Clear drawings	描画の消去
 	Discard changes	変更を破棄
 	Keep editing	編集を続ける
 	Click a square to put the piece there. Confirm keeps the correction without changing the PDF.	マスをクリックすると駒を置けます。確定すると PDF を変更せずに修正を保持します。
+# Plan A8 P3b4: Redraw in the PDF.
+	Redraw in the PDF…	PDF に描き直す…
+	Draw this position over the original diagram in the PDF (one undo step).	この局面を PDF の元の局面図の上に描画します (取り消しは 1 回)。
+	Redraw in the PDF draws the corrected position over the original. This changes the file; you can undo it with Ctrl+Z until you save.	PDF に描き直すと、修正した局面が元の局面図の上に描画されます。ファイルが変更されます。保存するまでは Ctrl+Z で取り消せます。
+	Don't show again	今後表示しない
+	Redraw	描き直す
+	Diagram redrawn in the PDF	PDF の局面図を描き直しました

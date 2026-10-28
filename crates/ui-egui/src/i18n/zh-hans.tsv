@@ -3167,3 +3167,10 @@ chess undo step	Clear drawings	清除标记
 	Discard changes	放弃更改
 	Keep editing	继续编辑
 	Click a square to put the piece there. Confirm keeps the correction without changing the PDF.	点击一个格子即可放置棋子。“确认”会保留更正，而不更改 PDF。
+# Plan A8 P3b4: Redraw in the PDF.
+	Redraw in the PDF…	在 PDF 中重绘…
+	Draw this position over the original diagram in the PDF (one undo step).	在 PDF 中原局面图上方绘制此局面（可一步撤销）。
+	Redraw in the PDF draws the corrected position over the original. This changes the file; you can undo it with Ctrl+Z until you save.	在 PDF 中重绘会把更正后的局面绘制在原局面图上方。这会更改文件；保存之前可以按 Ctrl+Z 撤销。
+	Don't show again	不再显示
+	Redraw	重绘
+	Diagram redrawn in the PDF	已在 PDF 中重绘局面图

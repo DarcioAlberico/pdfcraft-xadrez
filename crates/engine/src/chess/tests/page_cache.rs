@@ -224,3 +224,83 @@ fn a_page_nested_too_deep_has_no_key() {
     assert_eq!(k[0], None);
     assert!(k[1].is_some(), "the other page is not affected");
 }
+
+/// A scan carried across edits (plan A8 P3b4): the pages scanned follow their content to where
+/// it is now, and only a page whose content changed is left to read again.
+#[test]
+fn a_carried_scan_follows_its_pages_and_leaves_the_changed_ones_to_read() {
+    let (mut s, id) = open(book(60));
+    let then = s.chess_stamp(id).unwrap();
+    let first = s.chess_scan(id, &BOARDS, &quick(), true).unwrap();
+    let found = boards(&first);
+    let shift = |by: usize| found.iter().map(|(p, fen)| (p + by, fen.clone())).collect::<Vec<_>>();
+
+    // A page inserted first moves both boards one on; nothing is left to read.
+    s.apply(id, Edit::InsertBlankPage { at: 0, width: 600.0, height: 800.0 }).unwrap();
+    let carry = s.chess_carry(id, then, &BOARDS, false, &quick(), true).unwrap();
+    assert_eq!(Some(carry.stamp), s.chess_stamp(id));
+    assert_eq!((carry.wanted.as_slice(), carry.missing.as_slice()), ([5, 41].as_slice(), [].as_slice()));
+    assert_eq!(carry.follow, [(4, Some(5)), (40, Some(41))]);
+    assert_eq!(boards(&carry.pages), shift(1));
+
+    // Twice over: the carry is followed from the state it was made in.
+    s.apply(id, Edit::InsertBlankPage { at: 0, width: 600.0, height: 800.0 }).unwrap();
+    let carry = s.chess_carry(id, carry.stamp, &carry.wanted, false, &quick(), true).unwrap();
+    assert_eq!((carry.wanted.as_slice(), carry.missing.as_slice()), ([6, 42].as_slice(), [].as_slice()));
+    assert_eq!(boards(&carry.pages), shift(2));
+
+    // Turning the second board's page leaves that page alone to read.
+    s.apply(id, Edit::RotatePages { pages: vec![42], degrees: 90 }).unwrap();
+    let before = s.chess.scanned;
+    let carry = s.chess_carry(id, carry.stamp, &carry.wanted, false, &quick(), true).unwrap();
+    assert_eq!((carry.wanted.as_slice(), carry.missing.as_slice()), ([6, 42].as_slice(), [42].as_slice()));
+    assert_eq!(carry.follow, [(6, Some(6)), (42, Some(42))], "the turned page stays where it is");
+    assert_eq!(boards(&carry.pages), shift(2)[..1]);
+    assert_eq!(s.chess.scanned, before, "nothing is scanned by a carry");
+}
+
+/// A page removed is gone from a carried scan; the pages after it follow their content.
+#[test]
+fn a_removed_page_is_gone_from_a_carried_scan() {
+    let (mut s, id) = open(book(60));
+    let then = s.chess_stamp(id).unwrap();
+    let scanned = [4, 10, 40];
+    s.chess_scan(id, &scanned, &quick(), true).unwrap();
+    s.apply(id, Edit::DeletePages { pages: vec![10] }).unwrap();
+    let carry = s.chess_carry(id, then, &scanned, false, &quick(), true).unwrap();
+    assert_eq!(carry.follow, [(4, Some(4)), (10, None), (40, Some(39))]);
+    assert_eq!((carry.wanted.as_slice(), carry.missing.as_slice()), ([4, 39].as_slice(), [].as_slice()));
+    assert_eq!((carry.now_at(10), carry.now_at(40), carry.now_at(20)), (None, Some(39), None), "page 21 may have moved");
+    // An undo brings it back where it was.
+    let then = carry.stamp;
+    s.undo(id).unwrap();
+    let carry = s.chess_carry(id, then, &carry.wanted, false, &quick(), true).unwrap();
+    assert_eq!(carry.follow, [(4, Some(4)), (39, Some(40))]);
+    assert_eq!(carry.now_at(20), None);
+}
+
+/// A whole-book scan carried across an edit covers every page now, the changed one left to read.
+#[test]
+fn a_carried_whole_scan_covers_every_page() {
+    let (mut s, id) = open(book(12));
+    let then = s.chess_stamp(id).unwrap();
+    scan_all(&mut s, id);
+    s.apply(id, Edit::RotatePages { pages: vec![4], degrees: 90 }).unwrap();
+    s.apply(id, Edit::InsertBlankPage { at: 12, width: 600.0, height: 800.0 }).unwrap();
+    let carry = s.chess_carry(id, then, &[], true, &quick(), true).unwrap();
+    assert_eq!(carry.wanted, (0..13).collect::<Vec<_>>());
+    assert_eq!(carry.missing, [4, 12]);
+    assert_eq!(carry.pages.len(), 11);
+    // What a scan of the missing pages finds is then all a scan of the book reads again.
+    s.chess_scan(id, &carry.missing, &quick(), true).unwrap();
+    assert_eq!(scan_all(&mut s, id).1, 0);
+}
+
+/// A closed document's scan is not carried.
+#[test]
+fn a_carry_needs_the_document() {
+    let (mut s, id) = open(book(2));
+    let then = s.chess_stamp(id).unwrap();
+    s.close(id);
+    assert!(s.chess_carry(id, then, &[], true, &quick(), true).is_err());
+}

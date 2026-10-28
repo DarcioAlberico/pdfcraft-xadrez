@@ -3277,3 +3277,10 @@ chess undo step	Clear drawings	smazání kreseb
 	Discard changes	Zahodit změny
 	Keep editing	Pokračovat v úpravách
 	Click a square to put the piece there. Confirm keeps the correction without changing the PDF.	Klikněte na pole, kam se má figura postavit. Potvrdit ponechá opravu, aniž by se změnilo PDF.
+# Plan A8 P3b4: Redraw in the PDF.
+	Redraw in the PDF…	Překreslit v PDF…
+	Draw this position over the original diagram in the PDF (one undo step).	Nakreslit tuto pozici přes původní diagram v PDF (jeden krok zpět).
+	Redraw in the PDF draws the corrected position over the original. This changes the file; you can undo it with Ctrl+Z until you save.	Překreslení v PDF nakreslí opravenou pozici přes původní. Tím se soubor změní; dokud neuložíte, můžete to vrátit klávesami Ctrl+Z.
+	Don't show again	Příště nezobrazovat
+	Redraw	Překreslit
+	Diagram redrawn in the PDF	Diagram byl v PDF překreslen

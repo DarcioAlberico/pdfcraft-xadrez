@@ -68,6 +68,11 @@ pub struct ChessState {
     pub draft_prompt: Option<crate::chess_drafts::DraftPrompt>,
     /// The Diagram tab's first-time hint was read (dismissed, or a diagram confirmed).
     pub diagram_hint_seen: bool,
+    /// Redraw in the PDF draws at once: its first-time question was answered with Don't show
+    /// again (plan A8, P3b4).
+    pub redraw_asked: bool,
+    /// The first-time question before Redraw in the PDF, while it is asked.
+    pub redraw_prompt: Option<crate::chess_redraw::RedrawPrompt>,
     /// List only the diagrams to review.
     pub review_only: bool,
     /// The pieces the editor draws with, found once.
@@ -203,9 +208,21 @@ pub struct ChessResults {
     /// What the user did with each diagram (page, index): Verified or Corrected, and the
     /// position kept ([`PdfCraftApp::refresh_chess_kinds`]).
     pub kinds: HashMap<(usize, usize), (Kind, String)>,
+    /// The pages scans were asked for (ascending), and whether one was of every page: what an
+    /// edit carries to the document's next state ([`PdfCraftApp::carry_chess_results`]).
+    pub wanted: Vec<usize>,
+    pub all: bool,
 }
 
 impl ChessResults {
+    /// The list covers `pages` too (`all`: every page).
+    fn ask(&mut self, pages: &[usize], all: bool) {
+        self.all |= all;
+        self.wanted.extend_from_slice(pages);
+        self.wanted.sort_unstable();
+        self.wanted.dedup();
+    }
+
     /// How many diagrams were found.
     pub fn count(&self) -> usize {
         self.pages.iter().map(|p| p.diagrams.len()).sum()
@@ -283,8 +300,11 @@ pub struct ChessRun {
     pub progress: Arc<Mutex<ChessProgress>>,
     /// Diagrams in the batches shown so far.
     pub found: usize,
-    /// A batch was dropped because the document changed during the scan (said once).
+    /// A batch was dropped because the document changed during the scan.
     pub stale: bool,
+    /// The pages it scans, and whether they are every page.
+    pub pages: Vec<usize>,
+    pub all: bool,
 }
 
 /// The progress, even after a worker panicked while holding it (it is plain data).
@@ -665,13 +685,13 @@ impl PdfCraftApp {
         let Some(count) = self.session.get(id).map(|d| d.info.pages.len()) else { return };
         let pages: Vec<usize> =
             if all { (0..count).collect() } else { self.views.get(vi).map(|v| v.current).filter(|p| *p < count).into_iter().collect() };
-        self.start_chess_scan_pages(pages, false);
+        self.start_chess_scan_pages(id, pages, false, all);
     }
 
-    /// Scan `pages` of the active document. `quiet`: for a double-click on a page (`BoardAt`),
-    /// which neither shows the Chess panel nor announces what was found.
-    fn start_chess_scan_pages(&mut self, pages: Vec<usize>, quiet: bool) {
-        let Some((_, id)) = self.active_ids() else { return };
+    /// Scan `pages` of document `id` (`all`: they are every page). `quiet`: for a double-click
+    /// on a page (`BoardAt`) or the pages an edit changed, which neither shows the Chess panel
+    /// nor announces what was found.
+    fn start_chess_scan_pages(&mut self, id: DocId, pages: Vec<usize>, quiet: bool, all: bool) {
         if self.chess.run.is_some() {
             self.notify(tl!("Diagrams are already being scanned").to_string());
             return;
@@ -687,6 +707,7 @@ impl PdfCraftApp {
         let settings = self.chess_scan_settings();
         // `chunks` needs a batch size above zero: PAGES_PER_JOB is 8.
         let jobs: Vec<ChessScanJob> = pages.chunks(PAGES_PER_JOB).filter_map(|c| self.session.chess_scan_job(id, c, &settings, true)).collect();
+        let pages: Vec<usize> = jobs.iter().flat_map(ChessScanJob::pages).collect();
         // Results for another document, or for this one before it changed, give way.
         let now = self.session.chess_stamp(id);
         if self.chess.results.as_ref().is_some_and(|r| r.doc != id || Some(r.stamp) != now) {
@@ -723,7 +744,7 @@ impl PdfCraftApp {
         }
         #[cfg(target_arch = "wasm32")]
         work();
-        self.chess.run = Some(ChessRun { doc: id, quiet, progress, found: 0, stale: false });
+        self.chess.run = Some(ChessRun { doc: id, quiet, progress, found: 0, stale: false, pages, all });
         if !quiet {
             self.reveal_chess_diagrams();
         }
@@ -761,7 +782,11 @@ impl PdfCraftApp {
                 self.edit_chess_diagram(page, index, false);
             }
         }
-        let Some(progress) = self.chess.run.as_ref().map(|r| r.progress.clone()) else { return };
+        let Some(progress) = self.chess.run.as_ref().map(|r| r.progress.clone()) else {
+            // An edit, undo or redo since the scan: the list follows it.
+            self.carry_chess_results();
+            return;
+        };
         let (scans, model, finished) = {
             let mut s = lock(&progress);
             (std::mem::take(&mut s.scans), s.model.clone(), s.finished)
@@ -770,14 +795,10 @@ impl PdfCraftApp {
             let found: usize = scan.pages.iter().map(|p| p.diagrams.len()).sum();
             let kept = self.keep_chess_scan(scan, model.clone());
             let Some(run) = self.chess.run.as_mut() else { return };
-            let first_stale = if kept {
+            if kept {
                 run.found = run.found.saturating_add(found);
-                false
             } else {
-                !std::mem::replace(&mut run.stale, true)
-            };
-            if first_stale {
-                self.notify(tl!("The document changed since the scan. Scan again to update the diagrams.").to_string());
+                run.stale = true;
             }
         }
         if !finished {
@@ -787,9 +808,73 @@ impl PdfCraftApp {
             return;
         }
         let Some(run) = self.chess.run.take() else { return };
+        // The pages it was for are the list's even when the document changed meanwhile: the list
+        // is carried to the state now, and they with it.
+        match self.chess.results.as_mut().filter(|r| r.doc == run.doc) {
+            Some(results) => results.ask(&run.pages, run.all),
+            None if run.stale => self.notify(tl!("The document changed since the scan. Scan again to update the diagrams.").to_string()),
+            None => {}
+        }
         if !run.stale && !run.quiet {
             let n = run.found;
             self.notify(crate::i18n::fmt(tl!("Diagrams found: {n}"), &[("n", &n.to_string())]));
+        }
+        self.carry_chess_results();
+    }
+
+    /// The document changed since its diagrams were scanned (an edit, undo or redo): carry the
+    /// list to the state it is in now (plan A8, P3b4). The pages whose content did not change keep
+    /// what was found there, wherever they are now, and only the others are scanned again, in the
+    /// background and without a word. The diagram picked, the one in the editor and the drafts
+    /// follow their pages; those of a page removed go. Waits for a scan that is running.
+    pub(crate) fn carry_chess_results(&mut self) {
+        if self.chess.run.is_some() {
+            return;
+        }
+        let Some((id, then, wanted, all)) = self.chess.results.as_ref().map(|r| (r.doc, r.stamp, r.wanted.clone(), r.all)) else { return };
+        if self.session.chess_stamp(id).is_none_or(|now| now == then) {
+            return;
+        }
+        let settings = self.chess_scan_settings();
+        let carry = match self.session.chess_carry(id, then, &wanted, all, &settings, true) {
+            Ok(carry) => carry,
+            // Closed, or its content may no longer be copied: nothing of it is shown.
+            Err(_) => {
+                self.chess.results = None;
+                return;
+            }
+        };
+        if let Some(results) = self.chess.results.as_mut() {
+            results.stamp = carry.stamp;
+            results.wanted = carry.wanted.clone();
+            results.pages = carry.pages.clone();
+            results.selected = results.selected.and_then(|(page, index)| carry.now_at(page).map(|p| (p, index)));
+        }
+        let editing = self.chess.editor.as_ref().filter(|e| e.doc == id).map(|e| carry.now_at(e.page));
+        match editing {
+            Some(Some(page)) => {
+                if let Some(ed) = self.chess.editor.as_mut() {
+                    ed.page = page;
+                }
+            }
+            Some(None) => self.chess.editor = None,
+            None => {}
+        }
+        self.chess.drafts.retain_mut(|d| {
+            if d.target.doc != id {
+                return true;
+            }
+            match carry.now_at(d.target.page) {
+                Some(page) => {
+                    d.target.page = page;
+                    true
+                }
+                None => false,
+            }
+        });
+        self.refresh_chess_kinds();
+        if !carry.missing.is_empty() {
+            self.start_chess_scan_pages(id, carry.missing, true, false);
         }
     }
 
@@ -829,7 +914,7 @@ impl PdfCraftApp {
         self.chess.board_at = Some(at);
         // A scan that does not start (the document forbids copying its content, say) leaves no
         // run: the next tick drops the double-click.
-        self.start_chess_scan_pages(vec![at.page], true);
+        self.start_chess_scan_pages(at.doc, vec![at.page], true, false);
     }
 
     /// Add one batch to the results. Returns `false` when the document changed since the batch
@@ -851,9 +936,15 @@ impl PdfCraftApp {
                 reveal: false,
                 model: ModelNote::Missing,
                 kinds: HashMap::new(),
+                wanted: Vec::new(),
+                all: false,
             });
         }
+        let asked = self.chess.run.as_ref().filter(|r| r.doc == scan.doc).map(|r| (r.pages.clone(), r.all));
         let Some(results) = self.chess.results.as_mut() else { return true };
+        if let Some((pages, all)) = asked {
+            results.ask(&pages, all);
+        }
         if let Some(m) = model {
             results.model = m;
         }
@@ -1002,7 +1093,7 @@ impl PdfCraftApp {
                     }
                 }
             }
-            EditorAction::Replace => self.replace_chess_diagram(),
+            EditorAction::Redraw => self.redraw_chess_diagram(),
             EditorAction::Link => self.link_chess_diagram(),
             EditorAction::Confirm { next } => {
                 self.chess.confirm_only = !next;
@@ -1036,29 +1127,6 @@ impl PdfCraftApp {
             && let (Some(ctx), Some(pieces), Some(text)) = (self.ctx.as_ref(), self.chess.pieces.clone(), self.chess.text.as_mut())
         {
             text.redraw_boards(ctx, &pieces);
-        }
-    }
-
-    /// Draw the editor's position over its diagram on the page, then scan that page again.
-    pub fn replace_chess_diagram(&mut self) {
-        let Some(ed) = self.chess.editor.as_ref() else { return };
-        let Some(generation) = self.session.get(ed.doc).map(|d| d.edit_generation()) else { return };
-        // The fields apart: the editor is borrowed.
-        let pieces = crate::chess_editor::piece_set(&mut self.chess.pieces, &self.chess.diagram_piece_choice, &mut self.chess.diagram_piece_error);
-        let replacement = pdfcraft_engine::chess::DiagramReplacement {
-            drawings: Vec::new(),
-            page: ed.page,
-            index: ed.index,
-            generation,
-            placement: ed.position.placement,
-            style: pdfcraft_engine::chess::pdfcraft_chess::draw::BoardStyle { flipped: ed.flipped, ..Default::default() },
-            pieces,
-            scan: self.chess_scan_settings(),
-        };
-        if self.apply_edit(pdfcraft_engine::Edit::ReplaceDiagram(Box::new(replacement))) {
-            self.chess.editor = None;
-            self.notify(tl!("Diagram replaced").to_string());
-            self.start_chess_scan(false);
         }
     }
 

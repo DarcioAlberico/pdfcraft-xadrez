@@ -368,11 +368,40 @@ impl Automation {
         let index = a.int("index")?;
         let index = usize::try_from(index).ok().and_then(|i| i.checked_sub(1)).ok_or_else(|| Args::wrong("index", "1 or more"))?;
         let generation = u64::try_from(a.int("generation")?).map_err(|_| Args::wrong("generation", "0 or more"))?;
-        let placement = match (a.opt_str("fen")?, a.opt_str("placement")?) {
-            (Some(fen), None) => fen::parse(fen).map_err(|e| ToolError::InvalidArgs(format!("fen: {e}")))?.placement,
-            (None, Some(p)) => fen::parse_placement(p).map_err(|e| ToolError::InvalidArgs(format!("placement: {e}")))?,
-            _ => return Err(ToolError::InvalidArgs("give either fen or placement (the first field of a FEN), not both".into())),
+        let id = self.doc(a)?.id;
+        let keep = a.opt_bool("keep_correction")?.unwrap_or(false);
+        let given = match (a.opt_str("fen")?, a.opt_str("placement")?) {
+            (Some(fen), None) => {
+                Some((fen::parse(fen).map_err(|e| ToolError::InvalidArgs(format!("fen: {e}")))?.placement, Some(fen.trim().to_owned())))
+            }
+            (None, Some(p)) => Some((fen::parse_placement(p).map_err(|e| ToolError::InvalidArgs(format!("placement: {e}")))?, None)),
+            (None, None) => None,
+            _ => return Err(ToolError::InvalidArgs("give fen or placement (the first field of a FEN), not both".into())),
         };
+        // Redraw in the PDF (plan A8, P3b4): the diagram as found and read now, for the position
+        // kept for it and the correction kept after the drawing.
+        let target = if given.is_none() || keep { Some(self.diagram_target(a, id, page, index)?) } else { None };
+        let mut from_correction = None;
+        let (placement, full) = match given {
+            Some(given) => given,
+            None => {
+                let rect = target.as_ref().map(|t| t.0).ok_or_else(|| failed("the diagram could not be found"))?;
+                let (uid, fen) = self.kept_correction(a, id, page, rect)?.ok_or_else(|| {
+                    ToolError::InvalidArgs(
+                        "give fen or placement: the diagram has no correction kept in store (chess_correction_set keeps one)".into(),
+                    )
+                })?;
+                from_correction = Some(uid);
+                (fen::parse(&fen).map_err(|e| failed(format!("the kept correction: {e}")))?.placement, Some(fen))
+            }
+        };
+        if keep && full.is_none() {
+            return Err(ToolError::InvalidArgs("keep_correction keeps a whole position: give fen, not placement".into()));
+        }
+        // The folder the correction goes to, checked before anything is drawn.
+        if keep {
+            self.correction_store(a)?;
+        }
         let style = board_style(a)?;
         let (pieces, source, error) = match a.opt_str("pieces")? {
             None | Some("installed") => pieces::find(),
@@ -384,11 +413,14 @@ impl Automation {
         let drawings = drawings_arg(a)?;
         let described = pdfcraft_engine::chess::pdfcraft_chess::draw::describe(&drawings);
         let replacement = DiagramReplacement { page, index, generation, placement, style, pieces: Arc::new(pieces), scan: settings, drawings };
-        let id = self.doc(a)?.id;
         let plan = self.session.chess_replacement(id, &replacement).map_err(failed)?;
         let geometry = self.session.chess_scan(id, &[page], &replacement.scan, false).ok().and_then(|p| p.first().and_then(|p| p.geometry));
         let dry_run = a.opt_bool("dry_run")?.unwrap_or(false);
         let mut out = if dry_run { json!({}) } else { self.apply(a, Edit::ReplaceDiagram(Box::new(replacement)))? };
+        let correction = match (keep && !dry_run, target, full) {
+            (true, Some((rect, read)), Some(fen)) => self.keep_correction(a, id, page, rect, read, fen)?,
+            _ => Value::Null,
+        };
         let user = |r: [f64; 4]| page_rect(r);
         let removed = match (plan.deleted_image, plan.removed_lines.is_empty()) {
             (Some(_), _) => "image_deleted",
@@ -418,6 +450,8 @@ impl Automation {
                 PieceSource::Geometric => json!({ "source": "geometric", "family": Value::Null, "error": error.map(|e| e.to_string()) }),
             },
             "notes": plan.notes,
+            "from_correction": from_correction,
+            "correction": correction,
         });
         if let (Some(o), Value::Object(f)) = (out.as_object_mut(), fields) {
             o.extend(f);
