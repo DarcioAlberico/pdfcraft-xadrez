@@ -3615,7 +3615,13 @@ pub fn document_area(app: &mut PdfCraftApp, index: usize, ui: &mut egui::Ui) {
                 {
                     hover_text = Some((p, tip));
                 }
-                if resp.clicked() && tool == QuickTool::Select && !consumed {
+                // A diagram is picked with a click: with Select, and with the Hand when the click
+                // did not drag the page (plan A8, P2b), which the hand cursor says.
+                let picks = matches!(tool, QuickTool::Select | QuickTool::Hand);
+                if picks && !resp.dragged() {
+                    ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+                }
+                if resp.clicked() && picks && !consumed {
                     chess_pick = Some((i, d));
                 }
             }

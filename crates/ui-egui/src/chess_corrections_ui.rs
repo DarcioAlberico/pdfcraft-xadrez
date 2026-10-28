@@ -19,7 +19,7 @@ use std::collections::HashMap;
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::DocKeys;
 use pdfcraft_engine::chess::corrections::{
-    CorrectionError, CorrectionFile, CorrectionStore, Kind, Loaded, MemStore, NewCorrection, Original, StoreError, normalize,
+    CorrectionError, CorrectionFile, CorrectionStore, Kind, Loaded, MemStore, NewCorrection, Original, Status, StoreError, normalize,
 };
 
 use crate::PdfCraftApp;
@@ -289,6 +289,50 @@ impl PdfCraftApp {
         // A draft of it is confirmed too.
         self.chess.drafts.retain(|d| (d.target.doc, d.target.page, d.target.index) != (id, page, index));
         Some(kind)
+    }
+
+    /// Chess ▸ Mark the page as checked (plan A8, P2b): every diagram of `page` read with
+    /// confidence and not confirmed yet is kept as Verified, without changing the PDF. Those to
+    /// review, not read or with an error are left for the person to check one by one (the plan
+    /// rejects accepting them in bulk). Says what was done; how many were checked.
+    pub fn verify_chess_page(&mut self, page: usize) -> usize {
+        let Some((_, id)) = self.active_ids() else { return 0 };
+        let label = self.chess_page_label(page);
+        let Some(p) = self.chess.results.as_ref().filter(|r| r.doc == id).and_then(|r| r.pages.iter().find(|p| p.page == page)).cloned() else {
+            self.notify(tl!("Detect the diagrams on this page first.").to_string());
+            return 0;
+        };
+        let (mut done, mut left) = (0usize, 0usize);
+        for index in 0..p.diagrams.len() {
+            let kind = self.chess.results.as_ref().and_then(|r| r.kind(page, index));
+            let state = Status::of(crate::chess_ui::ChessResults::reading(&p, index), kind);
+            if state.to_review() {
+                left = left.saturating_add(1);
+            }
+            if !state.checked_with_the_page() {
+                continue;
+            }
+            let Some(target) = self.chess_diagram_target(id, page, index) else { continue };
+            let Some(fen) = target.read.clone() else { continue };
+            if self.store_chess_correction(&target, fen).is_none() {
+                // The store said why; nothing more is tried.
+                return done;
+            }
+            done = done.saturating_add(1);
+        }
+        let mut said = if done == 0 {
+            crate::i18n::fmt(tl!("Nothing on page {p} is left that was read with confidence."), &[("p", &label)])
+        } else {
+            let n = u64::try_from(done).unwrap_or(u64::MAX);
+            let checked = crate::i18n::trn(crate::i18n::current(), n, "{n} diagram checked", "{n} diagrams checked");
+            crate::i18n::fmt(tl!("Page {p}: {done}"), &[("p", &label), ("done", &checked)])
+        };
+        if left > 0 {
+            said.push_str(" · ");
+            said.push_str(&crate::i18n::fmt(tl!("{n} to review"), &[("n", &left.to_string())]));
+        }
+        self.notify(said);
+        done
     }
 
     /// Diagram Confirm: keep the editor's position for its diagram ([`Self::keep_chess_correction`]);

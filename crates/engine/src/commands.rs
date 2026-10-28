@@ -377,6 +377,8 @@ pub const COMMANDS: &[CommandSpec] = &[
     c("a11y.tags", "Tags panel", None, None, Document, "tag"),
     c("chess.scan", "Scan chess diagrams", None, None, Copying, "grid-3x3"),
     c("chess.panel", "Chess diagrams panel", None, None, Document, "grid-3x3"),
+    // The diagrams of the page shown read with confidence, kept as checked (plan A8, P2b).
+    c("chess.verify_page", "Mark the page as checked", None, None, Document, "badge-check"),
     // Where the chess models come from (U4): a folder on the desktop, files on the web.
     c("chess.models", "Chess models…", None, None, Nothing, "folder-open"),
     // The chess board's games (T4b): a new game, and PGN files in and out.

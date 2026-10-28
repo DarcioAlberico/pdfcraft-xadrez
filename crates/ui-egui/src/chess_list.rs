@@ -260,9 +260,9 @@ pub(crate) fn list(
         match *item {
             Item::Page(pi) => {
                 if let Some(page) = results.pages.get(pi)
-                    && page_header(ui, t, r, page.page, info, total_pages)
+                    && let Some(a) = page_header(ui, t, r, page.page, info, total_pages)
                 {
-                    action = Some(PanelAction::GoToPage(page.page));
+                    action = Some(a);
                 }
             }
             Item::Error(pi) => {
@@ -337,8 +337,8 @@ fn chip(ui: &mut egui::Ui, t: &Tokens, state: Option<DiagramState>, text: &str, 
 }
 
 /// A page's header in `rect` ("Page 17", and "· 25 of 703" when its label is not its number):
-/// whether it was clicked.
-fn page_header(ui: &mut egui::Ui, t: &Tokens, rect: Rect, page: usize, info: &DocInfo, total: usize) -> bool {
+/// a click goes to the page; its context menu marks the page as checked (plan A8, P2b).
+fn page_header(ui: &mut egui::Ui, t: &Tokens, rect: Rect, page: usize, info: &DocInfo, total: usize) -> Option<PanelAction> {
     let number = page.saturating_add(1).to_string();
     let label = info.pages.get(page).map_or_else(|| number.clone(), |p| p.label.clone());
     let head = crate::i18n::fmt(tl!("Page {label}"), &[("label", &label)]);
@@ -356,7 +356,20 @@ fn page_header(ui: &mut egui::Ui, t: &Tokens, rect: Rect, page: usize, info: &Do
         crate::widgets::paint_left(ui, left, &place, theme::regular(12.0), t.text_muted, (r.max.x - left.x).max(0.0));
     }
     crate::widgets::focus_ring(ui, &resp, r, 4);
-    theme::hand(resp).on_hover_text(tl!("Go to this page")).clicked()
+    let mut action = None;
+    resp.context_menu(|ui| {
+        if ui
+            .button(tl!("Mark the page as checked"))
+            .on_hover_text(tl!("Keep every diagram read with confidence on this page as checked; those to review are left for you."))
+            .clicked()
+        {
+            action = Some(PanelAction::VerifyPage(page));
+        }
+    });
+    if theme::hand(resp).on_hover_text(tl!("Go to this page")).clicked() {
+        action = Some(PanelAction::GoToPage(page));
+    }
+    action
 }
 
 /// A note under a page's header, in `rect`.

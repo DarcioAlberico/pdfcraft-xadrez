@@ -489,6 +489,11 @@ impl PdfCraftApp {
             "a11y.tags" => self.choose_right_panel(Some(RightPanel::Tags)),
             "chess.scan" => self.start_chess_scan(true),
             "chess.panel" => self.choose_right_panel(Some(RightPanel::Chess)),
+            "chess.verify_page" => {
+                if let Some(page) = self.active_ids().and_then(|(vi, _)| self.views.get(vi)).map(|v| v.current) {
+                    self.verify_chess_page(page);
+                }
+            }
             "chess.game.new" => self.chess_games_action(crate::chess_collection::GamesAction::New),
             "chess.game.new_from_here" | "chess.game.duplicate" | "chess.game.rename" | "chess.game.delete" => self.chess_game_command(id),
             "chess.pgn.open" => self.open_chess_pgn(),

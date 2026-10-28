@@ -344,6 +344,9 @@ pub enum PanelAction {
     GoToPage(usize),
     /// Review now: open the first diagram of the review queue (plan A8, P2a2).
     ReviewNow,
+    /// Mark the page as checked (0-based): its diagrams read with confidence become Verified
+    /// (plan A8, P2b).
+    VerifyPage(usize),
 }
 
 /// One diagram's state: its label, and its mark's colour from the theme's state tokens (plan A8
@@ -391,8 +394,11 @@ pub(crate) fn shown(state: &ChessState, id: DocId, current: Option<ScanStamp>) -
     state.results.as_ref().filter(|r| r.doc == id && Some(r.stamp) == current)
 }
 
-/// Outline the diagrams of `page` and number them. Returns the diagram under `pointer` (its
-/// index on the page) with its hover text.
+/// Outline the diagrams of `page` and number them (plan A8, P2b): a 1.5-point stroke in the
+/// state's colour at rest, an 8 % fill under the pointer, a 2.5-point stroke and an accent ring
+/// when selected; the number in a tab outside the box, above it (below when there is no room)
+/// with the state's 10-point icon, in the state's text colour on its soft fill (4.5:1). Returns
+/// the diagram under `pointer` (its index on the page) with its hover text.
 pub(crate) fn paint(
     painter: &egui::Painter,
     xf: &PageXform,
@@ -415,35 +421,58 @@ pub(crate) fn paint(
         }
         let r = xf.user_rect(info, page, [b.x0, b.y0, b.x1, b.y1]);
         let reading = ChessResults::reading(p, i);
-        let (label, colour) = status(reading, results.kind(page, i), &tokens);
+        let kind = results.kind(page, i);
+        let state = crate::chess_widgets::DiagramState::of(reading, kind);
+        let (label, colour) = status(reading, kind, &tokens);
         let selected = results.selected == Some((page, i));
-        painter.rect_filled(r, CornerRadius::same(2), colour.gamma_multiply(0.10));
-        painter.rect_stroke(r, CornerRadius::same(2), Stroke::new(if selected { 3.0 } else { 1.5 }, colour), egui::StrokeKind::Outside);
-        if selected {
-            painter.rect_stroke(r.expand(5.0), CornerRadius::same(4), Stroke::new(1.5, colour.gamma_multiply(0.6)), egui::StrokeKind::Outside);
+        let under = hovered.is_none() && pointer.is_some_and(|q| r.contains(q));
+        if under {
+            painter.rect_filled(r, CornerRadius::same(2), colour.gamma_multiply(0.08));
         }
-        // The diagram's number in reading order, in a tab at its top-left corner.
-        let number = painter.layout_no_wrap((i + 1).to_string(), theme::semibold(11.0), Color32::WHITE);
-        let tab = egui::Rect::from_min_size(r.left_top(), number.size() + egui::vec2(8.0, 2.0));
-        painter.rect_filled(tab, CornerRadius::same(2), colour);
-        painter.galley(tab.min + egui::vec2(4.0, 1.0), number, Color32::WHITE);
+        painter.rect_stroke(r, CornerRadius::same(2), Stroke::new(if selected { 2.5 } else { 1.5 }, colour), egui::StrokeKind::Outside);
+        if selected {
+            painter.rect_stroke(r.expand(4.0), CornerRadius::same(4), Stroke::new(2.0, tokens.accent), egui::StrokeKind::Outside);
+        }
+        // The diagram's number in reading order, in a tab outside the box.
+        let (text, fill) = state.text_on_soft(&tokens);
+        let number = painter.layout_no_wrap((i + 1).to_string(), theme::semibold(11.0), text);
+        let size = egui::vec2(number.size().x + MARK_ICON + 10.0, number.size().y.max(MARK_ICON) + 2.0);
+        let tab = mark_tab(r, size, xf.rect, if selected { 4.0 } else { 0.0 });
+        painter.rect(tab, CornerRadius::same(2), fill, Stroke::new(1.0, colour), egui::StrokeKind::Inside);
+        let icon = egui::Rect::from_center_size(egui::pos2(tab.min.x + 3.0 + MARK_ICON / 2.0, tab.center().y), egui::Vec2::splat(MARK_ICON));
+        crate::icons::paint_with(painter, icon, state.icon(), MARK_ICON, text);
+        painter.galley(egui::pos2(icon.max.x + 3.0, tab.center().y - number.size().y / 2.0), number, text);
         let draft = drafts.contains(&(page, i));
         if draft {
             crate::chess_widgets::draft_dot(painter, tab.expand(3.0), &tokens);
         }
-        if hovered.is_none() && pointer.is_some_and(|q| r.contains(q)) {
+        if under {
             let title = crate::i18n::fmt(tl!("Diagram {n}"), &[("n", &(i + 1).to_string())]);
             let kept = results.kinds.get(&(page, i)).map(|(_, fen)| fen.as_str());
             let fen = kept.or_else(|| reading.and_then(BoardReading::position).map(|pos| pos.fen.as_str()));
             let label = if draft { format!("{label} · {}", tl!("Unconfirmed changes")) } else { label };
             let text = match fen {
-                Some(fen) => format!("{title} · {label}\n{fen}"),
+                Some(fen) => format!(
+                    "{title} · {label}
+{fen}"
+                ),
                 None => format!("{title} · {label}"),
             };
             hovered = Some((i, text));
         }
     }
     hovered
+}
+
+/// The side of a mark's state icon, in points.
+const MARK_ICON: f32 = 10.0;
+
+/// Where a diagram's number tab of `size` goes for its box `r` on a page shown in `page`: on top
+/// of the box at its left, outside it (and outside the selection ring, `ring` points wide); below
+/// the box when there is no room above it on the page.
+pub(crate) fn mark_tab(r: egui::Rect, size: egui::Vec2, page: egui::Rect, ring: f32) -> egui::Rect {
+    let above = egui::Rect::from_min_size(egui::pos2(r.min.x, r.min.y - ring - 1.0 - size.y), size);
+    if above.min.y >= page.min.y { above } else { egui::Rect::from_min_size(egui::pos2(r.min.x, r.max.y + ring + 1.0), size) }
 }
 
 /// The Chess diagrams panel: its tabs, and the tab chosen. While the panel is in its own window
@@ -943,6 +972,9 @@ impl PdfCraftApp {
             PanelAction::Text(a) => self.chess_text_action(a),
             PanelAction::DockWindow => self.bring_back_chess_window(),
             PanelAction::Models => self.choose_chess_models(),
+            PanelAction::VerifyPage(page) => {
+                self.verify_chess_page(page);
+            }
             PanelAction::ReviewNow => {
                 if let Some((page, index)) = self.chess.results.as_ref().and_then(|r| r.review_queue().first().copied()) {
                     self.edit_chess_diagram(page, index, true);
@@ -1392,4 +1424,23 @@ pub(crate) fn board_source_label(app: &PdfCraftApp) -> Option<String> {
         let page = crate::i18n::fmt(tl!("Page {label}"), &[("label", &label)]);
         format!("{title} · {page}")
     })
+}
+
+#[cfg(test)]
+mod mark_tests {
+    use egui::{Rect, pos2, vec2};
+
+    /// A mark's number tab sits above its box, clear of the selection ring; on a box at the top
+    /// of the page, below it.
+    #[test]
+    fn the_number_tab_is_outside_the_box() {
+        let page = Rect::from_min_size(pos2(0.0, 0.0), vec2(600.0, 800.0));
+        let size = vec2(24.0, 14.0);
+        let middle = Rect::from_min_size(pos2(100.0, 200.0), vec2(150.0, 150.0));
+        let tab = super::mark_tab(middle, size, page, 4.0);
+        assert!(tab.max.y < middle.min.y - 4.0 && tab.min.x == middle.min.x, "{tab:?}");
+        let top = Rect::from_min_size(pos2(100.0, 5.0), vec2(150.0, 150.0));
+        let tab = super::mark_tab(top, size, page, 0.0);
+        assert!(tab.min.y > top.max.y && !tab.intersects(top), "below a box at the top: {tab:?}");
+    }
 }

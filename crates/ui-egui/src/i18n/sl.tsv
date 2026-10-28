@@ -3245,3 +3245,10 @@ chess undo step	Clear drawings	odstranjevanje risb
 	No diagrams detected yet. PdfCraft finds the diagrams and reads the positions. The whole book takes a few minutes.	Diagramov še ni zaznanih. PdfCraft najde diagrame in prebere pozicije. Vsa knjiga traja nekaj minut.
 @plural	In the whole book ({n} page)|In the whole book ({n} pages)	V vsej knjigi ({n} stran)|V vsej knjigi ({n} strani)|V vsej knjigi ({n} strani)|V vsej knjigi ({n} strani)
 @plural	{n} diagram|{n} diagrams	{n} diagram|{n} diagrama|{n} diagrami|{n} diagramov
+# Plan A8 P2b: the page marks and Mark the page as checked.
+	Mark the page as checked	Označi stran kot preverjeno
+	Keep every diagram read with confidence on this page as checked; those to review are left for you.	Vsak diagram na tej strani, prebran z gotovostjo, shrani kot preverjen; tiste za pregled prepusti vam.
+	Detect the diagrams on this page first.	Najprej zaznajte diagrame na tej strani.
+	Nothing on page {p} is left that was read with confidence.	Na strani {p} ni ostalo nič, prebranega z gotovostjo.
+	Page {p}: {done}	Stran {p}: {done}
+@plural	{n} diagram checked|{n} diagrams checked	{n} diagram preverjen|{n} diagrama preverjena|{n} diagrami preverjeni|{n} diagramov preverjenih

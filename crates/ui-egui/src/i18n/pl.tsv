@@ -3182,3 +3182,10 @@ chess undo step	Clear drawings	usunięcie rysunków
 	No diagrams detected yet. PdfCraft finds the diagrams and reads the positions. The whole book takes a few minutes.	Nie wykryto jeszcze diagramów. PdfCraft znajduje diagramy i odczytuje pozycje. Cała książka zajmuje kilka minut.
 @plural	In the whole book ({n} page)|In the whole book ({n} pages)	W całej książce ({n} strona)|W całej książce ({n} strony)|W całej książce ({n} stron)
 @plural	{n} diagram|{n} diagrams	{n} diagram|{n} diagramy|{n} diagramów
+# Plan A8 P2b: the page marks and Mark the page as checked.
+	Mark the page as checked	Oznacz stronę jako sprawdzoną
+	Keep every diagram read with confidence on this page as checked; those to review are left for you.	Zachowaj jako sprawdzony każdy diagram z tej strony odczytany z pewnością; te do sprawdzenia zostają dla Ciebie.
+	Detect the diagrams on this page first.	Najpierw wykryj diagramy na tej stronie.
+	Nothing on page {p} is left that was read with confidence.	Na stronie {p} nie zostało nic odczytanego z pewnością.
+	Page {p}: {done}	Strona {p}: {done}
+@plural	{n} diagram checked|{n} diagrams checked	{n} diagram sprawdzony|{n} diagramy sprawdzone|{n} diagramów sprawdzonych
