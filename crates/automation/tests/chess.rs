@@ -737,7 +737,8 @@ fn chess_export_markdown_and_pgn_write_inside_the_root() {
     );
     assert_eq!((md["diagrams_drawn"].as_u64(), md["image_dir"].as_str()), (Some(1), Some("book_diagrams")), "{md:#}");
     let text = std::fs::read_to_string(root.join("out").join("book.md")).unwrap();
-    assert!(text.contains("![rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1](book_diagrams/diagram-p0001-1.png)"), "{text}");
+    assert!(text.contains("](book_diagrams/diagram-p0001-1.png \"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\")"), "{text}");
+    assert!(text.contains("![Diagram 1, page 1: White to move. White: Ke1, Qd1"), "{text}");
     assert_eq!(text.matches("(not read)").count(), 2, "{text}");
     let png = std::fs::read(root.join("out").join("book_diagrams").join("diagram-p0001-1.png")).unwrap();
     assert_eq!(&png[..8], b"\x89PNG\r\n\x1a\n");

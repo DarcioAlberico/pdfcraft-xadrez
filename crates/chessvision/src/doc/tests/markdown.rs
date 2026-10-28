@@ -17,6 +17,8 @@ fn options() -> MarkdownOptions<'static> {
         links: true,
         link_text: "Analyze on lichess",
         image_dir: "",
+        lang: "",
+        page_labels: &[],
     }
 }
 
@@ -25,9 +27,11 @@ fn the_markdown_reads_back_as_the_document() {
     let (text, diagrams, hints) = showcase();
     let doc = build_page(&input(0, &text, &diagrams, &hints, &[]));
     let md = write(&doc, &options());
-    assert!(md.starts_with("# Book \\*one\\*\n\n## Chapter 1\n\n"), "{md}");
-    // The diagram as an image named for its page and number, its FEN as the alt text, then its link.
-    let image = format!("![{SCHOLAR}]({})", image_name(0, 0));
+    assert!(md.starts_with("---\ntitle: \"Book *one*\"\n---\n\n# Book \\*one\\*\n\n## Chapter 1\n\n"), "{md}");
+    // The diagram as an image named for its page and number, said in words as the alt text, its
+    // FEN as the title (plan A8 P9d), then its link.
+    let image = format!("({} \"{SCHOLAR}\")", image_name(0, 0));
+    assert!(md.contains("![Diagram 1, page 1: White to move. White: Ke1, Qd1, Ra1, Rh1, Bc1, Bc4, Nb1, Ng1; pawns a2"), "{md}");
     assert_eq!(md.matches("![").count(), 1);
     let at = md.find(&image).unwrap_or_else(|| panic!("{md}"));
     let link = md.find("[Analyze on lichess](https://lichess.org/analysis/").unwrap();
@@ -39,7 +43,41 @@ fn the_markdown_reads_back_as_the_document() {
     assert!(md.contains(&format!("`{SCHOLAR}`")) && !md.contains("![") && !md.contains("lichess"), "{md}");
     assert!(md.contains("3.Dh5!"), "German letters: {md}");
     let md = write(&doc, &MarkdownOptions { image_dir: "My book_diagrams/", ..options() });
-    assert!(md.contains(&format!("](My%20book_diagrams/{})", image_name(0, 0))), "{md}");
+    assert!(md.contains(&format!("](My%20book_diagrams/{} \"", image_name(0, 0))), "{md}");
+}
+
+/// Plan A8 P9d: the front matter, a rule before each chapter and not at each page, the
+/// diagram said in the book's language with its printed page, and a folder name any system takes.
+#[test]
+fn the_markdown_has_chapters_front_matter_and_diagrams_in_words() {
+    let (text, diagrams, hints) = showcase();
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &text, &diagrams, &hints, &[]));
+    b.add_page(&input(1, &page_text(vec![line(230.0, "More prose.")]), &[], &[], &[]));
+    let mut doc = b.finish();
+    let heading = |level, t: &str| Block::Heading {
+        level,
+        inlines: vec![Inline::Text { text: t.into(), source_rect: None, review: Vec::new() }],
+        source_rect: None,
+    };
+    doc.pages[1].blocks.insert(0, heading(1, "Chapter 2"));
+    doc.pages[1].blocks.push(heading(2, "A section"));
+    for page in &mut doc.pages {
+        page.lang = "pt".into();
+    }
+    let labels = vec!["xvii".to_owned(), String::new()];
+    let md = write(&doc, &MarkdownOptions { lang: "pt-BR", page_labels: &labels, ..options() });
+    assert!(md.starts_with("---\ntitle: \"Book *one*\"\nlang: pt-BR\n---\n\n# Book"), "{md}");
+    // One rule, before the second chapter: none at the page break, none before a section.
+    assert_eq!(md.matches("\n---\n").count(), 2, "the front matter's close and one chapter: {md}");
+    assert!(md.contains("\n---\n\n## Chapter 2\n\n"), "{md}");
+    assert!(md.contains("![Diagrama 1, pág. xvii: brancas jogam. Brancas: Re1, Dd1"), "{md}");
+    // A title that would end the front matter's quotes stays inside them.
+    let md = write(&doc, &MarkdownOptions { title: "A \"quoted\" \\ title", ..options() });
+    assert!(md.starts_with("---\ntitle: \"A \\\"quoted\\\" \\\\ title\"\n---\n"), "{md}");
+    assert_eq!(crate::doc::markdown::image_folder("Livro: 1?"), "Livro_ 1__diagrams");
+    assert_eq!(crate::doc::markdown::image_folder("a<b>c|d*e\"f/g\\h"), "a_b_c_d_e_f_g_h_diagrams");
+    assert_eq!(crate::doc::markdown::image_folder("CON"), "CON_diagrams");
 }
 
 #[test]
@@ -52,7 +90,7 @@ fn text_stays_text_and_unread_diagrams_say_so() {
         |t: &str| Block::Paragraph { inlines: vec![Inline::Text { text: t.into(), source_rect: None, review: Vec::new() }], source_rect: None };
     doc.pages[0].blocks.extend([plain("1. e4 is a move"), plain("- not a list"), plain("a*b_c [x](y) <b> # ~ |"), plain("# not a heading")]);
     let md = write(&doc, &options());
-    assert!(md.contains("*Diagram 1 (not read)*"), "{md}");
+    assert!(md.contains("*Diagram 1, page 1 (not read)*"), "{md}");
     assert!(md.contains("\n1\\. e4 is a move\n") && md.contains("\n\\- not a list\n"), "{md}");
     assert!(md.contains("a\\*b\\_c \\[x\\](y) \\<b\\> # \\~ \\|"), "{md}");
     assert!(md.contains("\n\\# not a heading\n"), "{md}");

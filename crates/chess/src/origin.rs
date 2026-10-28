@@ -106,13 +106,13 @@ fn clean(text: &str) -> String {
         .collect()
 }
 
-struct Words {
-    page: &'static str,
-    diagram: &'static str,
+pub(crate) struct Words {
+    pub(crate) page: &'static str,
+    pub(crate) diagram: &'static str,
     diagram_of: fn(usize, usize) -> String,
 }
 
-fn words(lang: Lang) -> Words {
+pub(crate) fn words(lang: Lang) -> Words {
     macro_rules! of {
         ($diagram:literal, $of:literal) => {
             |d, n| format!(concat!($diagram, " {} ", $of, " {}"), d, n)

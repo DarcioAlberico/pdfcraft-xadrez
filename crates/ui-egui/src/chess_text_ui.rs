@@ -669,7 +669,7 @@ impl PdfCraftApp {
         }
         let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "document".into());
         let mut options = ChessExportOptions::new(&stem);
-        options.image_dir = format!("{stem}_diagrams");
+        options.image_dir = pdfcraft_engine::chess::pdfcraft_chessvision::doc::markdown::image_folder(&stem);
         options.pieces = self.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Diagrams);
         options.book = self.chess_cipher(id);
         options.ocr = self.chess_origin(id).ocr_mode();

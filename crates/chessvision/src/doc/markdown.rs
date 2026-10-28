@@ -1,11 +1,15 @@
 //! A recognised chess document as Markdown, and every position as PGN (blueprint S15d).
 //!
-//! **Markdown** ([`write`]). Headings are `#` lines; paragraphs carry the moves with figurines
-//! (or letters, or as printed); each diagram is an image whose alt text is its FEN
-//! (`![FEN](diagram.png)`, the file named by the caller, which writes the image) or, without
-//! images, the FEN in backticks, with the lichess link under it. Text is escaped so that a
-//! Markdown reader shows it as printed: `1. e4` at the start of a paragraph stays text, not a
-//! list item, and `*`, `_`, `[` and friends stay characters.
+//! **Markdown** ([`write`]). A front matter with the title and the book's language, then the
+//! title as the one `#`. Headings are `#` lines, and a rule (`---`) comes before each chapter
+//! (each heading of the top level the book uses), not at each page. Paragraphs carry the moves
+//! with figurines (or letters, or as printed). Each diagram is an image whose alt text says it in
+//! the book's language (`Diagrama 1, pág. 17: brancas jogam. Brancas: Rg1…`,
+//! [`pdfcraft_chess::describe`]) and whose title is its FEN (`![…](diagram.png "FEN")`, the file
+//! named by the caller, which writes the image), or, without images, the FEN in backticks, with
+//! the lichess link under it. Text is escaped so that a Markdown reader shows it as printed:
+//! `1. e4` at the start of a paragraph stays text, not a list item, and `*`, `_`, `[` and friends
+//! stay characters (plan A8 P9d).
 //!
 //! **PGN** ([`pgn_export`]). The games found in the text, and for every legal diagram that is
 //! in none a game of its own with no moves: `[SetUp "1"]`, `[FEN …]` and the page and diagram it
@@ -17,6 +21,7 @@
 
 use std::fmt::Write as _;
 
+use pdfcraft_chess::describe;
 use pdfcraft_chess::origin::{PgnOrigin, with_origin_comment, with_origin_tags};
 use pdfcraft_chess::pgn_style::PgnStyle;
 use pdfcraft_chess::san::Lang;
@@ -44,6 +49,32 @@ pub struct MarkdownOptions<'a> {
     pub link_text: &'a str,
     /// The folder the images are in, relative to the Markdown file (empty: beside it).
     pub image_dir: &'a str,
+    /// The book's language for the front matter, as a BCP 47 tag (empty: none said).
+    pub lang: &'a str,
+    /// The number printed on each page, by page index (empty, or an empty label: the page's own
+    /// number from 1).
+    pub page_labels: &'a [String],
+}
+
+/// The folder of a Markdown file's images: `<stem>_diagrams`, with what Windows does not allow
+/// in a name (`<>:"/\|?*` and control characters) made `_`, so the folder copies to any system
+/// (plan A8 P9d). The suffix keeps it from being a reserved name (`CON`) or ending in a dot.
+pub fn image_folder(stem: &str) -> String {
+    let name: String = stem.chars().map(|c| if c.is_control() || "<>:\"/\\|?*".contains(c) { '_' } else { c }).collect();
+    format!("{name}_diagrams")
+}
+
+/// A YAML double-quoted scalar.
+fn yaml_quoted(text: &str) -> String {
+    let mut out = String::from("\"");
+    for c in text.chars().filter(|c| !c.is_control()) {
+        if matches!(c, '\\' | '"') {
+            out.push('\\');
+        }
+        out.push(c);
+    }
+    out.push('"');
+    out
 }
 
 /// The image name of diagram `number` (0-based) of page `index` (0-based), relative to the
@@ -82,14 +113,29 @@ fn safe_url(url: &str) -> bool {
 
 /// The document as Markdown.
 pub fn write(doc: &ChessDoc, o: &MarkdownOptions<'_>) -> String {
-    let mut s = format!("# {}\n\n", esc(o.title));
-    for (n, page) in doc.pages.iter().enumerate() {
-        if n > 0 {
-            s.push_str("---\n\n");
-        }
+    let mut s = format!("---\ntitle: {}\n", yaml_quoted(o.title));
+    let lang: String = o.lang.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '-').take(35).collect();
+    if !lang.is_empty() {
+        let _ = writeln!(s, "lang: {lang}");
+    }
+    let _ = write!(s, "---\n\n# {}\n\n", esc(o.title));
+    let start = s.len();
+    // A chapter starts at each heading of the top level the book uses.
+    let top = doc.pages.iter().flat_map(|p| &p.blocks).filter_map(|b| if let Block::Heading { level, .. } = b { Some(*level) } else { None }).min();
+    for page in &doc.pages {
+        let book_lang = Lang::from_tag(&page.lang).unwrap_or(Lang::En);
+        let label = usize::try_from(page.index)
+            .ok()
+            .and_then(|i| o.page_labels.get(i))
+            .map(|l| l.trim())
+            .filter(|l| !l.is_empty())
+            .map_or_else(|| (u64::from(page.index) + 1).to_string(), str::to_owned);
         for block in &page.blocks {
             match block {
                 Block::Heading { level, inlines, .. } => {
+                    if Some(*level) == top && s.len() > start {
+                        s.push_str("---\n\n");
+                    }
                     // The document's title is the one `#`: headings start at `##`.
                     let hashes = "#".repeat(usize::from((*level).clamp(1, 5)) + 1);
                     let _ = write!(s, "{hashes} {}\n\n", esc(&plain_text_with(inlines, o.figurines)));
@@ -98,8 +144,9 @@ pub fn write(doc: &ChessDoc, o: &MarkdownOptions<'_>) -> String {
                     let _ = write!(s, "{}\n\n", esc(&plain_text_with(inlines, o.figurines)));
                 }
                 Block::Diagram(d) => {
+                    let number = d.number.saturating_add(1);
                     let Some(reading) = &d.reading else {
-                        let _ = write!(s, "*Diagram {} (not read)*\n\n", d.number + 1);
+                        let _ = write!(s, "*{}*\n\n", esc(&describe::not_read(number, &label, book_lang)));
                         continue;
                     };
                     // The FEN holds no Markdown or link characters but `/`, digits, letters,
@@ -116,7 +163,10 @@ pub fn write(doc: &ChessDoc, o: &MarkdownOptions<'_>) -> String {
                                 .collect::<String>()
                                 .replace(' ', "%20");
                             let path = if dir.is_empty() { name } else { format!("{dir}/{name}") };
-                            let _ = write!(s, "![{}]({path})\n\n", esc(&reading.fen));
+                            // The alt text says the diagram; the title keeps its FEN.
+                            let alt = esc(&describe::describe(number, &label, &reading.fen, book_lang));
+                            let fen: String = reading.fen.chars().filter(|c| !matches!(c, '"' | '\\') && !c.is_control()).collect();
+                            let _ = write!(s, "![{alt}]({path} \"{fen}\")\n\n");
                         }
                         MarkdownDiagrams::Fen => {
                             let _ = write!(s, "`{}`\n\n", reading.fen.replace('`', ""));

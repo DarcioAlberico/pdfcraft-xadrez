@@ -111,7 +111,7 @@ impl ChessExportOptions {
             sign_font: fonts.signs.map(Arc::new),
             title: title.into(),
             diagram_px: super::office::DEFAULT_DIAGRAM_PX,
-            image_dir: format!("{title}_diagrams"),
+            image_dir: markdown::image_folder(title),
             book: None,
             style: BoardStyle::default(),
             positions: markdown::PgnPositions::default(),
@@ -229,6 +229,8 @@ impl Session {
                         }
                     }
                 }
+                // The printed page numbers and the book's language say each diagram (plan A8 P9d).
+                let labels: Vec<String> = self.get(id).map(|d| d.info.pages.iter().map(|p| p.label.clone()).collect()).unwrap_or_default();
                 let md = markdown::MarkdownOptions {
                     title: &o.title,
                     figurines: o.figurines,
@@ -236,6 +238,8 @@ impl Session {
                     links: o.links,
                     link_text: &o.link_text,
                     image_dir: &o.image_dir,
+                    lang: read.lang.lang.code(),
+                    page_labels: &labels,
                 };
                 markdown::write(&read.doc, &md).into_bytes()
             }
