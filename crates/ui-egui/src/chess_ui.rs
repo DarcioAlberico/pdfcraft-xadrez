@@ -29,9 +29,6 @@ use crate::{PdfCraftApp, widgets};
 /// results sooner and larger ones parse the file fewer times.
 const PAGES_PER_JOB: usize = 8;
 
-/// Diagrams listed in the panel at most; the page marks show them all.
-const MAX_LISTED: usize = 2000;
-
 /// Chess diagrams: the last results and the running scan.
 #[derive(Default)]
 pub struct ChessState {
@@ -75,8 +72,8 @@ pub struct ChessState {
     pub redraw_prompt: Option<crate::chess_redraw::RedrawPrompt>,
     /// The Diagram tab's keys and what it says to screen readers (plan A8, P3c).
     pub(crate) diagram_keys: crate::chess_diagram_keys::DiagramKeys,
-    /// List only the diagrams to review.
-    pub review_only: bool,
+    /// The Diagrams list's filter, its keyboard and what it follows (plan A8, P2a1).
+    pub(crate) list: crate::chess_list::ListState,
     /// The pieces the editor draws with, found once.
     pub pieces: Option<Arc<pdfcraft_engine::chess::pdfcraft_chess::draw::PieceSet>>,
     /// The pieces the analysis board draws with, found once (the user's piece pictures first).
@@ -343,11 +340,13 @@ pub enum PanelAction {
     DockWindow,
     /// Chess models…: choose where the models come from (U4).
     Models,
+    /// Go to this page (0-based): its header in the list was clicked (plan A8, P2a1).
+    GoToPage(usize),
 }
 
 /// One diagram's state: its label, and its mark's colour from the theme's state tokens (plan A8
 /// P1a). What the user did with it (`kind`) outranks the reading.
-fn status(reading: Option<&BoardReading>, kind: Option<Kind>, t: &Tokens) -> (String, Color32) {
+pub(crate) fn status(reading: Option<&BoardReading>, kind: Option<Kind>, t: &Tokens) -> (String, Color32) {
     let state = crate::chess_widgets::DiagramState::of(reading, kind);
     let colour = state.colour(t);
     let label = match reading.map(|r| &r.outcome) {
@@ -547,7 +546,6 @@ pub(crate) fn tab_contents(
     // The diagrams with unconfirmed changes, marked in the list (P3b3).
     let drafts = state.draft_keys(id);
     let mine = state.results.as_mut().filter(|r| r.doc == id);
-    let review_only = state.review_only;
     let Some(results) = mine else {
         if running.is_none() {
             ui.label(egui::RichText::new(tl!("Scan this page or all pages to find the chess diagrams in this document.")).color(t.text_muted));
@@ -589,93 +587,11 @@ pub(crate) fn tab_contents(
         }
     }
     ui.separator();
-    ui.add(crate::widgets::checkbox(
-        &mut state.review_only,
-        crate::i18n::fmt(tl!("Only diagrams to review ({n})"), &[("n", &queue.len().to_string())]),
-    ));
     let reveal = std::mem::take(&mut results.reveal);
     // Esc in the Diagram tab: the selected row takes the keyboard (plan A8, P3c).
     let focus_row = std::mem::take(&mut state.diagram_keys.focus_list);
-    let mut listed = 0;
-    for page in &results.pages {
-        if page.diagrams.is_empty() && page.error.is_none() {
-            continue;
-        }
-        let label = info.pages.get(page.page).map_or_else(|| (page.page + 1).to_string(), |p| p.label.clone());
-        ui.add_space(4.0);
-        ui.label(egui::RichText::new(crate::i18n::fmt(tl!("Page {label}"), &[("label", &label)])).font(theme::semibold(12.5)));
-        if let Some(e) = &page.error {
-            ui.label(egui::RichText::new(crate::i18n::fmt(tl!("This page couldn't be scanned: {e}"), &[("e", e)])).small().color(t.text_muted));
-        }
-        if page.truncated {
-            ui.label(
-                egui::RichText::new(crate::i18n::fmt(
-                    tl!("Only the first {n} diagrams on this page are listed."),
-                    &[("n", &page.diagrams.len().to_string())],
-                ))
-                .small()
-                .color(t.text_muted),
-            );
-        }
-        for (i, _) in page.diagrams.iter().enumerate() {
-            if listed >= MAX_LISTED {
-                break;
-            }
-            let reading = ChessResults::reading(page, i);
-            let kind = results.kind(page.page, i);
-            if review_only && (kind.is_some() || !crate::chess_editor::needs_review(reading)) {
-                continue;
-            }
-            listed += 1;
-            let (label, colour) = status(reading, kind, &Tokens::get(ui.ctx()));
-            let position = reading.and_then(BoardReading::position);
-            let selected = results.selected == Some((page.page, i));
-            let row = ui.push_id((page.page, i), |ui| {
-                ui.horizontal(|ui| {
-                    let (bar, _) = ui.allocate_exact_size(egui::vec2(4.0, if position.is_some() { 58.0 } else { 20.0 }), egui::Sense::hover());
-                    ui.painter().rect_filled(bar, CornerRadius::same(2), colour);
-                    ui.vertical(|ui| {
-                        let title = crate::i18n::fmt(tl!("Diagram {n}"), &[("n", &(i + 1).to_string())]);
-                        // The state's icon beside its words: never colour alone (plan A8 P1a).
-                        let state = crate::chess_widgets::DiagramState::of(reading, kind);
-                        let head = ui
-                            .horizontal(|ui| {
-                                crate::chess_widgets::state_icon(ui, &Tokens::get(ui.ctx()), state, 14.0, drafts.contains(&(page.page, i)));
-                                ui.selectable_label(selected, format!("{title} · {label}"))
-                            })
-                            .inner;
-                        if let Some(pos) = position {
-                            ui.add(egui::Label::new(egui::RichText::new(&pos.fen).monospace().small()).wrap());
-                            ui.horizontal(|ui| {
-                                if ui.small_button(tl!("Copy FEN")).clicked() {
-                                    action = Some(PanelAction::CopyFen(pos.fen.clone()));
-                                }
-                                if let Some(url) = pdfcraft_engine::chess::lichess_url(pos)
-                                    && ui.small_button(tl!("Open in lichess")).on_hover_text(&url).clicked()
-                                {
-                                    action = Some(PanelAction::OpenLichess(url));
-                                }
-                                if ui.small_button(tl!("Open on the board")).clicked() {
-                                    action = Some(PanelAction::OpenBoard(page.page, i));
-                                }
-                            });
-                        }
-                        head
-                    })
-                    .inner
-                })
-                .inner
-            });
-            if selected && (reveal || focus_row) {
-                row.response.scroll_to_me(Some(egui::Align::Center));
-            }
-            if selected && focus_row {
-                row.inner.request_focus();
-            }
-            if row.inner.clicked() {
-                action = Some(PanelAction::Select(page.page, i));
-            }
-        }
+    if let Some(a) = crate::chess_list::list(ui, t, &mut state.list, results, info, page_now, &drafts, reveal, focus_row) {
+        action = Some(a);
     }
     action
 }
@@ -1051,6 +967,11 @@ impl PdfCraftApp {
             PanelAction::Text(a) => self.chess_text_action(a),
             PanelAction::DockWindow => self.bring_back_chess_window(),
             PanelAction::Models => self.choose_chess_models(),
+            PanelAction::GoToPage(page) => {
+                if let Some(view) = self.active_ids().and_then(|(vi, _)| self.views.get_mut(vi)) {
+                    view.go_to_page(page);
+                }
+            }
         }
     }
 

@@ -3472,3 +3472,11 @@ chess undo step	Clear drawings	piešinių valymą
 	Copy without comments	Kopijuoti be komentarų
 	Copy without annotation glyphs	Kopijuoti be vertinimo ženklų
 	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	Variantai, palikti kaip komentarai: {n} (prieš juos nėra ėjimo arba įdėti giliau nei 32 lygiai).
+# Plan A8 P2a1: the Diagrams list.
+	On this page	Šiame puslapyje
+	Follow the page	Sekti puslapį
+	Keep the page on screen at the top of the list.	Rodomą puslapį laikyti sąrašo viršuje.
+	No diagram in this filter.	Šiame filtre diagramų nėra.
+	· {n} of {m}	· {n} iš {m}
+	Go to this page	Eiti į šį puslapį
+	Diagram actions	Diagramos veiksmai

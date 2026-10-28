@@ -3496,3 +3496,11 @@ chess undo step	Clear drawings	مسح الرسوم
 	Copy without comments	نسخ بدون تعليقات
 	Copy without annotation glyphs	نسخ بدون رموز التقييم
 	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	خطوط فرعية محفوظة كتعليقات: {n} (بلا نقلة قبلها، أو متداخلة لأعمق من 32).
+# Plan A8 P2a1: the Diagrams list.
+	On this page	في هذه الصفحة
+	Follow the page	متابعة الصفحة
+	Keep the page on screen at the top of the list.	إبقاء الصفحة المعروضة في أعلى القائمة.
+	No diagram in this filter.	لا يوجد مخطط في هذه التصفية.
+	· {n} of {m}	· {n} من {m}
+	Go to this page	الانتقال إلى هذه الصفحة
+	Diagram actions	إجراءات المخطط

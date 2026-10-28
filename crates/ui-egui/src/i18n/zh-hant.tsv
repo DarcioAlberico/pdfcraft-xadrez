@@ -3136,3 +3136,11 @@ chess undo step	Clear drawings	清除標記
 	Copy without comments	複製時不含註解
 	Copy without annotation glyphs	複製時不含評價符號
 	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	作為註解保留的變化：{n}（前面沒有著法，或巢狀超過 32 層）。
+# Plan A8 P2a1: the Diagrams list.
+	On this page	本頁
+	Follow the page	跟隨頁面
+	Keep the page on screen at the top of the list.	讓目前顯示的頁面保持在清單頂端。
+	No diagram in this filter.	此篩選中沒有局面圖。
+	· {n} of {m}	· 第 {n} 頁，共 {m} 頁
+	Go to this page	前往此頁
+	Diagram actions	局面圖操作

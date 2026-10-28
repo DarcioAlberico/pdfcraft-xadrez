@@ -3192,3 +3192,11 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Copy without comments	Αντιγραφή χωρίς σχόλια
 	Copy without annotation glyphs	Αντιγραφή χωρίς σύμβολα αξιολόγησης
 	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	Παραλλαγές που κρατήθηκαν ως σχόλια: {n} (χωρίς κίνηση πριν από αυτές ή σε βάθος πάνω από 32).
+# Plan A8 P2a1: the Diagrams list.
+	On this page	Σε αυτή τη σελίδα
+	Follow the page	Παρακολούθηση σελίδας
+	Keep the page on screen at the top of the list.	Η σελίδα που εμφανίζεται μένει στην κορυφή της λίστας.
+	No diagram in this filter.	Κανένα διάγραμμα σε αυτό το φίλτρο.
+	· {n} of {m}	· {n} από {m}
+	Go to this page	Μετάβαση σε αυτή τη σελίδα
+	Diagram actions	Ενέργειες διαγράμματος
