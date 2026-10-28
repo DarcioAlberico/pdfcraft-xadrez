@@ -3225,3 +3225,11 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Copy without comments	Kopiraj brez komentarjev
 	Copy without annotation glyphs	Kopiraj brez ocenjevalnih znakov
 	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	Variante, ohranjene kot komentarji: {n} (brez poteze pred njimi ali vgnezdene globlje od 32 ravni).
+# Plan A8 P2a1: the Diagrams list.
+	On this page	Na tej strani
+	Follow the page	Sledi strani
+	Keep the page on screen at the top of the list.	Prikazana stran ostane na vrhu seznama.
+	No diagram in this filter.	V tem filtru ni diagrama.
+	· {n} of {m}	· {n} od {m}
+	Go to this page	Pojdi na to stran
+	Diagram actions	Dejanja diagrama

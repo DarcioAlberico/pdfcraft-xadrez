@@ -3222,3 +3222,11 @@ chess undo step	Clear drawings	描画の消去
 	Copy without comments	コメントなしでコピー
 	Copy without annotation glyphs	評価記号なしでコピー
 	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	コメントとして残した変化: {n}(直前に手がない、または32段より深い入れ子)。
+# Plan A8 P2a1: the Diagrams list.
+	On this page	このページ
+	Follow the page	ページに追従
+	Keep the page on screen at the top of the list.	表示中のページを一覧の先頭に保ちます。
+	No diagram in this filter.	このフィルターに該当する局面図はありません。
+	· {n} of {m}	· {n}/{m}
+	Go to this page	このページへ移動
+	Diagram actions	局面図の操作

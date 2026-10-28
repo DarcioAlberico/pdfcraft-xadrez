@@ -3242,3 +3242,11 @@ chess undo step	Clear drawings	видалення малюнків
 	Copy without comments	Копіювати без коментарів
 	Copy without annotation glyphs	Копіювати без знаків оцінки
 	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	Варіанти, збережені як коментарі: {n} (без ходу перед ними або вкладені глибше за 32 рівні).
+# Plan A8 P2a1: the Diagrams list.
+	On this page	На цій сторінці
+	Follow the page	Стежити за сторінкою
+	Keep the page on screen at the top of the list.	Показана сторінка лишається вгорі списку.
+	No diagram in this filter.	Немає діаграм у цьому фільтрі.
+	· {n} of {m}	· {n} з {m}
+	Go to this page	Перейти на цю сторінку
+	Diagram actions	Дії з діаграмою

@@ -3219,3 +3219,11 @@ chess undo step	Clear drawings	rajzok törlése
 	Copy without comments	Másolás megjegyzések nélkül
 	Copy without annotation glyphs	Másolás értékelő jelek nélkül
 	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	Megjegyzésként megtartott változatok: {n} (nincs előttük lépés, vagy 32 szintnél mélyebbek).
+# Plan A8 P2a1: the Diagrams list.
+	On this page	Ezen az oldalon
+	Follow the page	Az oldal követése
+	Keep the page on screen at the top of the list.	A látható oldal maradjon a lista tetején.
+	No diagram in this filter.	Nincs diagram ebben a szűrőben.
+	· {n} of {m}	· {n} / {m}
+	Go to this page	Ugrás erre az oldalra
+	Diagram actions	Diagram műveletei

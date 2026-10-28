@@ -3294,3 +3294,11 @@ chess undo step	Clear drawings	smazání kreseb
 	Copy without comments	Kopírovat bez komentářů
 	Copy without annotation glyphs	Kopírovat bez hodnoticích značek
 	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	Varianty uložené jako komentáře: {n} (bez tahu před nimi nebo vnořené hlouběji než 32).
+# Plan A8 P2a1: the Diagrams list.
+	On this page	Na této straně
+	Follow the page	Sledovat stranu
+	Keep the page on screen at the top of the list.	Zobrazená strana zůstane nahoře v seznamu.
+	No diagram in this filter.	V tomto filtru není žádný diagram.
+	· {n} of {m}	· {n} z {m}
+	Go to this page	Přejít na tuto stranu
+	Diagram actions	Akce diagramu

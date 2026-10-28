@@ -3216,3 +3216,11 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Copy without comments	Yorumlar olmadan kopyala
 	Copy without annotation glyphs	Değerlendirme işaretleri olmadan kopyala
 	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	Yorum olarak tutulan varyantlar: {n} (öncesinde hamle yok ya da 32 düzeyden derin).
+# Plan A8 P2a1: the Diagrams list.
+	On this page	Bu sayfada
+	Follow the page	Sayfayı izle
+	Keep the page on screen at the top of the list.	Ekrandaki sayfayı listenin en üstünde tut.
+	No diagram in this filter.	Bu filtrede diyagram yok.
+	· {n} of {m}	· {n}/{m}
+	Go to this page	Bu sayfaya git
+	Diagram actions	Diyagram eylemleri
