@@ -3182,3 +3182,9 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Don't show again	Να μην εμφανιστεί ξανά
 	Redraw	Νέα σχεδίαση
 	Diagram redrawn in the PDF	Το διάγραμμα σχεδιάστηκε ξανά στο PDF
+# Plan A8 P3c: the Diagram tab by the keyboard and for screen readers.
+	{square}, empty	{square}, κενό
+	Arrow keys pick a square; a piece's letter puts it there (with Shift, Black's); Delete empties it.	Τα βέλη επιλέγουν τετράγωνο· το γράμμα ενός κομματιού το τοποθετεί εκεί (με Shift, μαύρο)· το Delete το αδειάζει.
+	Diagram {i} of {n} to review, page {p}	Διάγραμμα {i} από {n} για έλεγχο, σελίδα {p}
+	Diagram {n}, page {p}	Διάγραμμα {n}, σελίδα {p}
+@plural	{n} doubtful square|{n} doubtful squares	{n} αβέβαιο τετράγωνο|{n} αβέβαια τετράγωνα

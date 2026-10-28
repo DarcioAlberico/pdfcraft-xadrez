@@ -73,6 +73,8 @@ pub struct ChessState {
     pub redraw_asked: bool,
     /// The first-time question before Redraw in the PDF, while it is asked.
     pub redraw_prompt: Option<crate::chess_redraw::RedrawPrompt>,
+    /// The Diagram tab's keys and what it says to screen readers (plan A8, P3c).
+    pub(crate) diagram_keys: crate::chess_diagram_keys::DiagramKeys,
     /// List only the diagrams to review.
     pub review_only: bool,
     /// The pieces the editor draws with, found once.
@@ -582,7 +584,7 @@ pub(crate) fn tab_contents(
     if let Some(ed) = state.editor.as_mut().filter(|e| state.classic_editor && e.doc == id && Some(results.stamp) == current) {
         ui.separator();
         let pieces = crate::chess_editor::piece_set(&mut state.pieces, &state.diagram_piece_choice, &mut state.diagram_piece_error);
-        if let Some(a) = crate::chess_editor::editor_ui(ui, t, ed, &pieces, queue.len()) {
+        if let Some(a) = crate::chess_editor::editor_ui(ui, t, ed, &pieces, queue.len(), state.diagram_keys.board.as_ref()) {
             action = Some(PanelAction::Editor(a));
         }
     }
@@ -592,6 +594,8 @@ pub(crate) fn tab_contents(
         crate::i18n::fmt(tl!("Only diagrams to review ({n})"), &[("n", &queue.len().to_string())]),
     ));
     let reveal = std::mem::take(&mut results.reveal);
+    // Esc in the Diagram tab: the selected row takes the keyboard (plan A8, P3c).
+    let focus_row = std::mem::take(&mut state.diagram_keys.focus_list);
     let mut listed = 0;
     for page in &results.pages {
         if page.diagrams.is_empty() && page.error.is_none() {
@@ -662,8 +666,11 @@ pub(crate) fn tab_contents(
                 })
                 .inner
             });
-            if selected && reveal {
+            if selected && (reveal || focus_row) {
                 row.response.scroll_to_me(Some(egui::Align::Center));
+            }
+            if selected && focus_row {
+                row.inner.request_focus();
             }
             if row.inner.clicked() {
                 action = Some(PanelAction::Select(page.page, i));
@@ -983,6 +990,11 @@ impl PdfCraftApp {
             if let Some((_, fen)) = results.kinds.get(&(page, index)) {
                 ed.show_kept(fen);
             }
+            // Said to screen readers: which diagram, its place in the review queue, the doubts.
+            let queue = results.review_queue();
+            let place = queue.iter().position(|q| *q == (page, index)).map(|k| (k, queue.len()));
+            let said = crate::chess_diagram_keys::announcement(index, &self.chess_page_label(page), place, ed.uncertain.len());
+            self.chess.diagram_keys.announce = said;
             self.chess.editor = Some(ed);
             self.restore_chess_draft();
         }
@@ -1098,6 +1110,10 @@ impl PdfCraftApp {
             EditorAction::Confirm { next } => {
                 self.chess.confirm_only = !next;
                 self.confirm_chess_diagram(next);
+                // The keyboard is back on the board, of this diagram or the next one.
+                if let Some(ed) = self.chess.editor.as_mut() {
+                    ed.focus = true;
+                }
             }
             EditorAction::Forget => {
                 self.forget_chess_correction();

@@ -3173,3 +3173,9 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Don't show again	Да не се показва повече
 	Redraw	Прерисуване
 	Diagram redrawn in the PDF	Диаграмата е прерисувана в PDF
+# Plan A8 P3c: the Diagram tab by the keyboard and for screen readers.
+	{square}, empty	{square}, празно
+	Arrow keys pick a square; a piece's letter puts it there (with Shift, Black's); Delete empties it.	Стрелките избират поле; буквата на фигура я поставя там (със Shift – черна); Delete изпразва полето.
+	Diagram {i} of {n} to review, page {p}	Диаграма {i} от {n} за преглед, страница {p}
+	Diagram {n}, page {p}	Диаграма {n}, страница {p}
+@plural	{n} doubtful square|{n} doubtful squares	{n} съмнително поле|{n} съмнителни полета
