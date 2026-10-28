@@ -4,13 +4,17 @@
 //! (`chessvision::doc::html::xhtml_page`, the same markup and inline SVG boards), a navigation
 //! document listing the headings (or the pages, when there are none), the package document and
 //! the container. `mimetype` comes first and is stored, as OCF requires. Nothing is fetched and
-//! nothing runs: no script, no remote resource. No font is embedded: figurines use the reader's
-//! own fonts (an embedded face waits for one with figurines in craft-fonts).
+//! nothing runs: no script, no remote resource. The user's figurine and sign fonts, when the
+//! export found them, go in the package (`fonts/…`, [`epub_font_href`]) and the pages' style
+//! loads them; without them figurines use the reader's own fonts. The table of contents names
+//! pages in the book's language with their printed numbers (`Pág. xvii`, plan A8 P9b).
 //!
 //! The cover is the book's first page drawn by the page renderer ([`cover_png`]), at most
 //! [`MAX_COVER_PX`] on its long side: the manifest item has `properties="cover-image"` (EPUB 3),
 //! and `<meta name="cover"/>` names it for EPUB 2 readers.
 
+use pdfcraft_chess::describe;
+use pdfcraft_chess::san::Lang;
 use pdfcraft_chessvision::doc::ChessDoc;
 use pdfcraft_chessvision::doc::html::{HtmlOptions, epub_font_href, escape, toc, xhtml_page};
 use pdfcraft_export::Zip;
@@ -138,17 +142,23 @@ pub fn entries(doc: &ChessDoc, o: &HtmlOptions<'_>, meta: &EpubMeta) -> Result<V
         cover_meta = "<meta name=\"cover\" content=\"cover-image\"/>\n";
     }
 
-    // The table of contents: the headings, flat (each links to its anchor), else the pages.
+    // The table of contents: the headings, flat (each links to its anchor), else the pages, named
+    // in the book's language with their printed numbers.
+    let book_lang = Lang::from_tag(&meta.lang).unwrap_or(Lang::En);
+    let page_name = |index: u32| {
+        let printed = usize::try_from(index).ok().and_then(|i| o.page_labels.get(i)).map(|l| l.trim()).filter(|l| !l.is_empty());
+        describe::page(&printed.map_or_else(|| (u64::from(index) + 1).to_string(), str::to_owned), book_lang)
+    };
     let headings = toc(doc);
     let mut items = String::new();
     if headings.is_empty() {
         for (n, page) in doc.pages.iter().enumerate() {
-            items.push_str(&format!("<li><a href=\"{}\">Page {}</a></li>\n", page_file(n), u64::from(page.index) + 1));
+            items.push_str(&format!("<li><a href=\"{}\">{}</a></li>\n", page_file(n), escape(&page_name(page.index))));
         }
     } else {
         for h in &headings {
             let file = doc.pages.iter().position(|p| p.index == h.page).map(page_file).unwrap_or_default();
-            let text = if h.text.trim().is_empty() { format!("Page {}", u64::from(h.page) + 1) } else { h.text.clone() };
+            let text = if h.text.trim().is_empty() { page_name(h.page) } else { h.text.clone() };
             items.push_str(&format!("<li><a href=\"{file}#{}\">{}</a></li>\n", escape(&h.id), escape(&text)));
         }
     }

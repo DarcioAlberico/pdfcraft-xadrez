@@ -113,6 +113,11 @@ pub fn describe(number: usize, page: &str, fen: &str, lang: Lang) -> String {
     }
 }
 
+/// `Page 17` (`Pág. 17`): the page printed `page`, as a table of contents names it.
+pub fn page(page: &str, lang: Lang) -> String {
+    format!("{} {page}", words(lang).page)
+}
+
 /// `Diagram 1, page 17 (not read)`: a diagram no position was read from.
 pub fn not_read(number: usize, page: &str, lang: Lang) -> String {
     format!("{} ({})", name(number, page, lang), sides(lang).not_read)
@@ -137,6 +142,7 @@ mod tests {
         assert_eq!(describe(1, "1", "8/8/8/8/8/8/8/8 w - - 0 1", Lang::En), "Diagram 1, page 1: White to move.");
         assert_eq!(describe(1, "1", "not a fen", Lang::En), "Diagram 1, page 1.");
         assert_eq!(not_read(1, "17", Lang::Pt), "Diagrama 1, pág. 17 (não lido)");
+        assert_eq!((page("xvii", Lang::En), page("17", Lang::Pt)), ("Page xvii".to_owned(), "Pág. 17".to_owned()));
     }
 
     #[test]

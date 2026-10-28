@@ -18,6 +18,8 @@ fn options(pieces: &PieceSet) -> HtmlOptions<'_> {
         link_text: "Analyze on lichess",
         text_font: None,
         sign_font: None,
+        lang: "",
+        page_labels: &[],
     }
 }
 
@@ -53,7 +55,10 @@ fn the_html_reads_back_as_the_document() {
     let figure_fens: Vec<String> = html.split("<figure").skip(1).flat_map(|f| attrs(&format!(" {f}"), "data-fen").into_iter().take(1)).collect();
     assert_eq!(figure_fens, fens);
     assert_eq!(html.matches("<svg").count(), 1);
-    assert!(html.contains("<title>rnbqkbnr") || html.contains(&format!("<title>{SCHOLAR}")), "the board's accessible name is its FEN");
+    // The board is said in words, its name and description joined to it (plan A8 P9b).
+    assert!(html.contains(r#"role="img" aria-labelledby="p1-d1-t p1-d1-d"><title id="p1-d1-t">Diagram 1, page 1: White to move</title><desc id="p1-d1-d">White: Ke1, Qd1"#), "{html}");
+    assert!(html.contains("<figcaption>Page 1 · diagram 1 · <a href=\"https://lichess.org/analysis/"), "the PGN's comment, then the link: {html}");
+    assert!(html.starts_with("<!DOCTYPE html>\n<html>\n"), "no language said, none written");
     // Moves: every one, with its SAN; figurines for piece moves, none for pawn moves.
     let moves: Vec<&MoveInline> = doc
         .pages
@@ -102,11 +107,43 @@ fn an_unread_diagram_is_a_figure_without_a_position_and_no_unsafe_link_is_made()
     });
     let pieces = PieceSet::geometric();
     let html = write(&doc, &options(&pieces));
-    assert!(html.contains("<figure class=\"diagram unread review\""), "{html}");
+    assert!(html.contains("<figure class=\"diagram unread review\" id=\"p1-d1\"><figcaption>Diagram 1, page 1 (not read)</figcaption>"), "{html}");
     assert!(!html.split("<figure").nth(1).unwrap_or_default().split("</figure>").next().unwrap_or_default().contains("data-fen"));
     assert!(html.contains(">click<") && !html.contains("javascript:"), "{html}");
     // Unchecked moves are marked so.
     assert!(html.contains("data-status=\"unchecked\""));
+}
+
+/// Plan A8 P9b: in the book's language, with the number printed on the page, and the page's
+/// language on `<html>`; ids stay unique when a page has several diagrams.
+#[test]
+fn diagrams_are_said_in_the_books_language_with_the_printed_page() {
+    let rook = "8/8/4k3/8/8/4K3/r7/7R w - - 0 1";
+    let text = page_text(vec![line(380.0, "3.Qh5 Nf6 4.Qxf7#"), line(410.0, "1.Rh6+ Kd5 2.Rh5+")]);
+    let mut unread = reading(2, 520.0, SCHOLAR, true, false);
+    unread.outcome = Err(crate::board::Unreadable::NoModel);
+    let mut doc = build_page(&input(0, &text, &[reading(0, 60.0, SCHOLAR, true, false), reading(1, 220.0, rook, true, false), unread], &[], &[]));
+    doc.pages[0].lang = "pt".into();
+    let pieces = PieceSet::geometric();
+    let labels = vec!["xvii".to_owned()];
+    let html = write(&doc, &HtmlOptions { lang: "pt-BR", page_labels: &labels, links: false, ..options(&pieces) });
+    assert!(html.starts_with("<!DOCTYPE html>\n<html lang=\"pt-BR\">\n"), "{html}");
+    assert!(html.contains(r#"<title id="p1-d1-t">Diagrama 1, pág. xvii: brancas jogam</title><desc id="p1-d1-d">Brancas: Re1, Dd1"#), "{html}");
+    assert!(
+        html.contains(
+            r#"<title id="p1-d2-t">Diagrama 2, pág. xvii: brancas jogam</title><desc id="p1-d2-d">Brancas: Re3, Th1. Pretas: Re6, Ta2.</desc>"#
+        ),
+        "{html}"
+    );
+    assert!(html.contains("<figcaption>Pág. xvii · diagrama 2 de 3</figcaption>"), "{html}");
+    assert!(html.contains("<figcaption>Diagrama 3, pág. xvii (não lido)</figcaption>"), "{html}");
+    // Each name and description is found by the id the image points at, once.
+    for id in ["p1-d1-t", "p1-d1-d", "p1-d2-t", "p1-d2-d"] {
+        assert_eq!(html.matches(&format!("id=\"{id}\"")).count(), 1, "{id}");
+    }
+    // A language tag that is not one is not written as one.
+    let html = write(&doc, &HtmlOptions { lang: "\"><script>", ..options(&pieces) });
+    assert!(html.starts_with("<!DOCTYPE html>\n<html lang=\"script\">\n") && !html.contains("<script>"), "{html}");
 }
 
 proptest! {

@@ -22,6 +22,8 @@ fn options(pieces: &PieceSet) -> HtmlOptions<'_> {
         link_text: "Analyze on lichess",
         text_font: None,
         sign_font: None,
+        lang: "",
+        page_labels: &[],
     }
 }
 
@@ -212,6 +214,10 @@ fn a_book_without_headings_lists_its_pages_and_limits_hold() {
     let files = entries(&doc, &options(&pieces), &EpubMeta { lang: String::new(), ..meta() }).unwrap();
     let nav = file(&files, "OEBPS/nav.xhtml");
     assert!(nav.contains("<a href=\"page-00001.xhtml\">Page 5</a>"), "{nav}");
+    // In the book's language, with the number printed on the page (plan A8 P9b).
+    let labels = vec![String::new(); 4].into_iter().chain(["xvii".to_owned()]).collect::<Vec<_>>();
+    let pt = entries(&doc, &HtmlOptions { page_labels: &labels, ..options(&pieces) }, &EpubMeta { lang: "pt".into(), ..meta() }).unwrap();
+    assert!(file(&pt, "OEBPS/nav.xhtml").contains("<a href=\"page-00001.xhtml\">Pág. xvii</a>"), "{}", file(&pt, "OEBPS/nav.xhtml"));
     assert!(file(&files, "OEBPS/content.opf").contains("<dc:language>en</dc:language>"), "an empty language tag falls back to en");
     // No pages at all: the navigation still has an entry.
     let none = entries(&ChessDoc { pages: Vec::new(), ..doc.clone() }, &options(&pieces), &meta()).unwrap();
