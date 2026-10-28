@@ -66,6 +66,9 @@ const COLUMN_MAX_WIDTH: i64 = 1 << 16;
 /// Lines of different columns whose baselines are at most this many median box heights apart are
 /// one line of the page (a table's row, columns set on one grid), and stay one line.
 const SAME_BASELINE: f64 = 0.25;
+/// At least this share of the columns' lines on a baseline shared with another column's is a
+/// page set on one grid ([`lines`]).
+const ONE_GRID_SHARE: f64 = 0.5;
 
 /// An 8-bit gray view, 0 = black, row-major.
 #[derive(Clone, Copy)]
@@ -796,7 +799,13 @@ type ColumnLine = (usize, Vec<Bx>);
 /// [`column_cuts`]) is banded and broken on its own ([`order_in_strip`], [`break_lines`]), so the
 /// columns' baselines need not line up, then lines of different columns on one baseline (within
 /// [`SAME_BASELINE`]) are joined again, left to right, as one line of the page. Lines come top to
-/// bottom. A region with one column is broken exactly as [`break_lines`] breaks it.
+/// bottom.
+///
+/// A region with one column, or whose columns are set on one grid (at least [`ONE_GRID_SHARE`] of
+/// the columns' lines share a baseline with another column's), is broken exactly as
+/// [`break_lines`] breaks it across the page: there the other column's lines steady the bands (a
+/// speck over a column's line where that column has a frame and the other a line, Pinski p. 49,
+/// would start a band of its own in its column and cut the line under it in two).
 pub(crate) fn lines(boxes: &[Bx], scale: i64) -> Vec<Vec<Bx>> {
     let cuts = column_cuts(boxes, scale);
     if cuts.is_empty() {
@@ -836,6 +845,11 @@ pub(crate) fn lines(boxes: &[Bx], scale: i64) -> Vec<Vec<Bx>> {
             Some((first, parts)) if ((b - *first) as f64) <= SAME_BASELINE * med && parts.iter().all(|(pc, _)| *pc != c) => parts.push((c, line)),
             _ => joined.push((b, vec![(c, line)])),
         }
+    }
+    let shared: usize = joined.iter().filter(|(_, parts)| parts.len() > 1).map(|(_, parts)| parts.len()).sum();
+    let total: usize = joined.iter().map(|(_, parts)| parts.len()).sum();
+    if total > 0 && shared as f64 >= ONE_GRID_SHARE * total as f64 {
+        return break_lines(&order_in_strip(boxes), scale);
     }
     joined
         .into_iter()

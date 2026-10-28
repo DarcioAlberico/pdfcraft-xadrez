@@ -111,8 +111,9 @@ pub(crate) fn case_by_height(reads: &mut [Read], boxes: &[Bx], classes: &Classes
 
 /// The Caïssa `words_from_glyphs` rule: a gap wider than 0.42 of the median glyph width is a
 /// space, but a lone mark (`.!?+#,;:`) always sticks to the word before it. Between two figures
-/// the gap is measured as if each were as wide as the line's figures: a book's figures share one
-/// advance, and a narrow `1` stands apart by what it lacks. Ranges into `boxes`.
+/// the gap is measured as if each were as wide as the line's figures (a book's figures share one
+/// advance, and a narrow `1` stands apart by what it lacks), unless a letter stands before the
+/// first: a square's rank. Ranges into `boxes`.
 pub(crate) fn words(boxes: &[Bx], reads: &[Read], classes: &Classes) -> Vec<(usize, usize)> {
     if boxes.is_empty() {
         return Vec::new();
@@ -135,8 +136,10 @@ pub(crate) fn words(boxes: &[Bx], reads: &[Read], classes: &Classes) -> Vec<(usi
         let lone_mark = !t.is_empty() && t.chars().all(|c| STICKY_MARKS.contains(c));
         let mut gap = (cur.x0 - prev.x1) as f64;
         // Figures share one advance, so a narrow one (`1`) stands apart from its neighbours by
-        // half of what it lacks of a figure's width on each side (`1 970`, `Game 1 8`).
-        if digit(i) && digit(i + 1) {
+        // half of what it lacks of a figure's width on each side (`1 970`, `Game 1 8`): inside a
+        // number, not after a letter, where a square's rank stands before a space (`♖d1 0-0`).
+        let in_number = i == start || !text(i.wrapping_sub(1)).chars().any(char::is_alphabetic);
+        if digit(i) && digit(i + 1) && in_number {
             let figure = figure.unwrap_or_else(|| prev.w().max(cur.w())) as f64;
             gap -= (figure - prev.w() as f64).max(0.0) / 2.0 + (figure - cur.w() as f64).max(0.0) / 2.0;
         }
@@ -238,20 +241,34 @@ fn castle_core(t: &[char]) -> Option<(usize, usize)> {
     ok.then_some((a, b))
 }
 
-/// A `u` between a file, a rank or a figurine and a square (`guf6`, `♘uf3`) is a capture's `x`:
-/// notation never sets a `u` there, nor does a word of prose put a square straight after one. A
-/// scan's `x` glued to the `g` before it reads as the model's `gu` pair (Pinski 2005: `gxf6` read
-/// `guf6`), and an `x` alone may read `u` as well.
+/// A `u` or an `X` between a file, a rank or a figurine and a square (`guf6`, `♘uf3`, `♘Xh1`) is
+/// a capture's `x`: notation never sets either there, nor does a word of prose put a square
+/// straight after one. A scan's `x` glued to the `g` before it reads as the model's `gu` pair
+/// (Pinski 2005: `gxf6` read `guf6`), an `x` alone may read `u` as well, and an `x` with a speck
+/// over it stands as tall as a capital, so the case by height makes it `X` (Hawkins 2012 p. 98).
+/// For the same reason a `C` between a figurine, a piece letter or a capture's `x` and a rank is
+/// the file `c` (*Meu Sistema*: `1...♔C7`).
 pub(crate) fn capture_x(words: &mut [GlyphWord]) {
     let before = |c: &char| matches!(c, 'a'..='h' | '1'..='8') || is_figurine(*c);
+    let piece = |c: &char| matches!(c, 'x' | 'K' | 'Q' | 'R' | 'B' | 'N') || is_figurine(*c);
+    let rank = |c: &char| matches!(c, '1'..='8');
     for w in words.iter_mut() {
         let chars: Vec<char> = w.glyphs.iter().flat_map(|g| g.text.chars()).collect();
-        let at: Vec<usize> = (1..chars.len())
-            .filter(|&i| {
-                chars.get(i) == Some(&'u')
-                    && chars.get(i - 1).is_some_and(before)
+        let at: Vec<(usize, char)> = (1..chars.len())
+            .filter_map(|i| {
+                let (prev, here) = (chars.get(i - 1)?, chars.get(i)?);
+                let capture = matches!(here, 'u' | 'X')
+                    && before(prev)
                     && chars.get(i + 1).is_some_and(|c| matches!(c, 'a'..='h'))
-                    && chars.get(i + 2).is_some_and(|c| matches!(c, '1'..='8'))
+                    && chars.get(i + 2).is_some_and(rank);
+                let file = *here == 'C' && piece(prev) && chars.get(i + 1).is_some_and(rank);
+                if capture {
+                    Some((i, 'x'))
+                } else if file {
+                    Some((i, 'c'))
+                } else {
+                    None
+                }
             })
             .collect();
         if at.is_empty() {
@@ -263,7 +280,7 @@ pub(crate) fn capture_x(words: &mut [GlyphWord]) {
                 .text
                 .chars()
                 .map(|c| {
-                    let x = if at.contains(&i) { 'x' } else { c };
+                    let x = at.iter().find(|(j, _)| *j == i).map_or(c, |&(_, r)| r);
                     i += 1;
                     x
                 })

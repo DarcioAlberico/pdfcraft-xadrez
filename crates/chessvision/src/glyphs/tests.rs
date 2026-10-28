@@ -352,6 +352,21 @@ fn columns_on_one_grid_stay_rows() {
     assert_eq!(lines[0].len(), 12);
 }
 
+/// Columns on one grid are banded across the page as before, where the other column's lines
+/// steady the bands: a speck where the left column has no line (a frame stands there, Pinski
+/// p. 49) beside a line of the right column would, banded in its own column, take the next line's
+/// full stop away with it. (Fails with the columns of a grid broken one by one.)
+#[test]
+fn a_speck_beside_the_other_columns_line_cuts_nothing() {
+    let mut boxes: Vec<Bx> = column(0, 100, 10).into_iter().filter(|b| !(300..320).contains(&b.y0)).collect();
+    boxes.push(bx(145, 302, 148, 304));
+    boxes.extend(column(400, 100, 10));
+    let lines = seg::lines(&boxes, SCALE);
+    assert_eq!(lines, seg::break_lines(&seg::order_in_strip(&boxes), SCALE));
+    let next = lines.iter().find(|l| l.iter().any(|b| b.y0 == 340 && b.x0 == 0)).unwrap();
+    assert!(next.contains(&bx(150, 356, 154, 360)), "{next:?}");
+}
+
 /// One column has no gutter: word spaces do not line up, and a few aligned ones are crossed by
 /// the other lines. Too little text on one side is no column either.
 #[test]
@@ -783,6 +798,12 @@ fn a_narrow_one_stays_in_its_number() {
     ];
     let reads: Vec<Read> = ["a", "1", "9", "7", "0", "a", "1", "0"].iter().map(|t| read_of(&classes, t)).collect();
     assert_eq!(fix::words(&boxes, &reads, &classes), vec![(0, 1), (1, 5), (5, 6), (6, 7), (7, 8)]);
+    // A square's rank before a space stays apart: `d1 0-0` (Hawkins 2012 p. 98 read `d10-0`).
+    let reads: Vec<Read> = ["a", "1", "9", "7", "0", "a", "1", "0"].iter().map(|t| read_of(&classes, t)).collect();
+    let mut square = boxes;
+    square[6] = bx(220, 40, 235, 60);
+    square[7] = bx(247, 40, 272, 60);
+    assert_eq!(fix::words(&square, &reads, &classes), vec![(0, 1), (1, 5), (5, 7), (7, 8)]);
 }
 
 fn gw(text: &str, x0: u32, x1: u32) -> GlyphWord {
@@ -848,6 +869,26 @@ fn a_u_before_a_square_is_the_captures_x() {
     assert_eq!(texts[5..], prose);
     assert_eq!(words[0].glyphs.iter().map(|g| g.text.as_str()).collect::<Vec<_>>(), ["gx", "f", "6"]);
     assert!(words.iter().all(|w| w.text == w.glyphs.iter().map(|g| g.text.as_str()).collect::<String>()));
+}
+
+/// An `x` with a speck over it stands as tall as a capital and the case by height makes it `X`
+/// (Hawkins 2012 p. 98: `♘Xh1`); between a figurine or a file and a square it is the capture's
+/// `x` too. A capital `X` elsewhere stays. (Fails with only `u` read so.)
+#[test]
+fn a_capital_x_before_a_square_is_the_captures_x() {
+    let mut words = vec![gw("♘Xh1", 0, 40), gw("eXd5", 50, 90), gw("XIV", 100, 130), gw("Xa", 140, 160)];
+    fix::capture_x(&mut words);
+    assert_eq!(words.iter().map(|w| w.text.as_str()).collect::<Vec<_>>(), ["♘xh1", "exd5", "XIV", "Xa"]);
+}
+
+/// A `C` between a figurine, a piece letter or a capture's `x` and a rank is the file `c`
+/// (*Meu Sistema*: `1...♔C7`); a capital `C` in prose or before no rank stays. (Fails without the
+/// rule.)
+#[test]
+fn a_capital_c_before_a_rank_is_the_file() {
+    let mut words = vec![gw("1...♔C7", 0, 60), gw("NxC3", 70, 110), gw("RC1", 120, 150), gw("C3PO", 160, 200), gw("♔Ca", 210, 240)];
+    fix::capture_x(&mut words);
+    assert_eq!(words.iter().map(|w| w.text.as_str()).collect::<Vec<_>>(), ["1...♔c7", "Nxc3", "Rc1", "C3PO", "♔Ca"]);
 }
 
 #[test]
