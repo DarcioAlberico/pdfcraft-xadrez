@@ -156,7 +156,8 @@ impl Reader<'_> {
     }
 
     /// `colados.separar(auto)`: a box at least 1.35 scales wide is cut at its ink valley when
-    /// the classifier reads the halves better than the whole. One model call for all of them.
+    /// the classifier reads the halves better than the whole, unless they read as a letter and an
+    /// opening bracket ([`Self::bracket_after_letter`]). One model call for all of them.
     pub fn split_glued(&self, bin: &Bin, boxes: &[Bx], scale: i64) -> Result<Vec<Bx>, GlyphError> {
         let floor = GLUED_MIN_WIDTH * scale as f64;
         let cuts: Vec<Option<i64>> =
@@ -176,7 +177,7 @@ impl Reader<'_> {
                 continue;
             };
             let split = match tried.next() {
-                Some([whole, left, right]) => Self::confidence(left, right) > whole.p + ARBITER_GAIN,
+                Some([whole, left, right]) => Self::confidence(left, right) > whole.p + ARBITER_GAIN && !self.bracket_after_letter(left, right),
                 _ => false,
             };
             if split {
@@ -186,6 +187,19 @@ impl Reader<'_> {
             }
         }
         Ok(out)
+    }
+
+    /// Whether `left` reads as a letter or a digit and `right` as an opening bracket: no glued
+    /// pair, as a bracket opens after a space. A wide `w` cut at its middle valley reads `M` and
+    /// `(` better than whole on some scans (Ulf the Attacker: `who` read `M(ho`), and the open
+    /// bracket then made the moves after it a variation.
+    fn bracket_after_letter(&self, left: &Read, right: &Read) -> bool {
+        let opening = matches!(self.classes.text(right.class), "(" | "[");
+        let letter = {
+            let t = self.classes.text(left.class);
+            !t.is_empty() && t.chars().all(char::is_alphanumeric)
+        };
+        opening && letter
     }
 
     /// The opposite of [`Self::split_glued`]: neighbours in reading order merge when the

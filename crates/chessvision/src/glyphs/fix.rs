@@ -11,6 +11,11 @@ use super::{GlyphWord, union_rect};
 const CASE_BY_HEIGHT: &str = "cosuvwxzCOSUVWXZ";
 /// A case-ambiguous glyph this many times the line's median height is a capital.
 const CAPITAL_HEIGHT: f64 = 1.25;
+/// Small letters drawn at the x-height whose capitals differ in shape, so the classifier tells
+/// their case: their height is the line's x-height.
+const X_HEIGHT_LETTERS: &str = "aemnr";
+/// Fewest of them on a line to measure its x-height by.
+const MIN_X_HEIGHT_LETTERS: usize = 2;
 /// A box read as a dash but narrower than this many heights is a dot.
 const SQUARE_DOT_ASPECT: f64 = 1.5;
 /// A box ending this close above the baseline, against the median height, sits on it.
@@ -69,7 +74,16 @@ pub(crate) fn square_dots(reads: &mut [Read], boxes: &[Bx], classes: &Classes) {
 /// `caixa_alta.decidir`: the case of `c o s u v w x z` from the box height against the line's
 /// median height.
 pub(crate) fn case_by_height(reads: &mut [Read], boxes: &[Bx], classes: &Classes) {
-    let mut hs: Vec<f64> = boxes.iter().map(|b| b.h() as f64).collect();
+    // The x-height: the median height of the letters drawn only at it, when the line has a few;
+    // else of all its boxes. A line of ascenders and descenders (`anything as White and still be`)
+    // has its median box as tall as a capital, which then read as a small letter.
+    let small: Vec<f64> = reads
+        .iter()
+        .zip(boxes)
+        .filter(|(r, _)| single(classes, r).is_some_and(|c| X_HEIGHT_LETTERS.contains(c)))
+        .map(|(_, b)| b.h() as f64)
+        .collect();
+    let mut hs: Vec<f64> = if small.len() >= MIN_X_HEIGHT_LETTERS { small } else { boxes.iter().map(|b| b.h() as f64).collect() };
     hs.sort_by(f64::total_cmp);
     let n = hs.len();
     let xh = match (hs.get(n / 2), n.checked_sub(1).and_then(|m| hs.get(m / 2))) {
@@ -96,7 +110,9 @@ pub(crate) fn case_by_height(reads: &mut [Read], boxes: &[Bx], classes: &Classes
 }
 
 /// The Caïssa `words_from_glyphs` rule: a gap wider than 0.42 of the median glyph width is a
-/// space, but a lone mark (`.!?+#,;:`) always sticks to the word before it. Ranges into `boxes`.
+/// space, but a lone mark (`.!?+#,;:`) always sticks to the word before it. Between two figures
+/// the gap is measured as if each were as wide as the line's figures: a book's figures share one
+/// advance, and a narrow `1` stands apart by what it lacks. Ranges into `boxes`.
 pub(crate) fn words(boxes: &[Bx], reads: &[Read], classes: &Classes) -> Vec<(usize, usize)> {
     if boxes.is_empty() {
         return Vec::new();
@@ -105,13 +121,26 @@ pub(crate) fn words(boxes: &[Bx], reads: &[Read], classes: &Classes) -> Vec<(usi
     ws.sort_unstable();
     let med = ws.get(ws.len() / 2).copied().unwrap_or(0) as f64;
     let limit = WORD_GAP * if med == 0.0 { 1.0 } else { med };
+    let text = |i: usize| reads.get(i).map_or("", |r| classes.text(r.class));
+    let digit = |i: usize| matches!(text(i).as_bytes(), [b'0'..=b'9']);
+    // A figure's advance: the median width of the line's digits other than `1`.
+    let mut figures: Vec<i64> = boxes.iter().enumerate().filter(|&(i, _)| digit(i) && text(i) != "1").map(|(_, b)| b.w()).collect();
+    figures.sort_unstable();
+    let figure = figures.get(figures.len() / 2).copied();
     let mut out = Vec::new();
     let mut start = 0;
     for (i, pair) in boxes.windows(2).enumerate() {
         let [prev, cur] = pair else { continue };
-        let t = reads.get(i + 1).map_or("", |r| classes.text(r.class));
+        let t = text(i + 1);
         let lone_mark = !t.is_empty() && t.chars().all(|c| STICKY_MARKS.contains(c));
-        if (cur.x0 - prev.x1) as f64 > limit && !lone_mark {
+        let mut gap = (cur.x0 - prev.x1) as f64;
+        // Figures share one advance, so a narrow one (`1`) stands apart from its neighbours by
+        // half of what it lacks of a figure's width on each side (`1 970`, `Game 1 8`).
+        if digit(i) && digit(i + 1) {
+            let figure = figure.unwrap_or_else(|| prev.w().max(cur.w())) as f64;
+            gap -= (figure - prev.w() as f64).max(0.0) / 2.0 + (figure - cur.w() as f64).max(0.0) / 2.0;
+        }
+        if gap > limit && !lone_mark {
             out.push((start, i + 1));
             start = i + 1;
         }
@@ -178,13 +207,22 @@ fn number_spans(t: &[char]) -> Vec<(usize, usize)> {
     out
 }
 
-/// The castling core of a token (without surrounding punctuation): oval, separator, oval, and
-/// optionally separator, oval.
+/// Most digits of a move number before castling in one token (`19.0-0`).
+const CASTLE_NUMBER_DIGITS: usize = 3;
+
+/// The castling core of a token (without surrounding punctuation, nor a move number before it:
+/// `19.0.0`, where the scan's dash read as a full stop): oval, separator, oval, and optionally
+/// separator, oval.
 fn castle_core(t: &[char]) -> Option<(usize, usize)> {
     let punct = ".,;:!?()[]";
     let (mut a, mut b) = (0, t.len());
     while a < b && t.get(a).is_some_and(|c| punct.contains(*c)) {
         a += 1;
+    }
+    let digits = t.iter().skip(a).take_while(|c| c.is_ascii_digit()).count();
+    let dots = t.iter().skip(a + digits).take_while(|c| matches!(c, '.' | '…')).count();
+    if (1..=CASTLE_NUMBER_DIGITS).contains(&digits) && dots > 0 {
+        a += digits + dots;
     }
     while b > a && t.get(b - 1).is_some_and(|c| punct.contains(*c)) {
         b -= 1;
@@ -236,7 +274,7 @@ pub(crate) fn capture_x(words: &mut [GlyphWord]) {
 }
 
 /// The trunk's `juntar_numero_de_lance`, as the spike simplified it: on a line that carries
-/// notation, a lone digit followed by a word that starts with digits (at most three in all) and
+/// notation, a lone digit (or one after an opening bracket: `(1 7...`) followed by a word that starts with digits (at most three in all) and
 /// goes on with nothing or dots is one move number the segmentation split (`1 9...` → `19...`).
 /// The word after the digit may start with an oval instead, a `0` read as a letter once it stood
 /// apart (`1 O...♕e7` → `10...♕e7`, where a scan cut the `0` and a book's wide figures set it
@@ -252,8 +290,10 @@ pub(crate) fn join_move_numbers(words: &mut Vec<GlyphWord>) {
         let lead = b.text.chars().take_while(|c| c.is_ascii_digit() || *c == 'O' || *c == 'o').count();
         // `lead` ASCII digits and ovals are `lead` bytes, so this is a char boundary.
         let rest = b.text.get(lead..).unwrap_or("").to_owned();
-        let ok = a.text.chars().count() == 1
-            && a.text.chars().all(|c| c.is_ascii_digit())
+        // The digit may follow an opening bracket: `(1 7...♘xd5` is `(17...♘xd5`.
+        let digit = a.text.strip_prefix(['(', '[']).unwrap_or(&a.text);
+        let ok = digit.chars().count() == 1
+            && digit.chars().all(|c| c.is_ascii_digit())
             && lead > 0
             && lead < MAX_MOVE_NUMBER_DIGITS
             && (rest.is_empty() || rest.starts_with('.') || rest.starts_with('…'));

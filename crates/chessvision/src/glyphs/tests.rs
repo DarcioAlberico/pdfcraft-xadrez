@@ -7,10 +7,11 @@ use pdfcraft_chess::san::{Lang, San};
 use proptest::prelude::*;
 
 use super::classify::{CELL_VALUES, Classes, Read, Reader, cell};
-use super::fuse::{FusedLine, FusedWord, OcrWord, WordSource, fuse_line, to_chess_text, to_page_text};
+use super::fuse::{FusedLine, FusedWord, OcrWord, WordSource, fuse_line, glyphs_only, to_chess_text, to_page_text};
 use super::seg::{self, Bin, Bx, Gray};
 use super::*;
 use crate::chess_text::ChessRun;
+use crate::coords::ViewRect;
 
 /// A white canvas to draw glyphs on.
 #[derive(Clone)]
@@ -279,6 +280,96 @@ fn lines_break_and_order_left_to_right() {
     assert!(lines[1].iter().all(|b| b.y0 == 100));
 }
 
+/// `lines` lines of five letters (20 × 20, 30 apart) and a full stop at the baseline, the first
+/// line's top at `top`, 40 apart, from `x`.
+fn column(x: i64, top: i64, lines: i64) -> Vec<Bx> {
+    let mut out = Vec::new();
+    for k in 0..lines {
+        let y = top + 40 * k;
+        out.extend((0..5).map(|i| bx(x + 30 * i, y, x + 30 * i + 20, y + 20)));
+        out.push(bx(x + 150, y + 16, x + 154, y + 20));
+    }
+    out
+}
+
+/// Two columns whose baselines are a little apart (Ulf the Attacker's pages: 18 px at 300 dpi),
+/// the right one opening each line with a figurine standing higher: each line is one column's,
+/// with its own full stop. Banded across the page, both columns' lines fell into one band, which
+/// came out as one line across the gutter (and, on the page, dots and figurines in the other
+/// column's lines). (Fails with the lines broken across the page.)
+#[test]
+fn columns_off_one_grid_are_broken_apart() {
+    let mut boxes = column(0, 100, 10);
+    let mut right = column(420, 92, 10);
+    for k in 0..10 {
+        let y = 92 + 40 * k;
+        right.push(bx(400, y - 6, 416, y + 20));
+    }
+    boxes.extend(right);
+    let lines = seg::lines(&boxes, SCALE);
+    assert_eq!(lines.len(), 20);
+    for line in &lines {
+        let left = line.iter().all(|b| b.x1 <= 160);
+        let right = line.iter().all(|b| b.x0 >= 400);
+        assert!(left || right, "a line across the gutter: {line:?}");
+        assert_eq!(line.len(), if left { 6 } else { 7 }, "{line:?}");
+        let top = line.iter().filter(|b| b.h() == 20).map(|b| b.y0).min().unwrap();
+        assert!(line.iter().filter(|b| b.h() == 4).all(|d| d.y0 == top + 16), "a stop from another line: {line:?}");
+    }
+    assert_eq!(seg::column_cuts(&boxes, SCALE).len(), 1);
+}
+
+/// A descender (`g3`) does not set a line's baseline: a column's line whose `g` reaches the
+/// other column's baseline is still its own line (Ulf the Attacker, p. 100: `♘b8 19.0—0 … 21.g3`
+/// joined to the prose beside it, where the castling dash was read as a full stop). (Fails with
+/// the lowest bottom taken as the baseline.)
+#[test]
+fn a_descender_does_not_join_columns() {
+    let mut boxes = column(0, 100, 10);
+    let mut right = column(400, 92, 10);
+    for k in 0..10 {
+        let y = 92 + 40 * k;
+        right.push(bx(560, y, 580, y + 28));
+    }
+    boxes.extend(right);
+    let lines = seg::lines(&boxes, SCALE);
+    assert_eq!(lines.len(), 20);
+    assert!(lines.iter().all(|l| l.iter().all(|b| b.x1 <= 160) || l.iter().all(|b| b.x0 >= 400)), "{lines:?}");
+}
+
+/// Columns on one grid (a table's rows, a page set on one baseline grid) come out as they did:
+/// each row one line, left to right. A title across the gutter does not hide it, and stays one
+/// line. (Fails without joining the columns' lines again.)
+#[test]
+fn columns_on_one_grid_stay_rows() {
+    let mut boxes = column(0, 100, 10);
+    boxes.extend(column(400, 100, 10));
+    boxes.extend((0..12).map(|i| bx(100 + 40 * i, 40, 130 + 40 * i, 70)));
+    assert_eq!(seg::column_cuts(&boxes, SCALE).len(), 1);
+    let lines = seg::lines(&boxes, SCALE);
+    assert_eq!(lines, seg::break_lines(&seg::order_in_strip(&boxes), SCALE));
+    assert_eq!(lines.len(), 11);
+    assert_eq!(lines[0].len(), 12);
+}
+
+/// One column has no gutter: word spaces do not line up, and a few aligned ones are crossed by
+/// the other lines. Too little text on one side is no column either.
+#[test]
+fn one_column_has_no_gutter() {
+    let mut boxes = Vec::new();
+    for k in 0..12 {
+        let y = 100 + 40 * k;
+        // A wider space (170..250) on every third line only.
+        let gap = if k % 3 == 0 { 60 } else { 0 };
+        boxes.extend((0..6).map(|i| bx(30 * i, y, 30 * i + 20, y + 20)));
+        boxes.extend((0..6).map(|i| bx(190 + gap + 30 * i, y, 210 + gap + 30 * i, y + 20)));
+    }
+    assert!(seg::column_cuts(&boxes, SCALE).is_empty());
+    let mut margin = column(0, 100, 10);
+    margin.extend((0..3).map(|i| bx(400 + 30 * i, 100, 420 + 30 * i, 120)));
+    assert!(seg::column_cuts(&margin, SCALE).is_empty());
+}
+
 // ---------------------------------------------------------------- arbiters
 
 /// A solid figurine-like blob, 20 × 24, at `x`.
@@ -324,6 +415,24 @@ fn a_glued_x_is_split_off_its_figurine() {
     blob(&mut alone, 20);
     let (boxes, _) = alone.boxes(SCALE);
     assert_eq!(reader(&model, &alone).split_glued(&alone.bin(), &boxes, SCALE).unwrap(), boxes);
+}
+
+/// The same glued pair is left whole when its halves would read as a letter and an opening
+/// bracket: a bracket opens after a space (Ulf the Attacker: `who` cut into `M(ho`). (Fails
+/// without the veto.)
+#[test]
+fn a_letter_is_not_cut_into_an_opening_bracket() {
+    let mut b = Canvas::new(40, 90);
+    blob(&mut b, 10);
+    let mut x = Canvas::new(40, 90);
+    ex(&mut x, 10);
+    let model = Templates::new(&["M", "("]).learn("M", &b).learn("(", &x);
+    let mut c = Canvas::new(120, 90);
+    blob(&mut c, 20);
+    ex(&mut c, 43);
+    c.rect(40, 57, 46, 58);
+    let (boxes, _) = c.boxes(SCALE);
+    assert_eq!(reader(&model, &c).split_glued(&c.bin(), &boxes, SCALE).unwrap(), boxes);
 }
 
 /// An outlined figurine whose stroke broke in two pieces that overlap in columns: the union
@@ -585,6 +694,23 @@ fn case_follows_height() {
     assert_eq!(got, vec!["n", "O", "o", "n", "P", "x"]);
 }
 
+/// On a line of ascenders (`the White hill`) the median box is as tall as a capital; the x-height
+/// is the height of the letters only drawn at it (`e`), so a capital `W` stays one (Ulf the
+/// Attacker: `as white`, `ulf`, which the side-to-move words then missed). (Fails with the median
+/// of all boxes as the x-height.)
+#[test]
+fn a_capital_among_ascenders_stays_one() {
+    let names = names(&["t", "h", "e", "W", "w", "i", "l"]);
+    let classes = Classes::new(&names);
+    let texts = ["t", "h", "e", "W", "h", "i", "t", "e", "h", "i", "l", "l"];
+    let tall = |x: i64| bx(x, 30, x + 14, 60);
+    let short = |x: i64| bx(x, 40, x + 14, 60);
+    let boxes = [tall(0), tall(16), short(32), tall(54), tall(70), tall(86), tall(102), short(118), tall(140), tall(156), tall(172), tall(188)];
+    let mut reads: Vec<Read> = texts.iter().map(|t| read_of(&classes, t)).collect();
+    fix::case_by_height(&mut reads, &boxes, &classes);
+    assert_eq!(classes.text(reads[3].class), "W");
+}
+
 #[test]
 fn stacked_glyphs_take_their_shape_and_square_dots_their_place() {
     let names = names(&["=", ":", ".", "—", "-", "a"]);
@@ -611,6 +737,21 @@ fn ovals_in_numbers_are_zeros_and_castling_is_read() {
     assert_eq!(text, "100-0!ao0-0-0");
 }
 
+/// Castling after its move number in one token is read too: `19.0.0` (Ulf the Attacker, p. 100,
+/// the dash read as a full stop) is `19.0-0`, and `20...0.0.0` is `20...0-0-0`. A number of
+/// four digits before it is no move number. (Fails with the number not skipped.)
+#[test]
+fn castling_after_its_move_number_is_read() {
+    let names = names(&["1", "2", "9", "0", "o", "-", "."]);
+    let classes = Classes::new(&names);
+    let word = |s: &str| s.chars().map(|c| read_of(&classes, &c.to_string())).collect::<Vec<_>>();
+    let mut reads = [word("19.0.0"), word("20...o.0.0"), word("1990.0.0")].concat();
+    let ranges = [(0, 6), (6, 16), (16, 24)];
+    fix::numbers(&mut reads, &ranges, &classes);
+    let text: String = reads.iter().map(|r| classes.text(r.class)).collect();
+    assert_eq!(text, "19.0-020...0-0-01990.0.0");
+}
+
 #[test]
 fn words_split_at_wide_gaps_but_marks_stick() {
     let names = names(&["a", "!", "?"]);
@@ -619,6 +760,29 @@ fn words_split_at_wide_gaps_but_marks_stick() {
     let reads: Vec<Read> = ["a", "a", "a", "!"].iter().map(|t| read_of(&classes, t)).collect();
     assert_eq!(fix::words(&boxes, &reads, &classes), vec![(0, 2), (2, 4)]);
     assert!(fix::words(&[], &[], &classes).is_empty());
+}
+
+/// A narrow `1` among figures of one advance is no word gap (`1970`, `Game 18`, read `1 970` and
+/// `Game 1 8` on Ulf the Attacker's pages), while a space between figures still is. (Fails with
+/// the gap between figures measured on their ink.)
+#[test]
+fn a_narrow_one_stays_in_its_number() {
+    let names = names(&["1", "9", "7", "0", "a"]);
+    let classes = Classes::new(&names);
+    // `a 1970 a 1 0`: figures 25 wide and 6 apart, the `1` 15 wide set 12 from the next figure
+    // (its 5 of sidebearing beside the figure's), a space of 25; the word gap limit is 10.5.
+    let boxes = [
+        bx(0, 40, 25, 60),
+        bx(50, 40, 65, 60),
+        bx(77, 40, 102, 60),
+        bx(108, 40, 133, 60),
+        bx(139, 40, 164, 60),
+        bx(189, 40, 214, 60),
+        bx(239, 40, 254, 60),
+        bx(287, 40, 312, 60),
+    ];
+    let reads: Vec<Read> = ["a", "1", "9", "7", "0", "a", "1", "0"].iter().map(|t| read_of(&classes, t)).collect();
+    assert_eq!(fix::words(&boxes, &reads, &classes), vec![(0, 1), (1, 5), (5, 6), (6, 7), (7, 8)]);
 }
 
 fn gw(text: &str, x0: u32, x1: u32) -> GlyphWord {
@@ -652,6 +816,19 @@ fn a_split_move_number_is_joined_on_notation_lines_only() {
     let mut year = vec![gw("1", 0, 10), gw("984", 14, 50), gw("♘f3", 60, 90)];
     fix::join_move_numbers(&mut year);
     assert_eq!(year.len(), 3);
+}
+
+/// A move number opening a bracket splits the same way: `(1 7...♘xd5` is `(17...♘xd5` (Ulf the
+/// Attacker, p. 104). A bracket with more than one digit before the space is left alone. (Fails
+/// with only a lone digit joined.)
+#[test]
+fn a_split_move_number_after_a_bracket_is_joined() {
+    let mut words = vec![gw("17...c6", 0, 60), gw("(1", 70, 84), gw("7...♘xd5", 88, 150), gw("18.exd5", 160, 220)];
+    fix::join_move_numbers(&mut words);
+    assert_eq!(words.iter().map(|w| w.text.as_str()).collect::<Vec<_>>(), vec!["17...c6", "(17...♘xd5", "18.exd5"]);
+    let mut two = vec![gw("(12", 0, 30), gw("3...♘xd5", 34, 90)];
+    fix::join_move_numbers(&mut two);
+    assert_eq!(two.len(), 2);
 }
 
 /// A `u` between a file, a rank or a figurine and a square is the capture's `x`, in a pair class
@@ -835,6 +1012,25 @@ fn fused_lines_read_as_chess_text_like_a_text_layer() {
     assert!(to_page_text(&[bad], 0.0).glyphs.is_empty());
 }
 
+/// A run is bold where a word measured bold lies under at least half of it at its height: the
+/// glyph reader's bold `e5` makes the move bold, the number and the prose beside it stay regular.
+/// (Fails with the runs left as the text reads them.)
+#[test]
+fn runs_under_bold_words_are_bold() {
+    let glyphs = line(vec![gw("12.♘f3", 0, 60), gw("e5", 70, 100), gw("wins", 110, 150)]);
+    let mut text = to_chess_text(&glyphs_only(&[glyphs]), 72.0, Some(Lang::En));
+    let bold = [ViewRect { x0: 70.0, y0: 40.0, x1: 100.0, y1: 60.0 }];
+    crate::glyphs::fuse::set_bold(&mut text, &bold);
+    let weights: Vec<(String, bool)> = text.lines[0].spans.iter().map(|s| (format!("{:?}", s.run), s.bold)).collect();
+    assert!(weights.iter().any(|(r, b)| r.contains("e5") && *b), "{weights:?}");
+    assert!(weights.iter().filter(|(r, _)| !r.contains("e5")).all(|(_, b)| !b), "{weights:?}");
+    // A box above the line, or none, marks nothing.
+    let mut again = to_chess_text(&glyphs_only(&[line(vec![gw("e5", 70, 100)])]), 72.0, Some(Lang::En));
+    crate::glyphs::fuse::set_bold(&mut again, &[ViewRect { x0: 70.0, y0: 0.0, x1: 100.0, y1: 20.0 }]);
+    crate::glyphs::fuse::set_bold(&mut again, &[]);
+    assert!(again.lines.iter().flat_map(|l| &l.spans).all(|s| !s.bold));
+}
+
 /// A recognised glyph's box is its ink (`a` half the height of `h`), but on the page text every
 /// glyph spans its line, as a text layer's glyphs span the font: the layout measures word gaps
 /// and gutters against glyph height.
@@ -864,6 +1060,25 @@ fn page_text_glyphs_span_their_line() {
 
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(64))]
+
+    /// Breaking any boxes into lines never panics, and gives back only boxes it was given, each
+    /// at most once.
+    #[test]
+    fn lines_of_arbitrary_boxes_are_the_boxes(
+        raw in proptest::collection::vec((-50i64..3000, -50i64..3000, 0i64..120, 0i64..120), 0..300),
+        scale in -5i64..60,
+    ) {
+        let boxes: Vec<Bx> = raw.iter().map(|&(x, y, w, h)| bx(x, y, x + w, y + h)).collect();
+        let lines = seg::lines(&boxes, scale);
+        let mut left = boxes.clone();
+        for b in lines.iter().flatten() {
+            let at = left.iter().position(|o| o == b);
+            prop_assert!(at.is_some(), "{b:?} was not given, or came back twice");
+            if let Some(i) = at {
+                left.swap_remove(i);
+            }
+        }
+    }
 
     /// No image, region or scale makes the reader panic.
     #[test]
@@ -960,6 +1175,28 @@ fn stems(c: &mut Canvas, x: u32, y: u32, n: u32, stem: u32) -> GlyphWord {
 fn line_of_words(words: Vec<GlyphWord>) -> GlyphLine {
     let rect = words.iter().map(|w| w.rect).reduce(union_rect).unwrap();
     GlyphLine { words, rect }
+}
+
+/// Words set in bold among the body's: stems 4 px wide against the body's 3 (1.27 times its
+/// stroke: a short bold move on Ulf the Attacker's pages measured 1.25 to 1.3) and 5 px (1.5) are
+/// found. A lone bold glyph says too little, and figurines are not measured (an outline figurine
+/// is thin in a bold line too). (Fails with the headings' ratio: the 4 px word.)
+#[test]
+fn words_set_in_bold_are_found() {
+    let mut c = Canvas::new(700, 120);
+    let mut words: Vec<GlyphWord> = (0..6).map(|i| stems(&mut c, 10 + i * 70, 10, 4, 3)).collect();
+    let short_bold = stems(&mut c, 10, 50, 2, 4);
+    let bold = stems(&mut c, 80, 50, 3, 5);
+    let lone = stems(&mut c, 160, 50, 1, 5);
+    let mut figurines = stems(&mut c, 200, 50, 3, 5);
+    for g in &mut figurines.glyphs {
+        g.text = "♘".into();
+    }
+    words.extend([short_bold.clone(), bold.clone(), lone, figurines]);
+    let lines = vec![line_of_words(words)];
+    let found = crate::glyphs::bold_words(&c.image(), &lines).unwrap();
+    assert_eq!(found, vec![short_bold.rect, bold.rect]);
+    assert!(crate::glyphs::bold_words(&c.image(), &[]).unwrap().is_empty());
 }
 
 /// A heading set at the body's size in bold (stems 5 px wide against the body's 3: 1.5 times the

@@ -23,7 +23,7 @@ use pdfcraft_render::text::{PageText, TextGlyph};
 use super::notation::is_notation;
 use super::{Glyph, GlyphLine, GlyphWord, union_rect};
 use crate::chess_text::{ChessPageText, from_page_text};
-use crate::coords::{PixelRect, pixels_to_view};
+use crate::coords::{PixelRect, ViewRect, pixels_to_view};
 
 /// A word from the general OCR: its text and its box in the same pixels as the glyph reader's.
 #[derive(Clone, Debug, PartialEq)]
@@ -205,4 +205,32 @@ pub fn to_page_text(lines: &[FusedLine], dpi: f32) -> PageText {
 /// ([`crate::chess_text::from_page_text`]), so later steps treat both sources alike.
 pub fn to_chess_text(lines: &[FusedLine], dpi: f32, lang_hint: Option<Lang>) -> ChessPageText {
     from_page_text(&to_page_text(lines, dpi), lang_hint)
+}
+
+/// Mark the runs of `text` (view space) set in bold: each run whose width is at least half under
+/// `bold` (view-space boxes of words measured bolder than the page's body, [`super::bold_words`])
+/// at its height (overlapping it by half the shorter of the two). The rest are left as they are.
+/// A text layer tells a run's weight by its font; OCR text by its ink, through this.
+pub fn set_bold(text: &mut ChessPageText, bold: &[ViewRect]) {
+    if bold.is_empty() {
+        return;
+    }
+    for span in text.lines.iter_mut().flat_map(|l| &mut l.spans) {
+        let r = span.rect;
+        let width = r.x1 - r.x0;
+        if width.is_nan() || width <= 0.0 {
+            continue;
+        }
+        let covered: f32 = bold
+            .iter()
+            .filter(|b| {
+                let shorter = (r.y1 - r.y0).min(b.y1 - b.y0);
+                shorter > 0.0 && r.y1.min(b.y1) - r.y0.max(b.y0) >= 0.5 * shorter
+            })
+            .map(|b| (r.x1.min(b.x1) - r.x0.max(b.x0)).max(0.0))
+            .sum();
+        if covered >= 0.5 * width {
+            span.bold = true;
+        }
+    }
 }
