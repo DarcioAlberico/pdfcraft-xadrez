@@ -3282,9 +3282,105 @@ fn a_reading_confirmed_as_it_is_is_verified() {
     h.state_mut().chess.editor.as_mut().unwrap().position = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(EDITED).unwrap();
     h.hover_at(h.get_by_label_contains("Diagram board: ").rect().center());
     h.run_steps(1);
-    h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Enter);
-    h.run_steps(3);
+    host_key(&mut h, egui::Modifiers::COMMAND, egui::Key::Enter);
     assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Whether the Diagram tab's board has the keyboard: screen readers are on the square under its
+/// cursor then (the board's active descendant).
+#[track_caller]
+fn board_focused(h: &Harness<'static, PdfCraftApp>) -> bool {
+    let square = cursor_says(h);
+    h.get_all_by_role(egui::accesskit::Role::GridCell).any(|n| n.accesskit_node().label().as_deref() == Some(square.as_str()) && n.is_focused())
+}
+
+/// The square under the board's cursor, as the board tells screen readers.
+#[track_caller]
+fn cursor_says(h: &Harness<'static, PdfCraftApp>) -> String {
+    h.get_by_label_contains("Diagram board: ").value().unwrap_or_default()
+}
+
+/// The Diagram tab by the keyboard alone (plan A8, P3c): the board has the keyboard when the
+/// diagram opens and the tab says which one it is; the arrows move the cursor, the interface's
+/// letters put the pieces (Shift: Black's) and Delete empties a square, each square named for
+/// screen readers; the letters are no tool's shortcut there. Ctrl+Z and Ctrl+Shift+Z undo and
+/// redo in the editor, Ctrl+Enter confirms and gives the keyboard back to the board, Esc gives it
+/// to the diagram's row in the list, and Tab goes ⋯ → Confirm → ▾ in the footer.
+#[test]
+fn the_diagram_tab_corrects_and_confirms_by_the_keyboard_alone() {
+    use egui::{Key, Modifiers};
+    let dir = corrections_dir("keyboard");
+    let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), Some(dir.clone()));
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    if h.state().chess.results.as_ref().unwrap().review_queue() != vec![(0, 1)] {
+        // With the user's piece model installed the drawn board may be read and accepted.
+        return;
+    }
+    h.get_by_label_contains("Diagram 2 · ").click();
+    h.run_steps(3);
+    assert!(board_focused(&h), "the board has the keyboard when the diagram opens");
+    h.get_by_label("Diagram 1 of 1 to review, page 1");
+    assert_eq!(h.state().chess.editor.as_ref().map(|e| e.fen()).as_deref(), Some("8/8/8/8/8/8/8/8 w - - 0 1"), "not read: empty");
+    assert_eq!(cursor_says(&h), "a8, empty", "the cursor starts at the top left");
+    let tool = format!("{:?}", h.state().quick_tool);
+
+    // e8: a black king; e1: a white king; a1: a white rook.
+    for _ in 0..4 {
+        host_key(&mut h, Modifiers::NONE, Key::ArrowRight);
+    }
+    host_key(&mut h, Modifiers::SHIFT, Key::K);
+    assert_eq!(cursor_says(&h), "e8, Black king");
+    for _ in 0..7 {
+        host_key(&mut h, Modifiers::NONE, Key::ArrowDown);
+    }
+    host_key(&mut h, Modifiers::NONE, Key::K);
+    for _ in 0..5 {
+        host_key(&mut h, Modifiers::NONE, Key::ArrowLeft);
+    }
+    host_key(&mut h, Modifiers::NONE, Key::R);
+    assert_eq!(h.state().chess.editor.as_ref().map(|e| e.fen()).as_deref(), Some("4k3/8/8/8/8/8/8/R3K3 w - - 0 1"));
+    assert_eq!(cursor_says(&h), "a1, White rook", "stopped at the edge");
+    h.get_by_label("e8, Black king");
+    h.get_by_label("b1, empty");
+    // A letter no piece has and Space are the board's too: no tool, no Hand.
+    host_key(&mut h, Modifiers::NONE, Key::V);
+    host_key(&mut h, Modifiers::NONE, Key::H);
+    assert_eq!(format!("{:?}", h.state().quick_tool), tool, "no tool's shortcut fired");
+    assert!(board_focused(&h));
+
+    // Delete empties the square; Ctrl+Z puts the rook back and Ctrl+Shift+Z takes it away again.
+    host_key(&mut h, Modifiers::NONE, Key::Delete);
+    assert_eq!(cursor_says(&h), "a1, empty");
+    host_key(&mut h, Modifiers::COMMAND, Key::Z);
+    assert_eq!(cursor_says(&h), "a1, White rook", "undone in the editor");
+    host_key(&mut h, Modifiers::COMMAND | Modifiers::SHIFT, Key::Z);
+    assert_eq!(cursor_says(&h), "a1, empty", "redone");
+    host_key(&mut h, Modifiers::COMMAND, Key::Z);
+    assert_eq!(h.state().chess.editor.as_ref().map(|e| e.fen()).as_deref(), Some("4k3/8/8/8/8/8/8/R3K3 w - - 0 1"));
+
+    // Ctrl+Enter confirms: Corrected, and the keyboard is on the board again.
+    host_key(&mut h, Modifiers::COMMAND, Key::Enter);
+    assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"));
+    assert!(board_focused(&h), "back on the board after confirming");
+
+    // The footer in the keyboard's order: ⋯, the main button, its ▾.
+    h.get_by_label("More actions").focus();
+    h.run_steps(1);
+    h.key_press(Key::Tab);
+    h.run_steps(1);
+    assert!(h.get_by_label("Only confirm").is_focused(), "⋯ → Confirm");
+    h.key_press(Key::Tab);
+    h.run_steps(1);
+    assert!(h.get_by_label("More ways to confirm").is_focused(), "Confirm → ▾");
+
+    // Esc: back to the diagram's row in the list, nothing discarded.
+    h.get_by_label_contains("Diagram board: ").focus();
+    h.run_steps(1);
+    host_key(&mut h, Modifiers::NONE, Key::Escape);
+    assert!(h.get_by_label("Diagram 2 · Corrected").is_focused(), "the list's row has the keyboard");
+    assert_eq!(h.state().chess.editor.as_ref().map(|e| e.fen()).as_deref(), Some("4k3/8/8/8/8/8/8/R3K3 w - - 0 1"));
     let _ = std::fs::remove_dir_all(&dir);
 }
 

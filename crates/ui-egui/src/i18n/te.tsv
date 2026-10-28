@@ -3085,3 +3085,9 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Don't show again	మళ్లీ చూపవద్దు
 	Redraw	మళ్లీ గీయి
 	Diagram redrawn in the PDF	రేఖాచిత్రం PDF లో మళ్లీ గీయబడింది
+# Plan A8 P3c: the Diagram tab by the keyboard and for screen readers.
+	{square}, empty	{square}, ఖాళీ
+	Arrow keys pick a square; a piece's letter puts it there (with Shift, Black's); Delete empties it.	బాణం కీలు ఒక గడిని ఎంచుకుంటాయి; పావు అక్షరం దాన్ని అక్కడ ఉంచుతుంది (Shift తో నలుపు); Delete దాన్ని ఖాళీ చేస్తుంది.
+	Diagram {i} of {n} to review, page {p}	సమీక్షించాల్సిన చిత్రం {i} / {n}, పేజీ {p}
+	Diagram {n}, page {p}	చిత్రం {n}, పేజీ {p}
+@plural	{n} doubtful square|{n} doubtful squares	{n} సందేహాస్పద గడి|{n} సందేహాస్పద గడులు

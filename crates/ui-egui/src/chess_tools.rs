@@ -689,6 +689,9 @@ pub(crate) fn take_scope_keys(chess: &mut ChessState, ctx: &egui::Context, raw: 
     let shown = std::mem::take(&mut chess.tools.rail_shown);
     // Enter applies a capture waiting for the user, before anything else can use it (T7b).
     crate::chess_capture::take_enter(chess, &mut raw.events, blocked || ctx.text_edit_focused());
+    // The diagram editor's board and the Diagram tab, while they have the keyboard (plan A8, P3c).
+    let free = !blocked && !ctx.text_edit_focused() && !egui::Popup::is_any_open(ctx);
+    crate::chess_diagram_keys::take_keys(chess, ctx, &mut raw.events, free);
     // A focused row of the games list (T14) has its own keys, scope or not: its Delete deletes
     // no variation (nor a page or an annotation).
     if !blocked && !ctx.text_edit_focused() && !egui::Popup::is_any_open(ctx) && chess.games.list_has_focus(ctx) {

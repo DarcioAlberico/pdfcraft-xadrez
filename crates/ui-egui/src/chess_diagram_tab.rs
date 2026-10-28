@@ -10,10 +10,16 @@
 //! Confirm and next ▾ Only confirm (Ctrl+Enter), which keeps the position for the diagram
 //! (Verified when it is the reading, else Corrected) without changing the PDF. The last choice is
 //! remembered. Preferences ▸ Classic diagram editor keeps the editor in the Diagrams panel instead.
+//!
+//! All of it works by the keyboard (plan A8, P3c; [`crate::chess_diagram_keys`]): the board has
+//! the keyboard when a diagram opens and after a confirmation, Tab goes header → board → palette →
+//! who moves → move number → details → second readings → ⋯ → Confirm → ▾, and the tab tells
+//! screen readers which diagram opened.
 
 use egui::{Align, Layout, RichText, UiBuilder};
 use pdfcraft_engine::chess::pdfcraft_chess::placement::Color;
 
+use crate::chess_diagram_keys::TabKey;
 use crate::chess_editor::{DiagramEditor, EditorAction};
 use crate::chess_ui::{ChessResults, shown};
 use crate::chess_widgets::{DiagramState, state_icon};
@@ -58,10 +64,25 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let pieces = app.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Diagrams);
     let confirm_only = app.chess.confirm_only;
     let mut hint = !app.chess.diagram_hint_seen;
+    let tab_keys = std::mem::take(&mut app.chess.diagram_keys.tab_keys);
+    let board_keys = app.chess.diagram_keys.board.take();
     let Some(ed) = app.chess.editor.as_mut() else { return };
-    let dirty = ed.dirty();
 
-    let mut action = keys(ui, queue.len());
+    // The tab's keys (plan A8, P3c), taken in `raw_input_hook`.
+    let mut action = None;
+    let mut back_to_list = false;
+    for (key, m) in tab_keys {
+        match crate::chess_diagram_keys::tab_action(key, m) {
+            Some(TabKey::ConfirmNext) => action = Some(EditorAction::Confirm { next: true }),
+            Some(TabKey::Previous) if !queue.is_empty() => action = Some(EditorAction::Previous),
+            Some(TabKey::Next) if !queue.is_empty() => action = Some(EditorAction::Next),
+            Some(TabKey::Undo) => ed.undo(),
+            Some(TabKey::Redo) => ed.redo(),
+            Some(TabKey::BackToList) => back_to_list = true,
+            _ => {}
+        }
+    }
+    let dirty = ed.dirty();
     let whole = ui.max_rect();
     let header_rect = egui::Rect::from_min_size(whole.min, egui::vec2(whole.width(), HEADER));
     let footer_rect = egui::Rect::from_min_max(egui::pos2(whole.min.x, (whole.max.y - FOOTER).max(whole.min.y + HEADER)), whole.max);
@@ -118,7 +139,7 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
             }
             let side = (ui.available_width() - 24.0).min(body_rect.height() - AROUND_BOARD).clamp(MIN_BOARD, MAX_BOARD);
             let sprites = crate::chess_editor::palette_sprites(ui, ed, &pieces);
-            ui.vertical_centered(|ui| crate::chess_editor::board_view(ui, &t, ed, &pieces, side, true));
+            ui.vertical_centered(|ui| crate::chess_editor::board_view(ui, &t, ed, &pieces, side, true, board_keys.as_ref()));
             ui.add_space(6.0);
             crate::chess_editor::palette(ui, sprites.as_ref(), &mut ed.brush, false);
             ui.add_space(6.0);
@@ -131,27 +152,58 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
         ui.painter().hline(footer_rect.x_range(), footer_rect.min.y, egui::Stroke::new(1.0, t.border));
         let inner = footer_rect.shrink2(egui::vec2(8.0, 10.0));
         ui.scope_builder(UiBuilder::new().max_rect(inner), |ui| {
-            // The buttons first, from the right; whether the position is legal in what is left.
-            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                let illegal = ed.illegal_text();
-                if let Some(a) = confirm_button(ui, confirm_only, !queue.is_empty()) {
-                    action = Some(a);
-                }
-                if let Some(a) = more_menu(ui, ed, illegal.is_none(), kept) {
-                    action = Some(a);
-                }
+            // Whether the position is legal on the left, in what the buttons leave; the buttons
+            // made left to right, so the keyboard goes ⋯ → Confirm → ▾ (plan A8, P3c).
+            let illegal = ed.illegal_text();
+            let only = confirm_only || queue.is_empty();
+            let gap = ui.spacing().item_spacing.x;
+            let buttons = MENU_BUTTON + gap + widgets::icon_pill_width(ui, confirm_label(only)) + gap + MENU_BUTTON;
+            let split = (inner.max.x - buttons).max(inner.min.x);
+            let status = egui::Rect::from_min_max(inner.min, egui::pos2((split - gap).max(inner.min.x), inner.max.y));
+            ui.scope_builder(UiBuilder::new().max_rect(status).layout(Layout::left_to_right(Align::Center)), |ui| {
                 let (icon, text, colour) = match &illegal {
                     None => ("circle-check", tl!("Legal position").to_string(), t.success_text),
                     Some(why) => ("circle-x", why.clone(), t.danger_text),
                 };
-                ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-                    ui.add(crate::icons::image(icon, 14.0, colour));
-                    ui.add(egui::Label::new(RichText::new(text).small().color(colour)).truncate())
-                        .on_hover_text(illegal.as_deref().unwrap_or_default());
-                });
+                ui.add(crate::icons::image(icon, 14.0, colour));
+                ui.add(egui::Label::new(RichText::new(text).small().color(colour)).truncate()).on_hover_text(illegal.as_deref().unwrap_or_default());
+            });
+            let right = egui::Rect::from_min_max(egui::pos2(split, inner.min.y), inner.max);
+            ui.scope_builder(UiBuilder::new().max_rect(right).layout(Layout::left_to_right(Align::Center)), |ui| {
+                if let Some(a) = more_menu(ui, ed, illegal.is_none(), kept) {
+                    action = Some(a);
+                }
+                if let Some(a) = confirm_button(ui, only, !queue.is_empty()) {
+                    action = Some(a);
+                }
             });
         });
     });
+    // Changes since the last pass, for Undo.
+    ed.track();
+    let editor_board = crate::chess_diagram_keys::board_id(true);
+
+    // What the tab says to screen readers, polite: the diagram opened.
+    let said = &app.chess.diagram_keys.announce;
+    if !said.is_empty() {
+        let said = said.clone();
+        ui.ctx().accesskit_node_builder(egui::Id::new("chess-diagram-announce"), |node| {
+            node.set_role(egui::accesskit::Role::Status);
+            node.set_live(egui::accesskit::Live::Polite);
+            node.set_label(said);
+        });
+    }
+    // For the next frame's keys: where the tab is, and whether the keyboard is in it.
+    let focused = ui.ctx().memory(|m| m.focused());
+    let focus_in = focused.and_then(|f| ui.ctx().read_response(f)).is_some_and(|r| whole.contains(r.rect.center()));
+    app.chess.diagram_keys.tab = Some(whole);
+    app.chess.diagram_keys.focus_in_tab = focus_in && !back_to_list;
+    if back_to_list {
+        // Esc: the keyboard goes back to the diagram's row in the list; nothing is discarded.
+        app.chess.diagram_keys.focus_list = true;
+        ui.memory_mut(|m| m.surrender_focus(editor_board));
+        app.reveal_chess_diagrams();
+    }
 
     if !hint {
         app.chess.diagram_hint_seen = true;
@@ -189,26 +241,6 @@ fn empty(ui: &mut egui::Ui, t: &Tokens) {
         ui.add_space(6.0);
         ui.label(RichText::new(tl!("Select a diagram in the Diagrams panel, or click one on the page.")).color(t.text_muted));
     });
-}
-
-/// The keys the tab takes while the pointer is over it: Ctrl+Enter confirms and goes on, Page Up
-/// and Page Down walk the review queue (when there is one).
-fn keys(ui: &egui::Ui, queue: usize) -> Option<EditorAction> {
-    if !ui.rect_contains_pointer(ui.max_rect()) || ui.ctx().egui_wants_keyboard_input() {
-        return None;
-    }
-    ui.input_mut(|i| {
-        if i.consume_key(egui::Modifiers::COMMAND, egui::Key::Enter) {
-            return Some(EditorAction::Confirm { next: true });
-        }
-        if queue == 0 {
-            return None;
-        }
-        if i.consume_key(egui::Modifiers::NONE, egui::Key::PageDown) {
-            return Some(EditorAction::Next);
-        }
-        i.consume_key(egui::Modifiers::NONE, egui::Key::PageUp).then_some(EditorAction::Previous)
-    })
 }
 
 /// Who moves, the move number and the details.
@@ -259,12 +291,28 @@ fn row_label(ui: &mut egui::Ui, text: &str) {
 /// The height of a row of buttons in the tab, in points.
 const ROW: f32 = 26.0;
 
+/// The side of the footer's ⋯ and ▾ buttons, in points.
+const MENU_BUTTON: f32 = 26.0;
+
+/// The main button's words: Only confirm, or Confirm and next.
+fn confirm_label(only: bool) -> &'static str {
+    if only { tl!("Only confirm") } else { tl!("Confirm and next") }
+}
+
 /// The main button and its ▾: Confirm and next (Ctrl+Enter) or Only confirm, the last one chosen
 /// in front. Without a review queue there is no next, so Only confirm is in front.
 fn confirm_button(ui: &mut egui::Ui, confirm_only: bool, queue: bool) -> Option<EditorAction> {
     let only = confirm_only || !queue;
     let mut action = None;
-    let more = crate::icons::button(ui, "chevron-down", 26.0, false, tl!("More ways to confirm"));
+    let hint = if only {
+        tl!("Keep this position for the diagram, without changing the PDF.")
+    } else {
+        tl!("Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).")
+    };
+    if widgets::icon_pill(ui, "badge-check", confirm_label(only), true).on_hover_text(hint).clicked() {
+        action = Some(EditorAction::Confirm { next: !only });
+    }
+    let more = crate::icons::button(ui, "chevron-down", MENU_BUTTON, false, tl!("More ways to confirm"));
     egui::Popup::menu(&more).show(|ui| {
         if ui.add_enabled(queue, egui::Button::new(tl!("Confirm and next"))).clicked() {
             action = Some(EditorAction::Confirm { next: true });
@@ -273,22 +321,13 @@ fn confirm_button(ui: &mut egui::Ui, confirm_only: bool, queue: bool) -> Option<
             action = Some(EditorAction::Confirm { next: false });
         }
     });
-    let label = if only { tl!("Only confirm") } else { tl!("Confirm and next") };
-    let hint = if only {
-        tl!("Keep this position for the diagram, without changing the PDF.")
-    } else {
-        tl!("Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).")
-    };
-    if widgets::icon_pill(ui, "badge-check", label, true).on_hover_text(hint).clicked() {
-        action = Some(EditorAction::Confirm { next: !only });
-    }
     action
 }
 
 /// The other actions, behind ⋯.
 fn more_menu(ui: &mut egui::Ui, ed: &DiagramEditor, legal: bool, kept: bool) -> Option<EditorAction> {
     let mut action = None;
-    let button = crate::icons::button(ui, "ellipsis", 26.0, false, tl!("More actions"));
+    let button = crate::icons::button(ui, "ellipsis", MENU_BUTTON, false, tl!("More actions"));
     egui::Popup::menu(&button).show(|ui| {
         let fen = ed.fen();
         if ui

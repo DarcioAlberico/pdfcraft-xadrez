@@ -3,7 +3,8 @@
 //!
 //! The board is drawn by the engine with the drawing the PDF replacement and the exports use
 //! (`chess::draw`, the user's diagram font when one is installed) and shown as an image. A piece
-//! from the palette goes where the board is clicked (the eraser empties the square); the move
+//! from the palette goes where the board is clicked (the eraser empties the square), or where its
+//! cursor is by the keyboard ([`crate::chess_diagram_keys`]); the move
 //! number (read from the bold move number under the diagram when one is printed there), side to
 //! move, castling and the view from Black's side complete the position, and the panel says at
 //! once whether it is legal. Squares the model was unsure of are listed with its second reading,
@@ -37,6 +38,9 @@ const BOARD_PX: u32 = 496;
 /// Highest move number the editor takes.
 pub(crate) const MAX_MOVE_NUMBER: u32 = 999;
 
+/// Most changes the editor can undo.
+const MAX_HISTORY: usize = 200;
+
 /// What a click on the board puts there.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Brush {
@@ -59,6 +63,16 @@ pub struct DiagramEditor {
     pub uncertain: Vec<Uncertain>,
     pub flipped: bool,
     pub brush: Brush,
+    /// The square the keyboard acts on (plan A8, P3c).
+    pub cursor: Square,
+    /// The board takes the keyboard when it is next drawn: the editor just opened, or its
+    /// position was confirmed.
+    pub focus: bool,
+    /// The positions before each change, and those undone (Ctrl+Z and Ctrl+Shift+Z in the tab).
+    history: Vec<Position>,
+    future: Vec<Position>,
+    /// The position as the last [`DiagramEditor::track`] saw it.
+    seen: Option<Position>,
     texture: Option<(String, TextureHandle)>,
     /// The palette's pieces, cut out once (`Some(None)`: they could not be).
     sprites: Option<(u64, Option<TextureHandle>)>,
@@ -75,6 +89,10 @@ impl DiagramEditor {
             .and_then(|p| pdfcraft_engine::chess::pdfcraft_chess::fen::parse(&p.fen).ok())
             .unwrap_or_else(|| Position { side_to_move: Some(Color::White), ..Position::from_placement(Placement::empty()) });
         let start = position.fen();
+        let uncertain: Vec<Uncertain> = read.map(|p| p.uncertain.clone()).unwrap_or_default();
+        let flipped = read.and_then(|p| p.orientation).is_some_and(|o| o.black_point_of_view);
+        // The first square the model doubted, else the top left one as shown.
+        let cursor = uncertain.first().map_or(if flipped { Square::H1 } else { Square::A8 }, |u| u.square);
         DiagramEditor {
             doc,
             page,
@@ -82,9 +100,14 @@ impl DiagramEditor {
             position,
             original: read.map(|p| p.fen.clone()),
             start,
-            uncertain: read.map(|p| p.uncertain.clone()).unwrap_or_default(),
-            flipped: read.and_then(|p| p.orientation).is_some_and(|o| o.black_point_of_view),
+            uncertain,
+            flipped,
             brush: Brush::Put(Piece { color: Color::White, kind: PieceKind::Queen }),
+            cursor,
+            focus: true,
+            history: Vec::new(),
+            future: Vec::new(),
+            seen: None,
             texture: None,
             sprites: None,
             draw_error: None,
@@ -116,8 +139,82 @@ impl DiagramEditor {
             Brush::Put(p) => Some(p),
             Brush::Erase => None,
         };
+        self.put(square, piece);
+    }
+
+    /// Put `piece` on `square` (`None`: empty it); the model's doubt about it goes.
+    pub fn put(&mut self, square: Square, piece: Option<Piece>) {
         self.position.placement.set(square, piece);
         self.uncertain.retain(|u| u.square != square);
+    }
+
+    /// Move the cursor `dx` columns right and `dy` rows down as the board is shown, stopping at
+    /// its edges.
+    pub fn move_cursor(&mut self, dx: i8, dy: i8) {
+        // As shown: column 0 is the left, row 0 the top.
+        let (file, rank) = (i16::from(self.cursor.file()), i16::from(self.cursor.rank()));
+        let (col, row) = if self.flipped { (7 - file, rank) } else { (file, 7 - rank) };
+        let (col, row) = ((col + i16::from(dx)).clamp(0, 7), (row + i16::from(dy)).clamp(0, 7));
+        let (file, rank) = if self.flipped { (7 - col, row) } else { (col, 7 - row) };
+        // In 0..8 after the clamp, so the conversions cannot fail.
+        if let (Ok(file), Ok(rank)) = (u8::try_from(file), u8::try_from(rank))
+            && let Some(sq) = Square::new(file, rank)
+        {
+            self.cursor = sq;
+        }
+    }
+
+    /// Keep the position before a change made since the last call, for Undo. Changes of the move
+    /// number alone, one after another, are one step (its field changes it as it is dragged).
+    pub fn track(&mut self) {
+        let Some(seen) = self.seen.take() else {
+            self.seen = Some(self.position.clone());
+            return;
+        };
+        if seen != self.position {
+            let number_only = |a: &Position, b: &Position| Position { fullmove_number: b.fullmove_number, ..a.clone() } == *b;
+            let again = number_only(&seen, &self.position) && self.history.last().is_some_and(|last| number_only(last, &seen));
+            if !again {
+                if self.history.len() >= MAX_HISTORY {
+                    self.history.remove(0);
+                }
+                self.history.push(seen);
+            }
+            self.future.clear();
+        }
+        self.seen = Some(self.position.clone());
+    }
+
+    /// Whether there is a change to undo, or one undone to redo.
+    pub fn can_undo(&self) -> bool {
+        !self.history.is_empty()
+    }
+    pub fn can_redo(&self) -> bool {
+        !self.future.is_empty()
+    }
+
+    /// Undo the last change (Ctrl+Z in the tab).
+    pub fn undo(&mut self) {
+        if let Some(before) = self.history.pop() {
+            self.future.push(std::mem::replace(&mut self.position, before));
+            self.seen = Some(self.position.clone());
+        }
+    }
+
+    /// Redo the last change undone (Ctrl+Shift+Z in the tab).
+    pub fn redo(&mut self) {
+        if let Some(after) = self.future.pop() {
+            self.history.push(std::mem::replace(&mut self.position, after));
+            self.seen = Some(self.position.clone());
+        }
+    }
+
+    /// Forget the changes to undo: the position is now the PDF's (redrawn), so Ctrl+Z is the
+    /// document's again.
+    pub fn forget_history(&mut self) {
+        self.history.clear();
+        self.future.clear();
+        self.seen = None;
     }
 
     /// The square at `(x, y)` in the board's own units (0..1 from its top left), as shown.
@@ -260,7 +357,7 @@ pub(crate) fn piece_name(p: Piece) -> &'static str {
     }
 }
 
-const KINDS: [PieceKind; 6] = [PieceKind::King, PieceKind::Queen, PieceKind::Rook, PieceKind::Bishop, PieceKind::Knight, PieceKind::Pawn];
+pub(crate) const KINDS: [PieceKind; 6] = [PieceKind::King, PieceKind::Queen, PieceKind::Rook, PieceKind::Bishop, PieceKind::Knight, PieceKind::Pawn];
 
 /// A palette button's side, in points, and its piece's.
 const PALETTE_BUTTON: f32 = 30.0;
@@ -379,33 +476,93 @@ pub(crate) fn palette_sprites(ui: &egui::Ui, ed: &mut DiagramEditor, pieces: &Pi
 
 /// The editable board, `side` points a side: a click puts the brush on the square under it, and
 /// the squares the model was unsure of are outlined. Its accessible name is "Board: <FEN>", or
-/// "Diagram board: <FEN>" in the Diagram tab (`tab`), apart from the analysis board's.
-pub(crate) fn board_view(ui: &mut egui::Ui, t: &Tokens, ed: &mut DiagramEditor, pieces: &PieceSet, side: f32, tab: bool) {
-    if let Some(tex) = board_texture(ui, ed, pieces) {
-        let response = ui.add(egui::Image::new(&tex).fit_to_exact_size(egui::vec2(side, side)).sense(egui::Sense::click()));
-        let response = response.on_hover_text(tl!("Click a square to put the chosen piece there; click it again to empty it."));
-        // Its accessible name: what the board is, and the position on it.
-        let name = if tab { tl!("Diagram board: {fen}") } else { tl!("Board: {fen}") };
-        let board_name = crate::i18n::fmt(name, &[("fen", &ed.fen())]);
-        response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &board_name));
-        if response.clicked()
-            && let Some(pos) = response.interact_pointer_pos()
-        {
-            let r = response.rect;
-            if let Some(sq) = ed.square_at((pos.x - r.min.x) / r.width().max(1.0), (pos.y - r.min.y) / r.height().max(1.0)) {
-                ed.paint(sq);
+/// "Diagram board: <FEN>" in the Diagram tab (`tab`), apart from the analysis board's; its value
+/// is the square under the cursor, and each square is a cell of its own ("e4, White knight").
+/// `keys`: the keys the hook took for the board that has the keyboard (plan A8, P3c).
+pub(crate) fn board_view(
+    ui: &mut egui::Ui,
+    t: &Tokens,
+    ed: &mut DiagramEditor,
+    pieces: &PieceSet,
+    side: f32,
+    tab: bool,
+    keys: Option<&crate::chess_diagram_keys::BoardKeys>,
+) {
+    let id = crate::chess_diagram_keys::board_id(tab);
+    if let Some((_, keys)) = keys.filter(|(k, _)| *k == id) {
+        crate::chess_diagram_keys::board_keys(ed, keys);
+    }
+    let Some(tex) = board_texture(ui, ed, pieces) else {
+        if let Some(e) = &ed.draw_error {
+            ui.label(egui::RichText::new(crate::i18n::fmt(tl!("The board couldn't be drawn: {e}"), &[("e", e)])).small().color(t.text_muted));
+        }
+        return;
+    };
+    let (_, rect) = ui.allocate_space(egui::vec2(side, side));
+    let response = ui.interact(rect, id, egui::Sense::click());
+    ui.painter().image(tex.id(), rect, egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)), Color32::WHITE);
+    if std::mem::take(&mut ed.focus) {
+        response.request_focus();
+    }
+    if response.clicked()
+        && let Some(pos) = response.interact_pointer_pos()
+        && let Some(sq) = ed.square_at((pos.x - rect.min.x) / rect.width().max(1.0), (pos.y - rect.min.y) / rect.height().max(1.0))
+    {
+        ed.cursor = sq;
+        ed.paint(sq);
+        // The keyboard goes on from the square clicked.
+        response.request_focus();
+    }
+    let focused = response.has_focus();
+    // Its accessible name: what the board is, and the position on it.
+    let name = if tab { tl!("Diagram board: {fen}") } else { tl!("Board: {fen}") };
+    let board_name = crate::i18n::fmt(name, &[("fen", &ed.fen())]);
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Other, true, &board_name));
+    let here = crate::chess_diagram_keys::square_text(ed, ed.cursor);
+    let cell = rect.width() / 8.0;
+    // Not `id.with(n)`: egui names the board's tooltip `id.with(0)`.
+    let cell_id = |sq: Square| id.with(("square", sq.index()));
+    ui.ctx().accesskit_node_builder(id, |node| {
+        node.set_role(egui::accesskit::Role::Grid);
+        node.set_value(here);
+        node.set_description(tl!("Arrow keys pick a square; a piece's letter puts it there (with Shift, Black's); Delete empties it."));
+        node.set_row_count(8);
+        node.set_column_count(8);
+        node.set_active_descendant(cell_id(ed.cursor).accesskit_id());
+    });
+    // The squares, as screen readers find them, under the board.
+    ui.scope_builder(egui::UiBuilder::new().accessibility_parent(id), |ui| {
+        for row in 0..8u8 {
+            for col in 0..8u8 {
+                let Some(sq) = (if ed.flipped { Square::new(7 - col, row) } else { Square::new(col, 7 - row) }) else { continue };
+                let at = egui::Rect::from_min_size(rect.min + egui::vec2(f32::from(col) * cell, f32::from(row) * cell), egui::vec2(cell, cell));
+                ui.interact(at, cell_id(sq), egui::Sense::hover());
+                let text = crate::chess_diagram_keys::square_text(ed, sq);
+                ui.ctx().accesskit_node_builder(cell_id(sq), |node| {
+                    node.set_role(egui::accesskit::Role::GridCell);
+                    node.set_label(text);
+                    node.set_row_index(usize::from(row));
+                    node.set_column_index(usize::from(col));
+                    node.set_selected(sq == ed.cursor);
+                });
             }
         }
-        // The squares the model was unsure of, outlined.
-        for u in &ed.uncertain {
-            let (file, rank) = (f32::from(u.square.file()), f32::from(u.square.rank()));
-            let (col, row) = if ed.flipped { (7.0 - file, rank) } else { (file, 7.0 - rank) };
-            let cell = response.rect.width() / 8.0;
-            let sq = egui::Rect::from_min_size(response.rect.min + egui::vec2(col * cell, row * cell), egui::vec2(cell, cell));
-            ui.painter().rect_stroke(sq.shrink(1.0), 1.0, egui::Stroke::new(2.0, t.attention), egui::StrokeKind::Inside);
-        }
-    } else if let Some(e) = &ed.draw_error {
-        ui.label(egui::RichText::new(crate::i18n::fmt(tl!("The board couldn't be drawn: {e}"), &[("e", e)])).small().color(t.text_muted));
+    });
+    let response = response.on_hover_text(tl!("Click a square to put the chosen piece there; click it again to empty it."));
+    let shown = |sq: Square| {
+        let (file, rank) = (f32::from(sq.file()), f32::from(sq.rank()));
+        let (col, row) = if ed.flipped { (7.0 - file, rank) } else { (file, 7.0 - rank) };
+        egui::Rect::from_min_size(response.rect.min + egui::vec2(col * cell, row * cell), egui::vec2(cell, cell))
+    };
+    // The squares the model was unsure of, outlined.
+    for u in &ed.uncertain {
+        ui.painter().rect_stroke(shown(u.square).shrink(1.0), 1.0, egui::Stroke::new(2.0, t.attention), egui::StrokeKind::Inside);
+    }
+    // The cursor, while the board has the keyboard: the focus ring is on its square.
+    if focused {
+        let ring = shown(ed.cursor);
+        ui.painter().rect_stroke(ring.shrink(1.0), 2.0, egui::Stroke::new(3.0, t.accent), egui::StrokeKind::Inside);
+        ui.painter().rect_stroke(ring.shrink(4.0), 1.0, egui::Stroke::new(1.0, Color32::WHITE), egui::StrokeKind::Inside);
     }
 }
 
@@ -433,8 +590,15 @@ pub(crate) fn second_readings(ui: &mut egui::Ui, ed: &mut DiagramEditor) {
 }
 
 /// The editor: the board, the palette, the position's fields and the actions. `queue` is the
-/// number of diagrams to review (for Previous / Next).
-pub fn editor_ui(ui: &mut egui::Ui, t: &Tokens, ed: &mut DiagramEditor, pieces: &PieceSet, queue: usize) -> Option<EditorAction> {
+/// number of diagrams to review (for Previous / Next); `keys`, the board's ([`board_view`]).
+pub fn editor_ui(
+    ui: &mut egui::Ui,
+    t: &Tokens,
+    ed: &mut DiagramEditor,
+    pieces: &PieceSet,
+    queue: usize,
+    keys: Option<&crate::chess_diagram_keys::BoardKeys>,
+) -> Option<EditorAction> {
     let mut action = None;
     ui.horizontal(|ui| {
         let title = crate::i18n::fmt(tl!("Diagram {n}"), &[("n", &(ed.index + 1).to_string())]);
@@ -448,7 +612,7 @@ pub fn editor_ui(ui: &mut egui::Ui, t: &Tokens, ed: &mut DiagramEditor, pieces: 
     let sprites = palette_sprites(ui, ed, pieces);
     ui.horizontal_top(|ui| {
         let side = (ui.available_width() - PALETTE_COLUMN - ui.spacing().item_spacing.x).clamp(MIN_BOARD_PT, BOARD_PT);
-        board_view(ui, t, ed, pieces, side, false);
+        board_view(ui, t, ed, pieces, side, false, keys);
         ui.vertical(|ui| palette(ui, sprites.as_ref(), &mut ed.brush, true));
     });
     // Move number, side to move, castling, view. The side to move has a row of its own, so its

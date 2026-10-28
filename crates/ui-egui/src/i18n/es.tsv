@@ -3351,3 +3351,9 @@ chess undo step	Clear drawings	borrado de los dibujos
 	Don't show again	No volver a mostrar
 	Redraw	Redibujar
 	Diagram redrawn in the PDF	Diagrama redibujado en el PDF
+# Plan A8 P3c: the Diagram tab by the keyboard and for screen readers.
+	{square}, empty	{square}, vacía
+	Arrow keys pick a square; a piece's letter puts it there (with Shift, Black's); Delete empties it.	Las flechas eligen una casilla; la letra de una pieza la pone ahí (con Mayús, la negra); Supr la vacía.
+	Diagram {i} of {n} to review, page {p}	Diagrama {i} de {n} por revisar, página {p}
+	Diagram {n}, page {p}	Diagrama {n}, página {p}
+@plural	{n} doubtful square|{n} doubtful squares	{n} casilla dudosa|{n} casillas dudosas
