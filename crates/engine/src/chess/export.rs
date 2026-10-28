@@ -255,16 +255,21 @@ impl Session {
             }
             ChessFormat::Docx | ChessFormat::Rtf => {
                 let office = super::office::OfficeOptions {
+                    title: &o.title,
                     pieces: &o.pieces,
                     style: o.style,
                     figurines: o.figurines,
                     links: o.links,
                     link_text: &o.link_text,
                     diagram_px: o.diagram_px,
+                    text_font: o.text_font.as_deref(),
+                    sign_font: o.sign_font.as_deref(),
+                    lang: read.lang.lang.code(),
+                    page_labels: &labels,
                 };
-                let (pages, count) = super::office::to_pages(&read.doc, &office, &mut notes);
+                let (flow, count) = super::office::to_flow(&read.doc, &office, &mut notes);
                 drawn = count;
-                if format == ChessFormat::Docx { super::office::docx(&pages, &o.title) } else { super::office::rtf(&pages).into_bytes() }
+                if format == ChessFormat::Docx { super::office::docx(&flow) } else { super::office::rtf(&flow).into_bytes() }
             }
         };
         Ok(ChessExport { bytes, images, read, drawn, position_games, positions_skipped, notes })

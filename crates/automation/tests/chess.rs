@@ -707,14 +707,17 @@ fn chess_export_docx_and_rtf_carry_the_diagram_as_an_image() {
     let text = std::fs::read_to_string(root.join("book.rtf")).unwrap();
     assert_eq!(text.matches("\\pngblip").count(), 1, "{text:.300}");
     assert!(text.contains("\\picw120\\pich120"));
-    assert_eq!(text.matches("not read]").count(), 2);
-    assert!(text.contains("FEN: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"));
+    // The unread diagrams said in words, the read one with its text alternative and caption
+    // (plan A8 P9a).
+    assert_eq!(text.matches("(not read)").count(), 2, "{text}");
+    assert!(text.contains(r"{\sn wzDescription}{\sv Diagram 1, page 1: White to move. White: Ke1"), "{text:.600}");
+    assert!(text.contains("FEN rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"));
     assert!(text.contains("https://lichess.org/analysis/"));
     let docx = ok(&mut a, "chess_export_docx", json!({ "doc": doc, "out": "book.docx", "pieces": "geometric", "links": false }));
     assert_eq!(docx["diagrams_drawn"], 1, "{docx:#}");
     let bytes = std::fs::read(root.join("book.docx")).unwrap();
     assert_eq!(&bytes[..2], b"PK");
-    assert!(bytes.windows(16).any(|w| w == b"word/media/image"));
+    assert!(bytes.windows(23).any(|w| w == b"word/media/diagram1.png"));
     for (tool, out) in [("chess_export_docx", "../outside/x.docx"), ("chess_export_rtf", "../outside/x.rtf")] {
         match a.call(tool, &json!({ "doc": doc, "out": out })) {
             Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{tool}: {m}"),
