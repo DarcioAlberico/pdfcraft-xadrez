@@ -240,7 +240,7 @@ Cada passo: **Contexto** (o que ler) · **Tarefas** · **Verificação** · **Sa
 
 **P9a — `export::flow` para Word/RTF.** §2.4 Word/RTF. *Saída:* DOCX abre sem reparo; golden do PDF→Word intocado.
 
-**P9b — HTML/EPUB acessíveis.** §2.4 HTML/EPUB. *Saída:* XHTML bem-formado; `epubcheck` sem erros quando instalado; orçamento de tamanho medido.
+**P9b — HTML/EPUB acessíveis.** §2.4 HTML/EPUB. ◐ *Primeira parte feita (2026-10-28): SVG com `<title id>` e `<desc>` no idioma do livro, ligados por `aria-labelledby` (`pdfcraft_chess::describe`, com o número impresso da página); `data-fen` mantido; `figcaption` igual ao comentário do PGN, antes do link do lichess; diagrama não lido no idioma do livro; `<html lang>`; sumário do EPUB com "Pág. xvii"; comentário de `epub.rs:7-8` corrigido (o EPUB já leva as fontes do usuário). Falta a segunda parte: metadados de acessibilidade, `dc:creator`/`dc:source`, `page-list` e `pagebreak`, `styles.css` único, identificador por `DocKeys.id0`, `.review` desligado por padrão, recusa de fonte com `fsType` restrito e o orçamento medido de 15 MB.* *Saída:* XHTML bem-formado; `epubcheck` sem erros quando instalado; orçamento de tamanho medido.
 
 **P9c — Menu, aviso de pendências e "Abrir pasta"** (precisa de P2a e P3a3).
 

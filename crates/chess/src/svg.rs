@@ -10,15 +10,40 @@ use crate::draw::{Drawing, Paint, Rgb, Segment, Subpath};
 /// Write `drawing` as a standalone SVG element. `title` becomes its accessible name (the FEN, or
 /// a caption); it is escaped.
 pub fn to_svg(drawing: &Drawing, title: &str) -> String {
-    let mut s = String::new();
     // Writing to a String cannot fail, so the results of `write!` are ignored throughout.
+    let mut s = String::new();
+    let _ = write!(s, r#"{}><title>{}</title>"#, open(drawing), escape(title));
+    body(drawing, s)
+}
+
+/// [`to_svg`] with an accessible name and a description (plan A8 P9b): `<title id="{id}-t">` and
+/// `<desc id="{id}-d">`, joined to the image by `aria-labelledby`, so a screen reader says both.
+/// `id` is made of letters, digits, `-` and `_` only (others are dropped): it must be unique in
+/// the page.
+pub fn to_svg_described(drawing: &Drawing, id: &str, title: &str, desc: &str) -> String {
+    let id: String = id.chars().filter(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_')).collect();
+    let mut s = String::new();
     let _ = write!(
         s,
-        r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" height="{h}" role="img"><title>{t}</title>"#,
+        r#"{} aria-labelledby="{id}-t {id}-d"><title id="{id}-t">{}</title><desc id="{id}-d">{}</desc>"#,
+        open(drawing),
+        escape(title),
+        escape(desc),
+    );
+    body(drawing, s)
+}
+
+/// The `<svg` element's opening, without its closing `>`.
+fn open(drawing: &Drawing) -> String {
+    format!(
+        r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {w} {h}" width="{w}" height="{h}" role="img""#,
         w = num(drawing.width),
         h = num(drawing.height),
-        t = escape(title),
-    );
+    )
+}
+
+/// The drawing's paths and labels after `s`, and the closing tag.
+fn body(drawing: &Drawing, mut s: String) -> String {
     for layer in &drawing.layers {
         let d = path_data(&layer.subpaths);
         if d.is_empty() {

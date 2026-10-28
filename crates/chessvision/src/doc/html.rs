@@ -8,9 +8,12 @@
 //! What a program reading it back can rely on:
 //!
 //! - each page is a `<section class="page" data-page="n">` (1-based), in order;
-//! - each diagram is a `<figure class="diagram" data-fen="…">` (the FEN as read; `alt`/`title`
-//!   say it too), in the document's one reading order; a diagram that was not read is a
-//!   `<figure class="diagram unread">` with no `data-fen`;
+//! - each diagram is a `<figure class="diagram" data-fen="…">` (the FEN as read), in the
+//!   document's one reading order; its SVG board is named for a screen reader by a `<title>`
+//!   (`Diagrama 1, pág. 17: brancas jogam`) and a `<desc>` listing each side's pieces, both in the
+//!   book's language and joined by `aria-labelledby`, and its `<figcaption>` is the PGN's
+//!   comment for it (`Pág. 17 · diagrama 1 de 2`) with the lichess link (plan A8 P9b); a diagram
+//!   that was not read is a `<figure class="diagram unread">` with no `data-fen`;
 //! - each move is a `<span class="move" data-san="…">` (English SAN), with `data-fen` (the
 //!   position after it) when it was replayed, and `data-status` when it was not valid;
 //! - each annotation is a `<span class="nag" data-nag="n">` with the printed glyph;
@@ -21,9 +24,11 @@
 use crate::text_font::{self, FontRole, TextFont};
 use std::fmt::Write as _;
 
+use pdfcraft_chess::describe;
 use pdfcraft_chess::draw::{BoardStyle, PieceSet, board};
+use pdfcraft_chess::origin::PgnOrigin;
 use pdfcraft_chess::san::{FigurineSet, Lang, San, Style};
-use pdfcraft_chess::svg::to_svg;
+use pdfcraft_chess::svg::to_svg_described;
 
 use super::{Block, ChessDoc, ChessPage, DiagramBlock, Inline, MoveInline, MoveStatus};
 
@@ -66,6 +71,11 @@ pub struct HtmlOptions<'a> {
     pub text_font: Option<&'a TextFont>,
     /// The user's sign font (ISChess): the annotation glyphs it draws are written in it.
     pub sign_font: Option<&'a TextFont>,
+    /// The book's language for `<html lang>`, as a BCP 47 tag (empty: not said).
+    pub lang: &'a str,
+    /// The number printed on each page, by page index (empty, or an empty label: the page's own
+    /// number from 1): diagrams are said with it.
+    pub page_labels: &'a [String],
 }
 
 /// Escape for text and for attribute values in double quotes.
@@ -208,26 +218,45 @@ pub fn plain_text_with(inlines: &[Inline], figurines: Figurines) -> String {
     out
 }
 
-fn diagram_html(d: &DiagramBlock, page: u32, o: &HtmlOptions<'_>) -> String {
+fn diagram_html(d: &DiagramBlock, page: &ChessPage, o: &HtmlOptions<'_>) -> String {
     let review = if d.review.is_empty() && d.reading.as_ref().is_some_and(|r| r.accepted) { "" } else { " review" };
-    let id = format!("p{}-d{}", u64::from(page) + 1, d.number + 1);
+    let number = d.number.saturating_add(1);
+    let id = format!("p{}-d{number}", u64::from(page.index) + 1);
+    // Said in the book's language, with the number printed on the page (plan A8 P9b).
+    let lang = Lang::from_tag(&page.lang).unwrap_or(Lang::En);
+    let printed = usize::try_from(page.index).ok().and_then(|i| o.page_labels.get(i)).map(|l| l.trim()).filter(|l| !l.is_empty());
+    let label = printed.map_or_else(|| (u64::from(page.index) + 1).to_string(), str::to_owned);
     let Some(reading) = &d.reading else {
         return format!(
-            "<figure class=\"diagram unread review\" id=\"{id}\"><figcaption>Diagram {} (not read)</figcaption></figure>\n",
-            d.number + 1
+            "<figure class=\"diagram unread review\" id=\"{id}\"><figcaption>{}</figcaption></figure>\n",
+            esc(&describe::not_read(number, &label, lang))
         );
     };
     let fen = esc(&reading.fen);
     let body = match (o.diagrams, pdfcraft_chess::fen::parse(&reading.fen)) {
-        (DiagramMode::Svg, Ok(parsed)) => to_svg(&board(&parsed.placement, o.pieces, &o.style), &reading.fen),
+        (DiagramMode::Svg, Ok(parsed)) => {
+            let title = describe::title(number, &label, parsed.side_to_move, lang);
+            to_svg_described(&board(&parsed.placement, o.pieces, &o.style), &id, &title, &describe::pieces(&parsed.placement, lang))
+        }
         _ => format!("<code>{fen}</code>"),
     };
-    let mut caption = String::new();
+    // The caption is the PGN's comment for the diagram, then its link.
+    let of = page.blocks.iter().filter(|b| matches!(b, Block::Diagram(_))).count();
+    let origin = PgnOrigin {
+        page_index: page.index,
+        page_label: printed.map(str::to_owned),
+        diagram: Some(number),
+        of: Some(of),
+        lang: Some(lang),
+        ..PgnOrigin::default()
+    };
+    let mut caption = format!("<figcaption>{}", esc(&origin.comment()));
     if o.links
         && let Some(url) = d.lichess_url.as_deref().filter(|u| safe_url(u))
     {
-        let _ = write!(caption, "<figcaption><a href=\"{}\">{}</a></figcaption>", esc(url), esc(o.link_text));
+        let _ = write!(caption, " · <a href=\"{}\">{}</a>", esc(url), esc(o.link_text));
     }
+    caption.push_str("</figcaption>");
     format!("<figure class=\"diagram{review}\" id=\"{id}\" data-fen=\"{fen}\">{body}{caption}</figure>\n")
 }
 
@@ -285,7 +314,7 @@ fn page_section(page: &ChessPage, o: &HtmlOptions<'_>) -> String {
             Block::Paragraph { inlines, .. } => {
                 let _ = writeln!(s, "<p>{}</p>", inlines_html(inlines, o));
             }
-            Block::Diagram(d) => s.push_str(&diagram_html(d, page.index, o)),
+            Block::Diagram(d) => s.push_str(&diagram_html(d, page, o)),
         }
     }
     s.push_str("</section>\n");
@@ -296,8 +325,10 @@ fn page_section(page: &ChessPage, o: &HtmlOptions<'_>) -> String {
 pub fn write(doc: &ChessDoc, o: &HtmlOptions<'_>) -> String {
     // The file stays self-contained: the fonts go in as data URLs.
     let (fig_src, sign_src) = (o.text_font.map(text_font::data_url), o.sign_font.map(text_font::data_url));
+    let lang: String = o.lang.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '-').take(35).collect();
+    let html = if lang.is_empty() { "<html>".to_owned() } else { format!("<html lang=\"{lang}\">") };
     let mut s = format!(
-        "<!DOCTYPE html>\n<html>\n<head>\n<meta charset=\"utf-8\">\n<title>{}</title>\n<style>{}</style>\n</head>\n<body>\n",
+        "<!DOCTYPE html>\n{html}\n<head>\n<meta charset=\"utf-8\">\n<title>{}</title>\n<style>{}</style>\n</head>\n<body>\n",
         esc(o.title),
         style(o.text_font.zip(fig_src.as_deref()), o.sign_font.zip(sign_src.as_deref())),
     );

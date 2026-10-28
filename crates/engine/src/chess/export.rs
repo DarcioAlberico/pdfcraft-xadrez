@@ -155,6 +155,8 @@ impl Session {
     pub fn chess_export(&mut self, id: DocId, format: ChessFormat, o: &ChessExportOptions) -> Result<ChessExport, String> {
         let ocr = OcrOptions { mode: o.ocr, glyphs: None, general: true, book: o.book.as_ref() };
         let read = self.chess_document_with(id, &o.pages, &o.scan, o.lang, &ocr)?;
+        // The printed page numbers and the book's language say each diagram (plan A8 P9b, P9d).
+        let labels: Vec<String> = self.get(id).map(|d| d.info.pages.iter().map(|p| p.label.clone()).collect()).unwrap_or_default();
         let options = HtmlOptions {
             title: &o.title,
             pieces: &o.pieces,
@@ -165,6 +167,8 @@ impl Session {
             link_text: &o.link_text,
             text_font: o.text_font.as_deref(),
             sign_font: o.sign_font.as_deref(),
+            lang: read.lang.lang.code(),
+            page_labels: &labels,
         };
         let mut notes = Vec::new();
         let mut images = Vec::new();
@@ -229,8 +233,6 @@ impl Session {
                         }
                     }
                 }
-                // The printed page numbers and the book's language say each diagram (plan A8 P9d).
-                let labels: Vec<String> = self.get(id).map(|d| d.info.pages.iter().map(|p| p.label.clone()).collect()).unwrap_or_default();
                 let md = markdown::MarkdownOptions {
                     title: &o.title,
                     figurines: o.figurines,
