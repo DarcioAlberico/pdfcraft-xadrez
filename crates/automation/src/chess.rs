@@ -23,7 +23,7 @@ use pdfcraft_engine::chess::pdfcraft_chessvision::board::{BoardReading, ReadPosi
 use pdfcraft_engine::chess::pdfcraft_chessvision::cipher::BookCipher;
 use pdfcraft_engine::chess::pdfcraft_chessvision::coords::{PageGeometry, PageRect};
 use pdfcraft_engine::chess::pdfcraft_chessvision::detect::Source;
-use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, Inline, MoveInline, MoveStatus};
+use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, Inline, MoveInline, MoveStatus, markdown};
 use pdfcraft_engine::chess::pdfcraft_chessvision::merge::Merged;
 use pdfcraft_engine::chess::pdfcraft_chessvision::pieces::{self, PieceSource};
 use pdfcraft_engine::chess::{self, ChessPage, ChessScanSettings, DiagramReplacement, LinkSettings, ModelState, ReadingOrder};
@@ -636,6 +636,10 @@ impl Automation {
                 .filter(|n| (32..=chess::office::MAX_DIAGRAM_PX).contains(n))
                 .ok_or_else(|| Args::wrong("diagram_px", &format!("from 32 to {}", chess::office::MAX_DIAGRAM_PX)))?,
         };
+        let positions = match a.opt_str("positions")? {
+            None => markdown::PgnPositions::default(),
+            Some(name) => markdown::PgnPositions::from_name(name).ok_or_else(|| Args::wrong("positions", "\"unused\", \"all\" or \"none\""))?,
+        };
         let ocr = ocr_options(a)?.mode;
         let (book, cipher_out) = self.cipher_args(a)?;
         let scan = self.chess_settings(a)?;
@@ -676,6 +680,7 @@ impl Automation {
             image_dir: image_dir.clone(),
             book,
             style: theme_style(a)?,
+            positions,
         };
         let loaded = self.use_store_corrections(a, id)?;
         let made = self.session.chess_export(id, format, &options).map_err(failed)?;
@@ -715,6 +720,11 @@ impl Automation {
             "ocr_pages": read.ocr_pages.iter().map(|o| json!({ "page": o.page + 1, "lines": o.lines, "repaired": o.edits, "unsettled": o.flags, "general_ocr": o.general_ocr })).collect::<Vec<_>>(),
             "notes": notes,
             "position_games": made.position_games,
+            "positions_skipped": made.positions_skipped.iter().map(|s| json!({
+                "page": u64::from(s.at.page) + 1,
+                "diagram": s.at.diagram.saturating_add(1),
+                "reason": s.reason.name(),
+            })).collect::<Vec<_>>(),
             "cipher": Self::cipher_reply(&made.read.cipher, cipher_out.as_ref())?,
             "image_dir": folder.as_ref().filter(|_| !made.images.is_empty()).map(|_| image_dir),
             "corrections": crate::chess_corrections::corrections_reply(loaded, read),

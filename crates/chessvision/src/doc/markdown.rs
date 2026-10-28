@@ -7,11 +7,12 @@
 //! Markdown reader shows it as printed: `1. e4` at the start of a paragraph stays text, not a
 //! list item, and `*`, `_`, `[` and friends stay characters.
 //!
-//! **PGN** ([`pgn_with_diagrams`]). The games found in the text, and for every legal diagram
-//! that starts none a game of its own with no moves: `[SetUp "1"]`, `[FEN …]` and the page and
-//! diagram it came from, so a database gets every position of the book. Each game says where it
-//! came from through [`PgnOrigin`]: its tags, and a first comment in the book's language
-//! (`Pág. 17 · diagrama 1 de 2`), with the book's title and printed page numbers from
+//! **PGN** ([`pgn_export`]). The games found in the text, and for every legal diagram that is
+//! in none a game of its own with no moves: `[SetUp "1"]`, `[FEN …]` and the page and diagram it
+//! came from, so a database gets every position of the book ([`PgnPositions`] says which). A
+//! diagram that reprints a game's position marks that game's move with `$220` instead. Each game
+//! says where it came from through [`PgnOrigin`]: its tags, and a first comment in the book's
+//! language (`Pág. 17 · diagrama 1 de 2`), with the book's title and printed page numbers from
 //! [`PgnBook`] when the caller knows them.
 
 use std::fmt::Write as _;
@@ -19,7 +20,7 @@ use std::fmt::Write as _;
 use pdfcraft_chess::origin::{PgnOrigin, with_origin_comment, with_origin_tags};
 use pdfcraft_chess::san::Lang;
 
-use super::games::{GameOrigin, GameResult, GameScore, Tag};
+use super::games::{DiagramAt, GameOrigin, GameResult, GameScore, MAX_SHOWN_DIAGRAMS, Tag};
 use super::html::{Figurines, plain_text_with};
 use super::{Block, ChessDoc};
 
@@ -140,6 +141,69 @@ pub struct PgnBook {
     pub labels: Vec<String>,
 }
 
+/// Which diagrams [`pgn_export`] gives a game with no moves of their own (plan A8 P8b).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum PgnPositions {
+    /// Every legal diagram, also those a game starts from or reprints.
+    All,
+    /// The diagrams no game starts from or reprints: a game already holds the others.
+    #[default]
+    Unused,
+    /// None: only the games.
+    None,
+}
+
+impl PgnPositions {
+    /// The option's name in the tools: `all`, `unused` or `none`.
+    pub fn from_name(name: &str) -> Option<PgnPositions> {
+        match name {
+            "all" => Some(PgnPositions::All),
+            "unused" => Some(PgnPositions::Unused),
+            "none" => Some(PgnPositions::None),
+            _ => None,
+        }
+    }
+}
+
+/// Why a diagram got no game of its own.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SkipReason {
+    /// No position was read from it.
+    NotRead,
+    /// Its position is not legal.
+    Illegal,
+    /// Its position was made legal by a guess: a database would take the guess as the book's.
+    Repaired,
+}
+
+impl SkipReason {
+    /// The reason's name in the tools' replies.
+    pub fn name(self) -> &'static str {
+        match self {
+            SkipReason::NotRead => "not_read",
+            SkipReason::Illegal => "illegal",
+            SkipReason::Repaired => "repaired",
+        }
+    }
+}
+
+/// A diagram that was to get a game of its own and did not, and why.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct SkippedPosition {
+    pub at: DiagramAt,
+    pub reason: SkipReason,
+}
+
+/// What [`pgn_export`] wrote.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct PgnExport {
+    pub pgn: String,
+    /// How many games with no moves were added for diagrams.
+    pub positions: usize,
+    /// The diagrams [`PgnPositions`] asked a game for that got none, in the order of the book.
+    pub skipped: Vec<SkippedPosition>,
+}
+
 /// A game with no moves for a diagram: its position, and where it came from.
 fn position_game(fen: &str, page: u32, number: usize, puzzle: Option<u32>, accepted: bool) -> GameScore {
     let mut g = GameScore::new(Some(fen.to_owned()));
@@ -152,40 +216,61 @@ fn position_game(fen: &str, page: u32, number: usize, puzzle: Option<u32>, accep
     g
 }
 
-/// Every game, and a game with no moves for each legal diagram that starts none, in the order of
+/// Every game, and a game with no moves for each legal diagram that is in none, in the order of
 /// the book: page by page, a diagram's game where the diagram is, then the page's other games.
 /// Returns the PGN and how many position-only games were added.
 pub fn pgn_with_diagrams(doc: &ChessDoc) -> (String, usize) {
-    pgn_with_diagrams_in(doc, &PgnBook::default())
+    let made = pgn_export(doc, &PgnBook::default(), PgnPositions::Unused);
+    (made.pgn, made.positions)
 }
 
 /// [`pgn_with_diagrams`], each game saying where in `book` it came from (plan A8 P8a): the
-/// origin's tags, its first comment, and for a position the book's title as its `Event`.
-pub fn pgn_with_diagrams_in(doc: &ChessDoc, book: &PgnBook) -> (String, usize) {
+/// origin's tags, its first comment, and for a position the book's title as its `Event`; with a
+/// game of their own for the diagrams `positions` says (P8b), before the game that starts from
+/// the same diagram, and `$220` on each move whose position a diagram reprints.
+pub fn pgn_export(doc: &ChessDoc, book: &PgnBook, positions: PgnPositions) -> PgnExport {
     let mut out: Vec<GameScore> = Vec::new();
     let mut used = vec![false; doc.games.len()];
-    let mut added = 0;
+    let mut made = PgnExport::default();
+    // A document read from JSON is not held to the reading's cap.
+    let shown: std::collections::HashSet<DiagramAt> = doc.games.iter().flat_map(|g| g.shown.iter().take(MAX_SHOWN_DIAGRAMS).copied()).collect();
     for page in &doc.pages {
         for block in &page.blocks {
             let Block::Diagram(d) = block else { continue };
+            let at = DiagramAt { page: page.index, diagram: d.number };
             let from_here = doc
                 .games
                 .iter()
                 .position(|g| matches!(g.origin, GameOrigin::Diagram { page: p, diagram, .. } if p == page.index && diagram == d.number));
-            match (from_here, &d.reading) {
-                (Some(i), _) => {
-                    if let (Some(g), Some(slot)) = (doc.games.get(i), used.get_mut(i)) {
-                        out.push(with_origin(doc, book, g));
-                        *slot = true;
+            let wanted = match positions {
+                PgnPositions::All => true,
+                PgnPositions::Unused => from_here.is_none() && !shown.contains(&at),
+                PgnPositions::None => false,
+            };
+            if wanted {
+                match &d.reading {
+                    Some(r) if r.legal && !r.repaired && GameScore::new(Some(r.fen.clone())).start_board().is_some() => {
+                        let game = position_game(&r.fen, page.index, d.number, d.puzzle, r.accepted);
+                        let origin = origin_of(doc, book, page.index, Some(d.number), d.puzzle);
+                        out.push(apply_origin(game, &origin, true));
+                        made.positions = made.positions.saturating_add(1);
+                    }
+                    reading => {
+                        let reason = match reading {
+                            None => SkipReason::NotRead,
+                            Some(r) if r.repaired => SkipReason::Repaired,
+                            Some(_) => SkipReason::Illegal,
+                        };
+                        made.skipped.push(SkippedPosition { at, reason });
                     }
                 }
-                (None, Some(r)) if r.legal && !r.repaired && GameScore::new(Some(r.fen.clone())).start_board().is_some() => {
-                    let game = position_game(&r.fen, page.index, d.number, d.puzzle, r.accepted);
-                    let origin = origin_of(doc, book, page.index, Some(d.number), d.puzzle);
-                    out.push(apply_origin(game, &origin, true));
-                    added += 1;
-                }
-                _ => {}
+            }
+            if let Some(i) = from_here
+                && let (Some(g), Some(slot)) = (doc.games.get(i), used.get_mut(i))
+                && !*slot
+            {
+                out.push(with_origin(doc, book, g));
+                *slot = true;
             }
         }
         for (i, g) in doc.games.iter().enumerate() {
@@ -204,7 +289,8 @@ pub fn pgn_with_diagrams_in(doc: &ChessDoc, book: &PgnBook) -> (String, usize) {
             out.push(with_origin(doc, book, g));
         }
     }
-    (super::pgn::write(out.iter()), added)
+    made.pgn = super::pgn::write(out.iter());
+    made
 }
 
 /// A game of the document with its origin: the diagram it starts at, else the page of its first
@@ -215,7 +301,35 @@ fn with_origin(doc: &ChessDoc, book: &PgnBook, game: &super::games::Game) -> Gam
         GameOrigin::Initial => (game.page, None),
     };
     let puzzle = game.score.extra_tags.iter().find(|t| t.name == "PdfPuzzle").and_then(|t| t.value.parse().ok());
-    apply_origin(game.score.clone(), &origin_of(doc, book, page, diagram, puzzle), false)
+    let mut score = apply_origin(game.score.clone(), &origin_of(doc, book, page, diagram, puzzle), false);
+    mark_shown(doc, &game.shown, &mut score);
+    score
+}
+
+/// `$220` on the main-line move whose position each of `shown` reprints (the first with the
+/// diagram's placement). A move with a diagram mark already, or with no room for one, is left as
+/// it is.
+fn mark_shown(doc: &ChessDoc, shown: &[DiagramAt], score: &mut GameScore) {
+    fn placement(fen: &str) -> &str {
+        fen.split_whitespace().next().unwrap_or_default()
+    }
+    let main = score.mainline();
+    for at in shown.iter().take(MAX_SHOWN_DIAGRAMS) {
+        let reading = doc.pages.iter().find(|p| p.index == at.page).and_then(|p| {
+            p.blocks.iter().find_map(|b| match b {
+                Block::Diagram(d) if d.number == at.diagram => d.reading.as_ref(),
+                _ => None,
+            })
+        });
+        let Some(want) = reading.map(|r| placement(&r.fen)) else { continue };
+        let Some(i) = main.iter().copied().find(|&n| score.nodes.get(n).is_some_and(|node| placement(&node.fen) == want)) else { continue };
+        if let Some(node) = score.nodes.get_mut(i)
+            && !node.nags.iter().any(|&c| pdfcraft_chess::nag::is_diagram(c))
+            && node.nags.len() < super::games::MAX_NAGS
+        {
+            node.nags.push(pdfcraft_chess::nag::DIAGRAM);
+        }
+    }
 }
 
 /// The origin of page `page`'s diagram `diagram` (counted from 0), or of the page.

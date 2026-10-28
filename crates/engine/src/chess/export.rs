@@ -85,6 +85,9 @@ pub struct ChessExportOptions {
     /// How the diagrams are drawn: their squares' colours (a board theme's, plan HC7), hatched or
     /// not. The default is the boards' brown.
     pub style: BoardStyle,
+    /// PGN: which diagrams get a game of their own (plan A8 P8b). The default is those no game
+    /// starts from or reprints.
+    pub positions: markdown::PgnPositions,
 }
 
 impl ChessExportOptions {
@@ -109,6 +112,7 @@ impl ChessExportOptions {
             image_dir: format!("{title}_diagrams"),
             book: None,
             style: BoardStyle::default(),
+            positions: markdown::PgnPositions::default(),
         }
     }
 }
@@ -124,6 +128,8 @@ pub struct ChessExport {
     pub drawn: usize,
     /// PGN: games with no moves added for positions.
     pub position_games: Option<usize>,
+    /// PGN: the diagrams that were to get a game of their own and did not, and why.
+    pub positions_skipped: Vec<markdown::SkippedPosition>,
     /// What the writers noted (a diagram that could not be drawn, say).
     pub notes: Vec<String>,
 }
@@ -160,6 +166,7 @@ impl Session {
         let mut notes = Vec::new();
         let mut images = Vec::new();
         let mut position_games = None;
+        let mut positions_skipped = Vec::new();
         // HTML and EPUB draw every diagram that has a position, as SVG, unless asked for FENs.
         let read_diagrams = read.doc.pages.iter().flat_map(|p| &p.blocks).filter(|b| matches!(b, Block::Diagram(d) if d.reading.is_some())).count();
         let mut drawn = if o.diagrams == DiagramMode::Svg { read_diagrams } else { 0 };
@@ -192,10 +199,11 @@ impl Session {
                     title: Some(o.title.clone()).filter(|t| !t.trim().is_empty()),
                     labels: doc.info.pages.iter().map(|p| p.label.clone()).collect(),
                 };
-                let (pgn, added) = markdown::pgn_with_diagrams_in(&read.doc, &book);
-                position_games = Some(added);
+                let made = markdown::pgn_export(&read.doc, &book, o.positions);
+                position_games = Some(made.positions);
+                positions_skipped = made.skipped;
                 drawn = 0;
-                pgn.into_bytes()
+                made.pgn.into_bytes()
             }
             ChessFormat::Markdown => {
                 let with_images = o.diagrams == DiagramMode::Svg;
@@ -242,6 +250,6 @@ impl Session {
                 if format == ChessFormat::Docx { super::office::docx(&pages, &o.title) } else { super::office::rtf(&pages).into_bytes() }
             }
         };
-        Ok(ChessExport { bytes, images, read, drawn, position_games, notes })
+        Ok(ChessExport { bytes, images, read, drawn, position_games, positions_skipped, notes })
     }
 }

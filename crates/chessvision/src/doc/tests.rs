@@ -487,6 +487,9 @@ fn a_game_goes_on_past_a_diagram_of_its_own_position() {
         assert!(moves(&doc.pages[1]).iter().all(|(_, s)| *s == MoveStatus::Valid));
         assert_eq!(doc.games[0].flags.iter().any(|f| f.flag == ReviewFlag::ContinuedPastDiagram { page: 1, diagram: 0 }), flagged);
         assert!(!pgn::write_game(&doc.games[0].score).contains("Black to play"), "the caption goes to neither game");
+        // The game remembers the diagram that reprints its position, not the other (plan A8 P8b).
+        let shown = if flagged { Vec::new() } else { vec![crate::doc::games::DiagramAt { page: 1, diagram: 0 }] };
+        assert_eq!(doc.games[0].shown, shown, "{fen}");
     }
 }
 
