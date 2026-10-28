@@ -624,6 +624,29 @@ fn marking_the_page_as_checked_verifies_only_what_was_read_with_confidence() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// A diagram read with a doubt (to review) is never checked by Mark the page as checked: the
+/// person checks it in the Diagram tab (plan A8 rejects accepting them in bulk).
+#[test]
+fn marking_the_page_as_checked_leaves_a_doubted_reading() {
+    let dir = corrections_dir("verify-review");
+    let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), Some(dir.clone()));
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    // The font diagram's reading, made doubtful.
+    let results = h.state_mut().chess.results.as_mut().unwrap();
+    let page = Arc::make_mut(results.pages.get_mut(0).unwrap());
+    match page.readings.as_mut().and_then(|r| r.get_mut(0)).map(|r| &mut r.outcome) {
+        Some(Ok(p)) => p.accepted = false,
+        other => panic!("the font diagram is read: {other:?}"),
+    }
+    h.run_steps(1);
+    assert!(h.state_mut().execute("chess.verify_page"));
+    h.run_steps(2);
+    assert_eq!(kind(&h, 0), None, "left to review");
+    assert!(h.state().toast.as_ref().is_some_and(|t| t.0.starts_with("Nothing on page 1")), "{:?}", h.state().toast);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// The review queue: only the drawn board (no model read it) needs review; the list can show
 /// only it, and Next goes to it.
 #[test]
