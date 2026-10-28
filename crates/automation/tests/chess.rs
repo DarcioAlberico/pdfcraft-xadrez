@@ -755,6 +755,15 @@ fn chess_export_markdown_and_pgn_write_inside_the_root() {
             && games.contains("[PdfDiagram \"1\"]"),
         "{games}"
     );
+    // The two unread diagrams were to get a game and did not, and the reply says why (plan A8 P8b).
+    let skipped = pgn["positions_skipped"].as_array().unwrap();
+    assert_eq!(skipped.len(), 2, "{pgn:#}");
+    assert!(skipped.iter().all(|s| s["reason"] == "not_read" && s["page"].as_u64() >= Some(1) && s["diagram"].as_u64() >= Some(1)), "{pgn:#}");
+    let none = ok(&mut a, "chess_export_pgn", json!({ "doc": doc, "out": "none.pgn", "positions": "none" }));
+    assert_eq!((none["position_games"].as_u64(), none["positions_skipped"].as_array().map(Vec::len)), (Some(0), Some(0)), "{none:#}");
+    assert!(!std::fs::read_to_string(root.join("none.pgn")).unwrap().contains("[PdfDiagram"));
+    let e = a.call("chess_export_pgn", &json!({ "doc": doc, "out": "x.pgn", "positions": "some" })).unwrap_err();
+    assert!(e.to_string().contains("positions"), "{e}");
     for (tool, out) in [("chess_export_markdown", "../outside/x.md"), ("chess_export_pgn", "../outside/x.pgn")] {
         match a.call(tool, &json!({ "doc": doc, "out": out })) {
             Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{tool}: {m}"),

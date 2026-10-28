@@ -113,6 +113,8 @@ pub const MAX_GAMES: usize = 4096;
 pub const MAX_LISTED_MOVES: usize = 8;
 /// Most diagrams kept that no game started from, to be matched by a later first move.
 pub const MAX_SPARE_DIAGRAMS: usize = 6;
+/// Most diagrams a game remembers as reprinting its position ([`Game::shown`]).
+pub const MAX_SHOWN_DIAGRAMS: usize = 256;
 /// Headings between a solution's label and its first move that keep the diagram it named: the
 /// players' line and the event's, in books that set them as headings.
 pub const MAX_NAMED_HEADINGS: u8 = 2;
@@ -631,6 +633,18 @@ pub struct Game {
     pub score: GameScore,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub flags: Vec<GameFlag>,
+    /// The diagrams that came while it was read and show the position its main line had reached
+    /// (a book reprinting the game's position), at most [`MAX_SHOWN_DIAGRAMS`]: the PGN marks the
+    /// move with `$220` and gives them no game of their own (plan A8 P8b).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub shown: Vec<DiagramAt>,
+}
+
+/// A diagram of the document: its page index and its number on the page, both from 0.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct DiagramAt {
+    pub page: u32,
+    pub diagram: usize,
 }
 
 impl Game {
@@ -1184,7 +1198,7 @@ impl Walker {
         score.start_board()?;
         let mut walker = Walker { rules: WalkRules::ALL, fragment: true, ..Walker::default() };
         walker.open = Some(Open::new(0, None));
-        walker.games.push(Game { origin: GameOrigin::Initial, trusted: true, page: 0, score, flags: Vec::new() });
+        walker.games.push(Game { origin: GameOrigin::Initial, trusted: true, page: 0, score, flags: Vec::new(), shown: Vec::new() });
         walker.remaps.push(Vec::new());
         Some(walker)
     }
@@ -1212,12 +1226,30 @@ impl Walker {
     /// [`Walker::resolve_held`]). A diagram before it that no game started from is kept spare.
     pub fn diagram(&mut self, seed: Seed) {
         self.puzzles.keep(&seed);
+        self.note_shown(&seed);
         if let Anchor::Seed(old) = std::mem::take(&mut self.anchor) {
             self.keep_spare(old);
         }
         self.held = self.open.is_some();
         self.anchor = Anchor::Seed(seed);
         self.caption = false;
+    }
+
+    /// A diagram showing the position the open game's main line has reached is remembered by
+    /// that game ([`Game::shown`]), whatever the moves after it make of the game.
+    fn note_shown(&mut self, seed: &Seed) {
+        let Some(fen) = seed.fen.as_deref() else { return };
+        let Some((open, game)) = self.open.as_ref().and_then(|o| Some((o, self.games.get(o.game)?))) else { return };
+        let Some(main) = open.lines.first() else { return };
+        let same = game.score.board_after(main.cursor).is_some_and(|b| placement_of(&b.to_string()) == placement_of(fen));
+        let at = DiagramAt { page: seed.page, diagram: seed.diagram };
+        if same
+            && let Some(game) = self.games.get_mut(open.game)
+            && game.shown.len() < MAX_SHOWN_DIAGRAMS
+            && !game.shown.contains(&at)
+        {
+            game.shown.push(at);
+        }
     }
 
     /// A solution names a puzzle: the open game ends and the next moves start from that
@@ -1424,7 +1456,7 @@ impl Walker {
         };
         let flags = flags.into_iter().map(|flag| GameFlag { page: loc.page, source_rect: loc.rect, flag }).collect();
         self.open = Some(Open::new(self.games.len(), started_from));
-        self.games.push(Game { origin, trusted, page: loc.page, score, flags });
+        self.games.push(Game { origin, trusted, page: loc.page, score, flags, shown: Vec::new() });
         self.remaps.push(Vec::new());
         Some(honour)
     }
