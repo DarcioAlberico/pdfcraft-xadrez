@@ -3474,3 +3474,11 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Copy without comments	Sao chép không kèm bình luận
 	Copy without annotation glyphs	Sao chép không kèm ký hiệu đánh giá
 	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	Biến được giữ làm bình luận: {n} (không có nước đi trước, hoặc lồng sâu hơn 32 cấp).
+# Plan A8 P2a1: the Diagrams list.
+	On this page	Trên trang này
+	Follow the page	Theo trang
+	Keep the page on screen at the top of the list.	Giữ trang đang xem ở đầu danh sách.
+	No diagram in this filter.	Không có sơ đồ nào trong bộ lọc này.
+	· {n} of {m}	· {n}/{m}
+	Go to this page	Đi tới trang này
+	Diagram actions	Thao tác sơ đồ

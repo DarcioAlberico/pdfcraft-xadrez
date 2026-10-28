@@ -76,6 +76,13 @@ fn harness_stepping(step_dt: f32) -> Harness<'static, PdfCraftApp> {
     harness_on(boards(), step_dt)
 }
 
+/// Open the menu of the Diagrams list's row whose name starts with `row`, as its context menu.
+#[track_caller]
+fn row_menu(h: &mut Harness<'static, PdfCraftApp>, row: &str) {
+    h.get_all_by_label_contains(row).next().expect("the row is listed").click_secondary();
+    h.run_steps(2);
+}
+
 /// The harness on the PDF `bytes`.
 fn harness_on(bytes: Vec<u8>, step_dt: f32) -> Harness<'static, PdfCraftApp> {
     harness_with(bytes, step_dt, egui::vec2(1400.0, 1000.0), None)
@@ -124,7 +131,11 @@ fn scanning_lists_the_diagrams_with_their_positions_and_marks_them_on_the_page()
     assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Diagrams found: 2"));
     // The font diagram is first in reading order (the left column, top to bottom), read exactly.
     h.get_by_label("Diagram 1 · Position read");
-    h.get_by_label(START_FEN);
+    // Its FEN is in the row's tooltip (and its menu), not on the row (plan A8, P2a1).
+    assert!(h.query_by_label(START_FEN).is_none());
+    h.get_by_label("Diagram 1 · Position read").hover();
+    h.run_steps(4);
+    h.get_by_label_contains(START_FEN);
     let second = h
         .get_all_by_label_contains("Diagram 2 · ")
         .next()
@@ -135,9 +146,9 @@ fn scanning_lists_the_diagrams_with_their_positions_and_marks_them_on_the_page()
         .to_string();
     assert_eq!(h.state().chess.results.as_ref().and_then(|r| r.diagram(0, 1)).map(|d| d.0), Some([60.0, 240.0, 220.0, 400.0]), "{second}");
 
-    // Copy FEN puts the position on the clipboard. (The first button is diagram 1's: with the
-    // user's piece model installed, the drawn board is read too and has its own.)
-    h.get_all_by_label("Copy FEN").next().expect("diagram 1 has a position").click();
+    // Copy FEN, in the row's menu, puts the position on the clipboard.
+    row_menu(&mut h, "Diagram 1 · ");
+    h.get_by_label("Copy FEN").click();
     let mut copied = false;
     for _ in 0..3 {
         h.step();
@@ -145,7 +156,8 @@ fn scanning_lists_the_diagrams_with_their_positions_and_marks_them_on_the_page()
     }
     assert!(copied, "the FEN was copied");
     // Open in lichess opens the analysis board on that position.
-    h.get_all_by_label("Open in lichess").next().expect("and a lichess link").click();
+    row_menu(&mut h, "Diagram 1 · ");
+    h.get_by_label("Open in lichess").click();
     h.run_steps(2);
     assert_eq!(
         h.state().last_opened_url.as_deref(),
@@ -531,7 +543,8 @@ fn the_review_queue_lists_and_walks_the_diagrams_to_review() {
         return;
     }
     assert_eq!(queue, vec![(0, 1)]);
-    h.get_by_label("Only diagrams to review (1)").click();
+    // The chip of the drawn board's state: not read.
+    h.get_by_label("Not read 1").click();
     h.run_steps(2);
     assert!(h.query_by_label_contains("Diagram 1 · ").is_none(), "the font diagram is not to review");
     h.get_by_label_contains("Diagram 2 · ").click();
@@ -882,7 +895,8 @@ fn a_diagram_on_the_board_takes_the_side_and_move_number_its_moves_give_it() {
     h.get_by_label("Recognised text of page 1");
     h.get_by_label("Diagrams").click();
     h.run_steps(2);
-    h.get_all_by_label("Open on the board").next().expect("diagram 1 has a position").click();
+    row_menu(&mut h, "Diagram 1 · ");
+    h.get_by_label("Open on the board").click();
     h.run_steps(3);
     assert_eq!(h.state().chess.board().game.fen(), "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 12");
     assert_eq!(h.state().chess.board().game.first_move_number(), 12, "the Move number field shows it");
@@ -937,7 +951,8 @@ fn open_on_the_board_from_the_panel() {
     h.run_steps(3);
     assert!(h.query_by_label("Study board").is_none(), "the Chess panel's tabs are Diagrams and Text");
     assert!(!h.state().docking.layout.contains(&board));
-    h.get_all_by_label("Open on the board").next().expect("diagram 1 has a position").click();
+    row_menu(&mut h, "Diagram 1 · ");
+    h.get_by_label("Open on the board").click();
     h.run_steps(3);
     assert!(h.state().docking.layout.contains(&board), "the Board panel opened");
     assert_eq!(format!("{:?}", h.state().chess.tab), "Diagrams", "the Chess panel keeps its tab");
@@ -958,7 +973,8 @@ fn the_board_panel_corrects_the_move_number() {
     let mut h = harness();
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
-    h.get_all_by_label("Open on the board").next().expect("diagram 1 has a position").click();
+    row_menu(&mut h, "Diagram 1 · ");
+    h.get_by_label("Open on the board").click();
     h.run_steps(3);
     click_square(&mut h, "e2");
     click_square(&mut h, "e4");
@@ -994,7 +1010,8 @@ fn open_on_the_board_shows_the_windows_board() {
     h.run_steps(3);
     assert_eq!(h.state().chess_window_tab(), pdfcraft_ui_egui::ChessWindowTab::Diagrams);
     assert!(h.query_by_label_contains("Board: ").is_none());
-    h.get_all_by_label("Open on the board").next().expect("diagram 1 has a position").click();
+    row_menu(&mut h, "Diagram 1 · ");
+    h.get_by_label("Open on the board").click();
     h.run_steps(3);
     assert_eq!(h.state().chess_window_tab(), pdfcraft_ui_egui::ChessWindowTab::Board);
     assert!(!h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Board), "not docked");
@@ -2599,7 +2616,6 @@ fn the_chess_panel_moves_to_the_window_and_the_inspector_says_so() {
     let board = h.get_by_label_contains("Board: ").rect();
     let item = h.get_by_label("Diagram 1 · Position read").rect();
     assert!(item.min.x > board.max.x, "the list beside the board, once: {item:?} {board:?}");
-    h.get_by_label(START_FEN);
     h.get_by_label("The chess panel is in its own window.");
     assert_eq!(h.get_all_by_label("Scan this page").count(), 1, "the Diagrams tab is drawn once");
     // The Text tab beside the board, chosen in the window.

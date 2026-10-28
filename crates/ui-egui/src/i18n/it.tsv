@@ -3432,3 +3432,11 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	Copy without comments	Copia senza commenti
 	Copy without annotation glyphs	Copia senza segni di valutazione
 	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	Varianti tenute come commenti: {n} (senza mossa prima, o annidate oltre 32 livelli).
+# Plan A8 P2a1: the Diagrams list.
+	On this page	In questa pagina
+	Follow the page	Segui la pagina
+	Keep the page on screen at the top of the list.	Tieni la pagina mostrata in cima all'elenco.
+	No diagram in this filter.	Nessun diagramma in questo filtro.
+	· {n} of {m}	· {n} di {m}
+	Go to this page	Vai a questa pagina
+	Diagram actions	Azioni del diagramma

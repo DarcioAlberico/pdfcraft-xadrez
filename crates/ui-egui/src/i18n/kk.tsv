@@ -3218,3 +3218,11 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Copy without comments	Түсініктемесіз көшіру
 	Copy without annotation glyphs	Бағалау белгілерінсіз көшіру
 	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	Түсініктеме ретінде сақталған нұсқалар: {n} (алдында жүріс жоқ немесе 32 деңгейден терең).
+# Plan A8 P2a1: the Diagrams list.
+	On this page	Осы бетте
+	Follow the page	Беттің соңынан еру
+	Keep the page on screen at the top of the list.	Көрсетілген бетті тізімнің басында ұстау.
+	No diagram in this filter.	Бұл сүзгіде диаграмма жоқ.
+	· {n} of {m}	· {n}/{m}
+	Go to this page	Осы бетке өту
+	Diagram actions	Диаграмма әрекеттері

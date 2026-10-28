@@ -3183,3 +3183,11 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Copy without comments	Копиране без коментари
 	Copy without annotation glyphs	Копиране без оценъчни знаци
 	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	Варианти, запазени като коментари: {n} (без ход преди тях или вложени по-дълбоко от 32).
+# Plan A8 P2a1: the Diagrams list.
+	On this page	На тази страница
+	Follow the page	Следване на страницата
+	Keep the page on screen at the top of the list.	Показваната страница да е най-горе в списъка.
+	No diagram in this filter.	Няма диаграма в този филтър.
+	· {n} of {m}	· {n} от {m}
+	Go to this page	Към тази страница
+	Diagram actions	Действия с диаграмата

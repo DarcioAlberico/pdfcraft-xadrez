@@ -46,6 +46,7 @@ mod chess_drafts;
 mod chess_editor;
 mod chess_figurines;
 mod chess_history;
+mod chess_list;
 mod chess_models;
 mod chess_ocr_area;
 mod chess_pieces_ui;

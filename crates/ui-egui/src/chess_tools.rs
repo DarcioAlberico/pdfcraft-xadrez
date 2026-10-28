@@ -692,6 +692,8 @@ pub(crate) fn take_scope_keys(chess: &mut ChessState, ctx: &egui::Context, raw: 
     // The diagram editor's board and the Diagram tab, while they have the keyboard (plan A8, P3c).
     let free = !blocked && !ctx.text_edit_focused() && !egui::Popup::is_any_open(ctx);
     crate::chess_diagram_keys::take_keys(chess, ctx, &mut raw.events, free);
+    // A focused row of the Diagrams list: ↑ ↓ Home End go to another diagram (plan A8, P2a1).
+    crate::chess_list::take_keys(&mut chess.list, ctx, &mut raw.events, free);
     // A focused row of the games list (T14) has its own keys, scope or not: its Delete deletes
     // no variation (nor a page or an annotation).
     if !blocked && !ctx.text_edit_focused() && !egui::Popup::is_any_open(ctx) && chess.games.list_has_focus(ctx) {

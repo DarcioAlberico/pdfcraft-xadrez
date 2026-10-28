@@ -3095,3 +3095,11 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Copy without comments	వ్యాఖ్యలు లేకుండా కాపీ చేయి
 	Copy without annotation glyphs	మూల్యాంకన గుర్తులు లేకుండా కాపీ చేయి
 	Variations kept as comments: {n} (no move before them, or nested deeper than 32).	వ్యాఖ్యలుగా ఉంచిన ఉపవరుసలు: {n} (ముందు ఎత్తు లేదు, లేదా 32 స్థాయిల కంటే లోతుగా ఉన్నాయి).
+# Plan A8 P2a1: the Diagrams list.
+	On this page	ఈ పేజీలో
+	Follow the page	పేజీని అనుసరించు
+	Keep the page on screen at the top of the list.	చూపుతున్న పేజీని జాబితా పైభాగంలో ఉంచు.
+	No diagram in this filter.	ఈ వడపోతలో చిత్రాలు లేవు.
+	· {n} of {m}	· {n} / {m}
+	Go to this page	ఈ పేజీకి వెళ్ళు
+	Diagram actions	చిత్రం చర్యలు
