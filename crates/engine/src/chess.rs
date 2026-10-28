@@ -20,8 +20,11 @@
 //! Reading is slow with a model, so it is split as OCR is ([`crate::ocr`]): the job captures what
 //! it needs, [`ChessScanJob::run`] works anywhere (a worker thread on the desktop, inline on the
 //! web) and [`Session::store_chess_scan`] keeps the result. Results are cached per document, page
-//! and scan parameters, the document's edit generation included: an entry whose parameters
-//! differ is dropped and the page scanned again, never adapted.
+//! and scan parameters: an entry whose parameters differ is dropped and the page scanned again,
+//! never adapted. A page's result lasts across edits while the page's content key
+//! ([`page_key`]) stays the same: an edit, undo or redo reads again only the pages it touched,
+//! and a page moved by inserting or removing pages is found at its new index. A page without a
+//! key (too many objects to hash) lasts only as long as the document state it was read in.
 //!
 //! Scanning is read-only: nothing here changes a document. Replacing a diagram is [`replace`]
 //! (S10); the recognised document is [`document`] (S14b); adding lichess links is [`links`]
@@ -66,8 +69,9 @@ pub const MAX_SCAN_PIXELS: f32 = 40.0e6;
 /// Most pixels of image crops handed to the embedded-image detector on one page. Images past
 /// this budget go without pixels (they are not trimmed), and the page says so.
 pub const MAX_CROP_PIXELS: usize = 24_000_000;
-/// Pages kept in the scan cache across a session; the oldest go first.
-pub const MAX_CACHED_PAGES: usize = 512;
+/// Pages kept in the scan cache across a session; the least recently used go first. Enough for
+/// a long book (703 pages) and the pages an edit left behind.
+pub const MAX_CACHED_PAGES: usize = 2048;
 
 /// Chess ▸ Scan diagrams settings.
 #[derive(Clone, Debug, PartialEq)]
@@ -168,7 +172,8 @@ impl ModelKey {
 /// Everything a page's scan result depends on.
 #[derive(Clone, Debug, PartialEq)]
 struct ScanParams {
-    /// The document's edit generation and size: any edit, undo or redo makes a new result.
+    /// The document's edit generation and size: the state the scan was made in. A page with a
+    /// content key outlives it ([`ChessCache::get`]).
     generation: u64,
     bytes: usize,
     settings: ChessScanSettings,
@@ -177,74 +182,156 @@ struct ScanParams {
 }
 
 impl ScanParams {
-    /// Whether a result made with `self` answers a request made with `wanted`: the same document
-    /// state and detection settings, and, when `wanted` reads, the same model and reading
-    /// resolution. (The model folder setting itself is not compared: the model it found is.)
-    fn answers(&self, wanted: &ScanParams) -> bool {
+    /// Whether a result made with `self` answers a request made with `wanted` for a page with the
+    /// same content: the same detection settings and, when `wanted` reads, the same model and
+    /// reading resolution. (The model folder setting itself is not compared: the model it found
+    /// is.)
+    fn settles(&self, wanted: &ScanParams) -> bool {
         let (a, b) = (&self.settings, &wanted.settings);
-        let same_detection = self.generation == wanted.generation
-            && self.bytes == wanted.bytes
-            && a.dpi == b.dpi
-            && a.order == b.order
-            && a.max_diagrams == b.max_diagrams
-            && a.allow_unverified_fonts == b.allow_unverified_fonts;
+        let same_detection =
+            a.dpi == b.dpi && a.order == b.order && a.max_diagrams == b.max_diagrams && a.allow_unverified_fonts == b.allow_unverified_fonts;
         same_detection
             && match &wanted.model {
                 None => true,
                 Some(m) => self.model.as_ref() == Some(m) && *m != ModelKey::Supplied && a.max_read_dpi == b.max_read_dpi,
             }
     }
+
+    /// Made in the document state `other` was.
+    fn same_state(&self, other: &ScanParams) -> bool {
+        self.generation == other.generation && self.bytes == other.bytes
+    }
 }
 
 struct CacheEntry {
     doc: DocId,
     page: usize,
+    /// The page's content key when it was scanned; `None`: it had none.
+    key: Option<page_key::PageKey>,
     params: ScanParams,
     result: Arc<ChessPage>,
 }
 
-/// Scan results kept in the session, keyed by document, page and scan parameters.
+/// One document state's page keys, computed as they are asked for.
+struct KeyState {
+    doc: DocId,
+    generation: u64,
+    bytes: usize,
+    /// The page objects in page order; `None` until first needed, empty when the page tree can't
+    /// be walked.
+    pages: Option<Vec<pdfcraft_cos::ObjRef>>,
+    keys: std::collections::HashMap<usize, Option<page_key::PageKey>>,
+    memo: page_key::KeyMemo,
+}
+
+/// Scan results kept in the session, keyed by document, page content and scan parameters.
 #[derive(Default)]
 pub(crate) struct ChessCache {
+    /// Oldest used first.
     entries: Vec<CacheEntry>,
+    /// The page keys of each open document's current state.
+    keys: Vec<KeyState>,
     /// Each document's diagram corrections, as its caller loaded them from a store
     /// ([`Session::set_chess_corrections`]).
     corrections: Vec<(DocId, Arc<corrections::CorrectionFile>)>,
+    /// Pages [`Session::chess_scan`] has scanned (not answered from here), for tests.
+    scanned: usize,
 }
 
 impl ChessCache {
-    /// The result for `page` of `doc` that `wanted` would produce. An entry for that page made
-    /// with other parameters is dropped.
-    fn get(&mut self, doc: DocId, page: usize, wanted: &ScanParams) -> Option<Arc<ChessPage>> {
-        let at = self.entries.iter().position(|e| e.doc == doc && e.page == page)?;
-        let entry = self.entries.get(at)?;
-        if entry.params.answers(wanted) {
-            return Some(entry.result.clone());
-        }
-        self.entries.remove(at);
-        None
+    /// The result for `page` of `doc` that `wanted` would produce: one made for that page in
+    /// the same document state, or one made for any page with the same content `key`, given
+    /// `page`'s index. An entry for that page that can never answer again (other settings, or
+    /// no key and another state) is dropped.
+    fn get(&mut self, doc: DocId, page: usize, key: Option<page_key::PageKey>, wanted: &ScanParams) -> Option<Arc<ChessPage>> {
+        let same_content = |e: &CacheEntry| key.is_some() && e.key == key;
+        self.entries.retain(|e| {
+            let dead = e.doc == doc
+                && e.page == page
+                && !same_content(e)
+                && (!e.params.settles(wanted) || (e.key.is_none() && !e.params.same_state(wanted)));
+            !dead
+        });
+        let answers =
+            |e: &CacheEntry| e.doc == doc && e.params.settles(wanted) && (same_content(e) || (e.page == page && e.params.same_state(wanted)));
+        let at = self.entries.iter().position(|e| e.page == page && answers(e)).or_else(|| self.entries.iter().position(answers))?;
+        // Used now: the last to go.
+        let entry = self.entries.remove(at);
+        let result = if entry.result.page == page { entry.result.clone() } else { Arc::new(ChessPage { page, ..(*entry.result).clone() }) };
+        self.entries.push(entry);
+        Some(result)
     }
 
-    fn put(&mut self, doc: DocId, page: usize, params: ScanParams, result: Arc<ChessPage>) {
+    fn put(&mut self, doc: DocId, page: usize, key: Option<page_key::PageKey>, params: ScanParams, result: Arc<ChessPage>) {
         if params.model == Some(ModelKey::Supplied) {
             return;
         }
-        self.entries.retain(|e| !(e.doc == doc && e.page == page));
+        // What this replaces: the page's scan in this state, or its scan of the same content in
+        // another state. (Pages that draw the same, blank ones say, keep an entry each.)
+        self.entries.retain(|e| {
+            let same_scan = e.params.settings == params.settings && e.params.model == params.model;
+            let replaced = e.doc == doc && e.page == page && (e.params.same_state(&params) || (same_scan && key.is_some() && e.key == key));
+            !replaced
+        });
         if self.entries.len() >= MAX_CACHED_PAGES {
             self.entries.remove(0);
         }
-        self.entries.push(CacheEntry { doc, page, params, result });
+        self.entries.push(CacheEntry { doc, page, key, params, result });
+    }
+
+    /// The keys of `pages` of `doc`, in `cos` at state `(generation, bytes)` with `count` pages.
+    fn page_keys(
+        &mut self,
+        doc: DocId,
+        (generation, bytes): (u64, usize),
+        cos: &pdfcraft_cos::Document,
+        count: usize,
+        pages: &[usize],
+    ) -> Vec<Option<page_key::PageKey>> {
+        let at = match self.keys.iter().position(|k| k.doc == doc) {
+            Some(at) => at,
+            None => {
+                self.keys.push(KeyState { doc, generation, bytes, pages: None, keys: Default::default(), memo: Default::default() });
+                self.keys.len().saturating_sub(1)
+            }
+        };
+        let Some(state) = self.keys.get_mut(at) else { return vec![None; pages.len()] };
+        if state.generation != generation || state.bytes != bytes {
+            *state = KeyState { doc, generation, bytes, pages: None, keys: Default::default(), memo: Default::default() };
+        }
+        let refs = state.pages.get_or_insert_with(|| page_objects(cos, count));
+        pages
+            .iter()
+            .map(|&p| {
+                if let Some(known) = state.keys.get(&p) {
+                    return *known;
+                }
+                let key = refs.get(p).and_then(|r| state.memo.page(cos, *r));
+                state.keys.insert(p, key);
+                key
+            })
+            .collect()
     }
 
     /// Forget every result for `doc` (it was closed).
     pub(crate) fn forget(&mut self, doc: DocId) {
         self.entries.retain(|e| e.doc != doc);
+        self.keys.retain(|k| k.doc != doc);
         self.corrections.retain(|(d, _)| *d != doc);
     }
 
     #[cfg(test)]
     fn len(&self) -> usize {
         self.entries.len()
+    }
+}
+
+/// The objects of a document's `count` pages in page order; empty when its page tree can't be
+/// walked or disagrees with the page count (then no page has a key).
+fn page_objects(cos: &pdfcraft_cos::Document, count: usize) -> Vec<pdfcraft_cos::ObjRef> {
+    match pdfcraft_organize::pages(cos) {
+        Ok(pages) if pages.len() == count => pages.into_iter().map(|p| p.obj).collect(),
+        _ => Vec::new(),
     }
 }
 
@@ -374,6 +461,8 @@ struct PageInputs {
     images: Vec<(PageRect, u32, u32)>,
     boxes: Vec<FilledBox>,
     notes: Vec<String>,
+    /// The page's content key when the job was made.
+    key: Option<page_key::PageKey>,
 }
 
 /// Everything scanning needs from a document, detached from the session.
@@ -393,6 +482,8 @@ pub struct ChessScan {
     pub doc: DocId,
     params: ScanParams,
     pub pages: Vec<Arc<ChessPage>>,
+    /// Each page's content key when the job was made, by page.
+    keys: Vec<(usize, Option<page_key::PageKey>)>,
 }
 
 impl ChessScanJob {
@@ -442,7 +533,8 @@ impl ChessScanJob {
             pages.push(Arc::new(page));
         }
         progress(total, total);
-        ChessScan { doc: self.doc, params: self.params, pages }
+        let keys = self.inputs.iter().map(|i| (i.page, i.key)).collect();
+        ChessScan { doc: self.doc, params: self.params, pages, keys }
     }
 }
 
@@ -818,10 +910,33 @@ impl Session {
         let doc = self.get(id)?;
         let all = doc.info.pages.len();
         let pages: Vec<usize> = if pages.is_empty() { (0..all).collect() } else { pages.iter().copied().filter(|p| *p < all).collect() };
+        // The pages' keys, hashed for this job alone (`chess_scan` passes the session's).
+        let keys: Vec<Option<page_key::PageKey>> = match doc.editor.as_ref() {
+            Some(editor) => {
+                let objects = page_objects(&editor.cos, all);
+                let mut memo = page_key::KeyMemo::default();
+                pages.iter().map(|p| objects.get(*p).and_then(|r| memo.page(&editor.cos, *r))).collect()
+            }
+            None => vec![None; pages.len()],
+        };
+        self.chess_scan_job_keyed(id, &pages, &keys, settings, read)
+    }
+
+    /// [`Self::chess_scan_job`] for `pages` (in range) whose content keys are `keys`.
+    fn chess_scan_job_keyed(
+        &self,
+        id: DocId,
+        pages: &[usize],
+        keys: &[Option<page_key::PageKey>],
+        settings: &ChessScanSettings,
+        read: bool,
+    ) -> Option<ChessScanJob> {
+        let doc = self.get(id)?;
         let settings = settings.sanitized();
         let inputs = pages
             .iter()
-            .map(|&page| {
+            .zip(keys.iter().copied().chain(std::iter::repeat(None)))
+            .map(|(&page, key)| {
                 let mut notes = Vec::new();
                 let images = doc
                     .page_images(page)
@@ -852,28 +967,47 @@ impl Session {
                         Vec::new()
                     }
                 };
-                PageInputs { page, info: doc.info.pages.get(page).cloned(), images, boxes, notes }
+                PageInputs { page, info: doc.info.pages.get(page).cloned(), images, boxes, notes, key }
             })
             .collect();
         let params = ScanParams { generation: doc.generation, bytes: doc.bytes.len(), settings: settings.clone(), model: None };
         Some(ChessScanJob { doc: id, bytes: doc.bytes.clone(), password: doc.password.clone(), inputs, params, read, settings })
     }
 
-    /// Keep what [`ChessScanJob::run`] found, unless the document changed since the job was
-    /// made (then the result describes a state that is gone, and is dropped). Returns whether it
-    /// was kept.
+    /// Keep what [`ChessScanJob::run`] found. When the document changed since the job was made,
+    /// only the pages whose content is still what the job scanned are kept, at their index then
+    /// (a page that moved since is scanned again); the others describe a state that is gone.
+    /// Returns whether any page was kept.
     pub fn store_chess_scan(&mut self, scan: &ChessScan) -> bool {
-        let Some(doc) = self.get(scan.doc) else { return false };
-        if doc.generation != scan.params.generation || doc.bytes.len() != scan.params.bytes {
-            return false;
-        }
         if scan.params.model == Some(ModelKey::Supplied) {
             return false;
         }
-        for page in &scan.pages {
-            self.chess.put(scan.doc, page.page, scan.params.clone(), page.clone());
+        let Some((now, count)) =
+            self.get(scan.doc).map(|d| (ScanParams { generation: d.generation, bytes: d.bytes.len(), ..scan.params.clone() }, d.info.pages.len()))
+        else {
+            return false;
+        };
+        let same = scan.params.same_state(&now);
+        let pages: Vec<usize> = scan.pages.iter().map(|p| p.page).collect();
+        let current = if same { Vec::new() } else { self.chess_page_keys(scan.doc, &pages) };
+        let mut kept = false;
+        for (i, page) in scan.pages.iter().enumerate() {
+            let then = scan.keys.iter().find(|(p, _)| *p == page.page).and_then(|(_, k)| *k);
+            let still = same || (page.page < count && then.is_some() && current.get(i).copied().flatten() == then);
+            if still {
+                self.chess.put(scan.doc, page.page, then, now.clone(), page.clone());
+                kept = true;
+            }
         }
-        true
+        kept
+    }
+
+    /// The content keys of `pages` of document `id` in its current state (`None` for a page
+    /// without one), hashed once per state.
+    fn chess_page_keys(&mut self, id: DocId, pages: &[usize]) -> Vec<Option<page_key::PageKey>> {
+        let Some(doc) = self.docs.iter().find(|d| d.id == id) else { return vec![None; pages.len()] };
+        let Some(editor) = doc.editor.as_ref() else { return vec![None; pages.len()] };
+        self.chess.page_keys(id, (doc.generation, doc.bytes.len()), &editor.cos, doc.info.pages.len(), pages)
     }
 
     /// Scan `pages` (0-based; empty = all) of document `id`, from the cache where it still
@@ -892,10 +1026,14 @@ impl Session {
         let models = read.then(|| models(settings.models_dir.as_deref()));
         let model = models.as_deref().map(ModelKey::of);
         let wanted = ScanParams { generation: doc.generation, bytes: doc.bytes.len(), settings: settings.clone(), model };
-        let mut found: Vec<Option<Arc<ChessPage>>> = pages.iter().map(|&p| self.chess.get(id, p, &wanted)).collect();
-        let missing: Vec<usize> = pages.iter().zip(&found).filter(|(_, f)| f.is_none()).map(|(p, _)| *p).collect();
+        let keys = self.chess_page_keys(id, &pages);
+        let mut found: Vec<Option<Arc<ChessPage>>> =
+            pages.iter().enumerate().map(|(i, &p)| self.chess.get(id, p, keys.get(i).copied().flatten(), &wanted)).collect();
+        let (missing, missing_keys): (Vec<usize>, Vec<Option<page_key::PageKey>>) =
+            pages.iter().zip(&keys).zip(&found).filter(|(_, f)| f.is_none()).map(|((p, k), _)| (*p, *k)).unzip();
         if !missing.is_empty() {
-            let job = self.chess_scan_job(id, &missing, &settings, read).ok_or("no such document")?;
+            self.chess.scanned = self.chess.scanned.saturating_add(missing.len());
+            let job = self.chess_scan_job_keyed(id, &missing, &missing_keys, &settings, read).ok_or("no such document")?;
             let scan = match &models {
                 Some(m) => job.run(m, |_, _| true),
                 None => job.run_with(None, |_, _| true),
@@ -974,6 +1112,7 @@ pub mod export;
 pub mod keys;
 pub mod links;
 pub mod office;
+mod page_key;
 pub mod replace;
 pub mod samples;
 pub mod span;

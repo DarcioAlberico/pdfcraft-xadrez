@@ -597,6 +597,7 @@ mod document;
 mod epub;
 mod links;
 mod office;
+mod page_cache;
 mod replace;
 mod text_ocr;
 
