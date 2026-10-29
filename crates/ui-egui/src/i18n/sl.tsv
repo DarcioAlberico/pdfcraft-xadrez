@@ -2617,7 +2617,6 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Lines:	Variante:
 	Choose engine…	Izberi šahovski program…
 	Pick a UCI chess engine program, such as Stockfish.	Izberite šahovski program UCI, na primer Stockfish.
-	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Šahovskega programa ni bilo mogoče najti. Nastavite PDFCRAFT_CHESS_ENGINE na program UCI, na primer Stockfish, ga postavite v mapo engine poleg PdfCrafta ali ga izberite.
 	The engine couldn't be started: {e}	Šahovskega programa ni bilo mogoče zagnati: {e}
 	That program didn't answer as a UCI chess engine.	Ta program se ni odzval kot šahovski program UCI.
 	The engine stopped.	Šahovski program se je ustavil.
@@ -3276,3 +3275,12 @@ chess undo step	Clear drawings	odstranjevanje risb
 	More panels	Več podoken
 	More room for the page: collapse the tools panel?	Več prostora za stran: strni podokno z orodji?
 	Rotate view counterclockwise ({key})	Zavrti pogled levo ({key})
+	No analysis engine installed	Ni nameščenega šahovskega programa za analizo
+	Or set PDFCRAFT_CHESS_ENGINE to the program.	Ali pa program nastavite v PDFCRAFT_CHESS_ENGINE.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	Za analizo PdfCraft uporablja ločen program, na primer Stockfish (brezplačen). Prenesite ga in izberite datoteko stockfish.exe.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish program.	Za analizo PdfCraft uporablja ločen program, na primer Stockfish (brezplačen). Prenesite ga in izberite program stockfish.
+	Open stockfishchess.org	Odpri stockfishchess.org
+	Or put the program in an engine folder beside PdfCraft.	Ali pa program postavite v mapo engine poleg PdfCrafta.
+	Analyze	Analiziraj
+	Open on the board with the engine analysing it	Odpri na šahovnici z analizo programa
+	Stop the analysis	Ustavi analizo

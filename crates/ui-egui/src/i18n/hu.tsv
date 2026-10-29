@@ -2611,7 +2611,6 @@ chess undo step	Clear drawings	rajzok törlése
 	Lines:	Változatok:
 	Choose engine…	Motor kiválasztása…
 	Pick a UCI chess engine program, such as Stockfish.	Válasszon egy UCI sakkmotor programot, például a Stockfisht.
-	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Nem található sakkmotor. Állítsa a PDFCRAFT_CHESS_ENGINE változót egy UCI motorra, például a Stockfishre, tegyen egyet a PdfCraft melletti engine mappába, vagy válasszon egyet.
 	The engine couldn't be started: {e}	A motort nem sikerült elindítani: {e}
 	That program didn't answer as a UCI chess engine.	Ez a program nem UCI sakkmotorként válaszolt.
 	The engine stopped.	A motor leállt.
@@ -3270,3 +3269,12 @@ chess undo step	Clear drawings	rajzok törlése
 	More panels	További panelek
 	More room for the page: collapse the tools panel?	Több hely az oldalnak: összecsukja az eszközpanelt?
 	Rotate view counterclockwise ({key})	Nézet forgatása az óramutató járásával ellentétesen ({key})
+	No analysis engine installed	Nincs telepítve elemzőmotor
+	Or set PDFCRAFT_CHESS_ENGINE to the program.	Vagy állítsa be a programot a PDFCRAFT_CHESS_ENGINE változóban.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	Az elemzéshez a PdfCraft külön programot használ, például a Stockfish-t (ingyenes). Töltse le, és válassza ki a stockfish.exe fájlt.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish program.	Az elemzéshez a PdfCraft külön programot használ, például a Stockfish-t (ingyenes). Töltse le, és válassza ki a stockfish programot.
+	Open stockfishchess.org	A stockfishchess.org megnyitása
+	Or put the program in an engine folder beside PdfCraft.	Vagy tegye a programot egy engine mappába a PdfCraft mellé.
+	Analyze	Elemzés
+	Open on the board with the engine analysing it	Megnyitás a táblán, motoros elemzéssel
+	Stop the analysis	Az elemzés leállítása

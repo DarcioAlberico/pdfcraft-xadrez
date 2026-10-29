@@ -110,7 +110,7 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                     }
                 });
                 if crate::icons::button(ui, "gauge", 24.0, false, tl!("Analyze on the board")).clicked() {
-                    action = Some(EditorAction::OpenBoard);
+                    action = Some(EditorAction::Analyze);
                 }
             }
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {

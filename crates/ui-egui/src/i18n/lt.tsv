@@ -2865,7 +2865,6 @@ chess undo step	Clear drawings	piešinių valymą
 	Lines:	Variantai:
 	Choose engine…	Pasirinkti variklį…
 	Pick a UCI chess engine program, such as Stockfish.	Pasirinkite UCI šachmatų variklio programą, pavyzdžiui, Stockfish.
-	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Šachmatų variklis nerastas. Nustatykite PDFCRAFT_CHESS_ENGINE į UCI variklį, pavyzdžiui, Stockfish, įdėkite jį į aplanką engine šalia PdfCraft arba pasirinkite.
 	The engine couldn't be started: {e}	Nepavyko paleisti variklio: {e}
 	That program didn't answer as a UCI chess engine.	Ši programa neatsakė kaip UCI šachmatų variklis.
 	The engine stopped.	Variklis sustojo.
@@ -3522,3 +3521,12 @@ chess undo step	Clear drawings	piešinių valymą
 	More panels	Daugiau skydelių
 	More room for the page: collapse the tools panel?	Daugiau vietos puslapiui: suskleisti įrankių skydelį?
 	Rotate view counterclockwise ({key})	Pasukti rodinį prieš laikrodžio rodyklę ({key})
+	No analysis engine installed	Neįdiegtas joks analizės variklis
+	Or set PDFCRAFT_CHESS_ENGINE to the program.	Arba nurodykite programą PDFCRAFT_CHESS_ENGINE.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	Analizei PdfCraft naudoja atskirą programą, pavyzdžiui, Stockfish (nemokama). Atsisiųskite ją ir pasirinkite failą stockfish.exe.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish program.	Analizei PdfCraft naudoja atskirą programą, pavyzdžiui, Stockfish (nemokama). Atsisiųskite ją ir pasirinkite programą stockfish.
+	Open stockfishchess.org	Atverti stockfishchess.org
+	Or put the program in an engine folder beside PdfCraft.	Arba įdėkite programą į aplanką engine šalia PdfCraft.
+	Analyze	Analizuoti
+	Open on the board with the engine analysing it	Atverti lentoje, analizuojant varikliu
+	Stop the analysis	Stabdyti analizę

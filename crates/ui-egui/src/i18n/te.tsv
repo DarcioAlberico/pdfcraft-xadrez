@@ -2487,7 +2487,6 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Lines:	లైన్లు:
 	Choose engine…	ఇంజిన్‌ను ఎంచుకోండి…
 	Pick a UCI chess engine program, such as Stockfish.	Stockfish వంటి UCI చదరంగం ఇంజిన్ ప్రోగ్రామ్‌ను ఎంచుకోండి.
-	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	చదరంగం ఇంజిన్ కనబడలేదు. PDFCRAFT_CHESS_ENGINE‌ను Stockfish వంటి UCI ఇంజిన్‌కు సెట్ చేయండి, PdfCraft పక్కన ఉన్న engine ఫోల్డర్‌లో ఒకదాన్ని ఉంచండి, లేదా ఒకదాన్ని ఎంచుకోండి.
 	The engine couldn't be started: {e}	ఇంజిన్‌ను ప్రారంభించలేకపోయాం: {e}
 	That program didn't answer as a UCI chess engine.	ఆ ప్రోగ్రామ్ UCI చదరంగం ఇంజిన్‌గా స్పందించలేదు.
 	The engine stopped.	ఇంజిన్ ఆగిపోయింది.
@@ -3146,3 +3145,12 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	More panels	మరిన్ని ప్యానెల్‌లు
 	More room for the page: collapse the tools panel?	పేజీకి మరింత స్థలం: సాధనాల ప్యానెల్‌ను ముడుచాలా?
 	Rotate view counterclockwise ({key})	వీక్షణను అపసవ్యదిశలో తిప్పు ({key})
+	No analysis engine installed	విశ్లేషణ ఇంజిన్ ఏదీ ఇన్‌స్టాల్ కాలేదు
+	Or set PDFCRAFT_CHESS_ENGINE to the program.	లేదా PDFCRAFT_CHESS_ENGINEలో ప్రోగ్రామ్‌ను సెట్ చేయండి.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	విశ్లేషణకు PdfCraft Stockfish (ఉచితం) వంటి వేరే ప్రోగ్రామ్‌ను వాడుతుంది. దాన్ని డౌన్‌లోడ్ చేసి stockfish.exe ఫైల్‌ను ఎంచుకోండి.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish program.	విశ్లేషణకు PdfCraft Stockfish (ఉచితం) వంటి వేరే ప్రోగ్రామ్‌ను వాడుతుంది. దాన్ని డౌన్‌లోడ్ చేసి stockfish ప్రోగ్రామ్‌ను ఎంచుకోండి.
+	Open stockfishchess.org	stockfishchess.org తెరువు
+	Or put the program in an engine folder beside PdfCraft.	లేదా ప్రోగ్రామ్‌ను PdfCraft పక్కన ఉన్న engine ఫోల్డర్‌లో ఉంచండి.
+	Analyze	విశ్లేషించు
+	Open on the board with the engine analysing it	ఇంజిన్ విశ్లేషిస్తూ ఉండగా బోర్డుపై తెరువు
+	Stop the analysis	విశ్లేషణను ఆపు

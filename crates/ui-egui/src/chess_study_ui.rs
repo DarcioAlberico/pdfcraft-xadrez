@@ -140,6 +140,10 @@ pub struct StudyState {
     no_engine: bool,
     /// The position last given to the engine.
     sent: Option<String>,
+    /// Open the Analysis section at its next drawing ([`StudyState::analyze`]).
+    open_section: bool,
+    /// The no-engine assistant shows ([`engine_assistant`]).
+    pub assistant: bool,
 }
 
 impl Default for StudyState {
@@ -158,6 +162,8 @@ impl Default for StudyState {
             start_error: None,
             no_engine: false,
             sent: None,
+            open_section: false,
+            assistant: false,
         }
     }
 }
@@ -168,23 +174,25 @@ const MAX_ENGINE_PATH: usize = 4096;
 
 impl StudyState {
     /// The engine preferences for the settings file: the program picked (desktop; `null` when
-    /// none was) and the lines shown.
+    /// none was), the lines shown and whether analysis is on.
     pub(crate) fn to_json(&self) -> serde_json::Value {
         #[cfg(not(target_arch = "wasm32"))]
         let path = self.engine_path.as_ref().map(|p| p.to_string_lossy().into_owned());
         #[cfg(target_arch = "wasm32")]
         let path: Option<String> = None;
-        serde_json::json!({ "path": path, "lines": self.lines })
+        serde_json::json!({ "path": path, "lines": self.lines, "analysis": self.analysis })
     }
 
     /// The engine preferences from the settings file. It is untrusted: lines outside 1–3 are
     /// ignored, and so is a path that is empty, too long, not absolute, has a NUL in it or no
-    /// longer names a file (the engine is then looked for as when none was picked). Analysis
-    /// stays off until switched on.
+    /// longer names a file (the engine is then looked for as when none was picked). Analysis is
+    /// on again only when it was saved on, as `true` (plan A8, P7): the engine starts once the
+    /// board is shown.
     pub(crate) fn restore(&mut self, v: &serde_json::Value) {
         if let Some(lines) = v["lines"].as_u64().and_then(|n| u32::try_from(n).ok()).filter(|n| (1..=3).contains(n)) {
             self.lines = lines;
         }
+        self.analysis = v["analysis"].as_bool() == Some(true);
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(path) = v["path"].as_str().filter(|p| !p.is_empty() && p.len() <= MAX_ENGINE_PATH && !p.contains('\0')) {
             let path = PathBuf::from(path);
@@ -224,6 +232,39 @@ impl StudyState {
         self.no_engine = false;
         self.sent = None;
         self.analysis = true;
+    }
+
+    /// Analyse at one click (plan A8, P7: Analyze in the Diagrams list, the Diagram tab and on
+    /// the board): analysis on, without closing an engine already running, and the Analysis
+    /// section open. With no engine running, picked or found, the assistant says how to get one.
+    pub fn analyze(&mut self) {
+        if !self.analysis {
+            self.analysis = true;
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                self.start_error = None;
+            }
+            self.no_engine = false;
+            self.sent = None;
+        }
+        self.open_section = true;
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            self.assistant = self.engine.is_none()
+                && self.engine_path.as_deref().is_none_or(|p| !p.is_file())
+                && pdfcraft_engine::chess::analysis::find_engine().is_none();
+        }
+    }
+
+    /// The board's Analyze button: [`StudyState::analyze`] while analysis is off, off again
+    /// while it is on.
+    pub fn toggle_analysis(&mut self) {
+        if self.analysis {
+            self.analysis = false;
+            self.restart();
+        } else {
+            self.analyze();
+        }
     }
 
     /// Close the engine and look for one again at the next frame (another program was picked,
@@ -585,12 +626,8 @@ fn engine_view(ui: &mut egui::Ui, t: &Tokens, study: &mut StudyState, board: &mu
     }
     let muted = |ui: &mut egui::Ui, text: &str| ui.label(egui::RichText::new(text).small().color(t.text_muted));
     if study.no_engine {
-        muted(
-            ui,
-            tl!(
-                "No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one."
-            ),
-        );
+        ui.label(egui::RichText::new(tl!("No analysis engine installed")).small().strong());
+        muted(ui, engine_help()).on_hover_text(tl!("Or set PDFCRAFT_CHESS_ENGINE to the program."));
         return action;
     }
     let error = study.start_error.clone().or_else(|| study.engine.as_ref().and_then(|e| e.snapshot().error));
@@ -648,6 +685,55 @@ fn engine_view(ui: &mut egui::Ui, t: &Tokens, study: &mut StudyState, board: &mu
         board.play_uci_line(&moves);
     }
     action
+}
+
+/// How to get an engine, as the no-engine assistant and the Analysis section say it.
+fn engine_help() -> &'static str {
+    if cfg!(windows) {
+        tl!("To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.")
+    } else {
+        tl!("To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish program.")
+    }
+}
+
+/// Where Open stockfishchess.org goes.
+pub(crate) const STOCKFISH_URL: &str = "https://stockfishchess.org/download/";
+
+/// The no-engine assistant (plan A8, P7), while [`StudyState::assistant`] is set: Analyze found
+/// no engine. Choose engine… picks one (analysis goes on with it), Open stockfishchess.org shows
+/// where to get Stockfish and leaves the assistant up to choose it next, and Not now (or Esc)
+/// closes it with analysis off.
+pub(crate) fn engine_assistant(app: &mut crate::PdfCraftApp, ctx: &egui::Context) {
+    if !app.chess.study.assistant {
+        return;
+    }
+    let (mut choose, mut site, mut later) = (false, false, false);
+    let shown = crate::widgets::show_modal(ctx, "chess-engine-assistant", |ui| {
+        ui.set_max_width(440.0);
+        ui.heading(tl!("No analysis engine installed"));
+        ui.add_space(6.0);
+        ui.label(engine_help());
+        ui.add_space(10.0);
+        ui.horizontal_wrapped(|ui| {
+            choose = crate::widgets::pill_button(ui, tl!("Choose engine…"), true).clicked();
+            site = crate::widgets::pill_button(ui, tl!("Open stockfishchess.org"), false).on_hover_text(STOCKFISH_URL).clicked();
+            later = crate::widgets::pill_button(ui, tl!("Not now"), false).clicked();
+        });
+        ui.add_space(6.0);
+        let t = Tokens::get(ui.ctx());
+        ui.label(egui::RichText::new(tl!("Or put the program in an engine folder beside PdfCraft.")).small().color(t.text_muted));
+    });
+    if choose {
+        app.chess.study.assistant = false;
+        app.choose_chess_engine();
+    } else if site {
+        app.open_url(STOCKFISH_URL);
+    } else if later || shown.should_close() {
+        let study = &mut app.chess.study;
+        study.assistant = false;
+        study.analysis = false;
+        study.restart();
+    }
 }
 
 /// The rail's Set up tool is armed: the set-up view in the board's place, and `true`. Done
@@ -725,6 +811,7 @@ pub(crate) fn analysis_section(
     egui::CollapsingHeader::new(tl!("Analysis"))
         .id_salt("chess-board-analysis")
         .default_open(false)
+        .open(std::mem::take(&mut study.open_section).then_some(true))
         .show(ui, |ui| {
             #[cfg(not(target_arch = "wasm32"))]
             let action = engine_view(ui, t, study, board);

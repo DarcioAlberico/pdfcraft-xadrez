@@ -2634,7 +2634,6 @@ chess undo step	Clear drawings	видалення малюнків
 	Lines:	Варіанти:
 	Choose engine…	Вибрати рушій…
 	Pick a UCI chess engine program, such as Stockfish.	Виберіть програму шахового рушія UCI, наприклад Stockfish.
-	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Шаховий рушій не знайдено. Вкажіть у PDFCRAFT_CHESS_ENGINE рушій UCI, наприклад Stockfish, покладіть його в теку engine поруч із PdfCraft або виберіть рушій.
 	The engine couldn't be started: {e}	Не вдалося запустити рушій: {e}
 	That program didn't answer as a UCI chess engine.	Ця програма не відповіла як шаховий рушій UCI.
 	The engine stopped.	Рушій зупинився.
@@ -3293,3 +3292,12 @@ chess undo step	Clear drawings	видалення малюнків
 	More panels	Інші панелі
 	More room for the page: collapse the tools panel?	Більше місця для сторінки: згорнути панель інструментів?
 	Rotate view counterclockwise ({key})	Повернути вигляд проти годинникової стрілки ({key})
+	No analysis engine installed	Рушій для аналізу не встановлено
+	Or set PDFCRAFT_CHESS_ENGINE to the program.	Або вкажіть програму в PDFCRAFT_CHESS_ENGINE.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	Для аналізу PdfCraft використовує окрему програму, наприклад Stockfish (безкоштовно). Завантажте її та виберіть файл stockfish.exe.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish program.	Для аналізу PdfCraft використовує окрему програму, наприклад Stockfish (безкоштовно). Завантажте її та виберіть програму stockfish.
+	Open stockfishchess.org	Відкрити stockfishchess.org
+	Or put the program in an engine folder beside PdfCraft.	Або покладіть програму в теку engine поруч із PdfCraft.
+	Analyze	Аналіз
+	Open on the board with the engine analysing it	Відкрити на дошці з аналізом рушієм
+	Stop the analysis	Зупинити аналіз

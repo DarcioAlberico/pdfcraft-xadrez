@@ -2889,7 +2889,6 @@ chess undo step	Clear drawings	مسح الرسوم
 	Lines:	الخطوط:
 	Choose engine…	اختيار المحرك…
 	Pick a UCI chess engine program, such as Stockfish.	اختر برنامج محرك شطرنج يدعم UCI، مثل Stockfish.
-	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	لم يُعثر على محرك شطرنج. اضبط PDFCRAFT_CHESS_ENGINE على محرك UCI مثل Stockfish، أو ضع محركًا في مجلد engine بجوار PdfCraft، أو اختر واحدًا.
 	The engine couldn't be started: {e}	تعذّر تشغيل المحرك: {e}
 	That program didn't answer as a UCI chess engine.	لم يستجب هذا البرنامج كمحرك شطرنج UCI.
 	The engine stopped.	توقف المحرك.
@@ -3546,3 +3545,12 @@ chess undo step	Clear drawings	مسح الرسوم
 	More panels	مزيد من اللوحات
 	More room for the page: collapse the tools panel?	مساحة أكبر للصفحة: هل تريد طي لوحة الأدوات؟
 	Rotate view counterclockwise ({key})	تدوير العرض عكس عقارب الساعة ({key})
+	No analysis engine installed	لا يوجد محرك تحليل مثبت
+	Or set PDFCRAFT_CHESS_ENGINE to the program.	أو اضبط PDFCRAFT_CHESS_ENGINE على البرنامج.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	للتحليل، يستخدم PdfCraft برنامجًا منفصلًا، مثل Stockfish (مجاني). نزّله واختر الملف stockfish.exe.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish program.	للتحليل، يستخدم PdfCraft برنامجًا منفصلًا، مثل Stockfish (مجاني). نزّله واختر البرنامج stockfish.
+	Open stockfishchess.org	فتح stockfishchess.org
+	Or put the program in an engine folder beside PdfCraft.	أو ضع البرنامج في مجلد engine بجوار PdfCraft.
+	Analyze	تحليل
+	Open on the board with the engine analysing it	الفتح على الرقعة مع تحليل المحرك
+	Stop the analysis	إيقاف التحليل

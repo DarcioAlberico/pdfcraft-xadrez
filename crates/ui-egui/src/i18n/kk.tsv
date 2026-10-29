@@ -2610,7 +2610,6 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Lines:	Нұсқалар:
 	Choose engine…	Қозғалтқышты таңдау…
 	Pick a UCI chess engine program, such as Stockfish.	Stockfish сияқты UCI шахмат қозғалтқышы бағдарламасын таңдаңыз.
-	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Шахмат қозғалтқышы табылмады. PDFCRAFT_CHESS_ENGINE айнымалысына Stockfish сияқты UCI қозғалтқышын орнатыңыз, PdfCraft жанындағы engine қалтасына біреуін салыңыз немесе біреуін таңдаңыз.
 	The engine couldn't be started: {e}	Қозғалтқышты іске қосу мүмкін болмады: {e}
 	That program didn't answer as a UCI chess engine.	Бұл бағдарлама UCI шахмат қозғалтқышы ретінде жауап бермеді.
 	The engine stopped.	Қозғалтқыш тоқтады.
@@ -3269,3 +3268,12 @@ chess undo step	Clear drawings	суреттерді өшіру
 	More panels	Басқа панельдер
 	More room for the page: collapse the tools panel?	Бетке көбірек орын: құралдар панелін жинау керек пе?
 	Rotate view counterclockwise ({key})	Көріністі сағат тіліне қарсы бұру ({key})
+	No analysis engine installed	Талдау қозғалтқышы орнатылмаған
+	Or set PDFCRAFT_CHESS_ENGINE to the program.	Немесе PDFCRAFT_CHESS_ENGINE айнымалысына бағдарламаны көрсетіңіз.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	Талдау үшін PdfCraft Stockfish (тегін) сияқты бөлек бағдарламаны пайдаланады. Оны жүктеп алып, stockfish.exe файлын таңдаңыз.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish program.	Талдау үшін PdfCraft Stockfish (тегін) сияқты бөлек бағдарламаны пайдаланады. Оны жүктеп алып, stockfish бағдарламасын таңдаңыз.
+	Open stockfishchess.org	stockfishchess.org ашу
+	Or put the program in an engine folder beside PdfCraft.	Немесе бағдарламаны PdfCraft жанындағы engine қалтасына салыңыз.
+	Analyze	Талдау
+	Open on the board with the engine analysing it	Қозғалтқыш талдап жатқан күйде тақтада ашу
+	Stop the analysis	Талдауды тоқтату

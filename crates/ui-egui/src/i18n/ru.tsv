@@ -2525,7 +2525,6 @@ chess undo step	Clear drawings	удаление рисунков
 	Lines:	Варианты:
 	Choose engine…	Выбрать движок…
 	Pick a UCI chess engine program, such as Stockfish.	Выберите программу шахматного движка UCI, например Stockfish.
-	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Шахматный движок не найден. Укажите в PDFCRAFT_CHESS_ENGINE движок UCI, например Stockfish, положите его в папку engine рядом с PdfCraft или выберите движок.
 	The engine couldn't be started: {e}	Не удалось запустить движок: {e}
 	That program didn't answer as a UCI chess engine.	Эта программа не ответила как шахматный движок UCI.
 	The engine stopped.	Движок остановился.
@@ -3184,3 +3183,12 @@ chess undo step	Clear drawings	удаление рисунков
 	More panels	Другие панели
 	More room for the page: collapse the tools panel?	Больше места для страницы: свернуть панель инструментов?
 	Rotate view counterclockwise ({key})	Повернуть вид против часовой стрелки ({key})
+	No analysis engine installed	Движок для анализа не установлен
+	Or set PDFCRAFT_CHESS_ENGINE to the program.	Или укажите программу в PDFCRAFT_CHESS_ENGINE.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	Для анализа PdfCraft использует отдельную программу, например Stockfish (бесплатно). Скачайте её и выберите файл stockfish.exe.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish program.	Для анализа PdfCraft использует отдельную программу, например Stockfish (бесплатно). Скачайте её и выберите программу stockfish.
+	Open stockfishchess.org	Открыть stockfishchess.org
+	Or put the program in an engine folder beside PdfCraft.	Или положите программу в папку engine рядом с PdfCraft.
+	Analyze	Анализ
+	Open on the board with the engine analysing it	Открыть на доске с анализом движком
+	Stop the analysis	Остановить анализ

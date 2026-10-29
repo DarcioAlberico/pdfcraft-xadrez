@@ -2686,7 +2686,6 @@ chess undo step	Clear drawings	smazání kreseb
 	Lines:	Varianty:
 	Choose engine…	Vybrat engine…
 	Pick a UCI chess engine program, such as Stockfish.	Vyberte program šachového enginu UCI, například Stockfish.
-	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Nebyl nalezen žádný šachový engine. Nastavte PDFCRAFT_CHESS_ENGINE na engine UCI, například Stockfish, vložte ho do složky engine vedle PdfCraftu, nebo nějaký vyberte.
 	The engine couldn't be started: {e}	Engine nelze spustit: {e}
 	That program didn't answer as a UCI chess engine.	Tento program neodpověděl jako šachový engine UCI.
 	The engine stopped.	Engine se zastavil.
@@ -3345,3 +3344,12 @@ chess undo step	Clear drawings	smazání kreseb
 	More panels	Další panely
 	More room for the page: collapse the tools panel?	Víc místa pro stránku: sbalit panel nástrojů?
 	Rotate view counterclockwise ({key})	Otočit zobrazení proti směru hodinových ručiček ({key})
+	No analysis engine installed	Není nainstalován žádný engine pro analýzu
+	Or set PDFCRAFT_CHESS_ENGINE to the program.	Nebo nastavte PDFCRAFT_CHESS_ENGINE na tento program.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	K analýze používá PdfCraft samostatný program, například Stockfish (zdarma). Stáhněte si ho a vyberte soubor stockfish.exe.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish program.	K analýze používá PdfCraft samostatný program, například Stockfish (zdarma). Stáhněte si ho a vyberte program stockfish.
+	Open stockfishchess.org	Otevřít stockfishchess.org
+	Or put the program in an engine folder beside PdfCraft.	Nebo program vložte do složky engine vedle PdfCraftu.
+	Analyze	Analyzovat
+	Open on the board with the engine analysing it	Otevřít na šachovnici s analýzou enginem
+	Stop the analysis	Zastavit analýzu

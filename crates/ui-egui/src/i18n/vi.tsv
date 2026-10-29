@@ -2867,7 +2867,6 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Lines:	Số biến:
 	Choose engine…	Chọn engine…
 	Pick a UCI chess engine program, such as Stockfish.	Chọn một chương trình engine cờ vua UCI, chẳng hạn Stockfish.
-	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Không tìm thấy engine cờ vua. Đặt PDFCRAFT_CHESS_ENGINE trỏ tới một engine UCI như Stockfish, đặt một engine vào thư mục engine cạnh PdfCraft, hoặc chọn một engine.
 	The engine couldn't be started: {e}	Không thể khởi động engine: {e}
 	That program didn't answer as a UCI chess engine.	Chương trình đó không trả lời như một engine cờ vua UCI.
 	The engine stopped.	Engine đã dừng.
@@ -3524,3 +3523,12 @@ chess undo step	Clear drawings	xóa hình vẽ
 	More panels	Thêm bảng
 	More room for the page: collapse the tools panel?	Thêm chỗ cho trang: thu gọn bảng công cụ?
 	Rotate view counterclockwise ({key})	Xoay chế độ xem ngược chiều kim đồng hồ ({key})
+	No analysis engine installed	Chưa cài engine phân tích nào
+	Or set PDFCRAFT_CHESS_ENGINE to the program.	Hoặc đặt PDFCRAFT_CHESS_ENGINE thành chương trình đó.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	Để phân tích, PdfCraft dùng một chương trình riêng, như Stockfish (miễn phí). Hãy tải về và chọn tệp stockfish.exe.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish program.	Để phân tích, PdfCraft dùng một chương trình riêng, như Stockfish (miễn phí). Hãy tải về và chọn chương trình stockfish.
+	Open stockfishchess.org	Mở stockfishchess.org
+	Or put the program in an engine folder beside PdfCraft.	Hoặc đặt chương trình vào thư mục engine cạnh PdfCraft.
+	Analyze	Phân tích
+	Open on the board with the engine analysing it	Mở trên bàn cờ với engine đang phân tích
+	Stop the analysis	Dừng phân tích

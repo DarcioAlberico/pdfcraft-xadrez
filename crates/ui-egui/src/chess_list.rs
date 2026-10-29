@@ -469,7 +469,8 @@ fn row(
     RowOut { action, focused, menu_open }
 }
 
-/// A row's menu: Open on the board, Copy FEN and Open in lichess, for a diagram with a position.
+/// A row's menu: Open on the board, Analyze, Copy FEN and Open in lichess, for a diagram with a
+/// position.
 fn menu(
     ui: &mut egui::Ui,
     (page, index): (usize, usize),
@@ -479,6 +480,14 @@ fn menu(
 ) {
     if ui.add_enabled(position.is_some(), egui::Button::new(tl!("Open on the board"))).clicked() {
         *action = Some(PanelAction::OpenBoard(page, index));
+    }
+    let icon = crate::icons::image("gauge", 14.0, crate::theme::Tokens::get(ui.ctx()).icon);
+    if ui
+        .add_enabled(position.is_some(), egui::Button::image_and_text(icon, tl!("Analyze")))
+        .on_hover_text(tl!("Open on the board with the engine analysing it"))
+        .clicked()
+    {
+        *action = Some(PanelAction::Analyze(page, index));
     }
     if ui.add_enabled(fen.is_some(), egui::Button::new(tl!("Copy FEN"))).clicked()
         && let Some(fen) = fen

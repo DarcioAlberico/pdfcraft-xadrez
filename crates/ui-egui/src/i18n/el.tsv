@@ -2584,7 +2584,6 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Lines:	Γραμμές:
 	Choose engine…	Επιλογή μηχανής…
 	Pick a UCI chess engine program, such as Stockfish.	Επιλέξτε ένα πρόγραμμα σκακιστικής μηχανής UCI, όπως το Stockfish.
-	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Δεν βρέθηκε σκακιστική μηχανή. Ορίστε το PDFCRAFT_CHESS_ENGINE σε μια μηχανή UCI όπως το Stockfish, βάλτε μία σε φάκελο engine δίπλα στο PdfCraft ή επιλέξτε μία.
 	The engine couldn't be started: {e}	Δεν ήταν δυνατή η εκκίνηση της μηχανής: {e}
 	That program didn't answer as a UCI chess engine.	Αυτό το πρόγραμμα δεν απάντησε ως σκακιστική μηχανή UCI.
 	The engine stopped.	Η μηχανή σταμάτησε.
@@ -3243,3 +3242,12 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	More panels	Περισσότερα πλαίσια
 	More room for the page: collapse the tools panel?	Περισσότερος χώρος για τη σελίδα: σύμπτυξη του πλαισίου εργαλείων;
 	Rotate view counterclockwise ({key})	Περιστροφή προβολής αριστερόστροφα ({key})
+	No analysis engine installed	Δεν είναι εγκατεστημένη μηχανή ανάλυσης
+	Or set PDFCRAFT_CHESS_ENGINE to the program.	Ή ορίστε το πρόγραμμα στο PDFCRAFT_CHESS_ENGINE.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	Για την ανάλυση, το PdfCraft χρησιμοποιεί ξεχωριστό πρόγραμμα, όπως το Stockfish (δωρεάν). Κατεβάστε το και επιλέξτε το αρχείο stockfish.exe.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish program.	Για την ανάλυση, το PdfCraft χρησιμοποιεί ξεχωριστό πρόγραμμα, όπως το Stockfish (δωρεάν). Κατεβάστε το και επιλέξτε το πρόγραμμα stockfish.
+	Open stockfishchess.org	Άνοιγμα του stockfishchess.org
+	Or put the program in an engine folder beside PdfCraft.	Ή βάλτε το πρόγραμμα σε φάκελο engine δίπλα στο PdfCraft.
+	Analyze	Ανάλυση
+	Open on the board with the engine analysing it	Άνοιγμα στη σκακιέρα με ανάλυση από τη μηχανή
+	Stop the analysis	Διακοπή της ανάλυσης

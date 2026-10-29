@@ -2613,7 +2613,6 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	Lines:	Varianten:
 	Choose engine…	Engine wählen…
 	Pick a UCI chess engine program, such as Stockfish.	Wählen Sie ein UCI-Schachengine-Programm, etwa Stockfish.
-	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Keine Schachengine gefunden. Setzen Sie PDFCRAFT_CHESS_ENGINE auf eine UCI-Engine wie Stockfish, legen Sie eine in einen Ordner engine neben PdfCraft oder wählen Sie eine aus.
 	The engine couldn't be started: {e}	Die Engine konnte nicht gestartet werden: {e}
 	That program didn't answer as a UCI chess engine.	Dieses Programm hat nicht wie eine UCI-Schachengine geantwortet.
 	The engine stopped.	Die Engine wurde beendet.
@@ -3272,3 +3271,12 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	More panels	Weitere Bereiche
 	More room for the page: collapse the tools panel?	Mehr Platz für die Seite: Werkzeugbereich einklappen?
 	Rotate view counterclockwise ({key})	Ansicht gegen den Uhrzeigersinn drehen ({key})
+	No analysis engine installed	Keine Analyse-Engine installiert
+	Or set PDFCRAFT_CHESS_ENGINE to the program.	Oder setzen Sie PDFCRAFT_CHESS_ENGINE auf das Programm.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	Zum Analysieren nutzt PdfCraft ein eigenes Programm, etwa Stockfish (kostenlos). Laden Sie es herunter und wählen Sie die Datei stockfish.exe.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish program.	Zum Analysieren nutzt PdfCraft ein eigenes Programm, etwa Stockfish (kostenlos). Laden Sie es herunter und wählen Sie das Programm stockfish.
+	Open stockfishchess.org	stockfishchess.org öffnen
+	Or put the program in an engine folder beside PdfCraft.	Oder legen Sie das Programm in einen Ordner engine neben PdfCraft.
+	Analyze	Analysieren
+	Open on the board with the engine analysing it	Auf dem Brett öffnen und von der Engine analysieren lassen
+	Stop the analysis	Analyse beenden

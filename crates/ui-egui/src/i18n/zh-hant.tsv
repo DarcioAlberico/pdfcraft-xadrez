@@ -2528,7 +2528,6 @@ chess undo step	Clear drawings	清除標記
 	Lines:	變化數：
 	Choose engine…	選擇引擎…
 	Pick a UCI chess engine program, such as Stockfish.	選擇一個 UCI 西洋棋引擎程式，例如 Stockfish。
-	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	找不到西洋棋引擎。請將 PDFCRAFT_CHESS_ENGINE 設為 Stockfish 等 UCI 引擎，或在 PdfCraft 旁的 engine 資料夾中放一個引擎，或選擇一個引擎。
 	The engine couldn't be started: {e}	無法啟動引擎：{e}
 	That program didn't answer as a UCI chess engine.	該程式未以 UCI 西洋棋引擎的方式回應。
 	The engine stopped.	引擎已停止。
@@ -3187,3 +3186,12 @@ chess undo step	Clear drawings	清除標記
 	More panels	更多面板
 	More room for the page: collapse the tools panel?	給頁面更多空間：摺疊工具面板？
 	Rotate view counterclockwise ({key})	逆時針旋轉檢視（{key}）
+	No analysis engine installed	未安裝分析引擎
+	Or set PDFCRAFT_CHESS_ENGINE to the program.	或者將 PDFCRAFT_CHESS_ENGINE 設為該程式。
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	PdfCraft 使用另外的程式進行分析，例如 Stockfish（免費）。請下載後選擇 stockfish.exe 檔案。
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish program.	PdfCraft 使用另外的程式進行分析，例如 Stockfish（免費）。請下載後選擇 stockfish 程式。
+	Open stockfishchess.org	開啟 stockfishchess.org
+	Or put the program in an engine folder beside PdfCraft.	或者把程式放在 PdfCraft 旁邊的 engine 資料夾中。
+	Analyze	分析
+	Open on the board with the engine analysing it	在棋盤上開啟並由引擎分析
+	Stop the analysis	停止分析

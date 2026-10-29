@@ -2608,7 +2608,6 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Lines:	Varyantlar:
 	Choose engine…	Motor seç…
 	Pick a UCI chess engine program, such as Stockfish.	Stockfish gibi bir UCI satranç motoru programı seçin.
-	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Satranç motoru bulunamadı. PDFCRAFT_CHESS_ENGINE değişkenini Stockfish gibi bir UCI motoruna ayarlayın, PdfCraft'ın yanındaki engine klasörüne bir motor koyun ya da bir motor seçin.
 	The engine couldn't be started: {e}	Motor başlatılamadı: {e}
 	That program didn't answer as a UCI chess engine.	Bu program bir UCI satranç motoru gibi yanıt vermedi.
 	The engine stopped.	Motor durdu.
@@ -3267,3 +3266,12 @@ chess undo step	Clear drawings	çizimleri temizleme
 	More panels	Diğer paneller
 	More room for the page: collapse the tools panel?	Sayfaya daha çok yer: araç paneli daraltılsın mı?
 	Rotate view counterclockwise ({key})	Görünümü saat yönünün tersine döndür ({key})
+	No analysis engine installed	Yüklü bir analiz motoru yok
+	Or set PDFCRAFT_CHESS_ENGINE to the program.	Ya da PDFCRAFT_CHESS_ENGINE değişkenine programı yazın.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	PdfCraft çözümleme için Stockfish (ücretsiz) gibi ayrı bir program kullanır. İndirin ve stockfish.exe dosyasını seçin.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish program.	PdfCraft çözümleme için Stockfish (ücretsiz) gibi ayrı bir program kullanır. İndirin ve stockfish programını seçin.
+	Open stockfishchess.org	stockfishchess.org'u aç
+	Or put the program in an engine folder beside PdfCraft.	Ya da programı PdfCraft'ın yanındaki engine klasörüne koyun.
+	Analyze	Çözümle
+	Open on the board with the engine analysing it	Tahtada motor çözümlemesiyle aç
+	Stop the analysis	Çözümlemeyi durdur

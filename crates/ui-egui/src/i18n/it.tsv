@@ -2824,7 +2824,6 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	Lines:	Linee:
 	Choose engine…	Scegli motore…
 	Pick a UCI chess engine program, such as Stockfish.	Scegli un programma motore di scacchi UCI, come Stockfish.
-	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Nessun motore di scacchi trovato. Imposta PDFCRAFT_CHESS_ENGINE su un motore UCI come Stockfish, mettine uno in una cartella engine accanto a PdfCraft o sceglilo.
 	The engine couldn't be started: {e}	Impossibile avviare il motore: {e}
 	That program didn't answer as a UCI chess engine.	Quel programma non ha risposto come un motore di scacchi UCI.
 	The engine stopped.	Il motore si è fermato.
@@ -3483,3 +3482,12 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	More panels	Altri pannelli
 	More room for the page: collapse the tools panel?	Più spazio per la pagina: comprimere il pannello degli strumenti?
 	Rotate view counterclockwise ({key})	Ruota vista in senso antiorario ({key})
+	No analysis engine installed	Nessun motore di analisi installato
+	Or set PDFCRAFT_CHESS_ENGINE to the program.	Oppure imposta PDFCRAFT_CHESS_ENGINE con il programma.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	Per analizzare, PdfCraft usa un programma a parte, come Stockfish (gratuito). Scaricalo e scegli il file stockfish.exe.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish program.	Per analizzare, PdfCraft usa un programma a parte, come Stockfish (gratuito). Scaricalo e scegli il programma stockfish.
+	Open stockfishchess.org	Apri stockfishchess.org
+	Or put the program in an engine folder beside PdfCraft.	Oppure metti il programma in una cartella engine accanto a PdfCraft.
+	Analyze	Analizza
+	Open on the board with the engine analysing it	Apri sulla scacchiera con il motore che analizza
+	Stop the analysis	Ferma l’analisi
