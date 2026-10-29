@@ -3266,6 +3266,15 @@ chess undo step	Clear drawings	rajzok törlése
 	More panels	További panelek
 	More room for the page: collapse the tools panel?	Több hely az oldalnak: összecsukja az eszközpanelt?
 	Rotate view counterclockwise ({key})	Nézet forgatása az óramutató járásával ellentétesen ({key})
+	Only the main line	Csak a főváltozat
+	Variations	Változatok
+	Main line	Főváltozat
+	Continuations:	Folytatások:
+	Variation created: {move}	Változat létrehozva: {move}
+	Expand this variation	Változat kibontása
+	Collapse this variation	Változat összecsukása
+	— {n} more moves	— még {n} lépés
+	End of this variation. Shift+End goes to the end of the main line.	A változat vége. A Shift+End a főváltozat végére ugrik.
 	No analysis engine installed	Nincs telepítve elemzőmotor
 	Or set PDFCRAFT_CHESS_ENGINE to the program.	Vagy állítsa be a programot a PDFCRAFT_CHESS_ENGINE változóban.
 	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	Az elemzéshez a PdfCraft külön programot használ, például a Stockfish-t (ingyenes). Töltse le, és válassza ki a stockfish.exe fájlt.
@@ -3275,6 +3284,18 @@ chess undo step	Clear drawings	rajzok törlése
 	Analyze	Elemzés
 	Open on the board with the engine analysing it	Megnyitás a táblán, motoros elemzéssel
 	Stop the analysis	Az elemzés leállítása
+	Ask	Kérdezzen
+	End (End); with Shift, the end of the main line	A végére (End); Shifttel a főváltozat végére
+	Follow the line remembered	Az eltárolt vonal követése
+	New main line	Új főváltozat
+	New variation	Új változat
+	Playing a different move	Más lépés megtételekor
+	Replace the continuation	A folytatás cseréje
+	Start a variation	Változat létrehozása
+	Stepping forward at a fork	Elágazásnál előrelépéskor
+	Variation {i} of {n} after {fork}, move {move}	{i}/{n}. változat {fork} után, lépés: {move}
+	the start	a kezdet
+	↑ ↓ choose, → or Enter goes in, Esc takes the main line.	↑ ↓ választ, → vagy Enter belép, Esc a főváltozat.
 	Change to: {piece}	Csere erre: {piece}
 	Empty the square	Mező kiürítése
 	Restore the automatic reading	Az automatikus felismerés visszaállítása

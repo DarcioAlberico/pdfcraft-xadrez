@@ -3408,6 +3408,15 @@ chess undo step	Clear drawings	borrado de los dibujos
 	More panels	Más paneles
 	More room for the page: collapse the tools panel?	Más espacio para la página: ¿contraer el panel de herramientas?
 	Rotate view counterclockwise ({key})	Girar la vista a la izquierda ({key})
+	Only the main line	Solo la línea principal
+	Variations	Variantes
+	Main line	Línea principal
+	Continuations:	Continuaciones:
+	Variation created: {move}	Variante creada: {move}
+	Expand this variation	Expandir esta variante
+	Collapse this variation	Contraer esta variante
+	— {n} more moves	— {n} jugadas más
+	End of this variation. Shift+End goes to the end of the main line.	Fin de esta variante. Mayús+Fin va al final de la línea principal.
 	No analysis engine installed	No hay ningún motor de análisis instalado
 	Or set PDFCRAFT_CHESS_ENGINE to the program.	O defina PDFCRAFT_CHESS_ENGINE con el programa.
 	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	Para analizar, PdfCraft usa un programa aparte, como Stockfish (gratuito). Descárguelo y elija el archivo stockfish.exe.
@@ -3417,6 +3426,18 @@ chess undo step	Clear drawings	borrado de los dibujos
 	Analyze	Analizar
 	Open on the board with the engine analysing it	Abrir en el tablero con el motor analizando
 	Stop the analysis	Detener el análisis
+	Ask	Preguntar
+	End (End); with Shift, the end of the main line	Final (Fin); con Mayús, el final de la línea principal
+	Follow the line remembered	Seguir la línea recordada
+	New main line	Nueva línea principal
+	New variation	Nueva variante
+	Playing a different move	Al jugar una jugada distinta
+	Replace the continuation	Reemplazar la continuación
+	Start a variation	Crear una variante
+	Stepping forward at a fork	Al avanzar en una bifurcación
+	Variation {i} of {n} after {fork}, move {move}	Variante {i} de {n} después de {fork}, jugada {move}
+	the start	el inicio
+	↑ ↓ choose, → or Enter goes in, Esc takes the main line.	↑ ↓ eligen, → o Intro entran, Esc sigue la línea principal.
 	Change to: {piece}	Cambiar por: {piece}
 	Empty the square	Vaciar la casilla
 	Restore the automatic reading	Restaurar la lectura automática

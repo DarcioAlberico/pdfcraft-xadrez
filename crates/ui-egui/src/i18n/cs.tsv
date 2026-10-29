@@ -3341,6 +3341,15 @@ chess undo step	Clear drawings	smazání kreseb
 	More panels	Další panely
 	More room for the page: collapse the tools panel?	Víc místa pro stránku: sbalit panel nástrojů?
 	Rotate view counterclockwise ({key})	Otočit zobrazení proti směru hodinových ručiček ({key})
+	Only the main line	Jen hlavní varianta
+	Variations	Varianty
+	Main line	Hlavní varianta
+	Continuations:	Pokračování:
+	Variation created: {move}	Vytvořena varianta: {move}
+	Expand this variation	Rozbalit tuto variantu
+	Collapse this variation	Sbalit tuto variantu
+	— {n} more moves	— dalších {n} tahů
+	End of this variation. Shift+End goes to the end of the main line.	Konec této varianty. Shift+End přejde na konec hlavní varianty.
 	No analysis engine installed	Není nainstalován žádný engine pro analýzu
 	Or set PDFCRAFT_CHESS_ENGINE to the program.	Nebo nastavte PDFCRAFT_CHESS_ENGINE na tento program.
 	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	K analýze používá PdfCraft samostatný program, například Stockfish (zdarma). Stáhněte si ho a vyberte soubor stockfish.exe.
@@ -3350,6 +3359,18 @@ chess undo step	Clear drawings	smazání kreseb
 	Analyze	Analyzovat
 	Open on the board with the engine analysing it	Otevřít na šachovnici s analýzou enginem
 	Stop the analysis	Zastavit analýzu
+	Ask	Zeptat se
+	End (End); with Shift, the end of the main line	Na konec (End); se Shiftem konec hlavní varianty
+	Follow the line remembered	Sledovat zapamatovanou linii
+	New main line	Nová hlavní varianta
+	New variation	Nová varianta
+	Playing a different move	Při zahrání jiného tahu
+	Replace the continuation	Nahradit pokračování
+	Start a variation	Vytvořit variantu
+	Stepping forward at a fork	Při kroku vpřed na rozcestí
+	Variation {i} of {n} after {fork}, move {move}	Varianta {i} z {n} po {fork}, tah {move}
+	the start	začátku
+	↑ ↓ choose, → or Enter goes in, Esc takes the main line.	↑ ↓ vybírají, → nebo Enter vstoupí, Esc hlavní varianta.
 	Change to: {piece}	Změnit na: {piece}
 	Empty the square	Vyprázdnit pole
 	Restore the automatic reading	Obnovit automatické přečtení

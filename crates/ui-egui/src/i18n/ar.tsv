@@ -3542,6 +3542,15 @@ chess undo step	Clear drawings	مسح الرسوم
 	More panels	مزيد من اللوحات
 	More room for the page: collapse the tools panel?	مساحة أكبر للصفحة: هل تريد طي لوحة الأدوات؟
 	Rotate view counterclockwise ({key})	تدوير العرض عكس عقارب الساعة ({key})
+	Only the main line	الخط الرئيسي فقط
+	Variations	التفريعات
+	Main line	الخط الرئيسي
+	Continuations:	الاستمرارات:
+	Variation created: {move}	أُنشئ تفريع: {move}
+	Expand this variation	توسيع هذا التفريع
+	Collapse this variation	طي هذا التفريع
+	— {n} more moves	— {n} نقلات أخرى
+	End of this variation. Shift+End goes to the end of the main line.	نهاية هذا التفريع. Shift+End ينقلك إلى نهاية الخط الرئيسي.
 	No analysis engine installed	لا يوجد محرك تحليل مثبت
 	Or set PDFCRAFT_CHESS_ENGINE to the program.	أو اضبط PDFCRAFT_CHESS_ENGINE على البرنامج.
 	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	للتحليل، يستخدم PdfCraft برنامجًا منفصلًا، مثل Stockfish (مجاني). نزّله واختر الملف stockfish.exe.
@@ -3551,6 +3560,18 @@ chess undo step	Clear drawings	مسح الرسوم
 	Analyze	تحليل
 	Open on the board with the engine analysing it	الفتح على الرقعة مع تحليل المحرك
 	Stop the analysis	إيقاف التحليل
+	Ask	اسأل
+	End (End); with Shift, the end of the main line	إلى النهاية (End)؛ مع Shift إلى نهاية الخط الرئيسي
+	Follow the line remembered	اتبع الخط المحفوظ
+	New main line	خط رئيسي جديد
+	New variation	تفريعة جديدة
+	Playing a different move	عند لعب نقلة مختلفة
+	Replace the continuation	استبدل المتابعة
+	Start a variation	أنشئ تفريعة
+	Stepping forward at a fork	عند التقدم عند التفرع
+	Variation {i} of {n} after {fork}, move {move}	التفريعة {i} من {n} بعد {fork}، النقلة {move}
+	the start	البداية
+	↑ ↓ choose, → or Enter goes in, Esc takes the main line.	↑ ↓ للاختيار، → أو Enter للدخول، Esc للخط الرئيسي.
 	Change to: {piece}	التغيير إلى: {piece}
 	Empty the square	إفراغ المربع
 	Restore the automatic reading	استعادة القراءة التلقائية

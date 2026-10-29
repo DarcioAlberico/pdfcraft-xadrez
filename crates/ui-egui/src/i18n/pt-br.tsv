@@ -3284,6 +3284,15 @@ chess undo step	Clear drawings	remoção dos desenhos
 	More panels	Mais painéis
 	More room for the page: collapse the tools panel?	Mais espaço para a página: recolher o painel de ferramentas?
 	Rotate view counterclockwise ({key})	Girar exibição no sentido anti-horário ({key})
+	Only the main line	Só a linha principal
+	Variations	Variantes
+	Main line	Linha principal
+	Continuations:	Continuações:
+	Variation created: {move}	Variante criada: {move}
+	Expand this variation	Expandir esta variante
+	Collapse this variation	Recolher esta variante
+	— {n} more moves	— mais {n} lances
+	End of this variation. Shift+End goes to the end of the main line.	Fim desta variante. Shift+End vai ao fim da linha principal.
 	No analysis engine installed	Nenhum motor de análise instalado
 	Or set PDFCRAFT_CHESS_ENGINE to the program.	Ou defina PDFCRAFT_CHESS_ENGINE com o programa.
 	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	Para analisar, o PdfCraft usa um programa à parte, como o Stockfish (gratuito). Baixe-o e escolha o arquivo stockfish.exe.
@@ -3293,6 +3302,18 @@ chess undo step	Clear drawings	remoção dos desenhos
 	Analyze	Analisar
 	Open on the board with the engine analysing it	Abrir no tabuleiro com o motor analisando
 	Stop the analysis	Parar a análise
+	Ask	Perguntar
+	End (End); with Shift, the end of the main line	Fim (End); com Shift, o fim da linha principal
+	Follow the line remembered	Seguir a linha lembrada
+	New main line	Nova linha principal
+	New variation	Nova variante
+	Playing a different move	Ao jogar um lance diferente
+	Replace the continuation	Substituir a continuação
+	Start a variation	Criar variante
+	Stepping forward at a fork	Ao avançar numa bifurcação
+	Variation {i} of {n} after {fork}, move {move}	Variante {i} de {n} depois de {fork}, lance {move}
+	the start	o início
+	↑ ↓ choose, → or Enter goes in, Esc takes the main line.	↑ ↓ escolhem, → ou Enter entram, Esc segue a linha principal.
 	Change to: {piece}	Trocar por: {piece}
 	Empty the square	Esvaziar a casa
 	Restore the automatic reading	Restaurar a leitura automática

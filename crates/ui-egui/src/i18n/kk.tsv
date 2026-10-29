@@ -3265,6 +3265,15 @@ chess undo step	Clear drawings	суреттерді өшіру
 	More panels	Басқа панельдер
 	More room for the page: collapse the tools panel?	Бетке көбірек орын: құралдар панелін жинау керек пе?
 	Rotate view counterclockwise ({key})	Көріністі сағат тіліне қарсы бұру ({key})
+	Only the main line	Тек негізгі желі
+	Variations	Нұсқалар
+	Main line	Негізгі желі
+	Continuations:	Жалғасулар:
+	Variation created: {move}	Нұсқа жасалды: {move}
+	Expand this variation	Бұл нұсқаны жаю
+	Collapse this variation	Бұл нұсқаны жию
+	— {n} more moves	— тағы {n} жүріс
+	End of this variation. Shift+End goes to the end of the main line.	Бұл нұсқаның соңы. Shift+End негізгі желінің соңына өтеді.
 	No analysis engine installed	Талдау қозғалтқышы орнатылмаған
 	Or set PDFCRAFT_CHESS_ENGINE to the program.	Немесе PDFCRAFT_CHESS_ENGINE айнымалысына бағдарламаны көрсетіңіз.
 	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	Талдау үшін PdfCraft Stockfish (тегін) сияқты бөлек бағдарламаны пайдаланады. Оны жүктеп алып, stockfish.exe файлын таңдаңыз.
@@ -3274,6 +3283,18 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Analyze	Талдау
 	Open on the board with the engine analysing it	Қозғалтқыш талдап жатқан күйде тақтада ашу
 	Stop the analysis	Талдауды тоқтату
+	Ask	Сұрау
+	End (End); with Shift, the end of the main line	Соңына (End); Shift арқылы басты желінің соңына
+	Follow the line remembered	Есте сақталған желімен жүру
+	New main line	Жаңа басты желі
+	New variation	Жаңа нұсқа
+	Playing a different move	Басқа жүріс жасағанда
+	Replace the continuation	Жалғасын ауыстыру
+	Start a variation	Нұсқа жасау
+	Stepping forward at a fork	Тармақталуда алға жылжығанда
+	Variation {i} of {n} after {fork}, move {move}	{fork} кейінгі {n} нұсқаның {i}-сі, жүріс {move}
+	the start	басы
+	↑ ↓ choose, → or Enter goes in, Esc takes the main line.	↑ ↓ таңдайды, → немесе Enter кіреді, Esc басты желімен жүреді.
 	Change to: {piece}	Ауыстыру: {piece}
 	Empty the square	Шаршыны босату
 	Restore the automatic reading	Автоматты тануды қалпына келтіру

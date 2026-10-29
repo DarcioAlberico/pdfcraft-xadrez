@@ -3142,6 +3142,15 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	More panels	మరిన్ని ప్యానెల్‌లు
 	More room for the page: collapse the tools panel?	పేజీకి మరింత స్థలం: సాధనాల ప్యానెల్‌ను ముడుచాలా?
 	Rotate view counterclockwise ({key})	వీక్షణను అపసవ్యదిశలో తిప్పు ({key})
+	Only the main line	ప్రధాన వరుస మాత్రమే
+	Variations	వేరియేషన్లు
+	Main line	ప్రధాన వరుస
+	Continuations:	కొనసాగింపులు:
+	Variation created: {move}	వేరియేషన్ సృష్టించబడింది: {move}
+	Expand this variation	ఈ వేరియేషన్‌ను విస్తరించు
+	Collapse this variation	ఈ వేరియేషన్‌ను ముడుచు
+	— {n} more moves	— మరో {n} ఎత్తులు
+	End of this variation. Shift+End goes to the end of the main line.	ఈ వేరియేషన్ ముగింపు. Shift+End ప్రధాన వరుస చివరికి వెళ్తుంది.
 	No analysis engine installed	విశ్లేషణ ఇంజిన్ ఏదీ ఇన్‌స్టాల్ కాలేదు
 	Or set PDFCRAFT_CHESS_ENGINE to the program.	లేదా PDFCRAFT_CHESS_ENGINEలో ప్రోగ్రామ్‌ను సెట్ చేయండి.
 	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	విశ్లేషణకు PdfCraft Stockfish (ఉచితం) వంటి వేరే ప్రోగ్రామ్‌ను వాడుతుంది. దాన్ని డౌన్‌లోడ్ చేసి stockfish.exe ఫైల్‌ను ఎంచుకోండి.
@@ -3151,6 +3160,18 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Analyze	విశ్లేషించు
 	Open on the board with the engine analysing it	ఇంజిన్ విశ్లేషిస్తూ ఉండగా బోర్డుపై తెరువు
 	Stop the analysis	విశ్లేషణను ఆపు
+	Ask	అడుగు
+	End (End); with Shift, the end of the main line	చివరికి (End); Shiftతో ప్రధాన వరుస చివరికి
+	Follow the line remembered	గుర్తుంచుకున్న వరుసను అనుసరించు
+	New main line	కొత్త ప్రధాన వరుస
+	New variation	కొత్త వేరియేషన్
+	Playing a different move	వేరే ఎత్తు ఆడినప్పుడు
+	Replace the continuation	కొనసాగింపును మార్చు
+	Start a variation	వేరియేషన్ సృష్టించు
+	Stepping forward at a fork	చీలిక వద్ద ముందుకు వెళ్ళినప్పుడు
+	Variation {i} of {n} after {fork}, move {move}	{fork} తర్వాత {n}లో {i}వ వేరియేషన్, ఎత్తు {move}
+	the start	ప్రారంభం
+	↑ ↓ choose, → or Enter goes in, Esc takes the main line.	↑ ↓ ఎంచుకుంటాయి, → లేదా Enter లోపలికి, Esc ప్రధాన వరుస.
 	Change to: {piece}	దీనికి మార్చు: {piece}
 	Empty the square	గడిని ఖాళీ చేయి
 	Restore the automatic reading	ఆటోమేటిక్ చదువును పునరుద్ధరించు

@@ -272,11 +272,12 @@ impl Game {
         Ok(())
     }
 
-    /// Make the revision newer than both its own and `seen` (one more than the larger). After a
-    /// snapshot is restored, its older revision would otherwise match a plan made since; this
-    /// keeps revisions from repeating. Saturates at `u64::MAX`.
+    /// Make the revision newer than both its own and `seen`, and than any other game's so far
+    /// (revisions are one counter for all games). After a snapshot is restored, its older
+    /// revision would otherwise match a plan made since; this keeps revisions from repeating.
+    /// Saturates at `u64::MAX`.
     pub fn bump_revision(&mut self, seen: u64) {
-        self.revision = self.revision.max(seen).saturating_add(1);
+        self.revision = super::fresh_revision_past(self.revision.max(seen));
     }
 
     /// The comment before move `node` (always empty for the start, whose own comment comes before
@@ -298,7 +299,7 @@ impl Game {
             && n.comment_before != clean
         {
             n.comment_before = clean;
-            self.revision = self.revision.wrapping_add(1);
+            self.revision = super::fresh_revision();
         }
     }
 
@@ -316,7 +317,7 @@ impl Game {
         let Some(n) = self.nodes.get_mut(node) else { return false };
         if n.source != source {
             n.source = source;
-            self.revision = self.revision.wrapping_add(1);
+            self.revision = super::fresh_revision();
         }
         true
     }
@@ -341,7 +342,7 @@ impl Game {
         nags.push(code);
         nags.sort_unstable();
         n.nags = nags;
-        self.revision = self.revision.wrapping_add(1);
+        self.revision = super::fresh_revision();
         true
     }
 }

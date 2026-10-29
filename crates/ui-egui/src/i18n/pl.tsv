@@ -3209,6 +3209,17 @@ chess undo step	Clear drawings	usunięcie rysunków
 	More panels	Więcej paneli
 	More room for the page: collapse the tools panel?	Więcej miejsca na stronę: zwinąć panel narzędzi?
 	Rotate view counterclockwise ({key})	Obróć widok w lewo ({key})
+	Expand all	Rozwiń wszystko
+	Collapse all	Zwiń wszystko
+	Only the main line	Tylko linia główna
+	Variations	Warianty
+	Main line	Linia główna
+	Continuations:	Kontynuacje:
+	Variation created: {move}	Utworzono wariant: {move}
+	Expand this variation	Rozwiń ten wariant
+	Collapse this variation	Zwiń ten wariant
+	— {n} more moves	— jeszcze {n} ruchów
+	End of this variation. Shift+End goes to the end of the main line.	Koniec tego wariantu. Shift+End przechodzi na koniec linii głównej.
 	No analysis engine installed	Nie zainstalowano silnika do analizy
 	Or set PDFCRAFT_CHESS_ENGINE to the program.	Albo ustaw PDFCRAFT_CHESS_ENGINE na ten program.
 	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	Do analizy PdfCraft używa osobnego programu, takiego jak Stockfish (bezpłatny). Pobierz go i wybierz plik stockfish.exe.
@@ -3218,6 +3229,18 @@ chess undo step	Clear drawings	usunięcie rysunków
 	Analyze	Analizuj
 	Open on the board with the engine analysing it	Otwórz na szachownicy z analizą silnika
 	Stop the analysis	Zatrzymaj analizę
+	Ask	Pytaj
+	End (End); with Shift, the end of the main line	Na koniec (End); z Shift koniec linii głównej
+	Follow the line remembered	Idź zapamiętaną linią
+	New main line	Nowa linia główna
+	New variation	Nowy wariant
+	Playing a different move	Po zagraniu innego ruchu
+	Replace the continuation	Zastąp kontynuację
+	Start a variation	Utwórz wariant
+	Stepping forward at a fork	Przy kroku naprzód na rozwidleniu
+	Variation {i} of {n} after {fork}, move {move}	Wariant {i} z {n} po {fork}, ruch {move}
+	the start	początku
+	↑ ↓ choose, → or Enter goes in, Esc takes the main line.	↑ ↓ wybierają, → lub Enter wchodzą, Esc — linia główna.
 	Change to: {piece}	Zmień na: {piece}
 	Empty the square	Opróżnij pole
 	Restore the automatic reading	Przywróć odczyt automatyczny

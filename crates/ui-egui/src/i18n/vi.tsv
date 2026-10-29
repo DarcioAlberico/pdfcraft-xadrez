@@ -3520,6 +3520,15 @@ chess undo step	Clear drawings	xóa hình vẽ
 	More panels	Thêm bảng
 	More room for the page: collapse the tools panel?	Thêm chỗ cho trang: thu gọn bảng công cụ?
 	Rotate view counterclockwise ({key})	Xoay chế độ xem ngược chiều kim đồng hồ ({key})
+	Only the main line	Chỉ diễn biến chính
+	Variations	Biến thể
+	Main line	Diễn biến chính
+	Continuations:	Các nước tiếp theo:
+	Variation created: {move}	Đã tạo biến thể: {move}
+	Expand this variation	Mở rộng biến thể này
+	Collapse this variation	Thu gọn biến thể này
+	— {n} more moves	— thêm {n} nước
+	End of this variation. Shift+End goes to the end of the main line.	Hết biến thể này. Shift+End đến cuối diễn biến chính.
 	No analysis engine installed	Chưa cài engine phân tích nào
 	Or set PDFCRAFT_CHESS_ENGINE to the program.	Hoặc đặt PDFCRAFT_CHESS_ENGINE thành chương trình đó.
 	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	Để phân tích, PdfCraft dùng một chương trình riêng, như Stockfish (miễn phí). Hãy tải về và chọn tệp stockfish.exe.
@@ -3529,6 +3538,18 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Analyze	Phân tích
 	Open on the board with the engine analysing it	Mở trên bàn cờ với engine đang phân tích
 	Stop the analysis	Dừng phân tích
+	Ask	Hỏi
+	End (End); with Shift, the end of the main line	Về cuối (End); giữ Shift để về cuối nhánh chính
+	Follow the line remembered	Đi theo nhánh đã nhớ
+	New main line	Nhánh chính mới
+	New variation	Biến mới
+	Playing a different move	Khi đi một nước khác
+	Replace the continuation	Thay phần tiếp theo
+	Start a variation	Tạo biến
+	Stepping forward at a fork	Khi tiến tới chỗ rẽ nhánh
+	Variation {i} of {n} after {fork}, move {move}	Biến {i} trên {n} sau {fork}, nước {move}
+	the start	khởi đầu
+	↑ ↓ choose, → or Enter goes in, Esc takes the main line.	↑ ↓ để chọn, → hoặc Enter để vào, Esc đi theo nhánh chính.
 	Change to: {piece}	Đổi thành: {piece}
 	Empty the square	Làm trống ô
 	Restore the automatic reading	Khôi phục kết quả đọc tự động

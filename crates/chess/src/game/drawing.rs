@@ -199,7 +199,7 @@ impl Game {
             None if list.len() < MAX_DRAWINGS => insert(list, drawing),
             None => return false,
         }
-        self.revision = self.revision.wrapping_add(1);
+        self.revision = super::fresh_revision();
         true
     }
 
@@ -210,7 +210,7 @@ impl Game {
             return false;
         }
         n.drawings.clear();
-        self.revision = self.revision.wrapping_add(1);
+        self.revision = super::fresh_revision();
         true
     }
 }

@@ -3180,6 +3180,15 @@ chess undo step	Clear drawings	удаление рисунков
 	More panels	Другие панели
 	More room for the page: collapse the tools panel?	Больше места для страницы: свернуть панель инструментов?
 	Rotate view counterclockwise ({key})	Повернуть вид против часовой стрелки ({key})
+	Only the main line	Только главная линия
+	Variations	Варианты
+	Main line	Главная линия
+	Continuations:	Продолжения:
+	Variation created: {move}	Создан вариант: {move}
+	Expand this variation	Развернуть этот вариант
+	Collapse this variation	Свернуть этот вариант
+	— {n} more moves	— ещё {n} ходов
+	End of this variation. Shift+End goes to the end of the main line.	Конец этого варианта. Shift+End ведёт в конец главной линии.
 	No analysis engine installed	Движок для анализа не установлен
 	Or set PDFCRAFT_CHESS_ENGINE to the program.	Или укажите программу в PDFCRAFT_CHESS_ENGINE.
 	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	Для анализа PdfCraft использует отдельную программу, например Stockfish (бесплатно). Скачайте её и выберите файл stockfish.exe.
@@ -3189,6 +3198,18 @@ chess undo step	Clear drawings	удаление рисунков
 	Analyze	Анализ
 	Open on the board with the engine analysing it	Открыть на доске с анализом движком
 	Stop the analysis	Остановить анализ
+	Ask	Спрашивать
+	End (End); with Shift, the end of the main line	В конец (End); с Shift — в конец главной линии
+	Follow the line remembered	Идти по запомненной линии
+	New main line	Новая главная линия
+	New variation	Новый вариант
+	Playing a different move	При другом ходе
+	Replace the continuation	Заменить продолжение
+	Start a variation	Создавать вариант
+	Stepping forward at a fork	При шаге вперёд на развилке
+	Variation {i} of {n} after {fork}, move {move}	Вариант {i} из {n} после {fork}, ход {move}
+	the start	начала
+	↑ ↓ choose, → or Enter goes in, Esc takes the main line.	↑ ↓ выбирают, → или Enter входят, Esc — главная линия.
 	Change to: {piece}	Заменить на: {piece}
 	Empty the square	Очистить поле
 	Restore the automatic reading	Восстановить автоматическое распознавание

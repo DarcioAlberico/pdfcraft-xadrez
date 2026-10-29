@@ -27,7 +27,7 @@
 //! book can be illegal (a misread square): it is shown as it is, and no move can be played on it
 //! until it is corrected in the diagram editor.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use egui::{Color32, Key, PointerButton, Pos2, Rect, Stroke, TextureHandle, vec2};
 use pdfcraft_engine::DocId;
@@ -218,6 +218,23 @@ pub struct BoardState {
     /// The move whose drawings mark the pointer is over in the list, and the frame it was seen
     /// in (plan HC12): the board shows that move's drawings while it is.
     pub(crate) hovered_drawings: Option<(NodeId, u64)>,
+    /// The variations folded in the list, by their first move, and whether only the main line
+    /// shows (plan A8 V3).
+    pub(crate) folded: HashSet<NodeId>,
+    pub(crate) main_only: bool,
+    /// The move a move played just made a variation of, for the "Variation created" notice.
+    pub(crate) created_variation: Option<NodeId>,
+    /// The variation rules from the preferences, as of this frame (plan A8 V3).
+    pub(crate) rules: crate::chess_moves_tree::VariationRules,
+    /// While a step forward asks which reply (`AtFork::Ask`): the one picked, by its index among
+    /// the move shown's replies.
+    pub(crate) choosing: Option<usize>,
+    /// The notation's tokens and the game revision they are of: worked out once per change, not
+    /// every frame (plan A8 V3).
+    tokens_cache: Option<(u64, std::sync::Arc<Vec<Token>>)>,
+    /// The previous and the next variation from the move shown (plan HC11), with the revision and
+    /// the move they are for: each walks the whole game, so they are worked out once per change.
+    variation_steps: Option<(u64, NodeId, Option<NodeId>, Option<NodeId>)>,
     /// The comment field takes the keyboard when it is drawn next.
     pub(crate) focus_comment: bool,
     /// Where the glyph palette types.
@@ -265,6 +282,13 @@ impl Default for BoardState {
             comment_open: false,
             open_details: false,
             hovered_drawings: None,
+            folded: HashSet::new(),
+            main_only: false,
+            created_variation: None,
+            rules: Default::default(),
+            choosing: None,
+            tokens_cache: None,
+            variation_steps: None,
             focus_comment: false,
             typing: Default::default(),
             fresh: Default::default(),
@@ -540,13 +564,44 @@ impl BoardState {
         }
     }
 
+    /// The notation's tokens of the game shown, from the cache while the game is unchanged.
+    pub(crate) fn tokens(&mut self) -> std::sync::Arc<Vec<Token>> {
+        let revision = self.game.revision();
+        if let Some((r, tokens)) = &self.tokens_cache
+            && *r == revision
+        {
+            return tokens.clone();
+        }
+        let tokens = std::sync::Arc::new(self.game.tokens());
+        self.tokens_cache = Some((revision, tokens.clone()));
+        tokens
+    }
+
+    /// The first moves of the previous and the next variation in reading order from the move
+    /// shown (plan HC11), from the cache while the game and the move shown are unchanged.
+    pub(crate) fn variation_steps(&mut self) -> (Option<NodeId>, Option<NodeId>) {
+        let (revision, current) = (self.game.revision(), self.game.current());
+        if let Some((r, c, back, next)) = self.variation_steps
+            && (r, c) == (revision, current)
+        {
+            return (back, next);
+        }
+        let (back, next) = (self.game.previous_variation(current), self.game.next_variation(current));
+        self.variation_steps = Some((revision, current, back, next));
+        (back, next)
+    }
+
     /// Play a move (one undo step, unless it was in the game already and is only followed).
     fn play(&mut self, from: Square, to: Square, promotion: Option<PieceKind>) {
         self.selected = None;
+        let before = self.game.replies(self.game.current()).to_vec();
         self.edit(|s| match s.game.play(from, to, promotion) {
             Ok(()) => {
                 s.promotion = None;
                 s.message = None;
+                // A new move beside a continuation already there starts a variation (plan A8 V3).
+                let now = s.game.current();
+                s.created_variation = (!before.is_empty() && !before.contains(&now)).then_some(now);
                 Some(ChessEdit::Play(s.game.san(s.game.current()).to_owned()))
             }
             Err(GameError::NeedsPromotion) => {
@@ -558,6 +613,15 @@ impl BoardState {
                 None
             }
         });
+        // Replace the continuation (plan A8 V3): a step of its own, so the deletion is noticed
+        // and undone apart.
+        if self.created_variation.is_some() && self.rules.new_move == crate::chess_moves_tree::NewMove::Replace {
+            self.created_variation = None;
+            self.edit(|s| {
+                crate::chess_moves_tree::replace_continuation(&mut s.game);
+                Some(ChessEdit::DeleteMoves)
+            });
+        }
     }
 
     /// Play `moves` (UCI) from the move shown, as far as they can be played: a line the engine
@@ -581,13 +645,26 @@ impl BoardState {
         });
     }
 
-    /// Step through the line: `Some(true)` forward, `Some(false)` back.
+    /// Step through the line: `Some(true)` forward, `Some(false)` back. With `AtFork::Ask`, a
+    /// step forward where the move shown has more than one reply asks which (plan A8 V3) instead
+    /// of taking one; a second step forward takes the one picked.
     pub(crate) fn step(&mut self, forward: bool) {
         self.selected = None;
         self.promotion = None;
         if forward {
+            if crate::chess_moves_tree::choose_key(self, crate::chess_moves_tree::ChooseKey::Enter) {
+                return;
+            }
+            let current = self.game.current();
+            let replies = self.game.replies(current);
+            if self.rules.at_fork == crate::chess_moves_tree::AtFork::Ask && replies.len() > 1 {
+                let next = self.game.next_reply(current);
+                self.choosing = Some(replies.iter().position(|&n| Some(n) == next).unwrap_or(0));
+                return;
+            }
             self.game.forward();
         } else {
+            self.choosing = None;
             self.game.back();
         }
     }
@@ -1188,13 +1265,25 @@ pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, he
     if state.illegal.is_some() {
         return None;
     }
-    let tokens = state.game.tokens();
+    let tokens = state.tokens();
     let width = ui.available_width();
     let above = ui.cursor().top();
     if game_header(ui, t, &state.game) {
         state.open_details = true;
     }
-    let height = height.map(|h| (h - (ui.cursor().top() - above)).max(MIN_NOTATION / 2.0));
+    match crate::chess_moves_tree::header(ui, t, state, tokens.as_slice()) {
+        Some(crate::chess_moves_tree::TreeAction::Go(node)) => state.game.go_to_node(node),
+        Some(crate::chess_moves_tree::TreeAction::ExpandAll) => {
+            state.folded.clear();
+            state.main_only = false;
+        }
+        Some(crate::chess_moves_tree::TreeAction::CollapseAll) => state.folded = state.game.variation_starts().into_iter().collect(),
+        Some(crate::chess_moves_tree::TreeAction::MainOnly(on)) => state.main_only = on,
+        None => {}
+    }
+    // The moves keep their least height under the game's header and the tree's (plan A8 V3):
+    // when they do not fit, the panel scrolls.
+    let height = height.map(|h| (h - (ui.cursor().top() - above)).max(MIN_NOTATION.min(h)));
     // The area as one named region, for assistive technology (and the tests, which measure it).
     if let Some(h) = height {
         let region = Rect::from_min_size(ui.cursor().min, vec2(width, h));
@@ -1218,13 +1307,21 @@ pub(crate) fn notation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, he
         }
         look.size.apply(ui.style_mut());
         ui.spacing_mut().item_spacing.y = 2.0;
-        let mut cx = MoveCx { current, reveal, brush, edit: None, action: None };
+        // Folded variations (plan A8 V3): never the one the move shown is in.
+        let open: HashSet<NodeId> = crate::chess_moves_tree::variations_holding(&state.game, current).into_iter().collect();
+        let (shown, hidden) = crate::chess_moves_tree::fold(tokens.as_slice(), &state.folded, state.main_only, &open);
+        let mut cx = MoveCx { current, reveal, brush, edit: None, action: None, hidden, toggle: None };
         match look.layout {
-            crate::chess_figurines::ListLayout::Flow => flow(ui, t, state, &tokens, &mut cx),
-            crate::chess_figurines::ListLayout::Columns => columns(ui, t, state, &tokens, &mut cx),
+            crate::chess_figurines::ListLayout::Flow => flow(ui, t, state, &shown, &mut cx),
+            crate::chess_figurines::ListLayout::Columns => columns(ui, t, state, &shown, &mut cx),
         }
         edit = cx.edit;
         action = cx.action;
+        if let Some(node) = cx.toggle
+            && !state.folded.remove(&node)
+        {
+            state.folded.insert(node);
+        }
     });
     state.revealed = Some((current, state.game.revision()));
     if let Some(e) = edit {
@@ -1416,16 +1513,91 @@ struct MoveCx {
     brush: Option<u16>,
     edit: Option<MoveEdit>,
     action: Option<BoardAction>,
+    /// The folded variations' hidden moves, by their first move; and the variation whose fold
+    /// was clicked (plan A8 V3).
+    hidden: HashMap<NodeId, usize>,
+    toggle: Option<NodeId>,
 }
 
 /// The notation as running text: a row per stretch of a line, variations indented by depth.
-fn flow(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, tokens: &[Token], cx: &mut MoveCx) {
-    let rows = rows(tokens);
+/// Rows of running text further than this from the part in view are not built (plan A8 V3), in
+/// points.
+const ROW_OVERSCAN: f32 = 160.0;
+
+/// A row of running text with more moves than this is cut into rows of about this many, each
+/// starting at a White move, so a long line is built only where it shows (plan A8 V3).
+const ROW_MOVES: usize = 32;
+
+/// `rows` with each one longer than [`ROW_MOVES`] moves cut before a White move once it has that
+/// many; the rows after a cut keep the depth.
+fn split_long(rows: Vec<Row<'_>>) -> Vec<Row<'_>> {
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        if row.tokens.iter().filter(|t| matches!(t, Token::Move { .. })).count() <= ROW_MOVES {
+            out.push(row);
+            continue;
+        }
+        let mut part = Row { depth: row.depth, tokens: Vec::new() };
+        let mut moves = 0usize;
+        for token in row.tokens {
+            if let Token::Move { color, .. } = token {
+                if *color == Color::White && moves >= ROW_MOVES {
+                    out.push(std::mem::replace(&mut part, Row { depth: row.depth, tokens: Vec::new() }));
+                    moves = 0;
+                }
+                moves += 1;
+            }
+            part.tokens.push(token);
+        }
+        if !part.tokens.is_empty() {
+            out.push(part);
+        }
+    }
+    out
+}
+
+/// The notation as running text. Rows out of view take the height they had the frame before and
+/// are not built, while the list is laid out as it was then (the same game, folds and width): a
+/// 10,000-move game costs what its visible rows cost (plan A8 V3). The row holding the move shown
+/// is always built, so it can scroll into view.
+fn flow(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, tokens: &[&Token], cx: &mut MoveCx) {
+    let rows = split_long(rows(tokens.iter().copied()));
     let ends_main = rows.last().is_some_and(|r| r.depth == 0);
     let last = rows.len().saturating_sub(1);
+    let key = {
+        use std::hash::{Hash, Hasher};
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        state.game.revision().hash(&mut h);
+        let mut folded: Vec<NodeId> = state.folded.iter().copied().collect();
+        folded.sort_unstable();
+        folded.hash(&mut h);
+        state.main_only.hash(&mut h);
+        rows.len().hash(&mut h);
+        ui.available_width().to_bits().hash(&mut h);
+        ui.text_style_height(&egui::TextStyle::Body).to_bits().hash(&mut h);
+        h.finish()
+    };
+    let id = ui.id().with("chess-row-heights");
+    let known = ui.ctx().data(|d| d.get_temp::<(u64, std::sync::Arc<Vec<f32>>)>(id)).filter(|(k, _)| *k == key).map(|(_, h)| h);
+    let visible = ui.clip_rect().expand2(vec2(0.0, ROW_OVERSCAN));
+    let gap = ui.spacing().item_spacing.y;
+    let mut heights = Vec::with_capacity(rows.len());
     for (i, row) in rows.into_iter().enumerate() {
+        let top = ui.cursor().top();
+        let holds_current = row.tokens.iter().any(|t| matches!(t, Token::Move { node, .. } if *node == cx.current));
+        let skip = known
+            .as_ref()
+            .and_then(|h| h.get(i).copied())
+            .filter(|h| h.is_finite() && !holds_current && (top + h < visible.top() || top > visible.bottom()));
+        if let Some(h) = skip {
+            ui.allocate_space(vec2(ui.available_width(), h));
+            heights.push(h);
+            continue;
+        }
         flow_row(ui, t, state, &row, cx, i == last && ends_main);
+        heights.push((ui.cursor().top() - top - gap).max(0.0));
     }
+    ui.ctx().data_mut(|d| d.insert_temp(id, (key, std::sync::Arc::new(heights))));
     // The result, after the main line (plan HC10), on a row of its own when a variation ends
     // the notation.
     if !ends_main {
@@ -1436,11 +1608,37 @@ fn flow(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, tokens: &[Token],
 /// One row of running text, indented by its depth; `result`: the game's result after it.
 fn flow_row(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, row: &Row<'_>, cx: &mut MoveCx, result: bool) {
     let indent = i8::try_from(row.depth.min(MAX_INDENT).saturating_mul(INDENT)).unwrap_or(i8::MAX);
-    egui::Frame::NONE.inner_margin(egui::Margin { left: indent, ..egui::Margin::ZERO }).show(ui, |ui| {
+    // A row starting a variation: its first move, which folds and unfolds it (plan A8 V3).
+    let starts = match (row.tokens.first(), row.tokens.get(1)) {
+        (Some(Token::VariationStart), Some(Token::Move { node, .. })) => Some(*node),
+        _ => None,
+    };
+    let frame = egui::Frame::NONE.inner_margin(egui::Margin { left: indent, ..egui::Margin::ZERO }).show(ui, |ui| {
         ui.horizontal_wrapped(|ui| {
             ui.spacing_mut().item_spacing.x = 4.0;
             let small = row.depth > 0;
-            for token in &row.tokens {
+            // Deeper than the indent shows: the level, written.
+            if row.depth > MAX_INDENT {
+                ui.label(egui::RichText::new(format!("N{}", row.depth)).small().color(t.text_faint));
+            }
+            for (k, token) in row.tokens.iter().enumerate() {
+                if k == 0
+                    && let Some(first) = starts
+                {
+                    let folded = cx.hidden.contains_key(&first);
+                    let (icon, name) =
+                        if folded { ("chevron-right", tl!("Expand this variation")) } else { ("chevron-down", tl!("Collapse this variation")) };
+                    // Under the variation's own id: every chevron has the same name.
+                    if ui.push_id(("chess-fold", first), |ui| crate::icons::button(ui, icon, 18.0, false, name).clicked()).inner {
+                        cx.toggle = Some(first);
+                    }
+                }
+                if matches!(token, Token::VariationEnd)
+                    && let Some(n) = starts.and_then(|first| cx.hidden.get(&first))
+                {
+                    let text = crate::i18n::fmt(tl!("— {n} more moves"), &[("n", &n.to_string())]);
+                    ui.label(egui::RichText::new(text).small().color(t.text_faint));
+                }
                 token_item(ui, t, state, token, small, cx);
             }
             if result {
@@ -1448,6 +1646,12 @@ fn flow_row(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, row: &Row<'_>
             }
         });
     });
+    // A bar along each variation's rows, so its extent shows without colour.
+    if row.depth > 0 {
+        let r = frame.response.rect;
+        let x = r.left() + f32::from(indent) - 5.0;
+        ui.painter().vline(x, r.y_range(), egui::Stroke::new(2.0, t.border));
+    }
 }
 
 /// One token of the notation: a move with its number when it has one, a comment, a parenthesis.
@@ -1641,11 +1845,11 @@ enum ColItem<'a> {
 /// The main line's moves paired by number, and what comes between them as breaks: a comment on
 /// the main line, or a variation with all it holds. A Black move after a break starts its own
 /// pair, with no White move (shown "…").
-fn column_items(tokens: &[Token]) -> Vec<ColItem<'_>> {
+fn column_items<'a>(tokens: &[&'a Token]) -> Vec<ColItem<'a>> {
     let mut items: Vec<ColItem<'_>> = Vec::new();
     let mut held: Vec<&Token> = Vec::new();
     let mut depth = 0usize;
-    for token in tokens {
+    for &token in tokens {
         match token {
             Token::VariationStart => {
                 depth = depth.saturating_add(1);
@@ -1677,7 +1881,7 @@ fn column_items(tokens: &[Token]) -> Vec<ColItem<'_>> {
 
 /// The notation in columns (plan HC9): number, White, Black; a comment or a variation breaks the
 /// table and runs across it, and the table resumes after it.
-fn columns(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, tokens: &[Token], cx: &mut MoveCx) {
+fn columns(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, tokens: &[&Token], cx: &mut MoveCx) {
     let items = column_items(tokens);
     let number_width = ui.text_style_height(&egui::TextStyle::Body) * 2.6;
     let cell = ((ui.available_width() - number_width) / 2.0).max(48.0);
@@ -1958,16 +2162,29 @@ pub(crate) fn navigation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) 
         if nav(ui, ply > 0, "chevron-left", tl!("Previous move (Left arrow)")) {
             state.step(false);
         }
-        if nav(ui, ply < len, "chevron-right", tl!("Next move (Right arrow)")) {
+        // At the end of a variation, ▶ says why it is off (plan A8 V3).
+        let in_variation = !crate::chess_moves_tree::variations_holding(&state.game, state.game.current()).is_empty();
+        let forward = ui.add_enabled_ui(ply < len, |ui| crate::icons::button(ui, "chevron-right", 28.0, false, tl!("Next move (Right arrow)"))).inner;
+        let forward = if ply >= len && in_variation {
+            forward.on_disabled_hover_text(tl!("End of this variation. Shift+End goes to the end of the main line."))
+        } else {
+            forward
+        };
+        if forward.clicked() {
             state.step(true);
         }
-        if nav(ui, ply < len, "chevrons-right", tl!("End (End)")) {
-            state.game.go_to(usize::MAX);
+        // ⏭ to the end of the line shown; with Shift, of the main line (plan A8 V3).
+        let in_variation = !crate::chess_moves_tree::variations_holding(&state.game, state.game.current()).is_empty();
+        if nav(ui, ply < len || in_variation, "chevrons-right", tl!("End (End); with Shift, the end of the main line")) {
+            if ui.input(|i| i.modifiers.shift) {
+                state.game.go_to_main_end();
+            } else {
+                state.game.go_to(usize::MAX);
+            }
             state.selected = None;
         }
         // Variation to variation in reading order (plan HC11).
-        let current = state.game.current();
-        let (back, next) = (state.game.previous_variation(current), state.game.next_variation(current));
+        let (back, next) = state.variation_steps();
         for (to, icon, tip) in [(back, "chevron-up", tl!("Previous variation (Page Up)")), (next, "chevron-down", tl!("Next variation (Page Down)"))]
         {
             let r = ui
@@ -1983,6 +2200,9 @@ pub(crate) fn navigation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) 
             }
         }
     });
+    // The continuations at a fork, and the notice of a variation just made (plan A8 V3).
+    crate::chess_moves_tree::continuations(ui, t, state);
+    crate::chess_moves_tree::created_notice(ui, t, state);
     let (text, colour) = status(state, t);
     ui.label(egui::RichText::new(text).small().color(colour));
     if let Some(m) = &state.message {
@@ -2404,7 +2624,8 @@ mod tests {
     fn columns_pair_the_main_line_and_break_for_the_rest() {
         let (game, _) = Game::from_pgn("1. e4 e5 {A comment.} 2. Nf3 (2. c3 d5) Nc6 3. Bb5 *").unwrap();
         let tokens = game.tokens();
-        let shape: Vec<String> = column_items(&tokens)
+        let refs: Vec<&Token> = tokens.iter().collect();
+        let shape: Vec<String> = column_items(&refs)
             .iter()
             .map(|item| match item {
                 ColItem::Pair { number, white, black } => {
@@ -2419,7 +2640,7 @@ mod tests {
             .collect();
         assert_eq!(shape, ["1:e4:e5", "break(1)", "2:Nf3:-", "break(4)", "2:-:Nc6", "3:Bb5:-"]);
         // Nothing to pair: no row.
-        assert!(column_items(&Game::standard().tokens()).is_empty());
+        assert!(column_items(&[]).is_empty());
     }
 
     /// Plan HC12: each quality chip's sign reads on its fill at 4.5:1, and no two chips share a

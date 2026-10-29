@@ -361,13 +361,18 @@ fn comment_mode_writes_the_text_on_the_current_move() {
 #[test]
 fn a_stale_plan_is_refused() {
     let mut g = main_line_game();
+    let untouched = g.clone();
     let p = plan_at(&g, g.current(), CaptureMode::Auto, "20…Rc7");
     g.set_comment(0, "edited meanwhile");
     let before = g.movetext();
     assert_eq!(p.apply(&mut g, None), Err(CaptureError::Stale));
     assert_eq!(g.movetext(), before);
-    let mut fresh = main_line_game();
-    assert_eq!(p.apply(&mut fresh, Some(7)), Err(CaptureError::NoCandidate));
+    let mut same = untouched.clone();
+    assert_eq!(p.apply(&mut same, Some(7)), Err(CaptureError::NoCandidate));
+    // Another game, even one written the same, is not the one planned on (revisions are unique
+    // across games, plan A8 V3).
+    let mut other = main_line_game();
+    assert_eq!(p.apply(&mut other, None), Err(CaptureError::Stale));
 }
 
 /// Limits: text past the cap reads nothing; a move not in the game is no place.

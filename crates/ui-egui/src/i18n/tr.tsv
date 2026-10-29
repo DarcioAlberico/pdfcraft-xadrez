@@ -3263,6 +3263,15 @@ chess undo step	Clear drawings	çizimleri temizleme
 	More panels	Diğer paneller
 	More room for the page: collapse the tools panel?	Sayfaya daha çok yer: araç paneli daraltılsın mı?
 	Rotate view counterclockwise ({key})	Görünümü saat yönünün tersine döndür ({key})
+	Only the main line	Yalnızca ana hat
+	Variations	Varyantlar
+	Main line	Ana hat
+	Continuations:	Devamlar:
+	Variation created: {move}	Varyant oluşturuldu: {move}
+	Expand this variation	Bu varyantı genişlet
+	Collapse this variation	Bu varyantı daralt
+	— {n} more moves	— {n} hamle daha
+	End of this variation. Shift+End goes to the end of the main line.	Bu varyantın sonu. Shift+End ana hattın sonuna gider.
 	No analysis engine installed	Yüklü bir analiz motoru yok
 	Or set PDFCRAFT_CHESS_ENGINE to the program.	Ya da PDFCRAFT_CHESS_ENGINE değişkenine programı yazın.
 	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	PdfCraft çözümleme için Stockfish (ücretsiz) gibi ayrı bir program kullanır. İndirin ve stockfish.exe dosyasını seçin.
@@ -3272,6 +3281,18 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Analyze	Çözümle
 	Open on the board with the engine analysing it	Tahtada motor çözümlemesiyle aç
 	Stop the analysis	Çözümlemeyi durdur
+	Ask	Sor
+	End (End); with Shift, the end of the main line	Sona (End); Shift ile ana hattın sonuna
+	Follow the line remembered	Hatırlanan hattı izle
+	New main line	Yeni ana hat
+	New variation	Yeni varyant
+	Playing a different move	Farklı bir hamle oynanınca
+	Replace the continuation	Devamını değiştir
+	Start a variation	Varyant oluştur
+	Stepping forward at a fork	Bir çatalda ileri giderken
+	Variation {i} of {n} after {fork}, move {move}	{fork} sonrasında {n} varyanttan {i}. varyant, hamle {move}
+	the start	başlangıç
+	↑ ↓ choose, → or Enter goes in, Esc takes the main line.	↑ ↓ seçer, → veya Enter girer, Esc ana hattı izler.
 	Change to: {piece}	Şununla değiştir: {piece}
 	Empty the square	Kareyi boşalt
 	Restore the automatic reading	Otomatik okumayı geri yükle

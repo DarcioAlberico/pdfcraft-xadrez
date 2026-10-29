@@ -49,6 +49,7 @@ mod chess_figurines;
 mod chess_history;
 mod chess_list;
 mod chess_models;
+mod chess_moves_tree;
 mod chess_ocr_area;
 mod chess_panel_head;
 mod chess_pieces_ui;
@@ -2390,6 +2391,7 @@ impl PdfCraftApp {
         v["chess_comment_focus"] = serde_json::Value::Bool(self.chess.comment_focus);
         v["chess_move_list"] = self.chess.list_look.to_json();
         v["chess_move_preview"] = serde_json::Value::Bool(!self.chess.no_move_preview);
+        v["chess_variations"] = self.chess.variation_rules.to_json();
         // The Diagram tab or the editor in the Diagrams panel, and its main button (plan A8 P3b2).
         v["chess_classic_editor"] = serde_json::Value::Bool(self.chess.classic_editor);
         v["chess_confirm_only"] = serde_json::Value::Bool(self.chess.confirm_only);
@@ -2452,6 +2454,7 @@ impl PdfCraftApp {
         if let Some(on) = v["chess_comment_focus"].as_bool() {
             self.chess.comment_focus = on;
         }
+        self.chess.variation_rules = chess_moves_tree::VariationRules::from_json(&v["chess_variations"]);
         if let Some(on) = v["chess_move_preview"].as_bool() {
             self.chess.no_move_preview = !on;
         }
@@ -2642,6 +2645,9 @@ impl PdfCraftApp {
             }
             (part @ ("move-list-layout" | "move-list-size"), _) => {
                 self.chess.list_look.set(part.trim_start_matches("move-list-"), value)?;
+            }
+            (part @ ("variations-at-fork" | "variations-new-move"), _) => {
+                self.chess.variation_rules.set(part.trim_start_matches("variations-"), value)?;
             }
             ("move-preview", _) => {
                 self.chess.no_move_preview = match value {
@@ -3187,6 +3193,9 @@ impl eframe::App for PdfCraftApp {
         chess_figurines::set_preview(ctx, !self.chess.no_move_preview);
         chess_figurines::set(ctx, self.chess.move_pieces, figurines);
         chess_figurines::set_list_look(ctx, self.chess.list_look);
+        // The board's game follows the variation rules of the preferences (plan A8 V3).
+        let rules = self.chess.variation_rules;
+        self.chess.games.board_mut().rules = rules;
         #[cfg(not(target_arch = "wasm32"))]
         {
             self.window_state.repair(ctx);

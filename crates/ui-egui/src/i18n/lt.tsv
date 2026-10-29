@@ -3518,6 +3518,15 @@ chess undo step	Clear drawings	piešinių valymą
 	More panels	Daugiau skydelių
 	More room for the page: collapse the tools panel?	Daugiau vietos puslapiui: suskleisti įrankių skydelį?
 	Rotate view counterclockwise ({key})	Pasukti rodinį prieš laikrodžio rodyklę ({key})
+	Only the main line	Tik pagrindinė linija
+	Variations	Variantai
+	Main line	Pagrindinė linija
+	Continuations:	Tęsiniai:
+	Variation created: {move}	Sukurtas variantas: {move}
+	Expand this variation	Išskleisti šį variantą
+	Collapse this variation	Suskleisti šį variantą
+	— {n} more moves	— dar {n} ėjimai
+	End of this variation. Shift+End goes to the end of the main line.	Šio varianto pabaiga. Shift+End pereina į pagrindinės linijos pabaigą.
 	No analysis engine installed	Neįdiegtas joks analizės variklis
 	Or set PDFCRAFT_CHESS_ENGINE to the program.	Arba nurodykite programą PDFCRAFT_CHESS_ENGINE.
 	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	Analizei PdfCraft naudoja atskirą programą, pavyzdžiui, Stockfish (nemokama). Atsisiųskite ją ir pasirinkite failą stockfish.exe.
@@ -3527,6 +3536,18 @@ chess undo step	Clear drawings	piešinių valymą
 	Analyze	Analizuoti
 	Open on the board with the engine analysing it	Atverti lentoje, analizuojant varikliu
 	Stop the analysis	Stabdyti analizę
+	Ask	Klausti
+	End (End); with Shift, the end of the main line	Į pabaigą (End); su Shift – pagrindinės linijos pabaiga
+	Follow the line remembered	Sekti įsimintą liniją
+	New main line	Nauja pagrindinė linija
+	New variation	Naujas variantas
+	Playing a different move	Sužaidus kitą ėjimą
+	Replace the continuation	Pakeisti tęsinį
+	Start a variation	Kurti variantą
+	Stepping forward at a fork	Žengiant pirmyn išsišakojime
+	Variation {i} of {n} after {fork}, move {move}	Variantas {i} iš {n} po {fork}, ėjimas {move}
+	the start	pradžios
+	↑ ↓ choose, → or Enter goes in, Esc takes the main line.	↑ ↓ pasirenka, → arba Enter įeina, Esc – pagrindinė linija.
 	Change to: {piece}	Pakeisti į: {piece}
 	Empty the square	Ištuštinti langelį
 	Restore the automatic reading	Atkurti automatinį atpažinimą

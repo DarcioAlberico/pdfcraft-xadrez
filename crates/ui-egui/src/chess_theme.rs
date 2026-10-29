@@ -281,6 +281,20 @@ pub(crate) fn preferences_section(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &
     if ui.add(crate::widgets::checkbox(&mut preview, tl!("A move the pointer rests on shows its position"))).changed() {
         app.chess.no_move_preview = !preview;
     }
+    // Variations (plan A8 V3).
+    use crate::chess_moves_tree::{AtFork, NewMove};
+    let rules = &mut app.chess.variation_rules;
+    ui.horizontal_wrapped(|ui| {
+        ui.label(tl!("Stepping forward at a fork"));
+        crate::widgets::radio_value(ui, &mut rules.at_fork, AtFork::Follow, tl!("Follow the line remembered"));
+        crate::widgets::radio_value(ui, &mut rules.at_fork, AtFork::Ask, tl!("Ask"));
+    });
+    ui.horizontal_wrapped(|ui| {
+        ui.label(tl!("Playing a different move"));
+        crate::widgets::radio_value(ui, &mut rules.new_move, NewMove::Variation, tl!("Start a variation"));
+        crate::widgets::radio_value(ui, &mut rules.new_move, NewMove::Ask, tl!("Ask"));
+        crate::widgets::radio_value(ui, &mut rules.new_move, NewMove::Replace, tl!("Replace the continuation"));
+    });
     // The editor in the Diagrams panel, as before the Diagram tab (plan A8, P3b2; for one version).
     ui.add(crate::widgets::checkbox(&mut app.chess.classic_editor, tl!("Classic diagram editor")))
         .on_hover_text(tl!("Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version."));

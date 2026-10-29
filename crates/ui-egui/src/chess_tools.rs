@@ -635,12 +635,14 @@ enum Nav {
     Down,
     Start,
     End,
+    /// The end of the main line, from anywhere (plan A8 V3).
+    MainEnd,
     /// The first move of the previous or the next variation in reading order (plan HC11).
     PreviousVariation,
     NextVariation,
 }
 
-const NAV_KEYS: [(ChessKey, Nav); 10] = [
+const NAV_KEYS: [(ChessKey, Nav); 11] = [
     (ESC, Nav::Escape),
     (ChessKey::plain(Key::ArrowLeft), Nav::Back),
     // Backspace goes back a move, as it goes back in a browser; it deletes nothing.
@@ -650,6 +652,7 @@ const NAV_KEYS: [(ChessKey, Nav); 10] = [
     (ChessKey::plain(Key::ArrowDown), Nav::Down),
     (ChessKey::plain(Key::Home), Nav::Start),
     (ChessKey::plain(Key::End), Nav::End),
+    (ChessKey::shift(Key::End), Nav::MainEnd),
     (ChessKey::plain(Key::PageUp), Nav::PreviousVariation),
     (ChessKey::plain(Key::PageDown), Nav::NextVariation),
 ];
@@ -1239,6 +1242,23 @@ fn handle_key(ctx: &egui::Context, chess: &mut ChessState, key: Key, m: Modifier
 
 /// Esc, the arrows, Home and End.
 fn navigate(chess: &mut ChessState, nav: Nav) {
+    // A step forward that asked which reply takes the keys first (plan A8 V3).
+    {
+        use crate::chess_moves_tree::{ChooseKey, choose_key};
+        let key = match nav {
+            Nav::Up => Some(ChooseKey::Up),
+            Nav::Down => Some(ChooseKey::Down),
+            Nav::Forward => Some(ChooseKey::Enter),
+            Nav::Escape => Some(ChooseKey::Main),
+            Nav::Back => Some(ChooseKey::Leave),
+            _ => None,
+        };
+        if let Some(key) = key
+            && choose_key(chess.board_mut(), key)
+        {
+            return;
+        }
+    }
     if nav == Nav::Escape {
         // In order: the capture preview closes, then the comment editor and the glyph palette,
         // then an armed tool goes back to Navigate, then the piece picked up (or the pawn waiting
@@ -1270,6 +1290,7 @@ fn navigate(chess: &mut ChessState, nav: Nav) {
         Nav::Forward => board.step(true),
         Nav::Start => board.game.go_to(0),
         Nav::End => board.game.go_to(usize::MAX),
+        Nav::MainEnd => board.game.go_to_main_end(),
         Nav::Up | Nav::Down => {
             if let Some(node) = sibling(&board.game, board.game.current(), nav == Nav::Down) {
                 board.game.go_to_node(node);

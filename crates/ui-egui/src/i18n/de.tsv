@@ -3268,6 +3268,15 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	More panels	Weitere Bereiche
 	More room for the page: collapse the tools panel?	Mehr Platz für die Seite: Werkzeugbereich einklappen?
 	Rotate view counterclockwise ({key})	Ansicht gegen den Uhrzeigersinn drehen ({key})
+	Only the main line	Nur die Hauptvariante
+	Variations	Varianten
+	Main line	Hauptvariante
+	Continuations:	Fortsetzungen:
+	Variation created: {move}	Variante angelegt: {move}
+	Expand this variation	Diese Variante aufklappen
+	Collapse this variation	Diese Variante zuklappen
+	— {n} more moves	— {n} weitere Züge
+	End of this variation. Shift+End goes to the end of the main line.	Ende dieser Variante. Umschalt+Ende springt ans Ende der Hauptvariante.
 	No analysis engine installed	Keine Analyse-Engine installiert
 	Or set PDFCRAFT_CHESS_ENGINE to the program.	Oder setzen Sie PDFCRAFT_CHESS_ENGINE auf das Programm.
 	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	Zum Analysieren nutzt PdfCraft ein eigenes Programm, etwa Stockfish (kostenlos). Laden Sie es herunter und wählen Sie die Datei stockfish.exe.
@@ -3277,6 +3286,18 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	Analyze	Analysieren
 	Open on the board with the engine analysing it	Auf dem Brett öffnen und von der Engine analysieren lassen
 	Stop the analysis	Analyse beenden
+	Ask	Fragen
+	End (End); with Shift, the end of the main line	Ende (Ende); mit Umschalt das Ende der Hauptvariante
+	Follow the line remembered	Der gemerkten Linie folgen
+	New main line	Neue Hauptvariante
+	New variation	Neue Variante
+	Playing a different move	Beim Spielen eines anderen Zugs
+	Replace the continuation	Die Fortsetzung ersetzen
+	Start a variation	Eine Variante anlegen
+	Stepping forward at a fork	Beim Vorgehen an einer Verzweigung
+	Variation {i} of {n} after {fork}, move {move}	Variante {i} von {n} nach {fork}, Zug {move}
+	the start	dem Anfang
+	↑ ↓ choose, → or Enter goes in, Esc takes the main line.	↑ ↓ wählen, → oder Eingabe gehen hinein, Esc nimmt die Hauptvariante.
 	Change to: {piece}	Ändern in: {piece}
 	Empty the square	Feld leeren
 	Restore the automatic reading	Automatische Erkennung wiederherstellen

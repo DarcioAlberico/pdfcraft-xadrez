@@ -3269,6 +3269,15 @@ chess undo step	Clear drawings	描画の消去
 	More panels	その他のパネル
 	More room for the page: collapse the tools panel?	ページの表示領域を広げる: ツールパネルを折りたたみますか?
 	Rotate view counterclockwise ({key})	表示を反時計回りに回転（{key}）
+	Only the main line	本線のみ
+	Variations	変化
+	Main line	本線
+	Continuations:	続き:
+	Variation created: {move}	変化を作成: {move}
+	Expand this variation	この変化を展開
+	Collapse this variation	この変化を折りたたむ
+	— {n} more moves	— ほか {n} 手
+	End of this variation. Shift+End goes to the end of the main line.	この変化の終わりです。Shift+End で本線の最後へ移動します。
 	No analysis engine installed	解析エンジンがインストールされていません
 	Or set PDFCRAFT_CHESS_ENGINE to the program.	または PDFCRAFT_CHESS_ENGINE にプログラムを設定します。
 	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	解析には、Stockfish（無料）などの別のプログラムを使います。ダウンロードして stockfish.exe ファイルを選択してください。
@@ -3278,6 +3287,18 @@ chess undo step	Clear drawings	描画の消去
 	Analyze	解析
 	Open on the board with the engine analysing it	エンジンで解析しながら盤面で開く
 	Stop the analysis	解析を停止
+	Ask	確認する
+	End (End); with Shift, the end of the main line	最後 (End)、Shift で本線の最後
+	Follow the line remembered	覚えている手順をたどる
+	New main line	新しい本線
+	New variation	新しい変化
+	Playing a different move	別の手を指したとき
+	Replace the continuation	続きを置き換える
+	Start a variation	変化を作る
+	Stepping forward at a fork	分岐で進めるとき
+	Variation {i} of {n} after {fork}, move {move}	{fork} の後の変化 {n} 件中 {i} 件目、手 {move}
+	the start	開始局面
+	↑ ↓ choose, → or Enter goes in, Esc takes the main line.	↑ ↓ で選び、→ か Enter で進み、Esc で本線を進みます。
 	Change to: {piece}	変更: {piece}
 	Empty the square	マスを空にする
 	Restore the automatic reading	自動の読み取り結果に戻す
