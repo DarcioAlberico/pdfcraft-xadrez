@@ -931,7 +931,7 @@ fn turn_dot(painter: &egui::Painter, state: &BoardState, board: Rect) {
 /// The board itself within `sizing`'s limits, with its marks, taking clicks and drags. `overlay`
 /// is drawn under the hand-made drawings (the engine's best move).
 pub(crate) fn board_view_sized(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState, pieces: &PieceSet, overlay: &[Mark], sizing: Sizing) {
-    let side = ui.available_width().clamp(160.0, sizing.side_limit());
+    let side = board_side(ui.available_width(), ui.spacing().scroll.allocated_width(), sizing);
     let px = sizing.picture_px(side, ui.ctx().pixels_per_point());
     let Some(tex) = state.texture(ui.ctx(), pieces, px) else {
         if let Some(e) = &state.draw_error {
@@ -1879,8 +1879,7 @@ pub(crate) fn view_controls(ui: &mut egui::Ui, state: &mut BoardState) {
         ui.add_enabled_ui(state.illegal.is_none() && state.game.is_empty(), |ui| {
             let mut side = state.game.side_to_move();
             ui.label(tl!("To move:"));
-            crate::widgets::radio_value(ui, &mut side, Color::White, tl!("White"));
-            crate::widgets::radio_value(ui, &mut side, Color::Black, tl_ctx!("chess side", "Black"));
+            crate::widgets::segmented(ui, &mut side, &[(Color::White, tl!("White")), (Color::Black, tl_ctx!("chess side", "Black"))]);
             if side != state.game.side_to_move() {
                 state.set_first_side(side);
             }
@@ -2139,12 +2138,32 @@ pub(crate) fn sections(ui: &mut egui::Ui, state: &mut BoardState) -> Option<Boar
     action
 }
 
-/// The panel's title, the diagram the board was loaded from as a link to it, and the Move list
-/// beside the page (`beside`: it shows) as a toggle.
-pub(crate) fn title(ui: &mut egui::Ui, t: &Tokens, state: &BoardState, source_label: Option<String>, beside: bool) -> Option<BoardAction> {
+/// The board's side in `available` points of a panel whose scroll bar takes `scroll_bar` (plan A8,
+/// P6, finding X3): what is left of the width once the bar is set aside, up to the sizing's
+/// largest; never wider than the panel, and not below 160 points unless the panel itself is
+/// narrower (then as wide as it is, down to 48).
+pub(crate) fn board_side(available: f32, scroll_bar: f32, sizing: Sizing) -> f32 {
+    let room = if available.is_finite() { available } else { 0.0 } - if scroll_bar.is_finite() { scroll_bar.max(0.0) } else { 0.0 };
+    let room = room.max(48.0);
+    room.min(sizing.side_limit()).max(room.min(160.0))
+}
+
+/// The panel's title (`named`: not when a docking tab above already names it, plan A8 P6), the
+/// diagram the board was loaded from as a link to it, and the Move list beside the page
+/// (`beside`: it shows) as a toggle.
+pub(crate) fn title(
+    ui: &mut egui::Ui,
+    t: &Tokens,
+    state: &BoardState,
+    source_label: Option<String>,
+    beside: bool,
+    named: bool,
+) -> Option<BoardAction> {
     let mut action = None;
     ui.horizontal(|ui| {
-        ui.label(egui::RichText::new(tl!("Chess board")).font(theme::semibold(15.5)));
+        if named {
+            ui.label(egui::RichText::new(tl!("Chess board")).font(theme::semibold(15.5)));
+        }
         if let (Some(label), Some(source)) = (source_label, state.source)
             && ui.link(egui::RichText::new(label).small()).on_hover_text(tl!("Show this diagram on the page")).clicked()
         {
@@ -2177,7 +2196,8 @@ pub(crate) fn title(ui: &mut egui::Ui, t: &Tokens, state: &BoardState, source_la
 /// (with the evaluation bar while the engine analyses), the Analysis section, then
 /// [`moves_column`] in the height left. While the rail's Set up tool is armed the set-up view
 /// takes the place of all but the title. `source_label` names the diagram the board was loaded
-/// from.
+/// from; `named`: the title names the panel (not when a docking tab does).
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn panel_body(
     ui: &mut egui::Ui,
     t: &Tokens,
@@ -2186,9 +2206,10 @@ pub(crate) fn panel_body(
     source_label: Option<String>,
     sizing: Sizing,
     viewport: f32,
+    named: bool,
 ) -> (Option<BoardAction>, Option<crate::chess_collection::GamesAction>) {
     let top = ui.cursor().top();
-    let action = title(ui, t, chess.board(), source_label, chess.moves_beside);
+    let action = title(ui, t, chess.board(), source_label, chess.moves_beside, named);
     ui.add_space(4.0);
     if crate::chess_study_ui::setup_in_place(ui, t, chess, pieces) {
         return (action, None);
@@ -2323,6 +2344,21 @@ fn read_message(report: &PgnReport) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Plan A8, P6 (finding X3): the board leaves the scroll bar its room and is never wider
+    /// than the panel, whatever its width; at least 160 points when the panel has them.
+    #[test]
+    fn the_board_fits_the_panel_beside_its_scroll_bar() {
+        let docked = Sizing::DOCKED;
+        assert_eq!(board_side(400.0, 10.0, docked), 390.0);
+        assert_eq!(board_side(2000.0, 10.0, docked), docked.side_limit());
+        assert_eq!(board_side(150.0, 10.0, docked), 140.0, "a panel narrower than 160 gets a board as wide as it is");
+        assert_eq!(board_side(170.0, 10.0, docked), 160.0);
+        for (width, bar) in [(f32::NAN, 10.0), (f32::INFINITY, 10.0), (-5.0, 10.0), (300.0, f32::NAN), (0.0, 0.0)] {
+            let side = board_side(width, bar, docked);
+            assert!(side.is_finite() && (48.0..=docked.side_limit()).contains(&side), "{width} {bar}: {side}");
+        }
+    }
 
     /// Plan HC9: the main line's moves pair by number; a comment or a variation is a break, and
     /// a Black move after one starts a pair of its own.

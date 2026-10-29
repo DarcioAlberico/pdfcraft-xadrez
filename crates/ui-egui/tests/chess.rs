@@ -2087,9 +2087,12 @@ fn host_key(h: &mut Harness<'static, PdfCraftApp>, modifiers: egui::Modifiers, k
     h.run_steps(2);
 }
 
-/// A click on the Board panel's title: the chess scope goes on, and nothing takes the focus.
+/// A click on a label of the Board panel: the chess scope goes on, and nothing takes the focus.
 fn click_board_title(h: &mut Harness<'static, PdfCraftApp>) {
-    let title = h.get_all_by_label("Chess board").find(|n| n.accesskit_node().role() == egui::accesskit::Role::Label).expect("the panel's title");
+    let title = h
+        .get_all_by_label("To move:")
+        .find(|n| n.accesskit_node().role() == egui::accesskit::Role::Label)
+        .expect("a label of the panel (its title is the docking tab: plan A8, P6)");
     let at = title.rect().center();
     click_at(h, at);
     assert!(h.state().chess.in_scope());
@@ -3402,6 +3405,30 @@ fn confirming_keeps_the_correction_and_it_comes_back_when_reopened() {
     assert_eq!(kind(&h, 1), None);
     assert_eq!(h.state().chess.results.as_ref().unwrap().review_queue(), vec![(0, 1)]);
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Plan A8, P6: docked, the board panel is named by its workspace tab alone; who moves is a
+/// segmented control whose choices are radio buttons; the chess panel's tabs switch as before.
+#[test]
+fn the_panel_board_is_named_once_and_who_moves_is_segmented() {
+    use egui::accesskit::Role;
+    let mut h = harness();
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    // The chess panel's tabs, in the workspace's style, switch as before.
+    h.get_by_label("Text").click();
+    h.run_steps(3);
+    h.get_by_label("Diagrams").click();
+    h.run_steps(3);
+    h.get_by_label_contains("Diagram 1 · ");
+    h.state_mut().show_chess_board();
+    h.run_steps(4);
+    assert_eq!(h.query_all_by_label("Chess board").count(), 1, "the tab names it; the panel does not again");
+    let black = h.query_all_by_role_and_label(Role::RadioButton, "Black").count();
+    assert_eq!(black, 1, "Black is one segment of who moves");
+    h.get_by_role_and_label(Role::RadioButton, "Black").click();
+    h.run_steps(3);
+    assert_eq!(h.state().chess.board().game.side_to_move(), pdfcraft_engine::chess::pdfcraft_chess::placement::Color::Black);
 }
 
 /// Plan A8, P5 (finding X4): in a narrow window the chess panel offers once to collapse the tools

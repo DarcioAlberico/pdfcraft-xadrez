@@ -161,6 +161,93 @@ pub(crate) fn focus_ring(ui: &egui::Ui, resp: &Response, rect: Rect, radius: u8)
     }
 }
 
+/// A segmented control (plan A8, P6, spec §2.1): one button per choice, joined in one frame, the
+/// chosen one filled. Each segment is a radio button for assistive technology, named by its
+/// label, and takes the keyboard in turn. Whether the value changed.
+pub(crate) fn segmented<T: PartialEq + Copy>(ui: &mut egui::Ui, value: &mut T, choices: &[(T, &str)]) -> bool {
+    const HEIGHT: f32 = 24.0;
+    const PAD: f32 = 10.0;
+    let t = Tokens::get(ui.ctx());
+    let font = theme::medium(12.0);
+    let widths: Vec<f32> = choices.iter().map(|(_, label)| text_width(ui, label, &font) + 2.0 * PAD).collect();
+    let total: f32 = widths.iter().sum();
+    let (rect, _) = ui.allocate_exact_size(vec2(total, HEIGHT), Sense::hover());
+    let enabled = ui.is_enabled();
+    let mut changed = false;
+    let mut x = rect.min.x;
+    for (i, ((choice, label), width)) in choices.iter().zip(&widths).enumerate() {
+        let r = Rect::from_min_size(egui::pos2(x, rect.min.y), vec2(*width, HEIGHT));
+        x += width;
+        let resp = ui.interact(r, ui.id().with(("segment", i)), Sense::click());
+        let selected = *value == *choice;
+        resp.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::RadioButton, enabled, selected, *label));
+        let fill = if selected {
+            t.accent_soft
+        } else if resp.hovered() && enabled {
+            t.hover
+        } else {
+            Color32::TRANSPARENT
+        };
+        // The outer corners round, the inner ones meet.
+        let (first, last) = (i == 0, i + 1 == choices.len());
+        let corners =
+            CornerRadius { nw: if first { 6 } else { 0 }, sw: if first { 6 } else { 0 }, ne: if last { 6 } else { 0 }, se: if last { 6 } else { 0 } };
+        ui.painter().rect_filled(r, corners, fill);
+        if !first {
+            ui.painter().vline(r.min.x, r.y_range(), Stroke::new(1.0, t.border));
+        }
+        let ink = if !enabled {
+            t.text_faint
+        } else if selected {
+            t.accent_text
+        } else {
+            t.text
+        };
+        ui.painter().text(r.center(), Align2::CENTER_CENTER, *label, font.clone(), ink);
+        focus_ring(ui, &resp, r, 6);
+        if resp.clicked() && !selected {
+            *value = *choice;
+            changed = true;
+        }
+    }
+    ui.painter().rect_stroke(rect, CornerRadius::same(6), Stroke::new(1.0, t.border), egui::StrokeKind::Inside);
+    changed
+}
+
+/// Tabs drawn as the docking workspace draws its own (plan A8, P6): a strip in the chrome colour,
+/// the chosen tab and the one under the pointer filled, its label in the text colour and the
+/// others muted. Each is a selectable item named by its label. Whether the value changed.
+pub(crate) fn dock_tabs<T: PartialEq + Copy>(ui: &mut egui::Ui, value: &mut T, choices: &[(T, &str)]) -> bool {
+    const HEIGHT: f32 = 26.0;
+    const PAD: f32 = 12.0;
+    let t = Tokens::get(ui.ctx());
+    let font = theme::medium(12.0);
+    let (strip, _) = ui.allocate_exact_size(vec2(ui.available_width(), HEIGHT), Sense::hover());
+    ui.painter().rect_filled(strip, 0.0, t.chrome);
+    ui.painter().hline(strip.x_range(), strip.max.y - 0.5, Stroke::new(1.0, t.divider));
+    let mut changed = false;
+    let mut x = strip.min.x;
+    for (i, (choice, label)) in choices.iter().enumerate() {
+        let width = (text_width(ui, label, &font) + 2.0 * PAD).min((strip.max.x - x).max(0.0));
+        let r = Rect::from_min_size(egui::pos2(x, strip.min.y), vec2(width, HEIGHT));
+        x += width;
+        let resp = ui.interact(r, ui.id().with(("dock-tab", i)), Sense::click());
+        let selected = *value == *choice;
+        resp.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, true, selected, *label));
+        if selected || resp.hovered() {
+            ui.painter().rect_filled(r, 0.0, t.selected);
+        }
+        let ink = if selected { t.text } else { t.text_muted };
+        ui.painter().with_clip_rect(r).text(r.center(), Align2::CENTER_CENTER, *label, font.clone(), ink);
+        focus_ring(ui, &resp, r, 0);
+        if resp.clicked() && !selected {
+            *value = *choice;
+            changed = true;
+        }
+    }
+    changed
+}
+
 /// Icon + label, transparent until hovered.
 pub fn ghost_button(ui: &mut egui::Ui, icon: &str, label: &str) -> Response {
     ghost_button_sized(ui, icon, label, 30.0)

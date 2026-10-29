@@ -151,7 +151,10 @@ fn click_at(h: &mut Harness<'static, PdfCraftApp>, at: Pos2) {
 
 /// A click on the Board panel's title: the chess key scope goes on, and nothing has the focus.
 fn click_board_title(h: &mut Harness<'static, PdfCraftApp>) {
-    let title = h.get_all_by_label("Chess board").find(|n| n.accesskit_node().role() == Role::Label).expect("the panel's title");
+    let title = h
+        .get_all_by_label("To move:")
+        .find(|n| n.accesskit_node().role() == Role::Label)
+        .expect("a label of the panel (its title is the docking tab: plan A8, P6)");
     let at = title.rect().center();
     click_at(h, at);
     assert!(h.state().chess.in_scope());
