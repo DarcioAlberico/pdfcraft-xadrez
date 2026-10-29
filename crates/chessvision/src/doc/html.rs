@@ -25,10 +25,10 @@ use crate::text_font::{self, FontRole, TextFont};
 use std::fmt::Write as _;
 
 use pdfcraft_chess::describe;
-use pdfcraft_chess::draw::{BoardStyle, PieceSet, board};
+use pdfcraft_chess::draw::{BoardStyle, PieceSet};
 use pdfcraft_chess::origin::PgnOrigin;
 use pdfcraft_chess::san::{FigurineSet, Lang, San, Style};
-use pdfcraft_chess::svg::to_svg_described;
+use pdfcraft_chess::svg::{UsedPieces, board_described, symbols};
 
 use super::{Block, ChessDoc, ChessPage, DiagramBlock, Inline, MoveInline, MoveStatus};
 
@@ -334,7 +334,9 @@ pub fn plain_text_with(inlines: &[Inline], figurines: Figurines) -> String {
     out
 }
 
-fn diagram_html(d: &DiagramBlock, page: &ChessPage, o: &HtmlOptions<'_>) -> String {
+/// One diagram as a `<figure>`; its board's pieces are `<use>`s of the document's symbols, and
+/// `used` gains them.
+fn diagram_html(d: &DiagramBlock, page: &ChessPage, o: &HtmlOptions<'_>, used: &mut UsedPieces) -> String {
     let review = if d.review.is_empty() && d.reading.as_ref().is_some_and(|r| r.accepted) { "" } else { " review" };
     let number = d.number.saturating_add(1);
     let id = format!("p{}-d{number}", u64::from(page.index) + 1);
@@ -352,7 +354,7 @@ fn diagram_html(d: &DiagramBlock, page: &ChessPage, o: &HtmlOptions<'_>) -> Stri
     let body = match (o.diagrams, pdfcraft_chess::fen::parse(&reading.fen)) {
         (DiagramMode::Svg, Ok(parsed)) => {
             let title = describe::title(number, &label, parsed.side_to_move, lang);
-            to_svg_described(&board(&parsed.placement, o.pieces, &o.style), &id, &title, &describe::pieces(&parsed.placement, lang))
+            board_described(&parsed.placement, o.pieces, &o.style, used, &id, &title, &describe::pieces(&parsed.placement, lang))
         }
         _ => format!("<code>{fen}</code>"),
     };
@@ -423,7 +425,8 @@ pub fn heading_id(index: u32, k: usize) -> String {
 
 /// One page as a `<section>`; with `pagebreak`, it starts with the EPUB page break that names
 /// the page as the book numbers it (`id="pagebreak"`, the target of the package's page list).
-fn page_section(page: &ChessPage, o: &HtmlOptions<'_>, pagebreak: bool) -> String {
+/// `used` gains the pieces its boards place.
+fn page_section(page: &ChessPage, o: &HtmlOptions<'_>, pagebreak: bool, used: &mut UsedPieces) -> String {
     let mut s = String::new();
     let _ = writeln!(s, "<section class=\"page\" data-page=\"{}\">", u64::from(page.index) + 1);
     if pagebreak {
@@ -441,7 +444,7 @@ fn page_section(page: &ChessPage, o: &HtmlOptions<'_>, pagebreak: bool) -> Strin
             Block::Paragraph { inlines, .. } => {
                 let _ = writeln!(s, "<p>{}</p>", inlines_html(inlines, o));
             }
-            Block::Diagram(d) => s.push_str(&diagram_html(d, page, o)),
+            Block::Diagram(d) => s.push_str(&diagram_html(d, page, o, used)),
         }
     }
     s.push_str("</section>\n");
@@ -459,9 +462,14 @@ pub fn write(doc: &ChessDoc, o: &HtmlOptions<'_>) -> String {
         esc(o.title),
         style(o.text_font.zip(fig_src.as_deref()), o.sign_font.zip(sign_src.as_deref()), o.review_marks),
     );
-    for page in &doc.pages {
-        s.push_str(&page_section(page, o, false));
+    // Each piece is drawn once, before the boards that place it (plan A8 P9b).
+    let mut used = UsedPieces::default();
+    let pages: String = doc.pages.iter().map(|page| page_section(page, o, false, &mut used)).collect();
+    let defs = symbols(o.pieces, &used);
+    if !defs.is_empty() {
+        let _ = writeln!(s, "{defs}");
     }
+    s.push_str(&pages);
     s.push_str("</body>\n</html>\n");
     s
 }
@@ -478,13 +486,17 @@ pub fn epub_css(o: &HtmlOptions<'_>) -> String {
 
 /// One page as a standalone XHTML document (an EPUB 3 content document): well-formed XML, the
 /// same markup as [`write`] inside, starting with the page break that names the page, and the
-/// package's stylesheet ([`EPUB_CSS`]). `lang` is the book's language tag.
+/// package's stylesheet ([`EPUB_CSS`]). `lang` is the book's language tag. The pieces its boards
+/// use are drawn once in the page, as in [`write`].
 pub fn xhtml_page(page: &ChessPage, o: &HtmlOptions<'_>, lang: &str) -> String {
+    let mut used = UsedPieces::default();
+    let section = page_section(page, o, true, &mut used);
+    let defs = symbols(o.pieces, &used);
+    let defs = if defs.is_empty() { defs } else { format!("{defs}\n") };
     format!(
-        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE html>\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:epub=\"http://www.idpf.org/2007/ops\" lang=\"{l}\" xml:lang=\"{l}\">\n<head>\n<meta charset=\"utf-8\"/>\n<title>{t}</title>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"{EPUB_CSS}\"/>\n</head>\n<body>\n{body}</body>\n</html>\n",
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE html>\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:epub=\"http://www.idpf.org/2007/ops\" lang=\"{l}\" xml:lang=\"{l}\">\n<head>\n<meta charset=\"utf-8\"/>\n<title>{t}</title>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"{EPUB_CSS}\"/>\n</head>\n<body>\n{defs}{section}</body>\n</html>\n",
         l = esc(lang),
         t = esc(o.title),
-        body = page_section(page, o, true),
     )
 }
 

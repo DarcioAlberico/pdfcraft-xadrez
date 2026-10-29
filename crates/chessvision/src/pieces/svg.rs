@@ -340,4 +340,52 @@ mod tests {
         assert!(glyph_from_svg(b"<svg").is_err());
         assert!(glyph_from_svg(b"not svg").is_err());
     }
+
+    /// A board whose pieces are `<use>`s of one `<symbol>` each (plan A8 P9b) draws the same paths
+    /// as the board drawn in full, with every shipped set, flipped and with coordinates.
+    #[test]
+    fn symbols_draw_what_the_full_board_draws() {
+        use pdfcraft_chess::draw::{BoardStyle, board};
+        use pdfcraft_chess::svg::{UsedPieces, board_described, symbols, to_svg};
+        let placement = pdfcraft_chess::fen::parse_placement("r1bqk2r/pp2bppp/2n1pn2/3p4/2PP4/2N2N2/PP2BPPP/R2QKB1R").unwrap();
+        for set in crate::pieces::bundled::SETS {
+            let pieces = set.load().unwrap();
+            for style in [BoardStyle::default(), BoardStyle { coordinates: true, flipped: true, hatched: true, ..BoardStyle::default() }] {
+                let full = glyph_from_svg(to_svg(&board(&placement, &pieces, &style), "full").as_bytes()).unwrap();
+                let mut used = UsedPieces::default();
+                let svg = board_described(&placement, &pieces, &style, &mut used, "d", "t", "d");
+                let defs = symbols(&pieces, &used);
+                let (start, end) = (defs.find("<defs>").unwrap(), defs.rfind("</defs>").unwrap() + "</defs>".len());
+                let one = svg.replacen("<title", &format!("{}<title", &defs[start..end]), 1);
+                assert_eq!(one.matches("<use ").count(), placement.pieces().count());
+                let drawn = glyph_from_svg(one.as_bytes()).unwrap();
+                assert_eq!(drawn.layers.len(), full.layers.len(), "{}", set.id);
+                for (a, b) in drawn.layers.iter().zip(&full.layers) {
+                    match (a.paint, b.paint) {
+                        (Paint::Fill { color: ca, even_odd: ea }, Paint::Fill { color: cb, even_odd: eb }) => assert_eq!((ca, ea), (cb, eb)),
+                        (Paint::Stroke { color: ca, width: wa }, Paint::Stroke { color: cb, width: wb }) => {
+                            assert_eq!(ca, cb);
+                            assert!((wa - wb).abs() < 2e-4, "{}: width {wa} against {wb}", set.id);
+                        }
+                        (pa, pb) => panic!("{}: {pa:?} against {pb:?}", set.id),
+                    }
+                    let points = |l: &Layer| -> Vec<(f32, f32)> {
+                        l.subpaths
+                            .iter()
+                            .flat_map(|p| {
+                                std::iter::once(p.start).chain(p.segments.iter().map(|s| match *s {
+                                    Segment::Line(x, y) | Segment::Cubic(_, _, _, _, x, y) => (x, y),
+                                }))
+                            })
+                            .collect()
+                    };
+                    let (pa, pb) = (points(a), points(b));
+                    assert_eq!(pa.len(), pb.len(), "{}", set.id);
+                    for (p, q) in pa.iter().zip(&pb) {
+                        assert!((p.0 - q.0).abs() < 2e-4 && (p.1 - q.1).abs() < 2e-4, "{}: {p:?} against {q:?}", set.id);
+                    }
+                }
+            }
+        }
+    }
 }

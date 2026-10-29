@@ -55,7 +55,12 @@ fn the_html_reads_back_as_the_document() {
     assert_eq!(fens, vec![SCHOLAR.to_owned()]);
     let figure_fens: Vec<String> = html.split("<figure").skip(1).flat_map(|f| attrs(&format!(" {f}"), "data-fen").into_iter().take(1)).collect();
     assert_eq!(figure_fens, fens);
-    assert_eq!(html.matches("<svg").count(), 1);
+    // The board, and before it each of its pieces drawn once, placed on it with `<use>` (plan A8
+    // P9b).
+    assert_eq!(html.matches("<svg").count(), 2);
+    assert_eq!(html.matches("<symbol ").count(), 12);
+    assert_eq!(html.matches("<use href=\"#pc-").count(), 32);
+    assert!(html.find("<symbol ").unwrap() < html.find("<figure").unwrap());
     // The board is said in words, its name and description joined to it (plan A8 P9b).
     assert!(html.contains(r#"role="img" aria-labelledby="p1-d1-t p1-d1-d"><title id="p1-d1-t">Diagram 1, page 1: White to move</title><desc id="p1-d1-d">White: Ke1, Qd1"#), "{html}");
     assert!(html.contains("<figcaption>Page 1 · diagram 1 · <a href=\"https://lichess.org/analysis/"), "the PGN's comment, then the link: {html}");
@@ -244,4 +249,22 @@ fn the_sign_font_draws_the_annotation_glyphs_it_has() {
     // Without the sign font, ± is written as itself.
     let plain = write(&doc, &options(&pieces));
     assert!(plain.contains(">±</span>") && !plain.contains("nag sign"));
+}
+
+/// Plan A8 §2.4: the HTML of a book with 548 diagrams stays within 15 MB with every piece set
+/// PdfCraft ships, each piece drawn once (`<symbol>`/`<use>`) instead of on every board. Before
+/// that, Fantasy reached 82 MB. The sizes are printed to record them.
+#[test]
+fn five_hundred_and_forty_eight_diagrams_stay_within_fifteen_megabytes() {
+    let page = showcase_doc().pages.remove(0);
+    let doc = ChessDoc { pages: (0..548).map(|i| ChessPage { index: i, ..page.clone() }).collect(), ..showcase_doc() };
+    let mut sizes = vec![("geometric", write(&doc, &options(&PieceSet::geometric())).len())];
+    for set in crate::pieces::bundled::SETS {
+        let pieces = set.load().unwrap();
+        sizes.push((set.id, write(&doc, &options(&pieces)).len()));
+    }
+    eprintln!("{sizes:?}");
+    for (id, len) in sizes {
+        assert!(len <= 15_000_000, "{id}: {len} bytes");
+    }
 }

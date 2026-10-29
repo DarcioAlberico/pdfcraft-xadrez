@@ -78,13 +78,8 @@ pub struct PieceSet {
 
 impl PieceSet {
     pub fn glyph(&self, piece: Piece) -> &PieceGlyph {
-        let kind = PieceKind::ALL.iter().position(|k| *k == piece.kind).unwrap_or(0);
-        let index = match piece.color {
-            Color::White => kind,
-            Color::Black => kind + 6,
-        };
-        // `index < 12` by construction; the fallback only keeps the lookup total.
-        self.glyphs.get(index).unwrap_or(&EMPTY_GLYPH)
+        // `glyph_index` is below 12 by construction; the fallback only keeps the lookup total.
+        self.glyphs.get(glyph_index(piece)).unwrap_or(&EMPTY_GLYPH)
     }
 
     /// A plain set drawn in code from polygons: white pieces filled white with a black outline,
@@ -96,6 +91,16 @@ impl PieceSet {
             geometric_glyph(kind, color)
         });
         PieceSet { glyphs, name: "geometric".to_owned() }
+    }
+}
+
+/// Where `piece` sits in [`PieceSet::glyphs`]: White pawn, knight, bishop, rook, queen, king, then
+/// Black's, so always below 12.
+pub fn glyph_index(piece: Piece) -> usize {
+    let kind = PieceKind::ALL.iter().position(|k| *k == piece.kind).unwrap_or(0);
+    match piece.color {
+        Color::White => kind,
+        Color::Black => kind + 6,
     }
 }
 
@@ -371,11 +376,7 @@ pub fn board(placement: &Placement, pieces: &PieceSet, style: &BoardStyle) -> Dr
     }
     layers.push(Layer { subpaths: vec![rect(origin, origin, board_size, board_size)], paint: Paint::Fill { color: style.light, even_odd: false } });
 
-    // Screen position of a square: column and row from the top left, as seen.
-    let cell = |sq: Square| {
-        let (file, rank) = (f32::from(sq.file()), f32::from(sq.rank()));
-        if style.flipped { (7.0 - file, rank) } else { (file, 7.0 - rank) }
-    };
+    let cell = |sq: Square| cell(sq, style.flipped);
     let dark: Vec<Subpath> = (0..64)
         .filter_map(Square::from_index)
         .filter(|sq| !sq.is_light())
@@ -387,15 +388,13 @@ pub fn board(placement: &Placement, pieces: &PieceSet, style: &BoardStyle) -> Dr
     let dark = if style.hatched { dark.iter().flat_map(|sq| hatch(sq, s)).collect() } else { dark };
     layers.push(Layer { subpaths: dark, paint: Paint::Fill { color: style.dark, even_odd: false } });
 
-    for (sq, piece) in placement.pieces() {
-        let (col, row) = cell(sq);
-        let (dx, dy) = (origin + col * s, origin + row * s);
-        for layer in &pieces.glyph(piece).layers {
+    for spot in piece_spots(placement, style) {
+        for layer in &pieces.glyph(spot.piece).layers {
             let paint = match layer.paint {
                 Paint::Stroke { color, width } => Paint::Stroke { color, width: width * s },
                 fill => fill,
             };
-            let subpaths = layer.subpaths.iter().map(|p| place(p, dx, dy, s)).collect();
+            let subpaths = layer.subpaths.iter().map(|p| place(p, spot.x, spot.y, s)).collect();
             layers.push(Layer { subpaths, paint });
         }
     }
@@ -412,6 +411,35 @@ pub fn board(placement: &Placement, pieces: &PieceSet, style: &BoardStyle) -> Dr
         }
     }
     Drawing { width: total, height: total, layers, labels }
+}
+
+/// Screen position of a square: column and row from the top left, as seen.
+fn cell(sq: Square, flipped: bool) -> (f32, f32) {
+    let (file, rank) = (f32::from(sq.file()), f32::from(sq.rank()));
+    if flipped { (7.0 - file, rank) } else { (file, 7.0 - rank) }
+}
+
+/// Where a piece goes on a board [`board`] draws: the top left corner of its square and the
+/// square's width, in drawing units.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct PieceSpot {
+    pub piece: Piece,
+    pub x: f32,
+    pub y: f32,
+    pub size: f32,
+}
+
+/// The squares [`board`] draws `placement`'s pieces in, in its painting order. The SVG writer
+/// uses them to place each piece's one drawing with `<use>` (plan A8 P9b) instead of repeating it.
+pub fn piece_spots(placement: &Placement, style: &BoardStyle) -> Vec<PieceSpot> {
+    let (s, origin) = geometry(style);
+    placement
+        .pieces()
+        .map(|(sq, piece)| {
+            let (col, row) = cell(sq, style.flipped);
+            PieceSpot { piece, x: origin + col * s, y: origin + row * s, size: s }
+        })
+        .collect()
 }
 
 /// A unit-square subpath scaled by `s` and moved to `(dx, dy)`.
