@@ -23,11 +23,13 @@ mod drawing;
 mod graft;
 mod header;
 mod line;
+mod split;
 mod structure;
 
 pub use drawing::{DrawColor, Drawing, MAX_DRAWINGS, drawing_commands, split_drawings};
 pub use graft::{GraftMode, GraftReport, GraftStop, GraftStopReason, MAX_LEFTOVER_LEN};
 pub use header::GameHeader;
+pub use split::split_pgn;
 pub use structure::{NodePath, NodeSource, Shift, StructureError};
 
 /// Most moves a game holds, variations included. Real annotated games are under 3,000.

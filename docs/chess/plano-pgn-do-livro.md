@@ -1,6 +1,6 @@
 # Plano de implantação — Carregar PGN do livro · v1
 
-**Status:** v1 · 2026-10-29 · R0 feito (#229); R1–R7 a fazer.
+**Status:** v2 · 2026-10-29 · R0 (#229) e R1 feitos; R2–R7 a fazer.
 **Origem:** pedido do usuário em 2026-10-29: "quando temos o PDF digital e o PGN dele, daria pra implementar uma função carregar PGN para aproveitar esse PGN?". Analisamos o par em `C:\Users\AMD\Documents\PDFCraft_Arquivos\PDF e PGN`: *Beat the French Defence with 3.Nc3* (Harikrishna; 748 páginas, gerado pelo calibre a partir de um curso Chessable) e o PGN do curso (120 partidas, "Chapter N / Game M").
 **Repositório:** `DarcioAlberico/pdfcraft-xadrez`. Crates: `chess` (L0), `chessvision`, `engine` (L6), `automation`, `ui-egui`.
 **Público de cada passo:** uma sessão de agente que começa do zero. Cada passo traz o contexto, as tarefas, a verificação e o critério de saída.
@@ -160,7 +160,19 @@ R3 e R4 podem correr em paralelo depois de R2. R6 só começa depois de R5.
 ### 3.3 Estado (2026-10-29)
 
 - R0: feito (#229).
-- R1–R7: a fazer.
+- R1: feito (`chessvision::doc::reference`; `examples/reference_bench.rs` mede um livro). No livro da §1.2:
+  - 1.000 dos 1.036 lances válidos confirmados, nenhum perdido; 24 em conflito e 12 ausentes.
+  - 132 dos 223 lances não jogados resolvidos: 118 recuperados e 14 confirmados (legendas lidas como lance).
+  - 73 de 73 diagramas ligados a um nó; 54 páginas com partida; 2 rodadas.
+  - Índice em 106 ms (120 partidas, 12.691 lances, 10.916 posições), alinhamento em 2,5 ms (release).
+- R1, o que mudou em relação ao texto do passo:
+  - **O número impresso ordena, não filtra.** Um PGN que começa de um FEN com `0 1` numeraria errado, e o lance se perderia. O lado impresso continua filtrando.
+  - **Ordem dos candidatos:** número igual, depois a partida da página, depois a âncora mais recente; entre transposições, o nó da própria âncora, depois o primeiro do PGN.
+  - **Não sobra empate para ficar `absent`:** uma âncora dá no máximo uma posição para um SAN, então duas âncoras nunca empatam. O que sobra é escolher entre partidas que passam pela mesma posição (transposição), e a regra acima decide.
+  - **Legenda:** o primeiro lance depois de um diagrama cujo nó tem as peças do diagrama é `confirmed`, qualquer que seja o status do leitor.
+  - **Títulos ficam de fora:** um lance em título nomeia uma linha e não a joga.
+  - **O corte do PGN em partidas** (`split_pgn`) passou de `engine::chess::collection` para `chess::game`; `collection` o reexporta.
+- R2–R7: a fazer.
 
 ## 4. Decisões do usuário
 
@@ -178,3 +190,4 @@ R3 e R4 podem correr em paralelo depois de R2. R6 só começa depois de R5.
 ## 9. Revisões
 
 - **v1 (2026-10-29):** primeira versão, a partir da análise da §1 e da correção R0 (#229).
+- **v2 (2026-10-29):** R1 feito; a §3.3 traz as medidas e o que mudou em relação ao passo.
