@@ -112,9 +112,11 @@ impl<'a> Type3<'a> {
                     // see `Encoding::text_alias`.
                     .or_else(|| self.encoding.text_alias(code))
                     .or_else(|| self.encoding.map_code(code));
-                name.and_then(crate::font::glyph_name_to_unicode)
-                    .or_else(|| (0x20..0x7f).contains(&code).then_some(code as char))
-                    .map(BfString::Char)
+                name.and_then(crate::font::glyph_name_to_text).or_else(|| {
+                    (0x20..0x7f)
+                        .contains(&code)
+                        .then_some(BfString::Char(code as char))
+                })
             })
     }
 

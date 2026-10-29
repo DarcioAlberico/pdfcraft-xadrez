@@ -2,7 +2,7 @@ use crate::font::blob::{CffFontBlob, OpenTypeFontBlob};
 use crate::font::generated::{glyph_names, mac_os_roman, mac_roman, standard, win_ansi};
 use crate::font::standard_font::StandardKind;
 use crate::font::{
-    Encoding, FallbackFontQuery, FontFlags, glyph_name_to_unicode, read_to_unicode,
+    Encoding, FallbackFontQuery, FontFlags, glyph_name_to_text, read_to_unicode,
     strip_subset_prefix, unicode_from_name,
 };
 use crate::util::OptionLog;
@@ -192,9 +192,8 @@ impl TrueTypeFont {
         match &self.kind {
             Kind::Embedded(e) => e
                 .code_to_unicode_name(code as u8)
-                .and_then(glyph_name_to_unicode)
-                .map(BfString::Char),
-            Kind::Standard(s) => s.char_code_to_unicode(code as u8).map(BfString::Char),
+                .and_then(glyph_name_to_text),
+            Kind::Standard(s) => s.char_code_to_unicode(code as u8),
         }
 
         // TODO: The test PDFs below fail (but mutool can render them correctly).
