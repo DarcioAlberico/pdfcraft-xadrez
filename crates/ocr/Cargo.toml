@@ -14,9 +14,9 @@ workspace = true
 pdfcraft-cos = { workspace = true }
 pdfcraft-fonts = { workspace = true }
 # Character map and advances of the text layer's face; already in the tree through pdfcraft-fonts.
-skrifa = "0.44"
+skrifa = "0.47"
 ocrs = { version = "0.13.1", default-features = false, features = ["rten"] }
-rten = { version = "0.26.0", default-features = false, features = ["rten_format"] }
+rten = { version = "0.27.0", default-features = false, features = ["rten_format"] }
 thiserror.workspace = true
 
 [dev-dependencies]
