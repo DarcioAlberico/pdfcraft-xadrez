@@ -258,8 +258,7 @@ fn fields(ui: &mut egui::Ui, ed: &mut DiagramEditor) {
     ui.horizontal(|ui| {
         let mut side = ed.position.side_to_move.unwrap_or(Color::White);
         row_label(ui, tl!("To move:"));
-        ui.selectable_value(&mut side, Color::White, tl!("White"));
-        ui.selectable_value(&mut side, Color::Black, tl_ctx!("chess side", "Black"));
+        widgets::segmented(ui, &mut side, &[(Color::White, tl!("White")), (Color::Black, tl_ctx!("chess side", "Black"))]);
         ed.position.side_to_move = Some(side);
     });
     ui.horizontal(|ui| {

@@ -836,9 +836,15 @@ fn contents(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                     asked.dock = ui.button(tl!("Dock")).on_hover_text(tl!("Put the board and the chess panel back in the main window")).clicked();
                     if !wide {
                         ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
-                            ui.selectable_value(&mut tab, ChessWindowTab::Board, tl!("Board"));
-                            ui.selectable_value(&mut tab, ChessWindowTab::Diagrams, tl!("Diagrams"));
-                            ui.selectable_value(&mut tab, ChessWindowTab::Text, tl!("Text"));
+                            crate::widgets::dock_tabs(
+                                ui,
+                                &mut tab,
+                                &[
+                                    (ChessWindowTab::Board, tl!("Board")),
+                                    (ChessWindowTab::Diagrams, tl!("Diagrams")),
+                                    (ChessWindowTab::Text, tl!("Text")),
+                                ],
+                            );
                         });
                     }
                 });
@@ -915,7 +921,7 @@ fn board_column(
         // The notation takes the height the scroll area shows and the rest leaves.
         let viewport = ui.available_height();
         egui::ScrollArea::vertical().id_salt("chess-window-panel").auto_shrink([false, false]).show(ui, |ui| {
-            (asked.board, asked.games) = chess_board_ui::panel_body(ui, t, chess, pieces, source_label, sizing, viewport);
+            (asked.board, asked.games) = chess_board_ui::panel_body(ui, t, chess, pieces, source_label, sizing, viewport, true);
         });
         return;
     }
@@ -924,7 +930,7 @@ fn board_column(
     ui.horizontal_top(|ui| {
         ui.allocate_ui_with_layout(vec2(side, ui.available_height()), egui::Layout::top_down(egui::Align::Min), |ui| {
             ui.set_width(side);
-            asked.board = chess_board_ui::title(ui, t, chess.board(), source_label, chess.moves_beside);
+            asked.board = chess_board_ui::title(ui, t, chess.board(), source_label, chess.moves_beside, true);
             ui.add_space(4.0);
             if chess.tools.tool == crate::chess_tools::PgnTool::Setup {
                 // The set-up view is taller than the board's controls: it scrolls.

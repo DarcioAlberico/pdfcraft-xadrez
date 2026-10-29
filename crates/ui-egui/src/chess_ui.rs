@@ -554,10 +554,8 @@ pub(crate) fn panel(
     if crate::chess_history::pressed_in(ui) {
         state.enter_scope();
     }
-    ui.horizontal(|ui| {
-        ui.selectable_value(&mut state.tab, ChessTab::Diagrams, tl!("Diagrams"));
-        ui.selectable_value(&mut state.tab, ChessTab::Text, tl!("Text"));
-    });
+    // In the docking workspace's own tab style (plan A8, P6).
+    crate::widgets::dock_tabs(ui, &mut state.tab, &[(ChessTab::Diagrams, tl!("Diagrams")), (ChessTab::Text, tl!("Text"))]);
     ui.add_space(4.0);
     if in_window {
         return in_window_note(ui, t);
@@ -1461,6 +1459,8 @@ pub(crate) fn board_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     }
     let pieces = app.chess.role_pieces(Role::Board);
     let source_label = board_source_label(app);
+    // Docked, the workspace's tab names the panel already (plan A8, P6).
+    let named = app.mode == crate::Mode::Read;
     let mut action = None;
     let mut games = None;
     let mut paste = None;
@@ -1473,8 +1473,16 @@ pub(crate) fn board_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                 // The notation takes the height the scroll area shows and the rest leaves.
                 let viewport = ui.available_height();
                 egui::ScrollArea::vertical().id_salt("chess-board-panel").auto_shrink([false, false]).show(ui, |ui| {
-                    (action, games) =
-                        crate::chess_board_ui::panel_body(ui, &t, chess, &pieces, source_label, crate::chess_board_ui::Sizing::DOCKED, viewport);
+                    (action, games) = crate::chess_board_ui::panel_body(
+                        ui,
+                        &t,
+                        chess,
+                        &pieces,
+                        source_label,
+                        crate::chess_board_ui::Sizing::DOCKED,
+                        viewport,
+                        named,
+                    );
                 });
             });
         });
