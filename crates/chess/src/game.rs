@@ -570,12 +570,17 @@ impl Game {
 
     /// Play a move written in SAN (English letters, or as books print it) at the move shown. A
     /// null move (`--`, or `Z0` and `0000` as some programs write it) is played as
-    /// [`Game::play_null`] plays it.
+    /// [`Game::play_null`] plays it. Castling is taken in any spelling [`San::read`] takes
+    /// (`0-0-0`, as many programs write it in PGN, or `o-o`); other moves must be canonical.
     pub fn play_san(&mut self, text: &str) -> Result<(), GameError> {
-        if San::read(text, Lang::En).is_ok_and(|san| san.body == SanBody::Null) {
+        let read = San::read(text, Lang::En);
+        if read.as_ref().is_ok_and(|san| san.body == SanBody::Null) {
             return self.play_null();
         }
-        let san = San::parse(text).map_err(|_| GameError::IllegalMove)?;
+        let san = match read {
+            Ok(san) if matches!(san.body, SanBody::Castle(_)) => san,
+            _ => San::parse(text).map_err(|_| GameError::IllegalMove)?,
+        };
         let mv = san.to_move(self.board()).map_err(|_| GameError::IllegalMove)?;
         self.push(mv)
     }
@@ -1852,6 +1857,22 @@ mod tests {
         assert_eq!(again.movetext(), g.movetext());
         assert_eq!(again.start_fen(), g.start_fen());
         assert_eq!(again.tags(), g.tags());
+    }
+
+    #[test]
+    fn castling_written_with_zeros_is_read() {
+        // As a book's companion PGN writes it (a Chessable export): 83 of its 120 games stopped
+        // at the first `0-0`.
+        let text = "[FEN \"r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1\"]\n\n1.0-0 0-0-0 ( 1...o-o 2.a3 ) 2.a3 *";
+        let (g, stopped) = Game::from_pgn(text).unwrap();
+        assert_eq!(stopped, None);
+        assert_eq!(g.movetext(), "1. O-O O-O-O (1... O-O 2. a3) 2. a3");
+        let mut g = Game::from_fen("3k4/8/8/8/8/8/8/R3K3 w Q - 0 1").unwrap();
+        g.play_san("0-0-0+").unwrap();
+        assert_eq!(g.movetext(), "1. O-O-O+");
+        let mut g = Game::standard();
+        assert_eq!(g.play_san("0-0"), Err(GameError::IllegalMove), "read, but not legal here");
+        assert_eq!(g.play_san("nf3"), Err(GameError::IllegalMove), "other moves stay canonical");
     }
 
     #[test]
