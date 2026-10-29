@@ -1084,6 +1084,21 @@ fn optional_ending(rest: &str) -> Option<usize> {
     (rest.get(len..)?.starts_with(')')).then_some(len.saturating_add(1))
 }
 
+/// The smileys an annotator writes in prose (`it usually works! :)`), whose bracket opens or closes
+/// no variation.
+const EMOTICONS: [&str; 6] = [":-)", ":-(", ";-)", ":)", ":(", ";)"];
+
+/// The bytes of the smiley `rest` starts with ([`EMOTICONS`]), when it stands as a word of its
+/// own: `before` (the text before it) is empty or ends in a space, and the smiley is followed by
+/// the end, a space or a sign, not by more of a word.
+fn emoticon(before: &str, rest: &str) -> Option<usize> {
+    if before.chars().next_back().is_some_and(|c| !c.is_whitespace()) {
+        return None;
+    }
+    let smiley = EMOTICONS.iter().find(|e| rest.starts_with(**e))?;
+    rest.get(smiley.len()..)?.chars().next().is_none_or(|c| !c.is_alphanumeric()).then_some(smiley.len())
+}
+
 /// Whether `text` (the text before a `)`) ends in a label: one letter `a` to `h` alone.
 fn is_label(text: &str) -> bool {
     let mut rev = text.chars().rev();
@@ -1798,6 +1813,13 @@ impl Walker {
                 continue;
             }
             let after = i.saturating_add(ch.len_utf8());
+            // A smiley is prose: its bracket is no variation's, and its `;` separates nothing.
+            if matches!(ch, ':' | ';')
+                && let Some(len) = text.get(i..).and_then(|rest| emoticon(text.get(..i).unwrap_or_default(), rest))
+            {
+                skip_to = i.saturating_add(len);
+                continue;
+            }
             // A bracket between two small letters is part of a word, not of the notation: an
             // OCR's reading of a broken letter (`m(nre` for `move`, `ourc)d` for `oured`), or a
             // word's optional ending (`move(s)`), read whole. No move ends in a small letter, and
@@ -1870,7 +1892,9 @@ impl Walker {
                     start = after;
                 }
                 ';' if self.rules.separators && !self.main_level() => {
-                    if self.prose_until(text, start, after) {
+                    // The `;` ends the prose before it (`is good;`); standing alone it is no comment.
+                    let alone = text.get(start..i).is_some_and(|t| t.trim().is_empty());
+                    if self.prose_until(text, start, if alone { i } else { after }) {
                         return;
                     }
                     self.prose_seen = false;

@@ -939,6 +939,21 @@ fn a_word_cut_at_a_lines_end_is_joined() {
     assert!(pgn.contains("d4- d5"), "{pgn}");
 }
 
+/// A smiley in a variation's prose (`it usually works! :)`) closes no variation, and its `;`
+/// separates none (Chess Evolution 2013); the separator itself is no comment.
+#[test]
+fn a_smiley_closes_no_variation() {
+    let p0 = page_text(vec![line(100.0, "1.e4 e5 2.Nf3 [ 2.Bc4 it usually works! :) 2...Nf6 wink ;) 3.d3 ; 2.d4 exd4 ] 2...Nc6 3.Bb5")]);
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[], &[], &[]));
+    let doc = b.finish();
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    let [game] = doc.games.as_slice() else { panic!("{} games", doc.games.len()) };
+    let pgn = pgn::write_game(&game.score).split_whitespace().collect::<Vec<_>>().join(" ");
+    assert!(pgn.contains("(2. Bc4 {it usually works! :)} 2... Nf6 {wink ;)} 3. d3) (2. d4 exd4) 2... Nc6 3. Bb5"), "{pgn}");
+    assert!(!pgn.contains("{;}"), "a separator alone is no comment: {pgn}");
+}
+
 /// The headings a solution's label keeps its diagram through are the players' and the event's:
 /// a third heading is a new section's, and moves after it are not read from the exercise.
 #[test]
