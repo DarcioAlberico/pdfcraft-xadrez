@@ -2697,7 +2697,6 @@ certificate	SHA-256 digest	Impronta SHA-256
 	No link was added: {e}	Nessun link aggiunto: {e}
 	Only diagrams to review ({n})	Solo i diagrammi da rivedere ({n})
 	Add lichess link	Aggiungi link lichess
-	Back to the reading	Torna alla lettura
 	White king	Re bianco
 	White queen	Donna bianca
 	White rook	Torre bianca
@@ -2712,7 +2711,6 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Black pawn	Pedone nero
 	White	Bianco
 	Board: {fen}	Scacchiera: {fen}
-	Castling:	Arrocco:
 	Click a square to put the chosen piece there; click it again to empty it.	Fai clic su una casa per mettervi il pezzo scelto; fai di nuovo clic per svuotarla.
 	Close the editor	Chiudi l'editor
 	Draw this position over the diagram on the page (one undo step).	Disegna questa posizione sul diagramma della pagina (un passo di annullamento).
@@ -2728,7 +2726,6 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Move number:	Numero della mossa:
 	The move the diagram stands at: 35 with Black to move is 35…	La mossa a cui si trova il diagramma: 35 con il tratto al Nero è 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	La mossa da cui parte la partita, da correggere quando non è stata letta: 35 con il tratto al Nero è 35…
-	Use the second reading	Usa la seconda lettura
 	{n} to review	{n} da rivedere
 	◀ Previous to review	◀ Precedente da rivedere
 	Open in lichess	Apri in lichess
@@ -3491,3 +3488,16 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	Analyze	Analizza
 	Open on the board with the engine analysing it	Apri sulla scacchiera con il motore che analizza
 	Stop the analysis	Ferma l’analisi
+	Change to: {piece}	Cambia in: {piece}
+	Empty the square	Svuota la casa
+	Restore the automatic reading	Ripristina la lettura automatica
+	Castling —	Arrocco —
+	White:	Bianco:
+	Black:	Nero:
+castling	short	corto
+castling	long	lungo
+	White short castling	Arrocco corto del Bianco
+	White long castling	Arrocco lungo del Bianco
+	Black short castling	Arrocco corto del Nero
+	Black long castling	Arrocco lungo del Nero
+	Position code other chess programs accept.	Codice della posizione accettato dagli altri programmi di scacchi.

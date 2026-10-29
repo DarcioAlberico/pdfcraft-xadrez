@@ -2484,7 +2484,6 @@ animation effects	Off	Ki
 	No link was added: {e}	Nem került hivatkozás: {e}
 	Only diagrams to review ({n})	Csak az ellenőrizendő diagramok ({n})
 	Add lichess link	Lichess-hivatkozás hozzáadása
-	Back to the reading	Vissza a felismeréshez
 	White king	Világos király
 	White queen	Világos vezér
 	White rook	Világos bástya
@@ -2499,7 +2498,6 @@ animation effects	Off	Ki
 	Black pawn	Sötét gyalog
 	White	Világos
 	Board: {fen}	Tábla: {fen}
-	Castling:	Sáncolás:
 	Click a square to put the chosen piece there; click it again to empty it.	Kattintson egy mezőre, hogy oda tegye a kiválasztott bábut; újabb kattintással kiüríti.
 	Close the editor	Szerkesztő bezárása
 	Draw this position over the diagram on the page (one undo step).	Ez az állás rajzolódik az oldalon lévő diagram fölé (egy visszavonási lépés).
@@ -2515,7 +2513,6 @@ animation effects	Off	Ki
 	Move number:	Lépésszám:
 	The move the diagram stands at: 35 with Black to move is 35…	A lépés, amelynél a diagram áll: 35, sötét lépésével 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	A lépés, amellyel a játszma kezdődik, javításhoz, ha nem sikerült beolvasni: 35, sötét lépésével 35…
-	Use the second reading	A második olvasat használata
 	{n} to review	Ellenőrizendő: {n}
 	◀ Previous to review	◀ Előző ellenőrizendő
 	Open in lichess	Megnyitás a lichessben
@@ -3278,3 +3275,16 @@ chess undo step	Clear drawings	rajzok törlése
 	Analyze	Elemzés
 	Open on the board with the engine analysing it	Megnyitás a táblán, motoros elemzéssel
 	Stop the analysis	Az elemzés leállítása
+	Change to: {piece}	Csere erre: {piece}
+	Empty the square	Mező kiürítése
+	Restore the automatic reading	Az automatikus felismerés visszaállítása
+	Castling —	Sáncolás —
+	White:	Világos:
+	Black:	Sötét:
+castling	short	rövid
+castling	long	hosszú
+	White short castling	Világos rövid sánca
+	White long castling	Világos hosszú sánca
+	Black short castling	Sötét rövid sánca
+	Black long castling	Sötét hosszú sánca
+	Position code other chess programs accept.	Az állás kódja, amelyet más sakkprogramok is elfogadnak.

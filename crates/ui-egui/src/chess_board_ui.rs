@@ -2049,7 +2049,7 @@ pub(crate) fn sections(ui: &mut egui::Ui, state: &mut BoardState) -> Option<Boar
             });
         }
         ui.horizontal_wrapped(|ui| {
-            if ui.small_button(tl!("Copy FEN")).clicked() {
+            if ui.small_button(tl!("Copy FEN")).on_hover_text(tl!("Position code other chess programs accept.")).clicked() {
                 action = Some(BoardAction::CopyFen(state.current_fen()));
             }
             if state.illegal.is_none()

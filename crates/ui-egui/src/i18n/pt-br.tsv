@@ -2501,7 +2501,6 @@ animation effects	Off	Desativados
 	No link was added: {e}	Nenhum link foi adicionado: {e}
 	Only diagrams to review ({n})	Só os diagramas a revisar ({n})
 	Add lichess link	Adicionar link do lichess
-	Back to the reading	Voltar à leitura
 	White king	Rei branco
 	White queen	Dama branca
 	White rook	Torre branca
@@ -2516,7 +2515,6 @@ animation effects	Off	Desativados
 	Black pawn	Peão preto
 	White	Brancas
 	Board: {fen}	Tabuleiro: {fen}
-	Castling:	Roque:
 	Click a square to put the chosen piece there; click it again to empty it.	Clique numa casa para pôr ali a peça escolhida; clique de novo para esvaziá-la.
 	Close the editor	Fechar o editor
 	Draw this position over the diagram on the page (one undo step).	Desenhar esta posição sobre o diagrama na página (um passo de desfazer).
@@ -2533,7 +2531,6 @@ animation effects	Off	Desativados
 	The move the diagram stands at: 35 with Black to move is 35…	O lance em que o diagrama está: 35 com as pretas a jogar é 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	O lance em que a partida começa, para corrigir quando não foi reconhecido: 35 com as pretas a jogar é 35…
 chess side	Black	Pretas
-	Use the second reading	Usar a segunda leitura
 	{n} to review	{n} a revisar
 	◀ Previous to review	◀ Anterior a revisar
 	Open in lichess	Abrir no lichess
@@ -3039,15 +3036,15 @@ chess undo step	Clear drawings	remoção dos desenhos
 	Glyph model: {state}	Modelo de glifos: {state}
 	Found in {folder} instead.	Encontrados em {folder}.
 	Not model files, left out: {names}	Não são arquivos de modelo, deixados de fora: {names}
-	Chess models…	Modelos de xadrez…
+	Chess models…	Modelos de leitura…
 	Forget	Esquecer
 	Look for the models as when none were chosen.	Procurar os modelos como quando nenhum foi escolhido.
 	Choose the chess models folder	Escolha a pasta dos modelos de xadrez
 	{folder} can't be used as the chess models folder.	{folder} não pode ser usada como pasta dos modelos de xadrez.
 	Choose the chess model files	Escolha os arquivos dos modelos de xadrez
 	Choose the piece and glyph models that read diagrams and chess text.	Escolha os modelos de peças e de glifos que leem diagramas e texto de xadrez.
-	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	Sem modelo de peças: só são lidos os diagramas compostos em fonte de xadrez. Use Modelos de xadrez… para dar ao app o chess-pieces.onnx.
-	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	O OCR de xadrez precisa do modelo chess-glyphs. Use Modelos de xadrez… no painel de xadrez para dar ao app o chess-glyphs.onnx.
+	No piece model: only diagrams set in a chess font are read. Use Chess models… to give the app chess-pieces.onnx.	Sem modelo de peças: só são lidos os diagramas compostos em fonte de xadrez. Use Modelos de leitura… para dar ao app o chess-pieces.onnx.
+	Chess OCR needs the chess-glyphs model. Use Chess models… in the chess panel to give the app chess-glyphs.onnx.	O OCR de xadrez precisa do modelo chess-glyphs. Use Modelos de leitura… no painel de xadrez para dar ao app o chess-glyphs.onnx.
 # Chess board: moves deleted, told with Undo; a position set up is a new game (plan A8 §7, V2a)
 @plural	{n} move deleted|{n} moves deleted	{n} lance apagado|{n} lances apagados
 @plural	({n} variation)|({n} variations)	({n} variante)|({n} variantes)
@@ -3296,3 +3293,16 @@ chess undo step	Clear drawings	remoção dos desenhos
 	Analyze	Analisar
 	Open on the board with the engine analysing it	Abrir no tabuleiro com o motor analisando
 	Stop the analysis	Parar a análise
+	Change to: {piece}	Trocar por: {piece}
+	Empty the square	Esvaziar a casa
+	Restore the automatic reading	Restaurar a leitura automática
+	Castling —	Roque —
+	White:	Brancas:
+	Black:	Pretas:
+castling	short	curto
+castling	long	longo
+	White short castling	Roque curto das brancas
+	White long castling	Roque longo das brancas
+	Black short castling	Roque curto das pretas
+	Black long castling	Roque longo das pretas
+	Position code other chess programs accept.	Código da posição aceito por outros programas de xadrez.

@@ -2739,7 +2739,6 @@ key	Space	Space
 	No link was added: {e}	Không thêm liên kết nào: {e}
 	Only diagrams to review ({n})	Chỉ các sơ đồ cần xem lại ({n})
 	Add lichess link	Thêm liên kết lichess
-	Back to the reading	Quay lại kết quả đọc
 	White king	Vua trắng
 	White queen	Hậu trắng
 	White rook	Xe trắng
@@ -2754,7 +2753,6 @@ key	Space	Space
 	Black pawn	Tốt đen
 	White	Trắng
 	Board: {fen}	Bàn cờ: {fen}
-	Castling:	Nhập thành:
 	Click a square to put the chosen piece there; click it again to empty it.	Bấm vào một ô để đặt quân đã chọn vào đó; bấm lại để làm trống ô.
 	Close the editor	Đóng trình chỉnh sửa
 	Draw this position over the diagram on the page (one undo step).	Vẽ thế cờ này đè lên sơ đồ trên trang (một bước hoàn tác).
@@ -2771,7 +2769,6 @@ key	Space	Space
 	The move the diagram stands at: 35 with Black to move is 35…	Nước đi mà sơ đồ đang ở: 35 với Đen đi là 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Nước đi mà ván cờ bắt đầu, để sửa khi chưa đọc được: 35 với Đen đi là 35…
 chess side	Black	Đen
-	Use the second reading	Dùng kết quả đọc thứ hai
 	{n} to review	Cần xem lại: {n}
 	◀ Previous to review	◀ Cần xem lại trước đó
 	Open in lichess	Mở trong lichess
@@ -3532,3 +3529,16 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Analyze	Phân tích
 	Open on the board with the engine analysing it	Mở trên bàn cờ với engine đang phân tích
 	Stop the analysis	Dừng phân tích
+	Change to: {piece}	Đổi thành: {piece}
+	Empty the square	Làm trống ô
+	Restore the automatic reading	Khôi phục kết quả đọc tự động
+	Castling —	Nhập thành —
+	White:	Trắng:
+	Black:	Đen:
+castling	short	gần
+castling	long	xa
+	White short castling	Trắng nhập thành gần
+	White long castling	Trắng nhập thành xa
+	Black short castling	Đen nhập thành gần
+	Black long castling	Đen nhập thành xa
+	Position code other chess programs accept.	Mã thế cờ mà các chương trình cờ vua khác chấp nhận.

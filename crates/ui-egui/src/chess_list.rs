@@ -489,7 +489,7 @@ fn menu(
     {
         *action = Some(PanelAction::Analyze(page, index));
     }
-    if ui.add_enabled(fen.is_some(), egui::Button::new(tl!("Copy FEN"))).clicked()
+    if ui.add_enabled(fen.is_some(), egui::Button::new(tl!("Copy FEN"))).on_hover_text(tl!("Position code other chess programs accept.")).clicked()
         && let Some(fen) = fen
     {
         *action = Some(PanelAction::CopyFen(fen.to_owned()));

@@ -2737,7 +2737,6 @@ theme	Appearance	Išvaizda
 	No link was added: {e}	Nuoroda nepridėta: {e}
 	Only diagrams to review ({n})	Tik tikrintinos diagramos ({n})
 	Add lichess link	Pridėti lichess nuorodą
-	Back to the reading	Grįžti prie atpažinimo
 	White king	Baltasis karalius
 	White queen	Baltoji valdovė
 	White rook	Baltasis bokštas
@@ -2752,7 +2751,6 @@ theme	Appearance	Išvaizda
 	Black pawn	Juodasis pėstininkas
 	White	Baltieji
 	Board: {fen}	Lenta: {fen}
-	Castling:	Rokiruotė:
 	Click a square to put the chosen piece there; click it again to empty it.	Spustelėkite langelį, kad padėtumėte ten pasirinktą figūrą; spustelėkite dar kartą, kad jį ištuštintumėte.
 	Close the editor	Uždaryti rengyklę
 	Draw this position over the diagram on the page (one undo step).	Nupiešti šią poziciją ant diagramos puslapyje (vienas atšaukimo žingsnis).
@@ -2769,7 +2767,6 @@ theme	Appearance	Išvaizda
 	The move the diagram stands at: 35 with Black to move is 35…	Ėjimas, ties kuriuo yra diagrama: 35, kai eina juodieji, yra 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Ėjimas, nuo kurio prasideda partija, pataisyti, kai jis nebuvo nuskaitytas: 35, kai eina juodieji, yra 35…
 chess side	Black	Juodieji
-	Use the second reading	Naudoti antrąjį atpažinimą
 	{n} to review	Tikrintinų: {n}
 	◀ Previous to review	◀ Ankstesnė tikrintina
 	Open in lichess	Atverti lichess
@@ -3530,3 +3527,16 @@ chess undo step	Clear drawings	piešinių valymą
 	Analyze	Analizuoti
 	Open on the board with the engine analysing it	Atverti lentoje, analizuojant varikliu
 	Stop the analysis	Stabdyti analizę
+	Change to: {piece}	Pakeisti į: {piece}
+	Empty the square	Ištuštinti langelį
+	Restore the automatic reading	Atkurti automatinį atpažinimą
+	Castling —	Rokiruotė —
+	White:	Baltieji:
+	Black:	Juodieji:
+castling	short	trumpoji
+castling	long	ilgoji
+	White short castling	Baltųjų trumpoji rokiruotė
+	White long castling	Baltųjų ilgoji rokiruotė
+	Black short castling	Juodųjų trumpoji rokiruotė
+	Black long castling	Juodųjų ilgoji rokiruotė
+	Position code other chess programs accept.	Pozicijos kodas, kurį priima kitos šachmatų programos.

@@ -386,6 +386,43 @@ fn the_editor_sets_the_move_number() {
     assert_eq!(h.state().chess.editor.as_ref().map(|e| e.fen()).as_deref(), Some("4k3/8/8/8/8/8/8/R3K3 b Q - 0 35"));
 }
 
+/// Plan A8 §2.2 in the Diagram tab: castling written out, each box named in full, and a second
+/// reading's button saying what it puts on the square.
+#[test]
+fn the_diagram_tab_says_castling_and_second_readings_in_words() {
+    use pdfcraft_engine::chess::pdfcraft_chess::placement::{Color, Piece, PieceKind, Square};
+    use pdfcraft_engine::chess::pdfcraft_chess::recognize::Uncertain;
+    let mut h = harness();
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    h.state_mut().edit_chess_diagram(0, 0, true);
+    h.run_steps(3);
+    let bishop = Piece { color: Color::White, kind: PieceKind::Bishop };
+    let ed = h.state_mut().chess.editor.as_mut().expect("the diagram is open");
+    ed.uncertain = vec![
+        Uncertain { square: Square::parse("e2").unwrap(), confidence: 0.6, alternative: Some(bishop), alternative_confidence: 0.3 },
+        Uncertain { square: Square::parse("d7").unwrap(), confidence: 0.6, alternative: None, alternative_confidence: 0.3 },
+    ];
+    h.run_steps(2);
+    h.get_by_label("Change to: White bishop").click();
+    h.run_steps(2);
+    h.get_by_label("Empty the square").click();
+    h.run_steps(2);
+    let fen = h.state().chess.editor.as_ref().map(|e| e.fen()).unwrap();
+    assert_eq!(fen, "rnbqkbnr/ppp1pppp/8/8/8/8/PPPPBPPP/RNBQKBNR w KQkq - 0 1");
+    h.get_by_label("Details").click();
+    h.run_steps(2);
+    h.get_by_label("Castling —");
+    for name in ["White short castling", "White long castling", "Black short castling"] {
+        h.get_by_label(name);
+    }
+    h.get_by_label("Black long castling").click();
+    h.run_steps(2);
+    let fen = h.state().chess.editor.as_ref().map(|e| e.fen()).unwrap();
+    assert!(fen.ends_with(" w KQk - 0 1"), "{fen}");
+    assert!(h.query_by_label("K").is_none(), "no bare castling letters");
+}
+
 /// The document's edit generation now.
 fn generation(h: &Harness<'static, PdfCraftApp>) -> u64 {
     let id = h.state().active_ids().unwrap().1;
@@ -3683,6 +3720,128 @@ fn board_focused(h: &Harness<'static, PdfCraftApp>) -> bool {
 #[track_caller]
 fn cursor_says(h: &Harness<'static, PdfCraftApp>) -> String {
     h.get_by_label_contains("Diagram board: ").value().unwrap_or_default()
+}
+
+/// The gestures a journey takes: each click and key the user makes, counted as it is made.
+#[derive(Default)]
+struct Gestures(usize);
+
+impl Gestures {
+    /// Click the node labelled `label`.
+    #[track_caller]
+    fn click(&mut self, h: &mut Harness<'static, PdfCraftApp>, label: &str) {
+        h.get_by_label(label).click();
+        h.run_steps(3);
+        self.0 += 1;
+    }
+
+    /// Press `key` with `modifiers`, as the desktop app gets it.
+    fn key(&mut self, h: &mut Harness<'static, PdfCraftApp>, modifiers: egui::Modifiers, key: egui::Key) {
+        host_key(h, modifiers, key);
+        self.0 += 1;
+    }
+
+    /// What was counted since the last call.
+    fn take(&mut self) -> usize {
+        std::mem::take(&mut self.0)
+    }
+}
+
+/// Plan A8, P10 (§5, "medição das jornadas"): the review journeys a)–g), gesture by gesture, in
+/// a 1366 × 768 window. A gesture is a click or a key the user makes, counted as the test makes
+/// it; the edits of a correction are not counted, only what it takes around them. The table is
+/// printed (`cargo test -p pdfcraft-ui-egui --test chess -- journeys --nocapture`) and each count
+/// is held to the plan's target.
+#[test]
+fn the_review_journeys_take_the_gestures_the_plan_set() {
+    use egui::{Key, Modifiers};
+    let dir = corrections_dir("journeys");
+    let mut h = harness_with(boards(), 0.25, egui::vec2(1366.0, 768.0), Some(dir.join("store")));
+    let mut g = Gestures::default();
+    let mut table = Vec::new();
+    let mut journey = |name: &str, gestures: usize, target: usize| {
+        table.push(format!("| {name} | {gestures} | {target} |"));
+        assert!(gestures <= target, "{name}: {gestures} gestures, the plan's target is {target}");
+    };
+    assert!(h.state_mut().execute("chess.panel"));
+    h.run_steps(2);
+
+    // a) Detect, and see what to review: Detect diagrams, the summary, Review now.
+    g.click(&mut h, "Detect diagrams");
+    if h.state().chess.results.as_ref().unwrap().review_queue() != vec![(0, 1)] {
+        // With the user's piece model installed the drawn board may be read and accepted.
+        return;
+    }
+    h.get_by_label("2 diagrams · 1 to review");
+    g.click(&mut h, "Review now");
+    assert_eq!(h.state().chess.editor.as_ref().map(|e| (e.page, e.index)), Some((0, 1)));
+    journey("a) Detect and see what to review", g.take(), 2);
+
+    // b) and c) Correct and keep, in the review's sequence: the kings by the keyboard (the edits,
+    // not counted), then one key confirms, which is all a right reading needs.
+    for _ in 0..4 {
+        host_key(&mut h, Modifiers::NONE, Key::ArrowRight);
+    }
+    host_key(&mut h, Modifiers::SHIFT, Key::K);
+    for _ in 0..7 {
+        host_key(&mut h, Modifiers::NONE, Key::ArrowDown);
+    }
+    host_key(&mut h, Modifiers::NONE, Key::K);
+    g.key(&mut h, Modifiers::COMMAND, Key::Enter);
+    assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"));
+    // In the tab and in a notice.
+    assert!(h.get_all_by_label_contains("Review done: 1 of 1 checked").next().is_some());
+    let confirm = g.take();
+    // Opening the diagram (Review now, in a) and confirming it.
+    journey("b) Correct and keep (besides the edits)", 1 + confirm, 2);
+    journey("c) Review in sequence (per diagram, besides the edits)", confirm, 1);
+
+    // d) Analyse with an engine: the Diagram tab's Analyze.
+    let (engine, log) = fake_engine();
+    h.state_mut().chess.study.use_engine(engine);
+    h.state_mut().chess.study.analysis = false;
+    g.click(&mut h, "Analyze on the board");
+    let sent = format!("position fen {}", h.state().chess.board().game.fen());
+    assert!(wait_for(&mut h, |_| log.lock().unwrap().iter().any(|c| c == &sent)), "{:?}", log.lock().unwrap());
+    journey("d) Analyse with an engine", g.take(), 1);
+
+    // e) Back to the diagram from the board: its link.
+    h.state_mut().chess.editor = None;
+    h.run_steps(2);
+    g.click(&mut h, "Back to diagram 2 (page 1)");
+    assert_eq!(h.state().chess.editor.as_ref().map(|e| (e.page, e.index)), Some((0, 1)));
+    journey("e) Back to the diagram", g.take(), 1);
+
+    // f) Export with the origin: Export…, the format, and the file's name in the save dialog
+    // (given here, counted as one); nothing is left to review, so nothing is asked, and the
+    // window that says where has Open folder. The journey starts at the Diagrams panel, in front
+    // again (the board came forward in d).
+    let out = dir.join("book.pgn");
+    h.state_mut().save_override = Some(out.to_string_lossy().into_owned());
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(2);
+    g.click(&mut h, "Export…");
+    g.click(&mut h, "PGN — games");
+    h.run_steps(3);
+    assert!(out.exists(), "written");
+    let pgn = std::fs::read_to_string(&out).unwrap();
+    assert!(pgn.contains("[PdfPage \"1\"]"), "{pgn}");
+    h.get_by_label("Open folder");
+    journey("f) Export with the origin (the file's name counted as one)", g.take() + 1, 3);
+    h.state_mut().chess.export_done = None;
+    h.run_steps(2);
+
+    // g) The zoom and the printed page: in the mode bar, and the page one key away.
+    let zoom = h.get_by_role_and_label(egui::accesskit::Role::TextInput, "Zoom").rect();
+    assert!(zoom.max.y < 100.0, "the zoom is in the mode bar: {zoom:?}");
+    h.get_by_label("of 1");
+    g.key(&mut h, Modifiers::COMMAND | Modifiers::SHIFT, Key::N);
+    let focused = h.get_all_by_role(egui::accesskit::Role::TextInput).find(|n| n.is_focused()).map(|n| n.rect());
+    assert!(focused.is_some_and(|r| r.max.y < 100.0 && !r.intersects(zoom)), "Ctrl+Shift+N takes the keyboard to the page field: {focused:?}");
+    journey("g) Find the zoom and go to a printed page", g.take(), 1);
+
+    eprintln!("| Journey | Gestures | Target |\n|---|---|---|\n{}", table.join("\n"));
+    let _ = std::fs::remove_dir_all(&dir);
 }
 
 /// The Diagram tab by the keyboard alone (plan A8, P3c): the board has the keyboard when the

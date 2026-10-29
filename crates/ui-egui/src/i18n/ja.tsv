@@ -2487,7 +2487,6 @@ animation effects	Off	オフ
 	No link was added: {e}	リンクは追加されませんでした: {e}
 	Only diagrams to review ({n})	確認が必要な局面図のみ ({n})
 	Add lichess link	lichess リンクを追加
-	Back to the reading	読み取り結果に戻す
 	White king	白のキング
 	White queen	白のクイーン
 	White rook	白のルーク
@@ -2502,7 +2501,6 @@ animation effects	Off	オフ
 	Black pawn	黒のポーン
 	White	白
 	Board: {fen}	盤面: {fen}
-	Castling:	キャスリング:
 	Click a square to put the chosen piece there; click it again to empty it.	マスをクリックすると選んだ駒を置きます。もう一度クリックすると空にします。
 	Close the editor	エディターを閉じる
 	Draw this position over the diagram on the page (one undo step).	この局面をページ上の局面図の上に描画します (取り消しは 1 回)。
@@ -2518,7 +2516,6 @@ animation effects	Off	オフ
 	Move number:	手数:
 	The move the diagram stands at: 35 with Black to move is 35…	図の局面の手数。黒番の35手目の書き方: 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	棋譜が始まる手数。読み取れなかったときに直します。黒番の35手目の書き方: 35…
-	Use the second reading	第 2 候補を使う
 	{n} to review	確認待ち {n} 件
 	◀ Previous to review	◀ 前の確認対象
 	Open in lichess	lichess で開く
@@ -3281,3 +3278,16 @@ chess undo step	Clear drawings	描画の消去
 	Analyze	解析
 	Open on the board with the engine analysing it	エンジンで解析しながら盤面で開く
 	Stop the analysis	解析を停止
+	Change to: {piece}	変更: {piece}
+	Empty the square	マスを空にする
+	Restore the automatic reading	自動の読み取り結果に戻す
+	Castling —	キャスリング —
+	White:	白:
+	Black:	黒:
+castling	short	ショート
+castling	long	ロング
+	White short castling	白のショートキャスリング
+	White long castling	白のロングキャスリング
+	Black short castling	黒のショートキャスリング
+	Black long castling	黒のロングキャスリング
+	Position code other chess programs accept.	ほかのチェスプログラムでも使える局面のコードです。

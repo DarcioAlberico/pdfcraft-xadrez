@@ -2483,7 +2483,6 @@ animation effects	Off	Өшірулі
 	No link was added: {e}	Сілтеме қосылмады: {e}
 	Only diagrams to review ({n})	Тек тексерілетін диаграммалар ({n})
 	Add lichess link	lichess сілтемесін қосу
-	Back to the reading	Танылғанға қайту
 	White king	Ақ патша
 	White queen	Ақ уәзір
 	White rook	Ақ тура
@@ -2498,7 +2497,6 @@ animation effects	Off	Өшірулі
 	Black pawn	Қара пешка
 	White	Ақтар
 	Board: {fen}	Тақта: {fen}
-	Castling:	Рокировка:
 	Click a square to put the chosen piece there; click it again to empty it.	Таңдалған фигураны қою үшін шаршыны басыңыз; босату үшін қайта басыңыз.
 	Close the editor	Редакторды жабу
 	Draw this position over the diagram on the page (one undo step).	Бұл позицияны беттегі диаграмманың үстіне салу (бір болдырмау қадамы).
@@ -2514,7 +2512,6 @@ animation effects	Off	Өшірулі
 	Move number:	Жүріс нөмірі:
 	The move the diagram stands at: 35 with Black to move is 35…	Диаграмма тұрған жүріс: қаралар жүретін 35 — 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Партия басталатын жүріс, оқылмаған кезде түзету үшін: қаралар жүретін 35 — 35…
-	Use the second reading	Екінші оқылуды пайдалану
 	{n} to review	Тексерілетін: {n}
 	◀ Previous to review	◀ Алдыңғы тексерілетін
 	Open in lichess	lichess-те ашу
@@ -3277,3 +3274,16 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Analyze	Талдау
 	Open on the board with the engine analysing it	Қозғалтқыш талдап жатқан күйде тақтада ашу
 	Stop the analysis	Талдауды тоқтату
+	Change to: {piece}	Ауыстыру: {piece}
+	Empty the square	Шаршыны босату
+	Restore the automatic reading	Автоматты тануды қалпына келтіру
+	Castling —	Рокировка —
+	White:	Ақтар:
+	Black:	Қаралар:
+castling	short	қысқа
+castling	long	ұзын
+	White short castling	Ақтардың қысқа рокировкасы
+	White long castling	Ақтардың ұзын рокировкасы
+	Black short castling	Қаралардың қысқа рокировкасы
+	Black long castling	Қаралардың ұзын рокировкасы
+	Position code other chess programs accept.	Басқа шахмат бағдарламалары қабылдайтын позиция коды.

@@ -413,12 +413,7 @@ fn setup_view(ui: &mut egui::Ui, t: &Tokens, setup: &mut Setup, board: &mut Boar
         setup.position.side_to_move = Some(side);
     });
     ui.horizontal_wrapped(|ui| {
-        ui.label(tl!("Castling:"));
-        let c = &mut setup.position.castling;
-        ui.add(crate::widgets::checkbox(&mut c.white_king_side, "K"));
-        ui.add(crate::widgets::checkbox(&mut c.white_queen_side, "Q"));
-        ui.add(crate::widgets::checkbox(&mut c.black_king_side, "k"));
-        ui.add(crate::widgets::checkbox(&mut c.black_queen_side, "q"));
+        crate::chess_editor::castling_fields(ui, &mut setup.position.castling);
     });
     // A right a box was ticked for that the pieces do not allow is taken off again.
     setup.fit_castling();

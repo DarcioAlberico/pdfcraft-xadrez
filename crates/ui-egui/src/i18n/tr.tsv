@@ -2481,7 +2481,6 @@ animation effects	Off	Kapalı
 	No link was added: {e}	Bağlantı eklenmedi: {e}
 	Only diagrams to review ({n})	Yalnızca gözden geçirilecek diyagramlar ({n})
 	Add lichess link	Lichess bağlantısı ekle
-	Back to the reading	Okumaya geri dön
 	White king	Beyaz şah
 	White queen	Beyaz vezir
 	White rook	Beyaz kale
@@ -2496,7 +2495,6 @@ animation effects	Off	Kapalı
 	Black pawn	Siyah piyon
 	White	Beyaz
 	Board: {fen}	Tahta: {fen}
-	Castling:	Rok:
 	Click a square to put the chosen piece there; click it again to empty it.	Seçilen taşı oraya koymak için bir kareye tıklayın; boşaltmak için yeniden tıklayın.
 	Close the editor	Düzenleyiciyi kapat
 	Draw this position over the diagram on the page (one undo step).	Bu konumu sayfadaki diyagramın üzerine çiz (tek geri alma adımı).
@@ -2512,7 +2510,6 @@ animation effects	Off	Kapalı
 	Move number:	Hamle numarası:
 	The move the diagram stands at: 35 with Black to move is 35…	Diyagramın bulunduğu hamle: sıra siyahtayken 35 şöyle yazılır: 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Oyunun başladığı hamle, okunamadığında düzeltmek için: sıra siyahtayken 35 şöyle yazılır: 35…
-	Use the second reading	İkinci okumayı kullan
 	{n} to review	Gözden geçirilecek: {n}
 	◀ Previous to review	◀ Önceki gözden geçirilecek
 	Open in lichess	lichess'te aç
@@ -3275,3 +3272,16 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Analyze	Çözümle
 	Open on the board with the engine analysing it	Tahtada motor çözümlemesiyle aç
 	Stop the analysis	Çözümlemeyi durdur
+	Change to: {piece}	Şununla değiştir: {piece}
+	Empty the square	Kareyi boşalt
+	Restore the automatic reading	Otomatik okumayı geri yükle
+	Castling —	Rok —
+	White:	Beyaz:
+	Black:	Siyah:
+castling	short	kısa
+castling	long	uzun
+	White short castling	Beyazın kısa roku
+	White long castling	Beyazın uzun roku
+	Black short castling	Siyahın kısa roku
+	Black long castling	Siyahın uzun roku
+	Position code other chess programs accept.	Diğer satranç programlarının kabul ettiği konum kodu.
