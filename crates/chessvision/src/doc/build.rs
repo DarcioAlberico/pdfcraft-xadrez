@@ -23,6 +23,7 @@ use pdfcraft_chess::san::{FigurineSet, Lang, San, figurine};
 
 use super::fragment::join_hyphens;
 use super::games::{Key, Loc, Name, Seed, Walker};
+use super::header::{GameHeader, event_line, players_line};
 use super::{Block, ChessPage, DiagramBlock, HintKind, Inline, MoveInline, MoveNumber, MoveStatus, PageInput, ReviewFlag, UserRect};
 use crate::chess_text::{ChessLine, ChessRun, PoorReason, TextQuality};
 use crate::coords::{PageGeometry, ViewRect};
@@ -910,6 +911,17 @@ fn folio_blocks(blocks: &[Block]) -> Vec<usize> {
     out
 }
 
+/// A text block's text, when it holds nothing but text: no move, sign or figurine.
+fn block_text(block: &Block) -> Option<String> {
+    let (Block::Heading { inlines, .. } | Block::Paragraph { inlines, .. }) = block else { return None };
+    let mut out = String::new();
+    for inline in inlines {
+        let Inline::Text { text, .. } = inline else { return None };
+        out.push_str(text);
+    }
+    Some(out)
+}
+
 /// Run the page's blocks through the game walker, recording what became of each move.
 /// `trailing` is the page's trailing caption label ([`caption_numbers`]), the next page's first
 /// diagram's.
@@ -919,15 +931,36 @@ fn folio_blocks(blocks: &[Block]) -> Vec<usize> {
 /// does not count among the solutions ([`Name::caption`]).
 ///
 /// A running head ([`RunningHeads`]) is passed over: it ends no game and names no chapter or
-/// solution. So is the page's printed number ([`folio_blocks`]).
+/// solution. So is the page's printed number ([`folio_blocks`]). A game's header (its players'
+/// line and its event's, [`super::header`]) ends the open game, and the next game takes its tags.
 pub(crate) fn walk(page: u32, ocr: bool, blocks: &mut [Block], walker: &mut Walker, trailing: Option<u32>, heads: &mut RunningHeads) {
     walker.read_by_ocr(ocr);
     let numbers: Vec<Option<u32>> = blocks.iter().map(|b| if let Block::Diagram(d) = b { d.puzzle } else { None }).collect();
     let last_diagram = blocks.iter().rposition(|b| matches!(b, Block::Diagram(_)));
     let mut skipped = heads.page(blocks);
     skipped.extend(folio_blocks(blocks));
+    // A game's header: its players' line, and the event's line after it (the next text block:
+    // a diagram may come between, the page read across its columns).
+    let mut headers: Vec<Option<GameHeader>> = vec![None; blocks.len()];
+    for (bi, block) in blocks.iter().enumerate() {
+        let Some(mut header) = block_text(block).as_deref().and_then(players_line) else { continue };
+        let next = blocks.iter().enumerate().skip(bi.saturating_add(1)).find(|(_, b)| !matches!(b, Block::Diagram(_)));
+        if let Some((next, b)) = next
+            && let Some(text) = block_text(b)
+            && event_line(&text, &mut header)
+        {
+            skipped.push(next);
+        }
+        if let Some(slot) = headers.get_mut(bi) {
+            *slot = Some(header);
+        }
+    }
     for (bi, block) in blocks.iter_mut().enumerate() {
         if skipped.contains(&bi) {
+            continue;
+        }
+        if let Some(header) = headers.get_mut(bi).and_then(Option::take) {
+            walker.header(header, page, block.source_rect());
             continue;
         }
         let caption = |n: u32| {

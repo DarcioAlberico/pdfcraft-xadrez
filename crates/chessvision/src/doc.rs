@@ -31,6 +31,7 @@
 mod build;
 pub mod fragment;
 pub mod games;
+mod header;
 pub mod html;
 pub mod markdown;
 pub mod pgn;

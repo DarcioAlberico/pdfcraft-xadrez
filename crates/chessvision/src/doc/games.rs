@@ -92,6 +92,7 @@ use pdfcraft_chess::repair::{CONFIDENCE_ONE_SWAP, GameContext};
 use pdfcraft_chess::san::{San, SanBody, SanError};
 use serde::{Deserialize, Serialize};
 
+use super::header::GameHeader;
 use super::{MoveNumber, MoveStatus, ReviewFlag, UserRect};
 
 mod board;
@@ -831,6 +832,21 @@ pub(crate) struct Walker {
     /// first move, and how many headings kept it since: the players and the event before that
     /// move keep it, up to [`MAX_NAMED_HEADINGS`].
     named: Option<(u32, usize, u8)>,
+    /// Headers no game took yet ([`Walker::header`]), oldest first, at most
+    /// [`MAX_PENDING_HEADERS`]: each with its page and its box.
+    headers: Vec<(u32, Option<UserRect>, GameHeader)>,
+}
+
+/// Most headers waiting for their games ([`Walker::header`]): a page of puzzles sets one over
+/// each of its diagrams.
+pub const MAX_PENDING_HEADERS: usize = 8;
+
+/// Whether two boxes share some of their width (one column), or either is not known.
+fn same_column(a: Option<&UserRect>, b: Option<&UserRect>) -> bool {
+    match (a, b) {
+        (Some(a), Some(b)) => a.x0 < b.x1 && b.x0 < a.x1,
+        _ => true,
+    }
 }
 
 /// A separator between sibling variations, waiting for the move after it.
@@ -1316,6 +1332,35 @@ impl Walker {
         self.close();
         self.anchor = Anchor::None;
         self.spare.clear();
+        self.headers.clear();
+    }
+
+    /// A game's header, its players and its event ([`super::header`]), set on `page` in `rect`:
+    /// the open game ends, with the diagram that came while it was open and no move settled, and
+    /// the next game to start in the header's column, on that page or the next, takes its tags.
+    /// A page of puzzles sets a header over each diagram, in two columns read across, so the
+    /// other diagrams waiting stay, and a header waits for its own column's game; a newer header
+    /// in the same column takes the place of one no game took. A game with no header in its
+    /// column takes the one header waiting, if only one does (a header at a column's foot, its
+    /// moves atop the next).
+    pub fn header(&mut self, header: GameHeader, page: u32, rect: Option<UserRect>) {
+        if self.held {
+            self.anchor = Anchor::None;
+        }
+        self.close();
+        self.headers.retain(|(p, r, _)| p.saturating_add(1) >= page && !same_column(r.as_ref(), rect.as_ref()));
+        if self.headers.len() >= MAX_PENDING_HEADERS {
+            self.headers.remove(0);
+        }
+        self.headers.push((page, rect, header));
+    }
+
+    /// The oldest header waiting for a game that starts at `loc` ([`Walker::header`]).
+    fn take_header(&mut self, loc: Loc) -> Option<GameHeader> {
+        self.headers.retain(|(p, _, _)| p.saturating_add(1) >= loc.page);
+        let column = self.headers.iter().position(|(_, r, _)| same_column(r.as_ref(), loc.rect.as_ref()));
+        let i = column.or((self.headers.len() == 1).then_some(0))?;
+        Some(self.headers.remove(i).2)
     }
 
     fn keep_spare(&mut self, seed: Seed) {
@@ -1442,7 +1487,7 @@ impl Walker {
             other => other,
         };
         let mut started_from = None;
-        let (origin, score, mut flags, honour) = match anchor {
+        let (origin, mut score, mut flags, honour) = match anchor {
             Anchor::Seed(seed) => match seed_score(&seed, number) {
                 Some((score, flags, honour)) => {
                     let origin = GameOrigin::Diagram { page: seed.page, diagram: seed.diagram, accepted: seed.accepted };
@@ -1469,6 +1514,9 @@ impl Walker {
         };
         if matched {
             flags.push(ReviewFlag::DiagramMatchedByMove);
+        }
+        if let Some(header) = self.take_header(loc) {
+            header.apply(&mut score);
         }
         let trusted = match origin {
             GameOrigin::Initial => true,

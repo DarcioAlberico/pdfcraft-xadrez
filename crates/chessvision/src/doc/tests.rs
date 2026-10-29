@@ -973,6 +973,72 @@ fn a_smiley_closes_no_variation() {
     assert!(!pgn.contains("{;}"), "a separator alone is no comment: {pgn}");
 }
 
+/// A game's header as ChessBase prints it (Chess Evolution) ends the game before it, which no
+/// longer takes its words as comments, and fills the next game's tags.
+#[test]
+fn a_games_header_fills_its_tags() {
+    let p0 = page_text(vec![
+        line(100.0, "1.e4 e5 2.Nf3 Nc6"),
+        line(160.0, "(1) Carlsen,Magnus (2864)— Anand,Viswanathan (2786) [E46]"),
+        line(220.0, "Tal Memorial Moscow RUS (5.2), 2013[Arkadij Naiditsch]"),
+        line(280.0, "1.d4 Nf6 2.c4 e6"),
+    ]);
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[], &[], &[]));
+    let doc = b.finish();
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    let [first, game] = doc.games.as_slice() else { panic!("{} games", doc.games.len()) };
+    let before = pgn::write_game(&first.score);
+    assert!(!before.contains("Carlsen") && !before.contains("Moscow"), "{before}");
+    let pgn = pgn::write_game(&game.score);
+    for tag in [
+        "[Event \"Tal Memorial Moscow RUS\"]",
+        "[Date \"2013.??.??\"]",
+        "[Round \"5.2\"]",
+        "[White \"Carlsen, Magnus\"]",
+        "[Black \"Anand, Viswanathan\"]",
+        "[WhiteElo \"2864\"]",
+        "[BlackElo \"2786\"]",
+        "[ECO \"E46\"]",
+        "[Annotator \"Arkadij Naiditsch\"]",
+    ] {
+        assert!(pgn.contains(tag), "{tag}: {pgn}");
+    }
+    assert!(!pgn.contains("Carlsen,Magnus") && pgn.contains("1. d4 Nf6 2. c4 e6"), "{pgn}");
+    // The header stays in the document's text.
+    assert!(kinds(&doc.pages[0]).iter().any(|k| k.contains("Carlsen,Magnus")), "{:?}", kinds(&doc.pages[0]));
+}
+
+/// A page of puzzles read across its two columns (Chess Evolution's solutions): each game takes
+/// the header over its own column, whichever column's game starts first, and a newer header in a
+/// column takes the place of one whose game never started. With one header waiting, a game in
+/// the other column takes it (a header at a column's foot).
+#[test]
+fn a_header_waits_for_its_own_columns_game() {
+    use super::games::{Loc, Walker};
+    use super::header::GameHeader;
+    let left = |y: f32| Some(UserRect { x0: 40.0, y0: y, x1: 280.0, y1: y + 12.0 });
+    let right = |y: f32| Some(UserRect { x0: 330.0, y0: y, x1: 570.0, y1: y + 12.0 });
+    let header = |white: &str| GameHeader { white: white.to_owned(), black: "Black".to_owned(), ..GameHeader::default() };
+    let first = Some(MoveNumber { number: 1, black: false });
+    let play = |w: &mut Walker, number, san: &str, rect| {
+        let status = w.play(number, &San::read(san, Lang::En).unwrap(), san, false, Loc { page: 0, rect }).status;
+        assert_eq!(status, MoveStatus::Valid, "{san}");
+    };
+    let mut w = Walker::default();
+    w.header(header("Stale"), 0, left(700.0));
+    w.header(header("Left"), 0, left(600.0));
+    w.header(header("Right"), 0, right(600.0));
+    play(&mut w, first, "d4", right(500.0));
+    play(&mut w, None, "d5", right(500.0));
+    play(&mut w, first, "e4", left(500.0));
+    play(&mut w, None, "e5", left(500.0));
+    w.header(header("Foot"), 0, left(50.0));
+    play(&mut w, first, "c4", right(700.0));
+    let whites: Vec<String> = w.finish().games.iter().map(|g| g.score.roster.white.clone()).collect();
+    assert_eq!(whites, ["Right", "Left", "Foot"]);
+}
+
 /// The headings a solution's label keeps its diagram through are the players' and the event's:
 /// a third heading is a new section's, and moves after it are not read from the exercise.
 #[test]
