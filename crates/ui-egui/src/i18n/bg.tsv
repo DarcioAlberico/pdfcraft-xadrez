@@ -3230,6 +3230,15 @@ chess undo step	Clear drawings	изчистването на рисунките
 	More panels	Още панели
 	More room for the page: collapse the tools panel?	Повече място за страницата: да се свие ли панелът с инструменти?
 	Rotate view counterclockwise ({key})	Завърти изгледа обратно на часовниковата стрелка ({key})
+	Only the main line	Само основната линия
+	Variations	Варианти
+	Main line	Основна линия
+	Continuations:	Продължения:
+	Variation created: {move}	Създаден вариант: {move}
+	Expand this variation	Разгъване на този вариант
+	Collapse this variation	Свиване на този вариант
+	— {n} more moves	— още {n} хода
+	End of this variation. Shift+End goes to the end of the main line.	Край на този вариант. Shift+End отива в края на основната линия.
 	No analysis engine installed	Няма инсталиран енджин за анализ
 	Or set PDFCRAFT_CHESS_ENGINE to the program.	Или задайте програмата в PDFCRAFT_CHESS_ENGINE.
 	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	За анализ PdfCraft използва отделна програма, например Stockfish (безплатна). Изтеглете я и изберете файла stockfish.exe.
@@ -3239,6 +3248,18 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Analyze	Анализ
 	Open on the board with the engine analysing it	Отваряне на дъската с анализ от енджина
 	Stop the analysis	Спиране на анализа
+	Ask	Питай
+	End (End); with Shift, the end of the main line	Към края (End); с Shift — краят на главната линия
+	Follow the line remembered	Следвай запомнената линия
+	New main line	Нова главна линия
+	New variation	Нов вариант
+	Playing a different move	При изигран друг ход
+	Replace the continuation	Замени продължението
+	Start a variation	Създай вариант
+	Stepping forward at a fork	При стъпка напред на разклонение
+	Variation {i} of {n} after {fork}, move {move}	Вариант {i} от {n} след {fork}, ход {move}
+	the start	началото
+	↑ ↓ choose, → or Enter goes in, Esc takes the main line.	↑ ↓ избират, → или Enter влизат, Esc — главната линия.
 	Change to: {piece}	Смяна на: {piece}
 	Empty the square	Изпразване на полето
 	Restore the automatic reading	Възстановяване на автоматичното разчитане

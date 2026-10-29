@@ -311,10 +311,13 @@ pub(crate) fn move_button(
     muted: Color32,
     tint: Option<Color32>,
 ) -> egui::Response {
+    // A variation's moves are a point smaller than the main line's, never `small` (plan A8 V3).
+    let mono = ui.text_style_height(&egui::TextStyle::Monospace);
+    let size = ui.style().text_styles.get(&egui::TextStyle::Monospace).map_or(13.0, |f| f.size);
     let style = |text: String| {
         let mut rich = egui::RichText::new(text).monospace();
         if small {
-            rich = rich.small().color(muted);
+            rich = rich.size((size - 1.0).max(8.0)).color(muted);
         }
         if let Some(t) = tint {
             rich = rich.background_color(t);
@@ -325,8 +328,7 @@ pub(crate) fn move_button(
     let (kind, rest) = split(san);
     let response = match (mode, kind) {
         (MovePieces::Figurines, Some(kind)) if let Some(tex) = atlas(ui.ctx()) => {
-            let font = if small { egui::TextStyle::Small } else { egui::TextStyle::Monospace };
-            let side = ui.text_style_height(&font);
+            let side = if small { (mono - 1.0).max(8.0) } else { mono };
             // The board's white pieces: the list reads as a book printed in black on white.
             let piece = Piece { color: Color::White, kind };
             let image = egui::Image::new(&tex).uv(crate::chess_board_ui::sprite_uv(piece)).fit_to_exact_size(egui::vec2(side, side));

@@ -3267,6 +3267,15 @@ chess undo step	Clear drawings	l'effacement des dessins
 	More panels	Autres panneaux
 	More room for the page: collapse the tools panel?	Plus de place pour la page : réduire le panneau d'outils ?
 	Rotate view counterclockwise ({key})	Pivoter l'affichage vers la gauche ({key})
+	Only the main line	Seulement la ligne principale
+	Variations	Variantes
+	Main line	Ligne principale
+	Continuations:	Suites :
+	Variation created: {move}	Variante créée : {move}
+	Expand this variation	Déplier cette variante
+	Collapse this variation	Replier cette variante
+	— {n} more moves	— {n} coups de plus
+	End of this variation. Shift+End goes to the end of the main line.	Fin de cette variante. Maj+Fin va à la fin de la ligne principale.
 	No analysis engine installed	Aucun moteur d’analyse installé
 	Or set PDFCRAFT_CHESS_ENGINE to the program.	Ou définissez PDFCRAFT_CHESS_ENGINE avec le programme.
 	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	Pour analyser, PdfCraft utilise un programme à part, comme Stockfish (gratuit). Téléchargez-le et choisissez le fichier stockfish.exe.
@@ -3276,6 +3285,18 @@ chess undo step	Clear drawings	l'effacement des dessins
 	Analyze	Analyser
 	Open on the board with the engine analysing it	Ouvrir sur l’échiquier avec l’analyse du moteur
 	Stop the analysis	Arrêter l’analyse
+	Ask	Demander
+	End (End); with Shift, the end of the main line	Fin (Fin) ; avec Maj, la fin de la ligne principale
+	Follow the line remembered	Suivre la ligne retenue
+	New main line	Nouvelle ligne principale
+	New variation	Nouvelle variante
+	Playing a different move	En jouant un autre coup
+	Replace the continuation	Remplacer la suite
+	Start a variation	Créer une variante
+	Stepping forward at a fork	En avançant à un embranchement
+	Variation {i} of {n} after {fork}, move {move}	Variante {i} sur {n} après {fork}, coup {move}
+	the start	le début
+	↑ ↓ choose, → or Enter goes in, Esc takes the main line.	↑ ↓ choisissent, → ou Entrée y entrent, Échap suit la ligne principale.
 	Change to: {piece}	Remplacer par : {piece}
 	Empty the square	Vider la case
 	Restore the automatic reading	Rétablir la lecture automatique

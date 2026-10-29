@@ -3479,6 +3479,15 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	More panels	Altri pannelli
 	More room for the page: collapse the tools panel?	Più spazio per la pagina: comprimere il pannello degli strumenti?
 	Rotate view counterclockwise ({key})	Ruota vista in senso antiorario ({key})
+	Only the main line	Solo la linea principale
+	Variations	Varianti
+	Main line	Linea principale
+	Continuations:	Continuazioni:
+	Variation created: {move}	Variante creata: {move}
+	Expand this variation	Espandi questa variante
+	Collapse this variation	Comprimi questa variante
+	— {n} more moves	— altre {n} mosse
+	End of this variation. Shift+End goes to the end of the main line.	Fine di questa variante. Maiusc+Fine va alla fine della linea principale.
 	No analysis engine installed	Nessun motore di analisi installato
 	Or set PDFCRAFT_CHESS_ENGINE to the program.	Oppure imposta PDFCRAFT_CHESS_ENGINE con il programma.
 	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	Per analizzare, PdfCraft usa un programma a parte, come Stockfish (gratuito). Scaricalo e scegli il file stockfish.exe.
@@ -3488,6 +3497,18 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	Analyze	Analizza
 	Open on the board with the engine analysing it	Apri sulla scacchiera con il motore che analizza
 	Stop the analysis	Ferma l’analisi
+	Ask	Chiedere
+	End (End); with Shift, the end of the main line	Fine (Fine); con Maiusc, la fine della linea principale
+	Follow the line remembered	Seguire la linea ricordata
+	New main line	Nuova linea principale
+	New variation	Nuova variante
+	Playing a different move	Giocando una mossa diversa
+	Replace the continuation	Sostituire la continuazione
+	Start a variation	Creare una variante
+	Stepping forward at a fork	Avanzando a una biforcazione
+	Variation {i} of {n} after {fork}, move {move}	Variante {i} di {n} dopo {fork}, mossa {move}
+	the start	l'inizio
+	↑ ↓ choose, → or Enter goes in, Esc takes the main line.	↑ ↓ scelgono, → o Invio entrano, Esc segue la linea principale.
 	Change to: {piece}	Cambia in: {piece}
 	Empty the square	Svuota la casa
 	Restore the automatic reading	Ripristina la lettura automatica

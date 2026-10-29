@@ -3272,6 +3272,15 @@ chess undo step	Clear drawings	odstranjevanje risb
 	More panels	Več podoken
 	More room for the page: collapse the tools panel?	Več prostora za stran: strni podokno z orodji?
 	Rotate view counterclockwise ({key})	Zavrti pogled levo ({key})
+	Only the main line	Samo glavna linija
+	Variations	Variante
+	Main line	Glavna linija
+	Continuations:	Nadaljevanja:
+	Variation created: {move}	Ustvarjena varianta: {move}
+	Expand this variation	Razširi to varianto
+	Collapse this variation	Strni to varianto
+	— {n} more moves	— še {n} potez
+	End of this variation. Shift+End goes to the end of the main line.	Konec te variante. Shift+End gre na konec glavne linije.
 	No analysis engine installed	Ni nameščenega šahovskega programa za analizo
 	Or set PDFCRAFT_CHESS_ENGINE to the program.	Ali pa program nastavite v PDFCRAFT_CHESS_ENGINE.
 	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	Za analizo PdfCraft uporablja ločen program, na primer Stockfish (brezplačen). Prenesite ga in izberite datoteko stockfish.exe.
@@ -3281,6 +3290,18 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Analyze	Analiziraj
 	Open on the board with the engine analysing it	Odpri na šahovnici z analizo programa
 	Stop the analysis	Ustavi analizo
+	Ask	Vprašaj
+	End (End); with Shift, the end of the main line	Na konec (End); s Shift konec glavne variante
+	Follow the line remembered	Sledi zapomnjeni liniji
+	New main line	Nova glavna varianta
+	New variation	Nova varianta
+	Playing a different move	Ob drugačni potezi
+	Replace the continuation	Zamenjaj nadaljevanje
+	Start a variation	Ustvari varianto
+	Stepping forward at a fork	Ob koraku naprej na razcepu
+	Variation {i} of {n} after {fork}, move {move}	Varianta {i} od {n} po {fork}, poteza {move}
+	the start	začetku
+	↑ ↓ choose, → or Enter goes in, Esc takes the main line.	↑ ↓ izberejo, → ali Enter vstopita, Esc sledi glavni varianti.
 	Change to: {piece}	Zamenjaj z: {piece}
 	Empty the square	Izprazni polje
 	Restore the automatic reading	Obnovi samodejno branje

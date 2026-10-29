@@ -230,6 +230,32 @@ impl Node {
     }
 }
 
+/// The next revision any game takes ([`fresh_revision`]).
+static NEXT_REVISION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
+/// A revision no game has had yet: one counter for all of them, so a cache keyed by it (the
+/// notation's tokens, plan A8 V3) can't take one game for another. Saturates at `u64::MAX`,
+/// which 2^64 changes never reach.
+fn fresh_revision() -> u64 {
+    fresh_revision_past(0)
+}
+
+/// [`fresh_revision`], and newer than `seen`: the counter first moves past it, so no revision
+/// handed out later can equal the one returned.
+fn fresh_revision_past(seen: u64) -> u64 {
+    use std::sync::atomic::Ordering::Relaxed;
+    if seen == u64::MAX {
+        return u64::MAX;
+    }
+    NEXT_REVISION.fetch_max(seen.saturating_add(1), Relaxed);
+    let r = NEXT_REVISION.fetch_add(1, Relaxed);
+    // At the very top the counter would wrap; it stays at the top instead.
+    if r == u64::MAX {
+        NEXT_REVISION.store(u64::MAX, Relaxed);
+    }
+    r
+}
+
 /// A game from a start position.
 #[derive(Clone, Debug)]
 pub struct Game {
@@ -237,7 +263,9 @@ pub struct Game {
     nodes: Vec<Node>,
     current: NodeId,
     tags: Vec<(String, String)>,
-    /// Counts the changes to the moves, comments, glyphs and tags (not to the move shown).
+    /// Changes with every change to the moves, comments, glyphs and tags (not to the move shown),
+    /// to a value no game has had ([`fresh_revision`]): a game put in another's place is told
+    /// apart by it too.
     revision: u64,
     /// The furthest move of the line last stepped back along: while it comes after the move
     /// shown, a step forward goes towards it rather than along the first reply, so stepping back
@@ -258,7 +286,7 @@ impl Game {
     }
 
     fn from_board(board: Board) -> Game {
-        Game { nodes: vec![Node::start(board)], current: 0, tags: Vec::new(), revision: 0, tip: 0 }
+        Game { nodes: vec![Node::start(board)], current: 0, tags: Vec::new(), revision: fresh_revision(), tip: 0 }
     }
 
     /// A game from `position`, `side` to move when the position does not say.
@@ -297,7 +325,8 @@ impl Game {
         self.current
     }
 
-    /// Changes with every change to the moves, comments, glyphs or tags.
+    /// Changes with every change to the moves, comments, glyphs or tags, to a value no other game
+    /// has (a clone keeps it until either changes).
     pub fn revision(&self) -> u64 {
         self.revision
     }
@@ -443,7 +472,7 @@ impl Game {
             let renumbered = u16::try_from(number.saturating_add(after)).unwrap_or(u16::MAX).max(1);
             n.board.set_fullmove_number(renumbered);
         }
-        self.revision = self.revision.wrapping_add(1);
+        self.revision = fresh_revision();
         true
     }
 
@@ -634,7 +663,7 @@ impl Game {
             p.children.push(id);
         }
         self.current = id;
-        self.revision = self.revision.wrapping_add(1);
+        self.revision = fresh_revision();
         Ok(())
     }
 
@@ -739,7 +768,7 @@ impl Game {
         self.current = map(self.current).unwrap_or(0);
         self.tip = map(self.tip).unwrap_or(self.current);
         self.nodes = nodes;
-        self.revision = self.revision.wrapping_add(1);
+        self.revision = fresh_revision();
     }
 
     /// The comment after move `node` (on node 0: before the first move).
@@ -759,7 +788,7 @@ impl Game {
         if n.comment != clean || n.drawings != drawings {
             n.comment = clean;
             n.drawings = drawings;
-            self.revision = self.revision.wrapping_add(1);
+            self.revision = fresh_revision();
         }
     }
 
@@ -787,7 +816,7 @@ impl Game {
                 n.nags.sort_unstable();
             }
         }
-        self.revision = self.revision.wrapping_add(1);
+        self.revision = fresh_revision();
     }
 
     /// The SAN of move `node` (empty for the start).
@@ -996,7 +1025,7 @@ impl Game {
             (None, false) if self.tags.len() < MAX_TAGS => self.tags.push((name.to_owned(), value)),
             (None, false) => return Err(GameError::TooLong),
         }
-        self.revision = self.revision.wrapping_add(1);
+        self.revision = fresh_revision();
         Ok(())
     }
 

@@ -3289,6 +3289,15 @@ chess undo step	Clear drawings	видалення малюнків
 	More panels	Інші панелі
 	More room for the page: collapse the tools panel?	Більше місця для сторінки: згорнути панель інструментів?
 	Rotate view counterclockwise ({key})	Повернути вигляд проти годинникової стрілки ({key})
+	Only the main line	Лише головна лінія
+	Variations	Варіанти
+	Main line	Головна лінія
+	Continuations:	Продовження:
+	Variation created: {move}	Створено варіант: {move}
+	Expand this variation	Розгорнути цей варіант
+	Collapse this variation	Згорнути цей варіант
+	— {n} more moves	— ще {n} ходів
+	End of this variation. Shift+End goes to the end of the main line.	Кінець цього варіанта. Shift+End веде в кінець головної лінії.
 	No analysis engine installed	Рушій для аналізу не встановлено
 	Or set PDFCRAFT_CHESS_ENGINE to the program.	Або вкажіть програму в PDFCRAFT_CHESS_ENGINE.
 	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	Для аналізу PdfCraft використовує окрему програму, наприклад Stockfish (безкоштовно). Завантажте її та виберіть файл stockfish.exe.
@@ -3298,6 +3307,18 @@ chess undo step	Clear drawings	видалення малюнків
 	Analyze	Аналіз
 	Open on the board with the engine analysing it	Відкрити на дошці з аналізом рушієм
 	Stop the analysis	Зупинити аналіз
+	Ask	Питати
+	End (End); with Shift, the end of the main line	У кінець (End); із Shift — у кінець головної лінії
+	Follow the line remembered	Іти запам'ятованою лінією
+	New main line	Нова головна лінія
+	New variation	Новий варіант
+	Playing a different move	Коли зіграно інший хід
+	Replace the continuation	Замінити продовження
+	Start a variation	Створювати варіант
+	Stepping forward at a fork	Під час кроку вперед на розвилці
+	Variation {i} of {n} after {fork}, move {move}	Варіант {i} з {n} після {fork}, хід {move}
+	the start	початку
+	↑ ↓ choose, → or Enter goes in, Esc takes the main line.	↑ ↓ вибирають, → або Enter входять, Esc — головна лінія.
 	Change to: {piece}	Замінити на: {piece}
 	Empty the square	Очистити поле
 	Restore the automatic reading	Відновити автоматичне розпізнавання

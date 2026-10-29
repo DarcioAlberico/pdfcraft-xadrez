@@ -2367,6 +2367,8 @@ fn a_moves_menu_deletes_its_variation() {
     h.state_mut().show_chess_board();
     h.run_steps(3);
     put_game(&mut h, FORKS, &[0, 0, 0]);
+    // The list scrolls to the move shown (the tree's header takes room above it): let it settle.
+    h.run_steps(5);
     h.get_by_label("d6").click_secondary();
     h.run_steps(2);
     let item = h.get_by_label("Delete variation");
@@ -2374,7 +2376,9 @@ fn a_moves_menu_deletes_its_variation() {
     item.click();
     h.run_steps(2);
     assert_eq!(movetext(&h), "1. e4 e5 2. Nf3");
-    // On the main line there is no variation to delete; after the last move nothing to cut.
+    // On the main line there is no variation to delete; after the last move nothing to cut. (The
+    // tree's header went with the last variation: the list settles first.)
+    h.run_steps(5);
     h.get_by_label("knight f3").click_secondary();
     h.run_steps(2);
     assert!(h.get_by_label("Delete variation").accesskit_node().is_disabled());
@@ -4162,4 +4166,237 @@ fn a_game_opened_from_a_diagram_has_the_books_origin_tags() {
     let tags: Vec<&str> = pgn.lines().take_while(|l| l.starts_with('[')).skip(7).collect();
     // The document's first diagram is the standard start: no SetUp/FEN, which would come first.
     assert_eq!(tags, ["[PdfPage \"1\"]", "[PdfDiagram \"1\"]", "[SourceTitle \"book\"]"], "{pgn}");
+}
+
+/// Plan A8 V3: a variation folds and unfolds by its first move's chevron, saying how many moves it
+/// hides; the trail names the variation the move shown is in; a fork shows its continuations, one
+/// a click away; a move played beside a continuation says it made a variation, which Make main line
+/// promotes; Shift+End goes to the main line's end.
+#[test]
+fn the_move_tree_folds_trails_forks_and_tells_of_new_variations() {
+    use egui::{Key, Modifiers};
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    // FORKS: 1. e4 e5 (1... c5 2. Nf3 (2. c3) d6) 2. Nf3, shown at its end.
+    put_game(&mut h, FORKS, &[0, 0, 0]);
+    assert!(h.query_by_label("c3").is_some());
+    // The upper chevron folds 1…c5 (the lower one, inside it, 2.c3), once the list has scrolled
+    // to the move shown.
+    h.run_steps(5);
+    // The list is short and scrolled to the move shown: bring the chevron into view first.
+    let upper = |h: &Harness<'static, PdfCraftApp>| {
+        h.get_all_by_label("Collapse this variation").min_by(|a, b| a.rect().top().total_cmp(&b.rect().top())).map(|n| n.rect().center())
+    };
+    h.get_all_by_label("Collapse this variation").min_by(|a, b| a.rect().top().total_cmp(&b.rect().top())).unwrap().scroll_to_me();
+    h.run_steps(3);
+    let at = upper(&h).unwrap();
+    h.hover_at(at);
+    h.run_steps(1);
+    for pressed in [true, false] {
+        h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed, modifiers: Modifiers::NONE });
+    }
+    h.run_steps(3);
+    assert!(h.query_by_label("c3").is_none() && h.query_by_label("d6").is_none(), "folded: its inner moves are hidden");
+    assert!(h.query_by_label_contains("3 more moves").is_some());
+    if let Ok(dir) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
+        h.render().unwrap().save(std::path::Path::new(&dir).join("tree-folded.png")).unwrap();
+    }
+    h.get_by_label("Expand this variation").click();
+    h.run_steps(3);
+    assert!(h.query_by_label("c3").is_some(), "unfolded again");
+    // The trail, from inside the variation.
+    put_game(&mut h, FORKS, &[0, 1, 1]);
+    assert_eq!(shown(&h), "c3");
+    assert!(h.query_by_label("Main line").is_some() && h.query_by_label("1…c5").is_some(), "the trail");
+    if let Ok(dir) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
+        h.render().unwrap().save(std::path::Path::new(&dir).join("tree-trail.png")).unwrap();
+    }
+    h.get_by_label("Main line").click();
+    h.run_steps(2);
+    assert_eq!(shown(&h), "e4", "the main line's move the variation forks from");
+    // The fork after 1.e4: two continuations, a click on the second steps into it.
+    assert!(h.query_by_label_contains("Continuations:").is_some());
+    h.get_by_label("1…c5").click();
+    h.run_steps(2);
+    assert_eq!(shown(&h), "c5");
+    // A move beside a continuation: 1.e4 d5 is a new variation.
+    put_game(&mut h, FORKS, &[0]);
+    click_board_title(&mut h);
+    click_square(&mut h, "d7");
+    click_square(&mut h, "d5");
+    assert_eq!(shown(&h), "d5");
+    assert!(h.query_by_label("Variation created: 1…d5").is_some());
+    h.get_by_label("Make main line").click();
+    h.run_steps(2);
+    assert!(movetext(&h).starts_with("1. e4 d5"), "{}", movetext(&h));
+    // Shift+End: the main line's end, from a variation.
+    put_game(&mut h, FORKS, &[0, 1, 0, 0]);
+    assert_eq!(shown(&h), "d6");
+    click_board_title(&mut h);
+    host_key(&mut h, Modifiers::SHIFT, Key::End);
+    assert_eq!(shown(&h), "Nf3");
+}
+
+/// Plan A8 V3, "Stepping forward at a fork: Ask": → at a move with two replies stops and offers
+/// them; ↓ picks the variation and → goes in; Esc takes the main line. The choice is kept with the
+/// preferences.
+#[test]
+fn stepping_forward_at_a_fork_can_ask_which_reply() {
+    use egui::{Key, Modifiers};
+    let mut h = harness();
+    h.state_mut().set_option("variations-at-fork", "ask").unwrap();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, FORKS, &[0]);
+    click_board_title(&mut h);
+    host_key(&mut h, Modifiers::NONE, Key::ArrowRight);
+    assert_eq!(shown(&h), "e4", "it asks instead of moving");
+    h.get_by_label("↑ ↓ choose, → or Enter goes in, Esc takes the main line.");
+    host_key(&mut h, Modifiers::NONE, Key::ArrowDown);
+    host_key(&mut h, Modifiers::NONE, Key::ArrowRight);
+    assert_eq!(shown(&h), "c5", "into the variation picked");
+    put_game(&mut h, FORKS, &[0]);
+    click_board_title(&mut h);
+    host_key(&mut h, Modifiers::NONE, Key::ArrowRight);
+    host_key(&mut h, Modifiers::NONE, Key::Escape);
+    assert_eq!(shown(&h), "e5", "Esc: the main line");
+    assert!(h.state().persist().contains("\"at_fork\":\"ask\""));
+}
+
+/// Plan A8 V3, "Playing a different move": Replace takes the continuation away (with the deletion
+/// notice, and Undo brings it back as a variation); Ask offers New main line among its answers.
+#[test]
+fn a_different_move_can_replace_the_continuation_or_ask() {
+    let mut h = harness();
+    h.state_mut().set_option("variations-new-move", "replace").unwrap();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, FORKS, &[0]);
+    h.run_steps(5);
+    click_board_title(&mut h);
+    click_square(&mut h, "d7");
+    click_square(&mut h, "d5");
+    h.run_steps(3);
+    assert_eq!(movetext(&h), "1. e4 d5");
+    assert!(h.query_by_label_contains("moves deleted").is_some(), "the deletion is told, with Undo");
+    assert!(h.state_mut().chess.board_mut().undo());
+    h.run_steps(2);
+    assert!(movetext(&h).starts_with("1. e4 e5 (1... d5)") || movetext(&h).contains("(1... d5)"), "{}", movetext(&h));
+    // Ask: the notice asks; New main line promotes the move played.
+    h.state_mut().set_option("variations-new-move", "ask").unwrap();
+    put_game(&mut h, FORKS, &[0]);
+    h.run_steps(5);
+    click_board_title(&mut h);
+    click_square(&mut h, "d7");
+    click_square(&mut h, "d5");
+    h.run_steps(3);
+    h.get_by_label("Replace the continuation");
+    h.get_by_label("New variation");
+    h.get_by_label("New main line").click();
+    h.run_steps(3);
+    assert!(movetext(&h).starts_with("1. e4 d5 ("), "{}", movetext(&h));
+}
+
+/// Plan A8 V3: from inside a variation, screen readers hear where it is in one line.
+#[test]
+fn the_trail_is_said_in_one_line() {
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    put_game(&mut h, FORKS, &[0, 1, 1]);
+    h.run_steps(3);
+    assert_eq!(shown(&h), "c3");
+    let node = h.get_by_label_contains("Variation 1 of 1 after ");
+    // A label keeps its text as its value.
+    assert_eq!(node.accesskit_node().value().as_deref(), Some("Variation 1 of 1 after 1…c5, move 2.c3"));
+}
+
+/// Plan A8 V3: a long game builds only the rows of the notation in view (and the one with the move
+/// shown): of a 600-move main line, a few dozen moves are on screen, not all of them.
+#[test]
+fn a_long_game_builds_only_the_moves_in_view() {
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    let mut pgn = String::new();
+    for i in 0..150 {
+        let n = 2 * i + 1;
+        pgn.push_str(&format!("{n}. Nf3 Nf6 {}. Ng1 Ng8 ", n + 1));
+    }
+    pgn.push('*');
+    put_game(&mut h, &pgn, &[0]);
+    h.run_steps(6);
+    let built = h.query_all_by_label("knight f3").count();
+    assert!(built > 0 && built < 60, "{built} of 150 knight-f3 moves built");
+    // At the end, the move shown is built and in view.
+    h.state_mut().chess.board_mut().game.go_to(usize::MAX);
+    h.run_steps(6);
+    assert!(h.query_all_by_label("knight g8").count() > 0);
+}
+
+/// Not a check: plan A8 V3's measure. A game of about 10,000 moves with variations nested 32 deep
+/// on the board; the frame's time with the notation shown, and how many of its moves were built.
+/// `cargo test -p pdfcraft-ui-egui --test chess -- --ignored ten_thousand --nocapture`
+#[test]
+#[ignore]
+fn ten_thousand_moves_in_32_levels_cost_only_the_rows_in_view() {
+    use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
+    let mut game = Game::standard();
+    let dance = ["Nf3", "Nf6", "Ng1", "Ng8"];
+    for i in 0..6000 {
+        game.play_san(dance[i % 4]).unwrap();
+    }
+    // Every 240 plies of the main line, a chain of variations, each starting at the second move of
+    // the one before, 32 levels deep, each level four moves long.
+    let main: Vec<_> = {
+        game.go_to(0);
+        (0..6000)
+            .map(|_| {
+                let n = game.current();
+                game.forward();
+                n
+            })
+            .collect()
+    };
+    for start in main.iter().step_by(240) {
+        game.go_to_node(*start);
+        for _level in 0..32 {
+            let taken: Vec<String> = game.replies(game.current()).iter().map(|&n| game.san(n).to_owned()).collect();
+            let Some(alt) = game.legal_moves().into_iter().find(|m| !taken.contains(m)) else { break };
+            if game.play_san(&alt).is_err() {
+                break;
+            }
+            let first = game.current();
+            for _ in 0..3 {
+                let Some(m) = game.legal_moves().into_iter().next() else { break };
+                if game.play_san(&m).is_err() {
+                    break;
+                }
+            }
+            game.go_to_node(first);
+        }
+    }
+    let nodes = game.tokens().iter().filter(|t| matches!(t, pdfcraft_engine::chess::pdfcraft_chess::game::Token::Move { .. })).count();
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(10);
+    let frames = 60;
+    let time = |h: &mut Harness<'static, PdfCraftApp>| {
+        let started = std::time::Instant::now();
+        for _ in 0..frames {
+            h.step();
+        }
+        started.elapsed().as_secs_f64() * 1000.0 / f64::from(frames)
+    };
+    let empty = time(&mut h);
+    game.go_to(2000);
+    h.state_mut().chess.board_mut().game = game;
+    h.run_steps(10);
+    let full = time(&mut h);
+    let built = h.query_all_by_label_contains("knight").count();
+    eprintln!(
+        "{nodes} moves; {full:.2} ms a frame against {empty:.2} with no moves: the notation adds {:.2} ms; {built} knight moves built",
+        full - empty
+    );
 }

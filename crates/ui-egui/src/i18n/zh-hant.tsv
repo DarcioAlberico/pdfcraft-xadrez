@@ -3183,6 +3183,15 @@ chess undo step	Clear drawings	清除標記
 	More panels	更多面板
 	More room for the page: collapse the tools panel?	給頁面更多空間：摺疊工具面板？
 	Rotate view counterclockwise ({key})	逆時針旋轉檢視（{key}）
+	Only the main line	只看主線
+	Variations	變著
+	Main line	主線
+	Continuations:	後續著法：
+	Variation created: {move}	已建立變著：{move}
+	Expand this variation	展開此變著
+	Collapse this variation	摺疊此變著
+	— {n} more moves	— 另有 {n} 步
+	End of this variation. Shift+End goes to the end of the main line.	此變著已結束。按 Shift+End 跳到主線末尾。
 	No analysis engine installed	未安裝分析引擎
 	Or set PDFCRAFT_CHESS_ENGINE to the program.	或者將 PDFCRAFT_CHESS_ENGINE 設為該程式。
 	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	PdfCraft 使用另外的程式進行分析，例如 Stockfish（免費）。請下載後選擇 stockfish.exe 檔案。
@@ -3192,6 +3201,18 @@ chess undo step	Clear drawings	清除標記
 	Analyze	分析
 	Open on the board with the engine analysing it	在棋盤上開啟並由引擎分析
 	Stop the analysis	停止分析
+	Ask	詢問
+	End (End); with Shift, the end of the main line	末尾（End）；按住 Shift 到主線末尾
+	Follow the line remembered	沿記住的路線走
+	New main line	新主線
+	New variation	新變著
+	Playing a different move	走出不同的著法時
+	Replace the continuation	取代後續
+	Start a variation	建立變著
+	Stepping forward at a fork	在分岔處前進時
+	Variation {i} of {n} after {fork}, move {move}	{fork} 之後的第 {i} 個變著，共 {n} 個，著法 {move}
+	the start	開局
+	↑ ↓ choose, → or Enter goes in, Esc takes the main line.	↑ ↓ 選擇，→ 或 Enter 進入，Esc 走主線。
 	Change to: {piece}	改為：{piece}
 	Empty the square	清空此格
 	Restore the automatic reading	還原自動辨識結果

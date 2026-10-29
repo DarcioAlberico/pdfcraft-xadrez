@@ -313,11 +313,15 @@ fn bump_revision_passes_both() {
     let mut g = game(&["e4"]);
     let r = g.revision();
     g.bump_revision(r + 10);
-    assert_eq!(g.revision(), r + 11);
+    let after = g.revision();
+    assert!(after > r + 10);
     g.bump_revision(0);
-    assert_eq!(g.revision(), r + 12);
-    g.bump_revision(u64::MAX);
-    assert_eq!(g.revision(), u64::MAX);
+    assert!(g.revision() > after, "past its own too");
+    // No game made since takes a revision already given.
+    let other = game(&["d4"]);
+    assert!(other.revision() > g.revision());
+    // (Saturation at u64::MAX is not exercised: the counter is shared by every test in the
+    // process.)
 }
 
 #[test]

@@ -115,6 +115,8 @@ pub struct ChessState {
     /// No preview of a move's position when the pointer rests on it (plan HC13; shown by
     /// default).
     pub no_move_preview: bool,
+    /// What a step forward at a fork and a move played beside the reply there do (plan A8 V3).
+    pub variation_rules: crate::chess_moves_tree::VariationRules,
     /// Preferences' piece picker while it is shown.
     pub(crate) piece_picker: Option<crate::chess_pieces_ui::PiecePicker>,
     /// The panel's tab: the diagrams or the page's recognised text (S16).

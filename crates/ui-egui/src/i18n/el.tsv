@@ -3239,6 +3239,15 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	More panels	Περισσότερα πλαίσια
 	More room for the page: collapse the tools panel?	Περισσότερος χώρος για τη σελίδα: σύμπτυξη του πλαισίου εργαλείων;
 	Rotate view counterclockwise ({key})	Περιστροφή προβολής αριστερόστροφα ({key})
+	Only the main line	Μόνο η κύρια γραμμή
+	Variations	Παραλλαγές
+	Main line	Κύρια γραμμή
+	Continuations:	Συνέχειες:
+	Variation created: {move}	Δημιουργήθηκε παραλλαγή: {move}
+	Expand this variation	Ανάπτυξη αυτής της παραλλαγής
+	Collapse this variation	Σύμπτυξη αυτής της παραλλαγής
+	— {n} more moves	— {n} κινήσεις ακόμη
+	End of this variation. Shift+End goes to the end of the main line.	Τέλος αυτής της παραλλαγής. Το Shift+End πηγαίνει στο τέλος της κύριας γραμμής.
 	No analysis engine installed	Δεν είναι εγκατεστημένη μηχανή ανάλυσης
 	Or set PDFCRAFT_CHESS_ENGINE to the program.	Ή ορίστε το πρόγραμμα στο PDFCRAFT_CHESS_ENGINE.
 	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	Για την ανάλυση, το PdfCraft χρησιμοποιεί ξεχωριστό πρόγραμμα, όπως το Stockfish (δωρεάν). Κατεβάστε το και επιλέξτε το αρχείο stockfish.exe.
@@ -3248,6 +3257,18 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Analyze	Ανάλυση
 	Open on the board with the engine analysing it	Άνοιγμα στη σκακιέρα με ανάλυση από τη μηχανή
 	Stop the analysis	Διακοπή της ανάλυσης
+	Ask	Ερώτηση
+	End (End); with Shift, the end of the main line	Στο τέλος (End)· με Shift, το τέλος της κύριας γραμμής
+	Follow the line remembered	Ακολούθηση της γραμμής που θυμάται
+	New main line	Νέα κύρια γραμμή
+	New variation	Νέα παραλλαγή
+	Playing a different move	Όταν παίζεται διαφορετική κίνηση
+	Replace the continuation	Αντικατάσταση της συνέχειας
+	Start a variation	Δημιουργία παραλλαγής
+	Stepping forward at a fork	Όταν προχωράτε σε διακλάδωση
+	Variation {i} of {n} after {fork}, move {move}	Παραλλαγή {i} από {n} μετά το {fork}, κίνηση {move}
+	the start	την αρχή
+	↑ ↓ choose, → or Enter goes in, Esc takes the main line.	↑ ↓ επιλέγουν, → ή Enter μπαίνουν, Esc ακολουθεί την κύρια γραμμή.
 	Change to: {piece}	Αλλαγή σε: {piece}
 	Empty the square	Άδειασμα του τετραγώνου
 	Restore the automatic reading	Επαναφορά της αυτόματης ανάγνωσης
