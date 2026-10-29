@@ -9,11 +9,13 @@
 //!   `\noproof`: chess moves are not words);
 //! - a [`Figure`] is a picture with its text alternative (`wp:docPr descr` in Word,
 //!   `wzDescription` in RTF) and a caption paragraph under it, in Word's `Caption` style, the
-//!   picture kept with it on one page (`keepNext`);
+//!   picture kept with it on one page (`keepNext`); Word also gets its SVG when it has one
+//!   (`asvg:svgBlip`, the PNG kept as the fallback older readers show);
 //! - a link is a real hyperlink, for `http`, `https` and `mailto` addresses only
 //!   ([`super::link_target`]);
-//! - the document's language is the default of every run (`w:lang`), and RTF lists every font it
-//!   names in its font table, so a reader can see which ones must be installed.
+//! - the document's language is the default of every run (`w:lang`; `\deflang` and `\lang` in
+//!   RTF, by the Windows language number [`rtf_lang`] knows), and RTF lists every font it names in
+//!   its font table, so a reader can see which ones must be installed.
 //!
 //! Every text is escaped for its format and stripped of what XML does not allow.
 
@@ -45,6 +47,8 @@ impl Run {
 pub struct Figure {
     /// A PNG.
     pub png: Vec<u8>,
+    /// The same picture as a standalone SVG, which Word draws at any size instead of the PNG.
+    pub svg: Option<String>,
     /// Its side on the page, in points (it is square).
     pub side_pt: f64,
     /// What it shows, for a reader who cannot see it.
@@ -145,6 +149,7 @@ pub fn docx(doc: &FlowDoc) -> Vec<u8> {
     let mut body = String::new();
     let mut links: Vec<String> = Vec::new();
     let mut media: Vec<&[u8]> = Vec::new();
+    let mut svgs: Vec<(usize, &str)> = Vec::new();
     for block in &doc.blocks {
         match block {
             FlowBlock::Heading { level, runs } => {
@@ -155,6 +160,15 @@ pub fn docx(doc: &FlowDoc) -> Vec<u8> {
             FlowBlock::Figure(f) => {
                 media.push(&f.png);
                 let n = media.len();
+                // The SVG as an extension of the picture: Word 2016 and later draw it, others the
+                // PNG (plan A8 P9a).
+                let svg_blip = match f.svg.as_deref() {
+                    Some(svg) => {
+                        svgs.push((n, svg));
+                        format!("<a:extLst><a:ext uri=\"{SVG_EXT}\"><asvg:svgBlip xmlns:asvg=\"{SVG_NS}\" r:embed=\"rIdSvg{n}\"/></a:ext></a:extLst>")
+                    }
+                    None => String::new(),
+                };
                 let side = if f.side_pt.is_finite() && f.side_pt > 0.0 { f.side_pt.min(468.0) } else { 216.0 };
                 let (cx, cy) = (emu(side), emu(side));
                 let alt = esc(&f.alt.chars().map(|c| if c.is_control() { ' ' } else { c }).collect::<String>());
@@ -164,7 +178,7 @@ pub fn docx(doc: &FlowDoc) -> Vec<u8> {
 <wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect=\"1\"/></wp:cNvGraphicFramePr>\
 <a:graphic><a:graphicData uri=\"http://schemas.openxmlformats.org/drawingml/2006/picture\">\
 <pic:pic><pic:nvPicPr><pic:cNvPr id=\"{n}\" name=\"diagram{n}.png\" descr=\"{alt}\"/><pic:cNvPicPr/></pic:nvPicPr>\
-<pic:blipFill><a:blip r:embed=\"rIdImg{n}\"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill>\
+<pic:blipFill><a:blip r:embed=\"rIdImg{n}\">{svg_blip}</a:blip><a:stretch><a:fillRect/></a:stretch></pic:blipFill>\
 <pic:spPr><a:xfrm><a:off x=\"0\" y=\"0\"/><a:ext cx=\"{cx}\" cy=\"{cy}\"/></a:xfrm><a:prstGeom prst=\"rect\"><a:avLst/></a:prstGeom></pic:spPr></pic:pic>\
 </a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>"
                 ));
@@ -198,7 +212,7 @@ xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><w:body>{
     );
     let types = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\">\
 <Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"xml\" ContentType=\"application/xml\"/>\
-<Default Extension=\"png\" ContentType=\"image/png\"/>\
+<Default Extension=\"png\" ContentType=\"image/png\"/><Default Extension=\"svg\" ContentType=\"image/svg+xml\"/>\
 <Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/>\
 <Override PartName=\"/word/styles.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml\"/>\
 <Override PartName=\"/docProps/core.xml\" ContentType=\"application/vnd.openxmlformats-package.core-properties+xml\"/></Types>";
@@ -212,6 +226,11 @@ xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><w:body>{
     for n in 1..=media.len() {
         doc_rels.push_str(&format!(
             "<Relationship Id=\"rIdImg{n}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"media/diagram{n}.png\"/>"
+        ));
+    }
+    for (n, _) in &svgs {
+        doc_rels.push_str(&format!(
+            "<Relationship Id=\"rIdSvg{n}\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"media/diagram{n}.svg\"/>"
         ));
     }
     for (i, target) in links.iter().enumerate() {
@@ -237,10 +256,67 @@ xmlns:pic=\"http://schemas.openxmlformats.org/drawingml/2006/picture\"><w:body>{
     for (i, png) in media.iter().enumerate() {
         z.add(&format!("word/media/diagram{}.png", i + 1), png, false);
     }
+    for (n, svg) in &svgs {
+        z.add(&format!("word/media/diagram{n}.svg"), svg.as_bytes(), true);
+    }
     z.finish()
 }
 
+/// The extension that carries a picture's SVG in Office Open XML (Office 2016), and its namespace.
+const SVG_EXT: &str = "{96DAC541-7B7A-43D3-8B79-37D633B846F1}";
+const SVG_NS: &str = "http://schemas.microsoft.com/office/drawing/2016/SVG/main";
+
 // ---------------------------------------------------------------- RTF
+
+/// The Windows language number RTF names a language by (`\langN`), for a BCP 47 tag: the 18
+/// languages of chess notation and some others, a region where it changes the number (en-GB,
+/// pt-PT, nn). `None` for a language not listed: the text is then left unmarked.
+pub fn rtf_lang(tag: &str) -> Option<u16> {
+    let tag = lang_tag(tag).to_ascii_lowercase();
+    let mut parts = tag.split('-');
+    let primary = parts.next().unwrap_or("");
+    let region = parts.next().unwrap_or("");
+    Some(match (primary, region) {
+        ("en", "gb") => 2057,
+        ("en", _) => 1033,
+        ("pt", "pt") => 2070,
+        ("pt", _) => 1046,
+        ("de", _) => 1031,
+        ("es", _) => 3082,
+        ("fr", _) => 1036,
+        ("it", _) => 1040,
+        ("ru", _) => 1049,
+        ("nl", _) => 1043,
+        ("pl", _) => 1045,
+        ("cs", _) => 1029,
+        ("hu", _) => 1038,
+        ("da", _) => 1030,
+        ("sv", _) => 1053,
+        ("nn", _) => 2068,
+        ("no" | "nb", _) => 1044,
+        ("fi", _) => 1035,
+        ("ro", _) => 1048,
+        ("is", _) => 1039,
+        ("ca", _) => 1027,
+        ("sk", _) => 1051,
+        ("sl", _) => 1060,
+        ("hr", _) => 1050,
+        ("tr", _) => 1055,
+        ("el", _) => 1032,
+        ("uk", _) => 1058,
+        ("bg", _) => 1026,
+        ("lt", _) => 1063,
+        ("lv", _) => 1062,
+        ("et", _) => 1061,
+        ("ja", _) => 1041,
+        ("zh", _) => 2052,
+        ("ko", _) => 1042,
+        ("ar", _) => 1025,
+        ("he", _) => 1037,
+        ("vi", _) => 1066,
+        _ => return None,
+    })
+}
 
 /// The runs of a paragraph as RTF: each in its own group with its font and `\noproof`, a link as
 /// a `HYPERLINK` field.
@@ -250,6 +326,9 @@ fn rtf_runs(runs: &[Run], fonts: &[String]) -> String {
         let mut fmt = String::new();
         if let Some(i) = run.font.as_deref().map(font_name).and_then(|f| fonts.iter().position(|e| *e == f)) {
             fmt.push_str(&format!("\\f{}", i + 1));
+        }
+        if let Some(n) = run.lang.as_deref().and_then(rtf_lang) {
+            fmt.push_str(&format!("\\lang{n}"));
         }
         if run.no_proof {
             fmt.push_str("\\noproof");
@@ -291,7 +370,12 @@ fn rtf_figure(png: &[u8], side: f64, alt: &str) -> String {
 /// font, so a reader sees which must be installed where the file is read.
 pub fn rtf(doc: &FlowDoc) -> String {
     let fonts = fonts(doc);
-    let mut s = String::from("{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0\\froman Times New Roman;}");
+    let mut s = String::from("{\\rtf1\\ansi\\deff0");
+    // The document's language, the default of every run (`\plain` and each paragraph return to it).
+    if let Some(n) = rtf_lang(&doc.lang) {
+        s.push_str(&format!("\\deflang{n}"));
+    }
+    s.push_str("{\\fonttbl{\\f0\\froman Times New Roman;}");
     for (i, f) in fonts.iter().enumerate() {
         s.push_str(&format!("{{\\f{}\\fnil {};}}", i + 1, rtf_text(f)));
     }
@@ -342,7 +426,13 @@ mod tests {
                     Run { link: Some("https://example.org/?a=1&b=\"2\"".into()), ..Run::text("a link") },
                     Run { lang: Some("de".into()), ..Run::text("Zug") },
                 ]),
-                FlowBlock::Figure(Figure { png, side_pt: f64::NAN, alt: "Diagram \"1\" <a> & {b}\n".into(), caption: vec![Run::text("cap")] }),
+                FlowBlock::Figure(Figure {
+                    png,
+                    svg: Some("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"10\" height=\"10\"/>".into()),
+                    side_pt: f64::NAN,
+                    alt: "Diagram \"1\" <a> & {b}\n".into(),
+                    caption: vec![Run::text("cap")],
+                }),
             ],
         }
     }
@@ -366,6 +456,13 @@ mod tests {
         assert!(xml.contains("descr=\"Diagram &quot;1&quot; &lt;a&gt; &amp; {b} \""), "{xml}");
         assert!(part(&word, "word/styles.xml").contains("<w:lang w:val=\"pt-BRx\"/>"), "only a tag's own characters");
         assert_eq!(fonts(&doc), ["SemFig"]);
+        // The figure's SVG goes with its PNG (plan A8 P9a).
+        assert!(xml.contains("<a:blip r:embed=\"rIdImg1\"><a:extLst><a:ext uri=\"{96DAC541-7B7A-43D3-8B79-37D633B846F1}\"><asvg:svgBlip xmlns:asvg=\"http://schemas.microsoft.com/office/drawing/2016/SVG/main\" r:embed=\"rIdSvg1\"/>"), "{xml}");
+        assert!(part(&word, "word/_rels/document.xml.rels").contains(
+            "Id=\"rIdSvg1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/image\" Target=\"media/diagram1.svg\""
+        ));
+        assert!(part(&word, "[Content_Types].xml").contains("Extension=\"svg\" ContentType=\"image/svg+xml\""));
+        roxmltree::Document::parse(&part(&word, "word/media/diagram1.svg")).unwrap();
 
         let rich = rtf(&doc);
         // Every group closes: count the braces that are not escaped.
@@ -386,6 +483,29 @@ mod tests {
         assert_eq!(depth, 0, "{rich}");
         assert!(rich.contains(r"{\f1\fnil SemFig;}") && rich.contains(r"{\f1\noproof N\{\}\\}"), "{rich}");
         assert_eq!(rich.matches("HYPERLINK").count(), 1, "{rich}");
+        // The document's language and a run's own, by their Windows numbers.
+        assert!(rich.starts_with(r"{\rtf1\ansi\deff0\deflang1046{\fonttbl"), "{rich}");
+        assert!(rich.contains(r"{\lang1031 Zug}"), "{rich}");
         assert!(rich.contains(r"\picwgoal4320\pichgoal4320"), "a side that is not a number is three inches: {rich}");
+    }
+
+    #[test]
+    fn rtf_names_languages_by_their_windows_numbers() {
+        assert_eq!(rtf_lang("pt-BR"), Some(1046));
+        assert_eq!(rtf_lang("pt-PT"), Some(2070));
+        assert_eq!(rtf_lang("EN-gb"), Some(2057));
+        assert_eq!(rtf_lang("en"), Some(1033));
+        assert_eq!(rtf_lang("nb"), Some(1044));
+        assert_eq!(rtf_lang("nn-NO"), Some(2068));
+        assert_eq!(rtf_lang("ca"), Some(1027));
+        assert_eq!(rtf_lang(""), None);
+        assert_eq!(rtf_lang("tlh"), None);
+        let doc = FlowDoc {
+            title: String::new(),
+            lang: String::new(),
+            blocks: vec![FlowBlock::Para(vec![Run { lang: Some("xx".into()), ..Run::text("a") }])],
+        };
+        let rich = rtf(&doc);
+        assert!(!rich.contains(r"\lang") && !rich.contains(r"\deflang"), "no language said, none written: {rich}");
     }
 }

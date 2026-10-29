@@ -117,6 +117,11 @@ fn the_chapter_is_a_flowing_document_and_both_files_carry_the_diagram() {
         roxmltree::Document::parse(&zip_part(&docx, part)).unwrap_or_else(|e| panic!("{part}: {e}"));
     }
     assert!(docx.windows(23).any(|w| w == b"word/media/diagram1.png"), "the docx holds the diagram image");
+    // And the same board as SVG, said by the same text (plan A8 P9a).
+    let svg = zip_part(&docx, "word/media/diagram1.svg");
+    let svg_doc = roxmltree::Document::parse(&svg).unwrap();
+    assert_eq!(svg_doc.descendants().find(|n| n.has_tag_name("title")).and_then(|n| n.text()), Some(f.alt.as_str()));
+    assert_eq!(svg_doc.descendants().filter(|n| n.has_tag_name("path")).count(), 3 + 64, "the board and 32 pieces in two layers each");
     let xml = zip_part(&docx, "word/document.xml");
     let body = roxmltree::Document::parse(&xml).unwrap();
     let doc_pr = body.descendants().find(|n| n.has_tag_name("docPr")).unwrap();
@@ -134,6 +139,7 @@ fn the_chapter_is_a_flowing_document_and_both_files_carry_the_diagram() {
     assert!(styles_xml.contains("w:styleId=\"Caption\"><w:name w:val=\"caption\"/>"), "{styles_xml}");
 
     let rtf = rtf(&flow);
+    assert!(rtf.contains("\\deflang1033{"), "the book's language: {rtf:.200}");
     assert!(rtf.contains("\\pngblip") && rtf.contains("{\\sn wzDescription}{\\sv Diagram 1, page 1: White to move."), "{rtf:.600}");
     assert!(rtf.contains("\\outlinelevel0") && rtf.contains("Chapter 1"), "{rtf:.400}");
     assert!(rtf.contains("\\u9822?f3") && rtf.contains("\\noproof"), "the knight figurine as \\uN?, moves not proofed");
@@ -176,7 +182,10 @@ fn the_users_fonts_are_named_on_the_runs_that_need_them() {
     assert_eq!(in_font("ISChess").len(), 1, "the sign as the sign font's letter: {runs:?}");
     assert!(notes.iter().any(|n| n.contains("SemFig, ISChess") && n.contains("installed")), "{notes:?}");
     let rtf = rtf(&flow);
-    assert!(rtf.starts_with("{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0\\froman Times New Roman;}{\\f1\\fnil SemFig;}{\\f2\\fnil ISChess;}}"), "{rtf:.300}");
+    assert!(
+        rtf.starts_with("{\\rtf1\\ansi\\deff0\\deflang1033{\\fonttbl{\\f0\\froman Times New Roman;}{\\f1\\fnil SemFig;}{\\f2\\fnil ISChess;}}"),
+        "{rtf:.300}"
+    );
     assert!(rtf.contains("{\\f1\\noproof N}"), "{rtf}");
     let xml = zip_part(&docx(&flow), "word/document.xml");
     assert!(xml.contains("<w:rFonts w:ascii=\"SemFig\" w:hAnsi=\"SemFig\" w:cs=\"SemFig\"/><w:noProof/>"), "{xml}");
