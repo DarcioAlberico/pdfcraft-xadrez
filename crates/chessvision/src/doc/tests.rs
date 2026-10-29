@@ -956,6 +956,14 @@ fn a_word_cut_at_a_lines_end_is_joined() {
     assert!(pgn.contains("{a strong position on the e-file}"), "{pgn}");
     assert!(kinds(&doc.pages[0]).iter().any(|k| k.contains("a strong position on the e-file")), "{:?}", kinds(&doc.pages[0]));
     assert!(pgn.contains("d4- d5"), "{pgn}");
+    // Cut at a column's foot, its word goes on in the next paragraph (`cor-` `rect`).
+    let p0 = page_text(vec![line(100.0, "1.e4 e5 the cor-"), line(300.0, "rect reply 2.Nf3"), line(500.0, "re-"), line(700.0, "treat")]);
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[], &[], &[]));
+    let doc = b.finish();
+    let pgn = pgn::write_game(&doc.games[0].score);
+    assert!(pgn.contains("{the correct reply}") && pgn.contains("{retreat}"), "{pgn}");
+    assert_eq!(kinds(&doc.pages[0]), ["P:1.e4 e5 the correct", "P:reply 2.Nf3", "P:retreat"], "a paragraph left empty goes");
 }
 
 /// A smiley in a variation's prose (`it usually works! :)`) closes no variation, and its `;`

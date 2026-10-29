@@ -21,7 +21,7 @@
 
 use pdfcraft_chess::san::{FigurineSet, Lang, San, figurine};
 
-use super::fragment::join_hyphens;
+use super::fragment::{hyphen_join, join_hyphens};
 use super::games::{Key, Loc, Name, Seed, Walker};
 use super::header::{GameHeader, event_line, players_line};
 use super::{Block, ChessPage, DiagramBlock, HintKind, Inline, MoveInline, MoveNumber, MoveStatus, PageInput, ReviewFlag, UserRect};
@@ -783,7 +783,37 @@ fn blocks(input: &PageInput<'_>, carried: Option<u32>, folios: &[i64]) -> (Vec<B
         }
     }
     flush(&mut blocks, &mut group, key);
+    join_block_hyphens(&mut blocks);
     (blocks, trailing, offsets.into_iter().map(|(_, o)| o).collect())
+}
+
+/// A word a hyphen cut at the end of one paragraph and the next goes on with (a column's foot
+/// and the next column's head, read as two blocks: `cor-` `rect`) is joined into the first, as
+/// within a paragraph ([`hyphen_join`]); a paragraph left empty goes.
+fn join_block_hyphens(blocks: &mut Vec<Block>) {
+    let mut k = 1usize;
+    while k < blocks.len() {
+        let Some((head, tail)) = blocks.split_at_mut_checked(k) else { break };
+        if let (Some(Block::Paragraph { inlines: prev, .. }), Some(Block::Paragraph { inlines: next, .. })) = (head.last_mut(), tail.first_mut())
+            && let Some(Inline::Text { text: end, .. }) = prev.last_mut()
+            && let Some(Inline::Text { text: start, .. }) = next.first_mut()
+            && let Some((joined, remainder)) = hyphen_join(end, start)
+        {
+            *end = joined;
+            if remainder.is_empty() {
+                // `next` has a first inline: it was just matched.
+                next.remove(0);
+            } else {
+                *start = remainder;
+            }
+            if next.is_empty() {
+                // `k < blocks.len()`, checked by the loop.
+                blocks.remove(k);
+                continue;
+            }
+        }
+        k = k.saturating_add(1);
+    }
 }
 
 /// The page's trailing caption label ([`caption_numbers`]) from its text and its diagrams' boxes

@@ -365,19 +365,8 @@ pub(crate) fn join_hyphens(lines: &[ChessLine]) -> Vec<ChessLine> {
         let (Some(prev), Some(next)) = (head.last_mut(), tail.first_mut()) else { continue };
         let Some(ChessRun::Text(end)) = prev.spans.last_mut().map(|s| &mut s.run) else { continue };
         let Some(ChessRun::Text(start)) = next.spans.first().map(|s| &s.run) else { continue };
-        let Some(stem) = end.strip_suffix('-') else { continue };
-        let word = stem.rsplit(char::is_whitespace).next().unwrap_or_default();
-        let letters = word.chars().rev().take_while(|c| c.is_alphabetic()).count();
-        // The letters are a word's end, not a square's (`Nd7-`) or a sign's.
-        let alone = word.chars().rev().nth(letters).is_none_or(|c| !c.is_alphanumeric());
-        let starts = start.chars().next().is_some_and(|c| c.is_alphabetic() && c.is_lowercase());
-        if letters == 0 || !alone || !starts {
-            continue;
-        }
-        let first_word: String = start.chars().take_while(|c| !c.is_whitespace()).collect();
-        let joined = if letters == 1 { format!("{end}{first_word}") } else { format!("{stem}{first_word}") };
+        let Some((joined, remainder)) = hyphen_join(end, start) else { continue };
         *end = joined;
-        let remainder = start.get(first_word.len()..).unwrap_or_default().trim_start().to_owned();
         if remainder.is_empty() {
             next.spans.remove(0);
         } else if let Some(span) = next.spans.first_mut() {
@@ -385,4 +374,24 @@ pub(crate) fn join_hyphens(lines: &[ChessLine]) -> Vec<ChessLine> {
         }
     }
     out
+}
+
+/// The text `end` (a line's last words) and `start` (the next line's first) when a hyphen at the
+/// end of `end` cuts a word that `start` goes on with ([`join_hyphens`]): `end` with the word
+/// joined, and what is left of `start` after the word, its spaces trimmed. `None` when nothing is
+/// joined.
+pub(crate) fn hyphen_join(end: &str, start: &str) -> Option<(String, String)> {
+    let stem = end.strip_suffix('-')?;
+    let word = stem.rsplit(char::is_whitespace).next().unwrap_or_default();
+    let letters = word.chars().rev().take_while(|c| c.is_alphabetic()).count();
+    // The letters are a word's end, not a square's (`Nd7-`) or a sign's.
+    let alone = word.chars().rev().nth(letters).is_none_or(|c| !c.is_alphanumeric());
+    let starts = start.chars().next().is_some_and(|c| c.is_alphabetic() && c.is_lowercase());
+    if letters == 0 || !alone || !starts {
+        return None;
+    }
+    let first_word: String = start.chars().take_while(|c| !c.is_whitespace()).collect();
+    let joined = if letters == 1 { format!("{end}{first_word}") } else { format!("{stem}{first_word}") };
+    let remainder = start.get(first_word.len()..).unwrap_or_default().trim_start().to_owned();
+    Some((joined, remainder))
 }
