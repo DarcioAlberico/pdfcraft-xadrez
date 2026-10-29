@@ -281,7 +281,6 @@
 	Page {p} of {n}	Σελίδα {p} από {n}
 	Flatten Fill & Sign when saving	Ενσωμάτωση συμπληρώσεων και υπογραφών κατά την αποθήκευση
 	Text, marks and signatures become part of the page. Other comments stay editable.	Το κείμενο, τα σημάδια και οι υπογραφές γίνονται μέρος της σελίδας. Τα υπόλοιπα σχόλια παραμένουν επεξεργάσιμα.
-	Current page — type a page number or label (such as iv) and press Enter	Τρέχουσα σελίδα — πληκτρολογήστε αριθμό ή ετικέτα σελίδας (π.χ. iv) και πατήστε Enter
 	Zoom — type a percentage and press Enter	Ζουμ — πληκτρολογήστε ένα ποσοστό και πατήστε Enter
 	Files you open in PdfCraft appear here. Drop a PDF anywhere to open it.	Τα αρχεία που ανοίγετε στο PdfCraft εμφανίζονται εδώ. Σύρετε ένα PDF οπουδήποτε για να το ανοίξετε.
 	Scripts run in a sandbox without file or network access. With JavaScript off, Acrobat's standard format, validate and calculate functions still work.	Τα σενάρια εκτελούνται σε απομονωμένο περιβάλλον χωρίς πρόσβαση σε αρχεία ή δίκτυο. Με απενεργοποιημένη τη JavaScript, οι τυπικές λειτουργίες μορφοποίησης, επικύρωσης και υπολογισμού του Acrobat εξακολουθούν να λειτουργούν.
@@ -1443,7 +1442,6 @@
 	This area has too many overlapping paths; intersection snapping is limited.	Αυτή η περιοχή έχει υπερβολικά πολλές επικαλυπτόμενες διαδρομές· η προσκόλληση σε τομές είναι περιορισμένη.
 	This measurement needs at least {n} points.	Αυτή η μέτρηση απαιτεί τουλάχιστον {n} σημεία.
 	Switch to two-page view first to show the cover page	Μεταβείτε πρώτα στην προβολή δύο σελίδων για να εμφανιστεί το εξώφυλλο
-	Page display: {layout}	Εμφάνιση σελίδων: {layout}
 	Fit to width scrolling	Κύλιση με προσαρμογή στο πλάτος
 	Fit one full page	Προσαρμογή ολόκληρης σελίδας
 	Created a PDF from {n} files	Δημιουργήθηκε PDF από {n} αρχεία
@@ -3238,3 +3236,10 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Review done: {d} of {n} checked	Ο έλεγχος ολοκληρώθηκε: ελέγχθηκαν {d} από {n}
 	Next diagram (Page Down)	Επόμενο διάγραμμα (Page Down)
 	Previous diagram (Page Up)	Προηγούμενο διάγραμμα (Page Up)
+	of {n}	από {n}
+	· {i} of {n}	· {i} από {n}
+	Number printed in the book, then the place in the PDF. Type it and press Enter ({key}).	Ο αριθμός τυπωμένος στο βιβλίο, μετά η θέση στο PDF. Πληκτρολογήστε τον και πατήστε Enter ({key}).
+	View options	Επιλογές προβολής
+	More panels	Περισσότερα πλαίσια
+	More room for the page: collapse the tools panel?	Περισσότερος χώρος για τη σελίδα: σύμπτυξη του πλαισίου εργαλείων;
+	Rotate view counterclockwise ({key})	Περιστροφή προβολής αριστερόστροφα ({key})

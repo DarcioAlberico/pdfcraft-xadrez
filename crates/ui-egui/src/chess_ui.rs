@@ -84,6 +84,10 @@ pub struct ChessState {
     /// The review just finished, (checked, of): the Diagram tab says so until another diagram
     /// opens (plan A8, P4).
     pub(crate) review_done: Option<(usize, usize)>,
+    /// The chess panel offers to collapse the tools panel this frame (plan A8, P5).
+    pub(crate) tools_offer: bool,
+    /// The offer was answered (Collapse or Not now): it is not made again. Kept in the settings.
+    pub tools_offer_answered: bool,
     /// The Diagrams list's filter, its keyboard and what it follows (plan A8, P2a1).
     pub(crate) list: crate::chess_list::ListState,
     /// The pieces the editor draws with, found once.
@@ -399,6 +403,10 @@ pub enum PanelAction {
     /// Mark the page as checked (0-based): its diagrams read with confidence become Verified
     /// (plan A8, P2b).
     VerifyPage(usize),
+    /// The answer to the offer to collapse the tools panel (plan A8, P5).
+    ToolsOffer {
+        collapse: bool,
+    },
 }
 
 /// One diagram's state: its label, and its mark's colour from the theme's state tokens (plan A8
@@ -554,7 +562,36 @@ pub(crate) fn panel(
     if in_window {
         return in_window_note(ui, t);
     }
-    tab_contents(ui, t, state, state.tab == ChessTab::Text, id, info, current, page_now)
+    let offer = if state.tools_offer { tools_offer(ui, t) } else { None };
+    tab_contents(ui, t, state, state.tab == ChessTab::Text, id, info, current, page_now).or(offer)
+}
+
+/// Windows narrower than this, in points, get the offer to collapse the tools panel.
+pub(crate) const TOOLS_OFFER_BELOW: f32 = 1600.0;
+
+/// The offer to collapse the tools panel, for room beside the page (plan A8, P5, finding X4):
+/// Collapse, or Not now; either answer is kept, so it is made once.
+fn tools_offer(ui: &mut egui::Ui, t: &Tokens) -> Option<PanelAction> {
+    let mut action = None;
+    egui::Frame::NONE.fill(t.card).stroke(Stroke::new(1.0, t.border)).corner_radius(CornerRadius::same(6)).inner_margin(egui::Margin::same(8)).show(
+        ui,
+        |ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.add(crate::icons::image("panel-left", 14.0, t.icon));
+                ui.label(egui::RichText::new(tl!("More room for the page: collapse the tools panel?")).small());
+            });
+            ui.horizontal(|ui| {
+                if ui.button(tl!("Collapse")).clicked() {
+                    action = Some(PanelAction::ToolsOffer { collapse: true });
+                }
+                if ui.button(tl!("Not now")).clicked() {
+                    action = Some(PanelAction::ToolsOffer { collapse: false });
+                }
+            });
+        },
+    );
+    ui.add_space(6.0);
+    action
 }
 
 /// Where the Diagrams and Text tabs were: they are in the chess window, which can be docked.
@@ -1053,6 +1090,13 @@ impl PdfCraftApp {
                 self.verify_chess_page(page);
             }
             PanelAction::ReviewNow => self.review_chess_now(),
+            // Either answer is kept: the offer is made once (plan A8, P5).
+            PanelAction::ToolsOffer { collapse } => {
+                self.chess.tools_offer_answered = true;
+                if collapse {
+                    self.left_open = false;
+                }
+            }
             PanelAction::GoToPage(page) => {
                 if let Some(view) = self.active_ids().and_then(|(vi, _)| self.views.get_mut(vi)) {
                     view.go_to_page(page);

@@ -157,7 +157,6 @@
 	Toggle fit page / fit width	Przełącz dopasowanie do strony / szerokości
 	Next page	Następna strona
 	Previous page	Poprzednia strona
-	Current page — type a page number or label (such as iv) and press Enter	Bieżąca strona — wpisz numer lub etykietę strony (np. iv) i naciśnij Enter
 	Zoom — type a percentage and press Enter	Powiększenie — wpisz wartość procentową i naciśnij Enter
 	Welcome to PdfCraft	Witamy w PdfCraft
 	An open-source PDF workbench — local, private, and scriptable.	Otwarty zestaw narzędzi do PDF — lokalny, prywatny i obsługujący skrypty.
@@ -2029,7 +2028,6 @@
 	This area has too many overlapping paths; intersection snapping is limited.	Ten obszar ma zbyt wiele nakładających się ścieżek; przyciąganie do przecięć jest ograniczone.
 	This measurement needs at least {n} points.	Ten pomiar wymaga co najmniej {n} punktów.
 	Switch to two-page view first to show the cover page	Najpierw przełącz na widok dwóch stron, aby pokazać okładkę
-	Page display: {layout}	Wyświetlanie stron: {layout}
 	Fit to width scrolling	Przewijanie z dopasowaniem do szerokości
 	Fit one full page	Dopasuj jedną całą stronę
 	Created a PDF from {n} files	Utworzono PDF z {n} plików
@@ -3208,3 +3206,10 @@ chess undo step	Clear drawings	usunięcie rysunków
 	Review done: {d} of {n} checked	Sprawdzanie zakończone: sprawdzono {d} z {n}
 	Next diagram (Page Down)	Następny diagram (Page Down)
 	Previous diagram (Page Up)	Poprzedni diagram (Page Up)
+	of {n}	z {n}
+	· {i} of {n}	· {i} z {n}
+	Number printed in the book, then the place in the PDF. Type it and press Enter ({key}).	Numer wydrukowany w książce, potem miejsce w PDF. Wpisz go i naciśnij Enter ({key}).
+	View options	Opcje widoku
+	More panels	Więcej paneli
+	More room for the page: collapse the tools panel?	Więcej miejsca na stronę: zwinąć panel narzędzi?
+	Rotate view counterclockwise ({key})	Obróć widok w lewo ({key})

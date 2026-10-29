@@ -157,7 +157,6 @@
 	Toggle fit page / fit width	Alternar entre ajustar a la página y al ancho
 	Next page	Página siguiente
 	Previous page	Página anterior
-	Current page — type a page number or label (such as iv) and press Enter	Página actual: escribe un número o una etiqueta de página (por ejemplo, iv) y pulsa Intro
 	Zoom — type a percentage and press Enter	Zoom: escribe un porcentaje y pulsa Intro
 	Welcome to PdfCraft	Te damos la bienvenida a PdfCraft
 	An open-source PDF workbench — local, private, and scriptable.	Un banco de trabajo PDF de código abierto: local, privado y automatizable.
@@ -2082,7 +2081,6 @@ action wizard	Start	Iniciar
 @plural	{n} field|{n} fields	{n} campo|{n} campos
 @plural	{n} field name collides with earlier files and will be renamed: {list}|{n} field names collide with earlier files and will be renamed: {list}	{n} nombre de campo coincide con el de archivos anteriores y se renombrará: {list}|{n} nombres de campo coinciden con los de archivos anteriores y se renombrarán: {list}
 	Switch to two-page view first to show the cover page	Cambia primero a la vista de dos páginas para mostrar la portada
-	Page display: {layout}	Presentación de página: {layout}
 	Fit to width scrolling	Desplazamiento ajustado al ancho
 	Fit one full page	Ajustar una página completa
 	Default page display	Presentación de página predeterminada
@@ -3407,3 +3405,10 @@ chess undo step	Clear drawings	borrado de los dibujos
 	Review done: {d} of {n} checked	Revisión terminada: {d} de {n} revisados
 	Next diagram (Page Down)	Diagrama siguiente (Page Down)
 	Previous diagram (Page Up)	Diagrama anterior (Page Up)
+	of {n}	de {n}
+	· {i} of {n}	· {i} de {n}
+	Number printed in the book, then the place in the PDF. Type it and press Enter ({key}).	Número impreso en el libro; después, la posición en el PDF. Escríbalo y pulse Intro ({key}).
+	View options	Opciones de vista
+	More panels	Más paneles
+	More room for the page: collapse the tools panel?	Más espacio para la página: ¿contraer el panel de herramientas?
+	Rotate view counterclockwise ({key})	Girar la vista a la izquierda ({key})

@@ -733,7 +733,7 @@ fn default_zoom_is_used_for_new_documents() {
 }
 
 #[test]
-fn the_rail_zoom_field_sets_a_typed_zoom() {
+fn the_zoom_field_sets_a_typed_zoom() {
     use egui::accesskit::Role;
     use egui_kittest::kittest::Queryable;
     use pdfcraft_ui_egui::canvas::Fit;
@@ -776,13 +776,13 @@ fn preferences_set_the_default_zoom() {
 }
 
 #[test]
-fn rail_page_display_menu_offers_acrobats_view_choices() {
+fn view_options_menu_offers_acrobats_view_choices() {
     use egui_kittest::kittest::Queryable;
     use pdfcraft_ui_egui::canvas::{Fit, PageLayout};
     let mut h = harness(&[]);
     h.run_steps(4);
     let pick = |h: &mut Harness<'static, PdfCraftApp>, item: &str| {
-        h.get_by_label_contains("Page display:").click();
+        h.get_by_label("View options").click();
         h.run_steps(3);
         h.get_by_label(item).click();
         h.run_steps(4);
@@ -806,11 +806,11 @@ fn rail_page_display_menu_offers_acrobats_view_choices() {
 }
 
 #[test]
-fn rail_page_display_button_switches_layouts() {
+fn view_options_switch_layouts() {
     use egui_kittest::kittest::Queryable;
     let mut h = harness(&[]);
     h.run_steps(4);
-    h.get_by_label_contains("Page display").click();
+    h.get_by_label("View options").click();
     h.run_steps(3);
     h.get_by_label("Single page").click();
     h.run_steps(4);

@@ -134,7 +134,6 @@
 	Toggle fit page / fit width	Ganze Seite / Seitenbreite umschalten
 	Next page	Nächste Seite
 	Previous page	Vorherige Seite
-	Current page — type a page number or label (such as iv) and press Enter	Aktuelle Seite – gib eine Seitenzahl oder -beschriftung ein (z. B. iv) und drücke die Eingabetaste
 	Zoom — type a percentage and press Enter	Zoom – gib einen Prozentwert ein und drücke die Eingabetaste
 	Welcome to PdfCraft	Willkommen bei PdfCraft
 	An open-source PDF workbench — local, private, and scriptable.	Eine Open-Source-PDF-Werkbank – lokal, privat und skriptfähig.
@@ -2000,7 +1999,6 @@
 @plural	{n} field|{n} fields	{n} Feld|{n} Felder
 @plural	{n} field name collides with earlier files and will be renamed: {list}|{n} field names collide with earlier files and will be renamed: {list}	{n} Feldname kollidiert mit früheren Dateien und wird umbenannt: {list}|{n} Feldnamen kollidieren mit früheren Dateien und werden umbenannt: {list}
 	Switch to two-page view first to show the cover page	Wechsle zuerst zur Doppelseitenansicht, um das Deckblatt anzuzeigen
-	Page display: {layout}	Seitenanzeige: {layout}
 	Fit to width scrolling	An Breite anpassen und scrollen
 	Fit one full page	Eine ganze Seite einpassen
 	Default page display	Standard-Seitenanzeige
@@ -3267,3 +3265,10 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	Review done: {d} of {n} checked	Prüfung fertig: {d} von {n} geprüft
 	Next diagram (Page Down)	Nächstes Diagramm (Bild ab)
 	Previous diagram (Page Up)	Vorheriges Diagramm (Bild auf)
+	of {n}	von {n}
+	· {i} of {n}	· {i} von {n}
+	Number printed in the book, then the place in the PDF. Type it and press Enter ({key}).	Im Buch gedruckte Nummer, dann die Stelle im PDF. Eingeben und Eingabe drücken ({key}).
+	View options	Ansichtsoptionen
+	More panels	Weitere Bereiche
+	More room for the page: collapse the tools panel?	Mehr Platz für die Seite: Werkzeugbereich einklappen?
+	Rotate view counterclockwise ({key})	Ansicht gegen den Uhrzeigersinn drehen ({key})

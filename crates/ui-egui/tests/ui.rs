@@ -590,7 +590,8 @@ fn find_counts_matches_across_pages() {
         app.set_option("find", "brown").unwrap();
     });
     settle(&mut h);
-    h.get_by_label_contains("of 2");
+    // The find bar's count (the mode bar's page group says "of 2" too: plan A8, P5).
+    h.get_by_label("1 of 2");
     let v = &h.state().views[0];
     let f = v.find.as_ref().expect("find open");
     assert_eq!(f.matches.iter().map(|(p, _)| *p).collect::<Vec<_>>(), vec![0, 1]);

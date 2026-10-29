@@ -866,7 +866,7 @@ milestone = "M3"
 status = "shipped"
 commands = ["view.layout.single"]
 tools = []
-evidence = ["crates/ui-egui/tests/view.rs::single_page_layout_shows_one_page_at_a_time", "crates/ui-egui/tests/view.rs::single_page_wheel_pans_instead_when_zoomed_in", "crates/ui-egui/tests/view.rs::wheel_turns_one_page_per_notch_and_per_trackpad_swipe", "crates/ui-egui/tests/view.rs::single_page_wheel_at_the_bottom_edge_turns_to_the_next_page_top_and_back", "crates/ui-egui/tests/view.rs::single_page_swipe_that_reaches_the_edge_does_not_turn_but_a_fresh_one_does", "crates/ui-egui/tests/view.rs::rail_page_display_button_switches_layouts", "crates/ui-egui/tests/view.rs::view_menu_page_display_uses_the_same_commands"]
+evidence = ["crates/ui-egui/tests/view.rs::single_page_layout_shows_one_page_at_a_time", "crates/ui-egui/tests/view.rs::single_page_wheel_pans_instead_when_zoomed_in", "crates/ui-egui/tests/view.rs::wheel_turns_one_page_per_notch_and_per_trackpad_swipe", "crates/ui-egui/tests/view.rs::single_page_wheel_at_the_bottom_edge_turns_to_the_next_page_top_and_back", "crates/ui-egui/tests/view.rs::single_page_swipe_that_reaches_the_edge_does_not_turn_but_a_fresh_one_does", "crates/ui-egui/tests/view.rs::view_options_switch_layouts", "crates/ui-egui/tests/view.rs::view_menu_page_display_uses_the_same_commands"]
 notes = "when the whole page fits, each wheel notch turns a page and each trackpad swipe turns one, momentum included; zoomed in so the page is taller than the window, the wheel pans, and at the bottom (top) edge a wheel notch, or a fresh trackpad swipe, shows the next page at its top (the previous page at its bottom); a swipe that panned to the edge, momentum included, does not turn until the fingers lift and swipe again (#1924). Not verified against Acrobat's own thresholds. Switched from the View menu, the rail's Page display button or the palette"
 
 [[feature]]
@@ -950,8 +950,8 @@ milestone = "M3"
 status = "shipped"
 commands = []
 tools = []
-evidence = ["crates/ui-egui/tests/ui.rs::selection_works_in_every_view_rotation", "crates/ui-egui/tests/view.rs::the_rail_zoom_field_sets_a_typed_zoom"]
-notes = "Typed into the right rail's zoom field (150, 150% or 62.5 %, Enter applies, Escape discards, clamped to 8–6400%) or set through the control channel's zoom option; no preset dropdown in the field yet. PdfCraft draws a percentage on its fixed 96-dpi basis: 96/72 logical pixels per PDF point at 100%. Acrobat draws it at its Page Display resolution, with logical pixels per PDF point = ppi / 72 × zoom (checked black-box with Custom resolutions of 96, 110 and 120 ppi on one display), so the same percentage can differ in size. Acrobat's Use System Setting resolution is not reproduced. Tracked with misc.prefs-page-display"
+evidence = ["crates/ui-egui/tests/ui.rs::selection_works_in_every_view_rotation", "crates/ui-egui/tests/view.rs::the_zoom_field_sets_a_typed_zoom", "crates/ui-egui/tests/top_bar.rs::the_mode_bar_shows_the_zoom_and_the_page"]
+notes = "Typed into the right rail's zoom field (150, 150% or 62.5 %, Enter applies, Escape discards, clamped to 8–6400%) or set through the control channel's zoom option; no preset dropdown in the field yet. PdfCraft draws a percentage on its fixed 96-dpi basis: 96/72 logical pixels per PDF point at 100%. Acrobat draws it at its Page Display resolution, with logical pixels per PDF point = ppi / 72 × zoom (checked black-box with Custom resolutions of 96, 110 and 120 ppi on one display), so the same percentage can differ in size. Acrobat's Use System Setting resolution is not reproduced. Tracked with misc.prefs-page-display. Plan A8 P5 (2026-10-28): the zoom is in the mode bar, a framed field between zoom out and zoom in, with fit page / fit width and a View options menu (fit views, actual size, page display, rotation, Read mode); the right rail keeps only page navigation and the view history. In a narrow window the search box becomes its icon first, then the bar keeps only the zoom field, its menu and the page box, then goes (the View menu and shortcuts stay)"
 
 [[feature]]
 id = "view.zoom-actual-size"
@@ -974,7 +974,7 @@ milestone = "M3"
 status = "shipped"
 commands = ["view.fit_one_page"]
 tools = []
-evidence = ["crates/ui-egui/tests/view.rs::actual_size_fit_width_and_fit_page", "crates/ui-egui/tests/view.rs::rail_page_display_menu_offers_acrobats_view_choices", "crates/ui-egui/tests/view.rs::fit_page_holds_zoom_across_mixed_page_sizes", "crates/ui-egui/tests/view.rs::single_page_fit_page_fits_the_shown_page"]
+evidence = ["crates/ui-egui/tests/view.rs::actual_size_fit_width_and_fit_page", "crates/ui-egui/tests/view.rs::view_options_menu_offers_acrobats_view_choices", "crates/ui-egui/tests/view.rs::fit_page_holds_zoom_across_mixed_page_sizes", "crates/ui-egui/tests/view.rs::single_page_fit_page_fits_the_shown_page"]
 notes = "View ▸ Zoom to page level (⌘0) and the rail's Page display menu, which also offers Fit one full page (single-page view at Fit page). Scrolling views fit their largest page so mixed sizes never jump the zoom; single-page view fits the shown page"
 
 [[feature]]
@@ -986,7 +986,7 @@ milestone = "M3"
 status = "shipped"
 commands = ["view.fit_width_scrolling"]
 tools = []
-evidence = ["crates/ui-egui/tests/view.rs::actual_size_fit_width_and_fit_page", "crates/ui-egui/tests/view.rs::rail_page_display_menu_offers_acrobats_view_choices"]
+evidence = ["crates/ui-egui/tests/view.rs::actual_size_fit_width_and_fit_page", "crates/ui-egui/tests/view.rs::view_options_menu_offers_acrobats_view_choices"]
 notes = "View ▸ Fit to width (⌘2) and the rail's Page display menu's Fit to width scrolling (continuous scrolling at Fit width)"
 
 [[feature]]
@@ -1142,8 +1142,8 @@ milestone = "M3"
 status = "shipped"
 commands = []
 tools = []
-evidence = ["crates/ui-egui/tests/control.rs::state_and_view_options", "crates/ui-egui/tests/ui.rs::theme_and_view_options_apply", "crates/ui-egui/tests/viewer.rs::two_page_view_steps_a_spread_at_a_time", "crates/ui-egui/tests/viewer.rs::arrow_and_page_keys_move_through_a_scrolling_document"]
-notes = "in two-page view, next and previous page move a whole spread (with or without a cover page); → / ← turn pages in every layout, ↓ / ↑ scroll a line and Page Down / Page Up a screen (the page in single-page view), as in Acrobat; in single-page view ↓ / ↑ turn the page once there is nothing left to scroll that way, like the wheel"
+evidence = ["crates/ui-egui/tests/control.rs::state_and_view_options", "crates/ui-egui/tests/ui.rs::theme_and_view_options_apply", "crates/ui-egui/tests/viewer.rs::two_page_view_steps_a_spread_at_a_time", "crates/ui-egui/tests/viewer.rs::arrow_and_page_keys_move_through_a_scrolling_document", "crates/ui-egui/tests/top_bar.rs::the_rails_targets_never_overlap", "crates/ui-egui/tests/top_bar.rs::the_rails_more_menu_opens_the_other_panels"]
+notes = "in two-page view, next and previous page move a whole spread (with or without a cover page); → / ← turn pages in every layout, ↓ / ↑ scroll a line and Page Down / Page Up a screen (the page in single-page view), as in Acrobat; in single-page view ↓ / ↑ turn the page once there is nothing left to scroll that way, like the wheel; plan A8 P5 (2026-10-28): the right rail is measured, so its panel buttons that do not fit above the navigation go under a More panels menu and no two targets overlap (checked at 1366 × 705 and 420 points tall)"
 
 [[feature]]
 id = "view.goto-page-label"
@@ -1154,8 +1154,8 @@ milestone = "M3"
 status = "shipped"
 commands = []
 tools = []
-evidence = ["crates/ui-egui/tests/viewer.rs::layouts_fit_height_labels_and_system_theme"]
-notes = "the page box takes labels (iv, A-1) before numbers"
+evidence = ["crates/ui-egui/tests/viewer.rs::layouts_fit_height_labels_and_system_theme", "crates/ui-egui/tests/top_bar.rs::the_mode_bar_shows_the_zoom_and_the_page"]
+notes = "the page box takes labels (iv, A-1) before numbers; plan A8 P5 (2026-10-28): the page box is in the mode bar as 'Page [17] of 703', or 'Page [xvii] · 25 of 703' where the book prints its own number, its tooltip naming Go to page (Ctrl+Shift+N)"
 
 [[feature]]
 id = "view.view-history"

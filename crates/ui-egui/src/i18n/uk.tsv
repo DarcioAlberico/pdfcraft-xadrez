@@ -159,7 +159,6 @@
 	Toggle fit page / fit width	Перемкнути масштаб за сторінкою / за шириною
 	Next page	Наступна сторінка
 	Previous page	Попередня сторінка
-	Current page — type a page number or label (such as iv) and press Enter	Поточна сторінка — введіть номер або позначку сторінки (наприклад iv) і натисніть Enter
 	Zoom — type a percentage and press Enter	Масштаб — введіть відсоток і натисніть Enter
 	Welcome to PdfCraft	Вітаємо в PdfCraft
 	An open-source PDF workbench — local, private, and scriptable.	Відкритий інструментарій для PDF — локальний, приватний і з підтримкою сценаріїв.
@@ -2059,7 +2058,6 @@
 	This form's scripts are turned off because one ran too long. Reopen the document to run them again.	Сценарії цієї форми вимкнено, бо один із них виконувався надто довго. Щоб запустити їх знову, відкрийте документ повторно.
 	XFA form: its fields and its XFA data are kept in step, so other viewers show what you fill in.	Форма XFA: її поля й дані XFA синхронізуються, тому інші засоби перегляду показують введені вами дані.
 	Switch to two-page view first to show the cover page	Спочатку перемкніть на двосторінковий вигляд, щоб показати обкладинку
-	Page display: {layout}	Відображення сторінок: {layout}
 	Fit to width scrolling	Прокручування за шириною
 	Fit one full page	Одна повна сторінка
 	Default page display	Типове відображення сторінок
@@ -3288,3 +3286,10 @@ chess undo step	Clear drawings	видалення малюнків
 	Review done: {d} of {n} checked	Перевірку закінчено: перевірено {d} з {n}
 	Next diagram (Page Down)	Наступна діаграма (Page Down)
 	Previous diagram (Page Up)	Попередня діаграма (Page Up)
+	of {n}	із {n}
+	· {i} of {n}	· {i} із {n}
+	Number printed in the book, then the place in the PDF. Type it and press Enter ({key}).	Номер, надрукований у книжці, потім місце в PDF. Введіть його й натисніть Enter ({key}).
+	View options	Параметри перегляду
+	More panels	Інші панелі
+	More room for the page: collapse the tools panel?	Більше місця для сторінки: згорнути панель інструментів?
+	Rotate view counterclockwise ({key})	Повернути вигляд проти годинникової стрілки ({key})

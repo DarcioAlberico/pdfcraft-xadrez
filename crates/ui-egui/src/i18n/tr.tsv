@@ -119,7 +119,6 @@
 	Toggle fit page / fit width	Sayfayı sığdır / genişliğe sığdır geçişi
 	Next page	Sonraki sayfa
 	Previous page	Önceki sayfa
-	Current page — type a page number or label (such as iv) and press Enter	Geçerli sayfa — bir sayfa numarası veya etiketi (örneğin iv) yazıp Enter'a basın
 	Zoom — type a percentage and press Enter	Yakınlaştırma — bir yüzde yazıp Enter tuşuna basın
 	Welcome to PdfCraft	PdfCraft'a Hoş Geldiniz
 	An open-source PDF workbench — local, private, and scriptable.	Açık kaynaklı bir PDF çalışma alanı — yerel, gizli ve komut dosyalarıyla yönetilebilir.
@@ -1959,7 +1958,6 @@
 @plural	{n} page|{n} pages	{n} sayfa
 @plural	{n} field|{n} fields	{n} alan
 	Switch to two-page view first to show the cover page	Kapak sayfasını göstermek için önce iki sayfalı görünüme geçin
-	Page display: {layout}	Sayfa görünümü: {layout}
 	Fit to width scrolling	Genişliğe sığdırarak kaydırma
 	Fit one full page	Tam bir sayfaya sığdır
 	Default page display	Varsayılan sayfa görünümü
@@ -3262,3 +3260,10 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Review done: {d} of {n} checked	Gözden geçirme bitti: {n} diyagramdan {d} tanesi onaylandı
 	Next diagram (Page Down)	Sonraki diyagram (Page Down)
 	Previous diagram (Page Up)	Önceki diyagram (Page Up)
+	of {n}	/ {n}
+	· {i} of {n}	· {i} / {n}
+	Number printed in the book, then the place in the PDF. Type it and press Enter ({key}).	Kitapta basılı numara, sonra PDF'teki yeri. Yazıp Enter'a basın ({key}).
+	View options	Görünüm seçenekleri
+	More panels	Diğer paneller
+	More room for the page: collapse the tools panel?	Sayfaya daha çok yer: araç paneli daraltılsın mı?
+	Rotate view counterclockwise ({key})	Görünümü saat yönünün tersine döndür ({key})

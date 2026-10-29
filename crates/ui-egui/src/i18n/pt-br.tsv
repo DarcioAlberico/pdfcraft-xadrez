@@ -1068,7 +1068,6 @@
 	Toggle fit page / fit width	Alternar ajustar à página / ajustar à largura
 	Next page	Próxima página
 	Previous page	Página anterior
-	Current page — type a page number or label (such as iv) and press Enter	Página atual — digite o número da página ou rótulo (como iv) e pressione Enter
 	Zoom — type a percentage and press Enter	Zoom — digite uma porcentagem e pressione Enter
 	Open a PDF ({key})	Abrir um PDF ({key})
 	Dark gray theme	Tema cinza escuro
@@ -1987,7 +1986,6 @@
 	Default page display	Exibição de página padrão
 	Default zoom	Zoom padrão
 	Used when a PDF doesn't ask for a layout or zoom. Continuous scrolling never snaps between pages.	Usado quando um PDF não pede um layout ou zoom. A rolagem contínua nunca salta entre páginas.
-	Page display: {layout}	Exibição de página: {layout}
 	Switch to two-page view first to show the cover page	Mude para a exibição de duas páginas primeiro para mostrar a página de capa
 	Save pages	Salvar páginas
 	Save these pages as one PDF	Salvar estas páginas como um PDF
@@ -3283,3 +3281,10 @@ chess undo step	Clear drawings	remoção dos desenhos
 	Review done: {d} of {n} checked	Revisão concluída: {d} de {n} conferidos
 	Next diagram (Page Down)	Próximo diagrama (Page Down)
 	Previous diagram (Page Up)	Diagrama anterior (Page Up)
+	of {n}	de {n}
+	· {i} of {n}	· {i} de {n}
+	Number printed in the book, then the place in the PDF. Type it and press Enter ({key}).	Número impresso no livro; depois, a posição no PDF. Digite e tecle Enter ({key}).
+	View options	Opções de exibição
+	More panels	Mais painéis
+	More room for the page: collapse the tools panel?	Mais espaço para a página: recolher o painel de ferramentas?
+	Rotate view counterclockwise ({key})	Girar exibição no sentido anti-horário ({key})

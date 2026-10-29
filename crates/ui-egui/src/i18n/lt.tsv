@@ -430,7 +430,6 @@
 	Currency symbol:	Valiutos simbolis:
 	Current page	Dabartinis puslapis
 	Current page ({n})	Dabartinis puslapis ({n})
-	Current page — type a page number or label (such as iv) and press Enter	Dabartinis puslapis — įveskite puslapio numerį arba žymą (pvz., iv) ir paspauskite „Enter“
 	Zoom — type a percentage and press Enter	Mastelis – įveskite procentus ir paspauskite Enter
 	Custom	Pasirinktinis
 	Custom scale:	Pasirinktinis mastelis:
@@ -845,7 +844,6 @@
 	Page Range Options	Puslapių intervalo parinktys
 	Page Sizing & Handling	Puslapio dydis ir apdorojimas
 	Page background	Puslapio fonas
-	Page display: {layout}	Puslapių rodinys: {layout}
 	Page layout	Puslapio išdėstymas
 	Page navigation	Naršymas puslapiuose
 	Page number	Puslapio numeris
@@ -3517,3 +3515,10 @@ chess undo step	Clear drawings	piešinių valymą
 	Review done: {d} of {n} checked	Tikrinimas baigtas: patikrinta {d} iš {n}
 	Next diagram (Page Down)	Kita diagrama (Page Down)
 	Previous diagram (Page Up)	Ankstesnė diagrama (Page Up)
+	of {n}	iš {n}
+	· {i} of {n}	· {i} iš {n}
+	Number printed in the book, then the place in the PDF. Type it and press Enter ({key}).	Knygoje išspausdintas numeris, paskui vieta PDF faile. Įveskite ir paspauskite Enter ({key}).
+	View options	Rodinio parinktys
+	More panels	Daugiau skydelių
+	More room for the page: collapse the tools panel?	Daugiau vietos puslapiui: suskleisti įrankių skydelį?
+	Rotate view counterclockwise ({key})	Pasukti rodinį prieš laikrodžio rodyklę ({key})

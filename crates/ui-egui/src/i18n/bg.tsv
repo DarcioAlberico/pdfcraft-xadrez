@@ -1122,7 +1122,6 @@
 	Toggle fit page / fit width	Превключи между „побери страницата“ и „побери по ширина“
 	Next page	Следваща страница
 	Previous page	Предишна страница
-	Current page — type a page number or label (such as iv) and press Enter	Текуща страница — въведете номер или етикет на страница (например iv) и натиснете Enter
 	Zoom — type a percentage and press Enter	Мащаб — въведете процент и натиснете Enter
 	Open a PDF ({key})	Отвори PDF файл ({key})
 	Dark gray theme	Тъмносива тема
@@ -2084,7 +2083,6 @@
 	Open email app	Отвори имейл приложението
 	Open link	Отвори връзката
 	Open this web page?	Да се отвори ли тази уебстраница?
-	Page display: {layout}	Показване на страниците: {layout}
 	Scripts run in a sandbox without file or network access. A script that asks to open a web page needs your permission first. With JavaScript off, Acrobat's standard format, validate and calculate functions still work.	Скриптовете се изпълняват в изолирана среда без достъп до файлове или мрежа. Скрипт, който иска да отвори уебстраница, първо се нуждае от вашето разрешение. При изключен JavaScript стандартните функции на Acrobat за форматиране, валидиране и изчисляване продължават да работят.
 	Sign yourself	Подпишете сами
 	Switch to two-page view first to show the cover page	Първо превключете към изглед с две страници, за да се покаже корицата
@@ -3229,3 +3227,10 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Review done: {d} of {n} checked	Проверката приключи: проверени {d} от {n}
 	Next diagram (Page Down)	Следваща диаграма (Page Down)
 	Previous diagram (Page Up)	Предишна диаграма (Page Up)
+	of {n}	от {n}
+	· {i} of {n}	· {i} от {n}
+	Number printed in the book, then the place in the PDF. Type it and press Enter ({key}).	Номерът, отпечатан в книгата, след това мястото в PDF. Въведете го и натиснете Enter ({key}).
+	View options	Опции за изгледа
+	More panels	Още панели
+	More room for the page: collapse the tools panel?	Повече място за страницата: да се свие ли панелът с инструменти?
+	Rotate view counterclockwise ({key})	Завърти изгледа обратно на часовниковата стрелка ({key})

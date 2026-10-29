@@ -129,7 +129,6 @@
 	Two-page view	Dvoustránkové zobrazení
 	Show cover page in two-page view	Zobrazit titulní stránku ve dvoustránkovém zobrazení
 	Page display	Zobrazení stránek
-	Page display: {layout}	Zobrazení stránek: {layout}
 	Default page display	Výchozí zobrazení stránek
 	Default zoom	Výchozí zvětšení
 	Custom	Vlastní
@@ -278,7 +277,6 @@ key	Space	Mezerník
 	Toggle fit page / fit width	Přepnout celou stránku / šířku stránky
 	Next page	Další stránka
 	Previous page	Předchozí stránka
-	Current page — type a page number or label (such as iv) and press Enter	Aktuální stránka — zadejte číslo nebo označení stránky (třeba iv) a stiskněte Enter
 	Zoom — type a percentage and press Enter	Lupa — zadejte procenta a stiskněte Enter
 	Welcome to PdfCraft	Vítá vás PdfCraft
 	An open-source PDF workbench — local, private, and scriptable.	Open-source dílna pro PDF — lokální, soukromá a skriptovatelná.
@@ -3340,3 +3338,10 @@ chess undo step	Clear drawings	smazání kreseb
 	Review done: {d} of {n} checked	Kontrola hotova: zkontrolováno {d} z {n}
 	Next diagram (Page Down)	Další diagram (Page Down)
 	Previous diagram (Page Up)	Předchozí diagram (Page Up)
+	of {n}	z {n}
+	· {i} of {n}	· {i} z {n}
+	Number printed in the book, then the place in the PDF. Type it and press Enter ({key}).	Číslo vytištěné v knize, potom místo v PDF. Napište ho a stiskněte Enter ({key}).
+	View options	Možnosti zobrazení
+	More panels	Další panely
+	More room for the page: collapse the tools panel?	Víc místa pro stránku: sbalit panel nástrojů?
+	Rotate view counterclockwise ({key})	Otočit zobrazení proti směru hodinových ručiček ({key})

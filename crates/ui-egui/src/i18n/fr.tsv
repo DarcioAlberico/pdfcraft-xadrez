@@ -134,7 +134,6 @@
 	Toggle fit page / fit width	Basculer entre ajuster à la page et à la largeur
 	Next page	Page suivante
 	Previous page	Page précédente
-	Current page — type a page number or label (such as iv) and press Enter	Page actuelle — saisissez un numéro ou une étiquette de page (comme iv) et appuyez sur Entrée
 	Zoom — type a percentage and press Enter	Zoom — saisissez un pourcentage et appuyez sur Entrée
 	Welcome to PdfCraft	Bienvenue dans PdfCraft
 	An open-source PDF workbench — local, private, and scriptable.	Un atelier PDF open source — local, privé et automatisable.
@@ -1995,7 +1994,6 @@
 @plural	{n} field|{n} fields	{n} champ|{n} champs
 @plural	{n} field name collides with earlier files and will be renamed: {list}|{n} field names collide with earlier files and will be renamed: {list}	{n} nom de champ entre en collision avec les fichiers précédents et sera renommé : {list}|{n} noms de champs entrent en collision avec les fichiers précédents et seront renommés : {list}
 	Switch to two-page view first to show the cover page	Passez d'abord à l'affichage sur deux pages pour montrer la couverture
-	Page display: {layout}	Affichage des pages : {layout}
 	Fit to width scrolling	Défilement ajusté à la largeur
 	Fit one full page	Ajuster une page entière
 	Default page display	Affichage des pages par défaut
@@ -3266,3 +3264,10 @@ chess undo step	Clear drawings	l'effacement des dessins
 	Review done: {d} of {n} checked	Révision terminée : {d} sur {n} vérifiés
 	Next diagram (Page Down)	Diagramme suivant (Page Down)
 	Previous diagram (Page Up)	Diagramme précédent (Page Up)
+	of {n}	sur {n}
+	· {i} of {n}	· {i} sur {n}
+	Number printed in the book, then the place in the PDF. Type it and press Enter ({key}).	Numéro imprimé dans le livre, puis la position dans le PDF. Tapez-le et appuyez sur Entrée ({key}).
+	View options	Options d'affichage
+	More panels	Autres panneaux
+	More room for the page: collapse the tools panel?	Plus de place pour la page : réduire le panneau d'outils ?
+	Rotate view counterclockwise ({key})	Pivoter l'affichage vers la gauche ({key})

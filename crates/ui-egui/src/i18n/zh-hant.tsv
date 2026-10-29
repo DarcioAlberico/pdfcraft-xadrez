@@ -1073,7 +1073,6 @@
 	Toggle fit page / fit width	切換符合頁面／符合寬度
 	Next page	下一頁
 	Previous page	上一頁
-	Current page — type a page number or label (such as iv) and press Enter	目前頁面：輸入頁碼或頁面標籤（例如 iv），再按 Enter
 	Zoom — type a percentage and press Enter	縮放 — 輸入百分比並按 Enter
 	Open a PDF ({key})	開啟 PDF（{key}）
 	Dark gray theme	深灰色主題
@@ -2036,7 +2035,6 @@
 	This area has too many overlapping paths; intersection snapping is limited.	此區域有太多重疊路徑；交點吸附受到限制。
 	This measurement needs at least {n} points.	此測量至少需要 {n} 個點。
 	Switch to two-page view first to show the cover page	請先切換到雙頁檢視，才能顯示封面
-	Page display: {layout}	頁面顯示：{layout}
 	Fit to width scrolling	符合寬度連續捲動
 	Fit one full page	單頁完整顯示
 	Created a PDF from {n} files	已從 {n} 個檔案建立 PDF
@@ -3182,3 +3180,10 @@ chess undo step	Clear drawings	清除標記
 	Review done: {d} of {n} checked	複核完成：已確認 {d}/{n}
 	Next diagram (Page Down)	下一個棋圖（Page Down）
 	Previous diagram (Page Up)	上一個棋圖（Page Up）
+	of {n}	共 {n} 頁
+	· {i} of {n}	· 第 {i} 頁，共 {n} 頁
+	Number printed in the book, then the place in the PDF. Type it and press Enter ({key}).	書中印的頁碼，其次是在 PDF 中的位置。輸入後按 Enter（{key}）。
+	View options	檢視選項
+	More panels	更多面板
+	More room for the page: collapse the tools panel?	給頁面更多空間：摺疊工具面板？
+	Rotate view counterclockwise ({key})	逆時針旋轉檢視（{key}）
