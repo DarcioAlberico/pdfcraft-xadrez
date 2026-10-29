@@ -350,7 +350,19 @@ impl PdfCraftApp {
         }
         self.chess.diagram_hint_seen = true;
         if next {
-            self.chess_editor_action(crate::chess_editor::EditorAction::Next);
+            // The last one to review: the review is done, and the tab says so instead of moving
+            // on (plan A8, P4).
+            let reviewing = matches!(self.chess.list.filter, None | Some(crate::chess_widgets::DiagramState::Review));
+            let finished = self.chess.results.as_ref().filter(|r| r.doc == id && reviewing && r.review_queue().is_empty()).map(|r| r.reviewed());
+            match finished {
+                Some((checked, of)) => {
+                    let said = crate::i18n::fmt(tl!("Review done: {d} of {n} checked"), &[("d", &checked.to_string()), ("n", &of.to_string())]);
+                    self.chess.diagram_keys.announce = said.clone();
+                    self.chess.review_done = Some((checked, of));
+                    self.notify(said);
+                }
+                None => self.chess_editor_action(crate::chess_editor::EditorAction::Next),
+            }
         }
         true
     }

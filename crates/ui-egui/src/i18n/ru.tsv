@@ -3125,8 +3125,6 @@ chess undo step	Clear drawings	удаление рисунков
 # Plan A8 P3c: the Diagram tab by the keyboard and for screen readers.
 	{square}, empty	{square}, пусто
 	Arrow keys pick a square; a piece's letter puts it there (with Shift, Black's); Delete empties it.	Стрелки выбирают поле; буква фигуры ставит её туда (с Shift — чёрную); Delete очищает поле.
-	Diagram {i} of {n} to review, page {p}	Диаграмма {i} из {n} на проверку, страница {p}
-	Diagram {n}, page {p}	Диаграмма {n}, страница {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} сомнительное поле|{n} сомнительных поля|{n} сомнительных полей
 	Copy the main line only	Копировать только главную линию
 	Copy without comments	Копировать без комментариев
@@ -3173,3 +3171,11 @@ chess undo step	Clear drawings	удаление рисунков
 	Review first	Сначала проверить
 	Export anyway	Всё равно экспортировать
 	Open folder	Открыть папку
+	Back to the first diagram	Снова первая диаграмма
+	Back to the last diagram	Снова последняя диаграмма
+	Back to diagram {n} (page {p})	Назад к диаграмме {n} (стр. {p})
+	{i} of {n} · {state}	{i} из {n} · {state}
+	{n} · {state}	{n} · {state}
+	Review done: {d} of {n} checked	Проверка закончена: проверено {d} из {n}
+	Next diagram (Page Down)	Следующая диаграмма (Page Down)
+	Previous diagram (Page Up)	Предыдущая диаграмма (Page Up)

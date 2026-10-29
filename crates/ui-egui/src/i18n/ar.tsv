@@ -3488,8 +3488,6 @@ chess undo step	Clear drawings	مسح الرسوم
 # Plan A8 P3c: the Diagram tab by the keyboard and for screen readers.
 	{square}, empty	{square}، فارغة
 	Arrow keys pick a square; a piece's letter puts it there (with Shift, Black's); Delete empties it.	تختار مفاتيح الأسهم مربعًا؛ ويضع حرفُ القطعة القطعةَ فيه (مع Shift تكون سوداء)؛ ويُفرغه Delete.
-	Diagram {i} of {n} to review, page {p}	المخطط {i} من {n} للمراجعة، الصفحة {p}
-	Diagram {n}, page {p}	المخطط {n}، الصفحة {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} مربعات مشكوك فيها|{n} مربع مشكوك فيه|{n} مربعان مشكوك فيهما|{n} مربعات مشكوك فيها|{n} مربعًا مشكوكًا فيه|{n} مربع مشكوك فيه
 	Copy the main line only	نسخ الخط الرئيسي فقط
 	Copy without comments	نسخ بدون تعليقات
@@ -3535,3 +3533,11 @@ chess undo step	Clear drawings	مسح الرسوم
 	They are exported as they were read, and a reading may be wrong. Review first opens the first of them.	تُصدَّر كما قُرئت، وقد تكون القراءة خاطئة. «المراجعة أولًا» تفتح أولها.
 	Review first	المراجعة أولًا
 	Export anyway	التصدير على أي حال
+	Back to the first diagram	العودة إلى المخطط الأول
+	Back to the last diagram	العودة إلى المخطط الأخير
+	Back to diagram {n} (page {p})	العودة إلى المخطط {n} (الصفحة {p})
+	{i} of {n} · {state}	{i} من {n} · {state}
+	{n} · {state}	{n} · {state}
+	Review done: {d} of {n} checked	اكتملت المراجعة: تم التحقق من {d} من {n}
+	Next diagram (Page Down)	المخطط التالي (Page Down)
+	Previous diagram (Page Up)	المخطط السابق (Page Up)

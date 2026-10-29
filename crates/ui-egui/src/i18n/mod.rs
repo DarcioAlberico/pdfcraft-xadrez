@@ -1460,6 +1460,8 @@ mod tests {
             "Model",
             // The Diagram tab (plan A8, P3b2): the same word in Czech.
             "Diagram",
+            // How many diagrams of a state (plan A8, P4): only placeholders and a dot.
+            "{n} · {state}",
             "{field}: {e}",
             "{0}: {1}",
             "{month} {y}",
@@ -2587,6 +2589,7 @@ mod tests {
             "{field}: {e}",
             "{month} {y}",
             "{n} {kind}",
+            "{n} · {state}",
             "{rule} - {status}",
             "+LOC",
             "−LOC",
@@ -3040,6 +3043,7 @@ mod tests {
             "JavaScript",
             "ZIP",
             "{n} {kind}",
+            "{n} · {state}",
             "{rule} - {status}",
             "{field}: {e}",
             "`{command}` {when}",

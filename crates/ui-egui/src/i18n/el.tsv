@@ -3184,8 +3184,6 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 # Plan A8 P3c: the Diagram tab by the keyboard and for screen readers.
 	{square}, empty	{square}, κενό
 	Arrow keys pick a square; a piece's letter puts it there (with Shift, Black's); Delete empties it.	Τα βέλη επιλέγουν τετράγωνο· το γράμμα ενός κομματιού το τοποθετεί εκεί (με Shift, μαύρο)· το Delete το αδειάζει.
-	Diagram {i} of {n} to review, page {p}	Διάγραμμα {i} από {n} για έλεγχο, σελίδα {p}
-	Diagram {n}, page {p}	Διάγραμμα {n}, σελίδα {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} αβέβαιο τετράγωνο|{n} αβέβαια τετράγωνα
 	Copy the main line only	Αντιγραφή μόνο της κύριας γραμμής
 	Copy without comments	Αντιγραφή χωρίς σχόλια
@@ -3232,3 +3230,11 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Review first	Πρώτα έλεγχος
 	Export anyway	Εξαγωγή παρ' όλα αυτά
 	Open folder	Άνοιγμα φακέλου
+	Back to the first diagram	Ξανά στο πρώτο διάγραμμα
+	Back to the last diagram	Ξανά στο τελευταίο διάγραμμα
+	Back to diagram {n} (page {p})	Πίσω στο διάγραμμα {n} (σελ. {p})
+	{i} of {n} · {state}	{i} από {n} · {state}
+	{n} · {state}	{n} · {state}
+	Review done: {d} of {n} checked	Ο έλεγχος ολοκληρώθηκε: ελέγχθηκαν {d} από {n}
+	Next diagram (Page Down)	Επόμενο διάγραμμα (Page Down)
+	Previous diagram (Page Up)	Προηγούμενο διάγραμμα (Page Up)

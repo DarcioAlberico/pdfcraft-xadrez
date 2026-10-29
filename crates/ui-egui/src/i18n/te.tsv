@@ -3087,8 +3087,6 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 # Plan A8 P3c: the Diagram tab by the keyboard and for screen readers.
 	{square}, empty	{square}, ఖాళీ
 	Arrow keys pick a square; a piece's letter puts it there (with Shift, Black's); Delete empties it.	బాణం కీలు ఒక గడిని ఎంచుకుంటాయి; పావు అక్షరం దాన్ని అక్కడ ఉంచుతుంది (Shift తో నలుపు); Delete దాన్ని ఖాళీ చేస్తుంది.
-	Diagram {i} of {n} to review, page {p}	సమీక్షించాల్సిన చిత్రం {i} / {n}, పేజీ {p}
-	Diagram {n}, page {p}	చిత్రం {n}, పేజీ {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} సందేహాస్పద గడి|{n} సందేహాస్పద గడులు
 	Copy the main line only	ప్రధాన వరుస మాత్రమే కాపీ చేయి
 	Copy without comments	వ్యాఖ్యలు లేకుండా కాపీ చేయి
@@ -3135,3 +3133,11 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Review first	ముందు సమీక్షించు
 	Export anyway	అయినా ఎగుమతి చేయి
 	Open folder	ఫోల్డర్ తెరువు
+	Back to the first diagram	మళ్ళీ మొదటి రేఖాచిత్రం
+	Back to the last diagram	మళ్ళీ చివరి రేఖాచిత్రం
+	Back to diagram {n} (page {p})	రేఖాచిత్రం {n}కి తిరిగి వెళ్ళు (పేజీ {p})
+	{i} of {n} · {state}	{state} {i}/{n}
+	{n} · {state}	{state} {n}
+	Review done: {d} of {n} checked	సమీక్ష పూర్తయింది: {n}లో {d} తనిఖీ చేశారు
+	Next diagram (Page Down)	తర్వాతి రేఖాచిత్రం (Page Down)
+	Previous diagram (Page Up)	మునుపటి రేఖాచిత్రం (Page Up)

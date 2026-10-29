@@ -43,8 +43,8 @@ pub struct DiagramKeys {
     pub(crate) tab_keys: Vec<(Key, Modifiers)>,
     /// The selected row of the Diagrams list takes the keyboard when it is next drawn (Esc).
     pub(crate) focus_list: bool,
-    /// What the tab last said to screen readers: the diagram opened ("Diagram 4 of 40 to review,
-    /// page 18, 2 doubtful squares").
+    /// What the tab last said to screen readers: the diagram opened ("Page 18 · diagram 1 of 2,
+    /// 4 of 40 to review, 2 doubtful squares").
     pub(crate) announce: String,
 }
 
@@ -57,9 +57,10 @@ pub(crate) fn board_id(tab: bool) -> Id {
 /// `events`. Nothing is taken unless `free` (no modal dialog, text field or popup has the
 /// keyboard). Only presses are taken: a release seen without its press is harmless.
 pub(crate) fn take_keys(chess: &mut ChessState, ctx: &egui::Context, events: &mut Vec<Event>, free: bool) {
-    // Page Up and Page Down walk the review queue only when there is one (else they are the page's).
+    // Page Up and Page Down walk what the tab walks only when there is something (else they are
+    // the page's).
     let paging = events.iter().any(|e| matches!(e, Event::Key { key: Key::PageUp | Key::PageDown, pressed: true, .. }));
-    let queue = paging && chess.results.as_ref().is_some_and(|r| !r.review_queue().is_empty());
+    let queue = paging && !chess.walk().is_empty();
     let keys = &mut chess.diagram_keys;
     let tab = keys.tab.take();
     keys.board = None;
@@ -218,16 +219,11 @@ pub(crate) fn square_text(ed: &DiagramEditor, square: Square) -> String {
     }
 }
 
-/// What the tab says when diagram `index` of `page` (its label `label`) opens: its place in the
-/// review queue (`place` of `queue`, when it is in it) and how many squares the model doubted.
-pub(crate) fn announcement(index: usize, label: &str, place: Option<(usize, usize)>, doubtful: usize) -> String {
-    let mut text = match place {
-        Some((i, n)) => crate::i18n::fmt(
-            tl!("Diagram {i} of {n} to review, page {p}"),
-            &[("i", &i.saturating_add(1).to_string()), ("n", &n.to_string()), ("p", label)],
-        ),
-        None => crate::i18n::fmt(tl!("Diagram {n}, page {p}"), &[("n", &index.saturating_add(1).to_string()), ("p", label)]),
-    };
+/// What the tab says when a diagram opens: which it is (`title`, numbered by its page as
+/// everywhere: [`crate::chess_ui::diagram_title`]), its place in what the tab walks (`place`:
+/// [`crate::chess_ui::walk_place`]) and how many squares the model doubted.
+pub(crate) fn announcement(title: &str, place: &str, doubtful: usize) -> String {
+    let mut text = format!("{title}, {place}");
     if doubtful > 0 {
         let n = u64::try_from(doubtful).unwrap_or(u64::MAX);
         text.push_str(", ");

@@ -3424,8 +3424,6 @@ chess undo step	Clear drawings	cancellazione dei disegni
 # Plan A8 P3c: the Diagram tab by the keyboard and for screen readers.
 	{square}, empty	{square}, vuota
 	Arrow keys pick a square; a piece's letter puts it there (with Shift, Black's); Delete empties it.	Le frecce scelgono una casa; la lettera di un pezzo ve lo mette (con Maiusc, il nero); Canc la svuota.
-	Diagram {i} of {n} to review, page {p}	Diagramma {i} di {n} da rivedere, pagina {p}
-	Diagram {n}, page {p}	Diagramma {n}, pagina {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} casa dubbia|{n} case dubbie
 	Copy the main line only	Copia solo la linea principale
 	Copy without comments	Copia senza commenti
@@ -3472,3 +3470,11 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	Review first	Rivedi prima
 	Export anyway	Esporta comunque
 	Open folder	Apri cartella
+	Back to the first diagram	Di nuovo al primo diagramma
+	Back to the last diagram	Di nuovo all'ultimo diagramma
+	Back to diagram {n} (page {p})	Torna al diagramma {n} (pag. {p})
+	{i} of {n} · {state}	{i} di {n} · {state}
+	{n} · {state}	{n} · {state}
+	Review done: {d} of {n} checked	Revisione finita: {d} di {n} controllati
+	Next diagram (Page Down)	Diagramma successivo (Pag giù)
+	Previous diagram (Page Up)	Diagramma precedente (Pag su)

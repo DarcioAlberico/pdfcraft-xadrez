@@ -3234,8 +3234,6 @@ chess undo step	Clear drawings	видалення малюнків
 # Plan A8 P3c: the Diagram tab by the keyboard and for screen readers.
 	{square}, empty	{square}, порожньо
 	Arrow keys pick a square; a piece's letter puts it there (with Shift, Black's); Delete empties it.	Стрілки вибирають поле; літера фігури ставить її туди (із Shift — чорну); Delete очищає поле.
-	Diagram {i} of {n} to review, page {p}	Діаграма {i} з {n} на перевірку, сторінка {p}
-	Diagram {n}, page {p}	Діаграма {n}, сторінка {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} сумнівне поле|{n} сумнівні поля|{n} сумнівних полів
 	Copy the main line only	Копіювати лише головну лінію
 	Copy without comments	Копіювати без коментарів
@@ -3282,3 +3280,11 @@ chess undo step	Clear drawings	видалення малюнків
 	Review first	Спершу перевірити
 	Export anyway	Однаково експортувати
 	Open folder	Відкрити теку
+	Back to the first diagram	Знову перша діаграма
+	Back to the last diagram	Знову остання діаграма
+	Back to diagram {n} (page {p})	Назад до діаграми {n} (стор. {p})
+	{i} of {n} · {state}	{i} з {n} · {state}
+	{n} · {state}	{n} · {state}
+	Review done: {d} of {n} checked	Перевірку закінчено: перевірено {d} з {n}
+	Next diagram (Page Down)	Наступна діаграма (Page Down)
+	Previous diagram (Page Up)	Попередня діаграма (Page Up)

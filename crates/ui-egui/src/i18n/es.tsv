@@ -3353,8 +3353,6 @@ chess undo step	Clear drawings	borrado de los dibujos
 # Plan A8 P3c: the Diagram tab by the keyboard and for screen readers.
 	{square}, empty	{square}, vacía
 	Arrow keys pick a square; a piece's letter puts it there (with Shift, Black's); Delete empties it.	Las flechas eligen una casilla; la letra de una pieza la pone ahí (con Mayús, la negra); Supr la vacía.
-	Diagram {i} of {n} to review, page {p}	Diagrama {i} de {n} por revisar, página {p}
-	Diagram {n}, page {p}	Diagrama {n}, página {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} casilla dudosa|{n} casillas dudosas
 	Copy the main line only	Copiar solo la línea principal
 	Copy without comments	Copiar sin comentarios
@@ -3401,3 +3399,11 @@ chess undo step	Clear drawings	borrado de los dibujos
 	Review first	Revisar primero
 	Export anyway	Exportar de todos modos
 	Open folder	Abrir carpeta
+	Back to the first diagram	De vuelta al primer diagrama
+	Back to the last diagram	De vuelta al último diagrama
+	Back to diagram {n} (page {p})	Volver al diagrama {n} (pág. {p})
+	{i} of {n} · {state}	{i} de {n} · {state}
+	{n} · {state}	{n} · {state}
+	Review done: {d} of {n} checked	Revisión terminada: {d} de {n} revisados
+	Next diagram (Page Down)	Diagrama siguiente (Page Down)
+	Previous diagram (Page Up)	Diagrama anterior (Page Up)

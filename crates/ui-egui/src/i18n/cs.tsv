@@ -3286,8 +3286,6 @@ chess undo step	Clear drawings	smazání kreseb
 # Plan A8 P3c: the Diagram tab by the keyboard and for screen readers.
 	{square}, empty	{square}, prázdné
 	Arrow keys pick a square; a piece's letter puts it there (with Shift, Black's); Delete empties it.	Šipky vybírají pole; písmeno figury ji tam postaví (se Shiftem černou); Delete pole vyprázdní.
-	Diagram {i} of {n} to review, page {p}	Diagram {i} z {n} ke kontrole, strana {p}
-	Diagram {n}, page {p}	Diagram {n}, strana {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} nejisté pole|{n} nejistá pole|{n} nejistých polí
 	Copy the main line only	Kopírovat jen hlavní variantu
 	Copy without comments	Kopírovat bez komentářů
@@ -3334,3 +3332,11 @@ chess undo step	Clear drawings	smazání kreseb
 	Review first	Nejdřív zkontrolovat
 	Export anyway	Přesto exportovat
 	Open folder	Otevřít složku
+	Back to the first diagram	Zpět na první diagram
+	Back to the last diagram	Zpět na poslední diagram
+	Back to diagram {n} (page {p})	Zpět na diagram {n} (str. {p})
+	{i} of {n} · {state}	{i} z {n} · {state}
+	{n} · {state}	{n} · {state}
+	Review done: {d} of {n} checked	Kontrola hotova: zkontrolováno {d} z {n}
+	Next diagram (Page Down)	Další diagram (Page Down)
+	Previous diagram (Page Up)	Předchozí diagram (Page Up)

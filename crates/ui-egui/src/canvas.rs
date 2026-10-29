@@ -1226,13 +1226,7 @@ impl DocView {
         let page = page.min(self.page_count.saturating_sub(1));
         if page != self.current {
             // The view history (Previous view / Next view).
-            if self.back.last() != Some(&self.current) {
-                self.back.push(self.current);
-                if self.back.len() > 200 {
-                    self.back.remove(0);
-                }
-            }
-            self.forward.clear();
+            self.mark_history();
         }
         // Partial wheel motion belongs to the old place.
         self.reset_coarse_state();
@@ -1360,6 +1354,18 @@ impl DocView {
             }
             _ => false,
         }
+    }
+
+    /// Put the page on screen on the view history, as a jump from it would, without moving: a
+    /// place Previous view comes back to.
+    pub fn mark_history(&mut self) {
+        if self.back.last() != Some(&self.current) {
+            self.back.push(self.current);
+            if self.back.len() > 200 {
+                self.back.remove(0);
+            }
+        }
+        self.forward.clear();
     }
 
     /// View ▸ Page navigation ▸ Previous view (`false`) / Next view (`true`).
