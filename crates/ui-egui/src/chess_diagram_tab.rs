@@ -7,7 +7,7 @@
 //! Up / Page Down; plan A8, P4), saying so when it goes round from one end to the other and when
 //! the last one to review is confirmed ("Review done: 40 of 40 checked"). Under it the board (as large as the tab allows, 200 to 420 pt),
 //! the palette under the board, who moves, the move number, and the details (castling, the FEN,
-//! the view from Black's side, back to the reading) with the model's second readings. The footer
+//! the view from Black's side, Restore the automatic reading) with the model's second readings. The footer
 //! stays put: whether the position is legal (and why not), the other actions, and the main one,
 //! Confirm and next ▾ Only confirm (Ctrl+Enter), which keeps the position for the diagram
 //! (Verified when it is the reading, else Corrected) without changing the PDF. The last choice is
@@ -268,12 +268,8 @@ fn fields(ui: &mut egui::Ui, ed: &mut DiagramEditor) {
     });
     egui::CollapsingHeader::new(tl!("Details")).id_salt("chess-diagram-details").show(ui, |ui| {
         ui.horizontal_wrapped(|ui| {
-            ui.label(tl!("Castling:"));
             let c = &mut ed.position.castling;
-            ui.add(widgets::checkbox(&mut c.white_king_side, "K"));
-            ui.add(widgets::checkbox(&mut c.white_queen_side, "Q"));
-            ui.add(widgets::checkbox(&mut c.black_king_side, "k"));
-            ui.add(widgets::checkbox(&mut c.black_queen_side, "q"));
+            crate::chess_editor::castling_fields(ui, c);
             // A right the pieces do not allow is taken off again (plan A8, P3b1).
             *c = c.fitted(&ed.position.placement);
         });
@@ -282,7 +278,7 @@ fn fields(ui: &mut egui::Ui, ed: &mut DiagramEditor) {
             if ui.small_button(tl!("Flip board")).clicked() {
                 ed.flipped = !ed.flipped;
             }
-            if ed.original.is_some() && ui.small_button(tl!("Back to the reading")).clicked() {
+            if ed.original.is_some() && ui.small_button(tl!("Restore the automatic reading")).clicked() {
                 ed.reset();
             }
         });
@@ -348,7 +344,7 @@ fn more_menu(ui: &mut egui::Ui, ed: &DiagramEditor, legal: bool, kept: bool) -> 
         if ui.add_enabled(legal, egui::Button::new(tl!("Add lichess link"))).clicked() {
             action = Some(EditorAction::Link);
         }
-        if ui.button(tl!("Copy FEN")).clicked() {
+        if ui.button(tl!("Copy FEN")).on_hover_text(tl!("Position code other chess programs accept.")).clicked() {
             action = Some(EditorAction::CopyFen(fen.clone()));
         }
         if legal && let Ok(p) = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(&fen) {

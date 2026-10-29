@@ -2559,7 +2559,6 @@ animation effects	Off	Vypnuto
 	No link was added: {e}	Žádný odkaz nebyl přidán: {e}
 	Only diagrams to review ({n})	Jen diagramy ke kontrole ({n})
 	Add lichess link	Přidat odkaz na lichess
-	Back to the reading	Zpět k přečtení
 	White king	Bílý král
 	White queen	Bílá dáma
 	White rook	Bílá věž
@@ -2574,7 +2573,6 @@ animation effects	Off	Vypnuto
 	Black pawn	Černý pěšec
 	White	Bílý
 	Board: {fen}	Šachovnice: {fen}
-	Castling:	Rošáda:
 	Click a square to put the chosen piece there; click it again to empty it.	Klepnutím na pole tam položíte zvolenou figuru; dalším klepnutím pole vyprázdníte.
 	Close the editor	Zavřít editor
 	Draw this position over the diagram on the page (one undo step).	Nakreslit tuto pozici přes diagram na stránce (jeden krok zpět).
@@ -2590,7 +2588,6 @@ animation effects	Off	Vypnuto
 	Move number:	Číslo tahu:
 	The move the diagram stands at: 35 with Black to move is 35…	Tah, u kterého diagram stojí: 35 s černým na tahu je 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Tah, kterým partie začíná, k opravě, když nebyl přečten: 35 s černým na tahu je 35…
-	Use the second reading	Použít druhé čtení
 	{n} to review	Ke kontrole: {n}
 	◀ Previous to review	◀ Předchozí ke kontrole
 	Open in lichess	Otevřít v lichess
@@ -3353,3 +3350,16 @@ chess undo step	Clear drawings	smazání kreseb
 	Analyze	Analyzovat
 	Open on the board with the engine analysing it	Otevřít na šachovnici s analýzou enginem
 	Stop the analysis	Zastavit analýzu
+	Change to: {piece}	Změnit na: {piece}
+	Empty the square	Vyprázdnit pole
+	Restore the automatic reading	Obnovit automatické přečtení
+	Castling —	Rošáda —
+	White:	Bílý:
+	Black:	Černý:
+castling	short	krátká
+castling	long	dlouhá
+	White short castling	Krátká rošáda bílého
+	White long castling	Dlouhá rošáda bílého
+	Black short castling	Krátká rošáda černého
+	Black long castling	Dlouhá rošáda černého
+	Position code other chess programs accept.	Kód pozice, který přijímají jiné šachové programy.

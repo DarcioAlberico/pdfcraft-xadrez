@@ -2435,7 +2435,6 @@ animation effects	Off	關
 	No link was added: {e}	未新增連結：{e}
 	Only diagrams to review ({n})	僅顯示需要複核的局面圖 ({n})
 	Add lichess link	新增 lichess 連結
-	Back to the reading	還原辨識結果
 	White king	白王
 	White queen	白后
 	White rook	白車
@@ -2450,7 +2449,6 @@ animation effects	Off	關
 	Black pawn	黑兵
 	White	白方
 	Board: {fen}	棋盤：{fen}
-	Castling:	王車易位：
 	Click a square to put the chosen piece there; click it again to empty it.	點選格子放置所選棋子；再次點選即清空該格。
 	Close the editor	關閉編輯器
 	Draw this position over the diagram on the page (one undo step).	在頁面上的局面圖上方繪製此局面（可一步復原）。
@@ -2466,7 +2464,6 @@ animation effects	Off	關
 	Move number:	回合數:
 	The move the diagram stands at: 35 with Black to move is 35…	圖所處的回合：黑方走的第 35 回合寫作 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	對局開始的回合，未能辨識時可在此更正：黑方走的第 35 回合寫作 35…
-	Use the second reading	使用第二辨識結果
 	{n} to review	待複核 {n} 個
 	◀ Previous to review	◀ 上一個待複核
 	Open in lichess	在 lichess 中開啟
@@ -3195,3 +3192,16 @@ chess undo step	Clear drawings	清除標記
 	Analyze	分析
 	Open on the board with the engine analysing it	在棋盤上開啟並由引擎分析
 	Stop the analysis	停止分析
+	Change to: {piece}	改為：{piece}
+	Empty the square	清空此格
+	Restore the automatic reading	還原自動辨識結果
+	Castling —	王車易位 —
+	White:	白方：
+	Black:	黑方：
+castling	short	短
+castling	long	長
+	White short castling	白方短易位
+	White long castling	白方長易位
+	Black short castling	黑方短易位
+	Black long castling	黑方長易位
+	Position code other chess programs accept.	其他西洋棋程式也能讀取的局面代碼。

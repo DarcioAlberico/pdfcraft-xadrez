@@ -2490,7 +2490,6 @@ animation effects	Off	Izklopljeni
 	No link was added: {e}	Nobena povezava ni bila dodana: {e}
 	Only diagrams to review ({n})	Samo diagrami za pregled ({n})
 	Add lichess link	Dodaj povezavo na lichess
-	Back to the reading	Nazaj na branje
 	White king	Beli kralj
 	White queen	Bela dama
 	White rook	Bela trdnjava
@@ -2505,7 +2504,6 @@ animation effects	Off	Izklopljeni
 	Black pawn	Črni kmet
 	White	Beli
 	Board: {fen}	Šahovnica: {fen}
-	Castling:	Rokada:
 	Click a square to put the chosen piece there; click it again to empty it.	Kliknite polje, da nanj postavite izbrano figuro; znova kliknite, da ga izpraznite.
 	Close the editor	Zapri urejevalnik
 	Draw this position over the diagram on the page (one undo step).	Nariši ta položaj čez diagram na strani (en korak razveljavitve).
@@ -2521,7 +2519,6 @@ animation effects	Off	Izklopljeni
 	Move number:	Številka poteze:
 	The move the diagram stands at: 35 with Black to move is 35…	Poteza, pri kateri je diagram: 35 s črnim na potezi je 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Poteza, s katero se partija začne, za popravek, ko ni bila prebrana: 35 s črnim na potezi je 35…
-	Use the second reading	Uporabi drugo branje
 	{n} to review	Za pregled: {n}
 	◀ Previous to review	◀ Prejšnji za pregled
 	Open in lichess	Odpri v lichess
@@ -3284,3 +3281,16 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Analyze	Analiziraj
 	Open on the board with the engine analysing it	Odpri na šahovnici z analizo programa
 	Stop the analysis	Ustavi analizo
+	Change to: {piece}	Zamenjaj z: {piece}
+	Empty the square	Izprazni polje
+	Restore the automatic reading	Obnovi samodejno branje
+	Castling —	Rokada —
+	White:	Beli:
+	Black:	Črni:
+castling	short	kratka
+castling	long	dolga
+	White short castling	Kratka rokada belega
+	White long castling	Dolga rokada belega
+	Black short castling	Kratka rokada črnega
+	Black long castling	Dolga rokada črnega
+	Position code other chess programs accept.	Koda položaja, ki jo sprejmejo drugi šahovski programi.

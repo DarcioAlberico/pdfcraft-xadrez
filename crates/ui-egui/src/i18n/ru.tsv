@@ -2398,7 +2398,6 @@ animation effects	Off	Выкл
 	No link was added: {e}	Ссылка не добавлена: {e}
 	Only diagrams to review ({n})	Только диаграммы для проверки ({n})
 	Add lichess link	Добавить ссылку на lichess
-	Back to the reading	Вернуть распознанное
 	White king	Белый король
 	White queen	Белый ферзь
 	White rook	Белая ладья
@@ -2413,7 +2412,6 @@ animation effects	Off	Выкл
 	Black pawn	Чёрная пешка
 	White	Белые
 	Board: {fen}	Доска: {fen}
-	Castling:	Рокировка:
 	Click a square to put the chosen piece there; click it again to empty it.	Щёлкните по полю, чтобы поставить туда выбранную фигуру; щёлкните ещё раз, чтобы очистить его.
 	Close the editor	Закрыть редактор
 	Draw this position over the diagram on the page (one undo step).	Нарисовать эту позицию поверх диаграммы на странице (одно действие отмены).
@@ -2429,7 +2427,6 @@ animation effects	Off	Выкл
 	Move number:	Номер хода:
 	The move the diagram stands at: 35 with Black to move is 35…	Ход, на котором стоит диаграмма: 35 при ходе чёрных — это 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Ход, с которого начинается партия, — исправьте, если он не распознан: 35 при ходе чёрных — это 35…
-	Use the second reading	Взять второй вариант
 	{n} to review	Для проверки: {n}
 	◀ Previous to review	◀ Предыдущая для проверки
 	Open in lichess	Открыть в lichess
@@ -3192,3 +3189,16 @@ chess undo step	Clear drawings	удаление рисунков
 	Analyze	Анализ
 	Open on the board with the engine analysing it	Открыть на доске с анализом движком
 	Stop the analysis	Остановить анализ
+	Change to: {piece}	Заменить на: {piece}
+	Empty the square	Очистить поле
+	Restore the automatic reading	Восстановить автоматическое распознавание
+	Castling —	Рокировка —
+	White:	Белые:
+	Black:	Чёрные:
+castling	short	короткая
+castling	long	длинная
+	White short castling	Короткая рокировка белых
+	White long castling	Длинная рокировка белых
+	Black short castling	Короткая рокировка чёрных
+	Black long castling	Длинная рокировка чёрных
+	Position code other chess programs accept.	Код позиции, который понимают другие шахматные программы.

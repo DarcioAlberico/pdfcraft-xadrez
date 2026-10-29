@@ -2485,7 +2485,6 @@ animation effects	Off	Désactivés
 	No link was added: {e}	Aucun lien n'a été ajouté : {e}
 	Only diagrams to review ({n})	Seulement les diagrammes à revoir ({n})
 	Add lichess link	Ajouter un lien lichess
-	Back to the reading	Revenir à la lecture
 	White king	Roi blanc
 	White queen	Dame blanche
 	White rook	Tour blanche
@@ -2500,7 +2499,6 @@ animation effects	Off	Désactivés
 	Black pawn	Pion noir
 	White	Blancs
 	Board: {fen}	Échiquier : {fen}
-	Castling:	Roque :
 	Click a square to put the chosen piece there; click it again to empty it.	Cliquez sur une case pour y poser la pièce choisie ; cliquez à nouveau pour la vider.
 	Close the editor	Fermer l'éditeur
 	Draw this position over the diagram on the page (one undo step).	Dessiner cette position sur le diagramme de la page (une seule annulation).
@@ -2516,7 +2514,6 @@ animation effects	Off	Désactivés
 	Move number:	Numéro du coup :
 	The move the diagram stands at: 35 with Black to move is 35…	Le coup où en est le diagramme : 35 avec le trait aux Noirs s'écrit 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Le coup où commence la partie, à corriger quand il n'a pas été lu : 35 avec le trait aux Noirs s'écrit 35…
-	Use the second reading	Utiliser la deuxième lecture
 	{n} to review	{n} à revoir
 	◀ Previous to review	◀ Précédent à revoir
 	Open in lichess	Ouvrir dans lichess
@@ -3279,3 +3276,16 @@ chess undo step	Clear drawings	l'effacement des dessins
 	Analyze	Analyser
 	Open on the board with the engine analysing it	Ouvrir sur l’échiquier avec l’analyse du moteur
 	Stop the analysis	Arrêter l’analyse
+	Change to: {piece}	Remplacer par : {piece}
+	Empty the square	Vider la case
+	Restore the automatic reading	Rétablir la lecture automatique
+	Castling —	Roque —
+	White:	Blancs :
+	Black:	Noirs :
+castling	short	petit
+castling	long	grand
+	White short castling	Petit roque des Blancs
+	White long castling	Grand roque des Blancs
+	Black short castling	Petit roque des Noirs
+	Black long castling	Grand roque des Noirs
+	Position code other chess programs accept.	Code de la position accepté par les autres programmes d’échecs.

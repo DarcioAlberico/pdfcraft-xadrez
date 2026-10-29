@@ -228,7 +228,7 @@ impl DiagramEditor {
     }
 
     /// Show `fen`, the position the user kept for the diagram, instead of the reading (which
-    /// stays what Back to the reading goes back to).
+    /// stays what Restore the automatic reading goes back to).
     pub fn show_kept(&mut self, fen: &str) {
         if let Ok(p) = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(fen) {
             self.position = p;
@@ -257,7 +257,7 @@ impl DiagramEditor {
         }
     }
 
-    /// Back to the reading.
+    /// Restore the automatic reading.
     pub fn reset(&mut self) {
         if let Some(fen) = &self.original
             && let Ok(p) = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(fen)
@@ -339,6 +339,28 @@ pub(crate) fn not_legal_text(why: &[Violation]) -> String {
     match why.first() {
         Some(v) => crate::i18n::fmt(tl!("Not a legal position: {reason}"), &[("reason", violation_text(*v))]),
         None => tl!("Not a legal position").to_string(),
+    }
+}
+
+/// The castling rights written out (plan A8 §2.2): "Castling — White: short, long · Black:
+/// short, long", each box named in full for screen readers ("White short castling"). The
+/// caller fits the rights to the pieces.
+pub(crate) fn castling_fields(ui: &mut egui::Ui, c: &mut Castling) {
+    ui.label(tl!("Castling —"));
+    let sides = [
+        (tl!("White:"), [(&mut c.white_king_side, tl!("White short castling")), (&mut c.white_queen_side, tl!("White long castling"))]),
+        (tl!("Black:"), [(&mut c.black_king_side, tl!("Black short castling")), (&mut c.black_queen_side, tl!("Black long castling"))]),
+    ];
+    for (k, (side, rights)) in sides.into_iter().enumerate() {
+        if k > 0 {
+            ui.label("·");
+        }
+        ui.label(side);
+        for ((right, name), word) in rights.into_iter().zip([tl_ctx!("castling", "short"), tl_ctx!("castling", "long")]) {
+            let r = ui.add(crate::widgets::checkbox(right, word)).on_hover_text(name);
+            let on = *right;
+            r.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Checkbox, true, on, name));
+        }
     }
 }
 
@@ -580,7 +602,12 @@ pub(crate) fn second_readings(ui: &mut egui::Ui, ed: &mut DiagramEditor) {
                     .small()
                     .monospace(),
             );
-            if ui.small_button(tl!("Use the second reading")).clicked() {
+            // What the click does, said with the piece's name (plan A8 §2.2).
+            let change = match u.alternative {
+                Some(p) => crate::i18n::fmt(tl!("Change to: {piece}"), &[("piece", piece_name(p))]),
+                None => tl!("Empty the square").to_owned(),
+            };
+            if ui.small_button(change).clicked() {
                 take = Some(k);
             }
         });
@@ -632,18 +659,14 @@ pub fn editor_ui(
         ed.position.side_to_move = Some(side);
     });
     ui.horizontal_wrapped(|ui| {
-        ui.label(tl!("Castling:"));
         let c: &mut Castling = &mut ed.position.castling;
-        ui.add(crate::widgets::checkbox(&mut c.white_king_side, "K"));
-        ui.add(crate::widgets::checkbox(&mut c.white_queen_side, "Q"));
-        ui.add(crate::widgets::checkbox(&mut c.black_king_side, "k"));
-        ui.add(crate::widgets::checkbox(&mut c.black_queen_side, "q"));
+        castling_fields(ui, c);
         // A right the pieces do not allow is taken off again, as in the set-up (plan A8, P3b1).
         *c = c.fitted(&ed.position.placement);
         if ui.small_button(tl!("Flip board")).clicked() {
             ed.flipped = !ed.flipped;
         }
-        if ed.original.is_some() && ui.small_button(tl!("Back to the reading")).clicked() {
+        if ed.original.is_some() && ui.small_button(tl!("Restore the automatic reading")).clicked() {
             ed.reset();
         }
     });
@@ -671,7 +694,7 @@ pub fn editor_ui(
         {
             action = Some(EditorAction::Link);
         }
-        if ui.small_button(tl!("Copy FEN")).clicked() {
+        if ui.small_button(tl!("Copy FEN")).on_hover_text(tl!("Position code other chess programs accept.")).clicked() {
             action = Some(EditorAction::CopyFen(fen.clone()));
         }
         if legal && let Ok(p) = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(&fen) {

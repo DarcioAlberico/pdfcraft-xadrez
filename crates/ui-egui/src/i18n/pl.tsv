@@ -2461,7 +2461,6 @@ animation effects	Off	Wyłączone
 	No link was added: {e}	Nie dodano linku: {e}
 	Only diagrams to review ({n})	Tylko diagramy do sprawdzenia ({n})
 	Add lichess link	Dodaj link do lichess
-	Back to the reading	Wróć do odczytu
 	White king	Biały król
 	White queen	Biały hetman
 	White rook	Biała wieża
@@ -2476,7 +2475,6 @@ animation effects	Off	Wyłączone
 	Black pawn	Czarny pion
 	White	Białe
 	Board: {fen}	Szachownica: {fen}
-	Castling:	Roszada:
 	Click a square to put the chosen piece there; click it again to empty it.	Kliknij pole, aby postawić na nim wybraną bierkę; kliknij ponownie, aby je opróżnić.
 	Close the editor	Zamknij edytor
 	Draw this position over the diagram on the page (one undo step).	Narysuj tę pozycję na diagramie na stronie (jeden krok cofania).
@@ -2492,7 +2490,6 @@ animation effects	Off	Wyłączone
 	Move number:	Numer ruchu:
 	The move the diagram stands at: 35 with Black to move is 35…	Ruch, na którym stoi diagram: 35 z ruchem czarnych to 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Ruch, od którego zaczyna się partia, do poprawienia, gdy nie został odczytany: 35 z ruchem czarnych to 35…
-	Use the second reading	Użyj drugiego odczytu
 	{n} to review	Do sprawdzenia: {n}
 	◀ Previous to review	◀ Poprzedni do sprawdzenia
 	Open in lichess	Otwórz w lichess
@@ -3221,3 +3218,16 @@ chess undo step	Clear drawings	usunięcie rysunków
 	Analyze	Analizuj
 	Open on the board with the engine analysing it	Otwórz na szachownicy z analizą silnika
 	Stop the analysis	Zatrzymaj analizę
+	Change to: {piece}	Zmień na: {piece}
+	Empty the square	Opróżnij pole
+	Restore the automatic reading	Przywróć odczyt automatyczny
+	Castling —	Roszada —
+	White:	Białe:
+	Black:	Czarne:
+castling	short	krótka
+castling	long	długa
+	White short castling	Krótka roszada białych
+	White long castling	Długa roszada białych
+	Black short castling	Krótka roszada czarnych
+	Black long castling	Długa roszada czarnych
+	Position code other chess programs accept.	Kod pozycji, który przyjmują inne programy szachowe.

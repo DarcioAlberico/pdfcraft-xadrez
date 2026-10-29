@@ -2491,7 +2491,6 @@ animation effects	Off	Ανενεργά
 	No link was added: {e}	Δεν προστέθηκε σύνδεσμος: {e}
 	Only diagrams to review ({n})	Μόνο διαγράμματα για έλεγχο ({n})
 	Add lichess link	Προσθήκη συνδέσμου lichess
-	Back to the reading	Επιστροφή στην ανάγνωση
 	White king	Λευκός βασιλιάς
 	White queen	Λευκή βασίλισσα
 	White rook	Λευκός πύργος
@@ -2506,7 +2505,6 @@ animation effects	Off	Ανενεργά
 	Black pawn	Μαύρο πιόνι
 	White	Λευκά
 	Board: {fen}	Σκακιέρα: {fen}
-	Castling:	Ροκέ:
 	Click a square to put the chosen piece there; click it again to empty it.	Κάντε κλικ σε ένα τετράγωνο για να βάλετε εκεί το επιλεγμένο κομμάτι· κάντε ξανά κλικ για να το αδειάσετε.
 	Close the editor	Κλείσιμο επεξεργαστή
 	Draw this position over the diagram on the page (one undo step).	Σχεδίαση αυτής της θέσης πάνω από το διάγραμμα στη σελίδα (ένα βήμα αναίρεσης).
@@ -2522,7 +2520,6 @@ animation effects	Off	Ανενεργά
 	Move number:	Αριθμός κίνησης:
 	The move the diagram stands at: 35 with Black to move is 35…	Η κίνηση στην οποία βρίσκεται το διάγραμμα: 35 με τα μαύρα να παίζουν είναι 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Η κίνηση από την οποία αρχίζει η παρτίδα, για διόρθωση όταν δεν διαβάστηκε: 35 με τα μαύρα να παίζουν είναι 35…
-	Use the second reading	Χρήση της δεύτερης ανάγνωσης
 	{n} to review	Για έλεγχο: {n}
 	◀ Previous to review	◀ Προηγούμενο για έλεγχο
 	Open in lichess	Άνοιγμα στο lichess
@@ -3251,3 +3248,16 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Analyze	Ανάλυση
 	Open on the board with the engine analysing it	Άνοιγμα στη σκακιέρα με ανάλυση από τη μηχανή
 	Stop the analysis	Διακοπή της ανάλυσης
+	Change to: {piece}	Αλλαγή σε: {piece}
+	Empty the square	Άδειασμα του τετραγώνου
+	Restore the automatic reading	Επαναφορά της αυτόματης ανάγνωσης
+	Castling —	Ροκέ —
+	White:	Λευκά:
+	Black:	Μαύρα:
+castling	short	μικρό
+castling	long	μεγάλο
+	White short castling	Μικρό ροκέ των λευκών
+	White long castling	Μεγάλο ροκέ των λευκών
+	Black short castling	Μικρό ροκέ των μαύρων
+	Black long castling	Μεγάλο ροκέ των μαύρων
+	Position code other chess programs accept.	Κωδικός της θέσης που δέχονται άλλα προγράμματα σκακιού.
