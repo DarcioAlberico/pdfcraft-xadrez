@@ -186,17 +186,17 @@ tudo ─► P10
 
 Cada passo: **Contexto** (o que ler) · **Tarefas** · **Verificação** · **Saída** · **Reversão**. Em todos: entrada em `parity/`, ferramenta headless quando houver função nova, teste visto falhando antes da correção, i18n.
 
-**P1a — Tokens, estados e foco** (`ui-egui/theme.rs`, `widgets.rs`, novo `chess_widgets.rs`). Tokens e `DiagramState` de §2.1; anel de foco nas pílulas. *Verificação:* teste de contraste. *Saída:* nenhuma cor de estado fora dos tokens. *Reversão:* revert.
+**P1a — Tokens, estados e foco** ✅ *Feito (#197).* (`ui-egui/theme.rs`, `widgets.rs`, novo `chess_widgets.rs`). Tokens e `DiagramState` de §2.1; anel de foco nas pílulas. *Verificação:* teste de contraste. *Saída:* nenhuma cor de estado fora dos tokens. *Reversão:* revert.
 
-**P1b — Ícones, glifos e figurinhas** (depois da U6). Caracteres soltos → ícones; `piece_sprites`/`piece_button` compartilhados (fundo casa clara); ícones novos (`cpu`, `file-output`, `badge-check`, `circle-dashed`, `eraser`, `circle-help`). *Verificação:* teste "nenhum glifo ausente em rótulo de botão". *Reversão:* revert.
+**P1b — Ícones, glifos e figurinhas** ✅ *Feito (#199).* (depois da U6). Caracteres soltos → ícones; `piece_sprites`/`piece_button` compartilhados (fundo casa clara); ícones novos (`cpu`, `file-output`, `badge-check`, `circle-dashed`, `eraser`, `circle-help`). *Verificação:* teste "nenhum glifo ausente em rótulo de botão". *Reversão:* revert.
 
-**P1c — Atalhos por escopo** (`engine/commands.rs`, `canvas.rs`). `Shortcut.alt`; modificadores exatos; Alt+←/→ no histórico; teste de tabela sem colisão. *Saída:* Alt+→ não vira página (nota de versão). *Reversão:* revert.
+**P1c — Atalhos por escopo** ✅ *Feito (#198).* (`engine/commands.rs`, `canvas.rs`). `Shortcut.alt`; modificadores exatos; Alt+←/→ no histórico; teste de tabela sem colisão. *Saída:* Alt+→ não vira página (nota de versão). *Reversão:* revert.
 
 **P2a — Lista de diagramas** (`chess_ui.rs`, depois da U6). ✅ *P2a2 feito (2026-10-28, `chess_panel_head.rs`, `automation/src/chess_states.rs`): cabeçalho de uma linha com "Detectar diagramas" ▾ (livro todo com o nº de páginas / nesta página), `file-output` (exportar), `layout-grid` (tabuleiro) e `ellipsis` (modelos), na ordem do Tab; durante a detecção, "Detectando… pág. 75 de 703" com largura reservada, barra de 4 pt e × "Parar (os já encontrados ficam)"; no fim, "548 diagramas · 40 a revisar" [Revisar agora]; antes de tudo, o texto do estado vazio. Ferramenta `chess_diagram_states` (contagens por estado, com as correções), pela mesma regra do painel, agora no motor (`corrections::Status`).* *P2a1 feito (2026-10-28, `chess_list.rs`): chips por estado com ícone e contagem (um estado por vez) e "Nesta página"; "Acompanhar a página"; cabeçalho por página ("Pág. xvii · 25 de 703") que vai à página; linha de 32 pt com ícone, "Diagrama 1", estado e ⋯ (passar o ponteiro, seleção, foco e menu de contexto: Abrir no tabuleiro, Copiar FEN, Abrir no lichess); FEN só na dica e no menu. Lista virtualizada por somas prefixadas dentro da rolagem do painel (o painel já rola; um `ScrollArea` aninhado teria altura indefinida), só as linhas à vista são construídas: 2.000 diagramas somam 0,22 ms ao quadro (AMD Ryzen 5 8400F, teste `#[ignore]` `two_thousand_diagrams_add_at_most_4_ms_to_a_frame`). Teclado: ↑ ↓ Home End percorrem a lista inteira, Tab vai ao ⋯ e Enter abre o menu.* §2.1 (cabeçalho, chips, linhas, cabeçalho de página, `show_viewport`, "Acompanhar a página"); FEN só na dica e no menu; ferramenta `chess_diagram_states` (contagens por estado). *Verificação:* 2000 diagramas sintéticos com quadro ≤ 4 ms (comando + máquina registrados no `blueprint.md` §8); testes de UI de filtro e menu por teclado. *Reversão:* revert.
 
 **P2b — Marcas na página e clique com a Mão** (`chess_ui.rs`, `canvas.rs`). ✅ *Feito (2026-10-28): marcas com traço 1,5 pt em repouso, 8 % e cursor de mão sob o ponteiro, 2,5 pt + anel `accent` selecionada, aba numerada fora da caixa (acima; abaixo no topo da página) com ícone de estado de 10 pt no texto do estado sobre o fundo suave; clique sem arrasto também com a Mão (arrastar só move a página). "Marcar a página como conferida" (menu de contexto do cabeçalho da página na lista e comando `chess.verify_page`) guarda como Conferido só os diagramas lidos com confiança, nunca os a revisar (aceitar em massa foi rejeitado), e diz quantos conferiu e quantos ficam a revisar; ferramenta `chess_page_verify`. Faltam as capturas.* §2.1 "Marcas"; clique sem arrasto também com a Mão; "Marcar a página como conferida" (+ ferramenta). *Verificação:* testes de UI de clique com Selecionar e Mão; capturas. *Reversão:* revert.
 
-**P3a1 — Store de correções** (`engine/src/chess/corrections.rs`, trait; implementações no `ui-egui` desktop/web e na CLI dentro de `--root`).
+**P3a1 — Store de correções** ✅ *Feito (#194).* (`engine/src/chess/corrections.rs`, trait; implementações no `ui-egui` desktop/web e na CLI dentro de `--root`).
 - ✅ **Feito (2026-10-26):** formato, chave, mesclagem, trava e as três ferramentas; trait `CorrectionStore` com `DirStore` (desktop e CLI) e `MemStore` (web, orçamento próprio). Hash FNV de 128 bits em vez de blake3 (sem dependência nova; só nomeia e compara). A pasta do desktop sob os dados do app e o `MemStore` salvo no navegador entram com quem os usa (P3b2).
 - Chave: `DocKeys` (`/ID[0]`, caminho, nome + tamanho — `engine/src/chess/keys.rs`, estável entre salvamentos) + por entrada: índice da página, **impressão digital da página**, retângulo normalizado na CropBox; casamento por **IoU ≥ 0,7**; páginas inseridas/removidas realocadas pela impressão digital.
 - Esquema v1 em `<dados>/chess/corrections/<hash(DocKeys)>.json` (≤ 20 000 entradas, ≤ 4 MB; web com orçamento próprio, separado dos 4 MB do autosave):
@@ -216,7 +216,7 @@ Cada passo: **Contexto** (o que ler) · **Tarefas** · **Verificação** · **Sa
 
 **P3a3 — Correções nas leituras e nas exportações** ✅ *Feito (2026-10-26): `Session::chess_scan_corrected` + `corrections::apply`; documento, exportações e links leem por ele; as ferramentas carregam o store; `doc_save` leva as correções às chaves do arquivo salvo (`CorrectionStore::rekey`). A dica com a divergência fica para o P3b2.* (`engine/chess.rs`, `ChessPage`, `export.rs`). A correção vence a releitura (divergência registrada na dica); `chess_document_with`/exportações e links usam a posição corrigida. *Verificação:* exportar depois de corrigir usa a correção; zero correções perdidas após editar/desfazer/detectar/salvar/fechar/reabrir. *Reversão:* revert.
 
-**P3b1 — Motivo da ilegalidade** (crate `chess`). `IllegalReason` (rei faltando, dois reis, lado que não joga em xeque, peão na 1ª/8ª); `GameContext::from_fen` devolve o motivo; roque ajustado às peças. *Verificação:* testes unitários + wasm. *Reversão:* revert.
+**P3b1 — Motivo da ilegalidade** ✅ *Feito (#164).* (crate `chess`). `IllegalReason` (rei faltando, dois reis, lado que não joga em xeque, peão na 1ª/8ª); `GameContext::from_fen` devolve o motivo; roque ajustado às peças. *Verificação:* testes unitários + wasm. *Reversão:* revert.
 
 **P3b2 — Aba "Diagrama" com Confirmar** ✅ *Feito (2026-10-28): `docking::Panel::Diagram` entre a página e o Inspector (clique na página só a traz se já aberta: abrir moveria a página sob um duplo-clique); cabeçalho, tabuleiro, paleta, Quem joga, Lance nº, Detalhes e rodapé fixo com Confirmar e seguir ▾ Só confirmar (Ctrl+Enter); store na pasta de recuperação / `Storage` do navegador; editor clássico em Preferências. Ficam para P3b3 e depois: rascunhos, modal, tabuleiro pelo teclado, desfazer local, Esc, aba na janela de xadrez.* (`docking.rs`, `chess_editor.rs`, `chess_ui.rs`). `docking::Panel::DiagramEditor` com **migração do layout salvo**; definir onde a aba fica com o tabuleiro destacado (U5: vai junto para a janela de xadrez); layout de §2.1; "Confirmar e seguir"/"Só confirmar" gravando pelo P3a1; estados Conferido/Corrigido; editor antigo atrás de uma configuração por uma versão. *Verificação:* teste de UI do fluxo; capturas. *Reversão:* desligar a configuração.
 
@@ -247,6 +247,10 @@ Cada passo: **Contexto** (o que ler) · **Tarefas** · **Verificação** · **Sa
 **P9d — Markdown.** §2.4 Markdown. ✅ *Feito (2026-10-28): texto alternativo no idioma do livro com o número impresso da página e as peças de cada lado (`pdfcraft_chess::describe`, nos 18 idiomas de letras de peças, pronto para o `<title>`/`<desc>` do P9b); o FEN vai para o título da imagem (`![…](arquivo "FEN")`); diagrama não lido dito do mesmo jeito; front matter YAML com `title` e `lang`; `---` antes de cada capítulo (cada título do nível mais alto que o livro usa), não mais a cada página; pasta de imagens com `<>:"/\|?*` e caracteres de controle trocados por `_` (`markdown::image_folder`, usada pelo app, pela ferramenta e pelo motor).*
 
 **P10 — Textos, guia, aprendizado e medição.** *Em andamento (2026-10-29). Textos de §2.2 feitos: roque por extenso ("Roque — Brancas: curto, longo · Pretas: curto, longo", cada caixa com o nome inteiro para o leitor de tela) na aba Diagrama, no editor clássico e na montagem; "Trocar por: Bispo branco" (ou "Esvaziar a casa") no lugar de "Usar a segunda leitura"; "Restaurar a leitura automática"; dica de "Copiar FEN" ("Código da posição aceito por outros programas de xadrez."); "Modelos de leitura…". Guia feito em `docs/chess.md` ("Reviewing a book in 5 steps", estados com ícone e cor, a lista, a aba Diagrama e seus atalhos, onde ficam as correções, o aviso da exportação, Analisar e o assistente sem motor). Jornadas medidas pelo teste `the_review_journeys_take_the_gestures_the_plan_set` a 1366 × 768, cada gesto contado ao ser feito: a) 2, b) 2 além das edições, c) 1 tecla por diagrama, d) 1, e) 1, f) 3, g) 1 — todas na meta; tabela no guia. As dicas de primeira vez são as que já existem (a faixa da aba Diagrama e a pergunta antes de Redesenhar). Faltam o teste com 3 usuários que não programam (fica com o usuário), as mesmas jornadas só pelo teclado fora da aba Diagrama e as capturas.* §2.2 em todo o módulo; `docs/chess.md` (estados, cores, atalhos, "Revisar um livro em 5 passos"); dicas de primeira vez; roteiro de capturas e de **medição das jornadas** pelo canal de controle (saída registrada); teste com 3 usuários que não programam.
+
+### 3.3 Estado (2026-10-29)
+
+Todos os passos de §3.2 e §7.5 estão no `main`. Do P10 ficam o teste com 3 usuários que não programam (com o usuário), as jornadas só pelo teclado fora da aba Diagrama e as capturas antes/depois a 1366 × 768 nos temas claro e escuro.
 
 ## 4. Invariantes após todo passo
 
@@ -393,7 +397,7 @@ Limites que **não** apagam, e precisam continuar assim: `MAX_NODES` = 10 000 e 
 
 Branches `feat/chess-a8-<id>`, com as mesmas regras de §3.2 (teste visto falhando, ferramenta headless, `parity/`, i18n).
 
-**V1 — Navegação que lembra a linha, no crate `chess` (pode começar já).**
+**V1 — Navegação que lembra a linha, no crate `chess` (pode começar já).** ✅ *Feito (#99).*
 - `Game` guarda, por nó, o último filho visitado (transitório, fora do PGN). `forward()` segue esse filho; sem lembrança, segue o primeiro.
 - Novos `continuations(node)`, `line_label(node)` (para a trilha) e `end_of_main()`.
 - `GameError::TooDeep` separado de `TooLong`.
@@ -401,7 +405,7 @@ Branches `feat/chess-a8-<id>`, com as mesmas regras de §3.2 (teste visto falhan
 - *Verificação:* o teste reproduz o roteiro de `10-avancou.png` (◀◀◀▶▶▶ volta para 3.Bc4) e passa em wasm.
 - *Reversão:* revert.
 
-**V2a — Proteções fora dos arquivos da U6 (pode começar já)** (`chess_tools.rs`, `chess_study_ui.rs`, `chess_history.rs`, `chess_collection.rs`).
+**V2a — Proteções fora dos arquivos da U6 (pode começar já)** ✅ *Feito (#100).* (`chess_tools.rs`, `chess_study_ui.rs`, `chess_history.rs`, `chess_collection.rs`).
 - Backspace deixa de apagar e passa a voltar um lance.
 - Delete e Shift+Delete apagam com o aviso "{n} lances apagados · Desfazer".
 - "Concluir" na montagem cria um jogo novo com `new_from`; "Substituir o jogo atual" fica como opção secundária.
@@ -409,14 +413,14 @@ Branches `feat/chess-a8-<id>`, com as mesmas regras de §3.2 (teste visto falhan
 - *Verificação:* testes de UI para cada caminho, mostrando que o número de lances não muda sem um comando de apagar.
 - *Reversão:* revert.
 
-**V5 — Lixeira de lances no autosave (pode começar já)** (`chess_autosave.rs`).
+**V5 — Lixeira de lances no autosave (pode começar já)** ✅ *Feito (#101).* (`chess_autosave.rs`).
 - Antes de cada remoção, guarda o jogo inteiro: as 10 últimas por jogo, ≤ 256 KB por jogo, dentro do orçamento do autosave, com o web medido à parte.
 - Novo comando "Recuperar lances apagados…": lista com data, quantidade de lances e prévia da linha; restaura como jogo novo ou substituindo o atual.
 - Ferramentas `chess_trash_list` e `chess_trash_restore`.
 - *Verificação:* apagar, reiniciar e recuperar.
 - *Reversão:* só arquivos novos.
 
-**V2b — Proteções no tabuleiro (depois da U6, antes de P1b)** (`chess_board_ui.rs`).
+**V2b — Proteções no tabuleiro (depois da U6, antes de P1b)** ✅ *Feito (#157).* (`chess_board_ui.rs`).
 - O botão "Apagar os lances depois deste" sai de baixo da lista e vai para o menu do lance.
 - FEN: Enter só age com texto mudado, e oferece "Novo jogo com esta posição".
 - "Posição inicial padrão" cria um jogo novo quando há lances.
