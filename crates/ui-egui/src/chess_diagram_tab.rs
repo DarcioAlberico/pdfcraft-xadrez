@@ -2,8 +2,10 @@
 //! of its own beside the Inspector.
 //!
 //! The header says which diagram it is ("Page 17 · diagram 1 of 2", a link that shows it on the
-//! page), opens the position on the analysis board and walks the review queue ("12 of 40 to
-//! review", Page Up / Page Down). Under it the board (as large as the tab allows, 200 to 420 pt),
+//! page), opens the position on the analysis board and walks the diagrams the Diagrams list's
+//! chip shows, or with none the ones to review ("12 of 40 to review", "3 of 12 · Corrected", Page
+//! Up / Page Down; plan A8, P4), saying so when it goes round from one end to the other and when
+//! the last one to review is confirmed ("Review done: 40 of 40 checked"). Under it the board (as large as the tab allows, 200 to 420 pt),
 //! the palette under the board, who moves, the move number, and the details (castling, the FEN,
 //! the view from Black's side, back to the reading) with the model's second readings. The footer
 //! stays put: whether the position is legal (and why not), the other actions, and the main one,
@@ -21,7 +23,7 @@ use pdfcraft_engine::chess::pdfcraft_chess::placement::Color;
 
 use crate::chess_diagram_keys::TabKey;
 use crate::chess_editor::{DiagramEditor, EditorAction};
-use crate::chess_ui::{ChessResults, shown};
+use crate::chess_ui::{ChessResults, diagram_title, shown, walk_place};
 use crate::chess_widgets::{DiagramState, state_icon};
 use crate::theme::Tokens;
 use crate::{PdfCraftApp, widgets};
@@ -49,7 +51,11 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
         empty(ui, &t);
         return;
     };
-    let queue = results.review_queue();
+    // What the arrows walk: the list's chip, or the ones to review (plan A8, P4).
+    let filter = app.chess.list.filter;
+    let reviewing = matches!(filter, None | Some(DiagramState::Review));
+    let queue = results.walk(filter);
+    let review_done = app.chess.review_done;
     let Some(ed) = app.chess.editor.as_ref().filter(|e| e.doc == id) else {
         empty(ui, &t);
         return;
@@ -93,15 +99,13 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             {
                 ui.add_enabled_ui(!queue.is_empty(), |ui| {
-                    if crate::icons::button(ui, "chevron-right", 24.0, false, tl!("Next to review (Page Down)")).clicked() {
+                    let next = if reviewing { tl!("Next to review (Page Down)") } else { tl!("Next diagram (Page Down)") };
+                    if crate::icons::button(ui, "chevron-right", 24.0, false, next).clicked() {
                         action = Some(EditorAction::Next);
                     }
-                    let left = match place {
-                        Some(k) => crate::i18n::fmt(tl!("{i} of {n} to review"), &[("i", &(k + 1).to_string()), ("n", &queue.len().to_string())]),
-                        None => crate::i18n::fmt(tl!("{n} to review"), &[("n", &queue.len().to_string())]),
-                    };
-                    ui.label(RichText::new(left).small().color(t.text_muted));
-                    if crate::icons::button(ui, "chevron-left", 24.0, false, tl!("Previous to review (Page Up)")).clicked() {
+                    ui.label(RichText::new(walk_place(filter, place, queue.len())).small().color(t.text_muted));
+                    let previous = if reviewing { tl!("Previous to review (Page Up)") } else { tl!("Previous diagram (Page Up)") };
+                    if crate::icons::button(ui, "chevron-left", 24.0, false, previous).clicked() {
                         action = Some(EditorAction::Previous);
                     }
                 });
@@ -111,10 +115,7 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
             }
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                 state_icon(ui, &t, state, 16.0, dirty);
-                let title = crate::i18n::fmt(
-                    tl!("Page {p} · diagram {n} of {m}"),
-                    &[("p", &label), ("n", &(index + 1).to_string()), ("m", &on_page.max(index + 1).to_string())],
-                );
+                let title = diagram_title(&label, index, on_page);
                 let link = ui.add(egui::Label::new(RichText::new(&title).strong().color(t.accent_text)).truncate().sense(egui::Sense::click()));
                 link.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Link, true, &title));
                 if crate::theme::hand(link).on_hover_text(tl!("Show it on the page")).clicked() {
@@ -126,6 +127,14 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
 
     ui.scope_builder(UiBuilder::new().max_rect(body_rect.shrink2(egui::vec2(8.0, 0.0))), |ui| {
         egui::ScrollArea::vertical().id_salt("chess-diagram-tab").auto_shrink([false, false]).show(ui, |ui| {
+            // The review just finished (plan A8, P4).
+            if let Some((checked, of)) = review_done {
+                ui.horizontal(|ui| {
+                    ui.add(crate::icons::image("badge-check", 14.0, t.success_text));
+                    let done = crate::i18n::fmt(tl!("Review done: {d} of {n} checked"), &[("d", &checked.to_string()), ("n", &of.to_string())]);
+                    ui.label(RichText::new(done).small().strong().color(t.success_text));
+                });
+            }
             // The first time: what a click does, and that Confirm leaves the PDF alone (P3b3).
             if hint && first_time_hint(ui, &t) {
                 hint = false;

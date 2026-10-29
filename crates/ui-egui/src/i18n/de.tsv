@@ -3213,8 +3213,6 @@ chess undo step	Clear drawings	Zeichnungen löschen
 # Plan A8 P3c: the Diagram tab by the keyboard and for screen readers.
 	{square}, empty	{square}, leer
 	Arrow keys pick a square; a piece's letter puts it there (with Shift, Black's); Delete empties it.	Die Pfeiltasten wählen ein Feld; der Buchstabe einer Figur stellt sie dorthin (mit Umschalt die schwarze); Entf leert es.
-	Diagram {i} of {n} to review, page {p}	Diagramm {i} von {n} zu prüfen, Seite {p}
-	Diagram {n}, page {p}	Diagramm {n}, Seite {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} unsicheres Feld|{n} unsichere Felder
 	Copy the main line only	Nur die Hauptvariante kopieren
 	Copy without comments	Ohne Kommentare kopieren
@@ -3261,3 +3259,11 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	Review first	Zuerst prüfen
 	Export anyway	Trotzdem exportieren
 	Open folder	Ordner öffnen
+	Back to the first diagram	Zurück zum ersten Diagramm
+	Back to the last diagram	Zurück zum letzten Diagramm
+	Back to diagram {n} (page {p})	Zurück zu Diagramm {n} (Seite {p})
+	{i} of {n} · {state}	{i} von {n} · {state}
+	{n} · {state}	{n} · {state}
+	Review done: {d} of {n} checked	Prüfung fertig: {d} von {n} geprüft
+	Next diagram (Page Down)	Nächstes Diagramm (Bild ab)
+	Previous diagram (Page Up)	Vorheriges Diagramm (Bild auf)

@@ -3128,8 +3128,6 @@ chess undo step	Clear drawings	清除標記
 # Plan A8 P3c: the Diagram tab by the keyboard and for screen readers.
 	{square}, empty	{square}，空
 	Arrow keys pick a square; a piece's letter puts it there (with Shift, Black's); Delete empties it.	方向鍵選擇格子；按棋子的字母把它放在那裡（按住 Shift 為黑方）；Delete 清空格子。
-	Diagram {i} of {n} to review, page {p}	待檢查局面圖 {i}/{n}，第 {p} 頁
-	Diagram {n}, page {p}	局面圖 {n}，第 {p} 頁
 @plural	{n} doubtful square|{n} doubtful squares	{n} 個存疑格子
 	Copy the main line only	僅複製主線
 	Copy without comments	複製時不含註解
@@ -3176,3 +3174,11 @@ chess undo step	Clear drawings	清除標記
 	Review first	先檢查
 	Export anyway	仍然匯出
 	Open folder	開啟資料夾
+	Back to the first diagram	回到第一個棋圖
+	Back to the last diagram	回到最後一個棋圖
+	Back to diagram {n} (page {p})	返回棋圖 {n}（第 {p} 頁）
+	{i} of {n} · {state}	{state} {i}/{n}
+	{n} · {state}	{state} {n}
+	Review done: {d} of {n} checked	複核完成：已確認 {d}/{n}
+	Next diagram (Page Down)	下一個棋圖（Page Down）
+	Previous diagram (Page Up)	上一個棋圖（Page Up）

@@ -669,7 +669,8 @@ fn the_review_queue_lists_and_walks_the_diagrams_to_review() {
     h.state_mut().chess.editor = None;
     h.state_mut().select_chess_diagram(0, 0, true);
     h.run_steps(2);
-    h.get_by_label("Next to review (Page Down)").click();
+    // The chip still shows the ones not read: Next walks them (plan A8, P4).
+    h.get_by_label("Next diagram (Page Down)").click();
     h.run_steps(2);
     assert_eq!(h.state().chess.results.as_ref().and_then(|r| r.selected), Some((0, 1)));
 }
@@ -900,7 +901,7 @@ fn double_clicking_a_diagram_puts_it_on_the_board_to_play() {
     assert!(h.state().docking.layout.contains(&board), "the double-click opened the board");
     assert_eq!(h.state().chess.board().game.fen(), START_FEN);
     assert_eq!(h.state().chess.board().source.map(|s| (s.page, s.index)), Some((0, 0)));
-    h.get_by_label("Diagram 1 · Page 1");
+    h.get_by_label("Back to diagram 1 (page 1)");
     h.get_by_label("White to move");
 
     click_square(&mut h, "e2");
@@ -2926,7 +2927,7 @@ fn a_narrow_window_switches_tabs_and_follows_the_diagrams_picked_on_the_page() {
     h.run_steps(3);
     assert_eq!(h.state().chess.board().source.map(|s| (s.page, s.index)), Some((0, 0)));
     assert_eq!(h.state().chess_window_tab(), ChessWindowTab::Board);
-    h.get_by_label("Diagram 1 · Page 1");
+    h.get_by_label("Back to diagram 1 (page 1)");
     assert!(h.state().chess_window_detached(), "the board stays in the window");
 }
 
@@ -3376,7 +3377,8 @@ fn confirming_keeps_the_correction_and_it_comes_back_when_reopened() {
         h.get_by_label("Confirm and next").click();
         h.run_steps(3);
         assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"));
-        assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Diagram 2, page 1: Corrected"));
+        // It was the only one to review: the review is done (plan A8, P4).
+        assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Review done: 1 of 1 checked"));
         assert!(h.state().chess.results.as_ref().unwrap().review_queue().is_empty(), "off the review queue");
         h.get_by_label("Diagram 2 · Corrected");
         assert_eq!(correction_files(&dir).len(), 1, "kept on disk");
@@ -3400,6 +3402,61 @@ fn confirming_keeps_the_correction_and_it_comes_back_when_reopened() {
     assert_eq!(kind(&h, 1), None);
     assert_eq!(h.state().chess.results.as_ref().unwrap().review_queue(), vec![(0, 1)]);
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Plan A8, P4: the Diagram tab walks what the Diagrams list's chip shows ("1 of 1 · Read"), its
+/// arrows named for it, says so when it goes round from the end, and tells screen readers which
+/// diagram opened by its page, as everywhere.
+#[test]
+fn the_diagram_tab_walks_what_the_lists_chip_shows() {
+    let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), None);
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    if h.state().chess.results.as_ref().unwrap().review_queue() != vec![(0, 1)] {
+        // With the user's piece model installed the drawn board may be read and accepted.
+        return;
+    }
+    h.state_mut().edit_chess_diagram(0, 1, true);
+    h.run_steps(3);
+    h.get_by_label("1 of 1 to review");
+    h.get_by_label("Page 1 · diagram 2 of 2, 1 of 1 to review");
+    // The chip of the font diagram's state: the drawn board is not among them.
+    h.get_by_label("Read 1").click();
+    h.run_steps(2);
+    h.get_by_label("1 · Read");
+    h.get_by_label("Next diagram (Page Down)").click();
+    h.run_steps(3);
+    assert_eq!(h.state().chess.editor.as_ref().map(|e| (e.page, e.index)), Some((0, 0)));
+    h.get_by_label("1 of 1 · Read");
+    assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Back to the first diagram"), "past the end, round to the start, said");
+    h.get_by_label("Page 1 · diagram 1 of 2, 1 of 1 · Read");
+}
+
+/// Plan A8, P4: opening a diagram on the board puts its page on the view's history, and the
+/// board's link goes back to the diagram, with the Diagram tab.
+#[test]
+fn the_board_goes_back_to_its_diagram() {
+    let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), None);
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    h.state_mut().edit_chess_diagram(0, 1, true);
+    h.run_steps(3);
+    assert!(!h.state_mut().views[0].view_history(false), "no history yet");
+    h.get_by_label("Analyze on the board").click();
+    h.run_steps(3);
+    assert!(h.state_mut().views[0].view_history(false), "the diagram's page is a place to come back to");
+    // The diagram closed, and its tab too.
+    h.state_mut().chess.editor = None;
+    if let Some(r) = h.state_mut().chess.results.as_mut() {
+        r.selected = None;
+    }
+    h.state_mut().docking.layout.apply(craft_ui::docking::Action::Close { panel: pdfcraft_ui_egui::docking::Panel::Diagram }).unwrap();
+    h.run_steps(2);
+    assert!(!h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Diagram));
+    h.get_by_label("Back to diagram 2 (page 1)").click();
+    h.run_steps(3);
+    assert_eq!(h.state().chess.editor.as_ref().map(|e| (e.page, e.index)), Some((0, 1)), "the diagram is open again");
+    assert!(h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Diagram), "in the Diagram tab");
 }
 
 /// The font diagram confirmed as read is Verified; Ctrl+Enter over the tab confirms too; the
@@ -3465,7 +3522,7 @@ fn the_diagram_tab_corrects_and_confirms_by_the_keyboard_alone() {
     h.get_by_label_contains("Diagram 2 · ").click();
     h.run_steps(3);
     assert!(board_focused(&h), "the board has the keyboard when the diagram opens");
-    h.get_by_label("Diagram 1 of 1 to review, page 1");
+    h.get_by_label("Page 1 · diagram 2 of 2, 1 of 1 to review");
     assert_eq!(h.state().chess.editor.as_ref().map(|e| e.fen()).as_deref(), Some("8/8/8/8/8/8/8/8 w - - 0 1"), "not read: empty");
     assert_eq!(cursor_says(&h), "a8, empty", "the cursor starts at the top left");
     let tool = format!("{:?}", h.state().quick_tool);

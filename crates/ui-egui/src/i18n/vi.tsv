@@ -3466,8 +3466,6 @@ chess undo step	Clear drawings	xóa hình vẽ
 # Plan A8 P3c: the Diagram tab by the keyboard and for screen readers.
 	{square}, empty	{square}, trống
 	Arrow keys pick a square; a piece's letter puts it there (with Shift, Black's); Delete empties it.	Phím mũi tên chọn ô; chữ cái của quân đặt quân đó vào ô (với Shift là quân đen); Delete làm trống ô.
-	Diagram {i} of {n} to review, page {p}	Sơ đồ {i}/{n} cần xem lại, trang {p}
-	Diagram {n}, page {p}	Sơ đồ {n}, trang {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} ô không chắc chắn
 	Copy the main line only	Chỉ sao chép diễn biến chính
 	Copy without comments	Sao chép không kèm bình luận
@@ -3513,3 +3511,11 @@ chess undo step	Clear drawings	xóa hình vẽ
 	They are exported as they were read, and a reading may be wrong. Review first opens the first of them.	Chúng được xuất đúng như đã đọc, và kết quả đọc có thể sai. Xem lại trước sẽ mở sơ đồ đầu tiên trong số đó.
 	Review first	Xem lại trước
 	Export anyway	Vẫn xuất
+	Back to the first diagram	Quay lại sơ đồ đầu tiên
+	Back to the last diagram	Quay lại sơ đồ cuối cùng
+	Back to diagram {n} (page {p})	Về sơ đồ {n} (trang {p})
+	{i} of {n} · {state}	{i}/{n} · {state}
+	{n} · {state}	{n} · {state}
+	Review done: {d} of {n} checked	Đã xem lại xong: đã kiểm tra {d}/{n}
+	Next diagram (Page Down)	Sơ đồ tiếp theo (Page Down)
+	Previous diagram (Page Up)	Sơ đồ trước (Page Up)

@@ -3154,8 +3154,6 @@ chess undo step	Clear drawings	usunięcie rysunków
 # Plan A8 P3c: the Diagram tab by the keyboard and for screen readers.
 	{square}, empty	{square}, puste
 	Arrow keys pick a square; a piece's letter puts it there (with Shift, Black's); Delete empties it.	Strzałki wybierają pole; litera bierki stawia ją tam (z Shift – czarną); Delete opróżnia pole.
-	Diagram {i} of {n} to review, page {p}	Diagram {i} z {n} do sprawdzenia, strona {p}
-	Diagram {n}, page {p}	Diagram {n}, strona {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} niepewne pole|{n} niepewne pola|{n} niepewnych pól
 	Copy the main line only	Kopiuj tylko linię główną
 	Copy without comments	Kopiuj bez komentarzy
@@ -3202,3 +3200,11 @@ chess undo step	Clear drawings	usunięcie rysunków
 	Review first	Najpierw sprawdź
 	Export anyway	Eksportuj mimo to
 	Open folder	Otwórz folder
+	Back to the first diagram	Z powrotem przy pierwszym diagramie
+	Back to the last diagram	Z powrotem przy ostatnim diagramie
+	Back to diagram {n} (page {p})	Wróć do diagramu {n} (str. {p})
+	{i} of {n} · {state}	{i} z {n} · {state}
+	{n} · {state}	{n} · {state}
+	Review done: {d} of {n} checked	Sprawdzanie zakończone: sprawdzono {d} z {n}
+	Next diagram (Page Down)	Następny diagram (Page Down)
+	Previous diagram (Page Up)	Poprzedni diagram (Page Up)

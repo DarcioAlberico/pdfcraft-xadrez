@@ -3214,8 +3214,6 @@ chess undo step	Clear drawings	描画の消去
 # Plan A8 P3c: the Diagram tab by the keyboard and for screen readers.
 	{square}, empty	{square}、空き
 	Arrow keys pick a square; a piece's letter puts it there (with Shift, Black's); Delete empties it.	矢印キーでマスを選び、駒の文字キーでその駒を置きます (Shift で黒)。Delete で空にします。
-	Diagram {i} of {n} to review, page {p}	確認が必要な局面図 {i}/{n}、ページ {p}
-	Diagram {n}, page {p}	局面図 {n}、ページ {p}
 @plural	{n} doubtful square|{n} doubtful squares	不確かなマス {n} 個
 	Copy the main line only	本手順のみコピー
 	Copy without comments	コメントなしでコピー
@@ -3262,3 +3260,11 @@ chess undo step	Clear drawings	描画の消去
 	Review first	先に確認
 	Export anyway	このまま書き出す
 	Open folder	フォルダーを開く
+	Back to the first diagram	最初の局面図に戻りました
+	Back to the last diagram	最後の局面図に戻りました
+	Back to diagram {n} (page {p})	局面図 {n} に戻る ({p} ページ)
+	{i} of {n} · {state}	{state} {i}/{n}
+	{n} · {state}	{state} {n}
+	Review done: {d} of {n} checked	確認完了: {n} 件中 {d} 件を確認済み
+	Next diagram (Page Down)	次の局面図 (Page Down)
+	Previous diagram (Page Up)	前の局面図 (Page Up)

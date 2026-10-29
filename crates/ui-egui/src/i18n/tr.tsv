@@ -3208,8 +3208,6 @@ chess undo step	Clear drawings	çizimleri temizleme
 # Plan A8 P3c: the Diagram tab by the keyboard and for screen readers.
 	{square}, empty	{square}, boş
 	Arrow keys pick a square; a piece's letter puts it there (with Shift, Black's); Delete empties it.	Ok tuşları bir kare seçer; bir taşın harfi onu oraya koyar (Shift ile siyahını); Delete kareyi boşaltır.
-	Diagram {i} of {n} to review, page {p}	İncelenecek diyagram {i}/{n}, sayfa {p}
-	Diagram {n}, page {p}	Diyagram {n}, sayfa {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} şüpheli kare
 	Copy the main line only	Yalnızca ana hattı kopyala
 	Copy without comments	Yorumlar olmadan kopyala
@@ -3256,3 +3254,11 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Review first	Önce incele
 	Export anyway	Yine de dışa aktar
 	Open folder	Klasörü aç
+	Back to the first diagram	Yeniden ilk diyagram
+	Back to the last diagram	Yeniden son diyagram
+	Back to diagram {n} (page {p})	Diyagram {n}'e dön (sayfa {p})
+	{i} of {n} · {state}	{state} {i}/{n}
+	{n} · {state}	{state} {n}
+	Review done: {d} of {n} checked	Gözden geçirme bitti: {n} diyagramdan {d} tanesi onaylandı
+	Next diagram (Page Down)	Sonraki diyagram (Page Down)
+	Previous diagram (Page Up)	Önceki diyagram (Page Up)

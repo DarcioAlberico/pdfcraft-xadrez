@@ -3210,8 +3210,6 @@ chess undo step	Clear drawings	суреттерді өшіру
 # Plan A8 P3c: the Diagram tab by the keyboard and for screen readers.
 	{square}, empty	{square}, бос
 	Arrow keys pick a square; a piece's letter puts it there (with Shift, Black's); Delete empties it.	Көрсеткілер шаршыны таңдайды; фигураның әрпі оны сонда қояды (Shift арқылы — қара); Delete оны босатады.
-	Diagram {i} of {n} to review, page {p}	Тексерілетін диаграмма {i}/{n}, бет {p}
-	Diagram {n}, page {p}	Диаграмма {n}, бет {p}
 @plural	{n} doubtful square|{n} doubtful squares	{n} күмәнді шаршы|{n} күмәнді шаршы
 	Copy the main line only	Тек негізгі желіні көшіру
 	Copy without comments	Түсініктемесіз көшіру
@@ -3258,3 +3256,11 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Review first	Алдымен тексеру
 	Export anyway	Сонда да экспорттау
 	Open folder	Буманы ашу
+	Back to the first diagram	Қайтадан бірінші диаграмма
+	Back to the last diagram	Қайтадан соңғы диаграмма
+	Back to diagram {n} (page {p})	{n}-диаграммаға оралу ({p}-бет)
+	{i} of {n} · {state}	{state}: {n} ішінен {i}
+	{n} · {state}	{state}: {n}
+	Review done: {d} of {n} checked	Тексеру аяқталды: {n} ішінен {d} тексерілді
+	Next diagram (Page Down)	Келесі диаграмма (Page Down)
+	Previous diagram (Page Up)	Алдыңғы диаграмма (Page Up)
