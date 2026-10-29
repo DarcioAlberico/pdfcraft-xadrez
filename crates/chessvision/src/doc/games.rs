@@ -1336,35 +1336,44 @@ impl Walker {
     }
 
     /// The first move after a diagram that came while a game was open. The game goes on when the
-    /// diagram shows the position its main line reached, or when the move continues the main line
-    /// (its number is the next one, and it is legal there) and is not a first move from the
-    /// diagram. Otherwise the game ends and the move starts from the diagram.
+    /// diagram shows the position one of the open lines reached: the innermost such line goes on,
+    /// and the lines inside it close (a magazine sets a diagram inside a variation, after the move
+    /// it shows). It also goes on when the move continues the main line (its number is the next
+    /// one, and it is legal there) and is not a first move from the diagram. Otherwise the game
+    /// ends and the move starts from the diagram.
     fn resolve_held(&mut self, number: Option<MoveNumber>, san: &San) {
         self.held = false;
         let seed = match &self.anchor {
             Anchor::Seed(s) => Some(s),
             _ => None,
         };
-        let (same, fits) = match self.open.as_ref().and_then(|o| Some((o.lines.first()?, self.games.get(o.game)?))) {
-            Some((main, game)) => {
+        let fen = seed.and_then(|s| s.fen.as_deref());
+        let (shown, fits) = match self.open.as_ref().and_then(|o| Some((o, o.lines.first()?, self.games.get(o.game)?))) {
+            Some((open, main, game)) => {
+                let shows = |line: &Line| {
+                    let board = game.score.board_after(line.cursor);
+                    fen.zip(board).is_some_and(|(f, b)| placement_of(f) == placement_of(&b.to_string()))
+                };
+                let shown = open.lines.iter().rposition(shows);
                 let board = game.score.board_after(main.cursor);
-                let same =
-                    seed.and_then(|s| s.fen.as_deref()).zip(board.as_ref()).is_some_and(|(f, b)| placement_of(f) == placement_of(&b.to_string()));
                 let next = number.is_some_and(|n| game.score.next_ply(main.cursor) == Some(ply_of(n)));
                 let fits = main.moved && main.skipped == 0 && next && board.is_some_and(|b| san.to_move(&b).is_ok());
-                (same, fits && !seed.is_some_and(|s| seed_fits(s, number, san)))
+                (shown, fits && !seed.is_some_and(|s| seed_fits(s, number, san)))
             }
-            None => (false, false),
+            None => (None, false),
         };
-        if !same && !fits {
+        if shown.is_none() && !fits {
             self.close();
             return;
         }
+        let same = shown.is_some();
+        // The lines up to the one the diagram shows stay open; without one, the main line.
+        let keep = shown.unwrap_or(0).saturating_add(1);
         let anchor = std::mem::take(&mut self.anchor);
         if let Some(open) = self.open.as_mut()
             && let Some(game) = self.games.get_mut(open.game)
         {
-            while open.lines.len() > 1 {
+            while open.lines.len() > keep {
                 pop_line(game, open);
             }
             if !same && let Anchor::Seed(s) = &anchor {

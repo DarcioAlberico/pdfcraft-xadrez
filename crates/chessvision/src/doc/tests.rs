@@ -493,6 +493,25 @@ fn a_game_goes_on_past_a_diagram_of_its_own_position() {
     }
 }
 
+/// A diagram set inside a variation, of the position the variation reached, keeps the game and
+/// the variation open: the moves after it go on in the variation, and the main line after its
+/// bracket (Chess Evolution sets diagrams in its `[ ]` analysis).
+#[test]
+fn a_diagram_inside_a_variation_keeps_the_variation() {
+    let bc5 = "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4";
+    let p0 = page_text(vec![line(700.0, "1.e4 e5 2.Nf3 Nc6 3.Bb5 [ 3.Bc4 Bc5")]);
+    let p1 = page_text(vec![line(230.0, "4.c3 Nf6 ] 3...a6 4.Ba4")]);
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[], &[], &[]));
+    b.add_page(&input(1, &p1, &[reading(0, 60.0, bc5, true, false)], &[], &[]));
+    let doc = b.finish();
+    assert!(doc.pages.iter().all(|p| moves(p).iter().all(|(_, s)| *s == MoveStatus::Valid)), "{:?}", moves(&doc.pages[1]));
+    let [game] = doc.games.as_slice() else { panic!("{} games", doc.games.len()) };
+    let pgn = pgn::write_game(&game.score).split_whitespace().collect::<Vec<_>>().join(" ");
+    assert!(pgn.contains("3. Bb5 (3. Bc4 Bc5 4. c3 Nf6) 3... a6 4. Ba4"), "{pgn}");
+    assert!(game.flags.is_empty(), "{:?}", game.flags);
+}
+
 /// After an alternative written as prose, the text goes back to the main line: a move the
 /// alternative cannot play is tried there.
 #[test]
