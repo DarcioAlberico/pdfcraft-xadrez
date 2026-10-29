@@ -1982,6 +1982,33 @@ mod tests {
         assert_eq!(texts(2), ["a", "\u{ad}", "b", "\u{a0}", "c"], "a named glyph keeps its glyph list value");
     }
 
+    /// TeX and OpenType subsets name their figures `zero.pnum`…`nine.pnum` and their ligatures
+    /// `f_f`, and only the Adobe Glyph List Specification's own rule (the part before the first
+    /// period, split at underscores) maps them. Without it a chess magazine set in pdfTeX lost
+    /// every digit: `1.d4 d5` read `.d d`, and no move of it could be found.
+    #[test]
+    fn suffixed_and_ligature_glyph_names_read_as_the_agl_rule_maps_them() {
+        use lopdf::{Object, dictionary};
+        let name = |n: &str| Object::Name(n.as_bytes().to_vec());
+        let differences = Object::Dictionary(dictionary! {
+            "Type" => "Encoding",
+            "BaseEncoding" => "WinAnsiEncoding",
+            "Differences" => vec![
+                Object::Integer(128),
+                name("one.pnum"),
+                name("four.pnum"),
+                name("f_f"),
+                name("uni00660069.alt"),
+                name("A.sc"),
+                name("nonsense.pnum"),
+                name(".notdef"),
+            ],
+        });
+        let pdf = encoded_pages(&[(differences, &b"BT /F1 20 Tf 1 0 0 1 20 150 Tm (\x80.d\x81 o\x82ice \x83ve \x84\x85\x86) Tj ET"[..])]);
+        let text = extract_page(&pdf, 0, &InterpreterSettings::default()).unwrap();
+        assert_eq!(text.plain_text(), "1.d4 office five A");
+    }
+
     #[test]
     fn narrow_ligatures_keep_every_letter() {
         // Split evenly, this "ffi" put its two "f"s so close that the second was dropped as a

@@ -714,11 +714,73 @@ pub(crate) fn glyph_name_to_unicode(name: &str) -> Option<char> {
         return unicode_str.chars().next();
     }
 
-    unicode_from_name(name).or_else(|| {
-        warn!("failed to map glyph name {} to unicode", name);
+    // PdfCraft patch: a suffixed name (`zero.pnum`, `a.sc`) reads as its stem; see
+    // `glyph_name_to_text`.
+    unicode_from_name(name)
+        .or_else(|| match glyph_name_to_text(name)? {
+            BfString::Char(c) => Some(c),
+            BfString::String(_) => None,
+        })
+        .or_else(|| {
+            warn!("failed to map glyph name {} to unicode", name);
 
-        None
-    })
+            None
+        })
+}
+
+/// PdfCraft patch: the text a glyph name stands for, by the Adobe Glyph List Specification §2:
+/// the part before the first period, split at underscores, each component mapped on its own
+/// (an AGL name, `uniXXXX…` in groups of four, or `uXXXX` to `uXXXXXX`). TeX and OpenType
+/// subsets name figures `zero.pnum`…`nine.pnum` and ligatures `f_f`: without this, text
+/// extraction dropped every digit of such a book. `None` when any component is unknown.
+pub(crate) fn glyph_name_to_text(name: &str) -> Option<BfString> {
+    if let Some(unicode_str) = glyph_names::get(name) {
+        return Some(bf_string(unicode_str.to_string()));
+    }
+    let stem = name.split('.').next().filter(|s| !s.is_empty())?;
+    let mut out = String::new();
+    for part in stem.split('_') {
+        out.push_str(&glyph_component_text(part)?);
+    }
+    (!out.is_empty()).then(|| bf_string(out))
+}
+
+/// One character as [`BfString::Char`], more as [`BfString::String`].
+fn bf_string(s: String) -> BfString {
+    let mut chars = s.chars();
+    match (chars.next(), chars.next()) {
+        (Some(c), None) => BfString::Char(c),
+        _ => BfString::String(s),
+    }
+}
+
+/// One `_`-separated component of a glyph name, as [`glyph_name_to_text`] maps it.
+fn glyph_component_text(part: &str) -> Option<String> {
+    if let Some(s) = glyph_names::get(part) {
+        return Some(s.to_string());
+    }
+    // `from_str_radix` accepts a leading `+`, which is not a glyph name, so the digits are checked.
+    let hexish = |h: &str| !h.is_empty() && h.bytes().all(|b| b.is_ascii_hexdigit());
+    if let Some(hex) = part
+        .strip_prefix("uni")
+        .filter(|h| h.len() >= 4 && h.len() % 4 == 0 && hexish(h))
+    {
+        let mut s = String::new();
+        for i in (0..hex.len()).step_by(4) {
+            // A lone surrogate half is not a character; such a name is not usable text.
+            s.push(char::from_u32(
+                u32::from_str_radix(hex.get(i..i.saturating_add(4))?, 16).ok()?,
+            )?);
+        }
+        return Some(s);
+    }
+    let hex = part
+        .strip_prefix('u')
+        .filter(|h| (4..=6).contains(&h.len()) && hexish(h))?;
+    u32::from_str_radix(hex, 16)
+        .ok()
+        .and_then(char::from_u32)
+        .map(String::from)
 }
 
 pub(crate) fn unicode_from_name(name: &str) -> Option<char> {

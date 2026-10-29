@@ -2,7 +2,7 @@ use crate::font::blob::{CffFontBlob, Type1FontBlob};
 use crate::font::standard_font::{StandardFont, StandardKind, select_standard_font};
 use crate::font::true_type::{Width, read_encoding, read_widths};
 use crate::font::{
-    Encoding, FallbackFontQuery, glyph_name_to_unicode, normalized_glyph_name, read_to_unicode,
+    Encoding, FallbackFontQuery, glyph_name_to_text, normalized_glyph_name, read_to_unicode,
 };
 use crate::{CMapResolverFn, CacheKey, FontResolverFn};
 use hayro_cmap::{BfString, CMap};
@@ -118,9 +118,9 @@ impl Type1Font {
 
         let code = char_code as u8;
         match &self.1 {
-            Kind::Standard(s) => s.char_code_to_unicode(code).map(BfString::Char),
-            Kind::Cff(c) => c.char_code_to_unicode(code).map(BfString::Char),
-            Kind::Type1(t) => t.char_code_to_unicode(code).map(BfString::Char),
+            Kind::Standard(s) => s.char_code_to_unicode(code),
+            Kind::Cff(c) => c.char_code_to_unicode(code),
+            Kind::Type1(t) => t.char_code_to_unicode(code),
         }
     }
 }
@@ -238,16 +238,16 @@ impl Type1Kind {
         }
     }
 
-    fn char_code_to_unicode(&self, code: u8) -> Option<char> {
+    fn char_code_to_unicode(&self, code: u8) -> Option<BfString> {
         // PdfCraft patch: an Annex D.2 alias code reads as the ordinary character; see
         // `Encoding::text_alias`. `code_to_ps_name` is shared with glyph lookup and stays as it
         // is, so the alias is applied here, after `/Differences` has had its say.
         if !self.encodings.contains_key(&code)
             && let Some(name) = self.encoding.text_alias(code)
         {
-            return glyph_name_to_unicode(name);
+            return glyph_name_to_text(name);
         }
-        self.code_to_ps_name(code).and_then(glyph_name_to_unicode)
+        self.code_to_ps_name(code).and_then(glyph_name_to_text)
     }
 }
 
@@ -343,15 +343,15 @@ impl CffKind {
         }
     }
 
-    fn char_code_to_unicode(&self, code: u8) -> Option<char> {
+    fn char_code_to_unicode(&self, code: u8) -> Option<BfString> {
         // PdfCraft patch: an Annex D.2 alias code reads as the ordinary character; see
         // `Encoding::text_alias`. `code_to_ps_name` is shared with glyph lookup and stays as it
         // is, so the alias is applied here, after `/Differences` has had its say.
         if !self.encodings.contains_key(&code)
             && let Some(name) = self.encoding.text_alias(code)
         {
-            return glyph_name_to_unicode(name);
+            return glyph_name_to_text(name);
         }
-        self.code_to_ps_name(code).and_then(glyph_name_to_unicode)
+        self.code_to_ps_name(code).and_then(glyph_name_to_text)
     }
 }
