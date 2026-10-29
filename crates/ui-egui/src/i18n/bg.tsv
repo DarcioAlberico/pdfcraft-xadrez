@@ -2575,7 +2575,6 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Lines:	Варианти:
 	Choose engine…	Избор на енджин…
 	Pick a UCI chess engine program, such as Stockfish.	Изберете програма шахматен енджин с UCI, например Stockfish.
-	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Не е намерен шахматен енджин. Задайте PDFCRAFT_CHESS_ENGINE да сочи UCI енджин, например Stockfish, сложете такъв в папка engine до PdfCraft или изберете един.
 	The engine couldn't be started: {e}	Енджинът не можа да се стартира: {e}
 	That program didn't answer as a UCI chess engine.	Тази програма не отговори като UCI шахматен енджин.
 	The engine stopped.	Енджинът спря.
@@ -3234,3 +3233,12 @@ chess undo step	Clear drawings	изчистването на рисунките
 	More panels	Още панели
 	More room for the page: collapse the tools panel?	Повече място за страницата: да се свие ли панелът с инструменти?
 	Rotate view counterclockwise ({key})	Завърти изгледа обратно на часовниковата стрелка ({key})
+	No analysis engine installed	Няма инсталиран енджин за анализ
+	Or set PDFCRAFT_CHESS_ENGINE to the program.	Или задайте програмата в PDFCRAFT_CHESS_ENGINE.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	За анализ PdfCraft използва отделна програма, например Stockfish (безплатна). Изтеглете я и изберете файла stockfish.exe.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish program.	За анализ PdfCraft използва отделна програма, например Stockfish (безплатна). Изтеглете я и изберете програмата stockfish.
+	Open stockfishchess.org	Отваряне на stockfishchess.org
+	Or put the program in an engine folder beside PdfCraft.	Или сложете програмата в папка engine до PdfCraft.
+	Analyze	Анализ
+	Open on the board with the engine analysing it	Отваряне на дъската с анализ от енджина
+	Stop the analysis	Спиране на анализа

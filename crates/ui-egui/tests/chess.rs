@@ -934,7 +934,8 @@ fn double_clicking_a_diagram_puts_it_on_the_board_to_play() {
     // Copy FEN, in the FEN section (closed until opened), copies the position on the board.
     h.get_by_label("FEN").click();
     h.run_steps(2);
-    h.get_by_label("Copy FEN").click();
+    // The section opens at the panel's foot, partly under the window's edge: by its action.
+    h.get_by_label("Copy FEN").click_accesskit();
     let mut copied = false;
     for _ in 0..3 {
         h.step();
@@ -1361,6 +1362,12 @@ fn the_chosen_engine_is_remembered_and_bad_settings_are_ignored() {
     let study = &h.state().chess.study;
     assert_eq!((study.engine_path.as_deref(), study.lines), (Some(exe.as_path()), 2));
     assert!(!study.analysis, "the engine is not started by itself");
+    // Analysis left on is on again in the next session (plan A8, P7); only `true` counts.
+    let mut on = saved.clone();
+    on["chess_engine"]["analysis"] = serde_json::json!(true);
+    assert!(harness_restoring(on.to_string()).state().chess.study.analysis, "analysis is remembered");
+    on["chess_engine"]["analysis"] = serde_json::json!("yes");
+    assert!(!harness_restoring(on.to_string()).state().chess.study.analysis, "a value that is no boolean is ignored");
     // Choose engine… keeps the program picked for the next session.
     let mut h = harness();
     h.state_mut().show_chess_board();
@@ -1516,6 +1523,110 @@ fn analysis_pauses_while_the_board_panel_is_hidden() {
     assert!(wait_for(&mut h, |_| searching(&log) == 3), "{:?}", log.lock().unwrap());
     let after_e4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
     assert!(log.lock().unwrap().iter().any(|c| c == &format!("position fen {after_e4}")));
+}
+
+/// Plan A8, P7: the Diagram tab's Analyze puts the position as edited on the board, with the
+/// engine analysing it and the Analysis section open, in one click.
+#[test]
+fn analyze_on_the_diagram_tab_analyses_the_edited_position() {
+    use pdfcraft_engine::chess::pdfcraft_chess::placement::Square;
+    let mut h = harness();
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    h.state_mut().edit_chess_diagram(0, 0, true);
+    h.run_steps(3);
+    let edited = {
+        let ed = h.state_mut().chess.editor.as_mut().expect("the diagram is open");
+        ed.put(Square::parse("e2").unwrap(), None);
+        ed.fen()
+    };
+    assert_ne!(edited, START_FEN);
+    // An engine ready, with analysis off: the board is not drawn, so it stays open meanwhile.
+    let (engine, log) = fake_engine();
+    h.state_mut().chess.study.use_engine(engine);
+    h.state_mut().chess.study.analysis = false;
+    h.run_steps(2);
+    h.get_by_label("Analyze on the board").click();
+    h.run_steps(3);
+    assert_eq!(h.state().chess.board().game.fen(), edited, "the edited position is on the board");
+    assert!(h.state().chess.study.analysis, "analysis is on");
+    assert!(!h.state().chess.study.assistant, "an engine is there: no assistant");
+    // The section is open without a click on it: its switch shows.
+    h.get_by_label("Engine analysis");
+    let sent = format!("position fen {edited}");
+    assert!(wait_for(&mut h, |_| log.lock().unwrap().iter().any(|c| c == &sent)), "{:?}", log.lock().unwrap());
+    assert!(wait_for(&mut h, |h| h.query_by_label_contains("Fake Engine 1").is_some()), "the engine's line is shown");
+}
+
+/// Plan A8, P7: Analyze in a Diagrams list row's menu opens the diagram on the board, analysed.
+#[test]
+fn analyze_in_the_list_opens_the_diagram_analysed() {
+    let mut h = harness();
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    let (engine, log) = fake_engine();
+    h.state_mut().chess.study.use_engine(engine);
+    h.state_mut().chess.study.analysis = false;
+    row_menu(&mut h, "Diagram 1 · ");
+    h.get_by_label("Analyze").click();
+    h.run_steps(3);
+    assert!(h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Board), "the Board panel opened");
+    assert_eq!(h.state().chess.board().game.fen(), START_FEN);
+    assert!(h.state().chess.study.analysis);
+    h.get_by_label("Engine analysis");
+    let sent = format!("position fen {START_FEN}");
+    assert!(wait_for(&mut h, |_| log.lock().unwrap().iter().any(|c| c == &sent)), "{:?}", log.lock().unwrap());
+    // The board's own Analyze is on, and switches it off.
+    h.get_by_label("Stop the analysis").click();
+    h.run_steps(3);
+    assert!(!h.state().chess.study.analysis);
+    assert!(wait_for(&mut h, |_| log.lock().unwrap().iter().any(|c| c == "quit")), "the engine was told to quit");
+}
+
+/// The node labelled `label` inside the dialog card `id`.
+#[track_caller]
+fn in_card<'a>(h: &'a Harness<'static, PdfCraftApp>, id: &str, label: &'a str) -> egui_kittest::Node<'a> {
+    let card: egui::Rect = h.ctx.data(|d| d.get_temp(egui::Id::new(id).with("card"))).unwrap_or_else(|| panic!("{id} is shown"));
+    h.get_all_by_label(label).find(|n| card.contains_rect(n.rect())).unwrap_or_else(|| panic!("{label} in {id}"))
+}
+
+/// Plan A8, P7: with no engine anywhere, the board's Analyze shows the assistant. Open
+/// stockfishchess.org leaves it up, Not now closes it with analysis off, and Choose engine… picks
+/// the program, with analysis on.
+#[test]
+fn analyze_without_an_engine_shows_the_assistant() {
+    if pdfcraft_engine::chess::analysis::find_engine().is_some() {
+        eprintln!("an engine is installed for this test run: skipped");
+        return;
+    }
+    const CARD: &str = "chess-engine-assistant";
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    h.get_by_label("Analyze").click();
+    h.run_steps(3);
+    assert!(h.state().chess.study.assistant, "no engine: the assistant shows");
+    in_card(&h, CARD, "No analysis engine installed");
+    in_card(&h, CARD, "Open stockfishchess.org").click();
+    h.run_steps(2);
+    assert_eq!(h.state().last_opened_url.as_deref(), Some("https://stockfishchess.org/download/"));
+    assert!(h.state().chess.study.assistant, "still up, to choose the program next");
+    in_card(&h, CARD, "Not now").click();
+    h.run_steps(2);
+    assert!(!h.state().chess.study.assistant);
+    assert!(!h.state().chess.study.analysis, "Not now leaves analysis off");
+    assert!(h.query_by_label("Open stockfishchess.org").is_none(), "the assistant is gone");
+    // Again, and Choose engine…: a file that exists stands for the program.
+    let exe = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("Cargo.toml");
+    h.get_by_label("Analyze").click();
+    h.run_steps(3);
+    h.state_mut().pick_override = Some(vec![exe.display().to_string()]);
+    in_card(&h, CARD, "Choose engine…").click();
+    h.run_steps(3);
+    let study = &h.state().chess.study;
+    assert!(!study.assistant);
+    assert_eq!(study.engine_path.as_deref(), Some(exe.as_path()));
+    assert!(study.analysis, "analysis goes on with the program picked");
 }
 
 /// With a real UCI engine (`PDFCRAFT_CHESS_TEST_ENGINE`, e.g. Stockfish), the Board panel's
@@ -3504,6 +3615,11 @@ fn the_board_goes_back_to_its_diagram() {
     assert!(!h.state_mut().views[0].view_history(false), "no history yet");
     h.get_by_label("Analyze on the board").click();
     h.run_steps(3);
+    // Without an engine, Analyze asks how to get one (plan A8, P7): not now.
+    if h.state().chess.study.assistant {
+        in_card(&h, "chess-engine-assistant", "Not now").click();
+        h.run_steps(2);
+    }
     assert!(h.state_mut().views[0].view_history(false), "the diagram's page is a place to come back to");
     // The diagram closed, and its tab too.
     h.state_mut().chess.editor = None;
@@ -3513,6 +3629,13 @@ fn the_board_goes_back_to_its_diagram() {
     h.state_mut().docking.layout.apply(craft_ui::docking::Action::Close { panel: pdfcraft_ui_egui::docking::Panel::Diagram }).unwrap();
     h.run_steps(2);
     assert!(!h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Diagram));
+    // No button of the title covers the link (the panel is narrow: it goes under the title).
+    let link = h.get_by_label("Back to diagram 2 (page 1)").rect();
+    for name in ["Board theme", "Move list beside the page", "Analyze", "Stop the analysis"] {
+        if let Some(button) = h.query_by_label(name) {
+            assert!(!button.rect().intersects(link), "{name} {:?} over the link {link:?}", button.rect());
+        }
+    }
     h.get_by_label("Back to diagram 2 (page 1)").click();
     h.run_steps(3);
     assert_eq!(h.state().chess.editor.as_ref().map(|e| (e.page, e.index)), Some((0, 1)), "the diagram is open again");

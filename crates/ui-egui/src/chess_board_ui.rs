@@ -286,6 +286,8 @@ pub enum BoardAction {
     /// Pick the engine program for analysis (desktop only).
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
     ChooseEngine,
+    /// The title's Analyze: analysis on, with the Analysis section open, or off (plan A8, P7).
+    Analyze,
     /// The PGN field's games after the first, which went on the board: add them to the
     /// document's games; `more`: the field had more than the cap.
     AddGames {
@@ -2149,8 +2151,8 @@ pub(crate) fn board_side(available: f32, scroll_bar: f32, sizing: Sizing) -> f32
 }
 
 /// The panel's title (`named`: not when a docking tab above already names it, plan A8 P6), the
-/// diagram the board was loaded from as a link to it, and the Move list beside the page
-/// (`beside`: it shows) as a toggle.
+/// diagram the board was loaded from as a link to it, and as toggles the Move list beside the
+/// page (`beside`: it shows) and Analyze (`analysing`: it is on, plan A8 P7).
 pub(crate) fn title(
     ui: &mut egui::Ui,
     t: &Tokens,
@@ -2158,20 +2160,35 @@ pub(crate) fn title(
     source_label: Option<String>,
     beside: bool,
     named: bool,
+    analysing: bool,
 ) -> Option<BoardAction> {
     let mut action = None;
+    let link = source_label.zip(state.source).map(|(label, source)| (egui::RichText::new(label).small(), source));
+    let mut link_below = None;
     ui.horizontal(|ui| {
         if named {
             ui.label(egui::RichText::new(tl!("Chess board")).font(theme::semibold(15.5)));
         }
-        if let (Some(label), Some(source)) = (source_label, state.source)
-            && ui.link(egui::RichText::new(label).small()).on_hover_text(tl!("Show this diagram on the page")).clicked()
-        {
-            action = Some(BoardAction::ShowSource(source));
+        // The link beside the title when it fits there with the three buttons, else on its own
+        // line under it: the buttons, laid out from the right, would cover it.
+        if let Some((text, source)) = link {
+            let spacing = ui.spacing().item_spacing.x;
+            let width = egui::WidgetText::from(text.clone())
+                .into_galley(ui, Some(egui::TextWrapMode::Extend), f32::INFINITY, egui::TextStyle::Small)
+                .size()
+                .x;
+            let buttons = TITLE_BUTTONS * (TITLE_ICON + 2.0 * ui.spacing().button_padding.x + spacing);
+            if width + spacing + buttons <= ui.available_width() {
+                if source_link(ui, text) {
+                    action = Some(BoardAction::ShowSource(source));
+                }
+            } else {
+                link_below = Some((text, source));
+            }
         }
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let theme_name = tl!("Board theme");
-            let menu = egui::containers::menu::MenuButton::from_button(egui::Button::image(crate::icons::image("palette", 14.0, t.icon)));
+            let menu = egui::containers::menu::MenuButton::from_button(egui::Button::image(crate::icons::image("palette", TITLE_ICON, t.icon)));
             let (r, picked) = menu.ui(ui, crate::chess_theme::menu_items);
             let r = r.on_hover_text(theme_name);
             r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, theme_name));
@@ -2181,14 +2198,35 @@ pub(crate) fn title(
                 None => {}
             }
             let name = tl!("Move list beside the page");
-            let r = ui.add(egui::Button::image(crate::icons::image("list-ordered", 14.0, t.icon)).selected(beside)).on_hover_text(name);
+            let r = ui.add(egui::Button::image(crate::icons::image("list-ordered", TITLE_ICON, t.icon)).selected(beside)).on_hover_text(name);
             r.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, beside, name));
             if r.clicked() {
                 action = Some(BoardAction::ToggleMoveList);
             }
+            let name = if analysing { tl!("Stop the analysis") } else { tl!("Analyze") };
+            let r = ui.add(egui::Button::image(crate::icons::image("gauge", TITLE_ICON, t.icon)).selected(analysing)).on_hover_text(name);
+            r.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, analysing, name));
+            if r.clicked() {
+                action = Some(BoardAction::Analyze);
+            }
         });
     });
+    if let Some((text, source)) = link_below
+        && source_link(ui, text)
+    {
+        action = Some(BoardAction::ShowSource(source));
+    }
     action
+}
+
+/// The buttons at the right of the board's title (theme, Move list, Analyze), and their icons'
+/// side.
+const TITLE_BUTTONS: f32 = 3.0;
+const TITLE_ICON: f32 = 14.0;
+
+/// The link back to the diagram the board was loaded from; whether it was clicked.
+fn source_link(ui: &mut egui::Ui, text: egui::RichText) -> bool {
+    ui.link(text).on_hover_text(tl!("Show this diagram on the page")).clicked()
 }
 
 /// The Chess board panel below its keys, in one column (spec §4.1), in a scroll area whose
@@ -2209,7 +2247,7 @@ pub(crate) fn panel_body(
     named: bool,
 ) -> (Option<BoardAction>, Option<crate::chess_collection::GamesAction>) {
     let top = ui.cursor().top();
-    let action = title(ui, t, chess.board(), source_label, chess.moves_beside, named);
+    let action = title(ui, t, chess.board(), source_label, chess.moves_beside, named, chess.study.analysis);
     ui.add_space(4.0);
     if crate::chess_study_ui::setup_in_place(ui, t, chess, pieces) {
         return (action, None);

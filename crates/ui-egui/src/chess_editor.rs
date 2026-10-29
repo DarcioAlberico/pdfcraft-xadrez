@@ -280,6 +280,8 @@ pub enum EditorAction {
     Close,
     /// Put the position on the chess board.
     OpenBoard,
+    /// Put the position on the chess board and analyse it (plan A8, P7).
+    Analyze,
     /// Keep the position for the diagram without changing the PDF (plan A8, P3b2); `next`: then
     /// open the next diagram to review.
     Confirm {

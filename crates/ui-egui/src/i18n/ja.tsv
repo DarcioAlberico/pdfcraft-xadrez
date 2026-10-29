@@ -2614,7 +2614,6 @@ chess undo step	Clear drawings	描画の消去
 	Lines:	読み筋の数:
 	Choose engine…	エンジンを選択…
 	Pick a UCI chess engine program, such as Stockfish.	Stockfish などの UCI チェスエンジンのプログラムを選びます。
-	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	チェスエンジンが見つかりません。PDFCRAFT_CHESS_ENGINE に Stockfish などの UCI エンジンを指定するか、PdfCraft の隣の engine フォルダーに置くか、エンジンを選んでください。
 	The engine couldn't be started: {e}	エンジンを起動できませんでした: {e}
 	That program didn't answer as a UCI chess engine.	そのプログラムは UCI チェスエンジンとして応答しませんでした。
 	The engine stopped.	エンジンが停止しました。
@@ -3273,3 +3272,12 @@ chess undo step	Clear drawings	描画の消去
 	More panels	その他のパネル
 	More room for the page: collapse the tools panel?	ページの表示領域を広げる: ツールパネルを折りたたみますか?
 	Rotate view counterclockwise ({key})	表示を反時計回りに回転（{key}）
+	No analysis engine installed	解析エンジンがインストールされていません
+	Or set PDFCRAFT_CHESS_ENGINE to the program.	または PDFCRAFT_CHESS_ENGINE にプログラムを設定します。
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	解析には、Stockfish（無料）などの別のプログラムを使います。ダウンロードして stockfish.exe ファイルを選択してください。
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish program.	解析には、Stockfish（無料）などの別のプログラムを使います。ダウンロードして stockfish プログラムを選択してください。
+	Open stockfishchess.org	stockfishchess.org を開く
+	Or put the program in an engine folder beside PdfCraft.	または、PdfCraft と同じ場所の engine フォルダーにプログラムを置きます。
+	Analyze	解析
+	Open on the board with the engine analysing it	エンジンで解析しながら盤面で開く
+	Stop the analysis	解析を停止

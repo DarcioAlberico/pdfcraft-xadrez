@@ -386,6 +386,8 @@ pub enum PanelAction {
     Select(usize, usize),
     /// Put diagram (page, index) on the chess board.
     OpenBoard(usize, usize),
+    /// Put diagram (page, index) on the chess board and analyse it (plan A8, P7).
+    Analyze(usize, usize),
     /// Show the chess board panel.
     ShowBoard,
     CopyFen(String),
@@ -1067,6 +1069,14 @@ impl PdfCraftApp {
                 self.mark_chess_history();
                 self.open_chess_board(page, index);
             }
+            PanelAction::Analyze(page, index) => {
+                self.select_chess_diagram(page, index, false);
+                self.mark_chess_history();
+                if self.load_chess_board(page, index) {
+                    self.chess.study.analyze();
+                    self.show_chess_board();
+                }
+            }
             PanelAction::ShowBoard => self.show_chess_board(),
             PanelAction::CopyFen(fen) => {
                 let Some((_, id)) = self.active_ids() else { return };
@@ -1151,13 +1161,17 @@ impl PdfCraftApp {
                     }
                 }
             }
-            EditorAction::OpenBoard => {
+            EditorAction::OpenBoard | EditorAction::Analyze => {
                 self.mark_chess_history();
                 if let Some(ed) = self.chess.editor.as_ref() {
                     let source = crate::chess_board_ui::Source { doc: ed.doc, page: ed.page, index: ed.index };
                     let (fen, flipped) = (ed.fen(), ed.flipped);
                     // A new game in the document's games: the game on the board stays as it is.
                     if self.open_chess_game(&fen, flipped, Some(source)) {
+                        // The position as edited is the one analysed (plan A8, P7).
+                        if action == EditorAction::Analyze {
+                            self.chess.study.analyze();
+                        }
                         self.show_chess_board();
                     }
                 }
@@ -1410,6 +1424,7 @@ impl PdfCraftApp {
                 }
             }
             BoardAction::ChooseEngine => self.choose_chess_engine(),
+            BoardAction::Analyze => self.chess.study.toggle_analysis(),
             BoardAction::AddGames { texts, more } => self.add_pgn_field_games(&texts, more),
             BoardAction::ToggleMoveList => self.toggle_move_list(),
             BoardAction::BoardTheme(theme) => self.set_board_theme(theme),

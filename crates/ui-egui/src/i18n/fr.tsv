@@ -2612,7 +2612,6 @@ chess undo step	Clear drawings	l'effacement des dessins
 	Lines:	Lignes :
 	Choose engine…	Choisir le moteur…
 	Pick a UCI chess engine program, such as Stockfish.	Choisissez un programme de moteur d'échecs UCI, comme Stockfish.
-	No chess engine found. Set PDFCRAFT_CHESS_ENGINE to a UCI engine such as Stockfish, put one in an engine folder beside PdfCraft, or choose one.	Aucun moteur d'échecs trouvé. Définissez PDFCRAFT_CHESS_ENGINE sur un moteur UCI comme Stockfish, placez-en un dans un dossier engine à côté de PdfCraft, ou choisissez-en un.
 	The engine couldn't be started: {e}	Impossible de démarrer le moteur : {e}
 	That program didn't answer as a UCI chess engine.	Ce programme n'a pas répondu comme un moteur d'échecs UCI.
 	The engine stopped.	Le moteur s'est arrêté.
@@ -3271,3 +3270,12 @@ chess undo step	Clear drawings	l'effacement des dessins
 	More panels	Autres panneaux
 	More room for the page: collapse the tools panel?	Plus de place pour la page : réduire le panneau d'outils ?
 	Rotate view counterclockwise ({key})	Pivoter l'affichage vers la gauche ({key})
+	No analysis engine installed	Aucun moteur d’analyse installé
+	Or set PDFCRAFT_CHESS_ENGINE to the program.	Ou définissez PDFCRAFT_CHESS_ENGINE avec le programme.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish.exe file.	Pour analyser, PdfCraft utilise un programme à part, comme Stockfish (gratuit). Téléchargez-le et choisissez le fichier stockfish.exe.
+	To analyse, PdfCraft uses a separate program, such as Stockfish (free). Download it and choose the stockfish program.	Pour analyser, PdfCraft utilise un programme à part, comme Stockfish (gratuit). Téléchargez-le et choisissez le programme stockfish.
+	Open stockfishchess.org	Ouvrir stockfishchess.org
+	Or put the program in an engine folder beside PdfCraft.	Ou placez le programme dans un dossier engine à côté de PdfCraft.
+	Analyze	Analyser
+	Open on the board with the engine analysing it	Ouvrir sur l’échiquier avec l’analyse du moteur
+	Stop the analysis	Arrêter l’analyse
