@@ -161,7 +161,6 @@
 	Toggle fit page / fit width	ページ全体／幅に合わせるを切り替え
 	Next page	次のページ
 	Previous page	前のページ
-	Current page — type a page number or label (such as iv) and press Enter	現在のページ：ページ番号またはラベル（例：iv）を入力して Enter
 	Zoom — type a percentage and press Enter	ズーム — パーセンテージを入力して Enter キーを押します
 	Welcome to PdfCraft	PdfCraft へようこそ
 	An open-source PDF workbench — local, private, and scriptable.	ローカルで処理し、プライバシーを守る、スクリプト対応のオープンソース PDF ツール。
@@ -2051,7 +2050,6 @@
 	This area has too many overlapping paths; intersection snapping is limited.	この領域は重なるパスが多すぎるため、交点へのスナップを制限します。
 	This measurement needs at least {n} points.	この測定には少なくとも{n}点が必要です。
 	Switch to two-page view first to show the cover page	表紙を表示するには、先に見開き表示に切り替えてください
-	Page display: {layout}	ページ表示：{layout}
 	Fit to width scrolling	幅に合わせてスクロール
 	Fit one full page	1ページずつ全体を表示
 	Created a PDF from {n} files	{n} 個のファイルから PDF を作成しました
@@ -3268,3 +3266,10 @@ chess undo step	Clear drawings	描画の消去
 	Review done: {d} of {n} checked	確認完了: {n} 件中 {d} 件を確認済み
 	Next diagram (Page Down)	次の局面図 (Page Down)
 	Previous diagram (Page Up)	前の局面図 (Page Up)
+	of {n}	/ {n}
+	· {i} of {n}	· {i} / {n}
+	Number printed in the book, then the place in the PDF. Type it and press Enter ({key}).	本に印刷された番号、次に PDF 内の位置。入力して Enter キーを押します ({key})。
+	View options	表示オプション
+	More panels	その他のパネル
+	More room for the page: collapse the tools panel?	ページの表示領域を広げる: ツールパネルを折りたたみますか?
+	Rotate view counterclockwise ({key})	表示を反時計回りに回転（{key}）

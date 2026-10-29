@@ -132,7 +132,6 @@
 	Toggle fit page / fit width	Teljes oldal / szélesség váltása
 	Next page	Következő oldal
 	Previous page	Előző oldal
-	Current page — type a page number or label (such as iv) and press Enter	Aktuális oldal — írj be egy oldalszámot vagy címkét (például iv), majd nyomd meg az Entert
 	Zoom — type a percentage and press Enter	Nagyítás – írjon be egy százalékértéket, és nyomja meg az Entert
 	Welcome to PdfCraft	Üdvözöljük a PdfCraftban
 	An open-source PDF workbench — local, private, and scriptable.	Nyílt forráskódú PDF-munkapad — helyi, privát és parancsfájlokkal vezérelhető.
@@ -1985,7 +1984,6 @@
 @plural	{n} field|{n} fields	{n} mező|{n} mező
 @plural	{n} field name collides with earlier files and will be renamed: {list}|{n} field names collide with earlier files and will be renamed: {list}	{n} mezőnév ütközik a korábbi fájlokkal, és át lesz nevezve: {list}|{n} mezőnév ütközik a korábbi fájlokkal, és át lesz nevezve: {list}
 	Switch to two-page view first to show the cover page	Előbb válts kétoldalas nézetre a borító megjelenítéséhez
-	Page display: {layout}	Oldalmegjelenítés: {layout}
 	Fit to width scrolling	Görgetés szélességhez igazítva
 	Fit one full page	Egy teljes oldal igazítása
 	Default page display	Alapértelmezett oldalmegjelenítés
@@ -3265,3 +3263,10 @@ chess undo step	Clear drawings	rajzok törlése
 	Review done: {d} of {n} checked	Ellenőrzés kész: {d}/{n} ellenőrizve
 	Next diagram (Page Down)	Következő diagram (Page Down)
 	Previous diagram (Page Up)	Előző diagram (Page Up)
+	of {n}	/ {n}
+	· {i} of {n}	· {i} / {n}
+	Number printed in the book, then the place in the PDF. Type it and press Enter ({key}).	A könyvben nyomtatott szám, utána a hely a PDF-ben. Írja be, és nyomja meg az Entert ({key}).
+	View options	Nézet beállításai
+	More panels	További panelek
+	More room for the page: collapse the tools panel?	Több hely az oldalnak: összecsukja az eszközpanelt?
+	Rotate view counterclockwise ({key})	Nézet forgatása az óramutató járásával ellentétesen ({key})

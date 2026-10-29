@@ -161,7 +161,6 @@
 	Toggle fit page / fit width	التبديل بين ملاءمة الصفحة وملاءمة العرض
 	Next page	الصفحة التالية
 	Previous page	الصفحة السابقة
-	Current page — type a page number or label (such as iv) and press Enter	الصفحة الحالية — اكتب رقم صفحة أو تسميتها (مثل iv) ثم اضغط Enter
 	Zoom — type a percentage and press Enter	التكبير — اكتب نسبة مئوية واضغط Enter
 	Welcome to PdfCraft	مرحبًا بك في PdfCraft
 	An open-source PDF workbench — local, private, and scriptable.	منضدة عمل مفتوحة المصدر لملفات PDF — محلية وخاصة وقابلة للبرمجة.
@@ -2061,7 +2060,6 @@
 	This form's scripts are turned off because one ran too long. Reopen the document to run them again.	سكربتات هذا النموذج متوقفة لأن أحدها استغرق وقتًا طويلًا جدًا. أعد فتح المستند لتشغيلها من جديد.
 	XFA form: its fields and its XFA data are kept in step, so other viewers show what you fill in.	نموذج XFA: حقوله وبيانات XFA فيه تبقى متطابقة، فتعرض العارضات الأخرى ما تعبئه.
 	Switch to two-page view first to show the cover page	انتقل أولًا إلى عرض الصفحتين لإظهار صفحة الغلاف
-	Page display: {layout}	عرض الصفحات: {layout}
 	Fit to width scrolling	تمرير بملاءمة العرض
 	Fit one full page	ملاءمة صفحة كاملة واحدة
 	Default page display	عرض الصفحات الافتراضي
@@ -3541,3 +3539,10 @@ chess undo step	Clear drawings	مسح الرسوم
 	Review done: {d} of {n} checked	اكتملت المراجعة: تم التحقق من {d} من {n}
 	Next diagram (Page Down)	المخطط التالي (Page Down)
 	Previous diagram (Page Up)	المخطط السابق (Page Up)
+	of {n}	من {n}
+	· {i} of {n}	· {i} من {n}
+	Number printed in the book, then the place in the PDF. Type it and press Enter ({key}).	الرقم المطبوع في الكتاب، ثم الموضع في ملف PDF. اكتبه واضغط Enter ‏({key}).
+	View options	خيارات العرض
+	More panels	مزيد من اللوحات
+	More room for the page: collapse the tools panel?	مساحة أكبر للصفحة: هل تريد طي لوحة الأدوات؟
+	Rotate view counterclockwise ({key})	تدوير العرض عكس عقارب الساعة ({key})

@@ -158,7 +158,6 @@
 	Toggle fit page / fit width	Alterna adatta alla pagina / adatta alla larghezza
 	Next page	Pagina successiva
 	Previous page	Pagina precedente
-	Current page — type a page number or label (such as iv) and press Enter	Pagina corrente: digita un numero o un'etichetta di pagina (ad esempio iv) e premi Invio
 	Zoom — type a percentage and press Enter	Zoom: digita una percentuale e premi Invio
 	Welcome to PdfCraft	Benvenuto in PdfCraft
 	An open-source PDF workbench — local, private, and scriptable.	Un banco di lavoro PDF open source: locale, riservato e programmabile.
@@ -2042,7 +2041,6 @@
 	This area has too many overlapping paths; intersection snapping is limited.	Quest'area ha troppi tracciati sovrapposti; l'aggancio alle intersezioni è limitato.
 	This measurement needs at least {n} points.	Questa misura richiede almeno {n} punti.
 	Switch to two-page view first to show the cover page	Passa prima alla visualizzazione doppia per mostrare la copertina
-	Page display: {layout}	Visualizzazione pagina: {layout}
 	Fit to width scrolling	Adatta alla larghezza con scorrimento
 	Fit one full page	Adatta una pagina intera
 	Created a PDF from {n} files	Creato un PDF da {n} file
@@ -3478,3 +3476,10 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	Review done: {d} of {n} checked	Revisione finita: {d} di {n} controllati
 	Next diagram (Page Down)	Diagramma successivo (Pag giù)
 	Previous diagram (Page Up)	Diagramma precedente (Pag su)
+	of {n}	di {n}
+	· {i} of {n}	· {i} di {n}
+	Number printed in the book, then the place in the PDF. Type it and press Enter ({key}).	Numero stampato nel libro, poi la posizione nel PDF. Digitalo e premi Invio ({key}).
+	View options	Opzioni di visualizzazione
+	More panels	Altri pannelli
+	More room for the page: collapse the tools panel?	Più spazio per la pagina: comprimere il pannello degli strumenti?
+	Rotate view counterclockwise ({key})	Ruota vista in senso antiorario ({key})

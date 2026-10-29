@@ -427,7 +427,6 @@ theme	Appearance	Giao diện
 	Currency symbol:	Ký hiệu tiền tệ:
 	Current page	Trang hiện tại
 	Current page ({n})	Trang hiện tại ({n})
-	Current page — type a page number or label (such as iv) and press Enter	Trang hiện tại — nhập số trang hoặc nhãn (như iv) rồi nhấn Enter
 	Custom	Tùy chỉnh
 	Custom scale:	Tỷ lệ tùy chỉnh:
 	Custom text:	Văn bản tùy chỉnh:
@@ -840,7 +839,6 @@ theme	Appearance	Giao diện
 	Page Range Options	Tùy chọn phạm vi trang
 	Page Sizing & Handling	Định cỡ & xử lý trang
 	Page background	Nền trang
-	Page display: {layout}	Hiển thị trang: {layout}
 	Page layout	Bố cục trang
 	Page navigation	Điều hướng trang
 	Page number	Số trang
@@ -3519,3 +3517,10 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Review done: {d} of {n} checked	Đã xem lại xong: đã kiểm tra {d}/{n}
 	Next diagram (Page Down)	Sơ đồ tiếp theo (Page Down)
 	Previous diagram (Page Up)	Sơ đồ trước (Page Up)
+	of {n}	trên {n}
+	· {i} of {n}	· {i} trên {n}
+	Number printed in the book, then the place in the PDF. Type it and press Enter ({key}).	Số in trong sách, sau đó là vị trí trong PDF. Gõ số rồi nhấn Enter ({key}).
+	View options	Tùy chọn hiển thị
+	More panels	Thêm bảng
+	More room for the page: collapse the tools panel?	Thêm chỗ cho trang: thu gọn bảng công cụ?
+	Rotate view counterclockwise ({key})	Xoay chế độ xem ngược chiều kim đồng hồ ({key})

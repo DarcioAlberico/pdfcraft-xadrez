@@ -122,7 +122,6 @@
 	Toggle fit page / fit width	Бетке / еніне сыйдыруды ауыстыру
 	Next page	Келесі бет
 	Previous page	Алдыңғы бет
-	Current page — type a page number or label (such as iv) and press Enter	Ағымдағы бет — бет нөмірін немесе белгісін (мысалы, iv) теріңіз де, Enter пернесін басыңыз
 	Zoom — type a percentage and press Enter	Масштаб — пайызды енгізіп, Enter пернесін басыңыз
 	Welcome to PdfCraft	PdfCraft-ге қош келдіңіз
 	An open-source PDF workbench — local, private, and scriptable.	Ашық бастапқы кодты PDF жұмыс орны — жергілікті, жеке әрі скрипттерді қолдайтын.
@@ -1985,7 +1984,6 @@
 	This form's scripts are turned off because one ran too long. Reopen the document to run them again.	Бұл форманың скрипттері өшірілді, себебі олардың бірі тым ұзақ орындалды. Оларды қайта іске қосу үшін құжатты қайта ашыңыз.
 	XFA form: its fields and its XFA data are kept in step, so other viewers show what you fill in.	XFA формасы: өрістері мен XFA деректері өзара синхрондалып тұрады, сондықтан басқа қарау құралдары да сіз енгізген мәндерді көрсетеді.
 	Switch to two-page view first to show the cover page	Мұқабаны көрсету үшін алдымен екі беттік көрініске ауысыңыз
-	Page display: {layout}	Беттерді көрсету: {layout}
 	Fit to width scrolling	Еніне сыйдыра айналдыру
 	Fit one full page	Бір толық бетке сыйдыру
 	Default page display	Әдепкі беттер көрсету
@@ -3264,3 +3262,10 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Review done: {d} of {n} checked	Тексеру аяқталды: {n} ішінен {d} тексерілді
 	Next diagram (Page Down)	Келесі диаграмма (Page Down)
 	Previous diagram (Page Up)	Алдыңғы диаграмма (Page Up)
+	of {n}	/{n}
+	· {i} of {n}	· {i}/{n}
+	Number printed in the book, then the place in the PDF. Type it and press Enter ({key}).	Кітапта басылған нөмір, содан кейін PDF ішіндегі орны. Теріп, Enter басыңыз ({key}).
+	View options	Көрініс параметрлері
+	More panels	Басқа панельдер
+	More room for the page: collapse the tools panel?	Бетке көбірек орын: құралдар панелін жинау керек пе?
+	Rotate view counterclockwise ({key})	Көріністі сағат тіліне қарсы бұру ({key})

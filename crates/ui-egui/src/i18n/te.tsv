@@ -138,7 +138,6 @@ comment menu	Edit	సవరించు
 	Toggle fit page / fit width	పేజీకి సరిపోయేలా / వెడల్పుకు సరిపోయేలా మధ్య మారు
 	Next page	తదుపరి పేజీ
 	Previous page	మునుపటి పేజీ
-	Current page — type a page number or label (such as iv) and press Enter	ప్రస్తుత పేజీ — పేజీ సంఖ్యను లేదా లేబుల్‌ను (iv వంటిది) టైప్ చేసి Enter నొక్కండి
 	Zoom — type a percentage and press Enter	జూమ్ — శాతాన్ని టైప్ చేసి Enter నొక్కండి
 	Welcome to PdfCraft	PdfCraftకు స్వాగతం
 	An open-source PDF workbench — local, private, and scriptable.	ఓపెన్-సోర్స్ PDF వర్క్‌బెంచ్ — మీ కంప్యూటర్‌లోనే నడుస్తుంది, గోప్యంగా ఉంటుంది, స్క్రిప్ట్‌లతో ఆటోమేట్ చేయవచ్చు.
@@ -1981,7 +1980,6 @@ action wizard	Start	ప్రారంభించు
 @plural	{n} field|{n} fields	{n} ఫీల్డ్|{n} ఫీల్డ్‌లు
 @plural	{n} field name collides with earlier files and will be renamed: {list}|{n} field names collide with earlier files and will be renamed: {list}	{n} ఫీల్డ్ పేరు మునుపటి ఫైళ్లతో సరిపోలుతుంది, పేరు మార్చబడుతుంది: {list}|{n} ఫీల్డ్ పేర్లు మునుపటి ఫైళ్లతో సరిపోలుతున్నాయి, పేర్లు మార్చబడతాయి: {list}
 	Switch to two-page view first to show the cover page	కవర్ పేజీని చూపించడానికి ముందుగా రెండు పేజీల వీక్షణకు మారండి
-	Page display: {layout}	పేజీ ప్రదర్శన: {layout}
 	Fit to width scrolling	వెడల్పుకు సరిపోయేలా స్క్రోలింగ్
 	Fit one full page	ఒక పూర్తి పేజీ సరిపోయేలా
 	Default page display	డిఫాల్ట్ పేజీ ప్రదర్శన
@@ -3141,3 +3139,10 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Review done: {d} of {n} checked	సమీక్ష పూర్తయింది: {n}లో {d} తనిఖీ చేశారు
 	Next diagram (Page Down)	తర్వాతి రేఖాచిత్రం (Page Down)
 	Previous diagram (Page Up)	మునుపటి రేఖాచిత్రం (Page Up)
+	of {n}	/ {n}
+	· {i} of {n}	· {i} / {n}
+	Number printed in the book, then the place in the PDF. Type it and press Enter ({key}).	పుస్తకంలో ముద్రించిన సంఖ్య, తర్వాత PDFలో స్థానం. టైప్ చేసి Enter నొక్కండి ({key}).
+	View options	వీక్షణ ఎంపికలు
+	More panels	మరిన్ని ప్యానెల్‌లు
+	More room for the page: collapse the tools panel?	పేజీకి మరింత స్థలం: సాధనాల ప్యానెల్‌ను ముడుచాలా?
+	Rotate view counterclockwise ({key})	వీక్షణను అపసవ్యదిశలో తిప్పు ({key})

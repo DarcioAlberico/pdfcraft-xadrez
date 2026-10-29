@@ -3404,6 +3404,39 @@ fn confirming_keeps_the_correction_and_it_comes_back_when_reopened() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Plan A8, P5 (finding X4): in a narrow window the chess panel offers once to collapse the tools
+/// panel; the answer is kept in the settings, and a wide window is not asked.
+#[test]
+fn the_chess_panel_offers_once_to_collapse_the_tools_panel() {
+    let offer = "More room for the page: collapse the tools panel?";
+    let mut h = harness_with(boards(), 0.25, egui::vec2(1366.0, 900.0), None);
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    assert!(h.state().left_open);
+    h.get_by_label(offer);
+    h.get_by_label("Collapse").click();
+    h.run_steps(3);
+    assert!(!h.state().left_open, "the tools panel is collapsed");
+    assert!(h.query_by_label(offer).is_none());
+    let settings = h.state().persist();
+    assert!(settings.contains("\"chess_tools_offer_answered\":true"), "{settings}");
+    // Asked once: with the panel open again, no offer.
+    h.state_mut().left_open = true;
+    h.run_steps(3);
+    assert!(h.query_by_label(offer).is_none(), "answered already");
+    // Not now is an answer too; a wide window is not asked.
+    let mut h = harness_with(boards(), 0.25, egui::vec2(1366.0, 900.0), None);
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    h.get_by_label("Not now").click();
+    h.run_steps(3);
+    assert!(h.state().left_open && h.state().chess.tools_offer_answered);
+    let mut h = harness_with(boards(), 0.25, egui::vec2(1700.0, 900.0), None);
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    assert!(h.query_by_label(offer).is_none(), "a wide window has room");
+}
+
 /// Plan A8, P4: the Diagram tab walks what the Diagrams list's chip shows ("1 of 1 · Read"), its
 /// arrows named for it, says so when it goes round from the end, and tells screen readers which
 /// diagram opened by its page, as everywhere.

@@ -518,7 +518,6 @@
 	Currency symbol:	Simbol valute:
 	Current page	Trenutna stran
 	Current page ({n})	Trenutna stran ({n})
-	Current page — type a page number or label (such as iv) and press Enter	Trenutna stran — vnesite številko ali oznako strani (npr. iv) in pritisnite Enter
 	Zoom — type a percentage and press Enter	Povečava – vnesite odstotek in pritisnite Enter
 	Custom	Po meri
 	Custom scale:	Merilo po meri:
@@ -1278,7 +1277,6 @@
 	Page Range Options	Možnosti obsega strani
 	Page Sizing & Handling	Velikost in obravnava strani
 	Page display	Prikaz strani
-	Page display: {layout}	Prikaz strani: {layout}
 	Page does not require timed responses	Stran ne zahteva časovno omejenih odzivov
 	Page grid	Mreža strani
 	Page labels	Oznake strani
@@ -3271,3 +3269,10 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Review done: {d} of {n} checked	Pregled končan: pregledanih {d} od {n}
 	Next diagram (Page Down)	Naslednji diagram (Page Down)
 	Previous diagram (Page Up)	Prejšnji diagram (Page Up)
+	of {n}	od {n}
+	· {i} of {n}	· {i} od {n}
+	Number printed in the book, then the place in the PDF. Type it and press Enter ({key}).	Številka, natisnjena v knjigi, nato mesto v PDF. Vnesite jo in pritisnite Enter ({key}).
+	View options	Možnosti pogleda
+	More panels	Več podoken
+	More room for the page: collapse the tools panel?	Več prostora za stran: strni podokno z orodji?
+	Rotate view counterclockwise ({key})	Zavrti pogled levo ({key})

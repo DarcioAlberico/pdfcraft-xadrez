@@ -485,7 +485,8 @@ fn view_menu_and_tooltips_write_shortcuts_for_the_platform() {
     let h = view_menu(OperatingSystem::Mac);
     h.get_by_label("Actual size ⌘1");
     h.get_by_label("Fit visible ⌘3");
-    h.get_by_label("Rotate view clockwise (⇧⌘+)");
+    // Rotation is in the mode bar's View options now (plan A8, P5); zoom stays a button there.
+    h.get_by_label_contains("Zoom in (⌘");
     assert_eq!(h.query_all_by_label_contains("Ctrl+").count(), 0, "no Ctrl+ on macOS");
 }
 

@@ -538,6 +538,10 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
         let compare = &app.compare;
         // The Diagrams and Text tabs are in the chess window while it is out (T13b).
         let chess_in_window = app.chess_window.in_window();
+        // The tools panel takes 270 points of a narrow window: the chess panel offers to collapse
+        // it, once (plan A8, P5).
+        let narrow = ui.ctx().content_rect().width() < crate::chess_ui::TOOLS_OFFER_BELOW;
+        app.chess.tools_offer = narrow && app.left_open && app.mode != crate::Mode::Read && !app.chess.tools_offer_answered;
         let chess = &mut app.chess;
         let chess_now = app.session.chess_stamp(id);
         let comment_allowed = doc.allows_annotation();

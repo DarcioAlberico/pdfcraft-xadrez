@@ -1129,7 +1129,6 @@
 	Toggle fit page / fit width	切换适合页面/适合宽度
 	Next page	下一页
 	Previous page	上一页
-	Current page — type a page number or label (such as iv) and press Enter	当前页 — 输入页码或标签（如 iv）后按 Enter
 	Zoom — type a percentage and press Enter	缩放 — 输入百分比并按 Enter
 	Open a PDF ({key})	打开 PDF ({key})
 	Dark gray theme	深灰色主题
@@ -2096,7 +2095,6 @@
 	Open email app	打开邮件应用
 	Open link	打开链接
 	Open this web page?	是否打开此网页？
-	Page display: {layout}	页面显示：{layout}
 	Scripts run in a sandbox without file or network access. A script that asks to open a web page needs your permission first. With JavaScript off, Acrobat's standard format, validate and calculate functions still work.	脚本在沙盒中运行，无法访问文件或网络。脚本请求打开网页时，需要先获得您的许可。关闭 JavaScript 后，Acrobat 的标准格式、验证和计算函数仍可使用。
 	Sign yourself	自行签名
 	Switch to two-page view first to show the cover page	请先切换到双页视图，才能显示封面页
@@ -3230,3 +3228,10 @@ chess undo step	Clear drawings	清除标记
 	Review done: {d} of {n} checked	复核完成：已确认 {d}/{n}
 	Next diagram (Page Down)	下一个棋图（Page Down）
 	Previous diagram (Page Up)	上一个棋图（Page Up）
+	of {n}	共 {n} 页
+	· {i} of {n}	· 第 {i} 页，共 {n} 页
+	Number printed in the book, then the place in the PDF. Type it and press Enter ({key}).	书中印的页码，其次是在 PDF 中的位置。输入后按 Enter（{key}）。
+	View options	视图选项
+	More panels	更多面板
+	More room for the page: collapse the tools panel?	给页面更多空间：折叠工具面板？
+	Rotate view counterclockwise ({key})	逆时针旋转视图 ({key})
