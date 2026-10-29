@@ -631,7 +631,9 @@ fn chess_export_html_writes_the_diagrams_in_order_and_reads_back() {
     assert_eq!(html.matches("<figure class=\"diagram").count(), 3, "{html}");
     assert_eq!(html.matches("<figure class=\"diagram unread").count(), 2);
     assert!(html.contains("data-fen=\"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\""), "{html}");
-    assert_eq!(html.matches("<svg").count(), 1);
+    // The board, and its pieces drawn once before it (plan A8 P9b).
+    assert_eq!(html.matches("<svg").count(), 2);
+    assert_eq!(html.matches("<use ").count(), 32);
     assert_eq!(html.matches("href=\"https://lichess.org/analysis/").count(), 1);
     assert!(!html.contains("<script"));
     // FEN text instead of boards, no links.
