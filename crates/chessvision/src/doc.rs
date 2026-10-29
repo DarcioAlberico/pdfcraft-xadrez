@@ -588,6 +588,8 @@ pub struct DocBuilder {
     carry: Option<(u32, u32)>,
     /// The offsets of the page numbers from the pages' indices seen so far, newest last.
     folios: Vec<i64>,
+    /// The last pages' headings, to pass over running heads.
+    heads: build::RunningHeads,
 }
 
 impl DocBuilder {
@@ -598,14 +600,14 @@ impl DocBuilder {
     /// A builder whose game walker reads with `rules` (see [`WalkRules`]; [`DocBuilder::new`]
     /// uses [`WalkRules::BOOK`]).
     pub fn with_rules(rules: WalkRules) -> DocBuilder {
-        DocBuilder { pages: Vec::new(), walker: games::Walker::with_rules(rules), carry: None, folios: Vec::new() }
+        DocBuilder { walker: games::Walker::with_rules(rules), ..DocBuilder::default() }
     }
 
     /// Add the next page. Pages are taken in the order added.
     pub fn add_page(&mut self, input: &PageInput<'_>) {
         // A caption at the foot of a page is the next page's, not a later one's.
         let carried = self.carry.take().filter(|(index, _)| index.checked_add(1) == Some(input.index)).map(|(_, n)| n);
-        let (page, trailing, folios) = build::page(input, &mut self.walker, carried, &self.folios);
+        let (page, trailing, folios) = build::page(input, &mut self.walker, &mut self.heads, carried, &self.folios);
         build::remember_folios(&mut self.folios, &folios);
         self.carry = trailing.map(|n| (input.index, n));
         self.pages.push(page);
@@ -640,7 +642,7 @@ impl DocBuilder {
                 Block::Diagram(d) => d.review.retain(|f| !matches!(f, ReviewFlag::NoStartPosition)),
             }
         }
-        build::walk(page.index, page.ocr, &mut page.blocks, &mut self.walker, page.trailing);
+        build::walk(page.index, page.ocr, &mut page.blocks, &mut self.walker, page.trailing, &mut self.heads);
         self.carry = page.trailing.map(|n| (page.index, n));
         self.pages.push(page);
     }

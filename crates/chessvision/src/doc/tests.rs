@@ -855,6 +855,50 @@ fn solution_labels() {
     }
 }
 
+/// Chess Evolution sets `Issue 45` as a heading atop every page of an issue. A heading the page
+/// before set at the same height is a running head and the game goes on across it, also when
+/// the page is read again from its JSON; the same words lower down, or another issue's head,
+/// still end the game.
+#[test]
+fn a_running_head_does_not_end_the_game() {
+    let head = [BlockHint { kind: HintKind::Heading { level: 1 }, rect: user_box(30.0, 15.0, 300.0, 35.0) }];
+    let p0 = page_text(vec![line(20.0, "Issue 45"), line(100.0, "1.e4 e5 2.Nf3")]);
+    let p1 = page_text(vec![line(20.0, "Issue 45"), line(100.0, "2...Nc6 3.Bb5 a6")]);
+    let p2 = page_text(vec![line(20.0, "Issue 45"), line(100.0, "4.Ba4 Nf6")]);
+    let mut b = DocBuilder::new();
+    for (i, text) in [&p0, &p1, &p2].into_iter().enumerate() {
+        b.add_page(&input(i as u32, text, &[], &head, &[]));
+    }
+    let doc = b.finish();
+    for page in &doc.pages {
+        assert_eq!(kinds(page).first().map(String::as_str), Some("H:Issue 45"), "the head stays a heading in the document");
+        assert!(moves(page).iter().all(|(_, s)| *s == MoveStatus::Valid), "page {}: {:?}", page.index, moves(page));
+    }
+    assert_eq!(doc.games.len(), 1);
+
+    // Read again from the document (`DocBuilder::add_read_page`), as walk_bench and the app do.
+    let mut b = DocBuilder::new();
+    for page in doc.pages.clone() {
+        b.add_read_page(page);
+    }
+    let again = b.finish();
+    assert!(again.pages.iter().all(|p| moves(p).iter().all(|(_, s)| *s == MoveStatus::Valid)));
+    assert_eq!(again.games.len(), 1);
+
+    // The next issue's head, and the same words set lower as a section's title, end the game.
+    let lower = [BlockHint { kind: HintKind::Heading { level: 1 }, rect: user_box(30.0, 55.0, 300.0, 75.0) }];
+    let p3 = page_text(vec![line(20.0, "Issue 46"), line(100.0, "4.Ba4 Nf6")]);
+    let p4 = page_text(vec![line(60.0, "Issue 45"), line(100.0, "4.Ba4 Nf6")]);
+    for (text, hints) in [(&p3, &head), (&p4, &lower)] {
+        let mut b = DocBuilder::new();
+        b.add_page(&input(0, &p0, &[], &head, &[]));
+        b.add_page(&input(1, &p1, &[], &head, &[]));
+        b.add_page(&input(2, text, &[], hints, &[]));
+        let doc = b.finish();
+        assert!(moves(&doc.pages[2]).iter().all(|(_, s)| *s == MoveStatus::Unchecked), "{:?}", moves(&doc.pages[2]));
+    }
+}
+
 /// The headings a solution's label keeps its diagram through are the players' and the event's:
 /// a third heading is a new section's, and moves after it are not read from the exercise.
 #[test]
