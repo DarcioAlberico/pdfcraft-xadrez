@@ -9,7 +9,8 @@
 //! (`w:lang`). Each diagram is a picture, drawn by [`diagram_png`] at 300 ppi for the
 //! [`DIAGRAM_PT`] it is set at, its text alternative saying the position in words
 //! ([`pdfcraft_chess::describe`]), and a caption under it in Word's `Caption` style: the PGN's
-//! comment for the diagram (`Pág. 17 · diagrama 1 de 2`), its FEN and its lichess link.
+//! comment for the diagram (`Pág. 17 · diagrama 1 de 2`), its FEN and its lichess link. Word also
+//! gets the board as SVG, the same drawing, which it shows at any size (the PNG is the fallback).
 //!
 //! [`diagram_png`] draws the board with `chess::draw` and the same operators the PDF replacement
 //! uses ([`super::replace::drawing_ops`]) on a one-page PDF made here, and renders it with the
@@ -22,6 +23,7 @@ use pdfcraft_chess::draw::{BoardStyle, PieceSet, board};
 use pdfcraft_chess::origin::PgnOrigin;
 use pdfcraft_chess::placement::Placement;
 use pdfcraft_chess::san::Lang;
+use pdfcraft_chess::svg::to_svg;
 use pdfcraft_chessvision::doc::html::{Figurines, Span, SpanFont, spans};
 use pdfcraft_chessvision::doc::{Block as DocBlock, ChessDoc, Inline};
 use pdfcraft_chessvision::text_font::TextFont;
@@ -186,13 +188,16 @@ pub fn to_flow(doc: &ChessDoc, o: &OfficeOptions<'_>, notes: &mut Vec<String>) -
                         caption.push(Run::text(" · "));
                         caption.push(Run { link: Some(url.clone()), ..Run::text(o.link_text) });
                     }
-                    let png = pdfcraft_chess::fen::parse(&reading.fen)
-                        .map_err(|e| e.to_string())
-                        .and_then(|f| diagram_png(&f.placement, o.pieces, &o.style, o.diagram_px));
-                    match png {
-                        Ok(png) => {
+                    let drawn_board = pdfcraft_chess::fen::parse(&reading.fen).map_err(|e| e.to_string()).and_then(|f| {
+                        let png = diagram_png(&f.placement, o.pieces, &o.style, o.diagram_px)?;
+                        Ok((png, f.placement))
+                    });
+                    match drawn_board {
+                        Ok((png, placement)) => {
                             let alt = describe::describe(number, &label, &reading.fen, lang);
-                            blocks.push(FlowBlock::Figure(Figure { png, side_pt: DIAGRAM_PT, alt, caption }));
+                            // Word draws the SVG at any size; the PNG stays as its fallback.
+                            let svg = Some(to_svg(&board(&placement, o.pieces, &o.style), &alt));
+                            blocks.push(FlowBlock::Figure(Figure { png, svg, side_pt: DIAGRAM_PT, alt, caption }));
                             drawn += 1;
                         }
                         Err(e) => {
