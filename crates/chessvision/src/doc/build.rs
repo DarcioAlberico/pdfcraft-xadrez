@@ -16,7 +16,8 @@
 //! 3. **Inlines.** Runs become inlines in order; a move number is kept with the move after it.
 //! 4. **Review.** Text reviews go to the inline they overlap most; what overlaps nothing, unknown
 //!    chess fonts and a poor text layer go to the page.
-//! 5. **Games.** The blocks go through the [`Walker`] in order.
+//! 5. **Games.** The blocks go through the [`Walker`] in order, but for running heads
+//!    ([`RunningHeads`]), which end no game.
 
 use pdfcraft_chess::san::{FigurineSet, Lang, San, figurine};
 
@@ -814,6 +815,68 @@ fn attach_reviews(input: &PageInput<'_>, blocks: &mut [Block], page: &mut Vec<Re
     }
 }
 
+/// How many pages back a heading is looked for ([`RunningHeads`]): two, for books whose running
+/// head alternates between the left and the right page.
+pub const RUNNING_HEAD_PAGES: usize = 2;
+/// Most headings of one page remembered ([`RunningHeads`]); running heads come first or last.
+pub const MAX_PAGE_HEADINGS: usize = 16;
+
+/// The headings of the last [`RUNNING_HEAD_PAGES`] pages walked, to find running heads: a heading
+/// whose text one of them also set as a heading at the same height (its top and bottom within
+/// half its height) is the page's furniture, not a new section. A magazine sets `Issue 45` atop
+/// every page of an issue; read as headings, they ended the game at every page break, and each
+/// page's moves waited for a diagram to start from (Chess Evolution 2013: 1,529 of 2,354 moves
+/// valid, 1,976 without them). Its first page has no page before it, so the head is a heading
+/// there, where the issue starts.
+#[derive(Debug, Default, Clone)]
+pub(crate) struct RunningHeads {
+    /// Newest last: each page's headings, their text with its spaces collapsed and their box.
+    pages: Vec<Vec<(String, UserRect)>>,
+}
+
+impl RunningHeads {
+    /// The block indices of the page's running heads; the page's headings are remembered for
+    /// the pages after it.
+    pub(crate) fn page(&mut self, blocks: &[Block]) -> Vec<usize> {
+        let mut running = Vec::new();
+        let mut here = Vec::new();
+        for (bi, block) in blocks.iter().enumerate() {
+            let Block::Heading { inlines, source_rect: Some(rect), .. } = block else { continue };
+            let text = heading_text(inlines);
+            if text.is_empty() {
+                continue;
+            }
+            if self.pages.iter().flatten().any(|(t, r)| *t == text && same_height(r, rect)) {
+                running.push(bi);
+            }
+            if here.len() < MAX_PAGE_HEADINGS {
+                here.push((text, *rect));
+            }
+        }
+        if self.pages.len() >= RUNNING_HEAD_PAGES {
+            self.pages.remove(0);
+        }
+        self.pages.push(here);
+        running
+    }
+}
+
+/// A heading's words, its spaces collapsed.
+fn heading_text(inlines: &[Inline]) -> String {
+    let words: Vec<&str> = inlines
+        .iter()
+        .filter_map(|i| if let Inline::Text { text, .. } = i { Some(text.as_str()) } else { None })
+        .flat_map(str::split_whitespace)
+        .collect();
+    words.join(" ")
+}
+
+/// Whether two boxes sit at the same height: top and bottom each within half the first's height.
+fn same_height(a: &UserRect, b: &UserRect) -> bool {
+    let tolerance = (a.y1 - a.y0).abs() * 0.5;
+    (a.y0 - b.y0).abs() <= tolerance && (a.y1 - b.y1).abs() <= tolerance
+}
+
 /// Run the page's blocks through the game walker, recording what became of each move.
 /// `trailing` is the page's trailing caption label ([`caption_numbers`]), the next page's first
 /// diagram's.
@@ -821,11 +884,18 @@ fn attach_reviews(input: &PageInput<'_>, blocks: &mut [Block], page: &mut Vec<Re
 /// A label is a diagram's caption, not a solution, when a diagram beside it (the block before or
 /// after) has its number, or when it is the trailing label after the page's last diagram: it
 /// does not count among the solutions ([`Name::caption`]).
-pub(crate) fn walk(page: u32, ocr: bool, blocks: &mut [Block], walker: &mut Walker, trailing: Option<u32>) {
+///
+/// A running head ([`RunningHeads`]) is passed over: it ends no game and names no chapter or
+/// solution.
+pub(crate) fn walk(page: u32, ocr: bool, blocks: &mut [Block], walker: &mut Walker, trailing: Option<u32>, heads: &mut RunningHeads) {
     walker.read_by_ocr(ocr);
     let numbers: Vec<Option<u32>> = blocks.iter().map(|b| if let Block::Diagram(d) = b { d.puzzle } else { None }).collect();
     let last_diagram = blocks.iter().rposition(|b| matches!(b, Block::Diagram(_)));
+    let running = heads.page(blocks);
     for (bi, block) in blocks.iter_mut().enumerate() {
+        if running.contains(&bi) {
+            continue;
+        }
         let caption = |n: u32| {
             let beside = |j: Option<usize>| j.and_then(|j| numbers.get(j)).copied().flatten() == Some(n);
             beside(bi.checked_sub(1)) || beside(bi.checked_add(1)) || (trailing == Some(n) && last_diagram.is_none_or(|d| d < bi))
@@ -909,14 +979,20 @@ fn poor_reason(reason: &PoorReason) -> String {
 /// One page, with the caption label `carried` from the page before it and the page-number
 /// offsets `folios` seen before ([`blocks`]); also the label this page leaves for the next, and
 /// its own page-number offsets.
-pub(crate) fn page(input: &PageInput<'_>, walker: &mut Walker, carried: Option<u32>, folios: &[i64]) -> (ChessPage, Option<u32>, Vec<i64>) {
+pub(crate) fn page(
+    input: &PageInput<'_>,
+    walker: &mut Walker,
+    heads: &mut RunningHeads,
+    carried: Option<u32>,
+    folios: &[i64],
+) -> (ChessPage, Option<u32>, Vec<i64>) {
     let (mut blocks, trailing, offsets) = blocks(input, carried, folios);
     let mut review: Vec<ReviewFlag> = input.text.unknown_chess_fonts.iter().map(|f| ReviewFlag::UnknownChessFont { font: f.to_string() }).collect();
     if let TextQuality::Poor { reason } = &input.text.quality {
         review.push(ReviewFlag::PoorTextLayer { reason: poor_reason(reason) });
     }
     attach_reviews(input, &mut blocks, &mut review);
-    walk(input.index, input.ocr, &mut blocks, walker, trailing);
+    walk(input.index, input.ocr, &mut blocks, walker, trailing, heads);
     let page = ChessPage {
         index: input.index,
         lang: input.text.lang.lang.code().to_owned(),

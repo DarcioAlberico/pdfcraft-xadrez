@@ -67,8 +67,9 @@
 //!   it. When several chapters number their exercises from 1, the solution's chapter is found
 //!   from the structure: the chapter its label gives, a heading over it that numbers or names
 //!   one chapter, or else the chapters' order ([`puzzles`]).
-//! - **Where a game ends.** At the next diagram, at a heading, at a result (`1-0`, `0-1`, `½-½`,
-//!   `1/2-1/2`) outside variations, and at a new `1.` when the game started from the initial
+//! - **Where a game ends.** At the next diagram, at a heading (not a running head: one of the two
+//!   pages before set the same words as a heading at the same height), at a result (`1-0`,
+//!   `0-1`, `½-½`, `1/2-1/2`) outside variations, and at a new `1.` when the game started from the initial
 //!   position. Paragraphs and page breaks do not end a game. A diagram does not end it when it
 //!   shows the position the main line reached (a book reprinting the game's position, often on
 //!   the next page), or when the next move continues the main line and is not a first move from
