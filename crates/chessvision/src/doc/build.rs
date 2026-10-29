@@ -877,6 +877,33 @@ fn same_height(a: &UserRect, b: &UserRect) -> bool {
     (a.y0 - b.y0).abs() <= tolerance && (a.y1 - b.y1).abs() <= tolerance
 }
 
+/// Most digits of a page's printed number ([`folio_blocks`]).
+pub const MAX_FOLIO_DIGITS: usize = 4;
+
+/// The blocks that are the page's printed number: a paragraph of a bare number (at most
+/// [`MAX_FOLIO_DIGITS`] digits) with no block above it or none below it. Walked, it was a comment
+/// in the game the page break cut (`{10}`).
+fn folio_blocks(blocks: &[Block]) -> Vec<usize> {
+    let rects: Vec<(usize, UserRect)> = blocks.iter().enumerate().filter_map(|(bi, b)| Some((bi, b.source_rect()?))).collect();
+    let mut out = Vec::new();
+    for &(bi, rect) in &rects {
+        let Some(Block::Paragraph { inlines, .. }) = blocks.get(bi) else { continue };
+        let [Inline::Text { text, .. }] = inlines.as_slice() else { continue };
+        let t = text.trim();
+        if t.is_empty() || t.len() > MAX_FOLIO_DIGITS || !t.chars().all(|c| c.is_ascii_digit()) {
+            continue;
+        }
+        // User space: y grows upwards. A block wholly above starts at or over the number's top.
+        let others = || rects.iter().filter(|(o, _)| *o != bi).map(|(_, r)| r);
+        let head = others().all(|r| r.y0 < rect.y1);
+        let foot = others().all(|r| r.y1 > rect.y0);
+        if head || foot {
+            out.push(bi);
+        }
+    }
+    out
+}
+
 /// Run the page's blocks through the game walker, recording what became of each move.
 /// `trailing` is the page's trailing caption label ([`caption_numbers`]), the next page's first
 /// diagram's.
@@ -886,14 +913,15 @@ fn same_height(a: &UserRect, b: &UserRect) -> bool {
 /// does not count among the solutions ([`Name::caption`]).
 ///
 /// A running head ([`RunningHeads`]) is passed over: it ends no game and names no chapter or
-/// solution.
+/// solution. So is the page's printed number ([`folio_blocks`]).
 pub(crate) fn walk(page: u32, ocr: bool, blocks: &mut [Block], walker: &mut Walker, trailing: Option<u32>, heads: &mut RunningHeads) {
     walker.read_by_ocr(ocr);
     let numbers: Vec<Option<u32>> = blocks.iter().map(|b| if let Block::Diagram(d) = b { d.puzzle } else { None }).collect();
     let last_diagram = blocks.iter().rposition(|b| matches!(b, Block::Diagram(_)));
-    let running = heads.page(blocks);
+    let mut skipped = heads.page(blocks);
+    skipped.extend(folio_blocks(blocks));
     for (bi, block) in blocks.iter_mut().enumerate() {
-        if running.contains(&bi) {
+        if skipped.contains(&bi) {
             continue;
         }
         let caption = |n: u32| {

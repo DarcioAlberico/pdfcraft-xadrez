@@ -899,6 +899,25 @@ fn a_running_head_does_not_end_the_game() {
     }
 }
 
+/// The page's printed number, at its foot or its head, is no comment in the game the page break
+/// cuts (Chess Evolution 2014 read `{10}` into its games). A number with text below and above it
+/// stays one.
+#[test]
+fn a_page_number_is_no_comment() {
+    let p0 = page_text(vec![line(100.0, "1.e4 e5 2.Nf3 Nc6"), line(400.0, "1999"), line(500.0, "3.Bb5 a6"), line(760.0, "10")]);
+    let p1 = page_text(vec![line(20.0, "11"), line(100.0, "4.Ba4 Nf6")]);
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[], &[], &[]));
+    b.add_page(&input(1, &p1, &[], &[], &[]));
+    let doc = b.finish();
+    assert!(doc.pages.iter().all(|p| moves(p).iter().all(|(_, s)| *s == MoveStatus::Valid)));
+    assert_eq!(kinds(&doc.pages[1]).first().map(String::as_str), Some("P:11"), "the number stays in the document");
+    let [game] = doc.games.as_slice() else { panic!("{} games", doc.games.len()) };
+    let pgn = pgn::write_game(&game.score);
+    assert!(pgn.contains("{1999}"), "{pgn}");
+    assert_eq!(pgn.matches('{').count(), 1, "{pgn}");
+}
+
 /// The headings a solution's label keeps its diagram through are the players' and the event's:
 /// a third heading is a new section's, and moves after it are not read from the exercise.
 #[test]
