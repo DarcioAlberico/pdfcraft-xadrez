@@ -92,6 +92,7 @@ use pdfcraft_chess::repair::{CONFIDENCE_ONE_SWAP, GameContext};
 use pdfcraft_chess::san::{San, SanBody, SanError};
 use serde::{Deserialize, Serialize};
 
+use super::header::GameHeader;
 use super::{MoveNumber, MoveStatus, ReviewFlag, UserRect};
 
 mod board;
@@ -831,6 +832,21 @@ pub(crate) struct Walker {
     /// first move, and how many headings kept it since: the players and the event before that
     /// move keep it, up to [`MAX_NAMED_HEADINGS`].
     named: Option<(u32, usize, u8)>,
+    /// Headers no game took yet ([`Walker::header`]), oldest first, at most
+    /// [`MAX_PENDING_HEADERS`]: each with its page and its box.
+    headers: Vec<(u32, Option<UserRect>, GameHeader)>,
+}
+
+/// Most headers waiting for their games ([`Walker::header`]): a page of puzzles sets one over
+/// each of its diagrams.
+pub const MAX_PENDING_HEADERS: usize = 8;
+
+/// Whether two boxes share some of their width (one column), or either is not known.
+fn same_column(a: Option<&UserRect>, b: Option<&UserRect>) -> bool {
+    match (a, b) {
+        (Some(a), Some(b)) => a.x0 < b.x1 && b.x0 < a.x1,
+        _ => true,
+    }
 }
 
 /// A separator between sibling variations, waiting for the move after it.
@@ -1084,6 +1100,21 @@ fn optional_ending(rest: &str) -> Option<usize> {
     (rest.get(len..)?.starts_with(')')).then_some(len.saturating_add(1))
 }
 
+/// The smileys an annotator writes in prose (`it usually works! :)`), whose bracket opens or closes
+/// no variation.
+const EMOTICONS: [&str; 6] = [":-)", ":-(", ";-)", ":)", ":(", ";)"];
+
+/// The bytes of the smiley `rest` starts with ([`EMOTICONS`]), when it stands as a word of its
+/// own: `before` (the text before it) is empty or ends in a space, and the smiley is followed by
+/// the end, a space or a sign, not by more of a word.
+fn emoticon(before: &str, rest: &str) -> Option<usize> {
+    if before.chars().next_back().is_some_and(|c| !c.is_whitespace()) {
+        return None;
+    }
+    let smiley = EMOTICONS.iter().find(|e| rest.starts_with(**e))?;
+    rest.get(smiley.len()..)?.chars().next().is_none_or(|c| !c.is_alphanumeric()).then_some(smiley.len())
+}
+
 /// Whether `text` (the text before a `)`) ends in a label: one letter `a` to `h` alone.
 fn is_label(text: &str) -> bool {
     let mut rev = text.chars().rev();
@@ -1301,6 +1332,35 @@ impl Walker {
         self.close();
         self.anchor = Anchor::None;
         self.spare.clear();
+        self.headers.clear();
+    }
+
+    /// A game's header, its players and its event ([`super::header`]), set on `page` in `rect`:
+    /// the open game ends, with the diagram that came while it was open and no move settled, and
+    /// the next game to start in the header's column, on that page or the next, takes its tags.
+    /// A page of puzzles sets a header over each diagram, in two columns read across, so the
+    /// other diagrams waiting stay, and a header waits for its own column's game; a newer header
+    /// in the same column takes the place of one no game took. A game with no header in its
+    /// column takes the one header waiting, if only one does (a header at a column's foot, its
+    /// moves atop the next).
+    pub fn header(&mut self, header: GameHeader, page: u32, rect: Option<UserRect>) {
+        if self.held {
+            self.anchor = Anchor::None;
+        }
+        self.close();
+        self.headers.retain(|(p, r, _)| p.saturating_add(1) >= page && !same_column(r.as_ref(), rect.as_ref()));
+        if self.headers.len() >= MAX_PENDING_HEADERS {
+            self.headers.remove(0);
+        }
+        self.headers.push((page, rect, header));
+    }
+
+    /// The oldest header waiting for a game that starts at `loc` ([`Walker::header`]).
+    fn take_header(&mut self, loc: Loc) -> Option<GameHeader> {
+        self.headers.retain(|(p, _, _)| p.saturating_add(1) >= loc.page);
+        let column = self.headers.iter().position(|(_, r, _)| same_column(r.as_ref(), loc.rect.as_ref()));
+        let i = column.or((self.headers.len() == 1).then_some(0))?;
+        Some(self.headers.remove(i).2)
     }
 
     fn keep_spare(&mut self, seed: Seed) {
@@ -1321,35 +1381,44 @@ impl Walker {
     }
 
     /// The first move after a diagram that came while a game was open. The game goes on when the
-    /// diagram shows the position its main line reached, or when the move continues the main line
-    /// (its number is the next one, and it is legal there) and is not a first move from the
-    /// diagram. Otherwise the game ends and the move starts from the diagram.
+    /// diagram shows the position one of the open lines reached: the innermost such line goes on,
+    /// and the lines inside it close (a magazine sets a diagram inside a variation, after the move
+    /// it shows). It also goes on when the move continues the main line (its number is the next
+    /// one, and it is legal there) and is not a first move from the diagram. Otherwise the game
+    /// ends and the move starts from the diagram.
     fn resolve_held(&mut self, number: Option<MoveNumber>, san: &San) {
         self.held = false;
         let seed = match &self.anchor {
             Anchor::Seed(s) => Some(s),
             _ => None,
         };
-        let (same, fits) = match self.open.as_ref().and_then(|o| Some((o.lines.first()?, self.games.get(o.game)?))) {
-            Some((main, game)) => {
+        let fen = seed.and_then(|s| s.fen.as_deref());
+        let (shown, fits) = match self.open.as_ref().and_then(|o| Some((o, o.lines.first()?, self.games.get(o.game)?))) {
+            Some((open, main, game)) => {
+                let shows = |line: &Line| {
+                    let board = game.score.board_after(line.cursor);
+                    fen.zip(board).is_some_and(|(f, b)| placement_of(f) == placement_of(&b.to_string()))
+                };
+                let shown = open.lines.iter().rposition(shows);
                 let board = game.score.board_after(main.cursor);
-                let same =
-                    seed.and_then(|s| s.fen.as_deref()).zip(board.as_ref()).is_some_and(|(f, b)| placement_of(f) == placement_of(&b.to_string()));
                 let next = number.is_some_and(|n| game.score.next_ply(main.cursor) == Some(ply_of(n)));
                 let fits = main.moved && main.skipped == 0 && next && board.is_some_and(|b| san.to_move(&b).is_ok());
-                (same, fits && !seed.is_some_and(|s| seed_fits(s, number, san)))
+                (shown, fits && !seed.is_some_and(|s| seed_fits(s, number, san)))
             }
-            None => (false, false),
+            None => (None, false),
         };
-        if !same && !fits {
+        if shown.is_none() && !fits {
             self.close();
             return;
         }
+        let same = shown.is_some();
+        // The lines up to the one the diagram shows stay open; without one, the main line.
+        let keep = shown.unwrap_or(0).saturating_add(1);
         let anchor = std::mem::take(&mut self.anchor);
         if let Some(open) = self.open.as_mut()
             && let Some(game) = self.games.get_mut(open.game)
         {
-            while open.lines.len() > 1 {
+            while open.lines.len() > keep {
                 pop_line(game, open);
             }
             if !same && let Anchor::Seed(s) = &anchor {
@@ -1418,7 +1487,7 @@ impl Walker {
             other => other,
         };
         let mut started_from = None;
-        let (origin, score, mut flags, honour) = match anchor {
+        let (origin, mut score, mut flags, honour) = match anchor {
             Anchor::Seed(seed) => match seed_score(&seed, number) {
                 Some((score, flags, honour)) => {
                     let origin = GameOrigin::Diagram { page: seed.page, diagram: seed.diagram, accepted: seed.accepted };
@@ -1445,6 +1514,9 @@ impl Walker {
         };
         if matched {
             flags.push(ReviewFlag::DiagramMatchedByMove);
+        }
+        if let Some(header) = self.take_header(loc) {
+            header.apply(&mut score);
         }
         let trusted = match origin {
             GameOrigin::Initial => true,
@@ -1798,6 +1870,13 @@ impl Walker {
                 continue;
             }
             let after = i.saturating_add(ch.len_utf8());
+            // A smiley is prose: its bracket is no variation's, and its `;` separates nothing.
+            if matches!(ch, ':' | ';')
+                && let Some(len) = text.get(i..).and_then(|rest| emoticon(text.get(..i).unwrap_or_default(), rest))
+            {
+                skip_to = i.saturating_add(len);
+                continue;
+            }
             // A bracket between two small letters is part of a word, not of the notation: an
             // OCR's reading of a broken letter (`m(nre` for `move`, `ourc)d` for `oured`), or a
             // word's optional ending (`move(s)`), read whole. No move ends in a small letter, and
@@ -1870,7 +1949,9 @@ impl Walker {
                     start = after;
                 }
                 ';' if self.rules.separators && !self.main_level() => {
-                    if self.prose_until(text, start, after) {
+                    // The `;` ends the prose before it (`is good;`); standing alone it is no comment.
+                    let alone = text.get(start..i).is_some_and(|t| t.trim().is_empty());
+                    if self.prose_until(text, start, if alone { i } else { after }) {
                         return;
                     }
                     self.prose_seen = false;

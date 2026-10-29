@@ -493,6 +493,25 @@ fn a_game_goes_on_past_a_diagram_of_its_own_position() {
     }
 }
 
+/// A diagram set inside a variation, of the position the variation reached, keeps the game and
+/// the variation open: the moves after it go on in the variation, and the main line after its
+/// bracket (Chess Evolution sets diagrams in its `[ ]` analysis).
+#[test]
+fn a_diagram_inside_a_variation_keeps_the_variation() {
+    let bc5 = "r1bqk1nr/pppp1ppp/2n5/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4";
+    let p0 = page_text(vec![line(700.0, "1.e4 e5 2.Nf3 Nc6 3.Bb5 [ 3.Bc4 Bc5")]);
+    let p1 = page_text(vec![line(230.0, "4.c3 Nf6 ] 3...a6 4.Ba4")]);
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[], &[], &[]));
+    b.add_page(&input(1, &p1, &[reading(0, 60.0, bc5, true, false)], &[], &[]));
+    let doc = b.finish();
+    assert!(doc.pages.iter().all(|p| moves(p).iter().all(|(_, s)| *s == MoveStatus::Valid)), "{:?}", moves(&doc.pages[1]));
+    let [game] = doc.games.as_slice() else { panic!("{} games", doc.games.len()) };
+    let pgn = pgn::write_game(&game.score).split_whitespace().collect::<Vec<_>>().join(" ");
+    assert!(pgn.contains("3. Bb5 (3. Bc4 Bc5 4. c3 Nf6) 3... a6 4. Ba4"), "{pgn}");
+    assert!(game.flags.is_empty(), "{:?}", game.flags);
+}
+
 /// After an alternative written as prose, the text goes back to the main line: a move the
 /// alternative cannot play is tried there.
 #[test]
@@ -897,6 +916,135 @@ fn a_running_head_does_not_end_the_game() {
         let doc = b.finish();
         assert!(moves(&doc.pages[2]).iter().all(|(_, s)| *s == MoveStatus::Unchecked), "{:?}", moves(&doc.pages[2]));
     }
+}
+
+/// The page's printed number, at its foot or its head, is no comment in the game the page break
+/// cuts (Chess Evolution 2014 read `{10}` into its games). A number with text below and above it
+/// stays one.
+#[test]
+fn a_page_number_is_no_comment() {
+    let p0 = page_text(vec![line(100.0, "1.e4 e5 2.Nf3 Nc6"), line(400.0, "1999"), line(500.0, "3.Bb5 a6"), line(760.0, "10")]);
+    let p1 = page_text(vec![line(20.0, "11"), line(100.0, "4.Ba4 Nf6")]);
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[], &[], &[]));
+    b.add_page(&input(1, &p1, &[], &[], &[]));
+    let doc = b.finish();
+    assert!(doc.pages.iter().all(|p| moves(p).iter().all(|(_, s)| *s == MoveStatus::Valid)));
+    assert_eq!(kinds(&doc.pages[1]).first().map(String::as_str), Some("P:11"), "the number stays in the document");
+    let [game] = doc.games.as_slice() else { panic!("{} games", doc.games.len()) };
+    let pgn = pgn::write_game(&game.score);
+    assert!(pgn.contains("{1999}"), "{pgn}");
+    assert_eq!(pgn.matches('{').count(), 1, "{pgn}");
+}
+
+/// A word a hyphen cut at a line's end is one word in the document's text and in the game's
+/// comments (Chess Evolution 2013: `{... a nice final cal- culation}`); a move before the hyphen
+/// (`d4-`) is never joined.
+#[test]
+fn a_word_cut_at_a_lines_end_is_joined() {
+    let p0 = page_text(vec![
+        line(100.0, "1.e4 e5 a strong posi-"),
+        line(114.0, "tion on the e-"),
+        line(128.0, "file 2.Nf3 Nc6 3.d4-"),
+        line(142.0, "d5 maybe"),
+    ]);
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[], &[], &[]));
+    let doc = b.finish();
+    let [game] = doc.games.as_slice() else { panic!("{} games", doc.games.len()) };
+    let pgn = pgn::write_game(&game.score);
+    assert!(pgn.contains("{a strong position on the e-file}"), "{pgn}");
+    assert!(kinds(&doc.pages[0]).iter().any(|k| k.contains("a strong position on the e-file")), "{:?}", kinds(&doc.pages[0]));
+    assert!(pgn.contains("d4- d5"), "{pgn}");
+    // Cut at a column's foot, its word goes on in the next paragraph (`cor-` `rect`).
+    let p0 = page_text(vec![line(100.0, "1.e4 e5 the cor-"), line(300.0, "rect reply 2.Nf3"), line(500.0, "re-"), line(700.0, "treat")]);
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[], &[], &[]));
+    let doc = b.finish();
+    let pgn = pgn::write_game(&doc.games[0].score);
+    assert!(pgn.contains("{the correct reply}") && pgn.contains("{retreat}"), "{pgn}");
+    assert_eq!(kinds(&doc.pages[0]), ["P:1.e4 e5 the correct", "P:reply 2.Nf3", "P:retreat"], "a paragraph left empty goes");
+}
+
+/// A smiley in a variation's prose (`it usually works! :)`) closes no variation, and its `;`
+/// separates none (Chess Evolution 2013); the separator itself is no comment.
+#[test]
+fn a_smiley_closes_no_variation() {
+    let p0 = page_text(vec![line(100.0, "1.e4 e5 2.Nf3 [ 2.Bc4 it usually works! :) 2...Nf6 wink ;) 3.d3 ; 2.d4 exd4 ] 2...Nc6 3.Bb5")]);
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[], &[], &[]));
+    let doc = b.finish();
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    let [game] = doc.games.as_slice() else { panic!("{} games", doc.games.len()) };
+    let pgn = pgn::write_game(&game.score).split_whitespace().collect::<Vec<_>>().join(" ");
+    assert!(pgn.contains("(2. Bc4 {it usually works! :)} 2... Nf6 {wink ;)} 3. d3) (2. d4 exd4) 2... Nc6 3. Bb5"), "{pgn}");
+    assert!(!pgn.contains("{;}"), "a separator alone is no comment: {pgn}");
+}
+
+/// A game's header as ChessBase prints it (Chess Evolution) ends the game before it, which no
+/// longer takes its words as comments, and fills the next game's tags.
+#[test]
+fn a_games_header_fills_its_tags() {
+    let p0 = page_text(vec![
+        line(100.0, "1.e4 e5 2.Nf3 Nc6"),
+        line(160.0, "(1) Carlsen,Magnus (2864)— Anand,Viswanathan (2786) [E46]"),
+        line(220.0, "Tal Memorial Moscow RUS (5.2), 2013[Arkadij Naiditsch]"),
+        line(280.0, "1.d4 Nf6 2.c4 e6"),
+    ]);
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[], &[], &[]));
+    let doc = b.finish();
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    let [first, game] = doc.games.as_slice() else { panic!("{} games", doc.games.len()) };
+    let before = pgn::write_game(&first.score);
+    assert!(!before.contains("Carlsen") && !before.contains("Moscow"), "{before}");
+    let pgn = pgn::write_game(&game.score);
+    for tag in [
+        "[Event \"Tal Memorial Moscow RUS\"]",
+        "[Date \"2013.??.??\"]",
+        "[Round \"5.2\"]",
+        "[White \"Carlsen, Magnus\"]",
+        "[Black \"Anand, Viswanathan\"]",
+        "[WhiteElo \"2864\"]",
+        "[BlackElo \"2786\"]",
+        "[ECO \"E46\"]",
+        "[Annotator \"Arkadij Naiditsch\"]",
+    ] {
+        assert!(pgn.contains(tag), "{tag}: {pgn}");
+    }
+    assert!(!pgn.contains("Carlsen,Magnus") && pgn.contains("1. d4 Nf6 2. c4 e6"), "{pgn}");
+    // The header stays in the document's text.
+    assert!(kinds(&doc.pages[0]).iter().any(|k| k.contains("Carlsen,Magnus")), "{:?}", kinds(&doc.pages[0]));
+}
+
+/// A page of puzzles read across its two columns (Chess Evolution's solutions): each game takes
+/// the header over its own column, whichever column's game starts first, and a newer header in a
+/// column takes the place of one whose game never started. With one header waiting, a game in
+/// the other column takes it (a header at a column's foot).
+#[test]
+fn a_header_waits_for_its_own_columns_game() {
+    use super::games::{Loc, Walker};
+    use super::header::GameHeader;
+    let left = |y: f32| Some(UserRect { x0: 40.0, y0: y, x1: 280.0, y1: y + 12.0 });
+    let right = |y: f32| Some(UserRect { x0: 330.0, y0: y, x1: 570.0, y1: y + 12.0 });
+    let header = |white: &str| GameHeader { white: white.to_owned(), black: "Black".to_owned(), ..GameHeader::default() };
+    let first = Some(MoveNumber { number: 1, black: false });
+    let play = |w: &mut Walker, number, san: &str, rect| {
+        let status = w.play(number, &San::read(san, Lang::En).unwrap(), san, false, Loc { page: 0, rect }).status;
+        assert_eq!(status, MoveStatus::Valid, "{san}");
+    };
+    let mut w = Walker::default();
+    w.header(header("Stale"), 0, left(700.0));
+    w.header(header("Left"), 0, left(600.0));
+    w.header(header("Right"), 0, right(600.0));
+    play(&mut w, first, "d4", right(500.0));
+    play(&mut w, None, "d5", right(500.0));
+    play(&mut w, first, "e4", left(500.0));
+    play(&mut w, None, "e5", left(500.0));
+    w.header(header("Foot"), 0, left(50.0));
+    play(&mut w, first, "c4", right(700.0));
+    let whites: Vec<String> = w.finish().games.iter().map(|g| g.score.roster.white.clone()).collect();
+    assert_eq!(whites, ["Right", "Left", "Foot"]);
 }
 
 /// The headings a solution's label keeps its diagram through are the players' and the event's:

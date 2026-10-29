@@ -21,7 +21,9 @@
 
 use pdfcraft_chess::san::{FigurineSet, Lang, San, figurine};
 
+use super::fragment::{hyphen_join, join_hyphens};
 use super::games::{Key, Loc, Name, Seed, Walker};
+use super::header::{GameHeader, event_line, players_line};
 use super::{Block, ChessPage, DiagramBlock, HintKind, Inline, MoveInline, MoveNumber, MoveStatus, PageInput, ReviewFlag, UserRect};
 use crate::chess_text::{ChessLine, ChessRun, PoorReason, TextQuality};
 use crate::coords::{PageGeometry, ViewRect};
@@ -697,9 +699,14 @@ pub(crate) fn inlines(lines: &[&ChessLine], geometry: Option<&PageGeometry>) -> 
     out
 }
 
+/// A block of `lines`, with the words a hyphen cut at a line's end joined ([`join_hyphens`]):
+/// `cal-` `culation` is one word in the text and in the games' comments.
 fn text_block(kind: Option<HintKind>, lines: &[&ChessLine], geometry: &PageGeometry) -> Block {
     let source_rect = lines.iter().map(|l| user(l.rect, geometry)).fold(None, union);
-    let inlines = inlines(lines, Some(geometry));
+    let owned: Vec<ChessLine> = lines.iter().map(|l| (*l).clone()).collect();
+    let joined = join_hyphens(&owned);
+    let refs: Vec<&ChessLine> = joined.iter().collect();
+    let inlines = inlines(&refs, Some(geometry));
     match kind {
         Some(HintKind::Heading { level }) if titled(&inlines) => Block::Heading { level, inlines, source_rect },
         _ => Block::Paragraph { inlines, source_rect },
@@ -776,7 +783,37 @@ fn blocks(input: &PageInput<'_>, carried: Option<u32>, folios: &[i64]) -> (Vec<B
         }
     }
     flush(&mut blocks, &mut group, key);
+    join_block_hyphens(&mut blocks);
     (blocks, trailing, offsets.into_iter().map(|(_, o)| o).collect())
+}
+
+/// A word a hyphen cut at the end of one paragraph and the next goes on with (a column's foot
+/// and the next column's head, read as two blocks: `cor-` `rect`) is joined into the first, as
+/// within a paragraph ([`hyphen_join`]); a paragraph left empty goes.
+fn join_block_hyphens(blocks: &mut Vec<Block>) {
+    let mut k = 1usize;
+    while k < blocks.len() {
+        let Some((head, tail)) = blocks.split_at_mut_checked(k) else { break };
+        if let (Some(Block::Paragraph { inlines: prev, .. }), Some(Block::Paragraph { inlines: next, .. })) = (head.last_mut(), tail.first_mut())
+            && let Some(Inline::Text { text: end, .. }) = prev.last_mut()
+            && let Some(Inline::Text { text: start, .. }) = next.first_mut()
+            && let Some((joined, remainder)) = hyphen_join(end, start)
+        {
+            *end = joined;
+            if remainder.is_empty() {
+                // `next` has a first inline: it was just matched.
+                next.remove(0);
+            } else {
+                *start = remainder;
+            }
+            if next.is_empty() {
+                // `k < blocks.len()`, checked by the loop.
+                blocks.remove(k);
+                continue;
+            }
+        }
+        k = k.saturating_add(1);
+    }
 }
 
 /// The page's trailing caption label ([`caption_numbers`]) from its text and its diagrams' boxes
@@ -877,6 +914,44 @@ fn same_height(a: &UserRect, b: &UserRect) -> bool {
     (a.y0 - b.y0).abs() <= tolerance && (a.y1 - b.y1).abs() <= tolerance
 }
 
+/// Most digits of a page's printed number ([`folio_blocks`]).
+pub const MAX_FOLIO_DIGITS: usize = 4;
+
+/// The blocks that are the page's printed number: a paragraph of a bare number (at most
+/// [`MAX_FOLIO_DIGITS`] digits) with no block above it or none below it. Walked, it was a comment
+/// in the game the page break cut (`{10}`).
+fn folio_blocks(blocks: &[Block]) -> Vec<usize> {
+    let rects: Vec<(usize, UserRect)> = blocks.iter().enumerate().filter_map(|(bi, b)| Some((bi, b.source_rect()?))).collect();
+    let mut out = Vec::new();
+    for &(bi, rect) in &rects {
+        let Some(Block::Paragraph { inlines, .. }) = blocks.get(bi) else { continue };
+        let [Inline::Text { text, .. }] = inlines.as_slice() else { continue };
+        let t = text.trim();
+        if t.is_empty() || t.len() > MAX_FOLIO_DIGITS || !t.chars().all(|c| c.is_ascii_digit()) {
+            continue;
+        }
+        // User space: y grows upwards. A block wholly above starts at or over the number's top.
+        let others = || rects.iter().filter(|(o, _)| *o != bi).map(|(_, r)| r);
+        let head = others().all(|r| r.y0 < rect.y1);
+        let foot = others().all(|r| r.y1 > rect.y0);
+        if head || foot {
+            out.push(bi);
+        }
+    }
+    out
+}
+
+/// A text block's text, when it holds nothing but text: no move, sign or figurine.
+fn block_text(block: &Block) -> Option<String> {
+    let (Block::Heading { inlines, .. } | Block::Paragraph { inlines, .. }) = block else { return None };
+    let mut out = String::new();
+    for inline in inlines {
+        let Inline::Text { text, .. } = inline else { return None };
+        out.push_str(text);
+    }
+    Some(out)
+}
+
 /// Run the page's blocks through the game walker, recording what became of each move.
 /// `trailing` is the page's trailing caption label ([`caption_numbers`]), the next page's first
 /// diagram's.
@@ -886,14 +961,36 @@ fn same_height(a: &UserRect, b: &UserRect) -> bool {
 /// does not count among the solutions ([`Name::caption`]).
 ///
 /// A running head ([`RunningHeads`]) is passed over: it ends no game and names no chapter or
-/// solution.
+/// solution. So is the page's printed number ([`folio_blocks`]). A game's header (its players'
+/// line and its event's, [`super::header`]) ends the open game, and the next game takes its tags.
 pub(crate) fn walk(page: u32, ocr: bool, blocks: &mut [Block], walker: &mut Walker, trailing: Option<u32>, heads: &mut RunningHeads) {
     walker.read_by_ocr(ocr);
     let numbers: Vec<Option<u32>> = blocks.iter().map(|b| if let Block::Diagram(d) = b { d.puzzle } else { None }).collect();
     let last_diagram = blocks.iter().rposition(|b| matches!(b, Block::Diagram(_)));
-    let running = heads.page(blocks);
+    let mut skipped = heads.page(blocks);
+    skipped.extend(folio_blocks(blocks));
+    // A game's header: its players' line, and the event's line after it (the next text block:
+    // a diagram may come between, the page read across its columns).
+    let mut headers: Vec<Option<GameHeader>> = vec![None; blocks.len()];
+    for (bi, block) in blocks.iter().enumerate() {
+        let Some(mut header) = block_text(block).as_deref().and_then(players_line) else { continue };
+        let next = blocks.iter().enumerate().skip(bi.saturating_add(1)).find(|(_, b)| !matches!(b, Block::Diagram(_)));
+        if let Some((next, b)) = next
+            && let Some(text) = block_text(b)
+            && event_line(&text, &mut header)
+        {
+            skipped.push(next);
+        }
+        if let Some(slot) = headers.get_mut(bi) {
+            *slot = Some(header);
+        }
+    }
     for (bi, block) in blocks.iter_mut().enumerate() {
-        if running.contains(&bi) {
+        if skipped.contains(&bi) {
+            continue;
+        }
+        if let Some(header) = headers.get_mut(bi).and_then(Option::take) {
+            walker.header(header, page, block.source_rect());
             continue;
         }
         let caption = |n: u32| {
