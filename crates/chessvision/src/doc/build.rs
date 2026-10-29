@@ -21,6 +21,7 @@
 
 use pdfcraft_chess::san::{FigurineSet, Lang, San, figurine};
 
+use super::fragment::join_hyphens;
 use super::games::{Key, Loc, Name, Seed, Walker};
 use super::{Block, ChessPage, DiagramBlock, HintKind, Inline, MoveInline, MoveNumber, MoveStatus, PageInput, ReviewFlag, UserRect};
 use crate::chess_text::{ChessLine, ChessRun, PoorReason, TextQuality};
@@ -697,9 +698,14 @@ pub(crate) fn inlines(lines: &[&ChessLine], geometry: Option<&PageGeometry>) -> 
     out
 }
 
+/// A block of `lines`, with the words a hyphen cut at a line's end joined ([`join_hyphens`]):
+/// `cal-` `culation` is one word in the text and in the games' comments.
 fn text_block(kind: Option<HintKind>, lines: &[&ChessLine], geometry: &PageGeometry) -> Block {
     let source_rect = lines.iter().map(|l| user(l.rect, geometry)).fold(None, union);
-    let inlines = inlines(lines, Some(geometry));
+    let owned: Vec<ChessLine> = lines.iter().map(|l| (*l).clone()).collect();
+    let joined = join_hyphens(&owned);
+    let refs: Vec<&ChessLine> = joined.iter().collect();
+    let inlines = inlines(&refs, Some(geometry));
     match kind {
         Some(HintKind::Heading { level }) if titled(&inlines) => Block::Heading { level, inlines, source_rect },
         _ => Block::Paragraph { inlines, source_rect },

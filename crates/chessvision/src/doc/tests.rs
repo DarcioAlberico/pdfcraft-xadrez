@@ -918,6 +918,27 @@ fn a_page_number_is_no_comment() {
     assert_eq!(pgn.matches('{').count(), 1, "{pgn}");
 }
 
+/// A word a hyphen cut at a line's end is one word in the document's text and in the game's
+/// comments (Chess Evolution 2013: `{... a nice final cal- culation}`); a move before the hyphen
+/// (`d4-`) is never joined.
+#[test]
+fn a_word_cut_at_a_lines_end_is_joined() {
+    let p0 = page_text(vec![
+        line(100.0, "1.e4 e5 a strong posi-"),
+        line(114.0, "tion on the e-"),
+        line(128.0, "file 2.Nf3 Nc6 3.d4-"),
+        line(142.0, "d5 maybe"),
+    ]);
+    let mut b = DocBuilder::new();
+    b.add_page(&input(0, &p0, &[], &[], &[]));
+    let doc = b.finish();
+    let [game] = doc.games.as_slice() else { panic!("{} games", doc.games.len()) };
+    let pgn = pgn::write_game(&game.score);
+    assert!(pgn.contains("{a strong position on the e-file}"), "{pgn}");
+    assert!(kinds(&doc.pages[0]).iter().any(|k| k.contains("a strong position on the e-file")), "{:?}", kinds(&doc.pages[0]));
+    assert!(pgn.contains("d4- d5"), "{pgn}");
+}
+
 /// The headings a solution's label keeps its diagram through are the players' and the event's:
 /// a third heading is a new section's, and moves after it are not read from the exercise.
 #[test]
