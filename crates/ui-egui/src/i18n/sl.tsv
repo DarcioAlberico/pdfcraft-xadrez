@@ -3315,3 +3315,20 @@ castling	long	dolga
 	Black short castling	Kratka rokada črnega
 	Black long castling	Dolga rokada črnega
 	Position code other chess programs accept.	Koda položaja, ki jo sprejmejo drugi šahovski programi.
+	Load the book's PGN…	Naloži PGN knjige …
+	Remove the book's PGN	Odstrani PGN knjige
+	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	PGN knjige, shranjenega za ta dokument, ni bilo mogoče prebrati ({why}); odložen je kot {name}.
+	The book's PGN couldn't be read: {e}	PGN knjige ni bilo mogoče prebrati: {e}
+	{name} was not kept as the book's PGN: {e}	{name} ni bil shranjen kot PGN knjige: {e}
+	no game in it	ne vsebuje nobene partije
+	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	PGN knjige {name}: partij {games}, potez {moves}. Strani, ki jih bere zavihek Besedilo, se povežejo z njim.
+	The book's PGN was removed from this document.	PGN knjige je bil odstranjen iz tega dokumenta.
+	This document keeps no book's PGN.	Ta dokument ne hrani PGN knjige.
+	The book's PGN couldn't be removed: {e}	PGN knjige ni bilo mogoče odstraniti: {e}
+	The book's PGN was not kept for the saved file: {e}	PGN knjige ni bil ohranjen za shranjeno datoteko: {e}
+	Book's PGN: {name} ({games} games)	PGN knjige: {name} (partij {games})
+	The pages read here are linked to the book's PGN: a move the reader could not play is read from the PGN (underlined), and a move the PGN plays from another position is in conflict (in italics).	Tu prebrane strani so povezane s PGN knjige: poteza, ki je bralnik ni mogel odigrati, se prebere iz PGN (podčrtana), poteza, ki jo PGN igra iz drugega položaja, pa je v sporu (ležeče).
+	A PGN of this book's games (a course's or an e-book's export): the moves of each page read here are linked to it.	PGN partij iz te knjige (izvoz tečaja ali e-knjige): poteze vsake tu prebrane strani se povežejo z njim.
+	Read from the book's PGN: {san}	Prebrano iz PGN knjige: {san}
+	The book's PGN plays this move from another position: check it.	PGN knjige igra to potezo iz drugega položaja: preverite jo.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	PGN knjige na tej strani: potrjenih {confirmed}, prebranih iz PGN {recovered}, v sporu {conflict}.

@@ -1,6 +1,6 @@
 # Plano de implantação — Carregar PGN do livro · v1
 
-**Status:** v6 · 2026-10-30 · R0 (#229), R1 (#231), R2 (#233), R3 (#234), R4 (#235) e R5 feitos; R6–R7 a fazer.
+**Status:** v7 · 2026-10-30 · R0 (#229), R1 (#231), R2 (#233), R3 (#234), R4 (#235), R5 (#237) e R6a feitos; R6b–R7 a fazer.
 **Origem:** pedido do usuário em 2026-10-29: "quando temos o PDF digital e o PGN dele, daria pra implementar uma função carregar PGN para aproveitar esse PGN?". Analisamos o par em `C:\Users\AMD\Documents\PDFCraft_Arquivos\PDF e PGN`: *Beat the French Defence with 3.Nc3* (Harikrishna; 748 páginas, gerado pelo calibre a partir de um curso Chessable) e o PGN do curso (120 partidas, "Chapter N / Game M").
 **Repositório:** `DarcioAlberico/pdfcraft-xadrez`. Crates: `chess` (L0), `chessvision`, `engine` (L6), `automation`, `ui-egui`.
 **Público de cada passo:** uma sessão de agente que começa do zero. Cada passo traz o contexto, as tarefas, a verificação e o critério de saída.
@@ -214,7 +214,19 @@ R3 e R4 podem correr em paralelo depois de R2. R6 só começa depois de R5.
   - **Remover apaga o arquivo.** As correções deixam lápide porque se fundem; o PGN guardado é um só e só a pessoa pede para removê-lo.
   - **`chess_diagram_states` e `chess_export_pgn` também usam o PGN guardado**, não só `chess_document`, para as três ferramentas que aceitam `reference_pgn` se comportarem igual.
   - **O app ainda não usa a pasta.** O "Salvar como" do app leva as correções, mas não o PGN; isso entra no R6, junto com a escolha do PGN.
-- R6–R7: a fazer.
+- R6 foi dividido em partes menores: R6a (o PGN no app e a aba Texto), R6b (o chip "Confirmado pelo PGN", o "PGN comentado" no Exportar, aplicar a sugestão de diagrama) e R6c (o Tabuleiro no nó do PGN, a lista de partidas do PGN, a oferta do `.pgn` ao lado do PDF e a escolha num conflito).
+- R6a: feito.
+  - `ui-egui::chess_reference_ui`: a pasta `chess/reference` da pasta de recuperação no desktop; na web, o `Storage` do eframe (`pdfcraft-chess-reference-v1`, 2 MiB). O formato e as regras são os do R5.
+  - Comandos `chess.reference.load` ("Load the book's PGN…") e `chess.reference.clear` ("Remove the book's PGN"), também na aba Texto, numa linha abaixo de "Book origin" que diz o nome do PGN e quantas partidas ele tem.
+  - Um PGN sem partida é recusado e o guardado fica. O PGN é indexado ao ser carregado e na primeira leitura do documento.
+  - Cada página que a aba Texto lê é ligada ao PGN (`reference::link`, fora da thread da interface). O lance `recovered` aparece sublinhado, com a dica "Read from the book's PGN: SAN"; o `conflict`, em itálico, com a dica de conferir. A aba diz quantos lances da página foram confirmados, lidos do PGN e em conflito.
+  - "Salvar como" leva o PGN para as chaves novas, como as correções.
+  - Textos novos nos 22 catálogos.
+- R6a, o que mudou em relação ao texto do passo:
+  - **A ligação é por página, não pelo documento inteiro.** A aba Texto lê uma página por vez, então as âncoras vêm só dela. Uma página que continua uma linha da anterior sem diagrama liga menos que o `chess_document` sobre o livro todo.
+  - **O resumo é do PGN** (partidas e lances), não do livro ("1.160 lances ligados"): o app não lê o livro inteiro ao carregar o PGN. A contagem por página fica na aba Texto.
+  - **O conflito ainda não tem a escolha** "Usar o lance do PGN / Manter o do livro" (R6c).
+- R6b–R7: a fazer.
 
 ## 4. Decisões do usuário
 
@@ -237,3 +249,4 @@ R3 e R4 podem correr em paralelo depois de R2. R6 só começa depois de R5.
 - **v4 (2026-10-30):** R3 feito; a §3.3 diz como um diagrama é confirmado ou sugerido e o que ficou para o R6.
 - **v5 (2026-10-30):** R4 feito; a §3.3 diz onde cada texto do livro vai no PGN comentado e o que foi medido no livro.
 - **v6 (2026-10-30):** R5 feito; a §3.3 diz o formato do PGN guardado, as ferramentas e o que ficou para o R6.
+- **v7 (2026-10-30):** R6 dividido em R6a, R6b e R6c; R6a feito (o PGN no app e a aba Texto).

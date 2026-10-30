@@ -3308,3 +3308,20 @@ castling	long	ұзын
 	Black short castling	Қаралардың қысқа рокировкасы
 	Black long castling	Қаралардың ұзын рокировкасы
 	Position code other chess programs accept.	Басқа шахмат бағдарламалары қабылдайтын позиция коды.
+	Load the book's PGN…	Кітаптың PGN файлын жүктеу…
+	Remove the book's PGN	Кітаптың PGN файлын жою
+	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	Осы құжат үшін сақталған кітаптың PGN файлы оқылмады ({why}); ол {name} ретінде бөлек сақталды.
+	The book's PGN couldn't be read: {e}	Кітаптың PGN файлы оқылмады: {e}
+	{name} was not kept as the book's PGN: {e}	{name} кітаптың PGN файлы ретінде сақталмады: {e}
+	no game in it	онда бірде-бір ойын жоқ
+	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	Кітаптың PGN файлы {name}: ойындар — {games}, жүрістер — {moves}. «Мәтін» қойындысы оқитын беттер оған байланыстырылады.
+	The book's PGN was removed from this document.	Кітаптың PGN файлы осы құжаттан жойылды.
+	This document keeps no book's PGN.	Бұл құжатта кітаптың PGN файлы сақталмаған.
+	The book's PGN couldn't be removed: {e}	Кітаптың PGN файлы жойылмады: {e}
+	The book's PGN was not kept for the saved file: {e}	Кітаптың PGN файлы сақталған файл үшін қалдырылмады: {e}
+	Book's PGN: {name} ({games} games)	Кітаптың PGN файлы: {name} (ойындар — {games})
+	The pages read here are linked to the book's PGN: a move the reader could not play is read from the PGN (underlined), and a move the PGN plays from another position is in conflict (in italics).	Мұнда оқылған беттер кітаптың PGN файлына байланысты: тану кезінде жасалмаған жүріс PGN-нен алынады (асты сызылған), ал PGN басқа позициядан жасайтын жүріс қайшылықта (көлбеу).
+	A PGN of this book's games (a course's or an e-book's export): the moves of each page read here are linked to it.	Осы кітап ойындарының PGN файлы (курс не электрондық кітап экспорты): мұнда оқылған әр беттің жүрістері оған байланыстырылады.
+	Read from the book's PGN: {san}	Кітаптың PGN файлынан алынды: {san}
+	The book's PGN plays this move from another position: check it.	Кітаптың PGN файлы бұл жүрісті басқа позициядан жасайды: тексеріңіз.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	Осы беттегі кітаптың PGN файлы: расталды — {confirmed}, PGN-нен алынды — {recovered}, қайшылықта — {conflict}.

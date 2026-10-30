@@ -696,6 +696,7 @@ impl PdfCraftApp {
                     // The save may have given the file its first /ID and a new size.
                     self.rekey_chess_games(id);
                     self.rekey_chess_corrections(id);
+                    self.rekey_book_pgn(id);
                     if let Some(doc) = self.session.get(id)
                         && let Some(view) = self.views.get_mut(index)
                     {
@@ -799,6 +800,7 @@ impl PdfCraftApp {
                 // The save may have given the file its first /ID, a new size or a new path.
                 self.rekey_chess_games(id);
                 self.rekey_chess_corrections(id);
+                self.rekey_book_pgn(id);
                 if let Some(doc) = self.session.get(id)
                     && let Some(view) = self.views.iter_mut().find(|v| v.id == id)
                 {

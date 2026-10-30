@@ -3185,3 +3185,20 @@ castling	long	పెద్ద
 	Black short castling	నలుపు చిన్న క్యాస్లింగ్
 	Black long castling	నలుపు పెద్ద క్యాస్లింగ్
 	Position code other chess programs accept.	ఇతర చదరంగ ప్రోగ్రామ్‌లు అంగీకరించే స్థితి కోడ్.
+	Load the book's PGN…	పుస్తకం PGN ను లోడ్ చేయండి…
+	Remove the book's PGN	పుస్తకం PGN ను తీసివేయండి
+	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	ఈ పత్రం కోసం ఉంచిన పుస్తకం PGN చదవలేకపోయాం ({why}); దానిని {name} గా పక్కన ఉంచాం.
+	The book's PGN couldn't be read: {e}	పుస్తకం PGN చదవలేకపోయాం: {e}
+	{name} was not kept as the book's PGN: {e}	{name} పుస్తకం PGN గా ఉంచబడలేదు: {e}
+	no game in it	అందులో ఒక్క ఆట కూడా లేదు
+	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	పుస్తకం PGN {name}: {games} ఆటలు, {moves} ఎత్తులు. టెక్స్ట్ ట్యాబ్ చదివే పేజీలు దీనికి అనుసంధానం అవుతాయి.
+	The book's PGN was removed from this document.	ఈ పత్రం నుండి పుస్తకం PGN తీసివేయబడింది.
+	This document keeps no book's PGN.	ఈ పత్రంలో పుస్తకం PGN లేదు.
+	The book's PGN couldn't be removed: {e}	పుస్తకం PGN ను తీసివేయలేకపోయాం: {e}
+	The book's PGN was not kept for the saved file: {e}	సేవ్ చేసిన ఫైల్ కోసం పుస్తకం PGN ఉంచబడలేదు: {e}
+	Book's PGN: {name} ({games} games)	పుస్తకం PGN: {name} ({games} ఆటలు)
+	The pages read here are linked to the book's PGN: a move the reader could not play is read from the PGN (underlined), and a move the PGN plays from another position is in conflict (in italics).	ఇక్కడ చదివిన పేజీలు పుస్తకం PGN కు అనుసంధానమై ఉంటాయి: రీడర్ ఆడలేకపోయిన ఎత్తు PGN నుండి చదవబడుతుంది (అండర్‌లైన్), మరొక స్థితి నుండి PGN ఆడే ఎత్తు వైరుధ్యంలో ఉంటుంది (ఇటాలిక్స్).
+	A PGN of this book's games (a course's or an e-book's export): the moves of each page read here are linked to it.	ఈ పుస్తకం ఆటల PGN (కోర్సు లేదా ఈ-బుక్ ఎగుమతి): ఇక్కడ చదివిన ప్రతి పేజీ ఎత్తులు దీనికి అనుసంధానం అవుతాయి.
+	Read from the book's PGN: {san}	పుస్తకం PGN నుండి చదివినది: {san}
+	The book's PGN plays this move from another position: check it.	పుస్తకం PGN ఈ ఎత్తును మరొక స్థితి నుండి ఆడుతుంది: సరిచూడండి.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	ఈ పేజీలో పుస్తకం PGN: {confirmed} ధృవీకరించబడ్డాయి, {recovered} PGN నుండి చదివినవి, {conflict} వైరుధ్యంలో ఉన్నాయి.

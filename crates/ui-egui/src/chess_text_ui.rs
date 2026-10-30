@@ -32,7 +32,8 @@ use pdfcraft_engine::chess::export::{ChessExportOptions, ChessFormat};
 use pdfcraft_engine::chess::pdfcraft_chess::draw::BoardStyle;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::html::{Figurines, plain_text_with};
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::markdown::PgnPositions;
-use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, ChessDoc, Inline, MoveStatus, UserRect};
+use pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::{self, LinkKind};
+use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, ChessDoc, Inline, MoveInline, MoveStatus, ReviewFlag, UserRect};
 use pdfcraft_engine::chess::span::{GameSpanRead, MoveAt};
 
 use crate::theme::Tokens;
@@ -140,6 +141,51 @@ pub enum TextAction {
     PgnPositions(PgnPositions),
     /// Say where the document's pages came from.
     Origin(BookOrigin),
+    /// Load the book's PGN (`true`) or remove it (plan "Carregar PGN do livro", R6a).
+    BookPgn(bool),
+}
+
+/// The book's PGN row: what the document keeps, and the button to load or remove it.
+fn book_pgn_row(ui: &mut egui::Ui, book_pgn: Option<&crate::chess_reference_ui::BookPgnSummary>) -> Option<TextAction> {
+    let mut action = None;
+    match book_pgn {
+        Some(s) => {
+            let name = s.name.as_deref().unwrap_or("PGN");
+            let said = crate::i18n::fmt(tl!("Book's PGN: {name} ({games} games)"), &[("name", name), ("games", &s.games.to_string())]);
+            ui.label(said).on_hover_text(tl!(
+                "The pages read here are linked to the book's PGN: a move the reader could not play is read from the PGN (underlined), and a move the PGN plays from another position is in conflict (in italics)."
+            ));
+            if ui.button(tl!("Remove the book's PGN")).clicked() {
+                action = Some(TextAction::BookPgn(false));
+            }
+        }
+        None => {
+            if ui
+                .button(tl!("Load the book's PGN…"))
+                .on_hover_text(tl!(
+                    "A PGN of this book's games (a course's or an e-book's export): the moves of each page read here are linked to it."
+                ))
+                .clicked()
+            {
+                action = Some(TextAction::BookPgn(true));
+            }
+        }
+    }
+    action
+}
+
+/// How a move of the text is linked to the book's PGN, for its tooltip and its style: read from
+/// the PGN (with the PGN's move), or in conflict with it.
+fn reference_note(m: &MoveInline) -> Option<(LinkKind, String)> {
+    let kind = m.reference.as_ref()?.kind;
+    match kind {
+        LinkKind::Recovered => {
+            let san = m.review.iter().find_map(|f| if let ReviewFlag::FromReference { san } = f { Some(san.as_str()) } else { None }).unwrap_or("");
+            Some((kind, crate::i18n::fmt(tl!("Read from the book's PGN: {san}"), &[("san", san)])))
+        }
+        LinkKind::Conflict => Some((kind, tl!("The book's PGN plays this move from another position: check it.").to_string())),
+        LinkKind::Confirmed | LinkKind::Absent => None,
+    }
 }
 
 fn origin_label(o: BookOrigin) -> &'static str {
@@ -221,6 +267,7 @@ pub fn text_tab(
     origin: BookOrigin,
     busy: Option<&'static str>,
     positions: PgnPositions,
+    book_pgn: Option<&crate::chess_reference_ui::BookPgnSummary>,
 ) -> Option<TextAction> {
     let mut action = None;
     if let Some(label) = busy {
@@ -232,6 +279,11 @@ pub fn text_tab(
     let current = text.filter(|x| x.doc == id && x.page == page && Some(x.stamp) == now && x.origin == origin);
     ui.horizontal_wrapped(|ui| {
         if let Some(a) = origin_menu(ui, origin) {
+            action = Some(a);
+        }
+    });
+    ui.horizontal_wrapped(|ui| {
+        if let Some(a) = book_pgn_row(ui, book_pgn) {
             action = Some(a);
         }
     });
@@ -273,6 +325,33 @@ pub fn text_tab(
     for n in &x.notes {
         ui.label(egui::RichText::new(n).small().color(t.text_muted));
     }
+    if book_pgn.is_some() {
+        let mut counts = [0usize; 3];
+        let moves = x
+            .chess
+            .pages
+            .iter()
+            .flat_map(|p| &p.blocks)
+            .flat_map(|b| b.inlines())
+            .filter_map(|i| if let Inline::Move(m) = i { Some(m) } else { None });
+        for m in moves {
+            let slot = match m.reference.as_ref().map(|r| r.kind) {
+                Some(LinkKind::Confirmed) => counts.get_mut(0),
+                Some(LinkKind::Recovered) => counts.get_mut(1),
+                Some(LinkKind::Conflict) => counts.get_mut(2),
+                Some(LinkKind::Absent) | None => None,
+            };
+            if let Some(n) = slot {
+                *n = n.saturating_add(1);
+            }
+        }
+        let [confirmed, recovered, conflict] = counts.map(|n| n.to_string());
+        let said = crate::i18n::fmt(
+            tl!("Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict."),
+            &[("confirmed", &confirmed), ("recovered", &recovered), ("conflict", &conflict)],
+        );
+        ui.label(egui::RichText::new(said).small().color(t.text_muted));
+    }
     ui.separator();
     let figurines = figurines(ui.ctx());
     let Some(page_doc) = x.chess.pages.first() else {
@@ -303,6 +382,10 @@ pub fn text_tab(
                             Inline::Move(m) => {
                                 let shown = plain_text_with(std::slice::from_ref(inline), figurines);
                                 let mut tip = status_label(m.status).to_string();
+                                let linked = reference_note(m);
+                                if let Some((_, note)) = &linked {
+                                    tip = format!("{tip}\n{note}");
+                                }
                                 if let Some(fen) = &m.fen {
                                     tip = format!("{tip}\n{fen}");
                                 }
@@ -313,12 +396,13 @@ pub fn text_tab(
                                     tip = format!("{tip}\n{}", tl!("Double-click to open this game on the board."));
                                 }
                                 let at = MoveAt { page, block: bi, inline: k };
-                                let r = ui
-                                    .add(
-                                        egui::Label::new(egui::RichText::new(shown).color(status_colour(m.status, &Tokens::get(ui.ctx()))).strong())
-                                            .sense(egui::Sense::click()),
-                                    )
-                                    .on_hover_text(tip);
+                                let mut text = egui::RichText::new(shown).color(status_colour(m.status, &Tokens::get(ui.ctx()))).strong();
+                                text = match linked.map(|(k, _)| k) {
+                                    Some(LinkKind::Recovered) => text.underline(),
+                                    Some(LinkKind::Conflict) => text.italics(),
+                                    _ => text,
+                                };
+                                let r = ui.add(egui::Label::new(text).sense(egui::Sense::click())).on_hover_text(tip);
                                 // A click outlines the move on the page; a double-click (its first
                                 // click outlined it) opens its game on the board.
                                 if r.double_clicked() && opens {
@@ -436,9 +520,15 @@ impl PdfCraftApp {
         let mode = if ocr { OcrMode::All } else { OcrMode::Off };
         let book = self.chess_cipher(id);
         let settings = self.chess_scan_settings();
+        // The book's PGN, when the document keeps one: the page read is linked to it.
+        let reference = self.book_pgn_index(id);
         self.start_chess_job(id, JobKind::Read { page, stamp, origin, ocr }, move |s, id| {
             let options = OcrOptions { mode, glyphs: None, general: true, book: book.as_ref() };
-            JobDone::Read(s.chess_document_with(id, &[page], &settings, None, &options))
+            let mut read = s.chess_document_with(id, &[page], &settings, None, &options);
+            if let (Ok(read), Some(index)) = (read.as_mut(), reference.as_deref()) {
+                reference::link(&mut read.doc, index);
+            }
+            JobDone::Read(read)
         });
     }
 
@@ -618,6 +708,8 @@ impl PdfCraftApp {
                     self.chess.origin = Some((id, origin));
                 }
             }
+            TextAction::BookPgn(true) => self.load_book_pgn(),
+            TextAction::BookPgn(false) => self.clear_book_pgn(),
         }
     }
 

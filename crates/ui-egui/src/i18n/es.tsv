@@ -3451,3 +3451,20 @@ castling	long	largo
 	Black short castling	Enroque corto de las negras
 	Black long castling	Enroque largo de las negras
 	Position code other chess programs accept.	Código de la posición que aceptan otros programas de ajedrez.
+	Load the book's PGN…	Cargar el PGN del libro…
+	Remove the book's PGN	Quitar el PGN del libro
+	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	No se pudo leer el PGN del libro guardado para este documento ({why}); se guardó aparte como {name}.
+	The book's PGN couldn't be read: {e}	No se pudo leer el PGN del libro: {e}
+	{name} was not kept as the book's PGN: {e}	{name} no se guardó como PGN del libro: {e}
+	no game in it	no contiene ninguna partida
+	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	PGN del libro {name}: {games} partidas, {moves} jugadas. Las páginas que lee la pestaña Texto se enlazan con él.
+	The book's PGN was removed from this document.	Se quitó el PGN del libro de este documento.
+	This document keeps no book's PGN.	Este documento no guarda ningún PGN del libro.
+	The book's PGN couldn't be removed: {e}	No se pudo quitar el PGN del libro: {e}
+	The book's PGN was not kept for the saved file: {e}	El PGN del libro no se guardó para el archivo guardado: {e}
+	Book's PGN: {name} ({games} games)	PGN del libro: {name} ({games} partidas)
+	The pages read here are linked to the book's PGN: a move the reader could not play is read from the PGN (underlined), and a move the PGN plays from another position is in conflict (in italics).	Las páginas leídas aquí se enlazan con el PGN del libro: una jugada que el lector no pudo jugar se lee del PGN (subrayada), y una jugada que el PGN juega desde otra posición está en conflicto (en cursiva).
+	A PGN of this book's games (a course's or an e-book's export): the moves of each page read here are linked to it.	Un PGN de las partidas de este libro (exportado de un curso o de un libro electrónico): las jugadas de cada página leída aquí se enlazan con él.
+	Read from the book's PGN: {san}	Leída del PGN del libro: {san}
+	The book's PGN plays this move from another position: check it.	El PGN del libro juega esta jugada desde otra posición: compruébela.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	PGN del libro en esta página: {confirmed} confirmadas, {recovered} leídas del PGN, {conflict} en conflicto.

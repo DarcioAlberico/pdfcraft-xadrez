@@ -3310,3 +3310,20 @@ castling	long	grand
 	Black short castling	Petit roque des Noirs
 	Black long castling	Grand roque des Noirs
 	Position code other chess programs accept.	Code de la position accepté par les autres programmes d’échecs.
+	Load the book's PGN…	Charger le PGN du livre…
+	Remove the book's PGN	Retirer le PGN du livre
+	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	Le PGN du livre conservé pour ce document n'a pas pu être lu ({why}) ; il a été mis de côté sous le nom {name}.
+	The book's PGN couldn't be read: {e}	Le PGN du livre n'a pas pu être lu : {e}
+	{name} was not kept as the book's PGN: {e}	{name} n'a pas été conservé comme PGN du livre : {e}
+	no game in it	il ne contient aucune partie
+	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	PGN du livre {name} : {games} parties, {moves} coups. Les pages que lit l'onglet Texte y sont reliées.
+	The book's PGN was removed from this document.	Le PGN du livre a été retiré de ce document.
+	This document keeps no book's PGN.	Ce document ne conserve aucun PGN du livre.
+	The book's PGN couldn't be removed: {e}	Le PGN du livre n'a pas pu être retiré : {e}
+	The book's PGN was not kept for the saved file: {e}	Le PGN du livre n'a pas été conservé pour le fichier enregistré : {e}
+	Book's PGN: {name} ({games} games)	PGN du livre : {name} ({games} parties)
+	The pages read here are linked to the book's PGN: a move the reader could not play is read from the PGN (underlined), and a move the PGN plays from another position is in conflict (in italics).	Les pages lues ici sont reliées au PGN du livre : un coup que le lecteur n'a pas pu jouer est lu dans le PGN (souligné), et un coup que le PGN joue depuis une autre position est en conflit (en italique).
+	A PGN of this book's games (a course's or an e-book's export): the moves of each page read here are linked to it.	Un PGN des parties de ce livre (export d'un cours ou d'un livre numérique) : les coups de chaque page lue ici y sont reliés.
+	Read from the book's PGN: {san}	Lu dans le PGN du livre : {san}
+	The book's PGN plays this move from another position: check it.	Le PGN du livre joue ce coup depuis une autre position : vérifiez-le.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	PGN du livre sur cette page : {confirmed} confirmés, {recovered} lus dans le PGN, {conflict} en conflit.

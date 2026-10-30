@@ -386,6 +386,9 @@ pub const COMMANDS: &[CommandSpec] = &[
     c("chess.pgn.open", "Open PGN…", None, None, Nothing, "folder-open"),
     c("chess.pgn.save", "Save PGN…", None, None, Nothing, "save"),
     c("chess.pgn.save_all", "Save all games as PGN…", None, None, Nothing, "save"),
+    // The book's own PGN, kept with the document (plan "Carregar PGN do livro", R6a).
+    c("chess.reference.load", "Load the book's PGN…", None, None, Document, "book-open"),
+    c("chess.reference.clear", "Remove the book's PGN", None, None, Document, "file-x"),
     // The game shown in the list of games (T14): a new game from its current position, a copy,
     // and the name editor and delete question of the list.
     c("chess.game.new_from_here", "New game from this position", None, None, Nothing, "file-plus"),

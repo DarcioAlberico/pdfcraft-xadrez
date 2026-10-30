@@ -3223,3 +3223,20 @@ castling	long	длинная
 	Black short castling	Короткая рокировка чёрных
 	Black long castling	Длинная рокировка чёрных
 	Position code other chess programs accept.	Код позиции, который понимают другие шахматные программы.
+	Load the book's PGN…	Загрузить PGN книги…
+	Remove the book's PGN	Удалить PGN книги
+	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	Не удалось прочитать PGN книги, сохранённый для этого документа ({why}); он отложен как {name}.
+	The book's PGN couldn't be read: {e}	Не удалось прочитать PGN книги: {e}
+	{name} was not kept as the book's PGN: {e}	{name} не сохранён как PGN книги: {e}
+	no game in it	в нём нет ни одной партии
+	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	PGN книги {name}: партий — {games}, ходов — {moves}. Страницы, которые читает вкладка «Текст», связываются с ним.
+	The book's PGN was removed from this document.	PGN книги удалён из этого документа.
+	This document keeps no book's PGN.	В этом документе нет PGN книги.
+	The book's PGN couldn't be removed: {e}	Не удалось удалить PGN книги: {e}
+	The book's PGN was not kept for the saved file: {e}	PGN книги не сохранён для сохранённого файла: {e}
+	Book's PGN: {name} ({games} games)	PGN книги: {name} (партий — {games})
+	The pages read here are linked to the book's PGN: a move the reader could not play is read from the PGN (underlined), and a move the PGN plays from another position is in conflict (in italics).	Прочитанные здесь страницы связаны с PGN книги: ход, который не удалось сыграть при распознавании, берётся из PGN (подчёркнут), а ход, который PGN делает из другой позиции, отмечен как конфликт (курсивом).
+	A PGN of this book's games (a course's or an e-book's export): the moves of each page read here are linked to it.	PGN партий этой книги (экспорт курса или электронной книги): ходы каждой прочитанной здесь страницы связываются с ним.
+	Read from the book's PGN: {san}	Взято из PGN книги: {san}
+	The book's PGN plays this move from another position: check it.	В PGN книги этот ход сделан из другой позиции: проверьте его.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	PGN книги на этой странице: подтверждено — {confirmed}, взято из PGN — {recovered}, в конфликте — {conflict}.
