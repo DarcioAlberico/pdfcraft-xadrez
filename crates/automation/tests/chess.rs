@@ -365,9 +365,12 @@ fn chess_pieces_lists_the_sets_preferences_offers() {
     assert_eq!(sets.first().map(|s| &s["token"]), Some(&json!("auto")), "{listed:#}");
     assert_eq!(sets.last().map(|s| &s["pieces"]), Some(&json!("geometric")), "{listed:#}");
     let shipped: Vec<&Value> = sets.iter().filter(|s| s["kind"] == "shipped").collect();
-    assert_eq!(shipped.len(), 8, "{listed:#}");
+    assert_eq!(shipped.len(), 20, "{listed:#}");
     let chessnut = shipped.iter().find(|s| s["pieces"] == "chessnut").expect("chessnut is listed");
     assert_eq!((&chessnut["token"], &chessnut["licence"]), (&json!("bundled:chessnut"), &json!("Apache-2.0")));
+    // The sets drawn for PdfCraft are under its own licence.
+    let classic = shipped.iter().find(|s| s["pieces"] == "classic").expect("classic is listed");
+    assert_eq!((&classic["token"], &classic["licence"]), (&json!("bundled:classic"), &json!("MIT OR Apache-2.0")));
     assert!(shipped.iter().all(|s| s["author"].is_string() && s["missing"] == json!([])), "{listed:#}");
     assert!(listed["environment"].is_boolean());
     // Every value it gives for `pieces` is one the tools take.
@@ -481,7 +484,7 @@ fn chess_replace_diagram_draws_with_a_shipped_piece_set() {
     let (base, root) = workdir("replace-shipped");
     let (mut a, doc) = opened(&root);
     let generation = ok(&mut a, "chess_detect", json!({ "doc": doc }))["generation"].as_u64().unwrap();
-    for id in ["chessnut", "Kiwen-Suwi", "shapes"] {
+    for id in ["chessnut", "Kiwen-Suwi", "shapes", "classic", "PixelArt", "moves"] {
         let args = json!({ "doc": doc, "page": 1, "index": 1, "generation": generation, "placement": SICILIAN, "pieces": id, "dry_run": true });
         let dry = ok(&mut a, "chess_replace_diagram", args);
         assert_eq!(dry["pieces"]["source"], "bundled", "{dry:#}");
