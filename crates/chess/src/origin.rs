@@ -110,6 +110,8 @@ pub(crate) struct Words {
     pub(crate) page: &'static str,
     pub(crate) diagram: &'static str,
     diagram_of: fn(usize, usize) -> String,
+    /// What marks a line of an exported PGN that only the book has (plan "Carregar PGN do livro", R4).
+    only_in_book: &'static str,
 }
 
 pub(crate) fn words(lang: Lang) -> Words {
@@ -119,25 +121,33 @@ pub(crate) fn words(lang: Lang) -> Words {
         };
     }
     match lang {
-        Lang::En => Words { page: "Page", diagram: "diagram", diagram_of: of!("diagram", "of") },
-        Lang::Pt => Words { page: "Pág.", diagram: "diagrama", diagram_of: of!("diagrama", "de") },
-        Lang::De => Words { page: "S.", diagram: "Diagramm", diagram_of: of!("Diagramm", "von") },
-        Lang::Es => Words { page: "Pág.", diagram: "diagrama", diagram_of: of!("diagrama", "de") },
-        Lang::Fr => Words { page: "P.", diagram: "diagramme", diagram_of: of!("diagramme", "sur") },
-        Lang::It => Words { page: "Pag.", diagram: "diagramma", diagram_of: of!("diagramma", "di") },
-        Lang::Ru => Words { page: "С.", diagram: "диаграмма", diagram_of: of!("диаграмма", "из") },
-        Lang::Nl => Words { page: "Blz.", diagram: "diagram", diagram_of: of!("diagram", "van") },
-        Lang::Pl => Words { page: "S.", diagram: "diagram", diagram_of: of!("diagram", "z") },
-        Lang::Cs => Words { page: "S.", diagram: "diagram", diagram_of: of!("diagram", "z") },
-        Lang::Hu => Words { page: "Old.", diagram: "diagram", diagram_of: |d, n| format!("diagram {d}/{n}") },
-        Lang::Da => Words { page: "S.", diagram: "diagram", diagram_of: of!("diagram", "af") },
-        Lang::Sv => Words { page: "S.", diagram: "diagram", diagram_of: of!("diagram", "av") },
-        Lang::No => Words { page: "S.", diagram: "diagram", diagram_of: of!("diagram", "av") },
-        Lang::Fi => Words { page: "S.", diagram: "kaavio", diagram_of: |d, n| format!("kaavio {d}/{n}") },
-        Lang::Ro => Words { page: "Pag.", diagram: "diagrama", diagram_of: of!("diagrama", "din") },
-        Lang::Is => Words { page: "Bls.", diagram: "stöðumynd", diagram_of: of!("stöðumynd", "af") },
-        Lang::Ca => Words { page: "Pàg.", diagram: "diagrama", diagram_of: of!("diagrama", "de") },
+        Lang::En => Words { page: "Page", diagram: "diagram", diagram_of: of!("diagram", "of"), only_in_book: "only in the book" },
+        Lang::Pt => Words { page: "Pág.", diagram: "diagrama", diagram_of: of!("diagrama", "de"), only_in_book: "só no livro" },
+        Lang::De => Words { page: "S.", diagram: "Diagramm", diagram_of: of!("Diagramm", "von"), only_in_book: "nur im Buch" },
+        Lang::Es => Words { page: "Pág.", diagram: "diagrama", diagram_of: of!("diagrama", "de"), only_in_book: "solo en el libro" },
+        Lang::Fr => Words { page: "P.", diagram: "diagramme", diagram_of: of!("diagramme", "sur"), only_in_book: "seulement dans le livre" },
+        Lang::It => Words { page: "Pag.", diagram: "diagramma", diagram_of: of!("diagramma", "di"), only_in_book: "solo nel libro" },
+        Lang::Ru => Words {
+            page: "С.", diagram: "диаграмма", diagram_of: of!("диаграмма", "из"), only_in_book: "только в книге"
+        },
+        Lang::Nl => Words { page: "Blz.", diagram: "diagram", diagram_of: of!("diagram", "van"), only_in_book: "alleen in het boek" },
+        Lang::Pl => Words { page: "S.", diagram: "diagram", diagram_of: of!("diagram", "z"), only_in_book: "tylko w książce" },
+        Lang::Cs => Words { page: "S.", diagram: "diagram", diagram_of: of!("diagram", "z"), only_in_book: "pouze v knize" },
+        Lang::Hu => Words { page: "Old.", diagram: "diagram", diagram_of: |d, n| format!("diagram {d}/{n}"), only_in_book: "csak a könyvben" },
+        Lang::Da => Words { page: "S.", diagram: "diagram", diagram_of: of!("diagram", "af"), only_in_book: "kun i bogen" },
+        Lang::Sv => Words { page: "S.", diagram: "diagram", diagram_of: of!("diagram", "av"), only_in_book: "endast i boken" },
+        Lang::No => Words { page: "S.", diagram: "diagram", diagram_of: of!("diagram", "av"), only_in_book: "bare i boka" },
+        Lang::Fi => Words { page: "S.", diagram: "kaavio", diagram_of: |d, n| format!("kaavio {d}/{n}"), only_in_book: "vain kirjassa" },
+        Lang::Ro => Words { page: "Pag.", diagram: "diagrama", diagram_of: of!("diagrama", "din"), only_in_book: "doar în carte" },
+        Lang::Is => Words { page: "Bls.", diagram: "stöðumynd", diagram_of: of!("stöðumynd", "af"), only_in_book: "aðeins í bókinni" },
+        Lang::Ca => Words { page: "Pàg.", diagram: "diagrama", diagram_of: of!("diagrama", "de"), only_in_book: "només al llibre" },
     }
+}
+
+/// The comment on the first move of a line that the book prints and its own PGN does not have
+/// ("only in the book"), in `lang`.
+pub fn only_in_the_book(lang: Lang) -> &'static str {
+    words(lang).only_in_book
 }
 
 /// `tags` with the origin's tags replaced: every [`ORIGIN_TAGS`] tag is taken out, and the

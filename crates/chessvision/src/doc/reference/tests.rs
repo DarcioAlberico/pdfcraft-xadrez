@@ -5,7 +5,7 @@ use super::*;
 use crate::doc::{ChessPage, DiagramBlock, DiagramReading, DiagramSource, FORMAT_VERSION, MoveNumber, TextLayer};
 
 /// The FEN after `moves` from the initial position.
-fn fen_after(moves: &[&str]) -> String {
+pub(super) fn fen_after(moves: &[&str]) -> String {
     let mut game = PgnGame::standard();
     for m in moves {
         game.play_san(m).unwrap();
@@ -13,7 +13,7 @@ fn fen_after(moves: &[&str]) -> String {
     game.fen()
 }
 
-fn mv(number: Option<(u16, bool)>, san: &str, status: MoveStatus, fen: Option<String>) -> Inline {
+pub(super) fn mv(number: Option<(u16, bool)>, san: &str, status: MoveStatus, fen: Option<String>) -> Inline {
     Inline::Move(MoveInline {
         number: number.map(|(number, black)| MoveNumber { number, black }),
         text: san.to_string(),
@@ -29,7 +29,7 @@ fn mv(number: Option<(u16, bool)>, san: &str, status: MoveStatus, fen: Option<St
 }
 
 /// The moves after `before`, each as the reader plays it.
-fn played(before: &[&str], moves: &[&str]) -> Vec<Inline> {
+pub(super) fn played(before: &[&str], moves: &[&str]) -> Vec<Inline> {
     let mut line: Vec<&str> = before.to_vec();
     moves
         .iter()
@@ -40,12 +40,12 @@ fn played(before: &[&str], moves: &[&str]) -> Vec<Inline> {
         .collect()
 }
 
-fn para(inlines: Vec<Inline>) -> Block {
+pub(super) fn para(inlines: Vec<Inline>) -> Block {
     Block::Paragraph { inlines, source_rect: None }
 }
 
 /// A diagram read with White to move assumed, as the book's are.
-fn diagram(number: usize, fen: &str) -> Block {
+pub(super) fn diagram(number: usize, fen: &str) -> Block {
     let placement = fen.split(' ').next().unwrap();
     Block::Diagram(DiagramBlock {
         number,
@@ -68,7 +68,7 @@ fn diagram(number: usize, fen: &str) -> Block {
     })
 }
 
-fn doc(pages: Vec<Vec<Block>>) -> ChessDoc {
+pub(super) fn doc(pages: Vec<Vec<Block>>) -> ChessDoc {
     let pages = pages
         .into_iter()
         .enumerate()
@@ -443,7 +443,7 @@ fn arb_fen() -> impl Strategy<Value = Option<String>> {
     ]
 }
 
-fn arb_block() -> impl Strategy<Value = Block> {
+pub(super) fn arb_block() -> impl Strategy<Value = Block> {
     let status = prop::sample::select(vec![
         MoveStatus::Valid,
         MoveStatus::Illegal,

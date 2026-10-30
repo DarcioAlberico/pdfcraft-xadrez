@@ -93,6 +93,9 @@ pub struct ChessExportOptions {
     /// HTML and EPUB: highlight what the reading flagged for review. `None`: on in HTML (a file
     /// to check), off in EPUB (a book to read; plan A8 P9b).
     pub review_marks: Option<bool>,
+    /// PGN: the book's own PGN (plan "Carregar PGN do livro", R4). With it, the PGN written is
+    /// that PGN's games with the book's text as their comments, in place of the games read.
+    pub reference: Option<Arc<pdfcraft_chessvision::doc::reference::ReferenceIndex>>,
 }
 
 impl ChessExportOptions {
@@ -120,6 +123,7 @@ impl ChessExportOptions {
             positions: markdown::PgnPositions::default(),
             pgn_style: pdfcraft_chess::pgn_style::PgnStyle::FULL,
             review_marks: None,
+            reference: None,
         }
     }
 }
@@ -137,6 +141,8 @@ pub struct ChessExport {
     pub position_games: Option<usize>,
     /// PGN: the diagrams that were to get a game of their own and did not, and why.
     pub positions_skipped: Vec<markdown::SkippedPosition>,
+    /// PGN with [`ChessExportOptions::reference`]: what the book's PGN was given.
+    pub annotated: Option<pdfcraft_chessvision::doc::reference::annotate::AnnotatedPgn>,
     /// What the writers noted (a diagram that could not be drawn, say).
     pub notes: Vec<String>,
 }
@@ -179,6 +185,7 @@ impl Session {
         let mut images = Vec::new();
         let mut position_games = None;
         let mut positions_skipped = Vec::new();
+        let mut annotated = None;
         // HTML and EPUB draw every diagram that has a position, as SVG, unless asked for FENs.
         let read_diagrams = read.doc.pages.iter().flat_map(|p| &p.blocks).filter(|b| matches!(b, Block::Diagram(d) if d.reading.is_some())).count();
         let mut drawn = if o.diagrams == DiagramMode::Svg { read_diagrams } else { 0 };
@@ -214,11 +221,18 @@ impl Session {
                     title: Some(o.title.clone()).filter(|t| !t.trim().is_empty()),
                     labels: doc.info.pages.iter().map(|p| p.label.clone()).collect(),
                 };
-                let made = markdown::pgn_export(&read.doc, &book, o.positions, o.pgn_style);
-                position_games = Some(made.positions);
-                positions_skipped = made.skipped;
                 drawn = 0;
-                made.pgn.into_bytes()
+                if let Some(index) = &o.reference {
+                    let made = pdfcraft_chessvision::doc::reference::annotate::annotated_pgn(&read.doc, index, &book, o.pgn_style);
+                    let bytes = made.pgn.clone().into_bytes();
+                    annotated = Some(made);
+                    bytes
+                } else {
+                    let made = markdown::pgn_export(&read.doc, &book, o.positions, o.pgn_style);
+                    position_games = Some(made.positions);
+                    positions_skipped = made.skipped;
+                    made.pgn.into_bytes()
+                }
             }
             ChessFormat::Markdown => {
                 let with_images = o.diagrams == DiagramMode::Svg;
@@ -272,6 +286,6 @@ impl Session {
                 if format == ChessFormat::Docx { super::office::docx(&flow) } else { super::office::rtf(&flow).into_bytes() }
             }
         };
-        Ok(ChessExport { bytes, images, read, drawn, position_games, positions_skipped, notes })
+        Ok(ChessExport { bytes, images, read, drawn, position_games, positions_skipped, annotated, notes })
     }
 }
