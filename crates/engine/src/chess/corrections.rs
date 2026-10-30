@@ -520,7 +520,7 @@ fn hex(bytes: &[u8]) -> String {
 /// A 128-bit hash of `parts` (each with its length, so `["ab","c"]` and `["a","bc"]` differ), as
 /// 32 hexadecimal digits: two FNV-1a passes with different offsets. Not cryptographic; it names
 /// and compares, nothing more.
-fn hash_hex(parts: &[&[u8]]) -> String {
+pub(super) fn hash_hex(parts: &[&[u8]]) -> String {
     let mut a = 0xcbf2_9ce4_8422_2325u64;
     let mut b = 0x6c62_272e_07bb_0142u64;
     let mut eat = |byte: u8| {
@@ -781,7 +781,7 @@ fn changed<R>(
 
 /// The name a file that can't be read is set aside under: `<name>.bad`, else `.bad2`, … up to
 /// `.bad999`, the first not `taken`.
-fn aside_name(name: &str, taken: impl Fn(&str) -> bool) -> Option<String> {
+pub(super) fn aside_name(name: &str, taken: impl Fn(&str) -> bool) -> Option<String> {
     (1..1000u32).map(|n| if n == 1 { format!("{name}.bad") } else { format!("{name}.bad{n}") }).find(|bad| !taken(bad))
 }
 
@@ -844,7 +844,7 @@ impl DirStore {
             entries.flatten().take(MAX_FILES).filter_map(|e| e.file_name().to_str().map(str::to_owned)).filter(|n| n.ends_with(".json")).collect();
         names.sort();
         for name in names {
-            if let Ok(bytes) = read_capped(&self.dir.join(&name))
+            if let Ok(bytes) = read_capped(&self.dir.join(&name), MAX_FILE_BYTES)
                 && let Read::File(file) = CorrectionFile::read(&bytes)
                 && file.doc.matches(keys)
             {
@@ -861,26 +861,9 @@ impl DirStore {
         Ok(bad)
     }
 
-    /// Take the folder's lock: a lock file made only when absent. One left by a process that
-    /// stopped is taken over after [`STALE_LOCK`].
+    /// Take the folder's lock ([`take_lock`]).
     fn lock(&self) -> Result<Lock, StoreError> {
-        let path = self.dir.join("corrections.lock");
-        for _ in 0..200 {
-            match std::fs::OpenOptions::new().write(true).create_new(true).open(&path) {
-                Ok(_) => return Ok(Lock { path }),
-                Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
-                    let stale =
-                        std::fs::metadata(&path).and_then(|m| m.modified()).ok().and_then(|t| t.elapsed().ok()).is_some_and(|age| age > STALE_LOCK);
-                    if stale {
-                        let _ = std::fs::remove_file(&path);
-                    } else {
-                        std::thread::sleep(std::time::Duration::from_millis(15));
-                    }
-                }
-                Err(e) => return Err(e.into()),
-            }
-        }
-        Err(StoreError::Busy)
+        take_lock(self.dir.join("corrections.lock"))?.ok_or(StoreError::Busy)
     }
 }
 
@@ -888,7 +871,7 @@ impl DirStore {
 impl CorrectionStore for DirStore {
     fn load(&self, keys: &DocKeys, pages: usize) -> Result<Loaded, StoreError> {
         let name = self.name_for(keys)?;
-        let bytes = match read_capped(&self.dir.join(&name)) {
+        let bytes = match read_capped(&self.dir.join(&name), MAX_FILE_BYTES) {
             Ok(b) => Some(b),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
             Err(e) => return Err(e.into()),
@@ -1036,7 +1019,7 @@ impl CorrectionStore for MemStore {
 
 /// The folder's lock while it is held; dropping it lets go.
 #[cfg(not(target_arch = "wasm32"))]
-struct Lock {
+pub(super) struct Lock {
     path: std::path::PathBuf,
 }
 
@@ -1047,20 +1030,42 @@ impl Drop for Lock {
     }
 }
 
-/// Read a file of at most [`MAX_FILE_BYTES`] (a larger one reads as that many and one more, so
-/// it is refused as too big).
+/// Take the lock file `path` of a folder: made only when absent, and one left by a process that
+/// stopped is taken over after [`STALE_LOCK`]. `None` when another holds it all the while.
 #[cfg(not(target_arch = "wasm32"))]
-fn read_capped(path: &std::path::Path) -> std::io::Result<Vec<u8>> {
+pub(super) fn take_lock(path: std::path::PathBuf) -> std::io::Result<Option<Lock>> {
+    for _ in 0..200 {
+        match std::fs::OpenOptions::new().write(true).create_new(true).open(&path) {
+            Ok(_) => return Ok(Some(Lock { path })),
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                let stale =
+                    std::fs::metadata(&path).and_then(|m| m.modified()).ok().and_then(|t| t.elapsed().ok()).is_some_and(|age| age > STALE_LOCK);
+                if stale {
+                    let _ = std::fs::remove_file(&path);
+                } else {
+                    std::thread::sleep(std::time::Duration::from_millis(15));
+                }
+            }
+            Err(e) => return Err(e),
+        }
+    }
+    Ok(None)
+}
+
+/// Read a file of at most `max` bytes (a larger one reads as that many and one more, so it is
+/// refused as too big).
+#[cfg(not(target_arch = "wasm32"))]
+pub(super) fn read_capped(path: &std::path::Path, max: usize) -> std::io::Result<Vec<u8>> {
     use std::io::Read as _;
     let mut bytes = Vec::new();
-    let cap = u64::try_from(MAX_FILE_BYTES).unwrap_or(u64::MAX).saturating_add(1);
+    let cap = u64::try_from(max).unwrap_or(u64::MAX).saturating_add(1);
     std::fs::File::open(path)?.take(cap).read_to_end(&mut bytes)?;
     Ok(bytes)
 }
 
 /// Write `bytes` through a staging file beside `path`, flushed and renamed over it.
 #[cfg(not(target_arch = "wasm32"))]
-fn write_atomically(path: &std::path::Path, bytes: &[u8]) -> std::io::Result<()> {
+pub(super) fn write_atomically(path: &std::path::Path, bytes: &[u8]) -> std::io::Result<()> {
     use std::io::Write as _;
     let staging = path.with_extension(format!("json.tmp{}", std::process::id()));
     let result = (|| {

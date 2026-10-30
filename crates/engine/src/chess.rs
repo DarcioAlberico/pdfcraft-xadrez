@@ -1270,6 +1270,7 @@ pub mod keys;
 pub mod links;
 pub mod office;
 mod page_key;
+pub mod reference_store;
 pub mod replace;
 pub mod samples;
 pub mod span;

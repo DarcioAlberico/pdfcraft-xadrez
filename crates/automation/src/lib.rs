@@ -21,6 +21,7 @@ mod chess_area;
 mod chess_corrections;
 mod chess_games;
 mod chess_pgn;
+mod chess_reference;
 mod chess_sample;
 mod chess_states;
 mod comments;
@@ -838,6 +839,9 @@ impl Automation {
             "chess_page_verify" => self.chess_page_verify(&a)?,
             "chess_correction_set" => self.chess_correction_set(&a)?,
             "chess_correction_delete" => self.chess_correction_delete(&a)?,
+            "chess_reference_set" => self.chess_reference_set(&a)?,
+            "chess_reference_status" => self.chess_reference_status(&a)?,
+            "chess_reference_clear" => self.chess_reference_clear(&a)?,
             "chess_replace_diagram" => self.chess_replace_diagram(&a)?,
             "chess_document" => self.chess_document(&a)?,
             "chess_add_lichess_links" => self.chess_add_lichess_links(&a)?,
@@ -1017,6 +1021,12 @@ impl Automation {
                 Ok(true) => out["chess_corrections"] = json!("kept for the saved file"),
                 Ok(false) => {}
                 Err(e) => out["chess_corrections"] = json!(format!("not kept for the saved file: {e}")),
+            }
+            // The book's PGN too (plan "Carregar PGN do livro", R5).
+            match self.rekey_chess_reference(id, &before) {
+                Ok(true) => out["chess_reference"] = json!("kept for the saved file"),
+                Ok(false) => {}
+                Err(e) => out["chess_reference"] = json!(format!("not kept for the saved file: {e}")),
             }
         }
         Ok(out)

@@ -742,6 +742,86 @@ fn chess_export_pgn_writes_the_books_pgn_with_its_text() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// Plan "Carregar PGN do livro", R5: `chess_reference_set` keeps a copy of the book's PGN with the
+/// document, and `chess_document`, `chess_diagram_states` and `chess_export_pgn` use it when not
+/// given `reference_pgn` (unless `reference` is false), even after the PGN file is gone and after
+/// the document is saved as another file. Setting again replaces it; clearing removes it. The PGN
+/// and the store stay inside the root.
+#[test]
+fn the_books_pgn_kept_with_the_document_is_used_until_it_is_removed() {
+    let (base, root) = workdir("reference-kept");
+    std::fs::write(root.join("moves.pdf"), text_pdf("1.e4 e5 2.Nf3 Nc6 5.Bb5 a6")).unwrap();
+    std::fs::write(root.join("book.pgn"), RUY_PGN).unwrap();
+    std::fs::write(root.join("empty.pgn"), "[Event \"x\"]\n\n*\n").unwrap();
+    std::fs::write(base.join("outside").join("book.pgn"), RUY_PGN).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let doc = ok(&mut a, "doc_open", json!({ "path": "moves.pdf" }))["doc"].as_u64().unwrap();
+    let status = ok(&mut a, "chess_reference_status", json!({ "doc": doc }));
+    assert_eq!(status["kept"], false, "{status:#}");
+    let plain = ok(&mut a, "chess_document", json!({ "doc": doc, "lang": "en" }));
+    assert!(plain["reference"].is_null() && plain["reference_kept"]["kept"] == false, "{plain:#}");
+
+    let set = ok(&mut a, "chess_reference_set", json!({ "doc": doc, "path": "book.pgn" }));
+    assert_eq!(
+        (&set["kept"], &set["name"], &set["games"], &set["moves"], &set["replaced"]),
+        (&json!(true), &json!("book.pgn"), &json!(1), &json!(6), &json!(false)),
+        "{set:#}"
+    );
+    assert_eq!(set["bytes"], RUY_PGN.len());
+    let file = root.join(".pdfcraft/chess-reference").join(set["file"].as_str().unwrap());
+    assert!(file.is_file(), "{set:#}");
+    // The work folder's name is in every path under it, and in none of what is kept.
+    assert!(!std::fs::read_to_string(&file).unwrap().contains("reference-kept"), "no path is kept");
+
+    // The PGN file can go: the document keeps its copy.
+    std::fs::remove_file(root.join("book.pgn")).unwrap();
+    let read = ok(&mut a, "chess_document", json!({ "doc": doc, "lang": "en" }));
+    assert_eq!(read["reference"]["pgn"], "book.pgn", "{read:#}");
+    assert_eq!(read["reference"]["linked"], json!({ "confirmed": 4, "recovered": 2, "conflict": 0, "absent": 0 }), "{read:#}");
+    assert_eq!(read["reference_kept"]["hash"], set["hash"]);
+    let off = ok(&mut a, "chess_document", json!({ "doc": doc, "lang": "en", "reference": false }));
+    assert!(off["reference"].is_null() && off["reference_kept"].is_null(), "{off:#}");
+    let states = ok(&mut a, "chess_diagram_states", json!({ "doc": doc }));
+    assert_eq!(states["reference"], json!({ "pgn": "book.pgn", "games": 1, "moves": 6 }), "{states:#}");
+    let made = ok(&mut a, "chess_export_pgn", json!({ "doc": doc, "lang": "en", "out": "annotated.pgn" }));
+    assert_eq!(made["reference"]["games"], 1, "{made:#}");
+    assert!(std::fs::read_to_string(root.join("annotated.pgn")).unwrap().contains("[White \"Ruy\"]"));
+
+    // Saved as another file, the document keeps its PGN.
+    let saved = ok(&mut a, "doc_save", json!({ "doc": doc, "path": "saved.pdf" }));
+    assert_eq!(saved["chess_reference"], "kept for the saved file", "{saved:#}");
+    let mut b = Automation::new().with_root(&root).unwrap();
+    let again = ok(&mut b, "doc_open", json!({ "path": "saved.pdf" }))["doc"].as_u64().unwrap();
+    let reopened = ok(&mut b, "chess_document", json!({ "doc": again, "lang": "en" }));
+    assert_eq!(reopened["reference"]["linked"]["recovered"], 2, "{reopened:#}");
+
+    // Set again: replaced. A PGN with no game, or outside the root, is refused and changes nothing.
+    std::fs::write(root.join("other.pgn"), "[Event \"B\"]\n\n1.d4 d5 *\n").unwrap();
+    let replaced = ok(&mut b, "chess_reference_set", json!({ "doc": again, "path": "other.pgn" }));
+    assert_eq!((&replaced["replaced"], &replaced["name"], &replaced["moves"]), (&json!(true), &json!("other.pgn"), &json!(2)), "{replaced:#}");
+    let e = b.call("chess_reference_set", &json!({ "doc": again, "path": "empty.pgn" })).unwrap_err();
+    assert!(e.to_string().contains("no moves"), "{e}");
+    for path in ["../outside/book.pgn".to_string(), base.join("outside").join("book.pgn").to_string_lossy().into_owned()] {
+        match b.call("chess_reference_set", &json!({ "doc": again, "path": path })) {
+            Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{path}: {m}"),
+            other => panic!("{path} accepted: {other:?}"),
+        }
+    }
+    match b.call("chess_reference_status", &json!({ "doc": again, "reference_store": "../outside/store" })) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{m}"),
+        other => panic!("a store outside the root accepted: {other:?}"),
+    }
+    assert!(!base.join("outside").join("store").exists());
+    assert_eq!(ok(&mut b, "chess_reference_status", json!({ "doc": again }))["name"], "other.pgn");
+
+    // Cleared: no PGN is used any more.
+    assert_eq!(ok(&mut b, "chess_reference_clear", json!({ "doc": again }))["cleared"], true);
+    let gone = ok(&mut b, "chess_document", json!({ "doc": again, "lang": "en" }));
+    assert!(gone["reference"].is_null() && gone["reference_kept"]["kept"] == false, "{gone:#}");
+    assert_eq!(ok(&mut b, "chess_reference_clear", json!({ "doc": again }))["cleared"], false);
+    let _ = std::fs::remove_dir_all(base);
+}
+
 /// The font diagram gets a label and a link under it (found by `link_list`); the two diagrams
 /// no model reads are skipped with the reason. A dry run changes nothing, a second run adds
 /// nothing, and undo takes it all back.
