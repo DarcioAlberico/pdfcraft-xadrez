@@ -14,8 +14,14 @@ const MERIDA_START: [&str; 8] = ["tMvWlVmT", "OoOoOoOo", " + + + +", "+ + + + ",
 /// A 600 × 800 pt page: a Merida diagram at (60, 60) from the top left, 32 filled squares at
 /// (60, 400) and a 320 px checkerboard image at (360, 60), each 160 pt wide.
 pub fn chess_pdf() -> Vec<u8> {
+    chess_pdf_with(&MERIDA_START, None)
+}
+
+/// [`chess_pdf`] with the Merida diagram's lines `merida`, and `text` in 14 pt Helvetica 640 pt
+/// from the top, under the drawn board.
+fn chess_pdf_with(merida: &[&str; 8], text: Option<&str>) -> Vec<u8> {
     let mut content = String::from("BT /F1 20 Tf 60 724 Td ");
-    for (i, line) in MERIDA_START.iter().enumerate() {
+    for (i, line) in merida.iter().enumerate() {
         if i > 0 {
             content.push_str("0 -20 Td ");
         }
@@ -30,13 +36,18 @@ pub fn chess_pdf() -> Vec<u8> {
         }
     }
     content.push_str("f\nq 160 0 0 160 360 580 cm /Im1 Do Q\n");
+    if let Some(text) = text {
+        content.push_str(&format!("BT /F2 14 Tf 60 160 Td ({text}) Tj ET\n"));
+    }
     let px = 320usize;
     let image: Vec<u8> = (0..px * px).map(|i| if ((i % px) / 40 + (i / px) / 40).is_multiple_of(2) { 235 } else { 120 }).collect();
     let widths = vec!["1000"; 95].join(" ");
+    let helvetica = if text.is_some() { " /F2 7 0 R" } else { "" };
     let mut objs: Vec<Vec<u8>> = vec![
         b"<< /Type /Catalog /Pages 2 0 R >>".to_vec(),
         b"<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 600 800] >>".to_vec(),
-        b"<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> /XObject << /Im1 6 0 R >> >> >>".to_vec(),
+        format!("<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font << /F1 5 0 R{helvetica} >> /XObject << /Im1 6 0 R >> >> >>")
+            .into_bytes(),
         format!("<< /Length {} >>\nstream\n{content}\nendstream", content.len()).into_bytes(),
         format!("<< /Type /Font /Subtype /Type1 /BaseFont /ChessMerida /FirstChar 32 /LastChar 126 /Widths [{widths}] >>").into_bytes(),
     ];
@@ -48,6 +59,9 @@ pub fn chess_pdf() -> Vec<u8> {
     im.extend_from_slice(&image);
     im.extend_from_slice(b"\nendstream");
     objs.push(im);
+    if text.is_some() {
+        objs.push(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>".to_vec());
+    }
     let mut out = b"%PDF-1.7\n".to_vec();
     let mut offsets = Vec::new();
     for (i, o) in objs.iter().enumerate() {
@@ -633,6 +647,62 @@ fn chess_document_reference_pgn_outside_the_root_is_refused() {
     for (path, needle) in [("missing.pgn", "missing.pgn"), ("empty.pgn", "no moves"), ("huge.pgn", "more than 32 MiB")] {
         let e = a.call("chess_document", &json!({ "doc": doc, "reference_pgn": path })).unwrap_err();
         assert!(e.to_string().contains(needle), "{path}: {e}");
+    }
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// Plan "Carregar PGN do livro", R3: with the book's PGN, a diagram whose pieces the PGN has is
+/// confirmed (and counted as reference by `chess_diagram_states`), and one a square from a linked
+/// position gets a suggestion with its reading left alone. Nothing is written to the corrections.
+#[test]
+fn the_books_pgn_confirms_a_diagram_and_suggests_a_near_one_without_writing_a_correction() {
+    let (base, root) = workdir("document-reference-diagrams");
+    std::fs::write(root.join("book.pgn"), RUY_PGN).unwrap();
+    // The Merida diagram with no pawn on h7 (a light square: a blank), and the game's moves under it.
+    let mut no_h7 = MERIDA_START;
+    no_h7[1] = "OoOoOoO ";
+    std::fs::write(root.join("near.pdf"), chess_pdf_with(&no_h7, Some("1.e4 e5 2.Nf3 Nc6"))).unwrap();
+    let store = root.join(".pdfcraft").join("chess-corrections");
+    let (mut a, doc) = opened(&root);
+    let args = json!({ "doc": doc, "lang": "en", "include": ["json"], "models_dir": "models", "reference_pgn": "book.pgn" });
+    let read = ok(&mut a, "chess_document", args);
+    assert_eq!(read["reference"]["diagrams"], json!({ "linked": 1, "confirmed": 1, "suggested": 0 }), "{:#}", read["reference"]);
+    let diagram = &read["document"]["pages"][0]["blocks"][0];
+    assert_eq!((diagram["type"].as_str(), &diagram["reference"]["kind"]), (Some("diagram"), &json!("confirmed")), "{diagram:#}");
+    assert_eq!(diagram["reading"]["side_assumed"], false, "{diagram:#}");
+    let states = |a: &mut Automation, doc: u64, pgn: Option<&str>| {
+        let mut args = json!({ "doc": doc, "models_dir": "models" });
+        if let Some(pgn) = pgn {
+            args["reference_pgn"] = json!(pgn);
+        }
+        ok(a, "chess_diagram_states", args)
+    };
+    let with = states(&mut a, doc, Some("book.pgn"));
+    assert_eq!((with["states"]["reference"].as_u64(), with["states"]["read"].as_u64()), (Some(1), Some(0)), "{with:#}");
+    assert_eq!((with["reference"]["pgn"].as_str(), with["reference"]["moves"].as_u64()), (Some("book.pgn"), Some(6)), "{with:#}");
+    let without = states(&mut a, doc, None);
+    assert_eq!((without["states"]["reference"].as_u64(), without["states"]["read"].as_u64()), (Some(0), Some(1)), "{without:#}");
+    assert!(without["reference"].is_null());
+    // One square off: a suggestion, the reading as read.
+    let near = ok(&mut a, "doc_open", json!({ "path": "near.pdf" }))["doc"].as_u64().unwrap();
+    let args = json!({ "doc": near, "lang": "en", "include": ["json"], "models_dir": "models", "reference_pgn": "book.pgn" });
+    let read = ok(&mut a, "chess_document", args);
+    assert_eq!(read["reference"]["diagrams"], json!({ "linked": 0, "confirmed": 0, "suggested": 1 }), "{:#}", read["reference"]);
+    let blocks = read["document"]["pages"][0]["blocks"].as_array().unwrap();
+    let diagram = blocks.iter().find(|b| b["type"] == "diagram").unwrap();
+    assert_eq!(diagram["reference"]["kind"], "suggested", "{diagram:#}");
+    assert_eq!(diagram["reference"]["changes"], json!([{ "square": "h7", "from": null, "to": "p" }]), "{diagram:#}");
+    assert_eq!(diagram["reference"]["fen"], "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    assert!(diagram["reading"]["fen"].as_str().unwrap().starts_with("rnbqkbnr/ppppppp1/"), "{diagram:#}");
+    let near_states = states(&mut a, near, Some("book.pgn"));
+    assert_eq!(near_states["states"]["reference"], 0, "a suggestion is not a confirmation: {near_states:#}");
+    // Neither reading nor counting wrote a correction.
+    assert!(std::fs::read_dir(&store).map_or(true, |mut d| d.next().is_none()), "a correction was written to {}", store.display());
+    assert_eq!(ok(&mut a, "chess_correction_list", json!({ "doc": near }))["count"], 0);
+    // The store stays inside the root, as does the PGN.
+    match a.call("chess_diagram_states", &json!({ "doc": doc, "reference_pgn": "../outside/book.pgn" })) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{m}"),
+        other => panic!("a PGN outside the root accepted: {other:?}"),
     }
     let _ = std::fs::remove_dir_all(base);
 }

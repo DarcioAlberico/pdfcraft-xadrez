@@ -1,6 +1,6 @@
 # Plano de implantação — Carregar PGN do livro · v1
 
-**Status:** v3 · 2026-10-30 · R0 (#229), R1 (#231) e R2 feitos; R3–R7 a fazer.
+**Status:** v4 · 2026-10-30 · R0 (#229), R1 (#231), R2 (#233) e R3 feitos; R4–R7 a fazer.
 **Origem:** pedido do usuário em 2026-10-29: "quando temos o PDF digital e o PGN dele, daria pra implementar uma função carregar PGN para aproveitar esse PGN?". Analisamos o par em `C:\Users\AMD\Documents\PDFCraft_Arquivos\PDF e PGN`: *Beat the French Defence with 3.Nc3* (Harikrishna; 748 páginas, gerado pelo calibre a partir de um curso Chessable) e o PGN do curso (120 partidas, "Chapter N / Game M").
 **Repositório:** `DarcioAlberico/pdfcraft-xadrez`. Crates: `chess` (L0), `chessvision`, `engine` (L6), `automation`, `ui-egui`.
 **Público de cada passo:** uma sessão de agente que começa do zero. Cada passo traz o contexto, as tarefas, a verificação e o critério de saída.
@@ -181,7 +181,17 @@ R3 e R4 podem correr em paralelo depois de R2. R6 só começa depois de R5.
 - R2, o que mudou em relação ao texto do passo:
   - **A sessão de leitura do app ainda não chama `link`.** O app não tem onde escolher o PGN antes do R6. A função é uma só, e o R6 só a chama.
   - **`stopped_games` traz também as partidas que não puderam ser lidas** (`error`), além das paradas (`stopped_at`).
-- R3–R7: a fazer.
+- R3: feito.
+  - `link` também guarda em cada diagrama a posição do PGN (`DiagramBlock::reference`: `{kind, game, node, fen, changes, before}`).
+  - **Confirmado:** o diagrama cujas peças são as do lance do PGN com que foi alinhado ganha o lado a jogar, os roques e o número do PGN, e perde o `side_assumed` (também quando o FEN lido já era igual ao do PGN). As marcas `SideAssumed`, `Illegal` e `SideConflict` saem. A leitura original fica em `before`, e ligar de novo parte dela.
+  - **Sugerido:** um diagrama a 1 ou 2 casas de uma posição ligada a um lance na mesma página ou nas vizinhas ganha a sugestão, com as casas que diferem (`changes: [{square, from, to}]`). A leitura não muda.
+  - Uma posição que a pessoa fixou (`DiagramSource::User`) nunca muda, nem ganha sugestão. Um diagrama cujo lado foi lido (não suposto) e é o outro não é confirmado.
+  - `corrections::Status::Reference` ("reference") e `Status::with_reference`: uma leitura (com confiança ou com dúvida) cuja posição o PGN tem sai da fila de revisão. `chess_diagram_states` ganha `reference_pgn` e conta esse estado.
+  - Nada é gravado nas correções: o teste de ponta a ponta confere que a pasta `chess-corrections` continua vazia.
+- R3, o que mudou em relação ao texto do passo:
+  - **O app ainda não mostra o chip "Confirmado pelo PGN"** nem aplica a sugestão: sem o PGN guardado (R5), o app não tem como saber dele. No painel, `Status::Reference` aparece como lido até o R6.
+  - **As partidas não são refeitas** a partir do lado novo de um diagrama confirmado. O leitor joga antes do alinhamento, e o `SideFromMoveNumber` já corrige o lado pelo número do primeiro lance.
+- R4–R7: a fazer.
 
 ## 4. Decisões do usuário
 
@@ -201,3 +211,4 @@ R3 e R4 podem correr em paralelo depois de R2. R6 só começa depois de R5.
 - **v1 (2026-10-29):** primeira versão, a partir da análise da §1 e da correção R0 (#229).
 - **v2 (2026-10-29):** R1 feito; a §3.3 traz as medidas e o que mudou em relação ao passo.
 - **v3 (2026-10-30):** R2 feito; a §3.3 diz o que a ferramenta devolve e o que ficou para o R6.
+- **v4 (2026-10-30):** R3 feito; a §3.3 diz como um diagrama é confirmado ou sugerido e o que ficou para o R6.

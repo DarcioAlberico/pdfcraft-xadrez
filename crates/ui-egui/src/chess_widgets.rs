@@ -35,6 +35,8 @@ impl DiagramState {
             Status::Error => DiagramState::Error,
             Status::Verified => DiagramState::Verified,
             Status::Corrected => DiagramState::Corrected,
+            // Only `Status::with_reference` gives it, and the app has no book's PGN before R6.
+            Status::Reference => DiagramState::Read,
         }
     }
 

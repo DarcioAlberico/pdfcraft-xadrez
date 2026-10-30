@@ -393,6 +393,28 @@ fn a_repaired_reading_goes_to_review() {
     assert_eq!(lichess_url(&vector), None);
 }
 
+/// Plan "Carregar PGN do livro", R3: a reading whose position the book's PGN has is confirmed by
+/// it, with confidence or with a doubt; what the user did outranks it, and a position the PGN only
+/// nearly has is not.
+#[test]
+fn a_reading_the_books_pgn_has_is_confirmed_by_it() {
+    use crate::chess::corrections::{Kind, Status};
+    use pdfcraft_chessvision::doc::reference::ReferenceIndex;
+    let (s, id) = open(three_boards(400));
+    let scan = s.chess_scan_job(id, &[], &no_model(), true).unwrap().run_with(Some(&StandIn::new("4k3/8/8/8/8/8/8/R3K3")), |_, _| true);
+    let reading = &scan.pages[0].readings.as_ref().unwrap()[1];
+    let read = Status::of(Some(reading), None);
+    assert!(matches!(read, Status::Read | Status::Review), "{read:?}");
+    let has = ReferenceIndex::from_pgn("[FEN \"4k3/8/8/8/8/8/8/R3K3 w Q - 0 1\"]\n\n1.Ra8+ *").unwrap();
+    let near = ReferenceIndex::from_pgn("[FEN \"4k3/8/8/8/8/8/8/R2K4 w - - 0 1\"]\n\n1.Ra8+ *").unwrap();
+    assert_eq!(Status::with_reference(Some(reading), None, Some(&has)), Status::Reference);
+    assert!(!Status::Reference.to_review());
+    assert_eq!(Status::with_reference(Some(reading), None, Some(&near)), read, "one square off is a suggestion, not a confirmation");
+    assert_eq!(Status::with_reference(Some(reading), None, None), read);
+    assert_eq!(Status::with_reference(Some(reading), Some(Kind::Corrected), Some(&has)), Status::Corrected);
+    assert_eq!(Status::with_reference(None, None, Some(&has)), Status::Unread);
+}
+
 /// A turned page (`/Rotate 90`) and a `/UserUnit` page are read the same: the geometry adapter
 /// carries rotation and unit to the detectors.
 #[test]

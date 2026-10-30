@@ -63,6 +63,7 @@ fn diagram(number: usize, fen: &str) -> Block {
         }),
         lichess_url: None,
         puzzle: None,
+        reference: None,
         review: Vec::new(),
     })
 }
@@ -293,6 +294,140 @@ fn link_warns_when_the_pgn_is_not_the_books() {
     assert!(link(&mut doc(vec![vec![diagram(0, &fen_after(&[]))]]), &index).warnings.is_empty());
 }
 
+/// The diagrams of `doc`, in reading order.
+fn diagrams_of(doc: &ChessDoc) -> Vec<&DiagramBlock> {
+    doc.pages.iter().flat_map(|p| &p.blocks).filter_map(|b| if let Block::Diagram(d) = b { Some(d) } else { None }).collect()
+}
+
+/// A diagram of `fen`'s pieces with `square` (0 is a8, 63 is h1) set to `piece` (`'.'` empties it).
+fn misread(number: usize, fen: &str, changes: &[(usize, char)]) -> Block {
+    let mut squares = squares(fen.split(' ').next().unwrap()).unwrap();
+    for &(k, piece) in changes {
+        squares[k] = if piece == '.' { 0 } else { piece as u8 };
+    }
+    let ranks: Vec<String> = squares
+        .chunks(8)
+        .map(|rank| {
+            let mut out = String::new();
+            let mut empty = 0;
+            for &s in rank {
+                if s == 0 {
+                    empty += 1;
+                } else {
+                    if empty > 0 {
+                        out.push_str(&empty.to_string());
+                        empty = 0;
+                    }
+                    out.push(s as char);
+                }
+            }
+            if empty > 0 {
+                out.push_str(&empty.to_string());
+            }
+            out
+        })
+        .collect();
+    diagram(number, &ranks.join("/"))
+}
+
+#[test]
+fn link_confirms_the_diagrams_the_pgn_shows_and_suggests_the_near_ones() {
+    let index = ReferenceIndex::from_pgn("[Event \"Ch 1\"]\n\n1.e4 e6 2.d4 d5 3.Nc3 Bb4 4.e5 c5 *\n").unwrap();
+    let main = ["e4", "e6", "d4", "d5", "Nc3"];
+    let line = ["e4", "e6", "d4", "d5", "Nc3", "Bb4", "e5"];
+    let mut shown = diagram(0, &fen_after(&main));
+    if let Block::Diagram(d) = &mut shown {
+        d.review = vec![ReviewFlag::SideAssumed];
+        d.lichess_url = Some("https://lichess.org/analysis/x?color=black".into());
+    }
+    // h7 (square 15) misread as empty: one square from the position after 4.e5.
+    let near = misread(0, &fen_after(&line), &[(15, '.')]);
+    let far = misread(1, &fen_after(&line), &[(15, '.'), (14, '.'), (13, '.')]);
+    let mut set_by_a_person = misread(2, &fen_after(&line), &[(15, '.')]);
+    if let Block::Diagram(d) = &mut set_by_a_person {
+        d.source = DiagramSource::User;
+    }
+    let mut white_to_move = diagram(3, &fen_after(&main));
+    if let Block::Diagram(d) = &mut white_to_move {
+        d.reading.as_mut().unwrap().side_assumed = false;
+    }
+    let two_pages_on = misread(0, &fen_after(&line), &[(15, '.')]);
+    let pages = vec![
+        vec![para(played(&[], &main)), shown],
+        vec![para(played(&main, &["Bb4", "e5"])), near, far, set_by_a_person, white_to_move],
+        vec![],
+        vec![two_pages_on],
+    ];
+    let original = doc(pages);
+    let mut d = original.clone();
+    let linked = link(&mut d, &index);
+    assert_eq!(linked.diagrams, DiagramCounts { confirmed: 1, suggested: 1 });
+    let diagrams = diagrams_of(&d);
+    // Confirmed: the PGN's side to move, castling and number; the side no longer assumed.
+    let confirmed = diagrams[0];
+    let pgn_fen = fen_after(&main);
+    assert_eq!(confirmed.reading.as_ref().map(|r| (r.fen.as_str(), r.side_assumed)), Some((pgn_fen.as_str(), false)));
+    assert!(confirmed.review.is_empty(), "{:?}", confirmed.review);
+    assert!(
+        confirmed.lichess_url.as_deref().is_some_and(|u| u.contains("%20b%20KQkq") && u.ends_with("?color=black")),
+        "{:?}",
+        confirmed.lichess_url
+    );
+    let r = confirmed.reference.as_ref().unwrap();
+    assert_eq!((r.kind, r.game, r.node, r.fen.as_str()), (DiagramKind::Confirmed, 0, 5, pgn_fen.as_str()));
+    let read = diagrams_of(&original)[0];
+    assert_eq!(
+        r.before.as_ref().map(|b| (&b.reading, &b.review)),
+        Some((read.reading.as_ref().unwrap(), &read.review)),
+        "the reading as read is kept"
+    );
+    // Suggested: the squares that differ, and the reading left alone.
+    let suggested = diagrams[1];
+    let r = suggested.reference.as_ref().unwrap();
+    assert_eq!((r.kind, r.node, r.fen.as_str()), (DiagramKind::Suggested, 7, fen_after(&line).as_str()));
+    assert_eq!(r.changes, [SquareChange { square: "h7".into(), from: None, to: Some('p') }]);
+    let read = diagrams_of(&original)[1];
+    assert_eq!((&suggested.reading, &suggested.review, r.before.is_none()), (&read.reading, &read.review, true));
+    // Three squares off, a position a person set, a side read as the other one, two pages away:
+    // nothing.
+    for (k, d) in diagrams.iter().enumerate().skip(2) {
+        assert!(d.reference.is_none(), "diagram {k}: {:?}", d.reference);
+    }
+    // Linking again is linking once, and the links go to JSON and come back.
+    let once = d.clone();
+    link(&mut d, &index);
+    assert_eq!(d, once);
+    let json = d.to_json().unwrap();
+    assert!(json.contains("\"kind\":\"suggested\"") && json.contains("\"before\":{"), "{json}");
+    assert_eq!(ChessDoc::from_json(&json).unwrap(), d);
+    // Linked to a PGN that has none of it, every diagram is as read again.
+    link(&mut d, &ReferenceIndex::from_pgn("1.c4 *").unwrap());
+    assert_eq!(diagrams_of(&d), diagrams_of(&original));
+}
+
+#[test]
+fn squares_read_only_eight_ranks_of_eight() {
+    let start = squares("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
+    assert_eq!((start[0], start[15], start[16], start[63]), (b'r', b'p', 0, b'R'));
+    for bad in ["8/8/8/8/8/8/8", "8/8/8/8/8/8/8/8/8", "9/8/8/8/8/8/8/8", "7/8/8/8/8/8/8/8", "ppppppppp/8/8/8/8/8/8/8", "x7/8/8/8/8/8/8/8", ""] {
+        assert_eq!(squares(bad), None, "{bad}");
+    }
+    assert_eq!((square_name(0), square_name(15), square_name(63)), ("a8".to_string(), "h7".to_string(), "h1".to_string()));
+}
+
+#[test]
+fn a_diagram_read_as_the_pgn_has_it_still_loses_the_side_assumed() {
+    let index = ReferenceIndex::from_pgn("1.e4 e5 *").unwrap();
+    let mut start = diagram(0, &fen_after(&[]));
+    if let Block::Diagram(d) = &mut start {
+        d.reading.as_mut().unwrap().fen = fen_after(&[]);
+    }
+    let mut d = doc(vec![vec![start]]);
+    assert_eq!(link(&mut d, &index).diagrams.confirmed, 1);
+    let r = diagrams_of(&d)[0].reading.as_ref().unwrap();
+    assert_eq!((r.fen.as_str(), r.side_assumed), (fen_after(&[]).as_str(), false));
+}
+
 fn arb_san() -> impl Strategy<Value = String> {
     prop_oneof![
         prop::sample::select(vec!["e4", "e5", "Nf3", "Nc6", "Bb5", "O-O", "0-0-0", "d4", "", "+", "Nxe5#"]).prop_map(String::from),
@@ -340,6 +475,17 @@ proptest! {
             let mut linked = d.clone();
             let l = link(&mut linked, &index);
             prop_assert!(moves_of(&linked).iter().all(|m| m.reference.is_some()));
+            for (after, before) in diagrams_of(&linked).iter().zip(diagrams_of(&d)) {
+                match after.reference.as_ref().map(|r| r.kind) {
+                    Some(DiagramKind::Suggested) => {
+                        let r = after.reference.as_ref().unwrap();
+                        prop_assert!((1..=MAX_SUGGESTED_SQUARES).contains(&r.changes.len()));
+                        prop_assert_eq!(&after.reading, &before.reading, "a suggestion is never applied");
+                    }
+                    Some(DiagramKind::Confirmed) => prop_assert!(after.reading.as_ref().is_some_and(|r| !r.side_assumed)),
+                    None => prop_assert_eq!(*after, before),
+                }
+            }
             let once = linked.clone();
             link(&mut linked, &index);
             prop_assert_eq!(&linked, &once);
