@@ -848,7 +848,7 @@ fn the_books_pgn_links_the_text_tab_and_follows_the_document() {
         h.state_mut().set_book_pgn(id, "book.pgn", RUY_PGN.as_bytes());
         h.run_steps(4);
         h.get_by_label("Book's PGN: book.pgn (1 games)");
-        h.get_by_label("Book's PGN on this page: 4 confirmed, 2 read from the PGN, 0 in conflict.");
+        h.get_by_label("Book's PGN on this page: 4 confirmed, 2 read from the PGN, 0 in conflict (0 to review).");
         let moves = linked_moves(&h);
         assert_eq!(moves[4], ("Bb5".to_owned(), Some("Recovered".to_owned())), "{moves:?}");
         assert_eq!(moves[0].1.as_deref(), Some("Confirmed"), "{moves:?}");
@@ -960,6 +960,17 @@ fn the_books_pgn_suggests_a_diagrams_position_in_the_diagram_tab() {
     let _ = std::fs::remove_dir_all(dir);
 }
 
+/// A secondary click on the one widget whose label holds `part` (a move shown with its figurine).
+fn right_click_contains(h: &mut Harness<'static, PdfCraftApp>, part: &str) {
+    let at = h.get_by_label_contains(part).rect().center();
+    h.hover_at(at);
+    h.run_steps(1);
+    for pressed in [true, false] {
+        h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Secondary, pressed, modifiers: Default::default() });
+    }
+    h.run_steps(2);
+}
+
 /// A secondary click on the widget labelled `label`.
 fn right_click(h: &mut Harness<'static, PdfCraftApp>, label: &str) {
     let at = h.get_by_label(label).rect().center();
@@ -1023,6 +1034,39 @@ fn linking_the_whole_book_says_what_it_found_and_lists_the_pgns_games() {
     let game = &h.state().chess.board().game;
     assert_eq!(game.tag("White"), Some("Ruy"), "{}", game.pgn());
     assert_eq!(game.current(), 0, "at its start");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// Plan "Carregar PGN do livro", R6e: a move the PGN plays from another position is in conflict
+/// and to review; its menu takes the user's choice, the PGN's move or the book's, which leaves the
+/// review, is kept with the PGN and is found again when the document opens again.
+#[test]
+fn a_move_in_conflict_with_the_pgn_takes_the_users_choice() {
+    let dir = corrections_dir("book-pgn-conflict");
+    std::fs::create_dir_all(&dir).unwrap();
+    // The book's 1...c5 is not in the PGN: the reader plays 2.Nf3 after it, the PGN after 1...e5.
+    let pdf = chapter_with("1.e4 e5 1...c5 2.Nf3");
+    {
+        let mut h = book_pgn_harness("chapter.pdf", None, pdf.clone(), dir.join("reference"));
+        let id = h.state().views[0].id;
+        h.state_mut().set_book_pgn(id, "book.pgn", RUY_PGN.as_bytes());
+        h.run_steps(4);
+        assert_eq!(linked_moves(&h)[3], ("Nf3".to_owned(), Some("Conflict".to_owned())), "{:?}", linked_moves(&h));
+        h.get_by_label_contains("1 in conflict (1 to review).");
+        right_click_contains(&mut h, "f3");
+        assert!(h.query_by_label("Keep the book's move").is_some());
+        h.get_by_label("Use the PGN's move").click();
+        h.run_steps(3);
+        h.get_by_label_contains("1 in conflict (0 to review).");
+        right_click_contains(&mut h, "f3");
+        assert!(h.query_by_label("Use the PGN's move").is_none(), "the choice made is not offered again");
+        h.get_by_label("Keep the book's move").click();
+        h.run_steps(3);
+        h.get_by_label_contains("1 in conflict (0 to review).");
+    }
+    // Opened again, the choice is found with the PGN.
+    let h = book_pgn_harness("chapter.pdf", None, pdf, dir.join("reference"));
+    h.get_by_label_contains("1 in conflict (0 to review).");
     let _ = std::fs::remove_dir_all(dir);
 }
 

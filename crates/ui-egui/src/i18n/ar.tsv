@@ -3628,3 +3628,10 @@ castling	long	طويل
 	Go to its page and put the game on the board.	الانتقال إلى صفحتها ووضع المباراة على الرقعة.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	رُبط الكتاب بـ PGN الخاص به: {linked} من {moves} نقلة ({recovered} مقروءة من PGN)، {conflict} متعارضة.
 	Link the whole book to its PGN	ربط الكتاب كله بـ PGN الخاص به
+	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	يلعب PGN الكتاب هذه النقلة من وضعية أخرى: تحقّق منها ثم استخدم نقلة PGN أو احتفظ بنقلة الكتاب.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	PGN الكتاب في هذه الصفحة: {confirmed} مؤكدة، {recovered} مقروءة من PGN، {conflict} متعارضة ({open} للمراجعة).
+	You kept the book's move.	احتفظت بنقلة الكتاب.
+	You chose the book's PGN's move: its game is the one to follow here.	اخترت نقلة PGN الكتاب: مباراته هي المعتمدة هنا.
+	Use the PGN's move	استخدام نقلة PGN
+	Keep the book's move	الاحتفاظ بنقلة الكتاب
+	The choice was not kept: {e}	لم يُحفظ الاختيار: {e}

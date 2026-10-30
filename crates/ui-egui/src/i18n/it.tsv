@@ -3565,3 +3565,10 @@ castling	long	lungo
 	Go to its page and put the game on the board.	Va alla sua pagina e mette la partita sulla scacchiera.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Il libro è collegato al suo PGN: {linked} di {moves} mosse ({recovered} lette dal PGN), {conflict} in conflitto.
 	Link the whole book to its PGN	Collega l'intero libro al suo PGN
+	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	Il PGN del libro gioca questa mossa da un'altra posizione: verificala, poi usa la mossa del PGN o tieni quella del libro.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	PGN del libro in questa pagina: {confirmed} confermate, {recovered} lette dal PGN, {conflict} in conflitto ({open} da verificare).
+	You kept the book's move.	Hai tenuto la mossa del libro.
+	You chose the book's PGN's move: its game is the one to follow here.	Hai scelto la mossa del PGN del libro: vale la sua partita qui.
+	Use the PGN's move	Usa la mossa del PGN
+	Keep the book's move	Tieni la mossa del libro
+	The choice was not kept: {e}	La scelta non è stata salvata: {e}

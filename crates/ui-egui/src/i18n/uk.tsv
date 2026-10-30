@@ -3375,3 +3375,10 @@ castling	long	довга
 	Go to its page and put the game on the board.	Перейти на її сторінку й поставити партію на дошку.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Книгу пов'язано з її PGN: ходів — {linked} з {moves} (взято з PGN — {recovered}), у конфлікті — {conflict}.
 	Link the whole book to its PGN	Пов'язати всю книгу з її PGN
+	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	У PGN книги цей хід зроблено з іншої позиції: перевірте його, потім візьміть хід із PGN або залиште хід книги.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	PGN книги на цій сторінці: підтверджено — {confirmed}, взято з PGN — {recovered}, у конфлікті — {conflict} (на перевірку — {open}).
+	You kept the book's move.	Ви залишили хід книги.
+	You chose the book's PGN's move: its game is the one to follow here.	Ви вибрали хід із PGN книги: тут діє його партія.
+	Use the PGN's move	Узяти хід із PGN
+	Keep the book's move	Залишити хід книги
+	The choice was not kept: {e}	Вибір не збережено: {e}

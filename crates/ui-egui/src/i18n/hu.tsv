@@ -3352,3 +3352,10 @@ castling	long	hosszú
 	Go to its page and put the game on the board.	Ugrás az oldalára és a játszma a táblára.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	A könyv a PGN-jéhez kapcsolódik: {moves} lépésből {linked} ({recovered} a PGN-ből olvasva), {conflict} ütközik.
 	Link the whole book to its PGN	Az egész könyv összekapcsolása a PGN-jével
+	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	A könyv PGN-je ezt a lépést más állásból teszi meg: ellenőrizze, majd használja a PGN lépését, vagy tartsa meg a könyvét.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	A könyv PGN-je ezen az oldalon: {confirmed} megerősítve, {recovered} a PGN-ből olvasva, {conflict} ütközik ({open} ellenőrizendő).
+	You kept the book's move.	Megtartotta a könyv lépését.
+	You chose the book's PGN's move: its game is the one to follow here.	A könyv PGN-jének lépését választotta: itt annak játszmája érvényes.
+	Use the PGN's move	A PGN lépésének használata
+	Keep the book's move	A könyv lépésének megtartása
+	The choice was not kept: {e}	A választás nem lett tárolva: {e}

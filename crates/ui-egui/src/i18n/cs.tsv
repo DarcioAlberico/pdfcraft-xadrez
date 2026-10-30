@@ -3427,3 +3427,10 @@ castling	long	dlouhá
 	Go to its page and put the game on the board.	Přejít na její stránku a postavit partii na šachovnici.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Kniha je propojena s PGN: {linked} z {moves} tahů (přečteno z PGN {recovered}), v rozporu {conflict}.
 	Link the whole book to its PGN	Propojit celou knihu s jejím PGN
+	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	PGN knihy hraje tento tah z jiné pozice: zkontrolujte ho a pak použijte tah z PGN, nebo ponechte tah z knihy.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	PGN knihy na této stránce: potvrzeno {confirmed}, přečteno z PGN {recovered}, v rozporu {conflict} (ke kontrole {open}).
+	You kept the book's move.	Ponechali jste tah z knihy.
+	You chose the book's PGN's move: its game is the one to follow here.	Zvolili jste tah z PGN knihy: zde platí jeho partie.
+	Use the PGN's move	Použít tah z PGN
+	Keep the book's move	Ponechat tah z knihy
+	The choice was not kept: {e}	Volba nebyla uložena: {e}

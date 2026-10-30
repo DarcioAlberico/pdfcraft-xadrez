@@ -137,6 +137,44 @@ fn a_saved_document_keeps_its_pgn_under_its_new_keys() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+fn decision(inline: usize, choice: Choice) -> Decision {
+    Decision { page: 2, block: 1, inline, san: "Bb5".into(), choice }
+}
+
+/// R6e: a decision on a move in conflict is kept with the PGN, in place of the one on the same
+/// move; it goes with a save as another file, and keeping another PGN drops it. Without a PGN, or
+/// naming no move, it is refused.
+#[test]
+fn decisions_are_kept_with_the_pgn_they_were_made_against() {
+    let dir = temp_dir("decide");
+    let store = DirStore::new(&dir);
+    assert!(matches!(store.decide(&keys(), 10, decision(3, Choice::Pgn)), Err(ReferenceStoreError::NoPgn)), "no folder, no PGN");
+    store.set(&keys(), 10, kept(PGN)).unwrap();
+    store.decide(&keys(), 10, decision(3, Choice::Pgn)).unwrap();
+    store.decide(&keys(), 10, decision(5, Choice::Book)).unwrap();
+    let file = store.decide(&keys(), 10, decision(3, Choice::Book)).unwrap();
+    assert_eq!(file.decisions, vec![decision(5, Choice::Book), decision(3, Choice::Book)], "the same move's decision replaced");
+    assert_eq!(store.load(&keys(), 10).unwrap().file.unwrap().decisions.len(), 2, "kept on disk");
+    let mut nameless = decision(7, Choice::Pgn);
+    nameless.san.clear();
+    assert!(matches!(store.decide(&keys(), 10, nameless), Err(ReferenceStoreError::NoMove)));
+    assert!(store.rekey(&keys(), &saved_as(), 10).unwrap());
+    assert_eq!(store.load(&saved_as(), 10).unwrap().file.unwrap().decisions.len(), 2, "kept for the saved file");
+    store.set(&saved_as(), 10, kept(OTHER)).unwrap();
+    assert!(store.load(&saved_as(), 10).unwrap().file.unwrap().decisions.is_empty(), "another PGN, no decisions");
+    // A file without decisions (as R5 wrote it) reads, and one with a bad decision does not.
+    let bytes = ReferenceFile::new(DocRecord::new(&keys(), 10), kept(PGN)).to_bytes().unwrap();
+    assert!(!String::from_utf8_lossy(&bytes).contains("decisions"));
+    let mut bad = ReferenceFile::new(DocRecord::new(&keys(), 10), kept(PGN));
+    bad.decisions.push(Decision { san: "x".repeat(MAX_SAN + 1), ..decision(1, Choice::Book) });
+    assert!(matches!(ReferenceFile::read(&serde_json::to_vec(&bad).unwrap()), Read::Bad(_)));
+    let memory = MemStore::new(4096);
+    assert!(matches!(memory.decide(&keys(), 10, decision(3, Choice::Pgn)), Err(ReferenceStoreError::NoPgn)));
+    memory.set(&keys(), 10, kept(PGN)).unwrap();
+    assert_eq!(memory.decide(&keys(), 10, decision(3, Choice::Pgn)).unwrap().decisions.len(), 1);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn memory_keeps_within_its_budget_and_round_trips() {
     let store = MemStore::new(4096);

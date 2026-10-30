@@ -3317,3 +3317,10 @@ castling	long	长
 	Go to its page and put the game on the board.	转到其页面并将对局放到棋盘上。
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	本书已与其 PGN 关联：{moves} 步中 {linked} 步（从 PGN 读取 {recovered} 步），冲突 {conflict} 步。
 	Link the whole book to its PGN	将整本书与其 PGN 关联
+	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	本书的 PGN 从另一局面走出这步棋：请核对，然后使用 PGN 的着法或保留书中的着法。
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	此页的本书 PGN：已确认 {confirmed}，从 PGN 读取 {recovered}，冲突 {conflict}（待复核 {open}）。
+	You kept the book's move.	你保留了书中的着法。
+	You chose the book's PGN's move: its game is the one to follow here.	你选择了本书 PGN 的着法：此处以其对局为准。
+	Use the PGN's move	使用 PGN 的着法
+	Keep the book's move	保留书中的着法
+	The choice was not kept: {e}	未能保存选择：{e}

@@ -3355,3 +3355,10 @@ castling	long	ロング
 	Go to its page and put the game on the board.	そのページに移動し、対局を盤に置きます。
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	本を PGN に関連付けました: {moves} 手中 {linked} 手 (PGN から読み取り {recovered})、矛盾 {conflict}。
 	Link the whole book to its PGN	本全体を PGN に関連付ける
+	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	本の PGN はこの手を別の局面から指しています。確認して、PGN の手を使うか本の手を残してください。
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	このページの本の PGN: 一致 {confirmed}、PGN から読み取り {recovered}、矛盾 {conflict} (要確認 {open})。
+	You kept the book's move.	本の手を残しました。
+	You chose the book's PGN's move: its game is the one to follow here.	本の PGN の手を選びました。ここではその対局に従います。
+	Use the PGN's move	PGN の手を使う
+	Keep the book's move	本の手を残す
+	The choice was not kept: {e}	選択を保存できませんでした: {e}

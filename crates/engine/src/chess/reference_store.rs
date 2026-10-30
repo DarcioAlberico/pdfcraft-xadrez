@@ -8,6 +8,12 @@
 //! (never its path), when it was kept (`at`, seconds since 1970) and its games and moves. A file
 //! whose text does not have its hash is not trusted.
 //!
+//! **Decisions** (plan "Carregar PGN do livro", R6e): what the user chose for a move of the text
+//! the PGN plays from another position (a conflict), the book's move or the PGN's, each by the
+//! move's place on its page and its SAN as printed, so a page read differently does not take
+//! another move's decision. They belong to the PGN they were made against: keeping another PGN
+//! drops them; a save as another file keeps them.
+//!
 //! **Safety**, as for the corrections: a file of a newer version is read but never written or
 //! removed; one that can't be read is set aside as `….bad`, never deleted. The folder store
 //! ([`DirStore`], desktop and command line) writes under a lock file through a staging file
@@ -33,6 +39,40 @@ pub const MAX_FILE_BYTES: usize = 2 * MAX_REFERENCE_BYTES + (64 << 10);
 
 /// Longest file name kept for the PGN, in bytes; a longer one is not kept.
 const MAX_NAME: usize = 512;
+
+/// Most decisions a document keeps.
+pub const MAX_DECISIONS: usize = 20_000;
+
+/// Longest SAN a decision names, in bytes.
+const MAX_SAN: usize = 16;
+
+/// What the user chose for a move in conflict with the PGN.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Choice {
+    /// The book's move stands: checked, nothing to review.
+    Book,
+    /// The PGN's move is the right one.
+    Pgn,
+}
+
+/// The user's decision on a move of the text: its page (0-based), block and place in the block,
+/// its SAN as printed, and the choice.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Decision {
+    pub page: usize,
+    pub block: usize,
+    pub inline: usize,
+    pub san: String,
+    pub choice: Choice,
+}
+
+impl Decision {
+    /// Whether this is the decision on the move at `page`, `block`, `inline` printed `san`.
+    pub fn is_for(&self, page: usize, block: usize, inline: usize, san: &str) -> bool {
+        (self.page, self.block, self.inline) == (page, block, inline) && self.san == san
+    }
+}
 
 /// The PGN a document keeps.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -75,6 +115,10 @@ pub struct ReferenceFile {
     pub version: u32,
     pub doc: DocRecord,
     pub pgn: KeptPgn,
+    /// The user's decisions on moves in conflict with the PGN (R6e; optional, so a file without
+    /// them reads as before).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub decisions: Vec<Decision>,
 }
 
 /// What a file's bytes are.
@@ -91,7 +135,7 @@ pub enum Read {
 impl ReferenceFile {
     /// The file for the document `doc` keeping `pgn`.
     pub fn new(doc: DocRecord, pgn: KeptPgn) -> ReferenceFile {
-        ReferenceFile { format: FORMAT.into(), version: VERSION, doc, pgn }
+        ReferenceFile { format: FORMAT.into(), version: VERSION, doc, pgn, decisions: Vec::new() }
     }
 
     /// Read a file's bytes: this version's file, a newer one (read only), or why not.
@@ -137,7 +181,26 @@ impl ReferenceFile {
         if pgn.name.as_ref().is_some_and(|n| n.len() > MAX_NAME) {
             return Some("the PGN's file name is too long".into());
         }
+        if self.decisions.len() > MAX_DECISIONS {
+            return Some(format!("more than {MAX_DECISIONS} decisions"));
+        }
+        if self.decisions.iter().any(|d| d.san.is_empty() || d.san.len() > MAX_SAN) {
+            return Some("a decision names no move".into());
+        }
         None
+    }
+
+    /// Keep `decision` in place of the one on the same move. Refused past [`MAX_DECISIONS`].
+    pub fn decide(&mut self, decision: Decision) -> Result<(), ReferenceStoreError> {
+        if decision.san.is_empty() || decision.san.len() > MAX_SAN {
+            return Err(ReferenceStoreError::NoMove);
+        }
+        self.decisions.retain(|d| !d.is_for(decision.page, decision.block, decision.inline, &decision.san));
+        if self.decisions.len() >= MAX_DECISIONS {
+            return Err(ReferenceStoreError::TooManyDecisions);
+        }
+        self.decisions.push(decision);
+        Ok(())
     }
 
     /// The file as bytes, refused when it would be too big to read back.
@@ -199,6 +262,12 @@ pub enum ReferenceStoreError {
     Newer(u32),
     #[error("the books' PGNs kept here would take more than their {0} bytes")]
     OverBudget(usize),
+    #[error("the document keeps no book's PGN")]
+    NoPgn,
+    #[error("a decision must name a move of at most {MAX_SAN} bytes")]
+    NoMove,
+    #[error("this document keeps {MAX_DECISIONS} decisions, the most it keeps")]
+    TooManyDecisions,
 }
 
 /// Where documents keep their book's PGN: a folder on the desktop and the command line
@@ -214,6 +283,10 @@ pub trait ReferenceStore {
 
     /// Remove the document's PGN. Whether it kept one; refused for a file of a newer version.
     fn clear(&self, keys: &DocKeys, pages: usize) -> Result<bool, ReferenceStoreError>;
+
+    /// Keep `decision` with the document's PGN (R6e), in place of the one on the same move. The
+    /// file as kept; refused when the document keeps no PGN, and for a file of a newer version.
+    fn decide(&self, keys: &DocKeys, pages: usize, decision: Decision) -> Result<ReferenceFile, ReferenceStoreError>;
 
     /// The document was saved: its PGN, found under its keys before (`old`), is recorded under
     /// the keys it has now (`new`). Whether it kept one; a file of a newer version is left as it
@@ -243,6 +316,17 @@ fn set_bytes(loaded: &Loaded, keys: &DocKeys, pages: usize, pgn: KeptPgn) -> Res
         return Err(ReferenceStoreError::Newer(v));
     }
     let file = ReferenceFile::new(DocRecord::new(keys, pages), pgn);
+    let bytes = file.to_bytes()?;
+    Ok((file, bytes))
+}
+
+/// The file and its bytes for [`ReferenceStore::decide`].
+fn decide_bytes(loaded: &Loaded, decision: Decision) -> Result<(ReferenceFile, Vec<u8>), ReferenceStoreError> {
+    if let Some(v) = loaded.read_only {
+        return Err(ReferenceStoreError::Newer(v));
+    }
+    let mut file = loaded.file.clone().ok_or(ReferenceStoreError::NoPgn)?;
+    file.decide(decision)?;
     let bytes = file.to_bytes()?;
     Ok((file, bytes))
 }
@@ -342,6 +426,17 @@ impl ReferenceStore for DirStore {
         }
         std::fs::remove_file(self.dir.join(&loaded.name))?;
         Ok(true)
+    }
+
+    fn decide(&self, keys: &DocKeys, pages: usize, decision: Decision) -> Result<ReferenceFile, ReferenceStoreError> {
+        if !self.dir.is_dir() {
+            return Err(ReferenceStoreError::NoPgn);
+        }
+        let _lock = self.lock()?;
+        let loaded = self.load(keys, pages)?;
+        let (file, bytes) = decide_bytes(&loaded, decision)?;
+        corrections::write_atomically(&self.dir.join(&loaded.name), &bytes)?;
+        Ok(file)
     }
 
     /// Without the folder, nothing (it is not made).
@@ -457,6 +552,14 @@ impl ReferenceStore for MemStore {
             return Err(ReferenceStoreError::Newer(v));
         }
         Ok(loaded.file.is_some() && files.remove(&loaded.name).is_some())
+    }
+
+    fn decide(&self, keys: &DocKeys, _pages: usize, decision: Decision) -> Result<ReferenceFile, ReferenceStoreError> {
+        let mut files = self.guard();
+        let loaded = MemStore::load_in(&mut files, keys)?;
+        let (file, bytes) = decide_bytes(&loaded, decision)?;
+        self.put(&mut files, &loaded.name, bytes)?;
+        Ok(file)
     }
 
     fn rekey(&self, old: &DocKeys, new: &DocKeys, pages: usize) -> Result<bool, ReferenceStoreError> {

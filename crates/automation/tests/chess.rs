@@ -815,7 +815,8 @@ fn the_books_pgn_kept_with_the_document_is_used_until_it_is_removed() {
         other => panic!("a store outside the root accepted: {other:?}"),
     }
     assert!(!base.join("outside").join("store").exists());
-    assert_eq!(ok(&mut b, "chess_reference_status", json!({ "doc": again }))["name"], "other.pgn");
+    let status = ok(&mut b, "chess_reference_status", json!({ "doc": again }));
+    assert_eq!((&status["name"], &status["decisions"]), (&json!("other.pgn"), &json!(0)), "{status:#}");
 
     // Cleared: no PGN is used any more.
     assert_eq!(ok(&mut b, "chess_reference_clear", json!({ "doc": again }))["cleared"], true);

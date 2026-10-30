@@ -3349,3 +3349,10 @@ castling	long	uzun
 	Go to its page and put the game on the board.	Sayfasına git ve oyunu tahtaya koy.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Kitap PGN'ine bağlandı: {moves} hamleden {linked} ({recovered} PGN'den okundu), {conflict} çelişkili.
 	Link the whole book to its PGN	Kitabın tamamını PGN'ine bağla
+	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	Kitabın PGN'i bu hamleyi başka bir konumdan oynuyor: kontrol edin, sonra PGN'in hamlesini kullanın ya da kitabın hamlesini koruyun.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	Bu sayfada kitabın PGN'i: {confirmed} doğrulandı, {recovered} PGN'den okundu, {conflict} çelişkili ({open} incelenecek).
+	You kept the book's move.	Kitabın hamlesini korudunuz.
+	You chose the book's PGN's move: its game is the one to follow here.	Kitabın PGN'inin hamlesini seçtiniz: burada onun oyunu geçerli.
+	Use the PGN's move	PGN'in hamlesini kullan
+	Keep the book's move	Kitabın hamlesini koru
+	The choice was not kept: {e}	Seçim saklanmadı: {e}
