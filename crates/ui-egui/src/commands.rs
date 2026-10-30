@@ -499,6 +499,7 @@ impl PdfCraftApp {
             "chess.pgn.open" => self.open_chess_pgn(),
             "chess.reference.load" => self.load_book_pgn(),
             "chess.reference.clear" => self.clear_book_pgn(),
+            "chess.reference.link" => self.link_whole_book(),
             "chess.models" => self.choose_chess_models(),
             "chess.pgn.save" => self.save_chess_pgn(false),
             "chess.pgn.save_all" => self.save_chess_pgn(true),

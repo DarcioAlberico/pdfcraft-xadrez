@@ -88,6 +88,10 @@ pub enum JobKind {
         at: MoveAt,
         stamp: ScanStamp,
     },
+    /// Every page read and linked to the book's PGN (plan "Carregar PGN do livro", R6d).
+    LinkBook {
+        stamp: ScanStamp,
+    },
     #[cfg(not(target_arch = "wasm32"))]
     Export {
         format: ChessFormat,
@@ -105,6 +109,7 @@ enum JobDone {
     Read(Result<pdfcraft_engine::chess::document::ChessDocument, String>),
     Game(Result<GameSpanRead, String>),
     Export(Result<pdfcraft_engine::chess::export::ChessExport, String>),
+    Linked(Result<crate::chess_reference_ui::BookLink, String>),
 }
 
 impl ChessJob {
@@ -115,6 +120,7 @@ impl ChessJob {
             JobKind::Read { .. } => tl!("Reading the page…"),
             JobKind::Game { .. } => tl!("Reading the pages around the game…"),
             JobKind::Export { .. } => tl!("Exporting the chess document…"),
+            JobKind::LinkBook { .. } => tl!("Linking the whole book to its PGN…"),
         }
     }
 }
@@ -151,6 +157,14 @@ pub enum TextAction {
     OpenPgnGame {
         game: usize,
         node: usize,
+    },
+    /// Read every page and link it to the book's PGN (R6d).
+    LinkBook,
+    /// Go to page `page` (0-based) and put game `game` of the book's PGN on the board at its start
+    /// (R6d: the PGN's games list).
+    PgnGameAt {
+        game: usize,
+        page: Option<usize>,
     },
 }
 
@@ -189,6 +203,56 @@ fn book_pgn_row(ui: &mut egui::Ui, book_pgn: Option<&crate::chess_reference_ui::
             }
         }
     }
+    action
+}
+
+/// The whole book and the PGN (R6d): Link the whole book, its progress, what it found and the PGN's
+/// games, each with the first page that discusses it.
+fn book_link_section(ui: &mut egui::Ui, t: &Tokens, view: &crate::chess_reference_ui::BookPgnView) -> Option<TextAction> {
+    let mut action = None;
+    view.summary.as_ref()?;
+    if let Some((done, of)) = view.progress {
+        let said = crate::i18n::fmt(tl!("Linking the whole book: page {done} of {of}"), &[("done", &done.to_string()), ("of", &of.to_string())]);
+        ui.label(egui::RichText::new(said).small().color(t.text_muted));
+        return None;
+    }
+    let label = if view.link.is_some() { tl!("Link the whole book again") } else { tl!("Link the whole book") };
+    if ui
+        .button(label)
+        .on_hover_text(tl!(
+            "Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book."
+        ))
+        .clicked()
+    {
+        action = Some(TextAction::LinkBook);
+    }
+    let Some(link) = &view.link else { return action };
+    let said = crate::i18n::fmt(
+        tl!("Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages."),
+        &[
+            ("linked", &link.linked().to_string()),
+            ("moves", &link.moves().to_string()),
+            ("recovered", &link.counts.recovered.to_string()),
+            ("conflict", &link.counts.conflict.to_string()),
+            ("pages", &link.pages_linked.to_string()),
+            ("all", &link.pages.to_string()),
+        ],
+    );
+    ui.label(egui::RichText::new(said).small().color(t.text_muted));
+    let title = crate::i18n::fmt(tl!("Games of the book's PGN ({n})"), &[("n", &link.games.len().to_string())]);
+    egui::CollapsingHeader::new(title).id_salt("chess-book-pgn-games").show(ui, |ui| {
+        for g in &link.games {
+            let name =
+                if g.name.is_empty() { crate::i18n::fmt(tl!("Game {n}"), &[("n", &g.game.saturating_add(1).to_string())]) } else { g.name.clone() };
+            let shown = match g.first_page {
+                Some(p) => crate::i18n::fmt(tl!("p. {page} · {name}"), &[("page", &p.saturating_add(1).to_string()), ("name", &name)]),
+                None => crate::i18n::fmt(tl!("{name} (no page discusses it)"), &[("name", &name)]),
+            };
+            if ui.link(shown).on_hover_text(tl!("Go to its page and put the game on the board.")).clicked() {
+                action = Some(TextAction::PgnGameAt { game: g.game, page: g.first_page });
+            }
+        }
+    });
     action
 }
 
@@ -286,10 +350,10 @@ pub fn text_tab(
     origin: BookOrigin,
     busy: Option<&'static str>,
     positions: PgnPositions,
-    book_pgn: Option<&crate::chess_reference_ui::BookPgnSummary>,
-    sibling: Option<&str>,
+    pgn: &crate::chess_reference_ui::BookPgnView,
     source: crate::chess_export_ui::PgnSource,
 ) -> Option<TextAction> {
+    let book_pgn = pgn.summary.as_ref();
     let mut action = None;
     if let Some(label) = busy {
         ui.horizontal(|ui| {
@@ -304,10 +368,13 @@ pub fn text_tab(
         }
     });
     ui.horizontal_wrapped(|ui| {
-        if let Some(a) = book_pgn_row(ui, book_pgn, sibling) {
+        if let Some(a) = book_pgn_row(ui, book_pgn, pgn.sibling.as_deref()) {
             action = Some(a);
         }
     });
+    if let Some(a) = book_link_section(ui, t, pgn) {
+        action = Some(a);
+    }
     ui.horizontal_wrapped(|ui| {
         if ui
             .button(tl!("Read this page with chess OCR"))
@@ -590,6 +657,46 @@ impl PdfCraftApp {
         });
     }
 
+    /// Link the whole book (plan "Carregar PGN do livro", R6d): read every page of the active
+    /// document as the export does, off the interface thread, a block of pages at a time so the
+    /// Text tab can say how far it is, and align them with its book's PGN. What it found is kept
+    /// for the session ([`crate::chess_reference_ui::BookLink`]).
+    pub(crate) fn link_whole_book(&mut self) {
+        /// Pages read at a time.
+        const BLOCK: usize = 16;
+        let Some((_, id)) = self.active_ids() else { return };
+        let Some(index) = self.book_pgn_index(id) else {
+            return self.notify(tl!("This document keeps no book's PGN.").to_string());
+        };
+        if self.chess.job.is_some() {
+            return self.notify(tl!("A chess document is already being read or exported").to_string());
+        }
+        if !self.may_copy(id) {
+            return;
+        }
+        let (Some(stamp), Some(pages)) = (self.session.chess_stamp(id), self.session.get(id).map(|d| d.info.pages.len())) else { return };
+        let done = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        self.chess.book_pgns.progress = Some((done.clone(), pages));
+        let mode = self.chess_origin(id).ocr_mode();
+        let book = self.chess_cipher(id);
+        let settings = self.chess_scan_settings();
+        self.start_chess_job(id, JobKind::LinkBook { stamp }, move |s, id| {
+            let options = OcrOptions { mode, glyphs: None, general: true, book: book.as_ref() };
+            let all: Vec<usize> = (0..pages).collect();
+            let mut doc =
+                ChessDoc { format: pdfcraft_engine::chess::pdfcraft_chessvision::doc::FORMAT_VERSION, pages: Vec::new(), games: Vec::new() };
+            for block in all.chunks(BLOCK) {
+                match s.chess_document_with(id, block, &settings, None, &options) {
+                    Ok(read) => doc.pages.extend(read.doc.pages),
+                    Err(e) => return JobDone::Linked(Err(e)),
+                }
+                done.fetch_add(block.len(), std::sync::atomic::Ordering::Relaxed);
+            }
+            let aligned = reference::align(&doc, &index);
+            JobDone::Linked(Ok(crate::chess_reference_ui::BookLink::new(&aligned, &index, pages)))
+        });
+    }
+
     /// The book cipher learned so far for document `id`, if any.
     fn chess_cipher(&self, id: DocId) -> Option<pdfcraft_engine::chess::pdfcraft_chessvision::cipher::BookCipher> {
         self.chess.cipher.as_ref().filter(|(d, _)| *d == id).map(|(_, c)| c.clone())
@@ -708,7 +815,32 @@ impl PdfCraftApp {
                 },
                 Err(e) => self.notify(e),
             },
-            (_, JobDone::Read(Err(e)) | JobDone::Game(Err(e)) | JobDone::Export(Err(e))) => self.notify(e),
+            (JobKind::LinkBook { stamp }, JobDone::Linked(linked)) => {
+                self.chess.book_pgns.progress = None;
+                // The document changed meanwhile: the pages linked are of a state that is gone.
+                if self.session.chess_stamp(job.doc) != Some(stamp) {
+                    return;
+                }
+                match linked {
+                    Ok(link) => {
+                        self.notify(crate::i18n::fmt(
+                            tl!("The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict."),
+                            &[
+                                ("linked", &link.linked().to_string()),
+                                ("moves", &link.moves().to_string()),
+                                ("recovered", &link.counts.recovered.to_string()),
+                                ("conflict", &link.counts.conflict.to_string()),
+                            ],
+                        ));
+                        self.chess.book_pgns.keep_link(job.doc, link);
+                    }
+                    Err(e) => self.notify(e),
+                }
+            }
+            (_, JobDone::Read(Err(e)) | JobDone::Game(Err(e)) | JobDone::Export(Err(e))) => {
+                self.chess.book_pgns.progress = None;
+                self.notify(e)
+            }
             _ => {}
         }
     }
@@ -748,6 +880,14 @@ impl PdfCraftApp {
             TextAction::BookPgn(true) => self.load_book_pgn(),
             TextAction::BookPgn(false) => self.clear_book_pgn(),
             TextAction::SiblingPgn => self.use_sibling_pgn(),
+            TextAction::LinkBook => self.link_whole_book(),
+            TextAction::PgnGameAt { game, page } => {
+                let Some((vi, id)) = self.active_ids() else { return };
+                if let Some(view) = page.and_then(|p| self.views.get_mut(vi).map(|v| (v, p))) {
+                    view.0.go_to_page(view.1);
+                }
+                self.put_book_pgn_game(id, game, 0);
+            }
             TextAction::OpenPgnGame { game, node } => {
                 if let Some((_, id)) = self.active_ids() {
                     self.put_book_pgn_game(id, game, node);

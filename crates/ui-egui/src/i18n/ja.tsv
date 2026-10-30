@@ -3343,3 +3343,15 @@ castling	long	ロング
 	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	この PDF の隣に同じ名前の PGN があります。本の PGN として保存します。
 	Double-click to open the book's PGN game here.	ダブルクリックで本の PGN の対局をこの手で開きます。
 	Open the book's PGN game here	本の PGN の対局をこの手で開く
+	Linking the whole book to its PGN…	本全体を PGN に関連付けています…
+	Linking the whole book: page {done} of {of}	本全体を関連付け中: {of} ページ中 {done} ページ
+	Link the whole book again	本全体をもう一度関連付ける
+	Link the whole book	本全体を関連付ける
+	Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book.	すべてのページを読み、本の PGN に関連付けます。一致した手、PGN から読み取った手、矛盾した手の数と、各対局が始まるページがわかります。本の書き出しと同じくらい時間がかかります。
+	Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages.	本全体: {moves} 手中 {linked} 手を関連付け (PGN から読み取り {recovered})、矛盾 {conflict}、{all} ページ中 {pages} ページ。
+	Games of the book's PGN ({n})	本の PGN の対局 ({n})
+	p. {page} · {name}	p. {page} · {name}
+	{name} (no page discusses it)	{name} (扱うページなし)
+	Go to its page and put the game on the board.	そのページに移動し、対局を盤に置きます。
+	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	本を PGN に関連付けました: {moves} 手中 {linked} 手 (PGN から読み取り {recovered})、矛盾 {conflict}。
+	Link the whole book to its PGN	本全体を PGN に関連付ける

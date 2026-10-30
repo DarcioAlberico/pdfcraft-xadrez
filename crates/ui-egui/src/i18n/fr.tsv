@@ -3341,3 +3341,15 @@ castling	long	grand
 	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	Un PGN du même nom se trouve à côté de ce PDF : conservez-le comme PGN du livre.
 	Double-click to open the book's PGN game here.	Double-cliquez pour ouvrir ici la partie du PGN du livre.
 	Open the book's PGN game here	Ouvrir ici la partie du PGN du livre
+	Linking the whole book to its PGN…	Liaison du livre entier à son PGN…
+	Linking the whole book: page {done} of {of}	Liaison du livre entier : page {done} sur {of}
+	Link the whole book again	Relier de nouveau le livre entier
+	Link the whole book	Relier le livre entier
+	Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book.	Lit toutes les pages et les relie au PGN du livre : combien de coups il confirme, lit dans le PGN et trouve en conflit, et la page où commence chaque partie. Cela prend autant de temps qu'exporter le livre.
+	Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages.	Livre entier : {linked} coups sur {moves} reliés ({recovered} lus dans le PGN), {conflict} en conflit, sur {pages} pages sur {all}.
+	Games of the book's PGN ({n})	Parties du PGN du livre ({n})
+	p. {page} · {name}	p. {page} · {name}
+	{name} (no page discusses it)	{name} (aucune page n'en parle)
+	Go to its page and put the game on the board.	Aller à sa page et placer la partie sur l'échiquier.
+	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Le livre est relié à son PGN : {linked} coups sur {moves} ({recovered} lus dans le PGN), {conflict} en conflit.
+	Link the whole book to its PGN	Relier le livre entier à son PGN

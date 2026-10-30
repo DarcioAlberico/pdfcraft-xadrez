@@ -3358,3 +3358,15 @@ castling	long	longo
 	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	Há um PGN com o mesmo nome ao lado deste PDF: guarde-o como PGN do livro.
 	Double-click to open the book's PGN game here.	Clique duas vezes para abrir aqui a partida do PGN do livro.
 	Open the book's PGN game here	Abrir aqui a partida do PGN do livro
+	Linking the whole book to its PGN…	Ligando o livro inteiro ao PGN…
+	Linking the whole book: page {done} of {of}	Ligando o livro inteiro: página {done} de {of}
+	Link the whole book again	Ligar o livro inteiro de novo
+	Link the whole book	Ligar o livro inteiro
+	Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book.	Lê todas as páginas e as liga ao PGN do livro: quantos lances ele confirma, lê do PGN e acha em conflito, e a página onde cada partida começa. Leva o mesmo tempo que exportar o livro.
+	Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages.	Livro inteiro: {linked} de {moves} lances ligados ({recovered} lidos do PGN), {conflict} em conflito, em {pages} de {all} páginas.
+	Games of the book's PGN ({n})	Partidas do PGN do livro ({n})
+	p. {page} · {name}	p. {page} · {name}
+	{name} (no page discusses it)	{name} (nenhuma página a discute)
+	Go to its page and put the game on the board.	Vai à página dela e põe a partida no tabuleiro.
+	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	O livro está ligado ao PGN: {linked} de {moves} lances ({recovered} lidos do PGN), {conflict} em conflito.
+	Link the whole book to its PGN	Ligar o livro inteiro ao PGN

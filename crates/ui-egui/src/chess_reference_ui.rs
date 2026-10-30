@@ -99,6 +99,67 @@ pub struct BookPgnSummary {
     pub moves: usize,
 }
 
+/// The whole book linked to its PGN (plan "Carregar PGN do livro", R6d): what Link the whole
+/// book found, for the session.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BookLink {
+    pub counts: pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::LinkCounts,
+    /// The book's pages, and how many of them discuss a game of the PGN.
+    pub pages: usize,
+    pub pages_linked: usize,
+    /// Each game of the PGN, in its order.
+    pub games: Vec<LinkedGame>,
+}
+
+/// A game of the PGN and the first page of the book that discusses it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LinkedGame {
+    pub game: usize,
+    pub name: String,
+    /// 0-based; `None` when no page discusses it.
+    pub first_page: Option<usize>,
+}
+
+impl BookLink {
+    /// What the alignment `a` of a book of `pages` pages with `index` found.
+    pub(crate) fn new(a: &pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::Alignment, index: &ReferenceIndex, pages: usize) -> BookLink {
+        let mut first: Vec<Option<usize>> = vec![None; index.games().len()];
+        for p in &a.pages {
+            if let (Some(slot), Ok(page)) = (first.get_mut(p.game), usize::try_from(p.page)) {
+                *slot = Some(slot.map_or(page, |q| q.min(page)));
+            }
+        }
+        let games = index
+            .games()
+            .iter()
+            .enumerate()
+            .map(|(game, g)| LinkedGame { game, name: g.name.clone(), first_page: first.get(game).copied().flatten() })
+            .collect();
+        BookLink { counts: a.counts, pages, pages_linked: a.pages.len(), games }
+    }
+
+    /// The moves of the text linked to the PGN.
+    pub fn linked(&self) -> usize {
+        self.counts.confirmed.saturating_add(self.counts.recovered).saturating_add(self.counts.conflict)
+    }
+
+    /// The moves of the text.
+    pub fn moves(&self) -> usize {
+        self.linked().saturating_add(self.counts.absent)
+    }
+}
+
+/// What the Text tab shows of a document's book's PGN.
+#[derive(Clone, Debug, Default)]
+pub struct BookPgnView {
+    pub summary: Option<BookPgnSummary>,
+    /// The file name of the PGN beside the PDF, offered while none is kept.
+    pub sibling: Option<String>,
+    pub link: Option<BookLink>,
+    /// Link the whole book is running: pages read, of how many.
+    pub progress: Option<(usize, usize)>,
+}
+
 /// One open document's PGN, as loaded.
 struct DocPgn {
     doc: DocId,
@@ -110,6 +171,8 @@ struct DocPgn {
     /// A PGN beside the PDF with its name (`book.pdf` → `book.pgn`), offered when none is kept
     /// (R6c; desktop only).
     sibling: Option<std::path::PathBuf>,
+    /// The whole book linked to it, when Link the whole book ran (R6d).
+    link: Option<BookLink>,
 }
 
 /// The books' PGNs in the app.
@@ -117,6 +180,8 @@ struct DocPgn {
 pub struct BookPgns {
     store: Store,
     docs: Vec<DocPgn>,
+    /// Link the whole book's pages read so far, and of how many (R6d).
+    pub(crate) progress: Option<(Arc<std::sync::atomic::AtomicUsize>, usize)>,
     /// PGN files the browser read for a document, picked up on the next frame.
     #[cfg(target_arch = "wasm32")]
     pub(crate) uploads: Arc<std::sync::Mutex<Vec<(DocId, String, Vec<u8>)>>>,
@@ -167,6 +232,19 @@ impl BookPgns {
         self.doc(id)?.summary.as_ref()
     }
 
+    /// What the Text tab shows of document `id`'s book's PGN.
+    pub(crate) fn view(&self, id: DocId) -> BookPgnView {
+        let progress = self.progress.as_ref().map(|(done, of)| (done.load(std::sync::atomic::Ordering::Relaxed), *of));
+        BookPgnView { summary: self.summary(id).cloned(), sibling: self.sibling_name(id), link: self.doc(id).and_then(|d| d.link.clone()), progress }
+    }
+
+    /// Keep what Link the whole book found for document `id`.
+    pub(crate) fn keep_link(&mut self, id: DocId, link: BookLink) {
+        if let Some(d) = self.docs.iter_mut().find(|d| d.doc == id) {
+            d.link = Some(link);
+        }
+    }
+
     /// The file name of the PGN beside document `id`'s PDF, when it keeps none.
     pub(crate) fn sibling_name(&self, id: DocId) -> Option<String> {
         let d = self.doc(id).filter(|d| d.summary.is_none())?;
@@ -212,7 +290,7 @@ impl PdfCraftApp {
                 Err(e) => self.notify(crate::i18n::fmt(tl!("The book's PGN couldn't be read: {e}"), &[("e", &e.to_string())])),
             }
             let sibling = sibling_pgn(&keys);
-            self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, index, summary, sibling });
+            self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, index, summary, sibling, link: None });
         }
         self.chess.book_pgns.doc(id)
     }
@@ -296,7 +374,7 @@ impl PdfCraftApp {
         }
         self.chess.book_pgns.docs.retain(|d| d.doc != id);
         let sibling = sibling_pgn(&keys);
-        self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, index: Some(Arc::new(index)), summary: Some(summary.clone()), sibling });
+        self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, index: Some(Arc::new(index)), summary: Some(summary.clone()), sibling, link: None });
         // The Text tab reads its page again, linked to it, and the Diagrams list takes it.
         self.chess.text = None;
         self.refresh_chess_kinds();
@@ -329,7 +407,7 @@ impl PdfCraftApp {
             Ok(cleared) => {
                 self.chess.book_pgns.docs.retain(|d| d.doc != id);
                 let sibling = sibling_pgn(&keys);
-                self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, index: None, summary: None, sibling });
+                self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, index: None, summary: None, sibling, link: None });
                 self.chess.text = None;
                 self.refresh_chess_kinds();
                 let said = if cleared { tl!("The book's PGN was removed from this document.") } else { tl!("This document keeps no book's PGN.") };

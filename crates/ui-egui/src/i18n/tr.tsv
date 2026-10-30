@@ -3337,3 +3337,15 @@ castling	long	uzun
 	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	Bu PDF'nin yanında aynı adlı bir PGN var: kitabın PGN'i olarak saklayın.
 	Double-click to open the book's PGN game here.	Kitabın PGN'indeki oyunu burada açmak için çift tıklayın.
 	Open the book's PGN game here	Kitabın PGN oyununu burada aç
+	Linking the whole book to its PGN…	Kitabın tamamı PGN'ine bağlanıyor…
+	Linking the whole book: page {done} of {of}	Kitabın tamamı bağlanıyor: sayfa {done} / {of}
+	Link the whole book again	Kitabın tamamını yeniden bağla
+	Link the whole book	Kitabın tamamını bağla
+	Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book.	Her sayfayı okur ve kitabın PGN'ine bağlar: kaç hamleyi doğruladığını, PGN'den okuduğunu ve çelişkili bulduğunu ve her oyunun başladığı sayfayı gösterir. Kitabı dışa aktarmak kadar sürer.
+	Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages.	Kitabın tamamı: {moves} hamleden {linked} tanesi bağlandı ({recovered} PGN'den okundu), {conflict} çelişkili, {all} sayfadan {pages} sayfada.
+	Games of the book's PGN ({n})	Kitabın PGN oyunları ({n})
+	p. {page} · {name}	s. {page} · {name}
+	{name} (no page discusses it)	{name} (hiçbir sayfa ele almıyor)
+	Go to its page and put the game on the board.	Sayfasına git ve oyunu tahtaya koy.
+	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Kitap PGN'ine bağlandı: {moves} hamleden {linked} ({recovered} PGN'den okundu), {conflict} çelişkili.
+	Link the whole book to its PGN	Kitabın tamamını PGN'ine bağla

@@ -3304,3 +3304,15 @@ castling	long	дълга
 	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	До този PDF има PGN със същото име: запазете го като PGN на книгата.
 	Double-click to open the book's PGN game here.	Щракнете двукратно, за да отворите тук партията от PGN на книгата.
 	Open the book's PGN game here	Отваряне тук на партията от PGN на книгата
+	Linking the whole book to its PGN…	Свързване на цялата книга с нейния PGN…
+	Linking the whole book: page {done} of {of}	Свързване на цялата книга: страница {done} от {of}
+	Link the whole book again	Повторно свързване на цялата книга
+	Link the whole book	Свързване на цялата книга
+	Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book.	Чете всяка страница и я свързва с PGN на книгата: колко хода потвърждава, взема от PGN и намира в конфликт, и страницата, на която започва всяка партия. Отнема колкото експортът на книгата.
+	Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages.	Цялата книга: свързани ходове – {linked} от {moves} (взети от PGN – {recovered}), в конфликт – {conflict}, на {pages} от {all} страници.
+	Games of the book's PGN ({n})	Партии от PGN на книгата ({n})
+	p. {page} · {name}	с. {page} · {name}
+	{name} (no page discusses it)	{name} (никоя страница не я разглежда)
+	Go to its page and put the game on the board.	Отиване на нейната страница и поставяне на партията на дъската.
+	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Книгата е свързана с нейния PGN: ходове – {linked} от {moves} (взети от PGN – {recovered}), в конфликт – {conflict}.
+	Link the whole book to its PGN	Свързване на цялата книга с нейния PGN

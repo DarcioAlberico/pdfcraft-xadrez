@@ -3594,3 +3594,15 @@ castling	long	xa
 	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	Bên cạnh PDF này có một PGN cùng tên: lưu nó làm PGN của sách.
 	Double-click to open the book's PGN game here.	Nhấp đúp để mở ván cờ của PGN sách tại đây.
 	Open the book's PGN game here	Mở ván cờ của PGN sách tại đây
+	Linking the whole book to its PGN…	Đang liên kết toàn bộ sách với PGN của nó…
+	Linking the whole book: page {done} of {of}	Đang liên kết toàn bộ sách: trang {done} / {of}
+	Link the whole book again	Liên kết lại toàn bộ sách
+	Link the whole book	Liên kết toàn bộ sách
+	Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book.	Đọc mọi trang và liên kết với PGN của sách: số nước được xác nhận, lấy từ PGN và bị xung đột, và trang mỗi ván cờ bắt đầu. Mất thời gian như khi xuất sách.
+	Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages.	Toàn bộ sách: liên kết {linked} trên {moves} nước ({recovered} lấy từ PGN), {conflict} xung đột, trên {pages} / {all} trang.
+	Games of the book's PGN ({n})	Các ván cờ trong PGN của sách ({n})
+	p. {page} · {name}	tr. {page} · {name}
+	{name} (no page discusses it)	{name} (không trang nào bàn đến)
+	Go to its page and put the game on the board.	Đi đến trang của ván cờ và đặt nó lên bàn cờ.
+	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Sách đã được liên kết với PGN: {linked} trên {moves} nước ({recovered} lấy từ PGN), {conflict} xung đột.
+	Link the whole book to its PGN	Liên kết toàn bộ sách với PGN của nó

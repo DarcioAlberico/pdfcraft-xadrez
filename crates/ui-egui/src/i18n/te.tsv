@@ -3216,3 +3216,15 @@ castling	long	పెద్ద
 	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	ఈ PDF పక్కన అదే పేరుతో PGN ఉంది: దాన్ని పుస్తకం PGN గా ఉంచండి.
 	Double-click to open the book's PGN game here.	పుస్తకం PGN ఆటను ఇక్కడ తెరవడానికి రెండుసార్లు క్లిక్ చేయండి.
 	Open the book's PGN game here	పుస్తకం PGN ఆటను ఇక్కడ తెరవండి
+	Linking the whole book to its PGN…	మొత్తం పుస్తకాన్ని దాని PGN కు అనుసంధానిస్తున్నాం…
+	Linking the whole book: page {done} of {of}	మొత్తం పుస్తకాన్ని అనుసంధానిస్తున్నాం: {of} లో {done} వ పేజీ
+	Link the whole book again	మొత్తం పుస్తకాన్ని మళ్లీ అనుసంధానించండి
+	Link the whole book	మొత్తం పుస్తకాన్ని అనుసంధానించండి
+	Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book.	ప్రతి పేజీని చదివి పుస్తకం PGN కు అనుసంధానిస్తుంది: ఎన్ని ఎత్తులను ధృవీకరిస్తుంది, PGN నుండి చదువుతుంది, వైరుధ్యంలో కనుగొంటుంది, ప్రతి ఆట మొదలయ్యే పేజీ. పుస్తకాన్ని ఎగుమతి చేసినంత సమయం పడుతుంది.
+	Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages.	మొత్తం పుస్తకం: {moves} ఎత్తులలో {linked} అనుసంధానించబడ్డాయి (PGN నుండి {recovered}), {conflict} వైరుధ్యంలో, {all} పేజీలలో {pages} పేజీలలో.
+	Games of the book's PGN ({n})	పుస్తకం PGN ఆటలు ({n})
+	p. {page} · {name}	పే. {page} · {name}
+	{name} (no page discusses it)	{name} (ఏ పేజీ దీన్ని చర్చించదు)
+	Go to its page and put the game on the board.	దాని పేజీకి వెళ్లి ఆటను బోర్డుపై ఉంచండి.
+	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	పుస్తకం దాని PGN కు అనుసంధానించబడింది: {moves} ఎత్తులలో {linked} (PGN నుండి {recovered}), {conflict} వైరుధ్యంలో.
+	Link the whole book to its PGN	మొత్తం పుస్తకాన్ని దాని PGN కు అనుసంధానించండి

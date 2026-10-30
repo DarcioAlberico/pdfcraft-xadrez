@@ -3339,3 +3339,15 @@ castling	long	ұзын
 	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	Осы PDF-тің жанында аттас PGN бар: оны кітаптың PGN файлы ретінде сақтаңыз.
 	Double-click to open the book's PGN game here.	Кітаптың PGN ойынын осы жерде ашу үшін екі рет басыңыз.
 	Open the book's PGN game here	Кітаптың PGN ойынын осы жерде ашу
+	Linking the whole book to its PGN…	Бүкіл кітап оның PGN файлымен байланыстырылуда…
+	Linking the whole book: page {done} of {of}	Бүкіл кітап байланыстырылуда: {of} беттің {done}-беті
+	Link the whole book again	Бүкіл кітапты қайта байланыстыру
+	Link the whole book	Бүкіл кітапты байланыстыру
+	Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book.	Әр бетті оқып, кітаптың PGN файлымен байланыстырады: қанша жүрісті растайтынын, PGN-нен алатынын және қайшылықта табатынын, әр ойын басталатын бетті көрсетеді. Кітапты экспорттаумен бірдей уақыт алады.
+	Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages.	Бүкіл кітап: {moves} жүрістің {linked} байланыстырылды ({recovered} PGN-нен алынды), {conflict} қайшылықта, {all} беттің {pages} бетінде.
+	Games of the book's PGN ({n})	Кітаптың PGN ойындары ({n})
+	p. {page} · {name}	{page}-б. · {name}
+	{name} (no page discusses it)	{name} (оны бірде-бір бет қарастырмайды)
+	Go to its page and put the game on the board.	Оның бетіне өтіп, ойынды тақтаға қою.
+	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Кітап PGN файлымен байланыстырылды: {moves} жүрістің {linked} ({recovered} PGN-нен алынды), {conflict} қайшылықта.
+	Link the whole book to its PGN	Бүкіл кітапты PGN файлымен байланыстыру

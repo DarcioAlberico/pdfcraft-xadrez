@@ -279,15 +279,16 @@ impl ReferenceIndex {
     }
 }
 
-/// The name of a game: its Event, Site, White and Black tags that say something.
+/// The name of a game: its Event, Site, White and Black tags that say something, each once (a
+/// course's export can repeat its Event as White and its Site as Black).
 fn game_name(game: &PgnGame) -> String {
-    ["Event", "Site", "White", "Black"]
-        .iter()
-        .filter_map(|tag| game.tag(tag))
-        .map(str::trim)
-        .filter(|v| !v.is_empty() && !v.chars().all(|c| c == '?'))
-        .collect::<Vec<_>>()
-        .join(" · ")
+    let mut parts: Vec<&str> = Vec::new();
+    for value in ["Event", "Site", "White", "Black"].iter().filter_map(|tag| game.tag(tag)).map(str::trim) {
+        if !value.is_empty() && !value.chars().all(|c| c == '?') && !parts.contains(&value) {
+            parts.push(value);
+        }
+    }
+    parts.join(" · ")
 }
 
 /// The pieces and the side to move of a FEN: its first two fields.

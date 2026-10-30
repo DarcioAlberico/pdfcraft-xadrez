@@ -116,6 +116,20 @@ fn the_index_holds_every_line_and_names_its_games() {
     assert!(!index.truncated());
 }
 
+/// A course's export repeats its Event as White and its Site as Black: each says it once.
+#[test]
+fn a_games_name_says_each_tag_once() {
+    let pgn = "[Event \"Chapter Introduction\"]
+[Site \"Game 1\"]
+[White \"Chapter Introduction\"]
+[Black \"Game 1\"]
+
+1.e4 e6 *
+";
+    let index = ReferenceIndex::from_pgn(pgn).unwrap();
+    assert_eq!(index.games()[0].name, "Chapter Introduction · Game 1");
+}
+
 #[test]
 fn a_pgn_with_no_moves_or_too_long_is_refused() {
     assert_eq!(ReferenceIndex::from_pgn("").unwrap_err(), ReferenceError::NoMoves);

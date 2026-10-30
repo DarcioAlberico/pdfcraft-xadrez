@@ -640,24 +640,10 @@ pub(crate) fn tab_contents(
         let busy = state.job.as_ref().filter(|j| j.doc == id).map(crate::chess_text_ui::ChessJob::label);
         let origin = state.origin.filter(|(d, _)| *d == id).map(|(_, o)| o).unwrap_or_default();
         let positions = state.pgn_positions;
-        let book_pgn = state.book_pgns.summary(id).cloned();
-        let sibling = state.book_pgns.sibling_name(id);
+        let pgn = state.book_pgns.view(id);
         let source = state.pgn_source;
-        return crate::chess_text_ui::text_tab(
-            ui,
-            t,
-            state.text.as_mut(),
-            id,
-            page_now,
-            current,
-            origin,
-            busy,
-            positions,
-            book_pgn.as_ref(),
-            sibling.as_deref(),
-            source,
-        )
-        .map(PanelAction::Text);
+        return crate::chess_text_ui::text_tab(ui, t, state.text.as_mut(), id, page_now, current, origin, busy, positions, &pgn, source)
+            .map(PanelAction::Text);
     }
     let mut action = None;
     let running = state.run.as_ref().filter(|r| r.doc == id).map(|r| {
