@@ -3312,3 +3312,20 @@ castling	long	ロング
 	Black short castling	黒のショートキャスリング
 	Black long castling	黒のロングキャスリング
 	Position code other chess programs accept.	ほかのチェスプログラムでも使える局面のコードです。
+	Load the book's PGN…	本の PGN を読み込む…
+	Remove the book's PGN	本の PGN を削除
+	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	この文書に保存された本の PGN を読み込めませんでした ({why})。{name} として別に保存しました。
+	The book's PGN couldn't be read: {e}	本の PGN を読み込めませんでした: {e}
+	{name} was not kept as the book's PGN: {e}	{name} は本の PGN として保存されませんでした: {e}
+	no game in it	対局が含まれていません
+	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	本の PGN {name}: {games} 局、{moves} 手。テキスト タブで読むページはこれに関連付けられます。
+	The book's PGN was removed from this document.	この文書から本の PGN を削除しました。
+	This document keeps no book's PGN.	この文書には本の PGN が保存されていません。
+	The book's PGN couldn't be removed: {e}	本の PGN を削除できませんでした: {e}
+	The book's PGN was not kept for the saved file: {e}	保存したファイルに本の PGN を引き継げませんでした: {e}
+	Book's PGN: {name} ({games} games)	本の PGN: {name} ({games} 局)
+	The pages read here are linked to the book's PGN: a move the reader could not play is read from the PGN (underlined), and a move the PGN plays from another position is in conflict (in italics).	ここで読んだページは本の PGN に関連付けられます。読み取りで指せなかった手は PGN から読みます (下線)。PGN が別の局面から指す手は矛盾として示します (斜体)。
+	A PGN of this book's games (a course's or an e-book's export): the moves of each page read here are linked to it.	この本の対局の PGN (講座や電子書籍の書き出し)。ここで読む各ページの手がこれに関連付けられます。
+	Read from the book's PGN: {san}	本の PGN から読み取り: {san}
+	The book's PGN plays this move from another position: check it.	本の PGN はこの手を別の局面から指しています。確認してください。
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	このページの本の PGN: 一致 {confirmed}、PGN から読み取り {recovered}、矛盾 {conflict}。

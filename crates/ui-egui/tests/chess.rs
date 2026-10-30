@@ -715,7 +715,12 @@ fn the_review_queue_lists_and_walks_the_diagrams_to_review() {
 /// A page with a heading and moves in Helvetica above a board in the Chess Merida font (top left
 /// at 60, 200 from the page's top).
 fn chapter() -> Vec<u8> {
-    let mut content = String::from("BT /F2 24 Tf 60 760 Td (Chapter 1) Tj ET\nBT /F2 11 Tf 60 730 Td (1.e4 e5 2.Nf3 Nc6 3.Bb5 a6) Tj ET\n");
+    chapter_with("1.e4 e5 2.Nf3 Nc6 3.Bb5 a6")
+}
+
+/// [`chapter`] with `moves` as its line of moves.
+fn chapter_with(moves: &str) -> Vec<u8> {
+    let mut content = format!("BT /F2 24 Tf 60 760 Td (Chapter 1) Tj ET\nBT /F2 11 Tf 60 730 Td ({moves}) Tj ET\n");
     content.push_str("BT /F1 20 Tf 60 584 Td ");
     for (i, line) in MERIDA_START.iter().enumerate() {
         if i > 0 {
@@ -789,6 +794,87 @@ fn the_text_tab_shows_the_page_read_as_chess_text_and_points_back_at_it() {
     h.get_by_label("Diagram 1").click();
     h.run_steps(4);
     assert!(h.state().chess.editor.as_ref().is_some_and(|e| (e.page, e.index) == (0, 0)), "the editor is on the diagram");
+}
+
+/// The book's PGN of [`chapter`]'s line, the Ruy Lopez to 3...a6.
+const RUY_PGN: &str = "[Event \"Chapter 1\"]\n[White \"Ruy\"]\n\n1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 *\n";
+
+/// The moves of the page the Text tab read, and how each is linked to the book's PGN.
+fn linked_moves(h: &Harness<'static, PdfCraftApp>) -> Vec<(String, Option<String>)> {
+    let text = h.state().chess.text.as_ref().expect("the page was read");
+    text.chess.pages[0]
+        .blocks
+        .iter()
+        .flat_map(|b| b.inlines())
+        .filter_map(|i| if let pdfcraft_engine::chess::pdfcraft_chessvision::doc::Inline::Move(m) = i { Some(m) } else { None })
+        .map(|m| (m.san.clone(), m.reference.as_ref().map(|r| format!("{:?}", r.kind))))
+        .collect()
+}
+
+/// A harness with `pdf` open as `name` (at `path`, when it has one), the books' PGNs kept in
+/// `store`, on the Chess panel's Text tab.
+fn book_pgn_harness(name: &str, path: Option<String>, pdf: Vec<u8>, store: std::path::PathBuf) -> Harness<'static, PdfCraftApp> {
+    let name = name.to_owned();
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).build_eframe(move |_cc| {
+        let mut app = PdfCraftApp::new();
+        app.set_option("language", "en").unwrap();
+        app.chess.book_pgns.use_folder(store);
+        app.open_bytes(&name, path, pdf).unwrap();
+        app.run_inline = true;
+        app
+    });
+    h.run_steps(4);
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(2);
+    h.get_by_label("Text").click();
+    h.run_steps(4);
+    h
+}
+
+/// Plan "Carregar PGN do livro", R6a: the book's PGN kept for the document links the page the
+/// Text tab reads. The two moves after a misprinted number, which the reader stopped at, are
+/// read from the PGN, and the page says how many moves are linked. The PGN is kept in the
+/// store, follows the document through Save As, and once removed the page reads without it.
+#[test]
+fn the_books_pgn_links_the_text_tab_and_follows_the_document() {
+    let dir = corrections_dir("book-pgn");
+    std::fs::create_dir_all(&dir).unwrap();
+    let (store, out) = (dir.join("reference"), dir.join("saved copy.pdf"));
+    {
+        let mut h = book_pgn_harness("chapter.pdf", None, chapter_with("1.e4 e5 2.Nf3 Nc6 5.Bb5 a6"), store.clone());
+        h.get_by_label("Load the book's PGN…");
+        assert!(linked_moves(&h).iter().all(|(_, r)| r.is_none()), "no PGN, no link");
+        let id = h.state().views[0].id;
+        h.state_mut().set_book_pgn(id, "book.pgn", RUY_PGN.as_bytes());
+        h.run_steps(4);
+        h.get_by_label("Book's PGN: book.pgn (1 games)");
+        h.get_by_label("Book's PGN on this page: 4 confirmed, 2 read from the PGN, 0 in conflict.");
+        let moves = linked_moves(&h);
+        assert_eq!(moves[4], ("Bb5".to_owned(), Some("Recovered".to_owned())), "{moves:?}");
+        assert_eq!(moves[0].1.as_deref(), Some("Confirmed"), "{moves:?}");
+        assert_eq!(correction_files(&store).len(), 1, "kept in the store");
+        if let Ok(dir) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
+            h.render().unwrap().save(std::path::Path::new(&dir).join("book-pgn-text-tab.png")).unwrap();
+        }
+        // A PGN with no game is refused, and the one kept stays.
+        h.state_mut().set_book_pgn(id, "empty.pgn", b"[Event \"x\"]\n\n*\n");
+        h.run_steps(2);
+        h.get_by_label("Book's PGN: book.pgn (1 games)");
+        h.state_mut().save_override = Some(out.to_string_lossy().into_owned());
+        assert!(h.state_mut().save_active(pdfcraft_ui_egui::SaveTarget::As));
+    }
+    // The saved file, opened again, finds its PGN.
+    let bytes = std::fs::read(&out).unwrap();
+    let mut h = book_pgn_harness("saved copy.pdf", Some(out.to_string_lossy().into_owned()), bytes, store.clone());
+    h.get_by_label("Book's PGN: book.pgn (1 games)");
+    assert_eq!(linked_moves(&h)[5].1.as_deref(), Some("Recovered"));
+    // Removed: the page is read again without it, and the store keeps nothing.
+    h.get_by_label("Remove the book's PGN").click();
+    h.run_steps(4);
+    h.get_by_label("Load the book's PGN…");
+    assert!(linked_moves(&h).iter().all(|(_, r)| r.is_none()), "{:?}", linked_moves(&h));
+    assert!(correction_files(&store).is_empty());
+    let _ = std::fs::remove_dir_all(dir);
 }
 
 /// Export… writes the document: PGN with the position's game, and Markdown with its image in a

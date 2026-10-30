@@ -3585,3 +3585,20 @@ castling	long	طويل
 	Black short castling	تبييت قصير للأسود
 	Black long castling	تبييت طويل للأسود
 	Position code other chess programs accept.	رمز الوضع الذي تقبله برامج الشطرنج الأخرى.
+	Load the book's PGN…	تحميل PGN الكتاب…
+	Remove the book's PGN	إزالة PGN الكتاب
+	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	تعذّرت قراءة PGN الكتاب المحفوظ لهذا المستند ({why})؛ وقد حُفظ جانبًا باسم {name}.
+	The book's PGN couldn't be read: {e}	تعذّرت قراءة PGN الكتاب: {e}
+	{name} was not kept as the book's PGN: {e}	لم يُحفظ {name} بوصفه PGN الكتاب: {e}
+	no game in it	لا يحتوي على أي مباراة
+	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	PGN الكتاب {name}: عدد المباريات {games}، عدد النقلات {moves}. تُربط به الصفحات التي يقرؤها تبويب النص.
+	The book's PGN was removed from this document.	أُزيل PGN الكتاب من هذا المستند.
+	This document keeps no book's PGN.	لا يحفظ هذا المستند PGN للكتاب.
+	The book's PGN couldn't be removed: {e}	تعذّرت إزالة PGN الكتاب: {e}
+	The book's PGN was not kept for the saved file: {e}	لم يُحفظ PGN الكتاب للملف المحفوظ: {e}
+	Book's PGN: {name} ({games} games)	PGN الكتاب: {name} (عدد المباريات {games})
+	The pages read here are linked to the book's PGN: a move the reader could not play is read from the PGN (underlined), and a move the PGN plays from another position is in conflict (in italics).	الصفحات المقروءة هنا مربوطة بـ PGN الكتاب: النقلة التي لم يتمكن القارئ من لعبها تُقرأ من PGN (مسطّرة)، والنقلة التي يلعبها PGN من وضعية أخرى تكون متعارضة (مائلة).
+	A PGN of this book's games (a course's or an e-book's export): the moves of each page read here are linked to it.	ملف PGN لمباريات هذا الكتاب (تصدير دورة أو كتاب إلكتروني): تُربط به نقلات كل صفحة تُقرأ هنا.
+	Read from the book's PGN: {san}	مقروءة من PGN الكتاب: {san}
+	The book's PGN plays this move from another position: check it.	يلعب PGN الكتاب هذه النقلة من وضعية أخرى: تحقّق منها.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	PGN الكتاب في هذه الصفحة: {confirmed} مؤكدة، {recovered} مقروءة من PGN، {conflict} متعارضة.

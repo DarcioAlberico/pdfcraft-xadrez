@@ -3332,3 +3332,20 @@ castling	long	довга
 	Black short castling	Коротка рокіровка чорних
 	Black long castling	Довга рокіровка чорних
 	Position code other chess programs accept.	Код позиції, який приймають інші шахові програми.
+	Load the book's PGN…	Завантажити PGN книги…
+	Remove the book's PGN	Вилучити PGN книги
+	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	Не вдалося прочитати PGN книги, збережений для цього документа ({why}); його відкладено як {name}.
+	The book's PGN couldn't be read: {e}	Не вдалося прочитати PGN книги: {e}
+	{name} was not kept as the book's PGN: {e}	{name} не збережено як PGN книги: {e}
+	no game in it	у ньому немає жодної партії
+	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	PGN книги {name}: партій — {games}, ходів — {moves}. Сторінки, які читає вкладка «Текст», пов'язуються з ним.
+	The book's PGN was removed from this document.	PGN книги вилучено з цього документа.
+	This document keeps no book's PGN.	Цей документ не зберігає PGN книги.
+	The book's PGN couldn't be removed: {e}	Не вдалося вилучити PGN книги: {e}
+	The book's PGN was not kept for the saved file: {e}	PGN книги не збережено для збереженого файлу: {e}
+	Book's PGN: {name} ({games} games)	PGN книги: {name} (партій — {games})
+	The pages read here are linked to the book's PGN: a move the reader could not play is read from the PGN (underlined), and a move the PGN plays from another position is in conflict (in italics).	Прочитані тут сторінки пов'язані з PGN книги: хід, який не вдалося зіграти під час розпізнавання, береться з PGN (підкреслено), а хід, який PGN робить з іншої позиції, позначено як конфлікт (курсивом).
+	A PGN of this book's games (a course's or an e-book's export): the moves of each page read here are linked to it.	PGN партій цієї книги (експорт курсу чи електронної книги): ходи кожної прочитаної тут сторінки пов'язуються з ним.
+	Read from the book's PGN: {san}	Взято з PGN книги: {san}
+	The book's PGN plays this move from another position: check it.	У PGN книги цей хід зроблено з іншої позиції: перевірте його.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	PGN книги на цій сторінці: підтверджено — {confirmed}, взято з PGN — {recovered}, у конфлікті — {conflict}.

@@ -3306,3 +3306,20 @@ castling	long	uzun
 	Black short castling	Siyahın kısa roku
 	Black long castling	Siyahın uzun roku
 	Position code other chess programs accept.	Diğer satranç programlarının kabul ettiği konum kodu.
+	Load the book's PGN…	Kitabın PGN'ini yükle…
+	Remove the book's PGN	Kitabın PGN'ini kaldır
+	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	Bu belge için saklanan kitap PGN'i okunamadı ({why}); {name} olarak kenara ayrıldı.
+	The book's PGN couldn't be read: {e}	Kitabın PGN'i okunamadı: {e}
+	{name} was not kept as the book's PGN: {e}	{name} kitabın PGN'i olarak saklanmadı: {e}
+	no game in it	içinde hiç oyun yok
+	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	Kitabın PGN'i {name}: {games} oyun, {moves} hamle. Metin sekmesinin okuduğu sayfalar buna bağlanır.
+	The book's PGN was removed from this document.	Kitabın PGN'i bu belgeden kaldırıldı.
+	This document keeps no book's PGN.	Bu belge kitap PGN'i saklamıyor.
+	The book's PGN couldn't be removed: {e}	Kitabın PGN'i kaldırılamadı: {e}
+	The book's PGN was not kept for the saved file: {e}	Kitabın PGN'i kaydedilen dosya için korunmadı: {e}
+	Book's PGN: {name} ({games} games)	Kitabın PGN'i: {name} ({games} oyun)
+	The pages read here are linked to the book's PGN: a move the reader could not play is read from the PGN (underlined), and a move the PGN plays from another position is in conflict (in italics).	Burada okunan sayfalar kitabın PGN'ine bağlıdır: okuyucunun oynayamadığı bir hamle PGN'den okunur (altı çizili), PGN'in başka bir konumdan oynadığı bir hamle ise çelişkilidir (italik).
+	A PGN of this book's games (a course's or an e-book's export): the moves of each page read here are linked to it.	Bu kitabın oyunlarının PGN'i (bir kursun veya e-kitabın dışa aktarımı): burada okunan her sayfanın hamleleri buna bağlanır.
+	Read from the book's PGN: {san}	Kitabın PGN'inden okundu: {san}
+	The book's PGN plays this move from another position: check it.	Kitabın PGN'i bu hamleyi başka bir konumdan oynuyor: kontrol edin.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	Bu sayfada kitabın PGN'i: {confirmed} doğrulandı, {recovered} PGN'den okundu, {conflict} çelişkili.

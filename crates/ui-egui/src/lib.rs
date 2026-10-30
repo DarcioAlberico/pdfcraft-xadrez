@@ -54,6 +54,7 @@ mod chess_ocr_area;
 mod chess_panel_head;
 mod chess_pieces_ui;
 mod chess_redraw;
+mod chess_reference_ui;
 mod chess_samples;
 mod chess_theme;
 mod chess_widgets;

@@ -295,6 +295,9 @@ impl PdfCraftApp {
         // The diagram corrections beside them (plan A8, P3b2; the web keeps them in `Storage`).
         #[cfg(not(target_arch = "wasm32"))]
         self.chess.corrections.use_folder(store.dir().join("chess").join("corrections"));
+        // The books' PGNs too (plan "Carregar PGN do livro", R6a).
+        #[cfg(not(target_arch = "wasm32"))]
+        self.chess.book_pgns.use_folder(store.dir().join("chess").join("reference"));
         self.recoverable = store.list();
         if !self.recoverable.is_empty() {
             self.dialog = Some(crate::Dialog::Recovery);

@@ -3273,3 +3273,20 @@ castling	long	дълга
 	Black short castling	Къса рокада на черните
 	Black long castling	Дълга рокада на черните
 	Position code other chess programs accept.	Код на позицията, който други шахматни програми приемат.
+	Load the book's PGN…	Зареждане на PGN на книгата…
+	Remove the book's PGN	Премахване на PGN на книгата
+	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	PGN на книгата, запазен за този документ, не можа да бъде прочетен ({why}); той е оставен настрана като {name}.
+	The book's PGN couldn't be read: {e}	PGN на книгата не можа да бъде прочетен: {e}
+	{name} was not kept as the book's PGN: {e}	{name} не е запазен като PGN на книгата: {e}
+	no game in it	в него няма нито една партия
+	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	PGN на книгата {name}: партии – {games}, ходове – {moves}. Страниците, които раздел „Текст“ чете, се свързват с него.
+	The book's PGN was removed from this document.	PGN на книгата е премахнат от този документ.
+	This document keeps no book's PGN.	Този документ не пази PGN на книгата.
+	The book's PGN couldn't be removed: {e}	PGN на книгата не можа да бъде премахнат: {e}
+	The book's PGN was not kept for the saved file: {e}	PGN на книгата не е запазен за съхранения файл: {e}
+	Book's PGN: {name} ({games} games)	PGN на книгата: {name} (партии – {games})
+	The pages read here are linked to the book's PGN: a move the reader could not play is read from the PGN (underlined), and a move the PGN plays from another position is in conflict (in italics).	Прочетените тук страници са свързани с PGN на книгата: ход, който разпознаването не успя да изиграе, се взема от PGN (подчертан), а ход, който PGN играе от друга позиция, е в конфликт (в курсив).
+	A PGN of this book's games (a course's or an e-book's export): the moves of each page read here are linked to it.	PGN на партиите от тази книга (експорт от курс или електронна книга): ходовете от всяка прочетена тук страница се свързват с него.
+	Read from the book's PGN: {san}	Взет от PGN на книгата: {san}
+	The book's PGN plays this move from another position: check it.	PGN на книгата играе този ход от друга позиция: проверете го.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	PGN на книгата на тази страница: потвърдени – {confirmed}, взети от PGN – {recovered}, в конфликт – {conflict}.

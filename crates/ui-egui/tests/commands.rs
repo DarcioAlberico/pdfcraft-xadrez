@@ -67,6 +67,7 @@ const PICKERS: &[&str] = &[
     "export.rtf",
     "measure.export",
     "chess.pgn.open",
+    "chess.reference.load",
     "chess.pgn.save",
     "chess.pgn.save_all",
     "chess.models",

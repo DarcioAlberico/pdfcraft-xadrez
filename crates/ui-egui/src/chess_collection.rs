@@ -2119,6 +2119,8 @@ impl PdfCraftApp {
         self.chess.games.autosave(Some(now));
         #[cfg(target_arch = "wasm32")]
         self.take_chess_uploads();
+        #[cfg(target_arch = "wasm32")]
+        self.take_book_pgn_uploads();
         self.show_chess_notes();
     }
 
@@ -2144,6 +2146,10 @@ impl PdfCraftApp {
         if let Some(value) = self.chess.corrections.storage_value() {
             storage.set_string(crate::chess_corrections_ui::STORAGE_KEY, value);
         }
+        // The books' PGNs, under theirs.
+        if let Some(value) = self.chess.book_pgns.storage_value() {
+            storage.set_string(crate::chess_reference_ui::STORAGE_KEY, value);
+        }
     }
 
     /// The web build: autosave the chess games in eframe's `Storage` (read from it now).
@@ -2152,6 +2158,8 @@ impl PdfCraftApp {
         self.chess.games.autosave_to_storage(text.as_deref());
         let corrections = storage.and_then(|s| s.get_string(crate::chess_corrections_ui::STORAGE_KEY));
         self.chess.corrections.use_storage(corrections.as_deref());
+        let book_pgns = storage.and_then(|s| s.get_string(crate::chess_reference_ui::STORAGE_KEY));
+        self.chess.book_pgns.use_storage(book_pgns.as_deref());
     }
 
     fn show_chess_notes(&mut self) {

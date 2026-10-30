@@ -3282,3 +3282,20 @@ castling	long	μεγάλο
 	Black short castling	Μικρό ροκέ των μαύρων
 	Black long castling	Μεγάλο ροκέ των μαύρων
 	Position code other chess programs accept.	Κωδικός της θέσης που δέχονται άλλα προγράμματα σκακιού.
+	Load the book's PGN…	Φόρτωση του PGN του βιβλίου…
+	Remove the book's PGN	Αφαίρεση του PGN του βιβλίου
+	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	Δεν ήταν δυνατή η ανάγνωση του PGN του βιβλίου που φυλάχτηκε για αυτό το έγγραφο ({why}). Φυλάχτηκε χωριστά ως {name}.
+	The book's PGN couldn't be read: {e}	Δεν ήταν δυνατή η ανάγνωση του PGN του βιβλίου: {e}
+	{name} was not kept as the book's PGN: {e}	Το {name} δεν φυλάχτηκε ως PGN του βιβλίου: {e}
+	no game in it	δεν περιέχει καμία παρτίδα
+	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	PGN του βιβλίου {name}: παρτίδες {games}, κινήσεις {moves}. Οι σελίδες που διαβάζει η καρτέλα Κείμενο συνδέονται με αυτό.
+	The book's PGN was removed from this document.	Το PGN του βιβλίου αφαιρέθηκε από αυτό το έγγραφο.
+	This document keeps no book's PGN.	Αυτό το έγγραφο δεν φυλάει PGN του βιβλίου.
+	The book's PGN couldn't be removed: {e}	Δεν ήταν δυνατή η αφαίρεση του PGN του βιβλίου: {e}
+	The book's PGN was not kept for the saved file: {e}	Το PGN του βιβλίου δεν διατηρήθηκε για το αποθηκευμένο αρχείο: {e}
+	Book's PGN: {name} ({games} games)	PGN του βιβλίου: {name} (παρτίδες {games})
+	The pages read here are linked to the book's PGN: a move the reader could not play is read from the PGN (underlined), and a move the PGN plays from another position is in conflict (in italics).	Οι σελίδες που διαβάζονται εδώ συνδέονται με το PGN του βιβλίου: μια κίνηση που ο αναγνώστης δεν μπόρεσε να παίξει διαβάζεται από το PGN (υπογραμμισμένη), και μια κίνηση που το PGN παίζει από άλλη θέση είναι σε σύγκρουση (με πλάγια).
+	A PGN of this book's games (a course's or an e-book's export): the moves of each page read here are linked to it.	Ένα PGN με τις παρτίδες αυτού του βιβλίου (εξαγωγή μαθήματος ή ηλεκτρονικού βιβλίου): οι κινήσεις κάθε σελίδας που διαβάζεται εδώ συνδέονται με αυτό.
+	Read from the book's PGN: {san}	Από το PGN του βιβλίου: {san}
+	The book's PGN plays this move from another position: check it.	Το PGN του βιβλίου παίζει αυτή την κίνηση από άλλη θέση: ελέγξτε την.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	PGN του βιβλίου σε αυτή τη σελίδα: {confirmed} επιβεβαιωμένες, {recovered} από το PGN, {conflict} σε σύγκρουση.

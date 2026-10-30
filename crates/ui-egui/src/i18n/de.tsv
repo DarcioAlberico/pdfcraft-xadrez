@@ -3311,3 +3311,20 @@ castling	long	lang
 	Black short castling	Kurze Rochade von Schwarz
 	Black long castling	Lange Rochade von Schwarz
 	Position code other chess programs accept.	Code der Stellung, den andere Schachprogramme lesen.
+	Load the book's PGN…	PGN des Buchs laden…
+	Remove the book's PGN	PGN des Buchs entfernen
+	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	Die für dieses Dokument gespeicherte PGN des Buchs konnte nicht gelesen werden ({why}); sie wurde als {name} beiseitegelegt.
+	The book's PGN couldn't be read: {e}	Die PGN des Buchs konnte nicht gelesen werden: {e}
+	{name} was not kept as the book's PGN: {e}	{name} wurde nicht als PGN des Buchs gespeichert: {e}
+	no game in it	sie enthält keine Partie
+	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	PGN des Buchs {name}: {games} Partien, {moves} Züge. Die Seiten, die der Tab Text liest, werden mit ihr verknüpft.
+	The book's PGN was removed from this document.	Die PGN des Buchs wurde aus diesem Dokument entfernt.
+	This document keeps no book's PGN.	Dieses Dokument speichert keine PGN des Buchs.
+	The book's PGN couldn't be removed: {e}	Die PGN des Buchs konnte nicht entfernt werden: {e}
+	The book's PGN was not kept for the saved file: {e}	Die PGN des Buchs wurde für die gespeicherte Datei nicht übernommen: {e}
+	Book's PGN: {name} ({games} games)	PGN des Buchs: {name} ({games} Partien)
+	The pages read here are linked to the book's PGN: a move the reader could not play is read from the PGN (underlined), and a move the PGN plays from another position is in conflict (in italics).	Die hier gelesenen Seiten sind mit der PGN des Buchs verknüpft: Ein Zug, den der Leser nicht spielen konnte, wird aus der PGN gelesen (unterstrichen), und ein Zug, den die PGN aus einer anderen Stellung spielt, steht im Konflikt (kursiv).
+	A PGN of this book's games (a course's or an e-book's export): the moves of each page read here are linked to it.	Eine PGN der Partien dieses Buchs (Export eines Kurses oder E-Books): Die Züge jeder hier gelesenen Seite werden mit ihr verknüpft.
+	Read from the book's PGN: {san}	Aus der PGN des Buchs gelesen: {san}
+	The book's PGN plays this move from another position: check it.	Die PGN des Buchs spielt diesen Zug aus einer anderen Stellung: bitte prüfen.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	PGN des Buchs auf dieser Seite: {confirmed} bestätigt, {recovered} aus der PGN gelesen, {conflict} im Konflikt.
