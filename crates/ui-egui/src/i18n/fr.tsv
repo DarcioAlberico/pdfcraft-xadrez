@@ -3353,3 +3353,10 @@ castling	long	grand
 	Go to its page and put the game on the board.	Aller à sa page et placer la partie sur l'échiquier.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Le livre est relié à son PGN : {linked} coups sur {moves} ({recovered} lus dans le PGN), {conflict} en conflit.
 	Link the whole book to its PGN	Relier le livre entier à son PGN
+	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	Le PGN du livre joue ce coup depuis une autre position : vérifiez-le, puis utilisez le coup du PGN ou gardez celui du livre.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	PGN du livre sur cette page : {confirmed} confirmés, {recovered} lus dans le PGN, {conflict} en conflit ({open} à vérifier).
+	You kept the book's move.	Vous avez gardé le coup du livre.
+	You chose the book's PGN's move: its game is the one to follow here.	Vous avez choisi le coup du PGN du livre : c'est sa partie qui compte ici.
+	Use the PGN's move	Utiliser le coup du PGN
+	Keep the book's move	Garder le coup du livre
+	The choice was not kept: {e}	Le choix n'a pas été conservé : {e}

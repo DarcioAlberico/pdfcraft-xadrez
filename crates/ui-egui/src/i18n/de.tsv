@@ -3354,3 +3354,10 @@ castling	long	lang
 	Go to its page and put the game on the board.	Zu ihrer Seite gehen und die Partie aufs Brett setzen.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Das Buch ist mit seiner PGN verknüpft: {linked} von {moves} Zügen ({recovered} aus der PGN gelesen), {conflict} im Konflikt.
 	Link the whole book to its PGN	Das ganze Buch mit seiner PGN verknüpfen
+	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	Die PGN des Buchs spielt diesen Zug aus einer anderen Stellung: prüfen und dann den Zug der PGN übernehmen oder den des Buchs behalten.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	PGN des Buchs auf dieser Seite: {confirmed} bestätigt, {recovered} aus der PGN gelesen, {conflict} im Konflikt ({open} zu prüfen).
+	You kept the book's move.	Sie haben den Zug des Buchs behalten.
+	You chose the book's PGN's move: its game is the one to follow here.	Sie haben den Zug der PGN des Buchs gewählt: deren Partie gilt hier.
+	Use the PGN's move	Zug der PGN übernehmen
+	Keep the book's move	Zug des Buchs behalten
+	The choice was not kept: {e}	Die Wahl wurde nicht gespeichert: {e}

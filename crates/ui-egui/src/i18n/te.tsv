@@ -3228,3 +3228,10 @@ castling	long	పెద్ద
 	Go to its page and put the game on the board.	దాని పేజీకి వెళ్లి ఆటను బోర్డుపై ఉంచండి.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	పుస్తకం దాని PGN కు అనుసంధానించబడింది: {moves} ఎత్తులలో {linked} (PGN నుండి {recovered}), {conflict} వైరుధ్యంలో.
 	Link the whole book to its PGN	మొత్తం పుస్తకాన్ని దాని PGN కు అనుసంధానించండి
+	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	పుస్తకం PGN ఈ ఎత్తును మరొక స్థితి నుండి ఆడుతుంది: సరిచూసి, PGN ఎత్తును ఉపయోగించండి లేదా పుస్తకం ఎత్తును ఉంచండి.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	ఈ పేజీలో పుస్తకం PGN: {confirmed} ధృవీకరించబడ్డాయి, {recovered} PGN నుండి చదివినవి, {conflict} వైరుధ్యంలో ({open} సమీక్షకు).
+	You kept the book's move.	మీరు పుస్తకం ఎత్తును ఉంచారు.
+	You chose the book's PGN's move: its game is the one to follow here.	మీరు పుస్తకం PGN ఎత్తును ఎంచుకున్నారు: ఇక్కడ దాని ఆటే చెల్లుతుంది.
+	Use the PGN's move	PGN ఎత్తును ఉపయోగించండి
+	Keep the book's move	పుస్తకం ఎత్తును ఉంచండి
+	The choice was not kept: {e}	ఎంపిక భద్రపరచబడలేదు: {e}

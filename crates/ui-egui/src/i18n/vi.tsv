@@ -3606,3 +3606,10 @@ castling	long	xa
 	Go to its page and put the game on the board.	Đi đến trang của ván cờ và đặt nó lên bàn cờ.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Sách đã được liên kết với PGN: {linked} trên {moves} nước ({recovered} lấy từ PGN), {conflict} xung đột.
 	Link the whole book to its PGN	Liên kết toàn bộ sách với PGN của nó
+	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	PGN của sách đi nước này từ một thế cờ khác: hãy kiểm tra, rồi dùng nước của PGN hoặc giữ nước của sách.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	PGN của sách ở trang này: {confirmed} đã xác nhận, {recovered} lấy từ PGN, {conflict} xung đột ({open} cần xem lại).
+	You kept the book's move.	Bạn đã giữ nước của sách.
+	You chose the book's PGN's move: its game is the one to follow here.	Bạn đã chọn nước của PGN sách: ván cờ của nó là ván áp dụng ở đây.
+	Use the PGN's move	Dùng nước của PGN
+	Keep the book's move	Giữ nước của sách
+	The choice was not kept: {e}	Lựa chọn chưa được lưu: {e}

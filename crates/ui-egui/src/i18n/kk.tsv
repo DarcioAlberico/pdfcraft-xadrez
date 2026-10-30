@@ -3351,3 +3351,10 @@ castling	long	ұзын
 	Go to its page and put the game on the board.	Оның бетіне өтіп, ойынды тақтаға қою.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Кітап PGN файлымен байланыстырылды: {moves} жүрістің {linked} ({recovered} PGN-нен алынды), {conflict} қайшылықта.
 	Link the whole book to its PGN	Бүкіл кітапты PGN файлымен байланыстыру
+	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	Кітаптың PGN файлы бұл жүрісті басқа позициядан жасайды: тексеріп, PGN жүрісін қолданыңыз немесе кітап жүрісін қалдырыңыз.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	Осы беттегі кітаптың PGN файлы: расталды — {confirmed}, PGN-нен алынды — {recovered}, қайшылықта — {conflict} (тексеруге — {open}).
+	You kept the book's move.	Кітаптың жүрісін қалдырдыңыз.
+	You chose the book's PGN's move: its game is the one to follow here.	Кітаптың PGN жүрісін таңдадыңыз: мұнда оның ойыны жарамды.
+	Use the PGN's move	PGN жүрісін қолдану
+	Keep the book's move	Кітап жүрісін қалдыру
+	The choice was not kept: {e}	Таңдау сақталмады: {e}

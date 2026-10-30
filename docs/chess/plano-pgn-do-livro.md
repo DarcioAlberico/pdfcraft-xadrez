@@ -1,6 +1,6 @@
 # Plano de implantação — Carregar PGN do livro · v1
 
-**Status:** v10 · 2026-10-30 · R0 (#229), R1 (#231), R2 (#233), R3 (#234), R4 (#235), R5 (#237), R6a (#238), R6b (#240), R6c (#241) e R6d feitos; R6e–R6g e R7 a fazer.
+**Status:** v11 · 2026-10-30 · R0 (#229), R1 (#231), R2 (#233), R3 (#234), R4 (#235), R5 (#237), R6a (#238), R6b (#240), R6c (#241), R6d (#243) e R6e feitos; R6f, R6g e R7 a fazer.
 **Origem:** pedido do usuário em 2026-10-29: "quando temos o PDF digital e o PGN dele, daria pra implementar uma função carregar PGN para aproveitar esse PGN?". Analisamos o par em `C:\Users\AMD\Documents\PDFCraft_Arquivos\PDF e PGN`: *Beat the French Defence with 3.Nc3* (Harikrishna; 748 páginas, gerado pelo calibre a partir de um curso Chessable) e o PGN do curso (120 partidas, "Chapter N / Game M").
 **Repositório:** `DarcioAlberico/pdfcraft-xadrez`. Crates: `chess` (L0), `chessvision`, `engine` (L6), `automation`, `ui-egui`.
 **Público de cada passo:** uma sessão de agente que começa do zero. Cada passo traz o contexto, as tarefas, a verificação e o critério de saída.
@@ -251,7 +251,13 @@ R3 e R4 podem correr em paralelo depois de R2. R6 só começa depois de R5.
 - R6d, o que mudou em relação ao texto do passo:
   - **O resumo não aparece ao carregar**: é o fim do Ligar o livro inteiro, pelo custo medido acima.
   - **A lista fica na aba Texto**, não na lista de partidas do Tabuleiro: as partidas do PGN não são partidas do usuário até ele abrir uma.
-- R6e–R6g e R7: a fazer.
+- R6e: feito.
+  - **A escolha num conflito**: o menu de um lance em conflito com o PGN oferece "Usar o lance do PGN" e "Manter o lance do livro". O lance escolhido sai do "a revisar" da página ("C em conflito (A a revisar)"); com o PGN escolhido ele aparece sublinhado e a dica diz que a partida do PGN é a que vale ali; mantido, aparece como os outros. O menu só oferece a escolha que não foi feita, para mudar de ideia.
+  - **Guardada com o PGN** (`reference_store::Decision`, num campo `decisions` opcional do arquivo do R5, que segue lendo os arquivos sem ele): cada decisão pelo lugar do lance na página (página, bloco, posição) e pelo SAN impresso, para uma página lida de outro jeito não herdar a decisão de outro lance. Guardar outro PGN descarta as decisões; Salvar como as leva. `chess_reference_status` diz quantas há.
+- R6e, o que mudou em relação ao texto do passo:
+  - **A escolha não muda o texto nem a partida lida**: pela D1 o texto da aba é o do livro. "Usar o lance do PGN" marca o lance como resolvido a favor do PGN, cuja partida se abre naquele lance (R6c), e a exportação comentada já usa o PGN.
+  - **Não há uma fila de conflitos do livro inteiro**: cada página diz quantos tem a revisar, e o Ligar o livro inteiro (R6d) diz o total.
+- R6f, R6g e R7: a fazer.
 
 ## 4. Decisões do usuário
 
@@ -278,3 +284,4 @@ R3 e R4 podem correr em paralelo depois de R2. R6 só começa depois de R5.
 - **v8 (2026-10-30):** R6b feito (o chip, a origem do PGN exportado e a sugestão na aba Diagrama).
 - **v9 (2026-10-30):** R6c feito (a partida do PGN no Tabuleiro e o PGN ao lado do PDF).
 - **v10 (2026-10-30):** o resto do R6 dividido em R6d–R6g; R6d feito (o livro inteiro ligado, com a medida do custo).
+- **v11 (2026-10-30):** R6e feito (a escolha num conflito, guardada com o PGN).

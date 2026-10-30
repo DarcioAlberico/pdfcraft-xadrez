@@ -34,6 +34,7 @@ use pdfcraft_engine::chess::pdfcraft_chessvision::doc::html::{Figurines, plain_t
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::markdown::PgnPositions;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::{self, LinkKind};
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, ChessDoc, Inline, MoveInline, MoveStatus, ReviewFlag, UserRect};
+use pdfcraft_engine::chess::reference_store::Choice;
 use pdfcraft_engine::chess::span::{GameSpanRead, MoveAt};
 
 use crate::theme::Tokens;
@@ -166,6 +167,12 @@ pub enum TextAction {
         game: usize,
         page: Option<usize>,
     },
+    /// The user's choice for a move in conflict with the PGN (R6e).
+    Decide {
+        at: MoveAt,
+        san: String,
+        choice: pdfcraft_engine::chess::reference_store::Choice,
+    },
 }
 
 /// The book's PGN row: what the document keeps, and the button to load or remove it; with none
@@ -265,7 +272,10 @@ fn reference_note(m: &MoveInline) -> Option<(LinkKind, String)> {
             let san = m.review.iter().find_map(|f| if let ReviewFlag::FromReference { san } = f { Some(san.as_str()) } else { None }).unwrap_or("");
             Some((kind, crate::i18n::fmt(tl!("Read from the book's PGN: {san}"), &[("san", san)])))
         }
-        LinkKind::Conflict => Some((kind, tl!("The book's PGN plays this move from another position: check it.").to_string())),
+        LinkKind::Conflict => Some((
+            kind,
+            tl!("The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.").to_string(),
+        )),
         LinkKind::Confirmed | LinkKind::Absent => None,
     }
 }
@@ -414,29 +424,39 @@ pub fn text_tab(
         ui.label(egui::RichText::new(n).small().color(t.text_muted));
     }
     if book_pgn.is_some() {
-        let mut counts = [0usize; 3];
-        let moves = x
-            .chess
-            .pages
-            .iter()
-            .flat_map(|p| &p.blocks)
-            .flat_map(|b| b.inlines())
-            .filter_map(|i| if let Inline::Move(m) = i { Some(m) } else { None });
-        for m in moves {
+        let mut counts = [0usize; 4];
+        // Each move with its place on the page, for the decisions on conflicts (R6e).
+        let placed = x.chess.pages.iter().flat_map(|p| {
+            p.blocks.iter().enumerate().flat_map(move |(b, block)| {
+                block
+                    .inlines()
+                    .iter()
+                    .enumerate()
+                    .map(move |(i, inline)| (MoveAt { page: usize::try_from(p.index).unwrap_or(usize::MAX), block: b, inline: i }, inline))
+            })
+        });
+        for (at, m) in placed.filter_map(|(at, i)| if let Inline::Move(m) = i { Some((at, m)) } else { None }) {
             let slot = match m.reference.as_ref().map(|r| r.kind) {
                 Some(LinkKind::Confirmed) => counts.get_mut(0),
                 Some(LinkKind::Recovered) => counts.get_mut(1),
-                Some(LinkKind::Conflict) => counts.get_mut(2),
+                Some(LinkKind::Conflict) => {
+                    if pgn.choice(at, &m.san).is_none()
+                        && let Some(open) = counts.get_mut(3)
+                    {
+                        *open = open.saturating_add(1);
+                    }
+                    counts.get_mut(2)
+                }
                 Some(LinkKind::Absent) | None => None,
             };
             if let Some(n) = slot {
                 *n = n.saturating_add(1);
             }
         }
-        let [confirmed, recovered, conflict] = counts.map(|n| n.to_string());
+        let [confirmed, recovered, conflict, open] = counts.map(|n| n.to_string());
         let said = crate::i18n::fmt(
-            tl!("Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict."),
-            &[("confirmed", &confirmed), ("recovered", &recovered), ("conflict", &conflict)],
+            tl!("Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review)."),
+            &[("confirmed", &confirmed), ("recovered", &recovered), ("conflict", &conflict), ("open", &open)],
         );
         ui.label(egui::RichText::new(said).small().color(t.text_muted));
     }
@@ -470,8 +490,19 @@ pub fn text_tab(
                             Inline::Move(m) => {
                                 let shown = plain_text_with(std::slice::from_ref(inline), figurines);
                                 let mut tip = status_label(m.status).to_string();
+                                let at = MoveAt { page, block: bi, inline: k };
                                 let linked = reference_note(m);
-                                if let Some((_, note)) = &linked {
+                                // A conflict the user decided says what they chose (R6e).
+                                let conflict = linked.as_ref().is_some_and(|(k, _)| *k == LinkKind::Conflict);
+                                let choice = if conflict { pgn.choice(at, &m.san) } else { None };
+                                let note = match choice {
+                                    Some(Choice::Book) => Some(tl!("You kept the book's move.").to_string()),
+                                    Some(Choice::Pgn) => {
+                                        Some(tl!("You chose the book's PGN's move: its game is the one to follow here.").to_string())
+                                    }
+                                    None => linked.as_ref().map(|(_, n)| n.clone()),
+                                };
+                                if let Some(note) = &note {
                                     tip = format!("{tip}\n{note}");
                                 }
                                 if let Some(fen) = &m.fen {
@@ -488,11 +519,10 @@ pub fn text_tab(
                                 } else if opens {
                                     tip = format!("{tip}\n{}", tl!("Double-click to open this game on the board."));
                                 }
-                                let at = MoveAt { page, block: bi, inline: k };
                                 let mut text = egui::RichText::new(shown).color(status_colour(m.status, &Tokens::get(ui.ctx()))).strong();
-                                text = match linked.map(|(k, _)| k) {
-                                    Some(LinkKind::Recovered) => text.underline(),
-                                    Some(LinkKind::Conflict) => text.italics(),
+                                text = match (linked.map(|(k, _)| k), choice) {
+                                    (Some(LinkKind::Recovered), _) | (Some(LinkKind::Conflict), Some(Choice::Pgn)) => text.underline(),
+                                    (Some(LinkKind::Conflict), None) => text.italics(),
                                     _ => text,
                                 };
                                 let r = ui.add(egui::Label::new(text).sense(egui::Sense::click())).on_hover_text(tip);
@@ -520,6 +550,17 @@ pub fn text_tab(
                                         if opens && ui.button(tl!("Open this game on the board")).clicked() {
                                             action = Some(TextAction::OpenGame(at));
                                             ui.close();
+                                        }
+                                        // A move in conflict: the user's choice (R6e).
+                                        if conflict {
+                                            ui.separator();
+                                            for (c, label) in [(Choice::Pgn, tl!("Use the PGN's move")), (Choice::Book, tl!("Keep the book's move"))]
+                                            {
+                                                if choice != Some(c) && ui.button(label).clicked() {
+                                                    action = Some(TextAction::Decide { at, san: m.san.clone(), choice: c });
+                                                    ui.close();
+                                                }
+                                            }
                                         }
                                     });
                                 }
@@ -881,6 +922,7 @@ impl PdfCraftApp {
             TextAction::BookPgn(false) => self.clear_book_pgn(),
             TextAction::SiblingPgn => self.use_sibling_pgn(),
             TextAction::LinkBook => self.link_whole_book(),
+            TextAction::Decide { at, san, choice } => self.decide_book_move(at, san, choice),
             TextAction::PgnGameAt { game, page } => {
                 let Some((vi, id)) = self.active_ids() else { return };
                 if let Some(view) = page.and_then(|p| self.views.get_mut(vi).map(|v| (v, p))) {

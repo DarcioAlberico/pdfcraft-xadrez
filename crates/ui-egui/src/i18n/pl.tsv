@@ -3297,3 +3297,10 @@ castling	long	długa
 	Go to its page and put the game on the board.	Przejdź do jej strony i postaw partię na szachownicy.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Książka jest powiązana z PGN: {linked} z {moves} posunięć (odczytane z PGN: {recovered}), w konflikcie: {conflict}.
 	Link the whole book to its PGN	Powiąż całą książkę z jej PGN
+	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	PGN książki gra to posunięcie z innej pozycji: sprawdź je, a potem użyj posunięcia z PGN albo zachowaj posunięcie z książki.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	PGN książki na tej stronie: potwierdzone: {confirmed}, odczytane z PGN: {recovered}, w konflikcie: {conflict} (do sprawdzenia: {open}).
+	You kept the book's move.	Zachowano posunięcie z książki.
+	You chose the book's PGN's move: its game is the one to follow here.	Wybrano posunięcie z PGN książki: tu obowiązuje jego partia.
+	Use the PGN's move	Użyj posunięcia z PGN
+	Keep the book's move	Zachowaj posunięcie z książki
+	The choice was not kept: {e}	Wybór nie został zachowany: {e}

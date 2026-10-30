@@ -3325,3 +3325,10 @@ castling	long	μεγάλο
 	Go to its page and put the game on the board.	Μετάβαση στη σελίδα της και τοποθέτηση της παρτίδας στη σκακιέρα.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Το βιβλίο συνδέθηκε με το PGN του: {linked} από {moves} κινήσεις ({recovered} από το PGN), {conflict} σε σύγκρουση.
 	Link the whole book to its PGN	Σύνδεση ολόκληρου του βιβλίου με το PGN του
+	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	Το PGN του βιβλίου παίζει αυτή την κίνηση από άλλη θέση: ελέγξτε την και μετά χρησιμοποιήστε την κίνηση του PGN ή κρατήστε την κίνηση του βιβλίου.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	PGN του βιβλίου σε αυτή τη σελίδα: {confirmed} επιβεβαιωμένες, {recovered} από το PGN, {conflict} σε σύγκρουση ({open} για έλεγχο).
+	You kept the book's move.	Κρατήσατε την κίνηση του βιβλίου.
+	You chose the book's PGN's move: its game is the one to follow here.	Επιλέξατε την κίνηση του PGN του βιβλίου: εδώ ισχύει η παρτίδα του.
+	Use the PGN's move	Χρήση της κίνησης του PGN
+	Keep the book's move	Διατήρηση της κίνησης του βιβλίου
+	The choice was not kept: {e}	Η επιλογή δεν φυλάχτηκε: {e}

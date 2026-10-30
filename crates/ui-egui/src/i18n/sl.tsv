@@ -3358,3 +3358,10 @@ castling	long	dolga
 	Go to its page and put the game on the board.	Pojdi na njeno stran in postavi partijo na šahovnico.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Knjiga je povezana s PGN: {linked} od {moves} potez (prebranih iz PGN {recovered}), v sporu {conflict}.
 	Link the whole book to its PGN	Poveži celo knjigo z njenim PGN
+	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	PGN knjige igra to potezo iz drugega položaja: preverite jo, nato uporabite potezo iz PGN ali obdržite potezo iz knjige.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	PGN knjige na tej strani: potrjenih {confirmed}, prebranih iz PGN {recovered}, v sporu {conflict} (za pregled {open}).
+	You kept the book's move.	Obdržali ste potezo iz knjige.
+	You chose the book's PGN's move: its game is the one to follow here.	Izbrali ste potezo iz PGN knjige: tu velja njegova partija.
+	Use the PGN's move	Uporabi potezo iz PGN
+	Keep the book's move	Obdrži potezo iz knjige
+	The choice was not kept: {e}	Izbira ni bila shranjena: {e}

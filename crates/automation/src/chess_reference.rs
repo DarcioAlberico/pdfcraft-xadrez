@@ -51,6 +51,8 @@ fn loaded_reply(loaded: &Loaded) -> Value {
         "at": pgn.map(|p| p.at),
         "games": pgn.map(|p| p.games),
         "moves": pgn.map(|p| p.moves),
+        // The user's choices on moves in conflict with it, made in the app (R6e).
+        "decisions": loaded.file.as_ref().map(|f| f.decisions.len()),
         "read_only": loaded.read_only.is_some(),
         "set_aside": loaded.set_aside.as_ref().map(|(name, why)| json!({ "file": name, "why": why })),
     })

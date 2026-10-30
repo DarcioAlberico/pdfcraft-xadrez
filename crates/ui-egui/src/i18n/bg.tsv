@@ -3316,3 +3316,10 @@ castling	long	дълга
 	Go to its page and put the game on the board.	Отиване на нейната страница и поставяне на партията на дъската.
 	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Книгата е свързана с нейния PGN: ходове – {linked} от {moves} (взети от PGN – {recovered}), в конфликт – {conflict}.
 	Link the whole book to its PGN	Свързване на цялата книга с нейния PGN
+	The book's PGN plays this move from another position: check it, then use the PGN's move or keep the book's.	PGN на книгата играе този ход от друга позиция: проверете го, после използвайте хода от PGN или запазете хода от книгата.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict ({open} to review).	PGN на книгата на тази страница: потвърдени – {confirmed}, взети от PGN – {recovered}, в конфликт – {conflict} (за проверка – {open}).
+	You kept the book's move.	Запазихте хода от книгата.
+	You chose the book's PGN's move: its game is the one to follow here.	Избрахте хода от PGN на книгата: тук важи неговата партия.
+	Use the PGN's move	Използване на хода от PGN
+	Keep the book's move	Запазване на хода от книгата
+	The choice was not kept: {e}	Изборът не беше запазен: {e}
