@@ -3578,3 +3578,12 @@ castling	long	ilgoji
 	Read from the book's PGN: {san}	Paimta iš knygos PGN: {san}
 	The book's PGN plays this move from another position: check it.	Knygos PGN šį ėjimą žaidžia iš kitos pozicijos: patikrinkite.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	Knygos PGN šiame puslapyje: patvirtinta {confirmed}, paimta iš PGN {recovered}, prieštarauja {conflict}.
+	Confirmed by the PGN	Patvirtinta PGN
+	The book's PGN has this position, so it needs no review.	Knygos PGN turi šią poziciją, todėl jos tikrinti nereikia.
+	PGN games from	PGN partijos iš
+	The book's PGN, with the book's text	Knygos PGN su knygos tekstu
+	The text read from the PDF	Iš PDF perskaityto teksto
+	With the book's PGN, the PGN export writes its games, every line kept, with the book's text as comments and $220 where a diagram shows a move.	Turint knygos PGN, PGN eksportas įrašo jo partijas su visais variantais, knygos tekstu kaip komentarais ir $220 ten, kur diagrama rodo ėjimą.
+	The book's PGN shows: {changes}	Knygos PGN rodo: {changes}
+	Use the PGN's position	Naudoti PGN poziciją
+	Put the PGN's position on the board. It is kept only when you confirm it.	Padeda PGN poziciją ant lentos. Ji išsaugoma tik jums patvirtinus.

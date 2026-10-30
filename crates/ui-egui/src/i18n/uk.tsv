@@ -3349,3 +3349,12 @@ castling	long	довга
 	Read from the book's PGN: {san}	Взято з PGN книги: {san}
 	The book's PGN plays this move from another position: check it.	У PGN книги цей хід зроблено з іншої позиції: перевірте його.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	PGN книги на цій сторінці: підтверджено — {confirmed}, взято з PGN — {recovered}, у конфлікті — {conflict}.
+	Confirmed by the PGN	Підтверджено PGN
+	The book's PGN has this position, so it needs no review.	У PGN книги є ця позиція, тож її не треба перевіряти.
+	PGN games from	Партії PGN брати з
+	The book's PGN, with the book's text	PGN книги з текстом книги
+	The text read from the PDF	Тексту, прочитаного з PDF
+	With the book's PGN, the PGN export writes its games, every line kept, with the book's text as comments and $220 where a diagram shows a move.	З PGN книги експорт у PGN записує його партії з усіма варіантами, текстом книги в коментарях і $220 там, де діаграма показує хід.
+	The book's PGN shows: {changes}	У PGN книги: {changes}
+	Use the PGN's position	Узяти позицію з PGN
+	Put the PGN's position on the board. It is kept only when you confirm it.	Ставить позицію з PGN на дошку. Її збережено, лише коли ви її підтвердите.

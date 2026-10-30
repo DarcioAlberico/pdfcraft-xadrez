@@ -3202,3 +3202,12 @@ castling	long	పెద్ద
 	Read from the book's PGN: {san}	పుస్తకం PGN నుండి చదివినది: {san}
 	The book's PGN plays this move from another position: check it.	పుస్తకం PGN ఈ ఎత్తును మరొక స్థితి నుండి ఆడుతుంది: సరిచూడండి.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	ఈ పేజీలో పుస్తకం PGN: {confirmed} ధృవీకరించబడ్డాయి, {recovered} PGN నుండి చదివినవి, {conflict} వైరుధ్యంలో ఉన్నాయి.
+	Confirmed by the PGN	PGN ధృవీకరించింది
+	The book's PGN has this position, so it needs no review.	పుస్తకం PGN లో ఈ స్థితి ఉంది, కాబట్టి దీనికి సమీక్ష అవసరం లేదు.
+	PGN games from	PGN ఆటలు దీని నుండి
+	The book's PGN, with the book's text	పుస్తకం PGN, పుస్తకం పాఠ్యంతో
+	The text read from the PDF	PDF నుండి చదివిన పాఠ్యం
+	With the book's PGN, the PGN export writes its games, every line kept, with the book's text as comments and $220 where a diagram shows a move.	పుస్తకం PGN ఉన్నప్పుడు, PGN ఎగుమతి దాని ఆటలను అన్ని వైవిధ్యాలతో, పుస్తకం పాఠ్యాన్ని వ్యాఖ్యలుగా, మరియు చిత్రం ఎత్తును చూపే చోట $220 తో వ్రాస్తుంది.
+	The book's PGN shows: {changes}	పుస్తకం PGN చూపిస్తుంది: {changes}
+	Use the PGN's position	PGN స్థితిని ఉపయోగించండి
+	Put the PGN's position on the board. It is kept only when you confirm it.	PGN స్థితిని బోర్డుపై ఉంచుతుంది. మీరు ధృవీకరించినప్పుడే అది భద్రపరచబడుతుంది.

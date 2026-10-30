@@ -3468,3 +3468,12 @@ castling	long	largo
 	Read from the book's PGN: {san}	Leída del PGN del libro: {san}
 	The book's PGN plays this move from another position: check it.	El PGN del libro juega esta jugada desde otra posición: compruébela.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	PGN del libro en esta página: {confirmed} confirmadas, {recovered} leídas del PGN, {conflict} en conflicto.
+	Confirmed by the PGN	Confirmado por el PGN
+	The book's PGN has this position, so it needs no review.	El PGN del libro tiene esta posición, así que no necesita revisión.
+	PGN games from	Partidas del PGN desde
+	The book's PGN, with the book's text	El PGN del libro, con el texto del libro
+	The text read from the PDF	El texto leído del PDF
+	With the book's PGN, the PGN export writes its games, every line kept, with the book's text as comments and $220 where a diagram shows a move.	Con el PGN del libro, la exportación PGN escribe sus partidas, con todas las líneas, el texto del libro como comentarios y $220 donde un diagrama muestra una jugada.
+	The book's PGN shows: {changes}	El PGN del libro muestra: {changes}
+	Use the PGN's position	Usar la posición del PGN
+	Put the PGN's position on the board. It is kept only when you confirm it.	Pone la posición del PGN en el tablero. Solo se guarda cuando la confirma.

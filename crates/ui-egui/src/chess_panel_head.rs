@@ -19,7 +19,8 @@ const BUTTON: f32 = 26.0;
 
 /// The header row. `busy`: a scan runs (for this document or another), so none can start;
 /// `pages`: the document's page count; `running`: this document's scan, pages done of the total;
-/// `positions`: which diagrams the PGN export gives a game of their own.
+/// `positions`: which diagrams the PGN export gives a game of their own; `source`: where it takes
+/// its games from, when the document keeps a book's PGN.
 pub(crate) fn header(
     ui: &mut egui::Ui,
     t: &Tokens,
@@ -27,6 +28,7 @@ pub(crate) fn header(
     pages: usize,
     running: Option<(usize, usize)>,
     positions: PgnPositions,
+    source: Option<crate::chess_export_ui::PgnSource>,
 ) -> Option<PanelAction> {
     let mut action = None;
     ui.horizontal(|ui| {
@@ -55,7 +57,7 @@ pub(crate) fn header(
         }
         let export = icons::button(ui, "file-output", BUTTON, false, tl!("Export…"));
         egui::Popup::menu(&export).show(|ui| {
-            if let Some(a) = crate::chess_export_ui::items(ui, positions) {
+            if let Some(a) = crate::chess_export_ui::items(ui, positions, source) {
                 action = Some(PanelAction::Text(a));
             }
         });
@@ -141,7 +143,7 @@ mod tests {
                 return;
             }
             let t = Tokens::get(ui.ctx());
-            if let Some(a) = header(ui, &t, true, 703, Some((74, 703)), PgnPositions::default()) {
+            if let Some(a) = header(ui, &t, true, 703, Some((74, 703)), PgnPositions::default(), None) {
                 seen.set(Some(a));
             }
         });

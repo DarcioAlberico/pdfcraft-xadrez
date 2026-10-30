@@ -3299,3 +3299,12 @@ castling	long	μεγάλο
 	Read from the book's PGN: {san}	Από το PGN του βιβλίου: {san}
 	The book's PGN plays this move from another position: check it.	Το PGN του βιβλίου παίζει αυτή την κίνηση από άλλη θέση: ελέγξτε την.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	PGN του βιβλίου σε αυτή τη σελίδα: {confirmed} επιβεβαιωμένες, {recovered} από το PGN, {conflict} σε σύγκρουση.
+	Confirmed by the PGN	Επιβεβαιωμένο από το PGN
+	The book's PGN has this position, so it needs no review.	Το PGN του βιβλίου έχει αυτή τη θέση, οπότε δεν χρειάζεται έλεγχο.
+	PGN games from	Παρτίδες PGN από
+	The book's PGN, with the book's text	Το PGN του βιβλίου, με το κείμενο του βιβλίου
+	The text read from the PDF	Το κείμενο που διαβάστηκε από το PDF
+	With the book's PGN, the PGN export writes its games, every line kept, with the book's text as comments and $220 where a diagram shows a move.	Με το PGN του βιβλίου, η εξαγωγή PGN γράφει τις παρτίδες του με όλες τις παραλλαγές, το κείμενο του βιβλίου ως σχόλια και $220 όπου ένα διάγραμμα δείχνει κίνηση.
+	The book's PGN shows: {changes}	Το PGN του βιβλίου δείχνει: {changes}
+	Use the PGN's position	Χρήση της θέσης του PGN
+	Put the PGN's position on the board. It is kept only when you confirm it.	Βάζει τη θέση του PGN στη σκακιέρα. Φυλάσσεται μόνο όταν την επιβεβαιώσετε.

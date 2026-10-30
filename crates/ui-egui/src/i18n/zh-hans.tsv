@@ -3291,3 +3291,12 @@ castling	long	长
 	Read from the book's PGN: {san}	从本书的 PGN 读取：{san}
 	The book's PGN plays this move from another position: check it.	本书的 PGN 从另一局面走出这步棋：请核对。
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	此页的本书 PGN：已确认 {confirmed}，从 PGN 读取 {recovered}，冲突 {conflict}。
+	Confirmed by the PGN	已由 PGN 确认
+	The book's PGN has this position, so it needs no review.	本书的 PGN 包含此局面，因此无需复核。
+	PGN games from	PGN 对局来自
+	The book's PGN, with the book's text	本书的 PGN，附带书中文字
+	The text read from the PDF	从 PDF 读取的文字
+	With the book's PGN, the PGN export writes its games, every line kept, with the book's text as comments and $220 where a diagram shows a move.	有本书的 PGN 时，PGN 导出会写入其对局，保留所有变着，书中文字作为注释，并在图示所示着法处加 $220。
+	The book's PGN shows: {changes}	本书的 PGN 显示：{changes}
+	Use the PGN's position	使用 PGN 的局面
+	Put the PGN's position on the board. It is kept only when you confirm it.	将 PGN 的局面放到棋盘上。只有在你确认后才会保存。

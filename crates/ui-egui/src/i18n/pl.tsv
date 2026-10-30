@@ -3271,3 +3271,12 @@ castling	long	długa
 	Read from the book's PGN: {san}	Odczytane z PGN książki: {san}
 	The book's PGN plays this move from another position: check it.	PGN książki gra to posunięcie z innej pozycji: sprawdź je.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	PGN książki na tej stronie: potwierdzone: {confirmed}, odczytane z PGN: {recovered}, w konflikcie: {conflict}.
+	Confirmed by the PGN	Potwierdzone przez PGN
+	The book's PGN has this position, so it needs no review.	PGN książki ma tę pozycję, więc nie wymaga sprawdzenia.
+	PGN games from	Partie PGN z
+	The book's PGN, with the book's text	PGN książki, z tekstem książki
+	The text read from the PDF	Tekstu odczytanego z PDF
+	With the book's PGN, the PGN export writes its games, every line kept, with the book's text as comments and $220 where a diagram shows a move.	Z PGN książki eksport PGN zapisuje jego partie ze wszystkimi wariantami, tekstem książki jako komentarzami i $220 tam, gdzie diagram pokazuje posunięcie.
+	The book's PGN shows: {changes}	PGN książki pokazuje: {changes}
+	Use the PGN's position	Użyj pozycji z PGN
+	Put the PGN's position on the board. It is kept only when you confirm it.	Stawia pozycję z PGN na szachownicy. Zostanie zachowana dopiero po potwierdzeniu.

@@ -286,8 +286,9 @@ impl PdfCraftApp {
         }
         self.chess.book_pgns.docs.retain(|d| d.doc != id);
         self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, index: Some(Arc::new(index)), summary: Some(summary.clone()) });
-        // The Text tab reads its page again, linked to it.
+        // The Text tab reads its page again, linked to it, and the Diagrams list takes it.
         self.chess.text = None;
+        self.refresh_chess_kinds();
         self.notify(crate::i18n::fmt(
             tl!("Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it."),
             &[("name", name), ("games", &summary.games.to_string()), ("moves", &summary.moves.to_string())],
@@ -304,6 +305,7 @@ impl PdfCraftApp {
                 self.chess.book_pgns.docs.retain(|d| d.doc != id);
                 self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, index: None, summary: None });
                 self.chess.text = None;
+                self.refresh_chess_kinds();
                 let said = if cleared { tl!("The book's PGN was removed from this document.") } else { tl!("This document keeps no book's PGN.") };
                 self.notify(said.to_string());
             }
@@ -325,6 +327,57 @@ impl PdfCraftApp {
             }
             Err(e) => self.notify(crate::i18n::fmt(tl!("The book's PGN was not kept for the saved file: {e}"), &[("e", &e.to_string())])),
         }
+    }
+}
+
+/// The book's PGN's suggestion for a diagram: a position 1 or 2 squares from its reading, linked
+/// on its page or the pages beside it (`reference::link`, R3).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct Suggestion {
+    pub fen: String,
+    /// The squares that differ: "e4: N → ·" (as read → as the PGN has it).
+    pub changes: Vec<String>,
+}
+
+/// The suggestion for diagram `index` of `page` of document `id` in state `stamp`, when the Text
+/// tab's reading of that page (`text`) has one.
+pub(crate) fn suggestion(
+    text: Option<&crate::chess_text_ui::PageText>,
+    id: DocId,
+    stamp: Option<pdfcraft_engine::chess::ScanStamp>,
+    page: usize,
+    index: usize,
+) -> Option<Suggestion> {
+    use pdfcraft_engine::chess::pdfcraft_chessvision::doc::Block;
+    use pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::DiagramKind;
+    let text = text.filter(|t| t.doc == id && t.page == page && Some(t.stamp) == stamp)?;
+    let d = text
+        .chess
+        .pages
+        .iter()
+        .flat_map(|p| &p.blocks)
+        .find_map(|b| if let Block::Diagram(d) = b { Some(d).filter(|d| d.number == index) } else { None })?;
+    let r = d.reference.as_ref().filter(|r| r.kind == DiagramKind::Suggested)?;
+    let piece = |p: Option<char>| p.map_or_else(|| "·".to_owned(), |c| c.to_string());
+    let changes = r.changes.iter().map(|c| format!("{}: {} → {}", c.square, piece(c.from), piece(c.to))).collect();
+    Some(Suggestion { fen: r.fen.clone(), changes })
+}
+
+impl PdfCraftApp {
+    /// Every frame: when the diagram open in the Diagram tab is on the page shown and the
+    /// document keeps a book's PGN, the page is read for the Text tab, linked to it, so the
+    /// tab can offer the PGN's suggestion ([`suggestion`]).
+    pub(crate) fn book_pgn_tick(&mut self) {
+        let Some((vi, id)) = self.active_ids() else { return };
+        let Some(page) = self.chess.editor.as_ref().filter(|e| e.doc == id).map(|e| e.page) else { return };
+        if self.views.get(vi).map(|v| v.current) != Some(page) || self.chess.job.is_some() || self.chess.book_pgns.summary(id).is_none() {
+            return;
+        }
+        let stamp = self.session.chess_stamp(id);
+        if self.chess.text.as_ref().is_some_and(|t| t.doc == id && t.page == page && Some(t.stamp) == stamp) {
+            return;
+        }
+        self.read_chess_text(page, false);
     }
 }
 

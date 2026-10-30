@@ -2117,6 +2117,7 @@ impl PdfCraftApp {
             self.chess_games_action(GamesAction::NewFrom(Some(node)));
         }
         self.chess.games.autosave(Some(now));
+        self.book_pgn_tick();
         #[cfg(target_arch = "wasm32")]
         self.take_chess_uploads();
         #[cfg(target_arch = "wasm32")]

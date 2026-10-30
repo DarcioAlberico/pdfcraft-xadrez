@@ -22,21 +22,24 @@ pub(crate) enum DiagramState {
     Verified,
     /// The user changed the position.
     Corrected,
+    /// Read, and the book's PGN has the position (plan "Carregar PGN do livro", R6b).
+    Reference,
 }
 
 impl DiagramState {
-    /// The state of `reading`, after what the user did with it (`kind`, from the corrections):
-    /// the engine's rule ([`Status::of`]), which `chess_diagram_states` counts by too.
-    pub(crate) fn of(reading: Option<&BoardReading>, kind: Option<Kind>) -> DiagramState {
+    /// The state of `reading`, after what the user did with it (`kind`, from the corrections) and
+    /// whether the book's PGN has its position (`confirmed`, by [`Status::with_reference`]): the
+    /// engine's rule, which `chess_diagram_states` counts by too.
+    pub(crate) fn of(reading: Option<&BoardReading>, kind: Option<Kind>, confirmed: bool) -> DiagramState {
         match Status::of(reading, kind) {
+            Status::Read | Status::Review if confirmed => DiagramState::Reference,
             Status::Read => DiagramState::Read,
             Status::Review => DiagramState::Review,
             Status::Unread => DiagramState::Unread,
             Status::Error => DiagramState::Error,
             Status::Verified => DiagramState::Verified,
             Status::Corrected => DiagramState::Corrected,
-            // Only `Status::with_reference` gives it, and the app has no book's PGN before R6.
-            Status::Reference => DiagramState::Read,
+            Status::Reference => DiagramState::Reference,
         }
     }
 
@@ -48,13 +51,14 @@ impl DiagramState {
             DiagramState::Unread => "circle-dashed",
             DiagramState::Error => "circle-x",
             DiagramState::Verified | DiagramState::Corrected => "badge-check",
+            DiagramState::Reference => "book-open",
         }
     }
 
     /// Its mark's colour (icons, bars, strokes).
     pub(crate) fn colour(self, t: &Tokens) -> Color32 {
         match self {
-            DiagramState::Read | DiagramState::Verified | DiagramState::Corrected => t.success,
+            DiagramState::Read | DiagramState::Verified | DiagramState::Corrected | DiagramState::Reference => t.success,
             DiagramState::Review => t.warning,
             DiagramState::Unread => t.text_faint,
             DiagramState::Error => t.danger,
@@ -64,7 +68,7 @@ impl DiagramState {
     /// Its text colour and the soft fill it reads on at 4.5:1 or more (the page marks' tabs).
     pub(crate) fn text_on_soft(self, t: &Tokens) -> (Color32, Color32) {
         match self {
-            DiagramState::Read | DiagramState::Verified | DiagramState::Corrected => (t.success_text, t.success_soft),
+            DiagramState::Read | DiagramState::Verified | DiagramState::Corrected | DiagramState::Reference => (t.success_text, t.success_soft),
             DiagramState::Review => (t.warning_text, t.warning_soft),
             DiagramState::Unread => (t.text_muted, t.card),
             DiagramState::Error => (t.danger_text, t.danger_soft),
@@ -80,6 +84,7 @@ impl DiagramState {
             DiagramState::Error => tl!("With an error"),
             DiagramState::Verified => tl!("Verified"),
             DiagramState::Corrected => tl!("Corrected"),
+            DiagramState::Reference => tl!("Confirmed by the PGN"),
         }
     }
 
@@ -91,6 +96,7 @@ impl DiagramState {
             DiagramState::Unread | DiagramState::Error => tl!("It couldn't be read. Set the position up in the editor."),
             DiagramState::Verified => tl!("You checked it and kept the reading."),
             DiagramState::Corrected => tl!("You corrected this position."),
+            DiagramState::Reference => tl!("The book's PGN has this position, so it needs no review."),
         }
     }
 }
@@ -120,11 +126,15 @@ mod tests {
 
     #[test]
     fn what_the_user_did_outranks_the_reading() {
-        assert_eq!(DiagramState::of(None, None), DiagramState::Unread);
-        assert_eq!(DiagramState::of(None, Some(Kind::Corrected)), DiagramState::Corrected);
-        assert_eq!(DiagramState::of(None, Some(Kind::Verified)), DiagramState::Verified);
+        assert_eq!(DiagramState::of(None, None, false), DiagramState::Unread);
+        assert_eq!(DiagramState::of(None, Some(Kind::Corrected), false), DiagramState::Corrected);
+        assert_eq!(DiagramState::of(None, Some(Kind::Verified), false), DiagramState::Verified);
+        // The book's PGN having it never makes a diagram not read, or one the user confirmed, Reference.
+        assert_eq!(DiagramState::of(None, None, true), DiagramState::Unread);
+        assert_eq!(DiagramState::of(None, Some(Kind::Corrected), true), DiagramState::Corrected);
         // Every state has its own icon but the two the user made, which share the badge.
-        let all = [DiagramState::Read, DiagramState::Review, DiagramState::Unread, DiagramState::Error, DiagramState::Verified];
+        let all =
+            [DiagramState::Read, DiagramState::Review, DiagramState::Unread, DiagramState::Error, DiagramState::Verified, DiagramState::Reference];
         for (i, a) in all.iter().enumerate() {
             assert!(all.iter().skip(i + 1).all(|b| b.icon() != a.icon() && b.name() != a.name()), "{a:?}");
         }

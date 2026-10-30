@@ -59,7 +59,18 @@ fn synthetic(app: &PdfCraftApp) -> ChessResults {
         kinds.insert((page, 0), (Kind::Verified, START.to_owned()));
         kinds.insert((page, 1), (Kind::Corrected, START.to_owned()));
     }
-    ChessResults { doc: id, stamp, pages, selected: None, reveal: false, model: ModelNote::Loaded, kinds, wanted: (0..PAGES).collect(), all: true }
+    ChessResults {
+        doc: id,
+        stamp,
+        pages,
+        selected: None,
+        reveal: false,
+        model: ModelNote::Loaded,
+        kinds,
+        confirmed: Default::default(),
+        wanted: (0..PAGES).collect(),
+        all: true,
+    }
 }
 
 /// The app on a 100-page book with its Chess diagrams panel open, its 2,000 diagrams listed
@@ -196,4 +207,18 @@ fn two_thousand_diagrams_add_at_most_4_ms_to_a_frame() {
     let with = mean(&mut harness(true));
     eprintln!("frame without diagrams {without:.2} ms, with 2000 {with:.2} ms, added {:.2} ms", with - without);
     assert!(with - without <= 4.0, "{:.2} ms added", with - without);
+}
+
+/// Plan "Carregar PGN do livro", R6b: a diagram whose reading the book's PGN has leaves the review
+/// queue and counts as reviewed.
+#[test]
+fn a_diagram_the_books_pgn_has_leaves_the_review_queue() {
+    let h = harness(false);
+    let mut results = synthetic(h.state());
+    let (queue, reviewed) = (results.review_queue(), results.reviewed());
+    assert!(queue.contains(&(0, 2)), "not read: to review");
+    results.confirmed.insert((0, 2));
+    assert!(!results.review_queue().contains(&(0, 2)));
+    assert_eq!(results.review_queue().len(), queue.len() - 1);
+    assert_eq!(results.reviewed(), (reviewed.0 + 1, reviewed.1));
 }
