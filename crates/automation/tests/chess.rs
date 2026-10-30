@@ -569,6 +569,74 @@ fn chess_document_outputs_outside_the_root_are_refused() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// The book's PGN of `moves.pdf`'s line, the Ruy Lopez to 3...a6.
+const RUY_PGN: &str = "[Event \"Chapter 1\"]\n[White \"Ruy\"]\n\n1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 *\n";
+
+/// A book's own PGN links the text's moves: those the reader played are confirmed, and the two
+/// after a misprinted number, which the reader stopped at, are recovered with the reader's status
+/// kept. The links come in the document JSON, the summary says which game the page discusses,
+/// and nothing in the PDF changes.
+#[test]
+fn chess_document_links_the_moves_to_the_books_pgn() {
+    let (base, root) = workdir("document-reference");
+    std::fs::write(root.join("moves.pdf"), text_pdf("1.e4 e5 2.Nf3 Nc6 5.Bb5 a6")).unwrap();
+    std::fs::write(root.join("book.pgn"), RUY_PGN).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let doc = ok(&mut a, "doc_open", json!({ "path": "moves.pdf" }))["doc"].as_u64().unwrap();
+    let args = json!({ "doc": doc, "lang": "en", "include": ["json"], "reference_pgn": "book.pgn" });
+    let read = ok(&mut a, "chess_document", args);
+    let r = &read["reference"];
+    assert_eq!((r["pgn"].as_str(), r["games"].as_u64(), r["moves"].as_u64()), (Some("book.pgn"), Some(1), Some(6)), "{r:#}");
+    assert_eq!(r["linked"], json!({ "confirmed": 4, "recovered": 2, "conflict": 0, "absent": 0 }), "{r:#}");
+    assert_eq!(r["pages"], json!([{ "page": 1, "game": 1, "name": "Chapter 1 · Ruy" }]));
+    assert_eq!((r["warnings"].as_array().map(Vec::len), r["stopped_games"].as_array().map(Vec::len)), (Some(0), Some(0)));
+    let inlines = read["document"]["pages"][0]["blocks"][0]["inlines"].as_array().unwrap();
+    let moves: Vec<&Value> = inlines.iter().filter(|i| i["type"] == "move").collect();
+    assert_eq!(moves.len(), 6, "{inlines:#?}");
+    assert_eq!(moves[0]["reference"], json!({ "kind": "confirmed", "game": 0, "node": 1 }));
+    assert_eq!((moves[4]["status"].as_str(), &moves[4]["reference"]["kind"]), (Some("out_of_sequence"), &json!("recovered")), "{:#}", moves[4]);
+    assert_eq!(moves[4]["review"], json!([{ "flag": "from_reference", "san": "Bb5" }]));
+    assert_eq!(moves[5]["reference"], json!({ "kind": "recovered", "game": 0, "node": 6 }));
+    // Without the PGN, no link and no summary.
+    let plain = ok(&mut a, "chess_document", json!({ "doc": doc, "lang": "en", "include": ["json"] }));
+    assert!(plain["reference"].is_null() && !plain["document"].to_string().contains("reference"), "{plain:#}");
+    // A PGN of another book is said to be one.
+    std::fs::write(root.join("other.pgn"), "1.d4 d5 2.c4 *").unwrap();
+    let other = ok(&mut a, "chess_document", json!({ "doc": doc, "lang": "en", "reference_pgn": "other.pgn" }));
+    let warnings = other["reference"]["warnings"].as_array().unwrap();
+    assert!(warnings.iter().any(|w| w.as_str().unwrap().contains("does not look like this book's")), "{other:#}");
+    assert_eq!(ok(&mut a, "doc_list", json!({}))["documents"][0]["dirty"], false, "reading is read-only");
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// `reference_pgn` is confined to `--root`: a PGN that exists outside it, and links when copied in,
+/// is refused by relative and absolute path alike. A missing file, a PGN with no moves and one
+/// over 32 MiB are refused, saying so.
+#[test]
+fn chess_document_reference_pgn_outside_the_root_is_refused() {
+    let (base, root) = workdir("document-reference-confined");
+    std::fs::write(root.join("moves.pdf"), text_pdf("1.e4 e5 2.Nf3 Nc6")).unwrap();
+    std::fs::write(base.join("outside").join("book.pgn"), RUY_PGN).unwrap();
+    std::fs::write(root.join("book.pgn"), RUY_PGN).unwrap();
+    std::fs::write(root.join("huge.pgn"), " ".repeat((32 << 20) + 1)).unwrap();
+    std::fs::write(root.join("empty.pgn"), "[Event \"x\"]\n\n*\n").unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let doc = ok(&mut a, "doc_open", json!({ "path": "moves.pdf" }))["doc"].as_u64().unwrap();
+    let inside = ok(&mut a, "chess_document", json!({ "doc": doc, "lang": "en", "reference_pgn": "book.pgn" }));
+    assert_eq!(inside["reference"]["linked"]["confirmed"], 4, "the same PGN links inside the root: {inside:#}");
+    for path in ["../outside/book.pgn".to_string(), base.join("outside").join("book.pgn").to_string_lossy().into_owned()] {
+        match a.call("chess_document", &json!({ "doc": doc, "lang": "en", "reference_pgn": path })) {
+            Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{path}: {m}"),
+            other => panic!("{path} accepted: {other:?}"),
+        }
+    }
+    for (path, needle) in [("missing.pgn", "missing.pgn"), ("empty.pgn", "no moves"), ("huge.pgn", "more than 32 MiB")] {
+        let e = a.call("chess_document", &json!({ "doc": doc, "reference_pgn": path })).unwrap_err();
+        assert!(e.to_string().contains(needle), "{path}: {e}");
+    }
+    let _ = std::fs::remove_dir_all(base);
+}
+
 /// The font diagram gets a label and a link under it (found by `link_list`); the two diagrams
 /// no model reads are skipped with the reason. A dry run changes nothing, a second run adds
 /// nothing, and undo takes it all back.

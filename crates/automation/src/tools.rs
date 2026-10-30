@@ -1388,6 +1388,7 @@ pub fn tools() -> Vec<ToolDef> {
                         o.insert("include".into(), json!({ "type": "array", "items": { "type": "string", "enum": ["json", "pgn"] }, "description": "Add the document (json) and/or the games as PGN (pgn) to the reply." }));
                         o.insert("out".into(), json!({ "type": "string", "description": "Write the document as JSON to this file." }));
                         o.insert("pgn_out".into(), json!({ "type": "string", "description": "Write the games as PGN to this file." }));
+                        o.insert("reference_pgn".into(), json!({ "type": "string", "description": "The book's own PGN (a course's or an e-book's games), at most 32 MiB and 4,096 games: each move of the text is linked to it as confirmed, recovered (the reader could not play it, the PGN did: its status is kept and it gets a from_reference review flag with the PGN's move), conflict (played to a position the PGN does not have) or absent, and each move of the document JSON gets reference {kind, game, node}, its game counting from 0. The reply's reference field sums it up: games, moves, stopped_games, linked counts, diagrams placed on a PGN move, the game each page discusses (pages and games from 1) and warnings, one of them when under 30% of the moves on the first 20 pages read are in the PGN. The text and the games are not changed." }));
                     }
                     insert_corrections(&mut props);
                     props

@@ -23,7 +23,7 @@ use pdfcraft_engine::chess::pdfcraft_chessvision::board::{BoardReading, ReadPosi
 use pdfcraft_engine::chess::pdfcraft_chessvision::cipher::BookCipher;
 use pdfcraft_engine::chess::pdfcraft_chessvision::coords::{PageGeometry, PageRect};
 use pdfcraft_engine::chess::pdfcraft_chessvision::detect::Source;
-use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, Inline, MoveInline, MoveStatus, markdown};
+use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{Block, Inline, MoveInline, MoveStatus, markdown, reference};
 use pdfcraft_engine::chess::pdfcraft_chessvision::merge::Merged;
 use pdfcraft_engine::chess::pdfcraft_chessvision::pieces::{self, PieceSource};
 use pdfcraft_engine::chess::{self, ChessPage, ChessScanSettings, DiagramReplacement, LinkSettings, ModelState, ReadingOrder};
@@ -481,11 +481,21 @@ impl Automation {
         // Resolved before reading, so a path outside the root costs nothing.
         let out = a.opt_str("out")?.map(|p| self.resolve(p, true).map(|r| (p, r))).transpose()?;
         let pgn_out = a.opt_str("pgn_out")?.map(|p| self.resolve(p, true).map(|r| (p, r))).transpose()?;
+        // The book's own PGN (plan "Carregar PGN do livro", R2): indexed before the pages are read,
+        // so a PGN that cannot be used costs nothing.
+        let reference = match a.opt_str("reference_pgn")? {
+            None => None,
+            Some(p) => Some((p, read_reference(&self.resolve(p, false)?, p)?)),
+        };
         let id = self.doc(a)?.id;
         let (seed, cipher_out) = self.cipher_args(a)?;
         let ocr = OcrOptions { book: seed.as_ref(), ..ocr_options(a)? };
         let loaded = self.use_store_corrections(a, id)?;
-        let read = self.session.chess_document_with(id, &pages, &settings, lang, &ocr).map_err(failed)?;
+        let mut read = self.session.chess_document_with(id, &pages, &settings, lang, &ocr).map_err(failed)?;
+        let reference = reference.map(|(shown, index)| {
+            let linked = reference::link(&mut read.doc, &index);
+            reference_reply(shown, &index, &linked)
+        });
         let cipher = Self::cipher_reply(&read.cipher, cipher_out.as_ref())?;
         let corrections = crate::chess_corrections::corrections_reply(loaded, &read);
         let doc = &read.doc;
@@ -511,6 +521,7 @@ impl Automation {
             "cipher": cipher,
             "notes": read.notes.iter().map(|(p, n)| json!({ "page": p + 1, "note": n })).collect::<Vec<_>>(),
             "corrections": corrections,
+            "reference": reference,
         });
         if let Some((shown, path)) = out {
             crate::write_atomic(&path, json_text.as_bytes())?;
@@ -914,5 +925,47 @@ fn font_json(
         "format": font.map(|f| f.format.extension()),
         "used": font.is_some() && exported,
         "error": errors.first().map(|e| e.to_string()),
+    })
+}
+
+/// A book's PGN at `path` (`shown` as the caller named it), indexed. Refused past
+/// [`reference::MAX_REFERENCE_BYTES`] before it is read; bytes that are not UTF-8 are read as
+/// replacement characters, which no move needs.
+fn read_reference(path: &std::path::Path, shown: &str) -> Result<reference::ReferenceIndex> {
+    use std::io::Read as _;
+    let max = reference::MAX_REFERENCE_BYTES;
+    let too_large = || failed(format!("{shown}: a PGN of more than {} MiB is not read", max >> 20));
+    let file = std::fs::File::open(path).map_err(|e| failed(format!("{shown}: {e}")))?;
+    if file.metadata().map_err(|e| failed(format!("{shown}: {e}")))?.len() > max as u64 {
+        return Err(too_large());
+    }
+    let mut bytes = Vec::new();
+    // One byte past the cap, so a file that grew since is still refused.
+    file.take(max as u64 + 1).read_to_end(&mut bytes).map_err(|e| failed(format!("{shown}: {e}")))?;
+    if bytes.len() > max {
+        return Err(too_large());
+    }
+    reference::ReferenceIndex::from_pgn(&String::from_utf8_lossy(&bytes)).map_err(|e| failed(format!("{shown}: {e}")))
+}
+
+/// The `reference` field of `chess_document`'s reply. Pages and games count from 1.
+fn reference_reply(shown: &str, index: &reference::ReferenceIndex, linked: &reference::Linked) -> Value {
+    let games = index.games();
+    let name = |g: usize| games.get(g).map(|g| g.name.as_str()).unwrap_or_default();
+    let a = &linked.alignment;
+    json!({
+        "pgn": shown,
+        "games": games.len(),
+        "moves": index.moves(),
+        "stopped_games": games
+            .iter()
+            .enumerate()
+            .filter(|(_, g)| g.stopped.is_some() || g.error.is_some())
+            .map(|(k, g)| json!({ "game": k + 1, "name": g.name, "stopped_at": g.stopped, "error": g.error }))
+            .collect::<Vec<_>>(),
+        "linked": a.counts,
+        "diagrams": a.diagrams.iter().filter(|d| d.node.is_some()).count(),
+        "pages": a.pages.iter().map(|p| json!({ "page": u64::from(p.page) + 1, "game": p.game + 1, "name": name(p.game) })).collect::<Vec<_>>(),
+        "warnings": linked.warnings,
     })
 }

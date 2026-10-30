@@ -11,8 +11,10 @@
 //!   the same move from a position just before it.
 //! - **Absent:** the PGN does not have it.
 //!
-//! Nothing in the document changes: the alignment is a list of links beside it, and a book with no
-//! PGN is never aligned.
+//! [`align`] changes nothing in the document: the alignment is a list of links beside it, and a
+//! book with no PGN is never aligned. [`link`] (R2) keeps the links on the moves
+//! ([`MoveInline::reference`]) and marks the moves the PGN recovered for review, the reader's own
+//! status kept; it is the one function the tool and the app's reading use.
 //!
 //! **How a move is found.** Positions anchor the walk, as the reader reads: the diagrams, the
 //! moves linked so far and the initial position. A position is its pieces and the side to move;
@@ -36,7 +38,7 @@ use pdfcraft_chess::game::{Game as PgnGame, split_pgn};
 use serde::{Deserialize, Serialize};
 
 use super::games::DiagramAt;
-use super::{Block, ChessDoc, Inline, MoveInline, MoveStatus};
+use super::{Block, ChessDoc, Inline, MoveInline, MoveStatus, ReviewFlag};
 
 /// Largest PGN text [`ReferenceIndex::from_pgn`] reads.
 pub const MAX_REFERENCE_BYTES: usize = 32 << 20;
@@ -52,6 +54,12 @@ pub const RECENT_ANCHORS: usize = 60;
 
 /// Most alignment runs, each with the page map the one before voted.
 pub const MAX_ROUNDS: usize = 4;
+
+/// How many pages, from the first read, [`link`] judges the PGN by.
+pub const JUDGED_PAGES: usize = 20;
+
+/// The share of those pages' moves, in percent, below which the PGN does not look like the book's.
+pub const MIN_LINKED_PERCENT: usize = 30;
 
 /// The initial position, as a [`ReferenceIndex`] keys it.
 const START_KEY: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w";
@@ -344,6 +352,83 @@ pub struct Alignment {
     pub counts: LinkCounts,
     /// Alignment runs made (at most [`MAX_ROUNDS`]).
     pub rounds: usize,
+}
+
+/// A move of the text and where the reference has it, kept on the move
+/// ([`MoveInline::reference`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MoveReference {
+    pub kind: LinkKind,
+    /// The game of the reference, from 0; `None` when [`LinkKind::Absent`].
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub game: Option<usize>,
+    /// The node in that game (0 is its start).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub node: Option<usize>,
+}
+
+/// A document linked to its reference ([`link`]).
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Linked {
+    pub alignment: Alignment,
+    /// What a person should know about the PGN: that it does not look like the book's, or that
+    /// it was cut short.
+    pub warnings: Vec<String>,
+}
+
+/// Align `doc` with `index` ([`align`]) and keep the links on its moves: each move of a paragraph
+/// gets its [`MoveInline::reference`], and a recovered move keeps the reader's status and gains
+/// [`ReviewFlag::FromReference`] with the reference's move. The links of an earlier call are
+/// replaced, so linking twice is linking once.
+pub fn link(doc: &mut ChessDoc, index: &ReferenceIndex) -> Linked {
+    for page in &mut doc.pages {
+        for block in &mut page.blocks {
+            if let Block::Paragraph { inlines, .. } | Block::Heading { inlines, .. } = block {
+                for inline in inlines {
+                    if let Inline::Move(m) = inline {
+                        m.reference = None;
+                        m.review.retain(|f| !matches!(f, ReviewFlag::FromReference { .. }));
+                    }
+                }
+            }
+        }
+    }
+    let alignment = align(doc, index);
+    let at_page: HashMap<u32, usize> = doc.pages.iter().enumerate().map(|(k, p)| (p.index, k)).collect();
+    for l in &alignment.moves {
+        let page = at_page.get(&l.at.page).and_then(|&k| doc.pages.get_mut(k));
+        let Some(Block::Paragraph { inlines, .. }) = page.and_then(|p| p.blocks.get_mut(l.at.block)) else { continue };
+        let Some(Inline::Move(m)) = inlines.get_mut(l.at.inline) else { continue };
+        m.reference = Some(MoveReference { kind: l.kind, game: l.node.map(|n| n.game), node: l.node.map(|n| n.node) });
+        if l.kind == LinkKind::Recovered {
+            let san = l.node.and_then(|n| {
+                let game = index.games.get(n.game)?.game.as_ref()?;
+                game.fen_at(n.node).map(|_| game.san(n.node).to_string())
+            });
+            if let Some(san) = san {
+                m.review.push(ReviewFlag::FromReference { san });
+            }
+        }
+    }
+    let warnings = warnings(doc, index, &alignment);
+    Linked { alignment, warnings }
+}
+
+/// The warnings of [`Linked`]: few of the moves on the first [`JUDGED_PAGES`] pages read linked,
+/// and a PGN past the caps.
+fn warnings(doc: &ChessDoc, index: &ReferenceIndex, alignment: &Alignment) -> Vec<String> {
+    let mut out = Vec::new();
+    let judged: Vec<u32> = doc.pages.iter().map(|p| p.index).take(JUDGED_PAGES).collect();
+    let on_them = alignment.moves.iter().filter(|l| judged.contains(&l.at.page));
+    let (linked, total) = on_them
+        .fold((0usize, 0usize), |(linked, total), l| (linked.saturating_add(usize::from(l.kind != LinkKind::Absent)), total.saturating_add(1)));
+    if total > 0 && linked.saturating_mul(100) < total.saturating_mul(MIN_LINKED_PERCENT) {
+        out.push(format!("the PGN does not look like this book's: {linked} of the {total} moves on the first {} pages read are in it", judged.len()));
+    }
+    if index.truncated() {
+        out.push(format!("the PGN is longer than {MAX_REFERENCE_GAMES} games or {MAX_REFERENCE_NODES} moves; the rest of it was left out"));
+    }
+    out
 }
 
 /// Something read in order.
