@@ -3477,3 +3477,8 @@ castling	long	largo
 	The book's PGN shows: {changes}	El PGN del libro muestra: {changes}
 	Use the PGN's position	Usar la posición del PGN
 	Put the PGN's position on the board. It is kept only when you confirm it.	Pone la posición del PGN en el tablero. Solo se guarda cuando la confirma.
+	This game of the book's PGN can't be read.	No se pudo leer esta partida del PGN del libro.
+	Use {name}	Usar {name}
+	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	Hay un PGN con el mismo nombre junto a este PDF: guárdelo como PGN del libro.
+	Double-click to open the book's PGN game here.	Doble clic para abrir aquí la partida del PGN del libro.
+	Open the book's PGN game here	Abrir aquí la partida del PGN del libro

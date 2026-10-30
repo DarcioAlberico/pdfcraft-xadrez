@@ -3335,3 +3335,8 @@ castling	long	hosszú
 	The book's PGN shows: {changes}	A könyv PGN-je ezt mutatja: {changes}
 	Use the PGN's position	A PGN állásának használata
 	Put the PGN's position on the board. It is kept only when you confirm it.	A PGN állását a táblára teszi. Csak akkor tárolódik, ha megerősíti.
+	This game of the book's PGN can't be read.	A könyv PGN-jének ez a játszmája nem olvasható.
+	Use {name}	{name} használata
+	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	A PDF mellett ugyanilyen nevű PGN van: tárolja a könyv PGN-jeként.
+	Double-click to open the book's PGN game here.	Kattintson duplán, hogy itt megnyissa a könyv PGN-jének játszmáját.
+	Open the book's PGN game here	A könyv PGN-játszmájának megnyitása itt

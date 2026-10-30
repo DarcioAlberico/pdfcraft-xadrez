@@ -3338,3 +3338,8 @@ castling	long	ロング
 	The book's PGN shows: {changes}	本の PGN の局面: {changes}
 	Use the PGN's position	PGN の局面を使う
 	Put the PGN's position on the board. It is kept only when you confirm it.	PGN の局面を盤に置きます。確定するまで保存されません。
+	This game of the book's PGN can't be read.	本の PGN のこの対局を読み込めません。
+	Use {name}	{name} を使う
+	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	この PDF の隣に同じ名前の PGN があります。本の PGN として保存します。
+	Double-click to open the book's PGN game here.	ダブルクリックで本の PGN の対局をこの手で開きます。
+	Open the book's PGN game here	本の PGN の対局をこの手で開く

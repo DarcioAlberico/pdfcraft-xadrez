@@ -960,6 +960,45 @@ fn the_books_pgn_suggests_a_diagrams_position_in_the_diagram_tab() {
     let _ = std::fs::remove_dir_all(dir);
 }
 
+/// A secondary click on the widget labelled `label`.
+fn right_click(h: &mut Harness<'static, PdfCraftApp>, label: &str) {
+    let at = h.get_by_label(label).rect().center();
+    h.hover_at(at);
+    h.run_steps(1);
+    for pressed in [true, false] {
+        h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Secondary, pressed, modifiers: Default::default() });
+    }
+    h.run_steps(2);
+}
+
+/// Plan "Carregar PGN do livro", R6c: a PGN beside the PDF with its name is offered on the Text
+/// tab; kept, a move of the text linked to it opens the PGN's game on the board at that move,
+/// with the PGN's other lines.
+#[test]
+fn the_pgn_beside_the_pdf_is_offered_and_a_linked_move_opens_its_game() {
+    let dir = corrections_dir("book-pgn-sibling");
+    std::fs::create_dir_all(&dir).unwrap();
+    let pdf = dir.join("book.pdf");
+    let bytes = chapter_with("1.e4 e5 2.Nf3 Nc6 5.Bb5 a6");
+    std::fs::write(&pdf, &bytes).unwrap();
+    let pgn = "[Event \"Chapter 1\"]\n[White \"Ruy\"]\n\n1.e4 e5 2.Nf3 Nc6 3.Bb5 (3.Bc4 Bc5) 3...a6 *\n";
+    std::fs::write(dir.join("book.pgn"), pgn).unwrap();
+    let mut h = book_pgn_harness("book.pdf", Some(pdf.to_string_lossy().into_owned()), bytes, dir.join("reference"));
+    h.get_by_label("Use book.pgn").click();
+    h.run_steps(4);
+    h.get_by_label("Book's PGN: book.pgn (1 games)");
+    assert!(h.query_by_label("Use book.pgn").is_none(), "offered only while none is kept");
+    // A move in the middle: a game read from PGN already stands on its last move.
+    right_click(&mut h, "e5");
+    h.get_by_label("Open the book's PGN game here").click();
+    h.run_steps(4);
+    let game = &h.state().chess.board().game;
+    assert_eq!(game.tag("White"), Some("Ruy"), "{}", game.pgn());
+    assert!(game.pgn().contains("Bc4"), "the PGN's other line comes too: {}", game.pgn());
+    assert_eq!(game.fen(), "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2", "at the move clicked");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
 /// Export… writes the document: PGN with the position's game, and Markdown with its image in a
 /// folder beside it. The menu names each format by what it makes, under "Export chess book";
 /// once written, a window says where, and Open folder shows the file (plan A8, P9c).

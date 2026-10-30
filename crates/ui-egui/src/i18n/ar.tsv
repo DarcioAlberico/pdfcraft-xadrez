@@ -3611,3 +3611,8 @@ castling	long	طويل
 	The book's PGN shows: {changes}	يُظهر PGN الكتاب: {changes}
 	Use the PGN's position	استخدام وضعية PGN
 	Put the PGN's position on the board. It is kept only when you confirm it.	يضع وضعية PGN على الرقعة. لا تُحفظ إلا عندما تؤكدها.
+	This game of the book's PGN can't be read.	تعذّرت قراءة هذه المباراة من PGN الكتاب.
+	Use {name}	استخدام {name}
+	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	يوجد بجانب ملف PDF هذا ملف PGN بالاسم نفسه: احفظه بوصفه PGN الكتاب.
+	Double-click to open the book's PGN game here.	انقر نقرًا مزدوجًا لفتح مباراة PGN الكتاب هنا.
+	Open the book's PGN game here	فتح مباراة PGN الكتاب هنا

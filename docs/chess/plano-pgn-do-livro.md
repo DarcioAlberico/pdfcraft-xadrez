@@ -1,6 +1,6 @@
 # Plano de implantação — Carregar PGN do livro · v1
 
-**Status:** v8 · 2026-10-30 · R0 (#229), R1 (#231), R2 (#233), R3 (#234), R4 (#235), R5 (#237), R6a (#238) e R6b feitos; R6c–R7 a fazer.
+**Status:** v9 · 2026-10-30 · R0 (#229), R1 (#231), R2 (#233), R3 (#234), R4 (#235), R5 (#237), R6a (#238), R6b (#240) e R6c feitos; R7 a fazer.
 **Origem:** pedido do usuário em 2026-10-29: "quando temos o PDF digital e o PGN dele, daria pra implementar uma função carregar PGN para aproveitar esse PGN?". Analisamos o par em `C:\Users\AMD\Documents\PDFCraft_Arquivos\PDF e PGN`: *Beat the French Defence with 3.Nc3* (Harikrishna; 748 páginas, gerado pelo calibre a partir de um curso Chessable) e o PGN do curso (120 partidas, "Chapter N / Game M").
 **Repositório:** `DarcioAlberico/pdfcraft-xadrez`. Crates: `chess` (L0), `chessvision`, `engine` (L6), `automation`, `ui-egui`.
 **Público de cada passo:** uma sessão de agente que começa do zero. Cada passo traz o contexto, as tarefas, a verificação e o critério de saída.
@@ -234,7 +234,14 @@ R3 e R4 podem correr em paralelo depois de R2. R6 só começa depois de R5.
 - R6b, o que mudou em relação ao texto do passo:
   - **"PGN comentado" é a origem das partidas do PGN, não um formato novo** no menu: assim o resto do caminho da exportação (rascunhos, diagramas a revisar, onde salvar) não muda.
   - **O chip não reescreve a leitura** com o lado e o número do PGN; isso continua só no documento ligado (aba Texto e exportações).
-- R6c–R7: a fazer.
+- R6c: feito.
+  - **O lance ligado abre a partida do PGN no Tabuleiro**: um clique duplo num lance que o PGN tem (confirmado, recuperado ou em conflito), ou "Open the book's PGN game here" no menu dele, põe no Tabuleiro a partida do PGN naquele nó, com todas as variantes (`put_book_pgn_game`). A mesma partida já no Tabuleiro, sem mudança, é mostrada de novo em vez de duplicada. "Open this game on the board" continua no menu, para a partida como o leitor a leu.
+  - **O PGN ao lado do PDF**: sem PGN guardado, a aba Texto oferece "Use livro.pgn" quando há um `.pgn` com o mesmo nome do PDF na mesma pasta (só no desktop). Um clique guarda-o como o Carregar.
+- R6c, o que mudou em relação ao texto do passo:
+  - **A oferta é um botão na aba Texto, não uma pergunta ao abrir**: aparece enquanto o documento não guarda PGN e some quando guarda, sem precisar lembrar que já perguntou.
+  - **O conflito não tem a escolha "Usar o lance do PGN / Manter o do livro"**: pela D1 o texto da aba é sempre o do livro, então o que o PGN tem ali se vê abrindo a partida do PGN naquele lance.
+  - **A lista de partidas do Tabuleiro não mostra as partidas do PGN com a página**: cada uma entra quando um lance dela é aberto.
+- R7: a fazer.
 
 ## 4. Decisões do usuário
 
@@ -259,3 +266,4 @@ R3 e R4 podem correr em paralelo depois de R2. R6 só começa depois de R5.
 - **v6 (2026-10-30):** R5 feito; a §3.3 diz o formato do PGN guardado, as ferramentas e o que ficou para o R6.
 - **v7 (2026-10-30):** R6 dividido em R6a, R6b e R6c; R6a feito (o PGN no app e a aba Texto).
 - **v8 (2026-10-30):** R6b feito (o chip, a origem do PGN exportado e a sugestão na aba Diagrama).
+- **v9 (2026-10-30):** R6c feito (a partida do PGN no Tabuleiro e o PGN ao lado do PDF); o R6 está completo.

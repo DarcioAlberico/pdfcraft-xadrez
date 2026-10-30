@@ -246,4 +246,37 @@ impl PdfCraftApp {
         self.chess.enter_scope();
         self.show_chess_board();
     }
+
+    /// Put game `game` of document `id`'s book's PGN on the board at node `node`, every line of
+    /// it kept (plan "Carregar PGN do livro", R6c): what a move of the text linked to the PGN
+    /// opens. The same game already on the board, untouched, is shown again instead of added.
+    pub(crate) fn put_book_pgn_game(&mut self, id: DocId, game: usize, node: usize) {
+        if self.active_ids().map(|(_, active)| active) != Some(id) {
+            return;
+        }
+        let Some(pgn_game) = self.book_pgn_index(id).and_then(|index| index.games().get(game).and_then(|g| g.game.clone())) else {
+            self.notify(tl!("This game of the book's PGN can't be read.").to_string());
+            return;
+        };
+        self.sync_chess_docs();
+        let mut board = BoardState::default();
+        board.game = pgn_game;
+        board.game.go_to_node(node);
+        board.refresh_fields(true);
+        let pgn = board.game.pgn();
+        let c = self.chess.games.collection_mut();
+        let same = c.iter().position(|e| e.untouched() && e.board.illegal.is_none() && e.board.source.is_none() && e.board.game.pgn() == pgn);
+        match same {
+            Some(i) => {
+                c.switch_to(i);
+                c.active_mut().board.game.go_to_node(node);
+            }
+            None => {
+                c.add_games(vec![board], ChessEdit::OpenBookGame, true);
+            }
+        }
+        self.chess.study.setup = None;
+        self.chess.enter_scope();
+        self.show_chess_board();
+    }
 }

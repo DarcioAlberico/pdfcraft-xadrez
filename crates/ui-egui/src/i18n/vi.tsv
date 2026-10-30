@@ -3589,3 +3589,8 @@ castling	long	xa
 	The book's PGN shows: {changes}	PGN của sách cho thấy: {changes}
 	Use the PGN's position	Dùng thế cờ của PGN
 	Put the PGN's position on the board. It is kept only when you confirm it.	Đặt thế cờ của PGN lên bàn cờ. Nó chỉ được lưu khi bạn xác nhận.
+	This game of the book's PGN can't be read.	Không đọc được ván cờ này trong PGN của sách.
+	Use {name}	Dùng {name}
+	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	Bên cạnh PDF này có một PGN cùng tên: lưu nó làm PGN của sách.
+	Double-click to open the book's PGN game here.	Nhấp đúp để mở ván cờ của PGN sách tại đây.
+	Open the book's PGN game here	Mở ván cờ của PGN sách tại đây

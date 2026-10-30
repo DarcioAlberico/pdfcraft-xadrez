@@ -3410,3 +3410,8 @@ castling	long	dlouhá
 	The book's PGN shows: {changes}	PGN knihy ukazuje: {changes}
 	Use the PGN's position	Použít pozici z PGN
 	Put the PGN's position on the board. It is kept only when you confirm it.	Postaví pozici z PGN na šachovnici. Uloží se, až ji potvrdíte.
+	This game of the book's PGN can't be read.	Tuto partii z PGN knihy nelze přečíst.
+	Use {name}	Použít {name}
+	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	Vedle tohoto PDF je PGN se stejným názvem: uložte ho jako PGN knihy.
+	Double-click to open the book's PGN game here.	Poklepáním otevřete zde partii z PGN knihy.
+	Open the book's PGN game here	Otevřít zde partii z PGN knihy

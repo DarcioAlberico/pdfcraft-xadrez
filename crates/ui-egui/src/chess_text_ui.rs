@@ -145,10 +145,18 @@ pub enum TextAction {
     Origin(BookOrigin),
     /// Load the book's PGN (`true`) or remove it (plan "Carregar PGN do livro", R6a).
     BookPgn(bool),
+    /// Keep the PGN beside the PDF as the book's PGN (R6c).
+    SiblingPgn,
+    /// Put game `game` of the book's PGN on the board at node `node` (R6c).
+    OpenPgnGame {
+        game: usize,
+        node: usize,
+    },
 }
 
-/// The book's PGN row: what the document keeps, and the button to load or remove it.
-fn book_pgn_row(ui: &mut egui::Ui, book_pgn: Option<&crate::chess_reference_ui::BookPgnSummary>) -> Option<TextAction> {
+/// The book's PGN row: what the document keeps, and the button to load or remove it; with none
+/// kept, the PGN beside the PDF (`sibling`, its file name) is offered too.
+fn book_pgn_row(ui: &mut egui::Ui, book_pgn: Option<&crate::chess_reference_ui::BookPgnSummary>, sibling: Option<&str>) -> Option<TextAction> {
     let mut action = None;
     match book_pgn {
         Some(s) => {
@@ -170,6 +178,14 @@ fn book_pgn_row(ui: &mut egui::Ui, book_pgn: Option<&crate::chess_reference_ui::
                 .clicked()
             {
                 action = Some(TextAction::BookPgn(true));
+            }
+            if let Some(name) = sibling
+                && ui
+                    .button(crate::i18n::fmt(tl!("Use {name}"), &[("name", name)]))
+                    .on_hover_text(tl!("A PGN with the same name sits beside this PDF: keep it as the book's PGN."))
+                    .clicked()
+            {
+                action = Some(TextAction::SiblingPgn);
             }
         }
     }
@@ -271,6 +287,7 @@ pub fn text_tab(
     busy: Option<&'static str>,
     positions: PgnPositions,
     book_pgn: Option<&crate::chess_reference_ui::BookPgnSummary>,
+    sibling: Option<&str>,
     source: crate::chess_export_ui::PgnSource,
 ) -> Option<TextAction> {
     let mut action = None;
@@ -287,7 +304,7 @@ pub fn text_tab(
         }
     });
     ui.horizontal_wrapped(|ui| {
-        if let Some(a) = book_pgn_row(ui, book_pgn) {
+        if let Some(a) = book_pgn_row(ui, book_pgn, sibling) {
             action = Some(a);
         }
     });
@@ -396,7 +413,12 @@ pub fn text_tab(
                                 // A move with no position on its page alone may go on from the
                                 // page before: its game is looked for there.
                                 let opens = m.game.is_some() || m.status == MoveStatus::Unchecked;
-                                if opens {
+                                // A move linked to the book's PGN opens the PGN's game there, every
+                                // line kept (R6c).
+                                let in_pgn = m.reference.as_ref().and_then(|r| Some((r.game?, r.node?)));
+                                if in_pgn.is_some() {
+                                    tip = format!("{tip}\n{}", tl!("Double-click to open the book's PGN game here."));
+                                } else if opens {
                                     tip = format!("{tip}\n{}", tl!("Double-click to open this game on the board."));
                                 }
                                 let at = MoveAt { page, block: bi, inline: k };
@@ -409,16 +431,26 @@ pub fn text_tab(
                                 let r = ui.add(egui::Label::new(text).sense(egui::Sense::click())).on_hover_text(tip);
                                 // A click outlines the move on the page; a double-click (its first
                                 // click outlined it) opens its game on the board.
-                                if r.double_clicked() && opens {
+                                if r.double_clicked()
+                                    && let Some((game, node)) = in_pgn
+                                {
+                                    action = Some(TextAction::OpenPgnGame { game, node });
+                                } else if r.double_clicked() && opens {
                                     action = Some(TextAction::OpenGame(at));
                                 } else if r.clicked()
                                     && let Some(rect) = rect_of(m.source_rect)
                                 {
                                     action = Some(TextAction::Show(page, rect));
                                 }
-                                if opens {
+                                if opens || in_pgn.is_some() {
                                     r.context_menu(|ui| {
-                                        if ui.button(tl!("Open this game on the board")).clicked() {
+                                        if let Some((game, node)) = in_pgn
+                                            && ui.button(tl!("Open the book's PGN game here")).clicked()
+                                        {
+                                            action = Some(TextAction::OpenPgnGame { game, node });
+                                            ui.close();
+                                        }
+                                        if opens && ui.button(tl!("Open this game on the board")).clicked() {
                                             action = Some(TextAction::OpenGame(at));
                                             ui.close();
                                         }
@@ -715,6 +747,12 @@ impl PdfCraftApp {
             }
             TextAction::BookPgn(true) => self.load_book_pgn(),
             TextAction::BookPgn(false) => self.clear_book_pgn(),
+            TextAction::SiblingPgn => self.use_sibling_pgn(),
+            TextAction::OpenPgnGame { game, node } => {
+                if let Some((_, id)) = self.active_ids() {
+                    self.put_book_pgn_game(id, game, node);
+                }
+            }
         }
     }
 

@@ -107,6 +107,9 @@ struct DocPgn {
     /// The PGN indexed, when the document keeps one that could be read.
     index: Option<Arc<ReferenceIndex>>,
     summary: Option<BookPgnSummary>,
+    /// A PGN beside the PDF with its name (`book.pdf` → `book.pgn`), offered when none is kept
+    /// (R6c; desktop only).
+    sibling: Option<std::path::PathBuf>,
 }
 
 /// The books' PGNs in the app.
@@ -163,6 +166,12 @@ impl BookPgns {
     pub(crate) fn summary(&self, id: DocId) -> Option<&BookPgnSummary> {
         self.doc(id)?.summary.as_ref()
     }
+
+    /// The file name of the PGN beside document `id`'s PDF, when it keeps none.
+    pub(crate) fn sibling_name(&self, id: DocId) -> Option<String> {
+        let d = self.doc(id).filter(|d| d.summary.is_none())?;
+        d.sibling.as_ref()?.file_name().map(|n| n.to_string_lossy().into_owned())
+    }
 }
 
 /// Seconds since 1970, now.
@@ -202,7 +211,8 @@ impl PdfCraftApp {
                 Err(ReferenceStoreError::NoKeys) => {}
                 Err(e) => self.notify(crate::i18n::fmt(tl!("The book's PGN couldn't be read: {e}"), &[("e", &e.to_string())])),
             }
-            self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, index, summary });
+            let sibling = sibling_pgn(&keys);
+            self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, index, summary, sibling });
         }
         self.chess.book_pgns.doc(id)
     }
@@ -285,7 +295,8 @@ impl PdfCraftApp {
             return self.notify(refused(&e));
         }
         self.chess.book_pgns.docs.retain(|d| d.doc != id);
-        self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, index: Some(Arc::new(index)), summary: Some(summary.clone()) });
+        let sibling = sibling_pgn(&keys);
+        self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, index: Some(Arc::new(index)), summary: Some(summary.clone()), sibling });
         // The Text tab reads its page again, linked to it, and the Diagrams list takes it.
         self.chess.text = None;
         self.refresh_chess_kinds();
@@ -293,6 +304,20 @@ impl PdfCraftApp {
             tl!("Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it."),
             &[("name", name), ("games", &summary.games.to_string()), ("moves", &summary.moves.to_string())],
         ));
+    }
+
+    /// Keep the PGN beside the active document's PDF as its book's PGN (R6c).
+    pub(crate) fn use_sibling_pgn(&mut self) {
+        let Some((_, id)) = self.active_ids() else { return };
+        let Some(path) = self.chess.book_pgns.doc(id).and_then(|d| d.sibling.clone()) else { return };
+        let name = path.file_name().map_or_else(|| path.display().to_string(), |n| n.to_string_lossy().into_owned());
+        #[cfg(not(target_arch = "wasm32"))]
+        match read_pgn(&path) {
+            Ok(bytes) => self.set_book_pgn(id, &name, &bytes),
+            Err(e) => self.notify_fmt("Couldn't read {name}: {e}", &[("name", &name), ("e", &e)]),
+        }
+        #[cfg(target_arch = "wasm32")]
+        let _ = name;
     }
 
     /// Chess ▸ Remove the book's PGN: remove the PGN kept for the active document.
@@ -303,7 +328,8 @@ impl PdfCraftApp {
         match self.chess.book_pgns.store.clear(&keys, pages) {
             Ok(cleared) => {
                 self.chess.book_pgns.docs.retain(|d| d.doc != id);
-                self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, index: None, summary: None });
+                let sibling = sibling_pgn(&keys);
+                self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, index: None, summary: None, sibling });
                 self.chess.text = None;
                 self.refresh_chess_kinds();
                 let said = if cleared { tl!("The book's PGN was removed from this document.") } else { tl!("This document keeps no book's PGN.") };
@@ -378,6 +404,21 @@ impl PdfCraftApp {
             return;
         }
         self.read_chess_text(page, false);
+    }
+}
+
+/// The PGN beside the PDF at `keys`' path with its name (`book.pdf` → `book.pgn` or `book.PGN`),
+/// when there is one. Never on the web, which has no paths.
+fn sibling_pgn(keys: &DocKeys) -> Option<std::path::PathBuf> {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let pdf = std::path::Path::new(keys.path.as_deref()?);
+        ["pgn", "PGN"].iter().map(|ext| pdf.with_extension(ext)).find(|p| p.is_file())
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        let _ = keys;
+        None
     }
 }
 
