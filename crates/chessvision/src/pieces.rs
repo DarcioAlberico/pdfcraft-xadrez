@@ -5,12 +5,11 @@
 //! ([`images`]), read from their machine when needed and never copied into the repository or
 //! the binary.
 //!
-//! A diagram font's light-square glyphs draw each piece as an outline with an open interior. On
-//! a dark square that interior would show the square's colour, so each white piece is drawn in
-//! two layers: the matching black piece's glyph filled white (the solid silhouette, its detail
-//! lines left open), then the white glyph's lines in black on top. Black pieces are their glyph
-//! filled black. The [`pdfcraft_chess::catalog`] layout of the font's family says which character
-//! is which piece.
+//! A diagram font's light-square glyphs draw each piece as an outline with an open interior, and
+//! the black piece's detail lines as holes. On a board either would show the square's colour, so
+//! every piece is drawn in two layers: paper, the black piece's glyph filled white with its holes
+//! closed (the whole silhouette), then the piece's own glyph in black on top. The
+//! [`pdfcraft_chess::catalog`] layout of the font's family says which character is which piece.
 //!
 //! Where the pieces of **diagrams** come from (redrawn on the page, in the editor and in every
 //! export), in order ([`find`]):
@@ -133,22 +132,79 @@ pub fn from_font_bytes(bytes: &[u8], name_hint: &str) -> Result<(PieceSet, Strin
     for i in 0..6 {
         let white_c = glyph_char(layout.light_white, i).ok_or(PieceError::UnknownLayout(family.display_name.to_owned()))?;
         let black_c = glyph_char(layout.light_black, i).ok_or(PieceError::UnknownLayout(family.display_name.to_owned()))?;
-        let white = normalize(&draw(white_c)?, cell);
-        let black = normalize(&draw(black_c)?, cell);
+        let (white, black) = font_pieces(normalize(&draw(white_c)?, cell), normalize(&draw(black_c)?, cell));
         if let Some(g) = glyphs.get_mut(i) {
-            *g = PieceGlyph {
-                layers: vec![
-                    Layer { subpaths: black.clone(), paint: Paint::Fill { color: Rgb::WHITE, even_odd: false } },
-                    Layer { subpaths: white, paint: Paint::Fill { color: Rgb::BLACK, even_odd: false } },
-                ],
-            };
+            *g = white;
         }
         if let Some(g) = glyphs.get_mut(i + 6) {
-            *g = PieceGlyph { layers: vec![Layer { subpaths: black, paint: Paint::Fill { color: Rgb::BLACK, even_odd: false } }] };
+            *g = black;
         }
     }
     let name = family.display_name.to_owned();
     Ok((PieceSet { glyphs, name: name.clone() }, name))
+}
+
+/// The white and the black piece of one kind from a diagram font's two light-square glyphs
+/// (`white` the outline drawing, `black` the solid one). Each stands on paper: the black glyph
+/// filled white with its holes closed ([`paper`]), so neither piece shows the square through its
+/// open interior or its detail lines. On it go the glyph's own lines, in black.
+fn font_pieces(white: Vec<Subpath>, black: Vec<Subpath>) -> (PieceGlyph, PieceGlyph) {
+    let paper = Layer { subpaths: paper(&black), paint: Paint::Fill { color: Rgb::WHITE, even_odd: false } };
+    let ink = |subpaths| Layer { subpaths, paint: Paint::Fill { color: Rgb::BLACK, even_odd: false } };
+    (PieceGlyph { layers: vec![paper.clone(), ink(white)] }, PieceGlyph { layers: vec![paper, ink(black)] })
+}
+
+/// `paths` all turned the same way round, so that filled with the nonzero rule they cover every
+/// contour's inside: a glyph's holes (drawn turning the other way) are closed. What is left is
+/// its silhouette.
+fn paper(paths: &[Subpath]) -> Vec<Subpath> {
+    paths.iter().map(|p| if turn(p) < 0.0 { reversed(p) } else { p.clone() }).collect()
+}
+
+/// Twice the signed area a subpath encloses (shoelace, its curves sampled at quarters): which way
+/// round it turns.
+fn turn(p: &Subpath) -> f32 {
+    let mut sum = 0.0_f32;
+    let mut last = p.start;
+    for seg in &p.segments {
+        let (sx, sy) = last;
+        // A line's end four times over: the repeats add nothing.
+        let points = match *seg {
+            Segment::Line(x, y) => [(x, y); 4],
+            Segment::Cubic(ax, ay, bx, by, x, y) => [0.25_f32, 0.5, 0.75, 1.0].map(|t| {
+                let u = 1.0 - t;
+                let (w0, w1, w2, w3) = (u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t);
+                (w0 * sx + w1 * ax + w2 * bx + w3 * x, w0 * sy + w1 * ay + w2 * by + w3 * y)
+            }),
+        };
+        for to in points {
+            sum += last.0 * to.1 - to.0 * last.1;
+            last = to;
+        }
+    }
+    sum + last.0 * p.start.1 - p.start.0 * last.1
+}
+
+/// The same subpath drawn the other way round.
+fn reversed(p: &Subpath) -> Subpath {
+    // The point each segment starts from: the start, then each segment's end.
+    let mut points = Vec::with_capacity(p.segments.len() + 1);
+    points.push(p.start);
+    points.extend(p.segments.iter().map(|s| match *s {
+        Segment::Line(x, y) | Segment::Cubic(_, _, _, _, x, y) => (x, y),
+    }));
+    let start = points.last().copied().unwrap_or(p.start);
+    let segments = p
+        .segments
+        .iter()
+        .zip(&points)
+        .rev()
+        .map(|(seg, &(x, y))| match *seg {
+            Segment::Line(..) => Segment::Line(x, y),
+            Segment::Cubic(ax, ay, bx, by, _, _) => Segment::Cubic(bx, by, ax, ay, x, y),
+        })
+        .collect();
+    Subpath { start, segments, closed: p.closed }
 }
 
 /// Read a font file and make a piece set from it.
@@ -404,6 +460,76 @@ mod tests {
         assert_eq!(n[0].segments, vec![Segment::Line(1.0, 1.0)]);
     }
 
+    /// A font's pieces stand on paper: where the white piece's outline is open and where the black
+    /// piece's detail lines are holes, both pieces are white, not the square showing through.
+    #[test]
+    fn font_pieces_stand_on_paper_with_no_hole_left_open() {
+        // A square turning one way, from (x0, y0) to (x1, y1); its top edge a curve.
+        let square = |x0: f32, y0: f32, x1: f32, y1: f32, backwards: bool| {
+            let p = Subpath {
+                start: (x0, y0),
+                segments: vec![Segment::Cubic(x0 + 0.1, y0, x1 - 0.1, y0, x1, y0), Segment::Line(x1, y1), Segment::Line(x0, y1)],
+                closed: true,
+            };
+            if backwards { reversed(&p) } else { p }
+        };
+        // As a font draws them: the black piece solid with a hole, the white one a ring.
+        let black = vec![square(0.2, 0.1, 0.8, 0.9, false), square(0.4, 0.4, 0.6, 0.6, true)];
+        let white = vec![square(0.2, 0.1, 0.8, 0.9, false), square(0.25, 0.15, 0.75, 0.85, true)];
+        let (w, b) = font_pieces(white, black);
+        // In the black piece's hole, inside the white piece's outline.
+        assert_eq!((color_at(&w, (0.5, 0.5)), color_at(&b, (0.5, 0.5))), (Some(Rgb::WHITE), Some(Rgb::WHITE)));
+        // Inside the white outline, on the black piece's body.
+        assert_eq!((color_at(&w, (0.3, 0.3)), color_at(&b, (0.3, 0.3))), (Some(Rgb::WHITE), Some(Rgb::BLACK)));
+        // On the white piece's outline; outside both.
+        assert_eq!(color_at(&w, (0.22, 0.5)), Some(Rgb::BLACK));
+        assert_eq!((color_at(&w, (0.1, 0.5)), color_at(&b, (0.1, 0.5))), (None, None));
+        // Turning a subpath round twice gives it back, and turns its area's sign.
+        let s = square(0.2, 0.1, 0.8, 0.9, false);
+        assert_eq!(reversed(&reversed(&s)), s);
+        assert!(turn(&s) * turn(&reversed(&s)) < 0.0);
+    }
+
+    /// The colour the last layer painting `p` gives it, if any.
+    fn color_at(g: &PieceGlyph, p: (f32, f32)) -> Option<Rgb> {
+        g.layers.iter().rev().find_map(|l| match l.paint {
+            Paint::Fill { color, even_odd: false } => (winding(&l.subpaths, p) != 0).then_some(color),
+            Paint::Fill { color, even_odd: true } => (winding(&l.subpaths, p) % 2 != 0).then_some(color),
+            Paint::Stroke { .. } => None,
+        })
+    }
+
+    /// The winding number of `paths` around `p`, their curves cut into 32 lines each.
+    fn winding(paths: &[Subpath], p: (f32, f32)) -> i32 {
+        let mut n = 0;
+        for path in paths {
+            let mut points = vec![path.start];
+            for seg in &path.segments {
+                let (sx, sy) = *points.last().unwrap();
+                match *seg {
+                    Segment::Line(x, y) => points.push((x, y)),
+                    Segment::Cubic(ax, ay, bx, by, x, y) => points.extend((1..=32).map(|i| {
+                        let t = i as f32 / 32.0;
+                        let u = 1.0 - t;
+                        let (w0, w1, w2, w3) = (u * u * u, 3.0 * u * u * t, 3.0 * u * t * t, t * t * t);
+                        (w0 * sx + w1 * ax + w2 * bx + w3 * x, w0 * sy + w1 * ay + w2 * by + w3 * y)
+                    })),
+                }
+            }
+            points.push(path.start);
+            for w in points.windows(2) {
+                let ((x0, y0), (x1, y1)) = (w[0], w[1]);
+                if (y0 <= p.1) != (y1 <= p.1) {
+                    let x = x0 + (p.1 - y0) / (y1 - y0) * (x1 - x0);
+                    if x > p.0 {
+                        n += if y1 > y0 { 1 } else { -1 };
+                    }
+                }
+            }
+        }
+        n
+    }
+
     #[test]
     fn garbage_is_an_error() {
         assert!(matches!(from_font_bytes(b"not a font", "ChessMerida"), Err(PieceError::Font(_))));
@@ -451,9 +577,21 @@ mod tests {
             // Inside the cell, give or take the font's overshoot.
             assert!(b[0] > -0.1 && b[1] > -0.1 && b[2] < 1.1 && b[3] < 1.1, "glyph {i}: {b:?}");
         }
-        // White pieces are two layers (silhouette, then lines); black pieces one.
+        // Every piece is two layers: paper, then its lines.
         assert_eq!(set.glyphs[5].layers.len(), 2);
-        assert_eq!(set.glyphs[11].layers.len(), 1);
+        assert_eq!(set.glyphs[11].layers.len(), 2);
+        // No point inside any contour of the black glyph (the silhouette, its holes included)
+        // shows the square, on either piece: a grid over each cell finds none.
+        for k in 0..6 {
+            let contours = &set.glyphs[k + 6].layers.last().unwrap().subpaths;
+            for i in [k, k + 6] {
+                for p in (1..40).flat_map(|y| (1..40).map(move |x| (x as f32 / 40.0, y as f32 / 40.0))) {
+                    if contours.iter().any(|c| winding(std::slice::from_ref(c), p) != 0) {
+                        assert!(color_at(&set.glyphs[i], p).is_some(), "glyph {i} shows the square at {p:?}");
+                    }
+                }
+            }
+        }
         // For looking at: write a drawn position when asked.
         if let Some(out) = std::env::var_os("PDFCRAFT_CHESS_TEST_SVG_OUT") {
             let placement = pdfcraft_chess::fen::parse_placement("r1bqk2r/pp3ppp/2n2n2/2bpp3/4P3/2NB1N2/PPPP1PPP/R1BQK2R").unwrap();
