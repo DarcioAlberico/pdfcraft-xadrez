@@ -78,11 +78,14 @@ pub enum Status {
     Verified,
     /// The user changed the position.
     Corrected,
+    /// The book's PGN has the position read (plan "Carregar PGN do livro", R3): confirmed by it.
+    Reference,
 }
 
 impl Status {
     /// Every status, in the order the panel's chips show them.
-    pub const ALL: [Status; 6] = [Status::Read, Status::Review, Status::Verified, Status::Corrected, Status::Unread, Status::Error];
+    pub const ALL: [Status; 7] =
+        [Status::Read, Status::Review, Status::Reference, Status::Verified, Status::Corrected, Status::Unread, Status::Error];
 
     /// The status of a diagram read as `reading` (`None`: not read), after what the user did
     /// with it (`kind`).
@@ -98,6 +101,22 @@ impl Status {
         }
     }
 
+    /// [`Status::of`] with the book's PGN (plan "Carregar PGN do livro", R3): a diagram read, with
+    /// confidence or with a doubt, whose position `reference` has is [`Status::Reference`]. What
+    /// the user did still outranks it, and a suggestion near the position never counts.
+    pub fn with_reference(
+        reading: Option<&pdfcraft_chessvision::board::BoardReading>,
+        kind: Option<Kind>,
+        reference: Option<&pdfcraft_chessvision::doc::reference::ReferenceIndex>,
+    ) -> Status {
+        let status = Status::of(reading, kind);
+        let shown = || {
+            let read = reading.and_then(|r| r.outcome.as_ref().ok());
+            read.zip(reference).is_some_and(|(p, index)| index.has_position(&p.fen, p.side.is_assumed()))
+        };
+        if matches!(status, Status::Read | Status::Review) && shown() { Status::Reference } else { status }
+    }
+
     /// Its name in the tools' replies.
     pub fn name(self) -> &'static str {
         match self {
@@ -107,6 +126,7 @@ impl Status {
             Status::Error => "error",
             Status::Verified => "verified",
             Status::Corrected => "corrected",
+            Status::Reference => "reference",
         }
     }
 

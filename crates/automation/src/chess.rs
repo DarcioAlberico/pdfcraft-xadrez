@@ -931,7 +931,7 @@ fn font_json(
 /// A book's PGN at `path` (`shown` as the caller named it), indexed. Refused past
 /// [`reference::MAX_REFERENCE_BYTES`] before it is read; bytes that are not UTF-8 are read as
 /// replacement characters, which no move needs.
-fn read_reference(path: &std::path::Path, shown: &str) -> Result<reference::ReferenceIndex> {
+pub(crate) fn read_reference(path: &std::path::Path, shown: &str) -> Result<reference::ReferenceIndex> {
     use std::io::Read as _;
     let max = reference::MAX_REFERENCE_BYTES;
     let too_large = || failed(format!("{shown}: a PGN of more than {} MiB is not read", max >> 20));
@@ -964,7 +964,11 @@ fn reference_reply(shown: &str, index: &reference::ReferenceIndex, linked: &refe
             .map(|(k, g)| json!({ "game": k + 1, "name": g.name, "stopped_at": g.stopped, "error": g.error }))
             .collect::<Vec<_>>(),
         "linked": a.counts,
-        "diagrams": a.diagrams.iter().filter(|d| d.node.is_some()).count(),
+        "diagrams": {
+            "linked": a.diagrams.iter().filter(|d| d.node.is_some()).count(),
+            "confirmed": linked.diagrams.confirmed,
+            "suggested": linked.diagrams.suggested,
+        },
         "pages": a.pages.iter().map(|p| json!({ "page": u64::from(p.page) + 1, "game": p.game + 1, "name": name(p.game) })).collect::<Vec<_>>(),
         "warnings": linked.warnings,
     })

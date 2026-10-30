@@ -421,6 +421,9 @@ pub struct DiagramBlock {
     pub puzzle: Option<u32>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub review: Vec<ReviewFlag>,
+    /// The position of the book's PGN it shows or nearly shows ([`reference::link`], R3).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reference: Option<Box<reference::DiagramReference>>,
 }
 
 /// What was read from a diagram.
@@ -456,6 +459,7 @@ impl DiagramBlock {
             reading: None,
             lichess_url: None,
             puzzle: None,
+            reference: None,
             review: Vec::new(),
         };
         match &reading.outcome {

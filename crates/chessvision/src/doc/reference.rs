@@ -16,6 +16,14 @@
 //! ([`MoveInline::reference`]) and marks the moves the PGN recovered for review, the reader's own
 //! status kept; it is the one function the tool and the app's reading use.
 //!
+//! **Diagrams (R3).** [`link`] also keeps on each diagram the position of the PGN it shows
+//! ([`DiagramBlock::reference`]). A diagram whose pieces are those of the move it was aligned
+//! with is [`DiagramKind::Confirmed`]: its reading takes the PGN's side to move, castling and
+//! move number and loses the side assumed, and the reading as read is kept beside it, so linking
+//! again starts from it. A diagram one or two squares from a position linked on its page or the
+//! pages beside it is [`DiagramKind::Suggested`]: the squares that differ are listed and the
+//! reading is left alone, for a person to apply. A position a person set is never changed.
+//!
 //! **How a move is found.** Positions anchor the walk, as the reader reads: the diagrams, the
 //! moves linked so far and the initial position. A position is its pieces and the side to move;
 //! castling rights are left out, because a diagram does not show them. For each move of the text,
@@ -32,13 +40,14 @@
 //!
 //! Moves in headings are not aligned: a heading names a line rather than plays it.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use pdfcraft_chess::game::{Game as PgnGame, split_pgn};
+use pdfcraft_chess::placement::Color;
 use serde::{Deserialize, Serialize};
 
 use super::games::DiagramAt;
-use super::{Block, ChessDoc, Inline, MoveInline, MoveStatus, ReviewFlag};
+use super::{Block, ChessDoc, DiagramBlock, DiagramReading, DiagramSource, Inline, MoveInline, MoveStatus, ReviewFlag, SquareChange};
 
 /// Largest PGN text [`ReferenceIndex::from_pgn`] reads.
 pub const MAX_REFERENCE_BYTES: usize = 32 << 20;
@@ -60,6 +69,14 @@ pub const JUDGED_PAGES: usize = 20;
 
 /// The share of those pages' moves, in percent, below which the PGN does not look like the book's.
 pub const MIN_LINKED_PERCENT: usize = 30;
+
+/// Most squares by which a diagram may differ from a linked position for that position to be
+/// suggested.
+pub const MAX_SUGGESTED_SQUARES: usize = 2;
+
+/// How many pages read before and after a diagram's own the positions suggested for it may come
+/// from.
+const SUGGESTED_PAGES: u32 = 1;
 
 /// The initial position, as a [`ReferenceIndex`] keys it.
 const START_KEY: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w";
@@ -234,6 +251,16 @@ impl ReferenceIndex {
         self.truncated
     }
 
+    /// Whether a position of the reference has `fen`'s pieces, and its side to move unless
+    /// `side_assumed`.
+    pub fn has_position(&self, fen: &str, side_assumed: bool) -> bool {
+        let placement = fen.split_whitespace().next().unwrap_or_default();
+        if side_assumed {
+            return self.by_placement.contains_key(placement);
+        }
+        position_key(fen).is_some_and(|k| self.by_key.contains_key(&k))
+    }
+
     /// The FEN after move `at`.
     pub fn fen(&self, at: RefNode) -> Option<String> {
         self.games.get(at.game)?.game.as_ref()?.fen_at(at.node)
@@ -367,29 +394,83 @@ pub struct MoveReference {
     pub node: Option<usize>,
 }
 
+/// How a diagram stands against the reference.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DiagramKind {
+    /// Its pieces are the position's: the reading took the reference's side to move, castling
+    /// and move number.
+    Confirmed,
+    /// It is [`MAX_SUGGESTED_SQUARES`] squares or fewer from a position linked nearby: the
+    /// reference's position is offered, and the reading is left alone.
+    Suggested,
+}
+
+/// A diagram as it was read, before [`link`] confirmed it, so linking again starts from it.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ReadBefore {
+    pub reading: DiagramReading,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub lichess_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub review: Vec<ReviewFlag>,
+}
+
+/// A diagram of the document and the position of the reference it shows or nearly shows, kept
+/// on the diagram ([`DiagramBlock::reference`]).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct DiagramReference {
+    pub kind: DiagramKind,
+    /// The game of the reference, from 0.
+    pub game: usize,
+    /// The node in that game (0 is its start).
+    pub node: usize,
+    /// The reference's position there, a full FEN.
+    pub fen: String,
+    /// [`DiagramKind::Suggested`]: the squares that differ, `from` as read and `to` as the
+    /// reference has it.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub changes: Vec<SquareChange>,
+    /// [`DiagramKind::Confirmed`] and the reading changed: the diagram as it was read.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub before: Option<ReadBefore>,
+}
+
+/// How many diagrams [`link`] confirmed, and for how many it suggested a position.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DiagramCounts {
+    pub confirmed: usize,
+    pub suggested: usize,
+}
+
 /// A document linked to its reference ([`link`]).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Linked {
     pub alignment: Alignment,
+    pub diagrams: DiagramCounts,
     /// What a person should know about the PGN: that it does not look like the book's, or that
     /// it was cut short.
     pub warnings: Vec<String>,
 }
 
-/// Align `doc` with `index` ([`align`]) and keep the links on its moves: each move of a paragraph
-/// gets its [`MoveInline::reference`], and a recovered move keeps the reader's status and gains
-/// [`ReviewFlag::FromReference`] with the reference's move. The links of an earlier call are
-/// replaced, so linking twice is linking once.
+/// Align `doc` with `index` ([`align`]) and keep the links on its moves and diagrams: each move of
+/// a paragraph gets its [`MoveInline::reference`], and a recovered move keeps the reader's status
+/// and gains [`ReviewFlag::FromReference`] with the reference's move; each diagram the reference
+/// confirms or suggests a position for gets its [`DiagramBlock::reference`] (see the module
+/// documentation). The links of an earlier call are replaced, so linking twice is linking once.
 pub fn link(doc: &mut ChessDoc, index: &ReferenceIndex) -> Linked {
     for page in &mut doc.pages {
         for block in &mut page.blocks {
-            if let Block::Paragraph { inlines, .. } | Block::Heading { inlines, .. } = block {
-                for inline in inlines {
-                    if let Inline::Move(m) = inline {
-                        m.reference = None;
-                        m.review.retain(|f| !matches!(f, ReviewFlag::FromReference { .. }));
+            match block {
+                Block::Paragraph { inlines, .. } | Block::Heading { inlines, .. } => {
+                    for inline in inlines {
+                        if let Inline::Move(m) = inline {
+                            m.reference = None;
+                            m.review.retain(|f| !matches!(f, ReviewFlag::FromReference { .. }));
+                        }
                     }
                 }
+                Block::Diagram(d) => unlink_diagram(d),
             }
         }
     }
@@ -410,8 +491,180 @@ pub fn link(doc: &mut ChessDoc, index: &ReferenceIndex) -> Linked {
             }
         }
     }
+    let diagrams = link_diagrams(doc, index, &alignment);
     let warnings = warnings(doc, index, &alignment);
-    Linked { alignment, warnings }
+    Linked { alignment, diagrams, warnings }
+}
+
+/// Put back the diagram as it was before [`link`] confirmed it, and drop its link.
+fn unlink_diagram(d: &mut DiagramBlock) {
+    if let Some(before) = d.reference.take().and_then(|r| r.before) {
+        d.reading = Some(before.reading);
+        d.lichess_url = before.lichess_url;
+        d.review = before.review;
+    }
+}
+
+/// Keep on `doc`'s diagrams the positions of `index` they show ([`DiagramKind::Confirmed`]) or
+/// nearly show ([`DiagramKind::Suggested`]).
+fn link_diagrams(doc: &mut ChessDoc, index: &ReferenceIndex, alignment: &Alignment) -> DiagramCounts {
+    let mut counts = DiagramCounts::default();
+    let shown: HashMap<(u32, usize), RefNode> = alignment.diagrams.iter().filter_map(|d| Some(((d.at.page, d.at.diagram), d.node?))).collect();
+    let nearby = NearbyPositions::new(index, alignment);
+    for page in &mut doc.pages {
+        let page_index = page.index;
+        for block in &mut page.blocks {
+            let Block::Diagram(d) = block else { continue };
+            let Some(reading) = d.reading.as_ref() else { continue };
+            if let Some(&at) = shown.get(&(page_index, d.number)) {
+                if confirm(d, index, at) {
+                    counts.confirmed = counts.confirmed.saturating_add(1);
+                }
+                continue;
+            }
+            if d.source == DiagramSource::User {
+                continue;
+            }
+            if let Some(suggested) = nearby.suggest(index, page_index, reading) {
+                d.reference = Some(Box::new(suggested));
+                counts.suggested = counts.suggested.saturating_add(1);
+            }
+        }
+    }
+    counts
+}
+
+/// Confirm diagram `d` by the reference's move `at`, whose pieces it has: the reading takes the
+/// move's side to move, castling and number, unless a person set it. Not confirmed when its side
+/// to move was read, not assumed, and is the other one. Whether it was confirmed.
+fn confirm(d: &mut DiagramBlock, index: &ReferenceIndex, at: RefNode) -> bool {
+    let (Some(fen), Some(reading)) = (index.fen(at), d.reading.as_ref()) else { return false };
+    let field = |f: &str, n: usize| f.split_whitespace().nth(n).map(str::to_owned);
+    if field(&reading.fen, 0) != field(&fen, 0) || (!reading.side_assumed && field(&reading.fen, 1) != field(&fen, 1)) {
+        return false;
+    }
+    let mut before = None;
+    if d.source != DiagramSource::User && (reading.fen != fen || reading.side_assumed) {
+        before = Some(ReadBefore { reading: reading.clone(), lichess_url: d.lichess_url.clone(), review: d.review.clone() });
+        if let Some(r) = d.reading.as_mut() {
+            r.fen = fen.clone();
+            r.legal = true;
+            r.side_assumed = false;
+        }
+        d.review.retain(|f| !matches!(f, ReviewFlag::SideAssumed | ReviewFlag::Illegal { .. } | ReviewFlag::SideConflict));
+        let black_view = d.lichess_url.as_deref().is_some_and(|u| u.ends_with("?color=black"));
+        let orientation = if black_view { Color::Black } else { Color::White };
+        d.lichess_url = pdfcraft_chess::fen::parse(&fen).ok().map(|p| pdfcraft_chess::lichess::analysis_url(&p, orientation));
+    }
+    d.reference = Some(Box::new(DiagramReference { kind: DiagramKind::Confirmed, game: at.game, node: at.node, fen, changes: Vec::new(), before }));
+    true
+}
+
+/// The positions linked to moves, with the positions they were played from: what a diagram that
+/// nearly shows one of them is offered.
+struct NearbyPositions {
+    /// (the page of the move, the reference's move, its pieces as [`squares`]), in reading order.
+    linked: Vec<(u32, RefNode, [u8; 64])>,
+}
+
+impl NearbyPositions {
+    fn new(index: &ReferenceIndex, alignment: &Alignment) -> NearbyPositions {
+        let wanted: HashSet<RefNode> = alignment.moves.iter().filter_map(|l| l.node).collect();
+        // One pass over the index: each linked move's position, then the one it was played from.
+        let mut found: HashMap<RefNode, Vec<(RefNode, [u8; 64])>> = HashMap::new();
+        for node in index.nodes.iter().filter(|n| wanted.contains(&n.at)) {
+            let parent = node.parent.and_then(|p| index.node(p));
+            for (at, position) in std::iter::once((node.at, node.position)).chain(parent.map(|p| (p.at, p.position))) {
+                if let Some(squares) = index.placement(position).and_then(squares) {
+                    found.entry(node.at).or_default().push((at, squares));
+                }
+            }
+        }
+        let linked = alignment
+            .moves
+            .iter()
+            .filter_map(|l| Some((l.at.page, found.get(&l.node?)?)))
+            .flat_map(|(page, positions)| positions.iter().map(move |&(at, squares)| (page, at, squares)))
+            .collect();
+        NearbyPositions { linked }
+    }
+
+    /// The position linked on `page` or the pages beside it that `reading` is fewest squares from,
+    /// one to [`MAX_SUGGESTED_SQUARES`]; the first in reading order among the fewest. None when
+    /// the side to move was read, not assumed, and is the other one.
+    fn suggest(&self, index: &ReferenceIndex, page: u32, reading: &DiagramReading) -> Option<DiagramReference> {
+        let mut fields = reading.fen.split_whitespace();
+        let read = fields.next().and_then(squares)?;
+        let side = fields.next();
+        let mut best: Option<(usize, RefNode, [u8; 64])> = None;
+        for &(p, at, squares) in &self.linked {
+            if p.abs_diff(page) > SUGGESTED_PAGES {
+                continue;
+            }
+            let differ = read.iter().zip(squares.iter()).filter(|(a, b)| a != b).count();
+            if differ == 0 || differ > MAX_SUGGESTED_SQUARES || best.is_some_and(|(d, ..)| d <= differ) {
+                continue;
+            }
+            best = Some((differ, at, squares));
+        }
+        let (_, at, squares) = best?;
+        let fen = index.fen(at)?;
+        if !reading.side_assumed && side != fen.split_whitespace().nth(1) {
+            return None;
+        }
+        let changes = read
+            .iter()
+            .zip(squares.iter())
+            .enumerate()
+            .filter(|(_, (from, to))| from != to)
+            .map(|(k, (&from, &to))| SquareChange { square: square_name(k), from: piece(from), to: piece(to) })
+            .collect();
+        Some(DiagramReference { kind: DiagramKind::Suggested, game: at.game, node: at.node, fen, changes, before: None })
+    }
+}
+
+/// The 64 squares of a FEN's piece placement, a8 first and h1 last, 0 for an empty square and the
+/// piece's letter otherwise; `None` when it is not eight ranks of eight squares.
+fn squares(placement: &str) -> Option<[u8; 64]> {
+    let mut out = [0u8; 64];
+    let mut ranks = 0usize;
+    for (r, rank) in placement.split('/').enumerate() {
+        if r >= 8 {
+            return None;
+        }
+        ranks = r.saturating_add(1);
+        let mut file = 0usize;
+        for c in rank.bytes() {
+            match c {
+                b'1'..=b'8' => file = file.saturating_add(usize::from(c - b'0')),
+                b'p' | b'n' | b'b' | b'r' | b'q' | b'k' | b'P' | b'N' | b'B' | b'R' | b'Q' | b'K' => {
+                    if file < 8 {
+                        *out.get_mut(r.saturating_mul(8).saturating_add(file))? = c;
+                    }
+                    file = file.saturating_add(1);
+                }
+                _ => return None,
+            }
+            if file > 8 {
+                return None;
+            }
+        }
+        if file != 8 {
+            return None;
+        }
+    }
+    (ranks == 8).then_some(out)
+}
+
+/// The name of square `k` of [`squares`]: 0 is a8, 63 is h1.
+fn square_name(k: usize) -> String {
+    let file = b"abcdefgh".get(k % 8).map_or('?', |&f| char::from(f));
+    format!("{file}{}", 8usize.saturating_sub(k / 8))
+}
+
+/// A square of [`squares`] as a FEN piece letter, `None` when empty.
+fn piece(square: u8) -> Option<char> {
+    (square != 0).then_some(char::from(square))
 }
 
 /// The warnings of [`Linked`]: few of the moves on the first [`JUDGED_PAGES`] pages read linked,
