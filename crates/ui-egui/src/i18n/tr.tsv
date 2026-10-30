@@ -3356,3 +3356,10 @@ castling	long	uzun
 	Use the PGN's move	PGN'in hamlesini kullan
 	Keep the book's move	Kitabın hamlesini koru
 	The choice was not kept: {e}	Seçim saklanmadı: {e}
+	{name} sits beside this PDF: the Chess panel offers to use it as the book's PGN.	{name} bu PDF'nin yanında: Satranç paneli onu kitabın PGN'i olarak kullanmayı öneriyor.
+	{name} sits beside this PDF. Use it as the book's PGN?	{name} bu PDF'nin yanında. Kitabın PGN'i olarak kullanılsın mı?
+	Don't use {name} as the book's PGN	{name} kitabın PGN'i olarak kullanılmasın
+	read from the book's PGN	kitabın PGN'inden okundu
+	in conflict with the book's PGN	kitabın PGN'iyle çelişkili
+	in conflict, the PGN's move chosen	çelişkili, PGN'in hamlesi seçildi
+	in conflict, the book's move kept	çelişkili, kitabın hamlesi korundu

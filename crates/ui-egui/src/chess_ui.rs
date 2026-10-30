@@ -429,6 +429,10 @@ pub enum PanelAction {
     ToolsOffer {
         collapse: bool,
     },
+    /// The answer to the offer of the PGN beside the PDF (plan "Carregar PGN do livro", R6f).
+    PgnOffer {
+        use_it: bool,
+    },
 }
 
 /// One diagram's state: its label, and its mark's colour from the theme's state tokens (plan A8
@@ -584,7 +588,39 @@ pub(crate) fn panel(
         return in_window_note(ui, t);
     }
     let offer = if state.tools_offer { tools_offer(ui, t) } else { None };
-    tab_contents(ui, t, state, state.tab == ChessTab::Text, id, info, current, page_now).or(offer)
+    let pgn_offer = state.book_pgns.offer(id).and_then(|name| pgn_offer(ui, t, &name));
+    tab_contents(ui, t, state, state.tab == ChessTab::Text, id, info, current, page_now).or(offer).or(pgn_offer)
+}
+
+/// The offer of the PGN beside the PDF (plan "Carregar PGN do livro", R6f): Use it, or Not now,
+/// which is remembered for the document.
+fn pgn_offer(ui: &mut egui::Ui, t: &Tokens, name: &str) -> Option<PanelAction> {
+    let mut action = None;
+    egui::Frame::NONE.fill(t.card).stroke(Stroke::new(1.0, t.border)).corner_radius(CornerRadius::same(6)).inner_margin(egui::Margin::same(8)).show(
+        ui,
+        |ui| {
+            ui.horizontal_wrapped(|ui| {
+                ui.add(crate::icons::image("book-open", 14.0, t.icon));
+                ui.label(
+                    egui::RichText::new(crate::i18n::fmt(tl!("{name} sits beside this PDF. Use it as the book's PGN?"), &[("name", name)])).small(),
+                );
+            });
+            ui.horizontal(|ui| {
+                if ui.button(crate::i18n::fmt(tl!("Use {name}"), &[("name", name)])).clicked() {
+                    action = Some(PanelAction::PgnOffer { use_it: true });
+                }
+                // Its own name for screen readers: the tools panel's offer has a Not now too.
+                let not_now = ui.button(tl!("Not now"));
+                let said = crate::i18n::fmt(tl!("Don't use {name} as the book's PGN"), &[("name", name)]);
+                not_now.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &said));
+                if not_now.clicked() {
+                    action = Some(PanelAction::PgnOffer { use_it: false });
+                }
+            });
+        },
+    );
+    ui.add_space(6.0);
+    action
 }
 
 /// Windows narrower than this, in points, get the offer to collapse the tools panel.
@@ -1125,6 +1161,7 @@ impl PdfCraftApp {
             }
             PanelAction::ReviewNow => self.review_chess_now(),
             // Either answer is kept: the offer is made once (plan A8, P5).
+            PanelAction::PgnOffer { use_it } => self.answer_pgn_offer(use_it),
             PanelAction::ToolsOffer { collapse } => {
                 self.chess.tools_offer_answered = true;
                 if collapse {

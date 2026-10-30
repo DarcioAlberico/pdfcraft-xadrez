@@ -3501,3 +3501,10 @@ castling	long	largo
 	Use the PGN's move	Usar la jugada del PGN
 	Keep the book's move	Mantener la jugada del libro
 	The choice was not kept: {e}	La elección no se guardó: {e}
+	{name} sits beside this PDF: the Chess panel offers to use it as the book's PGN.	{name} está junto a este PDF: el panel Ajedrez ofrece usarlo como PGN del libro.
+	{name} sits beside this PDF. Use it as the book's PGN?	{name} está junto a este PDF. ¿Usarlo como PGN del libro?
+	Don't use {name} as the book's PGN	No usar {name} como PGN del libro
+	read from the book's PGN	leída del PGN del libro
+	in conflict with the book's PGN	en conflicto con el PGN del libro
+	in conflict, the PGN's move chosen	en conflicto, elegida la jugada del PGN
+	in conflict, the book's move kept	en conflicto, mantenida la jugada del libro

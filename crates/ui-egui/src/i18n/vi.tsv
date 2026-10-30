@@ -3613,3 +3613,10 @@ castling	long	xa
 	Use the PGN's move	Dùng nước của PGN
 	Keep the book's move	Giữ nước của sách
 	The choice was not kept: {e}	Lựa chọn chưa được lưu: {e}
+	{name} sits beside this PDF: the Chess panel offers to use it as the book's PGN.	{name} nằm cạnh PDF này: bảng Cờ vua đề nghị dùng nó làm PGN của sách.
+	{name} sits beside this PDF. Use it as the book's PGN?	{name} nằm cạnh PDF này. Dùng nó làm PGN của sách?
+	Don't use {name} as the book's PGN	Không dùng {name} làm PGN của sách
+	read from the book's PGN	lấy từ PGN của sách
+	in conflict with the book's PGN	xung đột với PGN của sách
+	in conflict, the PGN's move chosen	xung đột, đã chọn nước của PGN
+	in conflict, the book's move kept	xung đột, đã giữ nước của sách

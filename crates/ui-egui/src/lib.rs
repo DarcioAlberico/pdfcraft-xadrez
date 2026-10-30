@@ -2399,6 +2399,8 @@ impl PdfCraftApp {
         v["chess_diagram_hint_seen"] = serde_json::Value::Bool(self.chess.diagram_hint_seen);
         v["chess_redraw_asked"] = serde_json::Value::Bool(self.chess.redraw_asked);
         v["chess_tools_offer_answered"] = serde_json::Value::Bool(self.chess.tools_offer_answered);
+        // The documents that said Not now to the PGN beside them (plan "Carregar PGN do livro", R6f).
+        v["chess_pgn_offers_declined"] = serde_json::json!(self.chess.book_pgns.declined);
         v.to_string()
     }
 
@@ -2470,6 +2472,15 @@ impl PdfCraftApp {
         }
         if let Some(on) = v["chess_tools_offer_answered"].as_bool() {
             self.chess.tools_offer_answered = on;
+        }
+        if let Some(keys) = v["chess_pgn_offers_declined"].as_array() {
+            let max = crate::chess_reference_ui::MAX_DECLINED;
+            // Names a store gives its files: short, so a long string is not one.
+            let names = keys.iter().filter_map(serde_json::Value::as_str).filter(|k| k.len() <= 128).map(str::to_owned);
+            let mut declined: Vec<String> = names.collect();
+            let over = declined.len().saturating_sub(max);
+            declined.drain(..over);
+            self.chess.book_pgns.declined = declined;
         }
         if let Some(on) = v["chess_diagram_hint_seen"].as_bool() {
             self.chess.diagram_hint_seen = on;

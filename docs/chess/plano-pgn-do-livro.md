@@ -1,6 +1,6 @@
 # Plano de implantação — Carregar PGN do livro · v1
 
-**Status:** v11 · 2026-10-30 · R0 (#229), R1 (#231), R2 (#233), R3 (#234), R4 (#235), R5 (#237), R6a (#238), R6b (#240), R6c (#241), R6d (#243) e R6e feitos; R6f, R6g e R7 a fazer.
+**Status:** v12 · 2026-10-30 · R0 (#229), R1 (#231), R2 (#233), R3 (#234), R4 (#235), R5 (#237) e R6 (#238, #240, #241, #243, #244 e R6f/R6g) feitos; R7 a fazer.
 **Origem:** pedido do usuário em 2026-10-29: "quando temos o PDF digital e o PGN dele, daria pra implementar uma função carregar PGN para aproveitar esse PGN?". Analisamos o par em `C:\Users\AMD\Documents\PDFCraft_Arquivos\PDF e PGN`: *Beat the French Defence with 3.Nc3* (Harikrishna; 748 páginas, gerado pelo calibre a partir de um curso Chessable) e o PGN do curso (120 partidas, "Chapter N / Game M").
 **Repositório:** `DarcioAlberico/pdfcraft-xadrez`. Crates: `chess` (L0), `chessvision`, `engine` (L6), `automation`, `ui-egui`.
 **Público de cada passo:** uma sessão de agente que começa do zero. Cada passo traz o contexto, as tarefas, a verificação e o critério de saída.
@@ -257,7 +257,15 @@ R3 e R4 podem correr em paralelo depois de R2. R6 só começa depois de R5.
 - R6e, o que mudou em relação ao texto do passo:
   - **A escolha não muda o texto nem a partida lida**: pela D1 o texto da aba é o do livro. "Usar o lance do PGN" marca o lance como resolvido a favor do PGN, cuja partida se abre naquele lance (R6c), e a exportação comentada já usa o PGN.
   - **Não há uma fila de conflitos do livro inteiro**: cada página diz quantos tem a revisar, e o Ligar o livro inteiro (R6d) diz o total.
-- R6f, R6g e R7: a fazer.
+- R6f: feito.
+  - **A oferta ao abrir**: um PDF aberto com um `.pgn` do mesmo nome ao lado e nenhum PGN guardado ganha, no painel Xadrez, o cartão "livro.pgn está ao lado deste PDF. Usá-lo como PGN do livro?" com "Usar livro.pgn" e "Agora não", e um aviso de uma linha na primeira vez da sessão.
+  - **Uma vez por documento**: "Agora não" fica nas preferências (`chess_pgn_offers_declined`, pelo nome que as chaves do documento dão ao arquivo, no máximo 256), e o documento não é perguntado de novo; o botão da aba Texto continua.
+  - No leitor de tela, o "Agora não" do cartão diz "Não usar livro.pgn como PGN do livro", porque a oferta do painel de ferramentas também tem um "Agora não".
+- R6g: feito.
+  - **Leitor de tela**: um lance ligado ao PGN diz em palavras o que o sublinhado e o itálico mostram ("Bb5, lido do PGN do livro", "em conflito com o PGN do livro", "em conflito, escolhido o lance do PGN", "em conflito, mantido o lance do livro").
+  - **1366 × 768, claro e escuro**: um teste confere que os controles do PGN na aba Texto ficam na tela nos dois temas, e as capturas (`PDFCRAFT_CHESS_SHOTS`) foram olhadas.
+  - **Teclado**: Tab vai de "Remover PGN do livro" a "Ligar o livro inteiro", na ordem em que aparecem.
+- R7: a fazer.
 
 ## 4. Decisões do usuário
 
@@ -285,3 +293,4 @@ R3 e R4 podem correr em paralelo depois de R2. R6 só começa depois de R5.
 - **v9 (2026-10-30):** R6c feito (a partida do PGN no Tabuleiro e o PGN ao lado do PDF).
 - **v10 (2026-10-30):** o resto do R6 dividido em R6d–R6g; R6d feito (o livro inteiro ligado, com a medida do custo).
 - **v11 (2026-10-30):** R6e feito (a escolha num conflito, guardada com o PGN).
+- **v12 (2026-10-30):** R6f (a oferta do PGN ao lado ao abrir) e R6g (tela, teclado e leitor de tela) feitos; o R6 está completo.

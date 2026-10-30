@@ -3360,3 +3360,10 @@ castling	long	grand
 	Use the PGN's move	Utiliser le coup du PGN
 	Keep the book's move	Garder le coup du livre
 	The choice was not kept: {e}	Le choix n'a pas été conservé : {e}
+	{name} sits beside this PDF: the Chess panel offers to use it as the book's PGN.	{name} se trouve à côté de ce PDF : le panneau Échecs propose de l'utiliser comme PGN du livre.
+	{name} sits beside this PDF. Use it as the book's PGN?	{name} se trouve à côté de ce PDF. L'utiliser comme PGN du livre ?
+	Don't use {name} as the book's PGN	Ne pas utiliser {name} comme PGN du livre
+	read from the book's PGN	lu dans le PGN du livre
+	in conflict with the book's PGN	en conflit avec le PGN du livre
+	in conflict, the PGN's move chosen	en conflit, coup du PGN choisi
+	in conflict, the book's move kept	en conflit, coup du livre gardé

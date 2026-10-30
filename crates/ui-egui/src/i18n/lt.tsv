@@ -3611,3 +3611,10 @@ castling	long	ilgoji
 	Use the PGN's move	Naudoti PGN ėjimą
 	Keep the book's move	Palikti knygos ėjimą
 	The choice was not kept: {e}	Pasirinkimas neišsaugotas: {e}
+	{name} sits beside this PDF: the Chess panel offers to use it as the book's PGN.	{name} yra šalia šio PDF: Šachmatų skydelis siūlo jį naudoti kaip knygos PGN.
+	{name} sits beside this PDF. Use it as the book's PGN?	{name} yra šalia šio PDF. Naudoti jį kaip knygos PGN?
+	Don't use {name} as the book's PGN	Nenaudoti {name} kaip knygos PGN
+	read from the book's PGN	paimta iš knygos PGN
+	in conflict with the book's PGN	prieštarauja knygos PGN
+	in conflict, the PGN's move chosen	prieštarauja, pasirinktas PGN ėjimas
+	in conflict, the book's move kept	prieštarauja, paliktas knygos ėjimas

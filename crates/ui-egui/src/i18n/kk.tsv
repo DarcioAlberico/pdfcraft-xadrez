@@ -3358,3 +3358,10 @@ castling	long	ұзын
 	Use the PGN's move	PGN жүрісін қолдану
 	Keep the book's move	Кітап жүрісін қалдыру
 	The choice was not kept: {e}	Таңдау сақталмады: {e}
+	{name} sits beside this PDF: the Chess panel offers to use it as the book's PGN.	{name} осы PDF-тің жанында: «Шахмат» панелі оны кітаптың PGN файлы ретінде қолдануды ұсынады.
+	{name} sits beside this PDF. Use it as the book's PGN?	{name} осы PDF-тің жанында. Оны кітаптың PGN файлы ретінде қолданасыз ба?
+	Don't use {name} as the book's PGN	{name} кітаптың PGN файлы ретінде қолданылмасын
+	read from the book's PGN	кітаптың PGN файлынан алынды
+	in conflict with the book's PGN	кітаптың PGN файлымен қайшылықта
+	in conflict, the PGN's move chosen	қайшылықта, PGN жүрісі таңдалды
+	in conflict, the book's move kept	қайшылықта, кітап жүрісі қалдырылды

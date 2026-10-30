@@ -3324,3 +3324,10 @@ castling	long	长
 	Use the PGN's move	使用 PGN 的着法
 	Keep the book's move	保留书中的着法
 	The choice was not kept: {e}	未能保存选择：{e}
+	{name} sits beside this PDF: the Chess panel offers to use it as the book's PGN.	{name} 位于此 PDF 旁：国际象棋面板可将其用作本书的 PGN。
+	{name} sits beside this PDF. Use it as the book's PGN?	{name} 位于此 PDF 旁。要将其用作本书的 PGN 吗？
+	Don't use {name} as the book's PGN	不将 {name} 用作本书的 PGN
+	read from the book's PGN	从本书的 PGN 读取
+	in conflict with the book's PGN	与本书的 PGN 冲突
+	in conflict, the PGN's move chosen	冲突，已选 PGN 的着法
+	in conflict, the book's move kept	冲突，已保留书中的着法

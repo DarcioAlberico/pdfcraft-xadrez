@@ -30,6 +30,9 @@ pub const STORAGE_KEY: &str = "pdfcraft-chess-reference-v1";
 /// The bytes the web build keeps the books' PGNs in, apart from the games and the corrections.
 pub const WEB_BUDGET: usize = 2 << 20;
 
+/// Most documents remembered as having declined the PGN beside them; the oldest go first.
+pub const MAX_DECLINED: usize = 256;
+
 /// Where the books' PGNs are kept.
 enum Store {
     #[cfg(not(target_arch = "wasm32"))]
@@ -206,6 +209,12 @@ pub struct BookPgns {
     docs: Vec<DocPgn>,
     /// Link the whole book's pages read so far, and of how many (R6d).
     pub(crate) progress: Option<(Arc<std::sync::atomic::AtomicUsize>, usize)>,
+    /// The documents whose PGN beside them the user said Not now to, by the name their keys
+    /// give their files (`corrections::file_name`): not offered again. Kept in the settings, at
+    /// most [`MAX_DECLINED`] (R6f).
+    pub declined: Vec<String>,
+    /// The documents told this session that a PGN sits beside them (R6f).
+    told: Vec<DocId>,
     /// PGN files the browser read for a document, picked up on the next frame.
     #[cfg(target_arch = "wasm32")]
     pub(crate) uploads: Arc<std::sync::Mutex<Vec<(DocId, String, Vec<u8>)>>>,
@@ -274,6 +283,17 @@ impl BookPgns {
         if let Some(d) = self.docs.iter_mut().find(|d| d.doc == id) {
             d.link = Some(link);
         }
+    }
+
+    /// The PGN beside document `id`'s PDF, by its file name, when the panel offers it (R6f): the
+    /// document keeps none and the user did not say Not now to it.
+    pub(crate) fn offer(&self, id: DocId) -> Option<String> {
+        let d = self.doc(id)?;
+        let key = pdfcraft_engine::chess::corrections::file_name(&d.keys)?;
+        if self.declined.contains(&key) {
+            return None;
+        }
+        self.sibling_name(id)
     }
 
     /// The file name of the PGN beside document `id`'s PDF, when it keeps none.
@@ -425,6 +445,21 @@ impl PdfCraftApp {
         ));
     }
 
+    /// The answer to the offer of the PGN beside the active document's PDF (R6f): use it, or not
+    /// now, which is remembered so it is not offered again.
+    pub(crate) fn answer_pgn_offer(&mut self, use_it: bool) {
+        if use_it {
+            return self.use_sibling_pgn();
+        }
+        let Some((_, id)) = self.active_ids() else { return };
+        let Some(key) = self.chess.book_pgns.doc(id).and_then(|d| pdfcraft_engine::chess::corrections::file_name(&d.keys)) else { return };
+        let declined = &mut self.chess.book_pgns.declined;
+        declined.retain(|k| *k != key);
+        declined.push(key);
+        let over = declined.len().saturating_sub(MAX_DECLINED);
+        declined.drain(..over);
+    }
+
     /// Keep the PGN beside the active document's PDF as its book's PGN (R6c).
     pub(crate) fn use_sibling_pgn(&mut self) {
         let Some((_, id)) = self.active_ids() else { return };
@@ -531,6 +566,18 @@ impl PdfCraftApp {
     /// tab can offer the PGN's suggestion ([`suggestion`]).
     pub(crate) fn book_pgn_tick(&mut self) {
         let Some((vi, id)) = self.active_ids() else { return };
+        // The PGN beside a document opened is offered (R6f): looked for once per document, and
+        // said once per session.
+        if self.book_pgn_for(id).is_some()
+            && !self.chess.book_pgns.told.contains(&id)
+            && let Some(name) = self.chess.book_pgns.offer(id)
+        {
+            self.chess.book_pgns.told.push(id);
+            self.notify(crate::i18n::fmt(
+                tl!("{name} sits beside this PDF: the Chess panel offers to use it as the book's PGN."),
+                &[("name", &name)],
+            ));
+        }
         let Some(page) = self.chess.editor.as_ref().filter(|e| e.doc == id).map(|e| e.page) else { return };
         if self.views.get(vi).map(|v| v.current) != Some(page) || self.chess.job.is_some() || self.chess.book_pgns.summary(id).is_none() {
             return;
