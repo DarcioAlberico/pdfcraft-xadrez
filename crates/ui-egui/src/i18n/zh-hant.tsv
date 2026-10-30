@@ -3257,3 +3257,15 @@ castling	long	長
 	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	此 PDF 旁有同名的 PGN：將其儲存為本書的 PGN。
 	Double-click to open the book's PGN game here.	按兩下以在此處開啟本書 PGN 中的對局。
 	Open the book's PGN game here	在此處開啟本書 PGN 中的對局
+	Linking the whole book to its PGN…	正在將整本書與其 PGN 連結…
+	Linking the whole book: page {done} of {of}	正在連結整本書：第 {done} 頁，共 {of} 頁
+	Link the whole book again	重新連結整本書
+	Link the whole book	連結整本書
+	Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book.	讀取每一頁並與本書的 PGN 連結：它確認、從 PGN 讀取和發現衝突的著法數，以及每局開始的頁面。所需時間與匯出本書相同。
+	Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages.	整本書：{moves} 步中連結了 {linked} 步（從 PGN 讀取 {recovered} 步），衝突 {conflict} 步，涉及 {all} 頁中的 {pages} 頁。
+	Games of the book's PGN ({n})	本書 PGN 中的對局（{n}）
+	p. {page} · {name}	第 {page} 頁 · {name}
+	{name} (no page discusses it)	{name}（沒有頁面討論它）
+	Go to its page and put the game on the board.	前往其頁面並將對局放到棋盤上。
+	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	本書已與其 PGN 連結：{moves} 步中 {linked} 步（從 PGN 讀取 {recovered} 步），衝突 {conflict} 步。
+	Link the whole book to its PGN	將整本書與其 PGN 連結

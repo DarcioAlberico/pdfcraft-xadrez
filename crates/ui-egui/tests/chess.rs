@@ -999,6 +999,33 @@ fn the_pgn_beside_the_pdf_is_offered_and_a_linked_move_opens_its_game() {
     let _ = std::fs::remove_dir_all(dir);
 }
 
+/// Plan "Carregar PGN do livro", R6d: Link the whole book reads every page and links it to the
+/// book's PGN: the Text tab says how many moves it linked and lists the PGN's games, each with
+/// the first page that discusses it; a game opens on the board from there.
+#[test]
+fn linking_the_whole_book_says_what_it_found_and_lists_the_pgns_games() {
+    let dir = corrections_dir("book-pgn-link");
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut h = book_pgn_harness("chapter.pdf", None, chapter_with("1.e4 e5 2.Nf3 Nc6 5.Bb5 a6"), dir.join("reference"));
+    let id = h.state().views[0].id;
+    let pgn = format!("{RUY_PGN}\n[Event \"Chapter 2\"]\n\n1.d4 d5 *\n");
+    h.state_mut().set_book_pgn(id, "book.pgn", pgn.as_bytes());
+    h.run_steps(4);
+    h.get_by_label("Link the whole book").click();
+    h.run_steps(4);
+    h.get_by_label("Whole book: 6 of 6 moves linked (2 read from the PGN), 0 in conflict, on 1 of 1 pages.");
+    h.get_by_label("Link the whole book again");
+    h.get_by_label_contains("Games of the book's PGN (2)").click();
+    h.run_steps(2);
+    h.get_by_label("Chapter 2 (no page discusses it)");
+    h.get_by_label("p. 1 · Chapter 1 · Ruy").click();
+    h.run_steps(4);
+    let game = &h.state().chess.board().game;
+    assert_eq!(game.tag("White"), Some("Ruy"), "{}", game.pgn());
+    assert_eq!(game.current(), 0, "at its start");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
 /// Export… writes the document: PGN with the position's game, and Markdown with its image in a
 /// folder beside it. The menu names each format by what it makes, under "Export chess book";
 /// once written, a window says where, and Open folder shows the file (plan A8, P9c).

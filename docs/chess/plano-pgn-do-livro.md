@@ -1,6 +1,6 @@
 # Plano de implantação — Carregar PGN do livro · v1
 
-**Status:** v9 · 2026-10-30 · R0 (#229), R1 (#231), R2 (#233), R3 (#234), R4 (#235), R5 (#237), R6a (#238), R6b (#240) e R6c feitos; R7 a fazer.
+**Status:** v10 · 2026-10-30 · R0 (#229), R1 (#231), R2 (#233), R3 (#234), R4 (#235), R5 (#237), R6a (#238), R6b (#240), R6c (#241) e R6d feitos; R6e–R6g e R7 a fazer.
 **Origem:** pedido do usuário em 2026-10-29: "quando temos o PDF digital e o PGN dele, daria pra implementar uma função carregar PGN para aproveitar esse PGN?". Analisamos o par em `C:\Users\AMD\Documents\PDFCraft_Arquivos\PDF e PGN`: *Beat the French Defence with 3.Nc3* (Harikrishna; 748 páginas, gerado pelo calibre a partir de um curso Chessable) e o PGN do curso (120 partidas, "Chapter N / Game M").
 **Repositório:** `DarcioAlberico/pdfcraft-xadrez`. Crates: `chess` (L0), `chessvision`, `engine` (L6), `automation`, `ui-egui`.
 **Público de cada passo:** uma sessão de agente que começa do zero. Cada passo traz o contexto, as tarefas, a verificação e o critério de saída.
@@ -241,7 +241,17 @@ R3 e R4 podem correr em paralelo depois de R2. R6 só começa depois de R5.
   - **A oferta é um botão na aba Texto, não uma pergunta ao abrir**: aparece enquanto o documento não guarda PGN e some quando guarda, sem precisar lembrar que já perguntou.
   - **O conflito não tem a escolha "Usar o lance do PGN / Manter o do livro"**: pela D1 o texto da aba é sempre o do livro, então o que o PGN tem ali se vê abrindo a partida do PGN naquele lance.
   - **A lista de partidas do Tabuleiro não mostra as partidas do PGN com a página**: cada uma entra quando um lance dela é aberto.
-- R7: a fazer.
+- O usuário pediu o R6 inteiro (2026-10-30). O que faltava virou R6d (o livro inteiro ligado: o resumo e as partidas do PGN com a página), R6e (a escolha num conflito), R6f (a oferta do PGN ao lado ao abrir o PDF) e R6g (capturas em 1366 × 768, claro e escuro, teclado e leitor de tela).
+- **Medida antes do R6d:** `chess_document` com o PGN sobre as 748 páginas do livro da §1.2 levou 766 s no perfil de desenvolvimento, quase tudo na detecção de diagramas página a página. Sem modelo de peças, ligou 9.882 de 15.195 lances (557 confirmados, 9.325 recuperados) em 651 páginas. Ler o livro inteiro ao carregar o PGN, sem pedir, travaria o app por minutos: o R6d é um botão.
+- R6d: feito.
+  - **Ligar o livro inteiro** (botão na aba Texto e comando `chess.reference.link`): lê todas as páginas como o Exportar (numa sessão própria, fora da thread da interface), em blocos de 16 páginas, e a aba diz "página n de N". No fim, alinha tudo com o PGN (`reference::align`) e diz: "Livro inteiro: X de Y lances ligados (Z lidos do PGN), C em conflito, em P de N páginas."
+  - **Partidas do PGN do livro (N)**: uma lista recolhível com cada partida e a primeira página que a discute ("p. 13 · Chapter 1 · Game 3"), ou "(nenhuma página a discute)". Um clique vai à página e põe a partida no Tabuleiro, no começo.
+  - O resultado vale pela sessão; "Ligar o livro inteiro de novo" refaz.
+  - **Nome repetido**: o PGN do curso repete Event como White e Site como Black, e o nome saía "Chapter Introduction · Game 1 · Chapter Introduction · Game 1". Cada tag agora entra uma vez (`chessvision`, com teste).
+- R6d, o que mudou em relação ao texto do passo:
+  - **O resumo não aparece ao carregar**: é o fim do Ligar o livro inteiro, pelo custo medido acima.
+  - **A lista fica na aba Texto**, não na lista de partidas do Tabuleiro: as partidas do PGN não são partidas do usuário até ele abrir uma.
+- R6e–R6g e R7: a fazer.
 
 ## 4. Decisões do usuário
 
@@ -266,4 +276,5 @@ R3 e R4 podem correr em paralelo depois de R2. R6 só começa depois de R5.
 - **v6 (2026-10-30):** R5 feito; a §3.3 diz o formato do PGN guardado, as ferramentas e o que ficou para o R6.
 - **v7 (2026-10-30):** R6 dividido em R6a, R6b e R6c; R6a feito (o PGN no app e a aba Texto).
 - **v8 (2026-10-30):** R6b feito (o chip, a origem do PGN exportado e a sugestão na aba Diagrama).
-- **v9 (2026-10-30):** R6c feito (a partida do PGN no Tabuleiro e o PGN ao lado do PDF); o R6 está completo.
+- **v9 (2026-10-30):** R6c feito (a partida do PGN no Tabuleiro e o PGN ao lado do PDF).
+- **v10 (2026-10-30):** o resto do R6 dividido em R6d–R6g; R6d feito (o livro inteiro ligado, com a medida do custo).

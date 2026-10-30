@@ -3415,3 +3415,15 @@ castling	long	dlouhá
 	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	Vedle tohoto PDF je PGN se stejným názvem: uložte ho jako PGN knihy.
 	Double-click to open the book's PGN game here.	Poklepáním otevřete zde partii z PGN knihy.
 	Open the book's PGN game here	Otevřít zde partii z PGN knihy
+	Linking the whole book to its PGN…	Propojování celé knihy s jejím PGN…
+	Linking the whole book: page {done} of {of}	Propojování celé knihy: stránka {done} z {of}
+	Link the whole book again	Propojit celou knihu znovu
+	Link the whole book	Propojit celou knihu
+	Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book.	Přečte všechny stránky a propojí je s PGN knihy: kolik tahů potvrdí, přečte z PGN a najde v rozporu a na které stránce začíná každá partie. Trvá to stejně dlouho jako export knihy.
+	Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages.	Celá kniha: propojeno {linked} z {moves} tahů (přečteno z PGN {recovered}), v rozporu {conflict}, na {pages} z {all} stránek.
+	Games of the book's PGN ({n})	Partie z PGN knihy ({n})
+	p. {page} · {name}	s. {page} · {name}
+	{name} (no page discusses it)	{name} (žádná stránka ji nerozebírá)
+	Go to its page and put the game on the board.	Přejít na její stránku a postavit partii na šachovnici.
+	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Kniha je propojena s PGN: {linked} z {moves} tahů (přečteno z PGN {recovered}), v rozporu {conflict}.
+	Link the whole book to its PGN	Propojit celou knihu s jejím PGN

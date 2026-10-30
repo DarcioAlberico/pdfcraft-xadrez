@@ -3346,3 +3346,15 @@ castling	long	dolga
 	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	Ob tem PDF je PGN z enakim imenom: shranite ga kot PGN knjige.
 	Double-click to open the book's PGN game here.	Dvokliknite, da tukaj odprete partijo iz PGN knjige.
 	Open the book's PGN game here	Odpri tukaj partijo iz PGN knjige
+	Linking the whole book to its PGN…	Povezovanje cele knjige z njenim PGN …
+	Linking the whole book: page {done} of {of}	Povezovanje cele knjige: stran {done} od {of}
+	Link the whole book again	Znova poveži celo knjigo
+	Link the whole book	Poveži celo knjigo
+	Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book.	Prebere vse strani in jih poveže s PGN knjige: koliko potez potrdi, prebere iz PGN in najde v sporu ter stran, na kateri se začne vsaka partija. Traja toliko kot izvoz knjige.
+	Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages.	Cela knjiga: povezanih {linked} od {moves} potez (prebranih iz PGN {recovered}), v sporu {conflict}, na {pages} od {all} strani.
+	Games of the book's PGN ({n})	Partije iz PGN knjige ({n})
+	p. {page} · {name}	str. {page} · {name}
+	{name} (no page discusses it)	{name} (nobena stran je ne obravnava)
+	Go to its page and put the game on the board.	Pojdi na njeno stran in postavi partijo na šahovnico.
+	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Knjiga je povezana s PGN: {linked} od {moves} potez (prebranih iz PGN {recovered}), v sporu {conflict}.
+	Link the whole book to its PGN	Poveži celo knjigo z njenim PGN

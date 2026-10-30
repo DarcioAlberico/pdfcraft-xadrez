@@ -3313,3 +3313,15 @@ castling	long	μεγάλο
 	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	Δίπλα σε αυτό το PDF υπάρχει PGN με το ίδιο όνομα: φυλάξτε το ως PGN του βιβλίου.
 	Double-click to open the book's PGN game here.	Κάντε διπλό κλικ για να ανοίξετε εδώ την παρτίδα του PGN του βιβλίου.
 	Open the book's PGN game here	Άνοιγμα εδώ της παρτίδας του PGN του βιβλίου
+	Linking the whole book to its PGN…	Σύνδεση ολόκληρου του βιβλίου με το PGN του…
+	Linking the whole book: page {done} of {of}	Σύνδεση ολόκληρου του βιβλίου: σελίδα {done} από {of}
+	Link the whole book again	Νέα σύνδεση ολόκληρου του βιβλίου
+	Link the whole book	Σύνδεση ολόκληρου του βιβλίου
+	Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book.	Διαβάζει κάθε σελίδα και τη συνδέει με το PGN του βιβλίου: πόσες κινήσεις επιβεβαιώνει, διαβάζει από το PGN και βρίσκει σε σύγκρουση, και τη σελίδα όπου αρχίζει κάθε παρτίδα. Διαρκεί όσο η εξαγωγή του βιβλίου.
+	Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages.	Ολόκληρο το βιβλίο: συνδέθηκαν {linked} από {moves} κινήσεις ({recovered} από το PGN), {conflict} σε σύγκρουση, σε {pages} από {all} σελίδες.
+	Games of the book's PGN ({n})	Παρτίδες του PGN του βιβλίου ({n})
+	p. {page} · {name}	σ. {page} · {name}
+	{name} (no page discusses it)	{name} (καμία σελίδα δεν την εξετάζει)
+	Go to its page and put the game on the board.	Μετάβαση στη σελίδα της και τοποθέτηση της παρτίδας στη σκακιέρα.
+	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	Το βιβλίο συνδέθηκε με το PGN του: {linked} από {moves} κινήσεις ({recovered} από το PGN), {conflict} σε σύγκρουση.
+	Link the whole book to its PGN	Σύνδεση ολόκληρου του βιβλίου με το PGN του

@@ -3340,3 +3340,15 @@ castling	long	hosszú
 	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	A PDF mellett ugyanilyen nevű PGN van: tárolja a könyv PGN-jeként.
 	Double-click to open the book's PGN game here.	Kattintson duplán, hogy itt megnyissa a könyv PGN-jének játszmáját.
 	Open the book's PGN game here	A könyv PGN-játszmájának megnyitása itt
+	Linking the whole book to its PGN…	Az egész könyv összekapcsolása a PGN-jével…
+	Linking the whole book: page {done} of {of}	Az egész könyv összekapcsolása: {done}. oldal / {of}
+	Link the whole book again	Az egész könyv újbóli összekapcsolása
+	Link the whole book	Az egész könyv összekapcsolása
+	Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book.	Minden oldalt beolvas és a könyv PGN-jéhez kapcsol: hány lépést erősít meg, olvas a PGN-ből és talál ütközőnek, és melyik oldalon kezdődik az egyes játszmák tárgyalása. Annyi ideig tart, mint a könyv exportálása.
+	Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages.	Az egész könyv: {moves} lépésből {linked} kapcsolva ({recovered} a PGN-ből olvasva), {conflict} ütközik, {all} oldalból {pages} oldalon.
+	Games of the book's PGN ({n})	A könyv PGN-jének játszmái ({n})
+	p. {page} · {name}	{page}. o. · {name}
+	{name} (no page discusses it)	{name} (egyik oldal sem tárgyalja)
+	Go to its page and put the game on the board.	Ugrás az oldalára és a játszma a táblára.
+	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	A könyv a PGN-jéhez kapcsolódik: {moves} lépésből {linked} ({recovered} a PGN-ből olvasva), {conflict} ütközik.
+	Link the whole book to its PGN	Az egész könyv összekapcsolása a PGN-jével

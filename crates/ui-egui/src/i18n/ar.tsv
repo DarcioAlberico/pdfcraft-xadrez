@@ -3616,3 +3616,15 @@ castling	long	طويل
 	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	يوجد بجانب ملف PDF هذا ملف PGN بالاسم نفسه: احفظه بوصفه PGN الكتاب.
 	Double-click to open the book's PGN game here.	انقر نقرًا مزدوجًا لفتح مباراة PGN الكتاب هنا.
 	Open the book's PGN game here	فتح مباراة PGN الكتاب هنا
+	Linking the whole book to its PGN…	جارٍ ربط الكتاب كله بـ PGN الخاص به…
+	Linking the whole book: page {done} of {of}	جارٍ ربط الكتاب كله: الصفحة {done} من {of}
+	Link the whole book again	ربط الكتاب كله من جديد
+	Link the whole book	ربط الكتاب كله
+	Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book.	يقرأ كل الصفحات ويربطها بـ PGN الكتاب: عدد النقلات التي يؤكدها ويقرؤها من PGN ويجدها متعارضة، والصفحة التي تبدأ فيها كل مباراة. يستغرق الوقت نفسه الذي يستغرقه تصدير الكتاب.
+	Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages.	الكتاب كله: رُبطت {linked} من {moves} نقلة ({recovered} مقروءة من PGN)، {conflict} متعارضة، في {pages} من {all} صفحة.
+	Games of the book's PGN ({n})	مباريات PGN الكتاب ({n})
+	p. {page} · {name}	ص. {page} · {name}
+	{name} (no page discusses it)	{name} (لا تتناولها أي صفحة)
+	Go to its page and put the game on the board.	الانتقال إلى صفحتها ووضع المباراة على الرقعة.
+	The book is linked to its PGN: {linked} of {moves} moves ({recovered} read from the PGN), {conflict} in conflict.	رُبط الكتاب بـ PGN الخاص به: {linked} من {moves} نقلة ({recovered} مقروءة من PGN)، {conflict} متعارضة.
+	Link the whole book to its PGN	ربط الكتاب كله بـ PGN الخاص به
