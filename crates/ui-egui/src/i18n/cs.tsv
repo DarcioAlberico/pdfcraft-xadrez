@@ -3384,3 +3384,20 @@ castling	long	dlouhá
 	Black short castling	Krátká rošáda černého
 	Black long castling	Dlouhá rošáda černého
 	Position code other chess programs accept.	Kód pozice, který přijímají jiné šachové programy.
+	Load the book's PGN…	Načíst PGN knihy…
+	Remove the book's PGN	Odebrat PGN knihy
+	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	PGN knihy uložené pro tento dokument nelze přečíst ({why}); bylo odloženo jako {name}.
+	The book's PGN couldn't be read: {e}	PGN knihy nelze přečíst: {e}
+	{name} was not kept as the book's PGN: {e}	{name} nebylo uloženo jako PGN knihy: {e}
+	no game in it	neobsahuje žádnou partii
+	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	PGN knihy {name}: partií {games}, tahů {moves}. Stránky, které čte karta Text, se s ním propojí.
+	The book's PGN was removed from this document.	PGN knihy bylo z tohoto dokumentu odebráno.
+	This document keeps no book's PGN.	Tento dokument neuchovává žádné PGN knihy.
+	The book's PGN couldn't be removed: {e}	PGN knihy nelze odebrat: {e}
+	The book's PGN was not kept for the saved file: {e}	PGN knihy nebylo zachováno pro uložený soubor: {e}
+	Book's PGN: {name} ({games} games)	PGN knihy: {name} (partií {games})
+	The pages read here are linked to the book's PGN: a move the reader could not play is read from the PGN (underlined), and a move the PGN plays from another position is in conflict (in italics).	Zde čtené stránky jsou propojeny s PGN knihy: tah, který čtečka nedokázala zahrát, se čte z PGN (podtržený), a tah, který PGN hraje z jiné pozice, je v rozporu (kurzívou).
+	A PGN of this book's games (a course's or an e-book's export): the moves of each page read here are linked to it.	PGN partií této knihy (export kurzu nebo e-knihy): tahy každé zde čtené stránky se s ním propojí.
+	Read from the book's PGN: {san}	Přečteno z PGN knihy: {san}
+	The book's PGN plays this move from another position: check it.	PGN knihy hraje tento tah z jiné pozice: zkontrolujte ho.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	PGN knihy na této stránce: potvrzeno {confirmed}, přečteno z PGN {recovered}, v rozporu {conflict}.

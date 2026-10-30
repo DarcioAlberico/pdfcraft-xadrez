@@ -3309,3 +3309,20 @@ castling	long	hosszú
 	Black short castling	Sötét rövid sánca
 	Black long castling	Sötét hosszú sánca
 	Position code other chess programs accept.	Az állás kódja, amelyet más sakkprogramok is elfogadnak.
+	Load the book's PGN…	A könyv PGN-jének betöltése…
+	Remove the book's PGN	A könyv PGN-jének eltávolítása
+	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	A dokumentumhoz tárolt könyv-PGN nem olvasható ({why}); félretettük {name} néven.
+	The book's PGN couldn't be read: {e}	A könyv PGN-je nem olvasható: {e}
+	{name} was not kept as the book's PGN: {e}	A(z) {name} nem lett a könyv PGN-jeként tárolva: {e}
+	no game in it	nincs benne egyetlen játszma sem
+	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	A könyv PGN-je ({name}): {games} játszma, {moves} lépés. A Szöveg lapon olvasott oldalak ehhez kapcsolódnak.
+	The book's PGN was removed from this document.	A könyv PGN-je eltávolítva ebből a dokumentumból.
+	This document keeps no book's PGN.	Ez a dokumentum nem tárol könyv-PGN-t.
+	The book's PGN couldn't be removed: {e}	A könyv PGN-je nem távolítható el: {e}
+	The book's PGN was not kept for the saved file: {e}	A könyv PGN-je nem került át a mentett fájlhoz: {e}
+	Book's PGN: {name} ({games} games)	A könyv PGN-je: {name} ({games} játszma)
+	The pages read here are linked to the book's PGN: a move the reader could not play is read from the PGN (underlined), and a move the PGN plays from another position is in conflict (in italics).	Az itt olvasott oldalak a könyv PGN-jéhez kapcsolódnak: az a lépés, amelyet az olvasó nem tudott megtenni, a PGN-ből olvasható (aláhúzva), az a lépés pedig, amelyet a PGN más állásból tesz meg, ütközik (dőlten).
+	A PGN of this book's games (a course's or an e-book's export): the moves of each page read here are linked to it.	A könyv játszmáinak PGN-je (egy kurzus vagy e-könyv exportja): az itt olvasott oldalak lépései ehhez kapcsolódnak.
+	Read from the book's PGN: {san}	A könyv PGN-jéből olvasva: {san}
+	The book's PGN plays this move from another position: check it.	A könyv PGN-je ezt a lépést más állásból teszi meg: ellenőrizze.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	A könyv PGN-je ezen az oldalon: {confirmed} megerősítve, {recovered} a PGN-ből olvasva, {conflict} ütközik.

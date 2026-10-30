@@ -3254,3 +3254,20 @@ castling	long	długa
 	Black short castling	Krótka roszada czarnych
 	Black long castling	Długa roszada czarnych
 	Position code other chess programs accept.	Kod pozycji, który przyjmują inne programy szachowe.
+	Load the book's PGN…	Wczytaj PGN książki…
+	Remove the book's PGN	Usuń PGN książki
+	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	Nie udało się odczytać PGN książki zapisanego dla tego dokumentu ({why}); odłożono go jako {name}.
+	The book's PGN couldn't be read: {e}	Nie udało się odczytać PGN książki: {e}
+	{name} was not kept as the book's PGN: {e}	{name} nie został zapisany jako PGN książki: {e}
+	no game in it	nie zawiera żadnej partii
+	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	PGN książki {name}: partie: {games}, posunięcia: {moves}. Strony czytane na karcie Tekst są z nim powiązane.
+	The book's PGN was removed from this document.	Usunięto PGN książki z tego dokumentu.
+	This document keeps no book's PGN.	Ten dokument nie przechowuje PGN książki.
+	The book's PGN couldn't be removed: {e}	Nie udało się usunąć PGN książki: {e}
+	The book's PGN was not kept for the saved file: {e}	PGN książki nie został zachowany dla zapisanego pliku: {e}
+	Book's PGN: {name} ({games} games)	PGN książki: {name} (partie: {games})
+	The pages read here are linked to the book's PGN: a move the reader could not play is read from the PGN (underlined), and a move the PGN plays from another position is in conflict (in italics).	Strony czytane tutaj są powiązane z PGN książki: posunięcie, którego czytnik nie mógł zagrać, jest odczytywane z PGN (podkreślone), a posunięcie, które PGN gra z innej pozycji, jest w konflikcie (kursywą).
+	A PGN of this book's games (a course's or an e-book's export): the moves of each page read here are linked to it.	PGN partii z tej książki (eksport kursu lub e-booka): posunięcia z każdej czytanej tu strony są z nim powiązane.
+	Read from the book's PGN: {san}	Odczytane z PGN książki: {san}
+	The book's PGN plays this move from another position: check it.	PGN książki gra to posunięcie z innej pozycji: sprawdź je.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	PGN książki na tej stronie: potwierdzone: {confirmed}, odczytane z PGN: {recovered}, w konflikcie: {conflict}.

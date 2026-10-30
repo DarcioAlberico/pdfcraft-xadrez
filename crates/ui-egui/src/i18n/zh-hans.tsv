@@ -3274,3 +3274,20 @@ castling	long	长
 	Black short castling	黑方短易位
 	Black long castling	黑方长易位
 	Position code other chess programs accept.	其他国际象棋程序也能读取的局面代码。
+	Load the book's PGN…	加载本书的 PGN…
+	Remove the book's PGN	移除本书的 PGN
+	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	无法读取为此文档保存的本书 PGN（{why}）；已另存为 {name}。
+	The book's PGN couldn't be read: {e}	无法读取本书的 PGN：{e}
+	{name} was not kept as the book's PGN: {e}	{name} 未保存为本书的 PGN：{e}
+	no game in it	其中没有任何对局
+	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	本书的 PGN {name}：{games} 局，{moves} 步。“文本”选项卡读取的页面会与它关联。
+	The book's PGN was removed from this document.	已从此文档移除本书的 PGN。
+	This document keeps no book's PGN.	此文档没有保存本书的 PGN。
+	The book's PGN couldn't be removed: {e}	无法移除本书的 PGN：{e}
+	The book's PGN was not kept for the saved file: {e}	本书的 PGN 未随保存的文件保留：{e}
+	Book's PGN: {name} ({games} games)	本书的 PGN：{name}（{games} 局）
+	The pages read here are linked to the book's PGN: a move the reader could not play is read from the PGN (underlined), and a move the PGN plays from another position is in conflict (in italics).	此处读取的页面与本书的 PGN 关联：识别无法走出的着法从 PGN 读取（带下划线），PGN 从另一局面走出的着法标为冲突（斜体）。
+	A PGN of this book's games (a course's or an e-book's export): the moves of each page read here are linked to it.	本书对局的 PGN（课程或电子书的导出）：此处读取的每一页的着法都会与它关联。
+	Read from the book's PGN: {san}	从本书的 PGN 读取：{san}
+	The book's PGN plays this move from another position: check it.	本书的 PGN 从另一局面走出这步棋：请核对。
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	此页的本书 PGN：已确认 {confirmed}，从 PGN 读取 {recovered}，冲突 {conflict}。

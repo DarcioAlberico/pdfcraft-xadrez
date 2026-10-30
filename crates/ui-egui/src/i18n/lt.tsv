@@ -3561,3 +3561,20 @@ castling	long	ilgoji
 	Black short castling	Juodųjų trumpoji rokiruotė
 	Black long castling	Juodųjų ilgoji rokiruotė
 	Position code other chess programs accept.	Pozicijos kodas, kurį priima kitos šachmatų programos.
+	Load the book's PGN…	Įkelti knygos PGN…
+	Remove the book's PGN	Pašalinti knygos PGN
+	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	Šiam dokumentui saugoto knygos PGN nepavyko perskaityti ({why}); jis atidėtas kaip {name}.
+	The book's PGN couldn't be read: {e}	Knygos PGN nepavyko perskaityti: {e}
+	{name} was not kept as the book's PGN: {e}	{name} nebuvo išsaugotas kaip knygos PGN: {e}
+	no game in it	jame nėra nė vienos partijos
+	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	Knygos PGN {name}: partijų {games}, ėjimų {moves}. Skirtuko Tekstas skaitomi puslapiai susiejami su juo.
+	The book's PGN was removed from this document.	Knygos PGN pašalintas iš šio dokumento.
+	This document keeps no book's PGN.	Šis dokumentas nesaugo knygos PGN.
+	The book's PGN couldn't be removed: {e}	Knygos PGN nepavyko pašalinti: {e}
+	The book's PGN was not kept for the saved file: {e}	Knygos PGN nebuvo išlaikytas įrašytam failui: {e}
+	Book's PGN: {name} ({games} games)	Knygos PGN: {name} (partijų {games})
+	The pages read here are linked to the book's PGN: a move the reader could not play is read from the PGN (underlined), and a move the PGN plays from another position is in conflict (in italics).	Čia skaitomi puslapiai susieti su knygos PGN: ėjimas, kurio skaitytuvas negalėjo sužaisti, paimamas iš PGN (pabrauktas), o ėjimas, kurį PGN žaidžia iš kitos pozicijos, prieštarauja (kursyvu).
+	A PGN of this book's games (a course's or an e-book's export): the moves of each page read here are linked to it.	Šios knygos partijų PGN (kurso ar el. knygos eksportas): kiekvieno čia skaitomo puslapio ėjimai susiejami su juo.
+	Read from the book's PGN: {san}	Paimta iš knygos PGN: {san}
+	The book's PGN plays this move from another position: check it.	Knygos PGN šį ėjimą žaidžia iš kitos pozicijos: patikrinkite.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	Knygos PGN šiame puslapyje: patvirtinta {confirmed}, paimta iš PGN {recovered}, prieštarauja {conflict}.

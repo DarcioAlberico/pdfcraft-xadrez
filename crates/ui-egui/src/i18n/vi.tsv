@@ -3563,3 +3563,20 @@ castling	long	xa
 	Black short castling	Đen nhập thành gần
 	Black long castling	Đen nhập thành xa
 	Position code other chess programs accept.	Mã thế cờ mà các chương trình cờ vua khác chấp nhận.
+	Load the book's PGN…	Tải PGN của sách…
+	Remove the book's PGN	Gỡ PGN của sách
+	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	Không đọc được PGN của sách đã lưu cho tài liệu này ({why}); tệp đã được để riêng với tên {name}.
+	The book's PGN couldn't be read: {e}	Không đọc được PGN của sách: {e}
+	{name} was not kept as the book's PGN: {e}	{name} không được lưu làm PGN của sách: {e}
+	no game in it	không có ván cờ nào
+	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	PGN của sách {name}: {games} ván, {moves} nước. Các trang mà thẻ Văn bản đọc được liên kết với tệp này.
+	The book's PGN was removed from this document.	Đã gỡ PGN của sách khỏi tài liệu này.
+	This document keeps no book's PGN.	Tài liệu này không lưu PGN của sách.
+	The book's PGN couldn't be removed: {e}	Không gỡ được PGN của sách: {e}
+	The book's PGN was not kept for the saved file: {e}	PGN của sách không được giữ cho tệp đã lưu: {e}
+	Book's PGN: {name} ({games} games)	PGN của sách: {name} ({games} ván)
+	The pages read here are linked to the book's PGN: a move the reader could not play is read from the PGN (underlined), and a move the PGN plays from another position is in conflict (in italics).	Các trang đọc ở đây được liên kết với PGN của sách: nước đi mà trình đọc không đi được sẽ được lấy từ PGN (gạch chân), còn nước đi mà PGN đi từ một thế cờ khác thì bị xung đột (in nghiêng).
+	A PGN of this book's games (a course's or an e-book's export): the moves of each page read here are linked to it.	Một PGN gồm các ván cờ của sách này (xuất từ khóa học hoặc sách điện tử): nước đi của mỗi trang đọc ở đây được liên kết với nó.
+	Read from the book's PGN: {san}	Lấy từ PGN của sách: {san}
+	The book's PGN plays this move from another position: check it.	PGN của sách đi nước này từ một thế cờ khác: hãy kiểm tra.
+	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	PGN của sách ở trang này: {confirmed} đã xác nhận, {recovered} lấy từ PGN, {conflict} xung đột.

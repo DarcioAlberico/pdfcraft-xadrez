@@ -55,6 +55,8 @@ pub struct ChessState {
     pub editor: Option<crate::chess_editor::DiagramEditor>,
     /// The corrections the user confirmed, and where they are kept (plan A8, P3b2).
     pub corrections: crate::chess_corrections_ui::Corrections,
+    /// The books' own PGNs, and where they are kept (plan "Carregar PGN do livro", R6a).
+    pub book_pgns: crate::chess_reference_ui::BookPgns,
     /// Edit diagrams in the Diagrams panel as before the Diagram tab (a preference, for one
     /// version).
     pub classic_editor: bool,
@@ -621,7 +623,9 @@ pub(crate) fn tab_contents(
         let busy = state.job.as_ref().filter(|j| j.doc == id).map(crate::chess_text_ui::ChessJob::label);
         let origin = state.origin.filter(|(d, _)| *d == id).map(|(_, o)| o).unwrap_or_default();
         let positions = state.pgn_positions;
-        return crate::chess_text_ui::text_tab(ui, t, state.text.as_mut(), id, page_now, current, origin, busy, positions).map(PanelAction::Text);
+        let book_pgn = state.book_pgns.summary(id).cloned();
+        return crate::chess_text_ui::text_tab(ui, t, state.text.as_mut(), id, page_now, current, origin, busy, positions, book_pgn.as_ref())
+            .map(PanelAction::Text);
     }
     let mut action = None;
     let running = state.run.as_ref().filter(|r| r.doc == id).map(|r| {
