@@ -995,7 +995,8 @@ fn the_pgn_beside_the_pdf_is_offered_and_a_linked_move_opens_its_game() {
     let pgn = "[Event \"Chapter 1\"]\n[White \"Ruy\"]\n\n1.e4 e5 2.Nf3 Nc6 3.Bb5 (3.Bc4 Bc5) 3...a6 *\n";
     std::fs::write(dir.join("book.pgn"), pgn).unwrap();
     let mut h = book_pgn_harness("book.pdf", Some(pdf.to_string_lossy().into_owned()), bytes, dir.join("reference"));
-    h.get_by_label("Use book.pgn").click();
+    // The Text tab's button (the Chess panel offers it too, R6f).
+    h.get_all_by_label("Use book.pgn").last().expect("the Text tab's button").click();
     h.run_steps(4);
     h.get_by_label("Book's PGN: book.pgn (1 games)");
     assert!(h.query_by_label("Use book.pgn").is_none(), "offered only while none is kept");
@@ -1067,6 +1068,109 @@ fn a_move_in_conflict_with_the_pgn_takes_the_users_choice() {
     // Opened again, the choice is found with the PGN.
     let h = book_pgn_harness("chapter.pdf", None, pdf, dir.join("reference"));
     h.get_by_label_contains("1 in conflict (0 to review).");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// Plan "Carregar PGN do livro", R6f: a PDF opened with a PGN of its name beside it gets the
+/// offer in the Chess panel. Not now is remembered with the settings, so the document opened
+/// again is not asked (the Text tab still offers it); Use keeps it as the book's PGN.
+#[test]
+fn the_pgn_beside_a_pdf_opened_is_offered_once() {
+    let dir = corrections_dir("book-pgn-offer");
+    std::fs::create_dir_all(&dir).unwrap();
+    let pdf = dir.join("book.pdf");
+    let bytes = chapter_with("1.e4 e5 2.Nf3 Nc6 5.Bb5 a6");
+    std::fs::write(&pdf, &bytes).unwrap();
+    std::fs::write(dir.join("book.pgn"), RUY_PGN).unwrap();
+    let path = pdf.to_string_lossy().into_owned();
+    let offered = "book.pgn sits beside this PDF. Use it as the book's PGN?";
+    let settings = {
+        let mut h = book_pgn_harness("book.pdf", Some(path.clone()), bytes.clone(), dir.join("reference"));
+        h.get_by_label(offered);
+        h.get_by_label("Don't use book.pgn as the book's PGN").click();
+        h.run_steps(3);
+        assert!(h.query_by_label(offered).is_none(), "answered");
+        h.get_by_label("Use book.pgn");
+        h.state().persist()
+    };
+    // Opened again with the settings: not asked again; the Text tab still offers it.
+    let mut h = Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).build_eframe({
+        let (path, bytes, store) = (path.clone(), bytes.clone(), dir.join("reference"));
+        move |_cc| {
+            let mut app = PdfCraftApp::new();
+            app.restore(&settings);
+            app.set_option("language", "en").unwrap();
+            app.chess.book_pgns.use_folder(store);
+            app.open_bytes("book.pdf", Some(path), bytes).unwrap();
+            app.run_inline = true;
+            app
+        }
+    });
+    h.run_steps(4);
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(2);
+    h.get_by_label("Text").click();
+    h.run_steps(4);
+    assert!(h.query_by_label(offered).is_none(), "Not now is remembered");
+    h.get_by_label("Use book.pgn");
+    // Without that answer, Use in the offer keeps it.
+    let mut h = book_pgn_harness("book.pdf", Some(path), bytes, dir.join("reference"));
+    h.get_by_label(offered);
+    h.get_all_by_label("Use book.pgn").next().expect("the offer's button").click();
+    h.run_steps(4);
+    h.get_by_label("Book's PGN: book.pgn (1 games)");
+    assert!(h.query_by_label(offered).is_none(), "kept: no offer");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// Plan "Carregar PGN do livro", R6g: at 1366 × 768, in the light and the dark theme, the book's
+/// PGN's controls on the Text tab are on screen; the keyboard goes from Remove to Link the whole
+/// book; and a move read from the PGN is named so for screen readers, not by its underline alone.
+#[test]
+fn the_books_pgn_controls_fit_1366x768_light_and_dark_and_are_named() {
+    let dir = corrections_dir("book-pgn-1366");
+    std::fs::create_dir_all(&dir).unwrap();
+    for theme in ["light", "dark"] {
+        let store = dir.join(theme);
+        let mut h = Harness::builder().with_size(egui::vec2(1366.0, 768.0)).build_eframe(move |_cc| {
+            let mut app = PdfCraftApp::new();
+            app.set_option("language", "en").unwrap();
+            app.set_option("theme", theme).unwrap();
+            app.chess.book_pgns.use_folder(store);
+            app.open_bytes("chapter.pdf", None, chapter_with("1.e4 e5 2.Nf3 Nc6 5.Bb5 a6")).unwrap();
+            app.run_inline = true;
+            app
+        });
+        h.run_steps(4);
+        h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+        h.run_steps(2);
+        h.get_by_label("Text").click();
+        h.run_steps(4);
+        let id = h.state().views[0].id;
+        h.state_mut().set_book_pgn(id, "book.pgn", RUY_PGN.as_bytes());
+        h.run_steps(4);
+        h.get_by_label("Link the whole book").click();
+        h.run_steps(4);
+        h.get_by_label_contains("Games of the book's PGN (1)").click();
+        h.run_steps(3);
+        let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1366.0, 768.0));
+        for label in ["Remove the book's PGN", "Link the whole book again", "p. 1 · Chapter 1 · Ruy"] {
+            let r = h.get_by_label(label).rect();
+            assert!(screen.contains_rect(r) && r.width() > 0.0, "{theme}: {label} is on screen: {r:?}");
+        }
+        h.get_by_label_contains("Whole book: 6 of 6 moves linked");
+        // Named in words: the two moves read from the PGN, and only they.
+        assert_eq!(h.get_all_by_label_contains(", read from the book's PGN").count(), 2, "{theme}");
+        // The keyboard: Remove, then Link the whole book.
+        h.get_by_label("Remove the book's PGN").focus();
+        h.run_steps(1);
+        h.key_press(egui::Key::Tab);
+        h.run_steps(1);
+        assert!(h.get_by_label("Link the whole book again").is_focused(), "{theme}: Remove → Link the whole book");
+        if let Ok(shots) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
+            h.render().unwrap().save(std::path::Path::new(&shots).join(format!("book-pgn-1366-{theme}.png"))).unwrap();
+        }
+    }
     let _ = std::fs::remove_dir_all(dir);
 }
 

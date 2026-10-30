@@ -519,6 +519,15 @@ pub fn text_tab(
                                 } else if opens {
                                     tip = format!("{tip}\n{}", tl!("Double-click to open this game on the board."));
                                 }
+                                // The link is said in words too, never by the style alone (R6g).
+                                let said = match (linked.as_ref().map(|(k, _)| *k), choice) {
+                                    (Some(LinkKind::Recovered), _) => Some(tl!("read from the book's PGN")),
+                                    (Some(LinkKind::Conflict), None) => Some(tl!("in conflict with the book's PGN")),
+                                    (Some(LinkKind::Conflict), Some(Choice::Pgn)) => Some(tl!("in conflict, the PGN's move chosen")),
+                                    (Some(LinkKind::Conflict), Some(Choice::Book)) => Some(tl!("in conflict, the book's move kept")),
+                                    _ => None,
+                                };
+                                let name = said.map(|s| format!("{shown}, {s}"));
                                 let mut text = egui::RichText::new(shown).color(status_colour(m.status, &Tokens::get(ui.ctx()))).strong();
                                 text = match (linked.map(|(k, _)| k), choice) {
                                     (Some(LinkKind::Recovered), _) | (Some(LinkKind::Conflict), Some(Choice::Pgn)) => text.underline(),
@@ -526,6 +535,9 @@ pub fn text_tab(
                                     _ => text,
                                 };
                                 let r = ui.add(egui::Label::new(text).sense(egui::Sense::click())).on_hover_text(tip);
+                                if let Some(name) = &name {
+                                    r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, true, name));
+                                }
                                 // A click outlines the move on the page; a double-click (its first
                                 // click outlined it) opens its game on the board.
                                 if r.double_clicked()

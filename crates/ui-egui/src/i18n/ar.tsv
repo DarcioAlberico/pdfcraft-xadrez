@@ -3635,3 +3635,10 @@ castling	long	طويل
 	Use the PGN's move	استخدام نقلة PGN
 	Keep the book's move	الاحتفاظ بنقلة الكتاب
 	The choice was not kept: {e}	لم يُحفظ الاختيار: {e}
+	{name} sits beside this PDF: the Chess panel offers to use it as the book's PGN.	{name} بجانب ملف PDF هذا: تعرض لوحة الشطرنج استخدامه بوصفه PGN الكتاب.
+	{name} sits beside this PDF. Use it as the book's PGN?	{name} بجانب ملف PDF هذا. هل تستخدمه بوصفه PGN الكتاب؟
+	Don't use {name} as the book's PGN	عدم استخدام {name} بوصفه PGN الكتاب
+	read from the book's PGN	مقروءة من PGN الكتاب
+	in conflict with the book's PGN	متعارضة مع PGN الكتاب
+	in conflict, the PGN's move chosen	متعارضة، اختيرت نقلة PGN
+	in conflict, the book's move kept	متعارضة، احتُفظ بنقلة الكتاب

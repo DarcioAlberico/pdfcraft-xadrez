@@ -3235,3 +3235,10 @@ castling	long	పెద్ద
 	Use the PGN's move	PGN ఎత్తును ఉపయోగించండి
 	Keep the book's move	పుస్తకం ఎత్తును ఉంచండి
 	The choice was not kept: {e}	ఎంపిక భద్రపరచబడలేదు: {e}
+	{name} sits beside this PDF: the Chess panel offers to use it as the book's PGN.	{name} ఈ PDF పక్కన ఉంది: చదరంగం ప్యానెల్ దాన్ని పుస్తకం PGN గా ఉపయోగించమని సూచిస్తుంది.
+	{name} sits beside this PDF. Use it as the book's PGN?	{name} ఈ PDF పక్కన ఉంది. దాన్ని పుస్తకం PGN గా ఉపయోగించాలా?
+	Don't use {name} as the book's PGN	{name} ను పుస్తకం PGN గా ఉపయోగించవద్దు
+	read from the book's PGN	పుస్తకం PGN నుండి చదివినది
+	in conflict with the book's PGN	పుస్తకం PGN తో వైరుధ్యంలో
+	in conflict, the PGN's move chosen	వైరుధ్యంలో, PGN ఎత్తు ఎంచుకోబడింది
+	in conflict, the book's move kept	వైరుధ్యంలో, పుస్తకం ఎత్తు ఉంచబడింది

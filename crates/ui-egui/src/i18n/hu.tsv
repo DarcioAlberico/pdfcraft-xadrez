@@ -3359,3 +3359,10 @@ castling	long	hosszú
 	Use the PGN's move	A PGN lépésének használata
 	Keep the book's move	A könyv lépésének megtartása
 	The choice was not kept: {e}	A választás nem lett tárolva: {e}
+	{name} sits beside this PDF: the Chess panel offers to use it as the book's PGN.	A(z) {name} a PDF mellett van: a Sakk panel felajánlja, hogy a könyv PGN-jeként használja.
+	{name} sits beside this PDF. Use it as the book's PGN?	A(z) {name} a PDF mellett van. Használja a könyv PGN-jeként?
+	Don't use {name} as the book's PGN	A(z) {name} ne legyen a könyv PGN-je
+	read from the book's PGN	a könyv PGN-jéből olvasva
+	in conflict with the book's PGN	ütközik a könyv PGN-jével
+	in conflict, the PGN's move chosen	ütközik, a PGN lépése választva
+	in conflict, the book's move kept	ütközik, a könyv lépése megtartva

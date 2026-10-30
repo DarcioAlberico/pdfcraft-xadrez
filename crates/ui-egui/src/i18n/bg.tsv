@@ -3323,3 +3323,10 @@ castling	long	дълга
 	Use the PGN's move	Използване на хода от PGN
 	Keep the book's move	Запазване на хода от книгата
 	The choice was not kept: {e}	Изборът не беше запазен: {e}
+	{name} sits beside this PDF: the Chess panel offers to use it as the book's PGN.	{name} е до този PDF: панелът „Шах“ предлага да се използва като PGN на книгата.
+	{name} sits beside this PDF. Use it as the book's PGN?	{name} е до този PDF. Да се използва ли като PGN на книгата?
+	Don't use {name} as the book's PGN	Да не се използва {name} като PGN на книгата
+	read from the book's PGN	взет от PGN на книгата
+	in conflict with the book's PGN	в конфликт с PGN на книгата
+	in conflict, the PGN's move chosen	в конфликт, избран е ходът от PGN
+	in conflict, the book's move kept	в конфликт, запазен е ходът от книгата

@@ -3365,3 +3365,10 @@ castling	long	dolga
 	Use the PGN's move	Uporabi potezo iz PGN
 	Keep the book's move	Obdrži potezo iz knjige
 	The choice was not kept: {e}	Izbira ni bila shranjena: {e}
+	{name} sits beside this PDF: the Chess panel offers to use it as the book's PGN.	{name} je ob tem PDF: plošča Šah ponuja, da ga uporabite kot PGN knjige.
+	{name} sits beside this PDF. Use it as the book's PGN?	{name} je ob tem PDF. Ga uporabim kot PGN knjige?
+	Don't use {name} as the book's PGN	Ne uporabi {name} kot PGN knjige
+	read from the book's PGN	prebrano iz PGN knjige
+	in conflict with the book's PGN	v sporu s PGN knjige
+	in conflict, the PGN's move chosen	v sporu, izbrana poteza iz PGN
+	in conflict, the book's move kept	v sporu, obdržana poteza iz knjige
