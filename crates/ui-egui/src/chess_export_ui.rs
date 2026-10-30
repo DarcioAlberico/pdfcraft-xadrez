@@ -18,6 +18,16 @@ use pdfcraft_engine::chess::pdfcraft_chessvision::doc::markdown::PgnPositions;
 use crate::PdfCraftApp;
 use crate::chess_text_ui::TextAction;
 
+/// Where the PGN export takes its games from when the document keeps a book's PGN (plan
+/// "Carregar PGN do livro", R6b): that PGN, every line kept, with the book's text as comments
+/// (the default), or the text read from the PDF, as without one. The choice lasts for the session.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum PgnSource {
+    #[default]
+    Book,
+    Text,
+}
+
 /// The formats, in the menu's order.
 pub const MENU: [ChessFormat; 6] =
     [ChessFormat::Pgn, ChessFormat::Epub, ChessFormat::Html, ChessFormat::Docx, ChessFormat::Rtf, ChessFormat::Markdown];
@@ -36,8 +46,9 @@ pub fn label(format: ChessFormat) -> &'static str {
 }
 
 /// The export menu's items (in a menu that `ui` is): the formats, then which diagrams the PGN
-/// gives a game of their own (`positions`, the choice now).
-pub(crate) fn items(ui: &mut egui::Ui, positions: PgnPositions) -> Option<TextAction> {
+/// gives a game of their own (`positions`, the choice now) and, when the document keeps a book's
+/// PGN, where the PGN takes its games from (`source`, the choice now).
+pub(crate) fn items(ui: &mut egui::Ui, positions: PgnPositions, source: Option<PgnSource>) -> Option<TextAction> {
     let mut action = None;
     ui.label(egui::RichText::new(tl!("Export chess book")).strong());
     for f in MENU {
@@ -61,6 +72,21 @@ pub(crate) fn items(ui: &mut egui::Ui, positions: PgnPositions) -> Option<TextAc
     .on_hover_text(tl!(
         "A diagram becomes a game that starts from its position. A diagram a game starts from or prints again is already in that game."
     ));
+    if let Some(source) = source {
+        let choices = [(PgnSource::Book, tl!("The book's PGN, with the book's text")), (PgnSource::Text, tl!("The text read from the PDF"))];
+        ui.menu_button(tl!("PGN games from"), |ui| {
+            for (s, name) in choices {
+                if ui.add(crate::widgets::radio(source == s, name)).clicked() {
+                    action = Some(TextAction::PgnSource(s));
+                    ui.close();
+                }
+            }
+        })
+        .response
+        .on_hover_text(tl!(
+            "With the book's PGN, the PGN export writes its games, every line kept, with the book's text as comments and $220 where a diagram shows a move."
+        ));
+    }
     action
 }
 

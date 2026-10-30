@@ -3332,3 +3332,12 @@ castling	long	dolga
 	Read from the book's PGN: {san}	Prebrano iz PGN knjige: {san}
 	The book's PGN plays this move from another position: check it.	PGN knjige igra to potezo iz drugega položaja: preverite jo.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	PGN knjige na tej strani: potrjenih {confirmed}, prebranih iz PGN {recovered}, v sporu {conflict}.
+	Confirmed by the PGN	Potrjeno s PGN
+	The book's PGN has this position, so it needs no review.	PGN knjige vsebuje ta položaj, zato ga ni treba preveriti.
+	PGN games from	Partije PGN iz
+	The book's PGN, with the book's text	PGN knjige z besedilom knjige
+	The text read from the PDF	Besedila, prebranega iz PDF
+	With the book's PGN, the PGN export writes its games, every line kept, with the book's text as comments and $220 where a diagram shows a move.	S PGN knjige izvoz PGN zapiše njegove partije z vsemi variantami, besedilom knjige kot komentarji in $220, kjer diagram prikazuje potezo.
+	The book's PGN shows: {changes}	PGN knjige kaže: {changes}
+	Use the PGN's position	Uporabi položaj iz PGN
+	Put the PGN's position on the board. It is kept only when you confirm it.	Postavi položaj iz PGN na šahovnico. Shrani se šele, ko ga potrdite.

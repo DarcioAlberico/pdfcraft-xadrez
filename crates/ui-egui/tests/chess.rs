@@ -877,6 +877,89 @@ fn the_books_pgn_links_the_text_tab_and_follows_the_document() {
     let _ = std::fs::remove_dir_all(dir);
 }
 
+/// Plan "Carregar PGN do livro", R6b: with the book's PGN kept, a diagram whose reading the PGN
+/// has is Confirmed by the PGN (its own chip, out of the review queue), and the PGN export writes
+/// the book's PGN with the book's text unless the menu says the text read.
+#[test]
+fn the_books_pgn_confirms_diagrams_and_is_what_the_pgn_export_writes() {
+    let dir = corrections_dir("book-pgn-chip");
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut h = book_pgn_harness("chapter.pdf", None, chapter(), dir.join("reference"));
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(4);
+    let state = |h: &Harness<'static, PdfCraftApp>| {
+        let r = h.state().chess.results.as_ref().expect("scanned");
+        (r.confirmed(0, 0), r.review_queue().len())
+    };
+    assert!(!state(&h).0, "no PGN, nothing confirmed by it");
+    let id = h.state().views[0].id;
+    h.state_mut().set_book_pgn(id, "book.pgn", RUY_PGN.as_bytes());
+    h.run_steps(4);
+    assert_eq!(state(&h), (true, 0), "the PGN has the diagram's position");
+    h.get_by_label("Diagrams").click();
+    h.run_steps(3);
+    assert!(h.get_all_by_label_contains("Confirmed by the PGN").next().is_some(), "its chip and its row say so");
+    // The PGN export: the book's PGN, then the text read.
+    let (book, text) = (dir.join("book.pgn"), dir.join("text.pgn"));
+    h.state_mut().export_chess_to(id, pdfcraft_engine::chess::export::ChessFormat::Pgn, &book);
+    h.run_steps(4);
+    let written = std::fs::read_to_string(&book).unwrap();
+    assert!(written.contains("[White \"Ruy\"]") && written.contains("[SourceTitle "), "{written}");
+    // The menu's choice, on the Text tab.
+    h.get_by_label("Text").click();
+    h.run_steps(3);
+    h.get_all_by_label("Export…").last().expect("the Text tab's Export menu").click();
+    h.run_steps(2);
+    h.get_by_label_contains("PGN games from").hover();
+    h.run_steps(2);
+    h.get_by_label("The text read from the PDF").click();
+    h.run_steps(2);
+    h.state_mut().export_chess_to(id, pdfcraft_engine::chess::export::ChessFormat::Pgn, &text);
+    h.run_steps(4);
+    let written = std::fs::read_to_string(&text).unwrap();
+    assert!(!written.contains("[White \"Ruy\"]") && written.contains("Bb5"), "{written}");
+    // Removed: the diagram is read again as before.
+    h.state_mut().clear_book_pgn();
+    h.run_steps(2);
+    assert!(!state(&h).0, "removed: nothing confirmed by it");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// R6b: a diagram two squares from a position of the book's PGN linked on its page gets the
+/// PGN's suggestion in the Diagram tab; Use the PGN's position puts it on the board as an
+/// unconfirmed change, and nothing is kept until the user confirms it.
+#[test]
+fn the_books_pgn_suggests_a_diagrams_position_in_the_diagram_tab() {
+    let dir = corrections_dir("book-pgn-suggest");
+    std::fs::create_dir_all(&dir).unwrap();
+    // The PGN starts after 1.e4; the diagram, printed before it, is the initial position.
+    let pgn = "[Event \"After 1.e4\"]\n[SetUp \"1\"]\n[FEN \"rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1\"]\n\n1...e5 2.Nf3 Nc6 3.Bb5 a6 *\n";
+    let mut h = book_pgn_harness("chapter.pdf", None, chapter(), dir.join("reference"));
+    // Off the Text tab, so the page is read for the suggestion by the Diagram tab's own doing.
+    h.get_by_label("Diagrams").click();
+    h.run_steps(3);
+    let id = h.state().views[0].id;
+    h.state_mut().set_book_pgn(id, "book.pgn", pgn.as_bytes());
+    h.run_steps(4);
+    assert!(h.state().chess.text.is_none(), "the Text tab did not read the page again");
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(4);
+    h.get_by_label_contains("Diagram 1 · ").click();
+    h.run_steps(6);
+    h.get_by_label_contains("The book's PGN shows: ");
+    let before = h.state().chess.editor.as_ref().map(|e| e.fen()).unwrap();
+    h.get_by_label("Use the PGN's position").click();
+    h.run_steps(2);
+    let ed = h.state().chess.editor.as_ref().unwrap();
+    assert_eq!(ed.fen().split(' ').next(), Some("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR"), "was {before}");
+    assert!(ed.dirty(), "an unconfirmed change");
+    assert!(h.state().chess.results.as_ref().is_some_and(|r| r.kind(0, 0).is_none()), "nothing kept");
+    if let Ok(dir) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
+        h.render().unwrap().save(std::path::Path::new(&dir).join("book-pgn-suggestion.png")).unwrap();
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}
+
 /// Export… writes the document: PGN with the position's game, and Markdown with its image in a
 /// folder beside it. The menu names each format by what it makes, under "Export chess book";
 /// once written, a window says where, and Open folder shows the file (plan A8, P9c).

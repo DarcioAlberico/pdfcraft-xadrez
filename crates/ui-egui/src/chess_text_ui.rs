@@ -139,6 +139,8 @@ pub enum TextAction {
     Export(ChessFormat),
     /// Choose which diagrams the PGN export gives a game of their own.
     PgnPositions(PgnPositions),
+    /// Choose where the PGN export takes its games from (plan "Carregar PGN do livro", R6b).
+    PgnSource(crate::chess_export_ui::PgnSource),
     /// Say where the document's pages came from.
     Origin(BookOrigin),
     /// Load the book's PGN (`true`) or remove it (plan "Carregar PGN do livro", R6a).
@@ -250,9 +252,10 @@ fn figurines(ctx: &egui::Context) -> Figurines {
     if ctx.fonts_mut(|f| f.has_glyphs(&FontId::proportional(13.0), "♔♕♖♗♘♙")) { Figurines::Unicode } else { Figurines::AsPrinted }
 }
 
-/// The Export… menu (`positions`: which diagrams the PGN gives a game of their own).
-pub fn export_menu(ui: &mut egui::Ui, positions: PgnPositions) -> Option<TextAction> {
-    ui.menu_button(tl!("Export…"), |ui| crate::chess_export_ui::items(ui, positions)).inner.flatten()
+/// The Export… menu (`positions`: which diagrams the PGN gives a game of their own; `source`:
+/// where it takes its games from, when the document keeps a book's PGN).
+pub fn export_menu(ui: &mut egui::Ui, positions: PgnPositions, source: Option<crate::chess_export_ui::PgnSource>) -> Option<TextAction> {
+    ui.menu_button(tl!("Export…"), |ui| crate::chess_export_ui::items(ui, positions, source)).inner.flatten()
 }
 
 /// The Text tab for page `page` of document `id`, whose book origin is `origin`.
@@ -268,6 +271,7 @@ pub fn text_tab(
     busy: Option<&'static str>,
     positions: PgnPositions,
     book_pgn: Option<&crate::chess_reference_ui::BookPgnSummary>,
+    source: crate::chess_export_ui::PgnSource,
 ) -> Option<TextAction> {
     let mut action = None;
     if let Some(label) = busy {
@@ -295,7 +299,7 @@ pub fn text_tab(
         {
             action = Some(TextAction::Read(true));
         }
-        if let Some(a) = export_menu(ui, positions) {
+        if let Some(a) = export_menu(ui, positions, book_pgn.map(|_| source)) {
             action = Some(a);
         }
     });
@@ -702,6 +706,7 @@ impl PdfCraftApp {
             TextAction::OpenGame(at) => self.read_book_game(at),
             TextAction::Export(format) => self.export_chess_dialog(format),
             TextAction::PgnPositions(p) => self.chess.pgn_positions = p,
+            TextAction::PgnSource(s) => self.chess.pgn_source = s,
             // The page shown is read again under the new origin (the tab sees it is not current).
             TextAction::Origin(origin) => {
                 if let Some((_, id)) = self.active_ids() {
@@ -726,6 +731,20 @@ impl PdfCraftApp {
             return;
         }
         self.export_chess_save(id, format);
+    }
+
+    /// The book's PGN a `format` export of document `id` writes from: for PGN, the one the
+    /// document keeps, unless the export menu says the text read (plan "Carregar PGN do livro",
+    /// R6b).
+    fn export_reference(
+        &mut self,
+        id: DocId,
+        format: ChessFormat,
+    ) -> Option<Arc<pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::ReferenceIndex>> {
+        if format != ChessFormat::Pgn || self.chess.pgn_source != crate::chess_export_ui::PgnSource::Book {
+            return None;
+        }
+        self.book_pgn_index(id)
     }
 
     /// Ask where (`save_override` in tests), then read document `id` and write it as `format`.
@@ -757,6 +776,7 @@ impl PdfCraftApp {
             options.book = self.chess_cipher(id);
             options.ocr = self.chess_origin(id).ocr_mode();
             options.positions = self.chess.pgn_positions;
+            options.reference = self.export_reference(id, format);
             self.start_chess_job(id, JobKind::Export { format, name: format!("{stem}.{ext}") }, move |s, id| {
                 JobDone::Export(s.chess_export(id, format, &options))
             });
@@ -776,6 +796,7 @@ impl PdfCraftApp {
         options.book = self.chess_cipher(id);
         options.ocr = self.chess_origin(id).ocr_mode();
         options.positions = self.chess.pgn_positions;
+        options.reference = self.export_reference(id, format);
         let kind = JobKind::Export { format, path: path.to_path_buf(), image_dir: options.image_dir.clone() };
         self.notify(tl!("Exporting the chess document…").to_string());
         self.start_chess_job(id, kind, move |s, id| JobDone::Export(s.chess_export(id, format, &options)));

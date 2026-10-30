@@ -1,6 +1,6 @@
 # Plano de implantação — Carregar PGN do livro · v1
 
-**Status:** v7 · 2026-10-30 · R0 (#229), R1 (#231), R2 (#233), R3 (#234), R4 (#235), R5 (#237) e R6a feitos; R6b–R7 a fazer.
+**Status:** v8 · 2026-10-30 · R0 (#229), R1 (#231), R2 (#233), R3 (#234), R4 (#235), R5 (#237), R6a (#238) e R6b feitos; R6c–R7 a fazer.
 **Origem:** pedido do usuário em 2026-10-29: "quando temos o PDF digital e o PGN dele, daria pra implementar uma função carregar PGN para aproveitar esse PGN?". Analisamos o par em `C:\Users\AMD\Documents\PDFCraft_Arquivos\PDF e PGN`: *Beat the French Defence with 3.Nc3* (Harikrishna; 748 páginas, gerado pelo calibre a partir de um curso Chessable) e o PGN do curso (120 partidas, "Chapter N / Game M").
 **Repositório:** `DarcioAlberico/pdfcraft-xadrez`. Crates: `chess` (L0), `chessvision`, `engine` (L6), `automation`, `ui-egui`.
 **Público de cada passo:** uma sessão de agente que começa do zero. Cada passo traz o contexto, as tarefas, a verificação e o critério de saída.
@@ -226,7 +226,15 @@ R3 e R4 podem correr em paralelo depois de R2. R6 só começa depois de R5.
   - **A ligação é por página, não pelo documento inteiro.** A aba Texto lê uma página por vez, então as âncoras vêm só dela. Uma página que continua uma linha da anterior sem diagrama liga menos que o `chess_document` sobre o livro todo.
   - **O resumo é do PGN** (partidas e lances), não do livro ("1.160 lances ligados"): o app não lê o livro inteiro ao carregar o PGN. A contagem por página fica na aba Texto.
   - **O conflito ainda não tem a escolha** "Usar o lance do PGN / Manter o do livro" (R6c).
-- R6b–R7: a fazer.
+- R6b: feito.
+  - **Chip "Confirmed by the PGN"** (`DiagramState::Reference`, ícone `book-open`): um diagrama lido (com confiança ou com dúvida) cuja posição o PGN guardado tem, pela regra do engine (`Status::with_reference`), calculada junto com as correções (`refresh_chess_kinds`). Sai da fila de revisão e conta como revisado. Carregar ou remover o PGN refaz a conta.
+  - **Exportar ▸ "PGN games from"**: com um PGN guardado, a exportação em PGN escreve o PGN comentado (R4) por padrão; a escolha "The text read from the PDF" volta ao PGN do texto lido. A escolha vale pela sessão, como a dos diagramas.
+  - **Sugestão na aba Diagrama**: "The book's PGN shows: e4: · → P, e2: P → ·" e o botão "Use the PGN's position", que põe a posição do PGN no tabuleiro como mudança não confirmada. Nada é guardado até a pessoa confirmar (Confirmar grava `corrected` como qualquer correção).
+  - A sugestão vem da leitura da página pela aba Texto (R6a), ligada ao PGN. Com o editor aberto num diagrama da página mostrada e um PGN guardado, o app lê essa página sozinho.
+- R6b, o que mudou em relação ao texto do passo:
+  - **"PGN comentado" é a origem das partidas do PGN, não um formato novo** no menu: assim o resto do caminho da exportação (rascunhos, diagramas a revisar, onde salvar) não muda.
+  - **O chip não reescreve a leitura** com o lado e o número do PGN; isso continua só no documento ligado (aba Texto e exportações).
+- R6c–R7: a fazer.
 
 ## 4. Decisões do usuário
 
@@ -250,3 +258,4 @@ R3 e R4 podem correr em paralelo depois de R2. R6 só começa depois de R5.
 - **v5 (2026-10-30):** R4 feito; a §3.3 diz onde cada texto do livro vai no PGN comentado e o que foi medido no livro.
 - **v6 (2026-10-30):** R5 feito; a §3.3 diz o formato do PGN guardado, as ferramentas e o que ficou para o R6.
 - **v7 (2026-10-30):** R6 dividido em R6a, R6b e R6c; R6a feito (o PGN no app e a aba Texto).
+- **v8 (2026-10-30):** R6b feito (o chip, a origem do PGN exportado e a sugestão na aba Diagrama).

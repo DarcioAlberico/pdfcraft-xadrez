@@ -3326,3 +3326,12 @@ castling	long	hosszú
 	Read from the book's PGN: {san}	A könyv PGN-jéből olvasva: {san}
 	The book's PGN plays this move from another position: check it.	A könyv PGN-je ezt a lépést más állásból teszi meg: ellenőrizze.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	A könyv PGN-je ezen az oldalon: {confirmed} megerősítve, {recovered} a PGN-ből olvasva, {conflict} ütközik.
+	Confirmed by the PGN	A PGN megerősítette
+	The book's PGN has this position, so it needs no review.	A könyv PGN-je tartalmazza ezt az állást, ezért nem kell ellenőrizni.
+	PGN games from	PGN-játszmák forrása
+	The book's PGN, with the book's text	A könyv PGN-je, a könyv szövegével
+	The text read from the PDF	A PDF-ből olvasott szöveg
+	With the book's PGN, the PGN export writes its games, every line kept, with the book's text as comments and $220 where a diagram shows a move.	A könyv PGN-jével a PGN-export annak játszmáit írja minden változattal, a könyv szövegével megjegyzésként és $220-szal ott, ahol egy diagram lépést mutat.
+	The book's PGN shows: {changes}	A könyv PGN-je ezt mutatja: {changes}
+	Use the PGN's position	A PGN állásának használata
+	Put the PGN's position on the board. It is kept only when you confirm it.	A PGN állását a táblára teszi. Csak akkor tárolódik, ha megerősíti.

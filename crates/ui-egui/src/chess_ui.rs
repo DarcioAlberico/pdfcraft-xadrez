@@ -75,6 +75,9 @@ pub struct ChessState {
     pub redraw_prompt: Option<crate::chess_redraw::RedrawPrompt>,
     /// Which diagrams the PGN export gives a game of their own, for the session (plan A8, P9c).
     pub pgn_positions: pdfcraft_engine::chess::pdfcraft_chessvision::doc::markdown::PgnPositions,
+    /// Where the PGN export takes its games from when the document keeps a book's PGN, for the
+    /// session (plan "Carregar PGN do livro", R6b).
+    pub pgn_source: crate::chess_export_ui::PgnSource,
     /// The question before exporting while diagrams are still to review (P9c).
     pub export_prompt: Option<crate::chess_export_ui::PendingPrompt>,
     /// What the last export said, while it is shown (P9c).
@@ -233,6 +236,9 @@ pub struct ChessResults {
     /// What the user did with each diagram (page, index): Verified or Corrected, and the
     /// position kept ([`PdfCraftApp::refresh_chess_kinds`]).
     pub kinds: HashMap<(usize, usize), (Kind, String)>,
+    /// The diagrams (page, index) whose reading the book's PGN has, unless the user confirmed
+    /// them ([`PdfCraftApp::refresh_chess_kinds`]; plan "Carregar PGN do livro", R6b).
+    pub confirmed: std::collections::HashSet<(usize, usize)>,
     /// The pages scans were asked for (ascending), and whether one was of every page: what an
     /// edit carries to the document's next state ([`PdfCraftApp::carry_chess_results`]).
     pub wanted: Vec<usize>,
@@ -260,13 +266,9 @@ impl ChessResults {
     pub(crate) fn walk(&self, filter: Option<DiagramState>) -> Vec<(usize, usize)> {
         match filter {
             None => self.review_queue(),
-            Some(state) => self
-                .pages
-                .iter()
-                .flat_map(|p| {
-                    (0..p.diagrams.len()).filter(move |i| DiagramState::of(Self::reading(p, *i), self.kind(p.page, *i)) == state).map(|i| (p.page, i))
-                })
-                .collect(),
+            Some(state) => {
+                self.pages.iter().flat_map(|p| (0..p.diagrams.len()).filter(move |i| self.state(p, *i) == state).map(|i| (p.page, i))).collect()
+            }
         }
     }
 
@@ -278,7 +280,7 @@ impl ChessResults {
             for i in 0..p.diagrams.len() {
                 if crate::chess_editor::needs_review(Self::reading(p, i)) {
                     out.1 += 1;
-                    if self.kinds.contains_key(&(p.page, i)) {
+                    if self.kinds.contains_key(&(p.page, i)) || self.confirmed.contains(&(p.page, i)) {
                         out.0 += 1;
                     }
                 }
@@ -288,13 +290,17 @@ impl ChessResults {
     }
 
     /// The diagrams to review, in reading order: page, then index. A diagram the user confirmed
-    /// (Verified or Corrected) is not among them.
+    /// (Verified or Corrected), or whose reading the book's PGN has, is not among them.
     pub fn review_queue(&self) -> Vec<(usize, usize)> {
         self.pages
             .iter()
             .flat_map(|p| {
                 (0..p.diagrams.len())
-                    .filter(|i| !self.kinds.contains_key(&(p.page, *i)) && crate::chess_editor::needs_review(Self::reading(p, *i)))
+                    .filter(|i| {
+                        !self.kinds.contains_key(&(p.page, *i))
+                            && !self.confirmed.contains(&(p.page, *i))
+                            && crate::chess_editor::needs_review(Self::reading(p, *i))
+                    })
                     .map(|i| (p.page, i))
             })
             .collect()
@@ -303,6 +309,16 @@ impl ChessResults {
     /// What the user did with diagram `index` of `page`, when they confirmed it.
     pub fn kind(&self, page: usize, index: usize) -> Option<Kind> {
         self.kinds.get(&(page, index)).map(|(k, _)| *k)
+    }
+
+    /// Whether the book's PGN has the reading of diagram `index` of `page`.
+    pub fn confirmed(&self, page: usize, index: usize) -> bool {
+        self.confirmed.contains(&(page, index))
+    }
+
+    /// Diagram `index` of `page`'s state.
+    pub(crate) fn state(&self, page: &ChessPage, index: usize) -> DiagramState {
+        DiagramState::of(Self::reading(page, index), self.kind(page.page, index), self.confirmed(page.page, index))
     }
 
     /// The reading of diagram `index` on `page`, when it was read.
@@ -416,12 +432,13 @@ pub enum PanelAction {
 }
 
 /// One diagram's state: its label, and its mark's colour from the theme's state tokens (plan A8
-/// P1a). What the user did with it (`kind`) outranks the reading.
-pub(crate) fn status(reading: Option<&BoardReading>, kind: Option<Kind>, t: &Tokens) -> (String, Color32) {
-    let state = DiagramState::of(reading, kind);
+/// P1a). What the user did with it (`kind`) outranks the reading, and the book's PGN having it
+/// (`confirmed`) outranks a doubt.
+pub(crate) fn status(reading: Option<&BoardReading>, kind: Option<Kind>, confirmed: bool, t: &Tokens) -> (String, Color32) {
+    let state = DiagramState::of(reading, kind, confirmed);
     let colour = state.colour(t);
     let label = match reading.map(|r| &r.outcome) {
-        _ if kind.is_some() => state.name().to_string(),
+        _ if kind.is_some() || state == DiagramState::Reference => state.name().to_string(),
         Some(Ok(p)) if p.accepted => tl!("Position read").to_string(),
         Some(Ok(_)) => tl!("Needs review").to_string(),
         Some(Err(Unreadable::NoModel)) => tl!("Not read: no piece model").to_string(),
@@ -488,8 +505,8 @@ pub(crate) fn paint(
         let r = xf.user_rect(info, page, [b.x0, b.y0, b.x1, b.y1]);
         let reading = ChessResults::reading(p, i);
         let kind = results.kind(page, i);
-        let state = DiagramState::of(reading, kind);
-        let (label, colour) = status(reading, kind, &tokens);
+        let state = results.state(p, i);
+        let (label, colour) = status(reading, kind, results.confirmed(page, i), &tokens);
         let selected = results.selected == Some((page, i));
         let under = hovered.is_none() && pointer.is_some_and(|q| r.contains(q));
         if under {
@@ -624,7 +641,8 @@ pub(crate) fn tab_contents(
         let origin = state.origin.filter(|(d, _)| *d == id).map(|(_, o)| o).unwrap_or_default();
         let positions = state.pgn_positions;
         let book_pgn = state.book_pgns.summary(id).cloned();
-        return crate::chess_text_ui::text_tab(ui, t, state.text.as_mut(), id, page_now, current, origin, busy, positions, book_pgn.as_ref())
+        let source = state.pgn_source;
+        return crate::chess_text_ui::text_tab(ui, t, state.text.as_mut(), id, page_now, current, origin, busy, positions, book_pgn.as_ref(), source)
             .map(PanelAction::Text);
     }
     let mut action = None;
@@ -633,7 +651,8 @@ pub(crate) fn tab_contents(
         (s.done, s.total)
     });
     // The header: Detect diagrams ▾, the export, board and models buttons, the progress (P2a2).
-    if let Some(a) = crate::chess_panel_head::header(ui, t, state.run.is_some(), info.pages.len(), running, state.pgn_positions) {
+    let source = state.book_pgns.summary(id).map(|_| state.pgn_source);
+    if let Some(a) = crate::chess_panel_head::header(ui, t, state.run.is_some(), info.pages.len(), running, state.pgn_positions, source) {
         action = Some(a);
     }
     ui.add_space(6.0);
@@ -960,6 +979,7 @@ impl PdfCraftApp {
                 reveal: false,
                 model: ModelNote::Missing,
                 kinds: HashMap::new(),
+                confirmed: Default::default(),
                 wanted: Vec::new(),
                 all: false,
             });

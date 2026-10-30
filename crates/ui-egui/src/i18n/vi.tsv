@@ -3580,3 +3580,12 @@ castling	long	xa
 	Read from the book's PGN: {san}	Lấy từ PGN của sách: {san}
 	The book's PGN plays this move from another position: check it.	PGN của sách đi nước này từ một thế cờ khác: hãy kiểm tra.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	PGN của sách ở trang này: {confirmed} đã xác nhận, {recovered} lấy từ PGN, {conflict} xung đột.
+	Confirmed by the PGN	Đã xác nhận bằng PGN
+	The book's PGN has this position, so it needs no review.	PGN của sách có thế cờ này nên không cần xem lại.
+	PGN games from	Lấy ván cờ PGN từ
+	The book's PGN, with the book's text	PGN của sách, kèm văn bản của sách
+	The text read from the PDF	Văn bản đọc từ PDF
+	With the book's PGN, the PGN export writes its games, every line kept, with the book's text as comments and $220 where a diagram shows a move.	Khi có PGN của sách, xuất PGN sẽ ghi các ván cờ của nó với mọi biến, văn bản của sách làm chú thích và $220 ở nơi sơ đồ thể hiện một nước đi.
+	The book's PGN shows: {changes}	PGN của sách cho thấy: {changes}
+	Use the PGN's position	Dùng thế cờ của PGN
+	Put the PGN's position on the board. It is kept only when you confirm it.	Đặt thế cờ của PGN lên bàn cờ. Nó chỉ được lưu khi bạn xác nhận.

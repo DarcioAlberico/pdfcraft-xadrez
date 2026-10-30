@@ -3602,3 +3602,12 @@ castling	long	طويل
 	Read from the book's PGN: {san}	مقروءة من PGN الكتاب: {san}
 	The book's PGN plays this move from another position: check it.	يلعب PGN الكتاب هذه النقلة من وضعية أخرى: تحقّق منها.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	PGN الكتاب في هذه الصفحة: {confirmed} مؤكدة، {recovered} مقروءة من PGN، {conflict} متعارضة.
+	Confirmed by the PGN	مؤكَّد بواسطة PGN
+	The book's PGN has this position, so it needs no review.	يحتوي PGN الكتاب على هذه الوضعية، فلا تحتاج إلى مراجعة.
+	PGN games from	مصدر مباريات PGN
+	The book's PGN, with the book's text	PGN الكتاب، مع نص الكتاب
+	The text read from the PDF	النص المقروء من PDF
+	With the book's PGN, the PGN export writes its games, every line kept, with the book's text as comments and $220 where a diagram shows a move.	مع PGN الكتاب، يكتب تصدير PGN مبارياته بكل التفريعات، ونص الكتاب تعليقات، و$220 حيث يُظهر مخطط نقلةً.
+	The book's PGN shows: {changes}	يُظهر PGN الكتاب: {changes}
+	Use the PGN's position	استخدام وضعية PGN
+	Put the PGN's position on the board. It is kept only when you confirm it.	يضع وضعية PGN على الرقعة. لا تُحفظ إلا عندما تؤكدها.

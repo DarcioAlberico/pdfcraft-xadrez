@@ -38,8 +38,15 @@ const OVERSCAN: f32 = 64.0;
 const MAX_KEYS: usize = 64;
 
 /// The states the chips filter by, in the order shown.
-const STATES: [DiagramState; 6] =
-    [DiagramState::Read, DiagramState::Review, DiagramState::Verified, DiagramState::Corrected, DiagramState::Unread, DiagramState::Error];
+const STATES: [DiagramState; 7] = [
+    DiagramState::Read,
+    DiagramState::Reference,
+    DiagramState::Review,
+    DiagramState::Verified,
+    DiagramState::Corrected,
+    DiagramState::Unread,
+    DiagramState::Error,
+];
 
 /// The list's own state.
 #[derive(Default)]
@@ -109,7 +116,7 @@ pub(crate) fn take_keys(list: &mut ListState, ctx: &egui::Context, events: &mut 
 
 /// Diagram `index` of `page`'s state.
 fn state_of(results: &ChessResults, page: &ChessPage, index: usize) -> DiagramState {
-    DiagramState::of(ChessResults::reading(page, index), results.kind(page.page, index))
+    results.state(page, index)
 }
 
 /// What the list shows, in order: the pages with a diagram in the filter (or, unfiltered, one that
@@ -399,8 +406,8 @@ fn row(
     let key = (page.page, index);
     let reading = ChessResults::reading(page, index);
     let kind = results.kind(page.page, index);
-    let state = DiagramState::of(reading, kind);
-    let (label, _) = crate::chess_ui::status(reading, kind, t);
+    let state = results.state(page, index);
+    let (label, _) = crate::chess_ui::status(reading, kind, results.confirmed(page.page, index), t);
     let title = crate::i18n::fmt(tl!("Diagram {n}"), &[("n", &index.saturating_add(1).to_string())]);
     let selected = results.selected == Some(key);
     let draft = drafts.contains(&key);

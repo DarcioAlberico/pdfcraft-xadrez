@@ -3323,3 +3323,12 @@ castling	long	uzun
 	Read from the book's PGN: {san}	Kitabın PGN'inden okundu: {san}
 	The book's PGN plays this move from another position: check it.	Kitabın PGN'i bu hamleyi başka bir konumdan oynuyor: kontrol edin.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	Bu sayfada kitabın PGN'i: {confirmed} doğrulandı, {recovered} PGN'den okundu, {conflict} çelişkili.
+	Confirmed by the PGN	PGN ile doğrulandı
+	The book's PGN has this position, so it needs no review.	Kitabın PGN'inde bu konum var, bu yüzden incelenmesi gerekmiyor.
+	PGN games from	PGN oyunlarının kaynağı
+	The book's PGN, with the book's text	Kitabın PGN'i, kitabın metniyle
+	The text read from the PDF	PDF'den okunan metin
+	With the book's PGN, the PGN export writes its games, every line kept, with the book's text as comments and $220 where a diagram shows a move.	Kitabın PGN'i varken PGN dışa aktarımı onun oyunlarını tüm varyantlarıyla, kitabın metnini yorum olarak ve bir diyagramın hamle gösterdiği yerde $220 ile yazar.
+	The book's PGN shows: {changes}	Kitabın PGN'i gösteriyor: {changes}
+	Use the PGN's position	PGN'in konumunu kullan
+	Put the PGN's position on the board. It is kept only when you confirm it.	PGN'in konumunu tahtaya koyar. Yalnızca onayladığınızda saklanır.

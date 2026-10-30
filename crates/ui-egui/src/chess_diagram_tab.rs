@@ -38,6 +38,25 @@ const MIN_BOARD: f32 = 200.0;
 const MAX_BOARD: f32 = 420.0;
 const AROUND_BOARD: f32 = 204.0;
 
+/// The book's PGN's suggestion (plan "Carregar PGN do livro", R6b): the squares it would change,
+/// and a button that puts its position on the board as an unconfirmed change, which the user
+/// confirms as any other. Nothing is kept until then.
+fn suggestion_row(ui: &mut egui::Ui, t: &Tokens, ed: &mut crate::chess_editor::DiagramEditor, s: &crate::chess_reference_ui::Suggestion) {
+    ui.add_space(4.0);
+    ui.label(
+        RichText::new(crate::i18n::fmt(tl!("The book's PGN shows: {changes}"), &[("changes", &s.changes.join(", "))])).small().color(t.text_muted),
+    );
+    let shown = ed.fen().split(' ').next() == s.fen.split(' ').next();
+    if ui
+        .add_enabled(!shown, egui::Button::new(tl!("Use the PGN's position")))
+        .on_hover_text(tl!("Put the PGN's position on the board. It is kept only when you confirm it."))
+        .clicked()
+    {
+        let flipped = ed.flipped;
+        ed.show_draft(&s.fen, flipped);
+    }
+}
+
 /// The tab: the editor of the diagram selected in the Diagrams panel or on the page, else what to
 /// do to get one.
 pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
@@ -62,8 +81,11 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     };
     let (page, index) = (ed.page, ed.index);
     let on_page = results.pages.iter().find(|p| p.page == page).map_or(0, |p| p.diagrams.len());
-    let state =
-        DiagramState::of(results.pages.iter().find(|p| p.page == page).and_then(|p| ChessResults::reading(p, index)), results.kind(page, index));
+    let state = DiagramState::of(
+        results.pages.iter().find(|p| p.page == page).and_then(|p| ChessResults::reading(p, index)),
+        results.kind(page, index),
+        results.confirmed(page, index),
+    );
     let kept = results.kind(page, index).is_some();
     let place = queue.iter().position(|q| *q == (page, index));
     let label = app.chess_page_label(page);
@@ -72,6 +94,7 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let mut hint = !app.chess.diagram_hint_seen;
     let tab_keys = std::mem::take(&mut app.chess.diagram_keys.tab_keys);
     let board_keys = app.chess.diagram_keys.board.take();
+    let suggestion = crate::chess_reference_ui::suggestion(app.chess.text.as_ref(), id, current, page, index);
     let Some(ed) = app.chess.editor.as_mut() else { return };
 
     // The tab's keys (plan A8, P3c), taken in `raw_input_hook`.
@@ -154,6 +177,9 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
             ui.add_space(6.0);
             fields(ui, ed);
             crate::chess_editor::second_readings(ui, ed);
+            if let Some(s) = &suggestion {
+                suggestion_row(ui, &t, ed, s);
+            }
         });
     });
 

@@ -3401,3 +3401,12 @@ castling	long	dlouhá
 	Read from the book's PGN: {san}	Přečteno z PGN knihy: {san}
 	The book's PGN plays this move from another position: check it.	PGN knihy hraje tento tah z jiné pozice: zkontrolujte ho.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	PGN knihy na této stránce: potvrzeno {confirmed}, přečteno z PGN {recovered}, v rozporu {conflict}.
+	Confirmed by the PGN	Potvrzeno PGN
+	The book's PGN has this position, so it needs no review.	PGN knihy tuto pozici obsahuje, takže ji není třeba kontrolovat.
+	PGN games from	Partie PGN z
+	The book's PGN, with the book's text	PGN knihy s textem knihy
+	The text read from the PDF	Textu přečteného z PDF
+	With the book's PGN, the PGN export writes its games, every line kept, with the book's text as comments and $220 where a diagram shows a move.	S PGN knihy zapíše export PGN jeho partie se všemi variantami, textem knihy jako komentáři a $220 tam, kde diagram ukazuje tah.
+	The book's PGN shows: {changes}	PGN knihy ukazuje: {changes}
+	Use the PGN's position	Použít pozici z PGN
+	Put the PGN's position on the board. It is kept only when you confirm it.	Postaví pozici z PGN na šachovnici. Uloží se, až ji potvrdíte.

@@ -3329,3 +3329,12 @@ castling	long	ロング
 	Read from the book's PGN: {san}	本の PGN から読み取り: {san}
 	The book's PGN plays this move from another position: check it.	本の PGN はこの手を別の局面から指しています。確認してください。
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	このページの本の PGN: 一致 {confirmed}、PGN から読み取り {recovered}、矛盾 {conflict}。
+	Confirmed by the PGN	PGN で確認済み
+	The book's PGN has this position, so it needs no review.	本の PGN にこの局面があるため、確認は不要です。
+	PGN games from	PGN の対局の取得元
+	The book's PGN, with the book's text	本の PGN (本文付き)
+	The text read from the PDF	PDF から読んだテキスト
+	With the book's PGN, the PGN export writes its games, every line kept, with the book's text as comments and $220 where a diagram shows a move.	本の PGN があると、PGN 書き出しはその対局を全変化付きで書き、本文をコメントとして、図が手を示す箇所に $220 を付けます。
+	The book's PGN shows: {changes}	本の PGN の局面: {changes}
+	Use the PGN's position	PGN の局面を使う
+	Put the PGN's position on the board. It is kept only when you confirm it.	PGN の局面を盤に置きます。確定するまで保存されません。

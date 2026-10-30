@@ -240,8 +240,24 @@ impl PdfCraftApp {
                 }
             }
         }
+        // The readings the book's PGN has, unless the user confirmed them (plan "Carregar PGN do
+        // livro", R6b): the engine's rule, `Status::with_reference`.
+        let index = self.book_pgn_index(id);
+        let mut confirmed = std::collections::HashSet::new();
+        if let (Some(index), Some(results)) = (index.as_deref(), self.chess.results.as_ref()) {
+            for page in &results.pages {
+                for (i, _) in page.diagrams.iter().enumerate() {
+                    let reading = crate::chess_ui::ChessResults::reading(page, i);
+                    let kind = kinds.get(&(page.page, i)).map(|(k, _): &(Kind, String)| *k);
+                    if Status::with_reference(reading, kind, Some(index)) == Status::Reference {
+                        confirmed.insert((page.page, i));
+                    }
+                }
+            }
+        }
         if let Some(results) = self.chess.results.as_mut() {
             results.kinds = kinds;
+            results.confirmed = confirmed;
         }
     }
 
@@ -260,7 +276,7 @@ impl PdfCraftApp {
     /// reading, else Corrected, and say so. The kind kept, or `None` when it could not be.
     pub(crate) fn keep_chess_correction(&mut self, target: &DiagramTarget, fen: String) -> Option<Kind> {
         let kind = self.store_chess_correction(target, fen)?;
-        let state = crate::chess_widgets::DiagramState::of(None, Some(kind)).name();
+        let state = crate::chess_widgets::DiagramState::of(None, Some(kind), false).name();
         let label = self.chess_page_label(target.page);
         let n = (target.index + 1).to_string();
         self.notify(crate::i18n::fmt(tl!("Diagram {n}, page {p}: {state}"), &[("n", &n), ("p", &label), ("state", state)]));

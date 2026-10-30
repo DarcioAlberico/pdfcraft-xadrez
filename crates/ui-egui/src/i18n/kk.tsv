@@ -3325,3 +3325,12 @@ castling	long	ұзын
 	Read from the book's PGN: {san}	Кітаптың PGN файлынан алынды: {san}
 	The book's PGN plays this move from another position: check it.	Кітаптың PGN файлы бұл жүрісті басқа позициядан жасайды: тексеріңіз.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	Осы беттегі кітаптың PGN файлы: расталды — {confirmed}, PGN-нен алынды — {recovered}, қайшылықта — {conflict}.
+	Confirmed by the PGN	PGN растады
+	The book's PGN has this position, so it needs no review.	Кітаптың PGN файлында бұл позиция бар, сондықтан тексеру қажет емес.
+	PGN games from	PGN ойындарының көзі
+	The book's PGN, with the book's text	Кітаптың PGN файлы, кітап мәтінімен
+	The text read from the PDF	PDF-тен оқылған мәтін
+	With the book's PGN, the PGN export writes its games, every line kept, with the book's text as comments and $220 where a diagram shows a move.	Кітаптың PGN файлы болса, PGN экспорты оның ойындарын барлық нұсқаларымен, кітап мәтінін түсініктеме ретінде және диаграмма жүрісті көрсететін жерде $220 белгісімен жазады.
+	The book's PGN shows: {changes}	Кітаптың PGN файлы көрсетеді: {changes}
+	Use the PGN's position	PGN позициясын қолдану
+	Put the PGN's position on the board. It is kept only when you confirm it.	PGN позициясын тақтаға қояды. Ол тек сіз растағанда сақталады.
