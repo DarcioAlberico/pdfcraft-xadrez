@@ -3336,3 +3336,8 @@ castling	long	grand
 	The book's PGN shows: {changes}	Le PGN du livre montre : {changes}
 	Use the PGN's position	Utiliser la position du PGN
 	Put the PGN's position on the board. It is kept only when you confirm it.	Place la position du PGN sur l'échiquier. Elle n'est conservée que lorsque vous la confirmez.
+	This game of the book's PGN can't be read.	Cette partie du PGN du livre n'a pas pu être lue.
+	Use {name}	Utiliser {name}
+	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	Un PGN du même nom se trouve à côté de ce PDF : conservez-le comme PGN du livre.
+	Double-click to open the book's PGN game here.	Double-cliquez pour ouvrir ici la partie du PGN du livre.
+	Open the book's PGN game here	Ouvrir ici la partie du PGN du livre

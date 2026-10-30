@@ -3211,3 +3211,8 @@ castling	long	పెద్ద
 	The book's PGN shows: {changes}	పుస్తకం PGN చూపిస్తుంది: {changes}
 	Use the PGN's position	PGN స్థితిని ఉపయోగించండి
 	Put the PGN's position on the board. It is kept only when you confirm it.	PGN స్థితిని బోర్డుపై ఉంచుతుంది. మీరు ధృవీకరించినప్పుడే అది భద్రపరచబడుతుంది.
+	This game of the book's PGN can't be read.	పుస్తకం PGN లోని ఈ ఆటను చదవలేకపోయాం.
+	Use {name}	{name} ఉపయోగించండి
+	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	ఈ PDF పక్కన అదే పేరుతో PGN ఉంది: దాన్ని పుస్తకం PGN గా ఉంచండి.
+	Double-click to open the book's PGN game here.	పుస్తకం PGN ఆటను ఇక్కడ తెరవడానికి రెండుసార్లు క్లిక్ చేయండి.
+	Open the book's PGN game here	పుస్తకం PGN ఆటను ఇక్కడ తెరవండి

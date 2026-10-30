@@ -3252,3 +3252,8 @@ castling	long	長
 	The book's PGN shows: {changes}	本書的 PGN 顯示：{changes}
 	Use the PGN's position	使用 PGN 的局面
 	Put the PGN's position on the board. It is kept only when you confirm it.	將 PGN 的局面放到棋盤上。只有在你確認後才會儲存。
+	This game of the book's PGN can't be read.	無法讀取本書 PGN 中的這局棋。
+	Use {name}	使用 {name}
+	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	此 PDF 旁有同名的 PGN：將其儲存為本書的 PGN。
+	Double-click to open the book's PGN game here.	按兩下以在此處開啟本書 PGN 中的對局。
+	Open the book's PGN game here	在此處開啟本書 PGN 中的對局

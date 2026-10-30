@@ -3334,3 +3334,8 @@ castling	long	ұзын
 	The book's PGN shows: {changes}	Кітаптың PGN файлы көрсетеді: {changes}
 	Use the PGN's position	PGN позициясын қолдану
 	Put the PGN's position on the board. It is kept only when you confirm it.	PGN позициясын тақтаға қояды. Ол тек сіз растағанда сақталады.
+	This game of the book's PGN can't be read.	Кітаптың PGN файлындағы бұл ойын оқылмады.
+	Use {name}	{name} қолдану
+	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	Осы PDF-тің жанында аттас PGN бар: оны кітаптың PGN файлы ретінде сақтаңыз.
+	Double-click to open the book's PGN game here.	Кітаптың PGN ойынын осы жерде ашу үшін екі рет басыңыз.
+	Open the book's PGN game here	Кітаптың PGN ойынын осы жерде ашу

@@ -3337,3 +3337,8 @@ castling	long	lang
 	The book's PGN shows: {changes}	Die PGN des Buchs zeigt: {changes}
 	Use the PGN's position	Stellung der PGN übernehmen
 	Put the PGN's position on the board. It is kept only when you confirm it.	Setzt die Stellung der PGN aufs Brett. Sie wird erst gespeichert, wenn Sie sie bestätigen.
+	This game of the book's PGN can't be read.	Diese Partie der PGN des Buchs konnte nicht gelesen werden.
+	Use {name}	{name} verwenden
+	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	Neben diesem PDF liegt eine PGN mit demselben Namen: als PGN des Buchs speichern.
+	Double-click to open the book's PGN game here.	Doppelklicken, um die Partie der PGN des Buchs hier zu öffnen.
+	Open the book's PGN game here	Partie der PGN des Buchs hier öffnen

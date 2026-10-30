@@ -3308,3 +3308,8 @@ castling	long	μεγάλο
 	The book's PGN shows: {changes}	Το PGN του βιβλίου δείχνει: {changes}
 	Use the PGN's position	Χρήση της θέσης του PGN
 	Put the PGN's position on the board. It is kept only when you confirm it.	Βάζει τη θέση του PGN στη σκακιέρα. Φυλάσσεται μόνο όταν την επιβεβαιώσετε.
+	This game of the book's PGN can't be read.	Δεν ήταν δυνατή η ανάγνωση αυτής της παρτίδας του PGN του βιβλίου.
+	Use {name}	Χρήση του {name}
+	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	Δίπλα σε αυτό το PDF υπάρχει PGN με το ίδιο όνομα: φυλάξτε το ως PGN του βιβλίου.
+	Double-click to open the book's PGN game here.	Κάντε διπλό κλικ για να ανοίξετε εδώ την παρτίδα του PGN του βιβλίου.
+	Open the book's PGN game here	Άνοιγμα εδώ της παρτίδας του PGN του βιβλίου

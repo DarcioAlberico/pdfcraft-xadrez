@@ -3341,3 +3341,8 @@ castling	long	dolga
 	The book's PGN shows: {changes}	PGN knjige kaže: {changes}
 	Use the PGN's position	Uporabi položaj iz PGN
 	Put the PGN's position on the board. It is kept only when you confirm it.	Postavi položaj iz PGN na šahovnico. Shrani se šele, ko ga potrdite.
+	This game of the book's PGN can't be read.	Te partije iz PGN knjige ni bilo mogoče prebrati.
+	Use {name}	Uporabi {name}
+	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	Ob tem PDF je PGN z enakim imenom: shranite ga kot PGN knjige.
+	Double-click to open the book's PGN game here.	Dvokliknite, da tukaj odprete partijo iz PGN knjige.
+	Open the book's PGN game here	Odpri tukaj partijo iz PGN knjige

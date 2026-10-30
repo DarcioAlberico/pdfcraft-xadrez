@@ -3332,3 +3332,8 @@ castling	long	uzun
 	The book's PGN shows: {changes}	Kitabın PGN'i gösteriyor: {changes}
 	Use the PGN's position	PGN'in konumunu kullan
 	Put the PGN's position on the board. It is kept only when you confirm it.	PGN'in konumunu tahtaya koyar. Yalnızca onayladığınızda saklanır.
+	This game of the book's PGN can't be read.	Kitabın PGN'indeki bu oyun okunamadı.
+	Use {name}	{name} kullan
+	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	Bu PDF'nin yanında aynı adlı bir PGN var: kitabın PGN'i olarak saklayın.
+	Double-click to open the book's PGN game here.	Kitabın PGN'indeki oyunu burada açmak için çift tıklayın.
+	Open the book's PGN game here	Kitabın PGN oyununu burada aç

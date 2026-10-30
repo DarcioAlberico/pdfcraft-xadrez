@@ -3587,3 +3587,8 @@ castling	long	ilgoji
 	The book's PGN shows: {changes}	Knygos PGN rodo: {changes}
 	Use the PGN's position	Naudoti PGN poziciją
 	Put the PGN's position on the board. It is kept only when you confirm it.	Padeda PGN poziciją ant lentos. Ji išsaugoma tik jums patvirtinus.
+	This game of the book's PGN can't be read.	Šios knygos PGN partijos nepavyko perskaityti.
+	Use {name}	Naudoti {name}
+	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	Šalia šio PDF yra to paties pavadinimo PGN: išsaugokite jį kaip knygos PGN.
+	Double-click to open the book's PGN game here.	Dukart spustelėkite, kad atidarytumėte knygos PGN partiją čia.
+	Open the book's PGN game here	Atidaryti knygos PGN partiją čia
