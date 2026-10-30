@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+  <path d="M78 88L50 88L50 51.5Z" fill="#d8ecff" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M61 42L61 46L56 47Z" fill="#fde2e2" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M54 40L61 42L56 47Z" fill="#e4f6dc" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M72 76L78 80L78 88Z" fill="#fff4c9" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M62 23L63 30L59 37Z" fill="#ffffff" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M57 17L62 23L59 37Z" fill="#d8ecff" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M50 15L57 17L59 37Z" fill="#fde2e2" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M50 15L59 37L54 40Z" fill="#e4f6dc" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M50 51.5L50 15L54 40Z" fill="#fff4c9" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M50 51.5L54 40L56 47Z" fill="#ffffff" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M50 51.5L56 47L59 60Z" fill="#d8ecff" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M66 71L72 76L78 88Z" fill="#fde2e2" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M50 51.5L59 60L66 71Z" fill="#e4f6dc" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M66 71L78 88L50 51.5Z" fill="#fff4c9" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M22 88L50 88L50 51.5Z" fill="#e4f6dc" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M39 42L39 46L44 47Z" fill="#fff4c9" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M46 40L39 42L44 47Z" fill="#ffffff" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M28 76L22 80L22 88Z" fill="#d8ecff" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M38 23L37 30L41 37Z" fill="#fde2e2" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M43 17L38 23L41 37Z" fill="#e4f6dc" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M50 15L43 17L41 37Z" fill="#fff4c9" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M50 15L41 37L46 40Z" fill="#ffffff" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M50 51.5L50 15L46 40Z" fill="#d8ecff" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M50 51.5L46 40L44 47Z" fill="#fde2e2" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M50 51.5L44 47L41 60Z" fill="#e4f6dc" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M34 71L28 76L22 88Z" fill="#fff4c9" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M50 51.5L41 60L34 71Z" fill="#ffffff" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M34 71L22 88L50 51.5Z" fill="#d8ecff" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M50 15L57 17L62 23L63 30L59 37L54 40L61 42L61 46L56 47L59 60L66 71L72 76L78 80L78 88L50 88L22 88L22 80L28 76L34 71L41 60L44 47L39 46L39 42L46 40L41 37L37 30L38 23L43 17Z" fill="none" stroke="#1a1a1a" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

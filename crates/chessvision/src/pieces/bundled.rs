@@ -3,9 +3,12 @@
 //! Each is twelve SVG files under `assets/chess/pieces/<id>/`, compiled in and read by the same
 //! reader as the user's own folders ([`super::svg`]), so a set shipped here draws exactly as the
 //! same files would from a `pieces` folder. Every file is listed in `ATTRIBUTION.toml` with its
-//! author, source and licence (all on the allowlist of AGENTS.md §1.2); the licence texts sit
-//! beside the files. The SVGs are the ones lichess publishes, at the commit `ATTRIBUTION.toml`
-//! names; `source` is where the author keeps the set.
+//! author, source and licence (all on the allowlist of AGENTS.md §1.2).
+//!
+//! The first eight are openly licensed sets by other authors: the SVGs lichess publishes, at the
+//! commit `ATTRIBUTION.toml` names, with the licence texts beside the files; `source` is where the
+//! author keeps the set. The rest were drawn for PdfCraft (contributor-original, under the
+//! project's licence) and are described in `assets/chess/pieces/README.md`.
 
 use pdfcraft_chess::draw::{PieceGlyph, PieceSet};
 
@@ -21,7 +24,7 @@ pub struct Bundled {
     pub author: &'static str,
     /// SPDX identifier.
     pub licence: &'static str,
-    /// Where the author publishes the set.
+    /// Where the author publishes the set; for a set drawn for PdfCraft, its README here.
     pub source: &'static str,
     /// White pawn, knight, bishop, rook, queen, king, then Black's, as [`PieceSet::glyphs`].
     files: [&'static [u8]; 12],
@@ -44,6 +47,20 @@ macro_rules! files {
             include_bytes!(concat!("../../../../assets/chess/pieces/", $id, "/bQ.svg")),
             include_bytes!(concat!("../../../../assets/chess/pieces/", $id, "/bK.svg")),
         ]
+    };
+}
+
+/// A set drawn for PdfCraft: its id and name.
+macro_rules! original {
+    ($id:literal, $name:literal) => {
+        Bundled {
+            id: $id,
+            name: $name,
+            author: "PdfCraft contributors",
+            licence: "MIT OR Apache-2.0",
+            source: "assets/chess/pieces/README.md",
+            files: files!($id),
+        }
     };
 }
 
@@ -113,6 +130,18 @@ pub const SETS: &[Bundled] = &[
         source: "https://github.com/flugsio/chess_shapes",
         files: files!("shapes"),
     },
+    original!("classic", "Classic"),
+    original!("tokens", "Tokens"),
+    original!("pixelart", "Pixel Art"),
+    original!("bauhaus", "Bauhaus"),
+    original!("facets", "Facets"),
+    original!("glass", "Stained Glass"),
+    original!("moves", "Moves"),
+    original!("chubby", "Chubby"),
+    original!("deco", "Art Deco"),
+    original!("gothic", "Gothic"),
+    original!("wood", "Wood"),
+    original!("sketch", "Sketch"),
 ];
 
 /// The shipped set named `id` (ASCII case ignored).
@@ -141,7 +170,7 @@ mod tests {
 
     #[test]
     fn every_shipped_set_reads_whole_and_fills_its_squares() {
-        assert_eq!(SETS.len(), 8);
+        assert_eq!(SETS.len(), 20);
         for set in SETS {
             let pieces = set.load().unwrap_or_else(|e| panic!("{}: {e}", set.id));
             assert_eq!(pieces.name, set.name);
@@ -155,6 +184,39 @@ mod tests {
                 assert!(b[2] - b[0] > 0.3 && b[3] - b[1] > 0.3, "{} {name}: {b:?}", set.id);
             }
         }
+    }
+
+    /// A set whose files were mixed up shows it: two of its pieces drawn alike, or a white piece
+    /// no lighter than the black one of its kind.
+    #[test]
+    fn every_set_draws_twelve_different_pieces_and_white_is_the_light_side() {
+        for set in SETS {
+            let pieces = set.load().unwrap_or_else(|e| panic!("{}: {e}", set.id));
+            for (i, a) in pieces.glyphs.iter().enumerate() {
+                for (j, b) in pieces.glyphs.iter().enumerate().skip(i + 1) {
+                    assert_ne!(a, b, "{}: {} and {} are drawn alike", set.id, FILE_NAMES[i], FILE_NAMES[j]);
+                }
+            }
+            for k in 0..6 {
+                let (white, black) = (lightness(&pieces.glyphs[k]), lightness(&pieces.glyphs[k + 6]));
+                assert!(white > black, "{}: {} ({white}) is not lighter than {} ({black})", set.id, FILE_NAMES[k], FILE_NAMES[k + 6]);
+            }
+        }
+    }
+
+    /// The luminance of a piece's fills, each weighted by the area of its bounding box.
+    fn lightness(glyph: &PieceGlyph) -> f32 {
+        let (mut sum, mut weight) = (0.0, 0.0);
+        for layer in &glyph.layers {
+            if let pdfcraft_chess::draw::Paint::Fill { color, .. } = layer.paint
+                && let Some(b) = pdfcraft_chess::draw::bounds(&layer.subpaths)
+            {
+                let area = (b[2] - b[0]) * (b[3] - b[1]);
+                sum += area * (0.2126 * f32::from(color.0) + 0.7152 * f32::from(color.1) + 0.0722 * f32::from(color.2));
+                weight += area;
+            }
+        }
+        sum / weight
     }
 
     /// Not a check: writes a board per set to `$PDFCRAFT_PIECES_PREVIEW` to look at.
