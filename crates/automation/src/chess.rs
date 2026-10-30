@@ -659,6 +659,11 @@ impl Automation {
         let shown = a.str("out")?.to_owned();
         // Resolved before reading, so a path outside the root costs nothing.
         let path = self.resolve(&shown, true)?;
+        // PGN: the book's own PGN (plan "Carregar PGN do livro", R4), indexed before the pages are read.
+        let reference = match a.opt_str("reference_pgn")?.filter(|_| format == ChessFormat::Pgn) {
+            None => None,
+            Some(p) => Some((p.to_owned(), std::sync::Arc::new(read_reference(&self.resolve(p, false)?, p)?))),
+        };
         // Markdown's images go in a folder beside the file: `book.md` → `book_diagrams/`.
         let out = std::path::Path::new(&shown);
         let stem = out.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "document".into());
@@ -695,6 +700,7 @@ impl Automation {
             positions,
             pgn_style,
             review_marks: a.opt_bool("review_marks")?,
+            reference: reference.as_ref().map(|(_, index)| index.clone()),
         };
         let loaded = self.use_store_corrections(a, id)?;
         let made = self.session.chess_export(id, format, &options).map_err(failed)?;
@@ -742,6 +748,14 @@ impl Automation {
             "cipher": Self::cipher_reply(&made.read.cipher, cipher_out.as_ref())?,
             "image_dir": folder.as_ref().filter(|_| !made.images.is_empty()).map(|_| image_dir),
             "corrections": crate::chess_corrections::corrections_reply(loaded, read),
+            "reference": reference.as_ref().zip(made.annotated.as_ref()).map(|((p, index), n)| json!({
+                "pgn": p,
+                "games": n.games,
+                "moves": index.moves(),
+                "commented": n.commented,
+                "book_only": n.book_only,
+                "diagrams": n.diagrams,
+            })),
         }))
     }
 

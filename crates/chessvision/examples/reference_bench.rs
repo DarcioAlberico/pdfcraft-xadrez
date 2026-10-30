@@ -1,7 +1,7 @@
 //! Book-PGN alignment benchmark on a document read before. Not run in CI.
 //!
 //! ```text
-//! cargo run --release -p pdfcraft-chessvision --example reference_bench -- <document.json> <book.pgn> [--lost=N]
+//! cargo run --release -p pdfcraft-chessvision --example reference_bench -- <document.json> <book.pgn> [--lost=N] [--annotate=OUT.pgn]
 //! ```
 //!
 //! The document is a chess document as `chess_document` writes it (`out`); the PGN is the book's
@@ -9,21 +9,24 @@
 //! the valid moves the PGN confirms, the moves the reader could not play that the PGN recovers
 //! (by the reader's status), the conflicts and what stays absent, and how long the alignment took.
 //! `--lost=N` lists the first N moves the reader could not play and the PGN did not find either.
+//! `--annotate=OUT.pgn` also writes the PGN with the book's text as comments (R4) and says what
+//! went in.
 //!
 //! The book and its PGN are the user's own and stay outside the repository.
 
 use std::collections::BTreeMap;
 use std::time::Instant;
 
-use pdfcraft_chessvision::doc::reference::{LinkKind, ReferenceIndex, align};
+use pdfcraft_chessvision::doc::reference::{LinkKind, ReferenceIndex, align, annotate};
 use pdfcraft_chessvision::doc::{ChessDoc, Inline, MoveStatus};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let lost = args.iter().find_map(|a| a.strip_prefix("--lost=")).and_then(|n| n.parse::<usize>().ok()).unwrap_or(0);
+    let annotate = args.iter().find_map(|a| a.strip_prefix("--annotate="));
     let files: Vec<&String> = args.iter().filter(|a| !a.starts_with("--")).collect();
     let [doc_path, pgn_path] = files.as_slice() else {
-        return Err("usage: reference_bench <document.json> <book.pgn> [--lost=N]".into());
+        return Err("usage: reference_bench <document.json> <book.pgn> [--lost=N] [--annotate=OUT.pgn]".into());
     };
     let doc = ChessDoc::from_json(&std::fs::read_to_string(doc_path)?)?;
     let pgn = std::fs::read_to_string(pgn_path)?;
@@ -70,6 +73,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("diagrams: {diagrams} of {} placed on a PGN move", alignment.diagrams.len());
     for m in lost_moves {
         println!("  lost: {m}");
+    }
+    if let Some(out) = annotate {
+        let book = pdfcraft_chessvision::doc::markdown::PgnBook::default();
+        let started = Instant::now();
+        let made = annotate::annotated_pgn(&doc, &index, &book, pdfcraft_chess::pgn_style::PgnStyle::FULL);
+        println!(
+            "annotated in {:.1?}: {} games, {} moves commented, {} moves only in the book, {} diagram marks, {} bytes",
+            started.elapsed(),
+            made.games,
+            made.commented,
+            made.book_only,
+            made.diagrams,
+            made.pgn.len()
+        );
+        std::fs::write(out, made.pgn)?;
     }
     Ok(())
 }

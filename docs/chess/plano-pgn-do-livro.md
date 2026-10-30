@@ -1,6 +1,6 @@
 # Plano de implantação — Carregar PGN do livro · v1
 
-**Status:** v4 · 2026-10-30 · R0 (#229), R1 (#231), R2 (#233) e R3 feitos; R4–R7 a fazer.
+**Status:** v5 · 2026-10-30 · R0 (#229), R1 (#231), R2 (#233), R3 (#234) e R4 feitos; R5–R7 a fazer.
 **Origem:** pedido do usuário em 2026-10-29: "quando temos o PDF digital e o PGN dele, daria pra implementar uma função carregar PGN para aproveitar esse PGN?". Analisamos o par em `C:\Users\AMD\Documents\PDFCraft_Arquivos\PDF e PGN`: *Beat the French Defence with 3.Nc3* (Harikrishna; 748 páginas, gerado pelo calibre a partir de um curso Chessable) e o PGN do curso (120 partidas, "Chapter N / Game M").
 **Repositório:** `DarcioAlberico/pdfcraft-xadrez`. Crates: `chess` (L0), `chessvision`, `engine` (L6), `automation`, `ui-egui`.
 **Público de cada passo:** uma sessão de agente que começa do zero. Cada passo traz o contexto, as tarefas, a verificação e o critério de saída.
@@ -191,7 +191,19 @@ R3 e R4 podem correr em paralelo depois de R2. R6 só começa depois de R5.
 - R3, o que mudou em relação ao texto do passo:
   - **O app ainda não mostra o chip "Confirmado pelo PGN"** nem aplica a sugestão: sem o PGN guardado (R5), o app não tem como saber dele. No painel, `Status::Reference` aparece como lido até o R6.
   - **As partidas não são refeitas** a partir do lado novo de um diagrama confirmado. O leitor joga antes do alinhamento, e o `SideFromMoveNumber` já corrige o lado pelo número do primeiro lance.
-- R4–R7: a fazer.
+- R4: feito.
+  - `reference::annotate::annotated_pgn(doc, index, book, style)` escreve as partidas do PGN, com todas as linhas e NAGs, e o texto do livro como comentário. O texto entre um lance ligado e o próximo vai depois do primeiro. O texto depois de um título, antes do primeiro lance de outra partida, vai antes do primeiro lance dela. Sem título no meio, fica com o lance anterior.
+  - Figurinas viram letras inglesas. Um diagrama ligado põe `$220` no lance. A deixa da legenda, "Position after:" / "Posição depois de" / "Stellung nach" (as palavras do leitor, `after_cue`), sai quando o lance que vem depois repete o lance atual ou o de um diagrama; o resto do texto da legenda fica. Rótulos `A)`/`B1)` ficam.
+  - D2: um lance válido do leitor que o PGN não tem entra como variante a partir da posição de onde o leitor o jogou (o lance atual ou um dos 60 recentes), e o primeiro lance da linha ganha o comentário "só no livro" no idioma do livro (`origin::only_in_the_book`, 18 idiomas).
+  - Cada partida que o livro discute ganha `PdfPage`, `PdfPageLabel` e `SourceTitle` da primeira página que a discute. As que o livro não discute saem como estão.
+  - `chess_export_pgn` ganha `reference_pgn` (confinado a `--root`). `examples/reference_bench.rs` ganha `--annotate=SAÍDA.pgn`.
+  - No livro da §1.2: 120 partidas, 368 lances comentados, 7 lances só no livro, 73 marcas de diagrama, em 10 ms. O python-chess relê sem erro e com todas as sequências de lances do PGN. Sobram 4 deixas "Position after:" diante de lances que o PGN não tem.
+- R4, o que mudou em relação ao texto do passo:
+  - **A ferramenta recebe o caminho** (`reference_pgn`), não `reference: true`: o PGN guardado é o R5.
+  - **O menu Exportar "PGN comentado"** fica para o R6, junto com a escolha do PGN no app.
+  - **Variantes iguais repetidas no PGN original** viram uma só: o leitor do `chess` segue a resposta que já existe. Nenhuma sequência de lances se perde.
+  - **Texto que a extração do PDF põe fora de ordem** vai para o comentário errado; o alinhamento não tem como saber.
+- R5–R7: a fazer.
 
 ## 4. Decisões do usuário
 
@@ -212,3 +224,4 @@ R3 e R4 podem correr em paralelo depois de R2. R6 só começa depois de R5.
 - **v2 (2026-10-29):** R1 feito; a §3.3 traz as medidas e o que mudou em relação ao passo.
 - **v3 (2026-10-30):** R2 feito; a §3.3 diz o que a ferramenta devolve e o que ficou para o R6.
 - **v4 (2026-10-30):** R3 feito; a §3.3 diz como um diagrama é confirmado ou sugerido e o que ficou para o R6.
+- **v5 (2026-10-30):** R4 feito; a §3.3 diz onde cada texto do livro vai no PGN comentado e o que foi medido no livro.

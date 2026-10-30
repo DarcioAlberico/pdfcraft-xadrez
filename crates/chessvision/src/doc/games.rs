@@ -1128,7 +1128,7 @@ const AFTER_CUES: [&str; 12] = ["after", "após", "apos", "depois de", "nach", "
 
 /// Whether `text` (the words before a move) ends in a "position after" cue: `Position after:`,
 /// `Posição após`, `Stellung nach`, with or without a colon.
-fn after_cue(text: &str) -> bool {
+pub(crate) fn after_cue(text: &str) -> bool {
     let lower = text.trim().trim_end_matches([':', '\u{a0}']).trim_end().to_lowercase();
     AFTER_CUES.iter().any(|cue| {
         lower.strip_suffix(cue).is_some_and(|before| before.is_empty() || before.ends_with(|c: char| c.is_whitespace() || c == '(' || c == '['))

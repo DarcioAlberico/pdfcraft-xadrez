@@ -976,5 +976,7 @@ fn search(index: &ReferenceIndex, mv: &MoveInline, recent: &[Anchor], page_game:
     best.map(|(_, c)| c)
 }
 
+pub mod annotate;
+
 #[cfg(test)]
 mod tests;

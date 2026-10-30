@@ -220,6 +220,10 @@ fn chess_export_pgn_schema() -> Value {
             "positions".into(),
             json!({ "type": "string", "enum": ["unused", "all", "none"], "description": "Which diagrams get a game of their own with no moves: unused (default) those no game starts from or reprints, all every legal one, none only the games." }),
         );
+        props.insert(
+            "reference_pgn".into(),
+            json!({ "type": "string", "description": "The book's own PGN, at most 32 MiB (relative to --root when set). With it the PGN written is that PGN's games, every line and glyph kept, with the book's text as comments: the text between a linked move and the next goes after the first (text before another game's first move, before it), figurines as letters, $220 on a move a diagram shows, a caption's \"Position after:\" cue left out (its other words kept), line labels kept. A move the reader played that the PGN does not have goes in as a variation commented \"only in the book\" in the book's language; each game the book discusses gets PdfPage, PdfPageLabel and SourceTitle from its first page. positions is not used. The reply's reference gives pgn, games, moves, commented, book_only and diagrams." }),
+        );
     }
     s
 }

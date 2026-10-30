@@ -707,6 +707,41 @@ fn the_books_pgn_confirms_a_diagram_and_suggests_a_near_one_without_writing_a_co
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// Plan "Carregar PGN do livro", R4: chess_export_pgn with the book's PGN writes that PGN's games,
+/// every move kept, with the book's text as comments and the origin's tags; the PGN is confined to
+/// the root.
+#[test]
+fn chess_export_pgn_writes_the_books_pgn_with_its_text() {
+    use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, split_pgn};
+    let (base, root) = workdir("export-reference");
+    std::fs::write(root.join("moves.pdf"), text_pdf("1.e4 e5 2.Nf3 Nc6 is the main line. 3.Bb5 a6")).unwrap();
+    std::fs::write(root.join("book.pgn"), RUY_PGN).unwrap();
+    std::fs::write(base.join("outside").join("book.pgn"), RUY_PGN).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let doc = ok(&mut a, "doc_open", json!({ "path": "moves.pdf" }))["doc"].as_u64().unwrap();
+    let args = json!({ "doc": doc, "lang": "en", "out": "annotated.pgn", "title": "Ruy Book", "reference_pgn": "book.pgn" });
+    let made = ok(&mut a, "chess_export_pgn", args);
+    assert_eq!(made["reference"], json!({ "pgn": "book.pgn", "games": 1, "moves": 6, "commented": 1, "book_only": 0, "diagrams": 0 }), "{made:#}");
+    let pgn = std::fs::read_to_string(root.join("annotated.pgn")).unwrap();
+    let games = split_pgn(&pgn, 10);
+    assert_eq!(games.len(), 1, "{pgn}");
+    let (game, report) = Game::from_pgn_report(games[0]).unwrap();
+    assert_eq!(report.stopped, None, "{pgn}");
+    assert_eq!(game.moves().len(), 6, "{pgn}");
+    assert_eq!((game.tag("White"), game.tag("PdfPage"), game.tag("SourceTitle")), (Some("Ruy"), Some("1"), Some("Ruy Book")), "{pgn}");
+    assert!(pgn.contains("Nc6 {is the main line.}"), "{pgn}");
+    // Without the PGN, the games read from the text, as before.
+    let plain = ok(&mut a, "chess_export_pgn", json!({ "doc": doc, "lang": "en", "out": "plain.pgn" }));
+    assert!(plain["reference"].is_null(), "{plain:#}");
+    // The PGN stays inside the root, and nothing is written when it is refused.
+    match a.call("chess_export_pgn", &json!({ "doc": doc, "out": "refused.pgn", "reference_pgn": "../outside/book.pgn" })) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{m}"),
+        other => panic!("a PGN outside the root accepted: {other:?}"),
+    }
+    assert!(!root.join("refused.pgn").exists());
+    let _ = std::fs::remove_dir_all(base);
+}
+
 /// The font diagram gets a label and a link under it (found by `link_list`); the two diagrams
 /// no model reads are skipped with the reason. A dry run changes nothing, a second run adds
 /// nothing, and undo takes it all back.
