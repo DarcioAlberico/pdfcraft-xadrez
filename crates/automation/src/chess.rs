@@ -481,20 +481,16 @@ impl Automation {
         // Resolved before reading, so a path outside the root costs nothing.
         let out = a.opt_str("out")?.map(|p| self.resolve(p, true).map(|r| (p, r))).transpose()?;
         let pgn_out = a.opt_str("pgn_out")?.map(|p| self.resolve(p, true).map(|r| (p, r))).transpose()?;
-        // The book's own PGN (plan "Carregar PGN do livro", R2): indexed before the pages are read,
-        // so a PGN that cannot be used costs nothing.
-        let reference = match a.opt_str("reference_pgn")? {
-            None => None,
-            Some(p) => Some((p, read_reference(&self.resolve(p, false)?, p)?)),
-        };
         let id = self.doc(a)?.id;
+        // The book's own PGN (plan "Carregar PGN do livro", R2; the kept one, R5).
+        let (reference, reference_kept) = self.book_pgn(a, id)?;
         let (seed, cipher_out) = self.cipher_args(a)?;
         let ocr = OcrOptions { book: seed.as_ref(), ..ocr_options(a)? };
         let loaded = self.use_store_corrections(a, id)?;
         let mut read = self.session.chess_document_with(id, &pages, &settings, lang, &ocr).map_err(failed)?;
-        let reference = reference.map(|(shown, index)| {
-            let linked = reference::link(&mut read.doc, &index);
-            reference_reply(shown, &index, &linked)
+        let reference = reference.map(|r| {
+            let linked = reference::link(&mut read.doc, &r.index);
+            reference_reply(&r.shown, &r.index, &linked)
         });
         let cipher = Self::cipher_reply(&read.cipher, cipher_out.as_ref())?;
         let corrections = crate::chess_corrections::corrections_reply(loaded, &read);
@@ -522,6 +518,7 @@ impl Automation {
             "notes": read.notes.iter().map(|(p, n)| json!({ "page": p + 1, "note": n })).collect::<Vec<_>>(),
             "corrections": corrections,
             "reference": reference,
+            "reference_kept": reference_kept,
         });
         if let Some((shown, path)) = out {
             crate::write_atomic(&path, json_text.as_bytes())?;
@@ -659,10 +656,14 @@ impl Automation {
         let shown = a.str("out")?.to_owned();
         // Resolved before reading, so a path outside the root costs nothing.
         let path = self.resolve(&shown, true)?;
-        // PGN: the book's own PGN (plan "Carregar PGN do livro", R4), indexed before the pages are read.
-        let reference = match a.opt_str("reference_pgn")?.filter(|_| format == ChessFormat::Pgn) {
-            None => None,
-            Some(p) => Some((p.to_owned(), std::sync::Arc::new(read_reference(&self.resolve(p, false)?, p)?))),
+        // PGN: the book's own PGN (plan "Carregar PGN do livro", R4; the kept one, R5), indexed
+        // before the pages are read.
+        let (reference, reference_kept) = if format == ChessFormat::Pgn {
+            let id = self.doc(a)?.id;
+            let (r, kept) = self.book_pgn(a, id)?;
+            (r.map(|r| (r.shown, std::sync::Arc::new(r.index))), kept)
+        } else {
+            (None, Value::Null)
         };
         // Markdown's images go in a folder beside the file: `book.md` → `book_diagrams/`.
         let out = std::path::Path::new(&shown);
@@ -756,6 +757,7 @@ impl Automation {
                 "book_only": n.book_only,
                 "diagrams": n.diagrams,
             })),
+            "reference_kept": reference_kept,
         }))
     }
 
@@ -946,6 +948,12 @@ fn font_json(
 /// [`reference::MAX_REFERENCE_BYTES`] before it is read; bytes that are not UTF-8 are read as
 /// replacement characters, which no move needs.
 pub(crate) fn read_reference(path: &std::path::Path, shown: &str) -> Result<reference::ReferenceIndex> {
+    let text = read_reference_text(path, shown)?;
+    reference::ReferenceIndex::from_pgn(&text).map_err(|e| failed(format!("{shown}: {e}")))
+}
+
+/// The text of the book's PGN at `path`, as [`read_reference`] reads it.
+pub(crate) fn read_reference_text(path: &std::path::Path, shown: &str) -> Result<String> {
     use std::io::Read as _;
     let max = reference::MAX_REFERENCE_BYTES;
     let too_large = || failed(format!("{shown}: a PGN of more than {} MiB is not read", max >> 20));
@@ -959,7 +967,7 @@ pub(crate) fn read_reference(path: &std::path::Path, shown: &str) -> Result<refe
     if bytes.len() > max {
         return Err(too_large());
     }
-    reference::ReferenceIndex::from_pgn(&String::from_utf8_lossy(&bytes)).map_err(|e| failed(format!("{shown}: {e}")))
+    Ok(String::from_utf8_lossy(&bytes).into_owned())
 }
 
 /// The `reference` field of `chess_document`'s reply. Pages and games count from 1.

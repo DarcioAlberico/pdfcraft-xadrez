@@ -345,7 +345,10 @@ mod tests {
         // Helpers that are only called with a resolved path. `doc_batch` (batch.rs) resolves its
         // inputs and out_dir, walks only inside them (skipping links) and resolves every
         // discovered file again before `process` reads it or `publish` writes it.
-        const RESOLVED_BY_CALLER: &[&str] = &["write_atomic", "write_atomic_with", "read_review_sidecar", "process", "linked", "walk", "publish"];
+        // `read_reference_text` (chess.rs) reads the book's PGN that `read_reference` and
+        // `chess_reference_set` resolve first.
+        const RESOLVED_BY_CALLER: &[&str] =
+            &["write_atomic", "write_atomic_with", "read_review_sidecar", "process", "linked", "walk", "publish", "read_reference_text"];
         let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
         let mut offenders = vec![];
         for entry in std::fs::read_dir(&dir).unwrap() {

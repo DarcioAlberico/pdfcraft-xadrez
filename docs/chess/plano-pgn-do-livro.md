@@ -1,6 +1,6 @@
 # Plano de implantação — Carregar PGN do livro · v1
 
-**Status:** v5 · 2026-10-30 · R0 (#229), R1 (#231), R2 (#233), R3 (#234) e R4 feitos; R5–R7 a fazer.
+**Status:** v6 · 2026-10-30 · R0 (#229), R1 (#231), R2 (#233), R3 (#234), R4 (#235) e R5 feitos; R6–R7 a fazer.
 **Origem:** pedido do usuário em 2026-10-29: "quando temos o PDF digital e o PGN dele, daria pra implementar uma função carregar PGN para aproveitar esse PGN?". Analisamos o par em `C:\Users\AMD\Documents\PDFCraft_Arquivos\PDF e PGN`: *Beat the French Defence with 3.Nc3* (Harikrishna; 748 páginas, gerado pelo calibre a partir de um curso Chessable) e o PGN do curso (120 partidas, "Chapter N / Game M").
 **Repositório:** `DarcioAlberico/pdfcraft-xadrez`. Crates: `chess` (L0), `chessvision`, `engine` (L6), `automation`, `ui-egui`.
 **Público de cada passo:** uma sessão de agente que começa do zero. Cada passo traz o contexto, as tarefas, a verificação e o critério de saída.
@@ -203,7 +203,18 @@ R3 e R4 podem correr em paralelo depois de R2. R6 só começa depois de R5.
   - **O menu Exportar "PGN comentado"** fica para o R6, junto com a escolha do PGN no app.
   - **Variantes iguais repetidas no PGN original** viram uma só: o leitor do `chess` segue a resposta que já existe. Nenhuma sequência de lances se perde.
   - **Texto que a extração do PDF põe fora de ordem** vai para o comentário errado; o alinhamento não tem como saber.
-- R5–R7: a fazer.
+- R5: feito.
+  - `engine::chess::reference_store`: um JSON por documento (`{"format":"pdfcraft-chess-reference","version":1,"doc":{…},"pgn":{…}}`), com nome e busca iguais aos das correções (`corrections::file_name`, `DocRecord`). Guarda o texto do PGN (até 32 MiB), o hash, o tamanho, o nome do arquivo (nunca o caminho), a data e as contagens de partidas e lances. Um arquivo cujo texto não tem o hash guardado não é aceito.
+  - Como nas correções: um arquivo de versão mais nova é lido e nunca escrito nem removido; um arquivo ruim vai para `….bad`, nunca é apagado. A pasta (`DirStore`) escreve sob trava, por um arquivo de preparo renomeado por cima, com os mesmos auxiliares das correções (agora `pub(super)` em `corrections`); a memória (`MemStore`) tem orçamento próprio.
+  - Ferramentas `chess_reference_set` (`path`), `chess_reference_status` e `chess_reference_clear`, com `reference_store` confinado a `--root` (padrão `.pdfcraft/chess-reference`).
+  - `chess_document`, `chess_diagram_states` e `chess_export_pgn` usam o PGN guardado quando não recebem `reference_pgn`, a não ser com `reference: false`. A resposta ganha `reference_kept` (o que a pasta tinha).
+  - `doc_save` com outro nome leva o PGN para as chaves novas (`chess_reference: "kept for the saved file"`).
+- R5, o que mudou em relação ao texto do passo:
+  - **A busca entre os arquivos lê só o documento registrado** (`recorded`), sem conferir o hash de cada PGN; o arquivo escolhido é conferido inteiro ao ser lido.
+  - **Remover apaga o arquivo.** As correções deixam lápide porque se fundem; o PGN guardado é um só e só a pessoa pede para removê-lo.
+  - **`chess_diagram_states` e `chess_export_pgn` também usam o PGN guardado**, não só `chess_document`, para as três ferramentas que aceitam `reference_pgn` se comportarem igual.
+  - **O app ainda não usa a pasta.** O "Salvar como" do app leva as correções, mas não o PGN; isso entra no R6, junto com a escolha do PGN.
+- R6–R7: a fazer.
 
 ## 4. Decisões do usuário
 
@@ -225,3 +236,4 @@ R3 e R4 podem correr em paralelo depois de R2. R6 só começa depois de R5.
 - **v3 (2026-10-30):** R2 feito; a §3.3 diz o que a ferramenta devolve e o que ficou para o R6.
 - **v4 (2026-10-30):** R3 feito; a §3.3 diz como um diagrama é confirmado ou sugerido e o que ficou para o R6.
 - **v5 (2026-10-30):** R4 feito; a §3.3 diz onde cada texto do livro vai no PGN comentado e o que foi medido no livro.
+- **v6 (2026-10-30):** R5 feito; a §3.3 diz o formato do PGN guardado, as ferramentas e o que ficou para o R6.
