@@ -24,6 +24,7 @@ fn mv(number: Option<(u16, bool)>, san: &str, status: MoveStatus, fen: Option<St
         source_rect: None,
         bold: false,
         review: Vec::new(),
+        reference: None,
     })
 }
 
@@ -233,6 +234,65 @@ fn headings_and_moves_without_a_san_are_not_linked() {
     assert_eq!(kinds(&a), [Absent, Absent], "the heading's move is not among them");
 }
 
+/// The moves of `doc`'s paragraphs.
+fn moves_of(doc: &ChessDoc) -> Vec<&MoveInline> {
+    let paragraphs = doc.pages.iter().flat_map(|p| &p.blocks).filter(|b| matches!(b, Block::Paragraph { .. }));
+    paragraphs.flat_map(|b| b.inlines()).filter_map(|i| if let Inline::Move(m) = i { Some(m) } else { None }).collect()
+}
+
+#[test]
+fn link_keeps_the_links_on_the_moves_and_marks_what_the_pgn_recovered() {
+    let index = ReferenceIndex::from_pgn("[Event \"Ch 1\"]\n\n1.e4 e6 2.d4 d5 3.Nc3 Bb4! 4.e5 c5 *\n").unwrap();
+    let main = ["e4", "e6", "d4", "d5", "Nc3"];
+    let after = vec![mv(Some((3, false)), "Nc3", OutOfSequence, None), mv(Some((3, true)), "Bb4", NotReached, None)];
+    let mut d = doc(vec![vec![para(played(&[], &main)), diagram(0, &fen_after(&main)), para(after)]]);
+    let linked = link(&mut d, &index);
+    assert_eq!(linked.alignment.counts, LinkCounts { confirmed: 6, recovered: 1, conflict: 0, absent: 0 });
+    assert!(linked.warnings.is_empty(), "{:?}", linked.warnings);
+    let moves = moves_of(&d);
+    assert_eq!(moves[0].reference, Some(MoveReference { kind: Confirmed, game: Some(0), node: Some(1) }));
+    // The caption is the diagram's move; the move after it was recovered, its status kept.
+    assert_eq!(moves[5].reference.map(|r| (r.kind, r.node)), Some((Confirmed, Some(5))));
+    assert_eq!(moves[6].reference, Some(MoveReference { kind: Recovered, game: Some(0), node: Some(6) }));
+    assert_eq!(moves[6].status, NotReached);
+    assert_eq!(moves[6].review, [ReviewFlag::FromReference { san: "Bb4".into() }], "the PGN's move, its glyph aside");
+    assert!(moves[..6].iter().all(|m| m.review.is_empty()));
+    // Linking again is linking once; the links go to JSON and come back.
+    let once = d.clone();
+    link(&mut d, &index);
+    assert_eq!(d, once);
+    let json = d.to_json().unwrap();
+    assert!(json.contains("\"reference\":{\"kind\":\"recovered\",\"game\":0,\"node\":6}"), "{json}");
+    assert_eq!(ChessDoc::from_json(&json).unwrap(), d);
+    // A document read before R2 has no links, and reads as one with none.
+    let mut plain = doc(vec![vec![para(played(&[], &main))]]);
+    let old = plain.to_json().unwrap();
+    assert!(!old.contains("reference"), "{old}");
+    link(&mut plain, &ReferenceIndex::from_pgn("1.c4 *").unwrap());
+    assert!(moves_of(&plain).iter().all(|m| m.reference.is_some_and(|r| r.kind == Absent && r.game.is_none())));
+}
+
+#[test]
+fn link_warns_when_the_pgn_is_not_the_books() {
+    let index = ReferenceIndex::from_pgn("1.d4 d5 2.c4 e6 3.Nc3 *").unwrap();
+    // On the judged pages, 2 of the 7 moves (29%) are in the PGN.
+    let other = ["e4", "e5", "Nf3", "Nc6", "Bb5"];
+    let mut pages = vec![vec![para(played(&[], &["d4", "d5"]))], vec![para(played(&[], &other))]];
+    let mut d = doc(pages.clone());
+    let warnings = link(&mut d, &index).warnings;
+    assert_eq!(warnings.len(), 1, "{warnings:?}");
+    assert!(warnings[0].contains("does not look like this book's") && warnings[0].contains("2 of the 7"), "{warnings:?}");
+    // 3 of 8 (37%) is enough.
+    pages[0] = vec![para(played(&[], &["d4", "d5", "c4"]))];
+    assert!(link(&mut doc(pages.clone()), &index).warnings.is_empty());
+    // Only the first pages read are judged: past them, the moves of another book do not count.
+    let mut many: Vec<Vec<Block>> = (0..JUDGED_PAGES).map(|_| vec![para(played(&[], &["d4", "d5"]))]).collect();
+    many.push(vec![para(played(&[], &other)); 20]);
+    assert!(link(&mut doc(many), &index).warnings.is_empty());
+    // A page with no moves warns about nothing.
+    assert!(link(&mut doc(vec![vec![diagram(0, &fen_after(&[]))]]), &index).warnings.is_empty());
+}
+
 fn arb_san() -> impl Strategy<Value = String> {
     prop_oneof![
         prop::sample::select(vec!["e4", "e5", "Nf3", "Nc6", "Bb5", "O-O", "0-0-0", "d4", "", "+", "Nxe5#"]).prop_map(String::from),
@@ -277,7 +337,14 @@ proptest! {
         let d = doc(pages);
         let moves = d.pages.iter().flat_map(|p| &p.blocks).filter(|b| matches!(b, Block::Paragraph { .. })).flat_map(|b| b.inlines()).filter(|i| matches!(i, Inline::Move(_))).count();
         if let Ok(index) = ReferenceIndex::from_pgn(&pgn) {
+            let mut linked = d.clone();
+            let l = link(&mut linked, &index);
+            prop_assert!(moves_of(&linked).iter().all(|m| m.reference.is_some()));
+            let once = linked.clone();
+            link(&mut linked, &index);
+            prop_assert_eq!(&linked, &once);
             let a = align(&d, &index);
+            prop_assert_eq!(&l.alignment, &a);
             prop_assert_eq!(a.moves.len(), moves);
             let c = a.counts;
             prop_assert_eq!(c.confirmed + c.recovered + c.conflict + c.absent, moves);

@@ -678,6 +678,7 @@ pub(crate) fn inlines(lines: &[&ChessLine], geometry: Option<&PageGeometry>) -> 
                         source_rect,
                         bold: span.bold,
                         review: Vec::new(),
+                        reference: None,
                     }));
                 }
                 ChessRun::Nag(code) => {

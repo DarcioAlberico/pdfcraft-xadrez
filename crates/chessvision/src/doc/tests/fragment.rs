@@ -390,6 +390,7 @@ fn a_number_cut_from_its_move_is_given_back_to_it() {
             source_rect: None,
             bold: false,
             review: Vec::new(),
+            reference: None,
         })
     };
     let text = |t: &str| Inline::Text { text: t.to_owned(), source_rect: None, review: Vec::new() };

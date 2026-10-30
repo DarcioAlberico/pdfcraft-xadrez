@@ -155,6 +155,10 @@ pub enum ReviewFlag {
     /// A comment reached [`games::MAX_COMMENT_CHARS`]; the PGN comment is cut there (the text in
     /// the blocks is whole).
     CommentTruncated,
+    // --- The book's own PGN (plan "Carregar PGN do livro", R2) ---
+    /// The reader could not play the move; the book's PGN plays it as `san` ([`reference::link`]).
+    /// The reader's status is kept.
+    FromReference { san: String },
 }
 
 /// A square the decoder changed: `from` was the most probable reading, `to` what it chose.
@@ -330,6 +334,10 @@ pub struct MoveInline {
     pub bold: bool,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub review: Vec<ReviewFlag>,
+    /// Where the book's own PGN has it, when the document was linked to one
+    /// ([`reference::link`]).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reference: Option<reference::MoveReference>,
 }
 
 impl Inline {

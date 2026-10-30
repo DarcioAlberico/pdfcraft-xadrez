@@ -1,6 +1,6 @@
 # Plano de implantação — Carregar PGN do livro · v1
 
-**Status:** v2 · 2026-10-29 · R0 (#229) e R1 feitos; R2–R7 a fazer.
+**Status:** v3 · 2026-10-30 · R0 (#229), R1 (#231) e R2 feitos; R3–R7 a fazer.
 **Origem:** pedido do usuário em 2026-10-29: "quando temos o PDF digital e o PGN dele, daria pra implementar uma função carregar PGN para aproveitar esse PGN?". Analisamos o par em `C:\Users\AMD\Documents\PDFCraft_Arquivos\PDF e PGN`: *Beat the French Defence with 3.Nc3* (Harikrishna; 748 páginas, gerado pelo calibre a partir de um curso Chessable) e o PGN do curso (120 partidas, "Chapter N / Game M").
 **Repositório:** `DarcioAlberico/pdfcraft-xadrez`. Crates: `chess` (L0), `chessvision`, `engine` (L6), `automation`, `ui-egui`.
 **Público de cada passo:** uma sessão de agente que começa do zero. Cada passo traz o contexto, as tarefas, a verificação e o critério de saída.
@@ -157,10 +157,10 @@ R3 e R4 podem correr em paralelo depois de R2. R6 só começa depois de R5.
   3. Atualizar `docs/chess.md` ("Usar o PGN do livro"), `parity/` e o ROADMAP.
 - **Critério de saída:** pelo menos 3 livros medidos; a nota em `parity/` diz o que ainda falta.
 
-### 3.3 Estado (2026-10-29)
+### 3.3 Estado (2026-10-30)
 
 - R0: feito (#229).
-- R1: feito (`chessvision::doc::reference`; `examples/reference_bench.rs` mede um livro). No livro da §1.2:
+- R1: feito em #231 (`chessvision::doc::reference`; `examples/reference_bench.rs` mede um livro). No livro da §1.2:
   - 1.000 dos 1.036 lances válidos confirmados, nenhum perdido; 24 em conflito e 12 ausentes.
   - 132 dos 223 lances não jogados resolvidos: 118 recuperados e 14 confirmados (legendas lidas como lance).
   - 73 de 73 diagramas ligados a um nó; 54 páginas com partida; 2 rodadas.
@@ -172,7 +172,16 @@ R3 e R4 podem correr em paralelo depois de R2. R6 só começa depois de R5.
   - **Legenda:** o primeiro lance depois de um diagrama cujo nó tem as peças do diagrama é `confirmed`, qualquer que seja o status do leitor.
   - **Títulos ficam de fora:** um lance em título nomeia uma linha e não a joga.
   - **O corte do PGN em partidas** (`split_pgn`) passou de `engine::chess::collection` para `chess::game`; `collection` o reexporta.
-- R2–R7: a fazer.
+- R2: feito.
+  - `reference::link(doc, index)` faz o alinhamento e guarda a ligação em cada lance (`MoveInline::reference`: `{kind, game, node}`, com `serde(default)`). Um lance `recovered` mantém o status do leitor e ganha `ReviewFlag::FromReference { san }`, com o SAN do PGN. Ligar de novo substitui a ligação anterior. A ferramenta usa essa função, e o app vai usar a mesma no R6.
+  - `chess_document` ganha `reference_pgn`, confinado a `--root`. O arquivo é recusado acima de 32 MiB antes de ser lido, e um PGN sem lances é recusado antes da leitura das páginas.
+  - A resposta ganha `reference: {pgn, games, moves, stopped_games, linked, diagrams, pages, warnings}`. Páginas e partidas contam a partir de 1; no JSON do documento, `reference.game` conta a partir de 0, como os outros índices do documento.
+  - Aviso: menos de 30% dos lances das 20 primeiras páginas lidas no PGN ("the PGN does not look like this book's"); outro aviso quando o PGN passa dos tetos.
+  - Paridade: `chess.book-reference-pgn`, `partial`.
+- R2, o que mudou em relação ao texto do passo:
+  - **A sessão de leitura do app ainda não chama `link`.** O app não tem onde escolher o PGN antes do R6. A função é uma só, e o R6 só a chama.
+  - **`stopped_games` traz também as partidas que não puderam ser lidas** (`error`), além das paradas (`stopped_at`).
+- R3–R7: a fazer.
 
 ## 4. Decisões do usuário
 
@@ -183,7 +192,7 @@ R3 e R4 podem correr em paralelo depois de R2. R6 só começa depois de R5.
 ## 5. Riscos
 
 - **PGN de outra edição ou de outro livro:** coberto pelo aviso de R2 e pela taxa de ligação no resumo.
-- **Transposições:** a mesma posição em várias partidas. Resolvidas pelo mapa página → partida e pela âncora mais recente; um empate que sobra fica `absent` com os candidatos.
+- **Transposições:** a mesma posição em várias partidas. Resolvidas pelo mapa página → partida e pela âncora mais recente; entre partidas que passam pela mesma posição, ganha o nó da própria âncora (R1).
 - **Livros com lances que o PGN não tem** (texto de apoio, partidas citadas): ficam como o leitor deixou, sem perda.
 - **Desempenho:** índice de cerca de 11 mil posições neste livro; o alinhamento é linear no número de lances vezes K = 60. Meta: abaixo de 50 ms para 748 páginas.
 
@@ -191,3 +200,4 @@ R3 e R4 podem correr em paralelo depois de R2. R6 só começa depois de R5.
 
 - **v1 (2026-10-29):** primeira versão, a partir da análise da §1 e da correção R0 (#229).
 - **v2 (2026-10-29):** R1 feito; a §3.3 traz as medidas e o que mudou em relação ao passo.
+- **v3 (2026-10-30):** R2 feito; a §3.3 diz o que a ferramenta devolve e o que ficou para o R6.
