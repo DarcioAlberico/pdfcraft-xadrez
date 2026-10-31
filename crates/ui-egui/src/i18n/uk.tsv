@@ -3403,3 +3403,5 @@ castling	long	довга
 	The fonts cannot be imported: {reason}	Не вдалося імпортувати шрифти: {reason}
 	Smaller text	Дрібніший текст
 	Larger text	Більший текст
+diagram state	Read	Прочитано
+the move's comment	Move comment	Коментар до ходу

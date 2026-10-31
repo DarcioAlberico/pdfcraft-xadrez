@@ -3380,3 +3380,5 @@ castling	long	hosszú
 	The fonts cannot be imported: {reason}	A betűtípusok nem importálhatók: {reason}
 	Smaller text	Kisebb szöveg
 	Larger text	Nagyobb szöveg
+diagram state	Read	Beolvasva
+the move's comment	Move comment	A lépés megjegyzése

@@ -3325,3 +3325,5 @@ castling	long	długa
 	The fonts cannot be imported: {reason}	Nie można zaimportować czcionek: {reason}
 	Smaller text	Mniejszy tekst
 	Larger text	Większy tekst
+diagram state	Read	Odczytano
+the move's comment	Move comment	Komentarz do ruchu

@@ -3297,3 +3297,5 @@ castling	long	長
 	The fonts cannot be imported: {reason}	無法匯入字型：{reason}
 	Smaller text	縮小文字
 	Larger text	放大文字
+diagram state	Read	已讀取
+the move's comment	Move comment	此著法的評論

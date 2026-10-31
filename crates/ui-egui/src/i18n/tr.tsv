@@ -3377,3 +3377,5 @@ castling	long	uzun
 	The fonts cannot be imported: {reason}	Yazı tipleri içe aktarılamıyor: {reason}
 	Smaller text	Daha küçük metin
 	Larger text	Daha büyük metin
+diagram state	Read	Okundu
+the move's comment	Move comment	Hamlenin yorumu

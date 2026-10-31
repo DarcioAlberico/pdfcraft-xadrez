@@ -3383,3 +3383,5 @@ castling	long	ロング
 	The fonts cannot be imported: {reason}	フォントを読み込めません: {reason}
 	Smaller text	文字を小さく
 	Larger text	文字を大きく
+diagram state	Read	読み取り済み
+the move's comment	Move comment	手のコメント

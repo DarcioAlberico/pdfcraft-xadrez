@@ -3656,3 +3656,5 @@ castling	long	طويل
 	The fonts cannot be imported: {reason}	تعذر استيراد الخطوط: {reason}
 	Smaller text	نص أصغر
 	Larger text	نص أكبر
+diagram state	Read	مقروء
+the move's comment	Move comment	تعليق النقلة

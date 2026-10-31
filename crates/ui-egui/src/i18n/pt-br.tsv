@@ -3398,3 +3398,5 @@ castling	long	longo
 	The fonts cannot be imported: {reason}	As fontes não podem ser importadas: {reason}
 	Smaller text	Texto menor
 	Larger text	Texto maior
+diagram state	Read	Lido
+the move's comment	Move comment	Comentário do lance

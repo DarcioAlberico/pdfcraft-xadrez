@@ -3634,3 +3634,5 @@ castling	long	xa
 	The fonts cannot be imported: {reason}	Không thể nhập phông chữ: {reason}
 	Smaller text	Chữ nhỏ hơn
 	Larger text	Chữ lớn hơn
+diagram state	Read	Đã đọc
+the move's comment	Move comment	Bình luận của nước đi

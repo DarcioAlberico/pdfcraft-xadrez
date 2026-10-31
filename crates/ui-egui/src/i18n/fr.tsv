@@ -3381,3 +3381,5 @@ castling	long	grand
 	The fonts cannot be imported: {reason}	Les polices ne peuvent pas être importées : {reason}
 	Smaller text	Texte plus petit
 	Larger text	Texte plus grand
+diagram state	Read	Lu
+the move's comment	Move comment	Commentaire du coup
