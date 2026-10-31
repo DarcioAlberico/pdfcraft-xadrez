@@ -3366,3 +3366,9 @@ castling	long	hosszú
 	in conflict with the book's PGN	ütközik a könyv PGN-jével
 	in conflict, the PGN's move chosen	ütközik, a PGN lépése választva
 	in conflict, the book's move kept	ütközik, a könyv lépése megtartva
+	Border	Keret
+	Corners	Sarkok
+	Start outlined, end filled	Kiinduló mező keretezve, cél kitöltve
+	Border and light fill	Keret és halvány kitöltés
+	Last move	Utolsó lépés
+	Strength	Erősség

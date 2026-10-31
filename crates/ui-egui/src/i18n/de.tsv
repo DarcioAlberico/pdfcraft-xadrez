@@ -3368,3 +3368,9 @@ castling	long	lang
 	in conflict with the book's PGN	im Konflikt mit der PGN des Buchs
 	in conflict, the PGN's move chosen	im Konflikt, Zug der PGN gewählt
 	in conflict, the book's move kept	im Konflikt, Zug des Buchs behalten
+	Border	Rahmen
+	Corners	Ecken
+	Start outlined, end filled	Start umrandet, Ziel gefüllt
+	Border and light fill	Rahmen und leichte Füllung
+	Last move	Letzter Zug
+	Strength	Stärke

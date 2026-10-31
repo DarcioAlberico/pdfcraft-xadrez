@@ -21,6 +21,13 @@ impl Tint {
         };
         Rgb(mix(r, base.0), mix(g, base.1), mix(b, base.2))
     }
+
+    /// This tint at `percent` of its strength (100 and above leave it as it is): every channel
+    /// scaled, as a premultiplied colour fades.
+    pub fn scaled(self, percent: u8) -> Tint {
+        let p = u16::from(percent.min(100));
+        Tint(self.0.map(|c| u8::try_from((u16::from(c) * p + 50) / 100).unwrap_or(u8::MAX)))
+    }
 }
 
 /// A board's palette.
@@ -149,6 +156,12 @@ impl BoardTheme {
         Rgb(mix(self.light.0, self.dark.0), mix(self.light.1, self.dark.1), mix(self.light.2, self.dark.2))
     }
 
+    /// The colour of a line marking the last move (a border, corners or an arrow): its tint as it
+    /// shows on the dark square, which stands off both squares in every theme.
+    pub fn last_move_line(&self) -> Rgb {
+        self.last_move.over(self.ground(false))
+    }
+
     /// The coordinates' colour on a `light` square or a dark one: the other square's colour,
     /// darkened or lightened (towards whichever reads better) until it reads at
     /// [`COORDINATE_CONTRAST`].
@@ -204,6 +217,8 @@ mod tests {
                     let shown = tint.over(square);
                     assert!(distance(shown, square) >= 40.0, "{} {what} on {light}: {shown:?} over {square:?}", t.id);
                 }
+                let line = t.last_move_line();
+                assert!(distance(line, square) >= 40.0, "{} last move's line on {light}: {line:?} on {square:?}", t.id);
                 assert!(distance(t.check, square) >= 80.0, "{} check on {light}", t.id);
             }
             assert!(contrast(t.ground(true), t.ground(false)) >= 1.4, "{}: squares apart {:.2}", t.id, contrast(t.ground(true), t.ground(false)));
@@ -216,5 +231,18 @@ mod tests {
         assert_eq!(Tint([0, 0, 0, 0]).over(Rgb(10, 20, 30)), Rgb(10, 20, 30));
         assert_eq!(Tint([255, 0, 0, 255]).over(Rgb(10, 20, 30)), Rgb(255, 0, 0));
         assert_eq!(LAST.over(Rgb(240, 217, 181)), Rgb(255, 255, 106));
+    }
+
+    #[test]
+    fn a_scaled_tint_fades_towards_the_square() {
+        assert_eq!(AMBER.scaled(100), AMBER);
+        assert_eq!(AMBER.scaled(255), AMBER, "no stronger than the theme's");
+        assert_eq!(AMBER.scaled(0), Tint([0, 0, 0, 0]));
+        assert_eq!(AMBER.scaled(50), Tint([85, 60, 0, 60]));
+        // The green theme's light square, as the user saw it: nearly pure yellow at full strength.
+        let light = Rgb(236, 238, 212);
+        assert_eq!(AMBER.over(light), Rgb(255, 246, 112));
+        let half = AMBER.scaled(50).over(light);
+        assert!(distance(half, light) < distance(AMBER.over(light), light) / 1.5, "{half:?}");
     }
 }

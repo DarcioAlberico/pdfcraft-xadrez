@@ -3283,3 +3283,9 @@ castling	long	長
 	in conflict with the book's PGN	與本書的 PGN 衝突
 	in conflict, the PGN's move chosen	衝突，已選 PGN 的著法
 	in conflict, the book's move kept	衝突，已保留書中的著法
+	Border	邊框
+	Corners	四角
+	Start outlined, end filled	起點描邊，終點填滿
+	Border and light fill	邊框加淺色填滿
+	Last move	上一步
+	Strength	強度

@@ -3311,3 +3311,9 @@ castling	long	długa
 	in conflict with the book's PGN	w konflikcie z PGN książki
 	in conflict, the PGN's move chosen	w konflikcie, wybrano posunięcie z PGN
 	in conflict, the book's move kept	w konflikcie, zachowano posunięcie z książki
+	Border	Obramowanie
+	Corners	Narożniki
+	Start outlined, end filled	Pole startowe obrysowane, docelowe wypełnione
+	Border and light fill	Obramowanie i lekkie wypełnienie
+	Last move	Ostatni ruch
+	Strength	Intensywność

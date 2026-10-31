@@ -3372,3 +3372,9 @@ castling	long	dolga
 	in conflict with the book's PGN	v sporu s PGN knjige
 	in conflict, the PGN's move chosen	v sporu, izbrana poteza iz PGN
 	in conflict, the book's move kept	v sporu, obdržana poteza iz knjige
+	Border	Obroba
+	Corners	Koti
+	Start outlined, end filled	Začetek obrobljen, cilj zapolnjen
+	Border and light fill	Obroba in svetlo polnilo
+	Last move	Zadnja poteza
+	Strength	Moč

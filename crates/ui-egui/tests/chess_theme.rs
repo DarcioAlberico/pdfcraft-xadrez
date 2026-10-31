@@ -115,11 +115,125 @@ fn coordinates_beside_the_board_and_a_frame_keep_clicks_on_their_squares() {
     assert_eq!(h.state().chess.board().game.movetext(), "1. e4");
     shot(&mut h, "look-outside-double.png");
     let saved: serde_json::Value = serde_json::from_str(&h.state().persist()).unwrap();
-    assert_eq!(saved["chess_board_look"], serde_json::json!({ "coordinates": "outside", "frame": "double", "squares": "fill", "turn_dot": true }));
+    assert_eq!(
+        saved["chess_board_look"],
+        serde_json::json!({ "coordinates": "outside", "frame": "double", "squares": "fill", "turn_dot": true, "last_move": "fill", "last_move_strength": 100 })
+    );
     let h = harness(&saved.to_string(), false);
     assert_eq!(h.state().chess.board_look.to_json(), saved["chess_board_look"], "read back next time");
     let mut h = harness("", false);
     assert!(h.state_mut().set_option("board-frame", "triple").unwrap_err().contains("none, thin or double"));
+}
+
+/// Renders (wgpu) one at a time: two devices compiling shaders at once have crashed test runs.
+static GPU: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+/// The colour at `at` (in points) on the window as drawn now.
+fn pixel(h: &mut Harness<'static, PdfCraftApp>, at: egui::Pos2) -> [u8; 3] {
+    let image = h.render().unwrap();
+    let scale = h.ctx.pixels_per_point();
+    let [r, g, b, _] = image.get_pixel((at.x * scale) as u32, (at.y * scale) as u32).0;
+    [r, g, b]
+}
+
+fn apart(a: [u8; 3], b: [u8; 3]) -> f32 {
+    a.iter().zip(b).map(|(x, y)| (f32::from(*x) - f32::from(y)).powi(2)).sum::<f32>().sqrt()
+}
+
+/// The last move is marked as the look says and how strongly, always under the pieces: the pawn
+/// that moved keeps its colours (it took the mark's tint before), its square shows the mark. The
+/// choice is kept with the preferences.
+#[test]
+fn the_last_move_is_marked_under_the_piece_as_the_look_says() {
+    let _gpu = GPU.lock().unwrap_or_else(|e| e.into_inner());
+    let mut h = harness("", false);
+    h.state_mut().set_option("board-theme", "green").unwrap();
+    // A white pawn on a dark square, so that a tint over it shows.
+    h.state_mut().chess.board_mut().play_uci_line(&["d2d4".into()]);
+    h.run_steps(3);
+    let board = h.get_by_label_contains("Board: ").rect();
+    let cell = board.width() / 8.0;
+    let square = |file: f32, rank: f32| egui::Rect::from_min_size(board.min + egui::vec2(cell * file, cell * (7.0 - rank)), egui::vec2(cell, cell));
+    let (d4, d3) = (square(3.0, 3.0), square(3.0, 2.0));
+    let piece = d4.center() + egui::vec2(0.0, cell * 0.12);
+    let edge = d4.left_center() + egui::vec2(cell * 0.03, 0.0);
+    let inside = d4.left_top() + egui::vec2(cell * 0.2, cell * 0.2);
+    let look = |h: &mut Harness<'static, PdfCraftApp>, mark: &str, strength: &str| {
+        h.state_mut().set_option("board-last-move", mark).unwrap();
+        h.state_mut().set_option("board-last-move-strength", strength).unwrap();
+        h.run_steps(2);
+        (pixel(h, piece), pixel(h, edge), pixel(h, inside), pixel(h, d3.center()))
+    };
+    let (piece0, edge0, inside0, d3_0) = look(&mut h, "none", "100");
+    assert!(apart(piece0, edge0) > 60.0, "the point sampled is on the pawn: {piece0:?} {edge0:?}");
+    shot(&mut h, "last-move-none.png");
+
+    let (p, e, i, _) = look(&mut h, "fill", "100");
+    assert!(apart(p, piece0) < 8.0, "the pawn keeps its colours under the fill: {p:?} {piece0:?}");
+    assert!(apart(e, edge0) > 40.0 && apart(i, inside0) > 40.0, "the square shows it: {e:?} {i:?}");
+    shot(&mut h, "last-move-fill.png");
+    let (p, e, _, _) = look(&mut h, "fill", "40");
+    assert!(apart(p, piece0) < 8.0, "{p:?}");
+    let full = apart(look(&mut h, "fill", "100").1, edge0);
+    assert!(apart(e, edge0) > 10.0 && apart(e, edge0) < full * 0.6, "weaker at 40%: {e:?} {edge0:?}, full {full}");
+
+    let (p, e, i, _) = look(&mut h, "border", "100");
+    assert!(apart(p, piece0) < 8.0 && apart(e, edge0) > 40.0, "a line at the edge: {e:?}");
+    assert!(apart(i, inside0) < 8.0, "nothing inside it: {i:?} {inside0:?}");
+    shot(&mut h, "last-move-border.png");
+    for mark in ["corners", "from-border", "border-fill"] {
+        let (p, ..) = look(&mut h, mark, "100");
+        assert!(apart(p, piece0) < 8.0, "{mark}: {p:?}");
+        shot(&mut h, &format!("last-move-{mark}.png"));
+    }
+    let (_, e, _, d3_arrow) = look(&mut h, "arrow", "70");
+    assert!(apart(e, edge0) < 8.0 && apart(d3_arrow, d3_0) > 40.0, "an arrow over d3, the squares left alone: {d3_arrow:?} {d3_0:?}");
+    shot(&mut h, "last-move-arrow.png");
+
+    let saved: serde_json::Value = serde_json::from_str(&h.state().persist()).unwrap();
+    assert_eq!(
+        (saved["chess_board_look"]["last_move"].as_str(), saved["chess_board_look"]["last_move_strength"].as_u64()),
+        (Some("arrow"), Some(70))
+    );
+    let h2 = harness(&saved.to_string(), false);
+    assert_eq!(h2.state().chess.board_look.to_json(), saved["chess_board_look"], "read back next time");
+    assert!(h.state_mut().set_option("board-last-move", "glow").unwrap_err().contains("border-fill"));
+    assert!(h.state_mut().set_option("board-last-move-strength", "5").unwrap_err().contains("10 to 100"));
+    assert_eq!(h.state().chess.board_look.to_json(), saved["chess_board_look"], "a bad value changes nothing");
+}
+
+/// The mark and its strength are chosen in the board panel's palette menu and in Preferences.
+#[test]
+fn the_last_move_mark_is_chosen_in_the_menu_and_the_preferences() {
+    use egui::accesskit::Role;
+    let mut h = harness("", false);
+    press(&mut h, "Board theme");
+    shot(&mut h, "last-move-menu-closed.png");
+    // A submenu in the menu, its button saying the mark chosen.
+    h.get_by(|n| n.role() == Role::Button && n.label().is_some_and(|l| l.starts_with("Filled"))).click();
+    h.run_steps(3);
+    shot(&mut h, "last-move-menu.png");
+    h.get_by_label("Corners").click();
+    h.run_steps(3);
+    assert_eq!(h.state().chess.board_look.to_json()["last_move"], "corners", "picked in the menu");
+    assert!(h.query_by_label("Green").is_some(), "the menu stays open to try another");
+    h.get_by_label("Green").click();
+    h.run_steps(3);
+    assert_eq!(h.state().board_theme().id, "green");
+    assert!(h.query_by_label("Coral").is_none(), "a theme picked closes it");
+    let mut h = harness("", true);
+    h.get_by(|n| n.role() == Role::ComboBox && n.label().is_some_and(|l| l == "Last move")).scroll_to_me();
+    h.run_steps(2);
+    let list = h.get_by(|n| n.role() == Role::ComboBox && n.label().is_some_and(|l| l == "Last move"));
+    assert_eq!(list.value().as_deref(), Some("Filled"), "it says the mark chosen");
+    list.hover();
+    h.run_steps(1);
+    h.get_by(|n| n.role() == Role::ComboBox && n.label().is_some_and(|l| l == "Last move")).click();
+    h.run_steps(2);
+    h.get_by_label("Start outlined, end filled").click();
+    h.run_steps(3);
+    assert_eq!(h.state().chess.board_look.to_json()["last_move"], "from-border", "picked in the preferences");
+    shot(&mut h, "last-move-preferences.png");
 }
 
 /// Plan HC5: every textured theme draws the board (the book's dark squares hatched as paths).

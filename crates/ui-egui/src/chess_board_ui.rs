@@ -775,6 +775,12 @@ impl BoardState {
         Some(tex)
     }
 
+    /// The pieces already cut out for the current piece set, if they were.
+    fn sprites_cut(&self) -> Option<TextureHandle> {
+        let generation = crate::chess_editor::pieces_generation();
+        self.sprites.as_ref().filter(|(drawn, _)| *drawn == generation).map(|(_, tex)| tex.clone())
+    }
+
     /// Drop the board's pictures (they are drawn again when it is shown): a game not shown keeps
     /// none.
     pub(crate) fn release_textures(&mut self) {
@@ -1060,12 +1066,29 @@ pub(crate) fn board_view_sized(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardS
     }
     let painter = ui.painter_at(rect);
     let palette = crate::chess_theme::current(ui.ctx());
-    let (last_move, picked, target) =
-        (crate::chess_theme::tint(palette.last_move), crate::chess_theme::tint(palette.selected), crate::chess_theme::tint(palette.target));
+    let (picked, target) = (crate::chess_theme::tint(palette.selected), crate::chess_theme::tint(palette.target));
     if state.illegal.is_none() {
-        if let Some((from, to)) = state.game.last_move() {
-            painter.rect_filled(state.square_rect(rect, from), 0.0, last_move);
-            painter.rect_filled(state.square_rect(rect, to), 0.0, last_move);
+        // The marks on squares go under the pieces: the board's picture has them drawn already,
+        // so the pieces on the marked squares are drawn again over the marks.
+        let last_move = state.game.last_move().map(|(from, to)| (state.square_rect(rect, from), state.square_rect(rect, to)));
+        if let Some((from, to)) = last_move {
+            crate::chess_theme::paint_last_move(&painter, palette, look, from, to);
+        }
+        if let Some(from) = state.selected {
+            painter.rect_filled(state.square_rect(rect, from), 0.0, picked);
+        }
+        let marked: Vec<Square> = state.game.last_move().into_iter().flat_map(|(from, to)| [from, to]).chain(state.selected).collect();
+        if !marked.is_empty()
+            && let Some(sprites) = state.sprites(ui.ctx(), pieces)
+        {
+            for sq in marked {
+                if let Some(piece) = state.game.piece_on(sq) {
+                    painter.image(sprites.id(), state.square_rect(rect, sq), sprite_uv(piece), Color32::WHITE);
+                }
+            }
+        }
+        if let Some((from, to)) = last_move {
+            crate::chess_theme::paint_last_move_arrow(&painter, palette, look, from, to);
         }
         if state.game.in_check()
             && let Some(king) = state.game.placement().king(state.game.side_to_move())
@@ -1074,7 +1097,6 @@ pub(crate) fn board_view_sized(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardS
             painter.circle_stroke(r.center(), r.width() * 0.45, Stroke::new(3.0, crate::chess_theme::rgb(palette.check)));
         }
         if let Some(from) = state.selected {
-            painter.rect_filled(state.square_rect(rect, from), 0.0, picked);
             for to in state.game.targets(from) {
                 let r = state.square_rect(rect, to);
                 if state.game.piece_on(to).is_some() {
@@ -1799,10 +1821,20 @@ fn move_preview(ui: &egui::Ui, state: &BoardState, node: NodeId, r: &egui::Respo
     egui::Tooltip::for_widget(r).show(|ui| {
         let resp = ui.add(egui::Image::new(&tex).fit_to_exact_size(vec2(PREVIEW_SIDE, PREVIEW_SIDE)));
         if let Some((from, to)) = state.game.move_at(node) {
-            let tint = crate::chess_theme::tint(crate::chess_theme::current(ui.ctx()).last_move);
-            for sq in [from, to] {
-                ui.painter().rect_filled(state.square_rect(resp.rect, sq), 0.0, tint);
+            // Marked as the board marks it, the piece drawn again over the mark.
+            let (palette, look, painter) = (crate::chess_theme::current(ui.ctx()), crate::chess_theme::look(ui.ctx()), ui.painter());
+            let (a, b) = (state.square_rect(resp.rect, from), state.square_rect(resp.rect, to));
+            crate::chess_theme::paint_last_move(painter, palette, look, a, b);
+            let placement =
+                state.game.fen_at(node).and_then(|fen| pdfcraft_engine::chess::pdfcraft_chess::fen::parse(&fen).ok()).map(|p| p.placement);
+            if let (Some(placement), Some(sprites)) = (placement, state.sprites_cut()) {
+                for sq in [from, to] {
+                    if let Some(piece) = placement.get(sq) {
+                        painter.image(sprites.id(), state.square_rect(resp.rect, sq), sprite_uv(piece), Color32::WHITE);
+                    }
+                }
             }
+            crate::chess_theme::paint_last_move_arrow(painter, palette, look, a, b);
         }
         resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &name));
     });
@@ -2408,7 +2440,12 @@ pub(crate) fn title(
         }
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let theme_name = tl!("Board theme");
-            let menu = egui::containers::menu::MenuButton::from_button(egui::Button::image(crate::icons::image("palette", TITLE_ICON, t.icon)));
+            // Open until a click outside it: the look's choices are tried in place, and the last
+            // move's list (a combo box, not a submenu) would close it on opening. A theme picked
+            // closes it.
+            let config = egui::containers::menu::MenuConfig::new().close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside);
+            let menu = egui::containers::menu::MenuButton::from_button(egui::Button::image(crate::icons::image("palette", TITLE_ICON, t.icon)))
+                .config(config);
             let (r, picked) = menu.ui(ui, crate::chess_theme::menu_items);
             let r = r.on_hover_text(theme_name);
             r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, theme_name));
