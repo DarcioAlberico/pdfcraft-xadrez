@@ -245,6 +245,60 @@ pub const ALPHA: Layout = Layout {
     ..EMPTY_LAYOUT
 };
 
+/// The "DG" re-encodings of Marroquin's fonts (Chess Alpha DG, Condal DG, Kingdom DG, Leipzig
+/// DG): Chess Alpha's letters for the pieces, so the knights are on `h` and `j` and `n` is the
+/// black bishop, inside a frame of their own. The rank and file labels carry the frame's edge:
+/// U+00C0–C7 are the ranks 1–8 and U+00C8–CF the files a–h on a double rule, U+00E0–EF the same
+/// on a single rule. The to-move markers (squares, rings, triangles, hourglasses, arrows, pawns)
+/// are each drawn on a piece of the frame. Reading these fonts with the Marroquin table takes
+/// their black knight for a frame piece and their white knight for a black bishop.
+pub const ALPHA_DG: Layout = Layout {
+    light_white: "phbrqk",
+    light_black: "ojntwl",
+    dark_white: "PHBRQK",
+    dark_black: "OJNTWL",
+    empty_light: " *",
+    empty_dark: "+",
+    border: "!\"#$%&'(/12345678z",
+    // To-move markers, the font maker's mark (`?`) and the figurines without a square.
+    decoration: ")09?ACDEFGIMSUVXYZacdefgimuv\u{82}\u{83}\u{84}\u{85}\u{86}\u{87}\u{88}\u{89}\u{8A}\u{8B}\u{8C}\u{91}\u{A2}\u{A3}\u{A4}\u{A5}\u{A6}\u{A7}",
+    coordinates: &[
+        ('\u{C0}', '1'),
+        ('\u{C1}', '2'),
+        ('\u{C2}', '3'),
+        ('\u{C3}', '4'),
+        ('\u{C4}', '5'),
+        ('\u{C5}', '6'),
+        ('\u{C6}', '7'),
+        ('\u{C7}', '8'),
+        ('\u{C8}', 'a'),
+        ('\u{C9}', 'b'),
+        ('\u{CA}', 'c'),
+        ('\u{CB}', 'd'),
+        ('\u{CC}', 'e'),
+        ('\u{CD}', 'f'),
+        ('\u{CE}', 'g'),
+        ('\u{CF}', 'h'),
+        ('\u{E0}', '1'),
+        ('\u{E1}', '2'),
+        ('\u{E2}', '3'),
+        ('\u{E3}', '4'),
+        ('\u{E4}', '5'),
+        ('\u{E5}', '6'),
+        ('\u{E6}', '7'),
+        ('\u{E7}', '8'),
+        ('\u{E8}', 'a'),
+        ('\u{E9}', 'b'),
+        ('\u{EA}', 'c'),
+        ('\u{EB}', 'd'),
+        ('\u{EC}', 'e'),
+        ('\u{ED}', 'f'),
+        ('\u{EE}', 'g'),
+        ('\u{EF}', 'h'),
+    ],
+    ..EMPTY_LAYOUT
+};
+
 /// Chess Utrecht swaps the axes: case selects the piece colour, the letter group the square.
 pub const UTRECHT: Layout = Layout {
     light_white: "pnbrqk",
@@ -394,6 +448,7 @@ impl Family {
 const VERIFIED: &str =
     "Checked glyph by glyph against the installed font file (rendered, and cross-checked with a silhouette classifier calibrated on Chess Merida).";
 const SYMBOL_CMAP: &str = "Checked glyph by glyph against the installed font file; the font has only a (3,0) symbol cmap in U+F020-U+F0EF.";
+const DG: &str = "Checked glyph by glyph against the font files of Chess Alpha DG, Condal DG, Kingdom DG and Leipzig DG (drawn from their outlines, 2026-10-31): Chess Alpha's piece letters, the DG frame and labels; only a (3,0) symbol cmap.";
 
 use Confidence::{Inferred, Unverified, Verified};
 use FontKind::{Diagram, Figurine};
@@ -469,6 +524,12 @@ pub const FAMILIES: &[Family] = &[
         Verified,
         "Checked glyph by glyph against the installed font file. Note: 'n' is the black bishop, not the knight.",
     ),
+    // The DG cuts: their full names win over the plain family's ("chessleipzigdg" over
+    // "chessleipzig"), and their file names ("LeipzigDG.ttf") name them too.
+    family("alpha_dg", "Chess Alpha DG", &[Contains("chessalphadg"), Contains("alphadg")], &ALPHA_DG, Diagram, Verified, DG),
+    family("condal_dg", "Chess Condal DG", &[Contains("chesscondaldg"), Contains("condaldg")], &ALPHA_DG, Diagram, Verified, DG),
+    family("kingdom_dg", "Chess Kingdom DG", &[Contains("chesskingdomdg"), Contains("kingdomdg")], &ALPHA_DG, Diagram, Verified, DG),
+    family("leipzig_dg", "Chess Leipzig DG", &[Contains("chessleipzigdg"), Contains("leipzigdg")], &ALPHA_DG, Diagram, Verified, DG),
     family(
         "utrecht",
         "Chess Utrecht",
@@ -804,6 +865,56 @@ mod tests {
         let alpha = family_by_key("alpha").unwrap();
         assert_eq!(alpha.role('n').unwrap().kind, GlyphKind::Piece(piece('b')));
         assert_eq!(alpha.role('h').unwrap().kind, GlyphKind::Piece(piece('N')));
+    }
+
+    /// The DG cuts of Marroquin's fonts (DiagPDF's board fonts) draw their pieces on Chess Alpha's
+    /// letters: read with the Marroquin table, the white knight came out a black bishop and the
+    /// black knight a piece of the frame.
+    #[test]
+    fn dg_fonts_have_alpha_pieces_in_a_frame_of_their_own() {
+        let key = |n: &str| lookup_family(n).map(|f| f.key);
+        for (name, file, dg) in [
+            ("Chess Leipzig DG", "LeipzigDG", "leipzig_dg"),
+            ("Chess Condal DG", "CondalDG", "condal_dg"),
+            ("Chess Kingdom DG", "KingdomDG", "kingdom_dg"),
+            ("Chess Alpha DG", "AlphaDG", "alpha_dg"),
+        ] {
+            assert_eq!(key(name), Some(dg), "{name}");
+            assert_eq!(key(&format!("ABCDEF+{}", name.replace(' ', ""))), Some(dg), "{name} in a PDF");
+            assert_eq!(key(file), Some(dg), "{file}.ttf");
+            let f = family_by_key(dg).unwrap();
+            assert!(f.readable(), "{dg}");
+            for (c, fen, square) in [
+                ('h', 'N', SquareColor::Light),
+                ('j', 'n', SquareColor::Light),
+                ('b', 'B', SquareColor::Light),
+                ('n', 'b', SquareColor::Light),
+                ('H', 'N', SquareColor::Dark),
+                ('J', 'n', SquareColor::Dark),
+                ('N', 'b', SquareColor::Dark),
+                ('l', 'k', SquareColor::Light),
+                ('O', 'p', SquareColor::Dark),
+            ] {
+                let role = f.role(c).unwrap_or_else(|| panic!("{dg} {c}"));
+                assert_eq!((role.kind, role.square), (GlyphKind::Piece(piece(fen)), Some(square)), "{dg} {c}");
+            }
+            // A symbol-cmap code, the empty squares; the frame, labels and markers take no cell.
+            assert_eq!(f.role('\u{F068}'), f.role('h'));
+            assert!(f.role('+').is_some_and(|r| r.kind == GlyphKind::Empty && r.occupies_cell()));
+            assert!(f.role(' ').is_some_and(|r| r.kind == GlyphKind::Empty && r.square == Some(SquareColor::Light)));
+            for c in ['m', 'v', 'M', 'V', ')', '9', 'z', '%', '$', 'I', '\u{E0}', '\u{CF}'] {
+                assert!(f.role(c).is_some_and(|r| !r.occupies_cell()), "{dg} {c:?}");
+            }
+            assert_eq!(f.role('\u{E0}').map(|r| r.kind), Some(GlyphKind::Coordinate(Some('1'))));
+            assert_eq!(f.role('\u{EF}').map(|r| r.kind), Some(GlyphKind::Coordinate(Some('h'))));
+            assert_eq!(f.role('\u{C8}').map(|r| r.kind), Some(GlyphKind::Coordinate(Some('a'))));
+        }
+        // The plain families keep their own layouts.
+        assert_eq!(key("Chess Leipzig"), Some("leipzig"));
+        assert_eq!(key("Chess Kingdom"), Some("kingdom"));
+        assert_eq!(key("Chess Condal"), Some("condal"));
+        assert_eq!(key("Chess Alpha"), Some("alpha"));
+        assert_eq!(family_by_key("leipzig").unwrap().role('n').map(|r| r.kind), Some(GlyphKind::Piece(piece('N'))));
     }
 
     #[test]

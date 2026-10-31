@@ -3339,3 +3339,9 @@ castling	long	μεγάλο
 	in conflict with the book's PGN	σε σύγκρουση με το PGN του βιβλίου
 	in conflict, the PGN's move chosen	σε σύγκρουση, επιλέχθηκε η κίνηση του PGN
 	in conflict, the book's move kept	σε σύγκρουση, κρατήθηκε η κίνηση του βιβλίου
+	Import fonts…	Εισαγωγή γραμματοσειρών…
+	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Αντιγράφει γραμματοσειρές σκακιού στον φάκελο γραμματοσειρών δίπλα στο πρόγραμμα: κάθε γραμματοσειρά διαγραμμάτων είναι ένα σετ πεσσών, και μια γραμματοσειρά συμβόλων γράφει τις κινήσεις των εξαγωγών.
+	Choose chess fonts	Επιλέξτε γραμματοσειρές σκακιού
+	There is no fonts folder beside the program to import into.	Δεν υπάρχει φάκελος γραμματοσειρών δίπλα στο πρόγραμμα για εισαγωγή.
+	Already in the fonts folder: {fonts}. Replace them?	Υπάρχουν ήδη στον φάκελο γραμματοσειρών: {fonts}. Να αντικατασταθούν;
+	The fonts cannot be imported: {reason}	Οι γραμματοσειρές δεν μπορούν να εισαχθούν: {reason}

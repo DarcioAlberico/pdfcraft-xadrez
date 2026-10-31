@@ -435,6 +435,51 @@ fn chess_pieces_import_is_confined_to_the_root() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// `chess_pieces_import` given a folder of fonts (DiagPDF's `Fonts`, say) copies the chess fonts
+/// into a fonts folder inside the root: each diagram font a set the picker lists, a figurine font
+/// for the exports, a text font passed over. A different file of the same name waits for replace;
+/// a folder outside the root is refused.
+#[test]
+fn chess_pieces_import_takes_a_folder_of_chess_fonts() {
+    use pdfcraft_chessvision::pieces::test_font::font;
+    let (base, root) = workdir("fonts-import");
+    let fonts = root.join("DiagPDF");
+    std::fs::create_dir_all(&fonts).unwrap();
+    std::fs::write(fonts.join("LeipzigDG.ttf"), font("Chess Leipzig DG", "phbrqkojntwl+ ", true, 0)).unwrap();
+    std::fs::write(fonts.join("ChessMerida.ttf"), font("Chess Merida", "pnbrqkomvtwl+ ", true, 0)).unwrap();
+    std::fs::write(fonts.join("HastingsFigurine.TTF"), font("HastingsFigurine", "KQRBN", false, 0)).unwrap();
+    std::fs::write(fonts.join("Plain.ttf"), font("Plain Sans", "abc", false, 0)).unwrap();
+    let outside = base.join("outside");
+    std::fs::create_dir_all(&outside).unwrap();
+    std::fs::copy(fonts.join("LeipzigDG.ttf"), outside.join("LeipzigDG.ttf")).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    match a.call("chess_pieces_import", &json!({ "from": outside.to_string_lossy(), "into": "fonts" })) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{m}"),
+        other => panic!("accepted a folder outside the root: {other:?}"),
+    }
+    let done = ok(&mut a, "chess_pieces_import", json!({ "from": "DiagPDF", "into": "fonts" }));
+    let got: Vec<(&str, &str)> =
+        done["fonts"].as_array().unwrap().iter().map(|f| (f["name"].as_str().unwrap(), f["use"].as_str().unwrap())).collect();
+    assert_eq!(got, [("Chess Merida", "pieces"), ("HastingsFigurine", "figurines"), ("Chess Leipzig DG", "pieces")], "{done:#}");
+    assert!(done["fonts"][0]["token"].as_str().is_some_and(|t| t.starts_with("font:")), "{done:#}");
+    assert!(done["fonts"][1]["token"].is_null());
+    assert!(root.join("fonts/LeipzigDG.ttf").is_file() && !root.join("fonts/Plain.ttf").exists());
+    // One font file on its own; a different one of the same name waits for replace.
+    std::fs::write(fonts.join("LeipzigDG.ttf"), font("Chess Leipzig DG", "phbrqkojntwl+ *", true, 0)).unwrap();
+    let again = ok(&mut a, "chess_pieces_import", json!({ "from": "DiagPDF/LeipzigDG.ttf", "into": "fonts" }));
+    assert_eq!(again["exists"].as_array().map(Vec::len), Some(1), "{again:#}");
+    let replaced = ok(&mut a, "chess_pieces_import", json!({ "from": "DiagPDF/LeipzigDG.ttf", "into": "fonts", "replace": true }));
+    assert_eq!(replaced["fonts"][0]["name"], "Chess Leipzig DG", "{replaced:#}");
+    // A folder of nothing but a text font has no chess font to import.
+    std::fs::create_dir_all(root.join("text")).unwrap();
+    std::fs::copy(fonts.join("Plain.ttf"), root.join("text/Plain.ttf")).unwrap();
+    match a.call("chess_pieces_import", &json!({ "from": "text", "into": "fonts" })) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("no chess font"), "{m}"),
+        other => panic!("imported a text font: {other:?}"),
+    }
+    let _ = std::fs::remove_dir_all(base);
+}
+
 /// Plan HC7: the diagrams' squares take a board theme (book hatches the dark squares), and the
 /// default stays the boards' brown; the replacement draws the drawings asked for and says them in
 /// words. A theme or drawing the tools do not know is refused.

@@ -3330,3 +3330,9 @@ castling	long	дълга
 	in conflict with the book's PGN	в конфликт с PGN на книгата
 	in conflict, the PGN's move chosen	в конфликт, избран е ходът от PGN
 	in conflict, the book's move kept	в конфликт, запазен е ходът от книгата
+	Import fonts…	Импортиране на шрифтове…
+	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Копира шахматни шрифтове в папката с шрифтове до програмата: всеки шрифт за диаграми е комплект фигури, а шрифт с фигурини изписва ходовете в експортите.
+	Choose chess fonts	Изберете шахматни шрифтове
+	There is no fonts folder beside the program to import into.	До програмата няма папка с шрифтове, в която да се импортира.
+	Already in the fonts folder: {fonts}. Replace them?	Вече са в папката с шрифтове: {fonts}. Да бъдат ли заменени?
+	The fonts cannot be imported: {reason}	Шрифтовете не могат да бъдат импортирани: {reason}

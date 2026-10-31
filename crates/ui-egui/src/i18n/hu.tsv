@@ -3366,3 +3366,9 @@ castling	long	hosszú
 	in conflict with the book's PGN	ütközik a könyv PGN-jével
 	in conflict, the PGN's move chosen	ütközik, a PGN lépése választva
 	in conflict, the book's move kept	ütközik, a könyv lépése megtartva
+	Import fonts…	Betűtípusok importálása…
+	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Sakkbetűtípusokat másol a program melletti betűtípusmappába: minden diagram-betűtípus egy bábukészlet, a figurás betűtípus pedig az exportok lépéseit írja.
+	Choose chess fonts	Válasszon sakkbetűtípusokat
+	There is no fonts folder beside the program to import into.	A program mellett nincs betűtípusmappa, ahová importálni lehetne.
+	Already in the fonts folder: {fonts}. Replace them?	Már a betűtípusmappában vannak: {fonts}. Lecseréli őket?
+	The fonts cannot be imported: {reason}	A betűtípusok nem importálhatók: {reason}

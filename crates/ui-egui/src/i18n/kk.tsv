@@ -3365,3 +3365,9 @@ castling	long	ұзын
 	in conflict with the book's PGN	кітаптың PGN файлымен қайшылықта
 	in conflict, the PGN's move chosen	қайшылықта, PGN жүрісі таңдалды
 	in conflict, the book's move kept	қайшылықта, кітап жүрісі қалдырылды
+	Import fonts…	Қаріптерді импорттау…
+	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Шахмат қаріптерін бағдарламаның жанындағы қаріптер бумасына көшіреді: әр диаграмма қарпі фигуралар жиынтығы болады, ал фигурин қарпі экспорттардағы жүрістерді жазады.
+	Choose chess fonts	Шахмат қаріптерін таңдаңыз
+	There is no fonts folder beside the program to import into.	Бағдарламаның жанында импорттайтын қаріптер бумасы жоқ.
+	Already in the fonts folder: {fonts}. Replace them?	Қаріптер бумасында бар: {fonts}. Ауыстыру керек пе?
+	The fonts cannot be imported: {reason}	Қаріптерді импорттау мүмкін емес: {reason}

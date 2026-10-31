@@ -3363,3 +3363,9 @@ castling	long	uzun
 	in conflict with the book's PGN	kitabın PGN'iyle çelişkili
 	in conflict, the PGN's move chosen	çelişkili, PGN'in hamlesi seçildi
 	in conflict, the book's move kept	çelişkili, kitabın hamlesi korundu
+	Import fonts…	Yazı tiplerini içe aktar…
+	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Satranç yazı tiplerini programın yanındaki yazı tipleri klasörüne kopyalar: her diyagram yazı tipi bir taş takımıdır, figürin yazı tipi ise dışa aktarımlardaki hamleleri yazar.
+	Choose chess fonts	Satranç yazı tiplerini seçin
+	There is no fonts folder beside the program to import into.	Programın yanında içe aktarılacak bir yazı tipleri klasörü yok.
+	Already in the fonts folder: {fonts}. Replace them?	Zaten yazı tipleri klasöründe: {fonts}. Değiştirilsin mi?
+	The fonts cannot be imported: {reason}	Yazı tipleri içe aktarılamıyor: {reason}

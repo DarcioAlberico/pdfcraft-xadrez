@@ -3369,3 +3369,9 @@ castling	long	ロング
 	in conflict with the book's PGN	本の PGN と矛盾
 	in conflict, the PGN's move chosen	矛盾、PGN の手を選択
 	in conflict, the book's move kept	矛盾、本の手を維持
+	Import fonts…	フォントを読み込む…
+	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	チェスのフォントをプログラムの横のフォントフォルダーにコピーします。図面用フォントはそれぞれ駒のセットになり、フィギュリンフォントはエクスポートの指し手を書きます。
+	Choose chess fonts	チェスのフォントを選択
+	There is no fonts folder beside the program to import into.	読み込み先となるフォントフォルダーがプログラムの横にありません。
+	Already in the fonts folder: {fonts}. Replace them?	フォントフォルダーにすでにあります: {fonts}。置き換えますか？
+	The fonts cannot be imported: {reason}	フォントを読み込めません: {reason}

@@ -39,6 +39,10 @@ serde_json.workspace = true
 rten-imageproc = { version = "0.26.0", default-features = false }
 thiserror.workspace = true
 
+[features]
+# `pieces::test_font`, a synthetic chess font for other crates' tests (no chess font is committed).
+test-fonts = []
+
 [dev-dependencies]
 # A compressed (svgz) piece in the SVG tests.
 flate2.workspace = true

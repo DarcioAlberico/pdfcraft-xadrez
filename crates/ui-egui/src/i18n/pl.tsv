@@ -3311,3 +3311,9 @@ castling	long	długa
 	in conflict with the book's PGN	w konflikcie z PGN książki
 	in conflict, the PGN's move chosen	w konflikcie, wybrano posunięcie z PGN
 	in conflict, the book's move kept	w konflikcie, zachowano posunięcie z książki
+	Import fonts…	Importuj czcionki…
+	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Kopiuje czcionki szachowe do folderu czcionek obok programu: każda czcionka diagramów to zestaw bierek, a czcionka figurek zapisuje ruchy w eksportach.
+	Choose chess fonts	Wybierz czcionki szachowe
+	There is no fonts folder beside the program to import into.	Obok programu nie ma folderu czcionek, do którego można importować.
+	Already in the fonts folder: {fonts}. Replace them?	Już są w folderze czcionek: {fonts}. Zastąpić je?
+	The fonts cannot be imported: {reason}	Nie można zaimportować czcionek: {reason}

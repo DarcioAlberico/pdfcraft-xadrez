@@ -28,6 +28,8 @@ mcp = ["dep:base64"]
 
 [dev-dependencies]
 pdfcraft-fonts = { workspace = true }
+# A synthetic chess font for the font import's tests (`pieces::test_font`): none is committed.
+pdfcraft-chessvision = { workspace = true, features = ["test-fonts"] }
 flate2.workspace = true
 pdfcraft-model = { workspace = true }
 pdfcraft-xfa = { workspace = true }
