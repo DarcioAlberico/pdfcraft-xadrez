@@ -3620,3 +3620,9 @@ castling	long	xa
 	in conflict with the book's PGN	xung đột với PGN của sách
 	in conflict, the PGN's move chosen	xung đột, đã chọn nước của PGN
 	in conflict, the book's move kept	xung đột, đã giữ nước của sách
+	Border	Viền
+	Corners	Góc
+	Start outlined, end filled	Ô đi viền, ô đến tô đầy
+	Border and light fill	Viền và tô nhạt
+	Last move	Nước đi cuối
+	Strength	Cường độ

@@ -3508,3 +3508,9 @@ castling	long	largo
 	in conflict with the book's PGN	en conflicto con el PGN del libro
 	in conflict, the PGN's move chosen	en conflicto, elegida la jugada del PGN
 	in conflict, the book's move kept	en conflicto, mantenida la jugada del libro
+	Border	Borde
+	Corners	Esquinas
+	Start outlined, end filled	Origen con contorno, destino relleno
+	Border and light fill	Borde y relleno suave
+	Last move	Última jugada
+	Strength	Intensidad

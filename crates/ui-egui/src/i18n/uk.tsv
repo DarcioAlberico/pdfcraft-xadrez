@@ -3389,3 +3389,9 @@ castling	long	довга
 	in conflict with the book's PGN	у конфлікті з PGN книги
 	in conflict, the PGN's move chosen	у конфлікті, вибрано хід із PGN
 	in conflict, the book's move kept	у конфлікті, залишено хід книги
+	Border	Рамка
+	Corners	Кутики
+	Start outlined, end filled	Звідки — рамка, куди — заливка
+	Border and light fill	Рамка і легка заливка
+	Last move	Останній хід
+	Strength	Інтенсивність

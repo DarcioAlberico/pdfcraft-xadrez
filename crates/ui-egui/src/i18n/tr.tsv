@@ -3363,3 +3363,9 @@ castling	long	uzun
 	in conflict with the book's PGN	kitabın PGN'iyle çelişkili
 	in conflict, the PGN's move chosen	çelişkili, PGN'in hamlesi seçildi
 	in conflict, the book's move kept	çelişkili, kitabın hamlesi korundu
+	Border	Kenarlık
+	Corners	Köşeler
+	Start outlined, end filled	Başlangıç çerçeveli, varış dolu
+	Border and light fill	Kenarlık ve hafif dolgu
+	Last move	Son hamle
+	Strength	Yoğunluk

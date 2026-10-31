@@ -3367,3 +3367,9 @@ castling	long	grand
 	in conflict with the book's PGN	en conflit avec le PGN du livre
 	in conflict, the PGN's move chosen	en conflit, coup du PGN choisi
 	in conflict, the book's move kept	en conflit, coup du livre gardé
+	Border	Bordure
+	Corners	Coins
+	Start outlined, end filled	Départ encadré, arrivée remplie
+	Border and light fill	Bordure et fond léger
+	Last move	Dernier coup
+	Strength	Intensité

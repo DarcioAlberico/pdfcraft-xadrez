@@ -3365,3 +3365,9 @@ castling	long	ұзын
 	in conflict with the book's PGN	кітаптың PGN файлымен қайшылықта
 	in conflict, the PGN's move chosen	қайшылықта, PGN жүрісі таңдалды
 	in conflict, the book's move kept	қайшылықта, кітап жүрісі қалдырылды
+	Border	Жиек
+	Corners	Бұрыштар
+	Start outlined, end filled	Бастауы жиекті, соңы толтырылған
+	Border and light fill	Жиек және ашық толтыру
+	Last move	Соңғы жүріс
+	Strength	Қарқындылық

@@ -3441,3 +3441,9 @@ castling	long	dlouhá
 	in conflict with the book's PGN	v rozporu s PGN knihy
 	in conflict, the PGN's move chosen	v rozporu, zvolen tah z PGN
 	in conflict, the book's move kept	v rozporu, ponechán tah z knihy
+	Border	Okraj
+	Corners	Rohy
+	Start outlined, end filled	Začátek s okrajem, cíl vyplněný
+	Border and light fill	Okraj a jemná výplň
+	Last move	Poslední tah
+	Strength	Síla
