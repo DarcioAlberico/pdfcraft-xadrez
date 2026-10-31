@@ -3591,3 +3591,5 @@ castling	long	lungo
 	There is no fonts folder beside the program to import into.	Accanto al programma non c'è una cartella dei caratteri in cui importare.
 	Already in the fonts folder: {fonts}. Replace them?	Già nella cartella dei caratteri: {fonts}. Sostituirli?
 	The fonts cannot be imported: {reason}	Impossibile importare i caratteri: {reason}
+	Smaller text	Testo più piccolo
+	Larger text	Testo più grande

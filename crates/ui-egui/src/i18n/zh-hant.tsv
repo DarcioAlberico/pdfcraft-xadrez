@@ -3295,3 +3295,5 @@ castling	long	長
 	There is no fonts folder beside the program to import into.	程式旁邊沒有可匯入的字型資料夾。
 	Already in the fonts folder: {fonts}. Replace them?	字型資料夾中已有：{fonts}。要取代嗎？
 	The fonts cannot be imported: {reason}	無法匯入字型：{reason}
+	Smaller text	縮小文字
+	Larger text	放大文字

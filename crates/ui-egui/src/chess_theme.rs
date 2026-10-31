@@ -411,18 +411,17 @@ pub(crate) fn preferences_section(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &
     ui.add(crate::widgets::checkbox(&mut app.chess.classic_editor, tl!("Classic diagram editor")))
         .on_hover_text(tl!("Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version."));
     // The move list's layout and text size (plan HC9).
-    use crate::chess_figurines::{ListLayout, ListSize};
+    use crate::chess_figurines::ListLayout;
     let look = &mut app.chess.list_look;
     ui.horizontal_wrapped(|ui| {
         ui.label(tl!("Move list"));
         crate::widgets::radio_value(ui, &mut look.layout, ListLayout::Flow, tl!("Running text"));
         crate::widgets::radio_value(ui, &mut look.layout, ListLayout::Columns, tl!("Columns"));
     });
-    ui.horizontal_wrapped(|ui| {
+    // The same − and + as the Move list's, with the size between them.
+    ui.horizontal(|ui| {
         ui.label(tl!("Text size"));
-        crate::widgets::radio_value(ui, &mut look.size, ListSize::Small, tl!("Small"));
-        crate::widgets::radio_value(ui, &mut look.size, ListSize::Normal, tl!("Normal"));
-        crate::widgets::radio_value(ui, &mut look.size, ListSize::Large, tl!("Large"));
+        crate::chess_figurines::size_buttons(ui, t.icon, &mut look.size, true);
     });
 }
 

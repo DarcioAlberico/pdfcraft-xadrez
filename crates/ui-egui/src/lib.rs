@@ -3449,12 +3449,13 @@ impl eframe::App for PdfCraftApp {
                     .frame(egui::Frame::NONE)
                     .show(ui, |ui| panels::right_panel(self, ui));
             }
-            // The chess board panel too, when it is open (Read mode has no docking workspace).
+            // The chess board panel too, when it is open (Read mode has no docking workspace), as
+            // wide as it is dragged while the page keeps its least width, as when docked.
             if self.mode == Mode::Read && self.docking.exposed(docking::Panel::Board) {
                 egui::Panel::right("read_board_panel")
                     .resizable(true)
-                    .default_size(330.0)
-                    .size_range(260.0..=520.0)
+                    .default_size(docking::SIDE_WIDTH)
+                    .size_range(260.0..=docking::widest_beside_page(ui.available_width(), 260.0))
                     .frame(egui::Frame::NONE)
                     .show(ui, |ui| chess_ui::board_panel(self, ui));
             }
@@ -3465,7 +3466,7 @@ impl eframe::App for PdfCraftApp {
                 panel
                     .resizable(true)
                     .default_size(docking::MOVES_WIDTH)
-                    .size_range(180.0..=480.0)
+                    .size_range(180.0..=docking::widest_beside_page(ui.available_width(), 180.0))
                     .frame(egui::Frame::NONE)
                     .show(ui, |ui| chess_ui::moves_panel(self, ui));
             }

@@ -3215,7 +3215,7 @@ fn the_window_and_its_size_come_back_and_bad_values_are_ignored() {
     }
 }
 
-/// T13a, T13b: the window lifts the docked panel's 480 pt board. A window 760 pt wide or more
+/// T13a, T13b: the window's board is as large as its height allows. A window 760 pt wide or more
 /// has the Diagrams and Text tabs beside the board panel, and in a very wide one the board panel
 /// has the moves and fields beside the board too (§4.1); a narrow one shows one at a time.
 #[test]

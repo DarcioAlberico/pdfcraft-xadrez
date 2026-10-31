@@ -2,7 +2,7 @@
 //! the control channel's `board-theme` is used at once and kept with the preferences.
 
 use egui_kittest::Harness;
-use egui_kittest::kittest::Queryable;
+use egui_kittest::kittest::{NodeT, Queryable};
 use pdfcraft_ui_egui::PdfCraftApp;
 
 const PDF: &[u8] = b"%PDF-1.7
@@ -329,7 +329,7 @@ fn columns_pair_the_moves_and_the_text_size_scales() {
     h.run_steps(3);
     assert!(h.get_by_label("e4").rect().height() > normal + 2.0, "large text, taller rows");
     let saved: serde_json::Value = serde_json::from_str(&h.state().persist()).unwrap();
-    assert_eq!(saved["chess_move_list"], serde_json::json!({ "layout": "columns", "size": "large" }));
+    assert_eq!(saved["chess_move_list"], serde_json::json!({ "layout": "columns", "size": 125 }));
     assert!(h.state_mut().set_option("move-list-layout", "table").is_err());
     // A long game: 1,000 moves of knights going out and back.
     let mut long = Game::standard();
@@ -373,4 +373,105 @@ fn a_move_rested_on_shows_its_position_and_leaves_the_board() {
     assert_eq!(h.query_all_by_label_contains("Position after").count(), 0, "off");
     let saved: serde_json::Value = serde_json::from_str(&h.state().persist()).unwrap();
     assert_eq!(saved["chess_move_preview"], false);
+}
+
+/// Drag from `from` to `to` in a few moves, as a hand does.
+fn drag(h: &mut Harness<'static, PdfCraftApp>, from: egui::Pos2, to: egui::Pos2) {
+    h.hover_at(from);
+    h.run_steps(1);
+    h.drag_at(from);
+    h.run_steps(1);
+    for k in 1..=4 {
+        h.hover_at(from + (to - from) * (k as f32 / 4.0));
+        h.run_steps(1);
+    }
+    h.drop_at(to);
+    h.run_steps(3);
+}
+
+/// The docking split the board's column is dragged by: the "Resize panels" handle nearest the
+/// board on its left.
+fn board_split(h: &Harness<'static, PdfCraftApp>) -> egui::Rect {
+    let board = h.get_by_label_contains("Board: ").rect();
+    h.get_all_by_label("Resize panels")
+        .map(|n| n.rect())
+        .filter(|r| r.height() > r.width() && r.center().x < board.min.x)
+        .max_by(|a, b| a.center().x.total_cmp(&b.center().x))
+        .expect("a split left of the board")
+}
+
+/// The board's panel is as wide as it is dragged, docked or in Read mode: the board grows past
+/// the 480 pt it once stopped at, and the page keeps its least width (160 pt).
+#[test]
+fn the_board_panel_is_as_wide_as_it_is_dragged() {
+    let mut h = harness("", false);
+    let narrow = h.get_by_label_contains("Board: ").rect();
+    assert!(narrow.width() < 400.0, "{narrow:?}");
+    let split = board_split(&h);
+    drag(&mut h, split.center(), split.center() - egui::vec2(600.0, 0.0));
+    let board = h.get_by_label_contains("Board: ").rect();
+    assert!(board.width() > 800.0, "docked: {board:?}");
+    assert!((board.width() - board.height()).abs() < 1.0, "square: {board:?}");
+    shot(&mut h, "board-wide-docked.png");
+    // To the window's left edge: the page keeps its least width.
+    let split = board_split(&h);
+    drag(&mut h, split.center(), egui::pos2(5.0, split.center().y));
+    // The handle's middle is the page's edge (it reaches past it to be grabbed).
+    assert!(board_split(&h).center().x >= 160.0, "the page's least width: {:?}", board_split(&h));
+    // Read mode: the panel's own edge, grabbed just inside it (the page is drawn over its outer
+    // half).
+    h.state_mut().mode = pdfcraft_ui_egui::Mode::Read;
+    h.run_steps(4);
+    let panel = |h: &Harness<'static, PdfCraftApp>| {
+        egui::containers::panel::PanelState::load(&h.ctx, egui::Id::new("read_board_panel")).expect("the Read mode board panel").outer_rect
+    };
+    let edge = panel(&h).left_center() + egui::vec2(2.0, 0.0);
+    drag(&mut h, edge, edge - egui::vec2(600.0, 0.0));
+    assert!(panel(&h).width() > 860.0, "Read mode: {:?}", panel(&h));
+    assert!(h.get_by_label_contains("Board: ").rect().width() > 760.0);
+    let edge = panel(&h).left_center() + egui::vec2(2.0, 0.0);
+    drag(&mut h, edge, egui::pos2(5.0, edge.y));
+    assert!(panel(&h).min.x >= 159.0, "the page's least width: {:?}", panel(&h));
+}
+
+/// The Move list's − and + step its text from 70% to 300%: the moves grow and shrink at once,
+/// each button is off at its end, and the size is kept. Preferences steps the same size and
+/// shows it.
+#[test]
+fn the_move_lists_buttons_step_its_text_size() {
+    use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
+    let mut h = harness("", false);
+    let (game, _) = Game::from_pgn("1. e4 e5 2. Nf3 Nc6 *").unwrap();
+    h.state_mut().chess.board_mut().game = game;
+    h.get_by_label("Move list beside the page").click();
+    h.run_steps(3);
+    assert!(h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Moves));
+    let size = |h: &Harness<'static, PdfCraftApp>| h.state().chess.list_look.size.percent();
+    let height = |h: &Harness<'static, PdfCraftApp>| h.get_by_label("e4").rect().height();
+    let normal = height(&h);
+    h.get_by_label("Larger text").click();
+    h.run_steps(2);
+    assert_eq!(size(&h), 110);
+    assert!(height(&h) > normal, "{} > {normal}", height(&h));
+    for _ in 0..5 {
+        h.get_by_label("Smaller text").click();
+        h.run_steps(2);
+    }
+    assert_eq!(size(&h), 70, "the smallest, and no further");
+    assert!(height(&h) < normal - 2.0, "{} < {normal}", height(&h));
+    assert!(h.get_by_label("Smaller text").accesskit_node().is_disabled());
+    assert!(!h.get_by_label("Larger text").accesskit_node().is_disabled());
+    let saved: serde_json::Value = serde_json::from_str(&h.state().persist()).unwrap();
+    assert_eq!(saved["chess_move_list"]["size"], 70);
+    h.state_mut().set_option("move-list-size", "300").unwrap();
+    h.run_steps(2);
+    assert!(h.get_by_label("Larger text").accesskit_node().is_disabled(), "off at the largest");
+    assert!(height(&h) > normal * 2.0, "{} > 2 × {normal}", height(&h));
+    shot(&mut h, "move-list-300.png");
+    // The next session, in Preferences: the size shown between the same buttons.
+    let mut h = harness(r#"{"chess_move_list": {"size": 300}}"#, true);
+    h.get_by_label("300%");
+    press(&mut h, "Smaller text");
+    assert_eq!(size(&h), 250);
+    h.get_by_label("250%");
 }

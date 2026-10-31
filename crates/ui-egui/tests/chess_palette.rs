@@ -178,6 +178,16 @@ fn drag(h: &mut Harness<'static, PdfCraftApp>, from: Pos2, by: egui::Vec2) {
 fn the_glyph_palette_floats_puts_glyphs_on_the_move_and_remembers_its_place() {
     let mut h = harness();
     put_game(&mut h, "1. e4 e5 *", &[0, 0]);
+    // The panel opens 330 pt wide against the window's right edge, where the palette has no room
+    // on the rail's right: dragged wider by its split, as it was opened before (520 pt).
+    let board = h.get_by_label_contains("Board: ").rect();
+    let split = h
+        .get_all_by_label("Resize panels")
+        .map(|n| n.rect())
+        .filter(|r| r.height() > r.width() && r.center().x < board.min.x)
+        .max_by(|a, b| a.center().x.total_cmp(&b.center().x))
+        .expect("the board's split");
+    drag(&mut h, split.center(), egui::vec2(-200.0, 0.0));
     click_board_title(&mut h);
     assert!(palette(&h).is_none());
     host_key(&mut h, Modifiers::NONE, Key::G);

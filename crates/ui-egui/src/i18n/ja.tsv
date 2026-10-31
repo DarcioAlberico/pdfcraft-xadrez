@@ -3381,3 +3381,5 @@ castling	long	ロング
 	There is no fonts folder beside the program to import into.	読み込み先となるフォントフォルダーがプログラムの横にありません。
 	Already in the fonts folder: {fonts}. Replace them?	フォントフォルダーにすでにあります: {fonts}。置き換えますか？
 	The fonts cannot be imported: {reason}	フォントを読み込めません: {reason}
+	Smaller text	文字を小さく
+	Larger text	文字を大きく

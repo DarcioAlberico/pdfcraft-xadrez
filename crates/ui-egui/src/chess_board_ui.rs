@@ -43,26 +43,32 @@ use crate::theme::{self, Tokens};
 /// The board image's side, in pixels (it is scaled to the panel).
 const BOARD_PX: u32 = 640;
 
-/// Largest board on screen, in points.
-const MAX_BOARD_PT: f32 = 480.0;
+/// Largest board in the panels, in points: as wide as the panel is dragged, up to the chess
+/// window's largest.
+const MAX_BOARD_PT: f32 = 1_200.0;
+
+/// Largest side of the board's picture in the panels, in pixels: a board dragged large stays
+/// sharp.
+const MAX_BOARD_PX: u32 = 2_048;
 
 /// How large the board may be drawn, how sharp its picture is and how the panel is laid out:
-/// [`Sizing::DOCKED`] in the panels, larger in the chess board's own window
-/// (`chess_window`).
+/// [`Sizing::DOCKED`] in the panels, as the window's height allows in the chess board's own
+/// window (`chess_window`).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct Sizing {
     /// Largest board side, in points (at least the smallest board, 160 pt).
     pub(crate) max_side: f32,
     /// Largest side of the board's picture, in pixels; at [`BOARD_PX`] or below it is drawn at
-    /// [`BOARD_PX`] whatever the screen, as in the panels.
+    /// [`BOARD_PX`] whatever the screen.
     pub(crate) max_px: u32,
     /// Two columns: the board on the left, the moves, notes and fields on the right.
     pub(crate) wide: bool,
 }
 
 impl Sizing {
-    /// The panels: at most 480 pt, a 640 px picture, one column.
-    pub(crate) const DOCKED: Sizing = Sizing { max_side: MAX_BOARD_PT, max_px: BOARD_PX, wide: false };
+    /// The panels: at most 1,200 pt, a picture of the screen's pixels within 640..=2,048, one
+    /// column.
+    pub(crate) const DOCKED: Sizing = Sizing { max_side: MAX_BOARD_PT, max_px: MAX_BOARD_PX, wide: false };
 
     /// The largest board side, never below the smallest board (160 pt) nor NaN, so `clamp`
     /// with it can't panic.

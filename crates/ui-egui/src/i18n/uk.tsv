@@ -3401,3 +3401,5 @@ castling	long	довга
 	There is no fonts folder beside the program to import into.	Поруч із програмою немає теки шрифтів для імпорту.
 	Already in the fonts folder: {fonts}. Replace them?	Уже є в теці шрифтів: {fonts}. Замінити?
 	The fonts cannot be imported: {reason}	Не вдалося імпортувати шрифти: {reason}
+	Smaller text	Дрібніший текст
+	Larger text	Більший текст

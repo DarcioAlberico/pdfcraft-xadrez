@@ -47,33 +47,104 @@ pub enum ListLayout {
     Columns,
 }
 
-/// The move list's text size (plan HC9).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum ListSize {
-    Small,
-    #[default]
-    Normal,
-    Large,
+/// The move list's text size (plan HC9), in percent of the interface's: always one of
+/// [`ListSize::STEPS`], which the list's − and + buttons step through.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ListSize(u16);
+
+impl Default for ListSize {
+    fn default() -> Self {
+        ListSize::NORMAL
+    }
 }
 
 impl ListSize {
-    fn factor(self) -> f32 {
-        match self {
-            ListSize::Small => 0.85,
-            ListSize::Normal => 1.0,
-            ListSize::Large => 1.25,
+    /// The sizes, in percent, smallest first.
+    pub const STEPS: [u16; 11] = [70, 80, 90, 100, 110, 125, 150, 175, 200, 250, 300];
+    /// The sizes the control channel and older settings name `small`, `normal` and `large`.
+    pub const SMALL: ListSize = ListSize(90);
+    pub const NORMAL: ListSize = ListSize(100);
+    pub const LARGE: ListSize = ListSize(125);
+    // The first and last steps (constant indices, checked when compiled).
+    const LEAST: f64 = Self::STEPS[0] as f64;
+    const MOST: f64 = Self::STEPS[Self::STEPS.len() - 1] as f64;
+
+    pub fn percent(self) -> u16 {
+        self.0
+    }
+
+    /// The step nearest `percent` (of two as near, the smaller); not a number, the normal size.
+    pub fn nearest(percent: f64) -> ListSize {
+        if !percent.is_finite() {
+            return ListSize::NORMAL;
         }
+        // Within the steps first: far out, every gap rounds to the same number. `percent` is
+        // finite and LEAST < MOST, so `clamp` cannot panic.
+        let percent = percent.clamp(Self::LEAST, Self::MOST);
+        let gap = |step: u16| (f64::from(step) - percent).abs();
+        Self::STEPS.into_iter().min_by(|&a, &b| gap(a).total_cmp(&gap(b))).map_or(ListSize::NORMAL, ListSize)
+    }
+
+    /// `small`, `normal`, `large`, or a percentage within the steps (`130` or `130%`, to the
+    /// nearest step).
+    pub fn parse(value: &str) -> Option<ListSize> {
+        match value {
+            "small" => Some(ListSize::SMALL),
+            "normal" => Some(ListSize::NORMAL),
+            "large" => Some(ListSize::LARGE),
+            _ => {
+                let percent: f64 = value.trim().trim_end_matches('%').trim_end().parse().ok()?;
+                (Self::LEAST..=Self::MOST).contains(&percent).then(|| ListSize::nearest(percent))
+            }
+        }
+    }
+
+    /// The next size up, or `None` at the largest.
+    pub fn larger(self) -> Option<ListSize> {
+        Self::STEPS.into_iter().find(|&step| step > self.0).map(ListSize)
+    }
+
+    /// The next size down, or `None` at the smallest.
+    pub fn smaller(self) -> Option<ListSize> {
+        Self::STEPS.into_iter().rev().find(|&step| step < self.0).map(ListSize)
     }
 
     /// Scale `style`'s text to this size.
     pub(crate) fn apply(self, style: &mut egui::Style) {
-        let k = self.factor();
-        if k != 1.0 {
+        if self != ListSize::NORMAL {
+            let k = f32::from(self.0) / 100.0;
             for font in style.text_styles.values_mut() {
                 font.size *= k;
             }
         }
     }
+}
+
+/// The − and + buttons that step the move list's text `size`, each off at its end of the steps,
+/// with the size between them when `percent`, in the order of `ui`'s layout. Whether `size`
+/// changed.
+pub(crate) fn size_buttons(ui: &mut egui::Ui, tint: Color32, size: &mut ListSize, percent: bool) -> bool {
+    let smaller = (size.smaller(), "minus", tl!("Smaller text"));
+    let larger = (size.larger(), "plus", tl!("Larger text"));
+    // Right to left, the + button comes first so − stays on the left.
+    let (first, second) = if ui.layout().prefer_right_to_left() { (larger, smaller) } else { (smaller, larger) };
+    let shown = size.percent();
+    let mut changed = false;
+    for (i, (next, icon, name)) in [first, second].into_iter().enumerate() {
+        if i == 1 && percent {
+            ui.label(format!("{shown}%"));
+        }
+        let r = ui.add_enabled(next.is_some(), egui::Button::image(crate::icons::image(icon, 14.0, tint))).on_hover_text(name);
+        r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, next.is_some(), name));
+        // `next` is another step than `size`, never the same.
+        if r.clicked()
+            && let Some(next) = next
+        {
+            *size = next;
+            changed = true;
+        }
+    }
+    changed
 }
 
 /// How the move list is laid out and how large its text is.
@@ -89,32 +160,33 @@ impl ListLook {
             ListLayout::Flow => "flow",
             ListLayout::Columns => "columns",
         };
-        let size = match self.size {
-            ListSize::Small => "small",
-            ListSize::Normal => "normal",
-            ListSize::Large => "large",
-        };
-        serde_json::json!({ "layout": layout, "size": size })
+        serde_json::json!({ "layout": layout, "size": self.size.percent() })
     }
 
+    /// The look kept in the settings: the size as a percentage (to the nearest step), or as
+    /// `small`, `normal` or `large` as earlier versions kept it.
     pub fn from_json(v: &serde_json::Value) -> ListLook {
         let mut look = ListLook::default();
         look.set("layout", v["layout"].as_str().unwrap_or_default()).ok();
-        look.set("size", v["size"].as_str().unwrap_or_default()).ok();
+        match v["size"].as_f64() {
+            Some(percent) => look.size = ListSize::nearest(percent),
+            None => {
+                look.set("size", v["size"].as_str().unwrap_or_default()).ok();
+            }
+        }
         look
     }
 
     /// Set one part by name, as the control channel names it: `layout` (flow, columns) or `size`
-    /// (small, normal, large).
+    /// (small, normal, large, or a percentage from 70 to 300).
     pub fn set(&mut self, part: &str, value: &str) -> Result<(), String> {
         match (part, value) {
             ("layout", "flow") => self.layout = ListLayout::Flow,
             ("layout", "columns") => self.layout = ListLayout::Columns,
-            ("size", "small") => self.size = ListSize::Small,
-            ("size", "normal") => self.size = ListSize::Normal,
-            ("size", "large") => self.size = ListSize::Large,
             ("layout", _) => return Err("move-list-layout must be flow or columns".into()),
-            ("size", _) => return Err("move-list-size must be small, normal or large".into()),
+            ("size", _) => {
+                self.size = ListSize::parse(value).ok_or("move-list-size must be small, normal, large or a percentage from 70 to 300")?;
+            }
             _ => return Err(format!("no move list option {part}")),
         }
         Ok(())
@@ -345,6 +417,52 @@ pub(crate) fn move_button(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The text size steps from 70% to 300% and stops at either end; a percentage from the
+    /// settings or the control channel goes to the nearest step, and the older names still read.
+    #[test]
+    fn the_text_size_steps_and_reads_what_it_is_given() {
+        let mut size = ListSize::default();
+        let mut up = vec![size.percent()];
+        while let Some(next) = size.larger() {
+            size = next;
+            up.push(size.percent());
+        }
+        assert_eq!(up, [100, 110, 125, 150, 175, 200, 250, 300]);
+        let mut down = Vec::new();
+        while let Some(next) = size.smaller() {
+            size = next;
+            down.push(size.percent());
+        }
+        assert_eq!(down, [250, 200, 175, 150, 125, 110, 100, 90, 80, 70]);
+        assert!(size.smaller().is_none() && ListSize(300).larger().is_none());
+        // Nearest step: of two as near, the smaller; anything else in bounds.
+        for (given, step) in [(130.0, 125), (137.5, 125), (95.0, 90), (0.0, 70), (-5.0, 70), (1e30, 300), (f64::NAN, 100), (f64::INFINITY, 100)] {
+            assert_eq!(ListSize::nearest(given).percent(), step, "{given}");
+        }
+        for (given, step) in
+            [("small", Some(90)), ("normal", Some(100)), ("large", Some(125)), ("130", Some(125)), ("150%", Some(150)), (" 70 % ", Some(70))]
+        {
+            assert_eq!(ListSize::parse(given).map(ListSize::percent), step, "{given}");
+        }
+        for bad in ["", "%", "huge", "69", "301", "NaN", "inf", "-100", "1e400"] {
+            assert_eq!(ListSize::parse(bad), None, "{bad}");
+        }
+        // The settings: the number written back, the earlier names and stray values read.
+        let look = |v: serde_json::Value| ListLook::from_json(&serde_json::json!({ "layout": "columns", "size": v })).size.percent();
+        assert_eq!(look(serde_json::json!(175)), 175);
+        assert_eq!(look(serde_json::json!(1e300)), 300);
+        assert_eq!(look(serde_json::json!("large")), 125);
+        assert_eq!(look(serde_json::json!("small")), 90);
+        assert_eq!(look(serde_json::json!("giant")), 100);
+        assert_eq!(look(serde_json::json!([150])), 100);
+        let kept = ListLook { layout: ListLayout::Columns, size: ListSize(150) };
+        assert_eq!(kept.to_json(), serde_json::json!({ "layout": "columns", "size": 150 }));
+        assert_eq!(ListLook::from_json(&kept.to_json()), kept);
+        let mut set = ListLook::default();
+        assert!(set.set("size", "250").is_ok() && set.size.percent() == 250);
+        assert!(set.set("size", "1000").is_err() && set.size.percent() == 250, "a refused size changes nothing");
+    }
 
     #[test]
     fn moves_are_written_in_a_languages_letters() {

@@ -3377,3 +3377,5 @@ castling	long	ұзын
 	There is no fonts folder beside the program to import into.	Бағдарламаның жанында импорттайтын қаріптер бумасы жоқ.
 	Already in the fonts folder: {fonts}. Replace them?	Қаріптер бумасында бар: {fonts}. Ауыстыру керек пе?
 	The fonts cannot be imported: {reason}	Қаріптерді импорттау мүмкін емес: {reason}
+	Smaller text	Кішірек мәтін
+	Larger text	Үлкенірек мәтін

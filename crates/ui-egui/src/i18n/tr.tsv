@@ -3375,3 +3375,5 @@ castling	long	uzun
 	There is no fonts folder beside the program to import into.	Programın yanında içe aktarılacak bir yazı tipleri klasörü yok.
 	Already in the fonts folder: {fonts}. Replace them?	Zaten yazı tipleri klasöründe: {fonts}. Değiştirilsin mi?
 	The fonts cannot be imported: {reason}	Yazı tipleri içe aktarılamıyor: {reason}
+	Smaller text	Daha küçük metin
+	Larger text	Daha büyük metin
