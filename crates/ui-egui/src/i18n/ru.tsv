@@ -3294,3 +3294,5 @@ castling	long	длинная
 	The fonts cannot be imported: {reason}	Не удалось импортировать шрифты: {reason}
 	Smaller text	Мельче текст
 	Larger text	Крупнее текст
+diagram state	Read	Прочитано
+the move's comment	Move comment	Комментарий к ходу

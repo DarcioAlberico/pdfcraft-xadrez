@@ -3455,3 +3455,5 @@ castling	long	dlouhá
 	The fonts cannot be imported: {reason}	Písma nelze importovat: {reason}
 	Smaller text	Menší text
 	Larger text	Větší text
+diagram state	Read	Přečteno
+the move's comment	Move comment	Komentář k tahu

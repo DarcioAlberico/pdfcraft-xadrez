@@ -78,7 +78,7 @@ impl DiagramState {
     /// Its name.
     pub(crate) fn name(self) -> &'static str {
         match self {
-            DiagramState::Read => tl!("Read"),
+            DiagramState::Read => tl_ctx!("diagram state", "Read"),
             DiagramState::Review => tl!("To review"),
             DiagramState::Unread => tl!("Not read"),
             DiagramState::Error => tl!("With an error"),
@@ -123,6 +123,22 @@ pub(crate) fn draft_dot(painter: &egui::Painter, rect: egui::Rect, t: &Tokens) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// "Read" alone is the Read mode's tab, a verb ("Ler", "Lesen", "Lire"); the diagram state says
+    /// the diagram was read ("Lido", "Gelesen", "Lu"), in every language.
+    #[test]
+    fn the_read_state_is_said_as_done_not_as_the_verb() {
+        use crate::i18n::{self, Lang};
+        for lang in Lang::all().filter(|l| l.code() != "en") {
+            i18n::set_current(lang);
+            assert_ne!(DiagramState::Read.name(), i18n::tr(lang, "Read"), "{}", lang.code());
+        }
+        let pt = Lang::from_code("pt-br").expect("pt-BR registered");
+        i18n::set_current(pt);
+        assert_eq!((DiagramState::Read.name(), i18n::tr(pt, "Read")), ("Lido", "Ler"));
+        i18n::set_current(Lang::EN);
+        assert_eq!(DiagramState::Read.name(), "Read");
+    }
 
     #[test]
     fn what_the_user_did_outranks_the_reading() {

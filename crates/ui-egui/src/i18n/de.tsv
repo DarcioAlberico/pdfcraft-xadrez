@@ -3382,3 +3382,5 @@ castling	long	lang
 	The fonts cannot be imported: {reason}	Die Schriften können nicht importiert werden: {reason}
 	Smaller text	Kleinerer Text
 	Larger text	Größerer Text
+diagram state	Read	Gelesen
+the move's comment	Move comment	Kommentar des Zugs

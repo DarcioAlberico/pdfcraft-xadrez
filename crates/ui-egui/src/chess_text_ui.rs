@@ -485,8 +485,11 @@ pub fn text_tab(
             Block::Paragraph { inlines, source_rect } => {
                 ui.horizontal_wrapped(|ui| {
                     ui.spacing_mut().item_spacing.x = 4.0;
+                    // Each inline goes straight into the wrapped row: a child `Ui` (`push_id`)
+                    // would start at the cursor, and a label wrapped in it would never come back
+                    // to the left edge, so the paragraph would narrow into a staircase.
                     for (k, inline) in inlines.iter().enumerate() {
-                        ui.push_id(k, |ui| match inline {
+                        match inline {
                             Inline::Move(m) => {
                                 let shown = plain_text_with(std::slice::from_ref(inline), figurines);
                                 let mut tip = status_label(m.status).to_string();
@@ -585,7 +588,7 @@ pub fn text_tab(
                                     action = Some(TextAction::Show(page, rect));
                                 }
                             }
-                        });
+                        }
                     }
                 });
             }

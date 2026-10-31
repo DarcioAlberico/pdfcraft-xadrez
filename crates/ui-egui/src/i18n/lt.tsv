@@ -3632,3 +3632,5 @@ castling	long	ilgoji
 	The fonts cannot be imported: {reason}	Šriftų importuoti nepavyko: {reason}
 	Smaller text	Mažesnis tekstas
 	Larger text	Didesnis tekstas
+diagram state	Read	Nuskaityta
+the move's comment	Move comment	Ėjimo komentaras

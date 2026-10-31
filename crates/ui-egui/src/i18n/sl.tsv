@@ -3386,3 +3386,5 @@ castling	long	dolga
 	The fonts cannot be imported: {reason}	Pisav ni mogoče uvoziti: {reason}
 	Smaller text	Manjše besedilo
 	Larger text	Večje besedilo
+diagram state	Read	Prebrano
+the move's comment	Move comment	Komentar k potezi

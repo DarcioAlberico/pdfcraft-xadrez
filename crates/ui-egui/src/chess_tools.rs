@@ -553,7 +553,7 @@ const BRUSH: Tool = Tool {
 const COMMENT: Tool = Tool {
     id: "comment",
     icon: "message-square-quote",
-    label: |_| tl!("Move comment").to_owned(),
+    label: |_| tl_ctx!("the move's comment", "Move comment").to_owned(),
     keys: &[ChessKey::plain(Key::Enter)],
     command: Some("chess.comment.edit"),
     kind: Kind::Action(|b, _| b.toggle_comment_editor()),
@@ -1550,6 +1550,22 @@ mod tests {
     }
 
     const FORKS: &str = "1. e4 e5 (1... c5 2. Nf3 (2. c3) d6) 2. Nf3 *";
+
+    /// The rail's Move comment opens the move's comment: a noun ("Comentário do lance"), never
+    /// the undo step of moving a PDF comment, which keeps the verb ("Mover comentário").
+    #[test]
+    fn move_comment_names_the_moves_comment_in_every_language() {
+        use crate::i18n::{self, Lang};
+        let board = BoardState::default();
+        for lang in Lang::all().filter(|l| l.code() != "en") {
+            i18n::set_current(lang);
+            assert_ne!((COMMENT.label)(&board), i18n::tr(lang, "Move comment"), "{}", lang.code());
+        }
+        let pt = Lang::from_code("pt-br").expect("pt-BR registered");
+        i18n::set_current(pt);
+        assert_eq!(((COMMENT.label)(&board), i18n::tr(pt, "Move comment")), ("Comentário do lance".to_string(), "Mover comentário"));
+        i18n::set_current(Lang::EN);
+    }
 
     #[test]
     fn variation_tools_act_on_the_nearest_variation_they_can() {

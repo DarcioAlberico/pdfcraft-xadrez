@@ -3344,3 +3344,5 @@ castling	long	дълга
 	The fonts cannot be imported: {reason}	Шрифтовете не могат да бъдат импортирани: {reason}
 	Smaller text	По-малък текст
 	Larger text	По-голям текст
+diagram state	Read	Прочетена
+the move's comment	Move comment	Коментар към хода

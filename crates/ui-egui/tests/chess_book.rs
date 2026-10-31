@@ -372,3 +372,38 @@ fn a_captured_game_follows_its_moves_on_the_page() {
     assert_eq!(last_shown(&h).map(|s| (s.0, s.1)), Some((nf3.page as usize, nf3.rect_user)));
     assert_ne!(a6.rect_user, nf3.rect_user);
 }
+
+/// A paragraph that runs on after its moves reads as a paragraph: each wrapped line of prose goes
+/// back to the left edge of the tab, and a line of the PDF is never squeezed into the room left
+/// beside the words before it (each inline in a child `Ui` of its own made the paragraph a
+/// staircase, its last lines one letter wide down the tab's right edge).
+#[test]
+fn prose_after_the_moves_wraps_back_to_the_left_edge() {
+    let h = harness_on(pdf(&[concat!(
+        "BT /F1 24 Tf 60 760 Td (Chapter 1) Tj ET\n",
+        "BT /F1 11 Tf 60 730 Td (1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 The Spanish opening, named after a priest who) Tj ET\n",
+        "BT /F1 11 Tf 60 716 Td (wrote about it in the sixteenth century, is one of the oldest openings and) Tj ET\n",
+        "BT /F1 11 Tf 60 702 Td (is still played by the strongest players in the world today, at every level.) Tj ET\n",
+    )
+    .to_string()]));
+    let left = h.get_by_label("Chapter 1").rect().left();
+    let prose: Vec<egui::Rect> = h
+        .get_all_by_role(Role::Label)
+        .filter(|n| {
+            let text = n.accesskit_node().label().or_else(|| n.accesskit_node().value()).unwrap_or_default();
+            ["priest", "sixteenth", "strongest"].iter().any(|w| text.contains(w))
+        })
+        .map(|n| n.rect())
+        .collect();
+    assert!(!prose.is_empty(), "the prose is in the Text tab");
+    let row = text_move(&h, "a6").rect().height();
+    assert!(prose.iter().any(|r| r.height() > row * 1.5), "the prose is long enough to wrap in the tab");
+    for r in prose {
+        // A label of several rows starts its later rows at the paragraph's left edge, so its box
+        // does too; and it is never one narrow column.
+        if r.height() > row * 1.5 {
+            assert!((r.left() - left).abs() < 1.0, "a wrapped line goes back to the left edge ({r:?}, the edge at {left})");
+        }
+        assert!(r.width() > 60.0, "a line of prose is not squeezed into a column ({r:?})");
+    }
+}

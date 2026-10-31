@@ -3522,3 +3522,5 @@ castling	long	largo
 	The fonts cannot be imported: {reason}	No se pueden importar las fuentes: {reason}
 	Smaller text	Texto más pequeño
 	Larger text	Texto más grande
+diagram state	Read	Leído
+the move's comment	Move comment	Comentario de la jugada

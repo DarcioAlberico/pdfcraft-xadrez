@@ -3256,3 +3256,5 @@ castling	long	పెద్ద
 	The fonts cannot be imported: {reason}	ఫాంట్‌లను దిగుమతి చేయలేము: {reason}
 	Smaller text	చిన్న వచనం
 	Larger text	పెద్ద వచనం
+diagram state	Read	చదివినది
+the move's comment	Move comment	ఎత్తు వ్యాఖ్య

@@ -3379,3 +3379,5 @@ castling	long	ұзын
 	The fonts cannot be imported: {reason}	Қаріптерді импорттау мүмкін емес: {reason}
 	Smaller text	Кішірек мәтін
 	Larger text	Үлкенірек мәтін
+diagram state	Read	Оқылды
+the move's comment	Move comment	Жүріс түсініктемесі
