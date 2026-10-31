@@ -3630,3 +3630,5 @@ castling	long	ilgoji
 	There is no fonts folder beside the program to import into.	Šalia programos nėra šriftų aplanko, į kurį būtų galima importuoti.
 	Already in the fonts folder: {fonts}. Replace them?	Jau yra šriftų aplanke: {fonts}. Pakeisti?
 	The fonts cannot be imported: {reason}	Šriftų importuoti nepavyko: {reason}
+	Smaller text	Mažesnis tekstas
+	Larger text	Didesnis tekstas

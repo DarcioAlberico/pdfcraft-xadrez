@@ -3453,3 +3453,5 @@ castling	long	dlouhá
 	There is no fonts folder beside the program to import into.	Vedle programu není žádná složka písem, do které by se dalo importovat.
 	Already in the fonts folder: {fonts}. Replace them?	Už jsou ve složce písem: {fonts}. Nahradit je?
 	The fonts cannot be imported: {reason}	Písma nelze importovat: {reason}
+	Smaller text	Menší text
+	Larger text	Větší text

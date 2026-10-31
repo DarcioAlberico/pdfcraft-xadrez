@@ -1599,9 +1599,12 @@ pub(crate) fn moves_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     egui::Frame::NONE.fill(t.panel).stroke(Stroke::new(1.0, t.divider)).show(ui, |ui| {
         egui::Frame::NONE.inner_margin(egui::Margin { left: 10, right: 10, top: 10, bottom: 8 }).show(ui, |ui| {
             ui.horizontal(|ui| {
-                ui.label(egui::RichText::new(tl!("Move list")).font(theme::semibold(15.5)));
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    // Right to left: the right edge's button first.
+                    // Right to left: the right edge's button first, then the text size's, and the
+                    // title in the width left (cut short in a narrow list). Compact buttons, so a
+                    // title such as "Lista de lances" keeps its room at the list's opening width.
+                    ui.spacing_mut().button_padding = egui::vec2(3.0, 3.0);
+                    ui.spacing_mut().item_spacing.x = 4.0;
                     for (left, icon, name) in [(false, "panel-right", tl!("Right")), (true, "panel-left", tl!("Left"))] {
                         let r = ui
                             .add(egui::Button::image(crate::icons::image(icon, 14.0, t.icon)).selected(app.chess.moves_left == left))
@@ -1611,6 +1614,14 @@ pub(crate) fn moves_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                             side = Some(left);
                         }
                     }
+                    ui.separator();
+                    if crate::chess_figurines::size_buttons(ui, t.icon, &mut app.chess.list_look.size, false) {
+                        // The list below reads the size from the context: this frame already.
+                        crate::chess_figurines::set_list_look(ui.ctx(), app.chess.list_look);
+                    }
+                    ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                        ui.add(egui::Label::new(egui::RichText::new(tl!("Move list")).font(theme::semibold(15.5))).truncate());
+                    });
                 });
             });
             ui.add_space(4.0);

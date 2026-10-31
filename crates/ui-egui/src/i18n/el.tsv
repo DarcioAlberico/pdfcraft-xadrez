@@ -3351,3 +3351,5 @@ castling	long	μεγάλο
 	There is no fonts folder beside the program to import into.	Δεν υπάρχει φάκελος γραμματοσειρών δίπλα στο πρόγραμμα για εισαγωγή.
 	Already in the fonts folder: {fonts}. Replace them?	Υπάρχουν ήδη στον φάκελο γραμματοσειρών: {fonts}. Να αντικατασταθούν;
 	The fonts cannot be imported: {reason}	Οι γραμματοσειρές δεν μπορούν να εισαχθούν: {reason}
+	Smaller text	Μικρότερο κείμενο
+	Larger text	Μεγαλύτερο κείμενο

@@ -3343,3 +3343,5 @@ castling	long	长
 	There is no fonts folder beside the program to import into.	程序旁边没有可导入的字体文件夹。
 	Already in the fonts folder: {fonts}. Replace them?	字体文件夹中已有：{fonts}。要替换吗？
 	The fonts cannot be imported: {reason}	无法导入字体：{reason}
+	Smaller text	缩小文字
+	Larger text	放大文字

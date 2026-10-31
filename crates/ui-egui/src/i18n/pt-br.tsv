@@ -3396,3 +3396,5 @@ castling	long	longo
 	There is no fonts folder beside the program to import into.	Não há pasta de fontes ao lado do programa para importar.
 	Already in the fonts folder: {fonts}. Replace them?	Já estão na pasta de fontes: {fonts}. Substituir?
 	The fonts cannot be imported: {reason}	As fontes não podem ser importadas: {reason}
+	Smaller text	Texto menor
+	Larger text	Texto maior

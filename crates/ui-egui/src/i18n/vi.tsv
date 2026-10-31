@@ -3632,3 +3632,5 @@ castling	long	xa
 	There is no fonts folder beside the program to import into.	Không có thư mục phông chữ bên cạnh chương trình để nhập vào.
 	Already in the fonts folder: {fonts}. Replace them?	Đã có trong thư mục phông chữ: {fonts}. Thay thế chúng?
 	The fonts cannot be imported: {reason}	Không thể nhập phông chữ: {reason}
+	Smaller text	Chữ nhỏ hơn
+	Larger text	Chữ lớn hơn

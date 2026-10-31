@@ -3379,3 +3379,5 @@ castling	long	grand
 	There is no fonts folder beside the program to import into.	Il n'y a pas de dossier de polices à côté du programme où importer.
 	Already in the fonts folder: {fonts}. Replace them?	Déjà dans le dossier des polices : {fonts}. Les remplacer ?
 	The fonts cannot be imported: {reason}	Les polices ne peuvent pas être importées : {reason}
+	Smaller text	Texte plus petit
+	Larger text	Texte plus grand

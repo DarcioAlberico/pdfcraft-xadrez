@@ -3254,3 +3254,5 @@ castling	long	పెద్ద
 	There is no fonts folder beside the program to import into.	దిగుమతి చేయడానికి ప్రోగ్రామ్ పక్కన ఫాంట్‌ల ఫోల్డర్ లేదు.
 	Already in the fonts folder: {fonts}. Replace them?	ఇప్పటికే ఫాంట్‌ల ఫోల్డర్‌లో ఉన్నాయి: {fonts}. వాటిని భర్తీ చేయాలా?
 	The fonts cannot be imported: {reason}	ఫాంట్‌లను దిగుమతి చేయలేము: {reason}
+	Smaller text	చిన్న వచనం
+	Larger text	పెద్ద వచనం

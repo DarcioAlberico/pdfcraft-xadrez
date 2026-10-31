@@ -3323,3 +3323,5 @@ castling	long	długa
 	There is no fonts folder beside the program to import into.	Obok programu nie ma folderu czcionek, do którego można importować.
 	Already in the fonts folder: {fonts}. Replace them?	Już są w folderze czcionek: {fonts}. Zastąpić je?
 	The fonts cannot be imported: {reason}	Nie można zaimportować czcionek: {reason}
+	Smaller text	Mniejszy tekst
+	Larger text	Większy tekst

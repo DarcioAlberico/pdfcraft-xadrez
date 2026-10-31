@@ -3342,3 +3342,5 @@ castling	long	дълга
 	There is no fonts folder beside the program to import into.	До програмата няма папка с шрифтове, в която да се импортира.
 	Already in the fonts folder: {fonts}. Replace them?	Вече са в папката с шрифтове: {fonts}. Да бъдат ли заменени?
 	The fonts cannot be imported: {reason}	Шрифтовете не могат да бъдат импортирани: {reason}
+	Smaller text	По-малък текст
+	Larger text	По-голям текст

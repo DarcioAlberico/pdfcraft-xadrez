@@ -53,11 +53,25 @@ impl Panel {
     fn parse(id: &str) -> Result<Self, String> {
         Self::ALL.iter().copied().find(|panel| panel.id() == id).ok_or_else(|| format!("Unknown panel: {id}"))
     }
+    /// The width a panel of the right-hand column or the Move list takes in a split of its own
+    /// across, where the split would give it half the page: they are as wide as they are
+    /// dragged ([`panel_limits`]). The page and the Tools have none.
+    fn opening_width(self) -> Option<f32> {
+        match self {
+            Self::Canvas | Self::Tools => None,
+            Self::Inspector | Self::Board => Some(SIDE_WIDTH),
+            Self::Diagram => Some(DIAGRAM_WIDTH),
+            Self::Moves => Some(MOVES_WIDTH),
+        }
+    }
 }
 
 fn permissions(panel: &Panel) -> Permissions {
     if *panel == Panel::Canvas { Permissions::PROTECTED } else { Permissions::default() }
 }
+
+/// The Inspector's and the chess board's width when they open beside the page, in points.
+pub(crate) const SIDE_WIDTH: f32 = 330.0;
 
 /// The Move list's width when it opens beside the page, in points.
 pub(crate) const MOVES_WIDTH: f32 = 260.0;
@@ -98,7 +112,7 @@ impl Default for Workspace {
                     SplitAxis::Horizontal,
                     SplitSize::FixedFirst(272.0),
                     tabs(Panel::Tools),
-                    split(SplitAxis::Horizontal, SplitSize::FixedSecond(330.0), tabs(Panel::Canvas), tabs(Panel::Inspector)),
+                    split(SplitAxis::Horizontal, SplitSize::FixedSecond(SIDE_WIDTH), tabs(Panel::Canvas), tabs(Panel::Inspector)),
                 )),
                 floating: Vec::new(),
             },
@@ -146,18 +160,20 @@ impl Workspace {
         let was_open = self.layout.contains(&Panel::Moves);
         self.set_visible(Panel::Moves, true)?;
         let placement = Placement::Split(if left { Zone::Left } else { Zone::Right });
+        // [`Self::apply`] gives it its opening width.
         self.apply(Action::Move { panel: Panel::Moves, anchor: Panel::Canvas, placement })?;
-        self.fit_moves();
         if !was_open {
             self.set_visible(Panel::Moves, false)?;
         }
         Ok(())
     }
 
-    /// The split holding the Move list alone on one side gives it [`MOVES_WIDTH`]: a new split
-    /// would give it half the page.
-    fn fit_moves(&mut self) {
-        self.fit_width(Panel::Moves, MOVES_WIDTH);
+    /// The split holding `panel` alone on one side gives it the width it opens at
+    /// ([`Panel::opening_width`]), when it has one: a new split would give it half the page.
+    fn fit_opening(&mut self, panel: Panel) {
+        if let Some(width) = panel.opening_width() {
+            self.fit_width(panel, width);
+        }
     }
 
     /// Give `panel`, alone in its group at one side of a split across, `width` points.
@@ -234,7 +250,16 @@ impl Workspace {
         } else if let Action::Open { panel, .. } | Action::OpenAt { panel, .. } = &action {
             next.hidden.retain(|(id, _)| id != panel);
         }
+        // Put beside another panel, a panel goes into a split of its own (dropped there by a drag).
+        let beside = match &action {
+            Action::Move { panel, placement: Placement::Split(Zone::Left | Zone::Right), .. }
+            | Action::OpenAt { panel, placement: Placement::Split(Zone::Left | Zone::Right), .. } => Some(*panel),
+            _ => None,
+        };
         next.layout.apply_with_permissions(action, permissions).map_err(|error| error.to_string())?;
+        if let Some(panel) = beside {
+            next.fit_opening(panel);
+        }
         next.validate()?;
         *self = next;
         Ok(())
@@ -276,7 +301,7 @@ impl Workspace {
                     .apply_with_permissions(Action::OpenAt { panel, anchor: Panel::Canvas, placement: Placement::Split(Zone::Right) }, permissions)
                     .is_ok()
                 && {
-                    next.fit_width(Panel::Diagram, DIAGRAM_WIDTH);
+                    next.fit_opening(Panel::Diagram);
                     true
                 });
         // The board opens as a tab beside the Inspector, where the diagrams it shows are listed.
@@ -297,9 +322,8 @@ impl Workspace {
                     permissions,
                 )
                 .map_err(|error| error.to_string())?;
-            if panel == Panel::Moves {
-                next.fit_moves();
-            }
+            // In a split of its own beside the page: at its opening width, not half the page.
+            next.fit_opening(panel);
         }
         next.validate()?;
         *self = next;
@@ -600,12 +624,24 @@ impl DockContent<Panel> for Content<'_> {
     }
 }
 
+/// The page's least width beside the panels, in points.
+pub(crate) const PAGE_MIN_WIDTH: f32 = 160.0;
+
+/// The widest a panel beside the page may be dragged when `available` points are left for it
+/// and the page: all but [`PAGE_MIN_WIDTH`], and never under its own `least` width.
+pub(crate) fn widest_beside_page(available: f32, least: f32) -> f32 {
+    if available.is_finite() { (available - PAGE_MIN_WIDTH).max(least) } else { least }
+}
+
 fn panel_limits(panel: &Panel) -> PanelLimits {
+    // The right-hand column and the Move list are as wide as they are dragged: only the page's
+    // least width stops them. The whole column, since the board is a tab beside the Inspector
+    // and a tab group is no wider than the widest each of its panels allows.
     let (min, max_width) = match panel {
-        Panel::Canvas => (egui::vec2(160.0, 160.0), 1_000_000.0),
+        Panel::Canvas => (egui::vec2(PAGE_MIN_WIDTH, 160.0), 1_000_000.0),
         Panel::Tools => (egui::vec2(240.0, 120.0), 520.0),
-        Panel::Inspector | Panel::Board | Panel::Diagram => (egui::vec2(260.0, 120.0), 520.0),
-        Panel::Moves => (egui::vec2(180.0, 120.0), 480.0),
+        Panel::Inspector | Panel::Board | Panel::Diagram => (egui::vec2(260.0, 120.0), 1_000_000.0),
+        Panel::Moves => (egui::vec2(180.0, 120.0), 1_000_000.0),
     };
     PanelLimits { min, max: egui::vec2(max_width, 1_000_000.0) }
 }
@@ -613,6 +649,44 @@ fn panel_limits(panel: &Panel) -> PanelLimits {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A panel beside the page in Read mode may take all but the page's least width, never less
+    /// than its own least, whatever width it is given.
+    #[test]
+    fn a_panel_beside_the_page_leaves_the_page_its_least_width() {
+        assert_eq!(widest_beside_page(1400.0, 260.0), 1400.0 - PAGE_MIN_WIDTH);
+        assert_eq!(widest_beside_page(300.0, 260.0), 260.0);
+        for odd in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY, -50.0, 0.0] {
+            assert_eq!(widest_beside_page(odd, 180.0), 180.0, "{odd}");
+        }
+    }
+
+    /// A panel of the right-hand column opened or dropped beside the page in a split of its own
+    /// takes its opening width there, not half the page: no widest stops it at 520 pt any more.
+    /// The Tools keep the split the drop makes.
+    #[test]
+    fn side_panels_take_their_width_in_a_split_of_their_own() {
+        fn width(workspace: &Workspace, panel: Panel) -> Option<SplitSize> {
+            fn find(node: &Node<Panel>, panel: Panel) -> Option<SplitSize> {
+                let Node::Split { size, first, second, .. } = node else { return None };
+                let alone = |node: &Node<Panel>| matches!(node, Node::Tabs { panels, .. } if panels.as_slice() == [panel]);
+                if alone(first) || alone(second) { Some(*size) } else { find(first, panel).or_else(|| find(second, panel)) }
+            }
+            workspace.layout.root.as_ref().and_then(|root| find(root, panel))
+        }
+        let mut workspace = Workspace::default();
+        workspace.set_visible(Panel::Inspector, false).unwrap();
+        // No Inspector to be a tab beside: each in a split of its own.
+        workspace.set_visible(Panel::Board, true).unwrap();
+        assert_eq!(width(&workspace, Panel::Board), Some(SplitSize::FixedSecond(SIDE_WIDTH)));
+        workspace.set_visible(Panel::Diagram, true).unwrap();
+        assert_eq!(width(&workspace, Panel::Diagram), Some(SplitSize::FixedSecond(DIAGRAM_WIDTH)));
+        // Dragged to the page's left edge.
+        workspace.apply(Action::Move { panel: Panel::Board, anchor: Panel::Canvas, placement: Placement::Split(Zone::Left) }).unwrap();
+        assert_eq!(width(&workspace, Panel::Board), Some(SplitSize::FixedFirst(SIDE_WIDTH)));
+        workspace.apply(Action::Move { panel: Panel::Tools, anchor: Panel::Canvas, placement: Placement::Split(Zone::Right) }).unwrap();
+        assert!(matches!(width(&workspace, Panel::Tools), Some(SplitSize::Ratio(_))), "{:?}", workspace.layout);
+    }
 
     #[test]
     fn lithuanian_translates_every_dynamic_panel_title() {

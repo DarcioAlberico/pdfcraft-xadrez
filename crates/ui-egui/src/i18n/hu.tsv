@@ -3378,3 +3378,5 @@ castling	long	hosszú
 	There is no fonts folder beside the program to import into.	A program mellett nincs betűtípusmappa, ahová importálni lehetne.
 	Already in the fonts folder: {fonts}. Replace them?	Már a betűtípusmappában vannak: {fonts}. Lecseréli őket?
 	The fonts cannot be imported: {reason}	A betűtípusok nem importálhatók: {reason}
+	Smaller text	Kisebb szöveg
+	Larger text	Nagyobb szöveg
