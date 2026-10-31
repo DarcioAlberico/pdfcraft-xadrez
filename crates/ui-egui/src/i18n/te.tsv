@@ -3242,6 +3242,12 @@ castling	long	పెద్ద
 	in conflict with the book's PGN	పుస్తకం PGN తో వైరుధ్యంలో
 	in conflict, the PGN's move chosen	వైరుధ్యంలో, PGN ఎత్తు ఎంచుకోబడింది
 	in conflict, the book's move kept	వైరుధ్యంలో, పుస్తకం ఎత్తు ఉంచబడింది
+	Border	అంచు
+	Corners	మూలలు
+	Start outlined, end filled	ప్రారంభం అంచుతో, ముగింపు నింపి
+	Border and light fill	అంచు మరియు లేత నింపు
+	Last move	చివరి ఎత్తు
+	Strength	తీవ్రత
 	Import fonts…	ఫాంట్‌లను దిగుమతి చేయి…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	చదరంగం ఫాంట్‌లను ప్రోగ్రామ్ పక్కన ఉన్న ఫాంట్‌ల ఫోల్డర్‌లోకి కాపీ చేస్తుంది: ప్రతి డయాగ్రామ్ ఫాంట్ ఒక పావుల సెట్ అవుతుంది, ఫిగరిన్ ఫాంట్ ఎగుమతులలోని ఎత్తులను రాస్తుంది.
 	Choose chess fonts	చదరంగం ఫాంట్‌లను ఎంచుకోండి

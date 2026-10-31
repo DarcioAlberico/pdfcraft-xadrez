@@ -3372,6 +3372,12 @@ castling	long	dolga
 	in conflict with the book's PGN	v sporu s PGN knjige
 	in conflict, the PGN's move chosen	v sporu, izbrana poteza iz PGN
 	in conflict, the book's move kept	v sporu, obdržana poteza iz knjige
+	Border	Obroba
+	Corners	Koti
+	Start outlined, end filled	Začetek obrobljen, cilj zapolnjen
+	Border and light fill	Obroba in svetlo polnilo
+	Last move	Zadnja poteza
+	Strength	Moč
 	Import fonts…	Uvozi pisave…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Kopira šahovske pisave v mapo pisav ob programu: vsaka pisava za diagrame je komplet figur, pisava s figuricami pa piše poteze v izvozih.
 	Choose chess fonts	Izberite šahovske pisave

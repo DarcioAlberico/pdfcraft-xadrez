@@ -3280,6 +3280,12 @@ castling	long	длинная
 	in conflict with the book's PGN	в конфликте с PGN книги
 	in conflict, the PGN's move chosen	в конфликте, выбран ход из PGN
 	in conflict, the book's move kept	в конфликте, оставлен ход книги
+	Border	Рамка
+	Corners	Уголки
+	Start outlined, end filled	Откуда — рамка, куда — заливка
+	Border and light fill	Рамка и лёгкая заливка
+	Last move	Последний ход
+	Strength	Интенсивность
 	Import fonts…	Импортировать шрифты…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Копирует шахматные шрифты в папку шрифтов рядом с программой: каждый шрифт диаграмм становится набором фигур, а шрифт фигурок пишет ходы в экспорте.
 	Choose chess fonts	Выберите шахматные шрифты

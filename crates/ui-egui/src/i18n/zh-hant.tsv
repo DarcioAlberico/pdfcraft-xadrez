@@ -3283,6 +3283,12 @@ castling	long	長
 	in conflict with the book's PGN	與本書的 PGN 衝突
 	in conflict, the PGN's move chosen	衝突，已選 PGN 的著法
 	in conflict, the book's move kept	衝突，已保留書中的著法
+	Border	邊框
+	Corners	四角
+	Start outlined, end filled	起點描邊，終點填滿
+	Border and light fill	邊框加淺色填滿
+	Last move	上一步
+	Strength	強度
 	Import fonts…	匯入字型…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	將西洋棋字型複製到程式旁邊的字型資料夾：每種棋圖字型都是一套棋子，棋子符號字型則用於寫出匯出內容中的著法。
 	Choose chess fonts	選擇西洋棋字型

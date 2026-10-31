@@ -3339,6 +3339,12 @@ castling	long	μεγάλο
 	in conflict with the book's PGN	σε σύγκρουση με το PGN του βιβλίου
 	in conflict, the PGN's move chosen	σε σύγκρουση, επιλέχθηκε η κίνηση του PGN
 	in conflict, the book's move kept	σε σύγκρουση, κρατήθηκε η κίνηση του βιβλίου
+	Border	Περίγραμμα
+	Corners	Γωνίες
+	Start outlined, end filled	Αρχή με περίγραμμα, τέλος γεμάτο
+	Border and light fill	Περίγραμμα και απαλό γέμισμα
+	Last move	Τελευταία κίνηση
+	Strength	Ένταση
 	Import fonts…	Εισαγωγή γραμματοσειρών…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Αντιγράφει γραμματοσειρές σκακιού στον φάκελο γραμματοσειρών δίπλα στο πρόγραμμα: κάθε γραμματοσειρά διαγραμμάτων είναι ένα σετ πεσσών, και μια γραμματοσειρά συμβόλων γράφει τις κινήσεις των εξαγωγών.
 	Choose chess fonts	Επιλέξτε γραμματοσειρές σκακιού

@@ -2678,7 +2678,10 @@ impl PdfCraftApp {
             ("move-pieces", _) => {
                 self.chess.move_pieces = chess_figurines::MovePieces::from_token(value).ok_or("move-pieces must be figurines, letters or english")?;
             }
-            (part @ ("board-coordinates" | "board-frame" | "board-squares" | "board-turn-dot"), _) => {
+            (
+                part @ ("board-coordinates" | "board-frame" | "board-squares" | "board-turn-dot" | "board-last-move" | "board-last-move-strength"),
+                _,
+            ) => {
                 let mut look = self.chess.board_look;
                 look.set(part.trim_start_matches("board-"), value)?;
                 self.set_board_look(look);

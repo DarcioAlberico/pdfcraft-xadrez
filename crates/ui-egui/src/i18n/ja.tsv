@@ -3369,6 +3369,12 @@ castling	long	ロング
 	in conflict with the book's PGN	本の PGN と矛盾
 	in conflict, the PGN's move chosen	矛盾、PGN の手を選択
 	in conflict, the book's move kept	矛盾、本の手を維持
+	Border	枠線
+	Corners	四隅
+	Start outlined, end filled	移動元は枠線、移動先は塗りつぶし
+	Border and light fill	枠線と薄い塗りつぶし
+	Last move	最後の指し手
+	Strength	強さ
 	Import fonts…	フォントを読み込む…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	チェスのフォントをプログラムの横のフォントフォルダーにコピーします。図面用フォントはそれぞれ駒のセットになり、フィギュリンフォントはエクスポートの指し手を書きます。
 	Choose chess fonts	チェスのフォントを選択

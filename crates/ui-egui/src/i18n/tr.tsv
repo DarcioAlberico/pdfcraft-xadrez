@@ -3363,6 +3363,12 @@ castling	long	uzun
 	in conflict with the book's PGN	kitabın PGN'iyle çelişkili
 	in conflict, the PGN's move chosen	çelişkili, PGN'in hamlesi seçildi
 	in conflict, the book's move kept	çelişkili, kitabın hamlesi korundu
+	Border	Kenarlık
+	Corners	Köşeler
+	Start outlined, end filled	Başlangıç çerçeveli, varış dolu
+	Border and light fill	Kenarlık ve hafif dolgu
+	Last move	Son hamle
+	Strength	Yoğunluk
 	Import fonts…	Yazı tiplerini içe aktar…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Satranç yazı tiplerini programın yanındaki yazı tipleri klasörüne kopyalar: her diyagram yazı tipi bir taş takımıdır, figürin yazı tipi ise dışa aktarımlardaki hamleleri yazar.
 	Choose chess fonts	Satranç yazı tiplerini seçin

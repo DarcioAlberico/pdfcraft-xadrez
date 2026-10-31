@@ -3367,6 +3367,12 @@ castling	long	grand
 	in conflict with the book's PGN	en conflit avec le PGN du livre
 	in conflict, the PGN's move chosen	en conflit, coup du PGN choisi
 	in conflict, the book's move kept	en conflit, coup du livre gardé
+	Border	Bordure
+	Corners	Coins
+	Start outlined, end filled	Départ encadré, arrivée remplie
+	Border and light fill	Bordure et fond léger
+	Last move	Dernier coup
+	Strength	Intensité
 	Import fonts…	Importer des polices…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Copie des polices d'échecs dans le dossier des polices à côté du programme : chaque police de diagrammes est un jeu de pièces, et une police de figurines écrit les coups des exportations.
 	Choose chess fonts	Choisir des polices d'échecs

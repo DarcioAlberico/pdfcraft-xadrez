@@ -3508,6 +3508,12 @@ castling	long	largo
 	in conflict with the book's PGN	en conflicto con el PGN del libro
 	in conflict, the PGN's move chosen	en conflicto, elegida la jugada del PGN
 	in conflict, the book's move kept	en conflicto, mantenida la jugada del libro
+	Border	Borde
+	Corners	Esquinas
+	Start outlined, end filled	Origen con contorno, destino relleno
+	Border and light fill	Borde y relleno suave
+	Last move	Última jugada
+	Strength	Intensidad
 	Import fonts…	Importar fuentes…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Copia fuentes de ajedrez en la carpeta de fuentes junto al programa: cada fuente de diagramas es un juego de piezas, y una fuente de figurines escribe las jugadas de las exportaciones.
 	Choose chess fonts	Elija fuentes de ajedrez

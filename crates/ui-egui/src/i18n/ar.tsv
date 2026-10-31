@@ -3642,6 +3642,12 @@ castling	long	طويل
 	in conflict with the book's PGN	متعارضة مع PGN الكتاب
 	in conflict, the PGN's move chosen	متعارضة، اختيرت نقلة PGN
 	in conflict, the book's move kept	متعارضة، احتُفظ بنقلة الكتاب
+	Border	حدود
+	Corners	زوايا
+	Start outlined, end filled	البداية محددة والنهاية ممتلئة
+	Border and light fill	حدود وتعبئة خفيفة
+	Last move	آخر نقلة
+	Strength	الشدة
 	Import fonts…	استيراد خطوط…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	انسخ خطوط الشطرنج إلى مجلد الخطوط بجانب البرنامج: كل خط مخططات هو مجموعة قطع، وخط الرموز يكتب نقلات التصديرات.
 	Choose chess fonts	اختر خطوط الشطرنج

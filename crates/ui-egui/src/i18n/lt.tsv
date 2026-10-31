@@ -3618,6 +3618,12 @@ castling	long	ilgoji
 	in conflict with the book's PGN	prieštarauja knygos PGN
 	in conflict, the PGN's move chosen	prieštarauja, pasirinktas PGN ėjimas
 	in conflict, the book's move kept	prieštarauja, paliktas knygos ėjimas
+	Border	Rėmelis
+	Corners	Kampai
+	Start outlined, end filled	Pradžia apvesta, pabaiga užpildyta
+	Border and light fill	Rėmelis ir šviesus užpildas
+	Last move	Paskutinis ėjimas
+	Strength	Stiprumas
 	Import fonts…	Importuoti šriftus…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Nukopijuoja šachmatų šriftus į šriftų aplanką šalia programos: kiekvienas diagramų šriftas yra figūrų rinkinys, o figūrėlių šriftas rašo eksportų ėjimus.
 	Choose chess fonts	Pasirinkite šachmatų šriftus

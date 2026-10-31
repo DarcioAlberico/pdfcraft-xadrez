@@ -3331,6 +3331,12 @@ castling	long	长
 	in conflict with the book's PGN	与本书的 PGN 冲突
 	in conflict, the PGN's move chosen	冲突，已选 PGN 的着法
 	in conflict, the book's move kept	冲突，已保留书中的着法
+	Border	边框
+	Corners	四角
+	Start outlined, end filled	起点描边，终点填充
+	Border and light fill	边框加浅色填充
+	Last move	上一步
+	Strength	强度
 	Import fonts…	导入字体…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	将国际象棋字体复制到程序旁边的字体文件夹：每种棋图字体都是一套棋子，棋子符号字体则用于写出导出内容中的着法。
 	Choose chess fonts	选择国际象棋字体

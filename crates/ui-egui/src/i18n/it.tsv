@@ -3579,6 +3579,12 @@ castling	long	lungo
 	in conflict with the book's PGN	in conflitto con il PGN del libro
 	in conflict, the PGN's move chosen	in conflitto, scelta la mossa del PGN
 	in conflict, the book's move kept	in conflitto, tenuta la mossa del libro
+	Border	Bordo
+	Corners	Angoli
+	Start outlined, end filled	Partenza contornata, arrivo pieno
+	Border and light fill	Bordo e riempimento leggero
+	Last move	Ultima mossa
+	Strength	Intensità
 	Import fonts…	Importa caratteri…
 	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Copia i caratteri di scacchi nella cartella dei caratteri accanto al programma: ogni carattere per diagrammi è un set di pezzi, e un carattere di figurine scrive le mosse delle esportazioni.
 	Choose chess fonts	Scegli caratteri di scacchi
