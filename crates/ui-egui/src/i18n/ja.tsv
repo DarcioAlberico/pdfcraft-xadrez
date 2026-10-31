@@ -3375,3 +3375,9 @@ castling	long	ロング
 	Border and light fill	枠線と薄い塗りつぶし
 	Last move	最後の指し手
 	Strength	強さ
+	Import fonts…	フォントを読み込む…
+	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	チェスのフォントをプログラムの横のフォントフォルダーにコピーします。図面用フォントはそれぞれ駒のセットになり、フィギュリンフォントはエクスポートの指し手を書きます。
+	Choose chess fonts	チェスのフォントを選択
+	There is no fonts folder beside the program to import into.	読み込み先となるフォントフォルダーがプログラムの横にありません。
+	Already in the fonts folder: {fonts}. Replace them?	フォントフォルダーにすでにあります: {fonts}。置き換えますか？
+	The fonts cannot be imported: {reason}	フォントを読み込めません: {reason}

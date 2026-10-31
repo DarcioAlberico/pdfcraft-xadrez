@@ -79,6 +79,8 @@ egui_kittest = { workspace = true, features = ["eframe", "wgpu"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
 # Glyph-coverage test of the interface fonts; the same skrifa pdfcraft-fonts already uses.
 skrifa = "0.44"
+# A synthetic chess font for the font import's test (`pieces::test_font`): none is committed.
+pdfcraft-chessvision = { workspace = true, features = ["test-fonts"] }
 
 [build-dependencies]
 serde_json = { workspace = true }

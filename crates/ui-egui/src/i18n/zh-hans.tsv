@@ -3337,3 +3337,9 @@ castling	long	长
 	Border and light fill	边框加浅色填充
 	Last move	上一步
 	Strength	强度
+	Import fonts…	导入字体…
+	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	将国际象棋字体复制到程序旁边的字体文件夹：每种棋图字体都是一套棋子，棋子符号字体则用于写出导出内容中的着法。
+	Choose chess fonts	选择国际象棋字体
+	There is no fonts folder beside the program to import into.	程序旁边没有可导入的字体文件夹。
+	Already in the fonts folder: {fonts}. Replace them?	字体文件夹中已有：{fonts}。要替换吗？
+	The fonts cannot be imported: {reason}	无法导入字体：{reason}

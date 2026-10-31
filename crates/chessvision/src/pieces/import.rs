@@ -9,6 +9,11 @@
 //! is written, so a file that points elsewhere or draws nothing is refused. What is imported has
 //! no licence PdfCraft knows: each folder gets an `ORIGIN.txt` saying so, and the user is told
 //! it is for personal use. Nothing already there is replaced unless asked.
+//!
+//! Chess fonts are imported too ([`import_fonts`]), into the `fonts` folder beside the program
+//! rather than the pieces folder: a diagram font there is a piece set, and a figurine or sign
+//! font writes the moves of the exports ([`crate::text_font`]). A font carries its own licence in
+//! its name table; PdfCraft copies it as it is and ships none.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -30,6 +35,8 @@ const NAME_WINDOW: usize = 256;
 const MAX_NAME_CHARS: usize = 40;
 /// The note written into every imported folder.
 pub const ORIGIN_FILE: &str = "ORIGIN.txt";
+/// Most font files looked at in one folder.
+const MAX_FONT_FILES: usize = 256;
 
 /// Why pieces could not be imported.
 #[derive(Debug, thiserror::Error)]
@@ -46,10 +53,12 @@ pub enum ImportError {
     Incomplete { dir: PathBuf, missing: String },
     #[error("the set {set} cannot be used: {reason}")]
     Invalid { set: String, reason: String },
-    #[error("already in the pieces folder: {}", names(.0))]
+    #[error("already there: {}", names(.0))]
     Exists(Vec<PathBuf>),
-    #[error("{0} is already the pieces folder's own")]
+    #[error("{0} is the folder it would be imported into")]
     Same(PathBuf),
+    #[error("{0} holds no chess font PdfCraft can use (a diagram font it knows, or a figurine or sign font)")]
+    NoFonts(PathBuf),
 }
 
 fn names(dirs: &[PathBuf]) -> String {
@@ -78,6 +87,137 @@ type SetFiles = (String, Vec<(String, Vec<u8>)>);
 pub struct Imported {
     pub name: String,
     pub dir: PathBuf,
+}
+
+/// What an imported font is for.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FontUse {
+    /// A chess diagram font: its pieces are a set to choose.
+    Pieces,
+    /// A figurine or sign font: the exports write moves with it.
+    Text,
+}
+
+/// A chess font copied into the fonts folder.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ImportedFont {
+    /// Its family, as the piece picker names it.
+    pub name: String,
+    /// Where it is now.
+    pub path: PathBuf,
+    pub kind: FontUse,
+}
+
+/// Whether `path` is for [`import_fonts`] rather than [`import`]: a font file, or a folder with
+/// font files and no piece images.
+pub fn holds_fonts(path: &Path) -> bool {
+    if path.is_dir() {
+        return !images::is_piece_folder(path) && !font_files(path).is_empty();
+    }
+    is_font_file(path)
+}
+
+/// Copy the chess fonts among `from` (font files, or folders of them) into `into`, the fonts
+/// folder beside the program: the diagram fonts PdfCraft can draw pieces with
+/// ([`super::from_font_bytes`], their layout checked), and the figurine and sign fonts the
+/// exports write moves with ([`crate::text_font`]). Other fonts are passed over, and so is a
+/// second font of a family already taken (DiagPDF keeps a patched copy beside some). Nothing is
+/// written unless there is one at least, and a file of the same name already in `into` is
+/// replaced only when `replace` is set ([`ImportError::Exists`] names them otherwise); an
+/// identical one is left as it is. One font at a time is held in memory.
+pub fn import_fonts(from: &[PathBuf], into: &Path, replace: bool) -> Result<Vec<ImportedFont>, ImportError> {
+    let mut files = Vec::new();
+    for path in from {
+        if path.is_dir() {
+            if same_place(path, into) {
+                return Err(ImportError::Same(path.clone()));
+            }
+            files.extend(font_files(path));
+        } else {
+            files.push(path.clone());
+        }
+    }
+    // Each font taken, with the file it comes from.
+    let mut plan: Vec<(ImportedFont, PathBuf)> = Vec::new();
+    for path in files {
+        let Some((name, kind)) = chess_font(&path)? else { continue };
+        if plan.iter().any(|(f, _)| f.kind == kind && f.name == name) {
+            continue;
+        }
+        let Some(file) = path.file_name() else { continue };
+        plan.push((ImportedFont { name, path: into.join(file), kind }, path));
+    }
+    if plan.is_empty() {
+        return Err(ImportError::NoFonts(from.first().cloned().unwrap_or_default()));
+    }
+    // A file there already with other bytes waits for Replace; one with the same bytes stays.
+    let mut copies = Vec::new();
+    let mut taken = Vec::new();
+    for (font, source) in &plan {
+        if !font.path.exists() {
+            copies.push((source, &font.path));
+        } else if !same_bytes(source, &font.path)? {
+            taken.push(font.path.clone());
+            copies.push((source, &font.path));
+        }
+    }
+    if !taken.is_empty() && !replace {
+        return Err(ImportError::Exists(taken));
+    }
+    if !copies.is_empty() {
+        std::fs::create_dir_all(into).map_err(|source| ImportError::Write { path: into.to_path_buf(), source })?;
+    }
+    for (source, target) in copies {
+        std::fs::copy(source, target).map_err(|e| ImportError::Write { path: target.clone(), source: e })?;
+    }
+    Ok(plan.into_iter().map(|(font, _)| font).collect())
+}
+
+/// Whether two files hold the same bytes; a file there that cannot be read is taken as other.
+fn same_bytes(source: &Path, there: &Path) -> Result<bool, ImportError> {
+    let size = |p: &Path| std::fs::metadata(p).map(|m| m.len()).ok();
+    if size(source) != size(there) {
+        return Ok(false);
+    }
+    let ours = std::fs::read(source).map_err(|e| ImportError::Read { path: source.to_path_buf(), source: e })?;
+    Ok(std::fs::read(there).is_ok_and(|theirs| theirs == ours))
+}
+
+/// The font files directly in `dir`, by name, at most [`MAX_FONT_FILES`].
+fn font_files(dir: &Path) -> Vec<PathBuf> {
+    let Ok(entries) = std::fs::read_dir(dir) else { return Vec::new() };
+    let mut found: Vec<PathBuf> = entries.flatten().take(10_000).map(|e| e.path()).filter(|p| is_font_file(p)).collect();
+    found.sort();
+    found.truncate(MAX_FONT_FILES);
+    found
+}
+
+fn is_font_file(path: &Path) -> bool {
+    path.is_file() && path.extension().and_then(|e| e.to_str()).is_some_and(|e| matches!(e.to_ascii_lowercase().as_str(), "ttf" | "otf"))
+}
+
+/// The chess font in `path`: its family and what it is for; `None` for any other font, or a
+/// file that is no font. Only a file that cannot be read at all is an error.
+fn chess_font(path: &Path) -> Result<Option<(String, FontUse)>, ImportError> {
+    let size = std::fs::metadata(path).map_err(|source| ImportError::Read { path: path.to_path_buf(), source })?.len();
+    if usize::try_from(size).unwrap_or(usize::MAX) > super::MAX_FONT_BYTES {
+        return Ok(None);
+    }
+    let bytes = std::fs::read(path).map_err(|source| ImportError::Read { path: path.to_path_buf(), source })?;
+    let hint = path.file_stem().and_then(|s| s.to_str()).unwrap_or_default();
+    if let Ok(font) = super::read_font(&bytes, hint) {
+        // A layout only presumed would be imported and then never offered.
+        return Ok(font.offered().then_some((font.set.name, FontUse::Pieces)));
+    }
+    // A figurine or sign font PdfCraft knows; a font with the Unicode chess symbols is any text
+    // font, not a chess one.
+    match crate::text_font::from_bytes(bytes, hint) {
+        Ok(font) if font.role != crate::text_font::FontRole::Unicode => {
+            let name = if font.family.is_empty() { hint.to_owned() } else { font.family };
+            Ok(Some((name, FontUse::Text)))
+        }
+        _ => Ok(None),
+    }
 }
 
 /// Import the sets in `from` (a folder of piece images or a saved web page) into `into`, one
@@ -442,6 +582,61 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    /// A folder like DiagPDF's `Fonts`: board fonts (one with a patched copy beside it), a
+    /// figurine font, a text font and a stray file. The diagram fonts and the figurine font go
+    /// into the fonts folder, each family once; a second import changes nothing, and a different
+    /// file of the same name waits for Replace.
+    #[test]
+    fn a_folder_of_chess_fonts_goes_into_the_fonts_folder() {
+        use super::super::test_font::font;
+        let dir = scratch("fonts");
+        let (from, into) = (dir.join("Fonts"), dir.join("app").join("fonts"));
+        std::fs::create_dir_all(&from).unwrap();
+        let leipzig = font("Chess Leipzig DG", "phbrqkojntwl+ ", true, 0);
+        std::fs::write(from.join("LeipzigDG.ttf"), &leipzig).unwrap();
+        std::fs::write(from.join("LeipzigDG_patch.ttf"), &leipzig).unwrap();
+        std::fs::write(from.join("Chess Cases.ttf"), font("Chess Cases", "pnbrqkomvtwl+ ", true, 0x0002)).unwrap();
+        std::fs::write(from.join("HastingsFigurine.TTF"), font("HastingsFigurine", "KQRBN", false, 0)).unwrap();
+        std::fs::write(from.join("Inter.ttf"), include_bytes!("../../../../assets/fonts/Inter-Regular.ttf")).unwrap();
+        // A layout only presumed would never be offered: not imported either.
+        std::fs::write(from.join("LinaresDiagram.ttf"), font("LinaresDiagram", "PNLRQKpnlrqk+ ", false, 0)).unwrap();
+        std::fs::write(from.join("notes.txt"), "x").unwrap();
+        assert!(holds_fonts(&from) && holds_fonts(&from.join("LeipzigDG.ttf")));
+        assert!(!holds_fonts(&from.join("notes.txt")) && !holds_fonts(&dir.join("nothing")));
+        let imported = import_fonts(std::slice::from_ref(&from), &into, false).unwrap();
+        let got: Vec<(&str, FontUse, PathBuf)> = imported.iter().map(|f| (f.name.as_str(), f.kind, f.path.clone())).collect();
+        assert_eq!(
+            got,
+            [
+                ("Chess Cases", FontUse::Pieces, into.join("Chess Cases.ttf")),
+                ("HastingsFigurine", FontUse::Text, into.join("HastingsFigurine.TTF")),
+                ("Chess Leipzig DG", FontUse::Pieces, into.join("LeipzigDG.ttf")),
+            ]
+        );
+        let mut there: Vec<String> = std::fs::read_dir(&into).unwrap().flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect();
+        there.sort();
+        assert_eq!(there, ["Chess Cases.ttf", "HastingsFigurine.TTF", "LeipzigDG.ttf"]);
+        assert_eq!(std::fs::read(into.join("LeipzigDG.ttf")).unwrap(), leipzig);
+        // The same fonts again: already there as they are.
+        assert_eq!(import_fonts(std::slice::from_ref(&from), &into, false).unwrap().len(), 3);
+        // A different font of the same file name waits for Replace.
+        let other = font("Chess Leipzig DG", "phbrqkojntwl+ *", true, 0);
+        std::fs::write(from.join("LeipzigDG.ttf"), &other).unwrap();
+        let file = from.join("LeipzigDG.ttf");
+        assert!(matches!(import_fonts(std::slice::from_ref(&file), &into, false), Err(ImportError::Exists(t)) if t == [into.join("LeipzigDG.ttf")]));
+        assert_eq!(std::fs::read(into.join("LeipzigDG.ttf")).unwrap(), leipzig);
+        import_fonts(&[file], &into, true).unwrap();
+        assert_eq!(std::fs::read(into.join("LeipzigDG.ttf")).unwrap(), other);
+        // The fonts folder itself, and a folder with no chess font.
+        assert!(matches!(import_fonts(std::slice::from_ref(&into), &into, false), Err(ImportError::Same(_))));
+        let plain = dir.join("plain");
+        std::fs::create_dir_all(&plain).unwrap();
+        std::fs::write(plain.join("Inter.ttf"), include_bytes!("../../../../assets/fonts/Inter-Regular.ttf")).unwrap();
+        assert!(matches!(import_fonts(std::slice::from_ref(&plain), &dir.join("empty"), false), Err(ImportError::NoFonts(p)) if p == plain));
+        assert!(!dir.join("empty").exists(), "nothing written");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

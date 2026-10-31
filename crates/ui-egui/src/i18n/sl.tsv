@@ -3378,3 +3378,9 @@ castling	long	dolga
 	Border and light fill	Obroba in svetlo polnilo
 	Last move	Zadnja poteza
 	Strength	Moč
+	Import fonts…	Uvozi pisave…
+	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Kopira šahovske pisave v mapo pisav ob programu: vsaka pisava za diagrame je komplet figur, pisava s figuricami pa piše poteze v izvozih.
+	Choose chess fonts	Izberite šahovske pisave
+	There is no fonts folder beside the program to import into.	Ob programu ni mape pisav, v katero bi uvozili.
+	Already in the fonts folder: {fonts}. Replace them?	Že v mapi pisav: {fonts}. Jih zamenjam?
+	The fonts cannot be imported: {reason}	Pisav ni mogoče uvoziti: {reason}

@@ -15,9 +15,17 @@
 //! export), in order ([`find`]):
 //! 1. `$PDFCRAFT_CHESS_PIECES`, the path of a chess diagram font or of a folder of piece images,
 //!    or the id of a set PdfCraft ships ([`bundled`], `chessnut`…) when no such path exists;
-//! 2. a chess diagram font (Chess Merida…) in the `fonts` folder beside the executable;
+//! 2. a chess diagram font in the `fonts` folder beside the executable: Chess Merida when it is
+//!    there, else the first by file name, passing over a font whose licence forbids embedding (the
+//!    diagrams go into the page and the exports; such a font can still be chosen);
 //! 3. Chess Merida among the fonts installed on this machine;
 //! 4. a `pieces` folder of piece images beside the executable.
+//!
+//! The user's fonts get into that `fonts` folder by [`import::import_fonts`] (DiagPDF's folder of
+//! board fonts, say), and the picker ([`choice::candidates`]) offers every chess diagram font
+//! there or installed. Fonts are found, listed and imported only when the catalogue checked their
+//! family's layout ([`Family::readable`]): one presumed from a subset taken out of a PDF (Linares
+//! Diagram…) draws the wrong glyphs, and is used only when named.
 //!
 //! The analysis **board** looks for the `pieces` folder first ([`find_for_board`]): a book's
 //! diagrams in its diagram font, the board to play on in the user's own pictures.
@@ -33,10 +41,13 @@ pub mod choice;
 pub mod images;
 pub mod import;
 mod svg;
+#[cfg(any(test, feature = "test-fonts"))]
+#[doc(hidden)]
+pub mod test_font;
 
 pub use images::{from_image_dir, is_piece_folder, missing_pieces};
 
-use pdfcraft_chess::catalog::{FontKind, Layout, lookup_family, normalize_font_name};
+use pdfcraft_chess::catalog::{Family, FontKind, Layout, looks_like_chess_font, lookup_family, normalize_font_name};
 use pdfcraft_chess::draw::{Layer, Paint, PieceGlyph, PieceSet, Rgb, Segment, Subpath};
 use skrifa::instance::{LocationRef, Size};
 use skrifa::outline::{DrawSettings, OutlinePen};
@@ -86,9 +97,37 @@ pub enum PieceSource {
     Geometric,
 }
 
+/// A chess diagram font read as pieces.
+struct FontPieces {
+    set: PieceSet,
+    /// Its family in the catalogue.
+    family: &'static Family,
+    /// Its OS/2 fsType says Restricted License embedding.
+    restricted: bool,
+}
+
+impl FontPieces {
+    /// Whether the font is offered without being named: its family's layout was checked.
+    fn offered(&self) -> bool {
+        self.family.readable()
+    }
+}
+
+/// A font file's pieces, when it is offered without being named ([`FontPieces::offered`]).
+fn offered_font_file(path: &Path) -> Option<FontPieces> {
+    read_font_file(path).ok().filter(FontPieces::offered)
+}
+
 /// Make a piece set from a chess diagram font's bytes. `name_hint` (the file name, say) is used
 /// when the font's own family name is not catalogued.
 pub fn from_font_bytes(bytes: &[u8], name_hint: &str) -> Result<(PieceSet, String), PieceError> {
+    read_font(bytes, name_hint).map(|f| {
+        let name = f.set.name.clone();
+        (f.set, name)
+    })
+}
+
+fn read_font(bytes: &[u8], name_hint: &str) -> Result<FontPieces, PieceError> {
     if bytes.len() > MAX_FONT_BYTES {
         return Err(PieceError::TooLarge(bytes.len()));
     }
@@ -140,8 +179,8 @@ pub fn from_font_bytes(bytes: &[u8], name_hint: &str) -> Result<(PieceSet, Strin
             *g = black;
         }
     }
-    let name = family.display_name.to_owned();
-    Ok((PieceSet { glyphs, name: name.clone() }, name))
+    let restricted = font.os2().is_ok_and(|os2| crate::text_font::restricted(os2.fs_type()));
+    Ok(FontPieces { set: PieceSet { glyphs, name: family.display_name.to_owned() }, family, restricted })
 }
 
 /// The white and the black piece of one kind from a diagram font's two light-square glyphs
@@ -209,6 +248,10 @@ fn reversed(p: &Subpath) -> Subpath {
 
 /// Read a font file and make a piece set from it.
 pub fn from_font_file(path: &Path) -> Result<PieceSet, PieceError> {
+    read_font_file(path).map(|f| f.set)
+}
+
+fn read_font_file(path: &Path) -> Result<FontPieces, PieceError> {
     let size = std::fs::metadata(path).map_err(|source| PieceError::Read { path: path.to_path_buf(), source })?.len();
     let size = usize::try_from(size).unwrap_or(usize::MAX);
     if size > MAX_FONT_BYTES {
@@ -216,7 +259,7 @@ pub fn from_font_file(path: &Path) -> Result<PieceSet, PieceError> {
     }
     let bytes = std::fs::read(path).map_err(|source| PieceError::Read { path: path.to_path_buf(), source })?;
     let hint = path.file_stem().and_then(|s| s.to_str()).unwrap_or_default();
-    from_font_bytes(&bytes, hint).map(|(set, _)| set)
+    read_font(&bytes, hint)
 }
 
 /// The user's piece set: `$PDFCRAFT_CHESS_PIECES` (a font or a folder of images, or a shipped
@@ -270,7 +313,10 @@ pub fn find_for_board() -> (PieceSet, PieceSource, Option<PieceError>) {
     find()
 }
 
-/// The first chess diagram font in `dir`, by file name (other fonts there are for text).
+/// The chess diagram font in `dir` that draws diagrams on its own (other fonts there are for
+/// text): Chess Merida when it is there, else the first by file name. A font whose licence
+/// forbids embedding is passed over, as the diagrams go into the page and the exports, and so is
+/// one whose layout the catalogue only presumes.
 fn diagram_font_in(dir: &Path) -> Option<(PieceSet, PieceSource, Option<PieceError>)> {
     let mut files: Vec<PathBuf> = std::fs::read_dir(dir)
         .ok()?
@@ -280,11 +326,41 @@ fn diagram_font_in(dir: &Path) -> Option<(PieceSet, PieceSource, Option<PieceErr
         .filter(|p| p.extension().and_then(|e| e.to_str()).is_some_and(|e| matches!(e.to_ascii_lowercase().as_str(), "ttf" | "otf")))
         .collect();
     files.sort();
-    files.into_iter().find_map(|path| {
-        let set = from_font_file(&path).ok()?;
-        let family = set.name.clone();
-        Some((set, PieceSource::Font { path: Some(path), family }, None))
-    })
+    let mut chosen: Option<(PieceSet, PathBuf)> = None;
+    for path in files {
+        let Some(font) = offered_font_file(&path) else { continue };
+        if font.restricted {
+            continue;
+        }
+        if font.family.key == "merida" {
+            chosen = Some((font.set, path));
+            break;
+        }
+        if chosen.is_none() {
+            chosen = Some((font.set, path));
+        }
+    }
+    let (set, path) = chosen?;
+    let family = set.name.clone();
+    Some((set, PieceSource::Font { path: Some(path), family }, None))
+}
+
+/// The installed fonts the picker tries ([`choice::candidates`]): those whose file name is a
+/// catalogued diagram family's or looks like a chess font's, at most `MAX_INSTALLED_CHESS_FONTS`.
+/// Reading every installed font to find out would take seconds.
+pub(crate) fn installed_chess_fonts() -> Vec<PathBuf> {
+    chess_font_files(installed_fonts())
+}
+
+/// Most installed fonts the picker tries.
+const MAX_INSTALLED_CHESS_FONTS: usize = 64;
+
+fn chess_font_files(paths: Vec<PathBuf>) -> Vec<PathBuf> {
+    let chess = |stem: &str| lookup_family(stem).is_some_and(|f| f.kind == FontKind::Diagram && f.key != "unicode") || looks_like_chess_font(stem);
+    let mut found: Vec<PathBuf> = paths.into_iter().filter(|p| p.file_stem().and_then(|s| s.to_str()).is_some_and(chess)).collect();
+    found.sort();
+    found.truncate(MAX_INSTALLED_CHESS_FONTS);
+    found
 }
 
 /// A shipped set's pieces; one that cannot be read (a broken build) is reported, and plain pieces
@@ -599,5 +675,131 @@ mod tests {
             let drawing = pdfcraft_chess::draw::board(&placement, &set, &style);
             std::fs::write(&out, pdfcraft_chess::svg::to_svg(&drawing, "test")).unwrap();
         }
+    }
+
+    /// The letters of both layouts: a font with all of them reads with either table.
+    const BOTH: &str = "phbrqkojntwlnmvPHBRQKOJNTWLNMV+ ";
+
+    /// DiagPDF's board fonts Alpha DG, Condal DG, Kingdom DG and Leipzig DG draw their pieces on
+    /// Chess Alpha's letters. Read with Marroquin's, as their plain families are, the white
+    /// knight was a black bishop and the black knight a piece of the frame.
+    #[test]
+    fn a_dg_font_draws_its_knights_from_h_and_j() {
+        for (family, white, black) in [("Chess Leipzig DG", "phbrqk", "ojntwl"), ("Chess Leipzig", "pnbrqk", "omvtwl")] {
+            let (set, name) = from_font_bytes(&test_font::font(family, BOTH, true, 0), "x").unwrap();
+            assert_eq!(name, family);
+            let drawn: String = set.glyphs.iter().filter_map(test_font::drawn_char).collect();
+            assert_eq!(drawn, format!("{white}{black}"), "{family}");
+        }
+        // The file name says which when the font's own name does not.
+        let unnamed = test_font::font("", BOTH, true, 0);
+        assert_eq!(from_font_bytes(&unnamed, "KingdomDG").unwrap().1, "Chess Kingdom DG");
+        assert_eq!(from_font_bytes(&unnamed, "ChessMerida").unwrap().1, "Chess Merida");
+    }
+
+    /// The font that draws diagrams on its own from the fonts folder: Chess Merida when it is
+    /// there, else the first font by name, and never one whose licence forbids embedding, as the
+    /// diagrams go into the page and the exports. Such a font can still be chosen.
+    #[test]
+    fn the_fonts_folder_draws_with_merida_first_and_never_a_restricted_font() {
+        let dir = std::env::temp_dir().join(format!("pdfcraft-font-order-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("a-cases.ttf"), test_font::font("Chess Cases", BOTH, true, 0x0002)).unwrap();
+        std::fs::write(dir.join("b-leipzig.ttf"), test_font::font("Chess Leipzig DG", BOTH, true, 0)).unwrap();
+        std::fs::write(dir.join("c-merida.ttf"), test_font::font("Chess Merida", BOTH, false, 0)).unwrap();
+        let found = |dir: &Path| diagram_font_in(dir).map(|(set, source, _)| (set.name, source));
+        let (name, source) = found(&dir).unwrap();
+        assert_eq!(name, "Chess Merida");
+        assert_eq!(source, PieceSource::Font { path: Some(dir.join("c-merida.ttf")), family: name });
+        std::fs::remove_file(dir.join("c-merida.ttf")).unwrap();
+        assert_eq!(found(&dir).map(|f| f.0).as_deref(), Some("Chess Leipzig DG"), "Chess Cases sorts first and is passed over");
+        std::fs::remove_file(dir.join("b-leipzig.ttf")).unwrap();
+        assert_eq!(found(&dir), None);
+        assert_eq!(from_font_file(&dir.join("a-cases.ttf")).unwrap().name, "Chess Cases");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// The picker tries the installed fonts whose file names say chess, not the hundreds of others.
+    #[test]
+    fn installed_fonts_are_tried_when_their_file_name_says_chess() {
+        let paths = [
+            "C:/W/arial.ttf",
+            "C:/W/ChessMerida.ttf",
+            "C:/U/LeipzigDG.ttf",
+            "C:/U/CondalDG.ttf",
+            "C:/U/Chess 7.ttf",
+            "C:/U/chess-alpha.ttf",
+            "C:/U/AlphaDG.ttf",
+            "C:/U/Chessboard Sans.ttf",
+        ];
+        let found = chess_font_files(paths.iter().map(PathBuf::from).collect());
+        let stems: Vec<String> = found.iter().filter_map(|p| p.file_stem()).map(|s| s.to_string_lossy().into_owned()).collect();
+        assert_eq!(stems, ["AlphaDG", "Chess 7", "CondalDG", "LeipzigDG", "chess-alpha", "ChessMerida"]);
+        let many: Vec<PathBuf> = (0..100).map(|i| PathBuf::from(format!("ChessMerida{i:03}.ttf"))).collect();
+        assert_eq!(chess_font_files(many).len(), MAX_INSTALLED_CHESS_FONTS);
+    }
+
+    /// Every chess diagram font in the folder `PDFCRAFT_CHESS_TEST_FONTS` names (DiagPDF's
+    /// `Fonts`, say) draws twelve different pieces; each white one has less ink than its black
+    /// one, and its silhouette is most like its own black piece's: one piece, one outline. A
+    /// font read with another family's table fails the last (a black bishop drawn for the white
+    /// knight is no frame piece's twin). Skipped without the folder: no font is committed
+    /// (decision D4).
+    #[test]
+    fn every_real_diagram_font_in_a_folder_draws_each_piece_in_its_two_colours() {
+        let Some(dir) = std::env::var_os("PDFCRAFT_CHESS_TEST_FONTS") else { return };
+        let mut read = 0;
+        for path in std::fs::read_dir(&dir).unwrap().flatten().map(|e| e.path()) {
+            let Ok(font) = read_font_file(&path) else { continue };
+            read += 1;
+            let glyphs = &font.set.glyphs;
+            for (i, a) in glyphs.iter().enumerate() {
+                for (j, b) in glyphs.iter().enumerate().skip(i + 1) {
+                    assert_ne!(a, b, "{}: glyphs {i} and {j} are alike", path.display());
+                }
+            }
+            let masks: Vec<Vec<bool>> = glyphs.iter().map(|g| mask(&paper(&g.layers.last().unwrap().subpaths))).collect();
+            for k in 0..6 {
+                let (light, dark) = (ink(&glyphs[k]), ink(&glyphs[k + 6]));
+                assert!(light < dark, "{}: white piece {k} has ink {light}, its black one {dark}", path.display());
+                let likeness: Vec<f32> = (6..12).map(|b| shared(&masks[k], &masks[b])).collect();
+                let twin = likeness.iter().enumerate().max_by(|a, b| a.1.total_cmp(b.1)).map(|(i, _)| i);
+                assert_eq!(twin, Some(k), "{}: white piece {k} is most like black piece {twin:?}: {likeness:?}", path.display());
+            }
+        }
+        assert!(read > 0, "no diagram font in {dir:?}");
+    }
+
+    /// Side of the grids the tests sample a cell on.
+    const GRID: u16 = 48;
+
+    /// Points on a grid over a piece's cell.
+    fn grid() -> impl Iterator<Item = (f32, f32)> {
+        (1..GRID).flat_map(|y| (1..GRID).map(move |x| (f32::from(x) / f32::from(GRID), f32::from(y) / f32::from(GRID))))
+    }
+
+    /// The share of a piece's drawn points that are black.
+    fn ink(g: &PieceGlyph) -> f32 {
+        let (mut black, mut drawn) = (0u32, 0u32);
+        for p in grid() {
+            if let Some(c) = color_at(g, p) {
+                drawn += 1;
+                black += u32::from(c == Rgb::BLACK);
+            }
+        }
+        black as f32 / drawn.max(1) as f32
+    }
+
+    /// Which points of the grid `paths` cover, nonzero.
+    fn mask(paths: &[Subpath]) -> Vec<bool> {
+        grid().map(|p| winding(paths, p) != 0).collect()
+    }
+
+    /// How alike two masks are: the points both cover over those either does.
+    fn shared(a: &[bool], b: &[bool]) -> f32 {
+        let both = a.iter().zip(b).filter(|(x, y)| **x && **y).count();
+        let either = a.iter().zip(b).filter(|(x, y)| **x || **y).count();
+        both as f32 / either.max(1) as f32
     }
 }

@@ -3585,3 +3585,9 @@ castling	long	lungo
 	Border and light fill	Bordo e riempimento leggero
 	Last move	Ultima mossa
 	Strength	Intensità
+	Import fonts…	Importa caratteri…
+	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Copia i caratteri di scacchi nella cartella dei caratteri accanto al programma: ogni carattere per diagrammi è un set di pezzi, e un carattere di figurine scrive le mosse delle esportazioni.
+	Choose chess fonts	Scegli caratteri di scacchi
+	There is no fonts folder beside the program to import into.	Accanto al programma non c'è una cartella dei caratteri in cui importare.
+	Already in the fonts folder: {fonts}. Replace them?	Già nella cartella dei caratteri: {fonts}. Sostituirli?
+	The fonts cannot be imported: {reason}	Impossibile importare i caratteri: {reason}

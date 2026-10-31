@@ -2,9 +2,9 @@
 //!
 //! A [`PieceChoice`] is kept in the preferences as a short text ([`PieceChoice::token`]) and
 //! turned into pieces by [`resolve`]. [`candidates`] lists what can be chosen on this machine:
-//! the shipped sets, the diagram fonts in the `fonts` folder beside the executable, the `pieces`
-//! folder there and each folder of piece images inside it, an installed Chess Merida and the plain
-//! shapes. `$PDFCRAFT_CHESS_PIECES` still takes precedence over any choice, as it always did.
+//! the shipped sets, the diagram fonts in the `fonts` folder beside the executable and the chess
+//! diagram fonts installed on this machine, the `pieces` folder there and each folder of piece
+//! images inside it, and the plain shapes. `$PDFCRAFT_CHESS_PIECES` still takes precedence over any choice, as it always did.
 
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
@@ -149,17 +149,14 @@ pub struct Candidate {
 }
 
 /// Every set that can be chosen on this machine, in the order to offer them: automatic, the
-/// shipped sets, diagram fonts beside the executable and an installed Chess Merida, piece folders
-/// beside the executable, the plain shapes. Fonts that cannot be read are left out; a folder
-/// missing pieces is listed with [`Candidate::missing`].
+/// shipped sets, diagram fonts beside the executable then those installed, piece folders beside
+/// the executable, the plain shapes. Fonts that cannot be read are left out, as are those whose
+/// layout the catalogue only presumes and a second font of a family already listed (a patched
+/// copy, the same font installed); a folder missing pieces is listed with [`Candidate::missing`].
 pub fn candidates() -> Vec<Candidate> {
     let fonts = crate::text_font::beside_executable();
     let pieces = super::beside_executable();
-    let merida: Vec<PathBuf> = super::installed_fonts()
-        .into_iter()
-        .filter(|p| p.file_stem().and_then(|s| s.to_str()).map(pdfcraft_chess::catalog::normalize_font_name).unwrap_or_default().contains("merida"))
-        .collect();
-    candidates_in(fonts.as_deref(), pieces.as_deref(), &merida)
+    candidates_in(fonts.as_deref(), pieces.as_deref(), &super::installed_chess_fonts())
 }
 
 fn candidates_in(fonts_dir: Option<&Path>, pieces_dir: Option<&Path>, installed: &[PathBuf]) -> Vec<Candidate> {
@@ -181,8 +178,10 @@ fn candidates_in(fonts_dir: Option<&Path>, pieces_dir: Option<&Path>, installed:
         if out.iter().any(|c| c.path.as_ref() == Some(&path)) {
             continue;
         }
-        if let Ok(set) = from_font_file(&path) {
-            out.push(Candidate { name: set.name, path: Some(path.clone()), ..plain(PieceChoice::Font(path), CandidateKind::Font, "") });
+        if let Some(font) = super::offered_font_file(&path)
+            && !out.iter().any(|c| c.kind == CandidateKind::Font && c.name == font.set.name)
+        {
+            out.push(Candidate { name: font.set.name, path: Some(path.clone()), ..plain(PieceChoice::Font(path), CandidateKind::Font, "") });
         }
     }
     if let Some(dir) = pieces_dir {
@@ -293,6 +292,42 @@ mod tests {
         assert!(list.iter().all(|c| c.kind != CandidateKind::Font), "{list:?}");
         // Every candidate's choice reads back from its token.
         assert!(list.iter().all(|c| PieceChoice::from_token(&c.choice.token()).as_ref() == Some(&c.choice)));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Every chess font beside the program or installed is a set, each family once: DiagPDF keeps
+    /// a patched copy beside some, and a font may be in both places. One whose licence forbids
+    /// embedding is listed too, for the user to choose; one whose layout the catalogue only
+    /// presumes (a Linares Diagram subset taken out of a PDF) is not, but loads when named.
+    #[test]
+    fn candidates_list_every_chess_font_once_a_family() {
+        use super::super::test_font::font;
+        let dir = scratch("fonts");
+        let fonts = dir.join("fonts");
+        std::fs::create_dir_all(&fonts).unwrap();
+        let (marroquin, alpha) = ("pnbrqkomvtwl+ ", "phbrqkojntwl+ ");
+        let leipzig = font("Chess Leipzig DG", alpha, true, 0);
+        std::fs::write(fonts.join("LeipzigDG.ttf"), &leipzig).unwrap();
+        std::fs::write(fonts.join("LeipzigDG_patch.ttf"), &leipzig).unwrap();
+        std::fs::write(fonts.join("Cases.ttf"), font("Chess Cases", marroquin, true, 0x0002)).unwrap();
+        let merida = dir.join("ChessMerida.ttf");
+        std::fs::write(&merida, font("Chess Merida", marroquin, true, 0)).unwrap();
+        let linares = dir.join("AFEOHC-LinaresDiagram.ttf");
+        std::fs::write(&linares, font("LinaresDiagram", "PNLRQKpnlrqk+ ", false, 0)).unwrap();
+        let installed = [merida.clone(), fonts.join("LeipzigDG.ttf"), linares.clone(), dir.join("gone.ttf")];
+        let list = candidates_in(Some(&fonts), None, &installed);
+        let named: Vec<(&str, Option<&Path>)> =
+            list.iter().filter(|c| c.kind == CandidateKind::Font).map(|c| (c.name.as_str(), c.path.as_deref())).collect();
+        let (cases, leipzig) = (fonts.join("Cases.ttf"), fonts.join("LeipzigDG.ttf"));
+        assert_eq!(
+            named,
+            [("Chess Cases", Some(cases.as_path())), ("Chess Leipzig DG", Some(leipzig.as_path())), ("Chess Merida", Some(merida.as_path()))]
+        );
+        let (set, source, error) = resolve_with(&PieceChoice::Font(cases.clone()), Role::Diagrams, None);
+        assert_eq!((set.name.as_str(), error.is_none()), ("Chess Cases", true));
+        assert_eq!(source, PieceSource::Font { path: Some(cases), family: "Chess Cases".into() });
+        let (set, _, error) = resolve_with(&PieceChoice::Font(linares), Role::Board, None);
+        assert_eq!((set.name.as_str(), error.is_none()), ("Linares Diagram", true));
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

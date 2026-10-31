@@ -3248,3 +3248,9 @@ castling	long	పెద్ద
 	Border and light fill	అంచు మరియు లేత నింపు
 	Last move	చివరి ఎత్తు
 	Strength	తీవ్రత
+	Import fonts…	ఫాంట్‌లను దిగుమతి చేయి…
+	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	చదరంగం ఫాంట్‌లను ప్రోగ్రామ్ పక్కన ఉన్న ఫాంట్‌ల ఫోల్డర్‌లోకి కాపీ చేస్తుంది: ప్రతి డయాగ్రామ్ ఫాంట్ ఒక పావుల సెట్ అవుతుంది, ఫిగరిన్ ఫాంట్ ఎగుమతులలోని ఎత్తులను రాస్తుంది.
+	Choose chess fonts	చదరంగం ఫాంట్‌లను ఎంచుకోండి
+	There is no fonts folder beside the program to import into.	దిగుమతి చేయడానికి ప్రోగ్రామ్ పక్కన ఫాంట్‌ల ఫోల్డర్ లేదు.
+	Already in the fonts folder: {fonts}. Replace them?	ఇప్పటికే ఫాంట్‌ల ఫోల్డర్‌లో ఉన్నాయి: {fonts}. వాటిని భర్తీ చేయాలా?
+	The fonts cannot be imported: {reason}	ఫాంట్‌లను దిగుమతి చేయలేము: {reason}

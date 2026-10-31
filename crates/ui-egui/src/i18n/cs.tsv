@@ -3447,3 +3447,9 @@ castling	long	dlouhá
 	Border and light fill	Okraj a jemná výplň
 	Last move	Poslední tah
 	Strength	Síla
+	Import fonts…	Importovat písma…
+	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Zkopíruje šachová písma do složky písem vedle programu: každé diagramové písmo je sada figur a písmo s figurkami píše tahy v exportech.
+	Choose chess fonts	Vyberte šachová písma
+	There is no fonts folder beside the program to import into.	Vedle programu není žádná složka písem, do které by se dalo importovat.
+	Already in the fonts folder: {fonts}. Replace them?	Už jsou ve složce písem: {fonts}. Nahradit je?
+	The fonts cannot be imported: {reason}	Písma nelze importovat: {reason}

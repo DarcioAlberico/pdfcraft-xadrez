@@ -126,3 +126,43 @@ fn imported_sets_are_reported_and_replaced_only_when_asked() {
     assert!(h.query_by_label_contains("The pieces cannot be imported:").is_some());
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// Chess fonts (DiagPDF's board fonts, say) go into the fonts folder: the button is offered, the
+/// import names the chess fonts it took (a text font is passed over), and a different file of
+/// the same name waits for Replace, Cancel keeping what is there.
+#[test]
+fn imported_fonts_are_reported_and_replaced_only_when_asked() {
+    use pdfcraft_chessvision::pieces::test_font::font;
+    let dir = std::env::temp_dir().join(format!("pdfcraft-ui-font-import-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let (from, into) = (dir.join("DiagPDF"), dir.join("fonts"));
+    std::fs::create_dir_all(&from).unwrap();
+    let leipzig = font("Chess Leipzig DG", "phbrqkojntwl+ ", true, 0);
+    std::fs::write(from.join("LeipzigDG.ttf"), &leipzig).unwrap();
+    std::fs::write(from.join("HastingsFigurine.TTF"), font("HastingsFigurine", "KQRBN", false, 0)).unwrap();
+    std::fs::write(from.join("Plain.ttf"), font("Plain Sans", "abc", false, 0)).unwrap();
+    let mut h = harness("");
+    assert!(h.query_by_label("Import fonts…").is_some());
+    h.state_mut().import_fonts_into(vec![from.clone()], into.clone(), false);
+    h.run_steps(3);
+    assert!(h.query_by_label_contains("Imported: HastingsFigurine, Chess Leipzig DG. Their licence is not known").is_some());
+    assert!(into.join("LeipzigDG.ttf").is_file() && !into.join("Plain.ttf").exists());
+    // A different font of the same file name: nothing is written until Replace.
+    let other = font("Chess Leipzig DG", "phbrqkojntwl+ *", true, 0);
+    std::fs::write(from.join("LeipzigDG.ttf"), &other).unwrap();
+    h.state_mut().import_fonts_into(vec![from.join("LeipzigDG.ttf")], into.clone(), false);
+    h.run_steps(3);
+    assert!(h.query_by_label_contains("Already in the fonts folder: LeipzigDG.ttf. Replace them?").is_some());
+    press(&mut h, "Cancel");
+    assert_eq!(std::fs::read(into.join("LeipzigDG.ttf")).unwrap(), leipzig);
+    h.state_mut().import_fonts_into(vec![from.join("LeipzigDG.ttf")], into.clone(), false);
+    h.run_steps(3);
+    press(&mut h, "Replace");
+    assert!(h.query_by_label_contains("Imported: Chess Leipzig DG.").is_some());
+    assert_eq!(std::fs::read(into.join("LeipzigDG.ttf")).unwrap(), other);
+    // No chess font at all says so.
+    h.state_mut().import_fonts_into(vec![from.join("Plain.ttf")], into, false);
+    h.run_steps(3);
+    assert!(h.query_by_label_contains("The fonts cannot be imported:").is_some());
+    let _ = std::fs::remove_dir_all(&dir);
+}

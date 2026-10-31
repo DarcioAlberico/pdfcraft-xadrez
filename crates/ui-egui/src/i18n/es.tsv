@@ -3514,3 +3514,9 @@ castling	long	largo
 	Border and light fill	Borde y relleno suave
 	Last move	Última jugada
 	Strength	Intensidad
+	Import fonts…	Importar fuentes…
+	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Copia fuentes de ajedrez en la carpeta de fuentes junto al programa: cada fuente de diagramas es un juego de piezas, y una fuente de figurines escribe las jugadas de las exportaciones.
+	Choose chess fonts	Elija fuentes de ajedrez
+	There is no fonts folder beside the program to import into.	No hay carpeta de fuentes junto al programa a la que importar.
+	Already in the fonts folder: {fonts}. Replace them?	Ya están en la carpeta de fuentes: {fonts}. ¿Reemplazarlas?
+	The fonts cannot be imported: {reason}	No se pueden importar las fuentes: {reason}

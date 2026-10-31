@@ -3372,3 +3372,9 @@ castling	long	hosszú
 	Border and light fill	Keret és halvány kitöltés
 	Last move	Utolsó lépés
 	Strength	Erősség
+	Import fonts…	Betűtípusok importálása…
+	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Sakkbetűtípusokat másol a program melletti betűtípusmappába: minden diagram-betűtípus egy bábukészlet, a figurás betűtípus pedig az exportok lépéseit írja.
+	Choose chess fonts	Válasszon sakkbetűtípusokat
+	There is no fonts folder beside the program to import into.	A program mellett nincs betűtípusmappa, ahová importálni lehetne.
+	Already in the fonts folder: {fonts}. Replace them?	Már a betűtípusmappában vannak: {fonts}. Lecseréli őket?
+	The fonts cannot be imported: {reason}	A betűtípusok nem importálhatók: {reason}

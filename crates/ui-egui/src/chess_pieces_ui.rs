@@ -1,6 +1,8 @@
 //! Preferences ▸ Chess pieces (plan HC2), above the chess models: the piece set of the boards
 //! and the one of diagrams and exports, each picked from a grid of the sets this machine has
 //! (`chessvision::pieces::choice`). A pick is applied at once and kept with the preferences.
+//! Sets are imported from folders of images or web pages into the pieces folder (HC3), and chess
+//! fonts (DiagPDF's board fonts, say) into the fonts folder, where each diagram font is a set.
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -27,8 +29,16 @@ pub(crate) struct PiecePicker {
     previews: HashMap<String, Option<TextureHandle>>,
     /// What the last import did, shown under its buttons.
     pub(crate) import_note: Option<String>,
-    /// A page or folder whose sets are already in the pieces folder, waiting for Replace.
-    pub(crate) import_pending: Option<(PathBuf, PathBuf)>,
+    /// An import that found what it would write already there, waiting for Replace.
+    pub(crate) import_pending: Option<PendingImport>,
+}
+
+/// An import waiting for Replace: what it reads, and the folder it writes into.
+pub(crate) enum PendingImport {
+    /// A saved web page or a folder of piece images, into the pieces folder.
+    Pieces(PathBuf, PathBuf),
+    /// Font files or folders of fonts, into the fonts folder.
+    Fonts(Vec<PathBuf>, PathBuf),
 }
 
 impl PiecePicker {
@@ -100,11 +110,12 @@ pub(crate) fn preferences_section(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &
     match action {
         Some(ImportAction::Folder) => app.choose_pieces_to_import(true),
         Some(ImportAction::Page) => app.choose_pieces_to_import(false),
-        Some(ImportAction::Replace) => {
-            if let Some((from, into)) = app.chess.piece_picker.as_mut().and_then(|p| p.import_pending.take()) {
-                app.import_pieces_into(from, into, true);
-            }
-        }
+        Some(ImportAction::Fonts) => app.choose_fonts_to_import(),
+        Some(ImportAction::Replace) => match app.chess.piece_picker.as_mut().and_then(|p| p.import_pending.take()) {
+            Some(PendingImport::Pieces(from, into)) => app.import_pieces_into(from, into, true),
+            Some(PendingImport::Fonts(from, into)) => app.import_fonts_into(from, into, true),
+            None => {}
+        },
         Some(ImportAction::Keep) => {
             if let Some(p) = app.chess.piece_picker.as_mut() {
                 p.import_pending = None;
@@ -119,12 +130,14 @@ pub(crate) fn preferences_section(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &
 enum ImportAction {
     Folder,
     Page,
+    Fonts,
     Replace,
     Keep,
 }
 
-/// Import a folder or a saved web page's sets into the pieces folder (plan HC3), and what the
-/// last import did; with sets already there, Replace or Cancel.
+/// Import a folder or a saved web page's sets into the pieces folder (plan HC3), or chess fonts
+/// into the fonts folder, and what the last import did; with files already there, Replace or
+/// Cancel.
 fn import_row(ui: &mut egui::Ui, t: &Tokens, picker: &PiecePicker) -> Option<ImportAction> {
     if cfg!(target_arch = "wasm32") {
         return None;
@@ -144,6 +157,15 @@ fn import_row(ui: &mut egui::Ui, t: &Tokens, picker: &PiecePicker) -> Option<Imp
             .clicked()
         {
             action = Some(ImportAction::Page);
+        }
+        if ui
+            .button(tl!("Import fonts…"))
+            .on_hover_text(tl!(
+                "Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports."
+            ))
+            .clicked()
+        {
+            action = Some(ImportAction::Fonts);
         }
     });
     if let Some(note) = &picker.import_note {
@@ -180,6 +202,53 @@ impl PdfCraftApp {
         let _ = folder;
     }
 
+    /// Ask for chess font files (DiagPDF's board fonts, say), then import them.
+    pub(crate) fn choose_fonts_to_import(&mut self) {
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let dialog = rfd::AsyncFileDialog::new().set_title(tl!("Choose chess fonts")).add_filter(tl!("Fonts"), &["ttf", "otf"]);
+            self.ask(crate::pickers::Ask::Files(dialog), None, |app, paths| app.import_fonts(paths));
+        }
+    }
+
+    /// Import the chess fonts among `from` into the fonts folder beside the program.
+    pub fn import_fonts(&mut self, from: Vec<PathBuf>) {
+        match pdfcraft_engine::chess::pdfcraft_chessvision::text_font::beside_executable() {
+            Some(into) => self.import_fonts_into(from, into, false),
+            None => self.notify(tl!("There is no fonts folder beside the program to import into.")),
+        }
+    }
+
+    /// Import the chess fonts among `from` into `into`, replacing files of the same name only
+    /// when `replace`; what happened is shown under the import buttons, the grid lists each
+    /// diagram font as a set, and Auto finds its pieces again (it may draw with one now).
+    pub fn import_fonts_into(&mut self, from: Vec<PathBuf>, into: PathBuf, replace: bool) {
+        let result = import::import_fonts(&from, &into, replace);
+        let picker = self.chess.piece_picker.get_or_insert_with(PiecePicker::new);
+        match result {
+            Ok(fonts) => {
+                let list = fonts.iter().map(|f| f.name.as_str()).collect::<Vec<_>>().join(", ");
+                *picker = PiecePicker { role: picker.role, ..PiecePicker::new() };
+                picker.import_note =
+                    Some(crate::i18n::fmt(tl!("Imported: {sets}. Their licence is not known: use them for personal use only."), &[("sets", &list)]));
+                for role in [Role::Board, Role::Diagrams] {
+                    if *self.chess.piece_choice(role) == PieceChoice::Auto {
+                        self.reload_pieces(role);
+                    }
+                }
+            }
+            Err(import::ImportError::Exists(files)) => {
+                let list = files.iter().filter_map(|f| f.file_name()).map(|n| n.to_string_lossy().into_owned()).collect::<Vec<_>>().join(", ");
+                picker.import_note = Some(crate::i18n::fmt(tl!("Already in the fonts folder: {fonts}. Replace them?"), &[("fonts", &list)]));
+                picker.import_pending = Some(PendingImport::Fonts(from, into));
+            }
+            Err(e) => {
+                picker.import_pending = None;
+                picker.import_note = Some(crate::i18n::fmt(tl!("The fonts cannot be imported: {reason}"), &[("reason", &e.to_string())]));
+            }
+        }
+    }
+
     /// Import the sets in `from` into the pieces folder beside the program.
     pub fn import_pieces(&mut self, from: PathBuf) {
         match pieces::pieces_folder() {
@@ -206,7 +275,7 @@ impl PdfCraftApp {
             Err(import::ImportError::Exists(dirs)) => {
                 let list = names(&mut dirs.iter().map(PathBuf::as_path));
                 picker.import_note = Some(crate::i18n::fmt(tl!("Already in the pieces folder: {sets}. Replace them?"), &[("sets", &list)]));
-                picker.import_pending = Some((from, into));
+                picker.import_pending = Some(PendingImport::Pieces(from, into));
             }
             Err(e) => {
                 picker.import_pending = None;

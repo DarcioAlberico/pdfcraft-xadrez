@@ -1268,8 +1268,18 @@ impl PdfCraftApp {
             return;
         }
         match role {
-            Role::Board => (self.chess.board_piece_choice, self.chess.board_pieces) = (choice, None),
-            Role::Diagrams => (self.chess.diagram_piece_choice, self.chess.pieces) = (choice, None),
+            Role::Board => self.chess.board_piece_choice = choice,
+            Role::Diagrams => self.chess.diagram_piece_choice = choice,
+        }
+        self.reload_pieces(role);
+    }
+
+    /// Load `role`'s pieces again, from its choice or from what Auto finds now (a font just
+    /// imported, say), and draw every board with them.
+    pub(crate) fn reload_pieces(&mut self, role: Role) {
+        match role {
+            Role::Board => self.chess.board_pieces = None,
+            Role::Diagrams => self.chess.pieces = None,
         }
         self.chess.role_pieces(role);
         crate::chess_editor::pieces_changed();

@@ -3626,3 +3626,9 @@ castling	long	xa
 	Border and light fill	Viền và tô nhạt
 	Last move	Nước đi cuối
 	Strength	Cường độ
+	Import fonts…	Nhập phông chữ…
+	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Sao chép phông chữ cờ vua vào thư mục phông chữ bên cạnh chương trình: mỗi phông chữ sơ đồ là một bộ quân cờ, còn phông chữ ký hiệu quân ghi các nước đi của bản xuất.
+	Choose chess fonts	Chọn phông chữ cờ vua
+	There is no fonts folder beside the program to import into.	Không có thư mục phông chữ bên cạnh chương trình để nhập vào.
+	Already in the fonts folder: {fonts}. Replace them?	Đã có trong thư mục phông chữ: {fonts}. Thay thế chúng?
+	The fonts cannot be imported: {reason}	Không thể nhập phông chữ: {reason}

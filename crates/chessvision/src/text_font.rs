@@ -207,6 +207,11 @@ fn role_by_name(name: &str) -> Option<FontRole> {
     lookup_family(name).filter(|f| f.kind == FontKind::Figurine).map(|_| FontRole::Letters)
 }
 
+/// Whether `name` is a catalogued chess diagram family's (an empty name is none).
+fn is_diagram_font(name: &str) -> bool {
+    !normalize_font_name(name).is_empty() && lookup_family(name).is_some_and(|f| f.kind == FontKind::Diagram && f.key != "unicode")
+}
+
 /// A font from its bytes. `name_hint` (the file name, say) helps when the font's own name does
 /// not say what it is. A TrueType or OpenType font must be ISChess, a catalogued figurine font
 /// or have the Unicode chess symbols; WOFF and WOFF2 are compressed, so only their name says,
@@ -219,15 +224,20 @@ pub fn from_bytes(bytes: Vec<u8>, name_hint: &str) -> Result<TextFont, TextFontE
     let (role, family) = if matches!(format, FontFormat::TrueType | FontFormat::OpenType) {
         let font = FontRef::new(&bytes).map_err(|_| TextFontError::NotAFont)?;
         let family = font.localized_strings(StringId::FAMILY_NAME).english_or_first().map(|s| s.to_string()).unwrap_or_default();
+        let named = role_by_name(&family).or_else(|| role_by_name(name_hint));
+        let unicode = ('\u{2654}'..='\u{265F}').any(|c| font.charmap().map(c).is_some());
+        let role = named.or(unicode.then_some(FontRole::Unicode));
+        // A chess diagram font with no figurines is for the pieces (`crate::pieces`), which share
+        // the folder: passed over without a word about its licence, as no export carries it.
+        if role.is_none() && [family.as_str(), name_hint].into_iter().any(is_diagram_font) {
+            return Err(TextFontError::NoFigurines);
+        }
         // An export embeds the font: one whose licence forbids it is refused (a font with no OS/2
         // table says nothing, and is taken).
         if font.os2().is_ok_and(|os2| restricted(os2.fs_type())) {
             return Err(TextFontError::Restricted(family));
         }
-        let named = role_by_name(&family).or_else(|| role_by_name(name_hint));
-        let unicode = ('\u{2654}'..='\u{265F}').any(|c| font.charmap().map(c).is_some());
-        let role = named.or(unicode.then_some(FontRole::Unicode)).ok_or(TextFontError::NoFigurines)?;
-        (role, family)
+        (role.ok_or(TextFontError::NoFigurines)?, family)
     } else {
         (role_by_name(name_hint).unwrap_or(FontRole::Unicode), String::new())
     };
@@ -396,6 +406,26 @@ mod tests {
         assert!(found.figurines.is_none() && found.signs.is_none());
         assert_eq!(found.errors.len(), 1, "only the restricted one is said: {:?}", found.errors);
         assert!(found.errors[0].to_string().contains("may not be embedded"), "{}", found.errors[0]);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// The fonts folder is shared with the pieces: a chess diagram font there is passed over
+    /// without a word, even one whose licence forbids embedding (no export carries it).
+    #[test]
+    fn a_diagram_font_beside_the_text_fonts_is_passed_over_quietly() {
+        use crate::pieces::test_font::font;
+        let adventurer = font("Chess Adventurer", "pnbrqkomvtwl+ ", true, 0x0002);
+        assert!(matches!(from_bytes(adventurer.clone(), "x"), Err(TextFontError::NoFigurines)));
+        let dir = std::env::temp_dir().join(format!("pdfcraft-diagram-beside-text-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("Chess Adventurer.ttf"), adventurer).unwrap();
+        std::fs::write(dir.join("HastingsFigurine.ttf"), font("HastingsFigurine", "KQRBN", false, 0)).unwrap();
+        let found = from_folder(&dir);
+        assert!(found.errors.is_empty(), "{:?}", found.errors);
+        assert_eq!(found.figurines.map(|f| (f.role, f.family)), Some((FontRole::Letters, "HastingsFigurine".to_owned())));
+        // A figurine font that may not be embedded is still said.
+        assert!(matches!(from_bytes(font("HastingsFigurine", "KQRBN", false, 0x0002), "x"), Err(TextFontError::Restricted(_))));
         let _ = std::fs::remove_dir_all(&dir);
     }
 

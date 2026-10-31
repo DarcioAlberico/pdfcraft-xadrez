@@ -3374,3 +3374,9 @@ castling	long	lang
 	Border and light fill	Rahmen und leichte Füllung
 	Last move	Letzter Zug
 	Strength	Stärke
+	Import fonts…	Schriften importieren…
+	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Kopiert Schachschriften in den Schriftenordner neben dem Programm: Jede Diagrammschrift ist ein Figurensatz, und eine Figurinenschrift schreibt die Züge der Exporte.
+	Choose chess fonts	Schachschriften wählen
+	There is no fonts folder beside the program to import into.	Neben dem Programm gibt es keinen Schriftenordner, in den importiert werden kann.
+	Already in the fonts folder: {fonts}. Replace them?	Schon im Schriftenordner: {fonts}. Ersetzen?
+	The fonts cannot be imported: {reason}	Die Schriften können nicht importiert werden: {reason}

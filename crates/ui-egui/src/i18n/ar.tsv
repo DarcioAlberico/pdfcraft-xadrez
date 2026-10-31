@@ -3648,3 +3648,9 @@ castling	long	طويل
 	Border and light fill	حدود وتعبئة خفيفة
 	Last move	آخر نقلة
 	Strength	الشدة
+	Import fonts…	استيراد خطوط…
+	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	انسخ خطوط الشطرنج إلى مجلد الخطوط بجانب البرنامج: كل خط مخططات هو مجموعة قطع، وخط الرموز يكتب نقلات التصديرات.
+	Choose chess fonts	اختر خطوط الشطرنج
+	There is no fonts folder beside the program to import into.	لا يوجد مجلد خطوط بجانب البرنامج للاستيراد إليه.
+	Already in the fonts folder: {fonts}. Replace them?	موجودة بالفعل في مجلد الخطوط: {fonts}. هل تريد استبدالها؟
+	The fonts cannot be imported: {reason}	تعذر استيراد الخطوط: {reason}

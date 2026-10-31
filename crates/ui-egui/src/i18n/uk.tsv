@@ -3395,3 +3395,9 @@ castling	long	довга
 	Border and light fill	Рамка і легка заливка
 	Last move	Останній хід
 	Strength	Інтенсивність
+	Import fonts…	Імпортувати шрифти…
+	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Копіює шахові шрифти до теки шрифтів поруч із програмою: кожен шрифт діаграм стає набором фігур, а шрифт фігурок пише ходи в експорті.
+	Choose chess fonts	Виберіть шахові шрифти
+	There is no fonts folder beside the program to import into.	Поруч із програмою немає теки шрифтів для імпорту.
+	Already in the fonts folder: {fonts}. Replace them?	Уже є в теці шрифтів: {fonts}. Замінити?
+	The fonts cannot be imported: {reason}	Не вдалося імпортувати шрифти: {reason}

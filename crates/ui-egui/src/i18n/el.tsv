@@ -3345,3 +3345,9 @@ castling	long	μεγάλο
 	Border and light fill	Περίγραμμα και απαλό γέμισμα
 	Last move	Τελευταία κίνηση
 	Strength	Ένταση
+	Import fonts…	Εισαγωγή γραμματοσειρών…
+	Copy chess fonts into the fonts folder beside the program: each diagram font is a piece set, and a figurine font writes the moves of the exports.	Αντιγράφει γραμματοσειρές σκακιού στον φάκελο γραμματοσειρών δίπλα στο πρόγραμμα: κάθε γραμματοσειρά διαγραμμάτων είναι ένα σετ πεσσών, και μια γραμματοσειρά συμβόλων γράφει τις κινήσεις των εξαγωγών.
+	Choose chess fonts	Επιλέξτε γραμματοσειρές σκακιού
+	There is no fonts folder beside the program to import into.	Δεν υπάρχει φάκελος γραμματοσειρών δίπλα στο πρόγραμμα για εισαγωγή.
+	Already in the fonts folder: {fonts}. Replace them?	Υπάρχουν ήδη στον φάκελο γραμματοσειρών: {fonts}. Να αντικατασταθούν;
+	The fonts cannot be imported: {reason}	Οι γραμματοσειρές δεν μπορούν να εισαχθούν: {reason}

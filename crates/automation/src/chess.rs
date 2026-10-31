@@ -873,16 +873,46 @@ impl Automation {
         Ok(json!({ "sets": sets, "environment": choice::environment_overrides() }))
     }
 
-    /// Import piece sets from a folder or a saved web page into a pieces folder (plan HC3).
+    /// Import piece sets from a folder or a saved web page into a pieces folder (plan HC3), or
+    /// chess fonts from a font file or a folder of them into the fonts folder.
     pub(crate) fn chess_pieces_import(&self, a: &Args) -> Result<Value> {
         use pieces::import::{self, ImportError};
         let from = self.resolve(a.str("from")?, false)?;
+        let fonts = import::holds_fonts(&from);
         let into = match a.opt_str("into")? {
             Some(p) => self.resolve(p, true)?,
             None if self.root.is_some() => return Err(failed("into is needed when --root is set")),
+            None if fonts => pdfcraft_engine::chess::pdfcraft_chessvision::text_font::beside_executable()
+                .ok_or_else(|| failed("no fonts folder beside the executable"))?,
             None => pieces::pieces_folder().ok_or_else(|| failed("no pieces folder beside the executable"))?,
         };
         let replace = a.opt_bool("replace")?.unwrap_or(false);
+        if fonts {
+            return match import::import_fonts(std::slice::from_ref(&from), &into, replace) {
+                Ok(found) => {
+                    let fonts: Vec<Value> = found
+                        .into_iter()
+                        .map(|f| {
+                            let pieces = f.kind == import::FontUse::Pieces;
+                            json!({
+                                "name": f.name,
+                                "file": f.path.to_string_lossy(),
+                                "use": if pieces { "pieces" } else { "figurines" },
+                                "token": pieces.then(|| pieces::choice::PieceChoice::Font(f.path).token()),
+                            })
+                        })
+                        .collect();
+                    Ok(json!({ "imported": [], "fonts": fonts, "licence": "the font's own: for personal use only" }))
+                }
+                Err(ImportError::Exists(files)) => Ok(json!({
+                    "imported": [],
+                    "fonts": [],
+                    "exists": files.iter().map(|f| f.to_string_lossy().into_owned()).collect::<Vec<_>>(),
+                    "refused": "a different font of that file name is already there; pass replace to replace it",
+                })),
+                Err(e) => Err(failed(e.to_string())),
+            };
+        }
         match import::import(&from, &into, replace) {
             Ok(sets) => {
                 let sets: Vec<Value> = sets
