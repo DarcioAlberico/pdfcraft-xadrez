@@ -27,7 +27,7 @@ use rten_tensor::prelude::*;
 use rten_tensor::{NdTensor, NdTensorView};
 use serde::Deserialize;
 
-use pdfcraft_chess::recognize::CLASS_COUNT;
+use pdfcraft_chess::recognize::{ACCEPT_MIN_CONFIDENCE, CLASS_COUNT};
 
 /// File names, without extension.
 pub const PIECES: &str = "chess-pieces";
@@ -116,6 +116,9 @@ struct MetaFile {
     output: MetaOutput,
     #[serde(default = "one")]
     temperature: f32,
+    /// The piece model's own acceptance gate (see [`PieceModel::accept_min_confidence`]).
+    #[serde(default)]
+    accept_min_confidence: Option<f32>,
 }
 
 fn one() -> f32 {
@@ -224,11 +227,24 @@ pub struct PieceModel {
     net: Network,
     /// The architecture the description names, for display.
     pub arch_version: String,
+    accept_min_confidence: f32,
 }
 
 impl fmt::Debug for PieceModel {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("PieceModel").field("arch_version", &self.arch_version).finish()
+        f.debug_struct("PieceModel").field("arch_version", &self.arch_version).field("accept_min_confidence", &self.accept_min_confidence).finish()
+    }
+}
+
+/// The acceptance gate a piece model's description names: `accept_min_confidence`, a number in
+/// (0, 1], or [`ACCEPT_MIN_CONFIDENCE`] when it names none. The gate belongs to the model because
+/// it is part of its calibration: a model that is surer of itself, wrong squares included, needs
+/// a higher one to send as many wrong boards to review.
+fn piece_gate(named: Option<f32>) -> Result<f32, ModelError> {
+    match named {
+        None => Ok(ACCEPT_MIN_CONFIDENCE),
+        Some(v) if v.is_finite() && v > 0.0 && v <= 1.0 => Ok(v),
+        Some(v) => Err(ModelError::Meta(format!("accept_min_confidence {v} is not in (0, 1]"))),
     }
 }
 
@@ -239,8 +255,15 @@ impl PieceModel {
         if meta.output.classes != PIECE_CLASS_NAMES {
             return Err(ModelError::Classes(format!("expected {PIECE_CLASS_NAMES:?}, found {:?}", meta.output.classes)));
         }
+        let accept_min_confidence = piece_gate(meta.accept_min_confidence)?;
         let net = Network::load(model, &meta, PIECE_SIDE)?;
-        Ok(PieceModel { net, arch_version: meta.arch_version })
+        Ok(PieceModel { net, arch_version: meta.arch_version, accept_min_confidence })
+    }
+
+    /// The weakest square a reading may have and still be accepted without review: the model's
+    /// `accept_min_confidence`, else [`ACCEPT_MIN_CONFIDENCE`]. Always in (0, 1].
+    pub fn accept_min_confidence(&self) -> f32 {
+        self.accept_min_confidence
     }
 
     /// Class probabilities for `count` squares, each `64 × 64` gray values in 0..1, row-major.
@@ -441,6 +464,19 @@ mod tests {
     use super::*;
 
     const PIECE_META: &str = r#"{"kind":"chess-pieces","input":{"name":"cells"},"output":{"name":"logits","classes":["empty","P","N","B","R","Q","K","p","n","b","r","q","k"]},"temperature":1.4}"#;
+
+    #[test]
+    fn a_piece_model_names_its_own_gate_or_gets_the_default() {
+        let gate = |json: &str| parse_meta(json.as_bytes(), PIECES).and_then(|m| piece_gate(m.accept_min_confidence));
+        assert_eq!(gate(PIECE_META).unwrap(), ACCEPT_MIN_CONFIDENCE);
+        let named = |v: &str| PIECE_META.replace(r#""temperature":1.4"#, &format!(r#""temperature":1.4,"accept_min_confidence":{v}"#));
+        assert_eq!(gate(&named("0.95")).unwrap(), 0.95);
+        assert_eq!(gate(&named("1")).unwrap(), 1.0);
+        for bad in ["0", "-0.2", "1.5", "1e40"] {
+            assert!(matches!(gate(&named(bad)), Err(ModelError::Meta(ref why)) if why.contains("accept_min_confidence")), "{bad}");
+        }
+        assert!(matches!(gate(&named("\"high\"")), Err(ModelError::Meta(_))));
+    }
 
     #[test]
     fn descriptions_are_checked() {

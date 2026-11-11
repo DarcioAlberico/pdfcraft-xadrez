@@ -14,8 +14,9 @@
 //!    model's batch of 1024 squares, a page of up to 8 boards is one inference.
 //! 5. `pdfcraft-chess` decodes both readings under the rules ([`Reading::new`]), picks the
 //!    orientation ([`orient`]) and the side to move, and the gate decides whether the reading
-//!    can be exported without review ([`Reading::accepted`]: legal, and the weakest square at
-//!    least `ACCEPT_MIN_CONFIDENCE` = 0.80; squares at or below `UNCERTAIN_SQUARE_THRESHOLD` =
+//!    can be exported without review ([`Reading::accepted_at`]: legal, and the weakest square at
+//!    least the model's own gate, `accept_min_confidence` in its description, or
+//!    `ACCEPT_MIN_CONFIDENCE` = 0.80 when it names none; squares at or below `UNCERTAIN_SQUARE_THRESHOLD` =
 //!    0.90 are listed). A reading the decoder repaired has a square at most 0.5 and never passes:
 //!    a person confirms it.
 //! 6. A board the gate refused is read once more, in one more call for the batch, after the
@@ -37,7 +38,7 @@ use pdfcraft_chess::placement::{Color, Placement};
 use pdfcraft_chess::recognize::decode::{Change, Limits};
 use pdfcraft_chess::recognize::orient::{Verdict, font_verdict, orient};
 use pdfcraft_chess::recognize::side::{SideSource, SideToMove, compose_position, infer_side_to_move};
-use pdfcraft_chess::recognize::{CLASS_COUNT, Probabilities, ProbabilityError, Reading, Uncertain};
+use pdfcraft_chess::recognize::{ACCEPT_MIN_CONFIDENCE, CLASS_COUNT, Probabilities, ProbabilityError, Reading, Uncertain};
 use pdfcraft_chess::rules::{Legality, check_position};
 use pdfcraft_geom::PageRect;
 
@@ -84,11 +85,22 @@ pub trait SquareClassifier {
     fn max_batch(&self) -> usize {
         MAX_BATCH
     }
+
+    /// The weakest square a reading may have and still be accepted without review: the model's
+    /// own calibration ([`PieceModel::accept_min_confidence`]), [`ACCEPT_MIN_CONFIDENCE`] when
+    /// it names none.
+    fn accept_min_confidence(&self) -> f32 {
+        ACCEPT_MIN_CONFIDENCE
+    }
 }
 
 impl SquareClassifier for PieceModel {
     fn classify(&self, squares: &[f32], count: usize) -> Result<Vec<f32>, ModelError> {
         self.probabilities(squares, count)
+    }
+
+    fn accept_min_confidence(&self) -> f32 {
+        PieceModel::accept_min_confidence(self)
     }
 }
 
@@ -353,6 +365,7 @@ impl Batch {
 fn classify_boards(model: &dyn SquareClassifier, squares: &[f32], boards: usize) -> Vec<Result<ReadPosition, Unreadable>> {
     let count = boards.saturating_mul(SQUARES_PER_BOARD);
     let per_board = SQUARES_PER_BOARD * CLASS_COUNT;
+    let gate = model.accept_min_confidence();
     let result = model.classify(squares, count).and_then(|p| {
         let expected = count.saturating_mul(CLASS_COUNT);
         if p.len() == expected { Ok(p) } else { Err(ModelError::BatchSize { expected, count, got: p.len() }) }
@@ -362,7 +375,7 @@ fn classify_boards(model: &dyn SquareClassifier, squares: &[f32], boards: usize)
             Ok(p) => {
                 let start = k.saturating_mul(per_board);
                 match p.get(start..start.saturating_add(per_board)) {
-                    Some(board) => model_position(board),
+                    Some(board) => model_position(board, gate),
                     None => Err(Unreadable::Model("the model returned too few values".to_owned())),
                 }
             }
@@ -381,8 +394,10 @@ fn font_position(placement: Placement) -> ReadPosition {
     finish(placement, legality, orientation, 1.0, Vec::new(), Vec::new(), accepted)
 }
 
-/// The position from one board's 128 rows of probabilities: 64 as printed, then 64 turned.
-fn model_position(probabilities: &[f32]) -> Result<ReadPosition, Unreadable> {
+/// The position from one board's 128 rows of probabilities: 64 as printed, then 64 turned,
+/// accepted when its weakest square reaches `gate` (the model's own, see
+/// [`SquareClassifier::accept_min_confidence`]).
+fn model_position(probabilities: &[f32], gate: f32) -> Result<ReadPosition, Unreadable> {
     let half = 64 * CLASS_COUNT;
     let (upright, turned) = (probabilities.get(..half).unwrap_or(&[]), probabilities.get(half..).unwrap_or(&[]));
     let limits = Limits::default();
@@ -392,7 +407,7 @@ fn model_position(probabilities: &[f32]) -> Result<ReadPosition, Unreadable> {
     let verdict = orient(&upright, &turned, None);
     let chosen = if verdict.upright { upright } else { turned };
     let chosen = if verdict.black_point_of_view { chosen.seen_from_white() } else { chosen };
-    let accepted = chosen.accepted();
+    let accepted = chosen.accepted_at(gate);
     let Reading { placement, min_confidence, uncertain, decoded, legality, .. } = chosen;
     Ok(finish(placement, legality, Some(verdict), min_confidence, uncertain, decoded.changes, accepted))
 }

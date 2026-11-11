@@ -268,6 +268,19 @@ impl SquareClassifier for Fixed {
     }
 }
 
+/// [`Fixed`] with its own acceptance gate, as a model whose description sets one.
+struct Gated(Fixed, f32);
+
+impl SquareClassifier for Gated {
+    fn classify(&self, squares: &[f32], count: usize) -> Result<Vec<f32>, ModelError> {
+        self.0.classify(squares, count)
+    }
+
+    fn accept_min_confidence(&self) -> f32 {
+        self.1
+    }
+}
+
 /// Probabilities with `fen`'s class at `p` on every square.
 fn matrix(fen: &str, p: f32) -> Vec<f32> {
     parse_placement(fen)
@@ -311,6 +324,25 @@ fn boards_are_read_in_the_detectors_order() {
     assert!(opening.uncertain.is_empty() && !opening.repaired());
     // Three boards, one call of 3 × 128 squares.
     assert_eq!(*model.calls.borrow(), [384]);
+}
+
+#[test]
+fn the_models_own_gate_decides_what_goes_to_review() {
+    let mut page = Page::new(240, 240);
+    page.draw(OPENING, placed(20.0, 20.0, 0.0));
+    let geometry = page.geometry(Rotation::R0);
+    let given = [box_candidate(&geometry, 20.0, 20.0)];
+    // Every square at 0.9: past the default gate (0.80), short of a model's own 0.95.
+    let default = Fixed::new(matrix(OPENING, 0.9));
+    let readings = read(&page.image(), &geometry, DPI, &given, Some(&default));
+    assert!(readings[0].accepted(), "{:?}", readings[0]);
+    let strict = Gated(Fixed::new(matrix(OPENING, 0.9)), 0.95);
+    let readings = read(&page.image(), &geometry, DPI, &given, Some(&strict));
+    let position = readings[0].position().unwrap_or_else(|| panic!("{:?}", readings[0]));
+    // The same reading: only the gate differs.
+    assert_eq!(format_placement(&position.placement), OPENING);
+    assert!((position.min_confidence - 0.9).abs() < 1e-5, "{}", position.min_confidence);
+    assert!(!position.accepted, "0.9 is below the model's gate of 0.95");
 }
 
 #[test]

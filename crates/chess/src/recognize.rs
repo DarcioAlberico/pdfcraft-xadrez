@@ -243,7 +243,13 @@ impl Reading {
     /// Whether the reading can be exported without review: legal for some side to move and
     /// with every square at or above [`ACCEPT_MIN_CONFIDENCE`].
     pub fn accepted(&self) -> bool {
-        self.legality.is_legal_for_some_side() && self.min_confidence >= ACCEPT_MIN_CONFIDENCE
+        self.accepted_at(ACCEPT_MIN_CONFIDENCE)
+    }
+
+    /// [`Reading::accepted`] with another gate: a model calibrated otherwise names its own (a
+    /// more confident model needs a higher one to refuse as many wrong boards).
+    pub fn accepted_at(&self, min_confidence: f32) -> bool {
+        self.legality.is_legal_for_some_side() && self.min_confidence >= min_confidence
     }
 }
 
@@ -359,6 +365,17 @@ mod tests {
         assert_eq!(u.alternative, piece('N'));
         assert!((u.alternative_confidence - 0.25).abs() < 1e-5);
         assert!(!r.accepted(), "0.7 is below the export gate");
+    }
+
+    #[test]
+    fn a_models_own_gate_can_be_stricter() {
+        let mut v = matrix("8/8/8/4k3/8/8/8/4K3", 0.99);
+        set(&mut v, "d4", None, 0.9, piece('N'), 0.05);
+        let r = Reading::new(&Probabilities::new(&v).unwrap(), &decode::Limits::default());
+        assert!((r.min_confidence - 0.9).abs() < 1e-5, "{}", r.min_confidence);
+        assert!(r.accepted() && r.accepted_at(ACCEPT_MIN_CONFIDENCE));
+        assert!(!r.accepted_at(0.95), "0.9 is below a gate of 0.95");
+        assert!(r.accepted_at(0.9), "the gate is inclusive");
     }
 
     #[test]
