@@ -2,7 +2,7 @@
 //!
 //! ```text
 //! cargo run --release -p pdfcraft-chessvision --example read_bench -- \
-//!     <prototype data folder> <models folder> [split=test] [--misses] [--splits=<file>] [--steps=<letters>]
+//!     <prototype data folder> <models folder> [split=test] [--misses] [--splits=<file>] [--steps=<letters>] [--dump=<csv>]
 //! ```
 //!
 //! Reads the prototype's `labels.csv` (file name and FEN of each board image), `splits.csv` (the
@@ -19,8 +19,13 @@
 //! `--steps=` reads with another board preprocessing than the reader's default (letters as
 //! [`board::Preprocessing::from_letters`] takes them: `0` none, `0>h` hatch suppression on a retry).
 //!
+//! Every count uses the model's own acceptance gate (`accept_min_confidence` in its description,
+//! else 0.80), which the header line names. `--dump=` writes each board's upright reading (file
+//! name, exact, legal, accepted, repaired, weakest square) to the CSV file named, which is how a
+//! model's gate is chosen: the accepted and accepted-but-wrong boards at every threshold.
+//!
 //! The boards and the models are the user's own and stay outside the repository; nothing derived
-//! from them is written anywhere.
+//! from them is written anywhere but the `--dump` file the user names.
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -137,11 +142,14 @@ impl Tally {
 
 fn main() -> Result<(), Error> {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    let usage = "usage: read_bench <prototype data folder> <models folder> [split=test] [--misses] [--splits=<file>] [--steps=<letters>]";
+    let usage =
+        "usage: read_bench <prototype data folder> <models folder> [split=test] [--misses] [--splits=<file>] [--steps=<letters>] [--dump=<csv>]";
     let data = Path::new(args.first().ok_or(usage)?);
     let models = ChessModels::load_from(Path::new(args.get(1).ok_or(usage)?));
     let split = args.get(2).filter(|a| !a.starts_with("--")).map_or("test", String::as_str);
     let misses = args.iter().any(|a| a == "--misses");
+    let dump_path = args.iter().find_map(|a| a.strip_prefix("--dump=")).map(std::path::PathBuf::from);
+    let mut dump: Option<Vec<String>> = dump_path.as_ref().map(|_| Vec::new());
     let steps = match args.iter().find_map(|a| a.strip_prefix("--steps=")) {
         Some(letters) => board::Preprocessing::from_letters(letters).ok_or("unknown --steps letters")?,
         None => board::Preprocessing::DEFAULT,
@@ -176,6 +184,8 @@ fn main() -> Result<(), Error> {
         boards.push((file.clone(), path, format_placement(&placement)));
     }
     println!("split {split} of {}: {} boards ({illegal} illegal labels and {missing} missing images left out)", splits_file.display(), boards.len());
+    let gate = model.accept_min_confidence();
+    println!("model {} · acceptance gate {gate}", model.arch_version);
 
     let (mut cells, mut upright, mut turned) = (Tally::default(), Tally::default(), Tally::default());
     let start = Instant::now();
@@ -187,8 +197,8 @@ fn main() -> Result<(), Error> {
         let reading = Reading::new(&Probabilities::new(probs.get(..64 * CLASS_COUNT).unwrap_or(&[]))?, &Limits::default());
         let cell_exact = format_placement(&reading.placement) == *label;
         cells.exact += usize::from(cell_exact);
-        cells.accepted += usize::from(reading.accepted());
-        cells.accepted_wrong += usize::from(reading.accepted() && !cell_exact);
+        cells.accepted += usize::from(reading.accepted_at(gate));
+        cells.accepted_wrong += usize::from(reading.accepted_at(gate) && !cell_exact);
 
         let read = read_whole(&image, model, steps);
         let read_exact = upright.add(read.as_ref(), label);
@@ -198,6 +208,21 @@ fn main() -> Result<(), Error> {
             let got = read.as_ref().and_then(|r| r.position()).map(|p| (format_placement(&p.placement), p.min_confidence));
             println!("miss {file}: label {label}  cells {}  read {:?}  180° {}", format_placement(&reading.placement), got, turned_exact);
         }
+        if let Some(rows) = dump.as_mut()
+            && let Some(p) = read.as_ref().and_then(|r| r.position())
+        {
+            rows.push(format!(
+                "{file},{},{},{},{},{}",
+                u8::from(read_exact),
+                u8::from(p.legality.is_legal_for_some_side()),
+                u8::from(p.accepted),
+                u8::from(p.repaired()),
+                p.min_confidence
+            ));
+        }
+    }
+    if let (Some(rows), Some(path)) = (dump, dump_path) {
+        std::fs::write(path, format!("file,exact,legal,accepted,repaired,min_confidence\n{}\n", rows.join("\n")))?;
     }
     let total = boards.len();
     println!("{}", cells.line("cells", total));
