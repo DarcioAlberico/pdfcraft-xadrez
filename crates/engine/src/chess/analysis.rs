@@ -42,8 +42,13 @@ pub const DEFAULT_DEPTH: u32 = 30;
 /// The deepest search asked for.
 pub const MAX_DEPTH: u32 = 99;
 
-/// Most entries of the `engine` folder looked at.
+/// Most entries looked at while searching the `engine` folder, over all its folders together.
 const MAX_DIR_ENTRIES: usize = 256;
+
+/// How far below the `engine` folder a program is looked for. An engine is usually unpacked as
+/// it was downloaded, so it sits in a folder of its own (`engine/stockfish/stockfish.exe`), or
+/// one deeper (`engine/stockfish-17/stockfish/stockfish.exe`).
+const MAX_FOLDER_DEPTH: usize = 3;
 
 /// How long a closed engine has to quit before it is killed.
 const QUIT_GRACE: Duration = Duration::from_millis(400);
@@ -55,7 +60,7 @@ const MAX_SAN: usize = 24;
 pub const MAX_KEPT: usize = 64;
 
 /// The engine program to use: `$PDFCRAFT_CHESS_ENGINE` when it names a file, else the program
-/// in an `engine` folder beside the executable.
+/// in an `engine` folder beside the executable or in a folder inside it.
 pub fn find_engine() -> Option<PathBuf> {
     if let Some(path) = std::env::var_os("PDFCRAFT_CHESS_ENGINE").map(PathBuf::from).filter(|p| p.is_file()) {
         return Some(path);
@@ -65,12 +70,50 @@ pub fn find_engine() -> Option<PathBuf> {
 }
 
 /// The first program in `dir`, by name: an `.exe` on Windows, a file anyone may execute
-/// elsewhere.
+/// elsewhere. A program directly in `dir` wins; with none there, the folders inside it are
+/// looked through in the same way, by name, down to [`MAX_FOLDER_DEPTH`], because an engine is
+/// usually left in the folder it was unpacked into.
+///
+/// The search is bounded: [`MAX_DIR_ENTRIES`] entries in all and that depth, so a folder of
+/// thousands of files, or links that lead round in a circle, cannot hold it up.
 pub fn program_in(dir: &Path) -> Option<PathBuf> {
-    let mut programs: Vec<PathBuf> =
-        std::fs::read_dir(dir).ok()?.take(MAX_DIR_ENTRIES).filter_map(Result::ok).map(|e| e.path()).filter(|p| is_program(p)).collect();
+    let mut budget = MAX_DIR_ENTRIES;
+    let mut folders = vec![dir.to_path_buf()];
+    for _ in 0..MAX_FOLDER_DEPTH {
+        let mut below = Vec::new();
+        for folder in &folders {
+            let (programs, inside) = entries_of(folder, &mut budget);
+            if let Some(program) = programs.into_iter().next() {
+                return Some(program);
+            }
+            below.extend(inside);
+        }
+        if below.is_empty() || budget == 0 {
+            break;
+        }
+        below.sort();
+        folders = below;
+    }
+    None
+}
+
+/// The programs and the folders directly in `dir`, each sorted by name, taking no more than
+/// `budget` entries and counting what it took off it. An unreadable folder gives neither.
+fn entries_of(dir: &Path, budget: &mut usize) -> (Vec<PathBuf>, Vec<PathBuf>) {
+    let (mut programs, mut folders) = (Vec::new(), Vec::new());
+    let Ok(entries) = std::fs::read_dir(dir) else { return (programs, folders) };
+    for entry in entries.take(*budget).filter_map(Result::ok) {
+        *budget = budget.saturating_sub(1);
+        let path = entry.path();
+        if is_program(&path) {
+            programs.push(path);
+        } else if path.is_dir() {
+            folders.push(path);
+        }
+    }
     programs.sort();
-    programs.into_iter().next()
+    folders.sort();
+    (programs, folders)
 }
 
 #[cfg(windows)]
@@ -798,6 +841,44 @@ mod tests {
         }
         assert_eq!(program_in(&dir), Some(dir.join(name)));
         assert_eq!(program_in(&dir.join("missing")), None);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A program written at `path`, runnable where the system asks for it.
+    fn write_program(path: &Path) {
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).unwrap();
+        }
+        std::fs::write(path, "x").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+    }
+
+    /// An engine left in the folder it was unpacked into is found as well (the app's own `engine`
+    /// folder keeps Stockfish in `engine/stockfish/`), down to [`MAX_FOLDER_DEPTH`] and no
+    /// further. A program directly in the folder still wins.
+    #[test]
+    fn a_program_in_a_folder_inside_the_engine_folder_is_found() {
+        let dir = std::env::temp_dir().join(format!("pdfcraft-engine-deep-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let name = if cfg!(windows) { "stockfish.exe" } else { "stockfish" };
+        // Too deep: the folder itself, its folders and theirs are looked at, no deeper.
+        let too_deep = dir.join("a").join("b").join("c").join(name);
+        write_program(&too_deep);
+        assert_eq!(program_in(&dir), None, "four folders down is too deep");
+        // One folder down, as an unpacked engine sits.
+        let unpacked = dir.join("stockfish").join(name);
+        write_program(&unpacked);
+        std::fs::create_dir_all(dir.join("stockfish").join("scripts")).unwrap();
+        assert_eq!(program_in(&dir), Some(unpacked));
+        // A program directly in the folder wins over one inside a folder.
+        let beside = dir.join(name);
+        write_program(&beside);
+        assert_eq!(program_in(&dir), Some(beside));
         let _ = std::fs::remove_dir_all(&dir);
     }
 

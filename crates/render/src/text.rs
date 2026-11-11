@@ -52,9 +52,11 @@ pub struct TextGlyph {
     pub quad: [[f32; 2]; 4],
     /// Unit vector of the writing direction in page view space (`[1, 0]`: left to right).
     pub direction: [f32; 2],
-    /// The font's `/BaseFont` without its subset prefix (`ABCDEF+ChessMerida` → `ChessMerida`).
-    /// Symbol fonts such as chess figurines draw pictures under letter codes, so `text` alone
-    /// reads `l` where the page shows a knight; the font name says which catalogue applies.
+    /// The font's `/BaseFont` without its subset prefix (`ABCDEF+ChessMerida` → `ChessMerida`),
+    /// or, where the producer put a placeholder there instead of the font's own name, the family
+    /// the embedded font program carries (`TextDevice::glyph_font`). Symbol fonts such as chess
+    /// figurines draw pictures under letter codes, so `text` alone reads `l` where the page shows
+    /// a knight; the font name says which catalogue applies.
     pub font: Option<Arc<str>>,
     /// The character code the content stream showed, before any Unicode mapping: what a symbol
     /// font's catalogue is keyed by. `None` for an `/ActualText` replacement of several glyphs.
@@ -401,6 +403,9 @@ struct TextDevice {
     partial_replacement: bool,
     /// The last font name seen, as written and stripped: glyphs of one font share the `Arc`.
     last_font: Option<(String, Arc<str>)>,
+    /// The family the embedded program names, for each font whose `/BaseFont` is a placeholder
+    /// ([`is_placeholder_name`]), by the font's own identity. `None`: its program named nothing.
+    sanitized: HashMap<u128, Option<Arc<str>>>,
 }
 
 /// An `/ActualText` replacement: the glyph standing for it in `TextDevice::glyphs` (none for an
@@ -423,6 +428,20 @@ const MAX_CELLS: i64 = 4096;
 /// would otherwise make ~10^10 comparisons; past the budget the remaining replacements keep
 /// their unmarked redraws (the text reads twice, as it would without `/ActualText`).
 const MAX_REDRAW_WORK: usize = 1 << 22;
+
+/// Most fonts of a page whose embedded program is read for its family name. A page is not
+/// expected to use more; past that the placeholder name stands, as before.
+const MAX_SANITIZED_FONTS: usize = 64;
+
+/// Whether `name` says nothing about the font it names: nothing at all, or the placeholder a
+/// producer writes for every font it embeds (Chrome's font sanitizer, OTS, writes
+/// `OTS-derived-font`). Case, spaces, hyphens, underscores and dots are ignored; the subset
+/// prefix is already off. Allocates nothing: every glyph of a page goes through it.
+fn is_placeholder_name(name: &str) -> bool {
+    let mut bare = name.chars().filter(|c| !matches!(c, ' ' | '-' | '_' | '.')).flat_map(char::to_lowercase);
+    let Some(first) = bare.next() else { return true };
+    std::iter::once(first).chain(bare).eq("otsderivedfont".chars())
+}
 
 fn cell(v: f32) -> i64 {
     // Glyph boxes are finite (`draw_glyph` and `merge` drop the rest); `as` saturates.
@@ -479,7 +498,37 @@ impl TextDevice {
             actual_filtered: false,
             partial_replacement: false,
             last_font: None,
+            sanitized: HashMap::new(),
         }
+    }
+
+    /// The name of the font `glyph` is set in: its `/BaseFont` without the subset prefix, or,
+    /// where a producer replaced that name with a placeholder of its own, the family the embedded
+    /// font program names. Chrome's font sanitizer writes `OTS-derived-font` for every web font
+    /// it embeds, so a book printed from a web page carries no font names at all — and a chess
+    /// diagram font that is not named reads as prose instead of as a position.
+    ///
+    /// The program is read once per font (by the font's own identity, not by the name it shares
+    /// with the other sanitized fonts of the file), for at most [`MAX_SANITIZED_FONTS`] of them.
+    fn glyph_font(&mut self, glyph: &Glyph<'_>) -> Option<Arc<str>> {
+        let name = self.font_name(glyph.base_font()?);
+        if !is_placeholder_name(&name) {
+            return Some(name);
+        }
+        let Glyph::Outline(outline) = glyph else { return Some(name) };
+        let key = outline.font_cache_key();
+        if let Some(found) = self.sanitized.get(&key) {
+            return found.clone().or(Some(name));
+        }
+        // Each font's program is read once; past the cap the placeholder stands, so a page of
+        // hundreds of fonts cannot make the reading of the page a reading of its fonts.
+        if self.sanitized.len() >= MAX_SANITIZED_FONTS {
+            return Some(name);
+        }
+        let family: Option<Arc<str>> =
+            outline.font_data().and_then(|data| pdfcraft_fonts::embedding::program_family(data.data.as_ref().as_ref())).map(Arc::from);
+        self.sanitized.insert(key, family.clone());
+        family.or(Some(name))
     }
 
     /// `base_font` without its subset prefix, shared with the glyphs before it in that font.
@@ -682,7 +731,7 @@ impl<'a> Device<'a> for TextDevice {
         let direction = if length.is_finite() && length > 0.0 { [dx / length, dy / length] } else { [1.0, 0.0] };
         // A glyph whose Unicode is several characters (a ligature such as "ffi") stays one glyph
         // with its own box: the PDF gives no position for the characters inside it.
-        let font = glyph.base_font().map(|f| self.font_name(f));
+        let font = self.glyph_font(glyph);
         let glyph = TextGlyph::new(
             text,
             [b.x0 as f32, b.y0 as f32, b.x1 as f32, b.y1 as f32],
@@ -2872,6 +2921,48 @@ mod tests {
         doc.save_to(&mut bytes).unwrap();
         let pdf = Pdf::new(std::sync::Arc::new(bytes)).unwrap();
         extract_page(&pdf, 0, &InterpreterSettings::default()).unwrap().plain_text()
+    }
+
+    /// The font names of a page drawn with one embedded TrueType font named `base_font`.
+    fn embedded_font_names(base_font: &str) -> Vec<String> {
+        use lopdf::{Document, Object, Stream, dictionary};
+        let mut doc = Document::with_version("1.7");
+        let program = doc.add_object(Stream::new(dictionary! {}, include_bytes!("../../../assets/fonts/Inter-Regular.ttf").to_vec()));
+        let descriptor = doc.add_object(dictionary! { "Type" => "FontDescriptor", "FontName" => base_font, "Flags" => 32, "FontFile2" => program });
+        let font = doc.add_object(dictionary! { "Type" => "Font", "Subtype" => "TrueType", "BaseFont" => base_font, "FontDescriptor" => descriptor });
+        let content = doc.add_object(Stream::new(dictionary! {}, b"BT /F1 14 Tf 1 0 0 1 20 200 Tm (abc) Tj ET".to_vec()));
+        let pages = doc.new_object_id();
+        let page = doc.add_object(dictionary! { "Type" => "Page", "Parent" => pages, "MediaBox" => vec![Object::Integer(0), Object::Integer(0), Object::Integer(400), Object::Integer(400)], "Resources" => dictionary! {"Font" => dictionary! {"F1" => font}}, "Contents" => content });
+        doc.objects.insert(pages, dictionary! {"Type" => "Pages", "Kids" => vec![Object::Reference(page)], "Count" => 1}.into());
+        let catalog = doc.add_object(dictionary! {"Type" => "Catalog", "Pages" => pages});
+        doc.trailer.set("Root", catalog);
+        let mut bytes = Vec::new();
+        doc.save_to(&mut bytes).unwrap();
+        let pdf = Pdf::new(std::sync::Arc::new(bytes)).unwrap();
+        let text = extract_page(&pdf, 0, &InterpreterSettings::default()).unwrap();
+        let mut names: Vec<String> = text.glyphs.iter().filter_map(|g| g.font.as_deref().map(str::to_owned)).collect();
+        names.dedup();
+        names
+    }
+
+    /// A font whose `/BaseFont` the producer replaced with a placeholder of its own is named by
+    /// the family its embedded program carries. Chrome's font sanitizer writes `OTS-derived-font`
+    /// for every web font it embeds, so a book printed from a web page names none of its fonts —
+    /// and a chess diagram font that is not named reads as prose instead of as a position.
+    #[test]
+    fn a_placeholder_font_name_comes_from_the_embedded_program() {
+        assert_eq!(embedded_font_names("AAAAAA+OTS-derived-font"), vec!["Inter".to_owned()]);
+        assert_eq!(embedded_font_names("OTS-derived-font"), vec!["Inter".to_owned()]);
+        // A font the producer named keeps that name: the PDF's name is the one the catalogues
+        // and the user's font folder are keyed by, and it may differ from the program's.
+        assert_eq!(embedded_font_names("ABCDEF+Inter-Regular"), vec!["Inter-Regular".to_owned()]);
+        // The rule is only about names that say nothing.
+        for name in ["OTS-derived-font", "ots derived font", "", "   "] {
+            assert!(is_placeholder_name(name), "{name:?}");
+        }
+        for name in ["Inter-Regular", "ChessMerida", "Chess Merida", "OTSderived", "Otsdale"] {
+            assert!(!is_placeholder_name(name), "{name:?}");
+        }
     }
 
     #[test]

@@ -32,11 +32,31 @@ use crate::{PdfCraftApp, widgets};
 const HEADER: f32 = 36.0;
 const FOOTER: f32 = 52.0;
 
-/// The board's side: the tab's width less a margin, and its height less what goes around the
-/// board, from [`MIN_BOARD`] to [`MAX_BOARD`] points.
+/// The board's side: the room the tab leaves beside it, and its height less what goes around the
+/// board, from [`MIN_BOARD`] to [`MAX_BOARD`] points, and never more than the room ([`board_side`]).
 const MIN_BOARD: f32 = 200.0;
 const MAX_BOARD: f32 = 420.0;
 const AROUND_BOARD: f32 = 204.0;
+
+/// The margin the body keeps on each side of the tab.
+const BODY_MARGIN: f32 = 8.0;
+
+/// The width the board may take in a tab `width` points wide: the body's margins and the scroll
+/// bar's room come off, so the board never runs under the bar or over the tab's edge. Never
+/// negative, whatever the layout gives (a width of `NaN` gives 0).
+fn board_room(width: f32, bar: f32) -> f32 {
+    let room = width - 2.0 * BODY_MARGIN - bar.max(0.0);
+    if room.is_finite() && room > 0.0 { room } else { 0.0 }
+}
+
+/// The board's side in a tab of `room` points across and `height` points tall: as large as both
+/// allow, between [`MIN_BOARD`] and [`MAX_BOARD`], and never wider than the room — a tab too
+/// narrow for [`MIN_BOARD`] gets a smaller board, not one over its edge.
+fn board_side(room: f32, height: f32) -> f32 {
+    let tall = height - AROUND_BOARD;
+    let side = if tall.is_finite() { room.min(tall) } else { room };
+    side.clamp(MIN_BOARD, MAX_BOARD).min(room).max(0.0)
+}
 
 /// The book's PGN's suggestion (plan "Carregar PGN do livro", R6b): the squares it would change,
 /// and a button that puts its position on the board as an unconfirmed change, which the user
@@ -169,9 +189,17 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                     ui.label(RichText::new(tl!("Unconfirmed changes")).small().color(t.warning_text));
                 });
             }
-            let side = (ui.available_width() - 24.0).min(body_rect.height() - AROUND_BOARD).clamp(MIN_BOARD, MAX_BOARD);
+            // The board is as large as the tab can show it. The room is taken from the tab's own
+            // width, never from `ui.available_width()`, which inside the scroll area reports more
+            // than the body has (it leaves out the body's side margins): sized by it, the board
+            // ran over the tab's right edge and under the scroll bar.
+            let room = board_room(body_rect.width(), ui.spacing().scroll.bar_width);
+            let side = board_side(room, body_rect.height());
             let sprites = crate::chess_editor::palette_sprites(ui, ed, &pieces);
-            ui.vertical_centered(|ui| crate::chess_editor::board_view(ui, &t, ed, &pieces, side, true, board_keys.as_ref()));
+            ui.horizontal(|ui| {
+                ui.add_space(((room - side) / 2.0).max(0.0));
+                crate::chess_editor::board_view(ui, &t, ed, &pieces, side, true, board_keys.as_ref());
+            });
             ui.add_space(6.0);
             crate::chess_editor::palette(ui, sprites.as_ref(), &mut ed.brush, false);
             ui.add_space(6.0);
@@ -384,4 +412,36 @@ fn more_menu(ui: &mut egui::Ui, ed: &DiagramEditor, legal: bool, kept: bool) -> 
         }
     });
     action
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The board never takes more than the tab leaves it: the margins and the scroll bar come
+    /// off, and a tab too narrow for [`MIN_BOARD`] gets a smaller board, never one over its edge.
+    #[test]
+    fn the_board_never_takes_more_than_the_tab_leaves_it() {
+        // The tab as it opens (320 pt): the body's two margins and the bar come off.
+        assert_eq!(board_room(320.0, 8.0), 296.0);
+        assert_eq!(board_side(296.0, 700.0), 296.0);
+        // A tab narrower than the least board: the board shrinks with it.
+        let narrow = board_room(220.0, 8.0);
+        assert_eq!(narrow, 196.0);
+        assert_eq!(board_side(narrow, 700.0), 196.0);
+        // A short tab: the height decides, and the least board still fits the room.
+        assert_eq!(board_side(296.0, 380.0), 200.0);
+        assert!(board_side(140.0, 380.0) <= 140.0);
+        // A wide tab stops at the largest board.
+        assert_eq!(board_side(900.0, 2000.0), MAX_BOARD);
+        // Nothing the layout can give makes a negative or unreal side.
+        for odd in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY, -100.0, 0.0, 10.0] {
+            let room = board_room(odd, 8.0);
+            assert!(room >= 0.0 && room.is_finite(), "room of {odd}: {room}");
+            for height in [f32::NAN, f32::INFINITY, -50.0, 0.0, 240.0, 5000.0] {
+                let side = board_side(room, height);
+                assert!(side >= 0.0 && side.is_finite() && side <= room.max(0.0), "{odd} by {height}: {side} in {room}");
+            }
+        }
+    }
 }

@@ -163,6 +163,12 @@ pub struct ChessState {
 }
 
 impl ChessState {
+    /// Where the last pass drew the Diagram tab, in points, or `None` when it was not drawn.
+    /// The layout tests check that the tab's board stays inside it.
+    pub fn diagram_tab_rect(&self) -> Option<egui::Rect> {
+        self.diagram_keys.tab
+    }
+
     /// The diagrams the Diagram tab walks, of the document `results` hold (plan A8, P4): the
     /// state the Diagrams list's chip shows, or, with none, the ones to review.
     pub(crate) fn walk(&self) -> Vec<(usize, usize)> {
