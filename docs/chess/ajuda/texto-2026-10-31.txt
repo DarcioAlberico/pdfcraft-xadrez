@@ -1,0 +1,1250 @@
+GUIA DE AJUDA
+PdfCraft
+Ferramentas de xadrez
+Como ler, revisar, estudar e exportar livros de xadrez em PDF
+Versão do programa descrita: a instalada em dist/app em 31/10/2026 (código do main cc2d484c).
+As figuras foram feitas no próprio PdfCraft, em português, com um livro de exemplo de 4 páginas: duas partidas de domínio
+público (Morphy, Paris 1858; Anderssen–Kieseritzky, Londres 1851) com comentários escritos para este guia.
+
+PdfCraft · Ferramentas de xadrez
+Sumário
+1 Visão geral
+2 O que é preciso: modelos, fontes e motor
+3 Detectar e revisar os diagramas
+4 A aba Diagrama: corrigir uma posição
+5 A aba Texto: o livro lido como xadrez
+6 O PGN do livro
+7 O tabuleiro de análise
+8 A lista de lances
+9 O trilho de ferramentas
+10 Capturar lances impressos
+11 Sinais (glifos) e comentários
+12 Variantes, estrutura e Desfazer
+13 As partidas do documento
+14 Janela de xadrez e Seguir na página
+15 Aparência: peças, temas e lista
+16 Exportar o livro e redesenhar diagramas
+17 Atalhos de teclado
+18 Automação pela linha de comando
+19 Limites e solução de problemas
+3
+4
+5
+8
+10
+12
+14
+17
+20
+21
+24
+26
+27
+28
+28
+32
+33
+34
+35
+2
+
+PdfCraft · Ferramentas de xadrez
+1 Visão geral
+O PdfCraft lê um livro de xadrez em PDF. Ele acha os diagramas e lê cada um como uma posição (FEN). Também lê
+os lances do texto, com figurinas e sinais de comentário. A partir disso, você pode:
+revisar as posições lidas e corrigir as erradas, sem mudar o PDF;
+estudar qualquer diagrama ou partida do livro num tabuleiro de análise, com variantes, comentários,
+desenhos e um motor como o Stockfish;
+transcrever os lances impressos para uma partida com um gesto: selecionar o texto na página;
+ligar o livro ao PGN que acompanha a edição digital (Chessable, Forward Chess…);
+exportar o livro como PGN, EPUB, HTML, Word, RTF ou Markdown, com diagramas redesenhados e links do
+lichess.
+Tudo roda no seu computador. Nada é enviado para fora.
+O livro de exemplo aberto, depois de Detectar diagramas.
+1. 1 A marca do diagrama na página: a cor diz o estado,
+e a aba diz o número.
+2. 2 Detectar diagramas acha e lê os diagramas do livro.
+3. 3 O resumo e o botão Revisar agora.
+4. 4 Os filtros por estado (chips).
+5. 5 A lista de diagramas, agrupada por página.
+6. 6 O ícone do painel Diagramas de xadrez na barra da
+direita.
+7. 7 A oferta de usar o PGN que está ao lado do PDF
+(capítulo 6).
+3
+
+PdfCraft · Ferramentas de xadrez
+Onde ficam as ferramentas
+Lugar
+Para que serve
+Diagramas de xadrez (no Inspetor, à
+direita)
+O painel principal. A aba Diagramas detecta, lista e filtra os diagramas. A aba
+Texto mostra a página lida como texto de xadrez. Abre pelo ícone de tabuleiro na
+barra da direita, por Todas as ferramentas ▸ Xadrez ou pelo comando Painel de
+diagramas de xadrez ( Ctrl + K ).
+Diagrama (aba ao lado da página) Edita a posição de um diagrama para corrigir a leitura (capítulo 4).
+Tabuleiro (aba ao lado do Inspetor) O tabuleiro de análise e estudo, com o trilho de ferramentas, a seção Análise, as
+partidas do documento, FEN e PGN (capítulos 7 a 13).
+Lista de lances (ao lado da página) A partida do tabuleiro em formato de livro, numa coluna própria (capítulo 8).
+Preferências
+Peças, tema do tabuleiro, lista de lances, variantes e modelos de leitura (capítulo
+15).
+Comandos
+Toda ferramenta de xadrez também é um comando. Aperte Ctrl + K e digite parte do nome, por exemplo
+“diagramas”, “PGN” ou “variante”.
+2 O que é preciso: modelos, fontes e motor
+Nenhum destes arquivos vem com o PdfCraft. Sem eles, o resto continua funcionando.
+Arquivo
+O que faz
+Sem ele
+chess-pieces.onnx +
+.json
+Lê diagramas desenhados e escaneados. Só os diagramas compostos numa fonte
+de diagrama são lidos. Os outros são
+achados e marcados.
+chess-glyphs.onnx +
+.json
+OCR de xadrez: lê lances, figurinas e
+sinais a partir da imagem da página.
+Páginas sem camada de texto boa ficam
+como “precisam de OCR”.
+text-detection.rten ,
+text-recognition.rten
+Lê a prosa em volta dos lances.
+O leitor de glifos lê a prosa também, com
+menos acerto.
+Fonte de diagrama (Chess
+Merida…) ou pasta pieces
+Desenha os diagramas redesenhados
+com peças de verdade.
+O Automático usa peças geométricas
+simples. Dá para escolher um dos 20
+conjuntos que vêm com o programa
+(capítulo 15).
+Fonte de figurinas (Hastings,
+Linares, Zurich, SemFig…)
+Escreve as figurinas (♘f3) nas
+exportações HTML e EPUB.
+As fontes do leitor.
+ISChess (símbolos do
+Informador)
+Escreve os sinais (⩲ ± □ →) nas
+exportações HTML e EPUB.
+As fontes do leitor.
+Um motor UCI (Stockfish)
+Análise no tabuleiro.
+O tabuleiro funciona sem análise.
+4
+
+PdfCraft · Ferramentas de xadrez
+Onde colocar cada coisa
+Ao lado do programa ( pdfcraft.exe ) ficam três pastas:
+Pasta
+Conteúdo
+models
+Os modelos de leitura. O PdfCraft procura primeiro na pasta escolhida em Preferências, depois na
+indicada por PDFCRAFT_MODELS , depois em models e, por fim, na pasta do programa.
+fonts
+Fontes de diagrama (viram conjuntos de peças) e fontes de figurinas e sinais (usadas nas
+exportações). Use Importar fontes… para copiá-las para cá (capítulo 15).
+engine
+O programa do motor. O .exe precisa estar direto nesta pasta, não numa subpasta. Também dá
+para escolher o programa com Escolher motor….
+No seu computador
+Em dist/app/engine , o Stockfish está numa subpasta ( engine/stockfish/stockfish-windows-x86-64-
+universal.exe ). Assim ele só é usado se tiver sido escolhido em Escolher motor…. Para ele ser encontrado
+sozinho, copie o .exe direto para dist/app/engine .
+O atalho abrir-xadrez.cmd abre o PdfCraft com PDFCRAFT_MODELS=C:\Python-Chess2\pdfcraft-models .
+Modelos de leitura nas Preferências
+Modelos de leitura… escolhe a pasta dos modelos. Ela é conferida na hora: cada modelo carregado, não
+achado, ou o motivo de não carregar (por exemplo, um .json faltando ao lado do .onnx ). A escolha fica
+guardada nas configurações.
+Verificar novamente relê a pasta depois que você troca os arquivos.
+Esquecer volta à busca automática.
+A mesma escolha está no menu ⋯ Mais ações de xadrez do painel e no comando Modelos de leitura….
+Trocar os modelos durante uma leitura é seguro: ela termina com os modelos com que começou.
+3 Detectar e revisar os diagramas
+Revisar um livro em 5 passos
+Detectar diagramas. Clique em Detectar diagramas no topo do painel. O ▾ ao lado (Onde detectar)
+oferece No livro todo (N págs.) ou Nesta página. Durante a leitura, o painel mostra a página em que está, e
+1
+5
+
+PdfCraft · Ferramentas de xadrez
+o × para a leitura (os diagramas já achados ficam). No fim, aparece o resumo, por exemplo 4 diagramas · 1 a
+revisar.
+2
+3
+Revisar agora. O primeiro diagrama a revisar abre na aba Diagrama, ao lado da página, e a página o mostra
+contornado.
+Corrigir. Ponha as peças onde o livro as tem: clique numa casa para pôr a peça da paleta, ou use o teclado.
+O rodapé diz na hora se a posição é legal e, quando não é, por quê.
+4
+5
+Confirmar e seguir ( Ctrl + Enter ). A correção fica guardada para o diagrama, sem mudar o PDF, e o
+próximo a revisar abre. Uma leitura certa só precisa de Ctrl + Enter . Depois do último, aparece Revisão
+concluída: N de N conferidos.
+Exportar. Exportar… grava o livro com as suas correções (capítulo 16).
+O ▾ de Detectar diagramas.
+Os ícones Exportar…, Tabuleiro e ⋯ Mais ações de xadrez.
+Os estados de um diagrama
+Todo diagrama tem um estado, mostrado por ícone e palavra (nunca só pela cor): na lista, na marca da página e
+na aba Diagrama.
+Estado na tela
+Ícone e cor
+Quer dizer
+Lido
+círculo com ✓, verde
+Posição lida com confiança.
+A revisar
+triângulo, âmbar
+Alguma casa ficou em dúvida, ou a leitura foi reparada. Confira
+antes de usar.
+Não lido
+círculo tracejado, cinza Não deu para ler (por exemplo, um tabuleiro desenhado sem o
+modelo de peças). Monte a posição no editor.
+Com erro
+círculo com ×, vermelho A leitura falhou. Monte a posição no editor.
+Conferido
+selo com ✓, verde
+Você conferiu e manteve a leitura.
+Corrigido
+selo com ✓, verde
+Você corrigiu esta posição.
+Confirmado pelo PGN livro aberto
+A posição bate com o PGN do livro (capítulo 6).
+Um diagrama fica a revisar quando não foi lido, quando a leitura falhou ou quando ela não passou no controle de
+qualidade. Uma leitura que o programa precisou reparar nunca passa sozinha: alguém tem que confirmar.
+Quem joga e o número do lance
+Num PDF nativo digital, a partida costuma continuar sob o diagrama com o primeiro número de lance em negrito:
+23. ♘f3 quer dizer que as brancas jogam, e 23... ♖xe4, que as pretas jogam. O primeiro número em negrito sob
+o diagrama (na mesma coluna, antes do próximo diagrama) define quem joga e o número do lance na FEN e no
+link do lichess. Um número na fonte normal é prosa e é ignorado. Quando a própria posição prova o contrário (o
+6
+
+PdfCraft · Ferramentas de xadrez
+lado que não joga estaria em xeque), vale a posição, e o diagrama é marcado. Sem nenhum dos dois, assume-se
+que as brancas jogam.
+A lista de diagramas
+Chips filtram por estado, com a contagem de cada um (Todas 4, A
+revisar 1…). Vale um estado de cada vez, mais Nesta página.
+Acompanhar a página mantém no topo da lista a página que está
+na tela.
+Os diagramas ficam agrupados sob o cabeçalho da página (Página
+1), que leva à página. O menu de contexto do cabeçalho tem
+Marcar a página como conferida: todo diagrama daquela página
+lido com confiança passa a Conferido. Os que estão a revisar
+ficam para você, porque aceitá-los em bloco não é oferecido de
+propósito.
+Cada linha mostra Diagrama N e o estado. A FEN aparece na dica,
+ao parar o ponteiro sobre a linha.
+Uma edição do PDF, ou Desfazer e Refazer, mantém a lista. Só as
+páginas que mudaram são lidas de novo, em segundo plano.
+Na página, cada diagrama tem uma marca na cor do estado, com
+o número numa aba. Um clique escolhe o diagrama, com a
+ferramenta Selecionar ou com a Mão.
+O painel depois da detecção.
+O menu ⋯ de cada linha
+Abrir no tabuleiro: põe a posição no tabuleiro de análise, como uma
+partida nova.
+Analisar: abre no tabuleiro com o motor analisando.
+Copiar FEN.
+Abrir no lichess, quando o diagrama tem link.
+Pelo teclado: ↑ ↓ Home End andam pelas linhas, Tab vai ao ⋯ da
+linha e Enter abre o menu.
+Um duplo clique no diagrama da página também o abre no tabuleiro.
+O menu ⋯ de uma linha.
+7
+
+PdfCraft · Ferramentas de xadrez
+4 A aba Diagrama: corrigir uma posição
+A aba Diagrama abre ao lado da página quando você clica num diagrama da lista, em Revisar agora ou numa
+marca da página.
+O que há na aba
+Cabeçalho: Pág. 3 · diagrama 2 de 2 (um clique mostra o
+diagrama na página). As setas ‹ › andam pelos diagramas do
+chip escolhido (sem chip, pelos a revisar), com contador: 1
+de 1 a revisar. Ao dar a volta de uma ponta à outra, o painel
+avisa.
+Tabuleiro e paleta: peças brancas, peças pretas e a
+borracha.
+Quem joga (Brancas / Pretas) e Lance nº.
+Detalhes: o roque por extenso (Roque — Brancas: curto,
+longo · Pretas: curto, longo), a FEN, Virar tabuleiro e
+Restaurar a leitura automática. Um direito de roque que as
+peças já não permitem sai sozinho.
+Casas duvidosas ficam contornadas. Embaixo aparece a
+segunda leitura de cada uma, a um clique (por exemplo,
+Esvaziar a casa).
+Rodapé fixo: o selo de legalidade, o ⋯ e Confirmar e seguir
+▾ Só confirmar. O jeito de confirmar usado por último fica
+na frente da próxima vez.
+O Exercício 2 do livro, impresso sem o rei preto. O
+leitor “reparou” a posição pondo um rei em e2, por
+isso ela ficou a revisar.
+8
+
+PdfCraft · Ferramentas de xadrez
+Exemplo: corrigir o diagrama com erro
+2. Ponha o rei preto em e8 e confirme. A lista passa a dizer
+Corrigido, e a aba, Revisão concluída: 1 de 1 conferidos.
+1. Com a borracha, apague o rei de e2. O rodapé avisa: Posição
+ilegal: falta o rei preto. O ponto no ícone e a faixa Alterações
+não confirmadas mostram que há um rascunho.
+O rodapé explica qualquer posição ilegal: falta de rei, dois reis, o lado que não joga em xeque, peão na primeira
+ou na oitava fileira, roque que o rei ou a torre não permitem mais, casa en passant que não combina com os
+peões…
+O menu ⋯ do rodapé.
+O menu ⋯ do rodapé
+Redesenhar no PDF…: desenha a posição corrigida por cima
+do diagrama, num passo de desfazer. Na primeira vez ele
+pede confirmação (Não mostrar de novo fica lembrado).
+Adicionar link do lichess: põe sob o diagrama um link para a
+análise no lichess.
+Copiar FEN e Abrir no lichess.
+Esquecer a correção: volta à leitura automática.
+Analisar no tabuleiro (o ícone de medidor no cabeçalho) leva a
+posição, como está na edição, para o tabuleiro com o motor
+ligado.
+9
+
+PdfCraft · Ferramentas de xadrez
+Rascunhos e onde as correções ficam
+Mudanças não confirmadas ficam como rascunho de cada diagrama (um ponto no ícone) enquanto você
+olha outros. Ao fechar o documento, sair, exportar ou detectar de novo com rascunhos pendentes, o
+programa pergunta: Confirmar correção, Descartar mudanças ou Continuar editando.
+As correções ficam na pasta de recuperação ( chess/corrections ), um arquivo por livro. O livro é reconhecido
+pelo /ID do PDF, pelo caminho e pelo nome e tamanho, então elas sobrevivem a fechar, editar e salvar com
+outro nome. A correção acha o seu diagrama pelo conteúdo da página e pelo lugar nela, mesmo que páginas
+sejam inseridas antes.
+A correção de um diagrama vence uma nova leitura: na lista, no tabuleiro, nos links e em toda exportação.
+Nas Preferências, Editor de diagramas clássico traz de volta o editor dentro do painel, em vez da aba.
+Teclas da aba Diagrama
+Tecla
+Faz
+Tab
+Percorre os controles da aba. O tabuleiro fica com o teclado quando um diagrama
+abre e depois de confirmar.
+← → ↑ ↓
+Movem o cursor no tabuleiro.
+R D T B C P
+Põem a peça branca correspondente (Rei, Dama, Torre, Bispo, Cavalo, Peão) na casa
+do cursor. Com Shift , a preta.
+Delete , Backspace , Espaço
+Esvaziam a casa.
+Enter
+Põe a peça escolhida na paleta.
+Page Up , Page Down
+Diagrama anterior ou seguinte do chip (ou dos a revisar).
+Ctrl + Enter
+Confirmar e seguir.
+Ctrl + Z , Ctrl + Shift + Z
+Desfazer e refazer no editor (ou no documento, quando o editor não tem o que
+desfazer).
+Esc
+Volta à linha da lista, sem descartar nada.
+Alt + ← , Alt + →
+Voltar e avançar no histórico de navegação.
+Um leitor de tela ouve o tabuleiro como uma grade de casas (“e4, cavalo branco”).
+5 A aba Texto: o livro lido como xadrez
+A aba Texto mostra a página da tela lida como documento de xadrez: títulos, parágrafos, lances e diagramas.
+10
+
+PdfCraft · Ferramentas de xadrez
+A página 1 do livro de exemplo na aba Texto. Os lances em verde foram reproduzidos e são válidos; o diagrama aparece em
+miniatura, com a FEN.
+Os lances são coloridos pelo que a reprodução achou: válido, ilegal, não alcançado ou não verificado. A dica
+de cada lance diz o estado e a FEN.
+Um clique num lance ou num parágrafo mostra onde ele está na página. Um clique num diagrama abre o
+editor dele.
+Um duplo clique num lance, ou Abrir esta partida no tabuleiro no menu dele, abre a partida no tabuleiro
+naquele lance. As páginas vizinhas (até 4 para cada lado) também são lidas, para a partida vir inteira quando o
+livro a continua de uma página para outra.
+Ler esta página com OCR de xadrez lê a imagem da página em vez da camada de texto.
+Carregar PGN do livro… e Usar …pgn ligam o livro ao seu PGN (capítulo 6).
+Exportar… é a mesma exportação do painel (capítulo 16).
+Origem do livro
+Diz de onde vêm as páginas do documento aberto:
+11
+
+PdfCraft · Ferramentas de xadrez
+Opção
+Faz
+Automático (página a página)
+Confia na camada de texto de cada página, a menos que ela pareça ruim.
+Nesse caso usa o OCR de xadrez.
+Nativo digital (só a camada de texto)
+Nunca usa o OCR de xadrez. Uma página com camada ruim é lida como
+está, com um aviso.
+Escaneado (OCR de xadrez em todas as
+páginas)
+Lê toda página, e toda exportação, com o OCR de xadrez.
+Um escaneado que o FineReader, o Acrobat ou o Tesseract já reconheceram traz o texto deles invisível sobre a
+imagem. Essa camada costuma errar figurinas e sinais. Por isso, uma página com texto quase todo invisível e
+imagens cobrindo metade dela ou mais é tratada como “OCR de outro programa”, e o modo Automático a lê com
+o OCR de xadrez.
+Livros compostos em ISChess
+Os livros da Quality Chess e do Informador costumam compor os sinais, e às vezes as figurinas, na fonte ISChess,
+em que as letras querem dizer outra coisa ( O é ±, Q é +−, a é !?). O PdfCraft reconhece a fonte pelo nome,
+então a página é lida com os sinais e as peças que o livro imprime. Para ler, não é preciso ter o arquivo da fonte.
+6 O PGN do livro
+Muitos livros digitais têm um PGN próprio (exportações do Chessable, do Forward Chess…). Ligado ao PDF, esse
+PGN confirma as posições lidas, recupera lances que o leitor não conseguiu jogar e dá à exportação as partidas
+completas, com todas as variantes.
+Como ligar
+Oferta ao abrir. Quando há um .pgn com o mesmo nome ao lado do PDF, o painel oferece usá-lo: Usar
+livro-exemplo.pgn ou Agora não. A oferta aparece uma vez por documento, e a recusa fica lembrada.
+Carregar PGN do livro… (aba Texto, ou o comando) escolhe o arquivo à mão.
+Ligar o livro inteiro ao PGN (comando) lê o livro todo e liga cada página, em blocos, mostrando o progresso.
+No fim, diz o resultado.
+Remover PGN do livro desfaz a ligação.
+A oferta do PGN que está ao lado do PDF.
+12
+
+PdfCraft · Ferramentas de xadrez
+O resumo de Ligar o livro inteiro ao PGN no livro de exemplo.
+Três diagramas confirmados pelo PGN. O quarto continua
+com a correção feita à mão.
+O que muda com o PGN
+Diagramas: os que batem com uma posição do PGN
+ganham o estado Confirmado pelo PGN, que tem chip
+próprio. Quando a leitura difere do PGN em uma ou
+duas casas, a aba Diagrama sugere a posição do PGN
+com Usar a posição do PGN, como rascunho. Uma
+correção sua nunca é mudada.
+Aba Texto: um lance que o leitor não jogou e o PGN
+recuperou aparece sublinhado. Um lance em conflito
+com o PGN aparece em itálico, e o menu dele oferece
+Usar o lance do PGN ou Manter o lance do livro.
+Tabuleiro: o duplo clique num lance ligado abre a
+partida do PGN naquele lance, com todas as variantes.
+Exportação PGN: em Exportar… ▸ Partidas do PGN
+vêm de, o padrão é O PGN do livro, com o texto do
+livro: as partidas do PGN com todas as linhas, o texto do
+livro como comentários e $220 onde um diagrama
+mostra um lance. Linhas que só existem no livro entram
+como variantes marcadas {só no livro} . A outra
+opção, O texto lido do PDF, exporta como se não
+houvesse PGN. A escolha vale para a sessão.
+Num conflito, o texto da aba Texto continua sendo o do
+livro. Na exportação, vale o PGN.
+O PGN é guardado junto com as correções do livro (uma cópia, não só o caminho), e acompanha o documento
+quando ele é salvo com outro nome.
+13
+
+PdfCraft · Ferramentas de xadrez
+7 O tabuleiro de análise
+1. 1 A Lista de lances ao lado da página (capítulo 8).
+2. 2 O trilho de ferramentas (capítulo 9).
+3. 3 O tabuleiro, com desenhos: setas verdes e uma casa
+marcada em vermelho.
+4. 4 Virar tabuleiro, Quem joga e Lance nº.
+5. 5 Navegação: início, anterior, próximo, fim, variante
+anterior e variante seguinte.
+6. 6 A prévia da posição ao parar o ponteiro sobre um
+lance.
+7. 7 O comentário do lance mostrado.
+8. 8 Os ícones da seção Análise, da Lista de lances ao
+lado da página e do Tema do tabuleiro.
+14
+
+PdfCraft · Ferramentas de xadrez
+Abrir uma posição ou partida no tabuleiro
+Duplo clique num diagrama da página, ou Abrir no tabuleiro na lista ou no editor. Se o editor está com
+aquele diagrama, vale a posição como está na edição. Os lances sob o diagrama dão quem joga e o número
+do lance ( 12...e5 faz as pretas jogarem no lance 12).
+Duplo clique num lance da aba Texto: abre a partida do livro naquele lance.
+Nova partida, Abrir PGN… ou um PGN colado no campo PGN (capítulo 13).
+Cada um desses abre uma partida nova na lista de partidas: nunca substitui a partida que está no tabuleiro.
+Voltar ao diagrama N (pág. X), acima do tabuleiro, leva de volta ao diagrama de origem.
+Jogar e andar pelos lances
+Jogue clicando numa peça e depois no destino, ou arrastando a peça. Um peão que chega à última fileira
+pergunta a peça da promoção.
+As setas da navegação, ou as teclas ← → Home End com o ponteiro sobre o painel, andam pela linha.
+↑ ↓ trocam de variante na bifurcação. Page Up e Page Down vão à variante anterior ou à seguinte.
+Um lance diferente num ponto anterior cria uma variante, como no lichess. Nas Preferências dá para trocar
+isso: Ao jogar um lance diferente pode Criar variante, Perguntar ou Substituir a continuação. Ao avançar
+numa bifurcação pode Seguir a linha lembrada ou Perguntar.
+Antes do primeiro lance, escolha quem joga. Virar tabuleiro mostra o lado das pretas.
+Um diagrama com posição ilegal aparece num quadro vermelho e só pode ser jogado depois de corrigido no
+editor.
+Desenhar no tabuleiro
+Com o botão direito, como no lichess: um clique circula uma casa, e arrastar desenha uma seta. Segure Shift
+para vermelho, Alt para azul ou Ctrl para amarelo. Sem tecla, a cor é verde. Desenhar a mesma coisa de novo
+apaga.
+Os desenhos pertencem ao lance mostrado e voltam quando você volta a ele. Cada desenho é um passo de
+desfazer.
+No PGN, eles vão no comentário do lance, na convenção do ChessBase e do lichess: {[%csl Rd7][%cal
+Gd1d7,Gb5d7] texto} . Um PGN com esses comandos mostra os desenhos ao ser carregado.
+Apagar desenhos, na seção Análise, tira os desenhos do lance mostrado.
+15
+
+PdfCraft · Ferramentas de xadrez
+A seção Análise
+Fica sob o tabuleiro, fechada até você abrir (ou pelo ícone de
+medidor acima do tabuleiro).
+Análise do motor liga o motor UCI (Stockfish ou outro), que
+analisa a posição mostrada até a profundidade 30. Ele
+recomeça a cada mudança de posição e pausa quando o
+tabuleiro não está à vista.
+Linhas: 1, 2 ou 3 linhas, com a avaliação para as brancas
+( +0.40 , #3 ). Um clique num lance de uma linha joga a
+linha até ele: lances que já estão na partida são seguidos, e
+os outros começam uma variante.
+Uma barra de avaliação fina ao lado do tabuleiro mostra
+quem está melhor, e o melhor lance aparece como uma seta
+azul.
+Ao voltar a uma posição já analisada na sessão (uma das
+últimas 64), as linhas aparecem na hora e a busca continua.
+Escolher motor… escolhe o programa. O programa, o
+número de linhas e se a análise está ligada ficam lembrados.
+Sem motor, o painel explica como conseguir um: Escolher
+motor…, Abrir stockfishchess.org ou Agora não.
+A seção também mostra o material: as peças a mais de
+cada lado e a diferença em pontos.
+O Stockfish analisando a posição depois de 12...♖d8,
+com três linhas.
+16
+
+PdfCraft · Ferramentas de xadrez
+Montar uma posição
+Montar posição, no trilho, troca o tabuleiro pela montagem:
+Clique numa casa para pôr a peça escolhida na paleta. Clique de
+novo, ou use o botão direito, para esvaziar.
+Posição inicial padrão e Tabuleiro vazio recomeçam. Virar
+tabuleiro inverte a vista.
+Escolha Quem joga e o Roque. Um direito que as peças não
+permitem sai sozinho.
+O painel diz na hora se a posição é legal.
+Quando a partida do tabuleiro já tem lances, a escolha é entre
+Nova partida a partir desta posição (a partida atual fica com os
+lances dela) e Substituir esta partida (os lances saem, com aviso
+e Desfazer).
+Cancelar, Esc , outra ferramenta ou outra partida saem da
+montagem.
+A ferramenta Montar posição.
+8 A lista de lances
+A partida do tabuleiro aparece como num livro: sob o tabuleiro e, com Lista de lances ao lado da página (ícone
+acima do tabuleiro, ou o comando), numa coluna própria ao lado do PDF. Nessa coluna, os botões Esquerda e
+Direita escolhem o lado, e − e + (Texto menor e Texto maior) mudam o tamanho da letra.
+17
+
+PdfCraft · Ferramentas de xadrez
+Em Texto corrido, com Letras no seu idioma.
+Em Colunas, com figurinhas.
+Cabeçalho: jogadores (com Elo, quando houver), depois evento, local, data e rodada, cada um só quando a
+etiqueta diz algo. Um clique abre Dados da partida. O resultado ( 1-0 , 0-1 , ½-½ , * ) vem depois do último
+lance da linha principal.
+Variantes entre parênteses, com uma barra à esquerda e um ˅ para recolher ou expandir. Comentários em
+itálico.
+Sinais como chips coloridos (verde para !, laranja para ?…). Um ponto colorido indica que o lance tem
+desenhos: com o ponteiro sobre ele, os desenhos aparecem no tabuleiro.
+18
+
+PdfCraft · Ferramentas de xadrez
+Prévia: com o ponteiro parado sobre um lance por 400 ms (ou com o foco do teclado nele), aparece uma
+miniatura da posição depois do lance. A prévia pode ser desligada nas Preferências.
+Os lances que uma captura acabou de pôr ficam coloridos por um instante.
+Um clique num lance vai até ele. O botão direito abre o menu do lance.
+O menu do lance
+Estrutura: Promover um nível, Tornar esta a linha principal,
+Rebaixar, Excluir variante, Mover variante para cima e para baixo,
+Cortar depois deste lance, Ameaça (lance nulo) e Mostrar no
+PDF. O que não se aplica aparece apagado. Quando a ferramenta
+poderia agir em várias variantes no caminho até o lance, elas são
+listadas, a mais próxima primeiro.
+Sinais do lance e Sinais de avaliação (marcados quando o lance já
+os tem) e Remover todos os sinais. Eles agem naquele lance sem
+ir até ele.
+Diagrama aqui: mostra um pequeno tabuleiro depois do lance e
+grava $220 no PGN.
+Copiar linha com figurinas ( 18.♘d5! ♕xe1 19.♘xe7+ ) e Copiar
+linha (letras), do início da variante ou da partida até o lance.
+Apagar a partir deste lance e Nova partida a partir desta posição.
+Botão direito sobre 14...♕b4, dentro de uma
+variante.
+Preferências da lista
+Opção
+Escolhas
+Peças na lista de lances
+Figurinhas (do conjunto do tabuleiro), Letras no seu idioma (R D T B C) ou
+Letras em inglês (K Q R B N). Todo lance tem um nome por extenso para
+leitores de tela (“cavalo f3”).
+Lista de lances
+Texto corrido ou Colunas (nº | brancas | pretas, quebrando nos comentários
+e variantes).
+Tamanho do texto
+− 100% +.
+O comentário do lance mostrado,
+grande sob o tabuleiro
+Liga o comentário em destaque.
+Um lance em que o ponteiro para
+mostra a sua posição
+Liga ou desliga a prévia.
+19
+
+PdfCraft · Ferramentas de xadrez
+9 O trilho de ferramentas
+O trilho é a coluna de botões ao lado do tabuleiro (é a “barra PGN”). O nome de cada botão diz a tecla
+dele, que funciona enquanto o escopo de xadrez está ativo (veja abaixo). Um botão com um triângulo
+pequeno é um grupo: mostra a ferramenta usada por último, e um clique longo, o botão direito, ou
+Enter / ↓ com o foco nele, abre as outras.
+Botão (de cima para baixo)
+Tecla
+Faz
+Navegar
+Esc
+Um clique num lance vai até ele. Esc
+também solta qualquer outra ferramenta.
+Montar posição
+A montagem no lugar do tabuleiro
+(capítulo 7).
+Grupo Estrutura (mostra Promover um
+nível)
+Shift + S troca As operações de variantes (capítulo 12).
+Grupo Captura (Capturar (automático))
+X ; Shift + X
+troca
+Armada, uma seleção de texto na página
+entra na partida (capítulo 10).
+Capturar como comentário
+C
+Armada, a seleção vira comentário do
+lance.
+Área OCR
+O
+Numa página escaneada, captura o que o
+OCR de xadrez lê num retângulo.
+Três grupos de sinais (Bom lance, Posição
+igual, Vantagem de desenvolvimento)
+digitados
+Os 28 sinais mais comuns em três grupos
+(capítulo 11).
+Pincel de sinal
+B
+Armado, cada lance clicado na lista
+ganha (ou perde) o sinal do pincel.
+Comentário do lance
+Enter
+Abre o editor do comentário do lance,
+com o comentário antes do lance.
+Paleta de glifos
+G
+Janela flutuante com figurinas, sinais e
+caracteres.
+Seguir o lance na página
+F
+A página acompanha o lance mostrado
+(capítulo 14).
+O
+trilho.
+Mostrar no PDF
+Rola a página até onde o lance foi
+impresso.
+Desfazer, Refazer
+Ctrl + Z ,
+Ctrl + Shift + Z
+O histórico da partida. O nome diz o que
+seria desfeito (“Desfazer carregamento
+do PGN”).
+Xadrez em janela própria
+Tabuleiro e painel numa janela separada
+(só no computador).
+O escopo de xadrez
+Um clique nos painéis de xadrez, ou uma mudança na partida, dá o teclado e o Desfazer para a partida. Um clique
+na página, ou uma edição do documento, devolve os dois ao documento. Enquanto a partida tem o teclado, as
+20
+
+PdfCraft · Ferramentas de xadrez
+teclas acima vão para o tabuleiro antes de tudo: Delete apaga uma variante (nunca uma página ou anotação), e
+as setas andam pela partida (nunca pela página). As teclas ficam quietas quando um campo de texto tem o foco,
+quando um menu está aberto e sob uma janela de diálogo.
+10 Capturar lances impressos
+A captura transforma os lances impressos do livro em partida sem jogá-los um a um: você seleciona o texto na
+página e ele entra na partida do tabuleiro, como linha, variante ou comentário, com os sinais.
+Passo a passo, com o livro de exemplo
+Abra o diagrama da página 1 no tabuleiro (duplo clique, ou Abrir no tabuleiro). A partida nova começa no
+lance 13, porque esse é o número em negrito sob o diagrama.
+1
+2
+3
+Aperte X (ou o botão Capturar (automático)). A ferramenta da página passa a Selecionar, e um chip no
+canto da página diz o que está armado: Capturando · automático ▾ · Esc sai.
+Selecione na página de 13.♖xd7! até 15.♗xd7+ ♘xd7 e solte. Os 10 lances entram de uma vez: a linha
+principal em negrito, a variante (14...♕b4 15.♗xf6 ♕xb3 16.axb3 também perde.) como variante, com o texto
+dela como comentário, e o sinal ! no 13.♖xd7.
+A captura armada: o chip no canto da página.
+21
+
+PdfCraft · Ferramentas de xadrez
+Uma seleção, nenhum Enter: a lista de lances recebe a linha e a variante, e o aviso embaixo diz Linha desde o início · lances: 10,
+com Desfazer.
+Os modos de captura
+Modo
+Faz
+Capturar (automático)
+Lê o texto como o livro o compõe: um primeiro lance em negrito continua a
+linha principal, e qualquer outro vira variante onde os números couberem. A
+prosa vira comentário, os parênteses viram variantes, e ! , ± … viram sinais.
+Capturar como linha
+Continua a linha do lance mostrado. Um lance diferente que já esteja lá vira
+variante.
+Capturar como variante
+Variante da linha principal.
+Capturar como sub-variante
+Variante da linha do lance mostrado, ou de uma linha fora dela.
+Capturar como comentário ( C )
+O texto vira o comentário do lance mostrado, com os lances em SAN inglês. As
+opções do chip põem o comentário antes do lance e substituem o
+comentário existente, em vez de somar.
+Shift + X passa pelos modos. O ▾ do chip também troca o modo.
+Capturar sem armar nada
+Enviar ao PGN ▸, na barra que aparece ao lado de uma seleção (ou no menu do botão direito da página),
+captura a seleção no modo que você escolher.
+22
+
+PdfCraft · Ferramentas de xadrez
+Colar: Ctrl + V com o escopo de xadrez ativo (e nenhum campo de texto em uso) captura o texto da área de
+transferência. Colar como, no painel do tabuleiro, escolhe o modo.
+Ctrl + C na página também captura quando Capturar também o que for copiado está ligado no menu do
+chip (vem desligado).
+A barra de uma seleção na página, com Enviar ao PGN no fim.
+A seleção cresce até lances inteiros (“20.Cx” vira “20.Cxf6+”). Ela é lida dos glifos da página, não do texto copiado:
+as peças de uma fonte de figurinas são peças, e um glifo em negrito é negrito. O idioma é o do documento (como
+a aba Texto o leu), nunca adivinhado pela seleção: Rc7 é torre em inglês e rei em português.
+Onde a captura entra
+O primeiro lance da seleção decide, pelo número impresso:
+1. O número diz em que meio-lance o lance é jogado, contado a partir do número do diagrama.
+2. As linhas candidatas são a linha do lance mostrado, a linha de onde ela saiu, e assim por diante até a principal.
+3. Cada lugar possível é testado numa cópia da partida. Vence o lugar que joga mais lances, depois o que tem
+menos lances que não jogaram, depois a linha mais interna.
+4. Renumerar é uma opção à parte: quando os números do texto não cabem em lugar nenhum, o texto pode ser
+lido a partir do lance mostrado como se os números tivessem sido impressos para ele ( 12.Taxe1 depois de
+19...Rh7 vira 20.Taxe1). Isso nunca acontece sem a prévia.
+A prévia: quando a captura pergunta antes
+A captura entra direto, como um passo de desfazer, só quando o texto foi lido inteiro, cabe num lugar só, esse
+lugar fica na linha do lance mostrado e nada foi rebaixado nem renumerado. Fora isso, uma prévia abre ao lado
+da seleção e diz o motivo:
+Motivo
+Quer dizer
+ambígua
+Outro lugar joga a mesma quantidade de lances.
+incompleta
+Parte do texto não foi lida: um lance que não jogou, um parêntese sem par, texto
+depois de um resultado, um sinal sem lugar…
+linha externa
+O lugar fica numa linha fora da linha do lance mostrado.
+extensão da ponta
+Como variante, não achou lance de que ser alternativa e esticou o fim de uma linha.
+renumerada
+O texto foi lido com os números ajustados.
+fechamento suposto
+Um parêntese de fechamento que faltava foi suposto.
+rebaixa
+Um lance que já estava lá virou variante.
+não cabe
+Nenhum lugar joga lance algum.
+longa demais
+Mais de 64 KiB de texto: nada foi lido.
+23
+
+PdfCraft · Ferramentas de xadrez
+A prévia mostra onde o texto entra (“Variante de 18...Dxe1”), Encaixar em para escolher outro lugar, Renumerar
+quando dá para ajustar os números, o Idioma da leitura e os lances como chips: ✓ jogado, ✗ onde parou e por
+quê, cinza não lido, negrito na linha principal. Os botões são Aplicar ( Enter ), Aplicar e guardar o resto como
+comentário (o que não foi lido nunca é jogado fora) e Cancelar ( Esc ).
+Corrigir um lance que não jogou
+Na prévia, um chip ✗ é um botão. Ele abre um painel sob os chips:
+Lances legais próximos: o que a reparação faz do lance na posição em que ele seria jogado. Ela mostra a
+leitura escolhida, os lances que uma leitura ambígua permite ( Td1 : Tad1 , Thd1 ) ou os três lances legais mais
+parecidos. Nenhum é aplicado sem o seu clique.
+Correção: um campo com o lance como impresso. A paleta de glifos digita nele. Enter ou Ler de novo relê.
+Leituras do OCR (texto vindo da Área OCR): cada caractere do lance, com os duvidosos sublinhados. Um
+clique lista as três leituras mais prováveis.
+Cada correção reescreve o lance onde foi impresso e relê o texto todo. Nada entra na partida antes de Aplicar.
+Área OCR e coleta para retreino
+Área OCR ( O ): numa página escaneada, desenhe um retângulo. O OCR de xadrez lê o que está dentro, e o
+resultado entra como uma captura, com a prévia.
+Coletar caracteres corrigidos para retreino (menu do chip, opcional, só no computador): cada caractere da
+Área OCR que você corrige é guardado como uma imagem cinza de 32 × 32 numa pasta escolhida, no
+formato da fila de revisão do ChessVisionOFF ( revisao_ocr ). Nada é sobrescrito, e no máximo 2.000 imagens
+são guardadas por sessão. Um documento criptografado pede confirmação antes. Nada é treinado no app, e
+nada sai do computador.
+Texto já capturado
+Todo lance capturado lembra onde foi impresso. Sublinhar na página o texto já capturado, no painel do
+tabuleiro, sublinha esses lances na página, para você ver o que falta transcrever. Um documento que não
+permite copiar também não permite capturar. Cabem até 64 KiB de texto por captura.
+11 Sinais (glifos) e comentários
+O PdfCraft conhece todos os sinais do padrão PGN (códigos 1–139) e a extensão do ChessPad (140–146 e 238–
+255): 164 códigos. Os 28 mais usados ficam no trilho, em três grupos, cada um com o nome do que quer dizer:
+Grupo
+Sinais
+Regra
+Sinais do lance
+! ? !! ?? !? ?! , lance único □ , novidade N
+Um por lance: o novo
+substitui o anterior.
+Sinais de avaliação
+= ∞ ⩲ ⩱ ± ∓ +− −+ e compensação
+Um por lance.
+Outros sinais
+zugzwang, desenvolvimento, iniciativa, ataque,
+contrajogo, apuro de tempo, com a ideia, contra, melhor
+é, pior é, comentário editorial
+Somam-se.
+24
+
+PdfCraft · Ferramentas de xadrez
+Um sinal vai no lance mostrado, com o código do lado a que se refere. Clicar num sinal que o lance já tem tira o
+sinal. Cada mudança é um passo de desfazer.
+Quatro jeitos de pôr um sinal
+Digitando, com o escopo de xadrez ativo e nenhum campo em uso: ! ? !! ?? !? ?! = += =+ +/-
+-/+ +- -+ ~ . O 0 tira os sinais do lance. Um sinal de dois caracteres espera até 600 ms pelo segundo.
+Pincel de sinal ( B ): cada lance clicado na lista ganha o sinal do pincel, ou o perde. O lance mostrado não
+muda. Esc solta o pincel.
+O menu do lance (botão direito na lista): sinais do lance, de avaliação e Remover todos os sinais.
+A Paleta de glifos ( G ), descrita a seguir.
+A Paleta de glifos
+Uma janela pequena que flutua ao lado do trilho. Dá para arrastá-la,
+e ela reabre onde ficou.
+Figuras e sinais: as figurinas e ½ – × † ‡ .
+Sinais do lance, Sinais de avaliação, Outros sinais e Sinais
+posicionais: espaço ○ , jogo pela coluna ⇔ , pela diagonal ⇗ ,
+no centro ⊞ , na ala do rei ⟫ e da dama ⟪ , ponto fraco ✕ ,
+final ⊥ , estruturas de peões e de bispos.
+Mais avaliações (recolhida): as avaliações que o PGN numera,
+mas que os livros escrevem por extenso, em seções. O campo
+Filtrar avaliações procura pelo nome ou por $n .
+A Paleta de glifos.
+Um sinal clicado vai no lance mostrado (ou sai dele). Os outros
+caracteres vão para o fim do comentário. Se um campo de texto
+estava em uso (comentário, FEN, PGN, correção de captura), o
+caractere é digitado no cursor desse campo.
+Como os sinais aparecem
+Na lista, o sinal vem depois do lance, como chip. Quando as fontes da interface não têm o símbolo, ele é pintado.
+Uma avaliação sem símbolo aparece pelo nome, pequena e discreta, com o $n na dica. O PGN e o texto copiado
+guardam o caractere real, ou o $n .
+Comentários antes e depois do lance
+Sob a lista aparece o comentário do lance mostrado (o que vem depois dele). Enter , ou o botão do trilho,
+abre o editor, que também tem o comentário antes do lance.
+Escrever num comentário conta como um passo de desfazer por visita ao campo, não um por tecla.
+O PGN só tem lugar para um comentário antes do lance que começa uma variante. Antes de um lance que
+continua a linha, o PGN o junta ao comentário depois do lance anterior, e o editor avisa. O PdfCraft guarda o
+comentário no lugar certo na partida e no salvamento automático. Só um arquivo PGN perde esse lugar.
+25
+
+PdfCraft · Ferramentas de xadrez
+12 Variantes, estrutura e Desfazer
+Cada operação é um passo de desfazer e pode ser revertida com exatidão: promover e depois rebaixar, ou subir e
+depois descer, devolve a mesma árvore, com os comentários antes incluídos.
+Operação
+Tecla
+Faz
+Promover um nível
+Ctrl + ↑
+A variante passa a continuar a linha de onde saiu, e
+o lance daquela linha vira a primeira variante.
+Tornar esta a linha principal
+Ctrl + Shift + ↑
+Promove até o fim.
+Rebaixar
+Ctrl + ↓
+O inverso de promover.
+Mover variante para cima / para baixo
+Alt + ↑ / Alt + ↓ Reordena as variantes de uma mesma bifurcação. A
+linha em si nunca se move.
+Excluir variante
+Delete
+Apaga a variante e os lances dela. O lance
+mostrado volta à bifurcação.
+Cortar depois deste lance
+Shift + Delete
+Apaga todos os lances depois do mostrado, com as
+variantes.
+Ameaça (lance nulo)
+O lado que joga passa a vez, e os lances seguintes
+mostram a ameaça do outro lado, como nos livros
+( 12... -- ). Fica -- no PGN. Recusado quando o
+lado que joga está em xeque.
+Backspace só volta um lance: não apaga nada.
+Lances apagados nunca se perdem
+Tudo o que tira lances da partida é avisado numa faixa no topo do painel (“5 lances apagados (2 variantes)”),
+com Desfazer. O aviso fica até a partida mudar de novo, ou até você fechá-lo.
+A partida como estava também vai para uma lixeira do documento, guardada com o salvamento automático
+(as 30 mais recentes). Lances apagados (n)…, sob a lista de partidas, mostra essa lixeira, e Abrir como nova
+partida traz uma de volta, mesmo numa sessão posterior.
+Desfazer
+A partida tem um histórico próprio, separado do documento. Toda mudança é um passo: lance, captura, sinal,
+comentário, desenho, estrutura, dados da partida, posição ou PGN carregado. Andar pelos lances não é mudança.
+Desfazer e Refazer seguem o escopo da última ação: depois de um clique nos painéis de xadrez, desfazem na
+partida, e depois de um clique na página, no documento. O Desfazer do trilho sempre age na partida. O histórico
+guarda até 200 passos (64 MiB) por partida e não passa de uma sessão para outra.
+26
+
+PdfCraft · Ferramentas de xadrez
+13 As partidas do documento
+Cada documento aberto tem as suas partidas, e o tabuleiro
+mostra a ativa. Trocar de documento troca as partidas. Partidas
+do documento (n), no painel do tabuleiro, lista as partidas pelos
+jogadores. Sem jogadores, aparece o evento, o diagrama de
+origem (“Diagrama 1, p. 1”) ou o número.
+Nova partida cria uma partida em branco. Nova partida a
+partir desta posição começa no lance mostrado.
+Abrir PGN… acrescenta todas as partidas de um arquivo
+(até 256).
+Salvar PGN… grava a partida mostrada. Exportar… (no topo
+da lista) grava a lista inteira, na ordem. Salvar é recusado
+num documento que não permite copiar.
+FEN e PGN acompanham o tabuleiro. Edite um e aperte
+Enter (FEN) ou Carregar PGN. Copiar PGN copia o texto.
+Uma FEN digitada numa partida com lances pergunta: Nova
+partida com esta posição ou Substituir esta partida.
+Texto digitado no campo PGN fica como você digitou
+enquanto você joga, marcado PGN editado, com Carregar e
+Descartar. Com várias partidas no campo, a primeira vai
+para o tabuleiro e as outras entram na lista.
+Dados da partida: brancas, pretas, evento, local, data,
+rodada e resultado, gravados como etiquetas do PGN.
+A seção Análise fechada, as partidas do documento,
+FEN e PGN.
+O menu de uma partida
+Renomear… ( F2 ): brancas, pretas, evento, local, data e
+rodada, num passo de desfazer. A data é AAAA.MM.DD , com
+? no que não se sabe ( 1992.??.?? ).
+Duplicar, Mover para cima e Mover para baixo ( Alt + ↑ /
+↓ ). Também dá para arrastar a linha.
+Excluir… ( Delete ): pergunta antes. Excluir a última partida
+deixa uma em branco.
+O menu de uma partida.
+Várias partidas de uma vez
+Ctrl +clique põe ou tira uma partida da seleção, e Shift +clique seleciona um intervalo. Numa linha com foco,
+Shift + ↑ / ↓ estende a seleção, Ctrl + A seleciona todas e Ctrl + Espaço marca a linha. O menu, os botões e
+as teclas agem então em todas as selecionadas, num único passo de desfazer: Excluir…, Duplicar, mover, arrastar e
+Salvar PGN….
+O Desfazer também desfaz mudanças da lista: exclusões, partidas novas, duplicadas, PGN aberto, diagrama
+aberto no tabuleiro (“Desfazer Carregar o diagrama”). Uma partida que você mudou depois de acrescentada
+também vai para Lances apagados quando o Desfazer a tira.
+27
+
+PdfCraft · Ferramentas de xadrez
+Salvamento automático
+Dois segundos depois da última mudança, ao fechar o documento e ao sair, as partidas de cada documento
+são gravadas na pasta chess da pasta de recuperação: %LOCALAPPDATA%\PdfCraft\Recovery\chess no
+Windows (no modo portátil, na pasta de dados portátil).
+Ao reabrir o documento, as partidas voltam, com o lance mostrado, o lado do tabuleiro, de onde cada lance
+foi impresso e os comentários antes do lance.
+Limites: 256 partidas e 32 MiB por documento. Acima disso, o salvamento automático para (com aviso) até
+voltar abaixo. Nada é descartado.
+Documentos protegidos (criptografados, ou que não permitem copiar): o programa pergunta uma vez por
+documento e sessão antes de gravar as partidas em disco.
+Um arquivo ilegível é renomeado ….games.bad (nunca apagado) e você é avisado.
+14 Janela de xadrez e Seguir na página
+Xadrez em janela própria
+O último botão do trilho (ou o menu da aba Tabuleiro) leva o tabuleiro, com as abas Diagramas e Texto, para uma
+janela própria. Assim o PDF ocupa a janela principal, e o xadrez pode ir para outro monitor.
+A partir de 760 pt de largura, o tabuleiro fica ao lado das abas. Mais estreita, a janela mostra uma faixa
+Tabuleiro | Diagramas | Texto para alternar.
+Na janela, o tabuleiro pode crescer até 1.200 pt. As teclas de xadrez vão para o trilho dela, e os atalhos do app
+continuam funcionando.
+Fechar a janela, ou Encaixar, devolve o tabuleiro para onde estava. Trazer de volta, no Inspetor, faz o mesmo,
+mas mantém o Inspetor na frente.
+Tamanho, lugar e aba ficam lembrados, com o monitor em que a janela estava. Se aquele monitor sumiu, ela
+abre ao lado da janela principal.
+Seguir o lance na página
+Um lance capturado, ou de uma partida aberta pela aba Texto, lembra onde foi impresso.
+Mostrar no PDF rola a página até o lance mostrado e o contorna, se ele não estiver à vista.
+Seguir o lance na página ( F , liga e desliga na sessão) faz isso a cada mudança de lance. Andar pela partida
+anda pelo livro, com o tabuleiro encaixado ou em janela própria.
+Um lance sem lugar na página (jogado no tabuleiro, ou digitado) não mostra nada. O nome do botão então
+diz “este lance não tem lugar na página”.
+15 Aparência: peças, temas e lista
+Peças de xadrez
+Em Preferências ▸ Peças de xadrez há duas escolhas independentes:
+28
+
+PdfCraft · Ferramentas de xadrez
+Tabuleiro: os tabuleiros de análise e de estudo.
+Diagramas: os diagramas redesenhados na página, no editor e nas exportações.
+O início da seção: o papel (Tabuleiro ou Diagramas) e a grade de conjuntos.
+A grade mostra cada conjunto numa miniatura, com o autor e a licença do escolhido:
+Automático: a ordem do programa. Primeiro PDFCRAFT_CHESS_PIECES , depois uma fonte de diagrama na
+pasta fonts (a Chess Merida quando está lá, nunca uma fonte cuja licença proíbe incorporar), depois uma
+Chess Merida instalada, depois uma pasta pieces de imagens.
+20 conjuntos que vêm com o programa: oito abertos do lichess (Chessnut, RhosGFX, kiwen suwi, Firi,
+Fantasy, Spatial, Celtic, Shapes) e doze desenhados para o PdfCraft (Classic, Tokens, Pixel Art, Bauhaus, Facets,
+Stained Glass, Moves, Chubby, Art Deco, Gothic, Wood, Sketch).
+Fontes de xadrez: toda fonte de diagrama da pasta fonts , ou instalada no Windows, cujo mapa de
+caracteres foi conferido, uma por família. Entram as fontes do Marroquin (Merida, Cases, Leipzig, Condal,
+Kingdom, Maya, Mediaeval, Magnetic, Motif, Line, Harlequin, Alfonso-X, Adventurer, Lucena, Millennia), Chess
+7, Chess Alpha, os cortes DG (Alpha DG, Condal DG, Kingdom DG, Leipzig DG), Utrecht, OpenChessFont e
+DiagramTTF.
+Formas simples: peças geométricas, sempre disponíveis.
+29
+
+PdfCraft · Ferramentas de xadrez
+O fim da grade, com as fontes de xadrez, e os três botões de importação.
+Botão
+Faz
+Importar pasta…
+Copia uma pasta com 12 imagens PNG ou SVG ( wK wQ wR wB wN wP bK bQ bR bB
+bN bP ), cada uma ocupando uma casa, com fundo transparente.
+Importar de página web…
+Extrai um conjunto de peças em SVG de uma página HTML salva (as imagens
+data: com chaves wK … bP ). Cada peça passa pelo leitor seguro, e o conjunto fica
+marcado “licença desconhecida: uso pessoal”.
+Importar fontes…
+Copia fontes para a pasta fonts ao lado do programa. Dá para escolher várias de
+uma vez (toda a pasta Fonts do DiagPDF, por exemplo). Uma fonte de diagrama
+vira conjunto. Uma fonte de figurinas (Hastings, Linares, Zurich Figurine…) passa a
+escrever os lances nas exportações. Outras fontes, uma segunda cópia de uma
+família e fontes de mapa só presumido são ignoradas. Um arquivo igual fica como
+está, e um diferente com o mesmo nome pede confirmação para substituir.
+Licenças
+O PdfCraft não distribui nenhuma dessas fontes: cada uma mantém a sua licença. Chess Adventurer e Chess
+Cases proíbem a incorporação. Elas aparecem e podem ser escolhidas, mas o Automático nunca as escolhe.
+Diagramas e exportações com essas peças levam as fontes junto: tudo bem para uso pessoal, mas não para
+publicar.
+Tema do tabuleiro
+O tema vale para os tabuleiros em que você joga e estuda. Os diagramas na página e nas exportações mantêm as
+cores deles. Escolha nas Preferências ou pelo ícone de paleta acima do tabuleiro.
+30
+
+PdfCraft · Ferramentas de xadrez
+14 temas lisos: Marrom (o padrão), Madeira clara, Nogueira,
+Azul, Azul-gelo, Verde, Verde-oliva, Cinza, Grafite, Roxo, Rosa,
+Areia, Coral e Alto contraste.
+4 temas com textura gerada pelo programa: Madeira,
+Mármore, Papel e Impressão de livro (casas hachuradas, como
+num livro).
+Coordenadas: Nas casas, Ao lado do tabuleiro ou Nenhum. Em
+todo tema, as coordenadas têm contraste de pelo menos 4,5:1.
+Moldura: Nenhum, Fina ou Dupla.
+Casas marcadas (desenhos): Anel ou Pintadas.
+Último lance (Pintadas…) e Intensidade.
+Um ponto do lado de quem joga.
+O menu do ícone de paleta, com os 18 temas e
+as opções.
+Madeira, Mármore, Azul e Impressão de livro.
+Tema do tabuleiro nas Preferências.
+31
+
+PdfCraft · Ferramentas de xadrez
+Mais abaixo: peças na lista de lances, comentário em destaque, prévia, bifurcações, lances diferentes, editor clássico, formato e
+tamanho da lista.
+16 Exportar o livro e redesenhar diagramas
+Exportar… (o ícone de arquivo no topo do painel, ou o botão da aba
+Texto) grava o livro inteiro, com as suas correções:
+PGN — partidas
+EPUB — livro digital: a capa é a primeira página do livro.
+HTML — página da web: um arquivo só, com as fontes embutidas.
+Word (.docx) e RTF: o endereço do lichess vira um link de verdade.
+Markdown: as imagens dos diagramas vão numa pasta ao lado do
+arquivo.
+O menu Exportar livro de xadrez.
+Diagramas como partidas no PGN ▸ escolhe quais diagramas viram
+partidas próprias no PGN: só os que não estão numa partida, todos,
+ou nenhum.
+Com diagramas ainda a revisar, a exportação pergunta antes: Revisar primeiro ou Exportar assim mesmo.
+No fim, uma janela diz onde o arquivo foi gravado e o que a exportação anotou, e Abrir pasta mostra o
+arquivo.
+Sob cada diagrama legal aceito vai um link para a análise no lichess, que funciona em todos os formatos.
+Exportar um livro inteiro roda em segundo plano (o painel mostra que está trabalhando), mas não dá para
+cancelar depois de começar.
+As fontes das exportações
+O HTML e o EPUB usam as fontes de PDFCRAFT_CHESS_TEXT_FONT ou, sem essa variável, as da pasta fonts ao lado
+do programa, cada uma para o que desenha:
+32
+
+PdfCraft · Ferramentas de xadrez
+uma fonte de figurinas que desenha peças nas letras K Q R B N (SemFig, HastingsFigurine…): só as letras de
+peça dos lances são escritas nela, então “Kasparov” na prosa continua uma palavra;
+uma fonte com os símbolos Unicode de xadrez (DejaVu Sans…): usada só nesses símbolos;
+a ISChess: os sinais que ela desenha (⩲ ⩱ ± ∓ = ∞ □ → …) são escritos nela. ! e ? continuam caracteres
+comuns.
+No seu computador
+Com as fontes do DiagPDF importadas para dist/app/fonts , as exportações escrevem os lances com a
+HastingsFigurine, a primeira figurina pela ordem do nome. Para usar outra, deixe na pasta só a figurina
+desejada, ou aponte para ela com PDFCRAFT_CHESS_TEXT_FONT .
+Redesenhar diagramas e links no PDF
+Redesenhar no PDF… (menu ⋯ do rodapé da aba Diagrama) desenha a posição corrigida por cima do
+diagrama original, com as peças escolhidas para Diagramas. É um passo de desfazer, e só aquela página é
+relida.
+Adicionar link do lichess põe sob o diagrama um rótulo com o link da análise.
+Essas duas ações mudam o PDF. As correções sozinhas nunca mudam.
+17 Atalhos de teclado
+As teclas da partida funcionam com o escopo de xadrez ativo (depois de um clique nos painéis de xadrez) e nunca
+enquanto um campo de texto tem o foco. No macOS, Ctrl é ⌘ e Alt é ⌥ . As teclas da aba Diagrama estão
+no capítulo 4.
+Tabuleiro e partida
+Tecla
+Faz
+← →
+Lance anterior e seguinte.
+↑ ↓
+Variante anterior ou seguinte na bifurcação do lance mostrado.
+Home , End
+Início e fim da linha.
+Page Up , Page Down
+Variante anterior e seguinte.
+Esc
+Solta a ferramenta armada (Navegar) ou cancela uma prévia.
+Enter
+Abre o editor de comentário ou aplica uma prévia.
+X , Shift + X
+Arma a captura; passa ao próximo modo.
+C
+Arma Capturar como comentário.
+O
+Liga e desliga a Área OCR.
+B
+Arma o Pincel de sinal.
+G
+Abre e fecha a Paleta de glifos.
+33
+
+PdfCraft · Ferramentas de xadrez
+F
+Liga e desliga Seguir o lance na página.
+Shift + S
+Troca a ferramenta mostrada no grupo Estrutura.
+Ctrl + ↑ , Ctrl + Shift + ↑ , Ctrl + ↓ Promover um nível, tornar linha principal, rebaixar.
+Alt + ↑ , Alt + ↓
+Mover a variante para cima ou para baixo.
+Delete
+Excluir a variante.
+Backspace
+Volta um lance (como ← ).
+Shift + Delete
+Cortar depois do lance mostrado.
+! ? = + - / ~
+Digitar um sinal. 0 tira os sinais.
+Ctrl + Z , Ctrl + Shift + Z
+Desfazer e refazer na partida.
+Ctrl + V
+Capturar o texto da área de transferência.
+Lista de partidas (linha com foco)
+Tecla
+Faz
+F2
+Renomear.
+Delete , Backspace
+Excluir.
+Alt + ↑ , Alt + ↓
+Mover.
+Shift + ↑ , Shift + ↓
+Estender a seleção.
+Ctrl + A , Ctrl + Espaço
+Selecionar todas; marcar a linha.
+Enter
+Mostrar a partida.
+18 Automação pela linha de comando
+Toda função de xadrez também é uma ferramenta de automação, que o pdfcraft-cli roda sem abrir o app.
+pdfcraft-cli tools lista todas, com os argumentos. Todos os caminhos ficam presos à pasta dada em --root .
+Ferramenta
+Faz
+chess_status
+Quais modelos e conjunto de peças estão disponíveis, e por que não.
+chess_detect , chess_read
+Acham os diagramas e os leem (FEN, legalidade, quem joga, casas duvidosas,
+reparos, link do lichess).
+chess_document
+O livro como títulos, parágrafos e diagramas, com as partidas reproduzidas em
+árvores de variantes; JSON e PGN. Aceita reference_pgn .
+chess_diagram_states
+Conta os diagramas por estado.
+chess_replace_diagram
+Redesenha um diagrama (com board_theme e drawings ).
+chess_add_lichess_links
+Rótulo e link sob todo diagrama legal e aceito.
+34
+
+PdfCraft · Ferramentas de xadrez
+chess_game
+O tabuleiro sem documento: partida a partir de FEN ou PGN, lances em SAN
+ou UCI, a posição num lance com os lances legais, a partida em PGN.
+chess_pgn_edit
+Edita os lances de uma partida: jogar, lance nulo, comentário, sinais, diagrama,
+estrutura, variante anterior e seguinte, enxertar texto e capture (planejar e
+aplicar uma captura).
+chess_games
+Uma coleção PGN: listar, mostrar, renomear, duplicar, apagar, mover, nova
+partida a partir de um lance, exportar.
+chess_read_area
+Lê um retângulo da página com o OCR de xadrez.
+chess_glyph_sample
+Guarda um caractere corrigido como amostra 32 × 32 para retreino.
+chess_pieces ,
+chess_pieces_import
+Listam e escolhem os conjuntos de peças; importam pasta, página web, fonte
+ou pasta de fontes.
+chess_reference_set , _status ,
+_clear
+Guardam, mostram e removem o PGN do livro.
+chess_export_html , _epub , _docx ,
+_rtf , _markdown , _pgn
+As exportações.
+Exemplos:
+pdfcraft-cli chess scan livro.pdf imprime os diagramas achados.
+pdfcraft-cli run chess_pieces --root . lista os conjuntos de peças.
+O argumento ocr escolhe as páginas a ler com OCR: auto (padrão, só as de camada de texto ruim ou ausente),
+off (livro nativo digital) ou all (livro escaneado).
+19 Limites e solução de problemas
+Problemas comuns
+O que acontece
+O que fazer
+“Nenhum motor de análise instalado” Ponha o .exe do motor direto na pasta engine ao lado do programa (não
+numa subpasta), ou use Escolher motor…. A variável PDFCRAFT_CHESS_ENGINE
+também serve.
+Diagramas desenhados ficam Não lido Falta o modelo de peças. Confira Modelos de leitura… nas Preferências, ou
+abra o app por abrir-xadrez.cmd .
+Página sem lances na aba Texto
+A camada de texto pode ser ruim, ou não existir. Use Ler esta página com OCR
+de xadrez, ou escolha Escaneado em Origem do livro.
+Uma linha para no meio
+Um lance que não pode ser jogado (erro de impressão, diagrama mal lido,
+linha lida no ramo errado) para a linha. Os lances seguintes ficam “não
+alcançados” até um lance numerado achar o seu lugar. Corrija o diagrama, ou
+capture o trecho com a prévia.
+Lado a jogar errado
+Ajuste Quem joga e Lance nº na aba Diagrama. Sem número em negrito sob o
+diagrama, o programa assume que as brancas jogam.
+35
+
+PdfCraft · Ferramentas de xadrez
+A captura pergunta (prévia)
+Veja o motivo na tabela do capítulo 10. Encaixar em e Renumerar resolvem a
+maioria dos casos.
+Exportação com figurinas de outra
+fonte
+Veja “As fontes das exportações” no capítulo 16.
+Mudanças de peças ou fontes não
+aparecem
+Depois de importar fontes, as escolhas em Automático mudam na hora. Uma
+cópia do PdfCraft que já estava aberta antes da importação precisa ser
+reiniciada.
+Limites conhecidos
+Mais de quatro colunas são lidas como quatro, no máximo. Uma tabela em colunas (um índice de partidas) é
+lida coluna por coluna, como texto.
+Numa página escaneada, uma leitura com c e e trocados (a barra do e some no escaneamento) é tentada
+quando o lance impresso não joga. O lance é jogado só quando exatamente uma leitura é legal, e fica
+marcado para revisão.
+A cifra do livro (o que cada caractere de uma fonte de figurinas quer dizer) passa de página para página
+enquanto o documento está aberto, mas não é gravada no PDF.
+Um arquivo PGN só guarda o comentário antes de um lance quando o lance começa uma variante (o
+salvamento automático guarda sempre).
+O histórico de desfazer da partida e o da lista de partidas não passam de uma sessão para outra.
+Ler uma página com OCR ou exportar o livro inteiro roda em segundo plano, mas não pode ser cancelado
+depois de começar.
+Os conjuntos de peças de outros autores desenham os gradientes lisos, na primeira cor. Os cortes DG têm
+moldura e rótulos próprios, que são lidos mas não desenhados (o PdfCraft desenha o próprio tabuleiro).
+Detalhes desta versão
+Numa janela estreita, o tabuleiro da aba Diagrama pode passar da borda. Arraste a divisória para alargar a
+aba.
+Num livro com diagramas compostos numa fonte de diagrama (como o livro de exemplo), a aba Texto mostra
+também os caracteres da fonte como uma linha de texto acima e abaixo da miniatura do diagrama. A leitura
+do diagrama não é afetada.
+Onde ler mais
+O guia técnico completo, em inglês, está em docs/chess.md no repositório, junto com os planos em
+docs/chess/ . As medições de qualidade de leitura estão no capítulo “How well it reads”.
+36
