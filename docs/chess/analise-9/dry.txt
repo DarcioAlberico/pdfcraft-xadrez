@@ -1,0 +1,196 @@
+Wrote C:\Python-Chess2\wt-a9\.metrics\dry.edn
+DUPLICATE score=1.00
+  crates/automation/src/a11y.rs:11-18
+  crates/automation/src/chess.rs:90-97
+
+DUPLICATE score=1.00
+  crates/automation/src/a11y.rs:20-30
+  crates/automation/src/forms.rs:150-160
+
+DUPLICATE score=1.00
+  crates/automation/src/a11y.rs:20-30
+  crates/chessvision/src/doc/html.rs:151-161
+
+DUPLICATE score=1.00
+  crates/automation/src/chess.rs:207-210
+  crates/engine/src/chess/replace.rs:211-214
+
+DUPLICATE score=1.00
+  crates/automation/src/forms.rs:150-160
+  crates/chessvision/src/doc/html.rs:151-161
+
+DUPLICATE score=1.00
+  crates/automation/src/tools.rs:257-260
+  crates/automation/src/tools.rs:261-264
+
+DUPLICATE score=1.00
+  crates/chess/src/game/graft/tests.rs:47-52
+  crates/chess/src/game/structure/tests.rs:51-56
+
+DUPLICATE score=1.00
+  crates/chess/src/repair.rs:413-420
+  crates/chessvision/src/doc/games.rs:260-267
+
+DUPLICATE score=1.00
+  crates/chessvision/src/board/reading/tests.rs:101-108
+  crates/engine/src/chess/tests.rs:189-196
+
+DUPLICATE score=1.00
+  crates/chessvision/src/doc/games.rs:143-150
+  crates/chessvision/src/text_font.rs:125-132
+
+DUPLICATE score=1.00
+  crates/chessvision/src/doc/games.rs:143-150
+  crates/chessvision/src/text_font.rs:135-142
+
+DUPLICATE score=1.00
+  crates/chessvision/src/doc/games.rs:143-150
+  crates/chessvision/src/text_font.rs:145-152
+
+DUPLICATE score=1.00
+  crates/chessvision/src/doc/markdown.rs:232-238
+  crates/ui-egui/src/chess_figurines.rs:27-33
+
+DUPLICATE score=1.00
+  crates/chessvision/src/text_font.rs:125-132
+  crates/chessvision/src/text_font.rs:135-142
+
+DUPLICATE score=1.00
+  crates/chessvision/src/text_font.rs:125-132
+  crates/chessvision/src/text_font.rs:145-152
+
+DUPLICATE score=1.00
+  crates/chessvision/src/text_font.rs:135-142
+  crates/chessvision/src/text_font.rs:145-152
+
+DUPLICATE score=1.00
+  crates/engine/src/chess/corrections.rs:121-131
+  crates/ui-egui/src/chess_theme.rs:77-87
+
+DUPLICATE score=1.00
+  crates/engine/src/chess/corrections.rs:314-342
+  crates/engine/src/chess/reference_store.rs:142-170
+
+DUPLICATE score=1.00
+  crates/engine/src/chess/corrections.rs:356-359
+  crates/engine/src/chess/reference_store.rs:207-210
+
+DUPLICATE score=1.00
+  crates/engine/src/chess/corrections/tests.rs:42-46
+  crates/engine/src/chess/tests.rs:206-210
+
+DUPLICATE score=1.00
+  crates/engine/src/chess/corrections/tests.rs:49-53
+  crates/engine/src/chess/reference_store/tests.rs:19-23
+
+DUPLICATE score=1.00
+  crates/engine/src/chess/epub.rs:82-89
+  crates/engine/src/chess/samples.rs:57-64
+
+DUPLICATE score=1.00
+  crates/engine/src/chess/export.rs:37-46
+  crates/engine/src/chess/export.rs:49-58
+
+DUPLICATE score=1.00
+  crates/ui-egui/src/chess_capture.rs:1288-1298
+  crates/ui-egui/src/chess_capture.rs:1301-1311
+
+DUPLICATE score=1.00
+  crates/ui-egui/src/chess_capture.rs:1288-1298
+  crates/ui-egui/src/chess_text_ui.rs:323-333
+
+DUPLICATE score=1.00
+  crates/ui-egui/src/chess_capture.rs:1301-1311
+  crates/ui-egui/src/chess_text_ui.rs:323-333
+
+DUPLICATE score=1.00
+  crates/ui-egui/src/chess_corrections_ui.rs:49-55
+  crates/ui-egui/src/chess_reference_ui.rs:52-58
+
+DUPLICATE score=1.00
+  crates/ui-egui/src/chess_corrections_ui.rs:74-84
+  crates/ui-egui/src/chess_reference_ui.rs:96-106
+
+DUPLICATE score=1.00
+  crates/ui-egui/src/chess_corrections_ui.rs:128-137
+  crates/ui-egui/src/chess_reference_ui.rs:233-242
+
+DUPLICATE score=1.00
+  crates/ui-egui/src/chess_corrections_ui.rs:140-152
+  crates/ui-egui/src/chess_reference_ui.rs:245-257
+
+DUPLICATE score=1.00
+  crates/ui-egui/src/chess_editor.rs:197-202
+  crates/ui-egui/src/chess_editor.rs:205-210
+
+DUPLICATE score=1.00
+  crates/ui-egui/src/chess_history.rs:354-357
+  crates/ui-egui/src/chess_history.rs:360-363
+
+DUPLICATE score=0.94
+  crates/ui-egui/src/chess_board_ui.rs:542-549
+  crates/ui-egui/src/chess_editor.rs:221-228
+
+DUPLICATE score=0.93
+  crates/chessvision/src/pieces.rs:389-392
+  crates/chessvision/src/text_font.rs:332-335
+
+DUPLICATE score=0.91
+  crates/engine/src/chess/collection.rs:220-223
+  crates/ui-egui/src/chess_collection.rs:473-476
+
+DUPLICATE score=0.89
+  crates/chessvision/src/doc/markdown.rs:232-238
+  crates/ui-egui/src/chess_window.rs:105-111
+
+DUPLICATE score=0.89
+  crates/ui-egui/src/chess_figurines.rs:27-33
+  crates/ui-egui/src/chess_window.rs:105-111
+
+DUPLICATE score=0.87
+  crates/chessvision/src/doc/tests.rs:518-525
+  crates/chessvision/src/doc/tests.rs:532-546
+
+DUPLICATE score=0.86
+  crates/chessvision/src/chess_text/tests.rs:68-72
+  crates/chessvision/src/chess_text/tests.rs:74-79
+
+DUPLICATE score=0.85
+  crates/chessvision/src/chess_text/tests.rs:206-214
+  crates/chessvision/src/chess_text/tests.rs:232-238
+
+DUPLICATE score=0.85
+  crates/engine/src/chess/corrections.rs:935-946
+  crates/engine/src/chess/reference_store.rs:478-489
+
+DUPLICATE score=0.83
+  crates/ui-egui/src/chess_collection.rs:80-83
+  crates/ui-egui/src/chess_history.rs:201-204
+
+DUPLICATE score=0.83
+  crates/chessvision/src/chess_text/tests.rs:219-225
+  crates/chessvision/src/chess_text/tests.rs:232-238
+
+DUPLICATE score=0.82
+  crates/chess/src/game/structure.rs:87-96
+  crates/engine/src/chess/capture.rs:222-227
+
+DUPLICATE score=0.82
+  crates/chessvision/src/glyphs/tests.rs:744-753
+  crates/chessvision/src/glyphs/tests.rs:759-768
+
+DUPLICATE score=0.82
+  crates/chessvision/src/doc/tests.rs:681-690
+  crates/chessvision/src/doc/tests.rs:709-717
+
+DUPLICATE score=0.82
+  crates/chessvision/src/coords.rs:120-136
+  crates/chessvision/src/coords.rs:139-155
+
+DUPLICATE score=0.82
+  crates/chessvision/src/coords.rs:174-179
+  crates/chessvision/src/coords.rs:182-186
+
+DUPLICATE score=0.81
+  crates/ui-egui/src/chess_editor.rs:135-143
+  crates/ui-egui/src/chess_study_ui.rs:89-97
