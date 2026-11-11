@@ -4783,3 +4783,25 @@ fn ten_thousand_moves_in_32_levels_cost_only_the_rows_in_view() {
         full - empty
     );
 }
+
+/// The Diagram tab's board stays inside the tab, centred in the room the body leaves beside the
+/// scroll bar. It used to be sized from `ui.available_width()`, which inside the scroll area
+/// reports more than the body has, so the board ran over the tab's right edge and under the bar
+/// (found while writing the help, 2026-10-31).
+#[test]
+fn the_diagram_tabs_board_stays_inside_the_tab() {
+    // The tab as it opens, at the screens the plan checks and at a short window.
+    for size in [egui::vec2(1440.0, 900.0), egui::vec2(1366.0, 768.0), egui::vec2(1280.0, 620.0)] {
+        let mut h = harness_sized(boards(), size);
+        scan_and_edit_second(&mut h);
+        let board = h.get_by_label_contains("Diagram board: ").rect();
+        let tab = h.state().chess.diagram_tab_rect().expect("the Diagram tab was drawn");
+        let (margin, bar) = (8.0, 8.0);
+        assert!(board.left() >= tab.left() + margin - 0.5, "inside the tab's left edge at {size:?}: {board:?} in {tab:?}");
+        assert!(board.right() <= tab.right() - margin - bar + 0.5, "inside the tab's right edge and the bar at {size:?}: {board:?} in {tab:?}");
+        assert!(board.width() >= 100.0, "a board worth showing at {size:?}: {board:?}");
+        // Centred in what is left of the body beside the bar: the right gap is the left one plus the bar.
+        let (left_gap, right_gap) = (board.left() - tab.left(), tab.right() - board.right());
+        assert!((right_gap - left_gap - bar).abs() <= 1.0, "centred beside the bar at {size:?}: {left_gap} on the left, {right_gap} on the right");
+    }
+}
