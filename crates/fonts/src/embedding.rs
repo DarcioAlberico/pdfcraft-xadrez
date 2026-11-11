@@ -43,6 +43,27 @@ pub fn names(bytes: &[u8]) -> Result<(String, String), String> {
     Ok((family, postscript))
 }
 
+/// The family a font program names itself, for identifying a font whose PDF name says nothing:
+/// some producers replace `/BaseFont` with a placeholder of their own (Chrome's font sanitizer
+/// writes `OTS-derived-font` for every web font it embeds), and the name table the file still
+/// carries is then all that says which family it is. Reading a name is not embedding, so none of
+/// the licence and permission gates of [`validate_document_input`] apply; `None` when the program
+/// is unreadable or names nothing usable.
+pub fn program_family(bytes: &[u8]) -> Option<String> {
+    use skrifa::string::StringId;
+    // A font program of a PDF is untrusted input: do not parse an absurd one.
+    if bytes.len() > (64 << 20) {
+        return None;
+    }
+    let font = FontRef::new(bytes).ok()?;
+    // The family first: it is the name a font is known and catalogued by ("Chess Merida").
+    [StringId::FAMILY_NAME, StringId::FULL_NAME, StringId::TYPOGRAPHIC_FAMILY_NAME]
+        .into_iter()
+        .find_map(|id| font.localized_strings(id).english_or_first().map(|s| s.to_string()))
+        .map(|name| name.trim().to_owned())
+        .filter(|name| !name.is_empty() && name.len() <= 128)
+}
+
 /// A selected external font is document input. Require its own open-licence declaration;
 /// never turn a proprietary system-interface fallback into an exported PDF font.
 pub fn validate_document_input(bytes: &[u8]) -> Result<(), String> {
