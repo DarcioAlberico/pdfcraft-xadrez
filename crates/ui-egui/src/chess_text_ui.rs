@@ -77,8 +77,11 @@ pub struct ChessJob {
     /// The document's state when the job began: what it read is kept only while the document is
     /// still in it.
     stamp: Option<ScanStamp>,
-    result: Arc<Mutex<Option<(JobDone, Option<JobRead>)>>>,
+    result: JobSlot,
 }
+
+/// Where a job leaves what it did, and what its session holds then.
+type JobSlot = Arc<Mutex<Option<(JobDone, Option<JobRead>)>>>;
 
 /// What a job's session holds when it is done, to give back to the app's session.
 struct JobRead {
@@ -786,7 +789,7 @@ impl PdfCraftApp {
         let stamp = self.session.chess_stamp(id);
         let Some(doc) = self.session.get(id) else { return };
         let (name, bytes, password) = (doc.name.clone(), doc.bytes.clone(), doc.password.clone());
-        let result: Arc<Mutex<Option<(JobDone, Option<JobRead>)>>> = Arc::default();
+        let result: JobSlot = Arc::default();
         let slot = result.clone();
         let is_read = matches!(kind, JobKind::Read { .. });
         let run = move || {
