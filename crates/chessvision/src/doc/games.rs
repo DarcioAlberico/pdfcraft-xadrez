@@ -698,11 +698,13 @@ pub(crate) struct MoveOutcome {
     /// saying so, for the move's own review list, which a walk of the page read before keeps
     /// (its SAN is then the reading's, and nothing is read again).
     pub repaired: Option<ReviewFlag>,
+    /// The move was played but its printed marks say otherwise ([`ReviewFlag::NotationMismatch`]).
+    pub mismatch: Option<ReviewFlag>,
 }
 
 impl MoveOutcome {
     fn status(status: MoveStatus) -> MoveOutcome {
-        MoveOutcome { status, node: None, san: None, fen: None, tried: None, repaired: None }
+        MoveOutcome { status, node: None, san: None, fen: None, tried: None, repaired: None, mismatch: None }
     }
 }
 
@@ -1013,9 +1015,13 @@ fn main_takes(score: &GameScore, lines: &[Line], number: Option<MoveNumber>, san
 }
 
 /// Whether `san` is the first move of a game from `seed`, numbered `number`: the number is
-/// believed and the move is legal there.
+/// believed and the move is legal there, its printed marks true to it. A move whose capture or
+/// check mark the position does not bear out ([`San::to_move_checked`]) is weak evidence (plan
+/// A9-L5, R6-02): it settles no choice of diagram, though the diagram before it still takes it
+/// when no other does.
 fn seed_fits(seed: &Seed, number: Option<MoveNumber>, san: &San) -> bool {
-    seed_score(seed, number).is_some_and(|(score, _, honour)| honour && score.start_board().is_some_and(|b| san.to_move(&b).is_ok()))
+    seed_score(seed, number)
+        .is_some_and(|(score, _, honour)| honour && score.start_board().is_some_and(|b| matches!(san.to_move_checked(&b), Ok((_, None)))))
 }
 
 /// Whether a FEN says Black is to move (one that does not say is White's, as FEN writes it).
@@ -1757,6 +1763,13 @@ impl Walker {
             }
             Decision::Play(at) => match play_read(&mut game.score, at, san, misreads) {
                 Ok((node, reading)) => {
+                    // The marks printed on the move as played, against the position it was played in.
+                    let mismatch = game
+                        .score
+                        .board_after(at)
+                        .and_then(|b| reading.as_ref().unwrap_or(san).to_move_checked(&b).ok())
+                        .and_then(|(_, m)| m)
+                        .map(|m| ReviewFlag::NotationMismatch { text: printed.clone(), capture: m.capture, check: m.check, mate: m.mate });
                     // The move as played, canonical: the printed check mark may not fit it.
                     let played = |reading: San| game.score.nodes.get(node).map_or_else(|| reading.to_english(), |n| n.san.clone());
                     let repaired = reading.map(|reading| ReviewFlag::TextRepaired {
@@ -1804,6 +1817,7 @@ impl Walker {
                         fen: n.map(|n| n.fen.clone()),
                         tried: None,
                         repaired,
+                        mismatch,
                     };
                 }
                 Err(PlayError::Illegal(near)) => {

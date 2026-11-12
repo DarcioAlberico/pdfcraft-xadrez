@@ -35,6 +35,12 @@ Cada passo do plano (`../plano-analise-9.md`) com o PR que o fez e o que mudou e
 | I18 | #279 | A aba Diagrama **não** entra no escopo de teclas do tabuleiro (← moveria a partida e o Ctrl+Z cairia no A5-06); clicar em menus e barras não encerra o escopo (Editar ▸ Desfazer depois de um lance desfaz o lance); a checagem de foco pula os quadros de clique. A suíte completa da UI passou (1.718 testes). |
 | A9-L0 | #289 (L0a), #291 (L0b) | **L0a:** a lance guarda a leitura (`san_read`, `read_review`) ao lado do que o walk decidiu, que continua no `MoveInline` (o JSON do `chess_document`, as exportações e a aba Texto o leem ali; separar o tipo de saída fica para depois do I1a); `doc::walk(pages, rules)`; `READER_VERSION = 1` só como constante. **L0b, três decisões do coordenador (2026-11-12):** (1) o `reading` de um diagrama confirmado continua sendo reescrito pelo `link`, como antes, até o L6b; o L0b só re-percorre as partidas com os diagramas confirmados depois do `link` e alinha de novo uma vez (o A2-11, que era do L8). (2) Uma decisão casa pelo endereço **e** pelo `san_read` quando o guardou (senão pela SAN do walk, como antes): mais seguro, nunca cai noutro lance; recasar só pelo `san_read`, com a reversão que precisa do `reader_version` no arquivo, é do L1b (depois do G3a). (3) O orçamento por fronteira de página (estado do walker guardado por página, re-percorrer só a partir da partida afetada) vai para o **A9-L9** (desempenho do walk); o `link` re-percorre o documento inteiro, só quando uma confirmação mudou uma leitura. |
 
+## Onda 3 (em andamento)
+
+| Passo | PR | Desvios e decisões |
+|---|---|---|
+| A9-L5 | (este PR) | A palavra impressa vai até `ChessRun::Move { repaired: Some((de, para)) }` e vira `ReviewFlag::TextRepaired` na leitura do lance (`read_review`); juntar pedaços de um lance não é troca. `San::to_move_checked` e `ReviewFlag::NotationMismatch { text, capture, check, mate }` (só a marca impressa e errada conta). **Decisões:** (1) a "evidência fraca" entra só onde o walker escolhe entre diagramas (`seed_fits`: o diagrama de antes ainda toma o lance quando nenhum outro serve); continuar a partida depois de um diagrama não mudou; (2) o alinhamento com o PGN do livro ainda não pesa a bandeira (fica anotado no `parity/`); (3) a revisão do PGN do livro (passo R2 do `plano-pgn-do-livro.md`) vê a troca pela bandeira no lance. |
+
 ## Fora do plano, no mesmo período
 
 - #257: o modelo de peças retreinado no ChessVisionOFF (`fccd0097`) e o limiar de aceite por modelo (`accept_min_confidence`).

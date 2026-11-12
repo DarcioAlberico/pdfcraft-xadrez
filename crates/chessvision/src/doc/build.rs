@@ -644,6 +644,11 @@ fn push_text(out: &mut Vec<Inline>, text: &str, rect: Option<UserRect>) {
     }
 }
 
+/// Why a move's word was read again ([`ChessRun::Move`]'s `repaired`): the characters an old OCR
+/// layer sets for others in notation, read as the ones meant.
+pub const OLD_LAYER_REPAIR: &str =
+    "a character an old OCR layer sets for another read as meant: l for 1, S for 5 or 8, a mark inside a square, bullets for dots";
+
 /// A block's lines as inlines; without a geometry, they have no source boxes.
 pub(crate) fn inlines(lines: &[&ChessLine], geometry: Option<&PageGeometry>) -> Vec<Inline> {
     let mut out = Vec::new();
@@ -662,13 +667,23 @@ pub(crate) fn inlines(lines: &[&ChessLine], geometry: Option<&PageGeometry>) -> 
                     flush(&mut out, &mut number);
                     number = Some((MoveNumber { number: *n, black: *black }, rect, li));
                 }
-                ChessRun::Move { san, text } => {
+                ChessRun::Move { san, text, repaired } => {
                     let (n, source_rect) = match number.take() {
                         Some((n, r, l)) if l == li => (Some(n), union(r, rect)),
                         Some((n, _, _)) => (Some(n), rect),
                         None => (None, rect),
                     };
                     let san = san.to_english();
+                    // A misreading read again is said, never made silently (plan A9-L5, A2-10).
+                    let read_review = repaired
+                        .iter()
+                        .map(|(from, to)| ReviewFlag::TextRepaired {
+                            from: from.clone(),
+                            to: to.clone(),
+                            why: OLD_LAYER_REPAIR.to_owned(),
+                            confidence: pdfcraft_chess::repair::CONFIDENCE_ONE_SWAP,
+                        })
+                        .collect();
                     out.push(Inline::Move(MoveInline {
                         number: n,
                         text: text.clone(),
@@ -679,7 +694,7 @@ pub(crate) fn inlines(lines: &[&ChessLine], geometry: Option<&PageGeometry>) -> 
                         game: None,
                         source_rect,
                         bold: span.bold,
-                        read_review: Vec::new(),
+                        read_review,
                         review: Vec::new(),
                         reference: None,
                     }));
@@ -1087,7 +1102,7 @@ fn played(m: &mut MoveInline, page: u32, walker: &mut Walker) {
     }
     m.fen = out.fen;
     m.game = out.node;
-    if let Some(flag) = out.repaired {
+    for flag in [out.repaired, out.mismatch].into_iter().flatten() {
         let at = m.review.iter().position(|f| matches!(f, ReviewFlag::FromReference { .. })).unwrap_or(m.review.len());
         m.review.insert(at, flag);
     }

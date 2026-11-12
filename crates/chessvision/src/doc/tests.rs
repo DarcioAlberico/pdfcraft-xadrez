@@ -45,7 +45,7 @@ fn runs(text: &str) -> Vec<(ChessRun, bool)> {
         }
         let starts_like_move = rest.starts_with(|c: char| ('a'..='h').contains(&c) || "KQRBNO".contains(c));
         if starts_like_move && let Ok(san) = San::read(rest, Lang::En) {
-            out.push((ChessRun::Move { san, text: rest.to_owned() }, bold));
+            out.push((ChessRun::Move { san, text: rest.to_owned(), repaired: None }, bold));
         } else if let Some(n) = nag::by_glyph(rest) {
             out.push((ChessRun::Nag(n.code), bold));
         } else if let Some((ChessRun::Text(prev), _)) = out.last_mut() {
@@ -2060,9 +2060,73 @@ fn a_bracket_inside_a_word_is_no_variation() {
     assert!(got.contains("2. Nf3 {better} (2. Bc4 Nf6) 2... Nc6"), "{got}");
 }
 
+/// Plan A9-L5 (A2-10): a move whose word the reader read again from a misreading (`6.Rel`) has the
+/// reader's flag saying so, with what was printed, kept by every walk.
+#[test]
+fn a_move_read_again_is_flagged_with_what_was_printed() {
+    // The reader read `6.Rel` as the move `Re1` (`chess_text`): here `Nc6`, printed `Nc0`.
+    let mut text = page_text(vec![line(230.0, "1.e4 e5 2.Nf3 Nc6")]);
+    for span in &mut text.lines[0].spans {
+        if let ChessRun::Move { text: printed, repaired, .. } = &mut span.run
+            && printed == "Nc6"
+        {
+            *repaired = Some(("Nc0".into(), "Nc6".into()));
+        }
+    }
+    let doc = build_page(&input(0, &text, &[], &[], &[]));
+    let flagged: Vec<(String, Vec<ReviewFlag>)> = doc.pages[0]
+        .blocks
+        .iter()
+        .flat_map(|b| b.inlines())
+        .filter_map(|i| if let Inline::Move(m) = i { Some((m.text.clone(), m.review.clone())) } else { None })
+        .filter(|(_, r)| !r.is_empty())
+        .collect();
+    let repaired = |from: &str, to: &str| ReviewFlag::TextRepaired {
+        from: from.into(),
+        to: to.into(),
+        why: crate::doc::build::OLD_LAYER_REPAIR.into(),
+        confidence: pdfcraft_chess::repair::CONFIDENCE_ONE_SWAP,
+    };
+    assert_eq!(flagged, [("Nc6".to_owned(), vec![repaired("Nc0", "Nc6")])]);
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid));
+    // Walked again, the flag stays: it is the reading's.
+    let again = walk(&doc.pages, WalkRules::BOOK);
+    assert_eq!(again.pages, doc.pages);
+}
+
+/// Plan A9-L5 (R6-02): a move played whose printed marks the position does not bear out is
+/// flagged (`2.Nxf3`, taking nothing; `3.Bb5+`, no check), and a mark left out is not; such a move
+/// is weak evidence for a diagram: a first move that fits the diagram before it only with a wrong
+/// capture mark, and another diagram nearby cleanly, starts from that one.
+#[test]
+fn printed_marks_the_position_does_not_bear_out_are_flagged() {
+    let text = page_text(vec![line(230.0, "1.e4 e5 2.Nxf3 Nc6 3.Bb5+ a6 4.Ba4")]);
+    let doc = build_page(&input(0, &text, &[], &[], &[]));
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
+    let flags: Vec<(String, Vec<ReviewFlag>)> = doc.pages[0]
+        .blocks
+        .iter()
+        .flat_map(|b| b.inlines())
+        .filter_map(|i| if let Inline::Move(m) = i { Some((m.text.clone(), m.review.clone())) } else { None })
+        .filter(|(_, r)| !r.is_empty())
+        .collect();
+    let mismatch = |text: &str, capture, check| ReviewFlag::NotationMismatch { text: text.into(), capture, check, mate: false };
+    assert_eq!(flags, [("Nxf3".to_owned(), vec![mismatch("2.Nxf3", true, false)]), ("Bb5+".to_owned(), vec![mismatch("3.Bb5+", false, true)])]);
+    // `1.Kxd2` takes on d2 in the first diagram and nothing in the second, just before it.
+    let pawn = "4k3/8/8/8/8/8/3p4/4K3 w - - 0 1";
+    let bare = "4k3/8/8/8/8/8/8/4K3 w - - 0 1";
+    let diagrams = [reading(0, 60.0, pawn, true, false), reading(1, 220.0, bare, true, false)];
+    let doc = build_page(&input(0, &page_text(vec![line(380.0, "1.Kxd2 Ke7")]), &diagrams, &[], &[]));
+    let [game] = doc.games.as_slice() else { panic!("{} games", doc.games.len()) };
+    assert_eq!(game.origin, GameOrigin::Diagram { page: 0, diagram: 0, accepted: true });
+    assert!(game.flags.iter().any(|f| f.flag == ReviewFlag::DiagramMatchedByMove));
+    assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid));
+}
+
 /// On a page read by OCR, an illegal move that one misread file letter explains is played as that
-/// reading, and the move says so (a scan loses the bar of an `e`: `cxd4` for `exd4`); a text
-/// layer's move stays illegal, and so does one whose reading two moves fit.
+/// reading, and the move says so (a scan loses the bar of an `e`: `cxd4` for `exd4`), and so does
+/// its printed check, which the move does not give (plan A9-L5); a text layer's move stays
+/// illegal, and so does one whose reading two moves fit.
 #[test]
 fn a_misread_file_letter_is_read_again_on_a_page_read_by_ocr() {
     fn played(doc: &ChessDoc) -> Vec<&MoveInline> {
@@ -2079,7 +2143,10 @@ fn a_misread_file_letter_is_read_again_on_a_page_read_by_ocr() {
     assert!(moves(&doc.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[0]));
     assert_eq!(mainline(&doc), ["e4", "e5", "d4", "exd4", "Qxd4", "Nc6", "Qe3"]);
     let flags: Vec<(&str, &ReviewFlag)> = played(&doc).into_iter().flat_map(|m| m.review.iter().map(|f| (m.san.as_str(), f))).collect();
-    assert!(matches!(flags.as_slice(), [("exd4", ReviewFlag::TextRepaired { from, to, .. })] if from == "cxd4+" && to == "exd4"), "{flags:?}");
+    assert!(
+        matches!(flags.as_slice(), [("exd4", ReviewFlag::TextRepaired { from, to, .. }), ("exd4", ReviewFlag::NotationMismatch { check: true, capture: false, .. })] if from == "cxd4+" && to == "exd4"),
+        "{flags:?}"
+    );
     assert!(doc.pages[0].ocr);
     // Judged again from its JSON, the move keeps its reading and its flag.
     let mut builder = DocBuilder::new();
