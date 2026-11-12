@@ -253,3 +253,38 @@ fn the_lichess_address_is_a_real_hyperlink_in_word_and_rtf() {
     assert!(!zip_part(&docx(&flow), "word/document.xml").contains("w:hyperlink"));
     assert!(!rtf(&flow).contains("HYPERLINK"));
 }
+
+/// Plan A9-T2a (R3-08): a diagram that cannot be drawn is noted by the page the export names it
+/// with, its printed label as in its own caption; the note said the index + 1 ("page 25" for the
+/// page the Word file calls "xiii").
+#[test]
+fn an_undrawn_diagram_is_noted_by_the_page_its_caption_names() {
+    let (mut s, id) = open(super::document::chapter());
+    let mut doc = s.chess_document(id, &[], &no_model(), None).unwrap().doc;
+    doc.pages[0].index = 24;
+    for block in &mut doc.pages[0].blocks {
+        if let pdfcraft_chessvision::doc::Block::Diagram(d) = block {
+            d.reading.as_mut().unwrap().fen = "not a position".into();
+        }
+    }
+    let mut labels = vec![String::new(); 25];
+    labels[24] = "xiii".into();
+    let pieces = PieceSet::geometric();
+    let mut notes = Vec::new();
+    let (flow, drawn) = to_flow(&doc, &OfficeOptions { page_labels: &labels, ..options(&pieces) }, &mut notes);
+    assert_eq!(drawn, 0);
+    let caption = flow
+        .blocks
+        .iter()
+        .find_map(|b| match b {
+            FlowBlock::Para(runs) if text_of(runs).contains("FEN not a position") => Some(text_of(runs)),
+            _ => None,
+        })
+        .unwrap();
+    assert!(caption.starts_with("Page xiii · diagram 1"), "{caption}");
+    assert_eq!(notes.len(), 1, "{notes:?}");
+    assert!(notes[0].starts_with("page xiii, diagram 1: "), "{notes:?}");
+    // The engine says the page by the same rule: a document without labels by its number.
+    assert_eq!(crate::chess::export::page_label(s.get(id).unwrap(), 0).to_string(), "1");
+    assert_eq!(crate::chess::export::page_label(s.get(id).unwrap(), 0).printed, None);
+}

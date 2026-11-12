@@ -30,7 +30,7 @@ use pdfcraft_chess::origin::PgnOrigin;
 use pdfcraft_chess::san::{FigurineSet, Lang, San, Style};
 use pdfcraft_chess::svg::{UsedPieces, board_described, symbols};
 
-use super::{Block, ChessDoc, ChessPage, DiagramBlock, Inline, MoveInline, MoveStatus};
+use super::{Block, ChessDoc, ChessPage, DiagramBlock, Inline, MoveInline, MoveStatus, PageLabel};
 
 /// How diagrams appear.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -81,14 +81,10 @@ pub struct HtmlOptions<'a> {
     pub review_marks: bool,
 }
 
-/// The number printed on page `index` (0-based), when the document gives one.
-fn printed_label<'o>(o: &HtmlOptions<'o>, index: u32) -> Option<&'o str> {
-    usize::try_from(index).ok().and_then(|i| o.page_labels.get(i)).map(|l| l.trim()).filter(|l| !l.is_empty())
-}
-
-/// Page `index` (0-based) as the book numbers it: its printed number, else its own from 1.
-pub fn page_label(o: &HtmlOptions<'_>, index: u32) -> String {
-    printed_label(o, index).map_or_else(|| (u64::from(index) + 1).to_string(), str::to_owned)
+/// Page `index` (0-based) as the book numbers it ([`PageLabel`]: its printed number, else its own
+/// from 1).
+pub fn page_label(o: &HtmlOptions<'_>, index: u32) -> PageLabel {
+    PageLabel::of(o.page_labels, index)
 }
 
 /// Escape for text and for attribute values in double quotes.
@@ -342,8 +338,8 @@ fn diagram_html(d: &DiagramBlock, page: &ChessPage, o: &HtmlOptions<'_>, used: &
     let id = format!("p{}-d{number}", u64::from(page.index) + 1);
     // Said in the book's language, with the number printed on the page (plan A8 P9b).
     let lang = Lang::from_tag(&page.lang).unwrap_or(Lang::En);
-    let printed = printed_label(o, page.index);
-    let label = page_label(o, page.index);
+    let page_label = page_label(o, page.index);
+    let label = page_label.to_string();
     let Some(reading) = &d.reading else {
         return format!(
             "<figure class=\"diagram unread review\" id=\"{id}\"><figcaption>{}</figcaption></figure>\n",
@@ -362,7 +358,7 @@ fn diagram_html(d: &DiagramBlock, page: &ChessPage, o: &HtmlOptions<'_>, used: &
     let of = page.blocks.iter().filter(|b| matches!(b, Block::Diagram(_))).count();
     let origin = PgnOrigin {
         page_index: page.index,
-        page_label: printed.map(str::to_owned),
+        page_label: page_label.printed,
         diagram: Some(number),
         of: Some(of),
         lang: Some(lang),
@@ -430,7 +426,7 @@ fn page_section(page: &ChessPage, o: &HtmlOptions<'_>, pagebreak: bool, used: &m
     let mut s = String::new();
     let _ = writeln!(s, "<section class=\"page\" data-page=\"{}\">", u64::from(page.index) + 1);
     if pagebreak {
-        let label = esc(&page_label(o, page.index));
+        let label = esc(&page_label(o, page.index).to_string());
         let _ = writeln!(s, "<span epub:type=\"pagebreak\" role=\"doc-pagebreak\" id=\"pagebreak\" aria-label=\"{label}\" title=\"{label}\"></span>");
     }
     let mut k = 0;

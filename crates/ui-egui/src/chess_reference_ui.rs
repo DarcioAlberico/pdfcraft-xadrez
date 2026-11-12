@@ -181,7 +181,7 @@ pub struct BookPgnView {
 impl BookPgnView {
     /// The user's choice for the move at `at` printed `san`, when they made one.
     pub fn choice(&self, at: MoveAt, san: &str) -> Option<Choice> {
-        self.decisions.iter().find(|d| d.is_for(at.page, at.block, at.inline, san)).map(|d| d.choice)
+        self.decisions.iter().find(|d| d.is_for(at, san)).map(|d| d.choice)
     }
 }
 
@@ -487,7 +487,7 @@ impl PdfCraftApp {
         let Some((_, id)) = self.active_ids() else { return };
         let Some(doc) = self.session.get(id) else { return };
         let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
-        let decision = Decision { page: at.page, block: at.block, inline: at.inline, san, choice };
+        let decision = Decision::new(at, san, choice);
         match self.chess.book_pgns.store.decide(&keys, pages, decision) {
             Ok(file) => {
                 if let Some(d) = self.chess.book_pgns.docs.iter_mut().find(|d| d.doc == id) {

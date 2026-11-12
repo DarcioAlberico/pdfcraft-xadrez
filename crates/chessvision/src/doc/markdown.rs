@@ -28,7 +28,7 @@ use pdfcraft_chess::san::Lang;
 
 use super::games::{DiagramAt, GameOrigin, GameResult, GameScore, MAX_SHOWN_DIAGRAMS, Tag};
 use super::html::{Figurines, plain_text_with};
-use super::{Block, ChessDoc};
+use super::{Block, ChessDoc, PageLabel};
 
 /// How [`write`] sets diagrams.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -124,12 +124,7 @@ pub fn write(doc: &ChessDoc, o: &MarkdownOptions<'_>) -> String {
     let top = doc.pages.iter().flat_map(|p| &p.blocks).filter_map(|b| if let Block::Heading { level, .. } = b { Some(*level) } else { None }).min();
     for page in &doc.pages {
         let book_lang = Lang::from_tag(&page.lang).unwrap_or(Lang::En);
-        let label = usize::try_from(page.index)
-            .ok()
-            .and_then(|i| o.page_labels.get(i))
-            .map(|l| l.trim())
-            .filter(|l| !l.is_empty())
-            .map_or_else(|| (u64::from(page.index) + 1).to_string(), str::to_owned);
+        let label = PageLabel::of(o.page_labels, page.index).to_string();
         for block in &page.blocks {
             match block {
                 Block::Heading { level, inlines, .. } => {
@@ -399,7 +394,7 @@ fn origin_of(doc: &ChessDoc, book: &PgnBook, page: u32, diagram: Option<usize>, 
     PgnOrigin {
         book_title: book.title.clone(),
         page_index: page,
-        page_label: usize::try_from(page).ok().and_then(|i| book.labels.get(i)).cloned(),
+        page_label: PageLabel::of(&book.labels, page).printed,
         diagram: diagram.map(|d| d.saturating_add(1)),
         of: (diagrams > 0).then_some(diagrams),
         puzzle,

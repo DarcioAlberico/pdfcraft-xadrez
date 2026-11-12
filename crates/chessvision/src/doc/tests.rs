@@ -2102,3 +2102,38 @@ fn a_misread_file_letter_is_read_again_on_a_page_read_by_ocr() {
     let doc = build_page(&PageInput { ocr: true, ..input(0, &text, &diagrams, &[], &[]) });
     assert_eq!(moves(&doc.pages[0]), [("40...Qce5".to_owned(), MoveStatus::Illegal)]);
 }
+
+/// Plan A9-T2a (R3-09): one address for a move. It finds the move it names, and the alignment
+/// with the book's PGN writes it as it always wrote its own (`{"page", "block", "inline"}`).
+#[test]
+fn a_moves_address_finds_it_and_is_written_as_before() {
+    let text = page_text(vec![line(40.0, "White to play."), line(230.0, "1.e4 e5 2.Nf3")]);
+    let doc = build_page(&input(3, &text, &[], &[], &[]));
+    let (b, i) = doc.pages[0]
+        .blocks
+        .iter()
+        .enumerate()
+        .find_map(|(b, block)| block.inlines().iter().position(|x| matches!(x, Inline::Move(m) if m.text == "e5")).map(|i| (b, i)))
+        .unwrap();
+    let at = MoveAt::new(3, b, i);
+    assert_eq!(at.find(&doc).map(|m| m.text.as_str()), Some("e5"));
+    assert_eq!(MoveAt { page: 2, ..at }.find(&doc), None, "another page");
+    assert_eq!(MoveAt::new(3, b, usize::MAX).find(&doc), None, "a place no page holds");
+    let link = reference::MoveLink { at: MoveAt::new(3, 1, 2), kind: reference::LinkKind::Confirmed, node: None };
+    let json = serde_json::to_string(&link).unwrap();
+    assert!(json.starts_with(r#"{"at":{"page":3,"block":1,"inline":2},"#), "{json}");
+    assert_eq!(serde_json::from_str::<reference::MoveLink>(&json).unwrap(), link);
+}
+
+/// Plan A9-T2a (R3-08): one rule says a page as the book numbers it.
+#[test]
+fn a_page_is_said_by_its_printed_label_else_its_number() {
+    let labels: Vec<String> = ["i", " ", "3", " 13 \n"].map(String::from).to_vec();
+    let said = |p: u32| (PageLabel::of(&labels, p).printed, PageLabel::of(&labels, p).to_string());
+    assert_eq!(said(0), (Some("i".to_owned()), "i".to_owned()));
+    assert_eq!(said(1), (None, "2".to_owned()), "a blank label is none");
+    assert_eq!(said(2), (None, "3".to_owned()), "a page's own number is no printed label");
+    assert_eq!(said(3), (Some("13".to_owned()), "13".to_owned()));
+    assert_eq!(said(4), (None, "5".to_owned()), "past the labels");
+    assert_eq!(PageLabel::new(None, u32::MAX).to_string(), "4294967296");
+}
