@@ -1117,6 +1117,12 @@ fn chess_export_markdown_and_pgn_write_inside_the_root() {
     assert!(e.to_string().contains("variations"), "{e}");
     let e = a.call("chess_export_pgn", &json!({ "doc": doc, "out": "x.pgn", "positions": "some" })).unwrap_err();
     assert!(e.to_string().contains("positions"), "{e}");
+    // Plan A9-F1 (decision D18): with bom the file starts with UTF-8's byte order mark; without
+    // it, as by default, it does not.
+    let with_bom = ok(&mut a, "chess_export_pgn", json!({ "doc": doc, "out": "bom.pgn", "bom": true }));
+    let bytes = std::fs::read(root.join("bom.pgn")).unwrap();
+    assert!(bytes.starts_with(b"\xef\xbb\xbf[") && !std::fs::read(root.join("bare.pgn")).unwrap().starts_with(b"\xef\xbb\xbf"));
+    assert_eq!(with_bom["bytes"].as_u64(), u64::try_from(bytes.len()).ok(), "{with_bom:#}");
     for (tool, out) in [("chess_export_markdown", "../outside/x.md"), ("chess_export_pgn", "../outside/x.pgn")] {
         match a.call(tool, &json!({ "doc": doc, "out": out })) {
             Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{tool}: {m}"),
@@ -1124,6 +1130,33 @@ fn chess_export_markdown_and_pgn_write_inside_the_root() {
         }
     }
     assert_eq!(std::fs::read_dir(base.join("outside")).unwrap().count(), 0, "nothing was written outside");
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// Plan A9-F1 (A1-01, A1-10, A8-01): a PGN file with a byte order mark reads as its two games, not
+/// three (an empty one used to take its first tag line), and a Latin-1 one keeps its accents;
+/// the reply says how each was read. `chess_reference_set` reads a book's PGN the same way.
+#[test]
+fn pgn_files_with_a_bom_or_in_latin_1_read_whole() {
+    let (base, root) = workdir("pgn-encoding");
+    let two = "[Event \"Teste\"]\n[White \"Réti\"]\n[Black \"João\"]\n\n1. e4 e5 *\n\n[Event \"Dois\"]\n\n1. d4 d5 *\n";
+    let mut bom = b"\xef\xbb\xbf".to_vec();
+    bom.extend_from_slice(two.as_bytes());
+    std::fs::write(root.join("bom.pgn"), &bom).unwrap();
+    let latin1: Vec<u8> = two.chars().map(|c| u8::try_from(u32::from(c)).unwrap()).collect();
+    std::fs::write(root.join("latin1.pgn"), &latin1).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let r = ok(&mut a, "chess_games", json!({ "path": "bom.pgn" }));
+    assert_eq!((r["count"].as_u64(), r["encoding"].as_str()), (Some(2), Some("utf-8 with BOM")), "{r:#}");
+    assert!(r["games"][0]["event"] == "Teste" && r["games"][0]["pgn_stopped"].is_null(), "{r:#}");
+    let r = ok(&mut a, "chess_games", json!({ "path": "latin1.pgn" }));
+    assert_eq!((r["count"].as_u64(), r["encoding"].as_str()), (Some(2), Some("windows-1252")), "{r:#}");
+    assert_eq!((r["games"][0]["white"].as_str(), r["games"][0]["black"].as_str()), (Some("Réti"), Some("João")), "{r:#}");
+    assert!(r["pgn"].as_str().unwrap().contains("[White \"Réti\"]"), "{r:#}");
+    assert!(ok(&mut a, "chess_games", json!({ "pgn": two }))["encoding"].is_null());
+    let (mut a, doc) = opened(&root);
+    let kept = ok(&mut a, "chess_reference_set", json!({ "doc": doc, "path": "latin1.pgn" }));
+    assert_eq!((kept["games"].as_u64(), kept["encoding"].as_str()), (Some(2), Some("windows-1252")), "{kept:#}");
     let _ = std::fs::remove_dir_all(base);
 }
 

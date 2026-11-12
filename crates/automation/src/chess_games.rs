@@ -64,6 +64,7 @@ impl Automation {
         // The paths next: one that leaves the root is refused before anything is read.
         let path = a.opt_str("path")?.map(|p| self.resolve(p, false).map(|r| (p, r))).transpose()?;
         let out = a.opt_str("out")?.map(|p| self.resolve(p, true)).transpose()?;
+        let mut encoding = None;
         let text = match (inline, path) {
             (Some(_), Some(_)) => return Err(ToolError::InvalidArgs("give pgn or path, not both".into())),
             (Some(text), None) => {
@@ -74,7 +75,10 @@ impl Automation {
             }
             (None, Some((given, file))) => {
                 // Resolved above, and refused above the cap (a file that grew past it since too).
-                String::from_utf8_lossy(&crate::chess_files::read_capped(&file, given, MAX_PGN_BYTES)?).into_owned()
+                let bytes = crate::chess_files::read_capped(&file, given, MAX_PGN_BYTES)?;
+                let (text, read_as) = pdfcraft_engine::chess::pdfcraft_chess::pgn::decode(&bytes);
+                encoding = Some(read_as.name());
+                text
             }
             (None, None) => String::new(),
         };
@@ -136,6 +140,7 @@ impl Automation {
             "games": list_json(&list),
             "active": list.active_index(),
             "count": list.len(),
+            "encoding": encoding,
             "pgn": pgn,
             "report": report,
             "applied": applied,

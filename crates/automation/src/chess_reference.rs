@@ -123,7 +123,7 @@ impl Automation {
         let id = self.doc(a)?.id;
         let shown = a.str("path")?;
         let path = self.resolve(shown, false)?;
-        let text = crate::chess::read_reference_text(&path, shown)?;
+        let (text, encoding, bytes) = crate::chess::read_reference_text(&path, shown)?;
         // Indexed first: a PGN with no game in it is refused, and the counts are kept with it.
         let index = ReferenceIndex::from_pgn(&text).map_err(|e| failed(format!("{shown}: {e}")))?;
         if index.games().is_empty() {
@@ -131,12 +131,13 @@ impl Automation {
         }
         let name = path.file_name().map(|n| n.to_string_lossy().into_owned());
         let stopped = index.games().iter().filter(|g| g.stopped.is_some() || g.error.is_some()).count();
-        let pgn = KeptPgn::new(name.as_deref(), text, index.games().len(), index.moves(), now()).map_err(failed)?;
+        let pgn = KeptPgn::new(name.as_deref(), text, index.games().len(), index.moves(), now()).map_err(failed)?.read_from(&bytes);
         let (keys, pages) = self.reference_keys(id)?;
         let (replaced, loaded) = store.set(&keys, pages, pgn).map_err(failed)?;
         let mut reply = loaded_reply(&loaded);
         reply["replaced"] = json!(replaced);
         reply["stopped_games"] = json!(stopped);
+        reply["encoding"] = json!(encoding.name());
         Ok(reply)
     }
 

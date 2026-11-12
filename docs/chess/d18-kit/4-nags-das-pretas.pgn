@@ -1,0 +1,14 @@
+[Event "Kit D18: NAGs das pretas"]
+[Site "?"]
+[Date "2026.11.11"]
+[Round "1"]
+[White "Brancas"]
+[Black "Pretas"]
+[Result "*"]
+
+1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O $36 {$36: as brancas têm a
+iniciativa.} 5... Be7 6. Re1 b5 7. Bb3 d6 $37 {$37: as pretas têm a
+iniciativa.} 8. c3 O-O 9. h3 $22 {$22: as brancas em zugzwang (marca de
+teste).} 9... Na5 $23 {$23: as pretas em zugzwang (marca de teste).} 10. Bc2
+c5 $132 {$132: as pretas têm contrajogo moderado.} 11. d4 $133 {$133: as
+brancas têm contrajogo moderado.} *
