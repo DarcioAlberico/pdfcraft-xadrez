@@ -11,8 +11,10 @@
 //! ([`Snapshot::bytes`]); the oldest steps go first.
 //!
 //! **Which history Undo goes to** (D12, the scope of the last action): a click in the chess
-//! panels or a change to the game puts Undo and Redo on the game; a click on the page or a change
-//! to the document puts them back on the document. See [`ChessState::in_scope`].
+//! panels or a change to the game puts Undo and Redo on the game; a click on the page or in
+//! another panel, or a change to the document, puts them back on the document. Since plan
+//! A9-I18 the keyboard focus decides first: on a chess board's surface it puts them on the game,
+//! anywhere else on the document. See [`ChessState::in_scope`].
 
 use std::collections::VecDeque;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -28,6 +30,9 @@ pub(crate) const MAX_STEPS: usize = 200;
 
 /// Most memory the steps may take, as [`Estimate::bytes`] counts it (undo and redo together).
 pub(crate) const MAX_BYTES: usize = 64 << 20;
+
+/// Most chess surfaces kept from one pass (there are five kinds; a few windows' worth more).
+const MAX_SURFACES: usize = 16;
 
 /// Bytes a move of a game takes in memory, besides its text: its board (bitboards and state,
 /// about 100 bytes), the node's links, glyph and comment fields and its place on the page. A
@@ -332,9 +337,10 @@ impl<S> History<S> {
 }
 
 impl ChessState {
-    /// Whether Undo and Redo go to the chess game: the last action was a click in the chess
-    /// panels or a change to the game (counted by the game's history), not a click on the page or
-    /// a change to the document.
+    /// Whether Undo and Redo, and the chess keys, go to the chess game: the keyboard focus is on
+    /// one of the chess board's surfaces, or the last action was a click there or a change to the
+    /// game (counted by the game's history) and the focus has not gone elsewhere since; not a
+    /// click on the page or in another panel, nor a change to the document (plan A9-I18).
     ///
     /// The changes counted are the game shown's: showing another game (another document's, or
     /// another of the list) is not a change to it. Before the scope was ever settled, any change
@@ -342,7 +348,50 @@ impl ChessState {
     pub fn in_scope(&self) -> bool {
         let (game, edits) = self.games.scope_stamp();
         let (settled_game, settled_edits) = self.scope_edits;
-        self.scope || ((game == settled_game || settled_game == 0) && edits != settled_edits)
+        !self.focus_out && (self.scope || ((game == settled_game || settled_game == 0) && edits != settled_edits))
+    }
+
+    /// `ui`'s area, as far as it shows, is one of the chess board's surfaces this pass: the Board
+    /// panel, the Move list, the Chess panel, the chess window or the glyph palette. A widget
+    /// there with the keyboard focus puts the scope on ([`ChessState::settle_focus`]).
+    pub(crate) fn mark_surface(&mut self, ui: &egui::Ui) {
+        if self.surfaces.len() < MAX_SURFACES {
+            self.surfaces.push((ui.ctx().viewport_id(), ui.layer_id(), ui.max_rect().intersect(ui.clip_rect())));
+        }
+    }
+
+    /// The end of the main window's pass (plan A9-I18): the scope follows the keyboard focus. A
+    /// widget of a chess board's surface with the focus puts the scope on, and keeps it on once
+    /// the focus goes, as a click there does; a widget anywhere else (`chrome`: one of the docking
+    /// workspace's own, a divider or a tab) takes it off, so Tab out of the panel gives the keys
+    /// back; with no focus the last click decides. The focus in a popup, a menu or a dialog over
+    /// the window changes nothing: they come and go over whatever had it.
+    ///
+    /// Nothing is looked at unless `look` (a frame without a pointer press or release: see
+    /// `PdfCraftApp::settle_chess_focus`); the surfaces are forgotten either way.
+    pub(crate) fn settle_focus(&mut self, ctx: &egui::Context, look: bool, chrome: bool) {
+        let surfaces = std::mem::take(&mut self.surfaces);
+        if !look {
+            return;
+        }
+        let Some(widget) = ctx.memory(|m| m.focused()).and_then(|id| ctx.read_response(id)) else {
+            self.focus_out = false;
+            return;
+        };
+        // The chess window's own surfaces are in another viewport, whose layers may have the same ids.
+        let (viewport, at) = (ctx.viewport_id(), widget.rect.center());
+        let inside = !chrome && surfaces.iter().any(|(v, layer, rect)| *v == viewport && *layer == widget.layer_id && rect.contains(at));
+        if inside {
+            self.focus_out = false;
+            if !self.scope {
+                self.enter_scope();
+            }
+        } else if chrome || widget.layer_id.order < egui::Order::Foreground {
+            if !self.focus_out {
+                self.leave_scope();
+            }
+            self.focus_out = true;
+        }
     }
 
     /// Undo and Redo go to the chess game.

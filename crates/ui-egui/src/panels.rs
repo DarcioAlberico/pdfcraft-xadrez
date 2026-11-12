@@ -16,6 +16,10 @@ fn hue(g: &ToolGroup) -> Color32 {
 
 pub fn left_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
+    // A click in the Tools panel gives Undo and the keys back to the document (plan A9-I18).
+    if crate::chess_history::pressed_in(ui) {
+        app.chess.leave_scope();
+    }
     // Organize closed another way (the grid's Close, or a page opened from it) closes the tool too,
     // as its panel's Close does, back to the workspace's own panel.
     if app.left == LeftPanel::Tool("organize") && app.active.and_then(|i| app.views.get(i)).is_some_and(|v| !v.organize) {
@@ -508,6 +512,11 @@ pub(crate) enum Nav {
 
 pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
+    // A click in a panel other than the Chess one gives Undo and the keys back to the document
+    // (plan A9-I18); the Chess panel takes them again for a click in it (`chess_ui::panel`).
+    if crate::chess_history::pressed_in(ui) {
+        app.chess.leave_scope();
+    }
     let Some((index, id)) = app.active_ids() else { return };
     let Some(panel) = app.right else { return };
     let mut nav: Option<Nav> = None;

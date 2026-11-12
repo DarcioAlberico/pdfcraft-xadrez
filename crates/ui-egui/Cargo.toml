@@ -75,6 +75,8 @@ web-sys = { version = "0.3", features = ["Window", "Document", "Element", "HtmlE
 
 [dev-dependencies]
 pdfcraft-xfa = { workspace = true }
+# The golden journey reads the EPUB it exports (`tests/chess_golden.rs`); already in the graph.
+flate2 = { workspace = true }
 egui_kittest = { workspace = true, features = ["eframe", "wgpu"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
 # Glyph-coverage test of the interface fonts; the same skrifa pdfcraft-fonts already uses.

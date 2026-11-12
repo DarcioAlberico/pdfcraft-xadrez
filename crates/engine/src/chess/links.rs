@@ -47,6 +47,9 @@ const LINE: f32 = 1.25;
 const BLUE: [f64; 3] = [0.0, 0.2, 0.8];
 
 /// How the labels look and which readings get one.
+/// Built outside the engine by its constructor and its fields, never by a literal (plan A9-Q1b,
+/// A7-14): a field added here then breaks no caller (the cause of #185).
+#[non_exhaustive]
 #[derive(Clone, Debug, PartialEq)]
 pub struct LinkSettings {
     pub text: String,
