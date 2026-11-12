@@ -870,12 +870,17 @@ fn the_books_pgn_links_the_text_tab_and_follows_the_document() {
     let mut h = book_pgn_harness("saved copy.pdf", Some(out.to_string_lossy().into_owned()), bytes, store.clone());
     h.get_by_label("Book's PGN: book.pgn (1 games)");
     assert_eq!(linked_moves(&h)[5].1.as_deref(), Some("Recovered"));
-    // Removed: the page is read again without it, and the store keeps nothing.
+    // Removed: the page is read again without it, and the store keeps no PGN. Its file stays,
+    // saying when the PGN was removed, so an earlier build's copy does not bring it back (plan
+    // A9-G3a).
     h.get_by_label("Remove the book's PGN").click();
     h.run_steps(4);
     h.get_by_label("Load the book's PGN…");
     assert!(linked_moves(&h).iter().all(|(_, r)| r.is_none()), "{:?}", linked_moves(&h));
-    assert!(correction_files(&store).is_empty());
+    let files = correction_files(&store);
+    assert!(files.len() == 1 && files[0].ends_with(".reference.json"), "{files:?}");
+    let kept: serde_json::Value = serde_json::from_slice(&std::fs::read(store.join(&files[0])).unwrap()).unwrap();
+    assert!(kept.get("pgn").is_none() && kept["removed"].is_u64(), "{kept}");
     let _ = std::fs::remove_dir_all(dir);
 }
 
