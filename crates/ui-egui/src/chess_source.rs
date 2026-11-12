@@ -23,7 +23,7 @@
 
 use egui::Key;
 use pdfcraft_engine::DocId;
-use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, NodePath, NodeSource, Token};
+use pdfcraft_engine::chess::pdfcraft_chess::game::{NodePath, NodeSource};
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::{ChessDoc, GameOrigin, NodeRef};
 use pdfcraft_render::DestView;
 
@@ -131,12 +131,6 @@ pub(crate) const SHOW: Tool = Tool {
     on: None,
 };
 
-/// Where each move of `game` was printed, in PGN order: two games read from the same text have
-/// the same.
-fn places(game: &Game) -> Vec<Option<NodeSource>> {
-    game.tokens().into_iter().filter_map(|t| if let Token::Move { node, .. } = t { Some(game.source(node)) } else { None }).collect()
-}
-
 impl PdfCraftApp {
     /// Every frame: a move asked to be shown (Show in PDF), then, with Follow on, the move shown
     /// when it changed.
@@ -218,25 +212,12 @@ impl PdfCraftApp {
             board.game.go_to_node(node);
         }
         board.refresh_fields(true);
-        let (pgn, where_printed) = (board.game.pgn(), places(&board.game));
         let c = self.chess.games.collection_mut();
-        let same = c.iter().position(|e| {
-            e.untouched()
-                && e.board.illegal.is_none()
-                && e.board.source == source
-                && e.board.game.pgn() == pgn
-                && places(&e.board.game) == where_printed
-        });
-        match same {
-            Some(i) => {
-                c.switch_to(i);
-                let game = &mut c.active_mut().board.game;
-                if let Some(node) = path.as_ref().and_then(|p| game.node_at(p)) {
-                    game.go_to_node(node);
-                }
-            }
-            None => {
-                c.add_games(vec![board], ChessEdit::OpenBookGame, true);
+        // The same game, untouched, is shown again at the move asked for (plan A9-G8: one rule).
+        if !c.show_or_add(board, ChessEdit::OpenBookGame) {
+            let game = &mut c.active_mut().board.game;
+            if let Some(node) = path.as_ref().and_then(|p| game.node_at(p)) {
+                game.go_to_node(node);
             }
         }
         if dropped > 0 {
@@ -263,17 +244,9 @@ impl PdfCraftApp {
         board.game = pgn_game;
         board.game.go_to_node(node);
         board.refresh_fields(true);
-        let pgn = board.game.pgn();
         let c = self.chess.games.collection_mut();
-        let same = c.iter().position(|e| e.untouched() && e.board.illegal.is_none() && e.board.source.is_none() && e.board.game.pgn() == pgn);
-        match same {
-            Some(i) => {
-                c.switch_to(i);
-                c.active_mut().board.game.go_to_node(node);
-            }
-            None => {
-                c.add_games(vec![board], ChessEdit::OpenBookGame, true);
-            }
+        if !c.show_or_add(board, ChessEdit::OpenBookGame) {
+            c.active_mut().board.game.go_to_node(node);
         }
         self.chess.study.setup = None;
         self.chess.enter_scope();

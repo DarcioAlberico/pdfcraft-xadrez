@@ -56,7 +56,7 @@ use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::DocKeys;
 pub use pdfcraft_engine::chess::collection::GameNames;
 use pdfcraft_engine::chess::collection::split_pgn;
-use pdfcraft_engine::chess::collection::{self, GameList, ListedGame};
+use pdfcraft_engine::chess::collection::{self, GameList, ListedGame, OpenKey, ShowOrAdd};
 use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, NodeId, NodePath};
 
 use crate::PdfCraftApp;
@@ -117,6 +117,12 @@ impl ListedGame for GameEntry {
     /// Only the game shown needs its pictures; the others drop theirs until shown again.
     fn hidden(&mut self) {
         self.board.release_textures();
+    }
+
+    /// While untouched (no undo or redo step), what the game is known by: the same diagram or
+    /// game of the book opened again shows it ([`GameList::show_or_add`]).
+    fn open_key(&self) -> Option<OpenKey> {
+        self.untouched().then(|| self.board.open_key())
     }
 }
 
@@ -536,6 +542,23 @@ impl ChessCollection {
         added
     }
 
+    /// Show `board`'s game: the list's own when it holds the same game untouched (plan A9-G8: one
+    /// rule for a diagram, a game of the book's text and one of its PGN,
+    /// [`GameList::show_or_add`]), else `board` added at the end and shown, as one undo step of
+    /// the list named `edit`. Whether it was added.
+    pub(crate) fn show_or_add(&mut self, board: BoardState, edit: ChessEdit) -> bool {
+        let before = self.active().uid;
+        let entry = GameEntry::new(board);
+        let uid = entry.uid;
+        match self.games.show_or_add(entry) {
+            ShowOrAdd::Shown(_) => false,
+            ShowOrAdd::Added(_) => {
+                self.added(vec![uid], edit, before, None);
+                true
+            }
+        }
+    }
+
     /// Games `uids` were just added while game `before` was shown: one undo step of the list.
     fn added(&mut self, uids: Vec<u64>, edit: ChessEdit, before: u64, restored: Option<(usize, Trashed)>) {
         self.history.record(ListChange::Added { uids, edit, before, restored });
@@ -719,15 +742,20 @@ impl ChessCollection {
         &self.trash
     }
 
-    /// `deleted` moves just left the game shown: the game as it was (the state its last undo
-    /// step goes back to) goes into the trash.
-    pub(crate) fn trash_deleted(&mut self, deleted: usize) {
-        let number = self.active_index().saturating_add(1);
-        let entry = self.active();
-        let name = entry.name(number);
-        if let Some(before) = entry.board.history.undo_state() {
-            let game = before.game.clone();
-            self.trash.keep(&game, &name, deleted);
+    /// Moves that left this collection's games since it last looked (each edit step keeps the
+    /// game as it was, [`BoardState::removed`]): those games go into the trash (plan A9-G8,
+    /// A5-07), whether or not a panel is drawn. Called with every autosave tick.
+    fn trash_removed(&mut self) {
+        for index in 0..self.len() {
+            let Some(entry) = self.games.get_mut(index) else { continue };
+            if entry.board.removed.is_empty() {
+                continue;
+            }
+            let removed = std::mem::take(&mut entry.board.removed);
+            let name = entry.name(index.saturating_add(1));
+            for (game, deleted) in removed {
+                self.trash.keep(&game, &name, deleted);
+            }
         }
     }
 
@@ -1171,6 +1199,7 @@ impl ChessGames {
     /// Document `id` was closed: its games are written now, or kept in memory when they can't be.
     fn detach(&mut self, id: DocId) {
         let Some(mut c) = self.docs.remove(&id) else { return };
+        c.trash_removed();
         let mut w = Writer { store: &mut self.store, consent: &self.consent, said: &mut self.said, notes: &mut self.notes };
         w.tick(&mut c, None);
         if c.has_content() && !c.in_store() {
@@ -1184,9 +1213,11 @@ impl ChessGames {
         let ChessGames { docs, none, closed, store, consent, said, notes, .. } = self;
         let mut w = Writer { store, consent, said, notes };
         for c in docs.values_mut().chain(std::iter::once(none)) {
+            c.trash_removed();
             w.tick(c, now);
         }
         closed.retain_mut(|c| {
+            c.trash_removed();
             w.tick(c, now);
             !c.in_store()
         });
@@ -2276,20 +2307,11 @@ impl PdfCraftApp {
         // A new game: its own history starts empty (opening it is a step of the list's).
         board.history = Default::default();
         let c = self.chess.games.collection_mut();
-        let same = c.iter().position(|e| {
-            source.is_some()
-                && e.board.source == source
-                && e.untouched()
-                && e.board.flipped == flipped
-                && e.board.current_fen() == board.current_fen()
-        });
-        match same {
-            Some(i) => {
-                c.switch_to(i);
-            }
-            None => {
-                c.add_games(vec![board], ChessEdit::LoadDiagram, true);
-            }
+        // The same diagram, untouched, is shown again; a position from no diagram is always new.
+        if source.is_some() {
+            c.show_or_add(board, ChessEdit::LoadDiagram);
+        } else {
+            c.add_games(vec![board], ChessEdit::LoadDiagram, true);
         }
         self.chess.study.setup = None;
         self.chess.enter_scope();
@@ -2982,6 +3004,46 @@ mod tests {
     fn play(c: &mut ChessCollection, uci: &str) {
         let edited = c.active_mut().board.edit(|s| s.game.play_uci(uci).ok().map(|_| ChessEdit::Play(uci.to_owned())));
         assert!(edited, "{uci}");
+    }
+
+    /// Plan A9-G8 (A5-07): moves that leave a game go into the document's trash from the edit step
+    /// itself, whether or not the Board panel (whose rail fed the trash) is drawn: a variation
+    /// deleted from the move list beside the page, and a longer game loaded over it from the PGN
+    /// field, whose moves are more but not the same. A move played, or the same moves read again,
+    /// keeps nothing.
+    #[test]
+    fn moves_leaving_a_game_go_into_the_trash_without_the_board_panel() {
+        let mut games = ChessGames::default();
+        let c = games.collection_mut();
+        c.add(GameEntry::new(board_with(&["e2e4", "e7e5", "g1f3"])));
+        let b = &mut c.active_mut().board;
+        b.game.go_to(1);
+        assert!(b.edit(|s| s.game.play_uci("c7c5").ok().map(|_| ChessEdit::Play("c7c5".into()))));
+        let c5 = b.game.current();
+        // As the move list's menu deletes a move (MoveEdit::Delete): no rail is drawn.
+        assert!(b.edit(|s| {
+            s.game.delete(c5);
+            Some(ChessEdit::DeleteMoves)
+        }));
+        games.autosave(None);
+        let kept = |games: &ChessGames| games.collection().trash().newest_first().map(|(_, t)| (t.moves, t.deleted)).collect::<Vec<_>>();
+        assert_eq!(kept(&games), [(4, 1)], "the game as it was, with its variation");
+        // A longer game over it: more moves, none of them the old ones.
+        let b = &mut games.collection_mut().active_mut().board;
+        b.pgn_text = "1. d4 d5 2. c4 e6 3. Nc3 Nf6 *".into();
+        let _ = b.load_pgn();
+        assert_eq!(b.game.movetext(), "1. d4 d5 2. c4 e6 3. Nc3 Nf6");
+        games.autosave(None);
+        assert_eq!(kept(&games), [(3, 3), (4, 1)]);
+        let newest = games.collection().trash().newest_first().next().map(|(_, t)| t.pgn.clone()).unwrap_or_default();
+        assert!(newest.contains("1. e4 e5 2. Nf3"), "{newest}");
+        // A move played, and the same game read again with a comment: nothing more is kept.
+        play(games.collection_mut(), "c1g5");
+        let b = &mut games.collection_mut().active_mut().board;
+        b.pgn_text = "1. d4 d5 2. c4 e6 {QGD} 3. Nc3 Nf6 4. Bg5 *".into();
+        let _ = b.load_pgn();
+        games.autosave(None);
+        assert_eq!(games.collection().trash().len(), 2);
     }
 
     /// Wave 10 U2: a delete and a move are steps of the list that Undo takes back, the newer first

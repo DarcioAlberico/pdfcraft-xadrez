@@ -39,6 +39,7 @@ use pdfcraft_engine::chess::pdfcraft_chess::texture::Texture;
 
 use crate::chess_history::{ChessEdit, GameHistory, Snapshot};
 use crate::theme::{self, Tokens};
+use pdfcraft_engine::chess::collection::OpenKey;
 
 /// The board image's side, in pixels (it is scaled to the panel).
 const BOARD_PX: u32 = 640;
@@ -249,6 +250,60 @@ pub struct BoardState {
     pub fresh: crate::chess_capture::Fresh,
     /// A move whose place on the page was asked for (Show in PDF, T8), until the app shows it.
     pub(crate) show_source: Option<NodeId>,
+    /// The game as it was before each step that took moves out of it, and how many went, until
+    /// its collection puts them in the document's trash (plan A9-G8, A5-07): the step itself
+    /// says so, whether or not a panel is drawn. At most [`MAX_PENDING_REMOVED`].
+    pub(crate) removed: Vec<(Game, usize)>,
+}
+
+/// Most steps that took moves out kept for the trash between two looks from the collection.
+const MAX_PENDING_REMOVED: usize = crate::chess_trash::MAX_TRASHED;
+
+/// Most moves one walk over a game looks at: a game's tree has no cycles, and the cap only keeps
+/// a broken one from looping.
+const MAX_WALKED: usize = 1 << 22;
+
+/// Every move of `game` by its line from the start: a hash of the moves (SAN) that lead to it, so
+/// the same move in another game has the same key wherever variations put it.
+fn line_keys(game: &Game) -> Vec<u64> {
+    use std::hash::{Hash, Hasher};
+    let mut keys = Vec::new();
+    let mut stack = vec![(0usize, 0u64)];
+    while let Some((node, key)) = stack.pop() {
+        if keys.len() >= MAX_WALKED {
+            break;
+        }
+        for &child in game.replies(node) {
+            let mut h = std::collections::hash_map::DefaultHasher::new();
+            key.hash(&mut h);
+            game.san(child).hash(&mut h);
+            let child_key = h.finish();
+            keys.push(child_key);
+            stack.push((child, child_key));
+        }
+    }
+    keys
+}
+
+/// How many of `before`'s moves `after` no longer has, each move named by its line from the start
+/// ([`line_keys`]): a deleted variation, or the moves of a game another took the place of. Moves
+/// that only changed places among the variations are not counted.
+fn removed_moves(before: &Game, after: &Game) -> usize {
+    let mut left: HashMap<u64, usize> = HashMap::new();
+    for key in line_keys(after) {
+        let n = left.entry(key).or_insert(0);
+        *n = n.saturating_add(1);
+    }
+    line_keys(before)
+        .into_iter()
+        .filter(|key| match left.get_mut(key) {
+            Some(n) if *n > 0 => {
+                *n -= 1;
+                false
+            }
+            _ => true,
+        })
+        .count()
 }
 
 /// A comment or game-detail field while it has the keyboard: its key, its text as typed, and
@@ -299,6 +354,7 @@ impl Default for BoardState {
             typing: Default::default(),
             fresh: Default::default(),
             show_source: None,
+            removed: Vec::new(),
         }
     }
 }
@@ -449,8 +505,53 @@ impl BoardState {
             self.game.bump_revision(self.history.max_revision());
         }
         self.history.see(self.game.revision());
+        // Moves that left the game: the game as it was goes to the trash (plan A9-G8, A5-07).
+        let removed = removed_moves(&before.game, &self.game);
+        if removed > 0 {
+            if self.removed.len() >= MAX_PENDING_REMOVED {
+                self.removed.remove(0);
+            }
+            self.removed.push((before.game.clone(), removed));
+        }
         self.history.record(edit, before);
         true
+    }
+
+    /// What this board is known by while untouched (an [`OpenKey`], plan A9-G8): the diagram it
+    /// came from, the side shown, the position it starts at (or the illegal one), its tags, and
+    /// every move with its glyphs, comments and where it was printed, in one pass over the game.
+    /// No PGN is written for it.
+    pub(crate) fn open_key(&self) -> OpenKey {
+        use std::hash::{Hash, Hasher};
+        let mut h = std::collections::hash_map::DefaultHasher::new();
+        self.source.map(|s| (s.doc, s.page, s.index)).hash(&mut h);
+        self.flipped.hash(&mut h);
+        if let Some((_, fen)) = &self.illegal {
+            fen.hash(&mut h);
+            return OpenKey(h.finish());
+        }
+        let game = &self.game;
+        game.start_fen().hash(&mut h);
+        game.tags().hash(&mut h);
+        // Each move with its depth, in order: the tree's shape and its moves.
+        let mut stack = vec![(0usize, 0usize)];
+        let mut walked = 0usize;
+        while let Some((node, depth)) = stack.pop() {
+            walked = walked.saturating_add(1);
+            if walked > MAX_WALKED {
+                break;
+            }
+            depth.hash(&mut h);
+            game.san(node).hash(&mut h);
+            game.nags(node).hash(&mut h);
+            game.comment(node).hash(&mut h);
+            game.comment_before(node).hash(&mut h);
+            game.source(node).map(|s| (s.page, s.rect_user.map(f32::to_bits))).hash(&mut h);
+            for &child in game.replies(node).iter().rev() {
+                stack.push((child, depth.saturating_add(1)));
+            }
+        }
+        OpenKey(h.finish())
     }
 
     /// The memory the board's game and its history take, as the history's caps count it (a game
