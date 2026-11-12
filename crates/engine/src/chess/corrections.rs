@@ -63,6 +63,116 @@ pub const MATCH_IOU: f32 = 0.7;
 /// past it is no correction of a real document, and is left out (R2-03).
 pub const MAX_PAGES: usize = 1 << 20;
 
+/// Where a page fingerprint is among the document's pages now.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Spot {
+    Nowhere,
+    /// On this page, and on no other.
+    One(usize),
+    /// On more than one page (pages with the same content): it tells no page.
+    Many,
+}
+
+/// Every page's fingerprint now, in page order, as [`locate`] asks for them: a slice, looked
+/// through (for a question asked once), or [`Fingerprints`], indexed once per document state so
+/// that placing every correction costs a few look-ups each (plan A9-G2b, R8-04).
+pub trait PageFingerprints {
+    /// How many pages the document has.
+    fn count(&self) -> usize;
+    /// Page `page`'s fingerprint.
+    fn at(&self, page: usize) -> Option<&str>;
+    /// Where the page with fingerprint `fp` is.
+    fn spot(&self, fp: &str) -> Spot;
+}
+
+impl PageFingerprints for [String] {
+    fn count(&self) -> usize {
+        self.len()
+    }
+
+    fn at(&self, page: usize) -> Option<&str> {
+        self.get(page).map(String::as_str)
+    }
+
+    fn spot(&self, fp: &str) -> Spot {
+        let mut found = self.iter().enumerate().filter(|(_, f)| f.as_str() == fp).map(|(i, _)| i);
+        match (found.next(), found.next()) {
+            (None, _) => Spot::Nowhere,
+            (Some(p), None) => Spot::One(p),
+            (Some(_), Some(_)) => Spot::Many,
+        }
+    }
+}
+
+impl PageFingerprints for Vec<String> {
+    fn count(&self) -> usize {
+        self.len()
+    }
+
+    fn at(&self, page: usize) -> Option<&str> {
+        self.as_slice().at(page)
+    }
+
+    fn spot(&self, fp: &str) -> Spot {
+        self.as_slice().spot(fp)
+    }
+}
+
+/// Every page's fingerprint now and where each is: made once per document state (the session
+/// keeps it, [`crate::Session::chess_fingerprints`]), so [`apply`] and [`assign`] place every
+/// correction in a few look-ups instead of a pass over every page each (plan A9-G2b, R8-04: 1.7 s
+/// for 748 pages and 999 corrections; about 73 s at the scale of the Polgar). It counts the
+/// fingerprints it was asked about ([`Fingerprints::looked_up`]), so a test can hold the cost
+/// to its contract.
+#[derive(Debug, Default)]
+pub struct Fingerprints {
+    pages: Vec<String>,
+    spots: std::collections::HashMap<String, Spot>,
+    looked: std::sync::atomic::AtomicUsize,
+}
+
+impl Fingerprints {
+    /// The fingerprints `pages` (in page order), indexed.
+    pub fn new(pages: Vec<String>) -> Fingerprints {
+        let mut spots = std::collections::HashMap::with_capacity(pages.len());
+        for (i, fp) in pages.iter().enumerate() {
+            spots.entry(fp.clone()).and_modify(|s| *s = Spot::Many).or_insert(Spot::One(i));
+        }
+        Fingerprints { pages, spots, looked: std::sync::atomic::AtomicUsize::new(0) }
+    }
+
+    /// The fingerprints, in page order.
+    pub fn pages(&self) -> &[String] {
+        &self.pages
+    }
+
+    /// How many fingerprints it was asked about so far (each [`PageFingerprints::at`] and
+    /// [`PageFingerprints::spot`]).
+    pub fn looked_up(&self) -> usize {
+        self.looked.load(std::sync::atomic::Ordering::Relaxed)
+    }
+
+    fn look(&self) {
+        self.looked.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+impl PageFingerprints for Fingerprints {
+    fn count(&self) -> usize {
+        self.pages.len()
+    }
+
+    fn at(&self, page: usize) -> Option<&str> {
+        self.look();
+        self.pages.get(page).map(String::as_str)
+    }
+
+    fn spot(&self, fp: &str) -> Spot {
+        self.look();
+        self.spots.get(fp).copied().unwrap_or(Spot::Nowhere)
+    }
+}
+
 /// Longest FEN, uid, model key or document name kept.
 const MAX_TEXT: usize = 512;
 
@@ -422,7 +532,7 @@ impl CorrectionFile {
     /// correction its diagram has now (wherever its page was when it was written, by the rule of
     /// [`apply`]) as its next revision, else as a new entry, never as a second one. It records the
     /// page's fingerprint and its neighbours' as they are now. Returns its uid.
-    pub fn set(&mut self, new: NewCorrection, at: u64, fingerprints: &[String]) -> Result<String, CorrectionError> {
+    pub fn set<F: PageFingerprints + ?Sized>(&mut self, new: NewCorrection, at: u64, fingerprints: &F) -> Result<String, CorrectionError> {
         crate::chess::pdfcraft_chess::fen::parse(&new.fen).map_err(|e| CorrectionError::BadFen(e.to_string()))?;
         if new.fen.len() > MAX_TEXT {
             return Err(CorrectionError::BadFen("too long".into()));
@@ -446,7 +556,7 @@ impl CorrectionFile {
             e.page_fp = page_fp;
             e.prev_fp = prev_fp;
             e.next_fp = next_fp;
-            e.page_count = fingerprints.len();
+            e.page_count = fingerprints.count();
             e.rect = new.rect;
             e.fen = new.fen;
             e.kind = new.kind;
@@ -473,7 +583,7 @@ impl CorrectionFile {
             page_fp,
             prev_fp,
             next_fp,
-            page_count: fingerprints.len(),
+            page_count: fingerprints.count(),
             rect,
             orig,
             fen,
@@ -489,12 +599,12 @@ impl CorrectionFile {
     /// neighbours and the page count as they are now, which version 1 did not record: from here,
     /// another page taking their page's place is told from an edit to it ([`Located`]). Their
     /// revision stays: nothing the user made changed.
-    fn record_neighbours(&mut self, fingerprints: &[String]) {
+    fn record_neighbours<F: PageFingerprints + ?Sized>(&mut self, fingerprints: &F) {
         for e in self.entries.iter_mut().filter(|e| !e.deleted && e.page_count == 0) {
-            if fingerprints.get(e.page) == Some(&e.page_fp) {
+            if fingerprints.at(e.page) == Some(e.page_fp.as_str()) {
                 e.prev_fp = fingerprint_at(fingerprints, e.page.checked_sub(1));
                 e.next_fp = fingerprint_at(fingerprints, e.page.checked_add(1));
-                e.page_count = fingerprints.len();
+                e.page_count = fingerprints.count();
             }
         }
     }
@@ -513,14 +623,14 @@ impl CorrectionFile {
     }
 
     /// Where each live correction's diagram is now, given every page's fingerprint now.
-    pub fn locate(&self, fingerprints: &[String]) -> Vec<(Located, &Correction)> {
+    pub fn locate<F: PageFingerprints + ?Sized>(&self, fingerprints: &F) -> Vec<(Located, &Correction)> {
         self.live().map(|e| (locate(e, fingerprints), e)).collect()
     }
 
     /// The live correction of the diagram at `rect` (normalised) on page `page` now: of those
     /// overlapping it by [`MATCH_IOU`] whose position this build reads, the one that takes the
     /// diagram by the rule of [`apply`] ([`Claim::outranks`]).
-    pub fn find(&self, fingerprints: &[String], page: usize, rect: [f32; 4]) -> Option<&Correction> {
+    pub fn find<F: PageFingerprints + ?Sized>(&self, fingerprints: &F, page: usize, rect: [f32; 4]) -> Option<&Correction> {
         let claims = self.locate(fingerprints).into_iter().filter_map(|(at, e)| {
             let overlap = iou(e.rect, rect);
             (at.page() == Some(page) && overlap >= MATCH_IOU && fen_readable(&e.fen)).then_some((e, Claim { at, e, overlap }))
@@ -537,38 +647,37 @@ impl CorrectionFile {
 ///   (pages were removed or inserted there: the page at the index is another one, A4-01), or, with
 ///   no neighbour left to tell (none recorded, version 1; or each one changed too, as an edit to
 ///   every page does), the page count is not the one it recorded: then [`Located::Orphan`].
-fn locate(e: &Correction, fingerprints: &[String]) -> Located {
-    if fingerprints.get(e.page) == Some(&e.page_fp) {
+fn locate<F: PageFingerprints + ?Sized>(e: &Correction, fingerprints: &F) -> Located {
+    if fingerprints.at(e.page) == Some(e.page_fp.as_str()) {
         return Located::Same(e.page);
     }
-    let mut same = fingerprints.iter().enumerate().filter(|(_, fp)| **fp == e.page_fp).map(|(i, _)| i);
-    if let (Some(p), None) = (same.next(), same.next()) {
+    if let Spot::One(p) = fingerprints.spot(&e.page_fp) {
         return Located::Moved(p);
     }
-    if e.page >= fingerprints.len() {
+    if e.page >= fingerprints.count() {
         return Located::Orphan;
     }
     let mut told = false;
     for (beside, recorded) in [(e.page.checked_sub(1), &e.prev_fp), (e.page.checked_add(1), &e.next_fp)] {
         let Some(recorded) = recorded else { continue };
-        if beside.and_then(|p| fingerprints.get(p)) == Some(recorded) {
+        if beside.and_then(|p| fingerprints.at(p)) == Some(recorded.as_str()) {
             told = true;
-        } else if fingerprints.contains(recorded) {
+        } else if fingerprints.spot(recorded) != Spot::Nowhere {
             return Located::Orphan;
         }
     }
-    if told || e.page_count == 0 || e.page_count == fingerprints.len() { Located::Changed(e.page) } else { Located::Orphan }
+    if told || e.page_count == 0 || e.page_count == fingerprints.count() { Located::Changed(e.page) } else { Located::Orphan }
 }
 
 /// The fingerprint of page `page` (none past either end), when it is one a file keeps.
-fn fingerprint_at(fingerprints: &[String], page: Option<usize>) -> Option<String> {
-    page.and_then(|p| fingerprints.get(p)).filter(|fp| !fp.is_empty() && fp.len() <= MAX_TEXT).cloned()
+fn fingerprint_at<F: PageFingerprints + ?Sized>(fingerprints: &F, page: Option<usize>) -> Option<String> {
+    page.and_then(|p| fingerprints.at(p)).filter(|fp| !fp.is_empty() && fp.len() <= MAX_TEXT).map(str::to_owned)
 }
 
 /// Whether this build reads `fen` as a position: a correction whose FEN it can't read never takes a
 /// diagram ([`apply`] lists it).
 fn fen_readable(fen: &str) -> bool {
-    crate::chess::pdfcraft_chess::fen::parse(fen).is_ok()
+    crate::chess::pdfcraft_chess::fen::Fen::parse(fen).is_ok()
 }
 
 /// A correction over a diagram: where [`locate`] found it, and how much its box overlaps the
@@ -795,40 +904,50 @@ pub fn corrected_position(
     })
 }
 
-/// `pages` with `file`'s corrections in place of their readings, given every page's fingerprint
-/// now. A correction is its page's diagram whose box overlaps its own the most, by
-/// [`MATCH_IOU`] at least; of the corrections on one diagram, the one found by its page's
-/// fingerprint takes it over one found by its page's index, then the later one
-/// ([`Claim::outranks`]), and the others are listed with the one that took it. It wins over the
-/// reading whatever the reading says now. Pages scanned without reading are left as they are; a
-/// correction on a read page whose diagram is not there is listed as unmatched, never dropped
-/// silently. A correction whose page is gone or was taken by another page ([`Located::Orphan`])
-/// is on no page: never applied (`chess_correction_list` lists it).
-pub fn apply(pages: &[std::sync::Arc<super::ChessPage>], file: &CorrectionFile, fingerprints: &[String]) -> Corrected {
-    use pdfcraft_chessvision::board::{BoardReading, ReadingSource};
-    let located = file.locate(fingerprints);
-    let mut out = Corrected::default();
-    for page in pages {
-        let here: Vec<(Located, &Correction)> = located.iter().filter(|(at, _)| at.page() == Some(page.page)).map(|(at, e)| (*at, *e)).collect();
-        let (Some(readings), false) = (page.readings.as_ref(), here.is_empty()) else {
-            out.pages.push(page.clone());
-            continue;
-        };
-        let unmatched = |e: &Correction, reason: &str| Unmatched { uid: e.uid.clone(), page: page.page, reason: reason.into() };
-        let Some(crop) = page.geometry.map(|g| g.crop_box()) else {
-            out.unmatched.extend(here.iter().map(|(_, e)| unmatched(e, "the page has no visible area")));
-            out.pages.push(page.clone());
-            continue;
-        };
-        let boxes: Vec<Option<[f32; 4]>> = readings
-            .iter()
-            .map(|r| normalize([r.bbox_user.x0, r.bbox_user.y0, r.bbox_user.x1, r.bbox_user.y1], [crop.x0, crop.y0, crop.x1, crop.y1]))
-            .collect();
+/// A read page's diagrams, for [`assign`]: the page (0-based) and each reading's box normalised
+/// to the page's crop box (`None`: not on the page), in reading order.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PageBoxes {
+    pub page: usize,
+    pub boxes: Vec<Option<[f32; 4]>>,
+}
+
+/// A diagram [`assign`] gave a correction: the correction, where [`locate`] found it, and the
+/// diagram (its page and its index among the page's readings).
+#[derive(Clone, Copy, Debug)]
+pub struct Assignment<'a> {
+    pub correction: &'a Correction,
+    pub at: Located,
+    pub page: usize,
+    pub index: usize,
+}
+
+/// The one rule for which correction gets which diagram (plan A9 §2.4, step G2b), pure: of
+/// `located` (each live correction where [`locate`] found it), those on a page of `pages` claim
+/// the diagram their box overlaps most, by [`MATCH_IOU`] at least; of the corrections claiming
+/// one diagram, the one found by its page's fingerprint takes it over one found by its page's
+/// index, then the later one ([`Claim::outranks`]); one correction per diagram. The others are
+/// listed with why: no diagram where it was, a position this build can't read, or the
+/// correction that took the diagram. Corrections on pages not in `pages` are neither assigned nor
+/// listed. Grouped by page, so it costs O(D + C) and the overlaps of each page's own diagrams and
+/// corrections; each correction's position is read once.
+pub fn assign<'a>(pages: &[PageBoxes], located: &[(Located, &'a Correction)]) -> (Vec<Assignment<'a>>, Vec<Unmatched>) {
+    let mut by_page: std::collections::HashMap<usize, Vec<(Located, &'a Correction)>> = std::collections::HashMap::new();
+    for (at, e) in located {
+        if let Some(p) = at.page() {
+            by_page.entry(p).or_default().push((*at, *e));
+        }
+    }
+    let (mut assigned, mut unmatched) = (Vec::new(), Vec::new());
+    for pb in pages {
+        let Some(here) = by_page.get(&pb.page) else { continue };
+        let missed = |e: &Correction, reason: &str| Unmatched { uid: e.uid.clone(), page: pb.page, reason: reason.into() };
+        let readable: Vec<bool> = here.iter().map(|(_, e)| fen_readable(&e.fen)).collect();
         // Each correction's diagram: the one its box overlaps most, by MATCH_IOU at least.
         let claims: Vec<Option<(usize, f32)>> = here
             .iter()
             .map(|(_, e)| {
-                boxes
+                pb.boxes
                     .iter()
                     .enumerate()
                     .filter_map(|(i, b)| b.map(|b| (i, iou(b, e.rect))))
@@ -836,42 +955,92 @@ pub fn apply(pages: &[std::sync::Arc<super::ChessPage>], file: &CorrectionFile, 
                     .max_by(|a, b| a.1.total_cmp(&b.1))
             })
             .collect();
-        // Each diagram's correction, by the one rule (index into `here`).
-        let taker = |diagram: usize| {
-            winner(here.iter().zip(&claims).enumerate().filter_map(|(k, ((at, e), claim))| {
-                let (i, overlap) = (*claim)?;
-                (i == diagram && fen_readable(&e.fen)).then_some((k, Claim { at: *at, e, overlap }))
-            }))
-        };
-        let takers: Vec<Option<usize>> = (0..readings.len()).map(taker).collect();
-        let mut corrected = (**page).clone();
-        for (k, ((_, e), claim)) in here.iter().zip(&claims).enumerate() {
+        // Each diagram's correction, by the one rule (on a full tie, the first).
+        let mut takers: std::collections::HashMap<usize, usize> = std::collections::HashMap::new();
+        for (k, ((at, e), claim)) in here.iter().zip(&claims).enumerate() {
+            let (Some((i, overlap)), Some(true)) = (*claim, readable.get(k).copied()) else { continue };
+            let claim = Claim { at: *at, e, overlap };
+            let takes = match takers.get(&i).and_then(|&t| here.get(t).zip(claims.get(t).copied().flatten())) {
+                Some(((t_at, t_e), (_, t_overlap))) => claim.outranks(&Claim { at: *t_at, e: t_e, overlap: t_overlap }),
+                None => true,
+            };
+            if takes {
+                takers.insert(i, k);
+            }
+        }
+        for (k, ((at, e), claim)) in here.iter().zip(&claims).enumerate() {
             let Some((i, _)) = *claim else {
-                out.unmatched.push(unmatched(e, "no diagram on the page is where it was"));
+                unmatched.push(missed(e, "no diagram on the page is where it was"));
                 continue;
             };
-            if !fen_readable(&e.fen) {
-                out.unmatched.push(unmatched(e, "its position is not a FEN this build reads"));
+            if readable.get(k) != Some(&true) {
+                unmatched.push(missed(e, "its position is not a FEN this build reads"));
                 continue;
             }
-            match takers.get(i).copied().flatten() {
-                Some(t) if t == k => {}
+            match takers.get(&i).copied() {
+                Some(t) if t == k => assigned.push(Assignment { correction: e, at: *at, page: pb.page, index: i }),
                 Some(t) => {
                     let by = here.get(t).map_or("", |(_, w)| w.uid.as_str());
-                    out.unmatched.push(unmatched(e, &format!("the diagram already has correction {by}")));
-                    continue;
+                    unmatched.push(missed(e, &format!("the diagram already has correction {by}")));
                 }
                 // Not reached (a readable claim takes its diagram unless another does); listed
                 // all the same, never dropped.
-                None => {
-                    out.unmatched.push(unmatched(e, "no diagram on the page is where it was"));
-                    continue;
-                }
+                None => unmatched.push(missed(e, "no diagram on the page is where it was")),
             }
+        }
+    }
+    (assigned, unmatched)
+}
+
+/// `pages` with `file`'s corrections in place of their readings, given every page's fingerprint
+/// now: which correction gets which diagram is [`assign`]'s one rule. A correction wins over the
+/// reading whatever the reading says now. Pages scanned without reading are left as they are; a
+/// correction on a read page whose diagram is not there is listed as unmatched, never dropped
+/// silently. A correction whose page is gone or was taken by another page ([`Located::Orphan`])
+/// is on no page: never applied (`chess_correction_list` lists it). With [`Fingerprints`] (the
+/// session's, [`crate::Session::chess_fingerprints`]) every correction is placed in a few
+/// look-ups.
+pub fn apply<F: PageFingerprints + ?Sized>(pages: &[std::sync::Arc<super::ChessPage>], file: &CorrectionFile, fingerprints: &F) -> Corrected {
+    use pdfcraft_chessvision::board::{BoardReading, ReadingSource};
+    let located = file.locate(fingerprints);
+    let mut out = Corrected::default();
+    let on_pages: std::collections::HashSet<usize> = located.iter().filter_map(|(at, _)| at.page()).collect();
+    let mut boxes = Vec::new();
+    for page in pages {
+        let (Some(readings), true) = (page.readings.as_ref(), on_pages.contains(&page.page)) else { continue };
+        match page.geometry.map(|g| g.crop_box()) {
+            Some(crop) => boxes.push(PageBoxes {
+                page: page.page,
+                boxes: readings
+                    .iter()
+                    .map(|r| normalize([r.bbox_user.x0, r.bbox_user.y0, r.bbox_user.x1, r.bbox_user.y1], [crop.x0, crop.y0, crop.x1, crop.y1]))
+                    .collect(),
+            }),
+            None => out.unmatched.extend(located.iter().filter(|(at, _)| at.page() == Some(page.page)).map(|(_, e)| Unmatched {
+                uid: e.uid.clone(),
+                page: page.page,
+                reason: "the page has no visible area".into(),
+            })),
+        }
+    }
+    let (assigned, unmatched) = assign(&boxes, &located);
+    out.unmatched.extend(unmatched);
+    let mut by_page: std::collections::HashMap<usize, Vec<Assignment<'_>>> = std::collections::HashMap::new();
+    for a in assigned {
+        by_page.entry(a.page).or_default().push(a);
+    }
+    for page in pages {
+        let Some(mine) = by_page.get(&page.page) else {
+            out.pages.push(page.clone());
+            continue;
+        };
+        let mut corrected = (**page).clone();
+        for a in mine {
+            let (e, i) = (a.correction, a.index);
             let Some(reading) = corrected.readings.as_mut().and_then(|r| r.get_mut(i)) else { continue };
             let before = reading.position().cloned();
             let Some(position) = corrected_position(&e.fen, before.as_ref()) else {
-                out.unmatched.push(unmatched(e, "its position is not a FEN this build reads"));
+                out.unmatched.push(Unmatched { uid: e.uid.clone(), page: page.page, reason: "its position is not a FEN this build reads".into() });
                 continue;
             };
             let read_fen = before.map(|p| p.fen);

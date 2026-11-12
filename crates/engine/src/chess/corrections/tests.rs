@@ -983,3 +983,88 @@ fn compat_a_version_2_build_reads_and_writes_back_what_this_one_keeps() {
     let Parsed::File { file, skipped } = CorrectionFile::parse(&theirs.to_bytes().unwrap()) else { panic!("read back") };
     assert_eq!((file, skipped), (f, 0), "every field kept");
 }
+
+// ─── The cost of placing the corrections (plan A9-G2b, R8-04) ─────────────────────────────────
+
+/// A synthetic book of `pages` pages (fingerprints `fnv:p<i>`), page `i` with `per_page(i)`
+/// diagrams one above the other, each corrected: the fingerprints, the file, and each page's
+/// diagram boxes in user space.
+fn corrected_book(pages: usize, per_page: impl Fn(usize) -> usize) -> (Vec<String>, CorrectionFile, Vec<Vec<[f32; 4]>>) {
+    let book: Vec<String> = (0..pages).map(|i| format!("fnv:p{i}")).collect();
+    let mut f = CorrectionFile::new(DocRecord::new(&keys(), pages));
+    let mut boxes = Vec::with_capacity(pages);
+    for p in 0..pages {
+        let here: Vec<[f32; 4]> = (0..per_page(p).min(5))
+            .map(|j| {
+                let top = 790.0 - 150.0 * j as f32;
+                [60.0, top - 140.0, 300.0, top]
+            })
+            .collect();
+        for b in &here {
+            f.set(new(p, [b[0] / 600.0, b[1] / 800.0, b[2] / 600.0, b[3] / 800.0], QUEEN), 1, &book).unwrap();
+        }
+        boxes.push(here);
+    }
+    (book, f, boxes)
+}
+
+/// [`corrected_book`] after its first page was deleted: [`apply`] on every page left, read. The
+/// fingerprints it was asked about, the diagrams and the corrections, and what it applied.
+fn after_deleting_page_one(pages: usize, per_page: impl Fn(usize) -> usize + Copy) -> (usize, usize, usize, Corrected, std::time::Duration) {
+    let (book, f, boxes) = corrected_book(pages, per_page);
+    let read: Vec<Arc<crate::chess::ChessPage>> =
+        boxes.iter().enumerate().skip(1).map(|(p, b)| read_page_at(p - 1, b, &vec![None; b.len()])).collect();
+    let diagrams: usize = boxes.iter().skip(1).map(Vec::len).sum();
+    let fps = Fingerprints::new(book.get(1..).unwrap_or_default().to_vec());
+    let t = std::time::Instant::now();
+    let out = apply(&read, &f, &fps);
+    (fps.looked_up(), diagrams, f.live().count(), out, t.elapsed())
+}
+
+/// A9-G2b (R8-04): placing the corrections asked about every page for each one (D·C·P in the
+/// app, O(C·P) in the engine); with the fingerprints indexed once it costs a few look-ups each,
+/// at most 2 · (D + C) once a page was deleted and every later page moved. The corrections of
+/// the deleted page are orphans, the others all applied.
+#[test]
+fn placing_the_corrections_costs_a_few_look_ups_each() {
+    let (looked, d, c, out, _) = after_deleting_page_one(240, |p| 1 + p % 3);
+    assert!(looked <= 2 * (d + c), "{looked} look-ups for {d} diagrams and {c} corrections");
+    assert_eq!(out.applied.len(), d, "every diagram left has its correction");
+    assert!(out.unmatched.is_empty(), "{:?}", out.unmatched.first());
+}
+
+/// [`placing_the_corrections_costs_a_few_look_ups_each`] at the scale of the Polgar (1,104 pages,
+/// 5,334 diagrams, each corrected), in release by the chess gate (stage 4b).
+#[test]
+#[ignore = "release only: cargo xtask chess-gate runs it (stage 4b)"]
+fn perf_assign() {
+    let per_page = |p: usize| if p < 918 { 5 } else { 4 };
+    let (looked, d, c, out, took) = after_deleting_page_one(1104, per_page);
+    assert_eq!(c, 5334);
+    assert!(looked <= 2 * (d + c), "{looked} look-ups for {d} diagrams and {c} corrections");
+    assert_eq!(out.applied.len(), d);
+    eprintln!("PERF perf_assign {:.1}", took.as_secs_f64() * 1000.0);
+}
+
+/// [`assign`] is the one rule: of two corrections over one diagram, the one found by its page's
+/// fingerprint takes it over the one found by its index alone, even when that one is later, and
+/// the other is listed with the one that took the diagram; a correction over no diagram is listed
+/// too, and one on a page not given is neither.
+#[test]
+fn assign_gives_each_diagram_one_correction_by_the_one_rule() {
+    let book = fps(&["fnv:p0", "fnv:p1", "fnv:p2"]);
+    let mut f = CorrectionFile::new(DocRecord::new(&keys(), 3));
+    let by_fp = f.set(new(0, [0.1, 0.6, 0.5, 0.9], QUEEN), 1, &book).unwrap();
+    let by_index = f.set(new(1, [0.1, 0.6, 0.5, 0.9], KINGS), 9, &book).unwrap();
+    let nowhere = f.set(new(1, [0.1, 0.1, 0.3, 0.3], KINGS), 9, &book).unwrap();
+    let elsewhere = f.set(new(2, [0.1, 0.6, 0.5, 0.9], KINGS), 9, &book).unwrap();
+    let e = |uid: &str| f.entries.iter().find(|e| e.uid == uid).unwrap();
+    let located =
+        [(Located::Changed(0), e(&by_index)), (Located::Moved(0), e(&by_fp)), (Located::Changed(0), e(&nowhere)), (Located::Same(2), e(&elsewhere))];
+    let pages = [PageBoxes { page: 0, boxes: vec![Some([0.1, 0.6, 0.5, 0.9])] }];
+    let (assigned, unmatched) = assign(&pages, &located);
+    assert_eq!(assigned.iter().map(|a| (a.correction.uid.as_str(), a.page, a.index)).collect::<Vec<_>>(), vec![(by_fp.as_str(), 0, 0)]);
+    let reasons: Vec<(&str, &str)> = unmatched.iter().map(|u| (u.uid.as_str(), u.reason.as_str())).collect();
+    let taken = format!("the diagram already has correction {by_fp}");
+    assert_eq!(reasons, vec![(by_index.as_str(), taken.as_str()), (nowhere.as_str(), "no diagram on the page is where it was")]);
+}

@@ -332,6 +332,9 @@ pub(crate) struct ChessCache {
     /// Each document's diagram corrections, as its caller loaded them from a store
     /// ([`Session::set_chess_corrections`]).
     corrections: Vec<(DocId, Arc<corrections::CorrectionFile>)>,
+    /// Each document's page fingerprints, indexed, for the state (generation, size) they were
+    /// made in ([`Session::chess_fingerprints`]; plan A9-G2b).
+    fingerprints: Vec<(DocId, (u64, usize), Arc<corrections::Fingerprints>)>,
     /// Pages [`Session::chess_scan`] has scanned (not answered from here): [`Session::chess_scanned`].
     scanned: usize,
 }
@@ -430,6 +433,7 @@ impl ChessCache {
         self.docs.remove(&doc);
         self.keys.retain(|k| k.doc != doc);
         self.corrections.retain(|(d, _)| *d != doc);
+        self.fingerprints.retain(|(d, ..)| *d != doc);
     }
 
     #[cfg(test)]
@@ -1354,8 +1358,24 @@ impl Session {
         let Some(file) = self.chess.corrections.iter().find(|(d, _)| *d == id).map(|(_, f)| f.clone()) else {
             return Ok(corrections::Corrected { pages: scanned, ..Default::default() });
         };
-        let fingerprints = self.get(id).ok_or("no such document")?.page_fingerprints();
-        Ok(corrections::apply(&scanned, &file, &fingerprints))
+        let fingerprints = self.chess_fingerprints(id).ok_or("no such document")?;
+        Ok(corrections::apply(&scanned, &file, fingerprints.as_ref()))
+    }
+
+    /// Every page's fingerprint of document `id` as it is now, indexed ([`corrections::Fingerprints`]):
+    /// made once per document state and kept, so reading with the corrections does not hash the
+    /// book's pages again each time (plan A9-G2b, R8-04/R8-05: 748 fingerprints on every call).
+    /// `None` when there is no such document.
+    pub fn chess_fingerprints(&mut self, id: DocId) -> Option<Arc<corrections::Fingerprints>> {
+        let doc = self.get(id)?;
+        let state = (doc.generation, doc.bytes.len());
+        if let Some((_, _, kept)) = self.chess.fingerprints.iter().find(|(d, s, _)| *d == id && *s == state) {
+            return Some(kept.clone());
+        }
+        let made = Arc::new(corrections::Fingerprints::new(doc.page_fingerprints()));
+        self.chess.fingerprints.retain(|(d, ..)| *d != id);
+        self.chess.fingerprints.push((id, state, made.clone()));
+        Some(made)
     }
 
     /// The state document `id` is in now, to compare with a scan's [`ChessScan::stamp`]: a
