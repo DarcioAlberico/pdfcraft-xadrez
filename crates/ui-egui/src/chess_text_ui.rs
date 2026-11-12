@@ -68,11 +68,23 @@ pub struct PageText {
 
 /// Reading a page or exporting the book, off the interface thread: the work runs on a session
 /// of its own, opened from the document's working bytes, and the result is picked up when it is
-/// done (inline on the web and in tests).
+/// done (inline on the web and in tests). The session is given what the app's session read for
+/// the document's state, and what it reads anew is given back (plan A9, G11): the book is read
+/// once per session.
 pub struct ChessJob {
     pub doc: DocId,
     pub kind: JobKind,
-    result: Arc<Mutex<Option<JobDone>>>,
+    /// The document's state when the job began: what it read is kept only while the document is
+    /// still in it.
+    stamp: Option<ScanStamp>,
+    result: Arc<Mutex<Option<(JobDone, Option<JobRead>)>>>,
+}
+
+/// What a job's session holds when it is done, to give back to the app's session.
+struct JobRead {
+    cached: pdfcraft_engine::chess::ChessCached,
+    /// Pages it scanned anew.
+    scanned: usize,
 }
 
 /// What a job does.
@@ -768,9 +780,12 @@ impl PdfCraftApp {
     fn start_chess_job(&mut self, id: DocId, kind: JobKind, work: impl FnOnce(&mut pdfcraft_engine::Session, DocId) -> JobDone + Send + 'static) {
         // The diagram corrections go with the document: the job reads in a session of its own.
         let corrections = self.chess_corrections_file(id);
+        // So does what this session read for the document as it is: the job reads none of it again.
+        let cached = self.session.chess_cached(id, &[]);
+        let stamp = self.session.chess_stamp(id);
         let Some(doc) = self.session.get(id) else { return };
         let (name, bytes, password) = (doc.name.clone(), doc.bytes.clone(), doc.password.clone());
-        let result: Arc<Mutex<Option<JobDone>>> = Arc::default();
+        let result: Arc<Mutex<Option<(JobDone, Option<JobRead>)>>> = Arc::default();
         let slot = result.clone();
         let is_read = matches!(kind, JobKind::Read { .. });
         let run = move || {
@@ -778,14 +793,16 @@ impl PdfCraftApp {
             let done = match s.open(name, None, bytes, password.as_deref()) {
                 Ok(job_id) => {
                     s.set_chess_corrections(job_id, corrections);
-                    work(&mut s, job_id)
+                    s.prime_chess_cache(job_id, cached);
+                    let done = work(&mut s, job_id);
+                    (done, Some(JobRead { cached: s.chess_cached(job_id, &[]), scanned: s.chess_scanned() }))
                 }
-                Err(e) if is_read => JobDone::Read(Err(e.to_string())),
-                Err(e) => JobDone::Export(Err(e.to_string())),
+                Err(e) if is_read => (JobDone::Read(Err(e.to_string())), None),
+                Err(e) => (JobDone::Export(Err(e.to_string())), None),
             };
             *lock(&slot) = Some(done);
         };
-        self.chess.job = Some(ChessJob { doc: id, kind, result });
+        self.chess.job = Some(ChessJob { doc: id, kind, stamp, result });
         #[cfg(not(target_arch = "wasm32"))]
         if self.run_inline {
             run();
@@ -802,13 +819,20 @@ impl PdfCraftApp {
     /// Pick up a finished job: show the page read, or write the export.
     pub fn poll_chess_job(&mut self) {
         let Some(job) = self.chess.job.as_ref() else { return };
-        let Some(done) = lock(&job.result).take() else {
+        let Some((done, read)) = lock(&job.result).take() else {
             if let Some(ctx) = &self.ctx {
                 ctx.request_repaint_after(std::time::Duration::from_millis(200));
             }
             return;
         };
         let Some(job) = self.chess.job.take() else { return };
+        // What the job read is this session's too, while the document is in the state it read.
+        if let Some(read) = read {
+            self.chess.job_scanned = Some(read.scanned);
+            if job.stamp.is_some() && self.session.chess_stamp(job.doc) == job.stamp {
+                self.session.prime_chess_cache(job.doc, read.cached);
+            }
+        }
         match (job.kind, done) {
             (JobKind::Read { page, stamp, origin, ocr }, JobDone::Read(read)) => {
                 // The document changed meanwhile: the reading describes a state that is gone.
@@ -1007,6 +1031,8 @@ impl PdfCraftApp {
         #[cfg(target_arch = "wasm32")]
         {
             let mut options = ChessExportOptions::new(&stem);
+            // The scan the app made, so the job finds what it read (plan A9, G11).
+            options.scan = self.chess_scan_settings();
             options.pieces = self.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Diagrams);
             options.book = self.chess_cipher(id);
             options.ocr = self.chess_origin(id).ocr_mode();
@@ -1026,6 +1052,8 @@ impl PdfCraftApp {
         }
         let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "document".into());
         let mut options = ChessExportOptions::new(&stem);
+        // The scan the app made, so the job finds what it read (plan A9, G11).
+        options.scan = self.chess_scan_settings();
         options.image_dir = pdfcraft_engine::chess::pdfcraft_chessvision::doc::markdown::image_folder(&stem);
         options.pieces = self.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Diagrams);
         options.book = self.chess_cipher(id);
