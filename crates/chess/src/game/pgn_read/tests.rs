@@ -355,3 +355,15 @@ fn a_result_the_reader_ignores_is_said() {
     let (_, report) = Game::from_pgn_report("[Result \"1-0\"]\n\n1. e4 1-0").unwrap();
     assert_eq!(report, PgnReport::default());
 }
+
+/// Plan A9-Q4a's sample mutation of this file (51 of 54 killed) found two rules no test held: a
+/// variation kept as text keeps the variations inside it, to its own `)`; a `)` with no `(`
+/// changes nothing after it. (The third survivor, `unwrap_or(false)` made `true` in
+/// `Parser::open`, is equivalent: the main line's entry is never popped.)
+#[test]
+fn a_kept_variation_keeps_its_own_brackets_and_a_stray_bracket_changes_nothing() {
+    let (g, report) = Game::from_pgn_report("(1. d4 (1. c4) d5) 1. e4 e5 *").unwrap();
+    assert_eq!((g.comment(0), moves(&g).as_str(), kinds(&report)), ("(d4 (c4) d5)", "1. e4 e5", vec![PgnWarningKind::OrphanVariation]));
+    let (g, report) = Game::from_pgn_report("1. e4 e5 ) (1... c5) 2. Nf3 *").unwrap();
+    assert_eq!((moves(&g), report), ("1. e4 e5 (1... c5) 2. Nf3".to_owned(), PgnReport::default()));
+}
