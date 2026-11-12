@@ -1,12 +1,19 @@
 //! Chess ▸ Game collections: what names a document file across sessions, so the chess games
 //! played on its diagrams are found again when it is reopened (PGN toolbar spec §4.7, T4b).
 //!
-//! A document is named three ways, and any one of them is enough ([`DocKeys::matches`]): its
-//! first file identifier (`/ID[0]`), the path it was opened from or saved to, and its file name
-//! together with its size. The identifier survives renaming and moving; the path survives a file
-//! with no identifier; the name and size survive a copy opened from somewhere else (the web build
-//! has no paths). Saving can create the identifier (the writer adds one to a file without it) and
-//! changes the size, so whoever keeps games under these keys takes them again after every save.
+//! A document is named three ways ([`DocKeys::matches`]): its first file identifier (`/ID[0]`),
+//! the path it was opened from or saved to, and its file name together with its size. The
+//! identifier survives renaming and moving; the path survives a file with no identifier; the name
+//! and size survive a copy opened from somewhere else (the web build has no paths). When both
+//! sides have an identifier it decides alone: two different identifiers are two documents, whatever
+//! their paths or names say (plan A9, G1). Saving can create the identifier (the writer adds one
+//! to a file without it) and changes the size, so whoever keeps games under these keys takes them
+//! again after every save.
+//!
+//! **The identifier every new file used to get.** Before plan A9 (G1), every document PdfCraft
+//! made from nothing (extract, split, combine) was saved with one identifier,
+//! [`DocKeys::KNOWN_CONSTANT_ID`]. It names no document: it counts as no identifier at all, so
+//! those files are named by their path, or their name and size, like a file without one.
 
 use pdfcraft_cos::Object;
 
@@ -30,18 +37,36 @@ pub struct DocKeys {
 }
 
 impl DocKeys {
-    /// Whether `self` and `other` name the same document: the same identifier, the same path, or
-    /// the same file name and size. Keys that are missing on either side never match.
+    /// The identifier PdfCraft gave every document it made from nothing (extract, split, combine)
+    /// before plan A9 (G1): `9BA0D5AAD0617164A1D073B0D8C7DCD9`, a hash of no bytes. Files that
+    /// have it are many different documents, so it counts as no identifier ([`DocKeys::id`]).
+    pub const KNOWN_CONSTANT_ID: [u8; 16] = [0x9B, 0xA0, 0xD5, 0xAA, 0xD0, 0x61, 0x71, 0x64, 0xA1, 0xD0, 0x73, 0xB0, 0xD8, 0xC7, 0xDC, 0xD9];
+
+    /// The identifier when it names this document: `id0`, unless it is
+    /// [`DocKeys::KNOWN_CONSTANT_ID`].
+    pub fn id(&self) -> Option<[u8; 16]> {
+        self.id0.filter(|id| *id != DocKeys::KNOWN_CONSTANT_ID)
+    }
+
+    /// Whether `self` and `other` name the same document. When both have an identifier
+    /// ([`DocKeys::id`]), that alone decides: two different identifiers are two documents even
+    /// with the same path, name and size (another book saved over the file, a part split from
+    /// it). Otherwise the same path, or the same file name and size. Keys that are missing on
+    /// either side never match. The one rule for every chess store (games, corrections, the
+    /// book's PGN).
     pub fn matches(&self, other: &DocKeys) -> bool {
         fn same<T: PartialEq>(a: &Option<T>, b: &Option<T>) -> bool {
             a.is_some() && a == b
         }
-        same(&self.id0, &other.id0) || same(&self.path, &other.path) || (same(&self.name, &other.name) && same(&self.size, &other.size))
+        if let (Some(a), Some(b)) = (self.id(), other.id()) {
+            return a == b;
+        }
+        same(&self.path, &other.path) || (same(&self.name, &other.name) && same(&self.size, &other.size))
     }
 
     /// Whether no key is known (nothing can match).
     pub fn is_empty(&self) -> bool {
-        self.id0.is_none() && self.path.is_none() && (self.name.is_none() || self.size.is_none())
+        self.id().is_none() && self.path.is_none() && (self.name.is_none() || self.size.is_none())
     }
 }
 
@@ -60,6 +85,19 @@ pub fn fold_id(bytes: &[u8]) -> Option<[u8; 16]> {
     front.copy_from_slice(&fnv(&mut bytes.iter()).to_be_bytes());
     back.copy_from_slice(&fnv(&mut bytes.iter().rev()).to_be_bytes());
     Some(out)
+}
+
+/// An identifier written as 32 hexadecimal digits (as the stores record it), read back. `None`
+/// for anything else.
+pub fn id_from_hex(hex: &str) -> Option<[u8; 16]> {
+    if hex.len() != 32 || !hex.is_ascii() {
+        return None;
+    }
+    let mut id = [0u8; 16];
+    for (i, b) in id.iter_mut().enumerate() {
+        *b = u8::from_str_radix(hex.get(i * 2..i * 2 + 2)?, 16).ok()?;
+    }
+    Some(id)
 }
 
 impl Document {
@@ -95,6 +133,48 @@ mod tests {
         assert!(!DocKeys::default().matches(&DocKeys::default()));
         assert!(DocKeys::default().is_empty());
         assert!(!a.is_empty());
+    }
+
+    /// Two different identifiers are two documents whatever else they share (plan A9, G1): a part
+    /// split from a book, or another book saved over its file, is not the book. The identifier
+    /// every new file used to get names nothing.
+    #[test]
+    fn an_identifier_on_both_sides_decides_alone_and_the_known_constant_is_none() {
+        let a = DocKeys { id0: Some([1; 16]), path: Some("/a.pdf".into()), name: Some("a.pdf".into()), size: Some(10) };
+        assert!(!a.matches(&DocKeys { id0: Some([2; 16]), ..a.clone() }), "same path, name and size, another identifier");
+        assert!(a.matches(&DocKeys { id0: None, ..a.clone() }), "no identifier on one side: the path");
+        assert!(DocKeys { id0: None, path: None, ..a.clone() }.matches(&DocKeys { id0: None, path: None, ..a.clone() }));
+        let constant = DocKeys { id0: Some(DocKeys::KNOWN_CONSTANT_ID), ..DocKeys::default() };
+        assert_eq!(constant.id(), None);
+        assert!(constant.is_empty());
+        assert!(!constant.matches(&constant), "the constant names no document");
+        // Files that have it are named by their path, or their name and size.
+        let at = |path: &str| DocKeys { path: Some(path.into()), ..constant.clone() };
+        assert!(at("/a.pdf").matches(&a), "by the path");
+        assert!(!at("/cap1.pdf").matches(&at("/cap2.pdf")));
+        assert!(at("/cap1.pdf").matches(&at("/cap1.pdf")));
+        assert_eq!(id_from_hex(&"9ba0d5aad0617164a1d073b0d8c7dcd9".to_uppercase()), Some(DocKeys::KNOWN_CONSTANT_ID));
+        assert_eq!(id_from_hex("9ba0"), None);
+        assert_eq!(id_from_hex(&"é".repeat(16)), None);
+    }
+
+    /// Every part extracted used to be saved with one identifier ([`DocKeys::KNOWN_CONSTANT_ID`]),
+    /// so the chess stores took every part for one book (plan A9, A4-03). Different pages give
+    /// different identifiers; the same pages at the same moment, the same one.
+    #[test]
+    fn extracted_parts_are_different_documents() {
+        let mut s = Session::new().with_clock(|| 1_700_000_000);
+        let id = s.open("book.pdf", Some("/books/book.pdf".into()), Arc::new(crate::tests::fixture(3)), None).unwrap();
+        let mut keys = |pages: &[usize], name: &str| {
+            let bytes = s.extract(id, pages).unwrap();
+            let part = s.open(name, None, bytes, None).unwrap();
+            s.get(part).unwrap().doc_keys()
+        };
+        let (one, two, again) = (keys(&[0], "one.pdf"), keys(&[1, 2], "two.pdf"), keys(&[0], "again.pdf"));
+        assert!(one.id().is_some() && two.id().is_some(), "{one:?} {two:?}");
+        assert_ne!(one.id0, two.id0);
+        assert_eq!(one.id0, again.id0, "the same pages, the same moment");
+        assert!(!one.matches(&two));
     }
 
     #[test]
