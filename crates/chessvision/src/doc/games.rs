@@ -58,8 +58,9 @@
 //!   first or going on from the main line's last move stays a variation. A bold move that only
 //!   fits inside the analysis changes nothing. Moves all of one weight (OCR text, documents read
 //!   before the weight was kept) are read as above.
-//! - **Comments and NAGs.** Prose inside a game is the comment of the move before it. An annotation
-//!   glyph belongs to the move it follows.
+//! - **Comments and NAGs.** Prose inside a game is the comment of the move before it; after that
+//!   move's variations, the comment before the next move (`1.e4 {A} (1.d4 d5) {B} 1...e5`). An
+//!   annotation glyph belongs to the move it follows.
 //! - **Puzzles.** A diagram whose caption gives a number (`№185.`, `Exercício 12`) is remembered
 //!   by it. A solution that names it (`№185. Teichmann – Lasker 1...Qh4`, a heading `Ex. 6–12`),
 //!   however many pages on, closes the open game and starts its moves from that diagram (tagged
@@ -73,8 +74,12 @@
 //!   position. Paragraphs and page breaks do not end a game. A diagram does not end it when it
 //!   shows the position the main line reached (a book reprinting the game's position, often on
 //!   the next page), or when the next move continues the main line and is not a first move from
-//!   the diagram (flagged [`ReviewFlag::ContinuedPastDiagram`]); text between the diagram and that
-//!   move goes to neither game.
+//!   the diagram (flagged [`ReviewFlag::ContinuedPastDiagram`]).
+//! - **Text after a diagram.** What is printed between a diagram and the move that settles it is
+//!   held until that move: when the open game goes on past the diagram, it is read where it
+//!   stands (its brackets close the variations the diagram came in, a result ends the game);
+//!   when a game starts from the diagram, it is that game's first comment, less a "position
+//!   after" caption whose move was read. Only when no game takes the diagram does it go to none.
 //!
 //! - **Rules for selections.** [`WalkRules`] adds rules first written for a selection of the page
 //!   (an assumed lost bracket, moves in prose, sibling separators, more results, a lone
@@ -201,8 +206,9 @@ pub struct Node {
     pub ply: u32,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub nags: Vec<u16>,
-    /// A comment printed before the move. Only a variation's first move has one; text before a
-    /// main-line move is the comment of the move before it.
+    /// A comment printed before the move: a variation's first move's, or one printed after the
+    /// variations of the move before it. Other text before a move is the comment of the move
+    /// before it.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub comment_before: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
@@ -586,6 +592,41 @@ impl GameScore {
         }
     }
 
+    /// Put text that came after the variations of the move before node `n` into `n`'s own
+    /// `comment_before` (`1.e4 {A} (1.d4 d5) {B} 1...e5`: `B` is `e5`'s). Where PGN has no place
+    /// for it when the game is done, [`GameScore::settle_comments_before`] moves it. Returns
+    /// whether anything was cut.
+    pub(crate) fn put_before(&mut self, n: usize, text: &str) -> bool {
+        self.nodes.get_mut(n).is_some_and(|node| append_comment(&mut node.comment_before, text))
+    }
+
+    /// Whether PGN holds a comment before node `n` as `n`'s own: after the `(` of the variation
+    /// `n` starts, or after the `)` of the variations of the move before it (that move is the
+    /// first of its siblings, and has others).
+    fn holds_before(&self, n: usize) -> bool {
+        if self.starts_variation(n) {
+            return true;
+        }
+        let Some(p) = self.nodes.get(n).and_then(|node| node.parent) else { return false };
+        let siblings = self.children(self.nodes.get(p).and_then(|node| node.parent));
+        siblings.len() > 1 && siblings.first() == Some(&p)
+    }
+
+    /// A comment before a move where PGN has no place for one (the variations it came after
+    /// were not played, or the lines were put in another order since) goes where PGN reads it:
+    /// to the move before's comment, or the game's. So the game reads back from its PGN as it
+    /// is. Returns whether anything was cut.
+    pub(crate) fn settle_comments_before(&mut self) -> bool {
+        let mut cut = false;
+        for n in 0..self.nodes.len() {
+            if self.nodes.get(n).is_some_and(|node| !node.comment_before.is_empty()) && !self.holds_before(n) {
+                let text = self.nodes.get_mut(n).map(|node| std::mem::take(&mut node.comment_before)).unwrap_or_default();
+                cut |= self.comment_before(n, &text);
+            }
+        }
+        cut
+    }
+
     /// Put text that came before node `n`: its own `comment_before` when it starts a variation,
     /// else the comment of the move before it (or of the game).
     pub(crate) fn comment_before(&mut self, n: usize, text: &str) -> bool {
@@ -729,11 +770,16 @@ struct Line {
     skipped: u32,
     /// The last printed move was played, so an annotation after it is its own.
     last_ok: bool,
-    /// Text before the line's first move.
+    /// Text before the line's first move, or, after its last move's variations, before its next
+    /// move ([`Line::after_variations`]).
     pending: String,
     /// A variation not yet moved in: the move it was opened after. Its first move may be a reply
     /// to that move instead of an alternative to it.
     after: Option<usize>,
+    /// A variation of this line closed since its last move: text from here on comes after those
+    /// variations, so it is the next move's comment before (`1.e4 {A} (1.d4 d5) {B} 1...e5`),
+    /// not the last move's (plan A9-L2, A2-02).
+    after_variations: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -839,6 +885,108 @@ pub(crate) struct Walker {
     /// Headers no game took yet ([`Walker::header`]), oldest first, at most
     /// [`MAX_PENDING_HEADERS`]: each with its page and its box.
     headers: Vec<(u32, Option<UserRect>, GameHeader)>,
+    /// What was printed between a diagram and the move that settles it ([`Held`]).
+    held_text: Held,
+}
+
+/// A piece of what was printed between a diagram and the move that settles it.
+#[derive(Clone, Debug, PartialEq)]
+enum HeldItem {
+    Text(String),
+    Nag(u16),
+}
+
+/// What was printed between a diagram and the move that settles it (plan A9-L2, A2-01): prose,
+/// brackets and signs. When the open game goes on past the diagram it is read then, in its place
+/// (its brackets and a result count); a game that starts from the diagram takes the part after
+/// that diagram as its first comment; and when no game takes the diagram, nobody does. At most
+/// [`MAX_COMMENT_BYTES`] bytes are kept, and the game that takes them is flagged
+/// [`ReviewFlag::CommentTruncated`] past that.
+#[derive(Clone, Debug, Default, PartialEq)]
+struct Held {
+    items: Vec<HeldItem>,
+    /// Where the part after the last diagram starts in `items` (a game open before an earlier
+    /// diagram that goes on past this one takes all of it).
+    since_diagram: usize,
+    bytes: usize,
+    /// Something past [`MAX_COMMENT_BYTES`] was not kept.
+    cut: bool,
+}
+
+impl HeldItem {
+    /// The bytes it counts for against the cap: a sign one.
+    fn size(&self) -> usize {
+        match self {
+            HeldItem::Text(t) => t.len().max(1),
+            HeldItem::Nag(_) => 1,
+        }
+    }
+}
+
+impl Held {
+    /// Keep `item`, or of a text the words that fit under the cap.
+    fn push(&mut self, item: HeldItem) {
+        let room = MAX_COMMENT_BYTES.saturating_sub(self.bytes);
+        let item = match item {
+            item if item.size() <= room => item,
+            HeldItem::Text(text) => {
+                self.cut = true;
+                let mut end = room.min(text.len());
+                while end > 0 && !text.is_char_boundary(end) {
+                    end = end.saturating_sub(1);
+                }
+                let head = text.get(..end).unwrap_or_default();
+                // Between words, as a comment is cut.
+                let head = head.rfind(char::is_whitespace).map_or(head, |i| head.get(..i).unwrap_or_default());
+                if head.trim().is_empty() {
+                    return;
+                }
+                HeldItem::Text(head.to_owned())
+            }
+            HeldItem::Nag(_) => {
+                self.cut = true;
+                return;
+            }
+        };
+        self.bytes = self.bytes.saturating_add(item.size());
+        self.items.push(item);
+    }
+
+    /// Forget all of it: no game takes it.
+    fn clear(&mut self) {
+        *self = Held::default();
+    }
+
+    /// A diagram came: what was held so far stays only for a game that goes on past it.
+    fn mark_diagram(&mut self) {
+        self.since_diagram = self.items.len();
+    }
+
+    /// Keep only the part after the last diagram: the game open before it has ended.
+    fn keep_since_diagram(&mut self) {
+        let keep = self.items.split_off(self.since_diagram.min(self.items.len()));
+        let bytes = keep.iter().map(HeldItem::size).sum();
+        *self = Held { items: keep, since_diagram: 0, bytes, cut: self.cut };
+    }
+
+    /// A "position after" caption's move was read: the words that announced it are the
+    /// diagram's caption, not the game's text (`Position after:` in `A sharp line. Position
+    /// after: 2...Nc6`).
+    fn drop_caption_cue(&mut self) {
+        let Some(HeldItem::Text(last)) = self.items.last_mut() else { return };
+        let Some(start) = cue_start(last) else { return };
+        let before = last.get(..start).unwrap_or_default();
+        // The cue's sentence: from the end of the sentence before it, an ASCII sign, so `keep`
+        // is a char boundary.
+        let keep = before.rfind(['.', '!', '?', ';']).map_or(0, |i| i.saturating_add(1));
+        let kept = last.get(..keep).unwrap_or_default().to_owned();
+        self.bytes = self.bytes.saturating_sub(last.len().saturating_sub(kept.len()));
+        *last = kept;
+        if last.trim().is_empty() {
+            self.items.pop();
+            self.since_diagram = self.since_diagram.min(self.items.len());
+        }
+    }
 }
 
 /// Most headers waiting for their games ([`Walker::header`]): a page of puzzles sets one over
@@ -913,16 +1061,32 @@ impl Default for WalkRules {
     }
 }
 
-/// Append text to the comment the current line is at.
+/// Append text to the comment the current line is at: after the line's variations, the next
+/// move's comment before.
 fn comment(game: &mut Game, open: &mut Open, text: &str) {
     let depth = open.lines.len().saturating_sub(1);
     let Some(line) = open.lines.last_mut() else { return };
     let cut = match (line.moved, line.cursor) {
+        (true, Some(_)) if line.after_variations => append_comment(&mut line.pending, text),
         (true, Some(c)) => game.score.nodes.get_mut(c).is_some_and(|node| append_comment(&mut node.comment, text)),
         _ if depth == 0 => append_comment(&mut game.score.comment, text),
         _ => append_comment(&mut line.pending, text),
     };
     open.truncated |= cut;
+}
+
+/// The text a line that moved holds after its variations, with no move after it to take it (the
+/// line or the game ended): its last move's comment, so it stays in the game.
+fn flush_after_variations(game: &mut Game, line: &mut Line) -> bool {
+    if !line.moved || line.pending.is_empty() {
+        return false;
+    }
+    let text = std::mem::take(&mut line.pending);
+    line.after_variations = false;
+    match line.cursor.and_then(|c| game.score.nodes.get_mut(c)) {
+        Some(node) => append_comment(&mut node.comment, &text),
+        None => append_comment(&mut game.score.comment, &text),
+    }
 }
 
 /// A variation opened in `parent`: an alternative to its last move.
@@ -952,15 +1116,21 @@ fn opens_with(score: &GameScore, line: &Line, number: Option<MoveNumber>, san: &
 }
 
 /// Close the innermost variation. Text it held before any move went in goes to the line around
-/// it, in brackets.
+/// it, in brackets; text after its own variations, to its last move. The line around it is then
+/// after a variation: its next text is its next move's ([`Line::after_variations`]).
 fn pop_line(game: &mut Game, open: &mut Open) {
     if open.lines.len() <= 1 {
         return;
     }
-    if let Some(line) = open.lines.pop()
-        && !line.pending.is_empty()
-    {
-        comment(game, open, &format!("({})", line.pending));
+    if let Some(mut line) = open.lines.pop() {
+        if line.moved {
+            open.truncated |= flush_after_variations(game, &mut line);
+        } else if !line.pending.is_empty() {
+            comment(game, open, &format!("({})", line.pending));
+        }
+    }
+    if let Some(parent) = open.lines.last_mut() {
+        parent.after_variations = parent.moved;
     }
 }
 
@@ -1139,9 +1309,25 @@ const AFTER_CUES: [&str; 12] = ["after", "após", "apos", "depois de", "nach", "
 /// Whether `text` (the words before a move) ends in a "position after" cue: `Position after:`,
 /// `Posição após`, `Stellung nach`, with or without a colon.
 pub(crate) fn after_cue(text: &str) -> bool {
-    let lower = text.trim().trim_end_matches([':', '\u{a0}']).trim_end().to_lowercase();
-    AFTER_CUES.iter().any(|cue| {
-        lower.strip_suffix(cue).is_some_and(|before| before.is_empty() || before.ends_with(|c: char| c.is_whitespace() || c == '(' || c == '['))
+    cue_start(text).is_some()
+}
+
+/// Where the "position after" cue that `text` ends in starts, a byte offset ([`after_cue`]).
+fn cue_start(text: &str) -> Option<usize> {
+    let trimmed = text.trim_end().trim_end_matches([':', '\u{a0}']).trim_end();
+    AFTER_CUES.iter().find_map(|cue| {
+        // The cue's letters from the end, each matched by the text's letter in lower case.
+        let mut start = trimmed.len();
+        let mut chars = trimmed.char_indices().rev();
+        for want in cue.chars().rev() {
+            let (i, c) = chars.next()?;
+            if !c.to_lowercase().eq(std::iter::once(want)) {
+                return None;
+            }
+            start = i;
+        }
+        let before = trimmed.get(..start)?;
+        (before.is_empty() || before.ends_with(|c: char| c.is_whitespace() || c == '(' || c == '[')).then_some(start)
     })
 }
 
@@ -1273,8 +1459,38 @@ impl Walker {
             self.keep_spare(old);
         }
         self.held = self.open.is_some();
+        // What was held after an earlier diagram stays for the open game, if it goes on past
+        // this one; with no game open, no game took that diagram, nor its text.
+        if self.held {
+            self.held_text.mark_diagram();
+        } else {
+            self.held_text.clear();
+        }
         self.anchor = Anchor::Seed(seed);
         self.caption = false;
+    }
+
+    /// Whether what is read now waits for the move that settles a diagram ([`Held`]): a diagram
+    /// came while a game was open, or one waits for its first move with no game open.
+    fn holds(&self) -> bool {
+        !self.fragment && (self.held || (self.open.is_none() && matches!(self.anchor, Anchor::Seed(_))))
+    }
+
+    /// Read what was held ([`Held`]) where it stands, the open game going on past its diagram:
+    /// its prose is the comment there, its brackets open and close variations, a result ends the
+    /// game.
+    fn replay(&mut self, held: Held) {
+        if held.cut
+            && let Some(open) = self.open.as_mut()
+        {
+            open.truncated = true;
+        }
+        for item in held.items {
+            match item {
+                HeldItem::Text(text) => self.text(&text),
+                HeldItem::Nag(code) => self.nag(code),
+            }
+        }
     }
 
     /// A diagram showing the position the open game's main line has reached is remembered by
@@ -1307,6 +1523,7 @@ impl Walker {
             return;
         }
         self.close();
+        self.held_text.clear();
         self.named = Some((seed.page, seed.diagram, 0));
         self.anchor = Anchor::Seed(seed);
     }
@@ -1319,6 +1536,7 @@ impl Walker {
             self.puzzle(name);
         } else {
             self.close();
+            self.held_text.clear();
             self.anchor = Anchor::Blocked;
         }
     }
@@ -1340,6 +1558,7 @@ impl Walker {
         }
         self.named = None;
         self.close();
+        self.held_text.clear();
         self.anchor = Anchor::None;
         self.spare.clear();
         self.headers.clear();
@@ -1356,6 +1575,7 @@ impl Walker {
     pub fn header(&mut self, header: GameHeader, page: u32, rect: Option<UserRect>) {
         if self.held {
             self.anchor = Anchor::None;
+            self.held_text.clear();
         }
         self.close();
         self.headers.retain(|(p, r, _)| p.saturating_add(1) >= page && !same_column(r.as_ref(), rect.as_ref()));
@@ -1419,6 +1639,8 @@ impl Walker {
         };
         if shown.is_none() && !fits {
             self.close();
+            // The text after the diagram is the first comment of the game that starts from it.
+            self.held_text.keep_since_diagram();
             return;
         }
         let same = shown.is_some();
@@ -1442,6 +1664,9 @@ impl Walker {
         if !same && let Anchor::Seed(s) = anchor {
             self.keep_spare(s);
         }
+        // What was printed between the diagram and this move is the game's, read where it stands.
+        let held = std::mem::take(&mut self.held_text);
+        self.replay(held);
     }
 
     fn close(&mut self) {
@@ -1451,6 +1676,11 @@ impl Walker {
         while open.lines.len() > 1 {
             pop_line(game, &mut open);
         }
+        if let Some(main) = open.lines.first_mut() {
+            let cut = flush_after_variations(game, main);
+            open.truncated |= cut;
+        }
+        open.truncated |= game.score.settle_comments_before();
         if open.truncated {
             game.flags.push(GameFlag { page: game.page, source_rect: None, flag: ReviewFlag::CommentTruncated });
         }
@@ -1463,6 +1693,9 @@ impl Walker {
     /// Open a game for the move about to be read. Returns whether one is open, and whether the
     /// move's number is to be believed.
     fn start(&mut self, number: Option<MoveNumber>, san: &San, loc: Loc) -> Option<bool> {
+        // What was printed since the diagram: the first comment of a game from a diagram, and
+        // nobody's otherwise.
+        let held = std::mem::take(&mut self.held_text);
         if self.games.len() >= MAX_GAMES {
             return None;
         }
@@ -1537,8 +1770,21 @@ impl Walker {
                 accepted
             }
         };
+        let mut cut = false;
+        if matches!(origin, GameOrigin::Diagram { .. }) {
+            cut = held.cut;
+            for item in &held.items {
+                let text = match item {
+                    HeldItem::Text(text) => text.clone(),
+                    HeldItem::Nag(code) => pdfcraft_chess::nag::shown(*code),
+                };
+                cut |= append_comment(&mut score.comment, &text);
+            }
+        }
         let flags = flags.into_iter().map(|flag| GameFlag { page: loc.page, source_rect: loc.rect, flag }).collect();
-        self.open = Some(Open::new(self.games.len(), started_from));
+        let mut open = Open::new(self.games.len(), started_from);
+        open.truncated = cut;
+        self.open = Some(open);
         self.games.push(Game { origin, trusted, page: loc.page, score, flags, shown: Vec::new() });
         self.remaps.push(Vec::new());
         Some(honour)
@@ -1617,16 +1863,23 @@ impl Walker {
             self.spare.clear();
         }
         // The move a "position after" caption names: not played, it settles the diagram's side
-        // and number.
-        if std::mem::take(&mut self.caption)
-            && !self.fragment
-            && !self.open_plays(number, san)
+        // and number. Its cue is the diagram's caption, not text of a game.
+        let cued = std::mem::take(&mut self.caption) && !self.fragment;
+        let open_plays = cued && self.open_plays(number, san);
+        if cued
+            && !open_plays
             && let (Anchor::Seed(seed), Some(n)) = (&self.anchor, number)
             && !seed_fits(seed, number, san)
             && let Some(settled) = after_caption(seed, n, san)
         {
             self.anchor = Anchor::Seed(settled);
+            self.held_text.drop_caption_cue();
             return MoveOutcome::status(MoveStatus::Caption);
+        }
+        // A caption that names the open game's next move (a diagram reprinting the game's
+        // position): the move is played, and its cue is the diagram's too.
+        if open_plays && self.held {
+            self.held_text.drop_caption_cue();
         }
         if !self.fragment {
             self.split(number, san, loc);
@@ -1705,7 +1958,8 @@ impl Walker {
             let base = Line { cursor: open.bold_tip, moved: open.bold_tip.is_some(), ..Line::default() };
             if playable(&game.score, &base, number, san) {
                 placed = true;
-                *line = base;
+                // Text after variations still comes before this move.
+                *line = Line { pending: std::mem::take(&mut line.pending), after_variations: line.after_variations, ..base };
             }
         }
         // A numbered move that the main line takes (see `main_takes`): the text went back to the
@@ -1716,7 +1970,13 @@ impl Walker {
             && let [line] = open.lines.as_mut_slice()
             && let Some(tip) = game.score.mainline().last().copied()
         {
-            *line = Line { cursor: Some(tip), moved: true, ..Line::default() };
+            *line = Line {
+                cursor: Some(tip),
+                moved: true,
+                pending: std::mem::take(&mut line.pending),
+                after_variations: line.after_variations,
+                ..Line::default()
+            };
         }
         // A bracket opened after a move can hold the replies to it (`1.Kb1 (1...b3 2.Kb2; 1...a3)`):
         // a first move numbered as the move after it is played after it.
@@ -1765,9 +2025,10 @@ impl Walker {
                         why: "a file letter an OCR mixes up (c for e) read as the other: only that move is legal here".to_owned(),
                         confidence: CONFIDENCE_ONE_SWAP,
                     });
-                    let pending = open.lines.last_mut().map(|l| std::mem::take(&mut l.pending)).unwrap_or_default();
+                    let (pending, own) = open.lines.last_mut().map(|l| (std::mem::take(&mut l.pending), l.after_variations)).unwrap_or_default();
                     if !pending.is_empty() {
-                        open.truncated |= game.score.comment_before(node, &pending);
+                        // After the variations of the move before, the text is this move's own.
+                        open.truncated |= if own { game.score.put_before(node, &pending) } else { game.score.comment_before(node, &pending) };
                     }
                     if let Some(line) = open.lines.last_mut() {
                         *line = Line { cursor: Some(node), moved: true, skipped: 0, last_ok: true, ..Line::default() };
@@ -1839,7 +2100,8 @@ impl Walker {
 
     /// An annotation glyph: the last move's, when it was played; else part of the comment.
     pub fn nag(&mut self, code: u16) {
-        if self.held {
+        if self.holds() {
+            self.held_text.push(HeldItem::Nag(code));
             return;
         }
         let Some(open) = self.open.as_mut() else { return };
@@ -1865,8 +2127,13 @@ impl Walker {
         if matches!(self.anchor, Anchor::Seed(_)) && !text.trim().is_empty() {
             self.caption = after_cue(text);
         }
-        // Captions and prose between a diagram and the move that settles it belong to neither.
-        if self.held {
+        // Prose and brackets between a diagram and the move that settles it wait for that move:
+        // they are the open game's when it goes on past the diagram, else the first comment of
+        // the game that starts from it.
+        if self.holds() {
+            if !text.trim().is_empty() {
+                self.held_text.push(HeldItem::Text(text.to_owned()));
+            }
             return;
         }
         let mut start = 0usize;
@@ -2006,6 +2273,7 @@ impl Walker {
             game.score.result = result;
         }
         self.close();
+        self.held_text.clear();
         self.anchor = Anchor::None;
         if self.fragment {
             self.rest = Some(rest.to_owned());
@@ -2037,6 +2305,7 @@ impl Walker {
                     comment(game, open, &before);
                     game.score.result = result;
                     self.close();
+                    self.held_text.clear();
                     self.anchor = Anchor::None;
                     return Some(pos);
                 }
