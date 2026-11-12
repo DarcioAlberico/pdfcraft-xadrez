@@ -18,9 +18,10 @@
 //! the list there (and `out` is then not written).
 //!
 //! **Nothing is cut in silence** (plan A9, G7a; A4-05). A game is read up to the first move of its
-//! PGN that cannot be played (`pgn_stopped`); what follows it is not in the game, so writing the
-//! collection would drop it. With such a game in the list, `out` is refused unless the call says
-//! `allow_truncate: true`. `out` may be `path` (editing the file in place is what the tool is for),
+//! PGN that cannot be played (`pgn_stopped`); since plan A9-F3 what follows it is kept as a comment
+//! where the reading stopped, so writing the collection loses no text, but those moves would be
+//! written as text, no longer moves. With such a game in the list, `out` is refused unless the
+//! call says `allow_truncate: true`. `out` may be `path` (editing the file in place is what the tool is for),
 //! never the file of an open document unless the call says `overwrite: true`.
 
 use pdfcraft_engine::chess::collection::{self, GameList, GameNames, ListedGame, MAX_GAMES};
@@ -125,8 +126,9 @@ impl Automation {
                     list.iter().enumerate().filter_map(|(i, e)| e.stopped.as_ref().map(|mv| format!("game {i} at {mv}"))).collect();
                 if !stopped.is_empty() && !allow_truncate {
                     return Err(ToolError::InvalidArgs(format!(
-                        "out not written: {} read only up to a move that could not be played, and the rest of {} would be lost; \
-                         correct the move, delete the game, or pass allow_truncate: true to write it cut there",
+                        "out not written: {} read only up to a move that could not be played, and the rest of {} would be written \
+                         as a comment there, no longer moves; correct the move, delete the game, or pass allow_truncate: true \
+                         to write it so",
                         stopped.join(", "),
                         if stopped.len() == 1 { "it" } else { "them" },
                     )));
@@ -256,8 +258,11 @@ fn apply(list: &mut GameList<Entry>, op: &Value) -> std::result::Result<Map<Stri
             {
                 return Err(format!("date {:?} is not a PGN date: YYYY.MM.DD, ? for each unknown digit (1992.??.??)", date.trim()));
             }
-            let changed = collection::rename(game, &names);
-            entry.insert("changed".into(), json!(changed));
+            let renamed = collection::rename(game, &names);
+            entry.insert("changed".into(), json!(renamed.changed));
+            // Plan A9-F3 (A4-22): a value cut to the tag's cap, or a tag a full game refused, is said.
+            entry.insert("cut".into(), json!(renamed.cut));
+            entry.insert("refused".into(), json!(renamed.refused));
             entry.insert("name".into(), json!(GameNames::of(game).display()));
         }
         "duplicate" => {

@@ -32,16 +32,30 @@
 //!   result or the end goes after the move before the variations (A1-06). A variation holding
 //!   only a comment leaves it on the move it was an alternative to. A comment opening a variation
 //!   is its first move's comment-before; one before the first move is the game's.
-//! - a glyph written `$n` is set as written; one read from a glyph by the side that moved.
+//! - a glyph written `$n` is set as written; one read from a glyph by the side that moved; the
+//!   glyphs of a move are kept side by side, whatever their group (the group is the palette's
+//!   rule, not the PGN's);
+//! - **nothing is cut or dropped unsaid** (plan A9-F3, A1-02): a comment past [`MAX_COMMENT_LEN`]
+//!   bytes, a tag past [`MAX_TAG_LEN`] bytes or past [`MAX_TAGS`] tags, a glyph with no move,
+//!   past [`super::MAX_NAGS`] on a move or with a code PGN has none for, a result the tag disagrees with
+//!   or a tag that is no result: each is a warning with the move it is on; a FEN another program
+//!   got slightly wrong (castling rights the pieces don't allow, an en-passant square no double
+//!   step left, the clock past 100, move 0 or past [`MAX_MOVE_NUMBER`]) is made legal and said
+//!   (A1-08, A1-20), instead of refusing the game;
+//! - **the rest of a line after a move that can't be played becomes a comment** where the line
+//!   stopped (A4-05), so writing the game back loses none of its text.
 
 use cozy_chess::Color as CozyColor;
 
 use super::graft::{Frame, GraftStopReason};
 use super::pgn_scan::{ScanKind, brace_body, scan, tag_parts, tag_value};
-use super::{Game, GameError, MAX_COMMENT_LEN, MAX_DEPTH, MAX_PGN_LEN, MAX_PGN_WARNINGS, MAX_TAG_LEN, MAX_TAGS, NodeId, PgnReport, PgnStopReason};
-use super::{PgnWarning, PgnWarningKind, cut};
-use crate::fragment::{FragmentItem, NagCode};
+use super::{Game, GameError, MAX_COMMENT_LEN, MAX_DEPTH, MAX_MOVE_NUMBER, MAX_PGN_LEN, MAX_PGN_WARNINGS, MAX_TAG_LEN, MAX_TAGS};
+use super::{NodeId, PgnReport, PgnStopReason, PgnWarning, PgnWarningKind, cut};
+use crate::fen::Position;
+use crate::fragment::{FragmentItem, NagCode, items_text};
 use crate::nag;
+use crate::placement::Color;
+use crate::rules::{Violation, position_violations};
 use crate::san::{Lang, San, SanBody};
 
 /// Read one game's text (the first game, when it holds more).
@@ -59,6 +73,8 @@ pub(super) struct Parsed {
     pub(super) items: Vec<FragmentItem>,
     /// What reading an item noted, by the item's index.
     pub(super) notes: Vec<(usize, PgnWarningKind)>,
+    /// What reading the tags noted (on the start).
+    pub(super) tag_notes: Vec<PgnWarningKind>,
     /// The first word no reading makes a move: the index of the item it stood before, and the
     /// word. Its line ends there.
     pub(super) unreadable: Option<(usize, String)>,
@@ -80,6 +96,7 @@ pub(super) fn parse(text: &str) -> Parsed {
         // A variation never closed: kept to the end of the text.
         p.keep_done(kept);
     }
+    p.rest_done();
     p.out
 }
 
@@ -95,14 +112,20 @@ struct Kept {
 impl Kept {
     /// Add a piece of the variation, spaced as PGN writes it.
     fn push(&mut self, piece: &str) {
-        if self.text.len() > MAX_COMMENT_LEN || piece.is_empty() {
-            return;
-        }
-        if !(self.text.ends_with('(') || piece == ")") {
-            self.text.push(' ');
-        }
-        self.text.push_str(piece);
+        push_piece(&mut self.text, piece);
     }
+}
+
+/// Add `piece` to text kept from the PGN, spaced as PGN writes it; past [`MAX_COMMENT_LEN`] bytes
+/// nothing more is added (the comment it becomes is cut there, and says so).
+fn push_piece(text: &mut String, piece: &str) {
+    if text.len() > MAX_COMMENT_LEN || piece.is_empty() {
+        return;
+    }
+    if !(text.is_empty() || text.ends_with('(') || piece == ")") {
+        text.push(' ');
+    }
+    text.push_str(piece);
 }
 
 #[derive(Debug, Default)]
@@ -117,6 +140,8 @@ struct Parser {
     kept: Option<Kept>,
     /// The nesting whose line an unreadable word ended: skipped until it closes.
     dead: Option<usize>,
+    /// The text of that line from the word on, which becomes a comment where it stopped.
+    rest: Option<String>,
     /// The last item is a move (for an `e.p.` after it).
     after_move: bool,
 }
@@ -144,51 +169,38 @@ impl Parser {
         true
     }
 
+    /// A tag: kept, cut to [`MAX_TAG_LEN`] bytes, or (past [`MAX_TAGS`], or with no value)
+    /// dropped; each cut or drop noted.
     fn tag(&mut self, raw: &str) {
-        let Some((name, value)) = tag_parts(raw) else { return };
-        if self.out.tags.len() >= MAX_TAGS {
+        let Some((name, value)) = tag_parts(raw).filter(|_| self.out.tags.len() < MAX_TAGS) else {
+            self.out.tag_notes.push(PgnWarningKind::TagsDropped);
             return;
-        }
+        };
         let mut value = tag_value(value);
         if name == "Result"
             && let Some(r) = normal_result(&value)
         {
             value = r.to_owned();
         }
-        self.out.tags.push((cut(name, MAX_TAG_LEN).to_owned(), cut(&value, MAX_TAG_LEN).to_owned()));
+        let (name_kept, value_kept) = (cut(name, MAX_TAG_LEN), cut(&value, MAX_TAG_LEN));
+        if name_kept.len() < name.len() || value_kept.len() < value.len() {
+            self.out.tag_notes.push(PgnWarningKind::TagCut);
+        }
+        self.out.tags.push((name_kept.to_owned(), value_kept.to_owned()));
     }
 
     fn movetext_token(&mut self, kind: ScanKind, raw: &str) -> bool {
         if let Some(dead) = self.dead {
-            match kind {
-                ScanKind::Open => self.lines.push(true),
-                // The `)` of the variation the line was in: the variation still ends there.
-                ScanKind::Close if self.lines.len() > 1 => {
-                    self.lines.pop();
-                    if self.level() < dead {
-                        self.dead = None;
-                        self.push(FragmentItem::Close);
-                    }
-                }
-                ScanKind::Result => return self.result(raw),
-                _ => {}
-            }
-            return true;
+            return self.dead_token(dead, kind, raw);
         }
         match kind {
             ScanKind::Open => self.open(),
             ScanKind::Close => self.close(),
-            ScanKind::BraceComment { .. } => {
-                self.push(FragmentItem::Comment { text: cut(brace_body(raw), MAX_COMMENT_LEN.saturating_mul(2)).to_owned(), before: false })
-            }
-            ScanKind::LineComment => {
-                self.push(FragmentItem::Comment { text: cut(raw.get(1..).unwrap_or_default(), MAX_COMMENT_LEN).to_owned(), before: false })
-            }
-            ScanKind::Nag => {
-                if let Ok(code) = raw.get(1..).unwrap_or_default().parse::<u16>() {
-                    self.push(FragmentItem::Nag(NagCode::Written(code)));
-                }
-            }
+            // Whole: the file is capped, and a comment past the cap is cut where it is set, and said.
+            ScanKind::BraceComment { .. } => self.push(FragmentItem::Comment { text: brace_body(raw).to_owned(), before: false }),
+            ScanKind::LineComment => self.push(FragmentItem::Comment { text: raw.get(1..).unwrap_or_default().to_owned(), before: false }),
+            // A code past any PGN has (`$70000`) is code 0, none: dropped where it is set, and said.
+            ScanKind::Nag => self.push(FragmentItem::Nag(NagCode::Written(raw.get(1..).unwrap_or_default().parse::<u16>().unwrap_or(0)))),
             ScanKind::Result => return self.result(raw),
             ScanKind::Word => self.word(raw),
             ScanKind::Tag | ScanKind::Escape => {}
@@ -273,10 +285,52 @@ impl Parser {
         }
     }
 
-    /// A word no reading makes a move: its line ends before item `index`.
+    /// A word no reading makes a move: its line ends before item `index`, and its text from the
+    /// word on is kept for a comment.
     fn unreadable(&mut self, index: usize, word: String) {
+        let mut rest = String::new();
+        push_piece(&mut rest, &word);
         self.out.unreadable.get_or_insert((index, word));
         self.dead = Some(self.level());
+        self.rest = Some(rest);
+    }
+
+    /// A token of a line an unreadable word ended: its text goes to the rest, until the line's
+    /// own `)`, which still ends the variation; `false` when this game's text ends before it.
+    fn dead_token(&mut self, dead: usize, kind: ScanKind, raw: &str) -> bool {
+        let piece = match kind {
+            ScanKind::Open => {
+                self.lines.push(true);
+                "(".to_owned()
+            }
+            ScanKind::Close if self.lines.len() > 1 => {
+                self.lines.pop();
+                if self.level() < dead {
+                    self.dead = None;
+                    self.rest_done();
+                    self.push(FragmentItem::Close);
+                    return true;
+                }
+                ")".to_owned()
+            }
+            ScanKind::Result if self.level() == 0 => return self.result(raw),
+            ScanKind::BraceComment { .. } => brace_body(raw).to_owned(),
+            ScanKind::LineComment => raw.get(1..).unwrap_or_default().to_owned(),
+            ScanKind::Word => without_number(raw),
+            ScanKind::Nag | ScanKind::Result => raw.to_owned(),
+            ScanKind::Close | ScanKind::Tag | ScanKind::Escape => String::new(),
+        };
+        if let Some(rest) = self.rest.as_mut() {
+            push_piece(rest, piece.trim());
+        }
+        true
+    }
+
+    /// The rest of a line an unreadable word ended, as a comment where it stopped.
+    fn rest_done(&mut self) {
+        if let Some(text) = self.rest.take() {
+            self.push(FragmentItem::Comment { text, before: false });
+        }
     }
 
     /// A token of a variation kept as text; `false` when this game's text ends before it.
@@ -424,22 +478,50 @@ fn glued_glyphs(word: &str) -> Option<WordRead> {
 /// Step three: the items played into a new game.
 pub(super) fn build(parsed: Parsed) -> Result<(Game, PgnReport), GameError> {
     let fen = parsed.tags.iter().find(|(n, _)| n == "FEN").map(|(_, v)| v.as_str());
-    let mut game = match fen {
-        Some(fen) => Game::from_fen(fen)?,
-        None => Game::standard(),
+    let (mut game, repaired) = match fen {
+        Some(fen) => start_from(fen)?,
+        None => (Game::standard(), false),
     };
+    let mut notes: Vec<PgnWarningKind> = parsed.tag_notes.clone();
+    if repaired {
+        notes.push(PgnWarningKind::FenRepaired);
+    }
     for (name, value) in &parsed.tags {
-        // The placeholders PGN writes for unknown values are no values. Bad names are skipped,
-        // not fatal: the moves are what matters.
-        if !matches!(value.as_str(), "?" | "????.??.??" | "*") {
-            let _ = game.set_tag(name, value);
+        // The placeholders PGN writes for unknown values are no values. A name PGN does not allow
+        // drops its tag, said: the moves are what matters.
+        if !matches!(value.as_str(), "?" | "????.??.??" | "*") && game.set_tag(name, value).is_err() {
+            notes.push(PgnWarningKind::TagsDropped);
         }
     }
     let mut b = Builder::new(game, parsed.items.len());
+    b.notes.extend(notes.into_iter().map(|kind| (0, kind, 0)));
     for (index, item) in parsed.items.iter().enumerate() {
         b.item(index, item);
     }
     Ok(b.finish(parsed))
+}
+
+/// The game a `FEN` tag starts, and whether the FEN had to be repaired to be legal: castling
+/// rights the pieces do not allow taken off, an en-passant square no double step left dropped, the
+/// clock kept to 100 and the move number to 1..=[`MAX_MOVE_NUMBER`] (A1-08, A1-20). A FEN that
+/// can't be read, or whose position stays illegal, still refuses the game, with why.
+fn start_from(fen: &str) -> Result<(Game, bool), GameError> {
+    let mut position = crate::fen::parse(fen.trim()).map_err(|e| GameError::BadFen(e.to_string()))?;
+    let repaired = repair(&mut position);
+    Ok((Game::new(&position, Color::White)?, repaired))
+}
+
+/// Make `position`'s castling rights, en-passant square and counters ones a legal game can
+/// have; whether anything changed.
+fn repair(position: &mut Position) -> bool {
+    let before = position.clone();
+    position.castling = position.castling.fitted(&position.placement);
+    if position.en_passant.is_some() && position_violations(position, Color::White).contains(&Violation::BadEnPassant) {
+        position.en_passant = None;
+    }
+    position.halfmove_clock = position.halfmove_clock.min(100);
+    position.fullmove_number = position.fullmove_number.clamp(1, MAX_MOVE_NUMBER);
+    *position != before
 }
 
 /// Where [`build`] stands.
@@ -462,6 +544,11 @@ struct Builder {
     at: Vec<Option<NodeId>>,
     /// The first move that could not be played: its item, its text and why.
     stop: Option<(usize, String, PgnStopReason)>,
+    /// The line that move ended, from it on (with the comment that waited for it): the items
+    /// that become a comment where the line stopped, and the items whose notes go there.
+    rest: Option<(Vec<usize>, Vec<FragmentItem>)>,
+    /// What building noted: the item, the kind, the move it is on.
+    notes: Vec<(usize, PgnWarningKind, NodeId)>,
 }
 
 impl Builder {
@@ -477,6 +564,8 @@ impl Builder {
             born: vec![0],
             at: vec![None; items],
             stop: None,
+            rest: None,
+            notes: Vec::new(),
         }
     }
 
@@ -484,17 +573,46 @@ impl Builder {
         match item {
             FragmentItem::Open => self.open(index),
             FragmentItem::Close => self.close(),
-            _ if self.dead.is_some() => {}
-            FragmentItem::Move { san, text, .. } => self.play(index, san, text),
-            FragmentItem::Nag(code) => {
-                let to = self.last.unwrap_or(self.cur);
-                self.mark(&[index], to);
-                if let Some(last) = self.last {
-                    self.game.set_nag_code(last, *code);
-                }
-            }
+            _ if self.dead.is_some() => self.rest_push(item),
+            FragmentItem::Move { san, .. } => self.play(index, san, item),
+            FragmentItem::Nag(code) => self.nag(index, *code),
             FragmentItem::Comment { text, .. } => self.comment(index, text),
             FragmentItem::Result => {}
+        }
+    }
+
+    /// Note `kind` on item `index`, on move `node`.
+    fn note(&mut self, index: usize, kind: PgnWarningKind, node: NodeId) {
+        self.notes.push((index, kind, node));
+    }
+
+    /// A glyph on the last move, next to the glyphs there whatever their group; one with no move
+    /// before it, with a code PGN has none for, or past [`super::MAX_NAGS`] is dropped, and said.
+    fn nag(&mut self, index: usize, code: NagCode) {
+        let to = self.last.unwrap_or(self.cur);
+        self.mark(&[index], to);
+        let added = self.last.is_some_and(|last| {
+            let code = self.game.nag_code_for(last, code);
+            self.game.add_nag(last, code)
+        });
+        if !added {
+            self.note(index, PgnWarningKind::NagDropped, to);
+        }
+    }
+
+    /// An item of a line a move could not be played in: part of the rest.
+    fn rest_push(&mut self, item: &FragmentItem) {
+        if let Some((_, items)) = self.rest.as_mut() {
+            items.push(item.clone());
+        }
+    }
+
+    /// The rest of the line that died, as a comment where it stopped: after its last move, or,
+    /// when its first move could not be played, as a variation holding only a comment is.
+    fn place_rest(&mut self) {
+        if let Some((indices, items)) = self.rest.take() {
+            self.after_close = false;
+            self.comment_of(indices, items_text(&items));
         }
     }
 
@@ -507,15 +625,24 @@ impl Builder {
         }
     }
 
-    /// Add the comment `text` of items `indices` after move `node`.
+    /// Add the comment `text` of items `indices` after move `node`; cut past
+    /// [`MAX_COMMENT_LEN`], and said.
     fn comment_after(&mut self, node: NodeId, (text, indices): (String, Vec<usize>)) {
         self.mark(&indices, node);
-        append_comment(&mut self.game, node, text);
+        let joined = match self.game.comment(node) {
+            "" => text,
+            before => format!("{before} {text}"),
+        };
+        if self.game.set_comment(node, &joined).is_err() {
+            self.note(indices.first().copied().unwrap_or(0), PgnWarningKind::CommentCut, node);
+        }
     }
 
     fn open(&mut self, index: usize) {
         if self.dead.is_none() {
             self.flush_after_close();
+        } else {
+            self.rest_push(&FragmentItem::Open);
         }
         // A variation is an alternative to the move before it; parse leaves none without one.
         let from = match (self.dead, self.last) {
@@ -527,20 +654,33 @@ impl Builder {
     }
 
     fn close(&mut self) {
-        let Some(frame) = self.stack.pop() else { return };
-        if self.dead.is_none() {
-            self.flush_after_close();
-            // A variation holding only a comment: the comment stays on the move it was an
-            // alternative to.
-            if let Some(pending) = self.pending.take() {
-                self.comment_after(frame.last.unwrap_or(frame.cur), pending);
+        if self.stack.is_empty() {
+            return;
+        }
+        match self.dead {
+            // The `)` of the line that died: what it did not play goes where it stopped first.
+            Some(d) if self.stack.len() <= d => {
+                self.dead = None;
+                self.place_rest();
             }
+            Some(_) => {
+                self.rest_push(&FragmentItem::Close);
+                if let Some(frame) = self.stack.pop() {
+                    (self.cur, self.last) = (frame.cur, frame.last);
+                }
+                return;
+            }
+            None => {}
+        }
+        let Some(frame) = self.stack.pop() else { return };
+        self.flush_after_close();
+        // A variation holding only a comment: the comment stays on the move it was an
+        // alternative to.
+        if let Some(pending) = self.pending.take() {
+            self.comment_after(frame.last.unwrap_or(frame.cur), pending);
         }
         (self.cur, self.last) = (frame.cur, frame.last);
-        if self.dead.is_some_and(|d| self.stack.len() < d) {
-            self.dead = None;
-        }
-        self.after_close = self.dead.is_none();
+        self.after_close = true;
     }
 
     /// A comment after a `)` that no move followed goes after the move before the variations.
@@ -553,40 +693,52 @@ impl Builder {
     }
 
     fn comment(&mut self, index: usize, text: &str) {
+        self.comment_of(vec![index], text.to_owned());
+    }
+
+    /// The comment `text` of items `indices`, where the line is: waiting for the next move when
+    /// it opens a variation or follows a `)`, else after the last move (or on the start).
+    fn comment_of(&mut self, indices: Vec<usize>, text: String) {
         let opening = self.last.is_none() && !self.stack.is_empty();
         if self.after_close || opening {
-            let (mut joined, mut indices) = self.pending.take().unwrap_or_default();
+            let (mut joined, mut waiting) = self.pending.take().unwrap_or_default();
             if !joined.is_empty() {
                 joined.push(' ');
             }
-            joined.push_str(text);
-            indices.push(index);
-            self.pending = Some((joined, indices));
+            joined.push_str(&text);
+            waiting.extend(indices);
+            self.pending = Some((joined, waiting));
         } else {
-            self.comment_after(self.last.unwrap_or(self.cur), (text.to_owned(), vec![index]));
+            self.comment_after(self.last.unwrap_or(self.cur), (text, indices));
         }
     }
 
-    /// Play a move in the line read, after the one it is at.
-    fn play(&mut self, index: usize, san: &San, text: &str) {
+    /// Play a move (`item`) in the line read, after the one it is at.
+    fn play(&mut self, index: usize, san: &San, item: &FragmentItem) {
         let level = self.stack.len();
         let white = self.game.node(self.cur).board.side_to_move() == CozyColor::White;
         let node = match self.game.step_for(self.cur, san).and_then(|step| self.place(step, level)) {
             Ok(node) => node,
-            Err(reason) => return self.stopped(index, text, reason),
+            Err(reason) => return self.stopped(index, item, reason),
         };
         match self.born.get_mut(node) {
             Some(born) => *born = (*born).min(level),
             None => self.born.resize(node.saturating_add(1), level),
         }
-        self.game.set_suffix_nags(node, &san.suffix, white);
+        for code in nag::nags_from_suffix(&san.suffix, white) {
+            if !self.game.add_nag(node, code) {
+                self.note(index, PgnWarningKind::NagDropped, node);
+            }
+        }
         if let Some((text, indices)) = self.pending.take() {
             self.mark(&indices, node);
             let joined = match self.game.comment_before(node) {
                 "" => text,
                 before => format!("{before} {text}"),
             };
-            self.game.set_comment_before(node, &joined);
+            if self.game.set_comment_before(node, &joined).is_err() {
+                self.note(indices.first().copied().unwrap_or(index), PgnWarningKind::CommentCut, node);
+            }
         }
         (self.cur, self.last, self.after_close) = (node, Some(node), false);
         self.mark(&[index], node);
@@ -613,38 +765,55 @@ impl Builder {
         }
     }
 
-    /// A move that could not be played ends its line; the first is the report's.
-    fn stopped(&mut self, index: usize, text: &str, reason: GraftStopReason) {
+    /// A move (`item`) that could not be played ends its line, and the line from it on becomes
+    /// the rest; the first such move is the report's.
+    fn stopped(&mut self, index: usize, item: &FragmentItem, reason: GraftStopReason) {
         if self.stop.is_none() {
-            self.stop = Some((index, text.to_owned(), PgnStopReason::from_graft(reason)));
+            self.stop = Some((index, item.text(), PgnStopReason::from_graft(reason)));
         }
-        // A comment waiting for the move stays where the line stopped.
+        // A comment waiting for the move goes with the rest, before it.
         self.after_close = false;
-        if let Some(pending) = self.pending.take() {
-            self.comment_after(self.last.unwrap_or(self.cur), pending);
+        let mut indices = vec![index];
+        let mut items = Vec::new();
+        if let Some((text, waiting)) = self.pending.take() {
+            indices.extend(waiting);
+            items.push(FragmentItem::Comment { text, before: false });
         }
+        items.push(item.clone());
+        self.rest = Some((indices, items));
         self.dead = Some(self.stack.len());
     }
 
+    /// The result after the moves: the game's when no tag says one; one that disagrees with the
+    /// tag, or a tag that is no result, is said (A1-21).
+    fn result(&mut self, read: Option<&str>) {
+        let tag = self.game.tag("Result").map(str::to_owned);
+        match (tag.as_deref(), read) {
+            (Some(t), _) if normal_result(t).is_none() => self.note(0, PgnWarningKind::ResultIgnored, 0),
+            (Some(t), Some(r)) if r != "*" && r != t => self.note(0, PgnWarningKind::ResultIgnored, 0),
+            (None, Some(r)) if r != "*" => {
+                // A result PGN writes is a value set_tag takes.
+                let _ = self.game.set_tag("Result", r);
+            }
+            _ => {}
+        }
+    }
+
     fn finish(mut self, parsed: Parsed) -> (Game, PgnReport) {
-        // Variations never closed close at the end of the text.
+        // Variations never closed close at the end of the text; a main line that died leaves its
+        // rest at its end.
         while !self.stack.is_empty() {
             self.close();
         }
+        self.dead = None;
+        self.place_rest();
         self.flush_after_close();
-        if let Some(result) = parsed.result.as_deref()
-            && self.game.tag("Result").is_none()
-            && result != "*"
-        {
-            let _ = self.game.set_tag("Result", result);
-        }
-        let mut notes = parsed.notes;
-        notes.sort_by_key(|(index, _)| *index);
-        let warnings: Vec<PgnWarning> = notes
-            .into_iter()
-            .filter_map(|(index, kind)| Some(PgnWarning { kind, at: self.at.get(index).copied().flatten()? }))
-            .take(MAX_PGN_WARNINGS)
-            .collect();
+        self.result(parsed.result.as_deref());
+        let mut notes: Vec<(usize, PgnWarningKind, NodeId)> =
+            parsed.notes.iter().filter_map(|&(index, kind)| Some((index, kind, self.at.get(index).copied().flatten()?))).collect();
+        notes.append(&mut self.notes);
+        notes.sort_by_key(|(index, ..)| *index);
+        let warnings: Vec<PgnWarning> = notes.into_iter().map(|(_, kind, at)| PgnWarning { kind, at }).take(MAX_PGN_WARNINGS).collect();
         // The first of the two: a word no reading makes a move, or a move that could not be played.
         let unreadable_first = match (&parsed.unreadable, &self.stop) {
             (Some((i, _)), Some((j, ..))) => i <= j,
@@ -661,15 +830,6 @@ impl Builder {
         while game.forward() {}
         (game, PgnReport { stopped, stop_reason, warnings })
     }
-}
-
-/// Add `text` to the comment after `node`, after what it already says.
-fn append_comment(game: &mut Game, node: NodeId, text: String) {
-    let joined = match game.comment(node) {
-        "" => text,
-        before => format!("{before} {text}"),
-    };
-    game.set_comment(node, &joined);
 }
 
 #[cfg(test)]

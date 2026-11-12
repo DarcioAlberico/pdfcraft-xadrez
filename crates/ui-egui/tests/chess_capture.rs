@@ -329,7 +329,7 @@ fn a_stale_plan_is_planned_again() {
     assert!(h.state().chess.capture.pending.is_some(), "the end of the line is extended: shown first");
     h.get_by_label_contains("It extends the end of a line instead of branching from it.");
     // Meanwhile the game changes.
-    h.state_mut().chess.board_mut().game.set_comment(0, "edited meanwhile");
+    h.state_mut().chess.board_mut().game.set_comment(0, "edited meanwhile").unwrap();
     h.get_by_label_contains("Apply").click();
     h.run_steps(3);
     // Planned again on the game as it is now: it still asks.

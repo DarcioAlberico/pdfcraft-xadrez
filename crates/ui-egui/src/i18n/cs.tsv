@@ -2619,6 +2619,10 @@ animation effects	Off	Vypnuto
 	Previous move (Left arrow)	Předchozí tah (šipka vlevo)
 	Promote to:	Proměnit na:
 	Reading stopped at {move}: it is not a legal move there.	Čtení se zastavilo u {move}: tam to není legální tah.
+	Only the first 65,536 bytes of a comment are kept.	Z komentáře se ponechá jen prvních 65 536 bajtů.
+	The comment says that already.	Komentář to už říká.
+	Not kept as typed: {tags} (a tag holds at most 256 bytes, and a game 64 tags).	Neuloženo, jak bylo zadáno: {tags} (štítek pojme nejvýše 256 bajtů a partie 64 štítků).
+	Read with changes: {n} (a comment, tag or glyph past its limit cut or dropped, a FEN repaired, or a result ignored).	Přečteno se změnami: {n} (komentář, štítek nebo znak nad limit zkrácen či vynechán, FEN opraven nebo výsledek ignorován).
 	Reading stopped at {move}: more than one legal move there is written so.	Čtení se zastavilo u {move}: tam se takto zapisuje více než jeden legální tah.
 	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	Čtení se zastavilo u {move}: partie už má 10 000 tahů, což je maximum.
 	Reading stopped at {move}: its variation would nest deeper than 32.	Čtení se zastavilo u {move}: varianta by byla vnořena hlouběji než 32 úrovní.
@@ -2746,7 +2750,7 @@ chess undo step	Clear drawings	smazání kreseb
 	Quit without saving	Ukončit bez uložení
 	Close without saving	Zavřít bez uložení
 	Games read only up to an impossible move: {n}	Partie načtené jen po nemožný tah: {n}
-	The rest of them will not be written.	Zbytek z nich se nezapíše.
+	The rest of each is written as a comment at the move where its reading stopped.	Zbytek každé partie se zapíše jako komentář u tahu, kde se čtení zastavilo.
 	{name}: stopped at {move}	{name}: zastaveno na {move}
 	Save them as they are	Uložit je tak, jak jsou
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Šachové partie nelze automaticky ukládat: datovou složku aplikace se pro toto okno nepodařilo zamknout.

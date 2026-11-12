@@ -11,6 +11,7 @@ mod fuzz;
 mod gates;
 mod layers;
 mod macos_integration;
+mod mutate;
 mod parity;
 mod screenshots;
 mod version;
@@ -47,6 +48,11 @@ const COMMANDS: &[(&str, &str, Command)] = &[
         "chess-bench",
         "Read chess books (--dir DIR with books/*.pdf, --tag NAME, --models DIR) and compare the moves with --baseline TAG; fails on lost valid moves",
         chess_bench::run,
+    ),
+    (
+        "mutate",
+        "Mutation testing of one Rust file (Windows-safe: a copied workspace, process trees killed): mutate <file.rs> [--lines N,N] [--list] [--test-command CMD]",
+        mutate::run,
     ),
     (
         "chess-gate",

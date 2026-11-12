@@ -2519,6 +2519,10 @@ animation effects	Off	Wyłączone
 	Previous move (Left arrow)	Poprzedni ruch (strzałka w lewo)
 	Promote to:	Promuj na:
 	Reading stopped at {move}: it is not a legal move there.	Odczyt zatrzymał się na {move}: to nie jest tam legalny ruch.
+	Only the first 65,536 bytes of a comment are kept.	Z komentarza zachowywane jest tylko pierwsze 65 536 bajtów.
+	The comment says that already.	Komentarz już to mówi.
+	Not kept as typed: {tags} (a tag holds at most 256 bytes, and a game 64 tags).	Nie zapisano tak, jak wpisano: {tags} (znacznik mieści najwyżej 256 bajtów, a partia 64 znaczniki).
+	Read with changes: {n} (a comment, tag or glyph past its limit cut or dropped, a FEN repaired, or a result ignored).	Odczytano ze zmianami: {n} (komentarz, znacznik lub znak ponad limit przycięty lub pominięty, poprawiony FEN albo zignorowany wynik).
 	Reading stopped at {move}: more than one legal move there is written so.	Odczyt zatrzymał się na {move}: tam tak zapisuje się więcej niż jeden legalny ruch.
 	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	Odczyt zatrzymał się na {move}: partia ma już 10 000 ruchów, czyli maksimum.
 	Reading stopped at {move}: its variation would nest deeper than 32.	Odczyt zatrzymał się na {move}: wariant byłby zagnieżdżony głębiej niż 32 poziomy.

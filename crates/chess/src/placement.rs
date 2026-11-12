@@ -111,9 +111,12 @@ impl Square {
     pub const A8: Square = Square(56);
     pub const H1: Square = Square(7);
 
-    /// The square at `file` (0 = a) and `rank` (0 = first rank), or `None` off the board.
+    /// The square at `file` (0 = a) and `rank` (0 = first rank), or `None` off the board. Total
+    /// over every `(u8, u8)`: the index is only computed once both are below 8 (`then`, not
+    /// `then_some`, whose argument is computed first and overflows for a rank of 32 or more;
+    /// plan A9-Q4a, R2-04).
     pub fn new(file: u8, rank: u8) -> Option<Square> {
-        (file < 8 && rank < 8).then_some(Square(rank * 8 + file))
+        (file < 8 && rank < 8).then(|| Square(rank * 8 + file))
     }
 
     /// The square at `file` and `rank` taken modulo 8. For coordinates that are on the board by
@@ -357,6 +360,34 @@ mod tests {
         assert_eq!(a1.offset(7, 7), Square::parse("h8"));
         assert_eq!(a1.offset(8, 0), None);
         assert_eq!(a1.offset(i8::MIN, i8::MAX), None);
+    }
+
+    /// Plan A9-Q4a (R2-04): `Square::new` is total over every `(u8, u8)`, and `offset` over every
+    /// square and every `(i8, i8)` — all of them, not a sample: a rank of 32 or more used to
+    /// overflow computing the index of a square that was then thrown away.
+    #[test]
+    fn squares_and_offsets_are_total() {
+        for file in 0..=u8::MAX {
+            for rank in 0..=u8::MAX {
+                let sq = Square::new(file, rank);
+                assert_eq!(sq.is_some(), file < 8 && rank < 8, "{file} {rank}");
+                if let Some(sq) = sq {
+                    assert_eq!((sq.file(), sq.rank()), (file, rank));
+                }
+            }
+        }
+        for from in (0..64).filter_map(Square::from_index) {
+            for df in i8::MIN..=i8::MAX {
+                for dr in i8::MIN..=i8::MAX {
+                    let to = from.offset(df, dr);
+                    let (f, r) = (i16::from(from.file()) + i16::from(df), i16::from(from.rank()) + i16::from(dr));
+                    assert_eq!(
+                        to.map(|s| (i16::from(s.file()), i16::from(s.rank()))),
+                        ((0..8).contains(&f) && (0..8).contains(&r)).then_some((f, r))
+                    );
+                }
+            }
+        }
     }
 
     #[test]

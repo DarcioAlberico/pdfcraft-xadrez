@@ -2549,6 +2549,10 @@ animation effects	Off	Ανενεργά
 	Previous move (Left arrow)	Προηγούμενη κίνηση (αριστερό βέλος)
 	Promote to:	Προαγωγή σε:
 	Reading stopped at {move}: it is not a legal move there.	Η ανάγνωση σταμάτησε στο {move}: δεν είναι νόμιμη κίνηση εκεί.
+	Only the first 65,536 bytes of a comment are kept.	Από ένα σχόλιο κρατούνται μόνο τα πρώτα 65.536 byte.
+	The comment says that already.	Το σχόλιο το λέει ήδη.
+	Not kept as typed: {tags} (a tag holds at most 256 bytes, and a game 64 tags).	Δεν κρατήθηκε όπως γράφτηκε: {tags} (μια ετικέτα χωρά έως 256 byte και μια παρτίδα 64 ετικέτες).
+	Read with changes: {n} (a comment, tag or glyph past its limit cut or dropped, a FEN repaired, or a result ignored).	Διαβάστηκε με αλλαγές: {n} (σχόλιο, ετικέτα ή σύμβολο πέρα από το όριο περικόπηκε ή απορρίφθηκε, FEN διορθώθηκε ή αποτέλεσμα αγνοήθηκε).
 	Reading stopped at {move}: more than one legal move there is written so.	Η ανάγνωση σταμάτησε στο {move}: εκεί γράφονται έτσι περισσότερες από μία νόμιμες κινήσεις.
 	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	Η ανάγνωση σταμάτησε στο {move}: η παρτίδα έχει ήδη 10.000 κινήσεις, το μέγιστο.
 	Reading stopped at {move}: its variation would nest deeper than 32.	Η ανάγνωση σταμάτησε στο {move}: η παραλλαγή θα ήταν εμφωλευμένη βαθύτερα από 32 επίπεδα.

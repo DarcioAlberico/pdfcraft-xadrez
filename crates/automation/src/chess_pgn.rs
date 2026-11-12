@@ -192,13 +192,15 @@ fn apply(game: &mut Game, op: &Value) -> std::result::Result<Map<String, Value>,
             if text.len() > MAX_COMMENT_LEN {
                 return Err(format!("text is longer than {MAX_COMMENT_LEN} bytes"));
             }
-            if name == "comment" {
-                game.set_comment(at, text);
+            let set = if name == "comment" {
+                game.set_comment(at, text)
             } else if at == 0 {
                 return Err("the start has no comment before it (use comment on it)".into());
             } else {
-                game.set_comment_before(at, text);
-            }
+                game.set_comment_before(at, text)
+            };
+            // Refused above the cap, so a cut can't happen; were it to, it is said.
+            set.map_err(|c| format!("the comment was cut to {} bytes", c.kept))?;
             game.go_to_node(at);
         }
         "nag" => {
@@ -531,6 +533,7 @@ fn graft_json(r: &GraftReport) -> Value {
         "ply_mismatches": r.ply_mismatches,
         "unplaced": r.unplaced,
         "rest_from": r.rest_from,
+        "already_there": r.already_there,
         "leftover_text": r.leftover_text,
         "last": r.last.as_ref().map(path_text),
     })

@@ -2757,6 +2757,10 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Previous move (Left arrow)	Mossa precedente (freccia sinistra)
 	Promote to:	Promuovi a:
 	Reading stopped at {move}: it is not a legal move there.	Lettura interrotta a {move}: lì non è una mossa legale.
+	Only the first 65,536 bytes of a comment are kept.	Di un commento si conservano solo i primi 65.536 byte.
+	The comment says that already.	Il commento lo dice già.
+	Not kept as typed: {tags} (a tag holds at most 256 bytes, and a game 64 tags).	Non conservato come digitato: {tags} (un tag contiene al massimo 256 byte e una partita 64 tag).
+	Read with changes: {n} (a comment, tag or glyph past its limit cut or dropped, a FEN repaired, or a result ignored).	Letto con modifiche: {n} (un commento, un tag o un segno oltre il limite tagliato o scartato, un FEN corretto o un risultato ignorato).
 	Reading stopped at {move}: more than one legal move there is written so.	Lettura interrotta a {move}: lì più di una mossa legale si scrive così.
 	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	Lettura interrotta a {move}: la partita ha già 10.000 mosse, il massimo consentito.
 	Reading stopped at {move}: its variation would nest deeper than 32.	Lettura interrotta a {move}: la sua variante sarebbe annidata oltre 32 livelli.
@@ -2884,7 +2888,7 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	Quit without saving	Esci senza salvare
 	Close without saving	Chiudi senza salvare
 	Games read only up to an impossible move: {n}	Partite lette solo fino a una mossa impossibile: {n}
-	The rest of them will not be written.	Il resto non verrà scritto.
+	The rest of each is written as a comment at the move where its reading stopped.	Il resto di ciascuna è scritto come commento alla mossa dove la lettura si è fermata.
 	{name}: stopped at {move}	{name}: fermata a {move}
 	Save them as they are	Salvale così come sono
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Le partite di scacchi non possono essere salvate automaticamente: non è stato possibile bloccare la cartella dati dell'app per questa finestra.

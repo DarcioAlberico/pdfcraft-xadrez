@@ -84,7 +84,7 @@
 //!   [`super::ChessDoc::board_game`] does it with each move's place on its page.
 //!
 //! Everything is bounded: [`MAX_GAME_NODES`] moves a game, [`MAX_VARIATION_DEPTH`] nested
-//! variations, [`MAX_COMMENT_CHARS`] a comment, [`MAX_GAMES`] games a document.
+//! variations, [`MAX_COMMENT_BYTES`] a comment, [`MAX_GAMES`] games a document.
 
 use cozy_chess::{Board, Color, Move};
 use pdfcraft_chess::origin::PgnOrigin;
@@ -105,8 +105,10 @@ pub(crate) use puzzles::{Key, Name};
 pub const MAX_GAME_NODES: usize = 4096;
 /// Most nested variations.
 pub const MAX_VARIATION_DEPTH: usize = 32;
-/// Longest comment, in characters.
-pub const MAX_COMMENT_CHARS: usize = 4096;
+/// Longest comment, in bytes: the board's own cap (`pdfcraft_chess::game::MAX_COMMENT_LEN`), so a
+/// comment the document holds is never cut on the board (plan A9-F3, A2-18: one cap, in bytes, in
+/// both crates).
+pub const MAX_COMMENT_BYTES: usize = pdfcraft_chess::game::MAX_COMMENT_LEN;
 /// Most NAGs on one move.
 pub const MAX_NAGS: usize = 8;
 /// Most games in one document.
@@ -336,13 +338,14 @@ fn play_read(score: &mut GameScore, at: Option<usize>, san: &San, misreads: bool
 }
 
 /// Append `text` to a comment: whitespace collapsed to single spaces, `}` (which would end a PGN
-/// comment) written `)`, at most [`MAX_COMMENT_CHARS`] characters, cut between words. Returns
+/// comment) written `)`, at most [`MAX_COMMENT_BYTES`] bytes, cut between words. Returns
 /// whether anything was cut. Idempotent, so the builder and the PGN reader agree.
 pub(crate) fn append_comment(target: &mut String, text: &str) -> bool {
-    let mut count = target.chars().count();
+    let mut count = target.len();
     for word in text.split_whitespace() {
-        let need = word.chars().count().saturating_add(usize::from(!target.is_empty()));
-        if count.saturating_add(need) > MAX_COMMENT_CHARS {
+        // `}` and `)` are one byte each, so the word keeps its length.
+        let need = word.len().saturating_add(usize::from(!target.is_empty()));
+        if count.saturating_add(need) > MAX_COMMENT_BYTES {
             return true;
         }
         if !target.is_empty() {
