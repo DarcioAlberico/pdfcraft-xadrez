@@ -2918,6 +2918,10 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Games with no document open that autosave doesn't keep: {n}	Các ván không có tài liệu nào mở mà tính năng tự động lưu không giữ: {n}
 	Quit without saving	Thoát không lưu
 	Close without saving	Đóng không lưu
+	Games read only up to an impossible move: {n}	Các ván chỉ đọc được đến một nước đi không thể: {n}
+	The rest of them will not be written.	Phần còn lại của chúng sẽ không được ghi.
+	{name}: stopped at {move}	{name}: dừng ở {move}
+	Save them as they are	Lưu nguyên như vậy
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Không thể tự động lưu ván cờ: không khóa được thư mục dữ liệu của ứng dụng cho cửa sổ này.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Các ván cờ này được một cửa sổ PdfCraft khác tự động lưu. Các thay đổi ở đây không được tự động lưu.
 	Chess games couldn't be autosaved: {e}	Không thể tự động lưu ván cờ: {e}

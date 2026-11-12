@@ -2668,6 +2668,10 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Games with no document open that autosave doesn't keep: {n}	Partije brez odprtega dokumenta, ki jih samodejno shranjevanje ne ohrani: {n}
 	Quit without saving	Končaj brez shranjevanja
 	Close without saving	Zapri brez shranjevanja
+	Games read only up to an impossible move: {n}	Partije, prebrane le do nemogoče poteze: {n}
+	The rest of them will not be written.	Preostanek ne bo zapisan.
+	{name}: stopped at {move}	{name}: ustavljeno pri {move}
+	Save them as they are	Shrani jih takšne, kot so
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Šahovskih partij ni mogoče samodejno shranjevati: podatkovne mape aplikacije za to okno ni bilo mogoče zakleniti.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Te šahovske partije samodejno shranjuje drugo okno PdfCraft. Spremembe, narejene tukaj, se ne shranjujejo samodejno.
 	Chess games couldn't be autosaved: {e}	Šahovskih partij ni bilo mogoče samodejno shraniti: {e}

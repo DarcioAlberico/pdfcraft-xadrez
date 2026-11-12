@@ -2737,6 +2737,10 @@ chess undo step	Clear drawings	smazání kreseb
 	Games with no document open that autosave doesn't keep: {n}	Partie bez otevřeného dokumentu, které automatické ukládání neuchová: {n}
 	Quit without saving	Ukončit bez uložení
 	Close without saving	Zavřít bez uložení
+	Games read only up to an impossible move: {n}	Partie načtené jen po nemožný tah: {n}
+	The rest of them will not be written.	Zbytek z nich se nezapíše.
+	{name}: stopped at {move}	{name}: zastaveno na {move}
+	Save them as they are	Uložit je tak, jak jsou
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Šachové partie nelze automaticky ukládat: datovou složku aplikace se pro toto okno nepodařilo zamknout.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Tyto šachové partie automaticky ukládá jiné okno PdfCraft. Změny provedené zde se automaticky neukládají.
 	Chess games couldn't be autosaved: {e}	Šachové partie se nepodařilo automaticky uložit: {e}

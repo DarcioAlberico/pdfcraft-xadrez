@@ -2662,6 +2662,10 @@ chess undo step	Clear drawings	rajzok törlése
 	Games with no document open that autosave doesn't keep: {n}	Megnyitott dokumentum nélküli játszmák, amelyeket az automatikus mentés nem őriz meg: {n}
 	Quit without saving	Kilépés mentés nélkül
 	Close without saving	Bezárás mentés nélkül
+	Games read only up to an impossible move: {n}	Csak egy lehetetlen lépésig beolvasott játszmák: {n}
+	The rest of them will not be written.	A többi részük nem kerül kiírásra.
+	{name}: stopped at {move}	{name}: megállt itt: {move}
+	Save them as they are	Mentés úgy, ahogy vannak
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	A sakkjátszmák nem menthetők automatikusan: az alkalmazás adatmappáját nem sikerült zárolni ehhez az ablakhoz.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Ezeket a sakkjátszmákat egy másik PdfCraft-ablak menti automatikusan. Az itt végzett módosítások nem mentődnek automatikusan.
 	Chess games couldn't be autosaved: {e}	A sakkjátszmák automatikus mentése nem sikerült: {e}

@@ -2627,6 +2627,10 @@ chess undo step	Clear drawings	清除标记
 	Games with no document open that autosave doesn't keep: {n}	未打开文档时、自动保存未保留的对局：{n}
 	Quit without saving	不保存并退出
 	Close without saving	不保存并关闭
+	Games read only up to an impossible move: {n}	只读到不可能着法为止的对局：{n}
+	The rest of them will not be written.	其余部分将不会写入。
+	{name}: stopped at {move}	{name}：停在 {move}
+	Save them as they are	按原样保存
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	无法自动保存国际象棋对局：无法为此窗口锁定应用的数据文件夹。
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	另一个 PdfCraft 窗口正在自动保存这些国际象棋对局。此处的更改不会自动保存。
 	Chess games couldn't be autosaved: {e}	无法自动保存国际象棋对局：{e}

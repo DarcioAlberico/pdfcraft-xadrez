@@ -2685,6 +2685,10 @@ chess undo step	Clear drawings	видалення малюнків
 	Games with no document open that autosave doesn't keep: {n}	Партії без відкритого документа, яких автозбереження не зберігає: {n}
 	Quit without saving	Вийти без збереження
 	Close without saving	Закрити без збереження
+	Games read only up to an impossible move: {n}	Партії, прочитані лише до неможливого ходу: {n}
+	The rest of them will not be written.	Решту з них не буде записано.
+	{name}: stopped at {move}	{name}: зупинено на {move}
+	Save them as they are	Зберегти як є
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Шахові партії не можна зберігати автоматично: не вдалося заблокувати теку даних застосунку для цього вікна.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Ці шахові партії автоматично зберігає інше вікно PdfCraft. Зміни, зроблені тут, не зберігаються автоматично.
 	Chess games couldn't be autosaved: {e}	Не вдалося автоматично зберегти шахові партії: {e}

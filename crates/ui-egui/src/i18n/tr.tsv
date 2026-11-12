@@ -2659,6 +2659,10 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Games with no document open that autosave doesn't keep: {n}	Açık belge olmadan oynanan ve otomatik kaydın tutmadığı oyunlar: {n}
 	Quit without saving	Kaydetmeden çık
 	Close without saving	Kaydetmeden kapat
+	Games read only up to an impossible move: {n}	Yalnızca imkânsız bir hamleye kadar okunan oyunlar: {n}
+	The rest of them will not be written.	Geri kalanları yazılmayacak.
+	{name}: stopped at {move}	{name}: {move} hamlesinde durdu
+	Save them as they are	Oldukları gibi kaydet
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Satranç oyunları otomatik olarak kaydedilemiyor: uygulamanın veri klasörü bu pencere için kilitlenemedi.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Bu satranç oyunlarını başka bir PdfCraft penceresi otomatik olarak kaydediyor. Burada yapılan değişiklikler otomatik olarak kaydedilmiyor.
 	Chess games couldn't be autosaved: {e}	Satranç oyunları otomatik olarak kaydedilemedi: {e}

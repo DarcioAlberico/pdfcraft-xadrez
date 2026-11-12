@@ -2940,6 +2940,10 @@ chess undo step	Clear drawings	مسح الرسوم
 	Games with no document open that autosave doesn't keep: {n}	مباريات بلا مستند مفتوح لا يحفظها الحفظ التلقائي: {n}
 	Quit without saving	الخروج دون حفظ
 	Close without saving	الإغلاق دون حفظ
+	Games read only up to an impossible move: {n}	مباريات قُرئت فقط حتى نقلة مستحيلة: {n}
+	The rest of them will not be written.	لن يُكتب باقيها.
+	{name}: stopped at {move}	{name}: توقفت عند {move}
+	Save them as they are	احفظها كما هي
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	لا يمكن حفظ مباريات الشطرنج تلقائيًا: تعذّر قفل مجلد بيانات التطبيق لهذه النافذة.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	تحفظ نافذة أخرى من PdfCraft مباريات الشطرنج هذه تلقائيًا. لا تُحفظ التغييرات التي تُجرى هنا تلقائيًا.
 	Chess games couldn't be autosaved: {e}	تعذّر حفظ مباريات الشطرنج تلقائيًا: {e}
