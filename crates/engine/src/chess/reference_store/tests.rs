@@ -138,7 +138,37 @@ fn a_saved_document_keeps_its_pgn_under_its_new_keys() {
 }
 
 fn decision(inline: usize, choice: Choice) -> Decision {
-    Decision { page: 2, block: 1, inline, san: "Bb5".into(), choice }
+    Decision { page: 2, block: 1, inline, san: "Bb5".into(), san_read: None, choice }
+}
+
+/// Plan A9-L0b (R3-01): a decision is for its move by the move's address and the SAN as read. A
+/// move walked again from a corrected or confirmed diagram keeps its SAN read, while the SAN the
+/// walk writes can change (a repair undone): the decision stays on it; and a move printed
+/// otherwise at the same place, which the walk may write with the same SAN, is another move. A
+/// decision made before the SAN read was kept still goes by the walk's SAN.
+#[test]
+fn a_decision_stays_on_its_move_by_the_san_read() {
+    let at = pdfcraft_chessvision::doc::MoveAt { page: 0, block: 2, inline: 3 };
+    let d = Decision::new(at, "exd4".into(), "cxd4".into(), Choice::Book);
+    assert_eq!(d.san_read.as_deref(), Some("cxd4"));
+    assert!(d.is_for(at, "exd4", "cxd4"), "as decided");
+    assert!(d.is_for(at, "cxd4", "cxd4"), "walked again under the corrected diagram: the same printed move");
+    assert!(!d.is_for(at, "exd4", "exd4"), "another printed move at the same place");
+    assert!(!d.is_for(pdfcraft_chessvision::doc::MoveAt { inline: 4, ..at }, "exd4", "cxd4"), "another place");
+    let older = Decision { san_read: None, ..d.clone() };
+    assert!(older.is_for(at, "exd4", "anything"), "an older decision by the walk's SAN");
+    assert!(!older.is_for(at, "cxd4", "cxd4"));
+    // Written as before, with the SAN read beside; read by a build before as before.
+    let json = serde_json::to_string(&d).unwrap();
+    assert_eq!(json, r#"{"page":0,"block":2,"inline":3,"san":"exd4","san_read":"cxd4","choice":"book"}"#);
+    assert_eq!(serde_json::from_str::<Decision>(r#"{"page":0,"block":2,"inline":3,"san":"exd4","choice":"book"}"#).unwrap(), older);
+    // Deciding again on the same move replaces the choice, whatever the walk wrote since.
+    let mut file = ReferenceFile::new(DocRecord::new(&keys(), 10), kept(PGN));
+    file.decide(d.clone()).unwrap();
+    file.decide(Decision::new(at, "cxd4".into(), "cxd4".into(), Choice::Pgn)).unwrap();
+    assert_eq!(file.decisions.iter().map(|d| d.choice).collect::<Vec<_>>(), [Choice::Pgn]);
+    let long = Decision::new(at, "exd4".into(), "x".repeat(MAX_SAN + 1), Choice::Book);
+    assert!(matches!(file.decide(long), Err(ReferenceStoreError::NoMove)));
 }
 
 /// R6e: a decision on a move in conflict is kept with the PGN, in place of the one on the same

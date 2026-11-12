@@ -60,23 +60,30 @@ pub enum Choice {
 }
 
 /// The user's decision on a move of the text: its page (0-based), block and place in the block,
-/// its SAN as printed, and the choice.
+/// its SAN as the walk wrote it, the SAN as read, and the choice.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Decision {
     pub page: usize,
     pub block: usize,
     pub inline: usize,
+    /// The move's SAN as the walk wrote it when the choice was made (what builds before plan
+    /// A9-L0b match by, and still write).
     pub san: String,
+    /// The move's SAN as read (`MoveInline::san_read`, plan A9-L0b), which a walk with other
+    /// diagrams never changes; `None` in a decision made before it was kept.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub san_read: Option<String>,
     pub choice: Choice,
 }
 
 impl Decision {
-    /// The choice `choice` on the move at `at` printed `san`. Its place is written as the three
-    /// numbers the file has always had (the one address type, plan A9-T2a, takes their place in
-    /// the file with step G4).
-    pub fn new(at: MoveAt, san: String, choice: Choice) -> Decision {
+    /// The choice `choice` on the move at `at` the walk wrote `san` and the reader read
+    /// `san_read`. Its place is written as the three numbers the file has always had (the one
+    /// address type, plan A9-T2a, takes their place in the file with step G4).
+    pub fn new(at: MoveAt, san: String, san_read: String, choice: Choice) -> Decision {
         let to = |n: u32| usize::try_from(n).unwrap_or(usize::MAX);
-        Decision { page: to(at.page), block: to(at.block), inline: to(at.inline), san, choice }
+        let san_read = Some(san_read).filter(|s| !s.is_empty());
+        Decision { page: to(at.page), block: to(at.block), inline: to(at.inline), san, san_read, choice }
     }
 
     /// Where the move decided on is; `None` for a place no page holds.
@@ -85,9 +92,28 @@ impl Decision {
         Some(MoveAt { page: to(self.page)?, block: to(self.block)?, inline: to(self.inline)? })
     }
 
-    /// Whether this is the decision on the move at `at` printed `san`.
-    pub fn is_for(&self, at: MoveAt, san: &str) -> bool {
-        self.at() == Some(at) && self.san == san
+    /// Whether this is the decision on the move at `at` that the walk wrote `san` and the reader
+    /// read `san_read` (plan A9-L0b): its address, and the SAN read when the decision kept one,
+    /// else (a decision made before) the SAN the walk wrote. So a decision stays on its move when
+    /// the move is walked again from a corrected or confirmed diagram (its SAN read does not
+    /// change), and never lands on another move at the same place (one printed otherwise).
+    /// Matching by the SAN read alone, past a new segmentation, is step L1b's (§2.6).
+    pub fn is_for(&self, at: MoveAt, san: &str, san_read: &str) -> bool {
+        self.at() == Some(at)
+            && match &self.san_read {
+                Some(read) => read == san_read,
+                None => self.san == san,
+            }
+    }
+
+    /// Whether `self` and `other` are decisions on the same move: the same address, and the
+    /// same SAN read when both kept one, else the same SAN the walk wrote.
+    fn same_move(&self, other: &Decision) -> bool {
+        (self.page, self.block, self.inline) == (other.page, other.block, other.inline)
+            && match (&self.san_read, &other.san_read) {
+                (Some(a), Some(b)) => a == b,
+                _ => self.san == other.san,
+            }
     }
 }
 
@@ -218,7 +244,7 @@ impl ReferenceFile {
         if self.decisions.len() > MAX_DECISIONS {
             return Some(format!("more than {MAX_DECISIONS} decisions"));
         }
-        if self.decisions.iter().any(|d| d.san.is_empty() || d.san.len() > MAX_SAN) {
+        if self.decisions.iter().any(|d| d.san.is_empty() || d.san.len() > MAX_SAN || d.san_read.as_ref().is_some_and(|s| s.len() > MAX_SAN)) {
             return Some("a decision names no move".into());
         }
         None
@@ -226,10 +252,10 @@ impl ReferenceFile {
 
     /// Keep `decision` in place of the one on the same move. Refused past [`MAX_DECISIONS`].
     pub fn decide(&mut self, decision: Decision) -> Result<(), ReferenceStoreError> {
-        if decision.san.is_empty() || decision.san.len() > MAX_SAN {
+        if decision.san.is_empty() || decision.san.len() > MAX_SAN || decision.san_read.as_ref().is_some_and(|s| s.len() > MAX_SAN) {
             return Err(ReferenceStoreError::NoMove);
         }
-        self.decisions.retain(|d| (d.page, d.block, d.inline, &d.san) != (decision.page, decision.block, decision.inline, &decision.san));
+        self.decisions.retain(|d| !d.same_move(&decision));
         if self.decisions.len() >= MAX_DECISIONS {
             return Err(ReferenceStoreError::TooManyDecisions);
         }

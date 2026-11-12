@@ -454,30 +454,77 @@ pub struct Linked {
     /// What a person should know about the PGN: that it does not look like the book's, or that
     /// it was cut short.
     pub warnings: Vec<String>,
+    /// The document's moves were walked again from the diagrams the PGN confirmed with another
+    /// position (side to move, castling, number), and aligned once more (plan A9-L0b, A2-11).
+    pub walked_again: bool,
 }
 
 /// Align `doc` with `index` ([`align`]) and keep the links on its moves and diagrams: each move of
 /// a paragraph gets its [`MoveInline::reference`], and a recovered move keeps the reader's status
 /// and gains [`ReviewFlag::FromReference`] with the reference's move; each diagram the reference
 /// confirms or suggests a position for gets its [`DiagramBlock::reference`] (see the module
-/// documentation). The links of an earlier call are replaced, so linking twice is linking once.
+/// documentation).
+///
+/// **The games follow the diagrams confirmed** (plan A9-L0b, A2-11). A diagram the PGN confirms
+/// takes its side to move, castling and number, so the moves after it are walked again from the
+/// document as read ([`super::walk`], with the book's rules), with those diagrams as confirmed,
+/// and aligned once more: a move the reading's assumed side could not play is played, and the
+/// games and their PGN start where the book's do. A confirmed diagram's reading is updated as
+/// before (what was printed apart from what the PGN confirmed is step L6b's).
+///
+/// The links of an earlier call are replaced, and the moves are walked again from the diagrams as
+/// read before linking anew, so linking twice is linking once.
 pub fn link(doc: &mut ChessDoc, index: &ReferenceIndex) -> Linked {
+    let mut restored = false;
     for page in &mut doc.pages {
         for block in &mut page.blocks {
-            match block {
-                Block::Paragraph { inlines, .. } | Block::Heading { inlines, .. } => {
-                    for inline in inlines {
-                        if let Inline::Move(m) = inline {
-                            m.reference = None;
-                            m.review.retain(|f| !matches!(f, ReviewFlag::FromReference { .. }));
-                        }
-                    }
-                }
-                Block::Diagram(d) => unlink_diagram(d),
+            if let Block::Diagram(d) = block {
+                restored |= unlink_diagram(d);
             }
         }
     }
-    let alignment = align(doc, index);
+    if restored {
+        walk_again(doc);
+    }
+    let mut alignment = align(doc, index);
+    link_moves(doc, index, &alignment);
+    let diagrams = link_diagrams(doc, index, &alignment);
+    let walked_again = doc
+        .pages
+        .iter()
+        .flat_map(|p| &p.blocks)
+        .any(|b| matches!(b, Block::Diagram(d) if d.reference.as_ref().is_some_and(|r| r.kind == DiagramKind::Confirmed && r.before.is_some())));
+    if walked_again {
+        walk_again(doc);
+        alignment = align(doc, index);
+        link_moves(doc, index, &alignment);
+    }
+    let warnings = warnings(doc, index, &alignment);
+    Linked { alignment, diagrams, warnings, walked_again }
+}
+
+/// `doc`'s moves walked again from what was read on its pages, its diagrams as they stand now,
+/// with the book's rules ([`super::walk`]): its games made anew.
+fn walk_again(doc: &mut ChessDoc) {
+    let pages = std::mem::take(&mut doc.pages);
+    *doc = super::walk(&pages, super::WalkRules::BOOK);
+}
+
+/// Keep `alignment`'s links on `doc`'s moves, in place of any earlier ones: each move's
+/// [`MoveInline::reference`], and a recovered move's [`ReviewFlag::FromReference`].
+fn link_moves(doc: &mut ChessDoc, index: &ReferenceIndex, alignment: &Alignment) {
+    for page in &mut doc.pages {
+        for block in &mut page.blocks {
+            if let Block::Paragraph { inlines, .. } | Block::Heading { inlines, .. } = block {
+                for inline in inlines {
+                    if let Inline::Move(m) = inline {
+                        m.reference = None;
+                        m.review.retain(|f| !matches!(f, ReviewFlag::FromReference { .. }));
+                    }
+                }
+            }
+        }
+    }
     let at_page: HashMap<u32, usize> = doc.pages.iter().enumerate().map(|(k, p)| (p.index, k)).collect();
     for l in &alignment.moves {
         let page = at_page.get(&l.at.page).and_then(|&k| doc.pages.get_mut(k));
@@ -495,18 +542,16 @@ pub fn link(doc: &mut ChessDoc, index: &ReferenceIndex) -> Linked {
             }
         }
     }
-    let diagrams = link_diagrams(doc, index, &alignment);
-    let warnings = warnings(doc, index, &alignment);
-    Linked { alignment, diagrams, warnings }
 }
 
-/// Put back the diagram as it was before [`link`] confirmed it, and drop its link.
-fn unlink_diagram(d: &mut DiagramBlock) {
-    if let Some(before) = d.reference.take().and_then(|r| r.before) {
-        d.reading = Some(before.reading);
-        d.lichess_url = before.lichess_url;
-        d.review = before.review;
-    }
+/// Put back the diagram as it was before [`link`] confirmed it, and drop its link. Whether its
+/// reading was put back.
+fn unlink_diagram(d: &mut DiagramBlock) -> bool {
+    let Some(before) = d.reference.take().and_then(|r| r.before) else { return false };
+    d.reading = Some(before.reading);
+    d.lichess_url = before.lichess_url;
+    d.review = before.review;
+    true
 }
 
 /// Keep on `doc`'s diagrams the positions of `index` they show ([`DiagramKind::Confirmed`]) or

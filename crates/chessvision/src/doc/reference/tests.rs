@@ -262,8 +262,16 @@ fn link_keeps_the_links_on_the_moves_and_marks_what_the_pgn_recovered() {
     let index = ReferenceIndex::from_pgn("[Event \"Ch 1\"]\n\n1.e4 e6 2.d4 d5 3.Nc3 Bb4! 4.e5 c5 *\n").unwrap();
     let main = ["e4", "e6", "d4", "d5", "Nc3"];
     let after = vec![mv(Some((3, false)), "Nc3", OutOfSequence, None), mv(Some((3, true)), "Bb4", NotReached, None)];
-    let mut d = doc(vec![vec![para(played(&[], &main)), diagram(0, &fen_after(&main)), para(after)]]);
+    // The diagram reads as the PGN has it, so confirming it changes nothing and the moves keep the
+    // statuses given here (a confirmation that changes the reading walks the moves again: below).
+    let mut shown = diagram(0, &fen_after(&main));
+    if let Block::Diagram(d) = &mut shown {
+        let r = d.reading.as_mut().unwrap();
+        (r.fen, r.side_assumed) = (fen_after(&main), false);
+    }
+    let mut d = doc(vec![vec![para(played(&[], &main)), shown, para(after)]]);
     let linked = link(&mut d, &index);
+    assert!(!linked.walked_again);
     assert_eq!(linked.alignment.counts, LinkCounts { confirmed: 6, recovered: 1, conflict: 0, absent: 0 });
     assert!(linked.warnings.is_empty(), "{:?}", linked.warnings);
     let moves = moves_of(&d);
@@ -453,6 +461,38 @@ fn the_list_and_the_link_agree_on_what_is_the_same_position() {
     }
 }
 
+/// Plan A9-L0b (A2-11): the games follow the diagrams the PGN confirms. A diagram read with White
+/// to move assumed, which the PGN shows with Black to move, is confirmed with Black to move; the
+/// moves printed after it without numbers were walked with White to move and could not be played.
+/// `link` walks them again from the confirmed diagram (they are the PGN's moves now), and linking
+/// again gives the same document.
+#[test]
+fn the_moves_after_a_confirmed_diagram_are_walked_again_from_it() {
+    let index = ReferenceIndex::from_pgn("1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 *").unwrap();
+    let read = |d: &ChessDoc| moves_of(d).iter().map(|m| (m.text.clone(), m.status)).collect::<Vec<_>>();
+    let mut doc = crate::doc::walk(
+        &doc(vec![vec![
+            diagram(0, &fen_after(&["e4", "e5", "Nf3"])),
+            para(vec![mv(None, "Nc6", Unchecked, None), mv(None, "Bb5", Unchecked, None), mv(None, "a6", Unchecked, None)]),
+        ]])
+        .pages,
+        crate::doc::WalkRules::BOOK,
+    );
+    assert!(read(&doc).iter().all(|(_, s)| *s != MoveStatus::Valid), "with White to move assumed: {:?}", read(&doc));
+    let linked = link(&mut doc, &index);
+    assert_eq!(linked.diagrams.confirmed, 1);
+    assert!(linked.walked_again);
+    assert!(diagrams_of(&doc)[0].reading.as_ref().unwrap().fen.contains(" b KQkq "), "the PGN's side to move");
+    assert_eq!(read(&doc), [("Nc6".to_owned(), MoveStatus::Valid), ("Bb5".to_owned(), MoveStatus::Valid), ("a6".to_owned(), MoveStatus::Valid)]);
+    assert_eq!(doc.games.len(), 1);
+    assert_eq!(doc.games[0].score.mainline().len(), 3, "the game starts at the confirmed diagram");
+    assert_eq!(kinds(&linked.alignment), [Confirmed, Confirmed, Confirmed], "and its moves are the PGN's");
+    let once = doc.clone();
+    let again = link(&mut doc, &index);
+    assert_eq!(doc, once, "linking twice is linking once");
+    assert_eq!(again.alignment, linked.alignment);
+}
+
 fn arb_san() -> impl Strategy<Value = String> {
     prop_oneof![
         prop::sample::select(vec!["e4", "e5", "Nf3", "Nc6", "Bb5", "O-O", "0-0-0", "d4", "", "+", "Nxe5#"]).prop_map(String::from),
@@ -494,7 +534,8 @@ proptest! {
             "[\\[\\]\" a-hKQRBNOx0-9.+#=(){}*-]{0,80}",
         ],
     ) {
-        let d = doc(pages);
+        // A document as the reader gives it: walked.
+        let d = crate::doc::walk(&doc(pages).pages, crate::doc::WalkRules::BOOK);
         let moves = d.pages.iter().flat_map(|p| &p.blocks).filter(|b| matches!(b, Block::Paragraph { .. })).flat_map(|b| b.inlines()).filter(|i| matches!(i, Inline::Move(_))).count();
         if let Ok(index) = ReferenceIndex::from_pgn(&pgn) {
             let mut linked = d.clone();
@@ -508,14 +549,20 @@ proptest! {
                         prop_assert_eq!(&after.reading, &before.reading, "a suggestion is never applied");
                     }
                     Some(DiagramKind::Confirmed) => prop_assert!(after.reading.as_ref().is_some_and(|r| !r.side_assumed)),
-                    None => prop_assert_eq!(*after, before),
+                    // Untouched by the link; the walk's own flag may follow a confirmed diagram.
+                    None => {
+                        let walk_flag = |d: &DiagramBlock| d.review.iter().filter(|f| !matches!(f, ReviewFlag::NoStartPosition)).cloned().collect::<Vec<_>>();
+                        prop_assert_eq!((&after.reading, &after.lichess_url, walk_flag(after)), (&before.reading, &before.lichess_url, walk_flag(before)));
+                    }
                 }
             }
             let once = linked.clone();
             link(&mut linked, &index);
             prop_assert_eq!(&linked, &once);
             let a = align(&d, &index);
-            prop_assert_eq!(&l.alignment, &a);
+            // The alignment of the document as linked: walked again when a confirmed diagram
+            // changed (plan A9-L0b).
+            prop_assert_eq!(&l.alignment, &if l.walked_again { align(&linked, &index) } else { a.clone() });
             prop_assert_eq!(a.moves.len(), moves);
             let c = a.counts;
             prop_assert_eq!(c.confirmed + c.recovered + c.conflict + c.absent, moves);

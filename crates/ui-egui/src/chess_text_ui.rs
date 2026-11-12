@@ -186,6 +186,7 @@ pub enum TextAction {
     Decide {
         at: MoveAt,
         san: String,
+        san_read: String,
         choice: pdfcraft_engine::chess::reference_store::Choice,
     },
 }
@@ -453,7 +454,7 @@ pub fn text_tab(
                 Some(LinkKind::Confirmed) => counts.get_mut(0),
                 Some(LinkKind::Recovered) => counts.get_mut(1),
                 Some(LinkKind::Conflict) => {
-                    if pgn.choice(at, &m.san).is_none()
+                    if pgn.choice(at, &m.san, m.read_san()).is_none()
                         && let Some(open) = counts.get_mut(3)
                     {
                         *open = open.saturating_add(1);
@@ -510,7 +511,7 @@ pub fn text_tab(
                                 let linked = reference_note(m);
                                 // A conflict the user decided says what they chose (R6e).
                                 let conflict = linked.as_ref().is_some_and(|(k, _)| *k == LinkKind::Conflict);
-                                let choice = if conflict { pgn.choice(at, &m.san) } else { None };
+                                let choice = if conflict { pgn.choice(at, &m.san, m.read_san()) } else { None };
                                 let note = match choice {
                                     Some(Choice::Book) => Some(tl!("You kept the book's move.").to_string()),
                                     Some(Choice::Pgn) => {
@@ -585,7 +586,12 @@ pub fn text_tab(
                                             for (c, label) in [(Choice::Pgn, tl!("Use the PGN's move")), (Choice::Book, tl!("Keep the book's move"))]
                                             {
                                                 if choice != Some(c) && ui.button(label).clicked() {
-                                                    action = Some(TextAction::Decide { at, san: m.san.clone(), choice: c });
+                                                    action = Some(TextAction::Decide {
+                                                        at,
+                                                        san: m.san.clone(),
+                                                        san_read: m.read_san().to_owned(),
+                                                        choice: c,
+                                                    });
                                                     ui.close();
                                                 }
                                             }
@@ -964,7 +970,7 @@ impl PdfCraftApp {
             TextAction::BookPgn(false) => self.clear_book_pgn(),
             TextAction::SiblingPgn => self.use_sibling_pgn(),
             TextAction::LinkBook => self.link_whole_book(),
-            TextAction::Decide { at, san, choice } => self.decide_book_move(at, san, choice),
+            TextAction::Decide { at, san, san_read, choice } => self.decide_book_move(at, san, san_read, choice),
             TextAction::PgnGameAt { game, page } => {
                 let Some((vi, id)) = self.active_ids() else { return };
                 if let Some(view) = page.and_then(|p| self.views.get_mut(vi).map(|v| (v, p))) {

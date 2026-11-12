@@ -179,9 +179,10 @@ pub struct BookPgnView {
 }
 
 impl BookPgnView {
-    /// The user's choice for the move at `at` printed `san`, when they made one.
-    pub fn choice(&self, at: MoveAt, san: &str) -> Option<Choice> {
-        self.decisions.iter().find(|d| d.is_for(at, san)).map(|d| d.choice)
+    /// The user's choice for the move at `at` the walk wrote `san` and the reader read `san_read`,
+    /// when they made one ([`Decision::is_for`]).
+    pub fn choice(&self, at: MoveAt, san: &str, san_read: &str) -> Option<Choice> {
+        self.decisions.iter().find(|d| d.is_for(at, san, san_read)).map(|d| d.choice)
     }
 }
 
@@ -483,11 +484,11 @@ impl PdfCraftApp {
 
     /// Keep the user's choice for the move at `at` printed `san`, in conflict with the active
     /// document's book's PGN (R6e): the book's move stands, or the PGN's is the one to follow.
-    pub(crate) fn decide_book_move(&mut self, at: MoveAt, san: String, choice: Choice) {
+    pub(crate) fn decide_book_move(&mut self, at: MoveAt, san: String, san_read: String, choice: Choice) {
         let Some((_, id)) = self.active_ids() else { return };
         let Some(doc) = self.session.get(id) else { return };
         let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
-        let decision = Decision::new(at, san, choice);
+        let decision = Decision::new(at, san, san_read, choice);
         match self.chess.book_pgns.store.decide(&keys, pages, decision) {
             Ok(file) => {
                 if let Some(d) = self.chess.book_pgns.docs.iter_mut().find(|d| d.doc == id) {
