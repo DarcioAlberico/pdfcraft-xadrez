@@ -12,11 +12,15 @@
 //! 2. **Blocks.** A line belongs to the first hint whose box holds its centre; consecutive lines of
 //!    one hint form one heading or paragraph. Lines without a hint form paragraphs, a new one at a
 //!    gap taller than [`PARAGRAPH_GAP_SHARE`] of a line or a change of column. A diagram ends the
-//!    block before it.
+//!    block before it. Lines whose centre lies inside a diagram's box are that diagram's text, a
+//!    paragraph of [`BlockRole::DiagramText`] never joined with lines outside it, whatever their
+//!    font or hint ([`inside_diagram`]).
 //! 3. **Inlines.** Runs become inlines in order; a move number is kept with the move after it.
 //! 4. **Review.** Text reviews go to the inline they overlap most; what overlaps nothing, unknown
 //!    chess fonts and a poor text layer go to the page.
-//! 5. **Games.** The blocks go through the [`Walker`] in order, but for running heads
+//! 5. **Roles and games.** Each text block gets the role its page gives it ([`BlockRole`]:
+//!    the page's number, a game's header, a diagram's text; [`assign_roles`]), and the blocks go
+//!    through the [`Walker`] in order, but for the page's furniture and running heads
 //!    ([`RunningHeads`]), which end no game.
 
 use pdfcraft_chess::san::{FigurineSet, Lang, San, figurine};
@@ -24,7 +28,7 @@ use pdfcraft_chess::san::{FigurineSet, Lang, San, figurine};
 use super::fragment::{hyphen_join, join_hyphens};
 use super::games::{Key, Loc, Name, Seed, Walker};
 use super::header::{GameHeader, event_line, players_line};
-use super::{Block, ChessPage, DiagramBlock, HintKind, Inline, MoveInline, MoveNumber, MoveStatus, PageInput, ReviewFlag, UserRect};
+use super::{Block, BlockRole, ChessPage, DiagramBlock, HintKind, Inline, MoveInline, MoveNumber, MoveStatus, PageInput, ReviewFlag, UserRect};
 use crate::chess_text::{ChessLine, ChessRun, PoorReason, TextQuality};
 use crate::coords::{PageGeometry, ViewRect};
 
@@ -704,17 +708,27 @@ pub(crate) fn inlines(lines: &[&ChessLine], geometry: Option<&PageGeometry>) -> 
 }
 
 /// A block of `lines`, with the words a hyphen cut at a line's end joined ([`join_hyphens`]):
-/// `cal-` `culation` is one word in the text and in the games' comments.
-fn text_block(kind: Option<HintKind>, lines: &[&ChessLine], geometry: &PageGeometry) -> Block {
+/// `cal-` `culation` is one word in the text and in the games' comments. Lines inside a
+/// diagram's box (`diagram`) are a paragraph of [`BlockRole::DiagramText`], whatever the hint.
+fn text_block(kind: Option<HintKind>, lines: &[&ChessLine], geometry: &PageGeometry, diagram: bool) -> Block {
     let source_rect = lines.iter().map(|l| user(l.rect, geometry)).fold(None, union);
     let owned: Vec<ChessLine> = lines.iter().map(|l| (*l).clone()).collect();
     let joined = join_hyphens(&owned);
     let refs: Vec<&ChessLine> = joined.iter().collect();
     let inlines = inlines(&refs, Some(geometry));
     match kind {
-        Some(HintKind::Heading { level }) if titled(&inlines) => Block::Heading { level, inlines, source_rect },
-        _ => Block::Paragraph { inlines, source_rect },
+        _ if diagram => Block::Paragraph { inlines, source_rect, role: BlockRole::DiagramText },
+        Some(HintKind::Heading { level }) if titled(&inlines) => Block::Heading { level, inlines, source_rect, role: BlockRole::Content },
+        _ => Block::Paragraph { inlines, source_rect, role: BlockRole::Content },
     }
+}
+
+/// The diagram whose box (view space) holds the line's centre, if one does: the line is part of
+/// the diagram (its coordinates, a caption set inside it, a diagram font the catalogue does not
+/// know), whatever its font (plan A9-L1, A2-06).
+fn inside_diagram(line: &ChessLine, diagrams: &[Option<ViewRect>]) -> Option<usize> {
+    let (cx, cy) = ((line.rect.x0 + line.rect.x1) * 0.5, (line.rect.y0 + line.rect.y1) * 0.5);
+    diagrams.iter().position(|d| d.is_some_and(|d| cx >= d.x0 && cx <= d.x1 && cy >= d.y0 && cy <= d.y1))
 }
 
 /// Most moves a heading names (`The Evans Gambit: 4...Bb6 5 a4`).
@@ -745,10 +759,13 @@ fn blocks(input: &PageInput<'_>, carried: Option<u32>, folios: &[i64]) -> (Vec<B
     let mut blocks = Vec::new();
     let mut group: Vec<&ChessLine> = Vec::new();
     let mut key: Option<usize> = None;
-    let flush = |blocks: &mut Vec<Block>, group: &mut Vec<&ChessLine>, key: Option<usize>| {
+    // The diagram whose box holds the group's lines: they are its text, never joined with lines
+    // outside it.
+    let mut inside: Option<usize> = None;
+    let flush = |blocks: &mut Vec<Block>, group: &mut Vec<&ChessLine>, key: Option<usize>, inside: Option<usize>| {
         if !group.is_empty() {
             let kind = key.and_then(|k| hints.get(k)).map(|h| h.0);
-            blocks.push(text_block(kind, group, g));
+            blocks.push(text_block(kind, group, g, inside.is_some()));
             group.clear();
         }
     };
@@ -767,7 +784,7 @@ fn blocks(input: &PageInput<'_>, carried: Option<u32>, folios: &[i64]) -> (Vec<B
     for item in interleave(&ordered, &diagram_views, &splits, !gutters.is_empty()) {
         match item {
             Item::Diagram(i) => {
-                flush(&mut blocks, &mut group, key);
+                flush(&mut blocks, &mut group, key, inside);
                 if let Some(reading) = input.diagrams.get(i) {
                     let mut block = DiagramBlock::from_reading(i, reading);
                     block.puzzle = puzzles.get(i).copied().flatten().or(carried.take());
@@ -777,16 +794,25 @@ fn blocks(input: &PageInput<'_>, carried: Option<u32>, folios: &[i64]) -> (Vec<B
             }
             Item::Line(line) => {
                 let k = hint_of(line, &hints);
-                let joins = group.last().is_some_and(|prev| k == key && (k.is_some() || same_paragraph(prev.rect, line.rect)));
+                let d = inside_diagram(line, &diagram_views);
+                let joins = group.last().is_some_and(|prev| {
+                    d == inside
+                        && match d {
+                            // A diagram's lines are one block, whatever their hints.
+                            Some(_) => true,
+                            None => k == key && (k.is_some() || same_paragraph(prev.rect, line.rect)),
+                        }
+                });
                 if !joins {
-                    flush(&mut blocks, &mut group, key);
+                    flush(&mut blocks, &mut group, key, inside);
                     key = k;
+                    inside = d;
                 }
                 group.push(line);
             }
         }
     }
-    flush(&mut blocks, &mut group, key);
+    flush(&mut blocks, &mut group, key, inside);
     join_block_hyphens(&mut blocks);
     (blocks, trailing, offsets.into_iter().map(|(_, o)| o).collect())
 }
@@ -798,7 +824,10 @@ fn join_block_hyphens(blocks: &mut Vec<Block>) {
     let mut k = 1usize;
     while k < blocks.len() {
         let Some((head, tail)) = blocks.split_at_mut_checked(k) else { break };
-        if let (Some(Block::Paragraph { inlines: prev, .. }), Some(Block::Paragraph { inlines: next, .. })) = (head.last_mut(), tail.first_mut())
+        if let (
+            Some(Block::Paragraph { inlines: prev, role: BlockRole::Content, .. }),
+            Some(Block::Paragraph { inlines: next, role: BlockRole::Content, .. }),
+        ) = (head.last_mut(), tail.first_mut())
             && let Some(Inline::Text { text: end, .. }) = prev.last_mut()
             && let Some(Inline::Text { text: start, .. }) = next.first_mut()
             && let Some((joined, remainder)) = hyphen_join(end, start)
@@ -945,6 +974,55 @@ fn folio_blocks(blocks: &[Block]) -> Vec<usize> {
     out
 }
 
+/// Give a page's text blocks the roles the page decides alone ([`BlockRole`]): its printed number
+/// ([`folio_blocks`]) and its games' headers, the players' line and the event's line after it
+/// (the next text block: a diagram may come between, the page read across its columns,
+/// [`super::header`]); the text inside a diagram's box got its role when the lines were grouped
+/// ([`blocks`]) and keeps it. Returns each players' line's header as read, the event's in it.
+/// The same blocks always get the same roles, so a page built and the same page walked again
+/// from its JSON agree, and a page read before roles were kept walks as it did.
+fn assign_roles(blocks: &mut [Block]) -> Vec<Option<GameHeader>> {
+    let diagram_text = |b: &Block| b.role() == Some(BlockRole::DiagramText);
+    for block in blocks.iter_mut() {
+        if !diagram_text(block) {
+            block.set_role(BlockRole::Content);
+        }
+    }
+    let mut headers: Vec<Option<GameHeader>> = vec![None; blocks.len()];
+    let mut events: Vec<usize> = Vec::new();
+    for (bi, block) in blocks.iter().enumerate() {
+        if diagram_text(block) {
+            continue;
+        }
+        let Some(mut header) = block_text(block).as_deref().and_then(players_line) else { continue };
+        let next = blocks.iter().enumerate().skip(bi.saturating_add(1)).find(|(_, b)| !matches!(b, Block::Diagram(_)) && !diagram_text(b));
+        if let Some((next, b)) = next
+            && let Some(text) = block_text(b)
+            && event_line(&text, &mut header)
+        {
+            events.push(next);
+        }
+        if let Some(slot) = headers.get_mut(bi) {
+            *slot = Some(header);
+        }
+    }
+    let folios: Vec<usize> = folio_blocks(blocks).into_iter().filter(|&bi| blocks.get(bi).is_some_and(|b| !diagram_text(b))).collect();
+    // An event's line and the page's number are no game's header of their own.
+    for &bi in events.iter().chain(&folios) {
+        if let Some(slot) = headers.get_mut(bi) {
+            *slot = None;
+        }
+    }
+    for (bi, block) in blocks.iter_mut().enumerate() {
+        if folios.contains(&bi) {
+            block.set_role(BlockRole::Folio);
+        } else if events.contains(&bi) || headers.get(bi).is_some_and(Option::is_some) {
+            block.set_role(BlockRole::GameHeader);
+        }
+    }
+    headers
+}
+
 /// A text block's text, when it holds nothing but text: no move, sign or figurine.
 fn block_text(block: &Block) -> Option<String> {
     let (Block::Heading { inlines, .. } | Block::Paragraph { inlines, .. }) = block else { return None };
@@ -965,8 +1043,9 @@ fn block_text(block: &Block) -> Option<String> {
 /// does not count among the solutions ([`Name::caption`]).
 ///
 /// A running head ([`RunningHeads`]) is passed over: it ends no game and names no chapter or
-/// solution. So is the page's printed number ([`folio_blocks`]). A game's header (its players'
-/// line and its event's, [`super::header`]) ends the open game, and the next game takes its tags.
+/// solution. So are the page's furniture ([`assign_roles`]): its printed number, a header's
+/// event line and a diagram's own text. A game's header (its players' line and its event's,
+/// [`super::header`]) ends the open game, and the next game takes its tags.
 pub(crate) fn walk(page: u32, ocr: bool, blocks: &mut [Block], walker: &mut Walker, trailing: Option<u32>, heads: &mut RunningHeads) {
     for block in blocks.iter_mut() {
         if let Block::Heading { inlines, .. } | Block::Paragraph { inlines, .. } = block {
@@ -976,30 +1055,18 @@ pub(crate) fn walk(page: u32, ocr: bool, blocks: &mut [Block], walker: &mut Walk
     walker.read_by_ocr(ocr);
     let numbers: Vec<Option<u32>> = blocks.iter().map(|b| if let Block::Diagram(d) = b { d.puzzle } else { None }).collect();
     let last_diagram = blocks.iter().rposition(|b| matches!(b, Block::Diagram(_)));
-    let mut skipped = heads.page(blocks);
-    skipped.extend(folio_blocks(blocks));
-    // A game's header: its players' line, and the event's line after it (the next text block:
-    // a diagram may come between, the page read across its columns).
-    let mut headers: Vec<Option<GameHeader>> = vec![None; blocks.len()];
-    for (bi, block) in blocks.iter().enumerate() {
-        let Some(mut header) = block_text(block).as_deref().and_then(players_line) else { continue };
-        let next = blocks.iter().enumerate().skip(bi.saturating_add(1)).find(|(_, b)| !matches!(b, Block::Diagram(_)));
-        if let Some((next, b)) = next
-            && let Some(text) = block_text(b)
-            && event_line(&text, &mut header)
-        {
-            skipped.push(next);
-        }
-        if let Some(slot) = headers.get_mut(bi) {
-            *slot = Some(header);
-        }
-    }
+    let skipped = heads.page(blocks);
+    let mut headers = assign_roles(blocks);
     for (bi, block) in blocks.iter_mut().enumerate() {
         if skipped.contains(&bi) {
             continue;
         }
         if let Some(header) = headers.get_mut(bi).and_then(Option::take) {
             walker.header(header, page, block.source_rect());
+            continue;
+        }
+        // The page's furniture: its number, a header's event line, a diagram's own text.
+        if block.role().is_some_and(|r| !r.is_content()) {
             continue;
         }
         let caption = |n: u32| {
