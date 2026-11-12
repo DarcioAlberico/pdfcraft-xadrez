@@ -19,7 +19,10 @@
 //! (`PDFCRAFT_CHESS_TEST_MODELS`, `PDFCRAFT_CHESS_TEST_ENGINE`, from `--models` / `--engine` or
 //! those variables), with `PDFCRAFT_MODELS` and `PDFCRAFT_CHESS_ENGINE` taken out of their
 //! environment, and with `PDFCRAFT_REQUIRE_MODELS=1`, so a test that needs them fails instead of
-//! skipping. `--no-models` runs without them, and the summary says so.
+//! skipping. `--no-models` runs without them, and the summary says so. The tests of what an
+//! earlier build does with the files written now (plan A9 §2.10) get its command line as
+//! `PDFCRAFT_OLD_CLI`: `--old-cli EXE`, that variable, or else the installed build beside the
+//! main checkout (`dist/app/pdfcraft-cli.exe`) when there is one.
 //!
 //! A failing test passes the gate only when `xtask/known-failures.toml` lists it; a listed test
 //! that passes again fails the gate (unless its kind is `flaky`), so the list never hides a fix
@@ -99,6 +102,8 @@ struct Gate {
     merge_base: String,
     models: Option<PathBuf>,
     engine: Option<PathBuf>,
+    /// An earlier build's command line, for the format compatibility tests.
+    old_cli: Option<PathBuf>,
     no_models: bool,
     known: Vec<Known>,
     checks: Vec<Check>,
@@ -113,6 +118,8 @@ pub fn run(args: &[String]) -> anyhow::Result<()> {
     let no_models = args.iter().any(|a| a == "--no-models");
     let models = opt("--models").map(PathBuf::from).or_else(|| std::env::var_os("PDFCRAFT_CHESS_TEST_MODELS").map(PathBuf::from));
     let engine = opt("--engine").map(PathBuf::from).or_else(|| std::env::var_os("PDFCRAFT_CHESS_TEST_ENGINE").map(PathBuf::from));
+    let old_cli =
+        opt("--old-cli").map(PathBuf::from).or_else(|| std::env::var_os("PDFCRAFT_OLD_CLI").map(PathBuf::from)).or_else(|| installed_cli(&root));
 
     let merge_base = git(&root, &["merge-base", "HEAD", &base]).with_context(|| format!("no merge base with {base} (git fetch?)"))?;
     let merge_base = merge_base.trim().to_owned();
@@ -137,6 +144,7 @@ pub fn run(args: &[String]) -> anyhow::Result<()> {
         merge_base,
         models,
         engine,
+        old_cli,
         no_models,
         known: known.failure,
         checks: Vec::new(),
@@ -379,6 +387,9 @@ impl Gate {
             env.push(("PDFCRAFT_CHESS_TEST_MODELS".into(), self.models.as_ref().map(|p| p.display().to_string())));
             env.push(("PDFCRAFT_CHESS_TEST_ENGINE".into(), self.engine.as_ref().map(|p| p.display().to_string())));
         }
+        if let Some(cli) = &self.old_cli {
+            env.push(("PDFCRAFT_OLD_CLI".into(), Some(cli.display().to_string())));
+        }
         env
     }
 
@@ -402,6 +413,7 @@ impl Gate {
             "merge_base": self.merge_base,
             "changed": self.changed,
             "models": if self.no_models { json!("skipped (--no-models)") } else { json!({ "models": self.models, "engine": self.engine }) },
+            "old_cli": self.old_cli,
             "passed": failed.is_none(),
             "failed_stage": failed.map(|(n, name)| json!({ "stage": n, "name": name })),
             "checks": self.checks.iter().map(|c| json!({
@@ -422,6 +434,15 @@ fn short(rev: &str) -> &str {
 
 fn first_line(s: &str) -> &str {
     s.lines().next().unwrap_or("")
+}
+
+/// The installed build's command line beside the main checkout (`dist/app/pdfcraft-cli.exe`, or
+/// without `.exe` elsewhere), when there is one: worktrees have no `dist/`, so it is looked for
+/// beside the repository's common git folder.
+fn installed_cli(root: &Path) -> Option<PathBuf> {
+    let common = git(root, &["rev-parse", "--path-format=absolute", "--git-common-dir"]).ok()?;
+    let main = PathBuf::from(common.trim()).parent()?.to_path_buf();
+    ["pdfcraft-cli.exe", "pdfcraft-cli"].iter().map(|name| main.join("dist").join("app").join(name)).find(|p| p.is_file())
 }
 
 fn git(root: &Path, args: &[&str]) -> anyhow::Result<String> {
