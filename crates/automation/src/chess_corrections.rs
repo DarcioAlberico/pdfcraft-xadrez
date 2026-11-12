@@ -8,7 +8,9 @@
 use pdfcraft_engine::DocId;
 #[cfg(not(target_arch = "wasm32"))]
 use pdfcraft_engine::chess::corrections::DirStore;
-use pdfcraft_engine::chess::corrections::{CorrectionError, Kind, Loaded, Located, NewCorrection, Original, Status, StoreError, normalize};
+use pdfcraft_engine::chess::corrections::{
+    CorrectionError, Fingerprints, Kind, Loaded, Located, NewCorrection, Original, Status, StoreError, normalize,
+};
 use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
 use pdfcraft_engine::chess::{ChessDocument, DocKeys};
 use serde_json::{Value, json};
@@ -187,8 +189,9 @@ impl Automation {
         let found = scanned.first().ok_or_else(|| failed("the page could not be scanned"))?.clone();
         let crop = found.geometry.map(|g| g.crop_box()).ok_or_else(|| failed("the page's crop box could not be read"))?;
         let doc = self.session.get(id).ok_or_else(|| failed("no such document"))?;
-        let (keys, fingerprints) = (doc.doc_keys(), doc.page_fingerprints());
-        let kept = match store.load(&keys, fingerprints.len()) {
+        // Asked once per diagram: the fingerprints indexed once (plan A9-G2b).
+        let (keys, fingerprints) = (doc.doc_keys(), Fingerprints::new(doc.page_fingerprints()));
+        let kept = match store.load(&keys, fingerprints.pages().len()) {
             Ok(loaded) => Some(loaded.file),
             Err(StoreError::NoKeys) => None,
             Err(e) => return Err(failed(e)),
