@@ -2573,6 +2573,8 @@ animation effects	Off	Vypnuto
 	Black pawn	Černý pěšec
 	White	Bílý
 	Board: {fen}	Šachovnice: {fen}
+	Board, {state}, move {n}	Šachovnice, {state}, tah {n}
+	Board, {state}	Šachovnice, {state}
 	Click a square to put the chosen piece there; click it again to empty it.	Klepnutím na pole tam položíte zvolenou figuru; dalším klepnutím pole vyprázdníte.
 	Close the editor	Zavřít editor
 	Draw this position over the diagram on the page (one undo step).	Nakreslit tuto pozici přes diagram na stránce (jeden krok zpět).
@@ -2585,6 +2587,7 @@ animation effects	Off	Vypnuto
 	Replace on the page	Nahradit na stránce
 	The board couldn't be drawn: {e}	Šachovnici se nepodařilo nakreslit: {e}
 	To move:	Na tahu:
+	To move	Na tahu
 	Move number:	Číslo tahu:
 	The move the diagram stands at: 35 with Black to move is 35…	Tah, u kterého diagram stojí: 35 s černým na tahu je 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Tah, kterým partie začíná, k opravě, když nebyl přečten: 35 s černým na tahu je 35…
@@ -2773,14 +2776,13 @@ chess undo step	Clear drawings	smazání kreseb
 	Demote a line	snížení linie
 	Delete a variation	smazání varianty
 # Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
-	Dock	Ukotvit
 	The chess board couldn't open in its own window, so it is back in its panel.	Šachovnici nebylo možné otevřít ve vlastním okně, proto je zpět ve svém panelu.
 	The chess board couldn't open in its own window, so it stays in its panel.	Šachovnici nebylo možné otevřít ve vlastním okně, proto zůstává ve svém panelu.
 # Chess ▸ PGN toolbar: T13b, the whole chess panel in its own window (the rail's tool and the command, the window's tab strip and Dock button, the Inspector's note while it is out).
 	Chess in its own window	Šachy ve vlastním okně
 	Board	Šachovnice
 	The chess panel is in its own window.	Šachový panel je ve vlastním okně.
-	Bring it back	Vrátit zpět
+	Back to the main window	Zpět do hlavního okna
 	Put the board and the chess panel back in the main window	Vrátit šachovnici a šachový panel do hlavního okna
 
 # Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
@@ -2991,7 +2993,8 @@ chess undo step	Clear drawings	smazání kreseb
 	Variation of {move}	Varianta k {move}
 	moves: {n}	tahů: {n}
 # Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
-	Fit at	Umístit na
+	Insert in	Vložit do
+	Piece letters	Písmena figur
 	Apply and keep the rest as a comment	Použít a zbytek ponechat jako komentář
 	Unreadable move	Nečitelný tah
 	Past the capture's limits	Mimo meze zachycení
@@ -3265,12 +3268,15 @@ chess undo step	Clear drawings	smazání kreseb
 	More ways to confirm	Další způsoby potvrzení
 	Confirm and next	Potvrdit a dál
 	Only confirm	Jen potvrdit
+	Confirm	Potvrdit
+	Confirmed	Potvrzeno
+	This position is kept for the diagram. Change it to confirm again.	Tato pozice je u diagramu uložena. Změňte ji, chcete-li potvrdit znovu.
 	Keep this position for the diagram, without changing the PDF.	Ponechat tuto pozici pro diagram, aniž by se změnilo PDF.
 	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	Ponechat tuto pozici pro diagram, aniž by se změnilo PDF, a otevřít další ke kontrole (Ctrl+Enter).
 	More actions	Další akce
 	Forget the correction	Zapomenout opravu
 	Show what was read again; the PDF is not changed.	Znovu ukázat, co bylo přečteno; PDF se nemění.
-	Diagram board: {fen}	Šachovnice diagramu: {fen}
+	Diagram board, page {p}, diagram {n}	Šachovnice diagramu, stránka {p}, diagram {n}
 	Classic diagram editor	Klasický editor diagramů
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Upravovat diagramy v panelu Diagramy jako před kartou Diagram. Tato volba v některé příští verzi zmizí.
 # Plan A8 P3b3: drafts and the question about them.
@@ -3325,6 +3331,7 @@ chess undo step	Clear drawings	smazání kreseb
 	Page {p}: {done}	Strana {p}: {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} diagram zkontrolován|{n} diagramy zkontrolovány|{n} diagramů zkontrolováno
 	Export chess book	Exportovat šachovou knihu
+	Export book…	Exportovat knihu…
 	PGN — games	PGN — partie
 	EPUB — e-book	EPUB — e-kniha
 	HTML — web page	HTML — webová stránka
@@ -3414,6 +3421,14 @@ castling	long	dlouhá
 	The book's PGN plays this move from another position: check it.	PGN knihy hraje tento tah z jiné pozice: zkontrolujte ho.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	PGN knihy na této stránce: potvrzeno {confirmed}, přečteno z PGN {recovered}, v rozporu {conflict}.
 	Confirmed by the PGN	Potvrzeno PGN
+	All ({n})	Všechny ({n})
+	Read ({n})	Přečtené ({n})
+	To review ({n})	K revizi ({n})
+	Not read ({n})	Nepřečtené ({n})
+	With an error ({n})	S chybou ({n})
+	Verified ({n})	Ověřené ({n})
+	Corrected ({n})	Opravené ({n})
+	Confirmed by the PGN ({n})	Potvrzené PGN ({n})
 	The book's PGN has this position, so it needs no review.	PGN knihy tuto pozici obsahuje, takže ji není třeba kontrolovat.
 	PGN games from	Partie PGN z
 	The book's PGN, with the book's text	PGN knihy s textem knihy
@@ -3427,10 +3442,10 @@ castling	long	dlouhá
 	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	Vedle tohoto PDF je PGN se stejným názvem: uložte ho jako PGN knihy.
 	Double-click to open the book's PGN game here.	Poklepáním otevřete zde partii z PGN knihy.
 	Open the book's PGN game here	Otevřít zde partii z PGN knihy
-	Linking the whole book to its PGN…	Propojování celé knihy s jejím PGN…
-	Linking the whole book: page {done} of {of}	Propojování celé knihy: stránka {done} z {of}
-	Link the whole book again	Propojit celou knihu znovu
-	Link the whole book	Propojit celou knihu
+	Aligning the book to the PGN…	Slaďování knihy s PGN…
+	Aligning the book to the PGN: page {done} of {of}	Slaďování knihy s PGN: stránka {done} z {of}
+	Align again	Sladit znovu
+	Align the book to the PGN	Sladit knihu s PGN
 	Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book.	Přečte všechny stránky a propojí je s PGN knihy: kolik tahů potvrdí, přečte z PGN a najde v rozporu a na které stránce začíná každá partie. Trvá to stejně dlouho jako export knihy.
 	Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages.	Celá kniha: propojeno {linked} z {moves} tahů (přečteno z PGN {recovered}), v rozporu {conflict}, na {pages} z {all} stránek.
 	Games of the book's PGN ({n})	Partie z PGN knihy ({n})

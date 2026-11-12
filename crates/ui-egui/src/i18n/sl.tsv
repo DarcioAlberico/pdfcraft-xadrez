@@ -2504,6 +2504,8 @@ animation effects	Off	Izklopljeni
 	Black pawn	Črni kmet
 	White	Beli
 	Board: {fen}	Šahovnica: {fen}
+	Board, {state}, move {n}	Šahovnica, {state}, poteza {n}
+	Board, {state}	Šahovnica, {state}
 	Click a square to put the chosen piece there; click it again to empty it.	Kliknite polje, da nanj postavite izbrano figuro; znova kliknite, da ga izpraznite.
 	Close the editor	Zapri urejevalnik
 	Draw this position over the diagram on the page (one undo step).	Nariši ta položaj čez diagram na strani (en korak razveljavitve).
@@ -2516,6 +2518,7 @@ animation effects	Off	Izklopljeni
 	Replace on the page	Zamenjaj na strani
 	The board couldn't be drawn: {e}	Šahovnice ni bilo mogoče narisati: {e}
 	To move:	Na potezi:
+	To move	Na potezi
 	Move number:	Številka poteze:
 	The move the diagram stands at: 35 with Black to move is 35…	Poteza, pri kateri je diagram: 35 s črnim na potezi je 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Poteza, s katero se partija začne, za popravek, ko ni bila prebrana: 35 s črnim na potezi je 35…
@@ -2704,14 +2707,13 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Demote a line	znižanje linije
 	Delete a variation	brisanje variante
 # Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
-	Dock	Zasidraj
 	The chess board couldn't open in its own window, so it is back in its panel.	Šahovnice ni bilo mogoče odpreti v lastnem oknu, zato je spet na svoji plošči.
 	The chess board couldn't open in its own window, so it stays in its panel.	Šahovnice ni bilo mogoče odpreti v lastnem oknu, zato ostaja na svoji plošči.
 # Chess ▸ PGN toolbar: T13b, the whole chess panel in its own window (the rail's tool and the command, the window's tab strip and Dock button, the Inspector's note while it is out).
 	Chess in its own window	Šah v lastnem oknu
 	Board	Šahovnica
 	The chess panel is in its own window.	Šahovska plošča je v lastnem oknu.
-	Bring it back	Vrni nazaj
+	Back to the main window	Nazaj v glavno okno
 	Put the board and the chess panel back in the main window	Vrni šahovnico in šahovsko ploščo v glavno okno
 
 # Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
@@ -2922,7 +2924,8 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Variation of {move}	Varianta k {move}
 	moves: {n}	potez: {n}
 # Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
-	Fit at	Umesti pri
+	Insert in	Vstavi v
+	Piece letters	Črke figur
 	Apply and keep the rest as a comment	Uporabi in ostanek obdrži kot komentar
 	Unreadable move	Neberljiva poteza
 	Past the capture's limits	Zunaj meja zajema
@@ -3196,12 +3199,15 @@ chess undo step	Clear drawings	odstranjevanje risb
 	More ways to confirm	Drugi načini potrditve
 	Confirm and next	Potrdi in naprej
 	Only confirm	Samo potrdi
+	Confirm	Potrdi
+	Confirmed	Potrjeno
+	This position is kept for the diagram. Change it to confirm again.	Ta pozicija je shranjena za diagram. Spremenite jo, da jo znova potrdite.
 	Keep this position for the diagram, without changing the PDF.	Obdrži ta položaj za diagram, ne da bi se PDF spremenil.
 	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	Obdrži ta položaj za diagram, ne da bi se PDF spremenil, in odpri naslednjega za pregled (Ctrl+Enter).
 	More actions	Več dejanj
 	Forget the correction	Pozabi popravek
 	Show what was read again; the PDF is not changed.	Znova pokaži prebrano; PDF se ne spremeni.
-	Diagram board: {fen}	Šahovnica diagrama: {fen}
+	Diagram board, page {p}, diagram {n}	Šahovnica diagrama, stran {p}, diagram {n}
 	Classic diagram editor	Klasični urejevalnik diagramov
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Urejaj diagrame v podoknu Diagrami, kot pred zavihkom Diagram. Ta možnost bo v eni od prihodnjih različic izginila.
 # Plan A8 P3b3: drafts and the question about them.
@@ -3256,6 +3262,7 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Page {p}: {done}	Stran {p}: {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} diagram preverjen|{n} diagrama preverjena|{n} diagrami preverjeni|{n} diagramov preverjenih
 	Export chess book	Izvozi šahovsko knjigo
+	Export book…	Izvozi knjigo…
 	PGN — games	PGN — partije
 	EPUB — e-book	EPUB — e-knjiga
 	HTML — web page	HTML — spletna stran
@@ -3345,6 +3352,14 @@ castling	long	dolga
 	The book's PGN plays this move from another position: check it.	PGN knjige igra to potezo iz drugega položaja: preverite jo.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	PGN knjige na tej strani: potrjenih {confirmed}, prebranih iz PGN {recovered}, v sporu {conflict}.
 	Confirmed by the PGN	Potrjeno s PGN
+	All ({n})	Vsi ({n})
+	Read ({n})	Prebrani ({n})
+	To review ({n})	Za pregled ({n})
+	Not read ({n})	Neprebrani ({n})
+	With an error ({n})	Z napako ({n})
+	Verified ({n})	Preverjeni ({n})
+	Corrected ({n})	Popravljeni ({n})
+	Confirmed by the PGN ({n})	Potrjeni s PGN ({n})
 	The book's PGN has this position, so it needs no review.	PGN knjige vsebuje ta položaj, zato ga ni treba preveriti.
 	PGN games from	Partije PGN iz
 	The book's PGN, with the book's text	PGN knjige z besedilom knjige
@@ -3358,10 +3373,10 @@ castling	long	dolga
 	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	Ob tem PDF je PGN z enakim imenom: shranite ga kot PGN knjige.
 	Double-click to open the book's PGN game here.	Dvokliknite, da tukaj odprete partijo iz PGN knjige.
 	Open the book's PGN game here	Odpri tukaj partijo iz PGN knjige
-	Linking the whole book to its PGN…	Povezovanje cele knjige z njenim PGN …
-	Linking the whole book: page {done} of {of}	Povezovanje cele knjige: stran {done} od {of}
-	Link the whole book again	Znova poveži celo knjigo
-	Link the whole book	Poveži celo knjigo
+	Aligning the book to the PGN…	Usklajevanje knjige s PGN…
+	Aligning the book to the PGN: page {done} of {of}	Usklajevanje knjige s PGN: stran {done} od {of}
+	Align again	Uskladi znova
+	Align the book to the PGN	Uskladi knjigo s PGN
 	Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book.	Prebere vse strani in jih poveže s PGN knjige: koliko potez potrdi, prebere iz PGN in najde v sporu ter stran, na kateri se začne vsaka partija. Traja toliko kot izvoz knjige.
 	Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages.	Cela knjiga: povezanih {linked} od {moves} potez (prebranih iz PGN {recovered}), v sporu {conflict}, na {pages} od {all} strani.
 	Games of the book's PGN ({n})	Partije iz PGN knjige ({n})

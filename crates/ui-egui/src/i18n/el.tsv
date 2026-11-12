@@ -2505,6 +2505,8 @@ animation effects	Off	Ανενεργά
 	Black pawn	Μαύρο πιόνι
 	White	Λευκά
 	Board: {fen}	Σκακιέρα: {fen}
+	Board, {state}, move {n}	Σκακιέρα, {state}, κίνηση {n}
+	Board, {state}	Σκακιέρα, {state}
 	Click a square to put the chosen piece there; click it again to empty it.	Κάντε κλικ σε ένα τετράγωνο για να βάλετε εκεί το επιλεγμένο κομμάτι· κάντε ξανά κλικ για να το αδειάσετε.
 	Close the editor	Κλείσιμο επεξεργαστή
 	Draw this position over the diagram on the page (one undo step).	Σχεδίαση αυτής της θέσης πάνω από το διάγραμμα στη σελίδα (ένα βήμα αναίρεσης).
@@ -2517,6 +2519,7 @@ animation effects	Off	Ανενεργά
 	Replace on the page	Αντικατάσταση στη σελίδα
 	The board couldn't be drawn: {e}	Η σκακιέρα δεν σχεδιάστηκε: {e}
 	To move:	Παίζουν:
+	To move	Παίζουν
 	Move number:	Αριθμός κίνησης:
 	The move the diagram stands at: 35 with Black to move is 35…	Η κίνηση στην οποία βρίσκεται το διάγραμμα: 35 με τα μαύρα να παίζουν είναι 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Η κίνηση από την οποία αρχίζει η παρτίδα, για διόρθωση όταν δεν διαβάστηκε: 35 με τα μαύρα να παίζουν είναι 35…
@@ -2659,14 +2662,13 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Demote a line	υποβιβασμού γραμμής
 	Delete a variation	διαγραφής παραλλαγής
 # Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
-	Dock	Προσάρτηση
 	The chess board couldn't open in its own window, so it is back in its panel.	Η σκακιέρα δεν ήταν δυνατό να ανοίξει σε δικό της παράθυρο, οπότε επέστρεψε στο πλαίσιό της.
 	The chess board couldn't open in its own window, so it stays in its panel.	Η σκακιέρα δεν ήταν δυνατό να ανοίξει σε δικό της παράθυρο, οπότε μένει στο πλαίσιό της.
 # Chess ▸ PGN toolbar: T13b, the whole chess panel in its own window (the rail's tool and the command, the window's tab strip and Dock button, the Inspector's note while it is out).
 	Chess in its own window	Σκάκι σε δικό του παράθυρο
 	Board	Σκακιέρα
 	The chess panel is in its own window.	Το πλαίσιο σκακιού είναι σε δικό του παράθυρο.
-	Bring it back	Επαναφορά
+	Back to the main window	Επιστροφή στο κύριο παράθυρο
 	Put the board and the chess panel back in the main window	Επιστροφή της σκακιέρας και του πλαισίου σκακιού στο κύριο παράθυρο
 
 # Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
@@ -2877,7 +2879,8 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Variation of {move}	Παραλλαγή της {move}
 	moves: {n}	κινήσεις: {n}
 # Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
-	Fit at	Θέση
+	Insert in	Εισαγωγή σε
+	Piece letters	Γράμματα κομματιών
 	Apply and keep the rest as a comment	Εφαρμογή και διατήρηση του υπολοίπου ως σχόλιο
 	Unreadable move	Μη αναγνώσιμη κίνηση
 	Past the capture's limits	Πέρα από τα όρια της καταγραφής
@@ -3151,12 +3154,15 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	More ways to confirm	Άλλοι τρόποι επιβεβαίωσης
 	Confirm and next	Επιβεβαίωση και επόμενο
 	Only confirm	Μόνο επιβεβαίωση
+	Confirm	Επιβεβαίωση
+	Confirmed	Επιβεβαιώθηκε
+	This position is kept for the diagram. Change it to confirm again.	Αυτή η θέση έχει κρατηθεί για το διάγραμμα. Αλλάξτε τη για να επιβεβαιώσετε ξανά.
 	Keep this position for the diagram, without changing the PDF.	Κράτηση αυτής της θέσης για το διάγραμμα, χωρίς αλλαγή του PDF.
 	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	Κράτηση αυτής της θέσης για το διάγραμμα, χωρίς αλλαγή του PDF, και άνοιγμα του επόμενου για έλεγχο (Ctrl+Enter).
 	More actions	Περισσότερες ενέργειες
 	Forget the correction	Ξέχασε τη διόρθωση
 	Show what was read again; the PDF is not changed.	Εμφάνιση ξανά όσων διαβάστηκαν· το PDF δεν αλλάζει.
-	Diagram board: {fen}	Σκακιέρα διαγράμματος: {fen}
+	Diagram board, page {p}, diagram {n}	Σκακιέρα διαγράμματος, σελίδα {p}, διάγραμμα {n}
 	Classic diagram editor	Κλασικός επεξεργαστής διαγραμμάτων
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Επεξεργασία διαγραμμάτων μέσα στο πλαίσιο Διαγράμματα, όπως πριν από την καρτέλα Διάγραμμα. Η επιλογή αυτή θα καταργηθεί σε μελλοντική έκδοση.
 # Plan A8 P3b3: drafts and the question about them.
@@ -3211,6 +3217,7 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Page {p}: {done}	Σελίδα {p}: {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} διάγραμμα ελέγχθηκε|{n} διαγράμματα ελέγχθηκαν
 	Export chess book	Εξαγωγή σκακιστικού βιβλίου
+	Export book…	Εξαγωγή βιβλίου…
 	PGN — games	PGN — παρτίδες
 	EPUB — e-book	EPUB — ηλεκτρονικό βιβλίο
 	HTML — web page	HTML — ιστοσελίδα
@@ -3300,6 +3307,14 @@ castling	long	μεγάλο
 	The book's PGN plays this move from another position: check it.	Το PGN του βιβλίου παίζει αυτή την κίνηση από άλλη θέση: ελέγξτε την.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	PGN του βιβλίου σε αυτή τη σελίδα: {confirmed} επιβεβαιωμένες, {recovered} από το PGN, {conflict} σε σύγκρουση.
 	Confirmed by the PGN	Επιβεβαιωμένο από το PGN
+	All ({n})	Όλα ({n})
+	Read ({n})	Αναγνωσμένα ({n})
+	To review ({n})	Για έλεγχο ({n})
+	Not read ({n})	Μη αναγνωσμένα ({n})
+	With an error ({n})	Με σφάλμα ({n})
+	Verified ({n})	Επαληθευμένα ({n})
+	Corrected ({n})	Διορθωμένα ({n})
+	Confirmed by the PGN ({n})	Επιβεβαιωμένα από το PGN ({n})
 	The book's PGN has this position, so it needs no review.	Το PGN του βιβλίου έχει αυτή τη θέση, οπότε δεν χρειάζεται έλεγχο.
 	PGN games from	Παρτίδες PGN από
 	The book's PGN, with the book's text	Το PGN του βιβλίου, με το κείμενο του βιβλίου
@@ -3313,10 +3328,10 @@ castling	long	μεγάλο
 	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	Δίπλα σε αυτό το PDF υπάρχει PGN με το ίδιο όνομα: φυλάξτε το ως PGN του βιβλίου.
 	Double-click to open the book's PGN game here.	Κάντε διπλό κλικ για να ανοίξετε εδώ την παρτίδα του PGN του βιβλίου.
 	Open the book's PGN game here	Άνοιγμα εδώ της παρτίδας του PGN του βιβλίου
-	Linking the whole book to its PGN…	Σύνδεση ολόκληρου του βιβλίου με το PGN του…
-	Linking the whole book: page {done} of {of}	Σύνδεση ολόκληρου του βιβλίου: σελίδα {done} από {of}
-	Link the whole book again	Νέα σύνδεση ολόκληρου του βιβλίου
-	Link the whole book	Σύνδεση ολόκληρου του βιβλίου
+	Aligning the book to the PGN…	Ευθυγράμμιση του βιβλίου με το PGN…
+	Aligning the book to the PGN: page {done} of {of}	Ευθυγράμμιση του βιβλίου με το PGN: σελίδα {done} από {of}
+	Align again	Ευθυγράμμιση ξανά
+	Align the book to the PGN	Ευθυγράμμιση του βιβλίου με το PGN
 	Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book.	Διαβάζει κάθε σελίδα και τη συνδέει με το PGN του βιβλίου: πόσες κινήσεις επιβεβαιώνει, διαβάζει από το PGN και βρίσκει σε σύγκρουση, και τη σελίδα όπου αρχίζει κάθε παρτίδα. Διαρκεί όσο η εξαγωγή του βιβλίου.
 	Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages.	Ολόκληρο το βιβλίο: συνδέθηκαν {linked} από {moves} κινήσεις ({recovered} από το PGN), {conflict} σε σύγκρουση, σε {pages} από {all} σελίδες.
 	Games of the book's PGN ({n})	Παρτίδες του PGN του βιβλίου ({n})

@@ -2497,6 +2497,8 @@ animation effects	Off	Өшірулі
 	Black pawn	Қара пешка
 	White	Ақтар
 	Board: {fen}	Тақта: {fen}
+	Board, {state}, move {n}	Тақта, {state}, {n}-жүріс
+	Board, {state}	Тақта, {state}
 	Click a square to put the chosen piece there; click it again to empty it.	Таңдалған фигураны қою үшін шаршыны басыңыз; босату үшін қайта басыңыз.
 	Close the editor	Редакторды жабу
 	Draw this position over the diagram on the page (one undo step).	Бұл позицияны беттегі диаграмманың үстіне салу (бір болдырмау қадамы).
@@ -2509,6 +2511,7 @@ animation effects	Off	Өшірулі
 	Replace on the page	Бетте ауыстыру
 	The board couldn't be drawn: {e}	Тақтаны салу мүмкін болмады: {e}
 	To move:	Жүріс:
+	To move	Жүріс
 	Move number:	Жүріс нөмірі:
 	The move the diagram stands at: 35 with Black to move is 35…	Диаграмма тұрған жүріс: қаралар жүретін 35 — 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Партия басталатын жүріс, оқылмаған кезде түзету үшін: қаралар жүретін 35 — 35…
@@ -2697,14 +2700,13 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Demote a line	желіні төмендету
 	Delete a variation	нұсқаны өшіру
 # Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
-	Dock	Бекіту
 	The chess board couldn't open in its own window, so it is back in its panel.	Шахмат тақтасын жеке терезеде ашу мүмкін болмады, сондықтан ол өз тақтасына қайтарылды.
 	The chess board couldn't open in its own window, so it stays in its panel.	Шахмат тақтасын жеке терезеде ашу мүмкін болмады, сондықтан ол өз тақтасында қалады.
 # Chess ▸ PGN toolbar: T13b, the whole chess panel in its own window (the rail's tool and the command, the window's tab strip and Dock button, the Inspector's note while it is out).
 	Chess in its own window	Шахмат жеке терезеде
 	Board	Тақта
 	The chess panel is in its own window.	Шахмат панелі жеке терезеде.
-	Bring it back	Қайтару
+	Back to the main window	Негізгі терезеге қайтару
 	Put the board and the chess panel back in the main window	Тақта мен шахмат панелін негізгі терезеге қайтару
 
 # Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
@@ -2915,7 +2917,8 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Variation of {move}	{move} жүрісінің нұсқасы
 	moves: {n}	жүрістер: {n}
 # Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
-	Fit at	Орны
+	Insert in	Кірістіру орны
+	Piece letters	Фигуралардың әріптері
 	Apply and keep the rest as a comment	Қолдану және қалғанын түсініктеме ретінде сақтау
 	Unreadable move	Оқылмайтын жүріс
 	Past the capture's limits	Түсіру шегінен тыс
@@ -3189,12 +3192,15 @@ chess undo step	Clear drawings	суреттерді өшіру
 	More ways to confirm	Растаудың басқа жолдары
 	Confirm and next	Растау және келесі
 	Only confirm	Тек растау
+	Confirm	Растау
+	Confirmed	Расталды
+	This position is kept for the diagram. Change it to confirm again.	Бұл позиция диаграмма үшін сақталған. Қайта растау үшін оны өзгертіңіз.
 	Keep this position for the diagram, without changing the PDF.	Бұл позицияны PDF-ті өзгертпей диаграмма үшін сақтау.
 	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	Бұл позицияны PDF-ті өзгертпей диаграмма үшін сақтап, тексерілетін келесісін ашу (Ctrl+Enter).
 	More actions	Басқа әрекеттер
 	Forget the correction	Түзетуді ұмыту
 	Show what was read again; the PDF is not changed.	Оқылғанды қайта көрсету; PDF өзгермейді.
-	Diagram board: {fen}	Диаграмма тақтасы: {fen}
+	Diagram board, page {p}, diagram {n}	Диаграмма тақтасы, {p}-бет, {n}-диаграмма
 	Classic diagram editor	Классикалық диаграмма өңдегіші
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Диаграммаларды «Диаграмма» қойындысына дейінгідей «Диаграммалар» тақтасының ішінде өңдеу. Бұл параметр кейінгі нұсқада алынып тасталады.
 # Plan A8 P3b3: drafts and the question about them.
@@ -3249,6 +3255,7 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Page {p}: {done}	{p} бет: {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} диаграмма тексерілді|{n} диаграмма тексерілді
 	Export chess book	Шахмат кітабын экспорттау
+	Export book…	Кітапты экспорттау…
 	PGN — games	PGN — партиялар
 	EPUB — e-book	EPUB — электрондық кітап
 	HTML — web page	HTML — веб-бет
@@ -3338,6 +3345,14 @@ castling	long	ұзын
 	The book's PGN plays this move from another position: check it.	Кітаптың PGN файлы бұл жүрісті басқа позициядан жасайды: тексеріңіз.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	Осы беттегі кітаптың PGN файлы: расталды — {confirmed}, PGN-нен алынды — {recovered}, қайшылықта — {conflict}.
 	Confirmed by the PGN	PGN растады
+	All ({n})	Барлығы ({n})
+	Read ({n})	Оқылғандар ({n})
+	To review ({n})	Тексеру керек ({n})
+	Not read ({n})	Оқылмағандар ({n})
+	With an error ({n})	Қатесі барлар ({n})
+	Verified ({n})	Тексерілгендер ({n})
+	Corrected ({n})	Түзетілгендер ({n})
+	Confirmed by the PGN ({n})	PGN растағандар ({n})
 	The book's PGN has this position, so it needs no review.	Кітаптың PGN файлында бұл позиция бар, сондықтан тексеру қажет емес.
 	PGN games from	PGN ойындарының көзі
 	The book's PGN, with the book's text	Кітаптың PGN файлы, кітап мәтінімен
@@ -3351,10 +3366,10 @@ castling	long	ұзын
 	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	Осы PDF-тің жанында аттас PGN бар: оны кітаптың PGN файлы ретінде сақтаңыз.
 	Double-click to open the book's PGN game here.	Кітаптың PGN ойынын осы жерде ашу үшін екі рет басыңыз.
 	Open the book's PGN game here	Кітаптың PGN ойынын осы жерде ашу
-	Linking the whole book to its PGN…	Бүкіл кітап оның PGN файлымен байланыстырылуда…
-	Linking the whole book: page {done} of {of}	Бүкіл кітап байланыстырылуда: {of} беттің {done}-беті
-	Link the whole book again	Бүкіл кітапты қайта байланыстыру
-	Link the whole book	Бүкіл кітапты байланыстыру
+	Aligning the book to the PGN…	Кітап PGN-ге сәйкестендірілуде…
+	Aligning the book to the PGN: page {done} of {of}	Кітап PGN-ге сәйкестендірілуде: {of} беттің {done}-беті
+	Align again	Қайта сәйкестендіру
+	Align the book to the PGN	Кітапты PGN-ге сәйкестендіру
 	Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book.	Әр бетті оқып, кітаптың PGN файлымен байланыстырады: қанша жүрісті растайтынын, PGN-нен алатынын және қайшылықта табатынын, әр ойын басталатын бетті көрсетеді. Кітапты экспорттаумен бірдей уақыт алады.
 	Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages.	Бүкіл кітап: {moves} жүрістің {linked} байланыстырылды ({recovered} PGN-нен алынды), {conflict} қайшылықта, {all} беттің {pages} бетінде.
 	Games of the book's PGN ({n})	Кітаптың PGN ойындары ({n})

@@ -99,7 +99,7 @@ fn three_games(h: &mut Harness<'static, PdfCraftApp>) {
 fn export(h: &mut Harness<'static, PdfCraftApp>, path: &std::path::Path) -> String {
     let _ = std::fs::remove_file(path);
     h.state_mut().pick_override = Some(vec![path.to_string_lossy().into_owned()]);
-    h.get_by_label("Export…").click();
+    h.get_by_label("Save all games as PGN…").click();
     h.run_steps(4);
     h.state_mut().pick_override = None;
     std::fs::read_to_string(path).unwrap_or_else(|e| panic!("exported to {}: {e}; toast {:?}", path.display(), h.state().toast))
@@ -274,7 +274,7 @@ fn saving_games_read_only_up_to_an_impossible_move_says_so_first() {
     h.run_steps(3);
     let path = temp_dir("cut").join("games.pgn");
     h.state_mut().pick_override = Some(vec![path.to_string_lossy().into_owned()]);
-    h.get_by_label("Export…").click();
+    h.get_by_label("Save all games as PGN…").click();
     h.run_steps(4);
     assert!(h.query_by_label_contains("read only up to an impossible move").is_some(), "said before writing");
     assert!(h.query_by_label_contains("Cut: stopped at Bxh7").is_some(), "the game and its move named");
@@ -283,7 +283,7 @@ fn saving_games_read_only_up_to_an_impossible_move_says_so_first() {
     h.run_steps(4);
     assert!(h.query_by_label_contains("read only up to an impossible move").is_none());
     assert!(!path.exists(), "Cancel writes nothing");
-    h.get_by_label("Export…").click();
+    h.get_by_label("Save all games as PGN…").click();
     h.run_steps(3);
     h.get_by_label("Save them as they are").click();
     h.run_steps(4);

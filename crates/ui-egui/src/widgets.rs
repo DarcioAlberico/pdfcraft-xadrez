@@ -5,6 +5,9 @@ use egui::{Align2, Color32, CornerRadius, Rect, Response, Sense, Stroke, vec2};
 use crate::theme::{self, Tokens};
 use crate::{PdfCraftApp, icons};
 
+/// The least side of a control the pointer clicks, in points (WCAG 2.2, 2.5.8; plan A9 §2.8.1).
+pub(crate) const MIN_TARGET: f32 = 24.0;
+
 /// Horizontal and vertical inset of a single-line field.
 const FIELD_MARGIN: egui::Margin = egui::Margin::symmetric(10, 6);
 /// Outer height of a single-line field, including its inset.
@@ -32,6 +35,12 @@ pub fn modal(ctx: &egui::Context, id: impl std::hash::Hash + std::fmt::Debug) ->
 pub fn show_modal<R>(ctx: &egui::Context, id: &str, content: impl FnOnce(&mut egui::Ui) -> R) -> egui::ModalResponse<R> {
     let stored = egui::Id::new(id);
     modal(ctx, id).show(ctx, |ui| {
+        // A dialog to assistive technology, which takes the rest of the window out of reach
+        // (plan A9-I15; its name, focus and Tab trap are step I11's).
+        ui.ctx().accesskit_node_builder(ui.unique_id(), |node| {
+            node.set_role(egui::accesskit::Role::Dialog);
+            node.set_modal();
+        });
         begin_dialog(ui);
         let inner = content(ui);
         // The frame's stroke sits outside this content rect; the stored card is the fill.
@@ -163,8 +172,27 @@ pub(crate) fn focus_ring(ui: &egui::Ui, resp: &Response, rect: Rect, radius: u8)
 
 /// A segmented control (plan A8, P6, spec §2.1): one button per choice, joined in one frame, the
 /// chosen one filled. Each segment is a radio button for assistive technology, named by its
-/// label, and takes the keyboard in turn. Whether the value changed.
-pub(crate) fn segmented<T: PartialEq + Copy>(ui: &mut egui::Ui, value: &mut T, choices: &[(T, &str)]) -> bool {
+/// label, and takes the keyboard in turn; they are a radio group named `name` (plan A9-I15).
+/// Whether the value changed.
+pub(crate) fn segmented<T: PartialEq + Copy>(ui: &mut egui::Ui, name: &str, value: &mut T, choices: &[(T, &str)]) -> bool {
+    ui.scope(|ui| {
+        radio_group(ui, name);
+        segments(ui, value, choices)
+    })
+    .inner
+}
+
+/// Makes `ui`'s own node a radio group named `name`: the radio buttons put in `ui` are its
+/// choices for assistive technology.
+pub(crate) fn radio_group(ui: &egui::Ui, name: &str) {
+    ui.ctx().accesskit_node_builder(ui.unique_id(), |node| {
+        node.set_role(egui::accesskit::Role::RadioGroup);
+        node.set_label(name);
+    });
+}
+
+/// [`segmented`]'s segments.
+fn segments<T: PartialEq + Copy>(ui: &mut egui::Ui, value: &mut T, choices: &[(T, &str)]) -> bool {
     const HEIGHT: f32 = 24.0;
     const PAD: f32 = 10.0;
     let t = Tokens::get(ui.ctx());
@@ -234,6 +262,13 @@ pub(crate) fn dock_tabs<T: PartialEq + Copy>(ui: &mut egui::Ui, value: &mut T, c
         let resp = ui.interact(r, ui.id().with(("dock-tab", i)), Sense::click());
         let selected = *value == *choice;
         resp.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, true, selected, *label));
+        // A tab, chosen or not, to assistive technology: egui has no tab widget, and a
+        // selectable label is said as a button (plan A9-I15).
+        ui.ctx().accesskit_node_builder(resp.id, |node| {
+            node.set_role(egui::accesskit::Role::Tab);
+            node.clear_toggled();
+            node.set_selected(selected);
+        });
         if selected || resp.hovered() {
             ui.painter().rect_filled(r, 0.0, t.selected);
         }
@@ -296,8 +331,20 @@ pub fn search_box(ui: &mut egui::Ui, placeholder: &str, width: f32) -> Response 
     if elided { resp.on_hover_text(placeholder) } else { resp }
 }
 
+/// A menu's item with its shortcut: [`menu_entry`].
 pub fn menu_item(ui: &mut egui::Ui, label: &str, shortcut: &str) -> Response {
-    ui.add(egui::Button::new(label).shortcut_text(shortcut))
+    menu_entry(ui, true, egui::Button::new(label).shortcut_text(shortcut))
+}
+
+/// A menu's item (`button`, greyed out unless `enabled`). Clicked, it closes its menu, whether the
+/// click came from the pointer or from assistive technology: egui's menus close by themselves
+/// only on a pointer click (plan A9-I15, finding A6-18).
+pub fn menu_entry(ui: &mut egui::Ui, enabled: bool, button: egui::Button<'_>) -> Response {
+    let response = ui.add_enabled(enabled, button);
+    if response.clicked() {
+        ui.close();
+    }
+    response
 }
 
 /// Corner radius of a checkbox's box. With the widgets' radius (`Tokens::radius`, 6) egui's 14 px
@@ -548,6 +595,12 @@ pub fn toast(app: &mut PdfCraftApp, ctx: &egui::Context) {
                     // Allow natural short labels; wrap longer ones within the viewport,
                     // including the frame's 32 points and 16-point outside margins.
                     ui.set_max_width((screen.width() - 64.0).clamp(1.0, 560.0));
+                    // A status that screen readers say, politely, when it appears (plan A9-I15,
+                    // a bridge to step I17's notices): its text is the label inside it.
+                    ui.ctx().accesskit_node_builder(ui.unique_id(), |node| {
+                        node.set_role(egui::accesskit::Role::Status);
+                        node.set_live(egui::accesskit::Live::Polite);
+                    });
                     ui.add(
                         egui::Label::new(egui::RichText::new(msg).color(if t.dark() { Color32::from_rgb(0x22, 0x22, 0x26) } else { Color32::WHITE }))
                             .wrap(),

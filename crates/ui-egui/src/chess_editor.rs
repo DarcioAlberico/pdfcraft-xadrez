@@ -499,10 +499,13 @@ pub(crate) fn palette_sprites(ui: &egui::Ui, ed: &mut DiagramEditor, pieces: &Pi
 }
 
 /// The editable board, `side` points a side: a click puts the brush on the square under it, and
-/// the squares the model was unsure of are outlined. Its accessible name is "Board: <FEN>", or
-/// "Diagram board: <FEN>" in the Diagram tab (`tab`), apart from the analysis board's; its value
-/// is the square under the cursor, and each square is a cell of its own ("e4, White knight").
-/// `keys`: the keys the hook took for the board that has the keyboard (plan A8, P3c).
+/// the squares the model was unsure of are outlined. Its accessible name says which diagram it is
+/// ("Diagram board, page 13, diagram 1", [`board_name`]; the FEN is Copy FEN's, never spelled out
+/// to a screen reader, plan A9-I15, finding R5-07); its value is the square under the cursor,
+/// and each square is a cell of its own ("e4, White knight") with its place on the screen. `tab`:
+/// the Diagram tab's, else the classic editor's. `keys`: the keys the hook took for the board
+/// that has the keyboard (plan A8, P3c).
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn board_view(
     ui: &mut egui::Ui,
     t: &Tokens,
@@ -510,6 +513,7 @@ pub(crate) fn board_view(
     pieces: &PieceSet,
     side: f32,
     tab: bool,
+    name: &str,
     keys: Option<&crate::chess_diagram_keys::BoardKeys>,
 ) {
     let id = crate::chess_diagram_keys::board_id(tab);
@@ -538,10 +542,7 @@ pub(crate) fn board_view(
         response.request_focus();
     }
     let focused = response.has_focus();
-    // Its accessible name: what the board is, and the position on it.
-    let name = if tab { tl!("Diagram board: {fen}") } else { tl!("Board: {fen}") };
-    let board_name = crate::i18n::fmt(name, &[("fen", &ed.fen())]);
-    response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Other, true, &board_name));
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Other, true, name));
     let here = crate::chess_diagram_keys::square_text(ed, ed.cursor);
     let cell = rect.width() / 8.0;
     // Not `id.with(n)`: egui names the board's tooltip `id.with(0)`.
@@ -564,6 +565,8 @@ pub(crate) fn board_view(
                 let text = crate::chess_diagram_keys::square_text(ed, sq);
                 ui.ctx().accesskit_node_builder(cell_id(sq), |node| {
                     node.set_role(egui::accesskit::Role::GridCell);
+                    // Where it is, for a magnifier that follows the cursor (`interact` gives none).
+                    node.set_bounds(egui::accesskit::Rect { x0: at.min.x.into(), y0: at.min.y.into(), x1: at.max.x.into(), y1: at.max.y.into() });
                     node.set_label(text);
                     node.set_row_index(usize::from(row));
                     node.set_column_index(usize::from(col));
@@ -588,6 +591,12 @@ pub(crate) fn board_view(
         ui.painter().rect_stroke(ring.shrink(1.0), 2.0, egui::Stroke::new(3.0, t.accent), egui::StrokeKind::Inside);
         ui.painter().rect_stroke(ring.shrink(4.0), 1.0, egui::Stroke::new(1.0, Color32::WHITE), egui::StrokeKind::Inside);
     }
+}
+
+/// The editable board's accessible name: "Diagram board, page 13, diagram 1", diagram `index` (from
+/// 0) of the page printed `page`.
+pub(crate) fn board_name(page: &str, index: usize) -> String {
+    crate::i18n::fmt(tl!("Diagram board, page {p}, diagram {n}"), &[("p", page), ("n", &index.saturating_add(1).to_string())])
 }
 
 /// The model's second readings of the squares it was unsure of, each one click away.
@@ -618,16 +627,19 @@ pub(crate) fn second_readings(ui: &mut egui::Ui, ed: &mut DiagramEditor) {
     }
 }
 
-/// The editor: the board, the palette, the position's fields and the actions. `queue` is the
-/// number of diagrams to review (for Previous / Next); `confirm_only`, the way the user confirmed
-/// last; `keys`, the board's ([`board_view`]).
+/// The editor: the board, the palette, the position's fields and the actions. `page` is the
+/// diagram's page as printed; `queue` the number of diagrams to review (for Previous / Next);
+/// `confirm`, how the main button confirms ([`crate::chess_diagram_tab::Confirm`]); `keys`, the
+/// board's ([`board_view`]).
+#[allow(clippy::too_many_arguments)]
 pub fn editor_ui(
     ui: &mut egui::Ui,
     t: &Tokens,
     ed: &mut DiagramEditor,
     pieces: &PieceSet,
+    page: &str,
     queue: usize,
-    confirm_only: bool,
+    confirm: crate::chess_diagram_tab::Confirm,
     keys: Option<&crate::chess_diagram_keys::BoardKeys>,
 ) -> Option<EditorAction> {
     let mut action = None;
@@ -643,14 +655,14 @@ pub fn editor_ui(
     let sprites = palette_sprites(ui, ed, pieces);
     ui.horizontal_top(|ui| {
         let side = (ui.available_width() - PALETTE_COLUMN - ui.spacing().item_spacing.x).clamp(MIN_BOARD_PT, BOARD_PT);
-        board_view(ui, t, ed, pieces, side, false, keys);
+        board_view(ui, t, ed, pieces, side, false, &board_name(page, ed.index), keys);
         ui.vertical(|ui| palette(ui, sprites.as_ref(), &mut ed.brush, true));
     });
     // Confirm and whether the position is legal, right under the board, in sight without
     // scrolling at 1366 x 768: as the Diagram tab's footer, since this editor is also Read
     // mode's, which has no Diagram tab (plan A9-I15, finding R4-01).
     ui.horizontal_wrapped(|ui| {
-        if let Some(a) = crate::chess_diagram_tab::confirm_button(ui, confirm_only, queue > 0) {
+        if let Some(a) = crate::chess_diagram_tab::confirm_button(ui, confirm) {
             action = Some(a);
         }
         let illegal = ed.illegal_text();
@@ -666,6 +678,7 @@ pub fn editor_ui(
             .on_hover_text(tl!("The move the diagram stands at: 35 with Black to move is 35…"));
     });
     ui.horizontal_wrapped(|ui| {
+        crate::widgets::radio_group(ui, tl!("To move"));
         let mut side = ed.position.side_to_move.unwrap_or(Color::White);
         ui.label(tl!("To move:"));
         crate::widgets::radio_value(ui, &mut side, Color::White, tl!("White"));

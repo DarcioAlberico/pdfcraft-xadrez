@@ -2640,6 +2640,8 @@ animation effects	Off	Desactivados
 	Black pawn	Peón negro
 	White	Blancas
 	Board: {fen}	Tablero: {fen}
+	Board, {state}, move {n}	Tablero, {state}, jugada {n}
+	Board, {state}	Tablero, {state}
 	Click a square to put the chosen piece there; click it again to empty it.	Haz clic en una casilla para poner ahí la pieza elegida; vuelve a hacer clic para vaciarla.
 	Close the editor	Cerrar el editor
 	Draw this position over the diagram on the page (one undo step).	Dibujar esta posición sobre el diagrama de la página (un paso de deshacer).
@@ -2652,6 +2654,7 @@ animation effects	Off	Desactivados
 	Replace on the page	Reemplazar en la página
 	The board couldn't be drawn: {e}	No se pudo dibujar el tablero: {e}
 	To move:	Juegan:
+	To move	Juegan
 	Move number:	Número de jugada:
 	The move the diagram stands at: 35 with Black to move is 35…	La jugada en la que está el diagrama: 35 con juegan negras es 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	La jugada en la que empieza la partida, para corregirla cuando no se leyó: 35 con juegan negras es 35…
@@ -2840,14 +2843,13 @@ chess undo step	Clear drawings	borrado de los dibujos
 	Demote a line	relegación de línea
 	Delete a variation	borrado de variante
 # Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
-	Dock	Acoplar
 	The chess board couldn't open in its own window, so it is back in its panel.	El tablero de ajedrez no se pudo abrir en su propia ventana, así que ha vuelto a su panel.
 	The chess board couldn't open in its own window, so it stays in its panel.	El tablero de ajedrez no se pudo abrir en su propia ventana, así que sigue en su panel.
 # Chess ▸ PGN toolbar: T13b, the whole chess panel in its own window (the rail's tool and the command, the window's tab strip and Dock button, the Inspector's note while it is out).
 	Chess in its own window	Ajedrez en su propia ventana
 	Board	Tablero
 	The chess panel is in its own window.	El panel de ajedrez está en su propia ventana.
-	Bring it back	Traerlo de vuelta
+	Back to the main window	Volver a la ventana principal
 	Put the board and the chess panel back in the main window	Devolver el tablero y el panel de ajedrez a la ventana principal
 
 # Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
@@ -3058,7 +3060,8 @@ chess undo step	Clear drawings	borrado de los dibujos
 	Variation of {move}	Variante de {move}
 	moves: {n}	jugadas: {n}
 # Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
-	Fit at	Encajar en
+	Insert in	Insertar en
+	Piece letters	Letras de las piezas
 	Apply and keep the rest as a comment	Aplicar y guardar el resto como comentario
 	Unreadable move	Jugada ilegible
 	Past the capture's limits	Fuera de los límites de la captura
@@ -3332,12 +3335,15 @@ chess undo step	Clear drawings	borrado de los dibujos
 	More ways to confirm	Otras formas de confirmar
 	Confirm and next	Confirmar y seguir
 	Only confirm	Solo confirmar
+	Confirm	Confirmar
+	Confirmed	Confirmado
+	This position is kept for the diagram. Change it to confirm again.	Esta posición está guardada para el diagrama. Cámbiela para confirmar de nuevo.
 	Keep this position for the diagram, without changing the PDF.	Guardar esta posición para el diagrama, sin cambiar el PDF.
 	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	Guardar esta posición para el diagrama, sin cambiar el PDF, y abrir el siguiente por revisar (Ctrl+Enter).
 	More actions	Más acciones
 	Forget the correction	Olvidar la corrección
 	Show what was read again; the PDF is not changed.	Volver a mostrar lo leído; el PDF no cambia.
-	Diagram board: {fen}	Tablero del diagrama: {fen}
+	Diagram board, page {p}, diagram {n}	Tablero del diagrama, página {p}, diagrama {n}
 	Classic diagram editor	Editor de diagramas clásico
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Editar los diagramas dentro del panel Diagramas, como antes de la pestaña Diagrama. Esta opción desaparecerá en una versión futura.
 # Plan A8 P3b3: drafts and the question about them.
@@ -3392,6 +3398,7 @@ chess undo step	Clear drawings	borrado de los dibujos
 	Page {p}: {done}	Página {p}: {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} diagrama revisado|{n} diagramas revisados
 	Export chess book	Exportar libro de ajedrez
+	Export book…	Exportar libro…
 	PGN — games	PGN — partidas
 	EPUB — e-book	EPUB — libro electrónico
 	HTML — web page	HTML — página web
@@ -3481,6 +3488,14 @@ castling	long	largo
 	The book's PGN plays this move from another position: check it.	El PGN del libro juega esta jugada desde otra posición: compruébela.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	PGN del libro en esta página: {confirmed} confirmadas, {recovered} leídas del PGN, {conflict} en conflicto.
 	Confirmed by the PGN	Confirmado por el PGN
+	All ({n})	Todos ({n})
+	Read ({n})	Leídos ({n})
+	To review ({n})	Por revisar ({n})
+	Not read ({n})	Sin leer ({n})
+	With an error ({n})	Con error ({n})
+	Verified ({n})	Verificados ({n})
+	Corrected ({n})	Corregidos ({n})
+	Confirmed by the PGN ({n})	Confirmados por el PGN ({n})
 	The book's PGN has this position, so it needs no review.	El PGN del libro tiene esta posición, así que no necesita revisión.
 	PGN games from	Partidas del PGN desde
 	The book's PGN, with the book's text	El PGN del libro, con el texto del libro
@@ -3494,10 +3509,10 @@ castling	long	largo
 	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	Hay un PGN con el mismo nombre junto a este PDF: guárdelo como PGN del libro.
 	Double-click to open the book's PGN game here.	Doble clic para abrir aquí la partida del PGN del libro.
 	Open the book's PGN game here	Abrir aquí la partida del PGN del libro
-	Linking the whole book to its PGN…	Enlazando el libro entero con su PGN…
-	Linking the whole book: page {done} of {of}	Enlazando el libro entero: página {done} de {of}
-	Link the whole book again	Volver a enlazar el libro entero
-	Link the whole book	Enlazar el libro entero
+	Aligning the book to the PGN…	Alineando el libro con el PGN…
+	Aligning the book to the PGN: page {done} of {of}	Alineando el libro con el PGN: página {done} de {of}
+	Align again	Alinear de nuevo
+	Align the book to the PGN	Alinear el libro con el PGN
 	Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book.	Lee todas las páginas y las enlaza con el PGN del libro: cuántas jugadas confirma, lee del PGN y encuentra en conflicto, y la página donde empieza cada partida. Tarda lo mismo que exportar el libro.
 	Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages.	Libro entero: {linked} de {moves} jugadas enlazadas ({recovered} leídas del PGN), {conflict} en conflicto, en {pages} de {all} páginas.
 	Games of the book's PGN ({n})	Partidas del PGN del libro ({n})

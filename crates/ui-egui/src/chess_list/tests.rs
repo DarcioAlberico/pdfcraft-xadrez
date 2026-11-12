@@ -116,10 +116,10 @@ fn key(h: &mut Harness<'static, PdfCraftApp>, key: Key) {
 #[test]
 fn a_long_list_builds_only_what_is_in_sight_and_filters_by_state() {
     let mut h = harness(true);
-    h.get_by_label("All 2000");
-    h.get_by_label("Verified 100");
-    h.get_by_label("Corrected 100");
-    h.get_by_label("Not read 1800");
+    h.get_by_label("All (2000)");
+    h.get_by_label("Verified (100)");
+    h.get_by_label("Corrected (100)");
+    h.get_by_label("Not read (1800)");
     assert!(h.query_by_label_contains("To review").is_none(), "no chip for a state no diagram has");
     let built = rows(&h);
     assert!(!built.is_empty() && built.len() < 60, "{} rows built of 2000", built.len());
@@ -127,15 +127,15 @@ fn a_long_list_builds_only_what_is_in_sight_and_filters_by_state() {
     assert!(h.query_by_label(START).is_none(), "the FEN is not on the row");
     h.get_by_label("Page 1");
 
-    h.get_by_label("Verified 100").click();
+    h.get_by_label("Verified (100)").click();
     h.run_steps(2);
     let built = rows(&h);
     assert!(!built.is_empty() && built.iter().all(|r| r == "Diagram 1 · Verified"), "{built:?}");
-    h.get_by_label("Verified 100").click();
+    h.get_by_label("Verified (100)").click();
     h.run_steps(2);
     h.get_by_label("On this page").click();
     h.run_steps(2);
-    h.get_by_label("All 20");
+    h.get_by_label("All (20)");
     // Page 2 on screen: only its diagrams are listed, under its header.
     h.state_mut().views[0].go_to_page(1);
     h.run_steps(4);

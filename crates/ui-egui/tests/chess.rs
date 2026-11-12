@@ -282,7 +282,7 @@ fn the_editor_edits_the_selected_diagrams_position() {
     h.get_by_label(EDITED);
     h.get_by_label("Legal position");
     // Click e4 on the board (from White's side: file e = column 4, rank 4 = row 4 from the top).
-    let board = h.get_by_label_contains("Diagram board: ").rect();
+    let board = h.get_by_label_contains("Diagram board, ").rect();
     let at = board.min + egui::vec2(board.width() * 4.5 / 8.0, board.height() * 4.5 / 8.0);
     h.hover_at(at);
     h.run_steps(1);
@@ -325,7 +325,7 @@ fn the_editors_palette_is_the_pieces_pictures() {
     for letter in ["N", "n", "B", "b", "P", "p"] {
         assert!(h.query_by_label(letter).is_none(), "no {letter} in the palette");
     }
-    let board = h.get_by_label_contains("Diagram board: ").rect();
+    let board = h.get_by_label_contains("Diagram board, ").rect();
     // The palette is under the board: White's pieces on a row, Black's and the eraser on the next.
     let (white, black, erase) = (h.get_by_label("White knight").rect(), h.get_by_label("Black knight").rect(), h.get_by_label("Erase").rect());
     assert!(white.top() > board.bottom(), "under the board: {white:?}, {board:?}");
@@ -361,7 +361,7 @@ fn the_editors_labels_are_not_broken_into_letters() {
     scan_and_edit_second(&mut h);
     let (white, black) = (h.get_by_label("White").rect(), h.get_by_label("Black").rect());
     assert!(black.height() <= white.height() + 0.5, "Black is on one line: {black:?} against {white:?}");
-    let board = h.get_by_label_contains("Diagram board: ").rect();
+    let board = h.get_by_label_contains("Diagram board, ").rect();
     let tab = h.get_by_label("Page 1 · diagram 2 of 2").rect();
     let confirm = h.get_by_label("Confirm and next").rect();
     let (left, right) = (tab.left().min(board.left()) - 12.0, confirm.right() + 12.0);
@@ -700,7 +700,7 @@ fn the_review_queue_lists_and_walks_the_diagrams_to_review() {
     assert!(!queue.is_empty(), "with no piece model the drawn board goes to review");
     assert_eq!(queue, vec![(0, 1)]);
     // The chip of the drawn board's state: not read.
-    h.get_by_label("Not read 1").click();
+    h.get_by_label("Not read (1)").click();
     h.run_steps(2);
     assert!(h.query_by_label_contains("Diagram 1 · ").is_none(), "the font diagram is not to review");
     h.get_by_label_contains("Diagram 2 · ").click();
@@ -910,7 +910,7 @@ fn the_books_pgn_confirms_diagrams_and_is_what_the_pgn_export_writes() {
     // The menu's choice, on the Text tab.
     h.get_by_label("Text").click();
     h.run_steps(3);
-    h.get_all_by_label("Export…").last().expect("the Text tab's Export menu").click();
+    h.get_all_by_label("Export book…").last().expect("the Text tab's Export book menu").click();
     h.run_steps(2);
     h.get_by_label_contains("PGN games from").hover();
     h.run_steps(2);
@@ -1027,10 +1027,10 @@ fn linking_the_whole_book_says_what_it_found_and_lists_the_pgns_games() {
     let pgn = format!("{RUY_PGN}\n[Event \"Chapter 2\"]\n\n1.d4 d5 *\n");
     h.state_mut().set_book_pgn(id, "book.pgn", pgn.as_bytes());
     h.run_steps(4);
-    h.get_by_label("Link the whole book").click();
+    h.get_by_label("Align the book to the PGN").click();
     h.run_steps(4);
     h.get_by_label("Whole book: 6 of 6 moves linked (2 read from the PGN), 0 in conflict, on 1 of 1 pages.");
-    h.get_by_label("Link the whole book again");
+    h.get_by_label("Align again");
     h.get_by_label_contains("Games of the book's PGN (2)").click();
     h.run_steps(2);
     h.get_by_label("Chapter 2 (no page discusses it)");
@@ -1211,12 +1211,12 @@ fn the_books_pgn_controls_fit_1366x768_light_and_dark_and_are_named() {
         let id = h.state().views[0].id;
         h.state_mut().set_book_pgn(id, "book.pgn", RUY_PGN.as_bytes());
         h.run_steps(4);
-        h.get_by_label("Link the whole book").click();
+        h.get_by_label("Align the book to the PGN").click();
         h.run_steps(4);
         h.get_by_label_contains("Games of the book's PGN (1)").click();
         h.run_steps(3);
         let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1366.0, 768.0));
-        for label in ["Remove the book's PGN", "Link the whole book again", "p. 1 · Chapter 1 · Ruy"] {
+        for label in ["Remove the book's PGN", "Align again", "p. 1 · Chapter 1 · Ruy"] {
             let r = h.get_by_label(label).rect();
             assert!(screen.contains_rect(r) && r.width() > 0.0, "{theme}: {label} is on screen: {r:?}");
         }
@@ -1228,7 +1228,7 @@ fn the_books_pgn_controls_fit_1366x768_light_and_dark_and_are_named() {
         h.run_steps(1);
         h.key_press(egui::Key::Tab);
         h.run_steps(1);
-        assert!(h.get_by_label("Link the whole book again").is_focused(), "{theme}: Remove → Link the whole book");
+        assert!(h.get_by_label("Align again").is_focused(), "{theme}: Remove → Align again");
         if let Ok(shots) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
             h.render().unwrap().save(std::path::Path::new(&shots).join(format!("book-pgn-1366-{theme}.png"))).unwrap();
         }
@@ -1247,7 +1247,7 @@ fn export_writes_pgn_and_markdown_with_images() {
     for (format, name) in [("PGN — games", "book.pgn"), ("Markdown", "book.md")] {
         let mut h = chapter_harness();
         h.state_mut().save_override = Some(dir.join(name).to_string_lossy().into_owned());
-        h.get_by_label("Export…").click();
+        h.get_by_label("Export book…").click();
         h.run_steps(2);
         h.get_by_label("Export chess book");
         for other in ["EPUB — e-book", "HTML — web page", "Word (.docx)", "RTF"] {
@@ -1350,7 +1350,8 @@ fn the_book_origin_is_kept_and_the_page_is_read_again_under_it() {
 fn click_square(h: &mut Harness<'static, PdfCraftApp>, name: &str) {
     let b = name.as_bytes();
     let (file, rank) = (f32::from(b[0] - b'a'), f32::from(b[1] - b'1'));
-    let board = h.get_by_label_contains("Board: ").rect();
+    // The analysis board, or the set-up board in its place (still named by its FEN).
+    let board = h.query_by_label_contains("Board, ").or_else(|| h.query_by_label_contains("Board: ")).expect("a board").rect();
     let at = board.min + egui::vec2(board.width() * (file + 0.5) / 8.0, board.height() * (7.5 - rank) / 8.0);
     h.hover_at(at);
     h.run_steps(1);
@@ -1570,7 +1571,7 @@ fn open_on_the_board_from_the_panel() {
     assert_eq!(format!("{:?}", h.state().chess.tab), "Diagrams", "the Chess panel keeps its tab");
     assert_eq!(h.state().chess.board().game.fen(), START_FEN);
     // In front: its board is drawn, the rail's set-up tool and the Analysis section with it.
-    h.get_by_label(&format!("Board: {START_FEN}"));
+    h.get_by_label("Board, White to move, move 1");
     h.get_by_label("Set up a position");
     h.get_by_label("Analysis");
     click_square(&mut h, "e2");
@@ -1621,13 +1622,13 @@ fn open_on_the_board_shows_the_windows_board() {
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
     assert_eq!(h.state().chess_window_tab(), pdfcraft_ui_egui::ChessWindowTab::Diagrams);
-    assert!(h.query_by_label_contains("Board: ").is_none());
+    assert!(h.query_by_label_contains("Board, ").is_none());
     row_menu(&mut h, "Diagram 1 · ");
     h.get_by_label("Open on the board").click();
     h.run_steps(3);
     assert_eq!(h.state().chess_window_tab(), pdfcraft_ui_egui::ChessWindowTab::Board);
     assert!(!h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Board), "not docked");
-    assert_eq!(h.get_all_by_label(&format!("Board: {START_FEN}")).count(), 1, "the window's board, once");
+    assert_eq!(h.get_all_by_label("Board, White to move, move 1").count(), 1, "the window's board, once");
     h.get_by_label("Analysis");
     assert_eq!(format!("{:?}", h.state().chess.tab), "Diagrams");
 }
@@ -1638,7 +1639,7 @@ fn drag_square(h: &mut Harness<'static, PdfCraftApp>, button: egui::PointerButto
     let at = |h: &Harness<'static, PdfCraftApp>, name: &str| {
         let b = name.as_bytes();
         let (file, rank) = (f32::from(b[0] - b'a'), f32::from(b[1] - b'1'));
-        let board = h.get_by_label_contains("Board: ").rect();
+        let board = h.get_by_label_contains("Board, ").rect();
         board.min + egui::vec2(board.width() * (file + 0.5) / 8.0, board.height() * (7.5 - rank) / 8.0)
     };
     let (a, b) = (at(h, from), at(h, to));
@@ -1962,7 +1963,7 @@ fn the_analysis_section_switches_the_engine() {
     assert!(!log.lock().unwrap().iter().any(|c| c == "stop"));
     assert!(log.lock().unwrap().iter().any(|c| c == &format!("position fen {START_FEN}")), "{:?}", log.lock().unwrap());
     // The bar, named by its score, is beside the board, as tall as it.
-    let board = h.get_by_label(&format!("Board: {START_FEN}")).rect();
+    let board = h.get_by_label("Board, White to move, move 1").rect();
     let bar = h.get_all_by_label("+0.30").map(|n| n.rect()).find(|r| r.max.x <= board.min.x).expect("the evaluation bar");
     assert!((bar.height() - board.height()).abs() < 1.0 && bar.width() < 20.0, "{bar:?} {board:?}");
     if let Ok(dir) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
@@ -3223,18 +3224,18 @@ fn the_board_moves_to_its_own_window_and_docks_back_where_it_was() {
     assert!(h.state().chess_window_detached());
     assert!(!h.state().docking.layout.contains(&board), "the dock tab is gone");
     assert!(h.state().docking.hidden.iter().any(|(p, _)| *p == board), "its place is kept");
-    assert_eq!(h.get_all_by_label_contains("Board: ").count(), 1, "one board, in the window");
-    h.get_by_label("Dock");
+    assert_eq!(h.get_all_by_label_contains("Board, ").count(), 1, "one board, in the window");
+    window_back(&h);
     // The board in the window plays.
     click_square(&mut h, "e2");
     click_square(&mut h, "e4");
     assert_eq!(movetext(&h), "1. e4");
 
-    h.get_by_label("Dock").click();
+    window_back(&h).click();
     h.run_steps(3);
     assert!(!h.state().chess_window_detached());
     assert_eq!(h.state().docking.layout.location(&board).ok(), Some(place.clone()), "back where it was");
-    assert!(h.query_by_label("Dock").is_none());
+    assert!(h.query_by_label(BACK).is_none());
     assert_eq!(movetext(&h), "1. e4", "the same game");
 
     // Out again: a diagram opened on the board leaves it out; the command, on while it is out,
@@ -3266,11 +3267,11 @@ fn read_mode_shows_the_board_only_in_its_window() {
     h.run_steps(3);
     assert!(h.state_mut().execute("view.read_mode"));
     h.run_steps(3);
-    assert_eq!(h.get_all_by_label_contains("Board: ").count(), 1, "beside the page");
+    assert_eq!(h.get_all_by_label_contains("Board, ").count(), 1, "beside the page");
     h.state_mut().set_chess_window_detached(true);
     h.run_steps(3);
-    assert_eq!(h.get_all_by_label_contains("Board: ").count(), 1, "in the window only");
-    h.get_by_label("Dock");
+    assert_eq!(h.get_all_by_label_contains("Board, ").count(), 1, "in the window only");
+    window_back(&h);
 }
 
 /// T13a: whether the board is out, and the window's size, come back in the next session; a bad
@@ -3290,7 +3291,7 @@ fn the_window_and_its_size_come_back_and_bad_values_are_ignored() {
     let h = harness_restoring(next.to_string());
     assert!(h.state().chess_window_detached());
     assert!(!h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Board));
-    h.get_by_label("Dock");
+    window_back(&h);
     let [w, ht] = h.state().chess_window_size();
     assert!((w - 900.0).abs() < 1.0 && (ht - 640.0).abs() < 1.0, "the window kept its size: {w} × {ht}");
     let again: serde_json::Value = serde_json::from_str(&h.state().persist()).unwrap();
@@ -3302,7 +3303,7 @@ fn the_window_and_its_size_come_back_and_bad_values_are_ignored() {
     for bad in [serde_json::json!("yes"), serde_json::json!({"detached": 3}), serde_json::json!([true]), serde_json::Value::Null] {
         let h = harness_restoring(window_settings(bad.clone()));
         assert!(!h.state().chess_window_detached(), "{bad}");
-        assert!(h.query_by_label("Dock").is_none());
+        assert!(h.query_by_label(BACK).is_none());
     }
 }
 
@@ -3313,7 +3314,7 @@ fn the_window_and_its_size_come_back_and_bad_values_are_ignored() {
 fn a_wide_window_has_a_larger_board_beside_the_diagrams() {
     let h = harness_restoring(window_settings(serde_json::json!({"detached": true, "size": [1000.0, 820.0]})));
     assert!(h.state().chess_window_wide());
-    let board = h.get_by_label_contains("Board: ").rect();
+    let board = h.get_by_label_contains("Board, ").rect();
     assert!(board.width() > 480.0, "{board:?}");
     let scan = h.get_by_label("Detect diagrams").rect();
     assert!(scan.min.x > board.max.x && scan.min.y < board.max.y, "the Diagrams tab beside the board: {scan:?} {board:?}");
@@ -3322,7 +3323,7 @@ fn a_wide_window_has_a_larger_board_beside_the_diagrams() {
     // Very wide: the board column has the notation beside the board (T5b), filling the column
     // from its top, and the Diagrams tab beyond it.
     let mut h = harness_restoring(window_settings(serde_json::json!({"detached": true, "size": [1390.0, 900.0]})));
-    let board = h.get_by_label_contains("Board: ").rect();
+    let board = h.get_by_label_contains("Board, ").rect();
     let fen = h.get_by_label("FEN").rect();
     assert!(fen.min.x > board.max.x, "the fields beside the board: {fen:?} {board:?}");
     let moves = h.get_by_label("Moves").rect();
@@ -3338,15 +3339,16 @@ fn a_wide_window_has_a_larger_board_beside_the_diagrams() {
     h.run_steps(2);
     assert_eq!(h.get_all_by_label("Empty board").count(), 1);
     assert_eq!(h.get_all_by_label_contains("Board: ").count(), 1, "the set-up board alone");
+    assert!(h.query_by_label_contains("Board, ").is_none(), "the analysis board gives it its place");
     assert!(h.query_by_label("Analysis").is_none());
     h.get_by_label("Moves");
     h.get_by_label("Cancel").click();
     h.run_steps(2);
     assert_eq!(format!("{:?}", h.state().chess.tools.tool), "Navigate");
-    h.get_by_label_contains("Board: ");
+    h.get_by_label_contains("Board, ");
     let h = harness_restoring(window_settings(serde_json::json!({"detached": true, "size": [560.0, 820.0]})));
     assert!(!h.state().chess_window_wide());
-    let board = h.get_by_label_contains("Board: ").rect();
+    let board = h.get_by_label_contains("Board, ").rect();
     assert!(board.width() <= 520.0, "{board:?}");
     assert!(h.query_by_label("Detect diagrams").is_none(), "one tab at a time");
 }
@@ -3354,8 +3356,23 @@ fn a_wide_window_has_a_larger_board_beside_the_diagrams() {
 /// The node labelled `label` in the chess window (the Inspector's Chess panel has some of the
 /// same labels).
 fn in_window<'a>(h: &'a Harness<'static, PdfCraftApp>, label: &'a str) -> egui_kittest::Node<'a> {
-    let window = h.get_all_by_label("Chess").find(|n| n.query_by_label("Dock").is_some()).expect("the chess window");
+    let window = h.get_all_by_label("Chess").find(|n| n.query_by_label(BACK).is_some()).expect("the chess window");
     window.get_by_label(label)
+}
+
+/// The chess window's button that docks it, and the Inspector's Chess panel's while the window is
+/// out: one name for both (plan A9-I15; they were Dock and Bring it back).
+const BACK: &str = "Back to the main window";
+
+/// The chess window's Back to the main window.
+fn window_back<'a>(h: &'a Harness<'static, PdfCraftApp>) -> egui_kittest::Node<'a> {
+    in_window(h, BACK)
+}
+
+/// The Inspector's Chess panel's Back to the main window, while the window is out.
+fn inspector_back<'a>(h: &'a Harness<'static, PdfCraftApp>) -> egui_kittest::Node<'a> {
+    let theirs = window_back(h).accesskit_node().id();
+    h.get_all_by_label(BACK).find(|n| n.accesskit_node().id() != theirs).expect("the Inspector's Back to the main window")
 }
 
 /// T13b: the whole chess panel in its own window. Out, the Diagrams list is drawn once, in the
@@ -3371,7 +3388,7 @@ fn the_chess_panel_moves_to_the_window_and_the_inspector_says_so() {
     h.state_mut().set_chess_window_detached(true);
     h.run_steps(3);
     assert!(h.state().chess_window_wide(), "the window opens wide");
-    let board = h.get_by_label_contains("Board: ").rect();
+    let board = h.get_by_label_contains("Board, ").rect();
     let item = h.get_by_label("Diagram 1 · Position read").rect();
     assert!(item.min.x > board.max.x, "the list beside the board, once: {item:?} {board:?}");
     h.get_by_label("The chess panel is in its own window.");
@@ -3381,14 +3398,14 @@ fn the_chess_panel_moves_to_the_window_and_the_inspector_says_so() {
     h.run_steps(4);
     assert_eq!(h.state().chess_window_tab(), pdfcraft_ui_egui::ChessWindowTab::Text);
     h.get_by_label("Recognised text of page 1");
-    h.get_by_label_contains("Board: ");
+    h.get_by_label_contains("Board, ");
     assert!(h.query_by_label("Detect diagrams").is_none());
     // The Inspector brings it back. (Its button is under the window here, which kittest draws
     // inside the main one: pressed the way a screen reader would.)
-    h.get_by_label("Bring it back").click_accesskit();
+    inspector_back(&h).click_accesskit();
     h.run_steps(3);
     assert!(!h.state().chess_window_detached());
-    assert!(h.query_by_label("Dock").is_none(), "the window is gone");
+    assert!(h.query_by_label(BACK).is_none(), "the window is gone");
     // The board is back in its tab beside the Inspector, behind it (U5: the user is looking at
     // the Inspector), whose Chess panel has the list again.
     assert!(h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Board));
@@ -3396,7 +3413,7 @@ fn the_chess_panel_moves_to_the_window_and_the_inspector_says_so() {
     assert_eq!(h.get_all_by_label("Diagram 1 · Position read").count(), 1, "back in the Inspector");
     pdfcraft_ui_egui::docking::command(h.state_mut(), false, &serde_json::json!({"operation": "activate", "panel": "board"})).unwrap();
     h.run_steps(3);
-    assert_eq!(h.get_all_by_label_contains("Board: ").count(), 1);
+    assert_eq!(h.get_all_by_label_contains("Board, ").count(), 1);
 }
 
 /// The tab in front of the dock group that holds `panel`.
@@ -3438,19 +3455,19 @@ fn docking_back_returns_the_board_to_its_group_without_covering_the_inspector() 
 
     // Bring it back, from the Inspector the user is looking at.
     out(&mut h);
-    h.get_by_label("Bring it back").click_accesskit();
+    inspector_back(&h).click_accesskit();
     h.run_steps(3);
     assert!(!h.state().chess_window_detached());
     assert_eq!(h.state().docking.layout.location(&board).ok(), Some(place.clone()), "in its group, where it was in it");
     assert_eq!(front_of(h.state(), board), Some(inspector), "behind the Inspector");
     assert_eq!(h.get_all_by_label("Diagram 1 · Position read").count(), 1, "the Inspector shows the list again");
-    assert!(h.query_by_label_contains("Board: ").is_none());
+    assert!(h.query_by_label_contains("Board, ").is_none());
 
     // In front, out, the window's Dock: in front again, as it left.
     docking::command(h.state_mut(), false, &serde_json::json!({"operation": "activate", "panel": "board"})).unwrap();
     h.run_steps(2);
     out(&mut h);
-    h.get_by_label("Dock").click();
+    window_back(&h).click();
     h.run_steps(3);
     assert_eq!(h.state().docking.layout.location(&board).ok(), Some(place.clone()));
     assert_eq!(front_of(h.state(), board), Some(board));
@@ -3460,7 +3477,7 @@ fn docking_back_returns_the_board_to_its_group_without_covering_the_inspector() 
     docking::command(h.state_mut(), false, &serde_json::json!({"operation": "activate", "panel": "inspector"})).unwrap();
     h.run_steps(2);
     out(&mut h);
-    h.get_by_label("Dock").click();
+    window_back(&h).click();
     h.run_steps(3);
     assert_eq!(h.state().docking.layout.location(&board).ok(), Some(place));
     assert_eq!(front_of(h.state(), board), Some(inspector));
@@ -3474,7 +3491,7 @@ fn docking_back_returns_the_board_to_its_group_without_covering_the_inspector() 
     assert_eq!(front_of(h.state(), Panel::Tools), Some(board));
     h.state_mut().set_chess_window_detached(true);
     h.run_steps(3);
-    h.get_by_label("Bring it back").click_accesskit();
+    inspector_back(&h).click_accesskit();
     h.run_steps(3);
     assert_eq!(h.state().docking.layout.location(&board).ok(), Some(place));
     assert_eq!(front_of(h.state(), Panel::Tools), Some(board), "back with the Tools, in front");
@@ -3489,7 +3506,7 @@ fn the_embedded_window_keeps_the_inner_size_as_the_native_one_does() {
     h.run_steps(4);
     let [w, ht] = h.state().chess_window_size();
     assert!((w - 900.0).abs() < 1.0 && (ht - 640.0).abs() < 1.0, "the size kept: {w} × {ht}");
-    let dock = h.get_by_label("Dock").rect().center();
+    let dock = window_back(&h).rect().center();
     let window = h.get_all_by_label("Chess").map(|n| n.rect()).find(|r| r.contains(dock)).expect("the chess window");
     assert!(window.width() > 904.0 && window.height() > 660.0, "the frame and title bar around the 900 × 640 contents: {window:?}");
     // Saved and opened again: the same.
@@ -3510,14 +3527,14 @@ fn a_narrow_window_switches_tabs_and_follows_the_diagrams_picked_on_the_page() {
     let mut h = harness_restoring_stepping(window_settings(serde_json::json!({"detached": true, "size": [560.0, 900.0]})), 0.05);
     assert!(!h.state().chess_window_wide());
     assert_eq!(h.state().chess_window_tab(), ChessWindowTab::Board);
-    h.get_by_label_contains("Board: ");
+    h.get_by_label_contains("Board, ");
     assert!(h.query_by_label("Detect diagrams").is_none(), "one tab at a time");
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
     assert_ne!(h.state().right, Some(RightPanel::Chess), "the diagrams are in the window, not the Inspector");
     assert_eq!(h.state().chess_window_tab(), ChessWindowTab::Diagrams);
     h.get_by_label("Diagram 1 · Position read");
-    assert!(h.query_by_label_contains("Board: ").is_none());
+    assert!(h.query_by_label_contains("Board, ").is_none());
     h.get_by_label("Text").click();
     h.run_steps(4);
     assert_eq!(h.state().chess_window_tab(), ChessWindowTab::Text);
@@ -3526,11 +3543,11 @@ fn a_narrow_window_switches_tabs_and_follows_the_diagrams_picked_on_the_page() {
     h.get_by_label("Board").click();
     h.run_steps(2);
     assert_eq!(h.state().chess_window_tab(), ChessWindowTab::Board);
-    h.get_by_label_contains("Board: ");
+    h.get_by_label_contains("Board, ");
 
     // A diagram clicked on the page: selected, and shown selected in the window's list.
     let at = on_page(&h, 140.0, 660.0);
-    let dock = h.get_by_label("Dock").rect().center();
+    let dock = window_back(&h).rect().center();
     let window = h.get_all_by_label("Chess").map(|n| n.rect()).find(|r| r.contains(dock)).expect("the chess window");
     assert!(!window.contains(at), "the page's diagram is not under the window: {window:?} {at:?}");
     h.hover_at(at);
@@ -3573,7 +3590,7 @@ fn the_windows_tab_comes_back_and_old_or_bad_values_open_on_the_board() {
     let h = harness_restoring(saved.to_string());
     assert_eq!(h.state().chess_window_tab(), ChessWindowTab::Text);
     h.get_by_label("Recognised text of page 1");
-    assert!(h.query_by_label_contains("Board: ").is_none());
+    assert!(h.query_by_label_contains("Board, ").is_none());
     for tab in [serde_json::json!("diagrams"), serde_json::json!("moves"), serde_json::json!(2), serde_json::Value::Null] {
         let mut window = serde_json::json!({"detached": true, "size": [560.0, 900.0]});
         if !tab.is_null() {
@@ -3882,7 +3899,7 @@ fn the_move_list_stands_beside_the_page_on_either_side() {
     h.run_steps(3);
     put_game(&mut h, FORKS, &[0, 1, 0, 0]);
     let under_board = |h: &Harness<'static, PdfCraftApp>| {
-        let (moves, board) = (h.get_by_label("Moves").rect(), h.get_by_label_contains("Board: ").rect());
+        let (moves, board) = (h.get_by_label("Moves").rect(), h.get_by_label_contains("Board, ").rect());
         moves.min.y > board.max.y && moves.min.x < board.max.x
     };
     assert!(under_board(&h));
@@ -3891,7 +3908,7 @@ fn the_move_list_stands_beside_the_page_on_either_side() {
     assert!(h.state().docking.layout.contains(&Panel::Moves));
     assert_eq!(h.get_all_by_label("Moves").count(), 1, "the notation in one place");
     let page = h.state().views[0].page_screen_rect(0).expect("page 1 on screen");
-    let (moves, board) = (h.get_by_label("Moves").rect(), h.get_by_label_contains("Board: ").rect());
+    let (moves, board) = (h.get_by_label("Moves").rect(), h.get_by_label_contains("Board, ").rect());
     assert!(moves.min.x >= page.max.x && moves.max.x <= board.min.x, "between the page and the board: {moves:?} {page:?} {board:?}");
     assert!(moves.height() > 400.0, "the list's height: {moves:?}");
     h.get_by_label("PGN");
@@ -4101,7 +4118,7 @@ fn the_diagram_tab_walks_what_the_lists_chip_shows() {
     h.get_by_label("1 of 1 to review");
     h.get_by_label("Page 1 · diagram 2 of 2, 1 of 1 to review");
     // The chip of the font diagram's state: the drawn board is not among them.
-    h.get_by_label("Read 1").click();
+    h.get_by_label("Read (1)").click();
     h.run_steps(2);
     h.get_by_label("1 · Read");
     h.get_by_label("Next diagram (Page Down)").click();
@@ -4168,12 +4185,14 @@ fn a_reading_confirmed_as_it_is_is_verified() {
     h.run_steps(3);
     assert_eq!(kind(&h, 0).as_deref(), Some("Verified"));
     assert!(h.state().chess.confirm_only, "remembered");
-    h.get_by_label("Only confirm");
+    // Kept as shown: Confirmed, greyed out until the position changes (plan A9-I15, R4-08).
+    assert!(h.get_by_label("Confirmed").accesskit_node().is_disabled(), "nothing left to confirm");
+    assert!(h.query_by_label("Only confirm").is_none());
     // Ctrl+Enter with the pointer over the tab: the drawn board, set and confirmed.
     h.get_by_label_contains("Diagram 2 · ").click();
     h.run_steps(3);
     h.state_mut().chess.editor.as_mut().unwrap().position = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(EDITED).unwrap();
-    h.hover_at(h.get_by_label_contains("Diagram board: ").rect().center());
+    h.hover_at(h.get_by_label_contains("Diagram board, ").rect().center());
     h.run_steps(1);
     host_key(&mut h, egui::Modifiers::COMMAND, egui::Key::Enter);
     assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"));
@@ -4191,7 +4210,7 @@ fn board_focused(h: &Harness<'static, PdfCraftApp>) -> bool {
 /// The square under the board's cursor, as the board tells screen readers.
 #[track_caller]
 fn cursor_says(h: &Harness<'static, PdfCraftApp>) -> String {
-    h.get_by_label_contains("Diagram board: ").value().unwrap_or_default()
+    h.get_by_label_contains("Diagram board, ").value().unwrap_or_default()
 }
 
 /// The gestures a journey takes: each click and key the user makes, counted as it is made.
@@ -4289,7 +4308,7 @@ fn the_review_journeys_take_the_gestures_the_plan_set() {
     h.state_mut().save_override = Some(out.to_string_lossy().into_owned());
     h.state_mut().choose_right_panel(Some(RightPanel::Chess));
     h.run_steps(2);
-    g.click(&mut h, "Export…");
+    g.click(&mut h, "Export book…");
     g.click(&mut h, "PGN — games");
     h.run_steps(3);
     assert!(out.exists(), "written");
@@ -4369,23 +4388,25 @@ fn the_diagram_tab_corrects_and_confirms_by_the_keyboard_alone() {
     host_key(&mut h, Modifiers::COMMAND, Key::Z);
     assert_eq!(h.state().chess.editor.as_ref().map(|e| e.fen()).as_deref(), Some("4k3/8/8/8/8/8/8/R3K3 w - - 0 1"));
 
-    // Ctrl+Enter confirms: Corrected, and the keyboard is on the board again.
-    host_key(&mut h, Modifiers::COMMAND, Key::Enter);
-    assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"));
-    assert!(board_focused(&h), "back on the board after confirming");
-
     // The footer in the keyboard's order: ⋯, the main button, its ▾.
     h.get_by_label("More actions").focus();
     h.run_steps(1);
     h.key_press(Key::Tab);
     h.run_steps(1);
-    assert!(h.get_by_label("Only confirm").is_focused(), "⋯ → Confirm");
+    assert!(h.get_by_label("Confirm and next").is_focused(), "⋯ → Confirm");
     h.key_press(Key::Tab);
     h.run_steps(1);
     assert!(h.get_by_label("More ways to confirm").is_focused(), "Confirm → ▾");
 
+    // Ctrl+Enter confirms: Corrected, and the keyboard is on the board again. The last one to
+    // review: the main button says it is kept (plan A9-I15).
+    host_key(&mut h, Modifiers::COMMAND, Key::Enter);
+    assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"));
+    assert!(board_focused(&h), "back on the board after confirming");
+    assert!(h.get_by_label("Confirmed").accesskit_node().is_disabled());
+
     // Esc: back to the diagram's row in the list, nothing discarded.
-    h.get_by_label_contains("Diagram board: ").focus();
+    h.get_by_label_contains("Diagram board, ").focus();
     h.run_steps(1);
     host_key(&mut h, Modifiers::NONE, Key::Escape);
     assert!(h.get_by_label("Diagram 2 · Corrected").is_focused(), "the list's row has the keyboard");
@@ -4605,7 +4626,7 @@ fn the_export_menu_chooses_the_pgns_diagram_games() {
     let mut games = Vec::new();
     for (choice, name) in [("All of them", "all.pgn"), ("None", "none.pgn")] {
         let mut h = chapter_harness();
-        h.get_by_label("Export…").click();
+        h.get_by_label("Export book…").click();
         h.run_steps(2);
         h.get_by_label_contains("Diagrams as PGN games").hover();
         h.run_steps(2);
@@ -4910,7 +4931,7 @@ fn the_diagram_tabs_board_stays_inside_the_tab() {
     for size in [egui::vec2(1440.0, 900.0), egui::vec2(1366.0, 768.0), egui::vec2(1280.0, 620.0)] {
         let mut h = harness_sized(boards(), size);
         scan_and_edit_second(&mut h);
-        let board = h.get_by_label_contains("Diagram board: ").rect();
+        let board = h.get_by_label_contains("Diagram board, ").rect();
         let tab = h.state().chess.diagram_tab_rect().expect("the Diagram tab was drawn");
         let (margin, bar) = (8.0, 8.0);
         assert!(board.left() >= tab.left() + margin - 0.5, "inside the tab's left edge at {size:?}: {board:?} in {tab:?}");
@@ -4920,4 +4941,179 @@ fn the_diagram_tabs_board_stays_inside_the_tab() {
         let (left_gap, right_gap) = (board.left() - tab.left(), tab.right() - board.right());
         assert!((right_gap - left_gap - bar).abs() <= 1.0, "centred beside the bar at {size:?}: {left_gap} on the left, {right_gap} on the right");
     }
+}
+
+// ─── Plan A9-I15: menus, targets, the main button and quick accessibility ────────────────────
+
+/// Plan A9-I15 (finding A6-18): an item clicked by assistive technology, which sends no pointer
+/// click, closes its menu as the pointer's click does: Where to detect, a row's menu and the
+/// Diagram tab's ⋯.
+#[test]
+fn chess_menus_close_when_assistive_technology_clicks_their_items() {
+    let mut h = harness();
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(2);
+    h.get_by_label("Where to detect").click();
+    h.run_steps(2);
+    h.get_by_label("In the whole book (1 page)").click_accesskit();
+    h.run_steps(3);
+    assert_eq!(diagrams(&h), 2, "it detected");
+    assert!(h.query_by_label("In the whole book (1 page)").is_none(), "Where to detect closed");
+    row_menu(&mut h, "Diagram 1 · ");
+    h.get_by_label("Copy FEN").click_accesskit();
+    h.run_steps(2);
+    assert!(h.query_by_label("Open on the board").is_none(), "the row's menu closed");
+    h.get_by_label_contains("Diagram 1 · ").click();
+    h.run_steps(3);
+    h.get_by_label("More actions").click();
+    h.run_steps(2);
+    h.get_by_label("Copy FEN").click_accesskit();
+    h.run_steps(2);
+    assert!(h.query_by_label("Redraw in the PDF…").is_none(), "the tab's ⋯ closed");
+}
+
+/// Plan A9-I15 (finding R4-06, WCAG 2.2 2.5.8): every control the pointer clicks in the Diagram
+/// tab and the Chess diagrams panel beside it is at least 24 × 24 points; the first-time hint's
+/// Dismiss was 20 (the header's Stop, 22, is `chess_panel_head`'s test's).
+#[test]
+fn the_diagram_tab_and_the_chess_panel_take_clicks_on_24_points_or_more() {
+    let mut h = harness();
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    h.get_by_label_contains("Diagram 1 · ").click();
+    h.run_steps(3);
+    h.get_by_label("Dismiss");
+    // From the Diagram tab's title to the rail at the window's right edge.
+    let title = h.get_by_label("Page 1 · diagram 1 of 2").rect();
+    let right = 1400.0 - 48.0;
+    // Controls: what takes a click, less text that takes one only to be selected.
+    let clickable = egui_kittest::kittest::By::new()
+        .predicate(|n| n.data().supports_action(egui::accesskit::Action::Click) && n.role() != egui::accesskit::Role::Label);
+    let small: Vec<String> = h
+        .query_all(clickable)
+        .filter(|n| {
+            let r = n.rect();
+            r.min.x >= title.min.x - 8.0 && r.max.x <= right && r.min.y >= title.min.y - 8.0
+        })
+        .filter(|n| n.rect().width() < 24.0 || n.rect().height() < 24.0)
+        .map(|n| format!("{:?} {:?}", n.accesskit_node().label(), n.rect()))
+        .collect();
+    assert!(small.is_empty(), "under 24 points: {small:#?}");
+}
+
+/// Plan A9-I15 (finding R4-08, plan A9 §2.8.2): with nothing to review the main button is
+/// Confirm, with no ▾ beside it; once the position is kept it is Confirmed, greyed out, until the
+/// position changes.
+#[test]
+fn with_nothing_to_review_confirm_has_no_menu_and_then_says_confirmed() {
+    let mut h = harness();
+    scan_and_edit_second(&mut h);
+    h.get_by_label("Confirm and next").click();
+    h.run_steps(3);
+    assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"));
+    h.get_by_label_contains("Diagram 1 · ").click();
+    h.run_steps(3);
+    assert!(h.query_by_label("More ways to confirm").is_none(), "nothing to go on to");
+    h.get_by_label("Confirm").click();
+    h.run_steps(3);
+    assert_eq!(kind(&h, 0).as_deref(), Some("Verified"));
+    assert!(h.get_by_label("Confirmed").accesskit_node().is_disabled());
+    if let Ok(shots) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
+        h.render().unwrap().save(std::path::Path::new(&shots).join("diagram-tab-confirmed.png")).unwrap();
+    }
+    // A change: Confirm again.
+    h.state_mut().chess.editor.as_mut().unwrap().position = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(EDITED).unwrap();
+    h.run_steps(2);
+    assert!(!h.get_by_label("Confirm").accesskit_node().is_disabled());
+}
+
+/// Plan A9-I15 (task 7, finding R5-02; a bridge to step I17): the notice of what a scan found is
+/// a polite status, which screen readers say when it appears.
+#[test]
+fn a_chess_notice_is_a_polite_status() {
+    use egui::accesskit::{Live, Role};
+    let mut h = harness();
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    let toast = h.get_all_by_role(Role::Status).find(|n| n.query_by_label("Diagrams found: 2").is_some()).expect("the notice is a status");
+    assert_eq!(toast.accesskit_node().live(), Live::Polite);
+}
+
+/// Plan A9-I15 (task 7, finding A6-11): the Chess panel's Diagrams and Text are tabs to
+/// assistive technology, not buttons.
+#[test]
+fn the_chess_panels_tabs_are_tabs() {
+    let mut h = harness();
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(2);
+    for tab in ["Diagrams", "Text"] {
+        h.get_by_role_and_label(egui::accesskit::Role::Tab, tab);
+    }
+}
+
+/// Plan A9-I15 (task 7, finding R5-07): the editor's board is named by its diagram, never by its
+/// FEN, which a screen reader would spell out, and each of its 64 squares has its place on the
+/// screen, for a magnifier that follows the cursor.
+#[test]
+fn the_editors_board_is_named_by_its_diagram_and_its_squares_have_bounds() {
+    use egui::accesskit::Role;
+    let mut h = harness();
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    h.get_by_label_contains("Diagram 1 · ").click();
+    h.run_steps(3);
+    let grid = h.get_by_role(Role::Grid);
+    assert_eq!(grid.accesskit_node().label().as_deref(), Some("Diagram board, page 1, diagram 1"));
+    let cells: Vec<_> = grid.get_all_by_role(Role::GridCell).collect();
+    assert_eq!(cells.len(), 64);
+    assert!(cells.iter().all(|c| c.accesskit_node().raw_bounds().is_some_and(|b| b.width() > 1.0)), "every square has its place");
+}
+
+/// Plan A9-I15 (task 7, finding R5-07): To move is a radio group of its two choices, named, in
+/// the Diagram tab and in the classic editor.
+#[test]
+fn to_move_is_a_named_radio_group() {
+    use egui::accesskit::Role;
+    for classic in [false, true] {
+        let mut h = harness();
+        h.state_mut().chess.classic_editor = classic;
+        assert!(h.state_mut().execute("chess.scan"));
+        h.run_steps(3);
+        h.get_by_label_contains("Diagram 1 · ").click();
+        h.run_steps(3);
+        let group = h.get_by_role_and_label(Role::RadioGroup, "To move");
+        assert_eq!(group.get_all_by_role(Role::RadioButton).count(), 2, "classic editor: {classic}");
+    }
+}
+
+/// Plan A9-I15 (task 7, finding A6-25): the analysis board says whose move it is and the move,
+/// with its pieces in words, never its FEN.
+#[test]
+fn the_analysis_board_says_its_side_move_and_pieces() {
+    let mut h = harness();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    let board = h.get_by_label("Board, White to move, move 1");
+    let pieces = board.accesskit_node().description().unwrap_or_default();
+    assert!(pieces.starts_with("White: Ke1, Qd1") && pieces.contains("Black: Ke8"), "{pieces}");
+    if let Ok(shots) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
+        for theme in ["light", "dark"] {
+            h.state_mut().set_option("theme", theme).unwrap();
+            h.run_steps(3);
+            h.render().unwrap().save(std::path::Path::new(&shots).join(format!("analysis-board-{theme}.png"))).unwrap();
+        }
+    }
+}
+
+/// Plan A9-I15 (task 7): a chess question is a modal dialog to assistive technology, which takes
+/// the window behind it out of reach.
+#[test]
+fn a_chess_question_is_a_modal_dialog() {
+    let mut h = harness();
+    draft_second(&mut h);
+    h.state_mut().request_close_tab(0);
+    h.run_steps(2);
+    let dialog = h.get_by_role(egui::accesskit::Role::Dialog);
+    assert!(dialog.accesskit_node().data().is_modal());
+    dialog.get_by_label("Keep editing");
 }

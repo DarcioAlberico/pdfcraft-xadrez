@@ -2408,6 +2408,8 @@ animation effects	Off	ఆఫ్
 	Black pawn	నల్ల బంటు
 	White	తెలుపు
 	Board: {fen}	బోర్డు: {fen}
+	Board, {state}, move {n}	బోర్డు, {state}, ఎత్తు {n}
+	Board, {state}	బోర్డు, {state}
 	Click a square to put the chosen piece there; click it again to empty it.	ఎంచుకున్న పావును అక్కడ ఉంచడానికి ఒక గడిపై క్లిక్ చేయండి; ఖాళీ చేయడానికి మళ్ళీ క్లిక్ చేయండి.
 	Close the editor	ఎడిటర్ మూసివేయి
 	Draw this position over the diagram on the page (one undo step).	ఈ స్థితిని పేజీలోని రేఖాచిత్రంపై గీయి (ఒక రద్దు దశ).
@@ -2420,6 +2422,7 @@ animation effects	Off	ఆఫ్
 	Replace on the page	పేజీలో మార్చు
 	The board couldn't be drawn: {e}	బోర్డు గీయలేకపోయింది: {e}
 	To move:	ఎత్తు:
+	To move	ఎత్తు
 	Move number:	ఎత్తు సంఖ్య:
 	The move the diagram stands at: 35 with Black to move is 35…	రేఖాచిత్రం ఉన్న ఎత్తు: నలుపు ఆడాల్సిన 35 అంటే 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	ఆట మొదలయ్యే ఎత్తు, చదవనప్పుడు సరిచేయడానికి: నలుపు ఆడాల్సిన 35 అంటే 35…
@@ -2562,14 +2565,13 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Demote a line	వరుస కిందికి
 	Delete a variation	ఉపవరుస తొలగింపు
 # Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
-	Dock	డాక్ చేయి
 	The chess board couldn't open in its own window, so it is back in its panel.	చెస్ బోర్డును దాని సొంత విండోలో తెరవలేకపోయాం, కాబట్టి అది తిరిగి దాని ప్యానెల్‌లో ఉంది.
 	The chess board couldn't open in its own window, so it stays in its panel.	చెస్ బోర్డును దాని సొంత విండోలో తెరవలేకపోయాం, కాబట్టి అది దాని ప్యానెల్‌లోనే ఉంటుంది.
 # Chess ▸ PGN toolbar: T13b, the whole chess panel in its own window (the rail's tool and the command, the window's tab strip and Dock button, the Inspector's note while it is out).
 	Chess in its own window	చదరంగం ప్రత్యేక విండోలో
 	Board	బోర్డు
 	The chess panel is in its own window.	చదరంగం ప్యానెల్ ప్రత్యేక విండోలో ఉంది.
-	Bring it back	తిరిగి తీసుకురండి
+	Back to the main window	ప్రధాన విండోకు తిరిగి
 	Put the board and the chess panel back in the main window	బోర్డును, చదరంగం ప్యానెల్‌ను ప్రధాన విండోకు తిరిగి పెట్టు
 
 # Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
@@ -2780,7 +2782,8 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Variation of {move}	{move} యొక్క ఉపవరుస
 	moves: {n}	ఎత్తులు: {n}
 # Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
-	Fit at	ఇక్కడ అమర్చు
+	Insert in	ఇందులో చేర్చు
+	Piece letters	పావుల అక్షరాలు
 	Apply and keep the rest as a comment	వర్తింపజేసి మిగిలినదాన్ని వ్యాఖ్యగా ఉంచు
 	Unreadable move	చదవలేని ఎత్తు
 	Past the capture's limits	సంగ్రహణ పరిమితులకు మించి
@@ -3054,12 +3057,15 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	More ways to confirm	నిర్ధారించే ఇతర మార్గాలు
 	Confirm and next	నిర్ధారించి తర్వాతిది
 	Only confirm	నిర్ధారించు మాత్రమే
+	Confirm	నిర్ధారించు
+	Confirmed	నిర్ధారించబడింది
+	This position is kept for the diagram. Change it to confirm again.	ఈ స్థితి రేఖాచిత్రం కోసం భద్రపరచబడింది. మళ్లీ నిర్ధారించడానికి దాన్ని మార్చండి.
 	Keep this position for the diagram, without changing the PDF.	PDF ను మార్చకుండా ఈ స్థితిని రేఖాచిత్రం కోసం ఉంచు.
 	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	PDF ను మార్చకుండా ఈ స్థితిని రేఖాచిత్రం కోసం ఉంచి, తర్వాత సమీక్షించాల్సినదాన్ని తెరువు (Ctrl+Enter).
 	More actions	మరిన్ని చర్యలు
 	Forget the correction	సవరణను మర్చిపో
 	Show what was read again; the PDF is not changed.	చదివినదాన్ని మళ్లీ చూపించు; PDF మారదు.
-	Diagram board: {fen}	రేఖాచిత్రం బోర్డు: {fen}
+	Diagram board, page {p}, diagram {n}	రేఖాచిత్రం బోర్డు, పేజీ {p}, రేఖాచిత్రం {n}
 	Classic diagram editor	సాంప్రదాయ రేఖాచిత్ర ఎడిటర్
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	రేఖాచిత్రం ట్యాబ్ రాకముందులాగే రేఖాచిత్రాలు ప్యానెల్‌లోనే రేఖాచిత్రాలను సవరించు. ఈ ఎంపిక తదుపరి వెర్షన్‌లో తొలగించబడుతుంది.
 # Plan A8 P3b3: drafts and the question about them.
@@ -3114,6 +3120,7 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Page {p}: {done}	పేజీ {p}: {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} చిత్రం తనిఖీ అయింది|{n} చిత్రాలు తనిఖీ అయ్యాయి
 	Export chess book	చదరంగం పుస్తకాన్ని ఎగుమతి చేయి
+	Export book…	పుస్తకాన్ని ఎగుమతి చేయి…
 	PGN — games	PGN — ఆటలు
 	EPUB — e-book	EPUB — ఈ-పుస్తకం
 	HTML — web page	HTML — వెబ్ పేజీ
@@ -3203,6 +3210,14 @@ castling	long	పెద్ద
 	The book's PGN plays this move from another position: check it.	పుస్తకం PGN ఈ ఎత్తును మరొక స్థితి నుండి ఆడుతుంది: సరిచూడండి.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	ఈ పేజీలో పుస్తకం PGN: {confirmed} ధృవీకరించబడ్డాయి, {recovered} PGN నుండి చదివినవి, {conflict} వైరుధ్యంలో ఉన్నాయి.
 	Confirmed by the PGN	PGN ధృవీకరించింది
+	All ({n})	అన్నీ ({n})
+	Read ({n})	చదివినవి ({n})
+	To review ({n})	సమీక్షించాల్సినవి ({n})
+	Not read ({n})	చదవనివి ({n})
+	With an error ({n})	లోపం ఉన్నవి ({n})
+	Verified ({n})	నిర్ధారించినవి ({n})
+	Corrected ({n})	సరిచేసినవి ({n})
+	Confirmed by the PGN ({n})	PGN ధృవీకరించినవి ({n})
 	The book's PGN has this position, so it needs no review.	పుస్తకం PGN లో ఈ స్థితి ఉంది, కాబట్టి దీనికి సమీక్ష అవసరం లేదు.
 	PGN games from	PGN ఆటలు దీని నుండి
 	The book's PGN, with the book's text	పుస్తకం PGN, పుస్తకం పాఠ్యంతో
@@ -3216,10 +3231,10 @@ castling	long	పెద్ద
 	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	ఈ PDF పక్కన అదే పేరుతో PGN ఉంది: దాన్ని పుస్తకం PGN గా ఉంచండి.
 	Double-click to open the book's PGN game here.	పుస్తకం PGN ఆటను ఇక్కడ తెరవడానికి రెండుసార్లు క్లిక్ చేయండి.
 	Open the book's PGN game here	పుస్తకం PGN ఆటను ఇక్కడ తెరవండి
-	Linking the whole book to its PGN…	మొత్తం పుస్తకాన్ని దాని PGN కు అనుసంధానిస్తున్నాం…
-	Linking the whole book: page {done} of {of}	మొత్తం పుస్తకాన్ని అనుసంధానిస్తున్నాం: {of} లో {done} వ పేజీ
-	Link the whole book again	మొత్తం పుస్తకాన్ని మళ్లీ అనుసంధానించండి
-	Link the whole book	మొత్తం పుస్తకాన్ని అనుసంధానించండి
+	Aligning the book to the PGN…	పుస్తకాన్ని PGN తో సరిపోలుస్తున్నాం…
+	Aligning the book to the PGN: page {done} of {of}	పుస్తకాన్ని PGN తో సరిపోలుస్తున్నాం: {of} లో {done} వ పేజీ
+	Align again	మళ్లీ సరిపోల్చండి
+	Align the book to the PGN	పుస్తకాన్ని PGN తో సరిపోల్చండి
 	Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book.	ప్రతి పేజీని చదివి పుస్తకం PGN కు అనుసంధానిస్తుంది: ఎన్ని ఎత్తులను ధృవీకరిస్తుంది, PGN నుండి చదువుతుంది, వైరుధ్యంలో కనుగొంటుంది, ప్రతి ఆట మొదలయ్యే పేజీ. పుస్తకాన్ని ఎగుమతి చేసినంత సమయం పడుతుంది.
 	Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages.	మొత్తం పుస్తకం: {moves} ఎత్తులలో {linked} అనుసంధానించబడ్డాయి (PGN నుండి {recovered}), {conflict} వైరుధ్యంలో, {all} పేజీలలో {pages} పేజీలలో.
 	Games of the book's PGN ({n})	పుస్తకం PGN ఆటలు ({n})
