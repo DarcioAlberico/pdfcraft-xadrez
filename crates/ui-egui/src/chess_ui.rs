@@ -673,7 +673,7 @@ fn in_window_note(ui: &mut egui::Ui, t: &Tokens) -> Option<PanelAction> {
     ui.add_space(6.0);
     ui.label(egui::RichText::new(tl!("The chess panel is in its own window.")).color(t.text_muted));
     ui.add_space(4.0);
-    ui.button(tl!("Bring it back")).clicked().then_some(PanelAction::DockWindow)
+    ui.button(tl!("Back to the main window")).clicked().then_some(PanelAction::DockWindow)
 }
 
 /// The Text tab (`text`) or the Diagrams tab: in the Inspector's Chess panel, or in the chess
@@ -757,8 +757,10 @@ pub(crate) fn tab_contents(
     if let Some(ed) = state.editor.as_mut().filter(|e| editor_here && e.doc == id && Some(results.stamp) == current) {
         ui.separator();
         let pieces = crate::chess_editor::piece_set(&mut state.pieces, &state.diagram_piece_choice, &mut state.diagram_piece_error);
-        let confirm_only = state.confirm_only;
-        if let Some(a) = crate::chess_editor::editor_ui(ui, t, ed, &pieces, queue.len(), confirm_only, state.diagram_keys.board.as_ref()) {
+        let done = results.kind(ed.page, ed.index).is_some() && !ed.dirty();
+        let confirm = crate::chess_diagram_tab::Confirm::of(done, !queue.is_empty(), state.confirm_only);
+        let page = info.pages.get(ed.page).map_or_else(|| ed.page.saturating_add(1).to_string(), |p| p.label.clone());
+        if let Some(a) = crate::chess_editor::editor_ui(ui, t, ed, &pieces, &page, queue.len(), confirm, state.diagram_keys.board.as_ref()) {
             action = Some(PanelAction::Editor(a));
         }
     }

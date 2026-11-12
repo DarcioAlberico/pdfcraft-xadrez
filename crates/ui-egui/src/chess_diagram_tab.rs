@@ -159,7 +159,12 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                 state_icon(ui, &t, state, 16.0, dirty);
                 let title = diagram_title(&label, index, on_page);
-                let link = ui.add(egui::Label::new(RichText::new(&title).strong().color(t.accent_text)).truncate().sense(egui::Sense::click()));
+                // Its text's width (no more than the room left) and 24 points tall, the least a
+                // control the pointer clicks may be (plan A9-I15, finding R4-06).
+                let font = egui::TextStyle::Body.resolve(ui.style());
+                let width = (widgets::text_width(ui, &title, &font) + 1.0).min(ui.available_width());
+                let text = egui::Label::new(RichText::new(&title).strong().color(t.accent_text)).truncate().sense(egui::Sense::click());
+                let link = ui.add_sized(egui::vec2(width, widgets::MIN_TARGET), text);
                 link.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Link, true, &title));
                 if crate::theme::hand(link).on_hover_text(tl!("Show it on the page")).clicked() {
                     action = Some(EditorAction::ShowOnPage);
@@ -198,7 +203,16 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
             let sprites = crate::chess_editor::palette_sprites(ui, ed, &pieces);
             ui.horizontal(|ui| {
                 ui.add_space(((room - side) / 2.0).max(0.0));
-                crate::chess_editor::board_view(ui, &t, ed, &pieces, side, true, board_keys.as_ref());
+                crate::chess_editor::board_view(
+                    ui,
+                    &t,
+                    ed,
+                    &pieces,
+                    side,
+                    true,
+                    &crate::chess_editor::board_name(&label, index),
+                    board_keys.as_ref(),
+                );
             });
             ui.add_space(6.0);
             crate::chess_editor::palette(ui, sprites.as_ref(), &mut ed.brush, false);
@@ -218,9 +232,10 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
             // Whether the position is legal on the left, in what the buttons leave; the buttons
             // made left to right, so the keyboard goes ⋯ → Confirm → ▾ (plan A8, P3c).
             let illegal = ed.illegal_text();
-            let only = confirm_only || queue.is_empty();
+            let confirm = Confirm::of(kept && !dirty, !queue.is_empty(), confirm_only);
             let gap = ui.spacing().item_spacing.x;
-            let buttons = MENU_BUTTON + gap + widgets::icon_pill_width(ui, confirm_label(only)) + gap + MENU_BUTTON;
+            let more_ways = if confirm.has_menu() { gap + MENU_BUTTON } else { 0.0 };
+            let buttons = MENU_BUTTON + gap + widgets::icon_pill_width(ui, confirm.label()) + more_ways;
             let split = (inner.max.x - buttons).max(inner.min.x);
             let status = egui::Rect::from_min_max(inner.min, egui::pos2((split - gap).max(inner.min.x), inner.max.y));
             ui.scope_builder(UiBuilder::new().max_rect(status).layout(Layout::left_to_right(Align::Center)), |ui| {
@@ -236,7 +251,7 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                 if let Some(a) = more_menu(ui, ed, illegal.is_none(), kept) {
                     action = Some(a);
                 }
-                if let Some(a) = confirm_button(ui, only, !queue.is_empty()) {
+                if let Some(a) = confirm_button(ui, confirm) {
                     action = Some(a);
                 }
             });
@@ -287,7 +302,7 @@ fn first_time_hint(ui: &mut egui::Ui, t: &Tokens) -> bool {
                 )
                 .wrap(),
             );
-            if crate::icons::button(ui, "x", 20.0, false, tl!("Dismiss")).clicked() {
+            if crate::icons::button(ui, "x", widgets::MIN_TARGET, false, tl!("Dismiss")).clicked() {
                 away = true;
             }
         });
@@ -312,7 +327,7 @@ fn fields(ui: &mut egui::Ui, ed: &mut DiagramEditor) {
     ui.horizontal(|ui| {
         let mut side = ed.position.side_to_move.unwrap_or(Color::White);
         row_label(ui, tl!("To move:"));
-        widgets::segmented(ui, &mut side, &[(Color::White, tl!("White")), (Color::Black, tl_ctx!("chess side", "Black"))]);
+        widgets::segmented(ui, tl!("To move"), &mut side, &[(Color::White, tl!("White")), (Color::Black, tl_ctx!("chess side", "Black"))]);
         ed.position.side_to_move = Some(side);
     });
     ui.horizontal(|ui| {
@@ -352,33 +367,72 @@ const ROW: f32 = 26.0;
 /// The side of the footer's ⋯ and ▾ buttons, in points.
 const MENU_BUTTON: f32 = 26.0;
 
-/// The main button's words: Only confirm, or Confirm and next.
-fn confirm_label(only: bool) -> &'static str {
-    if only { tl!("Only confirm") } else { tl!("Confirm and next") }
+/// What the main button does (plan A9-I15, finding R4-08; the words are plan A9 §2.8.2's).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Confirm {
+    /// The diagram keeps this very position: Confirmed, greyed out until the position changes.
+    Done,
+    /// No review queue to go on to: Confirm, with no ▾.
+    Alone,
+    /// Confirm and next (Ctrl+Enter) or, when `only`, Only confirm in front, with ▾ for the other.
+    Queue { only: bool },
 }
 
-/// The main button and its ▾: Confirm and next (Ctrl+Enter) or Only confirm, the last one chosen
-/// in front. Without a review queue there is no next, so Only confirm is in front.
-pub(crate) fn confirm_button(ui: &mut egui::Ui, confirm_only: bool, queue: bool) -> Option<EditorAction> {
-    let only = confirm_only || !queue;
-    let mut action = None;
-    let hint = if only {
-        tl!("Keep this position for the diagram, without changing the PDF.")
-    } else {
-        tl!("Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).")
-    };
-    if widgets::icon_pill(ui, "badge-check", confirm_label(only), true).on_hover_text(hint).clicked() {
-        action = Some(EditorAction::Confirm { next: !only });
+impl Confirm {
+    /// The button for a diagram whose kept position is the one shown (`done`), with diagrams to
+    /// review (`queue`), the user having last chosen Only confirm (`only`).
+    pub(crate) fn of(done: bool, queue: bool, only: bool) -> Self {
+        match (done, queue) {
+            (true, _) => Self::Done,
+            (false, false) => Self::Alone,
+            (false, true) => Self::Queue { only },
+        }
     }
-    let more = crate::icons::button(ui, "chevron-down", MENU_BUTTON, false, tl!("More ways to confirm"));
-    egui::Popup::menu(&more).show(|ui| {
-        if ui.add_enabled(queue, egui::Button::new(tl!("Confirm and next"))).clicked() {
-            action = Some(EditorAction::Confirm { next: true });
+
+    /// The main button's words.
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            Self::Done => tl!("Confirmed"),
+            Self::Alone => tl!("Confirm"),
+            Self::Queue { only: true } => tl!("Only confirm"),
+            Self::Queue { only: false } => tl!("Confirm and next"),
         }
-        if ui.button(tl!("Only confirm")).clicked() {
-            action = Some(EditorAction::Confirm { next: false });
+    }
+
+    /// Whether a ▾ beside it offers the other way to confirm.
+    pub(crate) fn has_menu(self) -> bool {
+        matches!(self, Self::Queue { .. })
+    }
+}
+
+/// The main button, and with a review queue its ▾: Confirm and next (Ctrl+Enter) or Only
+/// confirm, the last one chosen in front ([`Confirm`]).
+pub(crate) fn confirm_button(ui: &mut egui::Ui, confirm: Confirm) -> Option<EditorAction> {
+    let mut action = None;
+    let next = confirm == Confirm::Queue { only: false };
+    let hint = match confirm {
+        Confirm::Done => tl!("This position is kept for the diagram. Change it to confirm again."),
+        Confirm::Queue { only: false } => {
+            tl!("Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).")
         }
-    });
+        Confirm::Alone | Confirm::Queue { only: true } => tl!("Keep this position for the diagram, without changing the PDF."),
+    };
+    let done = confirm == Confirm::Done;
+    let main = ui.add_enabled_ui(!done, |ui| widgets::icon_pill(ui, "badge-check", confirm.label(), !done)).inner;
+    if main.on_hover_text(hint).on_disabled_hover_text(hint).clicked() {
+        action = Some(EditorAction::Confirm { next });
+    }
+    if confirm.has_menu() {
+        let more = crate::icons::button(ui, "chevron-down", MENU_BUTTON, false, tl!("More ways to confirm"));
+        egui::Popup::menu(&more).show(|ui| {
+            if widgets::menu_entry(ui, true, egui::Button::new(tl!("Confirm and next"))).clicked() {
+                action = Some(EditorAction::Confirm { next: true });
+            }
+            if widgets::menu_entry(ui, true, egui::Button::new(tl!("Only confirm"))).clicked() {
+                action = Some(EditorAction::Confirm { next: false });
+            }
+        });
+    }
     action
 }
 
@@ -388,26 +442,27 @@ fn more_menu(ui: &mut egui::Ui, ed: &DiagramEditor, legal: bool, kept: bool) -> 
     let button = crate::icons::button(ui, "ellipsis", MENU_BUTTON, false, tl!("More actions"));
     egui::Popup::menu(&button).show(|ui| {
         let fen = ed.fen();
-        if ui
-            .button(tl!("Redraw in the PDF…"))
+        // Each item closes the menu, whatever clicked it (plan A9-I15, finding A6-18).
+        let item = |ui: &mut egui::Ui, enabled: bool, text: &str| widgets::menu_entry(ui, enabled, egui::Button::new(text));
+        if item(ui, true, tl!("Redraw in the PDF…"))
             .on_hover_text(tl!("Draw this position over the original diagram in the PDF (one undo step)."))
             .clicked()
         {
             action = Some(EditorAction::Redraw);
         }
-        if ui.add_enabled(legal, egui::Button::new(tl!("Add lichess link"))).clicked() {
+        if item(ui, legal, tl!("Add lichess link")).clicked() {
             action = Some(EditorAction::Link);
         }
-        if ui.button(tl!("Copy FEN")).on_hover_text(tl!("Position code other chess programs accept.")).clicked() {
+        if item(ui, true, tl!("Copy FEN")).on_hover_text(tl!("Position code other chess programs accept.")).clicked() {
             action = Some(EditorAction::CopyFen(fen.clone()));
         }
         if legal && let Ok(p) = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(&fen) {
             let url = pdfcraft_engine::chess::pdfcraft_chess::lichess::analysis_url(&p, if ed.flipped { Color::Black } else { Color::White });
-            if ui.button(tl!("Open in lichess")).on_hover_text(&url).clicked() {
+            if item(ui, true, tl!("Open in lichess")).on_hover_text(&url).clicked() {
                 action = Some(EditorAction::OpenLichess(url));
             }
         }
-        if kept && ui.button(tl!("Forget the correction")).on_hover_text(tl!("Show what was read again; the PDF is not changed.")).clicked() {
+        if kept && item(ui, true, tl!("Forget the correction")).on_hover_text(tl!("Show what was read again; the PDF is not changed.")).clicked() {
             action = Some(EditorAction::Forget);
         }
     });

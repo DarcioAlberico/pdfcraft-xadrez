@@ -260,10 +260,9 @@ impl Automation {
     ) -> Result<(String, u64, String)> {
         let doc = self.session.get(id).ok_or_else(|| failed("no such document"))?;
         let (keys, fingerprints) = (doc.doc_keys(), doc.page_fingerprints());
-        let page_fp = fingerprints.get(page).cloned().ok_or_else(|| failed("the page's fingerprint could not be made"))?;
-        let new = NewCorrection { page, page_fp, rect, orig: Some(Original { fen: read, model: None }), fen, kind };
+        let new = NewCorrection { page, rect, orig: Some(Original { fen: read, model: None }), fen, kind };
         let at = now();
-        let (uid, loaded) = store.update(&keys, fingerprints.len(), |f| f.set(new, at)).map_err(failed)?;
+        let (uid, loaded) = store.update(&keys, fingerprints.len(), |f| f.set(new, at, &fingerprints)).map_err(failed)?;
         let rev = loaded.file.entries.iter().find(|e| e.uid == uid).map_or(0, |e| e.rev);
         Ok((uid, rev, loaded.name))
     }

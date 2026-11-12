@@ -2753,6 +2753,8 @@ theme	Appearance	Išvaizda
 	Black pawn	Juodasis pėstininkas
 	White	Baltieji
 	Board: {fen}	Lenta: {fen}
+	Board, {state}, move {n}	Lenta, {state}, ėjimas {n}
+	Board, {state}	Lenta, {state}
 	Click a square to put the chosen piece there; click it again to empty it.	Spustelėkite langelį, kad padėtumėte ten pasirinktą figūrą; spustelėkite dar kartą, kad jį ištuštintumėte.
 	Close the editor	Uždaryti rengyklę
 	Draw this position over the diagram on the page (one undo step).	Nupiešti šią poziciją ant diagramos puslapyje (vienas atšaukimo žingsnis).
@@ -2765,6 +2767,7 @@ theme	Appearance	Išvaizda
 	Replace on the page	Pakeisti puslapyje
 	The board couldn't be drawn: {e}	Nepavyko nupiešti lentos: {e}
 	To move:	Ėjimas:
+	To move	Ėjimas
 	Move number:	Ėjimo numeris:
 	The move the diagram stands at: 35 with Black to move is 35…	Ėjimas, ties kuriuo yra diagrama: 35, kai eina juodieji, yra 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Ėjimas, nuo kurio prasideda partija, pataisyti, kai jis nebuvo nuskaitytas: 35, kai eina juodieji, yra 35…
@@ -2958,14 +2961,13 @@ chess undo step	Clear drawings	piešinių valymą
 	Demote a line	linijos nuleidimą
 	Delete a variation	varianto trynimą
 # Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
-	Dock	Prisegti
 	The chess board couldn't open in its own window, so it is back in its panel.	Šachmatų lentos nepavyko atverti atskirame lange, todėl ji grąžinta į savo skydelį.
 	The chess board couldn't open in its own window, so it stays in its panel.	Šachmatų lentos nepavyko atverti atskirame lange, todėl ji lieka savo skydelyje.
 # Chess ▸ PGN toolbar: T13b, the whole chess panel in its own window (the rail's tool and the command, the window's tab strip and Dock button, the Inspector's note while it is out).
 	Chess in its own window	Šachmatai atskirame lange
 	Board	Lenta
 	The chess panel is in its own window.	Šachmatų skydelis yra atskirame lange.
-	Bring it back	Grąžinti
+	Back to the main window	Atgal į pagrindinį langą
 	Put the board and the chess panel back in the main window	Grąžinti lentą ir šachmatų skydelį į pagrindinį langą
 
 # Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
@@ -3176,7 +3178,8 @@ chess undo step	Clear drawings	piešinių valymą
 	Variation of {move}	{move} variantas
 	moves: {n}	ėjimų: {n}
 # Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
-	Fit at	Vieta
+	Insert in	Įterpti į
+	Piece letters	Figūrų raidės
 	Apply and keep the rest as a comment	Pritaikyti ir likutį palikti kaip komentarą
 	Unreadable move	Neįskaitomas ėjimas
 	Past the capture's limits	Už perkėlimo ribų
@@ -3449,12 +3452,15 @@ chess undo step	Clear drawings	piešinių valymą
 	More ways to confirm	Kiti patvirtinimo būdai
 	Confirm and next	Patvirtinti ir toliau
 	Only confirm	Tik patvirtinti
+	Confirm	Patvirtinti
+	Confirmed	Patvirtinta
+	This position is kept for the diagram. Change it to confirm again.	Ši pozicija išsaugota diagramai. Pakeiskite ją, kad patvirtintumėte iš naujo.
 	Keep this position for the diagram, without changing the PDF.	Palikti šią poziciją diagramai, nekeičiant PDF.
 	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	Palikti šią poziciją diagramai, nekeičiant PDF, ir atverti kitą tikrintiną (Ctrl+Enter).
 	More actions	Daugiau veiksmų
 	Forget the correction	Pamiršti pataisymą
 	Show what was read again; the PDF is not changed.	Vėl rodyti, kas perskaityta; PDF nekeičiamas.
-	Diagram board: {fen}	Diagramos lenta: {fen}
+	Diagram board, page {p}, diagram {n}	Diagramos lenta, puslapis {p}, diagrama {n}
 	Classic diagram editor	Klasikinis diagramų redaktorius
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Redaguoti diagramas skydelyje Diagramos, kaip iki kortelės Diagrama. Ši parinktis dings vienoje iš būsimų versijų.
 # Plan A8 P3b3: drafts and the question about them.
@@ -3509,6 +3515,7 @@ chess undo step	Clear drawings	piešinių valymą
 	Page {p}: {done}	{p} puslapis: {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} diagrama patikrinta|{n} diagramos patikrintos|{n} diagramų patikrinta
 	Export chess book	Eksportuoti šachmatų knygą
+	Export book…	Eksportuoti knygą…
 	PGN — games	PGN — partijos
 	EPUB — e-book	EPUB — el. knyga
 	HTML — web page	HTML — tinklalapis
@@ -3597,6 +3604,14 @@ castling	long	ilgoji
 	The book's PGN plays this move from another position: check it.	Knygos PGN šį ėjimą žaidžia iš kitos pozicijos: patikrinkite.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	Knygos PGN šiame puslapyje: patvirtinta {confirmed}, paimta iš PGN {recovered}, prieštarauja {conflict}.
 	Confirmed by the PGN	Patvirtinta PGN
+	All ({n})	Visos ({n})
+	Read ({n})	Nuskaitytos ({n})
+	To review ({n})	Peržiūrėti ({n})
+	Not read ({n})	Nenuskaitytos ({n})
+	With an error ({n})	Su klaida ({n})
+	Verified ({n})	Patikrintos ({n})
+	Corrected ({n})	Pataisytos ({n})
+	Confirmed by the PGN ({n})	Patvirtintos PGN ({n})
 	The book's PGN has this position, so it needs no review.	Knygos PGN turi šią poziciją, todėl jos tikrinti nereikia.
 	PGN games from	PGN partijos iš
 	The book's PGN, with the book's text	Knygos PGN su knygos tekstu
@@ -3610,10 +3625,10 @@ castling	long	ilgoji
 	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	Šalia šio PDF yra to paties pavadinimo PGN: išsaugokite jį kaip knygos PGN.
 	Double-click to open the book's PGN game here.	Dukart spustelėkite, kad atidarytumėte knygos PGN partiją čia.
 	Open the book's PGN game here	Atidaryti knygos PGN partiją čia
-	Linking the whole book to its PGN…	Visa knyga susiejama su jos PGN…
-	Linking the whole book: page {done} of {of}	Visa knyga susiejama: puslapis {done} iš {of}
-	Link the whole book again	Vėl susieti visą knygą
-	Link the whole book	Susieti visą knygą
+	Aligning the book to the PGN…	Knyga derinama su PGN…
+	Aligning the book to the PGN: page {done} of {of}	Knyga derinama su PGN: puslapis {done} iš {of}
+	Align again	Suderinti iš naujo
+	Align the book to the PGN	Suderinti knygą su PGN
 	Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book.	Perskaito kiekvieną puslapį ir susieja jį su knygos PGN: kiek ėjimų patvirtina, paima iš PGN ir randa prieštaraujančių, ir kuriame puslapyje prasideda kiekviena partija. Užtrunka tiek, kiek knygos eksportas.
 	Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages.	Visa knyga: susieta {linked} iš {moves} ėjimų (paimta iš PGN {recovered}), prieštarauja {conflict}, {pages} iš {all} puslapių.
 	Games of the book's PGN ({n})	Knygos PGN partijos ({n})

@@ -287,12 +287,12 @@ impl PdfCraftApp {
     pub(crate) fn store_chess_correction(&mut self, target: &DiagramTarget, fen: String) -> Option<Kind> {
         let DiagramTarget { doc: id, page, index, rect, .. } = *target;
         let kind = if target.read.as_deref() == Some(fen.as_str()) { Kind::Verified } else { Kind::Corrected };
-        let page_fp = self.chess_corrections_for(id).and_then(|c| c.fingerprints.as_ref()?.1.get(page).cloned())?;
+        let fingerprints = self.chess_corrections_for(id).and_then(|c| c.fingerprints.as_ref()).map(|(_, fps)| fps.clone())?;
         let doc = self.session.get(id)?;
         let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
-        let new = NewCorrection { page, page_fp, rect, orig: Some(Original { fen: target.read.clone(), model: None }), fen, kind };
+        let new = NewCorrection { page, rect, orig: Some(Original { fen: target.read.clone(), model: None }), fen, kind };
         let at = now();
-        match self.chess.corrections.store.update(&keys, pages, |f| f.set(new, at)) {
+        match self.chess.corrections.store.update(&keys, pages, |f| f.set(new, at, &fingerprints)) {
             Ok((_, loaded)) => {
                 self.chess.corrections.said = false;
                 self.chess_corrections_kept(id, keys, loaded.file);

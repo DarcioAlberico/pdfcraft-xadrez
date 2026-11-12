@@ -399,7 +399,7 @@ fn the_preview_offers_each_place_and_applies_the_one_chosen() {
     let pending = h.state().chess.capture.pending.as_ref().expect("an ambiguous capture is shown first");
     assert_eq!(pending.plan.candidates.len(), 2);
     h.get_by_label_contains("It fits in more than one place.");
-    h.get_by_label("Fit at");
+    h.get_by_label("Insert in");
     // The place shown is the inner one; choose the other in Fit at.
     let fit = h
         .query_all_by(|n| n.role() == egui::accesskit::Role::ComboBox && n.value().as_deref() == Some("Line after 19…Kh8"))
@@ -668,7 +668,7 @@ fn the_preview_offers_renumbering_as_its_own_choice() {
     assert!(renumber.is_some() && place != renumber, "a place, and Renumber beside it");
     assert_eq!(p.choice, place);
     h.get_by_label("Variation of 19…Kh7");
-    assert!(h.query_by_label("Fit at").is_none(), "Renumber is not a place to fit at");
+    assert!(h.query_by_label("Insert in").is_none(), "Renumber is not a place to fit at");
     assert!(h.query_by_label_contains("is played as").is_none());
     h.get_by_label("Renumber").click();
     // The popover settles its new width (it is pinned by its right edge).

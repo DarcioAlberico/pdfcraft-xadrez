@@ -1954,7 +1954,7 @@ pub(crate) fn games_section(ui: &mut egui::Ui, t: &Tokens, games: &mut ChessGame
         // The list's header: every game, in this order, to one PGN file.
         ui.horizontal(|ui| {
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                let r = ui.small_button(tl!("Export…")).on_hover_text(tl!("Save all games as PGN…"));
+                let r = ui.small_button(tl!("Save all games as PGN…"));
                 list.see(&r);
                 if r.clicked() {
                     action = Some(GamesAction::SaveAll);

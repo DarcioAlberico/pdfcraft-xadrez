@@ -836,7 +836,10 @@ fn contents(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                 wide = ui.available_width() >= WIDE_FROM;
                 // One row: a narrow window's tabs on the left, the Dock button on the right.
                 ui.allocate_ui_with_layout(vec2(ui.available_width(), 24.0), egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    asked.dock = ui.button(tl!("Dock")).on_hover_text(tl!("Put the board and the chess panel back in the main window")).clicked();
+                    asked.dock = ui
+                        .button(tl!("Back to the main window"))
+                        .on_hover_text(tl!("Put the board and the chess panel back in the main window"))
+                        .clicked();
                     if !wide {
                         ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
                             crate::widgets::dock_tabs(

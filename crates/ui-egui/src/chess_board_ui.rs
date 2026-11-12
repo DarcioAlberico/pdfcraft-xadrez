@@ -1142,8 +1142,11 @@ pub(crate) fn board_view_sized(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardS
     let rect = look.board_rect(outer);
     let response = ui.interact(rect, ui.id().with("chess-board-squares"), egui::Sense::click_and_drag());
     ui.painter().image(tex.id(), rect, Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)), Color32::WHITE);
-    let board_name = crate::i18n::fmt(tl!("Board: {fen}"), &[("fen", &state.current_fen())]);
+    let board_name = board_name(state, t);
     response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &board_name));
+    // The pieces in words, in the interface's letters (plan A9-I15; never the FEN).
+    let in_words = pdfcraft_engine::chess::pdfcraft_chess::describe::pieces(&state.placement(), crate::chess_figurines::interface_lang());
+    ui.ctx().accesskit_node_builder(response.id, |node| node.set_description(in_words));
     let at = |state: &BoardState, p: Pos2| state.square_at((p.x - rect.min.x) / rect.width().max(1.0), (p.y - rect.min.y) / rect.height().max(1.0));
     if response.drag_started_by(PointerButton::Primary)
         && let Some(sq) = response.interact_pointer_pos().and_then(|p| at(state, p))
@@ -1303,23 +1306,39 @@ pub(crate) fn board_view_sized(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardS
     }
 }
 
-/// The game's status line: whose move it is, check, mate.
+/// The game's status line: whose move it is, check, mate. In the text colour: a diagram state's
+/// green is not the side to move's, and red is only for a position that is not legal and for
+/// mate (plan A9-I15, finding R4-05).
 fn status(state: &BoardState, t: &Tokens) -> (String, Color32) {
-    let check = t.danger_text;
+    let alarm = t.danger_text;
     if state.illegal.is_some() {
-        return (tl!("Not a legal position").to_string(), check);
+        return (tl!("Not a legal position").to_string(), alarm);
     }
     let side = state.game.side_to_move();
-    let fine = t.success_text;
+    let plain = t.text;
     match state.game.outcome() {
-        Outcome::Checkmate => (if side == Color::White { tl!("Checkmate: Black wins") } else { tl!("Checkmate: White wins") }.to_string(), check),
-        Outcome::Stalemate => (tl!("Stalemate").to_string(), fine),
-        Outcome::FiftyMoves => (tl!("Draw by the fifty-move rule").to_string(), fine),
+        Outcome::Checkmate => (if side == Color::White { tl!("Checkmate: Black wins") } else { tl!("Checkmate: White wins") }.to_string(), alarm),
+        Outcome::Stalemate => (tl!("Stalemate").to_string(), plain),
+        Outcome::FiftyMoves => (tl!("Draw by the fifty-move rule").to_string(), plain),
         Outcome::Ongoing if state.game.in_check() => {
-            (if side == Color::White { tl!("White to move, in check") } else { tl!("Black to move, in check") }.to_string(), check)
+            (if side == Color::White { tl!("White to move, in check") } else { tl!("Black to move, in check") }.to_string(), plain)
         }
-        Outcome::Ongoing => (if side == Color::White { tl!("White to move") } else { tl!("Black to move") }.to_string(), fine),
+        Outcome::Ongoing => (if side == Color::White { tl!("White to move") } else { tl!("Black to move") }.to_string(), plain),
     }
+}
+
+/// The analysis board's accessible name: its status and the move it stands at ("Board, White to
+/// move, move 7"), not the FEN a screen reader would spell out; a position that is not legal
+/// has no move (plan A9-I15).
+fn board_name(state: &BoardState, t: &Tokens) -> String {
+    let (said, _) = status(state, t);
+    if state.illegal.is_some() {
+        return crate::i18n::fmt(tl!("Board, {state}"), &[("state", &said)]);
+    }
+    // The FEN's sixth field; a game always writes one.
+    let fen = state.game.fen();
+    let number = fen.split(' ').nth(5).unwrap_or("1");
+    crate::i18n::fmt(tl!("Board, {state}, move {n}"), &[("state", &said), ("n", number)])
 }
 
 /// What a move's menu asked for.
@@ -2230,7 +2249,7 @@ pub(crate) fn view_controls(ui: &mut egui::Ui, state: &mut BoardState) {
         ui.add_enabled_ui(state.illegal.is_none() && state.game.is_empty(), |ui| {
             let mut side = state.game.side_to_move();
             ui.label(tl!("To move:"));
-            crate::widgets::segmented(ui, &mut side, &[(Color::White, tl!("White")), (Color::Black, tl_ctx!("chess side", "Black"))]);
+            crate::widgets::segmented(ui, tl!("To move"), &mut side, &[(Color::White, tl!("White")), (Color::Black, tl_ctx!("chess side", "Black"))]);
             if side != state.game.side_to_move() {
                 state.set_first_side(side);
             }
@@ -2349,7 +2368,17 @@ pub(crate) fn navigation(ui: &mut egui::Ui, t: &Tokens, state: &mut BoardState) 
     crate::chess_moves_tree::continuations(ui, t, state);
     crate::chess_moves_tree::created_notice(ui, t, state);
     let (text, colour) = status(state, t);
-    ui.label(egui::RichText::new(text).small().color(colour));
+    ui.horizontal(|ui| {
+        // The side to move's dot, as on the board's edge (`turn_dot`): white or black, ringed in
+        // the other, so it shows on either theme.
+        if state.illegal.is_none() {
+            let white = state.game.side_to_move() == Color::White;
+            let (dot, _) = ui.allocate_exact_size(vec2(10.0, 10.0), egui::Sense::hover());
+            let (fill, ring) = if white { (Color32::WHITE, Color32::BLACK) } else { (Color32::BLACK, Color32::WHITE) };
+            ui.painter().circle(dot.center(), 4.0, fill, Stroke::new(1.0, ring));
+        }
+        ui.label(egui::RichText::new(text).small().color(colour));
+    });
     if let Some(m) = &state.message {
         ui.label(egui::RichText::new(m).small().color(t.text_muted));
     }
@@ -2752,6 +2781,28 @@ fn read_message(report: &PgnReport) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Plan A9-I15 (finding R4-05): whose move it is, in check or not, is said in the text colour,
+    /// not a diagram state's green; red is only for a position that is not legal and for mate. The
+    /// board's accessible name says the same and the move, never the FEN.
+    #[test]
+    fn the_status_is_in_the_text_colour_and_red_only_for_an_illegal_position_or_mate() {
+        for kind in [crate::theme::ThemeKind::Light, crate::theme::ThemeKind::Dark] {
+            let t = Tokens::for_kind(kind);
+            let mut b = BoardState::default();
+            assert_eq!(status(&b, &t), ("White to move".to_owned(), t.text));
+            assert_eq!(board_name(&b, &t), "Board, White to move, move 1");
+            b.load_fen("4k3/8/8/8/8/8/8/4R1K1 b - - 0 7", false, None);
+            assert_eq!(status(&b, &t), ("Black to move, in check".to_owned(), t.text));
+            assert_eq!(board_name(&b, &t), "Board, Black to move, in check, move 7");
+            b.load_fen("R3k3/8/4K3/8/8/8/8/8 b - - 0 40", false, None);
+            assert_eq!(status(&b, &t), ("Checkmate: White wins".to_owned(), t.danger_text));
+            b.illegal = Some((b.game.placement(), "8/8/8/8/8/8/8/8 w - - 0 1".to_owned()));
+            assert_eq!(status(&b, &t), ("Not a legal position".to_owned(), t.danger_text));
+            assert_eq!(board_name(&b, &t), "Board, Not a legal position");
+            assert!(!board_name(&b, &t).contains('/'), "no FEN");
+        }
+    }
 
     /// Plan A9-G8 (R1-02): a PGN whose reading stopped at a move that can't be played marks the
     /// game cut, with that move, so saving it says so first; a PGN read whole doesn't.

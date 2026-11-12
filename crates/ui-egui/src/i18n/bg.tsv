@@ -2464,6 +2464,8 @@ animation effects	Off	Изключени
 	Black pawn	Черна пешка
 	White	Белите
 	Board: {fen}	Дъска: {fen}
+	Board, {state}, move {n}	Дъска, {state}, ход {n}
+	Board, {state}	Дъска, {state}
 	Click a square to put the chosen piece there; click it again to empty it.	Щракнете върху поле, за да поставите там избраната фигура; щракнете пак, за да го изпразните.
 	Close the editor	Затваряне на редактора
 	Draw this position over the diagram on the page (one undo step).	Изчертаване на тази позиция върху диаграмата на страницата (една стъпка за отмяна).
@@ -2476,6 +2478,7 @@ animation effects	Off	Изключени
 	Replace on the page	Замяна на страницата
 	The board couldn't be drawn: {e}	Дъската не можа да бъде изчертана: {e}
 	To move:	На ход:
+	To move	На ход
 	Move number:	Номер на хода:
 	The move the diagram stands at: 35 with Black to move is 35…	Ходът, на който е диаграмата: 35 с черните на ход е 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Ходът, от който започва партията, за да го поправите, когато не е разчетен: 35 с черните на ход е 35…
@@ -2668,14 +2671,13 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Demote a line	понижаването на линия
 	Delete a variation	изтриването на вариант
 # Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
-	Dock	Закачване
 	The chess board couldn't open in its own window, so it is back in its panel.	Шахматната дъска не можа да се отвори в собствен прозорец, затова е върната в панела си.
 	The chess board couldn't open in its own window, so it stays in its panel.	Шахматната дъска не можа да се отвори в собствен прозорец, затова остава в панела си.
 # Chess ▸ PGN toolbar: T13b, the whole chess panel in its own window (the rail's tool and the command, the window's tab strip and Dock button, the Inspector's note while it is out).
 	Chess in its own window	Шахмат в собствен прозорец
 	Board	Дъска
 	The chess panel is in its own window.	Панелът за шахмат е в собствен прозорец.
-	Bring it back	Връщане обратно
+	Back to the main window	Обратно в главния прозорец
 	Put the board and the chess panel back in the main window	Връщане на дъската и панела за шахмат в основния прозорец
 
 # Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
@@ -2886,7 +2888,8 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Variation of {move}	Вариант на {move}
 	moves: {n}	ходове: {n}
 # Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
-	Fit at	Място
+	Insert in	Вмъкване в
+	Piece letters	Букви на фигурите
 	Apply and keep the rest as a comment	Прилагане и запазване на остатъка като коментар
 	Unreadable move	Нечетлив ход
 	Past the capture's limits	Извън границите на прихващането
@@ -3160,12 +3163,15 @@ chess undo step	Clear drawings	изчистването на рисунките
 	More ways to confirm	Други начини за потвърждение
 	Confirm and next	Потвърди и напред
 	Only confirm	Само потвърди
+	Confirm	Потвърди
+	Confirmed	Потвърдено
+	This position is kept for the diagram. Change it to confirm again.	Тази позиция е запазена за диаграмата. Променете я, за да потвърдите отново.
 	Keep this position for the diagram, without changing the PDF.	Запази тази позиция за диаграмата, без да се променя PDF.
 	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	Запази тази позиция за диаграмата, без да се променя PDF, и отвори следващата за проверка (Ctrl+Enter).
 	More actions	Още действия
 	Forget the correction	Забрави корекцията
 	Show what was read again; the PDF is not changed.	Покажи отново прочетеното; PDF не се променя.
-	Diagram board: {fen}	Дъска на диаграмата: {fen}
+	Diagram board, page {p}, diagram {n}	Дъска на диаграмата, страница {p}, диаграма {n}
 	Classic diagram editor	Класически редактор на диаграми
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Редактиране на диаграмите в панела „Диаграми“, както преди раздела „Диаграма“. Тази опция ще отпадне в бъдеща версия.
 # Plan A8 P3b3: drafts and the question about them.
@@ -3220,6 +3226,7 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Page {p}: {done}	Страница {p}: {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} проверена диаграма|{n} проверени диаграми
 	Export chess book	Експортиране на шахматна книга
+	Export book…	Експортиране на книгата…
 	PGN — games	PGN — партии
 	EPUB — e-book	EPUB — електронна книга
 	HTML — web page	HTML — уеб страница
@@ -3309,6 +3316,14 @@ castling	long	дълга
 	The book's PGN plays this move from another position: check it.	PGN на книгата играе този ход от друга позиция: проверете го.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	PGN на книгата на тази страница: потвърдени – {confirmed}, взети от PGN – {recovered}, в конфликт – {conflict}.
 	Confirmed by the PGN	Потвърдено от PGN
+	All ({n})	Всички ({n})
+	Read ({n})	Прочетени ({n})
+	To review ({n})	За преглед ({n})
+	Not read ({n})	Непрочетени ({n})
+	With an error ({n})	С грешка ({n})
+	Verified ({n})	Проверени ({n})
+	Corrected ({n})	Поправени ({n})
+	Confirmed by the PGN ({n})	Потвърдени от PGN ({n})
 	The book's PGN has this position, so it needs no review.	PGN на книгата съдържа тази позиция, затова тя не се нуждае от проверка.
 	PGN games from	Партии в PGN от
 	The book's PGN, with the book's text	PGN на книгата, с текста на книгата
@@ -3322,10 +3337,10 @@ castling	long	дълга
 	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	До този PDF има PGN със същото име: запазете го като PGN на книгата.
 	Double-click to open the book's PGN game here.	Щракнете двукратно, за да отворите тук партията от PGN на книгата.
 	Open the book's PGN game here	Отваряне тук на партията от PGN на книгата
-	Linking the whole book to its PGN…	Свързване на цялата книга с нейния PGN…
-	Linking the whole book: page {done} of {of}	Свързване на цялата книга: страница {done} от {of}
-	Link the whole book again	Повторно свързване на цялата книга
-	Link the whole book	Свързване на цялата книга
+	Aligning the book to the PGN…	Подравняване на книгата с PGN…
+	Aligning the book to the PGN: page {done} of {of}	Подравняване на книгата с PGN: страница {done} от {of}
+	Align again	Подравняване отново
+	Align the book to the PGN	Подравняване на книгата с PGN
 	Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book.	Чете всяка страница и я свързва с PGN на книгата: колко хода потвърждава, взема от PGN и намира в конфликт, и страницата, на която започва всяка партия. Отнема колкото експортът на книгата.
 	Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages.	Цялата книга: свързани ходове – {linked} от {moves} (взети от PGN – {recovered}), в конфликт – {conflict}, на {pages} от {all} страници.
 	Games of the book's PGN ({n})	Партии от PGN на книгата ({n})
