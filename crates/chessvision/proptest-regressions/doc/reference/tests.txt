@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 371efa5972265fb8ecd0ecf80752e214ddf6aa0e8207306e4cb491c2c9300bef # shrinks to pages = [[Paragraph { inlines: [Move(MoveInline { number: None, text: "e4", san_read: "e4", san: "e4", status: Valid, fen: None, game: None, source_rect: None, bold: false, read_review: [], review: [], reference: None })], source_rect: None }, Diagram(DiagramBlock { number: 0, index: 0, source_rect: None, source: Font, dpi: 0.0, reading: Some(DiagramReading { fen: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w - - 0 1", legal: true, accepted: true, min_confidence: 1.0, repaired: false, side_assumed: true }), lichess_url: None, puzzle: None, review: [], reference: None })]], pgn = "1.e4 e5 (1...c5 2.Nf3) 2.Nf3 Nc6 3.Bb5 a6 *\n\n[Event \"b\"]\n\n1.Nf3 Nc6 2.e4 e5 0-0 *"
