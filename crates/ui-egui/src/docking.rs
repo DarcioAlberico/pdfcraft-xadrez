@@ -522,6 +522,18 @@ fn saved_split_path(saved: &Layout<Panel>, rendered: &Layout<Panel>, path: &[boo
     None
 }
 
+/// The docking area's id, the same every frame.
+fn dock_id() -> egui::Id {
+    egui::Id::new("pdfcraft-docking")
+}
+
+/// Whether one of the workspace's own controls (a divider, a tab, a floating panel's resize
+/// corner) has the keyboard focus: its keys are its own (plan A9-I18), so the chess key scope
+/// leaves them alone.
+pub(crate) fn chrome_has_focus(workspace: &Workspace, ctx: &egui::Context) -> bool {
+    DockArea::<Panel>::new(dock_id()).chrome_has_focus(ctx, &workspace.layout)
+}
+
 pub fn show(app: &mut crate::PdfCraftApp, ui: &mut egui::Ui) {
     let t = crate::theme::Tokens::get(ui.ctx());
     let mut workspace = std::mem::take(&mut app.docking);
@@ -554,7 +566,7 @@ pub fn show(app: &mut crate::PdfCraftApp, ui: &mut egui::Ui) {
     }
     // The notation is drawn in one place: the Move list while it shows, else under the board.
     app.chess.moves_beside = exposed_in(&rendered, Panel::Moves);
-    let output = DockArea::new(egui::Id::new("pdfcraft-docking")).show_customized(
+    let output = DockArea::new(dock_id()).show_customized(
         ui,
         &rendered,
         &style,

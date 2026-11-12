@@ -50,16 +50,10 @@ impl PdfCraftApp {
         let target = self.chess_diagram_target(id, page, index);
         let (placement, flipped) = (ed.position.placement, ed.flipped);
         let pieces = crate::chess_editor::piece_set(&mut self.chess.pieces, &self.chess.diagram_piece_choice, &mut self.chess.diagram_piece_error);
-        let replacement = pdfcraft_engine::chess::DiagramReplacement {
-            drawings: Vec::new(),
-            page,
-            index,
-            generation,
-            placement,
-            style: pdfcraft_engine::chess::pdfcraft_chess::draw::BoardStyle { flipped, ..Default::default() },
-            pieces,
-            scan: self.chess_scan_settings(),
-        };
+        let mut replacement = pdfcraft_engine::chess::DiagramReplacement::new(page, index, generation, placement);
+        replacement.style = pdfcraft_engine::chess::pdfcraft_chess::draw::BoardStyle { flipped, ..Default::default() };
+        replacement.pieces = pieces;
+        replacement.scan = self.chess_scan_settings();
         if !self.apply_edit(pdfcraft_engine::Edit::ReplaceDiagram(Box::new(replacement))) {
             return false;
         }

@@ -2800,6 +2800,9 @@ chess side	Black	Đen
 	Previous move (Left arrow)	Nước trước (mũi tên trái)
 	Promote to:	Phong cấp thành:
 	Reading stopped at {move}: it is not a legal move there.	Việc đọc dừng ở {move}: đó không phải nước đi hợp lệ tại đó.
+	Reading stopped at {move}: more than one legal move there is written so.	Việc đọc dừng ở {move}: tại đó có hơn một nước đi hợp lệ được viết như vậy.
+	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	Việc đọc dừng ở {move}: ván cờ đã có 10.000 nước, mức tối đa.
+	Reading stopped at {move}: its variation would nest deeper than 32.	Việc đọc dừng ở {move}: biến này sẽ lồng sâu quá 32 cấp.
 	Show the analysis board. Double-click a diagram on the page to load it there.	Hiện bàn cờ phân tích. Nhấp đúp vào một sơ đồ trên trang để tải nó vào đó.
 	Show this diagram on the page	Hiện sơ đồ này trên trang
 	Stalemate	Hết nước đi (hòa pat)
@@ -2948,6 +2951,7 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Delete variation	Xóa biến
 	Cut after this move	Cắt sau nước này
 	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	Thêm công cụ {group}: nhấp chuột phải, nhấn giữ hoặc nhấn Enter. {key} chuyển qua lại giữa chúng.
+	More {group} tools: right-click, hold, or press Enter.	Thêm công cụ {group}: nhấp chuột phải, nhấn giữ hoặc nhấn Enter.
 	This move is on the main line already.	Nước này đã nằm trên diễn biến chính.
 	There are no moves after this one.	Không có nước nào sau nước này.
 	Not done: variations would nest too deep.	Không thực hiện: các biến sẽ lồng nhau quá sâu.
@@ -3464,6 +3468,16 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Show what was read again; the PDF is not changed.	Hiện lại kết quả đã đọc; PDF không thay đổi.
 	Diagram board, page {p}, diagram {n}	Bàn cờ của sơ đồ, trang {p}, sơ đồ {n}
 	Classic diagram editor	Trình sửa sơ đồ cổ điển
+# Plan A9-I18: the chess keys (Preferences ▸ Chess: the one-key shortcuts and how long a typed sign waits).
+	One-key shortcuts (B, C, F, G, O, X, signs)	Phím tắt một phím (B, C, F, G, O, X, ký hiệu)
+	Off, the chess panels take no letter or sign typed; the buttons beside the board and the command search still do the same.	Khi tắt, các bảng cờ vua không nhận chữ hay ký hiệu gõ vào; các nút bên cạnh bàn cờ và tìm lệnh vẫn làm được điều tương tự.
+	A typed sign waits for its next character	Ký hiệu đã gõ chờ ký tự tiếp theo
+	Enter puts the sign on at once; Esc drops it.	Enter đặt ký hiệu ngay; Esc bỏ nó đi.
+	0.6 s	0,6 giây
+	1 s	1 giây
+	1.5 s	1,5 giây
+	2 s	2 giây
+	Until Enter	Đến khi nhấn Enter
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Sửa sơ đồ ngay trong bảng Sơ đồ, như trước khi có thẻ Sơ đồ. Tùy chọn này sẽ bị bỏ trong một phiên bản sau.
 # Plan A8 P3b3: drafts and the question about them.
 	Unconfirmed changes	Thay đổi chưa xác nhận

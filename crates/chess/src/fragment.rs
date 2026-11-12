@@ -29,9 +29,9 @@ pub enum FragmentItem {
         /// Where on the page it was printed, `[x0, y0, x1, y1]` in user space.
         rect: Option<[f32; 4]>,
     },
-    /// An annotation glyph, by White's code: the graft applies the code for the side it speaks of
-    /// (`↑` is `$36` after a White move and `$37` after a Black one).
-    Nag(u16),
+    /// An annotation glyph ([`NagCode`]): as PGN wrote its code, or by White's code as a glyph
+    /// printed in a book is read.
+    Nag(NagCode),
     /// A comment, already normalized. `before`: it comes before the next move rather than after
     /// the last one.
     Comment { text: String, before: bool },
@@ -43,6 +43,25 @@ pub enum FragmentItem {
     Result,
 }
 
+/// A glyph's code, and how it was given (plan A9-F2b).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum NagCode {
+    /// The code as PGN writes it (`$37` is Black's), set on the move as it is.
+    Written(u16),
+    /// White's code, as a glyph printed in a book is read: the graft sets the code for the side it
+    /// speaks of (`↑` is `$36` after a White move and `$37` after a Black one).
+    WhiteRelative(u16),
+}
+
+impl NagCode {
+    /// The code given.
+    pub fn code(self) -> u16 {
+        match self {
+            NagCode::Written(code) | NagCode::WhiteRelative(code) => code,
+        }
+    }
+}
+
 impl FragmentItem {
     /// The item as text, for a leftover or a comment: a move as printed (its English SAN when
     /// nothing was printed), a glyph as printed (`$n` when it has no safe glyph), a comment as
@@ -51,7 +70,7 @@ impl FragmentItem {
         match self {
             FragmentItem::Move { san, text, .. } if text.trim().is_empty() => san.to_english(),
             FragmentItem::Move { text, .. } => text.trim().to_owned(),
-            FragmentItem::Nag(code) => nag::printed(*code),
+            FragmentItem::Nag(nag) => nag::printed(nag.code()),
             FragmentItem::Comment { text, .. } => text.trim().to_owned(),
             FragmentItem::Open => "(".to_owned(),
             FragmentItem::Close => ")".to_owned(),
@@ -107,10 +126,10 @@ mod tests {
     fn items_read_back_as_text() {
         let items = vec![
             mv("Nd5"),
-            FragmentItem::Nag(1),
+            FragmentItem::Nag(NagCode::WhiteRelative(1)),
             FragmentItem::Open,
             mv("Bxf6"),
-            FragmentItem::Nag(146),
+            FragmentItem::Nag(NagCode::Written(146)),
             FragmentItem::Comment { text: " an idea ".to_owned(), before: false },
             FragmentItem::Close,
             FragmentItem::Move { ply: Some(36), san: San::parse("Qxe1").unwrap(), text: String::new(), bold: Some(true), rect: None },

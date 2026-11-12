@@ -43,7 +43,7 @@ fn ocr_options(a: &Args) -> Result<OcrOptions<'static>> {
         Some("all") => OcrMode::All,
         Some(_) => return Err(Args::wrong("ocr", "\"auto\", \"off\" or \"all\"")),
     };
-    Ok(OcrOptions { mode, glyphs: None, general: true, book: None })
+    Ok(OcrOptions::new(mode))
 }
 
 use crate::{Args, Automation, Result, ToolError, comments, failed};
@@ -417,7 +417,11 @@ impl Automation {
         settings.models_dir = None;
         let drawings = drawings_arg(a)?;
         let described = pdfcraft_engine::chess::pdfcraft_chess::draw::describe(&drawings);
-        let replacement = DiagramReplacement { page, index, generation, placement, style, pieces: Arc::new(pieces), scan: settings, drawings };
+        let mut replacement = DiagramReplacement::new(page, index, generation, placement);
+        replacement.style = style;
+        replacement.pieces = Arc::new(pieces);
+        replacement.scan = settings;
+        replacement.drawings = drawings;
         let plan = self.session.chess_replacement(id, &replacement).map_err(failed)?;
         let geometry = self.session.chess_scan(id, &[page], &replacement.scan, false).ok().and_then(|p| p.first().and_then(|p| p.geometry));
         let dry_run = a.opt_bool("dry_run")?.unwrap_or(false);
@@ -496,7 +500,7 @@ impl Automation {
             .chain(cipher_out.as_ref().map(|(_, path)| ("cipher_out", path.as_path())))
             .collect();
         self.check_outputs(a, &outputs, &self.input_paths(a)?.iter().map(|p| p.as_path()).collect::<Vec<_>>())?;
-        let ocr = OcrOptions { book: seed.as_ref(), ..ocr_options(a)? };
+        let ocr = ocr_options(a)?.with_book(seed.as_ref());
         let loaded = self.use_store_corrections(a, id)?;
         let mut read = self.session.chess_document_with(id, &pages, &settings, lang, &ocr).map_err(failed)?;
         let reference = reference.map(|r| {
@@ -696,28 +700,26 @@ impl Automation {
         };
         // HTML and EPUB show figurines with the user's font when there is one.
         let fonts = pdfcraft_engine::chess::pdfcraft_chessvision::text_font::find_fonts();
-        let options = ChessExportOptions {
-            pages,
-            scan,
-            lang,
-            ocr,
-            diagrams,
-            figurines,
-            links: a.opt_bool("links")?.unwrap_or(true),
-            link_text,
-            pieces: std::sync::Arc::new(pieces),
-            text_font: fonts.figurines.clone().map(std::sync::Arc::new),
-            sign_font: fonts.signs.clone().map(std::sync::Arc::new),
-            title,
-            diagram_px,
-            image_dir: image_dir.clone(),
-            book,
-            style: theme_style(a)?,
-            positions,
-            pgn_style,
-            review_marks: a.opt_bool("review_marks")?,
-            reference: reference.as_ref().map(|(_, index)| index.clone()),
-        };
+        let mut options = ChessExportOptions::new(&title);
+        options.pages = pages;
+        options.scan = scan;
+        options.lang = lang;
+        options.ocr = ocr;
+        options.diagrams = diagrams;
+        options.figurines = figurines;
+        options.links = a.opt_bool("links")?.unwrap_or(true);
+        options.link_text = link_text;
+        options.pieces = std::sync::Arc::new(pieces);
+        options.text_font = fonts.figurines.clone().map(std::sync::Arc::new);
+        options.sign_font = fonts.signs.clone().map(std::sync::Arc::new);
+        options.diagram_px = diagram_px;
+        options.image_dir = image_dir.clone();
+        options.book = book;
+        options.style = theme_style(a)?;
+        options.positions = positions;
+        options.pgn_style = pgn_style;
+        options.review_marks = a.opt_bool("review_marks")?;
+        options.reference = reference.as_ref().map(|(_, index)| index.clone());
         let loaded = self.use_store_corrections(a, id)?;
         let made = self.session.chess_export(id, format, &options).map_err(failed)?;
         if let Some(dir) = &folder
@@ -1072,7 +1074,9 @@ fn reference_reply(shown: &str, index: &reference::ReferenceIndex, linked: &refe
             .iter()
             .enumerate()
             .filter(|(_, g)| g.stopped.is_some() || g.error.is_some())
-            .map(|(k, g)| json!({ "game": k + 1, "name": g.name, "stopped_at": g.stopped, "error": g.error }))
+            .map(|(k, g)| {
+                json!({ "game": k + 1, "name": g.name, "stopped_at": g.stopped, "stop_reason": g.stop_reason.map(|r| r.name()), "error": g.error })
+            })
             .collect::<Vec<_>>(),
         "linked": a.counts,
         "diagrams": {

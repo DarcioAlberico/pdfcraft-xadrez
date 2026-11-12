@@ -13,7 +13,28 @@
 //!    the wasm32 check of `pdfcraft-chess` and `pdfcraft-chessvision` when they changed.
 //! 3. **Engine and up** (when L6+, an app or the CLI changed): `cargo check` of the CLI and the
 //!    app, wasm32 of the engine and automation, clippy of the changed crates, and the tests:
-//!    the engine's `chess` ones, automation's all, ui-egui's `chess*` test targets.
+//!    the engine's `chess` ones, automation's all, ui-egui's `chess*` test targets (among them
+//!    the golden journey, `chess_golden.rs`).
+//! 4. **Benches by the truth** (when the walker or the vision changed: `crates/chess`,
+//!    `crates/chessvision`; plan A9-Q2): `walk_bench` on the gate's documents and
+//!    `reference_bench` on those with a book PGN, against the baselines `--baseline` made from
+//!    `main`, losing no move (`--allow-lost 0`), and `ocr_bench --gate` on the OCR ground truth.
+//!
+//!    Then **4b, performance** (when the walker, the vision, the stores or the games' autosave
+//!    changed): the `perf_` tests in release (`--ignored`), each of which asserts a count first
+//!    and prints `PERF <name> <ms>`; a time above twice the baseline's fails.
+//! 5. **Full** (`--full` only): `cargo xtask chess-bench` on the 38 books against the baseline's
+//!    run (`--allow-lost 0`), and `cargo xtask fuzz`.
+//!
+//! **The gate's folder** (`--gate-dir`, `PDFCRAFT_CHESS_GATE_DIR`, else `gate` beside the target
+//! folder, `C:/Python-Chess2/cargo-targets/gate`): `bench/*.json`, the chess documents walked
+//! (`bench/<stem>.pgn` beside one: its book's PGN); `paths.toml` (`ocr_gt`, `bench38`); and the
+//! baselines. `--baseline` makes them: it checks out `--baseline-ref` (default `origin/main`) in
+//! a worktree of its own (`<gate>/main`), builds it with a target folder of its own
+//! (`<gate>/target`: the benches in release, 0.66 GB, and with `--full` the CLI), and
+//! writes `walk-baseline.json`, `reference-<stem>.json` and `perf-baseline.json` (and, with
+//! `--full`, the 38 books' run `gate-base`); `--ocr-gt DIR` and `--bench38 DIR` are kept in
+//! `paths.toml`.
 //!
 //! Tests run with the user's real models and engine passed **only** through the test variables
 //! (`PDFCRAFT_CHESS_TEST_MODELS`, `PDFCRAFT_CHESS_TEST_ENGINE`, from `--models` / `--engine` or
@@ -28,7 +49,8 @@
 //! that passes again fails the gate (unless its kind is `flaky`), so the list never hides a fix
 //! or rots. Every run writes a summary to `<target>/chess-gate.json` for the PR to cite.
 //!
-//! `--all` treats every chess crate as changed (a full run); `--from N` starts at stage N.
+//! `--all` treats every chess crate as changed (a full run); `--from N` starts at stage N;
+//! `--no-bench` leaves out stages 4 and 5 (the summary says so).
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -44,6 +66,8 @@ mod file_access_scan;
 
 #[path = "../../crates/ui-egui/src/i18n/chess_scan.rs"]
 mod chess_i18n_scan;
+
+mod bench;
 
 use crate::gates::root;
 
@@ -93,6 +117,9 @@ struct Check {
     detail: String,
 }
 
+/// A stage: its number, its name and what runs it (`false`: it failed).
+type Stage = (u8, &'static str, fn(&mut Gate) -> bool);
+
 struct Gate {
     root: PathBuf,
     target: PathBuf,
@@ -105,6 +132,12 @@ struct Gate {
     /// An earlier build's command line, for the format compatibility tests.
     old_cli: Option<PathBuf>,
     no_models: bool,
+    /// The gate's folder: bench documents, paths and baselines.
+    gate_dir: PathBuf,
+    /// Stage 5 too.
+    full: bool,
+    /// Stages 4 and 5 left out.
+    no_bench: bool,
     known: Vec<Known>,
     checks: Vec<Check>,
 }
@@ -120,6 +153,18 @@ pub fn run(args: &[String]) -> anyhow::Result<()> {
     let engine = opt("--engine").map(PathBuf::from).or_else(|| std::env::var_os("PDFCRAFT_CHESS_TEST_ENGINE").map(PathBuf::from));
     let old_cli =
         opt("--old-cli").map(PathBuf::from).or_else(|| std::env::var_os("PDFCRAFT_OLD_CLI").map(PathBuf::from)).or_else(|| installed_cli(&root));
+    let target = crate::gates::target_dir();
+    let gate_dir = opt("--gate-dir")
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("PDFCRAFT_CHESS_GATE_DIR").map(PathBuf::from))
+        .unwrap_or_else(|| target.parent().map_or_else(|| target.join("gate"), |p| p.join("gate")));
+    let full = args.iter().any(|a| a == "--full");
+    let no_bench = args.iter().any(|a| a == "--no-bench");
+    if args.iter().any(|a| a == "--baseline") {
+        let paths = bench::Paths { ocr_gt: opt("--ocr-gt").map(PathBuf::from), bench38: opt("--bench38").map(PathBuf::from) };
+        let reference = opt("--baseline-ref").unwrap_or_else(|| "origin/main".into());
+        return bench::baseline(&root, &gate_dir, &reference, paths, models.as_deref(), full);
+    }
 
     let merge_base = git(&root, &["merge-base", "HEAD", &base]).with_context(|| format!("no merge base with {base} (git fetch?)"))?;
     let merge_base = merge_base.trim().to_owned();
@@ -136,7 +181,7 @@ pub fn run(args: &[String]) -> anyhow::Result<()> {
     let known: KnownFile = toml::from_str(&known_text).context("xtask/known-failures.toml")?;
 
     let mut gate = Gate {
-        target: crate::gates::target_dir(),
+        target,
         root,
         owners,
         changed,
@@ -146,12 +191,22 @@ pub fn run(args: &[String]) -> anyhow::Result<()> {
         engine,
         old_cli,
         no_models,
+        gate_dir,
+        full,
+        no_bench,
         known: known.failure,
         checks: Vec::new(),
     };
     eprintln!("chess-gate: {} changed file(s) since {} ({})", gate.changed.len(), gate.base, short(&gate.merge_base));
-    let stages: [(u8, &str, fn(&mut Gate) -> bool); 4] =
-        [(0, "text", Gate::stage0), (1, "scans", Gate::stage1), (2, "lower crates", Gate::stage2), (3, "engine and up", Gate::stage3)];
+    let stages: [Stage; 7] = [
+        (0, "text", Gate::stage0),
+        (1, "scans", Gate::stage1),
+        (2, "lower crates", Gate::stage2),
+        (3, "engine and up", Gate::stage3),
+        (4, "benches by the truth", Gate::stage4),
+        (4, "performance", Gate::stage4b),
+        (5, "full", Gate::stage5),
+    ];
     let mut failed = None;
     for (n, name, stage) in stages {
         if n < from {
@@ -414,6 +469,10 @@ impl Gate {
             "changed": self.changed,
             "models": if self.no_models { json!("skipped (--no-models)") } else { json!({ "models": self.models, "engine": self.engine }) },
             "old_cli": self.old_cli,
+            "gate_dir": self.gate_dir,
+            "benches": if self.no_bench { json!("skipped (--no-bench)") } else { json!(true) },
+            "full": self.full,
+            "machine": bench::machine(),
             "passed": failed.is_none(),
             "failed_stage": failed.map(|(n, name)| json!({ "stage": n, "name": name })),
             "checks": self.checks.iter().map(|c| json!({

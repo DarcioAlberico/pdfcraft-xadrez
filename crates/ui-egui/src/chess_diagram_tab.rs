@@ -81,6 +81,11 @@ fn suggestion_row(ui: &mut egui::Ui, t: &Tokens, ed: &mut crate::chess_editor::D
 /// do to get one.
 pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
+    // The tab has its own keys, which follow its focus (plan A8, P3c): a click in it gives the
+    // board's keys and Undo back, as a click on the page does (plan A9-I18).
+    if crate::chess_history::pressed_in(ui) {
+        app.chess.leave_scope();
+    }
     let Some((_, id)) = app.active_ids() else {
         empty(ui, &t);
         return;

@@ -231,7 +231,7 @@ impl PdfCraftApp {
             let _finish = Finish(slot.clone());
             let read = match reader {
                 Some(reader) => reader(&query),
-                None => job.run(&OcrOptions { mode: OcrMode::Off, glyphs: None, general: true, book: book.as_ref() }, lang, models_dir.as_deref()),
+                None => job.run(&OcrOptions::new(OcrMode::Off).with_book(book.as_ref()), lang, models_dir.as_deref()),
             };
             *lock(&slot) = Some(read);
         };

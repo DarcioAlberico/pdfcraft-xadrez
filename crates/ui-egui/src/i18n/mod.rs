@@ -1482,6 +1482,9 @@ mod tests {
             "Model",
             // The Diagram tab (plan A8, P3b2): the same word in Czech.
             "Diagram",
+            // How long a typed sign waits (plan A9-I18): seconds are "s" in Czech too.
+            "1 s",
+            "2 s",
             // How many diagrams of a state (plan A8, P4): only placeholders and a dot.
             "{n} · {state}",
             "{field}: {e}",

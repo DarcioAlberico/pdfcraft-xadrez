@@ -2493,6 +2493,9 @@ animation effects	Off	關
 	Previous move (Left arrow)	上一步 (左箭頭)
 	Promote to:	升變為：
 	Reading stopped at {move}: it is not a legal move there.	讀取在 {move} 處停止：該著法在此不合法。
+	Reading stopped at {move}: more than one legal move there is written so.	讀取在 {move} 處停止：此處有不止一個合法著法寫作這樣。
+	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	讀取在 {move} 處停止：棋局已有 10,000 步，達到上限。
+	Reading stopped at {move}: its variation would nest deeper than 32.	讀取在 {move} 處停止：變著的嵌套會超過 32 層。
 	Show the analysis board. Double-click a diagram on the page to load it there.	顯示分析棋盤。按兩下頁面上的圖表即可將其載入。
 	Show this diagram on the page	在頁面上顯示此圖表
 	Stalemate	逼和
@@ -2595,6 +2598,7 @@ chess undo step	Clear drawings	清除標記
 	Delete variation	刪除變化
 	Cut after this move	剪除此著法之後
 	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	更多{group}工具：按右鍵、長按或按 Enter。{key} 在它們之間切換。
+	More {group} tools: right-click, hold, or press Enter.	更多{group}工具：按右鍵、長按或按 Enter。
 	This move is on the main line already.	此著法已在主線上。
 	There are no moves after this one.	此著法之後沒有著法。
 	Not done: variations would nest too deep.	未執行：變化會巢狀過深。
@@ -3112,6 +3116,16 @@ chess undo step	Clear drawings	清除標記
 	Show what was read again; the PDF is not changed.	重新顯示辨識結果；PDF 不會變更。
 	Diagram board, page {p}, diagram {n}	棋圖棋盤，第 {p} 頁，棋圖 {n}
 	Classic diagram editor	傳統棋圖編輯器
+# Plan A9-I18: the chess keys (Preferences ▸ Chess: the one-key shortcuts and how long a typed sign waits).
+	One-key shortcuts (B, C, F, G, O, X, signs)	單鍵快速鍵（B、C、F、G、O、X、符號）
+	Off, the chess panels take no letter or sign typed; the buttons beside the board and the command search still do the same.	關閉後，西洋棋面板不再接收輸入的字母或符號；棋盤旁的按鈕與指令搜尋仍可完成相同操作。
+	A typed sign waits for its next character	輸入的符號等待下一個字元
+	Enter puts the sign on at once; Esc drops it.	Enter 立即加上符號；Esc 放棄它。
+	0.6 s	0.6 秒
+	1 s	1 秒
+	1.5 s	1.5 秒
+	2 s	2 秒
+	Until Enter	直到按 Enter
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	如同「棋圖」分頁出現之前，在「棋圖」面板中編輯棋圖。此選項將在日後的版本中移除。
 # Plan A8 P3b3: drafts and the question about them.
 	Unconfirmed changes	未確認的變更

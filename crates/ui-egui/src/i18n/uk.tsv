@@ -2567,6 +2567,9 @@ animation effects	Off	Вимкнено
 	Previous move (Left arrow)	Попередній хід (стрілка ліворуч)
 	Promote to:	Перетворити на:
 	Reading stopped at {move}: it is not a legal move there.	Читання зупинилося на {move}: тут це не легальний хід.
+	Reading stopped at {move}: more than one legal move there is written so.	Читання зупинилося на {move}: тут так записується більше ніж один легальний хід.
+	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	Читання зупинилося на {move}: у партії вже 10 000 ходів — це максимум.
+	Reading stopped at {move}: its variation would nest deeper than 32.	Читання зупинилося на {move}: варіант був би вкладений глибше ніж на 32 рівні.
 	Show the analysis board. Double-click a diagram on the page to load it there.	Показати дошку для аналізу. Двічі клацніть діаграму на сторінці, щоб завантажити її туди.
 	Show this diagram on the page	Показати цю діаграму на сторінці
 	Stalemate	Пат
@@ -2715,6 +2718,7 @@ chess undo step	Clear drawings	видалення малюнків
 	Delete variation	Видалити варіант
 	Cut after this move	Обрізати після цього ходу
 	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	Інші інструменти групи «{group}»: клацання правою кнопкою, довге натискання або Enter. {key} перемикає між ними.
+	More {group} tools: right-click, hold, or press Enter.	Інші інструменти групи «{group}»: клацання правою кнопкою, довге натискання або Enter.
 	This move is on the main line already.	Цей хід уже в головному варіанті.
 	There are no moves after this one.	Після цього ходу ходів немає.
 	Not done: variations would nest too deep.	Не виконано: варіанти були б вкладені надто глибоко.
@@ -3232,6 +3236,16 @@ chess undo step	Clear drawings	видалення малюнків
 	Show what was read again; the PDF is not changed.	Знову показати прочитане; PDF не змінюється.
 	Diagram board, page {p}, diagram {n}	Дошка діаграми, сторінка {p}, діаграма {n}
 	Classic diagram editor	Класичний редактор діаграм
+# Plan A9-I18: the chess keys (Preferences ▸ Chess: the one-key shortcuts and how long a typed sign waits).
+	One-key shortcuts (B, C, F, G, O, X, signs)	Скорочення однією клавішею (B, C, F, G, O, X, знаки)
+	Off, the chess panels take no letter or sign typed; the buttons beside the board and the command search still do the same.	Якщо вимкнено, шахові панелі не перехоплюють набрані літери чи знаки; кнопки біля дошки й пошук команд і далі роблять те саме.
+	A typed sign waits for its next character	Набраний знак чекає на наступний символ
+	Enter puts the sign on at once; Esc drops it.	Enter одразу ставить знак, Esc скасовує його.
+	0.6 s	0,6 с
+	1 s	1 с
+	1.5 s	1,5 с
+	2 s	2 с
+	Until Enter	До натискання Enter
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Редагувати діаграми на панелі «Діаграми», як до вкладки «Діаграма». Цей параметр зникне в одній із наступних версій.
 # Plan A8 P3b3: drafts and the question about them.
 	Unconfirmed changes	Непідтверджені зміни
