@@ -304,3 +304,81 @@ fn a_carry_needs_the_document() {
     s.close(id);
     assert!(s.chess_carry(id, then, &[], true, &quick(), true).is_err());
 }
+
+// ─── Plan A9, G11: the book read once per session ──────────────────────────────────────────────
+
+/// A9-G11 (R8-01): the Text tab's reading, the exports and Link the whole book run in a session
+/// of their own, opened from the document's bytes, and read every page again (748 pages of a
+/// book after Detect in the book, 304 s instead of 5 s). Given what the app's session read for
+/// that state, the job's session reads nothing again; what a job reads goes back, so nothing is
+/// read twice.
+#[test]
+fn a_jobs_session_reads_nothing_the_session_read_and_gives_back_what_it_read() {
+    let (mut s, id) = open(book(12));
+    assert_eq!(scan_all(&mut s, id).1, 12, "Detect in the book");
+    let bytes = s.get(id).unwrap().bytes.to_vec();
+    let cached = s.chess_cached(id, &[]);
+    assert_eq!(cached.pages(), (0..12).collect::<Vec<_>>());
+    // The export's session, opened from the same bytes.
+    let (mut job, jid) = open(bytes.clone());
+    assert_eq!(job.prime_chess_cache(jid, cached), 12);
+    let read = job.chess_document(jid, &[], &quick(), None).unwrap();
+    assert_eq!(job.chess_scanned(), 0, "the export reads no page again");
+    assert_eq!(read.doc.pages.len(), 12);
+    // A job that read what the session had not gives it back: the session reads nothing then.
+    let (mut fresh, fid) = open(bytes.clone());
+    let (mut other, oid) = open(bytes);
+    other.chess_scan(oid, &[2, 4, 5], &quick(), true).unwrap();
+    assert_eq!(other.chess_scanned(), 3);
+    assert_eq!(fresh.prime_chess_cache(fid, other.chess_cached(oid, &[])), 3);
+    let before = fresh.chess_scanned();
+    fresh.chess_scan(fid, &[2, 4, 5], &quick(), true).unwrap();
+    assert_eq!(fresh.chess_scanned(), before, "given back");
+    // After an edit, what the session holds for the state now: the pages that moved are given at
+    // their index now, the page inserted is not (it was never read).
+    s.apply(id, Edit::InsertBlankPage { at: 0, width: 600.0, height: 800.0 }).unwrap();
+    assert_eq!(s.chess_cached(id, &[]).pages(), (1..13).collect::<Vec<_>>());
+    assert!(s.chess_cached(DocId(999), &[]).is_empty(), "no such document");
+}
+
+/// A9-G11: each document keeps its own [`MAX_CACHED_PAGES`] results, its least recently used
+/// page going first: a second long book read in the same session never puts the first one's
+/// pages out (they were one list of 2,048 for every document).
+#[test]
+fn each_document_keeps_its_own_pages() {
+    use pdfcraft_chessvision::coords::{PageGeometry, PageRect};
+    let page = |p: usize| {
+        Arc::new(ChessPage {
+            page: p,
+            geometry: PageGeometry::new(PageRect::new(0.0, 0.0, 600.0, 800.0), Rotation::R0),
+            dpi: MIN_DPI,
+            diagrams: Vec::new(),
+            readings: None,
+            truncated: false,
+            error: None,
+            notes: Vec::new(),
+        })
+    };
+    let params = ScanParams { generation: 1, bytes: 1, pages: MAX_CACHED_PAGES + 1, settings: quick(), model: None };
+    let key = |p: usize| Some(u128::try_from(p).unwrap() + 1);
+    let (a, b) = (DocId(1), DocId(2));
+    let mut cache = ChessCache::default();
+    for p in 0..MAX_CACHED_PAGES {
+        cache.put(a, p, key(p), params.clone(), page(p));
+    }
+    for p in 0..10 {
+        cache.put(b, p, key(p), params.clone(), page(p));
+    }
+    assert_eq!((cache.len_of(a), cache.len_of(b)), (MAX_CACHED_PAGES, 10), "the second book put none of the first's out");
+    // The first book's least recently used page goes for its next one: page 1, once page 0 is used.
+    assert!(cache.get(a, 0, key(0), &params).is_some());
+    cache.put(a, MAX_CACHED_PAGES, key(MAX_CACHED_PAGES), params.clone(), page(MAX_CACHED_PAGES));
+    assert_eq!(cache.len_of(a), MAX_CACHED_PAGES);
+    assert!(cache.get(a, 1, key(1), &params).is_none() && cache.get(a, 0, key(0), &params).is_some());
+    // A page that moved is found by its content key at its new index.
+    let moved = cache.get(a, 5000, key(7), &params).unwrap();
+    assert_eq!(moved.page, 5000);
+    assert_eq!(cache.len_of(b), 10);
+    cache.forget(a);
+    assert_eq!(cache.len(), 10);
+}
