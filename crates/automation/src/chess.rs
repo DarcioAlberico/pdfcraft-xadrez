@@ -270,12 +270,13 @@ fn board_style(a: &Args) -> Result<BoardStyle> {
     Ok(style)
 }
 
-fn model_json<T>(state: &ModelState<T>) -> Value {
-    let (word, reason) = chess::model_state(state);
-    json!({ "state": word, "reason": reason })
-}
-
 impl Automation {
+    /// A model's state for a reply; the reason names files relative to the root when confined.
+    fn model_json<T>(&self, state: &ModelState<T>) -> Value {
+        let (word, reason) = chess::model_state(state);
+        json!({ "state": word, "reason": reason.map(|r| self.shown_text(r)) })
+    }
+
     /// The scan settings from the arguments. Out-of-range numbers are refused, not clamped, so
     /// the agent learns what is allowed.
     pub(crate) fn chess_settings(&self, a: &Args) -> Result<ChessScanSettings> {
@@ -347,9 +348,12 @@ impl Automation {
         let models = chess::models(settings.models_dir.as_deref());
         let pages = self.chess_pages(a, &settings, true)?;
         let readings = || pages.iter().flat_map(|p| p.readings.iter().flatten());
-        let mut model = model_json(&models.pieces);
+        let mut model = self.model_json(&models.pieces);
         if let Some(o) = model.as_object_mut() {
-            o.insert("folder".into(), models.folder.as_ref().map(|f| f.to_string_lossy().into_owned()).into());
+            o.insert("folder".into(), models.folder.as_ref().map(|f| self.path_json(f)).into());
+            if models.folder.as_ref().is_some_and(|f| self.shown_path(f).1) {
+                o.insert("outside_root".into(), true.into());
+            }
         }
         let generation = self.doc(a)?.edit_generation();
         Ok(json!({
@@ -446,7 +450,7 @@ impl Automation {
             "fen": fen::format_placement(&placement),
             "pieces": match source {
                 PieceSource::Font { family, .. } => json!({ "source": "font", "family": family, "error": Value::Null }),
-                PieceSource::Images { dir } => json!({ "source": "images", "family": dir.to_string_lossy(), "error": Value::Null }),
+                PieceSource::Images { dir } => json!({ "source": "images", "family": self.path_json(&dir), "error": Value::Null }),
                 PieceSource::Bundled { id } => json!({ "source": "bundled", "family": id, "error": Value::Null }),
                 PieceSource::Geometric => json!({ "source": "geometric", "family": Value::Null, "error": error.map(|e| e.to_string()) }),
             },
@@ -486,6 +490,12 @@ impl Automation {
         // The book's own PGN (plan "Carregar PGN do livro", R2; the kept one, R5).
         let (reference, reference_kept) = self.book_pgn(a, id)?;
         let (seed, cipher_out) = self.cipher_args(a)?;
+        let outputs: Vec<(&str, &std::path::Path)> = [("out", out.as_ref()), ("pgn_out", pgn_out.as_ref())]
+            .into_iter()
+            .filter_map(|(arg, o)| o.map(|(_, path)| (arg, path.as_path())))
+            .chain(cipher_out.as_ref().map(|(_, path)| ("cipher_out", path.as_path())))
+            .collect();
+        self.check_outputs(a, &outputs, &self.input_paths(a)?.iter().map(|p| p.as_path()).collect::<Vec<_>>())?;
         let ocr = OcrOptions { book: seed.as_ref(), ..ocr_options(a)? };
         let loaded = self.use_store_corrections(a, id)?;
         let mut read = self.session.chess_document_with(id, &pages, &settings, lang, &ocr).map_err(failed)?;
@@ -675,6 +685,10 @@ impl Automation {
         } else {
             None
         };
+        let mut outputs: Vec<(&str, &std::path::Path)> = vec![("out", path.as_path())];
+        outputs.extend(cipher_out.as_ref().map(|(_, p)| ("cipher_out", p.as_path())));
+        outputs.extend(folder.as_ref().map(|f| ("image_dir", f.as_path())));
+        self.check_outputs(a, &outputs, &self.input_paths(a)?.iter().map(|p| p.as_path()).collect::<Vec<_>>())?;
         let id = self.doc(a)?.id;
         let title = match a.opt_str("title")? {
             Some(t) => t.to_owned(),
@@ -733,11 +747,11 @@ impl Automation {
             "diagrams_drawn": made.drawn,
             "diagrams_unread": all - positioned,
             "games": read.doc.games.len(),
-            "text_font": font_json(fonts.figurines.as_ref(), matches!(format, ChessFormat::Html | ChessFormat::Epub), &fonts.errors),
-            "sign_font": font_json(fonts.signs.as_ref(), matches!(format, ChessFormat::Html | ChessFormat::Epub), &[]),
+            "text_font": self.font_json(fonts.figurines.as_ref(), matches!(format, ChessFormat::Html | ChessFormat::Epub), &fonts.errors),
+            "sign_font": self.font_json(fonts.signs.as_ref(), matches!(format, ChessFormat::Html | ChessFormat::Epub), &[]),
             "pieces": match source {
                 PieceSource::Font { family, .. } => json!({ "source": "font", "family": family, "error": Value::Null }),
-                PieceSource::Images { dir } => json!({ "source": "images", "family": dir.to_string_lossy(), "error": Value::Null }),
+                PieceSource::Images { dir } => json!({ "source": "images", "family": self.path_json(&dir), "error": Value::Null }),
                 PieceSource::Bundled { id } => json!({ "source": "bundled", "family": id, "error": Value::Null }),
                 PieceSource::Geometric => json!({ "source": "geometric", "family": Value::Null, "error": error.map(|e| e.to_string()) }),
             },
@@ -772,12 +786,21 @@ impl Automation {
             None => None,
             Some(p) => {
                 let path = self.resolve(p, false)?;
-                let text = std::fs::read_to_string(&path).map_err(|e| failed(format!("{p}: {e}")))?;
+                // Capped before it is read whole (A4-10): the cipher reads no more than this.
+                let max = pdfcraft_engine::chess::pdfcraft_chessvision::cipher::MAX_JSON_BYTES;
+                let bytes = crate::chess_files::read_capped(&path, p, max)?;
+                let text = String::from_utf8(bytes).map_err(|_| failed(format!("{p}: not UTF-8 text")))?;
                 Some(BookCipher::from_json(&text).map_err(|e| failed(format!("{p}: {e}")))?)
             }
         };
         let out = a.opt_str("cipher_out")?.map(|p| self.resolve(p, true).map(|r| (p.to_owned(), r))).transpose()?;
         Ok((seed, out))
+    }
+
+    /// The files this call reads besides the document (the book's PGN, a saved cipher), resolved:
+    /// an output may not be one of them unless the call says `overwrite` (plan A9, G7a).
+    fn input_paths(&self, a: &Args) -> Result<Vec<std::path::PathBuf>> {
+        ["reference_pgn", "cipher_in"].into_iter().filter_map(|key| a.opt_str(key).transpose()).map(|p| self.resolve(p?, false)).collect()
     }
 
     /// Save `cipher` to `out` (when asked) and say what it holds.
@@ -842,6 +865,18 @@ impl Automation {
         }))
     }
 
+    /// A piece set's preferences token as a reply gives it: its file or folder named as
+    /// [`shown_path`](Self::shown_path) names it, so a confined client never reads the folders
+    /// around its root in a token either (plan A9, G7a; R7-06).
+    fn shown_token(&self, choice: &pieces::choice::PieceChoice) -> String {
+        use pieces::choice::PieceChoice;
+        match choice {
+            PieceChoice::Font(p) => PieceChoice::Font(self.shown_path(p).0.into()).token(),
+            PieceChoice::Folder(p) => PieceChoice::Folder(self.shown_path(p).0.into()).token(),
+            other => other.token(),
+        }
+    }
+
     /// The piece sets that can be chosen (Preferences ▸ Chess pieces, plan HC2).
     pub(crate) fn chess_pieces(&self) -> Result<Value> {
         use pieces::choice::{self, CandidateKind, PieceChoice};
@@ -863,12 +898,13 @@ impl Automation {
                     PieceChoice::Font(_) | PieceChoice::Folder(_) => None,
                 };
                 json!({
-                    "token": c.choice.token(),
+                    "token": self.shown_token(&c.choice),
                     "kind": kind,
                     "name": c.name,
                     "author": c.author,
                     "licence": c.licence,
-                    "path": c.path.map(|p| p.to_string_lossy().into_owned()),
+                    "outside_root": c.path.as_ref().is_some_and(|p| self.shown_path(p).1),
+                    "path": c.path.map(|p| self.shown_path(&p).0),
                     "missing": c.missing,
                     "pieces": argument,
                 })
@@ -885,7 +921,8 @@ impl Automation {
         let fonts = import::holds_fonts(&from);
         let into = match a.opt_str("into")? {
             Some(p) => self.resolve(p, true)?,
-            None if self.root.is_some() => return Err(failed("into is needed when --root is set")),
+            // The default folders are beside the executable, outside any root (A4-04).
+            None if self.confined() => return Err(failed("into is needed when files are confined (--root or the automation roots)")),
             None if fonts => pdfcraft_engine::chess::pdfcraft_chessvision::text_font::beside_executable()
                 .ok_or_else(|| failed("no fonts folder beside the executable"))?,
             None => pieces::pieces_folder().ok_or_else(|| failed("no pieces folder beside the executable"))?,
@@ -900,9 +937,9 @@ impl Automation {
                             let pieces = f.kind == import::FontUse::Pieces;
                             json!({
                                 "name": f.name,
-                                "file": f.path.to_string_lossy(),
+                                "file": self.path_json(&f.path),
                                 "use": if pieces { "pieces" } else { "figurines" },
-                                "token": pieces.then(|| pieces::choice::PieceChoice::Font(f.path).token()),
+                                "token": pieces.then(|| self.shown_token(&pieces::choice::PieceChoice::Font(f.path))),
                             })
                         })
                         .collect();
@@ -911,7 +948,7 @@ impl Automation {
                 Err(ImportError::Exists(files)) => Ok(json!({
                     "imported": [],
                     "fonts": [],
-                    "exists": files.iter().map(|f| f.to_string_lossy().into_owned()).collect::<Vec<_>>(),
+                    "exists": files.iter().map(|f| self.shown_path(f).0).collect::<Vec<_>>(),
                     "refused": "a different font of that file name is already there; pass replace to replace it",
                 })),
                 Err(e) => Err(failed(e.to_string())),
@@ -921,15 +958,13 @@ impl Automation {
             Ok(sets) => {
                 let sets: Vec<Value> = sets
                     .into_iter()
-                    .map(
-                        |s| json!({ "name": s.name, "folder": s.dir.to_string_lossy(), "token": pieces::choice::PieceChoice::Folder(s.dir).token() }),
-                    )
+                    .map(|s| json!({ "name": s.name, "folder": self.path_json(&s.dir), "token": self.shown_token(&pieces::choice::PieceChoice::Folder(s.dir)) }))
                     .collect();
                 Ok(json!({ "imported": sets, "licence": "unknown: for personal use only" }))
             }
             Err(ImportError::Exists(dirs)) => Ok(json!({
                 "imported": [],
-                "exists": dirs.iter().map(|d| d.to_string_lossy().into_owned()).collect::<Vec<_>>(),
+                "exists": dirs.iter().map(|d| self.shown_path(d).0).collect::<Vec<_>>(),
                 "refused": "a set of that name is already there; pass replace to replace it",
             })),
             Err(e) => Err(failed(e.to_string())),
@@ -940,21 +975,31 @@ impl Automation {
         let dir = self.models_dir(a)?;
         let models = chess::models(dir.as_deref());
         let (_, source, error) = pieces::find();
+        let mut set_path: Option<std::path::PathBuf> = None;
         let mut piece_set = match source {
             PieceSource::Font { path, family } => {
-                json!({ "source": "font", "family": family, "path": path.map(|p| p.to_string_lossy().into_owned()) })
+                set_path.clone_from(&path);
+                json!({ "source": "font", "family": family, "path": path.map(|p| self.shown_path(&p).0) })
             }
-            PieceSource::Images { dir } => json!({ "source": "images", "family": Value::Null, "path": dir.to_string_lossy() }),
+            PieceSource::Images { dir } => {
+                let shown = self.path_json(&dir);
+                set_path = Some(dir);
+                json!({ "source": "images", "family": Value::Null, "path": shown })
+            }
             PieceSource::Bundled { id } => json!({ "source": "bundled", "family": id, "path": Value::Null }),
             PieceSource::Geometric => json!({ "source": "geometric", "family": Value::Null, "path": Value::Null }),
         };
         if let Some(o) = piece_set.as_object_mut() {
             o.insert("error".into(), error.map(|e| e.to_string()).into());
+            if set_path.as_ref().is_some_and(|p| self.shown_path(p).1) {
+                o.insert("outside_root".into(), true.into());
+            }
         }
         Ok(json!({
-            "pieces": model_json(&models.pieces),
-            "glyphs": model_json(&models.glyphs),
-            "folder": models.folder.as_ref().map(|f| f.to_string_lossy().into_owned()),
+            "pieces": self.model_json(&models.pieces),
+            "glyphs": self.model_json(&models.glyphs),
+            "folder": models.folder.as_ref().map(|f| self.path_json(f)),
+            "outside_root": models.folder.as_ref().is_some_and(|f| self.shown_path(f).1),
             "looked_in": if dir.is_some() { "models_dir" } else { "PDFCRAFT_MODELS, then beside the executable" },
             "reads_fonts_without_model": true,
             "piece_set": piece_set,
@@ -962,20 +1007,23 @@ impl Automation {
     }
 }
 
-/// What an export says about one of the user's fonts (`chessvision::text_font`).
-fn font_json(
-    font: Option<&pdfcraft_engine::chess::pdfcraft_chessvision::text_font::TextFont>,
-    exported: bool,
-    errors: &[pdfcraft_engine::chess::pdfcraft_chessvision::text_font::TextFontError],
-) -> Value {
-    json!({
-        "path": font.and_then(|f| f.path.as_ref()).map(|p| p.to_string_lossy().into_owned()),
-        "family": font.map(|f| f.family.clone()),
-        "role": font.map(|f| format!("{:?}", f.role).to_lowercase()),
-        "format": font.map(|f| f.format.extension()),
-        "used": font.is_some() && exported,
-        "error": errors.first().map(|e| e.to_string()),
-    })
+impl Automation {
+    /// What an export says about one of the user's fonts (`chessvision::text_font`).
+    fn font_json(
+        &self,
+        font: Option<&pdfcraft_engine::chess::pdfcraft_chessvision::text_font::TextFont>,
+        exported: bool,
+        errors: &[pdfcraft_engine::chess::pdfcraft_chessvision::text_font::TextFontError],
+    ) -> Value {
+        json!({
+            "path": font.and_then(|f| f.path.as_ref()).map(|p| self.path_json(p)),
+            "family": font.map(|f| f.family.clone()),
+            "role": font.map(|f| format!("{:?}", f.role).to_lowercase()),
+            "format": font.map(|f| f.format.extension()),
+            "used": font.is_some() && exported,
+            "error": errors.first().map(|e| e.to_string()),
+        })
+    }
 }
 
 /// A book's PGN at `path` (`shown` as the caller named it), indexed. Refused past
@@ -989,16 +1037,13 @@ pub(crate) fn read_reference(path: &std::path::Path, shown: &str) -> Result<refe
 /// The text of the book's PGN at `path`, as [`read_reference`] reads it, how it was decoded, and
 /// the file's bytes (a kept PGN is also known by the hash older builds gave them).
 pub(crate) fn read_reference_text(path: &std::path::Path, shown: &str) -> Result<(String, PgnEncoding, Vec<u8>)> {
-    use std::io::Read as _;
     let max = reference::MAX_REFERENCE_BYTES;
     let too_large = || failed(format!("{shown}: a PGN of more than {} MiB is not read", max >> 20));
-    let file = std::fs::File::open(path).map_err(|e| failed(format!("{shown}: {e}")))?;
-    if file.metadata().map_err(|e| failed(format!("{shown}: {e}")))?.len() > max as u64 {
+    if std::fs::metadata(path).map_err(|e| failed(format!("{shown}: {e}")))?.len() > max as u64 {
         return Err(too_large());
     }
-    let mut bytes = Vec::new();
     // One byte past the cap, so a file that grew since is still refused.
-    file.take(max as u64 + 1).read_to_end(&mut bytes).map_err(|e| failed(format!("{shown}: {e}")))?;
+    let bytes = pdfcraft_engine::chess::corrections::read_capped(path, max).map_err(|e| failed(format!("{shown}: {e}")))?;
     if bytes.len() > max {
         return Err(too_large());
     }

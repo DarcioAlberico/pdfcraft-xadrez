@@ -16,14 +16,18 @@
 //! Both paths are confined to `--root` and resolved first, before anything is read. Each operation
 //! adds an entry to the report; one that is refused adds an error entry, changes nothing and stops
 //! the list there (and `out` is then not written).
-
-use std::io::Read;
+//!
+//! **Nothing is cut in silence** (plan A9, G7a; A4-05). A game is read up to the first move of its
+//! PGN that cannot be played (`pgn_stopped`); what follows it is not in the game, so writing the
+//! collection would drop it. With such a game in the list, `out` is refused unless the call says
+//! `allow_truncate: true`. `out` may be `path` (editing the file in place is what the tool is for),
+//! never the file of an open document unless the call says `overwrite: true`.
 
 use pdfcraft_engine::chess::collection::{self, GameList, GameNames, ListedGame, MAX_GAMES};
 use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
 use serde_json::{Map, Value, json};
 
-use crate::{Args, Automation, Result, ToolError, chess_pgn, failed, write_atomic};
+use crate::{Args, Automation, Result, ToolError, chess_pgn, write_atomic};
 
 /// Most operations in one call.
 pub(crate) const MAX_OPS: usize = 1000;
@@ -70,20 +74,18 @@ impl Automation {
                 text.to_owned()
             }
             (None, Some((given, file))) => {
-                // Resolved above, and refused above the cap.
-                let len = std::fs::metadata(&file).map_err(|e| failed(format!("{given}: {e}")))?.len();
-                let cap = u64::try_from(MAX_PGN_BYTES).unwrap_or(u64::MAX);
-                if len > cap {
-                    return Err(failed(format!("{given}: larger than {MAX_PGN_BYTES} bytes")));
-                }
-                let mut bytes = Vec::new();
-                std::fs::File::open(&file).and_then(|f| f.take(cap).read_to_end(&mut bytes)).map_err(|e| failed(format!("{given}: {e}")))?;
+                // Resolved above, and refused above the cap (a file that grew past it since too).
+                let bytes = crate::chess_files::read_capped(&file, given, MAX_PGN_BYTES)?;
                 let (text, read_as) = pdfcraft_engine::chess::pdfcraft_chess::pgn::decode(&bytes);
                 encoding = Some(read_as.name());
                 text
             }
             (None, None) => String::new(),
         };
+        if let Some(target) = &out {
+            self.check_outputs(a, &[("out", target.as_path())], &[])?;
+        }
+        let allow_truncate = a.opt_bool("allow_truncate")?.unwrap_or(false);
         let mut list = read_games(&text)?;
         if let Some(active) = a.opt_int("active")? {
             let shown = usize::try_from(active).ok().filter(|&i| list.switch_to(i));
@@ -118,8 +120,18 @@ impl Automation {
         let pgn = export(&list, None);
         let written = match (&out, refused) {
             (Some(target), false) => {
+                let stopped: Vec<String> =
+                    list.iter().enumerate().filter_map(|(i, e)| e.stopped.as_ref().map(|mv| format!("game {i} at {mv}"))).collect();
+                if !stopped.is_empty() && !allow_truncate {
+                    return Err(ToolError::InvalidArgs(format!(
+                        "out not written: {} read only up to a move that could not be played, and the rest of {} would be lost; \
+                         correct the move, delete the game, or pass allow_truncate: true to write it cut there",
+                        stopped.join(", "),
+                        if stopped.len() == 1 { "it" } else { "them" },
+                    )));
+                }
                 write_atomic(target, pgn.as_bytes())?;
-                Some(target.to_string_lossy().into_owned())
+                Some(self.shown_path(target).0)
             }
             _ => None,
         };

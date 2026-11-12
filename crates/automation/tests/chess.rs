@@ -2663,3 +2663,178 @@ fn corrections_win_in_readings_exports_and_links_and_are_never_lost() {
     assert_eq!((reopened, used["applied"][1]["page"].as_u64()), (vec![json!(E4), json!(KINGS), Value::Null], Some(2)), "{used:#}");
     let _ = std::fs::remove_dir_all(base);
 }
+
+// ─── Plan A9, G7a: confinement, overwrite and nothing cut ───────────────────────────────────────
+
+/// A9-G7a (A4-04): with only the automation roots (an MCP server's --automation-read-root and
+/// --automation-write-root, no --root), `chess_pieces_import` without `into` used to write into
+/// the `pieces` folder beside the executable, outside the write root. It is refused, nothing is
+/// written there, and the same import with `into` inside the write root works, its folder named
+/// relative to that root.
+#[test]
+fn chess_pieces_import_without_into_stays_inside_the_automation_roots() {
+    let (base, _) = workdir("g7a-import");
+    let (read, write) = (base.join("read"), base.join("write"));
+    std::fs::create_dir_all(&read).unwrap();
+    std::fs::create_dir_all(&write).unwrap();
+    // A set name of its own, so a set already beside the test executable is never taken for it.
+    let name = format!("g7a-escape-{}", std::process::id());
+    std::fs::write(read.join("course.html"), piece_page().replace("\"squares\"", &format!("\"{name}\""))).unwrap();
+    let beside = std::env::current_exe().unwrap().parent().unwrap().join("pieces").join(&name);
+    let roots = pdfcraft_automation::file_access::AutomationRoots::new(Some(&read), Some(&write)).unwrap();
+    let mut a = Automation::new().with_automation_roots(roots);
+    let from = read.join("course.html").to_string_lossy().into_owned();
+    let refused = a.call("chess_pieces_import", &json!({ "from": from }));
+    let escaped = beside.exists();
+    let _ = std::fs::remove_dir_all(&beside);
+    assert!(!escaped, "written beside the executable, outside the write root: {refused:?}");
+    match refused {
+        Err(ToolError::Failed(m)) => assert!(m.contains("into is needed"), "{m}"),
+        other => panic!("accepted without into: {other:?}"),
+    }
+    let into = write.join("pieces").to_string_lossy().into_owned();
+    let done = ok(&mut a, "chess_pieces_import", json!({ "from": from, "into": into }));
+    assert!(write.join("pieces").join(&name).join("wK.svg").is_file(), "{done:#}");
+    assert_eq!(done["imported"][0]["folder"].as_str(), Some(std::path::Path::new("pieces").join(&name).to_string_lossy().as_ref()), "{done:#}");
+    // Nor in the preferences token: the folders around the roots are never named (R7-06).
+    let around = base.file_name().unwrap().to_string_lossy().into_owned();
+    assert!(!done.to_string().contains(&around), "{done:#}");
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// A9-G7a (A4-11): an export whose `out` is the open PDF used to replace the book with what it
+/// wrote (759 bytes of Markdown); a `pgn_out` that is the book's PGN read in the same call, the
+/// PGN. Both are refused and the files are left as they were; `overwrite: true` writes anyway.
+#[test]
+fn exports_never_write_over_the_open_pdf_or_the_books_pgn_unasked() {
+    let (base, root) = workdir("g7a-overwrite");
+    let (mut a, doc) = opened(&root);
+    let pdf = std::fs::read(root.join("board.pdf")).unwrap();
+    for (tool, key) in [("chess_export_markdown", "out"), ("chess_export_html", "out"), ("chess_document", "pgn_out"), ("chess_document", "out")] {
+        let mut args = json!({ "doc": doc, key: "board.pdf" });
+        if tool != "chess_document" {
+            args["diagrams"] = json!("fen");
+        }
+        match a.call(tool, &args) {
+            Err(ToolError::InvalidArgs(m)) => assert!(m.contains("open document") && m.contains("overwrite"), "{tool} {key}: {m}"),
+            other => panic!("{tool} {key} wrote over the open PDF: {other:?}"),
+        }
+        assert_eq!(std::fs::read(root.join("board.pdf")).unwrap(), pdf, "{tool} {key}: the PDF is as it was");
+    }
+    // Written as `./board.pdf`, or with another case on Windows, it is the same file.
+    assert!(a.call("chess_export_markdown", &json!({ "doc": doc, "out": "./models/../board.pdf", "diagrams": "fen" })).is_err());
+    // The book's PGN read by the same call.
+    std::fs::write(root.join("book.pgn"), RUY_PGN).unwrap();
+    for (tool, key) in [("chess_document", "pgn_out"), ("chess_export_pgn", "out")] {
+        match a.call(tool, &json!({ "doc": doc, key: "book.pgn", "reference_pgn": "book.pgn" })) {
+            Err(ToolError::InvalidArgs(m)) => assert!(m.contains("this call reads"), "{tool}: {m}"),
+            other => panic!("{tool} wrote over the book's PGN: {other:?}"),
+        }
+        assert_eq!(std::fs::read_to_string(root.join("book.pgn")).unwrap(), RUY_PGN);
+    }
+    // Asked for, it is written.
+    ok(&mut a, "chess_export_markdown", json!({ "doc": doc, "out": "board.pdf", "diagrams": "fen", "overwrite": true }));
+    assert_ne!(std::fs::read(root.join("board.pdf")).unwrap(), pdf);
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// A9-G7a (R7-04): two outputs of one call on one file used to answer "exported" while the file
+/// held the second (the cipher's JSON in `book.md`). Refused, even with `overwrite`, and nothing
+/// is written.
+#[test]
+fn two_outputs_of_one_call_never_share_a_file() {
+    let (base, root) = workdir("g7a-outputs");
+    let (mut a, doc) = opened(&root);
+    for (tool, args) in [
+        ("chess_export_markdown", json!({ "doc": doc, "out": "book.md", "cipher_out": "book.md", "diagrams": "fen" })),
+        ("chess_export_markdown", json!({ "doc": doc, "out": "book.md", "cipher_out": "./book.md", "diagrams": "fen", "overwrite": true })),
+        ("chess_document", json!({ "doc": doc, "out": "x.json", "pgn_out": "x.json" })),
+        ("chess_document", json!({ "doc": doc, "pgn_out": "x.json", "cipher_out": "x.json" })),
+    ] {
+        match a.call(tool, &args) {
+            Err(ToolError::InvalidArgs(m)) => assert!(m.contains("name the same file"), "{tool} {args}: {m}"),
+            other => panic!("{tool} {args} accepted: {other:?}"),
+        }
+    }
+    assert!(!root.join("book.md").exists() && !root.join("x.json").exists(), "nothing written");
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// A9-G7a (A4-10): `cipher_in` used to be read whole before the cipher's cap (a 600 MB file
+/// took 616 MB of memory to refuse). It is refused at the cap: the refusal can no longer say
+/// the file's size, which it only knew by reading all of it.
+#[test]
+fn a_cipher_past_its_cap_is_refused_before_it_is_read_whole() {
+    let (base, root) = workdir("g7a-cipher");
+    let (mut a, doc) = opened(&root);
+    let max = pdfcraft_engine::chess::pdfcraft_chessvision::cipher::MAX_JSON_BYTES;
+    let size = max + 4096;
+    std::fs::write(root.join("big.json"), vec![b' '; size]).unwrap();
+    let e = a.call("chess_document", &json!({ "doc": doc, "cipher_in": "big.json" })).unwrap_err().to_string();
+    assert!(!e.contains(&size.to_string()), "the whole file was read: {e}");
+    assert!(e.contains("big.json") && e.contains(&max.to_string()), "{e}");
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// The study file of A4-05: the first game has an impossible `4. Bxh7` and more after it.
+const STUDY: &str = "[Event \"Study\"]\n[White \"A\"]\n[Black \"B\"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Bxh7 Nf6 5. O-O Be7 {a long comment the author wrote} 6. Re1 b5 *\n\n[Event \"Other\"]\n\n1. d4 d5 *\n";
+
+/// A9-G7a (A4-05): renaming the *other* game of a study file and writing it back used to cut the
+/// first game at its impossible move, losing the moves and the comment after it. `out` is refused
+/// and the file kept; deleting the game or `allow_truncate` lets it be written; and `written`
+/// names the file relative to the root (R7-06).
+#[test]
+fn chess_games_never_cuts_a_game_it_writes_back() {
+    let (base, root) = workdir("g7a-games");
+    std::fs::write(root.join("games.pgn"), STUDY).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let rename = json!([{ "op": "rename", "game": 1, "white": "Renamed" }]);
+    match a.call("chess_games", &json!({ "path": "games.pgn", "ops": rename, "out": "games.pgn" })) {
+        Err(ToolError::InvalidArgs(m)) => assert!(m.contains("game 0 at Bxh7") && m.contains("allow_truncate"), "{m}"),
+        other => panic!("written cut: {other:?}"),
+    }
+    assert_eq!(std::fs::read_to_string(root.join("games.pgn")).unwrap(), STUDY, "the file is as it was");
+    // Without out nothing is written, and the reply still says where the game stops.
+    let shown = ok(&mut a, "chess_games", json!({ "path": "games.pgn", "ops": rename }));
+    assert_eq!((shown["games"][0]["pgn_stopped"].as_str(), shown["written"].is_null()), (Some("Bxh7"), true), "{shown:#}");
+    // Asked for, it is written cut; with the game deleted, there is nothing to cut.
+    let cut = ok(&mut a, "chess_games", json!({ "path": "games.pgn", "ops": rename, "out": "cut.pgn", "allow_truncate": true }));
+    assert_eq!(cut["written"], "cut.pgn", "relative to the root: {cut:#}");
+    assert!(!std::fs::read_to_string(root.join("cut.pgn")).unwrap().contains("Bxh7"));
+    let deleted = ok(&mut a, "chess_games", json!({ "path": "games.pgn", "ops": [{ "op": "delete", "game": 0 }], "out": "games.pgn" }));
+    assert_eq!(deleted["written"], "games.pgn");
+    // The open document's file is not a collection's to write over.
+    let doc = ok(&mut a, "doc_open", json!({ "path": "board.pdf" }))["doc"].as_u64().unwrap();
+    assert!(doc > 0);
+    match a.call("chess_games", &json!({ "pgn": "1. e4 *", "out": "board.pdf" })) {
+        Err(ToolError::InvalidArgs(m)) => assert!(m.contains("open document"), "{m}"),
+        other => panic!("written over the open PDF: {other:?}"),
+    }
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// A9-G7a (R7-06): a confined client is told where files are relative to its root, and of a file
+/// outside it only the name, with `outside_root`: never the folders around it (`C:\Users\…`).
+#[test]
+fn confined_replies_name_files_relative_to_the_root() {
+    let (base, root) = workdir("g7a-shown");
+    let mut a = Automation::new().with_root(&root).unwrap();
+    std::fs::write(root.join("models").join("chess-pieces.onnx"), b"not a model").unwrap();
+    let status = ok(&mut a, "chess_status", json!({ "models_dir": "models" }));
+    assert_eq!((status["folder"].as_str(), status["outside_root"].as_bool()), (Some("models"), Some(false)), "{status:#}");
+    // A piece set found outside the root (the fonts installed on the machine): only its name.
+    let text = status.to_string();
+    let home = std::env::var("USERPROFILE").or_else(|_| std::env::var("HOME")).unwrap_or_default();
+    assert!(home.is_empty() || !text.to_lowercase().contains(&home.to_lowercase().replace('\\', "\\\\")), "{status:#}");
+    if status["piece_set"]["outside_root"] == true {
+        let name = status["piece_set"]["path"].as_str().unwrap_or_default();
+        assert!(!name.contains(['/', '\\']), "only the name of a set outside the root: {status:#}");
+    }
+    let sets = ok(&mut a, "chess_pieces", json!({}));
+    for set in sets["sets"].as_array().unwrap() {
+        if set["outside_root"] == true {
+            assert!(!set["path"].as_str().unwrap_or_default().contains(['/', '\\']), "{set:#}");
+        }
+    }
+    let _ = std::fs::remove_dir_all(base);
+}
