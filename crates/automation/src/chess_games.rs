@@ -60,6 +60,7 @@ impl Automation {
         // The paths next: one that leaves the root is refused before anything is read.
         let path = a.opt_str("path")?.map(|p| self.resolve(p, false).map(|r| (p, r))).transpose()?;
         let out = a.opt_str("out")?.map(|p| self.resolve(p, true)).transpose()?;
+        let mut encoding = None;
         let text = match (inline, path) {
             (Some(_), Some(_)) => return Err(ToolError::InvalidArgs("give pgn or path, not both".into())),
             (Some(text), None) => {
@@ -77,7 +78,9 @@ impl Automation {
                 }
                 let mut bytes = Vec::new();
                 std::fs::File::open(&file).and_then(|f| f.take(cap).read_to_end(&mut bytes)).map_err(|e| failed(format!("{given}: {e}")))?;
-                String::from_utf8_lossy(&bytes).into_owned()
+                let (text, read_as) = pdfcraft_engine::chess::pdfcraft_chess::pgn::decode(&bytes);
+                encoding = Some(read_as.name());
+                text
             }
             (None, None) => String::new(),
         };
@@ -125,6 +128,7 @@ impl Automation {
             "games": list_json(&list),
             "active": list.active_index(),
             "count": list.len(),
+            "encoding": encoding,
             "pgn": pgn,
             "report": report,
             "applied": applied,

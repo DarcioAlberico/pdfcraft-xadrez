@@ -2632,6 +2632,10 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Chess games couldn't be autosaved: {e}	Οι παρτίδες σκακιού δεν αποθηκεύτηκαν αυτόματα: {e}
 	Nothing to save: an illegal position has no PGN.	Τίποτα για αποθήκευση: μια μη έγκυρη θέση δεν έχει PGN.
 	Games read from {name}: {n}	Παρτίδες που διαβάστηκαν από το {name}: {n}
+	Read as Windows-1252 (Latin-1), not UTF-8.	Διαβάστηκε ως Windows-1252 (Latin-1), όχι UTF-8.
+	Lines read as Windows-1252 (Latin-1), not UTF-8: {n}	Γραμμές που διαβάστηκαν ως Windows-1252 (Latin-1), όχι UTF-8: {n}
+	Write PGN files with a byte order mark (BOM)	Εγγραφή αρχείων PGN με σήμα σειράς byte (BOM)
+	Some Windows programs need the mark to read accents; most read PGN without it.	Ορισμένα προγράμματα των Windows χρειάζονται το σήμα για να διαβάσουν τόνους· τα περισσότερα διαβάζουν PGN και χωρίς αυτό.
 	Not read: {n}	Δεν διαβάστηκαν: {n}
 	Only the first {n} were read.	Διαβάστηκαν μόνο οι πρώτες {n}.
 	the file is too large	το αρχείο είναι πολύ μεγάλο
