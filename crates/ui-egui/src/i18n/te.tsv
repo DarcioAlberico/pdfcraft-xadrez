@@ -2554,6 +2554,7 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Delete variation	ఉపవరుసను తొలగించు
 	Cut after this move	ఈ ఎత్తు తర్వాతివి కత్తిరించు
 	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	మరిన్ని {group} సాధనాలు: కుడి-క్లిక్ చేయండి, నొక్కి పట్టుకోండి లేదా Enter నొక్కండి. {key} వాటి మధ్య మారుస్తుంది.
+	More {group} tools: right-click, hold, or press Enter.	మరిన్ని {group} సాధనాలు: కుడి-క్లిక్ చేయండి, నొక్కి పట్టుకోండి లేదా Enter నొక్కండి.
 	This move is on the main line already.	ఈ ఎత్తు ఇప్పటికే ప్రధాన వరుసలో ఉంది.
 	There are no moves after this one.	ఈ ఎత్తు తర్వాత ఎత్తులు లేవు.
 	Not done: variations would nest too deep.	చేయలేదు: ఉపవరుసలు చాలా లోతుగా ఒకదానిలో ఒకటి ఉంటాయి.
@@ -3071,6 +3072,16 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Show what was read again; the PDF is not changed.	చదివినదాన్ని మళ్లీ చూపించు; PDF మారదు.
 	Diagram board, page {p}, diagram {n}	రేఖాచిత్రం బోర్డు, పేజీ {p}, రేఖాచిత్రం {n}
 	Classic diagram editor	సాంప్రదాయ రేఖాచిత్ర ఎడిటర్
+# Plan A9-I18: the chess keys (Preferences ▸ Chess: the one-key shortcuts and how long a typed sign waits).
+	One-key shortcuts (B, C, F, G, O, X, signs)	ఒకే కీ షార్ట్‌కట్‌లు (B, C, F, G, O, X, గుర్తులు)
+	Off, the chess panels take no letter or sign typed; the buttons beside the board and the command search still do the same.	ఆఫ్ చేస్తే, చదరంగం ప్యానెల్‌లు టైప్ చేసిన అక్షరాలు లేదా గుర్తులను తీసుకోవు; బోర్డు పక్కన ఉన్న బటన్‌లు, కమాండ్ శోధన ఇప్పటికీ అదే పని చేస్తాయి.
+	A typed sign waits for its next character	టైప్ చేసిన గుర్తు తదుపరి అక్షరం కోసం వేచి ఉంటుంది
+	Enter puts the sign on at once; Esc drops it.	Enter గుర్తును వెంటనే పెడుతుంది; Esc దాన్ని తీసివేస్తుంది.
+	0.6 s	0.6 సె.
+	1 s	1 సె.
+	1.5 s	1.5 సె.
+	2 s	2 సె.
+	Until Enter	Enter వరకు
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	రేఖాచిత్రం ట్యాబ్ రాకముందులాగే రేఖాచిత్రాలు ప్యానెల్‌లోనే రేఖాచిత్రాలను సవరించు. ఈ ఎంపిక తదుపరి వెర్షన్‌లో తొలగించబడుతుంది.
 # Plan A8 P3b3: drafts and the question about them.
 	Unconfirmed changes	నిర్ధారించని మార్పులు

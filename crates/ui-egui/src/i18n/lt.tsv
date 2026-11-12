@@ -2946,6 +2946,7 @@ chess undo step	Clear drawings	piešinių valymą
 	Delete variation	Ištrinti variantą
 	Cut after this move	Nukirpti po šio ėjimo
 	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	Daugiau grupės „{group}“ įrankių: dešinysis spustelėjimas, ilgas paspaudimas arba Enter. {key} perjungia juos.
+	More {group} tools: right-click, hold, or press Enter.	Daugiau grupės „{group}“ įrankių: dešinysis spustelėjimas, ilgas paspaudimas arba Enter.
 	This move is on the main line already.	Šis ėjimas jau yra pagrindiniame variante.
 	There are no moves after this one.	Po šio ėjimo ėjimų nėra.
 	Not done: variations would nest too deep.	Neatlikta: variantai būtų įdėti per giliai.
@@ -3462,6 +3463,16 @@ chess undo step	Clear drawings	piešinių valymą
 	Show what was read again; the PDF is not changed.	Vėl rodyti, kas perskaityta; PDF nekeičiamas.
 	Diagram board, page {p}, diagram {n}	Diagramos lenta, puslapis {p}, diagrama {n}
 	Classic diagram editor	Klasikinis diagramų redaktorius
+# Plan A9-I18: the chess keys (Preferences ▸ Chess: the one-key shortcuts and how long a typed sign waits).
+	One-key shortcuts (B, C, F, G, O, X, signs)	Vieno klavišo spartieji klavišai (B, C, F, G, O, X, ženklai)
+	Off, the chess panels take no letter or sign typed; the buttons beside the board and the command search still do the same.	Išjungus šachmatų skydeliai nepriima įvestų raidžių ar ženklų; mygtukai šalia lentos ir komandų paieška tebeatlieka tą patį.
+	A typed sign waits for its next character	Įvestas ženklas laukia kito simbolio
+	Enter puts the sign on at once; Esc drops it.	Enter ženklą uždeda iškart, Esc jį atmeta.
+	0.6 s	0,6 s
+	1 s	1 s
+	1.5 s	1,5 s
+	2 s	2 s
+	Until Enter	Iki Enter
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Redaguoti diagramas skydelyje Diagramos, kaip iki kortelės Diagrama. Ši parinktis dings vienoje iš būsimų versijų.
 # Plan A8 P3b3: drafts and the question about them.
 	Unconfirmed changes	Nepatvirtinti pakeitimai

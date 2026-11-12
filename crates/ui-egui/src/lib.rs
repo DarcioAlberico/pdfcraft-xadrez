@@ -47,6 +47,7 @@ mod chess_editor;
 mod chess_export_ui;
 mod chess_figurines;
 mod chess_history;
+mod chess_keymap;
 mod chess_list;
 mod chess_models;
 mod chess_moves_tree;
@@ -565,6 +566,9 @@ pub struct PdfCraftApp {
     /// The user closed the right panel, so opening a document leaves it closed instead of
     /// showing its comments or bookmarks (#1590). Remembered across restarts.
     pub right_panel_closed: bool,
+    /// The settings `restore` read that this build does not write (a newer build's preferences):
+    /// `persist` writes them back as they were (plan A9-I18, finding R7-05).
+    settings_kept: serde_json::Map<String, serde_json::Value>,
     pub quick_tool: QuickTool,
     /// The tool to go back to when Space, held for a temporary Hand, is released.
     space_hand: Option<QuickTool>,
@@ -966,6 +970,7 @@ impl PdfCraftApp {
             right_before_read: None,
             comments_panel_closed: false,
             right_panel_closed: false,
+            settings_kept: serde_json::Map::new(),
             quick_tool: QuickTool::Select,
             space_hand: None,
             focus_loss: Default::default(),
@@ -2305,8 +2310,23 @@ impl PdfCraftApp {
         }
     }
 
-    /// Serialize the user's persistent state (recent files, theme). Local only.
+    /// Serialize the user's persistent state (recent files, theme). Local only. The settings this
+    /// build does not write, read by [`PdfCraftApp::restore`], are written back as they were, so
+    /// a preference a newer build saved survives this one (plan A9-I18, finding R7-05).
     pub fn persist(&self) -> String {
+        let mut v = self.settings();
+        if let Some(map) = v.as_object_mut() {
+            for (key, value) in &self.settings_kept {
+                if !map.contains_key(key) {
+                    map.insert(key.clone(), value.clone());
+                }
+            }
+        }
+        v.to_string()
+    }
+
+    /// The settings this build writes, as it knows them now.
+    fn settings(&self) -> serde_json::Value {
         let trusted: Vec<String> = self.session.trusted_certificates().iter().map(pdfcraft_engine::sign::x509::to_pem).collect();
         let mut v = serde_json::json!({
             "docking": self.docking,
@@ -2403,12 +2423,29 @@ impl PdfCraftApp {
         v["chess_tools_offer_answered"] = serde_json::Value::Bool(self.chess.tools_offer_answered);
         // The documents that said Not now to the PGN beside them (plan "Carregar PGN do livro", R6f).
         v["chess_pgn_offers_declined"] = serde_json::json!(self.chess.book_pgns.declined);
-        v.to_string()
+        // The chess keys (plan A9-I18): the one-key shortcuts, and how long a typed sign waits.
+        v["chess_one_key_shortcuts"] = serde_json::Value::Bool(!self.chess.one_key_off);
+        v["chess_typed_wait"] = self.chess.typed_wait.to_json();
+        v
     }
 
-    /// Restore state written by `persist`. Unknown or malformed data is ignored.
+    /// Restore state written by `persist`. Malformed data is ignored; data this build does not
+    /// know is kept for `persist` to write back.
     pub fn restore(&mut self, json: &str) {
         let Ok(v) = serde_json::from_str::<serde_json::Value>(json) else { return };
+        // A newer build's preferences: kept as read (plan A9-I18, R7-05). They are no larger than
+        // the settings already read, so nothing new is sized by them.
+        let known = self.settings();
+        self.settings_kept = v
+            .as_object()
+            .map(|map| map.iter().filter(|(key, _)| known.get(key.as_str()).is_none()).map(|(k, value)| (k.clone(), value.clone())).collect())
+            .unwrap_or_default();
+        if let Some(on) = v["chess_one_key_shortcuts"].as_bool() {
+            self.chess.one_key_off = !on;
+        }
+        if let Some(wait) = crate::chess_annotate::TypedWait::from_json(&v["chess_typed_wait"]) {
+            self.chess.typed_wait = wait;
+        }
         if let Some(saved) = v.get("docking")
             && let Ok(workspace) = serde_json::from_value::<docking::Workspace>(saved.clone())
             && workspace.validate().is_ok()
@@ -2679,6 +2716,17 @@ impl PdfCraftApp {
                     "off" => false,
                     _ => return Err("comment-focus must be on or off".into()),
                 };
+            }
+            // The chess keys (plan A9-I18).
+            ("one-key-shortcuts", _) => {
+                self.chess.one_key_off = match value {
+                    "on" => false,
+                    "off" => true,
+                    _ => return Err("one-key-shortcuts must be on or off".into()),
+                };
+            }
+            ("typed-wait", _) => {
+                self.chess.typed_wait = crate::chess_annotate::TypedWait::parse(value).ok_or("typed-wait must be 0.6, 1, 1.5, 2 or enter")?;
             }
             ("move-pieces", _) => {
                 self.chess.move_pieces = chess_figurines::MovePieces::from_token(value).ok_or("move-pieces must be figurines, letters or english")?;
@@ -3087,6 +3135,11 @@ impl PdfCraftApp {
     }
 }
 
+/// The quick tools' letters (`tool_keys`): V selects, H pans. The chess key map checks that no
+/// chess key takes them (plan A9-I18, `chess_keymap`).
+pub(crate) const SELECT_KEY: egui::Key = egui::Key::V;
+pub(crate) const HAND_KEY: egui::Key = egui::Key::H;
+
 /// Why nothing can be copied out of the document: its security doesn't allow it (Table 22,
 /// bit 5; #568).
 pub(crate) fn copy_refused() -> &'static str {
@@ -3155,11 +3208,11 @@ impl PdfCraftApp {
                 self.views[i].knife.clear();
             }
         }
-        if ctx.input(|input| input.key_pressed(Key::V)) {
+        if ctx.input(|input| input.key_pressed(SELECT_KEY)) {
             self.quick_tool = QuickTool::Select;
             self.space_hand = None;
         }
-        if ctx.input(|input| input.key_pressed(Key::H)) {
+        if ctx.input(|input| input.key_pressed(HAND_KEY)) {
             self.quick_tool = QuickTool::Hand;
             self.space_hand = None;
         }
@@ -3434,6 +3487,7 @@ impl eframe::App for PdfCraftApp {
             // Notices too: a refused field value or a failed save must be seen in full screen.
             self.show_progress(&ctx);
             widgets::toast(self, &ctx);
+            self.settle_chess_focus(&ctx);
             self.finish_render_frame(&ctx);
             return;
         }
@@ -3507,11 +3561,24 @@ impl eframe::App for PdfCraftApp {
         chess_study_ui::engine_assistant(self, &ctx);
         self.show_progress(&ctx);
         widgets::toast(self, &ctx);
+        self.settle_chess_focus(&ctx);
         self.finish_render_frame(&ctx);
     }
 }
 
 impl PdfCraftApp {
+    /// The end of the main window's drawing: the chess key scope follows the keyboard focus as
+    /// this pass left it (plan A9-I18). A divider or tab of the docking workspace is never a
+    /// chess surface, whatever the panel beside it. Where the focused widget is comes from egui's
+    /// `read_response`, which lets that widget go when a pointer button went down or up elsewhere
+    /// this frame and it was not hovered yet (a text field this very click opened): on such a
+    /// frame the focus is not looked at, and the click itself settles the scope (`pressed_in`).
+    fn settle_chess_focus(&mut self, ctx: &egui::Context) {
+        let look = !ctx.input(|i| i.pointer.any_pressed() || i.pointer.any_released());
+        let chrome = look && docking::chrome_has_focus(&self.docking, ctx);
+        self.chess.settle_focus(ctx, look, chrome);
+    }
+
     fn finish_render_frame(&mut self, ctx: &egui::Context) {
         // The Combine grid's thumbnails, whichever tab shows (renders under way still finish).
         self.combine_thumbs_frame(ctx);

@@ -815,10 +815,12 @@ struct Asked {
 /// window (`take_window_keys`), and through the main window's key scope in an embedded one.
 fn contents(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
-    // A click anywhere in the window puts Undo and Redo on the game (D12).
+    // A click anywhere in the window puts Undo and Redo on the game (D12), and so does the
+    // keyboard focus in it (plan A9-I18).
     if crate::chess_history::pressed_in(ui) {
         app.chess.enter_scope();
     }
+    app.chess.mark_surface(ui);
     let pieces = app.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Board);
     let source_label = crate::chess_ui::board_source_label(app);
     let editor_here = app.chess_editor_in_panel();

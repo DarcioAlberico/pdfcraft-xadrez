@@ -67,7 +67,7 @@ pub fn show(app: &mut PdfCraftApp, ctx: &egui::Context) {
                     detail: spec
                         .shortcut
                         .map(|k| crate::commands::shortcut_label(ctx, k))
-                        .or_else(|| crate::chess_tools::command_key(ctx, spec.id))
+                        .or_else(|| crate::chess_tools::command_key(ctx, spec.id, !app.chess.one_key_off))
                         .unwrap_or_else(|| tl!(spec.menu.unwrap_or("Command")).to_string()),
                     icon: spec.icon,
                     command: Some(spec.id),
