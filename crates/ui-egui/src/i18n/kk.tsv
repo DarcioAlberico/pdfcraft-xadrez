@@ -2655,6 +2655,12 @@ chess undo step	Clear drawings	суреттерді өшіру
 	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Бұл құжат қорғалған: оның шахмат партиялары «Шахмат тақтасы» панелінде рұқсат етсеңіз ғана автоматты түрде сақталады.
 	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Бұл құжат үшін автосақтауға шахмат партиялары тым көп (ең көбі {n}, {mb} МБ). Ештеңе жоғалмас үшін оларды «Барлық партияларды PGN ретінде сақтау…» арқылы сақтаңыз.
 	These chess games were saved by a newer PdfCraft (format {v}): this one only reads them, and doesn't autosave changes made here. Save them with Save all games as PGN… so nothing is lost.	Бұл шахмат партияларын PdfCraft-тың жаңарақ нұсқасы сақтаған (пішім {v}): бұл нұсқа оларды тек оқиды және мұнда енгізілген өзгерістерді автоматты түрде сақтамайды. Ештеңе жоғалмас үшін оларды «Барлық партияларды PGN ретінде сақтау…» арқылы сақтаңыз.
+	Not added: {n}. A document keeps at most {max} games: save some as PGN and delete them to make room.	Қосылмады: {n}. Құжат ең көбі {max} партияны сақтайды: орын босату үшін кейбірін PGN ретінде сақтап, жойыңыз.
+	Chess games not saved	Сақталмаған шахмат партиялары
+	Games of “{name}” that autosave doesn't keep: {n}	«{name}» құжатының автосақтау сақтамайтын партиялары: {n}
+	Games with no document open that autosave doesn't keep: {n}	Құжат ашылмаған кездегі, автосақтау сақтамайтын партиялар: {n}
+	Quit without saving	Сақтамай шығу
+	Close without saving	Сақтамай жабу
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Шахмат партияларын автоматты түрде сақтау мүмкін емес: бұл терезе үшін қолданбаның деректер қалтасын құлыптау мүмкін болмады.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Бұл шахмат партияларын PdfCraft-тың басқа терезесі автоматты түрде сақтайды. Мұнда енгізілген өзгерістер автоматты түрде сақталмайды.
 	Chess games couldn't be autosaved: {e}	Шахмат партияларын автоматты түрде сақтау мүмкін болмады: {e}

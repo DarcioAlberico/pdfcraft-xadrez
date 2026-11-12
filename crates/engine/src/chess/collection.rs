@@ -299,14 +299,18 @@ impl<T: ListedGame> GameList<T> {
     /// [`ListedGame::open_key`]), else `game` itself, added as [`GameList::add`] adds it. The one
     /// place that decides "the same untouched game" for every way a game is opened.
     pub fn show_or_add(&mut self, game: T) -> ShowOrAdd {
-        if let Some(key) = game.open_key()
-            && let Some(at) = self.position(|g| g.open_key() == Some(key))
-        {
+        if let Some(at) = game.open_key().and_then(|key| self.find_untouched(key)) {
             self.switch_to(at);
             return ShowOrAdd::Shown(at);
         }
         self.add(game);
         ShowOrAdd::Added(self.active_index())
+    }
+
+    /// The place of the game the list holds untouched under `key`, when it holds one: the rule
+    /// [`GameList::show_or_add`] goes by, for a caller that adds the game its own way.
+    pub fn find_untouched(&self, key: OpenKey) -> Option<usize> {
+        self.position(|g| g.open_key() == Some(key))
     }
 
     /// The games in order, and the place of the one shown.
@@ -493,6 +497,7 @@ mod tests {
             assert_eq!(list.active_index(), at);
         }
         assert_eq!(list.len(), 3);
+        assert_eq!((list.find_untouched(OpenKey(3)), list.find_untouched(OpenKey(9))), (Some(2), None));
         // Changed: the next opening is a new game; so is a game with no key.
         if let Some(g) = list.get_mut(1) {
             g.touched = true;

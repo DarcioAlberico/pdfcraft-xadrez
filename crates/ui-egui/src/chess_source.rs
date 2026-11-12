@@ -29,6 +29,7 @@ use pdfcraft_render::DestView;
 
 use crate::PdfCraftApp;
 use crate::chess_board_ui::{BoardState, Source};
+use crate::chess_collection::{Opened, full_note};
 use crate::chess_history::ChessEdit;
 use crate::chess_tools::{ChessKey, Kind, Target, Tool};
 
@@ -214,11 +215,18 @@ impl PdfCraftApp {
         board.refresh_fields(true);
         let c = self.chess.games.collection_mut();
         // The same game, untouched, is shown again at the move asked for (plan A9-G8: one rule).
-        if !c.show_or_add(board, ChessEdit::OpenBookGame) {
-            let game = &mut c.active_mut().board.game;
-            if let Some(node) = path.as_ref().and_then(|p| game.node_at(p)) {
-                game.go_to_node(node);
+        match c.show_or_add(board, ChessEdit::OpenBookGame) {
+            Opened::Shown => {
+                let game = &mut c.active_mut().board.game;
+                if let Some(node) = path.as_ref().and_then(|p| game.node_at(p)) {
+                    game.go_to_node(node);
+                }
             }
+            Opened::Full => {
+                self.notify(full_note(1));
+                return;
+            }
+            Opened::Added | Opened::Replaced => {}
         }
         if dropped > 0 {
             self.notify(crate::i18n::fmt(tl!("Moves left off the board (more than it holds): {n}"), &[("n", &dropped.to_string())]));
@@ -245,8 +253,13 @@ impl PdfCraftApp {
         board.game.go_to_node(node);
         board.refresh_fields(true);
         let c = self.chess.games.collection_mut();
-        if !c.show_or_add(board, ChessEdit::OpenBookGame) {
-            c.active_mut().board.game.go_to_node(node);
+        match c.show_or_add(board, ChessEdit::OpenBookGame) {
+            Opened::Shown => c.active_mut().board.game.go_to_node(node),
+            Opened::Full => {
+                self.notify(full_note(1));
+                return;
+            }
+            Opened::Added | Opened::Replaced => {}
         }
         self.chess.study.setup = None;
         self.chess.enter_scope();

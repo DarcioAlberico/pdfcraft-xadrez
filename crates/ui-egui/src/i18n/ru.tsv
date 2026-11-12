@@ -2570,6 +2570,12 @@ chess undo step	Clear drawings	удаление рисунков
 	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Документ защищён: его шахматные партии сохраняются автоматически, только если вы разрешите это в панели «Шахматная доска».
 	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Слишком много шахматных партий для автосохранения в этом документе (не более {n}, {mb} МБ). Сохраните их командой «Сохранить все партии в PGN…», чтобы ничего не потерять.
 	These chess games were saved by a newer PdfCraft (format {v}): this one only reads them, and doesn't autosave changes made here. Save them with Save all games as PGN… so nothing is lost.	Эти шахматные партии сохранены более новой версией PdfCraft (формат {v}): эта версия только читает их и не сохраняет автоматически сделанные здесь изменения. Сохраните их командой «Сохранить все партии в PGN…», чтобы ничего не потерять.
+	Not added: {n}. A document keeps at most {max} games: save some as PGN and delete them to make room.	Не добавлено: {n}. Документ хранит не более {max} партий: сохраните часть в PGN и удалите их, чтобы освободить место.
+	Chess games not saved	Несохранённые шахматные партии
+	Games of “{name}” that autosave doesn't keep: {n}	Партии «{name}», которые автосохранение не сохраняет: {n}
+	Games with no document open that autosave doesn't keep: {n}	Партии без открытого документа, которые автосохранение не сохраняет: {n}
+	Quit without saving	Выйти без сохранения
+	Close without saving	Закрыть без сохранения
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Шахматные партии нельзя сохранять автоматически: не удалось заблокировать папку данных приложения для этого окна.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Эти шахматные партии автоматически сохраняет другое окно PdfCraft. Изменения, сделанные здесь, не сохраняются автоматически.
 	Chess games couldn't be autosaved: {e}	Не удалось автоматически сохранить шахматные партии: {e}

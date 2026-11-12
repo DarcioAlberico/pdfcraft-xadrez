@@ -66,6 +66,9 @@ pub struct ChessState {
     pub drafts: Vec<crate::chess_drafts::Draft>,
     /// The question asked about a draft before closing, quitting, exporting or detecting again.
     pub draft_prompt: Option<crate::chess_drafts::DraftPrompt>,
+    /// The question asked before quitting or closing about chess games the autosave doesn't keep
+    /// (plan A9-G8).
+    pub games_prompt: Option<crate::chess_unsaved::GamesPrompt>,
     /// The Diagram tab's first-time hint was read (dismissed, or a diagram confirmed).
     pub diagram_hint_seen: bool,
     /// Redraw in the PDF draws at once: its first-time question was answered with Don't show

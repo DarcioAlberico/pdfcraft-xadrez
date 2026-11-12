@@ -2731,6 +2731,12 @@ chess undo step	Clear drawings	smazání kreseb
 	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Tento dokument je chráněný: jeho šachové partie se automaticky ukládají, jen pokud to povolíte v panelu Šachovnice.
 	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Příliš mnoho šachových partií pro automatické ukládání tohoto dokumentu (nejvýše {n}, {mb} MB). Uložte je příkazem Uložit všechny partie jako PGN…, aby se nic neztratilo.
 	These chess games were saved by a newer PdfCraft (format {v}): this one only reads them, and doesn't autosave changes made here. Save them with Save all games as PGN… so nothing is lost.	Tyto šachové partie uložila novější verze PdfCraft (formát {v}): tato verze je jen čte a změny provedené zde automaticky neukládá. Uložte je příkazem Uložit všechny partie jako PGN…, aby se nic neztratilo.
+	Not added: {n}. A document keeps at most {max} games: save some as PGN and delete them to make room.	Nepřidáno: {n}. Dokument uchová nejvýše {max} partií: některé uložte jako PGN a smažte je, abyste uvolnili místo.
+	Chess games not saved	Neuložené šachové partie
+	Games of “{name}” that autosave doesn't keep: {n}	Partie z „{name}“, které automatické ukládání neuchová: {n}
+	Games with no document open that autosave doesn't keep: {n}	Partie bez otevřeného dokumentu, které automatické ukládání neuchová: {n}
+	Quit without saving	Ukončit bez uložení
+	Close without saving	Zavřít bez uložení
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Šachové partie nelze automaticky ukládat: datovou složku aplikace se pro toto okno nepodařilo zamknout.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Tyto šachové partie automaticky ukládá jiné okno PdfCraft. Změny provedené zde se automaticky neukládají.
 	Chess games couldn't be autosaved: {e}	Šachové partie se nepodařilo automaticky uložit: {e}

@@ -2679,6 +2679,12 @@ chess undo step	Clear drawings	видалення малюнків
 	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Документ захищено: його шахові партії зберігаються автоматично, лише якщо ви дозволите це на панелі «Шахова дошка».
 	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Забагато шахових партій для автозбереження в цьому документі (не більше {n}, {mb} МБ). Збережіть їх командою «Зберегти всі партії в PGN…», щоб нічого не втратити.
 	These chess games were saved by a newer PdfCraft (format {v}): this one only reads them, and doesn't autosave changes made here. Save them with Save all games as PGN… so nothing is lost.	Ці шахові партії збережено новішою версією PdfCraft (формат {v}): ця версія лише читає їх і не зберігає автоматично зміни, зроблені тут. Збережіть їх командою «Зберегти всі партії в PGN…», щоб нічого не втратити.
+	Not added: {n}. A document keeps at most {max} games: save some as PGN and delete them to make room.	Не додано: {n}. Документ зберігає не більше {max} партій: збережіть частину в PGN і видаліть їх, щоб звільнити місце.
+	Chess games not saved	Незбережені шахові партії
+	Games of “{name}” that autosave doesn't keep: {n}	Партії «{name}», яких автозбереження не зберігає: {n}
+	Games with no document open that autosave doesn't keep: {n}	Партії без відкритого документа, яких автозбереження не зберігає: {n}
+	Quit without saving	Вийти без збереження
+	Close without saving	Закрити без збереження
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Шахові партії не можна зберігати автоматично: не вдалося заблокувати теку даних застосунку для цього вікна.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Ці шахові партії автоматично зберігає інше вікно PdfCraft. Зміни, зроблені тут, не зберігаються автоматично.
 	Chess games couldn't be autosaved: {e}	Не вдалося автоматично зберегти шахові партії: {e}

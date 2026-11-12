@@ -2912,6 +2912,12 @@ chess undo step	Clear drawings	xóa hình vẽ
 	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Tài liệu này được bảo vệ: các ván cờ của nó chỉ được tự động lưu nếu bạn cho phép, trong bảng Bàn cờ.
 	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Quá nhiều ván cờ để tự động lưu cho tài liệu này (tối đa {n}, {mb} MB). Hãy lưu chúng bằng Lưu tất cả các ván thành PGN… để không mất gì.
 	These chess games were saved by a newer PdfCraft (format {v}): this one only reads them, and doesn't autosave changes made here. Save them with Save all games as PGN… so nothing is lost.	Các ván cờ này được lưu bởi một phiên bản PdfCraft mới hơn (định dạng {v}): phiên bản này chỉ đọc chúng và không tự động lưu các thay đổi thực hiện ở đây. Hãy lưu chúng bằng Lưu tất cả các ván thành PGN… để không mất gì.
+	Not added: {n}. A document keeps at most {max} games: save some as PGN and delete them to make room.	Không thêm: {n}. Một tài liệu giữ tối đa {max} ván: hãy lưu một số ván thành PGN rồi xóa chúng để có chỗ.
+	Chess games not saved	Các ván cờ chưa được lưu
+	Games of “{name}” that autosave doesn't keep: {n}	Các ván của “{name}” mà tính năng tự động lưu không giữ: {n}
+	Games with no document open that autosave doesn't keep: {n}	Các ván không có tài liệu nào mở mà tính năng tự động lưu không giữ: {n}
+	Quit without saving	Thoát không lưu
+	Close without saving	Đóng không lưu
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Không thể tự động lưu ván cờ: không khóa được thư mục dữ liệu của ứng dụng cho cửa sổ này.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Các ván cờ này được một cửa sổ PdfCraft khác tự động lưu. Các thay đổi ở đây không được tự động lưu.
 	Chess games couldn't be autosaved: {e}	Không thể tự động lưu ván cờ: {e}

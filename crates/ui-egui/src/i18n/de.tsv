@@ -2658,6 +2658,12 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Dieses Dokument ist geschützt: Seine Schachpartien werden nur automatisch gespeichert, wenn du es im Bereich „Schachbrett“ erlaubst.
 	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Zu viele Schachpartien für die automatische Speicherung dieses Dokuments (höchstens {n}, {mb} MB). Speichere sie mit „Alle Partien als PGN speichern…“, damit nichts verloren geht.
 	These chess games were saved by a newer PdfCraft (format {v}): this one only reads them, and doesn't autosave changes made here. Save them with Save all games as PGN… so nothing is lost.	Diese Schachpartien wurden von einer neueren PdfCraft-Version gespeichert (Format {v}): Diese Version liest sie nur und speichert hier vorgenommene Änderungen nicht automatisch. Speichere sie mit „Alle Partien als PGN speichern…“, damit nichts verloren geht.
+	Not added: {n}. A document keeps at most {max} games: save some as PGN and delete them to make room.	Nicht hinzugefügt: {n}. Ein Dokument behält höchstens {max} Partien: Speichere einige als PGN und lösche sie, um Platz zu schaffen.
+	Chess games not saved	Nicht gespeicherte Schachpartien
+	Games of “{name}” that autosave doesn't keep: {n}	Partien von „{name}“, die die automatische Speicherung nicht behält: {n}
+	Games with no document open that autosave doesn't keep: {n}	Partien ohne geöffnetes Dokument, die die automatische Speicherung nicht behält: {n}
+	Quit without saving	Beenden ohne Speichern
+	Close without saving	Schließen ohne Speichern
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Schachpartien können nicht automatisch gespeichert werden: Der Datenordner der App konnte für dieses Fenster nicht gesperrt werden.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Diese Schachpartien werden von einem anderen PdfCraft-Fenster automatisch gespeichert. Änderungen hier werden nicht automatisch gespeichert.
 	Chess games couldn't be autosaved: {e}	Schachpartien konnten nicht automatisch gespeichert werden: {e}
