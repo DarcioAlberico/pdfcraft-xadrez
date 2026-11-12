@@ -25,15 +25,21 @@
 //! and nothing of its neighbours) is still read, and written again as version 2.
 //!
 //! **Merging and safety.** Two copies merge entry by entry, the higher revision winning
-//! ([`CorrectionFile::merge`]). A file of a newer version is read but never written; one that
-//! can't be read is set aside as `….bad`, never deleted ([`Read`]). Files are kept through a
-//! [`CorrectionStore`]: the folder store ([`DirStore`], desktop and command line) reads, changes
-//! and writes a file under a lock file, through a staging file renamed over it; the memory store
-//! ([`MemStore`], the web build) keeps them within a byte budget of their own.
+//! ([`CorrectionFile::merge`]). An entry that can't be read (a field of the wrong kind, a box with
+//! its corners out of order, a page past [`MAX_PAGES`]) is left out and counted, and the rest of
+//! the file kept ([`CorrectionFile::parse`]; plan A9-G3a, findings A4-06, R2-03). A file of a newer
+//! version is read but never written; one that can't be read is reported, and set aside as
+//! `….bad` only by a change, never deleted. Files are kept through the document store of plan A9
+//! §2.3 ([`super::store::DocStore`], kind [`Corrections`]): `<hash>.corrections.json` in a folder
+//! ([`DirStore`], desktop and command line: read, changed and written under the folder's
+//! `corrections.lock`, through a staging file renamed over it) or in memory ([`MemStore`], the web
+//! build, within a byte budget of its own). The file earlier builds wrote, `<hash>.json`, is still
+//! read and merged in, never written.
 
 use serde::{Deserialize, Serialize};
 
 use super::keys::DocKeys;
+use super::store::Parsed;
 use crate::Document;
 
 /// The format's name, in every file.
@@ -52,6 +58,10 @@ pub const MAX_FILE_BYTES: usize = 4 << 20;
 
 /// Least intersection over union for a diagram to be a correction's.
 pub const MATCH_IOU: f32 = 0.7;
+
+/// Most pages a document a correction names may have: an entry recording a page or a page count
+/// past it is no correction of a real document, and is left out (R2-03).
+pub const MAX_PAGES: usize = 1 << 20;
 
 /// Longest FEN, uid, model key or document name kept.
 const MAX_TEXT: usize = 512;
@@ -337,54 +347,46 @@ impl CorrectionFile {
     }
 
     /// Read a file's bytes: this version's file (an older version's taken in as this one), a
-    /// newer one (read only), or why not.
+    /// newer one (read only), or why not. Entries that can't be read are left out
+    /// ([`CorrectionFile::parse`] counts them).
     pub fn read(bytes: &[u8]) -> Read {
-        if bytes.len() > MAX_FILE_BYTES {
-            return Read::Bad(format!("larger than {} MB", MAX_FILE_BYTES >> 20));
-        }
-        let value: serde_json::Value = match serde_json::from_slice(bytes) {
-            Ok(v) => v,
-            Err(e) => return Read::Bad(format!("not JSON: {e}")),
-        };
-        if value.get("format").and_then(serde_json::Value::as_str) != Some(FORMAT) {
-            return Read::Bad("not a corrections file".into());
-        }
-        let version = value.get("version").and_then(serde_json::Value::as_u64).and_then(|v| u32::try_from(v).ok());
-        let file = match version {
-            Some(1) => serde_json::from_value::<disk::FileV1>(value).map_err(|e| e.to_string()).map(disk::FileV1::into_file),
-            Some(VERSION) => serde_json::from_value::<disk::FileV2>(value).map_err(|e| e.to_string()).and_then(disk::FileV2::into_file),
-            Some(v) if v > VERSION => {
-                // Read in this version's layout, fields this build doesn't know left out.
-                let file = serde_json::from_value::<disk::FileV2>(value).ok().and_then(|f| f.into_file().ok()).filter(|f| f.problem().is_none());
-                return Read::Newer(v, file);
-            }
-            _ => return Read::Bad("no version this build reads".into()),
-        };
-        let file = match file {
-            Ok(f) => f,
-            Err(e) => return Read::Bad(format!("not a corrections file of its version: {e}")),
-        };
-        match file.problem() {
-            Some(why) => Read::Bad(why),
-            None => Read::File(file),
+        match CorrectionFile::parse(bytes) {
+            Parsed::File { file, .. } => Read::File(file),
+            Parsed::Newer { version, file } => Read::Newer(version, file),
+            Parsed::Bad(why) => Read::Bad(why),
         }
     }
 
-    /// What makes the file one not to trust, when something does.
-    fn problem(&self) -> Option<String> {
-        if self.entries.len() > MAX_ENTRIES {
-            return Some(format!("more than {MAX_ENTRIES} entries"));
+    /// Read a file's bytes, entry by entry: an entry that can't be read (a field of the wrong
+    /// kind, a fingerprint past the table, a box that is no box, a page past [`MAX_PAGES`]) is left
+    /// out and counted, and the rest kept (A4-06). Only what makes the whole file unreadable (not
+    /// JSON, another format, no version this build reads, no document record, more than
+    /// [`MAX_ENTRIES`] entries) makes it [`Parsed::Bad`].
+    pub fn parse(bytes: &[u8]) -> Parsed<CorrectionFile> {
+        if bytes.len() > MAX_FILE_BYTES {
+            return Parsed::Bad(format!("larger than {} MB", MAX_FILE_BYTES >> 20));
         }
-        let text_ok = |s: &str| !s.is_empty() && s.len() <= MAX_TEXT;
-        self.entries.iter().find_map(|e| {
-            let texts = [&e.uid, &e.page_fp, &e.fen].iter().all(|s| text_ok(s));
-            let neighbours = [&e.prev_fp, &e.next_fp].iter().all(|n| n.as_deref().is_none_or(text_ok));
-            if texts && neighbours && rect_ok(e.rect) {
-                None
-            } else {
-                Some(format!("entry {} is not a correction", e.uid.chars().take(64).collect::<String>()))
+        let value: serde_json::Value = match serde_json::from_slice(bytes) {
+            Ok(v) => v,
+            Err(e) => return Parsed::Bad(format!("not JSON: {e}")),
+        };
+        if value.get("format").and_then(serde_json::Value::as_str) != Some(FORMAT) {
+            return Parsed::Bad("not a corrections file".into());
+        }
+        let version = value.get("version").and_then(serde_json::Value::as_u64).and_then(|v| u32::try_from(v).ok());
+        let read = match version {
+            Some(1) => disk::FileV1::read(value),
+            Some(VERSION) => disk::FileV2::read(value),
+            Some(v) if v > VERSION => {
+                // Read in this version's layout, fields this build doesn't know left out.
+                return Parsed::Newer { version: v, file: disk::FileV2::read(value).ok().map(|(f, _)| f) };
             }
-        })
+            _ => return Parsed::Bad("no version this build reads".into()),
+        };
+        match read {
+            Ok((file, skipped)) => Parsed::File { file, skipped },
+            Err(why) => Parsed::Bad(format!("not a corrections file of its version: {why}")),
+        }
     }
 
     /// The file as bytes, in this version's layout, refused when it would be too big to read back.
@@ -602,6 +604,17 @@ fn winner<'a, T>(claims: impl IntoIterator<Item = (T, Claim<'a>)>) -> Option<T> 
         }
     }
     best.map(|(tag, _)| tag)
+}
+
+/// Whether an entry read from a file is one to keep: its texts there and not too long, its box a
+/// box, its page and page count within [`MAX_PAGES`].
+fn entry_ok(e: &Correction) -> bool {
+    let text_ok = |s: &str| !s.is_empty() && s.len() <= MAX_TEXT;
+    [&e.uid, &e.page_fp, &e.fen].iter().all(|s| text_ok(s))
+        && [&e.prev_fp, &e.next_fp].iter().all(|n| n.as_deref().is_none_or(text_ok))
+        && rect_ok(e.rect)
+        && e.page < MAX_PAGES
+        && e.page_count <= MAX_PAGES
 }
 
 /// A box in 0..1 with its corners in order and some area.
@@ -882,101 +895,54 @@ pub fn apply(pages: &[std::sync::Arc<super::ChessPage>], file: &CorrectionFile, 
     out
 }
 
-/// Where a document's corrections are kept: a folder on the desktop and the command line
-/// ([`DirStore`]), memory the web build saves in the browser's storage ([`MemStore`]).
-pub trait CorrectionStore {
-    /// The document's corrections: its file (found by the name its keys give, else by the
-    /// document recorded in each file), or an empty one named for it. A file that can't be read
-    /// is set aside, never deleted.
-    fn load(&self, keys: &DocKeys, pages: usize) -> Result<Loaded, StoreError>;
+/// The corrections as a kind of document store (plan A9 §2.3): `<hash>.corrections.json`, merged
+/// entry by entry ([`CorrectionFile::merge`]).
+pub struct Corrections;
 
-    /// Change the document's corrections with `change` and keep them: the file is read again
-    /// first, so two writers never lose each other's changes, and a file of a newer version is
-    /// refused. The document record takes the keys given (a save may have added an identifier).
-    fn update<R>(
-        &self,
-        keys: &DocKeys,
-        pages: usize,
-        change: impl FnOnce(&mut CorrectionFile) -> Result<R, CorrectionError>,
-    ) -> Result<(R, Loaded), StoreError>;
+impl super::store::StoreKind for Corrections {
+    const KIND: &'static str = "corrections";
+    const FORMAT: &'static str = FORMAT;
+    const MAX_FILE_BYTES: usize = MAX_FILE_BYTES;
+    type File = CorrectionFile;
+    type Error = StoreError;
 
-    /// The document was saved, as itself or as another file: its corrections, found under its
-    /// keys before (`old`), are recorded under the keys it has now (`new`), so they are found
-    /// when the saved file is opened, as a game collection follows its document. Whether there
-    /// were corrections to move; nothing is made for a document that has none, and a file of a
-    /// newer version is left as it is.
-    fn rekey(&self, old: &DocKeys, new: &DocKeys, pages: usize) -> Result<bool, StoreError>;
-}
-
-/// [`CorrectionStore::rekey`] on a loaded file: the bytes to keep under its name, when it has
-/// entries to move.
-fn rekeyed(loaded: &mut Loaded, new: &DocKeys, pages: usize) -> Result<Option<Vec<u8>>, CorrectionError> {
-    if loaded.read_only || loaded.file.entries.is_empty() {
-        return Ok(None);
+    fn empty(doc: DocRecord) -> CorrectionFile {
+        CorrectionFile::new(doc)
     }
-    loaded.file.doc = DocRecord::new(new, pages);
-    loaded.file.to_bytes().map(Some)
-}
 
-/// What a stored file's bytes give for the document named by `keys` (`None`: no file yet), and
-/// why they can't be read when they can't: then the file is empty and the caller sets the bytes
-/// aside.
-fn loaded(name: String, bytes: Option<&[u8]>, keys: &DocKeys, pages: usize) -> (Loaded, Option<String>) {
-    let empty = |name: String| Loaded { name, file: CorrectionFile::new(DocRecord::new(keys, pages)), read_only: false, set_aside: None };
-    let Some(bytes) = bytes else { return (empty(name), None) };
-    match CorrectionFile::read(bytes) {
-        Read::File(file) => (Loaded { name, file, read_only: false, set_aside: None }, None),
-        Read::Newer(v, file) => {
-            let mut file = file.unwrap_or_else(|| CorrectionFile::new(DocRecord::new(keys, pages)));
-            file.version = v;
-            (Loaded { name, file, read_only: true, set_aside: None }, None)
-        }
-        Read::Bad(why) => (empty(name), Some(why)),
+    fn set_doc(file: &mut CorrectionFile, doc: DocRecord) {
+        file.doc = doc;
+    }
+
+    fn read(bytes: &[u8]) -> Parsed<CorrectionFile> {
+        CorrectionFile::parse(bytes)
+    }
+
+    fn to_bytes(file: &CorrectionFile) -> Result<Vec<u8>, StoreError> {
+        Ok(file.to_bytes()?)
+    }
+
+    fn holds_anything(file: &CorrectionFile) -> bool {
+        !file.entries.is_empty()
+    }
+
+    fn merge(mine: &mut CorrectionFile, theirs: &CorrectionFile) {
+        mine.merge(theirs);
     }
 }
 
-/// Apply `change` to `loaded` (refused for a newer version's file) and give the bytes to keep.
-fn changed<R>(
-    loaded: &mut Loaded,
-    keys: &DocKeys,
-    pages: usize,
-    change: impl FnOnce(&mut CorrectionFile) -> Result<R, CorrectionError>,
-) -> Result<(R, Vec<u8>), CorrectionError> {
-    if loaded.read_only {
-        return Err(CorrectionError::Newer(loaded.file.version));
-    }
-    let out = change(&mut loaded.file)?;
-    loaded.file.doc = DocRecord::new(keys, pages);
-    Ok((out, loaded.file.to_bytes()?))
-}
-
-/// The name a file that can't be read is set aside under: `<name>.bad`, else `.bad2`, … up to
-/// `.bad999`, the first not `taken`.
-pub(super) fn aside_name(name: &str, taken: impl Fn(&str) -> bool) -> Option<String> {
-    (1..1000u32).map(|n| if n == 1 { format!("{name}.bad") } else { format!("{name}.bad{n}") }).find(|bad| !taken(bad))
-}
-
-/// A folder of corrections files, one per document (desktop and command line; the web build
-/// keeps its copy in the browser's storage, [`MemStore`]). Each change reads, changes and writes
-/// a file under a lock file in the folder, through a staging file renamed over the old one.
+/// The corrections in a folder, one file per document (desktop and command line).
 #[cfg(not(target_arch = "wasm32"))]
-pub struct DirStore {
-    dir: std::path::PathBuf,
-}
+pub type DirStore = super::store::DocStore<Corrections, super::store::DirBackend>;
 
-/// What [`DirStore::load`] found for a document.
-#[derive(Clone, Debug, PartialEq)]
-pub struct Loaded {
-    /// The file's name in the folder (the one a new file would get when there is none yet).
-    pub name: String,
-    pub file: CorrectionFile,
-    /// The file is of a newer version: shown, never written.
-    pub read_only: bool,
-    /// A file that could not be read was set aside under this name, and why.
-    pub set_aside: Option<(String, String)>,
-}
+/// The corrections in memory, within a byte budget of their own: the web build's store, which it
+/// saves in the browser's storage ([`super::store::DocStore::files`]).
+pub type MemStore = super::store::DocStore<Corrections, super::store::MemBackend>;
 
-/// Why the folder store failed.
+/// What a store found for a document: its file, where it is, and what could not be read.
+pub type Loaded = super::store::Loaded<CorrectionFile>;
+
+/// Why a corrections store failed.
 #[derive(Debug, thiserror::Error)]
 pub enum StoreError {
     #[error("the corrections folder: {0}")]
@@ -989,208 +955,31 @@ pub enum StoreError {
     Correction(#[from] CorrectionError),
 }
 
-/// Most files looked at to find a document's.
-#[cfg(not(target_arch = "wasm32"))]
-const MAX_FILES: usize = 1024;
+impl super::store::StoreFailure for StoreError {
+    fn no_keys() -> Self {
+        StoreError::NoKeys
+    }
+
+    fn busy() -> Self {
+        StoreError::Busy
+    }
+
+    fn newer(version: u32) -> Self {
+        StoreError::Correction(CorrectionError::Newer(version))
+    }
+
+    fn over_budget(budget: usize) -> Self {
+        StoreError::Correction(CorrectionError::OverBudget(budget))
+    }
+}
 
 /// A lock file older than this is taken as left behind by a process that stopped.
 #[cfg(not(target_arch = "wasm32"))]
 const STALE_LOCK: std::time::Duration = std::time::Duration::from_secs(30);
 
+/// A folder's lock file while it is held; dropping it lets go.
 #[cfg(not(target_arch = "wasm32"))]
-impl DirStore {
-    pub fn new(dir: impl Into<std::path::PathBuf>) -> DirStore {
-        DirStore { dir: dir.into() }
-    }
-
-    /// The file name for the document: the one whose recorded document is it, when a file in the
-    /// folder has it, else the one its keys give.
-    fn name_for(&self, keys: &DocKeys) -> Result<String, StoreError> {
-        let own = file_name(keys).ok_or(StoreError::NoKeys)?;
-        if self.dir.join(&own).is_file() {
-            return Ok(own);
-        }
-        let Ok(entries) = std::fs::read_dir(&self.dir) else { return Ok(own) };
-        let mut names: Vec<String> =
-            entries.flatten().take(MAX_FILES).filter_map(|e| e.file_name().to_str().map(str::to_owned)).filter(|n| n.ends_with(".json")).collect();
-        names.sort();
-        for name in names {
-            if let Ok(bytes) = read_capped(&self.dir.join(&name), MAX_FILE_BYTES)
-                && let Read::File(file) = CorrectionFile::read(&bytes)
-                && file.doc.matches(keys)
-            {
-                return Ok(name);
-            }
-        }
-        Ok(own)
-    }
-
-    /// Rename a file that can't be read to `<name>.bad` (`.bad2`, … when taken). The new name.
-    fn set_aside(&self, name: &str) -> Result<String, StoreError> {
-        let bad = aside_name(name, |n| self.dir.join(n).exists()).ok_or(StoreError::Busy)?;
-        std::fs::rename(self.dir.join(name), self.dir.join(&bad))?;
-        Ok(bad)
-    }
-
-    /// Take the folder's lock ([`take_lock`]).
-    fn lock(&self) -> Result<Lock, StoreError> {
-        take_lock(self.dir.join("corrections.lock"))?.ok_or(StoreError::Busy)
-    }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-impl CorrectionStore for DirStore {
-    fn load(&self, keys: &DocKeys, pages: usize) -> Result<Loaded, StoreError> {
-        let name = self.name_for(keys)?;
-        let bytes = match read_capped(&self.dir.join(&name), MAX_FILE_BYTES) {
-            Ok(b) => Some(b),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
-            Err(e) => return Err(e.into()),
-        };
-        let (mut l, bad) = loaded(name, bytes.as_deref(), keys, pages);
-        if let Some(why) = bad {
-            l.set_aside = Some((self.set_aside(&l.name)?, why));
-        }
-        Ok(l)
-    }
-
-    /// Under the folder's lock, through a staging file renamed over the old one.
-    fn update<R>(
-        &self,
-        keys: &DocKeys,
-        pages: usize,
-        change: impl FnOnce(&mut CorrectionFile) -> Result<R, CorrectionError>,
-    ) -> Result<(R, Loaded), StoreError> {
-        std::fs::create_dir_all(&self.dir)?;
-        let _lock = self.lock()?;
-        let mut loaded = self.load(keys, pages)?;
-        let (out, bytes) = changed(&mut loaded, keys, pages, change)?;
-        write_atomically(&self.dir.join(&loaded.name), &bytes)?;
-        Ok((out, loaded))
-    }
-
-    /// Without the folder, nothing (it is not made).
-    fn rekey(&self, old: &DocKeys, new: &DocKeys, pages: usize) -> Result<bool, StoreError> {
-        if old == new || !self.dir.is_dir() || file_name(old).is_none() {
-            return Ok(false);
-        }
-        let _lock = self.lock()?;
-        let mut loaded = self.load(old, pages)?;
-        match rekeyed(&mut loaded, new, pages)? {
-            Some(bytes) => {
-                write_atomically(&self.dir.join(&loaded.name), &bytes)?;
-                Ok(true)
-            }
-            None => Ok(false),
-        }
-    }
-}
-
-/// Corrections files kept in memory by name, within a byte budget of their own: the web build's
-/// store, which it saves in the browser's storage (apart from the autosave's) through
-/// [`MemStore::files`] and [`MemStore::with_files`]. A document's file is found as in a folder.
-#[derive(Debug, Default)]
-pub struct MemStore {
-    files: std::sync::Mutex<std::collections::BTreeMap<String, Vec<u8>>>,
-    budget: usize,
-}
-
-impl MemStore {
-    /// An empty store keeping at most `budget` bytes in all.
-    pub fn new(budget: usize) -> MemStore {
-        MemStore { files: Default::default(), budget }
-    }
-
-    /// A store holding `files` (as [`MemStore::files`] gave them) within `budget` bytes: a file
-    /// that would pass it, or [`MAX_FILE_BYTES`], is left out.
-    pub fn with_files(files: impl IntoIterator<Item = (String, Vec<u8>)>, budget: usize) -> MemStore {
-        let mut kept = std::collections::BTreeMap::new();
-        let mut used = 0usize;
-        for (name, bytes) in files {
-            let total = used.saturating_add(bytes.len());
-            if total <= budget && bytes.len() <= MAX_FILE_BYTES {
-                used = total;
-                kept.insert(name, bytes);
-            }
-        }
-        MemStore { files: std::sync::Mutex::new(kept), budget }
-    }
-
-    /// Every file by name, to save.
-    pub fn files(&self) -> Vec<(String, Vec<u8>)> {
-        self.guard().iter().map(|(n, b)| (n.clone(), b.clone())).collect()
-    }
-
-    /// The files. A lock poisoned by a panic elsewhere is taken as it is: each write replaces a
-    /// whole file, so none is ever half written.
-    fn guard(&self) -> std::sync::MutexGuard<'_, std::collections::BTreeMap<String, Vec<u8>>> {
-        self.files.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
-    }
-
-    /// [`CorrectionStore::load`] on `files`, already locked.
-    fn load_in(files: &mut std::collections::BTreeMap<String, Vec<u8>>, keys: &DocKeys, pages: usize) -> Result<Loaded, StoreError> {
-        let own = file_name(keys).ok_or(StoreError::NoKeys)?;
-        let name = if files.contains_key(&own) {
-            own
-        } else {
-            let recorded = files.iter().find(|(_, b)| matches!(CorrectionFile::read(b), Read::File(f) if f.doc.matches(keys)));
-            recorded.map_or(own, |(n, _)| n.clone())
-        };
-        let bytes = files.get(&name).map(Vec::as_slice);
-        let (mut l, bad) = loaded(name.clone(), bytes, keys, pages);
-        if let Some(why) = bad {
-            let aside = aside_name(&name, |n| files.contains_key(n)).ok_or(StoreError::Busy)?;
-            if let Some(bytes) = files.remove(&name) {
-                files.insert(aside.clone(), bytes);
-            }
-            l.set_aside = Some((aside, why));
-        }
-        Ok(l)
-    }
-}
-
-impl CorrectionStore for MemStore {
-    fn load(&self, keys: &DocKeys, pages: usize) -> Result<Loaded, StoreError> {
-        MemStore::load_in(&mut self.guard(), keys, pages)
-    }
-
-    /// Refused with [`CorrectionError::OverBudget`] when the files would pass the budget.
-    fn update<R>(
-        &self,
-        keys: &DocKeys,
-        pages: usize,
-        change: impl FnOnce(&mut CorrectionFile) -> Result<R, CorrectionError>,
-    ) -> Result<(R, Loaded), StoreError> {
-        let mut files = self.guard();
-        let mut loaded = MemStore::load_in(&mut files, keys, pages)?;
-        let (out, bytes) = changed(&mut loaded, keys, pages, change)?;
-        let others = files.iter().filter(|(n, _)| **n != loaded.name).fold(0usize, |sum, (_, b)| sum.saturating_add(b.len()));
-        if others.saturating_add(bytes.len()) > self.budget {
-            return Err(CorrectionError::OverBudget(self.budget).into());
-        }
-        files.insert(loaded.name.clone(), bytes);
-        Ok((out, loaded))
-    }
-
-    fn rekey(&self, old: &DocKeys, new: &DocKeys, pages: usize) -> Result<bool, StoreError> {
-        if old == new || file_name(old).is_none() {
-            return Ok(false);
-        }
-        let mut files = self.guard();
-        let mut loaded = MemStore::load_in(&mut files, old, pages)?;
-        match rekeyed(&mut loaded, new, pages)? {
-            Some(bytes) => {
-                files.insert(loaded.name, bytes);
-                Ok(true)
-            }
-            None => Ok(false),
-        }
-    }
-}
-
-/// The folder's lock while it is held; dropping it lets go.
-#[cfg(not(target_arch = "wasm32"))]
-pub(super) struct Lock {
+pub struct Lock {
     path: std::path::PathBuf,
 }
 
@@ -1260,13 +1049,13 @@ mod disk {
 
     use super::{Correction, CorrectionFile, DocRecord, Kind, MAX_ENTRIES, Original};
 
-    /// Version 1, as `801e3abf` (plan A8, P3a1) wrote it.
+    /// Version 1, as `801e3abf` (plan A8, P3a1) wrote it; its entries are read one by one.
     #[derive(Deserialize)]
     pub(super) struct FileV1 {
         format: String,
         doc: DocRecord,
         #[serde(default)]
-        entries: Vec<EntryV1>,
+        entries: Vec<serde_json::Value>,
     }
 
     #[derive(Deserialize)]
@@ -1286,11 +1075,18 @@ mod disk {
     }
 
     impl FileV1 {
-        /// Taken in as this version's file, the neighbours unknown.
-        pub(super) fn into_file(self) -> CorrectionFile {
-            let entries = self
+        /// The file `value` holds, taken in as this version's (the neighbours unknown), and how
+        /// many of its entries could not be read and were left out.
+        pub(super) fn read(value: serde_json::Value) -> Result<(CorrectionFile, usize), String> {
+            let file: FileV1 = serde_json::from_value(value).map_err(|e| e.to_string())?;
+            if file.entries.len() > MAX_ENTRIES {
+                return Err(format!("more than {MAX_ENTRIES} entries"));
+            }
+            let total = file.entries.len();
+            let entries: Vec<Correction> = file
                 .entries
                 .into_iter()
+                .filter_map(|v| serde_json::from_value::<EntryV1>(v).ok())
                 .map(|e| Correction {
                     uid: e.uid,
                     page: e.page,
@@ -1306,13 +1102,15 @@ mod disk {
                     rev: e.rev,
                     deleted: e.deleted,
                 })
+                .filter(super::entry_ok)
                 .collect();
-            CorrectionFile { format: self.format, version: super::VERSION, doc: self.doc, entries }
+            let skipped = total.saturating_sub(entries.len());
+            Ok((CorrectionFile { format: file.format, version: super::VERSION, doc: file.doc, entries }, skipped))
         }
     }
 
-    /// Version 2 (plan A9, G2a).
-    #[derive(Serialize, Deserialize)]
+    /// Version 2 (plan A9, G2a), as written.
+    #[derive(Serialize)]
     pub(super) struct FileV2 {
         format: String,
         version: u32,
@@ -1322,6 +1120,18 @@ mod disk {
         fps: Vec<String>,
         #[serde(default)]
         entries: Vec<EntryV2>,
+    }
+
+    /// Version 2 as read: the entries one by one ([`FileV2::read`]).
+    #[derive(Deserialize)]
+    struct FileV2In {
+        format: String,
+        version: u32,
+        doc: DocRecord,
+        #[serde(default)]
+        fps: Vec<String>,
+        #[serde(default)]
+        entries: Vec<serde_json::Value>,
     }
 
     #[derive(Serialize, Deserialize)]
@@ -1400,26 +1210,37 @@ mod disk {
             FileV2 { format: file.format.clone(), version: super::VERSION, doc: file.doc.clone(), fps: table.fps, entries }
         }
 
-        /// The file these bytes held, or why not: a place past the table.
-        pub(super) fn into_file(self) -> Result<CorrectionFile, String> {
-            if self.fps.len() > MAX_ENTRIES.saturating_mul(3) || self.entries.len() > MAX_ENTRIES {
+        /// The file `value` holds and how many of its entries could not be read and were left
+        /// out (one of the wrong shape, naming a place past the table, or not a correction,
+        /// [`super::entry_ok`]); or why the file can't be read: no document record, more than
+        /// [`MAX_ENTRIES`] entries.
+        pub(super) fn read(value: serde_json::Value) -> Result<(CorrectionFile, usize), String> {
+            let file: FileV2In = serde_json::from_value(value).map_err(|e| e.to_string())?;
+            if file.fps.len() > MAX_ENTRIES.saturating_mul(3) || file.entries.len() > MAX_ENTRIES {
                 return Err(format!("more than {MAX_ENTRIES} entries"));
             }
-            let fps = &self.fps;
-            let fp = |at: u32| usize::try_from(at).ok().and_then(|i| fps.get(i)).cloned().ok_or_else(|| format!("no fingerprint {at}"));
-            let mut entries = Vec::with_capacity(self.entries.len());
-            for e in self.entries {
+            let fps = &file.fps;
+            let fp = |at: u32| usize::try_from(at).ok().and_then(|i| fps.get(i)).cloned();
+            let total = file.entries.len();
+            let mut entries = Vec::with_capacity(total);
+            for value in file.entries {
+                let Ok(e) = serde_json::from_value::<EntryV2>(value) else { continue };
                 let (prev, own, next) = e.fp;
+                let (Some(page_fp), Some(prev_fp), Some(next_fp)) =
+                    (fp(own), prev.map(fp).map_or(Some(None), |f| f.map(Some)), next.map(fp).map_or(Some(None), |f| f.map(Some)))
+                else {
+                    continue;
+                };
                 let orig = match e.orig {
                     None => Some(Original { fen: Some(e.fen.clone()), model: None }),
                     Some(o) => o,
                 };
-                entries.push(Correction {
+                let entry = Correction {
                     uid: e.uid,
                     page: e.page,
-                    page_fp: fp(own)?,
-                    prev_fp: prev.map(fp).transpose()?,
-                    next_fp: next.map(fp).transpose()?,
+                    page_fp,
+                    prev_fp,
+                    next_fp,
                     page_count: e.pages,
                     rect: e.rect,
                     orig,
@@ -1428,9 +1249,13 @@ mod disk {
                     at: e.at,
                     rev: e.rev,
                     deleted: e.deleted,
-                });
+                };
+                if super::entry_ok(&entry) {
+                    entries.push(entry);
+                }
             }
-            Ok(CorrectionFile { format: self.format, version: self.version, doc: self.doc, entries })
+            let skipped = total.saturating_sub(entries.len());
+            Ok((CorrectionFile { format: file.format, version: file.version, doc: file.doc, entries }, skipped))
         }
     }
 }

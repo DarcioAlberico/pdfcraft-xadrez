@@ -8,7 +8,7 @@
 use pdfcraft_engine::DocId;
 #[cfg(not(target_arch = "wasm32"))]
 use pdfcraft_engine::chess::corrections::DirStore;
-use pdfcraft_engine::chess::corrections::{CorrectionError, CorrectionStore, Kind, Located, NewCorrection, Original, Status, StoreError, normalize};
+use pdfcraft_engine::chess::corrections::{CorrectionError, Kind, Loaded, Located, NewCorrection, Original, Status, StoreError, normalize};
 use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
 use pdfcraft_engine::chess::{ChessDocument, DocKeys};
 use serde_json::{Value, json};
@@ -28,6 +28,28 @@ pub(crate) type FolderStore = pdfcraft_engine::chess::corrections::MemStore;
 /// Seconds since 1970, now.
 fn now() -> u64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs())
+}
+
+/// What a store said about the files it read for a reply (plan A9-G3a, A4-06): entries left
+/// out because they could not be read (`skipped`), a file it could not read (`unreadable`: left
+/// as it is by a reading tool), and a file a change set aside first (`set_aside`), so nothing
+/// left out goes unsaid.
+pub(crate) fn store_notes(loaded: &Loaded) -> Value {
+    let named = |f: &Option<(String, String)>| f.as_ref().map(|(name, why)| json!({ "file": name, "why": why }));
+    json!({
+        "read_only": loaded.read_only,
+        "skipped": loaded.skipped,
+        "unreadable": named(&loaded.unreadable),
+        "set_aside": named(&loaded.set_aside),
+    })
+}
+
+/// `reply` with [`store_notes`] added.
+fn with_store_notes(mut reply: Value, loaded: &Loaded) -> Value {
+    if let (Some(o), Value::Object(notes)) = (reply.as_object_mut(), store_notes(loaded)) {
+        o.extend(notes);
+    }
+    reply
 }
 
 fn kind_name(kind: Kind) -> &'static str {
@@ -73,12 +95,7 @@ impl Automation {
             Err(e) => return Err(failed(format!("{e} (pass corrections: false to read without the corrections)"))),
         };
         let kept = loaded.file.live().count();
-        let reply = json!({
-            "file": loaded.name,
-            "kept": kept,
-            "read_only": loaded.read_only,
-            "set_aside": loaded.set_aside.map(|(name, why)| json!({ "file": name, "why": why })),
-        });
+        let reply = with_store_notes(json!({ "file": loaded.name, "kept": kept }), &loaded);
         self.session.set_chess_corrections(id, Some(loaded.file));
         Ok(reply)
     }
@@ -112,7 +129,7 @@ impl Automation {
                     "uid": e.uid,
                     "page": at.page().map(|p| p + 1),
                     "located": at.name(),
-                    "recorded_page": e.page + 1,
+                    "recorded_page": e.page.saturating_add(1),
                     "rect": e.rect,
                     "fen": e.fen,
                     "kind": kind_name(e.kind),
@@ -122,14 +139,7 @@ impl Automation {
                 })
             })
             .collect();
-        Ok(json!({
-            "file": loaded.name,
-            "read_only": loaded.read_only,
-            "set_aside": loaded.set_aside.map(|(name, why)| json!({ "file": name, "why": why })),
-            "count": corrections.len(),
-            "orphans": orphans,
-            "corrections": corrections,
-        }))
+        Ok(with_store_notes(json!({ "file": loaded.name, "count": corrections.len(), "orphans": orphans, "corrections": corrections }), &loaded))
     }
 
     pub(crate) fn chess_correction_set(&mut self, a: &Args) -> Result<Value> {
@@ -150,8 +160,8 @@ impl Automation {
             (None, Kind::Verified, None) => return Err(failed("the diagram was not read, so there is no reading to verify: give fen")),
             (None, Kind::Corrected, _) => return Err(ToolError::InvalidArgs("give fen, the corrected position".into())),
         };
-        let (uid, rev, file) = self.store_correction(&store, id, page, rect, read, fen.clone(), kind)?;
-        Ok(json!({
+        let (uid, rev, loaded) = self.store_correction(&store, id, page, rect, read, fen.clone(), kind)?;
+        let reply = json!({
             "uid": uid,
             "page": page + 1,
             "index": index + 1,
@@ -160,8 +170,9 @@ impl Automation {
             "kind": kind_name(kind),
             "legal": Game::from_fen(&fen).is_ok(),
             "rev": rev,
-            "file": file,
-        }))
+            "file": loaded.name,
+        });
+        Ok(with_store_notes(reply, &loaded))
     }
 
     /// Chess ▸ Mark the page as checked (plan A8, P2b): keep every diagram of `page` read with
@@ -182,7 +193,7 @@ impl Automation {
             Err(StoreError::NoKeys) => None,
             Err(e) => return Err(failed(e)),
         };
-        let (mut verified, mut left, mut file) = (Vec::new(), Vec::new(), Value::Null);
+        let (mut verified, mut left, mut file, mut notes) = (Vec::new(), Vec::new(), Value::Null, None);
         for (index, d) in found.diagrams.iter().enumerate() {
             let b = d.candidate.bbox_user;
             let Some(rect) = normalize([b.x0, b.y0, b.x1, b.y1], [crop.x0, crop.y0, crop.x1, crop.y1]) else { continue };
@@ -192,15 +203,21 @@ impl Automation {
             let fen = reading.and_then(|r| r.position()).map(|p| p.fen.clone());
             match (status, fen) {
                 (Some(s), Some(fen)) if s.checked_with_the_page() => {
-                    let (uid, rev, name) = self.store_correction(&store, id, page, rect, Some(fen.clone()), fen.clone(), Kind::Verified)?;
-                    file = json!(name);
+                    let (uid, rev, loaded) = self.store_correction(&store, id, page, rect, Some(fen.clone()), fen.clone(), Kind::Verified)?;
+                    file = json!(loaded.name);
+                    // A file set aside by the first write is said, not forgotten by the next.
+                    notes = notes.filter(|n: &Loaded| n.set_aside.is_some()).or(Some(loaded));
                     verified.push(json!({ "index": index + 1, "uid": uid, "fen": fen, "rev": rev }));
                 }
                 (None, _) => left.push(json!({ "index": index + 1, "why": "kept" })),
                 (Some(s), _) => left.push(json!({ "index": index + 1, "why": s.name() })),
             }
         }
-        Ok(json!({ "page": page + 1, "verified": verified, "left": left, "file": file }))
+        let reply = json!({ "page": page + 1, "verified": verified, "left": left, "file": file });
+        Ok(match notes {
+            Some(loaded) => with_store_notes(reply, &loaded),
+            None => reply,
+        })
     }
 
     /// Diagram `index` (0-based) of `page` of document `id` as a scan with `a`'s settings finds
@@ -242,11 +259,11 @@ impl Automation {
     pub(crate) fn keep_correction(&self, a: &Args, id: DocId, page: usize, rect: [f32; 4], read: Option<String>, fen: String) -> Result<Value> {
         let store = self.correction_store(a)?;
         let kind = if read.as_deref() == Some(fen.as_str()) { Kind::Verified } else { Kind::Corrected };
-        let (uid, rev, file) = self.store_correction(&store, id, page, rect, read, fen, kind)?;
-        Ok(json!({ "uid": uid, "kind": kind_name(kind), "rev": rev, "file": file }))
+        let (uid, rev, loaded) = self.store_correction(&store, id, page, rect, read, fen, kind)?;
+        Ok(with_store_notes(json!({ "uid": uid, "kind": kind_name(kind), "rev": rev, "file": loaded.name }), &loaded))
     }
 
-    /// Keep a correction in `store`: its uid, revision and file.
+    /// Keep a correction in `store`: its uid, its revision, and what the store found and wrote.
     #[allow(clippy::too_many_arguments)]
     fn store_correction(
         &self,
@@ -257,14 +274,14 @@ impl Automation {
         read: Option<String>,
         fen: String,
         kind: Kind,
-    ) -> Result<(String, u64, String)> {
+    ) -> Result<(String, u64, Loaded)> {
         let doc = self.session.get(id).ok_or_else(|| failed("no such document"))?;
         let (keys, fingerprints) = (doc.doc_keys(), doc.page_fingerprints());
         let new = NewCorrection { page, rect, orig: Some(Original { fen: read, model: None }), fen, kind };
         let at = now();
         let (uid, loaded) = store.update(&keys, fingerprints.len(), |f| f.set(new, at, &fingerprints)).map_err(failed)?;
         let rev = loaded.file.entries.iter().find(|e| e.uid == uid).map_or(0, |e| e.rev);
-        Ok((uid, rev, loaded.name))
+        Ok((uid, rev, loaded))
     }
 
     pub(crate) fn chess_correction_delete(&self, a: &Args) -> Result<Value> {
@@ -275,7 +292,7 @@ impl Automation {
         let at = now();
         let deleted = store.update(&keys, pages, |f| if f.delete(&uid, at) { Ok(()) } else { Err(CorrectionError::NoSuchCorrection(uid.clone())) });
         match deleted {
-            Ok((_, loaded)) => Ok(json!({ "uid": uid, "deleted": true, "file": loaded.name })),
+            Ok((_, loaded)) => Ok(with_store_notes(json!({ "uid": uid, "deleted": true, "file": loaded.name }), &loaded)),
             Err(e) => Err(failed(format!("{e} (see chess_correction_list)"))),
         }
     }
@@ -305,7 +322,7 @@ pub(crate) fn corrections_reply(mut loaded: Value, read: &ChessDocument) -> Valu
         );
         o.insert(
             "unmatched".into(),
-            read.unmatched_corrections.iter().map(|u| json!({ "uid": u.uid, "page": u.page + 1, "reason": u.reason })).collect(),
+            read.unmatched_corrections.iter().map(|u| json!({ "uid": u.uid, "page": u.page.saturating_add(1), "reason": u.reason })).collect(),
         );
     }
     loaded

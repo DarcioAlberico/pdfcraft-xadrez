@@ -432,7 +432,7 @@ impl ReferenceStore for DirStore {
         };
         let (mut l, bad) = loaded(name, bytes.as_deref());
         if let Some(why) = bad {
-            let aside = corrections::aside_name(&l.name, |n| self.dir.join(n).exists()).ok_or(ReferenceStoreError::Busy)?;
+            let aside = super::store::aside_name(&l.name, |n| self.dir.join(n).exists()).ok_or(ReferenceStoreError::Busy)?;
             std::fs::rename(self.dir.join(&l.name), self.dir.join(&aside))?;
             l.set_aside = Some((aside, why));
         }
@@ -548,7 +548,7 @@ impl MemStore {
         };
         let (mut l, bad) = loaded(name.clone(), files.get(&name).map(Vec::as_slice));
         if let Some(why) = bad {
-            let aside = corrections::aside_name(&name, |n| files.contains_key(n)).ok_or(ReferenceStoreError::Busy)?;
+            let aside = super::store::aside_name(&name, |n| files.contains_key(n)).ok_or(ReferenceStoreError::Busy)?;
             if let Some(bytes) = files.remove(&name) {
                 files.insert(aside.clone(), bytes);
             }

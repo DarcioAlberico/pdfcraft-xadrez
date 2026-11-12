@@ -3472,6 +3472,7 @@ chess undo step	Clear drawings	مسح الرسوم
 # Plan A8 P3b2: the Diagram tab and its corrections.
 	Diagram	مخطط
 	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	تعذّرت قراءة تصحيحات المخططات المحفوظة ({why})؛ وُضعت جانبًا باسم {name}.
+	Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted.	تعذّرت قراءة بعض تصحيحات المخططات المحفوظة ({why})؛ تُستخدم البقية، ويُحتفظ بـ {name} ولا يُحذف أبدًا.
 	The diagram corrections couldn't be saved: {e}	تعذّر حفظ تصحيحات المخططات: {e}
 	Diagram {n}, page {p}: {state}	المخطط {n}، الصفحة {p}: {state}
 	Page {p} · diagram {n} of {m}	الصفحة {p} · المخطط {n} من {m}

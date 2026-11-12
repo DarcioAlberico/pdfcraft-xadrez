@@ -1,0 +1,489 @@
+//! One store per document and per kind of data (plan A9 §2.3, step G3a): **what** is kept
+//! ([`StoreKind`]: the diagram corrections now; the book's PGN, the games and the book's cipher
+//! next) apart from **where** ([`StoreBackend`]: a folder on the desktop and the command line,
+//! [`DirBackend`]; memory the web build saves in the browser's storage, [`MemBackend`]). One
+//! [`DocStore`] holds the rules every kind shares, so they are written once:
+//!
+//! - **Names.** A document's file is `<hash>.<kind>.json` ([`file_name`]), so two kinds kept in
+//!   one folder never share a file (finding A4-07). The name earlier builds gave every kind,
+//!   `<hash>.json` ([`legacy_file_name`]), is still read when it holds this kind's format, and its
+//!   entries are merged in by the kind's rule ([`StoreKind::merge`]); it is never written, moved
+//!   or deleted, so a build from before keeps working on it, and what it writes there is seen here
+//!   at the next load. A file of another format is never this kind's, and never set aside by it.
+//! - **Reading only reads** ([`DocStore::load`]): a file that can't be read is reported
+//!   ([`Loaded::unreadable`]), not renamed; an entry that can't be read is left out and counted
+//!   ([`Loaded::skipped`]), the rest kept (A4-06). Only a change ([`DocStore::update`]), under the
+//!   store's lock, sets a file aside (`<name>.bad`): one that can't be read, or one holding entries
+//!   the change would drop. It says so ([`Loaded::set_aside`]); nothing is deleted.
+//! - **Versions.** A file of a newer version is read for what this build can make out of it, and
+//!   never written ([`Loaded::read_only`]).
+//! - **Finding a document's file.** Its own name, else the first `.json` file by name (of at most
+//!   [`MAX_FILES`]) whose header is this kind's and records the document; only the header is
+//!   parsed.
+
+use std::marker::PhantomData;
+
+use super::corrections::DocRecord;
+use super::keys::DocKeys;
+
+/// Most `.json` files looked at to find a document's file.
+pub const MAX_FILES: usize = 1024;
+
+/// What one kind of store keeps, and its rules.
+pub trait StoreKind {
+    /// The kind's name, in its files' names (`<hash>.<KIND>.json`) and its lock's.
+    const KIND: &'static str;
+    /// The `format` each of its files names.
+    const FORMAT: &'static str;
+    /// Largest file read or written.
+    const MAX_FILE_BYTES: usize;
+    /// A document's file.
+    type File: Clone;
+    /// What a change, and the store, can fail with.
+    type Error: StoreFailure;
+
+    /// An empty file for the document `doc`.
+    fn empty(doc: DocRecord) -> Self::File;
+    /// Record the document a file belongs to.
+    fn set_doc(file: &mut Self::File, doc: DocRecord);
+    /// A file's bytes: the file, with the entries that can't be read left out and counted; a newer
+    /// version's; or why it can't be read.
+    fn read(bytes: &[u8]) -> Parsed<Self::File>;
+    fn to_bytes(file: &Self::File) -> Result<Vec<u8>, Self::Error>;
+    /// Whether the file keeps anything (a document without anything has no file to move).
+    fn holds_anything(file: &Self::File) -> bool;
+    /// `theirs` taken into `mine` by the kind's rule, which never undoes what either did (a
+    /// deletion stays deleted); a tie keeps `mine`.
+    fn merge(mine: &mut Self::File, theirs: &Self::File);
+}
+
+/// The stores' own failures, which each kind's error says in its words.
+pub trait StoreFailure: From<std::io::Error> {
+    /// The document has no key to keep anything under.
+    fn no_keys() -> Self;
+    /// Another writer holds the store all the while.
+    fn busy() -> Self;
+    /// The file is of a newer version, which this build only reads.
+    fn newer(version: u32) -> Self;
+    /// The files would pass the memory store's budget.
+    fn over_budget(budget: usize) -> Self;
+}
+
+/// What a file's bytes are, for its kind.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Parsed<F> {
+    /// A file of this version (an older one taken in as this one), and how many of its entries
+    /// could not be read and were left out.
+    File { file: F, skipped: usize },
+    /// A file of a newer version: what this build can make out of it, for reading only.
+    Newer { version: u32, file: Option<F> },
+    /// Not a file of the kind this build can read, and why.
+    Bad(String),
+}
+
+/// What [`DocStore::load`] found for a document.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Loaded<F> {
+    /// The file's name in the store: the one a change writes.
+    pub name: String,
+    /// The document's file, with what its earlier name holds merged in; empty when there is none.
+    pub file: F,
+    /// A file is of a newer version: shown, never written.
+    pub read_only: bool,
+    /// That newer version.
+    pub newer: Option<u32>,
+    /// Entries that could not be read and were left out.
+    pub skipped: usize,
+    /// A file of this kind that could not be read, and why; a load leaves it as it is.
+    pub unreadable: Option<(String, String)>,
+    /// A change set a file aside under this name, and why.
+    pub set_aside: Option<(String, String)>,
+    /// The entries left out of the file named [`Loaded::name`] itself (not of the earlier name's,
+    /// which is never written).
+    own_skipped: usize,
+}
+
+/// Where a store's files are.
+pub trait StoreBackend {
+    /// What holds the store while it is changed.
+    type Guard<'a>: 'a
+    where
+        Self: 'a;
+    /// The names of the store's `.json` files, sorted, at most `max`.
+    fn list(&self, max: usize) -> std::io::Result<Vec<String>>;
+    /// The file `name`'s bytes (`None`: there is none), at most `max` and one more, so a larger
+    /// file is told by its length.
+    fn read(&self, name: &str, max: usize) -> std::io::Result<Option<Vec<u8>>>;
+    /// Write the file `name` whole in one step: a reader sees the old bytes or the new ones.
+    fn write<E: StoreFailure>(&self, name: &str, bytes: &[u8]) -> Result<(), E>;
+    /// Rename `name` aside, to `<name>.bad` (`.bad2`, … when taken). The new name.
+    fn set_aside<E: StoreFailure>(&self, name: &str) -> Result<String, E>;
+    /// Hold the store of kind `kind` against other writers ([`StoreFailure::busy`] when another
+    /// holds it all the while).
+    fn lock<E: StoreFailure>(&self, kind: &str) -> Result<Self::Guard<'_>, E>;
+}
+
+/// A document store of the kind `K` on the backend `B`.
+pub struct DocStore<K: StoreKind, B: StoreBackend> {
+    backend: B,
+    kind: PhantomData<fn() -> K>,
+}
+
+/// The name of the document's file of kind `kind`: [`legacy_file_name`]'s hash, then the kind.
+/// `None` when no key is known.
+pub fn file_name(keys: &DocKeys, kind: &str) -> Option<String> {
+    let legacy = legacy_file_name(keys)?;
+    legacy.strip_suffix(".json").map(|hash| format!("{hash}.{kind}.json"))
+}
+
+/// The name every kind's file had before plan A9-G3a: `<hash>.json`.
+pub fn legacy_file_name(keys: &DocKeys) -> Option<String> {
+    super::corrections::file_name(keys)
+}
+
+/// The format and the document a file records, the rest skipped.
+#[derive(serde::Deserialize)]
+struct Header {
+    #[serde(default)]
+    format: Option<String>,
+    #[serde(default)]
+    doc: Option<DocRecord>,
+}
+
+fn header(bytes: &[u8]) -> Option<Header> {
+    serde_json::from_slice(bytes).ok()
+}
+
+impl<K: StoreKind, B: StoreBackend> DocStore<K, B> {
+    /// The store on `backend`.
+    pub fn on(backend: B) -> Self {
+        DocStore { backend, kind: PhantomData }
+    }
+
+    /// The document's file: by its own name, else the file of this kind recording the document
+    /// (named for another kind of key, or by its earlier name), with what its earlier name holds
+    /// merged in; an empty one named for it when there is none. Only reads.
+    pub fn load(&self, keys: &DocKeys, pages: usize) -> Result<Loaded<K::File>, K::Error> {
+        let own = file_name(keys, K::KIND).ok_or_else(K::Error::no_keys)?;
+        let legacy = legacy_file_name(keys).ok_or_else(K::Error::no_keys)?;
+        let ours = format!(".{}.json", K::KIND);
+        let mut l = Loaded {
+            name: own.clone(),
+            file: K::empty(DocRecord::new(keys, pages)),
+            read_only: false,
+            newer: None,
+            skipped: 0,
+            unreadable: None,
+            set_aside: None,
+            own_skipped: 0,
+        };
+        match self.backend.read(&own, K::MAX_FILE_BYTES)? {
+            Some(bytes) => self.take_in(&mut l, &own, &bytes, true),
+            None => match self.find(keys)? {
+                // A file of this kind named for other keys (moved there by a save): it is the one.
+                Some((found, bytes)) if found.ends_with(&ours) => {
+                    l.name.clone_from(&found);
+                    self.take_in(&mut l, &found, &bytes, true);
+                }
+                // A file of the name before G3a for other keys: read, never written.
+                Some((found, bytes)) if found != legacy => self.take_in(&mut l, &found, &bytes, false),
+                _ => {}
+            },
+        }
+        if let Some(bytes) = self.backend.read(&legacy, K::MAX_FILE_BYTES)?
+            && header(&bytes).is_some_and(|h| h.format.as_deref() == Some(K::FORMAT))
+        {
+            self.take_in(&mut l, &legacy, &bytes, false);
+        }
+        Ok(l)
+    }
+
+    /// Read `bytes`, the file `name`, into `l`: as its file when `own`, else merged in.
+    fn take_in(&self, l: &mut Loaded<K::File>, name: &str, bytes: &[u8], own: bool) {
+        let parsed =
+            if bytes.len() > K::MAX_FILE_BYTES { Parsed::Bad(format!("larger than {} MB", K::MAX_FILE_BYTES >> 20)) } else { K::read(bytes) };
+        let file = match parsed {
+            Parsed::File { file, skipped } => {
+                l.skipped = l.skipped.saturating_add(skipped);
+                if own {
+                    l.own_skipped = skipped;
+                }
+                Some(file)
+            }
+            Parsed::Newer { version, file } => {
+                l.read_only = true;
+                l.newer = Some(l.newer.map_or(version, |v| v.max(version)));
+                file
+            }
+            Parsed::Bad(why) => {
+                if l.unreadable.is_none() || own {
+                    l.unreadable = Some((name.to_owned(), why));
+                }
+                None
+            }
+        };
+        // The own file is read first, into the empty one; the others are merged into it.
+        match (file, own) {
+            (Some(file), true) => l.file = file,
+            (Some(file), false) => K::merge(&mut l.file, &file),
+            (None, _) => {}
+        }
+    }
+
+    /// The first `.json` file by name whose header is this kind's and records the document named
+    /// by `keys`, with its bytes.
+    fn find(&self, keys: &DocKeys) -> Result<Option<(String, Vec<u8>)>, K::Error> {
+        for name in self.backend.list(MAX_FILES)? {
+            let Some(bytes) = self.backend.read(&name, K::MAX_FILE_BYTES)? else { continue };
+            let ours = header(&bytes).is_some_and(|h| h.format.as_deref() == Some(K::FORMAT) && h.doc.is_some_and(|d| d.matches(keys)));
+            if ours {
+                return Ok(Some((name, bytes)));
+            }
+        }
+        Ok(None)
+    }
+
+    /// Change the document's file with `change` and keep it, under the store's lock: the file is
+    /// read again first (with what its earlier name holds merged in), so two writers never lose
+    /// each other's changes; a newer version's file is refused. A file that can't be read, or that
+    /// held entries this write drops, is set aside first ([`Loaded::set_aside`]). The document
+    /// record takes the keys given (a save may have added an identifier).
+    pub fn update<R, E>(
+        &self,
+        keys: &DocKeys,
+        pages: usize,
+        change: impl FnOnce(&mut K::File) -> Result<R, E>,
+    ) -> Result<(R, Loaded<K::File>), K::Error>
+    where
+        K::Error: From<E>,
+    {
+        let _lock = self.backend.lock::<K::Error>(K::KIND)?;
+        let mut l = self.load(keys, pages)?;
+        if let Some(version) = l.newer {
+            return Err(K::Error::newer(version));
+        }
+        let out = change(&mut l.file).map_err(K::Error::from)?;
+        K::set_doc(&mut l.file, DocRecord::new(keys, pages));
+        self.write(&mut l)?;
+        Ok((out, l))
+    }
+
+    /// The document was saved, as itself or as another file: its file, found under the keys it
+    /// had (`old`), records the keys it has now (`new`), so it is found when the saved file is
+    /// opened. Whether there was anything to move: nothing is made for a document that keeps
+    /// nothing, and a newer version's file is left as it is.
+    pub fn rekey(&self, old: &DocKeys, new: &DocKeys, pages: usize) -> Result<bool, K::Error> {
+        if old == new || file_name(old, K::KIND).is_none() {
+            return Ok(false);
+        }
+        // Nothing to move: no lock taken, so a store that is not there (a folder) is not made.
+        let before = self.load(old, pages)?;
+        if before.read_only || !K::holds_anything(&before.file) {
+            return Ok(false);
+        }
+        let _lock = self.backend.lock::<K::Error>(K::KIND)?;
+        let mut l = self.load(old, pages)?;
+        if l.read_only || !K::holds_anything(&l.file) {
+            return Ok(false);
+        }
+        K::set_doc(&mut l.file, DocRecord::new(new, pages));
+        self.write(&mut l)?;
+        Ok(true)
+    }
+
+    /// Write `l` over its file, after setting the file aside when it could not be read or held
+    /// entries `l` left out, so nothing it held is lost.
+    fn write(&self, l: &mut Loaded<K::File>) -> Result<(), K::Error> {
+        let bytes = K::to_bytes(&l.file)?;
+        let why = match l.unreadable.take() {
+            Some((name, why)) if name == l.name => Some(why),
+            other => {
+                l.unreadable = other;
+                (l.own_skipped > 0).then(|| format!("{} entries could not be read", l.own_skipped))
+            }
+        };
+        if let Some(why) = why {
+            let aside = self.backend.set_aside::<K::Error>(&l.name)?;
+            l.set_aside = Some((aside, why));
+            l.own_skipped = 0;
+        }
+        self.backend.write::<K::Error>(&l.name, &bytes)
+    }
+}
+
+/// The name a file that can't be read is set aside under: `<name>.bad`, else `.bad2`, … up to
+/// `.bad999`, the first not `taken`.
+pub(super) fn aside_name(name: &str, taken: impl Fn(&str) -> bool) -> Option<String> {
+    (1..1000u32).map(|n| if n == 1 { format!("{name}.bad") } else { format!("{name}.bad{n}") }).find(|bad| !taken(bad))
+}
+
+/// A folder of files, one per document and kind (desktop and command line). A change holds the
+/// kind's lock file in the folder, and writes through a staging file renamed over the old one.
+#[cfg(not(target_arch = "wasm32"))]
+pub struct DirBackend {
+    dir: std::path::PathBuf,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl DirBackend {
+    pub fn new(dir: impl Into<std::path::PathBuf>) -> DirBackend {
+        DirBackend { dir: dir.into() }
+    }
+
+    /// The folder.
+    pub fn dir(&self) -> &std::path::Path {
+        &self.dir
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl StoreBackend for DirBackend {
+    type Guard<'a> = super::corrections::Lock;
+
+    /// A folder that isn't there has no files. The `.json` names are filtered before the cap, so
+    /// set-aside copies, staging files and locks never take a place.
+    fn list(&self, max: usize) -> std::io::Result<Vec<String>> {
+        let entries = match std::fs::read_dir(&self.dir) {
+            Ok(e) => e,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+            Err(e) => return Err(e),
+        };
+        let mut names: Vec<String> =
+            entries.flatten().filter_map(|e| e.file_name().to_str().map(str::to_owned)).filter(|n| n.ends_with(".json")).take(max).collect();
+        names.sort();
+        Ok(names)
+    }
+
+    fn read(&self, name: &str, max: usize) -> std::io::Result<Option<Vec<u8>>> {
+        match super::corrections::read_capped(&self.dir.join(name), max) {
+            Ok(b) => Ok(Some(b)),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(e) => Err(e),
+        }
+    }
+
+    fn write<E: StoreFailure>(&self, name: &str, bytes: &[u8]) -> Result<(), E> {
+        std::fs::create_dir_all(&self.dir)?;
+        Ok(super::corrections::write_atomically(&self.dir.join(name), bytes)?)
+    }
+
+    fn set_aside<E: StoreFailure>(&self, name: &str) -> Result<String, E> {
+        let bad = aside_name(name, |n| self.dir.join(n).exists()).ok_or_else(E::busy)?;
+        std::fs::rename(self.dir.join(name), self.dir.join(&bad))?;
+        Ok(bad)
+    }
+
+    /// The lock file `<kind>.lock` of the folder, the one earlier builds take too, so a build of
+    /// either kind and age never writes beside another.
+    fn lock<E: StoreFailure>(&self, kind: &str) -> Result<Self::Guard<'_>, E> {
+        std::fs::create_dir_all(&self.dir)?;
+        super::corrections::take_lock(self.dir.join(format!("{kind}.lock")))?.ok_or_else(E::busy)
+    }
+}
+
+/// Files kept in memory by name, within a byte budget of their own: the web build's store, which
+/// it saves in the browser's storage through [`MemBackend::files`] and [`MemBackend::with_files`].
+#[derive(Debug, Default)]
+pub struct MemBackend {
+    files: std::sync::Mutex<std::collections::BTreeMap<String, Vec<u8>>>,
+    /// Held while a change reads, changes and writes.
+    writing: std::sync::Mutex<()>,
+    budget: usize,
+}
+
+impl MemBackend {
+    /// An empty store keeping at most `budget` bytes in all.
+    pub fn new(budget: usize) -> MemBackend {
+        MemBackend { files: Default::default(), writing: Default::default(), budget }
+    }
+
+    /// A store holding `files` (as [`MemBackend::files`] gave them) within `budget` bytes, a file
+    /// over `max_file` bytes or past the budget left out.
+    pub fn with_files(files: impl IntoIterator<Item = (String, Vec<u8>)>, budget: usize, max_file: usize) -> MemBackend {
+        let mut kept = std::collections::BTreeMap::new();
+        let mut used = 0usize;
+        for (name, bytes) in files {
+            let total = used.saturating_add(bytes.len());
+            if total <= budget && bytes.len() <= max_file {
+                used = total;
+                kept.insert(name, bytes);
+            }
+        }
+        MemBackend { files: std::sync::Mutex::new(kept), writing: Default::default(), budget }
+    }
+
+    /// Every file by name, to save.
+    pub fn files(&self) -> Vec<(String, Vec<u8>)> {
+        self.guard().iter().map(|(n, b)| (n.clone(), b.clone())).collect()
+    }
+
+    /// The files. A lock poisoned by a panic elsewhere is taken as it is: each write replaces a
+    /// whole file, so none is ever half written.
+    fn guard(&self) -> std::sync::MutexGuard<'_, std::collections::BTreeMap<String, Vec<u8>>> {
+        self.files.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+}
+
+impl StoreBackend for MemBackend {
+    type Guard<'a> = std::sync::MutexGuard<'a, ()>;
+
+    fn list(&self, max: usize) -> std::io::Result<Vec<String>> {
+        Ok(self.guard().keys().filter(|n| n.ends_with(".json")).take(max).cloned().collect())
+    }
+
+    fn read(&self, name: &str, max: usize) -> std::io::Result<Option<Vec<u8>>> {
+        Ok(self.guard().get(name).map(|b| b.get(..max.saturating_add(1)).unwrap_or(b).to_vec()))
+    }
+
+    /// Refused with [`StoreFailure::over_budget`] when the files would pass the budget.
+    fn write<E: StoreFailure>(&self, name: &str, bytes: &[u8]) -> Result<(), E> {
+        let mut files = self.guard();
+        let others = files.iter().filter(|(n, _)| n.as_str() != name).fold(0usize, |sum, (_, b)| sum.saturating_add(b.len()));
+        if others.saturating_add(bytes.len()) > self.budget {
+            return Err(E::over_budget(self.budget));
+        }
+        files.insert(name.to_owned(), bytes.to_vec());
+        Ok(())
+    }
+
+    fn set_aside<E: StoreFailure>(&self, name: &str) -> Result<String, E> {
+        let mut files = self.guard();
+        let aside = aside_name(name, |n| files.contains_key(n)).ok_or_else(E::busy)?;
+        if let Some(bytes) = files.remove(name) {
+            files.insert(aside.clone(), bytes);
+        }
+        Ok(aside)
+    }
+
+    /// One lock for every kind: the web build has one page writing. A lock poisoned by a panic
+    /// elsewhere is taken as it is (it guards no data of its own).
+    fn lock<E: StoreFailure>(&self, _kind: &str) -> Result<Self::Guard<'_>, E> {
+        Ok(self.writing.lock().unwrap_or_else(std::sync::PoisonError::into_inner))
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl<K: StoreKind> DocStore<K, DirBackend> {
+    /// The store in the folder `dir` (made when a change is first kept).
+    pub fn new(dir: impl Into<std::path::PathBuf>) -> Self {
+        DocStore::on(DirBackend::new(dir))
+    }
+}
+
+impl<K: StoreKind> DocStore<K, MemBackend> {
+    /// An empty memory store keeping at most `budget` bytes in all.
+    pub fn new(budget: usize) -> Self {
+        DocStore::on(MemBackend::new(budget))
+    }
+
+    /// A memory store holding `files` (as [`DocStore::files`] gave them) within `budget` bytes: a
+    /// file that would pass it, or the kind's largest file, is left out.
+    pub fn with_files(files: impl IntoIterator<Item = (String, Vec<u8>)>, budget: usize) -> Self {
+        DocStore::on(MemBackend::with_files(files, budget, K::MAX_FILE_BYTES))
+    }
+
+    /// Every file by name, to save.
+    pub fn files(&self) -> Vec<(String, Vec<u8>)> {
+        self.backend.files()
+    }
+}

@@ -3195,6 +3195,7 @@ chess undo step	Clear drawings	rajzok törlése
 # Plan A8 P3b2: the Diagram tab and its corrections.
 	Diagram	Diagram
 	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	A mentett diagramjavításokat nem sikerült beolvasni ({why}); félretettük őket ezen a néven: {name}.
+	Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted.	Néhány mentett diagramjavítást nem sikerült beolvasni ({why}); a többit használjuk, a(z) {name} pedig megmarad, sosem törlődik.
 	The diagram corrections couldn't be saved: {e}	A diagramjavításokat nem sikerült menteni: {e}
 	Diagram {n}, page {p}: {state}	{n}. diagram, {p}. oldal: {state}
 	Page {p} · diagram {n} of {m}	{p}. oldal · {n}/{m}. diagram

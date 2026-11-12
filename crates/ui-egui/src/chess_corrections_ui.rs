@@ -19,7 +19,7 @@ use std::collections::HashMap;
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::DocKeys;
 use pdfcraft_engine::chess::corrections::{
-    CorrectionError, CorrectionFile, CorrectionStore, Kind, Loaded, MemStore, NewCorrection, Original, Status, StoreError, normalize,
+    CorrectionError, CorrectionFile, Kind, Loaded, MemStore, NewCorrection, Original, Status, StoreError, normalize,
 };
 
 use crate::PdfCraftApp;
@@ -179,12 +179,7 @@ impl PdfCraftApp {
         if self.chess.corrections.doc(id).is_none() {
             let file = match self.chess.corrections.store.load(&keys, pages) {
                 Ok(loaded) => {
-                    if let Some((name, why)) = &loaded.set_aside {
-                        self.notify(crate::i18n::fmt(
-                            tl!("Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}."),
-                            &[("why", why), ("name", name)],
-                        ));
-                    }
+                    self.say_unread_corrections(&loaded);
                     loaded.file
                 }
                 // No keys: nothing is kept for it yet, and it starts empty.
@@ -211,6 +206,29 @@ impl PdfCraftApp {
     /// and the exports' jobs, P3a3): the same bytes give the same page fingerprints there.
     pub(crate) fn chess_corrections_file(&mut self, id: DocId) -> Option<CorrectionFile> {
         self.chess_corrections_for(id).map(|c| c.file.clone()).filter(|f| f.live().next().is_some())
+    }
+
+    /// Say what the store could not read (plan A9-G3a): a file, or entries of one, left out of
+    /// what is shown; reading never renames a file, so it is said instead.
+    fn say_unread_corrections(&mut self, loaded: &Loaded) {
+        let unread = loaded.unreadable.clone().or_else(|| (loaded.skipped > 0).then(|| (loaded.name.clone(), format!("{} entries", loaded.skipped))));
+        if let Some((name, why)) = unread {
+            self.notify(crate::i18n::fmt(
+                tl!("Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted."),
+                &[("why", &why), ("name", &name)],
+            ));
+        }
+    }
+
+    /// Say that a change set a file aside before writing (one that could not be read, or whose
+    /// unreadable entries it dropped).
+    fn say_corrections_set_aside(&mut self, loaded: &Loaded) {
+        if let Some((name, why)) = &loaded.set_aside {
+            self.notify(crate::i18n::fmt(
+                tl!("Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}."),
+                &[("why", why), ("name", name)],
+            ));
+        }
     }
 
     fn say_corrections_failed(&mut self, why: &str) {
@@ -295,6 +313,7 @@ impl PdfCraftApp {
         match self.chess.corrections.store.update(&keys, pages, |f| f.set(new, at, &fingerprints)) {
             Ok((_, loaded)) => {
                 self.chess.corrections.said = false;
+                self.say_corrections_set_aside(&loaded);
                 self.chess_corrections_kept(id, keys, loaded.file);
             }
             Err(e) => {
@@ -398,7 +417,10 @@ impl PdfCraftApp {
             .store
             .update(&keys, pages, |f| if f.delete(&uid, at) { Ok(()) } else { Err(CorrectionError::NoSuchCorrection(uid.clone())) });
         match gone {
-            Ok((_, loaded)) => self.chess_corrections_kept(id, keys, loaded.file),
+            Ok((_, loaded)) => {
+                self.say_corrections_set_aside(&loaded);
+                self.chess_corrections_kept(id, keys, loaded.file);
+            }
             Err(e) => {
                 self.say_corrections_failed(&e.to_string());
                 return false;

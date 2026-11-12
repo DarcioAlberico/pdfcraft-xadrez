@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use super::*;
+use crate::chess::store::{DocStore, StoreBackend};
 use crate::{DocId, Edit, Session};
 
 const KINGS: &str = "4k3/8/8/8/8/8/8/4K3 w - - 0 1";
@@ -67,6 +68,11 @@ fn open(bytes: Vec<u8>) -> (Session, DocId) {
     (s, id)
 }
 
+/// The name of the document's corrections file since plan A9-G3a: `<hash>.corrections.json`.
+fn own_name(keys: &DocKeys) -> String {
+    crate::chess::store::file_name(keys, "corrections").unwrap()
+}
+
 /// A folder of its own under the temp folder, empty.
 fn temp_dir(name: &str) -> std::path::PathBuf {
     let dir = std::env::temp_dir().join(format!("pdfcraft-corrections-{name}-{}", std::process::id()));
@@ -86,7 +92,8 @@ fn a_file_round_trips_and_bad_or_newer_files_are_told_apart() {
     assert!(matches!(CorrectionFile::read(br#"{"format":"other","version":1}"#), Read::Bad(_)));
     assert_eq!(CorrectionFile::read(br#"{"format":"pdfcraft-chess-corrections","version":7,"whatever":[]}"#), Read::Newer(7, None));
     let bad_rect = text.replace("[0.1,0.2,0.5,0.6]", "[0.5,0.2,0.1,0.6]");
-    assert!(matches!(CorrectionFile::read(bad_rect.as_bytes()), Read::Bad(_)), "corners out of order");
+    let Parsed::File { file, skipped } = CorrectionFile::parse(bad_rect.as_bytes()) else { panic!("one bad entry is no bad file") };
+    assert_eq!((file.entries.len(), skipped), (0, 1), "corners out of order: the entry is left out");
     assert!(matches!(CorrectionFile::read(&vec![b' '; MAX_FILE_BYTES + 1]), Read::Bad(_)));
 }
 
@@ -307,9 +314,10 @@ fn version_2_is_compact_and_version_1_is_read() {
     assert_eq!(text.matches("\"orig\"").count(), 2, "left out when it is the position: {text}");
     assert!(!text.contains("deleted"), "{text}");
     assert_eq!(CorrectionFile::read(&bytes), Read::File(f.clone()));
-    // A place past the table is not a file.
-    let past = text.replace("\"fp\":[0,1,2]", "\"fp\":[0,1,9]");
-    assert!(past != text && matches!(CorrectionFile::read(past.as_bytes()), Read::Bad(_)), "{past}");
+    // An entry naming a place past the table is left out, the others kept.
+    let past = text.replacen("\"fp\":[0,1,2]", "\"fp\":[0,1,9]", 1);
+    let Parsed::File { file, skipped } = CorrectionFile::parse(past.as_bytes()) else { panic!("{past}") };
+    assert!(past != text && (file.entries.len(), skipped) == (2, 1), "{past}");
     // Version 1, as an earlier build wrote it.
     let v1 = format!(
         r#"{{"format":"pdfcraft-chess-corrections","version":1,"doc":{{"pages":3}},"entries":[{{"uid":"u1","page":1,"page_fp":"fnv:p1","rect":[0.1,0.6,0.5,0.9],"orig":{{"fen":"{KINGS}","model":null}},"fen":"{QUEEN}","kind":"corrected","at":7,"rev":3,"deleted":false}},{{"uid":"u2","page":2,"page_fp":"fnv:p2","rect":[0.1,0.6,0.5,0.9],"fen":"{KINGS}","kind":"verified","at":8,"rev":1}}]}}"#
@@ -401,7 +409,8 @@ fn the_identifier_every_new_file_used_to_get_names_no_book() {
     std::fs::write(dir.join(&legacy), file.to_bytes().unwrap()).unwrap();
     let store = DirStore::new(&dir);
     let found = store.load(&book(3), 10).unwrap();
-    assert_eq!((found.name.as_str(), found.file.live().count()), (legacy.as_str(), 1), "found by the path it records");
+    assert_eq!((found.name, found.file.live().count()), (own_name(&book(3)), 1), "found by the path it records, kept under its own name");
+    assert!(dir.join(&legacy).is_file(), "the earlier build's file is never moved");
     assert_eq!(store.load(&book(2), 10).unwrap().file.live().count(), 0, "never by the identifier");
     let _ = std::fs::remove_dir_all(&dir);
 }
@@ -460,16 +469,24 @@ fn the_folder_store_writes_finds_and_keeps_two_writers_changes() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// A9-G3a (A4-13): reading never renames. A file that can't be read is reported and left as it
+/// is by a load, as a reading tool given only read access does; the next change sets it aside
+/// before it writes, never deleting it. A newer version's file is read only.
 #[test]
-fn unreadable_files_are_set_aside_and_newer_ones_never_written() {
+fn unreadable_files_are_reported_by_reading_and_set_aside_by_a_change() {
     let dir = temp_dir("bad");
     std::fs::create_dir_all(&dir).unwrap();
-    let name = file_name(&keys()).unwrap();
+    let name = own_name(&keys());
     std::fs::write(dir.join(&name), b"{broken").unwrap();
     let store = DirStore::new(&dir);
     let loaded = store.load(&keys(), 10).unwrap();
-    assert_eq!(loaded.set_aside.as_ref().map(|(n, _)| n.clone()), Some(format!("{name}.bad")));
-    assert!(dir.join(format!("{name}.bad")).is_file() && loaded.file.entries.is_empty(), "set aside, never deleted");
+    assert_eq!((loaded.unreadable.as_ref().map(|(n, _)| n.clone()), loaded.set_aside.clone()), (Some(name.clone()), None));
+    assert_eq!(std::fs::read(dir.join(&name)).unwrap(), b"{broken", "a load leaves it as it is");
+    assert!(!dir.join(format!("{name}.bad")).exists());
+    let (_, changed) = store.update(&keys(), 10, |f| f.put(1, "fnv:b", [0.1, 0.2, 0.5, 0.6], KINGS, 1)).unwrap();
+    assert_eq!(changed.set_aside.as_ref().map(|(n, _)| n.clone()), Some(format!("{name}.bad")));
+    assert_eq!(std::fs::read(dir.join(format!("{name}.bad"))).unwrap(), b"{broken", "set aside, never deleted");
+    assert_eq!(store.load(&keys(), 10).unwrap().file.live().count(), 1);
     let newer = br#"{"format":"pdfcraft-chess-corrections","version":3,"doc":{},"entries":[]}"#;
     std::fs::write(dir.join(&name), newer).unwrap();
     assert!(store.load(&keys(), 10).unwrap().read_only);
@@ -479,11 +496,83 @@ fn unreadable_files_are_set_aside_and_newer_ones_never_written() {
     let text = String::from_utf8(kept.to_bytes().unwrap()).unwrap().replace("\"version\":2", "\"version\":3,\"later\":true");
     std::fs::write(dir.join(&name), &text).unwrap();
     let shown = store.load(&keys(), 10).unwrap();
-    assert_eq!((shown.read_only, shown.file.version, shown.file.live().count()), (true, 3, 1));
+    assert_eq!((shown.read_only, shown.newer, shown.file.version, shown.file.live().count()), (true, Some(3), 3, 1));
     std::fs::write(dir.join(&name), newer).unwrap();
     let refused = store.update(&keys(), 10, |f| f.put(1, "fnv:b", [0.1, 0.2, 0.5, 0.6], KINGS, 1));
     assert!(matches!(refused, Err(StoreError::Correction(CorrectionError::Newer(3)))));
     assert_eq!(std::fs::read(dir.join(&name)).unwrap(), newer.to_vec(), "left as it was");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A9-G3a (A4-06, R2-03): one entry that can't be read among sixteen used to set the whole file
+/// aside, and every correction disappeared from view (16 → 1). Now that entry is left out and
+/// counted, the fifteen others are kept, and the change that writes the file without it first
+/// sets the file aside as it was, so nothing is lost. An entry recording a page past
+/// [`MAX_PAGES`] (`usize::MAX`, whose page number overflowed) is left out the same way.
+#[test]
+fn one_bad_entry_among_sixteen_keeps_the_fifteen() {
+    let dir = temp_dir("one-bad");
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut f = CorrectionFile::new(DocRecord::new(&keys(), 10));
+    for i in 0..16u8 {
+        let y = 0.05 * f32::from(i);
+        f.put(usize::from(i % 8), "fnv:x", [0.1, y, 0.14, y + 0.04], KINGS, u64::from(i)).unwrap();
+    }
+    assert_eq!(f.live().count(), 16);
+    let text = String::from_utf8(f.to_bytes().unwrap()).unwrap();
+    // One box with its corners swapped.
+    let bad = text.replacen("[0.1,0.0,0.14,0.04]", "[0.14,0.0,0.1,0.04]", 1);
+    assert_ne!(bad, text);
+    let name = own_name(&keys());
+    std::fs::write(dir.join(&name), &bad).unwrap();
+    let store = DirStore::new(&dir);
+    let loaded = store.load(&keys(), 10).unwrap();
+    assert_eq!((loaded.file.live().count(), loaded.skipped, loaded.unreadable.clone()), (15, 1, None));
+    let (_, written) = store.update(&keys(), 10, |f| f.put(9, "fnv:new", [0.5, 0.5, 0.9, 0.9], QUEEN, 99)).unwrap();
+    assert_eq!((written.file.live().count(), written.skipped), (16, 1));
+    let aside = written.set_aside.as_ref().map(|(n, _)| n.clone());
+    assert_eq!(aside, Some(format!("{name}.bad")), "the file as it was is kept before the entry is dropped");
+    assert_eq!(std::fs::read_to_string(dir.join(format!("{name}.bad"))).unwrap(), bad);
+    assert_eq!(store.load(&keys(), 10).unwrap().skipped, 0, "written without it");
+    // R2-03: a page past any document's.
+    let huge = text.replacen("\"page\":0,", &format!("\"page\":{},", usize::MAX), 1);
+    assert_ne!(huge, text);
+    let Parsed::File { file, skipped } = CorrectionFile::parse(huge.as_bytes()) else { panic!("{huge}") };
+    assert_eq!((file.live().count(), skipped), (15, 1));
+    assert!(file.entries.iter().all(|e| e.page < MAX_PAGES));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A9-G3a (A4-07): the corrections are `<hash>.corrections.json`, so the book's PGN kept in the
+/// same folder under the name both used to share is never taken for them, nor set aside by them.
+/// The file earlier builds wrote, `<hash>.json`, is read and merged in, and never written: a build
+/// from before keeps working on it, and what it writes there is seen here at the next load.
+#[test]
+fn the_name_before_is_read_and_merged_and_another_format_never_touched() {
+    let dir = temp_dir("names");
+    std::fs::create_dir_all(&dir).unwrap();
+    let legacy = file_name(&keys()).unwrap();
+    // The book's PGN, under the name both kinds shared.
+    let pgn = br#"{"format":"pdfcraft-chess-reference","version":1,"doc":{"pages":10},"pgn":{}}"#;
+    std::fs::write(dir.join(&legacy), pgn).unwrap();
+    let store = DirStore::new(&dir);
+    let (uid, written) = store.update(&keys(), 10, |f| f.put(1, "fnv:b", [0.1, 0.2, 0.5, 0.6], KINGS, 1)).unwrap();
+    assert_eq!((written.name.clone(), written.set_aside.clone(), written.unreadable.clone()), (own_name(&keys()), None, None));
+    assert_eq!(std::fs::read(dir.join(&legacy)).unwrap(), pgn.to_vec(), "another format's file is left as it is");
+    // An earlier build's corrections under the name before: merged in, never written.
+    let mut old = CorrectionFile::new(DocRecord::new(&keys(), 10));
+    let old_uid = old.put(2, "fnv:c", [0.1, 0.2, 0.5, 0.6], QUEEN, 5).unwrap();
+    std::fs::write(dir.join(&legacy), old.to_bytes().unwrap()).unwrap();
+    let both = store.load(&keys(), 10).unwrap();
+    let mut uids: Vec<String> = both.file.live().map(|e| e.uid.clone()).collect();
+    uids.sort();
+    let mut expected = vec![uid.clone(), old_uid.clone()];
+    expected.sort();
+    assert_eq!(uids, expected);
+    let before = std::fs::read(dir.join(&legacy)).unwrap();
+    store.update(&keys(), 10, |f| Ok::<_, CorrectionError>(f.delete(&old_uid, 9))).unwrap();
+    assert_eq!(std::fs::read(dir.join(&legacy)).unwrap(), before, "the name before is never written");
+    assert_eq!(store.load(&keys(), 10).unwrap().file.live().map(|e| e.uid.clone()).collect::<Vec<_>>(), vec![uid], "its deletion holds");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -505,17 +594,20 @@ fn the_memory_store_keeps_files_within_its_budget() {
             let y = 0.1 * f32::from(i);
             f.put(2, "fnv:c", [0.0, y, 0.09, y + 0.09], QUEEN, 2)?;
         }
-        Ok(())
+        Ok::<(), CorrectionError>(())
     });
     assert!(matches!(many, Err(StoreError::Correction(CorrectionError::OverBudget(600)))), "{many:?}");
     assert_eq!(small.files(), before);
     assert!(MemStore::with_files(store.files(), 10).files().is_empty(), "a file past the budget is not taken in");
-    // A file that can't be read is set aside, never dropped.
-    let name = file_name(&keys()).unwrap();
+    // A file that can't be read is reported by a load, and set aside by a change, never dropped.
+    let name = own_name(&keys());
     let broken = MemStore::with_files([(name.clone(), b"{broken".to_vec())], 4096);
     let l = broken.load(&keys(), 10).unwrap();
+    assert_eq!((l.unreadable.map(|(n, _)| n), l.set_aside), (Some(name.clone()), None));
+    assert_eq!(broken.files(), vec![(name.clone(), b"{broken".to_vec())]);
+    let (_, l) = broken.update(&keys(), 10, |f| f.put(1, "fnv:b", [0.1, 0.2, 0.5, 0.6], KINGS, 1)).unwrap();
     assert_eq!(l.set_aside.map(|(n, _)| n), Some(format!("{name}.bad")));
-    assert_eq!(broken.files(), vec![(format!("{name}.bad"), b"{broken".to_vec())]);
+    assert!(broken.files().contains(&(format!("{name}.bad"), b"{broken".to_vec())));
     assert_eq!(MemStore::new(4096).load(&DocKeys::default(), 1).map(|_| ()).map_err(|e| e.to_string()), Err(StoreError::NoKeys.to_string()));
 }
 
@@ -620,6 +712,11 @@ fn a_correction_without_its_diagram_is_listed_never_dropped() {
 fn saving_moves_the_corrections_to_the_saved_files_keys() {
     let saved_as =
         DocKeys { id0: Some([3; 16]), path: Some("C:/books/Livro corrigido.pdf".into()), name: Some("Livro corrigido.pdf".into()), size: Some(99) };
+    // Nothing to move: the folder is not made (a save in a folder without corrections leaves it as
+    // it was).
+    let none = temp_dir("rekey-none");
+    assert!(!DirStore::new(&none).rekey(&keys(), &saved_as, 10).unwrap());
+    assert!(!none.exists(), "no folder made");
     for store in [&MemStore::new(1 << 20) as &dyn Rekey, &DirStore::new(temp_dir("rekey")) as &dyn Rekey] {
         assert!(!store.rekey_dyn(&keys(), &saved_as), "nothing to move");
         store.set_dyn(&keys());
@@ -637,7 +734,7 @@ trait Rekey {
     fn count_dyn(&self, keys: &DocKeys) -> usize;
 }
 
-impl<S: CorrectionStore> Rekey for S {
+impl<B: StoreBackend> Rekey for DocStore<Corrections, B> {
     fn rekey_dyn(&self, old: &DocKeys, new: &DocKeys) -> bool {
         self.rekey(old, new, 10).unwrap()
     }
@@ -771,4 +868,118 @@ fn compat_an_earlier_command_line_keeps_a_version_2_file_as_it_is() {
         assert_eq!((listed["count"].as_u64(), listed["corrections"][0]["uid"].as_str()), (Some(1), Some(uid.as_str())), "{report:#}");
     }
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A9-G3a, plan §2.10 (what an earlier build sees): the corrections are written as
+/// `<hash>.corrections.json` now. An earlier build's command line (`PDFCRAFT_OLD_CLI`, the
+/// installed `dist/app/pdfcraft-cli.exe`) keeps to `<hash>.json`: it does not see what this build
+/// kept, cannot change it, and leaves its file as it was, setting nothing aside. What such a build
+/// keeps under the name before (its frozen format, `corrections_v1`) is read here and merged in.
+/// Without the variable it is skipped with a warning, and it fails under
+/// `PDFCRAFT_REQUIRE_MODELS=1` (the chess gate).
+#[cfg(not(target_arch = "wasm32"))]
+#[test]
+fn compat_an_earlier_command_line_and_this_build_share_a_folder() {
+    let cli = match pdfcraft_chessvision::models::test_resource("PDFCRAFT_OLD_CLI", "an earlier build's pdfcraft-cli") {
+        Ok(Some(cli)) => cli,
+        Ok(None) => {
+            eprintln!(
+                "compat_an_earlier_command_line_and_this_build_share_a_folder skipped: set PDFCRAFT_OLD_CLI to an earlier build's pdfcraft-cli"
+            );
+            return;
+        }
+        Err(e) => panic!("{e}"),
+    };
+    let dir = temp_dir("old-cli-names");
+    let folder = dir.join(".pdfcraft").join("chess-corrections");
+    std::fs::create_dir_all(&folder).unwrap();
+    let pdf = with_id(pages_pdf(3));
+    std::fs::write(dir.join("book.pdf"), &pdf).unwrap();
+    let (s, id) = open(pdf);
+    let (keys, book) = s.get(id).map(|d| (d.doc_keys(), d.page_fingerprints())).unwrap();
+    let store = DirStore::new(&folder);
+    let (uid, _) = store.update(&keys, book.len(), |f| f.set(new(1, [0.1, 0.6, 0.5, 0.9], QUEEN), 1, &book)).unwrap();
+    let ours = own_name(&keys);
+    let bytes = std::fs::read(folder.join(&ours)).unwrap();
+    let steps = serde_json::json!([
+        { "tool": "doc_open", "args": { "path": "book.pdf" } },
+        { "tool": "chess_correction_list", "args": { "doc": 1 } },
+        { "tool": "chess_correction_delete", "args": { "doc": 1, "uid": uid } },
+    ]);
+    std::fs::write(dir.join("steps.json"), steps.to_string()).unwrap();
+    let out = std::process::Command::new(&cli)
+        .args(["run", "--report", "--script"])
+        .arg(dir.join("steps.json"))
+        .arg("--root")
+        .arg(&dir)
+        .output()
+        .unwrap_or_else(|e| panic!("{}: {e}", cli.display()));
+    let report: serde_json::Value = serde_json::from_slice(&out.stdout)
+        .unwrap_or_else(|e| panic!("{e}: {}\n{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr)));
+    let listed = &report["steps"][1]["result"][0];
+    let sees = listed["count"].as_u64() != Some(0);
+    if sees {
+        // A build that reads version 2 finds the file by the document it records, and changes it
+        // where it is.
+        assert_eq!((listed["count"].as_u64(), listed["file"].as_str()), (Some(1), Some(ours.as_str())), "{report:#}");
+        assert_eq!(report["steps"][2]["status"], "ok", "{report:#}");
+    } else {
+        assert_eq!(listed["file"].as_str(), file_name(&keys).as_deref(), "{report:#}");
+        assert_eq!(report["steps"][2]["status"], "error", "it cannot reach what this build kept: {report:#}");
+        assert_eq!(std::fs::read(folder.join(&ours)).unwrap(), bytes, "left as it was");
+    }
+    let names: Vec<String> = std::fs::read_dir(&folder).unwrap().flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect();
+    assert!(names.iter().all(|n| !n.contains(".bad")), "nothing set aside: {names:?}");
+    // What that build keeps under the name before, in its own format: seen here, merged.
+    let record = DocRecord::new(&keys, book.len());
+    let theirs = corrections_v1::CorrectionFile {
+        format: corrections_v1::FORMAT.into(),
+        version: corrections_v1::VERSION,
+        doc: corrections_v1::DocRecord { id0: record.id0, path_hash: record.path_hash, name: record.name, size: record.size, pages: record.pages },
+        entries: vec![corrections_v1::Correction {
+            uid: "old".into(),
+            page: 2,
+            page_fp: book[2].clone(),
+            rect: [0.1, 0.6, 0.5, 0.9],
+            orig: None,
+            fen: KINGS.into(),
+            kind: corrections_v1::Kind::Verified,
+            at: 3,
+            rev: 1,
+            deleted: false,
+        }],
+    };
+    std::fs::write(folder.join(file_name(&keys).unwrap()), theirs.to_bytes().unwrap()).unwrap();
+    let both = store.load(&keys, book.len()).unwrap();
+    let mut uids: Vec<&str> = both.file.live().map(|e| e.uid.as_str()).collect();
+    uids.sort_unstable();
+    let mut expected = if sees { vec!["old"] } else { vec!["old", uid.as_str()] };
+    expected.sort_unstable();
+    assert_eq!(uids, expected);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[allow(dead_code)]
+#[path = "../../../tests/compat/corrections_v2.rs"]
+mod corrections_v2;
+
+/// A9-G3a, plan §2.10: a build of version 2 from before the document store (G2a's; its format
+/// frozen in `corrections_v2`) reads what this build writes as a file of its own version, and what
+/// it writes back comes in here with every field, nothing left out or counted as unreadable.
+#[test]
+fn compat_a_version_2_build_reads_and_writes_back_what_this_one_keeps() {
+    let book = fps(&["fnv:p0", "fnv:p1", "fnv:p2"]);
+    let mut f = CorrectionFile::new(DocRecord::new(&keys(), 3));
+    f.set(new(1, [0.1, 0.6, 0.5, 0.9], QUEEN), 1, &book).unwrap();
+    let verified =
+        NewCorrection { orig: Some(Original { fen: Some(KINGS.into()), model: None }), kind: Kind::Verified, ..new(2, [0.1, 0.1, 0.5, 0.4], KINGS) };
+    f.set(verified, 2, &book).unwrap();
+    let gone = f.set(new(0, [0.2, 0.2, 0.6, 0.6], KINGS), 3, &book).unwrap();
+    assert!(f.delete(&gone, 4));
+    let corrections_v2::Read::File(theirs) = corrections_v2::CorrectionFile::read(&f.to_bytes().unwrap()) else {
+        panic!("a version 2 build reads it as its own")
+    };
+    assert_eq!(theirs.entries.len(), 3);
+    let Parsed::File { file, skipped } = CorrectionFile::parse(&theirs.to_bytes().unwrap()) else { panic!("read back") };
+    assert_eq!((file, skipped), (f, 0), "every field kept");
 }
