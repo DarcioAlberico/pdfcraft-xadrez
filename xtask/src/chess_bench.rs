@@ -26,6 +26,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use anyhow::{Context, bail};
 use serde_json::{Value, json};
 
+#[path = "../../crates/chessvision/examples/common/moves_match.rs"]
+mod moves_match;
+
 /// What one run says of one book.
 #[derive(Default)]
 struct Tally {
@@ -36,7 +39,7 @@ struct Tally {
 }
 
 /// A move's identity across runs: page, place (rounded to a point) and text.
-type Key = (u64, i64, i64, String);
+type Key = moves_match::Key;
 
 pub fn run(args: &[String]) -> anyhow::Result<()> {
     let opt = |name: &str| args.iter().position(|a| a == name).and_then(|i| args.get(i + 1)).cloned();
@@ -182,36 +185,12 @@ fn statuses(doc: &Value) -> BTreeMap<Key, String> {
     out
 }
 
-/// The moves valid in `now` and not in `then`.
-///
-/// A move is the same move in both runs when its page and text are and its place differs by at
-/// most [`SAME_PLACE`] points either way: a change to the reader can move a move's box a little
-/// (OCR measures its glyphs against another text scale), and that is not a move lost. A move
-/// matched nowhere near counts only when its page has more valid moves with its text in `now`
-/// than in `then`: its box was wrong in one run (a line inflated by a frame read as a glyph) and
-/// right in the other, and the move is the same.
+/// The moves valid in `now` and not in `then`, by the one matching rule the benches share
+/// (`crates/chessvision/examples/common/moves_match.rs`, plan A9 Q2): the same page and text, a
+/// place a few points away, or as many times valid on its page.
 fn newly_valid<'a>(now: &'a BTreeMap<Key, String>, then: &BTreeMap<Key, String>) -> Vec<&'a Key> {
-    let valid_on_page = |map: &BTreeMap<Key, String>, k: &Key| {
-        map.range((k.0, i64::MIN, i64::MIN, String::new())..)
-            .take_while(|(o, _)| o.0 == k.0)
-            .filter(|(o, st)| st.as_str() == "valid" && o.3 == k.3)
-            .count()
-    };
-    now.iter()
-        .filter(|(k, s)| {
-            s.as_str() == "valid"
-                && !then
-                    .range((k.0, i64::MIN, i64::MIN, String::new())..)
-                    .take_while(|(o, _)| o.0 == k.0)
-                    .any(|(o, st)| st.as_str() == "valid" && o.3 == k.3 && (o.1 - k.1).abs() <= SAME_PLACE && (o.2 - k.2).abs() <= SAME_PLACE)
-                && valid_on_page(now, k) > valid_on_page(then, k)
-        })
-        .map(|(k, _)| k)
-        .collect()
+    moves_match::newly(now, then, |s| s == "valid")
 }
-
-/// How far, in points, a move's place may move between runs and still be the same move.
-const SAME_PLACE: i64 = 4;
 
 fn tally(doc: &Value) -> Tally {
     let mut t = Tally::default();
