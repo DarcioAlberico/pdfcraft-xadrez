@@ -783,6 +783,8 @@
 	Couldn't check for updates: {e}	アップデートを確認できませんでした: {e}
 	You have version {c}. All releases are listed at {page}.	現在のバージョンは {c} です。すべてのリリースは {page} に掲載されています。
 	Asks GitHub for the latest release. Nothing is downloaded or installed automatically.	GitHub で最新リリースを確認します。自動でダウンロードやインストールは行いません。
+	PdfCraft Xadrez {b}: new versions come from the dist/app folder.	PdfCraft Xadrez {b}: 新しいバージョンは dist/app フォルダーから入手します。
+	Nothing is asked over the network: the original PdfCraft's releases lack the chess tools.	ネットワークには何も問い合わせません。元の PdfCraft のリリースにはチェスのツールがありません。
 	Download	ダウンロード
 	Later	後で
 	none	なし

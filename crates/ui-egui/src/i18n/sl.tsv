@@ -238,6 +238,8 @@
 	ArtCraft website	Spletna stran ArtCraft
 	Ask about this document	Vprašaj o tem dokumentu
 	Asks GitHub for the latest release. Nothing is downloaded or installed automatically.	Vpraša GitHub za najnovejšo izdajo. Ničesar se ne prenese ali namesti samodejno.
+	PdfCraft Xadrez {b}: new versions come from the dist/app folder.	PdfCraft Xadrez {b}: nove različice prihajajo iz mape dist/app.
+	Nothing is asked over the network: the original PdfCraft's releases lack the chess tools.	Po omrežju se ne poizveduje nič: izdajam izvirnega PdfCraft manjkajo šahovska orodja.
 	Associated with content	Povezano z vsebino
 	At least one signature has problems.	Vsaj en podpis ima težave.
 	At least one signature is invalid.	Vsaj en podpis je neveljaven.

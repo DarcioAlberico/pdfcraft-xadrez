@@ -288,6 +288,8 @@
 	Apply redactions	Pašalinti pažymėtą konfidencialią informaciją
 	Apply scale	Taikyti mastelį
 	Asks GitHub for the latest release. Nothing is downloaded or installed automatically.	„GitHub“ tikrinama, ar yra naujausia laida. Nieko automatiškai neatsisiunčiama ir neįdiegiama.
+	PdfCraft Xadrez {b}: new versions come from the dist/app folder.	PdfCraft Xadrez {b}: naujos versijos gaunamos iš aplanko dist/app.
+	Nothing is asked over the network: the original PdfCraft's releases lack the chess tools.	Tinkle nieko neklausiama: originalaus PdfCraft leidimuose nėra šachmatų įrankių.
 	At most	Daugiausia
 	Attachments	Priedai
 	Attachments Panel and Page	Priedų skydelis ir puslapis

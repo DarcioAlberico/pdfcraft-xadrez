@@ -15,6 +15,11 @@
 //! one line each way, a JSON request naming absolute paths and `ok`, and the running app opens the
 //! paths exactly as File ▸ Open would.
 //!
+//! Each copy of PdfCraft in its own folder has its own socket: the name starts with a short tag
+//! of the executable's folder ([`copy_socket_name`]), so a build kept beside the current one
+//! (`dist/app/anterior-…`), a portable copy and the installed app never hand files to each other
+//! (plan A9, E2): a file opened with the older build opens in it.
+//!
 //! Every failure falls back to the old behaviour: a launch that can't hand its files over within
 //! a few seconds opens its own window. `--new-window`, any other option, or no files at all also
 //! starts a window of its own, as before. macOS keeps its current behaviour (it already routes
@@ -159,6 +164,7 @@ fn socket_path() -> Option<std::path::PathBuf> {
     // own name so it never hands files to an installed copy (which keeps its settings elsewhere).
     // Never the portable folder itself: it may sit where other accounts can write (`C:\Tools`).
     let name = if pdfcraft_ui_egui::portable::data_dir().is_some() { format!("portable-{name}") } else { name };
+    let name = copy_socket_name(&name, executable_folder().as_deref());
     std::env::var_os("LOCALAPPDATA").filter(|v| !v.is_empty()).map(|d| std::path::PathBuf::from(d).join("PdfCraft").join(name))
 }
 
@@ -167,10 +173,31 @@ fn socket_path() -> Option<std::path::PathBuf> {
 #[cfg(all(unix, not(target_os = "macos")))]
 fn socket_path() -> Option<std::path::PathBuf> {
     let var = |k: &str| std::env::var(k).ok().filter(|v| !v.is_empty());
-    let name = display_socket_name(var("WAYLAND_DISPLAY").or_else(|| var("DISPLAY")).as_deref());
+    let name = copy_socket_name(&display_socket_name(var("WAYLAND_DISPLAY").or_else(|| var("DISPLAY")).as_deref()), executable_folder().as_deref());
     // The XDG base directory spec makes it the user's own (mode 0700), so the folder inside it is
     // out of other accounts' reach whatever the umask.
     var("XDG_RUNTIME_DIR").map(|d| std::path::PathBuf::from(d).join("pdfcraft").join(name))
+}
+
+/// The folder this executable is in, its links followed; `None` when the system won't say.
+#[cfg(any(windows, all(unix, not(target_os = "macos"))))]
+fn executable_folder() -> Option<std::path::PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    let exe = exe.canonicalize().unwrap_or(exe);
+    exe.parent().map(std::path::Path::to_path_buf)
+}
+
+/// `name` for the copy of PdfCraft in `folder`: a tag of the folder in front (eight hexadecimal
+/// digits of an FNV-1a hash of its path, without regard to case on Windows), so copies in two
+/// folders never share a socket and the same copy always finds its own. `name` as it is when the
+/// folder is not known.
+#[cfg_attr(not(any(windows, all(unix, not(target_os = "macos")))), allow(dead_code))]
+fn copy_socket_name(name: &str, folder: Option<&std::path::Path>) -> String {
+    let Some(folder) = folder else { return name.to_string() };
+    let path = folder.to_string_lossy();
+    let path = if cfg!(windows) { path.to_lowercase() } else { path.into_owned() };
+    let hash = path.bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, b| (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3));
+    format!("{:08x}-{name}", (hash >> 32) ^ (hash & 0xffff_ffff))
 }
 
 /// The socket's file name for a display (`WAYLAND_DISPLAY`, else `DISPLAY`): a launch opens its
@@ -404,6 +431,29 @@ mod tests {
         let events = poll();
         assert!(matches!(events.as_slice(), [OsEvent::Open(p)] if p == &["a.pdf", "b.pdf"]));
         assert!(poll().is_empty(), "each file is delivered once");
+    }
+
+    /// Plan A9, E2 (R10-01): the build kept beside the current one used to share its socket, so a
+    /// file opened with it opened in the other. Copies in two folders get two names; the same
+    /// copy, the same name.
+    #[test]
+    fn each_copy_of_the_app_gets_its_own_socket_name() {
+        use std::path::Path;
+        let base = socket_name(Some(1), None);
+        let current = copy_socket_name(&base, Some(Path::new(r"C:\PdfCraft\dist\app")));
+        let kept = copy_socket_name(&base, Some(Path::new(r"C:\PdfCraft\dist\app\anterior-2026-10-31")));
+        assert_ne!(current, kept, "two copies, two sockets");
+        assert_eq!(current, copy_socket_name(&base, Some(Path::new(r"C:\PdfCraft\dist\app"))), "the same copy finds its own");
+        assert!(current.ends_with("-instance-s1.sock") && current.len() == "01234567-instance-s1.sock".len(), "{current}");
+        assert!(current.chars().all(|c| c.is_ascii_alphanumeric() || "-.".contains(c)), "never a path: {current}");
+        assert_ne!(
+            copy_socket_name("instance.sock", Some(Path::new("/opt/pdfcraft"))),
+            copy_socket_name("instance.sock", Some(Path::new("/home/u/pdfcraft")))
+        );
+        if cfg!(windows) {
+            assert_eq!(current, copy_socket_name(&base, Some(Path::new(r"c:\pdfcraft\DIST\app"))), "Windows paths ignore case");
+        }
+        assert_eq!(copy_socket_name(&base, None), base, "no folder known: as before");
     }
 
     #[test]

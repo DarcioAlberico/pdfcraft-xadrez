@@ -1003,6 +1003,9 @@ impl Automation {
             "looked_in": if dir.is_some() { "models_dir" } else { "PDFCRAFT_MODELS, then beside the executable" },
             "reads_fonts_without_model": true,
             "piece_set": piece_set,
+            // Which build answers (plan A9, E2): builds kept side by side are one version.
+            "build": pdfcraft_engine::build_info::BUILD,
+            "version": pdfcraft_engine::build_info::VERSION,
         }))
     }
 }

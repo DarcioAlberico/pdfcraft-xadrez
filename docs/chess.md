@@ -373,6 +373,10 @@ The review journeys of plan A8 (§5), measured on 2026-10-29 by `the_review_jour
 
 Not measured here: the same journeys by the keyboard alone (the Diagram tab's are, in `the_diagram_tab_corrects_and_confirms_by_the_keyboard_alone`), and the plan's test with three people who don't program.
 
+## Builds side by side
+
+The chess edition is built into a `dist/app` folder, and earlier builds are kept beside it (`dist/app/anterior-…`). Each copy of PdfCraft in its own folder is its own instance: a PDF opened with an older build opens in that build, never in the current one's window (the single-instance socket's name carries a tag of the executable's folder). Every build says which it is: the short commit and the date the release script built (`PDFCRAFT_BUILD_ID`), or `dev`, in About, in `--version` (`pdfcraft 0.9.0, build 5f757af 2026-11-11`) and in `chess_status` (`build`, `version`). **Help ▸ Check for updates** asks nothing over the network: the original PdfCraft's releases lack the chess tools, so it says "PdfCraft Xadrez *build*: new versions come from the dist/app folder."
+
 ## Headless: tools and CLI
 
 Every feature is also a tool (`pdfcraft-cli tools`; the MCP server is opt-in):
