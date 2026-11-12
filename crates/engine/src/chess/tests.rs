@@ -596,7 +596,7 @@ fn the_users_models_read_an_embedded_board() {
         eprintln!("skipped: set PDFCRAFT_CHESS_TEST_MODELS to the folder of the chess models");
         return;
     };
-    let (set, source, _) = pdfcraft_chessvision::pieces::find();
+    let (set, source, _) = pdfcraft_chessvision::pieces::find(None);
     let image = rasterize(OPENING, &set, 640);
     let content = "q 160 0 0 160 220 320 cm /Im1 Do Q\n";
     let (mut s, id) = open(pdf(content, "Helvetica", Some((640, 640, &image)), ""));

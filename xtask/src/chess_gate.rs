@@ -8,7 +8,8 @@
 //!    chess texts in every complete catalogue (`ui-egui/src/i18n/chess_scan.rs`; both files are
 //!    included here as they are, so the crate's own tests run the same code), the parity
 //!    manifest (no TOML 1.1 escape, so TOML 1.0 tools read it, then `xtask parity`'s
-//!    validation), `xtask layers`, `xtask assets`, and `cargo test -p xtask` when xtask changed.
+//!    validation), no crate below L7 asking where the executable is (plan A9-T3), `xtask layers`,
+//!    `xtask assets`, and `cargo test -p xtask` when xtask changed.
 //! 2. **Lower crates**: clippy `-D warnings` and the tests of each changed crate below L6, and
 //!    the wasm32 check of `pdfcraft-chess` and `pdfcraft-chessvision` when they changed.
 //! 3. **Engine and up** (when L6+, an app or the CLI changed): `cargo check` of the CLI and the
@@ -307,6 +308,11 @@ impl Gate {
         let t = Instant::now();
         let result = toml10(&self.root.join("parity/acrobat-features.toml"));
         if !self.record(1, "parity manifest is TOML 1.0", t, result) {
+            return false;
+        }
+        let t = Instant::now();
+        let result = executable_below_l7(&self.root);
+        if !self.record(1, "nothing below L7 asks where the executable is", t, result) {
             return false;
         }
         for (name, f) in [
@@ -615,6 +621,66 @@ fn file_access(root: &Path) -> Result<String, String> {
     if offenders.is_empty() { Ok(String::new()) } else { Err(format!("resolve the path with `self.resolve` first:\n{}", offenders.join("\n"))) }
 }
 
+/// Crates below L7 that may still ask the system where the executable is, and why.
+const EXECUTABLE_BELOW_L7: &[(&str, &str)] =
+    &[("ocr", "upstream PdfCraft's OCR model search (`Models::search_dirs`), which plan A9 leaves to the upstream crate")];
+
+/// Plan A9-T3 (R3-07): where the app is gets decided once, in `platform::app_dirs` (L7), and is
+/// passed down as a parameter; no crate below L7 calls `current_exe` (bar
+/// [`EXECUTABLE_BELOW_L7`]). Test code is left out: files named `tests*.rs`, folders named
+/// `tests`, and a file's test module (from its first `#[cfg(test)]` on).
+fn executable_below_l7(root: &Path) -> Result<String, String> {
+    let crates = root.join("crates");
+    let entries = std::fs::read_dir(&crates).map_err(|e| format!("{}: {e}", crates.display()))?;
+    let mut offenders = Vec::new();
+    let mut dirs: Vec<String> = entries.flatten().filter(|e| e.path().is_dir()).map(|e| e.file_name().to_string_lossy().into_owned()).collect();
+    dirs.sort();
+    for dir in dirs {
+        let below =
+            crate::layers::classify(&dir).is_some_and(|c| matches!(c, crate::layers::Class::Layer(l) | crate::layers::Class::Standalone(l) if l < 7));
+        if !below || EXECUTABLE_BELOW_L7.iter().any(|(d, _)| *d == dir) {
+            continue;
+        }
+        let mut stack = vec![crates.join(&dir).join("src")];
+        while let Some(folder) = stack.pop() {
+            let Ok(entries) = std::fs::read_dir(&folder) else { continue };
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let name = entry.file_name().to_string_lossy().into_owned();
+                if path.is_dir() {
+                    if name != "tests" {
+                        stack.push(path);
+                    }
+                    continue;
+                }
+                if !name.ends_with(".rs") || name.starts_with("tests") {
+                    continue;
+                }
+                let text = std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+                let shown = path.strip_prefix(root).unwrap_or(&path).to_string_lossy().replace('\\', "/");
+                offenders.extend(asks_for_executable(&shown, &text));
+            }
+        }
+    }
+    offenders.sort();
+    if offenders.is_empty() {
+        Ok(String::new())
+    } else {
+        Err(format!("pass the install folder down from `platform::app_dirs::AppDirs` instead (plan A9-T3):\n{}", offenders.join("\n")))
+    }
+}
+
+/// The lines of `text` (the file `name`) before its test module whose code calls `current_exe`,
+/// as `name:line: text`. A `//` comment is not code.
+fn asks_for_executable(name: &str, text: &str) -> Vec<String> {
+    let code = text.split("\n#[cfg(test)]").next().unwrap_or("");
+    code.lines()
+        .enumerate()
+        .filter(|(_, line)| line.split("//").next().unwrap_or("").contains("current_exe"))
+        .map(|(n, line)| format!("{name}:{}: {}", n + 1, line.trim()))
+        .collect()
+}
+
 /// The chess texts of `crates/ui-egui/src/chess*.rs` in every catalogue complete for chess.
 fn chess_catalogues(root: &Path) -> Result<String, String> {
     let src = root.join("crates/ui-egui/src");
@@ -832,9 +898,17 @@ mod tests {
         let _ = std::fs::remove_dir_all(dir);
     }
 
+    /// A9-T3: a call in code is found, one in a comment or in the test module is not.
+    #[test]
+    fn a_call_for_the_executable_is_found_in_code_only() {
+        let text = "fn a() {}\n// std::env::current_exe() in a comment\nfn b() { let e = std::env::current_exe(); }\n#[cfg(test)]\nmod tests { fn c() { std::env::current_exe(); } }\n";
+        assert_eq!(asks_for_executable("x.rs", text), vec!["x.rs:3: fn b() { let e = std::env::current_exe(); }".to_owned()]);
+    }
+
     #[test]
     fn the_committed_tree_passes_the_scans() {
         let root = root();
+        executable_below_l7(&root).unwrap();
         file_access(&root).unwrap();
         chess_catalogues(&root).unwrap();
         toml10(&root.join("parity/acrobat-features.toml")).unwrap();

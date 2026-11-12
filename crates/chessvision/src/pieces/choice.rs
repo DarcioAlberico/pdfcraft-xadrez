@@ -85,22 +85,23 @@ pub fn environment_overrides() -> bool {
     std::env::var_os(ENV).is_some()
 }
 
-/// The pieces `choice` names for `role`. A chosen set that cannot be read is reported and plain
-/// shapes drawn instead, as [`super::find`] does with the variable's.
-pub fn resolve(choice: &PieceChoice, role: Role) -> (PieceSet, PieceSource, Option<PieceError>) {
-    resolve_with(choice, role, std::env::var_os(ENV))
+/// The pieces `choice` names for `role`, [`PieceChoice::Auto`] found in `install` (the folder the
+/// app is installed in). A chosen set that cannot be read is reported and plain shapes drawn
+/// instead, as [`super::find`] does with the variable's.
+pub fn resolve(choice: &PieceChoice, role: Role, install: Option<&Path>) -> (PieceSet, PieceSource, Option<PieceError>) {
+    resolve_with(choice, role, std::env::var_os(ENV), install)
 }
 
 /// The pieces `choice` names for `role`, whether or not the variable is set: what a picker
 /// shows for each set.
-pub fn load(choice: &PieceChoice, role: Role) -> (PieceSet, PieceSource, Option<PieceError>) {
-    resolve_with(choice, role, None)
+pub fn load(choice: &PieceChoice, role: Role, install: Option<&Path>) -> (PieceSet, PieceSource, Option<PieceError>) {
+    resolve_with(choice, role, None, install)
 }
 
-fn resolve_with(choice: &PieceChoice, role: Role, env: Option<OsString>) -> (PieceSet, PieceSource, Option<PieceError>) {
+fn resolve_with(choice: &PieceChoice, role: Role, env: Option<OsString>, install: Option<&Path>) -> (PieceSet, PieceSource, Option<PieceError>) {
     let found = || match role {
-        Role::Board => super::find_for_board(),
-        Role::Diagrams => super::find(),
+        Role::Board => super::find_for_board(install),
+        Role::Diagrams => super::find(install),
     };
     if env.is_some() {
         return found();
@@ -153,9 +154,9 @@ pub struct Candidate {
 /// the executable, the plain shapes. Fonts that cannot be read are left out, as are those whose
 /// layout the catalogue only presumes and a second font of a family already listed (a patched
 /// copy, the same font installed); a folder missing pieces is listed with [`Candidate::missing`].
-pub fn candidates() -> Vec<Candidate> {
-    let fonts = crate::text_font::beside_executable();
-    let pieces = super::beside_executable();
+pub fn candidates(install: Option<&Path>) -> Vec<Candidate> {
+    let fonts = crate::text_font::fonts_folder(install);
+    let pieces = super::pieces_folder(install);
     candidates_in(fonts.as_deref(), pieces.as_deref(), &super::installed_chess_fonts())
 }
 
@@ -267,19 +268,19 @@ mod tests {
     #[test]
     fn a_choice_is_resolved_unless_the_variable_names_the_pieces() {
         let dir = scratch("resolve");
-        let (set, source, error) = resolve_with(&PieceChoice::Bundled("firi".into()), Role::Board, None);
+        let (set, source, error) = resolve_with(&PieceChoice::Bundled("firi".into()), Role::Board, None, None);
         assert_eq!((set.name.as_str(), &source, error.is_none()), ("Firi", &PieceSource::Bundled { id: "firi" }, true));
-        let (_, source, error) = resolve_with(&PieceChoice::Bundled("cburnett".into()), Role::Diagrams, None);
+        let (_, source, error) = resolve_with(&PieceChoice::Bundled("cburnett".into()), Role::Diagrams, None, None);
         assert_eq!(source, PieceSource::Geometric);
         assert!(matches!(error, Some(PieceError::UnknownSet(ref id)) if id == "cburnett"), "{error:?}");
         let folder = piece_folder(&dir, "mine", 12);
-        let (_, source, error) = resolve_with(&PieceChoice::Folder(folder.clone()), Role::Diagrams, None);
+        let (_, source, error) = resolve_with(&PieceChoice::Folder(folder.clone()), Role::Diagrams, None, None);
         assert_eq!((source, error.is_none()), (PieceSource::Images { dir: folder.clone() }, true));
-        let (_, source, error) = resolve_with(&PieceChoice::Font(dir.join("gone.ttf")), Role::Diagrams, None);
+        let (_, source, error) = resolve_with(&PieceChoice::Font(dir.join("gone.ttf")), Role::Diagrams, None, None);
         assert_eq!((source, error.is_some()), (PieceSource::Geometric, true));
-        assert_eq!(resolve_with(&PieceChoice::Geometric, Role::Board, None).1, PieceSource::Geometric);
+        assert_eq!(resolve_with(&PieceChoice::Geometric, Role::Board, None, None).1, PieceSource::Geometric);
         // The variable takes precedence over the choice: what it names is found instead.
-        let (_, source, _) = resolve_with(&PieceChoice::Bundled("firi".into()), Role::Board, Some(OsString::from("x")));
+        let (_, source, _) = resolve_with(&PieceChoice::Bundled("firi".into()), Role::Board, Some(OsString::from("x")), None);
         assert_ne!(source, PieceSource::Bundled { id: "firi" });
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -339,10 +340,10 @@ mod tests {
             named,
             [("Chess Cases", Some(cases.as_path())), ("Chess Leipzig DG", Some(leipzig.as_path())), ("Chess Merida", Some(merida.as_path()))]
         );
-        let (set, source, error) = resolve_with(&PieceChoice::Font(cases.clone()), Role::Diagrams, None);
+        let (set, source, error) = resolve_with(&PieceChoice::Font(cases.clone()), Role::Diagrams, None, None);
         assert_eq!((set.name.as_str(), error.is_none()), ("Chess Cases", true));
         assert_eq!(source, PieceSource::Font { path: Some(cases), family: "Chess Cases".into() });
-        let (set, _, error) = resolve_with(&PieceChoice::Font(linares), Role::Board, None);
+        let (set, _, error) = resolve_with(&PieceChoice::Font(linares), Role::Board, None, None);
         assert_eq!((set.name.as_str(), error.is_none()), ("Linares Diagram", true));
         let _ = std::fs::remove_dir_all(&dir);
     }

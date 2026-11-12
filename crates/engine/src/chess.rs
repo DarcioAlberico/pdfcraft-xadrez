@@ -92,9 +92,9 @@ pub struct ChessScanSettings {
     /// Also read diagram fonts whose layout was not checked against the font.
     pub allow_unverified_fonts: bool,
     /// The folder of the piece model (`chess-pieces.onnx` and `.json`). `None` uses the models
-    /// installed from files ([`install_models`], the web app) or looks where
-    /// [`ChessModels::find`] looks (`$PDFCRAFT_MODELS`, then beside the executable). The app
-    /// passes the folder chosen in it, through [`ChessModels::locate`].
+    /// installed from files ([`install_models`], the web app), or none. The engine never looks
+    /// for a folder itself (plan A9-T3): the frontends pass the one [`ChessModels::locate`] finds
+    /// from the folder chosen in the app, `$PDFCRAFT_MODELS` and the install folder.
     pub models_dir: Option<PathBuf>,
 }
 
@@ -455,9 +455,9 @@ fn page_objects(cos: &pdfcraft_cos::Document, count: usize) -> Vec<pdfcraft_cos:
 /// Model folders kept loaded at most; the oldest goes first.
 const MAX_MODEL_FOLDERS: usize = 8;
 
-/// The models loaded so far, by folder (`None`: found as [`ChessModels::find`] finds them), and
-/// the ones installed from files for the session (the web app). Generic so its rules can be
-/// tested without real models.
+/// The models loaded so far, by folder, and the ones installed from files for the session (the
+/// web app), used when no folder is given. Generic so its rules can be tested without real
+/// models.
 struct ModelCache<T> {
     installed: Option<Arc<T>>,
     loaded: Vec<(Option<PathBuf>, Arc<T>)>,
@@ -511,10 +511,12 @@ fn model_cache() -> std::sync::MutexGuard<'static, ModelCache<ChessModels>> {
     MODELS.lock().unwrap_or_else(|e| e.into_inner())
 }
 
+/// The models in `dir`; none without a folder (the frontend found none, or it is the web app
+/// with no models installed).
 fn load_models(dir: Option<&Path>) -> ChessModels {
     match dir {
         Some(d) => ChessModels::load_from(d),
-        None => ChessModels::find(),
+        None => ChessModels::none(),
     }
 }
 
@@ -524,9 +526,9 @@ fn worth_keeping(models: &ChessModels) -> bool {
     models.pieces.loaded().is_some()
 }
 
-/// The user's chess models for `dir` (or found as [`ChessModels::find`] finds them), loaded
-/// once and shared. Without `dir`, models installed from files ([`install_models`]) come first.
-/// The app passes the folder [`ChessModels::locate`] finds from the one chosen in it.
+/// The user's chess models in `dir`, loaded once and shared. Without `dir`, the models installed
+/// from files ([`install_models`]), or none. The frontends pass the folder [`ChessModels::locate`]
+/// finds from the one chosen in the app and the install folder.
 pub fn models(dir: Option<&Path>) -> Arc<ChessModels> {
     model_cache().get(dir, load_models, worth_keeping)
 }

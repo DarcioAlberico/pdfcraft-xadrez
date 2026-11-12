@@ -8,8 +8,9 @@
 //!   figurines, Informator symbols, digits, letters and ligatures.
 //!
 //! The weights stay on the user's machine (blueprint decision D2). On the desktop they are found
-//! in the folder chosen in the app (Chess models…), then `$PDFCRAFT_MODELS`, then beside the
-//! executable ([`ChessModels::locate`]); in the browser there is no file system, so the user
+//! in the folder chosen in the app (Chess models…), then `$PDFCRAFT_MODELS`, then in the folder the
+//! app is installed in, which the frontend passes ([`ChessModels::locate`]; plan A9-T3: nothing
+//! here asks where the executable is); in the browser there is no file system, so the user
 //! picks the files and the page passes their bytes to [`ChessModels::from_files`] (each at most
 //! [`MAX_PICKED_FILE_BYTES`]). Without a model, detection still works and reading reports
 //! [`ModelState::Missing`].
@@ -451,23 +452,13 @@ impl ChessModels {
         ChessModels { pieces: ModelState::Missing, glyphs: ModelState::Missing, folder: None }
     }
 
-    /// Look for the models in `$PDFCRAFT_MODELS`, then beside the executable. In the browser
-    /// there is no such folder and both are missing.
-    pub fn find() -> ChessModels {
-        match ChessModels::locate(None) {
-            Some(dir) => ChessModels::load_from(&dir),
-            None => ChessModels::none(),
-        }
-    }
-
     /// The folder the models are loaded from: `chosen` (the folder picked in the app) when it
-    /// holds a model, else the first of `$PDFCRAFT_MODELS`, `models` beside the executable and
-    /// the executable's own folder that does. A chosen folder that is gone or holds no model
-    /// falls back to the search; the caller can tell by comparing. `None` when no folder holds
-    /// one (always in the browser).
-    pub fn locate(chosen: Option<&Path>) -> Option<PathBuf> {
-        let exe = std::env::current_exe().ok();
-        locate_in(chosen, std::env::var_os("PDFCRAFT_MODELS"), exe.as_deref())
+    /// holds a model, else the first of `$PDFCRAFT_MODELS`, `models` in `install` (the folder the
+    /// app is installed in: the executable's, which the frontend resolves) and `install` itself
+    /// that does. A chosen folder that is gone or holds no model falls back to the search; the
+    /// caller can tell by comparing. `None` when no folder holds one (always in the browser).
+    pub fn locate(chosen: Option<&Path>, install: Option<&Path>) -> Option<PathBuf> {
+        locate_in(chosen, std::env::var_os("PDFCRAFT_MODELS"), install)
     }
 
     /// Load whatever models `dir` holds.
@@ -530,22 +521,22 @@ pub fn holds_models(dir: &Path) -> bool {
 }
 
 /// The folders looked in, in order: the one chosen in the app, `$PDFCRAFT_MODELS` (`env`), then
-/// `models` beside the executable `exe` and the executable's own folder.
-fn search_order(chosen: Option<&Path>, env: Option<OsString>, exe: Option<&Path>) -> Vec<PathBuf> {
+/// `models` in the install folder and the install folder itself.
+fn search_order(chosen: Option<&Path>, env: Option<OsString>, install: Option<&Path>) -> Vec<PathBuf> {
     let mut dirs: Vec<PathBuf> = chosen.map(Path::to_path_buf).into_iter().collect();
     if let Some(dir) = env.filter(|d| !d.is_empty()) {
         dirs.push(PathBuf::from(dir));
     }
-    if let Some(parent) = exe.and_then(Path::parent) {
-        dirs.push(parent.join("models"));
-        dirs.push(parent.to_path_buf());
+    if let Some(install) = install {
+        dirs.push(install.join("models"));
+        dirs.push(install.to_path_buf());
     }
     dirs
 }
 
-/// [`ChessModels::locate`] with `$PDFCRAFT_MODELS` and the executable given.
-fn locate_in(chosen: Option<&Path>, env: Option<OsString>, exe: Option<&Path>) -> Option<PathBuf> {
-    search_order(chosen, env, exe).into_iter().find(|d| holds_models(d))
+/// [`ChessModels::locate`] with `$PDFCRAFT_MODELS` given.
+fn locate_in(chosen: Option<&Path>, env: Option<OsString>, install: Option<&Path>) -> Option<PathBuf> {
+    search_order(chosen, env, install).into_iter().find(|d| holds_models(d))
 }
 
 /// One model from picked files: missing when neither file was picked. Its parity file, when
@@ -677,33 +668,33 @@ mod tests {
         dir
     }
 
-    /// U4: the folder chosen in the app comes first, then `$PDFCRAFT_MODELS`, then `models`
-    /// beside the executable, then the executable's folder; a folder is used only when it holds a
-    /// model, so a chosen folder that is gone or empty falls back to the search.
+    /// U4: the folder chosen in the app comes first, then `$PDFCRAFT_MODELS`, then `models` in
+    /// the install folder the frontend passes (the executable's, plan A9-T3), then that folder
+    /// itself; a folder is used only when it holds a model, so a chosen folder that is gone or
+    /// empty falls back to the search.
     #[test]
     fn the_chosen_folder_comes_before_the_environment_and_the_executable() {
         let root = scratch("precedence");
-        let [chosen, env, exe_dir] = ["chosen", "env", "bin"].map(|d| root.join(d));
-        let exe = exe_dir.join("pdfcraft.exe");
-        for dir in [&chosen, &env, &exe_dir.join("models"), &exe_dir] {
+        let [chosen, env, install] = ["chosen", "env", "bin"].map(|d| root.join(d));
+        for dir in [&chosen, &env, &install.join("models"), &install] {
             std::fs::create_dir_all(dir).unwrap();
             std::fs::write(dir.join(format!("{GLYPHS}.onnx")), b"not a model").unwrap();
         }
         let env_var = || Some(OsString::from(&env));
-        assert_eq!(locate_in(Some(&chosen), env_var(), Some(&exe)), Some(chosen.clone()));
-        assert_eq!(locate_in(None, env_var(), Some(&exe)), Some(env.clone()));
-        assert_eq!(locate_in(None, None, Some(&exe)), Some(exe_dir.join("models")));
-        std::fs::remove_dir_all(exe_dir.join("models")).unwrap();
-        assert_eq!(locate_in(None, Some(OsString::new()), Some(&exe)), Some(exe_dir.clone()), "an empty PDFCRAFT_MODELS is no folder");
+        assert_eq!(locate_in(Some(&chosen), env_var(), Some(&install)), Some(chosen.clone()));
+        assert_eq!(locate_in(None, env_var(), Some(&install)), Some(env.clone()));
+        assert_eq!(locate_in(None, None, Some(&install)), Some(install.join("models")));
+        std::fs::remove_dir_all(install.join("models")).unwrap();
+        assert_eq!(locate_in(None, Some(OsString::new()), Some(&install)), Some(install.clone()), "an empty PDFCRAFT_MODELS is no folder");
         // A chosen folder without a model, or gone, gives way to the search.
         let empty = root.join("empty");
         std::fs::create_dir_all(&empty).unwrap();
-        assert_eq!(locate_in(Some(&empty), env_var(), Some(&exe)), Some(env.clone()));
-        assert_eq!(locate_in(Some(&root.join("gone")), env_var(), Some(&exe)), Some(env.clone()));
+        assert_eq!(locate_in(Some(&empty), env_var(), Some(&install)), Some(env.clone()));
+        assert_eq!(locate_in(Some(&root.join("gone")), env_var(), Some(&install)), Some(env.clone()));
         assert_eq!(locate_in(Some(&empty), None, None), None);
         // A pieces model alone counts too, and the folder's models are loaded and judged.
         std::fs::write(empty.join(format!("{PIECES}.onnx")), b"not a model").unwrap();
-        assert_eq!(locate_in(Some(&empty), env_var(), Some(&exe)), Some(empty.clone()));
+        assert_eq!(locate_in(Some(&empty), env_var(), Some(&install)), Some(empty.clone()));
         let found = ChessModels::load_from(&empty);
         assert!(matches!(&found.pieces, ModelState::Invalid(why) if why.contains("chess-pieces.json")), "{:?}", found.pieces);
         assert!(matches!(found.glyphs, ModelState::Missing));

@@ -2078,7 +2078,7 @@ fn in_card<'a>(h: &'a Harness<'static, PdfCraftApp>, id: &str, label: &'a str) -
 /// the program, with analysis on.
 #[test]
 fn analyze_without_an_engine_shows_the_assistant() {
-    if pdfcraft_engine::chess::analysis::find_engine().is_some() {
+    if pdfcraft_engine::chess::analysis::find_engine(pdfcraft_platform::app_dirs::AppDirs::current().install()).is_some() {
         eprintln!("an engine is installed for this test run: skipped");
         return;
     }

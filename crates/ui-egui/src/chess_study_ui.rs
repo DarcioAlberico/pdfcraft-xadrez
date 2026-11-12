@@ -252,7 +252,7 @@ impl StudyState {
         {
             self.assistant = self.engine.is_none()
                 && self.engine_path.as_deref().is_none_or(|p| !p.is_file())
-                && pdfcraft_engine::chess::analysis::find_engine().is_none();
+                && pdfcraft_engine::chess::analysis::find_engine(pdfcraft_platform::app_dirs::AppDirs::current().install()).is_none();
         }
     }
 
@@ -290,7 +290,7 @@ impl StudyState {
         }
         let options = AnalysisOptions { lines: self.lines, depth: DEFAULT_DEPTH };
         if self.engine.is_none() && self.start_error.is_none() && !self.no_engine {
-            match self.engine_path.clone().or_else(find_engine) {
+            match self.engine_path.clone().or_else(|| find_engine(pdfcraft_platform::app_dirs::AppDirs::current().install())) {
                 None => self.no_engine = true,
                 Some(path) => {
                     let ctx = ctx.clone();

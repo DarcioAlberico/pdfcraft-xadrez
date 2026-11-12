@@ -429,6 +429,8 @@ Branches `feat/chess-a9-<id>` (ou `fix/`). Alvo < ~800 linhas alteradas por PR. 
 
 **Passo 0 (dois PRs; S).** **P1 — feito em 2026-11-11** (o PR deste plano): o plano; `docs/chess/analise-9/` com A1–A8, R1–R10, `log.md`, `brief.md`, `review-brief.md`, `coerencia.py` (confere ficha × grafo × ondas × núcleo; rode a cada versão do plano), `dry.txt` e `parity_open.txt`; o texto da ajuda de 2026-10-31 extraído por `pdfcraft-cli text` em `docs/chess/ajuda/texto-2026-10-31.txt`, como fonte pt-BR do E1 (a fonte HTML e as imagens se perderam numa pasta temporária; os geradores `gen_book.py`, `toc.py` e `sheet.py` estão em `C:/Python-Chess2/analise-9-local/ajuda/`), e `docs/chess/ajuda/PENDENTE.md`. As provas foram copiadas da pasta temporária da sessão para `C:/Python-Chess2/analise-9-local/`, e a v0 sem commit saiu do worktree de leitura. **P2 — antes do Q1a** (faixa A): em cada uma das 20 entradas de xadrez do `parity/`, uma frase "Missing (plano A9): …" com os achados C e I abertos contra ela (R10-04; o `saida-parity.txt` da R10, em `analise-9-local/R10/`, já os cruza); `cargo xtask parity` e os testes do `xtask` verdes. Cada passo tira a sua frase quando fecha o achado.
 
+**Execução:** o núcleo ficou completo em 2026-11-12 (PRs #258–#283). O que foi feito em cada passo, e onde a execução se desviou do texto deste plano (passos divididos, decisões tomadas no caminho), está em `analise-9/execucao.md`, a fonte para o passo seguinte.
+
 **O núcleo** — o que vale fazer mesmo se o resto parar (≈ 16 PRs, ≈ 17 dias de agente, ≈ 2 semanas com as três faixas das ondas 0–1):
 
 | # | Passo | Fecha | PRs · dias |

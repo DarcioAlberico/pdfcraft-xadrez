@@ -116,7 +116,7 @@ impl ModelsPref {
         if cfg!(target_arch = "wasm32") {
             return None;
         }
-        ChessModels::locate(self.folder.as_deref())
+        ChessModels::locate(self.folder.as_deref(), pdfcraft_platform::app_dirs::AppDirs::current().install())
     }
 
     /// The preference, for the settings file.
@@ -291,7 +291,7 @@ impl PdfCraftApp {
             return;
         }
         let chosen = self.chess.models.folder.clone();
-        let dir = ChessModels::locate(chosen.as_deref());
+        let dir = ChessModels::locate(chosen.as_deref(), pdfcraft_platform::app_dirs::AppDirs::current().install());
         let models = pdfcraft_engine::chess::reload_models(dir.as_deref());
         self.chess.models.report = Some(ModelsReport::of(&models, chosen.as_deref(), Vec::new()));
     }

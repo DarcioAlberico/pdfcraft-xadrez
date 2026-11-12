@@ -9,3 +9,9 @@
 # since  = the date it was first seen failing on main.
 # kind   = "upstream" (fails on the PdfCraft main this fork merges), "machine" (this machine's
 #          setup: fonts, printers, drivers), or "flaky" (sometimes passes).
+
+[[failure]]
+test = "pdfcraft-ui-egui --test chess_theme (crashed)"
+reason = "an access violation while rendering screenshots, seen once in a full ui-egui run; passes on re-run"
+since = "2026-11-12"
+kind = "flaky"

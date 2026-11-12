@@ -2,7 +2,8 @@
 //! other), run as a child process, analysing the position the board shows.
 //!
 //! None ships with PdfCraft and none is fetched. The engine is `$PDFCRAFT_CHESS_ENGINE`, the
-//! program in an `engine` folder beside the executable, or one the user picks ([`find_engine`]).
+//! program in an `engine` folder beside the executable (in the install folder the frontend passes,
+//! plan A9-T3), or one the user picks ([`find_engine`]).
 //! It is a separate process speaking UCI over its standard input and output, so its licence does
 //! not reach PdfCraft. Desktop only: the web build cannot start processes.
 //!
@@ -67,13 +68,13 @@ pub fn test_engine() -> Result<Option<PathBuf>, String> {
 }
 
 /// The engine program to use: `$PDFCRAFT_CHESS_ENGINE` when it names a file, else the program
-/// in an `engine` folder beside the executable or in a folder inside it.
-pub fn find_engine() -> Option<PathBuf> {
+/// in the `engine` folder of `install` (the folder the app is installed in: the executable's,
+/// which the frontend resolves) or in a folder inside it. `None` without either.
+pub fn find_engine(install: Option<&Path>) -> Option<PathBuf> {
     if let Some(path) = std::env::var_os("PDFCRAFT_CHESS_ENGINE").map(PathBuf::from).filter(|p| p.is_file()) {
         return Some(path);
     }
-    let exe = std::env::current_exe().ok()?;
-    program_in(&exe.parent()?.join("engine"))
+    program_in(&install?.join("engine"))
 }
 
 /// The first program in `dir`, by name: an `.exe` on Windows, a file anyone may execute
