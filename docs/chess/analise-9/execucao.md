@@ -53,6 +53,12 @@ Cada passo do plano (`../plano-analise-9.md`) com o PR que o fez e o que mudou e
 |---|---|---|
 | A9-L5 | #299 | A palavra impressa vai até `ChessRun::Move { repaired: Some((de, para)) }` e vira `ReviewFlag::TextRepaired` na leitura do lance (`read_review`); juntar pedaços de um lance não é troca. `San::to_move_checked` e `ReviewFlag::NotationMismatch { text, capture, check, mate }` (só a marca impressa e errada conta). **Decisões:** (1) a "evidência fraca" entra só onde o walker escolhe entre diagramas (`seed_fits`: o diagrama de antes ainda toma o lance quando nenhum outro serve); continuar a partida depois de um diagrama não mudou; (2) o alinhamento com o PGN do livro ainda não pesa a bandeira (fica anotado no `parity/`); (3) a revisão do PGN do livro (passo R2 do `plano-pgn-do-livro.md`) vê a troca pela bandeira no lance. |
 
+## Onda 3 (em andamento)
+
+| Passo | PR | Desvios e decisões |
+|---|---|---|
+| A9-L6a | (este PR) | `ChessPage.text_lang` (idioma do texto) ao lado de `lang` (das letras das peças), os dois `doc::LangTag` (tag BCP 47 conferida na entrada; uma tag inválida fica vazia, "não dito", nunca erro), escritos como texto: o JSON de antes lê igual. **Decisões:** (1) o idioma do livro é decidido uma vez por documento no motor (o `/Lang` do catálogo, senão o voto de palavras funcionais de todas as páginas lidas, `ProseTally`) e dado ao `DocBuilder`; sem ele (uma página lida só, os testes) cada página vota pela sua prosa; (2) sem nada que diga, as exportações caem nas letras das peças, como antes; (3) o vocabulário cobre nove dos 18 idiomas (en, pt, es, fr, de, it, nl, ru, pl): os outros caem no `/Lang` ou nas letras. |
+
 ## Fora do plano, no mesmo período
 
 - #257: o modelo de peças retreinado no ChessVisionOFF (`fccd0097`) e o limiar de aceite por modelo (`accept_min_confidence`).

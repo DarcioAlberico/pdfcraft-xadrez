@@ -26,9 +26,9 @@
 //! Read-only: nothing here changes a document.
 
 use pdfcraft_chess::san::Lang;
-use pdfcraft_chessvision::chess_text::{self, ChessLine, ChessPageText, ChessRun, LangGuess, LangTally, TextQuality};
+use pdfcraft_chessvision::chess_text::{self, ChessLine, ChessPageText, ChessRun, LangGuess, LangTally, ProseTally, TextQuality};
 use pdfcraft_chessvision::coords::{PageGeometry, PageRect, ViewRect};
-use pdfcraft_chessvision::doc::{BlockHint, ChessDoc, DocBuilder, HintKind, PageInput, trailing_label};
+use pdfcraft_chessvision::doc::{BlockHint, ChessDoc, DocBuilder, HintKind, LangTag, PageInput, trailing_label};
 use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind};
 
 use pdfcraft_chess::repair::GameContext;
@@ -56,6 +56,9 @@ pub struct ChessDocument {
     pub lang: LangGuess,
     /// Whether `lang` was the caller's (`true`) or chosen from the pages' letters.
     pub lang_given: bool,
+    /// The language of the book's text (plan A9-L6a, A2-08): its PDF's `/Lang`, else the one the
+    /// prose of the pages read votes for; empty when neither says. The exports' language.
+    pub text_lang: LangTag,
     /// Pages (0-based) whose text layer is poor or missing and that chess OCR did not read (no
     /// glyph model, or OCR off), with the reason.
     pub needs_ocr: Vec<(usize, String)>,
@@ -504,7 +507,19 @@ impl Session {
             .map(|page| doc.editor.as_ref().map(|e| pdfcraft_edit::reading_blocks(&e.cos, page.page).map_err(|e| e.to_string())))
             .collect();
         let body = body_size(page_blocks.iter().flatten().flatten().flatten());
+        // The book's language: its PDF's `/Lang`, else what all its pages' prose says.
+        let text_lang = match LangTag::parse(doc.initial_view().language.as_deref().unwrap_or_default()) {
+            declared if !declared.is_empty() => declared,
+            _ => {
+                let mut prose = ProseTally::default();
+                for t in &chess_texts {
+                    prose.merge(&t.prose());
+                }
+                prose.guess().map(LangTag::of).unwrap_or_default()
+            }
+        };
         let mut builder = DocBuilder::new();
+        builder.text_lang(text_lang.clone());
         for ((page, layer_text), blocks) in scanned.iter().zip(&chess_texts).zip(&page_blocks) {
             let mut text = layer_text;
             let mut reviews: Vec<TextReview> = Vec::new();
@@ -630,6 +645,7 @@ impl Session {
             doc: builder.finish(),
             lang: chosen,
             lang_given: lang.is_some(),
+            text_lang,
             needs_ocr,
             ocr_pages,
             cipher,

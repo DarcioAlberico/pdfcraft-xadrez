@@ -48,6 +48,7 @@ pub mod reference;
 mod tests;
 
 use pdfcraft_chess::rules::Legality;
+use pdfcraft_chess::san::Lang;
 use serde::{Deserialize, Serialize};
 
 use crate::board::{BoardReading, ReadPosition, ReadingSource};
@@ -219,13 +220,85 @@ pub struct ChessDoc {
     pub games: Vec<Game>,
 }
 
+/// A language tag (BCP 47), checked where it enters (plan A9-L6a): one to eight ASCII letters or
+/// digits a subtag, subtags joined by hyphens, the first all letters, at most [`MAX_LANG_TAG`]
+/// characters (`en`, `pt-BR`, `zh-Hant`). A tag that is not one is empty, "not said", never an
+/// error: a document read before, or a PDF's `/Lang`, may hold anything. Written as its text.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(from = "String", into = "String")]
+pub struct LangTag(String);
+
+/// Longest language tag kept ([`LangTag`]).
+pub const MAX_LANG_TAG: usize = 35;
+
+impl LangTag {
+    /// `text` as a tag, trimmed (`_` read as `-`), when it is one; else empty.
+    pub fn parse(text: &str) -> LangTag {
+        let tag = text.trim().replace('_', "-");
+        let valid = tag.len() <= MAX_LANG_TAG
+            && tag.split('-').all(|s| (1..=8).contains(&s.len()) && s.chars().all(|c| c.is_ascii_alphanumeric()))
+            && tag.split('-').next().is_some_and(|s| s.chars().all(|c| c.is_ascii_alphabetic()));
+        if valid { LangTag(tag) } else { LangTag::default() }
+    }
+
+    /// The tag of a language with its own piece letters (`pt`).
+    pub fn of(lang: Lang) -> LangTag {
+        LangTag(lang.code().to_owned())
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// The language with its own piece letters and words this tag names (`pt-BR` is Portuguese),
+    /// when it names one.
+    pub fn lang(&self) -> Option<Lang> {
+        Lang::from_tag(&self.0)
+    }
+}
+
+impl From<String> for LangTag {
+    fn from(text: String) -> LangTag {
+        LangTag::parse(&text)
+    }
+}
+
+impl PartialEq<&str> for LangTag {
+    fn eq(&self, other: &&str) -> bool {
+        self.0 == *other
+    }
+}
+
+impl From<&str> for LangTag {
+    fn from(text: &str) -> LangTag {
+        LangTag::parse(text)
+    }
+}
+
+impl From<LangTag> for String {
+    fn from(tag: LangTag) -> String {
+        tag.0
+    }
+}
+
 /// One page.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ChessPage {
     /// The page's index in the document, from 0.
     pub index: u32,
-    /// The piece-letter language of the page's moves (BCP 47 code).
-    pub lang: String,
+    /// The piece-letter language of the page's moves (a BCP 47 tag, written as its text).
+    pub lang: LangTag,
+    /// The language of the page's text (plan A9-L6a, A2-08): the book's (its PDF's `/Lang`), else
+    /// the one its prose's function words say ([`crate::chess_text::ProseTally`]); empty when
+    /// neither says, and in a document read before it was kept: [`ChessPage::text_language`]
+    /// then falls back to the piece letters'. What a diagram is called in an export, and the
+    /// export's own language, come from it.
+    #[serde(default, skip_serializing_if = "LangTag::is_empty")]
+    pub text_lang: LangTag,
     pub text_layer: TextLayer,
     /// The text was read from a picture of the page ([`PageInput::ocr`]).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
@@ -240,6 +313,14 @@ pub struct ChessPage {
     /// with the page after it ([`DocBuilder::add_read_page`]) still passes it on.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub trailing: Option<u32>,
+}
+
+impl ChessPage {
+    /// The language the page's text is in ([`ChessPage::text_lang`]), else its piece letters',
+    /// else English.
+    pub fn text_language(&self) -> Lang {
+        self.text_lang.lang().or_else(|| self.lang.lang()).unwrap_or(Lang::En)
+    }
 }
 
 /// Where a move of the text is (plan A9-T2a, R3-09): its page (0-based), its block on the page and
@@ -789,6 +870,8 @@ pub struct DocBuilder {
     folios: Vec<i64>,
     /// The last pages' headings, to pass over running heads.
     heads: build::RunningHeads,
+    /// The book's language, every page's text language when given ([`DocBuilder::text_lang`]).
+    text_lang: LangTag,
 }
 
 impl DocBuilder {
@@ -802,11 +885,21 @@ impl DocBuilder {
         DocBuilder { walker: games::Walker::with_rules(rules), ..DocBuilder::default() }
     }
 
+    /// The book's language (its PDF's `/Lang`, or the vote of all its pages' prose): every page
+    /// added after takes it as its text language. Without it each page's own prose votes
+    /// ([`ChessPage::text_lang`]).
+    pub fn text_lang(&mut self, tag: LangTag) {
+        self.text_lang = tag;
+    }
+
     /// Add the next page. Pages are taken in the order added.
     pub fn add_page(&mut self, input: &PageInput<'_>) {
         // A caption at the foot of a page is the next page's, not a later one's.
         let carried = self.carry.take().filter(|(index, _)| index.checked_add(1) == Some(input.index)).map(|(_, n)| n);
-        let (page, trailing, folios) = build::page(input, &mut self.walker, &mut self.heads, carried, &self.folios);
+        let (mut page, trailing, folios) = build::page(input, &mut self.walker, &mut self.heads, carried, &self.folios);
+        if !self.text_lang.is_empty() {
+            page.text_lang = self.text_lang.clone();
+        }
         build::remember_folios(&mut self.folios, &folios);
         self.carry = trailing.map(|n| (input.index, n));
         self.pages.push(page);

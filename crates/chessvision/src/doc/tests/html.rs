@@ -269,3 +269,34 @@ fn five_hundred_and_forty_eight_diagrams_stay_within_fifteen_megabytes() {
         assert!(len <= 15_000_000, "{id}: {len} bytes");
     }
 }
+
+/// Plan A9-L6a (A2-08, A2's probe3): a book in Portuguese whose moves are figurines (so its piece
+/// letters say nothing, read as English) is described in Portuguese: the page's text language is
+/// its prose's, apart from its piece letters', and a language the book gives wins over both.
+#[test]
+fn a_diagram_is_described_in_the_language_of_the_books_text() {
+    let text = page_text(vec![
+        line(20.0, "As brancas não podem jogar o lance com a dama, mas a torre é forte para o ataque."),
+        line(230.0, "3.Qh5 Nf6 4.Qxf7#"),
+    ]);
+    let doc = build_page(&input(0, &text, &[reading(0, 60.0, SCHOLAR, true, false)], &[], &[]));
+    let page = &doc.pages[0];
+    assert_eq!((page.lang.as_str(), page.text_lang.as_str()), ("en", "pt"));
+    let pieces = PieceSet::geometric();
+    let html = write(&doc, &options(&pieces));
+    assert!(html.contains(">Diagrama 1, pág. 1: brancas jogam</title>"), "{html}");
+    // The book says its language: every page's.
+    let mut b = DocBuilder::new();
+    b.text_lang(LangTag::parse("de-DE"));
+    b.add_page(&input(0, &text, &[reading(0, 60.0, SCHOLAR, true, false)], &[], &[]));
+    let doc = b.finish();
+    assert_eq!(doc.pages[0].text_lang.as_str(), "de-DE");
+    assert!(write(&doc, &options(&pieces)).contains(">Diagramm 1, s. 1: Weiß am Zug</title>"));
+    // A tag that is none is not said, and an earlier document's JSON (no `text_lang`) reads as
+    // its piece letters.
+    assert!(LangTag::parse("pt BR").is_empty() && LangTag::parse("").is_empty() && LangTag::parse(&"a".repeat(40)).is_empty());
+    assert_eq!(LangTag::parse(" pt_BR ").as_str(), "pt-BR");
+    let json = doc.to_json().unwrap().replace(",\"text_lang\":\"de-DE\"", "");
+    let old = ChessDoc::from_json(&json).unwrap();
+    assert_eq!(old.pages[0].text_language(), Lang::En);
+}

@@ -2,7 +2,7 @@ use pdfcraft_chess::game::Game as PgnGame;
 use proptest::prelude::*;
 
 use super::*;
-use crate::doc::{BlockRole, ChessPage, DiagramBlock, DiagramReading, DiagramSource, FORMAT_VERSION, MoveNumber, TextLayer};
+use crate::doc::{BlockRole, ChessPage, DiagramBlock, DiagramReading, DiagramSource, FORMAT_VERSION, LangTag, MoveNumber, TextLayer};
 
 /// The FEN after `moves` from the initial position.
 pub(super) fn fen_after(moves: &[&str]) -> String {
@@ -77,6 +77,7 @@ pub(super) fn doc(pages: Vec<Vec<Block>>) -> ChessDoc {
         .map(|(i, blocks)| ChessPage {
             index: i as u32,
             lang: "en".into(),
+            text_lang: LangTag::default(),
             text_layer: TextLayer::Good,
             ocr: false,
             blocks,

@@ -22,7 +22,6 @@ use pdfcraft_chess::describe;
 use pdfcraft_chess::draw::{BoardStyle, PieceSet, board};
 use pdfcraft_chess::origin::PgnOrigin;
 use pdfcraft_chess::placement::Placement;
-use pdfcraft_chess::san::Lang;
 use pdfcraft_chess::svg::to_svg;
 use pdfcraft_chessvision::doc::html::{Figurines, Span, SpanFont, spans};
 use pdfcraft_chessvision::doc::{Block as DocBlock, ChessDoc, Inline, PageLabel};
@@ -157,7 +156,7 @@ pub fn to_flow(doc: &ChessDoc, o: &OfficeOptions<'_>, notes: &mut Vec<String>) -
     let mut blocks = Vec::new();
     let mut drawn = 0;
     for page in &doc.pages {
-        let lang = Lang::from_tag(&page.lang).unwrap_or(Lang::En);
+        let lang = page.text_language();
         let page_label = PageLabel::of(o.page_labels, page.index);
         let label = page_label.to_string();
         let of = page.blocks.iter().filter(|b| matches!(b, DocBlock::Diagram(_))).count();
