@@ -353,6 +353,12 @@ mod tests {
     #[test]
     fn adjacent_kings_are_fatal() {
         assert_eq!(check("8/8/8/3kK3/8/8/8/8"), Legality::Illegal(vec![Violation::AdjacentKings]));
+        // A rank apart, on one file and on the diagonal (plan A9-Q4a, A7-07): the two mutants of
+        // the rank test (`<= 1` made `< 1` or `<= 0`) lived because only one rank was tried.
+        assert_eq!(check("8/8/8/4k3/4K3/8/8/8"), Legality::Illegal(vec![Violation::AdjacentKings]));
+        assert_eq!(check("8/8/8/5k2/4K3/8/8/8"), Legality::Illegal(vec![Violation::AdjacentKings]));
+        // Two ranks apart they are not adjacent.
+        assert_eq!(check("8/8/4k3/8/4K3/8/8/8"), Legality::Legal);
     }
 
     #[test]
