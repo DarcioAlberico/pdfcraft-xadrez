@@ -65,8 +65,9 @@ pub const FORMAT_VERSION: u32 = 1;
 /// so an address kept by an earlier reading (a decision on a move, plan A9-L1b) is known to be
 /// of another segmentation and is matched again rather than trusted. 2 (plan A9-L1a): the lines
 /// inside a diagram's box are a block of their own ([`BlockRole::DiagramText`]), never joined with
-/// lines outside it.
-pub const READER_VERSION: u32 = 2;
+/// lines outside it. 3 (plan A9-L3): paragraph lines go on by their geometry, across the layout's
+/// paragraph hints where the sentence goes on and apart within one at a gap.
+pub const READER_VERSION: u32 = 3;
 
 /// Largest JSON text [`ChessDoc::from_json`] reads.
 pub const MAX_JSON_BYTES: usize = 64 << 20;

@@ -955,6 +955,33 @@ fn a_page_number_is_no_comment() {
     assert_eq!(pgn.matches('{').count(), 1, "{pgn}");
 }
 
+/// Plan A9-L3 (A2-05): the layout's hint says whether a line is a heading's or a paragraph's, and
+/// the geometry whether a paragraph goes on. The layout cut Harikrishna's paragraphs mid-sentence
+/// where a line's type or weight changed (`…even nicer to have a` | `knight on the kingside…`, 4 pt
+/// apart): one paragraph now. Within one hint, lines a blank line apart are two paragraphs; two
+/// hints with no gap between them stay two where the first ends its sentence.
+#[test]
+fn the_geometry_decides_where_a_paragraph_goes_on() {
+    let hint = |top: f32, bottom: f32| BlockHint { kind: HintKind::Paragraph, rect: user_box(30.0, top, 400.0, bottom) };
+    let paragraphs = |lines: Vec<ChessLine>, hints: &[BlockHint]| kinds(&build_page(&input(0, &page_text(lines), &[], hints, &[])).pages[0]);
+    // Two hints, 4 pt apart, mid-sentence: one paragraph.
+    let cut = [hint(98.0, 113.0), hint(115.0, 130.0)];
+    assert_eq!(
+        paragraphs(vec![line(100.0, "but it is even nicer to have a"), line(116.0, "knight on the kingside here")], &cut),
+        ["P:but it is even nicer to have a knight on the kingside here"]
+    );
+    // The same, the sentence ended: two.
+    assert_eq!(
+        paragraphs(vec![line(100.0, "It is even nicer."), line(116.0, "Knights love outposts.")], &cut),
+        ["P:It is even nicer.", "P:Knights love outposts."]
+    );
+    // One hint over two lines a blank line apart: two.
+    assert_eq!(
+        paragraphs(vec![line(100.0, "The first paragraph"), line(124.0, "the second one")], &[hint(98.0, 140.0)]),
+        ["P:The first paragraph", "P:the second one"]
+    );
+}
+
 /// Plan A9-L1a (A2-06): the lines inside a diagram's box are its text, whatever their font and
 /// hint: a diagram set in a font the catalogue does not know (its glyphs extracted as `4*+*+p+`)
 /// was read as a heading under the layout's hint, which ended the game and left the diagram's
@@ -2271,7 +2298,7 @@ fn the_reading_is_kept_and_an_older_document_walks_as_before() {
     let old = ChessDoc::from_json(&old.to_string()).unwrap();
     let again = walk(&old.pages, WalkRules::BOOK);
     assert_eq!(walked(&again), walked(&doc), "walked from its SAN `exd4` and its flag, as before");
-    assert_eq!(READER_VERSION, 2, "plan A9-L1a: a diagram's text is a block of its own");
+    assert_eq!(READER_VERSION, 3, "plan A9-L3: paragraphs go on by their geometry");
 }
 
 proptest! {
