@@ -3186,7 +3186,9 @@ mod tests {
     fn pgn_field_says_which_variations_it_kept_as_comments() {
         let mut s = BoardState { pgn_text: "1. e4 e5 ((1... d5)) 2. Nf3 *".into(), ..BoardState::default() };
         s.load_pgn();
-        assert_eq!(s.game.movetext(), "1. e4 {(d5)} 1... e5 2. Nf3");
+        // The variation holding only that text leaves it on the move it was an alternative to,
+        // e5 (plan A9-F2b, A1-06).
+        assert_eq!(s.game.movetext(), "1. e4 e5 {(d5)} 2. Nf3");
         assert_eq!(s.message.as_deref(), Some("Variations kept as comments: 1 (no move before them, or nested deeper than 32)."));
         s.pgn_text = "(1. d4) 1. e4 e5 2. Ke3".into();
         s.load_pgn();
