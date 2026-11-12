@@ -16,7 +16,13 @@
 //!
 //! The description and the model are both checked when they are loaded, against each other and
 //! against what this crate feeds them, so a mismatched pair fails with a message naming what
-//! differs instead of reading the wrong thing.
+//! differs instead of reading the wrong thing. Before rten sees the model its graph is read and
+//! checked ([`onnx`]): an operator a classifier does not need, a subgraph, or a tensor too large
+//! to allocate refuses it, where rten would abort the process. Once loaded, a model with a
+//! `<name>.parity.json` beside it (the references its export script wrote) is run on the same
+//! input and refused when it gives other probabilities: its weights are damaged.
+
+mod onnx;
 
 use std::ffi::OsString;
 use std::fmt;
@@ -86,7 +92,23 @@ pub enum ModelError {
     NotChosen(String),
     #[error("{name} could not be read: {why}")]
     Picked { name: String, why: String },
+    #[error("the model uses {0}, which a chess classifier never needs; it is not loaded")]
+    Unsupported(String),
+    #[error("the model's parity file is not valid: {0}")]
+    ParityFile(String),
+    #[error(
+        "the model's probabilities differ from its parity file by {worst}, more than {PARITY_TOLERANCE}: its weights are not the ones it was exported with"
+    )]
+    Parity { worst: f32 },
 }
+
+/// Most a probability may differ from the reference the export script wrote beside the model
+/// before the model is refused. rten and torch agree within 1e-4; a model with one bit of a weight
+/// flipped differed by more than this in 11 of 400 copies, and read another class in 8 (A3-10).
+pub const PARITY_TOLERANCE: f32 = 1e-3;
+
+/// Most images a parity file may hold references for (the export script writes 3).
+const MAX_PARITY_IMAGES: usize = 16;
 
 /// Whether a model is available.
 #[derive(Debug)]
@@ -184,6 +206,8 @@ impl Network {
         if bytes.len() > MAX_MODEL_BYTES {
             return Err(ModelError::TooLarge { what: "the model file", size: bytes.len(), limit: MAX_MODEL_BYTES });
         }
+        // Before rten folds a constant or allocates a tensor: an abort cannot be caught.
+        onnx::check(&bytes, &meta.input.name, side)?;
         let model = Model::load(bytes).map_err(|e| ModelError::Load(e.to_string()))?;
         let input = model.find_node(&meta.input.name).ok_or_else(|| ModelError::NoSuchNode(meta.input.name.clone()))?;
         let output = model.find_node(&meta.output.name).ok_or_else(|| ModelError::NoSuchNode(meta.output.name.clone()))?;
@@ -330,6 +354,65 @@ impl GlyphModel {
     }
 }
 
+/// The references a model's export script writes beside it (`<name>.parity.json`): the
+/// probabilities for `count` images of the pattern [`parity_input`].
+#[derive(Debug, Deserialize)]
+struct ParityFile {
+    count: usize,
+    probabilities: Vec<f32>,
+}
+
+/// The images the export script computes its references for: value `i` of the batch is
+/// `((i × 7919) mod 256) / 255`.
+fn parity_input(count: usize, side: usize) -> Vec<f32> {
+    let n = count.saturating_mul(side).saturating_mul(side);
+    (0..n).map(|i| (i.wrapping_mul(7919) % 256) as f32 / 255.0).collect()
+}
+
+/// Checks a loaded model against its parity file's `reference` bytes: `run` gives the
+/// probabilities for `count` images of `side × side`, `classes` each.
+fn check_parity(
+    reference: &[u8],
+    side: usize,
+    classes: usize,
+    run: impl Fn(&[f32], usize) -> Result<Vec<f32>, ModelError>,
+) -> Result<(), ModelError> {
+    if reference.len() > MAX_META_BYTES {
+        return Err(ModelError::TooLarge { what: "the parity file", size: reference.len(), limit: MAX_META_BYTES });
+    }
+    let file: ParityFile = serde_json::from_slice(reference).map_err(|e| ModelError::ParityFile(e.to_string()))?;
+    if file.count == 0 || file.count > MAX_PARITY_IMAGES {
+        return Err(ModelError::ParityFile(format!("{} images, not 1 to {MAX_PARITY_IMAGES}", file.count)));
+    }
+    if file.probabilities.len() != file.count.saturating_mul(classes) {
+        return Err(ModelError::ParityFile(format!("{} values for {} images of {classes} classes", file.probabilities.len(), file.count)));
+    }
+    let got = run(&parity_input(file.count, side), file.count)?;
+    let worst = got.iter().zip(&file.probabilities).map(|(a, b)| (a - b).abs()).fold(0.0_f32, f32::max);
+    // A value that is not a number fails too.
+    if worst.is_nan() || worst > PARITY_TOLERANCE {
+        return Err(ModelError::Parity { worst });
+    }
+    Ok(())
+}
+
+/// A model that can be checked against its parity file.
+trait Parity {
+    fn parity(&self, reference: &[u8]) -> Result<(), ModelError>;
+}
+
+impl Parity for PieceModel {
+    fn parity(&self, reference: &[u8]) -> Result<(), ModelError> {
+        check_parity(reference, PIECE_SIDE, CLASS_COUNT, |images, count| self.probabilities(images, count))
+    }
+}
+
+impl Parity for GlyphModel {
+    fn parity(&self, reference: &[u8]) -> Result<(), ModelError> {
+        check_parity(reference, GLYPH_SIDE, self.classes.len(), |images, count| self.probabilities(images, count))
+    }
+}
+
 /// The models found on this machine.
 #[derive(Debug)]
 pub struct ChessModels {
@@ -376,20 +459,24 @@ impl ChessModels {
     /// The models in files the user picked (the web app, where there is no folder to look in):
     /// each file's name and its bytes, or why it could not be read. Files are known by name
     /// (`chess-pieces.onnx`, `chess-pieces.json`, `chess-glyphs.onnx`, `chess-glyphs.json`, in
-    /// any case, any folder part ignored); a model with only one of its two files is invalid and
-    /// says which is missing, and a file over [`MAX_PICKED_FILE_BYTES`] is not loaded. Returns
+    /// any case, any folder part ignored; and `chess-pieces.parity.json`, `chess-glyphs.parity.json`,
+    /// each model's check when picked with it); a model with only one of its two files is invalid
+    /// and says which is missing, and a file over [`MAX_PICKED_FILE_BYTES`] is not loaded. Returns
     /// the models (no folder) and the names of the files that are not model files (the first 32).
     pub fn from_files(files: Vec<(String, Result<Vec<u8>, String>)>) -> (ChessModels, Vec<String>) {
         type Slot = Option<Result<Vec<u8>, ModelError>>;
         let (mut pieces_onnx, mut pieces_meta, mut glyphs_onnx, mut glyphs_meta): (Slot, Slot, Slot, Slot) = (None, None, None, None);
+        let (mut pieces_parity, mut glyphs_parity): (Slot, Slot) = (None, None);
         let mut ignored = Vec::new();
         for (name, bytes) in files {
             let base = name.rsplit(['/', '\\']).next().unwrap_or(&name).to_ascii_lowercase();
             let slot = match base.as_str() {
                 "chess-pieces.onnx" => &mut pieces_onnx,
                 "chess-pieces.json" => &mut pieces_meta,
+                "chess-pieces.parity.json" => &mut pieces_parity,
                 "chess-glyphs.onnx" => &mut glyphs_onnx,
                 "chess-glyphs.json" => &mut glyphs_meta,
+                "chess-glyphs.parity.json" => &mut glyphs_parity,
                 _ => {
                     if ignored.len() < MAX_IGNORED_NAMES {
                         ignored.push(name);
@@ -406,8 +493,8 @@ impl ChessModels {
             });
         }
         let models = ChessModels {
-            pieces: picked_pair(PIECES, pieces_onnx, pieces_meta, PieceModel::from_bytes),
-            glyphs: picked_pair(GLYPHS, glyphs_onnx, glyphs_meta, GlyphModel::from_bytes),
+            pieces: picked_pair(PIECES, pieces_onnx, pieces_meta, pieces_parity, PieceModel::from_bytes),
+            glyphs: picked_pair(GLYPHS, glyphs_onnx, glyphs_meta, glyphs_parity, GlyphModel::from_bytes),
             folder: None,
         };
         (models, ignored)
@@ -438,18 +525,25 @@ fn locate_in(chosen: Option<&Path>, env: Option<OsString>, exe: Option<&Path>) -
     search_order(chosen, env, exe).into_iter().find(|d| holds_models(d))
 }
 
-/// One model from picked files: missing when neither file was picked.
-fn picked_pair<T>(
+/// One model from picked files: missing when neither file was picked. Its parity file, when
+/// picked too, is checked once it has loaded.
+fn picked_pair<T: Parity>(
     name: &str,
     onnx: Option<Result<Vec<u8>, ModelError>>,
     meta: Option<Result<Vec<u8>, ModelError>>,
+    parity: Option<Result<Vec<u8>, ModelError>>,
     load: impl Fn(Vec<u8>, &[u8]) -> Result<T, ModelError>,
 ) -> ModelState<T> {
     let result = match (onnx, meta) {
         (None, None) => return ModelState::Missing,
         (Some(_), None) => Err(ModelError::NotChosen(format!("{name}.json"))),
         (None, Some(_)) => Err(ModelError::NotChosen(format!("{name}.onnx"))),
-        (Some(onnx), Some(meta)) => onnx.and_then(|model| load(model, &meta?)),
+        (Some(onnx), Some(meta)) => onnx.and_then(|model| load(model, &meta?)).and_then(|m| {
+            if let Some(reference) = parity {
+                m.parity(&reference?)?;
+            }
+            Ok(m)
+        }),
     };
     match result {
         Ok(m) => ModelState::Loaded(m),
@@ -457,7 +551,9 @@ fn picked_pair<T>(
     }
 }
 
-fn load_pair<T>(dir: &Path, name: &str, load: impl Fn(Vec<u8>, &[u8]) -> Result<T, ModelError>) -> ModelState<T> {
+/// The model `name` in `dir`: missing without its `.onnx`; with a `<name>.parity.json` beside it,
+/// checked against it once it has loaded (never before: the graph is checked first).
+fn load_pair<T: Parity>(dir: &Path, name: &str, load: impl Fn(Vec<u8>, &[u8]) -> Result<T, ModelError>) -> ModelState<T> {
     let onnx = dir.join(format!("{name}.onnx"));
     if !onnx.is_file() {
         return ModelState::Missing;
@@ -470,9 +566,16 @@ fn load_pair<T>(dir: &Path, name: &str, load: impl Fn(Vec<u8>, &[u8]) -> Result<
         }
         std::fs::read(path).map_err(|source| ModelError::Read { path: path.to_path_buf(), source })
     };
+    let parity = dir.join(format!("{name}.parity.json"));
     let result = read(&onnx, MAX_MODEL_BYTES)
         .and_then(|model| Ok((model, read(&dir.join(format!("{name}.json")), MAX_META_BYTES)?)))
-        .and_then(|(model, meta)| load(model, &meta));
+        .and_then(|(model, meta)| load(model, &meta))
+        .and_then(|m| {
+            if parity.is_file() {
+                m.parity(&read(&parity, MAX_META_BYTES)?)?;
+            }
+            Ok(m)
+        });
     match result {
         Ok(m) => ModelState::Loaded(m),
         Err(e) => ModelState::Invalid(e.to_string()),
@@ -657,5 +760,114 @@ mod tests {
         assert!(worst(&got, &reference(PIECES)) <= 1e-4, "pieces differ from torch by {}", worst(&got, &reference(PIECES)));
         let got = glyphs.probabilities(&pattern(3, GLYPH_SIDE), 3).unwrap();
         assert!(worst(&got, &reference(GLYPHS)) <= 1e-4, "glyphs differ from torch by {}", worst(&got, &reference(GLYPHS)));
+        // Plan A9-V8 (A3-10): `load_from` ran each model's parity file already (they loaded);
+        // the glyph model with one bit of its last bias flipped is refused by it. The bit is the
+        // top of the exponent of the bias of a class the references give between 0.001 and 0.99:
+        // its logit goes far up or far down, so that probability moves by more than 0.001.
+        let real = std::fs::read(Path::new(&dir).join(format!("{GLYPHS}.onnx"))).unwrap();
+        let at = onnx::build::raw_offset(&real, "fc2.bias").expect("the glyph model's last bias");
+        let probabilities = reference(GLYPHS);
+        let classes = glyphs.classes.len();
+        let class = (0..classes)
+            .filter_map(|c| probabilities.iter().skip(c).step_by(classes).copied().find(|p| (0.001..0.99).contains(p)).map(|p| (c, p)))
+            .max_by(|a, b| a.1.total_cmp(&b.1))
+            .expect("a class neither certain nor ruled out")
+            .0;
+        let mut flipped = real.clone();
+        flipped[at + 4 * class + 3] ^= 0x40;
+        let copy = scratch("real-flipped");
+        std::fs::write(copy.join(format!("{GLYPHS}.onnx")), &flipped).unwrap();
+        for file in [format!("{GLYPHS}.json"), format!("{GLYPHS}.parity.json")] {
+            std::fs::copy(Path::new(&dir).join(&file), copy.join(&file)).unwrap();
+        }
+        let state = ChessModels::load_from(&copy).glyphs;
+        assert!(matches!(&state, ModelState::Invalid(why) if why.contains("parity")), "{state:?}");
+        let _ = std::fs::remove_dir_all(&copy);
+    }
+
+    /// A folder holding `model` as the glyph model, with its description and, when given, its
+    /// parity file.
+    fn glyph_folder(name: &str, model: &[u8], classes: usize, parity: Option<&str>) -> PathBuf {
+        let dir = scratch(name);
+        std::fs::write(dir.join(format!("{GLYPHS}.onnx")), model).unwrap();
+        std::fs::write(dir.join(format!("{GLYPHS}.json")), onnx::build::glyph_meta(classes)).unwrap();
+        if let Some(parity) = parity {
+            std::fs::write(dir.join(format!("{GLYPHS}.parity.json")), parity).unwrap();
+        }
+        dir
+    }
+
+    /// The parity file a model's export script would write for `model`.
+    fn parity_of(model: &GlyphModel) -> String {
+        let probabilities = model.probabilities(&parity_input(3, GLYPH_SIDE), 3).unwrap();
+        serde_json::json!({ "count": 3, "probabilities": probabilities }).to_string()
+    }
+
+    /// Plan A9-V8 (R7-01): a valid model whose graph asks for a tensor no machine has, chosen as
+    /// the models folder, is invalid and says why; rten would have aborted the process loading it
+    /// (`memory allocation of 1099511627776 bytes failed`). Run on a thread, as the app loads it.
+    #[test]
+    fn a_model_that_asks_for_a_huge_tensor_is_refused_before_rten_loads_it() {
+        use onnx::build::{Attr, floats, int64s, model, node, value};
+        let classes = 2;
+        let input = || value("glyphs", &[None, Some(1), Some(32), Some(32)]);
+        let output = || value("logits", &[None, Some(classes as i64)]);
+        let w = || floats("W", &[1024, classes as i64], &vec![0.0; 1024 * classes]);
+        let head = || [node("Flatten", &["glyphs"], &["flat"], &[Attr::Int("axis", 1)]), node("MatMul", &["flat", "W"], &["l0"], &[])];
+        // The R7 bomb: ConstantOfShape [65536, 65536, 64], summed and added to the logits.
+        let [flat, matmul] = head();
+        let bomb = model(
+            &[
+                flat,
+                matmul,
+                node("ConstantOfShape", &["big_shape"], &["big"], &[]),
+                node("ReduceSum", &["big"], &["s"], &[Attr::Int("keepdims", 0)]),
+                node("Add", &["l0", "s"], &["logits"], &[]),
+            ],
+            &[w(), int64s("big_shape", &[65536, 65536, 64])],
+            input(),
+            output(),
+        );
+        // Only operators a classifier uses: two 2 MiB constants that broadcast to 2^38 values.
+        let [flat, matmul] = head();
+        let half = 1 << 19;
+        let broadcast = model(
+            &[flat, matmul, node("Add", &["A", "B"], &["big"], &[]), node("Add", &["l0", "big"], &["logits"], &[])],
+            &[w(), floats("A", &[half, 1], &vec![0.0; 1 << 19]), floats("B", &[1, half], &vec![0.0; 1 << 19])],
+            input(),
+            output(),
+        );
+        for (name, bytes, why) in [("bomb", bomb, "ConstantOfShape"), ("broadcast", broadcast, "more than 268435456")] {
+            let dir = glyph_folder(name, &bytes, classes, None);
+            let state = std::thread::spawn(move || ChessModels::load_from(&dir).glyphs).join().unwrap();
+            assert!(matches!(&state, ModelState::Invalid(why_not) if why_not.contains(why)), "{name}: {state:?}");
+        }
+    }
+
+    /// Plan A9-V8 (A3-10): a model whose weights changed by one bit loads and reads the wrong
+    /// class in silence; with the parity file its export wrote beside it, it is refused. The same
+    /// model unchanged passes.
+    #[test]
+    fn a_model_whose_weights_changed_fails_its_parity_check() {
+        let classes = 3;
+        let bytes = onnx::build::glyph_model(classes);
+        let reference = parity_of(&GlyphModel::from_bytes(bytes.clone(), onnx::build::glyph_meta(classes).as_bytes()).unwrap());
+        let dir = glyph_folder("parity-ok", &bytes, classes, Some(&reference));
+        assert!(matches!(ChessModels::load_from(&dir).glyphs, ModelState::Loaded(_)));
+        // One bit of one weight: the top bit of the exponent of pixel 5's weight for class 0
+        // (the pattern is 171/255 there), little-endian, so its fourth byte.
+        let raw: Vec<u8> = onnx::build::glyph_weights(classes).iter().flat_map(|v| v.to_le_bytes()).collect();
+        let start = bytes.windows(raw.len()).position(|w| w == raw.as_slice()).unwrap();
+        let mut flipped = bytes.clone();
+        flipped[start + 4 * (5 * classes) + 3] ^= 0x40;
+        let dir = glyph_folder("parity-flipped", &flipped, classes, Some(&reference));
+        let state = ChessModels::load_from(&dir).glyphs;
+        assert!(matches!(&state, ModelState::Invalid(why) if why.contains("parity")), "{state:?}");
+        // Without the parity file it loads, as before: nothing to compare with.
+        let dir = glyph_folder("parity-none", &flipped, classes, None);
+        assert!(matches!(ChessModels::load_from(&dir).glyphs, ModelState::Loaded(_)));
+        // A parity file that does not fit the model is a reason too.
+        let dir = glyph_folder("parity-short", &bytes, classes, Some(r#"{"count": 3, "probabilities": [0.5]}"#));
+        assert!(matches!(ChessModels::load_from(&dir).glyphs, ModelState::Invalid(why) if why.contains("parity file")));
     }
 }
