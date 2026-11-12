@@ -6,6 +6,7 @@
 //! (paths relative to the Markdown file). Writing them to disk is the caller's: the tools confine
 //! them to `--root`, the interface asks where.
 
+use std::path::Path;
 use std::sync::Arc;
 
 use pdfcraft_chess::draw::{BoardStyle, PieceSet};
@@ -103,9 +104,11 @@ pub struct ChessExportOptions {
 
 impl ChessExportOptions {
     /// The defaults for a document titled `title`: every page, OCR where the layer is poor,
-    /// redrawn diagrams, Unicode figurines, lichess links, the user's pieces.
-    pub fn new(title: &str) -> ChessExportOptions {
-        let fonts = pdfcraft_chessvision::text_font::find_fonts();
+    /// redrawn diagrams, Unicode figurines, lichess links, the user's pieces and fonts as found in
+    /// `install` (the folder the app is installed in, which the frontend resolves; `None` on the
+    /// web) and the environment.
+    pub fn new(title: &str, install: Option<&Path>) -> ChessExportOptions {
+        let fonts = pdfcraft_chessvision::text_font::find_fonts(install);
         ChessExportOptions {
             pages: Vec::new(),
             scan: ChessScanSettings::default(),
@@ -115,7 +118,7 @@ impl ChessExportOptions {
             figurines: Figurines::Unicode,
             links: true,
             link_text: super::links::DEFAULT_TEXT.into(),
-            pieces: Arc::new(pdfcraft_chessvision::pieces::find().0),
+            pieces: Arc::new(pdfcraft_chessvision::pieces::find(install).0),
             text_font: fonts.figurines.map(Arc::new),
             sign_font: fonts.signs.map(Arc::new),
             title: title.into(),

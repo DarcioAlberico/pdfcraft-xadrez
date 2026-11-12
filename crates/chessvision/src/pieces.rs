@@ -21,6 +21,9 @@
 //! 3. Chess Merida among the fonts installed on this machine;
 //! 4. a `pieces` folder of piece images beside the executable.
 //!
+//! "Beside the executable" is the install folder the frontend resolves and passes in (plan
+//! A9-T3); nothing in this crate asks the system where the executable is.
+//!
 //! The user's fonts get into that `fonts` folder by [`import::import_fonts`] (DiagPDF's folder of
 //! board fonts, say), and the picker ([`choice::candidates`]) offers every chess diagram font
 //! there or installed. Fonts are found, listed and imported only when the catalogue checked their
@@ -263,9 +266,10 @@ fn read_font_file(path: &Path) -> Result<FontPieces, PieceError> {
 }
 
 /// The user's piece set: `$PDFCRAFT_CHESS_PIECES` (a font or a folder of images, or a shipped
-/// set's id), then a `pieces` folder beside the executable, then an installed Chess Merida, else
-/// the geometric set. Configured pieces that fail are reported, not silently replaced.
-pub fn find() -> (PieceSet, PieceSource, Option<PieceError>) {
+/// set's id), then a diagram font in the `fonts` folder of `install` (the folder the app is
+/// installed in), then an installed Chess Merida, then the `pieces` folder of `install`, else the
+/// geometric set. Configured pieces that fail are reported, not silently replaced.
+pub fn find(install: Option<&Path>) -> (PieceSet, PieceSource, Option<PieceError>) {
     if let Some(path) = std::env::var_os("PDFCRAFT_CHESS_PIECES").map(PathBuf::from) {
         // A path that exists wins over a shipped set of the same name.
         if !path.exists()
@@ -284,7 +288,7 @@ pub fn find() -> (PieceSet, PieceSource, Option<PieceError>) {
             Err(e) => (PieceSet::geometric(), PieceSource::Geometric, Some(e)),
         };
     }
-    if let Some(found) = crate::text_font::beside_executable().and_then(|dir| diagram_font_in(&dir)) {
+    if let Some(found) = crate::text_font::fonts_folder(install).and_then(|dir| diagram_font_in(&dir)) {
         return found;
     }
     for path in installed_fonts() {
@@ -296,21 +300,21 @@ pub fn find() -> (PieceSet, PieceSource, Option<PieceError>) {
             return (set, PieceSource::Font { path: Some(path), family }, None);
         }
     }
-    if let Some(dir) = beside_executable().filter(|d| is_piece_folder(d)) {
+    if let Some(dir) = pieces_folder(install).filter(|d| is_piece_folder(d)) {
         return from_folder(dir);
     }
     (PieceSet::geometric(), PieceSource::Geometric, None)
 }
 
-/// The analysis board's pieces: the `pieces` folder beside the executable when there is one
-/// (and `$PDFCRAFT_CHESS_PIECES` names nothing), else as diagrams ([`find`]).
-pub fn find_for_board() -> (PieceSet, PieceSource, Option<PieceError>) {
+/// The analysis board's pieces: the `pieces` folder of `install` when there is one (and
+/// `$PDFCRAFT_CHESS_PIECES` names nothing), else as diagrams ([`find`]).
+pub fn find_for_board(install: Option<&Path>) -> (PieceSet, PieceSource, Option<PieceError>) {
     if std::env::var_os("PDFCRAFT_CHESS_PIECES").is_none()
-        && let Some(dir) = beside_executable().filter(|d| is_piece_folder(d))
+        && let Some(dir) = pieces_folder(install).filter(|d| is_piece_folder(d))
     {
         return from_folder(dir);
     }
-    find()
+    find(install)
 }
 
 /// The chess diagram font in `dir` that draws diagrams on its own (other fonts there are for
@@ -379,16 +383,11 @@ fn from_folder(dir: PathBuf) -> (PieceSet, PieceSource, Option<PieceError>) {
     }
 }
 
-/// The `pieces` folder beside the executable, where [`choice::candidates`] looks for folders of
-/// piece images and [`import::import`] puts the sets it imports.
-pub fn pieces_folder() -> Option<PathBuf> {
-    beside_executable()
-}
-
-/// The `pieces` folder beside the executable, as the models are looked for there.
-fn beside_executable() -> Option<PathBuf> {
-    let exe = std::env::current_exe().ok()?;
-    Some(exe.parent()?.join("pieces"))
+/// The `pieces` folder of `install` (the folder the app is installed in, the executable's, which
+/// the frontend resolves), where [`choice::candidates`] looks for folders of piece images and
+/// [`import::import`] puts the sets it imports. `None` without one (in the browser).
+pub fn pieces_folder(install: Option<&Path>) -> Option<PathBuf> {
+    install.map(|dir| dir.join("pieces"))
 }
 
 /// Font files in the usual font folders of this machine (one level deep, capped).

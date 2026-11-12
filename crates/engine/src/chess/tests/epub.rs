@@ -129,7 +129,7 @@ fn the_cover_is_one_manifest_item_that_resolves_to_the_first_page() {
 #[test]
 fn chess_export_writes_the_book_with_its_cover() {
     let (mut s, id) = open(super::document::chapter());
-    let out = s.chess_export(id, ChessFormat::Epub, &ChessExportOptions::new("Chapter")).unwrap();
+    let out = s.chess_export(id, ChessFormat::Epub, &ChessExportOptions::new("Chapter", None)).unwrap();
     assert!(out.notes.is_empty(), "{:?}", out.notes);
     let opf = String::from_utf8(zip_entry(&out.bytes, "OEBPS/content.opf")).unwrap();
     // Without an /ID the identifier is made from the PDF's bytes; the source is its file name.
@@ -143,7 +143,7 @@ fn chess_export_writes_the_book_with_its_cover() {
     let with_id = pdf.replacen("/Root 1 0 R >>", "/Root 1 0 R /ID [<00112233445566778899aabbccddeeff> <00112233445566778899aabbccddeeff>] >>", 1);
     assert_ne!(with_id, pdf);
     let (mut s2, id2) = open(with_id.into_bytes());
-    let out2 = s2.chess_export(id2, ChessFormat::Epub, &ChessExportOptions::new("Chapter")).unwrap();
+    let out2 = s2.chess_export(id2, ChessFormat::Epub, &ChessExportOptions::new("Chapter", None)).unwrap();
     let opf2 = String::from_utf8(zip_entry(&out2.bytes, "OEBPS/content.opf")).unwrap();
     assert!(opf2.contains("<dc:identifier id=\"book-id\">urn:pdfcraft:chess:id:00112233445566778899aabbccddeeff</dc:identifier>"), "{opf2}");
     let covers = cover_items(&opf);
@@ -174,7 +174,7 @@ fn parts_of_one_pdf_are_different_books() {
     let (mut s, id) = open(with_id.into_bytes());
     s.apply(id, crate::Edit::DuplicatePages { pages: vec![0], at: None }).unwrap();
     let book_id = |s: &mut Session, pages: Vec<usize>| {
-        let out = s.chess_export(id, ChessFormat::Epub, &ChessExportOptions { pages, ..ChessExportOptions::new("Chapter") }).unwrap();
+        let out = s.chess_export(id, ChessFormat::Epub, &ChessExportOptions { pages, ..ChessExportOptions::new("Chapter", None) }).unwrap();
         let opf = String::from_utf8(zip_entry(&out.bytes, "OEBPS/content.opf")).unwrap();
         let start = opf.find("<dc:identifier id=\"book-id\">").unwrap() + "<dc:identifier id=\"book-id\">".len();
         opf[start..].split('<').next().unwrap().to_owned()
@@ -186,7 +186,7 @@ fn parts_of_one_pdf_are_different_books() {
     // The constant identifier: the book is named by its bytes, as one without an identifier.
     let constant = pdf.replacen("/Root 1 0 R >>", "/Root 1 0 R /ID [<9BA0D5AAD0617164A1D073B0D8C7DCD9> <9BA0D5AAD0617164A1D073B0D8C7DCD9>] >>", 1);
     let (mut s, id) = open(constant.into_bytes());
-    let out = s.chess_export(id, ChessFormat::Epub, &ChessExportOptions::new("Chapter")).unwrap();
+    let out = s.chess_export(id, ChessFormat::Epub, &ChessExportOptions::new("Chapter", None)).unwrap();
     let opf = String::from_utf8(zip_entry(&out.bytes, "OEBPS/content.opf")).unwrap();
     assert!(!opf.contains("9ba0d5aa"), "{opf}");
     assert!(opf.contains(&identifier(&s.get(id).unwrap().bytes)), "{opf}");

@@ -764,7 +764,7 @@ pub fn board_piece_set(slot: &mut Option<Arc<PieceSet>>, choice: &PieceChoice, e
 
 fn found(slot: &mut Option<Arc<PieceSet>>, choice: &PieceChoice, role: Role, error: &mut Option<String>) -> Arc<PieceSet> {
     slot.get_or_insert_with(|| {
-        let (set, _, why) = resolve(choice, role);
+        let (set, _, why) = resolve(choice, role, pdfcraft_platform::app_dirs::AppDirs::current().install());
         *error = why.map(|e| e.to_string());
         Arc::new(set)
     })

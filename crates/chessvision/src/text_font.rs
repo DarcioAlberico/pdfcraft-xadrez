@@ -313,8 +313,9 @@ pub fn from_folder(dir: &Path) -> UserFonts {
 }
 
 /// The user's export fonts: the files `$PDFCRAFT_CHESS_TEXT_FONT` names, else the `fonts` folder
-/// beside the executable. A configured file that fails is reported, not silently skipped.
-pub fn find_fonts() -> UserFonts {
+/// of `install` (the folder the app is installed in). A configured file that fails is reported,
+/// not silently skipped.
+pub fn find_fonts(install: Option<&Path>) -> UserFonts {
     if let Some(paths) = std::env::var_os("PDFCRAFT_CHESS_TEXT_FONT") {
         let mut found = UserFonts::default();
         for path in std::env::split_paths(&paths).filter(|p| !p.as_os_str().is_empty()) {
@@ -325,13 +326,13 @@ pub fn find_fonts() -> UserFonts {
         }
         return found;
     }
-    beside_executable().map(|dir| from_folder(&dir)).unwrap_or_default()
+    fonts_folder(install).map(|dir| from_folder(&dir)).unwrap_or_default()
 }
 
-/// The `fonts` folder beside the executable.
-pub fn beside_executable() -> Option<PathBuf> {
-    let exe = std::env::current_exe().ok()?;
-    Some(exe.parent()?.join("fonts"))
+/// The `fonts` folder of `install`: the folder the app is installed in (the executable's), which
+/// the frontend resolves (plan A9-T3). `None` without one (in the browser).
+pub fn fonts_folder(install: Option<&Path>) -> Option<PathBuf> {
+    install.map(|dir| dir.join("fonts"))
 }
 
 /// The `@font-face` rule for `font` loaded from `src` (a URL, already escaped for CSS): named

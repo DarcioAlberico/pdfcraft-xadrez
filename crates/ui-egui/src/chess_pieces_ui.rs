@@ -43,7 +43,13 @@ pub(crate) enum PendingImport {
 
 impl PiecePicker {
     fn new() -> PiecePicker {
-        PiecePicker { role: Role::Board, candidates: choice::candidates(), previews: HashMap::new(), import_note: None, import_pending: None }
+        PiecePicker {
+            role: Role::Board,
+            candidates: choice::candidates(pdfcraft_platform::app_dirs::AppDirs::current().install()),
+            previews: HashMap::new(),
+            import_note: None,
+            import_pending: None,
+        }
     }
 }
 
@@ -74,7 +80,7 @@ pub(crate) fn preferences_section(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &
     // One picture per frame, so opening Preferences never stalls on a dozen sets.
     let role = picker.role;
     if let Some(c) = picker.candidates.iter().find(|c| c.missing.is_empty() && !picker.previews.contains_key(&preview_key(&c.choice, role))) {
-        let (set, _, error) = choice::load(&c.choice, role);
+        let (set, _, error) = choice::load(&c.choice, role, pdfcraft_platform::app_dirs::AppDirs::current().install());
         let picture = error.is_none().then(|| crate::chess_board_ui::cut_sprites(ui.ctx(), &set, "chess-piece-preview")).flatten();
         picker.previews.insert(preview_key(&c.choice, role), picture);
         ui.ctx().request_repaint();
@@ -213,7 +219,7 @@ impl PdfCraftApp {
 
     /// Import the chess fonts among `from` into the fonts folder beside the program.
     pub fn import_fonts(&mut self, from: Vec<PathBuf>) {
-        match pdfcraft_engine::chess::pdfcraft_chessvision::text_font::beside_executable() {
+        match pdfcraft_engine::chess::pdfcraft_chessvision::text_font::fonts_folder(pdfcraft_platform::app_dirs::AppDirs::current().install()) {
             Some(into) => self.import_fonts_into(from, into, false),
             None => self.notify(tl!("There is no fonts folder beside the program to import into.")),
         }
@@ -251,7 +257,7 @@ impl PdfCraftApp {
 
     /// Import the sets in `from` into the pieces folder beside the program.
     pub fn import_pieces(&mut self, from: PathBuf) {
-        match pieces::pieces_folder() {
+        match pieces::pieces_folder(pdfcraft_platform::app_dirs::AppDirs::current().install()) {
             Some(into) => self.import_pieces_into(from, into, false),
             None => self.notify(tl!("There is no pieces folder beside the program to import into.")),
         }
