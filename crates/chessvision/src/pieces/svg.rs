@@ -9,8 +9,20 @@
 //! The bytes are untrusted (a folder the user points at, a set they import), so the file is read
 //! from its own bytes alone ([`parse`]): no reference leaves it, a compressed (svgz) file is not
 //! inflated, and neither its size nor its XML entities can grow it past fixed limits.
+//!
+//! usvg converts a file recursively: one level for each element nested in another, each `<use>`
+//! and each resource a reference names (a clip path, mask, filter, marker or pattern), whose own
+//! contents may name the next. A stack overflow is an abort no caller can catch, so before usvg
+//! sees the file [`check_structure`] walks it without recursion and refuses one whose chain of
+//! nesting and references is deeper than [`MAX_DEPTH`], loops back on itself, or would expand to
+//! more than [`MAX_EXPANDED`] elements. On the desktop usvg then runs on a thread with a stack of
+//! its own ([`READER_STACK`]), a margin for a shape of recursion the walk does not foresee; in the
+//! browser there are no threads, and the walk alone protects.
+
+use std::collections::HashMap;
 
 use pdfcraft_chess::draw::{Layer, Paint, PieceGlyph, Rgb, Segment, Subpath};
+use usvg::roxmltree;
 use usvg::tiny_skia_path::{PathSegment, Transform};
 
 /// Most path segments kept for one piece.
@@ -28,8 +40,56 @@ const MAX_ENTITIES: usize = 64;
 /// Most bytes the file's own entities may add once expanded.
 const MAX_ENTITY_BYTES: usize = 1 << 20;
 
+/// Deepest chain of elements usvg converts one inside another: by nesting, through `<use>`, or
+/// through a reference to a resource. The shipped pieces measure 7 at most; 1,000 nested groups,
+/// 300 chained `<use>`s, or 3,000 clip paths that each clip the next overflow a 1 MiB stack.
+const MAX_DEPTH: usize = 32;
+
+/// Most elements a piece may stand for once every `<use>` and every resource is counted where it
+/// is used. The file's own nodes are bounded by [`MAX_NODES`], but usvg converts a clip path or
+/// mask in bounding-box units again for every shape it clips, so a chain of them multiplies: four
+/// levels of 20 took 6 s and 300 MB, and one more would take a hundred times that.
+const MAX_EXPANDED: u64 = 200_000;
+
+/// Most style-sheet rules that name a reference (an exported piece has a handful at most).
+const MAX_STYLE_LINKS: usize = 64;
+
+/// Most compound selectors in one selector of a style sheet (`svg .white path` has three). The
+/// matcher, usvg's and this check's, recurses once per compound: `g + g + … + g` over as many
+/// sibling groups would overflow the stack.
+const MAX_SELECTOR_PARTS: usize = 8;
+
+/// Most distinct paints and markers one element may inherit by reference.
+const MAX_INHERITED: usize = 16;
+
+/// Stack of the thread usvg converts a piece on, on the desktop: a margin far above what
+/// [`MAX_DEPTH`] levels take, for a shape of recursion [`check_structure`] does not foresee.
+#[cfg(not(target_arch = "wasm32"))]
+const READER_STACK: usize = 16 << 20;
+
 /// A piece glyph from an SVG file's bytes.
 pub(crate) fn glyph_from_svg(bytes: &[u8]) -> Result<PieceGlyph, String> {
+    on_own_stack(|| read_glyph(bytes))
+}
+
+/// `read` on a thread with [`READER_STACK`] of stack; on the calling thread if none can be had,
+/// where [`check_structure`] still bounds the recursion.
+#[cfg(not(target_arch = "wasm32"))]
+fn on_own_stack<T: Send>(read: impl Fn() -> Result<T, String> + Sync) -> Result<T, String> {
+    std::thread::scope(|scope| match std::thread::Builder::new().stack_size(READER_STACK).spawn_scoped(scope, &read) {
+        Ok(reader) => reader.join().unwrap_or_else(|_| Err("the SVG reader stopped on this file".into())),
+        Err(_) => read(),
+    })
+}
+
+/// In the browser there are no threads: [`check_structure`] alone bounds the recursion.
+#[cfg(target_arch = "wasm32")]
+fn on_own_stack<T>(read: impl Fn() -> Result<T, String>) -> Result<T, String> {
+    read()
+}
+
+/// [`glyph_from_svg`] on the calling thread.
+fn read_glyph(bytes: &[u8]) -> Result<PieceGlyph, String> {
     let tree = parse(bytes)?;
     let size = tree.size();
     let (w, h) = (size.width(), size.height());
@@ -58,9 +118,334 @@ fn parse(bytes: &[u8]) -> Result<usvg::Tree, String> {
     let text = std::str::from_utf8(bytes).map_err(|_| "the SVG is not UTF-8 text".to_owned())?;
     check_entities(text)?;
     // A DTD is allowed: many exported files carry one, and its entities were bounded above.
-    let xml = usvg::roxmltree::ParsingOptions { allow_dtd: true, nodes_limit: MAX_NODES };
-    let doc = usvg::roxmltree::Document::parse_with_options(text, xml).map_err(|e| e.to_string())?;
+    let xml = roxmltree::ParsingOptions { allow_dtd: true, nodes_limit: MAX_NODES };
+    let doc = roxmltree::Document::parse_with_options(text, xml).map_err(|e| e.to_string())?;
+    check_structure(&doc)?;
     usvg::Tree::from_xmltree(&doc, &options()).map_err(|e| e.to_string())
+}
+
+const SVG_NS: &str = "http://www.w3.org/2000/svg";
+
+/// The deepest chain of an SVG's nesting and references, as [`check_structure`] measures it.
+#[cfg(test)]
+pub(super) fn chain_depth(bytes: &[u8]) -> Result<usize, String> {
+    let text = std::str::from_utf8(bytes).map_err(|e| e.to_string())?;
+    let doc = roxmltree::Document::parse_with_options(text, roxmltree::ParsingOptions { allow_dtd: true, nodes_limit: MAX_NODES })
+        .map_err(|e| e.to_string())?;
+    check_structure(&doc)
+}
+
+/// Properties whose reference an element passes on to the elements inside it.
+const INHERITED_LINKS: [&str; 6] = ["fill", "stroke", "marker", "marker-start", "marker-mid", "marker-end"];
+
+/// Elements that draw with a paint or marker, so that usvg converts the pattern or marker it
+/// names inside them.
+const PAINTED: [&str; 10] = ["path", "rect", "circle", "ellipse", "line", "polyline", "polygon", "text", "tspan", "textPath"];
+
+/// Where usvg goes from one element. `links[..plain]` are converted inside it: its child
+/// elements, the resources it names, the paints and markers it draws with. For a `<use>`,
+/// `links[plain..plain + used]` are the elements it copies and the rest the paints and markers the
+/// copy inherits from it, which usvg reaches at the bottom of the copy at the deepest.
+#[derive(Default)]
+struct Links {
+    links: Vec<u32>,
+    plain: usize,
+    used: usize,
+}
+
+impl Links {
+    fn parts(&self) -> (&[u32], &[u32], &[u32]) {
+        let (plain, rest) = self.links.split_at(self.plain.min(self.links.len()));
+        let (used, inherits) = rest.split_at(self.used.min(rest.len()));
+        (plain, used, inherits)
+    }
+}
+
+fn too_deep() -> String {
+    format!("the SVG is nested or chained too deeply (more than {MAX_DEPTH} levels)")
+}
+
+/// Refuses an SVG that would make usvg recurse deeper than [`MAX_DEPTH`], loop, or build more than
+/// [`MAX_EXPANDED`] elements: measured on the XML, without recursion, before usvg sees it.
+///
+/// The chain counts each element nested in another and each reference usvg follows: `href` (a
+/// `<use>`, a pattern or gradient template, a filter image; not a link's), and `url(#id)` in any
+/// attribute, in a `style` attribute and in the rules of a `<style>` sheet, matched to the
+/// elements as usvg matches them. A paint or marker is inherited, so it counts where it is drawn,
+/// and a `<use>` passes its own to what it copies. Elements outside the SVG namespace are skipped,
+/// as usvg skips them. Every count is an upper bound: an `id` given twice stands for both elements.
+/// Returns the deepest chain.
+fn check_structure(doc: &roxmltree::Document) -> Result<usize, String> {
+    let nodes = doc.descendants().map(|n| n.id().get_usize()).max().map_or(0, |m| m.saturating_add(1));
+    // The SVG elements in document order (a parent before its children), and each node's place.
+    let mut index = vec![u32::MAX; nodes];
+    let mut elements: Vec<roxmltree::Node> = Vec::new();
+    for node in doc.descendants().filter(|n| n.is_element()) {
+        let parent_skipped = node.parent_element().is_some_and(|p| index.get(p.id().get_usize()).is_none_or(|i| *i == u32::MAX));
+        if parent_skipped || !matches!(node.tag_name().namespace(), None | Some(SVG_NS)) {
+            continue;
+        }
+        if let (Some(slot), Ok(i)) = (index.get_mut(node.id().get_usize()), u32::try_from(elements.len())) {
+            *slot = i;
+            elements.push(node);
+        }
+    }
+    let sheet = style_sheet(doc)?;
+    let graph = links(&elements, &index, &sheet)?;
+    measure(&graph)
+}
+
+/// The rules of the file's `<style>` sheets that name a reference (usvg reads every element named
+/// `style`), after checking that no selector is long enough to make matching recurse deeply.
+fn style_sheet<'a>(doc: &'a roxmltree::Document) -> Result<Vec<simplecss::Rule<'a>>, String> {
+    let mut sheet = simplecss::StyleSheet::new();
+    for style in doc.descendants().filter(|n| n.is_element() && n.tag_name().name() == "style") {
+        for text in style.children().filter_map(|c| c.text()) {
+            if longest_selector(text) > MAX_SELECTOR_PARTS {
+                return Err(format!("a style rule of the SVG has more than {MAX_SELECTOR_PARTS} parts"));
+            }
+            sheet.parse_more(text);
+        }
+    }
+    let rules: Vec<_> = sheet.rules.into_iter().filter(|r| r.declarations.iter().any(|d| !url_ids(d.value).is_empty())).collect();
+    if rules.len() > MAX_STYLE_LINKS {
+        return Err(format!("more than {MAX_STYLE_LINKS} style rules of the SVG name a reference"));
+    }
+    Ok(rules)
+}
+
+/// The most compound selectors in one selector of a style sheet's text, counted generously: each
+/// run of characters between combinators (spaces, `>`, `+`, `~`) and commas, outside comments and
+/// declaration blocks. Matching a selector recurses once per compound.
+fn longest_selector(css: &str) -> usize {
+    let (mut longest, mut parts, mut in_part, mut blocks) = (0_usize, 0_usize, false, 0_usize);
+    let mut rest = css;
+    while let Some(c) = rest.chars().next() {
+        if rest.starts_with("/*") {
+            rest = rest.get(2..).and_then(|r| r.split_once("*/")).map_or("", |(_, after)| after);
+            in_part = false;
+            continue;
+        }
+        rest = rest.get(c.len_utf8()..).unwrap_or_default();
+        match c {
+            '{' => {
+                blocks = blocks.saturating_add(1);
+                (parts, in_part) = (0, false);
+            }
+            '}' => {
+                blocks = blocks.saturating_sub(1);
+                (parts, in_part) = (0, false);
+            }
+            _ if blocks > 0 => {}
+            ',' => (parts, in_part) = (0, false),
+            c if c.is_whitespace() || matches!(c, '>' | '+' | '~') => in_part = false,
+            _ if !in_part => {
+                (parts, in_part) = (parts.saturating_add(1), true);
+                longest = longest.max(parts);
+            }
+            _ => {}
+        }
+    }
+    longest
+}
+
+/// For each element (as `index` places them), where usvg goes from it.
+fn links(elements: &[roxmltree::Node], index: &[u32], rules: &[simplecss::Rule]) -> Result<Vec<Links>, String> {
+    let at = |node: roxmltree::Node| index.get(node.id().get_usize()).copied().filter(|i| *i != u32::MAX);
+    // An id names its first element (as `<use>` reads it) and its last (as a resource is read).
+    // `xml:id` counts too, as usvg reads it.
+    let mut ids: HashMap<&str, (u32, u32)> = HashMap::new();
+    for (i, node) in (0_u32..).zip(elements) {
+        for id in node.attributes().filter(|a| a.name() == "id") {
+            ids.entry(id.value()).and_modify(|e| e.1 = i).or_insert((i, i));
+        }
+    }
+    let targets = |id: &str| -> Vec<u32> {
+        match ids.get(id) {
+            Some(&(first, last)) if first == last => vec![first],
+            Some(&(first, last)) => vec![first, last],
+            None => Vec::new(),
+        }
+    };
+    let mut graph: Vec<Links> = Vec::with_capacity(elements.len());
+    let mut depth: Vec<usize> = Vec::with_capacity(elements.len());
+    let mut inherited: Vec<Vec<u32>> = Vec::with_capacity(elements.len());
+    for node in elements {
+        let parent = node.parent_element().and_then(at).and_then(|p| usize::try_from(p).ok());
+        let level = parent.and_then(|p| depth.get(p)).map_or(1, |d| d.saturating_add(1));
+        if level > MAX_DEPTH {
+            return Err(too_deep());
+        }
+        // The references this element names, each with the property that names it.
+        let mut named: Vec<(&str, &str)> = Vec::new();
+        let mut copied: Vec<u32> = Vec::new();
+        let tag = node.tag_name().name();
+        for attr in node.attributes() {
+            match attr.name() {
+                "style" => {
+                    for d in simplecss::DeclarationTokenizer::from(attr.value()) {
+                        named.extend(url_ids(d.value).into_iter().map(|id| (d.name, id)));
+                    }
+                }
+                // A link's `href` is a hyperlink, nothing usvg converts.
+                "href" if tag != "a" => copied.extend(href_id(attr.value()).map(targets).unwrap_or_default()),
+                "href" => {}
+                name => named.extend(url_ids(attr.value()).into_iter().map(|id| (name, id))),
+            }
+        }
+        for rule in rules.iter().filter(|r| r.selector.matches(&XmlNode(*node))) {
+            for d in &rule.declarations {
+                named.extend(url_ids(d.value).into_iter().map(|id| (d.name, id)));
+            }
+        }
+        let mut paints = parent.and_then(|p| inherited.get(p)).cloned().unwrap_or_default();
+        let mut links = Links::default();
+        for (property, id) in named {
+            for t in targets(id) {
+                if !INHERITED_LINKS.contains(&property) {
+                    links.links.push(t);
+                } else if !paints.contains(&t) {
+                    paints.push(t);
+                }
+            }
+        }
+        if paints.len() > MAX_INHERITED {
+            return Err(format!("more than {MAX_INHERITED} paints or markers reach one element of the SVG"));
+        }
+        links.links.extend(node.children().filter_map(at));
+        if PAINTED.contains(&tag) {
+            links.links.extend(&paints);
+        }
+        if tag == "use" {
+            links.plain = links.links.len();
+            links.used = copied.len();
+            links.links.extend(copied);
+            links.links.extend(&paints);
+        } else {
+            links.links.extend(copied);
+            links.plain = links.links.len();
+        }
+        graph.push(links);
+        depth.push(level);
+        inherited.push(paints);
+    }
+    Ok(graph)
+}
+
+/// The longest chain and the expanded size from each element, depth first with an explicit
+/// stack; an element met again while it is still open is a loop. Returns the longest chain.
+fn measure(graph: &[Links]) -> Result<usize, String> {
+    const NEW: u8 = 0;
+    const OPEN: u8 = 1;
+    const DONE: u8 = 2;
+    let mut state = vec![NEW; graph.len()];
+    let mut height = vec![0_usize; graph.len()];
+    let mut size = vec![0_u64; graph.len()];
+    let at = |i: u32| usize::try_from(i).unwrap_or(usize::MAX);
+    let mut deepest = 0;
+    for start in 0..graph.len() {
+        if state.get(start) != Some(&NEW) {
+            continue;
+        }
+        let mut stack: Vec<(usize, usize)> = vec![(start, 0)];
+        if let Some(s) = state.get_mut(start) {
+            *s = OPEN;
+        }
+        while let Some(&mut (v, ref mut next)) = stack.last_mut() {
+            let Some(links) = graph.get(v) else { break };
+            if let Some(w) = links.links.get(*next).map(|w| at(*w)) {
+                *next = next.saturating_add(1);
+                match state.get(w) {
+                    Some(&NEW) => {
+                        if stack.len() >= MAX_DEPTH {
+                            return Err(too_deep());
+                        }
+                        if let Some(s) = state.get_mut(w) {
+                            *s = OPEN;
+                        }
+                        stack.push((w, 0));
+                    }
+                    Some(&OPEN) => return Err("the SVG refers back to itself (a reference loop)".into()),
+                    _ => {}
+                }
+                continue;
+            }
+            let (plain, used, inherits) = links.parts();
+            let tallest = |set: &[u32]| set.iter().filter_map(|w| height.get(at(*w))).copied().max().unwrap_or(0);
+            let total = |set: &[u32]| set.iter().filter_map(|w| size.get(at(*w))).fold(0_u64, |s, n| s.saturating_add(*n));
+            // A copy reaches what its `<use>` passes on at its own bottom at the deepest, and may
+            // reach it from every element it holds.
+            let copy = if used.is_empty() { 0 } else { tallest(used).saturating_add(tallest(inherits)) };
+            let h = tallest(plain).max(copy).saturating_add(1);
+            let n = total(plain).saturating_add(total(used).saturating_mul(total(inherits).saturating_add(1))).saturating_add(1);
+            if h > MAX_DEPTH {
+                return Err(too_deep());
+            }
+            if n > MAX_EXPANDED {
+                return Err(format!("the SVG would expand to more than {MAX_EXPANDED} elements"));
+            }
+            if let (Some(hv), Some(sv), Some(s)) = (height.get_mut(v), size.get_mut(v), state.get_mut(v)) {
+                (*hv, *sv, *s) = (h, n, DONE);
+            }
+            deepest = deepest.max(h);
+            stack.pop();
+        }
+    }
+    Ok(deepest)
+}
+
+/// The id an `href` names in the file (`#id`), read as usvg reads it.
+fn href_id(value: &str) -> Option<&str> {
+    let id = value.trim_start_matches(is_space).strip_prefix('#')?;
+    id.split(' ').next().filter(|id| !id.is_empty())
+}
+
+/// The ids of the local references in a property's value: `url(#id)`, `url("#id")` or
+/// `url('#id')`, read as usvg reads them, wherever they stand in the value.
+fn url_ids(value: &str) -> Vec<&str> {
+    let mut ids = Vec::new();
+    let mut rest = value;
+    while let Some(at) = rest.find("url(") {
+        rest = rest.get(at.saturating_add("url(".len())..).unwrap_or_default();
+        let inner = rest.trim_start_matches(is_space);
+        let id = match inner.chars().next() {
+            Some(quote @ ('"' | '\'')) => {
+                inner.get(1..).and_then(|s| s.trim_start_matches(is_space).strip_prefix('#')).map(|s| s.split(quote).next().unwrap_or(s).trim_end())
+            }
+            _ => inner.strip_prefix('#').map(|s| s.split([' ', ')']).next().unwrap_or(s)),
+        };
+        ids.extend(id.filter(|id| !id.is_empty()));
+    }
+    ids
+}
+
+fn is_space(c: char) -> bool {
+    matches!(c, ' ' | '\t' | '\n' | '\r')
+}
+
+/// An element as the style sheet's selectors see it: the matching usvg does.
+struct XmlNode<'a, 'input>(roxmltree::Node<'a, 'input>);
+
+impl simplecss::Element for XmlNode<'_, '_> {
+    fn parent_element(&self) -> Option<Self> {
+        self.0.parent_element().map(XmlNode)
+    }
+
+    fn prev_sibling_element(&self) -> Option<Self> {
+        self.0.prev_sibling_element().map(XmlNode)
+    }
+
+    fn has_local_name(&self, name: &str) -> bool {
+        self.0.tag_name().name() == name
+    }
+
+    fn attribute_matches(&self, name: &str, operator: simplecss::AttributeOperator<'_>) -> bool {
+        self.0.attribute(name).is_some_and(|v| operator.matches(v))
+    }
+
+    fn pseudo_class_matches(&self, class: simplecss::PseudoClass<'_>) -> bool {
+        matches!(class, simplecss::PseudoClass::FirstChild) && self.0.prev_sibling_element().is_none()
+    }
 }
 
 /// usvg's options with no way out of the file: an `<image>` (or `feImage`) reference resolves to
@@ -109,10 +494,17 @@ fn check_entities(text: &str) -> Result<(), String> {
     Ok(())
 }
 
-fn collect(group: &usvg::Group, size: (f32, f32), layers: &mut Vec<Layer>, budget: &mut usize) {
-    for node in group.children() {
+/// The visible paths under `root`, in the file's order, as layers. Without recursion: a stack of
+/// the groups being read.
+fn collect(root: &usvg::Group, size: (f32, f32), layers: &mut Vec<Layer>, budget: &mut usize) {
+    let mut open = vec![root.children().iter()];
+    while let Some(group) = open.last_mut() {
+        let Some(node) = group.next() else {
+            open.pop();
+            continue;
+        };
         match node {
-            usvg::Node::Group(g) => collect(g, size, layers, budget),
+            usvg::Node::Group(g) => open.push(g.children().iter()),
             usvg::Node::Path(p) if p.is_visible() => {
                 let t = p.abs_transform();
                 let subpaths = subpaths(p.data(), t, size, budget);
@@ -319,6 +711,141 @@ mod tests {
         // Inside a whole piece a later quote would close it; at the end of the text, nothing does.
         let err = check_entities(r#"<!DOCTYPE svg [<!ENTITY u "never closed"#).unwrap_err();
         assert!(err.contains("not closed"), "{err}");
+    }
+
+    /// A piece's whole text, `body` inside an `<svg>` that declares the xlink namespace.
+    fn whole(body: &str) -> String {
+        format!(r#"<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="45" height="45">{body}</svg>"#)
+    }
+
+    const TRIANGLE: &str = r#"d="M 9 36 L 36 36 L 22.5 9 Z""#;
+
+    /// A triangle inside `n` nested groups (A3-01).
+    fn nested(n: usize) -> String {
+        whole(&format!(r#"{}<path {TRIANGLE} fill="black"/>{}"#, r#"<g opacity="0.99">"#.repeat(n), "</g>".repeat(n)))
+    }
+
+    /// A triangle reached through `n` chained `<use>`s, each one element deep (R2-01).
+    fn use_chain(n: usize) -> String {
+        let uses: String = (1..=n).map(|i| format!(r##"<use id="u{i}" xlink:href="#u{}"/>"##, i - 1)).collect();
+        whole(&format!(r##"<defs><path id="u0" {TRIANGLE} fill="black"/>{uses}</defs><use xlink:href="#u{n}"/>"##))
+    }
+
+    /// A triangle clipped (or masked) by `n` resources, each clipped by the one before (R2-01).
+    fn resource_chain(n: usize, kind: &str, property: &str) -> String {
+        let chain: String =
+            (1..=n).map(|i| format!(r#"<{kind} id="r{i}" {property}="url(#r{})"><path {TRIANGLE} fill="white"/></{kind}>"#, i - 1)).collect();
+        whole(&format!(
+            r#"<defs><{kind} id="r0"><path {TRIANGLE} fill="white"/></{kind}>{chain}</defs><path {TRIANGLE} fill="black" {property}="url(#r{n})"/>"#
+        ))
+    }
+
+    /// The clip-path chain of [`resource_chain`] named by a style sheet instead of attributes.
+    fn styled_clip_chain(n: usize) -> String {
+        let rules: String = (1..=n).map(|i| format!("#c{i}{{clip-path:url(#c{})}}", i - 1)).collect();
+        let clips: String = (0..=n).map(|i| format!(r#"<clipPath id="c{i}"><path {TRIANGLE}/></clipPath>"#)).collect();
+        whole(&format!(r#"<style>{rules}</style><defs>{clips}</defs><path {TRIANGLE} fill="black" style="clip-path:url(#c{n})"/>"#))
+    }
+
+    /// `<use>`s of `fan` copies of the level below, `levels` deep: `fan^levels` triangles.
+    fn use_fan(fan: usize, levels: usize) -> String {
+        let groups: String = (1..=levels)
+            .map(|level| format!(r#"<g id="a{level}">{}</g>"#, format!(r##"<use xlink:href="#a{}"/>"##, level - 1).repeat(fan)))
+            .collect();
+        whole(&format!(r##"<defs><path id="a0" {TRIANGLE} fill="black"/>{groups}</defs><use xlink:href="#a{levels}"/>"##))
+    }
+
+    /// Clip paths in bounding-box units, which usvg converts again for every shape they clip, each
+    /// holding `fan` shapes clipped by the one below, `levels` deep: `fan^levels` shapes converted.
+    fn clip_fan(fan: usize, levels: usize) -> String {
+        let clip = |level: usize, inside: String| format!(r#"<clipPath id="k{level}" clipPathUnits="objectBoundingBox">{inside}</clipPath>"#);
+        let clips: String = (1..=levels)
+            .map(|level| clip(level, format!(r#"<rect width="0.5" height="0.5" clip-path="url(#k{})"/>"#, level - 1).repeat(fan)))
+            .collect();
+        let first = clip(0, r#"<rect width="0.5" height="0.5"/>"#.to_owned());
+        whole(&format!(r#"<defs>{first}{clips}</defs><path {TRIANGLE} fill="black" clip-path="url(#k{levels})"/>"#))
+    }
+
+    /// [`read_glyph`] (the check, without the desktop's own thread) on a thread with 1 MiB of
+    /// stack, the main thread's on Windows.
+    fn read_on_small_stack(svg: String) -> Result<PieceGlyph, String> {
+        std::thread::Builder::new().stack_size(1 << 20).spawn(move || read_glyph(svg.as_bytes())).unwrap().join().unwrap()
+    }
+
+    /// Plan A9-V1 (A3-01, R2-01): each of these aborted the process with a stack overflow inside
+    /// usvg; the check refuses them before usvg recurses, on a stack the size of the main thread's.
+    #[test]
+    fn hostile_nesting_and_reference_chains_are_refused_before_usvg_recurses() {
+        let three_clips_in_a_loop = whole(&format!(
+            r#"<defs>{}</defs><path {TRIANGLE} fill="black" clip-path="url(#c1)"/>"#,
+            [(1, 2), (2, 3), (3, 1)]
+                .map(|(i, next)| format!(r#"<clipPath id="c{i}" clip-path="url(#c{next})"><path {TRIANGLE}/></clipPath>"#))
+                .concat()
+        ));
+        let n = 20_000;
+        let sibling_selector = whole(&format!(r#"<style>{}g{{fill:black}}</style>{}<path {TRIANGLE}/>"#, "g+".repeat(n), "<g/>".repeat(n)));
+        for (name, svg, why) in [
+            ("1,000 nested groups", nested(1000), "too deeply"),
+            ("300 chained uses", use_chain(300), "too deeply"),
+            ("3,000 chained clip paths", resource_chain(3000, "clipPath", "clip-path"), "too deeply"),
+            ("3,000 chained masks", resource_chain(3000, "mask", "mask"), "too deeply"),
+            ("3,000 clip paths chained by a style sheet", styled_clip_chain(3000), "style rules"),
+            ("three clip paths in a loop", three_clips_in_a_loop, "loop"),
+            ("a 20,000-part sibling selector", sibling_selector, "parts"),
+            ("20^4 clip paths converted", clip_fan(20, 4), "expand"),
+        ] {
+            let err = read_on_small_stack(svg).err().unwrap_or_else(|| panic!("{name}: read"));
+            assert!(err.contains(why), "{name}: {err}");
+        }
+    }
+
+    /// The chain counts every way usvg goes from one element into another, each kept short
+    /// enough here to read without the check: a style sheet's references, a paint inherited by
+    /// the shapes inside a pattern, a paint a `<use>` passes to what it copies, and groups nested
+    /// inside each resource of a chain whose own length passes.
+    #[test]
+    fn every_reference_usvg_follows_counts_in_the_chain() {
+        let inherited: String = (1..=40)
+            .map(|i| format!(r#"<pattern id="p{i}" width="4" height="4" fill="url(#p{})"><rect width="2" height="2"/></pattern>"#, i - 1))
+            .collect();
+        let inherited = whole(&format!(
+            r#"<defs><pattern id="p0" width="4" height="4"><rect width="2" height="2" fill="black"/></pattern>{inherited}</defs><path {TRIANGLE} fill="url(#p40)"/>"#
+        ));
+        let through_use: String = (1..=40)
+            .map(|i| format!(r##"<pattern id="p{i}" width="4" height="4"><use xlink:href="#s" fill="url(#p{})"/></pattern>"##, i - 1))
+            .collect();
+        let through_use = whole(&format!(
+            r#"<defs><rect id="s" width="2" height="2"/><pattern id="p0" width="4" height="4"><rect width="2" height="2" fill="black"/></pattern>{through_use}</defs><path {TRIANGLE} fill="url(#p40)"/>"#
+        ));
+        let groups = |inner: &str| format!("{}{inner}{}", "<g>".repeat(10), "</g>".repeat(10));
+        let deep_clips: String = (1..=4)
+            .map(|i| format!(r#"<clipPath id="c{i}">{}</clipPath>"#, groups(&format!(r#"<path {TRIANGLE} clip-path="url(#c{})"/>"#, i - 1))))
+            .collect();
+        let deep_clips = whole(&format!(
+            r#"<defs><clipPath id="c0"><path {TRIANGLE}/></clipPath>{deep_clips}</defs><path {TRIANGLE} fill="black" clip-path="url(#c4)"/>"#
+        ));
+        for (name, svg) in [
+            ("styled clip paths", styled_clip_chain(40)),
+            ("inherited patterns", inherited),
+            ("patterns through uses", through_use),
+            ("deep clips", deep_clips),
+        ] {
+            let err = glyph_from_svg(svg.as_bytes()).err().unwrap_or_else(|| panic!("{name}: read"));
+            assert!(err.contains("too deeply"), "{name}: {err}");
+        }
+        // Short chains, a style sheet's references and a `<use>` of a gradient-filled shape read.
+        for svg in [
+            nested(20),
+            use_chain(20),
+            resource_chain(20, "clipPath", "clip-path"),
+            styled_clip_chain(20),
+            use_fan(8, 3),
+            whole(&format!(
+                r##"<defs><linearGradient id="g"><stop offset="0" stop-color="red"/></linearGradient><path id="s" {TRIANGLE}/></defs><use xlink:href="#s" fill="url(#g)"/>"##
+            )),
+        ] {
+            glyph_from_svg(svg.as_bytes()).unwrap();
+        }
     }
 
     proptest::proptest! {

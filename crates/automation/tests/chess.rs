@@ -435,6 +435,41 @@ fn chess_pieces_import_is_confined_to_the_root() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// Plan A9-V1 (R2-01): a set whose white king is 300 chained `<use>`s, flat XML that overflowed
+/// the stack inside usvg and closed the process, is refused by `chess_pieces_import` with the
+/// piece and the reason, on a thread with the main thread's 1 MiB of stack; nothing is written.
+#[test]
+fn chess_pieces_import_refuses_a_piece_chained_too_deeply() {
+    let (base, root) = workdir("pieces-chained");
+    let set = root.join("chained");
+    std::fs::create_dir_all(&set).unwrap();
+    let triangle = r#"d="M 9 36 L 36 36 L 22.5 9 Z" fill="black""#;
+    for colour in ["w", "b"] {
+        for piece in ["K", "Q", "R", "B", "N", "P"] {
+            let plain = format!(r#"<svg xmlns="http://www.w3.org/2000/svg" width="45" height="45"><path {triangle}/></svg>"#);
+            std::fs::write(set.join(format!("{colour}{piece}.svg")), plain).unwrap();
+        }
+    }
+    let uses: String = (1..=300).map(|i| format!(r##"<use id="u{i}" xlink:href="#u{}"/>"##, i - 1)).collect();
+    let king = format!(
+        r##"<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="45" height="45"><defs><path id="u0" {triangle}/>{uses}</defs><use xlink:href="#u300"/></svg>"##
+    );
+    std::fs::write(set.join("wK.svg"), king).unwrap();
+    let inside = root.clone();
+    let reply = std::thread::Builder::new()
+        .stack_size(1 << 20)
+        .spawn(move || Automation::new().with_root(&inside).unwrap().call("chess_pieces_import", &json!({ "from": "chained", "into": "pieces" })))
+        .unwrap()
+        .join()
+        .unwrap();
+    match reply {
+        Err(ToolError::Failed(m)) => assert!(m.contains("wK") && m.contains("nested or chained too deeply"), "{m}"),
+        other => panic!("imported: {other:?}"),
+    }
+    assert!(!root.join("pieces").exists(), "nothing written");
+    let _ = std::fs::remove_dir_all(base);
+}
+
 /// `chess_pieces_import` given a folder of fonts (DiagPDF's `Fonts`, say) copies the chess fonts
 /// into a fonts folder inside the root: each diagram font a set the picker lists, a figurine font
 /// for the exports, a text font passed over. A different file of the same name waits for replace;
