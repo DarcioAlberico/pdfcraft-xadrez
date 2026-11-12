@@ -668,15 +668,18 @@ pub(crate) fn inlines(lines: &[&ChessLine], geometry: Option<&PageGeometry>) -> 
                         Some((n, _, _)) => (Some(n), rect),
                         None => (None, rect),
                     };
+                    let san = san.to_english();
                     out.push(Inline::Move(MoveInline {
                         number: n,
                         text: text.clone(),
-                        san: san.to_english(),
+                        san_read: san.clone(),
+                        san,
                         status: MoveStatus::Unchecked,
                         fen: None,
                         game: None,
                         source_rect,
                         bold: span.bold,
+                        read_review: Vec::new(),
                         review: Vec::new(),
                         reference: None,
                     }));
@@ -847,7 +850,7 @@ fn attach_reviews(input: &PageInput<'_>, blocks: &mut [Block], page: &mut Vec<Re
             _ => None,
         });
         match target {
-            Some(inline) => inline.review_mut().push(review.flag.clone()),
+            Some(inline) => inline.read_review_mut().push(review.flag.clone()),
             None => page.push(review.flag.clone()),
         }
     }
@@ -965,6 +968,11 @@ fn block_text(block: &Block) -> Option<String> {
 /// solution. So is the page's printed number ([`folio_blocks`]). A game's header (its players'
 /// line and its event's, [`super::header`]) ends the open game, and the next game takes its tags.
 pub(crate) fn walk(page: u32, ocr: bool, blocks: &mut [Block], walker: &mut Walker, trailing: Option<u32>, heads: &mut RunningHeads) {
+    for block in blocks.iter_mut() {
+        if let Block::Heading { inlines, .. } | Block::Paragraph { inlines, .. } = block {
+            inlines.iter_mut().filter_map(|i| if let Inline::Move(m) = i { Some(m) } else { None }).for_each(unwalked);
+        }
+    }
     walker.read_by_ocr(ocr);
     let numbers: Vec<Option<u32>> = blocks.iter().map(|b| if let Block::Diagram(d) = b { d.puzzle } else { None }).collect();
     let last_diagram = blocks.iter().rposition(|b| matches!(b, Block::Diagram(_)));
@@ -1044,22 +1052,44 @@ pub(crate) fn walk(page: u32, ocr: bool, blocks: &mut [Block], walker: &mut Walk
                             walker.text(text);
                         }
                         Inline::Nag { code, .. } => walker.nag(*code),
-                        Inline::Move(m) => {
-                            // The English SAN reads back as the move it was written from.
-                            let Ok(san) = San::read(&m.san, Lang::En) else { continue };
-                            let out = walker.play(m.number, &san, &m.text, m.bold, Loc { page, rect: m.source_rect });
-                            m.status = out.status;
-                            if let Some(s) = out.san {
-                                m.san = s;
-                            }
-                            m.fen = out.fen;
-                            m.game = out.node;
-                            m.review.extend(out.repaired);
-                        }
+                        Inline::Move(m) => played(m, page, walker),
                     }
                 }
             }
         }
+    }
+}
+
+/// Move `m`'s walk part as before any walk (plan A9-L0a): unchecked, its SAN as read, no position
+/// or node, its flags the reader's and then the link's it had (the link's own, which only linking
+/// again replaces). Every move of a page walked starts so, played or not (a move in a heading, a
+/// running head or a page number is not played), so nothing the last walk wrote stays.
+fn unwalked(m: &mut MoveInline) {
+    let linked: Vec<ReviewFlag> = m.review.iter().filter(|f| matches!(f, ReviewFlag::FromReference { .. })).cloned().collect();
+    m.review = m.read_review.clone();
+    m.review.extend(linked);
+    m.san = m.read_san().to_owned();
+    m.status = MoveStatus::Unchecked;
+    m.fen = None;
+    m.game = None;
+}
+
+/// Play move `m` of page `page` from its reading alone (the SAN read, its number, text, weight
+/// and box), and write what the walk decided: status, SAN, position, node, and its repair flag
+/// after the reader's (before the link's).
+fn played(m: &mut MoveInline, page: u32, walker: &mut Walker) {
+    // The English SAN reads back as the move it was written from.
+    let Ok(san) = San::read(m.read_san(), Lang::En) else { return };
+    let out = walker.play(m.number, &san, &m.text, m.bold, Loc { page, rect: m.source_rect });
+    m.status = out.status;
+    if let Some(s) = out.san {
+        m.san = s;
+    }
+    m.fen = out.fen;
+    m.game = out.node;
+    if let Some(flag) = out.repaired {
+        let at = m.review.iter().position(|f| matches!(f, ReviewFlag::FromReference { .. })).unwrap_or(m.review.len());
+        m.review.insert(at, flag);
     }
 }
 

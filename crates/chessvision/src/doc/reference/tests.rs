@@ -17,12 +17,14 @@ pub(super) fn mv(number: Option<(u16, bool)>, san: &str, status: MoveStatus, fen
     Inline::Move(MoveInline {
         number: number.map(|(number, black)| MoveNumber { number, black }),
         text: san.to_string(),
+        san_read: san.to_string(),
         san: san.to_string(),
         status,
         fen,
         game: None,
         source_rect: None,
         bold: false,
+        read_review: Vec::new(),
         review: Vec::new(),
         reference: None,
     })

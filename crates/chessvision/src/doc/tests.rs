@@ -2137,3 +2137,118 @@ fn a_page_is_said_by_its_printed_label_else_its_number() {
     assert_eq!(said(4), (None, "5".to_owned()), "past the labels");
     assert_eq!(PageLabel::new(None, u32::MAX).to_string(), "4294967296");
 }
+
+/// Plan A9-L0a (R3-01): Black pawn e5, White pawn d4. `1...cxd4` read by OCR is played as `exd4`
+/// (a c read for an e), flagged `cxd4→exd4`.
+const R3_F1: &str = "4k3/8/8/4p3/3P4/8/8/4K3 b - - 0 1";
+/// The same diagram corrected: the pawn is on c5, and `1...cxd4` as printed is legal.
+const R3_F2: &str = "4k3/8/8/2p5/3P4/8/8/4K3 b - - 0 1";
+/// Neither `cxd4` nor `exd4` is legal.
+const R3_F3: &str = "4k3/8/2p1p3/8/3P4/8/8/4K3 b - - 0 1";
+
+/// Each move of `doc`: its text, its SAN, its status and its flags.
+fn walked(doc: &ChessDoc) -> Vec<(String, String, MoveStatus, Vec<ReviewFlag>)> {
+    doc.pages
+        .iter()
+        .flat_map(|p| &p.blocks)
+        .flat_map(|b| b.inlines())
+        .filter_map(|i| if let Inline::Move(m) = i { Some((m.text.clone(), m.san.clone(), m.status, m.review.clone())) } else { None })
+        .collect()
+}
+
+/// Plan A9-L0a (R3-01): a page walked again after its diagram's position changed (a correction,
+/// the book's PGN) is what a new reading of it gives. The walk wrote over the reading (the SAN it
+/// repaired, its flags beside the reader's), so walking again started from the last walk: under
+/// F2 `cxd4` came back valid with two false flags (`cxd4→exd4`, `cxd4→cxd4`), and under F3 the SAN
+/// stayed the `exd4` F1 had repaired.
+#[test]
+fn a_page_walked_again_after_its_diagram_changed_is_a_new_reading() {
+    let text = page_text(vec![line(230.0, "1...cxd4 2.Ke2")]);
+    let read = |fen: &str| {
+        let diagrams = [reading(0, 60.0, fen, true, false)];
+        build_page(&PageInput { ocr: true, ..input(0, &text, &diagrams, &[], &[]) })
+    };
+    let first = read(R3_F1);
+    let flags: Vec<ReviewFlag> = walked(&first).first().map(|m| m.3.clone()).unwrap_or_default();
+    assert!(
+        matches!(flags.as_slice(), [ReviewFlag::TextRepaired { from, to, .. }] if from == "1...cxd4" && to == "1...exd4"),
+        "under F1 the reader's c is played as an e: {flags:?}"
+    );
+    for fen in [R3_F2, R3_F3] {
+        let mut page = first.pages[0].clone();
+        for block in &mut page.blocks {
+            if let Block::Diagram(d) = block {
+                d.reading.as_mut().unwrap().fen = fen.to_owned();
+            }
+        }
+        let again = walk(&[page], WalkRules::BOOK);
+        assert_eq!(walked(&again), walked(&read(fen)), "walked again under {fen}");
+        assert_eq!(again.games, read(fen).games, "under {fen}");
+    }
+}
+
+/// Plan A9-L0a: the reading is kept beside the walk's part. A move's SAN as read and the reader's
+/// flags are in the JSON, and a document written before they were (no `san_read`) walks again as
+/// it did: from its SAN and its flags.
+#[test]
+fn the_reading_is_kept_and_an_older_document_walks_as_before() {
+    let text = page_text(vec![line(230.0, "1...cxd4 2.Ke2")]);
+    let diagrams = [reading(0, 60.0, R3_F1, true, false)];
+    let doc = build_page(&PageInput { ocr: true, ..input(0, &text, &diagrams, &[], &[]) });
+    let Some(Inline::Move(m)) = doc.pages[0].blocks.iter().flat_map(|b| b.inlines()).find(|i| matches!(i, Inline::Move(_))) else { panic!("a move") };
+    assert_eq!((m.san_read.as_str(), m.san.as_str(), m.read_review.len(), m.review.len()), ("cxd4", "exd4", 0, 1));
+    let json = doc.to_json().unwrap();
+    assert!(json.contains(r#""san_read":"cxd4""#), "{json}");
+    // Written before L0a: no reading apart.
+    let mut old: serde_json::Value = serde_json::from_str(&json).unwrap();
+    fn strip(v: &mut serde_json::Value) {
+        match v {
+            serde_json::Value::Object(map) => {
+                map.remove("san_read");
+                map.remove("read_review");
+                map.values_mut().for_each(strip);
+            }
+            serde_json::Value::Array(items) => items.iter_mut().for_each(strip),
+            _ => {}
+        }
+    }
+    strip(&mut old);
+    let old = ChessDoc::from_json(&old.to_string()).unwrap();
+    let again = walk(&old.pages, WalkRules::BOOK);
+    assert_eq!(walked(&again), walked(&doc), "walked from its SAN `exd4` and its flag, as before");
+    assert_eq!(READER_VERSION, 1);
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(64))]
+
+    /// Plan A9-L0a: walking a document again from its reading gives it back, games and all.
+    #[test]
+    fn walking_a_document_again_gives_it_back(
+        lines in proptest::collection::vec(arb_line(), 0..10),
+        diagrams in proptest::collection::vec(arb_diagram(), 0..3),
+        pages in 1u32..3,
+        ocr in any::<bool>(),
+    ) {
+        let text = page_text(lines.iter().map(|(x, y, toks)| {
+            let words: Vec<&str> = toks.iter().map(|&t| VOCAB[t]).collect();
+            line_at(*x, *y, &words.join(" "))
+        }).collect());
+        let readings: Vec<BoardReading> = diagrams.iter().enumerate().map(|(i, (f, top, x, accepted, assumed, kind))| {
+            let mut r = reading(i, *top, FENS[*f % FENS.len()], *accepted, *assumed);
+            r.bbox_user = user_box(*x, *top, *x + 150.0, *top + 150.0);
+            if *kind == 0 {
+                r.outcome = Err(Unreadable::BadGeometry);
+            }
+            r
+        }).collect();
+        let mut b = DocBuilder::new();
+        for p in 0..pages {
+            b.add_page(&PageInput { ocr, ..input(p, &text, &readings, &[], &[]) });
+        }
+        let doc = b.finish();
+        let again = walk(&doc.pages, WalkRules::BOOK);
+        prop_assert_eq!(&again, &doc);
+        prop_assert_eq!(walk(&again.pages, WalkRules::BOOK), doc);
+    }
+}

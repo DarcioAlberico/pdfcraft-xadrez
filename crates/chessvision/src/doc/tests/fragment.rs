@@ -383,12 +383,14 @@ fn a_number_cut_from_its_move_is_given_back_to_it() {
         Inline::Move(MoveInline {
             number: number.map(|(number, black)| MoveNumber { number, black }),
             text: san.to_owned(),
+            san_read: san.to_owned(),
             san: san.to_owned(),
             status: MoveStatus::Unchecked,
             fen: None,
             game: None,
             source_rect: None,
             bold: false,
+            read_review: Vec::new(),
             review: Vec::new(),
             reference: None,
         })
