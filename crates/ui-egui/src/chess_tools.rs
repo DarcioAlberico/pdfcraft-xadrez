@@ -956,11 +956,10 @@ pub(crate) fn with_rail<R>(ui: &mut egui::Ui, chess: &mut ChessState, body: impl
     typed_glyphs(ui, chess);
     // Moves that left the game (the keys just handled, or the panel last frame): how many, and
     // Undo, in a strip at the top of the panel that pushes it down rather than cover it.
+    // The game as it was went into the document's trash with the step itself (plan A9-G8): this
+    // is only the notice.
     let game = chess.games.scope_stamp().0;
-    if let Some(deleted) = chess.tools.deleted.see(game, chess.games.board()) {
-        // The game as it was goes into the document's trash, which outlives Undo (V5).
-        chess.games.collection_mut().trash_deleted(deleted);
-    }
+    let _ = chess.tools.deleted.see(game, chess.games.board());
     let mut top = area.min.y;
     if chess.tools.deleted.text().is_some() {
         let strip = Rect::from_min_max(pos2(area.min.x + RAIL_WIDTH + 5.0, area.min.y + 4.0), pos2(area.max.x - 4.0, area.max.y));

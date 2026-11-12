@@ -12,6 +12,10 @@
 //! - **The game shown stays shown** when others move, are added before it or are deleted; when it
 //!   is deleted, the game after it is shown (the one before, at the end of the list).
 //! - **Adding to a list that holds only a blank game** puts the new game in its place.
+//! - **A game opened twice is shown again** ([`GameList::show_or_add`]): a game opened from a
+//!   book (a diagram, a game of its text or of its PGN) that the list holds untouched, by the
+//!   same [`OpenKey`], is shown rather than added again. One rule for every way in (plan A9-G8,
+//!   A5-16).
 //!
 //! A game is named by its White, Black and Event tags, and placed by its Site, Date and Round
 //! ([`GameNames`]), so its name is in its PGN; [`pgn_date_ok`] says whether a date is one PGN reads.
@@ -26,6 +30,12 @@ pub use pdfcraft_chess::game::split_pgn;
 /// app autosaves.
 pub const MAX_GAMES: usize = 256;
 
+/// What a game is known by while nothing was changed in it since it came into the list: one hash
+/// of where it came from and what it holds, cheap to compare (no PGN text is written for it). Two
+/// games with the same key are the same game opened twice ([`GameList::show_or_add`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct OpenKey(pub u64);
+
 /// A game as a [`GameList`] holds it.
 pub trait ListedGame {
     /// A blank game: the standard start, nothing played (the list's game when it has no other).
@@ -34,6 +44,20 @@ pub trait ListedGame {
     fn is_blank(&self) -> bool;
     /// No longer the game shown: drop what only the game shown needs. Nothing by default.
     fn hidden(&mut self) {}
+    /// The game's [`OpenKey`] while it is untouched; `None` once it was changed, or for a game
+    /// that is never shown again in place of a copy. `None` by default.
+    fn open_key(&self) -> Option<OpenKey> {
+        None
+    }
+}
+
+/// What [`GameList::show_or_add`] did.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ShowOrAdd {
+    /// The list held the same game untouched: it is shown, at this place.
+    Shown(usize),
+    /// The game was added and is shown, at this place.
+    Added(usize),
 }
 
 impl ListedGame for Game {
@@ -271,6 +295,20 @@ impl<T: ListedGame> GameList<T> {
         self.before.append(&mut self.after);
     }
 
+    /// Show `game`: the list's own copy when it holds the same game untouched (the same
+    /// [`ListedGame::open_key`]), else `game` itself, added as [`GameList::add`] adds it. The one
+    /// place that decides "the same untouched game" for every way a game is opened.
+    pub fn show_or_add(&mut self, game: T) -> ShowOrAdd {
+        if let Some(key) = game.open_key()
+            && let Some(at) = self.position(|g| g.open_key() == Some(key))
+        {
+            self.switch_to(at);
+            return ShowOrAdd::Shown(at);
+        }
+        self.add(game);
+        ShowOrAdd::Added(self.active_index())
+    }
+
     /// The games in order, and the place of the one shown.
     pub fn into_games(self) -> (Vec<T>, usize) {
         let at = self.active_index();
@@ -415,6 +453,55 @@ mod tests {
 
     fn texts(list: &GameList<Game>) -> Vec<String> {
         list.iter().map(Game::movetext).collect()
+    }
+
+    /// A game opened from somewhere, as the app's list holds one: its key, and whether it was
+    /// changed since.
+    #[derive(Debug, PartialEq)]
+    struct Opened {
+        name: &'static str,
+        key: Option<u64>,
+        touched: bool,
+    }
+
+    impl ListedGame for Opened {
+        fn blank() -> Opened {
+            Opened { name: "", key: None, touched: false }
+        }
+
+        fn is_blank(&self) -> bool {
+            self.name.is_empty()
+        }
+
+        fn open_key(&self) -> Option<OpenKey> {
+            self.key.filter(|_| !self.touched).map(OpenKey)
+        }
+    }
+
+    /// Plan A9-G8 (A5-16): a diagram, a game of the book's text and a game of its PGN, each
+    /// opened twice, are shown again while untouched and added again once changed; a game with no
+    /// key is always added; a lone blank game gives way to the first.
+    #[test]
+    fn a_game_opened_twice_is_shown_again_while_untouched() {
+        let opened = |name, key| Opened { name, key: Some(key), touched: false };
+        let mut list: GameList<Opened> = GameList::new();
+        assert_eq!(list.show_or_add(opened("diagram", 1)), ShowOrAdd::Added(0), "in the blank game's place");
+        assert_eq!(list.show_or_add(opened("text game", 2)), ShowOrAdd::Added(1));
+        assert_eq!(list.show_or_add(opened("pgn game", 3)), ShowOrAdd::Added(2));
+        for (key, at) in [(1, 0), (2, 1), (3, 2), (1, 0)] {
+            assert_eq!(list.show_or_add(opened("again", key)), ShowOrAdd::Shown(at));
+            assert_eq!(list.active_index(), at);
+        }
+        assert_eq!(list.len(), 3);
+        // Changed: the next opening is a new game; so is a game with no key.
+        if let Some(g) = list.get_mut(1) {
+            g.touched = true;
+        }
+        assert_eq!(list.show_or_add(opened("text game", 2)), ShowOrAdd::Added(3));
+        assert_eq!(list.show_or_add(Opened { name: "keyless", key: None, touched: false }), ShowOrAdd::Added(4));
+        assert_eq!(list.show_or_add(Opened { name: "keyless", key: None, touched: false }), ShowOrAdd::Added(5));
+        assert_eq!(list.show_or_add(opened("again", 2)), ShowOrAdd::Shown(3), "the untouched one now");
+        assert_eq!(list.iter().map(|g| g.name).collect::<Vec<_>>(), ["diagram", "text game", "pgn game", "text game", "keyless", "keyless"]);
     }
 
     fn three() -> GameList<Game> {
