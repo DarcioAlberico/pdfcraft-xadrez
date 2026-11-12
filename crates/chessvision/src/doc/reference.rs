@@ -42,8 +42,9 @@
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
+use pdfcraft_chess::fen::{BookKey, Fen, PlacementKey};
 use pdfcraft_chess::game::{Game as PgnGame, PgnStopReason, split_pgn};
-use pdfcraft_chess::placement::Color;
+use pdfcraft_chess::placement::{Color, Piece, Placement};
 use serde::{Deserialize, Serialize};
 
 use super::games::DiagramAt;
@@ -79,7 +80,9 @@ pub const MAX_SUGGESTED_SQUARES: usize = 2;
 const SUGGESTED_PAGES: u32 = 1;
 
 /// The initial position, as a [`ReferenceIndex`] keys it.
-const START_KEY: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w";
+fn start_key() -> BookKey {
+    BookKey { placement: PlacementKey::of(&Placement::standard()), side: Color::White }
+}
 
 /// Why a PGN could not be used as a reference.
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
@@ -115,11 +118,10 @@ pub struct ReferenceGame {
 }
 
 /// A position of the reference and the moves of the reference that reach it.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 struct Position {
-    /// The pieces and the side to move: the first two fields of its FEN.
-    key: String,
-    black: bool,
+    /// Its pieces and its side to move (plan A9-T1a: the book's key, never FEN text).
+    key: BookKey,
     /// The nodes standing on it ([`ReferenceIndex::nodes`]).
     nodes: Vec<usize>,
     /// The moves played from it, in every game.
@@ -148,9 +150,9 @@ pub struct ReferenceIndex {
     games: Vec<ReferenceGame>,
     nodes: Vec<IndexNode>,
     positions: Vec<Position>,
-    by_key: HashMap<String, usize>,
+    by_key: HashMap<BookKey, usize>,
     /// The positions with these pieces, either side to move.
-    by_placement: HashMap<String, Vec<usize>>,
+    by_placement: HashMap<PlacementKey, Vec<usize>>,
     start: Option<usize>,
     truncated: bool,
 }
@@ -192,7 +194,7 @@ impl ReferenceIndex {
         if index.games.iter().all(|g| g.moves == 0) {
             return Err(ReferenceError::NoMoves);
         }
-        index.start = index.by_key.get(START_KEY).copied();
+        index.start = index.by_key.get(&start_key()).copied();
         Ok(index)
     }
 
@@ -206,10 +208,10 @@ impl ReferenceIndex {
                 self.truncated = true;
                 break;
             }
+            // Read from the board, no FEN text (plan A9-T1a): this runs for every move indexed.
             let Some(fen) = game.fen_at(node) else { continue };
-            let Some(key) = position_key(&fen) else { continue };
-            let fullmove = fen.split_whitespace().nth(5).and_then(|n| n.parse().ok()).unwrap_or(0);
-            let position = self.position_of(key, game_at);
+            let fullmove = fen.fullmove_number();
+            let position = self.position_of(fen.book_key(), game_at);
             let id = self.nodes.len();
             self.nodes.push(IndexNode { at: RefNode { game: game_at, node }, position, parent, san: plain_san(game.san(node)), number });
             if let Some(p) = self.positions.get_mut(position) {
@@ -231,7 +233,7 @@ impl ReferenceIndex {
     }
 
     /// The position `key`, added when new; game `game` stands on it.
-    fn position_of(&mut self, key: String, game: usize) -> usize {
+    fn position_of(&mut self, key: BookKey, game: usize) -> usize {
         if let Some(&id) = self.by_key.get(&key) {
             if let Some(p) = self.positions.get_mut(id).filter(|p| p.game != Some(game)) {
                 p.game = None;
@@ -239,11 +241,9 @@ impl ReferenceIndex {
             return id;
         }
         let id = self.positions.len();
-        let placement = key.split(' ').next().unwrap_or_default().to_string();
-        self.by_placement.entry(placement).or_default().push(id);
-        self.by_key.insert(key.clone(), id);
-        let black = key.ends_with(" b");
-        self.positions.push(Position { key, black, nodes: Vec::new(), children: Vec::new(), game: Some(game) });
+        self.by_placement.entry(key.placement).or_default().push(id);
+        self.by_key.insert(key, id);
+        self.positions.push(Position { key, nodes: Vec::new(), children: Vec::new(), game: Some(game) });
         id
     }
 
@@ -268,17 +268,17 @@ impl ReferenceIndex {
     }
 
     /// Whether a position of the reference has `fen`'s pieces, and its side to move unless
-    /// `side_assumed`.
+    /// `side_assumed` ([`BookKey::matches`]); `false` for a FEN that cannot be read.
     pub fn has_position(&self, fen: &str, side_assumed: bool) -> bool {
-        let placement = fen.split_whitespace().next().unwrap_or_default();
+        let Ok(fen) = Fen::parse(fen) else { return false };
         if side_assumed {
-            return self.by_placement.contains_key(placement);
+            return self.by_placement.contains_key(&fen.placement_key());
         }
-        position_key(fen).is_some_and(|k| self.by_key.contains_key(&k))
+        self.by_key.contains_key(&fen.book_key())
     }
 
-    /// The FEN after move `at`.
-    pub fn fen(&self, at: RefNode) -> Option<String> {
+    /// The position after move `at`.
+    pub fn fen(&self, at: RefNode) -> Option<Fen> {
         self.games.get(at.game)?.game.as_ref()?.fen_at(at.node)
     }
 
@@ -290,8 +290,8 @@ impl ReferenceIndex {
         self.positions.get(id)
     }
 
-    fn placement(&self, position: usize) -> Option<&str> {
-        self.position(position).and_then(|p| p.key.split(' ').next())
+    fn placement_key(&self, position: usize) -> Option<PlacementKey> {
+        self.position(position).map(|p| p.key.placement)
     }
 }
 
@@ -307,15 +307,9 @@ fn game_name(game: &PgnGame) -> String {
     parts.join(" · ")
 }
 
-/// The pieces and the side to move of a FEN: its first two fields.
-fn position_key(fen: &str) -> Option<String> {
-    let mut fields = fen.split_whitespace();
-    let placement = fields.next()?;
-    let side = match fields.next() {
-        Some("b") => "b",
-        _ => "w",
-    };
-    Some(format!("{placement} {side}"))
+/// The book's key of a move's FEN (as the reader wrote it), `None` when there is none to read.
+fn move_key(fen: Option<&str>) -> Option<BookKey> {
+    fen.and_then(|f| Fen::parse(f).ok()).map(|f| f.book_key())
 }
 
 /// A SAN without check marks and annotation glyphs, castling with letters.
@@ -556,23 +550,24 @@ fn link_diagrams(doc: &mut ChessDoc, index: &ReferenceIndex, alignment: &Alignme
 /// to move was read, not assumed, and is the other one. Whether it was confirmed.
 fn confirm(d: &mut DiagramBlock, index: &ReferenceIndex, at: RefNode) -> bool {
     let (Some(fen), Some(reading)) = (index.fen(at), d.reading.as_ref()) else { return false };
-    let field = |f: &str, n: usize| f.split_whitespace().nth(n).map(str::to_owned);
-    if field(&reading.fen, 0) != field(&fen, 0) || (!reading.side_assumed && field(&reading.fen, 1) != field(&fen, 1)) {
+    let Ok(read) = Fen::parse(&reading.fen) else { return false };
+    if !read.book_key().matches(fen.book_key(), reading.side_assumed) {
         return false;
     }
     let mut before = None;
-    if d.source != DiagramSource::User && (reading.fen != fen || reading.side_assumed) {
+    if d.source != DiagramSource::User && (read != fen || reading.side_assumed) {
         before = Some(ReadBefore { reading: reading.clone(), lichess_url: d.lichess_url.clone(), review: d.review.clone() });
         if let Some(r) = d.reading.as_mut() {
-            r.fen = fen.clone();
+            r.fen = fen.to_string();
             r.legal = true;
             r.side_assumed = false;
         }
         d.review.retain(|f| !matches!(f, ReviewFlag::SideAssumed | ReviewFlag::Illegal { .. } | ReviewFlag::SideConflict));
         let black_view = d.lichess_url.as_deref().is_some_and(|u| u.ends_with("?color=black"));
         let orientation = if black_view { Color::Black } else { Color::White };
-        d.lichess_url = pdfcraft_chess::fen::parse(&fen).ok().map(|p| pdfcraft_chess::lichess::analysis_url(&p, orientation));
+        d.lichess_url = Some(pdfcraft_chess::lichess::analysis_url(fen.position(), orientation));
     }
+    let fen = fen.to_string();
     d.reference = Some(Box::new(DiagramReference { kind: DiagramKind::Confirmed, game: at.game, node: at.node, fen, changes: Vec::new(), before }));
     true
 }
@@ -580,20 +575,23 @@ fn confirm(d: &mut DiagramBlock, index: &ReferenceIndex, at: RefNode) -> bool {
 /// The positions linked to moves, with the positions they were played from: what a diagram that
 /// nearly shows one of them is offered.
 struct NearbyPositions {
-    /// (the page of the move, the reference's move, its pieces as [`squares`]), in reading order.
-    linked: Vec<(u32, RefNode, [u8; 64])>,
+    /// (the page of the move, the reference's move, its pieces), in reading order.
+    linked: Vec<(u32, RefNode, Squares)>,
 }
+
+/// A placement's 64 squares in reading order, a8 first and h1 last.
+type Squares = [Option<Piece>; 64];
 
 impl NearbyPositions {
     fn new(index: &ReferenceIndex, alignment: &Alignment) -> NearbyPositions {
         let wanted: HashSet<RefNode> = alignment.moves.iter().filter_map(|l| l.node).collect();
         // One pass over the index: each linked move's position, then the one it was played from.
-        let mut found: HashMap<RefNode, Vec<(RefNode, [u8; 64])>> = HashMap::new();
+        let mut found: HashMap<RefNode, Vec<(RefNode, Squares)>> = HashMap::new();
         for node in index.nodes.iter().filter(|n| wanted.contains(&n.at)) {
             let parent = node.parent.and_then(|p| index.node(p));
-            for (at, position) in std::iter::once((node.at, node.position)).chain(parent.map(|p| (p.at, p.position))) {
-                if let Some(squares) = index.placement(position).and_then(squares) {
-                    found.entry(node.at).or_default().push((at, squares));
+            for at in std::iter::once(node.at).chain(parent.map(|p| p.at)) {
+                if let Some(fen) = index.fen(at) {
+                    found.entry(node.at).or_default().push((at, fen.placement().reading_order()));
                 }
             }
         }
@@ -610,10 +608,9 @@ impl NearbyPositions {
     /// one to [`MAX_SUGGESTED_SQUARES`]; the first in reading order among the fewest. None when
     /// the side to move was read, not assumed, and is the other one.
     fn suggest(&self, index: &ReferenceIndex, page: u32, reading: &DiagramReading) -> Option<DiagramReference> {
-        let mut fields = reading.fen.split_whitespace();
-        let read = fields.next().and_then(squares)?;
-        let side = fields.next();
-        let mut best: Option<(usize, RefNode, [u8; 64])> = None;
+        let read_fen = Fen::parse(&reading.fen).ok()?;
+        let read = read_fen.placement().reading_order();
+        let mut best: Option<(usize, RefNode, Squares)> = None;
         for &(p, at, squares) in &self.linked {
             if p.abs_diff(page) > SUGGESTED_PAGES {
                 continue;
@@ -626,7 +623,8 @@ impl NearbyPositions {
         }
         let (_, at, squares) = best?;
         let fen = index.fen(at)?;
-        if !reading.side_assumed && side != fen.split_whitespace().nth(1) {
+        // The pieces differ (that is the suggestion); a side read, not assumed, is the same.
+        if !reading.side_assumed && read_fen.book_key().side != fen.book_key().side {
             return None;
         }
         let changes = read
@@ -634,54 +632,16 @@ impl NearbyPositions {
             .zip(squares.iter())
             .enumerate()
             .filter(|(_, (from, to))| from != to)
-            .map(|(k, (&from, &to))| SquareChange { square: square_name(k), from: piece(from), to: piece(to) })
+            .map(|(k, (&from, &to))| SquareChange { square: square_name(k), from: from.map(Piece::fen_char), to: to.map(Piece::fen_char) })
             .collect();
-        Some(DiagramReference { kind: DiagramKind::Suggested, game: at.game, node: at.node, fen, changes, before: None })
+        Some(DiagramReference { kind: DiagramKind::Suggested, game: at.game, node: at.node, fen: fen.to_string(), changes, before: None })
     }
 }
 
-/// The 64 squares of a FEN's piece placement, a8 first and h1 last, 0 for an empty square and the
-/// piece's letter otherwise; `None` when it is not eight ranks of eight squares.
-fn squares(placement: &str) -> Option<[u8; 64]> {
-    let mut out = [0u8; 64];
-    let mut ranks = 0usize;
-    for (r, rank) in placement.split('/').enumerate() {
-        if r >= 8 {
-            return None;
-        }
-        ranks = r.saturating_add(1);
-        let mut file = 0usize;
-        for c in rank.bytes() {
-            match c {
-                b'1'..=b'8' => file = file.saturating_add(usize::from(c - b'0')),
-                b'p' | b'n' | b'b' | b'r' | b'q' | b'k' | b'P' | b'N' | b'B' | b'R' | b'Q' | b'K' => {
-                    if file < 8 {
-                        *out.get_mut(r.saturating_mul(8).saturating_add(file))? = c;
-                    }
-                    file = file.saturating_add(1);
-                }
-                _ => return None,
-            }
-            if file > 8 {
-                return None;
-            }
-        }
-        if file != 8 {
-            return None;
-        }
-    }
-    (ranks == 8).then_some(out)
-}
-
-/// The name of square `k` of [`squares`]: 0 is a8, 63 is h1.
+/// The name of square `k` of [`Squares`]: 0 is a8, 63 is h1.
 fn square_name(k: usize) -> String {
     let file = b"abcdefgh".get(k % 8).map_or('?', |&f| char::from(f));
     format!("{file}{}", 8usize.saturating_sub(k / 8))
-}
-
-/// A square of [`squares`] as a FEN piece letter, `None` when empty.
-fn piece(square: u8) -> Option<char> {
-    (square != 0).then_some(char::from(square))
 }
 
 /// The warnings of [`Linked`]: few of the moves on the first [`JUDGED_PAGES`] pages read linked,
@@ -701,9 +661,10 @@ fn warnings(doc: &ChessDoc, index: &ReferenceIndex, alignment: &Alignment) -> Ve
     out
 }
 
-/// Something read in order.
+/// Something read in order. A diagram's pieces are `None` when its FEN cannot be read: it still
+/// stands between the moves around it.
 enum Token<'a> {
-    Diagram { at: DiagramAt, placement: &'a str },
+    Diagram { at: DiagramAt, placement: Option<PlacementKey> },
     Move { at: InlineAt, mv: &'a MoveInline },
 }
 
@@ -714,7 +675,8 @@ fn tokens(doc: &ChessDoc) -> Vec<Token<'_>> {
         for (b, block) in page.blocks.iter().enumerate() {
             match block {
                 Block::Diagram(d) => {
-                    if let Some(placement) = d.reading.as_ref().and_then(|r| r.fen.split_whitespace().next()) {
+                    if let Some(r) = d.reading.as_ref().filter(|r| !r.fen.trim().is_empty()) {
+                        let placement = Fen::parse(&r.fen).ok().map(|f| f.placement_key());
                         out.push(Token::Diagram { at: DiagramAt { page: page.index, diagram: d.number }, placement });
                     }
                 }
@@ -767,9 +729,9 @@ fn first_vote(index: &ReferenceIndex, tokens: &[Token]) -> BTreeMap<u32, usize> 
     let mut votes: BTreeMap<u32, BTreeMap<usize, usize>> = BTreeMap::new();
     for token in tokens {
         let (page, positions): (u32, Vec<usize>) = match token {
-            Token::Diagram { at, placement } => (at.page, index.by_placement.get(*placement).cloned().unwrap_or_default()),
+            Token::Diagram { at, placement } => (at.page, placement.and_then(|k| index.by_placement.get(&k)).cloned().unwrap_or_default()),
             Token::Move { at, mv } if mv.status == MoveStatus::Valid => {
-                (at.page, mv.fen.as_deref().and_then(position_key).and_then(|k| index.by_key.get(&k).copied()).into_iter().collect())
+                (at.page, move_key(mv.fen.as_deref()).and_then(|k| index.by_key.get(&k).copied()).into_iter().collect())
             }
             Token::Move { .. } => continue,
         };
@@ -832,7 +794,7 @@ struct Pass {
 /// A diagram waiting to learn its move: by a caption naming it, or by the move played from it.
 struct Pending {
     link: usize,
-    placement: String,
+    placement: Option<PlacementKey>,
 }
 
 impl Pass {
@@ -843,19 +805,21 @@ impl Pass {
         // The node linked last, for a diagram that reprints the position just reached.
         let mut last: Option<usize> = None;
         // The pieces of the diagram just read, until the move after it: a caption may name it.
-        let mut caption: Option<&str> = None;
+        let mut caption: Option<PlacementKey> = None;
         for token in tokens {
             match token {
                 Token::Diagram { at, placement } => {
+                    let placement = *placement;
                     pass.settle(index, pending.take(), map);
                     let link = pass.diagrams.len();
-                    let reached = last.filter(|&n| index.node(n).is_some_and(|n| index.placement(n.position) == Some(*placement)));
+                    let reached =
+                        last.filter(|&n| placement.is_some() && index.node(n).is_some_and(|n| index.placement_key(n.position) == placement));
                     pass.diagrams.push((*at, reached));
-                    caption = Some(*placement);
+                    caption = placement;
                     if reached.is_none() {
-                        pending = Some(Pending { link, placement: (*placement).to_string() });
+                        pending = Some(Pending { link, placement });
                     }
-                    for &p in index.by_placement.get(*placement).map(Vec::as_slice).unwrap_or_default() {
+                    for &p in placement.and_then(|k| index.by_placement.get(&k)).map(Vec::as_slice).unwrap_or_default() {
                         push(&mut recent, Anchor { position: p, node: None });
                     }
                 }
@@ -867,7 +831,8 @@ impl Pass {
                     if let Some(p) = pending.take() {
                         // A caption names the diagram's own position; a move played from it says the
                         // diagram is the position before it.
-                        let shows = |id: usize| index.node(id).is_some_and(|n| index.placement(n.position) == Some(p.placement.as_str()));
+                        let shows =
+                            |id: usize| p.placement.is_some() && index.node(id).is_some_and(|n| index.placement_key(n.position) == p.placement);
                         let shown = if shows(node.0) { Some(node.0) } else { node.1.parent.filter(|&q| shows(q)) };
                         match (shown, pass.diagrams.get_mut(p.link)) {
                             (Some(id), Some(d)) => d.1 = Some(id),
@@ -888,9 +853,9 @@ impl Pass {
     fn settle(&mut self, index: &ReferenceIndex, pending: Option<Pending>, map: &BTreeMap<u32, usize>) {
         let Some(p) = pending else { return };
         let Some(link) = self.diagrams.get_mut(p.link) else { return };
-        let nodes: Vec<(usize, usize)> = index
-            .by_placement
-            .get(&p.placement)
+        let nodes: Vec<(usize, usize)> = p
+            .placement
+            .and_then(|k| index.by_placement.get(&k))
             .map(Vec::as_slice)
             .unwrap_or_default()
             .iter()
@@ -919,10 +884,10 @@ fn link_move(
     mv: &MoveInline,
     recent: &[Anchor],
     page_game: Option<usize>,
-    caption: Option<&str>,
+    caption: Option<PlacementKey>,
 ) -> (LinkKind, Option<usize>) {
     if mv.status == MoveStatus::Valid {
-        let at = mv.fen.as_deref().and_then(position_key).and_then(|k| index.by_key.get(&k).copied());
+        let at = move_key(mv.fen.as_deref()).and_then(|k| index.by_key.get(&k).copied());
         if let Some(position) = at {
             return (LinkKind::Confirmed, reached(index, position, recent, page_game));
         }
@@ -933,7 +898,7 @@ fn link_move(
     }
     match search(index, mv, recent, page_game) {
         Some(node) => {
-            let names_diagram = caption.is_some_and(|c| index.node(node).and_then(|n| index.placement(n.position)) == Some(c));
+            let names_diagram = caption.is_some_and(|c| index.node(node).and_then(|n| index.placement_key(n.position)) == Some(c));
             (if names_diagram { LinkKind::Confirmed } else { LinkKind::Recovered }, Some(node))
         }
         None => (LinkKind::Absent, None),
@@ -970,7 +935,7 @@ fn search(index: &ReferenceIndex, mv: &MoveInline, recent: &[Anchor], page_game:
     let mut best: Option<(Rank, usize)> = None;
     for (r, anchor) in recent.iter().copied().chain(start).enumerate() {
         let Some(from) = index.position(anchor.position) else { continue };
-        if mv.number.is_some_and(|n| n.black != from.black) {
+        if mv.number.is_some_and(|n| n.black != (from.key.side == Color::Black)) {
             continue;
         }
         for &c in &from.children {

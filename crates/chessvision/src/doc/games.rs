@@ -87,6 +87,7 @@
 //! variations, [`MAX_COMMENT_BYTES`] a comment, [`MAX_GAMES`] games a document.
 
 use cozy_chess::{Board, Color, Move};
+use pdfcraft_chess::fen::{Castling, Fen, Position};
 use pdfcraft_chess::origin::PgnOrigin;
 use pdfcraft_chess::repair::{CONFIDENCE_ONE_SWAP, GameContext};
 use pdfcraft_chess::san::{San, SanBody, SanError};
@@ -670,8 +671,8 @@ pub(crate) struct Seed {
     pub diagram: usize,
     /// The puzzle number its caption gives.
     pub puzzle: Option<u32>,
-    /// The reading's FEN, when it is legal with its side to move.
-    pub fen: Option<String>,
+    /// The reading's position, when it is legal with its side to move.
+    pub fen: Option<Fen>,
     pub accepted: bool,
     pub side_assumed: bool,
 }
@@ -1017,33 +1018,39 @@ fn seed_fits(seed: &Seed, number: Option<MoveNumber>, san: &San) -> bool {
     seed_score(seed, number).is_some_and(|(score, _, honour)| honour && score.start_board().is_some_and(|b| san.to_move(&b).is_ok()))
 }
 
-/// The piece placement of a FEN, its first field.
-fn placement_of(fen: &str) -> &str {
-    fen.split_whitespace().next().unwrap_or_default()
+/// Whether a FEN says Black is to move (one that does not say is White's, as FEN writes it).
+fn black_to_move(fen: &Fen) -> bool {
+    fen.side() == Some(pdfcraft_chess::placement::Color::Black)
 }
 
-/// A FEN from its six fields.
-fn compose(placement: &str, black: bool, castling: &str, ep: &str, halfmove: &str, fullmove: &str) -> String {
-    format!("{placement} {} {castling} {ep} {halfmove} {fullmove}", if black { 'b' } else { 'w' })
+/// `position` with Black to move when `black`, else White.
+fn moving(position: &Position, black: bool) -> Position {
+    use pdfcraft_chess::placement::Color as Side;
+    Position { side_to_move: Some(if black { Side::Black } else { Side::White }), ..position.clone() }
+}
+
+/// The board of `position` with its side to move written out; `None` when not legal.
+fn board_of(position: &Position) -> Option<Board> {
+    Board::from_fen(&position.fen(), false).ok()
 }
 
 /// The starting position for a diagram's moves, the flags it raised, and whether the first
 /// move's number is to be believed. `None` when the reading has no legal position.
 fn seed_score(seed: &Seed, number: Option<MoveNumber>) -> Option<(GameScore, Vec<ReviewFlag>, bool)> {
-    let fen = seed.fen.as_deref()?;
-    let original = Board::from_fen(fen.trim(), false).ok()?;
-    let fields: Vec<&str> = fen.split_whitespace().collect();
+    let fen = seed.fen.as_ref()?;
+    let read = moving(fen.position(), black_to_move(fen));
+    let original = board_of(&read)?;
     let mut flags = Vec::new();
     let mut honour = true;
     let mut board = original.clone();
-    if let (Some(n), [placement, side, castling, ep, halfmove, _]) = (number, fields.as_slice()) {
-        let mut black = *side == "b";
-        let mut ep = *ep;
+    if let Some(n) = number {
+        let mut black = black_to_move(fen);
+        let mut ep = read.en_passant;
         if n.black != black {
-            let flipped = compose(placement, n.black, castling, "-", halfmove, "1");
-            if seed.side_assumed && Board::from_fen(&flipped, false).is_ok() {
+            let flipped = Position { en_passant: None, fullmove_number: 1, ..moving(&read, n.black) };
+            if seed.side_assumed && board_of(&flipped).is_some() {
                 black = n.black;
-                ep = "-";
+                ep = None;
                 flags.push(ReviewFlag::SideFromMoveNumber);
             } else {
                 flags.push(ReviewFlag::SideConflict);
@@ -1054,7 +1061,7 @@ fn seed_score(seed: &Seed, number: Option<MoveNumber>) -> Option<(GameScore, Vec
         // follows from it: after Black's `7...d3`, White plays move 8; after White's `8.Nxe4`,
         // Black plays move 8.
         let fullmove = if n.black && !black { n.number.saturating_add(1) } else { n.number };
-        if let Ok(b) = Board::from_fen(&compose(placement, black, castling, ep, halfmove, &fullmove.to_string()), false) {
+        if let Some(b) = board_of(&Position { en_passant: ep, fullmove_number: u32::from(fullmove), ..moving(&read, black) }) {
             board = b;
         }
     }
@@ -1141,10 +1148,10 @@ pub(crate) fn after_cue(text: &str) -> bool {
 /// Whether `san`, played by Black when `black`, is the move that led to the position `fen`: the
 /// piece it moves stands on its square (after castling, the king and the rook on theirs). A move
 /// still to be played never is: no move ends on a square its own side holds.
-fn led_to(fen: &str, san: &San, black: bool) -> bool {
+fn led_to(fen: &Fen, san: &San, black: bool) -> bool {
     use pdfcraft_chess::placement::{Color as Side, Piece, PieceKind, Square};
     use pdfcraft_chess::san::Castle;
-    let Ok(placement) = pdfcraft_chess::fen::parse_placement(placement_of(fen)) else { return false };
+    let placement = fen.placement();
     let color = if black { Side::Black } else { Side::White };
     let holds = |file: u8, rank: u8, kind: PieceKind| Square::new(file, rank).and_then(|sq| placement.get(sq)) == Some(Piece { color, kind });
     let home = if black { 7 } else { 0 };
@@ -1156,34 +1163,36 @@ fn led_to(fen: &str, san: &San, black: bool) -> bool {
     }
 }
 
-/// The castling field `castling` without the rights the caption move `san` (Black's when `black`)
+/// The castling rights `castling` without those the caption move `san` (Black's when `black`)
 /// took away: castling or a king move takes both of its side's, a rook arriving on its own corner
-/// that corner's (it was away from it). `-` when none is left.
-fn rights_after(castling: &str, san: &San, black: bool) -> String {
+/// that corner's (it was away from it).
+fn rights_after(castling: Castling, san: &San, black: bool) -> Castling {
     use pdfcraft_chess::placement::PieceKind;
-    let (short, long) = if black { ('k', 'q') } else { ('K', 'Q') };
     let home = if black { 7 } else { 0 };
-    let lost: &[char] = match &san.body {
-        SanBody::Castle(_) | SanBody::Move { piece: Some(PieceKind::King), .. } => &[short, long],
-        SanBody::Move { piece: Some(PieceKind::Rook), to, .. } if to.rank() == home && to.file() == 7 => &[short],
-        SanBody::Move { piece: Some(PieceKind::Rook), to, .. } if to.rank() == home && to.file() == 0 => &[long],
-        _ => &[],
+    let (short, long) = match &san.body {
+        SanBody::Castle(_) | SanBody::Move { piece: Some(PieceKind::King), .. } => (true, true),
+        SanBody::Move { piece: Some(PieceKind::Rook), to, .. } if to.rank() == home && to.file() == 7 => (true, false),
+        SanBody::Move { piece: Some(PieceKind::Rook), to, .. } if to.rank() == home && to.file() == 0 => (false, true),
+        _ => (false, false),
     };
-    let kept: String = castling.chars().filter(|c| *c != '-' && !lost.contains(c)).collect();
-    if kept.is_empty() { "-".to_owned() } else { kept }
+    let mut kept = castling;
+    let (king_side, queen_side) =
+        if black { (&mut kept.black_king_side, &mut kept.black_queen_side) } else { (&mut kept.white_king_side, &mut kept.white_queen_side) };
+    *king_side &= !short;
+    *queen_side &= !long;
+    kept
 }
 
 /// The en passant square the caption move `san` (Black's when `black`) leaves in `placement`, when
 /// it is a pawn's step to its fourth rank that could have been a two-square step (the square it
 /// passed and the one it left are empty). A one-square step looks the same; the square only
 /// matters to a capture en passant printed next, which a one-square step would not allow.
-fn passed_square(placement: &str, san: &San, black: bool) -> Option<String> {
+fn passed_square(placement: &pdfcraft_chess::placement::Placement, san: &San, black: bool) -> Option<pdfcraft_chess::placement::Square> {
     use pdfcraft_chess::placement::Square;
     let SanBody::Move { piece: None, capture: false, to, promotion: None, .. } = &san.body else { return None };
     let (fourth, passed, start) = if black { (4, 5, 6) } else { (3, 2, 1) };
-    let board = pdfcraft_chess::fen::parse_placement(placement).ok()?;
-    let empty = |rank: u8| Square::new(to.file(), rank).is_some_and(|sq| board.get(sq).is_none());
-    (to.rank() == fourth && empty(passed) && empty(start)).then(|| Square::new(to.file(), passed).map(|sq| sq.to_string())).flatten()
+    let empty = |rank: u8| Square::new(to.file(), rank).is_some_and(|sq| placement.get(sq).is_none());
+    (to.rank() == fourth && empty(passed) && empty(start)).then(|| Square::new(to.file(), passed)).flatten()
 }
 
 /// `seed` as it stands after its caption `san`, numbered `number` ([`led_to`]): the other side to
@@ -1192,23 +1201,21 @@ fn passed_square(placement: &str, san: &San, black: bool) -> Option<String> {
 /// not the one the diagram shows played, the reading says the side and it is not the one after the
 /// caption, or the position is not legal with that side to move.
 fn after_caption(seed: &Seed, number: MoveNumber, san: &San) -> Option<Seed> {
-    let fen = seed.fen.as_deref()?;
-    let fields: Vec<&str> = fen.split_whitespace().collect();
-    let [placement, side, castling, _, halfmove, _] = fields.as_slice() else { return None };
+    let fen = seed.fen.as_ref()?;
     let next = number_of(ply_of(number).checked_add(1)?);
-    if !led_to(fen, san, number.black) || (!seed.side_assumed && (*side == "b") != next.black) {
+    if !led_to(fen, san, number.black) || (!seed.side_assumed && black_to_move(fen) != next.black) {
         return None;
     }
-    let number = next.number.to_string();
-    let rights = rights_after(castling, san, !next.black);
-    let ep = passed_square(placement, san, !next.black).unwrap_or_else(|| "-".to_owned());
+    let read = fen.position();
+    let rights = rights_after(read.castling, san, !next.black);
+    let ep = passed_square(&read.placement, san, !next.black);
     // Rights the reading guessed from the placement can still be wrong for the other side, and
     // an en passant square needs a pawn to take it: the most that makes a legal FEN is kept.
-    let fen = [(rights.as_str(), ep.as_str()), (rights.as_str(), "-"), ("-", "-")]
+    let after = [(rights, ep), (rights, None), (Castling::default(), None)]
         .into_iter()
-        .map(|(c, e)| compose(placement, next.black, c, e, halfmove, &number))
-        .find(|f| Board::from_fen(f, false).is_ok())?;
-    Some(Seed { fen: Some(fen), side_assumed: false, ..seed.clone() })
+        .map(|(castling, en_passant)| Position { castling, en_passant, fullmove_number: u32::from(next.number), ..moving(read, next.black) })
+        .find(|p| board_of(p).is_some())?;
+    Some(Seed { fen: Some(Fen::from(after)), side_assumed: false, ..seed.clone() })
 }
 
 impl Walker {
@@ -1273,10 +1280,10 @@ impl Walker {
     /// A diagram showing the position the open game's main line has reached is remembered by
     /// that game ([`Game::shown`]), whatever the moves after it make of the game.
     fn note_shown(&mut self, seed: &Seed) {
-        let Some(fen) = seed.fen.as_deref() else { return };
+        let Some(fen) = seed.fen.as_ref() else { return };
         let Some((open, game)) = self.open.as_ref().and_then(|o| Some((o, self.games.get(o.game)?))) else { return };
         let Some(main) = open.lines.first() else { return };
-        let same = game.score.board_after(main.cursor).is_some_and(|b| placement_of(&b.to_string()) == placement_of(fen));
+        let same = game.score.board_after(main.cursor).is_some_and(|b| Fen::from_board(&b).placement_key() == fen.placement_key());
         let at = DiagramAt { page: seed.page, diagram: seed.diagram };
         if same
             && let Some(game) = self.games.get_mut(open.game)
@@ -1395,12 +1402,12 @@ impl Walker {
             Anchor::Seed(s) => Some(s),
             _ => None,
         };
-        let fen = seed.and_then(|s| s.fen.as_deref());
+        let fen = seed.and_then(|s| s.fen.as_ref());
         let (shown, fits) = match self.open.as_ref().and_then(|o| Some((o, o.lines.first()?, self.games.get(o.game)?))) {
             Some((open, main, game)) => {
                 let shows = |line: &Line| {
                     let board = game.score.board_after(line.cursor);
-                    fen.zip(board).is_some_and(|(f, b)| placement_of(f) == placement_of(&b.to_string()))
+                    fen.zip(board).is_some_and(|(f, b)| f.placement_key() == Fen::from_board(&b).placement_key())
                 };
                 let shown = open.lines.iter().rposition(shows);
                 let board = game.score.board_after(main.cursor);

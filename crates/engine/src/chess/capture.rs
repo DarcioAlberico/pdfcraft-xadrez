@@ -394,7 +394,7 @@ impl Context<'_> {
     /// Read the text from the position after `at` and graft it there; `renumber`: for the
     /// Renumber choice. `None` when `game` has no move `at`.
     fn try_at(&self, game: &Game, at: NodeId, line: usize, renumber: bool) -> Option<Candidate> {
-        let fen = game.fen_at(at)?;
+        let fen = game.fen_at(at)?.to_string();
         let read = fragment::read(self.chess, &fen, &self.opts);
         let (grafted, report) = game.graft(at, self.graft_mode, &read.items, self.page);
         let stops = read.stops.len().saturating_add(usize::from(report.stop.is_some()));

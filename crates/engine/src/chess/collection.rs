@@ -449,7 +449,7 @@ pub fn rename(game: &mut Game, names: &GameNames) -> Renamed {
 /// A new game starting at the position of move `node` of `game` (the move shown when `None`, or
 /// when the game has no such move). Its PGN has the position as its `SetUp`/`FEN` tags.
 pub fn game_from(game: &Game, node: Option<NodeId>) -> Result<Game, GameError> {
-    let fen = node.and_then(|n| game.fen_at(n)).unwrap_or_else(|| game.fen());
+    let fen = node.and_then(|n| game.fen_at(n)).map_or_else(|| game.fen(), |f| f.to_string());
     Game::from_fen(&fen)
 }
 
@@ -674,10 +674,10 @@ mod tests {
         let mut g = game(&["e2e4", "e7e5"]);
         let after_e4 = g.main_line()[1];
         assert_eq!(game_from(&g, None).unwrap().start_fen(), g.fen());
-        assert_eq!(game_from(&g, Some(after_e4)).unwrap().start_fen(), g.fen_at(after_e4).unwrap());
+        assert_eq!(game_from(&g, Some(after_e4)).unwrap().start_fen(), g.fen_at(after_e4).unwrap().to_string());
         assert_eq!(game_from(&g, Some(usize::MAX)).unwrap().start_fen(), g.fen(), "no such move: the move shown");
         g.go_to_node(after_e4);
-        assert_eq!(game_from(&g, None).unwrap().start_fen(), g.fen_at(after_e4).unwrap());
+        assert_eq!(game_from(&g, None).unwrap().start_fen(), g.fen_at(after_e4).unwrap().to_string());
         assert_eq!(scoresheet_moves(&game(&["e2e4", "e7e5", "g1f3"])), 2);
     }
 }

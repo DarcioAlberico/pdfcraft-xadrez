@@ -89,13 +89,13 @@ fn kinds(a: &Alignment) -> Vec<LinkKind> {
     a.moves.iter().map(|l| l.kind).collect()
 }
 
-/// The FENs (pieces and side) of the moves' nodes.
-fn keys(index: &ReferenceIndex, a: &Alignment) -> Vec<Option<String>> {
-    a.moves.iter().map(|l| l.node.and_then(|n| index.fen(n)).and_then(|f| position_key(&f))).collect()
+/// The positions (pieces and side) of the moves' nodes.
+fn keys(index: &ReferenceIndex, a: &Alignment) -> Vec<Option<BookKey>> {
+    a.moves.iter().map(|l| l.node.and_then(|n| index.fen(n)).map(|f| f.book_key())).collect()
 }
 
-fn key(moves: &[&str]) -> Option<String> {
-    position_key(&fen_after(moves))
+fn key(moves: &[&str]) -> Option<BookKey> {
+    Fen::parse(&fen_after(moves)).ok().map(|f| f.book_key())
 }
 
 use LinkKind::{Absent, Confirmed, Conflict, Recovered};
@@ -157,7 +157,7 @@ fn a_caption_read_as_a_move_is_confirmed_and_the_line_after_it_recovered() {
     assert_eq!(k[5], key(&main), "the caption is the move the diagram shows");
     assert_eq!(k[8], key(&["e4", "e6", "d4", "d5", "Nc3", "Bb4", "e5", "c5"]));
     assert_eq!(a.diagrams.len(), 1);
-    assert_eq!(a.diagrams[0].node.and_then(|n| index.fen(n)).and_then(|f| position_key(&f)), key(&main));
+    assert_eq!(a.diagrams[0].node.and_then(|n| index.fen(n)).map(|f| f.book_key()), key(&main));
     assert_eq!(a.counts, LinkCounts { confirmed: 6, recovered: 3, conflict: 0, absent: 0 });
     assert_eq!(a.pages, [PageGame { page: 0, game: 0 }]);
 }
@@ -315,33 +315,11 @@ fn diagrams_of(doc: &ChessDoc) -> Vec<&DiagramBlock> {
 
 /// A diagram of `fen`'s pieces with `square` (0 is a8, 63 is h1) set to `piece` (`'.'` empties it).
 fn misread(number: usize, fen: &str, changes: &[(usize, char)]) -> Block {
-    let mut squares = squares(fen.split(' ').next().unwrap()).unwrap();
+    let mut cells = Fen::parse(fen).unwrap().placement().reading_order();
     for &(k, piece) in changes {
-        squares[k] = if piece == '.' { 0 } else { piece as u8 };
+        cells[k] = if piece == '.' { None } else { Piece::from_fen_char(piece) };
     }
-    let ranks: Vec<String> = squares
-        .chunks(8)
-        .map(|rank| {
-            let mut out = String::new();
-            let mut empty = 0;
-            for &s in rank {
-                if s == 0 {
-                    empty += 1;
-                } else {
-                    if empty > 0 {
-                        out.push_str(&empty.to_string());
-                        empty = 0;
-                    }
-                    out.push(s as char);
-                }
-            }
-            if empty > 0 {
-                out.push_str(&empty.to_string());
-            }
-            out
-        })
-        .collect();
-    diagram(number, &ranks.join("/"))
+    diagram(number, &pdfcraft_chess::fen::format_placement(&Placement::from_reading_order(&cells)))
 }
 
 #[test]
@@ -420,12 +398,7 @@ fn link_confirms_the_diagrams_the_pgn_shows_and_suggests_the_near_ones() {
 }
 
 #[test]
-fn squares_read_only_eight_ranks_of_eight() {
-    let start = squares("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR").unwrap();
-    assert_eq!((start[0], start[15], start[16], start[63]), (b'r', b'p', 0, b'R'));
-    for bad in ["8/8/8/8/8/8/8", "8/8/8/8/8/8/8/8/8", "9/8/8/8/8/8/8/8", "7/8/8/8/8/8/8/8", "ppppppppp/8/8/8/8/8/8/8", "x7/8/8/8/8/8/8/8", ""] {
-        assert_eq!(squares(bad), None, "{bad}");
-    }
+fn squares_are_named_in_reading_order() {
     assert_eq!((square_name(0), square_name(15), square_name(63)), ("a8".to_string(), "h7".to_string(), "h1".to_string()));
 }
 
@@ -440,6 +413,42 @@ fn a_diagram_read_as_the_pgn_has_it_still_loses_the_side_assumed() {
     assert_eq!(link(&mut d, &index).diagrams.confirmed, 1);
     let r = diagrams_of(&d)[0].reading.as_ref().unwrap();
     assert_eq!((r.fen.as_str(), r.side_assumed), (fen_after(&[]).as_str(), false));
+}
+
+/// Plan A9-T1a (R3-03): the list's "in the book's PGN" ([`ReferenceIndex::has_position`]) and
+/// the link's confirmation ([`confirm`]) ask one question, whether the PGN has the diagram's
+/// pieces and side to move, and must give one answer. Each sliced the FEN text its own way: a
+/// position set as its placement alone (a FEN may say only that, and the side is then White's)
+/// was in the PGN for the list and not for the link, and one written with the `_` of a lichess
+/// URL, which `fen::parse` reads, was in it for neither.
+#[test]
+fn the_list_and_the_link_agree_on_what_is_the_same_position() {
+    let index = ReferenceIndex::from_pgn("1.e4 e5 2.Nf3 *").unwrap();
+    let after_e5 = fen_after(&["e4", "e5"]);
+    let at = RefNode { game: 0, node: 2 };
+    assert_eq!(index.fen(at).map(|f| f.to_string()), Some(after_e5.clone()));
+    let placement = after_e5.split(' ').next().unwrap().to_string();
+    let black = after_e5.replace(" w ", " b ");
+    // (the reading's FEN, its side assumed, whether the PGN has it)
+    let cases = [
+        (after_e5.clone(), false, true),
+        (placement.clone(), false, true),
+        (after_e5.replace(' ', "_"), false, true),
+        (black.clone(), false, false),
+        (black.clone(), true, true),
+        (format!("{placement} b"), false, false),
+    ];
+    for (fen, side_assumed, has) in cases {
+        let mut block = diagram(0, &after_e5);
+        let Block::Diagram(d) = &mut block else { panic!("a diagram") };
+        d.source = DiagramSource::Model;
+        let reading = d.reading.as_mut().unwrap();
+        reading.fen = fen.clone();
+        reading.side_assumed = side_assumed;
+        let listed = index.has_position(&fen, side_assumed);
+        let confirmed = confirm(d, &index, at);
+        assert_eq!((listed, confirmed), (has, has), "{fen} (side assumed: {side_assumed}): listed, confirmed");
+    }
 }
 
 fn arb_san() -> impl Strategy<Value = String> {

@@ -37,7 +37,7 @@ fn the_documents_games_go_onto_the_board_with_their_places() {
         assert_eq!(paths.len(), g.score.nodes.len(), "every node is on the board");
         for (n, path) in &paths {
             let mv = game.node_at(path).unwrap();
-            assert_eq!(game.fen_at(mv).as_deref(), Some(g.score.nodes[*n].fen.as_str()), "node {n} is its own move");
+            assert_eq!(game.fen_at(mv).map(|f| f.to_string()).as_deref(), Some(g.score.nodes[*n].fen.as_str()), "node {n} is its own move");
         }
     }
     let solution = doc.board_game(0).unwrap().game;

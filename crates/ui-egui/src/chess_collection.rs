@@ -3276,7 +3276,7 @@ mod tests {
         assert_eq!(c.active().origin(), Some(Source { doc: DocId(3), page: 1, index: 0 }));
         assert!(c.switch_to(0));
         assert!(c.new_from(Some(after_e4)).is_ok());
-        assert_eq!(c.active().board.game.start_fen(), c.get(0).unwrap().board.game.fen_at(after_e4).unwrap());
+        assert_eq!(c.active().board.game.start_fen(), c.get(0).unwrap().board.game.fen_at(after_e4).unwrap().to_string());
         assert_eq!(names(&c), ["1. e4 e5", "", ""], "after the game it came from");
         // A move the game doesn't have: the move shown.
         assert!(c.switch_to(0));
