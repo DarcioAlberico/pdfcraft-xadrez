@@ -1,0 +1,24 @@
+[Event "Kit D18: exercício"]
+[Site "?"]
+[Date "2026.11.11"]
+[Round "1"]
+[White "Exercício 1"]
+[Black "Mate em 1"]
+[Result "*"]
+[SetUp "1"]
+[FEN "6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1"]
+
+{As brancas jogam e dão mate.} 1. Rd8# *
+
+[Event "Kit D18: exercício com %tqu (forma suposta)"]
+[Site "?"]
+[Date "2026.11.11"]
+[Round "2"]
+[White "Exercício 2"]
+[Black "Uma resposta"]
+[Result "*"]
+[SetUp "1"]
+[FEN "6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1"]
+
+{[%tqu "Pt","As brancas jogam e ganham. Qual é o lance?","","","d1d8","Isso: mate na oitava fileira.",10]}
+1. Rd8# *

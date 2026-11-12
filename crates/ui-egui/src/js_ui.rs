@@ -487,6 +487,10 @@ pub(crate) fn preferences_body(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &Tok
         app.chess_models_action(action);
     }
     ui.add_space(8.0);
+    // How Save PGN… writes its files (plan A9-F1, decision D18).
+    ui.add(widgets::checkbox(&mut app.chess.games.pgn_bom, tl!("Write PGN files with a byte order mark (BOM)")));
+    ui.label(egui::RichText::new(tl!("Some Windows programs need the mark to read accents; most read PGN without it.")).small().color(t.text_muted));
+    ui.add_space(8.0);
     ui.label(egui::RichText::new("JavaScript").font(theme::semibold(13.0)));
     egui::Frame::new().fill(t.hover).corner_radius(egui::CornerRadius::same(6)).inner_margin(egui::Margin::same(10)).show(ui, |ui| {
         ui.set_width(ui.available_width());

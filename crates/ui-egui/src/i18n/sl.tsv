@@ -2680,6 +2680,10 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Chess games couldn't be autosaved: {e}	Šahovskih partij ni bilo mogoče samodejno shraniti: {e}
 	Nothing to save: an illegal position has no PGN.	Ničesar ni treba shraniti: neveljavna pozicija nima PGN.
 	Games read from {name}: {n}	Partije, prebrane iz {name}: {n}
+	Read as Windows-1252 (Latin-1), not UTF-8.	Prebrano kot Windows-1252 (Latin-1), ne UTF-8.
+	Lines read as Windows-1252 (Latin-1), not UTF-8: {n}	Vrstice, prebrane kot Windows-1252 (Latin-1), ne UTF-8: {n}
+	Write PGN files with a byte order mark (BOM)	Zapisuj datoteke PGN z oznako vrstnega reda bajtov (BOM)
+	Some Windows programs need the mark to read accents; most read PGN without it.	Nekateri programi za Windows potrebujejo oznako za branje strešic in naglasov; večina bere PGN tudi brez nje.
 	Not read: {n}	Ni prebrano: {n}
 	Only the first {n} were read.	Prebranih je bilo le prvih {n}.
 	the file is too large	datoteka je prevelika

@@ -2928,6 +2928,10 @@ chess undo step	Clear drawings	piešinių valymą
 	Chess games couldn't be autosaved: {e}	Nepavyko automatiškai įrašyti šachmatų partijų: {e}
 	Nothing to save: an illegal position has no PGN.	Nėra ką įrašyti: neleistina pozicija neturi PGN.
 	Games read from {name}: {n}	Partijų perskaityta iš {name}: {n}
+	Read as Windows-1252 (Latin-1), not UTF-8.	Perskaityta kaip Windows-1252 (Latin-1), ne UTF-8.
+	Lines read as Windows-1252 (Latin-1), not UTF-8: {n}	Eilutės, perskaitytos kaip Windows-1252 (Latin-1), ne UTF-8: {n}
+	Write PGN files with a byte order mark (BOM)	Rašyti PGN failus su baitų tvarkos žyme (BOM)
+	Some Windows programs need the mark to read accents; most read PGN without it.	Kai kurioms Windows programoms ši žymė reikalinga diakritikai skaityti; dauguma PGN skaito ir be jos.
 	Not read: {n}	Neperskaityta: {n}
 	Only the first {n} were read.	Perskaitytos tik pirmosios {n}.
 	the file is too large	failas per didelis

@@ -2673,6 +2673,10 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Chess games couldn't be autosaved: {e}	Шахмат партияларын автоматты түрде сақтау мүмкін болмады: {e}
 	Nothing to save: an illegal position has no PGN.	Сақтайтын ештеңе жоқ: жарамсыз позицияның PGN-і жоқ.
 	Games read from {name}: {n}	{name} ішінен оқылған партиялар: {n}
+	Read as Windows-1252 (Latin-1), not UTF-8.	UTF-8 емес, Windows-1252 (Latin-1) ретінде оқылды.
+	Lines read as Windows-1252 (Latin-1), not UTF-8: {n}	UTF-8 емес, Windows-1252 (Latin-1) ретінде оқылған жолдар: {n}
+	Write PGN files with a byte order mark (BOM)	PGN файлдарын байт реті белгісімен (BOM) жазу
+	Some Windows programs need the mark to read accents; most read PGN without it.	Кейбір Windows бағдарламаларына екпіндерді оқу үшін бұл белгі қажет; көпшілігі PGN-ді онсыз да оқиды.
 	Not read: {n}	Оқылмады: {n}
 	Only the first {n} were read.	Тек алғашқы {n} партия оқылды.
 	the file is too large	файл тым үлкен

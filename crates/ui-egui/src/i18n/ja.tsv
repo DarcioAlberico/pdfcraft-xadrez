@@ -2677,6 +2677,10 @@ chess undo step	Clear drawings	描画の消去
 	Chess games couldn't be autosaved: {e}	チェスの対局を自動保存できませんでした: {e}
 	Nothing to save: an illegal position has no PGN.	保存するものがありません: 不正な局面には PGN がありません。
 	Games read from {name}: {n}	{name} から読み込んだ対局: {n}
+	Read as Windows-1252 (Latin-1), not UTF-8.	UTF-8 ではなく Windows-1252 (Latin-1) として読み込みました。
+	Lines read as Windows-1252 (Latin-1), not UTF-8: {n}	UTF-8 ではなく Windows-1252 (Latin-1) として読み込んだ行: {n}
+	Write PGN files with a byte order mark (BOM)	PGN ファイルにバイト順マーク (BOM) を付けて書き込む
+	Some Windows programs need the mark to read accents; most read PGN without it.	Windows のプログラムには、アクセント付き文字を読むためにこのマークを必要とするものがあります。ほとんどのプログラムはマークなしで PGN を読めます。
 	Not read: {n}	読み取れなかったもの: {n}
 	Only the first {n} were read.	最初の {n} 局だけを読み込みました。
 	the file is too large	ファイルが大きすぎます

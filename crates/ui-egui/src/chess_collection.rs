@@ -58,6 +58,7 @@ pub use pdfcraft_engine::chess::collection::GameNames;
 use pdfcraft_engine::chess::collection::split_pgn;
 use pdfcraft_engine::chess::collection::{self, GameList, ListedGame, OpenKey, ShowOrAdd};
 use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, NodeId, NodePath};
+use pdfcraft_engine::chess::pdfcraft_chess::pgn;
 
 use crate::PdfCraftApp;
 use crate::chess_autosave::{self, Blocked, Store};
@@ -1045,6 +1046,9 @@ pub struct ChessGames {
     /// PGN files read by the browser, imported at the next frame.
     #[cfg(target_arch = "wasm32")]
     uploads: std::sync::Arc<std::sync::Mutex<Vec<(String, Vec<u8>)>>>,
+    /// Save PGN… starts the file with a byte order mark (Preferences; off by default, decision
+    /// D18).
+    pub pgn_bom: bool,
 }
 
 /// A collection whose games the autosave doesn't keep ([`ChessGames::unsaved`]).
@@ -2329,6 +2333,18 @@ enum PgnGames {
     Collection(String),
 }
 
+/// What the user is told about a PGN file not read as UTF-8 throughout: how many of its lines
+/// were read as Windows-1252 (plan A9-F1). `None` for UTF-8.
+pub(crate) fn encoding_note(encoding: pgn::PgnEncoding) -> Option<String> {
+    match encoding {
+        pgn::PgnEncoding::Utf8 | pgn::PgnEncoding::Utf8Bom => None,
+        pgn::PgnEncoding::Windows1252 => Some(tl!("Read as Windows-1252 (Latin-1), not UTF-8.").to_string()),
+        pgn::PgnEncoding::Mixed { lines_1252 } => {
+            Some(crate::i18n::fmt(tl!("Lines read as Windows-1252 (Latin-1), not UTF-8: {n}"), &[("n", &lines_1252.to_string())]))
+        }
+    }
+}
+
 /// A name for a file: the characters file systems refuse replaced.
 fn file_stem(name: &str) -> String {
     let clean: String = name.chars().map(|c| if c.is_control() || "\\/:*?\"<>|".contains(c) { '_' } else { c }).take(100).collect();
@@ -2744,12 +2760,13 @@ impl PdfCraftApp {
             c.active().name(c.active_index().saturating_add(1))
         };
         let name = format!("{}.pgn", file_stem(&stem));
+        let bytes = pgn::encode(&text, self.chess.games.pgn_bom);
         #[cfg(not(target_arch = "wasm32"))]
         {
             let dialog = rfd::AsyncFileDialog::new().add_filter("PGN", &["pgn"]).set_file_name(&name);
             self.ask_one(crate::pickers::Ask::Save(dialog), None, move |app, dest| {
                 let shown = dest.file_name().map_or_else(|| name.clone(), |n| n.to_string_lossy().into_owned());
-                match crate::editing::write_atomically(&dest.to_string_lossy(), text.as_bytes()) {
+                match crate::editing::write_atomically(&dest.to_string_lossy(), &bytes) {
                     Ok(()) => {
                         if let Some((cid, fp)) = whole {
                             app.chess.games.left.insert(cid, fp);
@@ -2761,7 +2778,7 @@ impl PdfCraftApp {
             });
         }
         #[cfg(target_arch = "wasm32")]
-        match crate::editing::download(&name, text.as_bytes()) {
+        match crate::editing::download(&name, &bytes) {
             Ok(()) => {
                 if let Some((cid, fp)) = whole {
                     self.chess.games.left.insert(cid, fp);
@@ -2829,7 +2846,7 @@ impl PdfCraftApp {
     /// about the ones that couldn't be read or didn't fit.
     pub fn import_chess_pgn(&mut self, name: &str, bytes: &[u8]) -> usize {
         self.sync_chess_docs();
-        let text = String::from_utf8_lossy(bytes);
+        let (text, encoding) = pgn::decode(bytes);
         let chunks = split_pgn(&text, chess_autosave::MAX_GAMES);
         let more = chunks.len() > chess_autosave::MAX_GAMES;
         let (boards, failed) = pgn_boards(chunks.iter().take(chess_autosave::MAX_GAMES).copied());
@@ -2849,6 +2866,10 @@ impl PdfCraftApp {
         if added < read {
             note.push_str(" · ");
             note.push_str(&full_note(read.saturating_sub(added)));
+        }
+        if let Some(latin) = encoding_note(encoding) {
+            note.push_str(" · ");
+            note.push_str(&latin);
         }
         if failed > 0 {
             note.push_str(" · ");

@@ -2675,6 +2675,10 @@ chess undo step	Clear drawings	l'effacement des dessins
 	Chess games couldn't be autosaved: {e}	Impossible d'enregistrer automatiquement les parties d'échecs : {e}
 	Nothing to save: an illegal position has no PGN.	Rien à enregistrer : une position illégale n'a pas de PGN.
 	Games read from {name}: {n}	Parties lues dans {name} : {n}
+	Read as Windows-1252 (Latin-1), not UTF-8.	Lu en Windows-1252 (Latin-1), pas en UTF-8.
+	Lines read as Windows-1252 (Latin-1), not UTF-8: {n}	Lignes lues en Windows-1252 (Latin-1), pas en UTF-8 : {n}
+	Write PGN files with a byte order mark (BOM)	Écrire les fichiers PGN avec une marque d'ordre des octets (BOM)
+	Some Windows programs need the mark to read accents; most read PGN without it.	Certains programmes Windows ont besoin de cette marque pour lire les accents ; la plupart lisent le PGN sans elle.
 	Not read: {n}	Non lues : {n}
 	Only the first {n} were read.	Seules les {n} premières ont été lues.
 	the file is too large	le fichier est trop volumineux

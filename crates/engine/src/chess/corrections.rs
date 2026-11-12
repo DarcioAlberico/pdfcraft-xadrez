@@ -1061,9 +1061,9 @@ pub(super) fn take_lock(path: std::path::PathBuf) -> std::io::Result<Option<Lock
 }
 
 /// Read a file of at most `max` bytes (a larger one reads as that many and one more, so it is
-/// refused as too big).
-#[cfg(not(target_arch = "wasm32"))]
-pub(super) fn read_capped(path: &std::path::Path, max: usize) -> std::io::Result<Vec<u8>> {
+/// refused as too big): never more than `max` + 1 bytes in memory, whatever the file's size. The
+/// one capped read of the chess stores and tools (plan A9, G7a), which refuse past `max`.
+pub fn read_capped(path: &std::path::Path, max: usize) -> std::io::Result<Vec<u8>> {
     use std::io::Read as _;
     let mut bytes = Vec::new();
     let cap = u64::try_from(max).unwrap_or(u64::MAX).saturating_add(1);

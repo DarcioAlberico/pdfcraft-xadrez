@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 32ca50408e4006bbbb859d6a9f8894a254a9638a51fce0faa0455e2eb934f8aa # shrinks to games = ["[Event \"x\"]\n\n; note {x [y]\n*\n\n", "[Event \"x\"]\n\ne4 *\n\n"]

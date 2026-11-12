@@ -922,3 +922,40 @@ fn the_games_header_shows_what_is_known_and_opens_its_details() {
         h.render().unwrap().save(std::path::Path::new(&dir).join("game-header.png")).unwrap();
     }
 }
+
+/// Plan A9-F1 (A1-01, A1-10, A8-01): Open PGN… of a file that starts with a byte order mark reads
+/// its two games (an empty third used to take its first tag line), and of a Latin-1 file keeps
+/// its accents and says it was read as Windows-1252. Save PGN… writes the mark only when
+/// Preferences asks for it (decision D18), and the choice is remembered.
+#[test]
+fn pgn_files_with_a_bom_or_in_latin_1_open_whole() {
+    let mut h = harness();
+    let two = "[Event \"A\"]\n[White \"Réti\"]\n[Black \"João\"]\n\n1. e4 *\n\n[Event \"B\"]\n\n1. d4 *\n";
+    let mut bom = b"\xef\xbb\xbf".to_vec();
+    bom.extend_from_slice(two.as_bytes());
+    assert_eq!(h.state_mut().import_chess_pgn("bom.pgn", &bom), 2);
+    h.run_steps(3);
+    assert_eq!(listed(h.state()).0, ["Réti–João", "B"]);
+    let toast = format!("{:?}", h.state().toast);
+    assert!(!toast.contains("Windows-1252"), "{toast}");
+    let latin1: Vec<u8> = two.chars().map(|c| u8::try_from(u32::from(c)).unwrap()).collect();
+    assert_eq!(h.state_mut().import_chess_pgn("latin1.pgn", &latin1), 2);
+    h.run_steps(3);
+    assert_eq!(listed(h.state()).0, ["Réti–João", "B", "Réti–João", "B"]);
+    let toast = format!("{:?}", h.state().toast);
+    assert!(toast.contains("Read as Windows-1252 (Latin-1), not UTF-8."), "{toast}");
+    // Saved without the mark by default, with it when asked; the choice outlives a restart.
+    let dir = temp_dir("bom");
+    let path = dir.join("games.pgn");
+    assert!(!h.state().chess.games.pgn_bom);
+    export(&mut h, &path);
+    assert!(!std::fs::read(&path).unwrap().starts_with(b"\xef\xbb\xbf"));
+    h.state_mut().chess.games.pgn_bom = true;
+    let text = export(&mut h, &path);
+    assert!(std::fs::read(&path).unwrap().starts_with(b"\xef\xbb\xbf[Event \"A\"]"), "{text}");
+    let settings = h.state().persist();
+    let mut again = PdfCraftApp::new();
+    again.restore(&settings);
+    assert!(again.chess.games.pgn_bom);
+    let _ = std::fs::remove_dir_all(&dir);
+}

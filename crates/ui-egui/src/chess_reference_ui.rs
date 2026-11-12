@@ -413,20 +413,21 @@ impl PdfCraftApp {
         if bytes.len() > MAX_REFERENCE_BYTES {
             return self.notify(refused(&tl!("the file is too large")));
         }
-        let text = String::from_utf8_lossy(bytes).into_owned();
+        let (text, encoding) = pdfcraft_engine::chess::pdfcraft_chess::pgn::decode(bytes);
         let index = match ReferenceIndex::from_pgn(&text) {
             Ok(i) if !i.games().is_empty() => i,
             Ok(_) => return self.notify(refused(&tl!("no game in it"))),
             Err(e) => return self.notify(refused(&e)),
         };
         let summary = BookPgnSummary { name: Some(name.to_owned()), games: index.games().len(), moves: index.moves() };
-        let kept =
-            KeptPgn::new(Some(name), text, summary.games, summary.moves, now()).and_then(|pgn| self.chess.book_pgns.store.set(&keys, pages, pgn));
-        if let Err(e) = kept {
-            return self.notify(refused(&e));
-        }
+        let kept = KeptPgn::new(Some(name), text, summary.games, summary.moves, now())
+            .and_then(|pgn| self.chess.book_pgns.store.set(&keys, pages, pgn.read_from(bytes)));
+        // The same PGN kept again keeps the decisions made against it (plan A9-F1).
+        let decisions = match kept {
+            Ok((_, loaded)) => loaded.file.map(|f| f.decisions).unwrap_or_default(),
+            Err(e) => return self.notify(refused(&e)),
+        };
         self.chess.book_pgns.docs.retain(|d| d.doc != id);
-        let decisions = Vec::new();
         self.chess.book_pgns.docs.push(DocPgn {
             doc: id,
             keys,
@@ -440,10 +441,15 @@ impl PdfCraftApp {
         // The Text tab reads its page again, linked to it, and the Diagrams list takes it.
         self.chess.text = None;
         self.refresh_chess_kinds();
-        self.notify(crate::i18n::fmt(
+        let mut note = crate::i18n::fmt(
             tl!("Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it."),
             &[("name", name), ("games", &summary.games.to_string()), ("moves", &summary.moves.to_string())],
-        ));
+        );
+        if let Some(latin) = crate::chess_collection::encoding_note(encoding) {
+            note.push_str(" · ");
+            note.push_str(&latin);
+        }
+        self.notify(note);
     }
 
     /// The answer to the offer of the PGN beside the active document's PDF (R6f): use it, or not
