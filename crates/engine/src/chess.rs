@@ -1334,7 +1334,8 @@ impl Session {
     }
 
     /// Give document `id` the diagram corrections `file` holds (loaded from a
-    /// [`corrections::CorrectionStore`] for the document's keys), or none. From then on the
+    /// corrections store for the document's keys, [`corrections::DirStore`] or
+    /// [`corrections::MemStore`]), or none. From then on the
     /// readings the recognised document, the exports and the lichess links use are the corrected
     /// ones ([`Self::chess_scan_corrected`]); [`Self::chess_scan`] keeps giving what was read.
     /// Closing the document forgets them.
@@ -1477,6 +1478,7 @@ pub mod reference_store;
 pub mod replace;
 pub mod samples;
 pub mod span;
+pub mod store;
 pub mod text_ocr;
 
 #[cfg(test)]

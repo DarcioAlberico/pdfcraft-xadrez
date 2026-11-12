@@ -3218,6 +3218,7 @@ chess undo step	Clear drawings	видалення малюнків
 # Plan A8 P3b2: the Diagram tab and its corrections.
 	Diagram	Діаграма
 	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Не вдалося прочитати збережені виправлення діаграм ({why}); їх відкладено як {name}.
+	Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted.	Деякі збережені виправлення діаграм не вдалося прочитати ({why}); решта використовуються, а {name} зберігається й ніколи не видаляється.
 	The diagram corrections couldn't be saved: {e}	Не вдалося зберегти виправлення діаграм: {e}
 	Diagram {n}, page {p}: {state}	Діаграма {n}, стор. {p}: {state}
 	Page {p} · diagram {n} of {m}	Стор. {p} · діаграма {n} з {m}

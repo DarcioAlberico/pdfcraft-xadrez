@@ -3201,6 +3201,7 @@ chess undo step	Clear drawings	odstranjevanje risb
 # Plan A8 P3b2: the Diagram tab and its corrections.
 	Diagram	Diagram
 	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Shranjenih popravkov diagramov ni bilo mogoče prebrati ({why}); odloženi so kot {name}.
+	Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted.	Nekaterih shranjenih popravkov diagramov ni bilo mogoče prebrati ({why}); ostali se uporabijo, {name} pa se ohrani in se nikoli ne izbriše.
 	The diagram corrections couldn't be saved: {e}	Popravkov diagramov ni bilo mogoče shraniti: {e}
 	Diagram {n}, page {p}: {state}	Diagram {n}, str. {p}: {state}
 	Page {p} · diagram {n} of {m}	Str. {p} · diagram {n} od {m}

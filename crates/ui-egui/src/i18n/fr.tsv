@@ -3196,6 +3196,7 @@ chess undo step	Clear drawings	l'effacement des dessins
 # Plan A8 P3b2: the Diagram tab and its corrections.
 	Diagram	Diagramme
 	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Les corrections de diagrammes enregistrées n’ont pas pu être lues ({why}) ; elles ont été mises de côté sous le nom {name}.
+	Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted.	Certaines corrections de diagrammes enregistrées n'ont pas pu être lues ({why}) ; les autres sont utilisées, et {name} est conservé, jamais supprimé.
 	The diagram corrections couldn't be saved: {e}	Impossible d’enregistrer les corrections de diagrammes : {e}
 	Diagram {n}, page {p}: {state}	Diagramme {n}, page {p} : {state}
 	Page {p} · diagram {n} of {m}	Page {p} · diagramme {n} sur {m}

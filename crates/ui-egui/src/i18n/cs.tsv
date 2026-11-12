@@ -3270,6 +3270,7 @@ chess undo step	Clear drawings	smazání kreseb
 # Plan A8 P3b2: the Diagram tab and its corrections.
 	Diagram	Diagram
 	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Uložené opravy diagramů nebylo možné přečíst ({why}); byly odloženy jako {name}.
+	Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted.	Některé uložené opravy diagramů nebylo možné přečíst ({why}); ostatní se použijí a {name} zůstává uložen, nikdy se nemaže.
 	The diagram corrections couldn't be saved: {e}	Opravy diagramů nebylo možné uložit: {e}
 	Diagram {n}, page {p}: {state}	Diagram {n}, str. {p}: {state}
 	Page {p} · diagram {n} of {m}	Str. {p} · diagram {n} z {m}

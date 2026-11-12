@@ -2512,9 +2512,22 @@ fn diagram_corrections_are_kept_found_again_and_confined() {
     let uid = set["uid"].as_str().unwrap().to_owned();
     let file = root.join(".pdfcraft/chess-corrections").join(set["file"].as_str().unwrap());
     assert!(file.is_file(), "written inside the root: {file:?}");
+    assert!(set["file"].as_str().is_some_and(|f| f.ends_with(".corrections.json")), "{set:#}");
+    assert_eq!((set["skipped"].as_u64(), set["set_aside"].is_null()), (Some(0), true), "{set:#}");
+    // A9-G3a (A4-06): an entry that can't be read is left out and said, the others kept, and the
+    // file is not renamed by reading; the write that drops it keeps the file as it was beside it.
+    let text = std::fs::read_to_string(&file).unwrap();
+    let with_bad = text.replacen("\"entries\":[", "\"entries\":[{\"uid\":\"bad\"},", 1);
+    assert_ne!(with_bad, text);
+    std::fs::write(&file, &with_bad).unwrap();
+    let listed = ok(&mut a, "chess_correction_list", json!({ "doc": doc }));
+    assert_eq!((listed["count"].as_u64(), listed["skipped"].as_u64(), listed["set_aside"].is_null()), (Some(1), Some(1), true), "{listed:#}");
+    assert_eq!(std::fs::read_to_string(&file).unwrap(), with_bad, "a reading tool never rewrites or renames");
     // The same diagram again: the next revision of the same correction.
     let verified = ok(&mut a, "chess_correction_set", json!({ "doc": doc, "page": 1, "index": 1, "kind": "verified", "models_dir": "models" }));
     assert_eq!((verified["uid"].as_str(), verified["rev"].as_u64()), (Some(uid.as_str()), Some(2)), "{verified:#}");
+    let aside = verified["set_aside"]["file"].as_str().map(|f| root.join(".pdfcraft/chess-corrections").join(f));
+    assert_eq!(aside.as_ref().map(|f| std::fs::read_to_string(f).unwrap()), Some(with_bad), "{verified:#}");
     assert_eq!(verified["fen"], "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "verified keeps the reading");
     // Another session opening the same file finds it, on the same page, unchanged.
     let (mut b, doc_b) = opened(&root);
