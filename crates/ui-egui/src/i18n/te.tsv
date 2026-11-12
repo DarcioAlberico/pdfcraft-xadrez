@@ -2535,6 +2535,10 @@ chess undo step	Clear drawings	చిత్రాల తొలగింపు
 	Chess games couldn't be autosaved: {e}	చదరంగం ఆటలను స్వయంచాలకంగా సేవ్ చేయలేకపోయాము: {e}
 	Nothing to save: an illegal position has no PGN.	సేవ్ చేయడానికి ఏమీ లేదు: చెల్లని స్థితికి PGN లేదు.
 	Games read from {name}: {n}	{name} నుండి చదివిన ఆటలు: {n}
+	Read as Windows-1252 (Latin-1), not UTF-8.	UTF-8 గా కాకుండా Windows-1252 (Latin-1) గా చదవబడింది.
+	Lines read as Windows-1252 (Latin-1), not UTF-8: {n}	UTF-8 గా కాకుండా Windows-1252 (Latin-1) గా చదివిన పంక్తులు: {n}
+	Write PGN files with a byte order mark (BOM)	PGN ఫైళ్లను బైట్ క్రమ గుర్తు (BOM) తో రాయి
+	Some Windows programs need the mark to read accents; most read PGN without it.	కొన్ని Windows ప్రోగ్రాములకు యాస గుర్తులు చదవడానికి ఈ గుర్తు అవసరం; చాలావరకు అది లేకుండానే PGN ను చదువుతాయి.
 	Not read: {n}	చదవలేదు: {n}
 	Only the first {n} were read.	మొదటి {n} మాత్రమే చదవబడ్డాయి.
 	the file is too large	ఫైల్ చాలా పెద్దది

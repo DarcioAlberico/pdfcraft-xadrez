@@ -2668,6 +2668,10 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Chess games couldn't be autosaved: {e}	Satranç oyunları otomatik olarak kaydedilemedi: {e}
 	Nothing to save: an illegal position has no PGN.	Kaydedilecek bir şey yok: geçersiz bir konumun PGN'si yoktur.
 	Games read from {name}: {n}	{name} dosyasından okunan oyunlar: {n}
+	Read as Windows-1252 (Latin-1), not UTF-8.	UTF-8 olarak değil, Windows-1252 (Latin-1) olarak okundu.
+	Lines read as Windows-1252 (Latin-1), not UTF-8: {n}	UTF-8 olarak değil, Windows-1252 (Latin-1) olarak okunan satırlar: {n}
+	Write PGN files with a byte order mark (BOM)	PGN dosyalarını bayt sırası işaretiyle (BOM) yaz
+	Some Windows programs need the mark to read accents; most read PGN without it.	Bazı Windows programları aksanlı harfleri okumak için bu işarete ihtiyaç duyar; çoğu PGN'yi işaret olmadan okur.
 	Not read: {n}	Okunmadı: {n}
 	Only the first {n} were read.	Yalnızca ilk {n} oyun okundu.
 	the file is too large	dosya çok büyük

@@ -17,6 +17,7 @@ use pdfcraft_engine::chess::export::{ChessExportOptions, ChessFormat};
 use pdfcraft_engine::chess::links::Side;
 use pdfcraft_engine::chess::pdfcraft_chess::draw::{BoardStyle, PieceSet, Rgb};
 use pdfcraft_engine::chess::pdfcraft_chess::fen;
+use pdfcraft_engine::chess::pdfcraft_chess::pgn::{self, PgnEncoding};
 use pdfcraft_engine::chess::pdfcraft_chess::rules::Legality;
 use pdfcraft_engine::chess::pdfcraft_chess::san::Lang;
 use pdfcraft_engine::chess::pdfcraft_chessvision::board::{BoardReading, ReadPosition, ReadingSource, Unreadable};
@@ -715,14 +716,17 @@ impl Automation {
                 crate::write_atomic(&dir.join(name), png)?;
             }
         }
-        crate::write_atomic(&path, &made.bytes)?;
+        // A PGN starts with a byte order mark only when asked (decision D18).
+        let bom = format == ChessFormat::Pgn && a.opt_bool("bom")?.unwrap_or(false);
+        let bytes: std::borrow::Cow<[u8]> = if bom { [pgn::BOM, &made.bytes].concat().into() } else { made.bytes.as_slice().into() };
+        crate::write_atomic(&path, &bytes)?;
         let (all, positioned) = made.diagram_counts();
         let read = &made.read;
         let mut notes: Vec<Value> = read.notes.iter().map(|(p, n)| json!({ "page": p + 1, "note": n })).collect();
         notes.extend(made.notes.iter().map(|n| json!({ "note": n })));
         Ok(json!({
             "out": shown,
-            "bytes": made.bytes.len(),
+            "bytes": bytes.len(),
             "pages": read.doc.pages.len(),
             "lang": read.lang.lang.code(),
             "diagrams": all,
@@ -975,15 +979,16 @@ fn font_json(
 }
 
 /// A book's PGN at `path` (`shown` as the caller named it), indexed. Refused past
-/// [`reference::MAX_REFERENCE_BYTES`] before it is read; bytes that are not UTF-8 are read as
-/// replacement characters, which no move needs.
+/// [`reference::MAX_REFERENCE_BYTES`] before it is read; read as `pgn::decode` reads it (a line
+/// that is not UTF-8 as Windows-1252, a byte order mark dropped).
 pub(crate) fn read_reference(path: &std::path::Path, shown: &str) -> Result<reference::ReferenceIndex> {
-    let text = read_reference_text(path, shown)?;
+    let (text, _, _) = read_reference_text(path, shown)?;
     reference::ReferenceIndex::from_pgn(&text).map_err(|e| failed(format!("{shown}: {e}")))
 }
 
-/// The text of the book's PGN at `path`, as [`read_reference`] reads it.
-pub(crate) fn read_reference_text(path: &std::path::Path, shown: &str) -> Result<String> {
+/// The text of the book's PGN at `path`, as [`read_reference`] reads it, how it was decoded, and
+/// the file's bytes (a kept PGN is also known by the hash older builds gave them).
+pub(crate) fn read_reference_text(path: &std::path::Path, shown: &str) -> Result<(String, PgnEncoding, Vec<u8>)> {
     use std::io::Read as _;
     let max = reference::MAX_REFERENCE_BYTES;
     let too_large = || failed(format!("{shown}: a PGN of more than {} MiB is not read", max >> 20));
@@ -997,7 +1002,8 @@ pub(crate) fn read_reference_text(path: &std::path::Path, shown: &str) -> Result
     if bytes.len() > max {
         return Err(too_large());
     }
-    Ok(String::from_utf8_lossy(&bytes).into_owned())
+    let (text, encoding) = pgn::decode(&bytes);
+    Ok((text, encoding, bytes))
 }
 
 /// The `reference` field of `chess_document`'s reply. Pages and games count from 1.

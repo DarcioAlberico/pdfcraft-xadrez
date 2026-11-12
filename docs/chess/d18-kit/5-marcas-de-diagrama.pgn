@@ -1,0 +1,12 @@
+[Event "Kit D18: marcas de diagrama"]
+[Site "?"]
+[Date "2026.11.11"]
+[Round "1"]
+[White "Brancas"]
+[Black "Pretas"]
+[Result "*"]
+
+1. d4 Nf6 2. c4 e6 3. Nc3 Bb4 $201 {$201: marca de diagrama do Scid e do
+ChessDB.} 4. e3 O-O 5. Bd3 d5 6. Nf3 c5 7. O-O Nc6 $220 {$220: marca de
+diagrama do ChessPad.} 8. a3 Bxc3 9. bxc3 dxc4 10. Bxc4 Qc7 $221 {$221: a
+outra marca de diagrama do ChessPad.} *

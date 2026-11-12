@@ -2671,6 +2671,10 @@ chess undo step	Clear drawings	rajzok törlése
 	Chess games couldn't be autosaved: {e}	A sakkjátszmák automatikus mentése nem sikerült: {e}
 	Nothing to save: an illegal position has no PGN.	Nincs mit menteni: a szabálytalan állásnak nincs PGN-je.
 	Games read from {name}: {n}	{name} fájlból beolvasott játszmák: {n}
+	Read as Windows-1252 (Latin-1), not UTF-8.	Windows-1252 (Latin-1) kódolásként beolvasva, nem UTF-8-ként.
+	Lines read as Windows-1252 (Latin-1), not UTF-8: {n}	Windows-1252 (Latin-1) kódolásként beolvasott sorok, nem UTF-8: {n}
+	Write PGN files with a byte order mark (BOM)	PGN-fájlok írása bájtsorrend-jellel (BOM)
+	Some Windows programs need the mark to read accents; most read PGN without it.	Néhány Windows-program a jel nélkül nem olvassa helyesen az ékezeteket; a legtöbb jel nélkül is olvassa a PGN-t.
 	Not read: {n}	Nincs beolvasva: {n}
 	Only the first {n} were read.	Csak az első {n} lett beolvasva.
 	the file is too large	a fájl túl nagy

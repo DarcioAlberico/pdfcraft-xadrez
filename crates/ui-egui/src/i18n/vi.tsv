@@ -2927,6 +2927,10 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Chess games couldn't be autosaved: {e}	Không thể tự động lưu ván cờ: {e}
 	Nothing to save: an illegal position has no PGN.	Không có gì để lưu: thế cờ không hợp lệ không có PGN.
 	Games read from {name}: {n}	Số ván đọc từ {name}: {n}
+	Read as Windows-1252 (Latin-1), not UTF-8.	Đã đọc theo Windows-1252 (Latin-1), không phải UTF-8.
+	Lines read as Windows-1252 (Latin-1), not UTF-8: {n}	Số dòng đọc theo Windows-1252 (Latin-1), không phải UTF-8: {n}
+	Write PGN files with a byte order mark (BOM)	Ghi tệp PGN kèm dấu thứ tự byte (BOM)
+	Some Windows programs need the mark to read accents; most read PGN without it.	Một số chương trình Windows cần dấu này để đọc chữ có dấu; phần lớn đọc PGN mà không cần nó.
 	Not read: {n}	Chưa đọc: {n}
 	Only the first {n} were read.	Chỉ đọc {n} ván đầu tiên.
 	the file is too large	tệp quá lớn

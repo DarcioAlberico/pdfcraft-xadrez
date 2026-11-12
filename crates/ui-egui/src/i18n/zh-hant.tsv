@@ -2576,6 +2576,10 @@ chess undo step	Clear drawings	清除標記
 	Chess games couldn't be autosaved: {e}	無法自動儲存西洋棋對局：{e}
 	Nothing to save: an illegal position has no PGN.	沒有可儲存的內容：不合法的局面沒有 PGN。
 	Games read from {name}: {n}	從 {name} 讀取的對局：{n}
+	Read as Windows-1252 (Latin-1), not UTF-8.	已按 Windows-1252 (Latin-1) 而非 UTF-8 讀取。
+	Lines read as Windows-1252 (Latin-1), not UTF-8: {n}	按 Windows-1252 (Latin-1) 而非 UTF-8 讀取的行數：{n}
+	Write PGN files with a byte order mark (BOM)	寫入 PGN 檔案時加上位元組順序記號 (BOM)
+	Some Windows programs need the mark to read accents; most read PGN without it.	部分 Windows 程式需要此記號才能正確讀取重音字母；大多數程式不需要它也能讀取 PGN。
 	Not read: {n}	未讀取：{n}
 	Only the first {n} were read.	只讀取了前 {n} 局。
 	the file is too large	檔案太大
