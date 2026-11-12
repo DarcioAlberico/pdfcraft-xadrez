@@ -186,6 +186,19 @@ mod tests {
         }
     }
 
+    /// Plan A9-V1: the shipped pieces are far from the depth a hostile SVG is refused at.
+    #[test]
+    fn every_shipped_piece_is_shallow() {
+        let mut deepest = 0;
+        for set in SETS {
+            for (bytes, name) in set.files.iter().zip(FILE_NAMES) {
+                let depth = super::super::svg::chain_depth(bytes).unwrap_or_else(|e| panic!("{} {name}: {e}", set.id));
+                deepest = deepest.max(depth);
+            }
+        }
+        assert!(deepest <= 8, "{deepest}");
+    }
+
     /// A set whose files were mixed up shows it: two of its pieces drawn alike, or a white piece
     /// no lighter than the black one of its kind.
     #[test]

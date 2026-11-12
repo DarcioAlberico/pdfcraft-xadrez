@@ -33,6 +33,10 @@ base64 = "0.22"
 # SVG piece images (`pieces::svg`): their paths, resolved. Already in the tree (egui_extras > resvg);
 # without text, pure Rust, builds for wasm32.
 usvg = { version = "0.45", default-features = false }
+# The style sheets of an SVG piece, matched to its elements the way usvg matches them, so the
+# references a style sheet adds are measured before usvg follows them (`pieces::svg`). Already in
+# the tree (usvg's own CSS parser); pure Rust, builds for wasm32.
+simplecss = "0.2"
 serde.workspace = true
 serde_json.workspace = true
 # Contours, polygon simplification and minimum-area rectangles for the page detector (no OpenCV).
