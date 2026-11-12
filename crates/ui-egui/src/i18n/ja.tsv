@@ -2659,6 +2659,12 @@ chess undo step	Clear drawings	描画の消去
 	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	この文書は保護されています: チェスの対局は、チェス盤パネルで許可した場合にのみ自動保存されます。
 	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	この文書のチェスの対局が多すぎて自動保存できません (最大 {n} 局、{mb} MB)。何も失わないよう「すべての対局を PGN で保存…」で保存してください。
 	These chess games were saved by a newer PdfCraft (format {v}): this one only reads them, and doesn't autosave changes made here. Save them with Save all games as PGN… so nothing is lost.	これらのチェスの対局は新しいバージョンの PdfCraft で保存されています (形式 {v})。このバージョンでは読み取りのみで、ここでの変更は自動保存されません。何も失わないよう「すべての対局を PGN で保存…」で保存してください。
+	Not added: {n}. A document keeps at most {max} games: save some as PGN and delete them to make room.	追加されませんでした: {n}。1 つの文書に保持できる対局は最大 {max} 局です。いくつかを PGN で保存してから削除し、空きを作ってください。
+	Chess games not saved	保存されていないチェスの対局
+	Games of “{name}” that autosave doesn't keep: {n}	「{name}」の対局のうち自動保存されないもの: {n}
+	Games with no document open that autosave doesn't keep: {n}	文書を開いていないときの対局のうち自動保存されないもの: {n}
+	Quit without saving	保存せずに終了
+	Close without saving	保存せずに閉じる
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	チェスの対局を自動保存できません: このウィンドウ用にアプリのデータフォルダーをロックできませんでした。
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	これらのチェスの対局は別の PdfCraft ウィンドウが自動保存しています。ここでの変更は自動保存されません。
 	Chess games couldn't be autosaved: {e}	チェスの対局を自動保存できませんでした: {e}

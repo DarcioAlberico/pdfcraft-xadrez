@@ -103,6 +103,10 @@ fn new_cid() -> String {
 pub struct GameEntry {
     pub board: BoardState,
     uid: u64,
+    /// Opened from a diagram (double-click, Open on the board). While it is untouched it gives
+    /// way to the next diagram opened, counts toward no cap and is not autosaved: it is opened
+    /// again from its diagram (plan A9-G8, A5-01).
+    from_diagram: bool,
 }
 
 impl ListedGame for GameEntry {
@@ -128,7 +132,13 @@ impl ListedGame for GameEntry {
 
 impl GameEntry {
     pub fn new(board: BoardState) -> GameEntry {
-        GameEntry { board, uid: next_uid() }
+        GameEntry { board, uid: next_uid(), from_diagram: false }
+    }
+
+    /// Opened from a diagram and never changed since ([`Self::from_diagram`]): it gives way to
+    /// the next diagram opened, counts toward no cap and is not autosaved.
+    pub(crate) fn ephemeral(&self) -> bool {
+        self.from_diagram && self.untouched()
     }
 
     /// The move shown, as a path from the start.
@@ -520,8 +530,10 @@ impl ChessCollection {
 
     /// Add `boards` at the end, the first of them shown (`show`; else the game shown stays
     /// shown), as one undo step of the list named `edit`; a blank game alone in the list gives
-    /// way to them. How many were added.
-    pub(crate) fn add_games(&mut self, boards: Vec<BoardState>, edit: ChessEdit, show: bool) -> usize {
+    /// way to them. Only as many as fit under the cap ([`Self::room`]) are added, the first ones:
+    /// the caller says how many were not ([`full_note`]). How many were added.
+    pub(crate) fn add_games(&mut self, mut boards: Vec<BoardState>, edit: ChessEdit, show: bool) -> usize {
+        boards.truncate(self.room());
         if boards.is_empty() {
             return 0;
         }
@@ -545,18 +557,45 @@ impl ChessCollection {
     /// Show `board`'s game: the list's own when it holds the same game untouched (plan A9-G8: one
     /// rule for a diagram, a game of the book's text and one of its PGN,
     /// [`GameList::show_or_add`]), else `board` added at the end and shown, as one undo step of
-    /// the list named `edit`. Whether it was added.
-    pub(crate) fn show_or_add(&mut self, board: BoardState, edit: ChessEdit) -> bool {
+    /// the list named `edit`, unless the list is at the cap (plan A9-G8: [`Opened::Full`]).
+    pub(crate) fn show_or_add(&mut self, board: BoardState, edit: ChessEdit) -> Opened {
         let before = self.active().uid;
         let entry = GameEntry::new(board);
         let uid = entry.uid;
+        // At the cap, only the game already there can be shown.
+        if self.room() == 0 && entry.open_key().and_then(|key| self.games.find_untouched(key)).is_none() {
+            return Opened::Full;
+        }
         match self.games.show_or_add(entry) {
-            ShowOrAdd::Shown(_) => false,
+            ShowOrAdd::Shown(_) => Opened::Shown,
             ShowOrAdd::Added(_) => {
                 self.added(vec![uid], edit, before, None);
-                true
+                Opened::Added
             }
         }
+    }
+
+    /// Open `board`, a diagram's position, on the board (plan A9-G8, A5-01): the same diagram
+    /// untouched is shown again ([`GameList::find_untouched`]); else it takes the place of the
+    /// untouched diagram game shown, keeping its place and id, as no undo step (the step that
+    /// opened that one, "Load the diagram", takes this one back); else it is added, as one undo
+    /// step of the list. Never refused: an untouched diagram game counts toward no cap.
+    pub(crate) fn open_diagram(&mut self, board: BoardState) -> Opened {
+        let mut entry = GameEntry::new(board);
+        entry.from_diagram = true;
+        if let Some(at) = entry.open_key().and_then(|key| self.games.find_untouched(key)) {
+            self.games.switch_to(at);
+            return Opened::Shown;
+        }
+        if self.active().ephemeral() {
+            entry.uid = self.active().uid;
+            *self.games.active_mut() = entry;
+            return Opened::Replaced;
+        }
+        let (before, uid) = (self.active().uid, entry.uid);
+        self.games.add(entry);
+        self.added(vec![uid], ChessEdit::LoadDiagram, before, None);
+        Opened::Added
     }
 
     /// Games `uids` were just added while game `before` was shown: one undo step of the list.
@@ -692,7 +731,9 @@ impl ChessCollection {
     /// A copy of each of games `indices` (a selection) right after it, the first copy shown: one
     /// undo step of the list. How many copies were made.
     pub(crate) fn duplicate_many(&mut self, indices: &[usize]) -> usize {
-        let places = self.places(indices);
+        let mut places = self.places(indices);
+        // Only as many as fit under the cap, the first ones (the caller says how many did not).
+        places.truncate(self.room());
         let before = self.active().uid;
         let mut uids = Vec::with_capacity(places.len());
         // The last first, so the places of the others stay as they are.
@@ -724,8 +765,7 @@ impl ChessCollection {
         let game =
             collection::game_from(&b.game, node).map_err(|e| crate::i18n::fmt(tl!("The FEN couldn't be read: {e}"), &[("e", &e.to_string())]))?;
         let source = b.source;
-        self.insert_new(game, source, None);
-        Ok(())
+        self.insert_new(game, source, None)
     }
 
     /// A new game from position `fen` (one set up on the board), on the side of the game shown,
@@ -733,8 +773,7 @@ impl ChessCollection {
     /// FEN that can't start a game; the error says why.
     pub(crate) fn new_at(&mut self, fen: &str) -> Result<(), String> {
         let game = Game::from_fen(fen).map_err(|e| crate::i18n::fmt(tl!("The FEN couldn't be read: {e}"), &[("e", &e.to_string())]))?;
-        self.insert_new(game, None, None);
-        Ok(())
+        self.insert_new(game, None, None)
     }
 
     /// The deleted moves kept.
@@ -765,15 +804,21 @@ impl ChessCollection {
     pub(crate) fn restore_trashed(&mut self, index: usize) -> Result<(), String> {
         let item = self.trash.get(index).cloned().ok_or_else(|| tl!("Those deleted moves are no longer kept.").to_string())?;
         let (game, _) = Game::from_pgn(&item.pgn).map_err(|e| crate::i18n::fmt(tl!("The PGN couldn't be read: {e}"), &[("e", &e.to_string())]))?;
+        // Refused at the cap before the item leaves the trash.
+        if self.room() == 0 {
+            return Err(full_note(1));
+        }
         self.trash.take(index);
-        self.insert_new(game, None, Some((index, item)));
-        Ok(())
+        self.insert_new(game, None, Some((index, item)))
     }
 
     /// `game` as a new game right after the one shown, on its side, and shown: one undo step of
     /// the list ("New game from this position", or "Open as a new game" when it was `restored`
-    /// from the trash, the item and its place there).
-    fn insert_new(&mut self, game: Game, source: Option<Source>, restored: Option<(usize, Trashed)>) {
+    /// from the trash, the item and its place there). Refused at the cap, with the reason.
+    fn insert_new(&mut self, game: Game, source: Option<Source>, restored: Option<(usize, Trashed)>) -> Result<(), String> {
+        if self.room() == 0 {
+            return Err(full_note(1));
+        }
         let mut board = BoardState::default();
         board.game = game;
         board.source = source;
@@ -784,6 +829,7 @@ impl ChessCollection {
         self.insert_after(self.active_index(), entry);
         let edit = if restored.is_some() { ChessEdit::RestoreGame } else { ChessEdit::NewGameFromHere };
         self.added(vec![uid], edit, before, restored);
+        Ok(())
     }
 
     /// Add `entry` at the end and show it, as no step of the list (the tests build lists so). A
@@ -922,6 +968,48 @@ impl ChessCollection {
     fn has_content(&self) -> bool {
         self.len() > 1 || !self.active().is_blank()
     }
+
+    /// Anything the autosave keeps: a game that is neither blank nor an untouched diagram game.
+    fn kept_content(&self) -> bool {
+        self.iter().any(|e| !e.ephemeral() && !e.is_blank())
+    }
+
+    /// How many games count toward the cap ([`chess_autosave::MAX_GAMES`], what the autosave
+    /// keeps): every game but the untouched diagram games, and but a lone blank game, whose place
+    /// the next game added takes.
+    pub(crate) fn counted(&self) -> usize {
+        if self.len() == 1 && self.active().is_blank() {
+            return 0;
+        }
+        self.iter().filter(|e| !e.ephemeral()).count()
+    }
+
+    /// How many more games fit under the cap (plan A9-G8: adding past it is refused when it is
+    /// asked for, and said).
+    pub(crate) fn room(&self) -> usize {
+        chess_autosave::MAX_GAMES.saturating_sub(self.counted())
+    }
+}
+
+/// What opening a game of the book (a diagram, a game of its text or of its PGN) did.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Opened {
+    /// The list held it untouched: it is shown.
+    Shown,
+    /// It took the place of the untouched diagram game shown (no undo step).
+    Replaced,
+    /// It was added and is shown (one undo step of the list).
+    Added,
+    /// Refused: the document has as many games as it keeps.
+    Full,
+}
+
+/// "Not added: 3. A document keeps at most 256 games: …", for games refused at the cap.
+pub(crate) fn full_note(n: usize) -> String {
+    crate::i18n::fmt(
+        tl!("Not added: {n}. A document keeps at most {max} games: save some as PGN and delete them to make room."),
+        &[("n", &n.to_string()), ("max", &chess_autosave::MAX_GAMES.to_string())],
+    )
 }
 
 /// Every document's games.
@@ -946,12 +1034,78 @@ pub struct ChessGames {
     notes: Vec<String>,
     /// The list's question or name editor open, and its keyboard focus.
     list: ListState,
+    /// Collections the user left as they were, by id, with their fingerprint then: Quit or
+    /// Close without saving was said for them, or every game was saved as PGN. They are not asked
+    /// about again until they change (plan A9-G8).
+    left: HashMap<String, u64>,
     /// PGN files read by the browser, imported at the next frame.
     #[cfg(target_arch = "wasm32")]
     uploads: std::sync::Arc<std::sync::Mutex<Vec<(String, Vec<u8>)>>>,
 }
 
+/// A collection whose games the autosave doesn't keep ([`ChessGames::unsaved`]).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct Unsaved {
+    pub cid: String,
+    /// Its document, when it is open.
+    pub doc: Option<DocId>,
+    /// Its document's name as the collection knows it (a closed document's), when it does.
+    pub name: Option<String>,
+    /// How many of its games count (untouched diagram games don't).
+    pub games: usize,
+}
+
+/// Why a collection's games aren't autosaved, in a few words (the games list and the question
+/// before quitting say it).
+fn blocked_text(why: &Blocked) -> &'static str {
+    match why {
+        Blocked::TooBig => tl!("Too many games to autosave here: save them as PGN."),
+        Blocked::OtherInstance => tl!("Another PdfCraft window autosaves these games."),
+        Blocked::Newer(_) => tl!("Saved by a newer PdfCraft: these games are only read here."),
+        Blocked::NoLock | Blocked::Io(_) => tl!("These games aren't being autosaved."),
+    }
+}
+
 impl ChessGames {
+    /// The first collection whose games the autosave doesn't keep (plan A9-G8, A5-01): a write
+    /// of it was refused ([`Blocked`]) and its games changed since they were last written or
+    /// read; untouched diagram games don't count, nor does a collection the user left as it was
+    /// ([`Self::leave`]). The open documents `docs`, in that order, then, with `others`, the games
+    /// with no document and those of documents closed this session. Asked after an autosave,
+    /// which says why a write was refused.
+    pub(crate) fn unsaved(&self, docs: &[DocId], others: bool) -> Option<Unsaved> {
+        let open = docs.iter().filter_map(|id| self.docs.get(id).map(|c| (Some(*id), c)));
+        let rest = std::iter::once(&self.none).chain(self.closed.iter()).map(|c| (None, c)).filter(|_| others);
+        open.chain(rest).find(|(_, c)| self.not_kept(c)).map(|(doc, c)| Unsaved {
+            cid: c.cid.clone(),
+            doc,
+            name: c.keys.name.clone(),
+            games: c.counted(),
+        })
+    }
+
+    /// Whether `c`'s games are not kept and the user wasn't told so for them as they are.
+    fn not_kept(&self, c: &ChessCollection) -> bool {
+        c.autosave.blocked.is_some() && c.kept_content() && !c.in_store() && self.left.get(&c.cid) != Some(&c.fingerprint())
+    }
+
+    /// The collection `cid`, open, closed or the one for no document.
+    fn by_cid(&self, cid: &str) -> Option<&ChessCollection> {
+        self.docs.values().chain(self.closed.iter()).chain(std::iter::once(&self.none)).find(|c| c.cid == cid)
+    }
+
+    /// Leave collection `cid` as it is: not asked about again until it changes.
+    pub(crate) fn leave(&mut self, cid: &str) {
+        if let Some(fp) = self.by_cid(cid).map(ChessCollection::fingerprint) {
+            self.left.insert(cid.to_owned(), fp);
+        }
+    }
+
+    /// Why collection `cid`'s games aren't autosaved, when a write of them was refused.
+    pub(crate) fn why_not_kept(&self, cid: &str) -> Option<&'static str> {
+        self.by_cid(cid).and_then(|c| c.autosave.blocked.as_ref()).map(blocked_text)
+    }
+
     /// The collection shown: the open document's, or the one for no document.
     pub fn collection(&self) -> &ChessCollection {
         self.current.and_then(|id| self.docs.get(&id)).unwrap_or(&self.none)
@@ -1269,7 +1423,7 @@ impl Writer<'_> {
         if !self.store.is_on() {
             return false;
         }
-        if !c.has_content() && !c.autosave.stored {
+        if !c.kept_content() && !c.autosave.stored {
             c.autosave.saved = fp;
             return true;
         }
@@ -1289,8 +1443,12 @@ impl Writer<'_> {
             }
         }
         let keys = ChessGames::store_keys(c);
-        let boards: Vec<&BoardState> = c.iter().map(|e| &e.board).collect();
-        match self.store.write(&c.cid, &keys, c.active_index(), &boards, &c.trash.stored()) {
+        // Untouched diagram games are not kept (plan A9-G8): they are opened again from their
+        // diagram. The game shown is the kept game at or before its place.
+        let boards: Vec<&BoardState> = c.iter().filter(|e| !e.ephemeral()).map(|e| &e.board).collect();
+        let before_shown = c.iter().take(c.active_index().saturating_add(1)).filter(|e| !e.ephemeral()).count();
+        let active = before_shown.saturating_sub(1);
+        match self.store.write(&c.cid, &keys, active, &boards, &c.trash.stored()) {
             Ok(()) => {
                 c.autosave.saved = fp;
                 c.autosave.stored = true;
@@ -1764,13 +1922,7 @@ pub(crate) fn games_section(ui: &mut egui::Ui, t: &Tokens, games: &mut ChessGame
                 }
             });
         }
-        let why = match &c.autosave.blocked {
-            Some(Blocked::TooBig) => Some(tl!("Too many games to autosave here: save them as PGN.")),
-            Some(Blocked::OtherInstance) => Some(tl!("Another PdfCraft window autosaves these games.")),
-            Some(Blocked::Newer(_)) => Some(tl!("Saved by a newer PdfCraft: these games are only read here.")),
-            Some(Blocked::NoLock | Blocked::Io(_)) => Some(tl!("These games aren't being autosaved.")),
-            None => None,
-        };
+        let why = c.autosave.blocked.as_ref().map(blocked_text);
         if let Some(why) = why {
             ui.label(egui::RichText::new(why).small().color(t.text_muted));
         }
@@ -2151,6 +2303,8 @@ enum PgnGames {
     All,
     /// The games selected in the list, by place (a row's Save PGN… with several selected).
     These(Vec<usize>),
+    /// Every game of collection `.0`, shown or not (the question before quitting, plan A9-G8).
+    Collection(String),
 }
 
 /// A name for a file: the characters file systems refuse replaced.
@@ -2307,11 +2461,13 @@ impl PdfCraftApp {
         // A new game: its own history starts empty (opening it is a step of the list's).
         board.history = Default::default();
         let c = self.chess.games.collection_mut();
-        // The same diagram, untouched, is shown again; a position from no diagram is always new.
+        // A diagram's untouched game is shown again or gives way (plan A9-G8); a position from no
+        // diagram is always a new game, refused at the cap.
         if source.is_some() {
-            c.show_or_add(board, ChessEdit::LoadDiagram);
-        } else {
-            c.add_games(vec![board], ChessEdit::LoadDiagram, true);
+            c.open_diagram(board);
+        } else if c.add_games(vec![board], ChessEdit::LoadDiagram, true) == 0 {
+            self.notify(full_note(1));
+            return false;
         }
         self.chess.study.setup = None;
         self.chess.enter_scope();
@@ -2351,6 +2507,8 @@ impl PdfCraftApp {
                     self.chess.enter_scope();
                 }
             }
+            // At the cap a game added is refused, and said (plan A9-G8).
+            GamesAction::New | GamesAction::Duplicate(_) if self.chess.games.collection().room() == 0 => self.notify(full_note(1)),
             GamesAction::New => {
                 self.chess.games.collection_mut().new_game();
                 self.chess.study.setup = None;
@@ -2395,9 +2553,13 @@ impl PdfCraftApp {
                 self.chess.enter_scope();
             }
             GamesAction::DuplicateMany(places) => {
-                if self.chess.games.collection_mut().duplicate_many(&places) > 0 {
+                let made = self.chess.games.collection_mut().duplicate_many(&places);
+                if made > 0 {
                     self.chess.study.setup = None;
                     self.chess.enter_scope();
+                }
+                if made < places.len() {
+                    self.notify(full_note(places.len().saturating_sub(made)));
                 }
             }
             GamesAction::MoveMany(places, up) => {
@@ -2466,10 +2628,13 @@ impl PdfCraftApp {
     /// why, when the games come from a document that doesn't allow copying, or there is nothing
     /// to write.
     fn chess_pgn_text(&mut self, which: &PgnGames) -> Option<(String, usize)> {
-        let c = self.chess.games.collection();
+        let c = match which {
+            PgnGames::Collection(cid) => self.chess.games.by_cid(cid)?,
+            _ => self.chess.games.collection(),
+        };
         let boards: Vec<&BoardState> = match which {
             PgnGames::Shown => vec![&c.active().board],
-            PgnGames::All => c.iter().map(|e| &e.board).collect(),
+            PgnGames::All | PgnGames::Collection(_) => c.iter().map(|e| &e.board).collect(),
             PgnGames::These(places) => c.iter().enumerate().filter(|(i, _)| places.contains(i)).map(|(_, e)| &e.board).collect(),
         };
         let docs: HashSet<DocId> = boards.iter().filter_map(|b| b.source.map(|s| s.doc)).collect();
@@ -2488,6 +2653,11 @@ impl PdfCraftApp {
         Some((text.join("\n"), skipped))
     }
 
+    /// Save every game of collection `cid` as PGN (the question before quitting, plan A9-G8).
+    pub(crate) fn save_chess_collection_pgn(&mut self, cid: &str) {
+        self.save_chess_games_pgn(PgnGames::Collection(cid.to_owned()));
+    }
+
     /// Chess ▸ Save PGN… (`all`: Save all games as PGN…, the list's Export…): write the game
     /// shown, or the document's games in list order, to a `.pgn` file the user chooses
     /// (downloaded on the web). Games that couldn't be written (illegal positions) are said.
@@ -2500,9 +2670,24 @@ impl PdfCraftApp {
     fn save_chess_games_pgn(&mut self, which: PgnGames) {
         let Some((text, skipped)) = self.chess_pgn_text(&which) else { return };
         let all = !matches!(which, PgnGames::Shown);
+        // Every game of a collection, as it is now: once written, Quit doesn't ask about it until
+        // it changes (plan A9-G8).
+        let whole = match &which {
+            PgnGames::All => Some(self.chess.games.collection()),
+            PgnGames::Collection(cid) => self.chess.games.by_cid(cid),
+            PgnGames::Shown | PgnGames::These(_) => None,
+        }
+        .map(|c| (c.cid.clone(), c.fingerprint()));
+        // A collection named by its id is named after its document in the file name.
+        let named = match &which {
+            PgnGames::Collection(cid) => self.chess.games.by_cid(cid).and_then(|c| c.keys.name.clone()),
+            _ => None,
+        };
         let left_out =
             (skipped > 0).then(|| crate::i18n::fmt(tl!("Games not saved (an illegal position has no PGN): {n}"), &[("n", &skipped.to_string())]));
-        let stem = if all {
+        let stem = if let Some(name) = &named {
+            format!("{} games", std::path::Path::new(name).file_stem().map_or_else(|| name.clone(), |s| s.to_string_lossy().into_owned()))
+        } else if all {
             self.active_ids().and_then(|(_, id)| self.session.get(id)).map_or_else(
                 || "games".to_owned(),
                 |d| {
@@ -2523,14 +2708,24 @@ impl PdfCraftApp {
             self.ask_one(crate::pickers::Ask::Save(dialog), None, move |app, dest| {
                 let shown = dest.file_name().map_or_else(|| name.clone(), |n| n.to_string_lossy().into_owned());
                 match crate::editing::write_atomically(&dest.to_string_lossy(), text.as_bytes()) {
-                    Ok(()) => app.notify(with_note(crate::i18n::fmt(tl!("Saved {name}"), &[("name", &shown)]), left_out)),
+                    Ok(()) => {
+                        if let Some((cid, fp)) = whole {
+                            app.chess.games.left.insert(cid, fp);
+                        }
+                        app.notify(with_note(crate::i18n::fmt(tl!("Saved {name}"), &[("name", &shown)]), left_out));
+                    }
                     Err(e) => app.notify_fmt("Couldn't save {name}: {e}", &[("name", &shown), ("e", &e.to_string())]),
                 }
             });
         }
         #[cfg(target_arch = "wasm32")]
         match crate::editing::download(&name, text.as_bytes()) {
-            Ok(()) => self.notify(with_note(crate::i18n::fmt(tl!("Downloaded {name}"), &[("name", &name)]), left_out)),
+            Ok(()) => {
+                if let Some((cid, fp)) = whole {
+                    self.chess.games.left.insert(cid, fp);
+                }
+                self.notify(with_note(crate::i18n::fmt(tl!("Downloaded {name}"), &[("name", &name)]), left_out));
+            }
             Err(e) => self.notify_fmt("Couldn't download {name}: {e}", &[("name", &name), ("e", &e)]),
         }
     }
@@ -2596,15 +2791,23 @@ impl PdfCraftApp {
         let chunks = split_pgn(&text, chess_autosave::MAX_GAMES);
         let more = chunks.len() > chess_autosave::MAX_GAMES;
         let (boards, failed) = pgn_boards(chunks.iter().take(chess_autosave::MAX_GAMES).copied());
-        let added = boards.len();
-        if added == 0 {
+        let read = boards.len();
+        if read == 0 {
             self.notify_fmt("Couldn't read {name}: {e}", &[("name", name), ("e", tl!("no game could be read"))]);
             return 0;
         }
-        self.chess.games.collection_mut().add_games(boards, ChessEdit::LoadPgn, true);
+        let added = self.chess.games.collection_mut().add_games(boards, ChessEdit::LoadPgn, true);
+        if added == 0 {
+            self.notify(full_note(read));
+            return 0;
+        }
         self.chess.study.setup = None;
         self.chess.enter_scope();
         let mut note = crate::i18n::fmt(tl!("Games read from {name}: {n}"), &[("n", &added.to_string()), ("name", name)]);
+        if added < read {
+            note.push_str(" · ");
+            note.push_str(&full_note(read.saturating_sub(added)));
+        }
         if failed > 0 {
             note.push_str(" · ");
             note.push_str(&crate::i18n::fmt(tl!("Not read: {n}"), &[("n", &failed.to_string())]));
@@ -2626,6 +2829,7 @@ impl PdfCraftApp {
     pub(crate) fn add_pgn_field_games(&mut self, texts: &[String], more: bool) {
         self.sync_chess_docs();
         let (boards, failed) = pgn_boards(texts.iter().map(String::as_str));
+        let read = boards.len();
         let added = self.chess.games.collection_mut().add_games(boards, ChessEdit::LoadPgn, false);
         self.chess.enter_scope();
         let count = u64::try_from(added).unwrap_or(u64::MAX);
@@ -2635,6 +2839,10 @@ impl PdfCraftApp {
             "{n} more game was added to the list of games.",
             "{n} more games were added to the list of games.",
         );
+        if added < read {
+            note.push_str(" · ");
+            note.push_str(&full_note(read.saturating_sub(added)));
+        }
         if failed > 0 {
             note.push_str(" · ");
             note.push_str(&crate::i18n::fmt(tl!("Not read: {n}"), &[("n", &failed.to_string())]));
@@ -3044,6 +3252,117 @@ mod tests {
         let _ = b.load_pgn();
         games.autosave(None);
         assert_eq!(games.collection().trash().len(), 2);
+    }
+
+    /// The app on a document, autosaving into a fresh recovery folder of its own.
+    fn app_with_store(tag: &str) -> (crate::PdfCraftApp, std::path::PathBuf) {
+        let dir = std::env::temp_dir().join(format!("pdfcraft-chess-g8-{tag}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let mut app = crate::PdfCraftApp::new();
+        app.enable_recovery(crate::RecoveryStore::new(dir.clone()));
+        app.open_bytes("book.pdf", None, include_bytes!("../tests/data/form.pdf").to_vec()).unwrap();
+        app.sync_chess_docs();
+        (app, dir)
+    }
+
+    /// `n` games with a move each on the document shown, as no step (the tests build lists so).
+    fn fill(app: &mut crate::PdfCraftApp, n: usize) {
+        for _ in 0..n {
+            app.chess.games.collection_mut().add(GameEntry::new(board_with(&["e2e4"])));
+        }
+    }
+
+    /// Plan A9-G8 (A5-01): games autosave can't keep (here, more than it keeps) make Quit and
+    /// closing their document ask first, instead of losing them without a word. Cancel closes
+    /// nothing; a collection left as it is is not asked about again until it changes; Close
+    /// without saving closes the document.
+    #[test]
+    fn games_autosave_cannot_keep_make_quit_and_close_ask() {
+        use crate::chess_unsaved::{AfterGames, GamesAnswer};
+        let (mut app, dir) = app_with_store("quit");
+        let doc = app.views[0].id;
+        fill(&mut app, chess_autosave::MAX_GAMES + 1);
+        app.flush_chess_games();
+        let ctx = egui::Context::default();
+        assert!(!app.request_quit(&ctx), "Quit asks first");
+        assert!(!app.allow_quit);
+        let p = app.chess.games_prompt.clone().expect("the question");
+        assert_eq!((p.unsaved.doc, p.unsaved.games, p.then), (Some(doc), chess_autosave::MAX_GAMES + 1, AfterGames::Quit));
+        assert_eq!(app.chess.games.why_not_kept(&p.unsaved.cid), Some("Too many games to autosave here: save them as PGN."));
+        app.answer_chess_games(GamesAnswer::Cancel);
+        assert!(app.chess.games_prompt.is_none() && !app.allow_quit, "Cancel: nothing closes");
+        // Left as it is: not asked again until it changes.
+        assert!(app.ask_chess_games(AfterGames::Quit));
+        app.answer_chess_games(GamesAnswer::Leave);
+        assert!(!app.ask_chess_games(AfterGames::Quit));
+        play(app.chess.games.collection_mut(), "e7e5");
+        assert!(app.ask_chess_games(AfterGames::Quit), "changed since: asked again");
+        app.answer_chess_games(GamesAnswer::Cancel);
+        app.request_close_tab(0);
+        assert_eq!(app.views.len(), 1, "closing asks first");
+        assert_eq!(app.chess.games_prompt.as_ref().map(|p| p.then), Some(AfterGames::CloseTab(doc)));
+        app.answer_chess_games(GamesAnswer::Leave);
+        assert!(app.views.is_empty(), "closed without saving");
+        assert!(app.request_quit(&ctx), "left as it was: Quit doesn't ask again");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Plan A9-G8 (A5-01): a game opened from a diagram and never changed gives way to the next
+    /// diagram opened, counts toward no cap and is not autosaved; changed, it is a game like any
+    /// other.
+    #[test]
+    fn an_untouched_diagram_game_gives_way_and_is_not_counted() {
+        let (mut app, dir) = app_with_store("diagram");
+        fill(&mut app, chess_autosave::MAX_GAMES);
+        let doc = app.views[0].id;
+        assert!(app.open_chess_game("4k3/8/8/8/8/8/8/4K3 w - - 0 1", false, Some(Source { doc, page: 0, index: 0 })));
+        assert!(app.open_chess_game("4k3/8/8/8/8/8/4P3/4K3 w - - 0 1", false, Some(Source { doc, page: 0, index: 1 })));
+        let c = app.chess.games.collection();
+        assert_eq!(c.len(), chess_autosave::MAX_GAMES + 1, "the second diagram took the first one's place");
+        assert_eq!(c.active().board.source.map(|s| s.index), Some(1));
+        assert_eq!((c.counted(), c.room()), (chess_autosave::MAX_GAMES, 0));
+        app.flush_chess_games();
+        assert_eq!(app.chess.games.collection().autosave.blocked, None, "not counted, so all is kept");
+        let stored = std::fs::read_dir(dir.join("chess"))
+            .unwrap()
+            .flatten()
+            .filter_map(|e| std::fs::read_to_string(e.path()).ok())
+            .find_map(|t| t.lines().next().and_then(|h| serde_json::from_str::<serde_json::Value>(h).ok()))
+            .and_then(|h| h["games"].as_u64());
+        assert_eq!(stored, Some(chess_autosave::MAX_GAMES as u64), "the diagram game is not written");
+        // Taking its place was no step: Undo of "Load the diagram" takes the second one out.
+        assert_eq!(app.chess.games.history_step(true).as_deref(), Some("Load the diagram"));
+        assert_eq!(app.chess.games.collection().len(), chess_autosave::MAX_GAMES);
+        assert_eq!(app.chess.games.history_step(false).as_deref(), Some("Load the diagram"));
+        assert_eq!(app.chess.games.collection().active().board.source.map(|s| s.index), Some(1));
+        play(app.chess.games.collection_mut(), "e2e3");
+        app.flush_chess_games();
+        assert_eq!(app.chess.games.collection().autosave.blocked, Some(Blocked::TooBig), "changed, it counts");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Plan A9-G8 (A5-01): at the cap, adding games is refused when it is asked for, and said.
+    #[test]
+    fn adding_past_the_cap_is_refused_and_said() {
+        let (mut app, dir) = app_with_store("cap");
+        fill(&mut app, chess_autosave::MAX_GAMES);
+        assert_eq!(app.import_chess_pgn("more.pgn", b"1. d4 d5 *"), 0);
+        assert_eq!(app.chess.games.collection().len(), chess_autosave::MAX_GAMES);
+        let toast = app.toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+        assert!(toast.contains("Not added"), "{toast}");
+        // New game, Duplicate and New game from this position are refused too.
+        app.toast = None;
+        app.chess_games_action(GamesAction::New);
+        app.chess_games_action(GamesAction::Duplicate(0));
+        app.chess_games_action(GamesAction::NewFrom(None));
+        assert_eq!(app.chess.games.collection().len(), chess_autosave::MAX_GAMES);
+        assert!(app.toast.as_ref().is_some_and(|t| t.0.contains("Not added: 1.")));
+        // Under the cap, only what fits is added.
+        assert_eq!(app.chess.games.collection_mut().delete_many(&[0, 1]), 2);
+        assert_eq!(app.import_chess_pgn("more.pgn", b"[Event \"a\"]\n\n1. d4 *\n\n[Event \"b\"]\n\n1. c4 *\n\n[Event \"c\"]\n\n1. Nf3 *\n"), 2);
+        assert_eq!(app.chess.games.collection().len(), chess_autosave::MAX_GAMES);
+        assert!(app.toast.as_ref().is_some_and(|t| t.0.contains("Not added: 1.")));
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     /// Wave 10 U2: a delete and a move are steps of the list that Undo takes back, the newer first

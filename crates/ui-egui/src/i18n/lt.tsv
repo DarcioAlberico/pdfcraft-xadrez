@@ -2910,6 +2910,12 @@ chess undo step	Clear drawings	piešinių valymą
 	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Šis dokumentas apsaugotas: jo šachmatų partijos automatiškai įrašomos tik jums leidus, skydelyje „Šachmatų lenta“.
 	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Per daug šachmatų partijų automatiniam įrašymui šiame dokumente (daugiausia {n}, {mb} MB). Įrašykite jas komanda „Įrašyti visas partijas kaip PGN…“, kad niekas neprapultų.
 	These chess games were saved by a newer PdfCraft (format {v}): this one only reads them, and doesn't autosave changes made here. Save them with Save all games as PGN… so nothing is lost.	Šias šachmatų partijas įrašė naujesnė PdfCraft versija (formatas {v}): ši versija jas tik skaito ir čia padarytų pakeitimų automatiškai neįrašo. Įrašykite jas komanda „Įrašyti visas partijas kaip PGN…“, kad niekas neprapultų.
+	Not added: {n}. A document keeps at most {max} games: save some as PGN and delete them to make room.	Nepridėta: {n}. Dokumente laikoma daugiausia {max} partijų: kai kurias įrašykite kaip PGN ir ištrinkite, kad atsirastų vietos.
+	Chess games not saved	Neįrašytos šachmatų partijos
+	Games of “{name}” that autosave doesn't keep: {n}	„{name}“ partijos, kurių automatinis įrašymas neišlaiko: {n}
+	Games with no document open that autosave doesn't keep: {n}	Partijos be atverto dokumento, kurių automatinis įrašymas neišlaiko: {n}
+	Quit without saving	Išeiti neįrašius
+	Close without saving	Uždaryti neįrašius
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Šachmatų partijų negalima įrašyti automatiškai: nepavyko užrakinti programos duomenų aplanko šiam langui.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Šias šachmatų partijas automatiškai įrašo kitas PdfCraft langas. Čia atlikti pakeitimai automatiškai neįrašomi.
 	Chess games couldn't be autosaved: {e}	Nepavyko automatiškai įrašyti šachmatų partijų: {e}

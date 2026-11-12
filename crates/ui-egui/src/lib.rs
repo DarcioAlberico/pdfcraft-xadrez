@@ -65,6 +65,7 @@ mod chess_text_ui;
 mod chess_tools;
 mod chess_trash;
 mod chess_ui;
+mod chess_unsaved;
 mod chess_window;
 pub use chess_window::{ChessWindowTab, SurfaceFailuresFn};
 mod chrome;
@@ -3421,6 +3422,7 @@ impl eframe::App for PdfCraftApp {
             );
             dialogs::show(self, &ctx);
             chess_drafts::prompt(self, &ctx);
+            chess_unsaved::prompt(self, &ctx);
             chess_redraw::prompt(self, &ctx);
             chess_export_ui::prompt(self, &ctx);
             chess_study_ui::engine_assistant(self, &ctx);
@@ -3489,10 +3491,11 @@ impl eframe::App for PdfCraftApp {
         self.process_pending_edits();
         palette::show(self, &ctx);
         dialogs::show(self, &ctx);
-        // The question about a chess diagram's unconfirmed changes (plan A8, P3b3), and the one
-        // before the first redraw in the PDF (P3b4), the export's (P9c), and the assistant when
-        // Analyze finds no engine (P7).
+        // The question about a chess diagram's unconfirmed changes (plan A8, P3b3), the one about
+        // chess games the autosave doesn't keep (plan A9-G8), the one before the first redraw in
+        // the PDF (P3b4), the export's (P9c), and the assistant when Analyze finds no engine (P7).
         chess_drafts::prompt(self, &ctx);
+        chess_unsaved::prompt(self, &ctx);
         chess_redraw::prompt(self, &ctx);
         chess_export_ui::prompt(self, &ctx);
         chess_study_ui::engine_assistant(self, &ctx);

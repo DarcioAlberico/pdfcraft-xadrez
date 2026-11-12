@@ -2621,6 +2621,12 @@ chess undo step	Clear drawings	清除标记
 	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	此文档受保护：只有在“棋盘”面板中允许后，其国际象棋对局才会自动保存。
 	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	此文档的国际象棋对局太多，无法自动保存（最多 {n} 局，{mb} MB）。请使用“将所有对局保存为 PGN…”保存，以免丢失。
 	These chess games were saved by a newer PdfCraft (format {v}): this one only reads them, and doesn't autosave changes made here. Save them with Save all games as PGN… so nothing is lost.	这些国际象棋对局由较新版本的 PdfCraft 保存（格式 {v}）：此版本只读取它们，不会自动保存在此所做的更改。请使用“将所有对局保存为 PGN…”保存，以免丢失。
+	Not added: {n}. A document keeps at most {max} games: save some as PGN and delete them to make room.	未添加：{n}。一个文档最多保留 {max} 局：请将部分对局保存为 PGN 后删除，以腾出空间。
+	Chess games not saved	未保存的国际象棋对局
+	Games of “{name}” that autosave doesn't keep: {n}	“{name}”中自动保存未保留的对局：{n}
+	Games with no document open that autosave doesn't keep: {n}	未打开文档时、自动保存未保留的对局：{n}
+	Quit without saving	不保存并退出
+	Close without saving	不保存并关闭
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	无法自动保存国际象棋对局：无法为此窗口锁定应用的数据文件夹。
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	另一个 PdfCraft 窗口正在自动保存这些国际象棋对局。此处的更改不会自动保存。
 	Chess games couldn't be autosaved: {e}	无法自动保存国际象棋对局：{e}

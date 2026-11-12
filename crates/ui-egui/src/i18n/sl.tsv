@@ -2662,6 +2662,12 @@ chess undo step	Clear drawings	odstranjevanje risb
 	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Ta dokument je zaščiten: njegove šahovske partije se samodejno shranjujejo le, če to dovolite v podoknu Šahovnica.
 	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Preveč šahovskih partij za samodejno shranjevanje v tem dokumentu (največ {n}, {mb} MB). Shranite jih z ukazom Shrani vse partije kot PGN…, da se nič ne izgubi.
 	These chess games were saved by a newer PdfCraft (format {v}): this one only reads them, and doesn't autosave changes made here. Save them with Save all games as PGN… so nothing is lost.	Te šahovske partije je shranila novejša različica PdfCraft (oblika {v}): ta različica jih samo bere in sprememb, narejenih tukaj, ne shranjuje samodejno. Shranite jih z ukazom Shrani vse partije kot PGN…, da se nič ne izgubi.
+	Not added: {n}. A document keeps at most {max} games: save some as PGN and delete them to make room.	Ni dodano: {n}. Dokument hrani največ {max} partij: nekatere shranite kot PGN in jih izbrišite, da naredite prostor.
+	Chess games not saved	Neshranjene šahovske partije
+	Games of “{name}” that autosave doesn't keep: {n}	Partije iz »{name}«, ki jih samodejno shranjevanje ne ohrani: {n}
+	Games with no document open that autosave doesn't keep: {n}	Partije brez odprtega dokumenta, ki jih samodejno shranjevanje ne ohrani: {n}
+	Quit without saving	Končaj brez shranjevanja
+	Close without saving	Zapri brez shranjevanja
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Šahovskih partij ni mogoče samodejno shranjevati: podatkovne mape aplikacije za to okno ni bilo mogoče zakleniti.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Te šahovske partije samodejno shranjuje drugo okno PdfCraft. Spremembe, narejene tukaj, se ne shranjujejo samodejno.
 	Chess games couldn't be autosaved: {e}	Šahovskih partij ni bilo mogoče samodejno shraniti: {e}

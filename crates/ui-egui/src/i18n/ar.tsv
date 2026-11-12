@@ -2934,6 +2934,12 @@ chess undo step	Clear drawings	مسح الرسوم
 	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	هذا المستند محمي: لا تُحفظ مباريات الشطرنج الخاصة به تلقائيًا إلا إذا سمحت بذلك في لوحة رقعة الشطرنج.
 	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	مباريات الشطرنج أكثر من أن تُحفظ تلقائيًا لهذا المستند ({n} على الأكثر، {mb} ميغابايت). احفظها باستخدام «حفظ كل المباريات بصيغة PGN…» حتى لا يضيع شيء.
 	These chess games were saved by a newer PdfCraft (format {v}): this one only reads them, and doesn't autosave changes made here. Save them with Save all games as PGN… so nothing is lost.	حُفظت مباريات الشطرنج هذه بإصدار أحدث من PdfCraft (التنسيق {v}): هذا الإصدار يقرؤها فقط ولا يحفظ تلقائيًا ما يتغير هنا. احفظها باستخدام «حفظ كل المباريات بصيغة PGN…» حتى لا يضيع شيء.
+	Not added: {n}. A document keeps at most {max} games: save some as PGN and delete them to make room.	لم تُضف: {n}. يحفظ المستند {max} مباراة على الأكثر: احفظ بعضها بصيغة PGN واحذفها لإفساح المجال.
+	Chess games not saved	مباريات شطرنج غير محفوظة
+	Games of “{name}” that autosave doesn't keep: {n}	مباريات «{name}» التي لا يحفظها الحفظ التلقائي: {n}
+	Games with no document open that autosave doesn't keep: {n}	مباريات بلا مستند مفتوح لا يحفظها الحفظ التلقائي: {n}
+	Quit without saving	الخروج دون حفظ
+	Close without saving	الإغلاق دون حفظ
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	لا يمكن حفظ مباريات الشطرنج تلقائيًا: تعذّر قفل مجلد بيانات التطبيق لهذه النافذة.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	تحفظ نافذة أخرى من PdfCraft مباريات الشطرنج هذه تلقائيًا. لا تُحفظ التغييرات التي تُجرى هنا تلقائيًا.
 	Chess games couldn't be autosaved: {e}	تعذّر حفظ مباريات الشطرنج تلقائيًا: {e}

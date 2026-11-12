@@ -820,9 +820,11 @@ impl PdfCraftApp {
 
     /// Close a tab, asking first if it has unsaved changes.
     pub fn request_close_tab(&mut self, index: usize) {
-        // Chess diagrams with unconfirmed changes are asked about first (plan A8, P3b3).
+        // Chess diagrams with unconfirmed changes are asked about first (plan A8, P3b3), then
+        // chess games the autosave doesn't keep (plan A9-G8).
         if let Some(id) = self.views.get(index).map(|v| v.id)
-            && self.ask_chess_drafts(Some(id), crate::chess_drafts::AfterDrafts::CloseTab(id))
+            && (self.ask_chess_drafts(Some(id), crate::chess_drafts::AfterDrafts::CloseTab(id))
+                || self.ask_chess_games(crate::chess_unsaved::AfterGames::CloseTab(id)))
         {
             return;
         }
@@ -838,7 +840,8 @@ impl PdfCraftApp {
 
     /// File ▸ Close all: clean documents close at once; each one with unsaved changes asks.
     pub fn close_all(&mut self) {
-        if self.ask_chess_drafts(None, crate::chess_drafts::AfterDrafts::CloseAll) {
+        if self.ask_chess_drafts(None, crate::chess_drafts::AfterDrafts::CloseAll) || self.ask_chess_games(crate::chess_unsaved::AfterGames::CloseAll)
+        {
             return;
         }
         for i in (0..self.views.len()).rev() {
@@ -942,7 +945,10 @@ impl PdfCraftApp {
     /// Request a normal application exit, preserving every unsaved document until answered.
     /// Returns false while the existing save/discard/cancel prompt needs a decision.
     pub(crate) fn request_quit(&mut self, ctx: &egui::Context) -> bool {
-        if self.ask_chess_drafts(None, crate::chess_drafts::AfterDrafts::Quit) {
+        // The web has no quit to ask before (plan A9-G8): only its notice at the cap.
+        if self.ask_chess_drafts(None, crate::chess_drafts::AfterDrafts::Quit)
+            || (cfg!(not(target_arch = "wasm32")) && self.ask_chess_games(crate::chess_unsaved::AfterGames::Quit))
+        {
             ctx.request_repaint();
             return false;
         }
@@ -984,8 +990,12 @@ impl PdfCraftApp {
         if !ctx.input(|i| i.viewport().close_requested()) {
             return;
         }
-        // Chess diagrams with unconfirmed changes are asked about first (plan A8, P3b3).
-        if !self.allow_quit && self.ask_chess_drafts(None, crate::chess_drafts::AfterDrafts::Quit) {
+        // Chess diagrams with unconfirmed changes are asked about first (plan A8, P3b3), then
+        // chess games the autosave doesn't keep (plan A9-G8).
+        if !self.allow_quit
+            && (self.ask_chess_drafts(None, crate::chess_drafts::AfterDrafts::Quit)
+                || (cfg!(not(target_arch = "wasm32")) && self.ask_chess_games(crate::chess_unsaved::AfterGames::Quit)))
+        {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
             return;
         }
