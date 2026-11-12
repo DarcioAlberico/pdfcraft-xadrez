@@ -24,7 +24,7 @@
 //! never the file of an open document unless the call says `overwrite: true`.
 
 use pdfcraft_engine::chess::collection::{self, GameList, GameNames, ListedGame, MAX_GAMES};
-use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
+use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, PgnStopReason};
 use serde_json::{Map, Value, json};
 
 use crate::{Args, Automation, Result, ToolError, chess_pgn, write_atomic};
@@ -36,15 +36,16 @@ pub(crate) const MAX_OPS: usize = 1000;
 pub(crate) const MAX_PGN_BYTES: usize = 32 << 20;
 
 /// One game of the collection: the game, and the first move of its PGN that could not be played
-/// (its line ends there), said in the list.
+/// (its line ends there) with why, said in the list.
 struct Entry {
     game: Game,
     stopped: Option<String>,
+    stop_reason: Option<PgnStopReason>,
 }
 
 impl ListedGame for Entry {
     fn blank() -> Entry {
-        Entry { game: Game::standard(), stopped: None }
+        Entry { game: Game::standard(), stopped: None, stop_reason: None }
     }
 
     fn is_blank(&self) -> bool {
@@ -159,8 +160,8 @@ fn read_games(text: &str) -> Result<GameList<Entry>> {
     }
     let mut games = Vec::with_capacity(chunks.len());
     for (i, chunk) in chunks.iter().enumerate() {
-        let (game, stopped) = Game::from_pgn(chunk).map_err(|e| ToolError::InvalidArgs(format!("game {i}: {e}")))?;
-        games.push(Entry { game, stopped });
+        let (game, report) = Game::from_pgn_report(chunk).map_err(|e| ToolError::InvalidArgs(format!("game {i}: {e}")))?;
+        games.push(Entry { game, stopped: report.stopped, stop_reason: report.stop_reason });
     }
     Ok(GameList::from_games(games, 0))
 }
@@ -193,6 +194,7 @@ fn list_json(list: &GameList<Entry>) -> Value {
                     "start_fen": e.game.start_fen(),
                     "shown": i == shown,
                     "pgn_stopped": e.stopped,
+                    "pgn_stop_reason": e.stop_reason.map(|r| r.name()),
                 })
             })
             .collect(),
@@ -260,7 +262,8 @@ fn apply(list: &mut GameList<Entry>, op: &Value) -> std::result::Result<Map<Stri
         }
         "duplicate" => {
             let g = game_of(list, obj)?;
-            let copy = list.get(g).map(|e| Entry { game: e.game.clone(), stopped: e.stopped.clone() }).ok_or("no such game")?;
+            let copy =
+                list.get(g).map(|e| Entry { game: e.game.clone(), stopped: e.stopped.clone(), stop_reason: e.stop_reason }).ok_or("no such game")?;
             entry.insert("game".into(), json!(list.insert_after(g, copy)));
         }
         "delete" => {
@@ -288,13 +291,13 @@ fn apply(list: &mut GameList<Entry>, op: &Value) -> std::result::Result<Map<Stri
                 None => from.main_line().last().copied(),
             };
             let game = collection::game_from(from, node).map_err(|e| e.to_string())?;
-            entry.insert("game".into(), json!(list.insert_after(g, Entry { game, stopped: None })));
+            entry.insert("game".into(), json!(list.insert_after(g, Entry { game, stopped: None, stop_reason: None })));
         }
         "new_at" => {
             let g = game_of(list, obj)?;
             let fen = opt_text(obj, "fen")?.ok_or("fen is missing: the position the new game starts at")?;
             let game = Game::from_fen(fen).map_err(|e| format!("fen: {e}"))?;
-            entry.insert("game".into(), json!(list.insert_after(g, Entry { game, stopped: None })));
+            entry.insert("game".into(), json!(list.insert_after(g, Entry { game, stopped: None, stop_reason: None })));
         }
         "export" => {
             let only = match obj.get("game") {

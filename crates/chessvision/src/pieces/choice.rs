@@ -187,7 +187,9 @@ fn candidates_in(fonts_dir: Option<&Path>, pieces_dir: Option<&Path>, installed:
     }
     if let Some(dir) = pieces_dir {
         let mut folders = vec![dir.to_path_buf()];
-        folders.extend(files(dir, MAX_FOLDERS, Path::is_dir));
+        // A folder whose name starts with a dot is no set: a replacement's staging folder or the
+        // old set it moved aside (plan A9-V6a).
+        folders.extend(files(dir, MAX_FOLDERS, |p| p.is_dir() && !p.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.starts_with('.'))));
         for folder in folders.into_iter().filter(|f| is_piece_folder(f)) {
             let name = folder.file_name().and_then(|n| n.to_str()).unwrap_or_default().to_owned();
             let missing = missing_pieces(&folder);
@@ -231,6 +233,20 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    /// Plan A9-V6a: a replacement's staging folder and the old set it moved aside start with a
+    /// dot; however whole they are, they are never offered as sets.
+    #[test]
+    fn a_folder_starting_with_a_dot_is_not_offered() {
+        let dir = scratch("dot");
+        for name in ["my-wood", ".my-wood.import-12", ".my-wood.old-1700000000000"] {
+            piece_folder(&dir, name, 12);
+        }
+        let offered = candidates_in(None, Some(&dir), &[]);
+        let folders: Vec<&str> = offered.iter().filter(|c| c.kind == CandidateKind::Folder).map(|c| c.name.as_str()).collect();
+        assert_eq!(folders, ["my-wood"]);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

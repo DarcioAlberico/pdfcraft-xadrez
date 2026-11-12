@@ -409,7 +409,7 @@ fn glyphs_are_written_by_whites_code() {
     // `↑` after a Black move is `$37` in the walker's game; a fragment item carries White's
     // `$36`, and the graft writes Black's again.
     let read = read_lines(&["18.Nd5 ↑ Qxe1 ↑"], FEN);
-    let nags: Vec<u16> = read.items.iter().filter_map(|i| if let FragmentItem::Nag(c) = i { Some(*c) } else { None }).collect();
+    let nags: Vec<u16> = read.items.iter().filter_map(|i| if let FragmentItem::Nag(c) = i { Some(c.code()) } else { None }).collect();
     assert_eq!(nags, vec![36, 36]);
     assert_eq!(moves_only(&grafted(FEN, &read.items)), "18. Nd5 $36 Qxe1 $37");
 }

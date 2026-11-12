@@ -2971,13 +2971,12 @@ fn pgn_boards<'a>(texts: impl Iterator<Item = &'a str>) -> (Vec<BoardState>, usi
     let mut boards = Vec::new();
     let mut failed = 0usize;
     for text in texts {
-        match Game::from_pgn(text) {
-            Ok((game, stopped)) => {
+        match Game::from_pgn_report(text) {
+            Ok((game, report)) => {
                 let mut board = BoardState::default();
                 board.game = game;
-                board.message =
-                    stopped.as_ref().map(|m| crate::i18n::fmt(tl!("Reading stopped at {move}: it is not a legal move there."), &[("move", m)]));
-                board.cut = stopped;
+                board.message = report.stopped.as_ref().map(|m| crate::chess_board_ui::stop_message(m, report.stop_reason));
+                board.cut = report.stopped;
                 board.refresh_fields(true);
                 boards.push(board);
             }

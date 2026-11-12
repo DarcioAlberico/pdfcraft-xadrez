@@ -350,6 +350,19 @@ pub fn normalize_publisher_symbols(text: &str) -> (String, usize) {
 /// made it. Aliases are resolved, `+` and `#` and anything unknown are skipped, and each code
 /// appears once.
 pub fn nags_from_suffix(suffix: &str, white_moved: bool) -> Vec<u16> {
+    read_glyphs(suffix, white_moved, false).unwrap_or_default()
+}
+
+/// The NAG codes of a text made of glyphs and nothing else (`±`, `+-`, `!?∞`), for the side that
+/// made the move: `None` when anything in it is not a glyph (a check mark included) or it is
+/// empty. What a PGN reader takes for glyphs standing alone or glued to a move (plan A9-F2b).
+pub fn glyph_codes(text: &str, white_moved: bool) -> Option<Vec<u16>> {
+    read_glyphs(text, white_moved, true).filter(|codes| !codes.is_empty())
+}
+
+/// The glyphs of `text`, longest first; `strict`: `None` at the first character that is not part
+/// of one.
+fn read_glyphs(text: &str, white_moved: bool, strict: bool) -> Option<Vec<u16>> {
     let mut pieces: Vec<(&str, &Nag)> = Vec::new();
     for n in NAGS {
         // A sign not read in text has no aliases either, and an empty one would match anywhere.
@@ -359,7 +372,7 @@ pub fn nags_from_suffix(suffix: &str, white_moved: bool) -> Vec<u16> {
     }
     pieces.sort_by_key(|(p, _)| std::cmp::Reverse(p.chars().count()));
     let mut out: Vec<u16> = Vec::new();
-    let mut rest = suffix.trim();
+    let mut rest = text.trim();
     while let Some(c) = rest.chars().next() {
         match pieces.iter().find(|(p, _)| rest.starts_with(p)) {
             Some((p, n)) => {
@@ -369,10 +382,11 @@ pub fn nags_from_suffix(suffix: &str, white_moved: bool) -> Vec<u16> {
                 }
                 rest = rest.get(p.len()..).unwrap_or("");
             }
+            None if strict => return None,
             None => rest = rest.get(c.len_utf8()..).unwrap_or(""),
         }
     }
-    out
+    Some(out)
 }
 
 #[cfg(test)]

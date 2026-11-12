@@ -16,8 +16,8 @@ fn items(text: &str) -> Vec<FragmentItem> {
             "*" => FragmentItem::Result,
             _ if word.starts_with('{') => FragmentItem::Comment { text: word.trim_matches(['{', '}']).replace('_', " "), before: false },
             _ if word.starts_with('<') => FragmentItem::Comment { text: word.trim_matches(['<', '>']).replace('_', " "), before: true },
-            _ if word.starts_with('$') => FragmentItem::Nag(word[1..].parse().unwrap()),
-            _ if crate::nag::by_glyph(word).is_some() => FragmentItem::Nag(crate::nag::by_glyph(word).unwrap().code),
+            _ if word.starts_with('$') => FragmentItem::Nag(NagCode::WhiteRelative(word[1..].parse().unwrap())),
+            _ if crate::nag::by_glyph(word).is_some() => FragmentItem::Nag(NagCode::WhiteRelative(crate::nag::by_glyph(word).unwrap().code)),
             _ => {
                 let digits = word.chars().take_while(char::is_ascii_digit).count();
                 let (ply, san) = if digits > 0 {
@@ -460,7 +460,7 @@ proptest::proptest! {
                     FragmentItem::Open
                 }
                 7 => FragmentItem::Close,
-                8 => FragmentItem::Nag(NAGS[pick % NAGS.len()]),
+                8 => FragmentItem::Nag(NagCode::WhiteRelative(NAGS[pick % NAGS.len()])),
                 9 | 10 => FragmentItem::Comment { text: TEXTS[pick % TEXTS.len()].into(), before: pick % 3 == 0 },
                 _ => FragmentItem::Result,
             });

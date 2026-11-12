@@ -1000,9 +1000,18 @@ impl Automation {
                 o.insert("outside_root".into(), true.into());
             }
         }
+        // What a replacement of a set left beside the sets (plan A9-V6a): a staging folder of an
+        // import that stopped, or an old set kept aside because it held a folder of its own.
+        let leftovers: Vec<Value> = pieces::pieces_folder(self.install_dir())
+            .map(|dir| pieces::import::leftovers(&dir))
+            .unwrap_or_default()
+            .iter()
+            .map(|p| self.path_json(p))
+            .collect();
         Ok(json!({
             "pieces": self.model_json(&models.pieces),
             "glyphs": self.model_json(&models.glyphs),
+            "piece_leftovers": leftovers,
             "folder": models.folder.as_ref().map(|f| self.path_json(f)),
             "outside_root": models.folder.as_ref().is_some_and(|f| self.shown_path(f).1),
             "looked_in": if a.opt_str("models_dir")?.is_some() { "models_dir" } else { "PDFCRAFT_MODELS, then beside the executable" },
@@ -1072,7 +1081,9 @@ fn reference_reply(shown: &str, index: &reference::ReferenceIndex, linked: &refe
             .iter()
             .enumerate()
             .filter(|(_, g)| g.stopped.is_some() || g.error.is_some())
-            .map(|(k, g)| json!({ "game": k + 1, "name": g.name, "stopped_at": g.stopped, "error": g.error }))
+            .map(|(k, g)| {
+                json!({ "game": k + 1, "name": g.name, "stopped_at": g.stopped, "stop_reason": g.stop_reason.map(|r| r.name()), "error": g.error })
+            })
             .collect::<Vec<_>>(),
         "linked": a.counts,
         "diagrams": {

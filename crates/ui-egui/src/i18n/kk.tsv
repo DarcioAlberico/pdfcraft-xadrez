@@ -2543,6 +2543,9 @@ animation effects	Off	Өшірулі
 	Previous move (Left arrow)	Алдыңғы жүріс (сол жақ көрсеткі)
 	Promote to:	Айналдыру:
 	Reading stopped at {move}: it is not a legal move there.	Оқу {move} жүрісінде тоқтады: ол жерде бұл заңды жүріс емес.
+	Reading stopped at {move}: more than one legal move there is written so.	Оқу {move} жүрісінде тоқтады: ол жерде бірнеше заңды жүріс осылай жазылады.
+	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	Оқу {move} жүрісінде тоқтады: партияда 10 000 жүріс бар, бұл — ең көбі.
+	Reading stopped at {move}: its variation would nest deeper than 32.	Оқу {move} жүрісінде тоқтады: нұсқа 32 деңгейден тереңірек болар еді.
 	Show the analysis board. Double-click a diagram on the page to load it there.	Талдау тақтасын көрсету. Диаграмманы сонда жүктеу үшін беттегі диаграмманы екі рет шертіңіз.
 	Show this diagram on the page	Бұл диаграмманы бетте көрсету
 	Stalemate	Пат

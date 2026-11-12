@@ -2546,6 +2546,9 @@ animation effects	Off	Aus
 	Previous move (Left arrow)	Vorheriger Zug (Pfeil links)
 	Promote to:	Umwandeln in:
 	Reading stopped at {move}: it is not a legal move there.	Lesen bei {move} angehalten: dort kein legaler Zug.
+	Reading stopped at {move}: more than one legal move there is written so.	Lesen bei {move} angehalten: dort wird mehr als ein legaler Zug so geschrieben.
+	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	Lesen bei {move} angehalten: die Partie hat bereits 10.000 Züge, so viele wie erlaubt.
+	Reading stopped at {move}: its variation would nest deeper than 32.	Lesen bei {move} angehalten: die Variante wäre tiefer als 32 Ebenen verschachtelt.
 	Show the analysis board. Double-click a diagram on the page to load it there.	Das Analysebrett zeigen. Ein Diagramm auf der Seite doppelt anklicken, um es dort zu laden.
 	Show this diagram on the page	Dieses Diagramm auf der Seite zeigen
 	Stalemate	Patt

@@ -32,7 +32,9 @@ use std::collections::{HashMap, HashSet};
 use egui::{Color32, Key, PointerButton, Pos2, Rect, Stroke, TextureHandle, vec2};
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::pdfcraft_chess::draw::{BoardStyle, PieceSet, Rgb};
-use pdfcraft_engine::chess::pdfcraft_chess::game::{DrawColor, Drawing, Game, GameError, MAX_MOVE_NUMBER, NodeId, Outcome, PgnReport, Token};
+use pdfcraft_engine::chess::pdfcraft_chess::game::{
+    DrawColor, Drawing, Game, GameError, MAX_MOVE_NUMBER, NodeId, Outcome, PgnReport, PgnStopReason, PgnWarningKind, Token,
+};
 use pdfcraft_engine::chess::pdfcraft_chess::pgn_style::{PgnStyle, Variations};
 use pdfcraft_engine::chess::pdfcraft_chess::placement::{Color, Piece, PieceKind, Placement, Square};
 use pdfcraft_engine::chess::pdfcraft_chess::texture::Texture;
@@ -2769,13 +2771,26 @@ fn notation_height(viewport: f32, above: f32, below: f32) -> f32 {
 fn read_message(report: &PgnReport) -> Option<String> {
     let mut said = Vec::new();
     if let Some(m) = &report.stopped {
-        said.push(crate::i18n::fmt(tl!("Reading stopped at {move}: it is not a legal move there."), &[("move", m)]));
+        said.push(stop_message(m, report.stop_reason));
     }
-    if !report.warnings.is_empty() {
-        let n = report.warnings.len().to_string();
+    let kept = report.warnings.iter().filter(|w| w.kind != PgnWarningKind::NonStandard).count();
+    if kept > 0 {
+        let n = kept.to_string();
         said.push(crate::i18n::fmt(tl!("Variations kept as comments: {n} (no move before them, or nested deeper than 32)."), &[("n", &n)]));
     }
     (!said.is_empty()).then(|| said.join(" "))
+}
+
+/// Why reading a PGN stopped at move `m`, said as the reason it stopped (plan A9-F2b, A1-15: a
+/// limit is not an illegal move).
+pub(crate) fn stop_message(m: &str, reason: Option<PgnStopReason>) -> String {
+    let text = match reason {
+        Some(PgnStopReason::Ambiguous) => tl!("Reading stopped at {move}: more than one legal move there is written so."),
+        Some(PgnStopReason::TooLong) => tl!("Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may."),
+        Some(PgnStopReason::TooDeep) => tl!("Reading stopped at {move}: its variation would nest deeper than 32."),
+        Some(PgnStopReason::Illegal) | None => tl!("Reading stopped at {move}: it is not a legal move there."),
+    };
+    crate::i18n::fmt(text, &[("move", m)])
 }
 
 #[cfg(test)]
@@ -3171,7 +3186,9 @@ mod tests {
     fn pgn_field_says_which_variations_it_kept_as_comments() {
         let mut s = BoardState { pgn_text: "1. e4 e5 ((1... d5)) 2. Nf3 *".into(), ..BoardState::default() };
         s.load_pgn();
-        assert_eq!(s.game.movetext(), "1. e4 {(d5)} 1... e5 2. Nf3");
+        // The variation holding only that text leaves it on the move it was an alternative to,
+        // e5 (plan A9-F2b, A1-06).
+        assert_eq!(s.game.movetext(), "1. e4 e5 {(d5)} 2. Nf3");
         assert_eq!(s.message.as_deref(), Some("Variations kept as comments: 1 (no move before them, or nested deeper than 32)."));
         s.pgn_text = "(1. d4) 1. e4 e5 2. Ke3".into();
         s.load_pgn();

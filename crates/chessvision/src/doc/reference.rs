@@ -42,7 +42,7 @@
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
-use pdfcraft_chess::game::{Game as PgnGame, split_pgn};
+use pdfcraft_chess::game::{Game as PgnGame, PgnStopReason, split_pgn};
 use pdfcraft_chess::placement::Color;
 use serde::{Deserialize, Serialize};
 
@@ -108,6 +108,8 @@ pub struct ReferenceGame {
     pub moves: usize,
     /// The first move that could not be played: its line ends there.
     pub stopped: Option<String>,
+    /// Why it could not be played (plan A9-F2b).
+    pub stop_reason: Option<PgnStopReason>,
     /// Why the game could not be read.
     pub error: Option<String>,
 }
@@ -168,9 +170,23 @@ impl ReferenceIndex {
             match PgnGame::from_pgn_report(chunk) {
                 Ok((game, report)) => {
                     let moves = index.add_game(number, &game);
-                    index.games.push(ReferenceGame { name: game_name(&game), game: Some(game), moves, stopped: report.stopped, error: None });
+                    index.games.push(ReferenceGame {
+                        name: game_name(&game),
+                        game: Some(game),
+                        moves,
+                        stopped: report.stopped,
+                        stop_reason: report.stop_reason,
+                        error: None,
+                    });
                 }
-                Err(e) => index.games.push(ReferenceGame { name: String::new(), game: None, moves: 0, stopped: None, error: Some(e.to_string()) }),
+                Err(e) => index.games.push(ReferenceGame {
+                    name: String::new(),
+                    game: None,
+                    moves: 0,
+                    stopped: None,
+                    stop_reason: None,
+                    error: Some(e.to_string()),
+                }),
             }
         }
         if index.games.iter().all(|g| g.moves == 0) {

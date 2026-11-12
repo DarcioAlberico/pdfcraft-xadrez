@@ -8,7 +8,11 @@
 //! Every piece is read through the same SVG or PNG reader as the user's folders before anything
 //! is written, so a file that points elsewhere or draws nothing is refused. What is imported has
 //! no licence PdfCraft knows: each folder gets an `ORIGIN.txt` saying so, and the user is told
-//! it is for personal use. Nothing already there is replaced unless asked.
+//! it is for personal use. Nothing already there is replaced unless asked, and a set replaced is
+//! replaced in one step (plan A9-V6a, R7-02): the new one is written and read back beside it
+//! (`.<name>.import-<pid>`), and only then do the two change places, so a failure at any point
+//! (a piece held open by another program, a full disk) leaves the old set whole. A font replaced
+//! goes through a staging file the same way.
 //!
 //! Chess fonts are imported too ([`import_fonts`]), into the `fonts` folder beside the program
 //! rather than the pieces folder: a diagram font there is a piece set, and a figurine or sign
@@ -168,7 +172,8 @@ pub fn import_fonts(from: &[PathBuf], into: &Path, replace: bool) -> Result<Vec<
         std::fs::create_dir_all(into).map_err(|source| ImportError::Write { path: into.to_path_buf(), source })?;
     }
     for (source, target) in copies {
-        std::fs::copy(source, target).map_err(|e| ImportError::Write { path: target.clone(), source: e })?;
+        let bytes = std::fs::read(source).map_err(|e| ImportError::Read { path: source.clone(), source: e })?;
+        write_atomically(target, &bytes).map_err(|e| ImportError::Write { path: target.clone(), source: e })?;
     }
     Ok(plan.into_iter().map(|(font, _)| font).collect())
 }
@@ -282,28 +287,115 @@ fn folder_set(dir: &Path) -> Result<Vec<SetFiles>, ImportError> {
     Ok(vec![(name, files)])
 }
 
-/// Write one set's files into `dir`, after taking away the piece images already there (an SVG
-/// left behind would be read before a PNG written now).
+/// An error writing at `path`.
+fn write_err(path: &Path) -> impl FnOnce(std::io::Error) -> ImportError {
+    let path = path.to_path_buf();
+    move |source| ImportError::Write { path, source }
+}
+
+/// Write one set's files as the folder `dir`, in one step (plan A9-V6a, R7-02). They go into a
+/// staging folder beside it, `.<name>.import-<pid>`, with the files of the old folder that are no
+/// piece image (a note of the user's), and are read back as a set; only then does the old folder
+/// move aside (`.<name>.old-<time>`), the new one take its name, and the old one go. When any step
+/// fails, the old set is where it was with every file it had, and the staging folder is gone; a
+/// picture of the old set can never be read before one written now.
 fn write_set(dir: &Path, files: &[(String, Vec<u8>)], origin: &str) -> Result<(), ImportError> {
-    let write_err = |path: &Path| {
-        let path = path.to_path_buf();
-        move |source| ImportError::Write { path, source }
+    let (Some(parent), Some(name)) = (dir.parent(), dir.file_name().map(|n| n.to_string_lossy().into_owned())) else {
+        return Err(ImportError::Write { path: dir.to_path_buf(), source: std::io::ErrorKind::InvalidInput.into() });
     };
-    std::fs::create_dir_all(dir).map_err(write_err(dir))?;
-    for old in images::piece_files(dir) {
-        std::fs::remove_file(&old).map_err(write_err(&old))?;
+    std::fs::create_dir_all(parent).map_err(write_err(parent))?;
+    let staging = parent.join(format!(".{name}.import-{}", std::process::id()));
+    // One an earlier run of this process left (it can only be ours).
+    let _ = std::fs::remove_dir_all(&staging);
+    let done = stage(&staging, dir, &name, files, origin).and_then(|()| swap(dir, &staging, parent, &name));
+    if done.is_err() {
+        let _ = std::fs::remove_dir_all(&staging);
     }
+    done
+}
+
+/// Write the set into `staging`: its files, the old folder's files that are no piece image and
+/// not the note, and the note; then read it back as a set.
+fn stage(staging: &Path, dir: &Path, name: &str, files: &[(String, Vec<u8>)], origin: &str) -> Result<(), ImportError> {
+    std::fs::create_dir(staging).map_err(write_err(staging))?;
     for (file, bytes) in files {
-        let path = dir.join(file);
+        let path = staging.join(file);
         std::fs::write(&path, bytes).map_err(write_err(&path))?;
+    }
+    let pieces = images::piece_files(dir);
+    let kept = std::fs::read_dir(dir).into_iter().flatten().flatten().take(1_000).map(|e| e.path());
+    for old in kept.filter(|p| p.is_file() && !pieces.contains(p) && p.file_name().is_some_and(|n| n != ORIGIN_FILE)) {
+        let Some(file) = old.file_name() else { continue };
+        let path = staging.join(file);
+        if !path.exists() {
+            std::fs::copy(&old, &path).map_err(write_err(&path))?;
+        }
     }
     let note = format!(
         "These pieces were imported by PdfCraft from {origin}.\n\
          Their licence is not known: use them for personal use only, and do not share them\n\
          unless their author allows it.\n"
     );
-    let path = dir.join(ORIGIN_FILE);
-    std::fs::write(&path, note).map_err(write_err(&path))
+    let path = staging.join(ORIGIN_FILE);
+    std::fs::write(&path, note).map_err(write_err(&path))?;
+    images::from_image_dir(staging).map(|_| ()).map_err(|e| ImportError::Invalid { set: name.to_owned(), reason: e.to_string() })
+}
+
+/// Put the staged set at `dir`: the old folder renamed aside, the staged one renamed to `dir`, the
+/// old one deleted. A failed rename puts the old folder back. An old folder that holds a folder of
+/// its own is left aside rather than deleted (nothing of the user's is lost); `chess_status`
+/// lists such leftovers.
+fn swap(dir: &Path, staging: &Path, parent: &Path, name: &str) -> Result<(), ImportError> {
+    if !dir.exists() {
+        return std::fs::rename(staging, dir).map_err(write_err(dir));
+    }
+    let time = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_millis());
+    let old = parent.join(format!(".{name}.old-{time}"));
+    std::fs::rename(dir, &old).map_err(write_err(dir))?;
+    if let Err(e) = std::fs::rename(staging, dir) {
+        // The old set goes back where it was.
+        let _ = std::fs::rename(&old, dir);
+        return Err(ImportError::Write { path: dir.to_path_buf(), source: e });
+    }
+    let nested = std::fs::read_dir(&old).into_iter().flatten().flatten().any(|e| e.path().is_dir());
+    if !nested {
+        let _ = std::fs::remove_dir_all(&old);
+    }
+    Ok(())
+}
+
+/// Write `bytes` to `path` through a staging file beside it, renamed over the target only once it
+/// is whole: a failure leaves the file that was there as it was (plan A9-V6a).
+fn write_atomically(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    use std::io::Write as _;
+    let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+    let staging = path.with_file_name(format!(".{name}.import-{}", std::process::id()));
+    let written = std::fs::File::create(&staging).and_then(|mut f| {
+        f.write_all(bytes)?;
+        f.sync_all()
+    });
+    let done = written.and_then(|()| std::fs::rename(&staging, path));
+    if done.is_err() {
+        let _ = std::fs::remove_file(&staging);
+    }
+    done
+}
+
+/// The folders a replacement left beside the sets of `pieces`: staging folders of an import that
+/// stopped (`.<name>.import-…`) and old sets kept aside (`.<name>.old-…`), by name. Never one of
+/// the sets.
+pub fn leftovers(pieces: &Path) -> Vec<PathBuf> {
+    let Ok(entries) = std::fs::read_dir(pieces) else { return Vec::new() };
+    let mut found: Vec<PathBuf> = entries
+        .flatten()
+        .take(10_000)
+        .map(|e| e.path())
+        .filter(|p| p.is_dir())
+        .filter(|p| p.file_name().and_then(|n| n.to_str()).is_some_and(|n| n.starts_with('.') && (n.contains(".import-") || n.contains(".old-"))))
+        .collect();
+    found.sort();
+    found.truncate(256);
+    found
 }
 
 /// Whether `a` and `b` are one folder.
@@ -695,6 +787,91 @@ mod tests {
         assert!(!target.join("wQ.png").exists() && !target.join("readme.txt").exists());
         // Importing a folder onto itself is refused.
         assert!(matches!(import(&target, &into, true), Err(ImportError::Same(_))));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Every file of `dir` and its bytes, by name.
+    fn files_of(dir: &Path) -> BTreeMap<String, Vec<u8>> {
+        std::fs::read_dir(dir).unwrap().flatten().map(|e| (e.file_name().to_string_lossy().into_owned(), std::fs::read(e.path()).unwrap())).collect()
+    }
+
+    /// The names in `dir` that start with a dot: what a replacement left beside the sets.
+    fn hidden(dir: &Path) -> Vec<String> {
+        std::fs::read_dir(dir).unwrap().flatten().map(|e| e.file_name().to_string_lossy().into_owned()).filter(|n| n.starts_with('.')).collect()
+    }
+
+    /// Plan A9-V6a (R7-02): a piece of the old set held open by another program (a viewer, an
+    /// antivirus) without delete sharing makes Replace fail, and the old set is left whole: its
+    /// twelve pieces and its note with the bytes they had, and nothing beside it. Before, the
+    /// pieces were deleted one by one until the held one, and half the set was gone.
+    #[cfg(windows)]
+    #[test]
+    fn a_set_held_open_is_left_whole_when_replacing_it_fails() {
+        use std::os::windows::fs::OpenOptionsExt as _;
+        let dir = scratch("held");
+        let from = dir.join("My Wood");
+        std::fs::create_dir_all(&from).unwrap();
+        for k in PIECE_STEMS {
+            std::fs::write(from.join(format!("{k}.svg")), piece("black")).unwrap();
+        }
+        let into = dir.join("pieces");
+        let target = into.join("my-wood");
+        std::fs::create_dir_all(&target).unwrap();
+        for k in PIECE_STEMS {
+            std::fs::write(target.join(format!("{k}.svg")), piece("red")).unwrap();
+        }
+        std::fs::write(target.join("LICENCE.txt"), "the user's own note").unwrap();
+        let before = files_of(&target);
+        assert_eq!(before.len(), 13);
+        // FILE_SHARE_READ only: the file can't be deleted or renamed, nor its folder.
+        let held = std::fs::OpenOptions::new().read(true).share_mode(1).open(target.join("wB.svg")).unwrap();
+        let err = import(&from, &into, true).unwrap_err();
+        assert!(matches!(err, ImportError::Write { .. }), "{err}");
+        drop(held);
+        assert_eq!(files_of(&target), before);
+        assert!(hidden(&into).is_empty(), "{:?}", hidden(&into));
+        // Let go, the set is replaced, the user's note carried over, nothing left beside it.
+        import(&from, &into, true).unwrap();
+        let after = files_of(&target);
+        assert_eq!(after.get("wB.svg").map(Vec::as_slice), Some(piece("black").as_bytes()));
+        assert_eq!(after.get("LICENCE.txt").map(Vec::as_slice), Some(b"the user's own note".as_slice()));
+        assert!(after.contains_key(ORIGIN_FILE));
+        assert!(hidden(&into).is_empty() && leftovers(&into).is_empty(), "{:?}", hidden(&into));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A staging folder or an old set left aside is listed as a leftover (the choice never offers
+    /// it as a set: `choice`'s `a_folder_starting_with_a_dot_is_not_offered`).
+    #[test]
+    fn leftovers_are_listed() {
+        let dir = scratch("leftovers");
+        for name in [".my-wood.import-12", ".my-wood.old-1700000000000", "my-wood"] {
+            let d = dir.join(name);
+            std::fs::create_dir_all(&d).unwrap();
+            for k in PIECE_STEMS {
+                std::fs::write(d.join(format!("{k}.svg")), piece("black")).unwrap();
+            }
+        }
+        let names: Vec<String> = leftovers(&dir).iter().map(|p| p.file_name().unwrap().to_string_lossy().into_owned()).collect();
+        assert_eq!(names, [".my-wood.import-12", ".my-wood.old-1700000000000"]);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A font replaced goes through a staging file: what was there stays until the new one is
+    /// whole, and nothing is left beside it.
+    #[test]
+    fn a_font_is_written_whole_or_not_at_all() {
+        let dir = scratch("atomic");
+        let path = dir.join("Font.ttf");
+        std::fs::write(&path, b"old").unwrap();
+        write_atomically(&path, b"new bytes").unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"new bytes");
+        assert_eq!(hidden(&dir), Vec::<String>::new());
+        // A target that is a folder refuses the rename: the folder stays, no staging file is left.
+        let folder = dir.join("Folder.ttf");
+        std::fs::create_dir_all(&folder).unwrap();
+        assert!(write_atomically(&folder, b"x").is_err());
+        assert!(folder.is_dir() && hidden(&dir).is_empty());
         let _ = std::fs::remove_dir_all(&dir);
     }
 

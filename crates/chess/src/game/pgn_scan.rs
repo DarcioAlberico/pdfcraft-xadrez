@@ -43,7 +43,7 @@ pub enum ScanKind {
     Close,
     /// `$` and digits.
     Nag,
-    /// A result: `1-0`, `0-1`, `1/2-1/2`, `½-½` or `*`.
+    /// A result: `1-0`, `0-1`, `1/2-1/2` or `*`, or a draw as `½-½`, `1/2` or `0.5-0.5`.
     Result,
     /// Anything else up to whitespace or `{ ( ) ;`.
     Word,
@@ -64,8 +64,8 @@ pub struct Scanned {
     pub range: Range<usize>,
 }
 
-/// The results a word can be: the standard's four and `½-½`.
-const RESULTS: [&str; 5] = ["*", "1-0", "0-1", "1/2-1/2", "½-½"];
+/// The results a word can be: the standard's four, and a draw as `½-½`, `1/2` or `0.5-0.5`.
+const RESULTS: [&str; 7] = ["*", "1-0", "0-1", "1/2-1/2", "½-½", "1/2", "0.5-0.5"];
 
 /// The tokens of `text`, in order. A byte order mark the text may start with is not skipped: the
 /// callers take it off first ([`crate::pgn::without_bom`]), so ranges stay ranges of what they
@@ -287,7 +287,7 @@ mod tests {
         use ScanKind::*;
         assert_eq!(
             kinds("$1 $ $x1 e4$1 * ½-½ 1/2"),
-            [(Nag, "$1"), (Word, "$"), (Word, "$x1"), (Word, "e4$1"), (Result, "*"), (Result, "½-½"), (Word, "1/2")]
+            [(Nag, "$1"), (Word, "$"), (Word, "$x1"), (Word, "e4$1"), (Result, "*"), (Result, "½-½"), (Result, "1/2")]
         );
     }
 
