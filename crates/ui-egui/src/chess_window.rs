@@ -794,6 +794,8 @@ struct OpenDoc<'a> {
     info: &'a pdfcraft_render::DocInfo,
     stamp: Option<pdfcraft_engine::chess::ScanStamp>,
     page: usize,
+    /// The diagram editor is drawn in the Diagrams tab ([`PdfCraftApp::chess_editor_in_panel`]).
+    editor_here: bool,
 }
 
 /// What the window's contents asked for, done once they are drawn.
@@ -819,10 +821,11 @@ fn contents(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     }
     let pieces = app.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Board);
     let source_label = crate::chess_ui::board_source_label(app);
+    let editor_here = app.chess_editor_in_panel();
     let open = app.active_ids().and_then(|(vi, id)| {
         let page = app.views.get(vi)?.current;
         let doc = app.session.get(id)?;
-        Some(OpenDoc { id, info: &doc.info, stamp: app.session.chess_stamp(id), page })
+        Some(OpenDoc { id, info: &doc.info, stamp: app.session.chess_stamp(id), page, editor_here })
     });
     let mut tab = app.chess_window.tab;
     let mut asked = Asked::default();
@@ -982,7 +985,7 @@ fn side_tab(ui: &mut egui::Ui, t: &Tokens, chess: &mut crate::chess_ui::ChessSta
             ui.label(egui::RichText::new(tl!("Open a document first")).color(t.text_muted));
             return;
         };
-        asked.panel = crate::chess_ui::tab_contents(ui, t, chess, text, d.id, d.info, d.stamp, d.page);
+        asked.panel = crate::chess_ui::tab_contents(ui, t, chess, text, d.id, d.info, d.stamp, d.page, d.editor_here);
     });
 }
 

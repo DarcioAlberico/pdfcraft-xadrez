@@ -573,7 +573,8 @@ pub(crate) fn mark_tab(r: egui::Rect, size: egui::Vec2, page: egui::Rect, ring: 
 
 /// The Chess diagrams panel: its tabs, and the tab chosen. While the panel is in its own window
 /// (`in_window`, T13b) the Diagrams and Text tabs are drawn there and only said to be here, so
-/// one frame never draws them twice. The study board is the Board panel (T5c).
+/// one frame never draws them twice. The study board is the Board panel (T5c). `editor_here`:
+/// the diagram editor is drawn in the Diagrams tab ([`PdfCraftApp::chess_editor_in_panel`]).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn panel(
     ui: &mut egui::Ui,
@@ -584,6 +585,7 @@ pub(crate) fn panel(
     current: Option<ScanStamp>,
     page_now: usize,
     in_window: bool,
+    editor_here: bool,
 ) -> Option<PanelAction> {
     use crate::chess_text_ui::ChessTab;
     // A click anywhere in the panel, whichever tab shows, puts Undo and Redo on the game (D12).
@@ -598,11 +600,12 @@ pub(crate) fn panel(
     }
     let offer = if state.tools_offer { tools_offer(ui, t) } else { None };
     let pgn_offer = state.book_pgns.offer(id).and_then(|name| pgn_offer(ui, t, &name));
-    tab_contents(ui, t, state, state.tab == ChessTab::Text, id, info, current, page_now).or(offer).or(pgn_offer)
+    tab_contents(ui, t, state, state.tab == ChessTab::Text, id, info, current, page_now, editor_here).or(offer).or(pgn_offer)
 }
 
 /// The offer of the PGN beside the PDF (plan "Carregar PGN do livro", R6f): Use it, or Not now,
-/// which is remembered for the document.
+/// which is remembered for the document. The buttons are short words and the file's name is in
+/// the text, which wraps, so a long name never widens the panel (plan A9-I7a, finding A6-02).
 fn pgn_offer(ui: &mut egui::Ui, t: &Tokens, name: &str) -> Option<PanelAction> {
     let mut action = None;
     egui::Frame::NONE.fill(t.card).stroke(Stroke::new(1.0, t.border)).corner_radius(CornerRadius::same(6)).inner_margin(egui::Margin::same(8)).show(
@@ -610,18 +613,20 @@ fn pgn_offer(ui: &mut egui::Ui, t: &Tokens, name: &str) -> Option<PanelAction> {
         |ui| {
             ui.horizontal_wrapped(|ui| {
                 ui.add(crate::icons::image("book-open", 14.0, t.icon));
-                ui.label(
-                    egui::RichText::new(crate::i18n::fmt(tl!("{name} sits beside this PDF. Use it as the book's PGN?"), &[("name", name)])).small(),
-                );
+                let said = crate::i18n::fmt(tl!("{name} sits beside this PDF. Use it as the book's PGN?"), &[("name", name)]);
+                ui.add(egui::Label::new(egui::RichText::new(said).small()).wrap());
             });
-            ui.horizontal(|ui| {
-                if ui.button(crate::i18n::fmt(tl!("Use {name}"), &[("name", name)])).clicked() {
+            ui.horizontal_wrapped(|ui| {
+                // Each named in full for screen readers, its visible word first (WCAG 2.5.3): the
+                // tools panel's offer has a Not now too.
+                let named = |r: &egui::Response, text: &str| r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, text));
+                let use_it = ui.button(tl!("Use"));
+                named(&use_it, &crate::i18n::fmt(tl!("Use {name} as the book's PGN"), &[("name", name)]));
+                if use_it.clicked() {
                     action = Some(PanelAction::PgnOffer { use_it: true });
                 }
-                // Its own name for screen readers: the tools panel's offer has a Not now too.
                 let not_now = ui.button(tl!("Not now"));
-                let said = crate::i18n::fmt(tl!("Don't use {name} as the book's PGN"), &[("name", name)]);
-                not_now.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &said));
+                named(&not_now, &crate::i18n::fmt(tl!("Not now: don't use {name} as the book's PGN"), &[("name", name)]));
                 if not_now.clicked() {
                     action = Some(PanelAction::PgnOffer { use_it: false });
                 }
@@ -669,7 +674,8 @@ fn in_window_note(ui: &mut egui::Ui, t: &Tokens) -> Option<PanelAction> {
 }
 
 /// The Text tab (`text`) or the Diagrams tab: in the Inspector's Chess panel, or in the chess
-/// window (T13b).
+/// window (T13b). `editor_here`: the selected diagram's editor is drawn above the Diagrams list
+/// ([`PdfCraftApp::chess_editor_in_panel`]).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn tab_contents(
     ui: &mut egui::Ui,
@@ -680,6 +686,7 @@ pub(crate) fn tab_contents(
     info: &DocInfo,
     current: Option<ScanStamp>,
     page_now: usize,
+    editor_here: bool,
 ) -> Option<PanelAction> {
     if text {
         let busy = state.job.as_ref().filter(|j| j.doc == id).map(crate::chess_text_ui::ChessJob::label);
@@ -744,10 +751,11 @@ pub(crate) fn tab_contents(
         }
     }
     // The selected diagram's editor (S17), above the list.
-    if let Some(ed) = state.editor.as_mut().filter(|e| state.classic_editor && e.doc == id && Some(results.stamp) == current) {
+    if let Some(ed) = state.editor.as_mut().filter(|e| editor_here && e.doc == id && Some(results.stamp) == current) {
         ui.separator();
         let pieces = crate::chess_editor::piece_set(&mut state.pieces, &state.diagram_piece_choice, &mut state.diagram_piece_error);
-        if let Some(a) = crate::chess_editor::editor_ui(ui, t, ed, &pieces, queue.len(), state.diagram_keys.board.as_ref()) {
+        let confirm_only = state.confirm_only;
+        if let Some(a) = crate::chess_editor::editor_ui(ui, t, ed, &pieces, queue.len(), confirm_only, state.diagram_keys.board.as_ref()) {
             action = Some(PanelAction::Editor(a));
         }
     }
@@ -1099,17 +1107,25 @@ impl PdfCraftApp {
     }
 
     /// Pick diagram `index` on `page` to check it: [`Self::select_chess_diagram`], and the
-    /// Diagram tab comes forward with it (plan A8, P3b2) unless the classic editor is chosen.
-    /// Picked on the page (`go` false), the tab comes forward only when it is open already: one
-    /// opening there would move the page under the pointer, and a second click of a double-click
-    /// would miss the diagram.
+    /// Diagram tab comes forward with it (plan A8, P3b2) unless the editor is drawn in the
+    /// Diagrams panel ([`Self::chess_editor_in_panel`]). Picked on the page (`go` false), the tab
+    /// comes forward only when it is open already: one opening there would move the page under
+    /// the pointer, and a second click of a double-click would miss the diagram.
     pub fn edit_chess_diagram(&mut self, page: usize, index: usize, go: bool) {
         self.select_chess_diagram(page, index, go);
         let picked = self.chess.results.as_ref().and_then(|r| r.selected) == Some((page, index));
         let open = go || self.docking.layout.contains(&crate::docking::Panel::Diagram);
-        if picked && open && !self.chess.classic_editor {
+        if picked && open && !self.chess_editor_in_panel() {
             self.pending_panel_reveals.push(crate::docking::Panel::Diagram);
         }
+    }
+
+    /// Whether the selected diagram's editor is drawn above the Diagrams list instead of in the
+    /// Diagram tab: the classic editor was chosen, or Read mode draws no docking workspace and so
+    /// no Diagram tab (plan A9-I15, finding R4-01). A reveal asked for there would be done only
+    /// when Read mode is left, bringing out a tab the user never saw open.
+    pub(crate) fn chess_editor_in_panel(&self) -> bool {
+        self.chess.classic_editor || self.mode == crate::Mode::Read
     }
 
     /// Opening a diagram on the board is a place to come back to (plan A8, P4): the page on
