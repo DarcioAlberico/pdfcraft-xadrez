@@ -6,15 +6,23 @@
 //! ([`page_fingerprint`]: its content streams and its images, as stored, so it survives saving)
 //! and the diagram's box normalised to the page's crop box. A diagram is the correction's when
 //! their boxes overlap by an intersection over union of at least [`MATCH_IOU`]. A page that moved
-//! (pages inserted or removed before it) is found again by its fingerprint ([`Located`]).
+//! (pages inserted or removed before it) is found again by its fingerprint, and the fingerprints
+//! of the pages around it tell a page that changed from a page that took its place ([`Located`]).
+//! When two corrections are over one diagram, the one found by its page's fingerprint wins over
+//! the one found by its page's index, then the later one ([`apply`], [`CorrectionFile::find`] and
+//! [`CorrectionFile::set`] follow that one rule; plan A9, G2a).
 //!
 //! **Format** (version [`VERSION`]), one JSON file per document:
-//! `{"format":"pdfcraft-chess-corrections","version":1,"doc":{…},"entries":[…]}`. The document
-//! is recorded by its identifier, the hash of its path (never the path itself), its name, size and
-//! page count; no text or picture of the document is kept. Each entry has a `uid`, the page and
-//! its fingerprint, the normalised box, the reading it replaced (`orig`), the position (`fen`),
-//! its `kind` (verified: the reading was right; corrected), when (`at`, seconds since 1970) and a
-//! revision `rev`. Deleting leaves a tombstone (`deleted`), so a merge never brings it back.
+//! `{"format":"pdfcraft-chess-corrections","version":2,"doc":{…},"fps":[…],"entries":[…]}`. The
+//! document is recorded by its identifier, the hash of its path (never the path itself), its name,
+//! size and page count; no text or picture of the document is kept. `fps` holds each page
+//! fingerprint once. Each entry has a `uid`, the page (`page`, of `pages`), its fingerprint and
+//! those of the pages before and after it (`fp`: three places in `fps`, `null` where there is no
+//! page), the normalised box, the position (`fen`), the reading it replaced (`orig`: left out when
+//! it is the position, `null` when unknown), its `kind` (verified: the reading was right;
+//! corrected), when (`at`, seconds since 1970) and a revision `rev`. Deleting leaves a tombstone
+//! (`deleted`), so a merge never brings it back. Version 1 (each entry with its page's fingerprint
+//! and nothing of its neighbours) is still read, and written again as version 2.
 //!
 //! **Merging and safety.** Two copies merge entry by entry, the higher revision winning
 //! ([`CorrectionFile::merge`]). A file of a newer version is read but never written; one that
@@ -31,8 +39,10 @@ use crate::Document;
 /// The format's name, in every file.
 pub const FORMAT: &str = "pdfcraft-chess-corrections";
 
-/// The format's version. A newer one is read only; another is set aside.
-pub const VERSION: u32 = 1;
+/// The format's version. A newer one is read only; an older one is read and written again as this
+/// one; another is set aside. Version 2 (plan A9, G2a) records each correction's neighbouring
+/// pages and keeps the fingerprints in one table; a build of version 1 opens it read only.
+pub const VERSION: u32 = 2;
 
 /// Most entries (tombstones included) one document keeps.
 pub const MAX_ENTRIES: usize = 20_000;
@@ -156,16 +166,21 @@ pub struct Original {
 }
 
 /// One diagram's correction.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Correction {
     pub uid: String,
     /// The page, 0-based, when the correction was last written.
     pub page: usize,
     /// That page's fingerprint then ([`page_fingerprint`]).
     pub page_fp: String,
+    /// The fingerprints of the pages before and after it then; `None` where there was no page
+    /// (the first page, the last), and for an entry of version 1, which did not record them.
+    pub prev_fp: Option<String>,
+    pub next_fp: Option<String>,
+    /// How many pages the document had then; 0 for an entry of version 1.
+    pub page_count: usize,
     /// The diagram's box, normalised to the page's crop box: `[x0, y0, x1, y1]` in 0..1, y up.
     pub rect: [f32; 4],
-    #[serde(default)]
     pub orig: Option<Original>,
     /// The position, a full FEN.
     pub fen: String,
@@ -174,7 +189,6 @@ pub struct Correction {
     pub at: u64,
     /// Its revision: each change adds one, and the higher one wins a merge.
     pub rev: u64,
-    #[serde(default)]
     pub deleted: bool,
 }
 
@@ -225,13 +239,14 @@ impl DocRecord {
     }
 }
 
-/// A document's corrections.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+/// A document's corrections. Read and written by [`CorrectionFile::read`] and
+/// [`CorrectionFile::to_bytes`], in the layout of [`VERSION`].
+#[derive(Clone, Debug, PartialEq)]
 pub struct CorrectionFile {
     pub format: String,
+    /// [`VERSION`], or the newer version of a file read only ([`Read::Newer`]).
     pub version: u32,
     pub doc: DocRecord,
-    #[serde(default)]
     pub entries: Vec<Correction>,
 }
 
@@ -264,13 +279,15 @@ pub enum CorrectionError {
     NoSuchCorrection(String),
     #[error("the corrections kept here would take more than their {0} bytes")]
     OverBudget(usize),
+    #[error("page {} is not in the document as it is now", .0.saturating_add(1))]
+    NoSuchPage(usize),
 }
 
-/// A correction to put in: the diagram, and what is said about it.
+/// A correction to put in: the diagram, and what is said about it. Its page's fingerprint and its
+/// neighbours' are taken from the document as it is ([`CorrectionFile::set`]).
 #[derive(Clone, Debug, PartialEq)]
 pub struct NewCorrection {
     pub page: usize,
-    pub page_fp: String,
     /// The box normalised to the crop box ([`normalize`]).
     pub rect: [f32; 4],
     pub orig: Option<Original>,
@@ -286,8 +303,10 @@ pub enum Located {
     /// On another page with its page's fingerprint: pages were inserted or removed before it.
     Moved(usize),
     /// On its page, whose content changed (an edit, a redrawn diagram): matched by its box alone.
+    /// Only when no page it recorded as its neighbour has moved (then another page took its
+    /// place) and, when no neighbour is left to tell, the page count is the one it recorded.
     Changed(usize),
-    /// Nowhere: its page is gone.
+    /// Nowhere: its page is gone, or another page took its place. Listed, never applied.
     Orphan,
 }
 
@@ -317,7 +336,8 @@ impl CorrectionFile {
         CorrectionFile { format: FORMAT.into(), version: VERSION, doc, entries: Vec::new() }
     }
 
-    /// Read a file's bytes: this version's file, a newer one (read only), or why not.
+    /// Read a file's bytes: this version's file (an older version's taken in as this one), a
+    /// newer one (read only), or why not.
     pub fn read(bytes: &[u8]) -> Read {
         if bytes.len() > MAX_FILE_BYTES {
             return Read::Bad(format!("larger than {} MB", MAX_FILE_BYTES >> 20));
@@ -330,17 +350,19 @@ impl CorrectionFile {
             return Read::Bad("not a corrections file".into());
         }
         let version = value.get("version").and_then(serde_json::Value::as_u64).and_then(|v| u32::try_from(v).ok());
-        match version {
-            Some(VERSION) => {}
+        let file = match version {
+            Some(1) => serde_json::from_value::<disk::FileV1>(value).map_err(|e| e.to_string()).map(disk::FileV1::into_file),
+            Some(VERSION) => serde_json::from_value::<disk::FileV2>(value).map_err(|e| e.to_string()).and_then(disk::FileV2::into_file),
             Some(v) if v > VERSION => {
-                let file = serde_json::from_value::<CorrectionFile>(value).ok().filter(|f| f.problem().is_none());
+                // Read in this version's layout, fields this build doesn't know left out.
+                let file = serde_json::from_value::<disk::FileV2>(value).ok().and_then(|f| f.into_file().ok()).filter(|f| f.problem().is_none());
                 return Read::Newer(v, file);
             }
             _ => return Read::Bad("no version this build reads".into()),
-        }
-        let file: CorrectionFile = match serde_json::from_value(value) {
+        };
+        let file = match file {
             Ok(f) => f,
-            Err(e) => return Read::Bad(format!("not a version {VERSION} file: {e}")),
+            Err(e) => return Read::Bad(format!("not a corrections file of its version: {e}")),
         };
         match file.problem() {
             Some(why) => Read::Bad(why),
@@ -353,15 +375,21 @@ impl CorrectionFile {
         if self.entries.len() > MAX_ENTRIES {
             return Some(format!("more than {MAX_ENTRIES} entries"));
         }
+        let text_ok = |s: &str| !s.is_empty() && s.len() <= MAX_TEXT;
         self.entries.iter().find_map(|e| {
-            let long = [&e.uid, &e.page_fp, &e.fen].iter().any(|s| s.is_empty() || s.len() > MAX_TEXT);
-            if long || !rect_ok(e.rect) { Some(format!("entry {} is not a correction", e.uid.chars().take(64).collect::<String>())) } else { None }
+            let texts = [&e.uid, &e.page_fp, &e.fen].iter().all(|s| text_ok(s));
+            let neighbours = [&e.prev_fp, &e.next_fp].iter().all(|n| n.as_deref().is_none_or(text_ok));
+            if texts && neighbours && rect_ok(e.rect) {
+                None
+            } else {
+                Some(format!("entry {} is not a correction", e.uid.chars().take(64).collect::<String>()))
+            }
         })
     }
 
-    /// The file as bytes, refused when it would be too big to read back.
+    /// The file as bytes, in this version's layout, refused when it would be too big to read back.
     pub fn to_bytes(&self) -> Result<Vec<u8>, CorrectionError> {
-        let bytes = serde_json::to_vec(self).map_err(|_| CorrectionError::TooBig)?;
+        let bytes = serde_json::to_vec(&disk::FileV2::of(self)).map_err(|_| CorrectionError::TooBig)?;
         if bytes.len() > MAX_FILE_BYTES { Err(CorrectionError::TooBig) } else { Ok(bytes) }
     }
 
@@ -388,23 +416,35 @@ impl CorrectionFile {
         }
     }
 
-    /// Put `new` in at time `at`: over the live correction of the same diagram (same page, boxes
-    /// overlapping by [`MATCH_IOU`]) as its next revision, else as a new entry. Returns its uid.
-    pub fn set(&mut self, new: NewCorrection, at: u64) -> Result<String, CorrectionError> {
+    /// Put `new` in at time `at`, the document's pages having `fingerprints` now: over the live
+    /// correction its diagram has now (wherever its page was when it was written, by the rule of
+    /// [`apply`]) as its next revision, else as a new entry, never as a second one. It records the
+    /// page's fingerprint and its neighbours' as they are now. Returns its uid.
+    pub fn set(&mut self, new: NewCorrection, at: u64, fingerprints: &[String]) -> Result<String, CorrectionError> {
         crate::chess::pdfcraft_chess::fen::parse(&new.fen).map_err(|e| CorrectionError::BadFen(e.to_string()))?;
-        if new.fen.len() > MAX_TEXT || new.page_fp.is_empty() || new.page_fp.len() > MAX_TEXT {
+        if new.fen.len() > MAX_TEXT {
             return Err(CorrectionError::BadFen("too long".into()));
         }
         if !rect_ok(new.rect) {
             return Err(CorrectionError::BadRect);
         }
-        let same = self
-            .entries
-            .iter_mut()
-            .filter(|e| !e.deleted && e.page == new.page && iou(e.rect, new.rect) >= MATCH_IOU)
-            .max_by(|a, b| iou(a.rect, new.rect).total_cmp(&iou(b.rect, new.rect)));
-        if let Some(e) = same {
-            e.page_fp = new.page_fp;
+        let page_fp = fingerprint_at(fingerprints, Some(new.page)).ok_or(CorrectionError::NoSuchPage(new.page))?;
+        let (prev_fp, next_fp) = (fingerprint_at(fingerprints, new.page.checked_sub(1)), fingerprint_at(fingerprints, new.page.checked_add(1)));
+        self.record_neighbours(fingerprints);
+        // Only an entry written for this page's index or with this page's fingerprint can be
+        // located on it (same or changed, moved): the others are not looked for.
+        let over =
+            self.entries.iter().enumerate().filter(|(_, e)| !e.deleted && (e.page == new.page || e.page_fp == page_fp)).filter_map(|(i, e)| {
+                let (at, overlap) = (locate(e, fingerprints), iou(e.rect, new.rect));
+                (at.page() == Some(new.page) && overlap >= MATCH_IOU).then_some((i, Claim { at, e, overlap }))
+            });
+        let current = winner(over);
+        if let Some(e) = current.and_then(|i| self.entries.get_mut(i)) {
+            e.page = new.page;
+            e.page_fp = page_fp;
+            e.prev_fp = prev_fp;
+            e.next_fp = next_fp;
+            e.page_count = fingerprints.len();
             e.rect = new.rect;
             e.fen = new.fen;
             e.kind = new.kind;
@@ -418,15 +458,43 @@ impl CorrectionFile {
         if self.entries.len() >= MAX_ENTRIES {
             return Err(CorrectionError::Full);
         }
-        let mut uid = new_uid(&new, at, 0);
+        let mut uid = new_uid(&new, &page_fp, at, 0);
         let mut salt = 1u32;
         while self.entries.iter().any(|e| e.uid == uid) && salt < 1000 {
-            uid = new_uid(&new, at, salt);
+            uid = new_uid(&new, &page_fp, at, salt);
             salt += 1;
         }
-        let NewCorrection { page, page_fp, rect, orig, fen, kind } = new;
-        self.entries.push(Correction { uid: uid.clone(), page, page_fp, rect, orig, fen, kind, at, rev: 1, deleted: false });
+        let NewCorrection { page, rect, orig, fen, kind } = new;
+        self.entries.push(Correction {
+            uid: uid.clone(),
+            page,
+            page_fp,
+            prev_fp,
+            next_fp,
+            page_count: fingerprints.len(),
+            rect,
+            orig,
+            fen,
+            kind,
+            at,
+            rev: 1,
+            deleted: false,
+        });
         Ok(uid)
+    }
+
+    /// Entries of version 1 still on their page (its fingerprint where it was) take their
+    /// neighbours and the page count as they are now, which version 1 did not record: from here,
+    /// another page taking their page's place is told from an edit to it ([`Located`]). Their
+    /// revision stays: nothing the user made changed.
+    fn record_neighbours(&mut self, fingerprints: &[String]) {
+        for e in self.entries.iter_mut().filter(|e| !e.deleted && e.page_count == 0) {
+            if fingerprints.get(e.page) == Some(&e.page_fp) {
+                e.prev_fp = fingerprint_at(fingerprints, e.page.checked_sub(1));
+                e.next_fp = fingerprint_at(fingerprints, e.page.checked_add(1));
+                e.page_count = fingerprints.len();
+            }
+        }
     }
 
     /// Delete correction `uid` at time `at`, leaving a tombstone. Whether it was there and live.
@@ -447,29 +515,93 @@ impl CorrectionFile {
         self.live().map(|e| (locate(e, fingerprints), e)).collect()
     }
 
-    /// The live correction of the diagram at `rect` (normalised) on page `page` now, when one
-    /// overlaps it by [`MATCH_IOU`]: the best overlap wins.
+    /// The live correction of the diagram at `rect` (normalised) on page `page` now: of those
+    /// overlapping it by [`MATCH_IOU`] whose position this build reads, the one that takes the
+    /// diagram by the rule of [`apply`] ([`Claim::outranks`]).
     pub fn find(&self, fingerprints: &[String], page: usize, rect: [f32; 4]) -> Option<&Correction> {
-        self.locate(fingerprints)
-            .into_iter()
-            .filter(|(at, e)| at.page() == Some(page) && iou(e.rect, rect) >= MATCH_IOU)
-            .max_by(|(_, a), (_, b)| iou(a.rect, rect).total_cmp(&iou(b.rect, rect)))
-            .map(|(_, e)| e)
+        let claims = self.locate(fingerprints).into_iter().filter_map(|(at, e)| {
+            let overlap = iou(e.rect, rect);
+            (at.page() == Some(page) && overlap >= MATCH_IOU && fen_readable(&e.fen)).then_some((e, Claim { at, e, overlap }))
+        });
+        winner(claims)
     }
 }
 
-/// Where `e`'s diagram is now: its page when that page is unchanged; else the one page with its
-/// page's fingerprint; else its page by index when the document still has it.
+/// Where `e`'s diagram is now:
+/// - its page, when that page is unchanged ([`Located::Same`]);
+/// - else the one page with its page's fingerprint ([`Located::Moved`]);
+/// - else its page by index, changed ([`Located::Changed`]), unless the document has no such
+///   page, or a page it recorded as its neighbour is in the document but not beside that index
+///   (pages were removed or inserted there: the page at the index is another one, A4-01), or, with
+///   no neighbour left to tell (none recorded, version 1; or each one changed too, as an edit to
+///   every page does), the page count is not the one it recorded: then [`Located::Orphan`].
 fn locate(e: &Correction, fingerprints: &[String]) -> Located {
     if fingerprints.get(e.page) == Some(&e.page_fp) {
         return Located::Same(e.page);
     }
     let mut same = fingerprints.iter().enumerate().filter(|(_, fp)| **fp == e.page_fp).map(|(i, _)| i);
-    match (same.next(), same.next()) {
-        (Some(p), None) => Located::Moved(p),
-        _ if e.page < fingerprints.len() => Located::Changed(e.page),
-        _ => Located::Orphan,
+    if let (Some(p), None) = (same.next(), same.next()) {
+        return Located::Moved(p);
     }
+    if e.page >= fingerprints.len() {
+        return Located::Orphan;
+    }
+    let mut told = false;
+    for (beside, recorded) in [(e.page.checked_sub(1), &e.prev_fp), (e.page.checked_add(1), &e.next_fp)] {
+        let Some(recorded) = recorded else { continue };
+        if beside.and_then(|p| fingerprints.get(p)) == Some(recorded) {
+            told = true;
+        } else if fingerprints.contains(recorded) {
+            return Located::Orphan;
+        }
+    }
+    if told || e.page_count == 0 || e.page_count == fingerprints.len() { Located::Changed(e.page) } else { Located::Orphan }
+}
+
+/// The fingerprint of page `page` (none past either end), when it is one a file keeps.
+fn fingerprint_at(fingerprints: &[String], page: Option<usize>) -> Option<String> {
+    page.and_then(|p| fingerprints.get(p)).filter(|fp| !fp.is_empty() && fp.len() <= MAX_TEXT).cloned()
+}
+
+/// Whether this build reads `fen` as a position: a correction whose FEN it can't read never takes a
+/// diagram ([`apply`] lists it).
+fn fen_readable(fen: &str) -> bool {
+    crate::chess::pdfcraft_chess::fen::parse(fen).is_ok()
+}
+
+/// A correction over a diagram: where [`locate`] found it, and how much its box overlaps the
+/// diagram's.
+#[derive(Clone, Copy)]
+struct Claim<'a> {
+    at: Located,
+    e: &'a Correction,
+    overlap: f32,
+}
+
+impl Claim<'_> {
+    /// Whether this one takes the diagram from `other` (plan A9, G2a; R1-01, A4-02): one found by
+    /// its page's fingerprint (same, moved) wins over one found by its page's index alone
+    /// (changed); between those, the later one (`at`), then the higher revision, then the box
+    /// overlapping more.
+    fn outranks(&self, other: &Claim<'_>) -> bool {
+        let key = |c: &Claim<'_>| (matches!(c.at, Located::Same(_) | Located::Moved(_)), c.e.at, c.e.rev);
+        match key(self).cmp(&key(other)) {
+            std::cmp::Ordering::Equal => self.overlap.total_cmp(&other.overlap) == std::cmp::Ordering::Greater,
+            order => order == std::cmp::Ordering::Greater,
+        }
+    }
+}
+
+/// Of the claims on one diagram, each with a tag, the tag of the one that takes it
+/// ([`Claim::outranks`]); on a full tie, the first.
+fn winner<'a, T>(claims: impl IntoIterator<Item = (T, Claim<'a>)>) -> Option<T> {
+    let mut best: Option<(T, Claim<'a>)> = None;
+    for (tag, claim) in claims {
+        if best.as_ref().is_none_or(|(_, b)| claim.outranks(b)) {
+            best = Some((tag, claim));
+        }
+    }
+    best.map(|(tag, _)| tag)
 }
 
 /// A box in 0..1 with its corners in order and some area.
@@ -499,10 +631,10 @@ pub fn normalize(bbox: [f32; 4], crop: [f32; 4]) -> Option<[f32; 4]> {
 }
 
 /// A new entry's uid: a hash of what it was made from and when.
-fn new_uid(new: &NewCorrection, at: u64, salt: u32) -> String {
+fn new_uid(new: &NewCorrection, page_fp: &str, at: u64, salt: u32) -> String {
     let rect: Vec<u8> = new.rect.iter().flat_map(|v| v.to_bits().to_be_bytes()).collect();
     let page = u64::try_from(new.page).unwrap_or(u64::MAX).to_be_bytes();
-    hash_hex(&[new.page_fp.as_bytes(), &page, &rect, &at.to_be_bytes(), &salt.to_be_bytes()])
+    hash_hex(&[page_fp.as_bytes(), &page, &rect, &at.to_be_bytes(), &salt.to_be_bytes()])
 }
 
 /// The file name a new file for the document named by `keys` gets: a hash of its identifier
@@ -652,22 +784,26 @@ pub fn corrected_position(
 
 /// `pages` with `file`'s corrections in place of their readings, given every page's fingerprint
 /// now. A correction is its page's diagram whose box overlaps its own the most, by
-/// [`MATCH_IOU`] at least, each diagram taking one correction; it wins over the reading whatever
-/// the reading says now. Pages scanned without reading are left as they are; a correction on a
-/// read page whose diagram is not there is listed as unmatched, never dropped silently.
+/// [`MATCH_IOU`] at least; of the corrections on one diagram, the one found by its page's
+/// fingerprint takes it over one found by its page's index, then the later one
+/// ([`Claim::outranks`]), and the others are listed with the one that took it. It wins over the
+/// reading whatever the reading says now. Pages scanned without reading are left as they are; a
+/// correction on a read page whose diagram is not there is listed as unmatched, never dropped
+/// silently. A correction whose page is gone or was taken by another page ([`Located::Orphan`])
+/// is on no page: never applied (`chess_correction_list` lists it).
 pub fn apply(pages: &[std::sync::Arc<super::ChessPage>], file: &CorrectionFile, fingerprints: &[String]) -> Corrected {
     use pdfcraft_chessvision::board::{BoardReading, ReadingSource};
     let located = file.locate(fingerprints);
     let mut out = Corrected::default();
     for page in pages {
-        let here: Vec<&Correction> = located.iter().filter(|(at, _)| at.page() == Some(page.page)).map(|(_, e)| *e).collect();
+        let here: Vec<(Located, &Correction)> = located.iter().filter(|(at, _)| at.page() == Some(page.page)).map(|(at, e)| (*at, *e)).collect();
         let (Some(readings), false) = (page.readings.as_ref(), here.is_empty()) else {
             out.pages.push(page.clone());
             continue;
         };
         let unmatched = |e: &Correction, reason: &str| Unmatched { uid: e.uid.clone(), page: page.page, reason: reason.into() };
         let Some(crop) = page.geometry.map(|g| g.crop_box()) else {
-            out.unmatched.extend(here.iter().map(|e| unmatched(e, "the page has no visible area")));
+            out.unmatched.extend(here.iter().map(|(_, e)| unmatched(e, "the page has no visible area")));
             out.pages.push(page.clone());
             continue;
         };
@@ -675,29 +811,56 @@ pub fn apply(pages: &[std::sync::Arc<super::ChessPage>], file: &CorrectionFile, 
             .iter()
             .map(|r| normalize([r.bbox_user.x0, r.bbox_user.y0, r.bbox_user.x1, r.bbox_user.y1], [crop.x0, crop.y0, crop.x1, crop.y1]))
             .collect();
-        let mut taken = vec![false; readings.len()];
+        // Each correction's diagram: the one its box overlaps most, by MATCH_IOU at least.
+        let claims: Vec<Option<(usize, f32)>> = here
+            .iter()
+            .map(|(_, e)| {
+                boxes
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, b)| b.map(|b| (i, iou(b, e.rect))))
+                    .filter(|(_, overlap)| *overlap >= MATCH_IOU)
+                    .max_by(|a, b| a.1.total_cmp(&b.1))
+            })
+            .collect();
+        // Each diagram's correction, by the one rule (index into `here`).
+        let taker = |diagram: usize| {
+            winner(here.iter().zip(&claims).enumerate().filter_map(|(k, ((at, e), claim))| {
+                let (i, overlap) = (*claim)?;
+                (i == diagram && fen_readable(&e.fen)).then_some((k, Claim { at: *at, e, overlap }))
+            }))
+        };
+        let takers: Vec<Option<usize>> = (0..readings.len()).map(taker).collect();
         let mut corrected = (**page).clone();
-        for e in here {
-            let best = boxes
-                .iter()
-                .enumerate()
-                .filter(|(i, _)| !taken.get(*i).copied().unwrap_or(true))
-                .filter_map(|(i, b)| b.map(|b| (i, iou(b, e.rect))))
-                .filter(|(_, overlap)| *overlap >= MATCH_IOU)
-                .max_by(|a, b| a.1.total_cmp(&b.1));
-            let Some((i, _)) = best else {
+        for (k, ((_, e), claim)) in here.iter().zip(&claims).enumerate() {
+            let Some((i, _)) = *claim else {
                 out.unmatched.push(unmatched(e, "no diagram on the page is where it was"));
                 continue;
             };
+            if !fen_readable(&e.fen) {
+                out.unmatched.push(unmatched(e, "its position is not a FEN this build reads"));
+                continue;
+            }
+            match takers.get(i).copied().flatten() {
+                Some(t) if t == k => {}
+                Some(t) => {
+                    let by = here.get(t).map_or("", |(_, w)| w.uid.as_str());
+                    out.unmatched.push(unmatched(e, &format!("the diagram already has correction {by}")));
+                    continue;
+                }
+                // Not reached (a readable claim takes its diagram unless another does); listed
+                // all the same, never dropped.
+                None => {
+                    out.unmatched.push(unmatched(e, "no diagram on the page is where it was"));
+                    continue;
+                }
+            }
             let Some(reading) = corrected.readings.as_mut().and_then(|r| r.get_mut(i)) else { continue };
             let before = reading.position().cloned();
             let Some(position) = corrected_position(&e.fen, before.as_ref()) else {
                 out.unmatched.push(unmatched(e, "its position is not a FEN this build reads"));
                 continue;
             };
-            if let Some(t) = taken.get_mut(i) {
-                *t = true;
-            }
             let read_fen = before.map(|p| p.fen);
             let made_over = e.orig.as_ref().and_then(|o| o.fen.clone());
             let diverged = e.orig.is_some() && read_fen != made_over;
@@ -1087,6 +1250,189 @@ pub(super) fn write_atomically(path: &std::path::Path, bytes: &[u8]) -> std::io:
         let _ = std::fs::remove_file(&staging);
     }
     result
+}
+
+/// The files as stored. Version 1 kept each page fingerprint in every entry; version 2 keeps each
+/// once, in `fps`, an entry naming its page's and its neighbours' by their place there, and leaves
+/// out what it can (`orig` when it is the position, `deleted` when false).
+mod disk {
+    use serde::{Deserialize, Deserializer, Serialize};
+
+    use super::{Correction, CorrectionFile, DocRecord, Kind, MAX_ENTRIES, Original};
+
+    /// Version 1, as `801e3abf` (plan A8, P3a1) wrote it.
+    #[derive(Deserialize)]
+    pub(super) struct FileV1 {
+        format: String,
+        doc: DocRecord,
+        #[serde(default)]
+        entries: Vec<EntryV1>,
+    }
+
+    #[derive(Deserialize)]
+    struct EntryV1 {
+        uid: String,
+        page: usize,
+        page_fp: String,
+        rect: [f32; 4],
+        #[serde(default)]
+        orig: Option<Original>,
+        fen: String,
+        kind: Kind,
+        at: u64,
+        rev: u64,
+        #[serde(default)]
+        deleted: bool,
+    }
+
+    impl FileV1 {
+        /// Taken in as this version's file, the neighbours unknown.
+        pub(super) fn into_file(self) -> CorrectionFile {
+            let entries = self
+                .entries
+                .into_iter()
+                .map(|e| Correction {
+                    uid: e.uid,
+                    page: e.page,
+                    page_fp: e.page_fp,
+                    prev_fp: None,
+                    next_fp: None,
+                    page_count: 0,
+                    rect: e.rect,
+                    orig: e.orig,
+                    fen: e.fen,
+                    kind: e.kind,
+                    at: e.at,
+                    rev: e.rev,
+                    deleted: e.deleted,
+                })
+                .collect();
+            CorrectionFile { format: self.format, version: super::VERSION, doc: self.doc, entries }
+        }
+    }
+
+    /// Version 2 (plan A9, G2a).
+    #[derive(Serialize, Deserialize)]
+    pub(super) struct FileV2 {
+        format: String,
+        version: u32,
+        doc: DocRecord,
+        /// Each page fingerprint the entries name, once.
+        #[serde(default)]
+        fps: Vec<String>,
+        #[serde(default)]
+        entries: Vec<EntryV2>,
+    }
+
+    #[derive(Serialize, Deserialize)]
+    struct EntryV2 {
+        uid: String,
+        page: usize,
+        /// The document's page count then; 0 when not known (an entry of version 1 never placed
+        /// again).
+        #[serde(default)]
+        pages: usize,
+        /// The page's fingerprint and its neighbours' (before, page, after), as places in `fps`.
+        fp: (Option<u32>, u32, Option<u32>),
+        rect: [f32; 4],
+        fen: String,
+        /// Left out: the reading was the position (`fen`); `null`: not known.
+        #[serde(default, deserialize_with = "present", skip_serializing_if = "Option::is_none")]
+        orig: Option<Option<Original>>,
+        kind: Kind,
+        at: u64,
+        rev: u64,
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        deleted: bool,
+    }
+
+    /// The fingerprints of a file being written, each once, with its place.
+    #[derive(Default)]
+    struct Table<'a> {
+        fps: Vec<String>,
+        places: std::collections::HashMap<&'a str, u32>,
+    }
+
+    impl<'a> Table<'a> {
+        /// `fp`'s place in the table, put in when new.
+        fn place(&mut self, fp: &'a str) -> u32 {
+            if let Some(at) = self.places.get(fp) {
+                return *at;
+            }
+            // At most three per entry, and a file's entries are capped: always within a u32.
+            let at = u32::try_from(self.fps.len()).unwrap_or(u32::MAX);
+            self.fps.push(fp.to_owned());
+            self.places.insert(fp, at);
+            at
+        }
+    }
+
+    /// A field that is there, `null` or not: `Some`, so that `None` means left out.
+    fn present<'de, D: Deserializer<'de>>(d: D) -> Result<Option<Option<Original>>, D::Error> {
+        Option::<Original>::deserialize(d).map(Some)
+    }
+
+    impl FileV2 {
+        /// `file` in this layout.
+        pub(super) fn of(file: &CorrectionFile) -> FileV2 {
+            let mut table = Table::default();
+            let mut entries = Vec::with_capacity(file.entries.len());
+            for e in &file.entries {
+                let fp = (e.prev_fp.as_deref().map(|f| table.place(f)), table.place(&e.page_fp), e.next_fp.as_deref().map(|f| table.place(f)));
+                let orig = match &e.orig {
+                    Some(o) if o.model.is_none() && o.fen.as_deref() == Some(e.fen.as_str()) => None,
+                    other => Some(other.clone()),
+                };
+                entries.push(EntryV2 {
+                    uid: e.uid.clone(),
+                    page: e.page,
+                    pages: e.page_count,
+                    fp,
+                    rect: e.rect,
+                    fen: e.fen.clone(),
+                    orig,
+                    kind: e.kind,
+                    at: e.at,
+                    rev: e.rev,
+                    deleted: e.deleted,
+                });
+            }
+            FileV2 { format: file.format.clone(), version: super::VERSION, doc: file.doc.clone(), fps: table.fps, entries }
+        }
+
+        /// The file these bytes held, or why not: a place past the table.
+        pub(super) fn into_file(self) -> Result<CorrectionFile, String> {
+            if self.fps.len() > MAX_ENTRIES.saturating_mul(3) || self.entries.len() > MAX_ENTRIES {
+                return Err(format!("more than {MAX_ENTRIES} entries"));
+            }
+            let fps = &self.fps;
+            let fp = |at: u32| usize::try_from(at).ok().and_then(|i| fps.get(i)).cloned().ok_or_else(|| format!("no fingerprint {at}"));
+            let mut entries = Vec::with_capacity(self.entries.len());
+            for e in self.entries {
+                let (prev, own, next) = e.fp;
+                let orig = match e.orig {
+                    None => Some(Original { fen: Some(e.fen.clone()), model: None }),
+                    Some(o) => o,
+                };
+                entries.push(Correction {
+                    uid: e.uid,
+                    page: e.page,
+                    page_fp: fp(own)?,
+                    prev_fp: prev.map(fp).transpose()?,
+                    next_fp: next.map(fp).transpose()?,
+                    page_count: e.pages,
+                    rect: e.rect,
+                    orig,
+                    fen: e.fen,
+                    kind: e.kind,
+                    at: e.at,
+                    rev: e.rev,
+                    deleted: e.deleted,
+                });
+            }
+            Ok(CorrectionFile { format: self.format, version: self.version, doc: self.doc, entries })
+        }
+    }
 }
 
 #[cfg(test)]
