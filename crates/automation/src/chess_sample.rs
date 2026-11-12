@@ -87,7 +87,7 @@ impl Automation {
         .map_err(|e| ToolError::Failed(format!("{folder_arg}: {e}")))?;
         self.glyph_samples = SampleBudget { written: self.glyph_samples.written.saturating_add(1), bytes };
         Ok(json!({
-            "path": written.to_string_lossy(),
+            "path": self.shown_path(&written).0,
             "class": class,
             "name": written.file_name().map(|n| n.to_string_lossy().into_owned()),
             "side": SAMPLE_SIDE,
