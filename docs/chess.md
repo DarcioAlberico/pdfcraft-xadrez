@@ -374,6 +374,16 @@ The review journeys of plan A8 (§5), measured on 2026-10-29 by `the_review_jour
 
 Not measured here: the same journeys by the keyboard alone (the Diagram tab's are, in `the_diagram_tab_corrects_and_confirms_by_the_keyboard_alone`), and the plan's test with three people who don't program.
 
+**Benches by the truth** (plan A9-Q2, measured on 2026-11-12, release builds). A bench that only counts takes a valid but wrong move for a success, so the walker's benches now compare with a baseline and with the book's own PGN. `examples/walk_bench.rs --save-baseline` keeps every move's status (by document, page, place and text) and `--baseline FILE --allow-lost N` fails when more than N moves valid there are not now; `--reference=book.pgn` aligns the walked documents with the book's PGN; `examples/reference_bench.rs` has the same baseline for the moves the PGN backs (confirmed or recovered). All three benches, `cargo xtask chess-bench` included, match moves by one rule (`examples/common/moves_match.rs`). The base numbers:
+
+| What | How | Result |
+|---|---|---|
+| The 38-book sample (20 pages of each, read on 2026-11-11) | `walk_bench` | 25,544 valid moves, 10,616 of them in games that start from a diagram |
+| Harikrishna, 60 pages, with the book's PGN | `walk_bench --reference` | 1,087 valid (633 from a diagram); against the PGN: 1,061 confirmed, 102 recovered, 22 in conflict, 146 absent |
+| The same, as it was read | `reference_bench` | 1,047 confirmed, 117 recovered, 22 in conflict, 145 absent; 77 of 77 diagrams placed on a PGN move |
+
+Reverting the rule that a bracket between two small letters is part of a word (#153) makes `walk_bench --baseline` fail on the sample: 23 moves of Pinski's *Italian Game and Evans Gambit* (2005), page 46, valid in the baseline and not now (the stray `m(nre` opens a variation again), every other book +0 −0.
+
 ## Builds side by side
 
 The chess edition is built into a `dist/app` folder, and earlier builds are kept beside it (`dist/app/anterior-…`). Each copy of PdfCraft in its own folder is its own instance: a PDF opened with an older build opens in that build, never in the current one's window (the single-instance socket's name carries a tag of the executable's folder). Every build says which it is: the short commit and the date the release script built (`PDFCRAFT_BUILD_ID`), or `dev`, in About, in `--version` (`pdfcraft 0.9.0, build 5f757af 2026-11-11`) and in `chess_status` (`build`, `version`). **Help ▸ Check for updates** asks nothing over the network: the original PdfCraft's releases lack the chess tools, so it says "PdfCraft Xadrez *build*: new versions come from the dist/app folder."
