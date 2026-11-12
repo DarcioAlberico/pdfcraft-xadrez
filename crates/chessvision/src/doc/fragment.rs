@@ -130,7 +130,7 @@ pub fn read_inlines(inlines: &[Inline], start_fen: &str, weight: bool) -> Fragme
         match inline {
             Inline::Text { text, .. } | Inline::Link { text, .. } => walker.text(text),
             Inline::Nag { code, .. } => walker.nag(*code),
-            Inline::Move(m) => match San::read(&m.san, Lang::En) {
+            Inline::Move(m) => match San::read(m.read_san(), Lang::En) {
                 Ok(san) => {
                     let out = walker.play(m.number, &san, &m.text, m.bold, Loc { page: 0, rect: m.source_rect });
                     moves.push((k, out));

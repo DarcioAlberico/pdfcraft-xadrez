@@ -22,6 +22,13 @@
 //!   `edit` and cannot depend on it). Pages go through one [`DocBuilder`], because a game can run
 //!   on from one page to the next.
 //!
+//! - **What was read, and what the walk made of it** (plan A9-L0a, R3-01). A move keeps what the
+//!   reader read ([`MoveInline::san_read`], [`MoveInline::read_review`], its number, text, weight
+//!   and box), and the walk writes what it decided beside it (its status, SAN, position, node and
+//!   flags), never over it: walking pages again ([`walk`], [`DocBuilder::add_read_page`]) starts
+//!   from the reading, so it gives what a new reading would. [`READER_VERSION`] numbers the
+//!   reading's segmentation.
+//!
 //! Everything is serde JSON ([`ChessDoc::to_json`], [`ChessDoc::from_json`]). The shape is
 //! versioned by [`FORMAT_VERSION`].
 //!
@@ -52,6 +59,12 @@ pub use games::{Game, GameOrigin, GameResult, GameScore, Node, NodeRef, Roster, 
 
 /// The version of the JSON shape. Bumped when a field changes meaning or is removed.
 pub const FORMAT_VERSION: u32 = 1;
+
+/// The version of the reading's segmentation (plan A9 §2.10): how a page is cut into blocks and
+/// inlines, which [`MoveAt`] addresses. Every change that moves a block or an inline raises it,
+/// so an address kept by an earlier reading (a decision on a move, plan A9-L1b) is known to be
+/// of another segmentation and is matched again rather than trusted.
+pub const READER_VERSION: u32 = 1;
 
 /// Largest JSON text [`ChessDoc::from_json`] reads.
 pub const MAX_JSON_BYTES: usize = 64 << 20;
@@ -395,8 +408,12 @@ pub struct MoveInline {
     pub number: Option<MoveNumber>,
     /// The move as printed (figurine-font letters already shown as pieces, check marks included).
     pub text: String,
+    /// The English SAN as read: the reading, which the walk never writes (plan A9-L0a). Empty in a
+    /// document written before it was kept: [`MoveInline::read_san`] is then [`MoveInline::san`].
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub san_read: String,
     /// English SAN: canonical (disambiguation and check marks as the position requires) when
-    /// [`MoveStatus::Valid`], else as read.
+    /// [`MoveStatus::Valid`], else as read. The walk's.
     pub san: String,
     pub status: MoveStatus,
     /// The position after the move, when valid.
@@ -408,12 +425,37 @@ pub struct MoveInline {
     /// type. Only a text layer knows; OCR text and documents read before it was kept say `false`.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub bold: bool,
+    /// The reader's flags on the move (a word its repair changed or could not settle): the
+    /// reading, which the walk never writes (plan A9-L0a).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub read_review: Vec<ReviewFlag>,
+    /// Every flag on the move: the reader's ([`MoveInline::read_review`]), then the walk's, then
+    /// the link's ([`ReviewFlag::FromReference`]).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub review: Vec<ReviewFlag>,
     /// Where the book's own PGN has it, when the document was linked to one
     /// ([`reference::link`]).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub reference: Option<reference::MoveReference>,
+}
+
+impl MoveInline {
+    /// The English SAN as read ([`MoveInline::san_read`]; [`MoveInline::san`] in a document
+    /// written before the reading was kept apart).
+    pub fn read_san(&self) -> &str {
+        if self.san_read.is_empty() { &self.san } else { &self.san_read }
+    }
+
+    /// A move of a document written before the reading was kept apart (plan A9-L0a) takes its
+    /// reading from what it has: its SAN and its flags (the link's aside). That is what walking it
+    /// again started from then, so such a document walks as it did; one read since walks from the
+    /// reading alone.
+    fn keep_reading(&mut self) {
+        if self.san_read.is_empty() {
+            self.san_read = self.san.clone();
+            self.read_review = self.review.iter().filter(|f| !matches!(f, ReviewFlag::FromReference { .. })).cloned().collect();
+        }
+    }
 }
 
 impl Inline {
@@ -431,10 +473,12 @@ impl Inline {
         }
     }
 
-    fn review_mut(&mut self) -> &mut Vec<ReviewFlag> {
+    /// Where the reader's flags go: a move's reading ([`MoveInline::read_review`], which the walk
+    /// copies into its flags), any other inline's flags.
+    fn read_review_mut(&mut self) -> &mut Vec<ReviewFlag> {
         match self {
             Inline::Text { review, .. } | Inline::Nag { review, .. } | Inline::Link { review, .. } => review,
-            Inline::Move(m) => &mut m.review,
+            Inline::Move(m) => &mut m.read_review,
         }
     }
 
@@ -704,8 +748,10 @@ impl DocBuilder {
     }
 
     /// Add a page read before (from a document's JSON, or after its moves were corrected): its
-    /// moves are judged again, in order with the other pages, from what is printed. What the last
-    /// walk wrote on them (status, position, node, the diagrams' missing-start flags) is replaced.
+    /// moves are judged again, in order with the other pages, from what was read (plan A9-L0a):
+    /// the walk writes every move's status, SAN, position, node and flags afresh from its reading,
+    /// so nothing the last walk wrote is read back, and the page walks as a new reading of it
+    /// would. The diagrams' missing-start flags, the walk's, are made again too.
     ///
     /// A page read alone did not see the page before it: when the page added just before it is
     /// the one before it in the book and left a caption at its foot ([`ChessPage::trailing`]),
@@ -723,9 +769,7 @@ impl DocBuilder {
                 Block::Heading { inlines, .. } | Block::Paragraph { inlines, .. } => {
                     for inline in inlines {
                         if let Inline::Move(m) = inline {
-                            m.status = MoveStatus::Unchecked;
-                            m.fen = None;
-                            m.game = None;
+                            m.keep_reading();
                         }
                     }
                 }
@@ -776,6 +820,17 @@ impl DocBuilder {
 /// ([`DocBuilder::carry_caption`]).
 pub fn trailing_label(text: &ChessPageText, geometry: &PageGeometry, diagrams: &[PageRect]) -> Option<u32> {
     build::trailing_label(text, geometry, diagrams)
+}
+
+/// `pages`, read before, walked again as one document with `rules`, in their order, from what
+/// was read (plan A9-L0a): `pages` are left as they are, and walking the result again gives it
+/// back ([`DocBuilder::add_read_page`]).
+pub fn walk(pages: &[ChessPage], rules: WalkRules) -> ChessDoc {
+    let mut builder = DocBuilder::with_rules(rules);
+    for page in pages {
+        builder.add_read_page(page.clone());
+    }
+    builder.finish()
 }
 
 /// A one-page document.
