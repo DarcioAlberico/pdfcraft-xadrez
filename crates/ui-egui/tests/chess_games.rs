@@ -390,7 +390,7 @@ fn a_new_game_from_here_starts_at_that_position() {
     assert!(after_e5.starts_with("rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq"), "{after_e5}");
     let after_e4 = {
         let game = &h.state().chess.board().game;
-        game.fen_at(game.main_line()[1]).unwrap()
+        game.fen_at(game.main_line()[1]).unwrap().to_string()
     };
     assert!(after_e4.starts_with("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq"), "{after_e4}");
     assert!(h.state_mut().execute("chess.game.new_from_here"));

@@ -14,10 +14,10 @@ use std::fmt;
 
 use cozy_chess::{Board, GameStatus, Move};
 
-use crate::fen::Position;
+use crate::fen::{Fen, Position};
 use crate::pgn_style::PgnStyle;
 use crate::placement::{Color, Piece, PieceKind, Placement, Square};
-use crate::san::{Lang, San, SanBody, color_from_cozy, kind_from_cozy, square_from_cozy, square_to_cozy, to_cozy_kind};
+use crate::san::{Lang, San, SanBody, color_from_cozy, square_from_cozy, square_to_cozy, to_cozy_kind};
 
 mod drawing;
 mod graft;
@@ -531,7 +531,7 @@ impl Game {
 
     /// The pieces shown.
     pub fn placement(&self) -> Placement {
-        placement_of(self.board())
+        crate::fen::placement_of_board(self.board())
     }
 
     /// The FEN of the board shown.
@@ -569,10 +569,11 @@ impl Game {
         true
     }
 
-    /// The FEN of the position after move `node` (the start's for node 0), whatever move is
-    /// shown; `None` when the game has no such move.
-    pub fn fen_at(&self, node: NodeId) -> Option<String> {
-        self.nodes.get(node).map(|n| n.board.to_string())
+    /// The position after move `node` (the start's for node 0), whatever move is shown, read
+    /// from the board ([`Fen::from_board`]: no FEN text in between); `None` when the game has no
+    /// such move. Its text is the FEN [`Game::fen`] writes.
+    pub fn fen_at(&self, node: NodeId) -> Option<Fen> {
+        self.nodes.get(node).map(|n| Fen::from_board(&n.board))
     }
 
     /// Whose move it is on the board shown.
@@ -1289,17 +1290,6 @@ fn click_of(board: &Board, mv: Move) -> (Square, Square) {
     (from, to)
 }
 
-/// The pieces on a cozy-chess board.
-fn placement_of(board: &Board) -> Placement {
-    let mut placement = Placement::empty();
-    for sq in board.occupied() {
-        if let (Some(kind), Some(color)) = (board.piece_on(sq), board.color_on(sq)) {
-            placement.set(square_from_cozy(sq), Some(Piece { color: color_from_cozy(color), kind: kind_from_cozy(kind) }));
-        }
-    }
-    placement
-}
-
 /// `text` cut to at most `max` bytes, at a character boundary.
 fn cut(text: &str, max: usize) -> &str {
     if text.len() <= max {
@@ -1427,8 +1417,8 @@ mod tests {
         play(&mut g, &[("e2", "e4"), ("e7", "e5")]);
         let after_e4 = g.main_line()[1];
         g.go_to_node(0);
-        assert_eq!(g.fen_at(after_e4).as_deref(), Some("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"));
-        assert_eq!(g.fen_at(0), Some(g.start_fen()));
+        assert_eq!(g.fen_at(after_e4).map(|f| f.to_string()).as_deref(), Some("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"));
+        assert_eq!(g.fen_at(0).map(|f| f.to_string()), Some(g.start_fen()));
         assert_eq!(g.fen(), g.start_fen(), "the move shown is unchanged");
         assert_eq!(g.fen_at(99), None);
     }

@@ -1959,8 +1959,7 @@ fn move_preview(ui: &egui::Ui, state: &BoardState, node: NodeId, r: &egui::Respo
             let (palette, look, painter) = (crate::chess_theme::current(ui.ctx()), crate::chess_theme::look(ui.ctx()), ui.painter());
             let (a, b) = (state.square_rect(resp.rect, from), state.square_rect(resp.rect, to));
             crate::chess_theme::paint_last_move(painter, palette, look, a, b);
-            let placement =
-                state.game.fen_at(node).and_then(|fen| pdfcraft_engine::chess::pdfcraft_chess::fen::parse(&fen).ok()).map(|p| p.placement);
+            let placement = state.game.fen_at(node).map(|fen| *fen.placement());
             if let (Some(placement), Some(sprites)) = (placement, state.sprites_cut()) {
                 for sq in [from, to] {
                     if let Some(piece) = placement.get(sq) {
@@ -1987,7 +1986,7 @@ fn preview_texture(ctx: &egui::Context, state: &BoardState, node: NodeId) -> Opt
     {
         return Some(tex);
     }
-    let placement = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(&fen).ok()?.placement;
+    let placement = *fen.placement();
     let style = crate::chess_theme::style(ctx, BoardStyle { border: 0.0, coordinates: false, flipped: state.flipped, ..BoardStyle::default() });
     let px = (PREVIEW_SIDE * ctx.pixels_per_point()).round() as u32;
     let (w, h, rgba) = match palette.texture.filter(|t| *t != Texture::Hatched) {

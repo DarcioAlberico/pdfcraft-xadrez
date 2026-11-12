@@ -1006,7 +1006,7 @@ pub(crate) fn walk(page: u32, ocr: bool, blocks: &mut [Block], walker: &mut Walk
                     page,
                     diagram: d.number,
                     puzzle: d.puzzle,
-                    fen: r.filter(|r| r.legal).map(|r| r.fen.clone()),
+                    fen: r.filter(|r| r.legal).and_then(|r| pdfcraft_chess::fen::Fen::parse(&r.fen).ok()),
                     accepted: r.is_some_and(|r| r.accepted),
                     side_assumed: r.is_some_and(|r| r.side_assumed),
                 });

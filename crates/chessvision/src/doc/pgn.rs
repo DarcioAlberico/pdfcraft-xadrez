@@ -175,7 +175,8 @@ fn move_word(game: &GameScore, node: &super::games::Node) -> Option<String> {
     }
     let before = game.board_after(node.parent)?;
     let after = Board::from_fen(node.fen.trim(), false).ok()?;
-    let key = |b: &Board| b.to_string().split_whitespace().take(4).collect::<Vec<_>>().join(" ");
+    // FIDE's same position (pieces, side, castling, en passant), the move counters aside.
+    let key = |b: &Board| pdfcraft_chess::fen::Fen::from_board(b).full_key();
     let want = key(&after);
     let mut found = None;
     before.generate_moves(|moves| {

@@ -362,10 +362,11 @@ fn with_origin(doc: &ChessDoc, book: &PgnBook, game: &super::games::Game) -> Gam
 /// diagram's placement). A move with a diagram mark already, or with no room for one, is left as
 /// it is.
 fn mark_shown(doc: &ChessDoc, shown: &[DiagramAt], score: &mut GameScore) {
-    fn placement(fen: &str) -> &str {
-        fen.split_whitespace().next().unwrap_or_default()
-    }
+    use pdfcraft_chess::fen::{Fen, PlacementKey};
+    let placement = |fen: &str| Fen::parse(fen).ok().map(|f| f.placement_key());
     let main = score.mainline();
+    // Each main-line move's pieces, read once for all the diagrams.
+    let mut keys: Vec<Option<Option<PlacementKey>>> = vec![None; main.len()];
     for at in shown.iter().take(MAX_SHOWN_DIAGRAMS) {
         let reading = doc.pages.iter().find(|p| p.index == at.page).and_then(|p| {
             p.blocks.iter().find_map(|b| match b {
@@ -373,8 +374,15 @@ fn mark_shown(doc: &ChessDoc, shown: &[DiagramAt], score: &mut GameScore) {
                 _ => None,
             })
         });
-        let Some(want) = reading.map(|r| placement(&r.fen)) else { continue };
-        let Some(i) = main.iter().copied().find(|&n| score.nodes.get(n).is_some_and(|node| placement(&node.fen) == want)) else { continue };
+        let Some(want) = reading.and_then(|r| placement(&r.fen)) else { continue };
+        let mut found = None;
+        for (&n, key) in main.iter().zip(keys.iter_mut()) {
+            if *key.get_or_insert_with(|| score.nodes.get(n).and_then(|node| placement(&node.fen))) == Some(want) {
+                found = Some(n);
+                break;
+            }
+        }
+        let Some(i) = found else { continue };
         if let Some(node) = score.nodes.get_mut(i)
             && !node.nags.iter().any(|&c| pdfcraft_chess::nag::is_diagram(c))
             && node.nags.len() < super::games::MAX_NAGS

@@ -311,6 +311,23 @@ fn a_rejected_repaired_reading_seeds_an_untrusted_game() {
     assert_eq!(game.score.mainline().len(), 3, "the moves are still checked against the reading");
 }
 
+/// Plan A9-T1a (R3-03): a reading is legal when `fen::parse` reads it, and the walk starts from it
+/// as read once. A position given as its placement alone (a correction may say only that; White
+/// is to move) or with the `_` of a lichess URL was legal and still started nothing, because the
+/// walk read the text again as `cozy-chess` does: six fields between single spaces.
+#[test]
+fn a_legal_reading_starts_the_moves_after_it_however_its_fen_is_written() {
+    let placement = SCHOLAR.split(' ').next().unwrap();
+    for fen in [SCHOLAR.to_owned(), placement.to_owned(), SCHOLAR.replace(' ', "_"), format!("{placement}  w  KQkq - 2 3")] {
+        let r = reading(0, 60.0, &fen, true, false);
+        let text = page_text(vec![line(230.0, "3.Qh5 Nf6 4.Qxf7#")]);
+        let doc = build_page(&input(0, &text, &[r], &[], &[]));
+        assert_eq!(moves(&doc.pages[0]).iter().map(|(_, s)| *s).collect::<Vec<_>>(), [MoveStatus::Valid; 3], "{fen}");
+        assert_eq!(doc.games.len(), 1, "{fen}");
+        assert_eq!(doc.games[0].origin, GameOrigin::Diagram { page: 0, diagram: 0, accepted: true }, "{fen}");
+    }
+}
+
 #[test]
 fn moves_after_an_unreadable_diagram_stay_unchecked() {
     let mut r = reading(0, 60.0, SCHOLAR, true, false);

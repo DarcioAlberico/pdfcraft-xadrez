@@ -25,7 +25,7 @@ use pdfcraft_chess::origin::PgnOrigin;
 use pdfcraft_chess::pgn_style::PgnStyle;
 use pdfcraft_chess::san::Lang;
 
-use super::{InlineAt, RECENT_ANCHORS, RefNode, ReferenceIndex, align, position_key};
+use super::{InlineAt, RECENT_ANCHORS, RefNode, ReferenceIndex, align, move_key};
 use crate::doc::html::{Figurines, plain_text_with};
 use crate::doc::markdown::PgnBook;
 use crate::doc::{Block, ChessDoc, Inline, MoveInline, MoveStatus};
@@ -261,12 +261,12 @@ fn book_line(games: &mut [Option<PgnGame>], recent: &[RefNode], current: Option<
     if mv.status != MoveStatus::Valid {
         return None;
     }
-    let want = mv.fen.as_deref().and_then(position_key)?;
+    let want = move_key(mv.fen.as_deref())?;
     for from in current.into_iter().chain(recent.iter().copied()) {
         let Some(game) = games.get_mut(from.game).and_then(Option::as_mut) else { continue };
         let Some(fen) = game.fen_at(from.node) else { continue };
-        let Ok(mut trial) = PgnGame::from_fen(&fen) else { continue };
-        if trial.play_san(&mv.san).is_err() || position_key(&trial.fen()).as_deref() != Some(want.as_str()) {
+        let Ok(mut trial) = PgnGame::from_fen(&fen.to_string()) else { continue };
+        if trial.play_san(&mv.san).is_err() || trial.fen_at(trial.current()).map(|f| f.book_key()) != Some(want) {
             continue;
         }
         let before = game.replies(from.node).len();

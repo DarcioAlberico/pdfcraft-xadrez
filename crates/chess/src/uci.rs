@@ -8,6 +8,7 @@
 //! Scores come from the engine as the side to move sees them; [`Score::for_white`] turns them
 //! round so a board can show them from one side.
 
+use crate::fen::Fen;
 use crate::game::Game;
 use crate::placement::Color;
 
@@ -220,11 +221,11 @@ pub fn pv_san(fen: &str, pv: &[String]) -> Vec<String> {
 }
 
 /// `sans` numbered as a move list from `fen`'s move number and side to move: `12. Nf3 Nc6 13. d4`,
-/// or `12... Nc6 13. d4` when Black moves first.
+/// or `12... Nc6 13. d4` when Black moves first. A FEN that cannot be read numbers from `1.`.
 pub fn numbered(fen: &str, sans: &[String]) -> String {
-    let mut fields = fen.split_ascii_whitespace().skip(1);
-    let mut black = fields.next() == Some("b");
-    let mut number: u32 = fields.nth(3).and_then(|n| n.parse().ok()).filter(|n| *n > 0).unwrap_or(1);
+    let fen = Fen::parse(fen).ok();
+    let mut black = fen.as_ref().and_then(Fen::side) == Some(Color::Black);
+    let mut number = fen.as_ref().map(Fen::fullmove_number).filter(|n| *n > 0).unwrap_or(1);
     let mut out = String::new();
     for (i, san) in sans.iter().enumerate() {
         if !out.is_empty() {
