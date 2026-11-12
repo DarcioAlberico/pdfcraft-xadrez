@@ -3374,7 +3374,9 @@ castling	long	grand
 	The choice was not kept: {e}	Le choix n'a pas été conservé : {e}
 	{name} sits beside this PDF: the Chess panel offers to use it as the book's PGN.	{name} se trouve à côté de ce PDF : le panneau Échecs propose de l'utiliser comme PGN du livre.
 	{name} sits beside this PDF. Use it as the book's PGN?	{name} se trouve à côté de ce PDF. L'utiliser comme PGN du livre ?
-	Don't use {name} as the book's PGN	Ne pas utiliser {name} comme PGN du livre
+	Use	Utiliser
+	Use {name} as the book's PGN	Utiliser {name} comme PGN du livre
+	Not now: don't use {name} as the book's PGN	Pas maintenant : ne pas utiliser {name} comme PGN du livre
 	read from the book's PGN	lu dans le PGN du livre
 	in conflict with the book's PGN	en conflit avec le PGN du livre
 	in conflict, the PGN's move chosen	en conflit, coup du PGN choisi

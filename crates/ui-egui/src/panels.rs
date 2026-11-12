@@ -527,6 +527,8 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let bm_editable = app.session.get(id).is_some_and(|d| d.allows_assembly() && d.read_only_reason.is_none());
     // Prepare a form is open: the Fields panel orders tabs.
     let preparing = app.is_preparing();
+    // Where the chess panel draws the diagram editor (plan A9-I15).
+    let chess_editor_here = app.chess_editor_in_panel();
     {
         let Some(doc) = app.session.get(id) else { return };
         let info = &doc.info;
@@ -736,7 +738,9 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                     }
                     RightPanel::Search => crate::search_ui::panel(ui, &t, view, info.pages.len()),
                     RightPanel::Compare => compare_action = crate::compare_ui::panel(ui, &t, compare, id),
-                    RightPanel::Chess => chess_action = crate::chess_ui::panel(ui, &t, chess, id, info, chess_now, view.current, chess_in_window),
+                    RightPanel::Chess => {
+                        chess_action = crate::chess_ui::panel(ui, &t, chess, id, info, chess_now, view.current, chess_in_window, chess_editor_here)
+                    }
                     RightPanel::Attachments => {
                         if info.attachments.is_empty() {
                             empty(ui, &t, "paperclip", "This document has no attachments.");

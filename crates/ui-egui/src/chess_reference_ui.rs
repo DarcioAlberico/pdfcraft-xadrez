@@ -341,7 +341,8 @@ impl PdfCraftApp {
                 Err(ReferenceStoreError::NoKeys) => {}
                 Err(e) => self.notify(crate::i18n::fmt(tl!("The book's PGN couldn't be read: {e}"), &[("e", &e.to_string())])),
             }
-            let sibling = sibling_pgn(&keys);
+            // The folder is looked through only when there is something to offer.
+            let sibling = if summary.is_none() { find_sibling_pgn(&keys) } else { None };
             self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, index, summary, sibling, link: None, decisions });
         }
         self.chess.book_pgns.doc(id)
@@ -425,14 +426,14 @@ impl PdfCraftApp {
             return self.notify(refused(&e));
         }
         self.chess.book_pgns.docs.retain(|d| d.doc != id);
-        let sibling = sibling_pgn(&keys);
         let decisions = Vec::new();
         self.chess.book_pgns.docs.push(DocPgn {
             doc: id,
             keys,
             index: Some(Arc::new(index)),
             summary: Some(summary.clone()),
-            sibling,
+            // It keeps one now: nothing beside it to offer (Remove the book's PGN looks again).
+            sibling: None,
             link: None,
             decisions,
         });
@@ -499,7 +500,7 @@ impl PdfCraftApp {
         match self.chess.book_pgns.store.clear(&keys, pages) {
             Ok(cleared) => {
                 self.chess.book_pgns.docs.retain(|d| d.doc != id);
-                let sibling = sibling_pgn(&keys);
+                let sibling = find_sibling_pgn(&keys);
                 self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, index: None, summary: None, sibling, link: None, decisions: Vec::new() });
                 self.chess.text = None;
                 self.refresh_chess_kinds();
@@ -590,19 +591,84 @@ impl PdfCraftApp {
     }
 }
 
-/// The PGN beside the PDF at `keys`' path with its name (`book.pdf` → `book.pgn` or `book.PGN`),
-/// when there is one. Never on the web, which has no paths.
-fn sibling_pgn(keys: &DocKeys) -> Option<std::path::PathBuf> {
+/// Most entries of the PDF's folder looked at for its PGN: the folder may be Downloads (plan
+/// A9-I7a). The PGN named exactly as the PDF is found whatever the folder holds.
+#[cfg(not(target_arch = "wasm32"))]
+const MAX_FOLDER_ENTRIES: usize = 4096;
+
+/// The PGN beside the PDF at `keys`' path that goes with it ([`sibling_pgn`]: `book.pdf` →
+/// `book.pgn`, and `📚Book.pdf` → `Book.pgn`), when there is one. Never on the web, which has no
+/// paths.
+fn find_sibling_pgn(keys: &DocKeys) -> Option<std::path::PathBuf> {
     #[cfg(not(target_arch = "wasm32"))]
     {
         let pdf = std::path::Path::new(keys.path.as_deref()?);
-        ["pgn", "PGN"].iter().map(|ext| pdf.with_extension(ext)).find(|p| p.is_file())
+        if let Some(same) = ["pgn", "PGN"].iter().map(|ext| pdf.with_extension(ext)).find(|p| p.is_file()) {
+            return Some(same);
+        }
+        let dir = pdf.parent()?;
+        let names: Vec<String> = std::fs::read_dir(dir)
+            .ok()?
+            .take(MAX_FOLDER_ENTRIES)
+            .filter_map(|e| e.ok()?.file_name().into_string().ok())
+            .filter(|n| is_pgn_name(n) && dir.join(n).is_file())
+            .collect();
+        let name = sibling_pgn(pdf.file_name()?.to_str()?, names.iter().map(String::as_str))?;
+        Some(dir.join(name))
     }
     #[cfg(target_arch = "wasm32")]
     {
         let _ = keys;
         None
     }
+}
+
+/// Whether `name` is a PGN's file name (`.pgn`, in any case).
+#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+fn is_pgn_name(name: &str) -> bool {
+    std::path::Path::new(name).extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("pgn"))
+}
+
+/// What a file name's stem is matched by (plan A9-I7a, finding A6-03): its letters and digits in
+/// lower case, every run of anything else (spaces, punctuation, symbols, emoji) one space, none
+/// at either end. `📚 Livro_3.Nc3` gives `livro 3 nc3`.
+#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+fn name_key(stem: &str) -> String {
+    let mut key = String::with_capacity(stem.len());
+    let mut gap = false;
+    for c in stem.chars() {
+        if !c.is_alphanumeric() {
+            gap = true;
+            continue;
+        }
+        if gap && !key.is_empty() {
+            key.push(' ');
+        }
+        gap = false;
+        key.extend(c.to_lowercase());
+    }
+    key
+}
+
+/// The PGN among `names` (file names in the folder of the PDF named `pdf`) that goes with the
+/// PDF: the one named exactly as it is, else the first, in name order, whose stem is the PDF's
+/// once symbols, emoji, spaces and case are set aside ([`name_key`]). A PDF whose name has no
+/// letter or digit has none. Only an offer: the user says whether to use it.
+#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+fn sibling_pgn<'a>(pdf: &str, names: impl IntoIterator<Item = &'a str>) -> Option<&'a str> {
+    fn stem(name: &str) -> Option<&str> {
+        std::path::Path::new(name).file_stem().and_then(|s| s.to_str())
+    }
+    let pdf_stem = stem(pdf)?;
+    let key = name_key(pdf_stem);
+    if key.is_empty() {
+        return None;
+    }
+    let pgns: Vec<&'a str> = names.into_iter().filter(|n| is_pgn_name(n)).collect();
+    if let Some(same) = pgns.iter().copied().find(|n| stem(n) == Some(pdf_stem)) {
+        return Some(same);
+    }
+    pgns.into_iter().filter(|n| stem(n).is_some_and(|s| name_key(s) == key)).min()
 }
 
 /// A PGN file of at most [`MAX_REFERENCE_BYTES`].
@@ -620,4 +686,35 @@ fn read_pgn(path: &std::path::Path) -> Result<Vec<u8>, String> {
         return Err(tl!("the file is too large").to_string());
     }
     Ok(bytes)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The PGN beside the PDF is the one named as it is, or, failing that, one whose name is the
+    /// same once emoji, symbols, spaces and case are set aside (plan A9-I7a, finding A6-03: the
+    /// user's books start with an emoji their PGNs don't have).
+    #[test]
+    fn the_pgn_beside_is_found_by_its_name_set_apart_from_symbols_and_case() {
+        assert_eq!(sibling_pgn("📚Livro.pdf", ["Livro.pgn"]), Some("Livro.pgn"));
+        let user = "📚Harikrisna Pentala. Beat the French Defense with 3. Nc3.pdf";
+        assert_eq!(
+            sibling_pgn(user, ["notes.txt", "Harikrisna Pentala. Beat the French Defense with 3. Nc3.pgn"]),
+            Some("Harikrisna Pentala. Beat the French Defense with 3. Nc3.pgn")
+        );
+        // Spaces collapsed, symbols and case set aside, the extension in any case.
+        assert_eq!(sibling_pgn("My  Book (2nd ed.).pdf", ["my book 2nd ed.PGN"]), Some("my book 2nd ed.PGN"));
+        assert_eq!(sibling_pgn("Livro.pdf", ["LIVRO.Pgn"]), Some("LIVRO.Pgn"));
+        // The one named exactly as the PDF wins over one that only matches; else the first by name.
+        assert_eq!(sibling_pgn("Livro.pdf", ["livro!.pgn", "Livro.pgn"]), Some("Livro.pgn"));
+        assert_eq!(sibling_pgn("📚Livro.pdf", ["livro!.pgn", "Livro.pgn"]), Some("Livro.pgn"));
+        // Another name, another file kind, or a PDF named by symbols alone: nothing offered.
+        assert_eq!(sibling_pgn("Livro 2.pdf", ["Livro.pgn"]), None);
+        assert_eq!(sibling_pgn("Livro.pdf", ["Livro.txt", "Livro.pgn.bak"]), None);
+        assert_eq!(sibling_pgn("📚.pdf", ["!!.pgn", ".pgn"]), None);
+        assert_eq!(sibling_pgn("", ["Livro.pgn"]), None);
+        assert_eq!(name_key("📚 Livro_3.Nc3  "), "livro 3 nc3");
+        assert_eq!(name_key("Éé Ñ"), "éé ñ");
+    }
 }

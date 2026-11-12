@@ -359,7 +359,7 @@ fn confirm_label(only: bool) -> &'static str {
 
 /// The main button and its ▾: Confirm and next (Ctrl+Enter) or Only confirm, the last one chosen
 /// in front. Without a review queue there is no next, so Only confirm is in front.
-fn confirm_button(ui: &mut egui::Ui, confirm_only: bool, queue: bool) -> Option<EditorAction> {
+pub(crate) fn confirm_button(ui: &mut egui::Ui, confirm_only: bool, queue: bool) -> Option<EditorAction> {
     let only = confirm_only || !queue;
     let mut action = None;
     let hint = if only {

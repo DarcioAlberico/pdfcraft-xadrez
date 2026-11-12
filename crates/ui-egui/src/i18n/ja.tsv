@@ -3376,7 +3376,9 @@ castling	long	ロング
 	The choice was not kept: {e}	選択を保存できませんでした: {e}
 	{name} sits beside this PDF: the Chess panel offers to use it as the book's PGN.	{name} がこの PDF の隣にあります。チェス パネルで本の PGN として使えます。
 	{name} sits beside this PDF. Use it as the book's PGN?	{name} がこの PDF の隣にあります。本の PGN として使いますか?
-	Don't use {name} as the book's PGN	{name} を本の PGN として使わない
+	Use	使う
+	Use {name} as the book's PGN	{name} を本の PGN として使う
+	Not now: don't use {name} as the book's PGN	今はしない: {name} を本の PGN として使わない
 	read from the book's PGN	本の PGN から読み取り
 	in conflict with the book's PGN	本の PGN と矛盾
 	in conflict, the PGN's move chosen	矛盾、PGN の手を選択

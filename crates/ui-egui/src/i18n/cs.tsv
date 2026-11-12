@@ -3448,7 +3448,9 @@ castling	long	dlouhá
 	The choice was not kept: {e}	Volba nebyla uložena: {e}
 	{name} sits beside this PDF: the Chess panel offers to use it as the book's PGN.	{name} leží vedle tohoto PDF: panel Šachy nabízí jeho použití jako PGN knihy.
 	{name} sits beside this PDF. Use it as the book's PGN?	{name} leží vedle tohoto PDF. Použít ho jako PGN knihy?
-	Don't use {name} as the book's PGN	Nepoužívat {name} jako PGN knihy
+	Use	Použít
+	Use {name} as the book's PGN	Použít {name} jako PGN knihy
+	Not now: don't use {name} as the book's PGN	Teď ne: nepoužívat {name} jako PGN knihy
 	read from the book's PGN	přečteno z PGN knihy
 	in conflict with the book's PGN	v rozporu s PGN knihy
 	in conflict, the PGN's move chosen	v rozporu, zvolen tah z PGN

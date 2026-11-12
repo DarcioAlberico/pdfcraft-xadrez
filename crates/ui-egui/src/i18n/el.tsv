@@ -3334,7 +3334,9 @@ castling	long	μεγάλο
 	The choice was not kept: {e}	Η επιλογή δεν φυλάχτηκε: {e}
 	{name} sits beside this PDF: the Chess panel offers to use it as the book's PGN.	Το {name} βρίσκεται δίπλα σε αυτό το PDF: ο πίνακας Σκάκι προτείνει να χρησιμοποιηθεί ως PGN του βιβλίου.
 	{name} sits beside this PDF. Use it as the book's PGN?	Το {name} βρίσκεται δίπλα σε αυτό το PDF. Να χρησιμοποιηθεί ως PGN του βιβλίου;
-	Don't use {name} as the book's PGN	Να μη χρησιμοποιηθεί το {name} ως PGN του βιβλίου
+	Use	Χρήση
+	Use {name} as the book's PGN	Χρήση του {name} ως PGN του βιβλίου
+	Not now: don't use {name} as the book's PGN	Όχι τώρα: να μη χρησιμοποιηθεί το {name} ως PGN του βιβλίου
 	read from the book's PGN	από το PGN του βιβλίου
 	in conflict with the book's PGN	σε σύγκρουση με το PGN του βιβλίου
 	in conflict, the PGN's move chosen	σε σύγκρουση, επιλέχθηκε η κίνηση του PGN
