@@ -148,6 +148,75 @@ fn a_document_is_known_by_any_of_its_keys() {
     assert_ne!(file_name(&keys()), file_name(&DocKeys { id0: Some([7; 16]), ..keys() }), "the identifier names the file first");
 }
 
+/// Two books with different identifiers are two documents even with the same name and size, or
+/// the same path (another book saved over the file): a correction made in one is never shown in
+/// the other (plan A9, G1; A4-03). And the stores match or refuse every pair of keys alike: a
+/// record's rule is [`DocKeys::matches`], which the game collections use.
+#[test]
+fn another_identifier_is_another_book_in_every_store() {
+    let dir = temp_dir("veto");
+    let store = DirStore::new(&dir);
+    let a = DocKeys { id0: Some([1; 16]), ..keys() };
+    store.update(&a, 10, |f| f.set(new(0, "fnv:a", [0.1, 0.1, 0.4, 0.4], KINGS), 1)).unwrap();
+    let same_name_and_size = DocKeys { id0: Some([2; 16]), path: Some("C:/outros/Livro.pdf".into()), ..keys() };
+    assert_eq!(store.load(&same_name_and_size, 10).unwrap().file.live().count(), 0, "another book of the same name and size");
+    let saved_over = DocKeys { id0: Some([3; 16]), ..keys() };
+    assert_eq!(store.load(&saved_over, 10).unwrap().file.live().count(), 0, "another book saved over the file");
+    assert_eq!(store.load(&a, 10).unwrap().file.live().count(), 1);
+    assert_eq!(store.load(&DocKeys { id0: None, ..keys() }, 10).unwrap().file.live().count(), 1, "no identifier: the path");
+    let _ = std::fs::remove_dir_all(&dir);
+    // One rule: every pair of keys, as a record and as keys.
+    let constant = Some(DocKeys::KNOWN_CONSTANT_ID);
+    let variants: Vec<DocKeys> = [None, Some([1; 16]), Some([2; 16]), constant]
+        .into_iter()
+        .flat_map(|id0| {
+            [
+                DocKeys { id0, ..keys() },
+                DocKeys { id0, path: Some("C:/outros/Livro.pdf".into()), ..keys() },
+                DocKeys { id0, path: None, size: Some(1), ..keys() },
+                DocKeys { id0, path: None, name: None, size: None },
+            ]
+        })
+        .collect();
+    for x in &variants {
+        for y in &variants {
+            assert_eq!(DocRecord::new(x, 1).matches(y), x.matches(y), "{x:?} / {y:?}");
+        }
+    }
+}
+
+/// Files made by extract, split or combine before plan A9 all have one identifier
+/// ([`DocKeys::KNOWN_CONSTANT_ID`]); each is named by its path, and a file an earlier build
+/// named by that identifier is still found by the path it records (plan A9, G1).
+#[test]
+fn the_identifier_every_new_file_used_to_get_names_no_book() {
+    let dir = temp_dir("constant");
+    let store = DirStore::new(&dir);
+    let constant = Some(DocKeys::KNOWN_CONSTANT_ID);
+    let book =
+        |n: u64| DocKeys { id0: constant, path: Some(format!("C:/livros/cap{n}.pdf")), name: Some(format!("cap{n}.pdf")), size: Some(100 * n) };
+    store.update(&book(1), 10, |f| f.set(new(0, "fnv:a", [0.1, 0.1, 0.4, 0.4], KINGS), 1)).unwrap();
+    assert_eq!(store.load(&book(2), 10).unwrap().file.live().count(), 0, "another part with the same identifier");
+    assert_eq!(store.load(&book(1), 10).unwrap().file.live().count(), 1);
+    assert_eq!(DocRecord::new(&book(1), 1).id0, None, "the constant is not recorded");
+    assert_ne!(file_name(&book(1)), file_name(&book(2)));
+    let _ = std::fs::remove_dir_all(&dir);
+    // A file an earlier build wrote for part 3: named by the constant, recording it.
+    let dir = temp_dir("constant-legacy");
+    std::fs::create_dir_all(&dir).unwrap();
+    let legacy = format!("{}.json", hash_hex(&[b"id0", &DocKeys::KNOWN_CONSTANT_ID]));
+    let mut record = DocRecord::new(&book(3), 10);
+    record.id0 = Some(hex(&DocKeys::KNOWN_CONSTANT_ID));
+    let mut file = CorrectionFile::new(record);
+    file.set(new(0, "fnv:c", [0.1, 0.1, 0.4, 0.4], QUEEN), 1).unwrap();
+    std::fs::write(dir.join(&legacy), file.to_bytes().unwrap()).unwrap();
+    let store = DirStore::new(&dir);
+    let found = store.load(&book(3), 10).unwrap();
+    assert_eq!((found.name.as_str(), found.file.live().count()), (legacy.as_str(), 1), "found by the path it records");
+    assert_eq!(store.load(&book(2), 10).unwrap().file.live().count(), 0, "never by the identifier");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn normalised_boxes_and_overlap() {
     assert_eq!(normalize([100.0, 200.0, 300.0, 400.0], [0.0, 0.0, 400.0, 800.0]), Some([0.25, 0.25, 0.75, 0.5]));

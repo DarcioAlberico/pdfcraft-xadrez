@@ -228,6 +228,58 @@ fn incremental_save_keeps_a_trailer_only_edit() {
     assert_qpdf_clean(&saved);
 }
 
+/// A one-page document made from nothing, as extract, split and combine make them, saved.
+fn made_from_nothing(text: &str) -> Vec<u8> {
+    let mut doc = Document::new_empty();
+    let catalog = doc.resolve(doc.trailer().get(b"Root").unwrap());
+    let pages = catalog.as_dict().unwrap().reference(b"Pages").unwrap();
+    let content = doc.add(Object::Stream(Stream::from_raw(Dict::new(), format!("BT /F1 24 Tf 20 150 Td ({text}) Tj ET").into_bytes())));
+    let mut page = Dict::new();
+    page.set(b"Type".to_vec(), Object::name("Page"));
+    page.set(b"Parent".to_vec(), Object::Ref(pages));
+    page.set(b"MediaBox".to_vec(), Object::Array([0, 0, 200, 200].into_iter().map(Object::Int).collect()));
+    page.set(b"Contents".to_vec(), Object::Ref(content));
+    let page = doc.add(page);
+    doc.update_dict(pages, |d| {
+        d.set(b"Kids".to_vec(), Object::Array(vec![Object::Ref(page)]));
+        d.set(b"Count".to_vec(), Object::Int(1));
+    })
+    .unwrap();
+    write_incremental(&doc, &SaveOptions::default()).unwrap()
+}
+
+fn id0(bytes: &[u8]) -> Vec<u8> {
+    let doc = Document::open(Arc::new(bytes.to_vec())).unwrap();
+    let ids = doc.trailer().get(b"ID").and_then(Object::as_array).cloned().unwrap();
+    assert_eq!(ids.len(), 2);
+    ids.first().and_then(Object::as_string).unwrap().bytes.clone()
+}
+
+/// Documents made from nothing (extract, split, combine) used to share one identifier, made from
+/// their empty source (`9BA0D5AA…`): stores and readers keyed by `/ID[0]` then took two books for
+/// one (plan A9, A4-03). The identifier comes from the bytes written: other pages, another one;
+/// the same pages, the same one; a byte that differs anywhere, another one.
+#[test]
+fn new_documents_get_an_identifier_from_the_bytes_written() {
+    let (a, b, again) = (made_from_nothing("A"), made_from_nothing("B"), made_from_nothing("A"));
+    assert_ne!(id0(&a), id0(&b), "different pages, different identifiers");
+    assert_eq!(id0(&a), id0(&again), "the same bytes, the same identifier");
+    let constant = [0x9B, 0xA0, 0xD5, 0xAA, 0xD0, 0x61, 0x71, 0x64, 0xA1, 0xD0, 0x73, 0xB0, 0xD8, 0xC7, 0xDC, 0xD9];
+    assert_ne!(id0(&a), constant);
+    assert_eq!(id0(&a).len(), 16);
+    // Every byte counts, not a sample: two long contents that differ in one byte in the middle
+    // (stored as they are, so the files differ in that one byte too).
+    let long = |c: char| {
+        let mut text = "x".repeat(200_000);
+        text.replace_range(100_000..100_001, &c.to_string());
+        made_from_nothing(&text)
+    };
+    assert_ne!(id0(&long('y')), id0(&long('z')));
+    // A file that has an identifier keeps it.
+    let reopened = Document::open(Arc::new(a.clone())).unwrap();
+    assert_eq!(id0(&write_full(&reopened, &SaveOptions::default()).unwrap()), id0(&a));
+}
+
 #[test]
 fn qpdf_accepts_object_stream_output() {
     let qpdf = pdfcraft_oracle::or_skip!(pdfcraft_oracle::qpdf());

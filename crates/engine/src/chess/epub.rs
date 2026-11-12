@@ -14,7 +14,8 @@
 //! book can be read (`schema:accessMode`, `accessModeSufficient`, `accessibilityFeature`,
 //! `accessibilityHazard`, `accessibilitySummary`), who wrote it (`dc:creator`) and what it was
 //! made from (`dc:source`); the pages share one stylesheet ([`EPUB_CSS`]). The identifier comes
-//! from the PDF's own `/ID` when it has one, so a re-export after saving is the same book.
+//! from the PDF's own `/ID` when it has one, so a re-export after saving is the same book, and
+//! names the pages when the book is made from some of them ([`identifier_for_pages`]).
 //!
 //! The cover is the book's first page drawn by the page renderer ([`cover_png`]), at most
 //! [`MAX_COVER_PX`] on its long side: the manifest item has `properties="cover-image"` (EPUB 3),
@@ -94,6 +95,40 @@ pub fn identifier(pdf: &[u8]) -> String {
 pub fn identifier_from_id(id0: &[u8; 16]) -> String {
     let hex: String = id0.iter().map(|b| format!("{b:02x}")).collect();
     format!("urn:pdfcraft:chess:id:{hex}")
+}
+
+/// Most runs of pages written out in a part's identifier; a part with more is named by a hash of
+/// its pages instead.
+const MAX_ID_RUNS: usize = 32;
+
+/// The identifier of a book made from `pages` (0-based, in any order) of a document of `count`
+/// pages: `base` itself for every page, else `base` followed by the pages, 1-based
+/// (`…:pages:2-4,7`), so two parts of one PDF are two books to a reader, and the same part is the
+/// same book again (plan A9, G1). Pages past the end are left out.
+pub fn identifier_for_pages(base: String, pages: &[usize], count: usize) -> String {
+    let mut pages: Vec<usize> = pages.iter().copied().filter(|p| *p < count).collect();
+    pages.sort_unstable();
+    pages.dedup();
+    if pages.is_empty() || pages.len() == count {
+        return base;
+    }
+    let mut runs: Vec<(usize, usize)> = Vec::new();
+    for p in pages.iter().copied() {
+        match runs.last_mut() {
+            Some((_, last)) if last.checked_add(1) == Some(p) => *last = p,
+            _ => runs.push((p, p)),
+        }
+    }
+    if runs.len() > MAX_ID_RUNS {
+        let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+        for byte in pages.iter().flat_map(|p| u64::try_from(*p).unwrap_or(u64::MAX).to_be_bytes()) {
+            h = (h ^ u64::from(byte)).wrapping_mul(0x0000_0100_0000_01b3);
+        }
+        return format!("{base}:pages:h{h:016x}");
+    }
+    let one = |p: usize| p.saturating_add(1);
+    let text: Vec<String> = runs.iter().map(|&(a, b)| if a == b { one(a).to_string() } else { format!("{}-{}", one(a), one(b)) }).collect();
+    format!("{base}:pages:{}", text.join(","))
 }
 
 /// `dcterms:modified` from a PDF date (`D:YYYYMMDDHHmmSS…`, as `pdfcraft_cos::pdf_date` makes,

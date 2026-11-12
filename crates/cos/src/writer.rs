@@ -215,7 +215,7 @@ pub fn write_incremental(doc: &Document, opts: &SaveOptions) -> Result<Vec<u8>, 
     let as_stream = doc.revisions().last().is_some_and(|r| r.is_stream);
     let mut trailer = doc.trailer().clone();
     if doc.output_security().0.is_none() {
-        ensure_id(&mut trailer, opts, &original); // an encrypted file's ID is part of its key
+        ensure_id(&mut trailer, opts, &[original.as_slice(), out.as_slice()]); // an encrypted file's ID is part of its key
     }
     if let Some(p) = prev {
         trailer.set(b"Prev".to_vec(), Object::Int(p as i64));
@@ -355,7 +355,7 @@ pub fn write_full(doc: &Document, opts: &SaveOptions) -> Result<Vec<u8>, CosErro
         }
     }
     if reader.document.output_security().0.is_none() {
-        ensure_id(&mut trailer, opts, reader.document.bytes());
+        ensure_id(&mut trailer, opts, &[out.as_slice()]);
     }
     if opts.object_streams {
         write_xref_stream(&mut out, 0, &mut trailer, rows, next);
@@ -558,22 +558,61 @@ fn stamp_mod_date(doc: &mut Document, opts: &SaveOptions) {
     }
 }
 
-/// Keep an existing `/ID`, or create one (two equal 16-byte strings, §14.4).
-fn ensure_id(trailer: &mut Dict, opts: &SaveOptions, content: &[u8]) {
+/// Keep an existing `/ID`, or create one (two equal 16-byte strings, §14.4) from `written`: every
+/// byte the save writes before its cross-reference section, in order.
+///
+/// Every byte counts. A document made from nothing (extract, split, combine) has no source bytes,
+/// and an identifier made from those — or from a sample of any bytes — was one constant shared by
+/// every such file, so readers and stores keyed by `/ID[0]` took different files for one.
+fn ensure_id(trailer: &mut Dict, opts: &SaveOptions, written: &[&[u8]]) {
     if matches!(trailer.get(b"ID"), Some(Object::Array(a)) if a.len() == 2) {
         return;
     }
-    // FNV-1a over a sample of the content and the seed: stable, dependency-free.
-    let mut h: u64 = 0xcbf2_9ce4_8422_2325 ^ opts.id_seed;
-    for b in content.iter().step_by((content.len() / 4096).max(1)).chain(content.iter().rev().take(64)) {
-        h ^= *b as u64;
-        h = h.wrapping_mul(0x0100_0000_01b3);
-    }
-    let mut id = Vec::with_capacity(16);
-    id.extend_from_slice(&h.to_be_bytes());
-    id.extend_from_slice(&h.rotate_left(29).wrapping_mul(0x9E37_79B9_7F4A_7C15).to_be_bytes());
-    let s = Object::String(PdfString { bytes: id, hex: true });
+    let s = Object::String(PdfString { bytes: id_digest(written, opts.id_seed).to_vec(), hex: true });
     trailer.set(b"ID".to_vec(), Object::Array(vec![s.clone(), s]));
+}
+
+/// A 128-bit digest of `parts` read one after another, with `seed`: the same bytes give the same
+/// digest, and bytes that differ anywhere give another in practice. Two multiply–rotate lanes over
+/// 8-byte words, then the length, then a final mix; linear and dependency-free, not cryptographic
+/// (§14.4 asks for an identifier unique in practice, not a secret one).
+fn id_digest(parts: &[&[u8]], seed: u64) -> [u8; 16] {
+    const K1: u64 = 0x9E37_79B9_7F4A_7C15;
+    const K2: u64 = 0xC2B2_AE3D_27D4_EB4F;
+    let mut a: u64 = 0xcbf2_9ce4_8422_2325 ^ seed;
+    let mut b: u64 = 0x6c62_272e_07bb_0142 ^ seed.rotate_left(32);
+    let mut len: u64 = 0;
+    let mut eat = |w: u64| {
+        a = (a ^ w).wrapping_mul(K1).rotate_left(29);
+        b = (b ^ w.rotate_left(17)).wrapping_mul(K2).rotate_left(31);
+    };
+    for part in parts {
+        let (words, tail) = part.as_chunks::<8>();
+        for word in words {
+            eat(u64::from_le_bytes(*word));
+        }
+        // The last few bytes, with a marker bit so a trailing zero byte still counts.
+        if !tail.is_empty() {
+            eat(tail.iter().rev().fold(1u64, |w, byte| (w << 8) | u64::from(*byte)));
+        }
+        len = len.wrapping_add(u64::try_from(part.len()).unwrap_or(u64::MAX));
+    }
+    eat(len);
+    // Murmur3's finaliser on each lane, each folded into the other.
+    let mix = |mut h: u64| {
+        h ^= h >> 33;
+        h = h.wrapping_mul(0xff51_afd7_ed55_8ccd);
+        h ^= h >> 33;
+        h = h.wrapping_mul(0xc4ce_b9fe_1a85_ec53);
+        h ^ (h >> 33)
+    };
+    let (x, y) = (mix(a ^ b.rotate_left(13)), mix(b ^ a.rotate_left(41)));
+    let mut id = [0u8; 16];
+    // Two halves of eight bytes each, filled by eight bytes each: the copies cannot fail.
+    let (front, back) = id.split_at_mut(8);
+    front.copy_from_slice(&x.to_be_bytes());
+    back.copy_from_slice(&y.to_be_bytes());
+    id
 }
 
 /// A PDF date string for "now" given seconds since the Unix epoch (UTC).

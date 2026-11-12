@@ -205,8 +205,14 @@ impl Session {
                 let meta = super::epub::EpubMeta {
                     title: o.title.clone(),
                     lang: read.lang.lang.code().to_owned(),
-                    // The PDF's own identifier outlives saving; its bytes do not.
-                    identifier: doc.doc_keys().id0.map_or_else(|| super::epub::identifier(&doc.bytes), |id| super::epub::identifier_from_id(&id)),
+                    // The PDF's own identifier outlives saving; its bytes do not. The identifier
+                    // every new file used to get names no document (`DocKeys::id`); a part of the
+                    // document is another book.
+                    identifier: super::epub::identifier_for_pages(
+                        doc.doc_keys().id().map_or_else(|| super::epub::identifier(&doc.bytes), |id| super::epub::identifier_from_id(&id)),
+                        &o.pages,
+                        doc.info.pages.len(),
+                    ),
                     modified: super::epub::modified_at(self.now_secs()),
                     cover,
                     creator: doc.info.author.clone(),

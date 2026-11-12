@@ -1,8 +1,8 @@
 //! Chess ▸ Diagrams: the corrections a user made to diagram readings, kept on disk so they
 //! outlive an edit, a new scan, saving, closing and reopening (plan A8, P3a1).
 //!
-//! **What names a correction.** The document by its [`DocKeys`] (any one key is enough, as for
-//! the game collections), then each correction by its page index, the page's **fingerprint**
+//! **What names a correction.** The document by its [`DocKeys`] (the one rule of
+//! [`DocKeys::matches`], as for the game collections), then each correction by its page index, the page's **fingerprint**
 //! ([`page_fingerprint`]: its content streams and its images, as stored, so it survives saving)
 //! and the diagram's box normalised to the page's crop box. A diagram is the correction's when
 //! their boxes overlap by an intersection over union of at least [`MATCH_IOU`]. A page that moved
@@ -196,10 +196,11 @@ pub struct DocRecord {
 }
 
 impl DocRecord {
-    /// The record of the document named by `keys`, of `pages` pages.
+    /// The record of the document named by `keys`, of `pages` pages. The identifier every new file
+    /// used to get ([`DocKeys::KNOWN_CONSTANT_ID`]) names no document and is not recorded.
     pub fn new(keys: &DocKeys, pages: usize) -> DocRecord {
         DocRecord {
-            id0: keys.id0.map(|id| hex(&id)),
+            id0: keys.id().map(|id| hex(&id)),
             path_hash: keys.path.as_deref().map(|p| hash_hex(&[p.as_bytes()])),
             name: keys.name.clone().filter(|n| n.len() <= MAX_TEXT),
             size: keys.size,
@@ -207,14 +208,20 @@ impl DocRecord {
         }
     }
 
-    /// Whether this is the document named by `keys`: the same identifier, the same path, or the
-    /// same name and size ([`DocKeys::matches`]).
+    /// Whether this is the document named by `keys`, by the one rule of [`DocKeys::matches`]
+    /// (the path compared by its hash, the only form a record keeps).
     pub fn matches(&self, keys: &DocKeys) -> bool {
-        let other = DocRecord::new(keys, 0);
-        fn same<T: PartialEq>(a: &Option<T>, b: &Option<T>) -> bool {
-            a.is_some() && a == b
+        self.keys().matches(&DocRecord::new(keys, 0).keys())
+    }
+
+    /// The record as keys to compare, the path's hash standing for the path.
+    fn keys(&self) -> DocKeys {
+        DocKeys {
+            id0: self.id0.as_deref().and_then(super::keys::id_from_hex),
+            path: self.path_hash.clone(),
+            name: self.name.clone(),
+            size: self.size,
         }
-        same(&self.id0, &other.id0) || same(&self.path_hash, &other.path_hash) || (same(&self.name, &other.name) && same(&self.size, &other.size))
     }
 }
 
@@ -498,10 +505,11 @@ fn new_uid(new: &NewCorrection, at: u64, salt: u32) -> String {
     hash_hex(&[new.page_fp.as_bytes(), &page, &rect, &at.to_be_bytes(), &salt.to_be_bytes()])
 }
 
-/// The file name a new file for the document named by `keys` gets: a hash of its identifier, else
-/// of its path, else of its name and size. `None` when no key is known.
+/// The file name a new file for the document named by `keys` gets: a hash of its identifier
+/// ([`DocKeys::id`]: never the one every new file used to get), else of its path, else of its name
+/// and size. `None` when no key is known.
 pub fn file_name(keys: &DocKeys) -> Option<String> {
-    let hash = if let Some(id) = keys.id0 {
+    let hash = if let Some(id) = keys.id() {
         hash_hex(&[b"id0", &id])
     } else if let Some(p) = &keys.path {
         hash_hex(&[b"path", p.as_bytes()])

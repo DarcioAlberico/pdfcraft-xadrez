@@ -9,7 +9,8 @@ use pdfcraft_chessvision::doc::{ChessDoc, ChessPage, TextLayer};
 
 use super::*;
 use crate::chess::epub::{
-    EpubEntry, EpubMeta, MAX_COVER_PX, MAX_PAGES, cover_png, entries, epub, identifier, identifier_from_id, modified, modified_at,
+    EpubEntry, EpubMeta, MAX_COVER_PX, MAX_PAGES, cover_png, entries, epub, identifier, identifier_for_pages, identifier_from_id, modified,
+    modified_at,
 };
 use crate::chess::export::{ChessExportOptions, ChessFormat};
 
@@ -150,6 +151,45 @@ fn chess_export_writes_the_book_with_its_cover() {
     let png = zip_entry(&out.bytes, &format!("OEBPS/{}", covers[0].1));
     let (w, h) = png_size(&png);
     assert!(w.max(h) <= MAX_COVER_PX && w > 0 && h > 0, "{w}×{h}");
+}
+
+/// Two books made from different pages of one PDF are two books to a reader: before plan A9 (G1)
+/// both took the PDF's identifier, so Apple Books and Calibre kept one over the other (A4-03).
+/// The whole document is still its own identifier, and the identifier every new file used to get
+/// names no book.
+#[test]
+fn parts_of_one_pdf_are_different_books() {
+    let base = || "urn:pdfcraft:chess:id:00".to_owned();
+    assert_eq!(identifier_for_pages(base(), &[], 5), base(), "no pages given: every page");
+    assert_eq!(identifier_for_pages(base(), &[4, 0, 2, 1, 3, 3], 5), base(), "every page, in any order");
+    assert_eq!(identifier_for_pages(base(), &[1, 2, 3, 6, 9, 99], 10), format!("{}:pages:2-4,7,10", base()));
+    assert_ne!(identifier_for_pages(base(), &[0], 5), identifier_for_pages(base(), &[1], 5));
+    let every_other: Vec<usize> = (0..200).step_by(2).collect();
+    let hashed = identifier_for_pages(base(), &every_other, 200);
+    assert!(hashed.starts_with(&format!("{}:pages:h", base())) && hashed.len() < 64, "{hashed}");
+    assert_ne!(hashed, identifier_for_pages(base(), &every_other[1..], 200));
+    // Through the export: a PDF with an identifier, two pages.
+    let pdf = String::from_utf8(super::document::chapter()).unwrap();
+    let with_id = pdf.replacen("/Root 1 0 R >>", "/Root 1 0 R /ID [<00112233445566778899aabbccddeeff> <00112233445566778899aabbccddeeff>] >>", 1);
+    let (mut s, id) = open(with_id.into_bytes());
+    s.apply(id, crate::Edit::DuplicatePages { pages: vec![0], at: None }).unwrap();
+    let book_id = |s: &mut Session, pages: Vec<usize>| {
+        let out = s.chess_export(id, ChessFormat::Epub, &ChessExportOptions { pages, ..ChessExportOptions::new("Chapter") }).unwrap();
+        let opf = String::from_utf8(zip_entry(&out.bytes, "OEBPS/content.opf")).unwrap();
+        let start = opf.find("<dc:identifier id=\"book-id\">").unwrap() + "<dc:identifier id=\"book-id\">".len();
+        opf[start..].split('<').next().unwrap().to_owned()
+    };
+    let whole = "urn:pdfcraft:chess:id:00112233445566778899aabbccddeeff";
+    assert_eq!(book_id(&mut s, Vec::new()), whole);
+    assert_eq!(book_id(&mut s, vec![1]), format!("{whole}:pages:2"));
+    assert_ne!(book_id(&mut s, vec![0]), book_id(&mut s, vec![1]));
+    // The constant identifier: the book is named by its bytes, as one without an identifier.
+    let constant = pdf.replacen("/Root 1 0 R >>", "/Root 1 0 R /ID [<9BA0D5AAD0617164A1D073B0D8C7DCD9> <9BA0D5AAD0617164A1D073B0D8C7DCD9>] >>", 1);
+    let (mut s, id) = open(constant.into_bytes());
+    let out = s.chess_export(id, ChessFormat::Epub, &ChessExportOptions::new("Chapter")).unwrap();
+    let opf = String::from_utf8(zip_entry(&out.bytes, "OEBPS/content.opf")).unwrap();
+    assert!(!opf.contains("9ba0d5aa"), "{opf}");
+    assert!(opf.contains(&identifier(&s.get(id).unwrap().bytes)), "{opf}");
 }
 
 fn chapter_doc() -> ChessDoc {
