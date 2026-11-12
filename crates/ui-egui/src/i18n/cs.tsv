@@ -854,6 +854,8 @@ key	Space	Mezerník
 	Couldn't check for updates: {e}	Aktualizace nelze zkontrolovat: {e}
 	You have version {c}. All releases are listed at {page}.	Máte verzi {c}. Všechna vydání najdete na {page}.
 	Asks GitHub for the latest release. Nothing is downloaded or installed automatically.	Zjistí na GitHubu nejnovější vydání. Nic se automaticky nestahuje ani neinstaluje.
+	PdfCraft Xadrez {b}: new versions come from the dist/app folder.	PdfCraft Xadrez {b}: nové verze pocházejí ze složky dist/app.
+	Nothing is asked over the network: the original PdfCraft's releases lack the chess tools.	Po síti se na nic nedotazuje: vydáním původního PdfCraft chybějí šachové nástroje.
 	Download	Stáhnout
 	Later	Později
 	none	žádná

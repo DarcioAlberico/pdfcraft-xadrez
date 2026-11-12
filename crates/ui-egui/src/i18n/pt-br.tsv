@@ -411,6 +411,8 @@
 	Couldn't check for updates: {e}	Não foi possível verificar atualizações: {e}
 	You have version {c}. All releases are listed at {page}.	Você tem a versão {c}. Todos os lançamentos estão listados em {page}.
 	Asks GitHub for the latest release. Nothing is downloaded or installed automatically.	Consulta o GitHub para obter o lançamento mais recente. Nada é baixado ou instalado automaticamente.
+	PdfCraft Xadrez {b}: new versions come from the dist/app folder.	PdfCraft Xadrez {b}: as versões novas vêm da pasta dist/app.
+	Nothing is asked over the network: the original PdfCraft's releases lack the chess tools.	Nada é consultado pela rede: as versões do PdfCraft original não têm as ferramentas de xadrez.
 	Download	Baixar
 	Later	Mais tarde
 	none	nenhum

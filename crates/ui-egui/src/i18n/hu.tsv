@@ -751,6 +751,8 @@
 	Couldn't check for updates: {e}	A frissítések keresése nem sikerült: {e}
 	You have version {c}. All releases are listed at {page}.	A jelenlegi verzió: {c}. Minden kiadás itt található: {page}.
 	Asks GitHub for the latest release. Nothing is downloaded or installed automatically.	A GitHubtól kéri le a legújabb kiadást. Semmi sem töltődik le vagy települ automatikusan.
+	PdfCraft Xadrez {b}: new versions come from the dist/app folder.	PdfCraft Xadrez {b}: az új verziók a dist/app mappából származnak.
+	Nothing is asked over the network: the original PdfCraft's releases lack the chess tools.	Semmi sem kerül lekérdezésre a hálózaton: az eredeti PdfCraft kiadásaiból hiányoznak a sakkeszközök.
 	Download	Letöltés
 	Later	Később
 	none	nincs

@@ -774,6 +774,8 @@
 	Couldn't check for updates: {e}	Не удалось проверить обновления: {e}
 	You have version {c}. All releases are listed at {page}.	У вас версия {c}. Все релизы перечислены на {page}.
 	Asks GitHub for the latest release. Nothing is downloaded or installed automatically.	Запрашивает у GitHub последний релиз. Ничего не скачивается и не устанавливается автоматически.
+	PdfCraft Xadrez {b}: new versions come from the dist/app folder.	PdfCraft Xadrez {b}: новые версии берутся из папки dist/app.
+	Nothing is asked over the network: the original PdfCraft's releases lack the chess tools.	По сети ничего не запрашивается: в выпусках исходного PdfCraft нет шахматных инструментов.
 	Download	Скачать
 	Later	Позже
 	none	нет
