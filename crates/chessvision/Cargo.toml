@@ -30,6 +30,10 @@ skrifa = "0.44"
 png = "0.18"
 # The figurine font as a data URL in HTML exports (`text_font`); pure Rust, builds for wasm32.
 base64 = "0.22"
+# The piece model's identity (`PieceModel::digest`, plan A9-G6): SHA-256 of its two files, so a
+# model changed in its folder is never taken for the one read before. Already in the tree
+# (pdfcraft-crypt, automation); pure Rust, builds for wasm32.
+sha2 = "0.11"
 # SVG piece images (`pieces::svg`): their paths, resolved. Already in the tree (egui_extras > resvg);
 # without text, pure Rust, builds for wasm32.
 usvg = { version = "0.45", default-features = false }

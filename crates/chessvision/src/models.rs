@@ -273,12 +273,28 @@ pub struct PieceModel {
     /// The architecture the description names, for display.
     pub arch_version: String,
     accept_min_confidence: f32,
+    /// What the model is: [`model_digest`] of its two files, taken when it was loaded.
+    digest: [u8; 32],
 }
 
 impl fmt::Debug for PieceModel {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PieceModel").field("arch_version", &self.arch_version).field("accept_min_confidence", &self.accept_min_confidence).finish()
     }
+}
+
+/// The SHA-256 of a model's two files, each after its length (8 bytes, little-endian), so no two
+/// pairs of files give the same bytes to hash. Taken once, when the model is loaded (about 10 ms
+/// for 11 MB): the folder alone does not tell a model from the one retrained into its place, nor
+/// does the size (a copy with every weight changed has as many bytes).
+pub fn model_digest(onnx: &[u8], meta: &[u8]) -> [u8; 32] {
+    use sha2::Digest as _;
+    let mut hash = sha2::Sha256::new();
+    for part in [onnx, meta] {
+        hash.update(u64::try_from(part.len()).unwrap_or(u64::MAX).to_le_bytes());
+        hash.update(part);
+    }
+    hash.finalize().into()
 }
 
 /// The acceptance gate a piece model's description names: `accept_min_confidence`, a number in
@@ -296,13 +312,20 @@ fn piece_gate(named: Option<f32>) -> Result<f32, ModelError> {
 impl PieceModel {
     /// Load from the ONNX file's bytes and its description.
     pub fn from_bytes(model: Vec<u8>, meta: &[u8]) -> Result<PieceModel, ModelError> {
+        let digest = model_digest(&model, meta);
         let meta = parse_meta(meta, PIECES)?;
         if meta.output.classes != PIECE_CLASS_NAMES {
             return Err(ModelError::Classes(format!("expected {PIECE_CLASS_NAMES:?}, found {:?}", meta.output.classes)));
         }
         let accept_min_confidence = piece_gate(meta.accept_min_confidence)?;
         let net = Network::load(model, &meta, PIECE_SIDE)?;
-        Ok(PieceModel { net, arch_version: meta.arch_version, accept_min_confidence })
+        Ok(PieceModel { net, arch_version: meta.arch_version, accept_min_confidence, digest })
+    }
+
+    /// What the model is ([`model_digest`] of its files): two models with the same digest read
+    /// alike, wherever they were loaded from. The scan cache keys a reading by it (plan A9-G6).
+    pub fn digest(&self) -> &[u8; 32] {
+        &self.digest
     }
 
     /// The weakest square a reading may have and still be accepted without review: the model's

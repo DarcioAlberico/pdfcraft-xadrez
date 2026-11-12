@@ -153,8 +153,12 @@ pub struct ChessPage {
 enum ModelKey {
     /// No piece model: only diagram fonts were read.
     Missing,
-    /// The model loaded from this folder.
-    Folder(PathBuf),
+    /// The model loaded from this folder, and what it is ([`PieceModel::digest`], taken when it
+    /// was loaded): a model retrained into the same folder and loaded again is another model
+    /// (plan A9-G6, finding A4-14), even with the same size.
+    ///
+    /// [`PieceModel::digest`]: pdfcraft_chessvision::models::PieceModel::digest
+    Folder(PathBuf, [u8; 32]),
     /// A classifier the caller supplied ([`ChessScanJob::run_with`]); not cached.
     Supplied,
 }
@@ -163,7 +167,7 @@ impl ModelKey {
     /// The piece model `models` reads with.
     fn of(models: &ChessModels) -> ModelKey {
         match (models.pieces.loaded(), &models.folder) {
-            (Some(_), Some(folder)) => ModelKey::Folder(folder.clone()),
+            (Some(model), Some(folder)) => ModelKey::Folder(folder.clone(), *model.digest()),
             (Some(_), None) => ModelKey::Supplied,
             (None, _) => ModelKey::Missing,
         }
