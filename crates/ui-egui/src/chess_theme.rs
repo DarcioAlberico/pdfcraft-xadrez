@@ -407,6 +407,26 @@ pub(crate) fn preferences_section(ui: &mut egui::Ui, app: &mut PdfCraftApp, t: &
         crate::widgets::radio_value(ui, &mut rules.new_move, NewMove::Ask, tl!("Ask"));
         crate::widgets::radio_value(ui, &mut rules.new_move, NewMove::Replace, tl!("Replace the continuation"));
     });
+    // The chess keys (plan A9-I18): the one-key shortcuts can be turned off (WCAG 2.1.4), and a
+    // typed sign waits for its next character as long as it is asked to.
+    let mut one_key = !app.chess.one_key_off;
+    if ui
+        .add(crate::widgets::checkbox(&mut one_key, tl!("One-key shortcuts (B, C, F, G, O, X, signs)")))
+        .on_hover_text(tl!(
+            "Off, the chess panels take no letter or sign typed; the buttons beside the board and the command search still do the same."
+        ))
+        .changed()
+    {
+        app.chess.one_key_off = !one_key;
+    }
+    ui.horizontal_wrapped(|ui| {
+        let name = tl!("A typed sign waits for its next character");
+        crate::widgets::radio_group(ui, name);
+        ui.label(name).on_hover_text(tl!("Enter puts the sign on at once; Esc drops it."));
+        for wait in crate::chess_annotate::TypedWait::ALL {
+            crate::widgets::radio_value(ui, &mut app.chess.typed_wait, wait, wait.label());
+        }
+    });
     // The editor in the Diagrams panel, as before the Diagram tab (plan A8, P3b2; for one version).
     ui.add(crate::widgets::checkbox(&mut app.chess.classic_editor, tl!("Classic diagram editor")))
         .on_hover_text(tl!("Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version."));

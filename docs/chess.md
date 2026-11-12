@@ -152,7 +152,7 @@ The **PGN toolbar** turns a book's printed moves into games without playing them
 
 ### The rail
 
-The rail is a column of 28 pt buttons beside the board, in sections. Each button's name says its key, which works while the **chess key scope** is on (below). A button with a small triangle is a **group**: it shows the tool used last, and a long press, a right click, or Enter or ↓ while it has the keyboard focus opens the others; Shift with the group's letter switches the one shown.
+The rail is a column of 28 pt buttons beside the board, in sections. Each button's name says its key, which works while the **chess key scope** is on (below); with the one-key shortcuts off, the names leave the letters out. A button with a small triangle is a **group**: it shows the tool used last, and a long press, a right click, or Enter or ↓ while it has the keyboard focus opens the others; Shift with the group's letter switches the one shown.
 
 | Tool | Key | What it does |
 |---|---|---|
@@ -173,7 +173,9 @@ The rail is a column of 28 pt buttons beside the board, in sections. Each button
 
 On macOS, Ctrl is ⌘ and Alt is ⌥. Every tool is also a command (`chess.tool.*`, `chess.variation.*`, `chess.moves.*`, `chess.nag.1`–`6`, `chess.comment.edit`, `chess.palette.toggle`, `chess.source.*`, `chess.window.detach`), so it can be found with Ctrl+K and run by automation. A move's right-click menu in the notation has the structure tools, each saying what it would act on (or why it can't), and, where one could act on several variations on the way to the move, those variations listed under it, nearest first ("Promote one level: 2…Nc6 · 1…c5"); then the move-quality glyphs and the evaluations, ticked while the move has them, and **Remove all glyphs**, which act on that move without going to it; then **Diagram here**, **Copy line with figurines**, **Copy line (letters)**, **Delete from this move** and **New game from this position**.
 
-**The chess key scope.** A click in the chess panels, or a change to the game, gives the keyboard and Undo to the game; a click on the page or a change to the document gives them back to the document. While the game has them, the keys above go to the board before anything else sees them: Delete deletes a variation, never a page or an annotation, and the arrows walk the game, never the page. They are left alone while a text field has the keyboard (a letter or Delete typed in a comment is the comment's), while a menu or popup is open and under a dialog.
+**The chess key scope.** The scope follows the keyboard focus. A control of the chess board's panels with the focus (the Board panel, the Move list, the Chess panel, the chess window, the glyph palette), or a click there or a change to the game while no other control has the focus, gives the keyboard and Undo to the game. Tab to a control anywhere else, **F6**, a click on the page or in another panel (Tools, the Inspector's other panels, the Diagram tab, which has keys of its own), or a change to the document gives them back to the document. A menu, a popup or a dialog opened over the window changes nothing. While the game has them, the keys above go to the board before anything else sees them: Delete deletes a variation, never a page or an annotation, and the arrows walk the game, never the page. They are left alone while a text field has the keyboard (a letter or Delete typed in a comment is the comment's), while a menu or popup is open, under a dialog, and while a control outside the chess panels has the keyboard: a divider between the panels keeps its arrows.
+
+**One-key shortcuts.** **Preferences ▸ One-key shortcuts (B, C, F, G, O, X, signs)** turns the letters, Shift with a group's letter and the typed signs off (WCAG 2.1.4); the control channel's `one-key-shortcuts` and `typed-wait` set it and the wait below, and both are kept with the preferences. The rail's buttons and the command search do the same things, and the buttons' names and the command search stop offering the letters. Every key the chess panels take is in one key map, made from the rail, moving about the game, the typed signs, the Diagram tab's keys and the app's own letters (V, H). A test refuses a key with two meanings: a letter or a sign means one thing in every chess panel, while Esc, Page Up and Page Down act on the place the keyboard is in. The shortcut sheet is to be F1 (`?` is the "poor move" sign typed), and the Diagram tab's Original / Read switch Alt+O (O alone is the OCR area).
 
 ### Capturing text
 
@@ -237,7 +239,7 @@ PdfCraft knows every glyph of the PGN standard (codes 1–139) and of the extens
 
 A glyph goes on the move shown with the code for the side it speaks of (zugzwang: the side to move after it); clicking a glyph the move has takes it off. Each change is one undo step.
 
-- **Typed glyphs:** with the chess scope on and no field typing, type the sign: `!` `?` `!!` `??` `!?` `?!` `=` `+=` `=+` `+/-` `-/+` `+-` `-+` `~`, or `0` to take the move's glyphs off. They come as text, so any keyboard layout works; a two-character sign waits up to 600 ms for its second character.
+- **Typed glyphs:** with the chess scope on and no field typing, type the sign: `!` `?` `!!` `??` `!?` `?!` `=` `+=` `=+` `+/-` `-/+` `+-` `-+` `~`, or `0` to take the move's glyphs off. They come as text, so any keyboard layout works. A sign that a longer one starts with (`!`, `?`, `+`) waits for its next character as long as **Preferences ▸ A typed sign waits for its next character** says: 0.6 s (the default), 1 s, 1.5 s, 2 s or **Until Enter**. Enter puts it on at once, Esc drops it, and any other chess key puts it on before it acts.
 - **Glyph brush** (B): each move clicked in the notation gets the brush's glyph, or loses it, one undo step a click; the move shown does not change. A glyph chosen in a group while it is armed becomes the brush's. Esc puts it down.
 - **Glyph palette** (G, or the rail's button): a small window floating beside the rail, in the main window or the chess window, that can be dragged anywhere within it and opens again where it was left (for the session). It has the figurines and `½ – × † ‡`, then the glyphs in the rail's three groups (the move row with ChessPad's equivalent move `==` too), a row of **Positional glyphs**, and **More assessments**, all ticked while the move shown has them. A glyph clicked goes on the move shown, or comes off it, as on the rail; the other characters go at the end of the move's comment. While a field had the keyboard (a comment, FEN, PGN, a capture's correction field), any character, a glyph's sign too, is typed at its cursor instead; the rail's glyph buttons do the same then. An assessment without a sign always goes on the move. A click in the palette keeps the keys on the game, as a click in the panel does. Esc, its close button or G closes it.
   - **Positional glyphs**: space `○`, and ChessPad's play along the file `⇔`, along the diagonal `⇗`, in the center `⊞`, on the kingside `⟫` and the queenside `⟪`, weak point `✕`, endgame `⊥`, connected, isolated, doubled and passed pawns `⯺ ⯻ ⯼ ⯽`, the pair of bishops, bishops of opposite colors and of the same color, with `∟` and without `⯾`. ChessPad's space advantage (`$238`) is drawn `○` like the standard's (`$26`), which is the one read in text.
@@ -271,7 +273,7 @@ Whatever takes moves out of the game (these tools, a move's menu, the button und
 
 ### Undo
 
-The game has its own history, apart from the document's: every change (a move, a capture, a glyph, a comment, a drawing, a structure change, the game's details, a position or a PGN loaded) is one step, and walking the moves is not a change. Undo and Redo follow the scope of the last action: after a click in the chess panels or a change to the game they undo the game; after a click on the page or a document edit, the document. The rail's Undo and Redo always undo the game. The history keeps at most 200 steps and 64 MiB per game, the oldest going first. It is not kept across sessions.
+The game has its own history, apart from the document's: every change (a move, a capture, a glyph, a comment, a drawing, a structure change, the game's details, a position or a PGN loaded) is one step, and walking the moves is not a change. Undo and Redo follow the chess key scope (above): with the keyboard focus in the chess panels, or after a click there or a change to the game, they undo the game; with the focus elsewhere, or after a click on the page or in another panel or a document edit, the document. The rail's Undo and Redo always undo the game. The history keeps at most 200 steps and 64 MiB per game, the oldest going first. It is not kept across sessions.
 
 ### Games of a document
 
@@ -319,15 +321,15 @@ Steps 2–4 are tests of the engine (`engine::chess::capture`), of `chess_pgn_ed
 
 ### Keyboard
 
-These work while the chess scope is on (a click in the chess panels), and not while a text field has the keyboard. Ctrl is ⌘ on macOS.
+These work while the chess scope is on (the keyboard focus or a click in the chess panels), and not while a text field has the keyboard. The letters and the signs are one-key shortcuts, which Preferences can turn off. Ctrl is ⌘ on macOS.
 
 | Key | Does |
 |---|---|
 | ← → | previous, next move |
 | ↑ ↓ | the variation before, after the move shown at its fork |
 | Home, End | the start, the end of the line |
-| Esc | put the armed tool down (Navigate); cancel a preview |
-| Enter | open the comment editor; apply a preview |
+| Esc | put the armed tool down (Navigate); cancel a preview; drop a typed sign waiting |
+| Enter | open the comment editor; apply a preview; put a typed sign waiting on |
 | X, Shift+X | arm Capture; switch to the next capture mode |
 | C | arm Capture as a comment |
 | O | the OCR area on or off |
@@ -343,6 +345,7 @@ These work while the chess scope is on (a click in the chess panels), and not wh
 | `!` `?` `=` `+` `-` `/` `~` | type a glyph; `0` takes them off |
 | Ctrl+Z, Ctrl+Shift+Z | undo, redo the game |
 | Ctrl+V | capture the clipboard's text |
+| F6 | leave the chess panels: the keys go back to the page |
 
 In the list of games, a focused row takes F2 (rename), Delete or Backspace (delete), Alt+↑ / Alt+↓ (move), Shift+↑ / Shift+↓ (select on), Ctrl+A (select every game), Ctrl+Space (pick the row) and Enter (show), and nothing else; on one of several games selected, Delete and Alt+↑ / Alt+↓ act on all of them.
 

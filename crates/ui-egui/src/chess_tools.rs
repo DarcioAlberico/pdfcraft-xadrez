@@ -19,17 +19,20 @@
 //! to the Structure group.
 //!
 //! **The key scope** (`chess_scope`, spec §4.2). While Undo goes to the game
-//! ([`ChessState::in_scope`]) and a rail was on screen in the last frame, the chess keys (Esc,
-//! the arrows, Home, End and every key a rail tool or group has) are taken out of the frame's raw
-//! input in `raw_input_hook`, before egui (which moves the focus on the arrows) and before every
-//! shortcut of the app (Delete on the page grid's pages and on the selected annotation, the arrows
-//! on the page) can see them, and handed to the panel through [`ToolState`]. They are left alone
-//! while a text field has the keyboard, so a letter or Delete typed in a comment is the comment's;
-//! the hook runs before the frame, so that is the focus as the last frame left it. They are also
-//! left alone while a popup or menu is open (Esc and the arrows are its own) and under a modal
-//! dialog. Enter is taken only while nothing has the keyboard focus (a focused button is pressed
-//! with it). Text made only of the characters of typed glyphs (`!?=+-/~0`) is taken too, for
-//! `chess_annotate::Typed`.
+//! ([`ChessState::in_scope`]: the keyboard focus in the chess panels, or the last click there with
+//! the focus not gone elsewhere; plan A9-I18) and a rail was on screen in the last frame, the
+//! chess keys of the key map (`chess_keymap`: Esc, the arrows, Home, End and every key a rail tool
+//! or group has) are taken out of the frame's raw input in `raw_input_hook`, before egui (which
+//! moves the focus on the arrows) and before every shortcut of the app (Delete on the page grid's
+//! pages and on the selected annotation, the arrows on the page) can see them, and handed to the
+//! panel through [`ToolState`]. They are left alone while a text field has the keyboard, so a
+//! letter or Delete typed in a comment is the comment's; the hook runs before the frame, so that is
+//! the focus as the last frame left it. They are also left alone while a popup or menu is open
+//! (Esc and the arrows are its own) and under a modal dialog. Enter is taken only while nothing
+//! has the keyboard focus (a focused button is pressed with it). Text made only of the characters
+//! of typed glyphs (`!?=+-/~0`) is taken too, for `chess_annotate::Typed`. With the one-key
+//! shortcuts off (Preferences), letters, Shift with a group's letter and the typed glyphs are left
+//! alone. F6 ends the scope.
 
 use std::time::Duration;
 
@@ -38,7 +41,7 @@ use pdfcraft_engine::chess::capture::CaptureMode;
 use pdfcraft_engine::chess::pdfcraft_chess::game::{Game, NodeId, NodePath, Shift, StructureError};
 use pdfcraft_engine::commands::Shortcut;
 
-use crate::chess_annotate::{self, TYPED_WAIT, Typed};
+use crate::chess_annotate::{self, Typed};
 use crate::chess_board_ui::BoardState;
 use crate::chess_history::ChessEdit;
 use crate::chess_ui::ChessState;
@@ -172,25 +175,31 @@ impl ChessKey {
         ChessKey { key, command: false, shift: false, alt: false }
     }
 
-    const fn shift(key: Key) -> ChessKey {
+    pub(crate) const fn shift(key: Key) -> ChessKey {
         ChessKey { key, command: false, shift: true, alt: false }
     }
 
-    const fn command(key: Key) -> ChessKey {
+    pub(crate) const fn command(key: Key) -> ChessKey {
         ChessKey { key, command: true, shift: false, alt: false }
     }
 
-    const fn command_shift(key: Key) -> ChessKey {
+    pub(crate) const fn command_shift(key: Key) -> ChessKey {
         ChessKey { key, command: true, shift: true, alt: false }
     }
 
-    const fn alt(key: Key) -> ChessKey {
+    pub(crate) const fn alt(key: Key) -> ChessKey {
         ChessKey { key, command: false, shift: false, alt: true }
     }
 
     /// Whether `key` pressed with `m` is this key: the same modifiers.
-    fn matches(self, key: Key, m: Modifiers) -> bool {
+    pub(crate) fn matches(self, key: Key, m: Modifiers) -> bool {
         key == self.key && m.command == self.command && m.shift == self.shift && m.alt == self.alt && (self.command || !(m.ctrl || m.mac_cmd))
+    }
+
+    /// Whether this is a one-key shortcut (WCAG 2.1.4): a letter or a digit, alone or with Shift,
+    /// that is, one character typed.
+    pub(crate) fn is_character(self) -> bool {
+        !self.command && !self.alt && character_key(self.key)
     }
 
     /// How the key is written on this platform ("Ctrl+Shift+↑", "⇧⌘↑").
@@ -625,7 +634,7 @@ const WINDOW: Tool = Tool {
 
 /// Moving about the game, and Esc: the keys the panel takes besides the tools'.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Nav {
+pub(crate) enum Nav {
     Escape,
     Back,
     Forward,
@@ -642,7 +651,25 @@ enum Nav {
     NextVariation,
 }
 
-const NAV_KEYS: [(ChessKey, Nav); 11] = [
+impl Nav {
+    /// What the key does, as the key map names it (`chess_keymap`): Esc is the Navigate tool's.
+    pub(crate) fn action(self) -> &'static str {
+        match self {
+            Nav::Escape => NAVIGATE.id,
+            Nav::Back => "back",
+            Nav::Forward => "forward",
+            Nav::Up => "variation-up",
+            Nav::Down => "variation-down",
+            Nav::Start => "start",
+            Nav::End => "end",
+            Nav::MainEnd => "main-line-end",
+            Nav::PreviousVariation => "previous",
+            Nav::NextVariation => "next",
+        }
+    }
+}
+
+pub(crate) const NAV_KEYS: [(ChessKey, Nav); 11] = [
     (ESC, Nav::Escape),
     (ChessKey::plain(Key::ArrowLeft), Nav::Back),
     // Backspace goes back a move, as it goes back in a browser; it deletes nothing.
@@ -658,55 +685,65 @@ const NAV_KEYS: [(ChessKey, Nav); 11] = [
 ];
 
 /// Every tool of the rail, groups' members included.
-fn tools() -> impl Iterator<Item = &'static Tool> {
+pub(crate) fn tools() -> impl Iterator<Item = &'static Tool> {
     RAIL.iter().flat_map(|section| section.iter()).flat_map(|entry| match entry {
         Entry::Tool(tool) => std::slice::from_ref(tool).iter(),
         Entry::Group(group) => group.members.iter(),
     })
 }
 
-fn groups() -> impl Iterator<Item = &'static Group> {
+pub(crate) fn groups() -> impl Iterator<Item = &'static Group> {
     RAIL.iter().flat_map(|section| section.iter()).filter_map(|entry| match entry {
         Entry::Group(group) => Some(group),
         Entry::Tool(_) => None,
     })
 }
 
-/// Whether the scope takes `key` pressed with `m`.
-pub(crate) fn scope_key(key: Key, m: Modifiers) -> bool {
-    NAV_KEYS.iter().any(|(k, _)| k.matches(key, m))
-        || tools().any(|tool| tool.keys.iter().any(|k| k.matches(key, m)))
-        || groups().any(|group| group.letter.is_some_and(|letter| ChessKey::shift(letter).matches(key, m)))
+/// Whether `key` types one character (a letter or a digit), as a one-key shortcut is.
+pub(crate) fn character_key(key: Key) -> bool {
+    let mut chars = key.name().chars();
+    chars.next().is_some_and(|c| c.is_ascii_alphanumeric()) && chars.next().is_none()
+}
+
+/// Whether the scope takes `key` pressed with `m`: a key of the scope in the chess key map
+/// (`chess_keymap`), the one-key shortcuts only while they are on (`one_key`).
+pub(crate) fn scope_key(key: Key, m: Modifiers, one_key: bool) -> bool {
+    crate::chess_keymap::scope_keys().any(|k| k.matches(key, m) && (one_key || !k.is_character()))
 }
 
 /// The key scope (§4.2), called from `raw_input_hook` before egui reads the frame's input: take
-/// the chess keys out of `raw` for the panel when the scope is on. Nothing is taken when
-/// `blocked` (a modal dialog or the command palette is open), while a text field has the
-/// keyboard (as the last frame left it), while a popup or menu is open, or when no rail was drawn
-/// since the last call. Only presses are taken: a release that egui sees without its press is
-/// harmless, while a press seen without its release would leave the key held down. A `Paste` is
-/// taken for a capture (`chess_capture`) whenever the scope is on, rail or not.
+/// the chess keys out of `raw` for the panel when the scope is on ([`ChessState::in_scope`]: the
+/// keyboard focus on a chess board's surface, or the last click there and the focus not gone
+/// elsewhere since; plan A9-I18). Nothing is taken when `blocked` (a modal dialog or the command
+/// palette is open), while a text field has the keyboard (as the last frame left it), while a
+/// popup or menu is open, or when no rail was drawn since the last call. Only presses are taken:
+/// a release that egui sees without its press is harmless, while a press seen without its release
+/// would leave the key held down. A `Paste` is taken for a capture (`chess_capture`) whenever the
+/// scope is on, rail or not. F6 leaves the chess surface the keyboard is in ([`take_f6`]).
 pub(crate) fn take_scope_keys(chess: &mut ChessState, ctx: &egui::Context, raw: &mut egui::RawInput, blocked: bool) {
     chess.tools.keys.clear();
     chess.games.drop_list_keys();
     let shown = std::mem::take(&mut chess.tools.rail_shown);
     // Enter applies a capture waiting for the user, before anything else can use it (T7b).
     crate::chess_capture::take_enter(chess, &mut raw.events, blocked || ctx.text_edit_focused());
-    // The diagram editor's board and the Diagram tab, while they have the keyboard (plan A8, P3c).
     let free = !blocked && !ctx.text_edit_focused() && !egui::Popup::is_any_open(ctx);
+    if free {
+        take_f6(chess, ctx, &mut raw.events);
+    }
+    // The diagram editor's board and the Diagram tab, while they have the keyboard (plan A8, P3c).
     crate::chess_diagram_keys::take_keys(chess, ctx, &mut raw.events, free);
     // A focused row of the Diagrams list: ↑ ↓ Home End go to another diagram (plan A8, P2a1).
     crate::chess_list::take_keys(&mut chess.list, ctx, &mut raw.events, free);
     // A focused row of the games list (T14) has its own keys, scope or not: its Delete deletes
     // no variation (nor a page or an annotation).
-    if !blocked && !ctx.text_edit_focused() && !egui::Popup::is_any_open(ctx) && chess.games.list_has_focus(ctx) {
+    if free && chess.games.list_has_focus(ctx) {
         chess.games.take_list_keys(&mut raw.events);
         if chess.in_scope() {
             crate::chess_capture::take_paste(chess, &mut raw.events);
         }
         return;
     }
-    if blocked || !chess.in_scope() || ctx.text_edit_focused() || egui::Popup::is_any_open(ctx) {
+    if !free || !chess.in_scope() {
         return;
     }
     // A paste goes to the game whether or not the rail is on screen (T7a).
@@ -716,15 +753,40 @@ pub(crate) fn take_scope_keys(chess: &mut ChessState, ctx: &egui::Context, raw: 
     }
     // A focused button is pressed with Enter: Enter is the panel's only while nothing has focus.
     let focused = ctx.memory(|m| m.focused().is_some());
-    let tools = &mut chess.tools;
-    raw.events.retain(|event| match event {
-        Event::Key { key, pressed: true, modifiers, .. } if scope_key(*key, *modifiers) && !(*key == Key::Enter && focused) => {
+    let one_key = !chess.one_key_off;
+    take_rail_keys(&mut chess.tools, &mut raw.events, focused, one_key);
+}
+
+/// F6 leaves the chess surface the keyboard is in (plan A9-I18; WCAG 2.1.2): with the chess
+/// scope on, or the keyboard in the Diagram tab, the widget with the focus lets it go and the
+/// scope ends, so the arrows are the page's again. Taken only then; otherwise F6 is left alone.
+fn take_f6(chess: &mut ChessState, ctx: &egui::Context, events: &mut Vec<Event>) {
+    let f6 = |event: &Event| matches!(event, Event::Key { key: Key::F6, pressed: true, modifiers, .. } if modifiers.is_none());
+    if !events.iter().any(f6) || !(chess.in_scope() || chess.diagram_keys.focus_in_tab) {
+        return;
+    }
+    events.retain(|event| !f6(event));
+    ctx.memory_mut(|m| {
+        if let Some(id) = m.focused() {
+            m.surrender_focus(id);
+        }
+    });
+    chess.diagram_keys.focus_in_tab = false;
+    chess.leave_scope();
+}
+
+/// Take the rail's keys (the scope's keys of the key map, Enter only while nothing has the focus,
+/// the one-key shortcuts only while they are on) and the typed signs out of `events`, for the
+/// rail drawn this frame.
+fn take_rail_keys(tools: &mut ToolState, events: &mut Vec<Event>, focused: bool, one_key: bool) {
+    events.retain(|event| match event {
+        Event::Key { key, pressed: true, modifiers, .. } if scope_key(*key, *modifiers, one_key) && !(*key == Key::Enter && focused) => {
             if tools.keys.len() < MAX_KEYS {
                 tools.keys.push((*key, *modifiers));
             }
             false
         }
-        Event::Text(text) if chess_annotate::is_glyph_text(text) => {
+        Event::Text(text) if one_key && chess_annotate::is_glyph_text(text) => {
             text.chars().for_each(|c| tools.typed.take(c));
             false
         }
@@ -760,24 +822,11 @@ pub(crate) fn take_window_keys(chess: &mut ChessState, ctx: &egui::Context) -> M
         if listed {
             return main;
         }
-        // As in the main window's scope: Enter only while nothing has focus, and typed glyphs.
+        // As in the main window's scope: Enter only while nothing has focus, typed glyphs, and
+        // the one-key shortcuts only while they are on.
         let focused = ctx.memory(|m| m.focused().is_some());
-        let tools = &mut chess.tools;
-        ctx.input_mut(|i| {
-            i.events.retain(|event| match event {
-                Event::Key { key, pressed: true, modifiers, .. } if scope_key(*key, *modifiers) && !(*key == Key::Enter && focused) => {
-                    if tools.keys.len() < MAX_KEYS {
-                        tools.keys.push((*key, *modifiers));
-                    }
-                    false
-                }
-                Event::Text(text) if chess_annotate::is_glyph_text(text) => {
-                    text.chars().for_each(|c| tools.typed.take(c));
-                    false
-                }
-                _ => true,
-            });
-        });
+        let one_key = !chess.one_key_off;
+        ctx.input_mut(|i| take_rail_keys(&mut chess.tools, &mut i.events, focused, one_key));
     }
     main
 }
@@ -851,6 +900,8 @@ fn tool_button(ui: &mut egui::Ui, tool: &Tool, on: bool, name: &str) -> egui::Re
 fn name(ctx: &egui::Context, tool: &Tool, chess: &ChessState) -> String {
     let label = tool_label(tool, chess);
     let key = match (tool.keys.first(), tool.command) {
+        // With the one-key shortcuts off, the name offers no letter that does nothing (A9-I18).
+        (Some(k), _) if chess.one_key_off && k.is_character() => String::new(),
         (Some(k), _) => k.label(ctx),
         (None, Some(id)) => crate::commands::command_shortcut_label(ctx, id),
         (None, None) => String::new(),
@@ -883,9 +934,10 @@ pub(crate) fn command_enabled(chess: &ChessState, id: &str) -> Option<bool> {
 }
 
 /// The chess panel's key for the rail tool of command `id`, as written on this platform: the
-/// palette shows it, since the registry has no shortcut for these commands.
-pub(crate) fn command_key(ctx: &egui::Context, id: &str) -> Option<String> {
-    command_tool(id).and_then(|(tool, _)| tool.keys.first()).map(|k| k.label(ctx))
+/// palette shows it, since the registry has no shortcut for these commands. A one-key shortcut
+/// only while they are on (`one_key`; plan A9-I18).
+pub(crate) fn command_key(ctx: &egui::Context, id: &str, one_key: bool) -> Option<String> {
+    command_tool(id).and_then(|(tool, _)| tool.keys.first()).filter(|k| one_key || !k.is_character()).map(|k| k.label(ctx))
 }
 
 /// Run the rail tool of command `id` as its button would, on the move shown: the same action, so
@@ -950,10 +1002,26 @@ pub(crate) fn with_rail<R>(ui: &mut egui::Ui, chess: &mut ChessState, body: impl
     let rail_rect = Rect::from_min_size(area.min, vec2(RAIL_WIDTH, if bounded { area.height() } else { 4096.0 }));
     let mut rail_ui = ui.new_child(UiBuilder::new().id_salt("chess-rail").max_rect(rail_rect).layout(Layout::top_down(Align::Center)));
     let focused_group = rail(&mut rail_ui, &t, chess);
+    // The signs typed first, so that a key after them finds the one still waiting.
+    let now = ui.input(|i| i.time);
+    typed_glyphs(chess, now);
     for (key, m) in std::mem::take(&mut chess.tools.keys) {
+        // A sign waiting for its next character goes on before a key acts, Enter only puts it
+        // on, and Esc only drops it (plan A9-I18, finding R5-11).
+        if chess.tools.typed.waiting() {
+            if key == Key::Escape && m.is_none() {
+                chess.tools.typed.discard();
+                continue;
+            }
+            let codes = chess.tools.typed.confirm();
+            put_glyphs(chess, codes);
+            if key == Key::Enter && m.is_none() {
+                continue;
+            }
+        }
         handle_key(ui.ctx(), chess, key, m, focused_group);
     }
-    typed_glyphs(ui, chess);
+    wait_for_signs(ui, chess, now);
     // Moves that left the game (the keys just handled, or the panel last frame): how many, and
     // Undo, in a strip at the top of the panel that pushes it down rather than cover it.
     // The game as it was went into the document's trash with the step itself (plan A9-G8): this
@@ -981,19 +1049,33 @@ pub(crate) fn with_rail<R>(ui: &mut egui::Ui, chess: &mut ChessState, body: impl
     out
 }
 
-/// The glyph signs typed since the last frame, and the one waiting once its wait is over.
-fn typed_glyphs(ui: &egui::Ui, chess: &mut ChessState) {
-    let now = ui.input(|i| i.time);
+/// The glyph signs typed since the last frame, typed at `now`: those they complete go on the move
+/// shown.
+fn typed_glyphs(chess: &mut ChessState, now: f64) {
     let mut codes = Vec::new();
     for c in std::mem::take(&mut chess.tools.typed.incoming) {
         codes.extend(chess.tools.typed.push(c, now));
     }
-    codes.extend(chess.tools.typed.tick(now));
+    put_glyphs(chess, codes);
+}
+
+/// Put the glyphs of typed signs (codes, or `CLEAR`) on the move shown, in order.
+fn put_glyphs(chess: &mut ChessState, codes: Vec<u16>) {
     for code in codes {
         chess_annotate::typed_glyph(chess.board_mut(), code);
     }
-    if chess.tools.typed.waiting() {
-        ui.ctx().request_repaint_after(Duration::from_secs_f64(TYPED_WAIT));
+}
+
+/// The sign waiting goes on once the preference's wait is over (never, until Enter); until then
+/// a frame is asked for when it is.
+fn wait_for_signs(ui: &egui::Ui, chess: &mut ChessState, now: f64) {
+    let wait = chess.typed_wait.seconds();
+    let codes = chess.tools.typed.tick(now, wait);
+    put_glyphs(chess, codes);
+    if chess.tools.typed.waiting()
+        && let Some(wait) = wait
+    {
+        ui.ctx().request_repaint_after(Duration::from_secs_f64(wait));
     }
 }
 
@@ -1067,11 +1149,15 @@ fn group_button(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState, group: &'
         })
         .inner;
     let popup = r.id.with("tools");
-    let key = group.letter.map(|l| ChessKey::shift(l).label(&ctx)).unwrap_or_default();
-    let r = r.on_hover_text(crate::i18n::fmt(
-        tl!("More {group} tools: right-click, hold, or press Enter. {key} switches between them."),
-        &[("group", (group.label)()), ("key", &key)],
-    ));
+    // With the one-key shortcuts off, Shift with the group's letter does nothing (plan A9-I18).
+    let key = group.letter.filter(|_| !chess.one_key_off).map(|l| ChessKey::shift(l).label(&ctx));
+    let r = r.on_hover_text(match key {
+        Some(key) => crate::i18n::fmt(
+            tl!("More {group} tools: right-click, hold, or press Enter. {key} switches between them."),
+            &[("group", (group.label)()), ("key", &key)],
+        ),
+        None => crate::i18n::fmt(tl!("More {group} tools: right-click, hold, or press Enter."), &[("group", (group.label)())]),
+    });
     // The triangle that says there is more.
     let corner = r.rect.right_bottom() + vec2(-3.0, -3.0);
     let ink = if enabled { t.text_muted } else { t.text_faint };
@@ -1670,32 +1756,38 @@ mod tests {
     #[test]
     fn the_keymap_takes_its_keys_and_no_others() {
         let cmd = Modifiers::COMMAND;
-        assert!(scope_key(Key::Delete, Modifiers::NONE));
-        assert!(scope_key(Key::Backspace, Modifiers::NONE));
-        assert!(scope_key(Key::Delete, Modifiers::SHIFT));
-        assert!(scope_key(Key::ArrowUp, cmd));
-        assert!(scope_key(Key::ArrowUp, cmd | Modifiers::SHIFT));
-        assert!(scope_key(Key::ArrowDown, cmd));
-        assert!(scope_key(Key::Escape, Modifiers::NONE));
-        assert!(scope_key(Key::S, Modifiers::SHIFT), "the Structure group's letter");
-        assert!(scope_key(Key::Enter, Modifiers::NONE), "the comment editor");
-        assert!(scope_key(Key::G, Modifiers::NONE), "the glyph palette");
-        assert!(!scope_key(Key::G, cmd), "Ctrl+G is the app's (find next)");
+        assert!(scope_key(Key::Delete, Modifiers::NONE, true));
+        assert!(scope_key(Key::Backspace, Modifiers::NONE, true));
+        assert!(scope_key(Key::Delete, Modifiers::SHIFT, true));
+        assert!(scope_key(Key::ArrowUp, cmd, true));
+        assert!(scope_key(Key::ArrowUp, cmd | Modifiers::SHIFT, true));
+        assert!(scope_key(Key::ArrowDown, cmd, true));
+        assert!(scope_key(Key::Escape, Modifiers::NONE, true));
+        assert!(scope_key(Key::S, Modifiers::SHIFT, true), "the Structure group's letter");
+        assert!(scope_key(Key::Enter, Modifiers::NONE, true), "the comment editor");
+        assert!(scope_key(Key::G, Modifiers::NONE, true), "the glyph palette");
+        assert!(!scope_key(Key::G, cmd, true), "Ctrl+G is the app's (find next)");
         // Alt with ↑ and ↓ moves a variation (T15); B arms the glyph brush.
-        assert!(scope_key(Key::ArrowUp, Modifiers::ALT));
-        assert!(scope_key(Key::ArrowDown, Modifiers::ALT));
-        assert!(scope_key(Key::B, Modifiers::NONE));
+        assert!(scope_key(Key::ArrowUp, Modifiers::ALT, true));
+        assert!(scope_key(Key::ArrowDown, Modifiers::ALT, true));
+        assert!(scope_key(Key::B, Modifiers::NONE, true));
         // Not ours: the app's Undo, Select all, plain letters, Alt with the other arrows or with
         // more modifiers.
-        assert!(!scope_key(Key::Z, cmd));
-        assert!(!scope_key(Key::A, cmd));
-        assert!(!scope_key(Key::S, Modifiers::NONE));
-        assert!(!scope_key(Key::ArrowLeft, Modifiers::ALT));
-        assert!(!scope_key(Key::ArrowUp, Modifiers::ALT | Modifiers::SHIFT));
-        assert!(!scope_key(Key::ArrowUp, Modifiers::ALT | cmd));
-        assert!(!scope_key(Key::Delete, cmd));
+        assert!(!scope_key(Key::Z, cmd, true));
+        assert!(!scope_key(Key::A, cmd, true));
+        assert!(!scope_key(Key::S, Modifiers::NONE, true));
+        assert!(!scope_key(Key::ArrowLeft, Modifiers::ALT, true));
+        assert!(!scope_key(Key::ArrowUp, Modifiers::ALT | Modifiers::SHIFT, true));
+        assert!(!scope_key(Key::ArrowUp, Modifiers::ALT | cmd, true));
+        assert!(!scope_key(Key::Delete, cmd, true));
         // macOS: Ctrl with the arrows is the system's, not the command key's.
-        assert!(!scope_key(Key::ArrowUp, Modifiers { ctrl: true, ..Modifiers::NONE }));
+        assert!(!scope_key(Key::ArrowUp, Modifiers { ctrl: true, ..Modifiers::NONE }, true));
+        // With the one-key shortcuts off (plan A9-I18): no letter, alone or with Shift; the rest.
+        assert!(!scope_key(Key::B, Modifiers::NONE, false) && !scope_key(Key::S, Modifiers::SHIFT, false));
+        assert!(scope_key(Key::Delete, Modifiers::NONE, false) && scope_key(Key::ArrowUp, Modifiers::ALT, false));
+        assert!(scope_key(Key::Escape, Modifiers::NONE, false) && scope_key(Key::Enter, Modifiers::NONE, false));
+        // F6 is not a rail key: `take_f6` takes it.
+        assert!(!scope_key(Key::F6, Modifiers::NONE, true));
     }
 
     /// Each rail tool with a command is registered, without a shortcut of the registry's own (the
@@ -1723,12 +1815,16 @@ mod tests {
         assert!(!is_tool_command("chess.window.detach"), "the app runs the chess window's command");
         let ctx = egui::Context::default();
         ctx.set_os(egui::os::OperatingSystem::Nix);
-        assert_eq!(command_key(&ctx, "chess.variation.promote_one").as_deref(), Some("Ctrl+↑"));
-        assert_eq!(command_key(&ctx, "chess.variation.delete").as_deref(), Some("Delete"));
-        assert_eq!(command_key(&ctx, "chess.variation.up").as_deref(), Some("Alt+↑"));
+        assert_eq!(command_key(&ctx, "chess.variation.promote_one", true).as_deref(), Some("Ctrl+↑"));
+        assert_eq!(command_key(&ctx, "chess.variation.delete", true).as_deref(), Some("Delete"));
+        assert_eq!(command_key(&ctx, "chess.variation.up", true).as_deref(), Some("Alt+↑"));
         ctx.set_os(egui::os::OperatingSystem::Mac);
-        assert_eq!(command_key(&ctx, "chess.variation.down").as_deref(), Some("⌥↓"));
-        assert_eq!(command_key(&ctx, "chess.scan"), None);
+        assert_eq!(command_key(&ctx, "chess.variation.down", true).as_deref(), Some("⌥↓"));
+        assert_eq!(command_key(&ctx, "chess.scan", true), None);
+        // With the one-key shortcuts off the palette offers no letter that does nothing (A9-I18).
+        assert_eq!(command_key(&ctx, "chess.tool.glyph_brush", true).as_deref(), Some("B"));
+        assert_eq!(command_key(&ctx, "chess.tool.glyph_brush", false), None);
+        assert_eq!(command_key(&ctx, "chess.variation.delete", false).as_deref(), Some("Delete"));
     }
 
     #[test]

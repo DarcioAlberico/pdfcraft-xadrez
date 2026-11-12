@@ -21,6 +21,7 @@ use pdfcraft_engine::chess::pdfcraft_chess::placement::{Color, Piece, PieceKind,
 use pdfcraft_engine::chess::pdfcraft_chess::san::Lang;
 
 use crate::chess_editor::{DiagramEditor, KINDS};
+use crate::chess_tools::ChessKey;
 use crate::chess_ui::ChessState;
 
 /// Most keys kept from one frame's input (a held key repeats).
@@ -120,13 +121,13 @@ struct TabState {
 /// has something to undo or redo, else they are the document's; Page Up and Page Down only with
 /// diagrams to review; Esc only while the keyboard is in the tab, not for the pointer over it.
 fn tab_key(key: Key, m: Modifiers, s: TabState) -> bool {
-    match key {
-        Key::Enter => m.matches_exact(Modifiers::COMMAND),
-        Key::PageUp | Key::PageDown => s.queue && m.is_none(),
-        Key::Z => (s.undo && m.matches_exact(Modifiers::COMMAND)) || (s.redo && m.matches_exact(Modifiers::COMMAND | Modifiers::SHIFT)),
-        Key::Escape => s.focus_in && m.is_none(),
-        _ => false,
-    }
+    tab_action(key, m).is_some_and(|action| match action {
+        TabKey::ConfirmNext => true,
+        TabKey::Previous | TabKey::Next => s.queue,
+        TabKey::Undo => s.undo,
+        TabKey::Redo => s.redo,
+        TabKey::BackToList => s.focus_in,
+    })
 }
 
 /// What the tab's key `key` with `m` asks for.
@@ -140,17 +141,36 @@ pub(crate) enum TabKey {
     BackToList,
 }
 
+impl TabKey {
+    /// What the key does, as the chess key map names it (`chess_keymap`): Page Up and Page Down
+    /// and Esc are named as the board's are, since they do the same kind of thing in each place.
+    pub(crate) fn action(self) -> &'static str {
+        match self {
+            TabKey::ConfirmNext => "confirm-next",
+            TabKey::Previous => "previous",
+            TabKey::Next => "next",
+            TabKey::Undo => "diagram-undo",
+            TabKey::Redo => "diagram-redo",
+            TabKey::BackToList => "back-to-list",
+        }
+    }
+}
+
+/// The tab's keys (plan A8, P3c): Ctrl+Enter confirms and goes on, Page Up and Page Down walk the
+/// diagrams to review, Ctrl+Z and Ctrl+Shift+Z undo and redo the editor's changes, Esc gives the
+/// keyboard back to the list. The chess key map lists them (plan A9-I18).
+pub(crate) const TAB_KEYS: [(ChessKey, TabKey); 6] = [
+    (ChessKey::command(Key::Enter), TabKey::ConfirmNext),
+    (ChessKey::plain(Key::PageUp), TabKey::Previous),
+    (ChessKey::plain(Key::PageDown), TabKey::Next),
+    (ChessKey::command(Key::Z), TabKey::Undo),
+    (ChessKey::command_shift(Key::Z), TabKey::Redo),
+    (ChessKey::plain(Key::Escape), TabKey::BackToList),
+];
+
 /// The tab's key as an action (the keys [`take_keys`] takes for the tab).
 pub(crate) fn tab_action(key: Key, m: Modifiers) -> Option<TabKey> {
-    Some(match key {
-        Key::Enter => TabKey::ConfirmNext,
-        Key::PageUp => TabKey::Previous,
-        Key::PageDown => TabKey::Next,
-        Key::Z if m.shift => TabKey::Redo,
-        Key::Z => TabKey::Undo,
-        Key::Escape => TabKey::BackToList,
-        _ => return None,
-    })
+    TAB_KEYS.iter().find(|(k, _)| k.matches(key, m)).map(|(_, action)| *action)
 }
 
 /// The letter `key` types, upper case (`None` for a key that is not a letter).

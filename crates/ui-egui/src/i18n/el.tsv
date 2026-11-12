@@ -2651,6 +2651,7 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Delete variation	Διαγραφή παραλλαγής
 	Cut after this move	Αποκοπή μετά από αυτή την κίνηση
 	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	Περισσότερα εργαλεία της ομάδας {group}: δεξί κλικ, παρατεταμένο πάτημα ή Enter. Το {key} εναλλάσσει μεταξύ τους.
+	More {group} tools: right-click, hold, or press Enter.	Περισσότερα εργαλεία της ομάδας {group}: δεξί κλικ, παρατεταμένο πάτημα ή Enter.
 	This move is on the main line already.	Αυτή η κίνηση είναι ήδη στην κύρια γραμμή.
 	There are no moves after this one.	Δεν υπάρχουν κινήσεις μετά από αυτή.
 	Not done: variations would nest too deep.	Δεν έγινε: οι παραλλαγές θα ήταν εμφωλευμένες πολύ βαθιά.
@@ -3168,6 +3169,16 @@ chess undo step	Clear drawings	διαγραφής σχεδίων
 	Show what was read again; the PDF is not changed.	Εμφάνιση ξανά όσων διαβάστηκαν· το PDF δεν αλλάζει.
 	Diagram board, page {p}, diagram {n}	Σκακιέρα διαγράμματος, σελίδα {p}, διάγραμμα {n}
 	Classic diagram editor	Κλασικός επεξεργαστής διαγραμμάτων
+# Plan A9-I18: the chess keys (Preferences ▸ Chess: the one-key shortcuts and how long a typed sign waits).
+	One-key shortcuts (B, C, F, G, O, X, signs)	Συντομεύσεις ενός πλήκτρου (B, C, F, G, O, X, σημεία)
+	Off, the chess panels take no letter or sign typed; the buttons beside the board and the command search still do the same.	Όταν είναι ανενεργές, τα πάνελ σκακιού δεν παίρνουν πληκτρολογημένα γράμματα ή σημεία· τα κουμπιά δίπλα στη σκακιέρα και η αναζήτηση εντολών κάνουν ακόμη το ίδιο.
+	A typed sign waits for its next character	Ένα πληκτρολογημένο σημείο περιμένει τον επόμενο χαρακτήρα
+	Enter puts the sign on at once; Esc drops it.	Το Enter βάζει αμέσως το σημείο· το Esc το ακυρώνει.
+	0.6 s	0,6 δευτ.
+	1 s	1 δευτ.
+	1.5 s	1,5 δευτ.
+	2 s	2 δευτ.
+	Until Enter	Μέχρι το Enter
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Επεξεργασία διαγραμμάτων μέσα στο πλαίσιο Διαγράμματα, όπως πριν από την καρτέλα Διάγραμμα. Η επιλογή αυτή θα καταργηθεί σε μελλοντική έκδοση.
 # Plan A8 P3b3: drafts and the question about them.
 	Unconfirmed changes	Μη επιβεβαιωμένες αλλαγές

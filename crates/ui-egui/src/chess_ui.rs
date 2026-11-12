@@ -143,10 +143,23 @@ pub struct ChessState {
     /// later read and export follows it.
     pub origin: Option<(DocId, pdfcraft_engine::chess::document::BookOrigin)>,
     /// Undo and Redo go to the chess game, not the document: the last action was a click in the
-    /// chess panels (D12). See [`ChessState::in_scope`], which also counts changes to the game.
+    /// chess panels (D12), or the keyboard focus was there (plan A9-I18). See
+    /// [`ChessState::in_scope`], which also counts changes to the game.
     pub scope: bool,
     /// The game shown (its id) and its history's step count when the scope was last settled.
     pub(crate) scope_edits: (u64, u64),
+    /// A widget outside the chess board's surfaces had the keyboard focus at the end of the last
+    /// pass: the scope is off however it was settled (plan A9-I18).
+    pub(crate) focus_out: bool,
+    /// The chess board's surfaces drawn this pass, with their window and layer
+    /// ([`ChessState::mark_surface`]).
+    pub(crate) surfaces: Vec<(egui::ViewportId, egui::LayerId, egui::Rect)>,
+    /// Preferences ▸ Chess: the one-key shortcuts (B, C, F, G, O, X, Shift with a group's letter
+    /// and the typed signs) are off; the rail's buttons and the commands still act (plan A9-I18,
+    /// WCAG 2.1.4). On by default.
+    pub one_key_off: bool,
+    /// Preferences ▸ Chess: how long a typed sign waits for its next character (plan A9-I18).
+    pub typed_wait: crate::chess_annotate::TypedWait,
     /// The PGN tool rail: the tool armed and the keys the chess scope took (T5a).
     pub tools: crate::chess_tools::ToolState,
     /// Text captured from the page or the clipboard (T7a).
@@ -588,10 +601,12 @@ pub(crate) fn panel(
     editor_here: bool,
 ) -> Option<PanelAction> {
     use crate::chess_text_ui::ChessTab;
-    // A click anywhere in the panel, whichever tab shows, puts Undo and Redo on the game (D12).
+    // A click anywhere in the panel, whichever tab shows, puts Undo and Redo on the game (D12),
+    // and so does the keyboard focus in it (plan A9-I18).
     if crate::chess_history::pressed_in(ui) {
         state.enter_scope();
     }
+    state.mark_surface(ui);
     // In the docking workspace's own tab style (plan A8, P6).
     crate::widgets::dock_tabs(ui, &mut state.tab, &[(ChessTab::Diagrams, tl!("Diagrams")), (ChessTab::Text, tl!("Text"))]);
     ui.add_space(4.0);
@@ -1568,10 +1583,12 @@ impl PdfCraftApp {
 /// The chess board panel, in the docking workspace or beside the page in Read mode.
 pub(crate) fn board_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
-    // A click anywhere in the panel puts Undo and Redo on the game (D12).
+    // A click anywhere in the panel puts Undo and Redo on the game (D12), and so does the
+    // keyboard focus in it (plan A9-I18).
     if crate::chess_history::pressed_in(ui) {
         app.chess.enter_scope();
     }
+    app.chess.mark_surface(ui);
     let pieces = app.chess.role_pieces(Role::Board);
     let source_label = board_source_label(app);
     // Docked, the workspace's tab names the panel already (plan A8, P6).
@@ -1617,10 +1634,12 @@ pub(crate) fn board_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
 /// each move a click away, and the move's glyphs and comment under it.
 pub(crate) fn moves_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let t = Tokens::get(ui.ctx());
-    // A click in the list puts Undo and Redo on the game, as in the Board panel (D12).
+    // A click in the list puts Undo and Redo on the game, as in the Board panel (D12), and so
+    // does the keyboard focus in it (plan A9-I18).
     if crate::chess_history::pressed_in(ui) {
         app.chess.enter_scope();
     }
+    app.chess.mark_surface(ui);
     let mut action = None;
     let mut side = None;
     egui::Frame::NONE.fill(t.panel).stroke(Stroke::new(1.0, t.divider)).show(ui, |ui| {

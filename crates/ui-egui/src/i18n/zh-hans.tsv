@@ -2657,6 +2657,7 @@ chess undo step	Clear drawings	清除标记
 	Delete variation	删除变化
 	Cut after this move	剪除此着法之后
 	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	更多{group}工具：右键单击、长按或按 Enter。{key} 在它们之间切换。
+	More {group} tools: right-click, hold, or press Enter.	更多{group}工具：右键单击、长按或按 Enter。
 	This move is on the main line already.	此着法已在主线上。
 	There are no moves after this one.	此着法之后没有着法。
 	Not done: variations would nest too deep.	未执行：变化会嵌套过深。
@@ -3174,6 +3175,16 @@ chess undo step	Clear drawings	清除标记
 	Show what was read again; the PDF is not changed.	重新显示识别结果；PDF 不会更改。
 	Diagram board, page {p}, diagram {n}	棋图棋盘，第 {p} 页，棋图 {n}
 	Classic diagram editor	经典棋图编辑器
+# Plan A9-I18: the chess keys (Preferences ▸ Chess: the one-key shortcuts and how long a typed sign waits).
+	One-key shortcuts (B, C, F, G, O, X, signs)	单键快捷键（B、C、F、G、O、X、符号）
+	Off, the chess panels take no letter or sign typed; the buttons beside the board and the command search still do the same.	关闭后，国际象棋面板不再接收键入的字母或符号；棋盘旁的按钮和命令搜索仍可完成相同操作。
+	A typed sign waits for its next character	键入的符号等待下一个字符
+	Enter puts the sign on at once; Esc drops it.	Enter 立即加上符号；Esc 放弃它。
+	0.6 s	0.6 秒
+	1 s	1 秒
+	1.5 s	1.5 秒
+	2 s	2 秒
+	Until Enter	直到按 Enter
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	像“棋图”选项卡出现之前一样，在“棋图”面板中编辑棋图。此选项将在以后的版本中移除。
 # Plan A8 P3b3: drafts and the question about them.
 	Unconfirmed changes	未确认的更改
