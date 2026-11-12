@@ -452,7 +452,7 @@ mod tests {
         }
         let three = snap(&game).bytes();
         assert!(three >= empty + 3 * NODE_BYTES, "{three} vs {empty}");
-        game.set_comment(game.current(), &"x".repeat(1000));
+        game.set_comment(game.current(), &"x".repeat(1000)).unwrap();
         assert!(snap(&game).bytes() >= three + 1000);
     }
 }

@@ -30,7 +30,7 @@ fn the_documents_games_go_onto_the_board_with_their_places() {
     let doc = build_page(&input(3, &text, &diagrams, &hints, &[]));
     assert_eq!(doc.games.len(), 2);
     for (i, g) in doc.games.iter().enumerate() {
-        let BoardGame { game, paths, dropped } = doc.board_game(i).expect("a legal start");
+        let BoardGame { game, paths, dropped, .. } = doc.board_game(i).expect("a legal start");
         assert_eq!(dropped, 0);
         assert_eq!(game.movetext(), movetext_of(&g.score), "game {i}");
         assert_eq!(game.current(), 0, "shown at its start");

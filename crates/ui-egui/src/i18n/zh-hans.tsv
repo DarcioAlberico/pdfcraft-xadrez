@@ -2509,6 +2509,10 @@ animation effects	Off	关
 	Previous move (Left arrow)	上一步 (左箭头)
 	Promote to:	升变为：
 	Reading stopped at {move}: it is not a legal move there.	读取在 {move} 处停止：该着法在此不合法。
+	Only the first 65,536 bytes of a comment are kept.	注释只保留前 65,536 字节。
+	The comment says that already.	注释中已经有这段内容。
+	Not kept as typed: {tags} (a tag holds at most 256 bytes, and a game 64 tags).	未按输入保留：{tags}（一个标签最多 256 字节，一局最多 64 个标签）。
+	Read with changes: {n} (a comment, tag or glyph past its limit cut or dropped, a FEN repaired, or a result ignored).	读取时有改动：{n} 处（超出上限的注释、标签或符号被截断或舍弃，FEN 被修正，或结果被忽略）。
 	Reading stopped at {move}: more than one legal move there is written so.	读取在 {move} 处停止：此处有不止一个合法着法写作这样。
 	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	读取在 {move} 处停止：棋局已有 10,000 步，达到上限。
 	Reading stopped at {move}: its variation would nest deeper than 32.	读取在 {move} 处停止：变着的嵌套会超过 32 层。
@@ -2636,7 +2640,7 @@ chess undo step	Clear drawings	清除标记
 	Quit without saving	不保存并退出
 	Close without saving	不保存并关闭
 	Games read only up to an impossible move: {n}	只读到不可能着法为止的对局：{n}
-	The rest of them will not be written.	其余部分将不会写入。
+	The rest of each is written as a comment at the move where its reading stopped.	每局余下的部分会写成读取停止处那一步的注释。
 	{name}: stopped at {move}	{name}：停在 {move}
 	Save them as they are	按原样保存
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	无法自动保存国际象棋对局：无法为此窗口锁定应用的数据文件夹。

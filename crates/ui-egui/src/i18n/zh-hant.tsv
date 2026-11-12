@@ -2493,6 +2493,10 @@ animation effects	Off	關
 	Previous move (Left arrow)	上一步 (左箭頭)
 	Promote to:	升變為：
 	Reading stopped at {move}: it is not a legal move there.	讀取在 {move} 處停止：該著法在此不合法。
+	Only the first 65,536 bytes of a comment are kept.	註解只保留前 65,536 位元組。
+	The comment says that already.	註解中已經有這段內容。
+	Not kept as typed: {tags} (a tag holds at most 256 bytes, and a game 64 tags).	未按輸入保留：{tags}（一個標籤最多 256 位元組，一局最多 64 個標籤）。
+	Read with changes: {n} (a comment, tag or glyph past its limit cut or dropped, a FEN repaired, or a result ignored).	讀取時有改動：{n} 處（超出上限的註解、標籤或符號被截斷或捨棄，FEN 被修正，或結果被忽略）。
 	Reading stopped at {move}: more than one legal move there is written so.	讀取在 {move} 處停止：此處有不止一個合法著法寫作這樣。
 	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	讀取在 {move} 處停止：棋局已有 10,000 步，達到上限。
 	Reading stopped at {move}: its variation would nest deeper than 32.	讀取在 {move} 處停止：變著的嵌套會超過 32 層。

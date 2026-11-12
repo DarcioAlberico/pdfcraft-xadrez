@@ -2766,17 +2766,27 @@ fn notation_height(viewport: f32, above: f32, below: f32) -> f32 {
     if left.is_finite() { left.max(MIN_NOTATION) } else { MIN_NOTATION }
 }
 
-/// What Load PGN says about the text it read: the move it stopped at, and how many variations it
-/// kept as comments where it stood instead of reading them (plan A8 V4).
-fn read_message(report: &PgnReport) -> Option<String> {
+/// What Load PGN and Open PGN… say about the text they read: the move it stopped at, how many
+/// variations it kept as comments where they stood instead of reading them (plan A8 V4), and how
+/// many things it had to change to read it (plan A9-F3: cut, dropped, repaired or ignored; the
+/// tools list each).
+pub(crate) fn read_message(report: &PgnReport) -> Option<String> {
     let mut said = Vec::new();
     if let Some(m) = &report.stopped {
         said.push(stop_message(m, report.stop_reason));
     }
-    let kept = report.warnings.iter().filter(|w| w.kind != PgnWarningKind::NonStandard).count();
+    let kept = report.warnings.iter().filter(|w| matches!(w.kind, PgnWarningKind::OrphanVariation | PgnWarningKind::TooDeep)).count();
     if kept > 0 {
         let n = kept.to_string();
         said.push(crate::i18n::fmt(tl!("Variations kept as comments: {n} (no move before them, or nested deeper than 32)."), &[("n", &n)]));
+    }
+    let changed = report.warnings.iter().filter(|w| w.kind.is_change()).count();
+    if changed > 0 {
+        let n = changed.to_string();
+        said.push(crate::i18n::fmt(
+            tl!("Read with changes: {n} (a comment, tag or glyph past its limit cut or dropped, a FEN repaired, or a result ignored)."),
+            &[("n", &n)],
+        ));
     }
     (!said.is_empty()).then(|| said.join(" "))
 }
@@ -2825,7 +2835,8 @@ mod tests {
     fn a_pgn_read_only_up_to_an_impossible_move_is_marked_cut() {
         let mut b = BoardState { pgn_text: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Bxh7 Nf6 *".into(), ..BoardState::default() };
         let _ = b.load_pgn();
-        assert_eq!((b.game.movetext().as_str(), b.cut.as_deref()), ("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6", Some("Bxh7")));
+        // The rest of the line is a comment where it stopped (plan A9-F3): text, no longer moves.
+        assert_eq!((b.game.movetext().as_str(), b.cut.as_deref()), ("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 {Bxh7 Nf6}", Some("Bxh7")));
         b.pgn_text = "1. d4 d5 *".into();
         let _ = b.load_pgn();
         assert_eq!(b.cut, None);
@@ -3204,7 +3215,8 @@ mod tests {
         assert!(s.message.is_none());
         s.pgn_text = "1. e4 e5 2. Ke3".into();
         s.load_pgn();
-        assert_eq!(s.game.movetext(), "1. e4 e5");
+        // What could not be played is a comment where it stopped (plan A9-F3).
+        assert_eq!(s.game.movetext(), "1. e4 e5 {Ke3}");
         assert!(s.message.as_deref().is_some_and(|m| m.contains("Ke3")));
     }
 }

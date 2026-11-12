@@ -11,7 +11,7 @@
 //! round trips, not for every PGN in the wild: an illegal move is an error, not a repair.
 //!
 //! Comments are normalised the same way on both sides (`append_comment`: single spaces, `}`
-//! written `)`, at most `MAX_COMMENT_CHARS`), which is what makes the round trip exact.
+//! written `)`, at most `MAX_COMMENT_BYTES`), which is what makes the round trip exact.
 
 use cozy_chess::Board;
 use pdfcraft_chess::nag::nags_from_suffix;

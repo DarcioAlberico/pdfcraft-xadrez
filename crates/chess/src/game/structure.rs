@@ -16,7 +16,7 @@
 
 use std::fmt;
 
-use super::{Game, MAX_DEPTH, MAX_NAGS, NodeId, clean_comment, nag_group};
+use super::{Cut, Game, MAX_DEPTH, MAX_NAGS, NodeId, clean_comment, nag_group};
 
 /// Where on a PDF page a move was read: the page index and the rectangle `[x0, y0, x1, y1]` in
 /// the page's user space. It is kept with the move but is not part of the PGN.
@@ -289,18 +289,20 @@ impl Game {
     /// Set the comment before move `node`, cleaned as [`Game::set_comment`] does. It stays on the
     /// move whatever is promoted or demoted around it. PGN has room for it only after the `(` of
     /// a variation, so before a first reply it is written in one comment with the one after the
-    /// move before, and read back as that one. Ignored for the start.
-    pub fn set_comment_before(&mut self, node: NodeId, text: &str) {
+    /// move before, and read back as that one. Ignored for the start. Past
+    /// [`super::MAX_COMMENT_LEN`] bytes it is cut, and [`Cut`] says so.
+    pub fn set_comment_before(&mut self, node: NodeId, text: &str) -> Result<(), Cut> {
         if node == 0 {
-            return;
+            return Ok(());
         }
-        let clean = clean_comment(text);
+        let (clean, cut) = clean_comment(text);
         if let Some(n) = self.nodes.get_mut(node)
             && n.comment_before != clean
         {
             n.comment_before = clean;
             self.revision = super::fresh_revision();
         }
+        cut.map_or(Ok(()), Err)
     }
 
     /// Where on a page move `node` was read, when it was.
@@ -326,6 +328,27 @@ impl Game {
     /// move-quality glyph (codes 1–6) replaces the one there, as does an evaluation (10–21).
     /// Returns whether the move carries the glyph: not for the start, a move not in the game, a
     /// code outside 1–255, or a move that has as many glyphs as it may.
+    /// Add glyph `code` to move `node` as a PGN reader does: beside the glyphs there, whatever
+    /// their group (the group is the palette's rule, [`Game::set_nag`]'s, not the PGN's). Whether
+    /// the move carries it now: not the start, nor a code PGN has none for (0, past 255), nor a
+    /// glyph past [`MAX_NAGS`] (plan A9-F3).
+    pub(crate) fn add_nag(&mut self, node: NodeId, code: u16) -> bool {
+        if node == 0 || code == 0 || code > 255 {
+            return false;
+        }
+        let Some(n) = self.nodes.get_mut(node) else { return false };
+        if n.nags.contains(&code) {
+            return true;
+        }
+        if n.nags.len() >= MAX_NAGS {
+            return false;
+        }
+        n.nags.push(code);
+        n.nags.sort_unstable();
+        self.revision = super::fresh_revision();
+        true
+    }
+
     pub fn set_nag(&mut self, node: NodeId, code: u16) -> bool {
         if node == 0 || code == 0 || code > 255 {
             return false;

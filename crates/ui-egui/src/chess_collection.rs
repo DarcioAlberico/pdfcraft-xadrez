@@ -174,23 +174,21 @@ impl GameEntry {
     }
 
     /// Name the game: its White, Black, Event, Site, Date and Round tags take `names` (an empty
-    /// name removes its tag), as one undo step of the game ("Edit game details"). Whether anything
-    /// changed. The list's editor lets no date through that PGN can't read
-    /// ([`collection::pgn_date_ok`]).
-    fn rename(&mut self, names: &GameNames) -> bool {
-        let changes = names.changes_from(&self.names());
-        if changes.is_empty() {
-            return false;
+    /// name removes its tag), as one undo step of the game ("Edit game details"), through the
+    /// engine's [`collection::rename`]: what it cut or could not set is in the answer (plan
+    /// A9-F3), and nothing changed when nothing did. The list's editor lets no date through that
+    /// PGN can't read ([`collection::pgn_date_ok`]).
+    fn rename(&mut self, names: &GameNames) -> collection::Renamed {
+        if names.changes_from(&self.names()).is_empty() {
+            return collection::Renamed::default();
         }
+        let mut done = collection::Renamed::default();
         self.board.edit(|s| {
-            for (tag, value) in &changes {
-                // The six names are valid tag names; a game whose tags are full refuses a new
-                // one, and the others still change.
-                let _ = s.game.set_tag(tag, value);
-            }
+            done = collection::rename(&mut s.game, names);
             s.refresh_fields(true);
             Some(ChessEdit::GameDetails)
-        })
+        });
+        done
     }
 
     /// A copy, as a game of its own: the same moves, move shown, illegal position, side and
@@ -2553,8 +2551,13 @@ impl PdfCraftApp {
                 self.chess.enter_scope();
             }
             GamesAction::Rename(i, names) => {
-                if let Some(e) = self.chess.games.collection_mut().get_mut(i) {
-                    e.rename(&names);
+                let done = self.chess.games.collection_mut().get_mut(i).map(|e| e.rename(&names)).unwrap_or_default();
+                let lost: Vec<String> = done.cut.into_iter().chain(done.refused).collect();
+                if !lost.is_empty() {
+                    self.notify(crate::i18n::fmt(
+                        tl!("Not kept as typed: {tags} (a tag holds at most 256 bytes, and a game 64 tags)."),
+                        &[("tags", &lost.join(", "))],
+                    ));
                 }
                 self.chess.enter_scope();
             }
@@ -2939,7 +2942,7 @@ pub(crate) fn cut_prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
         ui.set_max_width(440.0);
         ui.heading(crate::i18n::fmt(tl!("Games read only up to an impossible move: {n}"), &[("n", &n)]));
         ui.add_space(6.0);
-        ui.label(tl!("The rest of them will not be written."));
+        ui.label(tl!("The rest of each is written as a comment at the move where its reading stopped."));
         for line in &named {
             ui.add(egui::Label::new(egui::RichText::new(line).small().color(t.text_muted)).wrap());
         }
@@ -2975,7 +2978,7 @@ fn pgn_boards<'a>(texts: impl Iterator<Item = &'a str>) -> (Vec<BoardState>, usi
             Ok((game, report)) => {
                 let mut board = BoardState::default();
                 board.game = game;
-                board.message = report.stopped.as_ref().map(|m| crate::chess_board_ui::stop_message(m, report.stop_reason));
+                board.message = crate::chess_board_ui::read_message(&report);
                 board.cut = report.stopped;
                 board.refresh_fields(true);
                 boards.push(board);
@@ -3074,16 +3077,16 @@ mod tests {
     fn renaming_sets_the_names_and_the_other_tags_in_one_undo_step() {
         let mut e = GameEntry::new(board_with(&["e2e4"]));
         let names = GameNames { white: " Werle ".into(), black: "Jianu".into(), event: "Wijk aan Zee".into(), ..GameNames::default() };
-        assert!(e.rename(&names));
+        assert!(e.rename(&names).changed);
         assert_eq!(e.name(1), "Werle–Jianu");
         assert_eq!(e.names(), GameNames { white: "Werle".into(), black: "Jianu".into(), event: "Wijk aan Zee".into(), ..GameNames::default() });
         assert_eq!(e.board.undo_label().as_deref(), Some("Edit game details"));
-        assert!(!e.rename(&names), "the same names change nothing");
+        assert!(!e.rename(&names).changed, "the same names change nothing");
         assert!(e.board.undo());
         assert_eq!(e.name(1), "Game 1", "one step took all three back");
-        assert!(e.rename(&GameNames { event: "Training".into(), ..GameNames::default() }));
+        assert!(e.rename(&GameNames { event: "Training".into(), ..GameNames::default() }).changed);
         assert_eq!(e.name(1), "Training", "named by its event without players");
-        assert!(e.rename(&GameNames::default()));
+        assert!(e.rename(&GameNames::default()).changed);
         assert!(e.board.game.tags().is_empty(), "empty names remove the tags");
         // Site, Date and Round, from the list, with the names: one step for all of them.
         let placed = GameNames {
@@ -3093,7 +3096,7 @@ mod tests {
             round: "6".into(),
             ..GameNames::default()
         };
-        assert!(e.rename(&placed));
+        assert!(e.rename(&placed).changed);
         let game = &e.board.game;
         assert_eq!(
             (game.tag("White"), game.tag("Site"), game.tag("Date"), game.tag("Round")),

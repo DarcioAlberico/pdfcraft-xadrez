@@ -2686,6 +2686,10 @@ animation effects	Off	Desactivados
 	Previous move (Left arrow)	Jugada anterior (flecha izquierda)
 	Promote to:	Coronar en:
 	Reading stopped at {move}: it is not a legal move there.	La lectura se detuvo en {move}: no es una jugada legal ahí.
+	Only the first 65,536 bytes of a comment are kept.	Solo se guardan los primeros 65.536 bytes de un comentario.
+	The comment says that already.	El comentario ya dice eso.
+	Not kept as typed: {tags} (a tag holds at most 256 bytes, and a game 64 tags).	No se guardó tal como se escribió: {tags} (una etiqueta admite como máximo 256 bytes y una partida 64 etiquetas).
+	Read with changes: {n} (a comment, tag or glyph past its limit cut or dropped, a FEN repaired, or a result ignored).	Leído con cambios: {n} (un comentario, etiqueta o signo que pasaba su límite recortado o descartado, un FEN corregido o un resultado ignorado).
 	Reading stopped at {move}: more than one legal move there is written so.	La lectura se detuvo en {move}: ahí hay más de una jugada legal que se escribe así.
 	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	La lectura se detuvo en {move}: la partida ya tiene 10.000 jugadas, el máximo que admite.
 	Reading stopped at {move}: its variation would nest deeper than 32.	La lectura se detuvo en {move}: su variante quedaría anidada a más de 32 niveles.
@@ -2813,7 +2817,7 @@ chess undo step	Clear drawings	borrado de los dibujos
 	Quit without saving	Salir sin guardar
 	Close without saving	Cerrar sin guardar
 	Games read only up to an impossible move: {n}	Partidas leídas solo hasta una jugada imposible: {n}
-	The rest of them will not be written.	El resto de ellas no se escribirá.
+	The rest of each is written as a comment at the move where its reading stopped.	El resto de cada una se escribe como comentario en la jugada donde se detuvo la lectura.
 	{name}: stopped at {move}	{name}: se detuvo en {move}
 	Save them as they are	Guardarlas tal como están
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Las partidas de ajedrez no se pueden guardar automáticamente: no se pudo bloquear la carpeta de datos de la aplicación para esta ventana.

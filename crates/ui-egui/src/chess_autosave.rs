@@ -259,11 +259,17 @@ pub(crate) fn restore(record: &GameRecord, doc: Option<DocId>) -> Option<BoardSt
         return loaded.then_some(board);
     }
     let (mut game, _) = Game::from_pgn(&record.pgn).ok()?;
+    // A stored comment past the cap (a file written by hand, or by a build with a larger cap) is
+    // cut, and said on the board (plan A9-F3).
+    let mut cut = false;
     for c in &record.comments {
         if let Some(node) = game.node_at(&NodePath::new(c.path.clone())) {
-            game.set_comment(node, &c.after);
-            game.set_comment_before(node, &c.before);
+            cut |= game.set_comment(node, &c.after).is_err();
+            cut |= game.set_comment_before(node, &c.before).is_err();
         }
+    }
+    if cut {
+        board.message = Some(tl!("Only the first 65,536 bytes of a comment are kept.").to_owned());
     }
     for s in &record.sources {
         if let Some(node) = game.node_at(&NodePath::new(s.path.clone())) {
@@ -843,8 +849,8 @@ pub(crate) mod tests {
         let e4 = long.game.current();
         long.game.play_uci("e7e5").unwrap();
         let e5 = long.game.current();
-        long.game.set_comment(e4, &"a".repeat(3000));
-        long.game.set_comment_before(e5, &"b".repeat(2500));
+        long.game.set_comment(e4, &"a".repeat(3000)).unwrap();
+        long.game.set_comment_before(e5, &"b".repeat(2500)).unwrap();
         vec![annotated(), illegal, long]
     }
 
@@ -868,11 +874,11 @@ pub(crate) mod tests {
         g.go_to(1);
         g.play_uci("c7c5").unwrap();
         let c5 = g.current();
-        g.set_comment(e5, "after e5");
+        g.set_comment(e5, "after e5").unwrap();
         // Nf3 is e5's first reply: PGN would write this one inside "after e5".
-        g.set_comment_before(nf3, "before Nf3");
+        g.set_comment_before(nf3, "before Nf3").unwrap();
         // c5 starts a variation: PGN has room for this one, after the "(".
-        g.set_comment_before(c5, "before c5");
+        g.set_comment_before(c5, "before c5").unwrap();
         g.toggle_nag(nf3, 1);
         g.set_tag("White", "Werle").unwrap();
         g.set_tag("Black", "Jianu").unwrap();
@@ -975,7 +981,7 @@ pub(crate) mod tests {
         let mut big = BoardState::default();
         for m in ["e2e4", "e7e5", "g1f3", "b8c6", "f1b5"] {
             big.game.play_uci(m).unwrap();
-            big.game.set_comment(big.game.current(), &"x".repeat(4000));
+            big.game.set_comment(big.game.current(), &"x".repeat(4000)).unwrap();
         }
         let mut boards = Vec::new();
         for _ in 0..MAX_GAMES {

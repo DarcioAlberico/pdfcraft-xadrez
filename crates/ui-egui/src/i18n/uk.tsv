@@ -2567,6 +2567,10 @@ animation effects	Off	Вимкнено
 	Previous move (Left arrow)	Попередній хід (стрілка ліворуч)
 	Promote to:	Перетворити на:
 	Reading stopped at {move}: it is not a legal move there.	Читання зупинилося на {move}: тут це не легальний хід.
+	Only the first 65,536 bytes of a comment are kept.	З коментаря зберігаються лише перші 65 536 байтів.
+	The comment says that already.	Коментар уже це каже.
+	Not kept as typed: {tags} (a tag holds at most 256 bytes, and a game 64 tags).	Збережено не так, як введено: {tags} (тег вміщує щонайбільше 256 байтів, партія — 64 теги).
+	Read with changes: {n} (a comment, tag or glyph past its limit cut or dropped, a FEN repaired, or a result ignored).	Прочитано зі змінами: {n} (коментар, тег або знак понад межу обрізано чи відкинуто, FEN виправлено або результат проігноровано).
 	Reading stopped at {move}: more than one legal move there is written so.	Читання зупинилося на {move}: тут так записується більше ніж один легальний хід.
 	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	Читання зупинилося на {move}: у партії вже 10 000 ходів — це максимум.
 	Reading stopped at {move}: its variation would nest deeper than 32.	Читання зупинилося на {move}: варіант був би вкладений глибше ніж на 32 рівні.
@@ -2694,7 +2698,7 @@ chess undo step	Clear drawings	видалення малюнків
 	Quit without saving	Вийти без збереження
 	Close without saving	Закрити без збереження
 	Games read only up to an impossible move: {n}	Партії, прочитані лише до неможливого ходу: {n}
-	The rest of them will not be written.	Решту з них не буде записано.
+	The rest of each is written as a comment at the move where its reading stopped.	Решту кожної записано коментарем до ходу, на якому зупинилося читання.
 	{name}: stopped at {move}	{name}: зупинено на {move}
 	Save them as they are	Зберегти як є
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Шахові партії не можна зберігати автоматично: не вдалося заблокувати теку даних застосунку для цього вікна.

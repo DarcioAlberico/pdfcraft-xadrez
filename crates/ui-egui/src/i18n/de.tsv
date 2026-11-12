@@ -2546,6 +2546,10 @@ animation effects	Off	Aus
 	Previous move (Left arrow)	Vorheriger Zug (Pfeil links)
 	Promote to:	Umwandeln in:
 	Reading stopped at {move}: it is not a legal move there.	Lesen bei {move} angehalten: dort kein legaler Zug.
+	Only the first 65,536 bytes of a comment are kept.	Von einem Kommentar werden nur die ersten 65.536 Bytes behalten.
+	The comment says that already.	Der Kommentar sagt das schon.
+	Not kept as typed: {tags} (a tag holds at most 256 bytes, and a game 64 tags).	Nicht wie eingegeben behalten: {tags} (ein Tag fasst höchstens 256 Bytes, eine Partie 64 Tags).
+	Read with changes: {n} (a comment, tag or glyph past its limit cut or dropped, a FEN repaired, or a result ignored).	Mit Änderungen gelesen: {n} (ein Kommentar, Tag oder Zeichen über seiner Grenze gekürzt oder verworfen, ein FEN repariert oder ein Ergebnis ignoriert).
 	Reading stopped at {move}: more than one legal move there is written so.	Lesen bei {move} angehalten: dort wird mehr als ein legaler Zug so geschrieben.
 	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	Lesen bei {move} angehalten: die Partie hat bereits 10.000 Züge, so viele wie erlaubt.
 	Reading stopped at {move}: its variation would nest deeper than 32.	Lesen bei {move} angehalten: die Variante wäre tiefer als 32 Ebenen verschachtelt.
@@ -2673,7 +2677,7 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	Quit without saving	Beenden ohne Speichern
 	Close without saving	Schließen ohne Speichern
 	Games read only up to an impossible move: {n}	Nur bis zu einem unmöglichen Zug gelesene Partien: {n}
-	The rest of them will not be written.	Der Rest davon wird nicht geschrieben.
+	The rest of each is written as a comment at the move where its reading stopped.	Der Rest jeder Partie wird als Kommentar beim Zug geschrieben, an dem das Lesen anhielt.
 	{name}: stopped at {move}	{name}: angehalten bei {move}
 	Save them as they are	So speichern, wie sie sind
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Schachpartien können nicht automatisch gespeichert werden: Der Datenordner der App konnte für dieses Fenster nicht gesperrt werden.

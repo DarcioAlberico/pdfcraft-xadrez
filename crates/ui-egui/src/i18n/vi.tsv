@@ -2800,6 +2800,10 @@ chess side	Black	Đen
 	Previous move (Left arrow)	Nước trước (mũi tên trái)
 	Promote to:	Phong cấp thành:
 	Reading stopped at {move}: it is not a legal move there.	Việc đọc dừng ở {move}: đó không phải nước đi hợp lệ tại đó.
+	Only the first 65,536 bytes of a comment are kept.	Chỉ giữ 65.536 byte đầu tiên của một chú thích.
+	The comment says that already.	Chú thích đã nói điều đó rồi.
+	Not kept as typed: {tags} (a tag holds at most 256 bytes, and a game 64 tags).	Không được giữ như đã nhập: {tags} (một thẻ chứa tối đa 256 byte, một ván 64 thẻ).
+	Read with changes: {n} (a comment, tag or glyph past its limit cut or dropped, a FEN repaired, or a result ignored).	Đã đọc với thay đổi: {n} (chú thích, thẻ hoặc ký hiệu vượt giới hạn bị cắt hoặc bỏ, FEN được sửa, hoặc kết quả bị bỏ qua).
 	Reading stopped at {move}: more than one legal move there is written so.	Việc đọc dừng ở {move}: tại đó có hơn một nước đi hợp lệ được viết như vậy.
 	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	Việc đọc dừng ở {move}: ván cờ đã có 10.000 nước, mức tối đa.
 	Reading stopped at {move}: its variation would nest deeper than 32.	Việc đọc dừng ở {move}: biến này sẽ lồng sâu quá 32 cấp.
@@ -2927,7 +2931,7 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Quit without saving	Thoát không lưu
 	Close without saving	Đóng không lưu
 	Games read only up to an impossible move: {n}	Các ván chỉ đọc được đến một nước đi không thể: {n}
-	The rest of them will not be written.	Phần còn lại của chúng sẽ không được ghi.
+	The rest of each is written as a comment at the move where its reading stopped.	Phần còn lại của mỗi ván được ghi thành chú thích tại nước đi nơi việc đọc dừng lại.
 	{name}: stopped at {move}	{name}: dừng ở {move}
 	Save them as they are	Lưu nguyên như vậy
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Không thể tự động lưu ván cờ: không khóa được thư mục dữ liệu của ứng dụng cho cửa sổ này.

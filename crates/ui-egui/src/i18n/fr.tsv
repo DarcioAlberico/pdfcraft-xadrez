@@ -2545,6 +2545,10 @@ animation effects	Off	Désactivés
 	Previous move (Left arrow)	Coup précédent (flèche gauche)
 	Promote to:	Promouvoir en :
 	Reading stopped at {move}: it is not a legal move there.	La lecture s'est arrêtée à {move} : ce coup n'est pas légal ici.
+	Only the first 65,536 bytes of a comment are kept.	Seuls les 65 536 premiers octets d'un commentaire sont conservés.
+	The comment says that already.	Le commentaire le dit déjà.
+	Not kept as typed: {tags} (a tag holds at most 256 bytes, and a game 64 tags).	Non conservé tel que saisi : {tags} (une balise contient au plus 256 octets, et une partie 64 balises).
+	Read with changes: {n} (a comment, tag or glyph past its limit cut or dropped, a FEN repaired, or a result ignored).	Lu avec des modifications : {n} (un commentaire, une balise ou un signe au-delà de sa limite coupé ou écarté, un FEN corrigé ou un résultat ignoré).
 	Reading stopped at {move}: more than one legal move there is written so.	La lecture s'est arrêtée à {move} : plus d'un coup légal s'écrit ainsi ici.
 	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	La lecture s'est arrêtée à {move} : la partie compte déjà 10 000 coups, le maximum autorisé.
 	Reading stopped at {move}: its variation would nest deeper than 32.	La lecture s'est arrêtée à {move} : sa variante serait imbriquée sur plus de 32 niveaux.
@@ -2672,7 +2676,7 @@ chess undo step	Clear drawings	l'effacement des dessins
 	Quit without saving	Quitter sans enregistrer
 	Close without saving	Fermer sans enregistrer
 	Games read only up to an impossible move: {n}	Parties lues seulement jusqu'à un coup impossible : {n}
-	The rest of them will not be written.	Le reste ne sera pas écrit.
+	The rest of each is written as a comment at the move where its reading stopped.	Le reste de chacune est écrit en commentaire au coup où la lecture s'est arrêtée.
 	{name}: stopped at {move}	{name} : arrêtée à {move}
 	Save them as they are	Les enregistrer telles quelles
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Les parties d'échecs ne peuvent pas être enregistrées automatiquement : le dossier de données de l'application n'a pas pu être verrouillé pour cette fenêtre.

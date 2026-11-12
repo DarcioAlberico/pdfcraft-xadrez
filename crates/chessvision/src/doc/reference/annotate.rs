@@ -42,6 +42,9 @@ pub struct AnnotatedPgn {
     pub book_only: usize,
     /// Moves marked as shown in a diagram (`$220`).
     pub diagrams: usize,
+    /// Comments the book's text made longer than a comment may be (`MAX_COMMENT_LEN` bytes), cut
+    /// there (plan A9-F3).
+    pub comments_cut: usize,
 }
 
 /// Unicode figurines and the English letters a comment gets for them (a pawn has none).
@@ -213,7 +216,9 @@ pub fn annotated_pgn(doc: &ChessDoc, index: &ReferenceIndex, book: &PgnBook, sty
         let Some(game) = games.get_mut(at.game).and_then(Option::as_mut) else { continue };
         let old = game.comment(at.node).trim().to_owned();
         let text = if old.is_empty() { note.clone() } else { format!("{old} {note}") };
-        game.set_comment(at.node, &text);
+        if game.set_comment(at.node, &text).is_err() {
+            made.comments_cut = made.comments_cut.saturating_add(1);
+        }
         made.commented = made.commented.saturating_add(usize::from(at.node > 0));
     }
     for at in &marked {
