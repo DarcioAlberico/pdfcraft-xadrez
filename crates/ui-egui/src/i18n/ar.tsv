@@ -780,6 +780,8 @@
 	Couldn't check for updates: {e}	تعذّر التحقق من التحديثات: {e}
 	You have version {c}. All releases are listed at {page}.	لديك الإصدار {c}. كل الإصدارات مدرجة في {page}.
 	Asks GitHub for the latest release. Nothing is downloaded or installed automatically.	يسأل GitHub عن أحدث إصدار. لا يُنزَّل أو يُثبَّت شيء تلقائيًا.
+	PdfCraft Xadrez {b}: new versions come from the dist/app folder.	PdfCraft Xadrez {b}: تأتي الإصدارات الجديدة من المجلد dist/app.
+	Nothing is asked over the network: the original PdfCraft's releases lack the chess tools.	لا يُطلب أي شيء عبر الشبكة: إصدارات PdfCraft الأصلي تخلو من أدوات الشطرنج.
 	Download	تنزيل
 	Later	لاحقًا
 	none	لا شيء

@@ -736,6 +736,8 @@
 	Couldn't check for updates: {e}	Güncellemeler denetlenemedi: {e}
 	You have version {c}. All releases are listed at {page}.	{c} sürümüne sahipsiniz. Tüm sürümler {page} adresinde listelenmiştir.
 	Asks GitHub for the latest release. Nothing is downloaded or installed automatically.	En son sürüm için GitHub'ı sorgular. Hiçbir şey otomatik olarak indirilmez veya kurulmaz.
+	PdfCraft Xadrez {b}: new versions come from the dist/app folder.	PdfCraft Xadrez {b}: yeni sürümler dist/app klasöründen gelir.
+	Nothing is asked over the network: the original PdfCraft's releases lack the chess tools.	Ağ üzerinden hiçbir şey sorulmaz: özgün PdfCraft sürümlerinde satranç araçları yoktur.
 	Download	İndir
 	Later	Daha sonra
 	none	yok

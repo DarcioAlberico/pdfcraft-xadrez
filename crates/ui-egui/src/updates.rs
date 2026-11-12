@@ -4,12 +4,21 @@
 //! network code; without a source (the web build, tests) the command opens the releases page.
 //! PdfCraft never downloads or installs anything itself: the user downloads the new version.
 //! It asks only when the user does: there is no check at start (the owner's decision).
+//!
+//! **This fork** ([`FORK`], plan A9 E2; R10-02): PdfCraft Xadrez is built into a `dist/app`
+//! folder, not released on GitHub, and the original PdfCraft's releases lack the chess tools.
+//! Check for updates says which build this is and where new ones come from, and asks nothing
+//! over the network: the release source is never called.
 
 use std::sync::Arc;
 
 use egui::{Align, Layout};
 
 use crate::{PdfCraftApp, theme, widgets};
+
+/// This copy is PdfCraft Xadrez, the chess fork: Check for updates never offers the original
+/// PdfCraft's releases and never asks the network (plan A9, E2).
+pub const FORK: bool = true;
 
 /// Where every PdfCraft release is listed.
 pub const RELEASES_PAGE: &str = "https://github.com/storytold/pdfcraft/releases";
@@ -53,6 +62,8 @@ pub(crate) enum Check {
     #[cfg(not(target_arch = "wasm32"))]
     Running(std::sync::mpsc::Receiver<Result<Release, String>>),
     Done(Result<Release, String>),
+    /// The fork's answer, given without asking anyone ([`FORK`]).
+    Fork,
 }
 
 #[derive(Default)]
@@ -65,6 +76,11 @@ pub(crate) struct Updates {
 impl PdfCraftApp {
     /// Help ▸ Check for updates: ask for the latest release and show the outcome.
     pub fn check_for_updates(&mut self) {
+        if FORK {
+            self.updates.open = true;
+            self.updates.check = Check::Fork;
+            return;
+        }
         let Some(source) = self.update_source.clone() else {
             self.open_url(RELEASES_PAGE);
             return;
@@ -149,6 +165,13 @@ pub(crate) fn dialog(app: &mut PdfCraftApp, ctx: &egui::Context) {
             Check::Done(Ok(_)) => {
                 ui.label(crate::i18n::fmt(tl!("PdfCraft {c} is up to date."), &[("c", current)]));
             }
+            Check::Fork => {
+                let build = pdfcraft_engine::build_info::BUILD;
+                ui.label(
+                    egui::RichText::new(crate::i18n::fmt(tl!("PdfCraft Xadrez {b}: new versions come from the dist/app folder."), &[("b", build)]))
+                        .strong(),
+                );
+            }
             Check::Done(Err(e)) => {
                 ui.label(crate::i18n::fmt(tl!("Couldn't check for updates: {e}"), &[("e", &e.to_string())]));
                 ui.label(
@@ -161,11 +184,12 @@ pub(crate) fn dialog(app: &mut PdfCraftApp, ctx: &egui::Context) {
             }
         }
         ui.add_space(10.0);
-        ui.label(
-            egui::RichText::new(tl!("Asks GitHub for the latest release. Nothing is downloaded or installed automatically."))
-                .color(t.text_muted)
-                .small(),
-        );
+        let note = if matches!(app.updates.check, Check::Fork) {
+            tl!("Nothing is asked over the network: the original PdfCraft's releases lack the chess tools.")
+        } else {
+            tl!("Asks GitHub for the latest release. Nothing is downloaded or installed automatically.")
+        };
+        ui.label(egui::RichText::new(note).color(t.text_muted).small());
         ui.add_space(12.0);
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             if let Some(url) = download.take() {

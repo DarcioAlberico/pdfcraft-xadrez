@@ -461,6 +461,8 @@
 	Couldn't check for updates: {e}	无法检查更新：{e}
 	You have version {c}. All releases are listed at {page}.	当前版本为 {c}。所有版本列在 {page}。
 	Asks GitHub for the latest release. Nothing is downloaded or installed automatically.	向 GitHub 查询最新版本。不会自动下载或安装任何内容。
+	PdfCraft Xadrez {b}: new versions come from the dist/app folder.	PdfCraft Xadrez {b}：新版本来自 dist/app 文件夹。
+	Nothing is asked over the network: the original PdfCraft's releases lack the chess tools.	不会通过网络查询任何内容：原版 PdfCraft 的发行版不含国际象棋工具。
 	Download	下载
 	Later	稍后
 	none	无

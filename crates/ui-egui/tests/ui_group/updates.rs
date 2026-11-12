@@ -1,41 +1,17 @@
 //! Help ▸ Check for updates (issue #28), with stand-in release sources (no network).
+//!
+//! In this fork (plan A9, E2) the command never asks for releases: the original PdfCraft's lack
+//! the chess tools, and new builds come from `dist/app`. The tests that offered a newer release,
+//! said a version was up to date or that GitHub could not be reached went with that path; the
+//! version comparison it would use is still checked.
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable;
 use pdfcraft_ui_egui::PdfCraftApp;
-use pdfcraft_ui_egui::updates::{Release, UpdateSource, is_newer};
-
-fn source(answer: Result<&str, &str>) -> UpdateSource {
-    let answer = answer.map(str::to_string).map_err(str::to_string);
-    Arc::new(move || answer.clone().map(|v| Release { url: format!("https://github.com/storytold/pdfcraft/releases/tag/{v}"), version: v }))
-}
-
-fn harness(answer: Result<&str, &str>) -> Harness<'static, PdfCraftApp> {
-    Harness::builder().with_size(egui::vec2(1200.0, 800.0)).build_eframe(move |_cc| {
-        let mut app = PdfCraftApp::new();
-        app.set_option("language", "en").unwrap();
-        app.update_source = Some(source(answer));
-        app
-    })
-}
-
-/// Run frames until the background check has reported. By what the dialog shows, with the
-/// same 30-second deadline as `support::wait_until`, not for a fixed second: under load the
-/// check's thread can take longer (#1277).
-fn settle(h: &mut Harness<'static, PdfCraftApp>) {
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
-    loop {
-        h.run_steps(2);
-        if h.query_by_label_contains("Checking for a newer version").is_none() {
-            break;
-        }
-        assert!(std::time::Instant::now() < deadline, "timed out waiting for the update check");
-        std::thread::sleep(std::time::Duration::from_millis(5));
-    }
-    h.run_steps(2);
-}
+use pdfcraft_ui_egui::updates::{Release, is_newer};
 
 #[test]
 fn versions_compare_by_number() {
@@ -50,36 +26,13 @@ fn versions_compare_by_number() {
     assert!(!is_newer("v99999999999999999999.0.0", "0.1.1"), "out of range");
 }
 
+/// Plan A9, E2 (R10-02): Check for updates used to ask GitHub for the original PdfCraft's latest
+/// release and offer it for download, a build without the chess tools. Now the release source (a
+/// stand-in that counts its calls) is never called, at start or from the command, and the dialog
+/// says which build this is and where new ones come from.
 #[test]
-fn a_newer_release_is_offered_for_download() {
-    let mut h = harness(Ok("v99.0.0"));
-    h.state_mut().execute("help.check_updates");
-    settle(&mut h);
-    h.get_by_label_contains("PdfCraft 99.0.0 is available");
-    h.get_by_label("Download");
-    h.get_by_label("Later").click();
-    h.run_steps(3);
-    assert!(h.query_by_label_contains("is available").is_none(), "Later closes the dialog");
-}
-
-#[test]
-fn an_up_to_date_or_failed_check_says_so() {
-    let mut h = harness(Ok(concat!("v", env!("CARGO_PKG_VERSION"))));
-    h.state_mut().execute("help.check_updates");
-    settle(&mut h);
-    h.get_by_label_contains("is up to date");
-    assert!(h.query_by_label("Download").is_none());
-
-    let mut h = harness(Err("couldn't reach GitHub"));
-    h.state_mut().execute("help.check_updates");
-    settle(&mut h);
-    h.get_by_label_contains("Couldn't check for updates: couldn't reach GitHub");
-}
-
-#[test]
-fn nothing_is_asked_until_the_user_checks() {
-    // No check at start (the owner's decision): the source is only called from the command.
-    let calls = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+fn the_fork_never_asks_for_the_original_pdfcrafts_releases() {
+    let calls = Arc::new(AtomicUsize::new(0));
     let counted = calls.clone();
     let mut h = Harness::builder().with_size(egui::vec2(1200.0, 800.0)).build_eframe(move |_cc| {
         let mut app = PdfCraftApp::new();
@@ -88,16 +41,26 @@ fn nothing_is_asked_until_the_user_checks() {
         app.restore(r#"{"check_updates_at_start": true}"#);
         let counted = counted.clone();
         app.update_source = Some(Arc::new(move || {
-            counted.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            counted.fetch_add(1, Ordering::SeqCst);
             Ok(Release { version: "v99.0.0".into(), url: "https://github.com/storytold/pdfcraft/releases/tag/v99.0.0".into() })
         }));
         app
     });
-    settle(&mut h);
-    assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 0);
-    assert!(h.query_by_label_contains("is available").is_none());
+    h.run_steps(4);
     h.state_mut().execute("help.check_updates");
-    settle(&mut h);
-    assert_eq!(calls.load(std::sync::atomic::Ordering::SeqCst), 1);
-    h.get_by_label_contains("PdfCraft 99.0.0 is available");
+    // Long enough for a check thread to have answered, had one started.
+    for _ in 0..20 {
+        h.run_steps(2);
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+    assert_eq!(calls.load(Ordering::SeqCst), 0, "the release source was called");
+    assert!(h.query_by_label_contains("is available").is_none());
+    assert!(h.query_by_label("Download").is_none());
+    let build = pdfcraft_engine::build_info::BUILD;
+    h.get_by_label_contains(&format!("PdfCraft Xadrez {build}: new versions come from the dist/app folder."));
+    h.get_by_label_contains("Nothing is asked over the network");
+    h.get_by_label("Close").click();
+    h.run_steps(3);
+    assert!(h.query_by_label_contains("PdfCraft Xadrez").is_none(), "Close closes the dialog");
+    assert_eq!(calls.load(Ordering::SeqCst), 0);
 }

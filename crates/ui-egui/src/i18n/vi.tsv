@@ -286,6 +286,8 @@ theme	Appearance	Giao diện
 	Apply redactions	Xóa vĩnh viễn nội dung đã đánh dấu
 	Apply scale	Áp dụng tỷ lệ
 	Asks GitHub for the latest release. Nothing is downloaded or installed automatically.	Hỏi GitHub về bản phát hành mới nhất. Không có gì được tải xuống hoặc cài đặt tự động.
+	PdfCraft Xadrez {b}: new versions come from the dist/app folder.	PdfCraft Xadrez {b}: các phiên bản mới lấy từ thư mục dist/app.
+	Nothing is asked over the network: the original PdfCraft's releases lack the chess tools.	Không hỏi gì qua mạng: các bản phát hành của PdfCraft gốc không có công cụ cờ vua.
 	At most	Tối đa
 	Attachments	Tệp đính kèm
 	Attachments Panel and Page	Bảng Tệp đính kèm và trang

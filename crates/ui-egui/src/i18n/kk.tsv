@@ -737,6 +737,8 @@
 	Couldn't check for updates: {e}	Жаңартуларды тексеру мүмкін болмады: {e}
 	You have version {c}. All releases are listed at {page}.	Сізде {c} нұсқасы бар. Барлық шығарылымдар {page} бетінде көрсетілген.
 	Asks GitHub for the latest release. Nothing is downloaded or installed automatically.	GitHub-тан соңғы шығарылымды сұрайды. Ештеңе автоматты түрде жүктелмейді немесе орнатылмайды.
+	PdfCraft Xadrez {b}: new versions come from the dist/app folder.	PdfCraft Xadrez {b}: жаңа нұсқалар dist/app қалтасынан келеді.
+	Nothing is asked over the network: the original PdfCraft's releases lack the chess tools.	Желі арқылы ештеңе сұралмайды: бастапқы PdfCraft шығарылымдарында шахмат құралдары жоқ.
 	Download	Жүктеп алу
 	Later	Кейінірек
 	none	жоқ
