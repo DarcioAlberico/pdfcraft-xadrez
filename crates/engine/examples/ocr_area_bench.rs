@@ -59,7 +59,7 @@ fn run() -> Result<(), String> {
     } else {
         PageRect::new(corners[0], corners[1], corners[2], corners[3])
     };
-    let options = OcrOptions { mode: OcrMode::Off, glyphs: None, general, book: None };
+    let options = OcrOptions::new(OcrMode::Off).with_general(general);
     let start = Instant::now();
     let read = session.chess_read_area(id, page, rect, &options, lang, models.as_deref()).map_err(|e| e.to_string())?;
     let took = start.elapsed();

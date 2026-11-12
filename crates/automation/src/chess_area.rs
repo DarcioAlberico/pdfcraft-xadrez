@@ -49,7 +49,7 @@ impl Automation {
         let game = game_of(a)?;
         let id = self.doc(a)?.id;
         let geometry = self.doc(a)?.info.pages.get(page).and_then(pdfcraft_engine::chess::geometry);
-        let options = OcrOptions { mode: OcrMode::Off, glyphs: None, general, book: None };
+        let options = OcrOptions::new(OcrMode::Off).with_general(general);
         let read = self.session.chess_read_area(id, page, rect, &options, lang, models_dir.as_deref()).map_err(failed)?;
         let mut out = read_json(&read, lang);
         if let (Some((game, at, mode)), Some(o)) = (game, out.as_object_mut()) {

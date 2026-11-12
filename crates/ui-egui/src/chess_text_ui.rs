@@ -698,7 +698,7 @@ impl PdfCraftApp {
         // The book's PGN, when the document keeps one: the page read is linked to it.
         let reference = self.book_pgn_index(id);
         self.start_chess_job(id, JobKind::Read { page, stamp, origin, ocr }, move |s, id| {
-            let options = OcrOptions { mode, glyphs: None, general: true, book: book.as_ref() };
+            let options = OcrOptions::new(mode).with_book(book.as_ref());
             let mut read = s.chess_document_with(id, &[page], &settings, None, &options);
             if let (Ok(read), Some(index)) = (read.as_mut(), reference.as_deref()) {
                 reference::link(&mut read.doc, index);
@@ -724,7 +724,7 @@ impl PdfCraftApp {
         let book = self.chess_cipher(id);
         let settings = self.chess_scan_settings();
         self.start_chess_job(id, JobKind::Game { at, stamp }, move |s, id| {
-            let options = OcrOptions { mode, glyphs: None, general: true, book: book.as_ref() };
+            let options = OcrOptions::new(mode).with_book(book.as_ref());
             JobDone::Game(s.chess_game_span(id, centre, at, &settings, &options))
         });
     }
@@ -753,7 +753,7 @@ impl PdfCraftApp {
         let book = self.chess_cipher(id);
         let settings = self.chess_scan_settings();
         self.start_chess_job(id, JobKind::LinkBook { stamp }, move |s, id| {
-            let options = OcrOptions { mode, glyphs: None, general: true, book: book.as_ref() };
+            let options = OcrOptions::new(mode).with_book(book.as_ref());
             let all: Vec<usize> = (0..pages).collect();
             let mut doc =
                 ChessDoc { format: pdfcraft_engine::chess::pdfcraft_chessvision::doc::FORMAT_VERSION, pages: Vec::new(), games: Vec::new() };

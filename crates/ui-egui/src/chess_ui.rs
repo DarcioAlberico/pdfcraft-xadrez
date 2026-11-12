@@ -1324,10 +1324,8 @@ impl PdfCraftApp {
     pub fn link_chess_diagram(&mut self) {
         let Some(ed) = self.chess.editor.as_ref() else { return };
         let (id, page, index, fen) = (ed.doc, ed.page, ed.index, ed.fen());
-        let settings = pdfcraft_engine::chess::LinkSettings {
-            only: Some(pdfcraft_engine::chess::LinkTarget { page, index, fen }),
-            ..pdfcraft_engine::chess::LinkSettings::default()
-        };
+        let mut settings = pdfcraft_engine::chess::LinkSettings::default();
+        settings.only = Some(pdfcraft_engine::chess::LinkTarget { page, index, fen });
         let scan = self.chess_scan_settings();
         match self.session.chess_link_plan(id, &[], &scan, &settings) {
             Ok(plan) => match plan.edit {

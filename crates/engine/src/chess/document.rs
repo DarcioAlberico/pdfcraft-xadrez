@@ -113,6 +113,9 @@ impl BookOrigin {
 }
 
 /// How [`Session::chess_document_with`] runs chess OCR.
+/// Built outside the engine by its constructor and its fields, never by a literal (plan A9-Q1b,
+/// A7-14): a field added here then breaks no caller (the cause of #185).
+#[non_exhaustive]
 #[derive(Clone, Copy, Default)]
 pub struct OcrOptions<'a> {
     pub mode: OcrMode,
@@ -123,6 +126,26 @@ pub struct OcrOptions<'a> {
     /// The book's cipher so far (from earlier pages or an earlier run): this reading starts from
     /// it, and [`ChessDocument::cipher`] carries it on with what these pages taught.
     pub book: Option<&'a BookCipher>,
+}
+
+impl<'a> OcrOptions<'a> {
+    /// Chess OCR as `mode` says, with the general OCR for prose and the user's glyph model, from
+    /// no book cipher.
+    pub fn new(mode: OcrMode) -> OcrOptions<'a> {
+        OcrOptions { mode, glyphs: None, general: true, book: None }
+    }
+
+    /// With the general OCR (`ocrs`) for prose, or without.
+    pub fn with_general(mut self, general: bool) -> OcrOptions<'a> {
+        self.general = general;
+        self
+    }
+
+    /// Starting from the book's cipher so far.
+    pub fn with_book(mut self, book: Option<&'a BookCipher>) -> OcrOptions<'a> {
+        self.book = book;
+        self
+    }
 }
 
 /// What chess OCR did on one page.
