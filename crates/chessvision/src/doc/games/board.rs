@@ -28,6 +28,9 @@ pub struct BoardGame {
     pub paths: Vec<(usize, NodePath)>,
     /// Moves of the score left off the board: one the board refused, with every move after it.
     pub dropped: usize,
+    /// Comments of the score the board had to cut (past `MAX_COMMENT_LEN` bytes): none from a
+    /// score the walker read, whose cap is the same; one read from tampered JSON can have some.
+    pub comments_cut: usize,
 }
 
 impl BoardGame {
@@ -44,8 +47,9 @@ fn placeholder(value: &str) -> bool {
 }
 
 /// The board's game of `score` and where each score node went (its board move, `None` when it
-/// was left out), with the count left out. `None` when the start position is not legal.
-fn build(score: &GameScore) -> Option<(ChessGame, Vec<Option<NodeId>>, usize)> {
+/// was left out), with the count left out and the count of comments cut. `None` when the start
+/// position is not legal.
+fn build(score: &GameScore) -> Option<(ChessGame, Vec<Option<NodeId>>, usize, usize)> {
     let mut game = match &score.start_fen {
         None => ChessGame::standard(),
         Some(fen) => ChessGame::from_fen(fen).ok()?,
@@ -65,7 +69,7 @@ fn build(score: &GameScore) -> Option<(ChessGame, Vec<Option<NodeId>>, usize)> {
             let _ = game.set_tag(&t.name, &t.value);
         }
     }
-    game.set_comment(0, &score.comment);
+    let mut cut = usize::from(game.set_comment(0, &score.comment).is_err());
 
     let count = score.nodes.len();
     let mut placed: Vec<Option<NodeId>> = vec![None; count];
@@ -97,13 +101,13 @@ fn build(score: &GameScore) -> Option<(ChessGame, Vec<Option<NodeId>>, usize)> {
                 // A glyph the board can't hold (out of range, or too many) is only a glyph lost.
                 game.set_nag(mv, code);
             }
-            game.set_comment(mv, &node.comment);
-            game.set_comment_before(mv, &node.comment_before);
+            cut = cut.saturating_add(usize::from(game.set_comment(mv, &node.comment).is_err()));
+            cut = cut.saturating_add(usize::from(game.set_comment_before(mv, &node.comment_before).is_err()));
             todo.push((Some(child), mv));
         }
     }
     game.go_to_node(0);
-    Some((game, placed, dropped))
+    Some((game, placed, dropped, cut))
 }
 
 /// How many moves are left out with score node `n`: it and every move after it not taken yet
@@ -126,9 +130,9 @@ fn left_out(score: &GameScore, n: usize, seen: &mut [bool]) -> usize {
 /// variation in its order, with the path to each node's move. `None` when the start position is
 /// not legal.
 pub fn to_game(score: &GameScore) -> Option<BoardGame> {
-    let (game, placed, dropped) = build(score)?;
+    let (game, placed, dropped, comments_cut) = build(score)?;
     let paths = placed.iter().enumerate().filter_map(|(n, mv)| Some((n, game.path_of((*mv)?)?))).collect();
-    Some(BoardGame { game, paths, dropped })
+    Some(BoardGame { game, paths, dropped, comments_cut })
 }
 
 impl ChessDoc {
@@ -137,7 +141,7 @@ impl ChessDoc {
     /// when there is no such game or its start position is not legal.
     pub fn board_game(&self, index: usize) -> Option<BoardGame> {
         let score = &self.games.get(index)?.score;
-        let (mut game, placed, dropped) = build(score)?;
+        let (mut game, placed, dropped, comments_cut) = build(score)?;
         for page in &self.pages {
             for inline in page.blocks.iter().flat_map(Block::inlines) {
                 let Inline::Move(m) = inline else { continue };
@@ -154,6 +158,6 @@ impl ChessDoc {
         }
         // Setting the sources moved nothing: the game is still shown at its start.
         let paths = placed.iter().enumerate().filter_map(|(n, mv)| Some((n, game.path_of((*mv)?)?))).collect();
-        Some(BoardGame { game, paths, dropped })
+        Some(BoardGame { game, paths, dropped, comments_cut })
     }
 }

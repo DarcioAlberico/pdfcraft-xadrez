@@ -3,7 +3,7 @@
 
 use std::ops::Range;
 
-use pdfcraft_chess::game::{Game as ChessGame, GraftMode, NodeId, NodePath};
+use pdfcraft_chess::game::{Game as ChessGame, GraftMode, MAX_COMMENT_LEN, NodeId, NodePath};
 use pdfcraft_chess::san::Lang;
 
 use crate::chess::capture::{CaptureError, CaptureMode, CapturePlan, CaptureText, MAX_CAPTURE_TEXT, PreviewReason, plan};
@@ -335,9 +335,12 @@ fn comment_mode_writes_the_text_on_the_current_move() {
     assert!(!p.needs_preview, "{:?}", p.reasons);
     assert_eq!(g.comment(kh7), "the point is 20.Raxe1! and Rc7");
     assert_eq!(g.current(), kh7);
-    // The same again adds nothing.
-    let p = capture(&mut g, CaptureMode::Comment { before: false }, "the point is 20.♖axe1! and Rc7");
-    assert_eq!(p.chosen().unwrap().game.comment(kh7), "the point is 20.Raxe1! and Rc7");
+    // The same again adds nothing, and says so: no place chosen, the reason already there (plan
+    // A9-F3, R2-02).
+    let p = plan_at(&g, kh7, CaptureMode::Comment { before: false }, "the point is 20.♖axe1! and Rc7");
+    assert_eq!(p.chosen, None);
+    assert_eq!(p.candidates[0].reasons, [PreviewReason::AlreadyThere]);
+    assert_eq!(g.comment(kh7), "the point is 20.Raxe1! and Rc7");
     // Before a variation's first move: its comment-before. In Portuguese, `C` is the knight.
     g.go_to_node(at(&g, &[0, 0, 0]));
     g.play_san("Kh8").unwrap();
@@ -349,11 +352,13 @@ fn comment_mode_writes_the_text_on_the_current_move() {
     // Nothing to write.
     let p = plan(&g, kh8, CaptureMode::Comment { before: false }, CaptureText::Plain("  "), Lang::En);
     assert_eq!((p.chosen, p.reasons), (None, vec![PreviewReason::NoFit]));
-    // Too long for the comment: kept whole as left over, never cut.
+    // Too long for the comment (with what it holds, past 64 KiB): kept whole as left over, never
+    // cut.
     let long = "word ".repeat(1000);
+    g.set_comment(kh8, &"x".repeat(MAX_COMMENT_LEN - 100)).unwrap();
     let p = plan(&g, kh8, CaptureMode::Comment { before: false }, CaptureText::Plain(&long), Lang::En);
     assert_eq!(p.reasons, vec![PreviewReason::Incomplete]);
-    assert_eq!(p.chosen().unwrap().game.comment(kh8), "");
+    assert_eq!(p.chosen().unwrap().game.comment(kh8).len(), MAX_COMMENT_LEN - 100);
     assert_eq!(p.chosen().unwrap().report.leftover_text, long.trim());
 }
 
@@ -363,7 +368,7 @@ fn a_stale_plan_is_refused() {
     let mut g = main_line_game();
     let untouched = g.clone();
     let p = plan_at(&g, g.current(), CaptureMode::Auto, "20…Rc7");
-    g.set_comment(0, "edited meanwhile");
+    g.set_comment(0, "edited meanwhile").unwrap();
     let before = g.movetext();
     assert_eq!(p.apply(&mut g, None), Err(CaptureError::Stale));
     assert_eq!(g.movetext(), before);

@@ -2452,6 +2452,10 @@ animation effects	Off	ఆఫ్
 	Previous move (Left arrow)	మునుపటి ఎత్తు (ఎడమ బాణం)
 	Promote to:	పదోన్నతి:
 	Reading stopped at {move}: it is not a legal move there.	{move} వద్ద చదవడం ఆగింది: అక్కడ అది చెల్లే ఎత్తు కాదు.
+	Only the first 65,536 bytes of a comment are kept.	వ్యాఖ్యలో మొదటి 65,536 బైట్‌లు మాత్రమే ఉంచబడతాయి.
+	The comment says that already.	వ్యాఖ్య ఇప్పటికే అది చెబుతోంది.
+	Not kept as typed: {tags} (a tag holds at most 256 bytes, and a game 64 tags).	రాసినట్లుగా ఉంచబడలేదు: {tags} (ఒక ట్యాగ్‌లో గరిష్ఠంగా 256 బైట్‌లు, ఒక ఆటలో 64 ట్యాగ్‌లు).
+	Read with changes: {n} (a comment, tag or glyph past its limit cut or dropped, a FEN repaired, or a result ignored).	మార్పులతో చదవబడింది: {n} (పరిమితి దాటిన వ్యాఖ్య, ట్యాగ్ లేదా గుర్తు కత్తిరించబడింది లేదా వదిలివేయబడింది, FEN సరిచేయబడింది, లేదా ఫలితం పట్టించుకోబడలేదు).
 	Reading stopped at {move}: more than one legal move there is written so.	{move} వద్ద చదవడం ఆగింది: అక్కడ ఇలా రాసే చెల్లే ఎత్తులు ఒకటి కంటే ఎక్కువ ఉన్నాయి.
 	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	{move} వద్ద చదవడం ఆగింది: ఆటలో ఇప్పటికే 10,000 ఎత్తులు ఉన్నాయి, అదే గరిష్ఠం.
 	Reading stopped at {move}: its variation would nest deeper than 32.	{move} వద్ద చదవడం ఆగింది: వేరియేషన్ 32 స్థాయిల కంటే లోతుగా గూడు కడుతుంది.

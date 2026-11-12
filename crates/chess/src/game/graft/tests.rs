@@ -213,6 +213,28 @@ fn comments_go_after_their_move_or_before_the_next() {
     assert_eq!(g4.comment(at(&g4, &[0, 0])), "");
 }
 
+/// Plan A9-F3 (A1-12, sonda p07): a comment the move's comment holds only inside a longer
+/// sentence is added; one the comment is, or ends with, is not added again, and the report
+/// names it (before, both were dropped and reported as applied).
+#[test]
+fn a_comment_already_there_is_said_and_one_only_inside_is_added() {
+    let mut g = main_line();
+    let nd5 = at(&g, &[0]);
+    g.set_comment(nd5, "White is better here").unwrap();
+    let (once, report) = g.graft(nd5, GraftMode::Comment, &items("{better}"), None);
+    assert_eq!((once.comment(nd5), report.already_there.as_slice()), ("White is better here better", &[][..]));
+    let (twice, report) = once.graft(nd5, GraftMode::Comment, &items("{better}"), None);
+    assert_eq!((twice.comment(nd5), report.already_there.as_slice()), ("White is better here better", &[0][..]));
+    assert_eq!(twice.revision(), once.revision());
+    // In a fragment of moves: the comment after a move followed.
+    // In a fragment of moves, the comments after one move are one comment: here what the move's
+    // comment ends with, so nothing is added.
+    let (moves, report) = g.graft(0, GraftMode::Follow, &items("18.Nd5 {is} {better_here}"), None);
+    assert_eq!((moves.comment(nd5), report.already_there.as_slice()), ("White is better here", &[1, 2][..]));
+    assert!(super::already_says("a b", "b") && super::already_says("b", "b"));
+    assert!(!super::already_says("ab", "b") && !super::already_says("b a", "b") && !super::already_says("a", ""));
+}
+
 #[test]
 fn an_open_before_any_move_is_an_alternative_to_the_anchor() {
     let g = main_line();

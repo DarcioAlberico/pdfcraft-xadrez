@@ -2543,6 +2543,10 @@ animation effects	Off	Өшірулі
 	Previous move (Left arrow)	Алдыңғы жүріс (сол жақ көрсеткі)
 	Promote to:	Айналдыру:
 	Reading stopped at {move}: it is not a legal move there.	Оқу {move} жүрісінде тоқтады: ол жерде бұл заңды жүріс емес.
+	Only the first 65,536 bytes of a comment are kept.	Түсініктемеден тек алғашқы 65 536 байт сақталады.
+	The comment says that already.	Түсініктеме мұны айтып тұр.
+	Not kept as typed: {tags} (a tag holds at most 256 bytes, and a game 64 tags).	Енгізілгендей сақталмады: {tags} (тег ең көбі 256 байт, партия 64 тег сыйғызады).
+	Read with changes: {n} (a comment, tag or glyph past its limit cut or dropped, a FEN repaired, or a result ignored).	Өзгерістермен оқылды: {n} (шегінен асқан түсініктеме, тег не белгі қысқартылды не алынды, FEN түзетілді не нәтиже ескерілмеді).
 	Reading stopped at {move}: more than one legal move there is written so.	Оқу {move} жүрісінде тоқтады: ол жерде бірнеше заңды жүріс осылай жазылады.
 	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	Оқу {move} жүрісінде тоқтады: партияда 10 000 жүріс бар, бұл — ең көбі.
 	Reading stopped at {move}: its variation would nest deeper than 32.	Оқу {move} жүрісінде тоқтады: нұсқа 32 деңгейден тереңірек болар еді.
@@ -2670,7 +2674,7 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Quit without saving	Сақтамай шығу
 	Close without saving	Сақтамай жабу
 	Games read only up to an impossible move: {n}	Тек мүмкін емес жүріске дейін оқылған партиялар: {n}
-	The rest of them will not be written.	Олардың қалған бөлігі жазылмайды.
+	The rest of each is written as a comment at the move where its reading stopped.	Әрқайсысының қалғаны оқу тоқтаған жүрістегі түсініктеме ретінде жазылады.
 	{name}: stopped at {move}	{name}: {move} жүрісінде тоқтады
 	Save them as they are	Сол күйінде сақтау
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Шахмат партияларын автоматты түрде сақтау мүмкін емес: бұл терезе үшін қолданбаның деректер қалтасын құлыптау мүмкін болмады.

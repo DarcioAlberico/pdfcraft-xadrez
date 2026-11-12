@@ -2458,6 +2458,10 @@ animation effects	Off	Выкл
 	Previous move (Left arrow)	Предыдущий ход (стрелка влево)
 	Promote to:	Превратить в:
 	Reading stopped at {move}: it is not a legal move there.	Чтение остановлено на {move}: здесь это не легальный ход.
+	Only the first 65,536 bytes of a comment are kept.	Из комментария сохраняются только первые 65 536 байт.
+	The comment says that already.	Комментарий уже это говорит.
+	Not kept as typed: {tags} (a tag holds at most 256 bytes, and a game 64 tags).	Сохранено не так, как введено: {tags} (тег вмещает не более 256 байт, партия — 64 тега).
+	Read with changes: {n} (a comment, tag or glyph past its limit cut or dropped, a FEN repaired, or a result ignored).	Прочитано с изменениями: {n} (комментарий, тег или знак сверх предела обрезан или отброшен, FEN исправлен или результат проигнорирован).
 	Reading stopped at {move}: more than one legal move there is written so.	Чтение остановлено на {move}: здесь так записывается больше одного легального хода.
 	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	Чтение остановлено на {move}: в партии уже 10 000 ходов — это максимум.
 	Reading stopped at {move}: its variation would nest deeper than 32.	Чтение остановлено на {move}: вариант оказался бы вложен глубже 32 уровней.
@@ -2585,7 +2589,7 @@ chess undo step	Clear drawings	удаление рисунков
 	Quit without saving	Выйти без сохранения
 	Close without saving	Закрыть без сохранения
 	Games read only up to an impossible move: {n}	Партии, прочитанные только до невозможного хода: {n}
-	The rest of them will not be written.	Остальная их часть не будет записана.
+	The rest of each is written as a comment at the move where its reading stopped.	Остаток каждой записывается комментарием к ходу, на котором остановилось чтение.
 	{name}: stopped at {move}	{name}: остановлено на {move}
 	Save them as they are	Сохранить как есть
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Шахматные партии нельзя сохранять автоматически: не удалось заблокировать папку данных приложения для этого окна.

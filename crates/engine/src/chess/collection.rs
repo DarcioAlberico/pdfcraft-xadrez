@@ -419,16 +419,31 @@ fn date_part(p: &[u8]) -> Option<Option<u32>> {
     }
 }
 
+/// What [`rename`] did: whether anything changed, and the tags it cut (a value past
+/// `MAX_TAG_LEN` bytes) or could not set (a game whose tags are full refuses a new one), never
+/// unsaid (plan A9-F3, A4-22).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Renamed {
+    pub changed: bool,
+    pub cut: Vec<String>,
+    pub refused: Vec<String>,
+}
+
 /// Name `game` `names` (its White, Black, Event, Site, Date and Round tags; an empty name removes
-/// its tag). Whether anything changed. A game whose tags are full refuses a new one, and the
-/// others still change. The date is set as given: check it with [`pgn_date_ok`] first.
-pub fn rename(game: &mut Game, names: &GameNames) -> bool {
+/// its tag), saying what it cut or could not set ([`Renamed`]); the others still change. The date
+/// is set as given: check it with [`pgn_date_ok`] first.
+pub fn rename(game: &mut Game, names: &GameNames) -> Renamed {
     let changes = names.changes_from(&GameNames::of(game));
+    let mut done = Renamed { changed: !changes.is_empty(), ..Renamed::default() };
     for (tag, value) in &changes {
         // The six names are valid tag names; only a full set of tags refuses one.
-        let _ = game.set_tag(tag, value);
+        if game.set_tag(tag, value).is_err() {
+            done.refused.push((*tag).to_owned());
+        } else if !value.trim().is_empty() && game.tag(tag).is_none_or(|kept| kept.len() < value.replace(['\r', '\n', '\t'], " ").trim().len()) {
+            done.cut.push((*tag).to_owned());
+        }
     }
-    !changes.is_empty()
+    done
 }
 
 /// A new game starting at the position of move `node` of `game` (the move shown when `None`, or
@@ -589,26 +604,35 @@ mod tests {
         assert!(list.active().is_blank(), "deleting the last game leaves a blank one");
     }
 
+    /// Plan A9-F3 (A4-22): a name cut to the tag's cap is said, not reported as set as given.
+    #[test]
+    fn a_rename_says_what_it_cut() {
+        let mut g = game(&["e2e4"]);
+        let done = rename(&mut g, &GameNames { white: "x".repeat(300), black: "Jianu".into(), ..GameNames::default() });
+        assert_eq!((done.changed, done.cut, done.refused), (true, vec!["White".to_owned()], Vec::<String>::new()));
+        assert_eq!(g.tag("White").map(str::len), Some(pdfcraft_chess::game::MAX_TAG_LEN));
+    }
+
     #[test]
     fn names_come_from_the_tags_and_a_rename_sets_only_what_changes() {
         let mut g = game(&["e2e4"]);
         assert_eq!(GameNames::of(&g), GameNames::default());
         assert_eq!(GameNames::default().display(), None);
         let names = GameNames { white: " Werle ".into(), black: "Jianu".into(), event: "Wijk aan Zee".into(), ..GameNames::default() };
-        assert!(rename(&mut g, &names));
+        assert!(rename(&mut g, &names).changed);
         assert_eq!(GameNames::of(&g).display().as_deref(), Some("Werle–Jianu"));
-        assert!(!rename(&mut g, &names), "the same names change nothing");
+        assert!(!rename(&mut g, &names).changed, "the same names change nothing");
         assert_eq!(names.changes_from(&GameNames::of(&g)), Vec::new());
-        assert!(rename(&mut g, &GameNames { event: "Training".into(), ..GameNames::default() }));
+        assert!(rename(&mut g, &GameNames { event: "Training".into(), ..GameNames::default() }).changed);
         assert_eq!(GameNames::of(&g).display().as_deref(), Some("Training"));
-        assert!(rename(&mut g, &GameNames::default()));
+        assert!(rename(&mut g, &GameNames::default()).changed);
         assert!(g.tags().is_empty(), "empty names remove the tags");
         g.set_tag("White", "?").unwrap();
         assert_eq!(GameNames::of(&g).white, "", "an unknown player is no name");
         // Site, Date and Round go with them, in one rename.
         let placed = GameNames { site: "Wijk aan Zee NED".into(), date: "2025.01.18".into(), round: " 6 ".into(), ..GameNames::default() };
         assert_eq!(placed.changes_from(&GameNames::of(&g)).len(), 3);
-        assert!(rename(&mut g, &placed));
+        assert!(rename(&mut g, &placed).changed);
         assert_eq!((g.tag("Site"), g.tag("Date"), g.tag("Round")), (Some("Wijk aan Zee NED"), Some("2025.01.18"), Some("6")));
         assert_eq!(GameNames::of(&g).display(), None, "they name no game");
         g.set_tag("Date", "????.??.??").unwrap();

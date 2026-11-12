@@ -508,11 +508,8 @@ pub(crate) fn plan_for(game: &Game, request: &Request) -> CapturePlan {
         // In place of the comment there: planned on the game without it, which is otherwise the
         // same game, so the plan stands for this one.
         let mut cleared = game.clone();
-        if before {
-            cleared.set_comment_before(current, "");
-        } else {
-            cleared.set_comment(current, "");
-        }
+        // Clearing a comment cuts nothing.
+        let _ = if before { cleared.set_comment_before(current, "") } else { cleared.set_comment(current, "") };
         let mut plan = capture::plan(&cleared, current, request.mode, text, request.lang);
         plan.base_revision = game.revision();
         return plan;
@@ -601,6 +598,7 @@ pub(crate) fn reason_text(reason: PreviewReason) -> &'static str {
         PreviewReason::Demotes => tl!("A move already there becomes a variation."),
         PreviewReason::NoFit => tl!("No move of the text fits the game here."),
         PreviewReason::TooLong => tl!("The text is too long to capture."),
+        PreviewReason::AlreadyThere => tl!("The comment says that already."),
     }
 }
 
@@ -702,7 +700,11 @@ impl PdfCraftApp {
             return;
         }
         if plan.chosen.is_none() {
-            let why = if matches!(request.mode, CaptureMode::Comment { .. }) {
+            // A comment the comment there already ends with is told apart (plan A9-F3, R2-02).
+            let already = plan.candidates.iter().any(|c| c.reasons.contains(&PreviewReason::AlreadyThere));
+            let why = if already {
+                tl!("The comment says that already.")
+            } else if matches!(request.mode, CaptureMode::Comment { .. }) {
                 tl!("Nothing was captured: there is no text to write.")
             } else {
                 tl!("Nothing was captured: no move of the text fits the game here.")
@@ -732,11 +734,7 @@ impl PdfCraftApp {
                     let old = s.game.comment(node);
                     let joined = if old.is_empty() { rest.clone() } else { format!("{old} {rest}") };
                     // Never cut: a rest too long for the comment stays on the page, and is said.
-                    if joined.len() <= MAX_COMMENT_LEN {
-                        s.game.set_comment(node, &joined);
-                    } else {
-                        rest_kept = false;
-                    }
+                    rest_kept = joined.len() <= MAX_COMMENT_LEN && s.game.set_comment(node, &joined).is_ok();
                 }
                 s.selected = None;
                 s.promotion = None;

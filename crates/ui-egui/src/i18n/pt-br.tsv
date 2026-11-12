@@ -2562,6 +2562,10 @@ chess side	Black	Pretas
 	Previous move (Left arrow)	Lance anterior (seta para a esquerda)
 	Promote to:	Promover a:
 	Reading stopped at {move}: it is not a legal move there.	A leitura parou em {move}: não é um lance legal ali.
+	Only the first 65,536 bytes of a comment are kept.	Só os primeiros 65.536 bytes de um comentário são guardados.
+	The comment says that already.	O comentário já diz isso.
+	Not kept as typed: {tags} (a tag holds at most 256 bytes, and a game 64 tags).	Não guardado como digitado: {tags} (uma etiqueta guarda no máximo 256 bytes, e uma partida 64 etiquetas).
+	Read with changes: {n} (a comment, tag or glyph past its limit cut or dropped, a FEN repaired, or a result ignored).	Lido com mudanças: {n} (comentário, etiqueta ou sinal além do limite cortado ou descartado, FEN consertada ou resultado ignorado).
 	Reading stopped at {move}: more than one legal move there is written so.	A leitura parou em {move}: mais de um lance legal ali se escreve assim.
 	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	A leitura parou em {move}: a partida já tem 10.000 lances, o máximo que uma partida pode ter.
 	Reading stopped at {move}: its variation would nest deeper than 32.	A leitura parou em {move}: a variante passaria de 32 níveis de aninhamento.
@@ -2689,7 +2693,7 @@ chess undo step	Clear drawings	remoção dos desenhos
 	Quit without saving	Sair sem salvar
 	Close without saving	Fechar sem salvar
 	Games read only up to an impossible move: {n}	Partidas lidas só até um lance impossível: {n}
-	The rest of them will not be written.	O resto delas não será gravado.
+	The rest of each is written as a comment at the move where its reading stopped.	O resto de cada uma é gravado como comentário no lance onde a leitura parou.
 	{name}: stopped at {move}	{name}: parou em {move}
 	Save them as they are	Salvar assim mesmo
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	As partidas não podem ser salvas automaticamente: não foi possível bloquear a pasta de dados do aplicativo para esta janela.

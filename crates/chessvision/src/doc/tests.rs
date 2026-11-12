@@ -1630,11 +1630,11 @@ fn a_poor_layer_and_unknown_fonts_are_page_flags() {
 #[test]
 fn deep_brackets_and_long_comments_are_bounded() {
     let deep = format!("1.e4 e5 {} 2.Nf3 {}", "( ".repeat(500), ") ".repeat(500));
-    let long = format!("1.e4 {}", "word ".repeat(2000));
+    let long = format!("1.e4 {}", "word ".repeat(14_000));
     let text = page_text(vec![line(100.0, &deep), line(112.0, &long)]);
     let doc = build_page(&input(0, &text, &[], &[], &[]));
     for g in &doc.games {
-        assert!(g.score.nodes.iter().all(|n| n.comment.chars().count() <= games::MAX_COMMENT_CHARS));
+        assert!(g.score.nodes.iter().all(|n| n.comment.len() <= games::MAX_COMMENT_BYTES));
     }
     assert!(doc.games.iter().any(|g| g.flags.iter().any(|f| f.flag == ReviewFlag::CommentTruncated)));
     let scores: Vec<GameScore> = doc.games.iter().map(|g| g.score.clone()).collect();

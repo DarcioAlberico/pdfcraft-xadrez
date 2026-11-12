@@ -82,7 +82,8 @@ fn a_long_list_is_capped_and_the_rest_kept() {
     // Far more than a comment holds never panics; what is past the cap is cut with the comment.
     let huge = format!("[%cal {}]", vec!["Ge2e4"; 20_000].join(","));
     let mut g = Game::standard();
-    g.set_comment(0, &huge);
+    // What is left of it after the drawings fits or is cut, and says which.
+    let _ = g.set_comment(0, &huge);
     assert_eq!(g.drawings(0), [arrow("e2", "e4", DrawColor::Green)]);
     assert!(g.comment(0).len() <= MAX_COMMENT_LEN);
 }
@@ -102,7 +103,7 @@ fn drawings_on_the_start_and_alone_are_written_as_a_comment() {
     let back = read(&g.pgn());
     assert_eq!(back.drawings(0), g.drawings(0));
     // With the comment before the next move written in the same braces.
-    g.set_comment_before(g.current(), "now");
+    g.set_comment_before(g.current(), "now").unwrap();
     assert_eq!(g.movetext(), "{[%csl Ge4]} 1. e4 {[%cal Re7e5] now} 1... e5");
     read(&g.pgn());
 }
@@ -136,12 +137,12 @@ fn a_comment_typed_with_commands_draws_them() {
     let mut g = Game::standard();
     g.play_san("d4").unwrap();
     let d4 = g.current();
-    g.set_comment(d4, "Center [%csl Gd4]");
+    g.set_comment(d4, "Center [%csl Gd4]").unwrap();
     assert_eq!((g.comment(d4), g.drawings(d4)), ("Center", &[square("d4", DrawColor::Green)][..]));
     // Typing the same again changes nothing.
     let revision = g.revision();
-    g.set_comment(d4, "Center [%csl Gd4]");
-    g.set_comment(d4, "Center");
+    g.set_comment(d4, "Center [%csl Gd4]").unwrap();
+    g.set_comment(d4, "Center").unwrap();
     assert_eq!(g.revision(), revision);
     assert_eq!(g.drawings(d4).len(), 1, "taking the command out of the text leaves the drawing");
 }

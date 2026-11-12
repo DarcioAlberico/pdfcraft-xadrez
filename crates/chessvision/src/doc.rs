@@ -152,7 +152,7 @@ pub enum ReviewFlag {
     /// The game reached [`games::MAX_GAME_NODES`] moves or [`games::MAX_VARIATION_DEPTH`]
     /// nested variations; the rest of the line was not added.
     GameTooLarge,
-    /// A comment reached [`games::MAX_COMMENT_CHARS`]; the PGN comment is cut there (the text in
+    /// A comment reached [`games::MAX_COMMENT_BYTES`]; the PGN comment is cut there (the text in
     /// the blocks is whole).
     CommentTruncated,
     // --- The book's own PGN (plan "Carregar PGN do livro", R2) ---
