@@ -23,6 +23,7 @@ mod drawing;
 mod graft;
 mod header;
 mod line;
+pub mod pgn_scan;
 mod split;
 mod structure;
 
@@ -1483,128 +1484,67 @@ enum Lexed {
     Result(String),
 }
 
-/// Split PGN into its pieces. Move numbers are dropped; `{…}` and `;…` are comments; a line
-/// starting with `%` is skipped.
+/// Split PGN into its pieces, as [`pgn_scan::scan`] reads it. Move numbers are dropped; `{…}` and
+/// `;…` are comments; a line starting with `%` is skipped.
 fn lex(text: &str) -> Vec<Lexed> {
+    use pgn_scan::ScanKind;
     // A byte order mark would turn the first tag into a word (A1-01).
     let text = crate::pgn::without_bom(text);
     let mut out = Vec::new();
-    let mut chars = text.chars().peekable();
-    let mut word = String::new();
-    let mut line_start = true;
-    let flush = |word: &mut String, out: &mut Vec<Lexed>| {
-        let w = std::mem::take(word);
-        if w.is_empty() {
-            return;
-        }
-        if let Some(n) = w.strip_prefix('$') {
-            if let Ok(code) = n.parse::<u16>() {
-                out.push(Lexed::Nag(code));
-            }
-        } else if matches!(w.as_str(), "*" | "1-0" | "0-1" | "1/2-1/2" | "½-½") {
-            out.push(Lexed::Result(if w == "½-½" { "1/2-1/2".to_owned() } else { w }));
-        } else if let Some(code) = crate::nag::nags_from_suffix(&w, true).first().filter(|_| w.chars().all(|c| matches!(c, '!' | '?'))) {
-            // A glyph standing alone (`e4 !?`).
-            out.push(Lexed::Nag(*code));
-        } else if !w.chars().all(|c| c.is_ascii_digit()) {
-            out.push(Lexed::Move(w));
-        }
-    };
-    while let Some(c) = chars.next() {
-        let at_line_start = std::mem::replace(&mut line_start, c == '\n');
-        match c {
-            '[' if at_line_start || (out.is_empty() && word.is_empty()) => {
-                flush(&mut word, &mut out);
-                let mut body = String::new();
-                let mut in_quotes = false;
-                let mut escaped = false;
-                for c in chars.by_ref() {
-                    if c == '\n' {
-                        line_start = true;
-                        break;
-                    }
-                    if in_quotes {
-                        if escaped {
-                            escaped = false;
-                        } else if c == '\\' {
-                            escaped = true;
-                            continue;
-                        } else if c == '"' {
-                            in_quotes = false;
-                            continue;
-                        }
-                        body.push(c);
-                        continue;
-                    }
-                    match c {
-                        '"' => {
-                            in_quotes = true;
-                            body.push('\u{1}');
-                        }
-                        ']' => break,
-                        _ => body.push(c),
-                    }
-                }
-                if let Some((name, value)) = body.split_once('\u{1}') {
-                    out.push(Lexed::Tag(cut(name.trim(), MAX_TAG_LEN).to_owned(), cut(value, MAX_TAG_LEN).to_owned()));
+    for token in pgn_scan::scan(text) {
+        let raw = text.get(token.range).unwrap_or_default();
+        match token.kind {
+            ScanKind::Tag => {
+                if let Some((name, value)) = pgn_scan::tag_parts(raw) {
+                    out.push(Lexed::Tag(cut(name, MAX_TAG_LEN).to_owned(), cut(&pgn_scan::tag_value(value), MAX_TAG_LEN).to_owned()));
                 }
             }
-            '%' if at_line_start => {
-                for c in chars.by_ref() {
-                    if c == '\n' {
-                        line_start = true;
-                        break;
-                    }
+            ScanKind::BraceComment { .. } => {
+                out.push(Lexed::Comment(cut(pgn_scan::brace_body(raw), MAX_COMMENT_LEN.saturating_mul(2)).to_owned()));
+            }
+            ScanKind::LineComment => out.push(Lexed::Comment(cut(raw.get(1..).unwrap_or_default(), MAX_COMMENT_LEN).to_owned())),
+            ScanKind::Escape => {}
+            ScanKind::Open => out.push(Lexed::Open),
+            ScanKind::Close => out.push(Lexed::Close),
+            ScanKind::Nag => {
+                if let Ok(code) = raw.get(1..).unwrap_or_default().parse::<u16>() {
+                    out.push(Lexed::Nag(code));
                 }
             }
-            '{' => {
-                flush(&mut word, &mut out);
-                let mut body = String::new();
-                for c in chars.by_ref() {
-                    if c == '}' {
-                        break;
-                    }
-                    if body.len() < MAX_COMMENT_LEN.saturating_mul(2) {
-                        body.push(c);
-                    }
-                }
-                out.push(Lexed::Comment(body));
-            }
-            ';' => {
-                flush(&mut word, &mut out);
-                let mut body = String::new();
-                for c in chars.by_ref() {
-                    if c == '\n' {
-                        line_start = true;
-                        break;
-                    }
-                    if body.len() < MAX_COMMENT_LEN {
-                        body.push(c);
-                    }
-                }
-                out.push(Lexed::Comment(body));
-            }
-            '(' => {
-                flush(&mut word, &mut out);
-                out.push(Lexed::Open);
-            }
-            ')' => {
-                flush(&mut word, &mut out);
-                out.push(Lexed::Close);
-            }
-            // A move number glued to its move: `1.e4`, `12...Nf6`.
-            '.' if word.chars().all(|c| c.is_ascii_digit()) => word.clear(),
-            '.' => {}
-            c if c.is_whitespace() => flush(&mut word, &mut out),
-            c => {
-                if word.len() < 64 {
-                    word.push(c);
-                }
-            }
+            ScanKind::Result => out.push(Lexed::Result(if raw == "½-½" { "1/2-1/2".to_owned() } else { raw.to_owned() })),
+            ScanKind::Word => lex_word(raw, &mut out),
         }
     }
-    flush(&mut word, &mut out);
     out
+}
+
+/// A word, with the move number glued to it taken off (`1.e4`, `12...Nf6`) and its other dots
+/// dropped: a glyph code, a result, a glyph standing alone (`e4 !?`), a move, or a move number
+/// alone (dropped).
+fn lex_word(raw: &str, out: &mut Vec<Lexed>) {
+    let mut w = String::new();
+    for c in raw.chars() {
+        match c {
+            '.' if w.chars().all(|c| c.is_ascii_digit()) => w.clear(),
+            '.' => {}
+            c if w.len() < 64 => w.push(c),
+            _ => {}
+        }
+    }
+    if w.is_empty() {
+        return;
+    }
+    if let Some(n) = w.strip_prefix('$') {
+        if let Ok(code) = n.parse::<u16>() {
+            out.push(Lexed::Nag(code));
+        }
+    } else if matches!(w.as_str(), "*" | "1-0" | "0-1" | "1/2-1/2" | "½-½") {
+        out.push(Lexed::Result(if w == "½-½" { "1/2-1/2".to_owned() } else { w }));
+    } else if let Some(code) = crate::nag::nags_from_suffix(&w, true).first().filter(|_| w.chars().all(|c| matches!(c, '!' | '?'))) {
+        out.push(Lexed::Nag(*code));
+    } else if !w.chars().all(|c| c.is_ascii_digit()) {
+        out.push(Lexed::Move(w));
+    }
 }
 
 #[cfg(test)]
@@ -1623,6 +1563,23 @@ mod tests {
         assert_eq!(stopped, None);
         assert_eq!(game.start_fen(), "4k3/8/8/8/8/8/8/4K3 w - - 0 1");
         assert_eq!(game.pgn().matches("Ke2").count(), 1);
+    }
+
+    /// Plan A9-F2a (A1-16, sonda p08): two tags on one line, an indented tag, an indented FEN and
+    /// a backslash that escapes nothing are read as written, the game with them.
+    #[test]
+    fn tags_on_one_line_indented_or_with_a_backslash_are_read() {
+        let (g, stopped) = Game::from_pgn("[Event \"A\"] [Site \"B\"]\n\n1. e4 *").unwrap();
+        assert_eq!((g.tag("Event"), g.tag("Site"), g.movetext().as_str(), stopped), (Some("A"), Some("B"), "1. e4", None));
+        let (g, stopped) = Game::from_pgn("[Event \"A\"]\n  [Site \"B\"]\n\n1. e4 *").unwrap();
+        assert_eq!((g.tag("Site"), g.movetext().as_str(), stopped), (Some("B"), "1. e4", None));
+        let (g, stopped) = Game::from_pgn("[Event \"A\"]\n  [FEN \"4k3/8/8/8/8/8/8/4K3 w - - 0 1\"]\n\n1. Ke2 *").unwrap();
+        assert_eq!((g.start_fen().as_str(), g.movetext().as_str(), stopped), ("4k3/8/8/8/8/8/8/4K3 w - - 0 1", "1. Ke2", None));
+        let (g, _) = Game::from_pgn("[Annotator \"C:\\games \\\\ \\\"x\\\"\"]\n\n1. e4 *").unwrap();
+        assert_eq!(g.tag("Annotator"), Some("C:\\games \\ \"x\""));
+        // Written back with the escapes PGN needs, and read back the same.
+        let (back, _) = Game::from_pgn(&g.pgn()).unwrap();
+        assert_eq!(back.tag("Annotator"), g.tag("Annotator"));
     }
 
     fn play(g: &mut Game, moves: &[(&str, &str)]) {
