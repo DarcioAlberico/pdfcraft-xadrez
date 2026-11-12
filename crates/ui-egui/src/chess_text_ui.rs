@@ -121,7 +121,7 @@ impl ChessJob {
             JobKind::Read { .. } => tl!("Reading the page…"),
             JobKind::Game { .. } => tl!("Reading the pages around the game…"),
             JobKind::Export { .. } => tl!("Exporting the chess document…"),
-            JobKind::LinkBook { .. } => tl!("Linking the whole book to its PGN…"),
+            JobKind::LinkBook { .. } => tl!("Aligning the book to the PGN…"),
         }
     }
 }
@@ -219,11 +219,12 @@ fn book_link_section(ui: &mut egui::Ui, t: &Tokens, view: &crate::chess_referenc
     let mut action = None;
     view.summary.as_ref()?;
     if let Some((done, of)) = view.progress {
-        let said = crate::i18n::fmt(tl!("Linking the whole book: page {done} of {of}"), &[("done", &done.to_string()), ("of", &of.to_string())]);
+        let said =
+            crate::i18n::fmt(tl!("Aligning the book to the PGN: page {done} of {of}"), &[("done", &done.to_string()), ("of", &of.to_string())]);
         ui.label(egui::RichText::new(said).small().color(t.text_muted));
         return None;
     }
-    let label = if view.link.is_some() { tl!("Link the whole book again") } else { tl!("Link the whole book") };
+    let label = if view.link.is_some() { tl!("Align again") } else { tl!("Align the book to the PGN") };
     if ui
         .button(label)
         .on_hover_text(tl!(
@@ -345,7 +346,7 @@ fn figurines(ctx: &egui::Context) -> Figurines {
 /// The Export… menu (`positions`: which diagrams the PGN gives a game of their own; `source`:
 /// where it takes its games from, when the document keeps a book's PGN).
 pub fn export_menu(ui: &mut egui::Ui, positions: PgnPositions, source: Option<crate::chess_export_ui::PgnSource>) -> Option<TextAction> {
-    ui.menu_button(tl!("Export…"), |ui| crate::chess_export_ui::items(ui, positions, source)).inner.flatten()
+    ui.menu_button(tl!("Export book…"), |ui| crate::chess_export_ui::items(ui, positions, source)).inner.flatten()
 }
 
 /// The Text tab for page `page` of document `id`, whose book origin is `origin`.

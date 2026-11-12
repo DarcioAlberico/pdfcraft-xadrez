@@ -87,7 +87,7 @@ fn the_board_panels_menu_and_the_control_channel_pick_a_theme() {
 fn click_square(h: &mut Harness<'static, PdfCraftApp>, name: &str) {
     let b = name.as_bytes();
     let (file, rank) = (f32::from(b[0] - b'a'), f32::from(b[1] - b'1'));
-    let board = h.get_by_label_contains("Board: ").rect();
+    let board = h.get_by_label_contains("Board, ").rect();
     let at = board.min + egui::vec2(board.width() * (file + 0.5) / 8.0, board.height() * (7.5 - rank) / 8.0);
     h.hover_at(at);
     h.run_steps(1);
@@ -102,12 +102,12 @@ fn click_square(h: &mut Harness<'static, PdfCraftApp>, name: &str) {
 #[test]
 fn coordinates_beside_the_board_and_a_frame_keep_clicks_on_their_squares() {
     let mut h = harness("", false);
-    let plain = h.get_by_label_contains("Board: ").rect();
+    let plain = h.get_by_label_contains("Board, ").rect();
     for (key, value) in [("board-coordinates", "outside"), ("board-frame", "double"), ("board-squares", "fill"), ("board-turn-dot", "on")] {
         h.state_mut().set_option(key, value).unwrap();
     }
     h.run_steps(3);
-    let framed = h.get_by_label_contains("Board: ").rect();
+    let framed = h.get_by_label_contains("Board, ").rect();
     assert!(framed.width() < plain.width() - 10.0 && framed.left() > plain.left() + 10.0, "{plain:?} {framed:?}");
     assert!((framed.width() - framed.height()).abs() < 0.5, "still square: {framed:?}");
     click_square(&mut h, "e2");
@@ -151,7 +151,7 @@ fn the_last_move_is_marked_under_the_piece_as_the_look_says() {
     // A white pawn on a dark square, so that a tint over it shows.
     h.state_mut().chess.board_mut().play_uci_line(&["d2d4".into()]);
     h.run_steps(3);
-    let board = h.get_by_label_contains("Board: ").rect();
+    let board = h.get_by_label_contains("Board, ").rect();
     let cell = board.width() / 8.0;
     let square = |file: f32, rank: f32| egui::Rect::from_min_size(board.min + egui::vec2(cell * file, cell * (7.0 - rank)), egui::vec2(cell, cell));
     let (d4, d3) = (square(3.0, 3.0), square(3.0, 2.0));
@@ -244,7 +244,7 @@ fn textured_themes_draw_the_board() {
     for id in ["wood", "marble", "paper", "book"] {
         h.state_mut().set_option("board-theme", id).unwrap();
         h.run_steps(3);
-        assert!(h.query_by_label_contains("Board: ").is_some(), "{id}: the board is drawn");
+        assert!(h.query_by_label_contains("Board, ").is_some(), "{id}: the board is drawn");
         assert!(h.query_by_label_contains("The board couldn't be drawn").is_none(), "{id}");
         shot(&mut h, &format!("theme-{id}.png"));
     }
@@ -392,7 +392,7 @@ fn drag(h: &mut Harness<'static, PdfCraftApp>, from: egui::Pos2, to: egui::Pos2)
 /// The docking split the board's column is dragged by: the "Resize panels" handle nearest the
 /// board on its left.
 fn board_split(h: &Harness<'static, PdfCraftApp>) -> egui::Rect {
-    let board = h.get_by_label_contains("Board: ").rect();
+    let board = h.get_by_label_contains("Board, ").rect();
     h.get_all_by_label("Resize panels")
         .map(|n| n.rect())
         .filter(|r| r.height() > r.width() && r.center().x < board.min.x)
@@ -405,11 +405,11 @@ fn board_split(h: &Harness<'static, PdfCraftApp>) -> egui::Rect {
 #[test]
 fn the_board_panel_is_as_wide_as_it_is_dragged() {
     let mut h = harness("", false);
-    let narrow = h.get_by_label_contains("Board: ").rect();
+    let narrow = h.get_by_label_contains("Board, ").rect();
     assert!(narrow.width() < 400.0, "{narrow:?}");
     let split = board_split(&h);
     drag(&mut h, split.center(), split.center() - egui::vec2(600.0, 0.0));
-    let board = h.get_by_label_contains("Board: ").rect();
+    let board = h.get_by_label_contains("Board, ").rect();
     assert!(board.width() > 800.0, "docked: {board:?}");
     assert!((board.width() - board.height()).abs() < 1.0, "square: {board:?}");
     shot(&mut h, "board-wide-docked.png");
@@ -428,7 +428,7 @@ fn the_board_panel_is_as_wide_as_it_is_dragged() {
     let edge = panel(&h).left_center() + egui::vec2(2.0, 0.0);
     drag(&mut h, edge, edge - egui::vec2(600.0, 0.0));
     assert!(panel(&h).width() > 860.0, "Read mode: {:?}", panel(&h));
-    assert!(h.get_by_label_contains("Board: ").rect().width() > 760.0);
+    assert!(h.get_by_label_contains("Board, ").rect().width() > 760.0);
     let edge = panel(&h).left_center() + egui::vec2(2.0, 0.0);
     drag(&mut h, edge, egui::pos2(5.0, edge.y));
     assert!(panel(&h).min.x >= 159.0, "the page's least width: {:?}", panel(&h));

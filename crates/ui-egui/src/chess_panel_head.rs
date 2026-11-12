@@ -1,6 +1,6 @@
 //! Chess ▸ Diagrams: the panel's header (plan A8, P2a2).
 //!
-//! One 30-point row: Detect diagrams ▾ (the whole book, or this page), and on the right Export…
+//! One 30-point row: Detect diagrams ▾ (the whole book, or this page), and on the right Export book…
 //! (`file-output`, the menu of `chess_export_ui`), the chess board (`layout-grid`) and ⋯ (Chess models…). While a scan runs, a
 //! 4-point progress bar and "Detecting… page 75 of 703" (its width kept for the longest number, so
 //! the text does not jump) with × to stop it, the diagrams found so far staying. When a scan has
@@ -39,11 +39,13 @@ pub(crate) fn header(
                 action = Some(PanelAction::ScanAll);
             }
             egui::Popup::menu(&more).show(|ui| {
+                // Each item closes the menu, whatever clicked it (plan A9-I15, finding A6-18).
                 let n = u64::try_from(pages).unwrap_or(u64::MAX);
-                if ui.button(crate::i18n::trn(crate::i18n::current(), n, "In the whole book ({n} page)", "In the whole book ({n} pages)")).clicked() {
+                let whole = crate::i18n::trn(crate::i18n::current(), n, "In the whole book ({n} page)", "In the whole book ({n} pages)");
+                if widgets::menu_entry(ui, true, egui::Button::new(whole)).clicked() {
                     action = Some(PanelAction::ScanAll);
                 }
-                if ui.button(tl!("On this page")).clicked() {
+                if widgets::menu_entry(ui, true, egui::Button::new(tl!("On this page"))).clicked() {
                     action = Some(PanelAction::ScanPage);
                 }
             });
@@ -55,7 +57,7 @@ pub(crate) fn header(
         if room > 0.0 {
             ui.add_space(room);
         }
-        let export = icons::button(ui, "file-output", BUTTON, false, tl!("Export…"));
+        let export = icons::button(ui, "file-output", BUTTON, false, tl!("Export book…"));
         egui::Popup::menu(&export).show(|ui| {
             if let Some(a) = crate::chess_export_ui::items(ui, positions, source) {
                 action = Some(PanelAction::Text(a));
@@ -66,7 +68,9 @@ pub(crate) fn header(
         }
         let more = icons::button(ui, "ellipsis", BUTTON, false, tl!("More chess actions"));
         egui::Popup::menu(&more).show(|ui| {
-            if ui.button(tl!("Chess models…")).on_hover_text(tl!("Choose the piece and glyph models that read diagrams and chess text.")).clicked()
+            if widgets::menu_entry(ui, true, egui::Button::new(tl!("Chess models…")))
+                .on_hover_text(tl!("Choose the piece and glyph models that read diagrams and chess text."))
+                .clicked()
             {
                 action = Some(PanelAction::Models);
             }
@@ -81,10 +85,10 @@ pub(crate) fn header(
             let font = egui::TextStyle::Small.resolve(ui.style());
             let width = widgets::text_width(ui, &page(total), &font);
             let text = page(done.saturating_add(1).min(total));
-            ui.allocate_ui_with_layout(vec2(width, 22.0), Layout::left_to_right(Align::Center), |ui| {
+            ui.allocate_ui_with_layout(vec2(width, widgets::MIN_TARGET), Layout::left_to_right(Align::Center), |ui| {
                 ui.label(RichText::new(text).small().color(t.text_muted));
             });
-            if icons::button(ui, "x", 22.0, false, tl!("Stop (those found stay)")).clicked() {
+            if icons::button(ui, "x", widgets::MIN_TARGET, false, tl!("Stop (those found stay)")).clicked() {
                 action = Some(PanelAction::Cancel);
             }
         });
@@ -149,9 +153,12 @@ mod tests {
         });
         h.run();
         h.get_by_label("Detecting… page 75 of 703");
-        for name in ["Detect diagrams", "Where to detect", "Export…", "Chess board", "More chess actions"] {
+        for name in ["Detect diagrams", "Where to detect", "Export book…", "Chess board", "More chess actions"] {
             h.get_by_label(name);
         }
+        // At least 24 × 24 points, as every control the pointer clicks (plan A9-I15, R4-06).
+        let stop = h.get_by_label("Stop (those found stay)").rect();
+        assert!(stop.width() >= widgets::MIN_TARGET && stop.height() >= widgets::MIN_TARGET, "{stop:?}");
         h.get_by_label("Stop (those found stay)").click();
         h.run();
         assert_eq!(asked.take(), Some(PanelAction::Cancel));

@@ -2497,6 +2497,8 @@ animation effects	Off	Kapalı
 	Black pawn	Siyah piyon
 	White	Beyaz
 	Board: {fen}	Tahta: {fen}
+	Board, {state}, move {n}	Tahta, {state}, {n}. hamle
+	Board, {state}	Tahta, {state}
 	Click a square to put the chosen piece there; click it again to empty it.	Seçilen taşı oraya koymak için bir kareye tıklayın; boşaltmak için yeniden tıklayın.
 	Close the editor	Düzenleyiciyi kapat
 	Draw this position over the diagram on the page (one undo step).	Bu konumu sayfadaki diyagramın üzerine çiz (tek geri alma adımı).
@@ -2509,6 +2511,7 @@ animation effects	Off	Kapalı
 	Replace on the page	Sayfada değiştir
 	The board couldn't be drawn: {e}	Tahta çizilemedi: {e}
 	To move:	Hamle sırası:
+	To move	Hamle sırası
 	Move number:	Hamle numarası:
 	The move the diagram stands at: 35 with Black to move is 35…	Diyagramın bulunduğu hamle: sıra siyahtayken 35 şöyle yazılır: 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	Oyunun başladığı hamle, okunamadığında düzeltmek için: sıra siyahtayken 35 şöyle yazılır: 35…
@@ -2701,14 +2704,13 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Demote a line	hat düşürme
 	Delete a variation	varyant silme
 # Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
-	Dock	Yerleştir
 	The chess board couldn't open in its own window, so it is back in its panel.	Satranç tahtası kendi penceresinde açılamadı, bu yüzden paneline geri döndü.
 	The chess board couldn't open in its own window, so it stays in its panel.	Satranç tahtası kendi penceresinde açılamadı, bu yüzden panelinde kalıyor.
 # Chess ▸ PGN toolbar: T13b, the whole chess panel in its own window (the rail's tool and the command, the window's tab strip and Dock button, the Inspector's note while it is out).
 	Chess in its own window	Satranç kendi penceresinde
 	Board	Tahta
 	The chess panel is in its own window.	Satranç paneli kendi penceresinde.
-	Bring it back	Geri getir
+	Back to the main window	Ana pencereye geri dön
 	Put the board and the chess panel back in the main window	Tahtayı ve satranç panelini ana pencereye geri koy
 
 # Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
@@ -2919,7 +2921,8 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Variation of {move}	{move} varyantı
 	moves: {n}	hamle: {n}
 # Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
-	Fit at	Yerleştir
+	Insert in	Ekleneceği yer
+	Piece letters	Taş harfleri
 	Apply and keep the rest as a comment	Uygula ve kalanı yorum olarak sakla
 	Unreadable move	Okunamayan hamle
 	Past the capture's limits	Yakalama sınırlarının dışında
@@ -3193,12 +3196,15 @@ chess undo step	Clear drawings	çizimleri temizleme
 	More ways to confirm	Onaylamanın diğer yolları
 	Confirm and next	Onayla ve sonraki
 	Only confirm	Yalnızca onayla
+	Confirm	Onayla
+	Confirmed	Onaylandı
+	This position is kept for the diagram. Change it to confirm again.	Bu konum diyagram için saklandı. Yeniden onaylamak için değiştirin.
 	Keep this position for the diagram, without changing the PDF.	Bu konumu PDF'yi değiştirmeden diyagram için sakla.
 	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	Bu konumu PDF'yi değiştirmeden diyagram için sakla ve gözden geçirilecek sonrakini aç (Ctrl+Enter).
 	More actions	Diğer eylemler
 	Forget the correction	Düzeltmeyi unut
 	Show what was read again; the PDF is not changed.	Okunanı yeniden göster; PDF değişmez.
-	Diagram board: {fen}	Diyagram tahtası: {fen}
+	Diagram board, page {p}, diagram {n}	Diyagram tahtası, sayfa {p}, diyagram {n}
 	Classic diagram editor	Klasik diyagram düzenleyici
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Diyagramları, Diyagram sekmesinden önceki gibi Diyagramlar panelinin içinde düzenle. Bu seçenek ileriki bir sürümde kaldırılacak.
 # Plan A8 P3b3: drafts and the question about them.
@@ -3253,6 +3259,7 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Page {p}: {done}	Sayfa {p}: {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} diyagram kontrol edildi
 	Export chess book	Satranç kitabını dışa aktar
+	Export book…	Kitabı dışa aktar…
 	PGN — games	PGN — oyunlar
 	EPUB — e-book	EPUB — e-kitap
 	HTML — web page	HTML — web sayfası
@@ -3342,6 +3349,14 @@ castling	long	uzun
 	The book's PGN plays this move from another position: check it.	Kitabın PGN'i bu hamleyi başka bir konumdan oynuyor: kontrol edin.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	Bu sayfada kitabın PGN'i: {confirmed} doğrulandı, {recovered} PGN'den okundu, {conflict} çelişkili.
 	Confirmed by the PGN	PGN ile doğrulandı
+	All ({n})	Tümü ({n})
+	Read ({n})	Okunan ({n})
+	To review ({n})	Gözden geçirilecek ({n})
+	Not read ({n})	Okunmayan ({n})
+	With an error ({n})	Hatalı ({n})
+	Verified ({n})	Doğrulanan ({n})
+	Corrected ({n})	Düzeltilen ({n})
+	Confirmed by the PGN ({n})	PGN ile doğrulanan ({n})
 	The book's PGN has this position, so it needs no review.	Kitabın PGN'inde bu konum var, bu yüzden incelenmesi gerekmiyor.
 	PGN games from	PGN oyunlarının kaynağı
 	The book's PGN, with the book's text	Kitabın PGN'i, kitabın metniyle
@@ -3355,10 +3370,10 @@ castling	long	uzun
 	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	Bu PDF'nin yanında aynı adlı bir PGN var: kitabın PGN'i olarak saklayın.
 	Double-click to open the book's PGN game here.	Kitabın PGN'indeki oyunu burada açmak için çift tıklayın.
 	Open the book's PGN game here	Kitabın PGN oyununu burada aç
-	Linking the whole book to its PGN…	Kitabın tamamı PGN'ine bağlanıyor…
-	Linking the whole book: page {done} of {of}	Kitabın tamamı bağlanıyor: sayfa {done} / {of}
-	Link the whole book again	Kitabın tamamını yeniden bağla
-	Link the whole book	Kitabın tamamını bağla
+	Aligning the book to the PGN…	Kitap PGN ile hizalanıyor…
+	Aligning the book to the PGN: page {done} of {of}	Kitap PGN ile hizalanıyor: sayfa {done} / {of}
+	Align again	Yeniden hizala
+	Align the book to the PGN	Kitabı PGN ile hizala
 	Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book.	Her sayfayı okur ve kitabın PGN'ine bağlar: kaç hamleyi doğruladığını, PGN'den okuduğunu ve çelişkili bulduğunu ve her oyunun başladığı sayfayı gösterir. Kitabı dışa aktarmak kadar sürer.
 	Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages.	Kitabın tamamı: {moves} hamleden {linked} tanesi bağlandı ({recovered} PGN'den okundu), {conflict} çelişkili, {all} sayfadan {pages} sayfada.
 	Games of the book's PGN ({n})	Kitabın PGN oyunları ({n})

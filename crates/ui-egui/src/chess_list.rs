@@ -187,7 +187,12 @@ pub(crate) fn list(
 ) -> Option<PanelAction> {
     let mut action = None;
     chips(ui, t, list, results, page_now);
-    ui.add(crate::widgets::checkbox(&mut list.follow, tl!("Follow the page"))).on_hover_text(tl!("Keep the page on screen at the top of the list."));
+    // As tall as every control the pointer clicks (plan A9-I15, finding R4-06).
+    ui.scope(|ui| {
+        ui.spacing_mut().interact_size.y = crate::widgets::MIN_TARGET;
+        ui.add(crate::widgets::checkbox(&mut list.follow, tl!("Follow the page")))
+            .on_hover_text(tl!("Keep the page on screen at the top of the list."));
+    });
     ui.add_space(4.0);
 
     let items = items(list, results, page_now);
@@ -305,12 +310,15 @@ fn chips(ui: &mut egui::Ui, t: &Tokens, list: &mut ListState, results: &ChessRes
     let (counts, all) = counts(list, results, page_now);
     ui.horizontal_wrapped(|ui| {
         ui.spacing_mut().item_spacing = vec2(4.0, 4.0);
-        if chip(ui, t, None, &format!("{} {all}", tl!("All")), list.filter.is_none()).clicked() {
+        // Named as groups of diagrams, with their count: All (999), Read (54) (plan A9-I15,
+        // finding A6-16).
+        let all = crate::i18n::fmt(tl!("All ({n})"), &[("n", &all.to_string())]);
+        if chip(ui, t, None, &all, list.filter.is_none()).clicked() {
             list.filter = None;
         }
         for (state, n) in STATES.into_iter().zip(counts) {
             let on = list.filter == Some(state);
-            if (n > 0 || on) && chip(ui, t, Some(state), &format!("{} {n}", state.name()), on).on_hover_text(state.hint()).clicked() {
+            if (n > 0 || on) && chip(ui, t, Some(state), &state.filter_name(n), on).on_hover_text(state.hint()).clicked() {
                 list.filter = if on { None } else { Some(state) };
             }
         }
@@ -365,8 +373,7 @@ fn page_header(ui: &mut egui::Ui, t: &Tokens, rect: Rect, page: usize, info: &Do
     crate::widgets::focus_ring(ui, &resp, r, 4);
     let mut action = None;
     resp.context_menu(|ui| {
-        if ui
-            .button(tl!("Mark the page as checked"))
+        if crate::widgets::menu_entry(ui, true, egui::Button::new(tl!("Mark the page as checked")))
             .on_hover_text(tl!("Keep every diagram read with confidence on this page as checked; those to review are left for you."))
             .clicked()
         {
@@ -485,24 +492,25 @@ fn menu(
     fen: Option<&str>,
     action: &mut Option<PanelAction>,
 ) {
-    if ui.add_enabled(position.is_some(), egui::Button::new(tl!("Open on the board"))).clicked() {
+    // Each item closes the menu, whatever clicked it (plan A9-I15, finding A6-18).
+    use crate::widgets::menu_entry;
+    if menu_entry(ui, position.is_some(), egui::Button::new(tl!("Open on the board"))).clicked() {
         *action = Some(PanelAction::OpenBoard(page, index));
     }
     let icon = crate::icons::image("gauge", 14.0, crate::theme::Tokens::get(ui.ctx()).icon);
-    if ui
-        .add_enabled(position.is_some(), egui::Button::image_and_text(icon, tl!("Analyze")))
+    if menu_entry(ui, position.is_some(), egui::Button::image_and_text(icon, tl!("Analyze")))
         .on_hover_text(tl!("Open on the board with the engine analysing it"))
         .clicked()
     {
         *action = Some(PanelAction::Analyze(page, index));
     }
-    if ui.add_enabled(fen.is_some(), egui::Button::new(tl!("Copy FEN"))).on_hover_text(tl!("Position code other chess programs accept.")).clicked()
+    if menu_entry(ui, fen.is_some(), egui::Button::new(tl!("Copy FEN"))).on_hover_text(tl!("Position code other chess programs accept.")).clicked()
         && let Some(fen) = fen
     {
         *action = Some(PanelAction::CopyFen(fen.to_owned()));
     }
     if let Some(url) = position.and_then(pdfcraft_engine::chess::lichess_url)
-        && ui.button(tl!("Open in lichess")).on_hover_text(&url).clicked()
+        && menu_entry(ui, true, egui::Button::new(tl!("Open in lichess"))).on_hover_text(&url).clicked()
     {
         *action = Some(PanelAction::OpenLichess(url));
     }
