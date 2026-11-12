@@ -2798,6 +2798,9 @@ chess side	Black	Juodieji
 	Previous move (Left arrow)	Ankstesnis ėjimas (rodyklė kairėn)
 	Promote to:	Paversti į:
 	Reading stopped at {move}: it is not a legal move there.	Skaitymas sustojo ties {move}: ten tai nėra teisėtas ėjimas.
+	Reading stopped at {move}: more than one legal move there is written so.	Skaitymas sustojo ties {move}: ten taip užrašomas daugiau nei vienas teisėtas ėjimas.
+	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	Skaitymas sustojo ties {move}: partijoje jau 10 000 ėjimų – tai daugiausia.
+	Reading stopped at {move}: its variation would nest deeper than 32.	Skaitymas sustojo ties {move}: variantas būtų įdėtas giliau nei 32 lygiai.
 	Show the analysis board. Double-click a diagram on the page to load it there.	Rodyti analizės lentą. Dukart spustelėkite diagramą puslapyje, kad ją ten įkeltumėte.
 	Show this diagram on the page	Rodyti šią diagramą puslapyje
 	Stalemate	Patas

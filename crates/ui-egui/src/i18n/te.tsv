@@ -2452,6 +2452,9 @@ animation effects	Off	ఆఫ్
 	Previous move (Left arrow)	మునుపటి ఎత్తు (ఎడమ బాణం)
 	Promote to:	పదోన్నతి:
 	Reading stopped at {move}: it is not a legal move there.	{move} వద్ద చదవడం ఆగింది: అక్కడ అది చెల్లే ఎత్తు కాదు.
+	Reading stopped at {move}: more than one legal move there is written so.	{move} వద్ద చదవడం ఆగింది: అక్కడ ఇలా రాసే చెల్లే ఎత్తులు ఒకటి కంటే ఎక్కువ ఉన్నాయి.
+	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	{move} వద్ద చదవడం ఆగింది: ఆటలో ఇప్పటికే 10,000 ఎత్తులు ఉన్నాయి, అదే గరిష్ఠం.
+	Reading stopped at {move}: its variation would nest deeper than 32.	{move} వద్ద చదవడం ఆగింది: వేరియేషన్ 32 స్థాయిల కంటే లోతుగా గూడు కడుతుంది.
 	Show the analysis board. Double-click a diagram on the page to load it there.	విశ్లేషణ బోర్డును చూపు. పేజీలోని డయాగ్రామ్‌ను అక్కడ లోడ్ చేయడానికి దానిపై డబుల్-క్లిక్ చేయండి.
 	Show this diagram on the page	ఈ డయాగ్రామ్‌ను పేజీలో చూపు
 	Stalemate	స్టేల్‌మేట్

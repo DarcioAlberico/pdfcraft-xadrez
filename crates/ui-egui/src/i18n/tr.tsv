@@ -2541,6 +2541,9 @@ animation effects	Off	Kapalı
 	Previous move (Left arrow)	Önceki hamle (sol ok)
 	Promote to:	Terfi:
 	Reading stopped at {move}: it is not a legal move there.	Okuma {move} hamlesinde durdu: orada geçerli bir hamle değil.
+	Reading stopped at {move}: more than one legal move there is written so.	Okuma {move} hamlesinde durdu: orada birden fazla geçerli hamle böyle yazılıyor.
+	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	Okuma {move} hamlesinde durdu: oyunda zaten 10.000 hamle var, en fazla bu kadar olabilir.
+	Reading stopped at {move}: its variation would nest deeper than 32.	Okuma {move} hamlesinde durdu: varyant 32 düzeyden daha derine iç içe geçerdi.
 	Show the analysis board. Double-click a diagram on the page to load it there.	Analiz tahtasını göster. Yüklemek için sayfadaki bir diyagrama çift tıklayın.
 	Show this diagram on the page	Bu diyagramı sayfada göster
 	Stalemate	Pat

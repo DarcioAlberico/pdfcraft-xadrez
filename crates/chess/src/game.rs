@@ -23,6 +23,7 @@ mod drawing;
 mod graft;
 mod header;
 mod line;
+mod pgn_read;
 pub mod pgn_scan;
 mod split;
 mod structure;
@@ -63,17 +64,58 @@ pub const MAX_PGN_WARNINGS: usize = 64;
 pub struct PgnReport {
     /// The first move that could not be played: its line ends there.
     pub stopped: Option<String>,
-    /// The variations kept as comments, in the order read, at most [`MAX_PGN_WARNINGS`].
+    /// Why it could not be played (plan A9-F2b, A1-15: a limit is not an illegal move).
+    pub stop_reason: Option<PgnStopReason>,
+    /// What the reading noted, in the order read, at most [`MAX_PGN_WARNINGS`].
     pub warnings: Vec<PgnWarning>,
 }
 
-/// Why a variation was kept as a comment.
+/// Why reading a PGN line stopped at a move ([`PgnReport::stopped`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum PgnStopReason {
+    /// No legal move there is written so (or the word is no move at all).
+    Illegal,
+    /// More than one legal move there is written so.
+    Ambiguous,
+    /// The game holds [`MAX_NODES`] moves already.
+    TooLong,
+    /// The move would nest a variation deeper than [`MAX_DEPTH`].
+    TooDeep,
+}
+
+impl PgnStopReason {
+    /// The reason's name in the tools' replies (`pgn_stop_reason`).
+    pub fn name(self) -> &'static str {
+        match self {
+            PgnStopReason::Illegal => "illegal",
+            PgnStopReason::Ambiguous => "ambiguous",
+            PgnStopReason::TooLong => "too_long",
+            PgnStopReason::TooDeep => "too_deep",
+        }
+    }
+
+    /// The reason a graft stop stands for.
+    fn from_graft(reason: GraftStopReason) -> PgnStopReason {
+        match reason {
+            GraftStopReason::Ambiguous => PgnStopReason::Ambiguous,
+            GraftStopReason::TooLong => PgnStopReason::TooLong,
+            GraftStopReason::TooDeep => PgnStopReason::TooDeep,
+            GraftStopReason::Illegal | GraftStopReason::Unreadable | GraftStopReason::NullMove | GraftStopReason::NoAnchor => PgnStopReason::Illegal,
+        }
+    }
+}
+
+/// What reading a PGN noted about a piece of it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PgnWarningKind {
-    /// No move stood before it for it to replace.
+    /// A variation kept as a comment: no move stood before it for it to replace.
     OrphanVariation,
-    /// It was nested deeper than [`MAX_DEPTH`]: the levels above it were read.
+    /// A variation kept as a comment: it was nested deeper than [`MAX_DEPTH`] (the levels above
+    /// it were read).
     TooDeep,
+    /// A move or glyph written as books print it rather than as PGN writes it, read so: `e8Q`,
+    /// `a8=q`, `Nf3±`, `+-` alone, `e.p.` after a capture (A1-09).
+    NonStandard,
 }
 
 impl PgnWarningKind {
@@ -82,12 +124,14 @@ impl PgnWarningKind {
         match self {
             PgnWarningKind::OrphanVariation => "orphan_variation",
             PgnWarningKind::TooDeep => "too_deep",
+            PgnWarningKind::NonStandard => "non_standard",
         }
     }
 }
 
-/// A variation kept as a comment, and the move it stood after (0: the start), whose comment, or
-/// whose variation's first move's comment, holds its text.
+/// What a reading noted, and the move it is on (0: the start): for a variation kept as a comment,
+/// the move whose comment (or comment-before) holds its text; for a move or glyph written as
+/// books print it, that move.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PgnWarning {
     pub kind: PgnWarningKind,
@@ -1096,235 +1140,22 @@ impl Game {
     }
 
     /// Read a PGN's first game: its tags (the `FEN` tag's position, the standard start without
-    /// one), its moves with their variations, comments and annotation glyphs. Move numbers and
-    /// the result are skipped. A move that is not legal ends its line (the variation it is in, or
-    /// the main line); the first such move is returned with the game. The game is shown at the
-    /// end of its main line. [`Game::from_pgn_report`] also says what was kept as a comment.
+    /// one), its moves with their variations, comments and annotation glyphs. Move numbers are
+    /// skipped. A move that can't be played ends its line (the variation it is in, or the main
+    /// line); the first such move is returned with the game. The game is shown at the end of its
+    /// main line. [`Game::from_pgn_report`] also says why it stopped and what was noted.
     pub fn from_pgn(text: &str) -> Result<(Game, Option<String>), GameError> {
         Game::from_pgn_report(text).map(|(game, report)| (game, report.stopped))
     }
 
-    /// [`Game::from_pgn`], and what the reading noted ([`PgnReport`]). A variation with no move
-    /// before it for it to replace (`((…))`, or one before the first move), or nested deeper than
-    /// [`MAX_DEPTH`], is not dropped: its text becomes a comment where it stood, and a warning
-    /// says so (plan A8 V4).
+    /// [`Game::from_pgn`], and what the reading noted ([`PgnReport`]), in three steps
+    /// (`pgn_read`: scan, parse, build; plan A9-F2b). A variation with no move before it for it
+    /// to replace (`((…))`, or one before the first move), or nested deeper than [`MAX_DEPTH`],
+    /// is not dropped: its text becomes a comment where it stood, and a warning says so (plan A8
+    /// V4). A variation never takes the place of the line it is a variation of (A1-03), and a
+    /// comment between `)` and the next move is that move's comment-before (A1-06).
     pub fn from_pgn_report(text: &str) -> Result<(Game, PgnReport), GameError> {
-        if text.len() > MAX_PGN_LEN {
-            return Err(GameError::PgnTooLong);
-        }
-        let lexed = lex(text);
-        let mut tags = Vec::new();
-        for t in &lexed {
-            match t {
-                Lexed::Tag(name, value) if tags.len() < MAX_TAGS => tags.push((name.clone(), value.clone())),
-                Lexed::Tag(..) => {}
-                _ => break,
-            }
-        }
-        let fen = tags.iter().find(|(n, _)| n == "FEN").map(|(_, v): &(String, String)| v.clone());
-        let mut game = match fen {
-            Some(fen) => Game::from_fen(&fen)?,
-            None => Game::standard(),
-        };
-        for (name, value) in &tags {
-            // The placeholders PGN writes for unknown values are no values. Bad names are
-            // skipped, not fatal: the moves are what matters.
-            if !matches!(value.as_str(), "?" | "????.??.??" | "*") {
-                let _ = game.set_tag(name, value);
-            }
-        }
-        let mut stopped: Option<String> = None;
-        // The move the next one is played after, and the last move played (for comments and
-        // glyphs), saved at each `(`.
-        let (mut cursor, mut last): (NodeId, Option<NodeId>) = (0, None);
-        let mut stack: Vec<(NodeId, Option<NodeId>)> = Vec::new();
-        // The nesting at which a line was cut by an illegal move: skip until it closes.
-        let mut dead: Option<usize> = None;
-        // A comment that opens a variation (`({an idea} 1. d4)`): it is the comment before the
-        // variation's first move, so it waits for that move rather than going to the line's.
-        let mut pending: Option<String> = None;
-        let mut started = false;
-        // A variation being kept as text ([`Kept`]), and what was kept so.
-        let mut kept: Option<Kept> = None;
-        let mut warnings: Vec<PgnWarning> = Vec::new();
-        for t in lexed.into_iter().skip(tags.len()) {
-            if let Some(k) = kept.as_mut() {
-                match &t {
-                    Lexed::Open => {
-                        stack.push((cursor, last));
-                        k.push("(");
-                        continue;
-                    }
-                    Lexed::Close => {
-                        if let Some((c, l)) = stack.pop() {
-                            (cursor, last) = (c, l);
-                        }
-                        k.push(")");
-                        if stack.len() >= k.level {
-                            continue;
-                        }
-                    }
-                    // The next game: the variation was never closed.
-                    Lexed::Tag(..) => {}
-                    Lexed::Move(word) | Lexed::Result(word) => {
-                        k.push(word);
-                        continue;
-                    }
-                    Lexed::Comment(text) => {
-                        k.push(text);
-                        continue;
-                    }
-                    Lexed::Nag(code) => {
-                        k.push(&format!("${code}"));
-                        continue;
-                    }
-                }
-                if let Some(k) = kept.take() {
-                    while stack.len() >= k.level {
-                        if let Some((c, l)) = stack.pop() {
-                            (cursor, last) = (c, l);
-                        }
-                    }
-                    let at = last.unwrap_or(cursor);
-                    keep_comment(&mut game, &mut pending, !stack.is_empty(), last, cursor, k.text);
-                    if warnings.len() < MAX_PGN_WARNINGS {
-                        warnings.push(PgnWarning { kind: k.kind, at });
-                    }
-                }
-                if matches!(t, Lexed::Close) {
-                    continue;
-                }
-            }
-            match t {
-                Lexed::Tag(..) if started => break, // the next game
-                Lexed::Tag(..) => {}
-                Lexed::Result(r) if stack.is_empty() && started => {
-                    if game.tag("Result").is_none() && r != "*" {
-                        let _ = game.set_tag("Result", &r);
-                    }
-                    break;
-                }
-                Lexed::Result(_) => {}
-                Lexed::Open => {
-                    let saved = (cursor, last);
-                    if dead.is_none() {
-                        match last {
-                            // A variation replaces the move before it.
-                            Some(l) if stack.len() < MAX_DEPTH => cursor = game.node(l).parent,
-                            // Nothing for it to replace, or too deep: kept as text, said.
-                            _ => {
-                                let kind = if last.is_none() { PgnWarningKind::OrphanVariation } else { PgnWarningKind::TooDeep };
-                                stack.push(saved);
-                                kept = Some(Kept { level: stack.len(), kind, text: "(".to_owned() });
-                                continue;
-                            }
-                        }
-                    }
-                    stack.push(saved);
-                    last = None;
-                }
-                Lexed::Close => {
-                    // A variation with a comment and no move: the comment goes where it used to.
-                    if let Some(text) = pending.take()
-                        && dead.is_none()
-                    {
-                        append_comment(&mut game, cursor, text);
-                    }
-                    if let Some((c, l)) = stack.pop() {
-                        (cursor, last) = (c, l);
-                    }
-                    if dead.is_some_and(|d| stack.len() < d) {
-                        dead = None;
-                    }
-                }
-                Lexed::Comment(text) => {
-                    if dead.is_some() {
-                        continue;
-                    }
-                    keep_comment(&mut game, &mut pending, !stack.is_empty(), last, cursor, text);
-                }
-                Lexed::Nag(code) => {
-                    if dead.is_none()
-                        && let Some(l) = last
-                        && !game.nags(l).contains(&code)
-                    {
-                        game.toggle_nag(l, code);
-                    }
-                }
-                Lexed::Move(word) => {
-                    started = true;
-                    if dead.is_some() {
-                        continue;
-                    }
-                    let (san, glyphs) = split_glyphs(&word);
-                    game.current = cursor;
-                    let white = game.side_to_move() == Color::White;
-                    if game.play_san(san).is_ok() {
-                        cursor = game.current;
-                        last = Some(cursor);
-                        for code in crate::nag::nags_from_suffix(glyphs, white) {
-                            if !game.nags(cursor).contains(&code) {
-                                game.toggle_nag(cursor, code);
-                            }
-                        }
-                        if let Some(text) = pending.take() {
-                            let joined = match game.comment_before(cursor) {
-                                "" => text,
-                                before => format!("{before} {text}"),
-                            };
-                            game.set_comment_before(cursor, &joined);
-                        }
-                    } else {
-                        stopped.get_or_insert(word);
-                        dead = Some(stack.len());
-                        pending = None;
-                    }
-                }
-            }
-        }
-        // A variation never closed, at the end of the text.
-        if let Some(k) = kept.take() {
-            while stack.len() >= k.level {
-                if let Some((c, l)) = stack.pop() {
-                    (cursor, last) = (c, l);
-                }
-            }
-            let at = last.unwrap_or(cursor);
-            keep_comment(&mut game, &mut pending, !stack.is_empty(), last, cursor, k.text);
-            if let Some(text) = pending.take() {
-                append_comment(&mut game, cursor, text);
-            }
-            if warnings.len() < MAX_PGN_WARNINGS {
-                warnings.push(PgnWarning { kind: k.kind, at });
-            }
-        }
-        game.current = 0;
-        while game.forward() {}
-        Ok((game, PgnReport { stopped, warnings }))
-    }
-}
-
-/// Add `text` to the comment after `node`, after what it already says.
-fn append_comment(game: &mut Game, node: NodeId, text: String) {
-    let joined = match game.comment(node) {
-        "" => text,
-        before => format!("{before} {text}"),
-    };
-    game.set_comment(node, &joined);
-}
-
-/// A comment read where the line is at: one that opens a variation (`inside`, no move yet) waits
-/// for the variation's first move in `pending`; any other goes after the last move (or before
-/// the first).
-fn keep_comment(game: &mut Game, pending: &mut Option<String>, inside: bool, last: Option<NodeId>, cursor: NodeId, text: String) {
-    match last {
-        None if inside => {
-            *pending = Some(match pending.take() {
-                Some(before) => format!("{before} {text}"),
-                None => text,
-            });
-        }
-        _ => append_comment(game, last.unwrap_or(cursor), text),
+        pgn_read::read(text)
     }
 }
 
@@ -1369,27 +1200,6 @@ fn kept_tokens(tokens: Vec<Token>, style: PgnStyle) -> Vec<Token> {
         }
     }
     out
-}
-
-/// A variation [`Game::from_pgn_report`] keeps as text: the nesting its `(` opened, why, and its
-/// text so far (at most [`MAX_COMMENT_LEN`] bytes: the rest would be cut from the comment).
-struct Kept {
-    level: usize,
-    kind: PgnWarningKind,
-    text: String,
-}
-
-impl Kept {
-    /// Add a token of the variation, spaced as PGN writes it.
-    fn push(&mut self, token: &str) {
-        if self.text.len() > MAX_COMMENT_LEN {
-            return;
-        }
-        if !(self.text.ends_with('(') || token == ")") {
-            self.text.push(' ');
-        }
-        self.text.push_str(token);
-    }
 }
 
 /// Which glyphs exclude each other on one move: 1 for the move-quality glyphs (codes 1–6), 2 for
@@ -1464,87 +1274,6 @@ fn clean_comment(text: &str) -> String {
 fn tidy_comment(text: &str) -> String {
     let swapped = text.replace('{', "(").replace('}', ")");
     swapped.split_whitespace().collect::<Vec<_>>().join(" ")
-}
-
-/// A move word split into the move and the glyphs glued to its end (`e4!?` → `e4`, `!?`).
-fn split_glyphs(word: &str) -> (&str, &str) {
-    let end = word.trim_end_matches(['!', '?']).len();
-    (word.get(..end).unwrap_or(word), word.get(end..).unwrap_or_default())
-}
-
-/// A piece of PGN.
-#[derive(Debug, PartialEq)]
-enum Lexed {
-    Tag(String, String),
-    Move(String),
-    Comment(String),
-    Nag(u16),
-    Open,
-    Close,
-    Result(String),
-}
-
-/// Split PGN into its pieces, as [`pgn_scan::scan`] reads it. Move numbers are dropped; `{…}` and
-/// `;…` are comments; a line starting with `%` is skipped.
-fn lex(text: &str) -> Vec<Lexed> {
-    use pgn_scan::ScanKind;
-    // A byte order mark would turn the first tag into a word (A1-01).
-    let text = crate::pgn::without_bom(text);
-    let mut out = Vec::new();
-    for token in pgn_scan::scan(text) {
-        let raw = text.get(token.range).unwrap_or_default();
-        match token.kind {
-            ScanKind::Tag => {
-                if let Some((name, value)) = pgn_scan::tag_parts(raw) {
-                    out.push(Lexed::Tag(cut(name, MAX_TAG_LEN).to_owned(), cut(&pgn_scan::tag_value(value), MAX_TAG_LEN).to_owned()));
-                }
-            }
-            ScanKind::BraceComment { .. } => {
-                out.push(Lexed::Comment(cut(pgn_scan::brace_body(raw), MAX_COMMENT_LEN.saturating_mul(2)).to_owned()));
-            }
-            ScanKind::LineComment => out.push(Lexed::Comment(cut(raw.get(1..).unwrap_or_default(), MAX_COMMENT_LEN).to_owned())),
-            ScanKind::Escape => {}
-            ScanKind::Open => out.push(Lexed::Open),
-            ScanKind::Close => out.push(Lexed::Close),
-            ScanKind::Nag => {
-                if let Ok(code) = raw.get(1..).unwrap_or_default().parse::<u16>() {
-                    out.push(Lexed::Nag(code));
-                }
-            }
-            ScanKind::Result => out.push(Lexed::Result(if raw == "½-½" { "1/2-1/2".to_owned() } else { raw.to_owned() })),
-            ScanKind::Word => lex_word(raw, &mut out),
-        }
-    }
-    out
-}
-
-/// A word, with the move number glued to it taken off (`1.e4`, `12...Nf6`) and its other dots
-/// dropped: a glyph code, a result, a glyph standing alone (`e4 !?`), a move, or a move number
-/// alone (dropped).
-fn lex_word(raw: &str, out: &mut Vec<Lexed>) {
-    let mut w = String::new();
-    for c in raw.chars() {
-        match c {
-            '.' if w.chars().all(|c| c.is_ascii_digit()) => w.clear(),
-            '.' => {}
-            c if w.len() < 64 => w.push(c),
-            _ => {}
-        }
-    }
-    if w.is_empty() {
-        return;
-    }
-    if let Some(n) = w.strip_prefix('$') {
-        if let Ok(code) = n.parse::<u16>() {
-            out.push(Lexed::Nag(code));
-        }
-    } else if matches!(w.as_str(), "*" | "1-0" | "0-1" | "1/2-1/2" | "½-½") {
-        out.push(Lexed::Result(if w == "½-½" { "1/2-1/2".to_owned() } else { w }));
-    } else if let Some(code) = crate::nag::nags_from_suffix(&w, true).first().filter(|_| w.chars().all(|c| matches!(c, '!' | '?'))) {
-        out.push(Lexed::Nag(*code));
-    } else if !w.chars().all(|c| c.is_ascii_digit()) {
-        out.push(Lexed::Move(w));
-    }
 }
 
 #[cfg(test)]
@@ -2004,8 +1733,10 @@ mod tests {
         assert_eq!(report.stopped, None);
         assert_eq!(report.warnings.len(), 1, "{report:?}");
         assert_eq!(report.warnings[0].kind, PgnWarningKind::OrphanVariation);
-        assert!(g.movetext().contains("(d4 Queen's pawn $1)"), "{}", g.movetext());
-        assert!(g.movetext().ends_with("1. e4 e5 2. Nf3"), "the main line goes on: {}", g.movetext());
+        // A variation holding only that text leaves it on the move it was an alternative to
+        // (plan A9-F2b, A1-06; it used to go to the start).
+        assert_eq!(g.comment(g.main_line()[1]), "(d4 Queen's pawn $1)", "{}", g.movetext());
+        assert_eq!(g.movetext_with(PgnStyle { comments: false, ..PgnStyle::FULL }), "1. e4 e5 2. Nf3", "the main line goes on");
         // Never closed: kept to the end of the text.
         let (g, report) = Game::from_pgn_report("1. e4 e5 ((2. Nf3").unwrap();
         assert_eq!(report.warnings.len(), 1);

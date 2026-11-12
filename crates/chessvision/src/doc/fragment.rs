@@ -33,7 +33,7 @@
 //! Comments lose leading punctuation (`, White obtains…`), comments of punctuation alone are
 //! left out, and figurines in them become English letters (`♘` is `N`).
 
-use pdfcraft_chess::fragment::{FragmentItem, MAX_FRAGMENT_ITEMS, ply_of};
+use pdfcraft_chess::fragment::{FragmentItem, MAX_FRAGMENT_ITEMS, NagCode, ply_of};
 use pdfcraft_chess::nag;
 use pdfcraft_chess::san::{Lang, San, figurine_piece};
 use pdfcraft_render::text::{PageText, TextGlyph};
@@ -311,7 +311,7 @@ fn write_line<'a>(
             rect: printed.and_then(|m| m.source_rect).map(corners),
         });
         // A glyph is written by White's code; the graft applies the side's.
-        out.extend(node.nags.iter().map(|&code| FragmentItem::Nag(nag::by_code(code).map_or(code, |n| n.code))));
+        out.extend(node.nags.iter().map(|&code| FragmentItem::Nag(NagCode::WhiteRelative(nag::by_code(code).map_or(code, |n| n.code)))));
         if let Some(text) = clean_comment(&node.comment) {
             out.push(FragmentItem::Comment { text, before: false });
         }

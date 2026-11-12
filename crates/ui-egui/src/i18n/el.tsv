@@ -2549,6 +2549,9 @@ animation effects	Off	Ανενεργά
 	Previous move (Left arrow)	Προηγούμενη κίνηση (αριστερό βέλος)
 	Promote to:	Προαγωγή σε:
 	Reading stopped at {move}: it is not a legal move there.	Η ανάγνωση σταμάτησε στο {move}: δεν είναι νόμιμη κίνηση εκεί.
+	Reading stopped at {move}: more than one legal move there is written so.	Η ανάγνωση σταμάτησε στο {move}: εκεί γράφονται έτσι περισσότερες από μία νόμιμες κινήσεις.
+	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	Η ανάγνωση σταμάτησε στο {move}: η παρτίδα έχει ήδη 10.000 κινήσεις, το μέγιστο.
+	Reading stopped at {move}: its variation would nest deeper than 32.	Η ανάγνωση σταμάτησε στο {move}: η παραλλαγή θα ήταν εμφωλευμένη βαθύτερα από 32 επίπεδα.
 	Show the analysis board. Double-click a diagram on the page to load it there.	Εμφάνιση της σκακιέρας ανάλυσης. Κάντε διπλό κλικ σε ένα διάγραμμα της σελίδας για να φορτωθεί εκεί.
 	Show this diagram on the page	Εμφάνιση αυτού του διαγράμματος στη σελίδα
 	Stalemate	Πατ

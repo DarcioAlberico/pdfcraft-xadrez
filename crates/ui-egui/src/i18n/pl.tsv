@@ -2519,6 +2519,9 @@ animation effects	Off	Wyłączone
 	Previous move (Left arrow)	Poprzedni ruch (strzałka w lewo)
 	Promote to:	Promuj na:
 	Reading stopped at {move}: it is not a legal move there.	Odczyt zatrzymał się na {move}: to nie jest tam legalny ruch.
+	Reading stopped at {move}: more than one legal move there is written so.	Odczyt zatrzymał się na {move}: tam tak zapisuje się więcej niż jeden legalny ruch.
+	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	Odczyt zatrzymał się na {move}: partia ma już 10 000 ruchów, czyli maksimum.
+	Reading stopped at {move}: its variation would nest deeper than 32.	Odczyt zatrzymał się na {move}: wariant byłby zagnieżdżony głębiej niż 32 poziomy.
 	Show the analysis board. Double-click a diagram on the page to load it there.	Pokaż szachownicę analizy. Kliknij dwukrotnie diagram na stronie, aby go tam wczytać.
 	Show this diagram on the page	Pokaż ten diagram na stronie
 	Stalemate	Pat

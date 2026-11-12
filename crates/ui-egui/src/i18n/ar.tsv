@@ -2822,6 +2822,9 @@ certificate	Version	الإصدار
 	Previous move (Left arrow)	النقلة السابقة (السهم الأيسر)
 	Promote to:	الترقية إلى:
 	Reading stopped at {move}: it is not a legal move there.	توقفت القراءة عند {move}: ليست نقلة قانونية هناك.
+	Reading stopped at {move}: more than one legal move there is written so.	توقفت القراءة عند {move}: هناك أكثر من نقلة قانونية تُكتب هكذا.
+	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	توقفت القراءة عند {move}: في المباراة 10000 نقلة بالفعل، وهو الحد الأقصى.
+	Reading stopped at {move}: its variation would nest deeper than 32.	توقفت القراءة عند {move}: سيتداخل الفرع أعمق من 32 مستوى.
 	Show the analysis board. Double-click a diagram on the page to load it there.	إظهار رقعة التحليل. انقر نقرًا مزدوجًا على مخطط في الصفحة لتحميله فيها.
 	Show this diagram on the page	إظهار هذا المخطط في الصفحة
 	Stalemate	تعادل بالجمود

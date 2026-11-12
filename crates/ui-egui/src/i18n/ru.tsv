@@ -2458,6 +2458,9 @@ animation effects	Off	Выкл
 	Previous move (Left arrow)	Предыдущий ход (стрелка влево)
 	Promote to:	Превратить в:
 	Reading stopped at {move}: it is not a legal move there.	Чтение остановлено на {move}: здесь это не легальный ход.
+	Reading stopped at {move}: more than one legal move there is written so.	Чтение остановлено на {move}: здесь так записывается больше одного легального хода.
+	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	Чтение остановлено на {move}: в партии уже 10 000 ходов — это максимум.
+	Reading stopped at {move}: its variation would nest deeper than 32.	Чтение остановлено на {move}: вариант оказался бы вложен глубже 32 уровней.
 	Show the analysis board. Double-click a diagram on the page to load it there.	Показать доску для анализа. Дважды щёлкните диаграмму на странице, чтобы загрузить её туда.
 	Show this diagram on the page	Показать эту диаграмму на странице
 	Stalemate	Пат

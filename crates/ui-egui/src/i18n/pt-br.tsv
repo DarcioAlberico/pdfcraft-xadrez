@@ -2562,6 +2562,9 @@ chess side	Black	Pretas
 	Previous move (Left arrow)	Lance anterior (seta para a esquerda)
 	Promote to:	Promover a:
 	Reading stopped at {move}: it is not a legal move there.	A leitura parou em {move}: não é um lance legal ali.
+	Reading stopped at {move}: more than one legal move there is written so.	A leitura parou em {move}: mais de um lance legal ali se escreve assim.
+	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	A leitura parou em {move}: a partida já tem 10.000 lances, o máximo que uma partida pode ter.
+	Reading stopped at {move}: its variation would nest deeper than 32.	A leitura parou em {move}: a variante passaria de 32 níveis de aninhamento.
 	Show the analysis board. Double-click a diagram on the page to load it there.	Mostrar o tabuleiro de análise. Dê um duplo clique num diagrama da página para carregá-lo nele.
 	Show this diagram on the page	Mostrar este diagrama na página
 	Stalemate	Afogamento

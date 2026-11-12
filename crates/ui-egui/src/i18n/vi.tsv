@@ -2800,6 +2800,9 @@ chess side	Black	Đen
 	Previous move (Left arrow)	Nước trước (mũi tên trái)
 	Promote to:	Phong cấp thành:
 	Reading stopped at {move}: it is not a legal move there.	Việc đọc dừng ở {move}: đó không phải nước đi hợp lệ tại đó.
+	Reading stopped at {move}: more than one legal move there is written so.	Việc đọc dừng ở {move}: tại đó có hơn một nước đi hợp lệ được viết như vậy.
+	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	Việc đọc dừng ở {move}: ván cờ đã có 10.000 nước, mức tối đa.
+	Reading stopped at {move}: its variation would nest deeper than 32.	Việc đọc dừng ở {move}: biến này sẽ lồng sâu quá 32 cấp.
 	Show the analysis board. Double-click a diagram on the page to load it there.	Hiện bàn cờ phân tích. Nhấp đúp vào một sơ đồ trên trang để tải nó vào đó.
 	Show this diagram on the page	Hiện sơ đồ này trên trang
 	Stalemate	Hết nước đi (hòa pat)

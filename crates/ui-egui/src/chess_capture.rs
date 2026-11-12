@@ -1256,7 +1256,7 @@ fn chips(ui: &mut egui::Ui, t: &Tokens, c: &Candidate, stopped: &[StoppedMove], 
                 }
             }
             FragmentItem::Nag(code) => {
-                ui.label(RichText::new(glyph_text(*code)).small().color(t.text_muted));
+                ui.label(RichText::new(glyph_text(code.code())).small().color(t.text_muted));
             }
             FragmentItem::Comment { text, .. } => {
                 let short: String = text.chars().take(40).collect();

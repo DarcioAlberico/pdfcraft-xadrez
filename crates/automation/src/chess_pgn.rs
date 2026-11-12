@@ -24,7 +24,7 @@
 
 use pdfcraft_engine::chess::capture::{self, Candidate, CaptureMode, CapturePlan, CaptureText};
 use pdfcraft_engine::chess::collection::{self, MAX_GAMES};
-use pdfcraft_engine::chess::pdfcraft_chess::fragment::FragmentItem;
+use pdfcraft_engine::chess::pdfcraft_chess::fragment::{FragmentItem, NagCode};
 use pdfcraft_engine::chess::pdfcraft_chess::game::{
     Game, GraftMode, GraftReport, GraftStopReason, MAX_COMMENT_LEN, NodeId, NodePath, PgnReport, Shift,
 };
@@ -110,6 +110,7 @@ impl Automation {
             "report": report,
             "applied": applied,
             "pgn_stopped": read.stopped,
+            "pgn_stop_reason": read.stop_reason.map(|r| r.name()),
             "pgn_warnings": warnings,
             "current_path": address_of(&game, game.current()),
             "games": games,
@@ -486,7 +487,9 @@ fn fragment_item(v: &Value) -> std::result::Result<FragmentItem, Refusal> {
             };
             FragmentItem::Move { ply, san, text: text.to_owned(), bold, rect: None }
         }
-        "nag" => FragmentItem::Nag(v.get("code").and_then(Value::as_u64).and_then(|c| u16::try_from(c).ok()).ok_or("code is a glyph's PGN code")?),
+        "nag" => FragmentItem::Nag(NagCode::WhiteRelative(
+            v.get("code").and_then(Value::as_u64).and_then(|c| u16::try_from(c).ok()).ok_or("code is a glyph's PGN code")?,
+        )),
         "comment" => {
             let text = v.get("text").and_then(Value::as_str).ok_or("text is missing")?;
             let before = match v.get("before").filter(|b| !b.is_null()) {
