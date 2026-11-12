@@ -39,7 +39,7 @@
 use cozy_chess::Color as CozyColor;
 
 use super::{Game, MAX_COMMENT_LEN, MAX_DEPTH, MAX_NODES, NodeId, NodePath, NodeSource, cut, tidy_comment};
-use crate::fragment::{FragmentItem, MAX_FRAGMENT_ITEMS, items_text};
+use crate::fragment::{FragmentItem, MAX_FRAGMENT_ITEMS, NagCode, items_text};
 use crate::nag;
 use crate::san::{SanBody, SanError, square_to_cozy};
 
@@ -133,11 +133,12 @@ pub struct GraftReport {
     pub last: Option<NodePath>,
 }
 
-/// One `(` being read: where the line it left was.
-struct Frame {
-    cur: NodeId,
-    last: Option<NodeId>,
-    open: usize,
+/// One `(` being read: where the line it left was (the graft's and the PGN reader's).
+pub(super) struct Frame {
+    pub(super) cur: NodeId,
+    pub(super) last: Option<NodeId>,
+    /// The item that opened it.
+    pub(super) open: usize,
 }
 
 /// A comment waiting for the next move, with the items it came from.
@@ -254,10 +255,7 @@ impl Game {
                     }
                 }
                 FragmentItem::Nag(code) => {
-                    let placed = last.is_some_and(|m| {
-                        let white_moved = self.node(m).board.side_to_move() == CozyColor::Black;
-                        self.set_nag(m, side_code(*code, white_moved))
-                    });
+                    let placed = last.is_some_and(|m| self.set_nag_code(m, *code));
                     if !placed {
                         report.unplaced.push(index);
                     }
@@ -288,17 +286,8 @@ impl Game {
                     }
                     let parent = self.node(cur);
                     let white = parent.board.side_to_move() == CozyColor::White;
-                    // The step to play: a move, or `None` for a null move.
-                    let mv = match san.body {
-                        SanBody::Null if parent.board.checkers().is_empty() => Ok(None),
-                        SanBody::Null => Err(GraftStopReason::NullMove),
-                        _ => san.to_move(&parent.board).map(Some).map_err(|e| match e {
-                            SanError::Ambiguous(_) => GraftStopReason::Ambiguous,
-                            SanError::NoSuchMove(_) | SanError::IllegalMove => GraftStopReason::Illegal,
-                            _ => GraftStopReason::Unreadable,
-                        }),
-                    };
-                    let existing = mv.ok().and_then(|mv| parent.children.iter().copied().find(|&c| self.node(c).mv == mv));
+                    let mv = self.step_for(cur, san);
+                    let existing = mv.ok().and_then(|mv| self.reply_with(cur, mv));
                     let node = match (mv, existing) {
                         (_, Some(node)) => node,
                         (Err(reason), None) => {
@@ -331,9 +320,7 @@ impl Game {
                         }
                     };
                     report.played = report.played.saturating_add(1);
-                    for code in nag::nags_from_suffix(&san.suffix, white) {
-                        self.set_nag(node, code);
-                    }
+                    self.set_suffix_nags(node, &san.suffix, white);
                     let waiting = std::mem::take(&mut pending);
                     if !waiting.text.is_empty() && !self.add_comment(node, &waiting.text, true) {
                         report.unplaced.extend(waiting.items);
@@ -362,11 +349,82 @@ impl Game {
         self.current = shown.unwrap_or(at);
     }
 
+    /// The step `san` names after move `parent`: a move, or `None` for a null move; why not when
+    /// it names none there. One of the steps the graft and the PGN reader share (plan A9-F2b).
+    pub(super) fn step_for(&self, parent: NodeId, san: &crate::san::San) -> Result<Option<cozy_chess::Move>, GraftStopReason> {
+        let board = &self.node(parent).board;
+        match san.body {
+            SanBody::Null if board.checkers().is_empty() => Ok(None),
+            SanBody::Null => Err(GraftStopReason::NullMove),
+            _ => san.to_move(board).map(Some).map_err(|e| match e {
+                SanError::Ambiguous(_) => GraftStopReason::Ambiguous,
+                SanError::NoSuchMove(_) | SanError::IllegalMove => GraftStopReason::Illegal,
+                _ => GraftStopReason::Unreadable,
+            }),
+        }
+    }
+
+    /// The reply to `parent` that plays `step`, when there is one: a step already there is
+    /// followed, never played twice.
+    pub(super) fn reply_with(&self, parent: NodeId, step: Option<cozy_chess::Move>) -> Option<NodeId> {
+        self.node(parent).children.iter().copied().find(|&c| self.node(c).mv == step)
+    }
+
+    /// Set glyph `code` on move `node`: a written code as it is, White's code as the code for the
+    /// side it speaks of. Returns whether the move carries it now.
+    pub(super) fn set_nag_code(&mut self, node: NodeId, code: NagCode) -> bool {
+        match code {
+            NagCode::Written(code) => self.set_nag(node, code),
+            NagCode::WhiteRelative(code) => {
+                let white_moved = self.node(node).board.side_to_move() == CozyColor::Black;
+                self.set_nag(node, side_code(code, white_moved))
+            }
+        }
+    }
+
+    /// Set the glyphs of a move's suffix (`Nd5!?`) on it, for the side that made it (`white`).
+    pub(super) fn set_suffix_nags(&mut self, node: NodeId, suffix: &str, white: bool) {
+        for code in nag::nags_from_suffix(suffix, white) {
+            self.set_nag(node, code);
+        }
+    }
+
+    /// Make reply `child` of `parent` its first: the reply that was first becomes a variation, one
+    /// level deeper with all its moves, and `child`'s moves come one level up. Refused (`false`,
+    /// the game unchanged) when that would nest a move deeper than [`MAX_DEPTH`].
+    pub(super) fn make_first(&mut self, parent: NodeId, child: NodeId) -> bool {
+        let Some(&old) = self.node(parent).children.first() else { return false };
+        let Some(at) = self.node(parent).children.iter().position(|&c| c == child) else { return false };
+        if old == child {
+            return true;
+        }
+        let demoted = self.subtree(old);
+        if demoted.iter().any(|&n| self.node(n).depth >= MAX_DEPTH) {
+            return false;
+        }
+        for n in self.subtree(child) {
+            if let Some(n) = self.nodes.get_mut(n) {
+                n.depth = n.depth.saturating_sub(1);
+            }
+        }
+        for n in demoted {
+            if let Some(n) = self.nodes.get_mut(n) {
+                n.depth = n.depth.saturating_add(1);
+            }
+        }
+        if let Some(p) = self.nodes.get_mut(parent) {
+            p.children.remove(at);
+            p.children.insert(0, child);
+        }
+        self.revision = super::fresh_revision();
+        true
+    }
+
     /// Add `mv` (`None`: a null move) as a reply to `parent`: the last reply, or with `first` the
     /// first one (the reply that was first becomes the second, a variation, one level deeper with
     /// all its moves). Returns the new move, or why it could not be added (the game is then
     /// unchanged).
-    fn add_reply(&mut self, parent: NodeId, mv: Option<cozy_chess::Move>, first: bool) -> Result<NodeId, GraftStopReason> {
+    pub(super) fn add_reply(&mut self, parent: NodeId, mv: Option<cozy_chess::Move>, first: bool) -> Result<NodeId, GraftStopReason> {
         let p = self.node(parent);
         let old_first = p.children.first().copied();
         let depth = p.depth.saturating_add(usize::from(old_first.is_some() && !first));

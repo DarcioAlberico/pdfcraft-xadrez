@@ -1069,7 +1069,9 @@ fn reference_reply(shown: &str, index: &reference::ReferenceIndex, linked: &refe
             .iter()
             .enumerate()
             .filter(|(_, g)| g.stopped.is_some() || g.error.is_some())
-            .map(|(k, g)| json!({ "game": k + 1, "name": g.name, "stopped_at": g.stopped, "error": g.error }))
+            .map(|(k, g)| {
+                json!({ "game": k + 1, "name": g.name, "stopped_at": g.stopped, "stop_reason": g.stop_reason.map(|r| r.name()), "error": g.error })
+            })
             .collect::<Vec<_>>(),
         "linked": a.counts,
         "diagrams": {

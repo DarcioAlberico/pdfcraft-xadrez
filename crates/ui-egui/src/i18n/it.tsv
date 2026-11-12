@@ -2757,6 +2757,9 @@ certificate	SHA-256 digest	Impronta SHA-256
 	Previous move (Left arrow)	Mossa precedente (freccia sinistra)
 	Promote to:	Promuovi a:
 	Reading stopped at {move}: it is not a legal move there.	Lettura interrotta a {move}: lì non è una mossa legale.
+	Reading stopped at {move}: more than one legal move there is written so.	Lettura interrotta a {move}: lì più di una mossa legale si scrive così.
+	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	Lettura interrotta a {move}: la partita ha già 10.000 mosse, il massimo consentito.
+	Reading stopped at {move}: its variation would nest deeper than 32.	Lettura interrotta a {move}: la sua variante sarebbe annidata oltre 32 livelli.
 	Show the analysis board. Double-click a diagram on the page to load it there.	Mostra la scacchiera di analisi. Fai doppio clic su un diagramma della pagina per caricarlo lì.
 	Show this diagram on the page	Mostra questo diagramma nella pagina
 	Stalemate	Stallo

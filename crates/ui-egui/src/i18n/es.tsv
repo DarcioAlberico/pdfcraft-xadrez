@@ -2686,6 +2686,9 @@ animation effects	Off	Desactivados
 	Previous move (Left arrow)	Jugada anterior (flecha izquierda)
 	Promote to:	Coronar en:
 	Reading stopped at {move}: it is not a legal move there.	La lectura se detuvo en {move}: no es una jugada legal ahí.
+	Reading stopped at {move}: more than one legal move there is written so.	La lectura se detuvo en {move}: ahí hay más de una jugada legal que se escribe así.
+	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	La lectura se detuvo en {move}: la partida ya tiene 10.000 jugadas, el máximo que admite.
+	Reading stopped at {move}: its variation would nest deeper than 32.	La lectura se detuvo en {move}: su variante quedaría anidada a más de 32 niveles.
 	Show the analysis board. Double-click a diagram on the page to load it there.	Mostrar el tablero de análisis. Haga doble clic en un diagrama de la página para cargarlo en él.
 	Show this diagram on the page	Mostrar este diagrama en la página
 	Stalemate	Ahogado

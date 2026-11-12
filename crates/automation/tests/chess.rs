@@ -1332,7 +1332,9 @@ fn chess_pgn_edit_says_what_it_kept_as_a_comment_and_writes_as_asked() {
     let mut auto = Automation::new().with_root(&root).unwrap();
     let pgn = "1. e4 e5 ((1... d5)) (1... c5 {Sicilian} 2. Nf3 (2. c3 $1)) 2. Nf3 *";
     let r = ok(&mut auto, "chess_pgn_edit", json!({ "pgn": pgn, "ops": [] }));
-    assert_eq!(r["pgn_warnings"], json!([{ "kind": "orphan_variation", "at": "path:0" }]), "{r:#}");
+    // A variation holding only that text leaves it on the move it was an alternative to, e5
+    // (plan A9-F2b, A1-06; it used to go to the move before).
+    assert_eq!(r["pgn_warnings"], json!([{ "kind": "orphan_variation", "at": "path:0.0" }]), "{r:#}");
     assert!(r["movetext"].as_str().unwrap().contains("(d5)"), "{r:#}");
     let main = ok(&mut auto, "chess_pgn_edit", json!({ "pgn": pgn, "ops": [], "variations": "main", "comments": "none" }));
     assert_eq!(main["movetext"], "1. e4 e5 2. Nf3", "{main:#}");
@@ -1346,7 +1348,7 @@ fn chess_pgn_edit_says_what_it_kept_as_a_comment_and_writes_as_asked() {
         "{main:#}"
     );
     let one = ok(&mut auto, "chess_pgn_edit", json!({ "pgn": pgn, "ops": [], "variations": "depth:1", "nags": "none" }));
-    assert_eq!(one["movetext"], "1. e4 {(d5)} 1... e5 (1... c5 {Sicilian} 2. Nf3) 2. Nf3", "{one:#}");
+    assert_eq!(one["movetext"], "1. e4 e5 {(d5)} (1... c5 {Sicilian} 2. Nf3) 2. Nf3", "{one:#}");
     for (key, value) in [("variations", "depth:x"), ("comments", "some"), ("nags", "")] {
         let e = auto.call("chess_pgn_edit", &json!({ "pgn": pgn, "ops": [], key: value })).unwrap_err();
         assert!(e.to_string().contains(key), "{key}: {e}");
@@ -1493,10 +1495,19 @@ fn chess_pgn_edit_applies_every_operation() {
     assert_eq!(r["movetext"], "18. Nd5 Qxe1");
     assert_eq!(r["current_path"], "path:0.0");
 
-    // A PGN move that cannot be played is said, not dropped silently.
+    // A PGN move that cannot be played is said, not dropped silently, with why (plan A9-F2b,
+    // A1-15: the cap on moves is not an illegal move).
     let r = ok(a, "chess_pgn_edit", json!({ "pgn": "1. e4 e5 2. Ke3 Nc6 *", "ops": [] }));
-    assert_eq!((r["movetext"].as_str(), r["pgn_stopped"].as_str()), (Some("1. e4 e5"), Some("Ke3")));
+    assert_eq!((r["movetext"].as_str(), r["pgn_stopped"].as_str(), r["pgn_stop_reason"].as_str()), (Some("1. e4 e5"), Some("Ke3"), Some("illegal")));
     assert_eq!(pgn_edit(a, false, json!([]))["pgn_stopped"], Value::Null);
+    assert_eq!(pgn_edit(a, false, json!([]))["pgn_stop_reason"], Value::Null);
+    let r = ok(a, "chess_pgn_edit", json!({ "pgn": "Nf3 Nf6 Ng1 Ng8 ".repeat(2600), "ops": [] }));
+    assert_eq!((r["pgn_stopped"].as_str(), r["pgn_stop_reason"].as_str()), (Some("Ng8"), Some("too_long")));
+    let r = ok(a, "chess_games", json!({ "pgn": "[Event \"x\"]\n\n1. e4 e5 2. Ke3 *\n", "ops": [] }));
+    assert_eq!((r["games"][0]["pgn_stopped"].as_str(), r["games"][0]["pgn_stop_reason"].as_str()), (Some("Ke3"), Some("illegal")), "{r:#}");
+    // A move written as books print it is read, and noted.
+    let r = ok(a, "chess_pgn_edit", json!({ "pgn": "1. e4 e5 2. Nf3± Nc6 *", "ops": [] }));
+    assert_eq!((r["movetext"].as_str(), r["pgn_warnings"][0]["kind"].as_str()), (Some("1. e4 e5 2. Nf3 $16 Nc6"), Some("non_standard")), "{r:#}");
 
     // play follows a move already there, and takes UCI too.
     let r =

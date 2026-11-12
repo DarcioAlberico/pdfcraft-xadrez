@@ -2508,6 +2508,9 @@ animation effects	Off	Изключени
 	Previous move (Left arrow)	Предишен ход (стрелка наляво)
 	Promote to:	Произвеждане в:
 	Reading stopped at {move}: it is not a legal move there.	Четенето спря при {move}: там това не е законен ход.
+	Reading stopped at {move}: more than one legal move there is written so.	Четенето спря при {move}: там така се записва повече от един законен ход.
+	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	Четенето спря при {move}: партията вече има 10 000 хода — това е максимумът.
+	Reading stopped at {move}: its variation would nest deeper than 32.	Четенето спря при {move}: вариантът би бил вложен по-дълбоко от 32 нива.
 	Show the analysis board. Double-click a diagram on the page to load it there.	Показване на дъската за анализ. Щракнете двукратно диаграма на страницата, за да я заредите там.
 	Show this diagram on the page	Показване на тази диаграма на страницата
 	Stalemate	Пат

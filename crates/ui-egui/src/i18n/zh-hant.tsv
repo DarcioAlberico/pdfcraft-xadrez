@@ -2493,6 +2493,9 @@ animation effects	Off	關
 	Previous move (Left arrow)	上一步 (左箭頭)
 	Promote to:	升變為：
 	Reading stopped at {move}: it is not a legal move there.	讀取在 {move} 處停止：該著法在此不合法。
+	Reading stopped at {move}: more than one legal move there is written so.	讀取在 {move} 處停止：此處有不止一個合法著法寫作這樣。
+	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	讀取在 {move} 處停止：棋局已有 10,000 步，達到上限。
+	Reading stopped at {move}: its variation would nest deeper than 32.	讀取在 {move} 處停止：變著的嵌套會超過 32 層。
 	Show the analysis board. Double-click a diagram on the page to load it there.	顯示分析棋盤。按兩下頁面上的圖表即可將其載入。
 	Show this diagram on the page	在頁面上顯示此圖表
 	Stalemate	逼和

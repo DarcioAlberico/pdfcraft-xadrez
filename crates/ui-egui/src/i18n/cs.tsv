@@ -2619,6 +2619,9 @@ animation effects	Off	Vypnuto
 	Previous move (Left arrow)	Předchozí tah (šipka vlevo)
 	Promote to:	Proměnit na:
 	Reading stopped at {move}: it is not a legal move there.	Čtení se zastavilo u {move}: tam to není legální tah.
+	Reading stopped at {move}: more than one legal move there is written so.	Čtení se zastavilo u {move}: tam se takto zapisuje více než jeden legální tah.
+	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	Čtení se zastavilo u {move}: partie už má 10 000 tahů, což je maximum.
+	Reading stopped at {move}: its variation would nest deeper than 32.	Čtení se zastavilo u {move}: varianta by byla vnořena hlouběji než 32 úrovní.
 	Show the analysis board. Double-click a diagram on the page to load it there.	Zobrazit analytickou šachovnici. Dvojklikem na diagram na stránce ho do ní načtete.
 	Show this diagram on the page	Zobrazit tento diagram na stránce
 	Stalemate	Pat
