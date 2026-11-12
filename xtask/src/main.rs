@@ -4,6 +4,7 @@ use std::process::ExitCode;
 
 mod assets;
 mod chess_bench;
+mod chess_gate;
 mod corpus;
 mod demo_pdf;
 mod fuzz;
@@ -46,6 +47,11 @@ const COMMANDS: &[(&str, &str, Command)] = &[
         "chess-bench",
         "Read chess books (--dir DIR with books/*.pdf, --tag NAME, --models DIR) and compare the moves with --baseline TAG; fails on lost valid moves",
         chess_bench::run,
+    ),
+    (
+        "chess-gate",
+        "The chess fork's local gate for what changed since --base (origin/main): text, scans, lower crates, engine and up (--models DIR --engine EXE, or --no-models; --all; --from N)",
+        chess_gate::run,
     ),
 ];
 

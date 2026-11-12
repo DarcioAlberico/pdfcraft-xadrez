@@ -59,6 +59,13 @@ const MAX_SAN: usize = 24;
 /// Positions whose lines are kept for when the board comes back to them.
 pub const MAX_KEPT: usize = 64;
 
+/// A real UCI engine for the tests that run one, from `PDFCRAFT_CHESS_TEST_ENGINE`; `Ok(None)` skips
+/// and `PDFCRAFT_REQUIRE_MODELS=1` makes a missing one an error (see
+/// [`pdfcraft_chessvision::models::test_models`]).
+pub fn test_engine() -> Result<Option<PathBuf>, String> {
+    pdfcraft_chessvision::models::test_resource("PDFCRAFT_CHESS_TEST_ENGINE", "a UCI engine program")
+}
+
 /// The engine program to use: `$PDFCRAFT_CHESS_ENGINE` when it names a file, else the program
 /// in an `engine` folder beside the executable or in a folder inside it.
 pub fn find_engine() -> Option<PathBuf> {

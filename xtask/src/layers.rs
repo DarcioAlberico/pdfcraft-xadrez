@@ -18,7 +18,7 @@ pub enum Class {
 }
 
 impl Class {
-    fn layer(self) -> Option<u8> {
+    pub(crate) fn layer(self) -> Option<u8> {
         match self {
             Class::Layer(l) | Class::Standalone(l) => Some(l),
             Class::Testkit => Some(7),

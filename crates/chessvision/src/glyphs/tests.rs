@@ -978,7 +978,7 @@ fn a_misbehaving_classifier_is_an_error() {
 
 #[test]
 fn the_glyph_model_is_a_classifier() {
-    let Some(dir) = std::env::var_os("PDFCRAFT_CHESS_TEST_MODELS") else { return };
+    let Some(dir) = crate::models::test_models().unwrap() else { return };
     let models = crate::models::ChessModels::load_from(std::path::Path::new(&dir));
     let model = models.glyphs.loaded().expect("glyph model");
     let mut c = Canvas::new(120, 90);

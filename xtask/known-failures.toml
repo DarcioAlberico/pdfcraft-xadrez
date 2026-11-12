@@ -1,0 +1,11 @@
+# Tests known to fail on `main`, and why (plan A9-Q1a). `cargo xtask chess-gate` fails on any
+# test failure not listed here, and on a listed test that passes again unless its kind is
+# "flaky": a fix takes its line out, so the list never hides a new failure nor goes stale.
+#
+# test   = "<package> <test name as cargo prints it>", or "<package> <target> (crashed)" for a
+#          test binary whose process died, the target as cargo's rerun hint names it
+#          ("--test content").
+# reason = why it fails, in a few words.
+# since  = the date it was first seen failing on main.
+# kind   = "upstream" (fails on the PdfCraft main this fork merges), "machine" (this machine's
+#          setup: fonts, printers, drivers), or "flaky" (sometimes passes).

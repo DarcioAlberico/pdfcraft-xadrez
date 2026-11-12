@@ -28,6 +28,8 @@ mod comments;
 mod content;
 mod conventions;
 pub mod file_access;
+#[cfg(test)]
+mod file_access_scan;
 mod forms;
 mod links;
 #[cfg(feature = "mcp")]

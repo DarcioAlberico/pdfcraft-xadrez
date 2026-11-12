@@ -239,13 +239,13 @@ fn ocr_words_join_the_glyph_line_they_overlap() {
 /// Printed, not asserted move by move: this measures the model, not the plumbing.
 #[test]
 fn the_users_glyph_model_reads_a_scanned_line() {
-    let Some(dir) = std::env::var_os("PDFCRAFT_CHESS_TEST_MODELS") else {
+    let Some(dir) = pdfcraft_chessvision::models::test_models().unwrap() else {
         eprintln!("skipped: set PDFCRAFT_CHESS_TEST_MODELS to the folder of the chess models");
         return;
     };
     let line = "1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 4.Ba4 Nf6 5.O-O Be7";
     let (mut s, id) = open(scanned_pdf(&[(line, 14.0, 300.0)], ""));
-    let settings = ChessScanSettings { models_dir: Some(dir.into()), ..no_model() };
+    let settings = ChessScanSettings { models_dir: Some(dir), ..no_model() };
     let read = s
         .chess_document_with(
             id,
@@ -433,13 +433,12 @@ fn the_layer_check_tells_scans_from_text() {
 /// Printed, not asserted move by move: this measures the model, not the plumbing.
 #[test]
 fn the_users_glyph_model_reads_an_area() {
-    let Some(dir) = std::env::var_os("PDFCRAFT_CHESS_TEST_MODELS") else {
+    let Some(dir) = pdfcraft_chessvision::models::test_models().unwrap() else {
         eprintln!("skipped: set PDFCRAFT_CHESS_TEST_MODELS to the folder of the chess models");
         return;
     };
     let (s, id) = open(two_lines());
     let none = OcrOptions { mode: OcrMode::Off, glyphs: None, general: false, book: None };
-    let dir = std::path::PathBuf::from(dir);
     let read = s.chess_read_area(id, 0, around(300.0), &none, pdfcraft_chess::san::Lang::En, Some(&dir)).unwrap();
     eprintln!("read: {}", read.plain_text());
     assert_eq!(read.lines, 1);
