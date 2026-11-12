@@ -58,7 +58,10 @@ impl ChessFormat {
     }
 }
 
-/// How to export.
+/// How to export: [`ChessExportOptions::new`], then the fields.
+/// Built outside the engine by its constructor and its fields, never by a literal (plan A9-Q1b,
+/// A7-14): a field added here then breaks no caller (the cause of #185).
+#[non_exhaustive]
 #[derive(Clone, Debug)]
 pub struct ChessExportOptions {
     /// Pages (0-based); empty: all.
