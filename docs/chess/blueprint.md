@@ -277,6 +277,7 @@ cargo xtask deny            # sempre que mudar dependência
 - Todo teste novo visto **falhando** com a correção revertida.
 - Toda ferramenta nova tem teste em `automation/tests/automation.rs`, com `--root` respeitado.
 - Toda string nova de UI vai no `tl!()` (inglês é a fonte) e nos **18** catálogos completos (`crates/ui-egui/src/i18n/*.tsv`; os quatro de `chess_scan::INCOMPLETE` até o A9-I14), com o SHA-256 de cada `.tsv` atualizado no `ATTRIBUTION.toml`.
+- Passo que mexe em regras puras (`rules`, `san`, `nag`, o leitor PGN) mede a mutação por amostra do arquivo (meta ≥ 90 % mortos, sobreviventes explicados no PR): `cargo xtask mutate crates/chess/src/rules.rs [--lines 210,215] [--list]` (A9-Q4a). Roda numa **cópia** do workspace em `<target>/mutate/ws` (nunca na árvore de trabalho; sem symlinks, que o Windows recusa), mata a árvore de processos de um teste que estoura o tempo (`taskkill /T` no Windows) e falha se algum mutante sobreviver.
 - Métricas (recall, CER, tempo) só valem com **comando exato + saída + máquina** registrados na §8.
 - Sem CI (Actions desligado): estes portões são o **único** gate antes do merge no `main`.
 - Branch de passo rebaseado sobre o **nosso** `main` antes do PR. O `upstream` entra por merge (D3), lendo cada conflito.
