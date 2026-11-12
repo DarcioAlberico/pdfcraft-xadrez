@@ -11,8 +11,10 @@
 //! **Decisions** (plan "Carregar PGN do livro", R6e): what the user chose for a move of the text
 //! the PGN plays from another position (a conflict), the book's move or the PGN's, each by the
 //! move's place on its page and its SAN as printed, so a page read differently does not take
-//! another move's decision. They belong to the PGN they were made against: keeping another PGN
-//! drops them; a save as another file keeps them.
+//! another move's decision. They belong to the PGN they were made against: keeping the same PGN
+//! again keeps them (the same text, or the same file as a build before plan A9-F1 read it, with
+//! U+FFFD where a byte was not UTF-8: [`KeptPgn::is_same_as`]); keeping another PGN drops them; a
+//! save as another file keeps them.
 //!
 //! **Safety**, as for the corrections: a file of a newer version is read but never written or
 //! removed; one that can't be read is set aside as `….bad`, never deleted. The folder store
@@ -88,6 +90,10 @@ pub struct KeptPgn {
     pub games: usize,
     pub moves: usize,
     pub text: String,
+    /// The hash the readers before plan A9-F1 gave the same file (every byte that is not UTF-8
+    /// a U+FFFD, the BOM kept), so a PGN they kept is still known as this one. Never written.
+    #[serde(skip)]
+    pub legacy_hash: Option<String>,
 }
 
 impl KeptPgn {
@@ -98,7 +104,20 @@ impl KeptPgn {
             return Err(ReferenceStoreError::TooBig);
         }
         let name = name.filter(|n| !n.is_empty() && n.len() <= MAX_NAME).map(str::to_owned);
-        Ok(KeptPgn { name, hash: text_hash(&text), bytes: text.len(), at, games, moves, text })
+        Ok(KeptPgn { name, hash: text_hash(&text), bytes: text.len(), at, games, moves, text, legacy_hash: None })
+    }
+
+    /// This PGN, read from the file's `bytes` (by `pdfcraft_chess::pgn::decode`): also known by
+    /// the hash the readers before plan A9-F1 gave those bytes.
+    pub fn read_from(mut self, bytes: &[u8]) -> KeptPgn {
+        self.legacy_hash = Some(text_hash(&pdfcraft_chess::pgn::legacy_text(bytes)));
+        self
+    }
+
+    /// Whether this is the PGN `kept` holds: the same text, or the same file as a build before
+    /// plan A9-F1 kept it.
+    pub fn is_same_as(&self, kept: &KeptPgn) -> bool {
+        self.hash == kept.hash || self.legacy_hash.as_deref() == Some(kept.hash.as_str())
     }
 }
 
@@ -315,7 +334,11 @@ fn set_bytes(loaded: &Loaded, keys: &DocKeys, pages: usize, pgn: KeptPgn) -> Res
     if let Some(v) = loaded.read_only {
         return Err(ReferenceStoreError::Newer(v));
     }
-    let file = ReferenceFile::new(DocRecord::new(keys, pages), pgn);
+    let mut file = ReferenceFile::new(DocRecord::new(keys, pages), pgn);
+    // The same PGN kept again keeps the decisions made against it.
+    if let Some(old) = loaded.file.as_ref().filter(|old| file.pgn.is_same_as(&old.pgn)) {
+        file.decisions.clone_from(&old.decisions);
+    }
     let bytes = file.to_bytes()?;
     Ok((file, bytes))
 }

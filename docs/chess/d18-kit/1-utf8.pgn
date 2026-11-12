@@ -1,0 +1,28 @@
+[Event "Kit D18: acentos"]
+[Site "São Paulo"]
+[Date "2026.11.11"]
+[Round "1"]
+[White "Réti, Richard"]
+[Black "Capablanca, José Raúl"]
+[Result "1-0"]
+[Annotator "PdfCraft (teste sintético)"]
+
+1. Nf3 d5 2. c4 {Abertura Réti: a peça vai para f3 antes do peão.} 2... e6
+3. g3 Nf6 4. Bg2 Be7 5. O-O O-O 6. b3 c5 7. Bb2 Nc6 8. e3 {Ação no centro,
+com ênfase na diagonal grande.} 8... b6 9. Nc3 Bb7 10. cxd5 exd5 11. d4 Rc8
+12. Rc1 Re8 13. dxc5 bxc5 14. Na4 Qa5 15. Qe2 {Peças às vezes ficam
+mal coordenadas; ótimo exemplo para o capítulo de pressão.} 1-0
+
+[Event "Kit D18: acentos"]
+[Site "Göteborg"]
+[Date "2026.11.11"]
+[Round "2"]
+[White "Müller, Jürgen"]
+[Black "Peña, Ñuño"]
+[Result "1/2-1/2"]
+[Annotator "PdfCraft (teste sintético)"]
+
+1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 {A Najdorf: o lance que
+dá nome à variante.} 6. Be3 e5 7. Nb3 Be6 8. f3 Be7 9. Qd2 O-O 10. O-O-O Nbd7
+11. g4 b5 12. g5 b4 13. Ne2 Ne8 14. f4 a5 15. f5 {Ataque à ala do rei; o
+preto responde na ala da dama.} 1/2-1/2

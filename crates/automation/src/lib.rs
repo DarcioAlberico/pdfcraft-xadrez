@@ -19,6 +19,7 @@ mod batch;
 mod chess;
 mod chess_area;
 mod chess_corrections;
+mod chess_files;
 mod chess_games;
 mod chess_pgn;
 mod chess_reference;

@@ -2585,6 +2585,10 @@ chess undo step	Clear drawings	удаление рисунков
 	Chess games couldn't be autosaved: {e}	Не удалось автоматически сохранить шахматные партии: {e}
 	Nothing to save: an illegal position has no PGN.	Нечего сохранять: у недопустимой позиции нет PGN.
 	Games read from {name}: {n}	Прочитано партий из {name}: {n}
+	Read as Windows-1252 (Latin-1), not UTF-8.	Прочитано как Windows-1252 (Latin-1), а не UTF-8.
+	Lines read as Windows-1252 (Latin-1), not UTF-8: {n}	Строки, прочитанные как Windows-1252 (Latin-1), а не UTF-8: {n}
+	Write PGN files with a byte order mark (BOM)	Записывать файлы PGN с меткой порядка байтов (BOM)
+	Some Windows programs need the mark to read accents; most read PGN without it.	Некоторым программам для Windows эта метка нужна, чтобы читать диакритические знаки; большинство читает PGN и без неё.
 	Not read: {n}	Не прочитано: {n}
 	Only the first {n} were read.	Прочитаны только первые {n}.
 	the file is too large	файл слишком большой

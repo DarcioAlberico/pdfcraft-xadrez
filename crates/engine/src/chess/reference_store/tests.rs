@@ -175,6 +175,36 @@ fn decisions_are_kept_with_the_pgn_they_were_made_against() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Plan A9-F1 (A1-10): a Latin-1 book PGN kept by a build before F1 (read with U+FFFD for each
+/// accent) and the same file read now (decoded as Windows-1252) are the same PGN: the decisions
+/// made against it stay, and the text kept from then on has its accents. The same text kept
+/// again keeps them too; another PGN still drops them.
+#[test]
+fn the_same_pgn_kept_again_keeps_its_decisions_even_as_an_older_build_read_it() {
+    let dir = temp_dir("same-pgn");
+    let store = DirStore::new(&dir);
+    let bytes = b"[White \"R\xe9ti\"]\n\n1. e4 e5 2. Nf3 *\n";
+    let before_f1 = KeptPgn::new(Some("livro.pgn"), String::from_utf8_lossy(bytes).into_owned(), 1, 3, 100).unwrap();
+    store.set(&keys(), 10, before_f1).unwrap();
+    store.decide(&keys(), 10, decision(3, Choice::Pgn)).unwrap();
+    let (text, encoding) = pdfcraft_chess::pgn::decode(bytes);
+    assert_eq!(encoding, pdfcraft_chess::pgn::PgnEncoding::Windows1252);
+    let now = KeptPgn::new(Some("livro.pgn"), text.clone(), 1, 3, 200).unwrap().read_from(bytes);
+    let (replaced, loaded) = store.set(&keys(), 10, now).unwrap();
+    assert!(replaced);
+    let file = loaded.file.unwrap();
+    assert_eq!(file.decisions, vec![decision(3, Choice::Pgn)], "the same file, read as before F1");
+    assert!(file.pgn.text.contains("Réti"), "{}", file.pgn.text);
+    let on_disk = store.load(&keys(), 10).unwrap().file.unwrap();
+    assert_eq!((on_disk.decisions.len(), on_disk.pgn.hash), (1, text_hash(&text)));
+    // The same text again, then another PGN.
+    store.set(&keys(), 10, KeptPgn::new(Some("livro.pgn"), text, 1, 3, 300).unwrap()).unwrap();
+    assert_eq!(store.load(&keys(), 10).unwrap().file.unwrap().decisions.len(), 1, "the same text");
+    store.set(&keys(), 10, kept(OTHER)).unwrap();
+    assert!(store.load(&keys(), 10).unwrap().file.unwrap().decisions.is_empty(), "another PGN");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn memory_keeps_within_its_budget_and_round_trips() {
     let store = MemStore::new(4096);

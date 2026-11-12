@@ -2399,6 +2399,7 @@ impl PdfCraftApp {
         v["chess_confirm_only"] = serde_json::Value::Bool(self.chess.confirm_only);
         v["chess_diagram_hint_seen"] = serde_json::Value::Bool(self.chess.diagram_hint_seen);
         v["chess_redraw_asked"] = serde_json::Value::Bool(self.chess.redraw_asked);
+        v["chess_pgn_bom"] = serde_json::Value::Bool(self.chess.games.pgn_bom);
         v["chess_tools_offer_answered"] = serde_json::Value::Bool(self.chess.tools_offer_answered);
         // The documents that said Not now to the PGN beside them (plan "Carregar PGN do livro", R6f).
         v["chess_pgn_offers_declined"] = serde_json::json!(self.chess.book_pgns.declined);
@@ -2470,6 +2471,9 @@ impl PdfCraftApp {
         }
         if let Some(on) = v["chess_redraw_asked"].as_bool() {
             self.chess.redraw_asked = on;
+        }
+        if let Some(on) = v["chess_pgn_bom"].as_bool() {
+            self.chess.games.pgn_bom = on;
         }
         if let Some(on) = v["chess_tools_offer_answered"].as_bool() {
             self.chess.tools_offer_answered = on;

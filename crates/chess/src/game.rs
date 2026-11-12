@@ -1486,6 +1486,8 @@ enum Lexed {
 /// Split PGN into its pieces. Move numbers are dropped; `{…}` and `;…` are comments; a line
 /// starting with `%` is skipped.
 fn lex(text: &str) -> Vec<Lexed> {
+    // A byte order mark would turn the first tag into a word (A1-01).
+    let text = crate::pgn::without_bom(text);
     let mut out = Vec::new();
     let mut chars = text.chars().peekable();
     let mut word = String::new();
@@ -1611,6 +1613,16 @@ mod tests {
 
     fn sq(name: &str) -> Square {
         Square::parse(name).unwrap()
+    }
+
+    /// Plan A9-F1 (A1-01): text that starts with a byte order mark (pasted, or passed through
+    /// JSON) keeps its first tag and its moves.
+    #[test]
+    fn a_byte_order_mark_does_not_hide_the_first_tag() {
+        let (game, stopped) = Game::from_pgn("\u{feff}[FEN \"4k3/8/8/8/8/8/8/4K3 w - - 0 1\"]\n[SetUp \"1\"]\n\n1. Ke2 Kd7 *").unwrap();
+        assert_eq!(stopped, None);
+        assert_eq!(game.start_fen(), "4k3/8/8/8/8/8/8/4K3 w - - 0 1");
+        assert_eq!(game.pgn().matches("Ke2").count(), 1);
     }
 
     fn play(g: &mut Game, moves: &[(&str, &str)]) {

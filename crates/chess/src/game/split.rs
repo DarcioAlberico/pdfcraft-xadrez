@@ -3,8 +3,10 @@
 
 /// The games of a PGN file, one text each: a tag line after moves starts the next game (a `[`
 /// inside a `{…}` comment doesn't). At most `max` games and one more, so the caller can tell
-/// there were more.
+/// there were more. A byte order mark the text starts with (text pasted, or passed through JSON)
+/// is left out: it would hide the first tag line.
 pub fn split_pgn(text: &str, max: usize) -> Vec<&str> {
+    let text = crate::pgn::without_bom(text);
     let mut games = Vec::new();
     let (mut start, mut at) = (0usize, 0usize);
     let (mut moves, mut in_comment) = (false, false);
@@ -57,5 +59,17 @@ mod tests {
         assert_eq!(split_pgn(&many, 3).len(), 4);
         assert!(split_pgn("", 3).is_empty());
         assert_eq!(split_pgn("1. e4 e5", 3), ["1. e4 e5"]);
+    }
+
+    /// Plan A9-F1 (A1-01): a byte order mark before the first tag no longer makes that line a
+    /// game of its own, so a problem file keeps its first FEN.
+    #[test]
+    fn a_byte_order_mark_does_not_split_off_the_first_tag() {
+        let text = "\u{feff}[FEN \"4k3/8/8/8/8/8/8/4K2R w K - 0 1\"]\n[SetUp \"1\"]\n\n1. O-O *\n";
+        let games = split_pgn(text, 10);
+        assert_eq!(games.len(), 1, "{games:?}");
+        assert!(games[0].starts_with("[FEN"), "{games:?}");
+        let (game, stopped) = crate::game::Game::from_pgn(games[0]).unwrap();
+        assert_eq!((game.start_fen().as_str(), stopped), ("4k3/8/8/8/8/8/8/4K2R w K - 0 1", None));
     }
 }
