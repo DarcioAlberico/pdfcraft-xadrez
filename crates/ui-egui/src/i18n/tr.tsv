@@ -2643,6 +2643,7 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Save them	Kaydet
 	Too many games to autosave here: save them as PGN.	Otomatik kayıt için çok fazla oyun var: bunları PGN olarak kaydedin.
 	Another PdfCraft window autosaves these games.	Bu oyunları başka bir PdfCraft penceresi otomatik olarak kaydediyor.
+	Saved by a newer PdfCraft: these games are only read here.	PdfCraft'ın daha yeni bir sürümüyle kaydedildi: bu oyunlar burada yalnızca okunur.
 	These games aren't being autosaved.	Bu oyunlar otomatik olarak kaydedilmiyor.
 	Chess game restored: {name}, moves: {n}	Satranç oyunu geri yüklendi: {name}, hamle: {n}
 	Chess games restored: {n}	Geri yüklenen satranç oyunları: {n}
@@ -2651,6 +2652,7 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.	Kayıtlı satranç oyunları okunamadı. Bir kenara ayrıldılar; yeni oyunlar artık kaydediliyor.
 	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Bu belge korumalı: satranç oyunları yalnızca Satranç tahtası panelinde izin verirseniz otomatik olarak kaydedilir.
 	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Bu belge için otomatik kaydedilecek çok fazla satranç oyunu var (en fazla {n}, {mb} MB). Hiçbir şey kaybolmasın diye bunları Tüm oyunları PGN olarak kaydet… ile kaydedin.
+	These chess games were saved by a newer PdfCraft (format {v}): this one only reads them, and doesn't autosave changes made here. Save them with Save all games as PGN… so nothing is lost.	Bu satranç oyunları PdfCraft'ın daha yeni bir sürümüyle kaydedilmiş (biçim {v}): bu sürüm onları yalnızca okur ve burada yapılan değişiklikleri otomatik kaydetmez. Hiçbir şey kaybolmasın diye bunları Tüm oyunları PGN olarak kaydet… ile kaydedin.
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Satranç oyunları otomatik olarak kaydedilemiyor: uygulamanın veri klasörü bu pencere için kilitlenemedi.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Bu satranç oyunlarını başka bir PdfCraft penceresi otomatik olarak kaydediyor. Burada yapılan değişiklikler otomatik olarak kaydedilmiyor.
 	Chess games couldn't be autosaved: {e}	Satranç oyunları otomatik olarak kaydedilemedi: {e}

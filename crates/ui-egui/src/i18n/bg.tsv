@@ -2610,6 +2610,7 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Save them	Записвай
 	Too many games to autosave here: save them as PGN.	Твърде много партии за автоматично записване: запишете ги като PGN.
 	Another PdfCraft window autosaves these games.	Друг прозорец на PdfCraft записва автоматично тези партии.
+	Saved by a newer PdfCraft: these games are only read here.	Записани от по-нова версия на PdfCraft: тук тези партии само се четат.
 	These games aren't being autosaved.	Тези партии не се записват автоматично.
 	Chess game restored: {name}, moves: {n}	Шахматната партия е възстановена: {name}, ходове: {n}
 	Chess games restored: {n}	Възстановени шахматни партии: {n}
@@ -2618,6 +2619,7 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.	Записаните шахматни партии не можаха да бъдат прочетени. Те бяха оставени настрана и отсега нататък се записват новите партии.
 	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Този документ е защитен: шахматните му партии се записват автоматично само ако разрешите това в панела „Шахматна дъска“.
 	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Твърде много шахматни партии за автоматично записване в този документ (най-много {n}, {mb} MB). Запишете ги с „Запиши всички партии като PGN…“, за да не се загуби нищо.
+	These chess games were saved by a newer PdfCraft (format {v}): this one only reads them, and doesn't autosave changes made here. Save them with Save all games as PGN… so nothing is lost.	Тези шахматни партии са записани от по-нова версия на PdfCraft (формат {v}): тази версия само ги чете и не записва автоматично промените, направени тук. Запишете ги с „Запиши всички партии като PGN…“, за да не се загуби нищо.
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Шахматните партии не могат да се записват автоматично: папката с данни на приложението не можа да бъде заключена за този прозорец.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Тези шахматни партии се записват автоматично от друг прозорец на PdfCraft. Промените, направени тук, не се записват автоматично.
 	Chess games couldn't be autosaved: {e}	Шахматните партии не можаха да бъдат записани автоматично: {e}

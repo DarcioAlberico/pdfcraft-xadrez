@@ -2669,6 +2669,7 @@ chess undo step	Clear drawings	видалення малюнків
 	Save them	Зберігати
 	Too many games to autosave here: save them as PGN.	Забагато партій для автозбереження: збережіть їх у PGN.
 	Another PdfCraft window autosaves these games.	Ці партії автоматично зберігає інше вікно PdfCraft.
+	Saved by a newer PdfCraft: these games are only read here.	Збережено новішою версією PdfCraft: тут ці партії лише читаються.
 	These games aren't being autosaved.	Ці партії не зберігаються автоматично.
 	Chess game restored: {name}, moves: {n}	Шахову партію відновлено: {name}, ходів: {n}
 	Chess games restored: {n}	Відновлено шахових партій: {n}
@@ -2677,6 +2678,7 @@ chess undo step	Clear drawings	видалення малюнків
 	Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.	Не вдалося прочитати збережені шахові партії. Їх відкладено, а нові партії тепер зберігаються.
 	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Документ захищено: його шахові партії зберігаються автоматично, лише якщо ви дозволите це на панелі «Шахова дошка».
 	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Забагато шахових партій для автозбереження в цьому документі (не більше {n}, {mb} МБ). Збережіть їх командою «Зберегти всі партії в PGN…», щоб нічого не втратити.
+	These chess games were saved by a newer PdfCraft (format {v}): this one only reads them, and doesn't autosave changes made here. Save them with Save all games as PGN… so nothing is lost.	Ці шахові партії збережено новішою версією PdfCraft (формат {v}): ця версія лише читає їх і не зберігає автоматично зміни, зроблені тут. Збережіть їх командою «Зберегти всі партії в PGN…», щоб нічого не втратити.
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Шахові партії не можна зберігати автоматично: не вдалося заблокувати теку даних застосунку для цього вікна.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Ці шахові партії автоматично зберігає інше вікно PdfCraft. Зміни, зроблені тут, не зберігаються автоматично.
 	Chess games couldn't be autosaved: {e}	Не вдалося автоматично зберегти шахові партії: {e}

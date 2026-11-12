@@ -2788,6 +2788,7 @@ chess undo step	Clear drawings	borrado de los dibujos
 	Save them	Guardarlas
 	Too many games to autosave here: save them as PGN.	Demasiadas partidas para el guardado automático: guárdalas en PGN.
 	Another PdfCraft window autosaves these games.	Otra ventana de PdfCraft guarda automáticamente estas partidas.
+	Saved by a newer PdfCraft: these games are only read here.	Guardadas por una versión más reciente de PdfCraft: aquí estas partidas solo se leen.
 	These games aren't being autosaved.	Estas partidas no se están guardando automáticamente.
 	Chess game restored: {name}, moves: {n}	Partida restaurada: {name}, jugadas: {n}
 	Chess games restored: {n}	Partidas restauradas: {n}
@@ -2796,6 +2797,7 @@ chess undo step	Clear drawings	borrado de los dibujos
 	Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.	No se pudieron leer las partidas guardadas. Se apartaron, y a partir de ahora se guardan las partidas nuevas.
 	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Este documento está protegido: sus partidas de ajedrez solo se guardan automáticamente si lo permites, en el panel Tablero.
 	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Demasiadas partidas de ajedrez para guardar automáticamente en este documento (como máximo {n}, {mb} MB). Guárdalas con Guardar todas las partidas en PGN… para no perder nada.
+	These chess games were saved by a newer PdfCraft (format {v}): this one only reads them, and doesn't autosave changes made here. Save them with Save all games as PGN… so nothing is lost.	Estas partidas de ajedrez las guardó una versión más reciente de PdfCraft (formato {v}): esta solo las lee y no guarda automáticamente los cambios hechos aquí. Guárdalas con Guardar todas las partidas en PGN… para no perder nada.
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Las partidas de ajedrez no se pueden guardar automáticamente: no se pudo bloquear la carpeta de datos de la aplicación para esta ventana.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Otra ventana de PdfCraft guarda automáticamente estas partidas de ajedrez. Los cambios hechos aquí no se guardan automáticamente.
 	Chess games couldn't be autosaved: {e}	No se pudieron guardar automáticamente las partidas de ajedrez: {e}

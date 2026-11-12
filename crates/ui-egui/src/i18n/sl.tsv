@@ -2652,6 +2652,7 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Save them	Shranjuj
 	Too many games to autosave here: save them as PGN.	Preveč partij za samodejno shranjevanje: shranite jih kot PGN.
 	Another PdfCraft window autosaves these games.	Te partije samodejno shranjuje drugo okno PdfCraft.
+	Saved by a newer PdfCraft: these games are only read here.	Shranila jih je novejša različica PdfCraft: tukaj se te partije samo berejo.
 	These games aren't being autosaved.	Te partije se ne shranjujejo samodejno.
 	Chess game restored: {name}, moves: {n}	Šahovska partija obnovljena: {name}, potez: {n}
 	Chess games restored: {n}	Obnovljene šahovske partije: {n}
@@ -2660,6 +2661,7 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.	Shranjenih šahovskih partij ni bilo mogoče prebrati. Odložene so na stran, nove partije pa se odslej shranjujejo.
 	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Ta dokument je zaščiten: njegove šahovske partije se samodejno shranjujejo le, če to dovolite v podoknu Šahovnica.
 	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Preveč šahovskih partij za samodejno shranjevanje v tem dokumentu (največ {n}, {mb} MB). Shranite jih z ukazom Shrani vse partije kot PGN…, da se nič ne izgubi.
+	These chess games were saved by a newer PdfCraft (format {v}): this one only reads them, and doesn't autosave changes made here. Save them with Save all games as PGN… so nothing is lost.	Te šahovske partije je shranila novejša različica PdfCraft (oblika {v}): ta različica jih samo bere in sprememb, narejenih tukaj, ne shranjuje samodejno. Shranite jih z ukazom Shrani vse partije kot PGN…, da se nič ne izgubi.
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Šahovskih partij ni mogoče samodejno shranjevati: podatkovne mape aplikacije za to okno ni bilo mogoče zakleniti.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Te šahovske partije samodejno shranjuje drugo okno PdfCraft. Spremembe, narejene tukaj, se ne shranjujejo samodejno.
 	Chess games couldn't be autosaved: {e}	Šahovskih partij ni bilo mogoče samodejno shraniti: {e}
