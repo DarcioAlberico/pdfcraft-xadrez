@@ -1001,7 +1001,9 @@ fn the_pgn_beside_the_pdf_is_offered_and_a_linked_move_opens_its_game() {
     h.get_all_by_label("Use book.pgn").last().expect("the Text tab's button").click();
     h.run_steps(4);
     h.get_by_label("Book's PGN: book.pgn (1 games)");
-    assert!(h.query_by_label("Use book.pgn").is_none(), "offered only while none is kept");
+    for kept in ["Use book.pgn", "Use book.pgn as the book's PGN"] {
+        assert!(h.query_by_label(kept).is_none(), "offered only while none is kept");
+    }
     // A move in the middle: a game read from PGN already stands on its last move.
     right_click(&mut h, "e5");
     h.get_by_label("Open the book's PGN game here").click();
@@ -1089,7 +1091,7 @@ fn the_pgn_beside_a_pdf_opened_is_offered_once() {
     let settings = {
         let mut h = book_pgn_harness("book.pdf", Some(path.clone()), bytes.clone(), dir.join("reference"));
         h.get_by_label(offered);
-        h.get_by_label("Don't use book.pgn as the book's PGN").click();
+        h.get_by_label("Not now: don't use book.pgn as the book's PGN").click();
         h.run_steps(3);
         assert!(h.query_by_label(offered).is_none(), "answered");
         h.get_by_label("Use book.pgn");
@@ -1118,10 +1120,68 @@ fn the_pgn_beside_a_pdf_opened_is_offered_once() {
     // Without that answer, Use in the offer keeps it.
     let mut h = book_pgn_harness("book.pdf", Some(path), bytes, dir.join("reference"));
     h.get_by_label(offered);
-    h.get_all_by_label("Use book.pgn").next().expect("the offer's button").click();
+    h.get_all_by_label("Use book.pgn as the book's PGN").next().expect("the offer's button").click();
     h.run_steps(4);
     h.get_by_label("Book's PGN: book.pgn (1 games)");
     assert!(h.query_by_label(offered).is_none(), "kept: no offer");
+    let _ = std::fs::remove_dir_all(dir);
+}
+
+/// Plan A9-I7a (findings A6-02 and A6-03): the PGN beside a PDF whose name starts with an emoji
+/// is offered, and the offer's buttons are short words, so an 80-character file name, said in
+/// full in the offer's text and to screen readers, never pushes Not now, nor the Text tab's
+/// Use, off the panel at 1366 × 768 (1360 × 705 inside), light and dark; Not now is then one
+/// click.
+#[test]
+fn a_long_named_pgn_beside_the_pdf_is_offered_inside_the_panel() {
+    let dir = corrections_dir("book-pgn-long-name");
+    std::fs::create_dir_all(&dir).unwrap();
+    let stem = "Harikrisna Pentala. Beat the French Defense with 3. Nc3, the annotated games";
+    let name = format!("{stem}.pgn");
+    assert_eq!(name.chars().count(), 80);
+    let pdf = dir.join(format!("📚{stem}.pdf"));
+    let bytes = chapter_with("1.e4 e5 2.Nf3 Nc6 5.Bb5 a6");
+    std::fs::write(&pdf, &bytes).unwrap();
+    std::fs::write(dir.join(&name), RUY_PGN).unwrap();
+    let size = egui::vec2(1360.0, 705.0);
+    for theme in ["light", "dark"] {
+        let mut h = Harness::builder().with_size(size).build_eframe({
+            let (path, store, bytes) = (pdf.to_string_lossy().into_owned(), dir.join("reference"), bytes.clone());
+            move |_cc| {
+                let mut app = PdfCraftApp::new();
+                app.set_option("language", "en").unwrap();
+                app.set_option("theme", theme).unwrap();
+                app.chess.book_pgns.use_folder(store);
+                app.open_bytes("book.pdf", Some(path), bytes).unwrap();
+                app.run_inline = true;
+                app
+            }
+        });
+        h.run_steps(4);
+        h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+        h.run_steps(3);
+        let offered = format!("{name} sits beside this PDF. Use it as the book's PGN?");
+        h.get_by_label(&offered);
+        // The panel ends where the rail beside the window's right edge begins.
+        let edge = size.x - 48.0;
+        let not_now = format!("Not now: don't use {name} as the book's PGN");
+        let use_it = format!("Use {name} as the book's PGN");
+        for label in [&not_now, &use_it] {
+            let r = h.get_by_label(label).rect();
+            assert!(r.max.x <= edge, "{theme}: {label} at {r:?}, the panel ends at {edge}");
+        }
+        if let Ok(shots) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
+            h.render().unwrap().save(std::path::Path::new(&shots).join(format!("pgn-offer-1366-{theme}.png"))).unwrap();
+        }
+        // The Text tab's own Use wraps its long name inside the row.
+        h.get_by_label("Text").click();
+        h.run_steps(4);
+        let r = h.get_by_label(&format!("Use {name}")).rect();
+        assert!(r.max.x <= edge, "{theme}: the Text tab's Use at {r:?}");
+        h.get_by_label(&not_now).click();
+        h.run_steps(3);
+        assert!(h.query_by_label(&offered).is_none(), "{theme}: Not now, by the mouse");
+    }
     let _ = std::fs::remove_dir_all(dir);
 }
 
@@ -4388,6 +4448,43 @@ fn the_classic_editor_stays_in_the_diagrams_panel() {
     let mut again = PdfCraftApp::new();
     again.restore(&saved);
     assert!(again.chess.classic_editor, "kept with the preferences");
+}
+
+/// Read mode draws no docking workspace, so no Diagram tab: picking a diagram there opens its
+/// editor in the Chess diagrams panel, as the classic editor does, where it is confirmed as in the
+/// Diagram tab; leaving Read mode brings out no Diagram tab the user never saw open (plan
+/// A9-I15, finding R4-01).
+#[test]
+fn read_mode_corrects_a_diagram_in_the_panel() {
+    for theme in ["light", "dark"] {
+        let mut h = harness_sized(boards(), egui::vec2(1360.0, 705.0));
+        h.state_mut().set_option("theme", theme).unwrap();
+        assert!(h.state_mut().execute("view.read_mode"));
+        h.run_steps(2);
+        assert_eq!(h.state().mode, pdfcraft_ui_egui::Mode::Read);
+        assert!(h.state_mut().execute("chess.scan"));
+        h.run_steps(3);
+        assert_eq!(h.state().right, Some(RightPanel::Chess), "the panel shows in Read mode");
+        h.get_by_label_contains("Diagram 1 · ").click();
+        h.run_steps(3);
+        h.get_by_label("Edit Diagram 1, page 1");
+        h.state_mut().chess.confirm_only = true;
+        h.run_steps(1);
+        if let Ok(shots) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
+            h.render().unwrap().save(std::path::Path::new(&shots).join(format!("read-mode-editor-1366-{theme}.png"))).unwrap();
+        }
+        // Confirm is in sight under the board at 1366 × 768, with no scrolling.
+        let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1360.0, 705.0));
+        let confirm = h.get_by_label("Only confirm").rect();
+        assert!(screen.contains_rect(confirm), "{theme}: Confirm at {confirm:?}");
+        h.get_by_label("Only confirm").click();
+        h.run_steps(3);
+        assert_eq!(kind(&h, 0).as_deref(), Some("Verified"), "{theme}: confirmed in Read mode");
+        assert!(h.state_mut().execute("view.read_mode"));
+        h.run_steps(3);
+        assert_ne!(h.state().mode, pdfcraft_ui_egui::Mode::Read);
+        assert!(!h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Diagram), "{theme}: no Diagram tab comes out");
+    }
 }
 
 // ─── Drafts and the question before closing, exporting or detecting again (plan A8, P3b3) ─────

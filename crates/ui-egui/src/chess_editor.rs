@@ -619,13 +619,15 @@ pub(crate) fn second_readings(ui: &mut egui::Ui, ed: &mut DiagramEditor) {
 }
 
 /// The editor: the board, the palette, the position's fields and the actions. `queue` is the
-/// number of diagrams to review (for Previous / Next); `keys`, the board's ([`board_view`]).
+/// number of diagrams to review (for Previous / Next); `confirm_only`, the way the user confirmed
+/// last; `keys`, the board's ([`board_view`]).
 pub fn editor_ui(
     ui: &mut egui::Ui,
     t: &Tokens,
     ed: &mut DiagramEditor,
     pieces: &PieceSet,
     queue: usize,
+    confirm_only: bool,
     keys: Option<&crate::chess_diagram_keys::BoardKeys>,
 ) -> Option<EditorAction> {
     let mut action = None;
@@ -643,6 +645,18 @@ pub fn editor_ui(
         let side = (ui.available_width() - PALETTE_COLUMN - ui.spacing().item_spacing.x).clamp(MIN_BOARD_PT, BOARD_PT);
         board_view(ui, t, ed, pieces, side, false, keys);
         ui.vertical(|ui| palette(ui, sprites.as_ref(), &mut ed.brush, true));
+    });
+    // Confirm and whether the position is legal, right under the board, in sight without
+    // scrolling at 1366 x 768: as the Diagram tab's footer, since this editor is also Read
+    // mode's, which has no Diagram tab (plan A9-I15, finding R4-01).
+    ui.horizontal_wrapped(|ui| {
+        if let Some(a) = crate::chess_diagram_tab::confirm_button(ui, confirm_only, queue > 0) {
+            action = Some(a);
+        }
+        let illegal = ed.illegal_text();
+        let colour = if illegal.is_none() { t.success_text } else { t.danger_text };
+        let status = illegal.unwrap_or_else(|| tl!("Legal position").to_string());
+        ui.add(egui::Label::new(egui::RichText::new(status).small().color(colour)).wrap());
     });
     // Move number, side to move, castling, view. The side to move has a row of its own, so its
     // label and its two choices stay together when the panel is narrow.
@@ -671,12 +685,8 @@ pub fn editor_ui(
         }
     });
     let fen = ed.fen();
-    let illegal = ed.illegal_text();
-    let legal = illegal.is_none();
+    let legal = ed.illegal_text().is_none();
     ui.add(egui::Label::new(egui::RichText::new(&fen).monospace().small()).wrap());
-    let status = illegal.unwrap_or_else(|| tl!("Legal position").to_string());
-    let colour = if legal { t.success_text } else { t.danger_text };
-    ui.add(egui::Label::new(egui::RichText::new(status).small().color(colour)).wrap());
     second_readings(ui, ed);
     ui.add_space(4.0);
     ui.horizontal_wrapped(|ui| {

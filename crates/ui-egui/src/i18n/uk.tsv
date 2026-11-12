@@ -3400,7 +3400,9 @@ castling	long	довга
 	The choice was not kept: {e}	Вибір не збережено: {e}
 	{name} sits beside this PDF: the Chess panel offers to use it as the book's PGN.	{name} лежить поруч із цим PDF: панель «Шахи» пропонує використати його як PGN книги.
 	{name} sits beside this PDF. Use it as the book's PGN?	{name} лежить поруч із цим PDF. Використати його як PGN книги?
-	Don't use {name} as the book's PGN	Не використовувати {name} як PGN книги
+	Use	Використати
+	Use {name} as the book's PGN	Використати {name} як PGN книги
+	Not now: don't use {name} as the book's PGN	Не зараз: не використовувати {name} як PGN книги
 	read from the book's PGN	взято з PGN книги
 	in conflict with the book's PGN	у конфлікті з PGN книги
 	in conflict, the PGN's move chosen	у конфлікті, вибрано хід із PGN
