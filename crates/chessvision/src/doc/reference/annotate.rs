@@ -25,10 +25,10 @@ use pdfcraft_chess::origin::PgnOrigin;
 use pdfcraft_chess::pgn_style::PgnStyle;
 use pdfcraft_chess::san::Lang;
 
-use super::{InlineAt, RECENT_ANCHORS, RefNode, ReferenceIndex, align, move_key};
+use super::{RECENT_ANCHORS, RefNode, ReferenceIndex, align, move_key};
 use crate::doc::html::{Figurines, plain_text_with};
 use crate::doc::markdown::PgnBook;
-use crate::doc::{Block, ChessDoc, Inline, MoveInline, MoveStatus};
+use crate::doc::{Block, ChessDoc, Inline, MoveAt, MoveInline, MoveStatus};
 
 /// What [`annotated_pgn`] wrote.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -126,7 +126,7 @@ fn flush(pending: &mut Pending, at: Option<RefNode>, notes: &mut BTreeMap<RefNod
 /// The reference's games written with the book's text (see the module documentation).
 pub fn annotated_pgn(doc: &ChessDoc, index: &ReferenceIndex, book: &PgnBook, style: PgnStyle) -> AnnotatedPgn {
     let alignment = align(doc, index);
-    let links: HashMap<InlineAt, RefNode> = alignment.moves.iter().filter_map(|l| Some((l.at, l.node?))).collect();
+    let links: HashMap<MoveAt, RefNode> = alignment.moves.iter().filter_map(|l| Some((l.at, l.node?))).collect();
     let shown: HashMap<(u32, usize), RefNode> = alignment.diagrams.iter().filter_map(|d| Some(((d.at.page, d.at.diagram), d.node?))).collect();
     let page_game: HashMap<u32, usize> = alignment.pages.iter().map(|p| (p.page, p.game)).collect();
     let mut games: Vec<Option<PgnGame>> = index.games().iter().map(|g| g.game.clone()).collect();
@@ -166,7 +166,7 @@ pub fn annotated_pgn(doc: &ChessDoc, index: &ReferenceIndex, book: &PgnBook, sty
                     let mut from = 0usize;
                     for (i, inline) in inlines.iter().enumerate() {
                         let Inline::Move(mv) = inline else { continue };
-                        let at = InlineAt { page: page.index, block: b, inline: i };
+                        let at = MoveAt::new(page.index, b, i);
                         let node = match links.get(&at) {
                             Some(&node) => Some(node),
                             None => book_line(&mut games, &recent, current, mv).map(|(parent, n, new)| {

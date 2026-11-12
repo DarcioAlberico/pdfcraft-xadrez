@@ -25,7 +25,7 @@ use pdfcraft_chess::placement::Placement;
 use pdfcraft_chess::san::Lang;
 use pdfcraft_chess::svg::to_svg;
 use pdfcraft_chessvision::doc::html::{Figurines, Span, SpanFont, spans};
-use pdfcraft_chessvision::doc::{Block as DocBlock, ChessDoc, Inline};
+use pdfcraft_chessvision::doc::{Block as DocBlock, ChessDoc, Inline, PageLabel};
 use pdfcraft_chessvision::text_font::TextFont;
 use pdfcraft_export::flow::{Figure, FlowBlock, FlowDoc, Run};
 /// The writers [`to_flow`] feeds.
@@ -158,8 +158,8 @@ pub fn to_flow(doc: &ChessDoc, o: &OfficeOptions<'_>, notes: &mut Vec<String>) -
     let mut drawn = 0;
     for page in &doc.pages {
         let lang = Lang::from_tag(&page.lang).unwrap_or(Lang::En);
-        let printed = usize::try_from(page.index).ok().and_then(|i| o.page_labels.get(i)).map(|l| l.trim()).filter(|l| !l.is_empty());
-        let label = printed.map_or_else(|| (u64::from(page.index) + 1).to_string(), str::to_owned);
+        let page_label = PageLabel::of(o.page_labels, page.index);
+        let label = page_label.to_string();
         let of = page.blocks.iter().filter(|b| matches!(b, DocBlock::Diagram(_))).count();
         for block in &page.blocks {
             match block {
@@ -174,7 +174,7 @@ pub fn to_flow(doc: &ChessDoc, o: &OfficeOptions<'_>, notes: &mut Vec<String>) -
                     // The caption: the PGN's comment for the diagram, its FEN, its link.
                     let origin = PgnOrigin {
                         page_index: page.index,
-                        page_label: printed.map(str::to_owned),
+                        page_label: page_label.printed.clone(),
                         diagram: Some(number),
                         of: Some(of),
                         lang: Some(lang),
@@ -201,7 +201,7 @@ pub fn to_flow(doc: &ChessDoc, o: &OfficeOptions<'_>, notes: &mut Vec<String>) -
                             drawn += 1;
                         }
                         Err(e) => {
-                            notes.push(format!("page {}, diagram {number}: {e}; its FEN was set instead", u64::from(page.index) + 1));
+                            notes.push(format!("page {label}, diagram {number}: {e}; its FEN was set instead"));
                             blocks.push(FlowBlock::Para(caption));
                         }
                     }

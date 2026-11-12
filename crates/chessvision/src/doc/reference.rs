@@ -48,7 +48,7 @@ use pdfcraft_chess::placement::{Color, Piece, Placement};
 use serde::{Deserialize, Serialize};
 
 use super::games::DiagramAt;
-use super::{Block, ChessDoc, DiagramBlock, DiagramReading, DiagramSource, Inline, MoveInline, MoveStatus, ReviewFlag, SquareChange};
+use super::{Block, ChessDoc, DiagramBlock, DiagramReading, DiagramSource, Inline, MoveAt, MoveInline, MoveStatus, ReviewFlag, SquareChange};
 
 /// Largest PGN text [`ReferenceIndex::from_pgn`] reads.
 pub const MAX_REFERENCE_BYTES: usize = 32 << 20;
@@ -337,18 +337,10 @@ pub enum LinkKind {
     Absent,
 }
 
-/// An inline of the document: its page index, block and place in the block, from 0.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct InlineAt {
-    pub page: u32,
-    pub block: usize,
-    pub inline: usize,
-}
-
 /// A move of the text and its move in the reference.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MoveLink {
-    pub at: InlineAt,
+    pub at: MoveAt,
     pub kind: LinkKind,
     /// `None` when [`LinkKind::Absent`].
     pub node: Option<RefNode>,
@@ -489,8 +481,9 @@ pub fn link(doc: &mut ChessDoc, index: &ReferenceIndex) -> Linked {
     let at_page: HashMap<u32, usize> = doc.pages.iter().enumerate().map(|(k, p)| (p.index, k)).collect();
     for l in &alignment.moves {
         let page = at_page.get(&l.at.page).and_then(|&k| doc.pages.get_mut(k));
-        let Some(Block::Paragraph { inlines, .. }) = page.and_then(|p| p.blocks.get_mut(l.at.block)) else { continue };
-        let Some(Inline::Move(m)) = inlines.get_mut(l.at.inline) else { continue };
+        let block = usize::try_from(l.at.block).ok().and_then(|b| page?.blocks.get_mut(b));
+        let Some(Block::Paragraph { inlines, .. }) = block else { continue };
+        let Some(Inline::Move(m)) = usize::try_from(l.at.inline).ok().and_then(|i| inlines.get_mut(i)) else { continue };
         m.reference = Some(MoveReference { kind: l.kind, game: l.node.map(|n| n.game), node: l.node.map(|n| n.node) });
         if l.kind == LinkKind::Recovered {
             let san = l.node.and_then(|n| {
@@ -665,7 +658,7 @@ fn warnings(doc: &ChessDoc, index: &ReferenceIndex, alignment: &Alignment) -> Ve
 /// stands between the moves around it.
 enum Token<'a> {
     Diagram { at: DiagramAt, placement: Option<PlacementKey> },
-    Move { at: InlineAt, mv: &'a MoveInline },
+    Move { at: MoveAt, mv: &'a MoveInline },
 }
 
 /// The document's diagrams and paragraph moves, in reading order.
@@ -683,7 +676,7 @@ fn tokens(doc: &ChessDoc) -> Vec<Token<'_>> {
                 Block::Paragraph { inlines, .. } => {
                     for (i, inline) in inlines.iter().enumerate() {
                         if let Inline::Move(mv) = inline {
-                            out.push(Token::Move { at: InlineAt { page: page.index, block: b, inline: i }, mv });
+                            out.push(Token::Move { at: MoveAt::new(page.index, b, i), mv });
                         }
                     }
                 }
@@ -787,7 +780,7 @@ struct Anchor {
 
 /// One run of the alignment over the document; nodes as [`ReferenceIndex::nodes`] indexes them.
 struct Pass {
-    moves: Vec<(InlineAt, LinkKind, Option<usize>)>,
+    moves: Vec<(MoveAt, LinkKind, Option<usize>)>,
     diagrams: Vec<(DiagramAt, Option<usize>)>,
 }
 

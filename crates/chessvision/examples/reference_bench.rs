@@ -26,7 +26,7 @@ use std::collections::BTreeMap;
 use std::time::Instant;
 
 use pdfcraft_chessvision::doc::reference::{LinkKind, ReferenceIndex, align, annotate};
-use pdfcraft_chessvision::doc::{ChessDoc, Inline, MoveStatus};
+use pdfcraft_chessvision::doc::{ChessDoc, MoveStatus};
 
 #[path = "common/moves_match.rs"]
 mod moves_match;
@@ -97,15 +97,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut lost_moves = Vec::new();
     let mut links: BTreeMap<Key, String> = BTreeMap::new();
     for link in &alignment.moves {
-        let Some(Inline::Move(mv)) = doc
-            .pages
-            .iter()
-            .find(|p| p.index == link.at.page)
-            .and_then(|p| p.blocks.get(link.at.block))
-            .and_then(|b| b.inlines().get(link.at.inline))
-        else {
-            continue;
-        };
+        let Some(mv) = link.at.find(&doc) else { continue };
         *by.entry((format!("{:?}", mv.status), format!("{:?}", link.kind))).or_default() += 1;
         if link.kind == LinkKind::Absent && mv.status != MoveStatus::Valid && lost_moves.len() < lost {
             lost_moves.push(format!("p.{} {}{} ({:?})", link.at.page + 1, mv.number.map(|n| n.text()).unwrap_or_default(), mv.text, mv.status));

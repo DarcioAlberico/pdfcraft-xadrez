@@ -443,13 +443,10 @@ pub fn text_tab(
         let mut counts = [0usize; 4];
         // Each move with its place on the page, for the decisions on conflicts (R6e).
         let placed = x.chess.pages.iter().flat_map(|p| {
-            p.blocks.iter().enumerate().flat_map(move |(b, block)| {
-                block
-                    .inlines()
-                    .iter()
-                    .enumerate()
-                    .map(move |(i, inline)| (MoveAt { page: usize::try_from(p.index).unwrap_or(usize::MAX), block: b, inline: i }, inline))
-            })
+            p.blocks
+                .iter()
+                .enumerate()
+                .flat_map(move |(b, block)| block.inlines().iter().enumerate().map(move |(i, inline)| (MoveAt::new(p.index, b, i), inline)))
         });
         for (at, m) in placed.filter_map(|(at, i)| if let Inline::Move(m) = i { Some((at, m)) } else { None }) {
             let slot = match m.reference.as_ref().map(|r| r.kind) {
@@ -509,7 +506,7 @@ pub fn text_tab(
                             Inline::Move(m) => {
                                 let shown = plain_text_with(std::slice::from_ref(inline), figurines);
                                 let mut tip = status_label(m.status).to_string();
-                                let at = MoveAt { page, block: bi, inline: k };
+                                let at = MoveAt::new(u32::try_from(page).unwrap_or(u32::MAX), bi, k);
                                 let linked = reference_note(m);
                                 // A conflict the user decided says what they chose (R6e).
                                 let conflict = linked.as_ref().is_some_and(|(k, _)| *k == LinkKind::Conflict);
@@ -715,8 +712,10 @@ impl PdfCraftApp {
     pub(crate) fn read_book_game(&mut self, at: MoveAt) {
         let Some((_, id)) = self.active_ids() else { return };
         let Some(stamp) = self.session.chess_stamp(id) else { return };
-        let Some(text) = self.chess.text.as_ref().filter(|t| t.doc == id && t.page == at.page && t.stamp == stamp) else { return };
-        let Some(centre) = text.chess.pages.first().filter(|p| usize::try_from(p.index).ok() == Some(at.page)).cloned() else { return };
+        let Some(text) = self.chess.text.as_ref().filter(|t| t.doc == id && u32::try_from(t.page).ok() == Some(at.page) && t.stamp == stamp) else {
+            return;
+        };
+        let Some(centre) = text.chess.pages.first().filter(|p| p.index == at.page).cloned() else { return };
         let mode = if text.ocr { OcrMode::All } else { OcrMode::Off };
         if self.chess.job.is_some() {
             return self.notify(tl!("A chess document is already being read or exported").to_string());

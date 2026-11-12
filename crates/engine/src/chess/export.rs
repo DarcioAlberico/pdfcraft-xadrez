@@ -12,7 +12,7 @@ use std::sync::Arc;
 use pdfcraft_chess::draw::{BoardStyle, PieceSet};
 use pdfcraft_chess::san::Lang;
 use pdfcraft_chessvision::doc::html::{self, DiagramMode, Figurines, HtmlOptions};
-use pdfcraft_chessvision::doc::{Block, markdown};
+use pdfcraft_chessvision::doc::{Block, PageLabel, markdown};
 use pdfcraft_chessvision::text_font::TextFont;
 
 use super::ChessScanSettings;
@@ -166,6 +166,13 @@ impl ChessExport {
     }
 }
 
+/// What page `index` (0-based) of `doc` is called (plan A9-T2a, R3-08): the label its
+/// `/PageLabels` prints, else its number from 1 ([`PageLabel`]). The exports say every page by
+/// this one rule; the interface's places that still count from the index come with step T2b.
+pub fn page_label(doc: &crate::Document, index: u32) -> PageLabel {
+    PageLabel::new(usize::try_from(index).ok().and_then(|i| doc.info.pages.get(i)).map(|p| p.label.as_str()), index)
+}
+
 impl Session {
     /// Chess ▸ Export: read the document's pages and write them as `format`.
     pub fn chess_export(&mut self, id: DocId, format: ChessFormat, o: &ChessExportOptions) -> Result<ChessExport, String> {
@@ -262,7 +269,7 @@ impl Session {
                                     images.push((format!("{}/{}", o.image_dir, markdown::image_name(page.index, d.number)), png));
                                     drawn += 1;
                                 }
-                                Err(e) => notes.push(format!("page {}, diagram {}: {e}", u64::from(page.index) + 1, d.number + 1)),
+                                Err(e) => notes.push(format!("page {}, diagram {}: {e}", PageLabel::of(&labels, page.index), d.number + 1)),
                             }
                         }
                     }

@@ -221,6 +221,82 @@ pub struct ChessPage {
     pub trailing: Option<u32>,
 }
 
+/// Where a move of the text is (plan A9-T2a, R3-09): its page (0-based), its block on the page and
+/// its place among the block's inlines, both from 0. The one address of a move read: the
+/// alignment with the book's PGN ([`reference::MoveLink`]), the Text tab and the game read across
+/// pages (`engine::chess::span`) all use it. Written as `{"page", "block", "inline"}`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct MoveAt {
+    pub page: u32,
+    pub block: u32,
+    pub inline: u32,
+}
+
+impl MoveAt {
+    /// Inline `inline` of block `block` on page `page`. A place past `u32::MAX`, which no page
+    /// holds, is kept as `u32::MAX`: it names nothing.
+    pub fn new(page: u32, block: usize, inline: usize) -> MoveAt {
+        let to = |n: usize| u32::try_from(n).unwrap_or(u32::MAX);
+        MoveAt { page, block: to(block), inline: to(inline) }
+    }
+
+    /// The inline at this address in `doc`, when the page was read and has it.
+    pub fn inline(self, doc: &ChessDoc) -> Option<&Inline> {
+        let page = doc.pages.iter().find(|p| p.index == self.page)?;
+        page.blocks.get(usize::try_from(self.block).ok()?)?.inlines().get(usize::try_from(self.inline).ok()?)
+    }
+
+    /// The move at this address in `doc`, when there is one.
+    pub fn find(self, doc: &ChessDoc) -> Option<&MoveInline> {
+        match self.inline(doc)? {
+            Inline::Move(m) => Some(m),
+            _ => None,
+        }
+    }
+}
+
+/// What a page is called (plan A9-T2a, R3-08; glossary "Página (física) · rótulo"): the label
+/// printed on it when the document gives one (`/PageLabels`), and its index. Every export says a
+/// page by [`PageLabel`]'s one rule, so a diagram's text and an export's notes name it alike.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PageLabel {
+    /// The printed label, trimmed; `None` when the document gives none, only blanks, or the
+    /// page's own number from 1 (a viewer shows that for a page with no label).
+    pub printed: Option<String>,
+    /// The page's index, from 0.
+    pub physical: u32,
+}
+
+impl PageLabel {
+    /// Page `physical`, labelled `label` (`None`, or a blank label, when it has none).
+    pub fn new(label: Option<&str>, physical: u32) -> PageLabel {
+        let number = u64::from(physical).saturating_add(1).to_string();
+        let printed = label.map(str::trim).filter(|l| !l.is_empty() && *l != number).map(str::to_owned);
+        PageLabel { printed, physical }
+    }
+
+    /// Page `physical` of a document whose pages are labelled `labels`, by index (empty when it
+    /// labels none).
+    pub fn of(labels: &[String], physical: u32) -> PageLabel {
+        PageLabel::new(usize::try_from(physical).ok().and_then(|i| labels.get(i)).map(String::as_str), physical)
+    }
+
+    /// The page counted from 1.
+    pub fn number(&self) -> u64 {
+        u64::from(self.physical).saturating_add(1)
+    }
+}
+
+/// The page as the book numbers it: its printed label, else its own number from 1.
+impl std::fmt::Display for PageLabel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.printed {
+            Some(printed) => f.write_str(printed),
+            None => write!(f, "{}", self.number()),
+        }
+    }
+}
+
 /// A block of the page, in reading order.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]

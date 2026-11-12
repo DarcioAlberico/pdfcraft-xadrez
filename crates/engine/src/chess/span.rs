@@ -33,13 +33,9 @@ use crate::{DocId, Session};
 /// Most pages read before, and after, the page of the move.
 pub const SPAN_PAGES: usize = 4;
 
-/// A move of a page: the page (0-based), its block and the inline in that block.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct MoveAt {
-    pub page: usize,
-    pub block: usize,
-    pub inline: usize,
-}
+/// A move of a page: the page (0-based), its block and the inline in that block; the one move
+/// address of the document model (plan A9-T2a).
+pub use pdfcraft_chessvision::doc::MoveAt;
 
 /// A move's game, read across the pages around it.
 #[derive(Clone, Debug)]
@@ -76,11 +72,7 @@ fn join(before: &[ChessPage], centre: &ChessPage, after: &[ChessPage], at: MoveA
 
 /// The node of the move at `at`, when it is a move of a game.
 fn node_of(doc: &ChessDoc, at: MoveAt) -> Option<NodeRef> {
-    let page = doc.pages.iter().find(|p| usize::try_from(p.index).ok() == Some(at.page))?;
-    match page.blocks.get(at.block)?.inlines().get(at.inline)? {
-        Inline::Move(m) => m.game,
-        _ => None,
-    }
+    at.find(doc)?.game
 }
 
 /// The games of page `page`'s moves, in reading order.
@@ -114,6 +106,8 @@ fn may_go_on(doc: &ChessDoc, game: usize, last: usize) -> bool {
 /// it as the module says. `pages` is the document's page count; `read(p)` reads page `p` alone
 /// (`None` when it cannot be read: the run ends there).
 pub fn span_game(centre: ChessPage, at: MoveAt, pages: usize, mut read: impl FnMut(usize) -> Option<ChessPage>) -> GameSpan {
+    // A page index is a `u32`; past `usize`, which no document reaches, nothing more is read.
+    let page = usize::try_from(at.page).unwrap_or(usize::MAX);
     let mut before: Vec<ChessPage> = Vec::new();
     let mut after: Vec<ChessPage> = Vec::new();
     // A direction stays closed once a page there could not be read or was not the game's.
@@ -121,8 +115,8 @@ pub fn span_game(centre: ChessPage, at: MoveAt, pages: usize, mut read: impl FnM
     let (mut doc, mut node) = join(&before, &centre, &after, at);
     // Each turn reads a page or ends a direction, so this ends; the bound is only a guard.
     for _ in 0..SPAN_PAGES.saturating_mul(2).saturating_add(2) {
-        let first = at.page.saturating_sub(before.len());
-        let last = at.page.saturating_add(after.len());
+        let first = page.saturating_sub(before.len());
+        let last = page.saturating_add(after.len());
         let game = node.map(|n| n.game);
         let back = back_open && first > 0 && before.len() < SPAN_PAGES && game.is_none_or(|g| may_go_back(&doc, g, first));
         let on = on_open && after.len() < SPAN_PAGES && last.saturating_add(1) < pages && game.is_some_and(|g| may_go_on(&doc, g, last));
@@ -165,8 +159,8 @@ pub fn span_game(centre: ChessPage, at: MoveAt, pages: usize, mut read: impl FnM
             None => on_open = false,
         }
     }
-    let first = at.page.saturating_sub(before.len());
-    let last = at.page.saturating_add(after.len());
+    let first = page.saturating_sub(before.len());
+    let last = page.saturating_add(after.len());
     GameSpan { doc, at: node, pages: (first, last) }
 }
 
@@ -183,7 +177,7 @@ impl Session {
         ocr: &OcrOptions<'_>,
     ) -> Result<GameSpanRead, String> {
         let pages = self.get(id).ok_or("no such document")?.info.pages.len();
-        if usize::try_from(centre.index).ok() != Some(at.page) {
+        if centre.index != at.page {
             return Err("the move is not on the page read".into());
         }
         let lang = Lang::ALL.into_iter().find(|l| l.code() == centre.lang);

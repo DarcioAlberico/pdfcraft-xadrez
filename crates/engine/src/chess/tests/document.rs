@@ -430,7 +430,7 @@ fn page_alone(s: &mut Session, id: DocId, page: usize) -> (pdfcraft_chessvision:
         .enumerate()
         .find_map(|(b, block)| block.inlines().iter().position(|i| matches!(i, Inline::Move(_))).map(|i| (b, i)))
         .unwrap();
-    (centre, crate::chess::span::MoveAt { page, block, inline })
+    (centre, crate::chess::span::MoveAt::new(u32::try_from(page).unwrap(), block, inline))
 }
 
 fn options() -> crate::chess::document::OcrOptions<'static> {

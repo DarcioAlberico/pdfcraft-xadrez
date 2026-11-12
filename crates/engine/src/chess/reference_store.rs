@@ -27,6 +27,7 @@ use serde::{Deserialize, Serialize};
 
 use super::corrections::{self, DocRecord};
 use super::keys::DocKeys;
+use pdfcraft_chessvision::doc::MoveAt;
 use pdfcraft_chessvision::doc::reference::MAX_REFERENCE_BYTES;
 
 /// The format's name, in every file.
@@ -70,9 +71,23 @@ pub struct Decision {
 }
 
 impl Decision {
-    /// Whether this is the decision on the move at `page`, `block`, `inline` printed `san`.
-    pub fn is_for(&self, page: usize, block: usize, inline: usize, san: &str) -> bool {
-        (self.page, self.block, self.inline) == (page, block, inline) && self.san == san
+    /// The choice `choice` on the move at `at` printed `san`. Its place is written as the three
+    /// numbers the file has always had (the one address type, plan A9-T2a, takes their place in
+    /// the file with step G4).
+    pub fn new(at: MoveAt, san: String, choice: Choice) -> Decision {
+        let to = |n: u32| usize::try_from(n).unwrap_or(usize::MAX);
+        Decision { page: to(at.page), block: to(at.block), inline: to(at.inline), san, choice }
+    }
+
+    /// Where the move decided on is; `None` for a place no page holds.
+    pub fn at(&self) -> Option<MoveAt> {
+        let to = |n: usize| u32::try_from(n).ok();
+        Some(MoveAt { page: to(self.page)?, block: to(self.block)?, inline: to(self.inline)? })
+    }
+
+    /// Whether this is the decision on the move at `at` printed `san`.
+    pub fn is_for(&self, at: MoveAt, san: &str) -> bool {
+        self.at() == Some(at) && self.san == san
     }
 }
 
@@ -214,7 +229,7 @@ impl ReferenceFile {
         if decision.san.is_empty() || decision.san.len() > MAX_SAN {
             return Err(ReferenceStoreError::NoMove);
         }
-        self.decisions.retain(|d| !d.is_for(decision.page, decision.block, decision.inline, &decision.san));
+        self.decisions.retain(|d| (d.page, d.block, d.inline, &d.san) != (decision.page, decision.block, decision.inline, &decision.san));
         if self.decisions.len() >= MAX_DECISIONS {
             return Err(ReferenceStoreError::TooManyDecisions);
         }

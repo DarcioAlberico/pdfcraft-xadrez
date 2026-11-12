@@ -213,11 +213,11 @@ pub fn entries(doc: &ChessDoc, o: &HtmlOptions<'_>, meta: &EpubMeta) -> Result<V
     // The table of contents: the headings, flat (each links to its anchor), else the pages, named
     // in the book's language with their printed numbers.
     let book_lang = Lang::from_tag(&meta.lang).unwrap_or(Lang::En);
-    let page_name = |index: u32| describe::page(&page_label(o, index), book_lang);
+    let page_name = |index: u32| describe::page(&page_label(o, index).to_string(), book_lang);
     // The page list: each page's break, by the number the book prints.
     let mut page_list = String::new();
     for (n, page) in doc.pages.iter().enumerate() {
-        page_list.push_str(&format!("<li><a href=\"{}#pagebreak\">{}</a></li>\n", page_file(n), escape(&page_label(o, page.index))));
+        page_list.push_str(&format!("<li><a href=\"{}#pagebreak\">{}</a></li>\n", page_file(n), escape(&page_label(o, page.index).to_string())));
     }
     let page_list = if page_list.is_empty() {
         String::new()
