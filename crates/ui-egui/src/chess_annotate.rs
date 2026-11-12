@@ -20,9 +20,10 @@
 //! **Typed glyphs.** With the chess key scope on and no text field taking the keyboard, the signs
 //! books use can be typed: `!` `?` `!!` `??` `!?` `?!` `=` `+=` `=+` `+/-` `-/+` `+-` `-+` and `~`
 //! (unclear), and `0` takes the move's glyphs off. They arrive as text (so any keyboard layout
-//! works) and wait in [`Typed`] for at most [`TYPED_WAIT`] for the next character of a longer
-//! sign: a sign that no longer one starts with goes on at once, and the longest sign typed goes on
-//! when the wait is over or a character that does not continue it comes.
+//! works) and wait in [`Typed`] for the next character of a longer sign, as long as Preferences
+//! say ([`TypedWait`]: 0.6 s by default, up to 2 s, or until Enter): a sign that no longer one
+//! starts with goes on at once, and the longest sign typed goes on when the wait is over, Enter or
+//! another chess key is pressed, or a character that does not continue it comes.
 //!
 //! **Comments.** Under the notation the move shown has its comment (after the move), and the
 //! comment editor (the rail's Move comment, or Enter) adds the comment before it. PGN only has a
@@ -85,11 +86,75 @@ pub(crate) const OTHER_GLYPHS: [u16; 11] = [32, 36, 40, 132, 140, 141, 22, 138, 
 /// "with" and "without".
 pub(crate) const POSITIONAL_GLYPHS: [u16; 18] = [26, 238, 239, 240, 241, 242, 243, 244, 245, 249, 250, 251, 252, 246, 247, 248, 254, 255];
 
-/// How long a typed sign waits for the next character of a longer one, in seconds.
-pub(crate) const TYPED_WAIT: f64 = 0.6;
+/// How long a typed sign waits for the next character of a longer one (Preferences ▸ Chess; plan
+/// A9-I18, finding R5-11): 0.6 s as before, up to 2 s, or until Enter. Whatever it is, Enter puts
+/// the sign waiting on at once, and so does any other chess key before it acts.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum TypedWait {
+    #[default]
+    Short,
+    Second,
+    Longer,
+    Long,
+    /// No time limit: the sign goes on with Enter, another key, or a character that does not
+    /// continue it.
+    Enter,
+}
 
-/// The signs that can be typed, and their glyphs (`0`: take the move's glyphs off).
-const TYPED: [(&str, u16); 15] = [
+impl TypedWait {
+    pub const ALL: [TypedWait; 5] = [TypedWait::Short, TypedWait::Second, TypedWait::Longer, TypedWait::Long, TypedWait::Enter];
+
+    /// The wait in seconds; `None` until Enter.
+    pub fn seconds(self) -> Option<f64> {
+        match self {
+            TypedWait::Short => Some(0.6),
+            TypedWait::Second => Some(1.0),
+            TypedWait::Longer => Some(1.5),
+            TypedWait::Long => Some(2.0),
+            TypedWait::Enter => None,
+        }
+    }
+
+    /// Its name in Preferences, in the current language.
+    pub(crate) fn label(self) -> &'static str {
+        match self {
+            TypedWait::Short => tl!("0.6 s"),
+            TypedWait::Second => tl!("1 s"),
+            TypedWait::Longer => tl!("1.5 s"),
+            TypedWait::Long => tl!("2 s"),
+            TypedWait::Enter => tl!("Until Enter"),
+        }
+    }
+
+    /// As the settings and the control channel write it: `0.6`, `1`, `1.5`, `2` or `enter`.
+    pub fn token(self) -> &'static str {
+        match self {
+            TypedWait::Short => "0.6",
+            TypedWait::Second => "1",
+            TypedWait::Longer => "1.5",
+            TypedWait::Long => "2",
+            TypedWait::Enter => "enter",
+        }
+    }
+
+    /// The wait a token names; `None` for anything else.
+    pub fn parse(token: &str) -> Option<TypedWait> {
+        TypedWait::ALL.into_iter().find(|w| w.token() == token.trim())
+    }
+
+    pub(crate) fn to_json(self) -> serde_json::Value {
+        serde_json::Value::String(self.token().to_owned())
+    }
+
+    /// The wait the settings hold; `None` (the default kept) for a value this build does not know.
+    pub(crate) fn from_json(v: &serde_json::Value) -> Option<TypedWait> {
+        v.as_str().and_then(TypedWait::parse)
+    }
+}
+
+/// The signs that can be typed, and their glyphs (`0`: take the move's glyphs off). The chess
+/// key map lists them (`chess_keymap`).
+pub(crate) const TYPED: [(&str, u16); 15] = [
     ("!", 1),
     ("?", 2),
     ("!!", 3),
@@ -480,7 +545,7 @@ pub(crate) fn clear_glyphs_at(board: &mut BoardState, node: NodeId) {
 
 /// Whether `text` (one event's text) is made only of characters a typed sign uses.
 pub(crate) fn is_glyph_text(text: &str) -> bool {
-    !text.is_empty() && text.chars().all(|c| "!?=+-/~0".contains(c))
+    !text.is_empty() && text.chars().all(|c| TYPED.iter().any(|(sign, _)| sign.contains(c)))
 }
 
 /// Signs typed and not yet put on the move: see the module's notes.
@@ -538,9 +603,21 @@ impl Typed {
         out
     }
 
-    /// The glyph of the sign waiting, once [`TYPED_WAIT`] passed since its last character.
-    pub(crate) fn tick(&mut self, now: f64) -> Vec<u16> {
-        if !self.buffer.is_empty() && (now - self.at >= TYPED_WAIT || !now.is_finite()) { self.flush() } else { Vec::new() }
+    /// The glyph of the sign waiting, once `wait` seconds passed since its last character
+    /// ([`TypedWait::seconds`]; `None`: it waits for Enter).
+    pub(crate) fn tick(&mut self, now: f64, wait: Option<f64>) -> Vec<u16> {
+        let over = wait.is_some_and(|wait| now - self.at >= wait) || !now.is_finite();
+        if !self.buffer.is_empty() && over { self.flush() } else { Vec::new() }
+    }
+
+    /// The glyph of the sign waiting, at once (Enter, or another key; plan A9-I18).
+    pub(crate) fn confirm(&mut self) -> Vec<u16> {
+        self.flush()
+    }
+
+    /// Drop the sign waiting (Esc).
+    pub(crate) fn discard(&mut self) {
+        self.buffer.clear();
     }
 
     /// Whether a sign waits for its next character.
@@ -770,6 +847,8 @@ pub(crate) fn palette_window(ctx: &egui::Context, chess: &mut ChessState, anchor
     let shown = window.show(ctx, |ui| {
         // Which field had the keyboard, whether or not the panel with the fields is drawn.
         chess.board_mut().typing.track(ui);
+        // The keyboard focus in the palette keeps the keys on the game (plan A9-I18).
+        chess.mark_surface(ui);
         ui.set_width(PALETTE_WIDTH);
         ui.horizontal(|ui| {
             ui.add(egui::Label::new(egui::RichText::new(tl!("Glyph palette")).strong()).selectable(false));
@@ -1101,13 +1180,17 @@ mod tests {
     use super::*;
 
     fn typed(keys: &[(char, f64)], end: f64) -> Vec<u16> {
+        typed_waiting(keys, end, TypedWait::Short)
+    }
+
+    fn typed_waiting(keys: &[(char, f64)], end: f64, wait: TypedWait) -> Vec<u16> {
         let mut t = Typed::default();
         let mut out = Vec::new();
         for (c, at) in keys {
-            out.extend(t.tick(*at));
+            out.extend(t.tick(*at, wait.seconds()));
             out.extend(t.push(*c, *at));
         }
-        out.extend(t.tick(end));
+        out.extend(t.tick(end, wait.seconds()));
         out
     }
 
@@ -1125,7 +1208,35 @@ mod tests {
         assert_eq!(typed(&[('0', 0.0)], 0.0), [CLEAR], "0 at once");
         assert_eq!(typed(&[('~', 0.0), ('?', 0.1), ('?', 0.2)], 0.3), [13, 4]);
         assert!(is_glyph_text("+/-") && is_glyph_text("0") && !is_glyph_text("a!") && !is_glyph_text(""));
-        assert_eq!(Typed::default().tick(f64::NAN), [] as [u16; 0]);
+        assert_eq!(Typed::default().tick(f64::NAN, Some(0.6)), [] as [u16; 0]);
+    }
+
+    /// Plan A9-I18 (finding R5-11): the wait is the preference's, from 0.6 s to 2 s or until
+    /// Enter, and Enter puts the sign waiting on at once.
+    #[test]
+    fn a_slow_typist_gets_the_sign_typed() {
+        let slow = [('!', 0.0), ('!', 1.2)];
+        assert_eq!(typed_waiting(&slow, 3.0, TypedWait::Short), [1, 1], "0.6 s: two signs");
+        assert_eq!(typed_waiting(&slow, 3.0, TypedWait::Longer), [3], "1.5 s: !!");
+        assert_eq!(typed_waiting(&[('!', 0.0)], 1.9, TypedWait::Long), [] as [u16; 0], "2 s: still waiting");
+        assert_eq!(typed_waiting(&[('!', 0.0)], 1e9, TypedWait::Enter), [] as [u16; 0], "until Enter: no time limit");
+        assert_eq!(typed_waiting(&[('!', 0.0), ('!', 500.0)], 1e9, TypedWait::Enter), [3]);
+        let mut t = Typed::default();
+        t.push('?', 0.0);
+        assert_eq!(t.confirm(), [2], "Enter: ? at once");
+        assert!(!t.waiting());
+        assert_eq!(t.confirm(), [] as [u16; 0]);
+        t.push('!', 0.0);
+        t.discard();
+        assert!(!t.waiting(), "Esc drops it");
+        assert_eq!(t.tick(9.0, Some(0.6)), [] as [u16; 0]);
+        // The settings and the control channel's tokens; anything else keeps the default.
+        for w in TypedWait::ALL {
+            assert_eq!(TypedWait::from_json(&w.to_json()), Some(w));
+        }
+        assert_eq!(TypedWait::parse("0.7"), None);
+        assert_eq!(TypedWait::from_json(&serde_json::json!(2.0)), None);
+        assert_eq!(TypedWait::default().seconds(), Some(0.6), "as before by default");
     }
 
     #[test]

@@ -50,7 +50,7 @@ const COMMANDS: &[(&str, &str, Command)] = &[
     ),
     (
         "chess-gate",
-        "The chess fork's local gate for what changed since --base (origin/main): text, scans, lower crates, engine and up (--models DIR --engine EXE, or --no-models; --all; --from N)",
+        "The chess fork's local gate for what changed since --base (origin/main): text, scans, lower crates, engine and up, benches, performance, and with --full the 38 books and fuzz (--models DIR --engine EXE, or --no-models; --all; --from N; --no-bench; --baseline [--baseline-ref REF --ocr-gt DIR --bench38 DIR] makes the baselines from main)",
         chess_gate::run,
     ),
 ];

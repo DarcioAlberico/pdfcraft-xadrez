@@ -2702,6 +2702,7 @@ chess undo step	Clear drawings	描画の消去
 	Delete variation	変化を削除
 	Cut after this move	この手の後を切り取る
 	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	{group}のその他のツール: 右クリック、長押し、または Enter キー。{key} で切り替えます。
+	More {group} tools: right-click, hold, or press Enter.	{group}のその他のツール: 右クリック、長押し、または Enter キー。
 	This move is on the main line already.	この手はすでに本線にあります。
 	There are no moves after this one.	この手の後に指し手はありません。
 	Not done: variations would nest too deep.	実行されませんでした: 変化の入れ子が深くなりすぎます。
@@ -3219,6 +3220,16 @@ chess undo step	Clear drawings	描画の消去
 	Show what was read again; the PDF is not changed.	読み取った局面を再び表示します。PDF は変更されません。
 	Diagram board, page {p}, diagram {n}	局面図の盤面、{p} ページ、局面図 {n}
 	Classic diagram editor	従来の局面図エディター
+# Plan A9-I18: the chess keys (Preferences ▸ Chess: the one-key shortcuts and how long a typed sign waits).
+	One-key shortcuts (B, C, F, G, O, X, signs)	1 キーのショートカット (B、C、F、G、O、X、記号)
+	Off, the chess panels take no letter or sign typed; the buttons beside the board and the command search still do the same.	オフにすると、チェスのパネルは入力された文字や記号を受け取りません。盤の横のボタンとコマンド検索では同じ操作ができます。
+	A typed sign waits for its next character	入力した記号が次の文字を待つ時間
+	Enter puts the sign on at once; Esc drops it.	Enter で記号をすぐに付け、Esc で取り消します。
+	0.6 s	0.6 秒
+	1 s	1 秒
+	1.5 s	1.5 秒
+	2 s	2 秒
+	Until Enter	Enter まで
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	局面図タブ以前と同じく「局面図」パネル内で局面図を編集します。このオプションは今後のバージョンで廃止されます。
 # Plan A8 P3b3: drafts and the question about them.
 	Unconfirmed changes	未確定の変更

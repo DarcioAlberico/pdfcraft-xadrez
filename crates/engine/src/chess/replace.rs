@@ -47,6 +47,9 @@ const COVER_PAD: f32 = 0.02;
 const COVER_MAX_PAD: f32 = 3.0;
 
 /// Chess ▸ Replace diagram: what to draw, and over which diagram.
+/// Built outside the engine by its constructor and its fields, never by a literal (plan A9-Q1b,
+/// A7-14): a field added here then breaks no caller (the cause of #185).
+#[non_exhaustive]
 #[derive(Clone, Debug, PartialEq)]
 pub struct DiagramReplacement {
     /// The page, 0-based.
@@ -64,6 +67,23 @@ pub struct DiagramReplacement {
     pub scan: ChessScanSettings,
     /// Arrows and rings drawn over the board (plan HC7).
     pub drawings: Vec<pdfcraft_chess::game::Drawing>,
+}
+
+impl DiagramReplacement {
+    /// Draw `placement` over diagram `index` of `page`, numbered at edit generation `generation`:
+    /// the board upright in the default style, the geometric pieces, the default scan, no drawings.
+    pub fn new(page: usize, index: usize, generation: u64, placement: Placement) -> DiagramReplacement {
+        DiagramReplacement {
+            page,
+            index,
+            generation,
+            placement,
+            style: BoardStyle::default(),
+            pieces: Arc::new(PieceSet::geometric()),
+            scan: ChessScanSettings::default(),
+            drawings: Vec::new(),
+        }
+    }
 }
 
 /// How a replacement will be made ([`Session::chess_replacement`]): checked against the page

@@ -2698,6 +2698,7 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Delete variation	Нұсқаны жою
 	Cut after this move	Осы жүрістен кейін кесу
 	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	«{group}» тобының басқа құралдары: оң жақ батырмамен басу, басып тұру немесе Enter. {key} олардың арасында ауыстырады.
+	More {group} tools: right-click, hold, or press Enter.	«{group}» тобының басқа құралдары: оң жақ батырмамен басу, басып тұру немесе Enter.
 	This move is on the main line already.	Бұл жүріс негізгі нұсқада тұр.
 	There are no moves after this one.	Бұл жүрістен кейін жүрістер жоқ.
 	Not done: variations would nest too deep.	Орындалмады: нұсқалар тым терең кірістіріліп кетер еді.
@@ -3215,6 +3216,16 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Show what was read again; the PDF is not changed.	Оқылғанды қайта көрсету; PDF өзгермейді.
 	Diagram board, page {p}, diagram {n}	Диаграмма тақтасы, {p}-бет, {n}-диаграмма
 	Classic diagram editor	Классикалық диаграмма өңдегіші
+# Plan A9-I18: the chess keys (Preferences ▸ Chess: the one-key shortcuts and how long a typed sign waits).
+	One-key shortcuts (B, C, F, G, O, X, signs)	Бір пернелік жарлықтар (B, C, F, G, O, X, белгілер)
+	Off, the chess panels take no letter or sign typed; the buttons beside the board and the command search still do the same.	Өшірулі болса, шахмат панельдері терілген әріптер мен белгілерді қабылдамайды; тақтаның жанындағы батырмалар мен командаларды іздеу сол әрекетті бұрынғыдай орындайды.
+	A typed sign waits for its next character	Терілген белгі келесі таңбаны күтеді
+	Enter puts the sign on at once; Esc drops it.	Enter белгіні бірден қояды, Esc одан бас тартады.
+	0.6 s	0,6 с
+	1 s	1 с
+	1.5 s	1,5 с
+	2 s	2 с
+	Until Enter	Enter басылғанша
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Диаграммаларды «Диаграмма» қойындысына дейінгідей «Диаграммалар» тақтасының ішінде өңдеу. Бұл параметр кейінгі нұсқада алынып тасталады.
 # Plan A8 P3b3: drafts and the question about them.
 	Unconfirmed changes	Расталмаған өзгерістер

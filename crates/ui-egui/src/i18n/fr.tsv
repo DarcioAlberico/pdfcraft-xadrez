@@ -2700,6 +2700,7 @@ chess undo step	Clear drawings	l'effacement des dessins
 	Delete variation	Supprimer la variante
 	Cut after this move	Couper après ce coup
 	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	Autres outils {group} : clic droit, appui long ou Entrée. {key} passe de l'un à l'autre.
+	More {group} tools: right-click, hold, or press Enter.	Autres outils {group} : clic droit, appui long ou Entrée.
 	This move is on the main line already.	Ce coup est déjà sur la ligne principale.
 	There are no moves after this one.	Il n'y a aucun coup après celui-ci.
 	Not done: variations would nest too deep.	Non effectué : les variantes seraient imbriquées trop profondément.
@@ -3217,6 +3218,16 @@ chess undo step	Clear drawings	l'effacement des dessins
 	Show what was read again; the PDF is not changed.	Montrer à nouveau ce qui a été lu ; le PDF n’est pas modifié.
 	Diagram board, page {p}, diagram {n}	Échiquier du diagramme, page {p}, diagramme {n}
 	Classic diagram editor	Éditeur de diagrammes classique
+# Plan A9-I18: the chess keys (Preferences ▸ Chess: the one-key shortcuts and how long a typed sign waits).
+	One-key shortcuts (B, C, F, G, O, X, signs)	Raccourcis d'une touche (B, C, F, G, O, X, signes)
+	Off, the chess panels take no letter or sign typed; the buttons beside the board and the command search still do the same.	Désactivés, les panneaux d'échecs ne prennent ni lettre ni signe tapés ; les boutons à côté de l'échiquier et la recherche de commandes font toujours la même chose.
+	A typed sign waits for its next character	Un signe tapé attend le caractère suivant
+	Enter puts the sign on at once; Esc drops it.	Entrée pose le signe aussitôt ; Échap l'abandonne.
+	0.6 s	0,6 s
+	1 s	1 s
+	1.5 s	1,5 s
+	2 s	2 s
+	Until Enter	Jusqu'à Entrée
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Modifier les diagrammes dans le panneau Diagrammes, comme avant l’onglet Diagramme. Cette option disparaîtra dans une version ultérieure.
 # Plan A8 P3b3: drafts and the question about them.
 	Unconfirmed changes	Modifications non confirmées

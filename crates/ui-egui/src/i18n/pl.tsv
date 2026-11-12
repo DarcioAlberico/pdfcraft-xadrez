@@ -2628,6 +2628,7 @@ chess undo step	Clear drawings	usunięcie rysunków
 	Delete variation	Usuń wariant
 	Cut after this move	Utnij po tym ruchu
 	More {group} tools: right-click, hold, or press Enter. {key} switches between them.	Więcej narzędzi z grupy {group}: kliknij prawym przyciskiem, przytrzymaj lub naciśnij Enter. {key} przełącza między nimi.
+	More {group} tools: right-click, hold, or press Enter.	Więcej narzędzi z grupy {group}: kliknij prawym przyciskiem, przytrzymaj lub naciśnij Enter.
 	This move is on the main line already.	Ten ruch jest już w głównej linii.
 	There are no moves after this one.	Po tym ruchu nie ma ruchów.
 	Not done: variations would nest too deep.	Nie wykonano: warianty byłyby zagnieżdżone zbyt głęboko.
@@ -3145,6 +3146,16 @@ chess undo step	Clear drawings	usunięcie rysunków
 	Show what was read again; the PDF is not changed.	Pokaż znów to, co odczytano; PDF się nie zmienia.
 	Diagram board, page {p}, diagram {n}	Szachownica diagramu, strona {p}, diagram {n}
 	Classic diagram editor	Klasyczny edytor diagramów
+# Plan A9-I18: the chess keys (Preferences ▸ Chess: the one-key shortcuts and how long a typed sign waits).
+	One-key shortcuts (B, C, F, G, O, X, signs)	Skróty jednoklawiszowe (B, C, F, G, O, X, znaki)
+	Off, the chess panels take no letter or sign typed; the buttons beside the board and the command search still do the same.	Gdy są wyłączone, panele szachowe nie przejmują wpisanych liter ani znaków; przyciski obok szachownicy i wyszukiwanie poleceń nadal robią to samo.
+	A typed sign waits for its next character	Wpisany znak czeka na kolejny symbol
+	Enter puts the sign on at once; Esc drops it.	Enter od razu wstawia znak, Esc go odrzuca.
+	0.6 s	0,6 s
+	1 s	1 s
+	1.5 s	1,5 s
+	2 s	2 s
+	Until Enter	Do naciśnięcia Enter
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Edytuj diagramy w panelu Diagramy, jak przed kartą Diagram. Ta opcja zniknie w jednej z kolejnych wersji.
 # Plan A8 P3b3: drafts and the question about them.
 	Unconfirmed changes	Niepotwierdzone zmiany
