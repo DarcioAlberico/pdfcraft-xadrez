@@ -85,7 +85,8 @@ fn harness(diagrams: bool) -> Harness<'static, PdfCraftApp> {
     h.run_steps(4);
     if diagrams {
         let results = synthetic(h.state());
-        h.state_mut().chess.results = Some(results);
+        let id = results.doc;
+        h.state_mut().chess.doc_mut(id).results = Some(results);
     }
     h.state_mut().choose_right_panel(Some(crate::RightPanel::Chess));
     h.run_steps(3);
@@ -157,7 +158,7 @@ fn the_list_follows_the_page() {
     // clicked Follow the page left its tooltip over the page.)
     h.get_by_label("Follow the page").click_accesskit();
     h.run_steps(2);
-    assert!(!h.state().chess.list.follow);
+    assert!(!h.state().chess.shown_list().follow);
     h.state_mut().views[0].go_to_page(0);
     h.run_steps(2);
     h.get_by_role_and_label(egui::accesskit::Role::Link, "Page 50").click_accesskit();
@@ -172,14 +173,14 @@ fn the_keys_walk_the_whole_list() {
     let mut h = harness(true);
     h.get_by_label("Diagram 1 · Verified").focus();
     h.run_steps(2);
-    assert_eq!(h.state().chess.list.focused, Some((0, 0)));
+    assert_eq!(h.state().chess.shown_list().focused, Some((0, 0)));
     key(&mut h, Key::ArrowDown);
     key(&mut h, Key::ArrowDown);
-    assert_eq!(h.state().chess.list.focused, Some((0, 2)), "two rows down");
+    assert_eq!(h.state().chess.shown_list().focused, Some((0, 2)), "two rows down");
     key(&mut h, Key::End);
-    assert_eq!(h.state().chess.list.focused, Some((PAGES - 1, PER_PAGE - 1)), "the book's last diagram");
+    assert_eq!(h.state().chess.shown_list().focused, Some((PAGES - 1, PER_PAGE - 1)), "the book's last diagram");
     key(&mut h, Key::Home);
-    assert_eq!(h.state().chess.list.focused, Some((0, 0)));
+    assert_eq!(h.state().chess.shown_list().focused, Some((0, 0)));
     // Tab goes to the row's ⋯, and Enter opens its menu.
     h.key_press(Key::Tab);
     h.run_steps(2);

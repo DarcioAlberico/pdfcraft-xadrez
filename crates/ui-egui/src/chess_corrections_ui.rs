@@ -237,16 +237,19 @@ impl PdfCraftApp {
         }
     }
 
-    /// Mark each scanned diagram with what the user did with it (Verified, Corrected): the list,
-    /// the marks on the page and the review queue follow. Closed documents' corrections go.
-    pub(crate) fn refresh_chess_kinds(&mut self) {
+    /// Mark each diagram scanned in document `id` with what the user did with it (Verified,
+    /// Corrected): the list, the marks on the page and the review queue follow. Closed documents'
+    /// corrections go.
+    pub(crate) fn refresh_chess_kinds(&mut self, id: DocId) {
         let open: Vec<DocId> = self.chess.corrections.docs.iter().map(|d| d.doc).filter(|d| self.session.get(*d).is_none()).collect();
         self.chess.corrections.docs.retain(|d| !open.contains(&d.doc));
-        let Some(id) = self.chess.results.as_ref().map(|r| r.doc) else { return };
+        if self.chess.results_of(id).is_none() {
+            return;
+        }
         let mut kinds = HashMap::new();
         self.chess_corrections_for(id);
         if let Some(c) = self.chess.corrections.doc(id)
-            && let Some(results) = self.chess.results.as_ref()
+            && let Some(results) = self.chess.results_of(id)
         {
             for page in &results.pages {
                 let Some(crop) = page.geometry.map(|g| g.crop_box()) else { continue };
@@ -262,7 +265,7 @@ impl PdfCraftApp {
         // livro", R6b): the engine's rule, `Status::with_reference`.
         let index = self.book_pgn_index(id);
         let mut confirmed = std::collections::HashSet::new();
-        if let (Some(index), Some(results)) = (index.as_deref(), self.chess.results.as_ref()) {
+        if let (Some(index), Some(results)) = (index.as_deref(), self.chess.results_of(id)) {
             for page in &results.pages {
                 for (i, _) in page.diagrams.iter().enumerate() {
                     let reading = crate::chess_ui::ChessResults::reading(page, i);
@@ -273,7 +276,7 @@ impl PdfCraftApp {
                 }
             }
         }
-        if let Some(results) = self.chess.results.as_mut() {
+        if let Some(results) = self.chess.results_of_mut(id) {
             results.kinds = kinds;
             results.confirmed = confirmed;
         }
@@ -281,7 +284,7 @@ impl PdfCraftApp {
 
     /// Diagram `index` of `page` of `id` as the scan found it: what a correction of it needs.
     pub(crate) fn chess_diagram_target(&self, id: DocId, page: usize, index: usize) -> Option<DiagramTarget> {
-        let results = self.chess.results.as_ref().filter(|r| r.doc == id)?;
+        let results = self.chess.results_of(id)?;
         let p = results.pages.iter().find(|p| p.page == page)?;
         let (d, crop) = (p.diagrams.get(index)?, p.geometry?.crop_box());
         let b = d.candidate.bbox_user;
@@ -333,13 +336,13 @@ impl PdfCraftApp {
     pub fn verify_chess_page(&mut self, page: usize) -> usize {
         let Some((_, id)) = self.active_ids() else { return 0 };
         let label = self.chess_page_label(page);
-        let Some(p) = self.chess.results.as_ref().filter(|r| r.doc == id).and_then(|r| r.pages.iter().find(|p| p.page == page)).cloned() else {
+        let Some(p) = self.chess.results_of(id).and_then(|r| r.pages.iter().find(|p| p.page == page)).cloned() else {
             self.notify(tl!("Detect the diagrams on this page first.").to_string());
             return 0;
         };
         let (mut done, mut left) = (0usize, 0usize);
         for index in 0..p.diagrams.len() {
-            let kind = self.chess.results.as_ref().and_then(|r| r.kind(page, index));
+            let kind = self.chess.results_of(id).and_then(|r| r.kind(page, index));
             let state = Status::of(crate::chess_ui::ChessResults::reading(&p, index), kind);
             if state.to_review() {
                 left = left.saturating_add(1);
@@ -387,8 +390,8 @@ impl PdfCraftApp {
         if next {
             // The last one to review: the review is done, and the tab says so instead of moving
             // on (plan A8, P4).
-            let reviewing = matches!(self.chess.list.filter, None | Some(crate::chess_widgets::DiagramState::Review));
-            let finished = self.chess.results.as_ref().filter(|r| r.doc == id && reviewing && r.review_queue().is_empty()).map(|r| r.reviewed());
+            let reviewing = matches!(self.chess.filter(id), None | Some(crate::chess_widgets::DiagramState::Review));
+            let finished = self.chess.results_of(id).filter(|r| reviewing && r.review_queue().is_empty()).map(|r| r.reviewed());
             match finished {
                 Some((checked, of)) => {
                     let said = crate::i18n::fmt(tl!("Review done: {d} of {n} checked"), &[("d", &checked.to_string()), ("n", &of.to_string())]);
@@ -438,7 +441,7 @@ impl PdfCraftApp {
     /// The uid of the correction over diagram `index` of `page` of `id`, when there is one.
     fn chess_correction_uid(&mut self, id: DocId, page: usize, index: usize) -> Option<String> {
         let (b, crop) = {
-            let results = self.chess.results.as_ref().filter(|r| r.doc == id)?;
+            let results = self.chess.results_of(id)?;
             let p = results.pages.iter().find(|p| p.page == page)?;
             (p.diagrams.get(index)?.candidate.bbox_user, p.geometry?.crop_box())
         };
@@ -456,7 +459,7 @@ impl PdfCraftApp {
             }
             None => self.chess.corrections.docs.push(DocCorrections { doc: id, keys, file, fingerprints: None }),
         }
-        self.refresh_chess_kinds();
+        self.refresh_chess_kinds(id);
     }
 
     /// Document `id` was saved: its corrections are recorded under the keys it has now, so they

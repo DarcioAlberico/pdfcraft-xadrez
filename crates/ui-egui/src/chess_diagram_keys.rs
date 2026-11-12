@@ -61,7 +61,7 @@ pub(crate) fn take_keys(chess: &mut ChessState, ctx: &egui::Context, events: &mu
     // Page Up and Page Down walk what the tab walks only when there is something (else they are
     // the page's).
     let paging = events.iter().any(|e| matches!(e, Event::Key { key: Key::PageUp | Key::PageDown, pressed: true, .. }));
-    let queue = paging && !chess.walk().is_empty();
+    let queue = paging && chess.editor.as_ref().is_some_and(|e| !chess.walk(e.doc).is_empty());
     let keys = &mut chess.diagram_keys;
     let tab = keys.tab.take();
     keys.board = None;

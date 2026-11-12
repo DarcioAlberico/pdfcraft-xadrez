@@ -3712,3 +3712,4 @@ castling	long	طويل
 	Larger text	نص أكبر
 diagram state	Read	مقروء
 the move's comment	Move comment	تعليق النقلة
+	Detecting in another book… page {d} of {t}	جارٍ الاكتشاف في كتاب آخر… الصفحة {d} من {t}

@@ -688,7 +688,7 @@ impl PdfCraftApp {
             boards: Vec::new(),
         };
         if self.session.get(id).is_some_and(|d| d.check_copying().is_err()) {
-            self.chess.text = Some(failed(tl!("This document does not allow copying its content, so its text is not read.").to_string()));
+            self.chess.doc_mut(id).text = Some(failed(tl!("This document does not allow copying its content, so its text is not read.").to_string()));
             return;
         }
         if self.chess.job.is_some() {
@@ -718,7 +718,7 @@ impl PdfCraftApp {
     pub(crate) fn read_book_game(&mut self, at: MoveAt) {
         let Some((_, id)) = self.active_ids() else { return };
         let Some(stamp) = self.session.chess_stamp(id) else { return };
-        let Some(text) = self.chess.text.as_ref().filter(|t| t.doc == id && u32::try_from(t.page).ok() == Some(at.page) && t.stamp == stamp) else {
+        let Some(text) = self.chess.text_of(id).filter(|t| u32::try_from(t.page).ok() == Some(at.page) && t.stamp == stamp) else {
             return;
         };
         let Some(centre) = text.chess.pages.first().filter(|p| p.index == at.page).cloned() else { return };
@@ -774,14 +774,15 @@ impl PdfCraftApp {
         });
     }
 
-    /// The book cipher learned so far for document `id`, if any.
-    fn chess_cipher(&self, id: DocId) -> Option<pdfcraft_engine::chess::pdfcraft_chessvision::cipher::BookCipher> {
-        self.chess.cipher.as_ref().filter(|(d, _)| *d == id).map(|(_, c)| c.clone())
+    /// The book cipher document `id`'s reads have taught so far, if any: the session keeps one per
+    /// document (plan A9-I1a), so reading another book never takes it.
+    pub fn chess_cipher(&self, id: DocId) -> Option<pdfcraft_engine::chess::pdfcraft_chessvision::cipher::BookCipher> {
+        self.session.chess_cipher(id)
     }
 
     /// Where document `id`'s pages came from, as the user said (Auto when not said).
     pub fn chess_origin(&self, id: DocId) -> BookOrigin {
-        self.chess.origin.filter(|(d, _)| *d == id).map(|(_, o)| o).unwrap_or_default()
+        self.session.chess_origin(id)
     }
 
     /// Run `work` on a session of its own, opened from document `id`'s working bytes, on a
@@ -850,9 +851,9 @@ impl PdfCraftApp {
                 }
                 let empty =
                     || ChessDoc { format: pdfcraft_engine::chess::pdfcraft_chessvision::doc::FORMAT_VERSION, pages: Vec::new(), games: Vec::new() };
-                self.chess.text = Some(match read {
+                let text = match read {
                     Ok(read) => {
-                        self.chess.cipher = Some((job.doc, read.cipher.clone()));
+                        self.session.set_chess_cipher(job.doc, read.cipher.clone());
                         let pieces = self.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Diagrams);
                         let boards = self.ctx.as_ref().map(|ctx| boards(ctx, &read.doc, &pieces)).unwrap_or_default();
                         let needs_ocr = read.needs_ocr.first().map(|(_, why)| why.clone());
@@ -873,14 +874,15 @@ impl PdfCraftApp {
                         notes: vec![e],
                         boards: Vec::new(),
                     },
-                });
+                };
+                self.chess.doc_mut(job.doc).text = Some(text);
             }
             (JobKind::Game { stamp, .. }, JobDone::Game(Ok(read))) => {
                 // The document changed meanwhile: the move may be gone.
                 if self.session.chess_stamp(job.doc) != Some(stamp) {
                     return;
                 }
-                self.chess.cipher = Some((job.doc, read.cipher));
+                self.session.set_chess_cipher(job.doc, read.cipher);
                 match read.span.at {
                     Some(node) => self.put_book_game(job.doc, &read.span.doc, node),
                     None => self.notify(tl!("No game was found for this move, on its page or the pages around it.").to_string()),
@@ -889,7 +891,7 @@ impl PdfCraftApp {
             #[cfg(not(target_arch = "wasm32"))]
             (JobKind::Export { path, image_dir, .. }, JobDone::Export(made)) => {
                 if let Ok(m) = &made {
-                    self.chess.cipher = Some((job.doc, m.read.cipher.clone()));
+                    self.session.set_chess_cipher(job.doc, m.read.cipher.clone());
                 }
                 self.write_chess_export(made, &path, &image_dir);
             }
@@ -950,7 +952,8 @@ impl PdfCraftApp {
             }
             TextAction::Diagram(page, index) => {
                 // The diagram list must hold this page's scan for the editor to open on it.
-                if self.chess.results.as_ref().is_none_or(|r| r.diagram(page, index).is_none()) {
+                let shown = self.active_ids().map(|(_, id)| id);
+                if shown.and_then(|id| self.chess.results_of(id)).is_none_or(|r| r.diagram(page, index).is_none()) {
                     self.start_chess_scan(false);
                 }
                 self.select_chess_diagram(page, index, true);
@@ -958,12 +961,20 @@ impl PdfCraftApp {
             }
             TextAction::OpenGame(at) => self.read_book_game(at),
             TextAction::Export(format) => self.export_chess_dialog(format),
-            TextAction::PgnPositions(p) => self.chess.pgn_positions = p,
-            TextAction::PgnSource(s) => self.chess.pgn_source = s,
+            TextAction::PgnPositions(p) => {
+                if let Some((_, id)) = self.active_ids() {
+                    self.chess.doc_mut(id).pgn_positions = p;
+                }
+            }
+            TextAction::PgnSource(s) => {
+                if let Some((_, id)) = self.active_ids() {
+                    self.chess.doc_mut(id).pgn_source = s;
+                }
+            }
             // The page shown is read again under the new origin (the tab sees it is not current).
             TextAction::Origin(origin) => {
                 if let Some((_, id)) = self.active_ids() {
-                    self.chess.origin = Some((id, origin));
+                    self.session.set_chess_origin(id, origin);
                 }
             }
             TextAction::BookPgn(true) => self.load_book_pgn(),
@@ -1009,7 +1020,7 @@ impl PdfCraftApp {
         id: DocId,
         format: ChessFormat,
     ) -> Option<Arc<pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::ReferenceIndex>> {
-        if format != ChessFormat::Pgn || self.chess.pgn_source != crate::chess_export_ui::PgnSource::Book {
+        if format != ChessFormat::Pgn || self.chess.doc(id).map(|d| d.pgn_source).unwrap_or_default() != crate::chess_export_ui::PgnSource::Book {
             return None;
         }
         self.book_pgn_index(id)
@@ -1045,7 +1056,7 @@ impl PdfCraftApp {
             options.pieces = self.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Diagrams);
             options.book = self.chess_cipher(id);
             options.ocr = self.chess_origin(id).ocr_mode();
-            options.positions = self.chess.pgn_positions;
+            options.positions = self.chess.doc(id).map(|d| d.pgn_positions).unwrap_or_default();
             options.reference = self.export_reference(id, format);
             self.start_chess_job(id, JobKind::Export { format, name: format!("{stem}.{ext}") }, move |s, id| {
                 JobDone::Export(s.chess_export(id, format, &options))
@@ -1067,7 +1078,7 @@ impl PdfCraftApp {
         options.pieces = self.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Diagrams);
         options.book = self.chess_cipher(id);
         options.ocr = self.chess_origin(id).ocr_mode();
-        options.positions = self.chess.pgn_positions;
+        options.positions = self.chess.doc(id).map(|d| d.pgn_positions).unwrap_or_default();
         options.reference = self.export_reference(id, format);
         let kind = JobKind::Export { format, path: path.to_path_buf(), image_dir: options.image_dir.clone() };
         self.notify(tl!("Exporting the chess document…").to_string());

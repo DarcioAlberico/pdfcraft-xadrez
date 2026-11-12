@@ -127,7 +127,7 @@ fn on_page(h: &Harness<'static, PdfCraftApp>, x: f32, y: f32) -> Pos2 {
 }
 
 fn diagrams(h: &Harness<'static, PdfCraftApp>) -> usize {
-    h.state().chess.results.as_ref().map_or(0, |r| r.count())
+    h.state().chess.results().map_or(0, |r| r.count())
 }
 
 #[test]
@@ -154,7 +154,7 @@ fn scanning_lists_the_diagrams_with_their_positions_and_marks_them_on_the_page()
         .label()
         .unwrap_or_default()
         .to_string();
-    assert_eq!(h.state().chess.results.as_ref().and_then(|r| r.diagram(0, 1)).map(|d| d.0), Some([60.0, 240.0, 220.0, 400.0]), "{second}");
+    assert_eq!(h.state().chess.results().and_then(|r| r.diagram(0, 1)).map(|d| d.0), Some([60.0, 240.0, 220.0, 400.0]), "{second}");
 
     // Copy FEN, in the row's menu, puts the position on the clipboard.
     row_menu(&mut h, "Diagram 1 · ");
@@ -177,7 +177,7 @@ fn scanning_lists_the_diagrams_with_their_positions_and_marks_them_on_the_page()
     // Picking a diagram in the panel goes to it and outlines it on the page.
     h.get_by_label(&second).click();
     h.run_steps(2);
-    assert_eq!(h.state().chess.results.as_ref().and_then(|r| r.selected), Some((0, 1)));
+    assert_eq!(h.state().chess.results().and_then(|r| r.selected), Some((0, 1)));
     assert_eq!(h.state().views[0].flash.map(|f| (f.0, f.1)), Some((0, [60.0, 240.0, 220.0, 400.0])));
 
     // Clicking a box on the page picks that diagram.
@@ -188,7 +188,7 @@ fn scanning_lists_the_diagrams_with_their_positions_and_marks_them_on_the_page()
         h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed, modifiers: egui::Modifiers::NONE });
     }
     h.run_steps(3);
-    assert_eq!(h.state().chess.results.as_ref().and_then(|r| r.selected), Some((0, 0)), "the font diagram was clicked");
+    assert_eq!(h.state().chess.results().and_then(|r| r.selected), Some((0, 0)), "the font diagram was clicked");
 }
 
 /// After an edit the list is carried to the document's state now (plan A8, P3b4): the page the
@@ -200,7 +200,7 @@ fn an_edit_keeps_the_scan_and_reads_again_the_page_it_changed() {
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
     assert_eq!(diagrams(&h), 2);
-    let first = h.state().chess.results.as_ref().unwrap().pages[0].clone();
+    let first = h.state().chess.results().unwrap().pages[0].clone();
     // A comment in a corner: the page changed, its diagrams did not.
     let shape = Shape::Rectangle { rect: [10.0, 10.0, 50.0, 50.0] };
     h.state_mut().apply_edit(Edit::AddAnnotation(NewAnnotation {
@@ -212,7 +212,7 @@ fn an_edit_keeps_the_scan_and_reads_again_the_page_it_changed() {
     }));
     h.run_steps(3);
     assert!(list_is_current(&h));
-    assert!(!Arc::ptr_eq(&h.state().chess.results.as_ref().unwrap().pages[0], &first), "the page changed is read again");
+    assert!(!Arc::ptr_eq(&h.state().chess.results().unwrap().pages[0], &first), "the page changed is read again");
     assert_eq!(diagrams(&h), 2);
     assert!(h.query_by_label("The document changed since the scan. Scan again to update the diagrams.").is_none());
     // The boxes are there: clicking one picks it.
@@ -223,7 +223,7 @@ fn an_edit_keeps_the_scan_and_reads_again_the_page_it_changed() {
         h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed, modifiers: egui::Modifiers::NONE });
     }
     h.run_steps(3);
-    assert_eq!(h.state().chess.results.as_ref().and_then(|r| r.selected), Some((0, 0)));
+    assert_eq!(h.state().chess.results().and_then(|r| r.selected), Some((0, 0)));
 }
 
 /// A document that does not allow copying its content can't be scanned.
@@ -246,7 +246,7 @@ fn a_document_that_forbids_copying_is_not_scanned() {
     app.run_inline = true;
     app.open_bytes("locked.pdf", None, locked).unwrap();
     app.start_chess_scan(true);
-    assert!(app.chess.run.is_none() && app.chess.results.is_none(), "nothing was scanned");
+    assert!(app.chess.run.is_none() && app.chess.results().is_none(), "nothing was scanned");
 }
 
 /// The position the user set in the editor (blueprint S17), for the drawn board no model read.
@@ -442,7 +442,7 @@ fn generation(h: &Harness<'static, PdfCraftApp>) -> u64 {
 /// The list is in the document's state now (not one before an edit).
 fn list_is_current(h: &Harness<'static, PdfCraftApp>) -> bool {
     let id = h.state().active_ids().unwrap().1;
-    h.state().chess.results.as_ref().is_some_and(|r| Some(r.stamp) == h.state().session.chess_stamp(id))
+    h.state().chess.results().is_some_and(|r| Some(r.stamp) == h.state().session.chess_stamp(id))
 }
 
 /// Opens More actions, then Redraw in the PDF….
@@ -475,7 +475,7 @@ fn redraw_in_the_pdf_asks_first_and_reads_only_its_page_again() {
     ed.position = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(EDITED).unwrap();
     h.run_steps(2);
     assert_eq!(diagrams(&h), 4);
-    let other = h.state().chess.results.as_ref().unwrap().pages[1].clone();
+    let other = h.state().chess.results().unwrap().pages[1].clone();
     let before = generation(&h);
 
     ask_redraw(&mut h);
@@ -495,7 +495,7 @@ fn redraw_in_the_pdf_asks_first_and_reads_only_its_page_again() {
     assert!(h.state().chess.redraw_asked);
     assert!(list_is_current(&h), "the list is carried to the state now");
     assert_eq!(diagrams(&h), 4, "the new board is found where the old one was");
-    let results = h.state().chess.results.as_ref().unwrap();
+    let results = h.state().chess.results().unwrap();
     assert!(Arc::ptr_eq(&results.pages[1], &other), "the other page is not read again");
     assert_eq!(results.kind(0, 1), Some(pdfcraft_engine::chess::corrections::Kind::Corrected), "kept as the correction");
     let ed = h.state().chess.editor.as_ref().expect("the editor stays on the diagram");
@@ -507,7 +507,7 @@ fn redraw_in_the_pdf_asks_first_and_reads_only_its_page_again() {
     h.run_steps(3);
     assert!(list_is_current(&h));
     assert_eq!(diagrams(&h), 4);
-    let results = h.state().chess.results.as_ref().unwrap();
+    let results = h.state().chess.results().unwrap();
     assert!(Arc::ptr_eq(&results.pages[1], &other));
     assert_eq!(results.kind(0, 1), Some(pdfcraft_engine::chess::corrections::Kind::Corrected));
 
@@ -526,11 +526,11 @@ fn redraw_in_the_pdf_asks_first_and_reads_only_its_page_again() {
 fn the_list_follows_its_pages_across_an_edit() {
     let mut h = harness();
     scan_and_edit_second(&mut h);
-    let box_before = h.state().chess.results.as_ref().unwrap().diagram(0, 1).map(|d| d.0);
+    let box_before = h.state().chess.results().unwrap().diagram(0, 1).map(|d| d.0);
     assert!(h.state_mut().apply_edit(Edit::InsertBlankPage { at: 0, width: 600.0, height: 800.0 }));
     h.run_steps(3);
     assert!(list_is_current(&h));
-    let results = h.state().chess.results.as_ref().unwrap();
+    let results = h.state().chess.results().unwrap();
     assert_eq!(results.count(), 2);
     assert_eq!(results.diagram(1, 1).map(|d| d.0), box_before, "the diagrams are on page 2 now");
     assert_eq!(results.selected, Some((1, 1)), "the diagram picked follows");
@@ -542,7 +542,7 @@ fn the_list_follows_its_pages_across_an_edit() {
     assert!(h.state_mut().execute("edit.undo"));
     h.run_steps(3);
     assert!(list_is_current(&h));
-    assert_eq!(h.state().chess.results.as_ref().unwrap().selected, Some((0, 1)));
+    assert_eq!(h.state().chess.results().unwrap().selected, Some((0, 1)));
     assert_eq!(h.state().chess.editor.as_ref().map(|e| (e.page, e.index)), Some((0, 1)));
 }
 
@@ -558,7 +558,7 @@ fn a_page_removed_leaves_the_list() {
     assert!(list_is_current(&h));
     assert_eq!(diagrams(&h), 0);
     assert!(h.state().chess.editor.is_none());
-    assert_eq!(h.state().chess.results.as_ref().unwrap().selected, None);
+    assert_eq!(h.state().chess.results().unwrap().selected, None);
 }
 
 /// Add lichess link puts a link to the corrected position under the diagram.
@@ -593,8 +593,8 @@ fn the_panel_header_detects_and_sums_up() {
     h.get_by_label("On this page").click();
     h.run_steps(3);
     assert_eq!(diagrams(&h), 2, "this page was scanned");
-    assert!(!h.state().chess.results.as_ref().unwrap().all, "this page, not the whole book");
-    let queue = h.state().chess.results.as_ref().unwrap().review_queue();
+    assert!(!h.state().chess.results().unwrap().all, "this page, not the whole book");
+    let queue = h.state().chess.results().unwrap().review_queue();
     assert!(!queue.is_empty(), "with no piece model the drawn board goes to review");
     h.get_by_label("2 diagrams · 1 to review");
     h.get_by_label("Review now").click();
@@ -605,7 +605,7 @@ fn the_panel_header_detects_and_sums_up() {
     // The main button detects in the whole book.
     h.get_by_label("Detect diagrams").click();
     h.run_steps(3);
-    assert!(h.state().chess.results.as_ref().unwrap().all, "the whole book");
+    assert!(h.state().chess.results().unwrap().all, "the whole book");
 }
 
 /// The marks on the page are picked with a click with the Hand too, as with Select; a drag
@@ -629,7 +629,7 @@ fn a_click_with_the_hand_picks_a_diagram_and_a_drag_does_not() {
     let end = at + egui::vec2(0.0, 72.0);
     h.event(egui::Event::PointerButton { pos: end, button: egui::PointerButton::Primary, pressed: false, modifiers: egui::Modifiers::NONE });
     h.run_steps(3);
-    assert_eq!(h.state().chess.results.as_ref().and_then(|r| r.selected), None, "a drag picks nothing");
+    assert_eq!(h.state().chess.results().and_then(|r| r.selected), None, "a drag picks nothing");
     // A click: the diagram under it is picked.
     let at = on_page(&h, 140.0, 320.0);
     h.hover_at(at);
@@ -638,7 +638,7 @@ fn a_click_with_the_hand_picks_a_diagram_and_a_drag_does_not() {
         h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed, modifiers: egui::Modifiers::NONE });
     }
     h.run_steps(3);
-    assert_eq!(h.state().chess.results.as_ref().and_then(|r| r.selected), Some((0, 1)), "the Hand's click picks");
+    assert_eq!(h.state().chess.results().and_then(|r| r.selected), Some((0, 1)), "the Hand's click picks");
 }
 
 /// Mark the page as checked, in the page header's context menu: the diagram read with
@@ -649,7 +649,7 @@ fn marking_the_page_as_checked_verifies_only_what_was_read_with_confidence() {
     let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), Some(dir.clone()));
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
-    let to_review = h.state().chess.results.as_ref().unwrap().review_queue().len();
+    let to_review = h.state().chess.results().unwrap().review_queue().len();
     h.get_by_role_and_label(egui::accesskit::Role::Link, "Page 1").click_secondary();
     h.run_steps(2);
     h.get_by_label("Mark the page as checked").click();
@@ -675,7 +675,7 @@ fn marking_the_page_as_checked_leaves_a_doubted_reading() {
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
     // The font diagram's reading, made doubtful.
-    let results = h.state_mut().chess.results.as_mut().unwrap();
+    let results = h.state_mut().chess.results_mut().unwrap();
     let page = Arc::make_mut(results.pages.get_mut(0).unwrap());
     match page.readings.as_mut().and_then(|r| r.get_mut(0)).map(|r| &mut r.outcome) {
         Some(Ok(p)) => p.accepted = false,
@@ -696,7 +696,7 @@ fn the_review_queue_lists_and_walks_the_diagrams_to_review() {
     let mut h = harness();
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
-    let queue = h.state().chess.results.as_ref().unwrap().review_queue();
+    let queue = h.state().chess.results().unwrap().review_queue();
     assert!(!queue.is_empty(), "with no piece model the drawn board goes to review");
     assert_eq!(queue, vec![(0, 1)]);
     // The chip of the drawn board's state: not read.
@@ -711,7 +711,7 @@ fn the_review_queue_lists_and_walks_the_diagrams_to_review() {
     // The chip still shows the ones not read: Next walks them (plan A8, P4).
     h.get_by_label("Next diagram (Page Down)").click();
     h.run_steps(2);
-    assert_eq!(h.state().chess.results.as_ref().and_then(|r| r.selected), Some((0, 1)));
+    assert_eq!(h.state().chess.results().and_then(|r| r.selected), Some((0, 1)));
 }
 
 /// A page with a heading and moves in Helvetica above a board in the Chess Merida font (top left
@@ -778,7 +778,7 @@ fn the_text_tab_shows_the_page_read_as_chess_text_and_points_back_at_it() {
     h.run_steps(4);
     h.get_by_label("Recognised text of page 1");
     h.get_by_label("Chapter 1");
-    let text = h.state().chess.text.as_ref().expect("the page was read");
+    let text = h.state().chess.text().expect("the page was read");
     let moves: Vec<String> = text.chess.pages[0]
         .blocks
         .iter()
@@ -803,7 +803,7 @@ const RUY_PGN: &str = "[Event \"Chapter 1\"]\n[White \"Ruy\"]\n\n1.e4 e5 2.Nf3 N
 
 /// The moves of the page the Text tab read, and how each is linked to the book's PGN.
 fn linked_moves(h: &Harness<'static, PdfCraftApp>) -> Vec<(String, Option<String>)> {
-    let text = h.state().chess.text.as_ref().expect("the page was read");
+    let text = h.state().chess.text().expect("the page was read");
     text.chess.pages[0]
         .blocks
         .iter()
@@ -890,7 +890,7 @@ fn the_books_pgn_confirms_diagrams_and_is_what_the_pgn_export_writes() {
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(4);
     let state = |h: &Harness<'static, PdfCraftApp>| {
-        let r = h.state().chess.results.as_ref().expect("scanned");
+        let r = h.state().chess.results().expect("scanned");
         (r.confirmed(0, 0), r.review_queue().len())
     };
     assert!(!state(&h).0, "no PGN, nothing confirmed by it");
@@ -943,7 +943,7 @@ fn the_books_pgn_suggests_a_diagrams_position_in_the_diagram_tab() {
     let id = h.state().views[0].id;
     h.state_mut().set_book_pgn(id, "book.pgn", pgn.as_bytes());
     h.run_steps(4);
-    assert!(h.state().chess.text.is_none(), "the Text tab did not read the page again");
+    assert!(h.state().chess.text().is_none(), "the Text tab did not read the page again");
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(4);
     h.get_by_label_contains("Diagram 1 · ").click();
@@ -955,7 +955,7 @@ fn the_books_pgn_suggests_a_diagrams_position_in_the_diagram_tab() {
     let ed = h.state().chess.editor.as_ref().unwrap();
     assert_eq!(ed.fen().split(' ').next(), Some("rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR"), "was {before}");
     assert!(ed.dirty(), "an unconfirmed change");
-    assert!(h.state().chess.results.as_ref().is_some_and(|r| r.kind(0, 0).is_none()), "nothing kept");
+    assert!(h.state().chess.results().is_some_and(|r| r.kind(0, 0).is_none()), "nothing kept");
     if let Ok(dir) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
         h.render().unwrap().save(std::path::Path::new(&dir).join("book-pgn-suggestion.png")).unwrap();
     }
@@ -1282,9 +1282,9 @@ fn the_page_is_read_off_the_interface_thread() {
     h.state_mut().run_inline = false;
     h.get_by_label("Text").click();
     h.run_steps(1);
-    assert!(h.state().chess.job.is_some() || h.state().chess.text.is_some(), "a read was started");
+    assert!(h.state().chess.job.is_some() || h.state().chess.text().is_some(), "a read was started");
     for _ in 0..200 {
-        if h.state().chess.text.is_some() && h.state().chess.job.is_none() {
+        if h.state().chess.text().is_some() && h.state().chess.job.is_none() {
             break;
         }
         std::thread::sleep(std::time::Duration::from_millis(20));
@@ -1294,7 +1294,8 @@ fn the_page_is_read_off_the_interface_thread() {
     h.get_by_label("Chapter 1");
     // An edit while a page is being read: the reading, of a state that is gone, is dropped.
     let app = h.state_mut();
-    app.chess.text = None;
+    let id = app.active_ids().unwrap().1;
+    app.chess.docs.get_mut(&id).unwrap().text = None;
     app.read_chess_text(0, false);
     assert!(app.chess.job.is_some(), "reading on a worker");
     let shape = Shape::Rectangle { rect: [10.0, 10.0, 50.0, 50.0] };
@@ -1313,7 +1314,7 @@ fn the_page_is_read_off_the_interface_thread() {
         std::thread::sleep(std::time::Duration::from_millis(10));
     }
     assert!(app.chess.job.is_none(), "the worker finished");
-    assert!(app.chess.text.is_none(), "the stale reading was not shown");
+    assert!(app.chess.text().is_none(), "the stale reading was not shown");
 }
 
 /// Book origin: the user says where the document's pages came from. The choice is kept with the
@@ -1324,7 +1325,7 @@ fn the_book_origin_is_kept_and_the_page_is_read_again_under_it() {
     let mut h = chapter_harness();
     h.get_by_label("Text").click();
     h.run_steps(4);
-    assert_eq!(h.state().chess.text.as_ref().map(|t| t.origin), Some(BookOrigin::Auto));
+    assert_eq!(h.state().chess.text().map(|t| t.origin), Some(BookOrigin::Auto));
     // The combo box shows the origin chosen; each choice reads the page again.
     for (shown, label, origin) in [
         ("Auto (page by page)", "Born digital (text layer only)", BookOrigin::Digital),
@@ -1336,8 +1337,8 @@ fn the_book_origin_is_kept_and_the_page_is_read_again_under_it() {
         h.get_all_by_label(label).last().expect("the choice is listed").click();
         h.run_steps(4);
         let app = h.state();
-        assert_eq!(app.chess.origin.map(|(_, o)| o), Some(origin), "{label}");
-        let text = app.chess.text.as_ref().expect("the page was read again");
+        assert_eq!(app.chess_origin(app.active_ids().unwrap().1), origin, "{label}");
+        let text = app.chess.text().expect("the page was read again");
         assert_eq!(text.origin, origin, "{label}");
         // The page's own layer is good, so a born-digital read has nothing to note.
         if origin == BookOrigin::Digital {
@@ -1463,7 +1464,7 @@ fn double_click_at(h: &mut Harness<'static, PdfCraftApp>, at: Pos2) {
 fn double_clicking_a_diagram_not_scanned_yet_scans_its_page_and_puts_it_on_the_board() {
     let board = pdfcraft_ui_egui::docking::Panel::Board;
     let mut h = harness_stepping(0.05);
-    assert!(h.state().chess.results.is_none(), "nothing scanned yet");
+    assert!(h.state().chess.results().is_none(), "nothing scanned yet");
     let at = on_page(&h, 140.0, 660.0);
     double_click_at(&mut h, at);
     assert!(h.state().chess.run.is_none(), "the scan ran inline and finished");
@@ -1501,7 +1502,7 @@ fn a_diagram_on_the_board_takes_the_side_and_move_number_its_moves_give_it() {
     let mut h = harness_on(boards_with("12...e5 13.Nf3 Nc6"), 0.1);
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
-    let read = h.state().chess.results.as_ref().and_then(|r| r.diagram(0, 0)).and_then(|d| d.1.map(str::to_owned));
+    let read = h.state().chess.results().and_then(|r| r.diagram(0, 0)).and_then(|d| d.1.map(str::to_owned));
     assert_eq!(read.as_deref(), Some(START_FEN), "the reading alone knows no better");
     h.get_by_label("Text").click();
     h.run_steps(4);
@@ -1529,7 +1530,7 @@ fn a_double_clicked_diagram_reads_its_page_for_the_move_number() {
             assert!(h.state_mut().execute("chess.scan"));
             h.run_steps(3);
         }
-        assert!(h.state().chess.text.is_none(), "the Text tab has read nothing");
+        assert!(h.state().chess.text().is_none(), "the Text tab has read nothing");
         let at = on_page(&h, 140.0, 660.0);
         double_click_at(&mut h, at);
         h.run_steps(3);
@@ -3557,7 +3558,7 @@ fn a_narrow_window_switches_tabs_and_follows_the_diagrams_picked_on_the_page() {
     }
     h.step();
     h.run_steps(8);
-    assert_eq!(h.state().chess.results.as_ref().and_then(|r| r.selected), Some((0, 0)));
+    assert_eq!(h.state().chess.results().and_then(|r| r.selected), Some((0, 0)));
     assert_eq!(h.state().chess_window_tab(), ChessWindowTab::Diagrams, "the list shows");
     assert_eq!(h.get_by_label("Diagram 1 · Position read").accesskit_node().toggled(), Some(egui::accesskit::Toggled::True), "selected in the list");
     assert_ne!(h.state().right, Some(RightPanel::Chess));
@@ -4000,7 +4001,7 @@ fn correction_files(dir: &std::path::Path) -> Vec<String> {
 
 /// What the user did with diagram `index` of page 1, as the list and the page marks show it.
 fn kind(h: &Harness<'static, PdfCraftApp>, index: usize) -> Option<String> {
-    h.state().chess.results.as_ref().and_then(|r| r.kind(0, index)).map(|k| format!("{k:?}"))
+    h.state().chess.results().and_then(|r| r.kind(0, index)).map(|k| format!("{k:?}"))
 }
 
 /// Picking a diagram opens the Diagram tab beside the Inspector, the list still in sight;
@@ -4015,14 +4016,14 @@ fn confirming_keeps_the_correction_and_it_comes_back_when_reopened() {
         scan_and_edit_second(&mut h);
         assert!(h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Diagram), "the Diagram tab opened");
         h.get_by_label_contains("Diagram 1 · ");
-        let queue = h.state().chess.results.as_ref().unwrap().review_queue();
+        let queue = h.state().chess.results().unwrap().review_queue();
         assert!(!queue.is_empty(), "with no piece model the drawn board goes to review");
         h.get_by_label("Confirm and next").click();
         h.run_steps(3);
         assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"));
         // It was the only one to review: the review is done (plan A8, P4).
         assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Review done: 1 of 1 checked"));
-        assert!(h.state().chess.results.as_ref().unwrap().review_queue().is_empty(), "off the review queue");
+        assert!(h.state().chess.results().unwrap().review_queue().is_empty(), "off the review queue");
         h.get_by_label("Diagram 2 · Corrected");
         assert_eq!(correction_files(&dir).len(), 1, "kept on disk");
         let id = h.state().active_ids().unwrap().1;
@@ -4043,7 +4044,47 @@ fn confirming_keeps_the_correction_and_it_comes_back_when_reopened() {
     h.get_by_label("Forget the correction").click();
     h.run_steps(3);
     assert_eq!(kind(&h, 1), None);
-    assert_eq!(h.state().chess.results.as_ref().unwrap().review_queue(), vec![(0, 1)]);
+    assert_eq!(h.state().chess.results().unwrap().review_queue(), vec![(0, 1)]);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Plan A9-I1a (findings A6-01, A5-10): each open document keeps its own chess view. Detecting
+/// in book B never empties book A's list: back in A, the panel lists A's diagrams, the export asks
+/// about A's diagrams to review, and the book cipher A's reading taught is still A's after B's.
+#[test]
+fn each_document_keeps_its_own_diagrams_and_cipher() {
+    let dir = corrections_dir("two-books");
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut h = harness_with(boards(), 0.25, egui::vec2(1366.0, 768.0), Some(dir.join("store")));
+    h.state_mut().open_bytes("b.pdf", None, boards_with("1.e4 e5 2.Nf3")).unwrap();
+    h.run_steps(3);
+    let (a, b) = (h.state().views[0].id, h.state().views[1].id);
+    let count = |h: &Harness<'static, PdfCraftApp>, id| h.state().chess.results_of(id).map(|r| r.count());
+    for (i, id) in [(0, a), (1, b)] {
+        h.state_mut().active = Some(i);
+        h.run_steps(2);
+        assert!(h.state_mut().execute("chess.scan"));
+        h.run_steps(3);
+        h.state_mut().read_chess_text(0, false);
+        h.run_steps(3);
+        assert_eq!(count(&h, id), Some(2), "document {i} detected");
+        assert!(h.state().chess_cipher(id).is_some(), "document {i} read");
+    }
+    h.state_mut().active = Some(0);
+    h.run_steps(3);
+    assert_eq!(count(&h, a), Some(2), "A's list stays after detecting in B");
+    h.get_by_label_contains("Diagram 2 · ");
+    assert!(h.state().chess_cipher(a).is_some(), "A's book cipher stays after reading B");
+    // With PDFCRAFT_CHESS_SHOTS set, a picture of the window back on A, at 1366 x 768.
+    if let Ok(shots) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
+        h.render().unwrap().save(std::path::Path::new(&shots).join("i1a-back-to-a.png")).unwrap();
+    }
+    let to_review = h.state().chess.results_of(a).map_or(0, |r| r.review_queue().len());
+    assert!(to_review > 0, "the drawn board is to review");
+    h.state_mut().save_override = Some(dir.join("a.pgn").to_string_lossy().into_owned());
+    h.state_mut().export_chess_dialog(pdfcraft_engine::chess::export::ChessFormat::Pgn);
+    h.run_steps(2);
+    h.get_by_label(&format!("Diagrams not checked yet: {to_review}"));
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -4112,7 +4153,7 @@ fn the_diagram_tab_walks_what_the_lists_chip_shows() {
     let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), None);
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
-    assert_eq!(h.state().chess.results.as_ref().unwrap().review_queue(), vec![(0, 1)], "with no piece model the drawn board goes to review");
+    assert_eq!(h.state().chess.results().unwrap().review_queue(), vec![(0, 1)], "with no piece model the drawn board goes to review");
     h.state_mut().edit_chess_diagram(0, 1, true);
     h.run_steps(3);
     h.get_by_label("1 of 1 to review");
@@ -4149,7 +4190,7 @@ fn the_board_goes_back_to_its_diagram() {
     assert!(h.state_mut().views[0].view_history(false), "the diagram's page is a place to come back to");
     // The diagram closed, and its tab too.
     h.state_mut().chess.editor = None;
-    if let Some(r) = h.state_mut().chess.results.as_mut() {
+    if let Some(r) = h.state_mut().chess.results_mut() {
         r.selected = None;
     }
     h.state_mut().docking.layout.apply(craft_ui::docking::Action::Close { panel: pdfcraft_ui_egui::docking::Panel::Diagram }).unwrap();
@@ -4259,7 +4300,7 @@ fn the_review_journeys_take_the_gestures_the_plan_set() {
 
     // a) Detect, and see what to review: Detect diagrams, the summary, Review now.
     g.click(&mut h, "Detect diagrams");
-    assert_eq!(h.state().chess.results.as_ref().unwrap().review_queue(), vec![(0, 1)], "with no piece model the drawn board goes to review");
+    assert_eq!(h.state().chess.results().unwrap().review_queue(), vec![(0, 1)], "with no piece model the drawn board goes to review");
     h.get_by_label("2 diagrams · 1 to review");
     g.click(&mut h, "Review now");
     assert_eq!(h.state().chess.editor.as_ref().map(|e| (e.page, e.index)), Some((0, 1)));
@@ -4345,7 +4386,7 @@ fn the_diagram_tab_corrects_and_confirms_by_the_keyboard_alone() {
     let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), Some(dir.clone()));
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
-    assert_eq!(h.state().chess.results.as_ref().unwrap().review_queue(), vec![(0, 1)], "with no piece model the drawn board goes to review");
+    assert_eq!(h.state().chess.results().unwrap().review_queue(), vec![(0, 1)], "with no piece model the drawn board goes to review");
     h.get_by_label_contains("Diagram 2 · ").click();
     h.run_steps(3);
     assert!(board_focused(&h), "the board has the keyboard when the diagram opens");
@@ -4587,7 +4628,7 @@ fn exporting_with_diagrams_to_review_asks_first() {
     let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), Some(dir.join("store")));
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
-    let queue = h.state().chess.results.as_ref().map(|r| r.review_queue()).unwrap_or_default();
+    let queue = h.state().chess.results().map(|r| r.review_queue()).unwrap_or_default();
     assert!(!queue.is_empty(), "the fixture has a diagram to review");
     let out = dir.join("book.pgn");
     h.state_mut().save_override = Some(out.to_string_lossy().into_owned());

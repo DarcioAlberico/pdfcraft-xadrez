@@ -3400,3 +3400,4 @@ castling	long	дълга
 	Larger text	По-голям текст
 diagram state	Read	Прочетена
 the move's comment	Move comment	Коментар към хода
+	Detecting in another book… page {d} of {t}	Откриване в друга книга… страница {d} от {t}
