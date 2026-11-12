@@ -39,7 +39,7 @@ Cada passo do plano (`../plano-analise-9.md`) com o PR que o fez e o que mudou e
 
 | Passo | PR | Desvios e decisões |
 |---|---|---|
-| A9-L5 | (este PR) | A palavra impressa vai até `ChessRun::Move { repaired: Some((de, para)) }` e vira `ReviewFlag::TextRepaired` na leitura do lance (`read_review`); juntar pedaços de um lance não é troca. `San::to_move_checked` e `ReviewFlag::NotationMismatch { text, capture, check, mate }` (só a marca impressa e errada conta). **Decisões:** (1) a "evidência fraca" entra só onde o walker escolhe entre diagramas (`seed_fits`: o diagrama de antes ainda toma o lance quando nenhum outro serve); continuar a partida depois de um diagrama não mudou; (2) o alinhamento com o PGN do livro ainda não pesa a bandeira (fica anotado no `parity/`); (3) a revisão do PGN do livro (passo R2 do `plano-pgn-do-livro.md`) vê a troca pela bandeira no lance. |
+| A9-L5 | #299 | A palavra impressa vai até `ChessRun::Move { repaired: Some((de, para)) }` e vira `ReviewFlag::TextRepaired` na leitura do lance (`read_review`); juntar pedaços de um lance não é troca. `San::to_move_checked` e `ReviewFlag::NotationMismatch { text, capture, check, mate }` (só a marca impressa e errada conta). **Decisões:** (1) a "evidência fraca" entra só onde o walker escolhe entre diagramas (`seed_fits`: o diagrama de antes ainda toma o lance quando nenhum outro serve); continuar a partida depois de um diagrama não mudou; (2) o alinhamento com o PGN do livro ainda não pesa a bandeira (fica anotado no `parity/`); (3) a revisão do PGN do livro (passo R2 do `plano-pgn-do-livro.md`) vê a troca pela bandeira no lance. |
 
 ## Fora do plano, no mesmo período
 
