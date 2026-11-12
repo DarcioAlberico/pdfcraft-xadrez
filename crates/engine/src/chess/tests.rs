@@ -614,6 +614,54 @@ fn the_users_models_read_an_embedded_board() {
     }
 }
 
+/// A9-G6 (A4-14): the scan cache knows a piece model by what it is, not by its folder alone. A
+/// model changed in its folder (retrained and promoted there, then Check again in the app) used
+/// to be answered from the cache with what the model before it read, until the document was
+/// edited. Here the description gains a byte, as a retrained model's weights change.
+#[test]
+fn a_model_changed_in_its_folder_reads_the_page_again() {
+    let Some(models) = pdfcraft_chessvision::models::test_models().unwrap() else {
+        eprintln!("skipped: set PDFCRAFT_CHESS_TEST_MODELS to the folder of the chess models");
+        return;
+    };
+    let dir = std::env::temp_dir().join(format!("pdfcraft-chess-g6-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    for name in ["chess-pieces.onnx", "chess-pieces.json", "chess-pieces.parity.json"] {
+        if models.join(name).is_file() {
+            std::fs::copy(models.join(name), dir.join(name)).unwrap();
+        }
+    }
+    let image = rasterize(OPENING, &PieceSet::geometric(), 640);
+    let (mut s, id) = open(pdf("q 160 0 0 160 220 320 cm /Im1 Do Q\n", "Helvetica", Some((640, 640, &image)), ""));
+    let settings = ChessScanSettings { models_dir: Some(dir.clone()), ..Default::default() };
+    assert!(reload_models(Some(&dir)).pieces.loaded().is_some(), "the piece model did not load");
+    s.chess_scan(id, &[0], &settings, true).unwrap();
+    let first = s.chess_scanned();
+    s.chess_scan(id, &[0], &settings, true).unwrap();
+    assert_eq!(s.chess_scanned(), first, "the same model: the page comes from the cache");
+    let mut meta = std::fs::read(dir.join("chess-pieces.json")).unwrap();
+    meta.push(b'\n');
+    std::fs::write(dir.join("chess-pieces.json"), meta).unwrap();
+    assert!(reload_models(Some(&dir)).pieces.loaded().is_some(), "the changed model did not load");
+    s.chess_scan(id, &[0], &settings, true).unwrap();
+    assert_eq!(s.chess_scanned(), first + 1, "another model in the same folder: the page is read again");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A9-G6: a reading made with one model settles a request only for that same model, the same
+/// folder and the same files ([`ModelKey::Folder`]).
+#[test]
+fn a_reading_settles_only_for_the_model_it_was_made_with() {
+    let folder = std::path::PathBuf::from("models");
+    let params = |model: Option<ModelKey>| ScanParams { generation: 0, bytes: 0, pages: 1, settings: ChessScanSettings::default(), model };
+    let made = params(Some(ModelKey::Folder(folder.clone(), [1; 32])));
+    assert!(made.settles(&params(Some(ModelKey::Folder(folder.clone(), [1; 32])))));
+    assert!(!made.settles(&params(Some(ModelKey::Folder(folder.clone(), [2; 32])))), "another model in the same folder");
+    assert!(!made.settles(&params(Some(ModelKey::Folder("elsewhere".into(), [1; 32])))));
+    assert!(made.settles(&params(None)), "detection only takes any reading");
+}
+
 mod capture;
 mod document;
 mod epub;
