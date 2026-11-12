@@ -2665,6 +2665,10 @@ chess undo step	Clear drawings	描画の消去
 	Games with no document open that autosave doesn't keep: {n}	文書を開いていないときの対局のうち自動保存されないもの: {n}
 	Quit without saving	保存せずに終了
 	Close without saving	保存せずに閉じる
+	Games read only up to an impossible move: {n}	不可能な指し手までしか読み込めなかった対局: {n}
+	The rest of them will not be written.	残りの部分は書き出されません。
+	{name}: stopped at {move}	{name}: {move} で停止
+	Save them as they are	このまま保存
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	チェスの対局を自動保存できません: このウィンドウ用にアプリのデータフォルダーをロックできませんでした。
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	これらのチェスの対局は別の PdfCraft ウィンドウが自動保存しています。ここでの変更は自動保存されません。
 	Chess games couldn't be autosaved: {e}	チェスの対局を自動保存できませんでした: {e}

@@ -254,6 +254,10 @@ pub struct BoardState {
     /// its collection puts them in the document's trash (plan A9-G8, A5-07): the step itself
     /// says so, whether or not a panel is drawn. At most [`MAX_PENDING_REMOVED`].
     pub(crate) removed: Vec<(Game, usize)>,
+    /// The move reading the PGN this game came from stopped at, when it did (not a legal move
+    /// there): the rest of that text is not in the game, so saving it as PGN writes it cut, and
+    /// Save PGN… says so first (plan A9-G8, R1-02; the root fix is F3).
+    pub(crate) cut: Option<String>,
 }
 
 /// Most steps that took moves out kept for the trash between two looks from the collection.
@@ -355,6 +359,7 @@ impl Default for BoardState {
             fresh: Default::default(),
             show_source: None,
             removed: Vec::new(),
+            cut: None,
         }
     }
 }
@@ -456,6 +461,7 @@ impl BoardState {
                 s.selected = None;
                 s.promotion = None;
                 s.message = read_message(&report);
+                s.cut = report.stopped.clone();
                 s.refresh_fields(true);
                 Some(ChessEdit::LoadPgn)
             }
@@ -2746,6 +2752,18 @@ fn read_message(report: &PgnReport) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Plan A9-G8 (R1-02): a PGN whose reading stopped at a move that can't be played marks the
+    /// game cut, with that move, so saving it says so first; a PGN read whole doesn't.
+    #[test]
+    fn a_pgn_read_only_up_to_an_impossible_move_is_marked_cut() {
+        let mut b = BoardState { pgn_text: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Bxh7 Nf6 *".into(), ..BoardState::default() };
+        let _ = b.load_pgn();
+        assert_eq!((b.game.movetext().as_str(), b.cut.as_deref()), ("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6", Some("Bxh7")));
+        b.pgn_text = "1. d4 d5 *".into();
+        let _ = b.load_pgn();
+        assert_eq!(b.cut, None);
+    }
 
     /// Plan A8, P6 (finding X3): the board leaves the scroll bar its room and is never wider
     /// than the panel, whatever its width; at least 160 points when the panel has them.

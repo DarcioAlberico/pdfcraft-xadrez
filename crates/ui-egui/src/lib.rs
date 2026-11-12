@@ -3423,6 +3423,7 @@ impl eframe::App for PdfCraftApp {
             dialogs::show(self, &ctx);
             chess_drafts::prompt(self, &ctx);
             chess_unsaved::prompt(self, &ctx);
+            chess_collection::cut_prompt(self, &ctx);
             chess_redraw::prompt(self, &ctx);
             chess_export_ui::prompt(self, &ctx);
             chess_study_ui::engine_assistant(self, &ctx);
@@ -3496,6 +3497,7 @@ impl eframe::App for PdfCraftApp {
         // the PDF (P3b4), the export's (P9c), and the assistant when Analyze finds no engine (P7).
         chess_drafts::prompt(self, &ctx);
         chess_unsaved::prompt(self, &ctx);
+        chess_collection::cut_prompt(self, &ctx);
         chess_redraw::prompt(self, &ctx);
         chess_export_ui::prompt(self, &ctx);
         chess_study_ui::engine_assistant(self, &ctx);

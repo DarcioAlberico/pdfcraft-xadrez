@@ -263,6 +263,36 @@ fn duplicating_makes_an_identical_game_after_it() {
     assert_eq!(movetexts(h.state())[1], movetexts(h.state())[2]);
 }
 
+/// Plan A9-G8 (R1-02): Save all games as PGN with games read only up to an impossible move says
+/// so first, naming each game and its move, with Cancel; going on writes them as they are.
+#[test]
+fn saving_games_read_only_up_to_an_impossible_move_says_so_first() {
+    let mut h = harness();
+    let pgn = "[Event \"Cut\"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Bxh7 Nf6 5. O-O Be7 {a long comment} 6. Re1 b5 *\n\n\
+               [Event \"Whole\"]\n\n1. d4 d5 *\n";
+    assert_eq!(h.state_mut().import_chess_pgn("study.pgn", pgn.as_bytes()), 2);
+    h.run_steps(3);
+    let path = temp_dir("cut").join("games.pgn");
+    h.state_mut().pick_override = Some(vec![path.to_string_lossy().into_owned()]);
+    h.get_by_label("Export…").click();
+    h.run_steps(4);
+    assert!(h.query_by_label_contains("read only up to an impossible move").is_some(), "said before writing");
+    assert!(h.query_by_label_contains("Cut: stopped at Bxh7").is_some(), "the game and its move named");
+    assert!(!path.exists(), "nothing written yet");
+    h.get_by_label("Cancel").click();
+    h.run_steps(4);
+    assert!(h.query_by_label_contains("read only up to an impossible move").is_none());
+    assert!(!path.exists(), "Cancel writes nothing");
+    h.get_by_label("Export…").click();
+    h.run_steps(3);
+    h.get_by_label("Save them as they are").click();
+    h.run_steps(4);
+    h.state_mut().pick_override = None;
+    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{e}; toast {:?}", h.state().toast));
+    assert!(text.contains("3. Bb5 a6") && !text.contains("Bxh7"), "{text}");
+    assert_eq!(events(&text), ["Cut", "Whole"]);
+}
+
 /// Delete asks first ("It can't be undone") and deletes only on yes; the game after it is shown.
 /// Deleting the last game leaves a blank one.
 #[test]

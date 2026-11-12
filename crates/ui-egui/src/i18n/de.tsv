@@ -2664,6 +2664,10 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	Games with no document open that autosave doesn't keep: {n}	Partien ohne geöffnetes Dokument, die die automatische Speicherung nicht behält: {n}
 	Quit without saving	Beenden ohne Speichern
 	Close without saving	Schließen ohne Speichern
+	Games read only up to an impossible move: {n}	Nur bis zu einem unmöglichen Zug gelesene Partien: {n}
+	The rest of them will not be written.	Der Rest davon wird nicht geschrieben.
+	{name}: stopped at {move}	{name}: angehalten bei {move}
+	Save them as they are	So speichern, wie sie sind
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Schachpartien können nicht automatisch gespeichert werden: Der Datenordner der App konnte für dieses Fenster nicht gesperrt werden.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Diese Schachpartien werden von einem anderen PdfCraft-Fenster automatisch gespeichert. Änderungen hier werden nicht automatisch gespeichert.
 	Chess games couldn't be autosaved: {e}	Schachpartien konnten nicht automatisch gespeichert werden: {e}

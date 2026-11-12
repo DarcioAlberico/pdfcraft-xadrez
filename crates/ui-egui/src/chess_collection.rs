@@ -200,6 +200,7 @@ impl GameEntry {
         board.illegal = self.board.illegal.clone();
         board.source = self.board.source;
         board.flipped = self.board.flipped;
+        board.cut = self.board.cut.clone();
         board.refresh_fields(true);
         GameEntry::new(board)
     }
@@ -1038,6 +1039,9 @@ pub struct ChessGames {
     /// Close without saving was said for them, or every game was saved as PGN. They are not asked
     /// about again until they change (plan A9-G8).
     left: HashMap<String, u64>,
+    /// Save PGN… waiting for its question about games read only up to an impossible move: what
+    /// it saves, and those games' names and moves (plan A9-G8, R1-02).
+    cut_prompt: Option<(PgnGames, Vec<(String, String)>)>,
     /// PGN files read by the browser, imported at the next frame.
     #[cfg(target_arch = "wasm32")]
     uploads: std::sync::Arc<std::sync::Mutex<Vec<(String, Vec<u8>)>>>,
@@ -1098,6 +1102,23 @@ impl ChessGames {
     pub(crate) fn leave(&mut self, cid: &str) {
         if let Some(fp) = self.by_cid(cid).map(ChessCollection::fingerprint) {
             self.left.insert(cid.to_owned(), fp);
+        }
+    }
+
+    /// The games `which` names, with their places in their list: the game shown, every game of
+    /// the collection shown or of collection `cid`, or the games selected.
+    fn chosen(&self, which: &PgnGames) -> Vec<(usize, &GameEntry)> {
+        let c = match which {
+            PgnGames::Collection(cid) => match self.by_cid(cid) {
+                Some(c) => c,
+                None => return Vec::new(),
+            },
+            _ => self.collection(),
+        };
+        match which {
+            PgnGames::Shown => vec![(c.active_index(), c.active())],
+            PgnGames::All | PgnGames::Collection(_) => c.iter().enumerate().collect(),
+            PgnGames::These(places) => c.iter().enumerate().filter(|(i, _)| places.contains(i)).collect(),
         }
     }
 
@@ -2296,6 +2317,7 @@ pub(crate) fn ask_new_game_from(ctx: &egui::Context, node: NodeId) {
 const NEW_GAME_FROM: &str = "chess-new-game-from";
 
 /// Which games of the document shown go into a PGN file.
+#[derive(Clone, Debug, PartialEq)]
 enum PgnGames {
     /// The game shown (Save PGN…).
     Shown,
@@ -2628,15 +2650,7 @@ impl PdfCraftApp {
     /// why, when the games come from a document that doesn't allow copying, or there is nothing
     /// to write.
     fn chess_pgn_text(&mut self, which: &PgnGames) -> Option<(String, usize)> {
-        let c = match which {
-            PgnGames::Collection(cid) => self.chess.games.by_cid(cid)?,
-            _ => self.chess.games.collection(),
-        };
-        let boards: Vec<&BoardState> = match which {
-            PgnGames::Shown => vec![&c.active().board],
-            PgnGames::All | PgnGames::Collection(_) => c.iter().map(|e| &e.board).collect(),
-            PgnGames::These(places) => c.iter().enumerate().filter(|(i, _)| places.contains(i)).map(|(_, e)| &e.board).collect(),
-        };
+        let boards: Vec<&BoardState> = self.chess.games.chosen(which).into_iter().map(|(_, e)| &e.board).collect();
         let docs: HashSet<DocId> = boards.iter().filter_map(|b| b.source.map(|s| s.doc)).collect();
         // Each game's PGN ends with a line break: joined by another, a blank line parts them.
         let text: Vec<String> = boards.iter().filter(|b| b.illegal.is_none()).map(|b| b.game.pgn()).collect();
@@ -2668,6 +2682,34 @@ impl PdfCraftApp {
     /// [`Self::save_chess_pgn`] of `which` games: the game shown, every game, or the games
     /// selected in the list (named as every game is: "<document> games.pgn").
     fn save_chess_games_pgn(&mut self, which: PgnGames) {
+        // Games read only up to an impossible move are written cut: said first (plan A9-G8, R1-02).
+        let cut: Vec<(String, String)> = self
+            .chess
+            .games
+            .chosen(&which)
+            .into_iter()
+            .filter(|(_, e)| e.board.illegal.is_none())
+            .filter_map(|(i, e)| e.board.cut.clone().map(|m| (e.name(i.saturating_add(1)), m)))
+            .collect();
+        if !cut.is_empty() {
+            self.chess.games.cut_prompt = Some((which, cut));
+            return;
+        }
+        self.write_chess_games_pgn(which);
+    }
+
+    /// Answer the question about games read only up to an impossible move: write them as they
+    /// are (`go_on`), or nothing.
+    pub(crate) fn answer_chess_cut(&mut self, go_on: bool) {
+        if let Some((which, _)) = self.chess.games.cut_prompt.take()
+            && go_on
+        {
+            self.write_chess_games_pgn(which);
+        }
+    }
+
+    /// [`Self::save_chess_games_pgn`] once nothing is left to ask: the file dialog, then the file.
+    fn write_chess_games_pgn(&mut self, which: PgnGames) {
         let Some((text, skipped)) = self.chess_pgn_text(&which) else { return };
         let all = !matches!(which, PgnGames::Shown);
         // Every game of a collection, as it is now: once written, Quit doesn't ask about it until
@@ -2855,6 +2897,53 @@ impl PdfCraftApp {
     }
 }
 
+/// Most games the question about games read only up to an impossible move names.
+const MAX_CUT_NAMED: usize = 8;
+
+/// The question before saving games read only up to an impossible move (plan A9-G8, R1-02):
+/// how many, which (the first [`MAX_CUT_NAMED`]) and where each stopped, with Save them as they
+/// are and Cancel.
+pub(crate) fn cut_prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
+    let Some((_, cut)) = app.chess.games.cut_prompt.as_ref() else { return };
+    let n = cut.len().to_string();
+    let named: Vec<String> = cut
+        .iter()
+        .take(MAX_CUT_NAMED)
+        .map(|(name, mv)| crate::i18n::fmt(tl!("{name}: stopped at {move}"), &[("name", name), ("move", mv)]))
+        .collect();
+    let more = cut.len() > MAX_CUT_NAMED;
+    let t = Tokens::get(ctx);
+    let mut answer = None;
+    let shown = crate::widgets::show_modal(ctx, "chess-cut-prompt", |ui| {
+        ui.set_max_width(440.0);
+        ui.heading(crate::i18n::fmt(tl!("Games read only up to an impossible move: {n}"), &[("n", &n)]));
+        ui.add_space(6.0);
+        ui.label(tl!("The rest of them will not be written."));
+        for line in &named {
+            ui.add(egui::Label::new(egui::RichText::new(line).small().color(t.text_muted)).wrap());
+        }
+        if more {
+            ui.label(egui::RichText::new("…").small().color(t.text_muted));
+        }
+        ui.add_space(10.0);
+        ui.horizontal_wrapped(|ui| {
+            if crate::widgets::pill_button(ui, tl!("Save them as they are"), true).clicked() {
+                answer = Some(true);
+            }
+            if crate::widgets::pill_button(ui, tl!("Cancel"), false).clicked() {
+                answer = Some(false);
+            }
+        });
+    });
+    // Esc, or a click outside, cancels: nothing is written.
+    if answer.is_none() && shown.should_close() {
+        answer = Some(false);
+    }
+    if let Some(go_on) = answer {
+        app.answer_chess_cut(go_on);
+    }
+}
+
 /// The games of PGN texts (one game each), each on a board of its own, and how many couldn't be
 /// read. A game whose reading stopped at a move that can't be played says so on its board.
 fn pgn_boards<'a>(texts: impl Iterator<Item = &'a str>) -> (Vec<BoardState>, usize) {
@@ -2865,7 +2954,9 @@ fn pgn_boards<'a>(texts: impl Iterator<Item = &'a str>) -> (Vec<BoardState>, usi
             Ok((game, stopped)) => {
                 let mut board = BoardState::default();
                 board.game = game;
-                board.message = stopped.map(|m| crate::i18n::fmt(tl!("Reading stopped at {move}: it is not a legal move there."), &[("move", &m)]));
+                board.message =
+                    stopped.as_ref().map(|m| crate::i18n::fmt(tl!("Reading stopped at {move}: it is not a legal move there."), &[("move", m)]));
+                board.cut = stopped;
                 board.refresh_fields(true);
                 boards.push(board);
             }

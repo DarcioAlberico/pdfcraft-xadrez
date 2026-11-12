@@ -2916,6 +2916,10 @@ chess undo step	Clear drawings	piešinių valymą
 	Games with no document open that autosave doesn't keep: {n}	Partijos be atverto dokumento, kurių automatinis įrašymas neišlaiko: {n}
 	Quit without saving	Išeiti neįrašius
 	Close without saving	Uždaryti neįrašius
+	Games read only up to an impossible move: {n}	Partijos, perskaitytos tik iki neįmanomo ėjimo: {n}
+	The rest of them will not be written.	Likusi jų dalis nebus įrašyta.
+	{name}: stopped at {move}	{name}: sustojo ties {move}
+	Save them as they are	Įrašyti tokias, kokios yra
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Šachmatų partijų negalima įrašyti automatiškai: nepavyko užrakinti programos duomenų aplanko šiam langui.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Šias šachmatų partijas automatiškai įrašo kitas PdfCraft langas. Čia atlikti pakeitimai automatiškai neįrašomi.
 	Chess games couldn't be autosaved: {e}	Nepavyko automatiškai įrašyti šachmatų partijų: {e}

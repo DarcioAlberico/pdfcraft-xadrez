@@ -2661,6 +2661,10 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Games with no document open that autosave doesn't keep: {n}	Құжат ашылмаған кездегі, автосақтау сақтамайтын партиялар: {n}
 	Quit without saving	Сақтамай шығу
 	Close without saving	Сақтамай жабу
+	Games read only up to an impossible move: {n}	Тек мүмкін емес жүріске дейін оқылған партиялар: {n}
+	The rest of them will not be written.	Олардың қалған бөлігі жазылмайды.
+	{name}: stopped at {move}	{name}: {move} жүрісінде тоқтады
+	Save them as they are	Сол күйінде сақтау
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Шахмат партияларын автоматты түрде сақтау мүмкін емес: бұл терезе үшін қолданбаның деректер қалтасын құлыптау мүмкін болмады.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Бұл шахмат партияларын PdfCraft-тың басқа терезесі автоматты түрде сақтайды. Мұнда енгізілген өзгерістер автоматты түрде сақталмайды.
 	Chess games couldn't be autosaved: {e}	Шахмат партияларын автоматты түрде сақтау мүмкін болмады: {e}
