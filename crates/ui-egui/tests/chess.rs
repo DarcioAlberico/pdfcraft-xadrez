@@ -88,6 +88,15 @@ fn harness_on(bytes: Vec<u8>, step_dt: f32) -> Harness<'static, PdfCraftApp> {
     harness_with(bytes, step_dt, egui::vec2(1400.0, 1000.0), None)
 }
 
+/// Pin "no piece model" for this test process, whatever `PDFCRAFT_MODELS` or a `models` folder
+/// beside the executable hold: the drawn boards here then always go to review, so the tests that
+/// walk the review queue test it instead of returning early when the user's model reads them
+/// (plan A9-Q1a). Installed models are used wherever no folder is chosen, and none is here.
+fn no_piece_model() {
+    let (none, _) = pdfcraft_engine::chess::pdfcraft_chessvision::models::ChessModels::from_files(Vec::new());
+    pdfcraft_engine::chess::install_models(Some(none));
+}
+
 /// The harness on the PDF `bytes` in a window of `size`.
 fn harness_sized(bytes: Vec<u8>, size: egui::Vec2) -> Harness<'static, PdfCraftApp> {
     harness_with(bytes, 0.25, size, None)
@@ -95,6 +104,7 @@ fn harness_sized(bytes: Vec<u8>, size: egui::Vec2) -> Harness<'static, PdfCraftA
 
 /// The harness on `bytes`, its diagram corrections kept in `corrections` (a folder) when given.
 fn harness_with(bytes: Vec<u8>, step_dt: f32, size: egui::Vec2, corrections: Option<std::path::PathBuf>) -> Harness<'static, PdfCraftApp> {
+    no_piece_model();
     let mut h = Harness::builder().with_size(size).with_step_dt(step_dt).build_eframe(move |_cc| {
         let mut app = PdfCraftApp::new();
         app.set_option("language", "en").unwrap();
@@ -585,12 +595,7 @@ fn the_panel_header_detects_and_sums_up() {
     assert_eq!(diagrams(&h), 2, "this page was scanned");
     assert!(!h.state().chess.results.as_ref().unwrap().all, "this page, not the whole book");
     let queue = h.state().chess.results.as_ref().unwrap().review_queue();
-    if queue.is_empty() {
-        // With the user's piece model installed the drawn board may be read and accepted.
-        h.get_by_label("2 diagrams");
-        assert!(h.query_by_label("Review now").is_none());
-        return;
-    }
+    assert!(!queue.is_empty(), "with no piece model the drawn board goes to review");
     h.get_by_label("2 diagrams · 1 to review");
     h.get_by_label("Review now").click();
     h.run_steps(3);
@@ -692,10 +697,7 @@ fn the_review_queue_lists_and_walks_the_diagrams_to_review() {
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
     let queue = h.state().chess.results.as_ref().unwrap().review_queue();
-    if queue.is_empty() {
-        // With the user's piece model installed the drawn board may be read and accepted.
-        return;
-    }
+    assert!(!queue.is_empty(), "with no piece model the drawn board goes to review");
     assert_eq!(queue, vec![(0, 1)]);
     // The chip of the drawn board's state: not read.
     h.get_by_label("Not read 1").click();
@@ -2054,7 +2056,7 @@ fn analyze_without_an_engine_shows_the_assistant() {
 /// variable is not set.
 #[test]
 fn the_board_panel_analyses_with_a_real_engine() {
-    let Some(engine) = std::env::var_os("PDFCRAFT_CHESS_TEST_ENGINE") else {
+    let Some(engine) = pdfcraft_engine::chess::analysis::test_engine().unwrap() else {
         eprintln!("PDFCRAFT_CHESS_TEST_ENGINE not set: skipped");
         return;
     };
@@ -2063,7 +2065,7 @@ fn the_board_panel_analyses_with_a_real_engine() {
     h.run_steps(3);
     h.get_by_label("Analysis").click();
     h.run_steps(2);
-    h.state_mut().chess.study.engine_path = Some(engine.into());
+    h.state_mut().chess.study.engine_path = Some(engine);
     h.get_by_label("Engine analysis").click();
     let mut found = false;
     for _ in 0..200 {
@@ -3937,10 +3939,7 @@ fn confirming_keeps_the_correction_and_it_comes_back_when_reopened() {
         assert!(h.state().docking.layout.contains(&pdfcraft_ui_egui::docking::Panel::Diagram), "the Diagram tab opened");
         h.get_by_label_contains("Diagram 1 · ");
         let queue = h.state().chess.results.as_ref().unwrap().review_queue();
-        if queue.is_empty() {
-            // With the user's piece model installed the drawn board may be read and accepted.
-            return;
-        }
+        assert!(!queue.is_empty(), "with no piece model the drawn board goes to review");
         h.get_by_label("Confirm and next").click();
         h.run_steps(3);
         assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"));
@@ -4036,10 +4035,7 @@ fn the_diagram_tab_walks_what_the_lists_chip_shows() {
     let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), None);
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
-    if h.state().chess.results.as_ref().unwrap().review_queue() != vec![(0, 1)] {
-        // With the user's piece model installed the drawn board may be read and accepted.
-        return;
-    }
+    assert_eq!(h.state().chess.results.as_ref().unwrap().review_queue(), vec![(0, 1)], "with no piece model the drawn board goes to review");
     h.state_mut().edit_chess_diagram(0, 1, true);
     h.run_steps(3);
     h.get_by_label("1 of 1 to review");
@@ -4184,10 +4180,7 @@ fn the_review_journeys_take_the_gestures_the_plan_set() {
 
     // a) Detect, and see what to review: Detect diagrams, the summary, Review now.
     g.click(&mut h, "Detect diagrams");
-    if h.state().chess.results.as_ref().unwrap().review_queue() != vec![(0, 1)] {
-        // With the user's piece model installed the drawn board may be read and accepted.
-        return;
-    }
+    assert_eq!(h.state().chess.results.as_ref().unwrap().review_queue(), vec![(0, 1)], "with no piece model the drawn board goes to review");
     h.get_by_label("2 diagrams · 1 to review");
     g.click(&mut h, "Review now");
     assert_eq!(h.state().chess.editor.as_ref().map(|e| (e.page, e.index)), Some((0, 1)));
@@ -4273,10 +4266,7 @@ fn the_diagram_tab_corrects_and_confirms_by_the_keyboard_alone() {
     let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), Some(dir.clone()));
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
-    if h.state().chess.results.as_ref().unwrap().review_queue() != vec![(0, 1)] {
-        // With the user's piece model installed the drawn board may be read and accepted.
-        return;
-    }
+    assert_eq!(h.state().chess.results.as_ref().unwrap().review_queue(), vec![(0, 1)], "with no piece model the drawn board goes to review");
     h.get_by_label_contains("Diagram 2 · ").click();
     h.run_steps(3);
     assert!(board_focused(&h), "the board has the keyboard when the diagram opens");

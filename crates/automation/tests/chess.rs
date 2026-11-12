@@ -2111,7 +2111,7 @@ fn chess_read_area_says_what_it_needs_and_stays_in_the_root() {
 /// asserted only loosely: this measures the model, not the plumbing.
 #[test]
 fn chess_read_area_reads_and_plans_with_the_users_model() {
-    let Some(models) = std::env::var_os("PDFCRAFT_CHESS_TEST_MODELS") else {
+    let Some(models) = pdfcraft_chessvision::models::test_models().unwrap() else {
         eprintln!("skipped: set PDFCRAFT_CHESS_TEST_MODELS to the folder of the chess models");
         return;
     };
@@ -2125,7 +2125,7 @@ fn chess_read_area_reads_and_plans_with_the_users_model() {
         "chess_read_area",
         json!({
             "doc": doc, "page": 1, "rect": [50, 480, 400, 520], "general_ocr": false,
-            "models_dir": std::path::PathBuf::from(models).to_string_lossy(),
+            "models_dir": models.to_string_lossy(),
             "fen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "at": "path:",
         }),
     );

@@ -24,6 +24,8 @@
 //!   translators may reorder placeholders freely.
 
 mod catalog;
+#[cfg(test)]
+mod chess_scan;
 
 use std::cell::Cell;
 use std::sync::OnceLock;
@@ -605,6 +607,26 @@ pub fn trn(lang: Lang, n: u64, one: &str, other: &str) -> String {
 mod tests {
     use super::catalog::{Entry, parse_entries, placeholders};
     use super::*;
+
+    /// Plan A9-Q1a: every chess text is in every catalogue complete for chess (the scan
+    /// `chess_scan`, which `cargo xtask chess-gate` runs too).
+    #[test]
+    fn every_complete_catalogue_has_every_chess_text() {
+        let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let mut literals = std::collections::BTreeSet::new();
+        for entry in std::fs::read_dir(&src).expect("UI source directory") {
+            let path = entry.expect("UI source entry").path();
+            let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+            if super::chess_scan::is_chess_source(&name) {
+                literals.extend(super::chess_scan::tl_literals(&std::fs::read_to_string(&path).expect("chess source").replace("\r\n", "\n")));
+            }
+        }
+        assert!(literals.len() > 500 && literals.contains("Detect diagrams"), "the scan found the chess texts: {}", literals.len());
+        let catalogues: Vec<(String, String)> =
+            LANGUAGES.iter().filter(|l| !l.source.is_empty()).map(|l| (l.code.to_owned(), l.source.to_owned())).collect();
+        let missing = super::chess_scan::missing(&literals, &catalogues);
+        assert!(missing.is_empty(), "chess texts missing from catalogues: {missing:#?}");
+    }
 
     const JA: fn() -> Lang = || Lang::from_code("ja").expect("ja registered");
     // These physical key-cap names remain English in several keyboard layouts. Only their

@@ -255,7 +255,13 @@ Arestas explícitas:
 
 ## 4. Invariantes após **todo** passo
 
-Só nos crates tocados, sob `timeout`, com `-j 2`:
+**Desde o plano A9 (Q1a), um comando faz tudo isto para o que mudou desde o `origin/main`**, parando na primeira falha e gravando o resumo em `<target>/chess-gate.json`:
+
+```sh
+cargo xtask chess-gate --models <pasta dos modelos> --engine <motor UCI>   # ou --no-models
+```
+
+Etapa 0 CRLF e `fmt`; etapa 1 varreduras (arquivos sem `resolve`, textos do xadrez nos 18 catálogos completos, parity em TOML 1.0, `layers`, `assets`); etapa 2 clippy, testes e wasm dos crates abaixo de L6; etapa 3 (motor, automação, UI ou apps) `check` da CLI e do app, wasm do motor e da automação, e os testes de xadrez. Falha conhecida só passa se estiver em `xtask/known-failures.toml`. Por baixo, o mesmo de antes, só nos crates tocados, sob `timeout`, com `-j 2`:
 
 ```sh
 cargo fmt --check
@@ -270,7 +276,7 @@ cargo xtask deny            # sempre que mudar dependência
 - Fixtures **sintéticas** geradas em teste. Nenhum PDF de livro, modelo ou fonte commitado.
 - Todo teste novo visto **falhando** com a correção revertida.
 - Toda ferramenta nova tem teste em `automation/tests/automation.rs`, com `--root` respeitado.
-- Toda string nova de UI vai em `en.tsv`, `pt-br.tsv` **e** `ja.tsv`.
+- Toda string nova de UI vai no `tl!()` (inglês é a fonte) e nos **18** catálogos completos (`crates/ui-egui/src/i18n/*.tsv`; os quatro de `chess_scan::INCOMPLETE` até o A9-I14), com o SHA-256 de cada `.tsv` atualizado no `ATTRIBUTION.toml`.
 - Métricas (recall, CER, tempo) só valem com **comando exato + saída + máquina** registrados na §8.
 - Sem CI (Actions desligado): estes portões são o **único** gate antes do merge no `main`.
 - Branch de passo rebaseado sobre o **nosso** `main` antes do PR. O `upstream` entra por merge (D3), lendo cada conflito.

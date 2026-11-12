@@ -337,47 +337,20 @@ mod tests {
     }
 
     /// Every file a tool reads or writes goes through `Automation::resolve`, which holds it to the
-    /// roots. A function that reaches for the file system without resolving a path first would
-    /// bypass them, so each use of `std::fs` or `File::open` must come after a `resolve` call in
-    /// the same function (or be one of the helpers that only ever get a resolved path).
+    /// roots. The scan (`crate::file_access_scan`, shared with `cargo xtask chess-gate`) names each
+    /// use of the file system in a function that resolves no path first.
     #[test]
     fn tools_do_not_touch_the_file_system_without_resolving_the_path() {
-        // Helpers that are only called with a resolved path. `doc_batch` (batch.rs) resolves its
-        // inputs and out_dir, walks only inside them (skipping links) and resolves every
-        // discovered file again before `process` reads it or `publish` writes it.
-        // `read_reference_text` (chess.rs) reads the book's PGN that `read_reference` and
-        // `chess_reference_set` resolve first.
-        const RESOLVED_BY_CALLER: &[&str] =
-            &["write_atomic", "write_atomic_with", "read_review_sidecar", "process", "linked", "walk", "publish", "read_reference_text"];
         let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
         let mut offenders = vec![];
         for entry in std::fs::read_dir(&dir).unwrap() {
             let path = entry.unwrap().path();
-            if path.extension().is_none_or(|e| e != "rs")
-                || path.file_name().is_some_and(|n| n == "file_access.rs" || n.to_string_lossy().starts_with("tests"))
-            {
+            let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+            if !crate::file_access_scan::scanned(&name) {
                 continue;
             }
             let text = std::fs::read_to_string(&path).unwrap();
-            // Test modules (which build their own fixtures) come last in each file.
-            let code = text.split("\n#[cfg(test)]").next().unwrap_or("");
-            let lines: Vec<&str> = code.lines().collect();
-            for (n, line) in lines.iter().enumerate() {
-                let trimmed = line.trim_start();
-                if trimmed.starts_with("//")
-                    || !(trimmed.contains("std::fs")
-                        || trimmed.contains("File::open")
-                        || trimmed.contains("File::create")
-                        || trimmed.contains("OpenOptions"))
-                {
-                    continue;
-                }
-                let start = (0..=n).rev().find(|&i| lines[i].trim_start().contains("fn ") && lines[i].trim_start().ends_with('{')).unwrap_or(0);
-                let name = lines[start].split("fn ").nth(1).and_then(|r| r.split(['(', '<']).next()).unwrap_or("");
-                if !RESOLVED_BY_CALLER.contains(&name) && !lines[start..=n].iter().any(|l| l.contains("resolve")) {
-                    offenders.push(format!("{}:{}: in `{name}`: {}", path.display(), n + 1, trimmed));
-                }
-            }
+            offenders.extend(crate::file_access_scan::offenders(&path.display().to_string(), &text));
         }
         assert!(offenders.is_empty(), "resolve the path with `self.resolve` first: {offenders:#?}");
     }

@@ -592,7 +592,7 @@ fn crops_are_clamped_to_the_raster() {
 /// geometric set, which the model was not trained on: then only the plumbing is checked.
 #[test]
 fn the_users_models_read_an_embedded_board() {
-    let Some(dir) = std::env::var_os("PDFCRAFT_CHESS_TEST_MODELS") else {
+    let Some(dir) = pdfcraft_chessvision::models::test_models().unwrap() else {
         eprintln!("skipped: set PDFCRAFT_CHESS_TEST_MODELS to the folder of the chess models");
         return;
     };
@@ -600,7 +600,7 @@ fn the_users_models_read_an_embedded_board() {
     let image = rasterize(OPENING, &set, 640);
     let content = "q 160 0 0 160 220 320 cm /Im1 Do Q\n";
     let (mut s, id) = open(pdf(content, "Helvetica", Some((640, 640, &image)), ""));
-    let settings = ChessScanSettings { models_dir: Some(dir.into()), ..Default::default() };
+    let settings = ChessScanSettings { models_dir: Some(dir), ..Default::default() };
     assert!(models(settings.models_dir.as_deref()).pieces.loaded().is_some(), "the piece model did not load");
     let page = s.chess_page(id, 0, &settings).unwrap();
     let readings = page.readings.as_ref().unwrap();

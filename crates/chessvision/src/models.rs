@@ -98,6 +98,26 @@ pub enum ModelState<T> {
     Invalid(String),
 }
 
+/// The folder of the user's real models for the tests that run them, from
+/// `PDFCRAFT_CHESS_TEST_MODELS`: `Ok(None)` when it is not set, so the test skips, and an error when
+/// `PDFCRAFT_REQUIRE_MODELS=1` asks for them, which `cargo xtask chess-gate` sets so that a gate
+/// run never passes by skipping (plan A9-Q1a). No weights are committed (decision D2).
+pub fn test_models() -> Result<Option<PathBuf>, String> {
+    test_resource("PDFCRAFT_CHESS_TEST_MODELS", "the folder of the chess models")
+}
+
+/// [`test_models`] for any variable that names a test resource (the engine's,
+/// `PDFCRAFT_CHESS_TEST_ENGINE`, too).
+pub fn test_resource(var: &str, what: &str) -> Result<Option<PathBuf>, String> {
+    match std::env::var_os(var) {
+        Some(value) if !value.is_empty() => Ok(Some(PathBuf::from(value))),
+        _ if std::env::var_os("PDFCRAFT_REQUIRE_MODELS").is_some_and(|v| v == "1") => {
+            Err(format!("PDFCRAFT_REQUIRE_MODELS=1 but {var} ({what}) is not set"))
+        }
+        _ => Ok(None),
+    }
+}
+
 impl<T> ModelState<T> {
     pub fn loaded(&self) -> Option<&T> {
         match self {
@@ -600,7 +620,7 @@ mod tests {
     /// folder. Skipped otherwise: no weights are committed (decision D2).
     #[test]
     fn the_users_models_load_and_run_when_present() {
-        let Some(dir) = std::env::var_os("PDFCRAFT_CHESS_TEST_MODELS") else {
+        let Some(dir) = test_models().unwrap() else {
             return;
         };
         let models = ChessModels::load_from(Path::new(&dir));
