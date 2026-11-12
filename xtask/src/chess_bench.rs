@@ -26,6 +26,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use anyhow::{Context, bail};
 use serde_json::{Value, json};
 
+// `compare` (the examples' listing of the moves lost) is not used here: only `Key` and `newly`.
+#[allow(dead_code)]
 #[path = "../../crates/chessvision/examples/common/moves_match.rs"]
 mod moves_match;
 
