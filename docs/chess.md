@@ -282,10 +282,11 @@ Every open document has its own games, and the board shows the active one; switc
 **Autosave.** Two seconds after the last change, when a document closes and on exit, each document's games are written to a file of their own in the `chess` folder of the recovery folder: `%LOCALAPPDATA%\PdfCraft\Recovery\chess` on Windows, `~/Library/Application Support/PdfCraft/Recovery/chess` on macOS, `~/.local/share/pdfcraft/recovery/chess` elsewhere (in portable mode, the portable data folder). The file is two lines of JSON: the document's keys (its `/ID`, path, and name and size), then the games: each one's PGN and what PGN cannot hold (the move shown, the board's side, an illegal position, the diagram it came from, where each move was printed, and the comments before a move PGN would merge). Opening the document again finds them by any of its keys, and saving the document takes the new keys at once.
 
 - Files are written atomically, and only by the running instance that holds the recovery folder's lock; a file another running instance wrote is left alone, and you are told.
-- A file that can't be read, is too big or has another version is renamed `….games.bad` (never deleted, never written over) and you are told; new games are saved from then on.
+- A file a newer PdfCraft wrote (a higher format version) is never renamed or written over, whichever document it belongs to. Its own document's games are read as far as this version can make them out, and changes to them are not autosaved: you are told, and the list says “Saved by a newer PdfCraft: these games are only read here.” (**Save all games as PGN…** keeps them).
+- Any other file that can't be read, or is too big, is renamed `….games.bad` (never deleted, never written over) and you are told; new games are saved from then on.
 - Caps: 256 games and 32 MiB per document. Above them the document's games are not autosaved (you are told) until they are back under; nothing is ever evicted.
 - **Protected documents** (encrypted, or not allowing copying): you are asked once per document and session before their games are written to disk.
-- On the web the games are kept in the browser's storage (4 MiB for all documents), written when the app saves its state; a value that can't be read is kept aside.
+- On the web the games are kept in the browser's storage (4 MiB for all documents), written when the app saves its state; a value that can't be read is kept aside, and one a newer PdfCraft wrote is only read, never written over.
 
 ### The chess window
 

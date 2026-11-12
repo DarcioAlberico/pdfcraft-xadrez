@@ -2442,8 +2442,10 @@ fn saving_a_pdf_without_an_id_rekeys_its_games() {
     assert_eq!(h.state().toast.as_ref().map(|t| t.0.as_str()), Some("Chess game restored: Game 1, moves: 1"));
 }
 
-/// Files that can't be read (random bytes, a file over the cap, an unknown version) are set
-/// aside as `.bad`, never deleted, and the user is told; the document opens with a blank game.
+/// Files that can't be read (random bytes, a file over the cap) are set aside as `.bad`, never
+/// deleted, and the user is told; the document opens with a blank game. A file a newer PdfCraft
+/// wrote is never set aside (plan A9-G12, R3-05): this one is another document's, and stays as
+/// it is.
 #[test]
 fn unreadable_game_files_are_set_aside_and_said() {
     let s = store("corrupt");
@@ -2463,16 +2465,43 @@ fn unreadable_game_files_are_set_aside_and_said() {
     let newer = "{\"format\":\"pdfcraft-chess-games\",\"version\":99,\"keys\":{\"name\":\"boards.pdf\"}}\n{}\n";
     std::fs::write(dir.join("cc-3.games"), newer).unwrap();
     let h = session(&s, "boards.pdf", None, boards());
-    assert_eq!(chess_files(&s), ["aa-1.games.bad", "bb-2.games.bad", "cc-3.games.bad"]);
+    assert_eq!(chess_files(&s), ["aa-1.games.bad", "bb-2.games.bad", "cc-3.games"]);
+    assert_eq!(std::fs::read_to_string(dir.join("cc-3.games")).unwrap(), newer, "the newer file is as it was");
     let toast = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
     assert!(toast.contains("couldn't be read. It was kept as aa-1.games.bad"), "{toast}");
-    assert!(toast.contains("cc-3.games.bad"), "{toast}");
+    assert!(!toast.contains("cc-3"), "{toast}");
     assert_eq!(games(h.state()).0, [""], "a blank game");
     // What was set aside stays aside: a second session neither reads nor renames it again.
     drop(h);
     let h = session(&s, "boards.pdf", None, boards());
-    assert_eq!(chess_files(&s), ["aa-1.games.bad", "bb-2.games.bad", "cc-3.games.bad"]);
+    assert_eq!(chess_files(&s), ["aa-1.games.bad", "bb-2.games.bad", "cc-3.games"]);
     assert!(h.state().toast.is_none());
+}
+
+/// Plan A9-G12: this document's games, in a file a newer PdfCraft wrote, are shown and only read.
+/// The user is told, the list says so, and changes made here never write over the file (nor set
+/// it aside), in the session or when it ends.
+#[test]
+fn a_newer_games_file_of_this_document_is_only_read() {
+    let s = store("newer");
+    let dir = s.dir().join("chess");
+    std::fs::create_dir_all(&dir).unwrap();
+    let size = boards().len();
+    let header = format!(r#"{{"format":"pdfcraft-chess-games","version":2,"keys":{{"name":"boards.pdf","size":{size}}},"games":1}}"#);
+    let newer = format!("{header}\n{}\n", r#"{"active":0,"games":[{"pgn":"1. d4 d5 *","uid":7,"rev":3}]}"#);
+    std::fs::write(dir.join("dd-4.games"), &newer).unwrap();
+    let mut h = session(&s, "boards.pdf", None, boards());
+    assert_eq!(games(h.state()).0, ["1. d4 d5"], "the games are read");
+    let toast = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    assert!(toast.contains("saved by a newer PdfCraft (format 2)"), "{toast}");
+    h.state_mut().chess.board_mut().play_uci_line(&["c2c4".into()]);
+    h.state_mut().flush_chess_games();
+    h.state_mut().show_chess_board();
+    h.run_steps(3);
+    assert!(h.query_by_label_contains("Saved by a newer PdfCraft: these games are only read here.").is_some(), "the list says why");
+    drop(h);
+    assert_eq!(chess_files(&s), ["dd-4.games"]);
+    assert_eq!(std::fs::read_to_string(dir.join("dd-4.games")).unwrap(), newer, "never written over");
 }
 
 /// Two windows on the same document: the second one finds the games the first autosaves, but

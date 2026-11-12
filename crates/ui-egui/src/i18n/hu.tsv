@@ -2646,6 +2646,7 @@ chess undo step	Clear drawings	rajzok törlése
 	Save them	Mentés
 	Too many games to autosave here: save them as PGN.	Túl sok játszma az automatikus mentéshez: mentsd őket PGN-ként.
 	Another PdfCraft window autosaves these games.	Egy másik PdfCraft-ablak menti automatikusan ezeket a játszmákat.
+	Saved by a newer PdfCraft: these games are only read here.	A PdfCraft egy újabb verziója mentette: ezek a játszmák itt csak olvashatók.
 	These games aren't being autosaved.	Ezek a játszmák nincsenek automatikusan mentve.
 	Chess game restored: {name}, moves: {n}	Sakkjátszma visszaállítva: {name}, lépések: {n}
 	Chess games restored: {n}	Visszaállított sakkjátszmák: {n}
@@ -2654,6 +2655,7 @@ chess undo step	Clear drawings	rajzok törlése
 	Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.	A mentett sakkjátszmák nem olvashatók be. Félretettük őket, és mostantól az új játszmákat mentjük.
 	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Ez a dokumentum védett: a sakkjátszmái csak akkor mentődnek automatikusan, ha ezt a Sakktábla panelen engedélyezed.
 	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Túl sok sakkjátszma a dokumentum automatikus mentéséhez (legfeljebb {n}, {mb} MB). Mentsd őket „Az összes játszma mentése PGN-ként…” paranccsal, hogy semmi ne vesszen el.
+	These chess games were saved by a newer PdfCraft (format {v}): this one only reads them, and doesn't autosave changes made here. Save them with Save all games as PGN… so nothing is lost.	Ezeket a sakkjátszmákat a PdfCraft egy újabb verziója mentette ({v}. formátum): ez a verzió csak olvassa őket, és az itt végzett módosításokat nem menti automatikusan. Mentsd őket „Az összes játszma mentése PGN-ként…” paranccsal, hogy semmi ne vesszen el.
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	A sakkjátszmák nem menthetők automatikusan: az alkalmazás adatmappáját nem sikerült zárolni ehhez az ablakhoz.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Ezeket a sakkjátszmákat egy másik PdfCraft-ablak menti automatikusan. Az itt végzett módosítások nem mentődnek automatikusan.
 	Chess games couldn't be autosaved: {e}	A sakkjátszmák automatikus mentése nem sikerült: {e}

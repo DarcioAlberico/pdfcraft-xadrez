@@ -2900,6 +2900,7 @@ chess undo step	Clear drawings	piešinių valymą
 	Save them	Įrašyti
 	Too many games to autosave here: save them as PGN.	Per daug partijų automatiniam įrašymui: įrašykite jas kaip PGN.
 	Another PdfCraft window autosaves these games.	Šias partijas automatiškai įrašo kitas PdfCraft langas.
+	Saved by a newer PdfCraft: these games are only read here.	Įrašyta naujesnės PdfCraft versijos: čia šios partijos tik skaitomos.
 	These games aren't being autosaved.	Šios partijos neįrašomos automatiškai.
 	Chess game restored: {name}, moves: {n}	Šachmatų partija atkurta: {name}, ėjimų: {n}
 	Chess games restored: {n}	Atkurta šachmatų partijų: {n}
@@ -2908,6 +2909,7 @@ chess undo step	Clear drawings	piešinių valymą
 	Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.	Nepavyko perskaityti įrašytų šachmatų partijų. Jos atidėtos, o naujos partijos nuo šiol įrašomos.
 	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Šis dokumentas apsaugotas: jo šachmatų partijos automatiškai įrašomos tik jums leidus, skydelyje „Šachmatų lenta“.
 	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Per daug šachmatų partijų automatiniam įrašymui šiame dokumente (daugiausia {n}, {mb} MB). Įrašykite jas komanda „Įrašyti visas partijas kaip PGN…“, kad niekas neprapultų.
+	These chess games were saved by a newer PdfCraft (format {v}): this one only reads them, and doesn't autosave changes made here. Save them with Save all games as PGN… so nothing is lost.	Šias šachmatų partijas įrašė naujesnė PdfCraft versija (formatas {v}): ši versija jas tik skaito ir čia padarytų pakeitimų automatiškai neįrašo. Įrašykite jas komanda „Įrašyti visas partijas kaip PGN…“, kad niekas neprapultų.
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Šachmatų partijų negalima įrašyti automatiškai: nepavyko užrakinti programos duomenų aplanko šiam langui.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Šias šachmatų partijas automatiškai įrašo kitas PdfCraft langas. Čia atlikti pakeitimai automatiškai neįrašomi.
 	Chess games couldn't be autosaved: {e}	Nepavyko automatiškai įrašyti šachmatų partijų: {e}

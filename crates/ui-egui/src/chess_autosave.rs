@@ -14,14 +14,23 @@
 //! (`NodeSource`, by path) and the comments PGN can't place exactly (a comment before a first
 //! reply is written into the comment after the move before it, and read back as part of that
 //! one): every move whose comments read back differently is stored with both of its comments, so
-//! a reload puts them back where they were.
+//! a reload puts them back where they were. The installed builds put comments back only through
+//! these, so they are written as long as the files are `*.games` of version 1 (plan A9 §2.10,
+//! R9-01); a sample of the format is frozen in `tests/compat/games_v1.games`.
+//!
+//! **Versions** (plan A9-G12). A file a newer PdfCraft wrote (a higher version) is never renamed,
+//! set aside or written over, whichever document it is for: its own document's games are read as
+//! far as this version can make them out, and writing them is refused ([`Blocked::Newer`]). The
+//! same holds for the web's value. A newer format takes a new file name (`<hash>.games.json`),
+//! which this version doesn't look at.
 //!
 //! **Safety.** Files are written atomically ([`crate::editing::write_atomically`]) and only by the
 //! instance that holds a lock in the recovery folder; a file another running instance wrote is
-//! left alone. Reading checks the size first and parses leniently; a file that can't be read,
-//! is too big or has an unknown version is set aside as `….bad` (never deleted) and the user is
-//! told. Nothing is evicted: a document above [`MAX_GAMES`] games or [`MAX_BODY_BYTES`] is not
-//! autosaved (the user is told) until it is back under.
+//! left alone. Reading reads the first line within a cap, then checks the size, and parses
+//! leniently; a file that can't be read as this version's or a newer one's, or is too big, is set
+//! aside as `….bad` (never deleted) and the user is told. Nothing is evicted: a document above
+//! [`MAX_GAMES`] games or [`MAX_BODY_BYTES`] is not autosaved (the user is told) until it is back
+//! under.
 
 use std::collections::HashSet;
 use std::io::{BufRead, Read};
@@ -37,7 +46,7 @@ use crate::chess_board_ui::{BoardState, Source};
 /// The format's name, in every header.
 const FORMAT: &str = "pdfcraft-chess-games";
 
-/// The format's version. Another version is set aside, not read.
+/// The format's version. A newer version is only read; an older or unknown one is set aside.
 pub(crate) const VERSION: u32 = 1;
 
 /// Most games autosaved for one document.
@@ -113,6 +122,13 @@ impl StoredKeys {
         });
         DocKeys { id0, path: self.path.clone(), name: self.name.clone(), size: self.size }
     }
+
+    /// The keys of a newer version's header, each one taken when it has the type this version
+    /// gives it (a newer version may give another key another type).
+    fn lenient(value: &serde_json::Value) -> StoredKeys {
+        let text = |key: &str| value.get(key).and_then(serde_json::Value::as_str).map(str::to_owned);
+        StoredKeys { id0: text("id0"), path: text("path"), name: text("name"), size: value.get("size").and_then(serde_json::Value::as_u64) }
+    }
 }
 
 /// The second line: the games.
@@ -183,6 +199,9 @@ pub(crate) enum Blocked {
     NoLock,
     /// Another running instance wrote the file.
     OtherInstance,
+    /// A newer PdfCraft wrote the file (or the web's value), in this format version: this one
+    /// only reads it, and never writes over it.
+    Newer(u32),
     /// The file couldn't be written.
     Io(String),
 }
@@ -293,9 +312,47 @@ pub(crate) fn decode(body: &Body, doc: Option<DocId>) -> (Vec<BoardState>, usize
     (boards, lost.saturating_add(body.games.len().saturating_sub(MAX_GAMES)))
 }
 
-/// Whether `header` is one this version reads.
-fn readable(header: &Header) -> bool {
-    header.format == FORMAT && header.version == VERSION
+/// The version a JSON value of this format says it has. `None` when it is not this format, or its
+/// version is not one a `u32` holds.
+fn version_of(value: &serde_json::Value) -> Option<u32> {
+    if value.get("format").and_then(serde_json::Value::as_str) != Some(FORMAT) {
+        return None;
+    }
+    value.get("version").and_then(serde_json::Value::as_u64).and_then(|v| u32::try_from(v).ok())
+}
+
+/// What a file's first line (or a web entry's header) is.
+#[derive(Debug)]
+enum Head {
+    /// A header of this version.
+    This(Header),
+    /// A newer PdfCraft's, of that version: never set aside or written over, whosever it is. Its
+    /// document's keys as far as this version can make them out.
+    Newer(u32, DocKeys),
+    /// Neither: set aside, never deleted.
+    Bad,
+}
+
+impl Head {
+    /// What the JSON `value` of a header is.
+    fn of(value: serde_json::Value) -> Head {
+        match version_of(&value) {
+            Some(VERSION) => serde_json::from_value::<Header>(value).map_or(Head::Bad, Head::This),
+            Some(v) if v > VERSION => Head::Newer(v, value.get("keys").map(StoredKeys::lenient).unwrap_or_default().keys()),
+            _ => Head::Bad,
+        }
+    }
+
+    /// What `header` (a web entry's, read already) is.
+    fn of_header(header: &Header) -> Head {
+        if header.format != FORMAT || header.version < VERSION {
+            Head::Bad
+        } else if header.version == VERSION {
+            Head::This(header.clone())
+        } else {
+            Head::Newer(header.version, header.keys.keys())
+        }
+    }
 }
 
 /// What looking for a document's games found.
@@ -306,6 +363,9 @@ pub(crate) struct Found {
     /// Files (or web values) that couldn't be read and were set aside, by the name they were
     /// kept under.
     pub set_aside: Vec<String>,
+    /// The games were written by a newer PdfCraft, in this format version: they are only read
+    /// (writing them is refused with [`Blocked::Newer`]).
+    pub newer: Option<u32>,
 }
 
 /// Where autosaved games live.
@@ -373,22 +433,30 @@ impl FileStore {
         self.dir.join(format!("{cid}.games"))
     }
 
-    /// The header of the file at `path`, read within the cap. `Err` when the file is there and
-    /// can't be read as one this version reads; `Ok(None)` when there is no file.
-    fn header(path: &Path) -> Result<Option<Header>, ()> {
+    /// What the first line of the file at `path` is, read within the cap; `None` when there is no
+    /// file. The size is checked after the version: a file of this version over the cap is
+    /// [`Head::Bad`], a newer one is left alone whatever its size (a newer build may keep more).
+    fn head(path: &Path) -> Option<Head> {
         let meta = match std::fs::metadata(path) {
             Ok(m) => m,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-            Err(_) => return Err(()),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return None,
+            Err(_) => return Some(Head::Bad),
         };
-        if !meta.is_file() || meta.len() > MAX_FILE_BYTES {
-            return Err(());
+        if !meta.is_file() {
+            return Some(Head::Bad);
         }
-        let file = std::fs::File::open(path).map_err(|_| ())?;
+        let Ok(file) = std::fs::File::open(path) else { return Some(Head::Bad) };
         let mut line = Vec::new();
-        std::io::BufReader::new(file.take(MAX_HEADER_BYTES as u64)).read_until(b'\n', &mut line).map_err(|_| ())?;
-        let header: Header = serde_json::from_slice(line.strip_suffix(b"\n").ok_or(())?).map_err(|_| ())?;
-        if readable(&header) { Ok(Some(header)) } else { Err(()) }
+        if std::io::BufReader::new(file.take(MAX_HEADER_BYTES as u64)).read_until(b'\n', &mut line).is_err() {
+            return Some(Head::Bad);
+        }
+        let Some(value) = line.strip_suffix(b"\n").and_then(|l| serde_json::from_slice::<serde_json::Value>(l).ok()) else {
+            return Some(Head::Bad);
+        };
+        Some(match Head::of(value) {
+            Head::This(_) if meta.len() > MAX_FILE_BYTES => Head::Bad,
+            head => head,
+        })
     }
 
     /// The body of the file at `path`, read within the cap.
@@ -439,23 +507,31 @@ impl FileStore {
         paths.sort();
         for path in paths {
             let Some(cid) = path.file_stem().and_then(|s| s.to_str()).filter(|s| plain_cid(s)).map(str::to_owned) else { continue };
-            let header = match FileStore::header(&path) {
-                Ok(Some(h)) => h,
-                Ok(None) => continue,
-                Err(()) => {
-                    found.set_aside.extend(self.set_aside(&path));
-                    continue;
+            match FileStore::head(&path) {
+                None => {}
+                Some(Head::Bad) => found.set_aside.extend(self.set_aside(&path)),
+                Some(Head::This(header)) => {
+                    if taken.contains(&cid) || !header.keys.keys().matches(keys) {
+                        continue;
+                    }
+                    match FileStore::body(&path) {
+                        Some(body) => {
+                            found.games = Some((cid, body));
+                            return found;
+                        }
+                        None => found.set_aside.extend(self.set_aside(&path)),
+                    }
                 }
-            };
-            if taken.contains(&cid) || !header.keys.keys().matches(keys) {
-                continue;
-            }
-            match FileStore::body(&path) {
-                Some(body) => {
-                    found.games = Some((cid, body));
+                // A newer PdfCraft's file is never touched; this document's is read, for reading
+                // only (what this version can't make out of its body is left out, never lost).
+                Some(Head::Newer(version, owner)) => {
+                    if taken.contains(&cid) || !owner.matches(keys) {
+                        continue;
+                    }
+                    found.games = Some((cid, FileStore::body(&path).unwrap_or_default()));
+                    found.newer = Some(version);
                     return found;
                 }
-                None => found.set_aside.extend(self.set_aside(&path)),
             }
         }
         found
@@ -473,19 +549,24 @@ impl FileStore {
             return Err(Blocked::Io(format!("bad collection id {cid:?}")));
         }
         let Some(instance) = self.recovery.instance() else { return Err(Blocked::NoLock) };
-        let (header, body) = encode(keys, active, boards, trash, Some(instance.clone()))?;
         let path = self.path(cid);
-        match FileStore::header(&path) {
-            Ok(Some(h)) => {
+        let head = FileStore::head(&path);
+        // A newer PdfCraft's file is only read here: never written over.
+        if let Some(Head::Newer(version, _)) = head {
+            return Err(Blocked::Newer(version));
+        }
+        let (header, body) = encode(keys, active, boards, trash, Some(instance.clone()))?;
+        match head {
+            Some(Head::This(h)) => {
                 if let Some(other) = h.instance.as_deref().filter(|w| *w != instance)
                     && self.recovery.held_by_another_instance(other)
                 {
                     return Err(Blocked::OtherInstance);
                 }
             }
-            Ok(None) => {}
+            None | Some(Head::Newer(..)) => {}
             // What is there can't be read: keep it, never write over it.
-            Err(()) => {
+            Some(Head::Bad) => {
                 if self.set_aside(&path).is_none() {
                     return Err(Blocked::Io("the file there couldn't be set aside".into()));
                 }
@@ -528,20 +609,39 @@ pub(crate) struct MemoryStore {
     /// What couldn't be read, to keep under [`STORAGE_BAD_KEY`] (the last one only: the browser's
     /// storage is small).
     bad: Option<String>,
+    /// The value was written by a newer PdfCraft, in this format version: it is only read, and
+    /// never written back (plan A9-G12).
+    newer: Option<u32>,
 }
 
 impl MemoryStore {
     /// The store a `Storage` value holds. A value that can't be read is kept aside (see
-    /// [`Self::take_bad`]) and the store starts empty; whether that happened.
+    /// [`Self::take_bad`]) and the store starts empty; whether that happened. A value a newer
+    /// PdfCraft wrote is read as far as this version can make it out, and never written back.
     pub(crate) fn load(text: Option<&str>) -> (MemoryStore, bool) {
         let Some(text) = text.filter(|t| !t.is_empty()) else { return (MemoryStore::default(), false) };
-        let file = (text.len() <= WEB_MAX_BYTES.saturating_mul(2))
-            .then(|| serde_json::from_str::<MemFile>(text).ok())
-            .flatten()
-            .filter(|f| f.format == FORMAT && f.version == VERSION);
-        match file {
-            Some(f) => (MemoryStore { entries: f.entries.into_iter().filter(|e| plain_cid(&e.cid)).collect(), dirty: false, bad: None }, false),
-            None => (MemoryStore { entries: Vec::new(), dirty: false, bad: Some(text.chars().take(WEB_MAX_BYTES).collect()) }, true),
+        let mut value = (text.len() <= WEB_MAX_BYTES.saturating_mul(2)).then(|| serde_json::from_str::<serde_json::Value>(text).ok()).flatten();
+        let version = value.as_ref().and_then(version_of);
+        let store = match (value.as_mut(), version) {
+            (Some(v), Some(VERSION)) => serde_json::from_value::<MemFile>(v.take())
+                .ok()
+                .map(|f| MemoryStore { entries: f.entries.into_iter().filter(|e| plain_cid(&e.cid)).collect(), ..MemoryStore::default() }),
+            (Some(v), Some(newer)) if newer > VERSION => {
+                // Each entry this version can make out; the others are left out, never lost, since
+                // nothing is written back.
+                let entries = match v.get_mut("entries").map(serde_json::Value::take) {
+                    Some(serde_json::Value::Array(items)) => {
+                        items.into_iter().filter_map(|e| serde_json::from_value::<MemEntry>(e).ok()).filter(|e| plain_cid(&e.cid)).collect()
+                    }
+                    _ => Vec::new(),
+                };
+                Some(MemoryStore { entries, newer: Some(newer), ..MemoryStore::default() })
+            }
+            _ => None,
+        };
+        match store {
+            Some(store) => (store, false),
+            None => (MemoryStore { bad: Some(text.chars().take(WEB_MAX_BYTES).collect()), ..MemoryStore::default() }, true),
         }
     }
 
@@ -552,11 +652,26 @@ impl MemoryStore {
         }
         let mut i = 0;
         while let Some(e) = self.entries.get(i) {
-            if !readable(&e.header) || (!taken.contains(&e.cid) && e.header.keys.keys().matches(keys)) {
+            let mine = !taken.contains(&e.cid) && e.header.keys.keys().matches(keys);
+            let head = match self.newer {
+                // In a newer value, every entry is a newer PdfCraft's.
+                Some(v) => Head::Newer(v, e.header.keys.keys()),
+                None => Head::of_header(&e.header),
+            };
+            if let Head::Newer(version, _) = head {
+                // Never set aside; this document's games are read, for reading only.
+                if mine {
+                    found.games = Some((e.cid.clone(), serde_json::from_str::<Body>(&e.body).unwrap_or_default()));
+                    found.newer = Some(version);
+                    return found;
+                }
+                i = i.saturating_add(1);
+                continue;
+            }
+            let this = matches!(head, Head::This(_));
+            if !this || mine {
                 let entry = self.entries.remove(i);
-                if readable(&entry.header)
-                    && let Ok(body) = serde_json::from_str::<Body>(&entry.body)
-                {
+                if this && let Ok(body) = serde_json::from_str::<Body>(&entry.body) {
                     // Kept (it is written back with the document's next change).
                     self.entries.insert(i, entry.clone());
                     found.games = Some((entry.cid, body));
@@ -580,6 +695,14 @@ impl MemoryStore {
         boards: &[&BoardState],
         trash: &[crate::chess_trash::Trashed],
     ) -> Result<(), Blocked> {
+        // A newer PdfCraft's value, or its entry for this collection, is only read here.
+        let entry_newer = self.entries.iter().find(|e| e.cid == cid).and_then(|e| match Head::of_header(&e.header) {
+            Head::Newer(v, _) => Some(v),
+            _ => None,
+        });
+        if let Some(v) = self.newer.or(entry_newer) {
+            return Err(Blocked::Newer(v));
+        }
         let (header, body) = encode(keys, active, boards, trash, None)?;
         let others: usize = self.entries.iter().filter(|e| e.cid != cid).map(|e| e.body.len().saturating_add(512)).sum();
         if others.saturating_add(body.len()) > WEB_MAX_BYTES {
@@ -596,7 +719,7 @@ impl MemoryStore {
 
     /// The value to store, when it changed since it was last taken.
     pub(crate) fn take_value(&mut self) -> Option<String> {
-        if !std::mem::take(&mut self.dirty) {
+        if !std::mem::take(&mut self.dirty) || self.newer.is_some() {
             return None;
         }
         serde_json::to_string(&MemFile { format: FORMAT.into(), version: VERSION, entries: self.entries.clone() }).ok()
@@ -700,6 +823,34 @@ pub(crate) mod tests {
 
     fn keys() -> DocKeys {
         DocKeys { id0: Some([9; 16]), path: Some("/b/book.pdf".into()), name: Some("book.pdf".into()), size: Some(1234) }
+    }
+
+    /// The keys of the frozen version 1 sample ([`GAMES_V1`]).
+    pub(crate) fn v1_keys() -> DocKeys {
+        keys()
+    }
+
+    /// The games of the frozen version 1 sample: an annotated game (a variation, a comment PGN
+    /// would move, a move read on a page, the board turned), an illegal position opened from a
+    /// diagram, and a game whose comment after a move and the one before the reply add up to
+    /// more than the PGN reader keeps of one comment (R9-01).
+    pub(crate) fn v1_sample_boards() -> Vec<BoardState> {
+        let mut illegal = BoardState::default();
+        illegal.load_fen("K7/8/8/8/8/8/8/K6k w - - 0 1", false, Some(Source { doc: DocId(7), page: 3, index: 1 }));
+        illegal.history = Default::default();
+        let mut long = BoardState::default();
+        long.game.play_uci("e2e4").unwrap();
+        let e4 = long.game.current();
+        long.game.play_uci("e7e5").unwrap();
+        let e5 = long.game.current();
+        long.game.set_comment(e4, &"a".repeat(3000));
+        long.game.set_comment_before(e5, &"b".repeat(2500));
+        vec![annotated(), illegal, long]
+    }
+
+    /// The deleted moves of the frozen version 1 sample.
+    pub(crate) fn v1_sample_trash() -> Vec<crate::chess_trash::Trashed> {
+        vec![crate::chess_trash::Trashed { pgn: "1. e4 e5 2. Nf3 *".into(), name: "Game 1".into(), moves: 3, deleted: 1, at: 7 }]
     }
 
     /// A game with a variation, a comment before a first reply (which PGN merges into the comment
@@ -832,8 +983,9 @@ pub(crate) mod tests {
         }
         assert_eq!(m.write("abc-2", &keys(), 0, &boards, &[]), Err(Blocked::TooBig));
         assert!(m.find(&keys(), &HashSet::new()).games.is_some(), "the first document's games are still there");
-        // A value that can't be read is kept aside and the store starts empty.
-        for junk in ["{not json", "{\"format\":\"pdfcraft-chess-games\",\"version\":99,\"entries\":[]}"] {
+        // A value that can't be read is kept aside and the store starts empty (a newer version's
+        // is only read: see the next test).
+        for junk in ["{not json", "{\"format\":\"pdfcraft-chess-games\",\"version\":0,\"entries\":[]}"] {
             let (mut m, bad) = MemoryStore::load(Some(junk));
             assert!(bad);
             assert_eq!(m.take_bad().as_deref(), Some(junk));
@@ -961,5 +1113,156 @@ pub(crate) mod tests {
         }
         assert!(read > 50 && set_aside > 50, "both ways were taken: {read} read, {set_aside} set aside");
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// The version 1 format as the installed builds (≤ cc2d484c) write it: written by this module
+    /// before plan A9-G12 changed anything (the sample games, keys and deleted moves above, the
+    /// lock's name made fixed) and frozen since.
+    const GAMES_V1: &[u8] = include_bytes!("../tests/compat/games_v1.games");
+
+    /// A file's two lines as JSON, the lock name of the instance that wrote it left out.
+    fn v1_lines(bytes: &[u8]) -> (Value, Value) {
+        let at = bytes.iter().position(|&b| b == b'\n').unwrap();
+        assert_eq!(bytes.iter().filter(|&&b| b == b'\n').count(), 2, "two lines, each ending in a line break");
+        let mut header: Value = serde_json::from_slice(&bytes[..at]).unwrap();
+        header["instance"] = Value::Null;
+        (header, serde_json::from_slice(&bytes[at + 1..]).unwrap())
+    }
+
+    /// Every file in `dir`, by name, with its bytes.
+    fn files_in(dir: &Path) -> Vec<(String, Vec<u8>)> {
+        let mut files: Vec<(String, Vec<u8>)> = std::fs::read_dir(dir)
+            .unwrap()
+            .flatten()
+            .map(|e| (e.file_name().to_string_lossy().into_owned(), std::fs::read(e.path()).unwrap()))
+            .collect();
+        files.sort();
+        files
+    }
+
+    /// Plan A9 §2.10 and G12: the version 1 sample reads back whole (the comments PGN can't place
+    /// included), and what this build writes for the same games is the same JSON. The installed
+    /// builds read this format, and put comments back in place only through its `comments`
+    /// (`StoredComments`, R9-01), so a change here needs a new version and a new file name.
+    #[test]
+    fn the_version_1_sample_reads_back_and_is_what_this_build_writes() {
+        let dir = std::env::temp_dir().join(format!("pdfcraft-chess-games-v1-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let recovery = crate::RecoveryStore::new(dir.join("recovery"));
+        recovery.claim();
+        let folder = dir.join("chess");
+        std::fs::create_dir_all(&folder).unwrap();
+        std::fs::write(folder.join("abc-1.games"), GAMES_V1).unwrap();
+        let mut store = FileStore::new(folder.clone(), recovery);
+        let found = store.find(&v1_keys(), &HashSet::new());
+        assert!(found.set_aside.is_empty());
+        let (cid, body) = found.games.expect("the sample is read");
+        assert_eq!((cid.as_str(), body.active), ("abc-1", 1));
+        assert_eq!(body.trash, v1_sample_trash());
+        let (boards, lost) = decode(&body, Some(DocId(7)));
+        assert_eq!(lost, 0);
+        let sample = v1_sample_boards();
+        assert_eq!(boards.len(), sample.len());
+        for (a, b) in sample.iter().zip(&boards) {
+            same(a, b);
+            assert_eq!(a.illegal.as_ref().map(|(_, f)| f), b.illegal.as_ref().map(|(_, f)| f));
+            assert_eq!(a.source, b.source);
+        }
+        // The comments PGN merges come back apart, the long pair whole.
+        let long = &boards[2].game;
+        let e5 = long.node_at(&NodePath::new(vec![0, 0])).unwrap();
+        assert_eq!(long.comment_before(e5), "b".repeat(2500));
+        // What this build writes for the same games.
+        let refs: Vec<&BoardState> = sample.iter().collect();
+        store.write("abc-2", &v1_keys(), 1, &refs, &v1_sample_trash()).unwrap();
+        let written = std::fs::read(store.path("abc-2")).unwrap();
+        assert_eq!(v1_lines(&written), v1_lines(GAMES_V1), "the version 1 format, unchanged");
+        let (_, body) = v1_lines(GAMES_V1);
+        let stored: Vec<&Value> = body["games"].as_array().unwrap().iter().flat_map(|g| g["comments"].as_array().unwrap()).collect();
+        assert_eq!(stored.len(), 4, "every comment PGN would move is stored apart (R9-01)");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// The first line of a games file a newer PdfCraft might write for the document `keys`, and
+    /// a body with fields this version doesn't know.
+    fn newer_file(keys: &DocKeys, pgn: &str) -> String {
+        let keys = serde_json::to_value(StoredKeys::of(keys)).unwrap();
+        let header = json!({ "format": FORMAT, "version": VERSION + 1, "keys": keys, "instance": "instance-1-0.lock", "games": 1, "uids": true });
+        let body = json!({ "active": 0, "games": [{ "pgn": pgn, "uid": 7, "rev": 3 }], "tombstones": [] });
+        format!("{header}\n{body}\n")
+    }
+
+    /// Plan A9-G12 (R3-05): a folder with a version 1 file of another book, the name a later
+    /// format takes (`<hash>.games.json`), and `.games` files a newer PdfCraft wrote, one for
+    /// another book and one for this one. Looking for this book's games renames, sets aside and
+    /// writes nothing; this book's newer file is read.
+    #[test]
+    fn a_newer_games_file_is_only_read_and_no_other_books_file_is_touched() {
+        let dir = std::env::temp_dir().join(format!("pdfcraft-chess-games-newer-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let recovery = crate::RecoveryStore::new(dir.join("recovery"));
+        recovery.claim();
+        let folder = dir.join("chess");
+        let mut store = FileStore::new(folder.clone(), recovery);
+        let other = DocKeys { id0: Some([5; 16]), path: Some("/b/other.pdf".into()), name: Some("other.pdf".into()), size: Some(99) };
+        store.write("bb-1", &other, 0, &[&annotated()], &[]).unwrap();
+        std::fs::write(folder.join("cc-2.games"), newer_file(&other, "1. d4 d5 *")).unwrap();
+        std::fs::write(folder.join("dd-3.games"), newer_file(&keys(), "1. c4 e5 *")).unwrap();
+        std::fs::write(folder.join("0123456789abcdef.games.json"), r#"{"format":"pdfcraft-chess-games","version":2,"games":[]}"#).unwrap();
+        let before = files_in(&folder);
+        let found = store.find(&keys(), &HashSet::new());
+        assert!(found.set_aside.is_empty(), "nothing set aside: {:?}", found.set_aside);
+        assert_eq!(files_in(&folder), before, "every file as it was, under its own name");
+        let (cid, body) = found.games.expect("this book's games, read from the newer file");
+        assert_eq!(cid, "dd-3");
+        assert_eq!(decode(&body, None).0.iter().map(|b| b.game.movetext()).collect::<Vec<_>>(), ["1. c4 e5"]);
+        assert_eq!(found.newer, Some(VERSION + 1), "for reading only");
+        // Writing them is refused, and the file stays as it was.
+        assert_eq!(store.write("dd-3", &keys(), 0, &[&annotated()], &[]), Err(Blocked::Newer(VERSION + 1)));
+        // Another book looked for: the same, and its own version 1 file is found.
+        let found = store.find(&other, &HashSet::new());
+        assert_eq!(found.games.map(|(cid, _)| cid).as_deref(), Some("bb-1"));
+        assert!(found.set_aside.is_empty() && found.newer.is_none());
+        assert_eq!(files_in(&folder), before, "nothing renamed or written over");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Plan A9-G12 on the web: a value a newer PdfCraft wrote is read and never written back, and
+    /// in a value of this version a newer entry of another document is left as it is.
+    #[test]
+    fn the_web_store_reads_a_newer_value_and_never_writes_it() {
+        let newer_entry = |keys: &DocKeys, cid: &str| {
+            let text = newer_file(keys, "1. c4 e5 *");
+            let (header, body) = text.trim_end().split_once('\n').unwrap();
+            json!({ "cid": cid, "header": serde_json::from_str::<Value>(header).unwrap(), "body": body, "more": 1 })
+        };
+        let value =
+            json!({ "format": FORMAT, "version": VERSION + 1, "entries": [newer_entry(&keys(), "dd-3"), { "cid": "x", "odd": true }] }).to_string();
+        let (mut m, bad) = MemoryStore::load(Some(&value));
+        assert!(!bad, "a newer value is not set aside");
+        let found = m.find(&keys(), &HashSet::new());
+        assert_eq!(found.newer, Some(VERSION + 1));
+        let (cid, body) = found.games.unwrap();
+        assert_eq!((cid.as_str(), decode(&body, None).0[0].game.movetext().as_str()), ("dd-3", "1. c4 e5"));
+        assert_eq!(m.write("dd-3", &keys(), 0, &[&annotated()], &[]), Err(Blocked::Newer(VERSION + 1)));
+        assert_eq!(m.write("new-1", &keys(), 0, &[&annotated()], &[]), Err(Blocked::Newer(VERSION + 1)), "nothing is added either");
+        assert_eq!((m.take_value(), m.take_bad()), (None, None), "never written back");
+        // A value of this version with a newer entry of another document, and one of this one's.
+        let other = DocKeys { id0: Some([5; 16]), path: Some("/b/other.pdf".into()), name: Some("other.pdf".into()), size: Some(99) };
+        let (mut m, _) = MemoryStore::load(None);
+        m.write("abc-1", &keys(), 0, &[&annotated()], &[]).unwrap();
+        let mut value: Value = serde_json::from_str(&m.take_value().unwrap()).unwrap();
+        value["entries"].as_array_mut().unwrap().insert(0, newer_entry(&other, "cc-2"));
+        let (mut m, bad) = MemoryStore::load(Some(&value.to_string()));
+        assert!(!bad);
+        let found = m.find(&keys(), &HashSet::new());
+        assert!(found.set_aside.is_empty() && found.newer.is_none());
+        assert_eq!(found.games.map(|(cid, _)| cid).as_deref(), Some("abc-1"));
+        assert_eq!(m.take_bad(), None);
+        assert!(m.find(&other, &HashSet::new()).newer.is_some(), "the other document's newer games are still there");
+        assert_eq!(m.write("cc-2", &other, 0, &[&annotated()], &[]), Err(Blocked::Newer(VERSION + 1)));
+        m.write("abc-1", &keys(), 0, &[&BoardState::default()], &[]).unwrap();
+        let written: Value = serde_json::from_str(&m.take_value().unwrap()).unwrap();
+        assert_eq!(written["entries"][0]["header"]["version"], json!(VERSION + 1), "kept as it was when the value is written");
     }
 }

@@ -2721,6 +2721,7 @@ chess undo step	Clear drawings	smazání kreseb
 	Save them	Ukládat
 	Too many games to autosave here: save them as PGN.	Příliš mnoho partií pro automatické ukládání: uložte je jako PGN.
 	Another PdfCraft window autosaves these games.	Tyto partie automaticky ukládá jiné okno PdfCraft.
+	Saved by a newer PdfCraft: these games are only read here.	Uloženo novější verzí PdfCraft: tyto partie se zde jen čtou.
 	These games aren't being autosaved.	Tyto partie se automaticky neukládají.
 	Chess game restored: {name}, moves: {n}	Šachová partie obnovena: {name}, tahů: {n}
 	Chess games restored: {n}	Obnovené šachové partie: {n}
@@ -2729,6 +2730,7 @@ chess undo step	Clear drawings	smazání kreseb
 	Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.	Uložené šachové partie nešlo přečíst. Byly uschovány stranou a od teď se ukládají nové partie.
 	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	Tento dokument je chráněný: jeho šachové partie se automaticky ukládají, jen pokud to povolíte v panelu Šachovnice.
 	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	Příliš mnoho šachových partií pro automatické ukládání tohoto dokumentu (nejvýše {n}, {mb} MB). Uložte je příkazem Uložit všechny partie jako PGN…, aby se nic neztratilo.
+	These chess games were saved by a newer PdfCraft (format {v}): this one only reads them, and doesn't autosave changes made here. Save them with Save all games as PGN… so nothing is lost.	Tyto šachové partie uložila novější verze PdfCraft (formát {v}): tato verze je jen čte a změny provedené zde automaticky neukládá. Uložte je příkazem Uložit všechny partie jako PGN…, aby se nic neztratilo.
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Šachové partie nelze automaticky ukládat: datovou složku aplikace se pro toto okno nepodařilo zamknout.
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	Tyto šachové partie automaticky ukládá jiné okno PdfCraft. Změny provedené zde se automaticky neukládají.
 	Chess games couldn't be autosaved: {e}	Šachové partie se nepodařilo automaticky uložit: {e}

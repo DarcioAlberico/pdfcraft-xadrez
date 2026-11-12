@@ -2649,6 +2649,7 @@ chess undo step	Clear drawings	描画の消去
 	Save them	保存する
 	Too many games to autosave here: save them as PGN.	対局が多すぎて自動保存できません: PGN で保存してください。
 	Another PdfCraft window autosaves these games.	別の PdfCraft ウィンドウがこれらの対局を自動保存しています。
+	Saved by a newer PdfCraft: these games are only read here.	新しいバージョンの PdfCraft で保存: ここではこれらの対局は読み取りのみです。
 	These games aren't being autosaved.	これらの対局は自動保存されていません。
 	Chess game restored: {name}, moves: {n}	チェスの対局を復元しました: {name}、{n} 手
 	Chess games restored: {n}	復元したチェスの対局: {n}
@@ -2657,6 +2658,7 @@ chess undo step	Clear drawings	描画の消去
 	Saved chess games couldn't be read. They were kept aside, and new games are saved from now on.	保存済みのチェスの対局を読み取れませんでした。別に保管し、これからは新しい対局を保存します。
 	This document is protected: its chess games are autosaved only if you allow it, in the Chess board panel.	この文書は保護されています: チェスの対局は、チェス盤パネルで許可した場合にのみ自動保存されます。
 	Too many chess games to autosave for this document (at most {n}, {mb} MB). Save them with Save all games as PGN… so nothing is lost.	この文書のチェスの対局が多すぎて自動保存できません (最大 {n} 局、{mb} MB)。何も失わないよう「すべての対局を PGN で保存…」で保存してください。
+	These chess games were saved by a newer PdfCraft (format {v}): this one only reads them, and doesn't autosave changes made here. Save them with Save all games as PGN… so nothing is lost.	これらのチェスの対局は新しいバージョンの PdfCraft で保存されています (形式 {v})。このバージョンでは読み取りのみで、ここでの変更は自動保存されません。何も失わないよう「すべての対局を PGN で保存…」で保存してください。
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	チェスの対局を自動保存できません: このウィンドウ用にアプリのデータフォルダーをロックできませんでした。
 	These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.	これらのチェスの対局は別の PdfCraft ウィンドウが自動保存しています。ここでの変更は自動保存されません。
 	Chess games couldn't be autosaved: {e}	チェスの対局を自動保存できませんでした: {e}

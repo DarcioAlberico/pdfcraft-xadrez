@@ -1092,6 +1092,7 @@ impl ChessGames {
             let mut c = ChessCollection::from_boards(DocKeys::default(), cid, boards, body.active);
             c.trash = crate::chess_trash::Trash::from_stored(body.trash);
             c.autosave.stored = true;
+            self.read_only(&mut c, found.newer);
             self.none = c;
             if lost > 0 {
                 self.notes.push(crate::i18n::fmt(tl!("Saved chess games that couldn't be read: {n}"), &[("n", &lost.to_string())]));
@@ -1107,6 +1108,16 @@ impl ChessGames {
     fn set_aside_notes(&mut self, names: &[String]) {
         for name in names {
             self.notes.push(crate::i18n::fmt(tl!("A file of saved chess games couldn't be read. It was kept as {name}."), &[("name", name)]));
+        }
+    }
+
+    /// `c` was read from a file a newer PdfCraft wrote, in format version `newer` (plan A9-G12):
+    /// its games are only read here. Said now, once, and on the list.
+    fn read_only(&mut self, c: &mut ChessCollection, newer: Option<u32>) {
+        let Some(version) = newer else { return };
+        c.autosave.blocked = Some(Blocked::Newer(version));
+        if self.said.insert(format!("newer {}", c.cid)) {
+            self.notes.push(newer_note(version));
         }
     }
 
@@ -1133,6 +1144,7 @@ impl ChessGames {
                     let mut c = ChessCollection::from_boards(keys.clone(), cid, boards, body.active);
                     c.trash = crate::chess_trash::Trash::from_stored(body.trash);
                     c.autosave.stored = true;
+                    self.read_only(&mut c, found.newer);
                     restored = Some((c, lost));
                 }
             }
@@ -1268,6 +1280,7 @@ impl Writer<'_> {
                     Blocked::OtherInstance => self.say(format!("other {}", c.cid), || {
                         tl!("These chess games are autosaved by another PdfCraft window. Changes made here aren't autosaved.").to_string()
                     }),
+                    Blocked::Newer(v) => self.say(format!("newer {}", c.cid), || newer_note(*v)),
                     Blocked::Io(e) => self.say(format!("io {}", c.cid), || crate::i18n::fmt(tl!("Chess games couldn't be autosaved: {e}"), &[("e", e)])),
                 }
                 c.autosave.blocked = Some(why);
@@ -1275,6 +1288,16 @@ impl Writer<'_> {
             }
         }
     }
+}
+
+/// That a collection's games are a newer PdfCraft's, of format `version` (plan A9-G12).
+fn newer_note(version: u32) -> String {
+    crate::i18n::fmt(
+        tl!(
+            "These chess games were saved by a newer PdfCraft (format {v}): this one only reads them, and doesn't autosave changes made here. Save them with Save all games as PGN… so nothing is lost."
+        ),
+        &[("v", &version.to_string())],
+    )
 }
 
 /// "Chess game restored: Werle–Jianu, moves: 34", or "Chess games restored: 3"; and how many
@@ -1713,6 +1736,7 @@ pub(crate) fn games_section(ui: &mut egui::Ui, t: &Tokens, games: &mut ChessGame
         let why = match &c.autosave.blocked {
             Some(Blocked::TooBig) => Some(tl!("Too many games to autosave here: save them as PGN.")),
             Some(Blocked::OtherInstance) => Some(tl!("Another PdfCraft window autosaves these games.")),
+            Some(Blocked::Newer(_)) => Some(tl!("Saved by a newer PdfCraft: these games are only read here.")),
             Some(Blocked::NoLock | Blocked::Io(_)) => Some(tl!("These games aren't being autosaved.")),
             None => None,
         };
