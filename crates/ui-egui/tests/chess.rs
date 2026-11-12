@@ -2431,8 +2431,8 @@ fn the_games_come_back_exactly_in_the_next_session() {
             let nf3 = g.current();
             g.go_to(2);
             let e5 = g.current();
-            g.set_comment(e5, "after e5");
-            g.set_comment_before(nf3, "before Nf3");
+            g.set_comment(e5, "after e5").unwrap();
+            g.set_comment_before(nf3, "before Nf3").unwrap();
             g.toggle_nag(nf3, 1);
             assert!(g.set_source(nf3, Some(NodeSource { page: 0, rect_user: [60.0, 500.0, 90.0, 512.0] })));
             g.set_tag("White", "Werle").unwrap();

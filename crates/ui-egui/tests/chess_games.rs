@@ -264,7 +264,8 @@ fn duplicating_makes_an_identical_game_after_it() {
 }
 
 /// Plan A9-G8 (R1-02): Save all games as PGN with games read only up to an impossible move says
-/// so first, naming each game and its move, with Cancel; going on writes them as they are.
+/// so first, naming each game and its move, with Cancel; going on writes them as they are (since
+/// plan A9-F3, the rest of each as a comment where its reading stopped).
 #[test]
 fn saving_games_read_only_up_to_an_impossible_move_says_so_first() {
     let mut h = harness();
@@ -278,6 +279,7 @@ fn saving_games_read_only_up_to_an_impossible_move_says_so_first() {
     h.run_steps(4);
     assert!(h.query_by_label_contains("read only up to an impossible move").is_some(), "said before writing");
     assert!(h.query_by_label_contains("Cut: stopped at Bxh7").is_some(), "the game and its move named");
+    assert!(h.query_by_label_contains("The rest of each is written as a comment").is_some(), "what saving does to it");
     assert!(!path.exists(), "nothing written yet");
     h.get_by_label("Cancel").click();
     h.run_steps(4);
@@ -289,7 +291,9 @@ fn saving_games_read_only_up_to_an_impossible_move_says_so_first() {
     h.run_steps(4);
     h.state_mut().pick_override = None;
     let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{e}; toast {:?}", h.state().toast));
-    assert!(text.contains("3. Bb5 a6") && !text.contains("Bxh7"), "{text}");
+    // The rest of the line is written as a comment where its reading stopped (plan A9-F3): text,
+    // no longer moves.
+    assert!(text.contains("3. Bb5 a6 {Bxh7 Nf6") && !text.contains("4. Bxh7"), "{text}");
     assert_eq!(events(&text), ["Cut", "Whole"]);
 }
 

@@ -2550,6 +2550,10 @@ animation effects	Off	Izklopljeni
 	Previous move (Left arrow)	Prejšnja poteza (puščica levo)
 	Promote to:	Promoviraj v:
 	Reading stopped at {move}: it is not a legal move there.	Branje se je ustavilo pri {move}: tam to ni legalna poteza.
+	Only the first 65,536 bytes of a comment are kept.	Od komentarja se ohrani le prvih 65.536 bajtov.
+	The comment says that already.	Komentar to že pove.
+	Not kept as typed: {tags} (a tag holds at most 256 bytes, and a game 64 tags).	Ni shranjeno, kot je vneseno: {tags} (oznaka ima največ 256 bajtov, partija pa 64 oznak).
+	Read with changes: {n} (a comment, tag or glyph past its limit cut or dropped, a FEN repaired, or a result ignored).	Prebrano s spremembami: {n} (komentar, oznaka ali znak čez mejo skrajšan ali izpuščen, popravljen FEN ali prezrt izid).
 	Reading stopped at {move}: more than one legal move there is written so.	Branje se je ustavilo pri {move}: tam se tako zapiše več kot ena legalna poteza.
 	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	Branje se je ustavilo pri {move}: partija ima že 10.000 potez, kar je največ.
 	Reading stopped at {move}: its variation would nest deeper than 32.	Branje se je ustavilo pri {move}: varianta bi bila ugnezdena globlje od 32 ravni.
@@ -2677,7 +2681,7 @@ chess undo step	Clear drawings	odstranjevanje risb
 	Quit without saving	Končaj brez shranjevanja
 	Close without saving	Zapri brez shranjevanja
 	Games read only up to an impossible move: {n}	Partije, prebrane le do nemogoče poteze: {n}
-	The rest of them will not be written.	Preostanek ne bo zapisan.
+	The rest of each is written as a comment at the move where its reading stopped.	Ostanek vsake se zapiše kot komentar pri potezi, kjer se je branje ustavilo.
 	{name}: stopped at {move}	{name}: ustavljeno pri {move}
 	Save them as they are	Shrani jih takšne, kot so
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Šahovskih partij ni mogoče samodejno shranjevati: podatkovne mape aplikacije za to okno ni bilo mogoče zakleniti.

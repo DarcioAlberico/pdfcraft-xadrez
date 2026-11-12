@@ -2508,6 +2508,10 @@ animation effects	Off	Изключени
 	Previous move (Left arrow)	Предишен ход (стрелка наляво)
 	Promote to:	Произвеждане в:
 	Reading stopped at {move}: it is not a legal move there.	Четенето спря при {move}: там това не е законен ход.
+	Only the first 65,536 bytes of a comment are kept.	От коментар се пазят само първите 65 536 байта.
+	The comment says that already.	Коментарът вече казва това.
+	Not kept as typed: {tags} (a tag holds at most 256 bytes, and a game 64 tags).	Не е запазено както е въведено: {tags} (етикет побира най-много 256 байта, а партия — 64 етикета).
+	Read with changes: {n} (a comment, tag or glyph past its limit cut or dropped, a FEN repaired, or a result ignored).	Прочетено с промени: {n} (коментар, етикет или знак над границата е съкратен или пропуснат, FEN е поправен или резултат е пренебрегнат).
 	Reading stopped at {move}: more than one legal move there is written so.	Четенето спря при {move}: там така се записва повече от един законен ход.
 	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	Четенето спря при {move}: партията вече има 10 000 хода — това е максимумът.
 	Reading stopped at {move}: its variation would nest deeper than 32.	Четенето спря при {move}: вариантът би бил вложен по-дълбоко от 32 нива.
@@ -2635,7 +2639,7 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Quit without saving	Изход без записване
 	Close without saving	Затваряне без записване
 	Games read only up to an impossible move: {n}	Партии, прочетени само до невъзможен ход: {n}
-	The rest of them will not be written.	Останалата част от тях няма да бъде записана.
+	The rest of each is written as a comment at the move where its reading stopped.	Останалото от всяка се записва като коментар при хода, където четенето спря.
 	{name}: stopped at {move}	{name}: спря на {move}
 	Save them as they are	Запиши ги както са
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Шахматните партии не могат да се записват автоматично: папката с данни на приложението не можа да бъде заключена за този прозорец.

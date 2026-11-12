@@ -142,7 +142,8 @@ fn a_hundred_thousand_brackets_read_in_a_small_stack() {
         .unwrap();
     let (line, kinds) = worker.join().unwrap();
     assert_eq!(line, ["e4"]);
-    assert_eq!(kinds, [PgnWarningKind::TooDeep]);
+    // The text kept from it passes a comment's cap: cut there, and said.
+    assert_eq!(kinds, [PgnWarningKind::TooDeep, PgnWarningKind::CommentCut]);
 }
 
 /// The golden of plan A9-F2b: A1's probes that the reader answers (p01, p02, p03, p08, p10, p13,
@@ -168,8 +169,9 @@ fn the_golden_reads() {
         ("1. e4 e5 2. Nf3 ± Nc6 *", "1. e4 e5 2. Nf3 $16 Nc6", None, &[PgnWarningKind::NonStandard]),
         // p08: tags on one line; the draw.
         ("[Event \"A\"] [Result \"1/2\"]\n\n1. e4 *", "1. e4", None, &[]),
-        // An illegal move ends its own line only.
-        ("1. e4 e5 (1... Ke3 c5) 2. Nf3 Nc6 3. Ke3 Bc5", "1. e4 e5 2. Nf3 Nc6", Some("Ke3"), &[]),
+        // An illegal move ends its own line only; the rest of it is a comment where it stopped
+        // (plan A9-F3), a variation's on the move it was an alternative to.
+        ("1. e4 e5 (1... Ke3 c5) 2. Nf3 Nc6 3. Ke3 Bc5", "1. e4 e5 {Ke3 c5} 2. Nf3 Nc6 {Ke3 Bc5}", Some("Ke3"), &[]),
         // Variations with no move before them, and one never closed.
         ("(1. d4 d5) 1. e4 e5 *", "{(d4 d5)} 1. e4 e5", None, &[PgnWarningKind::OrphanVariation]),
         ("1. e4 e5 ((2. Nf3", "1. e4 e5 {(Nf3}", None, &[PgnWarningKind::OrphanVariation]),
@@ -266,4 +268,102 @@ proptest::proptest! {
             proptest::prop_assert_eq!(report.stopped, None);
         }
     }
+}
+
+fn count(report: &PgnReport, kind: PgnWarningKind) -> usize {
+    report.warnings.iter().filter(|w| w.kind == kind).count()
+}
+
+/// Plan A9-F3 (A1-02, sonda p17): a comment of 7,999 bytes is read whole and stays whole when
+/// edited; every tag and glyph the reader can't keep is said, one warning each; glyphs of one
+/// group are kept side by side.
+#[test]
+fn nothing_is_cut_or_dropped_unsaid() {
+    let long = "a".repeat(7_999);
+    let tags: String = (0..80).map(|i| format!("[Tag{i} \"v\"]\n")).collect();
+    let text = format!("[Annotator \"{}\"]\n{tags}\n1. e4 {{{long}}} $1 $10 $13 $14 $22 $32 $36 $40 $132 $138 $140 $146 *", "x".repeat(400));
+    let (mut g, report) = Game::from_pgn_report(&text).unwrap();
+    let e4 = g.main_line()[1];
+    assert_eq!(g.comment(e4).len(), 7_999);
+    assert_eq!(g.set_comment(e4, &format!("{long}b")), Ok(()));
+    assert_eq!(g.comment(e4).len(), 8_000, "edited without a cut");
+    assert_eq!(g.nags(e4), [1, 10, 13, 14, 22, 32, 36, 40]);
+    assert_eq!(g.tag("Annotator").map(str::len), Some(crate::game::MAX_TAG_LEN));
+    let said = [PgnWarningKind::TagCut, PgnWarningKind::TagsDropped, PgnWarningKind::NagDropped].map(|k| count(&report, k));
+    assert_eq!(said, [1, 81 - crate::game::MAX_TAGS, 4], "{report:?}");
+    // Two glyphs of one group (a quality and another), and a glyph with no move before it.
+    let (g, report) = Game::from_pgn_report("$14 1. e4 $1 $3 *").unwrap();
+    assert_eq!(g.nags(g.main_line()[1]), [1, 3]);
+    assert_eq!(report.warnings, [PgnWarning { kind: PgnWarningKind::NagDropped, at: 0 }]);
+    // Codes PGN has none for.
+    let (_, report) = Game::from_pgn_report("1. e4 $0 $256 $70000 *").unwrap();
+    assert_eq!(count(&report, PgnWarningKind::NagDropped), 3);
+    // A comment past the cap: cut there, said.
+    let (g, report) = Game::from_pgn_report(&format!("1. e4 {{{}}} *", "b".repeat(crate::game::MAX_COMMENT_LEN + 10))).unwrap();
+    assert_eq!(g.comment(g.main_line()[1]).len(), crate::game::MAX_COMMENT_LEN);
+    assert_eq!(report.warnings, [PgnWarning { kind: PgnWarningKind::CommentCut, at: g.main_line()[1] }]);
+}
+
+/// Plan A9-F3 (A1-08, A1-20, sondas p05 and p11): a FEN another program got slightly wrong opens,
+/// made legal, and says so; one already right says nothing.
+#[test]
+fn a_slightly_wrong_fen_opens_repaired_and_said() {
+    for (fen, start) in [
+        ("4k3/8/8/8/8/8/8/4K3 w - - 0 0", "4k3/8/8/8/8/8/8/4K3 w - - 0 1"),
+        ("4k3/8/8/8/8/8/8/4K3 w - - 120 90", "4k3/8/8/8/8/8/8/4K3 w - - 100 90"),
+        ("4k3/8/8/8/8/8/8/4K3 w - - 0 70000", "4k3/8/8/8/8/8/8/4K3 w - - 0 999"),
+        ("4k3/8/8/8/8/8/8/4K3 w - - 0 65535", "4k3/8/8/8/8/8/8/4K3 w - - 0 999"),
+        ("r3k3/8/8/8/8/8/8/R3K2R w KQkq - 0 1", "r3k3/8/8/8/8/8/8/R3K2R w KQq - 0 1"),
+        ("4k3/8/8/8/8/8/8/4K3 w - e3 0 1", "4k3/8/8/8/8/8/8/4K3 w - - 0 1"),
+    ] {
+        let (g, report) = Game::from_pgn_report(&format!("[FEN \"{fen}\"]\n[SetUp \"1\"]\n\n1. Ke2 *")).unwrap();
+        assert_eq!((g.start_fen().as_str(), main_line(&g)), (start, vec!["Ke2".to_owned()]), "{fen}");
+        assert_eq!(report.warnings, [PgnWarning { kind: PgnWarningKind::FenRepaired, at: 0 }], "{fen}");
+    }
+    let (_, report) = Game::from_pgn_report("[FEN \"4k3/8/8/8/8/8/8/4K3 w - - 3 40\"]\n\n1. Ke2 *").unwrap();
+    assert_eq!(report, PgnReport::default());
+    // A position no repair makes legal is still refused, with why.
+    assert!(matches!(Game::from_pgn_report("[FEN \"8/8/8/8/8/8/8/4K3 w - - 0 1\"]\n\n*"), Err(GameError::IllegalPosition(_))));
+}
+
+/// Plan A9-F3 (A4-05): the rest of a line after a move that can't be played is a comment where
+/// the line stopped, so what is written back still holds it.
+#[test]
+fn the_rest_after_an_impossible_move_is_kept_as_a_comment() {
+    let (g, report) = Game::from_pgn_report("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Bxh7 {a blunder} Nf6 (4... d6) 5. O-O *").unwrap();
+    assert_eq!((report.stopped.as_deref(), report.stop_reason), (Some("Bxh7"), Some(PgnStopReason::Illegal)));
+    assert_eq!(g.movetext(), "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 {Bxh7 a blunder Nf6 (d6) O-O}");
+    let (back, _) = Game::from_pgn_report(&g.pgn()).unwrap();
+    assert_eq!(back.pgn(), g.pgn());
+    // A variation whose first move can't be played: on the move it was an alternative to.
+    let (g, _) = Game::from_pgn("1. e4 (1. Ke2 d5) e5 *").unwrap();
+    assert_eq!(g.movetext(), "1. e4 {Ke2 d5} 1... e5");
+    // A word that is no move, and a comment that waited for the move.
+    let (g, _) = Game::from_pgn("1. e4 e5 2. zz 3. Nf3 *").unwrap();
+    assert_eq!(g.movetext(), "1. e4 e5 {zz Nf3}");
+    let (g, _) = Game::from_pgn("1. e4 e5 (1... c5) {waits} 2. Ke3 Nc6 *").unwrap();
+    assert_eq!(g.movetext(), "1. e4 e5 {waits Ke3 Nc6} (1... c5)");
+}
+
+/// Plan A9-F3 (A1-21): a result the tag disagrees with, or a tag that is no result, is said.
+#[test]
+fn a_result_the_reader_ignores_is_said() {
+    let (g, report) = Game::from_pgn_report("[Result \"1-0\"]\n\n1. e4 0-1").unwrap();
+    assert_eq!((g.result(), report.warnings), ("1-0".to_owned(), vec![PgnWarning { kind: PgnWarningKind::ResultIgnored, at: 0 }]));
+    let (_, report) = Game::from_pgn_report("[Result \"won on time\"]\n\n1. e4 *").unwrap();
+    assert_eq!(count(&report, PgnWarningKind::ResultIgnored), 1);
+    let (_, report) = Game::from_pgn_report("[Result \"1-0\"]\n\n1. e4 1-0").unwrap();
+    assert_eq!(report, PgnReport::default());
+}
+
+/// Plan A9-Q4a's sample mutation of this file (51 of 54 killed) found two rules no test held: a
+/// variation kept as text keeps the variations inside it, to its own `)`; a `)` with no `(`
+/// changes nothing after it. (The third survivor, `unwrap_or(false)` made `true` in
+/// `Parser::open`, is equivalent: the main line's entry is never popped.)
+#[test]
+fn a_kept_variation_keeps_its_own_brackets_and_a_stray_bracket_changes_nothing() {
+    let (g, report) = Game::from_pgn_report("(1. d4 (1. c4) d5) 1. e4 e5 *").unwrap();
+    assert_eq!((g.comment(0), moves(&g).as_str(), kinds(&report)), ("(d4 (c4) d5)", "1. e4 e5", vec![PgnWarningKind::OrphanVariation]));
+    let (g, report) = Game::from_pgn_report("1. e4 e5 ) (1... c5) 2. Nf3 *").unwrap();
+    assert_eq!((moves(&g), report), ("1. e4 e5 (1... c5) 2. Nf3".to_owned(), PgnReport::default()));
 }

@@ -2822,6 +2822,10 @@ certificate	Version	الإصدار
 	Previous move (Left arrow)	النقلة السابقة (السهم الأيسر)
 	Promote to:	الترقية إلى:
 	Reading stopped at {move}: it is not a legal move there.	توقفت القراءة عند {move}: ليست نقلة قانونية هناك.
+	Only the first 65,536 bytes of a comment are kept.	لا يُحتفظ إلا بأول 65536 بايت من التعليق.
+	The comment says that already.	التعليق يقول ذلك بالفعل.
+	Not kept as typed: {tags} (a tag holds at most 256 bytes, and a game 64 tags).	لم يُحفظ كما كُتب: {tags} (يتسع الوسم لـ 256 بايت على الأكثر، والمباراة لـ 64 وسمًا).
+	Read with changes: {n} (a comment, tag or glyph past its limit cut or dropped, a FEN repaired, or a result ignored).	قُرئت مع تغييرات: {n} (تعليق أو وسم أو علامة تجاوز حده فقُص أو أُسقط، أو FEN صُحّح، أو نتيجة تُجوهلت).
 	Reading stopped at {move}: more than one legal move there is written so.	توقفت القراءة عند {move}: هناك أكثر من نقلة قانونية تُكتب هكذا.
 	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	توقفت القراءة عند {move}: في المباراة 10000 نقلة بالفعل، وهو الحد الأقصى.
 	Reading stopped at {move}: its variation would nest deeper than 32.	توقفت القراءة عند {move}: سيتداخل الفرع أعمق من 32 مستوى.
@@ -2949,7 +2953,7 @@ chess undo step	Clear drawings	مسح الرسوم
 	Quit without saving	الخروج دون حفظ
 	Close without saving	الإغلاق دون حفظ
 	Games read only up to an impossible move: {n}	مباريات قُرئت فقط حتى نقلة مستحيلة: {n}
-	The rest of them will not be written.	لن يُكتب باقيها.
+	The rest of each is written as a comment at the move where its reading stopped.	يُكتب باقي كل مباراة تعليقًا عند النقلة التي توقفت عندها القراءة.
 	{name}: stopped at {move}	{name}: توقفت عند {move}
 	Save them as they are	احفظها كما هي
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	لا يمكن حفظ مباريات الشطرنج تلقائيًا: تعذّر قفل مجلد بيانات التطبيق لهذه النافذة.

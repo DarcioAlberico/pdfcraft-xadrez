@@ -15,8 +15,9 @@
 //! - **A glyph** is set (not toggled) on the last move, by the code for the side it speaks of: a
 //!   fragment carries White's code, and `↑` after a Black move is `$37`. Zugzwang speaks of the
 //!   side to move, the others of the side that moved.
-//! - **A comment** after a move is added to that move's comment, unless the comment already says
-//!   it. A comment marked `before`, and any comment with no move before it in its line (at the
+//! - **Comments** after a move are one comment, added to that move's comment unless the comment
+//!   already says it ([`already_says`]: it is that text, or ends with it); grafting the same items
+//!   twice adds nothing the second time, and the report names what was there (`already_there`). A comment marked `before`, and any comment with no move before it in its line (at the
 //!   start of the fragment or right after `(`), waits for the next move and becomes its
 //!   comment-before.
 //! - **`(`** starts an alternative to the last move: the moves that follow are played from that
@@ -128,6 +129,9 @@ pub struct GraftReport {
     /// The text of what is left over: the unplaced items, then the rest. At most
     /// [`MAX_LEFTOVER_LEN`] bytes.
     pub leftover_text: String,
+    /// Indices of the comments the place they go to already says ([`already_says`]): nothing was
+    /// added for them (plan A9-F3, A1-12).
+    pub already_there: Vec<usize>,
     /// The last move played on the fragment's own line (the move the grafted game shows), or
     /// the last one played at all when the line had none.
     pub last: Option<NodePath>,
@@ -196,19 +200,10 @@ impl Game {
             return;
         }
         let before = at != 0 && self.node(self.node(at).parent).children.first() != Some(&at);
-        let existing = if before { self.comment_before(at) } else { self.comment(at) };
-        if existing.contains(&text) {
-            return;
-        }
-        let joined = if existing.is_empty() { text } else { format!("{existing} {text}") };
-        if joined.len() > MAX_COMMENT_LEN {
-            refuse(report);
-            return;
-        }
-        if before {
-            self.set_comment_before(at, &joined);
-        } else {
-            self.set_comment(at, &joined);
+        match self.add_comment(at, &text, before) {
+            Added::Yes => {}
+            Added::Already => report.already_there = (0..items.len()).collect(),
+            Added::NoRoom => refuse(report),
         }
     }
 
@@ -219,6 +214,9 @@ impl Game {
         let mut last: Option<NodeId> = None;
         let mut stack: Vec<Frame> = Vec::new();
         let mut pending = Pending::default();
+        // The comments after each move, gathered by move: each move's are added as one at the end
+        // (plan A9-F3), so grafting the same items again finds them there whole.
+        let mut after: Vec<(NodeId, Pending)> = Vec::new();
         let mut line_last: Option<NodeId> = None;
         let mut any_last: Option<NodeId> = None;
         let mut new_ids: Vec<NodeId> = Vec::new();
@@ -266,9 +264,26 @@ impl Game {
                         continue;
                     }
                     match last {
+                        // Said twice in the gathering: once is enough, and said.
                         Some(m) if !before => {
-                            if !self.add_comment(m, &clean, false) {
-                                report.unplaced.push(index);
+                            let group = match after.iter().position(|(n, _)| *n == m) {
+                                Some(i) => after.get_mut(i).map(|(_, g)| g),
+                                None => {
+                                    after.push((m, Pending::default()));
+                                    after.last_mut().map(|(_, g)| g)
+                                }
+                            };
+                            match group {
+                                // Said twice in the fragment: once is enough, and said.
+                                Some(g) if already_says(&g.text, &clean) => report.already_there.push(index),
+                                Some(g) => {
+                                    if !g.text.is_empty() {
+                                        g.text.push(' ');
+                                    }
+                                    g.text.push_str(&clean);
+                                    g.items.push(index);
+                                }
+                                None => report.unplaced.push(index),
                             }
                         }
                         _ => {
@@ -322,8 +337,12 @@ impl Game {
                     report.played = report.played.saturating_add(1);
                     self.set_suffix_nags(node, &san.suffix, white);
                     let waiting = std::mem::take(&mut pending);
-                    if !waiting.text.is_empty() && !self.add_comment(node, &waiting.text, true) {
-                        report.unplaced.extend(waiting.items);
+                    if !waiting.text.is_empty() {
+                        match self.add_comment(node, &waiting.text, true) {
+                            Added::Yes => {}
+                            Added::Already => report.already_there.extend(waiting.items),
+                            Added::NoRoom => report.unplaced.extend(waiting.items),
+                        }
                     }
                     if let (Some(page), Some(rect_user)) = (page, rect)
                         && self.source(node).is_none()
@@ -339,10 +358,14 @@ impl Game {
                 }
             }
         }
+        for (node, group) in after {
+            self.add_after(node, group, report);
+        }
         report.unplaced.extend(pending.items);
         report.unplaced.sort_unstable();
         report.unbalanced.extend(stack.iter().map(|f| f.open));
         report.unbalanced.sort_unstable();
+        report.already_there.sort_unstable();
         report.new_nodes = new_ids.iter().filter_map(|&id| self.path_of(id)).collect();
         let shown = line_last.or(any_last);
         report.last = shown.and_then(|id| self.path_of(id));
@@ -373,12 +396,16 @@ impl Game {
     /// Set glyph `code` on move `node`: a written code as it is, White's code as the code for the
     /// side it speaks of. Returns whether the move carries it now.
     pub(super) fn set_nag_code(&mut self, node: NodeId, code: NagCode) -> bool {
+        let code = self.nag_code_for(node, code);
+        self.set_nag(node, code)
+    }
+
+    /// The PGN code glyph `code` is on move `node`: a written code as it is, White's code as the
+    /// code for the side it speaks of.
+    pub(super) fn nag_code_for(&self, node: NodeId, code: NagCode) -> u16 {
         match code {
-            NagCode::Written(code) => self.set_nag(node, code),
-            NagCode::WhiteRelative(code) => {
-                let white_moved = self.node(node).board.side_to_move() == CozyColor::Black;
-                self.set_nag(node, side_code(code, white_moved))
-            }
+            NagCode::Written(code) => code,
+            NagCode::WhiteRelative(code) => side_code(code, self.node(node).board.side_to_move() == CozyColor::Black),
         }
     }
 
@@ -476,25 +503,54 @@ impl Game {
         out
     }
 
+    /// Add the comments gathered after move `node` (`group`) as one: comments after one move are one
+    /// comment, as PGN reads them, so grafting the same items again finds it there whole and adds
+    /// nothing ([`already_says`]). What was there already, or did not fit, is in the report.
+    fn add_after(&mut self, node: NodeId, group: Pending, report: &mut GraftReport) {
+        if group.text.is_empty() {
+            return;
+        }
+        match self.add_comment(node, &group.text, false) {
+            Added::Yes => {}
+            Added::Already => report.already_there.extend(group.items),
+            Added::NoRoom => report.unplaced.extend(group.items),
+        }
+    }
+
     /// Add `text` (cleaned) to the comment after `node`, or with `before` to the one before it,
-    /// unless it already says it. Returns whether the comment says it now: not when the two would
-    /// not fit in [`MAX_COMMENT_LEN`] (nothing is cut).
-    fn add_comment(&mut self, node: NodeId, text: &str, before: bool) -> bool {
+    /// unless it already says it ([`already_says`]); not when the two would not fit in
+    /// [`MAX_COMMENT_LEN`] (nothing is cut).
+    fn add_comment(&mut self, node: NodeId, text: &str, before: bool) -> Added {
         let existing = if before { self.comment_before(node) } else { self.comment(node) };
-        if existing.contains(text) {
-            return true;
+        if already_says(existing, text) {
+            return Added::Already;
         }
         let joined = if existing.is_empty() { text.to_owned() } else { format!("{existing} {text}") };
         if joined.len() > MAX_COMMENT_LEN {
-            return false;
+            return Added::NoRoom;
         }
-        if before {
-            self.set_comment_before(node, &joined);
-        } else {
-            self.set_comment(node, &joined);
-        }
-        true
+        let set = if before { self.set_comment_before(node, &joined) } else { self.set_comment(node, &joined) };
+        // `joined` fits, so nothing was cut; were it cut, the text would be left over.
+        if set.is_ok() { Added::Yes } else { Added::NoRoom }
     }
+}
+
+/// What adding a comment did.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Added {
+    Yes,
+    /// The comment there already says it.
+    Already,
+    /// The two together would pass [`MAX_COMMENT_LEN`]: nothing was added.
+    NoRoom,
+}
+
+/// Whether a comment `existing` already says `text`: it is `text`, or ends with it after a space
+/// (what adding `text` to a comment makes). A comment that only holds `text` somewhere inside
+/// ("White is better here" and "better") does not: adding it again is the reader's choice, never
+/// dropped unsaid (plan A9-F3, A1-12, R2-02). The one rule for the graft and the capture.
+pub fn already_says(existing: &str, text: &str) -> bool {
+    !text.is_empty() && (existing == text || existing.strip_suffix(text).is_some_and(|head| head.ends_with(' ')))
 }
 
 /// The code glyph `code` (White's, or any code PGN has) is written as on a move: by the side

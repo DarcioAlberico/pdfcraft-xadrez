@@ -76,9 +76,9 @@ fn max_depth(g: &Game) -> usize {
 fn a_comment_before_a_first_reply_is_written_with_the_comment_before_it() {
     let mut g = game(&["e4", "e5", "Nf3"]);
     let (e4, e5, nf3) = (at(&g, &[0]), at(&g, &[0, 0]), at(&g, &[0, 0, 0]));
-    g.set_comment_before(nf3, "now {the} knight");
+    g.set_comment_before(nf3, "now {the} knight").unwrap();
     assert_eq!(g.movetext(), "1. e4 e5 {now (the) knight} 2. Nf3");
-    g.set_comment(e5, "solid");
+    g.set_comment(e5, "solid").unwrap();
     assert_eq!(g.movetext(), "1. e4 e5 {solid now (the) knight} 2. Nf3");
     assert_fixpoint(&g);
     // It stays on its move; reading the PGN back puts it after the move before.
@@ -86,8 +86,8 @@ fn a_comment_before_a_first_reply_is_written_with_the_comment_before_it() {
     let (back, _) = Game::from_pgn(&g.pgn()).unwrap();
     assert_eq!(back.comment(at(&back, &[0, 0])), "solid now (the) knight");
     // The first move of the game: with the game's own comment.
-    g.set_comment_before(e4, "first");
-    g.set_comment(0, "Intro");
+    g.set_comment_before(e4, "first").unwrap();
+    g.set_comment(0, "Intro").unwrap();
     assert_eq!(g.movetext(), "{Intro first} 1. e4 e5 {solid now (the) knight} 2. Nf3");
     assert_fixpoint(&g);
     // With variations of the move before, it comes before them, where PGN has room for it.
@@ -99,7 +99,7 @@ fn a_comment_before_a_first_reply_is_written_with_the_comment_before_it() {
     assert!(tokens.contains(&Token::Comment { node: nf3, text: "now (the) knight".into(), before: true }), "{tokens:?}");
     assert!(tokens.contains(&Token::Comment { node: e5, text: "solid".into(), before: false }), "{tokens:?}");
     // The start has no comment before it.
-    g.set_comment_before(0, "x");
+    g.set_comment_before(0, "x").unwrap();
     assert_eq!(g.comment_before(0), "");
 }
 
@@ -108,7 +108,7 @@ fn a_comment_before_a_variation_is_written_after_its_bracket() {
     let mut g = game(&["e4", "e5", "Nf3"]);
     let c5 = play_at(&mut g, 1, &["c5"]);
     play_at(&mut g, c5, &["Nf3"]);
-    g.set_comment_before(c5, "an idea");
+    g.set_comment_before(c5, "an idea").unwrap();
     assert_eq!(g.movetext(), "1. e4 e5 ({an idea} 1... c5 2. Nf3) 2. Nf3");
     assert_fixpoint(&g);
     let (back, _) = Game::from_pgn(&g.pgn()).unwrap();
@@ -201,8 +201,8 @@ fn promote_one_moves_a_variation_up_one_and_demote_undoes_it() {
     play_at(&mut g, e4, &["e6"]);
     let shown = play_at(&mut g, e4, &["c6"]);
     let c5 = at(&g, &[0, 1]);
-    g.set_comment(c5, "sharp");
-    g.set_comment_before(c5, "or");
+    g.set_comment(c5, "sharp").unwrap();
+    g.set_comment_before(c5, "or").unwrap();
     assert!(g.set_nag(c5, 1));
     assert!(g.set_source(c5, Some(NodeSource { page: 3, rect_user: [1.0, 2.0, 3.0, 4.0] })));
     g.go_to_node(shown);
@@ -474,8 +474,8 @@ proptest::proptest! {
                     }
                 }
                 7 => g.promote(node),
-                8 => g.set_comment(node, TEXTS.iter().chain(&AFTER_TEXTS).nth(b % (TEXTS.len() + AFTER_TEXTS.len())).copied().unwrap_or_default()),
-                9 => g.set_comment_before(node, TEXTS[b % TEXTS.len()]),
+                8 => g.set_comment(node, TEXTS.iter().chain(&AFTER_TEXTS).nth(b % (TEXTS.len() + AFTER_TEXTS.len())).copied().unwrap_or_default()).unwrap(),
+                9 => g.set_comment_before(node, TEXTS[b % TEXTS.len()]).unwrap(),
                 10 => { g.set_nag(node, [1u16, 2, 3, 6, 10, 14, 18, 22, 36, 146, 255][b % 11]); }
                 11 => g.toggle_nag(node, [1u16, 2, 14, 36][b % 4]),
                 12 => { g.set_source(node, Some(NodeSource { page: b as u32, rect_user: [0.0, 1.0, 2.0, b as f32] })); }

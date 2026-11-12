@@ -2798,6 +2798,10 @@ chess side	Black	Juodieji
 	Previous move (Left arrow)	Ankstesnis ėjimas (rodyklė kairėn)
 	Promote to:	Paversti į:
 	Reading stopped at {move}: it is not a legal move there.	Skaitymas sustojo ties {move}: ten tai nėra teisėtas ėjimas.
+	Only the first 65,536 bytes of a comment are kept.	Iš komentaro išsaugomi tik pirmi 65 536 baitai.
+	The comment says that already.	Komentaras tai jau sako.
+	Not kept as typed: {tags} (a tag holds at most 256 bytes, and a game 64 tags).	Neišsaugota taip, kaip įvesta: {tags} (žymoje telpa ne daugiau kaip 256 baitai, partijoje – 64 žymos).
+	Read with changes: {n} (a comment, tag or glyph past its limit cut or dropped, a FEN repaired, or a result ignored).	Perskaityta su pakeitimais: {n} (komentaras, žyma ar ženklas virš ribos sutrumpintas ar atmestas, FEN pataisytas arba rezultatas nepaisytas).
 	Reading stopped at {move}: more than one legal move there is written so.	Skaitymas sustojo ties {move}: ten taip užrašomas daugiau nei vienas teisėtas ėjimas.
 	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	Skaitymas sustojo ties {move}: partijoje jau 10 000 ėjimų – tai daugiausia.
 	Reading stopped at {move}: its variation would nest deeper than 32.	Skaitymas sustojo ties {move}: variantas būtų įdėtas giliau nei 32 lygiai.
@@ -2925,7 +2929,7 @@ chess undo step	Clear drawings	piešinių valymą
 	Quit without saving	Išeiti neįrašius
 	Close without saving	Uždaryti neįrašius
 	Games read only up to an impossible move: {n}	Partijos, perskaitytos tik iki neįmanomo ėjimo: {n}
-	The rest of them will not be written.	Likusi jų dalis nebus įrašyta.
+	The rest of each is written as a comment at the move where its reading stopped.	Kiekvienos likutis įrašomas kaip komentaras prie ėjimo, ties kuriuo sustojo skaitymas.
 	{name}: stopped at {move}	{name}: sustojo ties {move}
 	Save them as they are	Įrašyti tokias, kokios yra
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	Šachmatų partijų negalima įrašyti automatiškai: nepavyko užrakinti programos duomenų aplanko šiam langui.

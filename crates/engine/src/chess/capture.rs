@@ -58,7 +58,7 @@ use std::sync::Arc;
 
 use pdfcraft_chess::fen;
 use pdfcraft_chess::fragment::{FragmentItem, ply_of};
-use pdfcraft_chess::game::{Game, GraftMode, GraftReport, GraftStop, GraftStopReason, MAX_COMMENT_LEN, MAX_DEPTH, NodeId, NodePath};
+use pdfcraft_chess::game::{Game, GraftMode, GraftReport, GraftStop, GraftStopReason, MAX_COMMENT_LEN, MAX_DEPTH, NodeId, NodePath, already_says};
 use pdfcraft_chess::nag;
 use pdfcraft_chess::placement::Color;
 use pdfcraft_chess::repair::{self, CipherMap, GameContext, MAX_NEAR_MISSES, Outcome, ReadToken};
@@ -142,6 +142,8 @@ pub enum PreviewReason {
     NoFit,
     /// The text is longer than [`MAX_CAPTURE_TEXT`]; nothing was read.
     TooLong,
+    /// As a comment: the comment there already says it ([`already_says`]), so nothing changes.
+    AlreadyThere,
 }
 
 impl PreviewReason {
@@ -157,6 +159,7 @@ impl PreviewReason {
             PreviewReason::Demotes => "demotes",
             PreviewReason::NoFit => "no_fit",
             PreviewReason::TooLong => "too_long",
+            PreviewReason::AlreadyThere => "already_there",
         }
     }
 }
@@ -284,7 +287,8 @@ pub fn plan(game: &Game, current: NodeId, mode: CaptureMode, text: CaptureText<'
     };
     if let CaptureMode::Comment { before } = mode {
         let candidate = comment_candidate(game, current, &chess, before);
-        out.chosen = (!candidate.reasons.contains(&PreviewReason::NoFit)).then_some(0);
+        // Nothing to write, or nothing new: no place is chosen, and the reason says which.
+        out.chosen = (!candidate.reasons.iter().any(|r| matches!(r, PreviewReason::NoFit | PreviewReason::AlreadyThere))).then_some(0);
         out.candidates.push(candidate);
         return finish(out);
     }
@@ -541,7 +545,8 @@ fn renumbered_start(game: &Game, first: FirstMove, ctx: &Context<'_>) -> Option<
         // The tags were valid in `game`.
         let _ = again.set_tag(name, value);
     }
-    again.set_comment(0, game.comment(0));
+    // The game's own comment fits a comment: nothing is cut.
+    again.set_comment(0, game.comment(0)).ok()?;
     if again.abs_ply(0) != Some(ply) {
         return None;
     }
@@ -625,18 +630,19 @@ fn comment_candidate(game: &Game, current: NodeId, chess: &ChessPageText, before
         reasons.push(PreviewReason::NoFit);
     } else {
         let existing = if before { g.comment_before(current) } else { g.comment(current) };
-        if !existing.contains(text.as_str()) {
-            let joined = if existing.is_empty() { text.clone() } else { format!("{existing} {text}") };
-            if joined.len() > MAX_COMMENT_LEN {
-                report.stop = Some(GraftStop { index: 0, reason: GraftStopReason::TooLong, text: text.clone(), maybe_en_passant: false, fen: None });
-                report.rest_from = Some(0);
-                report.leftover_text = text;
-                reasons.push(PreviewReason::Incomplete);
-            } else if before {
-                g.set_comment_before(current, &joined);
-            } else {
-                g.set_comment(current, &joined);
-            }
+        let joined = if existing.is_empty() { text.clone() } else { format!("{existing} {text}") };
+        if already_says(existing, &text) {
+            // The one rule the graft has (plan A9-F3, R2-02): said, not reported as applied.
+            report.already_there = vec![0];
+            reasons.push(PreviewReason::AlreadyThere);
+        } else if joined.len() > MAX_COMMENT_LEN
+            || (if before { g.set_comment_before(current, &joined) } else { g.set_comment(current, &joined) }).is_err()
+        {
+            // Never cut: a text that does not fit is left over whole.
+            report.stop = Some(GraftStop { index: 0, reason: GraftStopReason::TooLong, text: text.clone(), maybe_en_passant: false, fen: None });
+            report.rest_from = Some(0);
+            report.leftover_text = text;
+            reasons.push(PreviewReason::Incomplete);
         }
     }
     g.go_to_node(current);

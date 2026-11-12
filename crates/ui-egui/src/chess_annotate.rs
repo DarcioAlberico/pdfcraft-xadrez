@@ -66,7 +66,7 @@
 //! game for the words not to crowd it.
 
 use egui::Id;
-use pdfcraft_engine::chess::pdfcraft_chess::game::NodeId;
+use pdfcraft_engine::chess::pdfcraft_chess::game::{MAX_COMMENT_LEN, NodeId};
 use pdfcraft_engine::chess::pdfcraft_chess::nag::{self, NagGroup};
 use pdfcraft_engine::chess::pdfcraft_chess::placement::{Color, Piece, PieceKind};
 
@@ -733,7 +733,10 @@ pub(crate) fn palette_insert(board: &mut BoardState, text: &str) {
         c => format!("{c} {text}"),
     };
     board.edit(|s| {
-        s.game.set_comment(node, &joined);
+        // Past the cap the comment is cut: said on the board (plan A9-F3).
+        if s.game.set_comment(node, &joined).is_err() {
+            s.message = Some(tl!("Only the first 65,536 bytes of a comment are kept.").to_owned());
+        }
         Some(ChessEdit::Comment)
     });
 }
@@ -1110,8 +1113,12 @@ pub(crate) fn comments(ui: &mut egui::Ui, t: &crate::theme::Tokens, board: &mut 
         let r = ui.add(egui::TextEdit::multiline(&mut text).id(id).hint_text(hint.as_str()).desired_rows(1).desired_width(f32::INFINITY));
         labeled(&r, &hint);
         if r.changed() || inserted {
-            recorded = board.type_in(recorded, ChessEdit::CommentBefore, |game| game.set_comment_before(node, &text));
+            // A cut is said under the field (below), where the text was typed.
+            recorded = board.type_in(recorded, ChessEdit::CommentBefore, |game| {
+                let _ = game.set_comment_before(node, &text);
+            });
         }
+        cut_note(ui, &text, t);
         if (!text.trim().is_empty() || r.has_focus())
             && let Some(why) = before_note(board, node)
         {
@@ -1130,9 +1137,21 @@ pub(crate) fn comments(ui: &mut egui::Ui, t: &crate::theme::Tokens, board: &mut 
         r.request_focus();
     }
     if r.changed() || inserted {
-        recorded = board.type_in(recorded, ChessEdit::Comment, |game| game.set_comment(node, &text));
+        // A cut is said under the field, where the text was typed.
+        recorded = board.type_in(recorded, ChessEdit::Comment, |game| {
+            let _ = game.set_comment(node, &text);
+        });
     }
+    cut_note(ui, &text, t);
     board.keep(&key, &r, text, recorded);
+}
+
+/// Under a comment field: that only the first [`MAX_COMMENT_LEN`] bytes of what is typed are
+/// kept, once the text is longer (plan A9-F3: a comment is never cut unsaid).
+fn cut_note(ui: &mut egui::Ui, text: &str, t: &crate::theme::Tokens) {
+    if text.len() > MAX_COMMENT_LEN {
+        ui.label(egui::RichText::new(format!("⚠ {}", tl!("Only the first 65,536 bytes of a comment are kept."))).small().color(t.text_muted));
+    }
 }
 
 /// Name a comment field for assistive technology by what it holds (its hint); the field keeps

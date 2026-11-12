@@ -29,7 +29,7 @@ mod split;
 mod structure;
 
 pub use drawing::{DrawColor, Drawing, MAX_DRAWINGS, drawing_commands, split_drawings};
-pub use graft::{GraftMode, GraftReport, GraftStop, GraftStopReason, MAX_LEFTOVER_LEN};
+pub use graft::{GraftMode, GraftReport, GraftStop, GraftStopReason, MAX_LEFTOVER_LEN, already_says};
 pub use header::GameHeader;
 pub use split::split_pgn;
 pub use structure::{NodePath, NodeSource, Shift, StructureError};
@@ -46,8 +46,10 @@ pub const MAX_DEPTH: usize = 32;
 /// Longest PGN read, in bytes.
 pub const MAX_PGN_LEN: usize = 1 << 20;
 
-/// Longest comment kept, in bytes (cut at a character boundary).
-pub const MAX_COMMENT_LEN: usize = 4096;
+/// Longest comment, in bytes, read from a PGN or set (one cap for both, plan A9-F3: a lower one
+/// for editing would cut a comment read whole the first time it is edited). Cut at a character
+/// boundary, and said ([`Cut`], [`PgnWarningKind::CommentCut`]).
+pub const MAX_COMMENT_LEN: usize = 1 << 16;
 
 /// Most tags kept, and the longest tag name and value.
 pub const MAX_TAGS: usize = 64;
@@ -116,6 +118,22 @@ pub enum PgnWarningKind {
     /// A move or glyph written as books print it rather than as PGN writes it, read so: `e8Q`,
     /// `a8=q`, `Nf3±`, `+-` alone, `e.p.` after a capture (A1-09).
     NonStandard,
+    /// A comment longer than [`MAX_COMMENT_LEN`] bytes, cut there (plan A9-F3, A1-02).
+    CommentCut,
+    /// A tag name or value longer than [`MAX_TAG_LEN`] bytes, cut there.
+    TagCut,
+    /// A tag dropped: past [`MAX_TAGS`], with no quoted value, or with a name PGN does not allow.
+    TagsDropped,
+    /// A glyph dropped: with no move before it, with a code PGN has none for (`$0`, past `$255`),
+    /// or past the most a move holds.
+    NagDropped,
+    /// A result ignored: a `Result` tag that is no result, or a result after the moves that the
+    /// tag disagrees with (the tag is kept).
+    ResultIgnored,
+    /// The `FEN` tag made legal: castling rights the pieces do not allow taken off, an
+    /// en-passant square no double step left dropped, the clock kept to 100, the move number to
+    /// 1..=[`MAX_MOVE_NUMBER`] (A1-08, A1-20).
+    FenRepaired,
 }
 
 impl PgnWarningKind {
@@ -125,7 +143,27 @@ impl PgnWarningKind {
             PgnWarningKind::OrphanVariation => "orphan_variation",
             PgnWarningKind::TooDeep => "too_deep",
             PgnWarningKind::NonStandard => "non_standard",
+            PgnWarningKind::CommentCut => "comment_cut",
+            PgnWarningKind::TagCut => "tag_cut",
+            PgnWarningKind::TagsDropped => "tags_dropped",
+            PgnWarningKind::NagDropped => "nag_dropped",
+            PgnWarningKind::ResultIgnored => "result_ignored",
+            PgnWarningKind::FenRepaired => "fen_repaired",
         }
+    }
+
+    /// Whether it says something of the game was changed to be read (cut, dropped, repaired or
+    /// ignored), rather than a variation kept as text or a spelling read.
+    pub fn is_change(self) -> bool {
+        matches!(
+            self,
+            PgnWarningKind::CommentCut
+                | PgnWarningKind::TagCut
+                | PgnWarningKind::TagsDropped
+                | PgnWarningKind::NagDropped
+                | PgnWarningKind::ResultIgnored
+                | PgnWarningKind::FenRepaired
+        )
     }
 }
 
@@ -146,6 +184,14 @@ pub const ROSTER: [&str; 7] = ["Event", "Site", "Date", "Round", "White", "Black
 
 /// A move in the game (the start position is node 0).
 pub type NodeId = usize;
+
+/// A comment set was longer than [`MAX_COMMENT_LEN`] bytes and was cut: `kept` bytes of it are
+/// the comment now ([`Game::set_comment`], [`Game::set_comment_before`]). The caller says so or
+/// refuses.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Cut {
+    pub kept: usize,
+}
 
 /// Why a game could not be set up or a move made.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -828,20 +874,22 @@ impl Game {
         &self.node(node).comment
     }
 
-    /// Set the comment after move `node`, cut to [`MAX_COMMENT_LEN`]. Braces, which end a PGN
+    /// Set the comment after move `node`; past [`MAX_COMMENT_LEN`] bytes it is cut, and
+    /// [`Cut`] says so (the caller tells the user, or refuses). Braces, which end a PGN
     /// comment, become parentheses. Drawing commands in it (`[%csl …]`, `[%cal …]`) are taken
     /// out and drawn on the move's position, as reading them from a PGN does
     /// ([`split_drawings`]): the comment's text never holds a drawing the move could hold, so
     /// the PGN written is read back the same.
-    pub fn set_comment(&mut self, node: NodeId, text: &str) {
-        let Some(n) = self.nodes.get_mut(node) else { return };
+    pub fn set_comment(&mut self, node: NodeId, text: &str) -> Result<(), Cut> {
+        let Some(n) = self.nodes.get_mut(node) else { return Ok(()) };
         let mut drawings = n.drawings.clone();
-        let clean = clean_comment(&split_drawings(text, &mut drawings));
+        let (clean, cut) = clean_comment(&split_drawings(text, &mut drawings));
         if n.comment != clean || n.drawings != drawings {
             n.comment = clean;
             n.drawings = drawings;
             self.revision = fresh_revision();
         }
+        cut.map_or(Ok(()), Err)
     }
 
     /// The annotation glyphs on move `node` (PGN codes).
@@ -1264,9 +1312,13 @@ fn cut(text: &str, max: usize) -> &str {
     text.get(..end).unwrap_or_default()
 }
 
-/// A comment as kept: braces made parentheses, whitespace runs made one space, capped.
-fn clean_comment(text: &str) -> String {
-    cut(&tidy_comment(text), MAX_COMMENT_LEN).to_owned()
+/// A comment as kept: braces made parentheses, whitespace runs made one space, capped at
+/// [`MAX_COMMENT_LEN`] bytes; with what was cut, when it was.
+fn clean_comment(text: &str) -> (String, Option<Cut>) {
+    let tidy = tidy_comment(text);
+    let kept = cut(&tidy, MAX_COMMENT_LEN);
+    let cut_off = (kept.len() < tidy.len()).then_some(Cut { kept: kept.len() });
+    (kept.to_owned(), cut_off)
 }
 
 /// A comment with braces made parentheses and whitespace runs made one space, not capped (for a
@@ -1486,19 +1538,19 @@ mod tests {
         g.toggle_nag(e5, 2);
         assert_eq!(g.nags(e5), &[2], "one move-quality glyph at a time");
         g.toggle_nag(e5, 14);
-        g.set_comment(e5, "  the {classical}\nreply ");
+        g.set_comment(e5, "  the {classical}\nreply ").unwrap();
         play(&mut g, &[("g1", "f3")]);
-        g.set_comment(0, "A test");
+        g.set_comment(0, "A test").unwrap();
         assert_eq!(g.movetext(), "{A test} 1. e4 e5 $2 $14 {the (classical) reply} 2. Nf3");
         // After a comment, Black's move gets its number again.
-        g.set_comment(e5, "");
+        g.set_comment(e5, "").unwrap();
         let nf3 = g.current();
-        g.set_comment(nf3, "develops");
+        g.set_comment(nf3, "develops").unwrap();
         play(&mut g, &[("b8", "c6")]);
         assert_eq!(g.movetext(), "{A test} 1. e4 e5 $2 $14 2. Nf3 {develops} 2... Nc6");
         g.toggle_nag(e5, 14);
         assert_eq!(g.nags(e5), &[2]);
-        g.set_comment(e5, &"é".repeat(MAX_COMMENT_LEN));
+        assert!(g.set_comment(e5, &"é".repeat(MAX_COMMENT_LEN)).is_err(), "past the cap: cut, and said");
         assert!(g.comment(e5).len() <= MAX_COMMENT_LEN);
     }
 
@@ -1578,7 +1630,8 @@ mod tests {
     #[test]
     fn an_illegal_move_ends_only_its_own_line() {
         let (g, stopped) = Game::from_pgn("1. e4 e5 (1... Ke3 c5) 2. Nf3 Nc6 3. Ke3 Bc5").unwrap();
-        assert_eq!(g.movetext(), "1. e4 e5 2. Nf3 Nc6");
+        // The rest of each line is kept as a comment where it stopped (plan A9-F3, A4-05).
+        assert_eq!(g.movetext(), "1. e4 e5 {Ke3 c5} 2. Nf3 Nc6 {Ke3 Bc5}");
         assert_eq!(stopped.as_deref(), Some("Ke3"));
         assert_eq!(Game::from_pgn(&"e".repeat(MAX_PGN_LEN + 1)).err(), Some(GameError::PgnTooLong));
     }
@@ -1619,7 +1672,7 @@ mod tests {
             play(&mut g, &[("g1", "f3"), ("g8", "f6"), ("f3", "g1"), ("f6", "g8")]);
         }
         let node = g.current();
-        g.set_comment(node, "A comment long enough to have been cut at the eightieth column\nof the line");
+        g.set_comment(node, "A comment long enough to have been cut at the eightieth column\nof the line").unwrap();
         let pgn = g.pgn();
         let moves = pgn.split("\n\n").nth(1).unwrap_or_default();
         assert_eq!(moves.trim_end().lines().count(), 1, "{pgn}");

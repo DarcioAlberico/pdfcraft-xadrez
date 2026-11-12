@@ -1496,9 +1496,13 @@ fn chess_pgn_edit_applies_every_operation() {
     assert_eq!(r["current_path"], "path:0.0");
 
     // A PGN move that cannot be played is said, not dropped silently, with why (plan A9-F2b,
-    // A1-15: the cap on moves is not an illegal move).
+    // A1-15: the cap on moves is not an illegal move), and the rest of its line is a comment
+    // where it stopped (plan A9-F3).
     let r = ok(a, "chess_pgn_edit", json!({ "pgn": "1. e4 e5 2. Ke3 Nc6 *", "ops": [] }));
-    assert_eq!((r["movetext"].as_str(), r["pgn_stopped"].as_str(), r["pgn_stop_reason"].as_str()), (Some("1. e4 e5"), Some("Ke3"), Some("illegal")));
+    assert_eq!(
+        (r["movetext"].as_str(), r["pgn_stopped"].as_str(), r["pgn_stop_reason"].as_str()),
+        (Some("1. e4 e5 {Ke3 Nc6}"), Some("Ke3"), Some("illegal"))
+    );
     assert_eq!(pgn_edit(a, false, json!([]))["pgn_stopped"], Value::Null);
     assert_eq!(pgn_edit(a, false, json!([]))["pgn_stop_reason"], Value::Null);
     let r = ok(a, "chess_pgn_edit", json!({ "pgn": "Nf3 Nf6 Ng1 Ng8 ".repeat(2600), "ops": [] }));
@@ -1582,7 +1586,7 @@ fn chess_pgn_edit_refuses_what_the_game_does_not_allow() {
         (json!({ "op": "play", "at": "18.Nd5", "moves": ["e4"] }), "an address is"),
         (json!({ "op": "play", "moves": ["e4"] }), "at is missing"),
         (json!({ "op": "play", "at": "path:0", "moves": ["Qd8", "Qh1"] }), "Qh1 cannot be played"),
-        (json!({ "op": "comment", "at": "path:0", "text": "x".repeat(4097) }), "longer than"),
+        (json!({ "op": "comment", "at": "path:0", "text": "x".repeat(65_537) }), "longer than"),
         (json!({ "op": "comment_before", "at": "path:", "text": "x" }), "the start"),
         (json!({ "op": "nag", "at": "path:0", "code": 0 }), "cannot be put"),
         (json!({ "op": "nag", "at": "path:", "code": 1 }), "cannot be put"),
@@ -2865,10 +2869,12 @@ fn chess_games_never_cuts_a_game_it_writes_back() {
     // Without out nothing is written, and the reply still says where the game stops.
     let shown = ok(&mut a, "chess_games", json!({ "path": "games.pgn", "ops": rename }));
     assert_eq!((shown["games"][0]["pgn_stopped"].as_str(), shown["written"].is_null()), (Some("Bxh7"), true), "{shown:#}");
-    // Asked for, it is written cut; with the game deleted, there is nothing to cut.
+    // Asked for, it is written with the rest of that line as a comment where it stopped (plan
+    // A9-F3: text, no longer moves); with the game deleted, there is nothing to cut.
     let cut = ok(&mut a, "chess_games", json!({ "path": "games.pgn", "ops": rename, "out": "cut.pgn", "allow_truncate": true }));
     assert_eq!(cut["written"], "cut.pgn", "relative to the root: {cut:#}");
-    assert!(!std::fs::read_to_string(root.join("cut.pgn")).unwrap().contains("Bxh7"));
+    let written = std::fs::read_to_string(root.join("cut.pgn")).unwrap();
+    assert!(written.contains("{Bxh7") && !written.contains(" Bxh7 "), "{written}");
     let deleted = ok(&mut a, "chess_games", json!({ "path": "games.pgn", "ops": [{ "op": "delete", "game": 0 }], "out": "games.pgn" }));
     assert_eq!(deleted["written"], "games.pgn");
     // The open document's file is not a collection's to write over.
@@ -2905,4 +2911,52 @@ fn confined_replies_name_files_relative_to_the_root() {
         }
     }
     let _ = std::fs::remove_dir_all(base);
+}
+
+/// Plan A9-F3 (A4-05, A4's script s13): a collection rewritten in place keeps, as a comment where
+/// its reading stopped, the rest of a game read only up to an impossible move; and (A4-22) a name
+/// cut to the tag's cap is said.
+#[test]
+fn chess_games_rewritten_in_place_loses_no_text_and_says_what_it_cut() {
+    let (_base, root) = workdir("pgn-rest");
+    let games =
+        "[Event \"Test\"]\n\n1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Bxh7 {sharp} Nf6 *\n\n[Event \"Second\"]\n[White \"C\"]\n\n1. d4 d5 2. c4 1-0\n";
+    std::fs::write(root.join("games.pgn"), games).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let r = ok(
+        &mut a,
+        "chess_games",
+        json!({ "path": "games.pgn", "ops": [{ "op": "rename", "game": 1, "white": "Carlos" }], "out": "games.pgn", "allow_truncate": true }),
+    );
+    assert_eq!(r["games"][0]["pgn_stopped"], "Bxh7", "{r:#}");
+    let written = std::fs::read_to_string(root.join("games.pgn")).unwrap();
+    assert!(written.contains("a6 {Bxh7 sharp Nf6} *") && written.contains("[White \"Carlos\"]"), "{written}");
+    let long = "x".repeat(300);
+    let r = ok(&mut a, "chess_games", json!({ "pgn": games, "ops": [{ "op": "rename", "game": 1, "white": long, "black": "D" }] }));
+    assert_eq!((r["report"][0]["cut"].clone(), r["report"][0]["refused"].clone()), (json!(["White"]), json!([])), "{r:#}");
+}
+
+/// Plan A9-F3 (A1-12, R2-02, R2's script s3): capturing text the comment holds only inside a
+/// longer sentence adds it; capturing what the comment already ends with says so instead of
+/// answering that it was applied.
+#[test]
+fn chess_pgn_edit_capture_as_a_comment_adds_or_says_it_is_there() {
+    let (_base, root) = workdir("pgn-already");
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let start = json!([
+        { "op": "play", "at": "main:0", "moves": ["e4"] },
+        { "op": "comment", "at": "main:1", "text": "White's centre is strong and solid" },
+    ]);
+    let with = |op: Value| {
+        let mut ops = start.as_array().unwrap().clone();
+        ops.push(op);
+        json!({ "ops": ops })
+    };
+    let r = ok(&mut a, "chess_pgn_edit", with(json!({ "op": "capture", "at": "main:1", "text": "strong", "mode": "comment" })));
+    assert_eq!(r["movetext"], "1. e4 {White's centre is strong and solid strong}", "{r:#}");
+    let r = ok(&mut a, "chess_pgn_edit", with(json!({ "op": "capture", "at": "main:1", "text": "and solid", "mode": "comment" })));
+    assert_eq!(r["movetext"], "1. e4 {White's centre is strong and solid}", "{r:#}");
+    let capture = &r["report"][2]["capture"];
+    assert!(capture.to_string().contains("already_there"), "{capture:#}");
+    assert_eq!(capture["applied"], false, "{capture:#}");
 }

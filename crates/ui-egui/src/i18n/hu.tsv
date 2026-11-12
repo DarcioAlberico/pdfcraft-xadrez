@@ -2544,6 +2544,10 @@ animation effects	Off	Ki
 	Previous move (Left arrow)	Előző lépés (balra nyíl)
 	Promote to:	Átváltozás erre:
 	Reading stopped at {move}: it is not a legal move there.	Az olvasás itt megállt: {move} – ott ez nem szabályos lépés.
+	Only the first 65,536 bytes of a comment are kept.	Egy megjegyzésből csak az első 65 536 bájt marad meg.
+	The comment says that already.	A megjegyzés ezt már mondja.
+	Not kept as typed: {tags} (a tag holds at most 256 bytes, and a game 64 tags).	Nem úgy maradt, ahogy beírta: {tags} (egy címke legfeljebb 256 bájt, egy játszma 64 címke).
+	Read with changes: {n} (a comment, tag or glyph past its limit cut or dropped, a FEN repaired, or a result ignored).	Változásokkal beolvasva: {n} (korláton túli megjegyzés, címke vagy jel levágva vagy elhagyva, FEN javítva vagy eredmény figyelmen kívül hagyva).
 	Reading stopped at {move}: more than one legal move there is written so.	Az olvasás itt megállt: {move} – ott több szabályos lépés is így írható.
 	Reading stopped at {move}: the game already holds 10,000 moves, as many as a game may.	Az olvasás itt megállt: {move} – a játszmában már 10 000 lépés van, ez a legtöbb.
 	Reading stopped at {move}: its variation would nest deeper than 32.	Az olvasás itt megállt: {move} – a változat 32 szintnél mélyebbre kerülne.
@@ -2671,7 +2675,7 @@ chess undo step	Clear drawings	rajzok törlése
 	Quit without saving	Kilépés mentés nélkül
 	Close without saving	Bezárás mentés nélkül
 	Games read only up to an impossible move: {n}	Csak egy lehetetlen lépésig beolvasott játszmák: {n}
-	The rest of them will not be written.	A többi részük nem kerül kiírásra.
+	The rest of each is written as a comment at the move where its reading stopped.	Mindegyik maradéka megjegyzésként kerül annál a lépésnél, ahol az olvasás megállt.
 	{name}: stopped at {move}	{name}: megállt itt: {move}
 	Save them as they are	Mentés úgy, ahogy vannak
 	Chess games can't be autosaved: the app's data folder couldn't be locked for this window.	A sakkjátszmák nem menthetők automatikusan: az alkalmazás adatmappáját nem sikerült zárolni ehhez az ablakhoz.
