@@ -131,6 +131,10 @@ pub struct Automation {
     texts: TextCache,
     /// What `chess_glyph_sample` has written this session, held to its caps.
     glyph_samples: chess_sample::SampleBudget,
+    /// The folder the app is installed in (the executable's), where the chess tools look for the
+    /// app's own folders: `models`, `pieces`, `fonts`, `engine` (plan A9-T3). Resolved here, at
+    /// L7, and handed to the engine as a parameter.
+    install: Option<PathBuf>,
 }
 
 impl Default for Automation {
@@ -148,7 +152,20 @@ impl Automation {
             renderers: HashMap::new(),
             texts: TextCache::default(),
             glyph_samples: Default::default(),
+            install: pdfcraft_platform::app_dirs::AppDirs::current().install.clone(),
         }
+    }
+
+    /// Look for the app's own folders (`models`, `pieces`, `fonts`, `engine`) in `install`
+    /// instead of the executable's folder; `None`: there are none.
+    pub fn with_install_dir(mut self, install: Option<PathBuf>) -> Self {
+        self.install = install;
+        self
+    }
+
+    /// The folder the app is installed in, as the chess lookups take it.
+    pub(crate) fn install_dir(&self) -> Option<&Path> {
+        self.install.as_deref()
     }
 
     /// Confine every path the tools read or write to `root` (relative paths resolve inside it).

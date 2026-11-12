@@ -1034,7 +1034,7 @@ impl PdfCraftApp {
         }
         #[cfg(target_arch = "wasm32")]
         {
-            let mut options = ChessExportOptions::new(&stem);
+            let mut options = ChessExportOptions::new(&stem, pdfcraft_platform::app_dirs::AppDirs::current().install());
             // The scan the app made, so the job finds what it read (plan A9, G11).
             options.scan = self.chess_scan_settings();
             options.pieces = self.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Diagrams);
@@ -1055,7 +1055,7 @@ impl PdfCraftApp {
             return self.notify(tl!("A chess document is already being read or exported").to_string());
         }
         let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_else(|| "document".into());
-        let mut options = ChessExportOptions::new(&stem);
+        let mut options = ChessExportOptions::new(&stem, pdfcraft_platform::app_dirs::AppDirs::current().install());
         // The scan the app made, so the job finds what it read (plan A9, G11).
         options.scan = self.chess_scan_settings();
         options.image_dir = pdfcraft_engine::chess::pdfcraft_chessvision::doc::markdown::image_folder(&stem);

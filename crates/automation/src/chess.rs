@@ -313,9 +313,12 @@ impl Automation {
         Ok(s)
     }
 
-    /// `models_dir`, confined to the root like every other path.
+    /// `models_dir`, confined to the root like every other path; without it, the folder
+    /// [`chess::ChessModels::locate`] finds (`$PDFCRAFT_MODELS`, then `models` beside the
+    /// executable and the executable's folder), as the engine never looks for one itself (plan
+    /// A9-T3). `None` when no folder holds a model.
     pub(crate) fn models_dir(&self, a: &Args) -> Result<Option<std::path::PathBuf>> {
-        let Some(dir) = a.opt_str("models_dir")? else { return Ok(None) };
+        let Some(dir) = a.opt_str("models_dir")? else { return Ok(chess::ChessModels::locate(None, self.install_dir())) };
         let path = self.resolve(dir, false)?;
         if !path.is_dir() {
             return Err(failed(format!("models_dir {dir} is not a folder")));
@@ -409,7 +412,7 @@ impl Automation {
         }
         let style = board_style(a)?;
         let (pieces, source, error) = match a.opt_str("pieces")? {
-            None | Some("installed") => pieces::find(),
+            None | Some("installed") => pieces::find(self.install_dir()),
             Some("geometric") => (PieceSet::geometric(), PieceSource::Geometric, None),
             Some(id) => pieces::from_bundled(pieces::bundled::by_id(id).ok_or_else(|| Args::wrong("pieces", &pieces_expected()))?),
         };
@@ -644,7 +647,7 @@ impl Automation {
             Some(_) => return Err(Args::wrong("figurines", "\"unicode\", \"letters\" or \"printed\"")),
         };
         let (pieces, source, error) = match a.opt_str("pieces")? {
-            None | Some("installed") => pieces::find(),
+            None | Some("installed") => pieces::find(self.install_dir()),
             Some("geometric") => (PieceSet::geometric(), PieceSource::Geometric, None),
             Some(id) => pieces::from_bundled(pieces::bundled::by_id(id).ok_or_else(|| Args::wrong("pieces", &pieces_expected()))?),
         };
@@ -699,8 +702,8 @@ impl Automation {
             None => self.doc(a)?.name.trim_end_matches(".pdf").to_owned(),
         };
         // HTML and EPUB show figurines with the user's font when there is one.
-        let fonts = pdfcraft_engine::chess::pdfcraft_chessvision::text_font::find_fonts();
-        let mut options = ChessExportOptions::new(&title);
+        let fonts = pdfcraft_engine::chess::pdfcraft_chessvision::text_font::find_fonts(self.install_dir());
+        let mut options = ChessExportOptions::new(&title, self.install_dir());
         options.pages = pages;
         options.scan = scan;
         options.lang = lang;
@@ -882,7 +885,7 @@ impl Automation {
     /// The piece sets that can be chosen (Preferences ▸ Chess pieces, plan HC2).
     pub(crate) fn chess_pieces(&self) -> Result<Value> {
         use pieces::choice::{self, CandidateKind, PieceChoice};
-        let sets: Vec<Value> = choice::candidates()
+        let sets: Vec<Value> = choice::candidates(self.install_dir())
             .into_iter()
             .map(|c| {
                 let kind = match c.kind {
@@ -925,9 +928,9 @@ impl Automation {
             Some(p) => self.resolve(p, true)?,
             // The default folders are beside the executable, outside any root (A4-04).
             None if self.confined() => return Err(failed("into is needed when files are confined (--root or the automation roots)")),
-            None if fonts => pdfcraft_engine::chess::pdfcraft_chessvision::text_font::beside_executable()
+            None if fonts => pdfcraft_engine::chess::pdfcraft_chessvision::text_font::fonts_folder(self.install_dir())
                 .ok_or_else(|| failed("no fonts folder beside the executable"))?,
-            None => pieces::pieces_folder().ok_or_else(|| failed("no pieces folder beside the executable"))?,
+            None => pieces::pieces_folder(self.install_dir()).ok_or_else(|| failed("no pieces folder beside the executable"))?,
         };
         let replace = a.opt_bool("replace")?.unwrap_or(false);
         if fonts {
@@ -976,7 +979,7 @@ impl Automation {
     pub(crate) fn chess_status(&self, a: &Args) -> Result<Value> {
         let dir = self.models_dir(a)?;
         let models = chess::models(dir.as_deref());
-        let (_, source, error) = pieces::find();
+        let (_, source, error) = pieces::find(self.install_dir());
         let mut set_path: Option<std::path::PathBuf> = None;
         let mut piece_set = match source {
             PieceSource::Font { path, family } => {
@@ -1002,7 +1005,7 @@ impl Automation {
             "glyphs": self.model_json(&models.glyphs),
             "folder": models.folder.as_ref().map(|f| self.path_json(f)),
             "outside_root": models.folder.as_ref().is_some_and(|f| self.shown_path(f).1),
-            "looked_in": if dir.is_some() { "models_dir" } else { "PDFCRAFT_MODELS, then beside the executable" },
+            "looked_in": if a.opt_str("models_dir")?.is_some() { "models_dir" } else { "PDFCRAFT_MODELS, then beside the executable" },
             "reads_fonts_without_model": true,
             "piece_set": piece_set,
             // Which build answers (plan A9, E2): builds kept side by side are one version.
