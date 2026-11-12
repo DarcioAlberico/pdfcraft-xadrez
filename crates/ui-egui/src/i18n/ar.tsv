@@ -2778,6 +2778,8 @@ certificate	Version	الإصدار
 	Black pawn	بيدق أسود
 	White	الأبيض
 	Board: {fen}	الرقعة: {fen}
+	Board, {state}, move {n}	الرقعة، {state}، النقلة {n}
+	Board, {state}	الرقعة، {state}
 	Click a square to put the chosen piece there; click it again to empty it.	انقر مربعًا لوضع القطعة المختارة فيه؛ وانقره مرة أخرى لإفراغه.
 	Close the editor	إغلاق المحرر
 	Draw this position over the diagram on the page (one undo step).	ارسم هذا الوضع فوق المخطط في الصفحة (خطوة تراجع واحدة).
@@ -2790,6 +2792,7 @@ certificate	Version	الإصدار
 	Replace on the page	استبدال في الصفحة
 	The board couldn't be drawn: {e}	تعذر رسم الرقعة: {e}
 	To move:	الدور:
+	To move	الدور
 	Move number:	رقم النقلة:
 	The move the diagram stands at: 35 with Black to move is 35…	النقلة التي يقف عندها المخطط: 35 والدور للأسود تُكتب 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	النقلة التي تبدأ عندها المباراة، لتصحيحها حين لم تُقرأ: 35 والدور للأسود تُكتب 35…
@@ -2982,14 +2985,13 @@ chess undo step	Clear drawings	مسح الرسوم
 	Demote a line	تخفيض خط
 	Delete a variation	حذف خط فرعي
 # Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
-	Dock	إرساء
 	The chess board couldn't open in its own window, so it is back in its panel.	تعذّر فتح رقعة الشطرنج في نافذتها الخاصة، فأُعيدت إلى لوحتها.
 	The chess board couldn't open in its own window, so it stays in its panel.	تعذّر فتح رقعة الشطرنج في نافذتها الخاصة، فبقيت في لوحتها.
 # Chess ▸ PGN toolbar: T13b, the whole chess panel in its own window (the rail's tool and the command, the window's tab strip and Dock button, the Inspector's note while it is out).
 	Chess in its own window	الشطرنج في نافذة خاصة
 	Board	الرقعة
 	The chess panel is in its own window.	لوحة الشطرنج في نافذة خاصة بها.
-	Bring it back	إعادتها
+	Back to the main window	العودة إلى النافذة الرئيسية
 	Put the board and the chess panel back in the main window	إعادة الرقعة ولوحة الشطرنج إلى النافذة الرئيسية
 
 # Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
@@ -3200,7 +3202,8 @@ chess undo step	Clear drawings	مسح الرسوم
 	Variation of {move}	خط فرعي لـ {move}
 	moves: {n}	النقلات: {n}
 # Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
-	Fit at	الموضع
+	Insert in	إدراج في
+	Piece letters	حروف القطع
 	Apply and keep the rest as a comment	تطبيق مع الاحتفاظ بالباقي كتعليق
 	Unreadable move	نقلة غير مقروءة
 	Past the capture's limits	خارج حدود الالتقاط
@@ -3473,12 +3476,15 @@ chess undo step	Clear drawings	مسح الرسوم
 	More ways to confirm	طرق أخرى للتأكيد
 	Confirm and next	تأكيد ثم التالي
 	Only confirm	تأكيد فقط
+	Confirm	تأكيد
+	Confirmed	مؤكَّد
+	This position is kept for the diagram. Change it to confirm again.	هذا الوضع محفوظ للمخطط. غيّره لتأكيده من جديد.
 	Keep this position for the diagram, without changing the PDF.	الاحتفاظ بهذا الوضع للمخطط دون تغيير ملف PDF.
 	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	الاحتفاظ بهذا الوضع للمخطط دون تغيير ملف PDF، ثم فتح التالي للمراجعة (Ctrl+Enter).
 	More actions	إجراءات أخرى
 	Forget the correction	نسيان التصحيح
 	Show what was read again; the PDF is not changed.	إظهار ما قُرئ مجددًا؛ لا يتغير ملف PDF.
-	Diagram board: {fen}	رقعة المخطط: {fen}
+	Diagram board, page {p}, diagram {n}	رقعة المخطط، الصفحة {p}، المخطط {n}
 	Classic diagram editor	محرر المخططات الكلاسيكي
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	تحرير المخططات داخل لوحة المخططات كما كان قبل علامة تبويب المخطط. سيُزال هذا الخيار في إصدار لاحق.
 # Plan A8 P3b3: drafts and the question about them.
@@ -3533,6 +3539,7 @@ chess undo step	Clear drawings	مسح الرسوم
 	Page {p}: {done}	الصفحة {p}: {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} مخططات مُراجَعة|{n} مخطط مُراجَع|{n} مخططان مُراجَعان|{n} مخططات مُراجَعة|{n} مخططًا مُراجَعًا|{n} مخطط مُراجَع
 	Export chess book	تصدير كتاب الشطرنج
+	Export book…	تصدير الكتاب…
 	PGN — games	PGN — مباريات
 	EPUB — e-book	EPUB — كتاب إلكتروني
 	HTML — web page	HTML — صفحة ويب
@@ -3621,6 +3628,14 @@ castling	long	طويل
 	The book's PGN plays this move from another position: check it.	يلعب PGN الكتاب هذه النقلة من وضعية أخرى: تحقّق منها.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	PGN الكتاب في هذه الصفحة: {confirmed} مؤكدة، {recovered} مقروءة من PGN، {conflict} متعارضة.
 	Confirmed by the PGN	مؤكَّد بواسطة PGN
+	All ({n})	الكل ({n})
+	Read ({n})	المقروءة ({n})
+	To review ({n})	للمراجعة ({n})
+	Not read ({n})	غير المقروءة ({n})
+	With an error ({n})	بها خطأ ({n})
+	Verified ({n})	المتحقَّق منها ({n})
+	Corrected ({n})	المصحَّحة ({n})
+	Confirmed by the PGN ({n})	المؤكَّدة بواسطة PGN ({n})
 	The book's PGN has this position, so it needs no review.	يحتوي PGN الكتاب على هذه الوضعية، فلا تحتاج إلى مراجعة.
 	PGN games from	مصدر مباريات PGN
 	The book's PGN, with the book's text	PGN الكتاب، مع نص الكتاب
@@ -3634,10 +3649,10 @@ castling	long	طويل
 	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	يوجد بجانب ملف PDF هذا ملف PGN بالاسم نفسه: احفظه بوصفه PGN الكتاب.
 	Double-click to open the book's PGN game here.	انقر نقرًا مزدوجًا لفتح مباراة PGN الكتاب هنا.
 	Open the book's PGN game here	فتح مباراة PGN الكتاب هنا
-	Linking the whole book to its PGN…	جارٍ ربط الكتاب كله بـ PGN الخاص به…
-	Linking the whole book: page {done} of {of}	جارٍ ربط الكتاب كله: الصفحة {done} من {of}
-	Link the whole book again	ربط الكتاب كله من جديد
-	Link the whole book	ربط الكتاب كله
+	Aligning the book to the PGN…	جارٍ مواءمة الكتاب مع PGN…
+	Aligning the book to the PGN: page {done} of {of}	جارٍ مواءمة الكتاب مع PGN: الصفحة {done} من {of}
+	Align again	مواءمة مرة أخرى
+	Align the book to the PGN	مواءمة الكتاب مع PGN
 	Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book.	يقرأ كل الصفحات ويربطها بـ PGN الكتاب: عدد النقلات التي يؤكدها ويقرؤها من PGN ويجدها متعارضة، والصفحة التي تبدأ فيها كل مباراة. يستغرق الوقت نفسه الذي يستغرقه تصدير الكتاب.
 	Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages.	الكتاب كله: رُبطت {linked} من {moves} نقلة ({recovered} مقروءة من PGN)، {conflict} متعارضة، في {pages} من {all} صفحة.
 	Games of the book's PGN ({n})	مباريات PGN الكتاب ({n})

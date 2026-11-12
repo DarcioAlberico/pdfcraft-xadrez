@@ -2503,6 +2503,8 @@ animation effects	Off	オフ
 	Black pawn	黒のポーン
 	White	白
 	Board: {fen}	盤面: {fen}
+	Board, {state}, move {n}	盤面、{state}、{n} 手目
+	Board, {state}	盤面、{state}
 	Click a square to put the chosen piece there; click it again to empty it.	マスをクリックすると選んだ駒を置きます。もう一度クリックすると空にします。
 	Close the editor	エディターを閉じる
 	Draw this position over the diagram on the page (one undo step).	この局面をページ上の局面図の上に描画します (取り消しは 1 回)。
@@ -2515,6 +2517,7 @@ animation effects	Off	オフ
 	Replace on the page	ページ上で置換
 	The board couldn't be drawn: {e}	盤面を描画できませんでした: {e}
 	To move:	手番:
+	To move	手番
 	Move number:	手数:
 	The move the diagram stands at: 35 with Black to move is 35…	図の局面の手数。黒番の35手目の書き方: 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	棋譜が始まる手数。読み取れなかったときに直します。黒番の35手目の書き方: 35…
@@ -2707,14 +2710,13 @@ chess undo step	Clear drawings	描画の消去
 	Demote a line	筋の降格
 	Delete a variation	変化の削除
 # Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
-	Dock	ドッキング
 	The chess board couldn't open in its own window, so it is back in its panel.	チェス盤を別ウィンドウで開けなかったため、パネルに戻しました。
 	The chess board couldn't open in its own window, so it stays in its panel.	チェス盤を別ウィンドウで開けないため、パネルに表示したままにします。
 # Chess ▸ PGN toolbar: T13b, the whole chess panel in its own window (the rail's tool and the command, the window's tab strip and Dock button, the Inspector's note while it is out).
 	Chess in its own window	チェスを別ウィンドウに表示
 	Board	盤
 	The chess panel is in its own window.	チェスパネルは別ウィンドウにあります。
-	Bring it back	ここに戻す
+	Back to the main window	メインウィンドウに戻す
 	Put the board and the chess panel back in the main window	盤とチェスパネルをメインウィンドウに戻す
 
 # Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
@@ -2925,7 +2927,8 @@ chess undo step	Clear drawings	描画の消去
 	Variation of {move}	{move} の変化
 	moves: {n}	手数: {n}
 # Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
-	Fit at	当てはめる位置
+	Insert in	挿入先
+	Piece letters	駒の文字
 	Apply and keep the rest as a comment	適用して残りをコメントとして保持
 	Unreadable move	読み取れない指し手
 	Past the capture's limits	取り込みの上限を超えています
@@ -3199,12 +3202,15 @@ chess undo step	Clear drawings	描画の消去
 	More ways to confirm	その他の確定方法
 	Confirm and next	確定して次へ
 	Only confirm	確定のみ
+	Confirm	確定
+	Confirmed	確定済み
+	This position is kept for the diagram. Change it to confirm again.	この局面は局面図に保存されています。もう一度確定するには変更してください。
 	Keep this position for the diagram, without changing the PDF.	PDF を変更せずに、この局面を局面図の局面として保持します。
 	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	PDF を変更せずに、この局面を局面図の局面として保持し、次の確認待ちを開きます (Ctrl+Enter)。
 	More actions	その他の操作
 	Forget the correction	修正を取り消す
 	Show what was read again; the PDF is not changed.	読み取った局面を再び表示します。PDF は変更されません。
-	Diagram board: {fen}	局面図の盤面: {fen}
+	Diagram board, page {p}, diagram {n}	局面図の盤面、{p} ページ、局面図 {n}
 	Classic diagram editor	従来の局面図エディター
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	局面図タブ以前と同じく「局面図」パネル内で局面図を編集します。このオプションは今後のバージョンで廃止されます。
 # Plan A8 P3b3: drafts and the question about them.
@@ -3259,6 +3265,7 @@ chess undo step	Clear drawings	描画の消去
 	Page {p}: {done}	ページ {p}: {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} 個の局面図を確認済みにしました
 	Export chess book	チェスの本を書き出す
+	Export book…	本を書き出す…
 	PGN — games	PGN — 棋譜
 	EPUB — e-book	EPUB — 電子書籍
 	HTML — web page	HTML — ウェブページ
@@ -3348,6 +3355,14 @@ castling	long	ロング
 	The book's PGN plays this move from another position: check it.	本の PGN はこの手を別の局面から指しています。確認してください。
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	このページの本の PGN: 一致 {confirmed}、PGN から読み取り {recovered}、矛盾 {conflict}。
 	Confirmed by the PGN	PGN で確認済み
+	All ({n})	すべて ({n})
+	Read ({n})	読み取り済み ({n})
+	To review ({n})	要確認 ({n})
+	Not read ({n})	未読み取り ({n})
+	With an error ({n})	エラーあり ({n})
+	Verified ({n})	確認済み ({n})
+	Corrected ({n})	修正済み ({n})
+	Confirmed by the PGN ({n})	PGN で確認済み ({n})
 	The book's PGN has this position, so it needs no review.	本の PGN にこの局面があるため、確認は不要です。
 	PGN games from	PGN の対局の取得元
 	The book's PGN, with the book's text	本の PGN (本文付き)
@@ -3361,10 +3376,10 @@ castling	long	ロング
 	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	この PDF の隣に同じ名前の PGN があります。本の PGN として保存します。
 	Double-click to open the book's PGN game here.	ダブルクリックで本の PGN の対局をこの手で開きます。
 	Open the book's PGN game here	本の PGN の対局をこの手で開く
-	Linking the whole book to its PGN…	本全体を PGN に関連付けています…
-	Linking the whole book: page {done} of {of}	本全体を関連付け中: {of} ページ中 {done} ページ
-	Link the whole book again	本全体をもう一度関連付ける
-	Link the whole book	本全体を関連付ける
+	Aligning the book to the PGN…	本を PGN に合わせています…
+	Aligning the book to the PGN: page {done} of {of}	本を PGN に合わせています: {of} ページ中 {done} ページ
+	Align again	もう一度合わせる
+	Align the book to the PGN	本を PGN に合わせる
 	Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book.	すべてのページを読み、本の PGN に関連付けます。一致した手、PGN から読み取った手、矛盾した手の数と、各対局が始まるページがわかります。本の書き出しと同じくらい時間がかかります。
 	Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages.	本全体: {moves} 手中 {linked} 手を関連付け (PGN から読み取り {recovered})、矛盾 {conflict}、{all} ページ中 {pages} ページ。
 	Games of the book's PGN ({n})	本の PGN の対局 ({n})

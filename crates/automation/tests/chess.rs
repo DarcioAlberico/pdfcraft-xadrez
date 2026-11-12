@@ -2664,6 +2664,63 @@ fn corrections_win_in_readings_exports_and_links_and_are_never_lost() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// A9-G2a, end to end as the analysis's scripts did it (`s2.json`, `s15.json`, `s_a401b.json`):
+/// three pages with their diagrams in the same boxes. Deleting a corrected page never gives its
+/// correction to the diagram that moves up into its place: not over that diagram's own correction
+/// (R1-01), nor over its reading (A4-01). Correcting again a diagram whose page moved revises its
+/// one correction (A4-02).
+#[test]
+fn a_correction_never_lands_on_another_pages_diagram() {
+    const START: &str = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    const A: &str = "8/8/8/4k3/8/8/8/4K3 w - - 0 1";
+    const B: &str = "4k3/8/8/8/8/8/8/R3K3 w Q - 0 1";
+    const C: &str = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+    let (base, root) = workdir("g2a");
+    let (mut a, doc) = opened(&root);
+    ok(&mut a, "page_duplicate", json!({ "doc": doc, "pages": [1] }));
+    ok(&mut a, "page_duplicate", json!({ "doc": doc, "pages": [1] }));
+    // A line of its own at the foot of pages 2 and 3, so each page has a fingerprint of its own.
+    for page in [2, 3] {
+        ok(&mut a, "page_add_text", json!({ "doc": doc, "page": page, "text": format!("page {page}"), "at": [60, 770], "size": 8 }));
+    }
+    let set = |a: &mut Automation, page: u64, fen: &str| {
+        ok(a, "chess_correction_set", json!({ "doc": doc, "page": page, "index": 1, "fen": fen, "models_dir": "models" }))["uid"]
+            .as_str()
+            .unwrap()
+            .to_owned()
+    };
+    let read = |a: &mut Automation, page: u64| {
+        let r = ok(a, "chess_document", json!({ "doc": doc, "pages": [page], "models_dir": "models", "include": ["json"], "lang": "en" }));
+        let fen = r["document"]["pages"][0]["blocks"].as_array().unwrap().iter().find(|b| b["type"] == "diagram").unwrap()["reading"]["fen"].clone();
+        (fen, r["corrections"].clone())
+    };
+    let uids = |v: &Value, key: &str| v[key].as_array().unwrap().iter().map(|c| c["uid"].as_str().unwrap().to_owned()).collect::<Vec<_>>();
+    let a_uid = set(&mut a, 1, A);
+    let b_uid = set(&mut a, 2, B);
+    // R1-01: page 1 deleted; page 2, with B, is page 1 now.
+    ok(&mut a, "page_delete", json!({ "doc": doc, "pages": [1] }));
+    let listed = ok(&mut a, "chess_correction_list", json!({ "doc": doc }));
+    let located: Vec<(&str, &str)> =
+        listed["corrections"].as_array().unwrap().iter().map(|c| (c["uid"].as_str().unwrap(), c["located"].as_str().unwrap())).collect();
+    assert_eq!((located, listed["orphans"].as_u64()), (vec![(a_uid.as_str(), "orphan"), (b_uid.as_str(), "moved")], Some(1)), "{listed:#}");
+    let (fen, used) = read(&mut a, 1);
+    assert_eq!((fen, uids(&used, "applied"), uids(&used, "unmatched")), (json!(B), vec![b_uid.clone()], vec![]), "{used:#}");
+    // A4-02: a page inserted first, then B's diagram (page 2 now) corrected again: the same one.
+    ok(&mut a, "page_insert_blank", json!({ "doc": doc, "at": 1 }));
+    let again = set(&mut a, 2, C);
+    assert_eq!(again, b_uid);
+    let listed = ok(&mut a, "chess_correction_list", json!({ "doc": doc }));
+    assert_eq!((listed["count"].as_u64(), listed["corrections"][1]["rev"].as_u64()), (Some(2), Some(2)), "A and B, revised: {listed:#}");
+    let (fen, used) = read(&mut a, 2);
+    assert_eq!((fen, uids(&used, "applied")), (json!(C), vec![b_uid.clone()]), "{used:#}");
+    // A4-01: that page deleted too; old page 3, which has no correction, keeps its reading.
+    ok(&mut a, "page_delete", json!({ "doc": doc, "pages": [2] }));
+    let (fen, used) = read(&mut a, 2);
+    assert_eq!((fen, uids(&used, "applied"), uids(&used, "unmatched")), (json!(START), vec![], vec![]), "{used:#}");
+    assert_eq!(ok(&mut a, "chess_correction_list", json!({ "doc": doc }))["orphans"], 2);
+    let _ = std::fs::remove_dir_all(base);
+}
+
 // ─── Plan A9, G7a: confinement, overwrite and nothing cut ───────────────────────────────────────
 
 /// A9-G7a (A4-04): with only the automation roots (an MCP server's --automation-read-root and

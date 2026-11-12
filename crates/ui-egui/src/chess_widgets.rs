@@ -88,6 +88,20 @@ impl DiagramState {
         }
     }
 
+    /// Its filter chip's words: the diagrams in this state, as a group, and how many (`n`).
+    pub(crate) fn filter_name(self, n: usize) -> String {
+        let name = match self {
+            DiagramState::Read => tl!("Read ({n})"),
+            DiagramState::Review => tl!("To review ({n})"),
+            DiagramState::Unread => tl!("Not read ({n})"),
+            DiagramState::Error => tl!("With an error ({n})"),
+            DiagramState::Verified => tl!("Verified ({n})"),
+            DiagramState::Corrected => tl!("Corrected ({n})"),
+            DiagramState::Reference => tl!("Confirmed by the PGN ({n})"),
+        };
+        crate::i18n::fmt(name, &[("n", &n.to_string())])
+    }
+
     /// What it means, for a tooltip.
     pub(crate) fn hint(self) -> &'static str {
         match self {

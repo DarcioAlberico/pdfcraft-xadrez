@@ -1104,7 +1104,7 @@ fn preview(ui: &mut egui::Ui, t: &Tokens, p: &mut Pending, typing: &mut crate::c
     ui.label(RichText::new(title).font(crate::theme::semibold(14.0)));
     ui.horizontal_wrapped(|ui| {
         if p.plan.places().nth(1).is_some() {
-            let label = ui.label(RichText::new(tl!("Fit at")).small().color(t.text_muted));
+            let label = ui.label(RichText::new(tl!("Insert in")).small().color(t.text_muted));
             let shown = c.map(|c| headline(c, captured_by(c, p.request.mode))).unwrap_or_default();
             let combo = egui::ComboBox::from_id_salt("chess-capture-fit").selected_text(shown).show_ui(ui, |ui| {
                 for (i, other) in p.plan.places() {
@@ -1127,7 +1127,7 @@ fn preview(ui: &mut egui::Ui, t: &Tokens, p: &mut Pending, typing: &mut crate::c
                 action = Some(PreviewAction::Choose(if on { back.unwrap_or(renumber) } else { renumber }));
             }
         }
-        let label = ui.label(RichText::new(tl!("Language")).small().color(t.text_muted));
+        let label = ui.label(RichText::new(tl!("Piece letters")).small().color(t.text_muted));
         let combo = egui::ComboBox::from_id_salt("chess-capture-lang").selected_text(endonym(p.request.lang)).show_ui(ui, |ui| {
             for lang in Lang::ALL {
                 if ui.selectable_label(lang == p.request.lang, endonym(lang)).clicked() && lang != p.request.lang {

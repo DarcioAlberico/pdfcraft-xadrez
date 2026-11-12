@@ -2500,6 +2500,8 @@ animation effects	Off	Ki
 	Black pawn	Sötét gyalog
 	White	Világos
 	Board: {fen}	Tábla: {fen}
+	Board, {state}, move {n}	Tábla, {state}, {n}. lépés
+	Board, {state}	Tábla, {state}
 	Click a square to put the chosen piece there; click it again to empty it.	Kattintson egy mezőre, hogy oda tegye a kiválasztott bábut; újabb kattintással kiüríti.
 	Close the editor	Szerkesztő bezárása
 	Draw this position over the diagram on the page (one undo step).	Ez az állás rajzolódik az oldalon lévő diagram fölé (egy visszavonási lépés).
@@ -2512,6 +2514,7 @@ animation effects	Off	Ki
 	Replace on the page	Csere az oldalon
 	The board couldn't be drawn: {e}	A táblát nem sikerült megrajzolni: {e}
 	To move:	Lép:
+	To move	Lép
 	Move number:	Lépésszám:
 	The move the diagram stands at: 35 with Black to move is 35…	A lépés, amelynél a diagram áll: 35, sötét lépésével 35…
 	The move the game starts at, to correct it when it was not read: 35 with Black to move is 35…	A lépés, amellyel a játszma kezdődik, javításhoz, ha nem sikerült beolvasni: 35, sötét lépésével 35…
@@ -2704,14 +2707,13 @@ chess undo step	Clear drawings	rajzok törlése
 	Demote a line	vonal lefokozása
 	Delete a variation	változat eltávolítása
 # Chess ▸ PGN toolbar: T13a, the chess board in its own window (the rail's tool, the Board tab's menu, the window's Dock button).
-	Dock	Rögzítés
 	The chess board couldn't open in its own window, so it is back in its panel.	A sakktáblát nem sikerült saját ablakban megnyitni, ezért visszakerült a paneljére.
 	The chess board couldn't open in its own window, so it stays in its panel.	A sakktáblát nem sikerült saját ablakban megnyitni, ezért a paneljén marad.
 # Chess ▸ PGN toolbar: T13b, the whole chess panel in its own window (the rail's tool and the command, the window's tab strip and Dock button, the Inspector's note while it is out).
 	Chess in its own window	Sakk saját ablakban
 	Board	Tábla
 	The chess panel is in its own window.	A sakkpanel saját ablakban van.
-	Bring it back	Visszahozás
+	Back to the main window	Vissza a főablakba
 	Put the board and the chess panel back in the main window	A tábla és a sakkpanel visszahelyezése a főablakba
 
 # Chess ▸ PGN toolbar: T5b, the board panel's layout and the rail's commands (the last five are command names).
@@ -2922,7 +2924,8 @@ chess undo step	Clear drawings	rajzok törlése
 	Variation of {move}	Változat ehhez: {move}
 	moves: {n}	lépések: {n}
 # Chess ▸ PGN toolbar: T7b, the capture preview, its notice and the layer of captured text.
-	Fit at	Hely
+	Insert in	Beszúrás ide
+	Piece letters	Bábubetűk
 	Apply and keep the rest as a comment	Alkalmazás, a maradék megtartása megjegyzésként
 	Unreadable move	Olvashatatlan lépés
 	Past the capture's limits	A rögzítés korlátain túl
@@ -3196,12 +3199,15 @@ chess undo step	Clear drawings	rajzok törlése
 	More ways to confirm	További megerősítési módok
 	Confirm and next	Megerősítés és tovább
 	Only confirm	Csak megerősítés
+	Confirm	Megerősítés
+	Confirmed	Megerősítve
+	This position is kept for the diagram. Change it to confirm again.	Ez az állás el van mentve a diagramhoz. Módosítsa, ha újra meg akarja erősíteni.
 	Keep this position for the diagram, without changing the PDF.	Ennek az állásnak a megtartása a diagramhoz, a PDF módosítása nélkül.
 	Keep this position for the diagram, without changing the PDF, and open the next one to review (Ctrl+Enter).	Ennek az állásnak a megtartása a diagramhoz, a PDF módosítása nélkül, majd a következő ellenőrizendő megnyitása (Ctrl+Enter).
 	More actions	További műveletek
 	Forget the correction	Javítás elvetése
 	Show what was read again; the PDF is not changed.	Ismét a beolvasott állás mutatása; a PDF nem változik.
-	Diagram board: {fen}	Diagram táblája: {fen}
+	Diagram board, page {p}, diagram {n}	Diagram táblája, {p}. oldal, {n}. diagram
 	Classic diagram editor	Klasszikus diagramszerkesztő
 	Edit diagrams inside the Diagrams panel, as before the Diagram tab. This option goes away in a later version.	Diagramok szerkesztése a Diagramok panelen belül, mint a Diagram lap előtt. Ez a lehetőség egy későbbi verzióban megszűnik.
 # Plan A8 P3b3: drafts and the question about them.
@@ -3256,6 +3262,7 @@ chess undo step	Clear drawings	rajzok törlése
 	Page {p}: {done}	{p}. oldal: {done}
 @plural	{n} diagram checked|{n} diagrams checked	{n} diagram ellenőrizve|{n} diagram ellenőrizve
 	Export chess book	Sakk-könyv exportálása
+	Export book…	Könyv exportálása…
 	PGN — games	PGN — játszmák
 	EPUB — e-book	EPUB — e-könyv
 	HTML — web page	HTML — weboldal
@@ -3345,6 +3352,14 @@ castling	long	hosszú
 	The book's PGN plays this move from another position: check it.	A könyv PGN-je ezt a lépést más állásból teszi meg: ellenőrizze.
 	Book's PGN on this page: {confirmed} confirmed, {recovered} read from the PGN, {conflict} in conflict.	A könyv PGN-je ezen az oldalon: {confirmed} megerősítve, {recovered} a PGN-ből olvasva, {conflict} ütközik.
 	Confirmed by the PGN	A PGN megerősítette
+	All ({n})	Mind ({n})
+	Read ({n})	Beolvasott ({n})
+	To review ({n})	Ellenőrizendő ({n})
+	Not read ({n})	Be nem olvasott ({n})
+	With an error ({n})	Hibás ({n})
+	Verified ({n})	Ellenőrzött ({n})
+	Corrected ({n})	Javított ({n})
+	Confirmed by the PGN ({n})	A PGN által megerősített ({n})
 	The book's PGN has this position, so it needs no review.	A könyv PGN-je tartalmazza ezt az állást, ezért nem kell ellenőrizni.
 	PGN games from	PGN-játszmák forrása
 	The book's PGN, with the book's text	A könyv PGN-je, a könyv szövegével
@@ -3358,10 +3373,10 @@ castling	long	hosszú
 	A PGN with the same name sits beside this PDF: keep it as the book's PGN.	A PDF mellett ugyanilyen nevű PGN van: tárolja a könyv PGN-jeként.
 	Double-click to open the book's PGN game here.	Kattintson duplán, hogy itt megnyissa a könyv PGN-jének játszmáját.
 	Open the book's PGN game here	A könyv PGN-játszmájának megnyitása itt
-	Linking the whole book to its PGN…	Az egész könyv összekapcsolása a PGN-jével…
-	Linking the whole book: page {done} of {of}	Az egész könyv összekapcsolása: {done}. oldal / {of}
-	Link the whole book again	Az egész könyv újbóli összekapcsolása
-	Link the whole book	Az egész könyv összekapcsolása
+	Aligning the book to the PGN…	A könyv igazítása a PGN-hez…
+	Aligning the book to the PGN: page {done} of {of}	A könyv igazítása a PGN-hez: {done}. oldal / {of}
+	Align again	Igazítás újra
+	Align the book to the PGN	A könyv igazítása a PGN-hez
 	Read every page and link it to the book's PGN: how many moves it confirms, reads from the PGN and finds in conflict, and the page each game starts on. It takes as long as exporting the book.	Minden oldalt beolvas és a könyv PGN-jéhez kapcsol: hány lépést erősít meg, olvas a PGN-ből és talál ütközőnek, és melyik oldalon kezdődik az egyes játszmák tárgyalása. Annyi ideig tart, mint a könyv exportálása.
 	Whole book: {linked} of {moves} moves linked ({recovered} read from the PGN), {conflict} in conflict, on {pages} of {all} pages.	Az egész könyv: {moves} lépésből {linked} kapcsolva ({recovered} a PGN-ből olvasva), {conflict} ütközik, {all} oldalból {pages} oldalon.
 	Games of the book's PGN ({n})	A könyv PGN-jének játszmái ({n})
