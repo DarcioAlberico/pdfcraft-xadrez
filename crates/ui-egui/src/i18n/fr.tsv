@@ -3460,3 +3460,5 @@ the move's comment	Move comment	Commentaire du coup
 	Aligning was stopped: the book's link is as it was.	L’alignement a été arrêté : le lien du livre reste tel qu’il était.
 	The work stopped on an internal error: {why}	Le travail s’est arrêté sur une erreur interne : {why}
 	The work stopped on an internal error.	Le travail s’est arrêté sur une erreur interne.
+# Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
+	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	Dans le navigateur, un livre de plus de {n} pages ne peut pas encore être exporté ni aligné sur son PGN : l’onglet cesserait de répondre jusqu’à la fin. L’application de bureau le fait en arrière-plan.

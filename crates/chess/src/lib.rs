@@ -17,6 +17,7 @@ pub mod fen;
 pub mod fragment;
 pub mod game;
 pub mod lichess;
+pub mod mate;
 pub mod nag;
 pub mod origin;
 pub mod pgn;

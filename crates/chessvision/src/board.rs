@@ -21,7 +21,7 @@ pub mod preprocess;
 pub mod reading;
 
 pub use preprocess::{Preprocessing, Steps, preprocess};
-pub use reading::{BoardReading, ReadPosition, ReadingSource, SquareClassifier, Unreadable, board_image, read, read_with, squares};
+pub use reading::{BoardReading, MateFinding, ReadPosition, ReadingSource, SquareClassifier, Unreadable, board_image, read, read_with, squares};
 
 use crate::coords::PixelRect;
 use crate::imageops::{Plane, dims, resize_area, resize_bilinear, to_gray, to_plane, warp_plane};

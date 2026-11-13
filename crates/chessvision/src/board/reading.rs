@@ -34,6 +34,8 @@
 //! `board_probabilities_batch` (one batch with the board as printed and turned 180°, no TTA, no
 //! temperature).
 
+use pdfcraft_chess::fen::Fen;
+use pdfcraft_chess::mate::{MAX_MATE_MOVES, MateReport, MatingSide, mating_side, solve_side};
 use pdfcraft_chess::placement::{Color, Placement};
 use pdfcraft_chess::recognize::decode::{Change, Limits};
 use pdfcraft_chess::recognize::orient::{Verdict, font_verdict, orient};
@@ -164,9 +166,56 @@ pub struct ReadPosition {
     pub repairs: Vec<Change>,
     /// Whether the reading may be exported without review.
     pub accepted: bool,
+    /// What the solver found for the mate the page asks of the diagram (plan A9-N4); `None` when
+    /// it asks none ([`ReadPosition::check_mate`]).
+    pub mate: Option<MateFinding>,
+}
+
+/// What [`ReadPosition::check_mate`] found.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum MateFinding {
+    /// The solver's report for the side to move (decided by it when the page did not say and only
+    /// that side mates).
+    Solved(MateReport),
+    /// The page did not say who is to play and both sides mate in `n` (every back-rank
+    /// combination): the side stays assumed.
+    BothSides { n: u8 },
 }
 
 impl ReadPosition {
+    /// The mate in `n` moves the page asks of the diagram (a caption's or a heading's `#2`, `Mate
+    /// in 2`; only a direct mate, never a helpmate, a selfmate or a study), solved within `budget`
+    /// positions a side (plan A9-N4). When the side to move is only assumed, the solver decides
+    /// it if exactly one side mates in `n` ([`SideSource::Solved`]); when both do, it stays
+    /// assumed. The report says the keys, a cook, or no mate with the best try and its refutation,
+    /// for review. More than [`MAX_MATE_MOVES`] moves, or a position the solver cannot set up,
+    /// leaves the reading as it was.
+    pub fn check_mate(&mut self, n: u8, budget: u64) {
+        if !(1..=MAX_MATE_MOVES).contains(&n) {
+            return;
+        }
+        let Ok(fen) = Fen::parse(&self.fen) else { return };
+        if self.side.is_assumed() {
+            match mating_side(&fen, n, budget) {
+                Ok(MatingSide::One(report)) => {
+                    self.declare_side(report.side, SideSource::Solved, fen.fullmove_number());
+                    if self.side.color == report.side {
+                        self.mate = Some(MateFinding::Solved(report));
+                    }
+                    return;
+                }
+                Ok(MatingSide::Both) => {
+                    self.mate = Some(MateFinding::BothSides { n });
+                    return;
+                }
+                Ok(MatingSide::Neither | MatingSide::Unknown) | Err(_) => {}
+            }
+        }
+        if let Ok(report) = solve_side(&fen, self.side.color, n, budget) {
+            self.mate = Some(MateFinding::Solved(report));
+        }
+    }
+
     /// Whether the decoder changed any square.
     pub fn repaired(&self) -> bool {
         !self.repairs.is_empty()
@@ -175,11 +224,13 @@ impl ReadPosition {
     /// Take the side to move a source declared (the bold move number under the diagram, say),
     /// with its move number, and rebuild the FEN. The position still wins: when it proves the
     /// other side, that side is kept, the conflict is flagged and the move number, which belongs
-    /// to the other side's move, is dropped.
+    /// to the other side's move, is dropped. What the solver found for the side before is
+    /// dropped too ([`ReadPosition::check_mate`] runs after the side is declared).
     pub fn declare_side(&mut self, color: Color, source: SideSource, fullmove: u32) {
         self.side = infer_side_to_move(&self.placement, Some((color, source)));
         let fullmove = if self.side.conflicting { 1 } else { fullmove };
         self.fen = compose_position(self.placement, self.side.color, None, fullmove).fen();
+        self.mate = None;
     }
 
     /// The lichess analysis URL of the position, only when it is legal with the side to move it
@@ -423,7 +474,7 @@ fn finish(
 ) -> ReadPosition {
     let side = infer_side_to_move(&placement, None);
     let fen = compose_position(placement, side.color, None, 1).fen();
-    ReadPosition { placement, fen, legality, side, orientation, min_confidence, uncertain, repairs, accepted }
+    ReadPosition { placement, fen, legality, side, orientation, min_confidence, uncertain, repairs, accepted, mate: None }
 }
 
 /// The candidate's board as the model reads it: [`BOARD_SIZE`] pixels a side, upright as
