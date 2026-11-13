@@ -288,7 +288,7 @@ pub struct PgnExport {
 /// origin's tags; why it gets none when its position was not read, is not legal or was made
 /// legal by a guess.
 pub(crate) fn position_game_of(doc: &ChessDoc, book: &PgnBook, page: u32, d: &super::DiagramBlock) -> Result<GameScore, SkippedPosition> {
-    let at = DiagramAt { page, diagram: d.number };
+    let at = DiagramAt::on(page, d.number);
     // The position it shows: the PGN's, the one the text settled, the one read.
     let shown = d.shown().map(|s| (s.fen, s.confirmed));
     match (&d.reading, shown) {

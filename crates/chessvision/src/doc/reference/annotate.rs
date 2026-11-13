@@ -257,7 +257,7 @@ pub fn annotated_pgn(doc: &ChessDoc, index: &ReferenceIndex, book: &PgnBook, pos
             let Block::Diagram(d) = block else { continue };
             let wanted = match positions {
                 PgnPositions::All => true,
-                PgnPositions::Unused => !shown.contains_key(&(page.index, d.number)),
+                PgnPositions::Unused => !shown.contains_key(&DiagramAt::on(page.index, d.number)),
                 PgnPositions::None => false,
             };
             if wanted {
