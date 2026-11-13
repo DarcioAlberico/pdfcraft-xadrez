@@ -687,6 +687,7 @@ fn chess_document_links_the_moves_to_the_books_pgn() {
     assert_eq!(r["linked"], json!({ "confirmed": 4, "recovered": 2, "conflict": 0, "absent": 0 }), "{r:#}");
     assert_eq!(r["pages"], json!([{ "page": 1, "game": 1, "name": "Chapter 1 · Ruy" }]));
     assert_eq!((r["warnings"].as_array().map(Vec::len), r["stopped_games"].as_array().map(Vec::len)), (Some(0), Some(0)));
+    assert_eq!(r["walked_again"], false, "no diagram the PGN confirmed: nothing walked again");
     let inlines = read["document"]["pages"][0]["blocks"][0]["inlines"].as_array().unwrap();
     let moves: Vec<&Value> = inlines.iter().filter(|i| i["type"] == "move").collect();
     assert_eq!(moves.len(), 6, "{inlines:#?}");
@@ -755,6 +756,14 @@ fn the_books_pgn_confirms_a_diagram_and_suggests_a_near_one_without_writing_a_co
     // The reading stays what was printed; the diagram shows the PGN's position (plan A9-L6b).
     assert!(diagram["reference"]["fen"].as_str().is_some_and(|f| f.ends_with(" w KQkq - 0 1")), "{diagram:#}");
     assert!(diagram["reference"]["before"].is_null() && diagram["reading"]["side_source"].is_string(), "{diagram:#}");
+    // The reading only assumed the side the PGN gives: the moves were walked again from the PGN's
+    // position (plan A9-L8, A2-11), and the reply says so.
+    assert_eq!(
+        (diagram["reading"]["side_source"].as_str(), &read["reference"]["walked_again"]),
+        (Some("assumed"), &json!(true)),
+        "{:#}",
+        read["reference"]
+    );
     let states = |a: &mut Automation, doc: u64, pgn: Option<&str>| {
         let mut args = json!({ "doc": doc, "models_dir": "models" });
         if let Some(pgn) = pgn {
