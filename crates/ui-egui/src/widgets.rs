@@ -31,23 +31,101 @@ pub fn modal(ctx: &egui::Context, id: impl std::hash::Hash + std::fmt::Debug) ->
     egui::Modal::new(egui::Id::new(id)).frame(dialog_frame(ctx))
 }
 
-/// Show [`modal`], outline its controls, and remember the card rect for layout checks.
+/// Show [`modal`], outline its controls, and remember the card rect for layout checks. A dialog
+/// to assistive technology, unnamed: [`show_titled_modal`] names it.
 pub fn show_modal<R>(ctx: &egui::Context, id: &str, content: impl FnOnce(&mut egui::Ui) -> R) -> egui::ModalResponse<R> {
+    show_dialog(ctx, id, None, content)
+}
+
+/// [`show_modal`] named `title`, the heading its content shows (plan A9-I11a, WCAG 4.1.2).
+pub fn show_titled_modal<R>(ctx: &egui::Context, id: &str, title: &str, content: impl FnOnce(&mut egui::Ui) -> R) -> egui::ModalResponse<R> {
+    show_dialog(ctx, id, Some(title), content)
+}
+
+/// A modal dialog (plans A9-I15 and I11a, finding A6-10): to assistive technology its node is a
+/// Dialog, modal (the rest of the window is out of reach), named `title`. On the pass it opens,
+/// the control its content passes to [`dialog_focus`] takes the keyboard; Tab stays inside it
+/// (egui's modal layer) and Esc closes it (`ModalResponse::should_close`); once it is no longer
+/// shown, [`settle_dialogs`] gives the keyboard back to the control that had it when it opened.
+fn show_dialog<R>(ctx: &egui::Context, id: &str, title: Option<&str>, content: impl FnOnce(&mut egui::Ui) -> R) -> egui::ModalResponse<R> {
     let stored = egui::Id::new(id);
+    let opening = open_dialog(ctx, stored);
     modal(ctx, id).show(ctx, |ui| {
-        // A dialog to assistive technology, which takes the rest of the window out of reach
-        // (plan A9-I15; its name, focus and Tab trap are step I11's).
         ui.ctx().accesskit_node_builder(ui.unique_id(), |node| {
             node.set_role(egui::accesskit::Role::Dialog);
             node.set_modal();
+            if let Some(title) = title {
+                node.set_label(title);
+            }
         });
         begin_dialog(ui);
+        ui.ctx().data_mut(|d| d.insert_temp(focus_pending(), opening));
         let inner = content(ui);
+        ui.ctx().data_mut(|d| d.remove::<bool>(focus_pending()));
         // The frame's stroke sits outside this content rect; the stored card is the fill.
         let card = ui.min_rect().expand2(egui::vec2(f32::from(DIALOG_PAD_X), f32::from(DIALOG_PAD_Y)));
         ui.ctx().data_mut(|d| d.insert_temp(stored.with("card"), card));
         inner
     })
+}
+
+/// The dialogs shown: each with the pass it was last shown in and the control that had the
+/// keyboard when it opened.
+#[derive(Clone, Default)]
+struct OpenDialogs(Vec<(egui::Id, u64, Option<egui::Id>)>);
+
+fn open_dialogs() -> egui::Id {
+    egui::Id::new("widgets-open-dialogs")
+}
+
+/// Where [`show_dialog`] says, while its content is drawn, that the dialog opened this pass.
+fn focus_pending() -> egui::Id {
+    egui::Id::new("widgets-dialog-focus-pending")
+}
+
+/// Note dialog `id` as shown in this pass. Whether it opens in it (it was not shown in the pass
+/// before).
+fn open_dialog(ctx: &egui::Context, id: egui::Id) -> bool {
+    let pass = ctx.cumulative_pass_nr();
+    let had = ctx.memory(|m| m.focused());
+    ctx.data_mut(|d| {
+        let open = d.get_temp_mut_or_default::<OpenDialogs>(open_dialogs());
+        match open.0.iter_mut().find(|(shown, ..)| *shown == id) {
+            Some(entry) => {
+                entry.1 = pass;
+                false
+            }
+            None => {
+                open.0.push((id, pass, had));
+                true
+            }
+        }
+    })
+}
+
+/// The keyboard goes to `response`'s control on the pass its dialog opens: the dialog's first
+/// control that destroys nothing (plan A9-I11a, §2.8.1).
+pub fn dialog_focus(response: &Response) {
+    if response.ctx.data(|d| d.get_temp::<bool>(focus_pending())).unwrap_or(false) {
+        response.request_focus();
+        response.ctx.data_mut(|d| d.insert_temp(focus_pending(), false));
+    }
+}
+
+/// After this pass's dialogs (once per pass, in the main window): each dialog not shown in it has
+/// closed, and the control that had the keyboard when it opened takes it back (plan A9-I11a,
+/// WCAG 2.4.3).
+pub fn settle_dialogs(ctx: &egui::Context) {
+    let pass = ctx.cumulative_pass_nr();
+    let closed: Vec<egui::Id> = ctx.data_mut(|d| {
+        let open = d.get_temp_mut_or_default::<OpenDialogs>(open_dialogs());
+        let (gone, shown): (Vec<_>, Vec<_>) = open.0.drain(..).partition(|(_, last, _)| *last < pass);
+        open.0 = shown;
+        gone.into_iter().filter_map(|(_, _, had)| had).collect()
+    });
+    for had in closed {
+        ctx.memory_mut(|m| m.request_focus(had));
+    }
 }
 
 /// Outlined controls at a shared 30-point height, with a focus stroke and 4-point corners.
@@ -338,13 +416,33 @@ pub fn menu_item(ui: &mut egui::Ui, label: &str, shortcut: &str) -> Response {
 
 /// A menu's item (`button`, greyed out unless `enabled`). Clicked, it closes its menu, whether the
 /// click came from the pointer or from assistive technology: egui's menus close by themselves
-/// only on a pointer click (plan A9-I15, finding A6-18).
+/// only on a pointer click (plan A9-I15, finding A6-18). To assistive technology it is a menu
+/// item, in a menu (plan A9-I11a, finding R5-08).
 pub fn menu_entry(ui: &mut egui::Ui, enabled: bool, button: egui::Button<'_>) -> Response {
     let response = ui.add_enabled(enabled, button);
+    menu_roles(ui, &response, egui::accesskit::Role::MenuItem);
     if response.clicked() {
         ui.close();
     }
     response
+}
+
+/// A menu's choice of one among several (`selected`: the one chosen), drawn as [`radio`]: to
+/// assistive technology a radio menu item, checked when chosen. Clicked, it closes its menu as
+/// [`menu_entry`] does.
+pub fn menu_radio(ui: &mut egui::Ui, selected: bool, label: &str) -> Response {
+    let response = ui.add(radio(selected, label));
+    menu_roles(ui, &response, egui::accesskit::Role::MenuItemRadio);
+    if response.clicked() {
+        ui.close();
+    }
+    response
+}
+
+/// `item` is a menu item of `role` and `ui`, which holds it, is the menu.
+fn menu_roles(ui: &egui::Ui, item: &Response, role: egui::accesskit::Role) {
+    ui.ctx().accesskit_node_builder(ui.unique_id(), |node| node.set_role(egui::accesskit::Role::Menu));
+    ui.ctx().accesskit_node_builder(item.id, |node| node.set_role(role));
 }
 
 /// Corner radius of a checkbox's box. With the widgets' radius (`Tokens::radius`, 6) egui's 14 px
@@ -446,10 +544,10 @@ fn toggle<'a>(widget: impl egui::Widget + 'a, radius: Option<u8>, word: Option<S
             if !t.dark() && w.inactive.bg_fill == t.field {
                 w.inactive.bg_fill = t.hover;
             }
-            if w.inactive.bg_stroke.is_empty() {
-                w.inactive.bg_stroke = Stroke::new(1.0, t.border);
-            }
-            if w.hovered.bg_stroke.is_empty() {
+            // The box or the circle is the control: its edge reads at 3:1 (plan A9-I11a, WCAG
+            // 1.4.11), in a dialog too, whose fields keep the lighter border.
+            w.inactive.bg_stroke = Stroke::new(1.0, t.border_strong);
+            if w.hovered.bg_stroke.is_empty() || w.hovered.bg_stroke.color == t.border {
                 w.hovered.bg_stroke = Stroke::new(1.0, t.text_muted);
             }
             ui.add(widget)

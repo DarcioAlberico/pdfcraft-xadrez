@@ -2938,9 +2938,10 @@ pub(crate) fn cut_prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
     let more = cut.len() > MAX_CUT_NAMED;
     let t = Tokens::get(ctx);
     let mut answer = None;
-    let shown = crate::widgets::show_modal(ctx, "chess-cut-prompt", |ui| {
+    let title = crate::i18n::fmt(tl!("Games read only up to an impossible move: {n}"), &[("n", &n)]);
+    let shown = crate::widgets::show_titled_modal(ctx, "chess-cut-prompt", &title, |ui| {
         ui.set_max_width(440.0);
-        ui.heading(crate::i18n::fmt(tl!("Games read only up to an impossible move: {n}"), &[("n", &n)]));
+        ui.heading(&title);
         ui.add_space(6.0);
         ui.label(tl!("The rest of each is written as a comment at the move where its reading stopped."));
         for line in &named {
@@ -2951,7 +2952,9 @@ pub(crate) fn cut_prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
         }
         ui.add_space(10.0);
         ui.horizontal_wrapped(|ui| {
-            if crate::widgets::pill_button(ui, tl!("Save them as they are"), true).clicked() {
+            let save = crate::widgets::pill_button(ui, tl!("Save them as they are"), true);
+            crate::widgets::dialog_focus(&save);
+            if save.clicked() {
                 answer = Some(true);
             }
             if crate::widgets::pill_button(ui, tl!("Cancel"), false).clicked() {

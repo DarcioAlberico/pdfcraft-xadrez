@@ -945,6 +945,8 @@ fn page_box(ui: &mut egui::Ui, t: &Tokens, view: &mut DocView, labels: &[String]
         .show(ui, |ui| ui.add(edit))
         .inner
         .on_hover_text(tip);
+    // Named for assistive technology: the box shows only the page it is on (plan A9-I11a, A6-11).
+    ui.ctx().accesskit_node_builder(r.id, |node| node.set_label(tl!("Page number")));
     if r.lost_focus() {
         if ui.input(|i| i.key_pressed(egui::Key::Enter)) {
             // A page label first (logical page numbers, as Acrobat), then a number.

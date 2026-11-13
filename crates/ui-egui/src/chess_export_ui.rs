@@ -52,9 +52,8 @@ pub(crate) fn items(ui: &mut egui::Ui, positions: PgnPositions, source: Option<P
     let mut action = None;
     ui.label(egui::RichText::new(tl!("Export chess book")).strong());
     for f in MENU {
-        if ui.button(label(f)).clicked() {
+        if crate::widgets::menu_entry(ui, true, egui::Button::new(label(f))).clicked() {
             action = Some(TextAction::Export(f));
-            ui.close();
         }
     }
     ui.separator();
@@ -62,9 +61,8 @@ pub(crate) fn items(ui: &mut egui::Ui, positions: PgnPositions, source: Option<P
         [(PgnPositions::Unused, tl!("Only those not in a game")), (PgnPositions::All, tl!("All of them")), (PgnPositions::None, tl!("None"))];
     ui.menu_button(tl!("Diagrams as PGN games"), |ui| {
         for (p, name) in choices {
-            if ui.add(crate::widgets::radio(positions == p, name)).clicked() {
+            if crate::widgets::menu_radio(ui, positions == p, name).clicked() {
                 action = Some(TextAction::PgnPositions(p));
-                ui.close();
             }
         }
     })
@@ -76,9 +74,8 @@ pub(crate) fn items(ui: &mut egui::Ui, positions: PgnPositions, source: Option<P
         let choices = [(PgnSource::Book, tl!("The book's PGN, with the book's text")), (PgnSource::Text, tl!("The text read from the PDF"))];
         ui.menu_button(tl!("PGN games from"), |ui| {
             for (s, name) in choices {
-                if ui.add(crate::widgets::radio(source == s, name)).clicked() {
+                if crate::widgets::menu_radio(ui, source == s, name).clicked() {
                     action = Some(TextAction::PgnSource(s));
-                    ui.close();
                 }
             }
         })
@@ -179,14 +176,17 @@ pub(crate) fn prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
     if let Some(p) = app.chess.export_prompt.as_ref() {
         let n = p.to_review;
         let mut answer = None;
-        let shown = crate::widgets::show_modal(ctx, "chess-export-pending", |ui| {
+        let title = crate::i18n::fmt(tl!("Diagrams not checked yet: {n}"), &[("n", &n.to_string())]);
+        let shown = crate::widgets::show_titled_modal(ctx, "chess-export-pending", &title, |ui| {
             ui.set_max_width(420.0);
-            ui.heading(crate::i18n::fmt(tl!("Diagrams not checked yet: {n}"), &[("n", &n.to_string())]));
+            ui.heading(&title);
             ui.add_space(6.0);
             ui.label(tl!("They are exported as they were read, and a reading may be wrong. Review first opens the first of them."));
             ui.add_space(10.0);
             ui.horizontal(|ui| {
-                if crate::widgets::pill_button(ui, tl!("Review first"), true).clicked() {
+                let review = crate::widgets::pill_button(ui, tl!("Review first"), true);
+                crate::widgets::dialog_focus(&review);
+                if review.clicked() {
                     answer = Some(PendingAnswer::ReviewFirst);
                 }
                 if crate::widgets::pill_button(ui, tl!("Export anyway"), false).clicked() {
@@ -204,7 +204,7 @@ pub(crate) fn prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
     }
     let Some(d) = app.chess.export_done.as_ref() else { return };
     let (mut reveal, mut close) = (false, false);
-    let shown = crate::widgets::show_modal(ctx, "chess-export-done", |ui| {
+    let shown = crate::widgets::show_titled_modal(ctx, "chess-export-done", &d.said, |ui| {
         ui.set_max_width(460.0);
         ui.label(egui::RichText::new(&d.said).strong());
         if !d.notes.is_empty() {
@@ -217,10 +217,14 @@ pub(crate) fn prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
         }
         ui.add_space(10.0);
         ui.horizontal(|ui| {
-            if d.path.is_some() && crate::widgets::pill_button(ui, tl!("Open folder"), true).clicked() {
-                reveal = true;
+            if d.path.is_some() {
+                let open = crate::widgets::pill_button(ui, tl!("Open folder"), true);
+                crate::widgets::dialog_focus(&open);
+                reveal = open.clicked();
             }
-            if crate::widgets::pill_button(ui, tl!("Close"), d.path.is_none()).clicked() {
+            let done = crate::widgets::pill_button(ui, tl!("Close"), d.path.is_none());
+            crate::widgets::dialog_focus(&done);
+            if done.clicked() {
                 close = true;
             }
         });

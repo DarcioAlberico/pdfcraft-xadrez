@@ -171,9 +171,10 @@ pub(crate) fn prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
     let label =
         app.session.get(p.draft.target.doc).and_then(|d| d.info.pages.get(page)).map_or_else(|| (page + 1).to_string(), |pg| pg.label.clone());
     let mut answer = None;
-    let shown = crate::widgets::show_modal(ctx, "chess-draft-prompt", |ui| {
+    let title = crate::i18n::fmt(tl!("Keep the correction of diagram {n} (page {p})?"), &[("n", &n.to_string()), ("p", &label)]);
+    let shown = crate::widgets::show_titled_modal(ctx, "chess-draft-prompt", &title, |ui| {
         ui.set_max_width(420.0);
-        ui.heading(crate::i18n::fmt(tl!("Keep the correction of diagram {n} (page {p})?"), &[("n", &n.to_string()), ("p", &label)]));
+        ui.heading(&title);
         ui.add_space(6.0);
         let what = if squares > 0 {
             crate::i18n::fmt(tl!("Squares changed: {n}. Not confirmed yet."), &[("n", &squares.to_string())])
@@ -183,7 +184,9 @@ pub(crate) fn prompt(app: &mut PdfCraftApp, ctx: &egui::Context) {
         ui.label(what);
         ui.add_space(10.0);
         ui.horizontal(|ui| {
-            if crate::widgets::pill_button(ui, tl!("Confirm correction"), true).clicked() {
+            let confirm = crate::widgets::pill_button(ui, tl!("Confirm correction"), true);
+            crate::widgets::dialog_focus(&confirm);
+            if confirm.clicked() {
                 answer = Some(DraftAnswer::Confirm);
             }
             if crate::widgets::pill_button(ui, tl!("Discard changes"), false).clicked() {

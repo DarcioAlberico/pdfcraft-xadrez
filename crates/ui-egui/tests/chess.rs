@@ -4047,6 +4047,100 @@ fn confirming_keeps_the_correction_and_it_comes_back_when_reopened() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Plan A9-I11a (A6-10, §2.8.1, WCAG 4.1.2 and 2.4.3): a chess question is a modal dialog named
+/// by its title. It opens with the keyboard on its first control that changes nothing (Review
+/// first, not Export anyway), Esc closes it, and the keyboard goes back to the control that had it.
+#[test]
+fn a_chess_dialog_is_named_takes_the_keyboard_and_gives_it_back() {
+    use egui::accesskit::Role;
+    let dir = corrections_dir("dialog-focus");
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), Some(dir.join("store")));
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    let to_review = h.state().chess.results.as_ref().map_or(0, |r| r.review_queue().len());
+    assert!(to_review > 0, "the drawn board is to review");
+    h.get_by_label("Export book…").focus();
+    h.run_steps(2);
+    assert!(h.get_by_label("Export book…").is_focused());
+    h.state_mut().save_override = Some(dir.join("book.pgn").to_string_lossy().into_owned());
+    h.state_mut().export_chess_dialog(pdfcraft_engine::chess::export::ChessFormat::Pgn);
+    h.run_steps(3);
+    let title = format!("Diagrams not checked yet: {to_review}");
+    let dialog = h.get_by(|n| n.role() == Role::Dialog);
+    assert_eq!(dialog.accesskit_node().label().as_deref(), Some(title.as_str()), "named by its title");
+    assert!(dialog.accesskit_node().data().is_modal());
+    assert!(h.get_by_label("Review first").is_focused(), "the keyboard on the first control that writes nothing");
+    // With PDFCRAFT_CHESS_SHOTS set, a picture of the window with the question, at 1400 x 1000.
+    if let Ok(shots) = std::env::var("PDFCRAFT_CHESS_SHOTS") {
+        h.render().unwrap().save(std::path::Path::new(&shots).join("i11a-dialog.png")).unwrap();
+    }
+    h.key_press(egui::Key::Escape);
+    h.run_steps(3);
+    assert!(h.query_by(|n| n.role() == Role::Dialog).is_none(), "Esc closes it");
+    assert!(!dir.join("book.pgn").exists(), "nothing written");
+    assert!(h.get_by_label("Export book…").is_focused(), "the keyboard is back where it was");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Plan A9-I11a (R5-08): the panel's menus are menus to assistive technology, their entries menu
+/// items, and a choice of one among several a radio menu item, checked when chosen.
+#[test]
+fn the_chess_menus_are_menus_of_menu_items() {
+    use egui::accesskit::Role;
+    let mut h = harness();
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    h.get_by_label("Where to detect").click();
+    h.run_steps(2);
+    assert!(h.query_by(|n| n.role() == Role::Menu).is_some(), "the popup is a menu");
+    for item in ["On this page", "In the whole book (1 page)"] {
+        h.get_by_role_and_label(Role::MenuItem, item);
+    }
+    h.get_by_role_and_label(Role::MenuItem, "On this page").click();
+    h.run_steps(2);
+    assert!(h.query_by(|n| n.role() == Role::Menu).is_none(), "an item closes its menu");
+    h.get_by_label("Export book…").click();
+    h.run_steps(2);
+    assert_eq!(h.get_by_label("PGN — games").accesskit_node().role(), Role::MenuItem);
+    h.get_by_label_contains("Diagrams as PGN games").click();
+    h.run_steps(2);
+    let only = h.get_by_label("Only those not in a game");
+    assert_eq!(only.accesskit_node().role(), Role::MenuItemRadio);
+    assert_eq!(only.accesskit_node().toggled(), Some(egui::accesskit::Toggled::True), "the default, chosen");
+}
+
+/// Plan A9-I11a (A6-11, WCAG 4.1.2): every control that takes the keyboard in the window, with
+/// the Chess panel open on the Diagrams tab and then on the Text tab, has a name, the page box of
+/// the document bar among them; the editor's move number field has its label's.
+#[test]
+fn every_focusable_control_has_a_name() {
+    let mut h = chapter_harness();
+    // The Chess panel (from its header's left edge) and the document bar under the tabs: the rest
+    // of the window is not the chess panel's.
+    let panel_left = h.get_by_label("Detect diagrams").rect().min.x - 16.0;
+    let bar = h.get_by(|n| n.label().as_deref() == Some("Page number")).rect().y_range();
+    let nameless = |h: &Harness<'static, PdfCraftApp>| -> Vec<String> {
+        // A label's text is its name (a move of the Text tab).
+        let named = |n: &egui_kittest::kittest::AccessKitNode<'_>| {
+            n.label().is_some_and(|l| !l.trim().is_empty())
+                || (n.role() == egui::accesskit::Role::Label && n.value().is_some_and(|v| !v.trim().is_empty()))
+        };
+        h.query_all_by(move |n| n.data().supports_action(egui::accesskit::Action::Focus) && !named(n))
+            .filter(|n| {
+                let r = n.rect();
+                r.min.x >= panel_left || (r.min.y >= bar.min - 8.0 && r.max.y <= bar.max + 8.0)
+            })
+            .map(|n| format!("{:?} {:?} {:?}", n.accesskit_node().role(), n.accesskit_node().value(), n.rect()))
+            .collect()
+    };
+    assert_eq!(nameless(&h), Vec::<String>::new(), "the Diagrams tab");
+    h.get_by_label("Text").click();
+    h.run_steps(4);
+    assert_eq!(nameless(&h), Vec::<String>::new(), "the Text tab");
+    h.get_by(|n| n.role() == egui::accesskit::Role::ComboBox && n.label().as_deref() == Some("Book origin"));
+}
+
 /// Plan A8, P6: docked, the board panel is named by its workspace tab alone; who moves is a
 /// segmented control whose choices are radio buttons; the chess panel's tabs switch as before.
 #[test]

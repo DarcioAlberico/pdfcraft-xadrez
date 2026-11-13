@@ -703,14 +703,17 @@ pub(crate) fn engine_assistant(app: &mut crate::PdfCraftApp, ctx: &egui::Context
         return;
     }
     let (mut choose, mut site, mut later) = (false, false, false);
-    let shown = crate::widgets::show_modal(ctx, "chess-engine-assistant", |ui| {
+    let title = tl!("No analysis engine installed");
+    let shown = crate::widgets::show_titled_modal(ctx, "chess-engine-assistant", title, |ui| {
         ui.set_max_width(440.0);
-        ui.heading(tl!("No analysis engine installed"));
+        ui.heading(title);
         ui.add_space(6.0);
         ui.label(engine_help());
         ui.add_space(10.0);
         ui.horizontal_wrapped(|ui| {
-            choose = crate::widgets::pill_button(ui, tl!("Choose engine…"), true).clicked();
+            let pick = crate::widgets::pill_button(ui, tl!("Choose engine…"), true);
+            crate::widgets::dialog_focus(&pick);
+            choose = pick.clicked();
             site = crate::widgets::pill_button(ui, tl!("Open stockfishchess.org"), false).on_hover_text(STOCKFISH_URL).clicked();
             later = crate::widgets::pill_button(ui, tl!("Not now"), false).clicked();
         });
