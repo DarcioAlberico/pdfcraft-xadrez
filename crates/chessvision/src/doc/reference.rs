@@ -18,9 +18,9 @@
 //!
 //! **Diagrams (R3).** [`link`] also keeps on each diagram the position of the PGN it shows
 //! ([`DiagramBlock::reference`]). A diagram whose pieces are those of the move it was aligned
-//! with is [`DiagramKind::Confirmed`]: its reading takes the PGN's side to move, castling and
-//! move number and loses the side assumed, and the reading as read is kept beside it, so linking
-//! again starts from it. A diagram one or two squares from a position linked on its page or the
+//! with is [`DiagramKind::Confirmed`]: it shows the PGN's position, side to move, castling and
+//! move number ([`DiagramBlock::shown`]), and its reading stays what was printed (plan A9-L6b), so
+//! linking again starts from it. A diagram one or two squares from a position linked on its page or the
 //! pages beside it is [`DiagramKind::Suggested`]: the squares that differ are listed and the
 //! reading is left alone, for a person to apply. A position a person set is never changed.
 //!
@@ -469,8 +469,8 @@ pub struct Linked {
 /// takes its side to move, castling and number, so the moves after it are walked again from the
 /// document as read ([`super::walk`], with the book's rules), with those diagrams as confirmed,
 /// and aligned once more: a move the reading's assumed side could not play is played, and the
-/// games and their PGN start where the book's do. A confirmed diagram's reading is updated as
-/// before (what was printed apart from what the PGN confirmed is step L6b's).
+/// games and their PGN start where the book's do. A confirmed diagram's reading stays what was
+/// printed: the position confirmed is its link's (plan A9-L6b).
 ///
 /// The links of an earlier call are replaced, and the moves are walked again from the diagrams as
 /// read before linking anew, so linking twice is linking once.
@@ -489,11 +489,7 @@ pub fn link(doc: &mut ChessDoc, index: &ReferenceIndex) -> Linked {
     let mut alignment = align(doc, index);
     link_moves(doc, index, &alignment);
     let diagrams = link_diagrams(doc, index, &alignment);
-    let walked_again = doc
-        .pages
-        .iter()
-        .flat_map(|p| &p.blocks)
-        .any(|b| matches!(b, Block::Diagram(d) if d.reference.as_ref().is_some_and(|r| r.kind == DiagramKind::Confirmed && r.before.is_some())));
+    let walked_again = doc.pages.iter().flat_map(|p| &p.blocks).any(|b| matches!(b, Block::Diagram(d) if moves_position(d)));
     if walked_again {
         walk_again(doc);
         alignment = align(doc, index);
@@ -544,14 +540,29 @@ fn link_moves(doc: &mut ChessDoc, index: &ReferenceIndex, alignment: &Alignment)
     }
 }
 
-/// Put back the diagram as it was before [`link`] confirmed it, and drop its link. Whether its
-/// reading was put back.
+/// Drop the diagram's link. Whether the moves must be walked again: its confirmation gave another
+/// position than the reading's, or, in a document an earlier build linked, it rewrote the reading,
+/// which is put back.
 fn unlink_diagram(d: &mut DiagramBlock) -> bool {
-    let Some(before) = d.reference.take().and_then(|r| r.before) else { return false };
-    d.reading = Some(before.reading);
-    d.lichess_url = before.lichess_url;
-    d.review = before.review;
-    true
+    let changed = moves_position(d);
+    let Some(link) = d.reference.take() else { return false };
+    match link.before {
+        Some(before) => {
+            d.reading = Some(before.reading);
+            d.lichess_url = before.lichess_url;
+            d.review = before.review;
+            true
+        }
+        None => changed,
+    }
+}
+
+/// Whether the position the book's PGN confirmed for diagram `d` ([`DiagramBlock::confirmed`]) is
+/// not the reading's, side to move, castling or numbers, or the reading only assumed its side: the
+/// moves after it are then walked from another position than the reading's.
+fn moves_position(d: &DiagramBlock) -> bool {
+    let (Some(fen), Some(reading)) = (d.confirmed(), d.reading.as_ref()) else { return false };
+    reading.side_assumed() || Fen::parse(fen).ok() != Fen::parse(&reading.fen).ok()
 }
 
 /// Keep on `doc`'s diagrams the positions of `index` they show ([`DiagramKind::Confirmed`]) or
@@ -583,30 +594,19 @@ fn link_diagrams(doc: &mut ChessDoc, index: &ReferenceIndex, alignment: &Alignme
     counts
 }
 
-/// Confirm diagram `d` by the reference's move `at`, whose pieces it has: the reading takes the
-/// move's side to move, castling and number, unless a person set it. Not confirmed when its side
-/// to move was read, not assumed, and is the other one. Whether it was confirmed.
+/// Confirm diagram `d` by the reference's move `at`, whose pieces it has: the diagram shows the
+/// move's position, its side to move, castling and number ([`DiagramBlock::shown`]), unless a
+/// person set it; the reading stays what was printed (plan A9-L6b). Not confirmed when its side to
+/// move was read, not assumed, and is the other one. Whether it was confirmed.
 fn confirm(d: &mut DiagramBlock, index: &ReferenceIndex, at: RefNode) -> bool {
     let (Some(fen), Some(reading)) = (index.fen(at), d.reading.as_ref()) else { return false };
     let Ok(read) = Fen::parse(&reading.fen) else { return false };
-    if !read.book_key().matches(fen.book_key(), reading.side_assumed) {
+    if !read.book_key().matches(fen.book_key(), reading.side_assumed()) {
         return false;
     }
-    let mut before = None;
-    if d.source != DiagramSource::User && (read != fen || reading.side_assumed) {
-        before = Some(ReadBefore { reading: reading.clone(), lichess_url: d.lichess_url.clone(), review: d.review.clone() });
-        if let Some(r) = d.reading.as_mut() {
-            r.fen = fen.to_string();
-            r.legal = true;
-            r.side_assumed = false;
-        }
-        d.review.retain(|f| !matches!(f, ReviewFlag::SideAssumed | ReviewFlag::Illegal { .. } | ReviewFlag::SideConflict));
-        let black_view = d.lichess_url.as_deref().is_some_and(|u| u.ends_with("?color=black"));
-        let orientation = if black_view { Color::Black } else { Color::White };
-        d.lichess_url = Some(pdfcraft_chess::lichess::analysis_url(fen.position(), orientation));
-    }
     let fen = fen.to_string();
-    d.reference = Some(Box::new(DiagramReference { kind: DiagramKind::Confirmed, game: at.game, node: at.node, fen, changes: Vec::new(), before }));
+    d.reference =
+        Some(Box::new(DiagramReference { kind: DiagramKind::Confirmed, game: at.game, node: at.node, fen, changes: Vec::new(), before: None }));
     true
 }
 
@@ -662,7 +662,7 @@ impl NearbyPositions {
         let (_, at, squares) = best?;
         let fen = index.fen(at)?;
         // The pieces differ (that is the suggestion); a side read, not assumed, is the same.
-        if !reading.side_assumed && read_fen.book_key().side != fen.book_key().side {
+        if !reading.side_assumed() && read_fen.book_key().side != fen.book_key().side {
             return None;
         }
         let changes = read

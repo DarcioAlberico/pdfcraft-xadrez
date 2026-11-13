@@ -166,7 +166,8 @@ pub fn to_flow(doc: &ChessDoc, o: &OfficeOptions<'_>, notes: &mut Vec<String>) -
                 DocBlock::Paragraph { inlines, .. } => blocks.push(FlowBlock::Para(runs(inlines, o))),
                 DocBlock::Diagram(d) => {
                     let number = d.number.saturating_add(1);
-                    let Some(reading) = &d.reading else {
+                    // The position it shows, all told (plan A9-L6b).
+                    let Some(shown) = d.shown() else {
                         blocks.push(FlowBlock::Para(vec![Run::text(describe::not_read(number, &label, lang))]));
                         continue;
                     };
@@ -180,20 +181,20 @@ pub fn to_flow(doc: &ChessDoc, o: &OfficeOptions<'_>, notes: &mut Vec<String>) -
                         ..PgnOrigin::default()
                     };
                     let mut caption =
-                        vec![Run::text(format!("{} · ", origin.comment())), Run { no_proof: true, ..Run::text(format!("FEN {}", reading.fen)) }];
+                        vec![Run::text(format!("{} · ", origin.comment())), Run { no_proof: true, ..Run::text(format!("FEN {}", shown.fen)) }];
                     if o.links
-                        && let Some(url) = &d.lichess_url
+                        && let Some(url) = d.link()
                     {
                         caption.push(Run::text(" · "));
-                        caption.push(Run { link: Some(url.clone()), ..Run::text(o.link_text) });
+                        caption.push(Run { link: Some(url), ..Run::text(o.link_text) });
                     }
-                    let drawn_board = pdfcraft_chess::fen::parse(&reading.fen).map_err(|e| e.to_string()).and_then(|f| {
+                    let drawn_board = pdfcraft_chess::fen::parse(shown.fen).map_err(|e| e.to_string()).and_then(|f| {
                         let png = diagram_png(&f.placement, o.pieces, &o.style, o.diagram_px)?;
                         Ok((png, f.placement))
                     });
                     match drawn_board {
                         Ok((png, placement)) => {
-                            let alt = describe::describe(number, &label, &reading.fen, lang);
+                            let alt = describe::describe_side(number, &label, shown.fen, shown.side_known, lang);
                             // Word draws the SVG at any size; the PNG stays as its fallback.
                             let svg = Some(to_svg(&board(&placement, o.pieces, &o.style), &alt));
                             blocks.push(FlowBlock::Figure(Figure { png, svg, side_pt: DIAGRAM_PT, alt, caption }));

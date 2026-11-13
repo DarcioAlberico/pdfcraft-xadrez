@@ -263,8 +263,8 @@ impl Session {
                     for page in &read.doc.pages {
                         for block in &page.blocks {
                             let Block::Diagram(d) = block else { continue };
-                            let Some(reading) = &d.reading else { continue };
-                            let png = pdfcraft_chess::fen::parse(&reading.fen)
+                            let Some(shown) = d.shown() else { continue };
+                            let png = pdfcraft_chess::fen::parse(shown.fen)
                                 .map_err(|e| e.to_string())
                                 .and_then(|f| super::office::diagram_png(&f.placement, &o.pieces, &o.style, o.diagram_px));
                             match png {

@@ -300,3 +300,40 @@ fn a_diagram_is_described_in_the_language_of_the_books_text() {
     let old = ChessDoc::from_json(&json).unwrap();
     assert_eq!(old.pages[0].text_language(), Lang::En);
 }
+
+/// Plan A9-L6b (A1-14, R5-05): a diagram is described with what is known of its side to move.
+/// A "position after" caption settles it (`Position after: 5.dxc5`: Black to move), and the
+/// description, the FEN and the lichess link say so; a side only assumed is said not given, never
+/// `White to move`.
+#[test]
+fn a_diagram_says_the_side_the_text_settled_and_not_one_assumed() {
+    let pieces = PieceSet::geometric();
+    // Read with White to move, assumed; the caption names the move that led to it.
+    let read = "rnbqkbnr/pp3ppp/8/2Pp4/8/2N5/PP2PPPP/R1BQKBNR w KQkq - 0 1";
+    let text = page_text(vec![line(230.0, "Position after: 5.dxc5"), line(250.0, "5...Bxc5 6.Nxd5")]);
+    let doc = build_page(&input(0, &text, &[reading(0, 60.0, read, true, true)], &[], &[]));
+    let Block::Diagram(d) = &doc.pages[0].blocks[0] else { panic!("a diagram first") };
+    assert_eq!(d.reading.as_ref().map(|r| r.fen.as_str()), Some(read), "the reading is what was printed");
+    let settled = d.settled.as_ref().expect("the caption settles the side");
+    assert_eq!((settled.fen.as_str(), settled.side), ("rnbqkbnr/pp3ppp/8/2Pp4/8/2N5/PP2PPPP/R1BQKBNR b KQkq - 0 5", crate::doc::SideSource::Caption));
+    let html = write(&doc, &options(&pieces));
+    assert!(html.contains(">Diagram 1, page 1: Black to move</title>"), "{html}");
+    assert!(html.contains("data-fen=\"rnbqkbnr/pp3ppp/8/2Pp4/8/2N5/PP2PPPP/R1BQKBNR b KQkq - 0 5\""), "{html}");
+    assert!(d.link().is_some_and(|u| u.contains("%20b%20KQkq")), "{:?}", d.link());
+    let mut user = d.clone();
+    user.source = crate::doc::DiagramSource::User;
+    assert_eq!(user.shown().map(|s| s.fen), Some(read), "a position a person set is theirs");
+    // The first move's number agrees with the side assumed: the side is known, the position the
+    // one read.
+    let text = page_text(vec![line(230.0, "1.Nxd5 Qxd5")]);
+    let doc = build_page(&input(0, &text, &[reading(0, 60.0, read, true, true)], &[], &[]));
+    let Block::Diagram(d) = &doc.pages[0].blocks[0] else { panic!("a diagram first") };
+    assert_eq!(d.settled.as_ref().map(|s| (s.fen.as_str(), s.side)), Some((read, crate::doc::SideSource::MoveNumber)));
+    assert!(write(&doc, &options(&pieces)).contains(">Diagram 1, page 1: White to move</title>"));
+    // Nothing settles it: the side is not given.
+    let text = page_text(vec![line(230.0, "A quiet position.")]);
+    let doc = build_page(&input(0, &text, &[reading(0, 60.0, read, true, true)], &[], &[]));
+    let html = write(&doc, &options(&pieces));
+    assert!(html.contains(">Diagram 1, page 1: side to move not given</title>"), "{html}");
+    assert!(!html.contains("White to move"), "{html}");
+}

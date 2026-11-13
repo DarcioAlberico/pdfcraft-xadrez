@@ -752,7 +752,9 @@ fn the_books_pgn_confirms_a_diagram_and_suggests_a_near_one_without_writing_a_co
     assert_eq!(read["reference"]["diagrams"], json!({ "linked": 1, "confirmed": 1, "suggested": 0 }), "{:#}", read["reference"]);
     let diagram = &read["document"]["pages"][0]["blocks"][0];
     assert_eq!((diagram["type"].as_str(), &diagram["reference"]["kind"]), (Some("diagram"), &json!("confirmed")), "{diagram:#}");
-    assert_eq!(diagram["reading"]["side_assumed"], false, "{diagram:#}");
+    // The reading stays what was printed; the diagram shows the PGN's position (plan A9-L6b).
+    assert!(diagram["reference"]["fen"].as_str().is_some_and(|f| f.ends_with(" w KQkq - 0 1")), "{diagram:#}");
+    assert!(diagram["reference"]["before"].is_null() && diagram["reading"]["side_source"].is_string(), "{diagram:#}");
     let states = |a: &mut Automation, doc: u64, pgn: Option<&str>| {
         let mut args = json!({ "doc": doc, "models_dir": "models" });
         if let Some(pgn) = pgn {
@@ -1049,7 +1051,8 @@ fn chess_export_docx_and_rtf_carry_the_diagram_as_an_image() {
     // The unread diagrams said in words, the read one with its text alternative and caption
     // (plan A8 P9a).
     assert_eq!(text.matches("(not read)").count(), 2, "{text}");
-    assert!(text.contains(r"{\sn wzDescription}{\sv Diagram 1, page 1: White to move. White: Ke1"), "{text:.600}");
+    // No text after it says who is to move (plan A9-L6b).
+    assert!(text.contains(r"{\sn wzDescription}{\sv Diagram 1, page 1: side to move not given. White: Ke1"), "{text:.600}");
     assert!(text.contains("FEN rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"));
     assert!(text.contains("https://lichess.org/analysis/"));
     let docx = ok(&mut a, "chess_export_docx", json!({ "doc": doc, "out": "book.docx", "pieces": "geometric", "links": false }));
@@ -1084,7 +1087,7 @@ fn chess_export_markdown_and_pgn_write_inside_the_root() {
     assert_eq!((md["diagrams_drawn"].as_u64(), md["image_dir"].as_str()), (Some(1), Some("book_diagrams")), "{md:#}");
     let text = std::fs::read_to_string(root.join("out").join("book.md")).unwrap();
     assert!(text.contains("](book_diagrams/diagram-p0001-1.png \"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\")"), "{text}");
-    assert!(text.contains("![Diagram 1, page 1: White to move. White: Ke1, Qd1"), "{text}");
+    assert!(text.contains("![Diagram 1, page 1: side to move not given. White: Ke1, Qd1"), "{text}");
     assert_eq!(text.matches("(not read)").count(), 2, "{text}");
     let png = std::fs::read(root.join("out").join("book_diagrams").join("diagram-p0001-1.png")).unwrap();
     assert_eq!(&png[..8], b"\x89PNG\r\n\x1a\n");

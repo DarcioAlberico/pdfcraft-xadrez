@@ -64,3 +64,50 @@ fn an_earlier_build_reads_the_roles_as_plain_blocks() {
     let read = ChessDoc::from_json(earlier).unwrap();
     assert!(read.pages[0].blocks.iter().all(|b| b.role() == Some(BlockRole::Content)));
 }
+
+/// The document's `DiagramReading` as written before plan A9-L6b (a literal copy at `53a46b42`):
+/// what an earlier build reads a diagram's reading as.
+mod reading_v1 {
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+    pub struct DiagramReading {
+        pub fen: String,
+        pub legal: bool,
+        pub accepted: bool,
+        pub min_confidence: f32,
+        pub repaired: bool,
+        pub side_assumed: bool,
+    }
+}
+
+/// Plan A9-L6b, the reading's facts once: an earlier build reads a reading written now (`legal`
+/// and `side_assumed` are still written, from the reading), and a reading it wrote reads now with
+/// its side's source and, for a board printed from Black, the orientation its link said.
+#[test]
+fn an_earlier_build_reads_the_reading_and_its_readings_read_now() {
+    let read = |fen: &str, assumed: bool| reading(0, 60.0, fen, true, assumed);
+    let doc = build_page(&input(0, &page_text(vec![]), &[read(SCHOLAR, true)], &[], &[]));
+    let Block::Diagram(d) = &doc.pages[0].blocks[0] else { panic!("a diagram") };
+    let json = serde_json::to_value(d.reading.as_ref().unwrap()).unwrap();
+    let old: reading_v1::DiagramReading = serde_json::from_value(json.clone()).unwrap();
+    assert_eq!(
+        old,
+        reading_v1::DiagramReading { fen: SCHOLAR.into(), legal: true, accepted: true, min_confidence: 0.99, repaired: false, side_assumed: true }
+    );
+    assert_eq!(json["side_source"], "assumed");
+    // What an earlier build wrote: no source, no orientation.
+    let written = serde_json::to_value(&old).unwrap();
+    let now: DiagramReading = serde_json::from_value(written).unwrap();
+    assert_eq!((now.side_source, now.orientation, now.legal()), (crate::doc::SideSource::Assumed, None, true));
+    let said: DiagramReading = serde_json::from_value(
+        serde_json::json!({"fen": SCHOLAR, "legal": true, "accepted": true, "min_confidence": 1.0, "repaired": false, "side_assumed": false}),
+    )
+    .unwrap();
+    assert_eq!(said.side_source, crate::doc::SideSource::Printed);
+    // A board printed from Black's side, written before: its link says it.
+    let mut block = d.clone();
+    block.reading = Some(now);
+    block.lichess_url = Some("https://lichess.org/analysis/x?color=black".into());
+    assert_eq!(block.orientation(), pdfcraft_chess::placement::Color::Black);
+}

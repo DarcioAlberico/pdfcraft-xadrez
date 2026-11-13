@@ -1132,13 +1132,17 @@ pub(crate) fn walk(page: u32, ocr: bool, blocks: &mut [Block], walker: &mut Walk
         match block {
             Block::Diagram(d) => {
                 let r = d.reading.as_ref();
+                // The position the book's PGN confirmed, else the one read (plan A9-L6b: the
+                // reading stays what was printed).
+                let confirmed = d.confirmed().and_then(|f| pdfcraft_chess::fen::Fen::parse(f).ok());
+                let read = || r.filter(|r| r.legal()).and_then(|r| pdfcraft_chess::fen::Fen::parse(&r.fen).ok());
                 walker.diagram(Seed {
                     page,
                     diagram: d.number,
                     puzzle: d.puzzle,
-                    fen: r.filter(|r| r.legal).and_then(|r| pdfcraft_chess::fen::Fen::parse(&r.fen).ok()),
+                    side_assumed: confirmed.is_none() && r.is_some_and(|r| r.side_assumed()),
+                    fen: confirmed.or_else(read),
                     accepted: r.is_some_and(|r| r.accepted),
-                    side_assumed: r.is_some_and(|r| r.side_assumed),
                 });
             }
             Block::Heading { inlines, .. } => {

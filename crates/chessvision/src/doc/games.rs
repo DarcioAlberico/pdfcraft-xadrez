@@ -835,6 +835,9 @@ pub(crate) struct Done {
     remaps: Vec<Vec<Option<usize>>>,
     /// Diagrams `(page, number)` that had moves after them but could not seed a game.
     pub blocked: Vec<(u32, usize)>,
+    /// Diagrams `(page, number)` a game started from at a printed move number it believed
+    /// (`1.e4`, `23...Rd4`): the number says who is to move there (plan A9-L6b).
+    pub numbered: Vec<(u32, usize)>,
 }
 
 impl Done {
@@ -863,6 +866,8 @@ pub(crate) struct Walker {
     /// [`MAX_PUZZLES`].
     puzzles: puzzles::Puzzles,
     blocked: Vec<(u32, usize)>,
+    /// See [`Done::numbered`]; one per game at most.
+    numbered: Vec<(u32, usize)>,
     /// The reading rules beyond the walker's own.
     rules: WalkRules,
     /// Fragment mode ([`Walker::fragment`]): one game from a given position, never split.
@@ -1739,6 +1744,9 @@ impl Walker {
         let (origin, mut score, mut flags, honour) = match anchor {
             Anchor::Seed(seed) => match seed_score(&seed, number) {
                 Some((score, flags, honour)) => {
+                    if honour && number.is_some() {
+                        self.numbered.push((seed.page, seed.diagram));
+                    }
                     let origin = GameOrigin::Diagram { page: seed.page, diagram: seed.diagram, accepted: seed.accepted };
                     started_from = Some(seed);
                     (origin, score, flags, honour)
@@ -2357,6 +2365,6 @@ impl Walker {
     /// Close the open game and hand the games over.
     pub fn finish(mut self) -> Done {
         self.close();
-        Done { games: self.games, remaps: self.remaps, blocked: self.blocked }
+        Done { games: self.games, remaps: self.remaps, blocked: self.blocked, numbered: self.numbered }
     }
 }

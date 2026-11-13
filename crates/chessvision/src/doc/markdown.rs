@@ -139,7 +139,8 @@ pub fn write(doc: &ChessDoc, o: &MarkdownOptions<'_>) -> String {
                 }
                 Block::Diagram(d) => {
                     let number = d.number.saturating_add(1);
-                    let Some(reading) = &d.reading else {
+                    // The position it shows, all told (plan A9-L6b).
+                    let Some(shown) = d.shown() else {
                         let _ = write!(s, "*{}*\n\n", esc(&describe::not_read(number, &label, book_lang)));
                         continue;
                     };
@@ -158,16 +159,16 @@ pub fn write(doc: &ChessDoc, o: &MarkdownOptions<'_>) -> String {
                                 .replace(' ', "%20");
                             let path = if dir.is_empty() { name } else { format!("{dir}/{name}") };
                             // The alt text says the diagram; the title keeps its FEN.
-                            let alt = esc(&describe::describe(number, &label, &reading.fen, book_lang));
-                            let fen: String = reading.fen.chars().filter(|c| !matches!(c, '"' | '\\') && !c.is_control()).collect();
+                            let alt = esc(&describe::describe_side(number, &label, shown.fen, shown.side_known, book_lang));
+                            let fen: String = shown.fen.chars().filter(|c| !matches!(c, '"' | '\\') && !c.is_control()).collect();
                             let _ = write!(s, "![{alt}]({path} \"{fen}\")\n\n");
                         }
                         MarkdownDiagrams::Fen => {
-                            let _ = write!(s, "`{}`\n\n", reading.fen.replace('`', ""));
+                            let _ = write!(s, "`{}`\n\n", shown.fen.replace('`', ""));
                         }
                     }
                     if o.links
-                        && let Some(url) = d.lichess_url.as_deref().filter(|u| safe_url(u))
+                        && let Some(url) = d.link().filter(|u| safe_url(u))
                     {
                         let _ = write!(s, "[{}]({url})\n\n", esc(o.link_text));
                     }
@@ -294,14 +295,18 @@ pub fn pgn_export(doc: &ChessDoc, book: &PgnBook, positions: PgnPositions, style
                 PgnPositions::None => false,
             };
             if wanted {
-                match &d.reading {
-                    Some(r) if r.legal && !r.repaired && GameScore::new(Some(r.fen.clone())).start_board().is_some() => {
-                        let game = position_game(&r.fen, page.index, d.number, d.puzzle, r.accepted);
+                // The position it shows: the PGN's, the one the text settled, the one read.
+                let shown = d.shown().map(|s| (s.fen, s.confirmed));
+                match (&d.reading, shown) {
+                    (Some(r), Some((fen, confirmed)))
+                        if (confirmed || (r.legal() && !r.repaired)) && GameScore::new(Some(fen.to_owned())).start_board().is_some() =>
+                    {
+                        let game = position_game(fen, page.index, d.number, d.puzzle, r.accepted);
                         let origin = origin_of(doc, book, page.index, Some(d.number), d.puzzle);
                         out.push(apply_origin(game, &origin, true));
                         made.positions = made.positions.saturating_add(1);
                     }
-                    reading => {
+                    (reading, _) => {
                         let reason = match reading {
                             None => SkipReason::NotRead,
                             Some(r) if r.repaired => SkipReason::Repaired,

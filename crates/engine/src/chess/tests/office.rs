@@ -265,6 +265,8 @@ fn an_undrawn_diagram_is_noted_by_the_page_its_caption_names() {
     for block in &mut doc.pages[0].blocks {
         if let pdfcraft_chessvision::doc::Block::Diagram(d) = block {
             d.reading.as_mut().unwrap().fen = "not a position".into();
+            // Nothing settled from it either (the walk would settle nothing from no position).
+            d.settled = None;
         }
     }
     let mut labels = vec![String::new(); 25];
