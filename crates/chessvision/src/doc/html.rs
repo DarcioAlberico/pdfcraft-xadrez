@@ -30,7 +30,9 @@ use std::fmt::Write as _;
 use pdfcraft_chess::describe;
 use pdfcraft_chess::draw::{BoardStyle, PieceSet};
 use pdfcraft_chess::origin::PgnOrigin;
-use pdfcraft_chess::san::{FigurineSet, Lang, San, Style};
+use pdfcraft_chess::placement::Color;
+use pdfcraft_chess::san::{FigurineSet, Lang, San, Style, figurine_piece};
+use pdfcraft_chess::spoken::{self, Reason};
 use pdfcraft_chess::svg::{UsedPieces, board_described, symbols};
 
 use super::{Block, ChessDoc, ChessPage, DiagramBlock, Inline, MoveInline, MoveStatus, PageLabel};
@@ -117,8 +119,9 @@ fn safe_url(url: &str) -> bool {
 
 /// A move's text, and its markup inside the move's span. With a figurine font that draws pieces
 /// on letters, the move is written with English letters and each piece letter (K Q R B N, never
-/// a file or castling's O) is a `fig` span in that font.
-fn move_markup(m: &MoveInline, o: &HtmlOptions<'_>) -> (String, String) {
+/// a file or castling's O) is a `fig` span in that font. A Unicode figurine is named for a screen
+/// reader by the piece and the side that moved, in `lang` ([`said_figurines`]).
+fn move_markup(m: &MoveInline, o: &HtmlOptions<'_>, lang: Lang) -> (String, String) {
     let letters = o.figurines == Figurines::Unicode && o.text_font.is_some_and(|f| f.role == FontRole::Letters);
     if letters && let Ok(san) = San::read(&m.san, Lang::En) {
         let number = m.number.map(|n| n.text()).unwrap_or_default();
@@ -134,8 +137,38 @@ fn move_markup(m: &MoveInline, o: &HtmlOptions<'_>) -> (String, String) {
         return (format!("{number}{body}"), html);
     }
     let shown = move_text(m, o.figurines);
-    let html = esc(&shown);
+    let html = match o.figurines {
+        Figurines::Unicode => said_figurines(&shown, mover(m), o, lang),
+        _ => esc(&shown),
+    };
     (shown, html)
+}
+
+/// The side that played move `m`: the other side is to move after it, else its number says
+/// (`12...` is Black's); `None` when neither is known.
+fn mover(m: &MoveInline) -> Option<Color> {
+    match m.fen.as_deref().and_then(|f| f.split_whitespace().nth(1)) {
+        Some("w") => Some(Color::Black),
+        Some("b") => Some(Color::White),
+        _ => m.number.map(|n| if n.black { Color::Black } else { Color::White }),
+    }
+}
+
+/// `text` escaped, each Unicode chess figurine in it a `role="img"` named for a screen reader by
+/// its piece and `side`, in `lang` (plan A9-X3b, R5-06: the figurines are solid for both sides, so
+/// `♞f3` was read "black chess knight f3" on a White move). Unnamed when the side is not known.
+fn said_figurines(text: &str, side: Option<Color>, o: &HtmlOptions<'_>, lang: Lang) -> String {
+    let mut html = String::with_capacity(text.len());
+    for c in text.chars() {
+        match side.zip(figurine_piece(c)) {
+            Some((color, kind)) => {
+                let said = spoken::piece(color, kind, lang);
+                let _ = write!(html, "<span role=\"img\" aria-label=\"{}\"{}>{c}</span>", esc(said.text), lang_attr(o, said.lang));
+            }
+            None => html.push_str(&esc(c.encode_utf8(&mut [0; 4]))),
+        }
+    }
+    html
 }
 
 /// The move as it is printed in the file.
@@ -161,8 +194,52 @@ fn status_word(s: MoveStatus) -> &'static str {
     }
 }
 
-/// The inline's markup and its text as it reads (for spacing).
-fn inline_html(inline: &Inline, o: &HtmlOptions<'_>) -> (String, String) {
+/// The inline's markup and its text as it reads (for spacing), names said in `lang`. With the
+/// review highlight on, what was flagged is followed by words a screen reader reads and the page
+/// does not show ([`review_words`]).
+fn inline_html(inline: &Inline, o: &HtmlOptions<'_>, lang: Lang) -> (String, String) {
+    let (html, text) = inline_markup(inline, o, lang);
+    if !o.review_marks || inline.review().is_empty() {
+        return (html, text);
+    }
+    let reason = match inline {
+        Inline::Move(m) => move_reason(m.status),
+        _ => None,
+    };
+    (format!("{html}{}", review_words(o, lang, reason)), text)
+}
+
+/// Why a move of this status is to be reviewed, as the interface's Text tab names it.
+fn move_reason(status: MoveStatus) -> Option<Reason> {
+    match status {
+        MoveStatus::Illegal => Some(Reason::Illegal),
+        MoveStatus::Ambiguous => Some(Reason::Ambiguous),
+        MoveStatus::OutOfSequence => Some(Reason::OutOfSequence),
+        MoveStatus::NotReached => Some(Reason::NotReached),
+        MoveStatus::Unchecked => Some(Reason::Unchecked),
+        MoveStatus::Valid | MoveStatus::Caption => None,
+    }
+}
+
+/// ` (To review: Illegal move)` in `lang`, hidden from the page and read by a screen reader
+/// (the `sr` class; plan A9-X3b, R5-06: the highlight is only seen), each part said in English
+/// where the book's language has no name for it.
+fn review_words(o: &HtmlOptions<'_>, lang: Lang, reason: Option<Reason>) -> String {
+    let head = spoken::to_review(lang);
+    let mut s = format!("<span class=\"sr\"{}> ({}", lang_attr(o, head.lang), esc(head.text));
+    if let Some(reason) = reason.map(|r| spoken::reason(r, lang)) {
+        if reason.lang == head.lang {
+            let _ = write!(s, ": {}", esc(reason.text));
+        } else {
+            let _ = write!(s, ": <span{}>{}</span>", lang_attr(o, reason.lang), esc(reason.text));
+        }
+    }
+    s.push_str(")</span>");
+    s
+}
+
+/// The inline's own markup and its text as it reads.
+fn inline_markup(inline: &Inline, o: &HtmlOptions<'_>, lang: Lang) -> (String, String) {
     let review = if inline.review().is_empty() { "" } else { " review" };
     match inline {
         Inline::Text { text, .. } => {
@@ -170,7 +247,7 @@ fn inline_html(inline: &Inline, o: &HtmlOptions<'_>) -> (String, String) {
             (html, text.clone())
         }
         Inline::Move(m) => {
-            let (shown, body) = move_markup(m, o);
+            let (shown, body) = move_markup(m, o, lang);
             let mut attrs = format!(" data-san=\"{}\"", esc(&m.san));
             if let Some(fen) = &m.fen {
                 let _ = write!(attrs, " data-fen=\"{}\"", esc(fen));
@@ -181,13 +258,13 @@ fn inline_html(inline: &Inline, o: &HtmlOptions<'_>) -> (String, String) {
             (format!("<span class=\"move{review}\"{attrs}>{body}</span>"), shown)
         }
         Inline::Nag { code, .. } => {
-            let (glyph, name) = (pdfcraft_chess::nag::shown(*code), pdfcraft_chess::nag::by_code(*code).map_or("", |n| n.name));
-            // Said by its name (plan A9-X3, R5-06): a screen reader reads no `title`, and reads the
-            // glyph as what it looks like ("plus minus") or, in the sign font, as its letter.
-            let title = if name.is_empty() {
-                String::new()
-            } else {
-                format!(" role=\"img\" aria-label=\"{n}\"{en} title=\"{n}\"", n = esc(name), en = english_inside(o))
+            let glyph = pdfcraft_chess::nag::shown(*code);
+            // Said by its name in the book's language (plan A9-X3, X3b, R5-06): a screen reader
+            // reads no `title`, and reads the glyph as what it looks like ("plus minus") or, in
+            // the sign font, as its letter.
+            let title = match spoken::sign(*code, lang) {
+                Some(said) => format!(" role=\"img\" aria-label=\"{n}\"{l} title=\"{n}\"", n = esc(said.text), l = lang_attr(o, said.lang)),
+                None => String::new(),
             };
             // With the sign font, the glyph is its letter (the title still names it).
             if o.sign_font.is_some()
@@ -204,19 +281,20 @@ fn inline_html(inline: &Inline, o: &HtmlOptions<'_>) -> (String, String) {
     }
 }
 
-/// ` lang="en"` for English said inside a book whose language is not English (or not given):
-/// the names of the annotation glyphs are English ([`pdfcraft_chess::nag::NAGS`]).
-fn english_inside(o: &HtmlOptions<'_>) -> &'static str {
+/// ` lang="xx"` for words said in `said`, a language other than the document's
+/// ([`HtmlOptions::lang`]; any, when it gives none): a name the book's language has none for is
+/// said in English ([`spoken`]).
+fn lang_attr(o: &HtmlOptions<'_>, said: Lang) -> String {
     let primary = o.lang.split(['-', '_']).next().unwrap_or_default();
-    if primary.eq_ignore_ascii_case("en") { "" } else { " lang=\"en\"" }
+    if primary.eq_ignore_ascii_case(said.code()) { String::new() } else { format!(" lang=\"{}\"", said.code()) }
 }
 
-/// Inlines joined with the spacing of [`super::plain_text`].
-fn inlines_html(inlines: &[Inline], o: &HtmlOptions<'_>) -> String {
+/// Inlines joined with the spacing of [`super::plain_text`], names said in `lang`.
+fn inlines_html(inlines: &[Inline], o: &HtmlOptions<'_>, lang: Lang) -> String {
     let mut out = String::new();
     let mut last = String::new();
     for inline in inlines {
-        let (html, text) = inline_html(inline, o);
+        let (html, text) = inline_html(inline, o, lang);
         let glued = matches!(inline, Inline::Nag { .. }) || text.starts_with([')', ']', ',', '.', ';', ':', '!', '?']);
         if !out.is_empty() && !glued && !last.ends_with(['(', '[', ' ']) {
             out.push(' ');
@@ -238,22 +316,25 @@ pub enum SpanFont {
 
 /// A piece of a paragraph as a document writer sets it (Word and RTF, plan A8 P9a): prose, or
 /// chess (a move or an annotation, which spelling checks should skip), set in a font of its own
-/// when it needs one, or a link.
+/// when it needs one, or a link; in a language of its own when it is not the page's (a sign's
+/// name the book's language has none for is English).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Span {
     pub text: String,
     pub chess: bool,
     pub font: Option<SpanFont>,
     pub link: Option<String>,
+    /// Its language, a BCP 47 tag, when it is not the page's.
+    pub lang: Option<&'static str>,
 }
 
 impl Span {
     fn prose(text: impl Into<String>) -> Span {
-        Span { text: text.into(), chess: false, font: None, link: None }
+        Span { text: text.into(), chess: false, font: None, link: None, lang: None }
     }
 
     fn chess(text: impl Into<String>, font: Option<SpanFont>) -> Span {
-        Span { text: text.into(), chess: true, font, link: None }
+        Span { text: text.into(), chess: true, font, link: None, lang: None }
     }
 }
 
@@ -263,7 +344,9 @@ fn push_span(spans: &mut Vec<Span>, span: Span) {
         return;
     }
     match spans.last_mut() {
-        Some(last) if last.chess == span.chess && last.font == span.font && last.link == span.link => last.text.push_str(&span.text),
+        Some(last) if last.chess == span.chess && last.font == span.font && last.link == span.link && last.lang == span.lang => {
+            last.text.push_str(&span.text)
+        }
         _ => spans.push(span),
     }
 }
@@ -272,8 +355,10 @@ fn push_span(spans: &mut Vec<Span>, span: Span) {
 /// with a figurine font that draws pieces on letters (SemFig, `text_font` of role
 /// [`FontRole::Letters`]) and Unicode figurines, each piece letter is set in it, as the HTML's
 /// `fig` spans; with a Unicode figurine font, whole moves are; with the sign font, an annotation
-/// is its letter in it.
-pub fn spans(inlines: &[Inline], figurines: Figurines, text_font: Option<FontRole>, sign_font: bool) -> Vec<Span> {
+/// is its letter in it. A sign other than the move marks (`!`, `?`, `!!`, `??`, `!?`, `?!`) is
+/// followed by its name in brackets, in `lang` where it has one, else in English (plan A9-X3b,
+/// R5-06: a document has no name a screen reader reads beside a glyph, so it is printed).
+pub fn spans(inlines: &[Inline], figurines: Figurines, text_font: Option<FontRole>, sign_font: bool, lang: Lang) -> Vec<Span> {
     let mut out = Vec::new();
     let mut last = String::new();
     for inline in inlines {
@@ -310,11 +395,15 @@ pub fn spans(inlines: &[Inline], figurines: Figurines, text_font: Option<FontRol
                     Some(letter) => mine.push(Span::chess(letter.to_string(), Some(SpanFont::Signs))),
                     None => mine.push(Span::chess(glyph.clone(), None)),
                 }
+                if let Some(said) = spoken::sign(*code, lang).filter(|_| !glyph.chars().all(|c| c == '!' || c == '?')) {
+                    let other = (said.lang != lang).then_some(said.lang.code());
+                    mine.push(Span { text: format!(" ({})", said.text), chess: false, font: None, link: None, lang: other });
+                }
                 glyph
             }
             Inline::Link { url, text, .. } => {
                 let link = safe_url(url).then(|| url.clone());
-                mine.push(Span { text: text.clone(), chess: false, font: None, link });
+                mine.push(Span { text: text.clone(), chess: false, font: None, link, lang: None });
                 text.clone()
             }
         };
@@ -398,6 +487,10 @@ fn diagram_html(d: &DiagramBlock, page: &ChessPage, o: &HtmlOptions<'_>, used: &
     {
         let _ = write!(caption, " · <a href=\"{}\">{}</a>", esc(&url), esc(o.link_text));
     }
+    // To review, said to a screen reader when the highlight is on (plan A9-X3b).
+    if o.review_marks && !review.is_empty() {
+        caption.push_str(&review_words(o, lang, None));
+    }
     caption.push_str("</figcaption>");
     format!("<figure class=\"diagram{review}\" id=\"{id}\" data-fen=\"{fen}\">{body}{caption}</figure>\n")
 }
@@ -415,7 +508,8 @@ pub const REVIEW_LINE: &str = "#8a5d00";
 const STYLE: &str = "body{max-width:46em;margin:2em auto;padding:0 1em;font-family:serif;line-height:1.5}\
 .move{white-space:nowrap}.review{background:#fff3c4;border-bottom:2px solid #8a5d00}\
 figure.diagram{margin:1.2em auto;text-align:center}figure.diagram svg{max-width:100%;height:auto;width:20em}\
-figcaption{font-family:sans-serif;font-size:.85em}section.page+section.page{border-top:1px solid #ccc;margin-top:2em}";
+figcaption{font-family:sans-serif;font-size:.85em}section.page+section.page{border-top:1px solid #ccc;margin-top:2em}\
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}";
 
 /// Where an EPUB carries a font, relative to its pages: `fonts/figurines.*` or `fonts/signs.*`.
 pub fn epub_font_href(font: &TextFont) -> String {
@@ -469,11 +563,11 @@ fn page_section(page: &ChessPage, o: &HtmlOptions<'_>, pagebreak: bool, used: &m
         match block {
             Block::Heading { level, inlines, .. } => {
                 let l = (*level).clamp(1, 6);
-                let _ = writeln!(s, "<h{l} id=\"{}\">{}</h{l}>", heading_id(page.index, k), inlines_html(inlines, o));
+                let _ = writeln!(s, "<h{l} id=\"{}\">{}</h{l}>", heading_id(page.index, k), inlines_html(inlines, o, page.text_language()));
                 k += 1;
             }
             Block::Paragraph { inlines, .. } => {
-                let _ = writeln!(s, "<p>{}</p>", inlines_html(inlines, o));
+                let _ = writeln!(s, "<p>{}</p>", inlines_html(inlines, o, page.text_language()));
             }
             Block::Diagram(d) => s.push_str(&diagram_html(d, page, o, used)),
         }

@@ -34,9 +34,10 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
+use pdfcraft_chess::mate;
 use pdfcraft_chess::recognize::side::SideSource;
-use pdfcraft_chess::stipulation::Scope;
-use pdfcraft_chessvision::board::{self, BoardReading, ReadPosition, SquareClassifier};
+use pdfcraft_chess::stipulation::{Goal, Scope, Stipulation};
+use pdfcraft_chessvision::board::{self, BoardReading, MateFinding, ReadPosition, SquareClassifier};
 use pdfcraft_chessvision::coords::{PageGeometry, PageRect, PixelRect, Rotation, ViewRect, view_to_pixels};
 use pdfcraft_chessvision::detect::embedded::{self, ImageBox};
 use pdfcraft_chessvision::detect::font::{self, FontGlyph};
@@ -1071,7 +1072,7 @@ fn scan_page(
         }
     };
     if let (Some(readings), Some(text)) = (readings.as_mut(), text.text.as_deref()) {
-        sides_from_move_numbers(text, &geometry, &diagrams, readings);
+        sides_from_move_numbers(text, &geometry, &diagrams, readings, &mut notes);
     }
     ChessPage { page: input.page, geometry: Some(geometry), dpi, diagrams, readings, truncated, error, notes }
 }
@@ -1080,7 +1081,18 @@ fn scan_page(
 /// born-digital page's text (`side_text`); else from the words printed by it or over the page
 /// (`White to move`, `Pretas jogam`: plan A9-L6c, R6-03), at their scope. The position still
 /// overrules either, and a contradiction is flagged.
-fn sides_from_move_numbers(text: &pdfcraft_render::PageText, geometry: &PageGeometry, diagrams: &[Merged], readings: &mut [BoardReading]) {
+///
+/// Then a direct mate the words ask (`#2`, `Mate in 2`, up to [`mate::MAX_MATE_MOVES`] moves; plan
+/// A9-N4) is solved, within [`mate::DEFAULT_MATE_BUDGET`] positions a side: it decides a side the
+/// page did not say when only one side mates, and the review says no mate or more than one key.
+/// When both sides mate, the side stays assumed and a note says so.
+fn sides_from_move_numbers(
+    text: &pdfcraft_render::PageText,
+    geometry: &PageGeometry,
+    diagrams: &[Merged],
+    readings: &mut [BoardReading],
+    notes: &mut Vec<String>,
+) {
     if !readings.iter().any(|r| r.position().is_some()) {
         return;
     }
@@ -1099,6 +1111,12 @@ fn sides_from_move_numbers(text: &pdfcraft_render::PageText, geometry: &PageGeom
         {
             let source = if s.scope == Scope::Diagram { SideSource::Text } else { SideSource::TextPageScope };
             position.declare_side(color, source, 1);
+        }
+        if let Some(Stipulation { goal: Some(Goal::Mate(n)), .. }) = stipulations.get(reading.index).copied().flatten() {
+            position.check_mate(n, mate::DEFAULT_MATE_BUDGET);
+            if let Some(MateFinding::BothSides { n }) = position.mate {
+                notes.push(format!("diagram {}: both sides mate in {n}; the side to move stays assumed", reading.index.saturating_add(1)));
+            }
         }
     }
 }

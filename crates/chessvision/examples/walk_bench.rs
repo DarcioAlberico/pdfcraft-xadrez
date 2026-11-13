@@ -14,7 +14,8 @@
 //! every move (file, page, printed text with `*` before a bold one, status) one per line, so two runs can be compared move by
 //! move. `--plain` forgets which moves were printed in bold first, as a document read before the
 //! weight was kept (or from OCR) has it, so the weight's part is measured on the same reading.
-//! `--rules=` reads with other [`WalkRules`] than the book's: `none`, `all`, or a comma-separated
+//! `--rules=` reads with other [`WalkRules`] than the book's: `none`, `all`, a comma-separated
+//! list of the rules to turn off from the book's (`-ellipsis,-separators`), or a comma-separated
 //! list of `implied_close`, `prose_moves`, `separators`, `results`, `ellipsis`, `misread_files`,
 //! `prose_squares`, `prose_pieces`, so each rule's
 //! effect on whole books is measured before it is turned on for them.
@@ -104,10 +105,30 @@ fn plain(page: &mut ChessPage) {
     }
 }
 
-/// `--rules=` as rules.
+/// `--rules=` as rules: names turn rules on from none; `-name` turns them off from the book's
+/// (plan A9-L9: `--rules=-ellipsis` measures what the ellipsis rule weighs on whole books).
 fn rules(spec: &str) -> Result<WalkRules, String> {
+    let names: Vec<&str> = spec.split(',').map(str::trim).filter(|n| !n.is_empty()).collect();
+    if names.iter().any(|n| n.starts_with('-')) {
+        let mut r = WalkRules::BOOK;
+        for name in names {
+            let flag = match name.strip_prefix('-').ok_or_else(|| format!("{name}: rules to take off (-name) and rules to add cannot be mixed"))? {
+                "implied_close" => &mut r.implied_close,
+                "prose_moves" => &mut r.prose_moves,
+                "separators" => &mut r.separators,
+                "results" => &mut r.results,
+                "ellipsis" => &mut r.ellipsis,
+                "misread_files" => &mut r.misread_files,
+                "prose_squares" => &mut r.prose_squares,
+                "prose_pieces" => &mut r.prose_pieces,
+                other => return Err(format!("unknown rule {other}")),
+            };
+            *flag = false;
+        }
+        return Ok(r);
+    }
     let mut r = WalkRules::NONE;
-    for name in spec.split(',').map(str::trim).filter(|n| !n.is_empty()) {
+    for name in names {
         match name {
             "none" => r = WalkRules::NONE,
             "all" => r = WalkRules::ALL,
