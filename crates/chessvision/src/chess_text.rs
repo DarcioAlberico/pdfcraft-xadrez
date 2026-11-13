@@ -63,8 +63,10 @@ pub enum ChessRun {
     /// A move. `san.suffix` holds only the check and mate marks; annotation glyphs glued to the
     /// move follow it as [`ChessRun::Nag`]s. `text` is the move as printed (check marks
     /// included, annotations not), with figurine-font letters already shown as pieces
-    /// (`♘xd4`).
-    Move { san: San, text: String },
+    /// (`♘xd4`). `repaired` is what was printed and what was read when a misreading of an old
+    /// OCR layer was read again in the move's word (`Rel` read as `Re1`; plan A9-L5, A2-10), so
+    /// the change is said, never made silently.
+    Move { san: San, text: String, repaired: Option<(String, String)> },
     /// An annotation glyph, as its PGN code (`$15` for `⩱`).
     Nag(u16),
     /// A figurine that is not part of a move: "the ♘ on f3".
@@ -177,9 +179,23 @@ fn read(page: &PageText, lang_hint: Option<Lang>, selection: Option<Lang>) -> Ch
     };
     let rules = token::Rules { ellipsis: selection.is_some() };
     // 4. Runs.
-    let lines: Vec<Vec<Vec<glyph::Cell>>> = lines.into_iter().map(|words| token::join_split_moves(words, lang.lang)).collect();
-    let mut tokens: Vec<Vec<Vec<token::Token>>> =
-        lines.iter().map(|words| words.iter().map(|w| token::tokenize(w, lang.lang, rules)).collect()).collect();
+    let lines: Vec<Vec<(Vec<glyph::Cell>, Option<String>)>> = lines.into_iter().map(|words| token::join_split_moves(words, lang.lang)).collect();
+    let mut tokens: Vec<Vec<Vec<token::Token>>> = lines
+        .iter()
+        .map(|words| {
+            // A move number read again gives its repair to the move after it.
+            let mut pending: Option<(String, String)> = None;
+            words
+                .iter()
+                .map(|(w, printed)| {
+                    let mut tokens = token::tokenize(w, lang.lang, rules);
+                    let repair = printed.as_deref().map(|p| token::repair_texts(p, w)).or_else(|| pending.take());
+                    pending = token::mark_repaired(&mut tokens, repair);
+                    tokens
+                })
+                .collect()
+        })
+        .collect();
     token::settle(&mut tokens);
     let mut side = token::Side::default();
     let lines = tokens.into_iter().filter_map(|words| token::assemble(words, &mut side)).collect();

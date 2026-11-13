@@ -257,6 +257,26 @@ pub struct San {
     pub suffix: String,
 }
 
+/// What a move's printed marks say that the move it names does not (plan A9-L5, R6-02): the
+/// cheapest sign that a reading has strayed from the book's position (`Qxf6` played as `Qf6` to an
+/// empty square). Only marks printed and wrong count; a mark left out does not.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct NotationMismatch {
+    /// A capture mark on a move that takes nothing.
+    pub capture: bool,
+    /// A check mark on a move that gives no check.
+    pub check: bool,
+    /// A mate mark on a move that does not mate.
+    pub mate: bool,
+}
+
+impl NotationMismatch {
+    /// Whether any mark is wrong.
+    pub fn any(&self) -> bool {
+        self.capture || self.check || self.mate
+    }
+}
+
 /// Why a move token was rejected.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum SanError {
@@ -418,8 +438,34 @@ impl San {
         Ok(San { body, suffix: suffix.to_owned() })
     }
 
+    /// [`San::to_move`], and what the printed marks say that the move does not
+    /// ([`NotationMismatch`], plan A9-L5, R6-02): a capture mark when it takes nothing, a check
+    /// mark when it gives no check, a mate mark when it does not mate. A mark left out is no
+    /// mismatch: many books print no check, and the squares say which move is meant.
+    pub fn to_move_checked(&self, board: &Board) -> Result<(Move, Option<NotationMismatch>), SanError> {
+        let mv = self.to_move(board)?;
+        let capture = match self.body {
+            SanBody::Move { capture: true, piece, .. } => {
+                let pawn = piece.is_none_or(|p| p == PieceKind::Pawn);
+                // En passant takes on another square than the one it goes to.
+                let takes = board.color_on(mv.to).is_some_and(|c| c != board.side_to_move()) || (pawn && mv.from.file() != mv.to.file());
+                !takes
+            }
+            _ => false,
+        };
+        let mut after = board.clone();
+        after.try_play(mv).map_err(|_| SanError::IllegalMove)?;
+        let gives_check = !after.checkers().is_empty();
+        let mates = gives_check && after.status() == GameStatus::Won;
+        let check = self.suffix.contains('+') && !gives_check;
+        let mate = self.suffix.contains('#') && !mates;
+        let mismatch = NotationMismatch { capture, check, mate };
+        Ok((mv, mismatch.any().then_some(mismatch)))
+    }
+
     /// The one legal move on `board` this SAN names. Capture and check marks are not required to
-    /// be right: books drop them, and the squares already say which move is meant.
+    /// be right: books drop them, and the squares already say which move is meant
+    /// ([`San::to_move_checked`] says when they are wrong).
     pub fn to_move(&self, board: &Board) -> Result<Move, SanError> {
         let text = || self.to_english();
         match self.body {
@@ -683,6 +729,28 @@ mod tests {
 
     fn en(s: &str) -> San {
         San::parse(s).unwrap()
+    }
+
+    /// Plan A9-L5 (R6-02): the marks printed on a move that the move does not bear out; a mark left
+    /// out is no mismatch, and en passant takes.
+    #[test]
+    fn printed_marks_the_move_does_not_bear_out() {
+        // After 1.e4 e5 2.Nf3 Nc6 3.Bc4 Nf6: White to move.
+        let board = Board::from_fen("r1bqkb1r/pppp1ppp/2n2n2/4p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4", false).unwrap();
+        let checked = |s: &str| San::read(s, Lang::En).unwrap().to_move_checked(&board).unwrap().1;
+        assert_eq!(checked("Ng5"), None);
+        assert_eq!(checked("Nxe5"), None);
+        assert_eq!(checked("Nxg5"), Some(NotationMismatch { capture: true, check: false, mate: false }));
+        assert_eq!(checked("Bxf7+"), None);
+        assert_eq!(checked("Bf7+"), None, "a capture mark left out is no mismatch");
+        assert_eq!(checked("Ng5+"), Some(NotationMismatch { capture: false, check: true, mate: false }));
+        assert_eq!(checked("Bxf7#"), Some(NotationMismatch { capture: false, check: false, mate: true }));
+        assert_eq!(checked("Bxf7"), None, "a check mark left out is no mismatch");
+        // En passant takes on another square.
+        let ep = Board::from_fen("4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 2", false).unwrap();
+        assert_eq!(San::read("exd6", Lang::En).unwrap().to_move_checked(&ep).unwrap().1, None);
+        // A move that is not legal is still an error.
+        assert!(San::read("Qh8", Lang::En).unwrap().to_move_checked(&board).is_err());
     }
 
     #[test]

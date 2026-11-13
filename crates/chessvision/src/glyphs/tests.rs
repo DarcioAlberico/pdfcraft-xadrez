@@ -1034,7 +1034,7 @@ fn fused_lines_read_as_chess_text_like_a_text_layer() {
     let fused = fuse_line(&[ow("12.Bf3", 0, 60), ow("e5!", 70, 100), ow("wins", 110, 150)], &[glyphs]);
     let text = to_chess_text(std::slice::from_ref(&fused), 72.0, Some(Lang::En));
     let runs: Vec<ChessRun> = text.lines[0].spans.iter().map(|s| s.run.clone()).collect();
-    let mv = |s: &str, t: &str| ChessRun::Move { san: San::read(s, Lang::En).unwrap(), text: t.to_owned() };
+    let mv = |s: &str, t: &str| ChessRun::Move { san: San::read(s, Lang::En).unwrap(), text: t.to_owned(), repaired: None };
     assert_eq!(runs[..3], [ChessRun::MoveNumber { number: 12, black: false }, mv("Nf3", "♘f3"), mv("e5", "e5")]);
     // At 72 DPI a pixel is a point: the boxes carry over.
     let page = to_page_text(&[fused], 72.0);

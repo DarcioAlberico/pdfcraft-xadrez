@@ -408,6 +408,7 @@ impl Automation {
         }
         // The folder the correction goes to, checked before anything is drawn.
         if keep {
+            self.may_keep(a, id)?;
             self.correction_store(a)?;
         }
         let style = board_style(a)?;

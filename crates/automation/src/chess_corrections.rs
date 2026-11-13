@@ -3,7 +3,10 @@
 //!
 //! The corrections live in a folder confined to `--root` (`store`, [`DEFAULT_STORE`] by default),
 //! one file per document, in the format of `pdfcraft_engine::chess::corrections`; a tool lists and
-//! changes the corrections of the document it is given, never another's.
+//! changes the corrections of the document it is given, never another's. A tool that only reads
+//! them (the listing, the reading tools) needs only read access to the folder, and a folder that
+//! is not there is an empty store (plan A9-G3a, A4-13). What is read from a document is kept only
+//! as its security allows ([`Automation::may_keep`]).
 
 use pdfcraft_engine::DocId;
 #[cfg(not(target_arch = "wasm32"))]
@@ -12,6 +15,7 @@ use pdfcraft_engine::chess::corrections::{
     CorrectionError, Fingerprints, Kind, Loaded, Located, NewCorrection, Original, Status, StoreError, normalize,
 };
 use pdfcraft_engine::chess::pdfcraft_chess::game::Game;
+use pdfcraft_engine::chess::store::{Persist, persist_policy};
 use pdfcraft_engine::chess::{ChessDocument, DocKeys};
 use serde_json::{Value, json};
 
@@ -36,18 +40,19 @@ fn now() -> u64 {
 /// out because they could not be read (`skipped`), a file it could not read (`unreadable`: left
 /// as it is by a reading tool), and a file a change set aside first (`set_aside`), so nothing
 /// left out goes unsaid.
-pub(crate) fn store_notes(loaded: &Loaded) -> Value {
+pub(crate) fn store_notes<F>(loaded: &pdfcraft_engine::chess::store::Loaded<F>) -> Value {
     let named = |f: &Option<(String, String)>| f.as_ref().map(|(name, why)| json!({ "file": name, "why": why }));
     json!({
         "read_only": loaded.read_only,
         "skipped": loaded.skipped,
         "unreadable": named(&loaded.unreadable),
         "set_aside": named(&loaded.set_aside),
+        "old_lock_only": loaded.old_lock_only,
     })
 }
 
 /// `reply` with [`store_notes`] added.
-fn with_store_notes(mut reply: Value, loaded: &Loaded) -> Value {
+pub(crate) fn with_store_notes<F>(mut reply: Value, loaded: &pdfcraft_engine::chess::store::Loaded<F>) -> Value {
     if let (Some(o), Value::Object(notes)) = (reply.as_object_mut(), store_notes(loaded)) {
         o.extend(notes);
     }
@@ -62,10 +67,20 @@ fn kind_name(kind: Kind) -> &'static str {
 }
 
 impl Automation {
-    /// The corrections folder `store` names, confined to the root.
+    /// The corrections folder `store` names, confined to the root, to change.
     pub(crate) fn correction_store(&self, a: &Args) -> Result<FolderStore> {
         let store = a.opt_str("store")?.unwrap_or(DEFAULT_STORE);
-        let dir = self.resolve(store, true)?;
+        Ok(Self::correction_folder(self.resolve(store, true)?))
+    }
+
+    /// The corrections folder `store` names, confined to the root, only to read: read access is
+    /// enough, and a folder that is not there is an empty store (A4-13).
+    pub(crate) fn correction_store_to_read(&self, a: &Args) -> Result<FolderStore> {
+        let store = a.opt_str("store")?.unwrap_or(DEFAULT_STORE);
+        Ok(Self::correction_folder(self.resolve_to_read(store)?))
+    }
+
+    fn correction_folder(dir: std::path::PathBuf) -> FolderStore {
         #[cfg(not(target_arch = "wasm32"))]
         let store = DirStore::new(dir);
         #[cfg(target_arch = "wasm32")]
@@ -73,7 +88,23 @@ impl Automation {
             let _ = dir;
             FolderStore::new(0)
         };
-        Ok(store)
+        store
+    }
+
+    /// Whether what is read from document `id` may be kept in a store (plan A9 §2.3,
+    /// [`persist_policy`]): never for a document that does not allow copying; for an encrypted
+    /// one only with `allow_encrypted`, since the stores keep it unencrypted (as
+    /// `chess_glyph_sample` asks).
+    pub(crate) fn may_keep(&self, a: &Args, id: DocId) -> Result<()> {
+        let doc = self.session.get(id).ok_or_else(|| failed("no such document"))?;
+        match persist_policy(doc) {
+            Persist::Yes => Ok(()),
+            Persist::Never => Err(failed("the document's security settings don't allow copying: nothing read from it is kept")),
+            Persist::Ask if a.opt_bool("allow_encrypted")?.unwrap_or(false) => Ok(()),
+            Persist::Ask => {
+                Err(failed("the document is encrypted and the store would keep what is read from it unencrypted: pass allow_encrypted to keep it"))
+            }
+        }
     }
 
     /// Before a reading tool reads document `id`: give it the corrections `store` keeps for it,
@@ -84,7 +115,7 @@ impl Automation {
             self.session.set_chess_corrections(id, None);
             return Ok(Value::Null);
         }
-        let store = self.correction_store(a)?;
+        let store = self.correction_store_to_read(a)?;
         let doc = self.session.get(id).ok_or_else(|| failed("no such document"))?;
         let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
         let loaded = match store.load(&keys, pages) {
@@ -118,7 +149,7 @@ impl Automation {
     }
 
     pub(crate) fn chess_correction_list(&self, a: &Args) -> Result<Value> {
-        let store = self.correction_store(a)?;
+        let store = self.correction_store_to_read(a)?;
         let doc = self.doc(a)?;
         let (keys, fingerprints) = (doc.doc_keys(), doc.page_fingerprints());
         let loaded = store.load(&keys, fingerprints.len()).map_err(failed)?;
@@ -154,6 +185,7 @@ impl Automation {
             Some(_) => return Err(Args::wrong("kind", "\"corrected\" or \"verified\"")),
         };
         let id = self.doc(a)?.id;
+        self.may_keep(a, id)?;
         let (rect, read) = self.diagram_target(a, id, page, index)?;
         // Verified says the reading was right: the reading's position unless fen is given.
         let fen = match (a.opt_str("fen")?, kind, &read) {
@@ -184,6 +216,7 @@ impl Automation {
         let store = self.correction_store(a)?;
         let page = self.page(a)?;
         let id = self.doc(a)?.id;
+        self.may_keep(a, id)?;
         let settings = self.chess_settings(a)?;
         let scanned = self.session.chess_scan(id, &[page], &settings, true).map_err(failed)?;
         let found = scanned.first().ok_or_else(|| failed("the page could not be scanned"))?.clone();
@@ -245,7 +278,7 @@ impl Automation {
     /// The correction `a`'s store keeps for the diagram with box `rect` on `page` of document
     /// `id` as it is now: its uid and position.
     pub(crate) fn kept_correction(&self, a: &Args, id: DocId, page: usize, rect: [f32; 4]) -> Result<Option<(String, String)>> {
-        let store = self.correction_store(a)?;
+        let store = self.correction_store_to_read(a)?;
         let doc = self.session.get(id).ok_or_else(|| failed("no such document"))?;
         let (keys, fingerprints) = (doc.doc_keys(), doc.page_fingerprints());
         let loaded = match store.load(&keys, fingerprints.len()) {
@@ -260,6 +293,7 @@ impl Automation {
     /// with the page as it is now (so it follows the page from here): Verified when it is what
     /// was `read`, else Corrected. For a reply: uid, kind, rev and file.
     pub(crate) fn keep_correction(&self, a: &Args, id: DocId, page: usize, rect: [f32; 4], read: Option<String>, fen: String) -> Result<Value> {
+        self.may_keep(a, id)?;
         let store = self.correction_store(a)?;
         let kind = if read.as_deref() == Some(fen.as_str()) { Kind::Verified } else { Kind::Corrected };
         let (uid, rev, loaded) = self.store_correction(&store, id, page, rect, read, fen, kind)?;

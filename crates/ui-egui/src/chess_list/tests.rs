@@ -56,8 +56,9 @@ fn synthetic(app: &PdfCraftApp) -> ChessResults {
         .collect();
     let mut kinds = HashMap::new();
     for page in 0..PAGES {
-        kinds.insert((page, 0), (Kind::Verified, START.to_owned()));
-        kinds.insert((page, 1), (Kind::Corrected, START.to_owned()));
+        let kept = |kind, n: usize| crate::chess_ui::Kept { uid: format!("{page}-{n}"), kind, fen: START.to_owned() };
+        kinds.insert((page, 0), kept(Kind::Verified, 0));
+        kinds.insert((page, 1), kept(Kind::Corrected, 1));
     }
     ChessResults {
         doc: id,

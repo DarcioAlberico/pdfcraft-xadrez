@@ -2,14 +2,14 @@ use proptest::prelude::*;
 
 use super::super::tests::{arb_block, diagram, doc, fen_after, mv, para, played};
 use super::*;
-use crate::doc::ChessPage;
+use crate::doc::{BlockRole, ChessPage};
 
 fn text(t: &str) -> Inline {
     Inline::Text { text: t.to_string(), source_rect: None, review: Vec::new() }
 }
 
 fn heading(t: &str) -> Block {
-    Block::Heading { level: 1, inlines: vec![text(t)], source_rect: None }
+    Block::Heading { level: 1, inlines: vec![text(t)], source_rect: None, role: BlockRole::Content }
 }
 
 /// The games of a PGN, read back; none may stop short.

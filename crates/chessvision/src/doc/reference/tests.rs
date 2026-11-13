@@ -2,7 +2,7 @@ use pdfcraft_chess::game::Game as PgnGame;
 use proptest::prelude::*;
 
 use super::*;
-use crate::doc::{ChessPage, DiagramBlock, DiagramReading, DiagramSource, FORMAT_VERSION, MoveNumber, TextLayer};
+use crate::doc::{BlockRole, ChessPage, DiagramBlock, DiagramReading, DiagramSource, FORMAT_VERSION, MoveNumber, TextLayer};
 
 /// The FEN after `moves` from the initial position.
 pub(super) fn fen_after(moves: &[&str]) -> String {
@@ -43,7 +43,7 @@ pub(super) fn played(before: &[&str], moves: &[&str]) -> Vec<Inline> {
 }
 
 pub(super) fn para(inlines: Vec<Inline>) -> Block {
-    Block::Paragraph { inlines, source_rect: None }
+    Block::Paragraph { inlines, source_rect: None, role: BlockRole::Content }
 }
 
 /// A diagram read with White to move assumed, as the book's are.
@@ -245,7 +245,7 @@ fn a_pgn_of_another_book_links_nothing() {
 #[test]
 fn headings_and_moves_without_a_san_are_not_linked() {
     let index = ReferenceIndex::from_pgn("1.e4 e5 *").unwrap();
-    let heading = Block::Heading { level: 2, inlines: played(&[], &["e4"]), source_rect: None };
+    let heading = Block::Heading { level: 2, inlines: played(&[], &["e4"]), source_rect: None, role: BlockRole::Content };
     let a =
         align(&doc(vec![vec![heading, para(vec![mv(Some((1, false)), "", Unchecked, None), mv(Some((1, false)), "0-0", Unchecked, None)])]]), &index);
     assert_eq!(kinds(&a), [Absent, Absent], "the heading's move is not among them");

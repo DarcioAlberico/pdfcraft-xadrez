@@ -4,14 +4,17 @@
 //!
 //! The PGNs live in a folder confined to `--root` (`reference_store`, [`DEFAULT_STORE`] by
 //! default), one file per document, in the format of `pdfcraft_engine::chess::reference_store`; a
-//! tool reads and changes the PGN of the document it is given, never another's.
+//! tool reads and changes the PGN of the document it is given, never another's. A tool that only
+//! reads it needs only read access to the folder, and a folder that is not there keeps nothing
+//! (plan A9-G3a, A4-13); a PGN is kept for a document only as its security allows
+//! (`Automation::may_keep`).
 
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::DocKeys;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::ReferenceIndex;
 #[cfg(not(target_arch = "wasm32"))]
 use pdfcraft_engine::chess::reference_store::DirStore;
-use pdfcraft_engine::chess::reference_store::{KeptPgn, Loaded, ReferenceStore, ReferenceStoreError};
+use pdfcraft_engine::chess::reference_store::{KeptPgn, Loaded, ReferenceStoreError};
 use serde_json::{Value, json};
 
 use crate::{Args, Automation, Result, failed};
@@ -39,10 +42,11 @@ fn now() -> u64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs())
 }
 
-/// What a store found, for a reply.
+/// What a store found, for a reply, with what it could not read and what a change set aside
+/// (`crate::chess_corrections::store_notes`).
 fn loaded_reply(loaded: &Loaded) -> Value {
     let pgn = loaded.pgn();
-    json!({
+    let reply = json!({
         "file": loaded.name,
         "kept": pgn.is_some(),
         "name": pgn.and_then(|p| p.name.clone()),
@@ -52,18 +56,23 @@ fn loaded_reply(loaded: &Loaded) -> Value {
         "games": pgn.map(|p| p.games),
         "moves": pgn.map(|p| p.moves),
         // The user's choices on moves in conflict with it, made in the app (R6e).
-        "decisions": loaded.file.as_ref().map(|f| f.decisions.len()),
-        "read_only": loaded.read_only.is_some(),
-        "set_aside": loaded.set_aside.as_ref().map(|(name, why)| json!({ "file": name, "why": why })),
-    })
+        "decisions": pgn.map(|_| loaded.file.decisions.len()),
+    });
+    crate::chess_corrections::with_store_notes(reply, loaded)
 }
 
 impl Automation {
-    /// The folder `reference_store` names, confined to the root.
+    /// The folder `reference_store` names, confined to the root, to change.
     fn reference_store(&self, a: &Args) -> Result<FolderStore> {
         let store = a.opt_str("reference_store")?.unwrap_or(DEFAULT_STORE);
         let dir = self.resolve(store, true)?;
         Ok(Self::folder_store(dir))
+    }
+
+    /// The folder `reference_store` names, confined to the root, only to read (A4-13).
+    fn reference_store_to_read(&self, a: &Args) -> Result<FolderStore> {
+        let store = a.opt_str("reference_store")?.unwrap_or(DEFAULT_STORE);
+        Ok(Self::folder_store(self.resolve_to_read(store)?))
     }
 
     fn folder_store(dir: std::path::PathBuf) -> FolderStore {
@@ -95,7 +104,7 @@ impl Automation {
         if !a.opt_bool("reference")?.unwrap_or(true) {
             return Ok((None, Value::Null));
         }
-        let store = self.reference_store(a)?;
+        let store = self.reference_store_to_read(a)?;
         let (keys, pages) = self.reference_keys(id)?;
         let loaded = match store.load(&keys, pages) {
             Ok(l) => l,
@@ -121,6 +130,7 @@ impl Automation {
     pub(crate) fn chess_reference_set(&mut self, a: &Args) -> Result<Value> {
         let store = self.reference_store(a)?;
         let id = self.doc(a)?.id;
+        self.may_keep(a, id)?;
         let shown = a.str("path")?;
         let path = self.resolve(shown, false)?;
         let (text, encoding, bytes) = crate::chess::read_reference_text(&path, shown)?;
@@ -142,7 +152,7 @@ impl Automation {
     }
 
     pub(crate) fn chess_reference_status(&self, a: &Args) -> Result<Value> {
-        let store = self.reference_store(a)?;
+        let store = self.reference_store_to_read(a)?;
         let id = self.doc(a)?.id;
         let (keys, pages) = self.reference_keys(id)?;
         let loaded = store.load(&keys, pages).map_err(failed)?;
@@ -153,7 +163,7 @@ impl Automation {
         let store = self.reference_store(a)?;
         let id = self.doc(a)?.id;
         let (keys, pages) = self.reference_keys(id)?;
-        let cleared = store.clear(&keys, pages).map_err(failed)?;
+        let cleared = store.clear(&keys, pages, now()).map_err(failed)?;
         Ok(json!({ "cleared": cleared }))
     }
 }

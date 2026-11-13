@@ -497,7 +497,7 @@ pub fn text_tab(
                     action = Some(TextAction::Show(page, rect));
                 }
             }
-            Block::Paragraph { inlines, source_rect } => {
+            Block::Paragraph { inlines, source_rect, .. } => {
                 ui.horizontal_wrapped(|ui| {
                     ui.spacing_mut().item_spacing.x = 4.0;
                     // Each inline goes straight into the wrapped row: a child `Ui` (`push_id`)
