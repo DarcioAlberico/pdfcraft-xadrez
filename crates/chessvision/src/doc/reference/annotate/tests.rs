@@ -157,3 +157,18 @@ proptest! {
         }
     }
 }
+
+/// Plan A9-L1b (A2-04): the page's furniture is no comment. Harikrishna's annotated PGN had its
+/// page numbers in the comments (`{32}`, `{22 Position after:}`); a running head and a diagram's
+/// own glyphs are not the book's words either.
+#[test]
+fn the_pages_furniture_is_no_comment() {
+    let index = ReferenceIndex::from_pgn("[Event \"?\"]\n\n1. e4 e5 2. Bc4 Nc6 3. Qh5 Nf6 4. Qxf7# 1-0\n").unwrap();
+    let made = annotated_pgn(&crate::doc::tests::issue_pages(), &index, &PgnBook::default(), PgnStyle::FULL);
+    let [game] = games_of(&made.pgn).try_into().unwrap_or_else(|g: Vec<PgnGame>| panic!("{} games: {}", g.len(), made.pgn));
+    assert_eq!(nodes(&game), 7, "{}", made.pgn);
+    assert_eq!(made.pgn.matches("Issue 47").count(), 1, "the head once, where the issue starts: {}", made.pgn);
+    for furniture in ["15", "16", "4*+"] {
+        assert!(!made.pgn.contains(&format!("{{{furniture}")) && !made.pgn.contains(&format!("{furniture}}}")), "{furniture}: {}", made.pgn);
+    }
+}

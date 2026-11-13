@@ -44,12 +44,21 @@ fn helv(top: f32, size: f32, text: &str) -> String {
 /// The page of the blueprint's check: a heading, a caption, the start position in Merida, the
 /// opening played from it and a closing paragraph.
 pub(super) fn chapter() -> Vec<u8> {
+    two_font_pdf(&chapter_content())
+}
+
+fn chapter_content() -> String {
     let mut content = helv(40.0, 24.0, "Chapter 1");
     content.push_str(&helv(70.0, 11.0, "White to play. The Spanish opening."));
     content.push_str(&font_board(60.0, 90.0, MERIDA_START));
     content.push_str(&helv(280.0, 11.0, "1.e4 e5 2.Nf3 Nc6 3.Bb5 a6"));
     content.push_str(&helv(320.0, 11.0, "Black asks the bishop at once."));
-    two_font_pdf(&content)
+    content
+}
+
+/// [`chapter`] with the number `folio` printed at the page's foot.
+pub(super) fn numbered_chapter(folio: &str) -> Vec<u8> {
+    two_font_pdf(&(chapter_content() + &helv(770.0, 9.0, folio)))
 }
 
 fn kinds(doc: &pdfcraft_chessvision::doc::ChessDoc) -> Vec<String> {

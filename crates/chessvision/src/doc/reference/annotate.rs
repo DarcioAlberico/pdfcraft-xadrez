@@ -7,7 +7,8 @@
 //! the reader played elsewhere (a conflict) is the PGN's (decision D1). In the comments, figurines
 //! are letters; a diagram on a linked position is `$220` on that move, and the "Position after:"
 //! cue of its caption is left out (the `$220` says it), the caption's other words kept; line labels
-//! (`A)`, `B1)`) stay as printed.
+//! (`A)`, `B1)`) stay as printed. The page's furniture, its printed number, its running heads and
+//! a diagram's own text, is no comment (plan A9-L1b, A2-04).
 //!
 //! **Lines only the book has** (decision D2): a move the reader played that the PGN does not
 //! have goes in as a variation from the position it was played from, when that position is one
@@ -146,7 +147,9 @@ pub fn annotated_pgn(doc: &ChessDoc, index: &ReferenceIndex, book: &PgnBook, sty
         if current.is_none() {
             current = page_game.get(&page.index).map(|&game| RefNode { game, node: 0 });
         }
-        for (b, block) in page.blocks.iter().enumerate() {
+        // The book's text: its number, running heads and a diagram's own text are no comment
+        // (plan A9-L1b, A2-04).
+        for (b, block) in page.book_blocks() {
             match block {
                 Block::Diagram(d) => {
                     if let Some(&at) = shown.get(&(page.index, d.number)) {

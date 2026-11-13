@@ -14,7 +14,7 @@ use pdfcraft_engine::chess::DocKeys;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::ReferenceIndex;
 #[cfg(not(target_arch = "wasm32"))]
 use pdfcraft_engine::chess::reference_store::DirStore;
-use pdfcraft_engine::chess::reference_store::{KeptPgn, Loaded, ReferenceStoreError};
+use pdfcraft_engine::chess::reference_store::{Decisions, KeptPgn, Loaded, ReferenceStoreError};
 use serde_json::{Value, json};
 
 use crate::chess_store_migrate::{REFERENCE, StoreAt};
@@ -36,6 +36,8 @@ pub(crate) struct BookPgn {
     /// The path as given, or the kept PGN's file name.
     pub shown: String,
     pub index: ReferenceIndex,
+    /// The user's choices on moves in conflict with the PGN kept (R6e; none for `reference_pgn`).
+    pub decisions: Decisions,
 }
 
 /// Seconds since 1970, now.
@@ -111,7 +113,7 @@ impl Automation {
     pub(crate) fn book_pgn(&self, a: &Args, id: DocId) -> Result<(Option<BookPgn>, Value)> {
         if let Some(p) = a.opt_str("reference_pgn")? {
             let index = crate::chess::read_reference(&self.resolve(p, false)?, p)?;
-            return Ok((Some(BookPgn { shown: p.to_owned(), index }), Value::Null));
+            return Ok((Some(BookPgn { shown: p.to_owned(), index, decisions: Decisions::default() }), Value::Null));
         }
         if !a.opt_bool("reference")?.unwrap_or(true) {
             return Ok((None, Value::Null));
@@ -128,7 +130,7 @@ impl Automation {
         let Some(pgn) = loaded.pgn() else { return Ok((None, reply)) };
         let shown = pgn.name.clone().unwrap_or_else(|| "the kept PGN".into());
         let index = ReferenceIndex::from_pgn(&pgn.text).map_err(|e| failed(format!("{shown} (kept for the document): {e}")))?;
-        Ok((Some(BookPgn { shown, index }), reply))
+        Ok((Some(BookPgn { shown, index, decisions: Decisions::of(&loaded.file) }), reply))
     }
 
     /// After document `id` was saved: its PGN in the default folder, found under the keys it had
