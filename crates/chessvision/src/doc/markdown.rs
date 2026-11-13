@@ -9,7 +9,10 @@
 //! named by the caller, which writes the image), or, without images, the FEN in backticks, with
 //! the lichess link under it. Text is escaped so that a Markdown reader shows it as printed:
 //! `1. e4` at the start of a paragraph stays text, not a list item, and `*`, `_`, `[` and friends
-//! stay characters (plan A8 P9d).
+//! stay characters (plan A8 P9d); so do `&` (`&copy;` is not ©) and a paragraph made only of
+//! `-`, `=`, `_` or `*` (`---` is not a rule; plan A9-X1a, A2-13). The images' folder is written in
+//! the link with each of its names percent-encoded (RFC 3986), so `Livro #2 100%_diagrams` finds
+//! its images (A2-14).
 //!
 //! **PGN** ([`pgn_export`]). The games found in the text, and for every legal diagram that is
 //! in none a game of its own with no moves: `[SetUp "1"]`, `[FEN …]` and the page and diagram it
@@ -82,14 +85,21 @@ pub fn image_name(index: u32, number: usize) -> String {
     format!("diagram-p{:04}-{}.png", u64::from(index) + 1, number + 1)
 }
 
-/// Escape inline Markdown: backslash, emphasis, code, links, HTML and line-start markers.
+/// Escape inline Markdown: backslash, emphasis, code, links, HTML and its entities (`&`), and
+/// line-start markers.
 fn esc(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     for c in text.chars().filter(|c| !c.is_control()) {
-        if matches!(c, '\\' | '`' | '*' | '_' | '[' | ']' | '<' | '>' | '|' | '~') {
+        if matches!(c, '\\' | '`' | '*' | '_' | '[' | ']' | '<' | '>' | '|' | '~' | '&') {
             out.push('\\');
         }
         out.push(c);
+    }
+    // A paragraph of nothing but `-` and `=` (and spaces) is a rule or a heading's underline:
+    // its first stays a character. (`_` and `*` are escaped above.)
+    if out.chars().any(|c| matches!(c, '-' | '=')) && out.chars().all(|c| matches!(c, '-' | '=' | ' ')) {
+        out.insert(0, '\\');
+        return out;
     }
     // A paragraph that starts like a list item or a heading stays a paragraph: `1. e4`, `- x`,
     // `+ x`, `# x` (`#` matters only there: `4.Qxf7#` keeps its mate sign as printed).
@@ -99,6 +109,27 @@ fn esc(text: &str) -> String {
         out.insert(digits, '\\');
     } else if out.starts_with("- ") || out.starts_with("+ ") || out == "-" || out == "+" || out.starts_with('#') {
         out.insert(0, '\\');
+    }
+    out
+}
+
+/// `path`, a relative path with `/` between its names, as a link's destination (plan A9-X1a,
+/// A2-14): each name percent-encoded but for RFC 3986's unreserved characters (letters, digits,
+/// `-`, `.`, `_`, `~`), a byte at a time in UTF-8, so `#` (a fragment), `%` (an escape), a space and
+/// a bracket name the folder they are in.
+pub fn link_path(path: &str) -> String {
+    let mut out = String::with_capacity(path.len());
+    for (k, name) in path.split('/').enumerate() {
+        if k > 0 {
+            out.push('/');
+        }
+        for b in name.bytes() {
+            if b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.' | b'_' | b'~') {
+                out.push(char::from(b));
+            } else {
+                let _ = write!(out, "%{b:02X}");
+            }
+        }
     }
     out
 }
@@ -149,14 +180,8 @@ pub fn write(doc: &ChessDoc, o: &MarkdownOptions<'_>) -> String {
                     match o.diagrams {
                         MarkdownDiagrams::Images => {
                             let name = image_name(page.index, d.number);
-                            // A link destination: spaces encoded, nothing that would end it.
-                            let dir: String = o
-                                .image_dir
-                                .trim_matches('/')
-                                .chars()
-                                .filter(|c| !"()<>".contains(*c) && !c.is_control())
-                                .collect::<String>()
-                                .replace(' ', "%20");
+                            // A link destination: each of the folder's names percent-encoded.
+                            let dir = link_path(o.image_dir.trim_matches('/'));
                             let path = if dir.is_empty() { name } else { format!("{dir}/{name}") };
                             // The alt text says the diagram; the title keeps its FEN.
                             let alt = esc(&describe::describe_side(number, &label, shown.fen, shown.side_known, book_lang));

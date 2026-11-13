@@ -337,3 +337,15 @@ fn a_diagram_says_the_side_the_text_settled_and_not_one_assumed() {
     assert!(html.contains(">Diagram 1, page 1: side to move not given</title>"), "{html}");
     assert!(!html.contains("White to move"), "{html}");
 }
+
+/// Plan A9-X1a (A2-17): U+FFFE and U+FFFF, which XML does not allow, and the other noncharacters
+/// leave the HTML and the EPUB's pages well-formed: they are dropped, the text around them kept.
+#[test]
+fn noncharacters_are_dropped_from_the_markup() {
+    assert_eq!(crate::doc::html::escape("a\u{FFFE}b\u{FFFF}c\u{FDD0}d\u{1FFFF}e<"), "abcde&lt;");
+    assert_eq!(
+        crate::doc::html::escape("\u{FFFD}\u{FDCF}\u{FDF0}"),
+        "\u{FFFD}\u{FDCF}\u{FDF0}",
+        "a replacement character and their neighbours are characters"
+    );
+}

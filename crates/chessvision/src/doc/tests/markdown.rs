@@ -242,3 +242,24 @@ fn a_diagram_reprinting_a_game_marks_its_move() {
     let once = pgn_export(&marked, &PgnBook::default(), PgnPositions::Unused, PgnStyle::FULL);
     assert!(once.pgn.contains("2. Nf3 $221 Nc6") && !once.pgn.contains("$220"), "{}", once.pgn);
 }
+
+/// Plan A9-X1a (A2-13, A2-14): a paragraph printed `---` is text, not a rule; `&copy;` and `&amp;`
+/// are what was printed, not © and &; and the images' folder of a file named `Livro #2 100%.md`
+/// is linked so that a reader finds it (`#` began a fragment, `%_d` was a broken escape).
+#[test]
+fn printed_signs_and_an_odd_folder_name_read_as_they_are() {
+    let text = page_text(vec![line(100.0, "---"), line(130.0, "==="), line(160.0, "&copy; and &amp; R&D")]);
+    let doc = build_page(&input(0, &text, &[], &[], &[]));
+    let md = write(&doc, &options());
+    assert!(md.contains("\n\\---\n"), "{md}");
+    assert!(md.contains("\n\\===\n"), "{md}");
+    assert!(md.contains("\\&copy; and \\&amp; R\\&D"), "{md}");
+    let (text, diagrams, hints) = showcase();
+    let doc = build_page(&input(0, &text, &diagrams, &hints, &[]));
+    let folder = crate::doc::markdown::image_folder("Livro #2 100% (2017)");
+    assert_eq!(folder, "Livro #2 100% (2017)_diagrams");
+    let md = write(&doc, &MarkdownOptions { image_dir: &folder, ..options() });
+    let link = format!("](Livro%20%232%20100%25%20%282017%29_diagrams/{} \"", image_name(0, 0));
+    assert!(md.contains(&link), "{md}");
+    assert_eq!(crate::doc::markdown::link_path("a b/é#%~._-"), "a%20b/%C3%A9%23%25~._-");
+}

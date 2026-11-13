@@ -250,22 +250,23 @@ impl crate::Document {
         (pages, truncated)
     }
 
-    /// The document as a Word, PowerPoint, HTML or RTF file.
-    pub fn export_office(&self, format: OfficeFormat) -> Vec<u8> {
-        self.export_office_checked(format).bytes
+    /// The document as a Word, PowerPoint, HTML or RTF file; refused when a Word or PowerPoint
+    /// package would hold more than a zip file holds (plan A9-X1a: 4 GB, 65,535 files).
+    pub fn export_office(&self, format: OfficeFormat) -> Result<Vec<u8>, String> {
+        self.export_office_checked(format).map(|e| e.bytes)
     }
 
     /// [`Self::export_office`], and the pages whose text it had to leave out
     /// ([`OfficeExport::truncated_pages`]).
-    pub fn export_office_checked(&self, format: OfficeFormat) -> OfficeExport {
+    pub fn export_office_checked(&self, format: OfficeFormat) -> Result<OfficeExport, String> {
         let (pages, truncated_pages) = self.export_pages_checked();
         let title = self.info.title.clone().unwrap_or_else(|| self.name.trim_end_matches(".pdf").to_string());
         let bytes = match format {
-            OfficeFormat::Docx => pdfcraft_export::docx(&pages, &title),
-            OfficeFormat::Pptx => pdfcraft_export::pptx(&pages, &title),
+            OfficeFormat::Docx => pdfcraft_export::docx(&pages, &title).map_err(|e| e.to_string())?,
+            OfficeFormat::Pptx => pdfcraft_export::pptx(&pages, &title).map_err(|e| e.to_string())?,
             OfficeFormat::Html => pdfcraft_export::html(&pages, &title).into_bytes(),
             OfficeFormat::Rtf => pdfcraft_export::rtf(&pages).into_bytes(),
         };
-        OfficeExport { bytes, truncated_pages }
+        Ok(OfficeExport { bytes, truncated_pages })
     }
 }

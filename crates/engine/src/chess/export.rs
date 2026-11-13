@@ -305,7 +305,11 @@ impl Session {
                 };
                 let (flow, count) = super::office::to_flow(&read.doc, &office, &mut notes);
                 drawn = count;
-                if format == ChessFormat::Docx { super::office::docx(&flow) } else { super::office::rtf(&flow).into_bytes() }
+                if format == ChessFormat::Docx {
+                    super::office::docx(&flow).map_err(|e| e.to_string())?
+                } else {
+                    super::office::rtf(&flow).into_bytes()
+                }
             }
         };
         Ok(ChessExport { bytes, images, read, drawn, position_games, positions_skipped, annotated, notes })

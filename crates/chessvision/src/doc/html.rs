@@ -98,6 +98,8 @@ fn esc(s: &str) -> String {
             '"' => out.push_str("&quot;"),
             '\'' => out.push_str("&#39;"),
             c if c.is_control() && c != '\n' && c != '\t' => {}
+            // Not characters XML takes (U+FFFE, U+FFFF, the noncharacters; plan A9-X1a, A2-17).
+            c if pdfcraft_chess::svg::noncharacter(c) => {}
             c => out.push(c),
         }
     }
