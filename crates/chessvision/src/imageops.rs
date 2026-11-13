@@ -550,6 +550,50 @@ pub(crate) fn clahe(image: &GrayImage, tiles: usize, clip: f64) -> Option<GrayIm
     GrayImage::new(image.width(), image.height(), data).ok()
 }
 
+/// Douglas–Peucker on an open polyline: the points of `points` kept, both ends always, each other
+/// one when it lies farther than `epsilon` from the chord of the stretch it splits (the first of
+/// the farthest on a tie). An explicit stack, never recursion: a hostile contour cannot exhaust
+/// the stack (plan A9-V9, A3-11: the piece tracer's copy recursed without a bound). The one
+/// simplification of the crate: the diagram detector's contours and the piece tracer's loops.
+pub(crate) fn simplify_open(points: &[(f32, f32)], epsilon: f32) -> Vec<(f32, f32)> {
+    let Some(last) = points.len().checked_sub(1) else { return Vec::new() };
+    let mut keep = vec![false; points.len()];
+    for i in [0, last] {
+        if let Some(slot) = keep.get_mut(i) {
+            *slot = true;
+        }
+    }
+    let mut stack = vec![(0, last)];
+    while let Some((start, end)) = stack.pop() {
+        if end <= start + 1 {
+            continue;
+        }
+        let (Some(&p), Some(&q)) = (points.get(start), points.get(end)) else { continue };
+        let (best, distance) = (start + 1..end).fold((start, -1.0_f32), |(best, d), i| {
+            let dist = points.get(i).map_or(0.0, |r| line_distance(*r, p, q));
+            if dist > d { (i, dist) } else { (best, d) }
+        });
+        if distance > epsilon {
+            if let Some(slot) = keep.get_mut(best) {
+                *slot = true;
+            }
+            stack.push((start, best));
+            stack.push((best, end));
+        }
+    }
+    points.iter().zip(&keep).filter(|(_, k)| **k).map(|(p, _)| *p).collect()
+}
+
+/// Distance from `r` to the line through `p` and `q` (to `p` when they coincide).
+fn line_distance(r: (f32, f32), p: (f32, f32), q: (f32, f32)) -> f32 {
+    let (dx, dy) = (q.0 - p.0, q.1 - p.1);
+    let length = (dx * dx + dy * dy).sqrt();
+    if length <= f32::EPSILON {
+        return ((r.0 - p.0).powi(2) + (r.1 - p.1).powi(2)).sqrt();
+    }
+    ((r.0 - p.0) * dy - (r.1 - p.1) * dx).abs() / length
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
