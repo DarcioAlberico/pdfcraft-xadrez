@@ -29,7 +29,7 @@
 //! since is made again, once. A move of a waiting plan that did not play is corrected in the
 //! preview (T10, [`crate::chess_correct`]).
 
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::Arc;
 
 use egui::{Key, Modifiers, Rect, RichText, pos2};
 use pdfcraft_engine::DocId;
@@ -97,7 +97,7 @@ pub struct CaptureState {
     /// A plan waiting for the user: it did not read completely or fit only one place.
     pub pending: Option<Pending>,
     /// A plan being made off the interface thread.
-    job: Option<Job>,
+    job: Option<CaptureJob>,
     /// Text pasted while the chess scope was on, captured at the next tick.
     pasted: Vec<String>,
     /// The mode the next paste is captured in (Paste as ▸, where the clipboard can only be read by
@@ -278,38 +278,12 @@ impl Request {
     }
 }
 
-/// How a plan made on a worker thread is getting on (the web plans inline: never done there).
+/// A plan made on a worker thread (plan A9-I2: a [`crate::chess_job::Job`]; the web plans
+/// inline, so never there).
 #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
-enum JobState {
-    Running,
-    Done(Box<CapturePlan>),
-    /// The worker ended without a plan.
-    Gone,
-}
-
-struct Job {
+struct CaptureJob {
     request: Request,
-    state: Arc<Mutex<JobState>>,
-}
-
-/// The job's state, even after a worker panicked while holding it (it is plain data).
-fn lock(m: &Mutex<JobState>) -> MutexGuard<'_, JobState> {
-    m.lock().unwrap_or_else(|e| e.into_inner())
-}
-
-/// Marks the job gone when the worker ends without a plan, so the interface never waits for a
-/// worker that is gone.
-#[cfg(not(target_arch = "wasm32"))]
-struct Finish(Arc<Mutex<JobState>>);
-
-#[cfg(not(target_arch = "wasm32"))]
-impl Drop for Finish {
-    fn drop(&mut self) {
-        let mut s = lock(&self.0);
-        if matches!(*s, JobState::Running) {
-            *s = JobState::Gone;
-        }
-    }
+    job: crate::chess_job::Job<CapturePlan>,
 }
 
 // ─── The rail ────────────────────────────────────────────────────────────────────────────────
@@ -665,19 +639,10 @@ impl PdfCraftApp {
         self.chess.capture.job = None;
         #[cfg(not(target_arch = "wasm32"))]
         if request.len() > INLINE_BYTES && !self.run_inline {
-            let game = self.chess.board().game.clone();
-            let state = Arc::new(Mutex::new(JobState::Running));
-            let (slot, work) = (state.clone(), request.clone());
-            let run = move || {
-                let _finish = Finish(slot.clone());
-                let plan = plan_for(&game, &work);
-                *lock(&slot) = JobState::Done(Box::new(plan));
-            };
-            if std::thread::Builder::new().name("pdfcraft-capture".into()).spawn(run).is_ok() {
-                self.chess.capture.job = Some(Job { request, state });
-                return;
-            }
-            // No thread: plan here.
+            let (game, work) = (self.chess.board().game.clone(), request.clone());
+            let job = crate::chess_job::Job::spawn("pdfcraft-capture", false, move |_| Ok(plan_for(&game, &work)));
+            self.chess.capture.job = Some(CaptureJob { request, job });
+            return;
         }
         let plan = plan_for(&self.chess.board().game, &request);
         self.finish_capture(request, plan, false);
@@ -805,20 +770,20 @@ impl PdfCraftApp {
         }
         self.poll_chess_area();
         self.poll_chess_samples();
-        let Some(job) = self.chess.capture.job.as_ref() else { return };
-        let state = std::mem::replace(&mut *lock(&job.state), JobState::Running);
-        match state {
-            JobState::Running => {
+        let Some(job) = self.chess.capture.job.as_mut() else { return };
+        match job.job.poll() {
+            None => {
                 if let Some(ctx) = &self.ctx {
                     ctx.request_repaint_after(std::time::Duration::from_millis(30));
                 }
             }
-            JobState::Done(plan) => {
+            Some(Ok(plan)) => {
                 if let Some(job) = self.chess.capture.job.take() {
-                    self.finish_capture(job.request, *plan, false);
+                    self.finish_capture(job.request, plan, false);
                 }
             }
-            JobState::Gone => {
+            // No thread, or the planning panicked.
+            Some(Err(_)) => {
                 self.chess.capture.job = None;
                 self.notify(tl!("The capture couldn't be planned.").to_owned());
             }

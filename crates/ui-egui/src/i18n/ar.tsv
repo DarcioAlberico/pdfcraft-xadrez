@@ -3728,3 +3728,10 @@ the move's comment	Move comment	تعليق النقلة
 	what was saved before couldn't be read, and is kept aside first; try again in a moment	تعذّرت قراءة ما حُفظ من قبل، ويُحفظ جانبًا أولًا؛ حاول مرة أخرى بعد قليل
 	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	تعذّرت قراءة تصحيحات المخططات المحفوظة ({why}). تُحفظ جانبًا عند الحفظ التالي، وتُحفظ التصحيحات الجديدة بعد ذلك.
 	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	تعذّرت قراءة ملفات PGN المحفوظة للكتب ({why}). تُحفظ جانبًا عند الحفظ التالي، وتُحفظ الملفات الجديدة بعد ذلك.
+# Plan A9-I2: one kind of job; the long jobs say how far they are and stop when asked.
+	Stop	إيقاف
+	Exporting the chess document: page {done} of {of}	جارٍ تصدير مستند الشطرنج: الصفحة {done} من {of}
+	The export was stopped: nothing was written.	أُوقف التصدير: لم يُكتب شيء.
+	Aligning was stopped: the book's link is as it was.	أُوقفت المواءمة: بقي ربط الكتاب كما كان.
+	The work stopped on an internal error: {why}	توقف العمل بسبب خطأ داخلي: {why}
+	The work stopped on an internal error.	توقف العمل بسبب خطأ داخلي.

@@ -24,7 +24,7 @@
 use pdfcraft_chess::describe;
 use pdfcraft_chess::san::Lang;
 use pdfcraft_chessvision::doc::ChessDoc;
-use pdfcraft_chessvision::doc::html::{EPUB_CSS, HtmlOptions, epub_css, epub_font_href, escape, page_label, toc, xhtml_page};
+use pdfcraft_chessvision::doc::html::{EPUB_CSS, HtmlOptions, accessibility_summary, epub_css, epub_font_href, escape, page_label, toc, xhtml_page};
 use pdfcraft_export::Zip;
 use pdfcraft_render::{PageRenderer, RenderRequest};
 
@@ -57,7 +57,8 @@ pub struct EpubMeta {
 }
 
 /// What the package says about how the book can be read (EPUB Accessibility 1.1, schema.org):
-/// text and pictures, the text alone enough (every diagram is said in words), and what helps.
+/// text and pictures, the text alone enough (every diagram is said in words), and what helps. The
+/// summary is counted from the book ([`accessibility_summary`]).
 const ACCESSIBILITY: &str = "<meta property=\"schema:accessMode\">textual</meta>\n\
 <meta property=\"schema:accessMode\">visual</meta>\n\
 <meta property=\"schema:accessModeSufficient\">textual</meta>\n\
@@ -66,8 +67,13 @@ const ACCESSIBILITY: &str = "<meta property=\"schema:accessMode\">textual</meta>
 <meta property=\"schema:accessibilityFeature\">tableOfContents</meta>\n\
 <meta property=\"schema:accessibilityFeature\">readingOrder</meta>\n\
 <meta property=\"schema:accessibilityFeature\">pageNavigation</meta>\n\
-<meta property=\"schema:accessibilityHazard\">none</meta>\n\
-<meta property=\"schema:accessibilitySummary\">Every chess diagram has a text alternative that names the side to move and each piece on its square; the moves are text. Pages carry the printed page numbers of the source book.</meta>\n";
+<meta property=\"schema:accessibilityHazard\">none</meta>\n";
+
+/// Whether an author's name stands for none (`Unknown`, `Anonymous`, `?`, `N/A`, `None`): the
+/// package leaves `dc:creator` out rather than name the author so (plan A9-X3, R5-06).
+fn unknown_name(name: &str) -> bool {
+    ["unknown", "anonymous", "?", "n/a", "none"].iter().any(|n| name.trim().eq_ignore_ascii_case(n))
+}
 
 /// One file of the package.
 #[derive(Clone, Debug, PartialEq)]
@@ -210,8 +216,8 @@ pub fn entries(doc: &ChessDoc, o: &HtmlOptions<'_>, meta: &EpubMeta) -> Result<V
         cover_meta = "<meta name=\"cover\" content=\"cover-image\"/>\n";
     }
 
-    // The table of contents: the headings, flat (each links to its anchor), else the pages, named
-    // in the book's language with their printed numbers.
+    // The table of contents: the headings, nested by level (each links to its anchor), else the
+    // pages, named in the book's language with their printed numbers.
     let book_lang = Lang::from_tag(&meta.lang).unwrap_or(Lang::En);
     let page_name = |index: u32| describe::page(&page_label(o, index).to_string(), book_lang);
     // The page list: each page's break, by the number the book prints.
@@ -231,10 +237,30 @@ pub fn entries(doc: &ChessDoc, o: &HtmlOptions<'_>, meta: &EpubMeta) -> Result<V
             items.push_str(&format!("<li><a href=\"{}\">{}</a></li>\n", page_file(n), escape(&page_name(page.index))));
         }
     } else {
+        // A heading goes under the nearest one before it of a higher level (plan A9-X3, R5-06: the
+        // list was flat), so a reader moves by chapter and by section. `open` holds the levels of
+        // the items not yet closed, outermost first; levels are 1-6, so lists nest six deep at most.
+        let mut open: Vec<u8> = Vec::new();
         for h in &headings {
             let file = doc.pages.iter().position(|p| p.index == h.page).map(page_file).unwrap_or_default();
             let text = if h.text.trim().is_empty() { page_name(h.page) } else { h.text.clone() };
-            items.push_str(&format!("<li><a href=\"{file}#{}\">{}</a></li>\n", escape(&h.id), escape(&text)));
+            if open.last().is_some_and(|&l| l < h.level) {
+                items.push_str("\n<ol>\n");
+            } else if open.pop().is_some() {
+                items.push_str("</li>\n");
+                while open.last().is_some_and(|&l| l >= h.level) {
+                    open.pop();
+                    items.push_str("</ol>\n</li>\n");
+                }
+            }
+            items.push_str(&format!("<li><a href=\"{file}#{}\">{}</a>", escape(&h.id), escape(&text)));
+            open.push(h.level);
+        }
+        while open.pop().is_some() {
+            items.push_str("</li>\n");
+            if !open.is_empty() {
+                items.push_str("</ol>\n");
+            }
         }
     }
     if items.is_empty() {
@@ -249,10 +275,17 @@ pub fn entries(doc: &ChessDoc, o: &HtmlOptions<'_>, meta: &EpubMeta) -> Result<V
             t = escape(&meta.title),
         ),
     ));
+    // How the book can be read, counted from it; in English, said so in a book in another language.
+    let english = lang.split(['-', '_']).next().is_some_and(|p| p.eq_ignore_ascii_case("en"));
+    let summary = format!(
+        "<meta property=\"schema:accessibilitySummary\"{}>{}</meta>\n",
+        if english { "" } else { " xml:lang=\"en\"" },
+        escape(&accessibility_summary(doc, o)),
+    );
     out.push(entry(
         "OEBPS/content.opf",
         format!(
-            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" unique-identifier=\"book-id\" xml:lang=\"{l}\">\n<metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n<dc:identifier id=\"book-id\">{id}</dc:identifier>\n<dc:title>{t}</dc:title>\n<dc:language>{l}</dc:language>\n{who}<meta property=\"dcterms:modified\">{m}</meta>\n{ACCESSIBILITY}{cover_meta}</metadata>\n<manifest>\n{manifest}</manifest>\n<spine>\n{spine}</spine>\n</package>\n",
+            "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" unique-identifier=\"book-id\" xml:lang=\"{l}\">\n<metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">\n<dc:identifier id=\"book-id\">{id}</dc:identifier>\n<dc:title>{t}</dc:title>\n<dc:language>{l}</dc:language>\n{who}<meta property=\"dcterms:modified\">{m}</meta>\n{ACCESSIBILITY}{summary}{cover_meta}</metadata>\n<manifest>\n{manifest}</manifest>\n<spine>\n{spine}</spine>\n</package>\n",
             l = escape(lang),
             id = escape(&meta.identifier),
             t = escape(&meta.title),
@@ -260,7 +293,7 @@ pub fn entries(doc: &ChessDoc, o: &HtmlOptions<'_>, meta: &EpubMeta) -> Result<V
             who = {
                 let mut who = String::new();
                 for (tag, value) in [("creator", &meta.creator), ("source", &meta.source)] {
-                    if let Some(v) = value.as_deref().map(str::trim).filter(|v| !v.is_empty()) {
+                    if let Some(v) = value.as_deref().map(str::trim).filter(|v| !v.is_empty() && !(tag == "creator" && unknown_name(v))) {
                         who.push_str(&format!("<dc:{tag}>{}</dc:{tag}>\n", escape(v)));
                     }
                 }

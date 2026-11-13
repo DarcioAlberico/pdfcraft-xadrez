@@ -3449,3 +3449,10 @@ the move's comment	Move comment	Hamlenin yorumu
 	what was saved before couldn't be read, and is kept aside first; try again in a moment	daha önce kaydedilen okunamadı ve önce kenara ayrılıyor; birazdan yeniden deneyin
 	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	Kaydedilmiş diyagram düzeltmeleri okunamadı ({why}). Bir sonraki kayıtta kenara ayrılırlar, o andan itibaren yeni düzeltmeler saklanır.
 	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	Kitapların kaydedilmiş PGN dosyaları okunamadı ({why}). Bir sonraki kayıtta kenara ayrılırlar, o andan itibaren yenileri saklanır.
+# Plan A9-I2: one kind of job; the long jobs say how far they are and stop when asked.
+	Stop	Durdur
+	Exporting the chess document: page {done} of {of}	Satranç belgesi dışa aktarılıyor: sayfa {done} / {of}
+	The export was stopped: nothing was written.	Dışa aktarma durduruldu: hiçbir şey yazılmadı.
+	Aligning was stopped: the book's link is as it was.	Hizalama durduruldu: kitabın bağlantısı olduğu gibi kaldı.
+	The work stopped on an internal error: {why}	İş bir iç hata nedeniyle durdu: {why}
+	The work stopped on an internal error.	İş bir iç hata nedeniyle durdu.

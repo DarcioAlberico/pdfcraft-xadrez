@@ -99,6 +99,22 @@ pub(crate) fn header(
     action
 }
 
+/// A long job's row (plan A9-I2): what it says ("Exporting the chess document: page 75 of 703"),
+/// × to stop it, and a 4-point bar, as the scan's. Whether × was clicked.
+pub(crate) fn long_job(ui: &mut egui::Ui, t: &Tokens, row: &crate::chess_text_ui::LongRow) -> bool {
+    let mut stop = false;
+    ui.add_space(2.0);
+    ui.horizontal(|ui| {
+        ui.label(RichText::new(&row.said).small().color(t.text_muted));
+        stop = icons::button(ui, "x", widgets::MIN_TARGET, false, tl!("Stop")).clicked();
+    });
+    let total = row.total.max(1);
+    // Pages done of the total; in 0..=1 as `done <= total`, the cast to f32 only rounds.
+    let fraction = (row.done.min(total) as f32 / total as f32).clamp(0.0, 1.0);
+    ui.add(egui::ProgressBar::new(fraction).desired_height(4.0).corner_radius(2));
+    stop
+}
+
 /// What a scan found: "548 diagrams · 40 to review", with Review now when some are.
 pub(crate) fn summary(ui: &mut egui::Ui, t: &Tokens, diagrams: usize, to_review: usize) -> Option<PanelAction> {
     let mut action = None;

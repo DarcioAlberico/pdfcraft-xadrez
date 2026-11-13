@@ -343,7 +343,12 @@ impl Gate {
             return false;
         }
         let t = Instant::now();
-        let result = crate::fuzz::run(&strings(&["--time", "300"])).map(|()| String::new()).map_err(|e| format!("{e:#}"));
+        // With the models, the runs read with them and with the hostile ones (plan A9-Q3a).
+        let mut args = strings(&["--time", "300"]);
+        if let Some(m) = &self.models {
+            args.extend(["--models".to_owned(), m.display().to_string()]);
+        }
+        let result = crate::fuzz::run(&args).map(|()| String::new()).map_err(|e| format!("{e:#}"));
         self.record(5, "fuzz (300 s)", t, result)
     }
 }
