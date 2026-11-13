@@ -72,7 +72,7 @@ fn normalized(chars: &[char]) -> Vec<char> {
 /// Words longer than [`MAX_WORD_CHARS`] are prose or noise and come back as they are: aligning
 /// the aliases re-normalizes the rest of the word at each one, which is quadratic in its length.
 pub(crate) fn normalize_symbols(word: &[Cell]) -> Vec<Cell> {
-    if word.len() > MAX_WORD_CHARS {
+    if word.len() > MAX_WORD_CHARS || row_of_signs(word.iter().map(|c| c.ch)) {
         return word.to_vec();
     }
     let src: Vec<char> = word.iter().map(|c| c.ch).collect();
@@ -108,6 +108,20 @@ pub(crate) fn normalize_symbols(word: &[Cell]) -> Vec<Cell> {
     // word's box.
     let (rect, bold) = (rect_of(word).unwrap_or([0.0; 4]), bold_of(word));
     out.into_iter().map(|c| Cell { bold, ..Cell::new(c, rect) }).collect()
+}
+
+/// Whether a word is a row of three or more `=`, `-` or `*` (`=====`, `---`, `* * *` cut into
+/// words aside): a rule or a break set in text, which is prose, not assessments (`=====` was read
+/// as `$144 $144 $10`; plan A9-L7, A2-12).
+fn row_of_signs(chars: impl Iterator<Item = char>) -> bool {
+    let mut n = 0usize;
+    for c in chars {
+        if !matches!(c, '=' | '-' | '*') {
+            return false;
+        }
+        n = n.saturating_add(1);
+    }
+    n >= 3
 }
 
 /// One annotation symbol after a move, or a check mark.
@@ -458,7 +472,9 @@ pub(crate) fn join_split_moves(words: Vec<Vec<Cell>>, lang: Lang) -> Vec<(Vec<Ce
             continue;
         }
         let lone_figurine = matches!(word.as_slice(), [c] if figurine_piece(c.ch).is_some());
-        let promotion_next = words.get(i + 1).is_some_and(|next| next.first().is_some_and(|c| c.ch == '='));
+        // A promotion cut off its move (`e8` `=Q`), not a row of signs after it (`=====`).
+        let promotion_next =
+            words.get(i + 1).is_some_and(|next| next.first().is_some_and(|c| c.ch == '=') && !row_of_signs(next.iter().map(|c| c.ch)));
         let spans: &[usize] = if lone_figurine {
             &[1, 2]
         } else if promotion_next {
@@ -717,6 +733,8 @@ pub(crate) fn tokenize(word: &[Cell], lang: Lang, rules: Rules) -> Vec<Token> {
                 body.push(token(Kind::Nag(sym), tail.get(r).unwrap_or(&[])));
             }
         }
+    } else if row_of_signs(core.iter().copied()) {
+        body.push(token(Kind::Text, core_cells));
     } else if let Some(marks) = split_marks(core, true) {
         body.extend(marks.into_iter().map(|(mark, r)| match mark {
             Mark::Nag(sym) => token(Kind::Nag(sym), core_cells.get(r).unwrap_or(&[])),

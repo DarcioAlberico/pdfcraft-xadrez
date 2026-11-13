@@ -44,12 +44,21 @@ fn helv(top: f32, size: f32, text: &str) -> String {
 /// The page of the blueprint's check: a heading, a caption, the start position in Merida, the
 /// opening played from it and a closing paragraph.
 pub(super) fn chapter() -> Vec<u8> {
+    two_font_pdf(&chapter_content())
+}
+
+fn chapter_content() -> String {
     let mut content = helv(40.0, 24.0, "Chapter 1");
     content.push_str(&helv(70.0, 11.0, "White to play. The Spanish opening."));
     content.push_str(&font_board(60.0, 90.0, MERIDA_START));
     content.push_str(&helv(280.0, 11.0, "1.e4 e5 2.Nf3 Nc6 3.Bb5 a6"));
     content.push_str(&helv(320.0, 11.0, "Black asks the bishop at once."));
-    two_font_pdf(&content)
+    content
+}
+
+/// [`chapter`] with the number `folio` printed at the page's foot.
+pub(super) fn numbered_chapter(folio: &str) -> Vec<u8> {
+    two_font_pdf(&(chapter_content() + &helv(770.0, 9.0, folio)))
 }
 
 fn kinds(doc: &pdfcraft_chessvision::doc::ChessDoc) -> Vec<String> {
@@ -556,4 +565,16 @@ fn a_whole_game_on_its_page_reads_no_other_page() {
     let score = &span.doc.games[at.game].score;
     assert_eq!(score.mainline().len(), 4);
     assert!(score.nodes.iter().all(|n| n.comment.is_empty()), "{:?}", score.nodes.last().map(|n| &n.comment));
+}
+
+/// Plan A9-L7 (R6-07): a page printed in descriptive notation gave no game and said nothing; it
+/// says so in its notes now (the notation is not converted: decision D27).
+#[test]
+fn a_page_in_descriptive_notation_says_so_in_its_notes() {
+    let content = helv(100.0, 11.0, "1.P-K4 P-K4 2.N-KB3 N-QB3 3.B-N5 P-QR3");
+    let (mut s, id) = open(two_font_pdf(&content));
+    let read = s.chess_document(id, &[], &no_model(), Some(pdfcraft_chess::san::Lang::En)).unwrap();
+    let said = "descriptive notation (P-K4, P-K4, N-KB3): not supported; its moves were not read";
+    assert!(read.notes.iter().any(|(p, n)| *p == 0 && n == said), "{:?}", read.notes);
+    assert!(read.doc.games.is_empty());
 }

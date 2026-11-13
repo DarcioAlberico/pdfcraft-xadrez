@@ -1101,7 +1101,10 @@ fn block_text(block: &Block) -> Option<String> {
 /// solution. So are the page's furniture ([`assign_roles`]): its printed number, a header's
 /// event line and a diagram's own text. A game's header (its players' line and its event's,
 /// [`super::header`]) ends the open game, and the next game takes its tags.
-pub(crate) fn walk(page: u32, ocr: bool, blocks: &mut [Block], walker: &mut Walker, trailing: Option<u32>, heads: &mut RunningHeads) {
+///
+/// Returns the page's running heads, by their place among its blocks
+/// ([`super::ChessPage::running_heads`]).
+pub(crate) fn walk(page: u32, ocr: bool, blocks: &mut [Block], walker: &mut Walker, trailing: Option<u32>, heads: &mut RunningHeads) -> Vec<u32> {
     for block in blocks.iter_mut() {
         if let Block::Heading { inlines, .. } | Block::Paragraph { inlines, .. } = block {
             inlines.iter_mut().filter_map(|i| if let Inline::Move(m) = i { Some(m) } else { None }).for_each(unwalked);
@@ -1184,6 +1187,8 @@ pub(crate) fn walk(page: u32, ocr: bool, blocks: &mut [Block], walker: &mut Walk
             }
         }
     }
+    // A page holds far fewer than `u32::MAX` blocks; a place past it names none.
+    skipped.into_iter().filter_map(|bi| u32::try_from(bi).ok()).collect()
 }
 
 /// Move `m`'s walk part as before any walk (plan A9-L0a): unchecked, its SAN as read, no position
@@ -1252,7 +1257,13 @@ pub(crate) fn page(
         review.push(ReviewFlag::PoorTextLayer { reason: poor_reason(reason) });
     }
     attach_reviews(input, &mut blocks, &mut review);
-    walk(input.index, input.ocr, &mut blocks, walker, trailing, heads);
+    let running_heads = walk(input.index, input.ocr, &mut blocks, walker, trailing, heads);
+    // A page of descriptive notation (plan A9-L7, R6-07): more of its words than moves read.
+    let descriptive = crate::chess_text::descriptive::descriptive_words(input.text);
+    let moves = blocks.iter().flat_map(Block::inlines).filter(|i| matches!(i, Inline::Move(_))).count();
+    if descriptive.words >= crate::chess_text::descriptive::MIN_DESCRIPTIVE_WORDS && descriptive.words > moves {
+        review.push(ReviewFlag::DescriptiveNotation { words: descriptive.words, examples: descriptive.examples });
+    }
     let page = ChessPage {
         index: input.index,
         lang: LangTag::of(input.text.lang.lang),
@@ -1262,6 +1273,7 @@ pub(crate) fn page(
         blocks,
         review,
         trailing,
+        running_heads,
     };
     (page, trailing, offsets)
 }

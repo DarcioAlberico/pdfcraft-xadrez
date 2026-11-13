@@ -33,6 +33,16 @@
 //! that has their move, since a decision is looked up only for a move in conflict with the PGN's
 //! same move. A save as another file keeps them. A decision that can't be read is left out and
 //! counted, the others kept.
+//!
+//! **A page read differently** (plan A9-L1b, §2.6, §2.10). A new reading may cut a page into other
+//! blocks (A9-L1a, L3), so a move's place changes. Each decision also keeps its move's ordinal
+//! among the page's moves printed the same (`ordinal`), and is found on the page as read now by
+//! it ([`Decision::find`]); one made before the ordinal was kept is found as the only move of its
+//! page printed so, else at its place. When the interface reads a page, the decisions made on it
+//! are taken to their moves there once and written ([`ReferenceFile::rematch`]); one found
+//! nowhere is kept and counted, never applied to another move ([`Decisions::on_page`]). The file
+//! says the reading of the newest build that wrote it (`reader_version`, `doc::READER_VERSION`):
+//! a file a later reading wrote is read only here, and none of its decisions applied.
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -40,8 +50,8 @@ use serde_json::{Map, Value};
 use super::corrections::{self, DocRecord};
 use super::keys::DocKeys;
 use super::store::{DocStore, Parsed, StoreBackend, StoreFailure, StoreKind};
-use pdfcraft_chessvision::doc::MoveAt;
 use pdfcraft_chessvision::doc::reference::MAX_REFERENCE_BYTES;
+use pdfcraft_chessvision::doc::{ChessPage, Inline, MoveAt, READER_VERSION};
 
 /// The format's name, in every file.
 pub const FORMAT: &str = "pdfcraft-chess-reference";
@@ -89,6 +99,11 @@ pub struct Decision {
     /// diagrams never changes; `None` in a decision made before it was kept.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub san_read: Option<String>,
+    /// The move's place among the moves of its page read with the same SAN, from 0 (plan A9-L1b,
+    /// §2.6): what finds it again when a later reading cuts the page into other blocks
+    /// ([`Decision::find`]). `None` in a decision made before it was kept.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ordinal: Option<u32>,
     pub choice: Choice,
     /// The move of the book's PGN the move was in conflict with, as the PGN writes it (plan A9-G4,
     /// R6-10): for [`Choice::Pgn`] the move chosen. `None` in a decision made before it was kept,
@@ -106,27 +121,61 @@ impl Decision {
     pub fn new(at: MoveAt, san: String, san_read: String, pgn_san: String, choice: Choice) -> Decision {
         let san_read = Some(san_read).filter(|s| !s.is_empty());
         let pgn_san = Some(pgn_san).filter(|s| !s.is_empty());
-        Decision { at, san, san_read, choice, pgn_san, other: Map::new() }
+        Decision { at, san, san_read, ordinal: None, choice, pgn_san, other: Map::new() }
+    }
+
+    /// This decision with its move's ordinal on `page`, the page it is made on as read now
+    /// ([`Decision::ordinal`]), so a later reading finds it again; as it is when its move is not
+    /// on that page.
+    pub fn placed_on(mut self, page: &ChessPage) -> Decision {
+        let at = self.at;
+        self.ordinal = self.same_moves(page).iter().position(|m| *m == at).and_then(|n| u32::try_from(n).ok());
+        self
+    }
+
+    /// The moves of `page` printed as this decision's (its SAN read; the SAN the walk wrote, for a
+    /// decision made before the SAN read was kept), in reading order: every text block's, the
+    /// page's furniture's too, so that a block that changes role from one reading to the next
+    /// moves no move.
+    fn same_moves(&self, page: &ChessPage) -> Vec<MoveAt> {
+        let mut out = Vec::new();
+        for (b, block) in page.blocks.iter().enumerate() {
+            for (i, inline) in block.inlines().iter().enumerate() {
+                let Inline::Move(m) = inline else { continue };
+                let printed = match &self.san_read {
+                    Some(read) => m.read_san() == read,
+                    None => m.san == self.san,
+                };
+                if printed {
+                    out.push(MoveAt::new(page.index, b, i));
+                }
+            }
+        }
+        out
+    }
+
+    /// Where this decision's move is on `page` as read now, when that is its page (plan A9-L1b,
+    /// §2.6): a reading that cuts a page into other blocks (A9-L1a, L3) moves its moves to other
+    /// places. Among the page's moves printed as it was ([`Decision::same_moves`]), the one of its
+    /// [`Decision::ordinal`]; for a decision made before that was kept, the only one, else the one
+    /// at its place, when that is one of them (the rule it was found by before). `None` when none
+    /// is, and the decision is unmatched: kept, never applied to another move.
+    pub fn find(&self, page: &ChessPage) -> Option<MoveAt> {
+        if self.at.page != page.index {
+            return None;
+        }
+        let same = self.same_moves(page);
+        match self.ordinal {
+            Some(n) => usize::try_from(n).ok().and_then(|n| same.get(n)).copied(),
+            None if same.len() == 1 => same.first().copied(),
+            None => Some(self.at).filter(|at| same.contains(at)),
+        }
     }
 
     /// The move of the PGN it was made against: [`Decision::pgn_san`], else (a decision made
     /// before it was kept) the move's own SAN, which a move in conflict shares with the PGN's.
     pub fn pgn_move(&self) -> &str {
         self.pgn_san.as_deref().unwrap_or(&self.san)
-    }
-
-    /// Whether this is the decision on the move at `at` that the walk wrote `san` and the reader
-    /// read `san_read` (plan A9-L0b): its address, and the SAN read when the decision kept one,
-    /// else (a decision made before) the SAN the walk wrote. So a decision stays on its move when
-    /// the move is walked again from a corrected or confirmed diagram (its SAN read does not
-    /// change), and never lands on another move at the same place (one printed otherwise).
-    /// Matching by the SAN read alone, past a new segmentation, is step L1b's (§2.6).
-    pub fn is_for(&self, at: MoveAt, san: &str, san_read: &str) -> bool {
-        self.at == at
-            && match &self.san_read {
-                Some(read) => read == san_read,
-                None => self.san == san,
-            }
     }
 
     /// Whether `self` and `other` are decisions on the same move: the same address, and the
@@ -144,6 +193,92 @@ impl Decision {
     fn names_a_move(&self) -> bool {
         let short = |s: &Option<String>| s.as_ref().is_none_or(|s| s.len() <= MAX_SAN);
         !self.san.is_empty() && self.san.len() <= MAX_SAN && short(&self.san_read) && short(&self.pgn_san)
+    }
+}
+
+/// The move at `at` on `page`, when there is one.
+fn move_on(page: &ChessPage, at: MoveAt) -> Option<&pdfcraft_chessvision::doc::MoveInline> {
+    let block = page.blocks.get(usize::try_from(at.block).ok()?)?;
+    match block.inlines().get(usize::try_from(at.inline).ok()?)? {
+        Inline::Move(m) => Some(m),
+        _ => None,
+    }
+}
+
+/// Take the decisions made on `page` to their moves in its reading now (plan A9-L1b, §2.6):
+/// each one found ([`Decision::find`]) gets its move's place, SAN as read and ordinal, so it is
+/// found by them from now on, past any later reading; one not found is left as it is. Two found
+/// on one move: the later made keeps it, the other is left as it was. How many changed.
+fn rematch(decisions: &mut [Decision], page: &ChessPage) -> usize {
+    let mut taken: Vec<MoveAt> = Vec::new();
+    let mut changed = 0usize;
+    for d in decisions.iter_mut().rev() {
+        let Some(at) = d.find(page).filter(|at| !taken.contains(at)) else { continue };
+        taken.push(at);
+        // A SAN read longer than a decision names (no move) would leave the decision unreadable.
+        let Some(m) = move_on(page, at).filter(|m| m.read_san().len() <= MAX_SAN) else { continue };
+        let placed = Decision {
+            pgn_san: d.pgn_san.clone(),
+            other: d.other.clone(),
+            ..Decision::new(at, d.san.clone(), m.read_san().to_owned(), String::new(), d.choice).placed_on(page)
+        };
+        if placed != *d {
+            changed = changed.saturating_add(1);
+            *d = placed;
+        }
+    }
+    changed
+}
+
+/// A document's decisions as kept, to find on its pages as read (plan A9-L1b, §2.6): the
+/// interface shows the choice made on a move of the page it reads, and says how many choices made
+/// on that page it could not find.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Decisions {
+    /// [`ReferenceFile::reader_version`].
+    pub reader_version: u32,
+    pub list: Vec<Decision>,
+}
+
+/// The decisions made on a page, as found on it ([`Decisions::on_page`]).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct OnPage {
+    /// Each move a decision was found on, with the choice: the decision made last, when two
+    /// were found on one move.
+    pub found: Vec<(MoveAt, Choice)>,
+    /// Decisions made on the page and found on no move of it (kept, never applied elsewhere).
+    pub unmatched: usize,
+}
+
+impl Decisions {
+    /// The decisions `file` keeps.
+    pub fn of(file: &ReferenceFile) -> Decisions {
+        Decisions { reader_version: file.reader_version, list: file.decisions.clone() }
+    }
+
+    /// The decisions made on `page`, found on its moves as read now ([`Decision::find`]). A file
+    /// a later reading wrote applies none: every decision made on the page is unmatched.
+    pub fn on_page(&self, page: &ChessPage) -> OnPage {
+        let mut out = OnPage::default();
+        let mine = self.list.iter().rev().filter(|d| d.at.page == page.index);
+        for d in mine {
+            let found = if self.reader_version > READER_VERSION { None } else { d.find(page) };
+            match found {
+                // An earlier choice on a move chosen again since: the later one stands.
+                Some(at) if out.found.iter().any(|(f, _)| *f == at) => {}
+                Some(at) => out.found.push((at, d.choice)),
+                None => out.unmatched = out.unmatched.saturating_add(1),
+            }
+        }
+        out
+    }
+
+    /// Whether [`ReferenceFile::rematch`] would change a decision made on `page`.
+    pub fn need_rematch(&self, page: &ChessPage) -> bool {
+        if self.reader_version > READER_VERSION {
+            return false;
+        }
+        rematch(&mut self.list.clone(), page) > 0
     }
 }
 
@@ -262,6 +397,11 @@ pub struct ReferenceFile {
     pub removed: Option<u64>,
     /// The user's decisions on moves in conflict with the PGN (R6e).
     pub decisions: Vec<Decision>,
+    /// The reading of the newest build that wrote the file (`doc::READER_VERSION`, plan A9 §2.10,
+    /// L1b); 0 for a file written before it was kept. A file a later reading wrote is read only
+    /// here, and none of its decisions is applied ([`Decisions::on_page`]): their places and
+    /// ordinals are that reading's.
+    pub reader_version: u32,
     /// Fields a later build of this version wrote, kept as they are.
     pub other: Map<String, Value>,
 }
@@ -289,6 +429,7 @@ struct Written<'a> {
     removed: Option<u64>,
     #[serde(skip_serializing_if = "<[Decision]>::is_empty")]
     decisions: &'a [Decision],
+    reader_version: u32,
     #[serde(flatten)]
     other: &'a Map<String, Value>,
 }
@@ -296,7 +437,16 @@ struct Written<'a> {
 impl ReferenceFile {
     /// The file for the document `doc` keeping nothing.
     pub fn empty(doc: DocRecord) -> ReferenceFile {
-        ReferenceFile { format: FORMAT.into(), version: VERSION, doc, pgn: None, removed: None, decisions: Vec::new(), other: Map::new() }
+        ReferenceFile {
+            format: FORMAT.into(),
+            version: VERSION,
+            doc,
+            pgn: None,
+            removed: None,
+            decisions: Vec::new(),
+            reader_version: READER_VERSION,
+            other: Map::new(),
+        }
     }
 
     /// The file for the document `doc` keeping `pgn`.
@@ -335,6 +485,8 @@ impl ReferenceFile {
         let version = fields.get("version").and_then(Value::as_u64).and_then(|v| u32::try_from(v).ok());
         match version {
             Some(v @ 1..=VERSION) => match ReferenceFile::take(fields, v) {
+                // Written by a later reading (plan A9 §2.10): read only, its decisions not applied.
+                Ok((file, _)) if file.reader_version > READER_VERSION => Parsed::Newer { version: file.reader_version, file: Some(file) },
                 Ok((file, skipped)) => Parsed::File { file, skipped },
                 Err(why) => Parsed::Bad(format!("not a book's PGN file of its version: {why}")),
             },
@@ -364,6 +516,8 @@ impl ReferenceFile {
             return Err(why);
         }
         let removed = fields.remove("removed").and_then(|v| v.as_u64());
+        // Not written before plan A9-L1b: 0.
+        let reader_version = fields.remove("reader_version").and_then(|v| v.as_u64()).map_or(0, |v| u32::try_from(v).unwrap_or(u32::MAX));
         let decisions = match fields.remove("decisions") {
             None | Some(Value::Null) => Vec::new(),
             Some(Value::Array(list)) => list,
@@ -376,7 +530,13 @@ impl ReferenceFile {
         let decisions: Vec<Decision> =
             decisions.into_iter().filter_map(|v| serde_json::from_value::<Decision>(v).ok()).filter(Decision::names_a_move).collect();
         let skipped = total.saturating_sub(decisions.len());
-        Ok((ReferenceFile { format: FORMAT.into(), version: VERSION, doc, pgn, removed, decisions, other: fields }, skipped))
+        Ok((ReferenceFile { format: FORMAT.into(), version: VERSION, doc, pgn, removed, decisions, reader_version, other: fields }, skipped))
+    }
+
+    /// Take the decisions made on `page` to their moves in its reading now (plan A9-L1b, §2.6):
+    /// [`rematch`]. How many changed.
+    pub fn rematch(&mut self, page: &ChessPage) -> usize {
+        rematch(&mut self.decisions, page)
     }
 
     /// Keep `decision` in place of the one on the same move. Refused past [`MAX_DECISIONS`].
@@ -457,6 +617,8 @@ impl ReferenceFile {
             pgn: self.pgn.as_ref(),
             removed: self.removed,
             decisions: &self.decisions,
+            // This build's reading wrote it (a later reading's file is never written here).
+            reader_version: READER_VERSION,
             other: &self.other,
         };
         let bytes = serde_json::to_vec(&written).map_err(|_| ReferenceStoreError::TooBig)?;
@@ -589,16 +751,38 @@ impl<B: StoreBackend> DocStore<Reference, B> {
         self.update(keys, pages, |f| Ok::<_, ReferenceStoreError>(f.remove(at))).map(|(had, _)| had)
     }
 
-    /// Keep `decision` with the document's PGN (R6e), in place of the one on the same move. The
-    /// file as kept; refused when the document keeps no PGN (nothing is written, a folder is not
-    /// made), and for a file of a newer version.
-    pub fn decide(&self, keys: &DocKeys, pages: usize, decision: Decision) -> Result<Loaded, ReferenceStoreError> {
+    /// Keep `decision` with the document's PGN (R6e), in place of the one on the same move, the
+    /// decisions made before on its page, `page` as read now, taken to their moves first
+    /// ([`ReferenceFile::rematch`]), so one made on the same move under another reading is
+    /// replaced too. The file as kept; refused when the document keeps no PGN (nothing is
+    /// written, a folder is not made), and for a file of a newer version.
+    pub fn decide(&self, keys: &DocKeys, pages: usize, decision: Decision, page: Option<&ChessPage>) -> Result<Loaded, ReferenceStoreError> {
         let now = self.load(keys, pages)?;
         if now.newer.is_none() && now.file.pgn.is_none() {
             return Err(ReferenceStoreError::NoPgn);
         }
-        let ((), l) = self.update(keys, pages, |f| if f.pgn.is_none() { Err(ReferenceStoreError::NoPgn) } else { f.decide(decision) })?;
+        let ((), l) = self.update(keys, pages, |f| {
+            if f.pgn.is_none() {
+                return Err(ReferenceStoreError::NoPgn);
+            }
+            if let Some(page) = page {
+                f.rematch(page);
+            }
+            f.decide(decision)
+        })?;
         Ok(l)
+    }
+
+    /// Take the decisions made on `page`, as read now, to their moves there and write them (plan
+    /// A9-L1b, [`ReferenceFile::rematch`]): the file as kept when one changed; `None`, and nothing
+    /// written, when none did, and for a file a later build wrote.
+    pub fn rematch(&self, keys: &DocKeys, pages: usize, page: &ChessPage) -> Result<Option<Loaded>, ReferenceStoreError> {
+        let now = self.load(keys, pages)?;
+        if now.newer.is_some() || !Decisions::of(&now.file).need_rematch(page) {
+            return Ok(None);
+        }
+        let (_, l) = self.update(keys, pages, |f| Ok::<_, ReferenceStoreError>(f.rematch(page)))?;
+        Ok(Some(l))
     }
 }
 
