@@ -68,8 +68,8 @@ fn book() -> ChessDoc {
 fn the_books_text_becomes_the_comments_of_its_pgn() {
     let index = ReferenceIndex::from_pgn(PGN).unwrap();
     let book_info = PgnBook { title: Some("Beat the French".into()), labels: vec!["7".into(), "8".into()] };
-    let made = annotated_pgn(&book(), &index, &book_info, PgnStyle::FULL);
-    assert_eq!((made.games, made.book_only, made.diagrams), (2, 1, 1), "{}", made.pgn);
+    let made = annotated_pgn(&book(), &index, &book_info, PgnPositions::Unused, PgnStyle::FULL);
+    assert_eq!((made.games, made.book_only, made.diagrams, made.positions), (2, 1, 1, 0), "{}", made.pgn);
     let games = games_of(&made.pgn);
     assert_eq!(games.len(), 2);
     let g = &games[0];
@@ -100,14 +100,14 @@ fn the_books_text_becomes_the_comments_of_its_pgn() {
 fn a_book_with_nothing_of_the_pgn_writes_the_pgn_as_it_is() {
     let index = ReferenceIndex::from_pgn(PGN).unwrap();
     let other = doc(vec![vec![para(vec![text("A book about something else."), mv(None, "c4", MoveStatus::Unchecked, None)])]]);
-    let made = annotated_pgn(&other, &index, &PgnBook::default(), PgnStyle::FULL);
+    let made = annotated_pgn(&other, &index, &PgnBook::default(), PgnPositions::Unused, PgnStyle::FULL);
     assert_eq!((made.games, made.commented, made.book_only, made.diagrams), (2, 0, 0, 0));
     let games = games_of(&made.pgn);
     assert_eq!(games.iter().map(nodes).collect::<Vec<_>>(), [8, 3]);
     assert!(games.iter().all(|g| g.tag("PdfPage").is_none()));
     // An empty document too.
     let empty = ChessDoc { pages: Vec::<ChessPage>::new(), ..other };
-    assert_eq!(games_of(&annotated_pgn(&empty, &index, &PgnBook::default(), PgnStyle::FULL).pgn).len(), 2);
+    assert_eq!(games_of(&annotated_pgn(&empty, &index, &PgnBook::default(), PgnPositions::Unused, PgnStyle::FULL).pgn).len(), 2);
 }
 
 /// A caption read as a plain move (not as a caption) still loses its "Position after:" cue, in
@@ -120,7 +120,7 @@ fn a_caption_cue_before_the_move_it_names_is_left_out() {
         let caption = vec![text(cue), mv(Some((1, true)), "e6", MoveStatus::Valid, Some(e6.clone())), text("Black is solid.")];
         let prose = vec![text("Play goes on after"), mv(Some((2, false)), "d4", MoveStatus::Valid, Some(fen_after(&["e4", "e6", "d4"])))];
         let d = doc(vec![vec![para(played(&[], &["e4", "e6"])), diagram(0, &e6), para(caption), para(prose)]]);
-        let made = annotated_pgn(&d, &index, &PgnBook::default(), PgnStyle::FULL);
+        let made = annotated_pgn(&d, &index, &PgnBook::default(), PgnPositions::Unused, PgnStyle::FULL);
         let g = &games_of(&made.pgn)[0];
         let want =
             if kept.is_empty() { "Black is solid. Play goes on after".to_string() } else { format!("{kept} Black is solid. Play goes on after") };
@@ -128,9 +128,35 @@ fn a_caption_cue_before_the_move_it_names_is_left_out() {
     }
 }
 
+/// Plan A9-F4 (A2-09): with a reference, the diagrams get a game of their own as `positions`
+/// says, as they do without one, after the reference's games; and the PGN is wrapped at 79
+/// columns as every PGN written is (it was one line per game).
 #[test]
-fn figurines_become_letters() {
-    assert_eq!(letters("♔♕♖♗♘♙ ♚♛♜♝♞♟ e4"), "KQRBN KQRBN e4");
+fn positions_are_kept_with_a_reference_and_lines_are_wrapped() {
+    let index = ReferenceIndex::from_pgn(PGN).unwrap();
+    // The book's diagram after 6...Bb4 is linked to that move; a puzzle on the next page is in
+    // no game.
+    let mut d = book();
+    let puzzle = "6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1";
+    d.pages[1].blocks.push(diagram(0, puzzle));
+    let count = |made: &AnnotatedPgn| (made.games, made.positions, games_of(&made.pgn).len());
+    let unused = annotated_pgn(&d, &index, &PgnBook::default(), PgnPositions::Unused, PgnStyle::FULL);
+    assert_eq!(count(&unused), (2, 1, 3), "{}", unused.pgn);
+    let last = games_of(&unused.pgn).pop().unwrap();
+    assert_eq!((last.start_fen().as_str(), last.tag("PdfDiagram"), last.is_empty()), (puzzle, Some("1"), true));
+    let all = annotated_pgn(&d, &index, &PgnBook::default(), PgnPositions::All, PgnStyle::FULL);
+    assert_eq!(count(&all), (2, 2, 4), "{}", all.pgn);
+    let none = annotated_pgn(&d, &index, &PgnBook::default(), PgnPositions::None, PgnStyle::FULL);
+    assert_eq!(count(&none), (2, 0, 2));
+    assert_eq!((none.skipped.len(), none.warnings.len()), (0, 0));
+    // The same writer as the document's: 79 columns, the figurines of the comments as letters.
+    let long = vec![text(&"The French is a solid answer to ♘f3 and e4, ".repeat(6)), mv(Some((1, false)), "e4", MoveStatus::Valid, None)];
+    let mut d = book();
+    d.pages[0].blocks.insert(0, para(long));
+    let made = annotated_pgn(&d, &index, &PgnBook::default(), PgnPositions::None, PgnStyle::FULL);
+    let moves: Vec<&str> = made.pgn.lines().filter(|l| !l.starts_with('[')).collect();
+    assert!(moves.len() > 3 && moves.iter().all(|l| l.chars().count() <= 79), "{}", made.pgn);
+    assert!(!made.pgn.contains('♘') && made.pgn.contains("Nf3"), "{}", made.pgn);
 }
 
 proptest! {
@@ -147,10 +173,10 @@ proptest! {
         ],
     ) {
         if let Ok(index) = ReferenceIndex::from_pgn(&pgn) {
-            let made = annotated_pgn(&doc(pages), &index, &PgnBook::default(), PgnStyle::FULL);
+            let made = annotated_pgn(&doc(pages), &index, &PgnBook::default(), PgnPositions::Unused, PgnStyle::FULL);
             let read: Vec<&PgnGame> = index.games().iter().filter_map(|g| g.game.as_ref()).collect();
             let back = games_of(&made.pgn);
-            prop_assert_eq!(back.len(), read.len());
+            prop_assert_eq!(back.len(), read.len() + made.positions);
             for (a, b) in read.iter().zip(&back) {
                 prop_assert!(nodes(b) >= nodes(a), "{} < {}", nodes(b), nodes(a));
             }

@@ -1314,10 +1314,9 @@ fn export_writes_pgn_and_markdown_with_images() {
         assert_eq!(h.state().chess.last_revealed.as_deref(), Some(dir.join(name).as_path()), "{format}: the file is shown");
     }
     let pgn = std::fs::read_to_string(dir.join("book.pgn")).unwrap();
-    assert!(
-        pgn.contains("[FEN \"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\"]") && pgn.contains("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6"),
-        "{pgn}"
-    );
+    // The game from the initial position is written with no FEN, as every PGN PdfCraft writes
+    // one (plan A9-F4: one writer).
+    assert!(pgn.contains("[PdfDiagram \"1\"]") && !pgn.contains("[FEN ") && pgn.contains("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6"), "{pgn}");
     let md = std::fs::read_to_string(dir.join("book.md")).unwrap();
     assert!(md.contains("](book_diagrams/diagram-p0001-1.png \""), "{md}");
     assert!(dir.join("book_diagrams").join("diagram-p0001-1.png").exists());
