@@ -119,7 +119,8 @@ impl PdfCraftApp {
         let Some(keys) = self.session.get(id).map(|d| d.doc_keys()) else { return Err(tl!("the document is closed").to_string()) };
         let fingerprints = self.session.chess_fingerprints(id).map(|f| f.pages().to_vec()).unwrap_or_default();
         let at = crate::chess_corrections_ui::now();
-        let written = self.chess.corrections.store.update(&keys, &fingerprints, |f| {
+        let write = self.chess_corrections_place(id)?;
+        let written = self.chess.corrections.store.update(write, &keys, &fingerprints, |f| {
             let mut entries = Vec::with_capacity(target.entries.len());
             for (uid, entry) in &target.entries {
                 entries.push((uid.clone(), f.live().find(|e| e.uid == *uid).cloned()));

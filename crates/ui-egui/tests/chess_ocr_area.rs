@@ -460,14 +460,15 @@ fn a_protected_document_is_asked_about_and_a_no_saves_nothing() {
     collect_into(&mut h, &dir);
     correct_the_eight(&mut h);
     assert!(files(&dir).is_empty(), "not before the answer");
-    h.get_by_label("Save character samples from this protected document?");
-    h.get_by_label("Don't save").click();
+    // The one question about keeping the document's chess (plan A9-I1c).
+    h.get_by_label("Keep your chess work on this protected document?");
+    h.get_by_label("Don't keep").click();
     h.run_steps(3);
     assert!(files(&dir).is_empty());
-    assert!(h.query_by_label("Save character samples from this protected document?").is_none(), "asked once");
+    assert!(h.query_by_label("Keep your chess work on this protected document?").is_none(), "asked once");
     correct_the_eight(&mut h);
     assert!(files(&dir).is_empty(), "declined stays declined");
-    assert!(h.query_by_label("Save character samples from this protected document?").is_none());
+    assert!(h.query_by_label("Keep your chess work on this protected document?").is_none());
     let _ = std::fs::remove_dir_all(dir);
 }
 
@@ -481,7 +482,7 @@ fn a_protected_document_allowed_saves_what_waited() {
     support::wait_until(&mut h, "the OCR area switching on", |app| app.chess.capture.area.on);
     collect_into(&mut h, &dir);
     correct_the_eight(&mut h);
-    h.get_by_label("Save them").click();
+    h.get_by_label("Keep them").click();
     h.run_steps(3);
     assert_eq!(files(&dir).len(), 1, "{:?}", files(&dir));
     let _ = std::fs::remove_dir_all(dir);

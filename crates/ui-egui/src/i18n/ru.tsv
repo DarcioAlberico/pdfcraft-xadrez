@@ -3375,3 +3375,10 @@ the move's comment	Move comment	Комментарий к ходу
 	The work stopped on an internal error.	Работа остановилась из-за внутренней ошибки.
 # Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
 	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	В браузере книгу больше чем из {n} страниц пока нельзя экспортировать или сопоставить с PGN: вкладка перестала бы отвечать до самого конца. Настольное приложение делает это в фоне.
+# Plan A9-I1c: one question before keeping an encrypted document's chess (corrections, book's PGN, games, samples).
+	Keep your chess work on this protected document?	Сохранять вашу шахматную работу над этим защищённым документом?
+	“{name}” is encrypted. The app keeps your diagram corrections, the book's PGN and the chess games of each document unencrypted on this computer, so they come back when the document is opened again; character samples go to the folder chosen for them.	«{name}» зашифрован. Приложение хранит исправления диаграмм, PGN книги и шахматные партии каждого документа на этом компьютере без шифрования, чтобы они вернулись при повторном открытии документа; образцы символов сохраняются в выбранную для них папку.
+	Not kept, they last only until the document is closed.	Если их не сохранять, они живут только до закрытия документа.
+	Keep them	Сохранять
+	Don't keep	Не сохранять
+	The book's PGN couldn't be saved: {e}	Не удалось сохранить PGN книги: {e}
