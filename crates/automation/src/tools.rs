@@ -1483,7 +1483,7 @@ pub fn tools() -> Vec<ToolDef> {
                     "ops": {
                         "type": "array",
                         "maxItems": crate::chess_pgn::MAX_OPS,
-                        "description": "The operations, applied in order. 20,000 moves and items at most in all.",
+                        "description": "The operations, applied in order. 20,000 moves and items at most in all, and fewer operations for a long game: 2,000,000 divided by its moves, the ones played included (200 at 10,000).",
                         "items": {
                             "type": "object",
                             "properties": {

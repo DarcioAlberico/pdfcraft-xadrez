@@ -1628,6 +1628,27 @@ fn chess_pgn_edit_refuses_what_the_game_does_not_allow() {
     let r = pgn_edit(a, true, json!([{ "op": "play", "at": "path:0.0.0.0.0", "moves": ["Rf8", "Qh1"] }]));
     assert_eq!(r["movetext"], MAIN);
 
+    // Plan A9-F6 (A7-12): an op the list does not have is refused by its name, word for word;
+    // a field an op does not know is accepted, as it always was; a field of the wrong type says
+    // which and what it takes.
+    let r = pgn_edit(a, true, json!([{ "op": "rotate", "at": "path:0" }]));
+    assert_eq!(r["report"][0]["error"], "unknown op \"rotate\"");
+    let r = pgn_edit(a, true, json!([{ "op": "cut", "at": "path:0.0.0.0.0", "colour": "blue", "n": "many" }]));
+    assert_eq!((r["applied"].as_u64(), r["report"][0]["ok"].as_bool()), (Some(1), Some(true)), "{r:#}");
+    for (op, says) in [
+        (json!({ "op": "back", "n": 0 }), "n is a number of moves, 1-20000"),
+        (json!({ "op": "forward", "n": "two" }), "n is a number of moves"),
+        (json!({ "op": "choose", "index": -1 }), "index is the reply to step into"),
+        (json!({ "op": "play", "at": 7, "moves": ["e4"] }), "at is main:<half-move> or path:<i.j.k>"),
+        (json!({ "op": "play", "at": "path:0", "moves": [7] }), "moves are strings"),
+        (json!({ "op": "move_variation", "at": "path:0.1", "to": "left" }), "to is up or down"),
+        (json!({ "op": "nag", "at": "path:0", "code": 256 }), "1-255"),
+    ] {
+        let r = pgn_edit(a, true, json!([op]));
+        assert_eq!(r["movetext"], MAIN, "{op} changed the game");
+        assert!(r["report"][0]["error"].as_str().unwrap().contains(says), "{op}: {}", r["report"][0]["error"]);
+    }
+
     let too_many: Vec<Value> = (0..2001).map(|_| json!({ "op": "cut", "at": "path:" })).collect();
     let too_long: Vec<Value> = (0..11).map(|_| json!({ "op": "play", "at": "path:", "moves": vec!["Nd5"; 2000] })).collect();
     for bad in [
@@ -1640,6 +1661,33 @@ fn chess_pgn_edit_refuses_what_the_game_does_not_allow() {
     ] {
         assert!(matches!(a.call("chess_pgn_edit", &bad), Err(ToolError::InvalidArgs(_))), "{bad} is refused");
     }
+}
+
+/// Plan A9-F6 (R8-08): the operations one call may hold shrink as the game grows: every one may
+/// visit the whole game. 250 for a game of 8,000 moves, 2,000 for a short one; the moves a call
+/// plays count too.
+#[test]
+fn chess_pgn_edit_takes_fewer_operations_for_a_long_game() {
+    let mut a = Automation::new();
+    let mut long = String::new();
+    for n in 0..2000 {
+        long.push_str(&format!("{}. Nf3 Nf6 {}. Ng1 Ng8 ", 2 * n + 1, 2 * n + 2));
+    }
+    long.push('*');
+    let ops = |n: usize| Value::Array((0..n).map(|_| json!({ "op": "back" })).collect());
+    let e = a.call("chess_pgn_edit", &json!({ "pgn": long, "ops": ops(251) })).unwrap_err();
+    assert!(e.to_string().contains("at most 250 operations for a game of 8000 moves"), "{e}");
+    let r = ok(&mut a, "chess_pgn_edit", json!({ "pgn": long, "ops": ops(250) }));
+    assert_eq!(r["applied"], 250);
+    // 2,000 moves to play: 2,000,000 / 10,000.
+    let mut playing = ops(201);
+    if let Some(first) = playing.as_array_mut().and_then(|o| o.first_mut()) {
+        *first = json!({ "op": "play", "at": "path:", "moves": vec!["Nc3"; 2000] });
+    }
+    let e = a.call("chess_pgn_edit", &json!({ "pgn": long, "ops": playing })).unwrap_err();
+    assert!(e.to_string().contains("at most 200 operations for a game of 8000 moves and 2000 moves and items to add"), "{e}");
+    let r = ok(&mut a, "chess_pgn_edit", json!({ "pgn": "1. e4 *", "ops": ops(2000) }));
+    assert_eq!(r["applied"], 2000);
 }
 
 /// chess_pgn_edit edits any game of a PGN that holds several: `game` (0-based, the first by
