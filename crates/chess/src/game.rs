@@ -349,6 +349,15 @@ fn fresh_revision_past(seen: u64) -> u64 {
     r
 }
 
+/// Where a game's moves stood ([`Game::mark`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MovesMark {
+    nodes: usize,
+    current: NodeId,
+    tip: NodeId,
+    revision: u64,
+}
+
 /// A game from a start position.
 #[derive(Clone, Debug)]
 pub struct Game {
@@ -450,6 +459,11 @@ impl Game {
     /// How many moves the line shown has.
     pub fn len(&self) -> usize {
         self.line().len().saturating_sub(1)
+    }
+
+    /// How many moves the game holds, every line counted.
+    pub fn move_count(&self) -> usize {
+        self.nodes.len().saturating_sub(1)
     }
 
     /// Whether no move was made at all.
@@ -707,6 +721,34 @@ impl Game {
     /// limits [`Game::play`] has. A null move already there is followed.
     pub fn play_null(&mut self) -> Result<(), GameError> {
         self.push_step(None)
+    }
+
+    /// Where the game's moves stand, to take back the moves played after it
+    /// ([`Game::roll_back`]).
+    pub fn mark(&self) -> MovesMark {
+        MovesMark { nodes: self.nodes.len(), current: self.current, tip: self.tip, revision: self.revision }
+    }
+
+    /// Take back every move played since `mark` (plan A9-F6, R8-08: a refused list of moves was
+    /// undone by keeping a copy of the whole game for each one). Moves are only ever added at the
+    /// end of the game, so those after the mark are dropped with the replies that point to them,
+    /// and the move shown is the one shown then. Only for moves played since the mark
+    /// ([`Game::play`], [`Game::play_san`], [`Game::play_uci`], [`Game::play_null`]) and nothing
+    /// else; a mark of a game with more moves than this one is ignored. The game stays a tree
+    /// whatever is done with it.
+    pub fn roll_back(&mut self, mark: MovesMark) {
+        if mark.nodes == 0 || mark.nodes > self.nodes.len() {
+            return;
+        }
+        if mark.nodes < self.nodes.len() {
+            self.nodes.truncate(mark.nodes);
+            for n in &mut self.nodes {
+                n.children.retain(|&c| c < mark.nodes);
+            }
+            self.revision = mark.revision;
+        }
+        self.current = if mark.current < mark.nodes { mark.current } else { 0 };
+        self.tip = if mark.tip < mark.nodes { mark.tip } else { self.current };
     }
 
     /// Whether move `node` is a null move (a pass). The start is not.
@@ -1542,6 +1584,32 @@ mod tests {
         assert_eq!(g.nags(e5), &[2]);
         assert!(g.set_comment(e5, &"é".repeat(MAX_COMMENT_LEN)).is_err(), "past the cap: cut, and said");
         assert!(g.comment(e5).len() <= MAX_COMMENT_LEN);
+    }
+
+    /// Plan A9-F6 (R8-08): the moves played since a mark are taken back without a copy of the
+    /// game: the tree, the move shown and the revision are the mark's again.
+    #[test]
+    fn moves_played_since_a_mark_are_taken_back() {
+        let (mut g, _) = Game::from_pgn("1. e4 e5 (1... c5 2. Nf3) 2. Nf3 Nc6 *").unwrap();
+        let c5 = g.node_at(&NodePath::new(vec![0, 1])).unwrap();
+        g.go_to_node(c5);
+        let (before, shown, revision, count) = (g.pgn(), g.current(), g.revision(), g.move_count());
+        let mark = g.mark();
+        for m in ["Nf3", "d6", "d4"] {
+            g.play_san(m).unwrap();
+        }
+        g.play_null().unwrap();
+        g.go_to_node(c5);
+        g.play_san("Nc3").unwrap();
+        assert!(g.move_count() > count);
+        g.roll_back(mark);
+        assert_eq!((g.pgn(), g.current(), g.revision(), g.move_count()), (before, shown, revision, count));
+        // Nothing played since: nothing taken back; a mark of a larger game is ignored.
+        g.roll_back(mark);
+        assert_eq!(g.move_count(), count);
+        let big = Game::from_pgn("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 *").unwrap().0.mark();
+        g.roll_back(big);
+        assert_eq!(g.move_count(), count);
     }
 
     #[test]

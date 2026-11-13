@@ -26,16 +26,28 @@ use pdfcraft_engine::chess::capture::{self, Candidate, CaptureMode, CapturePlan,
 use pdfcraft_engine::chess::collection::{self, MAX_GAMES};
 use pdfcraft_engine::chess::pdfcraft_chess::fragment::{FragmentItem, NagCode};
 use pdfcraft_engine::chess::pdfcraft_chess::game::{
-    Game, GraftMode, GraftReport, GraftStopReason, MAX_COMMENT_LEN, NodeId, NodePath, PgnReport, Shift,
+    Game, GraftMode, GraftReport, GraftStopReason, MAX_COMMENT_LEN, MAX_NODES, NodeId, NodePath, PgnReport, Shift,
 };
 use pdfcraft_engine::chess::pdfcraft_chess::pgn_style::PgnStyle;
 use pdfcraft_engine::chess::pdfcraft_chess::san::{Lang, San, Style};
+use serde::Deserialize;
 use serde_json::{Map, Value, json};
 
 use crate::{Args, Automation, Result, ToolError};
 
-/// Most operations in one call.
+/// Most operations in one call (for a game of up to [`MAX_WORK`] / [`MAX_OPS`] moves).
 pub(crate) const MAX_OPS: usize = 2000;
+
+/// The work one call may do: operations times the moves of the game (its own and the ones the
+/// operations play). Every operation may visit the whole game (an address on the main line, the
+/// reading order, a graft's copy of it), so the operations allowed shrink as the game grows:
+/// [`MAX_OPS`] up to 1,000 moves, 200 at 10,000 (plan A9-F6, R8-08).
+pub(crate) const MAX_WORK: usize = 2_000_000;
+
+/// The operations one call may hold for a game of `moves` moves ([`MAX_WORK`]).
+pub(crate) fn max_ops(moves: usize) -> usize {
+    (MAX_WORK / moves.max(1)).min(MAX_OPS)
+}
 
 /// Most moves and fragment items over all the operations of one call.
 const MAX_STEPS: usize = 20_000;
@@ -87,10 +99,15 @@ impl Automation {
         if steps > MAX_STEPS {
             return Err(Args::wrong("ops", &format!("at most {MAX_STEPS} moves and items in all")));
         }
+        let limit = max_ops(game.move_count().saturating_add(steps).min(MAX_NODES));
+        if ops.len() > limit {
+            let adding = if steps > 0 { format!(" and {steps} moves and items to add") } else { String::new() };
+            return Err(Args::wrong("ops", &format!("at most {limit} operations for a game of {} moves{adding}", game.move_count())));
+        }
         let mut report = Vec::with_capacity(ops.len());
         for (index, op) in ops.iter().enumerate() {
             let name = op.get("op").and_then(Value::as_str).unwrap_or_default().to_owned();
-            match apply(&mut game, op) {
+            match PgnOp::read(op).and_then(|op| op.apply(&mut game)) {
                 Ok(mut entry) => {
                     entry.insert("index".into(), json!(index));
                     entry.insert("op".into(), json!(name));
@@ -160,194 +177,439 @@ fn pick_game(pgn: &str, chosen: Option<i64>) -> Result<(&str, usize)> {
     Ok((text, count))
 }
 
-/// Apply one operation; the game is unchanged when it is refused.
-fn apply(game: &mut Game, op: &Value) -> std::result::Result<Map<String, Value>, Refusal> {
-    let obj = op.as_object().ok_or("an operation is an object")?;
-    let name = obj.get("op").and_then(Value::as_str).ok_or("op is missing")?;
-    // Stepping through the game starts from the move shown unless `at` names another.
-    let steps = matches!(name, "back" | "forward" | "choose" | "next_variation" | "prev_variation");
-    let at = match obj.get("at").and_then(Value::as_str) {
-        Some(at_text) => resolve(game, at_text)?,
-        None if steps => game.current(),
-        None => return Err("at is missing (main:<half-move> or path:<i.j.k>)".into()),
-    };
-    let text = || obj.get("text").and_then(Value::as_str).ok_or("text is missing");
-    let mut entry = Map::new();
-    match name {
-        "play" => {
-            let moves = obj.get("moves").and_then(Value::as_array).ok_or("moves is missing")?;
-            let mut played = game.clone();
-            played.go_to_node(at);
-            for mv in moves {
-                let mv = mv.as_str().ok_or("moves are strings")?;
-                // UCI first: `e2e4` is not SAN, and no SAN reads as UCI.
-                if played.play_uci(mv).is_err() && played.play_san(mv).is_err() {
-                    return Err(format!("{mv} cannot be played there"));
-                }
-            }
-            *game = played;
-        }
-        "comment" | "comment_before" => {
-            let text = text()?;
-            if text.len() > MAX_COMMENT_LEN {
-                return Err(format!("text is longer than {MAX_COMMENT_LEN} bytes"));
-            }
-            let set = if name == "comment" {
-                game.set_comment(at, text)
-            } else if at == 0 {
-                return Err("the start has no comment before it (use comment on it)".into());
-            } else {
-                game.set_comment_before(at, text)
-            };
-            // Refused above the cap, so a cut can't happen; were it to, it is said.
-            set.map_err(|c| format!("the comment was cut to {} bytes", c.kept))?;
-            game.go_to_node(at);
-        }
-        "nag" => {
-            let code = obj.get("code").and_then(Value::as_u64).and_then(|c| u16::try_from(c).ok()).ok_or("code is a glyph's PGN code, 1-255")?;
-            if !game.set_nag(at, code) {
-                return Err(format!("${code} cannot be put on this move (the start, a code outside 1-255, or too many glyphs)"));
-            }
-            game.go_to_node(at);
-        }
-        "play_null" => {
-            let mut played = game.clone();
-            played.go_to_node(at);
-            played.play_null().map_err(|_| "a null move cannot be played there: the side to move is in check, or the game is full".to_owned())?;
-            *game = played;
-        }
-        "move_variation" => {
-            let shift = match obj.get("to").and_then(Value::as_str) {
-                Some("up") => Shift::Up,
-                Some("down") => Shift::Down,
-                _ => return Err("to is up or down".into()),
-            };
-            game.move_variation(at, shift).map_err(|e| e.to_string())?;
-        }
-        "diagram" => {
-            let on = match obj.get("on") {
-                None => true,
-                Some(v) => v.as_bool().ok_or("on is true or false")?,
-            };
-            if on != game.has_diagram(at) && !game.toggle_diagram(at) {
-                return Err("a diagram mark cannot go on this move (the start, or too many glyphs)".into());
-            }
-            game.go_to_node(at);
-        }
-        "promote_one" => game.promote_one(at).map_err(|e| e.to_string())?,
-        "demote" => game.demote(at).map_err(|e| e.to_string())?,
-        "delete_variation" => game.delete_variation(at).map_err(|e| e.to_string())?,
-        "make_main" => make_main(game, at)?,
-        "back" | "forward" => {
-            let n = match obj.get("n") {
-                None => 1,
-                Some(v) => v
-                    .as_u64()
-                    .and_then(|n| usize::try_from(n).ok())
-                    .filter(|n| (1..=MAX_STEPS).contains(n))
-                    .ok_or(format!("n is a number of moves, 1-{MAX_STEPS}"))?,
-            };
-            game.go_to_node(at);
-            let mut moved = 0usize;
-            while moved < n && if name == "back" { game.back() } else { game.forward() } {
-                moved += 1;
-            }
-            entry.insert("moved".into(), json!(moved));
-        }
-        "next_variation" | "prev_variation" => {
-            let to = if name == "next_variation" { game.next_variation(at) } else { game.previous_variation(at) };
-            entry.insert("moved".into(), json!(to.is_some()));
-            game.go_to_node(to.unwrap_or(at));
-        }
-        "choose" => {
-            let index = obj.get("index").and_then(Value::as_u64).ok_or("index is the reply to step into (0: the line, 1: its first variation…)")?;
-            game.go_to_node(at);
-            let replies = game.replies(at).len();
-            if !usize::try_from(index).is_ok_and(|i| game.forward_to(i)) {
-                return Err(format!("the move has {replies} replies, so there is no reply {index}"));
-            }
-        }
-        "cut" => {
-            game.go_to_node(at);
-            game.truncate();
-        }
-        "graft" => {
-            let mode = match obj.get("mode").and_then(Value::as_str) {
-                None | Some("follow") => GraftMode::Follow,
-                Some("line") => GraftMode::Line,
-                Some("comment") => GraftMode::Comment,
-                Some(other) => return Err(format!("mode {other:?} is follow, line or comment")),
-            };
-            let raw = obj.get("items").and_then(Value::as_array).ok_or("items is missing")?;
-            if raw.len() > MAX_ITEMS {
-                return Err(format!("at most {MAX_ITEMS} items"));
-            }
-            let items = raw
-                .iter()
-                .enumerate()
-                .map(|(i, v)| fragment_item(v).map_err(|e| format!("items[{i}]: {e}")))
-                .collect::<std::result::Result<Vec<_>, _>>()?;
-            let (grafted, graft) = game.graft(at, mode, &items, None);
-            *game = grafted;
-            entry.insert("graft".into(), graft_json(&graft));
-        }
-        "capture" => {
-            let (plan, lang) = capture_plan(game, at, obj)?;
-            let (apply, choice) = match obj.get("apply").and_then(Value::as_str) {
-                None | Some("chosen") => (plan.chosen.is_some(), None),
-                Some("auto") => (plan.chosen.is_some() && !plan.needs_preview, None),
-                Some("never") => (false, None),
-                // The Renumber choice, when the plan has one.
-                Some("renumber") => (plan.renumber.is_some(), plan.renumber),
-                Some(other) => return Err(format!("apply {other:?} is chosen, auto, never or renumber")),
-            };
-            // Planned on this very game, so only a missing candidate can refuse it.
-            let applied = apply && plan.apply(game, choice).is_ok();
-            if !applied {
-                game.go_to_node(at);
-            }
-            entry.insert("capture".into(), capture_json(&plan, applied, lang));
-        }
-        other => return Err(format!("unknown op {other:?}")),
-    }
-    entry.insert("path".into(), json!(address_of(game, game.current())));
-    Ok(entry)
+/// The operations of `chess_pgn_edit` (plan A9-F6, A7-12), read from JSON by their `op` into
+/// fields of types that are valid once they exist: a glyph's code is 1–255, a count of steps
+/// 1–[`MAX_STEPS`], a direction up or down, a capture's language, mode, bold ranges and choice. An
+/// address stays text until its operation runs: the operations before it change the tree. A field
+/// an operation needs and does not have is said when it runs. Fields an operation does not know
+/// are accepted, as they always were; an `op` this list does not have is refused as
+/// `unknown op "<x>"`.
+#[derive(Debug, Deserialize)]
+#[serde(tag = "op", rename_all = "snake_case")]
+enum PgnOp {
+    Play {
+        at: Option<Address>,
+        moves: Option<Moves>,
+    },
+    Comment {
+        at: Option<Address>,
+        text: Option<Text>,
+    },
+    CommentBefore {
+        at: Option<Address>,
+        text: Option<Text>,
+    },
+    Nag {
+        at: Option<Address>,
+        code: Option<GlyphCode>,
+    },
+    PlayNull {
+        at: Option<Address>,
+    },
+    MoveVariation {
+        at: Option<Address>,
+        to: Option<Way>,
+    },
+    Diagram {
+        at: Option<Address>,
+        on: Option<Switch>,
+    },
+    PromoteOne {
+        at: Option<Address>,
+    },
+    MakeMain {
+        at: Option<Address>,
+    },
+    Demote {
+        at: Option<Address>,
+    },
+    DeleteVariation {
+        at: Option<Address>,
+    },
+    Cut {
+        at: Option<Address>,
+    },
+    Back {
+        at: Option<Address>,
+        n: Option<Steps>,
+    },
+    Forward {
+        at: Option<Address>,
+        n: Option<Steps>,
+    },
+    Choose {
+        at: Option<Address>,
+        index: Option<ReplyIndex>,
+    },
+    NextVariation {
+        at: Option<Address>,
+    },
+    PrevVariation {
+        at: Option<Address>,
+    },
+    Graft {
+        at: Option<Address>,
+        mode: Option<GraftModeName>,
+        items: Option<Items>,
+    },
+    Capture {
+        at: Option<Address>,
+        text: Option<Text>,
+        lang: Option<LangTag>,
+        mode: Option<CaptureModeName>,
+        bold_runs: Option<BoldRuns>,
+        apply: Option<ApplyChoice>,
+    },
 }
 
-/// The plan of a `capture` op: `text` read in `lang` (English by default) after `at` in `mode`
-/// (auto by default), the characters in `bold_runs` (`[start, end]` pairs) set in bold; with the
-/// language.
-fn capture_plan(game: &Game, at: NodeId, obj: &Map<String, Value>) -> std::result::Result<(CapturePlan, Lang), Refusal> {
-    let text = obj.get("text").and_then(Value::as_str).ok_or("text is missing")?;
-    let lang = match obj.get("lang").filter(|l| !l.is_null()) {
-        None => Lang::En,
-        Some(l) => l.as_str().and_then(Lang::from_tag).ok_or("lang is a language tag such as en or pt")?,
-    };
-    let mode = capture_mode(obj.get("mode").and_then(Value::as_str))?;
-    let bold = match obj.get("bold_runs").filter(|b| !b.is_null()) {
-        None => None,
-        Some(runs) => {
-            let runs = runs.as_array().ok_or("bold_runs is an array of [start, end] character ranges")?;
-            if runs.len() > MAX_BOLD_RUNS {
-                return Err(format!("at most {MAX_BOLD_RUNS} bold_runs"));
+/// Every operation's name, in the order the tool's schema lists them.
+pub(crate) const OP_NAMES: [&str; 19] = [
+    "play",
+    "comment",
+    "comment_before",
+    "nag",
+    "play_null",
+    "move_variation",
+    "diagram",
+    "promote_one",
+    "make_main",
+    "demote",
+    "delete_variation",
+    "cut",
+    "back",
+    "forward",
+    "choose",
+    "next_variation",
+    "prev_variation",
+    "graft",
+    "capture",
+];
+
+/// A field read from JSON by `TryFrom<Value>`; its refusal is what the report says.
+macro_rules! field {
+    ($(#[$doc:meta])* $name:ident($inner:ty), |$v:ident| $read:expr) => {
+        $(#[$doc])*
+        #[derive(Debug, Deserialize)]
+        #[serde(try_from = "Value")]
+        struct $name($inner);
+
+        impl TryFrom<Value> for $name {
+            type Error = String;
+            fn try_from($v: Value) -> std::result::Result<$name, String> {
+                $read.map($name)
             }
-            let bound = |v: Option<&Value>| v.and_then(Value::as_u64).map(|n| usize::try_from(n).unwrap_or(usize::MAX));
-            let ranges = runs
-                .iter()
-                .map(|r| match r.as_array().map(Vec::as_slice) {
-                    Some([a, b]) => bound(Some(a)).zip(bound(Some(b))).map(|(start, end)| start..end),
-                    _ => None,
-                })
-                .collect::<Option<Vec<_>>>()
-                .ok_or("bold_runs are [start, end] pairs of character indices")?;
-            Some(ranges)
         }
     };
-    let text = match &bold {
-        Some(bold) => CaptureText::Styled { text, bold },
-        None => CaptureText::Plain(text),
+}
+
+field!(
+    /// An address, `main:<half-move>` or `path:<i.j.k>`, read when its operation runs.
+    Address(String),
+    |v| v.as_str().map(str::to_owned).ok_or_else(|| "at is main:<half-move> or path:<i.j.k>".to_owned())
+);
+field!(
+    /// Moves in SAN or UCI, played in order.
+    Moves(Vec<String>),
+    |v| v
+        .as_array()
+        .ok_or_else(|| "moves is an array of moves in SAN or UCI".to_owned())?
+        .iter()
+        .map(|m| m.as_str().map(str::to_owned).ok_or_else(|| "moves are strings".to_owned()))
+        .collect::<std::result::Result<Vec<String>, String>>()
+);
+field!(
+    /// A comment's text, or a capture's.
+    Text(String),
+    |v| v.as_str().map(str::to_owned).ok_or_else(|| "text is a string".to_owned())
+);
+field!(
+    /// A graft's fragment items, read when it runs, at most [`MAX_ITEMS`].
+    Items(Vec<Value>),
+    |v| match v {
+        Value::Array(items) if items.len() > MAX_ITEMS => Err(format!("at most {MAX_ITEMS} items")),
+        Value::Array(items) => Ok(items),
+        _ => Err("items is an array of fragment items".to_owned()),
+    }
+);
+field!(
+    /// A glyph's PGN code, 1–255.
+    GlyphCode(u16),
+    |v| v.as_u64().and_then(|c| u16::try_from(c).ok()).filter(|c| (1..=255).contains(c)).ok_or_else(|| {
+        format!("code is a glyph's PGN code, 1-255 ({v} cannot be put on a move)")
+    })
+);
+field!(
+    /// Up or down among the variations at a fork.
+    Way(Shift),
+    |v| match v.as_str() {
+        Some("up") => Ok(Shift::Up),
+        Some("down") => Ok(Shift::Down),
+        _ => Err("to is up or down".to_owned()),
+    }
+);
+field!(
+    /// A switch.
+    Switch(bool),
+    |v| v.as_bool().ok_or_else(|| "on is true or false".to_owned())
+);
+field!(
+    /// A count of moves to step, 1–[`MAX_STEPS`].
+    Steps(usize),
+    |v| v.as_u64().and_then(|n| usize::try_from(n).ok()).filter(|n| (1..=MAX_STEPS).contains(n)).ok_or_else(|| format!("n is a number of moves, 1-{MAX_STEPS}"))
+);
+field!(
+    /// A reply to step into: 0 the line, 1 its first variation…
+    ReplyIndex(u64),
+    |v| v.as_u64().ok_or_else(|| "index is the reply to step into (0: the line, 1: its first variation…)".to_owned())
+);
+field!(
+    /// How a graft places its items.
+    GraftModeName(GraftMode),
+    |v| match v.as_str() {
+        Some("follow") => Ok(GraftMode::Follow),
+        Some("line") => Ok(GraftMode::Line),
+        Some("comment") => Ok(GraftMode::Comment),
+        _ => Err(format!("mode {v} is follow, line or comment")),
+    }
+);
+field!(
+    /// The language a capture's piece letters are in.
+    LangTag(Lang),
+    |v| v.as_str().and_then(Lang::from_tag).ok_or_else(|| "lang is a language tag such as en or pt".to_owned())
+);
+field!(
+    /// Where a capture's text goes.
+    CaptureModeName(CaptureMode),
+    |v| match v.as_str() {
+        Some(name) => capture_mode(Some(name)),
+        None => Err(format!("mode {v} is auto, line, variation, subvariation, comment or comment_before")),
+    }
+);
+field!(
+    /// The characters of a capture's text set in bold, as `[start, end)` ranges.
+    BoldRuns(Vec<std::ops::Range<usize>>),
+    |v| bold_runs(&v)
+);
+field!(
+    /// Which of a capture's places is applied.
+    ApplyChoice(String),
+    |v| match v.as_str() {
+        Some(name @ ("chosen" | "auto" | "never" | "renumber")) => Ok(name.to_owned()),
+        _ => Err(format!("apply {v} is chosen, auto, never or renumber")),
+    }
+);
+
+/// A capture's `bold_runs`: at most [`MAX_BOLD_RUNS`] `[start, end]` pairs of character indices.
+fn bold_runs(v: &Value) -> std::result::Result<Vec<std::ops::Range<usize>>, String> {
+    let runs = v.as_array().ok_or("bold_runs is an array of [start, end] character ranges")?;
+    if runs.len() > MAX_BOLD_RUNS {
+        return Err(format!("at most {MAX_BOLD_RUNS} bold_runs"));
+    }
+    let bound = |v: &Value| v.as_u64().map(|n| usize::try_from(n).unwrap_or(usize::MAX));
+    runs.iter()
+        .map(|r| match r.as_array().map(Vec::as_slice) {
+            Some([a, b]) => bound(a).zip(bound(b)).map(|(start, end)| start..end),
+            _ => None,
+        })
+        .collect::<Option<Vec<_>>>()
+        .ok_or_else(|| "bold_runs are [start, end] pairs of character indices".to_owned())
+}
+
+impl PgnOp {
+    /// Read one operation: its name first (one this list does not have is refused by name),
+    /// then its fields, each into its type.
+    fn read(op: &Value) -> std::result::Result<PgnOp, Refusal> {
+        let name = op.as_object().ok_or("an operation is an object")?.get("op").and_then(Value::as_str).ok_or("op is missing")?;
+        if !OP_NAMES.contains(&name) {
+            return Err(format!("unknown op {name:?}"));
+        }
+        PgnOp::deserialize(op).map_err(|e| e.to_string())
+    }
+
+    /// Where the operation runs: its address, or for a step through the game the move shown.
+    fn at(&self) -> Option<&str> {
+        match self {
+            PgnOp::Play { at, .. }
+            | PgnOp::Comment { at, .. }
+            | PgnOp::CommentBefore { at, .. }
+            | PgnOp::Nag { at, .. }
+            | PgnOp::PlayNull { at }
+            | PgnOp::MoveVariation { at, .. }
+            | PgnOp::Diagram { at, .. }
+            | PgnOp::PromoteOne { at }
+            | PgnOp::MakeMain { at }
+            | PgnOp::Demote { at }
+            | PgnOp::DeleteVariation { at }
+            | PgnOp::Cut { at }
+            | PgnOp::Back { at, .. }
+            | PgnOp::Forward { at, .. }
+            | PgnOp::Choose { at, .. }
+            | PgnOp::NextVariation { at }
+            | PgnOp::PrevVariation { at }
+            | PgnOp::Graft { at, .. }
+            | PgnOp::Capture { at, .. } => at.as_ref().map(|a| a.0.as_str()),
+        }
+    }
+
+    /// Whether the operation steps through the game, from the move shown when it has no address.
+    fn steps(&self) -> bool {
+        matches!(self, PgnOp::Back { .. } | PgnOp::Forward { .. } | PgnOp::Choose { .. } | PgnOp::NextVariation { .. } | PgnOp::PrevVariation { .. })
+    }
+
+    /// Apply the operation; the game is unchanged when it is refused.
+    fn apply(self, game: &mut Game) -> std::result::Result<Map<String, Value>, Refusal> {
+        let op = self;
+        let at = match op.at() {
+            Some(at_text) => resolve(game, at_text)?,
+            None if op.steps() => game.current(),
+            None => return Err("at is missing (main:<half-move> or path:<i.j.k>)".into()),
+        };
+        let mut entry = Map::new();
+        match op {
+            PgnOp::Play { moves, .. } => {
+                let Moves(moves) = moves.ok_or("moves is missing")?;
+                // Played on the game itself; a move that cannot be played takes back the ones
+                // before it (plan A9-F6: a copy of the whole game was kept for each list).
+                let mark = game.mark();
+                game.go_to_node(at);
+                for mv in &moves {
+                    // UCI first: `e2e4` is not SAN, and no SAN reads as UCI.
+                    if game.play_uci(mv).is_err() && game.play_san(mv).is_err() {
+                        game.roll_back(mark);
+                        return Err(format!("{mv} cannot be played there"));
+                    }
+                }
+            }
+            PgnOp::Comment { text, .. } => set_comment(game, at, &text.ok_or("text is missing")?.0, false)?,
+            PgnOp::CommentBefore { text, .. } => set_comment(game, at, &text.ok_or("text is missing")?.0, true)?,
+            PgnOp::Nag { code, .. } => {
+                let GlyphCode(code) = code.ok_or("code is a glyph's PGN code, 1-255")?;
+                if !game.set_nag(at, code) {
+                    return Err(format!("${code} cannot be put on this move (the start, a code outside 1-255, or too many glyphs)"));
+                }
+                game.go_to_node(at);
+            }
+            PgnOp::PlayNull { .. } => {
+                let mark = game.mark();
+                game.go_to_node(at);
+                if game.play_null().is_err() {
+                    game.roll_back(mark);
+                    return Err("a null move cannot be played there: the side to move is in check, or the game is full".into());
+                }
+            }
+            PgnOp::MoveVariation { to, .. } => {
+                let Way(shift) = to.ok_or("to is up or down")?;
+                game.move_variation(at, shift).map_err(|e| e.to_string())?;
+            }
+            PgnOp::Diagram { on, .. } => {
+                let on = on.is_none_or(|Switch(on)| on);
+                if on != game.has_diagram(at) && !game.toggle_diagram(at) {
+                    return Err("a diagram mark cannot go on this move (the start, or too many glyphs)".into());
+                }
+                game.go_to_node(at);
+            }
+            PgnOp::PromoteOne { .. } => game.promote_one(at).map_err(|e| e.to_string())?,
+            PgnOp::Demote { .. } => game.demote(at).map_err(|e| e.to_string())?,
+            PgnOp::DeleteVariation { .. } => game.delete_variation(at).map_err(|e| e.to_string())?,
+            PgnOp::MakeMain { .. } => make_main(game, at)?,
+            PgnOp::Back { n, .. } => {
+                entry.insert("moved".into(), json!(step(game, at, n, Game::back)));
+            }
+            PgnOp::Forward { n, .. } => {
+                entry.insert("moved".into(), json!(step(game, at, n, Game::forward)));
+            }
+            PgnOp::NextVariation { .. } => {
+                let to = game.next_variation(at);
+                entry.insert("moved".into(), json!(to.is_some()));
+                game.go_to_node(to.unwrap_or(at));
+            }
+            PgnOp::PrevVariation { .. } => {
+                let to = game.previous_variation(at);
+                entry.insert("moved".into(), json!(to.is_some()));
+                game.go_to_node(to.unwrap_or(at));
+            }
+            PgnOp::Choose { index, .. } => {
+                let ReplyIndex(index) = index.ok_or("index is the reply to step into (0: the line, 1: its first variation…)")?;
+                game.go_to_node(at);
+                let replies = game.replies(at).len();
+                if !usize::try_from(index).is_ok_and(|i| game.forward_to(i)) {
+                    return Err(format!("the move has {replies} replies, so there is no reply {index}"));
+                }
+            }
+            PgnOp::Cut { .. } => {
+                game.go_to_node(at);
+                game.truncate();
+            }
+            PgnOp::Graft { mode, items, .. } => {
+                let mode = mode.map_or(GraftMode::Follow, |GraftModeName(m)| m);
+                let Items(raw) = items.ok_or("items is missing")?;
+                let items = raw
+                    .iter()
+                    .enumerate()
+                    .map(|(i, v)| fragment_item(v).map_err(|e| format!("items[{i}]: {e}")))
+                    .collect::<std::result::Result<Vec<_>, _>>()?;
+                let (grafted, graft) = game.graft(at, mode, &items, None);
+                *game = grafted;
+                entry.insert("graft".into(), graft_json(&graft));
+            }
+            PgnOp::Capture { text, lang, mode, bold_runs, apply, .. } => {
+                let Text(text) = text.ok_or("text is missing")?;
+                let lang = lang.map_or(Lang::En, |LangTag(l)| l);
+                let mode = mode.map_or(CaptureMode::Auto, |CaptureModeName(m)| m);
+                let bold = bold_runs.map(|BoldRuns(b)| b);
+                let captured = match &bold {
+                    Some(bold) => CaptureText::Styled { text: &text, bold },
+                    None => CaptureText::Plain(&text),
+                };
+                let plan = capture::plan(game, at, mode, captured, lang);
+                let (apply, choice) = match apply.as_ref().map_or("chosen", |ApplyChoice(a)| a.as_str()) {
+                    "auto" => (plan.chosen.is_some() && !plan.needs_preview, None),
+                    "never" => (false, None),
+                    // The Renumber choice, when the plan has one.
+                    "renumber" => (plan.renumber.is_some(), plan.renumber),
+                    _ => (plan.chosen.is_some(), None),
+                };
+                // Planned on this very game, so only a missing candidate can refuse it.
+                let applied = apply && plan.apply(game, choice).is_ok();
+                if !applied {
+                    game.go_to_node(at);
+                }
+                entry.insert("capture".into(), capture_json(&plan, applied, lang));
+            }
+        }
+        entry.insert("path".into(), json!(address_of(game, game.current())));
+        Ok(entry)
+    }
+}
+
+/// Set the comment after move `at`, or before it, at most [`MAX_COMMENT_LEN`] bytes, and show
+/// the move.
+fn set_comment(game: &mut Game, at: NodeId, text: &str, before: bool) -> std::result::Result<(), Refusal> {
+    if text.len() > MAX_COMMENT_LEN {
+        return Err(format!("text is longer than {MAX_COMMENT_LEN} bytes"));
+    }
+    let set = if !before {
+        game.set_comment(at, text)
+    } else if at == 0 {
+        return Err("the start has no comment before it (use comment on it)".into());
+    } else {
+        game.set_comment_before(at, text)
     };
-    Ok((capture::plan(game, at, mode, text, lang), lang))
+    // Refused above the cap, so a cut can't happen; were it to, it is said.
+    set.map_err(|c| format!("the comment was cut to {} bytes", c.kept))?;
+    game.go_to_node(at);
+    Ok(())
+}
+
+/// Step `n` moves (one by default) from `at` with `one` (back or forward); how many it moved.
+fn step(game: &mut Game, at: NodeId, n: Option<Steps>, one: fn(&mut Game) -> bool) -> usize {
+    let n = n.map_or(1, |Steps(n)| n);
+    game.go_to_node(at);
+    let mut moved = 0usize;
+    while moved < n && one(game) {
+        moved += 1;
+    }
+    moved
 }
 
 /// A capture mode by its name (`auto` when none is given).
@@ -537,4 +799,44 @@ fn graft_json(r: &GraftReport) -> Value {
         "leftover_text": r.leftover_text,
         "last": r.last.as_ref().map(path_text),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::BTreeSet;
+
+    use super::*;
+
+    /// Plan A9-F6 (A7-12): the tool's schema lists the operations the enum reads, and the fields
+    /// they read, no more and no fewer. Both are asked of the enum itself, not of a list kept
+    /// beside it: its names from serde's refusal of a name it does not have, and the fields an
+    /// operation reads from whether it refuses an object put in one (every field's type does; a
+    /// field it does not read is let through).
+    #[test]
+    fn the_schema_lists_the_operations_the_enum_reads() {
+        let def = crate::tools::find("chess_pgn_edit").unwrap();
+        let item = &def.input_schema["properties"]["ops"]["items"]["properties"];
+        let names: Vec<&str> = item["op"]["enum"].as_array().unwrap().iter().filter_map(Value::as_str).collect();
+        assert_eq!(names, OP_NAMES);
+        let refusal = PgnOp::deserialize(&json!({ "op": "?" })).unwrap_err().to_string();
+        let (_, listed) = refusal.split_once("expected one of ").unwrap();
+        let read: Vec<&str> = listed.split(", ").map(|n| n.trim_matches('`')).collect();
+        assert_eq!(read, OP_NAMES, "{refusal}");
+        let schema_fields: BTreeSet<&str> = item.as_object().unwrap().keys().map(String::as_str).filter(|&k| k != "op").collect();
+        let mut read_fields = BTreeSet::new();
+        for name in OP_NAMES {
+            let read = PgnOp::read(&json!({ "op": name }));
+            assert!(read.is_ok(), "{name}: {read:?}");
+            for &field in &schema_fields {
+                if PgnOp::read(&json!({ "op": name, field: { "?": 0 } })).is_err() {
+                    read_fields.insert(field);
+                }
+            }
+        }
+        assert_eq!(read_fields, schema_fields);
+        assert_eq!(PgnOp::read(&json!({ "op": "rotate" })).err().as_deref(), Some("unknown op \"rotate\""));
+        assert_eq!(PgnOp::read(&json!("cut")).err().as_deref(), Some("an operation is an object"));
+        assert_eq!(PgnOp::read(&json!({ "at": "path:" })).err().as_deref(), Some("op is missing"));
+        assert_eq!((max_ops(1), max_ops(1000), max_ops(10_000)), (MAX_OPS, MAX_OPS, 200));
+    }
 }
