@@ -1232,6 +1232,75 @@ mod tests {
         assert!(html(&[t], "Grid").contains("style=\"color:#FF0000\""));
     }
 
+    /// What [`esc`] wrote, read back as XML reads it.
+    fn xml_unescape(s: &str) -> Option<String> {
+        let mut out = String::new();
+        let mut rest = s;
+        while let Some(at) = rest.find('&') {
+            out.push_str(&rest[..at]);
+            let tail = &rest[at..];
+            let (c, len) = [("&amp;", '&'), ("&lt;", '<'), ("&gt;", '>'), ("&quot;", '"')]
+                .iter()
+                .find(|(e, _)| tail.starts_with(e))
+                .map(|(e, c)| (*c, e.len()))?;
+            out.push(c);
+            rest = &tail[len..];
+        }
+        out.push_str(rest);
+        Some(out)
+    }
+
+    /// What [`rtf_text`] wrote, read back as RTF reads it: `\{`, `\}`, `\\` and `\uN?` (UTF-16
+    /// units as signed numbers, the `?` the fallback a reader skips).
+    fn rtf_unescape(s: &str) -> Option<String> {
+        let mut units: Vec<u16> = Vec::new();
+        let mut chars = s.chars().peekable();
+        while let Some(c) = chars.next() {
+            match c {
+                '\\' => match chars.next()? {
+                    c @ ('\\' | '{' | '}') => units.push(c as u16),
+                    'u' => {
+                        let mut n = String::new();
+                        while let Some(d) = chars.peek().copied().filter(|d| *d == '-' || d.is_ascii_digit()) {
+                            n.push(d);
+                            chars.next();
+                        }
+                        units.push(n.parse::<i16>().ok()? as u16);
+                        (chars.next()? == '?').then_some(())?;
+                    }
+                    _ => return None,
+                },
+                '{' | '}' => return None,
+                c => units.push(u16::try_from(u32::from(c)).ok()?),
+            }
+        }
+        String::from_utf16(&units).ok()
+    }
+
+    proptest::proptest! {
+        /// Plan A9-Q3b (A7-08): any text, as a Word part writes it, is XML text that reads back
+        /// to the text without what XML refuses ([`allowed`]): no `<`, `>` or `"` of its own and
+        /// every `&` an entity.
+        #[test]
+        fn docx_text_reads_back(text in "\\PC{0,64}|[\\x00-\\x20&<>\"'\\u{fdd0}\\u{fffe}\\u{ffff}\\u{1fffe}a-z]{0,64}") {
+            let written = esc(&text);
+            proptest::prop_assert!(!written.contains(['<', '>', '"']), "{:?}", written);
+            proptest::prop_assert!(written.chars().all(allowed));
+            let kept: String = text.chars().filter(|c| allowed(*c)).collect();
+            proptest::prop_assert_eq!(xml_unescape(&written), Some(kept));
+        }
+
+        /// Any text, as RTF writes it, is 7-bit text whose braces and backslashes are escaped,
+        /// and reads back to the text without what Word refuses.
+        #[test]
+        fn rtf_text_reads_back(text in "\\PC{0,64}|[\\x00-\\x20{}\\\\\\u{e9}\\u{1f600}\\u{fffe}a-z]{0,64}") {
+            let written = rtf_text(&text);
+            proptest::prop_assert!(written.is_ascii(), "{:?}", written);
+            let kept: String = text.chars().filter(|c| allowed(*c)).collect();
+            proptest::prop_assert_eq!(rtf_unescape(&written), Some(kept), "{:?}", written);
+        }
+    }
+
     #[test]
     fn rtf_escapes_and_sizes() {
         let mut p = page();
