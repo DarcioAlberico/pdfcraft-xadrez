@@ -968,7 +968,7 @@ fn chess_export_html_writes_the_diagrams_in_order_and_reads_back() {
     );
     assert_eq!(done["pieces"]["source"], "geometric");
     // What was flagged for review is highlighted in HTML, unless asked not to (plan A8 P9b).
-    assert!(std::fs::read_to_string(root.join("book.html")).unwrap().contains(".review{background:#fff3c4}"));
+    assert!(std::fs::read_to_string(root.join("book.html")).unwrap().contains(".review{background:#fff3c4;border-bottom:2px solid #8a5d00}"));
     ok(&mut a, "chess_export_html", json!({ "doc": doc, "out": "clean.html", "pieces": "geometric", "review_marks": false }));
     assert!(!std::fs::read_to_string(root.join("clean.html")).unwrap().contains(".review{background"));
     // The figurine font is reported: used only when the machine has one configured.
