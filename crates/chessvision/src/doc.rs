@@ -52,7 +52,7 @@ use pdfcraft_chess::rules::Legality;
 use pdfcraft_chess::san::Lang;
 use serde::{Deserialize, Serialize};
 
-use crate::board::{BoardReading, ReadPosition, ReadingSource};
+use crate::board::{BoardReading, MateFinding, ReadPosition, ReadingSource};
 use crate::chess_text::{ChessPageText, TextQuality};
 use crate::cipher::{WordEdit, WordFlag};
 use crate::coords::{PageGeometry, PageRect, ViewRect, pixels_to_view};
@@ -138,6 +138,14 @@ pub enum ReviewFlag {
     /// Moves follow the diagram but its reading cannot be replayed from (unreadable or illegal),
     /// so they were not checked.
     NoStartPosition,
+    /// The page asks for mate in `n` (`#2`, `Mate in 2`) and the side to move has none (plan
+    /// A9-N4): a square misread, or the book wrong. `best_try` is the first move that comes
+    /// closest (the fewest defences refute it) and `refutation` one of those defences, in SAN, so
+    /// a person can tell which.
+    NoMate { n: u8, best_try: Option<String>, refutation: Option<String> },
+    /// The page asks for mate in `n` and more than one first move mates (a *cook*): most often a
+    /// square misread, since a problem has one key. `keys` in SAN.
+    ManyKeys { n: u8, keys: Vec<String> },
     // --- Text (S12, S13c) ---
     /// A word the cipher or the legality repair rewrote.
     TextRepaired { from: String, to: String, why: String, confidence: f32 },
@@ -829,7 +837,8 @@ pub enum SideSource {
     Caption,
     /// The number of the first move after the diagram (`23...`).
     MoveNumber,
-    /// The position allows only one side to move.
+    /// The position decides: it allows only one side to move, or (plan A9-N4) only one side mates
+    /// in the moves the page asks for.
     Position,
     /// Nothing said: White, assumed.
     Assumed,
@@ -840,7 +849,7 @@ impl SideSource {
         use pdfcraft_chess::recognize::side::SideSource as S;
         match source {
             S::Default => SideSource::Assumed,
-            S::Legality => SideSource::Position,
+            S::Legality | S::Solved => SideSource::Position,
             S::MoveNumber => SideSource::MoveNumber,
             S::CaptionAfter => SideSource::Caption,
             _ => SideSource::Printed,
@@ -1096,6 +1105,13 @@ fn position_flags(p: &ReadPosition, legal: bool) -> Vec<ReviewFlag> {
     }
     if p.side.conflicting {
         flags.push(ReviewFlag::SideConflict);
+    }
+    if let Some(MateFinding::Solved(report)) = &p.mate {
+        if report.no_mate() {
+            flags.push(ReviewFlag::NoMate { n: report.n, best_try: report.best_try.clone(), refutation: report.refutation.clone() });
+        } else if report.cooked() {
+            flags.push(ReviewFlag::ManyKeys { n: report.n, keys: report.keys.clone() });
+        }
     }
     flags
 }
