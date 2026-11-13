@@ -117,8 +117,10 @@ pub const MAX_VARIATION_DEPTH: usize = 32;
 pub const MAX_COMMENT_BYTES: usize = pdfcraft_chess::game::MAX_COMMENT_LEN;
 /// Most NAGs on one move.
 pub const MAX_NAGS: usize = 8;
-/// Most games in one document.
-pub const MAX_GAMES: usize = 4096;
+/// Most games in one document: as many as the numbered puzzles a document remembers
+/// ([`MAX_PUZZLES`]), so a book of exercises keeps all its solutions (plan A9-L7, A2-07: at 4,096
+/// the Polgár would have lost about 1,200). Past it a page says so ([`ReviewFlag::TooManyGames`]).
+pub const MAX_GAMES: usize = 20_000;
 /// Most legal moves listed for a reviewer.
 pub const MAX_LISTED_MOVES: usize = 8;
 /// Most diagrams kept that no game started from, to be matched by a later first move.
@@ -778,6 +780,9 @@ struct Line {
     /// variations, so it is the next move's comment before (`1.e4 {A} (1.d4 d5) {B} 1...e5`),
     /// not the last move's (plan A9-L2, A2-02).
     after_variations: bool,
+    /// Opened by `[`, not `(`: a variation with no move goes back to the text in its own brackets
+    /// (plan A9-L7, A2-12).
+    square: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -834,6 +839,8 @@ pub(crate) struct Done {
     /// Diagrams `(page, number)` a game started from at a printed move number it believed
     /// (`1.e4`, `23...Rd4`): the number says who is to move there (plan A9-L6b).
     pub numbered: Vec<(u32, usize)>,
+    /// The first page where a game could not start because the document holds [`MAX_GAMES`].
+    pub capped: Option<u32>,
 }
 
 impl Done {
@@ -864,6 +871,8 @@ pub(crate) struct Walker {
     blocked: Vec<(u32, usize)>,
     /// See [`Done::numbered`]; one per game at most.
     numbered: Vec<(u32, usize)>,
+    /// See [`Done::capped`].
+    capped: Option<u32>,
     /// The reading rules beyond the walker's own.
     rules: WalkRules,
     /// Fragment mode ([`Walker::fragment`]): one game from a given position, never split.
@@ -1129,7 +1138,8 @@ fn pop_line(game: &mut Game, open: &mut Open) {
         if line.moved {
             open.truncated |= flush_after_variations(game, &mut line);
         } else if !line.pending.is_empty() {
-            comment(game, open, &format!("({})", line.pending));
+            let (o, c) = if line.square { ('[', ']') } else { ('(', ')') };
+            comment(game, open, &format!("{o}{}{c}", line.pending));
         }
     }
     if let Some(parent) = open.lines.last_mut() {
@@ -1302,10 +1312,35 @@ fn emoticon(before: &str, rest: &str) -> Option<usize> {
     rest.get(smiley.len()..)?.chars().next().is_none_or(|c| !c.is_alphanumeric()).then_some(smiley.len())
 }
 
-/// Whether `text` (the text before a `)`) ends in a label: one letter `a` to `h` alone.
+/// Whether `text` (the text before a `)`) ends in a label standing alone: one letter `a` to `h`
+/// (`a)`), or a capital with numbers after it, maybe joined by dots (`A)`, `B2)`, `B2.1)`; plan
+/// A9-L7, A2-12): books number their lines so, and such a `)` closes no variation.
 fn is_label(text: &str) -> bool {
-    let mut rev = text.chars().rev();
-    matches!(rev.next(), Some('a'..='h')) && rev.next().is_none_or(char::is_whitespace)
+    let word = text.rsplit(char::is_whitespace).next().unwrap_or_default();
+    let mut chars = word.chars();
+    match chars.next() {
+        Some('a'..='h') => word.len() == 1,
+        Some('A'..='Z') => {
+            let rest = chars.as_str();
+            rest.is_empty()
+                || (!rest.starts_with('.') && !rest.ends_with('.') && !rest.contains("..") && rest.chars().all(|c| c.is_ascii_digit() || c == '.'))
+        }
+        _ => false,
+    }
+}
+
+/// The bytes of the label in brackets that `rest`, the text after a `(`, starts with: a label
+/// ([`is_label`]: `a`, `B`, `A1`, `B2.1`), its `)`, then the end or a space (`(a) 6.Nf3`, `(B2)
+/// With …`; plan A9-L7, A2-12). Books number their lines so, and such brackets hold no variation:
+/// read as one, `(A)` once its `)` became a label left the variation open.
+fn bracketed_label(rest: &str) -> Option<usize> {
+    let close = rest.find(')')?;
+    let word = rest.get(..close)?;
+    if word.is_empty() || word.contains(char::is_whitespace) || !is_label(word) {
+        return None;
+    }
+    let len = close.saturating_add(1);
+    rest.get(len..)?.chars().next().is_none_or(char::is_whitespace).then_some(len)
 }
 
 /// The words a caption puts before the move that led to its diagram, lower case, in the languages
@@ -1571,6 +1606,19 @@ impl Walker {
         self.headers.clear();
     }
 
+    /// The next page read is not the one after the last (plan A9-G7b, A2-16): the open game ends
+    /// there, and no diagram, header or text before it waits for a move after it. The numbered
+    /// puzzles stay: a solution names its exercise from anywhere in the book.
+    pub fn gap(&mut self) {
+        self.named = None;
+        self.close();
+        self.held_text.clear();
+        self.anchor = Anchor::None;
+        self.spare.clear();
+        self.matched = false;
+        self.headers.clear();
+    }
+
     /// A game's header, its players and its event ([`super::header`]), set on `page` in `rect`:
     /// the open game ends, with the diagram that came while it was open and no move settled, and
     /// the next game to start in the header's column, on that page or the next, takes its tags.
@@ -1704,6 +1752,8 @@ impl Walker {
         // nobody's otherwise.
         let held = std::mem::take(&mut self.held_text);
         if self.games.len() >= MAX_GAMES {
+            // Said once, on the first page it happens (plan A9-L7, A2-07).
+            self.capped.get_or_insert(loc.page);
             return None;
         }
         // A first move that does not fit where it stands may fit a spare diagram nearby.
@@ -2193,15 +2243,12 @@ impl Walker {
                     if self.prose_until(text, start, i) {
                         return;
                     }
-                    // A label in brackets (`(a)`, `(b)`) opens no variation.
+                    // A label in brackets (`(a)`, `(b)`, `(A)`, `(B2)`) opens no variation.
                     if ch == '('
                         && self.rules.separators
-                        && let Some(rest) = text.get(after..)
-                        && let [Some('a'..='h'), Some(')'), next] = [rest.chars().next(), rest.chars().nth(1), rest.chars().nth(2)]
-                        && next.is_none_or(char::is_whitespace)
+                        && let Some(len) = text.get(after..).and_then(bracketed_label)
                     {
-                        // `(`, a letter `a`-`h` and `)` are one byte each.
-                        skip_to = after.saturating_add(2);
+                        skip_to = after.saturating_add(len);
                         if self.prose_until(text, i, skip_to) {
                             return;
                         }
@@ -2218,7 +2265,7 @@ impl Walker {
                         self.end(result, text.get(after.saturating_add(len)..).unwrap_or_default());
                         return;
                     }
-                    self.open_variation();
+                    self.open_variation(ch == '[');
                     (self.prose_seen, self.ellipsis, self.separator) = (false, false, Separator::None);
                     start = after;
                 }
@@ -2335,7 +2382,8 @@ impl Walker {
         None
     }
 
-    fn open_variation(&mut self) {
+    /// Open a variation, by `[` when `square`.
+    fn open_variation(&mut self, square: bool) {
         let Some(open) = self.open.as_mut() else { return };
         if open.lines.len() > MAX_VARIATION_DEPTH {
             open.overflow = open.overflow.saturating_add(1);
@@ -2343,7 +2391,7 @@ impl Walker {
         }
         let Some(game) = self.games.get(open.game) else { return };
         let Some(parent) = open.lines.last() else { return };
-        let line = variation_line(&game.score, parent);
+        let line = Line { square, ..variation_line(&game.score, parent) };
         open.lines.push(line);
     }
 
@@ -2361,6 +2409,6 @@ impl Walker {
     /// Close the open game and hand the games over.
     pub fn finish(mut self) -> Done {
         self.close();
-        Done { games: self.games, remaps: self.remaps, blocked: self.blocked, numbered: self.numbered }
+        Done { games: self.games, remaps: self.remaps, blocked: self.blocked, numbered: self.numbered, capped: self.capped }
     }
 }

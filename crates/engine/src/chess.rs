@@ -365,7 +365,8 @@ pub struct BookPgn {
     pub name: Option<String>,
     pub index: Arc<pdfcraft_chessvision::doc::reference::ReferenceIndex>,
     /// The user's choices on the moves in conflict with it (R6e of `plano-pgn-do-livro.md`).
-    pub decisions: Vec<reference_store::Decision>,
+    /// With the reading they were matched against (plan A9-L1b: `reader_version`, the ordinals).
+    pub decisions: reference_store::Decisions,
 }
 
 impl ChessCache {
@@ -1274,11 +1275,8 @@ impl Session {
     pub fn chess_scan(&mut self, id: DocId, pages: &[usize], settings: &ChessScanSettings, read: bool) -> Result<Vec<Arc<ChessPage>>, String> {
         let doc = self.get(id).ok_or("no such document")?;
         doc.check_copying().map_err(|e| e.to_string())?;
-        let all = doc.info.pages.len();
-        if let Some(p) = pages.iter().find(|p| **p >= all) {
-            return Err(format!("page {} is out of range: the document has {all} pages", p + 1));
-        }
-        let pages: Vec<usize> = if pages.is_empty() { (0..all).collect() } else { pages.to_vec() };
+        // In the book's order, each once (plan A9-G7b, A2-16): every reading and export scans so.
+        let pages = pdfcraft_chessvision::doc::PageSet::new(pages, doc.info.pages.len())?.pages().to_vec();
         let settings = settings.sanitized();
         let models = read.then(|| models(settings.models_dir.as_deref()));
         let (mut found, keys) = self.chess_lookup(id, &pages, &settings, models.as_deref().map(ModelKey::of));

@@ -50,8 +50,9 @@ use serde::{Deserialize, Serialize};
 use super::games::DiagramAt;
 use super::{Block, ChessDoc, DiagramBlock, DiagramReading, DiagramSource, Inline, MoveAt, MoveInline, MoveStatus, ReviewFlag, SquareChange};
 
-/// Largest PGN text [`ReferenceIndex::from_pgn`] reads.
-pub const MAX_REFERENCE_BYTES: usize = 32 << 20;
+/// Largest PGN text [`ReferenceIndex::from_pgn`] reads: the one cap of every PGN read (plan
+/// A9-F4).
+pub const MAX_REFERENCE_BYTES: usize = pdfcraft_chess::pgn::MAX_PGN_FILE_BYTES;
 
 /// Most games a reference keeps. Courses run past the Board's own 256.
 pub const MAX_REFERENCE_GAMES: usize = 4096;
