@@ -752,8 +752,18 @@ fn each_document_keeps_its_own_book_pgn() {
     let b = s.open("b.pdf", None, Arc::new(bytes), None).unwrap();
     let index = |pgn: &str| Arc::new(ReferenceIndex::from_pgn(pgn).unwrap());
     let decision = Decision::new(MoveAt { page: 0, block: 0, inline: 0 }, "e4".into(), "e4".into(), "e4".into(), Choice::Pgn);
-    s.set_chess_book_pgn(a, Some(BookPgn { name: Some("a.pgn".into()), index: index("1. e4 e5 *"), decisions: reference_store::Decisions { reader_version: 0, list: vec![decision] } }));
-    s.set_chess_book_pgn(b, Some(BookPgn { name: Some("b.pgn".into()), index: index("1. d4 d5 *"), decisions: reference_store::Decisions::default() }));
+    s.set_chess_book_pgn(
+        a,
+        Some(BookPgn {
+            name: Some("a.pgn".into()),
+            index: index("1. e4 e5 *"),
+            decisions: reference_store::Decisions { reader_version: 0, list: vec![decision] },
+        }),
+    );
+    s.set_chess_book_pgn(
+        b,
+        Some(BookPgn { name: Some("b.pgn".into()), index: index("1. d4 d5 *"), decisions: reference_store::Decisions::default() }),
+    );
     let kept = s.chess_book_pgn(a).expect("A's PGN, after B's");
     assert_eq!((kept.name.as_deref(), kept.decisions.list.len(), kept.index.games().len()), (Some("a.pgn"), 1, 1));
     s.set_chess_book_pgn(b, None);
