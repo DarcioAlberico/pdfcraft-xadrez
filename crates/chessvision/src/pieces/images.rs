@@ -542,4 +542,42 @@ mod tests {
             std::fs::write(&out, pdfcraft_chess::svg::to_svg(&drawing, "test")).unwrap();
         }
     }
+
+    proptest::proptest! {
+        /// Plan A9-Q3b (A7-08): marching squares on any grid, at any level, never panics; every
+        /// point lies on the grid, and on a grid whose border is below the level (the traced
+        /// image is padded so) every loop closes: its last point and its first share a cell.
+        #[test]
+        fn marching_squares_trace_closed_loops_on_the_grid(
+            gw in 0usize..24,
+            gh in 0usize..24,
+            values in proptest::collection::vec(proptest::prop_oneof![0.0f32..1.0, proptest::prelude::Just(f32::NAN), proptest::prelude::Just(f32::INFINITY)], 0..600),
+            level in proptest::prop_oneof![0.0f32..1.0, proptest::prelude::Just(f32::NAN)],
+            short in proptest::prelude::any::<bool>(),
+        ) {
+            // A grid shorter than gw × gh reads the missing values as 0.
+            let len = if short { values.len().min(gw * gh) } else { gw * gh };
+            let grid: Vec<f32> = (0..len).map(|i| values.get(i).copied().unwrap_or(0.0)).collect();
+            let _ = march(&grid, gw, gh, level);
+            // Finite values, a zero border: closed loops on the grid.
+            if level.is_finite() && level > 0.0 && gw >= 3 && gh >= 3 {
+                let padded: Vec<f32> = (0..gw * gh)
+                    .map(|i| {
+                        let (x, y) = (i % gw, i / gw);
+                        let v = values.get(i).copied().filter(|v| v.is_finite()).unwrap_or(0.0);
+                        if x == 0 || y == 0 || x + 1 == gw || y + 1 == gh { 0.0 } else { v }
+                    })
+                    .collect();
+                for points in march(&padded, gw, gh, level) {
+                    proptest::prop_assert!(points.len() >= 3);
+                    for (x, y) in &points {
+                        proptest::prop_assert!(x.is_finite() && y.is_finite() && *x >= 0.0 && *y >= 0.0, "{:?}", points);
+                        proptest::prop_assert!(*x <= (gw - 1) as f32 && *y <= (gh - 1) as f32, "{:?}", points);
+                    }
+                    let (first, last) = (points[0], points[points.len() - 1]);
+                    proptest::prop_assert!((first.0 - last.0).abs() <= 1.0 && (first.1 - last.1).abs() <= 1.0, "an open loop: {:?}", points);
+                }
+            }
+        }
+    }
 }
