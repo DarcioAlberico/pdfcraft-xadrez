@@ -4,8 +4,11 @@
 //! `chess/reference` folder of the recovery folder (`DirStore`); the web build keeps them in
 //! eframe's `Storage` under [`STORAGE_KEY`], within [`WEB_BUDGET`] bytes of their own
 //! (`MemStore`). Until either is set (tests, a session without recovery) they live in memory for
-//! the session. The format and the rules are the engine's
-//! (`pdfcraft_engine::chess::reference_store`): one file per document, found by its keys.
+//! the session. The format and the rules are the engine's document store
+//! (`pdfcraft_engine::chess::reference_store`, plan A9-G3a): one file per document,
+//! `<hash>.reference.json`, found by its keys. Reading it never renames a file: one that can't be
+//! read is said, and set aside only by the next change, which says so too. The wait for another
+//! writer's lock (at most three seconds) stays on the interface thread until step I3b's writer.
 //!
 //! **What uses it.** Chess ▸ Load the book's PGN… (`chess.reference.load`) keeps the PGN chosen
 //! for the active document, and Remove the book's PGN (`chess.reference.clear`) removes it. Each
@@ -19,7 +22,7 @@ use std::sync::Arc;
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::DocKeys;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::{MAX_REFERENCE_BYTES, ReferenceIndex};
-use pdfcraft_engine::chess::reference_store::{Choice, Decision, KeptPgn, Loaded, MemStore, ReferenceFile, ReferenceStore, ReferenceStoreError};
+use pdfcraft_engine::chess::reference_store::{Choice, Decision, KeptPgn, Loaded, MemStore, ReferenceStoreError};
 use pdfcraft_engine::chess::span::MoveAt;
 
 use crate::PdfCraftApp;
@@ -72,16 +75,16 @@ impl Store {
     fn clear(&mut self, keys: &DocKeys, pages: usize) -> Result<bool, ReferenceStoreError> {
         match self {
             #[cfg(not(target_arch = "wasm32"))]
-            Store::Folder(s) => s.clear(keys, pages),
+            Store::Folder(s) => s.clear(keys, pages, now()),
             Store::Memory { store, changed } => {
-                let cleared = store.clear(keys, pages)?;
+                let cleared = store.clear(keys, pages, now())?;
                 *changed |= cleared;
                 Ok(cleared)
             }
         }
     }
 
-    fn decide(&mut self, keys: &DocKeys, pages: usize, decision: Decision) -> Result<ReferenceFile, ReferenceStoreError> {
+    fn decide(&mut self, keys: &DocKeys, pages: usize, decision: Decision) -> Result<Loaded, ReferenceStoreError> {
         match self {
             #[cfg(not(target_arch = "wasm32"))]
             Store::Folder(s) => s.decide(keys, pages, decision),
@@ -321,13 +324,12 @@ impl PdfCraftApp {
             let (mut index, mut summary, mut decisions) = (None, None, Vec::new());
             match self.chess.book_pgns.store.load(&keys, pages) {
                 Ok(loaded) => {
-                    if let Some((name, why)) = &loaded.set_aside {
-                        self.notify(crate::i18n::fmt(
-                            tl!("The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}."),
-                            &[("why", why), ("name", name)],
-                        ));
+                    // Reading never renames (plan A9-G3a): a file that can't be read is said, and
+                    // the next change sets it aside.
+                    if let Some((_, why)) = &loaded.unreadable {
+                        self.notify(crate::i18n::fmt(tl!("The book's PGN couldn't be read: {e}"), &[("e", why)]));
                     }
-                    decisions = loaded.file.as_ref().map(|f| f.decisions.clone()).unwrap_or_default();
+                    decisions.clone_from(&loaded.file.decisions);
                     if let Some(pgn) = loaded.pgn() {
                         match ReferenceIndex::from_pgn(&pgn.text) {
                             Ok(i) => {
@@ -425,7 +427,10 @@ impl PdfCraftApp {
             .and_then(|pgn| self.chess.book_pgns.store.set(&keys, pages, pgn.read_from(bytes)));
         // The same PGN kept again keeps the decisions made against it (plan A9-F1).
         let decisions = match kept {
-            Ok((_, loaded)) => loaded.file.map(|f| f.decisions).unwrap_or_default(),
+            Ok((_, loaded)) => {
+                self.say_book_pgn_set_aside(&loaded);
+                loaded.file.decisions
+            }
             Err(e) => return self.notify(refused(&e)),
         };
         self.chess.book_pgns.docs.retain(|d| d.doc != id);
@@ -490,9 +495,10 @@ impl PdfCraftApp {
         let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
         let decision = Decision::new(at, san, san_read, choice);
         match self.chess.book_pgns.store.decide(&keys, pages, decision) {
-            Ok(file) => {
+            Ok(loaded) => {
+                self.say_book_pgn_set_aside(&loaded);
                 if let Some(d) = self.chess.book_pgns.docs.iter_mut().find(|d| d.doc == id) {
-                    d.decisions = file.decisions;
+                    d.decisions = loaded.file.decisions;
                 }
             }
             Err(e) => self.notify(crate::i18n::fmt(tl!("The choice was not kept: {e}"), &[("e", &e.to_string())])),
@@ -515,6 +521,17 @@ impl PdfCraftApp {
                 self.notify(said.to_string());
             }
             Err(e) => self.notify(crate::i18n::fmt(tl!("The book's PGN couldn't be removed: {e}"), &[("e", &e.to_string())])),
+        }
+    }
+
+    /// Say that a change set the document's file aside before writing (one that could not be
+    /// read, or whose unreadable decisions it dropped; plan A9-G3a).
+    fn say_book_pgn_set_aside(&mut self, loaded: &Loaded) {
+        if let Some((name, why)) = &loaded.set_aside {
+            self.notify(crate::i18n::fmt(
+                tl!("The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}."),
+                &[("why", why), ("name", name)],
+            ));
         }
     }
 

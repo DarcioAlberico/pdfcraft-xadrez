@@ -13,14 +13,23 @@
 //! lichess links read the corrected positions (P3a3); the Diagrams list and the marks on the page
 //! show Verified and Corrected, and a confirmed diagram leaves the review queue. Saving records
 //! them under the saved file's keys ([`PdfCraftApp::rekey_chess_corrections`]).
+//!
+//! **One copy, one rule** (plan A9-G2b, R3-06, R8-04). The session holds the corrections in memory
+//! ([`pdfcraft_engine::Session::chess_corrections`]); the app keeps only the keys they are stored
+//! under. The marks are the engine's [`assign`]: every diagram and every correction placed once,
+//! with the session's page fingerprints indexed once per document state, the same rule the exports
+//! apply. Never `find` per diagram, which cost O(D × C) on the interface thread and could mark two
+//! diagrams with one correction the exports give to one.
 
 use std::collections::HashMap;
 
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::DocKeys;
 use pdfcraft_engine::chess::corrections::{
-    CorrectionError, CorrectionFile, Kind, Loaded, MemStore, NewCorrection, Original, Status, StoreError, normalize,
+    CorrectionError, CorrectionFile, Kind, Loaded, MemStore, NewCorrection, Original, PageBoxes, Status, StoreError, assign, normalize,
 };
+
+use crate::chess_ui::Kept;
 
 use crate::PdfCraftApp;
 
@@ -95,14 +104,12 @@ pub(crate) struct DiagramTarget {
     pub read: Option<String>,
 }
 
-/// One open document's corrections.
+/// One open document's corrections as the app loaded them. The session holds the file, the one
+/// copy in memory ([`pdfcraft_engine::Session::chess_corrections`], plan A9-G2b).
 pub(crate) struct DocCorrections {
     pub doc: DocId,
     /// The keys they were loaded under: a save that changes them moves the corrections along.
     pub keys: DocKeys,
-    pub file: CorrectionFile,
-    /// The document's page fingerprints, for the document state they were made in.
-    fingerprints: Option<(pdfcraft_engine::chess::ScanStamp, Vec<String>)>,
 }
 
 /// The corrections in the app.
@@ -156,56 +163,42 @@ impl Corrections {
     }
 }
 
-impl DocCorrections {
-    /// The correction over diagram `rect` (its user-space box) on `page`, given the page's
-    /// crop box, when there is one.
-    fn correction_at(&self, page: usize, rect: [f32; 4], crop: [f32; 4]) -> Option<&pdfcraft_engine::chess::corrections::Correction> {
-        let fps = &self.fingerprints.as_ref()?.1;
-        self.file.find(fps, page, normalize(rect, crop)?)
-    }
-}
-
 /// Seconds since 1970, now.
 fn now() -> u64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs())
 }
 
 impl PdfCraftApp {
-    /// Document `id`'s corrections, loaded from the store the first time and given to the
-    /// session; their fingerprints made again when the document changed.
-    fn chess_corrections_for(&mut self, id: DocId) -> Option<&DocCorrections> {
-        let doc = self.session.get(id)?;
-        let (keys, pages, stamp) = (doc.doc_keys(), doc.info.pages.len(), self.session.chess_stamp(id)?);
-        if self.chess.corrections.doc(id).is_none() {
-            let file = match self.chess.corrections.store.load(&keys, pages) {
-                Ok(loaded) => {
-                    self.say_unread_corrections(&loaded);
-                    loaded.file
-                }
-                // No keys: nothing is kept for it yet, and it starts empty.
-                Err(StoreError::NoKeys) => CorrectionFile::new(Default::default()),
-                Err(e) => {
-                    self.say_corrections_failed(&e.to_string());
-                    CorrectionFile::new(Default::default())
-                }
-            };
-            self.session.set_chess_corrections(id, Some(file.clone()));
-            self.chess.corrections.docs.push(DocCorrections { doc: id, keys, file, fingerprints: None });
+    /// Load document `id`'s corrections from the store into the session the first time they are
+    /// asked for; from then on the session holds them. Whether the document is open.
+    fn load_chess_corrections(&mut self, id: DocId) -> bool {
+        let Some(doc) = self.session.get(id) else { return false };
+        if self.chess.corrections.doc(id).is_some() {
+            return true;
         }
-        let stale = self.chess.corrections.doc(id).is_none_or(|d| d.fingerprints.as_ref().is_none_or(|(s, _)| *s != stamp));
-        if stale {
-            let fps = self.session.get(id).map(|d| d.page_fingerprints()).unwrap_or_default();
-            if let Some(d) = self.chess.corrections.docs.iter_mut().find(|d| d.doc == id) {
-                d.fingerprints = Some((stamp, fps));
+        let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
+        let file = match self.chess.corrections.store.load(&keys, pages) {
+            Ok(loaded) => {
+                self.say_unread_corrections(&loaded);
+                loaded.file
             }
-        }
-        self.chess.corrections.doc(id)
+            // No keys: nothing is kept for it yet, and it starts empty.
+            Err(StoreError::NoKeys) => CorrectionFile::new(Default::default()),
+            Err(e) => {
+                self.say_corrections_failed(&e.to_string());
+                CorrectionFile::new(Default::default())
+            }
+        };
+        self.session.set_chess_corrections(id, Some(file));
+        self.chess.corrections.docs.push(DocCorrections { doc: id, keys });
+        true
     }
 
     /// Document `id`'s corrections, for a reading made in a session of its own (the Text tab's
     /// and the exports' jobs, P3a3): the same bytes give the same page fingerprints there.
     pub(crate) fn chess_corrections_file(&mut self, id: DocId) -> Option<CorrectionFile> {
-        self.chess_corrections_for(id).map(|c| c.file.clone()).filter(|f| f.live().next().is_some())
+        self.load_chess_corrections(id);
+        self.session.chess_corrections(id).map(|f| CorrectionFile::clone(&f))
     }
 
     /// Say what the store could not read (plan A9-G3a): a file, or entries of one, left out of
@@ -246,21 +239,8 @@ impl PdfCraftApp {
         if self.chess.results_of(id).is_none() {
             return;
         }
-        let mut kinds = HashMap::new();
-        self.chess_corrections_for(id);
-        if let Some(c) = self.chess.corrections.doc(id)
-            && let Some(results) = self.chess.results_of(id)
-        {
-            for page in &results.pages {
-                let Some(crop) = page.geometry.map(|g| g.crop_box()) else { continue };
-                for (i, d) in page.diagrams.iter().enumerate() {
-                    let b = d.candidate.bbox_user;
-                    if let Some(e) = c.correction_at(page.page, [b.x0, b.y0, b.x1, b.y1], [crop.x0, crop.y0, crop.x1, crop.y1]) {
-                        kinds.insert((page.page, i), (e.kind, e.fen.clone()));
-                    }
-                }
-            }
-        }
+        self.load_chess_corrections(id);
+        let kinds = self.chess_marks(id);
         // The readings the book's PGN has, unless the user confirmed them (plan "Carregar PGN do
         // livro", R6b): the engine's rule, `Status::with_reference`.
         let index = self.book_pgn_index(id);
@@ -269,7 +249,7 @@ impl PdfCraftApp {
             for page in &results.pages {
                 for (i, _) in page.diagrams.iter().enumerate() {
                     let reading = crate::chess_ui::ChessResults::reading(page, i);
-                    let kind = kinds.get(&(page.page, i)).map(|(k, _): &(Kind, String)| *k);
+                    let kind = kinds.get(&(page.page, i)).map(|k: &Kept| k.kind);
                     if Status::with_reference(reading, kind, Some(index)) == Status::Reference {
                         confirmed.insert((page.page, i));
                     }
@@ -280,6 +260,33 @@ impl PdfCraftApp {
             results.kinds = kinds;
             results.confirmed = confirmed;
         }
+    }
+
+    /// The correction over each diagram of the results of document `id`, by the engine's one rule
+    /// ([`assign`]) with the session's corrections and its page fingerprints, indexed once per
+    /// document state: every diagram and correction placed once, O(D + C) (plan A9-G2b, R8-04).
+    /// The boxes are the scan's, those the exports' readings carry, of every page with a visible
+    /// area: a diagram the page's raster could not read is marked too.
+    fn chess_marks(&mut self, id: DocId) -> HashMap<(usize, usize), Kept> {
+        let Some(file) = self.session.chess_corrections(id) else { return HashMap::new() };
+        let Some(fingerprints) = self.session.chess_fingerprints(id) else { return HashMap::new() };
+        let Some(results) = self.chess.results_of(id) else { return HashMap::new() };
+        let pages: Vec<PageBoxes> = results
+            .pages
+            .iter()
+            .filter_map(|p| {
+                let crop = p.geometry?.crop_box();
+                let crop = [crop.x0, crop.y0, crop.x1, crop.y1];
+                let boxes = p.diagrams.iter().map(|d| d.candidate.bbox_user).map(|b| normalize([b.x0, b.y0, b.x1, b.y1], crop)).collect();
+                Some(PageBoxes { page: p.page, boxes })
+            })
+            .collect();
+        let located = file.locate(fingerprints.as_ref());
+        let (assigned, _) = assign(&pages, &located);
+        assigned
+            .into_iter()
+            .map(|a| ((a.page, a.index), Kept { uid: a.correction.uid.clone(), kind: a.correction.kind, fen: a.correction.fen.clone() }))
+            .collect()
     }
 
     /// Diagram `index` of `page` of `id` as the scan found it: what a correction of it needs.
@@ -308,12 +315,15 @@ impl PdfCraftApp {
     pub(crate) fn store_chess_correction(&mut self, target: &DiagramTarget, fen: String) -> Option<Kind> {
         let DiagramTarget { doc: id, page, index, rect, .. } = *target;
         let kind = if target.read.as_deref() == Some(fen.as_str()) { Kind::Verified } else { Kind::Corrected };
-        let fingerprints = self.chess_corrections_for(id).and_then(|c| c.fingerprints.as_ref()).map(|(_, fps)| fps.clone())?;
+        if !self.load_chess_corrections(id) {
+            return None;
+        }
+        let fingerprints = self.session.chess_fingerprints(id)?;
         let doc = self.session.get(id)?;
         let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
         let new = NewCorrection { page, rect, orig: Some(Original { fen: target.read.clone(), model: None }), fen, kind };
         let at = now();
-        match self.chess.corrections.store.update(&keys, pages, |f| f.set(new, at, &fingerprints)) {
+        match self.chess.corrections.store.update(&keys, pages, |f| f.set(new, at, fingerprints.as_ref())) {
             Ok((_, loaded)) => {
                 self.chess.corrections.said = false;
                 self.say_corrections_set_aside(&loaded);
@@ -438,26 +448,19 @@ impl PdfCraftApp {
         true
     }
 
-    /// The uid of the correction over diagram `index` of `page` of `id`, when there is one.
+    /// The uid of the correction over diagram `index` of `page` of `id`, when there is one: the
+    /// one the marks show ([`Self::chess_marks`]).
     fn chess_correction_uid(&mut self, id: DocId, page: usize, index: usize) -> Option<String> {
-        let (b, crop) = {
-            let results = self.chess.results_of(id)?;
-            let p = results.pages.iter().find(|p| p.page == page)?;
-            (p.diagrams.get(index)?.candidate.bbox_user, p.geometry?.crop_box())
-        };
-        let c = self.chess_corrections_for(id)?;
-        c.correction_at(page, [b.x0, b.y0, b.x1, b.y1], [crop.x0, crop.y0, crop.x1, crop.y1]).map(|e| e.uid.clone())
+        self.refresh_chess_kinds(id);
+        self.chess.results_of(id)?.kinds.get(&(page, index)).map(|k| k.uid.clone())
     }
 
-    /// The store kept `file` for `id` under `keys`: the session and the marks take it.
+    /// The store kept `file` for `id` under `keys`: the session holds it, and the marks follow.
     fn chess_corrections_kept(&mut self, id: DocId, keys: DocKeys, file: CorrectionFile) {
-        self.session.set_chess_corrections(id, Some(file.clone()));
+        self.session.set_chess_corrections(id, Some(file));
         match self.chess.corrections.docs.iter_mut().find(|d| d.doc == id) {
-            Some(d) => {
-                d.keys = keys;
-                d.file = file;
-            }
-            None => self.chess.corrections.docs.push(DocCorrections { doc: id, keys, file, fingerprints: None }),
+            Some(d) => d.keys = keys,
+            None => self.chess.corrections.docs.push(DocCorrections { doc: id, keys }),
         }
         self.refresh_chess_kinds(id);
     }

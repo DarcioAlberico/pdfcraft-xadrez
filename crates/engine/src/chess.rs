@@ -1390,12 +1390,19 @@ impl Session {
         }
     }
 
+    /// The diagram corrections document `id` was given ([`Self::set_chess_corrections`]), when it
+    /// has live ones: the one copy in memory, which the app's marks and its jobs read (plan A9-G2b,
+    /// R3-06).
+    pub fn chess_corrections(&self, id: DocId) -> Option<Arc<corrections::CorrectionFile>> {
+        self.chess.corrections.iter().find(|(d, _)| *d == id).map(|(_, f)| f.clone())
+    }
+
     /// [`Self::chess_scan`] reading the diagrams, with the document's corrections in place of
     /// the readings they correct ([`corrections::apply`]): a person's position wins over the
     /// reading, whatever the reading says now.
     pub fn chess_scan_corrected(&mut self, id: DocId, pages: &[usize], settings: &ChessScanSettings) -> Result<corrections::Corrected, String> {
         let scanned = self.chess_scan(id, pages, settings, true)?;
-        let Some(file) = self.chess.corrections.iter().find(|(d, _)| *d == id).map(|(_, f)| f.clone()) else {
+        let Some(file) = self.chess_corrections(id) else {
             return Ok(corrections::Corrected { pages: scanned, ..Default::default() });
         };
         let fingerprints = self.chess_fingerprints(id).ok_or("no such document")?;

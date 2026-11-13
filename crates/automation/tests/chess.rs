@@ -2973,3 +2973,205 @@ fn chess_pgn_edit_capture_as_a_comment_adds_or_says_it_is_there() {
     assert!(capture.to_string().contains("already_there"), "{capture:#}");
     assert_eq!(capture["applied"], false, "{capture:#}");
 }
+
+// ─── Plan A9, G3a (second PR): the book's PGN in the document store, reading tools that only read ─
+
+/// Every file of `dir` (and its subfolders) by its path under it, with its bytes; nothing for a
+/// folder that is not there.
+fn snapshot(dir: &Path) -> Vec<(String, Vec<u8>)> {
+    let mut out = Vec::new();
+    let mut todo = vec![dir.to_path_buf()];
+    while let Some(d) = todo.pop() {
+        let Ok(entries) = std::fs::read_dir(&d) else { continue };
+        for e in entries.flatten() {
+            let path = e.path();
+            if path.is_dir() {
+                todo.push(path);
+            } else {
+                let name = path.strip_prefix(dir).unwrap().to_string_lossy().into_owned();
+                out.push((name, std::fs::read(&path).unwrap()));
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+/// A9-G3a (A4-07, A7-02): the corrections and the book's PGN kept in one folder (`store` and
+/// `reference_store` the same) used to share a file name, and one kind set the other's file aside.
+/// Here an earlier build's corrections are in that folder under the name both shared
+/// (`<hash>.json`): keeping, reading and removing the book's PGN never takes that file for its own
+/// nor sets it aside, and the corrections are still found.
+#[test]
+fn one_folder_for_both_kinds_keeps_both() {
+    const CORRECTED: &str = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+    let (base, root) = workdir("one-folder");
+    std::fs::write(root.join("book.pgn"), RUY_PGN).unwrap();
+    let (mut a, doc) = opened(&root);
+    let set =
+        ok(&mut a, "chess_correction_set", json!({ "doc": doc, "page": 1, "index": 1, "fen": CORRECTED, "models_dir": "models", "store": "shared" }));
+    let shared = root.join("shared");
+    let own = set["file"].as_str().unwrap().to_owned();
+    let before = own.strip_suffix(".corrections.json").map(|h| format!("{h}.json")).unwrap();
+    // As an earlier build keeps them: under the name both kinds shared.
+    std::fs::rename(shared.join(&own), shared.join(&before)).unwrap();
+    let theirs = std::fs::read(shared.join(&before)).unwrap();
+    let kept = ok(&mut a, "chess_reference_set", json!({ "doc": doc, "path": "book.pgn", "reference_store": "shared" }));
+    assert_eq!((kept["kept"].as_bool(), kept["set_aside"].is_null(), kept["unreadable"].is_null()), (Some(true), true, true), "{kept:#}");
+    assert!(kept["file"].as_str().is_some_and(|f| f.ends_with(".reference.json")), "{kept:#}");
+    let status = ok(&mut a, "chess_reference_status", json!({ "doc": doc, "reference_store": "shared" }));
+    assert_eq!((status["kept"].as_bool(), status["name"].as_str()), (Some(true), Some("book.pgn")), "{status:#}");
+    let listed = ok(&mut a, "chess_correction_list", json!({ "doc": doc, "store": "shared" }));
+    assert_eq!((listed["count"].as_u64(), listed["corrections"][0]["fen"].as_str()), (Some(1), Some(CORRECTED)), "{listed:#}");
+    assert_eq!(ok(&mut a, "chess_reference_clear", json!({ "doc": doc, "reference_store": "shared" }))["cleared"], true);
+    assert_eq!(std::fs::read(shared.join(&before)).unwrap(), theirs, "the earlier build's file is left as it was");
+    let names: Vec<String> = snapshot(&shared).into_iter().map(|(n, _)| n).collect();
+    assert!(names.iter().all(|n| !n.contains(".bad")), "nothing set aside: {names:?}");
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// The arguments a reading tool is called with in [`reading_tools_change_no_store_and_need_only_read_access`]:
+/// `doc`, and a value for each other argument it requires.
+fn reading_args(tool: &pdfcraft_automation::ToolDef, doc: u64) -> Value {
+    let mut args = json!({ "doc": doc });
+    let props = &tool.input_schema["properties"];
+    if props.get("models_dir").is_some() {
+        args["models_dir"] = json!("models");
+    }
+    for name in tool.input_schema["required"].as_array().into_iter().flatten().filter_map(Value::as_str) {
+        let value = match name {
+            "doc" => continue,
+            "page" => json!(1),
+            "pages" => json!([1]),
+            "index" => json!(1),
+            "out" => json!(format!("made/{}.out", tool.name)),
+            other => panic!("{}: give reading_args a value for {other}", tool.name),
+        };
+        args[name] = value;
+    }
+    args
+}
+
+/// A9-G3a (A4-13, R1-03): every tool the schema calls read only that reads the stores
+/// (`store`, `reference_store`) leaves both folders byte for byte as they were, also with a file
+/// that can't be read in each (a reading tool used to rename it `….bad`); and with read access
+/// alone (an MCP server's --automation-read-root, no write root) the reading tools work: they used
+/// to resolve the folders for writing and were refused.
+#[test]
+fn reading_tools_change_no_store_and_need_only_read_access() {
+    const CORRECTED: &str = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+    let (base, root) = workdir("read-only");
+    std::fs::write(root.join("book.pgn"), RUY_PGN).unwrap();
+    let (mut a, doc) = opened(&root);
+    let set = ok(&mut a, "chess_correction_set", json!({ "doc": doc, "page": 1, "index": 1, "fen": CORRECTED, "models_dir": "models" }));
+    let kept = ok(&mut a, "chess_reference_set", json!({ "doc": doc, "path": "book.pgn" }));
+    let (corrections, reference) = (root.join(".pdfcraft/chess-corrections"), root.join(".pdfcraft/chess-reference"));
+    // A correction that can't be read beside the good one, and a book's PGN file that can't be
+    // read at all, under its name and under the name before.
+    let file = corrections.join(set["file"].as_str().unwrap());
+    let text = std::fs::read_to_string(&file).unwrap().replacen("\"entries\":[", "\"entries\":[{\"uid\":\"bad\"},", 1);
+    std::fs::write(&file, text).unwrap();
+    let own = kept["file"].as_str().unwrap().to_owned();
+    std::fs::write(reference.join(&own), b"{broken").unwrap();
+    std::fs::write(reference.join(own.replace(".reference.json", ".json")), b"{broken").unwrap();
+    let before = (snapshot(&corrections), snapshot(&reference));
+    let mut called = Vec::new();
+    for tool in pdfcraft_automation::tools().into_iter().filter(|t| t.read_only) {
+        let props = &tool.input_schema["properties"];
+        if props.get("store").is_none() && props.get("reference_store").is_none() {
+            continue;
+        }
+        let args = reading_args(&tool, doc);
+        let reply = a.call(tool.name, &args).map(json_of).unwrap_or_else(|e| panic!("{} {args}: {e}", tool.name));
+        assert_eq!((snapshot(&corrections), snapshot(&reference)), before, "{} changed a store: {reply:#}", tool.name);
+        called.push(tool.name);
+    }
+    for named in ["chess_correction_list", "chess_reference_status", "chess_diagram_states"] {
+        assert!(called.contains(&named), "{named} is a read-only tool that reads the stores: {called:?}");
+    }
+    // The reading tools that write only what they are asked to (out) read the stores the same way.
+    ok(&mut a, "chess_document", json!({ "doc": doc, "lang": "en" }));
+    assert_eq!((snapshot(&corrections), snapshot(&reference)), before, "chess_document changed a store");
+    let status = ok(&mut a, "chess_reference_status", json!({ "doc": doc }));
+    assert_eq!((status["kept"].as_bool(), status["unreadable"]["file"].as_str()), (Some(false), Some(own.as_str())), "{status:#}");
+    let listed = ok(&mut a, "chess_correction_list", json!({ "doc": doc }));
+    assert_eq!((listed["count"].as_u64(), listed["skipped"].as_u64()), (Some(1), Some(1)), "{listed:#}");
+
+    // Read access alone.
+    let roots = pdfcraft_automation::file_access::AutomationRoots::new(Some(&root), None).unwrap();
+    let mut r = Automation::new().with_automation_roots(roots);
+    let path = |p: &Path| p.to_string_lossy().into_owned();
+    let doc = ok(&mut r, "doc_open", json!({ "path": path(&root.join("board.pdf")) }))["doc"].as_u64().unwrap();
+    let stores = json!({ "doc": doc, "store": path(&corrections), "reference_store": path(&reference), "models_dir": path(&root.join("models")) });
+    let states = ok(&mut r, "chess_diagram_states", stores.clone());
+    assert_eq!(states["corrections"]["kept"], 1, "{states:#}");
+    let mut list = json!({ "doc": doc, "store": path(&corrections) });
+    assert_eq!(ok(&mut r, "chess_correction_list", list.clone())["count"], 1);
+    assert_eq!(ok(&mut r, "chess_reference_status", json!({ "doc": doc, "reference_store": path(&reference) }))["kept"], false);
+    // A folder that is not there is an empty store, and is not made.
+    list["store"] = json!(path(&root.join("none")));
+    assert_eq!(ok(&mut r, "chess_correction_list", list)["count"], 0);
+    assert!(!root.join("none").exists());
+    // Changing needs write access.
+    match r.call(
+        "chess_correction_set",
+        &json!({ "doc": doc, "page": 1, "index": 1, "fen": CORRECTED, "store": path(&corrections), "models_dir": path(&root.join("models")) }),
+    ) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("write authority is absent"), "{m}"),
+        other => panic!("written with read access alone: {other:?}"),
+    }
+    assert_eq!((snapshot(&corrections), snapshot(&reference)), before);
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// A9-G3a (plan A9 §2.3, `persist_policy`): the stores keep what they keep unencrypted. Nothing
+/// of a document that does not allow copying is kept; of an encrypted one, only with
+/// `allow_encrypted`, as `chess_glyph_sample` asks. Refused, nothing is written.
+#[test]
+fn protected_documents_keep_nothing_unasked() {
+    const CORRECTED: &str = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+    let (base, root) = workdir("protected");
+    std::fs::write(root.join("book.pgn"), RUY_PGN).unwrap();
+    let (mut a, doc) = opened(&root);
+    ok(&mut a, "doc_protect", json!({ "doc": doc, "open_password": "open" }));
+    ok(&mut a, "doc_save", json!({ "doc": doc, "path": "encrypted.pdf" }));
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let doc = ok(&mut a, "doc_open", json!({ "path": "encrypted.pdf", "password": "open" }))["doc"].as_u64().unwrap();
+    let stores = root.join(".pdfcraft");
+    let correction = json!({ "doc": doc, "page": 1, "index": 1, "fen": CORRECTED, "models_dir": "models" });
+    for (tool, args) in [
+        ("chess_reference_set", json!({ "doc": doc, "path": "book.pgn" })),
+        ("chess_correction_set", correction.clone()),
+        ("chess_page_verify", json!({ "doc": doc, "page": 1, "models_dir": "models" })),
+    ] {
+        match a.call(tool, &args) {
+            Err(ToolError::Failed(m)) => assert!(m.contains("encrypted") && m.contains("allow_encrypted"), "{tool}: {m}"),
+            other => panic!("{tool} kept an encrypted document's data unasked: {other:?}"),
+        }
+    }
+    assert!(!stores.exists(), "nothing written");
+    let mut asked = correction.clone();
+    asked["allow_encrypted"] = json!(true);
+    assert_eq!(ok(&mut a, "chess_correction_set", asked)["kind"], "corrected");
+    assert_eq!(ok(&mut a, "chess_reference_set", json!({ "doc": doc, "path": "book.pgn", "allow_encrypted": true }))["kept"], true);
+
+    // Copying not allowed: never, asked or not.
+    let mut b = Automation::new().with_root(&root).unwrap();
+    let plain = ok(&mut b, "doc_open", json!({ "path": "board.pdf" }))["doc"].as_u64().unwrap();
+    ok(&mut b, "doc_protect", json!({ "doc": plain, "permissions_password": "boss" }));
+    ok(&mut b, "doc_save", json!({ "doc": plain, "path": "no-copy.pdf" }));
+    let mut c = Automation::new().with_root(&root).unwrap();
+    let locked = ok(&mut c, "doc_open", json!({ "path": "no-copy.pdf" }))["doc"].as_u64().unwrap();
+    let before = snapshot(&stores);
+    for (tool, args) in [
+        ("chess_reference_set", json!({ "doc": locked, "path": "book.pgn", "allow_encrypted": true })),
+        ("chess_correction_set", json!({ "doc": locked, "page": 1, "index": 1, "fen": CORRECTED, "models_dir": "models", "allow_encrypted": true })),
+    ] {
+        match c.call(tool, &args) {
+            Err(ToolError::Failed(m)) => assert!(m.contains("don't allow copying"), "{tool}: {m}"),
+            other => panic!("{tool} kept a document that does not allow copying: {other:?}"),
+        }
+    }
+    assert_eq!(snapshot(&stores), before, "nothing written");
+    let _ = std::fs::remove_dir_all(base);
+}

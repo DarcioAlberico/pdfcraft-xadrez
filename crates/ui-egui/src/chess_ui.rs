@@ -304,6 +304,16 @@ pub struct BoardText {
     pub started: bool,
 }
 
+/// A correction over a diagram, as the engine's one rule gives it the diagram
+/// ([`pdfcraft_engine::chess::corrections::assign`], plan A9-G2b): Verified or Corrected, the
+/// position kept, and which correction it is.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Kept {
+    pub uid: String,
+    pub kind: Kind,
+    pub fen: String,
+}
+
 /// What scanning found in one document.
 pub struct ChessResults {
     pub doc: DocId,
@@ -317,9 +327,9 @@ pub struct ChessResults {
     pub reveal: bool,
     /// Whether the piece model could be used.
     pub model: ModelNote,
-    /// What the user did with each diagram (page, index): Verified or Corrected, and the
-    /// position kept ([`PdfCraftApp::refresh_chess_kinds`]).
-    pub kinds: HashMap<(usize, usize), (Kind, String)>,
+    /// What the user did with each diagram (page, index): the correction the engine's one rule
+    /// gives it ([`PdfCraftApp::refresh_chess_kinds`]; plan A9-G2b).
+    pub kinds: HashMap<(usize, usize), Kept>,
     /// The diagrams (page, index) whose reading the book's PGN has, unless the user confirmed
     /// them ([`PdfCraftApp::refresh_chess_kinds`]; plan "Carregar PGN do livro", R6b).
     pub confirmed: std::collections::HashSet<(usize, usize)>,
@@ -392,7 +402,12 @@ impl ChessResults {
 
     /// What the user did with diagram `index` of `page`, when they confirmed it.
     pub fn kind(&self, page: usize, index: usize) -> Option<Kind> {
-        self.kinds.get(&(page, index)).map(|(k, _)| *k)
+        self.kinds.get(&(page, index)).map(|k| k.kind)
+    }
+
+    /// The position kept for diagram `index` of `page`, when the user confirmed it.
+    pub fn kept_fen(&self, page: usize, index: usize) -> Option<&str> {
+        self.kinds.get(&(page, index)).map(|k| k.fen.as_str())
     }
 
     /// Whether the book's PGN has the reading of diagram `index` of `page`.
@@ -619,7 +634,7 @@ pub(crate) fn paint(
         }
         if under {
             let title = crate::i18n::fmt(tl!("Diagram {n}"), &[("n", &(i + 1).to_string())]);
-            let kept = results.kinds.get(&(page, i)).map(|(_, fen)| fen.as_str());
+            let kept = results.kept_fen(page, i);
             let fen = kept.or_else(|| reading.and_then(BoardReading::position).map(|pos| pos.fen.as_str()));
             let label = if draft { format!("{label} · {}", tl!("Unconfirmed changes")) } else { label };
             let text = match fen {
@@ -1185,7 +1200,7 @@ impl PdfCraftApp {
             let reading = results.pages.iter().find(|p| p.page == page).and_then(|p| ChessResults::reading(p, index));
             let mut ed = crate::chess_editor::DiagramEditor::new(id, page, index, reading);
             // A diagram the user confirmed opens on the position kept for it.
-            if let Some((_, fen)) = results.kinds.get(&(page, index)) {
+            if let Some(fen) = results.kept_fen(page, index) {
                 ed.show_kept(fen);
             }
             // Said to screen readers: which diagram, its place in what the tab walks, the doubts.
