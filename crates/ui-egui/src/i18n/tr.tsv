@@ -3193,6 +3193,7 @@ chess undo step	Clear drawings	çizimleri temizleme
 	Diagram	Diyagram
 	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Kaydedilmiş diyagram düzeltmeleri okunamadı ({why}); {name} olarak kenara ayrıldı.
 	Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted.	Kaydedilmiş bazı diyagram düzeltmeleri okunamadı ({why}); diğerleri kullanılıyor ve {name} korunuyor, asla silinmiyor.
+	Diagram corrections or books' PGNs an earlier PdfCraft changed were brought in.	Önceki bir PdfCraft'ın değiştirdiği diyagram düzeltmeleri veya kitap PGN'leri aktarıldı.
 	The diagram corrections couldn't be saved: {e}	Diyagram düzeltmeleri kaydedilemedi: {e}
 	Diagram {n}, page {p}: {state}	Diyagram {n}, sayfa {p}: {state}
 	Page {p} · diagram {n} of {m}	Sayfa {p} · diyagram {n}/{m}

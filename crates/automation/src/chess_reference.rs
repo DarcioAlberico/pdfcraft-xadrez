@@ -17,10 +17,11 @@ use pdfcraft_engine::chess::reference_store::DirStore;
 use pdfcraft_engine::chess::reference_store::{KeptPgn, Loaded, ReferenceStoreError};
 use serde_json::{Value, json};
 
+use crate::chess_store_migrate::{REFERENCE, StoreAt};
 use crate::{Args, Automation, Result, failed};
 
-/// The folder of the books' PGNs when `reference_store` is not given (relative to `--root` when
-/// set).
+/// The folder of the books' PGNs when `reference_store` is not given and no app folder is known
+/// (relative to `--root` when set; the app's own otherwise, plan A9-G5a).
 pub(crate) const DEFAULT_STORE: &str = ".pdfcraft/chess-reference";
 
 /// Where the tools keep the books' PGNs: a folder. The web build has no folders: there the store
@@ -40,6 +41,12 @@ pub(crate) struct BookPgn {
 /// Seconds since 1970, now.
 fn now() -> u64 {
     std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs())
+}
+
+/// What a reading tool says when the books' PGNs are kept in the app's folder, outside the
+/// folders the tools are confined to (plan A9-G5a): none read, and why.
+fn outside_root() -> Value {
+    json!({ "file": Value::Null, "kept": false, "outside_root": true, "why": "the books' PGNs are kept in the app's data folder, outside the folders the tools are confined to: give reference_store to read one" })
 }
 
 /// What a store found, for a reply, with what it could not read and what a change set aside
@@ -62,17 +69,22 @@ fn loaded_reply(loaded: &Loaded) -> Value {
 }
 
 impl Automation {
-    /// The folder `reference_store` names, confined to the root, to change.
+    /// The folder `reference_store` names (by default the app's, plan A9-G5a), confined to the
+    /// root, to change.
     fn reference_store(&self, a: &Args) -> Result<FolderStore> {
-        let store = a.opt_str("reference_store")?.unwrap_or(DEFAULT_STORE);
-        let dir = self.resolve(store, true)?;
-        Ok(Self::folder_store(dir))
+        match self.chess_store_at(a, REFERENCE, true)? {
+            StoreAt::Folder(dir) => Ok(Self::folder_store(dir)),
+            StoreAt::OutsideRoot => Err(failed("the books' PGNs folder is outside the allowed folders")),
+        }
     }
 
-    /// The folder `reference_store` names, confined to the root, only to read (A4-13).
-    fn reference_store_to_read(&self, a: &Args) -> Result<FolderStore> {
-        let store = a.opt_str("reference_store")?.unwrap_or(DEFAULT_STORE);
-        Ok(Self::folder_store(self.resolve_to_read(store)?))
+    /// The folder `reference_store` names, confined to the root, only to read (A4-13). `None`:
+    /// the app's folder, outside the folders the tools are confined to.
+    fn reference_store_to_read(&self, a: &Args) -> Result<Option<FolderStore>> {
+        Ok(match self.chess_store_at(a, REFERENCE, false)? {
+            StoreAt::Folder(dir) => Some(Self::folder_store(dir)),
+            StoreAt::OutsideRoot => None,
+        })
     }
 
     fn folder_store(dir: std::path::PathBuf) -> FolderStore {
@@ -104,7 +116,7 @@ impl Automation {
         if !a.opt_bool("reference")?.unwrap_or(true) {
             return Ok((None, Value::Null));
         }
-        let store = self.reference_store_to_read(a)?;
+        let Some(store) = self.reference_store_to_read(a)? else { return Ok((None, outside_root())) };
         let (keys, pages) = self.reference_keys(id)?;
         let loaded = match store.load(&keys, pages) {
             Ok(l) => l,
@@ -122,7 +134,7 @@ impl Automation {
     /// After document `id` was saved: its PGN in the default folder, found under the keys it had
     /// `before`, recorded under its keys now. Whether there was one.
     pub(crate) fn rekey_chess_reference(&self, id: DocId, before: &DocKeys) -> std::result::Result<bool, String> {
-        let Ok(dir) = self.resolve(DEFAULT_STORE, true) else { return Ok(false) };
+        let Ok(StoreAt::Folder(dir)) = self.chess_store_at(&Args(&Value::Null), REFERENCE, true) else { return Ok(false) };
         let doc = self.session.get(id).ok_or("no such document")?;
         Self::folder_store(dir).rekey(before, &doc.doc_keys(), doc.info.pages.len()).map_err(|e| e.to_string())
     }
@@ -155,7 +167,7 @@ impl Automation {
     }
 
     pub(crate) fn chess_reference_status(&self, a: &Args) -> Result<Value> {
-        let store = self.reference_store_to_read(a)?;
+        let Some(store) = self.reference_store_to_read(a)? else { return Ok(outside_root()) };
         let id = self.doc(a)?.id;
         let (keys, pages) = self.reference_keys(id)?;
         let loaded = store.load(&keys, pages).map_err(failed)?;

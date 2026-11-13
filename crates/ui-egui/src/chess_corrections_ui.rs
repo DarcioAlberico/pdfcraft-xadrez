@@ -1,7 +1,8 @@
 //! Chess ▸ Diagrams ▸ the corrections the user confirms, kept in the app (plan A8, P3b2).
 //!
-//! **Where.** The desktop keeps them in the `chess/corrections` folder of the recovery folder,
-//! beside the autosaved games and under the same instance lock (`DirStore`); the web build keeps
+//! **Where.** The desktop keeps them in the `chess/corrections` folder of the app's data folder
+//! (plan A9-G5a, decision D17: the one the command line uses too; [`PdfCraftApp::use_chess_data`]
+//! merges in what earlier builds kept in the recovery folder) (`DirStore`); the web build keeps
 //! them in eframe's `Storage` under [`STORAGE_KEY`], within [`WEB_BUDGET`] bytes of their own
 //! (`MemStore`). Until either is set (tests, a session without recovery) they live in memory for
 //! the session. The format and the rules are the engine's (`pdfcraft_engine::chess::corrections`):
@@ -55,27 +56,31 @@ impl Default for Store {
 }
 
 impl Store {
-    fn load(&self, keys: &DocKeys, pages: usize) -> Result<Loaded, StoreError> {
+    /// The document's corrections, with its own entries of a file several books shared (plan
+    /// A9-G1b; `fingerprints`: its pages').
+    fn load(&self, keys: &DocKeys, fingerprints: &[String]) -> Result<Loaded, StoreError> {
         match self {
             #[cfg(not(target_arch = "wasm32"))]
-            Store::Folder(s) => s.load(keys, pages),
-            Store::Memory { store, .. } => store.load(keys, pages),
+            Store::Folder(s) => s.load_with(keys, fingerprints).map(|(l, _)| l),
+            Store::Memory { store, .. } => store.load_with(keys, fingerprints).map(|(l, _)| l),
         }
     }
 
+    /// A change, after the document's entries are taken out of a file several books shared (plan
+    /// A9-G1b).
     fn update<R>(
         &mut self,
         keys: &DocKeys,
-        pages: usize,
+        fingerprints: &[String],
         change: impl FnOnce(&mut CorrectionFile) -> Result<R, CorrectionError>,
     ) -> Result<(R, Loaded), StoreError> {
         match self {
             #[cfg(not(target_arch = "wasm32"))]
-            Store::Folder(s) => s.update(keys, pages, change),
+            Store::Folder(s) => s.update_with(keys, fingerprints, change).map(|(r, l, _)| (r, l)),
             Store::Memory { store, changed } => {
-                let out = store.update(keys, pages, change)?;
+                let (r, l, _) = store.update_with(keys, fingerprints, change)?;
                 *changed = true;
-                Ok(out)
+                Ok((r, l))
             }
         }
     }
@@ -170,14 +175,19 @@ fn now() -> u64 {
 
 impl PdfCraftApp {
     /// Load document `id`'s corrections from the store into the session the first time they are
-    /// asked for; from then on the session holds them. Whether the document is open.
+    /// asked for; from then on the session holds them. Whether the document is open. With the
+    /// page fingerprints, a file several books shared gives this book its own entries (plan
+    /// A9-G1b).
     fn load_chess_corrections(&mut self, id: DocId) -> bool {
-        let Some(doc) = self.session.get(id) else { return false };
+        if self.session.get(id).is_none() {
+            return false;
+        }
         if self.chess.corrections.doc(id).is_some() {
             return true;
         }
-        let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
-        let file = match self.chess.corrections.store.load(&keys, pages) {
+        let fingerprints = self.session.chess_fingerprints(id).map(|f| f.pages().to_vec()).unwrap_or_default();
+        let Some(keys) = self.session.get(id).map(|d| d.doc_keys()) else { return false };
+        let file = match self.chess.corrections.store.load(&keys, &fingerprints) {
             Ok(loaded) => {
                 self.say_unread_corrections(&loaded);
                 loaded.file
@@ -320,10 +330,10 @@ impl PdfCraftApp {
         }
         let fingerprints = self.session.chess_fingerprints(id)?;
         let doc = self.session.get(id)?;
-        let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
+        let keys = doc.doc_keys();
         let new = NewCorrection { page, rect, orig: Some(Original { fen: target.read.clone(), model: None }), fen, kind };
         let at = now();
-        match self.chess.corrections.store.update(&keys, pages, |f| f.set(new, at, fingerprints.as_ref())) {
+        match self.chess.corrections.store.update(&keys, fingerprints.pages(), |f| f.set(new, at, fingerprints.as_ref())) {
             Ok((_, loaded)) => {
                 self.chess.corrections.said = false;
                 self.say_corrections_set_aside(&loaded);
@@ -421,14 +431,14 @@ impl PdfCraftApp {
         let Some(ed) = self.chess.editor.as_ref() else { return false };
         let (id, page, index) = (ed.doc, ed.page, ed.index);
         let Some(uid) = self.chess_correction_uid(id, page, index) else { return false };
-        let Some(doc) = self.session.get(id) else { return false };
-        let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
+        let Some(keys) = self.session.get(id).map(|d| d.doc_keys()) else { return false };
+        let fingerprints = self.session.chess_fingerprints(id).map(|f| f.pages().to_vec()).unwrap_or_default();
         let at = now();
         let gone = self
             .chess
             .corrections
             .store
-            .update(&keys, pages, |f| if f.delete(&uid, at) { Ok(()) } else { Err(CorrectionError::NoSuchCorrection(uid.clone())) });
+            .update(&keys, &fingerprints, |f| if f.delete(&uid, at) { Ok(()) } else { Err(CorrectionError::NoSuchCorrection(uid.clone())) });
         match gone {
             Ok((_, loaded)) => {
                 self.say_corrections_set_aside(&loaded);

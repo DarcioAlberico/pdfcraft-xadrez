@@ -3338,6 +3338,7 @@ chess undo step	Clear drawings	borrado de los dibujos
 	Diagram	Diagrama
 	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	No se pudieron leer las correcciones de diagramas guardadas ({why}); se apartaron como {name}.
 	Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted.	Algunas correcciones de diagramas guardadas no se pudieron leer ({why}); se usan las demás, y {name} se conserva, nunca se borra.
+	Diagram corrections or books' PGNs an earlier PdfCraft changed were brought in.	Se trajeron las correcciones de diagramas o los PGN de libros que cambió una versión anterior de PdfCraft.
 	The diagram corrections couldn't be saved: {e}	No se pudieron guardar las correcciones de diagramas: {e}
 	Diagram {n}, page {p}: {state}	Diagrama {n}, pág. {p}: {state}
 	Page {p} · diagram {n} of {m}	Pág. {p} · diagrama {n} de {m}

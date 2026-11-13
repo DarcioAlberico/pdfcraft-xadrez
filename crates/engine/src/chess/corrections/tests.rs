@@ -1190,3 +1190,187 @@ fn a_writer_of_the_builds_before_and_this_one_lose_nothing() {
     assert_eq!(DirStore::new(&dir).load(&keys(), 10).unwrap().file.live().count(), 49);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+// ─── One place for the stores, migrated into (plan A9-G5a, decision D17) ───────────────────────
+
+/// Every file of `dir` by name, with its bytes.
+fn files_of(dir: &std::path::Path) -> Vec<(String, Vec<u8>)> {
+    let mut files: Vec<(String, Vec<u8>)> = std::fs::read_dir(dir)
+        .map(|entries| {
+            entries
+                .flatten()
+                .filter(|e| e.path().is_file())
+                .map(|e| (e.file_name().to_string_lossy().into_owned(), std::fs::read(e.path()).unwrap()))
+                .collect()
+        })
+        .unwrap_or_default();
+    files.sort();
+    files
+}
+
+fn other_book() -> DocKeys {
+    DocKeys { id0: None, path: Some("C:/books/Outro.pdf".into()), name: Some("Outro.pdf".into()), size: Some(9) }
+}
+
+/// A9-G5a (A4-12, D17): what an earlier build kept in another folder (the recovery folder's, a
+/// `.pdfcraft`) is merged into the one place, by uid and revision, into the file that records
+/// the same document; the source is only read. Run again it merges nothing new; once the earlier
+/// build changed a file there, that file again. A file of a newer version, or one that can't be
+/// read, is left where it is and counted; a book's PGN in the same folder is not this kind's.
+/// An interrupted run (its record lost) run again leaves no entry twice.
+#[test]
+fn the_migration_merges_can_run_again_and_never_touches_its_source() {
+    let base = temp_dir("migrate");
+    let (from, to) = (base.join("from"), base.join("to"));
+    std::fs::create_dir_all(&from).unwrap();
+    // An earlier build's files: one under the name before, one under this kind's name.
+    let mut mine = CorrectionFile::new(DocRecord::new(&keys(), 10));
+    let first = mine.put(1, "fnv:a", [0.1, 0.1, 0.4, 0.4], KINGS, 1).unwrap();
+    std::fs::write(from.join(file_name(&keys()).unwrap()), mine.to_bytes().unwrap()).unwrap();
+    let mut theirs = CorrectionFile::new(DocRecord::new(&other_book(), 3));
+    let elsewhere = theirs.put(0, "fnv:o", [0.1, 0.1, 0.4, 0.4], QUEEN, 1).unwrap();
+    std::fs::write(from.join(own_name(&other_book())), theirs.to_bytes().unwrap()).unwrap();
+    // Beside them: a book's PGN, a corrections file of a newer version, one that can't be read.
+    let hex32 = |c: char| c.to_string().repeat(32);
+    std::fs::write(from.join(format!("{}.json", hex32('a'))), br#"{"format":"pdfcraft-chess-reference","version":1,"doc":{}}"#).unwrap();
+    std::fs::write(from.join(format!("{}.json", hex32('b'))), br#"{"format":"pdfcraft-chess-corrections","version":9,"doc":{}}"#).unwrap();
+    std::fs::write(from.join(format!("{}.json", hex32('c'))), br#"{"format":"pdfcraft-chess-corrections","version":2}"#).unwrap();
+    // The one place already keeps the first book, under its own name, with another correction.
+    let store = DirStore::new(&to);
+    let (here, _) = store.update(&keys(), 10, |f| f.put(2, "fnv:c", [0.5, 0.5, 0.9, 0.9], QUEEN, 5)).unwrap();
+    let source = files_of(&from);
+
+    let m = store.migrate_from(&from).unwrap();
+    assert_eq!((m.merged, m.changed, m.unchanged, m.newer, m.unreadable, m.left_here), (2, 0, 0, 1, 1, 0), "{m:?}");
+    let live = |k: &DocKeys| {
+        let mut uids: Vec<String> = store.load(k, 10).unwrap().file.live().map(|e| e.uid.clone()).collect();
+        uids.sort();
+        uids
+    };
+    let mut both = vec![first.clone(), here.clone()];
+    both.sort();
+    assert_eq!(live(&keys()), both, "merged into the file that keeps the book");
+    assert_eq!(live(&other_book()), vec![elsewhere.clone()]);
+    assert!(to.join(own_name(&other_book())).is_file(), "named for its kind");
+    assert_eq!(files_of(&from), source, "the source is only read");
+    let record = std::fs::read_to_string(to.join(crate::chess::store::MIGRATED)).unwrap();
+    assert!(!record.contains("books") && !record.contains(&*base.to_string_lossy()), "no path kept: {record}");
+
+    // Again: nothing new.
+    let again = store.migrate_from(&from).unwrap();
+    assert_eq!((again.merged, again.changed, again.unchanged), (0, 0, 2), "{again:?}");
+    // The earlier build goes on writing there: that file is merged again.
+    let later = mine.put(3, "fnv:d", [0.1, 0.5, 0.4, 0.9], KINGS, 9).unwrap();
+    std::fs::write(from.join(file_name(&keys()).unwrap()), mine.to_bytes().unwrap()).unwrap();
+    let changed = store.migrate_from(&from).unwrap();
+    assert_eq!((changed.merged, changed.changed, changed.unchanged), (0, 1, 1), "{changed:?}");
+    assert!(live(&keys()).contains(&later));
+    // Interrupted before its record was kept: run again, nothing twice.
+    std::fs::remove_file(to.join(crate::chess::store::MIGRATED)).unwrap();
+    let rerun = store.migrate_from(&from).unwrap();
+    assert_eq!(rerun.merged, 2);
+    assert_eq!((live(&keys()).len(), live(&other_book()).len()), (3, 1), "no entry twice");
+    assert_eq!(store.migrate_from(&base.join("none")).unwrap(), crate::chess::store::Migration::default(), "no folder, nothing");
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// A9-G5a: the same book kept in two places (the recovery folder's and a `.pdfcraft`, which name
+/// its file alike) keeps both places' corrections, never one copied over the other.
+#[test]
+fn the_same_book_in_two_sources_keeps_both_sides() {
+    let base = temp_dir("two-sources");
+    let (app, cli, to) = (base.join("recovery"), base.join("pdfcraft"), base.join("to"));
+    for dir in [&app, &cli] {
+        std::fs::create_dir_all(dir).unwrap();
+    }
+    let mut in_app = CorrectionFile::new(DocRecord::new(&keys(), 10));
+    let a = in_app.put(1, "fnv:a", [0.1, 0.1, 0.4, 0.4], KINGS, 1).unwrap();
+    std::fs::write(app.join(file_name(&keys()).unwrap()), in_app.to_bytes().unwrap()).unwrap();
+    let mut in_cli = CorrectionFile::new(DocRecord::new(&keys(), 10));
+    let b = in_cli.put(4, "fnv:b", [0.1, 0.1, 0.4, 0.4], QUEEN, 2).unwrap();
+    std::fs::write(cli.join(own_name(&keys())), in_cli.to_bytes().unwrap()).unwrap();
+    let store = DirStore::new(&to);
+    store.migrate_from(&app).unwrap();
+    store.migrate_from(&cli).unwrap();
+    let mut uids: Vec<String> = store.load(&keys(), 10).unwrap().file.live().map(|e| e.uid.clone()).collect();
+    uids.sort();
+    let mut expected = vec![a, b];
+    expected.sort();
+    assert_eq!(uids, expected);
+    let _ = std::fs::remove_dir_all(&base);
+}
+
+/// A9-G1b (A4-03): builds before G1 gave every PDF they made one identifier, and named a
+/// corrections file by it, so one file holds two books' corrections. It is never split by
+/// reading: each book reads its own entries from it (by page fingerprint), and the book whose path
+/// it records lists the other's as another book's. A change moves the changing book's entries
+/// into its own file (written first) and writes the shared file without them, the other book's
+/// left there; again, nothing moves. Nothing is deleted.
+#[test]
+fn a_file_two_books_shared_is_separated_by_a_change_never_by_reading() {
+    let dir = temp_dir("shared");
+    std::fs::create_dir_all(&dir).unwrap();
+    let a_keys = DocKeys { id0: Some(DocKeys::KNOWN_CONSTANT_ID), path: Some("C:/books/A.pdf".into()), name: Some("A.pdf".into()), size: Some(100) };
+    let b_keys = DocKeys { id0: Some(DocKeys::KNOWN_CONSTANT_ID), path: Some("C:/books/B.pdf".into()), name: Some("B.pdf".into()), size: Some(200) };
+    let (a_pages, b_pages) = (fps(&["fnv:a0", "fnv:a1", "fnv:a2"]), fps(&["fnv:b0", "fnv:b1"]));
+    // The file as such a build wrote it, for A's path, holding both books' corrections.
+    let mut record = DocRecord::new(&a_keys, 3);
+    record.id0 = Some(hex(&DocKeys::KNOWN_CONSTANT_ID));
+    assert!(record.is_shared() && !DocRecord::new(&a_keys, 3).is_shared());
+    let mut both = CorrectionFile::new(record);
+    let on_a = both.set(new(1, [0.1, 0.1, 0.4, 0.4], KINGS), 1, &a_pages).unwrap();
+    let on_b = both.set(new(0, [0.1, 0.1, 0.4, 0.4], QUEEN), 1, &b_pages).unwrap();
+    let shared = format!("{}.json", hash_hex(&[b"id0", &DocKeys::KNOWN_CONSTANT_ID]));
+    std::fs::write(dir.join(&shared), both.to_bytes().unwrap()).unwrap();
+    let store = DirStore::new(&dir);
+    let before = files_of(&dir);
+    let uids = |l: &Loaded| l.file.live().map(|e| e.uid.clone()).collect::<Vec<_>>();
+
+    // Reading: each book its own; the one whose path it records lists the other's as another's.
+    let (b_read, b_other) = store.load_with(&b_keys, &b_pages).unwrap();
+    assert_eq!((uids(&b_read), b_other), (vec![on_b.clone()], vec![]));
+    let (a_read, a_other) = store.load_with(&a_keys, &a_pages).unwrap();
+    assert_eq!(uids(&a_read).len(), 2, "found by its path, as before");
+    assert_eq!(a_other, vec![on_b.clone()]);
+    assert_eq!(files_of(&dir), before, "reading never splits it");
+
+    // B's change: its entry into its own file, the shared file left with A's.
+    let ((), b_changed, moved) = store.update_with(&b_keys, &b_pages, |_| Ok::<_, CorrectionError>(())).unwrap();
+    assert_eq!((moved, b_changed.name.clone(), uids(&b_changed)), (1, own_name(&b_keys), vec![on_b.clone()]));
+    let Read::File(left) = CorrectionFile::read(&std::fs::read(dir.join(&shared)).unwrap()) else { panic!("the shared file") };
+    assert_eq!(left.entries.iter().map(|e| e.uid.clone()).collect::<Vec<_>>(), vec![on_a.clone()]);
+    assert_eq!(store.update_with(&b_keys, &b_pages, |_| Ok::<_, CorrectionError>(())).unwrap().2, 0, "again: nothing moves");
+    // A's change: its entry into its own file; nothing of B's in it.
+    let ((), a_changed, moved) = store.update_with(&a_keys, &a_pages, |_| Ok::<_, CorrectionError>(())).unwrap();
+    assert_eq!((moved, uids(&a_changed)), (1, vec![on_a.clone()]));
+    let (b_again, _) = store.load_with(&b_keys, &b_pages).unwrap();
+    assert_eq!(uids(&b_again), vec![on_b], "kept for B");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A9-G1b: an earlier load of the book whose path a shared file records copied the other book's
+/// entries into that book's own file (plan A9-G3a merges what a file found for it holds). Its
+/// next change drops those copies, while the shared file still keeps them for the other book.
+#[test]
+fn copies_of_another_books_entries_leave_with_the_next_change() {
+    let dir = temp_dir("shared-copies");
+    std::fs::create_dir_all(&dir).unwrap();
+    let a_keys = DocKeys { id0: None, path: Some("C:/books/A.pdf".into()), name: Some("A.pdf".into()), size: Some(100) };
+    let (a_pages, b_pages) = (fps(&["fnv:a0", "fnv:a1"]), fps(&["fnv:b0"]));
+    let mut record = DocRecord::new(&a_keys, 2);
+    record.id0 = Some(hex(&DocKeys::KNOWN_CONSTANT_ID));
+    let mut both = CorrectionFile::new(record);
+    let on_a = both.set(new(1, [0.1, 0.1, 0.4, 0.4], KINGS), 1, &a_pages).unwrap();
+    let on_b = both.set(new(0, [0.1, 0.1, 0.4, 0.4], QUEEN), 1, &b_pages).unwrap();
+    let shared = format!("{}.json", hash_hex(&[b"id0", &DocKeys::KNOWN_CONSTANT_ID]));
+    std::fs::write(dir.join(&shared), both.to_bytes().unwrap()).unwrap();
+    let store = DirStore::new(&dir);
+    // As the build of plan A9-G3a's first PR did: a change kept both in A's own file.
+    store.update(&a_keys, 2, |_| Ok::<_, CorrectionError>(())).unwrap();
+    assert_eq!(store.load(&a_keys, 2).unwrap().file.live().count(), 2);
+    let ((), changed, _) = store.update_with(&a_keys, &a_pages, |_| Ok::<_, CorrectionError>(())).unwrap();
+    assert_eq!(changed.file.live().map(|e| e.uid.clone()).collect::<Vec<_>>(), vec![on_a]);
+    let Read::File(left) = CorrectionFile::read(&std::fs::read(dir.join(&shared)).unwrap()) else { panic!("the shared file") };
+    assert_eq!(left.entries.iter().map(|e| e.uid.clone()).collect::<Vec<_>>(), vec![on_b], "the other book's, kept for it");
+    let _ = std::fs::remove_dir_all(&dir);
+}
