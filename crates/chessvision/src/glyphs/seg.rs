@@ -12,6 +12,10 @@ const PLAUSIBLE_INK: std::ops::RangeInclusive<f64> = 0.0005..=0.35;
 pub(crate) const SHORT_BOX: f64 = 0.65;
 /// Smallest glyph box area, in squared scales.
 const MIN_AREA_GLYPH: f64 = 0.005;
+/// Smallest box of an ink component kept, in square pixels: a smaller one is dust (a halftone's
+/// dot, a speck), never part of a glyph, and is dropped without counting toward a cap (plan
+/// A9-V2, A3-02: a picture's dots made a page "not text").
+pub(crate) const MIN_COMPONENT_AREA: i64 = 3;
 /// Widest aspect (width / height) of a glyph box; flatter ones are rules or bars.
 const MAX_ASPECT: f64 = 6.0;
 /// Widest and tallest a bar of `=` or `±` may be, in scales.
@@ -282,8 +286,9 @@ fn ring(px: &[usize], w: usize, b: &Bx) -> bool {
     covered(&top) && covered(&bottom) && covered(&left) && covered(&right)
 }
 
-/// The 8-connected components of the ink, or `None` past `cap` components. Iterative flood
-/// fill; the work and the memory are linear in the pixels.
+/// The 8-connected components of the ink whose box is at least [`MIN_COMPONENT_AREA`], or
+/// `None` past `cap` of them. Iterative flood fill; the work and the memory are linear in the
+/// pixels.
 pub(crate) fn components(bin: &Bin, cap: usize) -> Option<Vec<Comp>> {
     let mut left = bin.ink.clone();
     let mut out = Vec::new();
@@ -297,9 +302,6 @@ pub(crate) fn components(bin: &Bin, cap: usize) -> Option<Vec<Comp>> {
             match left.get_mut(i) {
                 Some(v) if *v => *v = false,
                 _ => continue,
-            }
-            if out.len() >= cap {
-                return None;
             }
             stack.push((x, y));
             let (xi, yi) = (x as i64, y as i64);
@@ -327,6 +329,12 @@ pub(crate) fn components(bin: &Bin, cap: usize) -> Option<Vec<Comp>> {
                         }
                     }
                 }
+            }
+            if b.w().saturating_mul(b.h()) < MIN_COMPONENT_AREA {
+                continue;
+            }
+            if out.len() >= cap {
+                return None;
             }
             let ring = keep && ring(&pixels, bin.w, &b);
             out.push(Comp { b, area, ring });
@@ -368,6 +376,72 @@ pub(crate) fn scale(comps: &[Comp], image_px: usize) -> i64 {
         }
     }
     sel.last().map_or(0, |c| c.b.h())
+}
+
+/// Whether `c`'s box is smaller than a glyph's at `scale` ([`MIN_AREA_GLYPH`]): [`char_boxes`]
+/// drops it, so a page's ink can too before counting.
+pub(crate) fn below_glyph(c: &Comp, scale: i64) -> bool {
+    let s = scale as f64;
+    (c.b.w() as f64) * (c.b.h() as f64) < MIN_AREA_GLYPH * s * s
+}
+
+/// The strips of a page `h` pixels tall (rows some component's box reaches, across gaps of at
+/// most `bridge` rows: the gaps between a picture's rows of dots, not those between lines) whose
+/// components are left out so that at most `cap` remain: every strip holding more than `cap`,
+/// then the strip holding most while more than `cap` remain (plan A9-V2: a picture's dots, or a
+/// dusty scan, fill one strip; the lines in the others are still read). Returns the strips left
+/// out, as `(y0, y1)` rows; `comps` keeps the others'.
+pub(crate) fn drop_dense_strips(comps: &mut Vec<Comp>, h: usize, cap: usize, bridge: i64) -> Vec<(i64, i64)> {
+    if comps.len() <= cap || h == 0 {
+        return Vec::new();
+    }
+    // Rows reached by some box: a running count of boxes started minus boxes ended.
+    let mut starts = vec![0i64; h.saturating_add(1)];
+    for c in comps.iter() {
+        let (y0, y1) = (c.b.y0.clamp(0, h as i64) as usize, c.b.y1.clamp(0, h as i64) as usize);
+        if y0 < y1 {
+            if let Some(v) = starts.get_mut(y0) {
+                *v += 1;
+            }
+            if let Some(v) = starts.get_mut(y1) {
+                *v -= 1;
+            }
+        }
+    }
+    // Each row's strip, and the strips' rows.
+    let mut strip_of = vec![usize::MAX; h];
+    let mut strips: Vec<(i64, i64)> = Vec::new();
+    let mut open = 0i64;
+    for (y, slot) in strip_of.iter_mut().enumerate() {
+        open += starts.get(y).copied().unwrap_or(0);
+        if open > 0 {
+            let y = y as i64;
+            match strips.last_mut() {
+                Some(last) if y <= last.1.saturating_add(bridge) => last.1 = y + 1,
+                _ => strips.push((y, y + 1)),
+            }
+            *slot = strips.len().saturating_sub(1);
+        }
+    }
+    let strip = |c: &Comp| strip_of.get(c.b.y0.clamp(0, h as i64 - 1) as usize).copied().unwrap_or(usize::MAX);
+    let mut counts = vec![0usize; strips.len()];
+    for c in comps.iter() {
+        if let Some(n) = counts.get_mut(strip(c)) {
+            *n += 1;
+        }
+    }
+    let mut dropped: Vec<bool> = counts.iter().map(|&n| n > cap).collect();
+    let mut left = comps.len().saturating_sub(counts.iter().filter(|&&n| n > cap).sum::<usize>());
+    while left > cap {
+        let densest = counts.iter().zip(&dropped).enumerate().filter(|(_, (_, d))| !**d).max_by_key(|(_, (n, _))| **n);
+        let Some((i, (&n, _))) = densest.filter(|(_, (n, _))| **n > 0) else { break };
+        if let Some(d) = dropped.get_mut(i) {
+            *d = true;
+        }
+        left = left.saturating_sub(n);
+    }
+    comps.retain(|c| !dropped.get(strip(c)).copied().unwrap_or(false));
+    strips.iter().zip(&dropped).filter(|(_, d)| **d).map(|(s, _)| *s).collect()
 }
 
 /// Whether `c` is a frame around text ([`FRAME_MIN_SIDE`]).

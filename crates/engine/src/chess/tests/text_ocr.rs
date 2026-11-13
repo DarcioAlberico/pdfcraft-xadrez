@@ -696,3 +696,31 @@ fn a_bolder_title_standing_alone_on_a_scan_is_a_heading() {
     assert!(headings(false, 160.0).is_empty(), "the same word set regular");
     assert!(headings(true, 140.0).is_empty(), "bold at the leading");
 }
+
+/// Plan A9-V2 (A3-02): a scanned page whose picture (a halftone of 2-pixel dots, more of them
+/// than a read takes) fills a strip under its moves is read: the moves above it, and a note that
+/// says how much of the page was not read; the page was refused whole ("more than 20000 ink
+/// components").
+#[test]
+fn a_page_with_a_halftone_is_read_and_says_what_it_left_out() {
+    let templates = Templates::learn("1.e4526Nf3c", 14.0);
+    let dpi = crate::chess::text_ocr::OCR_DPI;
+    let (w, h, mut data) = scan(&[(MOVES, 14.0, 100.0)], "", dpi);
+    // 2 × 2 dots every 3 pixels over 1,200 × 300 pixels, a third of the way down: 40,000 dots.
+    let (x0, y0) = (300usize, (h / 3) as usize);
+    for y in (y0..y0 + 300).step_by(3) {
+        for x in (x0..x0 + 1200).step_by(3) {
+            for (dx, dy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
+                if let Some(px) = data.get_mut((y + dy) * w as usize + x + dx) {
+                    *px = 0;
+                }
+            }
+        }
+    }
+    let image = GrayImage::new(w, h, data).unwrap();
+    let mut book = pdfcraft_chessvision::cipher::BookCipher::default();
+    let read = crate::chess::text_ocr::read_page(&image, dpi, &[], &templates, None, pdfcraft_chess::san::Lang::En, None, &mut book, 0)
+        .unwrap_or_else(|e| panic!("the page is read: {e}"));
+    assert_eq!(read.lines, 1, "the moves' line");
+    assert!(read.notes.iter().any(|n| n.contains("were not read")), "{:?}", read.notes);
+}
