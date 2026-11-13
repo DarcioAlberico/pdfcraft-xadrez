@@ -52,6 +52,7 @@ use pdfcraft_render::{PageInfo, PageRenderer, RenderConfig, RenderRequest, Reque
 pub use document::ChessDocument;
 pub use keys::DocKeys;
 pub use links::{LinkPlan, LinkSettings, LinkTarget};
+pub use pdfcraft_chessvision::doc::DiagramAt;
 pub use pdfcraft_chessvision::models::{ChessModels, ModelState};
 pub use pdfcraft_chessvision::order::ReadingOrder;
 pub use replace::{DiagramReplacement, ReplacementPlan};

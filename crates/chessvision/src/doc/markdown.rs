@@ -284,7 +284,7 @@ pub fn pgn_export(doc: &ChessDoc, book: &PgnBook, positions: PgnPositions, style
     for page in &doc.pages {
         for block in &page.blocks {
             let Block::Diagram(d) = block else { continue };
-            let at = DiagramAt { page: page.index, diagram: d.number };
+            let at = DiagramAt::on(page.index, d.number);
             let from_here = doc
                 .games
                 .iter()
@@ -367,9 +367,9 @@ fn mark_shown(doc: &ChessDoc, shown: &[DiagramAt], score: &mut GameScore) {
     // Each main-line move's pieces, read once for all the diagrams.
     let mut keys: Vec<Option<Option<PlacementKey>>> = vec![None; main.len()];
     for at in shown.iter().take(MAX_SHOWN_DIAGRAMS) {
-        let reading = doc.pages.iter().find(|p| p.index == at.page).and_then(|p| {
+        let reading = doc.pages.iter().find(|p| p.index == at.page_index()).and_then(|p| {
             p.blocks.iter().find_map(|b| match b {
-                Block::Diagram(d) if d.number == at.diagram => d.reading.as_ref(),
+                Block::Diagram(d) if d.number == at.index => d.reading.as_ref(),
                 _ => None,
             })
         });

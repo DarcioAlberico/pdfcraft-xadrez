@@ -678,7 +678,7 @@ pub fn editor_ui(
     let mut action = None;
     ui.horizontal(|ui| {
         let title = crate::i18n::fmt(tl!("Diagram {n}"), &[("n", &(ed.index + 1).to_string())]);
-        ui.label(egui::RichText::new(crate::i18n::fmt(tl!("Edit {d}, page {p}"), &[("d", &title), ("p", &(ed.page + 1).to_string())])).strong());
+        ui.label(egui::RichText::new(crate::i18n::fmt(tl!("Edit {d}, page {p}"), &[("d", &title), ("p", page)])).strong());
         if crate::icons::button(ui, "x", 22.0, false, tl!("Close the editor")).clicked() {
             action = Some(EditorAction::Close);
         }

@@ -79,7 +79,7 @@ fn temp_dir(tag: &str) -> std::path::PathBuf {
 /// The names of the games in the list, in order, and which one is shown.
 fn listed(app: &PdfCraftApp) -> (Vec<String>, usize) {
     let c = app.chess.games.collection();
-    (c.iter().enumerate().map(|(i, e)| e.name(i + 1)).collect(), c.active_index())
+    ((0..c.len()).filter_map(|i| c.name_of(i)).collect(), c.active_index())
 }
 
 /// The movetext of every game, in list order.

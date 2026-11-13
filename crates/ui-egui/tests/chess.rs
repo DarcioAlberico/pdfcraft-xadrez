@@ -26,6 +26,11 @@ fn boards() -> Vec<u8> {
 
 /// [`boards`] with a line of `moves` in Helvetica between the two boards (y 540).
 fn boards_with(moves: &str) -> Vec<u8> {
+    boards_catalog(moves, "<< /Type /Catalog /Pages 2 0 R >>")
+}
+
+/// [`boards_with`] whose document catalog is `catalog` (object 1, its pages object 2).
+fn boards_catalog(moves: &str, catalog: &str) -> Vec<u8> {
     let mut content = if moves.is_empty() { String::new() } else { format!("BT /F2 11 Tf 60 540 Td ({moves}) Tj ET\n") };
     content.push_str("BT /F1 20 Tf 60 724 Td ");
     for (i, line) in MERIDA_START.iter().enumerate() {
@@ -45,7 +50,7 @@ fn boards_with(moves: &str) -> Vec<u8> {
     content.push_str("f\n");
     let widths = vec!["1000"; 95].join(" ");
     let objs = [
-        "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
+        catalog.to_string(),
         "<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 600 800] >>".to_string(),
         "<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>".to_string(),
         format!("<< /Length {} >>\nstream\n{content}\nendstream", content.len()),
@@ -177,7 +182,7 @@ fn scanning_lists_the_diagrams_with_their_positions_and_marks_them_on_the_page()
     // Picking a diagram in the panel goes to it and outlines it on the page.
     h.get_by_label(&second).click();
     h.run_steps(2);
-    assert_eq!(h.state().chess.results().and_then(|r| r.selected), Some((0, 1)));
+    assert_eq!(h.state().chess.results().and_then(|r| r.selected), Some(pdfcraft_engine::chess::DiagramAt::new(0, 1)));
     assert_eq!(h.state().views[0].flash.map(|f| (f.0, f.1)), Some((0, [60.0, 240.0, 220.0, 400.0])));
 
     // Clicking a box on the page picks that diagram.
@@ -188,7 +193,11 @@ fn scanning_lists_the_diagrams_with_their_positions_and_marks_them_on_the_page()
         h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed, modifiers: egui::Modifiers::NONE });
     }
     h.run_steps(3);
-    assert_eq!(h.state().chess.results().and_then(|r| r.selected), Some((0, 0)), "the font diagram was clicked");
+    assert_eq!(
+        h.state().chess.results().and_then(|r| r.selected),
+        Some(pdfcraft_engine::chess::DiagramAt::new(0, 0)),
+        "the font diagram was clicked"
+    );
 }
 
 /// After an edit the list is carried to the document's state now (plan A8, P3b4): the page the
@@ -223,7 +232,7 @@ fn an_edit_keeps_the_scan_and_reads_again_the_page_it_changed() {
         h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed, modifiers: egui::Modifiers::NONE });
     }
     h.run_steps(3);
-    assert_eq!(h.state().chess.results().and_then(|r| r.selected), Some((0, 0)));
+    assert_eq!(h.state().chess.results().and_then(|r| r.selected), Some(pdfcraft_engine::chess::DiagramAt::new(0, 0)));
 }
 
 /// A document that does not allow copying its content can't be scanned.
@@ -536,7 +545,7 @@ fn the_list_follows_its_pages_across_an_edit() {
     let results = h.state().chess.results().unwrap();
     assert_eq!(results.count(), 2);
     assert_eq!(results.diagram(1, 1).map(|d| d.0), box_before, "the diagrams are on page 2 now");
-    assert_eq!(results.selected, Some((1, 1)), "the diagram picked follows");
+    assert_eq!(results.selected, Some(pdfcraft_engine::chess::DiagramAt::new(1, 1)), "the diagram picked follows");
     let ed = h.state().chess.editor.as_ref().unwrap();
     assert_eq!(((ed.page, ed.index), ed.fen()), ((1, 1), EDITED.to_string()), "the editor follows, its changes kept");
     assert!(h.state().toast.as_ref().is_none_or(|t| !t.0.contains("changed")), "{:?}", h.state().toast);
@@ -545,7 +554,7 @@ fn the_list_follows_its_pages_across_an_edit() {
     assert!(h.state_mut().execute("edit.undo"));
     h.run_steps(3);
     assert!(list_is_current(&h));
-    assert_eq!(h.state().chess.results().unwrap().selected, Some((0, 1)));
+    assert_eq!(h.state().chess.results().unwrap().selected, Some(pdfcraft_engine::chess::DiagramAt::new(0, 1)));
     assert_eq!(h.state().chess.editor.as_ref().map(|e| (e.page, e.index)), Some((0, 1)));
 }
 
@@ -641,7 +650,7 @@ fn a_click_with_the_hand_picks_a_diagram_and_a_drag_does_not() {
         h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed, modifiers: egui::Modifiers::NONE });
     }
     h.run_steps(3);
-    assert_eq!(h.state().chess.results().and_then(|r| r.selected), Some((0, 1)), "the Hand's click picks");
+    assert_eq!(h.state().chess.results().and_then(|r| r.selected), Some(pdfcraft_engine::chess::DiagramAt::new(0, 1)), "the Hand's click picks");
 }
 
 /// Mark the page as checked, in the page header's context menu: the diagram read with
@@ -701,7 +710,7 @@ fn the_review_queue_lists_and_walks_the_diagrams_to_review() {
     h.run_steps(3);
     let queue = h.state().chess.results().unwrap().review_queue();
     assert!(!queue.is_empty(), "with no piece model the drawn board goes to review");
-    assert_eq!(queue, vec![(0, 1)]);
+    assert_eq!(queue, vec![pdfcraft_engine::chess::DiagramAt::new(0, 1)]);
     // The chip of the drawn board's state: not read.
     h.get_by_label("Not read (1)").click();
     h.run_steps(2);
@@ -714,7 +723,7 @@ fn the_review_queue_lists_and_walks_the_diagrams_to_review() {
     // The chip still shows the ones not read: Next walks them (plan A8, P4).
     h.get_by_label("Next diagram (Page Down)").click();
     h.run_steps(2);
-    assert_eq!(h.state().chess.results().and_then(|r| r.selected), Some((0, 1)));
+    assert_eq!(h.state().chess.results().and_then(|r| r.selected), Some(pdfcraft_engine::chess::DiagramAt::new(0, 1)));
 }
 
 /// A page with a heading and moves in Helvetica above a board in the Chess Merida font (top left
@@ -3611,7 +3620,7 @@ fn a_narrow_window_switches_tabs_and_follows_the_diagrams_picked_on_the_page() {
     }
     h.step();
     h.run_steps(8);
-    assert_eq!(h.state().chess.results().and_then(|r| r.selected), Some((0, 0)));
+    assert_eq!(h.state().chess.results().and_then(|r| r.selected), Some(pdfcraft_engine::chess::DiagramAt::new(0, 0)));
     assert_eq!(h.state().chess_window_tab(), ChessWindowTab::Diagrams, "the list shows");
     assert_eq!(h.get_by_label("Diagram 1 · Position read").accesskit_node().toggled(), Some(egui::accesskit::Toggled::True), "selected in the list");
     assert_ne!(h.state().right, Some(RightPanel::Chess));
@@ -4097,7 +4106,7 @@ fn confirming_keeps_the_correction_and_it_comes_back_when_reopened() {
     h.get_by_label("Forget the correction").click();
     h.run_steps(3);
     assert_eq!(kind(&h, 1), None);
-    assert_eq!(h.state().chess.results().unwrap().review_queue(), vec![(0, 1)]);
+    assert_eq!(h.state().chess.results().unwrap().review_queue(), vec![pdfcraft_engine::chess::DiagramAt::new(0, 1)]);
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -4192,6 +4201,33 @@ fn unreadable_stored_corrections_are_kept_aside_never_written_over() {
     assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"));
     let saved = h.state_mut().chess.corrections.storage_values(None, |_| false);
     assert!(saved.iter().any(|(k, v)| k == KEY && v.contains("pdfcraft-chess-corrections")), "{saved:?}");
+}
+
+/// Plan A9-T2b (finding R3-08): in a book whose page labels number its page 25, every place of
+/// the chess panels says 25 for it, by the one rule the exports follow: the Diagrams list, the
+/// Diagram tab, the Text tab, the classic editor and the name of a game opened from a diagram
+/// (before, the last three said the page's index from 1).
+#[test]
+fn every_chess_place_says_the_page_as_the_book_numbers_it() {
+    let pdf = boards_catalog("1.e4 e5 2.Nf3", "<< /Type /Catalog /Pages 2 0 R /PageLabels << /Nums [0 << /S /D /St 25 >>] >> >>");
+    let mut h = harness_on(pdf, 0.25);
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    h.get_all_by_label_contains("Page 25").next().expect("the list's page");
+    h.state_mut().edit_chess_diagram(0, 0, true);
+    h.run_steps(3);
+    h.get_all_by_label_contains("Page 25 · diagram 1 of 2").next().expect("the Diagram tab");
+    h.state_mut().read_chess_text(0, false);
+    h.run_steps(4);
+    assert_eq!(h.state().chess.text().map(|t| t.label.as_str()), Some("25"), "the Text tab");
+    h.state_mut().chess.classic_editor = true;
+    h.run_steps(3);
+    h.get_by_label_contains("Edit Diagram 1, page 25");
+    h.state_mut().open_chess_board(0, 0);
+    h.run_steps(3);
+    let c = h.state().chess.games.collection();
+    let names: Vec<String> = (0..c.len()).filter_map(|i| c.name_of(i)).collect();
+    assert!(names.iter().any(|n| n == "Diagram 1, p. 25"), "the game's name: {names:?}");
 }
 
 /// Plan A9-I11a (A6-10, §2.8.1, WCAG 4.1.2 and 2.4.3): a chess question is a modal dialog named
@@ -4388,7 +4424,11 @@ fn the_diagram_tab_walks_what_the_lists_chip_shows() {
     let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), None);
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
-    assert_eq!(h.state().chess.results().unwrap().review_queue(), vec![(0, 1)], "with no piece model the drawn board goes to review");
+    assert_eq!(
+        h.state().chess.results().unwrap().review_queue(),
+        vec![pdfcraft_engine::chess::DiagramAt::new(0, 1)],
+        "with no piece model the drawn board goes to review"
+    );
     h.state_mut().edit_chess_diagram(0, 1, true);
     h.run_steps(3);
     h.get_by_label("1 of 1 to review");
@@ -4535,7 +4575,11 @@ fn the_review_journeys_take_the_gestures_the_plan_set() {
 
     // a) Detect, and see what to review: Detect diagrams, the summary, Review now.
     g.click(&mut h, "Detect diagrams");
-    assert_eq!(h.state().chess.results().unwrap().review_queue(), vec![(0, 1)], "with no piece model the drawn board goes to review");
+    assert_eq!(
+        h.state().chess.results().unwrap().review_queue(),
+        vec![pdfcraft_engine::chess::DiagramAt::new(0, 1)],
+        "with no piece model the drawn board goes to review"
+    );
     h.get_by_label("2 diagrams · 1 to review");
     g.click(&mut h, "Review now");
     assert_eq!(h.state().chess.editor.as_ref().map(|e| (e.page, e.index)), Some((0, 1)));
@@ -4621,7 +4665,11 @@ fn the_diagram_tab_corrects_and_confirms_by_the_keyboard_alone() {
     let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), Some(dir.clone()));
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(3);
-    assert_eq!(h.state().chess.results().unwrap().review_queue(), vec![(0, 1)], "with no piece model the drawn board goes to review");
+    assert_eq!(
+        h.state().chess.results().unwrap().review_queue(),
+        vec![pdfcraft_engine::chess::DiagramAt::new(0, 1)],
+        "with no piece model the drawn board goes to review"
+    );
     h.get_by_label_contains("Diagram 2 · ").click();
     h.run_steps(3);
     assert!(board_focused(&h), "the board has the keyboard when the diagram opens");
@@ -4874,7 +4922,11 @@ fn exporting_with_diagrams_to_review_asks_first() {
     h.run_steps(3);
     assert!(!out.exists(), "nothing written");
     assert!(h.state().chess.export_prompt.is_none());
-    assert_eq!(h.state().chess.editor.as_ref().map(|e| (e.page, e.index)), queue.first().copied(), "the first to review is open");
+    assert_eq!(
+        h.state().chess.editor.as_ref().map(|e| pdfcraft_engine::chess::DiagramAt::new(e.page, e.index)),
+        queue.first().copied(),
+        "the first to review is open"
+    );
     h.state_mut().export_chess_dialog(pdfcraft_engine::chess::export::ChessFormat::Pgn);
     h.run_steps(2);
     h.get_by_label("Export anyway").click();

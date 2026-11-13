@@ -28,7 +28,7 @@ use pdfcraft_chess::san::Lang;
 use super::{RECENT_ANCHORS, RefNode, ReferenceIndex, align, move_key};
 use crate::doc::html::{Figurines, plain_text_with};
 use crate::doc::markdown::PgnBook;
-use crate::doc::{Block, ChessDoc, Inline, MoveAt, MoveInline, MoveStatus};
+use crate::doc::{Block, ChessDoc, DiagramAt, Inline, MoveAt, MoveInline, MoveStatus};
 
 /// What [`annotated_pgn`] wrote.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -127,7 +127,7 @@ fn flush(pending: &mut Pending, at: Option<RefNode>, notes: &mut BTreeMap<RefNod
 pub fn annotated_pgn(doc: &ChessDoc, index: &ReferenceIndex, book: &PgnBook, style: PgnStyle) -> AnnotatedPgn {
     let alignment = align(doc, index);
     let links: HashMap<MoveAt, RefNode> = alignment.moves.iter().filter_map(|l| Some((l.at, l.node?))).collect();
-    let shown: HashMap<(u32, usize), RefNode> = alignment.diagrams.iter().filter_map(|d| Some(((d.at.page, d.at.diagram), d.node?))).collect();
+    let shown: HashMap<DiagramAt, RefNode> = alignment.diagrams.iter().filter_map(|d| Some((d.at, d.node?))).collect();
     let page_game: HashMap<u32, usize> = alignment.pages.iter().map(|p| (p.page, p.game)).collect();
     let mut games: Vec<Option<PgnGame>> = index.games().iter().map(|g| g.game.clone()).collect();
     let mut notes: BTreeMap<RefNode, String> = BTreeMap::new();
@@ -149,7 +149,7 @@ pub fn annotated_pgn(doc: &ChessDoc, index: &ReferenceIndex, book: &PgnBook, sty
         for (b, block) in page.blocks.iter().enumerate() {
             match block {
                 Block::Diagram(d) => {
-                    if let Some(&at) = shown.get(&(page.index, d.number)) {
+                    if let Some(&at) = shown.get(&DiagramAt::on(page.index, d.number)) {
                         let to = before(current, at, &pending);
                         flush(&mut pending, to, &mut notes);
                         marked.insert(at);

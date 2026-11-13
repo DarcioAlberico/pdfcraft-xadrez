@@ -116,6 +116,8 @@ pub struct LinkedGame {
     pub name: String,
     /// 0-based; `None` when no page discusses it.
     pub first_page: Option<usize>,
+    /// That page as the book numbers it (plan A9-T2b), once the link is kept.
+    pub first_label: Option<String>,
 }
 
 impl BookLink {
@@ -131,7 +133,7 @@ impl BookLink {
             .games()
             .iter()
             .enumerate()
-            .map(|(game, g)| LinkedGame { game, name: g.name.clone(), first_page: first.get(game).copied().flatten() })
+            .map(|(game, g)| LinkedGame { game, name: g.name.clone(), first_page: first.get(game).copied().flatten(), first_label: None })
             .collect();
         BookLink { counts: a.counts, pages, pages_linked: a.pages.len(), games }
     }

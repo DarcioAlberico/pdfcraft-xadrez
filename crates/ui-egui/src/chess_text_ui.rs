@@ -64,6 +64,8 @@ pub struct PageText {
     pub notes: Vec<String>,
     /// The diagrams' boards, by block index.
     boards: Vec<(usize, TextureHandle)>,
+    /// The page as the book numbers it (plan A9-T2b, R3-08).
+    pub label: String,
 }
 
 /// Reading a page or exporting the book, off the interface thread: the work runs on a session
@@ -153,8 +155,8 @@ pub enum TextAction {
     Read(bool),
     /// Outline a box of `page` (user space) on the page.
     Show(usize, [f32; 4]),
-    /// Open diagram `index` of `page` in the editor.
-    Diagram(usize, usize),
+    /// Open the diagram in the editor.
+    Diagram(pdfcraft_engine::chess::DiagramAt),
     /// Put the game the move belongs to on the board, at that move, the pages around its page
     /// read too (`chess_source`).
     OpenGame(MoveAt),
@@ -269,7 +271,10 @@ fn book_link_section(ui: &mut egui::Ui, t: &Tokens, view: &crate::chess_referenc
             let name =
                 if g.name.is_empty() { crate::i18n::fmt(tl!("Game {n}"), &[("n", &g.game.saturating_add(1).to_string())]) } else { g.name.clone() };
             let shown = match g.first_page {
-                Some(p) => crate::i18n::fmt(tl!("p. {page} · {name}"), &[("page", &p.saturating_add(1).to_string()), ("name", &name)]),
+                Some(p) => {
+                    let page = g.first_label.clone().unwrap_or_else(|| p.saturating_add(1).to_string());
+                    crate::i18n::fmt(tl!("p. {page} · {name}"), &[("page", &page), ("name", &name)])
+                }
                 None => crate::i18n::fmt(tl!("{name} (no page discusses it)"), &[("name", &name)]),
             };
             if ui.link(shown).on_hover_text(tl!("Go to its page and put the game on the board.")).clicked() {
@@ -423,9 +428,7 @@ pub fn text_tab(
         ui.label(egui::RichText::new(tl!("Reading the page…")).color(t.text_muted));
         return action;
     };
-    ui.label(
-        egui::RichText::new(crate::i18n::fmt(tl!("Recognised text of page {p}"), &[("p", &(page + 1).to_string())])).font(theme::semibold(12.5)),
-    );
+    ui.label(egui::RichText::new(crate::i18n::fmt(tl!("Recognised text of page {p}"), &[("p", &x.label)])).font(theme::semibold(12.5)));
     if x.ocr {
         ui.label(egui::RichText::new(tl!("Read with chess OCR: check it against the page.")).small().color(t.text_muted));
     }
@@ -622,12 +625,12 @@ pub fn text_tab(
                         let named = crate::i18n::fmt(tl!("Diagram {n}, open"), &[("n", &(d.number + 1).to_string())]);
                         r.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Image, true, &named));
                         if r.clicked() {
-                            action = Some(TextAction::Diagram(page, d.number));
+                            action = Some(TextAction::Diagram(pdfcraft_engine::chess::DiagramAt::new(page, d.number)));
                         }
                     }
                     ui.vertical(|ui| {
                         if ui.link(&title).clicked() {
-                            action = Some(TextAction::Diagram(page, d.number));
+                            action = Some(TextAction::Diagram(pdfcraft_engine::chess::DiagramAt::new(page, d.number)));
                         }
                         // The position it shows: the PGN's, the one the text settled, the one read.
                         match d.shown() {
@@ -682,6 +685,7 @@ impl PdfCraftApp {
         let Some(stamp) = self.session.chess_stamp(id) else { return };
         let origin = self.chess_origin(id);
         // A failed read is kept too, with why, so the tab does not try again every frame.
+        let label = self.page_label_in(id, page);
         let failed = |why: String| PageText {
             doc: id,
             stamp,
@@ -692,6 +696,7 @@ impl PdfCraftApp {
             needs_ocr: None,
             notes: vec![why],
             boards: Vec::new(),
+            label: label.clone(),
         };
         if self.session.get(id).is_some_and(|d| d.check_copying().is_err()) {
             self.chess.doc_mut(id).text = Some(failed(tl!("This document does not allow copying its content, so its text is not read.").to_string()));
@@ -867,7 +872,19 @@ impl PdfCraftApp {
                         if ocr && read.ocr_pages.is_empty() && !notes.iter().any(|n| n.contains("chess-glyphs")) {
                             notes.push(tl!("Chess OCR read nothing on this page.").to_string());
                         }
-                        PageText { doc: job.doc, stamp, page, origin, chess: read.doc, ocr: !read.ocr_pages.is_empty(), needs_ocr, notes, boards }
+                        let label = self.page_label_in(job.doc, page);
+                        PageText {
+                            doc: job.doc,
+                            stamp,
+                            page,
+                            origin,
+                            chess: read.doc,
+                            ocr: !read.ocr_pages.is_empty(),
+                            needs_ocr,
+                            notes,
+                            boards,
+                            label,
+                        }
                     }
                     Err(e) => PageText {
                         doc: job.doc,
@@ -879,6 +896,7 @@ impl PdfCraftApp {
                         needs_ocr: None,
                         notes: vec![e],
                         boards: Vec::new(),
+                        label: self.page_label_in(job.doc, page),
                     },
                 };
                 self.chess.doc_mut(job.doc).text = Some(text);
@@ -929,6 +947,10 @@ impl PdfCraftApp {
                                 ("conflict", &link.counts.conflict.to_string()),
                             ],
                         ));
+                        let mut link = link;
+                        for g in &mut link.games {
+                            g.first_label = g.first_page.map(|p| self.page_label_in(job.doc, p));
+                        }
                         self.chess.doc_mut(job.doc).book_link = Some(link);
                     }
                     Err(e) => self.notify(e),
@@ -956,7 +978,7 @@ impl PdfCraftApp {
                     view.flash = Some((page, rect, 0.0));
                 }
             }
-            TextAction::Diagram(page, index) => {
+            TextAction::Diagram(pdfcraft_engine::chess::DiagramAt { page, index }) => {
                 // The diagram list must hold this page's scan for the editor to open on it.
                 let shown = self.active_ids().map(|(_, id)| id);
                 if shown.and_then(|id| self.chess.results_of(id)).is_none_or(|r| r.diagram(page, index).is_none()) {
