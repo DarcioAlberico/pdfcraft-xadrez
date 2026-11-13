@@ -3594,3 +3594,10 @@ the move's comment	Move comment	Comentario de la jugada
 	what was saved before couldn't be read, and is kept aside first; try again in a moment	lo guardado antes no se pudo leer y primero se aparta; inténtelo de nuevo en un momento
 	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	No se pudieron leer las correcciones de diagramas guardadas ({why}). Se apartan en el próximo guardado, y desde entonces se guardan las correcciones nuevas.
 	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	No se pudieron leer los PGN de libros guardados ({why}). Se apartan en el próximo guardado, y desde entonces se guardan los nuevos.
+# Plan A9-I2: one kind of job; the long jobs say how far they are and stop when asked.
+	Stop	Detener
+	Exporting the chess document: page {done} of {of}	Exportando el documento de ajedrez: página {done} de {of}
+	The export was stopped: nothing was written.	Se detuvo la exportación: no se escribió nada.
+	Aligning was stopped: the book's link is as it was.	Se detuvo la alineación: el enlace del libro queda como estaba.
+	The work stopped on an internal error: {why}	El trabajo se detuvo por un error interno: {why}
+	The work stopped on an internal error.	El trabajo se detuvo por un error interno.

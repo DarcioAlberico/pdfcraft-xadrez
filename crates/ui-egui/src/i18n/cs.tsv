@@ -3527,3 +3527,10 @@ the move's comment	Move comment	Komentář k tahu
 	what was saved before couldn't be read, and is kept aside first; try again in a moment	dříve uložená data nešla přečíst a nejprve se odkládají stranou; zkuste to za chvíli znovu
 	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	Uložené opravy diagramů nešlo přečíst ({why}). Při příštím uložení se odloží stranou a od té doby se nové opravy ukládají.
 	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	Uložené PGN knih nešlo přečíst ({why}). Při příštím uložení se odloží stranou a od té doby se nové ukládají.
+# Plan A9-I2: one kind of job; the long jobs say how far they are and stop when asked.
+	Stop	Zastavit
+	Exporting the chess document: page {done} of {of}	Export šachového dokumentu: stránka {done} z {of}
+	The export was stopped: nothing was written.	Export byl zastaven: nic nebylo zapsáno.
+	Aligning was stopped: the book's link is as it was.	Slaďování bylo zastaveno: propojení knihy zůstává, jak bylo.
+	The work stopped on an internal error: {why}	Práce se zastavila kvůli vnitřní chybě: {why}
+	The work stopped on an internal error.	Práce se zastavila kvůli vnitřní chybě.

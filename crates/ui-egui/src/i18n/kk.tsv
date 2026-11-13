@@ -3451,3 +3451,10 @@ the move's comment	Move comment	Жүріс түсініктемесі
 	what was saved before couldn't be read, and is kept aside first; try again in a moment	бұрын сақталғанды оқу мүмкін болмады, алдымен ол бөлек сақталады; сәлден соң қайталап көріңіз
 	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	Сақталған диаграмма түзетулерін оқу мүмкін болмады ({why}). Олар келесі сақтауда бөлек сақталады, содан кейін жаңа түзетулер сақталады.
 	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	Кітаптардың сақталған PGN файлдарын оқу мүмкін болмады ({why}). Олар келесі сақтауда бөлек сақталады, содан кейін жаңалары сақталады.
+# Plan A9-I2: one kind of job; the long jobs say how far they are and stop when asked.
+	Stop	Тоқтату
+	Exporting the chess document: page {done} of {of}	Шахмат құжаты экспортталуда: {of} беттің {done}-беті
+	The export was stopped: nothing was written.	Экспорт тоқтатылды: ештеңе жазылған жоқ.
+	Aligning was stopped: the book's link is as it was.	Сәйкестендіру тоқтатылды: кітаптың байланысы бұрынғыдай қалды.
+	The work stopped on an internal error: {why}	Жұмыс ішкі қатеге байланысты тоқтады: {why}
+	The work stopped on an internal error.	Жұмыс ішкі қатеге байланысты тоқтады.

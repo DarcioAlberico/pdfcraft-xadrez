@@ -160,8 +160,12 @@ pub struct ChessState {
     /// What the Board panel adds as the study board: set-up, engine analysis (the board itself
     /// is [`ChessState::board`]).
     pub study: crate::chess_study_ui::StudyState,
-    /// A page being read, or the book being exported, off the interface thread.
-    pub job: Option<crate::chess_text_ui::ChessJob>,
+    /// A page being read off the interface thread (or the pages around a move's game): the last
+    /// read asked takes the place of the one running (plan A9-I2).
+    pub reading: Option<crate::chess_text_ui::ChessJob>,
+    /// The book being exported or aligned to its PGN, off the interface thread, one at a time:
+    /// a slot of its own, so the page read never waits for it (plan A9-I2, finding A5-12).
+    pub long: Option<crate::chess_text_ui::ChessJob>,
     /// How many pages the last finished job scanned anew, not given from what the session had
     /// read (plan A9, G11): shown nowhere, for tests and measurements.
     pub job_scanned: Option<usize>,
@@ -477,16 +481,13 @@ impl ModelNote {
     }
 }
 
-/// A running scan: pages done of the total, the batches finished and not yet shown, and a
-/// cancel request.
+/// A running scan: pages done of the total, and the batches finished and not yet shown.
 #[derive(Default)]
 pub struct ChessProgress {
     pub done: usize,
     pub total: usize,
     pub scans: Vec<ChessScan>,
     pub model: Option<ModelNote>,
-    pub finished: bool,
-    pub cancel: bool,
 }
 
 pub struct ChessRun {
@@ -495,6 +496,8 @@ pub struct ChessRun {
     /// scan neither brings the Chess panel forward nor announces the count of diagrams found.
     pub quiet: bool,
     pub progress: Arc<Mutex<ChessProgress>>,
+    /// The scan's work (plan A9-I2): done when it gives its result, stopped by its cancel.
+    pub(crate) job: crate::chess_job::Job<()>,
     /// Diagrams in the batches shown so far.
     pub found: usize,
     /// A batch was dropped because the document changed during the scan.
@@ -507,16 +510,6 @@ pub struct ChessRun {
 /// The progress, even after a worker panicked while holding it (it is plain data).
 fn lock(p: &Mutex<ChessProgress>) -> MutexGuard<'_, ChessProgress> {
     p.lock().unwrap_or_else(|e| e.into_inner())
-}
-
-/// Marks the scan finished when the worker ends, however it ends, so the screen never waits for
-/// a worker that is gone.
-struct Finish(Arc<Mutex<ChessProgress>>);
-
-impl Drop for Finish {
-    fn drop(&mut self) {
-        lock(&self.0).finished = true;
-    }
 }
 
 /// What the panel asks for.
@@ -807,11 +800,13 @@ pub(crate) fn tab_contents(
     editor_here: bool,
     pgn: &crate::chess_reference_ui::BookPgnView,
 ) -> Option<PanelAction> {
+    // The document's long job (Export, Align the book), with Stop (plan A9-I2).
+    let long = state.long.as_ref().filter(|j| j.doc == id).map(crate::chess_text_ui::ChessJob::long_row);
     if text {
-        let busy = state.job.as_ref().filter(|j| j.doc == id).map(crate::chess_text_ui::ChessJob::label);
+        let busy = state.reading.as_ref().filter(|j| j.doc == id).map(crate::chess_text_ui::ChessJob::label);
         let doc = state.doc_mut(id);
         let (positions, source) = (doc.pgn_positions, doc.pgn_source);
-        return crate::chess_text_ui::text_tab(ui, t, doc.text.as_mut(), id, page_now, current, origin, busy, positions, pgn, source)
+        return crate::chess_text_ui::text_tab(ui, t, doc.text.as_mut(), id, page_now, current, origin, busy, long.as_ref(), positions, pgn, source)
             .map(PanelAction::Text);
     }
     let mut action = None;
@@ -825,6 +820,11 @@ pub(crate) fn tab_contents(
     let (positions, source) = (doc.pgn_positions, kept.then_some(doc.pgn_source));
     if let Some(a) = crate::chess_panel_head::header(ui, t, state.run.is_some(), info.pages.len(), running, positions, source) {
         action = Some(a);
+    }
+    if let Some(row) = &long
+        && crate::chess_panel_head::long_job(ui, t, row)
+    {
+        action = Some(PanelAction::Text(crate::chess_text_ui::TextAction::Stop));
     }
     // A scan of another document holds the header's Detect: it says so (plan A9-I1a).
     let elsewhere = state.run.as_ref().filter(|r| r.doc != id).map(|r| {
@@ -942,36 +942,25 @@ impl PdfCraftApp {
         }
         let progress = Arc::new(Mutex::new(ChessProgress { total: pages.len(), ..Default::default() }));
         let p = progress.clone();
-        let work = move || {
-            let _finish = Finish(p.clone());
+        let job = crate::chess_job::Job::spawn("pdfcraft-chess", self.run_inline, move |ctl| {
             let models = pdfcraft_engine::chess::models(settings.models_dir.as_deref());
             lock(&p).model = Some(ModelNote::of(&models));
             let mut base: usize = 0;
             for job in jobs {
                 let size = job.pages().len();
                 let scan = job.run(&models, |done, _| {
-                    let mut s = lock(&p);
-                    s.done = base.saturating_add(done);
-                    !s.cancel
+                    lock(&p).done = base.saturating_add(done);
+                    !ctl.cancelled()
                 });
                 base = base.saturating_add(size);
-                let mut s = lock(&p);
-                s.scans.push(scan);
-                if s.cancel {
+                lock(&p).scans.push(scan);
+                if ctl.cancelled() {
                     break;
                 }
             }
-        };
-        #[cfg(not(target_arch = "wasm32"))]
-        if self.run_inline {
-            work();
-        } else if std::thread::Builder::new().name("pdfcraft-chess".into()).spawn(work).is_err() {
-            // The work never ran, so no `Finish` will mark the scan done: do it here.
-            lock(&progress).finished = true;
-        }
-        #[cfg(target_arch = "wasm32")]
-        work();
-        self.chess.run = Some(ChessRun { doc: id, quiet, progress, found: 0, stale: false, pages, all });
+            Ok(())
+        });
+        self.chess.run = Some(ChessRun { doc: id, quiet, progress, job, found: 0, stale: false, pages, all });
         if !quiet {
             self.reveal_chess_diagrams();
         }
@@ -981,7 +970,7 @@ impl PdfCraftApp {
     /// Stop a running scan (the pages scanned so far are kept).
     pub fn cancel_chess_scan(&mut self) {
         if let Some(r) = &self.chess.run {
-            lock(&r.progress).cancel = true;
+            r.job.cancel();
         }
     }
 
@@ -1008,14 +997,16 @@ impl PdfCraftApp {
                 self.edit_chess_diagram(page, index, false);
             }
         }
-        let Some(progress) = self.chess.run.as_ref().map(|r| r.progress.clone()) else {
+        let Some(run) = self.chess.run.as_mut() else {
             // An edit, undo or redo since the scan: the list follows it.
             self.carry_chess_results();
             return;
         };
-        let (scans, model, finished) = {
-            let mut s = lock(&progress);
-            (std::mem::take(&mut s.scans), s.model.clone(), s.finished)
+        // Whether it is done first: once it is, every batch is in.
+        let finished = run.job.poll();
+        let (scans, model) = {
+            let mut s = lock(&run.progress);
+            (std::mem::take(&mut s.scans), s.model.clone())
         };
         for scan in scans {
             let found: usize = scan.pages.iter().map(|p| p.diagrams.len()).sum();
@@ -1027,13 +1018,17 @@ impl PdfCraftApp {
                 run.stale = true;
             }
         }
-        if !finished {
+        let Some(finished) = finished else {
             if let Some(ctx) = &self.ctx {
                 ctx.request_repaint_after(std::time::Duration::from_millis(200));
             }
             return;
-        }
+        };
         let Some(run) = self.chess.run.take() else { return };
+        // The scan's work panicked: said, the pages it scanned kept.
+        if let Err(why) = finished {
+            self.notify(why);
+        }
         // The pages it was for are the list's even when the document changed meanwhile: the list
         // is carried to the state now, and they with it.
         match self.chess.results_of_mut(run.doc) {
@@ -1566,7 +1561,7 @@ impl PdfCraftApp {
             self.apply_chess_text_start(&want);
             return;
         }
-        if self.chess.job.is_some() {
+        if self.chess.reading.is_some() {
             return;
         }
         if want.started {
@@ -1916,7 +1911,16 @@ mod view_tests {
     fn a_scan_of_another_document_is_said_where_it_holds_detect() {
         let (shown, scanned) = (DocId(1), DocId(2));
         let progress = Arc::new(Mutex::new(ChessProgress { done: 305, total: 748, ..Default::default() }));
-        let run = ChessRun { doc: scanned, quiet: false, progress, found: 0, stale: false, pages: Vec::new(), all: true };
+        let run = ChessRun {
+            doc: scanned,
+            quiet: false,
+            progress,
+            job: crate::chess_job::Job::waiting(),
+            found: 0,
+            stale: false,
+            pages: Vec::new(),
+            all: true,
+        };
         let mut state = ChessState { run: Some(run), ..Default::default() };
         let info = DocInfo::default();
         let mut fonts = false;

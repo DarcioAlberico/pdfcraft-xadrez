@@ -3706,3 +3706,10 @@ the move's comment	Move comment	Bình luận của nước đi
 	what was saved before couldn't be read, and is kept aside first; try again in a moment	không đọc được dữ liệu đã lưu trước đó, dữ liệu này được cất riêng trước; hãy thử lại sau giây lát
 	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	Không đọc được các chỉnh sửa sơ đồ đã lưu ({why}). Chúng được cất riêng ở lần lưu tới, và từ đó các chỉnh sửa mới được lưu.
 	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	Không đọc được các tệp PGN của sách đã lưu ({why}). Chúng được cất riêng ở lần lưu tới, và từ đó các tệp mới được lưu.
+# Plan A9-I2: one kind of job; the long jobs say how far they are and stop when asked.
+	Stop	Dừng
+	Exporting the chess document: page {done} of {of}	Đang xuất tài liệu cờ vua: trang {done} / {of}
+	The export was stopped: nothing was written.	Đã dừng xuất: chưa ghi gì cả.
+	Aligning was stopped: the book's link is as it was.	Đã dừng căn sách: liên kết của sách vẫn như cũ.
+	The work stopped on an internal error: {why}	Công việc đã dừng do lỗi nội bộ: {why}
+	The work stopped on an internal error.	Công việc đã dừng do lỗi nội bộ.
