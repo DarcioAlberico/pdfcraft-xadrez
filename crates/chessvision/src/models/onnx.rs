@@ -8,7 +8,10 @@
 //! every operator is one a classifier of these shapes is built from ([`OPERATORS`]), no node holds
 //! a subgraph, every initializer and constant holds at most [`MAX_CONSTANT_ELEMENTS`] values, and
 //! every value the graph makes, its shape worked out from the input the crate feeds
-//! ([`MAX_BATCH`] images), holds at most [`MAX_TENSOR_ELEMENTS`].
+//! ([`MAX_BATCH`] images), holds at most [`MAX_TENSOR_ELEMENTS`]. No path through the graph may
+//! be longer than [`MAX_DEPTH`] operators: rten plans a run by a depth-first walk that recurses
+//! once per operator of the path, and a valid 1.7 MB model whose 60,000 `Identity` nodes follow
+//! one another overflowed the stack (plan A9-Q3a, found by the fuzzer's built models).
 
 use std::collections::HashMap;
 
@@ -53,6 +56,11 @@ const MAX_ATTRIBUTE_INTS: usize = 64;
 
 /// Most dimensions a tensor may have.
 const MAX_RANK: usize = 8;
+
+/// Most operators one after another on any path from the input to a value: rten's planner
+/// recurses once for each (`PlanBuilder::visit`). The models trained for PdfCraft are about a
+/// dozen deep; 256 frames of the planner fit any thread's stack.
+const MAX_DEPTH: usize = 256;
 
 /// Most values of an integer constant kept to read a `Reshape`'s target shape.
 const MAX_SHAPE_VALUES: usize = MAX_RANK;
@@ -101,8 +109,13 @@ pub(super) fn check(bytes: &[u8], input: &str, side: usize) -> Result<(), ModelE
             return Err(unsupported(&format!("a subgraph in {}", node.op)));
         }
         let out = shapes.infer(node)?;
+        let depth = node.inputs.iter().filter_map(|n| shapes.depth.get(n)).copied().max().unwrap_or(0).saturating_add(1);
+        if depth > MAX_DEPTH {
+            return Err(unsupported(&format!("more than {MAX_DEPTH} operators one after another")));
+        }
         for name in node.outputs.iter().filter(|n| !n.is_empty()) {
             shapes.set(name, out.clone())?;
+            shapes.depth.insert(name, depth);
         }
     }
     Ok(())
@@ -112,11 +125,13 @@ fn unsupported(what: &str) -> ModelError {
     ModelError::Unsupported(what.to_owned())
 }
 
-/// The values' shapes worked out so far, and the integer constants a `Reshape` may read.
+/// The values' shapes worked out so far, the integer constants a `Reshape` may read, and how
+/// many operators deep each value made so far is (an input or an initializer: none).
 #[derive(Default)]
 struct Shapes<'a> {
     dims: HashMap<&'a str, Vec<u64>>,
     ints: HashMap<&'a str, Vec<i64>>,
+    depth: HashMap<&'a str, usize>,
 }
 
 impl<'a> Shapes<'a> {
@@ -662,161 +677,11 @@ fn read_tensor(bytes: &[u8]) -> Result<Tensor<'_>, String> {
     Ok(tensor)
 }
 
-/// A writer of the ONNX protobuf fields the tests need, for synthetic models (no weights are
-/// committed, decision D2).
+/// The writer of synthetic and hostile models (`onnx_build.rs`, shared with `cargo xtask fuzz`),
+/// and where an initializer's raw data starts.
 #[cfg(test)]
 pub(super) mod build {
-    fn varint(out: &mut Vec<u8>, mut v: u64) {
-        while v >= 0x80 {
-            out.push((v & 0x7f) as u8 | 0x80);
-            v >>= 7;
-        }
-        out.push(v as u8);
-    }
-
-    fn bytes(out: &mut Vec<u8>, field: u64, b: &[u8]) {
-        varint(out, field << 3 | 2);
-        varint(out, b.len() as u64);
-        out.extend_from_slice(b);
-    }
-
-    fn int(out: &mut Vec<u8>, field: u64, v: i64) {
-        varint(out, field << 3);
-        varint(out, v as u64);
-    }
-
-    /// A `TensorProto` of `data_type` (1 float, 7 int64) holding `raw`.
-    pub fn tensor(name: &str, dims: &[i64], data_type: i64, raw: &[u8]) -> Vec<u8> {
-        let mut t = Vec::new();
-        for d in dims {
-            int(&mut t, 1, *d);
-        }
-        int(&mut t, 2, data_type);
-        bytes(&mut t, 8, name.as_bytes());
-        bytes(&mut t, 9, raw);
-        t
-    }
-
-    pub fn floats(name: &str, dims: &[i64], values: &[f32]) -> Vec<u8> {
-        tensor(name, dims, 1, &values.iter().flat_map(|v| v.to_le_bytes()).collect::<Vec<_>>())
-    }
-
-    pub fn int64s(name: &str, values: &[i64]) -> Vec<u8> {
-        tensor(name, &[values.len() as i64], 7, &values.iter().flat_map(|v| v.to_le_bytes()).collect::<Vec<_>>())
-    }
-
-    /// An attribute of a node.
-    pub enum Attr<'a> {
-        Int(&'a str, i64),
-        Ints(&'a str, &'a [i64]),
-        Tensor(&'a str, Vec<u8>),
-        /// A subgraph (`If`'s `then_branch`), empty.
-        Graph(&'a str),
-    }
-
-    pub fn node(op: &str, inputs: &[&str], outputs: &[&str], attrs: &[Attr]) -> Vec<u8> {
-        let mut n = Vec::new();
-        for i in inputs {
-            bytes(&mut n, 1, i.as_bytes());
-        }
-        for o in outputs {
-            bytes(&mut n, 2, o.as_bytes());
-        }
-        bytes(&mut n, 4, op.as_bytes());
-        for attr in attrs {
-            let mut a = Vec::new();
-            match attr {
-                Attr::Int(name, v) => {
-                    bytes(&mut a, 1, name.as_bytes());
-                    int(&mut a, 20, 2);
-                    int(&mut a, 3, *v);
-                }
-                Attr::Ints(name, vs) => {
-                    bytes(&mut a, 1, name.as_bytes());
-                    int(&mut a, 20, 7);
-                    for v in *vs {
-                        int(&mut a, 8, *v);
-                    }
-                }
-                Attr::Tensor(name, t) => {
-                    bytes(&mut a, 1, name.as_bytes());
-                    int(&mut a, 20, 4);
-                    bytes(&mut a, 5, t);
-                }
-                Attr::Graph(name) => {
-                    bytes(&mut a, 1, name.as_bytes());
-                    int(&mut a, 20, 5);
-                    bytes(&mut a, 6, &[]);
-                }
-            }
-            bytes(&mut n, 5, &a);
-        }
-        n
-    }
-
-    /// A `ValueInfoProto` for a float tensor; `None` is a free dimension named `batch`.
-    pub fn value(name: &str, dims: &[Option<i64>]) -> Vec<u8> {
-        let mut shape = Vec::new();
-        for d in dims {
-            let mut dim = Vec::new();
-            match d {
-                Some(v) => int(&mut dim, 1, *v),
-                None => bytes(&mut dim, 2, b"batch"),
-            }
-            bytes(&mut shape, 1, &dim);
-        }
-        let mut tensor_type = Vec::new();
-        int(&mut tensor_type, 1, 1);
-        bytes(&mut tensor_type, 2, &shape);
-        let mut ty = Vec::new();
-        bytes(&mut ty, 1, &tensor_type);
-        let mut v = Vec::new();
-        bytes(&mut v, 1, name.as_bytes());
-        bytes(&mut v, 2, &ty);
-        v
-    }
-
-    /// A `ModelProto` (IR 7, opset 13) whose graph is `nodes` on `initializers`, from `input` to
-    /// `output`.
-    pub fn model(nodes: &[Vec<u8>], initializers: &[Vec<u8>], input: Vec<u8>, output: Vec<u8>) -> Vec<u8> {
-        let mut g = Vec::new();
-        for n in nodes {
-            bytes(&mut g, 1, n);
-        }
-        bytes(&mut g, 2, b"test");
-        for t in initializers {
-            bytes(&mut g, 5, t);
-        }
-        bytes(&mut g, 11, &input);
-        bytes(&mut g, 12, &output);
-        let mut opset = Vec::new();
-        bytes(&mut opset, 1, b"");
-        int(&mut opset, 2, 13);
-        let mut m = Vec::new();
-        int(&mut m, 1, 7);
-        bytes(&mut m, 8, &opset);
-        bytes(&mut m, 7, &g);
-        m
-    }
-
-    /// A glyph classifier with `classes` outputs: the 32 × 32 cell flattened, then one dense
-    /// layer of fixed weights.
-    pub fn glyph_model(classes: usize) -> Vec<u8> {
-        let k = 32 * 32;
-        let weights = glyph_weights(classes);
-        let bias: Vec<f32> = (0..classes).map(|c| c as f32 / 100.0).collect();
-        model(
-            &[node("Flatten", &["glyphs"], &["flat"], &[Attr::Int("axis", 1)]), node("Gemm", &["flat", "W", "B"], &["logits"], &[])],
-            &[floats("W", &[k as i64, classes as i64], &weights), floats("B", &[classes as i64], &bias)],
-            value("glyphs", &[None, Some(1), Some(32), Some(32)]),
-            value("logits", &[None, Some(classes as i64)]),
-        )
-    }
-
-    /// The dense layer's weights of [`glyph_model`], `1024 × classes`, row-major.
-    pub fn glyph_weights(classes: usize) -> Vec<f32> {
-        (0..32 * 32 * classes).map(|i| ((i * 37 % 101) as f32 - 50.0) / 5000.0).collect()
-    }
+    pub use super::onnx_build::*;
 
     /// Where the raw data of the initializer `name` starts in `model`'s bytes.
     pub fn raw_offset(model: &[u8], name: &str) -> Option<usize> {
@@ -824,13 +689,11 @@ pub(super) mod build {
         let t = graph.initializers.iter().find(|t| t.name == name)?;
         (t.raw.as_ptr() as usize).checked_sub(model.as_ptr() as usize)
     }
-
-    /// The description of [`glyph_model`].
-    pub fn glyph_meta(classes: usize) -> String {
-        let names: Vec<String> = (0..classes).map(|c| format!("\"g{c}\"")).collect();
-        format!(r#"{{"kind":"chess-glyphs","input":{{"name":"glyphs"}},"output":{{"name":"logits","classes":[{}]}}}}"#, names.join(","))
-    }
 }
+
+#[cfg(test)]
+#[path = "onnx_build.rs"]
+mod onnx_build;
 
 #[cfg(test)]
 mod tests {
@@ -945,6 +808,7 @@ mod tests {
             ),
             ("an initializer", model(&[flat(), gemm()], &[tensor("W", &[1 << 31, 1 << 31], 1, &[0; 4])], glyphs(), logits()), "initializer"),
             ("a subgraph", model(&[node("Identity", &["glyphs"], &["logits"], &[Attr::Graph("then_branch")])], &[], glyphs(), logits()), "subgraph"),
+            ("a long path", chain(MAX_DEPTH + 1), "operators one after another"),
             (
                 "a domain",
                 model(
@@ -969,6 +833,30 @@ mod tests {
             let err = check(&bytes, "glyphs", 32).expect_err(name).to_string();
             assert!(err.contains(why), "{name}: {err}");
         }
+    }
+
+    /// `n` operators one after another, from the input to the logits: a flatten, a dense layer,
+    /// then `Identity` nodes.
+    fn chain(n: usize) -> Vec<u8> {
+        let mut nodes = vec![node("Flatten", &["glyphs"], &["flat"], &[Attr::Int("axis", 1)]), node("Gemm", &["flat", "W"], &["c2"], &[])];
+        for i in 2..n {
+            let to = if i + 1 == n { "logits".to_owned() } else { format!("c{}", i + 1) };
+            nodes.push(node("Identity", &[&format!("c{i}")], &[&to], &[]));
+        }
+        model(&nodes, &[floats("W", &[1024, 2], &[0.0; 2048])], glyphs(), logits())
+    }
+
+    /// Plan A9-Q3a: a path of operators as long as the cap is checked; one longer, refused. The
+    /// depth is the longest path, not the count: side branches and constants add none.
+    #[test]
+    fn a_path_longer_than_the_cap_is_refused() {
+        assert!(check(&chain(MAX_DEPTH), "glyphs", 32).is_ok());
+        let err = check(&chain(MAX_DEPTH + 1), "glyphs", 32).unwrap_err().to_string();
+        assert!(err.contains("more than 256 operators one after another"), "{err}");
+        // Many operators side by side, each one deep from the input, are not a path.
+        let mut wide = vec![node("Flatten", &["glyphs"], &["flat"], &[Attr::Int("axis", 1)]), node("Gemm", &["flat", "W"], &["logits"], &[])];
+        wide.extend((0..2 * MAX_DEPTH).map(|i| node("Relu", &["glyphs"], &[&format!("r{i}")], &[])));
+        assert!(check(&model(&wide, &[floats("W", &[1024, 2], &[0.0; 2048])], glyphs(), logits()), "glyphs", 32).is_ok());
     }
 
     #[test]
