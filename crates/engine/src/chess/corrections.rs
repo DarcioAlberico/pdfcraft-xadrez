@@ -568,7 +568,7 @@ impl CorrectionFile {
         at: u64,
         fingerprints: &F,
     ) -> Result<(String, Option<Correction>), CorrectionError> {
-        crate::chess::pdfcraft_chess::fen::parse(&new.fen).map_err(|e| CorrectionError::BadFen(e.to_string()))?;
+        crate::chess::pdfcraft_chess::fen::Fen::parse(&new.fen).map_err(|e| CorrectionError::BadFen(e.to_string()))?;
         if new.fen.len() > MAX_TEXT {
             return Err(CorrectionError::BadFen("too long".into()));
         }
@@ -967,12 +967,12 @@ pub fn corrected_position(
     before: Option<&pdfcraft_chessvision::board::ReadPosition>,
 ) -> Option<pdfcraft_chessvision::board::ReadPosition> {
     use pdfcraft_chess::recognize::side::{SideSource, SideToMove};
-    let parsed = crate::chess::pdfcraft_chess::fen::parse(fen).ok()?;
-    let color = parsed.side_to_move.unwrap_or(pdfcraft_chess::placement::Color::White);
-    let legality = pdfcraft_chess::rules::check_position(&parsed.placement);
+    let parsed = crate::chess::pdfcraft_chess::fen::Fen::parse(fen).ok()?;
+    let color = parsed.side().unwrap_or(pdfcraft_chess::placement::Color::White);
+    let legality = pdfcraft_chess::rules::check_position(parsed.placement());
     let accepted = legality.allows(color);
     Some(pdfcraft_chessvision::board::ReadPosition {
-        placement: parsed.placement,
+        placement: *parsed.placement(),
         fen: fen.trim().to_owned(),
         legality,
         side: SideToMove { color, source: SideSource::Manual, conflicting: false },

@@ -537,7 +537,7 @@ fn renumbered_start(game: &Game, first: FirstMove, ctx: &Context<'_>) -> Option<
         return None;
     }
     let number = ply / 2 + 1;
-    let mut position = fen::parse(&game.start_fen()).ok()?;
+    let mut position = fen::Fen::parse(&game.start_fen()).ok()?.position().clone();
     position.fullmove_number = number;
     let side = if start % 2 == 1 { Color::Black } else { Color::White };
     let mut again = Game::new(&position, side).ok()?;

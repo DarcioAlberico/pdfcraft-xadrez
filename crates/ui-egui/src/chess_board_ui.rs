@@ -2445,10 +2445,15 @@ pub(crate) fn sections(ui: &mut egui::Ui, state: &mut BoardState) -> Option<Boar
             if ui.small_button(tl!("Copy FEN")).on_hover_text(tl!("Position code other chess programs accept.")).clicked() {
                 action = Some(BoardAction::CopyFen(state.current_fen()));
             }
+            // The move shown's position, from the game's board, not read again from its FEN text
+            // (plan A9-T1b).
             if state.illegal.is_none()
-                && let Ok(p) = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(&state.game.fen())
+                && let Some(p) = state.game.fen_at(state.game.current())
             {
-                let url = pdfcraft_engine::chess::pdfcraft_chess::lichess::analysis_url(&p, if state.flipped { Color::Black } else { Color::White });
+                let url = pdfcraft_engine::chess::pdfcraft_chess::lichess::analysis_url(
+                    p.position(),
+                    if state.flipped { Color::Black } else { Color::White },
+                );
                 if ui.small_button(tl!("Open in lichess")).on_hover_text(&url).clicked() {
                     action = Some(BoardAction::OpenLichess(url));
                 }

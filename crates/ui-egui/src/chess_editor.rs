@@ -88,7 +88,8 @@ impl DiagramEditor {
     pub fn new(doc: DocId, page: usize, index: usize, reading: Option<&BoardReading>) -> DiagramEditor {
         let read = reading.and_then(BoardReading::position);
         let position = read
-            .and_then(|p| pdfcraft_engine::chess::pdfcraft_chess::fen::parse(&p.fen).ok())
+            .and_then(|p| pdfcraft_engine::chess::pdfcraft_chess::fen::Fen::parse(&p.fen).ok())
+            .map(|f| f.position().clone())
             .unwrap_or_else(|| Position { side_to_move: Some(Color::White), ..Position::from_placement(Placement::empty()) });
         let start = position.fen();
         let uncertain: Vec<Uncertain> = read.map(|p| p.uncertain.clone()).unwrap_or_default();
@@ -247,8 +248,8 @@ impl DiagramEditor {
     /// Show `fen`, the position the user kept for the diagram, instead of the reading (which
     /// stays what Restore the automatic reading goes back to).
     pub fn show_kept(&mut self, fen: &str) {
-        if let Ok(p) = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(fen) {
-            self.position = p;
+        if let Ok(p) = pdfcraft_engine::chess::pdfcraft_chess::fen::Fen::parse(fen) {
+            self.position = p.position().clone();
             self.uncertain.clear();
             self.start = self.position.fen();
         }
@@ -261,15 +262,15 @@ impl DiagramEditor {
 
     /// How many squares differ from the position it opened on.
     pub fn changed_squares(&self) -> usize {
-        let Ok(start) = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(&self.start) else { return 0 };
-        (0..64usize).filter_map(Square::from_index).filter(|sq| start.placement.get(*sq) != self.position.placement.get(*sq)).count()
+        let Ok(start) = pdfcraft_engine::chess::pdfcraft_chess::fen::Fen::parse(&self.start) else { return 0 };
+        (0..64usize).filter_map(Square::from_index).filter(|sq| start.placement().get(*sq) != self.position.placement.get(*sq)).count()
     }
 
     /// Show `fen` (a draft of this diagram) with the view it was edited in, keeping the
     /// position it opened on.
     pub fn show_draft(&mut self, fen: &str, flipped: bool) {
-        if let Ok(p) = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(fen) {
-            self.position = p;
+        if let Ok(p) = pdfcraft_engine::chess::pdfcraft_chess::fen::Fen::parse(fen) {
+            self.position = p.position().clone();
             self.flipped = flipped;
         }
     }
@@ -277,25 +278,25 @@ impl DiagramEditor {
     /// The position it opens on when nothing is kept for its diagram: the reading, else an empty
     /// board with White to move.
     pub fn reading_fen(&self) -> String {
-        let read = self.original.as_deref().and_then(|f| pdfcraft_engine::chess::pdfcraft_chess::fen::parse(f).ok());
-        read.unwrap_or_else(|| Position { side_to_move: Some(Color::White), ..Position::from_placement(Placement::empty()) }).fen()
+        let read = self.original.as_deref().and_then(|f| pdfcraft_engine::chess::pdfcraft_chess::fen::Fen::parse(f).ok());
+        read.map_or_else(|| Position { side_to_move: Some(Color::White), ..Position::from_placement(Placement::empty()) }.fen(), |f| f.to_string())
     }
 
     /// Show the position it opens on with nothing kept ([`Self::reading_fen`]), with nothing left
     /// to confirm: its diagram's correction was forgotten.
     pub fn show_reading(&mut self) {
         self.start = self.reading_fen();
-        if let Ok(p) = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(&self.start) {
-            self.position = p;
+        if let Ok(p) = pdfcraft_engine::chess::pdfcraft_chess::fen::Fen::parse(&self.start) {
+            self.position = p.position().clone();
         }
     }
 
     /// Restore the automatic reading.
     pub fn reset(&mut self) {
         if let Some(fen) = &self.original
-            && let Ok(p) = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(fen)
+            && let Ok(p) = pdfcraft_engine::chess::pdfcraft_chess::fen::Fen::parse(fen)
         {
-            self.position = p;
+            self.position = p.position().clone();
         }
     }
 }
@@ -754,8 +755,9 @@ pub fn editor_ui(
         if ui.small_button(tl!("Copy FEN")).on_hover_text(tl!("Position code other chess programs accept.")).clicked() {
             action = Some(EditorAction::CopyFen(fen.clone()));
         }
-        if legal && let Ok(p) = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(&fen) {
-            let url = pdfcraft_engine::chess::pdfcraft_chess::lichess::analysis_url(&p, if ed.flipped { Color::Black } else { Color::White });
+        if legal {
+            let url =
+                pdfcraft_engine::chess::pdfcraft_chess::lichess::analysis_url(&ed.position, if ed.flipped { Color::Black } else { Color::White });
             if ui.small_button(tl!("Open in lichess")).on_hover_text(&url).clicked() {
                 action = Some(EditorAction::OpenLichess(url));
             }

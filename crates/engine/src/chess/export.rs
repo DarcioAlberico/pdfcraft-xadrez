@@ -281,9 +281,9 @@ impl Session {
                         for block in &page.blocks {
                             let Block::Diagram(d) = block else { continue };
                             let Some(shown) = d.shown() else { continue };
-                            let png = pdfcraft_chess::fen::parse(shown.fen)
+                            let png = pdfcraft_chess::fen::Fen::parse(shown.fen)
                                 .map_err(|e| e.to_string())
-                                .and_then(|f| super::office::diagram_png(&f.placement, &o.pieces, &o.style, o.diagram_px));
+                                .and_then(|f| super::office::diagram_png(f.placement(), &o.pieces, &o.style, o.diagram_px));
                             match png {
                                 Ok(png) => {
                                     images.push((format!("{}/{}", o.image_dir, markdown::image_name(page.index, d.number)), png));

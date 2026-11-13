@@ -79,18 +79,18 @@ impl Default for LinkSettings {
 
 /// The lichess address of a confirmed position, or why it cannot have one.
 fn confirmed_url(fen: &str) -> Result<String, String> {
-    let position = pdfcraft_chess::fen::parse(fen).map_err(|e| format!("the position is not a FEN: {e}"))?;
+    let position = pdfcraft_chess::fen::Fen::parse(fen).map_err(|e| format!("the position is not a FEN: {e}"))?;
     if pdfcraft_chess::repair::GameContext::from_fen(fen).is_none() {
         return Err(not_legal(fen));
     }
-    Ok(pdfcraft_chess::lichess::analysis_url(&position, pdfcraft_chess::placement::Color::White))
+    Ok(pdfcraft_chess::lichess::analysis_url(position.position(), pdfcraft_chess::placement::Color::White))
 }
 
 /// "the position is not legal", with the first rule FEN `fen` breaks when one is named (plan A8,
 /// P3b1).
 fn not_legal(fen: &str) -> String {
-    let why = pdfcraft_chess::fen::parse(fen)
-        .map(|p| pdfcraft_chess::rules::position_violations(&p, pdfcraft_chess::placement::Color::White))
+    let why = pdfcraft_chess::fen::Fen::parse(fen)
+        .map(|p| pdfcraft_chess::rules::position_violations(p.position(), pdfcraft_chess::placement::Color::White))
         .unwrap_or_default();
     match why.first() {
         Some(v) => format!("the position is not legal: {v}"),

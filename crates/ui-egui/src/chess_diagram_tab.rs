@@ -66,7 +66,8 @@ fn suggestion_row(ui: &mut egui::Ui, t: &Tokens, ed: &mut crate::chess_editor::D
     ui.label(
         RichText::new(crate::i18n::fmt(tl!("The book's PGN shows: {changes}"), &[("changes", &s.changes.join(", "))])).small().color(t.text_muted),
     );
-    let shown = ed.fen().split(' ').next() == s.fen.split(' ').next();
+    // The same pieces on the same squares (plan A9-T1b: a key, not a slice of the FEN text).
+    let shown = crate::chess_ui::same_pieces(&ed.fen(), &s.fen);
     if ui
         .add_enabled(!shown, egui::Button::new(tl!("Use the PGN's position")))
         .on_hover_text(tl!("Put the PGN's position on the board. It is kept only when you confirm it."))
@@ -468,8 +469,9 @@ fn more_menu(ui: &mut egui::Ui, ed: &DiagramEditor, legal: bool, kept: bool) -> 
         if item(ui, true, tl!("Copy FEN")).on_hover_text(tl!("Position code other chess programs accept.")).clicked() {
             action = Some(EditorAction::CopyFen(fen.clone()));
         }
-        if legal && let Ok(p) = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(&fen) {
-            let url = pdfcraft_engine::chess::pdfcraft_chess::lichess::analysis_url(&p, if ed.flipped { Color::Black } else { Color::White });
+        if legal {
+            let url =
+                pdfcraft_engine::chess::pdfcraft_chess::lichess::analysis_url(&ed.position, if ed.flipped { Color::Black } else { Color::White });
             if item(ui, true, tl!("Open in lichess")).on_hover_text(&url).clicked() {
                 action = Some(EditorAction::OpenLichess(url));
             }
