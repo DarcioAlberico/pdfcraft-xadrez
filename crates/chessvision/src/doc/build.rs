@@ -9,10 +9,12 @@
 //!    goes before the first line below it in its column, or in a column to its right, or wholly
 //!    below it and not in another column ([`diagram_before`]). Diagrams are never reordered among themselves, so the n-th diagram
 //!    block is diagram n of the reading order. Diagrams no line comes after go at the end.
-//! 2. **Blocks.** A line belongs to the first hint whose box holds its centre; consecutive lines of
-//!    one hint form one heading or paragraph. Lines without a hint form paragraphs, a new one at a
-//!    gap taller than [`PARAGRAPH_GAP_SHARE`] of a line or a change of column. A diagram ends the
-//!    block before it. Lines whose centre lies inside a diagram's box are that diagram's text, a
+//! 2. **Blocks.** A line belongs to the first hint whose box holds its centre, which says whether
+//!    it is a heading's or a paragraph's; consecutive lines of one heading hint form one heading.
+//!    Paragraph lines form one paragraph while they stand close in one column, a new one at a gap
+//!    taller than [`PARAGRAPH_GAP_SHARE`] of a line or a change of column, within one hint or
+//!    none, and across two hints only where the sentence goes on ([`continues`]). A diagram ends
+//!    the block before it. Lines whose centre lies inside a diagram's box are that diagram's text, a
 //!    paragraph of [`BlockRole::DiagramText`] never joined with lines outside it, whatever their
 //!    font or hint ([`inside_diagram`]).
 //! 3. **Inlines.** Runs become inlines in order; a move number is kept with the move after it.
@@ -589,6 +591,42 @@ fn same_paragraph(prev: ViewRect, cur: ViewRect) -> bool {
     same_column && gap <= PARAGRAPH_GAP_SHARE * height && gap > -height
 }
 
+/// Whether `line`, in hint `k`, goes on the block whose last line is `prev`, in hint `key` (plan
+/// A9-L3, A2-05): the layout's hint says what a line is, a heading's or a paragraph's, and the
+/// geometry whether a paragraph goes on. A heading's lines are its hint's. Paragraph lines go on
+/// when they stand close in one column ([`same_paragraph`]), within one hint or none, and across
+/// two hints only when the sentence goes on ([`sentence_goes_on`]): the layout cuts a paragraph
+/// mid-sentence where a line's type or weight changes (`…even nicer to have a` | `knight on f4,
+/// hitting…`), and keeps apart two paragraphs set with no gap between them.
+fn continues(prev: &ChessLine, line: &ChessLine, k: Option<usize>, key: Option<usize>, hints: &[(HintKind, Option<ViewRect>)]) -> bool {
+    let heading = |k: Option<usize>| k.and_then(|k| hints.get(k)).is_some_and(|h| matches!(h.0, HintKind::Heading { .. }));
+    match (heading(key), heading(k)) {
+        (true, true) => k == key,
+        (false, false) => same_paragraph(prev.rect, line.rect) && (k == key || sentence_goes_on(prev, line)),
+        _ => false,
+    }
+}
+
+/// Closing quotes and brackets after a sentence's last word.
+const CLOSERS: [char; 7] = ['"', '\'', '\u{201d}', '\u{2019}', '\u{bb}', ')', ']'];
+
+/// Whether the sentence `prev` ends in goes on in `next`: `prev` ends in a word or a comma, not a
+/// full stop, a question or an exclamation mark, a colon, an ellipsis or a result; or `next`
+/// starts with a word in small letters. A line that ends in a move says neither.
+fn sentence_goes_on(prev: &ChessLine, next: &ChessLine) -> bool {
+    let ends_open = match prev.spans.last().map(|s| &s.run) {
+        Some(ChessRun::Text(t)) => {
+            let t = t.trim_end().trim_end_matches(CLOSERS);
+            let last_word = t.rsplit(char::is_whitespace).next().unwrap_or_default().trim_end_matches([',', ';']);
+            !t.is_empty() && !t.ends_with(['.', '!', '?', ':', '\u{2026}']) && super::games::GameResult::from_text(last_word).is_none()
+        }
+        _ => false,
+    };
+    let starts_small =
+        matches!(next.spans.first().map(|s| &s.run), Some(ChessRun::Text(t)) if t.trim_start().chars().next().is_some_and(char::is_lowercase));
+    ends_open || starts_small
+}
+
 /// The first hint whose box holds the line's centre.
 fn hint_of(line: &ChessLine, hints: &[(HintKind, Option<ViewRect>)]) -> Option<usize> {
     let (cx, cy) = ((line.rect.x0 + line.rect.x1) * 0.5, (line.rect.y0 + line.rect.y1) * 0.5);
@@ -800,7 +838,7 @@ fn blocks(input: &PageInput<'_>, carried: Option<u32>, folios: &[i64]) -> (Vec<B
                         && match d {
                             // A diagram's lines are one block, whatever their hints.
                             Some(_) => true,
-                            None => k == key && (k.is_some() || same_paragraph(prev.rect, line.rect)),
+                            None => continues(prev, line, k, key, &hints),
                         }
                 });
                 if !joins {
