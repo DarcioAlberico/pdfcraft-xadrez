@@ -160,7 +160,9 @@ pub fn to_flow(doc: &ChessDoc, o: &OfficeOptions<'_>, notes: &mut Vec<String>) -
         let page_label = PageLabel::of(o.page_labels, page.index);
         let label = page_label.to_string();
         let of = page.blocks.iter().filter(|b| matches!(b, DocBlock::Diagram(_))).count();
-        for block in &page.blocks {
+        // The book's text: its number, running heads and a diagram's own text are not (plan
+        // A9-L1b, A2-04).
+        for (_, block) in page.book_blocks() {
             match block {
                 DocBlock::Heading { level, inlines, .. } => blocks.push(FlowBlock::Heading { level: *level, runs: runs(inlines, o) }),
                 DocBlock::Paragraph { inlines, .. } => blocks.push(FlowBlock::Para(runs(inlines, o))),

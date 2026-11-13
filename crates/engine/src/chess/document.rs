@@ -28,7 +28,7 @@
 use pdfcraft_chess::san::Lang;
 use pdfcraft_chessvision::chess_text::{self, ChessLine, ChessPageText, ChessRun, LangGuess, LangTally, ProseTally, TextQuality};
 use pdfcraft_chessvision::coords::{PageGeometry, PageRect, ViewRect};
-use pdfcraft_chessvision::doc::{BlockHint, ChessDoc, DocBuilder, HintKind, LangTag, PageInput, trailing_label};
+use pdfcraft_chessvision::doc::{BlockHint, ChessDoc, DocBuilder, HintKind, LangTag, PageInput, ReviewFlag, trailing_label};
 use pdfcraft_render::{PageRenderer, RenderConfig, RenderRequest, RequestKind};
 
 use pdfcraft_chess::repair::GameContext;
@@ -641,8 +641,24 @@ impl Session {
         for u in &corrected.unmatched {
             notes.push((u.page, format!("a correction ({}) was not used: {}", u.uid.chars().take(8).collect::<String>(), u.reason)));
         }
+        let doc = builder.finish();
+        // What the page's reading could not do, said on the page (plan A9-L7).
+        for page in &doc.pages {
+            let index = usize::try_from(page.index).unwrap_or(usize::MAX);
+            for flag in &page.review {
+                match flag {
+                    ReviewFlag::DescriptiveNotation { examples, .. } => {
+                        notes.push((index, format!("descriptive notation ({}): not supported; its moves were not read", examples.join(", "))))
+                    }
+                    ReviewFlag::TooManyGames { max } => {
+                        notes.push((index, format!("the document holds {max} games, the most it keeps: from here on, no game starts")))
+                    }
+                    _ => {}
+                }
+            }
+        }
         Ok(ChessDocument {
-            doc: builder.finish(),
+            doc,
             lang: chosen,
             lang_given: lang.is_some(),
             text_lang,

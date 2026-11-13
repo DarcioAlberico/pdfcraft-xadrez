@@ -153,6 +153,23 @@ fn chess_export_writes_the_book_with_its_cover() {
     assert!(w.max(h) <= MAX_COVER_PX && w > 0 && h > 0, "{w}×{h}");
 }
 
+/// Plan A9-L1b (§2.6, A2-04): a book whose PDF says no page labels is paged by the number it
+/// prints: the page list and the diagrams say `15`, not `1`, and the number itself is not a
+/// paragraph of the book. (The PDF's own labels win: `PageLabel::with_folios`' test.)
+#[test]
+fn a_book_without_page_labels_is_paged_by_its_printed_number() {
+    let (mut s, id) = open(super::document::numbered_chapter("15"));
+    let out = s.chess_export(id, ChessFormat::Epub, &ChessExportOptions::new("Chapter", None)).unwrap();
+    let nav = String::from_utf8(zip_entry(&out.bytes, "OEBPS/nav.xhtml")).unwrap();
+    assert!(nav.contains("<li><a href=\"page-00001.xhtml#pagebreak\">15</a></li>"), "{nav}");
+    let page = String::from_utf8(zip_entry(&out.bytes, "OEBPS/page-00001.xhtml")).unwrap();
+    assert!(page.contains("aria-label=\"15\"") && page.contains("Diagram 1, page 15"), "{page}");
+    assert!(!page.contains("<p>15</p>"), "{page}");
+    // The other exports keep the page's own number, as before.
+    let html = String::from_utf8(s.chess_export(id, ChessFormat::Html, &ChessExportOptions::new("Chapter", None)).unwrap().bytes).unwrap();
+    assert!(html.contains("Diagram 1, page 1:") && !html.contains("<p>15</p>"), "{html}");
+}
+
 /// Two books made from different pages of one PDF are two books to a reader: before plan A9 (G1)
 /// both took the PDF's identifier, so Apple Books and Calibre kept one over the other (A4-03).
 /// The whole document is still its own identifier, and the identifier every new file used to get
@@ -347,6 +364,7 @@ fn a_book_without_headings_lists_its_pages_and_limits_hold() {
         blocks: Vec::new(),
         review: Vec::new(),
         trailing: None,
+        running_heads: Vec::new(),
     };
     let doc = ChessDoc { format: 1, pages: vec![empty.clone()], games: Vec::new() };
     let pieces = PieceSet::geometric();
