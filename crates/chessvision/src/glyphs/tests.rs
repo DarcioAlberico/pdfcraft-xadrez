@@ -953,11 +953,16 @@ fn empty_blank_and_huge_inputs_are_values_not_panics() {
     assert!(matches!(read(&huge, None, None, &model, &opts), Err(GlyphError::TooLarge { .. })));
     assert!(matches!(text_scale(&huge, &[]), Err(GlyphError::TooLarge { .. })));
     assert!(read(&huge, Some(PixelRect { x0: 0, y0: 0, x1: 100, y1: 100 }), None, &model, &opts).unwrap().is_empty());
-    // Speckle: more components than a text region has.
+    // Speckle of single pixels: dust, left out without counting (plan A9-V2); no text in it.
     let side = 320usize;
     let speckle: Vec<u8> = (0..side * side).map(|i| if (i % side).is_multiple_of(2) && (i / side).is_multiple_of(2) { 0 } else { 255 }).collect();
     let speckle = GrayImage::new(side as u32, side as u32, speckle).unwrap();
-    assert!(matches!(read(&speckle, None, None, &model, &opts), Err(GlyphError::TooManyComponents { .. })));
+    assert!(read(&speckle, None, None, &model, &opts).unwrap().is_empty());
+    // More components above the dust floor than any text region holds: no text at all.
+    let side = 2200usize;
+    let coarse: Vec<u8> = (0..side * side).map(|i| if (i % side) % 3 < 2 && (i / side) % 3 < 2 { 0 } else { 255 }).collect();
+    let coarse = GrayImage::new(side as u32, side as u32, coarse).unwrap();
+    assert!(matches!(read(&coarse, None, None, &model, &opts), Err(GlyphError::TooManyComponents { .. })));
 }
 
 #[test]
@@ -1301,4 +1306,92 @@ fn a_bolder_line_standing_alone_is_a_heading() {
     let boards = [PixelRect { x0: 20, y0: 50, x1: 200, y1: 190 }, PixelRect { x0: 20, y0: 390, x1: 200, y1: 530 }];
     assert_eq!(crate::glyphs::bolder_lines(&c.image(), &lines, &[]).unwrap().len(), 2);
     assert!(crate::glyphs::bolder_lines(&c.image(), &lines, &boards).unwrap().is_empty());
+}
+
+/// A page of `lines` lines of ten letter blocks (14 × 20, every 30 rows from row 40, from x 20)
+/// and a halftone of `dot` × `dot` dots every `pitch` pixels over `[x0, x1) × [y0, y1)`.
+fn page_with_a_picture(lines: i64, (x0, y0, x1, y1): (i64, i64, i64, i64), dot: i64, pitch: i64) -> Canvas {
+    let mut c = Canvas::new(1400, (40 + lines * 30 + 40) as usize);
+    for l in 0..lines {
+        for k in 0..10 {
+            c.rect(20 + k * 18, 40 + l * 30, 20 + k * 18 + 14, 60 + l * 30);
+        }
+    }
+    let mut y = y0;
+    while y < y1 {
+        let mut x = x0;
+        while x < x1 {
+            c.rect(x, y, x + dot, y + dot);
+            x += pitch;
+        }
+        y += pitch;
+    }
+    c
+}
+
+/// Plan A9-V2 (A3-02, A3's probe c06): a picture's fine dots beside the text, 22,500 of them,
+/// no longer make the page "not text" (it was refused past 20,000 components): they are dust,
+/// left out without counting, and the 40 lines are read.
+#[test]
+fn a_halftone_of_fine_dots_leaves_the_text_read() {
+    let model = blob_and_x();
+    let c = page_with_a_picture(40, (500, 100, 950, 550), 1, 3);
+    let lines = read(&c.image(), None, None, &model, &GlyphOptions::default()).unwrap();
+    assert_eq!(lines.len(), 40);
+    let ink = PageInk::new(&c.image(), None, None, &[]).unwrap().unwrap();
+    assert_eq!((ink.scale(), ink.skipped().len()), (Some(SCALE as u32), 0));
+}
+
+/// Plan A9-V2: coarser dots (2 × 2, every 3 pixels, more than [`MAX_COMPONENTS`] of them) are no
+/// dust: the strip of the page they fill is left out, and said, and the lines above and below it
+/// are read; a line beside the picture goes with it.
+#[test]
+fn a_halftone_of_coarse_dots_leaves_out_its_strip_only() {
+    let model = blob_and_x();
+    let (y0, y1) = (400, 880);
+    let c = page_with_a_picture(40, (500, y0, 1380, y1), 2, 3);
+    let image = c.image();
+    let ink = PageInk::new(&image, None, None, &[]).unwrap().unwrap();
+    let skipped = ink.skipped().to_vec();
+    assert_eq!(skipped.len(), 1, "{skipped:?}");
+    let strip = skipped[0];
+    assert!(strip.y0 <= y0 as u32 && strip.y1 >= y1 as u32 && strip.y1 <= y1 as u32 + 30, "{strip:?}");
+    let lines = read_ink(&ink, &model, &GlyphOptions::default()).unwrap();
+    let beside = (0..40).filter(|l| {
+        let (top, bottom) = (40 + l * 30, 60 + l * 30);
+        bottom > i64::from(strip.y0) && top < i64::from(strip.y1)
+    });
+    assert_eq!(lines.len(), 40 - beside.count());
+    assert!(lines.iter().all(|l| l.rect.y1 <= strip.y0 || l.rect.y0 >= strip.y1), "no line read inside the strip");
+    assert_eq!(read(&image, None, None, &model, &GlyphOptions::default()).unwrap().len(), lines.len());
+}
+
+/// Plan A9-V2: the strips left out are the fewest, densest ones that bring the components under
+/// the cap, and every component outside them is kept.
+#[test]
+fn dense_strips_are_left_out_until_the_cap_holds() {
+    let comp = |y0: i64, y1: i64| seg::Comp { b: Bx { x0: 0, y0, x1: 4, y1 }, area: 8, ring: false };
+    // Strips: rows 0-9 (3 comps), 20-29 (6), 40-49 (2), with gaps of 10 rows.
+    let mut comps: Vec<seg::Comp> = Vec::new();
+    for (y, n) in [(0, 3), (20, 6), (40, 2)] {
+        for _ in 0..n {
+            comps.push(comp(y, y + 10));
+        }
+    }
+    let mut kept = comps.clone();
+    assert!(seg::drop_dense_strips(&mut kept, 60, 11, 2).is_empty(), "under the cap");
+    assert_eq!(seg::drop_dense_strips(&mut kept, 60, 5, 2), [(20, 30)]);
+    assert_eq!(kept.len(), 5);
+    // Over the cap alone (6), then the densest left (3) until the cap holds.
+    let mut kept = comps.clone();
+    assert_eq!(seg::drop_dense_strips(&mut kept, 60, 4, 2), [(0, 10), (20, 30)]);
+    assert_eq!(kept.iter().map(|c| c.b.y0).collect::<Vec<_>>(), [40, 40]);
+    // Every strip over the cap: none kept.
+    let mut kept = comps.clone();
+    assert_eq!(seg::drop_dense_strips(&mut kept, 60, 1, 2), [(0, 10), (20, 30), (40, 50)]);
+    assert!(kept.is_empty());
+    // Gaps of at most `bridge` rows join strips.
+    let mut kept = comps.clone();
+    assert_eq!(seg::drop_dense_strips(&mut kept, 60, 5, 10), [(0, 50)]);
+    assert!(kept.is_empty());
 }
