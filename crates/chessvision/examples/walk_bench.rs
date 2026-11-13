@@ -15,13 +15,18 @@
 //! move. `--plain` forgets which moves were printed in bold first, as a document read before the
 //! weight was kept (or from OCR) has it, so the weight's part is measured on the same reading.
 //! `--rules=` reads with other [`WalkRules`] than the book's: `none`, `all`, or a comma-separated
-//! list of `implied_close`, `prose_moves`, `separators`, `results`, `ellipsis`, `misread_files`, so each rule's
+//! list of `implied_close`, `prose_moves`, `separators`, `results`, `ellipsis`, `misread_files`,
+//! `prose_squares`, `prose_pieces`, so each rule's
 //! effect on whole books is measured before it is turned on for them.
 //!
 //! The truth, not the count (finding A7-09): a move that is valid but wrong counts as valid, so
 //! - `--reference=<book.pgn>` aligns each document walked with the book's own PGN
 //!   (`reference::align`) and says how many moves it confirms, recovers, finds in conflict or
-//!   does not have;
+//!   does not have; and (plan A9-L4, A2-03) how the moves without a number right after prose
+//!   fare, by the word before them, as R6 measured them: a bare square after a preposition or a
+//!   determiner (`to d3`), another move after one (`any ♘xf5`), a move after a connective (`after
+//!   …`), and the others; a move printed `…d5` (an idea) is no such move. `--prose-dump=<file>`
+//!   writes each of them, its class, status and link, so the conflicts can be audited by hand;
 //! - `--save-baseline=<file>` keeps every move's status, by document, page, place and text;
 //!   `--baseline=<file>` matches each move with that run's (the rule of `cargo xtask chess-bench`,
 //!   `common/moves_match.rs`), lists the moves valid there and not now, and fails when there are
@@ -32,8 +37,8 @@
 
 use std::collections::BTreeMap;
 
-use pdfcraft_chessvision::doc::reference::{ReferenceIndex, align};
-use pdfcraft_chessvision::doc::{Block, ChessDoc, ChessPage, DocBuilder, GameOrigin, Inline, MoveStatus, WalkRules};
+use pdfcraft_chessvision::doc::reference::{LinkKind, ReferenceIndex, align};
+use pdfcraft_chessvision::doc::{Block, ChessDoc, ChessPage, DocBuilder, GameOrigin, Inline, MoveAt, MoveStatus, WalkRules};
 
 #[path = "common/moves_match.rs"]
 mod moves_match;
@@ -42,6 +47,50 @@ use moves_match::Key;
 
 /// The baseline file's format name.
 const BASELINE: &str = "pdfcraft-chess-walk-baseline";
+
+/// The words before a move R6 counted as a preposition or a determiner (plan A9-L4: the class of a
+/// bare move after prose; `R6/prose_classes.py`).
+const PREPOSITIONS: [&str; 25] = [
+    "to", "on", "at", "the", "of", "from", "into", "via", "towards", "toward", "for", "a", "an", "any", "our", "his", "their", "its", "this", "that",
+    "with", "against", "by", "about", "over",
+];
+/// The connectives R6 counted.
+const CONNECTIVES: [&str; 12] = ["after", "if", "and", "or", "then", "e.g.", "i.e.", "like", "as", "also", "but", "while"];
+
+/// The classes of a move without a number right after prose.
+const CLASSES: [&str; 4] = ["bare square after a preposition", "move after a determiner", "after a connective", "other"];
+
+/// The class of the move `text` without a number, after the prose `before` (two words or more):
+/// an index into [`CLASSES`], or `None` when it is no such move (a `…d5` idea, or prose of fewer
+/// words).
+fn prose_class(before: &str, text: &str) -> Option<usize> {
+    if before.split_whitespace().filter(|w| w.chars().any(char::is_alphabetic)).count() < 2 || text.starts_with("...") || text.starts_with('…') {
+        return None;
+    }
+    let last = before.split_whitespace().last()?.to_lowercase();
+    let last = last.trim_matches(|c| matches!(c, ',' | ';' | ':' | '('));
+    let bare = matches!(text.as_bytes(), [b'a'..=b'h', b'1'..=b'8']);
+    Some(if bare && PREPOSITIONS.contains(&last) {
+        0
+    } else if PREPOSITIONS.contains(&last) {
+        1
+    } else if CONNECTIVES.contains(&last) {
+        2
+    } else {
+        3
+    })
+}
+
+/// The link kinds counted for a class: confirmed, recovered, conflict, absent, none.
+fn link_slot(kind: Option<LinkKind>) -> usize {
+    match kind {
+        Some(LinkKind::Confirmed) => 0,
+        Some(LinkKind::Recovered) => 1,
+        Some(LinkKind::Conflict) => 2,
+        Some(LinkKind::Absent) => 3,
+        None => 4,
+    }
+}
 
 /// Forget which moves were printed in bold.
 fn plain(page: &mut ChessPage) {
@@ -69,6 +118,8 @@ fn rules(spec: &str) -> Result<WalkRules, String> {
             "results" => r.results = true,
             "ellipsis" => r.ellipsis = true,
             "misread_files" => r.misread_files = true,
+            "prose_squares" => r.prose_squares = true,
+            "prose_pieces" => r.prose_pieces = true,
             other => return Err(format!("unknown rule {other}")),
         }
     }
@@ -112,7 +163,11 @@ fn status_name(status: MoveStatus) -> String {
 }
 
 fn main() -> Result<(), String> {
-    let args = Args::parse(std::env::args().skip(1).collect(), &["dump", "rules", "reference", "save-baseline", "baseline", "allow-lost"])?;
+    let args =
+        Args::parse(std::env::args().skip(1).collect(), &["dump", "rules", "reference", "save-baseline", "baseline", "allow-lost", "prose-dump"])?;
+    let mut prose_dump = args.get("prose-dump").map(|p| std::fs::File::create(p).map_err(|e| e.to_string())).transpose()?;
+    // Per class of the moves after prose: confirmed, recovered, conflict, absent, unlinked.
+    let mut classes = [[0usize; 5]; CLASSES.len()];
     // `--dump=<file>`: every move's page, printed text and status, one per line, to compare runs.
     let mut dump = args.get("dump").map(|p| std::fs::File::create(p).map_err(|e| e.to_string())).transpose()?;
     let forget = args.get("plain").is_some();
@@ -177,9 +232,31 @@ fn main() -> Result<(), String> {
         let moves: usize = counts.values().sum();
         let mut note = String::new();
         if let Some(index) = &reference {
-            let c = align(&doc, index).counts;
+            let alignment = align(&doc, index);
+            let c = alignment.counts;
             for (slot, n) in links.iter_mut().zip([c.confirmed, c.recovered, c.conflict, c.absent]) {
                 *slot += n;
+            }
+            let kinds: BTreeMap<MoveAt, LinkKind> = alignment.moves.iter().map(|l| (l.at, l.kind)).collect();
+            for page in &doc.pages {
+                for (b, block) in page.blocks.iter().enumerate() {
+                    let (Block::Heading { inlines, .. } | Block::Paragraph { inlines, .. }) = block else { continue };
+                    for (i, inline) in inlines.iter().enumerate() {
+                        let Inline::Move(m) = inline else { continue };
+                        let Some(Inline::Text { text: before, .. }) = i.checked_sub(1).and_then(|k| inlines.get(k)) else { continue };
+                        if m.number.is_some() {
+                            continue;
+                        }
+                        let Some(class) = prose_class(before, &m.text) else { continue };
+                        let kind = kinds.get(&MoveAt::new(page.index, b, i)).copied();
+                        classes[class][link_slot(kind)] += 1;
+                        if let Some(f) = prose_dump.as_mut() {
+                            use std::io::Write;
+                            let tail: String = before.chars().rev().take(40).collect::<Vec<_>>().into_iter().rev().collect();
+                            let _ = writeln!(f, "{name}\tp.{}\t{}\t…{tail} {}\t{:?}\t{kind:?}", page.index + 1, CLASSES[class], m.text, m.status);
+                        }
+                    }
+                }
             }
             note = format!("; book PGN: {} confirmed, {} recovered, {} conflict, {} absent", c.confirmed, c.recovered, c.conflict, c.absent);
         }
@@ -204,6 +281,12 @@ fn main() -> Result<(), String> {
     println!("valid: {valid}, valid from a diagram: {from_diagram}");
     if reference.is_some() {
         println!("book PGN: {} confirmed, {} recovered, {} conflict, {} absent", links[0], links[1], links[2], links[3]);
+        println!("moves without a number right after prose, by class (confirmed recovered conflict absent unlinked):");
+        for (name, n) in CLASSES.iter().zip(&classes) {
+            println!("  {name}: {} ({} {} {} {} {})", n.iter().sum::<usize>(), n[0], n[1], n[2], n[3], n[4]);
+        }
+        let all: Vec<usize> = (0..5).map(|k| classes.iter().map(|c| c[k]).sum()).collect();
+        println!("  total: {} ({} {} {} {} {})", all.iter().sum::<usize>(), all[0], all[1], all[2], all[3], all[4]);
     }
     if let Some(path) = args.get("save-baseline") {
         save_baseline(path, &kept)?;
