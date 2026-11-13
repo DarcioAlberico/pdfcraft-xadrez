@@ -153,6 +153,8 @@ pub struct ReferenceIndex {
     by_key: HashMap<BookKey, usize>,
     /// The positions with these pieces, either side to move.
     by_placement: HashMap<PlacementKey, Vec<usize>>,
+    /// Every move's SAN without check marks ([`ReferenceIndex::has_move`]).
+    sans: HashSet<String>,
     start: Option<usize>,
     truncated: bool,
 }
@@ -213,7 +215,11 @@ impl ReferenceIndex {
             let fullmove = fen.fullmove_number();
             let position = self.position_of(fen.book_key(), game_at);
             let id = self.nodes.len();
-            self.nodes.push(IndexNode { at: RefNode { game: game_at, node }, position, parent, san: plain_san(game.san(node)), number });
+            let san = plain_san(game.san(node));
+            if parent.is_some() && !self.sans.contains(&san) {
+                self.sans.insert(san.clone());
+            }
+            self.nodes.push(IndexNode { at: RefNode { game: game_at, node }, position, parent, san, number });
             if let Some(p) = self.positions.get_mut(position) {
                 p.nodes.push(id);
             }
@@ -275,6 +281,20 @@ impl ReferenceIndex {
             return self.by_placement.contains_key(&fen.placement_key());
         }
         self.by_key.contains_key(&fen.book_key())
+    }
+
+    /// Whether some game of the reference plays a move written `san` (check marks, annotation
+    /// marks and a castling written with zeros set aside), from any position (plan A9-G4: whether
+    /// a decision made against another PGN can still apply).
+    pub fn has_move(&self, san: &str) -> bool {
+        self.sans.contains(&plain_san(san))
+    }
+
+    /// Move `at` as the reference writes it; `None` for a node it does not have or a game's start.
+    pub fn san(&self, at: RefNode) -> Option<&str> {
+        let game = self.games.get(at.game)?.game.as_ref()?;
+        let san = game.san(at.node);
+        (at.node > 0 && !san.is_empty()).then_some(san)
     }
 
     /// The position after move `at`.

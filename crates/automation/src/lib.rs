@@ -25,6 +25,7 @@ mod chess_pgn;
 mod chess_reference;
 mod chess_sample;
 mod chess_states;
+mod chess_store_migrate;
 mod comments;
 mod content;
 mod conventions;
@@ -135,6 +136,9 @@ pub struct Automation {
     /// app's own folders: `models`, `pieces`, `fonts`, `engine` (plan A9-T3). Resolved here, at
     /// L7, and handed to the engine as a parameter.
     install: Option<PathBuf>,
+    /// The app's chess stores' folder, where the chess tools keep corrections and the books'
+    /// PGNs by default (plan A9-G5a, decision D17; [`Automation::with_chess_data`]).
+    chess_data: chess_store_migrate::ChessData,
 }
 
 impl Default for Automation {
@@ -153,6 +157,7 @@ impl Automation {
             texts: TextCache::default(),
             glyph_samples: Default::default(),
             install: pdfcraft_platform::app_dirs::AppDirs::current().install.clone(),
+            chess_data: Default::default(),
         }
     }
 
@@ -862,6 +867,7 @@ impl Automation {
             "chess_reference_set" => self.chess_reference_set(&a)?,
             "chess_reference_status" => self.chess_reference_status(&a)?,
             "chess_reference_clear" => self.chess_reference_clear(&a)?,
+            "chess_store_migrate" => self.chess_store_migrate(&a)?,
             "chess_replace_diagram" => self.chess_replace_diagram(&a)?,
             "chess_document" => self.chess_document(&a)?,
             "chess_add_lichess_links" => self.chess_add_lichess_links(&a)?,

@@ -36,6 +36,17 @@
 //! renamed over it) or in memory ([`MemStore`], the web
 //! build, within a byte budget of its own). The file earlier builds wrote, `<hash>.json`, is still
 //! read and merged in, never written.
+//!
+//! **One file, several books** (plan A9-G1b). Builds before plan A9-G1 gave every PDF they made by
+//! extracting, splitting or combining one and the same identifier
+//! ([`DocKeys::KNOWN_CONSTANT_ID`]), and named corrections files by it, so one file
+//! ([`DocRecord::is_shared`]) can hold several books' corrections. It is never split on reading.
+//! A document whose page fingerprints are known sees, besides its own file, the entries of such a
+//! file whose page is one of its pages ([`DocStore::load_with`]); a change made with them
+//! ([`DocStore::update_with`]) first moves those entries into the document's own file (written
+//! first) and writes the shared file again without them (by `uid`, so doing it twice changes
+//! nothing). The others stay there for the book they belong to, and are listed as another book's
+//! where they show; nothing is deleted.
 
 use serde::{Deserialize, Serialize};
 
@@ -347,6 +358,18 @@ impl DocRecord {
     /// (the path compared by its hash, the only form a record keeps).
     pub fn matches(&self, keys: &DocKeys) -> bool {
         self.keys().matches(&DocRecord::new(keys, 0).keys())
+    }
+
+    /// Whether `other` records the same document, by the same rule.
+    pub fn same_document(&self, other: &DocRecord) -> bool {
+        self.keys().matches(&other.keys())
+    }
+
+    /// Whether the file recording this was keyed by the identifier every PDF earlier builds made
+    /// shared ([`DocKeys::KNOWN_CONSTANT_ID`]), so it may hold several books' corrections (plan
+    /// A9-G1b).
+    pub fn is_shared(&self) -> bool {
+        self.id0.as_deref().is_some_and(|id| id.eq_ignore_ascii_case(&hex(&DocKeys::KNOWN_CONSTANT_ID)))
     }
 
     /// The record as keys to compare, the path's hash standing for the path.
@@ -1083,6 +1106,10 @@ impl super::store::StoreKind for Corrections {
         CorrectionFile::new(doc)
     }
 
+    fn doc(file: &CorrectionFile) -> &DocRecord {
+        &file.doc
+    }
+
     fn set_doc(file: &mut CorrectionFile, doc: DocRecord) {
         file.doc = doc;
     }
@@ -1114,6 +1141,105 @@ pub type MemStore = super::store::DocStore<Corrections, super::store::MemBackend
 
 /// What a store found for a document: its file, where it is, and what could not be read.
 pub type Loaded = super::store::Loaded<CorrectionFile>;
+
+/// The entries of `file` whose page is one of `fingerprints` (tombstones too, so a deletion goes
+/// with them).
+fn on_pages<'a>(file: &'a CorrectionFile, fingerprints: &'a std::collections::HashSet<&str>) -> impl Iterator<Item = &'a Correction> {
+    file.entries.iter().filter(|e| fingerprints.contains(e.page_fp.as_str()))
+}
+
+impl<B: super::store::StoreBackend> super::store::DocStore<Corrections, B> {
+    /// The files of the store several books may share ([`DocRecord::is_shared`]), by name, as
+    /// read (one of a newer version, or that can't be read, is left out: it is never written).
+    fn shared_files(&self) -> Result<Vec<(String, CorrectionFile)>, StoreError> {
+        use super::store::StoreKind as _;
+        let mut out = Vec::new();
+        for name in self.backend().list(super::store::MAX_FILES)?.into_iter().filter(|n| super::store::named_for::<Corrections>(n)) {
+            let Some(bytes) = self.backend().read(&name, MAX_FILE_BYTES)? else { continue };
+            let shared =
+                super::store::header(&bytes).is_some_and(|h| h.format.as_deref() == Some(FORMAT) && h.doc.as_ref().is_some_and(DocRecord::is_shared));
+            if let (true, Parsed::File { file, .. }) = (shared, Corrections::read(&bytes)) {
+                out.push((name, file));
+            }
+        }
+        Ok(out)
+    }
+
+    /// [`DocStore::load`], for a document whose page fingerprints are `fingerprints` (plan
+    /// A9-G1b): with the entries of the files several books share whose page is one of its pages
+    /// (the document's own, as read; nothing is written). With them, the uids of the entries
+    /// shown that are another book's: in such a file, on no page of this document.
+    pub fn load_with(&self, keys: &DocKeys, fingerprints: &[String]) -> Result<(Loaded, Vec<String>), StoreError> {
+        let mut l = self.load(keys, fingerprints.len())?;
+        let pages: std::collections::HashSet<&str> = fingerprints.iter().map(String::as_str).collect();
+        let mut theirs = std::collections::HashSet::new();
+        for (name, shared) in self.shared_files()? {
+            theirs.extend(shared.entries.iter().filter(|e| !pages.contains(e.page_fp.as_str())).map(|e| e.uid.clone()));
+            if name != l.name {
+                let mine = CorrectionFile { entries: on_pages(&shared, &pages).cloned().collect(), ..shared.clone() };
+                l.file.merge(&mine);
+            }
+        }
+        let other: Vec<String> =
+            l.file.entries.iter().filter(|e| theirs.contains(&e.uid) && !pages.contains(e.page_fp.as_str())).map(|e| e.uid.clone()).collect();
+        Ok((l, other))
+    }
+
+    /// [`DocStore::update`], for a document whose page fingerprints are `fingerprints`, after
+    /// taking its entries out of the files several books share (plan A9-G1b): those whose page is
+    /// one of its pages go into its own file, written first, and each such file is written again
+    /// without them, the other books' entries left there. By uid, so doing it again moves nothing.
+    /// With the change's result, how many entries moved.
+    pub fn update_with<R, E>(
+        &self,
+        keys: &DocKeys,
+        fingerprints: &[String],
+        change: impl FnOnce(&mut CorrectionFile) -> Result<R, E>,
+    ) -> Result<(R, Loaded, usize), StoreError>
+    where
+        StoreError: From<E>,
+    {
+        let mut moved = 0usize;
+        let (out, l) = self.update_in(
+            keys,
+            fingerprints.len(),
+            |store, l| {
+                let pages: std::collections::HashSet<&str> = fingerprints.iter().map(String::as_str).collect();
+                let (mut leaving, before) = (Vec::new(), l.file.entries.len());
+                for (name, mut shared) in store.shared_files()? {
+                    if name == l.name {
+                        continue;
+                    }
+                    // Another book's entries an earlier load copied into this document's file:
+                    // they are in the shared file still, for that book (a later change here kept).
+                    let others: std::collections::HashMap<&str, u64> =
+                        shared.entries.iter().filter(|e| !pages.contains(e.page_fp.as_str())).map(|e| (e.uid.as_str(), e.rev)).collect();
+                    l.file.entries.retain(|e| pages.contains(e.page_fp.as_str()) || others.get(e.uid.as_str()).is_none_or(|rev| e.rev > *rev));
+                    let mine: Vec<Correction> = on_pages(&shared, &pages).cloned().collect();
+                    if mine.is_empty() {
+                        continue;
+                    }
+                    moved = moved.saturating_add(mine.len());
+                    l.file.merge(&CorrectionFile { entries: mine.clone(), ..shared.clone() });
+                    shared.entries.retain(|e| !mine.iter().any(|m| m.uid == e.uid));
+                    leaving.push((name, shared));
+                }
+                if leaving.is_empty() && l.file.entries.len() == before {
+                    return Ok(());
+                }
+                // The document's own file first, so an interruption leaves the entries in both.
+                l.file.doc = DocRecord::new(keys, fingerprints.len());
+                store.write(l)?;
+                for (name, shared) in leaving {
+                    store.backend().write::<StoreError>(&name, &shared.to_bytes()?)?;
+                }
+                Ok(())
+            },
+            change,
+        )?;
+        Ok((out, l, moved))
+    }
+}
 
 /// Why a corrections store failed.
 #[derive(Debug, thiserror::Error)]

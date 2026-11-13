@@ -338,6 +338,17 @@ pub(crate) struct ChessCache {
     fingerprints: Vec<(DocId, (u64, usize), Arc<corrections::Fingerprints>)>,
     /// Pages [`Session::chess_scan`] has scanned (not answered from here): [`Session::chess_scanned`].
     scanned: usize,
+    /// What each open document's reads taught and what the user said of its pages (plan A9-I1a):
+    /// [`Session::chess_cipher`], [`Session::chess_origin`].
+    books: std::collections::HashMap<DocId, BookState>,
+}
+
+/// One document's book cipher, as its reads and exports taught it, and its book origin, as the
+/// user said (plan A9-I1a, finding A5-10: one slot for every document lost them).
+#[derive(Default)]
+struct BookState {
+    cipher: Option<pdfcraft_chessvision::cipher::BookCipher>,
+    origin: document::BookOrigin,
 }
 
 impl ChessCache {
@@ -435,6 +446,7 @@ impl ChessCache {
         self.keys.retain(|k| k.doc != doc);
         self.corrections.retain(|(d, _)| *d != doc);
         self.fingerprints.retain(|(d, ..)| *d != doc);
+        self.books.remove(&doc);
     }
 
     #[cfg(test)]
@@ -1355,6 +1367,34 @@ impl Session {
         self.chess.corrections.retain(|(d, _)| *d != id);
         if let Some(file) = file.filter(|f| f.live().next().is_some()) {
             self.chess.corrections.push((id, Arc::new(file)));
+        }
+    }
+
+    /// The book cipher document `id`'s reads and exports taught so far (plan A9-I1a): the next
+    /// read or export of it starts from it, whatever other document was read in between. `None`
+    /// before the first, or for a document that is not open.
+    pub fn chess_cipher(&self, id: DocId) -> Option<pdfcraft_chessvision::cipher::BookCipher> {
+        self.chess.books.get(&id).and_then(|b| b.cipher.clone())
+    }
+
+    /// Keep `cipher` as what document `id`'s reads taught (a read or an export of it gave it
+    /// back). Nothing for a document that is not open; closing it forgets it.
+    pub fn set_chess_cipher(&mut self, id: DocId, cipher: pdfcraft_chessvision::cipher::BookCipher) {
+        if self.get(id).is_some() {
+            self.chess.books.entry(id).or_default().cipher = Some(cipher);
+        }
+    }
+
+    /// Where document `id`'s pages came from, as the user said (Auto until said, plan A9-I1a).
+    pub fn chess_origin(&self, id: DocId) -> document::BookOrigin {
+        self.chess.books.get(&id).map(|b| b.origin).unwrap_or_default()
+    }
+
+    /// The user said where document `id`'s pages came from: its later reads and exports follow it.
+    /// Nothing for a document that is not open; closing it forgets it.
+    pub fn set_chess_origin(&mut self, id: DocId, origin: document::BookOrigin) {
+        if self.get(id).is_some() {
+            self.chess.books.entry(id).or_default().origin = origin;
         }
     }
 

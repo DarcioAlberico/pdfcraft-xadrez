@@ -3110,6 +3110,7 @@ chess undo step	Clear drawings	удаление рисунков
 	Diagram	Диаграмма
 	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Не удалось прочитать сохранённые исправления диаграмм ({why}); они отложены как {name}.
 	Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted.	Некоторые сохранённые исправления диаграмм не удалось прочитать ({why}); остальные используются, а {name} сохраняется и никогда не удаляется.
+	Diagram corrections or books' PGNs an earlier PdfCraft changed were brought in.	Исправления диаграмм или PGN книг, изменённые более ранней версией PdfCraft, перенесены.
 	The diagram corrections couldn't be saved: {e}	Не удалось сохранить исправления диаграмм: {e}
 	Diagram {n}, page {p}: {state}	Диаграмма {n}, стр. {p}: {state}
 	Page {p} · diagram {n} of {m}	Стр. {p} · диаграмма {n} из {m}
@@ -3271,6 +3272,7 @@ castling	long	длинная
 	Remove the book's PGN	Удалить PGN книги
 	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	Не удалось прочитать PGN книги, сохранённый для этого документа ({why}); он отложен как {name}.
 	The book's PGN couldn't be read: {e}	Не удалось прочитать PGN книги: {e}
+	Choices on moves in conflict naming a move this PGN doesn't have: {n}. They are kept for a PGN that has it.	Решения по ходам в конфликте, указывающие ход, которого нет в этом PGN: {n}. Они сохраняются для PGN, в котором он есть.
 	{name} was not kept as the book's PGN: {e}	{name} не сохранён как PGN книги: {e}
 	no game in it	в нём нет ни одной партии
 	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	PGN книги {name}: партий — {games}, ходов — {moves}. Страницы, которые читает вкладка «Текст», связываются с ним.
@@ -3350,3 +3352,6 @@ castling	long	длинная
 	Larger text	Крупнее текст
 diagram state	Read	Прочитано
 the move's comment	Move comment	Комментарий к ходу
+	Detecting in another book… page {d} of {t}	Поиск в другой книге… страница {d} из {t}
+	Redraw in the PDF?	Перерисовать в PDF?
+	Diagram {n}, open	Диаграмма {n}, открыть

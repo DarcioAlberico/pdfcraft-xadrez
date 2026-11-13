@@ -673,8 +673,9 @@ pub fn editor_ui(
     // Move number, side to move, castling, view. The side to move has a row of its own, so its
     // label and its two choices stay together when the panel is narrow.
     ui.horizontal_wrapped(|ui| {
-        ui.label(tl!("Move number:"));
+        let named = ui.label(tl!("Move number:"));
         ui.add(egui::DragValue::new(&mut ed.position.fullmove_number).range(1..=MAX_MOVE_NUMBER).speed(0.2))
+            .labelled_by(named.id)
             .on_hover_text(tl!("The move the diagram stands at: 35 with Black to move is 35…"));
     });
     ui.horizontal_wrapped(|ui| {

@@ -1,7 +1,8 @@
 //! Chess ▸ Diagrams ▸ the corrections the user confirms, kept in the app (plan A8, P3b2).
 //!
-//! **Where.** The desktop keeps them in the `chess/corrections` folder of the recovery folder,
-//! beside the autosaved games and under the same instance lock (`DirStore`); the web build keeps
+//! **Where.** The desktop keeps them in the `chess/corrections` folder of the app's data folder
+//! (plan A9-G5a, decision D17: the one the command line uses too; [`PdfCraftApp::use_chess_data`]
+//! merges in what earlier builds kept in the recovery folder) (`DirStore`); the web build keeps
 //! them in eframe's `Storage` under [`STORAGE_KEY`], within [`WEB_BUDGET`] bytes of their own
 //! (`MemStore`). Until either is set (tests, a session without recovery) they live in memory for
 //! the session. The format and the rules are the engine's (`pdfcraft_engine::chess::corrections`):
@@ -55,27 +56,31 @@ impl Default for Store {
 }
 
 impl Store {
-    fn load(&self, keys: &DocKeys, pages: usize) -> Result<Loaded, StoreError> {
+    /// The document's corrections, with its own entries of a file several books shared (plan
+    /// A9-G1b; `fingerprints`: its pages').
+    fn load(&self, keys: &DocKeys, fingerprints: &[String]) -> Result<Loaded, StoreError> {
         match self {
             #[cfg(not(target_arch = "wasm32"))]
-            Store::Folder(s) => s.load(keys, pages),
-            Store::Memory { store, .. } => store.load(keys, pages),
+            Store::Folder(s) => s.load_with(keys, fingerprints).map(|(l, _)| l),
+            Store::Memory { store, .. } => store.load_with(keys, fingerprints).map(|(l, _)| l),
         }
     }
 
+    /// A change, after the document's entries are taken out of a file several books shared (plan
+    /// A9-G1b).
     fn update<R>(
         &mut self,
         keys: &DocKeys,
-        pages: usize,
+        fingerprints: &[String],
         change: impl FnOnce(&mut CorrectionFile) -> Result<R, CorrectionError>,
     ) -> Result<(R, Loaded), StoreError> {
         match self {
             #[cfg(not(target_arch = "wasm32"))]
-            Store::Folder(s) => s.update(keys, pages, change),
+            Store::Folder(s) => s.update_with(keys, fingerprints, change).map(|(r, l, _)| (r, l)),
             Store::Memory { store, changed } => {
-                let out = store.update(keys, pages, change)?;
+                let (r, l, _) = store.update_with(keys, fingerprints, change)?;
                 *changed = true;
-                Ok(out)
+                Ok((r, l))
             }
         }
     }
@@ -170,14 +175,19 @@ fn now() -> u64 {
 
 impl PdfCraftApp {
     /// Load document `id`'s corrections from the store into the session the first time they are
-    /// asked for; from then on the session holds them. Whether the document is open.
+    /// asked for; from then on the session holds them. Whether the document is open. With the
+    /// page fingerprints, a file several books shared gives this book its own entries (plan
+    /// A9-G1b).
     fn load_chess_corrections(&mut self, id: DocId) -> bool {
-        let Some(doc) = self.session.get(id) else { return false };
+        if self.session.get(id).is_none() {
+            return false;
+        }
         if self.chess.corrections.doc(id).is_some() {
             return true;
         }
-        let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
-        let file = match self.chess.corrections.store.load(&keys, pages) {
+        let fingerprints = self.session.chess_fingerprints(id).map(|f| f.pages().to_vec()).unwrap_or_default();
+        let Some(keys) = self.session.get(id).map(|d| d.doc_keys()) else { return false };
+        let file = match self.chess.corrections.store.load(&keys, &fingerprints) {
             Ok(loaded) => {
                 self.say_unread_corrections(&loaded);
                 loaded.file
@@ -230,19 +240,22 @@ impl PdfCraftApp {
         }
     }
 
-    /// Mark each scanned diagram with what the user did with it (Verified, Corrected): the list,
-    /// the marks on the page and the review queue follow. Closed documents' corrections go.
-    pub(crate) fn refresh_chess_kinds(&mut self) {
+    /// Mark each diagram scanned in document `id` with what the user did with it (Verified,
+    /// Corrected): the list, the marks on the page and the review queue follow. Closed documents'
+    /// corrections go.
+    pub(crate) fn refresh_chess_kinds(&mut self, id: DocId) {
         let open: Vec<DocId> = self.chess.corrections.docs.iter().map(|d| d.doc).filter(|d| self.session.get(*d).is_none()).collect();
         self.chess.corrections.docs.retain(|d| !open.contains(&d.doc));
-        let Some(id) = self.chess.results.as_ref().map(|r| r.doc) else { return };
+        if self.chess.results_of(id).is_none() {
+            return;
+        }
         self.load_chess_corrections(id);
         let kinds = self.chess_marks(id);
         // The readings the book's PGN has, unless the user confirmed them (plan "Carregar PGN do
         // livro", R6b): the engine's rule, `Status::with_reference`.
         let index = self.book_pgn_index(id);
         let mut confirmed = std::collections::HashSet::new();
-        if let (Some(index), Some(results)) = (index.as_deref(), self.chess.results.as_ref()) {
+        if let (Some(index), Some(results)) = (index.as_deref(), self.chess.results_of(id)) {
             for page in &results.pages {
                 for (i, _) in page.diagrams.iter().enumerate() {
                     let reading = crate::chess_ui::ChessResults::reading(page, i);
@@ -253,7 +266,7 @@ impl PdfCraftApp {
                 }
             }
         }
-        if let Some(results) = self.chess.results.as_mut() {
+        if let Some(results) = self.chess.results_of_mut(id) {
             results.kinds = kinds;
             results.confirmed = confirmed;
         }
@@ -267,7 +280,7 @@ impl PdfCraftApp {
     fn chess_marks(&mut self, id: DocId) -> HashMap<(usize, usize), Kept> {
         let Some(file) = self.session.chess_corrections(id) else { return HashMap::new() };
         let Some(fingerprints) = self.session.chess_fingerprints(id) else { return HashMap::new() };
-        let Some(results) = self.chess.results.as_ref().filter(|r| r.doc == id) else { return HashMap::new() };
+        let Some(results) = self.chess.results_of(id) else { return HashMap::new() };
         let pages: Vec<PageBoxes> = results
             .pages
             .iter()
@@ -288,7 +301,7 @@ impl PdfCraftApp {
 
     /// Diagram `index` of `page` of `id` as the scan found it: what a correction of it needs.
     pub(crate) fn chess_diagram_target(&self, id: DocId, page: usize, index: usize) -> Option<DiagramTarget> {
-        let results = self.chess.results.as_ref().filter(|r| r.doc == id)?;
+        let results = self.chess.results_of(id)?;
         let p = results.pages.iter().find(|p| p.page == page)?;
         let (d, crop) = (p.diagrams.get(index)?, p.geometry?.crop_box());
         let b = d.candidate.bbox_user;
@@ -317,10 +330,10 @@ impl PdfCraftApp {
         }
         let fingerprints = self.session.chess_fingerprints(id)?;
         let doc = self.session.get(id)?;
-        let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
+        let keys = doc.doc_keys();
         let new = NewCorrection { page, rect, orig: Some(Original { fen: target.read.clone(), model: None }), fen, kind };
         let at = now();
-        match self.chess.corrections.store.update(&keys, pages, |f| f.set(new, at, fingerprints.as_ref())) {
+        match self.chess.corrections.store.update(&keys, fingerprints.pages(), |f| f.set(new, at, fingerprints.as_ref())) {
             Ok((_, loaded)) => {
                 self.chess.corrections.said = false;
                 self.say_corrections_set_aside(&loaded);
@@ -343,13 +356,13 @@ impl PdfCraftApp {
     pub fn verify_chess_page(&mut self, page: usize) -> usize {
         let Some((_, id)) = self.active_ids() else { return 0 };
         let label = self.chess_page_label(page);
-        let Some(p) = self.chess.results.as_ref().filter(|r| r.doc == id).and_then(|r| r.pages.iter().find(|p| p.page == page)).cloned() else {
+        let Some(p) = self.chess.results_of(id).and_then(|r| r.pages.iter().find(|p| p.page == page)).cloned() else {
             self.notify(tl!("Detect the diagrams on this page first.").to_string());
             return 0;
         };
         let (mut done, mut left) = (0usize, 0usize);
         for index in 0..p.diagrams.len() {
-            let kind = self.chess.results.as_ref().and_then(|r| r.kind(page, index));
+            let kind = self.chess.results_of(id).and_then(|r| r.kind(page, index));
             let state = Status::of(crate::chess_ui::ChessResults::reading(&p, index), kind);
             if state.to_review() {
                 left = left.saturating_add(1);
@@ -397,8 +410,8 @@ impl PdfCraftApp {
         if next {
             // The last one to review: the review is done, and the tab says so instead of moving
             // on (plan A8, P4).
-            let reviewing = matches!(self.chess.list.filter, None | Some(crate::chess_widgets::DiagramState::Review));
-            let finished = self.chess.results.as_ref().filter(|r| r.doc == id && reviewing && r.review_queue().is_empty()).map(|r| r.reviewed());
+            let reviewing = matches!(self.chess.filter(id), None | Some(crate::chess_widgets::DiagramState::Review));
+            let finished = self.chess.results_of(id).filter(|r| reviewing && r.review_queue().is_empty()).map(|r| r.reviewed());
             match finished {
                 Some((checked, of)) => {
                     let said = crate::i18n::fmt(tl!("Review done: {d} of {n} checked"), &[("d", &checked.to_string()), ("n", &of.to_string())]);
@@ -418,14 +431,14 @@ impl PdfCraftApp {
         let Some(ed) = self.chess.editor.as_ref() else { return false };
         let (id, page, index) = (ed.doc, ed.page, ed.index);
         let Some(uid) = self.chess_correction_uid(id, page, index) else { return false };
-        let Some(doc) = self.session.get(id) else { return false };
-        let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
+        let Some(keys) = self.session.get(id).map(|d| d.doc_keys()) else { return false };
+        let fingerprints = self.session.chess_fingerprints(id).map(|f| f.pages().to_vec()).unwrap_or_default();
         let at = now();
         let gone = self
             .chess
             .corrections
             .store
-            .update(&keys, pages, |f| if f.delete(&uid, at) { Ok(()) } else { Err(CorrectionError::NoSuchCorrection(uid.clone())) });
+            .update(&keys, &fingerprints, |f| if f.delete(&uid, at) { Ok(()) } else { Err(CorrectionError::NoSuchCorrection(uid.clone())) });
         match gone {
             Ok((_, loaded)) => {
                 self.say_corrections_set_aside(&loaded);
@@ -448,8 +461,8 @@ impl PdfCraftApp {
     /// The uid of the correction over diagram `index` of `page` of `id`, when there is one: the
     /// one the marks show ([`Self::chess_marks`]).
     fn chess_correction_uid(&mut self, id: DocId, page: usize, index: usize) -> Option<String> {
-        self.refresh_chess_kinds();
-        self.chess.results.as_ref().filter(|r| r.doc == id)?.kinds.get(&(page, index)).map(|k| k.uid.clone())
+        self.refresh_chess_kinds(id);
+        self.chess.results_of(id)?.kinds.get(&(page, index)).map(|k| k.uid.clone())
     }
 
     /// The store kept `file` for `id` under `keys`: the session holds it, and the marks follow.
@@ -459,7 +472,7 @@ impl PdfCraftApp {
             Some(d) => d.keys = keys,
             None => self.chess.corrections.docs.push(DocCorrections { doc: id, keys }),
         }
-        self.refresh_chess_kinds();
+        self.refresh_chess_kinds(id);
     }
 
     /// Document `id` was saved: its corrections are recorded under the keys it has now, so they

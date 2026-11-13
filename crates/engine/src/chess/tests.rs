@@ -709,6 +709,35 @@ fn a_reading_settles_only_for_the_model_it_was_made_with() {
     assert!(made.settles(&params(None)), "detection only takes any reading");
 }
 
+/// Plan A9-I1a (A5-10): each open document keeps its own book cipher and book origin. Teaching
+/// one book never takes them from another, and closing a document forgets its own.
+#[test]
+fn each_document_keeps_its_own_cipher_and_origin() {
+    use crate::chess::document::BookOrigin;
+    use pdfcraft_chess::placement::PieceKind;
+    use pdfcraft_chessvision::cipher::{BookCipher, Source as Taught};
+    let bytes = pdf(&font_board(60.0, 60.0, MERIDA_START), "ChessMerida", None, "");
+    let mut s = Session::new();
+    let a = s.open("a.pdf", None, Arc::new(bytes.clone()), None).unwrap();
+    let b = s.open("b.pdf", None, Arc::new(bytes), None).unwrap();
+    let mut taught = BookCipher::default();
+    taught.observe("@", PieceKind::Knight, Taught::Legality, None);
+    assert!(!taught.entries().is_empty());
+    s.set_chess_cipher(a, taught.clone());
+    s.set_chess_origin(a, BookOrigin::Scanned);
+    s.set_chess_cipher(b, BookCipher::default());
+    s.set_chess_origin(b, BookOrigin::Digital);
+    assert_eq!(s.chess_cipher(a), Some(taught), "reading B leaves what A taught");
+    assert_eq!(s.chess_origin(a), BookOrigin::Scanned);
+    assert_eq!(s.chess_origin(b), BookOrigin::Digital);
+    s.close(a);
+    assert_eq!(s.chess_cipher(a), None, "closing forgets it");
+    assert_eq!(s.chess_origin(a), BookOrigin::Auto);
+    s.set_chess_origin(a, BookOrigin::Scanned);
+    assert_eq!(s.chess_origin(a), BookOrigin::Auto, "nothing kept for a document that is not open");
+    assert_eq!(s.chess_origin(b), BookOrigin::Digital);
+}
+
 mod capture;
 mod document;
 mod epub;

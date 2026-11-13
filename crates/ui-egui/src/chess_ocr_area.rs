@@ -221,7 +221,7 @@ impl PdfCraftApp {
         self.sync_chess_docs();
         let lang = crate::chess_capture::document_lang(&self.chess, Some(id));
         let games = self.chess.games.current_doc();
-        let book = self.chess.cipher.as_ref().filter(|(d, _)| *d == id).map(|(_, c)| c.clone());
+        let book = self.session.chess_cipher(id);
         let query = AreaQuery { page, rect_user: [user.x0, user.y0, user.x1, user.y1], rect_view: job.rect_view(), lang };
         let reader = self.chess.capture.area.reader.clone();
         let models_dir = self.chess.models.models_dir();
@@ -324,7 +324,7 @@ impl PdfCraftApp {
     /// is there.
     fn layer_poor(&self, vi: usize, id: DocId, page: usize) -> Option<bool> {
         let stamp = self.session.chess_stamp(id);
-        if let Some(t) = self.chess.text.as_ref().filter(|t| t.doc == id && t.page == page && Some(t.stamp) == stamp) {
+        if let Some(t) = self.chess.text_of(id).filter(|t| t.page == page && Some(t.stamp) == stamp) {
             return Some(t.ocr || t.needs_ocr.is_some());
         }
         let text = self.views.get(vi)?.texts.get(&page)?.clone();
