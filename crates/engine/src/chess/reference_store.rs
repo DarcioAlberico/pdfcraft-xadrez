@@ -1,12 +1,26 @@
 //! Chess: the book's own PGN kept with its document, so the book opens linked to it again (plan
 //! "Carregar PGN do livro", R5; decision D3: a copy of the PGN, not a path to it).
 //!
-//! **Format** (version [`VERSION`]), one JSON file per document, named and found as the diagram
-//! corrections are ([`corrections::file_name`], the document recorded by [`DocRecord`]):
-//! `{"format":"pdfcraft-chess-reference","version":1,"doc":{…},"pgn":{…}}`. The PGN is kept as
-//! its text (at most [`MAX_REFERENCE_BYTES`]), its hash, its size, the file name it came from
-//! (never its path), when it was kept (`at`, seconds since 1970) and its games and moves. A file
-//! whose text does not have its hash is not trusted.
+//! **Where** (plan A9 §2.3, step G3a): a kind of the document store ([`super::store::DocStore`],
+//! kind [`Reference`]), as the diagram corrections are: one file per document,
+//! `<hash>.reference.json`, found by the document's keys and the document it records
+//! ([`DocRecord`]), in a folder ([`DirStore`], desktop and command line) or in memory
+//! ([`MemStore`], the web build, within a byte budget of its own). The file builds before G3a
+//! wrote, `<hash>.json`, is still read and merged in ([`ReferenceFile::merge`]), and never written,
+//! moved or deleted; a corrections file under that name is never taken for the PGN, nor set aside
+//! by it (A4-07). Reading only reads (A4-13): a file that can't be read is reported, and set aside
+//! as `….bad` only by the next change, never deleted.
+//!
+//! **Format** (version [`VERSION`]):
+//! `{"format":"pdfcraft-chess-reference","version":2,"doc":{…},"pgn":{…},"decisions":[…]}`. The
+//! PGN is kept as its text (at most [`MAX_REFERENCE_BYTES`]), its hash, its size, the file name it
+//! came from (never its path), when it was kept (`at`, seconds since 1970) and its games and
+//! moves. A file whose text does not have its hash is not trusted. Removing the PGN leaves the
+//! file without it and with when it was removed (`removed`), so a copy kept under the name before,
+//! older, does not bring it back. Fields a later build of this version writes, in the file, the
+//! PGN or a decision, are kept as they are. Version 1 (the PGN required, no `removed`) is read and
+//! written again as version 2; a build of version 1 never finds a version 2 file, and opens one
+//! only as read only.
 //!
 //! **Decisions** (plan "Carregar PGN do livro", R6e): what the user chose for a move of the text
 //! the PGN plays from another position (a conflict), the book's move or the PGN's, each by the
@@ -14,27 +28,25 @@
 //! another move's decision. They belong to the PGN they were made against: keeping the same PGN
 //! again keeps them (the same text, or the same file as a build before plan A9-F1 read it, with
 //! U+FFFD where a byte was not UTF-8: [`KeptPgn::is_same_as`]); keeping another PGN drops them; a
-//! save as another file keeps them.
-//!
-//! **Safety**, as for the corrections: a file of a newer version is read but never written or
-//! removed; one that can't be read is set aside as `….bad`, never deleted. The folder store
-//! ([`DirStore`], desktop and command line) writes under a lock file through a staging file
-//! renamed over the old one, with the corrections' own helpers; the memory store ([`MemStore`],
-//! the web build) keeps the files within a byte budget. Removing a document's PGN, which only a
-//! person asks for, removes its file.
+//! save as another file keeps them. A decision that can't be read is left out and counted, the
+//! others kept.
 
 use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 
 use super::corrections::{self, DocRecord};
 use super::keys::DocKeys;
+use super::store::{DocStore, Parsed, StoreBackend, StoreFailure, StoreKind};
 use pdfcraft_chessvision::doc::MoveAt;
 use pdfcraft_chessvision::doc::reference::MAX_REFERENCE_BYTES;
 
 /// The format's name, in every file.
 pub const FORMAT: &str = "pdfcraft-chess-reference";
 
-/// The version this build reads and writes.
-pub const VERSION: u32 = 1;
+/// The version this build writes. Version 1 is read and written again as this one; a newer one
+/// is read only. Version 2 (plan A9-G3a) is named `<hash>.reference.json`, can say the PGN was
+/// removed, and keeps fields a later build of it writes.
+pub const VERSION: u32 = 2;
 
 /// Largest file read or written: the PGN's [`MAX_REFERENCE_BYTES`] as JSON, where a quote or a
 /// line break takes two bytes, and the rest.
@@ -74,6 +86,9 @@ pub struct Decision {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub san_read: Option<String>,
     pub choice: Choice,
+    /// Fields a later build of this version wrote, kept as they are while the decision is.
+    #[serde(flatten)]
+    pub other: Map<String, Value>,
 }
 
 impl Decision {
@@ -83,7 +98,7 @@ impl Decision {
     pub fn new(at: MoveAt, san: String, san_read: String, choice: Choice) -> Decision {
         let to = |n: u32| usize::try_from(n).unwrap_or(usize::MAX);
         let san_read = Some(san_read).filter(|s| !s.is_empty());
-        Decision { page: to(at.page), block: to(at.block), inline: to(at.inline), san, san_read, choice }
+        Decision { page: to(at.page), block: to(at.block), inline: to(at.inline), san, san_read, choice, other: Map::new() }
     }
 
     /// Where the move decided on is; `None` for a place no page holds.
@@ -115,6 +130,12 @@ impl Decision {
                 _ => self.san == other.san,
             }
     }
+
+    /// Whether it names a move this build keeps: a SAN of 1 to [`MAX_SAN`] bytes, the SAN read
+    /// no longer.
+    fn names_a_move(&self) -> bool {
+        !self.san.is_empty() && self.san.len() <= MAX_SAN && self.san_read.as_ref().is_none_or(|s| s.len() <= MAX_SAN)
+    }
 }
 
 /// The PGN a document keeps.
@@ -135,6 +156,9 @@ pub struct KeptPgn {
     /// a U+FFFD, the BOM kept), so a PGN they kept is still known as this one. Never written.
     #[serde(skip)]
     pub legacy_hash: Option<String>,
+    /// Fields a later build of this version wrote, kept as they are while the PGN is.
+    #[serde(flatten)]
+    pub other: Map<String, Value>,
 }
 
 impl KeptPgn {
@@ -145,7 +169,7 @@ impl KeptPgn {
             return Err(ReferenceStoreError::TooBig);
         }
         let name = name.filter(|n| !n.is_empty() && n.len() <= MAX_NAME).map(str::to_owned);
-        Ok(KeptPgn { name, hash: text_hash(&text), bytes: text.len(), at, games, moves, text, legacy_hash: None })
+        Ok(KeptPgn { name, hash: text_hash(&text), bytes: text.len(), at, games, moves, text, legacy_hash: None, other: Map::new() })
     }
 
     /// This PGN, read from the file's `bytes` (by `pdfcraft_chess::pgn::decode`): also known by
@@ -160,6 +184,20 @@ impl KeptPgn {
     pub fn is_same_as(&self, kept: &KeptPgn) -> bool {
         self.hash == kept.hash || self.legacy_hash.as_deref() == Some(kept.hash.as_str())
     }
+
+    /// What makes it a PGN not to trust, when something does.
+    fn problem(&self) -> Option<String> {
+        if self.text.len() > MAX_REFERENCE_BYTES {
+            return Some(format!("a PGN larger than {} MB", MAX_REFERENCE_BYTES >> 20));
+        }
+        if self.bytes != self.text.len() || self.hash != text_hash(&self.text) {
+            return Some("the PGN is not the one it was kept as (its size or hash differs)".into());
+        }
+        if self.name.as_ref().is_some_and(|n| n.len() > MAX_NAME) {
+            return Some("the PGN's file name is too long".into());
+        }
+        None
+    }
 }
 
 /// The hash a kept PGN's text has: 32 hexadecimal digits, to name and compare (not
@@ -168,91 +206,139 @@ pub fn text_hash(text: &str) -> String {
     corrections::hash_hex(&[b"pgn", text.as_bytes()])
 }
 
-/// A document's kept PGN.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+/// A document's kept PGN, its removal, and the decisions made against it.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ReferenceFile {
     pub format: String,
+    /// [`VERSION`], or the newer version of a file read only.
     pub version: u32,
     pub doc: DocRecord,
-    pub pgn: KeptPgn,
-    /// The user's decisions on moves in conflict with the PGN (R6e; optional, so a file without
-    /// them reads as before).
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    /// The PGN kept; `None` when there is none, or it was removed (`removed`).
+    pub pgn: Option<KeptPgn>,
+    /// When the PGN was removed, in seconds since 1970.
+    pub removed: Option<u64>,
+    /// The user's decisions on moves in conflict with the PGN (R6e).
     pub decisions: Vec<Decision>,
+    /// Fields a later build of this version wrote, kept as they are.
+    pub other: Map<String, Value>,
 }
 
 /// What a file's bytes are.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Read {
     File(ReferenceFile),
-    /// A file of a newer version: kept as it is, never written or removed by this build. Its
-    /// PGN, when this build can make it out, for reading.
+    /// A file of a newer version: kept as it is, never written or removed by this build. What
+    /// this build can make out of it, for reading.
     Newer(u32, Option<ReferenceFile>),
     /// Not a file this build can read, and why: set it aside, never delete it.
     Bad(String),
 }
 
+/// A file as written.
+#[derive(Serialize)]
+struct Written<'a> {
+    format: &'a str,
+    version: u32,
+    doc: &'a DocRecord,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pgn: Option<&'a KeptPgn>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    removed: Option<u64>,
+    #[serde(skip_serializing_if = "<[Decision]>::is_empty")]
+    decisions: &'a [Decision],
+    #[serde(flatten)]
+    other: &'a Map<String, Value>,
+}
+
 impl ReferenceFile {
+    /// The file for the document `doc` keeping nothing.
+    pub fn empty(doc: DocRecord) -> ReferenceFile {
+        ReferenceFile { format: FORMAT.into(), version: VERSION, doc, pgn: None, removed: None, decisions: Vec::new(), other: Map::new() }
+    }
+
     /// The file for the document `doc` keeping `pgn`.
     pub fn new(doc: DocRecord, pgn: KeptPgn) -> ReferenceFile {
-        ReferenceFile { format: FORMAT.into(), version: VERSION, doc, pgn, decisions: Vec::new() }
+        ReferenceFile { pgn: Some(pgn), ..ReferenceFile::empty(doc) }
     }
 
-    /// Read a file's bytes: this version's file, a newer one (read only), or why not.
+    /// Read a file's bytes: this version's file (version 1 taken in as this one), a newer one
+    /// (read only), or why not. Decisions that can't be read are left out
+    /// ([`ReferenceFile::parse`] counts them).
     pub fn read(bytes: &[u8]) -> Read {
-        if bytes.len() > MAX_FILE_BYTES {
-            return Read::Bad(format!("larger than {} MB", MAX_FILE_BYTES >> 20));
-        }
-        let value: serde_json::Value = match serde_json::from_slice(bytes) {
-            Ok(v) => v,
-            Err(e) => return Read::Bad(format!("not JSON: {e}")),
-        };
-        if value.get("format").and_then(serde_json::Value::as_str) != Some(FORMAT) {
-            return Read::Bad("not a book's PGN file".into());
-        }
-        let version = value.get("version").and_then(serde_json::Value::as_u64).and_then(|v| u32::try_from(v).ok());
-        match version {
-            Some(VERSION) => {}
-            Some(v) if v > VERSION => {
-                let file = serde_json::from_value::<ReferenceFile>(value).ok().filter(|f| f.problem().is_none());
-                return Read::Newer(v, file);
-            }
-            _ => return Read::Bad("no version this build reads".into()),
-        }
-        let file: ReferenceFile = match serde_json::from_value(value) {
-            Ok(f) => f,
-            Err(e) => return Read::Bad(format!("not a version {VERSION} file: {e}")),
-        };
-        match file.problem() {
-            Some(why) => Read::Bad(why),
-            None => Read::File(file),
+        match ReferenceFile::parse(bytes) {
+            Parsed::File { file, .. } => Read::File(file),
+            Parsed::Newer { version, file } => Read::Newer(version, file),
+            Parsed::Bad(why) => Read::Bad(why),
         }
     }
 
-    /// What makes the file one not to trust, when something does.
-    fn problem(&self) -> Option<String> {
-        let pgn = &self.pgn;
-        if pgn.text.len() > MAX_REFERENCE_BYTES {
-            return Some(format!("a PGN larger than {} MB", MAX_REFERENCE_BYTES >> 20));
+    /// Read a file's bytes, decision by decision: one that can't be read (of the wrong shape,
+    /// naming no move) is left out and counted, and the rest kept. What makes the whole file
+    /// unreadable: not JSON, another format, no version this build reads, no document record, a
+    /// PGN not to trust (its text not the one it was kept as), a version 1 file without one, more
+    /// than [`MAX_DECISIONS`] decisions.
+    pub fn parse(bytes: &[u8]) -> Parsed<ReferenceFile> {
+        if bytes.len() > MAX_FILE_BYTES {
+            return Parsed::Bad(format!("larger than {} MB", MAX_FILE_BYTES >> 20));
         }
-        if pgn.bytes != pgn.text.len() || pgn.hash != text_hash(&pgn.text) {
-            return Some("the PGN is not the one it was kept as (its size or hash differs)".into());
+        let value: Value = match serde_json::from_slice(bytes) {
+            Ok(v) => v,
+            Err(e) => return Parsed::Bad(format!("not JSON: {e}")),
+        };
+        let Value::Object(fields) = value else { return Parsed::Bad("not a book's PGN file".into()) };
+        if fields.get("format").and_then(Value::as_str) != Some(FORMAT) {
+            return Parsed::Bad("not a book's PGN file".into());
         }
-        if pgn.name.as_ref().is_some_and(|n| n.len() > MAX_NAME) {
-            return Some("the PGN's file name is too long".into());
+        let version = fields.get("version").and_then(Value::as_u64).and_then(|v| u32::try_from(v).ok());
+        match version {
+            Some(v @ 1..=VERSION) => match ReferenceFile::take(fields, v) {
+                Ok((file, skipped)) => Parsed::File { file, skipped },
+                Err(why) => Parsed::Bad(format!("not a book's PGN file of its version: {why}")),
+            },
+            // Read in this version's layout, the fields this build doesn't know kept.
+            Some(v) if v > VERSION => Parsed::Newer {
+                version: v,
+                file: ReferenceFile::take(fields, v).ok().map(|(mut f, _)| {
+                    f.version = v;
+                    f
+                }),
+            },
+            _ => Parsed::Bad("no version this build reads".into()),
         }
-        if self.decisions.len() > MAX_DECISIONS {
-            return Some(format!("more than {MAX_DECISIONS} decisions"));
+    }
+
+    /// The file `fields` hold, of version `version`, and how many of its decisions were left out.
+    fn take(mut fields: Map<String, Value>, version: u32) -> Result<(ReferenceFile, usize), String> {
+        fields.remove("format");
+        fields.remove("version");
+        let doc: DocRecord = serde_json::from_value(fields.remove("doc").ok_or("no document record")?).map_err(|e| e.to_string())?;
+        let pgn = match fields.remove("pgn") {
+            None | Some(Value::Null) if version >= 2 => None,
+            None | Some(Value::Null) => return Err("no PGN".into()),
+            Some(v) => Some(serde_json::from_value::<KeptPgn>(v).map_err(|e| e.to_string())?),
+        };
+        if let Some(why) = pgn.as_ref().and_then(KeptPgn::problem) {
+            return Err(why);
         }
-        if self.decisions.iter().any(|d| d.san.is_empty() || d.san.len() > MAX_SAN || d.san_read.as_ref().is_some_and(|s| s.len() > MAX_SAN)) {
-            return Some("a decision names no move".into());
+        let removed = fields.remove("removed").and_then(|v| v.as_u64());
+        let decisions = match fields.remove("decisions") {
+            None | Some(Value::Null) => Vec::new(),
+            Some(Value::Array(list)) => list,
+            Some(_) => return Err("the decisions are not a list".into()),
+        };
+        if decisions.len() > MAX_DECISIONS {
+            return Err(format!("more than {MAX_DECISIONS} decisions"));
         }
-        None
+        let total = decisions.len();
+        let decisions: Vec<Decision> =
+            decisions.into_iter().filter_map(|v| serde_json::from_value::<Decision>(v).ok()).filter(Decision::names_a_move).collect();
+        let skipped = total.saturating_sub(decisions.len());
+        Ok((ReferenceFile { format: FORMAT.into(), version: VERSION, doc, pgn, removed, decisions, other: fields }, skipped))
     }
 
     /// Keep `decision` in place of the one on the same move. Refused past [`MAX_DECISIONS`].
     pub fn decide(&mut self, decision: Decision) -> Result<(), ReferenceStoreError> {
-        if decision.san.is_empty() || decision.san.len() > MAX_SAN || decision.san_read.as_ref().is_some_and(|s| s.len() > MAX_SAN) {
+        if !decision.names_a_move() {
             return Err(ReferenceStoreError::NoMove);
         }
         self.decisions.retain(|d| !d.same_move(&decision));
@@ -263,47 +349,73 @@ impl ReferenceFile {
         Ok(())
     }
 
-    /// The file as bytes, refused when it would be too big to read back.
+    /// Keep `pgn` in place of the PGN kept: the decisions stay when it is the same PGN, and go
+    /// with another. Whether a PGN was kept before.
+    pub fn keep(&mut self, pgn: KeptPgn) -> bool {
+        let before = self.pgn.take();
+        if !before.as_ref().is_some_and(|old| pgn.is_same_as(old)) {
+            self.decisions.clear();
+        }
+        self.pgn = Some(pgn);
+        self.removed = None;
+        before.is_some()
+    }
+
+    /// Remove the PGN kept, and the decisions made against it, at `at` (seconds since 1970).
+    /// Whether one was kept.
+    pub fn remove(&mut self, at: u64) -> bool {
+        let had = self.pgn.take().is_some();
+        if had {
+            self.removed = Some(at);
+            self.decisions.clear();
+        }
+        had
+    }
+
+    /// When the PGN was last kept or removed (0: never).
+    fn changed_at(&self) -> u64 {
+        self.pgn.as_ref().map_or(self.removed.unwrap_or(0), |p| p.at)
+    }
+
+    /// Take `theirs` in (the file of the name before plan A9-G3a, or another copy): the PGN kept
+    /// or removed the later wins, with its decisions (a tie keeps this one's); with the same PGN
+    /// on both sides, each one's decisions are kept, this one's where both decided on a move.
+    pub fn merge(&mut self, theirs: &ReferenceFile) {
+        let same = match (&self.pgn, &theirs.pgn) {
+            (Some(mine), Some(other)) => mine.hash == other.hash,
+            _ => false,
+        };
+        if !same {
+            if theirs.changed_at() > self.changed_at() {
+                self.pgn.clone_from(&theirs.pgn);
+                self.removed = theirs.removed;
+                self.decisions.clone_from(&theirs.decisions);
+            }
+            return;
+        }
+        for d in &theirs.decisions {
+            if self.decisions.len() >= MAX_DECISIONS {
+                break;
+            }
+            if !self.decisions.iter().any(|mine| mine.same_move(d)) {
+                self.decisions.push(d.clone());
+            }
+        }
+    }
+
+    /// The file as bytes, in this version's layout, refused when it would be too big to read back.
     pub fn to_bytes(&self) -> Result<Vec<u8>, ReferenceStoreError> {
-        let bytes = serde_json::to_vec(self).map_err(|_| ReferenceStoreError::TooBig)?;
+        let written = Written {
+            format: FORMAT,
+            version: VERSION,
+            doc: &self.doc,
+            pgn: self.pgn.as_ref(),
+            removed: self.removed,
+            decisions: &self.decisions,
+            other: &self.other,
+        };
+        let bytes = serde_json::to_vec(&written).map_err(|_| ReferenceStoreError::TooBig)?;
         if bytes.len() > MAX_FILE_BYTES { Err(ReferenceStoreError::TooBig) } else { Ok(bytes) }
-    }
-}
-
-/// The document a file's bytes record, read without the PGN's hash checked: enough to find a
-/// document's file among the others without hashing each PGN. `None` for bytes that are not a
-/// file of this version.
-fn recorded(bytes: &[u8]) -> Option<DocRecord> {
-    #[derive(Deserialize)]
-    struct Head {
-        format: String,
-        version: u32,
-        doc: DocRecord,
-    }
-    if bytes.len() > MAX_FILE_BYTES {
-        return None;
-    }
-    let head: Head = serde_json::from_slice(bytes).ok()?;
-    (head.format == FORMAT && head.version == VERSION).then_some(head.doc)
-}
-
-/// What a store found for a document.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Loaded {
-    /// The file's name (the one a new file would get when there is none yet).
-    pub name: String,
-    /// The file, when the document keeps a PGN this build can read.
-    pub file: Option<ReferenceFile>,
-    /// The file is of a newer version: read, never written or removed.
-    pub read_only: Option<u32>,
-    /// A file that could not be read was set aside under this name, and why.
-    pub set_aside: Option<(String, String)>,
-}
-
-impl Loaded {
-    /// The PGN kept, when there is one this build can read.
-    pub fn pgn(&self) -> Option<&KeptPgn> {
-        self.file.as_ref().map(|f| &f.pgn)
     }
 }
 
@@ -330,315 +442,113 @@ pub enum ReferenceStoreError {
     TooManyDecisions,
 }
 
-/// Where documents keep their book's PGN: a folder on the desktop and the command line
-/// ([`DirStore`]), memory the web build saves in the browser's storage ([`MemStore`]).
-pub trait ReferenceStore {
-    /// The document's kept PGN, found by the name its keys give, else by the document recorded
-    /// in each file. A file that can't be read is set aside, never deleted.
-    fn load(&self, keys: &DocKeys, pages: usize) -> Result<Loaded, ReferenceStoreError>;
+impl StoreFailure for ReferenceStoreError {
+    fn no_keys() -> Self {
+        ReferenceStoreError::NoKeys
+    }
 
-    /// Keep `pgn` for the document, in place of the one it kept. Whether it kept one before;
-    /// refused for a file of a newer version.
-    fn set(&self, keys: &DocKeys, pages: usize, pgn: KeptPgn) -> Result<(bool, Loaded), ReferenceStoreError>;
+    fn busy() -> Self {
+        ReferenceStoreError::Busy
+    }
 
-    /// Remove the document's PGN. Whether it kept one; refused for a file of a newer version.
-    fn clear(&self, keys: &DocKeys, pages: usize) -> Result<bool, ReferenceStoreError>;
+    fn newer(version: u32) -> Self {
+        ReferenceStoreError::Newer(version)
+    }
+
+    fn over_budget(budget: usize) -> Self {
+        ReferenceStoreError::OverBudget(budget)
+    }
+}
+
+/// The book's PGN as a kind of document store (plan A9 §2.3): `<hash>.reference.json`, merged by
+/// [`ReferenceFile::merge`].
+pub struct Reference;
+
+impl StoreKind for Reference {
+    const KIND: &'static str = "reference";
+    const FORMAT: &'static str = FORMAT;
+    const MAX_FILE_BYTES: usize = MAX_FILE_BYTES;
+    /// Builds of version 1 never find a `<hash>.reference.json` file (they look for version 1),
+    /// and only read the `<hash>.json` they write: they never write a file this build writes.
+    const OLD_LOCK: bool = false;
+    type File = ReferenceFile;
+    type Error = ReferenceStoreError;
+
+    fn empty(doc: DocRecord) -> ReferenceFile {
+        ReferenceFile::empty(doc)
+    }
+
+    fn set_doc(file: &mut ReferenceFile, doc: DocRecord) {
+        file.doc = doc;
+    }
+
+    fn read(bytes: &[u8]) -> Parsed<ReferenceFile> {
+        ReferenceFile::parse(bytes)
+    }
+
+    fn to_bytes(file: &ReferenceFile) -> Result<Vec<u8>, ReferenceStoreError> {
+        file.to_bytes()
+    }
+
+    fn holds_anything(file: &ReferenceFile) -> bool {
+        file.pgn.is_some() || file.removed.is_some() || !file.decisions.is_empty()
+    }
+
+    fn merge(mine: &mut ReferenceFile, theirs: &ReferenceFile) {
+        mine.merge(theirs);
+    }
+}
+
+/// The books' PGNs in a folder, one file per document (desktop and command line).
+#[cfg(not(target_arch = "wasm32"))]
+pub type DirStore = DocStore<Reference, super::store::DirBackend>;
+
+/// The books' PGNs in memory, within a byte budget of their own: the web build's store, which it
+/// saves in the browser's storage ([`DocStore::files`]).
+pub type MemStore = DocStore<Reference, super::store::MemBackend>;
+
+/// What a store found for a document: its file (empty when it keeps nothing), where it is, and
+/// what could not be read.
+pub type Loaded = super::store::Loaded<ReferenceFile>;
+
+impl super::store::Loaded<ReferenceFile> {
+    /// The PGN kept, when there is one this build can read.
+    pub fn pgn(&self) -> Option<&KeptPgn> {
+        self.file.pgn.as_ref()
+    }
+}
+
+impl<B: StoreBackend> DocStore<Reference, B> {
+    /// Keep `pgn` for the document, in place of the one it kept ([`ReferenceFile::keep`]).
+    /// Whether it kept one before; refused for a file of a newer version.
+    pub fn set(&self, keys: &DocKeys, pages: usize, pgn: KeptPgn) -> Result<(bool, Loaded), ReferenceStoreError> {
+        self.update(keys, pages, |f| Ok::<_, ReferenceStoreError>(f.keep(pgn)))
+    }
+
+    /// Remove the document's PGN at `at` ([`ReferenceFile::remove`]). Whether it kept one;
+    /// refused for a file of a newer version. With nothing to remove nothing is written (a folder
+    /// is not made).
+    pub fn clear(&self, keys: &DocKeys, pages: usize, at: u64) -> Result<bool, ReferenceStoreError> {
+        let now = self.load(keys, pages)?;
+        if let Some(v) = now.newer {
+            return Err(ReferenceStoreError::Newer(v));
+        }
+        if now.file.pgn.is_none() {
+            return Ok(false);
+        }
+        self.update(keys, pages, |f| Ok::<_, ReferenceStoreError>(f.remove(at))).map(|(had, _)| had)
+    }
 
     /// Keep `decision` with the document's PGN (R6e), in place of the one on the same move. The
-    /// file as kept; refused when the document keeps no PGN, and for a file of a newer version.
-    fn decide(&self, keys: &DocKeys, pages: usize, decision: Decision) -> Result<ReferenceFile, ReferenceStoreError>;
-
-    /// The document was saved: its PGN, found under its keys before (`old`), is recorded under
-    /// the keys it has now (`new`). Whether it kept one; a file of a newer version is left as it
-    /// is.
-    fn rekey(&self, old: &DocKeys, new: &DocKeys, pages: usize) -> Result<bool, ReferenceStoreError>;
-}
-
-/// What a stored file's bytes give (`None`: no file), and why they can't be read when they can't:
-/// then the caller sets the bytes aside.
-fn loaded(name: String, bytes: Option<&[u8]>) -> (Loaded, Option<String>) {
-    let mut out = Loaded { name, file: None, read_only: None, set_aside: None };
-    let Some(bytes) = bytes else { return (out, None) };
-    match ReferenceFile::read(bytes) {
-        Read::File(file) => out.file = Some(file),
-        Read::Newer(v, file) => {
-            out.file = file;
-            out.read_only = Some(v);
-        }
-        Read::Bad(why) => return (out, Some(why)),
-    }
-    (out, None)
-}
-
-/// The bytes to keep for [`ReferenceStore::set`].
-fn set_bytes(loaded: &Loaded, keys: &DocKeys, pages: usize, pgn: KeptPgn) -> Result<(ReferenceFile, Vec<u8>), ReferenceStoreError> {
-    if let Some(v) = loaded.read_only {
-        return Err(ReferenceStoreError::Newer(v));
-    }
-    let mut file = ReferenceFile::new(DocRecord::new(keys, pages), pgn);
-    // The same PGN kept again keeps the decisions made against it.
-    if let Some(old) = loaded.file.as_ref().filter(|old| file.pgn.is_same_as(&old.pgn)) {
-        file.decisions.clone_from(&old.decisions);
-    }
-    let bytes = file.to_bytes()?;
-    Ok((file, bytes))
-}
-
-/// The file and its bytes for [`ReferenceStore::decide`].
-fn decide_bytes(loaded: &Loaded, decision: Decision) -> Result<(ReferenceFile, Vec<u8>), ReferenceStoreError> {
-    if let Some(v) = loaded.read_only {
-        return Err(ReferenceStoreError::Newer(v));
-    }
-    let mut file = loaded.file.clone().ok_or(ReferenceStoreError::NoPgn)?;
-    file.decide(decision)?;
-    let bytes = file.to_bytes()?;
-    Ok((file, bytes))
-}
-
-/// The bytes to keep for [`ReferenceStore::rekey`], when there is a PGN to move.
-fn rekey_bytes(loaded: &mut Loaded, new: &DocKeys, pages: usize) -> Result<Option<Vec<u8>>, ReferenceStoreError> {
-    if loaded.read_only.is_some() {
-        return Ok(None);
-    }
-    let Some(file) = loaded.file.as_mut() else { return Ok(None) };
-    file.doc = DocRecord::new(new, pages);
-    file.to_bytes().map(Some)
-}
-
-/// A folder of the books' PGNs, one file per document (desktop and command line).
-#[cfg(not(target_arch = "wasm32"))]
-pub struct DirStore {
-    dir: std::path::PathBuf,
-}
-
-/// Most files looked at to find a document's.
-#[cfg(not(target_arch = "wasm32"))]
-const MAX_FILES: usize = 1024;
-
-#[cfg(not(target_arch = "wasm32"))]
-impl DirStore {
-    pub fn new(dir: impl Into<std::path::PathBuf>) -> DirStore {
-        DirStore { dir: dir.into() }
-    }
-
-    /// The file name for the document: the one its keys give when the folder has it, else the
-    /// one whose recorded document is it, else the one its keys give.
-    fn name_for(&self, keys: &DocKeys) -> Result<String, ReferenceStoreError> {
-        let own = corrections::file_name(keys).ok_or(ReferenceStoreError::NoKeys)?;
-        if self.dir.join(&own).is_file() {
-            return Ok(own);
-        }
-        let Ok(entries) = std::fs::read_dir(&self.dir) else { return Ok(own) };
-        let mut names: Vec<String> =
-            entries.flatten().take(MAX_FILES).filter_map(|e| e.file_name().to_str().map(str::to_owned)).filter(|n| n.ends_with(".json")).collect();
-        names.sort();
-        for name in names {
-            if let Ok(bytes) = corrections::read_capped(&self.dir.join(&name), MAX_FILE_BYTES)
-                && recorded(&bytes).is_some_and(|doc| doc.matches(keys))
-            {
-                return Ok(name);
-            }
-        }
-        Ok(own)
-    }
-
-    fn lock(&self) -> Result<corrections::Lock, ReferenceStoreError> {
-        corrections::take_lock(self.dir.join("reference.lock"))?.ok_or(ReferenceStoreError::Busy)
-    }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-impl ReferenceStore for DirStore {
-    fn load(&self, keys: &DocKeys, _pages: usize) -> Result<Loaded, ReferenceStoreError> {
-        let name = self.name_for(keys)?;
-        let bytes = match corrections::read_capped(&self.dir.join(&name), MAX_FILE_BYTES) {
-            Ok(b) => Some(b),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
-            Err(e) => return Err(e.into()),
-        };
-        let (mut l, bad) = loaded(name, bytes.as_deref());
-        if let Some(why) = bad {
-            let aside = super::store::aside_name(&l.name, |n| self.dir.join(n).exists()).ok_or(ReferenceStoreError::Busy)?;
-            std::fs::rename(self.dir.join(&l.name), self.dir.join(&aside))?;
-            l.set_aside = Some((aside, why));
-        }
-        Ok(l)
-    }
-
-    fn set(&self, keys: &DocKeys, pages: usize, pgn: KeptPgn) -> Result<(bool, Loaded), ReferenceStoreError> {
-        std::fs::create_dir_all(&self.dir)?;
-        let _lock = self.lock()?;
-        let mut loaded = self.load(keys, pages)?;
-        let (file, bytes) = set_bytes(&loaded, keys, pages, pgn)?;
-        corrections::write_atomically(&self.dir.join(&loaded.name), &bytes)?;
-        let had = loaded.file.replace(file).is_some();
-        Ok((had, loaded))
-    }
-
-    /// Without the folder, nothing (it is not made).
-    fn clear(&self, keys: &DocKeys, pages: usize) -> Result<bool, ReferenceStoreError> {
-        if !self.dir.is_dir() {
-            return Ok(false);
-        }
-        let _lock = self.lock()?;
-        let loaded = self.load(keys, pages)?;
-        if let Some(v) = loaded.read_only {
-            return Err(ReferenceStoreError::Newer(v));
-        }
-        if loaded.file.is_none() {
-            return Ok(false);
-        }
-        std::fs::remove_file(self.dir.join(&loaded.name))?;
-        Ok(true)
-    }
-
-    fn decide(&self, keys: &DocKeys, pages: usize, decision: Decision) -> Result<ReferenceFile, ReferenceStoreError> {
-        if !self.dir.is_dir() {
+    /// file as kept; refused when the document keeps no PGN (nothing is written, a folder is not
+    /// made), and for a file of a newer version.
+    pub fn decide(&self, keys: &DocKeys, pages: usize, decision: Decision) -> Result<Loaded, ReferenceStoreError> {
+        let now = self.load(keys, pages)?;
+        if now.newer.is_none() && now.file.pgn.is_none() {
             return Err(ReferenceStoreError::NoPgn);
         }
-        let _lock = self.lock()?;
-        let loaded = self.load(keys, pages)?;
-        let (file, bytes) = decide_bytes(&loaded, decision)?;
-        corrections::write_atomically(&self.dir.join(&loaded.name), &bytes)?;
-        Ok(file)
-    }
-
-    /// Without the folder, nothing (it is not made).
-    fn rekey(&self, old: &DocKeys, new: &DocKeys, pages: usize) -> Result<bool, ReferenceStoreError> {
-        if old == new || !self.dir.is_dir() || corrections::file_name(old).is_none() {
-            return Ok(false);
-        }
-        let _lock = self.lock()?;
-        let mut loaded = self.load(old, pages)?;
-        match rekey_bytes(&mut loaded, new, pages)? {
-            Some(bytes) => {
-                corrections::write_atomically(&self.dir.join(&loaded.name), &bytes)?;
-                Ok(true)
-            }
-            None => Ok(false),
-        }
-    }
-}
-
-/// The books' PGNs kept in memory by name, within a byte budget of their own: the web build's
-/// store, which it saves in the browser's storage through [`MemStore::files`] and
-/// [`MemStore::with_files`]. A document's file is found as in a folder.
-#[derive(Debug, Default)]
-pub struct MemStore {
-    files: std::sync::Mutex<std::collections::BTreeMap<String, Vec<u8>>>,
-    budget: usize,
-}
-
-type Files = std::collections::BTreeMap<String, Vec<u8>>;
-
-impl MemStore {
-    /// An empty store keeping at most `budget` bytes in all.
-    pub fn new(budget: usize) -> MemStore {
-        MemStore { files: Default::default(), budget }
-    }
-
-    /// A store holding `files` (as [`MemStore::files`] gave them) within `budget` bytes: a file
-    /// that would pass it, or [`MAX_FILE_BYTES`], is left out.
-    pub fn with_files(files: impl IntoIterator<Item = (String, Vec<u8>)>, budget: usize) -> MemStore {
-        let mut kept = Files::new();
-        let mut used = 0usize;
-        for (name, bytes) in files {
-            let total = used.saturating_add(bytes.len());
-            if total <= budget && bytes.len() <= MAX_FILE_BYTES {
-                used = total;
-                kept.insert(name, bytes);
-            }
-        }
-        MemStore { files: std::sync::Mutex::new(kept), budget }
-    }
-
-    /// Every file by name, to save.
-    pub fn files(&self) -> Vec<(String, Vec<u8>)> {
-        self.guard().iter().map(|(n, b)| (n.clone(), b.clone())).collect()
-    }
-
-    /// The files. A lock poisoned by a panic elsewhere is taken as it is: each write replaces a
-    /// whole file, so none is ever half written.
-    fn guard(&self) -> std::sync::MutexGuard<'_, Files> {
-        self.files.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
-    }
-
-    /// [`ReferenceStore::load`] on `files`, already locked.
-    fn load_in(files: &mut Files, keys: &DocKeys) -> Result<Loaded, ReferenceStoreError> {
-        let own = corrections::file_name(keys).ok_or(ReferenceStoreError::NoKeys)?;
-        let name = if files.contains_key(&own) {
-            own
-        } else {
-            let recorded = files.iter().find(|(_, b)| recorded(b).is_some_and(|doc| doc.matches(keys)));
-            recorded.map_or(own, |(n, _)| n.clone())
-        };
-        let (mut l, bad) = loaded(name.clone(), files.get(&name).map(Vec::as_slice));
-        if let Some(why) = bad {
-            let aside = super::store::aside_name(&name, |n| files.contains_key(n)).ok_or(ReferenceStoreError::Busy)?;
-            if let Some(bytes) = files.remove(&name) {
-                files.insert(aside.clone(), bytes);
-            }
-            l.set_aside = Some((aside, why));
-        }
+        let ((), l) = self.update(keys, pages, |f| if f.pgn.is_none() { Err(ReferenceStoreError::NoPgn) } else { f.decide(decision) })?;
         Ok(l)
-    }
-
-    /// Put `bytes` under `name`, refused when the files would pass the budget.
-    fn put(&self, files: &mut Files, name: &str, bytes: Vec<u8>) -> Result<(), ReferenceStoreError> {
-        let others = files.iter().filter(|(n, _)| n.as_str() != name).fold(0usize, |sum, (_, b)| sum.saturating_add(b.len()));
-        if others.saturating_add(bytes.len()) > self.budget {
-            return Err(ReferenceStoreError::OverBudget(self.budget));
-        }
-        files.insert(name.to_owned(), bytes);
-        Ok(())
-    }
-}
-
-impl ReferenceStore for MemStore {
-    fn load(&self, keys: &DocKeys, _pages: usize) -> Result<Loaded, ReferenceStoreError> {
-        MemStore::load_in(&mut self.guard(), keys)
-    }
-
-    /// Refused with [`ReferenceStoreError::OverBudget`] when the files would pass the budget.
-    fn set(&self, keys: &DocKeys, pages: usize, pgn: KeptPgn) -> Result<(bool, Loaded), ReferenceStoreError> {
-        let mut files = self.guard();
-        let mut loaded = MemStore::load_in(&mut files, keys)?;
-        let (file, bytes) = set_bytes(&loaded, keys, pages, pgn)?;
-        self.put(&mut files, &loaded.name, bytes)?;
-        let had = loaded.file.replace(file).is_some();
-        Ok((had, loaded))
-    }
-
-    fn clear(&self, keys: &DocKeys, _pages: usize) -> Result<bool, ReferenceStoreError> {
-        let mut files = self.guard();
-        let loaded = MemStore::load_in(&mut files, keys)?;
-        if let Some(v) = loaded.read_only {
-            return Err(ReferenceStoreError::Newer(v));
-        }
-        Ok(loaded.file.is_some() && files.remove(&loaded.name).is_some())
-    }
-
-    fn decide(&self, keys: &DocKeys, _pages: usize, decision: Decision) -> Result<ReferenceFile, ReferenceStoreError> {
-        let mut files = self.guard();
-        let loaded = MemStore::load_in(&mut files, keys)?;
-        let (file, bytes) = decide_bytes(&loaded, decision)?;
-        self.put(&mut files, &loaded.name, bytes)?;
-        Ok(file)
-    }
-
-    fn rekey(&self, old: &DocKeys, new: &DocKeys, pages: usize) -> Result<bool, ReferenceStoreError> {
-        if old == new || corrections::file_name(old).is_none() {
-            return Ok(false);
-        }
-        let mut files = self.guard();
-        let mut loaded = MemStore::load_in(&mut files, old)?;
-        match rekey_bytes(&mut loaded, new, pages)? {
-            Some(bytes) => {
-                self.put(&mut files, &loaded.name, bytes)?;
-                Ok(true)
-            }
-            None => Ok(false),
-        }
     }
 }
 
