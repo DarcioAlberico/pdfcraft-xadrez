@@ -2708,23 +2708,30 @@ fn a_second_instance_does_not_overwrite_the_games_of_the_first() {
     assert!(String::from_utf8_lossy(&std::fs::read(&file).unwrap()).contains("1. e4 e5"), "written once the first window is gone");
 }
 
-/// A document that forbids copying: its games are written only once the user allows it. Until
-/// then nothing is written; "Don't save" writes nothing for the session.
+/// A protected document's games follow the one rule for what is kept of it (plan A9-I1c): an
+/// encrypted one's are written only once the user says so, asked once in a dialog; until then
+/// nothing is written, and "Don't keep" writes nothing for the session. A document that doesn't
+/// allow copying never has its games written, and nothing is asked.
 #[test]
 fn a_protected_document_asks_before_its_games_are_written() {
-    let mut doc = pdfcraft_cos::Document::open(std::sync::Arc::new(boards())).unwrap();
-    doc.set_encryption(&pdfcraft_cos::NewEncryption {
-        algorithm: pdfcraft_cos::Algorithm::Aes256,
-        user_password: "",
-        owner_password: "owner",
-        permissions: 0b0100,
-        encrypt_metadata: true,
-        seed: [3; 32],
-    })
-    .unwrap();
-    let bytes = pdfcraft_cos::write_full(&doc, &Default::default()).unwrap();
-    for allow in [false, true] {
-        let s = store(if allow { "protected-yes" } else { "protected-no" });
+    const ASKED: &str = "Keep your chess work on this protected document?";
+    let protect = |permissions: i32| {
+        let mut doc = pdfcraft_cos::Document::open(std::sync::Arc::new(boards())).unwrap();
+        doc.set_encryption(&pdfcraft_cos::NewEncryption {
+            algorithm: pdfcraft_cos::Algorithm::Aes256,
+            user_password: "",
+            owner_password: "owner",
+            permissions,
+            encrypt_metadata: true,
+            seed: [3; 32],
+        })
+        .unwrap();
+        pdfcraft_cos::write_full(&doc, &Default::default()).unwrap()
+    };
+    // Print and copy; print only.
+    let (encrypted, no_copy) = (protect(0b1_0100), protect(0b0100));
+    for (tag, bytes, answer) in [("yes", &encrypted, Some(true)), ("no", &encrypted, Some(false)), ("no-copy", &no_copy, None)] {
+        let s = store(&format!("protected-{tag}"));
         let mut h = session(&s, "restricted.pdf", None, bytes.clone());
         // Tall enough for the Games section under the board, its Analysis section and the moves.
         h.set_size(egui::vec2(1400.0, 1200.0));
@@ -2733,17 +2740,23 @@ fn a_protected_document_asks_before_its_games_are_written() {
         click_square(&mut h, "e2");
         click_square(&mut h, "e4");
         h.state_mut().flush_chess_games();
-        assert!(chess_files(&s).is_empty(), "nothing before the user answers");
-        let toast = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
-        assert!(toast.contains("autosaved only if you allow it"), "{toast}");
-        h.get_by_label("Save chess games for this protected document?");
-        h.get_by_label(if allow { "Save them" } else { "Don't save" }).click();
         h.run_steps(2);
-        assert!(h.query_by_label("Save chess games for this protected document?").is_none(), "asked once");
+        assert!(chess_files(&s).is_empty(), "{tag}: nothing before the user answers");
+        match answer {
+            Some(keep) => {
+                h.get_by_label(ASKED);
+                h.get_by_label(if keep { "Keep them" } else { "Don't keep" }).click();
+                h.run_steps(2);
+                assert!(h.query_by_label(ASKED).is_none(), "{tag}: the dialog closed");
+            }
+            None => assert!(h.query_by_label(ASKED).is_none(), "{tag}: nothing to ask"),
+        }
         click_square(&mut h, "e7");
         click_square(&mut h, "e5");
         h.state_mut().flush_chess_games();
-        assert_eq!(chess_files(&s).len(), usize::from(allow));
+        h.run_steps(2);
+        assert!(h.query_by_label(ASKED).is_none(), "{tag}: asked once");
+        assert_eq!(chess_files(&s).len(), usize::from(answer == Some(true)), "{tag}");
     }
 }
 
@@ -4255,6 +4268,61 @@ fn confirming_keeps_the_correction_and_it_comes_back_when_reopened() {
     assert_eq!(kind(&h, 1), None);
     assert_eq!(h.state().chess.results().unwrap().review_queue(), vec![pdfcraft_engine::chess::DiagramAt::new(0, 1)]);
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// The boards, encrypted, their permissions allowing printing and copying (plan A9-I1c).
+fn encrypted_boards() -> Vec<u8> {
+    let mut doc = pdfcraft_cos::Document::open(std::sync::Arc::new(boards())).unwrap();
+    doc.set_encryption(&pdfcraft_cos::NewEncryption {
+        algorithm: pdfcraft_cos::Algorithm::Aes256,
+        user_password: "",
+        owner_password: "owner",
+        // Print and copy.
+        permissions: 0b1_0100,
+        encrypt_metadata: true,
+        seed: [5; 32],
+    })
+    .unwrap();
+    pdfcraft_cos::write_full(&doc, &Default::default()).unwrap()
+}
+
+/// Plan A9-I1c (§2.3, `persist_policy` = Ask): an encrypted document's chess is written only once
+/// the user says so. A correction confirmed is Corrected for the session, and nothing is on disk;
+/// the app asks once, in a dialog. Keep them writes what waited; Don't keep writes nothing, then
+/// or after another correction, while the session keeps working with them in memory. The book's
+/// PGN follows the same answer without asking again.
+#[test]
+fn an_encrypted_documents_correction_is_written_only_once_the_user_says_so() {
+    const ASKED: &str = "Keep your chess work on this protected document?";
+    for keep in [true, false] {
+        let dir = corrections_dir(if keep { "encrypted-yes" } else { "encrypted-no" });
+        let (fixes, pgns) = (dir.join("corrections"), dir.join("reference"));
+        let mut h = harness_with(encrypted_boards(), 0.25, egui::vec2(1400.0, 1000.0), Some(fixes.clone()));
+        h.state_mut().chess.book_pgns.use_folder(pgns.clone());
+        scan_and_edit_second(&mut h);
+        h.get_by_label("Confirm and next").click();
+        h.run_steps(3);
+        assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"), "the session keeps it");
+        assert!(correction_files(&fixes).is_empty(), "nothing written before the answer");
+        h.get_by_label(ASKED);
+        h.get_by_label(if keep { "Keep them" } else { "Don't keep" }).click();
+        h.run_steps(3);
+        assert!(h.query_by_label(ASKED).is_none(), "the dialog closed");
+        assert_eq!(correction_files(&fixes).len(), usize::from(keep), "written once the user says so");
+        // Another correction (the page checked: diagram 1, read with confidence) and the book's PGN:
+        // the same answer, never asked again.
+        assert_eq!(h.state_mut().verify_chess_page(0), 1);
+        let id = h.state().active_ids().unwrap().1;
+        h.state_mut().set_book_pgn(id, "book.pgn", b"[Event \"A\"]\n\n1. e4 e5 2. Nf3 *\n");
+        h.run_steps(3);
+        assert!(h.query_by_label(ASKED).is_none(), "asked once");
+        assert_eq!(kind(&h, 0).as_deref(), Some("Verified"));
+        assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"));
+        assert!(h.state_mut().book_pgn_summary(id).is_some(), "the session holds the PGN");
+        assert_eq!(correction_files(&fixes).len(), usize::from(keep));
+        assert_eq!(correction_files(&pgns).len(), usize::from(keep));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
 
 /// Plan A9-I1a (findings A6-01, A5-10): each open document keeps its own chess view. Detecting

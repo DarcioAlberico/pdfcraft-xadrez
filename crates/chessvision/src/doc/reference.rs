@@ -698,7 +698,7 @@ impl NearbyPositions {
 }
 
 /// The name of square `k` of [`Squares`]: 0 is a8, 63 is h1.
-fn square_name(k: usize) -> String {
+pub(super) fn square_name(k: usize) -> String {
     let file = b"abcdefgh".get(k % 8).map_or('?', |&f| char::from(f));
     format!("{file}{}", 8usize.saturating_sub(k / 8))
 }

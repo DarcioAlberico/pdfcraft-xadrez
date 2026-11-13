@@ -3484,6 +3484,13 @@ the move's comment	Move comment	Коментар до ходу
 	The work stopped on an internal error.	Роботу зупинено через внутрішню помилку.
 # Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
 	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	У браузері книгу понад {n} сторінок поки що не можна експортувати чи зіставити з PGN: вкладка перестала б відповідати до самого кінця. Настільний застосунок робить це у фоні.
+# Plan A9-I1c: one question before keeping an encrypted document's chess (corrections, book's PGN, games, samples).
+	Keep your chess work on this protected document?	Зберігати вашу шахову роботу над цим захищеним документом?
+	“{name}” is encrypted. The app keeps your diagram corrections, the book's PGN and the chess games of each document unencrypted on this computer, so they come back when the document is opened again; character samples go to the folder chosen for them.	«{name}» зашифровано. Застосунок зберігає виправлення діаграм, PGN книги й шахові партії кожного документа на цьому комп’ютері без шифрування, щоб вони повернулися, коли документ відкриють знову; зразки символів ідуть до вибраної для них теки.
+	Not kept, they last only until the document is closed.	Якщо їх не зберігати, вони існують лише до закриття документа.
+	Keep them	Зберігати
+	Don't keep	Не зберігати
+	The book's PGN couldn't be saved: {e}	Не вдалося зберегти PGN книги: {e}
 # Plan A9-I4: a diagram waits for its page's scan; plan A9-N4: the Diagram tab says the mate the page asks.
 	Diagram {n} wasn't found on page {p}.	Діаграму {n} не знайдено на сторінці {p}.
 	Mate in {n}: {key}! (unique)	Мат у {n} ходи: {key}! (єдиний)

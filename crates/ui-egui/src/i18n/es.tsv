@@ -3603,6 +3603,13 @@ the move's comment	Move comment	Comentario de la jugada
 	The work stopped on an internal error.	El trabajo se detuvo por un error interno.
 # Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
 	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	En el navegador, aún no se puede exportar ni alinear con el PGN un libro de más de {n} páginas: la pestaña dejaría de responder hasta el final. La aplicación de escritorio lo hace en segundo plano.
+# Plan A9-I1c: one question before keeping an encrypted document's chess (corrections, book's PGN, games, samples).
+	Keep your chess work on this protected document?	¿Conservar su trabajo de ajedrez en este documento protegido?
+	“{name}” is encrypted. The app keeps your diagram corrections, the book's PGN and the chess games of each document unencrypted on this computer, so they come back when the document is opened again; character samples go to the folder chosen for them.	«{name}» está cifrado. La aplicación guarda sus correcciones de diagramas, el PGN del libro y las partidas de ajedrez de cada documento sin cifrar en este equipo, para que vuelvan cuando se abra de nuevo el documento; las muestras de caracteres van a la carpeta elegida para ellas.
+	Not kept, they last only until the document is closed.	Si no se conservan, solo duran hasta que se cierre el documento.
+	Keep them	Conservarlos
+	Don't keep	No conservar
+	The book's PGN couldn't be saved: {e}	No se pudo guardar el PGN del libro: {e}
 # Plan A9-I4: a diagram waits for its page's scan; plan A9-N4: the Diagram tab says the mate the page asks.
 	Diagram {n} wasn't found on page {p}.	No se encontró el diagrama {n} en la página {p}.
 	Mate in {n}: {key}! (unique)	Mate en {n}: {key}! (única)

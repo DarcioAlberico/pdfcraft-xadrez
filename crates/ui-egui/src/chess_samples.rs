@@ -20,12 +20,13 @@
 //! ever overwritten). The names and places are the engine's ([`pdfcraft_engine::chess::samples`]),
 //! which the automation tool `chess_glyph_sample` uses too (wave 10, U3).
 //!
-//! **Rules.** Saving is extraction: a document that doesn't allow copying never gives samples
-//! (it can't be read by the OCR area anyway), and an encrypted one is asked about first, once per
-//! document and session, as its games' autosave is (`chess_collection`): declined, nothing of it
-//! is written. Files are written atomically (`editing::write_atomically`), at most
-//! [`MAX_SAMPLES`] a session (the user is told when the cap is reached). Nothing is trained in the
-//! app, and nothing leaves the computer.
+//! **Rules.** Saving is extraction, and follows the one rule for what is kept of a document
+//! ([`crate::chess_keep`], plan A9-I1c): a document that doesn't allow copying never gives samples
+//! (it can't be read by the OCR area anyway), and an encrypted one's wait for the user's answer,
+//! asked once per document with its corrections, book's PGN and games: declined, nothing of it is
+//! written. Files are written atomically (`editing::write_atomically`), at most [`MAX_SAMPLES`] a
+//! session (the user is told when the cap is reached). Nothing is trained in the app, and nothing
+//! leaves the computer.
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -34,6 +35,7 @@ use egui::RichText;
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::samples;
 
+use crate::chess_keep::Keeping;
 use crate::chess_ui::ChessState;
 use crate::theme::Tokens;
 
@@ -68,11 +70,9 @@ pub struct Samples {
     pub folder: Option<PathBuf>,
     /// Samples saved this session.
     pub written: usize,
-    /// The answer for each encrypted document: save its samples or not.
-    consent: HashMap<DocId, bool>,
     /// Corrections to save at the next tick.
     queue: Vec<GlyphFix>,
-    /// Corrections of encrypted documents waiting for the user's answer.
+    /// Corrections of encrypted documents waiting for the user's answer (plan A9-I1c).
     held: Vec<GlyphFix>,
     /// The folder picker is to be shown at the next tick.
     pick: bool,
@@ -92,14 +92,9 @@ impl Samples {
         self.queue.extend(fixes.into_iter().take(room));
     }
 
-    /// The encrypted document whose samples wait for the user's answer, if any.
-    pub fn asking(&self) -> Option<DocId> {
-        self.held.first().map(|f| f.doc)
-    }
-
-    /// The user's answer for document `doc`: its samples are saved from now on, or never.
+    /// The user's answer about document `doc` (plan A9-I1c): the samples that waited are saved, or
+    /// dropped.
     pub fn answer(&mut self, doc: DocId, save: bool) {
-        self.consent.insert(doc, save);
         let (mine, others): (Vec<GlyphFix>, Vec<GlyphFix>) = std::mem::take(&mut self.held).into_iter().partition(|f| f.doc == doc);
         self.held = others;
         if save {
@@ -161,34 +156,6 @@ pub(crate) fn menu(ui: &mut egui::Ui, t: &Tokens, chess: &mut ChessState) {
     });
 }
 
-/// The question for an encrypted document whose corrected characters wait, over the page area
-/// `area` of document `doc`. Returns the answer.
-pub(crate) fn ask(ctx: &egui::Context, area: egui::Rect, chess: &ChessState, doc: DocId) -> Option<bool> {
-    if chess.capture.samples.asking() != Some(doc) {
-        return None;
-    }
-    let mut answer = None;
-    egui::Area::new(egui::Id::new("chess-samples-ask"))
-        .order(egui::Order::Foreground)
-        .pivot(egui::Align2::LEFT_BOTTOM)
-        .fixed_pos(egui::pos2(area.left() + 16.0, area.bottom() - 24.0))
-        .show(ctx, |ui| {
-            egui::Frame::popup(ui.style()).show(ui, |ui| {
-                ui.label(RichText::new(tl!("Save character samples from this protected document?")).strong());
-                ui.label(RichText::new(tl!("They are saved unencrypted, in the folder you chose for retraining.")).small());
-                ui.horizontal(|ui| {
-                    if ui.button(tl!("Save them")).clicked() {
-                        answer = Some(true);
-                    }
-                    if ui.button(tl!("Don't save")).clicked() {
-                        answer = Some(false);
-                    }
-                });
-            });
-        });
-    answer
-}
-
 impl crate::PdfCraftApp {
     /// Every frame: show the folder picker when asked, and save the corrections waiting.
     pub(crate) fn poll_chess_samples(&mut self) {
@@ -201,25 +168,18 @@ impl crate::PdfCraftApp {
             });
         }
         for fix in std::mem::take(&mut self.chess.capture.samples.queue) {
-            let Some(doc) = self.session.get(fix.doc) else { continue };
-            // Copying not allowed: never (the area could not have been read either).
-            if !doc.allows_copying() {
-                continue;
-            }
-            if doc.info.encrypted {
-                let s = &mut self.chess.capture.samples;
-                match s.consent.get(&fix.doc) {
-                    Some(true) => {}
-                    Some(false) => continue,
-                    None => {
-                        if s.held.len() < MAX_WAITING {
-                            s.held.push(fix);
-                        }
-                        continue;
+            // The one rule for what is kept of a document (plan A9-I1c): copying not allowed,
+            // never (the area could not have been read either); encrypted, once the user says so.
+            match self.chess_keep(fix.doc) {
+                Keeping::Yes => self.save_chess_sample(&fix),
+                Keeping::No => {}
+                Keeping::Ask => {
+                    let s = &mut self.chess.capture.samples;
+                    if s.held.len() < MAX_WAITING {
+                        s.held.push(fix);
                     }
                 }
             }
-            self.save_chess_sample(&fix);
         }
     }
 
@@ -275,12 +235,10 @@ mod tests {
         assert_eq!(s.queue.len(), MAX_WAITING, "capped");
         s.queue.clear();
         s.held = vec![fix(1), fix(2), fix(1)];
-        assert_eq!(s.asking(), Some(DocId(1)));
         s.answer(DocId(1), false);
         assert!(s.queue.is_empty() && s.held == vec![fix(2)]);
-        assert_eq!(s.asking(), Some(DocId(2)));
         s.answer(DocId(2), true);
         assert_eq!(s.queue, vec![fix(2)]);
-        assert_eq!(s.asking(), None);
+        assert!(s.held.is_empty());
     }
 }

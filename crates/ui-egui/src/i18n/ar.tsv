@@ -3737,6 +3737,13 @@ the move's comment	Move comment	تعليق النقلة
 	The work stopped on an internal error.	توقف العمل بسبب خطأ داخلي.
 # Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
 	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	في المتصفح، لا يمكن بعدُ تصدير كتاب يزيد على {n} صفحة أو مواءمته مع PGN: ستتوقف علامة التبويب عن الاستجابة حتى النهاية. تطبيق سطح المكتب يفعل ذلك في الخلفية.
+# Plan A9-I1c: one question before keeping an encrypted document's chess (corrections, book's PGN, games, samples).
+	Keep your chess work on this protected document?	هل تريد حفظ عملك في الشطرنج على هذا المستند المحمي؟
+	“{name}” is encrypted. The app keeps your diagram corrections, the book's PGN and the chess games of each document unencrypted on this computer, so they come back when the document is opened again; character samples go to the folder chosen for them.	«{name}» مشفّر. يحفظ التطبيق تصحيحات المخططات وPGN الكتاب ومباريات الشطرنج لكل مستند دون تشفير على هذا الكمبيوتر، لتعود عند فتح المستند مرة أخرى؛ وتذهب عينات الأحرف إلى المجلد المختار لها.
+	Not kept, they last only until the document is closed.	إن لم تُحفظ، فلن تبقى إلا حتى إغلاق المستند.
+	Keep them	احفظها
+	Don't keep	لا تحفظ
+	The book's PGN couldn't be saved: {e}	تعذّر حفظ PGN الكتاب: {e}
 # Plan A9-I4: a diagram waits for its page's scan; plan A9-N4: the Diagram tab says the mate the page asks.
 	Diagram {n} wasn't found on page {p}.	لم يُعثر على المخطط {n} في الصفحة {p}.
 	Mate in {n}: {key}! (unique)	كش مات في {n}: {key}! (وحيدة)

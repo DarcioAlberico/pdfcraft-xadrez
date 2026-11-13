@@ -3461,6 +3461,13 @@ the move's comment	Move comment	A lépés megjegyzése
 	The work stopped on an internal error.	A munka belső hiba miatt leállt.
 # Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
 	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	A böngészőben {n} oldalnál hosszabb könyvet még nem lehet exportálni vagy a PGN-hez igazítani: a lap a végéig nem válaszolna. Az asztali alkalmazás ezt a háttérben végzi.
+# Plan A9-I1c: one question before keeping an encrypted document's chess (corrections, book's PGN, games, samples).
+	Keep your chess work on this protected document?	Megőrizzük a sakkmunkáját ebben a védett dokumentumban?
+	“{name}” is encrypted. The app keeps your diagram corrections, the book's PGN and the chess games of each document unencrypted on this computer, so they come back when the document is opened again; character samples go to the folder chosen for them.	„{name}” titkosított. Az alkalmazás titkosítás nélkül őrzi meg ezen a számítógépen minden dokumentum diagramjavításait, a könyv PGN-jét és a sakkjátszmákat, hogy a dokumentum újbóli megnyitásakor visszatérjenek; a karaktermintákat a nekik választott mappába menti.
+	Not kept, they last only until the document is closed.	Ha nem őrizzük meg, csak a dokumentum bezárásáig maradnak meg.
+	Keep them	Megőrzés
+	Don't keep	Nem őrizzük meg
+	The book's PGN couldn't be saved: {e}	A könyv PGN-jét nem sikerült menteni: {e}
 # Plan A9-I4: a diagram waits for its page's scan; plan A9-N4: the Diagram tab says the mate the page asks.
 	Diagram {n} wasn't found on page {p}.	A(z) {n}. diagram nem található a(z) {p}. oldalon.
 	Mate in {n}: {key}! (unique)	Matt {n} lépésben: {key}! (egyetlen)

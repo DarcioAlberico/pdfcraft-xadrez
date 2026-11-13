@@ -3715,6 +3715,13 @@ the move's comment	Move comment	Bình luận của nước đi
 	The work stopped on an internal error.	Công việc đã dừng do lỗi nội bộ.
 # Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
 	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	Trong trình duyệt, chưa thể xuất hoặc căn theo PGN một cuốn sách dài hơn {n} trang: thẻ sẽ ngừng phản hồi cho đến khi xong. Ứng dụng máy tính làm việc này ở chế độ nền.
+# Plan A9-I1c: one question before keeping an encrypted document's chess (corrections, book's PGN, games, samples).
+	Keep your chess work on this protected document?	Giữ lại công việc cờ vua của bạn trên tài liệu được bảo vệ này?
+	“{name}” is encrypted. The app keeps your diagram corrections, the book's PGN and the chess games of each document unencrypted on this computer, so they come back when the document is opened again; character samples go to the folder chosen for them.	“{name}” đã được mã hóa. Ứng dụng giữ các chỉnh sửa sơ đồ, PGN của sách và các ván cờ của từng tài liệu mà không mã hóa trên máy tính này, để chúng trở lại khi tài liệu được mở lại; các mẫu ký tự được lưu vào thư mục đã chọn cho chúng.
+	Not kept, they last only until the document is closed.	Nếu không giữ lại, chúng chỉ tồn tại đến khi đóng tài liệu.
+	Keep them	Giữ lại
+	Don't keep	Không giữ
+	The book's PGN couldn't be saved: {e}	Không thể lưu PGN của sách: {e}
 # Plan A9-I4: a diagram waits for its page's scan; plan A9-N4: the Diagram tab says the mate the page asks.
 	Diagram {n} wasn't found on page {p}.	Không tìm thấy sơ đồ {n} trên trang {p}.
 	Mate in {n}: {key}! (unique)	Chiếu hết sau {n} nước: {key}! (duy nhất)

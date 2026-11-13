@@ -3467,6 +3467,13 @@ the move's comment	Move comment	Komentar k potezi
 	The work stopped on an internal error.	Delo se je ustavilo zaradi notranje napake.
 # Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
 	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	V brskalniku knjige z več kot {n} stranmi še ni mogoče izvoziti ali uskladiti s PGN: zavihek bi se do konca prenehal odzivati. Namizna aplikacija to naredi v ozadju.
+# Plan A9-I1c: one question before keeping an encrypted document's chess (corrections, book's PGN, games, samples).
+	Keep your chess work on this protected document?	Ali želite ohraniti svoje šahovsko delo v tem zaščitenem dokumentu?
+	“{name}” is encrypted. The app keeps your diagram corrections, the book's PGN and the chess games of each document unencrypted on this computer, so they come back when the document is opened again; character samples go to the folder chosen for them.	»{name}« je šifriran. Aplikacija hrani popravke diagramov, PGN knjige in šahovske partije vsakega dokumenta nešifrirane v tem računalniku, da se vrnejo, ko dokument znova odprete; vzorci znakov gredo v mapo, izbrano zanje.
+	Not kept, they last only until the document is closed.	Če jih ne ohranite, trajajo le do zaprtja dokumenta.
+	Keep them	Ohrani
+	Don't keep	Ne ohrani
+	The book's PGN couldn't be saved: {e}	PGN knjige ni bilo mogoče shraniti: {e}
 # Plan A9-I4: a diagram waits for its page's scan; plan A9-N4: the Diagram tab says the mate the page asks.
 	Diagram {n} wasn't found on page {p}.	Diagrama {n} na strani {p} ni bilo mogoče najti.
 	Mate in {n}: {key}! (unique)	Mat v {n}: {key}! (edina)

@@ -52,17 +52,21 @@ use classify::{Classes, Read, Reader};
 use seg::{Bx, Gray};
 pub use weight::{
     BOLD_GAP_ABOVE, BOLD_LEADING, BOLD_MAX_LINES, BOLD_MAX_SIZE, BOLD_MIN_GLYPHS, BOLD_RATIO, RUN_GAP, WORD_BOLD_RATIO, WORD_MIN_GLYPHS, bold_words,
-    bolder_lines,
+    bold_words_in, bolder_lines, bolder_lines_in,
 };
 
 /// Most pixels read at once: 40 megapixels, a letter page at 600 DPI. A larger raster is
 /// refused; read it in strips.
 pub const MAX_GLYPH_PIXELS: usize = 40_000_000;
-/// Most ink components in one [`read`] call. A page of text has a few thousand; the character
-/// box rules are quadratic in them, so a noisy region is refused rather than ground through.
+/// Most ink components one [`read`] works on, dust left out ([`PageInk`]). A page of text has a
+/// few thousand; the character box rules are quadratic in them, so the strips of a region past it
+/// (a picture's dots) are left out, and said, rather than ground through.
 pub const MAX_COMPONENTS: usize = 20_000;
-/// Most ink components [`text_scale`] measures.
+/// Most ink components above the dust floor a region may hold at all: past it, it is not text.
 pub const MAX_SCALE_COMPONENTS: usize = 500_000;
+/// Most blank rows within one strip of a picture ([`PageInk`]): a halftone's rows of dots are
+/// a pixel or two apart, a page's lines farther.
+const PICTURE_GAP: i64 = 2;
 /// Most alternatives kept per glyph.
 pub const MAX_ALTERNATIVES: usize = 3;
 /// Least probability of a kept alternative.
@@ -235,38 +239,109 @@ fn crop(image: &GrayImage, region: PixelRect) -> Result<(usize, usize, Vec<u8>),
     Ok((w, h, px))
 }
 
+/// A page's ink, worked out once and read by [`read_ink`], [`frames_in`], [`bolder_lines_in`] and
+/// [`bold_words_in`] (plan A9-V2, A3-09: each binarized and segmented the page again): the
+/// region's pixels, their binarization, the ink components and the text scale they give.
+///
+/// Dust is left out without counting ([`seg::MIN_COMPONENT_AREA`], then whatever is smaller than
+/// a glyph at the page's scale), so a picture's fine dots no longer make a page "not text" (A3-02).
+/// A strip of the page that still holds more than [`MAX_COMPONENTS`] (coarser dots, a dusty scan)
+/// is left out of the reading, and [`PageInk::skipped`] says where; the other lines are read.
+/// Past [`MAX_SCALE_COMPONENTS`] components in all, the region is no text.
+pub struct PageInk {
+    region: PixelRect,
+    w: usize,
+    h: usize,
+    px: Vec<u8>,
+    bin: seg::Bin,
+    comps: Vec<seg::Comp>,
+    scale: i64,
+    skipped: Vec<PixelRect>,
+}
+
+impl PageInk {
+    /// The ink of `region` of `image` (all of it when `None`), its scale `scale` when given (else
+    /// measured outside `exclude`, in `image`'s pixels). `None` for a region with no pixels.
+    pub fn new(image: &GrayImage, region: Option<PixelRect>, scale: Option<u32>, exclude: &[PixelRect]) -> Result<Option<PageInk>, GlyphError> {
+        let Some(region) = clamp_region(image, region) else { return Ok(None) };
+        let (w, h, px) = crop(image, region)?;
+        let bin = seg::binarize(&Gray { w, h, px: &px });
+        let mut comps = seg::components(&bin, MAX_SCALE_COMPONENTS).ok_or(GlyphError::TooManyComponents { max: MAX_SCALE_COMPONENTS })?;
+        // A strip with more than a read takes (a picture's dots) goes first, so that it neither
+        // passes the cap nor sets the scale.
+        let skipped = seg::drop_dense_strips(&mut comps, h, MAX_COMPONENTS, PICTURE_GAP)
+            .into_iter()
+            .map(|(y0, y1)| to_image(&Bx { x0: 0, y0, x1: w as i64, y1 }, region))
+            .collect();
+        let scale = match scale.filter(|&s| s > 0) {
+            Some(s) => i64::from(s),
+            None if exclude.is_empty() => seg::scale(&comps, w.saturating_mul(h)),
+            None => {
+                let (ox, oy) = (i64::from(region.x0), i64::from(region.y0));
+                let outside = |c: &&seg::Comp| {
+                    let (cx, cy) = ((c.b.x0 + c.b.x1) / 2 + ox, (c.b.y0 + c.b.y1) / 2 + oy);
+                    !exclude.iter().any(|r| cx >= i64::from(r.x0) && cx < i64::from(r.x1) && cy >= i64::from(r.y0) && cy < i64::from(r.y1))
+                };
+                let counted: Vec<seg::Comp> = comps.iter().filter(outside).copied().collect();
+                seg::scale(&counted, w.saturating_mul(h))
+            }
+        };
+        if scale > 0 {
+            comps.retain(|c| !seg::below_glyph(c, scale));
+        }
+        Ok(Some(PageInk { region, w, h, px, bin, comps, scale, skipped }))
+    }
+
+    /// The text scale: the box height at the median of the ink mass. `None` without ink.
+    pub fn scale(&self) -> Option<u32> {
+        u32::try_from(self.scale).ok().filter(|&s| s > 0)
+    }
+
+    /// The strips of the page left out of the reading, in the image's pixels: too much fine ink to
+    /// be text ([`MAX_COMPONENTS`]).
+    pub fn skipped(&self) -> &[PixelRect] {
+        &self.skipped
+    }
+
+    /// `rect`, in the image's pixels, in the region's.
+    fn local(&self, rect: PixelRect) -> PixelRect {
+        PixelRect {
+            x0: rect.x0.saturating_sub(self.region.x0),
+            y0: rect.y0.saturating_sub(self.region.y0),
+            x1: rect.x1.saturating_sub(self.region.x0),
+            y1: rect.y1.saturating_sub(self.region.y0),
+        }
+    }
+}
+
 /// The text scale of a page: the box height at the median of its ink mass (cap height, more or
 /// less), measured outside `exclude` (the page's diagrams, in the same pixels). `None` for a
 /// page without ink.
 pub fn text_scale(image: &GrayImage, exclude: &[PixelRect]) -> Result<Option<u32>, GlyphError> {
-    let Some(region) = clamp_region(image, None) else { return Ok(None) };
-    let (w, h, px) = crop(image, region)?;
-    let bin = seg::binarize(&Gray { w, h, px: &px });
-    let comps = seg::components(&bin, MAX_SCALE_COMPONENTS).ok_or(GlyphError::TooManyComponents { max: MAX_SCALE_COMPONENTS })?;
-    let outside = |c: &seg::Comp| {
-        let (cx, cy) = ((c.b.x0 + c.b.x1) / 2, (c.b.y0 + c.b.y1) / 2);
-        !exclude.iter().any(|r| cx >= i64::from(r.x0) && cx < i64::from(r.x1) && cy >= i64::from(r.y0) && cy < i64::from(r.y1))
-    };
-    let comps: Vec<seg::Comp> = comps.into_iter().filter(outside).collect();
-    let s = seg::scale(&comps, w.saturating_mul(h));
-    Ok(u32::try_from(s).ok().filter(|&s| s > 0))
+    Ok(PageInk::new(image, None, None, exclude)?.and_then(|ink| ink.scale()))
 }
 
 /// The frames drawn around text in `region` of `image` (all of it when `None`), in `image`'s
-/// pixels: a game's header box, a chapter title's. [`read`] reads the text inside them and leaves
-/// the frames out; a page read with OCR has no layout but these to tell a heading by. A frame is
-/// looked for on lighter ink than the text's (`seg::binarize_light`): a header box ruled in light
-/// gray is still a frame. `scale` as for [`read`].
+/// pixels ([`frames_in`]). `scale` as for [`read`].
 pub fn frames(image: &GrayImage, region: Option<PixelRect>, scale: Option<u32>) -> Result<Vec<PixelRect>, GlyphError> {
-    let Some(region) = clamp_region(image, region) else { return Ok(Vec::new()) };
-    let (w, h, px) = crop(image, region)?;
-    let bin = seg::binarize_light(&Gray { w, h, px: &px });
-    let comps = seg::components(&bin, MAX_COMPONENTS).ok_or(GlyphError::TooManyComponents { max: MAX_COMPONENTS })?;
-    let scale = scale.filter(|&s| s > 0).map_or_else(|| seg::scale(&comps, w.saturating_mul(h)), i64::from);
-    if scale <= 0 {
+    match PageInk::new(image, region, scale, &[])? {
+        Some(ink) => frames_in(&ink),
+        None => Ok(Vec::new()),
+    }
+}
+
+/// The frames drawn around text on `ink`'s page, in the image's pixels: a game's header box, a
+/// chapter title's. [`read`] reads the text inside them and leaves the frames out; a page read
+/// with OCR has no layout but these to tell a heading by. A frame is looked for on lighter ink
+/// than the text's (`seg::binarize_light`): a header box ruled in light gray is still a frame.
+pub fn frames_in(ink: &PageInk) -> Result<Vec<PixelRect>, GlyphError> {
+    if ink.scale <= 0 {
         return Ok(Vec::new());
     }
-    Ok(comps.iter().filter(|c| seg::is_frame(c, scale)).map(|c| to_image(&c.b, region)).collect())
+    let bin = seg::binarize_light(&Gray { w: ink.w, h: ink.h, px: &ink.px });
+    // Only the frames are kept, one look at each component: the cap is the region's, not a read's.
+    let comps = seg::components(&bin, MAX_SCALE_COMPONENTS).ok_or(GlyphError::TooManyComponents { max: MAX_SCALE_COMPONENTS })?;
+    Ok(comps.iter().filter(|c| seg::is_frame(c, ink.scale)).map(|c| to_image(&c.b, ink.region)).collect())
 }
 
 /// Read the glyphs of `region` of `image` (all of it when `None`) into lines of words, with
@@ -274,8 +349,9 @@ pub fn frames(image: &GrayImage, region: Option<PixelRect>, scale: Option<u32>) 
 /// measures it from the region, which is right for a crop of one line or a whole page.
 ///
 /// An empty or blank region reads as no lines. A region above [`MAX_GLYPH_PIXELS`] or with more
-/// than [`MAX_COMPONENTS`] ink components is an error, as is a classifier that fails or answers
-/// with the wrong number of values.
+/// than [`MAX_SCALE_COMPONENTS`] ink components is an error, as is a classifier that fails or
+/// answers with the wrong number of values; the strips of a region with too much fine ink are
+/// left out ([`PageInk`]).
 pub fn read(
     image: &GrayImage,
     region: Option<PixelRect>,
@@ -283,33 +359,41 @@ pub fn read(
     model: &dyn GlyphClassifier,
     options: &GlyphOptions,
 ) -> Result<Vec<GlyphLine>, GlyphError> {
+    if model.classes().is_empty() {
+        return Err(GlyphError::NoClasses);
+    }
+    match PageInk::new(image, region, scale, &[])? {
+        Some(ink) => read_ink(&ink, model, options),
+        None => Ok(Vec::new()),
+    }
+}
+
+/// [`read`] on a page's ink worked out before ([`PageInk`]).
+pub fn read_ink(ink: &PageInk, model: &dyn GlyphClassifier, options: &GlyphOptions) -> Result<Vec<GlyphLine>, GlyphError> {
     let names = model.classes();
     if names.is_empty() {
         return Err(GlyphError::NoClasses);
     }
-    let Some(region) = clamp_region(image, region) else { return Ok(Vec::new()) };
-    let (w, h, px) = crop(image, region)?;
-    let gray = Gray { w, h, px: &px };
-    let bin = seg::binarize(&gray);
-    let comps = seg::components(&bin, MAX_COMPONENTS).ok_or(GlyphError::TooManyComponents { max: MAX_COMPONENTS })?;
-    let scale = scale.filter(|&s| s > 0).map_or_else(|| seg::scale(&comps, w.saturating_mul(h)), i64::from);
+    let (region, scale, bin) = (ink.region, ink.scale, &ink.bin);
     if scale <= 0 {
         return Ok(Vec::new());
     }
-    let (boxes, bars) = seg::char_boxes(&comps, scale);
-    let boxes = seg::join_dots(&boxes, &bin);
+    let gray = Gray { w: ink.w, h: ink.h, px: &ink.px };
+    let (boxes, bars) = seg::char_boxes(&ink.comps, scale);
+    let boxes = seg::join_dots(&boxes, bin);
     let (parts, bars) = seg::join_stacked(&boxes, &bars, scale);
     let boxes = seg::order_in_strip(&seg::join_signs(parts, &bars, scale));
-    let reader = Reader { model, classes: Classes::new(names), gray };
-    let boxes = if options.split_glued { reader.split_glued(&bin, &boxes, scale)? } else { boxes };
+    let reader = Reader::new(model, Classes::new(names), gray);
+    let boxes = if options.split_glued { reader.split_glued(bin, &boxes, scale)? } else { boxes };
     let boxes = if options.merge_broken { reader.merge_broken(&boxes, scale)? } else { boxes };
+    // Every line's glyphs, and the unions tried on them, read in batches of the page, not a call
+    // a line and a pair (plan A9-V3, A3-03).
+    let lines = reader.read_lines(seg::lines(&boxes, scale))?;
+    let lines = if options.merge_broken { reader.join_fragments_in(reader.join_bracket_pairs_in(lines, scale)?, scale)? } else { lines };
     let mut out = Vec::new();
-    for line in seg::lines(&boxes, scale) {
-        let reads = reader.read(&line)?;
-        let (line, reads) = if options.merge_broken { reader.join_bracket_pairs(line, reads, scale)? } else { (line, reads) };
-        let (line, mut reads) = if options.merge_broken { reader.join_fragments(line, reads, scale)? } else { (line, reads) };
+    for (line, mut reads) in lines {
         fix::stacked(&mut reads, &line, &reader.classes);
-        let ink: Vec<Bx> = line.iter().map(|b| seg::tighten(&bin, b)).collect();
+        let ink: Vec<Bx> = line.iter().map(|b| seg::tighten(bin, b)).collect();
         fix::square_dots(&mut reads, &ink, &reader.classes);
         if options.case_by_height {
             fix::case_by_height(&mut reads, &line, &reader.classes);
