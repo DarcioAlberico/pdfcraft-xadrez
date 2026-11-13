@@ -36,6 +36,7 @@
 //! relicensed MIT/Apache, `docs/chess/provenance.md`); the code is written here.
 
 mod build;
+pub mod errata;
 pub mod fragment;
 pub mod from_games;
 pub mod games;

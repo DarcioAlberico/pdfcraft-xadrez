@@ -892,6 +892,83 @@ fn every_export_takes_the_books_pgn_and_the_users_games() {
     let _ = std::fs::remove_dir_all(base);
 }
 
+/// Plan A9-N19: `chess_errata` lists a knight printed taking on an empty d8 and a check printed on
+/// a move that gives none as two CSV rows with their page and move, inline or to a file inside the
+/// root; as Markdown too. With the book's PGN, a move in conflict with it on the born-digital page
+/// is a row, unless the user kept the book's move in the app, which is counted instead.
+#[test]
+fn chess_errata_lists_what_the_book_printed_that_its_moves_do_not_bear_out() {
+    let (base, root) = workdir("errata");
+    std::fs::write(root.join("marks.pdf"), text_pdf("1.Nf3 d5 2.Ng5+ Qd6 3.Ne6 Qb4 4.Nxd8 Kxd8")).unwrap();
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let doc = ok(&mut a, "doc_open", json!({ "path": "marks.pdf" }))["doc"].as_u64().unwrap();
+    let csv = ok(&mut a, "chess_errata", json!({ "doc": doc, "lang": "en" }));
+    assert_eq!(
+        csv["text"].as_str().unwrap().lines().collect::<Vec<_>>(),
+        [
+            "page,page_label,move,printed,issue,expected,detail,read_from",
+            "1,1,2.,2.Ng5+,check_mark,Ng5,\"printed with a check, but Ng5 gives none\",text",
+            "1,1,4.,4.Nxd8,capture_mark,Nd8,\"printed as a capture, but Nd8 takes nothing\",text",
+        ],
+        "{csv:#}"
+    );
+    assert_eq!(csv["rows"], 2);
+    assert_eq!(csv["issues"], json!({ "capture_mark": 1, "check_mark": 1, "mate_mark": 0, "move_number": 0, "book_pgn": 0 }));
+    assert_eq!((csv["born_digital_pages"].as_u64(), csv["ocr_pages"].as_u64(), &csv["reference"]), (Some(1), Some(0), &Value::Null));
+    // As Markdown, to a file inside the root, and nothing inline.
+    let md = ok(&mut a, "chess_errata", json!({ "doc": doc, "lang": "en", "format": "markdown", "out": "errata.md", "title": "Marks" }));
+    assert!(md.get("text").is_none() && md["out"] == "errata.md", "{md:#}");
+    let written = std::fs::read_to_string(root.join("errata.md")).unwrap();
+    assert!(written.starts_with("# Notation errata: Marks\n\n| Page |"), "{written}");
+    // `4\.` reads `4.` (escaped where a line may start a list, as the Markdown export escapes it).
+    assert!(written.contains("| 1 | 1 | 4\\. | 4.Nxd8 | capture mark | Nd8 |"), "{written}");
+    // With bom, Excel's byte order mark first.
+    ok(&mut a, "chess_errata", json!({ "doc": doc, "lang": "en", "out": "errata.csv", "bom": true }));
+    assert!(std::fs::read(root.join("errata.csv")).unwrap().starts_with(b"\xEF\xBB\xBFpage,"));
+    // Confined to the root, and nothing is written outside it.
+    for out in ["../outside/e.csv".to_string(), base.join("outside").join("e.csv").to_string_lossy().into_owned()] {
+        match a.call("chess_errata", &json!({ "doc": doc, "out": out })) {
+            Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{out}: {m}"),
+            other => panic!("{out} accepted: {other:?}"),
+        }
+    }
+    assert_eq!(std::fs::read_dir(base.join("outside")).unwrap().count(), 0, "nothing was written outside");
+    let e = a.call("chess_errata", &json!({ "doc": doc, "format": "xlsx" })).unwrap_err();
+    assert!(e.to_string().contains("format"), "{e}");
+
+    // The book's 1...c5 is not in its PGN, which plays 2.Nf3 after 1...e5.
+    std::fs::write(root.join("line.pdf"), text_pdf("1.e4 e5 (1...c5 2.Nf3) 2.Nf3")).unwrap();
+    std::fs::write(root.join("book.pgn"), "[Event \"Chapter 1\"]\n\n1.e4 e5 2.Nf3 Nc6 *\n").unwrap();
+    let line = ok(&mut a, "doc_open", json!({ "path": "line.pdf" }))["doc"].as_u64().unwrap();
+    let pgn = ok(&mut a, "chess_errata", json!({ "doc": line, "lang": "en", "reference_pgn": "book.pgn" }));
+    let rows: Vec<&str> = pgn["text"].as_str().unwrap().lines().skip(1).collect();
+    assert_eq!(rows.len(), 1, "{pgn:#}");
+    assert!(rows[0].starts_with("1,1,2.,2.Nf3,book_pgn,2.Nf3,\"the book's PGN (game 1, Chapter 1) plays 2.Nf3 from another position;"), "{rows:?}");
+    assert_eq!((pgn["reference"]["kept_as_printed"].as_u64(), pgn["reference"]["not_judged"].as_u64()), (Some(0), Some(0)), "{pgn:#}");
+    // The user kept the book's move in the app (no tool makes the choice): no row, counted.
+    let set = ok(&mut a, "chess_reference_set", json!({ "doc": line, "path": "book.pgn" }));
+    let read = ok(&mut a, "chess_document", json!({ "doc": line, "lang": "en", "include": ["json"] }));
+    let at = read["document"]["pages"][0]["blocks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .enumerate()
+        .find_map(|(b, block)| {
+            let inlines = block["inlines"].as_array()?;
+            inlines.iter().position(|i| i["reference"]["kind"] == "conflict").map(|i| (b, i))
+        })
+        .unwrap_or_else(|| panic!("no move in conflict: {read:#}"));
+    let file = root.join(".pdfcraft/chess-reference").join(set["file"].as_str().unwrap());
+    let mut kept: Value = serde_json::from_slice(&std::fs::read(&file).unwrap()).unwrap();
+    kept["decisions"] =
+        json!([{ "page": 0, "block": at.0, "inline": at.1, "san": "Nf3", "san_read": "Nf3", "ordinal": 0, "choice": "book", "pgn_san": "Nf3" }]);
+    std::fs::write(&file, serde_json::to_vec(&kept).unwrap()).unwrap();
+    let decided = ok(&mut a, "chess_errata", json!({ "doc": line, "lang": "en" }));
+    assert_eq!((decided["rows"].as_u64(), decided["reference"]["kept_as_printed"].as_u64()), (Some(0), Some(1)), "{decided:#}");
+    assert_eq!(ok(&mut a, "doc_list", json!({}))["documents"][0]["dirty"], false, "reading is read-only");
+    let _ = std::fs::remove_dir_all(base);
+}
+
 /// Plan "Carregar PGN do livro", R5: `chess_reference_set` keeps a copy of the book's PGN with the
 /// document, and `chess_document`, `chess_diagram_states` and `chess_export_pgn` use it when not
 /// given `reference_pgn` (unless `reference` is false), even after the PGN file is gone and after

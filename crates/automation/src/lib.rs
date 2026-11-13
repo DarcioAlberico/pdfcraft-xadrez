@@ -19,6 +19,7 @@ mod batch;
 mod chess;
 mod chess_area;
 mod chess_corrections;
+mod chess_errata;
 mod chess_files;
 mod chess_games;
 mod chess_pgn;
@@ -872,6 +873,7 @@ impl Automation {
             "chess_store_migrate" => self.chess_store_migrate(&a)?,
             "chess_replace_diagram" => self.chess_replace_diagram(&a)?,
             "chess_document" => self.chess_document(&a)?,
+            "chess_errata" => self.chess_errata(&a)?,
             "chess_add_lichess_links" => self.chess_add_lichess_links(&a)?,
             "chess_export_html" => self.chess_export_html(&a)?,
             "chess_export_epub" => self.chess_export_epub(&a)?,
