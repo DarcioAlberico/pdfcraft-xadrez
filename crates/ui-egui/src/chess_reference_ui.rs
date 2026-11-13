@@ -22,7 +22,7 @@ use std::sync::Arc;
 use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::DocKeys;
 use pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::{MAX_REFERENCE_BYTES, ReferenceIndex};
-use pdfcraft_engine::chess::reference_store::{Choice, Decision, KeptPgn, Loaded, MemStore, ReferenceStoreError};
+use pdfcraft_engine::chess::reference_store::{Choice, Decision, Kept, KeptPgn, Loaded, MemStore, ReferenceStoreError};
 use pdfcraft_engine::chess::span::MoveAt;
 
 use crate::PdfCraftApp;
@@ -60,12 +60,12 @@ impl Store {
         }
     }
 
-    fn set(&mut self, keys: &DocKeys, pages: usize, pgn: KeptPgn) -> Result<(bool, Loaded), ReferenceStoreError> {
+    fn set(&mut self, keys: &DocKeys, pages: usize, pgn: KeptPgn, has_move: impl Fn(&str) -> bool) -> Result<(Kept, Loaded), ReferenceStoreError> {
         match self {
             #[cfg(not(target_arch = "wasm32"))]
-            Store::Folder(s) => s.set(keys, pages, pgn),
+            Store::Folder(s) => s.set(keys, pages, pgn, has_move),
             Store::Memory { store, changed } => {
-                let out = store.set(keys, pages, pgn)?;
+                let out = store.set(keys, pages, pgn, has_move)?;
                 *changed = true;
                 Ok(out)
             }
@@ -424,12 +424,13 @@ impl PdfCraftApp {
         };
         let summary = BookPgnSummary { name: Some(name.to_owned()), games: index.games().len(), moves: index.moves() };
         let kept = KeptPgn::new(Some(name), text, summary.games, summary.moves, now())
-            .and_then(|pgn| self.chess.book_pgns.store.set(&keys, pages, pgn.read_from(bytes)));
-        // The same PGN kept again keeps the decisions made against it (plan A9-F1).
-        let decisions = match kept {
-            Ok((_, loaded)) => {
+            .and_then(|pgn| self.chess.book_pgns.store.set(&keys, pages, pgn.read_from(bytes), |san| index.has_move(san)));
+        // The decisions stay, with the same PGN (plan A9-F1) and with another (decision D25, plan
+        // A9-G4); those naming a move the new one doesn't have are said.
+        let (decisions, unmatched) = match kept {
+            Ok((kept, loaded)) => {
                 self.say_book_pgn_set_aside(&loaded);
-                loaded.file.decisions
+                (loaded.file.decisions, kept.unmatched)
             }
             Err(e) => return self.notify(refused(&e)),
         };
@@ -445,8 +446,8 @@ impl PdfCraftApp {
             decisions,
         });
         // The Text tab reads its page again, linked to it, and the Diagrams list takes it.
-        self.chess.text = None;
-        self.refresh_chess_kinds();
+        self.chess.doc_mut(id).text = None;
+        self.refresh_chess_kinds(id);
         let mut note = crate::i18n::fmt(
             tl!("Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it."),
             &[("name", name), ("games", &summary.games.to_string()), ("moves", &summary.moves.to_string())],
@@ -454,6 +455,13 @@ impl PdfCraftApp {
         if let Some(latin) = crate::chess_collection::encoding_note(encoding) {
             note.push_str(" · ");
             note.push_str(&latin);
+        }
+        if unmatched > 0 {
+            note.push_str(" · ");
+            note.push_str(&crate::i18n::fmt(
+                tl!("Choices on moves in conflict naming a move this PGN doesn't have: {n}. They are kept for a PGN that has it."),
+                &[("n", &unmatched.to_string())],
+            ));
         }
         self.notify(note);
     }
@@ -493,7 +501,9 @@ impl PdfCraftApp {
         let Some((_, id)) = self.active_ids() else { return };
         let Some(doc) = self.session.get(id) else { return };
         let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
-        let decision = Decision::new(at, san, san_read, choice);
+        // The PGN's move it is in conflict with, as the PGN writes it (plan A9-G4, R6-10).
+        let pgn_san = self.conflict_pgn_move(id, at).unwrap_or_default();
+        let decision = Decision::new(at, san, san_read, pgn_san, choice);
         match self.chess.book_pgns.store.decide(&keys, pages, decision) {
             Ok(loaded) => {
                 self.say_book_pgn_set_aside(&loaded);
@@ -503,6 +513,20 @@ impl PdfCraftApp {
             }
             Err(e) => self.notify(crate::i18n::fmt(tl!("The choice was not kept: {e}"), &[("e", &e.to_string())])),
         }
+    }
+
+    /// The book's PGN's move that the move at `at` of document `id`, as the Text tab read its page,
+    /// is linked to (in conflict, the same move from another position), as the PGN writes it.
+    fn conflict_pgn_move(&self, id: DocId, at: MoveAt) -> Option<String> {
+        use pdfcraft_engine::chess::pdfcraft_chessvision::doc::Inline;
+        use pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::RefNode;
+        let text = self.chess.text_of(id)?;
+        let page = text.chess.pages.iter().find(|p| p.index == at.page)?;
+        let block = page.blocks.get(usize::try_from(at.block).ok()?)?;
+        let Inline::Move(m) = block.inlines().get(usize::try_from(at.inline).ok()?)? else { return None };
+        let r = m.reference.as_ref()?;
+        let index = self.chess.book_pgns.doc(id)?.index.as_ref()?;
+        index.san(RefNode { game: r.game?, node: r.node? }).map(str::to_owned)
     }
 
     /// Chess ▸ Remove the book's PGN: remove the PGN kept for the active document.
@@ -515,8 +539,8 @@ impl PdfCraftApp {
                 self.chess.book_pgns.docs.retain(|d| d.doc != id);
                 let sibling = find_sibling_pgn(&keys);
                 self.chess.book_pgns.docs.push(DocPgn { doc: id, keys, index: None, summary: None, sibling, link: None, decisions: Vec::new() });
-                self.chess.text = None;
-                self.refresh_chess_kinds();
+                self.chess.doc_mut(id).text = None;
+                self.refresh_chess_kinds(id);
                 let said = if cleared { tl!("The book's PGN was removed from this document.") } else { tl!("This document keeps no book's PGN.") };
                 self.notify(said.to_string());
             }
@@ -608,7 +632,7 @@ impl PdfCraftApp {
             return;
         }
         let stamp = self.session.chess_stamp(id);
-        if self.chess.text.as_ref().is_some_and(|t| t.doc == id && t.page == page && Some(t.stamp) == stamp) {
+        if self.chess.text_of(id).is_some_and(|t| t.page == page && Some(t.stamp) == stamp) {
             return;
         }
         self.read_chess_text(page, false);

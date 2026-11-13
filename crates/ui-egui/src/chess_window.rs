@@ -793,6 +793,8 @@ struct OpenDoc<'a> {
     id: pdfcraft_engine::DocId,
     info: &'a pdfcraft_render::DocInfo,
     stamp: Option<pdfcraft_engine::chess::ScanStamp>,
+    /// Where its pages came from, as the user said (plan A9-I1a: kept by the session).
+    origin: pdfcraft_engine::chess::document::BookOrigin,
     page: usize,
     /// The diagram editor is drawn in the Diagrams tab ([`PdfCraftApp::chess_editor_in_panel`]).
     editor_here: bool,
@@ -827,7 +829,7 @@ fn contents(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let open = app.active_ids().and_then(|(vi, id)| {
         let page = app.views.get(vi)?.current;
         let doc = app.session.get(id)?;
-        Some(OpenDoc { id, info: &doc.info, stamp: app.session.chess_stamp(id), page, editor_here })
+        Some(OpenDoc { id, info: &doc.info, stamp: app.session.chess_stamp(id), origin: app.session.chess_origin(id), page, editor_here })
     });
     let mut tab = app.chess_window.tab;
     let mut asked = Asked::default();
@@ -990,7 +992,7 @@ fn side_tab(ui: &mut egui::Ui, t: &Tokens, chess: &mut crate::chess_ui::ChessSta
             ui.label(egui::RichText::new(tl!("Open a document first")).color(t.text_muted));
             return;
         };
-        asked.panel = crate::chess_ui::tab_contents(ui, t, chess, text, d.id, d.info, d.stamp, d.page, d.editor_here);
+        asked.panel = crate::chess_ui::tab_contents(ui, t, chess, text, d.id, d.info, d.stamp, d.origin, d.page, d.editor_here);
     });
 }
 

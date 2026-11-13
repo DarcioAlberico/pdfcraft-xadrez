@@ -3160,6 +3160,7 @@ chess undo step	Clear drawings	изчистването на рисунките
 	Diagram	Диаграма
 	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Запазените корекции на диаграми не можаха да се прочетат ({why}); оставени са настрана като {name}.
 	Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted.	Някои запазени корекции на диаграми не можаха да се прочетат ({why}); останалите се използват, а {name} се пази и никога не се изтрива.
+	Diagram corrections or books' PGNs an earlier PdfCraft changed were brought in.	Поправките на диаграми или PGN файловете на книги, променени от по-ранна версия на PdfCraft, бяха пренесени.
 	The diagram corrections couldn't be saved: {e}	Корекциите на диаграми не можаха да се запазят: {e}
 	Diagram {n}, page {p}: {state}	Диаграма {n}, стр. {p}: {state}
 	Page {p} · diagram {n} of {m}	Стр. {p} · диаграма {n} от {m}
@@ -3321,6 +3322,7 @@ castling	long	дълга
 	Remove the book's PGN	Премахване на PGN на книгата
 	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	PGN на книгата, запазен за този документ, не можа да бъде прочетен ({why}); той е оставен настрана като {name}.
 	The book's PGN couldn't be read: {e}	PGN на книгата не можа да бъде прочетен: {e}
+	Choices on moves in conflict naming a move this PGN doesn't have: {n}. They are kept for a PGN that has it.	Избори при ходове в конфликт, посочващи ход, който този PGN няма: {n}. Пазят се за PGN, който го има.
 	{name} was not kept as the book's PGN: {e}	{name} не е запазен като PGN на книгата: {e}
 	no game in it	в него няма нито една партия
 	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	PGN на книгата {name}: партии – {games}, ходове – {moves}. Страниците, които раздел „Текст“ чете, се свързват с него.
@@ -3400,3 +3402,6 @@ castling	long	дълга
 	Larger text	По-голям текст
 diagram state	Read	Прочетена
 the move's comment	Move comment	Коментар към хода
+	Detecting in another book… page {d} of {t}	Откриване в друга книга… страница {d} от {t}
+	Redraw in the PDF?	Прерисуване в PDF?
+	Diagram {n}, open	Диаграма {n}, отваряне

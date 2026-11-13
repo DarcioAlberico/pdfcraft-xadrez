@@ -947,7 +947,10 @@ fn run_child(exe: &Path, file: &Path, dpi: &str, timeout: Duration) -> serde_jso
 // ---- automation --------------------------------------------------------------------------------
 
 fn automation(args: &[String]) -> Result<pdfcraft_automation::Automation, String> {
-    let a = pdfcraft_automation::Automation::new();
+    // The chess stores where the app keeps them, the same for both (plan A9-G5a, decision D17),
+    // and the folder earlier builds of the app kept them in, merged in.
+    let dirs = pdfcraft_platform::app_dirs::AppDirs::current();
+    let a = pdfcraft_automation::Automation::new().with_chess_data(dirs.chess(), dirs.recovery().map(|r| r.join("chess")));
     match flag(args, "--root") {
         Some(root) => a.with_root(root).map_err(|e| format!("--root {root}: {e}")),
         None => Ok(a),
