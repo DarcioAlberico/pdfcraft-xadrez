@@ -3469,3 +3469,14 @@ the move's comment	Move comment	Commentaire du coup
 	Keep them	Les conserver
 	Don't keep	Ne pas conserver
 	The book's PGN couldn't be saved: {e}	Le PGN du livre n’a pas pu être enregistré : {e}
+# Plan A9-I4: a diagram waits for its page's scan; plan A9-N4: the Diagram tab says the mate the page asks.
+	Diagram {n} wasn't found on page {p}.	Le diagramme {n} est introuvable à la page {p}.
+	Mate in {n}: {key}! (unique)	Mat en {n} : {key} ! (unique)
+	Mate in {n}: {key}! (not proved the only key)	Mat en {n} : {key} ! (non prouvée comme seule clé)
+	Mate in {n}: no key found within the search budget	Mat en {n} : aucune clé trouvée dans la limite de recherche
+	Mate in {n}: none found; best try {best}, refuted by {reply}	Mat en {n} : aucun ; meilleur essai {best}, réfuté par {reply}
+	Mate in {n}: none found	Mat en {n} : aucun
+	Mate in {n}: {keys} ({k} keys)	Mat en {n} : {keys} ({k} clés)
+	mates in {m}	mate en {m}
+	supposes castling is allowed	suppose le roque permis
+	Mate in {n}: both sides mate, so who moves stays assumed	Mat en {n} : les deux camps matent, donc le trait reste supposé

@@ -32,14 +32,8 @@ fn boards_with(moves: &str) -> Vec<u8> {
 /// [`boards_with`] whose document catalog is `catalog` (object 1, its pages object 2).
 fn boards_catalog(moves: &str, catalog: &str) -> Vec<u8> {
     let mut content = if moves.is_empty() { String::new() } else { format!("BT /F2 11 Tf 60 540 Td ({moves}) Tj ET\n") };
-    content.push_str("BT /F1 20 Tf 60 724 Td ");
-    for (i, line) in MERIDA_START.iter().enumerate() {
-        if i > 0 {
-            content.push_str("0 -20 Td ");
-        }
-        content.push_str(&format!("({line}) Tj "));
-    }
-    content.push_str("ET\n0.45 g\n");
+    content.push_str(&font_board(&MERIDA_START.map(String::from)));
+    content.push_str("0.45 g\n");
     for rank in 0..8 {
         for file in 0..8 {
             if (rank + file) % 2 == 0 {
@@ -48,6 +42,58 @@ fn boards_catalog(moves: &str, catalog: &str) -> Vec<u8> {
         }
     }
     content.push_str("f\n");
+    pdf_of(&content, catalog)
+}
+
+/// The board `rows` (top rank first) set in the Chess Merida font, top left (x 60..220, y 580..740).
+fn font_board(rows: &[String; 8]) -> String {
+    let mut content = String::from("BT /F1 20 Tf 60 724 Td ");
+    for (i, line) in rows.iter().enumerate() {
+        if i > 0 {
+            content.push_str("0 -20 Td ");
+        }
+        content.push_str(&format!("({line}) Tj "));
+    }
+    content.push_str("ET\n");
+    content
+}
+
+/// `placement` (a FEN's first field) in the Chess Merida layout of [`MERIDA_START`]: a white piece
+/// is its letter in lower case on a light square and upper case on a dark one, a black one `o m v
+/// t w l` for `p n b r q k`, likewise; an empty square a space (light) or `+` (dark).
+fn merida(placement: &str) -> [String; 8] {
+    let mut rows: [String; 8] = Default::default();
+    for (r, (row, out)) in placement.split('/').zip(rows.iter_mut()).enumerate() {
+        for c in row.chars() {
+            let n = c.to_digit(10).unwrap_or(0);
+            for _ in 0..n.max(u32::from(n == 0)) {
+                // a8 is light.
+                let light = (out.chars().count() + r) % 2 == 0;
+                let glyph = match "PNBRQKpnbrqk".find(c) {
+                    Some(i) if n == 0 => ['p', 'n', 'b', 'r', 'q', 'k', 'o', 'm', 'v', 't', 'w', 'l'][i],
+                    _ => ' ',
+                };
+                out.push(match (glyph, light) {
+                    (' ', true) => ' ',
+                    (' ', false) => '+',
+                    (g, true) => g,
+                    (g, false) => g.to_ascii_uppercase(),
+                });
+            }
+        }
+    }
+    rows
+}
+
+/// A page with the position `placement` in a diagram font, top left, and `caption` under it.
+fn captioned_board(placement: &str, caption: &str) -> Vec<u8> {
+    let content = format!("{}BT /F2 10 Tf 60 566 Td ({caption}) Tj ET\n", font_board(&merida(placement)));
+    pdf_of(&content, "<< /Type /Catalog /Pages 2 0 R >>")
+}
+
+/// A one-page PDF of 600 × 800 pt drawing `content`, with the Chess Merida font as F1 and
+/// Helvetica as F2, whose document catalog is `catalog` (object 1, its pages object 2).
+fn pdf_of(content: &str, catalog: &str) -> Vec<u8> {
     let widths = vec!["1000"; 95].join(" ");
     let objs = [
         catalog.to_string(),
@@ -74,6 +120,11 @@ fn boards_catalog(moves: &str, catalog: &str) -> Vec<u8> {
 
 fn harness() -> Harness<'static, PdfCraftApp> {
     harness_stepping(0.25)
+}
+
+#[test]
+fn the_merida_layout_is_the_placement() {
+    assert_eq!(merida("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"), MERIDA_START.map(String::from));
 }
 
 /// The harness, with frames `step_dt` seconds apart (kittest's default is 0.25 s).
@@ -4076,6 +4127,103 @@ fn correction_files(dir: &std::path::Path) -> Vec<String> {
 /// What the user did with diagram `index` of page 1, as the list and the page marks show it.
 fn kind(h: &Harness<'static, PdfCraftApp>, index: usize) -> Option<String> {
     h.state().chess.results().and_then(|r| r.kind(0, index)).map(|k| format!("{k:?}"))
+}
+
+/// Plan A9-I4 (finding A5-05): a diagram's row, its menu and the board take the position it
+/// shows from the engine's one rule for corrections, never a rule of their own. The drawn board no
+/// model read, once corrected, can go on the board (its menu's Open on the board was off: no
+/// reading), and Open in lichess links to the correction, not to the reading.
+#[test]
+fn a_corrected_diagram_opens_and_links_with_its_correction() {
+    let dir = corrections_dir("effective");
+    let mut h = harness_with(boards(), 0.25, egui::vec2(1400.0, 1000.0), Some(dir.clone()));
+    scan_and_edit_second(&mut h);
+    h.get_by_label("Confirm and next").click();
+    h.run_steps(3);
+    assert_eq!(kind(&h, 1).as_deref(), Some("Corrected"));
+    // Another diagram in the editor, so the board takes the row's position, not the editor's.
+    h.get_all_by_label_contains("Diagram 1 · ").next().unwrap().click();
+    h.run_steps(3);
+    row_menu(&mut h, "Diagram 2 · ");
+    let lichess = h.get_by_label("Open in lichess");
+    assert!(!lichess.accesskit_node().is_disabled(), "the corrected diagram links");
+    lichess.click();
+    h.run_steps(2);
+    let url = h.state().last_opened_url.clone().unwrap_or_default();
+    assert!(url.contains("4k3/8/8/8/8/8/8/R3K3"), "the correction's position: {url}");
+    row_menu(&mut h, "Diagram 2 · ");
+    let open = h.get_by_label("Open on the board");
+    assert!(!open.accesskit_node().is_disabled(), "a diagram not read but corrected opens on the board");
+    open.click();
+    h.run_steps(3);
+    assert!(h.state().chess.board().game.start_fen().starts_with("4k3/8/8/8/8/8/8/R3K3"), "{}", h.state().chess.board().game.start_fen());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Plan A9-I4 (finding A5-04): "Diagram N" in the Text tab waits for its page's scan when the list
+/// doesn't hold it: with the scan on a worker, as in the app, the first click opens the editor on
+/// it (it used to pick the diagram before the scan was in, which did nothing). The text's page,
+/// not the view's, is a unit test (`chess_ui::pick_tests`).
+#[test]
+fn a_diagram_of_the_text_tab_opens_once_its_page_is_scanned() {
+    // Four blank pages, the boards (page 5), five blank pages.
+    let mut s = pdfcraft_engine::Session::new();
+    let id = s.open("boards.pdf", None, std::sync::Arc::new(boards()), None).unwrap();
+    for at in [0, 0, 0, 0, 5, 5, 5, 5, 5] {
+        s.apply(id, pdfcraft_engine::Edit::InsertBlankPage { at, width: 600.0, height: 800.0 }).unwrap();
+    }
+    let bytes = s.save_bytes(id).unwrap().to_vec();
+    let mut h = harness_on(bytes, 0.25);
+    h.state_mut().views[0].go_to_page(4);
+    h.state_mut().choose_right_panel(Some(RightPanel::Chess));
+    h.run_steps(3);
+    h.get_by_label("Text").click();
+    h.run_steps(4);
+    assert!(h.state().chess.results().is_none(), "nothing scanned yet");
+    h.state_mut().run_inline = false;
+    h.get_by_label("Diagram 1").click();
+    for _ in 0..300 {
+        h.step();
+        if h.state().chess.editor.is_some() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    h.run_steps(2);
+    let ed = h.state().chess.editor.as_ref().expect("the first click opened the editor");
+    assert_eq!((ed.page, ed.index), (4, 0));
+}
+
+/// Plan A9-I4 (finding A5-17): Review now puts the list's chip back on All, so the Diagram tab
+/// walks the diagrams to review, not the chip's.
+#[test]
+fn review_now_walks_the_diagrams_to_review() {
+    let mut h = harness();
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    h.get_by_label_contains("Read (1)").click();
+    h.run_steps(2);
+    h.get_by_label("Review now").click();
+    h.run_steps(3);
+    let ed = h.state().chess.editor.as_ref().expect("the first to review opened");
+    assert_eq!((ed.page, ed.index), (0, 1));
+    assert!(h.get_all_by_label_contains("1 of 1 to review").next().is_some(), "the tab walks the diagrams to review");
+}
+
+/// Plan A9-N4 (the Diagram tab's line): a diagram whose caption asks a mate says what the solver
+/// found under its board, while the board shows the position solved.
+#[test]
+fn the_diagram_tab_says_the_mate_the_caption_asks() {
+    let mut h = harness_on(captioned_board("6k1/5ppp/8/8/8/8/8/3R2K1", "Mate in 1"), 0.25);
+    assert!(h.state_mut().execute("chess.scan"));
+    h.run_steps(3);
+    h.get_all_by_label_contains("Diagram 1 · ").next().expect("listed").click();
+    h.run_steps(3);
+    h.get_by_label("Mate in 1: 1.Rd8#! (unique)");
+    // Another position on the board: the line is not about it.
+    h.state_mut().chess.editor.as_mut().unwrap().position = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(EDITED).unwrap();
+    h.run_steps(2);
+    assert!(h.query_by_label("Mate in 1: 1.Rd8#! (unique)").is_none());
 }
 
 /// Picking a diagram opens the Diagram tab beside the Inspector, the list still in sight;

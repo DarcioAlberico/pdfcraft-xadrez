@@ -19,7 +19,9 @@
 //! screen readers which diagram opened.
 
 use egui::{Align, Layout, RichText, UiBuilder};
+use pdfcraft_engine::chess::pdfcraft_chess::mate::MateReport;
 use pdfcraft_engine::chess::pdfcraft_chess::placement::Color;
+use pdfcraft_engine::chess::pdfcraft_chessvision::board::{BoardReading, MateFinding};
 
 use crate::chess_diagram_keys::TabKey;
 use crate::chess_editor::{DiagramEditor, EditorAction};
@@ -78,6 +80,51 @@ fn suggestion_row(ui: &mut egui::Ui, t: &Tokens, ed: &mut crate::chess_editor::D
     }
 }
 
+/// A move of a problem's solution as the solution writes it: "1.Qf7" for White, "1...Kb2" for
+/// Black; the move in SAN as the solver gives it.
+fn first_move(side: Color, san: &str) -> String {
+    if side == Color::White { format!("1.{san}") } else { format!("1...{san}") }
+}
+
+/// What the solver found for the mate in `n` the page asks of a diagram (plan A9-N4), in one line:
+/// "Mate in 2: 1.Qf7! (unique)", the keys of a cook, or no mate with the best try and the defence
+/// that refutes it, so the user can tell a misread diagram from the book's mistake.
+pub(crate) fn mate_line(finding: &MateFinding) -> String {
+    let report: &MateReport = match finding {
+        MateFinding::BothSides { n } => {
+            return crate::i18n::fmt(tl!("Mate in {n}: both sides mate, so who moves stays assumed"), &[("n", &n.to_string())]);
+        }
+        MateFinding::Solved(report) => report,
+    };
+    let n = report.n.to_string();
+    let mut line = match report.keys.as_slice() {
+        [key] if report.unique() => crate::i18n::fmt(tl!("Mate in {n}: {key}! (unique)"), &[("n", &n), ("key", &first_move(report.side, key))]),
+        // Found before the budget ran out: there may be another.
+        [key] => crate::i18n::fmt(tl!("Mate in {n}: {key}! (not proved the only key)"), &[("n", &n), ("key", &first_move(report.side, key))]),
+        [] if report.exhausted => crate::i18n::fmt(tl!("Mate in {n}: no key found within the search budget"), &[("n", &n)]),
+        [] => match (&report.best_try, &report.refutation) {
+            (Some(best), Some(reply)) => crate::i18n::fmt(
+                tl!("Mate in {n}: none found; best try {best}, refuted by {reply}"),
+                &[("n", &n), ("best", &first_move(report.side, best)), ("reply", &first_move(report.side.opponent(), reply))],
+            ),
+            _ => crate::i18n::fmt(tl!("Mate in {n}: none found"), &[("n", &n)]),
+        },
+        keys => {
+            let written: Vec<String> = keys.iter().map(|k| format!("{}!", first_move(report.side, k))).collect();
+            crate::i18n::fmt(tl!("Mate in {n}: {keys} ({k} keys)"), &[("n", &n), ("keys", &written.join(", ")), ("k", &keys.len().to_string())])
+        }
+    };
+    if let Some(m) = report.shortest.filter(|m| *m < report.n && !report.keys.is_empty()) {
+        line.push_str(" · ");
+        line.push_str(&crate::i18n::fmt(tl!("mates in {m}"), &[("m", &m.to_string())]));
+    }
+    if report.castles {
+        line.push_str(" · ");
+        line.push_str(tl!("supposes castling is allowed"));
+    }
+    line
+}
+
 /// The tab: the editor of the diagram selected in the Diagrams panel or on the page, else what to
 /// do to get one.
 pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
@@ -124,6 +171,15 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
     let kept = results.kind(page, index).is_some();
     let place = queue.iter().position(|q| *q == pdfcraft_engine::chess::DiagramAt::new(page, index));
     let label = app.chess_page_label(page);
+    // What the solver found for the mate the page asks of the diagram, with the position it was
+    // found for (plan A9-N4).
+    let mate = results
+        .pages
+        .iter()
+        .find(|p| p.page == page)
+        .and_then(|p| ChessResults::reading(p, index))
+        .and_then(BoardReading::position)
+        .and_then(|pos| pos.mate.as_ref().map(|m| (pos.fen.clone(), mate_line(m))));
     let pieces = app.chess.role_pieces(pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::Role::Diagrams);
     let confirm_only = app.chess.confirm_only;
     let mut hint = !app.chess.diagram_hint_seen;
@@ -230,6 +286,11 @@ pub(crate) fn panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
             crate::chess_editor::palette(ui, sprites.as_ref(), &mut ed.brush, false);
             ui.add_space(6.0);
             fields(ui, ed);
+            // The mate the page asks, while the board shows the position it was solved for.
+            if let Some((_, line)) = mate.as_ref().filter(|(fen, _)| crate::chess_ui::same_pieces(&ed.fen(), fen)) {
+                ui.add_space(4.0);
+                ui.add(egui::Label::new(RichText::new(line).small()).wrap());
+            }
             crate::chess_editor::second_readings(ui, ed);
             if let Some(s) = &suggestion {
                 suggestion_row(ui, &t, ed, s);
@@ -492,6 +553,40 @@ fn more_menu(ui: &mut egui::Ui, ed: &DiagramEditor, legal: bool, kept: bool) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Plan A9-N4: the mate the page asks, in one line. "(unique)" only for one key proved; the
+    /// keys of a cook; no mate with the best try and the defence that refutes it, Black's moves
+    /// written "1...".
+    #[test]
+    fn the_mate_line_says_what_the_solver_found() {
+        let report = |side, keys: &[&str], shortest, exhausted, best: Option<&str>, reply: Option<&str>, castles| {
+            MateFinding::Solved(MateReport {
+                n: 2,
+                side,
+                keys: keys.iter().map(|k| (*k).to_owned()).collect(),
+                shortest,
+                nodes: 1,
+                exhausted,
+                best_try: best.map(str::to_owned),
+                refutation: reply.map(str::to_owned),
+                castles,
+            })
+        };
+        assert_eq!(mate_line(&report(Color::White, &["Qf7"], Some(2), false, None, None, false)), "Mate in 2: 1.Qf7! (unique)");
+        assert_eq!(
+            mate_line(&report(Color::White, &["O-O"], Some(1), false, None, None, true)),
+            "Mate in 2: 1.O-O! (unique) · mates in 1 · supposes castling is allowed"
+        );
+        assert_eq!(mate_line(&report(Color::Black, &["Qf2", "Qg1"], Some(2), false, None, None, false)), "Mate in 2: 1...Qf2!, 1...Qg1! (2 keys)");
+        assert_eq!(
+            mate_line(&report(Color::White, &[], None, false, Some("Qc6"), Some("Ka3"), false)),
+            "Mate in 2: none found; best try 1.Qc6, refuted by 1...Ka3"
+        );
+        assert_eq!(mate_line(&report(Color::White, &[], None, true, None, None, false)), "Mate in 2: no key found within the search budget");
+        // A key found before the budget ran out is not proved the only one.
+        assert_eq!(mate_line(&report(Color::White, &["Qf7"], Some(2), true, None, None, false)), "Mate in 2: 1.Qf7! (not proved the only key)");
+        assert_eq!(mate_line(&MateFinding::BothSides { n: 1 }), "Mate in 1: both sides mate, so who moves stays assumed");
+    }
 
     /// The board never takes more than the tab leaves it: the margins and the scroll bar come
     /// off, and a tab too narrow for [`MIN_BOARD`] gets a smaller board, never one over its edge.

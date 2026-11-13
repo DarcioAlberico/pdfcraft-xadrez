@@ -3467,3 +3467,14 @@ the move's comment	Move comment	Жүріс түсініктемесі
 	Keep them	Сақтау
 	Don't keep	Сақтамау
 	The book's PGN couldn't be saved: {e}	Кітаптың PGN-ін сақтау мүмкін болмады: {e}
+# Plan A9-I4: a diagram waits for its page's scan; plan A9-N4: the Diagram tab says the mate the page asks.
+	Diagram {n} wasn't found on page {p}.	{p}-бетте {n}-диаграмма табылмады.
+	Mate in {n}: {key}! (unique)	{n} жүрісте мат: {key}! (жалғыз)
+	Mate in {n}: {key}! (not proved the only key)	{n} жүрісте мат: {key}! (жалғыз кілт екені дәлелденбеді)
+	Mate in {n}: no key found within the search budget	{n} жүрісте мат: іздеу шегінде кілт табылмады
+	Mate in {n}: none found; best try {best}, refuted by {reply}	{n} жүрісте мат: табылмады; ең жақсы әрекет {best}, оны {reply} теріске шығарады
+	Mate in {n}: none found	{n} жүрісте мат: табылмады
+	Mate in {n}: {keys} ({k} keys)	{n} жүрісте мат: {keys} ({k} кілт)
+	mates in {m}	{m} жүрісте мат қояды
+	supposes castling is allowed	рокировка рұқсат етілген деп болжайды
+	Mate in {n}: both sides mate, so who moves stays assumed	{n} жүрісте мат: екі жақ та мат қояды, сондықтан кімнің жүрісі екені болжам күйінде қалады
