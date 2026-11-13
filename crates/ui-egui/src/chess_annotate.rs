@@ -66,7 +66,7 @@
 //! game for the words not to crowd it.
 
 use egui::Id;
-use pdfcraft_engine::chess::pdfcraft_chess::game::{MAX_COMMENT_LEN, NodeId};
+use pdfcraft_engine::chess::pdfcraft_chess::game::{MAX_COMMENT_LEN, NodeId, NodePath};
 use pdfcraft_engine::chess::pdfcraft_chess::nag::{self, NagGroup};
 use pdfcraft_engine::chess::pdfcraft_chess::placement::{Color, Piece, PieceKind};
 
@@ -453,9 +453,9 @@ fn code_here(board: &BoardState, code: u16) -> Option<u16> {
 /// [`code_here`] for move `node`, whatever move is shown.
 fn code_at(board: &BoardState, node: NodeId, code: u16) -> Option<u16> {
     let n = nag::by_code(code)?;
-    // An even absolute half-move after the move: White is to move.
+    // An even absolute half-move after the move: White is to move, so Black made it.
     let white_to_move = board.game.abs_ply(node)? % 2 == 0;
-    Some(if n.side_is_mover { n.code_for(!white_to_move) } else { n.code_for(white_to_move) })
+    Some(n.code_after(!white_to_move))
 }
 
 /// Whether the move shown carries glyph `code` (White's code; the side's is looked for).
@@ -1161,11 +1161,20 @@ fn labeled(r: &egui::Response, name: &str) {
 }
 
 /// What PGN does with a comment before move `node` that does not start a variation, or `None`
-/// when it does (PGN has its place: `( {…} 12... Nf6`).
+/// when PGN has its place: a variation's first move (`( {…} 12... Nf6`), or a move after the
+/// variations of the move before it (`12. Nf3 (12. Nc3) {…} 12... Nf6`, plan A9-F4).
 fn before_note(board: &BoardState, node: NodeId) -> Option<&'static str> {
     let path = board.game.path_of(node)?;
     let indices = path.indices();
     if indices.last().copied() != Some(0) {
+        return None;
+    }
+    // The move before it continues its own line and has variations, which PGN writes after it:
+    // the comment comes after them. (A variation's first move has its alternatives written
+    // before its bracket, so nothing comes between it and the move after it.)
+    let before_first = indices.len().checked_sub(2).and_then(|n| indices.get(n)) == Some(&0);
+    let grandparent = indices.len().checked_sub(2).and_then(|n| indices.get(..n)).and_then(|p| board.game.node_at(&NodePath::new(p.to_vec())));
+    if before_first && grandparent.is_some_and(|g| board.game.replies(g).len() > 1) {
         return None;
     }
     Some(if indices.len() == 1 {
@@ -1192,6 +1201,29 @@ mod tests {
         }
         out.extend(t.tick(end, wait.seconds()));
         out
+    }
+
+    /// Plan A9-F4: the editor's note says where PGN writes a comment before a move only where
+    /// PGN has no place of its own for it: none after the variations of the move before.
+    #[test]
+    fn the_note_on_a_comment_before_is_said_only_where_pgn_moves_it() {
+        let mut b = BoardState::default();
+        for m in ["e2e4", "e7e5", "g1f3"] {
+            b.game.play_uci(m).unwrap();
+        }
+        let at = |b: &BoardState, path: &[u16]| b.game.node_at(&NodePath::new(path.to_vec())).unwrap();
+        b.game.go_to_node(at(&b, &[0]));
+        for m in ["c7c5", "g1f3"] {
+            b.game.play_uci(m).unwrap();
+        }
+        let first = tl!("In PGN this comment joins the comment before the game's first move.");
+        let previous = tl!("In PGN this comment is written after the previous move.");
+        assert_eq!(before_note(&b, at(&b, &[0])), Some(first));
+        assert_eq!(before_note(&b, at(&b, &[0, 0])), Some(previous), "e4 has no variation");
+        assert_eq!(before_note(&b, at(&b, &[0, 0, 0])), None, "after e5's variation");
+        assert_eq!(before_note(&b, at(&b, &[0, 1])), None, "a variation's first move");
+        // Inside the variation, 2.Nf3 follows 1...c5 with nothing between them.
+        assert_eq!(before_note(&b, at(&b, &[0, 1, 0])), Some(previous), "c5's alternatives come before its bracket");
     }
 
     #[test]

@@ -98,6 +98,8 @@ fn esc(s: &str) -> String {
             '"' => out.push_str("&quot;"),
             '\'' => out.push_str("&#39;"),
             c if c.is_control() && c != '\n' && c != '\t' => {}
+            // Not characters XML takes (U+FFFE, U+FFFF, the noncharacters; plan A9-X1a, A2-17).
+            c if pdfcraft_chess::svg::noncharacter(c) => {}
             c => out.push(c),
         }
     }
@@ -435,7 +437,8 @@ fn page_section(page: &ChessPage, o: &HtmlOptions<'_>, pagebreak: bool, used: &m
         let _ = writeln!(s, "<span epub:type=\"pagebreak\" role=\"doc-pagebreak\" id=\"pagebreak\" aria-label=\"{label}\" title=\"{label}\"></span>");
     }
     let mut k = 0;
-    for block in &page.blocks {
+    // The book's text: its number, running heads and a diagram's own text are not (plan A9-L1b).
+    for (_, block) in page.book_blocks() {
         match block {
             Block::Heading { level, inlines, .. } => {
                 let l = (*level).clamp(1, 6);
@@ -512,12 +515,12 @@ pub struct TocEntry {
     pub id: String,
 }
 
-/// The document's headings, in order.
+/// The document's headings, in order; not its running heads (plan A9-L1b, A2-04).
 pub fn toc(doc: &ChessDoc) -> Vec<TocEntry> {
     let mut out = Vec::new();
     for page in &doc.pages {
         let mut k = 0;
-        for block in &page.blocks {
+        for (_, block) in page.book_blocks() {
             if let Block::Heading { level, inlines, .. } = block {
                 out.push(TocEntry { page: page.index, level: (*level).clamp(1, 6), text: super::plain_text(inlines), id: heading_id(page.index, k) });
                 k += 1;

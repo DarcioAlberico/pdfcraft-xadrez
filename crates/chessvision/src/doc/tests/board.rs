@@ -65,11 +65,10 @@ fn the_documents_games_go_onto_the_board_with_their_places() {
 }
 
 /// A comment before a variation's first move, and one before a move that continues its line
-/// (which PGN can only write with the comment of the move before), stay on their own moves.
+/// (which PGN writes after the variations of the move before), stay on their own moves.
 #[test]
 fn comments_before_stay_on_their_moves() {
-    let scores = pgn::parse("1. e4 {King's pawn} e5 ({Instead} 1... c5 $5 2. Nf3) 2. Nf3 *").unwrap();
-    let mut score = scores[0].clone();
+    let mut score = pgn::tests::score_of("1. e4 {King's pawn} e5 ({Instead} 1... c5 $5 2. Nf3) 2. Nf3 *");
     let nf3 = score.mainline()[2];
     score.nodes[nf3].comment_before = "Then".into();
     let board = to_game(&score).unwrap();
@@ -81,31 +80,41 @@ fn comments_before_stay_on_their_moves() {
     let nf3 = board.node(nf3).unwrap();
     assert_eq!(g.comment_before(nf3), "Then", "kept on the move, not merged into the comment before it");
     assert_eq!(g.comment(board.node(score.mainline()[1]).unwrap()), "", "the move before has none of it");
-    // PGN writes it after the move before, where the reader takes it for that move's comment.
-    assert_eq!(g.movetext(), "1. e4 {King's pawn} 1... e5 {Then} ({Instead} 1... c5 $5 2. Nf3) 2. Nf3");
+    // PGN writes it after the variations of the move before, where the reader takes it for the
+    // comment before the move (plan A9-F4).
+    assert_eq!(g.movetext(), "1. e4 {King's pawn} 1... e5 ({Instead} 1... c5 $5 2. Nf3) {Then} 2. Nf3");
+    let (back, _) = ChessGame::from_pgn(&g.pgn()).unwrap();
+    assert_eq!(pgn::tests::tree(&back), pgn::tests::tree(g));
     // The main line is the main line, its variation second.
     assert_eq!(g.main_line().iter().skip(1).map(|&n| g.san(n)).collect::<Vec<_>>(), ["e4", "e5", "Nf3"]);
 }
 
-/// A move the board refuses ends its line: it and the moves after it are counted, the rest of
-/// the game (the variations before it) is kept.
+/// A move the board refuses ends its line: it and the moves after it are counted and said, the
+/// rest of the game (the variations before it) is kept. A SAN edited into another move is found
+/// again from the position after it, as long as that position is one a legal move reaches.
 #[test]
 fn a_move_the_board_refuses_ends_its_line_and_is_counted() {
-    let mut score = pgn::parse("1. e4 e5 (1... c5 2. Nf3 d6) 2. Nf3 Nc6 3. Bb5 *").unwrap().remove(0);
+    use pdfcraft_chess::game::{PgnWarning, PgnWarningKind};
+    let mut score = pgn::tests::score_of("1. e4 e5 (1... c5 2. Nf3 d6) 2. Nf3 Nc6 3. Bb5 *");
     let nf3 = score.mainline()[2];
     score.nodes[nf3].san = "Qh8".into();
+    let board = to_game(&score).unwrap();
+    assert_eq!((board.dropped, board.game.movetext().as_str()), (0, "1. e4 e5 (1... c5 2. Nf3 d6) 2. Nf3 Nc6 3. Bb5"), "named again");
+    score.nodes[nf3].fen = "4k3/8/8/8/8/8/8/4K3 b - - 0 2".into();
     let board = to_game(&score).unwrap();
     assert_eq!(board.dropped, 3, "2.Nf3 (refused), Nc6 and 3.Bb5");
     assert_eq!(board.game.movetext(), "1. e4 e5 (1... c5 2. Nf3 d6)");
     assert_eq!(board.paths.len(), score.nodes.len() - 3);
     assert!(board.node(nf3).is_none());
+    let e5 = board.node(score.mainline()[1]).unwrap();
+    assert_eq!(board.warnings, [PgnWarning { kind: PgnWarningKind::MovesLeftOut, at: e5 }]);
 }
 
 /// A tree read from JSON that loops, points twice at one node or out of range, or a start that
 /// is not a position: nothing panics, every move is played at most once.
 #[test]
 fn tampered_trees_are_bounded() {
-    let mut score = pgn::parse("1. e4 e5 2. Nf3 Nc6 *").unwrap().remove(0);
+    let mut score = pgn::tests::score_of("1. e4 e5 2. Nf3 Nc6 *");
     let last = *score.mainline().last().unwrap();
     score.nodes[last].children = vec![0, last, 99];
     score.roots.push(0);
@@ -114,7 +123,7 @@ fn tampered_trees_are_bounded() {
     assert_eq!(board.game.movetext(), "1. e4 e5 2. Nf3 Nc6");
     assert_eq!(board.dropped, 0);
     // Two replies that are the same move: the second is left out, not merged.
-    let mut twins = pgn::parse("1. e4 e5 (1... c5) *").unwrap().remove(0);
+    let mut twins = pgn::tests::score_of("1. e4 e5 (1... c5) *");
     let c5 = twins.nodes.iter().position(|n| n.san == "c5").unwrap();
     twins.nodes[c5].san = "e5".into();
     let board = to_game(&twins).unwrap();

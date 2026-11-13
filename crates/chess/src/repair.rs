@@ -157,10 +157,11 @@ fn is_dash(c: char) -> bool {
     matches!(c, '-' | '‐' | '‑' | '‒' | '–' | '—' | '―' | '−')
 }
 
-/// `O-O`, `0-0-0`, `o–o`, and the misreads the confusion table brings back to them (`0-Q`).
+/// `O-O`, `0-0-0`, `o–o` (any of [`crate::san::CASTLING_LETTERS`]), and the misreads the
+/// confusion table brings back to them (`0-Q`).
 fn is_castling(text: &str) -> bool {
     let parts: Vec<&str> = text.split(is_dash).collect();
-    (parts.len() == 2 || parts.len() == 3) && parts.iter().all(|p| matches!(*p, "O" | "0" | "o" | "Q" | "D" | "О" | "о"))
+    (parts.len() == 2 || parts.len() == 3) && parts.iter().all(|p| crate::san::is_castling_letter(p) || matches!(*p, "Q" | "D"))
 }
 
 /// The move in `token`, or `None` when it is not shaped like one.
