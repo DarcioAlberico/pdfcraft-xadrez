@@ -383,14 +383,15 @@ pub fn read_ink(ink: &PageInk, model: &dyn GlyphClassifier, options: &GlyphOptio
     let boxes = seg::join_dots(&boxes, bin);
     let (parts, bars) = seg::join_stacked(&boxes, &bars, scale);
     let boxes = seg::order_in_strip(&seg::join_signs(parts, &bars, scale));
-    let reader = Reader { model, classes: Classes::new(names), gray };
+    let reader = Reader::new(model, Classes::new(names), gray);
     let boxes = if options.split_glued { reader.split_glued(bin, &boxes, scale)? } else { boxes };
     let boxes = if options.merge_broken { reader.merge_broken(&boxes, scale)? } else { boxes };
+    // Every line's glyphs, and the unions tried on them, read in batches of the page, not a call
+    // a line and a pair (plan A9-V3, A3-03).
+    let lines = reader.read_lines(seg::lines(&boxes, scale))?;
+    let lines = if options.merge_broken { reader.join_fragments_in(reader.join_bracket_pairs_in(lines, scale)?, scale)? } else { lines };
     let mut out = Vec::new();
-    for line in seg::lines(&boxes, scale) {
-        let reads = reader.read(&line)?;
-        let (line, reads) = if options.merge_broken { reader.join_bracket_pairs(line, reads, scale)? } else { (line, reads) };
-        let (line, mut reads) = if options.merge_broken { reader.join_fragments(line, reads, scale)? } else { (line, reads) };
+    for (line, mut reads) in lines {
         fix::stacked(&mut reads, &line, &reader.classes);
         let ink: Vec<Bx> = line.iter().map(|b| seg::tighten(bin, b)).collect();
         fix::square_dots(&mut reads, &ink, &reader.classes);
