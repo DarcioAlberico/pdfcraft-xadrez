@@ -854,6 +854,11 @@ pub(in crate::chess) fn with_id(pdf: Vec<u8>) -> Vec<u8> {
     text.replace("/Root 1 0 R >>", &format!("/Root 1 0 R /ID [{id} {id}] >>")).into_bytes()
 }
 
+/// The store the earlier-CLI tests give it by name: a build before plan A9-G5a keeps it there by
+/// default, and one since keeps it in the app's data folder, outside `--root`, unless told.
+#[cfg(not(target_arch = "wasm32"))]
+const OLD_CLI_STORE: &str = ".pdfcraft/chess-corrections";
+
 /// The same with an earlier build's command line (`PDFCRAFT_OLD_CLI`, such as the installed
 /// `dist/app/pdfcraft-cli.exe`): a build older than version 2 lists the file read only, refuses to
 /// change it and leaves its bytes as they were; a build of this version or newer lists its
@@ -887,8 +892,8 @@ fn compat_an_earlier_command_line_keeps_a_version_2_file_as_it_is() {
     std::fs::write(store.join(&name), &bytes).unwrap();
     let steps = serde_json::json!([
         { "tool": "doc_open", "args": { "path": "book.pdf" } },
-        { "tool": "chess_correction_list", "args": { "doc": 1 } },
-        { "tool": "chess_correction_delete", "args": { "doc": 1, "uid": uid } },
+        { "tool": "chess_correction_list", "args": { "doc": 1, "store": OLD_CLI_STORE } },
+        { "tool": "chess_correction_delete", "args": { "doc": 1, "uid": uid, "store": OLD_CLI_STORE } },
     ]);
     std::fs::write(dir.join("steps.json"), steps.to_string()).unwrap();
     let out = std::process::Command::new(&cli)
@@ -945,8 +950,8 @@ fn compat_an_earlier_command_line_and_this_build_share_a_folder() {
     let bytes = std::fs::read(folder.join(&ours)).unwrap();
     let steps = serde_json::json!([
         { "tool": "doc_open", "args": { "path": "book.pdf" } },
-        { "tool": "chess_correction_list", "args": { "doc": 1 } },
-        { "tool": "chess_correction_delete", "args": { "doc": 1, "uid": uid } },
+        { "tool": "chess_correction_list", "args": { "doc": 1, "store": OLD_CLI_STORE } },
+        { "tool": "chess_correction_delete", "args": { "doc": 1, "uid": uid, "store": OLD_CLI_STORE } },
     ]);
     std::fs::write(dir.join("steps.json"), steps.to_string()).unwrap();
     let out = std::process::Command::new(&cli)
