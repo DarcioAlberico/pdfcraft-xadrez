@@ -110,6 +110,7 @@ fn an_unread_diagram_is_a_figure_without_a_position_and_no_unsafe_link_is_made()
     doc.pages[0].blocks.push(Block::Paragraph {
         inlines: vec![Inline::Link { url: "javascript:alert(1)".into(), text: "click".into(), source_rect: None, review: Vec::new() }],
         source_rect: None,
+        role: BlockRole::Content,
     });
     let pieces = PieceSet::geometric();
     let html = write(&doc, &options(&pieces));

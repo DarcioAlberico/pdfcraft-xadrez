@@ -5,3 +5,5 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc ed831bb93ec39837c2ec318be33625dc1d13f50464e6df1dbb03661d569b49ec # shrinks to lines = [], diagrams = [(0, 0.0, 0.0, false, false, 1), (0, 0.0, 0.0, false, false, 2)], hint = None, pages = 1
+cc eacb251c3abc9f2b6bc8faab40e91936946be69bc9a4f0c39f863b4e5c2d9946 # shrinks to lines = [(0.0, 0.0, [0]), (0.0, 0.0, [1, 12, 0, 13, 3, 2])], diagrams = [], hint = None, pages = 1
+cc b7a5a005b81c6781bfc4df0ec789a5762bf34630d3440047387d748eefabf38d # shrinks to lines = [(0.0, 0.0, [4, 6]), (0.0, 0.0, [0, 14, 26, 16, 7]), (0.0, 0.0, [13, 2, 1]), (0.0, 0.0, [12, 0, 5]), (0.0, 0.0, [14, 16, 6])], diagrams = [], hint = None, pages = 2

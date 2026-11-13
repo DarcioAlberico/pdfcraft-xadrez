@@ -1170,6 +1170,9 @@ fn a_writer_of_the_builds_before_and_this_one_lose_nothing() {
                 file.put(1, "fnv:b", [0.0, y, 0.02, y + 0.02], QUEEN, 2).unwrap();
                 write_atomically(&dir.join(&name), &file.to_bytes().unwrap()).unwrap();
                 drop(lock);
+                // A build does other work between two changes: never take the lock back at once,
+                // which would starve the other writer's 15 ms tries (the test, not the stores).
+                std::thread::sleep(std::time::Duration::from_millis(20));
             }
         })
     };

@@ -88,7 +88,7 @@ fn runs(page: &ChessPageText) -> Vec<Vec<ChessRun>> {
 }
 
 fn mv(english: &str, text: &str) -> ChessRun {
-    ChessRun::Move { san: San::read(english, Lang::En).unwrap(), text: text.to_owned() }
+    ChessRun::Move { san: San::read(english, Lang::En).unwrap(), text: text.to_owned(), repaired: None }
 }
 
 fn white(number: u16) -> ChessRun {
@@ -289,6 +289,26 @@ fn an_old_ocr_layers_letters_for_digits_are_read_again() {
     // An `S` after a capital is an abbreviation's (`BS`, `HS`), not a rank.
     let read = Page::new().text("a BS and HS").read(Some(Lang::En));
     assert!(moves_of(&read).is_empty(), "{:?}", read.lines[0].spans);
+}
+
+/// Plan A9-L5 (A2-10): a misreading read again is said, on the move, with what was printed
+/// (`6.Rel` is the move `Re1`, printed `Rel`); a move number read again is said on the move after
+/// it, and a word only joined from pieces (`♖ e1`) or printed right is no repair.
+#[test]
+fn a_misreading_read_again_is_said_on_its_move() {
+    let repairs = |read: &ChessPageText| -> Vec<Option<(String, String)>> {
+        read.lines[0].spans.iter().filter_map(|s| if let ChessRun::Move { repaired, .. } = &s.run { Some(repaired.clone()) } else { None }).collect()
+    };
+    let pair = |a: &str, b: &str| Some((a.to_owned(), b.to_owned()));
+    let read = Page::new().text("6.Rel Kh7 7.Rg1 Kg8").read(Some(Lang::En));
+    assert_eq!(moves_of(&read), ["Re1", "Kh7", "Rg1", "Kg8"], "{:?}", read.lines[0].spans);
+    assert_eq!(repairs(&read), [pair("Rel", "Re1"), None, None, None]);
+    let read = Page::new().text("27.Rg5 Kh7 2S.Kh2").read(Some(Lang::En));
+    assert_eq!(repairs(&read), [None, None, pair("2S.Kh2", "28.Kh2")], "{:?}", read.lines[0].spans);
+    let read = Page::new().text("24.Qg6 Kh8 2S. Rae1").read(Some(Lang::En));
+    assert_eq!(repairs(&read), [None, None, pair("2S.", "25.")], "{:?}", read.lines[0].spans);
+    let read = Page::new().text("12.Kh7 ♖ e1").read(Some(Lang::En));
+    assert_eq!(repairs(&read), [None, None], "{:?}", read.lines[0].spans);
 }
 
 #[test]
