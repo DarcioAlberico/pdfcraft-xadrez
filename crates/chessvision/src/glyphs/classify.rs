@@ -1,6 +1,7 @@
 //! Classifying boxes: the 32 × 32 cell, batched calls to a [`GlyphClassifier`], and the two
 //! arbiters that let the classifier decide segmentation (glued glyphs split, broken ones merged).
 
+use std::cell::RefCell;
 use std::collections::HashMap;
 
 use super::seg::{Bin, Bx, Gray, valley};
@@ -119,20 +120,36 @@ pub(crate) fn cell(g: &Gray, b: &Bx) -> Vec<f32> {
     out
 }
 
+/// A line's boxes and their readings, in order.
+pub(crate) type ReadLine = (Vec<Bx>, Vec<Read>);
+
 /// Classifies boxes of one image.
 pub(crate) struct Reader<'a> {
     pub model: &'a dyn GlyphClassifier,
     pub classes: Classes<'a>,
     pub gray: Gray<'a>,
+    /// Every box read on this page, and its reading: a box is read once, whatever asks for it
+    /// (plan A9-V3: a neighbour pair, a line and a union asked for the same boxes again).
+    seen: RefCell<HashMap<Bx, Read>>,
 }
 
-impl Reader<'_> {
-    /// One [`Read`] per box, in order. Calls the model in batches of at most its `max_batch`.
+impl<'a> Reader<'a> {
+    pub fn new(model: &'a dyn GlyphClassifier, classes: Classes<'a>, gray: Gray<'a>) -> Self {
+        Reader { model, classes, gray, seen: RefCell::new(HashMap::new()) }
+    }
+
+    /// One [`Read`] per box, in order. The boxes not read before on this page are read in
+    /// batches of at most the model's `max_batch`, each once.
     pub fn read(&self, boxes: &[Bx]) -> Result<Vec<Read>, GlyphError> {
         let k = self.classes.names.len();
         let batch = self.model.max_batch().clamp(1, MAX_BATCH);
-        let mut out = Vec::with_capacity(boxes.len());
-        for chunk in boxes.chunks(batch) {
+        let mut fresh: Vec<Bx> = Vec::new();
+        {
+            let seen = self.seen.borrow();
+            let mut asked = std::collections::HashSet::new();
+            fresh.extend(boxes.iter().filter(|b| !seen.contains_key(b) && asked.insert(**b)));
+        }
+        for chunk in fresh.chunks(batch) {
             let mut data = Vec::with_capacity(chunk.len() * CELL_VALUES);
             for b in chunk {
                 data.extend(cell(&self.gray, b));
@@ -141,13 +158,15 @@ impl Reader<'_> {
             if probs.len() != chunk.len().saturating_mul(k) {
                 return Err(GlyphError::Output { expected: chunk.len().saturating_mul(k), got: probs.len() });
             }
-            for row in probs.chunks(k.max(1)) {
+            let mut seen = self.seen.borrow_mut();
+            for (b, row) in chunk.iter().zip(probs.chunks(k.max(1))) {
                 let row: Vec<f32> = row.iter().map(|v| if v.is_finite() { *v } else { 0.0 }).collect();
                 let (class, p) = row.iter().enumerate().fold((0usize, f32::MIN), |acc, (i, &v)| if v > acc.1 { (i, v) } else { acc });
-                out.push(Read { class, p, probs: row });
+                seen.insert(*b, Read { class, p, probs: row });
             }
         }
-        Ok(out)
+        let seen = self.seen.borrow();
+        Ok(boxes.iter().filter_map(|b| seen.get(b).cloned()).collect())
     }
 
     /// Mean winning confidence of two parts: the trunk's arbiter.
@@ -207,7 +226,84 @@ impl Reader<'_> {
     /// overlap (outlined figurines whose inner strokes came apart) and for neighbours on one line
     /// no more than [`BROKEN_MAX_GAP`] apart whose union is one letter wide (a scan's letters cut
     /// at their hairlines).
+    ///
+    /// Read in rounds, not a call a pair (plan A9-V3, A3-03: 1,960 calls on an italic page):
+    /// from every box, the union of the boxes merged into it so far is tried with the next box,
+    /// all such tries of a round read in one batch, until no try merges; the groups are then
+    /// taken from the first box on. A try is the one pair-by-pair reading made from that box, so
+    /// the merges are the same; the tries from boxes a group swallows are read for nothing (a few
+    /// cells a box: a union is at most a letter wide).
     pub fn merge_broken(&self, boxes: &[Bx], scale: i64) -> Result<Vec<Bx>, GlyphError> {
+        let s = scale as f64;
+        let candidate = |last: &Bx, b: &Bx| {
+            let u = last.union(b);
+            let rows = (last.y1.min(b.y1) - last.y0.max(b.y0)) as f64;
+            let shorter = last.h().min(b.h()).max(1) as f64;
+            let cut_letter = last.common_x(b) <= 0
+                && (-last.common_x(b) as f64) <= BROKEN_MAX_GAP * s
+                && (u.w() as f64) <= BROKEN_LETTER_WIDTH * s
+                && rows >= BROKEN_MIN_ROWS * shorter;
+            let overlapping = last.common_x(b) > 0 && (u.w() as f64) <= BROKEN_MAX_WIDTH * s;
+            (overlapping || cut_letter) && (u.h() as f64) <= BROKEN_MAX_HEIGHT * s
+        };
+        let merges = |reads: &[Read]| matches!(reads, [l, r, whole] if whole.p > Self::confidence(l, r) + ARBITER_GAIN);
+        // From each box `i`: the union of the boxes merged into it, and the last of them.
+        let mut grown: Vec<(Bx, usize)> = boxes.iter().enumerate().map(|(i, b)| (*b, i)).collect();
+        let mut growing: Vec<usize> = (0..boxes.len()).collect();
+        while !growing.is_empty() {
+            let tries: Vec<(usize, Bx, Bx)> = growing
+                .iter()
+                .filter_map(|&i| {
+                    let &(u, last) = grown.get(i)?;
+                    let next = *boxes.get(last + 1)?;
+                    candidate(&u, &next).then_some((i, u, next))
+                })
+                .collect();
+            let cells: Vec<Bx> = tries.iter().flat_map(|&(_, u, next)| [u, next, u.union(&next)]).collect();
+            let reads = self.read(&cells)?;
+            growing.clear();
+            for (&(i, u, next), three) in tries.iter().zip(reads.chunks(3)) {
+                if merges(three)
+                    && let Some(g) = grown.get_mut(i)
+                {
+                    *g = (u.union(&next), g.1 + 1);
+                    growing.push(i);
+                }
+            }
+        }
+        let mut out = Vec::new();
+        let mut i = 0;
+        while let Some(&(u, last)) = grown.get(i) {
+            out.push(u);
+            i = last + 1;
+        }
+        Ok(out)
+    }
+
+    /// Each line's boxes with their [`Read`]s, all the page's read in batches (plan A9-V3: a call
+    /// a line before).
+    pub fn read_lines(&self, lines: Vec<Vec<Bx>>) -> Result<Vec<ReadLine>, GlyphError> {
+        let all: Vec<Bx> = lines.iter().flatten().copied().collect();
+        let mut reads = self.read(&all)?.into_iter();
+        Ok(lines
+            .into_iter()
+            .map(|line| {
+                let mine: Vec<Read> = reads.by_ref().take(line.len()).collect();
+                (line, mine)
+            })
+            .collect())
+    }
+
+    /// [`Self::join_bracket_pairs_in`] on one line.
+    #[cfg(test)]
+    pub fn join_bracket_pairs(&self, line: Vec<Bx>, reads: Vec<Read>, scale: i64) -> Result<(Vec<Bx>, Vec<Read>), GlyphError> {
+        Ok(self.join_bracket_pairs_in(vec![(line, reads)], scale)?.pop().unwrap_or_default())
+    }
+
+    /// The pair-by-pair [`Self::merge_broken`] before plan A9-V3, one model call a candidate: the
+    /// reference the batched one is held to.
+    #[cfg(test)]
+    pub fn merge_broken_one_by_one(&self, boxes: &[Bx], scale: i64) -> Result<Vec<Bx>, GlyphError> {
         let s = scale as f64;
         let mut out: Vec<Bx> = Vec::with_capacity(boxes.len());
         for b in boxes {
@@ -235,53 +331,9 @@ impl Reader<'_> {
         Ok(out)
     }
 
-    /// A line's classified boxes with each empty pair of brackets read again as the letter it was
-    /// before the scan cut it in two (`()` for `o` or `0`, see [`BRACKETS_MAX_GAP`]): a `(` with a
-    /// `)` straight after it, at most a letter wide, on the same rows, whose union the classifier
-    /// reads as a letter or a digit. The arcs each read as a bracket at full confidence, so
-    /// [`Reader::merge_broken`] (which asks the union to read better) keeps them apart.
-    pub fn join_bracket_pairs(&self, line: Vec<Bx>, reads: Vec<Read>, scale: i64) -> Result<(Vec<Bx>, Vec<Read>), GlyphError> {
-        let s = scale as f64;
-        let is = |r: &Read, name: &str| self.classes.names.get(r.class).is_some_and(|n| n == name);
-        let mut boxes = Vec::with_capacity(line.len());
-        let mut out = Vec::with_capacity(reads.len());
-        let mut i = 0;
-        while let (Some(b), Some(r)) = (line.get(i), reads.get(i)) {
-            if let (Some(next), Some(nr)) = (line.get(i + 1), reads.get(i + 1))
-                && is(r, "(")
-                && is(nr, ")")
-            {
-                let u = b.union(next);
-                let rows = (b.y1.min(next.y1) - b.y0.max(next.y0)) as f64;
-                let shorter = b.h().min(next.h()).max(1) as f64;
-                let close = (-b.common_x(next) as f64) <= BRACKETS_MAX_GAP * s;
-                if close
-                    && (u.w() as f64) <= BROKEN_LETTER_WIDTH * s
-                    && (u.h() as f64) <= BROKEN_MAX_HEIGHT * s
-                    && rows >= BROKEN_MIN_ROWS * shorter
-                    && let Some(whole) = self.read(&[u])?.pop()
-                    && whole.p >= BRACKETS_MIN_P
-                    && self.classes.names.get(whole.class).is_some_and(|n| n.chars().all(char::is_alphanumeric) && !n.is_empty())
-                {
-                    boxes.push(u);
-                    out.push(whole);
-                    i += 2;
-                    continue;
-                }
-            }
-            boxes.push(*b);
-            out.push(r.clone());
-            i += 1;
-        }
-        Ok((boxes, out))
-    }
-
-    /// A line's classified boxes with each fragment of a neighbour's letter ([`FRAGMENT_MIN_COLUMNS`])
-    /// joined to it, when their union reads as a letter or a digit at [`BRACKETS_MIN_P`] or more:
-    /// the union is then read as the one glyph. Both parts read at full confidence (the `g` and
-    /// its ear as `y`), so [`Reader::merge_broken`], which asks the union to read better than the
-    /// parts, keeps them apart.
-    pub fn join_fragments(&self, line: Vec<Bx>, reads: Vec<Read>, scale: i64) -> Result<(Vec<Bx>, Vec<Read>), GlyphError> {
+    /// The pair-by-pair [`Self::join_fragments`] before plan A9-V3: the batched one's reference.
+    #[cfg(test)]
+    pub fn join_fragments_one_by_one(&self, line: Vec<Bx>, reads: Vec<Read>, scale: i64) -> Result<(Vec<Bx>, Vec<Read>), GlyphError> {
         let slack = FRAGMENT_ROW_SLACK * scale as f64;
         let fragment_of = |f: &Bx, host: &Bx| {
             f.w() < host.w()
@@ -310,5 +362,106 @@ impl Reader<'_> {
             i += 1;
         }
         Ok((boxes, out))
+    }
+
+    /// Each line's classified boxes with each empty pair of brackets read again as the letter it
+    /// was before the scan cut it in two (`()` for `o` or `0`, see [`BRACKETS_MAX_GAP`]): a `(`
+    /// with a `)` straight after it, at most a letter wide, on the same rows, whose union the
+    /// classifier reads as a letter or a digit. The arcs each read as a bracket at full
+    /// confidence, so [`Reader::merge_broken`] (which asks the union to read better) keeps them
+    /// apart. Every line of a page at once, the unions read in one batch (plan A9-V3: a call a
+    /// pair before).
+    pub fn join_bracket_pairs_in(&self, lines: Vec<ReadLine>, scale: i64) -> Result<Vec<ReadLine>, GlyphError> {
+        let s = scale as f64;
+        let is = |r: &Read, name: &str| self.classes.names.get(r.class).is_some_and(|n| n == name);
+        let candidate = |line: &[Bx], reads: &[Read], i: usize| -> Option<Bx> {
+            let (b, next, r, nr) = (line.get(i)?, line.get(i + 1)?, reads.get(i)?, reads.get(i + 1)?);
+            let u = b.union(next);
+            let rows = (b.y1.min(next.y1) - b.y0.max(next.y0)) as f64;
+            let shorter = b.h().min(next.h()).max(1) as f64;
+            let close = (-b.common_x(next) as f64) <= BRACKETS_MAX_GAP * s;
+            (is(r, "(")
+                && is(nr, ")")
+                && close
+                && (u.w() as f64) <= BROKEN_LETTER_WIDTH * s
+                && (u.h() as f64) <= BROKEN_MAX_HEIGHT * s
+                && rows >= BROKEN_MIN_ROWS * shorter)
+                .then_some(u)
+        };
+        self.join_read_unions(lines, |line, reads, i| candidate(line, reads, i))
+    }
+
+    /// Each line's pairs (`i`, `i + 1`) whose union `candidate` gives, the unions read in one
+    /// batch, joined left to right where the union reads as a letter or a digit at
+    /// [`BRACKETS_MIN_P`] or more (a joined pair's right box joins nothing else).
+    fn join_read_unions(&self, lines: Vec<ReadLine>, candidate: impl Fn(&[Bx], &[Read], usize) -> Option<Bx>) -> Result<Vec<ReadLine>, GlyphError> {
+        // (line, i) of each candidate, and its union.
+        let mut at: Vec<(usize, usize)> = Vec::new();
+        let mut unions: Vec<Bx> = Vec::new();
+        for (l, (line, reads)) in lines.iter().enumerate() {
+            for i in 0..line.len().saturating_sub(1) {
+                if let Some(u) = candidate(line, reads, i) {
+                    at.push((l, i));
+                    unions.push(u);
+                }
+            }
+        }
+        let wholes = self.read(&unions)?;
+        let joins = |whole: &Read| {
+            whole.p >= BRACKETS_MIN_P && self.classes.names.get(whole.class).is_some_and(|n| n.chars().all(char::is_alphanumeric) && !n.is_empty())
+        };
+        let mut found = at.into_iter().zip(unions.into_iter().zip(wholes)).peekable();
+        let mut out = Vec::with_capacity(lines.len());
+        for (l, (line, reads)) in lines.into_iter().enumerate() {
+            let mut boxes = Vec::with_capacity(line.len());
+            let mut kept = Vec::with_capacity(reads.len());
+            let mut i = 0;
+            while let (Some(b), Some(r)) = (line.get(i), reads.get(i)) {
+                // The candidates of this line before `i` were passed over by a join.
+                while found.peek().is_some_and(|((fl, fi), _)| (*fl, *fi) < (l, i)) {
+                    found.next();
+                }
+                if let Some(((_, _), (u, whole))) = found.next_if(|((fl, fi), _)| (*fl, *fi) == (l, i))
+                    && joins(&whole)
+                {
+                    boxes.push(u);
+                    kept.push(whole);
+                    i += 2;
+                    continue;
+                }
+                boxes.push(*b);
+                kept.push(r.clone());
+                i += 1;
+            }
+            out.push((boxes, kept));
+        }
+        Ok(out)
+    }
+
+    /// [`Self::join_fragments_in`] on one line.
+    #[cfg(test)]
+    pub fn join_fragments(&self, line: Vec<Bx>, reads: Vec<Read>, scale: i64) -> Result<(Vec<Bx>, Vec<Read>), GlyphError> {
+        Ok(self.join_fragments_in(vec![(line, reads)], scale)?.pop().unwrap_or_default())
+    }
+
+    /// Each line's classified boxes with each fragment of a neighbour's letter
+    /// ([`FRAGMENT_MIN_COLUMNS`]) joined to it, when their union reads as a letter or a digit at
+    /// [`BRACKETS_MIN_P`] or more: the union is then read as the one glyph. Both parts read at full
+    /// confidence (the `g` and its ear as `y`), so [`Reader::merge_broken`], which asks the union to
+    /// read better than the parts, keeps them apart. Every line of a page at once, the unions read
+    /// in one batch (plan A9-V3: a call a pair before).
+    pub fn join_fragments_in(&self, lines: Vec<ReadLine>, scale: i64) -> Result<Vec<ReadLine>, GlyphError> {
+        let slack = FRAGMENT_ROW_SLACK * scale as f64;
+        let fragment_of = |f: &Bx, host: &Bx| {
+            f.w() < host.w()
+                && (f.h() as f64) <= FRAGMENT_MAX_HEIGHT * host.h() as f64
+                && (f.common_x(host) as f64) >= FRAGMENT_MIN_COLUMNS * f.w() as f64
+                && (f.y0 as f64) >= host.y0 as f64 - slack
+                && (f.y1 as f64) <= host.y1 as f64 + slack
+        };
+        self.join_read_unions(lines, |line, _, i| {
+            let (b, next) = (line.get(i)?, line.get(i + 1)?);
+            (fragment_of(next, b) || fragment_of(b, next)).then(|| b.union(next))
+        })
     }
 }
