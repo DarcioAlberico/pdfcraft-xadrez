@@ -44,7 +44,7 @@ fn runs(text: &str) -> Vec<(ChessRun, bool)> {
                 continue;
             }
         }
-        let starts_like_move = rest.starts_with(|c: char| ('a'..='h').contains(&c) || "KQRBNO".contains(c));
+        let starts_like_move = rest.starts_with(|c: char| ('a'..='h').contains(&c) || "KQRBNO♔♕♖♗♘♚♛♜♝♞".contains(c));
         if starts_like_move && let Ok(san) = San::read(rest, Lang::En) {
             out.push((ChessRun::Move { san, text: rest.to_owned(), repaired: None }, bold));
         } else if let Some(n) = nag::by_glyph(rest) {
@@ -1911,6 +1911,24 @@ const VOCAB: &[&str] = &[
     "www.x.org",
     "Rd8+",
     "Bxe5",
+    // Plan A9-Q3b (A7-11): the walker's other rules. Separators and labels between sibling
+    // variations, a lone ellipsis before Black's move, the main line in bold (`*`), a figurine, a
+    // caption that names the move a diagram shows, an exercise's label.
+    ";",
+    "a)",
+    "b)",
+    "(c)",
+    "B2)",
+    "…",
+    "...",
+    "*12.Nf3",
+    "*Nc6",
+    "*e4",
+    "♘f3",
+    "♞c6",
+    "Position after 3...a6",
+    "Exercise 4",
+    "1:0",
 ];
 
 fn arb_line() -> impl Strategy<Value = (f32, f32, Vec<usize>)> {
@@ -1924,6 +1942,99 @@ fn arb_diagram() -> impl Strategy<Value = (usize, f32, f32, bool, bool, u8)> {
 const FENS: &[&str] =
     &[SCHOLAR, "8/8/4k3/8/8/4K3/r7/7R w - - 0 1", "8/8/8/8/8/8/8/8 w - - 0 1", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"];
 
+/// The moves of a game as a tree, depth first: each move's SAN, `(` and `)` around each
+/// variation. Comments are left out.
+fn tree(score: &GameScore) -> String {
+    fn walk(score: &GameScore, at: Option<usize>, out: &mut String) {
+        let children = score.children(at);
+        let Some((&first, rest)) = children.split_first() else { return };
+        out.push_str(&score.nodes[first].san);
+        out.push(' ');
+        for &v in rest {
+            out.push_str("( ");
+            out.push_str(&score.nodes[v].san);
+            out.push(' ');
+            walk(score, Some(v), out);
+            out.push_str(") ");
+        }
+        walk(score, Some(first), out);
+    }
+    let mut out = String::new();
+    walk(score, None, &mut out);
+    out
+}
+
+/// `moves` (indices into each position's legal moves) played from `game`, numbered as books do:
+/// every move with its number (`3.Bb5`, `3...a6`). The moves played are left in `game`.
+fn numbered_line(game: &mut pdfcraft_chess::game::Game, picks: &[usize]) -> Vec<String> {
+    let mut out = Vec::new();
+    for &pick in picks {
+        let legal = game.legal_moves();
+        let Some(san) = legal.get(pick % legal.len().max(1)).cloned() else { break };
+        let Some(fen) = game.fen_at(game.current()) else { break };
+        let number = fen.fullmove_number();
+        let white = fen.side() != Some(pdfcraft_chess::placement::Color::Black);
+        let text = if white { format!("{number}.{san}") } else { format!("{number}...{san}") };
+        if game.play_san(&san).is_err() {
+            break;
+        }
+        out.push(text);
+    }
+    out
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(64))]
+
+    /// Plan A9-Q3b (A7-11): sibling variations written with separators inside one bracket
+    /// (`(a) 3.Bc4 Bc5 b) 3.d4 exd4)`, `(3.Bc4 Bc5 (b) 3.d4 exd4)`, `(3.Bc4 Bc5; 3.d4 exd4)`) are
+    /// read as the same tree as when each has its own brackets (`(3.Bc4 Bc5) (3.d4 exd4)`): the
+    /// walker's `separators` rule, on random legal lines. (Brackets stand apart, as the test pages
+    /// write them.)
+    #[test]
+    fn separated_variations_read_as_bracketed_ones(
+        main in proptest::collection::vec(0usize..64, 4..10),
+        first in proptest::collection::vec(0usize..64, 1..4),
+        second in proptest::collection::vec(0usize..64, 1..4),
+        at in 1usize..4,
+        kind in 0usize..3,
+    ) {
+        use pdfcraft_chess::game::Game;
+        let at = at.min(main.len() - 1);
+        let mut game = Game::standard();
+        let main_moves = numbered_line(&mut game, &main);
+        prop_assume!(main_moves.len() > at);
+        // The variations replace main move `at`: from the position before it.
+        let line_from = |picks: &[usize]| {
+            let mut g = Game::standard();
+            for m in main_moves.iter().take(at) {
+                let san = m.trim_start_matches(|c: char| c.is_ascii_digit() || c == '.');
+                g.play_san(san).unwrap();
+            }
+            numbered_line(&mut g, picks)
+        };
+        let (v1, v2) = (line_from(&first), line_from(&second));
+        prop_assume!(!v1.is_empty() && !v2.is_empty() && v1[0] != v2[0] && v1[0] != main_moves[at] && v2[0] != main_moves[at]);
+        let head = main_moves[..=at].join(" ");
+        let tail = main_moves[at + 1..].join(" ");
+        let (v1, v2) = (v1.join(" "), v2.join(" "));
+        let bracketed = format!("{head} ( {v1} ) ( {v2} ) {tail}");
+        let separated = match kind {
+            0 => format!("{head} ( a) {v1} b) {v2} ) {tail}"),
+            1 => format!("{head} ( {v1} (b) {v2} ) {tail}"),
+            _ => format!("{head} ( {v1} ; {v2} ) {tail}"),
+        };
+        let read = |text: &str| {
+            let text = page_text(vec![line(230.0, text)]);
+            build_page(&input(0, &text, &[], &[], &[]))
+        };
+        let (want, got) = (read(&bracketed), read(&separated));
+        prop_assume!(moves(&want.pages[0]).iter().all(|(_, s)| *s == MoveStatus::Valid) && want.games.len() == 1);
+        prop_assert_eq!(got.games.len(), 1, "{}", separated);
+        prop_assert_eq!(tree(&got.games[0].score), tree(&want.games[0].score), "{} / {}", separated, bracketed);
+    }
+}
+
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(96))]
 
@@ -1933,6 +2044,7 @@ proptest! {
         diagrams in proptest::collection::vec(arb_diagram(), 0..4),
         hint in proptest::option::of((-100.0f32..700.0, -100.0f32..900.0)),
         pages in 1u32..3,
+        ocr in any::<bool>(),
     ) {
         let text = page_text(lines.iter().map(|(x, y, toks)| {
             let words: Vec<&str> = toks.iter().map(|&t| VOCAB[t]).collect();
@@ -1951,7 +2063,8 @@ proptest! {
         let hints: Vec<BlockHint> = hint.iter().map(|(x, y)| BlockHint { kind: HintKind::Heading { level: 2 }, rect: user_box(*x, *y, *x + 200.0, *y + 30.0) }).collect();
         let mut b = DocBuilder::new();
         for p in 0..pages {
-            b.add_page(&input(p, &text, &readings, &hints, &[]));
+            // A page read by OCR turns on the walker's misread-file repair.
+            b.add_page(&PageInput { ocr, ..input(p, &text, &readings, &hints, &[]) });
         }
         let doc = b.finish();
         // Every diagram, in order, exactly once per page.

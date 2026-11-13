@@ -3455,3 +3455,10 @@ the move's comment	Move comment	手のコメント
 	what was saved before couldn't be read, and is kept aside first; try again in a moment	以前に保存した内容を読み込めなかったため、先に別に保管します。しばらくしてからもう一度お試しください
 	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	保存済みの局面図の修正を読み込めませんでした ({why})。次回の保存時に別に保管され、それ以降は新しい修正が保存されます。
 	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	保存済みの本の PGN を読み込めませんでした ({why})。次回の保存時に別に保管され、それ以降は新しいものが保存されます。
+# Plan A9-I2: one kind of job; the long jobs say how far they are and stop when asked.
+	Stop	停止
+	Exporting the chess document: page {done} of {of}	チェス文書を書き出し中: {of} ページ中 {done} ページ
+	The export was stopped: nothing was written.	書き出しを停止しました。何も書き込まれていません。
+	Aligning was stopped: the book's link is as it was.	PGN への合わせ込みを停止しました。本の対応付けは元のままです。
+	The work stopped on an internal error: {why}	内部エラーにより処理が停止しました: {why}
+	The work stopped on an internal error.	内部エラーにより処理が停止しました。

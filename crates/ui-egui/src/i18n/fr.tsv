@@ -3453,3 +3453,10 @@ the move's comment	Move comment	Commentaire du coup
 	what was saved before couldn't be read, and is kept aside first; try again in a moment	ce qui avait été enregistré n’a pas pu être lu et est d’abord mis de côté ; réessayez dans un instant
 	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	Impossible de lire les corrections de diagrammes enregistrées ({why}). Elles sont mises de côté au prochain enregistrement, et les nouvelles corrections sont conservées dès lors.
 	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	Impossible de lire les PGN de livres enregistrés ({why}). Ils sont mis de côté au prochain enregistrement, et les nouveaux sont conservés dès lors.
+# Plan A9-I2: one kind of job; the long jobs say how far they are and stop when asked.
+	Stop	Arrêter
+	Exporting the chess document: page {done} of {of}	Exportation du document d’échecs : page {done} sur {of}
+	The export was stopped: nothing was written.	L’exportation a été arrêtée : rien n’a été écrit.
+	Aligning was stopped: the book's link is as it was.	L’alignement a été arrêté : le lien du livre reste tel qu’il était.
+	The work stopped on an internal error: {why}	Le travail s’est arrêté sur une erreur interne : {why}
+	The work stopped on an internal error.	Le travail s’est arrêté sur une erreur interne.

@@ -3452,3 +3452,10 @@ the move's comment	Move comment	A lépés megjegyzése
 	what was saved before couldn't be read, and is kept aside first; try again in a moment	a korábban mentett adatot nem sikerült beolvasni, ezért előbb félre lesz téve; próbálja újra kicsit később
 	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	A mentett diagramjavításokat nem sikerült beolvasni ({why}). A következő mentéskor félre lesznek téve, és onnantól az új javítások megmaradnak.
 	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	A könyvek mentett PGN-jeit nem sikerült beolvasni ({why}). A következő mentéskor félre lesznek téve, és onnantól az újak megmaradnak.
+# Plan A9-I2: one kind of job; the long jobs say how far they are and stop when asked.
+	Stop	Leállítás
+	Exporting the chess document: page {done} of {of}	A sakkdokumentum exportálása: {done}. oldal / {of}
+	The export was stopped: nothing was written.	Az exportálás leállt: semmi sem lett kiírva.
+	Aligning was stopped: the book's link is as it was.	Az igazítás leállt: a könyv kapcsolása olyan maradt, amilyen volt.
+	The work stopped on an internal error: {why}	A munka belső hiba miatt leállt: {why}
+	The work stopped on an internal error.	A munka belső hiba miatt leállt.

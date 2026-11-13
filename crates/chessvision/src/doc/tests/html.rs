@@ -5,7 +5,7 @@
 use pdfcraft_chess::draw::{BoardStyle, PieceSet};
 
 use super::*;
-use crate::doc::html::{DiagramMode, Figurines, HtmlOptions, write};
+use crate::doc::html::{DiagramMode, Figurines, HtmlOptions, REVIEW_LINE, accessibility_summary, write};
 
 fn options(pieces: &PieceSet) -> HtmlOptions<'_> {
     HtmlOptions {
@@ -242,9 +242,12 @@ fn the_sign_font_draws_the_annotation_glyphs_it_has() {
     let html = write(&doc, &HtmlOptions { sign_font: Some(&ischess), ..options(&pieces) });
     assert!(html.contains("@font-face{font-family:\"PdfCraft Signs\""), "{html}");
     assert!(html.contains(".sign{font-family:\"PdfCraft Signs\"}"));
-    assert!(html.contains("<span class=\"nag sign\" data-nag=\"16\" title=\"White is clearly better\">O</span>"), "{html}");
-    assert!(html.contains("<span class=\"nag sign\" data-nag=\"23\" title=\"Zugzwang\">[</span>"), "{html}");
-    assert!(html.contains("<span class=\"nag sign\" data-nag=\"247\" title=\"Bishops of opposite colors\">n</span>"), "{html}");
+    // Each said by its name, not by its letter (plan A9-X3).
+    for (code, name, letter) in [(16, "White is clearly better", 'O'), (23, "Zugzwang", '['), (247, "Bishops of opposite colors", 'n')] {
+        let said =
+            format!("<span class=\"nag sign\" data-nag=\"{code}\" role=\"img\" aria-label=\"{name}\" lang=\"en\" title=\"{name}\">{letter}</span>");
+        assert!(html.contains(&said), "{said}\n{html}");
+    }
     // Glyphs ISChess has no letter for (! and ??) stay as they are.
     assert!(html.contains("<span class=\"nag\" data-nag=\"1\""), "{html}");
     // Without the sign font, ± is written as itself.
@@ -426,4 +429,99 @@ fn noncharacters_are_dropped_from_the_markup() {
         "\u{FFFD}\u{FDCF}\u{FDF0}",
         "a replacement character and their neighbours are characters"
     );
+}
+
+/// Plan A9-X3 (R5-06): an annotation glyph is said by its name to a screen reader, which reads no
+/// `title` and reads `±` as "plus minus"; the names are English, and the span says so in a book
+/// in another language or in none given.
+#[test]
+fn an_annotation_glyph_is_said_by_its_name() {
+    let text = page_text(vec![line(230.0, "1.e4 e5 2.Nf3 Nc6")]);
+    let mut doc = build_page(&input(0, &text, &[], &[], &[]));
+    let para = doc.pages[0].blocks.iter_mut().find_map(|b| if let Block::Paragraph { inlines, .. } = b { Some(inlines) } else { None }).unwrap();
+    para.insert(3, Inline::Nag { code: 16, source_rect: None, review: Vec::new() });
+    let pieces = PieceSet::geometric();
+    let name = pdfcraft_chess::nag::by_code(16).map(|n| n.name).unwrap();
+    let html = write(&doc, &HtmlOptions { lang: "pt-BR", ..options(&pieces) });
+    assert!(
+        html.contains(&format!("<span class=\"nag\" data-nag=\"16\" role=\"img\" aria-label=\"{name}\" lang=\"en\" title=\"{name}\">±</span>")),
+        "{html}"
+    );
+    let html = write(&doc, &HtmlOptions { lang: "en-GB", ..options(&pieces) });
+    assert!(html.contains(&format!("<span class=\"nag\" data-nag=\"16\" role=\"img\" aria-label=\"{name}\" title=\"{name}\">±</span>")), "{html}");
+}
+
+/// Plan A9-X3 (R5-06): a diagram written as its FEN has the position in words beside it, as the
+/// board's own description says it.
+#[test]
+fn a_diagram_as_fen_has_the_position_in_words() {
+    let text = page_text(vec![line(230.0, "3.Qh5 Nf6 4.Qxf7#")]);
+    let doc = build_page(&input(0, &text, &[reading(0, 60.0, SCHOLAR, true, false)], &[], &[]));
+    let pieces = PieceSet::geometric();
+    let html = write(&doc, &HtmlOptions { diagrams: DiagramMode::Fen, ..options(&pieces) });
+    let fen = attrs(&html, "data-fen").into_iter().next().unwrap();
+    let words = pdfcraft_chess::describe::describe(1, "1", &fen, Lang::En);
+    assert!(words.contains(": White to move. White: K"), "{words}");
+    assert!(html.contains(&format!("<code>{fen}</code><p class=\"position\">{words}</p>")), "{html}");
+}
+
+/// The relative luminance of `#rrggbb` (WCAG 2).
+fn luminance(hex: &str) -> f64 {
+    let channel = |i: usize| {
+        let c = f64::from(u8::from_str_radix(&hex[i..i + 2], 16).unwrap()) / 255.0;
+        if c <= 0.04045 { c / 12.92 } else { ((c + 0.055) / 1.055).powf(2.4) }
+    };
+    0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5)
+}
+
+/// Plan A9-X3 (R5-06): what was flagged for review is underlined as well as tinted, so it is not
+/// told by colour alone: the line is at least 3:1 against the page and against the tint (the tint
+/// alone is 1.1:1 against white).
+#[test]
+fn a_review_mark_is_not_told_by_colour_alone() {
+    let pieces = PieceSet::geometric();
+    let html = write(&showcase_doc(), &options(&pieces));
+    assert!(html.contains(&format!(".review{{background:#fff3c4;border-bottom:2px solid {REVIEW_LINE}}}")), "{html}");
+    let contrast = |a: &str, b: &str| {
+        let (la, lb) = (luminance(a), luminance(b));
+        (la.max(lb) + 0.05) / (la.min(lb) + 0.05)
+    };
+    assert!(contrast("#fff3c4", "#ffffff") < 1.2);
+    for page in ["#ffffff", "#fff3c4"] {
+        assert!(contrast(REVIEW_LINE, page) >= 3.0, "{REVIEW_LINE} on {page}: {}", contrast(REVIEW_LINE, page));
+    }
+    // A book for readers has neither.
+    let html = write(&showcase_doc(), &HtmlOptions { review_marks: false, ..options(&pieces) });
+    assert!(!html.contains(".review{"), "{html}");
+}
+
+/// Plan A9-X3 (R5-06): what a book says of how it can be read is counted from it: how many
+/// diagrams are said in words and name the side to move, and whether the page numbers are the
+/// book's own (it said both of every book).
+#[test]
+fn the_accessibility_summary_is_counted_from_the_book() {
+    let rook = "8/8/4k3/8/8/4K3/r7/7R w - - 0 1";
+    let text = page_text(vec![line(380.0, "A quiet position.")]);
+    let mut unread = reading(2, 520.0, SCHOLAR, true, false);
+    unread.outcome = Err(crate::board::Unreadable::NoModel);
+    let doc = build_page(&input(0, &text, &[reading(0, 60.0, SCHOLAR, true, false), reading(1, 220.0, rook, true, true), unread], &[], &[]));
+    let pieces = PieceSet::geometric();
+    assert_eq!(
+        accessibility_summary(&doc, &options(&pieces)),
+        "The moves are text. Chess diagrams: 3. With a text alternative that lists each piece on its square: 2 (the other 1 could not \
+         be read, and say so). Naming the side to move: 1 (the book does not give it for the other 1). Page numbers count the pages of \
+         the PDF."
+    );
+    let labels = vec!["17".to_owned()];
+    assert!(
+        accessibility_summary(&doc, &HtmlOptions { page_labels: &labels, ..options(&pieces) })
+            .ends_with(". Page numbers are the ones the book prints.")
+    );
+    // A PDF without page labels gives each page its own number from 1: not one the book prints.
+    let own = vec!["1".to_owned()];
+    assert!(
+        accessibility_summary(&doc, &HtmlOptions { page_labels: &own, ..options(&pieces) }).ends_with(". Page numbers count the pages of the PDF.")
+    );
+    let none = build_page(&input(0, &page_text(vec![line(230.0, "1.e4 e5")]), &[], &[], &[]));
+    assert!(accessibility_summary(&none, &options(&pieces)).starts_with("The moves are text. No chess diagrams. Page numbers"));
 }

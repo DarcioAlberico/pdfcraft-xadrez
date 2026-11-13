@@ -28,7 +28,11 @@ const COMMANDS: &[(&str, &str, Command)] = &[
     ("assets", "Enforce the asset policy (AGENTS.md §1) against ATTRIBUTION.toml; --write regenerates ATTRIBUTION.md", assets::run),
     ("corpus", "Fetch the pinned pdf.js test corpus into corpus/ (git-ignored) and verify it; --update-pin re-records the pin", gates::corpus),
     ("check", "Robustness sweep over corpus/ with pdfcraft-cli; fails on crashes or regressions vs xtask/baselines", gates::check),
-    ("fuzz", "Mutation fuzzing of open/render/edit/save in child processes; findings in fuzz-out/ (--time 300)", fuzz::run),
+    (
+        "fuzz",
+        "Mutation fuzzing of open/render/edit/save and the chess paths in child processes; findings in fuzz-out/ (--time 300; --cli EXE; --models DIR reads with them and with hostile models built for it)",
+        fuzz::run,
+    ),
     ("parity", "Validate parity/acrobat-features.toml against the registry, tools and tests; report progress (--json, --partial)", parity::run),
     (
         "macos-integration",
