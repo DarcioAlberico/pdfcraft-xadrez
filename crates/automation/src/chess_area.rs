@@ -91,7 +91,7 @@ fn read_json(read: &AreaRead, lang: Lang) -> Value {
     for span in chess.lines.iter().flat_map(|l| &l.spans) {
         match &span.run {
             ChessRun::MoveNumber { number: n, black } => number = Some(if *black { format!("{n}...") } else { format!("{n}.") }),
-            ChessRun::Move { san, text } => moves.push(json!({
+            ChessRun::Move { san, text, .. } => moves.push(json!({
                 "number": number.take(),
                 "text": text,
                 "san": san.to_english(),

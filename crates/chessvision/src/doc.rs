@@ -165,6 +165,11 @@ pub enum ReviewFlag {
     /// A diagram stands between these moves, but the next move continues this game and is not
     /// legal from the diagram, so the game was carried on past it.
     ContinuedPastDiagram { page: u32, diagram: usize },
+    /// The move was played, but a mark printed on it says otherwise (plan A9-L5, R6-02): a capture
+    /// mark on a move that takes nothing (`capture`), a check mark on one that gives no check
+    /// (`check`), a mate mark on one that does not mate (`mate`). The cheapest sign that the
+    /// reading strayed from the book's position; a mark left out is no sign.
+    NotationMismatch { text: String, capture: bool, check: bool, mate: bool },
     /// The game reached [`games::MAX_GAME_NODES`] moves or [`games::MAX_VARIATION_DEPTH`]
     /// nested variations; the rest of the line was not added.
     GameTooLarge,
