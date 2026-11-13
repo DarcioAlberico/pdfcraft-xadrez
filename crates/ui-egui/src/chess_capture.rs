@@ -481,7 +481,7 @@ pub(crate) fn document_lang(chess: &ChessState, doc: Option<DocId>) -> Lang {
     {
         return lang;
     }
-    chess.text.as_ref().filter(|t| Some(t.doc) == doc).and_then(|t| t.chess.pages.first()).and_then(|p| p.lang.lang()).unwrap_or(Lang::En)
+    doc.and_then(|id| chess.text_of(id)).and_then(|t| t.chess.pages.first()).and_then(|p| p.lang.lang()).unwrap_or(Lang::En)
 }
 
 /// Plan `request` on `game`, after the move it shows.

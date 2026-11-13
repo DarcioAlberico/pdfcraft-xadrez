@@ -555,6 +555,7 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
         app.chess.tools_offer = narrow && app.left_open && app.mode != crate::Mode::Read && !app.chess.tools_offer_answered;
         let chess = &mut app.chess;
         let chess_now = app.session.chess_stamp(id);
+        let chess_origin = app.session.chess_origin(id);
         let comment_allowed = doc.allows_annotation();
         // A dialog or the palette owns the keyboard: the panel leaves Escape to it.
         let modal = app.dialog.is_some() || app.palette_open;
@@ -575,7 +576,7 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                     RightPanel::Tags => ("Tags", None),
                     RightPanel::Search => ("Search", None),
                     RightPanel::Compare => ("Compare", compare.as_ref().filter(|c| c.new == id).map(|c| c.result.changes.len())),
-                    RightPanel::Chess => ("Chess diagrams", chess.results.as_ref().filter(|r| r.doc == id).map(crate::chess_ui::ChessResults::count)),
+                    RightPanel::Chess => ("Chess diagrams", chess.results_of(id).map(crate::chess_ui::ChessResults::count)),
                 };
                 ui.horizontal(|ui| {
                     ui.label(egui::RichText::new(tl!(title)).font(theme::semibold(15.5)));
@@ -748,7 +749,8 @@ pub fn right_panel(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                     RightPanel::Search => crate::search_ui::panel(ui, &t, view, info.pages.len()),
                     RightPanel::Compare => compare_action = crate::compare_ui::panel(ui, &t, compare, id),
                     RightPanel::Chess => {
-                        chess_action = crate::chess_ui::panel(ui, &t, chess, id, info, chess_now, view.current, chess_in_window, chess_editor_here)
+                        chess_action =
+                            crate::chess_ui::panel(ui, &t, chess, id, info, chess_now, chess_origin, view.current, chess_in_window, chess_editor_here)
                     }
                     RightPanel::Attachments => {
                         if info.attachments.is_empty() {

@@ -3199,6 +3199,7 @@ chess undo step	Clear drawings	描画の消去
 	Diagram	局面図
 	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	保存された局面図の修正を読み込めませんでした ({why})。{name} として退避しました。
 	Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted.	保存された局面図の修正の一部を読み込めませんでした ({why})。残りは使用し、{name} は削除せずに保持します。
+	Diagram corrections or books' PGNs an earlier PdfCraft changed were brought in.	以前の PdfCraft が変更した図の修正または本の PGN を取り込みました。
 	The diagram corrections couldn't be saved: {e}	局面図の修正を保存できませんでした: {e}
 	Diagram {n}, page {p}: {state}	局面図 {n}、{p} ページ: {state}
 	Page {p} · diagram {n} of {m}	{p} ページ · 局面図 {n}/{m}
@@ -3360,6 +3361,7 @@ castling	long	ロング
 	Remove the book's PGN	本の PGN を削除
 	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	この文書に保存された本の PGN を読み込めませんでした ({why})。{name} として別に保存しました。
 	The book's PGN couldn't be read: {e}	本の PGN を読み込めませんでした: {e}
+	Choices on moves in conflict naming a move this PGN doesn't have: {n}. They are kept for a PGN that has it.	この PGN にない手を指す、競合する手についての選択: {n} 件。その手を含む PGN のために保持されます。
 	{name} was not kept as the book's PGN: {e}	{name} は本の PGN として保存されませんでした: {e}
 	no game in it	対局が含まれていません
 	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	本の PGN {name}: {games} 局、{moves} 手。テキスト タブで読むページはこれに関連付けられます。
@@ -3439,3 +3441,6 @@ castling	long	ロング
 	Larger text	文字を大きく
 diagram state	Read	読み取り済み
 the move's comment	Move comment	手のコメント
+	Detecting in another book… page {d} of {t}	別の本で検出中… {t} ページ中 {d} ページ
+	Redraw in the PDF?	PDF に描き直しますか?
+	Diagram {n}, open	局面図 {n}、開く

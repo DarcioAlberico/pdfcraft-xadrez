@@ -3178,3 +3178,194 @@ fn protected_documents_keep_nothing_unasked() {
     assert_eq!(snapshot(&stores), before, "nothing written");
     let _ = std::fs::remove_dir_all(base);
 }
+
+// ─── Plan A9, G4: the book's PGN kept again, the same or another ─────────────────────────────
+
+/// A9-G4 (A4-08, A5-08, D25): the same PGN kept again keeps the decisions made in the app, and
+/// another PGN keeps them too (it used to drop them all), saying how many name a move it doesn't
+/// have (`decisions_unmatched`).
+#[test]
+fn keeping_the_books_pgn_again_keeps_the_choices() {
+    let (base, root) = workdir("reference-again");
+    std::fs::write(root.join("book.pgn"), RUY_PGN).unwrap();
+    // Another PGN: it plays Nf3 but never Bb5.
+    std::fs::write(root.join("other.pgn"), "[Event \"Other\"]\n\n1.e4 e5 2.Nf3 Nf6 *\n").unwrap();
+    let (mut a, doc) = opened(&root);
+    let set = ok(&mut a, "chess_reference_set", json!({ "doc": doc, "path": "book.pgn" }));
+    // Two choices made in the app (no tool makes one), as it writes them.
+    let file = root.join(".pdfcraft/chess-reference").join(set["file"].as_str().unwrap());
+    let mut kept: Value = serde_json::from_slice(&std::fs::read(&file).unwrap()).unwrap();
+    kept["decisions"] = json!([
+        { "page": 0, "block": 1, "inline": 2, "san": "Nf3", "choice": "pgn", "pgn_san": "Nf3" },
+        { "page": 0, "block": 1, "inline": 5, "san": "Bb5", "choice": "book", "pgn_san": "Bb5" },
+    ]);
+    std::fs::write(&file, serde_json::to_vec(&kept).unwrap()).unwrap();
+    let again = ok(&mut a, "chess_reference_set", json!({ "doc": doc, "path": "book.pgn" }));
+    assert_eq!(again["decisions"].as_u64(), Some(2), "the same PGN: {again:#}");
+    let other = ok(&mut a, "chess_reference_set", json!({ "doc": doc, "path": "other.pgn" }));
+    assert_eq!((other["replaced"].as_bool(), other["name"].as_str()), (Some(true), Some("other.pgn")), "{other:#}");
+    assert_eq!(other["decisions"].as_u64(), Some(2), "another PGN keeps them: {other:#}");
+    assert_eq!((again["decisions_unmatched"].as_u64(), other["decisions_unmatched"].as_u64()), (Some(0), Some(1)), "{other:#}");
+    assert_eq!(ok(&mut a, "chess_reference_status", json!({ "doc": doc }))["decisions"], 2);
+    let _ = std::fs::remove_dir_all(base);
+}
+
+// ─── Plan A9, G5a: one place for the stores (decision D17), migrated into ─────────────────────
+
+/// A9-G5a (A4-12, D17): the command line kept the stores in `.pdfcraft` of its working folder and
+/// the app in the recovery folder, so neither saw what the other kept. Given the app's folder
+/// (as the command line and the MCP server are), the tools keep them where the app does: a
+/// correction set by the tools is in the app's store, and one the app keeps there is read by
+/// chess_document without store. The recovery folder's stores (where the app kept them before)
+/// are merged in the first time, and left as they were.
+#[test]
+fn the_app_and_the_command_line_keep_one_store() {
+    const CORRECTED: &str = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+    let (base, root) = workdir("one-store");
+    let (data, earlier) = (base.join("data").join("chess"), base.join("data").join("Recovery").join("chess"));
+    let path = |p: &Path| p.to_string_lossy().into_owned();
+    // What an earlier app kept in the recovery folder: the book's PGN.
+    {
+        let mut legacy = Automation::new().with_root(&root).unwrap();
+        std::fs::write(root.join("book.pgn"), RUY_PGN).unwrap();
+        let doc = ok(&mut legacy, "doc_open", json!({ "path": "board.pdf" }))["doc"].as_u64().unwrap();
+        ok(&mut legacy, "chess_reference_set", json!({ "doc": doc, "path": "book.pgn", "reference_store": "recovery-reference" }));
+        std::fs::create_dir_all(&earlier).unwrap();
+        std::fs::rename(root.join("recovery-reference"), earlier.join("reference")).unwrap();
+    }
+    let before = snapshot(&earlier);
+    let mut cli = Automation::new().with_chess_data(Some(data.clone()), Some(earlier.clone()));
+    let doc = ok(&mut cli, "doc_open", json!({ "path": path(&root.join("board.pdf")) }))["doc"].as_u64().unwrap();
+    let models = path(&root.join("models"));
+    let set = ok(&mut cli, "chess_correction_set", json!({ "doc": doc, "page": 1, "index": 1, "fen": CORRECTED, "models_dir": models }));
+    assert!(data.join("corrections").join(set["file"].as_str().unwrap()).is_file(), "in the app's folder: {set:#}");
+    assert!(!root.join(".pdfcraft").exists(), "nowhere else");
+    let status = ok(&mut cli, "chess_reference_status", json!({ "doc": doc }));
+    assert_eq!((status["kept"].as_bool(), status["name"].as_str()), (Some(true), Some("book.pgn")), "brought in: {status:#}");
+    assert_eq!(snapshot(&earlier), before, "the earlier folder left as it was");
+    // Another session (the app, or a second command line) reads the same store, without store.
+    let mut again = Automation::new().with_chess_data(Some(data.clone()), None);
+    let doc = ok(&mut again, "doc_open", json!({ "path": path(&root.join("board.pdf")) }))["doc"].as_u64().unwrap();
+    let read = ok(&mut again, "chess_document", json!({ "doc": doc, "lang": "en", "models_dir": models }));
+    assert_eq!(read["corrections"]["kept"], 1, "{:#}", read["corrections"]);
+    assert_eq!(read["reference_kept"]["kept"], true, "{:#}", read["reference_kept"]);
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// A9-G5a: `--root` restricts the app's folder, it does not move it. Outside the root, a reading
+/// tool reads nothing there and says so (`outside_root`, no path), and a change is refused until
+/// `store` names a folder inside the root; inside the root, it is used as it is.
+#[test]
+fn with_a_root_the_apps_store_must_be_inside_it() {
+    const CORRECTED: &str = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+    let (base, root) = workdir("root-restricts");
+    let outside = base.join("data").join("chess");
+    let mut a = Automation::new().with_root(&root).unwrap().with_chess_data(Some(outside.clone()), None);
+    let doc = ok(&mut a, "doc_open", json!({ "path": "board.pdf" }))["doc"].as_u64().unwrap();
+    let listed = ok(&mut a, "chess_correction_list", json!({ "doc": doc }));
+    assert_eq!((listed["count"].as_u64(), listed["outside_root"].as_bool()), (Some(0), Some(true)), "{listed:#}");
+    let around = base.file_name().unwrap().to_string_lossy().into_owned();
+    assert!(!listed.to_string().contains(&around), "no path outside the root named: {listed:#}");
+    let status = ok(&mut a, "chess_reference_status", json!({ "doc": doc }));
+    assert_eq!(status["outside_root"], true, "{status:#}");
+    let read = ok(&mut a, "chess_document", json!({ "doc": doc, "lang": "en", "models_dir": "models" }));
+    assert_eq!(read["corrections"]["outside_root"], true, "{:#}", read["corrections"]);
+    match a.call("chess_correction_set", &json!({ "doc": doc, "page": 1, "index": 1, "fen": CORRECTED, "models_dir": "models" })) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("give store"), "{m}"),
+        other => panic!("written outside the root: {other:?}"),
+    }
+    assert!(!outside.exists(), "nothing written there");
+    let given =
+        ok(&mut a, "chess_correction_set", json!({ "doc": doc, "page": 1, "index": 1, "fen": CORRECTED, "models_dir": "models", "store": "mine" }));
+    assert!(root.join("mine").join(given["file"].as_str().unwrap()).is_file());
+    // The app's folder inside the root: used.
+    let inside = root.join("appdata").join("chess");
+    let mut b = Automation::new().with_root(&root).unwrap().with_chess_data(Some(inside.clone()), None);
+    let doc = ok(&mut b, "doc_open", json!({ "path": "board.pdf" }))["doc"].as_u64().unwrap();
+    let set = ok(&mut b, "chess_correction_set", json!({ "doc": doc, "page": 1, "index": 1, "fen": CORRECTED, "models_dir": "models" }));
+    assert!(inside.join("corrections").join(set["file"].as_str().unwrap()).is_file(), "{set:#}");
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// A9-G5a: `chess_store_migrate` merges what a `.pdfcraft` folder keeps into the stores the tools
+/// use, by each kind's rule; run again it merges nothing new, and the source is only read.
+#[test]
+fn chess_store_migrate_brings_a_pdfcraft_folder_in_once() {
+    const CORRECTED: &str = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+    let (base, root) = workdir("migrate");
+    std::fs::write(root.join("book.pgn"), RUY_PGN).unwrap();
+    // What an earlier command line kept in .pdfcraft of the root.
+    let (mut old, doc) = opened(&root);
+    ok(&mut old, "chess_correction_set", json!({ "doc": doc, "page": 1, "index": 1, "fen": CORRECTED, "models_dir": "models" }));
+    ok(&mut old, "chess_reference_set", json!({ "doc": doc, "path": "book.pgn" }));
+    let source = snapshot(&root.join(".pdfcraft"));
+    let app = root.join("appdata").join("chess");
+    let mut a = Automation::new().with_root(&root).unwrap().with_chess_data(Some(app.clone()), None);
+    let doc = ok(&mut a, "doc_open", json!({ "path": "board.pdf" }))["doc"].as_u64().unwrap();
+    assert_eq!(ok(&mut a, "chess_correction_list", json!({ "doc": doc }))["count"], 0, "not there yet");
+    let m = ok(&mut a, "chess_store_migrate", json!({ "from": ".pdfcraft" }));
+    assert_eq!((m["corrections"]["merged"].as_u64(), m["reference"]["merged"].as_u64()), (Some(1), Some(1)), "{m:#}");
+    assert_eq!(m["corrections"]["to"], json!(std::path::Path::new("appdata").join("chess").join("corrections").to_string_lossy()), "{m:#}");
+    let again = ok(&mut a, "chess_store_migrate", json!({ "from": ".pdfcraft" }));
+    assert_eq!((again["corrections"]["merged"].as_u64(), again["corrections"]["unchanged"].as_u64()), (Some(0), Some(1)), "{again:#}");
+    let listed = ok(&mut a, "chess_correction_list", json!({ "doc": doc }));
+    assert_eq!(listed["count"], 1, "once: {listed:#}");
+    assert_eq!(ok(&mut a, "chess_reference_status", json!({ "doc": doc }))["name"], "book.pgn");
+    assert_eq!(snapshot(&root.join(".pdfcraft")), source, "the source only read");
+    match a.call("chess_store_migrate", &json!({ "from": "../outside" })) {
+        Err(ToolError::Failed(m)) => assert!(m.contains("is outside the allowed directory"), "{m}"),
+        other => panic!("a source outside the root accepted: {other:?}"),
+    }
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// A9-G1b, through the tools: a corrections file named by the identifier every PDF earlier builds
+/// made shared, holding this book's correction and another book's. Listing shows the other's as
+/// `other_book`; the next change moves this book's into its own file and leaves the other's in
+/// the shared one, so the list shows this book's alone. Nothing is deleted.
+#[test]
+fn chess_correction_list_tells_another_books_entries_and_a_change_separates_them() {
+    const CORRECTED: &str = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
+    let (base, root) = workdir("shared-file");
+    let (mut a, doc) = opened(&root);
+    let set = ok(&mut a, "chess_correction_set", json!({ "doc": doc, "page": 1, "index": 1, "fen": CORRECTED, "models_dir": "models" }));
+    let store = root.join(".pdfcraft/chess-corrections");
+    let own = store.join(set["file"].as_str().unwrap());
+    // As an earlier build kept it: the identifier every PDF it made shared, and another book's
+    // correction beside this one's.
+    let mut file: Value = serde_json::from_slice(&std::fs::read(&own).unwrap()).unwrap();
+    file["doc"]["id0"] = json!("9ba0d5aad0617164a1d073b0d8c7dcd9");
+    file["fps"].as_array_mut().unwrap().push(json!("fnv:another-book"));
+    let foreign = file["fps"].as_array().unwrap().len() - 1;
+    let mut theirs = file["entries"][0].clone();
+    theirs["uid"] = json!("another-books");
+    theirs["fp"] = json!([null, foreign, null]);
+    file["entries"].as_array_mut().unwrap().push(theirs);
+    std::fs::remove_file(&own).unwrap();
+    let shared = store.join("12fb2ab1ef72d2416a6ebd94a9b56a37.json");
+    std::fs::write(&shared, serde_json::to_vec(&file).unwrap()).unwrap();
+    let listed = ok(&mut a, "chess_correction_list", json!({ "doc": doc }));
+    let flags: Vec<(String, bool)> = listed["corrections"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| (c["uid"].as_str().unwrap().to_owned(), c["other_book"].as_bool().unwrap()))
+        .collect();
+    let uid = set["uid"].as_str().unwrap().to_owned();
+    assert!(flags.contains(&(uid.clone(), false)) && flags.contains(&("another-books".to_owned(), true)), "{listed:#}");
+    // A change: this book's correction goes to its own file; the other's stays.
+    ok(&mut a, "chess_correction_set", json!({ "doc": doc, "page": 1, "index": 1, "kind": "verified", "models_dir": "models" }));
+    let listed = ok(&mut a, "chess_correction_list", json!({ "doc": doc }));
+    assert_eq!(
+        listed["corrections"].as_array().map(|c| c.iter().map(|c| c["uid"].as_str().unwrap().to_owned()).collect::<Vec<_>>()),
+        Some(vec![uid]),
+        "{listed:#}"
+    );
+    let left: Value = serde_json::from_slice(&std::fs::read(&shared).unwrap()).unwrap();
+    assert_eq!(
+        left["entries"].as_array().map(|e| e.iter().map(|e| e["uid"].clone()).collect::<Vec<_>>()),
+        Some(vec![json!("another-books")]),
+        "{left}"
+    );
+    let _ = std::fs::remove_dir_all(base);
+}

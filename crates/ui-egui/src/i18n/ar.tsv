@@ -3473,6 +3473,7 @@ chess undo step	Clear drawings	مسح الرسوم
 	Diagram	مخطط
 	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	تعذّرت قراءة تصحيحات المخططات المحفوظة ({why})؛ وُضعت جانبًا باسم {name}.
 	Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted.	تعذّرت قراءة بعض تصحيحات المخططات المحفوظة ({why})؛ تُستخدم البقية، ويُحتفظ بـ {name} ولا يُحذف أبدًا.
+	Diagram corrections or books' PGNs an earlier PdfCraft changed were brought in.	تم جلب تصحيحات المخططات أو ملفات PGN للكتب التي غيّرها إصدار سابق من PdfCraft.
 	The diagram corrections couldn't be saved: {e}	تعذّر حفظ تصحيحات المخططات: {e}
 	Diagram {n}, page {p}: {state}	المخطط {n}، الصفحة {p}: {state}
 	Page {p} · diagram {n} of {m}	الصفحة {p} · المخطط {n} من {m}
@@ -3633,6 +3634,7 @@ castling	long	طويل
 	Remove the book's PGN	إزالة PGN الكتاب
 	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	تعذّرت قراءة PGN الكتاب المحفوظ لهذا المستند ({why})؛ وقد حُفظ جانبًا باسم {name}.
 	The book's PGN couldn't be read: {e}	تعذّرت قراءة PGN الكتاب: {e}
+	Choices on moves in conflict naming a move this PGN doesn't have: {n}. They are kept for a PGN that has it.	اختيارات على نقلات متعارضة تسمي نقلة لا يحتويها ملف PGN هذا: {n}. تُحفظ لملف PGN يحتويها.
 	{name} was not kept as the book's PGN: {e}	لم يُحفظ {name} بوصفه PGN الكتاب: {e}
 	no game in it	لا يحتوي على أي مباراة
 	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	PGN الكتاب {name}: عدد المباريات {games}، عدد النقلات {moves}. تُربط به الصفحات التي يقرؤها تبويب النص.
@@ -3712,3 +3714,6 @@ castling	long	طويل
 	Larger text	نص أكبر
 diagram state	Read	مقروء
 the move's comment	Move comment	تعليق النقلة
+	Detecting in another book… page {d} of {t}	جارٍ الاكتشاف في كتاب آخر… الصفحة {d} من {t}
+	Redraw in the PDF?	إعادة الرسم في ملف PDF؟
+	Diagram {n}, open	المخطط {n}، فتح

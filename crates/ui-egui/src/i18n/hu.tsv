@@ -3196,6 +3196,7 @@ chess undo step	Clear drawings	rajzok törlése
 	Diagram	Diagram
 	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	A mentett diagramjavításokat nem sikerült beolvasni ({why}); félretettük őket ezen a néven: {name}.
 	Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted.	Néhány mentett diagramjavítást nem sikerült beolvasni ({why}); a többit használjuk, a(z) {name} pedig megmarad, sosem törlődik.
+	Diagram corrections or books' PGNs an earlier PdfCraft changed were brought in.	Egy korábbi PdfCraft által módosított diagramjavítások vagy könyv-PGN-ek átvéve.
 	The diagram corrections couldn't be saved: {e}	A diagramjavításokat nem sikerült menteni: {e}
 	Diagram {n}, page {p}: {state}	{n}. diagram, {p}. oldal: {state}
 	Page {p} · diagram {n} of {m}	{p}. oldal · {n}/{m}. diagram
@@ -3357,6 +3358,7 @@ castling	long	hosszú
 	Remove the book's PGN	A könyv PGN-jének eltávolítása
 	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	A dokumentumhoz tárolt könyv-PGN nem olvasható ({why}); félretettük {name} néven.
 	The book's PGN couldn't be read: {e}	A könyv PGN-je nem olvasható: {e}
+	Choices on moves in conflict naming a move this PGN doesn't have: {n}. They are kept for a PGN that has it.	Konfliktusos lépésekről hozott döntések, amelyek olyan lépést neveznek meg, amely ebben a PGN-ben nincs: {n}. Megmaradnak egy olyan PGN-hez, amelyben megvan.
 	{name} was not kept as the book's PGN: {e}	A(z) {name} nem lett a könyv PGN-jeként tárolva: {e}
 	no game in it	nincs benne egyetlen játszma sem
 	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	A könyv PGN-je ({name}): {games} játszma, {moves} lépés. A Szöveg lapon olvasott oldalak ehhez kapcsolódnak.
@@ -3436,3 +3438,6 @@ castling	long	hosszú
 	Larger text	Nagyobb szöveg
 diagram state	Read	Beolvasva
 the move's comment	Move comment	A lépés megjegyzése
+	Detecting in another book… page {d} of {t}	Felismerés egy másik könyvben… {d}. / {t} oldal
+	Redraw in the PDF?	Újrarajzolás a PDF-ben?
+	Diagram {n}, open	{n}. diagram, megnyitás

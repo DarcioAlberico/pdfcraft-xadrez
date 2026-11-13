@@ -55,6 +55,37 @@ impl AppDirs {
     pub fn install(&self) -> Option<&Path> {
         self.install.as_deref()
     }
+
+    /// The crash-recovery folder in [`AppDirs::data`]: `Recovery`, in lower case in an XDG data
+    /// folder (`~/.local/share/pdfcraft/recovery`, like the folders around it).
+    pub fn recovery(&self) -> Option<PathBuf> {
+        let xdg = self.portable.dir.is_none() && cfg!(all(unix, not(target_os = "macos")));
+        self.data.as_ref().map(|d| d.join(if xdg { "recovery" } else { "Recovery" }))
+    }
+
+    /// The folder of the chess stores in [`AppDirs::data`] (plan A9-G5a, decision D17): `chess`,
+    /// with `corrections` and `reference` in it, the one place the app and the command line keep
+    /// the diagram corrections and the books' PGNs. Not under [`AppDirs::recovery`], which is
+    /// for what a crash left behind.
+    pub fn chess(&self) -> Option<PathBuf> {
+        self.data.as_ref().map(|d| d.join("chess"))
+    }
+}
+
+/// Make the folder `dir` (with its parents) and, where the system has permissions (Unix), open
+/// to its owner alone (0700), as the user's data in it is: the chess stores keep what was read
+/// from the books, unencrypted. Elsewhere it is made as the system makes folders.
+pub fn create_private_dir(dir: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dir)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let open_to_others = std::fs::metadata(dir).is_ok_and(|m| m.permissions().mode() & 0o077 != 0);
+        if open_to_others {
+            std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700))?;
+        }
+    }
+    Ok(())
 }
 
 /// The platform's per-user data folder for PdfCraft, from the environment variables `env` gives:
@@ -229,6 +260,25 @@ mod tests {
         let dirs = AppDirs::resolve(Some(&exe.join("pdfcraft.exe")), env(&everywhere));
         assert_eq!(dirs.data, Some(exe.join(DATA_DIR)), "never the per-user folder in portable mode");
         let _ = std::fs::remove_dir_all(&exe);
+    }
+
+    #[test]
+    fn the_chess_stores_and_the_recovery_folder_are_in_the_data_folder() {
+        let everywhere = [("HOME", "/home/u"), ("LOCALAPPDATA", "C:\\Users\\u\\AppData\\Local"), ("XDG_DATA_HOME", "/home/u/.data")];
+        let dirs = AppDirs::resolve(None, env(&everywhere));
+        let data = dirs.data.clone().unwrap();
+        assert_eq!(dirs.chess(), Some(data.join("chess")));
+        let recovery = if cfg!(all(unix, not(target_os = "macos"))) { "recovery" } else { "Recovery" };
+        assert_eq!(dirs.recovery(), Some(data.join(recovery)));
+        assert_eq!(AppDirs::default().chess(), None, "no data folder, no stores");
+        let made = temp("private").join("a").join("chess");
+        create_private_dir(&made).unwrap();
+        assert!(made.is_dir());
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert_eq!(std::fs::metadata(&made).unwrap().permissions().mode() & 0o777, 0o700);
+        }
     }
 
     #[test]

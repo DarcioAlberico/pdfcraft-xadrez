@@ -3198,6 +3198,7 @@ chess undo step	Clear drawings	Zeichnungen löschen
 	Diagram	Diagramm
 	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Gespeicherte Diagrammkorrekturen konnten nicht gelesen werden ({why}); sie wurden als {name} beiseitegelegt.
 	Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted.	Einige gespeicherte Diagrammkorrekturen konnten nicht gelesen werden ({why}); die übrigen werden verwendet, und {name} bleibt erhalten und wird nie gelöscht.
+	Diagram corrections or books' PGNs an earlier PdfCraft changed were brought in.	Diagrammkorrekturen oder Buch-PGNs, die ein früheres PdfCraft geändert hat, wurden übernommen.
 	The diagram corrections couldn't be saved: {e}	Die Diagrammkorrekturen konnten nicht gespeichert werden: {e}
 	Diagram {n}, page {p}: {state}	Diagramm {n}, Seite {p}: {state}
 	Page {p} · diagram {n} of {m}	Seite {p} · Diagramm {n} von {m}
@@ -3359,6 +3360,7 @@ castling	long	lang
 	Remove the book's PGN	PGN des Buchs entfernen
 	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	Die für dieses Dokument gespeicherte PGN des Buchs konnte nicht gelesen werden ({why}); sie wurde als {name} beiseitegelegt.
 	The book's PGN couldn't be read: {e}	Die PGN des Buchs konnte nicht gelesen werden: {e}
+	Choices on moves in conflict naming a move this PGN doesn't have: {n}. They are kept for a PGN that has it.	Entscheidungen zu Zügen im Konflikt, die einen Zug nennen, den dieses PGN nicht hat: {n}. Sie bleiben für ein PGN erhalten, das ihn hat.
 	{name} was not kept as the book's PGN: {e}	{name} wurde nicht als PGN des Buchs gespeichert: {e}
 	no game in it	sie enthält keine Partie
 	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	PGN des Buchs {name}: {games} Partien, {moves} Züge. Die Seiten, die der Tab Text liest, werden mit ihr verknüpft.
@@ -3438,3 +3440,6 @@ castling	long	lang
 	Larger text	Größerer Text
 diagram state	Read	Gelesen
 the move's comment	Move comment	Kommentar des Zugs
+	Detecting in another book… page {d} of {t}	Erkennen in einem anderen Buch… Seite {d} von {t}
+	Redraw in the PDF?	Im PDF neu zeichnen?
+	Diagram {n}, open	Diagramm {n}, öffnen

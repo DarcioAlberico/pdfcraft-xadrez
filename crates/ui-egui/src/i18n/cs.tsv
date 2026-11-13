@@ -3271,6 +3271,7 @@ chess undo step	Clear drawings	smazání kreseb
 	Diagram	Diagram
 	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Uložené opravy diagramů nebylo možné přečíst ({why}); byly odloženy jako {name}.
 	Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted.	Některé uložené opravy diagramů nebylo možné přečíst ({why}); ostatní se použijí a {name} zůstává uložen, nikdy se nemaže.
+	Diagram corrections or books' PGNs an earlier PdfCraft changed were brought in.	Opravy diagramů nebo PGN knih, které změnila starší verze PdfCraft, byly převzaty.
 	The diagram corrections couldn't be saved: {e}	Opravy diagramů nebylo možné uložit: {e}
 	Diagram {n}, page {p}: {state}	Diagram {n}, str. {p}: {state}
 	Page {p} · diagram {n} of {m}	Str. {p} · diagram {n} z {m}
@@ -3432,6 +3433,7 @@ castling	long	dlouhá
 	Remove the book's PGN	Odebrat PGN knihy
 	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	PGN knihy uložené pro tento dokument nelze přečíst ({why}); bylo odloženo jako {name}.
 	The book's PGN couldn't be read: {e}	PGN knihy nelze přečíst: {e}
+	Choices on moves in conflict naming a move this PGN doesn't have: {n}. They are kept for a PGN that has it.	Volby u tahů v rozporu, které uvádějí tah, jenž tento PGN nemá: {n}. Zůstávají uloženy pro PGN, který ho má.
 	{name} was not kept as the book's PGN: {e}	{name} nebylo uloženo jako PGN knihy: {e}
 	no game in it	neobsahuje žádnou partii
 	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	PGN knihy {name}: partií {games}, tahů {moves}. Stránky, které čte karta Text, se s ním propojí.
@@ -3511,3 +3513,6 @@ castling	long	dlouhá
 	Larger text	Větší text
 diagram state	Read	Přečteno
 the move's comment	Move comment	Komentář k tahu
+	Detecting in another book… page {d} of {t}	Hledání v jiné knize… strana {d} z {t}
+	Redraw in the PDF?	Překreslit v PDF?
+	Diagram {n}, open	Diagram č. {n}, otevřít

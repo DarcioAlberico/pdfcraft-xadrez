@@ -3197,6 +3197,7 @@ chess undo step	Clear drawings	l'effacement des dessins
 	Diagram	Diagramme
 	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Les corrections de diagrammes enregistrées n’ont pas pu être lues ({why}) ; elles ont été mises de côté sous le nom {name}.
 	Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted.	Certaines corrections de diagrammes enregistrées n'ont pas pu être lues ({why}) ; les autres sont utilisées, et {name} est conservé, jamais supprimé.
+	Diagram corrections or books' PGNs an earlier PdfCraft changed were brought in.	Les corrections de diagrammes ou les PGN de livres modifiés par un PdfCraft antérieur ont été repris.
 	The diagram corrections couldn't be saved: {e}	Impossible d’enregistrer les corrections de diagrammes : {e}
 	Diagram {n}, page {p}: {state}	Diagramme {n}, page {p} : {state}
 	Page {p} · diagram {n} of {m}	Page {p} · diagramme {n} sur {m}
@@ -3358,6 +3359,7 @@ castling	long	grand
 	Remove the book's PGN	Retirer le PGN du livre
 	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	Le PGN du livre conservé pour ce document n'a pas pu être lu ({why}) ; il a été mis de côté sous le nom {name}.
 	The book's PGN couldn't be read: {e}	Le PGN du livre n'a pas pu être lu : {e}
+	Choices on moves in conflict naming a move this PGN doesn't have: {n}. They are kept for a PGN that has it.	Choix sur des coups en conflit désignant un coup absent de ce PGN : {n}. Ils sont conservés pour un PGN qui le contient.
 	{name} was not kept as the book's PGN: {e}	{name} n'a pas été conservé comme PGN du livre : {e}
 	no game in it	il ne contient aucune partie
 	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	PGN du livre {name} : {games} parties, {moves} coups. Les pages que lit l'onglet Texte y sont reliées.
@@ -3437,3 +3439,6 @@ castling	long	grand
 	Larger text	Texte plus grand
 diagram state	Read	Lu
 the move's comment	Move comment	Commentaire du coup
+	Detecting in another book… page {d} of {t}	Détection dans un autre livre… page {d} sur {t}
+	Redraw in the PDF?	Redessiner dans le PDF ?
+	Diagram {n}, open	Diagramme {n}, ouvrir

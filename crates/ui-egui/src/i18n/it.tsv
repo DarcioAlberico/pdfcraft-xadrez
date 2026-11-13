@@ -3409,6 +3409,7 @@ chess undo step	Clear drawings	cancellazione dei disegni
 	Diagram	Diagramma
 	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Le correzioni dei diagrammi salvate non si sono potute leggere ({why}); sono state messe da parte come {name}.
 	Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted.	Alcune correzioni dei diagrammi salvate non sono state lette ({why}); le altre vengono usate e {name} viene conservato, mai eliminato.
+	Diagram corrections or books' PGNs an earlier PdfCraft changed were brought in.	Le correzioni dei diagrammi o i PGN dei libri modificati da un PdfCraft precedente sono stati ripresi.
 	The diagram corrections couldn't be saved: {e}	Impossibile salvare le correzioni dei diagrammi: {e}
 	Diagram {n}, page {p}: {state}	Diagramma {n}, pag. {p}: {state}
 	Page {p} · diagram {n} of {m}	Pag. {p} · diagramma {n} di {m}
@@ -3570,6 +3571,7 @@ castling	long	lungo
 	Remove the book's PGN	Rimuovi il PGN del libro
 	The book's PGN kept for this document couldn't be read ({why}); it was kept aside as {name}.	Il PGN del libro conservato per questo documento non è stato letto ({why}); è stato messo da parte come {name}.
 	The book's PGN couldn't be read: {e}	Il PGN del libro non è stato letto: {e}
+	Choices on moves in conflict naming a move this PGN doesn't have: {n}. They are kept for a PGN that has it.	Scelte su mosse in conflitto che indicano una mossa assente da questo PGN: {n}. Restano conservate per un PGN che la contenga.
 	{name} was not kept as the book's PGN: {e}	{name} non è stato conservato come PGN del libro: {e}
 	no game in it	non contiene alcuna partita
 	Book's PGN {name}: {games} games, {moves} moves. The pages the Text tab reads are linked to it.	PGN del libro {name}: {games} partite, {moves} mosse. Le pagine lette dalla scheda Testo vi sono collegate.
@@ -3649,3 +3651,6 @@ castling	long	lungo
 	Larger text	Testo più grande
 diagram state	Read	Letto
 the move's comment	Move comment	Commento della mossa
+	Detecting in another book… page {d} of {t}	Rilevamento in un altro libro… pagina {d} di {t}
+	Redraw in the PDF?	Ridisegnare nel PDF?
+	Diagram {n}, open	Diagramma {n}, apri

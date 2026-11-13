@@ -25,11 +25,14 @@
 //! **Decisions** (plan "Carregar PGN do livro", R6e): what the user chose for a move of the text
 //! the PGN plays from another position (a conflict), the book's move or the PGN's, each by the
 //! move's place on its page and its SAN as printed, so a page read differently does not take
-//! another move's decision. They belong to the PGN they were made against: keeping the same PGN
-//! again keeps them (the same text, or the same file as a build before plan A9-F1 read it, with
-//! U+FFFD where a byte was not UTF-8: [`KeptPgn::is_same_as`]); keeping another PGN drops them; a
-//! save as another file keeps them. A decision that can't be read is left out and counted, the
-//! others kept.
+//! another move's decision. Each also keeps the PGN's move it was made against (`pgn_san`, plan
+//! A9-G4). Keeping the same PGN again keeps them (the same text, the same file as a build before
+//! plan A9-F1 read it, with U+FFFD where a byte was not UTF-8, or the same file's bytes:
+//! [`KeptPgn::is_same_as`]). Keeping another PGN keeps them too (decision D25), and says how many
+//! name a move the new PGN does not have ([`Kept::unmatched`]): those apply again only to a PGN
+//! that has their move, since a decision is looked up only for a move in conflict with the PGN's
+//! same move. A save as another file keeps them. A decision that can't be read is left out and
+//! counted, the others kept.
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
@@ -71,13 +74,14 @@ pub enum Choice {
     Pgn,
 }
 
-/// The user's decision on a move of the text: its page (0-based), block and place in the block,
-/// its SAN as the walk wrote it, the SAN as read, and the choice.
+/// The user's decision on a move of the text: its place (page from 0, block and place in the
+/// block, written as the three numbers files have always had), its SAN as the walk wrote it, the
+/// SAN as read, the PGN's move it was in conflict with, and the choice.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Decision {
-    pub page: usize,
-    pub block: usize,
-    pub inline: usize,
+    /// Where the move is (plan A9-T2a's one address; `page`, `block` and `inline` in the file).
+    #[serde(flatten)]
+    pub at: MoveAt,
     /// The move's SAN as the walk wrote it when the choice was made (what builds before plan
     /// A9-L0b match by, and still write).
     pub san: String,
@@ -86,6 +90,11 @@ pub struct Decision {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub san_read: Option<String>,
     pub choice: Choice,
+    /// The move of the book's PGN the move was in conflict with, as the PGN writes it (plan A9-G4,
+    /// R6-10): for [`Choice::Pgn`] the move chosen. `None` in a decision made before it was kept,
+    /// which stands for the move by its own SAN.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pgn_san: Option<String>,
     /// Fields a later build of this version wrote, kept as they are while the decision is.
     #[serde(flatten)]
     pub other: Map<String, Value>,
@@ -93,18 +102,17 @@ pub struct Decision {
 
 impl Decision {
     /// The choice `choice` on the move at `at` the walk wrote `san` and the reader read
-    /// `san_read`. Its place is written as the three numbers the file has always had (the one
-    /// address type, plan A9-T2a, takes their place in the file with step G4).
-    pub fn new(at: MoveAt, san: String, san_read: String, choice: Choice) -> Decision {
-        let to = |n: u32| usize::try_from(n).unwrap_or(usize::MAX);
+    /// `san_read`, in conflict with the PGN's move `pgn_san` (empty: not known).
+    pub fn new(at: MoveAt, san: String, san_read: String, pgn_san: String, choice: Choice) -> Decision {
         let san_read = Some(san_read).filter(|s| !s.is_empty());
-        Decision { page: to(at.page), block: to(at.block), inline: to(at.inline), san, san_read, choice, other: Map::new() }
+        let pgn_san = Some(pgn_san).filter(|s| !s.is_empty());
+        Decision { at, san, san_read, choice, pgn_san, other: Map::new() }
     }
 
-    /// Where the move decided on is; `None` for a place no page holds.
-    pub fn at(&self) -> Option<MoveAt> {
-        let to = |n: usize| u32::try_from(n).ok();
-        Some(MoveAt { page: to(self.page)?, block: to(self.block)?, inline: to(self.inline)? })
+    /// The move of the PGN it was made against: [`Decision::pgn_san`], else (a decision made
+    /// before it was kept) the move's own SAN, which a move in conflict shares with the PGN's.
+    pub fn pgn_move(&self) -> &str {
+        self.pgn_san.as_deref().unwrap_or(&self.san)
     }
 
     /// Whether this is the decision on the move at `at` that the walk wrote `san` and the reader
@@ -114,7 +122,7 @@ impl Decision {
     /// change), and never lands on another move at the same place (one printed otherwise).
     /// Matching by the SAN read alone, past a new segmentation, is step L1b's (§2.6).
     pub fn is_for(&self, at: MoveAt, san: &str, san_read: &str) -> bool {
-        self.at() == Some(at)
+        self.at == at
             && match &self.san_read {
                 Some(read) => read == san_read,
                 None => self.san == san,
@@ -124,7 +132,7 @@ impl Decision {
     /// Whether `self` and `other` are decisions on the same move: the same address, and the
     /// same SAN read when both kept one, else the same SAN the walk wrote.
     fn same_move(&self, other: &Decision) -> bool {
-        (self.page, self.block, self.inline) == (other.page, other.block, other.inline)
+        self.at == other.at
             && match (&self.san_read, &other.san_read) {
                 (Some(a), Some(b)) => a == b,
                 _ => self.san == other.san,
@@ -132,9 +140,10 @@ impl Decision {
     }
 
     /// Whether it names a move this build keeps: a SAN of 1 to [`MAX_SAN`] bytes, the SAN read
-    /// no longer.
+    /// and the PGN's no longer.
     fn names_a_move(&self) -> bool {
-        !self.san.is_empty() && self.san.len() <= MAX_SAN && self.san_read.as_ref().is_none_or(|s| s.len() <= MAX_SAN)
+        let short = |s: &Option<String>| s.as_ref().is_none_or(|s| s.len() <= MAX_SAN);
+        !self.san.is_empty() && self.san.len() <= MAX_SAN && short(&self.san_read) && short(&self.pgn_san)
     }
 }
 
@@ -156,6 +165,11 @@ pub struct KeptPgn {
     /// a U+FFFD, the BOM kept), so a PGN they kept is still known as this one. Never written.
     #[serde(skip)]
     pub legacy_hash: Option<String>,
+    /// A hash of the file's bytes as read ([`bytes_hash`], plan A9-G4), so the same file is the
+    /// same PGN whatever a reader makes of its text; `None` for a PGN kept before it was kept, or
+    /// given as text.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bytes_hash: Option<String>,
     /// Fields a later build of this version wrote, kept as they are while the PGN is.
     #[serde(flatten)]
     pub other: Map<String, Value>,
@@ -169,20 +183,34 @@ impl KeptPgn {
             return Err(ReferenceStoreError::TooBig);
         }
         let name = name.filter(|n| !n.is_empty() && n.len() <= MAX_NAME).map(str::to_owned);
-        Ok(KeptPgn { name, hash: text_hash(&text), bytes: text.len(), at, games, moves, text, legacy_hash: None, other: Map::new() })
+        Ok(KeptPgn {
+            name,
+            hash: text_hash(&text),
+            bytes: text.len(),
+            at,
+            games,
+            moves,
+            text,
+            legacy_hash: None,
+            bytes_hash: None,
+            other: Map::new(),
+        })
     }
 
     /// This PGN, read from the file's `bytes` (by `pdfcraft_chess::pgn::decode`): also known by
-    /// the hash the readers before plan A9-F1 gave those bytes.
+    /// the hash the readers before plan A9-F1 gave those bytes, and by the bytes' own hash.
     pub fn read_from(mut self, bytes: &[u8]) -> KeptPgn {
         self.legacy_hash = Some(text_hash(&pdfcraft_chess::pgn::legacy_text(bytes)));
+        self.bytes_hash = Some(bytes_hash(bytes));
         self
     }
 
-    /// Whether this is the PGN `kept` holds: the same text, or the same file as a build before
-    /// plan A9-F1 kept it.
+    /// Whether this is the PGN `kept` holds: the same text, the same file as a build before plan
+    /// A9-F1 kept it, or the same file's bytes (plan A9-G4).
     pub fn is_same_as(&self, kept: &KeptPgn) -> bool {
-        self.hash == kept.hash || self.legacy_hash.as_deref() == Some(kept.hash.as_str())
+        self.hash == kept.hash
+            || self.legacy_hash.as_deref() == Some(kept.hash.as_str())
+            || self.bytes_hash.as_ref().is_some_and(|b| kept.bytes_hash.as_ref() == Some(b))
     }
 
     /// What makes it a PGN not to trust, when something does.
@@ -204,6 +232,21 @@ impl KeptPgn {
 /// cryptographic).
 pub fn text_hash(text: &str) -> String {
     corrections::hash_hex(&[b"pgn", text.as_bytes()])
+}
+
+/// The hash of a PGN file's bytes as read, before any decoding: 32 hexadecimal digits.
+pub fn bytes_hash(bytes: &[u8]) -> String {
+    corrections::hash_hex(&[b"pgn-bytes", bytes])
+}
+
+/// What keeping a PGN did ([`ReferenceFile::keep`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Kept {
+    /// A PGN was kept before.
+    pub replaced: bool,
+    /// Decisions kept that name a move the PGN does not have (another PGN, decision D25): they
+    /// apply again only to a PGN that has it.
+    pub unmatched: usize,
 }
 
 /// A document's kept PGN, its removal, and the decisions made against it.
@@ -349,16 +392,16 @@ impl ReferenceFile {
         Ok(())
     }
 
-    /// Keep `pgn` in place of the PGN kept: the decisions stay when it is the same PGN, and go
-    /// with another. Whether a PGN was kept before.
-    pub fn keep(&mut self, pgn: KeptPgn) -> bool {
+    /// Keep `pgn` in place of the PGN kept. The decisions stay (decision D25): with the same PGN
+    /// all of them hold; with another, those whose move ([`Decision::pgn_move`]) `has_move` says
+    /// the new PGN does not have are counted ([`Kept::unmatched`]).
+    pub fn keep(&mut self, pgn: KeptPgn, has_move: impl Fn(&str) -> bool) -> Kept {
         let before = self.pgn.take();
-        if !before.as_ref().is_some_and(|old| pgn.is_same_as(old)) {
-            self.decisions.clear();
-        }
+        let same = before.as_ref().is_some_and(|old| pgn.is_same_as(old));
+        let unmatched = if same { 0 } else { self.decisions.iter().filter(|d| !has_move(d.pgn_move())).count() };
         self.pgn = Some(pgn);
         self.removed = None;
-        before.is_some()
+        Kept { replaced: before.is_some(), unmatched }
     }
 
     /// Remove the PGN kept, and the decisions made against it, at `at` (seconds since 1970).
@@ -378,29 +421,31 @@ impl ReferenceFile {
     }
 
     /// Take `theirs` in (the file of the name before plan A9-G3a, or another copy): the PGN kept
-    /// or removed the later wins, with its decisions (a tie keeps this one's); with the same PGN
-    /// on both sides, each one's decisions are kept, this one's where both decided on a move.
+    /// or removed the later wins (a tie keeps this one's). While a PGN is kept, each side's
+    /// decisions are kept (decision D25: they outlive a change of PGN), the winner's where both
+    /// decided on a move; a removal the later takes them all away.
     pub fn merge(&mut self, theirs: &ReferenceFile) {
-        let same = match (&self.pgn, &theirs.pgn) {
-            (Some(mine), Some(other)) => mine.hash == other.hash,
-            _ => false,
-        };
-        if !same {
-            if theirs.changed_at() > self.changed_at() {
-                self.pgn.clone_from(&theirs.pgn);
-                self.removed = theirs.removed;
-                self.decisions.clone_from(&theirs.decisions);
+        let (mut first, mut second) = (self.decisions.clone(), theirs.decisions.clone());
+        if theirs.changed_at() > self.changed_at() {
+            self.pgn.clone_from(&theirs.pgn);
+            self.removed = theirs.removed;
+            std::mem::swap(&mut first, &mut second);
+        }
+        if self.pgn.is_none() {
+            if self.removed.is_some() {
+                self.decisions.clear();
             }
             return;
         }
-        for d in &theirs.decisions {
-            if self.decisions.len() >= MAX_DECISIONS {
+        for d in second {
+            if first.len() >= MAX_DECISIONS {
                 break;
             }
-            if !self.decisions.iter().any(|mine| mine.same_move(d)) {
-                self.decisions.push(d.clone());
+            if !first.iter().any(|kept| kept.same_move(&d)) {
+                first.push(d);
             }
         }
+        self.decisions = first;
     }
 
     /// The file as bytes, in this version's layout, refused when it would be too big to read back.
@@ -478,6 +523,10 @@ impl StoreKind for Reference {
         ReferenceFile::empty(doc)
     }
 
+    fn doc(file: &ReferenceFile) -> &DocRecord {
+        &file.doc
+    }
+
     fn set_doc(file: &mut ReferenceFile, doc: DocRecord) {
         file.doc = doc;
     }
@@ -519,10 +568,11 @@ impl super::store::Loaded<ReferenceFile> {
 }
 
 impl<B: StoreBackend> DocStore<Reference, B> {
-    /// Keep `pgn` for the document, in place of the one it kept ([`ReferenceFile::keep`]).
-    /// Whether it kept one before; refused for a file of a newer version.
-    pub fn set(&self, keys: &DocKeys, pages: usize, pgn: KeptPgn) -> Result<(bool, Loaded), ReferenceStoreError> {
-        self.update(keys, pages, |f| Ok::<_, ReferenceStoreError>(f.keep(pgn)))
+    /// Keep `pgn` for the document, in place of the one it kept, with the decisions
+    /// ([`ReferenceFile::keep`]; `has_move`: whether `pgn` has a move). Refused for a file of a
+    /// newer version.
+    pub fn set(&self, keys: &DocKeys, pages: usize, pgn: KeptPgn, has_move: impl Fn(&str) -> bool) -> Result<(Kept, Loaded), ReferenceStoreError> {
+        self.update(keys, pages, |f| Ok::<_, ReferenceStoreError>(f.keep(pgn, has_move)))
     }
 
     /// Remove the document's PGN at `at` ([`ReferenceFile::remove`]). Whether it kept one;

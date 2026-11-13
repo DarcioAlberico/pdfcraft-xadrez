@@ -82,7 +82,7 @@ fn a_book_detected_or_exported_once_is_not_read_again_by_the_next_export() {
     let mut h = harness();
     assert!(h.state_mut().execute("chess.scan"));
     h.run_steps(4);
-    assert_eq!(h.state().chess.results.as_ref().map(|r| r.count()), Some(1), "the diagram is found");
+    assert_eq!(h.state().chess.results().map(|r| r.count()), Some(1), "the diagram is found");
     let id = h.state().views[0].id;
     h.state_mut().export_chess_to(id, ChessFormat::Epub, &epub);
     h.run_steps(4);
