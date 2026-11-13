@@ -14,8 +14,18 @@
 //!   stays deleted.
 //! - A file past the budget is never left out when loaded; a change that would pass it is refused,
 //!   and said.
+//!
+//! **A document whose chess is not written** (plan A9-I1c, [`crate::chess_keep`]): an encrypted
+//! one before the user's yes, or after a no, or one that doesn't allow copying. Its changes go to
+//! a memory store of their own ([`UiStore::at`]), never saved, which takes what the store held of
+//! it first ([`UiStore::hold`]); a yes merges them into the store by the kind's rule.
 
+use pdfcraft_engine::chess::DocKeys;
 use pdfcraft_engine::chess::store::{DocStore, MemBackend, Parsed, StoreKind};
+
+/// The documents' files the memory for documents not written holds at most, at the kind's
+/// largest file each (plan A9-I1c).
+const UNKEPT_FILES: usize = 16;
 
 /// Where a kind of store is kept.
 pub(crate) enum Place<K: StoreKind> {
@@ -50,6 +60,9 @@ pub(crate) struct UiStore<K: StoreKind> {
     unreadable: Option<String>,
     /// That value, to keep under `<key>.bad` at the next save.
     bad: Option<String>,
+    /// The documents whose chess is not written (plan A9-I1c): their changes, in memory for the
+    /// session, never saved. Always [`Place::Memory`].
+    unkept: Place<K>,
 }
 
 /// The files of a `Storage` value: each file's name and text, as [`UiStore::storage_values`]
@@ -87,7 +100,35 @@ impl<K: StoreKind> UiStore<K> {
     /// The session's memory, within `budget` bytes, kept nowhere (tests, a session without a
     /// data folder).
     pub(crate) fn memory(budget: usize) -> Self {
-        UiStore { place: Place::Memory(DocStore::<K, MemBackend>::new(budget)), key: None, budget, changed: false, unreadable: None, bad: None }
+        UiStore {
+            place: Place::Memory(DocStore::<K, MemBackend>::new(budget)),
+            key: None,
+            budget,
+            changed: false,
+            unreadable: None,
+            bad: None,
+            unkept: Place::Memory(DocStore::<K, MemBackend>::new(UNKEPT_FILES.saturating_mul(K::MAX_FILE_BYTES))),
+        }
+    }
+
+    /// Where a change of a document goes: the store when its chess may be written (`write`), else
+    /// the memory for the documents whose chess is not (plan A9-I1c).
+    pub(crate) fn at(&self, write: bool) -> &Place<K> {
+        if write { &self.place } else { &self.unkept }
+    }
+
+    /// The document named by `keys`, of `pages` pages, is not written from now on: its changes go
+    /// to memory ([`Self::at`]), which starts from `file`, what the store holds of it now. Why
+    /// not, in words that follow "couldn't be saved:".
+    pub(crate) fn hold(&self, keys: &DocKeys, pages: usize, file: K::File) -> Result<(), String>
+    where
+        K::Error: std::fmt::Display,
+    {
+        let held = in_store!(&self.unkept, s => s.update(keys, pages, |f| {
+            *f = file;
+            Ok::<(), std::io::Error>(())
+        }));
+        held.map(|_| ()).map_err(|e| e.to_string())
     }
 
     /// The folder `dir` (the desktop; tests pass their own folder).

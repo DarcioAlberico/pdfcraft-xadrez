@@ -3462,3 +3462,10 @@ the move's comment	Move comment	Commentaire du coup
 	The work stopped on an internal error.	Le travail s’est arrêté sur une erreur interne.
 # Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
 	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	Dans le navigateur, un livre de plus de {n} pages ne peut pas encore être exporté ni aligné sur son PGN : l’onglet cesserait de répondre jusqu’à la fin. L’application de bureau le fait en arrière-plan.
+# Plan A9-I1c: one question before keeping an encrypted document's chess (corrections, book's PGN, games, samples).
+	Keep your chess work on this protected document?	Conserver votre travail d’échecs sur ce document protégé ?
+	“{name}” is encrypted. The app keeps your diagram corrections, the book's PGN and the chess games of each document unencrypted on this computer, so they come back when the document is opened again; character samples go to the folder chosen for them.	« {name} » est chiffré. L’application conserve vos corrections de diagrammes, le PGN du livre et les parties d’échecs de chaque document non chiffrés sur cet ordinateur, pour qu’ils reviennent quand le document est rouvert ; les échantillons de caractères vont dans le dossier choisi pour eux.
+	Not kept, they last only until the document is closed.	Non conservés, ils ne durent que jusqu’à la fermeture du document.
+	Keep them	Les conserver
+	Don't keep	Ne pas conserver
+	The book's PGN couldn't be saved: {e}	Le PGN du livre n’a pas pu être enregistré : {e}

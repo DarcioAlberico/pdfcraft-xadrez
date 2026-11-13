@@ -885,9 +885,6 @@ pub(crate) fn page_overlay(
     let reading_area = crate::chess_ocr_area::reading(chess);
     let busy = chess.capture.job.is_some() || reading_area;
     let waiting = chess.capture.pending.is_some();
-    if let Some(save) = crate::chess_samples::ask(&ctx, area, chess, view.id) {
-        chess.capture.samples.answer(view.id, save);
-    }
     if !armed && !busy && !waiting && chess.capture.toast.is_none() {
         return None;
     }
