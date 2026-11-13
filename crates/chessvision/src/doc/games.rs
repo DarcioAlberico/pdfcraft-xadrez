@@ -881,6 +881,9 @@ pub(crate) struct Walker {
     ocr: bool,
     /// Prose words were read since the last move or bracket ([`WalkRules::prose_moves`]).
     prose_seen: bool,
+    /// The last word of the prose read since the last move or bracket, in lower case and without
+    /// the punctuation around it ([`WalkRules::prose_squares`]).
+    prose_word: Option<String>,
     /// The text since the last move ends in an ellipsis standing alone ([`WalkRules::ellipsis`]).
     ellipsis: bool,
     /// A separator was read inside brackets ([`WalkRules::separators`]).
@@ -1049,22 +1052,83 @@ pub struct WalkRules {
     /// with a file letter an OCR mixes up makes legal (`cxf4` for `exf4`: a scan loses the bar
     /// of an `e`) is played as that reading. Flagged [`ReviewFlag::TextRepaired`].
     pub misread_files: bool,
+    /// A bare square without a number (`d3`) right after a preposition or a determiner that ends
+    /// prose (`…does not come to d3`, `the knight goes on h5`) is prose and stays in the comment,
+    /// unless it is set in bold (plan A9-L4, A2-03; [`PROSE_WORDS`]).
+    pub prose_squares: bool,
+    /// A move without a number that is not a bare square (`♘xf5`, `Rd1`) right after a
+    /// preposition or a determiner that ends prose (`Stops any ♘xf5`) is prose and stays in the
+    /// comment, unless it is set in bold (plan A9-L4).
+    pub prose_pieces: bool,
 }
+
+/// The words after which a move without a number is prose when the prose ends with one of them
+/// ([`WalkRules::prose_squares`], [`WalkRules::prose_pieces`]): the prepositions and determiners
+/// R6 counted on the Harikrishna book (`R6/prose_classes.py`), English only, but for `with`, `via`
+/// and `by`, which introduce a move rather than a square or a piece (`continue with ♘f3`, `via h6`,
+/// `by 0-0-0`: there the book's own PGN plays the move).
+pub const PROSE_WORDS: [&str; 22] = [
+    "to", "on", "at", "the", "of", "from", "into", "towards", "toward", "for", "a", "an", "any", "our", "his", "their", "its", "this", "that",
+    "against", "about", "over",
+];
 
 impl WalkRules {
     /// None of the rules: the walker's own reading.
-    pub const NONE: WalkRules =
-        WalkRules { implied_close: false, prose_moves: false, separators: false, results: false, ellipsis: false, misread_files: false };
+    pub const NONE: WalkRules = WalkRules {
+        implied_close: false,
+        prose_moves: false,
+        separators: false,
+        results: false,
+        ellipsis: false,
+        misread_files: false,
+        prose_squares: false,
+        prose_pieces: false,
+    };
     /// Every rule: fragment mode.
-    pub const ALL: WalkRules =
-        WalkRules { implied_close: true, prose_moves: true, separators: true, results: true, ellipsis: true, misread_files: true };
+    pub const ALL: WalkRules = WalkRules {
+        implied_close: true,
+        prose_moves: true,
+        separators: true,
+        results: true,
+        ellipsis: true,
+        misread_files: true,
+        prose_squares: true,
+        prose_pieces: true,
+    };
     /// The rules a whole book is read with: those that made no move of ten earlier documents
     /// worse (`walk_bench --rules=`, 2,304 -> 2,327 valid moves, 23 better and none worse, all
     /// from `ellipsis`; the other two changed nothing there). `prose_moves` made 88 worse (books go
     /// on after prose without numbers), and `results` 3, all played into the wrong game before a
     /// result it now reads (`0:1`) ended the right one; both stay for fragments only.
-    pub const BOOK: WalkRules =
-        WalkRules { implied_close: true, prose_moves: false, separators: true, results: false, ellipsis: true, misread_files: true };
+    ///
+    /// Plan A9-L4, measured by the book's PGN (`walk_bench --reference`, Harikrishna 60 pp.) and on
+    /// the gate's 39 documents: `prose_squares` reads 12 bare squares after prose as prose (all
+    /// absent from the book's PGN) and keeps every confirmed move; on the other documents it turns
+    /// 7 valid moves into prose, each a square in a sentence (`a nasty check on h5`). The book's
+    /// PGN "recovers" one more (`attacked on d5`): a move its game plays from there, not this
+    /// text's. `prose_pieces` is right word by word too (`the problem of the ♗c4`, `the idea of
+    /// ♘g5`), but where the reading had missed a move, such a mention had stood in for it: 30
+    /// valid moves lost and 16 gained, 15 of them one line of one book. It stays for fragments.
+    pub const BOOK: WalkRules = WalkRules {
+        implied_close: true,
+        prose_moves: false,
+        separators: true,
+        results: false,
+        ellipsis: true,
+        misread_files: true,
+        prose_squares: PROSE_SQUARES_IN_BOOKS,
+        prose_pieces: PROSE_PIECES_IN_BOOKS,
+    };
+}
+
+/// Whether a whole book is read with [`WalkRules::prose_squares`] (plan A9-L4: measured alone).
+const PROSE_SQUARES_IN_BOOKS: bool = true;
+/// Whether a whole book is read with [`WalkRules::prose_pieces`] (plan A9-L4: measured alone).
+const PROSE_PIECES_IN_BOOKS: bool = false;
+
+/// Whether the printed move `text` is a bare square (`d3`): a pawn's step, no capture, no mark.
+fn bare_square(text: &str) -> bool {
+    matches!(text.as_bytes(), [b'a'..=b'h', b'1'..=b'8'])
 }
 
 impl Default for WalkRules {
@@ -1958,6 +2022,7 @@ impl Walker {
         let rules = self.rules;
         let misreads = rules.misread_files && self.ocr;
         let prose_seen = std::mem::take(&mut self.prose_seen);
+        let prose_word = self.prose_word.take();
         let ellipsis = std::mem::take(&mut self.ellipsis);
         let separator = std::mem::take(&mut self.separator);
         let Some(open) = self.open.as_mut() else { return MoveOutcome::status(MoveStatus::Unchecked) };
@@ -1967,7 +2032,14 @@ impl Walker {
         // (`the break f5`), and in a fragment one numbered before the fragment's start, which no
         // line of it can hold (`as after 1.e4`).
         let citation = self.fragment && number.is_some_and(|n| game.score.start_ply().is_some_and(|s| ply_of(n) < s));
-        if citation || (rules.prose_moves && prose_seen && number.is_none() && !bold) {
+        // A move in a sentence (plan A9-L4): one without a number right after a preposition or a
+        // determiner ending prose (`…does not come to d3`, `Stops any ♘xf5`).
+        let in_sentence = number.is_none()
+            && !bold
+            && prose_seen
+            && prose_word.as_deref().is_some_and(|w| PROSE_WORDS.contains(&w))
+            && if bare_square(text) { rules.prose_squares } else { rules.prose_pieces };
+        if citation || in_sentence || (rules.prose_moves && prose_seen && number.is_none() && !bold) {
             comment(game, open, &printed);
             self.prose_seen = true;
             return MoveOutcome::status(MoveStatus::Unchecked);
@@ -2356,6 +2428,7 @@ impl Walker {
         } else if text.trim_end().ends_with('…') || text.trim_end().ends_with("...") {
             self.ellipsis = true;
         }
+        self.prose_word = text.split_whitespace().last().map(|w| w.trim_matches(|c: char| matches!(c, ',' | ';' | ':' | '(')).to_lowercase());
         let extended = self.rules.results;
         let open = self.open.as_mut()?;
         let game = self.games.get_mut(open.game)?;

@@ -448,4 +448,50 @@ mod tests {
         set(&mut v, "a4", piece('K'), 0.5, None, 0.45);
         assert_eq!(run(&v), run(&v));
     }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::prelude::ProptestConfig::with_cases(64))]
+
+        /// Plan A9-Q3b (A7-08): any matrix a model could give, with any limits, decodes within
+        /// them: what is kept is the argmax with `changes` applied, never more probable than it,
+        /// at most `max_changes` squares changed and `max_expansions` states taken; a satisfied
+        /// result breaks no rule, an unsatisfied one says which rules it still breaks.
+        #[test]
+        fn any_matrix_decodes_within_its_limits(
+            values in proptest::collection::vec(0.0f32..1.0, 64 * CLASS_COUNT),
+            peaks in proptest::collection::vec((0usize..64, 0usize..CLASS_COUNT, 0.5f32..50.0), 0..40),
+            max_changes in 0usize..8,
+            max_expansions in 0usize..400,
+            max_states in 1usize..2_000,
+            alternatives_per_square in 0usize..CLASS_COUNT + 2,
+            bishop_colors in proptest::prelude::any::<bool>(),
+            adjacent_kings in proptest::prelude::any::<bool>(),
+        ) {
+            let mut values = values;
+            // Peaks make readings that look like boards: a few squares sure of a piece.
+            for (square, class, weight) in peaks {
+                if let Some(v) = values.get_mut(square * CLASS_COUNT + class) {
+                    *v += weight;
+                }
+            }
+            let Ok(probs) = Probabilities::new(&values) else { return Ok(()) };
+            let rules = Rules { bishop_colors, adjacent_kings };
+            let limits = Limits { max_changes, max_expansions, max_states, alternatives_per_square, rules };
+            let d = decode(&probs, &limits);
+            let base = probs.argmax();
+            let changed: Vec<usize> = (0..64).filter(|&i| d.cells[i] != base[i]).collect();
+            proptest::prop_assert_eq!(changed.len(), d.changes.len());
+            proptest::prop_assert!(d.changes.len() <= max_changes);
+            proptest::prop_assert!(d.expansions <= max_expansions);
+            let argmax_log: f64 = log_probs(&probs).iter().zip(&base).map(|(row, c)| row[usize::from(*c)]).sum();
+            proptest::prop_assert!(d.log_prob <= argmax_log + 1e-9, "{} > {}", d.log_prob, argmax_log);
+            let broken = violations(&d.cells, rules);
+            proptest::prop_assert_eq!(d.satisfied, broken.is_empty());
+            if d.satisfied {
+                proptest::prop_assert!(d.remaining.is_empty());
+            } else {
+                proptest::prop_assert!(!d.remaining.is_empty());
+            }
+        }
+    }
 }

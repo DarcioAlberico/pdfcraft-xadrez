@@ -3417,3 +3417,10 @@ the move's comment	Move comment	此着法的评论
 	what was saved before couldn't be read, and is kept aside first; try again in a moment	之前保存的内容无法读取，将先另行保存；请稍后再试
 	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	无法读取已保存的棋图更正（{why}）。它们会在下次保存时另行保存，此后新的更正会被保存。
 	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	无法读取已保存的书籍 PGN（{why}）。它们会在下次保存时另行保存，此后新的 PGN 会被保存。
+# Plan A9-I2: one kind of job; the long jobs say how far they are and stop when asked.
+	Stop	停止
+	Exporting the chess document: page {done} of {of}	正在导出国际象棋文档：第 {done} 页，共 {of} 页
+	The export was stopped: nothing was written.	导出已停止：未写入任何内容。
+	Aligning was stopped: the book's link is as it was.	对齐已停止：书的链接保持原样。
+	The work stopped on an internal error: {why}	工作因内部错误而停止：{why}
+	The work stopped on an internal error.	工作因内部错误而停止。

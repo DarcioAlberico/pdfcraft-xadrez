@@ -16,7 +16,10 @@
 //!   that was not read is a `<figure class="diagram unread">` with no `data-fen`;
 //! - each move is a `<span class="move" data-san="…">` (English SAN), with `data-fen` (the
 //!   position after it) when it was replayed, and `data-status` when it was not valid;
-//! - each annotation is a `<span class="nag" data-nag="n">` with the printed glyph;
+//! - each annotation is a `<span class="nag" data-nag="n">` with the printed glyph, said by its
+//!   name to a screen reader (`role="img"`, `aria-label`; the names are English, so the span says
+//!   `lang="en"` in a book in another language; plan A9-X3);
+//! - a diagram written as its FEN (`<code>`) has the position in words beside it;
 //! - anything flagged for review carries the class `review`.
 //!
 //! Only `http` and `https` addresses become links. Every size is bounded by the document's own.
@@ -179,7 +182,13 @@ fn inline_html(inline: &Inline, o: &HtmlOptions<'_>) -> (String, String) {
         }
         Inline::Nag { code, .. } => {
             let (glyph, name) = (pdfcraft_chess::nag::shown(*code), pdfcraft_chess::nag::by_code(*code).map_or("", |n| n.name));
-            let title = if name.is_empty() { String::new() } else { format!(" title=\"{}\"", esc(name)) };
+            // Said by its name (plan A9-X3, R5-06): a screen reader reads no `title`, and reads the
+            // glyph as what it looks like ("plus minus") or, in the sign font, as its letter.
+            let title = if name.is_empty() {
+                String::new()
+            } else {
+                format!(" role=\"img\" aria-label=\"{n}\"{en} title=\"{n}\"", n = esc(name), en = english_inside(o))
+            };
             // With the sign font, the glyph is its letter (the title still names it).
             if o.sign_font.is_some()
                 && let Some(letter) = text_font::ischess_letter(*code)
@@ -193,6 +202,13 @@ fn inline_html(inline: &Inline, o: &HtmlOptions<'_>) -> (String, String) {
             (html.replace(" class=\"\"", ""), text.clone())
         }
     }
+}
+
+/// ` lang="en"` for English said inside a book whose language is not English (or not given):
+/// the names of the annotation glyphs are English ([`pdfcraft_chess::nag::NAGS`]).
+fn english_inside(o: &HtmlOptions<'_>) -> &'static str {
+    let primary = o.lang.split(['-', '_']).next().unwrap_or_default();
+    if primary.eq_ignore_ascii_case("en") { "" } else { " lang=\"en\"" }
 }
 
 /// Inlines joined with the spacing of [`super::plain_text`].
@@ -359,7 +375,12 @@ fn diagram_html(d: &DiagramBlock, page: &ChessPage, o: &HtmlOptions<'_>, used: &
             };
             board_described(&parsed.placement, o.pieces, &o.style, used, &id, &title, &describe::pieces(&parsed.placement, lang))
         }
-        _ => format!("<code>{fen}</code>"),
+        // A FEN says nothing to a listener: the position in words goes with it (plan A9-X3,
+        // R5-06), as the board's own description does.
+        _ => format!(
+            "<code>{fen}</code><p class=\"position\">{}</p>",
+            esc(&describe::describe_side(number, &label, shown.fen, shown.side_known, lang))
+        ),
     };
     // The caption is the PGN's comment for the diagram, then its link.
     let of = page.blocks.iter().filter(|b| matches!(b, Block::Diagram(_))).count();
@@ -381,12 +402,18 @@ fn diagram_html(d: &DiagramBlock, page: &ChessPage, o: &HtmlOptions<'_>, used: &
     format!("<figure class=\"diagram{review}\" id=\"{id}\" data-fen=\"{fen}\">{body}{caption}</figure>\n")
 }
 
-/// The highlight of what was flagged for review ([`HtmlOptions::review_marks`]).
-const REVIEW_RULE: &str = ".review{background:#fff3c4}";
+/// The highlight of what was flagged for review ([`HtmlOptions::review_marks`]): a pale
+/// background, and a dark line under it so it is not told by colour alone (plan A9-X3, R5-06:
+/// the background is 1.1:1 against white; the line [`REVIEW_LINE`] is 5.8:1 against white and
+/// 5.2:1 against the background).
+const REVIEW_RULE: &str = ".review{background:#fff3c4;border-bottom:2px solid #8a5d00}";
+
+/// The colour of the line under what was flagged for review ([`REVIEW_RULE`]).
+pub const REVIEW_LINE: &str = "#8a5d00";
 
 /// The style both outputs share.
 const STYLE: &str = "body{max-width:46em;margin:2em auto;padding:0 1em;font-family:serif;line-height:1.5}\
-.move{white-space:nowrap}.review{background:#fff3c4}\
+.move{white-space:nowrap}.review{background:#fff3c4;border-bottom:2px solid #8a5d00}\
 figure.diagram{margin:1.2em auto;text-align:center}figure.diagram svg{max-width:100%;height:auto;width:20em}\
 figcaption{font-family:sans-serif;font-size:.85em}section.page+section.page{border-top:1px solid #ccc;margin-top:2em}";
 
@@ -500,8 +527,64 @@ pub fn xhtml_page(page: &ChessPage, o: &HtmlOptions<'_>, lang: &str) -> String {
     format!(
         "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<!DOCTYPE html>\n<html xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:epub=\"http://www.idpf.org/2007/ops\" lang=\"{l}\" xml:lang=\"{l}\">\n<head>\n<meta charset=\"utf-8\"/>\n<title>{t}</title>\n<link rel=\"stylesheet\" type=\"text/css\" href=\"{EPUB_CSS}\"/>\n</head>\n<body>\n{defs}{section}</body>\n</html>\n",
         l = esc(lang),
-        t = esc(o.title),
+        t = esc(&page_title(o, page)),
     )
+}
+
+/// A content document's `<title>`: the book's and the page's, as the book numbers it, in the
+/// page's language (`Livro — Pág. 13`; plan A9-X3, R5-06: every page was titled with the book
+/// alone), so a reader going from page to page hears where it is.
+pub fn page_title(o: &HtmlOptions<'_>, page: &ChessPage) -> String {
+    let page_name = describe::page(&page_label(o, page.index).to_string(), page.text_language());
+    if o.title.trim().is_empty() { page_name } else { format!("{} — {page_name}", o.title) }
+}
+
+/// What a book says of how it can be read (EPUB's `schema:accessibilitySummary`), in English and
+/// counted from what it holds (plan A9-X3, R5-06: it was one sentence that gave every diagram a
+/// side to move and every page its printed number, whatever the book had): its diagrams, how many
+/// have a text alternative (the others were not read, and say so) and how many of those name the
+/// side to move (the book does not give it for the others); and whether the page numbers are the
+/// book's own ([`HtmlOptions::page_labels`], a page's own number from 1 not counting as one: a PDF
+/// with no labels says that) or count the PDF's pages.
+pub fn accessibility_summary(doc: &ChessDoc, o: &HtmlOptions<'_>) -> String {
+    let (mut diagrams, mut described, mut side) = (0usize, 0usize, 0usize);
+    for (_, block) in doc.pages.iter().flat_map(ChessPage::book_blocks) {
+        if let Block::Diagram(d) = block {
+            diagrams = diagrams.saturating_add(1);
+            if let Some(shown) = d.shown() {
+                described = described.saturating_add(1);
+                side = side.saturating_add(usize::from(shown.side_known));
+            }
+        }
+    }
+    let mut s = String::from("The moves are text.");
+    if diagrams == 0 {
+        s.push_str(" No chess diagrams.");
+    } else {
+        let _ = write!(s, " Chess diagrams: {diagrams}. With a text alternative that lists each piece on its square: {described}");
+        let unread = diagrams.saturating_sub(described);
+        if unread > 0 {
+            let _ = write!(s, " (the other {unread} could not be read, and say so)");
+        }
+        let _ = write!(s, ". Naming the side to move: {side}");
+        let unsaid = described.saturating_sub(side);
+        if unsaid > 0 {
+            let _ = write!(s, " (the book does not give it for the other {unsaid})");
+        }
+        s.push('.');
+    }
+    let pages = doc.pages.len();
+    let printed = doc.pages.iter().filter(|p| page_label(o, p.index).printed.is_some()).count();
+    if pages > 0 {
+        if printed == pages {
+            s.push_str(" Page numbers are the ones the book prints.");
+        } else if printed == 0 {
+            s.push_str(" Page numbers count the pages of the PDF.");
+        } else {
+            let _ = write!(s, " Page numbers as the book prints them: {printed} of {pages} pages; the others count the pages of the PDF.");
+        }
+    }
+    s
 }
 
 /// A heading for a table of contents.

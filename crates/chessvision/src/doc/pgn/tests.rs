@@ -286,6 +286,16 @@ fn random_game(choices: &[u16], from_middle: bool, comments: &[String], nags: &[
         }
     }
     g.result = [GameResult::WhiteWins, GameResult::BlackWins, GameResult::Draw, GameResult::Unknown][choices.len() % 4];
+    // A game that ends in mate or stalemate has the board's result: the reader says when the tag
+    // says another (plan A9-F5a, `ResultMismatch`), and this round trip expects no warning.
+    if let Some(end) = g.board_after(at) {
+        match end.status() {
+            cozy_chess::GameStatus::Won if end.side_to_move() == cozy_chess::Color::White => g.result = GameResult::BlackWins,
+            cozy_chess::GameStatus::Won => g.result = GameResult::WhiteWins,
+            cozy_chess::GameStatus::Drawn => g.result = GameResult::Draw,
+            cozy_chess::GameStatus::Ongoing => {}
+        }
+    }
     g.reorder_canonical();
     g
 }
