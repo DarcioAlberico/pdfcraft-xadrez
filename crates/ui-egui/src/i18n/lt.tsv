@@ -3711,3 +3711,5 @@ the move's comment	Move comment	Ėjimo komentaras
 	Aligning was stopped: the book's link is as it was.	Derinimas sustabdytas: knygos susiejimas liko toks, koks buvo.
 	The work stopped on an internal error: {why}	Darbas sustojo dėl vidinės klaidos: {why}
 	The work stopped on an internal error.	Darbas sustojo dėl vidinės klaidos.
+# Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
+	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	Naršyklėje knygos, ilgesnės nei {n} puslapių, dar negalima eksportuoti ar suderinti su PGN: kortelė iki pabaigos nustotų reaguoti. Darbalaukio programa tai daro fone.

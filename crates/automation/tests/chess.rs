@@ -1231,6 +1231,38 @@ fn chess_arguments_out_of_range_are_refused_with_what_is_allowed() {
 
 /// chess_game plays a game without a document: from a FEN or a PGN, with moves in SAN or UCI,
 /// shown at a ply, and stops at the first illegal move.
+/// Plan A9-N4: `chess_mate` gives the keys of a mate in n for the FEN's side or the one asked,
+/// which side mates with `side: both`, no mate with the best try and its refutation, and the
+/// budget spent; bad arguments are refused.
+#[test]
+fn chess_mate_solves_a_problem() {
+    let mut a = Automation::new();
+    let r = ok(&mut a, "chess_mate", json!({ "fen": "8/8/8/8/4R3/6k1/8/4K2R w K - 0 1", "n": 2 }));
+    assert_eq!(
+        (&r["keys"], &r["unique"], &r["castles"], &r["shortest"], &r["side"]),
+        (&json!(["O-O"]), &json!(true), &json!(true), &json!(2), &json!("white")),
+        "{r:#}"
+    );
+    let r = ok(&mut a, "chess_mate", json!({ "fen": "8/8/8/8/4R3/6k1/8/4K2R w - - 0 1", "n": 2 }));
+    assert_eq!(r["no_mate"], true, "{r:#}");
+    assert!(r["best_try"].is_string() && r["refutation"].is_string(), "{r:#}");
+    let r = ok(&mut a, "chess_mate", json!({ "fen": "3r2k1/5ppp/8/8/8/8/5PPP/3R2K1", "n": 1, "side": "both" }));
+    assert_eq!((&r["mates"], r["reports"].as_array().map(Vec::len)), (&json!("both"), Some(2)), "{r:#}");
+    let r = ok(&mut a, "chess_mate", json!({ "fen": "3r2k1/5ppp/8/8/8/8/5PPP/6K1", "n": 1, "side": "both" }));
+    assert_eq!(r["mates"], "black", "{r:#}");
+    let r = ok(&mut a, "chess_mate", json!({ "fen": "8/8/8/8/4R3/6k1/8/4K2R w K - 0 1", "n": 2, "budget": 5 }));
+    assert_eq!((&r["exhausted"], &r["no_mate"]), (&json!(true), &json!(false)), "{r:#}");
+    assert!(r["nodes"].as_u64().is_some_and(|n| n <= 5), "{r:#}");
+    for bad in [
+        json!({ "fen": "8/8/8/8/4R3/6k1/8/4K2R", "n": 4 }),
+        json!({ "fen": "nope", "n": 1 }),
+        json!({ "fen": "8/8/8/8/8/8/8/K6k", "n": 1, "side": "red" }),
+        json!({ "fen": "8/8/8/8/8/8/8/K6k", "n": 1, "budget": 0 }),
+    ] {
+        assert!(matches!(a.call("chess_mate", &bad), Err(ToolError::InvalidArgs(_))), "{bad}");
+    }
+}
+
 /// `chess_game`'s header is what the move list shows (plan HC10): PGN's placeholders are null, a
 /// date reads as far as it is known, and the result is `*` while the game goes on. The result
 /// read is the game's: a mate beside a `*` read is the board's say, not the result (plan A9-F5).

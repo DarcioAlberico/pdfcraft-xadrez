@@ -136,6 +136,36 @@ fn unreadable_code(u: &Unreadable) -> &'static str {
     }
 }
 
+/// Most positions `chess_mate` may be asked to play.
+const MAX_MATE_BUDGET: u64 = 5_000_000;
+
+/// A mate report as the tools write it.
+fn mate_report(r: &pdfcraft_engine::chess::pdfcraft_chess::mate::MateReport) -> Value {
+    json!({
+        "n": r.n,
+        "side": if r.side == pdfcraft_engine::chess::pdfcraft_chess::placement::Color::White { "white" } else { "black" },
+        "keys": r.keys,
+        "shortest": r.shortest,
+        "unique": r.unique(),
+        "cooked": r.cooked(),
+        "no_mate": r.no_mate(),
+        "best_try": r.best_try,
+        "refutation": r.refutation,
+        "castles": r.castles,
+        "nodes": r.nodes,
+        "exhausted": r.exhausted,
+    })
+}
+
+/// What the solver found for the mate a diagram's page asks (plan A9-N4), as the tools write it.
+fn mate_finding(m: &pdfcraft_engine::chess::pdfcraft_chessvision::board::MateFinding) -> Value {
+    use pdfcraft_engine::chess::pdfcraft_chessvision::board::MateFinding;
+    match m {
+        MateFinding::Solved(r) => mate_report(r),
+        MateFinding::BothSides { n } => json!({ "n": n, "both_sides": true }),
+    }
+}
+
 fn position(p: &ReadPosition) -> Value {
     let (legality, violations) = match &p.legality {
         Legality::Legal => ("legal".to_string(), Vec::new()),
@@ -171,6 +201,7 @@ fn position(p: &ReadPosition) -> Value {
         "repaired": p.repaired(),
         "repairs": p.repairs.iter().map(|c| json!({ "square": c.square.to_string(), "from": piece(c.from), "to": piece(c.to) })).collect::<Vec<_>>(),
         "lichess_url": chess::lichess_url(p),
+        "mate": p.mate.as_ref().map(mate_finding),
     })
 }
 
@@ -829,6 +860,45 @@ impl Automation {
             crate::write_atomic(path, text.as_bytes())?;
         }
         Ok(json!({ "rows": cipher.entries().len(), "settled": cipher.proven().len(), "saved": out.map(|(shown, _)| shown.clone()) }))
+    }
+
+    /// `chess_mate`: a mate in n solved (plan A9-N4).
+    pub(crate) fn chess_mate(&self, a: &Args) -> Result<Value> {
+        use pdfcraft_engine::chess::pdfcraft_chess::fen::Fen;
+        use pdfcraft_engine::chess::pdfcraft_chess::mate::{self, MateError, MatingSide};
+        use pdfcraft_engine::chess::pdfcraft_chess::placement::Color;
+        let fen = Fen::parse(a.str("fen")?).map_err(|e| ToolError::InvalidArgs(format!("fen: {e}")))?;
+        let n = u8::try_from(a.int("n")?).ok().filter(|n| (1..=mate::MAX_MATE_MOVES).contains(n)).ok_or_else(|| Args::wrong("n", "1 to 3"))?;
+        let budget = match a.opt_int("budget")? {
+            Some(b) => u64::try_from(b).ok().filter(|b| (1..=MAX_MATE_BUDGET).contains(b)).ok_or_else(|| Args::wrong("budget", "1 to 5,000,000"))?,
+            None => mate::DEFAULT_MATE_BUDGET,
+        };
+        let refused = |e: MateError| ToolError::InvalidArgs(e.to_string());
+        let side = match a.opt_str("side")? {
+            None => fen.side().unwrap_or(Color::White),
+            Some("white") => Color::White,
+            Some("black") => Color::Black,
+            Some("both") => {
+                let mut reports = Vec::new();
+                for side in [Color::White, Color::Black] {
+                    match mate::solve_side(&fen, side, n, budget) {
+                        Ok(r) => reports.push(mate_report(&r)),
+                        Err(MateError::Illegal(_)) => {}
+                        Err(e) => return Err(refused(e)),
+                    }
+                }
+                let mates = match mate::mating_side(&fen, n, budget).map_err(refused)? {
+                    MatingSide::One(r) if r.side == Color::White => "white",
+                    MatingSide::One(_) => "black",
+                    MatingSide::Both => "both",
+                    MatingSide::Neither => "neither",
+                    MatingSide::Unknown => "unknown",
+                };
+                return Ok(json!({ "n": n, "mates": mates, "reports": reports }));
+            }
+            Some(_) => return Err(Args::wrong("side", "white, black or both")),
+        };
+        mate::solve_side(&fen, side, n, budget).map(|r| mate_report(&r)).map_err(refused)
     }
 
     pub(crate) fn chess_game(&self, a: &Args) -> Result<Value> {

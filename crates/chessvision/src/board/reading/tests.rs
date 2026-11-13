@@ -576,6 +576,46 @@ fn a_declared_side_and_move_number_go_into_the_fen() {
     assert!(p.lichess_url().unwrap().contains("%20b%20"), "{:?}", p.lichess_url());
 }
 
+/// Plan A9-N4: a mate in n the page asks decides the side the page did not say when only one side
+/// mates; when both do, the side stays assumed; a side the page said is solved for as it is; and
+/// declaring the side again forgets what the solver found for the side before.
+#[test]
+fn a_mate_asked_decides_the_side_only_when_one_side_mates() {
+    use pdfcraft_chess::mate::DEFAULT_MATE_BUDGET;
+    // Only White mates in two, castling (the rights inferred from the king and rook).
+    let mut p = font_position(parse_placement("8/8/8/8/4R3/6k1/8/4K2R").unwrap());
+    p.check_mate(2, DEFAULT_MATE_BUDGET);
+    assert_eq!((p.side.color, p.side.source), (Color::White, SideSource::Solved));
+    let Some(MateFinding::Solved(report)) = &p.mate else { panic!("{:?}", p.mate) };
+    assert!(report.unique() && report.castles && report.keys == ["O-O"], "{report:?}");
+    assert!(p.fen.starts_with("8/8/8/8/4R3/6k1/8/4K2R w K "), "{}", p.fen);
+    // Only Black mates in one: the side becomes Black's, and the FEN says so.
+    let mut p = font_position(parse_placement("3r2k1/5ppp/8/8/8/8/5PPP/6K1").unwrap());
+    p.check_mate(1, DEFAULT_MATE_BUDGET);
+    assert_eq!((p.side.color, p.side.source), (Color::Black, SideSource::Solved));
+    assert!(p.fen.contains(" b "), "{}", p.fen);
+    // Both mate in one on the back rank: assumed it stays.
+    let mut p = font_position(parse_placement("3r2k1/5ppp/8/8/8/8/5PPP/3R2K1").unwrap());
+    p.check_mate(1, DEFAULT_MATE_BUDGET);
+    assert_eq!((p.side.source, p.mate.clone()), (SideSource::Default, Some(MateFinding::BothSides { n: 1 })));
+    // The page said White: solved for White, whatever Black could do.
+    let mut p = font_position(parse_placement("3r2k1/5ppp/8/8/8/8/5PPP/3R2K1").unwrap());
+    p.declare_side(Color::White, SideSource::Text, 1);
+    p.check_mate(1, DEFAULT_MATE_BUDGET);
+    assert!(matches!(&p.mate, Some(MateFinding::Solved(r)) if r.side == Color::White && r.unique()), "{:?}", p.mate);
+    p.declare_side(Color::Black, SideSource::Text, 1);
+    assert_eq!(p.mate, None);
+    // Neither side mates: solved for the assumed side, which has no mate, for review.
+    let mut p = font_position(parse_placement("8/8/8/4k3/8/8/8/K6R").unwrap());
+    p.check_mate(2, DEFAULT_MATE_BUDGET);
+    assert_eq!(p.side.source, SideSource::Default);
+    assert!(matches!(&p.mate, Some(MateFinding::Solved(r)) if r.no_mate()), "{:?}", p.mate);
+    // More moves than the solver takes: nothing changes.
+    let mut p = font_position(parse_placement("8/8/8/8/4R3/6k1/8/4K2R").unwrap());
+    p.check_mate(4, DEFAULT_MATE_BUDGET);
+    assert_eq!((p.side.source, p.mate.clone()), (SideSource::Default, None));
+}
+
 #[test]
 fn the_position_overrules_a_declared_side() {
     // The black king on e8 is in check from the rook on e1: only Black can be to move.

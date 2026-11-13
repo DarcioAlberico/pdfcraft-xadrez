@@ -3672,3 +3672,5 @@ the move's comment	Move comment	Commento della mossa
 	Aligning was stopped: the book's link is as it was.	L’allineamento è stato fermato: il collegamento del libro resta com’era.
 	The work stopped on an internal error: {why}	Il lavoro si è fermato per un errore interno: {why}
 	The work stopped on an internal error.	Il lavoro si è fermato per un errore interno.
+# Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
+	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	Nel browser non è ancora possibile esportare o allineare al PGN un libro di più di {n} pagine: la scheda smetterebbe di rispondere fino alla fine. L’app desktop lo fa in background.

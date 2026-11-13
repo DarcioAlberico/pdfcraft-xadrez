@@ -981,6 +981,7 @@ pub fn corrected_position(
         uncertain: Vec::new(),
         repairs: Vec::new(),
         accepted,
+        mate: None,
     })
 }
 

@@ -3465,3 +3465,5 @@ the move's comment	Move comment	Komentar k potezi
 	Aligning was stopped: the book's link is as it was.	Usklajevanje je bilo ustavljeno: povezava knjige je ostala, kot je bila.
 	The work stopped on an internal error: {why}	Delo se je ustavilo zaradi notranje napake: {why}
 	The work stopped on an internal error.	Delo se je ustavilo zaradi notranje napake.
+# Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
+	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	V brskalniku knjige z več kot {n} stranmi še ni mogoče izvoziti ali uskladiti s PGN: zavihek bi se do konca prenehal odzivati. Namizna aplikacija to naredi v ozadju.

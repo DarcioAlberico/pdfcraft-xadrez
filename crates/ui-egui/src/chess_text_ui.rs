@@ -172,6 +172,10 @@ impl ChessJob {
     }
 }
 
+/// The most pages Export and Align the book read on the web, where they run inside one frame
+/// (plan A9-I2).
+const WEB_WHOLE_BOOK_PAGES: usize = 20;
+
 /// A long job of the document shown, as its row says it: pages done of the total (plan A9-I2).
 #[derive(Clone, Debug, PartialEq)]
 pub struct LongRow {
@@ -402,7 +406,7 @@ fn status_colour(s: MoveStatus, t: &Tokens) -> Color32 {
     }
 }
 
-fn status_label(s: MoveStatus) -> &'static str {
+pub(crate) fn status_label(s: MoveStatus) -> &'static str {
     match s {
         MoveStatus::Valid => tl!("Valid move"),
         MoveStatus::Illegal => tl!("Illegal move"),
@@ -882,6 +886,16 @@ impl PdfCraftApp {
         let long = kind.is_long();
         if long && self.chess.long.is_some() {
             return self.notify(tl!("A chess document is already being read or exported").to_string());
+        }
+        // On the web the whole book is read inside one frame, the tab frozen until the end: only
+        // a short one, until it is read a page at a time as the scan is (plan A9-I2, R8-03).
+        let pages = self.session.get(id).map_or(0, |d| d.info.pages.len());
+        if long && self.chess_frame_budget().is_some() && pages > WEB_WHOLE_BOOK_PAGES {
+            let n = WEB_WHOLE_BOOK_PAGES.to_string();
+            return self.notify(crate::i18n::fmt(
+                tl!("In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background."),
+                &[("n", &n)],
+            ));
         }
         // The diagram corrections go with the document: the job reads in a session of its own.
         let corrections = self.chess_corrections_file(id);
