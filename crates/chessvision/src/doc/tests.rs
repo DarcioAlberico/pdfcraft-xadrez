@@ -2645,3 +2645,153 @@ fn the_pages_read_are_in_order_once_and_no_game_crosses_a_gap() {
     let doc = b.finish();
     assert!(moves(&doc.pages[1]).iter().all(|(_, s)| *s == MoveStatus::Valid), "{:?}", moves(&doc.pages[1]));
 }
+
+/// Plan A9-L9 (A7-10): each rule of the walker on a few texts, pinned before the rules became
+/// functions of their own and after: the games as trees (`game_tree`), and for a rule [`WalkRules`]
+/// can turn off, that the text needs it (read without it, it gives another tree).
+mod rules {
+    use super::*;
+
+    /// A game's moves as a tree: each move's SAN, `(` and `)` around each variation.
+    fn game_tree(score: &GameScore) -> String {
+        fn walk_tree(score: &GameScore, at: Option<usize>, out: &mut String) {
+            let children = score.children(at);
+            let Some((&first, rest)) = children.split_first() else { return };
+            out.push_str(&score.nodes[first].san);
+            out.push(' ');
+            for &v in rest {
+                out.push_str("( ");
+                out.push_str(&score.nodes[v].san);
+                out.push(' ');
+                walk_tree(score, Some(v), out);
+                out.push_str(") ");
+            }
+            walk_tree(score, Some(first), out);
+        }
+        let mut out = String::new();
+        walk_tree(score, None, &mut out);
+        out
+    }
+
+    /// The page's text walked with `rules`: each game as a tree, `|` between games.
+    fn trees(lines: &[&str], rules: WalkRules) -> String {
+        let text = page_text(lines.iter().enumerate().map(|(i, l)| line(100.0 + 20.0 * i as f32, l)).collect());
+        let doc = build_page(&input(0, &text, &[], &[], &[]));
+        let doc = walk(&doc.pages, rules);
+        doc.games.iter().map(|g| game_tree(&g.score).trim().to_owned()).collect::<Vec<_>>().join(" | ")
+    }
+
+    /// Each text, walked with the book's rules, gives its tree; without `off`, another.
+    fn pinned(off: Option<fn(&mut WalkRules)>, cases: &[(&[&str], &str)]) {
+        pinned_with(WalkRules::BOOK, off, cases);
+    }
+
+    /// [`pinned`] with `base` for the book's rules.
+    fn pinned_with(base: WalkRules, off: Option<fn(&mut WalkRules)>, cases: &[(&[&str], &str)]) {
+        for (lines, want) in cases {
+            assert_eq!(trees(lines, base), *want, "{lines:?}");
+            if let Some(off) = off {
+                let mut rules = base;
+                off(&mut rules);
+                assert_ne!(trees(lines, rules), *want, "the rule is not needed by {lines:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn a_move_in_prose_stays_in_the_comment() {
+        pinned(
+            Some(|r| r.prose_squares = false),
+            &[
+                (&["1.e4 e5 2.Nf3 and Black guards the pawn by moving the d-pawn to d6 or 2...Nc6 3.Bb5"], "e4 e5 Nf3 Nc6 Bb5"),
+                (&["1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 and the bishop goes back to a4 4.Ba4"], "e4 e5 Nf3 Nc6 Bb5 a6 Ba4"),
+                (&["1.d4 d5 2.c4 e6 White would like to play on e4 3.Nc3 Nf6"], "d4 d5 c4 e6 Nc3 Nf6"),
+            ],
+        );
+        // A whole book reads a piece's move after prose as a move (`WalkRules::BOOK`): fragments.
+        pinned_with(
+            WalkRules { prose_pieces: true, ..WalkRules::BOOK },
+            Some(|r| r.prose_pieces = false),
+            &[
+                (&["1.e4 e5 2.Nf3 Nc6 and White threatens any Nxe5 at once 3.Bb5 a6"], "e4 e5 Nf3 Nc6 Bb5 a6"),
+                (&["1.e4 e5 2.Nf3 Nc6 3.Bb5 a6 White can keep the Bc4 retreat in mind 4.Ba4 Nf6"], "e4 e5 Nf3 Nc6 Bb5 a6 Ba4 Nf6"),
+                (&["1.d4 Nf6 2.c4 e6 3.Nc3 and Black can pin it with the Bb4 of the Nimzo 3...d5 4.cxd5"], "d4 Nf6 c4 e6 Nc3 d5 cxd5"),
+            ],
+        );
+    }
+
+    #[test]
+    fn a_move_after_a_lone_ellipsis_is_blacks() {
+        pinned(
+            Some(|r| r.ellipsis = false),
+            &[
+                (&["1.e4 e5 2.Nf3 ( … d6 3.d4 ) 2...Nc6 3.Bb5"], "e4 e5 Nf3 Nc6 ( d6 d4 ) Bb5"),
+                (&["1.d4 d5 2.c4 ( … e6 3.Nc3 ) 2...c6 3.Nf3"], "d4 d5 c4 c6 ( e6 Nc3 ) Nf3"),
+                (&["1.e4 c5 2.Nf3 ( … Nc6 3.d4 ) 2...d6 3.d4"], "e4 c5 Nf3 d6 ( Nc6 d4 ) d4"),
+            ],
+        );
+    }
+
+    #[test]
+    fn a_separator_starts_a_sibling_variation() {
+        pinned(
+            Some(|r| r.separators = false),
+            &[
+                (&["1.e4 e5 2.Nf3 ( 2.Nc3 Nf6 ; Bc4 Nc6 ) 2...Nc6 3.Bb5"], "e4 e5 Nf3 ( Nc3 Nf6 ) ( Bc4 Nc6 ) Nc6 Bb5"),
+                (&["1.e4 e5 2.Nf3 ( a) 2.Nc3 Nf6 b) Bc4 Nc6 ) 2...Nc6 3.Bb5"], "e4 e5 Nf3 ( Nc3 Nf6 ) ( Bc4 Nc6 ) Nc6 Bb5"),
+                (&["1.e4 e5 2.Nf3 ( 2.Nc3 Nf6 (b) Bc4 Nc6 ) 2...Nc6 3.Bb5"], "e4 e5 Nf3 ( Nc3 Nf6 ) ( Bc4 Nc6 ) Nc6 Bb5"),
+            ],
+        );
+    }
+
+    #[test]
+    fn a_bold_move_goes_on_the_bold_line() {
+        pinned(
+            None,
+            &[
+                (&["*1.e4 *e5 *2.Nf3 *Nc6 Black can also play 2...d6 3.d4 *3.Bb5 *a6"], "e4 e5 Nf3 Nc6 ( d6 d4 ) Bb5 a6"),
+                (&["*1.d4 *d5 *2.c4 2...dxc4 3.e3 b5 is risky *2...e6 *3.Nc3"], "d4 d5 c4 e6 ( dxc4 e3 b5 ) Nc3"),
+                (&["*1.e4 *c5 2.Nc3 Nc6 3.g3 *2.Nf3 *d6"], "e4 c5 Nf3 ( Nc3 Nc6 g3 ) d6"),
+            ],
+        );
+    }
+
+    #[test]
+    fn a_move_the_main_line_takes_goes_back_to_it() {
+        pinned(
+            None,
+            &[
+                (&["1.e4 e5 2.Nf3 Nc6 . Instead 2.Bc4 Nf6 is calmer. 3.Nxe5 Nxe5"], "e4 e5 Nf3 ( Bc4 Nf6 ) Nc6 Nxe5 Nxe5"),
+                (
+                    &["1.e4 e5 2.Nf3 Nc6! If 2...d6? 3.d4 Nd7 4.Bc4 c6 is passive. 3.Bb5 a6 4.Ba4 Nf6"],
+                    "e4 e5 Nf3 Nc6 ( d6 d4 Nd7 Bc4 c6 ) Bb5 a6 Ba4 Nf6",
+                ),
+                (&["1.d4 d5 2.c4 e6 3.Nc3 . The exchange 3.cxd5 exd5 is quieter. 3...Nf6 4.Bg5"], "d4 d5 c4 e6 Nc3 ( cxd5 exd5 ) Nf6 Bg5"),
+            ],
+        );
+    }
+
+    #[test]
+    fn a_bracket_after_a_move_can_hold_its_replies() {
+        pinned(
+            None,
+            &[
+                (&["1.e4 e5 2.Nf3 ( 2...Nc6 3.Bb5 ; 2...d6 3.d4 ) 2...Nf6 3.Nxe5"], "e4 e5 Nf3 Nf6 ( Nc6 Bb5 ) ( d6 d4 ) Nxe5"),
+                (&["1.d4 ( 1...d5 2.c4 ) 1...Nf6 2.c4"], "d4 Nf6 ( d5 c4 ) c4"),
+                (&["1.e4 c5 2.Nf3 ( 2...Nc6 3.d4 ) 2...d6 3.d4"], "e4 c5 Nf3 d6 ( Nc6 d4 ) d4"),
+            ],
+        );
+    }
+
+    #[test]
+    fn a_numbered_move_outside_the_variation_closes_it() {
+        pinned(
+            Some(|r| r.implied_close = false),
+            &[
+                (&["1.e4 d5 ( 1...e5 2.Nf3 Nc6 2.exd5 Qxd5 3.Nc3"], "e4 d5 ( e5 Nf3 Nc6 ) exd5 Qxd5 Nc3"),
+                (&["1.e4 c5 2.Nf3 d6 3.d4 cxd4 ( 3...Nf6 4.dxc5 4.Nxd4 Nf6"], "e4 c5 Nf3 d6 d4 cxd4 ( Nf6 dxc5 ) Nxd4 Nf6"),
+                (&["1.e4 e5 2.Nf3 d6 3.d4 exd4 ( 3...Nd7 4.Bc4 c6 4.Nxd4 Nf6"], "e4 e5 Nf3 d6 d4 exd4 ( Nd7 Bc4 c6 ) Nxd4 Nf6"),
+            ],
+        );
+    }
+}
