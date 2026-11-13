@@ -453,9 +453,9 @@ fn code_here(board: &BoardState, code: u16) -> Option<u16> {
 /// [`code_here`] for move `node`, whatever move is shown.
 fn code_at(board: &BoardState, node: NodeId, code: u16) -> Option<u16> {
     let n = nag::by_code(code)?;
-    // An even absolute half-move after the move: White is to move.
+    // An even absolute half-move after the move: White is to move, so Black made it.
     let white_to_move = board.game.abs_ply(node)? % 2 == 0;
-    Some(if n.side_is_mover { n.code_for(!white_to_move) } else { n.code_for(white_to_move) })
+    Some(n.code_after(!white_to_move))
 }
 
 /// Whether the move shown carries glyph `code` (White's code; the side's is looked for).

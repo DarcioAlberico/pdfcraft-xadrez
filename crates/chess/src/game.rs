@@ -140,6 +140,10 @@ pub enum PgnWarningKind {
     /// Writing a document's game: its start position is not one a game can start from, so the
     /// game was left out of what was written.
     GameLeftOut,
+    /// The `Result` tag says one result and the board at the end of the main line another (a
+    /// mate, a stalemate): the tag is kept, never written over (plan A9-F5, R6-04); `at` is the
+    /// main line's last move.
+    ResultMismatch,
 }
 
 impl PgnWarningKind {
@@ -157,6 +161,7 @@ impl PgnWarningKind {
             PgnWarningKind::FenRepaired => "fen_repaired",
             PgnWarningKind::MovesLeftOut => "moves_left_out",
             PgnWarningKind::GameLeftOut => "game_left_out",
+            PgnWarningKind::ResultMismatch => "result_mismatch",
         }
     }
 
@@ -222,6 +227,9 @@ pub enum GameError {
     TooDeep,
     /// The PGN is longer than [`MAX_PGN_LEN`].
     PgnTooLong,
+    /// The game is played in a variant this reader does not read (its `Variant` tag): refused
+    /// whole, never read as chess and cut at its first move of another game (plan A9-F5, R6-05).
+    UnsupportedVariant(String),
     /// A tag name that PGN does not allow (letters, digits and `_` only), or one too long.
     BadTag,
 }
@@ -242,6 +250,7 @@ impl fmt::Display for GameError {
             GameError::TooLong => write!(f, "the game is too long"),
             GameError::TooDeep => write!(f, "variations would nest too deep (at most {MAX_DEPTH})"),
             GameError::PgnTooLong => write!(f, "the PGN is too long"),
+            GameError::UnsupportedVariant(name) => write!(f, "the game is {name}, a variant PdfCraft does not read"),
             GameError::BadTag => write!(f, "a tag name has letters, digits and _ only"),
         }
     }
@@ -256,7 +265,8 @@ pub enum Outcome {
     /// The side to move is mated.
     Checkmate,
     Stalemate,
-    /// Fifty moves without a capture or a pawn move.
+    /// Fifty moves without a capture or a pawn move: a draw a player may claim, never a result
+    /// (A1-04).
     FiftyMoves,
 }
 
@@ -1145,22 +1155,32 @@ impl Game {
         self.main_line().into_iter().skip(1).take(crate::pgn::ECO_PLIES).map(|id| self.node(id).mv).collect()
     }
 
-    /// The result: decided by a mate or a draw at the end of the main line, else the Result tag,
+    /// The result as read or set: the `Result` tag, when it is one PGN writes (`1-0`, `0-1`,
+    /// `1/2-1/2`, `*`). The board never writes over it (plan A9-F5, R6-04: a reading where the
+    /// two disagree says so, [`PgnWarningKind::ResultMismatch`]); only a game with no tag (made on
+    /// the board) takes what its board says at the end of the main line ([`Game::board_result`]),
     /// else `*`.
     pub fn result(&self) -> String {
+        match self.tag("Result") {
+            Some(r @ ("1-0" | "0-1" | "1/2-1/2" | "*")) => r.to_owned(),
+            _ => self.board_result().unwrap_or("*").to_owned(),
+        }
+    }
+
+    /// What the board says at the end of the main line: `1-0` or `0-1` for a mate, `1/2-1/2` for
+    /// a stalemate, `None` while the game goes on. Fifty moves without a capture or a pawn move
+    /// end nothing: that draw is claimed, not given (A1-04).
+    pub fn board_result(&self) -> Option<&'static str> {
         let mut end = 0;
         while let Some(&next) = self.node(end).children.first() {
             end = next;
         }
         let board = &self.node(end).board;
-        match board.status() {
-            GameStatus::Won if board.side_to_move() == cozy_chess::Color::White => "0-1".to_owned(),
-            GameStatus::Won => "1-0".to_owned(),
-            GameStatus::Drawn => "1/2-1/2".to_owned(),
-            GameStatus::Ongoing => match self.tag("Result") {
-                Some(r @ ("1-0" | "0-1" | "1/2-1/2")) => r.to_owned(),
-                _ => "*".to_owned(),
-            },
+        match outcome_of(board) {
+            Outcome::Checkmate if board.side_to_move() == cozy_chess::Color::White => Some("0-1"),
+            Outcome::Checkmate => Some("1-0"),
+            Outcome::Stalemate => Some("1/2-1/2"),
+            Outcome::Ongoing | Outcome::FiftyMoves => None,
         }
     }
 
@@ -1664,6 +1684,58 @@ mod tests {
         assert!(moves.lines().count() > 1 && moves.lines().all(|l| l.chars().count() <= crate::pgn::LINE_WIDTH), "{pgn}");
         assert!(moves.split_whitespace().collect::<Vec<_>>().join(" ").contains("eightieth column of the line} *"), "{pgn}");
         assert_eq!(g.movetext().lines().count(), 1);
+    }
+
+    /// Plan A9-F5 (R6-04, A1-04): the `Result` read is the game's; the board says its own beside
+    /// it, and a reading where the two disagree says so. Fifty moves decide nothing.
+    #[test]
+    fn a_result_read_is_never_written_over_by_the_board() {
+        let kinds = |r: &PgnReport| r.warnings.iter().map(|w| w.kind).collect::<Vec<_>>();
+        // The clock reaches 100 with the move: a draw one may claim, not the result (it was
+        // written 1/2-1/2).
+        let (g, report) = Game::from_pgn_report("[Result \"1-0\"]\n[FEN \"4k3/8/8/8/8/8/8/R3K3 w - - 99 80\"]\n\n80. Ra7 1-0").unwrap();
+        assert_eq!((g.result(), g.board_result(), kinds(&report)), ("1-0".to_owned(), None, vec![]));
+        assert!(g.pgn().contains("[Result \"1-0\"]") && g.pgn().trim_end().ends_with("80. Ra7 1-0"), "{}", g.pgn());
+        // A mate with a draw tag: the tag stays, said (it was written 0-1).
+        let (g, report) = Game::from_pgn_report("[Result \"1/2-1/2\"]\n\n1. f3 e5 2. g4 Qh4# 1/2-1/2").unwrap();
+        assert_eq!((g.result(), g.board_result()), ("1/2-1/2".to_owned(), Some("0-1")));
+        let qh4 = *g.main_line().last().unwrap();
+        assert_eq!(report.warnings, [PgnWarning { kind: PgnWarningKind::ResultMismatch, at: qh4 }]);
+        assert!(g.pgn().trim_end().ends_with("2. g4 Qh4# 1/2-1/2"), "{}", g.pgn());
+        // A stalemate with a win tag.
+        let (g, report) = Game::from_pgn_report("[Result \"1-0\"]\n[FEN \"7k/5Q2/6K1/8/8/8/8/8 b - - 0 1\"]\n\n1-0").unwrap();
+        assert_eq!((g.result(), g.board_result(), kinds(&report)), ("1-0".to_owned(), Some("1/2-1/2"), vec![PgnWarningKind::ResultMismatch]));
+        // An exercise kept unsolved: `*` is the result read, mate or not.
+        let (g, report) = Game::from_pgn_report("[Result \"*\"]\n[FEN \"6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1\"]\n\n1. Rd8# *").unwrap();
+        assert_eq!((g.result(), kinds(&report)), ("*".to_owned(), vec![]));
+        // `*` with a result after the moves: the moves' result.
+        let (g, _) = Game::from_pgn_report("[Result \"*\"]\n\n1. e4 1-0").unwrap();
+        assert_eq!(g.result(), "1-0");
+        // A game made on the board, with no tag, takes the board's result; fifty moves are none.
+        let mut g = Game::standard();
+        for m in ["f3", "e5", "g4", "Qh4#"] {
+            g.play_san(m).unwrap();
+        }
+        assert_eq!(g.result(), "0-1");
+        let mut g = Game::from_fen("4k3/8/8/8/8/8/8/R3K3 w - - 99 80").unwrap();
+        g.play_san("Ra7").unwrap();
+        assert_eq!((g.outcome(), g.result()), (Outcome::FiftyMoves, "*".to_owned()));
+    }
+
+    /// Plan A9-F5 (R6-05): the `Variant` tag decides how a game is read; another game than
+    /// chess is refused whole, with its name, never read as chess and cut.
+    #[test]
+    fn a_game_of_another_variant_is_refused_whole() {
+        let crazyhouse = "[Variant \"Crazyhouse\"]\n\n1. e4 d5 2. exd5 Qxd5 3. N@e4 *";
+        assert_eq!(Game::from_pgn(crazyhouse).err(), Some(GameError::UnsupportedVariant("Crazyhouse".to_owned())));
+        let chess960 = "[Variant \"Chess960\"]\n[FEN \"bqnb1rkr/pp3ppp/3ppn2/2p5/5P2/P2P4/NPP1P1PP/BQ1BNRKR w HFhf - 2 9\"]\n\n9. g3 *";
+        let refused = Game::from_pgn(chess960).err();
+        assert_eq!(refused, Some(GameError::UnsupportedVariant("Chess960".to_owned())));
+        assert_eq!(refused.map(|e| e.to_string()).as_deref(), Some("the game is Chess960, a variant PdfCraft does not read"));
+        for standard in ["Standard", "From Position", "standard", ""] {
+            let (g, stopped) = Game::from_pgn(&format!("[Variant \"{standard}\"]\n\n1. e4 e5 *")).unwrap();
+            assert_eq!((g.movetext(), stopped), ("1. e4 e5".to_owned(), None), "{standard}");
+        }
     }
 
     #[test]

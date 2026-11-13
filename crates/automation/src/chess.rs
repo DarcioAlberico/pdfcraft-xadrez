@@ -49,7 +49,9 @@ fn ocr_options(a: &Args) -> Result<OcrOptions<'static>> {
 use crate::{Args, Automation, Result, ToolError, comments, failed};
 
 /// What the move list shows above and after the moves (plan HC10): each tag null when it says
-/// nothing (PGN's `?`, a date as far as it is known), and the result, `*` while the game goes on.
+/// nothing (PGN's `?`, a date as far as it is known), and the result, `*` while the game goes on;
+/// the result read is the game's, and what the board says at the end of the main line is beside
+/// it (`board_result`, plan A9-F5).
 fn header_json(game: &pdfcraft_engine::chess::pdfcraft_chess::game::Game) -> Value {
     let h = game.header();
     json!({
@@ -62,6 +64,7 @@ fn header_json(game: &pdfcraft_engine::chess::pdfcraft_chess::game::Game) -> Val
         "date": h.date,
         "round": h.round,
         "result": game.result(),
+        "board_result": game.board_result(),
     })
 }
 

@@ -375,11 +375,12 @@ fn ischess_signs_and_coloured_pieces_are_read() {
 #[test]
 fn ischess_draws_the_chesspad_signs() {
     // Checked against the font's drawings. The ring (`W`) is space, by the side that moved; the
-    // ringed dot (`[`) zugzwang.
+    // ringed dot (`[`) zugzwang, of the side to move after it: Black after 8.Kf1 (plan A9-F5,
+    // A1-07; it was White's $22).
     let page = Page::new().text("7.Nf3").text_in("W", "ISChess").text(" h6").text_in("W", "ISChess").text(" 8.Kf1").text_in("[", "ISChess");
     assert_eq!(
         runs(&page.read(None)),
-        vec![vec![white(7), mv("Nf3", "Nf3"), ChessRun::Nag(26), mv("h6", "h6"), ChessRun::Nag(27), white(8), mv("Kf1", "Kf1"), ChessRun::Nag(22)]]
+        vec![vec![white(7), mv("Nf3", "Nf3"), ChessRun::Nag(26), mv("h6", "h6"), ChessRun::Nag(27), white(8), mv("Kf1", "Kf1"), ChessRun::Nag(23)]]
     );
     // The cross `k` is a weak point, and the capture before it stays a capture.
     let page = Page::new().text("19.Nxe5").text_in("k", "ISChess");
