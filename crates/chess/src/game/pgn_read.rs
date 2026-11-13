@@ -80,6 +80,8 @@ pub(super) struct Parsed {
     pub(super) unreadable: Option<(usize, String)>,
     /// The result after the moves, as PGN writes it.
     pub(super) result: Option<String>,
+    /// A word no reading makes a move ended the main line.
+    pub(super) main_stopped: bool,
 }
 
 /// Step two: the tokens of one game's text as its tags and its items. Reading stops at the next
@@ -291,6 +293,7 @@ impl Parser {
         let mut rest = String::new();
         push_piece(&mut rest, &word);
         self.out.unreadable.get_or_insert((index, word));
+        self.out.main_stopped |= self.level() == 0;
         self.dead = Some(self.level());
         self.rest = Some(rest);
     }
@@ -556,6 +559,8 @@ struct Builder {
     at: Vec<Option<NodeId>>,
     /// The first move that could not be played: its item, its text and why.
     stop: Option<(usize, String, PgnStopReason)>,
+    /// A move that could not be played ended the main line.
+    main_stopped: bool,
     /// The line that move ended, from it on (with the comment that waited for it): the items
     /// that become a comment where the line stopped, and the items whose notes go there.
     rest: Option<(Vec<usize>, Vec<FragmentItem>)>,
@@ -576,6 +581,7 @@ impl Builder {
             born: vec![0],
             at: vec![None; items],
             stop: None,
+            main_stopped: false,
             rest: None,
             notes: Vec::new(),
         }
@@ -783,6 +789,7 @@ impl Builder {
         if self.stop.is_none() {
             self.stop = Some((index, item.text(), PgnStopReason::from_graft(reason)));
         }
+        self.main_stopped |= self.stack.is_empty();
         // A comment waiting for the move goes with the rest, before it.
         self.after_close = false;
         let mut indices = vec![index];
@@ -852,6 +859,9 @@ impl Builder {
         };
         let (stopped, stop_reason) = first.unzip();
         let mut game = self.game;
+        // The tags the moves decide describe the moves read, unless the main line stopped short
+        // of the text's (plan A9-F4).
+        game.settle_move_tags(!(self.main_stopped || parsed.main_stopped));
         game.current = 0;
         while game.forward() {}
         (game, PgnReport { stopped, stop_reason, warnings })

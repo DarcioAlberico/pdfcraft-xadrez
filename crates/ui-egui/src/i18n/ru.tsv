@@ -3355,3 +3355,4 @@ the move's comment	Move comment	Комментарий к ходу
 	Detecting in another book… page {d} of {t}	Поиск в другой книге… страница {d} из {t}
 	Redraw in the PDF?	Перерисовать в PDF?
 	Diagram {n}, open	Диаграмма {n}, открыть
+	Choices made on this page not found in its reading (kept): {n}	Выборы на этой странице, не найденные в её прочтении (сохранены): {n}

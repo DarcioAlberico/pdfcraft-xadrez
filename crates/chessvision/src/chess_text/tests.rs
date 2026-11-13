@@ -697,3 +697,16 @@ fn long_algebraic_moves_are_moves() {
         .collect();
     assert_eq!(moves, ["e2e4", "e7e5", "Ng1f3", "Nb8c6", "Bf1xc6", "d7xc6"], "{:?}", runs(&read));
 }
+
+/// Plan A9-L7 (A2-12): a row of three or more `=`, `-` or `*` is a rule or a break set in text,
+/// a word of prose: `=====` was read as three assessments (`$144 $144 $10`). `=` and `==` alone
+/// stay signs.
+#[test]
+fn a_row_of_signs_is_prose() {
+    for row in ["=====", "---", "***", "=-=-="] {
+        let read = Page::new().text(&format!("Nf3 {row} Nc6")).read(None);
+        assert_eq!(runs(&read), vec![vec![mv("Nf3", "Nf3"), text(row), mv("Nc6", "Nc6")]], "{row}");
+    }
+    let read = Page::new().text("Nf3 = Nc6").read(None);
+    assert!(runs(&read)[0].iter().any(|r| matches!(r, ChessRun::Nag(_))), "{:?}", runs(&read));
+}

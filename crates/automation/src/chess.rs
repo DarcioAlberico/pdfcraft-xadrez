@@ -510,8 +510,15 @@ impl Automation {
         let ocr = ocr_options(a)?.with_book(seed.as_ref());
         let loaded = self.use_store_corrections(a, id)?;
         let mut read = self.session.chess_document_with(id, &pages, &settings, lang, &ocr).map_err(failed)?;
+        let mut reference_kept = reference_kept;
         let reference = reference.map(|r| {
             let linked = reference::link(&mut read.doc, &r.index);
+            // The choices made on the pages read, found on their moves as read now (plan A9-L1b).
+            if reference_kept.is_object() {
+                let on: Vec<_> = read.doc.pages.iter().map(|p| r.decisions.on_page(p)).collect();
+                reference_kept["decisions_found"] = json!(on.iter().map(|o| o.found.len()).sum::<usize>());
+                reference_kept["decisions_unmatched"] = json!(on.iter().map(|o| o.unmatched).sum::<usize>());
+            }
             reference_reply(&r.shown, &r.index, &linked)
         });
         let cipher = Self::cipher_reply(&read.cipher, cipher_out.as_ref())?;
@@ -770,6 +777,7 @@ impl Automation {
             "ocr_pages": read.ocr_pages.iter().map(|o| json!({ "page": o.page + 1, "lines": o.lines, "repaired": o.edits, "unsettled": o.flags, "general_ocr": o.general_ocr })).collect::<Vec<_>>(),
             "notes": notes,
             "position_games": made.position_games,
+            "pgn_warnings": made.pgn_warnings.iter().map(|w| json!({ "game": w.game.saturating_add(1), "kind": w.warning.kind.name() })).collect::<Vec<_>>(),
             "positions_skipped": made.positions_skipped.iter().map(|s| json!({
                 "page": u64::from(s.at.page) + 1,
                 "diagram": s.at.diagram.saturating_add(1),
@@ -1099,5 +1107,8 @@ fn reference_reply(shown: &str, index: &reference::ReferenceIndex, linked: &refe
         },
         "pages": a.pages.iter().map(|p| json!({ "page": u64::from(p.page) + 1, "game": p.game + 1, "name": name(p.game) })).collect::<Vec<_>>(),
         "warnings": linked.warnings,
+        // The moves were walked again from the diagrams the PGN confirmed with another position
+        // (plan A9-L0b, L8: A2-11).
+        "walked_again": linked.walked_again,
     })
 }
