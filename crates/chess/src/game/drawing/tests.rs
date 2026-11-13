@@ -159,7 +159,7 @@ fn a_comment_before_a_variation_keeps_its_commands_as_text() {
 fn drawings_follow_their_moves_through_promotion() {
     let mut g = read("1. e4 {[%csl Ge4]} (1. d4 {[%cal Gc1g5]}) 1... e5 *");
     let d4 = g.node_at(&NodePath::new(vec![1])).unwrap();
-    g.promote(d4);
+    g.promote(d4).unwrap();
     let d4 = g.node_at(&NodePath::new(vec![0])).unwrap();
     assert_eq!(g.san(d4), "d4");
     assert_eq!(g.drawings(d4), [arrow("c1", "g5", DrawColor::Green)]);

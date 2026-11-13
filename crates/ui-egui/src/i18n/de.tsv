@@ -3443,6 +3443,7 @@ the move's comment	Move comment	Kommentar des Zugs
 	Detecting in another book… page {d} of {t}	Erkennen in einem anderen Buch… Seite {d} von {t}
 	Redraw in the PDF?	Im PDF neu zeichnen?
 	Diagram {n}, open	Diagramm {n}, öffnen
+	Choices made on this page not found in its reading (kept): {n}	Auf dieser Seite getroffene Wahlen, die in ihrer Lesung fehlen (behalten): {n}
 # Plan A9-G10: corrections undone and redone, Forget asked about over unconfirmed changes, Redraw kept first.
 	the document is closed	das Dokument ist geschlossen
 	Diagram {n}, page {p}: correction forgotten	Diagramm {n}, Seite {p}: Korrektur verworfen

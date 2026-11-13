@@ -112,7 +112,7 @@ fn the_chapter_is_a_flowing_document_and_both_files_carry_the_diagram() {
     let FlowBlock::Para(prose) = &flow.blocks[1] else { panic!("not a paragraph") };
     assert!(prose.iter().all(|r| !r.no_proof), "{prose:?}");
 
-    let docx = docx(&flow);
+    let docx = docx(&flow).unwrap();
     for part in ["word/document.xml", "word/styles.xml", "word/_rels/document.xml.rels", "[Content_Types].xml", "docProps/core.xml"] {
         roxmltree::Document::parse(&zip_part(&docx, part)).unwrap_or_else(|e| panic!("{part}: {e}"));
     }
@@ -187,7 +187,7 @@ fn the_users_fonts_are_named_on_the_runs_that_need_them() {
         "{rtf:.300}"
     );
     assert!(rtf.contains("{\\f1\\noproof N}"), "{rtf}");
-    let xml = zip_part(&docx(&flow), "word/document.xml");
+    let xml = zip_part(&docx(&flow).unwrap(), "word/document.xml");
     assert!(xml.contains("<w:rFonts w:ascii=\"SemFig\" w:hAnsi=\"SemFig\" w:cs=\"SemFig\"/><w:noProof/>"), "{xml}");
     // A font with no family name is not named: its letters keep the document's font.
     let (plain, _) = to_flow(&doc, &OfficeOptions { text_font: Some(&font(FontRole::Letters, " ")), ..options(&pieces) }, &mut Vec::new());
@@ -227,7 +227,7 @@ fn the_lichess_address_is_a_real_hyperlink_in_word_and_rtf() {
         .unwrap();
     assert!(url.starts_with("https://lichess.org/analysis/"), "{url}");
 
-    let word = docx(&flow);
+    let word = docx(&flow).unwrap();
     let xml = zip_part(&word, "word/document.xml");
     let rels = zip_part(&word, "word/_rels/document.xml.rels");
     let body = roxmltree::Document::parse(&xml).unwrap();
@@ -250,7 +250,7 @@ fn the_lichess_address_is_a_real_hyperlink_in_word_and_rtf() {
 
     // Without the addresses, no link either.
     let (flow, _) = to_flow(&doc, &OfficeOptions { links: false, ..options(&pieces) }, &mut Vec::new());
-    assert!(!zip_part(&docx(&flow), "word/document.xml").contains("w:hyperlink"));
+    assert!(!zip_part(&docx(&flow).unwrap(), "word/document.xml").contains("w:hyperlink"));
     assert!(!rtf(&flow).contains("HYPERLINK"));
 }
 

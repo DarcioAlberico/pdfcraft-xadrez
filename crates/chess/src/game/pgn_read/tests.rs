@@ -162,8 +162,9 @@ fn the_golden_reads() {
         ),
         // p03.
         ("1. e4 e5 2. Nf3 (2. Nf3 Nc6 3. Bc4) 2... Nc6 3. Bb5 a6 *", "1. e4 e5 2. Nf3 Nc6 3. Bb5 (3. Bc4) 3... a6", None, &[]),
-        // p10.
-        ("1. e4 (1. d4) {about e5} 1... e5 *", "1. e4 {about e5} (1. d4) 1... e5", None, &[]),
+        // p10: the comment between `)` and the move stays there (plan A9-F4 wrote it before the
+        // variation).
+        ("1. e4 (1. d4) {about e5} 1... e5 *", "1. e4 (1. d4) {about e5} 1... e5", None, &[]),
         ("1. e4 ({only a comment}) e5 *", "1. e4 {only a comment} 1... e5", None, &[]),
         // p02.
         ("1. e4 e5 2. Nf3 ± Nc6 *", "1. e4 e5 2. Nf3 $16 Nc6", None, &[PgnWarningKind::NonStandard]),

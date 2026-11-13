@@ -10,6 +10,8 @@
 //! wherever the PGN goes and comes back as it was; it is left out of the running text, where a
 //! book prints the diagram itself.
 
+use std::sync::{Arc, Mutex};
+
 use super::{Game, NodeId, Token};
 use crate::nag;
 
@@ -119,46 +121,96 @@ impl Game {
     }
 }
 
-impl Game {
-    /// The first move of every variation, in reading order: the order [`Game::tokens`] writes
-    /// them, a variation's own variations right after the move they branch from.
-    pub fn variation_starts(&self) -> Vec<NodeId> {
-        let mut starts = Vec::new();
+/// The moves in the order the notation reads them and which of them start a variation, read
+/// from the tokens once for each revision of the game (plan A9-F5, A1-23): stepping from
+/// variation to variation made the tokens twice and searched a list for each move, 4 ms a step
+/// with 2,000 moves. A clone of the game starts with an empty cache.
+#[derive(Debug, Default)]
+pub(super) struct ReadingCache(Mutex<Option<(u64, Arc<Reading>)>>);
+
+impl Clone for ReadingCache {
+    fn clone(&self) -> ReadingCache {
+        ReadingCache::default()
+    }
+}
+
+/// See [`ReadingCache`].
+#[derive(Debug)]
+pub(super) struct Reading {
+    /// Every move, in reading order.
+    order: Vec<NodeId>,
+    /// By node: its place in `order`.
+    place: Vec<Option<usize>>,
+    /// By place in `order`: whether the move starts a variation.
+    starts: Vec<bool>,
+}
+
+impl Reading {
+    fn of(game: &Game, nodes: usize) -> Reading {
+        let mut reading = Reading { order: Vec::new(), place: vec![None; nodes], starts: Vec::new() };
         let mut opened = false;
-        for token in self.tokens() {
+        for token in game.tokens() {
             match token {
                 Token::VariationStart => opened = true,
-                Token::Move { node, .. } if opened => {
-                    starts.push(node);
+                Token::Move { node, .. } => {
+                    if let Some(slot) = reading.place.get_mut(node) {
+                        *slot = Some(reading.order.len());
+                    }
+                    reading.order.push(node);
+                    reading.starts.push(opened);
                     opened = false;
                 }
                 _ => {}
             }
         }
-        starts
+        reading
+    }
+
+    /// The move at place `i` when it starts a variation.
+    fn start_at(&self, i: usize) -> Option<NodeId> {
+        self.starts.get(i).copied().filter(|&s| s).and(self.order.get(i).copied())
+    }
+}
+
+impl Game {
+    /// The reading order for this revision: the cached one, or read now and kept.
+    fn reading(&self) -> Arc<Reading> {
+        let mut cached = match self.reading.0.lock() {
+            Ok(guard) => guard,
+            // A panic elsewhere while it was held left a reading or none: either is whole.
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        if let Some((revision, reading)) = cached.as_ref()
+            && *revision == self.revision
+        {
+            return Arc::clone(reading);
+        }
+        let reading = Arc::new(Reading::of(self, self.nodes.len()));
+        *cached = Some((self.revision, Arc::clone(&reading)));
+        reading
+    }
+
+    /// The first move of every variation, in reading order: the order [`Game::tokens`] writes
+    /// them, a variation's own variations right after the move they branch from.
+    pub fn variation_starts(&self) -> Vec<NodeId> {
+        let reading = self.reading();
+        (0..reading.order.len()).filter_map(|i| reading.start_at(i)).collect()
     }
 
     /// The first move of the next variation after `node` in reading order (plan HC11): into a
     /// variation, out of one into the next, across the main line. `None` after the last.
     pub fn next_variation(&self, node: NodeId) -> Option<NodeId> {
-        let order = self.reading_order();
-        let at = order.iter().position(|&n| n == node);
-        let starts = self.variation_starts();
-        order.iter().enumerate().find(|&(i, n)| at.is_none_or(|a| i > a) && starts.contains(n)).map(|(_, &n)| n)
+        let reading = self.reading();
+        let from = reading.place.get(node).copied().flatten().map_or(0, |at| at.saturating_add(1));
+        (from..reading.order.len()).find_map(|i| reading.start_at(i))
     }
 
     /// The first move of the variation before `node` in reading order: the one `node` is in when
     /// `node` is past its first move, else the one before. `None` before the first.
     pub fn previous_variation(&self, node: NodeId) -> Option<NodeId> {
-        let order = self.reading_order();
-        let at = order.iter().position(|&n| n == node)?;
-        let starts = self.variation_starts();
-        order.iter().take(at).rev().find(|n| starts.contains(n)).copied()
-    }
-
-    /// Every move in the order the notation reads them.
-    fn reading_order(&self) -> Vec<NodeId> {
-        self.tokens().into_iter().filter_map(|t| if let Token::Move { node, .. } = t { Some(node) } else { None }).collect()
+        let reading = self.reading();
+        let at = reading.place.get(node).copied().flatten()?;
+        (0..at).rev().find_map(|i| reading.start_at(i))
     }
 }
 
@@ -256,7 +308,7 @@ mod tests {
             at = n;
         }
         assert_eq!(seen, starts);
-        let end = g.reading_order().last().copied().unwrap();
+        let end = g.reading().order.last().copied().unwrap();
         let mut at = end;
         let mut back = Vec::new();
         while let Some(n) = g.previous_variation(at) {
@@ -265,10 +317,79 @@ mod tests {
         }
         assert_eq!(back, ["Bc4", "e6", "d3", "Nf6", "c3", "c5"]);
         // Inside a variation, past its first move: previous goes to that first move.
-        let d5 = g.reading_order().into_iter().find(|&n| name(n) == "d5").unwrap();
+        let d5 = g.reading().order.iter().copied().find(|&n| name(n) == "d5").unwrap();
         assert_eq!(g.previous_variation(d5).map(name).as_deref(), Some("c3"));
         // A game with no variation has none to go to.
         let (plain, _) = Game::from_pgn("1. e4 e5 *").unwrap();
         assert_eq!((plain.next_variation(0), plain.previous_variation(0)), (None, None));
+    }
+
+    /// The moves in reading order and the variation starts as the tokens give them, made afresh:
+    /// what the cache must agree with (the two-pass search it replaced, plan A9-F5, A1-23).
+    fn fresh(g: &Game) -> (Vec<NodeId>, Vec<NodeId>) {
+        let mut order = Vec::new();
+        let mut starts = Vec::new();
+        let mut opened = false;
+        for token in g.tokens() {
+            match token {
+                Token::VariationStart => opened = true,
+                Token::Move { node, .. } => {
+                    if opened {
+                        starts.push(node);
+                    }
+                    order.push(node);
+                    opened = false;
+                }
+                _ => {}
+            }
+        }
+        (order, starts)
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::prelude::ProptestConfig::with_cases(64))]
+
+        /// Plan A9-F5 (A1-23): the reading order is read once per revision, and every change to
+        /// the tree (a move, a variation made the main line, moved, deleted) gives the next step
+        /// the new order, never the cached one; a clone keeps its own.
+        #[test]
+        fn the_cached_reading_order_follows_every_change(ops in proptest::collection::vec((0u8..6, 0usize..400), 1..60)) {
+            let mut g = Game::standard();
+            for (op, pick) in ops {
+                let nodes = g.nodes.len();
+                let node = pick % nodes;
+                match op {
+                    0 | 1 => {
+                        g.go_to_node(node);
+                        let moves = g.legal_moves();
+                        if let Some(m) = moves.get(pick % moves.len().max(1)) {
+                            let _ = g.play_san(m);
+                        }
+                    }
+                    2 => {
+                        let _ = g.promote(node);
+                    }
+                    3 => {
+                        let _ = g.move_variation(node, super::super::Shift::Up);
+                    }
+                    4 => {
+                        let _ = g.delete_variation(node);
+                    }
+                    _ => {
+                        let copy = g.clone();
+                        proptest::prop_assert_eq!(copy.variation_starts(), g.variation_starts());
+                    }
+                }
+                let (order, starts) = fresh(&g);
+                proptest::prop_assert_eq!(g.variation_starts(), starts.clone());
+                for (i, &n) in order.iter().enumerate() {
+                    let next = order.iter().skip(i + 1).find(|m| starts.contains(m)).copied();
+                    let previous = order.iter().take(i).rev().find(|m| starts.contains(m)).copied();
+                    proptest::prop_assert_eq!(g.next_variation(n), next);
+                    proptest::prop_assert_eq!(g.previous_variation(n), previous);
+                }
+                proptest::prop_assert_eq!(g.next_variation(0), order.iter().find(|m| starts.contains(m)).copied());
+            }
+        }
     }
 }

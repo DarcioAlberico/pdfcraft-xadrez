@@ -3717,6 +3717,7 @@ the move's comment	Move comment	تعليق النقلة
 	Detecting in another book… page {d} of {t}	جارٍ الاكتشاف في كتاب آخر… الصفحة {d} من {t}
 	Redraw in the PDF?	إعادة الرسم في ملف PDF؟
 	Diagram {n}, open	المخطط {n}، فتح
+	Choices made on this page not found in its reading (kept): {n}	الخيارات المتخذة في هذه الصفحة وغير الموجودة في قراءتها (محفوظة): {n}
 # Plan A9-G10: corrections undone and redone, Forget asked about over unconfirmed changes, Redraw kept first.
 	the document is closed	المستند مغلق
 	Diagram {n}, page {p}: correction forgotten	المخطط {n}، الصفحة {p}: نُسي التصحيح

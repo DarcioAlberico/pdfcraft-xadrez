@@ -338,7 +338,10 @@ impl San {
             Some(PieceKind::Pawn) | None => None,
             Some(kind) => Some(kind),
         };
-        if promotion.is_some_and(|p| p == PieceKind::King || p == PieceKind::Pawn) {
+        // A promotion is a pawn's, onto the last rank, to a piece (plan A9-F5, A1-18): `Nf4=Q`
+        // and `e5=Q` are no move of any position, and `Rf1N` is a rook's move and a sign.
+        let last_rank = to.rank() == 0 || to.rank() == 7;
+        if promotion.is_some_and(|p| p == PieceKind::King || p == PieceKind::Pawn || piece.is_some() || !last_rank) {
             return Err(unreadable());
         }
         Ok(San { body: SanBody::Move { piece, from_file, from_rank, capture, to, promotion }, suffix })
@@ -596,9 +599,19 @@ fn split_suffix(text: &str) -> (String, String) {
     (body.to_owned(), suffix)
 }
 
+/// The letters castling is written with: the capital O of PGN, the zero many programs and books
+/// write, a small o, and the Cyrillic capital and small O a Russian keyboard or OCR gives (plan
+/// A9-F5, A1-13). The reader and the repair read castling by these.
+pub const CASTLING_LETTERS: [char; 5] = ['O', '0', 'o', 'О', 'о'];
+
+/// Whether `part` is one castling letter ([`CASTLING_LETTERS`]).
+pub(crate) fn is_castling_letter(part: &str) -> bool {
+    single_char(part).is_some_and(|c| CASTLING_LETTERS.contains(&c))
+}
+
 fn read_castle(body: &str) -> Option<Castle> {
     let parts: Vec<&str> = body.split('-').collect();
-    if !parts.iter().all(|p| matches!(*p, "O" | "0" | "o")) {
+    if !parts.iter().all(|p| is_castling_letter(p)) {
         return None;
     }
     match parts.len() {
@@ -798,8 +811,25 @@ mod tests {
         for s in ["", "  ", "Xf3", "Nf9", "Ni3", "e8=K", "N", "Nbcd2", "O-O-O-O", "e4e5e6"] {
             assert!(San::read(s, Lang::En).is_err(), "{s}");
         }
+        // Plan A9-F5 (A1-18): a promotion is a pawn's, onto the last rank; no position has the
+        // others, and `Rf1N` is a rook's move with a sign after it, not a promotion.
+        for s in ["Nf4=Q", "Kd4=N", "e5=Q", "Rf1N", "Qxe8=R", "d2=N"] {
+            assert!(San::read(s, Lang::En).is_err(), "{s}");
+        }
+        for s in ["e8=Q", "exd1=N", "a1Q", "b8=R+"] {
+            assert!(San::read(s, Lang::En).is_ok(), "{s}");
+        }
         assert_eq!(San::read(&"N".repeat(40), Lang::En), Err(SanError::TooLong));
         assert_eq!(San::parse("0-0"), Err(SanError::NotCanonical("0-0".into())));
+    }
+
+    /// Plan A9-F5 (A1-13): castling with the Cyrillic O a Russian keyboard or OCR gives is read,
+    /// as the repair already took it.
+    #[test]
+    fn castling_with_a_cyrillic_o_is_read() {
+        assert_eq!(San::read("О-О", Lang::Ru).map(|s| s.body), Ok(SanBody::Castle(Castle::Short)));
+        assert_eq!(San::read("о-о-о+", Lang::Ru).map(|s| (s.body, s.suffix)), Ok((SanBody::Castle(Castle::Long), "+".to_owned())));
+        assert!(CASTLING_LETTERS.iter().all(|c| San::read(&format!("{c}-{c}"), Lang::En).is_ok()));
     }
 
     /// Long algebraic, as German books print it: the from-square, `-` (or a dash) for a move and

@@ -13,7 +13,7 @@ mod pptx;
 mod zip;
 
 pub use pptx::pptx;
-pub use zip::Zip;
+pub use zip::{Zip, ZipError};
 
 /// A paragraph of a page.
 #[derive(Clone, Debug, PartialEq)]
@@ -425,10 +425,12 @@ fn items(pages: &[Page]) -> Vec<Item<'_>> {
 }
 
 /// Whether a character may appear in the output. XML 1.0 forbids the C0 controls other than tab,
-/// line feed and carriage return, and U+FFFE/U+FFFF. Text extracted from PDFs often holds them
-/// (fonts without a usable `/ToUnicode`), and Word refuses a whole document over one (#72).
+/// line feed and carriage return, and U+FFFE/U+FFFF, and discourages the other noncharacters
+/// (U+FDD0–U+FDEF, the last two of every plane; plan A9-X1a). Text extracted from PDFs often holds
+/// them (fonts without a usable `/ToUnicode`), and Word refuses a whole document over one (#72).
 fn allowed(c: char) -> bool {
-    matches!(c, '\t' | '\n' | '\r') || !(c.is_ascii_control() || c == '\u{FFFE}' || c == '\u{FFFF}')
+    let n = u32::from(c);
+    matches!(c, '\t' | '\n' | '\r') || !(c.is_ascii_control() || (0xFDD0..=0xFDEF).contains(&n) || n & 0xFFFE == 0xFFFE)
 }
 
 pub(crate) fn esc(s: &str) -> String {
@@ -766,7 +768,7 @@ fn section(page: &Page) -> String {
 
 /// A Word document (.docx, Office Open XML). Ordinary pages flow as paragraphs and tables;
 /// pages with rotated text, or text that overlaps artwork, use floating shapes to retain their layout.
-pub fn docx(pages: &[Page], title: &str) -> Vec<u8> {
+pub fn docx(pages: &[Page], title: &str) -> Result<Vec<u8>, ZipError> {
     let mut body = String::new();
     let mut media: Vec<(String, &Image)> = Vec::new();
     // Word needs a paragraph between adjacent tables and after the last one in the body.
@@ -878,14 +880,14 @@ xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawin
         esc(title)
     );
     let mut z = Zip::default();
-    z.add("[Content_Types].xml", types.as_bytes(), true);
-    z.add("_rels/.rels", rels.as_bytes(), true);
-    z.add("docProps/core.xml", core.as_bytes(), true);
-    z.add("word/document.xml", doc.as_bytes(), true);
-    z.add("word/styles.xml", styles.as_bytes(), true);
-    z.add("word/_rels/document.xml.rels", doc_rels.as_bytes(), true);
+    z.add("[Content_Types].xml", types.as_bytes(), true)?;
+    z.add("_rels/.rels", rels.as_bytes(), true)?;
+    z.add("docProps/core.xml", core.as_bytes(), true)?;
+    z.add("word/document.xml", doc.as_bytes(), true)?;
+    z.add("word/styles.xml", styles.as_bytes(), true)?;
+    z.add("word/_rels/document.xml.rels", doc_rels.as_bytes(), true)?;
     for (name, im) in &media {
-        z.add(&format!("word/media/{name}"), &im.bytes, false);
+        z.add(&format!("word/media/{name}"), &im.bytes, false)?;
     }
     z.finish()
 }
@@ -1080,7 +1082,7 @@ mod tests {
 
     #[test]
     fn docx_is_a_word_package() {
-        let d = docx(&[page()], "Report");
+        let d = docx(&[page()], "Report").unwrap();
         assert!(d.starts_with(b"PK"));
         let names: Vec<&str> =
             ["[Content_Types].xml", "word/document.xml", "word/styles.xml", "word/_rels/document.xml.rels", "word/media/image1.png", "_rels/.rels"]
@@ -1092,7 +1094,7 @@ mod tests {
 
     #[test]
     fn word_does_not_invent_borders_for_aligned_invoice_fields() {
-        let xml = part(&docx(&[table_page()], "Invoice"), "word/document.xml");
+        let xml = part(&docx(&[table_page()], "Invoice").unwrap(), "word/document.xml");
         assert!(xml.contains("<w:tbl>"));
         assert!(!xml.contains("w:val=\"single\""), "text alignment is not evidence of a border: {xml}");
         assert!(xml.contains("<w:insideH w:val=\"nil\"/>"));
@@ -1102,7 +1104,7 @@ mod tests {
     fn word_keeps_a_page_with_a_clear_image_and_big_title_in_flow() {
         // page() has a picture between paragraphs and a 24 pt title over 11 pt body text, but
         // nothing overlaps: it must stay flowing paragraphs with the image inline.
-        let xml = part(&docx(&[page()], "Report"), "word/document.xml");
+        let xml = part(&docx(&[page()], "Report").unwrap(), "word/document.xml");
         assert!(!xml.contains("position:absolute"), "nothing overlaps, so nothing floats: {xml}");
         assert!(xml.contains("<wp:inline>"), "the picture stays inline: {xml}");
         assert!(xml.contains("<w:pStyle w:val=\"Heading1\"/>"), "the title stays a heading: {xml}");
@@ -1111,7 +1113,7 @@ mod tests {
         // The same page with the picture moved over the body text floats.
         let mut over = page();
         over.images[0].rect = [72.0, 380.0, 272.0, 530.0];
-        let xml = part(&docx(&[over], "Report"), "word/document.xml");
+        let xml = part(&docx(&[over], "Report").unwrap(), "word/document.xml");
         assert!(xml.contains("position:absolute"), "an image over text floats: {xml}");
     }
 
@@ -1128,7 +1130,7 @@ mod tests {
             rotation: 0.0,
         });
         p.images = page().images;
-        let xml = part(&docx(&[p], "Invoice"), "word/document.xml");
+        let xml = part(&docx(&[p], "Invoice").unwrap(), "word/document.xml");
         assert!(xml.contains("position:absolute"), "overlapping text must float: {xml}");
         assert!(!xml.contains("<wp:inline>"), "images must not displace invoice text");
         assert!(!xml.contains("<w:tbl>"), "the source text boxes must keep their positions");
@@ -1149,7 +1151,7 @@ mod tests {
         let mut second = p.clone();
         second.width = 400.0;
         second.height = 500.0;
-        let xml = part(&docx(&[p, second], "Two invoices"), "word/document.xml");
+        let xml = part(&docx(&[p, second], "Two invoices").unwrap(), "word/document.xml");
         assert!(xml.contains("rotation:315.000"), "PDF y-up becomes Word y-down");
         assert_eq!(xml.matches("<w:sectPr>").count(), 2);
         assert!(xml.contains("<w:pgSz w:w=\"8000\" w:h=\"10000\"/>"));
@@ -1189,7 +1191,7 @@ mod tests {
             color: [0.0; 3],
             rotation: 0.0,
         });
-        let xml = part(&docx(&[p.clone()], "Receipt\u{1}"), "word/document.xml");
+        let xml = part(&docx(&[p.clone()], "Receipt\u{1}").unwrap(), "word/document.xml");
         assert!(xml.contains(">Total 4.50\tGBP</w:t>"), "{xml}");
         assert!(!xml.chars().any(|c| !allowed(c)));
         assert!(xml.contains("<w:pgSz w:w=\"12240\" w:h=\"31680\"/>"), "clamped to 22 in: {xml}");
@@ -1197,7 +1199,7 @@ mod tests {
         assert!(rtf(&[p]).contains("Total 4.50\tGBP"));
         // A narrow page keeps room for text: margins shrink.
         let narrow = Page { width: 100.0, height: 200.0, ..page() };
-        let xml = part(&docx(&[narrow], "Narrow"), "word/document.xml");
+        let xml = part(&docx(&[narrow], "Narrow").unwrap(), "word/document.xml");
         assert!(xml.contains("<w:pgMar w:top=\"500\" w:right=\"250\" w:bottom=\"500\" w:left=\"250\""), "{xml}");
     }
 
@@ -1207,7 +1209,7 @@ mod tests {
         let mut p = page();
         p.blocks[1].color = [0.05, 0.23, 0.18];
         p.blocks[3].color = [f64::NAN, 2.0, -1.0];
-        let xml = part(&docx(&[p.clone()], "Colour"), "word/document.xml");
+        let xml = part(&docx(&[p.clone()], "Colour").unwrap(), "word/document.xml");
         assert!(xml.contains("<w:color w:val=\"0D3B2E\"/>"), "{xml}");
         assert!(xml.contains("<w:color w:val=\"00FF00\"/>"), "out-of-range values clamp: {xml}");
         // Black text keeps Word's default colour.
@@ -1218,14 +1220,14 @@ mod tests {
         let r = rtf(&[p.clone()]);
         assert!(r.contains("{\\colortbl;\\red13\\green59\\blue46;\\red0\\green255\\blue0;}"), "{r}");
         assert!(r.contains("\\cf1 Annual Report"), "{r}");
-        let ppt = pptx(&[p], "Colour");
+        let ppt = pptx(&[p], "Colour").unwrap();
         let pxml = part(&ppt, "ppt/slides/slide1.xml");
         assert!(pxml.contains("<a:srgbClr val=\"0D3B2E\"/>"), "{pxml}");
         assert!(pxml.contains("<a:srgbClr val=\"00FF00\"/>"), "out-of-range values clamp: {pxml}");
         // A table cell keeps its colour too.
         let mut t = table_page();
         t.blocks[0].color = [1.0, 0.0, 0.0];
-        let xml = part(&docx(&[t.clone()], "Grid"), "word/document.xml");
+        let xml = part(&docx(&[t.clone()], "Grid").unwrap(), "word/document.xml");
         assert!(xml.contains("<w:color w:val=\"FF0000\"/>"), "{xml}");
         assert!(html(&[t], "Grid").contains("style=\"color:#FF0000\""));
     }
@@ -1320,7 +1322,7 @@ mod tests {
         assert!(h.contains("<td></td>"), "the hole is an empty cell: {h}");
         assert!(h.contains("<p>Notes follow"), "the paragraph after the table stays: {h}");
 
-        let d = docx(std::slice::from_ref(&p), "Bill");
+        let d = docx(std::slice::from_ref(&p), "Bill").unwrap();
         assert!(d.starts_with(b"PK"));
         assert!(d.windows(b"word/document.xml".len()).any(|w| w == b"word/document.xml"));
         let (tables, _) = tables(&p.blocks);
@@ -1337,7 +1339,7 @@ mod tests {
         assert!(r.contains("\\trowd\\trgaph108\\cellx4640\\cellx7840\\cellx9920{"), "{r}");
         assert!(r.contains("\\trowd\\trgaph108\\cellx7840{\\intbl\\fs22 Totals}\\cell\\row"), "{r}");
 
-        let pt = pptx(std::slice::from_ref(&p), "Bill");
+        let pt = pptx(std::slice::from_ref(&p), "Bill").unwrap();
         assert!(pt.starts_with(b"PK"));
         assert!(pt.windows(b"ppt/slides/slide1.xml".len()).any(|w| w == b"ppt/slides/slide1.xml"));
         let slide_xml = part(&pt, "ppt/slides/slide1.xml");
@@ -1389,7 +1391,7 @@ mod tests {
                 .collect(),
             images: Vec::new(),
         };
-        let grid_cols = |p: &Page| part(&docx(std::slice::from_ref(p), "Grid"), "word/document.xml").matches("<w:gridCol ").count();
+        let grid_cols = |p: &Page| part(&docx(std::slice::from_ref(p), "Grid").unwrap(), "word/document.xml").matches("<w:gridCol ").count();
         assert_eq!(grid_cols(&grid(63)), 63, "63 columns is still a table");
         // Word refuses to open a document with a 64-column table, so that grid stays text.
         assert_eq!(grid_cols(&grid(64)), 0);
@@ -1504,7 +1506,7 @@ mod tests {
                 p.images[0].rect = [72.0, 640.0, 272.0, 790.0];
                 p.blocks[0].rect = [72.0, 700.0, 300.0, 760.0];
             }
-            let zip = docx(&[p], "T");
+            let zip = docx(&[p], "T").unwrap();
             let xml = part(&zip, "word/document.xml");
             assert_eq!(xml.contains("<wp:anchor "), placed, "{xml}");
             let rels = part(&zip, "word/_rels/document.xml.rels");
@@ -1525,7 +1527,7 @@ mod tests {
         let one = p.images[0].clone();
         p.images = vec![Image { bytes: Vec::new(), ..one.clone() }];
         p.images.extend(std::iter::repeat_n(one, MAX_MEDIA + 10));
-        let zip = docx(&[p], "T");
+        let zip = docx(&[p], "T").unwrap();
         let rels = part(&zip, "word/_rels/document.xml.rels");
         assert_eq!(rels.matches("relationships/image\"").count(), MAX_MEDIA);
     }
@@ -1607,7 +1609,7 @@ mod tests {
 
     #[test]
     fn word_writes_links_as_hyperlinks_with_external_relationships() {
-        let zip = docx(&[linked_page()], "Links");
+        let zip = docx(&[linked_page()], "Links").unwrap();
         let links = word_link_targets(&zip);
         assert_eq!(
             links,
@@ -1628,7 +1630,7 @@ mod tests {
         assert!(!part(&zip, "word/_rels/document.xml.rels").to_ascii_lowercase().contains("javascript"));
         // One relationship per address, however many paragraphs link to it.
         let twice = Page { blocks: [linked_page().blocks, linked_page().blocks].concat(), ..linked_page() };
-        let rels = part(&docx(&[twice], "Links"), "word/_rels/document.xml.rels");
+        let rels = part(&docx(&[twice], "Links").unwrap(), "word/_rels/document.xml.rels");
         assert_eq!(rels.matches("relationships/hyperlink\"").count(), 2, "{rels}");
     }
 
@@ -1637,7 +1639,7 @@ mod tests {
         let mut p = linked_page();
         p.blocks.push(Block { rotation: 30.0, rect: [100.0, 100.0, 200.0, 150.0], ..p.blocks[3].clone() });
         assert!(positioned(&p));
-        let zip = docx(&[p], "Links");
+        let zip = docx(&[p], "Links").unwrap();
         assert!(part(&zip, "word/document.xml").contains("<v:textbox"));
         assert_eq!(word_link_targets(&zip).len(), 2);
     }
