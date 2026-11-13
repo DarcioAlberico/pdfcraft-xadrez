@@ -559,8 +559,12 @@ fn toggle<'a>(widget: impl egui::Widget + 'a, radius: Option<u8>, word: Option<S
                 w.inactive.bg_fill = t.hover;
             }
             // The box or the circle is the control: its edge reads at 3:1 (plan A9-I11a, WCAG
-            // 1.4.11), in a dialog too, whose fields keep the lighter border.
-            w.inactive.bg_stroke = Stroke::new(1.0, t.border_strong);
+            // 1.4.11), in a dialog too, whose fields keep the lighter border. An outline of the
+            // caller's own is kept.
+            let edge = w.inactive.bg_stroke;
+            if edge.is_empty() || edge.color == t.border {
+                w.inactive.bg_stroke = Stroke::new(edge.width.max(1.0), t.border_strong);
+            }
             if w.hovered.bg_stroke.is_empty() || w.hovered.bg_stroke.color == t.border {
                 w.hovered.bg_stroke = Stroke::new(1.0, t.text_muted);
             }
