@@ -37,6 +37,7 @@
 
 mod build;
 pub mod fragment;
+pub mod from_games;
 pub mod games;
 mod header;
 pub mod html;
