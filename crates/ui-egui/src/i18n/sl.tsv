@@ -3474,3 +3474,14 @@ the move's comment	Move comment	Komentar k potezi
 	Keep them	Ohrani
 	Don't keep	Ne ohrani
 	The book's PGN couldn't be saved: {e}	PGN knjige ni bilo mogoče shraniti: {e}
+# Plan A9-I4: a diagram waits for its page's scan; plan A9-N4: the Diagram tab says the mate the page asks.
+	Diagram {n} wasn't found on page {p}.	Diagrama {n} na strani {p} ni bilo mogoče najti.
+	Mate in {n}: {key}! (unique)	Mat v {n}: {key}! (edina)
+	Mate in {n}: {key}! (not proved the only key)	Mat v {n}: {key}! (ni dokazano, da je edini ključ)
+	Mate in {n}: no key found within the search budget	Mat v {n}: v okviru iskanja ni bilo najdenega ključa
+	Mate in {n}: none found; best try {best}, refuted by {reply}	Mat v {n}: ga ni; najboljši poskus {best}, ovrže ga {reply}
+	Mate in {n}: none found	Mat v {n}: ga ni
+	Mate in {n}: {keys} ({k} keys)	Mat v {n}: {keys} (ključev: {k})
+	mates in {m}	matira v {m}
+	supposes castling is allowed	predpostavlja, da je rokada dovoljena
+	Mate in {n}: both sides mate, so who moves stays assumed	Mat v {n}: matirata obe strani, zato ostane, kdo je na potezi, predpostavljeno

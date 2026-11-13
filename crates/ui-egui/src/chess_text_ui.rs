@@ -1087,14 +1087,11 @@ impl PdfCraftApp {
                     view.flash = Some((page, rect, 0.0));
                 }
             }
-            TextAction::Diagram(pdfcraft_engine::chess::DiagramAt { page, index }) => {
-                // The diagram list must hold this page's scan for the editor to open on it.
-                let shown = self.active_ids().map(|(_, id)| id);
-                if shown.and_then(|id| self.chess.results_of(id)).is_none_or(|r| r.diagram(page, index).is_none()) {
-                    self.start_chess_scan(false);
-                }
-                self.select_chess_diagram(page, index, true);
-                self.show_chess_tab(ChessTab::Diagrams);
+            // The text's page, scanned first when the list doesn't hold it, whatever page is in view
+            // (plan A9-I4, finding A5-04).
+            TextAction::Diagram(at) => {
+                let Some((_, id)) = self.active_ids() else { return };
+                self.pick_after_scan(id, at);
             }
             TextAction::OpenGame(at) => self.read_book_game(at),
             TextAction::Stop => self.stop_chess_job(),

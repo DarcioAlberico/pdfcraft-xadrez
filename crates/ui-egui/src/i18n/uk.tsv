@@ -3491,3 +3491,14 @@ the move's comment	Move comment	Коментар до ходу
 	Keep them	Зберігати
 	Don't keep	Не зберігати
 	The book's PGN couldn't be saved: {e}	Не вдалося зберегти PGN книги: {e}
+# Plan A9-I4: a diagram waits for its page's scan; plan A9-N4: the Diagram tab says the mate the page asks.
+	Diagram {n} wasn't found on page {p}.	Діаграму {n} не знайдено на сторінці {p}.
+	Mate in {n}: {key}! (unique)	Мат у {n} ходи: {key}! (єдиний)
+	Mate in {n}: {key}! (not proved the only key)	Мат у {n} ходи: {key}! (не доведено, що ключ єдиний)
+	Mate in {n}: no key found within the search budget	Мат у {n} ходи: у межах пошуку ключ не знайдено
+	Mate in {n}: none found; best try {best}, refuted by {reply}	Мат у {n} ходи: не знайдено; найкраща спроба {best}, спростування {reply}
+	Mate in {n}: none found	Мат у {n} ходи: не знайдено
+	Mate in {n}: {keys} ({k} keys)	Мат у {n} ходи: {keys} (ключів: {k})
+	mates in {m}	матує у {m} ходи
+	supposes castling is allowed	припускає, що рокіровка дозволена
+	Mate in {n}: both sides mate, so who moves stays assumed	Мат у {n} ходи: матують обидві сторони, тож черга ходу лишається припущеною
