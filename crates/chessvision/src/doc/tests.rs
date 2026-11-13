@@ -611,6 +611,43 @@ fn a_diagram_inside_a_variation_keeps_the_variation() {
     assert!(game.flags.is_empty(), "{:?}", game.flags);
 }
 
+/// Plan A9-L4 (A2-03): a move without a number right after a preposition or a determiner that ends
+/// prose is prose, kept in the comment unchecked: a bare square, in a whole book
+/// (`…does not come to d3`; here `d6`, which Black could play), and a piece's move with
+/// [`WalkRules::prose_pieces`] (`Stops any ♘xf5`; here `Nxe5`, which White could). Before, each
+/// was played into the game as valid and the book's next move went astray. A numbered one, or
+/// one set in bold, is still a move, and a `…d5` idea stays text.
+#[test]
+fn a_move_in_a_sentence_stays_prose() {
+    let walked_with = |text: &str, rules: WalkRules| {
+        let text = page_text(vec![line(230.0, text)]);
+        let doc = walk(&build_page(&input(0, &text, &[], &[], &[])).pages, rules);
+        // The PGN's lines wrapped where they may, one space between words.
+        let pgn = doc.pgn().split_whitespace().collect::<Vec<_>>().join(" ");
+        (moves(&doc.pages[0]), pgn)
+    };
+    let walked = |text: &str| walked_with(text, WalkRules::BOOK);
+    let (got, pgn) = walked("1.e4 e5 2.Nf3 and Black guards the pawn by moving the d-pawn to d6 or 2...Nc6 3.Bb5");
+    assert!(got.contains(&("d6".to_owned(), MoveStatus::Unchecked)), "{got:?}");
+    assert!(got.iter().filter(|(t, _)| t != "d6").all(|(_, s)| *s == MoveStatus::Valid), "{got:?}");
+    assert!(pgn.contains("2... Nc6 3. Bb5") && pgn.contains("to d6"), "{pgn}");
+    let pieces = WalkRules { prose_pieces: true, ..WalkRules::BOOK };
+    let (got, pgn) = walked_with("1.e4 e5 2.Nf3 Nc6 and White threatens any Nxe5 at once 3.Bb5 a6", pieces);
+    assert!(got.contains(&("Nxe5".to_owned(), MoveStatus::Unchecked)), "{got:?}");
+    assert!(pgn.contains("3. Bb5 a6"), "{pgn}");
+    // A whole book reads such a piece's move as before (see `WalkRules::BOOK`).
+    let (got, _) = walked("1.e4 e5 2.Nf3 Nc6 and White threatens any Nxe5 at once 3.Bb5 a6");
+    assert!(got.contains(&("Nxe5".to_owned(), MoveStatus::Valid)), "{got:?}");
+    // Numbered or bold, it is a move.
+    let (got, _) = walked("1.e4 e5 2.Nf3 and then to 2...d6 3.d4");
+    assert!(got.iter().all(|(_, s)| *s == MoveStatus::Valid), "{got:?}");
+    let (got, _) = walked("1.e4 e5 2.Nf3 and the reply to *d6 3.d4");
+    assert!(got.contains(&("d6".to_owned(), MoveStatus::Valid)), "{got:?}");
+    // An idea with an ellipsis stays text.
+    let (got, pgn) = walked("1.e4 e5 2.Nf3 with the idea …d5 later 2...Nc6");
+    assert!(!got.iter().any(|(t, _)| t.contains("d5")) && pgn.contains("…d5"), "{got:?} {pgn}");
+}
+
 /// After an alternative written as prose, the text goes back to the main line: a move the
 /// alternative cannot play is tried there.
 #[test]

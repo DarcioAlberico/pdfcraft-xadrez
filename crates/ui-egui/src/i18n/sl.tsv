@@ -3458,3 +3458,10 @@ the move's comment	Move comment	Komentar k potezi
 	what was saved before couldn't be read, and is kept aside first; try again in a moment	prej shranjenega ni bilo mogoče prebrati, zato se najprej odloži; poskusite znova čez trenutek
 	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	Shranjenih popravkov diagramov ni bilo mogoče prebrati ({why}). Ob naslednjem shranjevanju se odložijo, od takrat pa se novi popravki shranjujejo.
 	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	Shranjenih PGN knjig ni bilo mogoče prebrati ({why}). Ob naslednjem shranjevanju se odložijo, od takrat pa se novi shranjujejo.
+# Plan A9-I2: one kind of job; the long jobs say how far they are and stop when asked.
+	Stop	Ustavi
+	Exporting the chess document: page {done} of {of}	Izvažanje šahovskega dokumenta: stran {done} od {of}
+	The export was stopped: nothing was written.	Izvoz je bil ustavljen: nič ni bilo zapisano.
+	Aligning was stopped: the book's link is as it was.	Usklajevanje je bilo ustavljeno: povezava knjige je ostala, kot je bila.
+	The work stopped on an internal error: {why}	Delo se je ustavilo zaradi notranje napake: {why}
+	The work stopped on an internal error.	Delo se je ustavilo zaradi notranje napake.

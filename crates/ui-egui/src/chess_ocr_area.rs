@@ -26,7 +26,7 @@
 //! doubted a word, the preview is shown even for a plan that fits; there a move that did not play
 //! is corrected with the glyphs' top readings, kept with the request (T10, `chess_correct`).
 
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::Arc;
 
 use egui::{Key, RichText};
 use pdfcraft_engine::DocId;
@@ -70,9 +70,6 @@ pub struct AreaState {
     reader: Option<AreaReader>,
 }
 
-/// The read's result, once there is one.
-type Slot = Arc<Mutex<Option<Result<AreaRead, AreaError>>>>;
-
 /// An area being read, and what to capture it as.
 struct AreaJob {
     doc: DocId,
@@ -85,25 +82,8 @@ struct AreaJob {
     lang: Lang,
     /// The document whose games it goes into.
     games: Option<DocId>,
-    result: Slot,
-}
-
-/// The slot, even after a worker panicked while holding it (it holds plain data).
-fn lock(m: &Mutex<Option<Result<AreaRead, AreaError>>>) -> MutexGuard<'_, Option<Result<AreaRead, AreaError>>> {
-    m.lock().unwrap_or_else(|e| e.into_inner())
-}
-
-/// Fills the slot when the worker ends without a result, so the interface never waits for a
-/// worker that is gone.
-struct Finish(Slot);
-
-impl Drop for Finish {
-    fn drop(&mut self) {
-        let mut slot = lock(&self.0);
-        if slot.is_none() {
-            *slot = Some(Err(AreaError::Read("the reading stopped unexpectedly".into())));
-        }
-    }
+    /// The reading, off the interface thread (plan A9-I2: a [`crate::chess_job::Job`]).
+    job: crate::chess_job::Job<Result<AreaRead, AreaError>>,
 }
 
 /// OCR area (O): the switch on the capture tools' source.
@@ -211,8 +191,8 @@ impl PdfCraftApp {
         let generation = doc.edit_generation();
         let geometry = doc.info.pages.get(page).and_then(pdfcraft_engine::chess::geometry);
         let Some(user) = geometry.and_then(|g| g.view_to_user(ViewRect::new(x0, y0, x1, y1))) else { return };
-        let job = match self.session.chess_ocr_area_job(id, page, user) {
-            Ok(job) => job,
+        let area = match self.session.chess_ocr_area_job(id, page, user) {
+            Ok(area) => area,
             Err(e) => {
                 self.notify(error_text(&e));
                 return;
@@ -222,38 +202,24 @@ impl PdfCraftApp {
         let lang = crate::chess_capture::document_lang(&self.chess, Some(id));
         let games = self.chess.games.current_doc();
         let book = self.session.chess_cipher(id);
-        let query = AreaQuery { page, rect_user: [user.x0, user.y0, user.x1, user.y1], rect_view: job.rect_view(), lang };
+        let query = AreaQuery { page, rect_user: [user.x0, user.y0, user.x1, user.y1], rect_view: area.rect_view(), lang };
         let reader = self.chess.capture.area.reader.clone();
         let models_dir = self.chess.models.models_dir();
-        let result: Slot = Arc::default();
-        let slot = result.clone();
-        let run = move || {
-            let _finish = Finish(slot.clone());
-            let read = match reader {
+        let job = crate::chess_job::Job::spawn("pdfcraft-ocr-area", self.run_inline, move |_| {
+            Ok(match reader {
                 Some(reader) => reader(&query),
-                None => job.run(&OcrOptions::new(OcrMode::Off).with_book(book.as_ref()), lang, models_dir.as_deref()),
-            };
-            *lock(&slot) = Some(read);
-        };
-        self.chess.capture.area.job = Some(AreaJob { doc: id, page, geometry, generation, mode, replace, lang, games, result });
-        #[cfg(not(target_arch = "wasm32"))]
-        if self.run_inline {
-            run();
-        } else if let Err(e) = std::thread::Builder::new().name("pdfcraft-ocr-area".into()).spawn(run) {
-            self.chess.capture.area.job = None;
-            self.notify(e.to_string());
-            return;
-        }
-        #[cfg(target_arch = "wasm32")]
-        run();
+                None => area.run(&OcrOptions::new(OcrMode::Off).with_book(book.as_ref()), lang, models_dir.as_deref()),
+            })
+        });
+        self.chess.capture.area.job = Some(AreaJob { doc: id, page, geometry, generation, mode, replace, lang, games, job });
         self.poll_chess_area();
     }
 
     /// Every frame: decide the switch for the page shown, and pick up an area read.
     pub(crate) fn poll_chess_area(&mut self) {
         self.decide_chess_area();
-        let Some(job) = self.chess.capture.area.job.as_ref() else { return };
-        let Some(done) = lock(&job.result).take() else {
+        let Some(done) = self.chess.capture.area.job.as_mut().map(|j| j.job.poll()) else { return };
+        let Some(done) = done else {
             if let Some(ctx) = &self.ctx {
                 ctx.request_repaint_after(std::time::Duration::from_millis(100));
             }
@@ -265,6 +231,11 @@ impl PdfCraftApp {
             self.notify(tl!("The area read was dropped: the document was edited.").to_owned());
             return;
         }
+        // No thread, or the reading panicked: said with why.
+        let done = match done {
+            Ok(done) => done,
+            Err(why) => return self.notify(why),
+        };
         match done {
             Err(e) => self.notify(error_text(&e)),
             Ok(read) if read.text.glyphs.iter().all(|g| g.text.trim().is_empty()) => {
