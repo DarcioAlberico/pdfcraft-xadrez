@@ -65,8 +65,8 @@ impl Setup {
     /// Set-up from `fen` (or its placement alone, for a position that is not legal); an empty
     /// board with White to move when it cannot be read.
     pub fn from_fen(fen: &str) -> Setup {
-        let parse = pdfcraft_engine::chess::pdfcraft_chess::fen::parse;
-        let mut position = parse(fen)
+        let mut position = pdfcraft_engine::chess::pdfcraft_chess::fen::Fen::parse(fen)
+            .map(|f| f.position().clone())
             .or_else(|_| pdfcraft_engine::chess::pdfcraft_chess::fen::parse_placement(fen).map(Position::from_placement))
             .unwrap_or_else(|_| Position::from_placement(Placement::empty()));
         position.side_to_move.get_or_insert(Color::White);

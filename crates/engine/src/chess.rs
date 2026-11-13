@@ -597,13 +597,13 @@ pub fn lichess_url(position: &ReadPosition) -> Option<String> {
     if !position.legality.allows(position.side.color) || position.repaired() {
         return None;
     }
-    let parsed = pdfcraft_chess::fen::parse(&position.fen).ok()?;
+    let parsed = pdfcraft_chess::fen::Fen::parse(&position.fen).ok()?;
     let from = if position.orientation.is_some_and(|v| v.black_point_of_view) {
         pdfcraft_chess::placement::Color::Black
     } else {
         pdfcraft_chess::placement::Color::White
     };
-    Some(pdfcraft_chess::lichess::analysis_url(&parsed, from))
+    Some(pdfcraft_chess::lichess::analysis_url(parsed.position(), from))
 }
 
 /// One page's inputs taken from the document's object graph when the job is made.

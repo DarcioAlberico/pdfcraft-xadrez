@@ -380,7 +380,7 @@ impl Automation {
         let keep = a.opt_bool("keep_correction")?.unwrap_or(false);
         let given = match (a.opt_str("fen")?, a.opt_str("placement")?) {
             (Some(fen), None) => {
-                Some((fen::parse(fen).map_err(|e| ToolError::InvalidArgs(format!("fen: {e}")))?.placement, Some(fen.trim().to_owned())))
+                Some((*fen::Fen::parse(fen).map_err(|e| ToolError::InvalidArgs(format!("fen: {e}")))?.placement(), Some(fen.trim().to_owned())))
             }
             (None, Some(p)) => Some((fen::parse_placement(p).map_err(|e| ToolError::InvalidArgs(format!("placement: {e}")))?, None)),
             (None, None) => None,
@@ -400,7 +400,7 @@ impl Automation {
                     )
                 })?;
                 from_correction = Some(uid);
-                (fen::parse(&fen).map_err(|e| failed(format!("the kept correction: {e}")))?.placement, Some(fen))
+                (*fen::Fen::parse(&fen).map_err(|e| failed(format!("the kept correction: {e}")))?.placement(), Some(fen))
             }
         };
         if keep && full.is_none() {

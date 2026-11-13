@@ -146,8 +146,8 @@ impl PdfCraftApp {
         match (kept, edit) {
             (Some(fen), ChessEdit::ForgetCorrection) => ed.show_kept(&fen),
             (Some(fen), _) => {
-                if let Ok(p) = pdfcraft_engine::chess::pdfcraft_chess::fen::parse(&fen) {
-                    ed.start = p.fen();
+                if let Ok(p) = pdfcraft_engine::chess::pdfcraft_chess::fen::Fen::parse(&fen) {
+                    ed.start = p.to_string();
                 }
             }
             (None, ChessEdit::ForgetCorrection) => ed.show_reading(),

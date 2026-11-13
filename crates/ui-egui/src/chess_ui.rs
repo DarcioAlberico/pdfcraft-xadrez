@@ -1610,8 +1610,9 @@ impl PdfCraftApp {
             |g| matches!(g.origin, GameOrigin::Diagram { page: p, diagram, .. } if usize::try_from(p).ok() == Some(page) && diagram == index),
         )?;
         let start = game.score.start_fen.as_deref()?;
-        // The walker settles the side and the number, never the pieces.
-        (start.split_whitespace().next() == fen.split_whitespace().next()).then(|| start.to_owned())
+        // The walker settles the side and the number, never the pieces: the same pieces on the
+        // same squares (plan A9-T1b).
+        same_pieces(start, fen).then(|| start.to_owned())
     }
 
     /// Open the chess board panel and bring it to the front. The docking workspace does it when it
@@ -1844,6 +1845,14 @@ pub(crate) fn board_source_label(app: &PdfCraftApp) -> Option<String> {
 
 /// A diagram as the module names it everywhere (plan A8, P4: one numbering, by page): "Page 17 ·
 /// diagram 1 of 2". `of` is how many the page has.
+/// Whether FENs `a` and `b` have the same pieces on the same squares (plan A9-T1b, finding R3-03):
+/// their placement keys, never a slice of the FEN text, so FENs written differently for one
+/// placement (`44` for `8`, fields joined by `_`) agree. What can't be read is no position.
+pub(crate) fn same_pieces(a: &str, b: &str) -> bool {
+    use pdfcraft_engine::chess::pdfcraft_chess::fen::Fen;
+    matches!((Fen::parse(a), Fen::parse(b)), (Ok(a), Ok(b)) if a.placement_key() == b.placement_key())
+}
+
 pub(crate) fn diagram_title(label: &str, index: usize, of: usize) -> String {
     crate::i18n::fmt(
         tl!("Page {p} · diagram {n} of {m}"),
@@ -1866,6 +1875,18 @@ pub(crate) fn walk_place(filter: Option<DiagramState>, place: Option<usize>, len
 #[cfg(test)]
 mod mark_tests {
     use egui::{Rect, pos2, vec2};
+
+    /// Plan A9-T1b (R3-03): "the same pieces" is the placement key, never a slice of the FEN text:
+    /// FENs written differently for one placement agree, other pieces never do, and what can't be
+    /// read is no position.
+    #[test]
+    fn the_same_pieces_whatever_the_fen_is_written_like() {
+        use super::same_pieces;
+        assert!(same_pieces("4k3/8/8/8/8/8/8/4K3 w - - 0 1", "4k3/44/8/8/8/8/8/4K3 b - - 0 12"));
+        assert!(same_pieces("4k3/8/8/8/8/8/8/4K3 w - - 0 1", "4k3/8/8/8/8/8/8/4K3_w_-_-_0_1"));
+        assert!(!same_pieces("4k3/8/8/8/8/8/8/4K3 w", "4k3/8/8/8/8/8/8/3K4 w"));
+        assert!(!same_pieces("no fen", "no fen"), "what can't be read is no position");
+    }
 
     /// A mark's number tab sits above its box, clear of the selection ring; on a box at the top
     /// of the page, below it.
