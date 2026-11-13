@@ -3369,3 +3369,25 @@ fn chess_correction_list_tells_another_books_entries_and_a_change_separates_them
     );
     let _ = std::fs::remove_dir_all(base);
 }
+
+/// Plan A9-G7b (A2-16): the pages a reading tool is given are read in the book's order, each once:
+/// `pages: [2, 1]` read page 2 before page 1 (a game across them read backwards, and the exports in
+/// that order), and `[1, 1]` read page 1 twice (its games doubled, its HTML's ids repeated).
+#[test]
+fn chess_document_reads_pages_in_order_once() {
+    let (base, root) = workdir("pageset");
+    let (mut a, doc) = opened(&root);
+    ok(&mut a, "page_duplicate", json!({ "doc": doc, "pages": [1] }));
+    let indices = |read: &Value| -> Vec<u64> { read["document"]["pages"].as_array().unwrap().iter().map(|p| p["index"].as_u64().unwrap()).collect() };
+    let read = ok(&mut a, "chess_document", json!({ "doc": doc, "pages": [2, 1], "include": ["json"] }));
+    assert_eq!((read["pages"].as_u64(), indices(&read)), (Some(2), vec![0, 1]), "{read:#}");
+    let read = ok(&mut a, "chess_document", json!({ "doc": doc, "pages": [1, 1], "include": ["json"] }));
+    assert_eq!((read["pages"].as_u64(), indices(&read)), (Some(1), vec![0]), "{read:#}");
+    let html = ok(&mut a, "chess_export_html", json!({ "doc": doc, "pages": [2, 1, 2], "out": "two.html" }));
+    assert!(html.get("error").is_none(), "{html:#}");
+    let text = std::fs::read_to_string(root.join("two.html")).unwrap();
+    let first = text.find("data-page=\"1\"").unwrap();
+    let second = text.find("data-page=\"2\"").unwrap();
+    assert!(first < second && text.matches("data-page=\"2\"").count() == 1, "in order, once");
+    let _ = std::fs::remove_dir_all(base);
+}

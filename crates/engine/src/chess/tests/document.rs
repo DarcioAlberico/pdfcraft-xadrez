@@ -566,3 +566,15 @@ fn a_whole_game_on_its_page_reads_no_other_page() {
     assert_eq!(score.mainline().len(), 4);
     assert!(score.nodes.iter().all(|n| n.comment.is_empty()), "{:?}", score.nodes.last().map(|n| &n.comment));
 }
+
+/// Plan A9-L7 (R6-07): a page printed in descriptive notation gave no game and said nothing; it
+/// says so in its notes now (the notation is not converted: decision D27).
+#[test]
+fn a_page_in_descriptive_notation_says_so_in_its_notes() {
+    let content = helv(100.0, 11.0, "1.P-K4 P-K4 2.N-KB3 N-QB3 3.B-N5 P-QR3");
+    let (mut s, id) = open(two_font_pdf(&content));
+    let read = s.chess_document(id, &[], &no_model(), Some(pdfcraft_chess::san::Lang::En)).unwrap();
+    let said = "descriptive notation (P-K4, P-K4, N-KB3): not supported; its moves were not read";
+    assert!(read.notes.iter().any(|(p, n)| *p == 0 && n == said), "{:?}", read.notes);
+    assert!(read.doc.games.is_empty());
+}
