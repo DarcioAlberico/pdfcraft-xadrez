@@ -5,10 +5,11 @@
 //! ([`align`] links them); text read before the first move of another game (its heading, an
 //! introduction) goes before that game's first move. The PGN is the source of the moves: a move
 //! the reader played elsewhere (a conflict) is the PGN's (decision D1). In the comments, figurines
-//! are letters; a diagram on a linked position is `$220` on that move, and the "Position after:"
-//! cue of its caption is left out (the `$220` says it), the caption's other words kept; line labels
-//! (`A)`, `B1)`) stay as printed. The page's furniture, its printed number, its running heads and
-//! a diagram's own text, is no comment (plan A9-L1b, A2-04).
+//! are letters (the one PGN writer writes them so, plan A9-F4); a diagram on a linked position is
+//! `$220` on that move, and the "Position after:" cue of its caption is left out (the `$220` says
+//! it), the caption's other words kept; line labels (`A)`, `B1)`) stay as printed. The page's
+//! furniture, its printed number, its running heads and a diagram's own text, is no comment (plan
+//! A9-L1b, A2-04).
 //!
 //! **Lines only the book has** (decision D2): a move the reader played that the PGN does not
 //! have goes in as a variation from the position it was played from, when that position is one
@@ -17,18 +18,22 @@
 //!
 //! Each game the book discusses gets the origin's tags from the first page that discusses it
 //! (`PdfPage`, `PdfPageLabel`, `SourceTitle`); the games it never discusses are written as they
-//! are, so no move of the PGN is lost.
+//! are, so no move of the PGN is lost. After them, the diagrams [`PgnPositions`] asks a game of
+//! their own for (plan A9-F4: with a reference too), in the order of the book: by default those
+//! linked to no move of the PGN.
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
 use pdfcraft_chess::game::Game as PgnGame;
 use pdfcraft_chess::origin::PgnOrigin;
+use pdfcraft_chess::pgn::WriteOptions;
 use pdfcraft_chess::pgn_style::PgnStyle;
 use pdfcraft_chess::san::Lang;
 
 use super::{RECENT_ANCHORS, RefNode, ReferenceIndex, align, move_key};
 use crate::doc::html::{Figurines, plain_text_with};
-use crate::doc::markdown::PgnBook;
+use crate::doc::markdown::{PgnBook, PgnPositions, SkippedPosition, position_game_of};
+use crate::doc::pgn::GameWarning;
 use crate::doc::{Block, ChessDoc, Inline, MoveAt, MoveInline, MoveStatus};
 
 /// What [`annotated_pgn`] wrote.
@@ -46,22 +51,13 @@ pub struct AnnotatedPgn {
     /// Comments the book's text made longer than a comment may be (`MAX_COMMENT_LEN` bytes), cut
     /// there (plan A9-F3).
     pub comments_cut: usize,
-}
-
-/// Unicode figurines and the English letters a comment gets for them (a pawn has none).
-const FIGURINES: [(char, &str); 12] =
-    [('♔', "K"), ('♕', "Q"), ('♖', "R"), ('♗', "B"), ('♘', "N"), ('♙', ""), ('♚', "K"), ('♛', "Q"), ('♜', "R"), ('♝', "B"), ('♞', "N"), ('♟', "")];
-
-/// `text` with its figurines as English letters.
-fn letters(text: &str) -> String {
-    let mut out = String::with_capacity(text.len());
-    for c in text.chars() {
-        match FIGURINES.iter().find(|(f, _)| *f == c) {
-            Some((_, l)) => out.push_str(l),
-            None => out.push(c),
-        }
-    }
-    out
+    /// Games with no moves added for diagrams ([`PgnPositions`]), after the reference's games.
+    pub positions: usize,
+    /// The diagrams [`PgnPositions`] asked a game for that got none, in the order of the book.
+    pub skipped: Vec<SkippedPosition>,
+    /// What writing left out of the diagrams' games, by game (counted from 0: the reference's
+    /// games first, then the diagrams' in the order of the book).
+    pub warnings: Vec<GameWarning>,
 }
 
 /// Text waiting for the move it follows.
@@ -124,8 +120,9 @@ fn flush(pending: &mut Pending, at: Option<RefNode>, notes: &mut BTreeMap<RefNod
     note.push_str(&text);
 }
 
-/// The reference's games written with the book's text (see the module documentation).
-pub fn annotated_pgn(doc: &ChessDoc, index: &ReferenceIndex, book: &PgnBook, style: PgnStyle) -> AnnotatedPgn {
+/// The reference's games written with the book's text, then the diagrams' games `positions` asks
+/// for (see the module documentation).
+pub fn annotated_pgn(doc: &ChessDoc, index: &ReferenceIndex, book: &PgnBook, positions: PgnPositions, style: PgnStyle) -> AnnotatedPgn {
     let alignment = align(doc, index);
     let links: HashMap<MoveAt, RefNode> = alignment.moves.iter().filter_map(|l| Some((l.at, l.node?))).collect();
     let shown: HashMap<(u32, usize), RefNode> = alignment.diagrams.iter().filter_map(|d| Some(((d.at.page, d.at.diagram), d.node?))).collect();
@@ -163,7 +160,7 @@ pub fn annotated_pgn(doc: &ChessDoc, index: &ReferenceIndex, book: &PgnBook, sty
                 Block::Heading { inlines, .. } => {
                     flush(&mut pending, current, &mut notes);
                     pending.heading = true;
-                    pending.add(&letters(&plain_text_with(inlines, Figurines::Letters(Lang::En))));
+                    pending.add(&plain_text_with(inlines, Figurines::Letters(Lang::En)));
                 }
                 Block::Paragraph { inlines, .. } => {
                     let mut from = 0usize;
@@ -181,7 +178,7 @@ pub fn annotated_pgn(doc: &ChessDoc, index: &ReferenceIndex, book: &PgnBook, sty
                         };
                         let Some(node) = node else { continue };
                         if let Some(text) = inlines.get(from..i) {
-                            pending.add(&letters(&plain_text_with(text, Figurines::Letters(Lang::En))));
+                            pending.add(&plain_text_with(text, Figurines::Letters(Lang::En)));
                         }
                         from = i.saturating_add(1);
                         // A move repeated just after itself or its diagram is a caption naming it.
@@ -197,7 +194,7 @@ pub fn annotated_pgn(doc: &ChessDoc, index: &ReferenceIndex, book: &PgnBook, sty
                         recent.truncate(RECENT_ANCHORS);
                     }
                     if let Some(text) = inlines.get(from..) {
-                        pending.add(&letters(&plain_text_with(text, Figurines::Letters(Lang::En))));
+                        pending.add(&plain_text_with(text, Figurines::Letters(Lang::En)));
                     }
                 }
             }
@@ -231,6 +228,7 @@ pub fn annotated_pgn(doc: &ChessDoc, index: &ReferenceIndex, book: &PgnBook, sty
             made.diagrams = made.diagrams.saturating_add(1);
         }
     }
+    let options = WriteOptions { style, letters: true };
     let mut out = Vec::new();
     for (g, game) in games.iter_mut().enumerate() {
         let Some(game) = game.as_mut() else { continue };
@@ -249,8 +247,33 @@ pub fn annotated_pgn(doc: &ChessDoc, index: &ReferenceIndex, book: &PgnBook, sty
                 let _ = game.set_tag(&name, &value);
             }
         }
-        out.push(game.pgn_with(style));
+        out.push(pdfcraft_chess::pgn::write(game, options));
         made.games = made.games.saturating_add(1);
+    }
+    // The diagrams' own games: by default those no move of the PGN is linked to.
+    let mut position_games = Vec::new();
+    for page in &doc.pages {
+        for block in &page.blocks {
+            let Block::Diagram(d) = block else { continue };
+            let wanted = match positions {
+                PgnPositions::All => true,
+                PgnPositions::Unused => !shown.contains_key(&(page.index, d.number)),
+                PgnPositions::None => false,
+            };
+            if wanted {
+                match position_game_of(doc, book, page.index, d) {
+                    Ok(game) => position_games.push(game),
+                    Err(skipped) => made.skipped.push(skipped),
+                }
+            }
+        }
+    }
+    let written = crate::doc::pgn::write_report(position_games.iter(), style);
+    let left_out = written.warnings.iter().filter(|w| w.warning.kind == pdfcraft_chess::game::PgnWarningKind::GameLeftOut).count();
+    made.positions = position_games.len().saturating_sub(left_out);
+    made.warnings = written.warnings.into_iter().map(|w| GameWarning { game: w.game.saturating_add(made.games), ..w }).collect();
+    if !written.pgn.is_empty() {
+        out.push(written.pgn);
     }
     made.pgn = out.join("\n");
     made

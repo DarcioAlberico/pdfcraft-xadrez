@@ -289,7 +289,7 @@ fn the_doc_and_its_games_survive_json_and_pgn() {
     assert!(json.contains("\"type\":\"diagram\"") && json.contains("\"status\":\"illegal\""));
     assert_eq!(ChessDoc::from_json(&json).unwrap(), doc);
     let scores: Vec<GameScore> = doc.games.iter().map(|g| g.score.clone()).collect();
-    assert_eq!(pgn::parse(&doc.pgn()).unwrap(), scores);
+    pgn::tests::assert_reads_back(&scores, &doc.pgn());
     assert!(ChessDoc::from_json(&" ".repeat(MAX_JSON_BYTES + 1)).is_err());
 }
 
@@ -438,7 +438,8 @@ fn unbracketed_second_solutions_and_brackets_become_variations() {
     let text = page_text(vec![line(230.0, "3.Qh5 Nf6 4.Qxf7# . If 3...g6 then 4.Qf3 [ 4.Qxe5+ Qe7 ] Nf6")]);
     let doc = build_page(&input(0, &text, &[reading(0, 60.0, SCHOLAR, true, false)], &[], &[]));
     let pgn = pgn::write_game(&doc.games[0].score);
-    assert!(pgn.ends_with("3. Qh5 Nf6 (3... g6 {then} 4. Qf3 (4. Qxe5+ Qe7) 4... Nf6) 4. Qxf7# {. If} *\n"), "{pgn}");
+    // Mate with no result printed: the board's result (plan A9-F4, one writer for both trees).
+    assert!(pgn.ends_with("3. Qh5 Nf6 (3... g6 {then} 4. Qf3 (4. Qxe5+ Qe7) 4... Nf6) 4. Qxf7# {. If} 1-0\n"), "{pgn}");
 }
 
 #[test]
@@ -551,7 +552,7 @@ fn the_text_between_a_diagram_and_its_move_reaches_the_game() {
     assert_eq!(doc.games[0].score.comment, nag::shown(nag::by_glyph("±").unwrap().code));
     // The PGN reads back as the game.
     let scores: Vec<GameScore> = doc.games.iter().map(|g| g.score.clone()).collect();
-    assert_eq!(pgn::parse(&doc.pgn()).unwrap(), scores);
+    pgn::tests::assert_reads_back(&scores, &doc.pgn());
 }
 
 /// Plan A9-L2 (A2-01): a bracket printed after a diagram set inside a variation closes that
@@ -580,7 +581,7 @@ fn text_after_a_moves_variations_comes_before_the_next_move() {
     let pgn = one_line_pgn(game);
     assert!(pgn.contains("2. Nf3 (2. Bc4 Nf6) {Better is the knight.} 2... Nc6 3. Bb5"), "{pgn}");
     let scores: Vec<GameScore> = doc.games.iter().map(|g| g.score.clone()).collect();
-    assert_eq!(pgn::parse(&doc.pgn()).unwrap(), scores);
+    pgn::tests::assert_reads_back(&scores, &doc.pgn());
     // On the board it is that move's comment before.
     let board = crate::doc::games::to_game(&game.score).unwrap();
     let nc6 = game.score.mainline()[3];
@@ -1831,7 +1832,7 @@ fn deep_brackets_and_long_comments_are_bounded() {
     }
     assert!(doc.games.iter().any(|g| g.flags.iter().any(|f| f.flag == ReviewFlag::CommentTruncated)));
     let scores: Vec<GameScore> = doc.games.iter().map(|g| g.score.clone()).collect();
-    assert_eq!(pgn::parse(&doc.pgn()).unwrap(), scores);
+    pgn::tests::assert_reads_back(&scores, &doc.pgn());
     // Text held after a diagram has the comments' cap (plan A9-L2): kept up to it, and said.
     let long = format!("{} 3.Qh5 Nf6", "word ".repeat(14_000));
     let doc = build_page(&input(0, &page_text(vec![line(230.0, &long)]), &[reading(0, 60.0, SCHOLAR, true, false)], &[], &[]));
@@ -1930,7 +1931,7 @@ proptest! {
         let json = doc.to_json().unwrap();
         prop_assert_eq!(ChessDoc::from_json(&json).unwrap(), doc.clone());
         let scores: Vec<GameScore> = doc.games.iter().map(|g| g.score.clone()).collect();
-        prop_assert_eq!(pgn::parse(&doc.pgn()), Ok(scores));
+        pgn::tests::assert_reads_back(&scores, &doc.pgn());
     }
 
     #[test]
@@ -1967,7 +1968,16 @@ fn a_hostile_doc_writes_pgn_without_panicking() {
         "start_fen":"not a fen","nodes":[{"san":"e4 }{","ply":4294967295,"fen":"x","parent":5,"children":[0,0,9]}],
         "roots":[0,3],"result":"*"}}]}"#;
     let doc = ChessDoc::from_json(json).unwrap();
-    assert!(doc.pgn().contains("e4"));
+    // No game can start there: left out of the PGN, and said (plan A9-F4).
+    assert_eq!(doc.pgn(), "");
+    let made = pgn::write_report(doc.games.iter().map(|g| &g.score), pdfcraft_chess::pgn_style::PgnStyle::FULL);
+    assert_eq!(made.warnings.iter().map(|w| (w.game, w.warning.kind)).collect::<Vec<_>>(), [(0, pdfcraft_chess::game::PgnWarningKind::GameLeftOut)]);
+    // With a start, the move that is no move is left out, and said.
+    let json = json.replace("\"start_fen\":\"not a fen\"", "\"start_fen\":null");
+    let doc = ChessDoc::from_json(&json).unwrap();
+    let made = pgn::write_report(doc.games.iter().map(|g| &g.score), pdfcraft_chess::pgn_style::PgnStyle::FULL);
+    assert!(made.pgn.ends_with("\n\n*\n"), "{}", made.pgn);
+    assert_eq!(made.warnings.iter().map(|w| w.warning.kind).collect::<Vec<_>>(), [pdfcraft_chess::game::PgnWarningKind::MovesLeftOut]);
 }
 
 /// A game in long algebraic replays like any other.

@@ -7,7 +7,14 @@ use crate::doc::html::Figurines;
 use crate::doc::markdown::{
     MarkdownDiagrams, MarkdownOptions, PgnBook, PgnPositions, SkipReason, SkippedPosition, image_name, pgn_export, pgn_with_diagrams, write,
 };
+use crate::doc::pgn::tests::read_games;
+use pdfcraft_chess::game::{Game as ChessGame, ROSTER};
 use pdfcraft_chess::pgn_style::PgnStyle;
+
+/// A game's tags past the roster, as `name=value`.
+fn extra_tags(g: &ChessGame) -> Vec<String> {
+    g.tags().iter().filter(|(n, _)| !ROSTER.contains(&n.as_str())).map(|(n, v)| format!("{n}={v}")).collect()
+}
 
 fn options() -> MarkdownOptions<'static> {
     MarkdownOptions {
@@ -119,14 +126,14 @@ fn the_pgn_has_a_game_for_every_legal_position() {
     let doc = build_page(&input(0, &text, &readings, &[], &[]));
     let (pgn, added) = pgn_with_diagrams(&doc);
     assert_eq!(added, 1, "{pgn}");
-    let games = pgn::parse(&pgn).unwrap();
+    let games = read_games(&pgn);
     assert_eq!(games.len(), 2, "{pgn}");
-    assert_eq!(games[0].start_fen.as_deref(), Some(SCHOLAR));
-    assert!(!games[0].nodes.is_empty());
-    assert_eq!(games[1].start_fen.as_deref(), Some("4k3/8/8/8/8/8/8/R3K3 w Q - 0 1"));
-    assert!(games[1].nodes.is_empty());
-    assert!(games[1].extra_tags.iter().any(|t| t.name == "PdfDiagram" && t.value == "2"), "{:?}", games[1].extra_tags);
-    assert!(games[1].comment.contains("did not pass review"), "not accepted, so said");
+    assert_eq!(games[0].start_fen(), SCHOLAR);
+    assert!(!games[0].is_empty());
+    assert_eq!(games[1].start_fen(), "4k3/8/8/8/8/8/8/R3K3 w Q - 0 1");
+    assert!(games[1].is_empty());
+    assert_eq!(games[1].tag("PdfDiagram"), Some("2"), "{pgn}");
+    assert!(games[1].comment(0).contains("did not pass review"), "not accepted, so said");
     // Order: the book's.
     assert!(pgn.find("[PdfDiagram \"1\"]").unwrap() < pgn.find("[PdfDiagram \"2\"]").unwrap());
 }
@@ -141,20 +148,19 @@ fn each_pgn_game_says_where_in_the_book_it_came_from() {
     let made = pgn_export(&doc, &book, PgnPositions::Unused, PgnStyle::FULL);
     let (pgn, added) = (made.pgn, made.positions);
     assert_eq!(added, 1, "{pgn}");
-    let games = pgn::parse(&pgn).unwrap();
-    let tags = |g: &crate::doc::games::GameScore| g.extra_tags.iter().map(|t| format!("{}={}", t.name, t.value)).collect::<Vec<_>>();
-    assert_eq!(tags(&games[0]), ["PdfPage=1", "PdfPageLabel=xvii", "PdfDiagram=1", "SourceTitle=My book"], "{pgn}");
-    assert!(games[0].comment.starts_with("Page xvii · diagram 1 of 2"), "{pgn}");
-    assert_eq!(games[0].roster.event, "?", "a game keeps its own event");
+    let games = read_games(&pgn);
+    assert_eq!(extra_tags(&games[0]), ["PdfPage=1", "PdfPageLabel=xvii", "PdfDiagram=1", "SourceTitle=My book"], "{pgn}");
+    assert!(games[0].comment(0).starts_with("Page xvii · diagram 1 of 2"), "{pgn}");
+    assert_eq!(games[0].tag("Event"), None, "a game keeps its own event");
     // The position: the book's title as its event, Round "-", its comment after the origin.
-    assert_eq!(tags(&games[1]), ["PdfPage=1", "PdfPageLabel=xvii", "PdfDiagram=2", "SourceTitle=My book"]);
-    assert_eq!((games[1].roster.event.as_str(), games[1].roster.round.as_str()), ("My book", "-"));
-    assert_eq!(games[1].comment, "Page xvii · diagram 2 of 2");
+    assert_eq!(extra_tags(&games[1]), ["PdfPage=1", "PdfPageLabel=xvii", "PdfDiagram=2", "SourceTitle=My book"]);
+    assert_eq!((games[1].tag("Event"), games[1].tag("Round")), (Some("My book"), Some("-")));
+    assert_eq!(games[1].comment(0), "Page xvii · diagram 2 of 2");
     // Without a book, only what the reading knows: the physical page and the diagram.
     let (plain, _) = pgn_with_diagrams(&doc);
-    let games = pgn::parse(&plain).unwrap();
-    assert_eq!(tags(&games[1]), ["PdfPage=1", "PdfDiagram=2"]);
-    assert_eq!(games[1].roster.event, "?");
+    let games = read_games(&plain);
+    assert_eq!(extra_tags(&games[1]), ["PdfPage=1", "PdfDiagram=2"]);
+    assert_eq!(games[1].tag("Event"), None);
     assert!(!plain.contains("PdfPageLabel") && !plain.contains("SourceTitle"), "{plain}");
 }
 
@@ -179,17 +185,7 @@ fn the_pgn_positions_option_says_which_diagrams_get_a_game() {
     ];
     let doc = build_page(&input(0, &text, &readings, &[], &[]));
     let diagram = |pgn: &str| -> Vec<String> {
-        pgn::parse(pgn)
-            .unwrap()
-            .iter()
-            .map(|g| {
-                format!(
-                    "{}{}",
-                    g.extra_tags.iter().find(|t| t.name == "PdfDiagram").map_or("?", |t| &t.value),
-                    if g.nodes.is_empty() { "" } else { "+moves" }
-                )
-            })
-            .collect()
+        read_games(pgn).iter().map(|g| format!("{}{}", g.tag("PdfDiagram").unwrap_or("?"), if g.is_empty() { "" } else { "+moves" })).collect()
     };
     let skipped = |made: &crate::doc::markdown::PgnExport| made.skipped.iter().map(|s| (s.at.diagram, s.reason)).collect::<Vec<_>>();
     let bad = vec![(2, SkipReason::Illegal), (3, SkipReason::Repaired), (4, SkipReason::NotRead)];
@@ -225,7 +221,7 @@ fn a_diagram_reprinting_a_game_marks_its_move() {
     let unused = pgn_export(&doc, &PgnBook::default(), PgnPositions::Unused, PgnStyle::FULL);
     assert_eq!(unused.positions, 0, "{}", unused.pgn);
     assert!(unused.pgn.contains("2. Nf3 $220 Nc6"), "{}", unused.pgn);
-    assert_eq!(pgn::parse(&unused.pgn).unwrap().len(), 1);
+    assert_eq!(read_games(&unused.pgn).len(), 1);
     // The reading's own game keeps no mark: the book's text has none.
     assert!(doc.games[0].score.nodes.iter().all(|n| n.nags.is_empty()));
     // All: the position too, and the mark.

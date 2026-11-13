@@ -774,6 +774,7 @@ impl Automation {
             "ocr_pages": read.ocr_pages.iter().map(|o| json!({ "page": o.page + 1, "lines": o.lines, "repaired": o.edits, "unsettled": o.flags, "general_ocr": o.general_ocr })).collect::<Vec<_>>(),
             "notes": notes,
             "position_games": made.position_games,
+            "pgn_warnings": made.pgn_warnings.iter().map(|w| json!({ "game": w.game.saturating_add(1), "kind": w.warning.kind.name() })).collect::<Vec<_>>(),
             "positions_skipped": made.positions_skipped.iter().map(|s| json!({
                 "page": u64::from(s.at.page) + 1,
                 "diagram": s.at.diagram.saturating_add(1),

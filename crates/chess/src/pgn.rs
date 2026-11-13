@@ -1,4 +1,5 @@
-//! PGN files as bytes: the one place their text is decoded (plan A9-F1).
+//! PGN files: the one place their bytes are decoded (plan A9-F1) and the one writer of their text
+//! (plan A9-F4, [`write`]).
 //!
 //! The PGN standard (§4.1) names ISO 8859-1, most programs now write UTF-8, some with a byte
 //! order mark, and a collection made by joining files (`copy *.pgn`) mixes them. So [`decode`]
@@ -6,6 +7,14 @@
 //! as Windows-1252 (ISO 8859-1 with printable characters where Latin-1 has C1 controls), and a
 //! leading byte order mark is dropped. Deciding for the whole file instead would turn every UTF-8
 //! game of a joined collection into mojibake for the sake of one Latin-1 game.
+
+mod writer;
+
+pub use writer::{ECO_PLIES, LINE_WIDTH, WriteOptions, comment_letters, movetext, write, write_games};
+
+/// Largest PGN file read, in bytes: a collection opened, a book's PGN, the games a tool reads
+/// (one cap for all of them, plan A9-F4).
+pub const MAX_PGN_FILE_BYTES: usize = 32 << 20;
 
 /// How a PGN's bytes were read.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

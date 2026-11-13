@@ -287,9 +287,10 @@ impl Game {
     }
 
     /// Set the comment before move `node`, cleaned as [`Game::set_comment`] does. It stays on the
-    /// move whatever is promoted or demoted around it. PGN has room for it only after the `(` of
-    /// a variation, so before a first reply it is written in one comment with the one after the
-    /// move before, and read back as that one. Ignored for the start. Past
+    /// move whatever is promoted or demoted around it. PGN writes it right before the move: after
+    /// the `(` of a variation it starts, or after the variations of the move before (plan
+    /// A9-F4); before a first reply whose move before has none, it is written in one comment
+    /// with the one after the move before, and read back as that one. Ignored for the start. Past
     /// [`super::MAX_COMMENT_LEN`] bytes it is cut, and [`Cut`] says so.
     pub fn set_comment_before(&mut self, node: NodeId, text: &str) -> Result<(), Cut> {
         if node == 0 {
