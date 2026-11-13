@@ -404,13 +404,15 @@ mod tests {
         #![proptest_config(proptest::prelude::ProptestConfig::with_cases(256))]
 
         /// Plan A9-V9 (A3-11): the one Douglas–Peucker (iterative, in `imageops`) keeps the points
-        /// the piece tracer's recursive one kept, on polylines anywhere and at any tolerance; the
+        /// the piece tracer's recursive one kept, on polylines of grid points (ties among the farthest come up) and at any tolerance; the
         /// traces of the tests below are unchanged with it.
         #[test]
         fn the_shared_simplification_keeps_what_the_recursive_one_kept(
-            points in proptest::collection::vec((-100.0f32..100.0, -100.0f32..100.0), 0..80),
-            tolerance in 0.0f32..20.0,
+            grid in proptest::collection::vec((-8i32..8, -8i32..8), 0..80),
+            tolerance in 0.0f32..6.0,
         ) {
+            // On a coarse grid, so points as far from a chord as each other (ties) come up often.
+            let points: Vec<(f32, f32)> = grid.iter().map(|&(x, y)| (x as f32, y as f32)).collect();
             proptest::prop_assert_eq!(simplify_open(&points, tolerance), simplify_open_recursive(&points, tolerance));
         }
     }
