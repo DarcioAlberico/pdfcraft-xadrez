@@ -218,12 +218,22 @@ fn escape(text: &str) -> String {
             '>' => out.push_str("&gt;"),
             '"' => out.push_str("&quot;"),
             '\'' => out.push_str("&#39;"),
-            // Characters XML 1.0 does not allow are dropped.
+            // Characters XML 1.0 does not allow are dropped, and the noncharacters it discourages.
             c if (c as u32) < 0x20 && !matches!(c, '\t' | '\n' | '\r') => {}
+            c if noncharacter(c) => {}
             c => out.push(c),
         }
     }
     out
+}
+
+/// Whether `c` is a Unicode noncharacter (plan A9-X1a, A2-17): U+FDD0 to U+FDEF, and the last two
+/// code points of every plane (U+FFFE, U+FFFF, U+1FFFE…). XML 1.0 forbids U+FFFE and U+FFFF and
+/// discourages the rest; a text layer may hold them (a font's broken `/ToUnicode`), and one made
+/// an EPUB page not well-formed.
+pub fn noncharacter(c: char) -> bool {
+    let n = u32::from(c);
+    (0xFDD0..=0xFDEF).contains(&n) || n & 0xFFFE == 0xFFFE
 }
 
 #[cfg(test)]
@@ -258,5 +268,13 @@ mod tests {
     #[test]
     fn control_characters_are_dropped() {
         assert_eq!(escape("a\u{1}b\nc"), "ab\nc");
+    }
+
+    /// Plan A9-X1a (A2-17): the noncharacters, U+FFFE and U+FFFF above all (XML forbids them), are
+    /// dropped; the characters beside them are kept.
+    #[test]
+    fn noncharacters_are_dropped() {
+        assert_eq!(escape("a\u{FFFE}b\u{FFFF}c\u{FDD0}d\u{FDEF}e\u{10FFFF}f"), "abcdef");
+        assert_eq!(escape("\u{FFFD}\u{FDCF}\u{FDF0}\u{FFFC}"), "\u{FFFD}\u{FDCF}\u{FDF0}\u{FFFC}");
     }
 }

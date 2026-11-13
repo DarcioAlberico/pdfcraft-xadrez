@@ -415,3 +415,15 @@ fn a_book_without_page_labels_is_paged_by_its_printed_numbers() {
     let doc = numbered(&[Some("15"), None, Some("99")]);
     assert_eq!(PageLabel::with_folios(&own(3), &doc), own(3));
 }
+
+/// Plan A9-X1a (A2-17): U+FFFE and U+FFFF, which XML does not allow, and the other noncharacters
+/// leave the HTML and the EPUB's pages well-formed: they are dropped, the text around them kept.
+#[test]
+fn noncharacters_are_dropped_from_the_markup() {
+    assert_eq!(crate::doc::html::escape("a\u{FFFE}b\u{FFFF}c\u{FDD0}d\u{1FFFF}e<"), "abcde&lt;");
+    assert_eq!(
+        crate::doc::html::escape("\u{FFFD}\u{FDCF}\u{FDF0}"),
+        "\u{FFFD}\u{FDCF}\u{FDF0}",
+        "a replacement character and their neighbours are characters"
+    );
+}
