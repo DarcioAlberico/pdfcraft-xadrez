@@ -520,7 +520,7 @@ impl PdfCraftApp {
     fn conflict_pgn_move(&self, id: DocId, at: MoveAt) -> Option<String> {
         use pdfcraft_engine::chess::pdfcraft_chessvision::doc::Inline;
         use pdfcraft_engine::chess::pdfcraft_chessvision::doc::reference::RefNode;
-        let text = self.chess.text.as_ref().filter(|t| t.doc == id)?;
+        let text = self.chess.text_of(id)?;
         let page = text.chess.pages.iter().find(|p| p.index == at.page)?;
         let block = page.blocks.get(usize::try_from(at.block).ok()?)?;
         let Inline::Move(m) = block.inlines().get(usize::try_from(at.inline).ok()?)? else { return None };
