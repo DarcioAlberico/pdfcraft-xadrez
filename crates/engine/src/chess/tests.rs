@@ -412,6 +412,83 @@ fn the_side_printed_in_words_sets_the_side_to_move() {
     assert!(flags.contains(&pdfcraft_chessvision::doc::ReviewFlag::SideConflict), "{flags:?}");
 }
 
+/// `placement` (a FEN's first field) in the Chess Merida layout of [`MERIDA_START`]: a white piece
+/// is its letter in lower case on a light square and upper case on a dark one, a black one `o m v
+/// t w l` for `p n b r q k`, likewise; an empty square a space (light) or `+` (dark).
+fn merida(placement: &str) -> [String; 8] {
+    let rows: Vec<String> = placement
+        .split('/')
+        .enumerate()
+        .map(|(r, row)| {
+            let mut out = String::new();
+            for c in row.chars() {
+                let n = c.to_digit(10).unwrap_or(0);
+                for _ in 0..n.max(u32::from(n == 0)) {
+                    // a8 is light: rank 8 - r, file from 1.
+                    let light = (out.chars().count() + 1 + (8 - r)) % 2 == 1;
+                    let glyph = if n > 0 {
+                        if light { ' ' } else { '+' }
+                    } else {
+                        let white = "PNBRQK".find(c).map(|i| ['p', 'n', 'b', 'r', 'q', 'k'][i]);
+                        let black = "pnbrqk".find(c).map(|i| ['o', 'm', 'v', 't', 'w', 'l'][i]);
+                        let g = white.or(black).unwrap();
+                        if light { g } else { g.to_ascii_uppercase() }
+                    };
+                    out.push(glyph);
+                }
+            }
+            out
+        })
+        .collect();
+    rows.try_into().unwrap()
+}
+
+#[test]
+fn the_merida_layout_is_the_placement() {
+    let start = merida("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
+    assert_eq!(start.map(|r| r), MERIDA_START.map(String::from));
+}
+
+/// Plan A9-N4 (A8-04): a direct mate the caption asks is solved on the diagram read. When the page
+/// does not say who plays, only the side that mates is to play (`#2`: White, by castling); both
+/// sides mating leaves the side assumed, with a note; a side with no mate, or a problem with two
+/// keys, is for review; a helpmate is not solved.
+#[test]
+fn a_mate_asked_under_a_diagram_is_solved() {
+    use pdfcraft_chessvision::board::MateFinding;
+    use pdfcraft_chessvision::doc::{Block, ReviewFlag};
+    let scan = |placement: &str, caption: &str| {
+        let rows = merida(placement);
+        let rows: [&str; 8] = std::array::from_fn(|i| rows[i].as_str());
+        let (mut s, id) = open(board_with_words(rows, caption, ""));
+        let page = s.chess_page(id, 0, &no_model()).unwrap();
+        let read = page.readings.as_ref().unwrap()[0].position().unwrap().clone();
+        let doc = s.chess_document(id, &[], &no_model(), None).unwrap();
+        let review = doc.doc.pages[0].blocks.iter().find_map(|b| if let Block::Diagram(d) = b { Some(d.review.clone()) } else { None }).unwrap();
+        (read, page.notes.clone(), review, doc.notes)
+    };
+    let (read, _, review, _) = scan("8/8/8/8/4R3/6k1/8/4K2R", "Mate in 2");
+    assert_eq!((read.side.color, read.side.source), (Color::White, SideSource::Solved), "{read:?}");
+    assert!(matches!(&read.mate, Some(MateFinding::Solved(r)) if r.unique() && r.keys == ["O-O"] && r.castles), "{:?}", read.mate);
+    assert!(!review.contains(&ReviewFlag::SideAssumed), "{review:?}");
+    // Both sides mate in one: the side stays assumed, and the page says why.
+    let (read, notes, review, doc_notes) = scan("3r2k1/5ppp/8/8/8/8/5PPP/3R2K1", "#1");
+    assert_eq!(read.side.source, SideSource::Default);
+    assert_eq!(read.mate, Some(MateFinding::BothSides { n: 1 }));
+    assert!(notes.iter().any(|n| n.contains("both sides mate in 1")), "{notes:?}");
+    assert!(doc_notes.iter().any(|(_, n)| n.contains("both sides mate in 1")), "{doc_notes:?}");
+    assert!(review.contains(&ReviewFlag::SideAssumed), "{review:?}");
+    // No mate, and two keys: both for review.
+    let (_, _, review, _) = scan("8/8/8/4k3/8/8/8/K6R", "White to play. Mate in 2");
+    assert!(review.iter().any(|f| matches!(f, ReviewFlag::NoMate { n: 2, .. })), "{review:?}");
+    let (_, _, review, _) = scan("6k1/5ppp/8/8/8/8/5PPP/R2R2K1", "#1");
+    assert!(review.iter().any(|f| matches!(f, ReviewFlag::ManyKeys { n: 1, keys } if keys.len() == 2)), "{review:?}");
+    // A helpmate is never solved as a direct mate: no "no mate" for it.
+    let (read, _, review, _) = scan("8/8/8/4k3/8/8/8/K6R", "h#2");
+    assert_eq!(read.mate, None);
+    assert!(!review.iter().any(|f| matches!(f, ReviewFlag::NoMate { .. })), "{review:?}");
+}
+
 /// An illegal reading (no kings) is reported, but gets no lichess link.
 #[test]
 fn an_illegal_reading_gets_no_lichess_link() {

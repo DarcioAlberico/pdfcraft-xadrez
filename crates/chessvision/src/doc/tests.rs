@@ -118,6 +118,7 @@ fn reading(index: usize, top: f32, fen: &str, accepted: bool, assumed: bool) -> 
             uncertain: Vec::new(),
             repairs: Vec::new(),
             accepted,
+            mate: None,
         }),
     }
 }
@@ -291,6 +292,38 @@ fn the_doc_and_its_games_survive_json_and_pgn() {
     let scores: Vec<GameScore> = doc.games.iter().map(|g| g.score.clone()).collect();
     pgn::tests::assert_reads_back(&scores, &doc.pgn());
     assert!(ChessDoc::from_json(&" ".repeat(MAX_JSON_BYTES + 1)).is_err());
+}
+
+/// Plan A9-N4: what the solver found for the mate the page asks is for review when the side to
+/// move has no mate (with the best try and the defence that refutes it) or more than one key; a
+/// unique key, or both sides mating, flags nothing more; the JSON reads back.
+#[test]
+fn a_mate_with_no_key_or_many_keys_is_for_review() {
+    use crate::board::MateFinding;
+    use pdfcraft_chess::mate::{DEFAULT_MATE_BUDGET, solve};
+    let flags = |fen: &str, finding: Option<MateFinding>| {
+        let mut r = reading(0, 60.0, fen, true, false);
+        if let Ok(p) = &mut r.outcome {
+            p.mate = finding;
+        }
+        let text = page_text(vec![]);
+        let doc = build_page(&input(0, &text, &[r], &[], &[]));
+        assert_eq!(ChessDoc::from_json(&doc.to_json().unwrap()).unwrap(), doc);
+        let Block::Diagram(d) = &doc.pages[0].blocks[0] else { panic!() };
+        d.review.clone()
+    };
+    let solved = |fen: &str, n| Some(MateFinding::Solved(solve(fen, n, DEFAULT_MATE_BUDGET).unwrap()));
+    let none = "8/8/8/4k3/8/8/8/K6R w - - 0 1";
+    let got = flags(none, solved(none, 2));
+    assert!(got.iter().any(|f| matches!(f, ReviewFlag::NoMate { n: 2, best_try: Some(_), refutation: Some(_) })), "{got:?}");
+    let cook = "6k1/5ppp/8/8/8/8/5PPP/R2R2K1 w - - 0 1";
+    let got = flags(cook, solved(cook, 1));
+    assert!(got.contains(&ReviewFlag::ManyKeys { n: 1, keys: vec!["Ra8#".into(), "Rd8#".into()] }), "{got:?}");
+    let sound = "8/8/8/8/4R3/6k1/8/4K2R w K - 0 1";
+    let got = flags(sound, solved(sound, 2));
+    assert!(!got.iter().any(|f| matches!(f, ReviewFlag::NoMate { .. } | ReviewFlag::ManyKeys { .. })), "{got:?}");
+    let got = flags(sound, Some(MateFinding::BothSides { n: 2 }));
+    assert!(!got.iter().any(|f| matches!(f, ReviewFlag::NoMate { .. } | ReviewFlag::ManyKeys { .. })), "{got:?}");
 }
 
 #[test]
