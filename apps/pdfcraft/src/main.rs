@@ -413,6 +413,9 @@ fn app_creator<'a>(
         if let Some(dir) = pdfcraft_ui_egui::RecoveryStore::default_dir() {
             app.enable_recovery(pdfcraft_ui_egui::RecoveryStore::new(dir));
         }
+        // The diagram corrections and the books' PGNs where the command line keeps them too (plan
+        // A9-G5a, decision D17), with what earlier builds kept in the recovery folder merged in.
+        app.use_default_chess_data();
         if let Some(state) = &cc.wgpu_render_state {
             let adapter = state.adapter.get_info();
             let max_texture_dimension_2d = state.device.limits().max_texture_dimension_2d;

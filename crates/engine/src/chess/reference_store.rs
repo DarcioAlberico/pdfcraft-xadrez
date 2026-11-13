@@ -478,6 +478,10 @@ impl StoreKind for Reference {
         ReferenceFile::empty(doc)
     }
 
+    fn doc(file: &ReferenceFile) -> &DocRecord {
+        &file.doc
+    }
+
     fn set_doc(file: &mut ReferenceFile, doc: DocRecord) {
         file.doc = doc;
     }

@@ -28,6 +28,12 @@
 //!   ([`Loaded::old_lock_only`]). Under the lock, the staging files of this kind a writer that
 //!   stopped left behind, more than an hour old, are removed: only names the store makes
 //!   (`<hash>.<kind>.json.tmp<n>`), never anything else in the folder.
+//! - **One place, migrated into** (plan A9-G5a, decision D17): the app and the command line keep
+//!   the stores in the app's data folder, and what earlier builds kept elsewhere (the recovery
+//!   folder's `chess`, a `.pdfcraft` folder) is merged in by the kind's rule
+//!   ([`DocStore::migrate_from`]), never copied over, moved or deleted. `migrated.json` in the
+//!   folder records each source file's size and time as merged, so running it again merges only
+//!   what changed since (an earlier build goes on writing where it did).
 //! - **What may be kept** ([`persist_policy`]): nothing read from a document that does not allow
 //!   copying, and from an encrypted one only with the user's consent, since the stores keep it
 //!   unencrypted. Every writer asks before keeping (the stores do not see the document).
@@ -59,6 +65,8 @@ pub trait StoreKind {
 
     /// An empty file for the document `doc`.
     fn empty(doc: DocRecord) -> Self::File;
+    /// The document a file records.
+    fn doc(file: &Self::File) -> &DocRecord;
     /// Record the document a file belongs to.
     fn set_doc(file: &mut Self::File, doc: DocRecord);
     /// A file's bytes: the file, with the entries that can't be read left out and counted; a newer
@@ -172,20 +180,20 @@ pub fn legacy_file_name(keys: &DocKeys) -> Option<String> {
 
 /// The format and the document a file records, the rest skipped.
 #[derive(serde::Deserialize)]
-struct Header {
+pub(super) struct Header {
     #[serde(default)]
-    format: Option<String>,
+    pub(super) format: Option<String>,
     #[serde(default)]
-    doc: Option<DocRecord>,
+    pub(super) doc: Option<DocRecord>,
 }
 
-fn header(bytes: &[u8]) -> Option<Header> {
+pub(super) fn header(bytes: &[u8]) -> Option<Header> {
     serde_json::from_slice(bytes).ok()
 }
 
 /// Whether `name` is named as a file of kind `K` (`<hash>.<kind>.json`) or as every kind's file
 /// was before plan A9-G3a (`<hash>.json`, the hash 32 hexadecimal digits).
-fn named_for<K: StoreKind>(name: &str) -> bool {
+pub(super) fn named_for<K: StoreKind>(name: &str) -> bool {
     let Some(stem) = name.strip_suffix(".json") else { return false };
     let hash = stem.strip_suffix(K::KIND).and_then(|s| s.strip_suffix('.')).unwrap_or(stem);
     is_hash(hash)
@@ -223,6 +231,11 @@ impl<K: StoreKind, B: StoreBackend> DocStore<K, B> {
     /// The store on `backend`.
     pub fn on(backend: B) -> Self {
         DocStore { backend, kind: PhantomData }
+    }
+
+    /// Where its files are.
+    pub(super) fn backend(&self) -> &B {
+        &self.backend
     }
 
     /// The document's file: by its own name, else the file of this kind recording the document
@@ -327,12 +340,29 @@ impl<K: StoreKind, B: StoreBackend> DocStore<K, B> {
     where
         K::Error: From<E>,
     {
+        self.update_in(keys, pages, |_, _| Ok(()), change)
+    }
+
+    /// [`DocStore::update`], with `prepare` run under the lock on the file as read, before
+    /// `change` (a kind's own housekeeping: the corrections take their entries out of a file
+    /// several books shared, plan A9-G1b).
+    pub(super) fn update_in<R, E>(
+        &self,
+        keys: &DocKeys,
+        pages: usize,
+        prepare: impl FnOnce(&Self, &mut Loaded<K::File>) -> Result<(), K::Error>,
+        change: impl FnOnce(&mut K::File) -> Result<R, E>,
+    ) -> Result<(R, Loaded<K::File>), K::Error>
+    where
+        K::Error: From<E>,
+    {
         let lock = self.backend.lock::<K::Error>(K::KIND, K::OLD_LOCK)?;
         let mut l = self.load(keys, pages)?;
         l.old_lock_only = lock.old_lock_only();
         if let Some(version) = l.newer {
             return Err(K::Error::newer(version));
         }
+        prepare(self, &mut l)?;
         let out = change(&mut l.file).map_err(K::Error::from)?;
         K::set_doc(&mut l.file, DocRecord::new(keys, pages));
         self.write(&mut l)?;
@@ -365,7 +395,7 @@ impl<K: StoreKind, B: StoreBackend> DocStore<K, B> {
 
     /// Write `l` over its file, after setting the file aside when it could not be read or held
     /// entries `l` left out, so nothing it held is lost.
-    fn write(&self, l: &mut Loaded<K::File>) -> Result<(), K::Error> {
+    pub(super) fn write(&self, l: &mut Loaded<K::File>) -> Result<(), K::Error> {
         let bytes = K::to_bytes(&l.file)?;
         let why = match l.unreadable.take() {
             Some((name, why)) if name == l.name => Some(why),
@@ -626,6 +656,203 @@ impl<K: StoreKind> DocStore<K, DirBackend> {
     /// The store in the folder `dir` (made when a change is first kept).
     pub fn new(dir: impl Into<std::path::PathBuf>) -> Self {
         DocStore::on(DirBackend::new(dir))
+    }
+
+    /// The folder.
+    pub fn dir(&self) -> &std::path::Path {
+        self.backend.dir()
+    }
+
+    /// Merge into this store what the folder `from` keeps of this kind (plan A9-G5a, decision
+    /// D17): each file, by the kind's rule ([`StoreKind::merge`]), into the file here that records
+    /// the same document, else into one named as it is (`<hash>.<kind>.json`); never copied over,
+    /// and `from` is only read: nothing in it is moved, changed or deleted. Run again, a file whose
+    /// size and time are what `migrated.json` here recorded when it was merged is not read again;
+    /// one changed since (an earlier build went on writing it) is merged again. A file of a newer
+    /// version, or one that can't be read, is left where it is and counted; so is a file here
+    /// that can't be written over (of a newer version, or unreadable). Under the kind's lock. A
+    /// folder `from` that is not there has nothing to merge.
+    pub fn migrate_from(&self, from: &std::path::Path) -> Result<Migration, K::Error> {
+        let source = DirBackend::new(from);
+        let names: Vec<String> = source.list(MAX_FILES)?.into_iter().filter(|n| named_for::<K>(n)).collect();
+        let mut out = Migration::default();
+        if names.is_empty() || same_folder(from, self.backend.dir()) {
+            return Ok(out);
+        }
+        let _lock = self.backend.lock::<K::Error>(K::KIND, K::OLD_LOCK)?;
+        let mut record = Migrated::read(&self.backend);
+        let mut here = self.records()?;
+        let place = from.canonicalize().unwrap_or_else(|_| from.to_path_buf()).to_string_lossy().into_owned();
+        for name in names {
+            let Ok(meta) = std::fs::metadata(from.join(&name)) else { continue };
+            let (size, time) = (meta.len(), nanos(&meta));
+            let key = super::corrections::hash_hex(&[b"migrated", place.as_bytes(), name.as_bytes()]);
+            let seen = record.sources.iter().position(|s| s.source == key);
+            if seen.and_then(|i| record.sources.get(i)).is_some_and(|s| s.size == size && s.time == time) {
+                out.unchanged = out.unchanged.saturating_add(1);
+                continue;
+            }
+            let Some(bytes) = source.read(&name, K::MAX_FILE_BYTES)? else { continue };
+            if header(&bytes).is_none_or(|h| h.format.as_deref() != Some(K::FORMAT)) {
+                continue; // Another kind's, kept in the same folder.
+            }
+            let theirs = match K::read(&bytes) {
+                Parsed::File { file, skipped } => {
+                    out.skipped = out.skipped.saturating_add(skipped);
+                    file
+                }
+                Parsed::Newer { .. } => {
+                    out.newer = out.newer.saturating_add(1);
+                    continue;
+                }
+                Parsed::Bad(_) => {
+                    out.unreadable = out.unreadable.saturating_add(1);
+                    continue;
+                }
+            };
+            let Some(dest) =
+                here.iter().find(|(_, doc)| doc.same_document(K::doc(&theirs))).map(|(n, _)| n.clone()).or_else(|| kind_name::<K>(&name))
+            else {
+                continue;
+            };
+            let merged = match self.backend.read(&dest, K::MAX_FILE_BYTES)? {
+                None => theirs,
+                Some(mine) => match K::read(&mine) {
+                    Parsed::File { mut file, .. } => {
+                        K::merge(&mut file, &theirs);
+                        file
+                    }
+                    Parsed::Newer { .. } | Parsed::Bad(_) => {
+                        out.left_here = out.left_here.saturating_add(1);
+                        continue;
+                    }
+                },
+            };
+            self.backend.write::<K::Error>(&dest, &K::to_bytes(&merged)?)?;
+            if !here.iter().any(|(n, _)| *n == dest) {
+                here.push((dest, K::doc(&merged).clone()));
+            }
+            if seen.is_some() {
+                out.changed = out.changed.saturating_add(1)
+            } else {
+                out.merged = out.merged.saturating_add(1)
+            }
+            let hash = super::corrections::hash_hex(&[&bytes]);
+            record.keep(MigratedSource { source: key, size, time, hash });
+            record.write::<K::Error>(&self.backend)?;
+        }
+        Ok(out)
+    }
+
+    /// Every file of this kind here, with the document it records (its header only).
+    fn records(&self) -> Result<Vec<(String, DocRecord)>, K::Error> {
+        let mut out = Vec::new();
+        for name in self.backend.list(MAX_FILES)?.into_iter().filter(|n| named_for::<K>(n)) {
+            let Some(bytes) = self.backend.read(&name, K::MAX_FILE_BYTES)? else { continue };
+            if let Some(Header { format: Some(f), doc: Some(doc) }) = header(&bytes)
+                && f == K::FORMAT
+            {
+                out.push((name, doc));
+            }
+        }
+        Ok(out)
+    }
+}
+
+/// What [`DocStore::migrate_from`] did.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Migration {
+    /// Files merged in for the first time.
+    pub merged: usize,
+    /// Files merged before and changed since (an earlier build went on writing them), merged again.
+    pub changed: usize,
+    /// Files merged before and not changed since: not read again.
+    pub unchanged: usize,
+    /// Files of a newer version, which this build only reads: left where they are.
+    pub newer: usize,
+    /// Files that could not be read: left where they are.
+    pub unreadable: usize,
+    /// Files here that could not be merged into (of a newer version, or unreadable): left as they are.
+    pub left_here: usize,
+    /// Entries of the files merged that could not be read, left out.
+    pub skipped: usize,
+}
+
+/// The name of the file of kind `K` for the document a file named `name` keeps
+/// (`<hash>.json` or `<hash>.<kind>.json`): `<hash>.<kind>.json`.
+#[cfg(not(target_arch = "wasm32"))]
+fn kind_name<K: StoreKind>(name: &str) -> Option<String> {
+    let stem = name.strip_suffix(".json")?;
+    let hash = stem.strip_suffix(K::KIND).and_then(|s| s.strip_suffix('.')).unwrap_or(stem);
+    is_hash(hash).then(|| format!("{hash}.{}.json", K::KIND))
+}
+
+/// Whether two folders are one.
+#[cfg(not(target_arch = "wasm32"))]
+fn same_folder(a: &std::path::Path, b: &std::path::Path) -> bool {
+    match (a.canonicalize(), b.canonicalize()) {
+        (Ok(a), Ok(b)) => a == b,
+        _ => a == b,
+    }
+}
+
+/// A file's last change, in nanoseconds since 1970 (0 when the system can't say).
+#[cfg(not(target_arch = "wasm32"))]
+fn nanos(meta: &std::fs::Metadata) -> u64 {
+    meta.modified().ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()).map_or(0, |d| u64::try_from(d.as_nanos()).unwrap_or(u64::MAX))
+}
+
+/// The name of the record of what was migrated into a folder.
+pub const MIGRATED: &str = "migrated.json";
+
+/// Its format.
+#[cfg(not(target_arch = "wasm32"))]
+const MIGRATED_FORMAT: &str = "pdfcraft-chess-migrated";
+
+/// Most source files it remembers; the oldest go first.
+#[cfg(not(target_arch = "wasm32"))]
+const MAX_MIGRATED: usize = 4 * MAX_FILES;
+
+/// `migrated.json`: each source file merged into the folder, by a hash of its folder and name
+/// (never its path), with its size and time then and a hash of its bytes.
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Clone, Debug, Default, serde::Serialize, serde::Deserialize)]
+struct Migrated {
+    format: String,
+    version: u32,
+    #[serde(default)]
+    sources: Vec<MigratedSource>,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+struct MigratedSource {
+    source: String,
+    size: u64,
+    time: u64,
+    hash: String,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl Migrated {
+    /// The record in `backend`'s folder; an empty one when there is none, or it can't be read
+    /// (every source is then merged again, which merging makes harmless).
+    fn read(backend: &DirBackend) -> Migrated {
+        let read = backend.read(MIGRATED, 4 << 20).ok().flatten().and_then(|b| serde_json::from_slice::<Migrated>(&b).ok());
+        read.filter(|m| m.format == MIGRATED_FORMAT).unwrap_or(Migrated { format: MIGRATED_FORMAT.into(), version: 1, sources: Vec::new() })
+    }
+
+    /// Remember `source` in place of what was remembered of it.
+    fn keep(&mut self, source: MigratedSource) {
+        self.sources.retain(|s| s.source != source.source);
+        self.sources.push(source);
+        let over = self.sources.len().saturating_sub(MAX_MIGRATED);
+        self.sources.drain(..over);
+    }
+
+    fn write<E: StoreFailure>(&self, backend: &DirBackend) -> Result<(), E> {
+        let bytes = serde_json::to_vec(self).map_err(|e| E::from(std::io::Error::other(e)))?;
+        backend.write::<E>(MIGRATED, &bytes)
     }
 }
 

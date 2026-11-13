@@ -3451,6 +3451,7 @@ chess undo step	Clear drawings	xóa hình vẽ
 	Diagram	Sơ đồ
 	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Không đọc được các chỉnh sửa sơ đồ đã lưu ({why}); chúng đã được để riêng với tên {name}.
 	Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted.	Không đọc được một số chỉnh sửa sơ đồ đã lưu ({why}); các chỉnh sửa còn lại vẫn được dùng, và {name} được giữ lại, không bao giờ bị xóa.
+	Diagram corrections or books' PGNs an earlier PdfCraft changed were brought in.	Đã đưa vào các chỉnh sửa sơ đồ hoặc PGN của sách mà một PdfCraft cũ hơn đã thay đổi.
 	The diagram corrections couldn't be saved: {e}	Không lưu được các chỉnh sửa sơ đồ: {e}
 	Diagram {n}, page {p}: {state}	Sơ đồ {n}, trang {p}: {state}
 	Page {p} · diagram {n} of {m}	Trang {p} · sơ đồ {n}/{m}

@@ -3199,6 +3199,7 @@ chess undo step	Clear drawings	描画の消去
 	Diagram	局面図
 	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	保存された局面図の修正を読み込めませんでした ({why})。{name} として退避しました。
 	Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted.	保存された局面図の修正の一部を読み込めませんでした ({why})。残りは使用し、{name} は削除せずに保持します。
+	Diagram corrections or books' PGNs an earlier PdfCraft changed were brought in.	以前の PdfCraft が変更した図の修正または本の PGN を取り込みました。
 	The diagram corrections couldn't be saved: {e}	局面図の修正を保存できませんでした: {e}
 	Diagram {n}, page {p}: {state}	局面図 {n}、{p} ページ: {state}
 	Page {p} · diagram {n} of {m}	{p} ページ · 局面図 {n}/{m}

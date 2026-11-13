@@ -3449,6 +3449,7 @@ chess undo step	Clear drawings	piešinių valymą
 	Diagram	Diagrama
 	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Nepavyko perskaityti įrašytų diagramų pataisymų ({why}); jie atidėti kaip {name}.
 	Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted.	Kai kurių įrašytų diagramų pataisymų nepavyko perskaityti ({why}); kiti naudojami, o {name} išlaikomas ir niekada neištrinamas.
+	Diagram corrections or books' PGNs an earlier PdfCraft changed were brought in.	Ankstesnės PdfCraft versijos pakeisti diagramų taisymai ar knygų PGN perkelti.
 	The diagram corrections couldn't be saved: {e}	Nepavyko įrašyti diagramų pataisymų: {e}
 	Diagram {n}, page {p}: {state}	Diagrama {n}, {p} psl.: {state}
 	Page {p} · diagram {n} of {m}	{p} psl. · diagrama {n} iš {m}

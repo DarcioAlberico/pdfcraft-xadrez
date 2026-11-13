@@ -5122,3 +5122,41 @@ fn a_chess_question_is_a_modal_dialog() {
     assert!(dialog.accesskit_node().data().is_modal());
     dialog.get_by_label("Keep editing");
 }
+
+/// Plan A9-G5a (decision D17): the app keeps the diagram corrections and the books' PGNs in its
+/// data folder's `chess` (where the command line keeps them too), after bringing in what it kept
+/// before in the recovery folder's `chess`, which it leaves as it was. An earlier build that goes
+/// on writing there is seen at the next start, and said.
+#[test]
+fn the_app_keeps_its_chess_stores_in_one_place_and_brings_in_the_earlier_ones() {
+    use pdfcraft_engine::chess::DocKeys;
+    use pdfcraft_engine::chess::corrections::{DirStore, Kind, NewCorrection};
+    let dir = corrections_dir("chess-data");
+    let (data, earlier) = (dir.join("data").join("chess"), dir.join("Recovery").join("chess"));
+    let book = DocKeys { id0: None, path: Some("C:/books/Livro.pdf".into()), name: Some("Livro.pdf".into()), size: Some(1234) };
+    let pages: Vec<String> = vec!["fnv:p0".into(), "fnv:p1".into()];
+    let correct = |store: &DirStore, page: usize| {
+        let new = NewCorrection { page, rect: [0.1, 0.1, 0.4, 0.4], orig: None, fen: "4k3/8/8/8/8/8/8/4K3 w - - 0 1".into(), kind: Kind::Corrected };
+        store.update(&book, pages.len(), |f| f.set(new, 1, &pages)).unwrap();
+    };
+    let before = DirStore::new(earlier.join("corrections"));
+    correct(&before, 0);
+    let source = correction_files(&earlier.join("corrections"));
+    let source_bytes: Vec<Vec<u8>> = source.iter().map(|n| std::fs::read(earlier.join("corrections").join(n)).unwrap()).collect();
+    let mut app = PdfCraftApp::new();
+    app.set_option("language", "en").unwrap();
+    app.use_chess_data(data.clone(), Some(earlier.clone()));
+    let here = DirStore::new(data.join("corrections"));
+    assert_eq!(here.load(&book, 2).unwrap().file.live().count(), 1, "brought in");
+    let after: Vec<Vec<u8>> = source.iter().map(|n| std::fs::read(earlier.join("corrections").join(n)).unwrap()).collect();
+    assert_eq!(after, source_bytes, "the earlier folder left as it was");
+    assert!(app.toast.as_ref().is_none_or(|t| !t.0.contains("brought in")), "nothing to say the first time");
+    // The earlier build goes on writing there: the next start brings it in, and says so.
+    correct(&before, 1);
+    let mut next = PdfCraftApp::new();
+    next.set_option("language", "en").unwrap();
+    next.use_chess_data(data.clone(), Some(earlier.clone()));
+    assert_eq!(here.load(&book, 2).unwrap().file.live().count(), 2);
+    assert_eq!(next.toast.as_ref().map(|t| t.0.as_str()), Some("Diagram corrections or books' PGNs an earlier PdfCraft changed were brought in."));
+    let _ = std::fs::remove_dir_all(dir);
+}

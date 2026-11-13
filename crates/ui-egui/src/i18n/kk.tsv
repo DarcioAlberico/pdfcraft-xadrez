@@ -3195,6 +3195,7 @@ chess undo step	Clear drawings	суреттерді өшіру
 	Diagram	Диаграмма
 	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	Сақталған диаграмма түзетулерін оқу мүмкін болмады ({why}); олар {name} деп бөлек қойылды.
 	Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted.	Сақталған диаграмма түзетулерінің кейбірін оқу мүмкін болмады ({why}); қалғандары пайдаланылады, ал {name} сақталады, ешқашан жойылмайды.
+	Diagram corrections or books' PGNs an earlier PdfCraft changed were brought in.	Бұрынғы PdfCraft өзгерткен диаграмма түзетулері немесе кітап PGN файлдары әкелінді.
 	The diagram corrections couldn't be saved: {e}	Диаграмма түзетулерін сақтау мүмкін болмады: {e}
 	Diagram {n}, page {p}: {state}	{n}-диаграмма, {p}-бет: {state}
 	Page {p} · diagram {n} of {m}	{p}-бет · {m} ішінен {n}-диаграмма

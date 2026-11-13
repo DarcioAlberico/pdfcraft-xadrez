@@ -3161,6 +3161,7 @@ chess undo step	Clear drawings	清除标记
 	Diagram	棋图
 	Saved diagram corrections couldn't be read ({why}); they were kept aside as {name}.	无法读取已保存的棋图更正（{why}）；已另存为 {name}。
 	Some saved diagram corrections couldn't be read ({why}); the others are used, and {name} is kept, never deleted.	部分已保存的棋图更正无法读取（{why}）；其余的照常使用，{name} 会被保留，绝不删除。
+	Diagram corrections or books' PGNs an earlier PdfCraft changed were brought in.	已导入较早版本 PdfCraft 更改过的图表更正或书籍 PGN。
 	The diagram corrections couldn't be saved: {e}	无法保存棋图更正：{e}
 	Diagram {n}, page {p}: {state}	棋图 {n}，第 {p} 页：{state}
 	Page {p} · diagram {n} of {m}	第 {p} 页 · 棋图 {n}/{m}

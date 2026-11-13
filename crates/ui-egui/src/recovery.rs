@@ -175,9 +175,7 @@ impl RecoveryStore {
     /// `%LOCALAPPDATA%\PdfCraft\Recovery` (Windows), or `$XDG_DATA_HOME/pdfcraft/recovery` /
     /// `~/.local/share/pdfcraft/recovery` (others, in lower case like their data folders).
     pub fn default_dir() -> Option<PathBuf> {
-        let dirs = pdfcraft_platform::app_dirs::AppDirs::current();
-        let xdg = dirs.portable.dir.is_none() && cfg!(all(unix, not(target_os = "macos")));
-        dirs.data.as_ref().map(|d| d.join(if xdg { "recovery" } else { "Recovery" }))
+        pdfcraft_platform::app_dirs::AppDirs::current().recovery()
     }
 
     pub fn dir(&self) -> &Path {
@@ -281,21 +279,65 @@ fn now_secs() -> u64 {
 
 impl PdfCraftApp {
     /// Turn on autosave into `store`, and look for documents a previous session left behind.
-    /// The chess games are autosaved in its `chess` folder, under the same instance lock.
+    /// The chess games are autosaved in its `chess` folder, under the same instance lock. The
+    /// diagram corrections and the books' PGNs are kept in the app's data folder since plan
+    /// A9-G5a ([`PdfCraftApp::use_chess_data`]).
     pub fn enable_recovery(&mut self, store: RecoveryStore) {
         store.claim();
         self.chess.games.autosave_to_files(&store);
-        // The diagram corrections beside them (plan A8, P3b2; the web keeps them in `Storage`).
-        #[cfg(not(target_arch = "wasm32"))]
-        self.chess.corrections.use_folder(store.dir().join("chess").join("corrections"));
-        // The books' PGNs too (plan "Carregar PGN do livro", R6a).
-        #[cfg(not(target_arch = "wasm32"))]
-        self.chess.book_pgns.use_folder(store.dir().join("chess").join("reference"));
         self.recoverable = store.list();
         if !self.recoverable.is_empty() {
             self.dialog = Some(crate::Dialog::Recovery);
         }
         self.recovery = Some(store);
+    }
+
+    /// Keep the diagram corrections and the books' PGNs in `dir` (the app's `chess` folder: its
+    /// `corrections` and `reference`, plan A9-G5a, decision D17, the folder the command line uses
+    /// too), made open to its owner alone, after merging in what earlier builds kept in `earlier`
+    /// (the recovery folder's `chess`): by each kind's rule, never copied over, `earlier` only read,
+    /// so a build that still writes there keeps working and what it changes since is brought in
+    /// at the next start, and said.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn use_chess_data(&mut self, dir: std::path::PathBuf, earlier: Option<std::path::PathBuf>) {
+        if let Err(e) = pdfcraft_platform::app_dirs::create_private_dir(&dir) {
+            log::warn!("chess folder {} can't be made: {e}", dir.display());
+        }
+        let (corrections, reference) = (dir.join("corrections"), dir.join("reference"));
+        if let Some(earlier) = earlier {
+            let changed = [
+                pdfcraft_engine::chess::corrections::DirStore::new(&corrections)
+                    .migrate_from(&earlier.join("corrections"))
+                    .map(|m| m.changed)
+                    .map_err(|e| e.to_string()),
+                pdfcraft_engine::chess::reference_store::DirStore::new(&reference)
+                    .migrate_from(&earlier.join("reference"))
+                    .map(|m| m.changed)
+                    .map_err(|e| e.to_string()),
+            ];
+            let mut brought = 0usize;
+            for c in changed {
+                match c {
+                    Ok(n) => brought = brought.saturating_add(n),
+                    Err(e) => log::warn!("chess stores of an earlier build not brought in: {e}"),
+                }
+            }
+            if brought > 0 {
+                self.notify(tl!("Diagram corrections or books' PGNs an earlier PdfCraft changed were brought in.").to_string());
+            }
+        }
+        self.chess.corrections.use_folder(corrections);
+        self.chess.book_pgns.use_folder(reference);
+    }
+
+    /// [`PdfCraftApp::use_chess_data`] with the app's own folders: `chess` in its data folder,
+    /// and the recovery folder's `chess` to bring in. Nothing without a data folder.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn use_default_chess_data(&mut self) {
+        let dirs = pdfcraft_platform::app_dirs::AppDirs::current();
+        if let Some(chess) = dirs.chess() {
+            self.use_chess_data(chess, dirs.recovery().map(|r| r.join("chess")));
+        }
     }
 
     /// Write snapshots of documents changed since the last autosave (called periodically).

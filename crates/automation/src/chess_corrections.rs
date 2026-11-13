@@ -1,8 +1,9 @@
 //! Chess ▸ Diagrams: the corrections kept on disk, without the interface (plan A8, P3a1):
 //! `chess_correction_list`, `chess_correction_set` and `chess_correction_delete`, one verb each.
 //!
-//! The corrections live in a folder confined to `--root` (`store`, [`DEFAULT_STORE`] by default),
-//! one file per document, in the format of `pdfcraft_engine::chess::corrections`; a tool lists and
+//! The corrections live in a folder confined to `--root` (`store`; by default the app's own,
+//! plan A9-G5a, `crate::chess_store_migrate`; [`DEFAULT_STORE`] where there is none), one file per
+//! document, in the format of `pdfcraft_engine::chess::corrections`; a tool lists and
 //! changes the corrections of the document it is given, never another's. A tool that only reads
 //! them (the listing, the reading tools) needs only read access to the folder, and a folder that
 //! is not there is an empty store (plan A9-G3a, A4-13). What is read from a document is kept only
@@ -19,9 +20,11 @@ use pdfcraft_engine::chess::store::{Persist, persist_policy};
 use pdfcraft_engine::chess::{ChessDocument, DocKeys};
 use serde_json::{Value, json};
 
+use crate::chess_store_migrate::StoreAt;
 use crate::{Args, Automation, Result, ToolError, failed};
 
-/// The corrections folder when `store` is not given (relative to `--root` when set).
+/// The corrections folder when `store` is not given and no app folder is known (relative to
+/// `--root` when set).
 pub(crate) const DEFAULT_STORE: &str = ".pdfcraft/chess-corrections";
 
 /// Where the tools keep corrections: a folder. The web build has no folders: there the store is
@@ -66,18 +69,30 @@ fn kind_name(kind: Kind) -> &'static str {
     }
 }
 
+/// What a reading tool says when the corrections are kept in the app's folder, outside the
+/// folders the tools are confined to (plan A9-G5a): none read, and why.
+fn outside_root() -> Value {
+    json!({ "file": Value::Null, "kept": 0, "outside_root": true, "why": "the corrections are kept in the app's data folder, outside the folders the tools are confined to: give store to read some" })
+}
+
 impl Automation {
-    /// The corrections folder `store` names, confined to the root, to change.
+    /// The corrections folder `store` names (by default the app's, plan A9-G5a), confined to the
+    /// root, to change.
     pub(crate) fn correction_store(&self, a: &Args) -> Result<FolderStore> {
-        let store = a.opt_str("store")?.unwrap_or(DEFAULT_STORE);
-        Ok(Self::correction_folder(self.resolve(store, true)?))
+        match self.chess_store_at(a, crate::chess_store_migrate::CORRECTIONS, true)? {
+            StoreAt::Folder(dir) => Ok(Self::correction_folder(dir)),
+            StoreAt::OutsideRoot => Err(failed("the corrections folder is outside the allowed folders")),
+        }
     }
 
     /// The corrections folder `store` names, confined to the root, only to read: read access is
-    /// enough, and a folder that is not there is an empty store (A4-13).
-    pub(crate) fn correction_store_to_read(&self, a: &Args) -> Result<FolderStore> {
-        let store = a.opt_str("store")?.unwrap_or(DEFAULT_STORE);
-        Ok(Self::correction_folder(self.resolve_to_read(store)?))
+    /// enough, and a folder that is not there is an empty store (A4-13). `None`: the app's folder,
+    /// outside the folders the tools are confined to.
+    pub(crate) fn correction_store_to_read(&self, a: &Args) -> Result<Option<FolderStore>> {
+        Ok(match self.chess_store_at(a, crate::chess_store_migrate::CORRECTIONS, false)? {
+            StoreAt::Folder(dir) => Some(Self::correction_folder(dir)),
+            StoreAt::OutsideRoot => None,
+        })
     }
 
     fn correction_folder(dir: std::path::PathBuf) -> FolderStore {
@@ -115,10 +130,16 @@ impl Automation {
             self.session.set_chess_corrections(id, None);
             return Ok(Value::Null);
         }
-        let store = self.correction_store_to_read(a)?;
+        let Some(store) = self.correction_store_to_read(a)? else {
+            self.session.set_chess_corrections(id, None);
+            return Ok(outside_root());
+        };
+        let fingerprints = self.session.chess_fingerprints(id).ok_or_else(|| failed("no such document"))?;
         let doc = self.session.get(id).ok_or_else(|| failed("no such document"))?;
-        let (keys, pages) = (doc.doc_keys(), doc.info.pages.len());
-        let loaded = match store.load(&keys, pages) {
+        let keys = doc.doc_keys();
+        // With the fingerprints, a file several books shared gives this book its own entries
+        // (plan A9-G1b).
+        let (loaded, other_book) = match store.load_with(&keys, fingerprints.pages()) {
             Ok(l) => l,
             // A document with no name, path or identifier has nothing kept under it.
             Err(StoreError::NoKeys) => {
@@ -128,7 +149,7 @@ impl Automation {
             Err(e) => return Err(failed(format!("{e} (pass corrections: false to read without the corrections)"))),
         };
         let kept = loaded.file.live().count();
-        let reply = with_store_notes(json!({ "file": loaded.name, "kept": kept }), &loaded);
+        let reply = with_store_notes(json!({ "file": loaded.name, "kept": kept, "other_book": other_book.len() }), &loaded);
         self.session.set_chess_corrections(id, Some(loaded.file));
         Ok(reply)
     }
@@ -136,7 +157,9 @@ impl Automation {
     /// After document `id` was saved: its corrections in the default folder, found under the
     /// keys it had `before`, recorded under its keys now. Whether there were any.
     pub(crate) fn rekey_chess_corrections(&self, id: DocId, before: &DocKeys) -> std::result::Result<bool, String> {
-        let Ok(dir) = self.resolve(DEFAULT_STORE, true) else { return Ok(false) };
+        let Ok(StoreAt::Folder(dir)) = self.chess_store_at(&Args(&Value::Null), crate::chess_store_migrate::CORRECTIONS, true) else {
+            return Ok(false);
+        };
         let doc = self.session.get(id).ok_or("no such document")?;
         #[cfg(not(target_arch = "wasm32"))]
         let store = DirStore::new(dir);
@@ -149,10 +172,15 @@ impl Automation {
     }
 
     pub(crate) fn chess_correction_list(&self, a: &Args) -> Result<Value> {
-        let store = self.correction_store_to_read(a)?;
+        let Some(store) = self.correction_store_to_read(a)? else {
+            let mut reply = outside_root();
+            reply["count"] = json!(0);
+            reply["corrections"] = json!([]);
+            return Ok(reply);
+        };
         let doc = self.doc(a)?;
         let (keys, fingerprints) = (doc.doc_keys(), doc.page_fingerprints());
-        let loaded = store.load(&keys, fingerprints.len()).map_err(failed)?;
+        let (loaded, other_book) = store.load_with(&keys, &fingerprints).map_err(failed)?;
         let located = loaded.file.locate(&fingerprints);
         let orphans = located.iter().filter(|(at, _)| *at == Located::Orphan).count();
         let corrections: Vec<Value> = located
@@ -169,6 +197,8 @@ impl Automation {
                     "original_fen": e.orig.as_ref().and_then(|o| o.fen.clone()),
                     "at": e.at,
                     "rev": e.rev,
+                    // In a file several books shared, on no page of this one (plan A9-G1b).
+                    "other_book": other_book.contains(&e.uid),
                 })
             })
             .collect();
@@ -224,8 +254,8 @@ impl Automation {
         let doc = self.session.get(id).ok_or_else(|| failed("no such document"))?;
         // Asked once per diagram: the fingerprints indexed once (plan A9-G2b).
         let (keys, fingerprints) = (doc.doc_keys(), Fingerprints::new(doc.page_fingerprints()));
-        let kept = match store.load(&keys, fingerprints.pages().len()) {
-            Ok(loaded) => Some(loaded.file),
+        let kept = match store.load_with(&keys, fingerprints.pages()) {
+            Ok((loaded, _)) => Some(loaded.file),
             Err(StoreError::NoKeys) => None,
             Err(e) => return Err(failed(e)),
         };
@@ -278,11 +308,11 @@ impl Automation {
     /// The correction `a`'s store keeps for the diagram with box `rect` on `page` of document
     /// `id` as it is now: its uid and position.
     pub(crate) fn kept_correction(&self, a: &Args, id: DocId, page: usize, rect: [f32; 4]) -> Result<Option<(String, String)>> {
-        let store = self.correction_store_to_read(a)?;
+        let Some(store) = self.correction_store_to_read(a)? else { return Ok(None) };
         let doc = self.session.get(id).ok_or_else(|| failed("no such document"))?;
         let (keys, fingerprints) = (doc.doc_keys(), doc.page_fingerprints());
-        let loaded = match store.load(&keys, fingerprints.len()) {
-            Ok(loaded) => loaded,
+        let loaded = match store.load_with(&keys, &fingerprints) {
+            Ok((loaded, _)) => loaded,
             Err(StoreError::NoKeys) => return Ok(None),
             Err(e) => return Err(failed(e)),
         };
@@ -316,7 +346,7 @@ impl Automation {
         let (keys, fingerprints) = (doc.doc_keys(), doc.page_fingerprints());
         let new = NewCorrection { page, rect, orig: Some(Original { fen: read, model: None }), fen, kind };
         let at = now();
-        let (uid, loaded) = store.update(&keys, fingerprints.len(), |f| f.set(new, at, &fingerprints)).map_err(failed)?;
+        let (uid, loaded, _) = store.update_with(&keys, &fingerprints, |f| f.set(new, at, &fingerprints)).map_err(failed)?;
         let rev = loaded.file.entries.iter().find(|e| e.uid == uid).map_or(0, |e| e.rev);
         Ok((uid, rev, loaded))
     }
@@ -325,11 +355,12 @@ impl Automation {
         let store = self.correction_store(a)?;
         let uid = a.str("uid")?.to_owned();
         let doc = self.doc(a)?;
-        let (keys, pages) = (doc.doc_keys(), doc.page_fingerprints().len());
+        let (keys, fingerprints) = (doc.doc_keys(), doc.page_fingerprints());
         let at = now();
-        let deleted = store.update(&keys, pages, |f| if f.delete(&uid, at) { Ok(()) } else { Err(CorrectionError::NoSuchCorrection(uid.clone())) });
+        let deleted = store
+            .update_with(&keys, &fingerprints, |f| if f.delete(&uid, at) { Ok(()) } else { Err(CorrectionError::NoSuchCorrection(uid.clone())) });
         match deleted {
-            Ok((_, loaded)) => Ok(with_store_notes(json!({ "uid": uid, "deleted": true, "file": loaded.name }), &loaded)),
+            Ok((_, loaded, _)) => Ok(with_store_notes(json!({ "uid": uid, "deleted": true, "file": loaded.name }), &loaded)),
             Err(e) => Err(failed(format!("{e} (see chess_correction_list)"))),
         }
     }
