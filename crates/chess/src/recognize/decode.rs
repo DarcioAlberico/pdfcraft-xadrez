@@ -110,11 +110,6 @@ struct Violation {
     target: Option<u8>,
 }
 
-fn is_light(reading_index: usize) -> bool {
-    // a8 (index 0) is light, and the colour alternates.
-    (reading_index / 8 + reading_index % 8).is_multiple_of(2)
-}
-
 fn violations(state: &[u8; 64], rules: Rules) -> Vec<Violation> {
     let mut v = Vec::new();
     let class = |color, kind| class_of(Some(Piece::new(color, kind)));
@@ -154,25 +149,17 @@ fn violations(state: &[u8; 64], rules: Rules) -> Vec<Violation> {
         }
     }
 
+    let placement = super::placement_of(state);
     for color in [Color::White, Color::Black] {
         let own: Vec<usize> = (0..64).filter(|&i| state.get(i).and_then(|c| piece_of(*c)).is_some_and(|p| p.color == color)).collect();
         if own.len() > 16 {
             v.push(Violation { problem: Problem::TooManyPieces(color), squares: own, target: None });
             continue;
         }
-        let extra = |kind, initial: usize| count(class(color, kind)).saturating_sub(initial);
-        let mut promoted = extra(PieceKind::Knight, 2) + extra(PieceKind::Bishop, 2) + extra(PieceKind::Rook, 2) + extra(PieceKind::Queen, 1);
-        if rules.bishop_colors {
-            // Bishops of one square colour beyond the first were promoted too; count only what
-            // the plain bishop count above has not already counted.
-            let bishop = class(color, PieceKind::Bishop);
-            let light = (0..64).filter(|&i| state.get(i) == Some(&bishop) && is_light(i)).count();
-            let dark = (0..64).filter(|&i| state.get(i) == Some(&bishop) && !is_light(i)).count();
-            let by_colour = light.saturating_sub(1) + dark.saturating_sub(1);
-            let by_count = (light + dark).saturating_sub(2);
-            promoted += by_colour.saturating_sub(by_count);
-        }
-        if count(class(color, PieceKind::Pawn)) + promoted > 8 {
+        // The rules' own count (plan A9-F5, A1-22: one rule, not two that agreed by proof); more
+        // than eight pawns is a violation of its own, and also one here, as it always was.
+        let promoted = crate::rules::promotions(&placement, color, rules.bishop_colors);
+        if promoted > crate::rules::missing_pawns(&placement, color) || count(class(color, PieceKind::Pawn)) > 8 {
             v.push(Violation { problem: Problem::TooManyPromotions(color), squares: own, target: None });
         }
     }
@@ -421,6 +408,37 @@ mod tests {
         assert!(d.expansions <= 10);
         let tiny = Limits { max_states: 5, ..Limits::default() };
         assert!(!decode(&Probabilities::new(&v).unwrap(), &tiny).satisfied);
+    }
+
+    proptest::proptest! {
+        #![proptest_config(proptest::prelude::ProptestConfig::with_cases(64))]
+
+        /// Plan A9-F5 (A1-22): the decoder and the rules are one rule. A board read as a
+        /// classifier reads one (most squares empty, some pieces, each with a second guess, kings
+        /// or not, too many of a kind or not): a decoding that satisfied the decoder breaks none
+        /// of the rules a position must keep whoever is to move, and one is found most times.
+        #[test]
+        fn a_satisfied_decoding_breaks_no_rule(cells in proptest::collection::vec((0usize..64, 0usize..CLASS_COUNT, 0usize..CLASS_COUNT), 2..32)) {
+            let mut v = vec![0.1 / 12.0; 64 * CLASS_COUNT];
+            for square in 0..64 {
+                if let Some(x) = v.get_mut(square * CLASS_COUNT + usize::from(EMPTY)) {
+                    *x = 0.9;
+                }
+            }
+            for (square, first, second) in cells {
+                for class in 0..CLASS_COUNT {
+                    let p = if class == first { 0.6 } else if class == second { 0.35 } else { 0.05 / 11.0 };
+                    if let Some(x) = v.get_mut(square * CLASS_COUNT + class) {
+                        *x = p;
+                    }
+                }
+            }
+            let d = decode(&Probabilities::new(&v).unwrap(), &Limits::default());
+            if d.satisfied {
+                let placement = placement_of(&d.cells);
+                proptest::prop_assert_eq!(crate::rules::fatal_violations(&placement), Vec::new(), "{}", fen(&d));
+            }
+        }
     }
 
     #[test]

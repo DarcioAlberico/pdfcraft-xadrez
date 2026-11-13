@@ -71,8 +71,8 @@ use crate::theme::Tokens;
 /// Seconds after the last change before a collection is written.
 pub(crate) const DEBOUNCE_SECS: f64 = 2.0;
 
-/// Largest PGN file read.
-const MAX_PGN_FILE_BYTES: u64 = 32 << 20;
+/// Largest PGN file read: the one cap of every PGN read (plan A9-F4).
+const MAX_PGN_FILE_BYTES: u64 = pdfcraft_engine::chess::pdfcraft_chess::pgn::MAX_PGN_FILE_BYTES as u64;
 
 /// The id of the collection kept for when no document is open.
 const NO_DOCUMENT: &str = "no-document";

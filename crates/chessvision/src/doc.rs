@@ -147,6 +147,10 @@ pub enum ReviewFlag {
     UnknownChessFont { font: String },
     /// The text layer is not to be believed (read the page with OCR instead).
     PoorTextLayer { reason: String },
+    /// The page is printed in descriptive notation (`P-K4`, `N-KB3`, `P4R`; plan A9-L7, R6-07),
+    /// which the reader does not convert (decision D27): `words` of it, the first few as
+    /// `examples`. Its moves are prose here.
+    DescriptiveNotation { words: usize, examples: Vec<String> },
     // --- Games ---
     /// A move that is not legal where it stands. The line stops there.
     IllegalMove { text: String, near: Vec<String> },
@@ -178,6 +182,9 @@ pub enum ReviewFlag {
     /// A comment reached [`games::MAX_COMMENT_BYTES`]; the PGN comment is cut there (the text in
     /// the blocks is whole).
     CommentTruncated,
+    /// The document holds [`games::MAX_GAMES`] games: from this page on, no game starts, and its
+    /// moves stay unchecked (plan A9-L7, A2-07).
+    TooManyGames { max: usize },
     // --- The book's own PGN (plan "Carregar PGN do livro", R2) ---
     /// The reader could not play the move; the book's PGN plays it as `san` ([`reference::link`]).
     /// The reader's status is kept.
@@ -314,6 +321,13 @@ pub struct ChessPage {
     /// with the page after it ([`DocBuilder::add_read_page`]) still passes it on.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub trailing: Option<u32>,
+    /// The headings the walk took for running heads (plan A9-L1b, A2-04), by their place among
+    /// the page's blocks: a heading the page before or the one before that also set at the same
+    /// height (`Issue 47` atop every page of an issue). Not a role, because it needs the pages
+    /// before it: the walk writes it, beside what it decided of the moves, and walking the page
+    /// again writes it afresh. Not written when the page has none.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub running_heads: Vec<u32>,
 }
 
 impl ChessPage {
@@ -321,6 +335,30 @@ impl ChessPage {
     /// else English.
     pub fn text_language(&self) -> Lang {
         self.text_lang.lang().or_else(|| self.lang.lang()).unwrap_or(Lang::En)
+    }
+
+    /// Whether block `block` is the page's furniture rather than the book's text (plan A9-L1b,
+    /// A2-04, A2-06): its printed number, the text inside a diagram's box ([`BlockRole::is_furniture`])
+    /// or a running head ([`ChessPage::running_heads`]). The exports (HTML, EPUB, Word, RTF,
+    /// Markdown, the annotated PGN) pass it over, as the walk does; a game's header stays, the
+    /// book's own words.
+    pub fn is_furniture(&self, block: usize) -> bool {
+        let running = u32::try_from(block).is_ok_and(|b| self.running_heads.contains(&b));
+        running || self.blocks.get(block).and_then(Block::role).is_some_and(|r| r.is_furniture())
+    }
+
+    /// The blocks an export writes, with their place among the page's blocks: all but its
+    /// furniture ([`ChessPage::is_furniture`]).
+    pub fn book_blocks(&self) -> impl Iterator<Item = (usize, &Block)> {
+        self.blocks.iter().enumerate().filter(|(bi, _)| !self.is_furniture(*bi))
+    }
+
+    /// The page's number as printed on it, a bare number at its head or foot
+    /// ([`BlockRole::Folio`]); `None` when it prints none, or two that differ.
+    pub fn folio(&self) -> Option<String> {
+        let mut folios = self.blocks.iter().filter(|b| b.role() == Some(BlockRole::Folio)).map(|b| plain_text(b.inlines()).trim().to_owned());
+        let first = folios.next().filter(|f| !f.is_empty())?;
+        folios.all(|f| f == first).then_some(first)
     }
 }
 
@@ -388,6 +426,47 @@ impl PageLabel {
     pub fn number(&self) -> u64 {
         u64::from(self.physical).saturating_add(1)
     }
+
+    /// The labels of a document's pages, by index, for a book that may print its page numbers
+    /// without saying them in `/PageLabels` (plan A9-L1b, §2.6): `labels` themselves when they
+    /// label any page; else each page of `doc` takes the number it prints ([`ChessPage::folio`]),
+    /// when that number is as far from the page's index as most pages' numbers are (so a stray
+    /// bare number is not taken for one), and a page between two such pages that prints none
+    /// (a chapter's first page) takes the number its place gives. The other pages keep their own
+    /// number.
+    pub fn with_folios(labels: &[String], doc: &ChessDoc) -> Vec<String> {
+        let at = |i: usize| u32::try_from(i).unwrap_or(u32::MAX);
+        if labels.iter().enumerate().any(|(i, l)| PageLabel::new(Some(l), at(i)).printed.is_some()) {
+            return labels.to_vec();
+        }
+        // How far each printed number is from its page's index.
+        let offsets: Vec<(u32, i64)> =
+            doc.pages.iter().filter_map(|p| Some((p.index, p.folio()?.parse::<i64>().ok()?.saturating_sub(i64::from(p.index))))).collect();
+        let mut counts: Vec<(i64, usize)> = Vec::new();
+        for &(_, o) in &offsets {
+            match counts.iter_mut().find(|(c, _)| *c == o) {
+                Some((_, n)) => *n = n.saturating_add(1),
+                None => counts.push((o, 1)),
+            }
+        }
+        // The most common offset; a tie between two is no offset at all.
+        counts.sort_by_key(|c| std::cmp::Reverse(c.1));
+        let offset = match counts.as_slice() {
+            [(o, _)] => *o,
+            [(o, n), (_, m), ..] if n > m => *o,
+            _ => return labels.to_vec(),
+        };
+        let agreeing = || offsets.iter().filter(|(_, o)| *o == offset).map(|(p, _)| *p);
+        let (Some(first), Some(last)) = (agreeing().min(), agreeing().max()) else { return labels.to_vec() };
+        let mut out = labels.to_vec();
+        for page in doc.pages.iter().filter(|p| (first..=last).contains(&p.index)) {
+            let number = i64::from(page.index).saturating_add(offset);
+            if let (true, Some(slot)) = (number >= 1, usize::try_from(page.index).ok().and_then(|i| out.get_mut(i))) {
+                *slot = number.to_string();
+            }
+        }
+        out
+    }
 }
 
 /// The page as the book numbers it: its printed label, else its own number from 1.
@@ -423,11 +502,12 @@ pub enum Block {
 
 /// What a text block is to the book (plan A9-L1, §2.6; A2-04, A2-06), decided from its page alone
 /// when the page is built or walked, so a page reads the same whatever was read before it. Only
-/// [`BlockRole::Content`] is the book's text; the others are the page's furniture, which the walk
-/// passes over (a game's header gives the next game its tags). A running head is not a role: it
-/// needs the pages before it. Written in the document's JSON as `"role"` (`"folio"`,
-/// `"game_header"`, `"diagram_text"`), not at all for content, so a document with none reads as
-/// before.
+/// [`BlockRole::Content`] is read for moves; the walk passes over the others (a game's header
+/// gives the next game its tags). The exports pass over the page's furniture
+/// ([`BlockRole::is_furniture`]) and keep a game's header, the book's own words. A running head is
+/// not a role: it needs the pages before it ([`ChessPage::running_heads`]). Written in the
+/// document's JSON as `"role"` (`"folio"`, `"game_header"`, `"diagram_text"`), not at all for
+/// content, so a document with none reads as before.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum BlockRole {
@@ -448,6 +528,12 @@ impl BlockRole {
     /// Whether this is the book's text.
     pub fn is_content(&self) -> bool {
         *self == BlockRole::Content
+    }
+
+    /// Whether this is the page's furniture, which no export writes (plan A9-L1b): its printed
+    /// number, or text inside a diagram's box (the diagram is drawn and said in words instead).
+    pub fn is_furniture(&self) -> bool {
+        matches!(self, BlockRole::Folio | BlockRole::DiagramText)
     }
 }
 
@@ -1046,11 +1132,45 @@ pub struct PageInput<'a> {
     pub ocr: bool,
 }
 
-/// Builds a [`ChessDoc`] page by page, carrying open games across page breaks.
+/// The pages a reading takes (plan A9-G7b, A2-16; glossary "Conjunto de páginas"): of a
+/// document's, in the book's order, each once. Every reading of a document's pages goes through
+/// it (the engine's scan, and so its reading and its exports), so pages asked for out of order
+/// are read in the book's, and a page asked for twice once: `pages: [2, 1]` had cut a game read
+/// backwards (92 valid moves to 72) and `[1, 1]` doubled its games and its HTML's ids.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct PageSet(Vec<usize>);
+
+impl PageSet {
+    /// `pages` (from 0) of a document of `count` pages, in order, each once; none given: every
+    /// page. Fails, saying the first, for a page past the end.
+    pub fn new(pages: &[usize], count: usize) -> Result<PageSet, String> {
+        if let Some(p) = pages.iter().find(|p| **p >= count) {
+            return Err(format!("page {} is out of range: the document has {count} pages", p.saturating_add(1)));
+        }
+        if pages.is_empty() {
+            return Ok(PageSet((0..count).collect()));
+        }
+        let mut pages = pages.to_vec();
+        pages.sort_unstable();
+        pages.dedup();
+        Ok(PageSet(pages))
+    }
+
+    /// The pages, from 0, in order.
+    pub fn pages(&self) -> &[usize] {
+        &self.0
+    }
+}
+
+/// Builds a [`ChessDoc`] page by page, carrying open games across page breaks. A game goes on
+/// only onto the page after its own: a page added after a gap (or out of the book's order)
+/// starts with no game open and no diagram waiting (plan A9-G7b, A2-16).
 #[derive(Debug, Default)]
 pub struct DocBuilder {
     pages: Vec<ChessPage>,
     walker: games::Walker,
+    /// The index of the last page added.
+    last: Option<u32>,
     /// The last page added (its index) and the caption label it left for the page after it.
     carry: Option<(u32, u32)>,
     /// The offsets of the page numbers from the pages' indices seen so far, newest last.
@@ -1079,8 +1199,19 @@ impl DocBuilder {
         self.text_lang = tag;
     }
 
-    /// Add the next page. Pages are taken in the order added.
+    /// A page `index` is about to be added: after a gap, nothing goes on onto it.
+    fn next_page(&mut self, index: u32) {
+        if self.last.is_some_and(|last| last.checked_add(1) != Some(index)) {
+            self.walker.gap();
+            self.heads = build::RunningHeads::default();
+        }
+        self.last = Some(index);
+    }
+
+    /// Add the next page. Pages are taken in the order added; a game goes on onto it only from
+    /// the page before it ([`PageSet`]).
     pub fn add_page(&mut self, input: &PageInput<'_>) {
+        self.next_page(input.index);
         // A caption at the foot of a page is the next page's, not a later one's.
         let carried = self.carry.take().filter(|(index, _)| index.checked_add(1) == Some(input.index)).map(|(_, n)| n);
         let (mut page, trailing, folios) = build::page(input, &mut self.walker, &mut self.heads, carried, &self.folios);
@@ -1103,6 +1234,7 @@ impl DocBuilder {
     /// the page's first diagram takes that number unless a caption of its own numbers it, as the
     /// whole-document reader gives it ([`DocBuilder::add_page`]).
     pub fn add_read_page(&mut self, mut page: ChessPage) {
+        self.next_page(page.index);
         let carried = self.carry.take().filter(|(index, _)| index.checked_add(1) == Some(page.index)).map(|(_, n)| n);
         if let Some(Block::Diagram(first)) = page.blocks.iter_mut().find(|b| matches!(b, Block::Diagram(_)))
             && first.puzzle.is_none()
@@ -1124,7 +1256,7 @@ impl DocBuilder {
                 }
             }
         }
-        build::walk(page.index, page.ocr, &mut page.blocks, &mut self.walker, page.trailing, &mut self.heads);
+        page.running_heads = build::walk(page.index, page.ocr, &mut page.blocks, &mut self.walker, page.trailing, &mut self.heads);
         self.carry = page.trailing.map(|n| (page.index, n));
         self.pages.push(page);
     }
@@ -1140,6 +1272,9 @@ impl DocBuilder {
     pub fn finish(self) -> ChessDoc {
         let mut pages = self.pages;
         let done = self.walker.finish();
+        if let Some(page) = done.capped.and_then(|p| pages.iter_mut().find(|q| q.index == p)) {
+            page.review.push(ReviewFlag::TooManyGames { max: games::MAX_GAMES });
+        }
         for page in &mut pages {
             for block in &mut page.blocks {
                 match block {

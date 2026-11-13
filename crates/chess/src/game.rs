@@ -107,7 +107,7 @@ impl PgnStopReason {
     }
 }
 
-/// What reading a PGN noted about a piece of it.
+/// What reading a PGN noted about a piece of it, or writing a document's games left out (plan A9-F4).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PgnWarningKind {
     /// A variation kept as a comment: no move stood before it for it to replace.
@@ -134,6 +134,16 @@ pub enum PgnWarningKind {
     /// en-passant square no double step left dropped, the clock kept to 100, the move number to
     /// 1..=[`MAX_MOVE_NUMBER`] (A1-08, A1-20).
     FenRepaired,
+    /// Writing a document's game (plan A9-F4): a move the board refused, with every move after
+    /// it, left out of what was written; `at` is the move it was to follow.
+    MovesLeftOut,
+    /// Writing a document's game: its start position is not one a game can start from, so the
+    /// game was left out of what was written.
+    GameLeftOut,
+    /// The `Result` tag says one result and the board at the end of the main line another (a
+    /// mate, a stalemate): the tag is kept, never written over (plan A9-F5, R6-04); `at` is the
+    /// main line's last move.
+    ResultMismatch,
 }
 
 impl PgnWarningKind {
@@ -149,6 +159,9 @@ impl PgnWarningKind {
             PgnWarningKind::NagDropped => "nag_dropped",
             PgnWarningKind::ResultIgnored => "result_ignored",
             PgnWarningKind::FenRepaired => "fen_repaired",
+            PgnWarningKind::MovesLeftOut => "moves_left_out",
+            PgnWarningKind::GameLeftOut => "game_left_out",
+            PgnWarningKind::ResultMismatch => "result_mismatch",
         }
     }
 
@@ -163,6 +176,8 @@ impl PgnWarningKind {
                 | PgnWarningKind::NagDropped
                 | PgnWarningKind::ResultIgnored
                 | PgnWarningKind::FenRepaired
+                | PgnWarningKind::MovesLeftOut
+                | PgnWarningKind::GameLeftOut
         )
     }
 }
@@ -212,6 +227,9 @@ pub enum GameError {
     TooDeep,
     /// The PGN is longer than [`MAX_PGN_LEN`].
     PgnTooLong,
+    /// The game is played in a variant this reader does not read (its `Variant` tag): refused
+    /// whole, never read as chess and cut at its first move of another game (plan A9-F5, R6-05).
+    UnsupportedVariant(String),
     /// A tag name that PGN does not allow (letters, digits and `_` only), or one too long.
     BadTag,
 }
@@ -232,6 +250,7 @@ impl fmt::Display for GameError {
             GameError::TooLong => write!(f, "the game is too long"),
             GameError::TooDeep => write!(f, "variations would nest too deep (at most {MAX_DEPTH})"),
             GameError::PgnTooLong => write!(f, "the PGN is too long"),
+            GameError::UnsupportedVariant(name) => write!(f, "the game is {name}, a variant PdfCraft does not read"),
             GameError::BadTag => write!(f, "a tag name has letters, digits and _ only"),
         }
     }
@@ -246,7 +265,8 @@ pub enum Outcome {
     /// The side to move is mated.
     Checkmate,
     Stalemate,
-    /// Fifty moves without a capture or a pawn move.
+    /// Fifty moves without a capture or a pawn move: a draw a player may claim, never a result
+    /// (A1-04).
     FiftyMoves,
 }
 
@@ -266,9 +286,8 @@ pub enum Token {
         depth: usize,
     },
     /// A comment after move `node` (on node 0: before the first move), or, with `before`, the
-    /// comment before move `node`. A comment before a first reply comes where PGN has room for
-    /// it, right after the comment on the move before (so before that move's variations); one
-    /// before a variation's first move comes right after its `(`.
+    /// comment before move `node`, which comes right before it: after the variations of the move
+    /// before (plan A9-F4), or right after the `(` of a variation it starts.
     Comment {
         node: NodeId,
         text: String,
@@ -349,6 +368,15 @@ fn fresh_revision_past(seen: u64) -> u64 {
     r
 }
 
+/// Where a game's moves stood ([`Game::mark`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MovesMark {
+    nodes: usize,
+    current: NodeId,
+    tip: NodeId,
+    revision: u64,
+}
+
 /// A game from a start position.
 #[derive(Clone, Debug)]
 pub struct Game {
@@ -364,6 +392,14 @@ pub struct Game {
     /// shown, a step forward goes towards it rather than along the first reply, so stepping back
     /// out of a variation and forward again returns into it. Not part of the PGN.
     tip: NodeId,
+    /// The tags the moves decide, as they stood when read or set (plan A9-F4, R6-08): the
+    /// main line's length when the `PlyCount` tag was, and its first [`crate::pgn::ECO_PLIES`]
+    /// moves when the `ECO` tag was. The writer keeps a tag while the moves still say what it
+    /// was given for ([`crate::pgn::write`]); `None` when the moves never did.
+    ply_count_for: Option<usize>,
+    eco_for: Option<Vec<Option<Move>>>,
+    /// The moves in reading order, read once for each revision ([`line::ReadingCache`]).
+    reading: line::ReadingCache,
 }
 
 impl Default for Game {
@@ -379,7 +415,16 @@ impl Game {
     }
 
     fn from_board(board: Board) -> Game {
-        Game { nodes: vec![Node::start(board)], current: 0, tags: Vec::new(), revision: fresh_revision(), tip: 0 }
+        Game {
+            nodes: vec![Node::start(board)],
+            current: 0,
+            tags: Vec::new(),
+            revision: fresh_revision(),
+            tip: 0,
+            ply_count_for: None,
+            eco_for: None,
+            reading: line::ReadingCache::default(),
+        }
     }
 
     /// A game from `position`, `side` to move when the position does not say.
@@ -450,6 +495,11 @@ impl Game {
     /// How many moves the line shown has.
     pub fn len(&self) -> usize {
         self.line().len().saturating_sub(1)
+    }
+
+    /// How many moves the game holds, every line counted.
+    pub fn move_count(&self) -> usize {
+        self.nodes.len().saturating_sub(1)
     }
 
     /// Whether no move was made at all.
@@ -709,6 +759,34 @@ impl Game {
         self.push_step(None)
     }
 
+    /// Where the game's moves stand, to take back the moves played after it
+    /// ([`Game::roll_back`]).
+    pub fn mark(&self) -> MovesMark {
+        MovesMark { nodes: self.nodes.len(), current: self.current, tip: self.tip, revision: self.revision }
+    }
+
+    /// Take back every move played since `mark` (plan A9-F6, R8-08: a refused list of moves was
+    /// undone by keeping a copy of the whole game for each one). Moves are only ever added at the
+    /// end of the game, so those after the mark are dropped with the replies that point to them,
+    /// and the move shown is the one shown then. Only for moves played since the mark
+    /// ([`Game::play`], [`Game::play_san`], [`Game::play_uci`], [`Game::play_null`]) and nothing
+    /// else; a mark of a game with more moves than this one is ignored. The game stays a tree
+    /// whatever is done with it.
+    pub fn roll_back(&mut self, mark: MovesMark) {
+        if mark.nodes == 0 || mark.nodes > self.nodes.len() {
+            return;
+        }
+        if mark.nodes < self.nodes.len() {
+            self.nodes.truncate(mark.nodes);
+            for n in &mut self.nodes {
+                n.children.retain(|&c| c < mark.nodes);
+            }
+            self.revision = mark.revision;
+        }
+        self.current = if mark.current < mark.nodes { mark.current } else { 0 };
+        self.tip = if mark.tip < mark.nodes { mark.tip } else { self.current };
+    }
+
     /// Whether move `node` is a null move (a pass). The start is not.
     pub fn is_null(&self, node: NodeId) -> bool {
         node != 0 && self.nodes.get(node).is_some_and(|n| n.mv.is_none())
@@ -795,10 +873,12 @@ impl Game {
     /// Make the line through `node` the main line: at each move on the way from the start it
     /// becomes the first reply. The old main line becomes a variation, one level deeper with
     /// everything under it; when that would nest a move deeper than [`MAX_DEPTH`] (where it could
-    /// no longer be written out), the game is left as it is.
-    pub fn promote(&mut self, node: NodeId) {
+    /// no longer be written out), the game is left as it is and [`StructureError::TooDeep`] says
+    /// so (plan A9-F5, A1-19: the refusal was silent); [`StructureError::NoSuchMove`] for a move
+    /// the game does not have.
+    pub fn promote(&mut self, node: NodeId) -> Result<(), StructureError> {
         if node >= self.nodes.len() {
-            return;
+            return Err(StructureError::NoSuchMove);
         }
         let mut promoted = self.clone();
         let mut at = node;
@@ -813,9 +893,11 @@ impl Game {
             at = parent;
         }
         promoted.compact();
-        if promoted.nodes.iter().all(|n| n.depth <= MAX_DEPTH) {
-            *self = promoted;
+        if promoted.nodes.iter().any(|n| n.depth > MAX_DEPTH) {
+            return Err(StructureError::TooDeep);
         }
+        *self = promoted;
+        Ok(())
     }
 
     /// Whether `node` is `ancestor` or comes after it.
@@ -959,12 +1041,13 @@ impl Game {
         if !root.comment.is_empty() || !root.drawings.is_empty() {
             out.push(Token::Comment { node: 0, text: root.comment.clone(), before: false });
         }
-        self.emit_first_reply_before(0, &mut out);
         self.emit_line(0, true, &mut out, 0);
         out
     }
 
-    /// Write the line that goes on from `parent`, with the variations at each move.
+    /// Write the line that goes on from `parent`, with the variations at each move. A move's
+    /// comment-before comes right before it: after the variations of the move before, where
+    /// PGN writes it (`1. e4 {A} (1. d4 d5) {B} 1... e5`, plan A9-F4, A1-06).
     fn emit_line(&self, mut parent: NodeId, mut numbered: bool, out: &mut Vec<Token>, nesting: usize) {
         if nesting > MAX_DEPTH {
             return;
@@ -972,13 +1055,11 @@ impl Game {
         loop {
             let children = &self.node(parent).children;
             let Some(&main) = children.first() else { break };
+            numbered = self.emit_before(main, out) || numbered;
             numbered = self.emit_move(main, numbered, out);
             for &alt in children.iter().skip(1) {
                 out.push(Token::VariationStart);
-                let alt_node = self.node(alt);
-                if !alt_node.comment_before.is_empty() {
-                    out.push(Token::Comment { node: alt, text: alt_node.comment_before.clone(), before: true });
-                }
+                self.emit_before(alt, out);
                 let after = self.emit_move(alt, true, out);
                 self.emit_line(alt, after, out, nesting.saturating_add(1));
                 out.push(Token::VariationEnd);
@@ -988,8 +1069,17 @@ impl Game {
         }
     }
 
-    /// One move, its comment and the comment before its first reply. Returns whether the next
-    /// move needs its number.
+    /// The comment before move `id`, when it has one; whether it had.
+    fn emit_before(&self, id: NodeId, out: &mut Vec<Token>) -> bool {
+        let text = &self.node(id).comment_before;
+        if text.is_empty() {
+            return false;
+        }
+        out.push(Token::Comment { node: id, text: text.clone(), before: true });
+        true
+    }
+
+    /// One move and its comment. Returns whether the next move needs its number.
     fn emit_move(&self, id: NodeId, numbered: bool, out: &mut Vec<Token>) -> bool {
         let n = self.node(id);
         let before = &self.node(n.parent).board;
@@ -1008,25 +1098,13 @@ impl Game {
         if commented {
             out.push(Token::Comment { node: id, text: n.comment.clone(), before: false });
         }
-        self.emit_first_reply_before(id, out) || commented
+        commented
     }
 
-    /// The comment before `id`'s first reply, which PGN can only hold right after `id`'s own
-    /// comment. Returns whether there was one.
-    fn emit_first_reply_before(&self, id: NodeId, out: &mut Vec<Token>) -> bool {
-        let Some(&first) = self.node(id).children.first() else { return false };
-        let text = &self.node(first).comment_before;
-        if text.is_empty() {
-            return false;
-        }
-        out.push(Token::Comment { node: first, text: text.clone(), before: true });
-        true
-    }
-
-    /// The moves as PGN movetext: `1. e4 e5 (1... c5 {Sicilian}) 2. Nf3 $1`. Comments next to
-    /// each other (a move's own and the one before its first reply) are written as one, the way
-    /// PGN reads them back, so the text read and written again is the same (while the two
-    /// together fit in [`MAX_COMMENT_LEN`], which is all of a comment the reader keeps).
+    /// The moves as PGN movetext on one line: `1. e4 e5 (1... c5 {Sicilian}) 2. Nf3 $1`, as the
+    /// one PGN writer writes them ([`crate::pgn::movetext`]). Comments next to each other (a
+    /// move's own and the one before the next move, when no variation comes between) are written
+    /// as one, the way PGN reads them back.
     pub fn movetext(&self) -> String {
         self.movetext_with(PgnStyle::FULL)
     }
@@ -1036,52 +1114,12 @@ impl Game {
     /// numbered where what is written just before it is not a move, so leaving a comment or a
     /// variation out leaves no stray `12...`.
     pub fn movetext_with(&self, style: PgnStyle) -> String {
-        let mut out = String::new();
-        let mut glue = true; // no space before the next piece
-        let mut after_comment = false;
-        for token in kept_tokens(self.tokens(), style) {
-            if let Token::Comment { node, text, before } = &token
-                && after_comment
-                && out.ends_with('}')
-            {
-                out.pop();
-                out.push(' ');
-                out.push_str(&self.comment_body(*node, text, *before));
-                out.push('}');
-                continue;
-            }
-            after_comment = matches!(token, Token::Comment { .. });
-            let piece = match &token {
-                Token::Move { number, color, numbered, san, nags, .. } => {
-                    let mut s = String::new();
-                    if *numbered {
-                        s.push_str(&match color {
-                            Color::White => format!("{number}. "),
-                            Color::Black => format!("{number}... "),
-                        });
-                    }
-                    s.push_str(san);
-                    for code in nags {
-                        s.push_str(&format!(" ${code}"));
-                    }
-                    s
-                }
-                Token::Comment { node, text, before } => format!("{{{}}}", self.comment_body(*node, text, *before)),
-                Token::VariationStart => "(".to_owned(),
-                Token::VariationEnd => ")".to_owned(),
-            };
-            if !(glue || matches!(token, Token::VariationEnd)) {
-                out.push(' ');
-            }
-            out.push_str(&piece);
-            glue = matches!(token, Token::VariationStart);
-        }
-        out
+        crate::pgn::movetext(self, crate::pgn::WriteOptions { style, ..crate::pgn::WriteOptions::default() })
     }
 
     /// What a comment token writes between its braces: for the comment after move `node`, its
     /// drawings' commands first (so the text after them is left as it was read), then its text.
-    fn comment_body(&self, node: NodeId, text: &str, before: bool) -> String {
+    pub(crate) fn comment_body(&self, node: NodeId, text: &str, before: bool) -> String {
         let commands = if before { String::new() } else { drawing_commands(self.drawings(node)) };
         match (commands.is_empty(), text.is_empty()) {
             (true, _) => text.to_owned(),
@@ -1102,7 +1140,9 @@ impl Game {
     }
 
     /// Set tag `name` (an empty value removes it). Names are letters, digits and `_`; values are
-    /// cut to [`MAX_TAG_LEN`] and lose their line breaks.
+    /// cut to [`MAX_TAG_LEN`], and their line breaks and other control characters are spaces (as
+    /// the writer writes them, so a game written and read back keeps its tags). A `PlyCount` or
+    /// `ECO` set is taken to describe the moves as they are now ([`Game::settle_move_tags`]).
     pub fn set_tag(&mut self, name: &str, value: &str) -> Result<(), GameError> {
         let name = name.trim();
         if name.is_empty() || name.len() > MAX_TAG_LEN || !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
@@ -1111,7 +1151,8 @@ impl Game {
         if matches!(name, "FEN" | "SetUp") {
             return Ok(());
         }
-        let value: String = cut(&value.replace(['\r', '\n', '\t'], " "), MAX_TAG_LEN).trim().to_owned();
+        let spaced: String = value.chars().map(|c| if c.is_control() { ' ' } else { c }).collect();
+        let value: String = cut(&spaced, MAX_TAG_LEN).trim().to_owned();
         let at = self.tags.iter().position(|(n, _)| n == name);
         match (at, value.is_empty()) {
             (Some(i), true) => {
@@ -1126,32 +1167,83 @@ impl Game {
             (None, false) if self.tags.len() < MAX_TAGS => self.tags.push((name.to_owned(), value)),
             (None, false) => return Err(GameError::TooLong),
         }
+        match name {
+            "PlyCount" => self.ply_count_for = Some(self.main_plies()),
+            "ECO" => self.eco_for = Some(self.opening()),
+            _ => {}
+        }
         self.revision = fresh_revision();
         Ok(())
     }
 
-    /// The result: decided by a mate or a draw at the end of the main line, else the Result tag,
+    /// Take the tags the moves decide (`PlyCount`, `ECO`) to describe the moves as they are
+    /// now: a game read (from PGN, or a document's score) whose tags came before its moves. The
+    /// writer then keeps them while the main line keeps its length (`PlyCount`) and its first
+    /// [`crate::pgn::ECO_PLIES`] moves (`ECO`); with `complete` false (a reading that stopped
+    /// in the main line, so its moves are not all the text's), `PlyCount` is written from the
+    /// moves, and `ECO` kept only when the opening was read whole.
+    pub fn settle_move_tags(&mut self, complete: bool) {
+        let opening = self.opening();
+        self.ply_count_for = complete.then(|| self.main_plies());
+        self.eco_for = (complete || opening.len() >= crate::pgn::ECO_PLIES).then_some(opening);
+    }
+
+    /// The `PlyCount` the writer writes: the tag as it was while the main line has the length it
+    /// had then, else the main line's length; `None` without the tag.
+    pub(crate) fn written_ply_count(&self) -> Option<String> {
+        let tag = self.tag("PlyCount")?;
+        let plies = self.main_plies();
+        Some(if self.ply_count_for == Some(plies) { tag.to_owned() } else { plies.to_string() })
+    }
+
+    /// Whether the writer keeps the `ECO` tag: the main line still opens with the moves it had
+    /// when the tag was read or set.
+    pub(crate) fn eco_holds(&self) -> bool {
+        self.eco_for.as_ref().is_some_and(|was| *was == self.opening())
+    }
+
+    /// Moves in the main line.
+    fn main_plies(&self) -> usize {
+        self.main_line().len().saturating_sub(1)
+    }
+
+    /// The main line's first [`crate::pgn::ECO_PLIES`] moves (`None` for a null move).
+    fn opening(&self) -> Vec<Option<Move>> {
+        self.main_line().into_iter().skip(1).take(crate::pgn::ECO_PLIES).map(|id| self.node(id).mv).collect()
+    }
+
+    /// The result as read or set: the `Result` tag, when it is one PGN writes (`1-0`, `0-1`,
+    /// `1/2-1/2`, `*`). The board never writes over it (plan A9-F5, R6-04: a reading where the
+    /// two disagree says so, [`PgnWarningKind::ResultMismatch`]); only a game with no tag (made on
+    /// the board) takes what its board says at the end of the main line ([`Game::board_result`]),
     /// else `*`.
     pub fn result(&self) -> String {
+        match self.tag("Result") {
+            Some(r @ ("1-0" | "0-1" | "1/2-1/2" | "*")) => r.to_owned(),
+            _ => self.board_result().unwrap_or("*").to_owned(),
+        }
+    }
+
+    /// What the board says at the end of the main line: `1-0` or `0-1` for a mate, `1/2-1/2` for
+    /// a stalemate, `None` while the game goes on. Fifty moves without a capture or a pawn move
+    /// end nothing: that draw is claimed, not given (A1-04).
+    pub fn board_result(&self) -> Option<&'static str> {
         let mut end = 0;
         while let Some(&next) = self.node(end).children.first() {
             end = next;
         }
         let board = &self.node(end).board;
-        match board.status() {
-            GameStatus::Won if board.side_to_move() == cozy_chess::Color::White => "0-1".to_owned(),
-            GameStatus::Won => "1-0".to_owned(),
-            GameStatus::Drawn => "1/2-1/2".to_owned(),
-            GameStatus::Ongoing => match self.tag("Result") {
-                Some(r @ ("1-0" | "0-1" | "1/2-1/2")) => r.to_owned(),
-                _ => "*".to_owned(),
-            },
+        match outcome_of(board) {
+            Outcome::Checkmate if board.side_to_move() == cozy_chess::Color::White => Some("0-1"),
+            Outcome::Checkmate => Some("1-0"),
+            Outcome::Stalemate => Some("1/2-1/2"),
+            Outcome::Ongoing | Outcome::FiftyMoves => None,
         }
     }
 
-    /// The game as PGN: the seven tags, the start position when it is not the standard one, the
-    /// others, and the moves on one line: pasted elsewhere, a comment is not cut where
-    /// the 80th column fell.
+    /// The game as PGN, as the one PGN writer writes it ([`crate::pgn::write`]): the seven
+    /// tags, the start position when it is not the standard one, the others, and the moves
+    /// wrapped at [`crate::pgn::LINE_WIDTH`] columns (copied to the clipboard too: decision D19).
     pub fn pgn(&self) -> String {
         self.pgn_with(PgnStyle::FULL)
     }
@@ -1159,33 +1251,12 @@ impl Game {
     /// [`Game::pgn`] with [`Game::movetext_with`]'s moves: the tags are all written whatever
     /// `style` leaves out.
     pub fn pgn_with(&self, style: PgnStyle) -> String {
-        let result = self.result();
-        let mut out = String::new();
-        let quote = |v: &str| v.replace('\\', "\\\\").replace('"', "\\\"");
-        for tag in ROSTER {
-            let value = if tag == "Result" {
-                result.clone()
-            } else {
-                self.tag(tag).map_or_else(|| if tag == "Date" { "????.??.??".to_owned() } else { "?".to_owned() }, str::to_owned)
-            };
-            out.push_str(&format!("[{tag} \"{}\"]\n", quote(&value)));
-        }
-        // The start position before the other tags, as the document's export writes them (plan
-        // A8 P8a: the same origin gives the same tags in the same order from both writers).
-        let start = self.start_fen();
-        if start != Board::default().to_string() {
-            out.push_str("[SetUp \"1\"]\n");
-            out.push_str(&format!("[FEN \"{start}\"]\n"));
-        }
-        for (name, value) in self.tags.iter().filter(|(n, _)| !ROSTER.contains(&n.as_str())) {
-            out.push_str(&format!("[{name} \"{}\"]\n", quote(value)));
-        }
-        out.push('\n');
-        let moves = self.movetext_with(style);
-        let text = if moves.is_empty() { result } else { format!("{moves} {result}") };
-        out.push_str(&text);
-        out.push('\n');
-        out
+        crate::pgn::write(self, crate::pgn::WriteOptions { style, ..crate::pgn::WriteOptions::default() })
+    }
+
+    /// Whether the game starts from the standard position (no `FEN` tag is written).
+    pub(crate) fn starts_standard(&self) -> bool {
+        self.start_fen() == Board::default().to_string()
     }
 
     /// Read a PGN's first game: its tags (the `FEN` tag's position, the standard start without
@@ -1211,7 +1282,7 @@ impl Game {
 /// `tokens` without what `style` leaves out ([`Game::movetext_with`]). A Black move is numbered
 /// when what is written just before it is not a move (the start, a comment, a bracket), as PGN
 /// numbers it.
-fn kept_tokens(tokens: Vec<Token>, style: PgnStyle) -> Vec<Token> {
+pub(crate) fn kept_tokens(tokens: Vec<Token>, style: PgnStyle) -> Vec<Token> {
     let mut out: Vec<Token> = Vec::with_capacity(tokens.len());
     let mut level = 0usize;
     // The nesting of the variation being left out, with everything in it.
@@ -1495,7 +1566,7 @@ mod tests {
         g.go_to(1);
         play(&mut g, &[("c7", "c5"), ("g1", "f3")]);
         let nf3 = g.current();
-        g.promote(nf3);
+        g.promote(nf3).unwrap();
         assert_eq!(g.movetext(), "1. e4 c5 (1... e5) 2. Nf3");
         assert_eq!(g.san(g.current()), "Nf3", "the move shown follows its renumbering");
         // Delete the e5 variation.
@@ -1542,6 +1613,32 @@ mod tests {
         assert_eq!(g.nags(e5), &[2]);
         assert!(g.set_comment(e5, &"é".repeat(MAX_COMMENT_LEN)).is_err(), "past the cap: cut, and said");
         assert!(g.comment(e5).len() <= MAX_COMMENT_LEN);
+    }
+
+    /// Plan A9-F6 (R8-08): the moves played since a mark are taken back without a copy of the
+    /// game: the tree, the move shown and the revision are the mark's again.
+    #[test]
+    fn moves_played_since_a_mark_are_taken_back() {
+        let (mut g, _) = Game::from_pgn("1. e4 e5 (1... c5 2. Nf3) 2. Nf3 Nc6 *").unwrap();
+        let c5 = g.node_at(&NodePath::new(vec![0, 1])).unwrap();
+        g.go_to_node(c5);
+        let (before, shown, revision, count) = (g.pgn(), g.current(), g.revision(), g.move_count());
+        let mark = g.mark();
+        for m in ["Nf3", "d6", "d4"] {
+            g.play_san(m).unwrap();
+        }
+        g.play_null().unwrap();
+        g.go_to_node(c5);
+        g.play_san("Nc3").unwrap();
+        assert!(g.move_count() > count);
+        g.roll_back(mark);
+        assert_eq!((g.pgn(), g.current(), g.revision(), g.move_count()), (before, shown, revision, count));
+        // Nothing played since: nothing taken back; a mark of a larger game is ignored.
+        g.roll_back(mark);
+        assert_eq!(g.move_count(), count);
+        let big = Game::from_pgn("1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 *").unwrap().0.mark();
+        g.roll_back(big);
+        assert_eq!(g.move_count(), count);
     }
 
     #[test]
@@ -1655,8 +1752,10 @@ mod tests {
         assert!(pgn.ends_with("1. e4 *\n"), "{pgn}");
     }
 
+    /// A1-11 (plan A9-F4): the PGN is wrapped at 79 columns, as the document's always was (it was
+    /// one line of up to 13,501 characters); the move text alone stays on one line.
     #[test]
-    fn long_move_text_stays_on_one_line() {
+    fn long_move_text_is_wrapped_at_79_columns() {
         let mut g = Game::standard();
         for _ in 0..10 {
             play(&mut g, &[("g1", "f3"), ("g8", "f6"), ("f3", "g1"), ("f6", "g8")]);
@@ -1665,8 +1764,61 @@ mod tests {
         g.set_comment(node, "A comment long enough to have been cut at the eightieth column\nof the line").unwrap();
         let pgn = g.pgn();
         let moves = pgn.split("\n\n").nth(1).unwrap_or_default();
-        assert_eq!(moves.trim_end().lines().count(), 1, "{pgn}");
-        assert!(moves.contains("eightieth column of the line} *"), "{pgn}");
+        assert!(moves.lines().count() > 1 && moves.lines().all(|l| l.chars().count() <= crate::pgn::LINE_WIDTH), "{pgn}");
+        assert!(moves.split_whitespace().collect::<Vec<_>>().join(" ").contains("eightieth column of the line} *"), "{pgn}");
+        assert_eq!(g.movetext().lines().count(), 1);
+    }
+
+    /// Plan A9-F5 (R6-04, A1-04): the `Result` read is the game's; the board says its own beside
+    /// it, and a reading where the two disagree says so. Fifty moves decide nothing.
+    #[test]
+    fn a_result_read_is_never_written_over_by_the_board() {
+        let kinds = |r: &PgnReport| r.warnings.iter().map(|w| w.kind).collect::<Vec<_>>();
+        // The clock reaches 100 with the move: a draw one may claim, not the result (it was
+        // written 1/2-1/2).
+        let (g, report) = Game::from_pgn_report("[Result \"1-0\"]\n[FEN \"4k3/8/8/8/8/8/8/R3K3 w - - 99 80\"]\n\n80. Ra7 1-0").unwrap();
+        assert_eq!((g.result(), g.board_result(), kinds(&report)), ("1-0".to_owned(), None, vec![]));
+        assert!(g.pgn().contains("[Result \"1-0\"]") && g.pgn().trim_end().ends_with("80. Ra7 1-0"), "{}", g.pgn());
+        // A mate with a draw tag: the tag stays, said (it was written 0-1).
+        let (g, report) = Game::from_pgn_report("[Result \"1/2-1/2\"]\n\n1. f3 e5 2. g4 Qh4# 1/2-1/2").unwrap();
+        assert_eq!((g.result(), g.board_result()), ("1/2-1/2".to_owned(), Some("0-1")));
+        let qh4 = *g.main_line().last().unwrap();
+        assert_eq!(report.warnings, [PgnWarning { kind: PgnWarningKind::ResultMismatch, at: qh4 }]);
+        assert!(g.pgn().trim_end().ends_with("2. g4 Qh4# 1/2-1/2"), "{}", g.pgn());
+        // A stalemate with a win tag.
+        let (g, report) = Game::from_pgn_report("[Result \"1-0\"]\n[FEN \"7k/5Q2/6K1/8/8/8/8/8 b - - 0 1\"]\n\n1-0").unwrap();
+        assert_eq!((g.result(), g.board_result(), kinds(&report)), ("1-0".to_owned(), Some("1/2-1/2"), vec![PgnWarningKind::ResultMismatch]));
+        // An exercise kept unsolved: `*` is the result read, mate or not.
+        let (g, report) = Game::from_pgn_report("[Result \"*\"]\n[FEN \"6k1/5ppp/8/8/8/8/5PPP/3R2K1 w - - 0 1\"]\n\n1. Rd8# *").unwrap();
+        assert_eq!((g.result(), kinds(&report)), ("*".to_owned(), vec![]));
+        // `*` with a result after the moves: the moves' result.
+        let (g, _) = Game::from_pgn_report("[Result \"*\"]\n\n1. e4 1-0").unwrap();
+        assert_eq!(g.result(), "1-0");
+        // A game made on the board, with no tag, takes the board's result; fifty moves are none.
+        let mut g = Game::standard();
+        for m in ["f3", "e5", "g4", "Qh4#"] {
+            g.play_san(m).unwrap();
+        }
+        assert_eq!(g.result(), "0-1");
+        let mut g = Game::from_fen("4k3/8/8/8/8/8/8/R3K3 w - - 99 80").unwrap();
+        g.play_san("Ra7").unwrap();
+        assert_eq!((g.outcome(), g.result()), (Outcome::FiftyMoves, "*".to_owned()));
+    }
+
+    /// Plan A9-F5 (R6-05): the `Variant` tag decides how a game is read; another game than
+    /// chess is refused whole, with its name, never read as chess and cut.
+    #[test]
+    fn a_game_of_another_variant_is_refused_whole() {
+        let crazyhouse = "[Variant \"Crazyhouse\"]\n\n1. e4 d5 2. exd5 Qxd5 3. N@e4 *";
+        assert_eq!(Game::from_pgn(crazyhouse).err(), Some(GameError::UnsupportedVariant("Crazyhouse".to_owned())));
+        let chess960 = "[Variant \"Chess960\"]\n[FEN \"bqnb1rkr/pp3ppp/3ppn2/2p5/5P2/P2P4/NPP1P1PP/BQ1BNRKR w HFhf - 2 9\"]\n\n9. g3 *";
+        let refused = Game::from_pgn(chess960).err();
+        assert_eq!(refused, Some(GameError::UnsupportedVariant("Chess960".to_owned())));
+        assert_eq!(refused.map(|e| e.to_string()).as_deref(), Some("the game is Chess960, a variant PdfCraft does not read"));
+        for standard in ["Standard", "From Position", "standard", ""] {
+            let (g, stopped) = Game::from_pgn(&format!("[Variant \"{standard}\"]\n\n1. e4 e5 *")).unwrap();
+            assert_eq!((g.movetext(), stopped), ("1. e4 e5".to_owned(), None), "{standard}");
+        }
     }
 
     #[test]
@@ -1879,16 +2031,18 @@ mod tests {
         g.play_san("d4").unwrap();
         let d4 = g.current();
         let before = g.movetext();
-        g.promote(d4);
+        // Refused, and said (plan A9-F5, A1-19: it was silent).
+        assert_eq!(g.promote(d4), Err(StructureError::TooDeep));
         assert_eq!(g.movetext(), before);
         assert!(g.movetext().starts_with("1. e4"), "{}", g.movetext());
+        assert_eq!(g.promote(9999), Err(StructureError::NoSuchMove));
         // A shallow promotion still works.
         let mut h = Game::standard();
         h.play_san("e4").unwrap();
         h.go_to_node(0);
         h.play_san("d4").unwrap();
         let d4 = h.current();
-        h.promote(d4);
+        assert_eq!(h.promote(d4), Ok(()));
         assert!(h.movetext().starts_with("1. d4 (1. e4)"), "{}", h.movetext());
     }
 
@@ -2080,7 +2234,9 @@ mod tests {
                 match op {
                     0 => { g.back(); }
                     1 => g.delete(g.current()),
-                    2 => g.promote(g.current()),
+                    2 => {
+                        let _ = g.promote(g.current());
+                    }
                     3 => g.toggle_nag(g.current(), 1),
                     4 => g.go_to(t.index() % 5),
                     _ => {}

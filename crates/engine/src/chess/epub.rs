@@ -283,9 +283,10 @@ pub fn entries(doc: &ChessDoc, o: &HtmlOptions<'_>, meta: &EpubMeta) -> Result<V
 
 /// The book as an `.epub` file.
 pub fn epub(doc: &ChessDoc, o: &HtmlOptions<'_>, meta: &EpubMeta) -> Result<Vec<u8>, String> {
+    // What a zip file cannot hold is refused, never cut (plan A9-X1a, A4-18).
     let mut zip = Zip::default();
     for e in entries(doc, o, meta)? {
-        zip.add(&e.name, &e.data, e.compress);
+        zip.add(&e.name, &e.data, e.compress).map_err(|e| e.to_string())?;
     }
-    Ok(zip.finish())
+    zip.finish().map_err(|e| e.to_string())
 }

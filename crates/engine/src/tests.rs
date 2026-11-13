@@ -3934,14 +3934,14 @@ fn exporting_office_files_keeps_images() {
     let pid = s.open("p.pdf", None, pic, None).unwrap();
     let d = s.get(pid).unwrap();
     assert_eq!(d.export_pages()[0].images.len(), 1);
-    let docx = d.export_office(compare::OfficeFormat::Docx);
+    let docx = d.export_office(compare::OfficeFormat::Docx).unwrap();
     assert!(docx.windows(16).any(|w| w == b"word/media/image"));
-    let pptx = d.export_office(compare::OfficeFormat::Pptx);
+    let pptx = d.export_office(compare::OfficeFormat::Pptx).unwrap();
     assert!(pptx.windows(15).any(|w| w == b"ppt/media/image"));
     if let Ok(dir) = std::env::var("PDFCRAFT_EXPORT_DIR") {
         std::fs::write(format!("{dir}/pic.docx"), &docx).unwrap();
     }
-    assert!(String::from_utf8(d.export_office(compare::OfficeFormat::Html)).unwrap().contains("data:image/png;base64,"));
+    assert!(String::from_utf8(d.export_office(compare::OfficeFormat::Html).unwrap()).unwrap().contains("data:image/png;base64,"));
 }
 
 /// #314: a page whose content is drawn through a form XObject exports its text (the file from
@@ -3967,7 +3967,7 @@ trailer <</Root 1 0 R>>
     let d = s.get(id).unwrap();
     let blocks: Vec<String> = d.export_pages()[0].blocks.iter().map(|b| b.text.clone()).collect();
     assert_eq!(blocks, ["Hello from a test invoice"]);
-    assert!(String::from_utf8(d.export_office(compare::OfficeFormat::Html)).unwrap().contains("Hello from a test invoice"));
+    assert!(String::from_utf8(d.export_office(compare::OfficeFormat::Html).unwrap()).unwrap().contains("Hello from a test invoice"));
     // Edit text still offers only what the page's own streams show.
     assert!(d.text_blocks(0).is_empty());
 }
@@ -3999,12 +3999,12 @@ trailer <</Root 1 0 R>>
     // Visible page coordinates (y up), as the blocks are.
     let rect = page.links[0].rect;
     assert!(rect.iter().zip([70.0, 750.0, 300.0, 780.0]).all(|(a, b)| (a - b).abs() < 0.01), "{rect:?}");
-    let rtf = String::from_utf8(d.export_office(compare::OfficeFormat::Rtf)).unwrap();
+    let rtf = String::from_utf8(d.export_office(compare::OfficeFormat::Rtf).unwrap()).unwrap();
     assert!(rtf.contains("{\\field{\\*\\fldinst{HYPERLINK \"https://example.org/rules?a=1&b=2\"}}{\\fldrslt{\\ul Read the rules online}}}"), "{rtf}");
     // The writers refuse the `javascript:` address: its paragraph stays plain text.
     assert_eq!(rtf.matches("HYPERLINK").count(), 1, "{rtf}");
     assert!(rtf.contains(" Plain words\\par") && rtf.contains(" Run a script\\par"), "{rtf}");
-    let html = String::from_utf8(d.export_office(compare::OfficeFormat::Html)).unwrap();
+    let html = String::from_utf8(d.export_office(compare::OfficeFormat::Html).unwrap()).unwrap();
     assert!(html.contains("<a href=\"https://example.org/rules?a=1&amp;b=2\">Read the rules online</a>"), "{html}");
 }
 
@@ -4035,9 +4035,9 @@ BT /F1 11 Tf 0 g 72 650 Td (Black body text that is long enough to be the body s
     let mut s = Session::new();
     let id = s.open("c.pdf", None, Arc::new(pdf), None).unwrap();
     let d = s.get(id).unwrap();
-    let html = String::from_utf8(d.export_office(compare::OfficeFormat::Html)).unwrap();
+    let html = String::from_utf8(d.export_office(compare::OfficeFormat::Html).unwrap()).unwrap();
     assert!(html.contains("style=\"color:#0D3B2E\">Annual Report"), "{html}");
-    let pptx = d.export_office(compare::OfficeFormat::Pptx);
+    let pptx = d.export_office(compare::OfficeFormat::Pptx).unwrap();
     assert!(pptx.starts_with(b"PK"));
     assert!(pptx.windows(b"ppt/slides/slide1.xml".len()).any(|w| w == b"ppt/slides/slide1.xml"));
     let blocks = &d.export_pages()[0].blocks;
@@ -5987,7 +5987,7 @@ fn exporting_a_jpeg_logo_to_word_keeps_the_image() {
         assert_eq!((pages[0].images.len(), pages[0].images[0].ext), (1, "jpg"), "overlap {overlaps}");
         let jpeg = pages[0].images[0].bytes.clone();
         assert!(jpeg.starts_with(&[0xFF, 0xD8]));
-        let docx = d.export_office(compare::OfficeFormat::Docx);
+        let docx = d.export_office(compare::OfficeFormat::Docx).unwrap();
         assert!(docx.windows(21).any(|w| w == b"word/media/image1.jpg"), "overlap {overlaps}");
         assert!(docx.windows(jpeg.len()).any(|w| w == jpeg.as_slice()), "the JPEG is stored unchanged (overlap {overlaps})");
     }

@@ -553,13 +553,10 @@ pub fn already_says(existing: &str, text: &str) -> bool {
     !text.is_empty() && (existing == text || existing.strip_suffix(text).is_some_and(|head| head.ends_with(' ')))
 }
 
-/// The code glyph `code` (White's, or any code PGN has) is written as on a move: by the side
-/// that made it, or for zugzwang by the side to move after it. A code not in the table is kept.
+/// The code glyph `code` (White's, or any code PGN has) is written as on a move
+/// ([`nag::Nag::code_after`]). A code not in the table is kept.
 fn side_code(code: u16, white_moved: bool) -> u16 {
-    match nag::by_code(code) {
-        Some(n) => n.code_for(if n.side_is_mover { white_moved } else { !white_moved }),
-        None => code,
-    }
+    nag::by_code(code).map_or(code, |n| n.code_after(white_moved))
 }
 
 fn stop_at(index: usize, item: &FragmentItem, reason: GraftStopReason, maybe_en_passant: bool) -> GraftStop {

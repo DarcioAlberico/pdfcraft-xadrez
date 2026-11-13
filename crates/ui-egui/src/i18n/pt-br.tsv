@@ -3459,6 +3459,7 @@ the move's comment	Move comment	Comentário do lance
 	Detecting in another book… page {d} of {t}	Detectando em outro livro… pág. {d} de {t}
 	Redraw in the PDF?	Redesenhar no PDF?
 	Diagram {n}, open	Diagrama {n}, abrir
+	Choices made on this page not found in its reading (kept): {n}	Escolhas feitas nesta página não encontradas na sua leitura (guardadas): {n}
 # Plan A9-G10: corrections undone and redone, Forget asked about over unconfirmed changes, Redraw kept first.
 	the document is closed	o documento está fechado
 	Diagram {n}, page {p}: correction forgotten	Diagrama {n}, pág. {p}: correção esquecida

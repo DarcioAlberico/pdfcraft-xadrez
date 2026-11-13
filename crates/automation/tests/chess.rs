@@ -687,6 +687,7 @@ fn chess_document_links_the_moves_to_the_books_pgn() {
     assert_eq!(r["linked"], json!({ "confirmed": 4, "recovered": 2, "conflict": 0, "absent": 0 }), "{r:#}");
     assert_eq!(r["pages"], json!([{ "page": 1, "game": 1, "name": "Chapter 1 · Ruy" }]));
     assert_eq!((r["warnings"].as_array().map(Vec::len), r["stopped_games"].as_array().map(Vec::len)), (Some(0), Some(0)));
+    assert_eq!(r["walked_again"], false, "no diagram the PGN confirmed: nothing walked again");
     let inlines = read["document"]["pages"][0]["blocks"][0]["inlines"].as_array().unwrap();
     let moves: Vec<&Value> = inlines.iter().filter(|i| i["type"] == "move").collect();
     assert_eq!(moves.len(), 6, "{inlines:#?}");
@@ -755,6 +756,14 @@ fn the_books_pgn_confirms_a_diagram_and_suggests_a_near_one_without_writing_a_co
     // The reading stays what was printed; the diagram shows the PGN's position (plan A9-L6b).
     assert!(diagram["reference"]["fen"].as_str().is_some_and(|f| f.ends_with(" w KQkq - 0 1")), "{diagram:#}");
     assert!(diagram["reference"]["before"].is_null() && diagram["reading"]["side_source"].is_string(), "{diagram:#}");
+    // The reading only assumed the side the PGN gives: the moves were walked again from the PGN's
+    // position (plan A9-L8, A2-11), and the reply says so.
+    assert_eq!(
+        (diagram["reading"]["side_source"].as_str(), &read["reference"]["walked_again"]),
+        (Some("assumed"), &json!(true)),
+        "{:#}",
+        read["reference"]
+    );
     let states = |a: &mut Automation, doc: u64, pgn: Option<&str>| {
         let mut args = json!({ "doc": doc, "models_dir": "models" });
         if let Some(pgn) = pgn {
@@ -1099,12 +1108,9 @@ fn chess_export_markdown_and_pgn_write_inside_the_root() {
     let pgn = ok(&mut a, "chess_export_pgn", json!({ "doc": doc, "out": "games.pgn" }));
     assert_eq!(pgn["position_games"], 1, "{pgn:#}");
     let games = std::fs::read_to_string(root.join("games.pgn")).unwrap();
-    assert!(
-        games.contains("[SetUp \"1\"]")
-            && games.contains("[FEN \"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1\"]")
-            && games.contains("[PdfDiagram \"1\"]"),
-        "{games}"
-    );
+    // The diagram shows the initial position: written as every PGN PdfCraft writes a game from
+    // it, with no FEN (plan A9-F4: one writer).
+    assert!(games.contains("[PdfDiagram \"1\"]") && !games.contains("[FEN") && games.trim_end().ends_with("of 3} *"), "{games}");
     // The two unread diagrams were to get a game and did not, and the reply says why (plan A8 P8b).
     let skipped = pgn["positions_skipped"].as_array().unwrap();
     assert_eq!(skipped.len(), 2, "{pgn:#}");
@@ -1226,7 +1232,8 @@ fn chess_arguments_out_of_range_are_refused_with_what_is_allowed() {
 /// chess_game plays a game without a document: from a FEN or a PGN, with moves in SAN or UCI,
 /// shown at a ply, and stops at the first illegal move.
 /// `chess_game`'s header is what the move list shows (plan HC10): PGN's placeholders are null, a
-/// date reads as far as it is known, and the result is `*` while the game goes on.
+/// date reads as far as it is known, and the result is `*` while the game goes on. The result
+/// read is the game's: a mate beside a `*` read is the board's say, not the result (plan A9-F5).
 #[test]
 fn chess_game_says_what_the_move_list_header_shows() {
     let (base, root) = workdir("game-header");
@@ -1246,10 +1253,13 @@ fn chess_game_says_what_the_move_list_header_shows() {
     let h = &g["header"];
     assert_eq!((&h["white"], &h["white_elo"], &h["black"], &h["black_elo"]), (&json!("Doe"), &json!("2100"), &json!("Roe"), &Value::Null), "{g:#}");
     assert_eq!((&h["event"], &h["site"], &h["date"], &h["round"]), (&json!("Club ch"), &Value::Null, &json!("2026.10"), &Value::Null), "{g:#}");
-    assert_eq!(h["result"], "0-1", "the mate decides it: {g:#}");
+    assert_eq!((&h["result"], &h["board_result"]), (&json!("*"), &json!("0-1")), "the mate is the board's say: {g:#}");
     let fresh = ok(&mut a, "chess_game", json!({}));
     let fields = fresh["header"].as_object().unwrap();
     assert!(fields.iter().all(|(k, v)| if k == "result" { v == "*" } else { v.is_null() }), "{fresh:#}");
+    // A game played to mate here, with no result read, takes the board's.
+    let mated = ok(&mut a, "chess_game", json!({ "moves": ["f3", "e5", "g4", "Qh4#"] }));
+    assert_eq!((&mated["header"]["result"], &mated["header"]["board_result"]), (&json!("0-1"), &json!("0-1")), "{mated:#}");
     let _ = std::fs::remove_dir_all(base);
 }
 
@@ -1618,6 +1628,27 @@ fn chess_pgn_edit_refuses_what_the_game_does_not_allow() {
     let r = pgn_edit(a, true, json!([{ "op": "play", "at": "path:0.0.0.0.0", "moves": ["Rf8", "Qh1"] }]));
     assert_eq!(r["movetext"], MAIN);
 
+    // Plan A9-F6 (A7-12): an op the list does not have is refused by its name, word for word;
+    // a field an op does not know is accepted, as it always was; a field of the wrong type says
+    // which and what it takes.
+    let r = pgn_edit(a, true, json!([{ "op": "rotate", "at": "path:0" }]));
+    assert_eq!(r["report"][0]["error"], "unknown op \"rotate\"");
+    let r = pgn_edit(a, true, json!([{ "op": "cut", "at": "path:0.0.0.0.0", "colour": "blue", "n": "many" }]));
+    assert_eq!((r["applied"].as_u64(), r["report"][0]["ok"].as_bool()), (Some(1), Some(true)), "{r:#}");
+    for (op, says) in [
+        (json!({ "op": "back", "n": 0 }), "n is a number of moves, 1-20000"),
+        (json!({ "op": "forward", "n": "two" }), "n is a number of moves"),
+        (json!({ "op": "choose", "index": -1 }), "index is the reply to step into"),
+        (json!({ "op": "play", "at": 7, "moves": ["e4"] }), "at is main:<half-move> or path:<i.j.k>"),
+        (json!({ "op": "play", "at": "path:0", "moves": [7] }), "moves are strings"),
+        (json!({ "op": "move_variation", "at": "path:0.1", "to": "left" }), "to is up or down"),
+        (json!({ "op": "nag", "at": "path:0", "code": 256 }), "1-255"),
+    ] {
+        let r = pgn_edit(a, true, json!([op]));
+        assert_eq!(r["movetext"], MAIN, "{op} changed the game");
+        assert!(r["report"][0]["error"].as_str().unwrap().contains(says), "{op}: {}", r["report"][0]["error"]);
+    }
+
     let too_many: Vec<Value> = (0..2001).map(|_| json!({ "op": "cut", "at": "path:" })).collect();
     let too_long: Vec<Value> = (0..11).map(|_| json!({ "op": "play", "at": "path:", "moves": vec!["Nd5"; 2000] })).collect();
     for bad in [
@@ -1630,6 +1661,33 @@ fn chess_pgn_edit_refuses_what_the_game_does_not_allow() {
     ] {
         assert!(matches!(a.call("chess_pgn_edit", &bad), Err(ToolError::InvalidArgs(_))), "{bad} is refused");
     }
+}
+
+/// Plan A9-F6 (R8-08): the operations one call may hold shrink as the game grows: every one may
+/// visit the whole game. 250 for a game of 8,000 moves, 2,000 for a short one; the moves a call
+/// plays count too.
+#[test]
+fn chess_pgn_edit_takes_fewer_operations_for_a_long_game() {
+    let mut a = Automation::new();
+    let mut long = String::new();
+    for n in 0..2000 {
+        long.push_str(&format!("{}. Nf3 Nf6 {}. Ng1 Ng8 ", 2 * n + 1, 2 * n + 2));
+    }
+    long.push('*');
+    let ops = |n: usize| Value::Array((0..n).map(|_| json!({ "op": "back" })).collect());
+    let e = a.call("chess_pgn_edit", &json!({ "pgn": long, "ops": ops(251) })).unwrap_err();
+    assert!(e.to_string().contains("at most 250 operations for a game of 8000 moves"), "{e}");
+    let r = ok(&mut a, "chess_pgn_edit", json!({ "pgn": long, "ops": ops(250) }));
+    assert_eq!(r["applied"], 250);
+    // 2,000 moves to play: 2,000,000 / 10,000.
+    let mut playing = ops(201);
+    if let Some(first) = playing.as_array_mut().and_then(|o| o.first_mut()) {
+        *first = json!({ "op": "play", "at": "path:", "moves": vec!["Nc3"; 2000] });
+    }
+    let e = a.call("chess_pgn_edit", &json!({ "pgn": long, "ops": playing })).unwrap_err();
+    assert!(e.to_string().contains("at most 200 operations for a game of 8000 moves and 2000 moves and items to add"), "{e}");
+    let r = ok(&mut a, "chess_pgn_edit", json!({ "pgn": "1. e4 *", "ops": ops(2000) }));
+    assert_eq!(r["applied"], 2000);
 }
 
 /// chess_pgn_edit edits any game of a PGN that holds several: `game` (0-based, the first by
@@ -3367,5 +3425,92 @@ fn chess_correction_list_tells_another_books_entries_and_a_change_separates_them
         Some(vec![json!("another-books")]),
         "{left}"
     );
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// Plan A9-G7b (A2-16): the pages a reading tool is given are read in the book's order, each once:
+/// `pages: [2, 1]` read page 2 before page 1 (a game across them read backwards, and the exports in
+/// that order), and `[1, 1]` read page 1 twice (its games doubled, its HTML's ids repeated).
+#[test]
+fn chess_document_reads_pages_in_order_once() {
+    let (base, root) = workdir("pageset");
+    let (mut a, doc) = opened(&root);
+    ok(&mut a, "page_duplicate", json!({ "doc": doc, "pages": [1] }));
+    let indices = |read: &Value| -> Vec<u64> { read["document"]["pages"].as_array().unwrap().iter().map(|p| p["index"].as_u64().unwrap()).collect() };
+    let read = ok(&mut a, "chess_document", json!({ "doc": doc, "pages": [2, 1], "include": ["json"] }));
+    assert_eq!((read["pages"].as_u64(), indices(&read)), (Some(2), vec![0, 1]), "{read:#}");
+    let read = ok(&mut a, "chess_document", json!({ "doc": doc, "pages": [1, 1], "include": ["json"] }));
+    assert_eq!((read["pages"].as_u64(), indices(&read)), (Some(1), vec![0]), "{read:#}");
+    let html = ok(&mut a, "chess_export_html", json!({ "doc": doc, "pages": [2, 1, 2], "out": "two.html" }));
+    assert!(html.get("error").is_none(), "{html:#}");
+    let text = std::fs::read_to_string(root.join("two.html")).unwrap();
+    let first = text.find("data-page=\"1\"").unwrap();
+    let second = text.find("data-page=\"2\"").unwrap();
+    assert!(first < second && text.matches("data-page=\"2\"").count() == 1, "in order, once");
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// The comments of a move text, in order, and the text without them: what an earlier build's
+/// writer and this one's write alike when only the place of a comment before a move differs.
+fn split_comments(movetext: &str) -> (Vec<String>, String) {
+    let mut words = Vec::new();
+    let mut rest = String::new();
+    let mut inside: Option<String> = None;
+    for c in movetext.chars() {
+        match (c, inside.as_mut()) {
+            ('{', None) => inside = Some(String::new()),
+            ('}', Some(_)) => words.extend(inside.take().unwrap_or_default().split_whitespace().map(str::to_owned)),
+            (c, Some(text)) => text.push(c),
+            (c, None) => rest.push(c),
+        }
+    }
+    words.sort();
+    (words, rest.split_whitespace().collect::<Vec<_>>().join(" "))
+}
+
+/// Plan A9-F4, §2.10 (what an earlier build sees): the PGN this build writes, in 79 columns with
+/// a comment before a move after the variations of the move before, frozen in
+/// `crates/chess/tests/compat/pgn_79.pgn`. An earlier build's command line (`PDFCRAFT_OLD_CLI`,
+/// the installed `dist/app/pdfcraft-cli.exe`) reads every move, variation, glyph and tag of it,
+/// nothing stopped and nothing noted, and every word of its comments (its writer may put the
+/// comment before a move back with the move before's). Without the variable it is skipped with a
+/// warning, and it fails under `PDFCRAFT_REQUIRE_MODELS=1` (the chess gate).
+#[test]
+fn compat_an_earlier_build_reads_the_pgn_this_build_writes() {
+    const FROZEN: &str = include_str!("../../chess/tests/compat/pgn_79.pgn");
+    let cli = match pdfcraft_engine::chess::pdfcraft_chessvision::models::test_resource("PDFCRAFT_OLD_CLI", "an earlier build's pdfcraft-cli") {
+        Ok(Some(cli)) => cli,
+        Ok(None) => {
+            eprintln!("compat_an_earlier_build_reads_the_pgn_this_build_writes skipped: set PDFCRAFT_OLD_CLI to an earlier build's pdfcraft-cli");
+            return;
+        }
+        Err(e) => panic!("{e}"),
+    };
+    let (base, root) = workdir("old-cli-pgn");
+    let args = json!({ "pgn": FROZEN, "ops": [] });
+    let mut a = Automation::new().with_root(&root).unwrap();
+    let ours = ok(&mut a, "chess_pgn_edit", args.clone());
+    assert_eq!(ours["pgn"], FROZEN, "this build writes the frozen text again");
+    let steps = json!([{ "tool": "chess_pgn_edit", "args": args }]);
+    std::fs::write(root.join("steps.json"), steps.to_string()).unwrap();
+    let out = std::process::Command::new(&cli)
+        .args(["run", "--report", "--script"])
+        .arg(root.join("steps.json"))
+        .arg("--root")
+        .arg(&root)
+        .output()
+        .unwrap_or_else(|e| panic!("{}: {e}", cli.display()));
+    let report: Value = serde_json::from_slice(&out.stdout).unwrap_or_else(|e| panic!("{e}: {}", String::from_utf8_lossy(&out.stdout)));
+    let theirs = report["steps"][0]["result"][0].clone();
+    assert!(theirs.is_object(), "{report}");
+    assert_eq!((&theirs["pgn_stopped"], &theirs["pgn_warnings"]), (&Value::Null, &json!([])), "{theirs}");
+    let tags = |pgn: &Value| pgn.as_str().unwrap_or_default().lines().filter(|l| l.starts_with('[')).map(str::to_owned).collect::<Vec<_>>();
+    assert_eq!(tags(&theirs["pgn"]), tags(&ours["pgn"]));
+    let (their_words, their_moves) = split_comments(theirs["movetext"].as_str().unwrap_or_default());
+    let (our_words, our_moves) = split_comments(ours["movetext"].as_str().unwrap_or_default());
+    assert_eq!(their_words, our_words);
+    // Black's number after a comment the earlier writer moved is the only difference left.
+    let unnumbered = |m: &str| m.split(' ').filter(|w| !w.ends_with("...")).collect::<Vec<_>>().join(" ");
+    assert_eq!(unnumbered(&their_moves), unnumbered(&our_moves));
     let _ = std::fs::remove_dir_all(base);
 }

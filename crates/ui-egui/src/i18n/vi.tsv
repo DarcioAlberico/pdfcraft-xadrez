@@ -3695,6 +3695,7 @@ the move's comment	Move comment	Bình luận của nước đi
 	Detecting in another book… page {d} of {t}	Đang phát hiện trong sách khác… trang {d}/{t}
 	Redraw in the PDF?	Vẽ lại trong PDF?
 	Diagram {n}, open	Sơ đồ {n}, mở
+	Choices made on this page not found in its reading (kept): {n}	Lựa chọn trên trang này không tìm thấy trong bản đọc (vẫn giữ): {n}
 # Plan A9-G10: corrections undone and redone, Forget asked about over unconfirmed changes, Redraw kept first.
 	the document is closed	tài liệu đã đóng
 	Diagram {n}, page {p}: correction forgotten	Sơ đồ {n}, trang {p}: đã bỏ chỉnh sửa

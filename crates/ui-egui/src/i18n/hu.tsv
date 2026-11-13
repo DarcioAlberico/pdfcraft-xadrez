@@ -3441,6 +3441,7 @@ the move's comment	Move comment	A lépés megjegyzése
 	Detecting in another book… page {d} of {t}	Felismerés egy másik könyvben… {d}. / {t} oldal
 	Redraw in the PDF?	Újrarajzolás a PDF-ben?
 	Diagram {n}, open	{n}. diagram, megnyitás
+	Choices made on this page not found in its reading (kept): {n}	Az oldalon hozott, az olvasatában nem talált döntések (megőrizve): {n}
 # Plan A9-G10: corrections undone and redone, Forget asked about over unconfirmed changes, Redraw kept first.
 	the document is closed	a dokumentum be van zárva
 	Diagram {n}, page {p}: correction forgotten	{n}. diagram, {p}. oldal: javítás elvetve

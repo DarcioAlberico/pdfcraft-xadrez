@@ -118,7 +118,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(out) = annotate {
         let book = pdfcraft_chessvision::doc::markdown::PgnBook::default();
         let started = Instant::now();
-        let made = annotate::annotated_pgn(&doc, &index, &book, pdfcraft_chess::pgn_style::PgnStyle::FULL);
+        let made = annotate::annotated_pgn(
+            &doc,
+            &index,
+            &book,
+            pdfcraft_chessvision::doc::markdown::PgnPositions::None,
+            pdfcraft_chess::pgn_style::PgnStyle::FULL,
+        );
         println!(
             "annotated in {:.1?}: {} games, {} moves commented, {} moves only in the book, {} diagram marks, {} bytes",
             started.elapsed(),
