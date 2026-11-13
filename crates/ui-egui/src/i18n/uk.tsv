@@ -3459,3 +3459,4 @@ castling	long	довга
 	Larger text	Більший текст
 diagram state	Read	Прочитано
 the move's comment	Move comment	Коментар до ходу
+	Detecting in another book… page {d} of {t}	Пошук в іншій книзі… сторінка {d} з {t}

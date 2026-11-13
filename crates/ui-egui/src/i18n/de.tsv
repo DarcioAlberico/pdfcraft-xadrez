@@ -3438,3 +3438,4 @@ castling	long	lang
 	Larger text	Größerer Text
 diagram state	Read	Gelesen
 the move's comment	Move comment	Kommentar des Zugs
+	Detecting in another book… page {d} of {t}	Erkennen in einem anderen Buch… Seite {d} von {t}

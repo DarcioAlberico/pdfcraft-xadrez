@@ -3436,3 +3436,4 @@ castling	long	hosszú
 	Larger text	Nagyobb szöveg
 diagram state	Read	Beolvasva
 the move's comment	Move comment	A lépés megjegyzése
+	Detecting in another book… page {d} of {t}	Felismerés egy másik könyvben… {d}. / {t} oldal

@@ -3435,3 +3435,4 @@ castling	long	ұзын
 	Larger text	Үлкенірек мәтін
 diagram state	Read	Оқылды
 the move's comment	Move comment	Жүріс түсініктемесі
+	Detecting in another book… page {d} of {t}	Басқа кітапта анықталуда… бет {d}/{t}

@@ -124,7 +124,7 @@ impl PdfCraftApp {
     /// Before exporting document `id` as `format`: when diagrams detected in it are still to
     /// review, ask first. Whether the export must wait for the answer.
     pub(crate) fn ask_chess_pending(&mut self, id: DocId, format: ChessFormat) -> bool {
-        let to_review = self.chess.results.as_ref().filter(|r| r.doc == id).map_or(0, |r| r.review_queue().len());
+        let to_review = self.chess.results_of(id).map_or(0, |r| r.review_queue().len());
         if to_review == 0 {
             return false;
         }
