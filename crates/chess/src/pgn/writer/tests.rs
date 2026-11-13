@@ -145,7 +145,7 @@ fn eco_is_left_out_once_the_opening_changes() {
     assert!(g.pgn().contains("[ECO \"C65\"]"));
     // Promoted, it does: the third move is another.
     let bc4 = g.current();
-    g.promote(bc4);
+    g.promote(bc4).unwrap();
     let pgn = g.pgn();
     assert!(!pgn.contains("ECO"), "{pgn}");
     assert_eq!(g.tag("ECO"), Some("C65"), "the tag is kept on the game, only not written");
