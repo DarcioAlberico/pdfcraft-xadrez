@@ -3470,3 +3470,10 @@ the move's comment	Move comment	Comentário do lance
 	what was saved before couldn't be read, and is kept aside first; try again in a moment	o que foi guardado antes não pôde ser lido e é posto de lado primeiro; tente de novo daqui a pouco
 	Saved diagram corrections couldn't be read ({why}). They are kept aside at the next save, and new corrections are kept from then on.	Não foi possível ler as correções de diagramas guardadas ({why}). Elas são postas de lado no próximo salvamento, e as correções novas são guardadas a partir daí.
 	Saved books' PGNs couldn't be read ({why}). They are kept aside at the next save, and new ones are kept from then on.	Não foi possível ler os PGN de livros guardados ({why}). Eles são postos de lado no próximo salvamento, e os novos são guardados a partir daí.
+# Plan A9-I2: one kind of job; the long jobs say how far they are and stop when asked.
+	Stop	Parar
+	Exporting the chess document: page {done} of {of}	Exportando o documento de xadrez: página {done} de {of}
+	The export was stopped: nothing was written.	A exportação foi interrompida: nada foi gravado.
+	Aligning was stopped: the book's link is as it was.	O alinhamento foi interrompido: a ligação do livro ficou como estava.
+	The work stopped on an internal error: {why}	O trabalho parou por um erro interno: {why}
+	The work stopped on an internal error.	O trabalho parou por um erro interno.

@@ -48,6 +48,7 @@ mod chess_export_ui;
 mod chess_figurines;
 mod chess_fixes;
 mod chess_history;
+mod chess_job;
 mod chess_keymap;
 mod chess_list;
 mod chess_models;
