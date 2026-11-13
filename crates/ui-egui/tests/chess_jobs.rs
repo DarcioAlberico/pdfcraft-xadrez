@@ -181,3 +181,84 @@ fn a_long_job_never_holds_the_page_read_and_stops_when_asked() {
     h.get_by_label("Align the book to the PGN");
     let _ = std::fs::remove_dir_all(dir);
 }
+
+/// The pages done of the scan running, and of how many.
+fn scan_done(h: &Harness<'static, PdfCraftApp>) -> Option<(usize, usize)> {
+    h.state().chess.run.as_ref().map(|r| {
+        let p = r.progress.lock().unwrap();
+        (p.done, p.total)
+    })
+}
+
+/// Pages of the active document's list, and the diagrams on them.
+fn listed(h: &Harness<'static, PdfCraftApp>) -> (usize, usize) {
+    h.state().chess.results().map_or((0, 0), |r| (r.pages.len(), r.pages.iter().map(|p| p.diagrams.len()).sum()))
+}
+
+/// [`long_book`] open, its jobs inline, a scan run a page at a time as the web runs it (a frame's
+/// budget of `budget_ms`).
+fn web_harness(pages: usize, budget_ms: f64) -> Harness<'static, PdfCraftApp> {
+    let (none, _) = pdfcraft_engine::chess::pdfcraft_chessvision::models::ChessModels::from_files(Vec::new());
+    pdfcraft_engine::chess::install_models(Some(none));
+    let bytes = long_book(pages);
+    let mut h = Harness::builder().with_size(egui::vec2(1366.0, 768.0)).build_eframe(move |_cc| {
+        let mut app = PdfCraftApp::new();
+        app.set_option("language", "en").unwrap();
+        app.open_bytes("book.pdf", None, bytes).unwrap();
+        app.run_inline = true;
+        app.chess.frame_budget_ms = Some(budget_ms);
+        app
+    });
+    h.run_steps(4);
+    h
+}
+
+/// Plan A9-I2 (finding R8-03): scanned as the web scans, a page at a time within a frame's
+/// budget, Detect in the whole book goes on across frames, says how far it is and stops when
+/// asked, the pages scanned kept. It used to scan the whole book inside one frame: the tab froze
+/// and Stop could not be clicked.
+#[test]
+fn the_web_scans_the_book_a_page_at_a_time_and_stops_when_asked() {
+    // A frame's budget of nothing: one page a frame.
+    let mut h = web_harness(8, 0.0);
+    h.state_mut().start_chess_scan(true);
+    let first = scan_done(&h).expect("the scan runs on").0;
+    assert!((1..8).contains(&first), "a page at a time, not the book in one frame: {first} of 8");
+    h.step();
+    let next = scan_done(&h).expect("the scan runs on").0;
+    assert!(next > first && next < 8, "on in the next frame: {next} of 8");
+    h.state_mut().cancel_chess_scan();
+    h.step();
+    assert!(h.state().chess.run.is_none(), "stopped");
+    let (pages, _) = listed(&h);
+    assert!(pages >= next && pages < 8, "the pages scanned stay: {pages}");
+    // Again, to the end, across frames.
+    h.state_mut().start_chess_scan(true);
+    let mut frames = 0;
+    while h.state().chess.run.is_some() && frames < 100 {
+        h.step();
+        frames += 1;
+    }
+    assert!(frames >= 2, "the rest across frames: {frames}");
+    assert_eq!(listed(&h), (8, 4), "every page, a diagram on every other");
+}
+
+/// Plan A9-I2: until the whole book's Export and Align run a page at a time too, the web refuses
+/// them above 20 pages, with the reason; a short book is exported.
+#[test]
+fn the_web_refuses_a_whole_book_export_above_twenty_pages() {
+    let dir = temp_dir("web-export");
+    let mut h = web_harness(32, 50.0);
+    let id = h.state().views[0].id;
+    h.state_mut().export_chess_to(id, ChessFormat::Pgn, &dir.join("long.pgn"));
+    h.run_steps(2);
+    let said = h.state().toast.as_ref().map(|t| t.0.clone()).unwrap_or_default();
+    assert!(said.starts_with("In the browser, a book of more than 20 pages can't be exported"), "{said}");
+    assert!(h.state().chess.long.is_none() && !dir.join("long.pgn").exists(), "nothing exported");
+    let mut h = web_harness(16, 50.0);
+    let id = h.state().views[0].id;
+    h.state_mut().export_chess_to(id, ChessFormat::Pgn, &dir.join("short.pgn"));
+    h.run_steps(2);
+    assert!(dir.join("short.pgn").exists(), "a book of 16 pages is exported");
+    let _ = std::fs::remove_dir_all(dir);
+}

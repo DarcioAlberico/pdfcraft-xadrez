@@ -18,7 +18,7 @@ use pdfcraft_engine::DocId;
 use pdfcraft_engine::chess::corrections::Kind;
 use pdfcraft_engine::chess::pdfcraft_chessvision::board::{BoardReading, Unreadable};
 use pdfcraft_engine::chess::pdfcraft_chessvision::pieces::choice::{PieceChoice, Role};
-use pdfcraft_engine::chess::{ChessModels, ChessPage, ChessScan, ChessScanJob, DiagramAt, ModelState, ScanStamp};
+use pdfcraft_engine::chess::{ChessModels, ChessPage, ChessScan, ChessScanJob, ChessScanSteps, DiagramAt, ModelState, ScanStamp};
 use pdfcraft_render::DocInfo;
 
 use crate::PdfCraftApp;
@@ -163,6 +163,9 @@ pub struct ChessState {
     /// A page being read off the interface thread (or the pages around a move's game): the last
     /// read asked takes the place of the one running (plan A9-I2).
     pub reading: Option<crate::chess_text_ui::ChessJob>,
+    /// The time a frame gives a scan run a page at a time, as the web runs it (tests; the web
+    /// takes 50 ms when `None`, the desktop scans on a worker; plan A9-I2).
+    pub frame_budget_ms: Option<f64>,
     /// The book being exported or aligned to its PGN, off the interface thread, one at a time:
     /// a slot of its own, so the page read never waits for it (plan A9-I2, finding A5-12).
     pub long: Option<crate::chess_text_ui::ChessJob>,
@@ -496,8 +499,8 @@ pub struct ChessRun {
     /// scan neither brings the Chess panel forward nor announces the count of diagrams found.
     pub quiet: bool,
     pub progress: Arc<Mutex<ChessProgress>>,
-    /// The scan's work (plan A9-I2): done when it gives its result, stopped by its cancel.
-    pub(crate) job: crate::chess_job::Job<()>,
+    /// The scan's work (plan A9-I2): on a worker, or a few pages a frame.
+    pub(crate) work: ScanWork,
     /// Diagrams in the batches shown so far.
     pub found: usize,
     /// A batch was dropped because the document changed during the scan.
@@ -506,6 +509,83 @@ pub struct ChessRun {
     pub pages: Vec<usize>,
     pub all: bool,
 }
+
+/// How a scan runs (plan A9-I2).
+pub(crate) enum ScanWork {
+    /// On a worker thread (the desktop): done when it gives its result, stopped by its cancel.
+    Thread(crate::chess_job::Job<()>),
+    /// A page at a time, as many as a frame's budget allows (the web, which has no threads;
+    /// finding R8-03: the whole book used to be scanned inside one frame, the tab frozen and Stop
+    /// out of reach).
+    Steps(Box<StepScan>),
+}
+
+impl ScanWork {
+    /// Ask the scan to stop at its next page.
+    fn cancel(&mut self) {
+        match self {
+            ScanWork::Thread(job) => job.cancel(),
+            ScanWork::Steps(steps) => steps.cancelled = true,
+        }
+    }
+}
+
+/// A scan run a page at a time on the interface thread ([`ScanWork::Steps`]).
+pub(crate) struct StepScan {
+    models: Arc<ChessModels>,
+    jobs: std::collections::VecDeque<ChessScanJob>,
+    current: Option<ChessScanSteps>,
+    /// Pages of the batches finished.
+    base: usize,
+    cancelled: bool,
+}
+
+impl StepScan {
+    /// Scan pages until `budget_ms` milliseconds have gone (one page at least), the batches
+    /// finished into `progress`. Whether the scan is done.
+    fn advance(&mut self, progress: &Mutex<ChessProgress>, budget_ms: f64) -> bool {
+        let start = now_ms();
+        loop {
+            let Some(steps) = self.current.as_mut() else {
+                match self.jobs.pop_front().filter(|_| !self.cancelled) {
+                    Some(job) => {
+                        self.current = Some(job.steps(&self.models));
+                        continue;
+                    }
+                    None => return true,
+                }
+            };
+            if self.cancelled || steps.step(&self.models).is_none() {
+                // The batch is done (or stopped): its pages are shown.
+                if let Some(steps) = self.current.take() {
+                    self.base = self.base.saturating_add(steps.done());
+                    lock(progress).scans.push(steps.finish());
+                }
+                continue;
+            }
+            lock(progress).done = self.base.saturating_add(steps.done());
+            if now_ms() - start >= budget_ms {
+                return false;
+            }
+        }
+    }
+}
+
+/// Milliseconds on a clock that only goes forward (the browser's on the web, where
+/// `std::time::Instant` has none).
+#[cfg(target_arch = "wasm32")]
+fn now_ms() -> f64 {
+    js_sys::Date::now()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn now_ms() -> f64 {
+    static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
+    START.get_or_init(std::time::Instant::now).elapsed().as_secs_f64() * 1000.0
+}
+
+/// A frame's time for a scan run a page at a time, on the web.
+const WEB_FRAME_BUDGET_MS: f64 = 50.0;
 
 /// The progress, even after a worker panicked while holding it (it is plain data).
 fn lock(p: &Mutex<ChessProgress>) -> MutexGuard<'_, ChessProgress> {
@@ -942,7 +1022,28 @@ impl PdfCraftApp {
         }
         let progress = Arc::new(Mutex::new(ChessProgress { total: pages.len(), ..Default::default() }));
         let p = progress.clone();
-        let job = crate::chess_job::Job::spawn("pdfcraft-chess", self.run_inline, move |ctl| {
+        let work = if self.chess_frame_budget().is_some() {
+            let models = pdfcraft_engine::chess::models(settings.models_dir.as_deref());
+            lock(&progress).model = Some(ModelNote::of(&models));
+            ScanWork::Steps(Box::new(StepScan { models, jobs: jobs.into(), current: None, base: 0, cancelled: false }))
+        } else {
+            ScanWork::Thread(Self::scan_on_a_worker(p, jobs, settings, self.run_inline))
+        };
+        self.chess.run = Some(ChessRun { doc: id, quiet, progress, work, found: 0, stale: false, pages, all });
+        if !quiet {
+            self.reveal_chess_diagrams();
+        }
+        self.poll_chess();
+    }
+
+    /// The scan of `jobs` on a worker thread (inline when `inline`), into `p`.
+    fn scan_on_a_worker(
+        p: Arc<Mutex<ChessProgress>>,
+        jobs: Vec<ChessScanJob>,
+        settings: pdfcraft_engine::chess::ChessScanSettings,
+        inline: bool,
+    ) -> crate::chess_job::Job<()> {
+        crate::chess_job::Job::spawn("pdfcraft-chess", inline, move |ctl| {
             let models = pdfcraft_engine::chess::models(settings.models_dir.as_deref());
             lock(&p).model = Some(ModelNote::of(&models));
             let mut base: usize = 0;
@@ -959,18 +1060,19 @@ impl PdfCraftApp {
                 }
             }
             Ok(())
-        });
-        self.chess.run = Some(ChessRun { doc: id, quiet, progress, job, found: 0, stale: false, pages, all });
-        if !quiet {
-            self.reveal_chess_diagrams();
-        }
-        self.poll_chess();
+        })
+    }
+
+    /// The time a frame gives a scan run a page at a time, when scans run so: always on the web,
+    /// and in tests that ask ([`ChessState::frame_budget_ms`]).
+    pub(crate) fn chess_frame_budget(&self) -> Option<f64> {
+        if cfg!(target_arch = "wasm32") { Some(self.chess.frame_budget_ms.unwrap_or(WEB_FRAME_BUDGET_MS)) } else { self.chess.frame_budget_ms }
     }
 
     /// Stop a running scan (the pages scanned so far are kept).
     pub fn cancel_chess_scan(&mut self) {
-        if let Some(r) = &self.chess.run {
-            r.job.cancel();
+        if let Some(r) = &mut self.chess.run {
+            r.work.cancel();
         }
     }
 
@@ -997,13 +1099,19 @@ impl PdfCraftApp {
                 self.edit_chess_diagram(page, index, false);
             }
         }
+        let budget = self.chess_frame_budget().unwrap_or(WEB_FRAME_BUDGET_MS);
         let Some(run) = self.chess.run.as_mut() else {
             // An edit, undo or redo since the scan: the list follows it.
             self.carry_chess_results();
             return;
         };
-        // Whether it is done first: once it is, every batch is in.
-        let finished = run.job.poll();
+        // Whether it is done first: once it is, every batch is in. A scan run a page at a time
+        // runs its pages for this frame here.
+        let finished = match &mut run.work {
+            ScanWork::Thread(job) => job.poll(),
+            ScanWork::Steps(steps) => steps.advance(&run.progress, budget).then_some(Ok(())),
+        };
+        let stepping = matches!(run.work, ScanWork::Steps(_));
         let (scans, model) = {
             let mut s = lock(&run.progress);
             (std::mem::take(&mut s.scans), s.model.clone())
@@ -1020,7 +1128,8 @@ impl PdfCraftApp {
         }
         let Some(finished) = finished else {
             if let Some(ctx) = &self.ctx {
-                ctx.request_repaint_after(std::time::Duration::from_millis(200));
+                // A scan run a page at a time goes on in the next frame, at once.
+                ctx.request_repaint_after(std::time::Duration::from_millis(if stepping { 0 } else { 200 }));
             }
             return;
         };
@@ -1915,7 +2024,7 @@ mod view_tests {
             doc: scanned,
             quiet: false,
             progress,
-            job: crate::chess_job::Job::waiting(),
+            work: ScanWork::Thread(crate::chess_job::Job::waiting()),
             found: 0,
             stale: false,
             pages: Vec::new(),

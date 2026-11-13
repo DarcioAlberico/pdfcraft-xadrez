@@ -3423,3 +3423,5 @@ the move's comment	Move comment	Коментар към хода
 	Aligning was stopped: the book's link is as it was.	Подравняването е спряно: връзката на книгата е както преди.
 	The work stopped on an internal error: {why}	Работата спря поради вътрешна грешка: {why}
 	The work stopped on an internal error.	Работата спря поради вътрешна грешка.
+# Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
+	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	В браузъра книга с повече от {n} страници все още не може да се експортира или подравни с PGN: разделът би спрял да отговаря до края. Настолното приложение го прави във фонов режим.

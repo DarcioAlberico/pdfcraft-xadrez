@@ -3735,3 +3735,5 @@ the move's comment	Move comment	تعليق النقلة
 	Aligning was stopped: the book's link is as it was.	أُوقفت المواءمة: بقي ربط الكتاب كما كان.
 	The work stopped on an internal error: {why}	توقف العمل بسبب خطأ داخلي: {why}
 	The work stopped on an internal error.	توقف العمل بسبب خطأ داخلي.
+# Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
+	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	في المتصفح، لا يمكن بعدُ تصدير كتاب يزيد على {n} صفحة أو مواءمته مع PGN: ستتوقف علامة التبويب عن الاستجابة حتى النهاية. تطبيق سطح المكتب يفعل ذلك في الخلفية.
