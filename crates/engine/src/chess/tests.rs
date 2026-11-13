@@ -412,6 +412,83 @@ fn the_side_printed_in_words_sets_the_side_to_move() {
     assert!(flags.contains(&pdfcraft_chessvision::doc::ReviewFlag::SideConflict), "{flags:?}");
 }
 
+/// `placement` (a FEN's first field) in the Chess Merida layout of [`MERIDA_START`]: a white piece
+/// is its letter in lower case on a light square and upper case on a dark one, a black one `o m v
+/// t w l` for `p n b r q k`, likewise; an empty square a space (light) or `+` (dark).
+fn merida(placement: &str) -> [String; 8] {
+    let rows: Vec<String> = placement
+        .split('/')
+        .enumerate()
+        .map(|(r, row)| {
+            let mut out = String::new();
+            for c in row.chars() {
+                let n = c.to_digit(10).unwrap_or(0);
+                for _ in 0..n.max(u32::from(n == 0)) {
+                    // a8 is light: rank 8 - r, file from 1.
+                    let light = (out.chars().count() + 1 + (8 - r)) % 2 == 1;
+                    let glyph = if n > 0 {
+                        if light { ' ' } else { '+' }
+                    } else {
+                        let white = "PNBRQK".find(c).map(|i| ['p', 'n', 'b', 'r', 'q', 'k'][i]);
+                        let black = "pnbrqk".find(c).map(|i| ['o', 'm', 'v', 't', 'w', 'l'][i]);
+                        let g = white.or(black).unwrap();
+                        if light { g } else { g.to_ascii_uppercase() }
+                    };
+                    out.push(glyph);
+                }
+            }
+            out
+        })
+        .collect();
+    rows.try_into().unwrap()
+}
+
+#[test]
+fn the_merida_layout_is_the_placement() {
+    let start = merida("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR");
+    assert_eq!(start.map(|r| r), MERIDA_START.map(String::from));
+}
+
+/// Plan A9-N4 (A8-04): a direct mate the caption asks is solved on the diagram read. When the page
+/// does not say who plays, only the side that mates is to play (`#2`: White, by castling); both
+/// sides mating leaves the side assumed, with a note; a side with no mate, or a problem with two
+/// keys, is for review; a helpmate is not solved.
+#[test]
+fn a_mate_asked_under_a_diagram_is_solved() {
+    use pdfcraft_chessvision::board::MateFinding;
+    use pdfcraft_chessvision::doc::{Block, ReviewFlag};
+    let scan = |placement: &str, caption: &str| {
+        let rows = merida(placement);
+        let rows: [&str; 8] = std::array::from_fn(|i| rows[i].as_str());
+        let (mut s, id) = open(board_with_words(rows, caption, ""));
+        let page = s.chess_page(id, 0, &no_model()).unwrap();
+        let read = page.readings.as_ref().unwrap()[0].position().unwrap().clone();
+        let doc = s.chess_document(id, &[], &no_model(), None).unwrap();
+        let review = doc.doc.pages[0].blocks.iter().find_map(|b| if let Block::Diagram(d) = b { Some(d.review.clone()) } else { None }).unwrap();
+        (read, page.notes.clone(), review, doc.notes)
+    };
+    let (read, _, review, _) = scan("8/8/8/8/4R3/6k1/8/4K2R", "Mate in 2");
+    assert_eq!((read.side.color, read.side.source), (Color::White, SideSource::Solved), "{read:?}");
+    assert!(matches!(&read.mate, Some(MateFinding::Solved(r)) if r.unique() && r.keys == ["O-O"] && r.castles), "{:?}", read.mate);
+    assert!(!review.contains(&ReviewFlag::SideAssumed), "{review:?}");
+    // Both sides mate in one: the side stays assumed, and the page says why.
+    let (read, notes, review, doc_notes) = scan("3r2k1/5ppp/8/8/8/8/5PPP/3R2K1", "#1");
+    assert_eq!(read.side.source, SideSource::Default);
+    assert_eq!(read.mate, Some(MateFinding::BothSides { n: 1 }));
+    assert!(notes.iter().any(|n| n.contains("both sides mate in 1")), "{notes:?}");
+    assert!(doc_notes.iter().any(|(_, n)| n.contains("both sides mate in 1")), "{doc_notes:?}");
+    assert!(review.contains(&ReviewFlag::SideAssumed), "{review:?}");
+    // No mate, and two keys: both for review.
+    let (_, _, review, _) = scan("8/8/8/4k3/8/8/8/K6R", "White to play. Mate in 2");
+    assert!(review.iter().any(|f| matches!(f, ReviewFlag::NoMate { n: 2, .. })), "{review:?}");
+    let (_, _, review, _) = scan("6k1/5ppp/8/8/8/8/5PPP/R2R2K1", "#1");
+    assert!(review.iter().any(|f| matches!(f, ReviewFlag::ManyKeys { n: 1, keys } if keys.len() == 2)), "{review:?}");
+    // A helpmate is never solved as a direct mate: no "no mate" for it.
+    let (read, _, review, _) = scan("8/8/8/4k3/8/8/8/K6R", "h#2");
+    assert_eq!(read.mate, None);
+    assert!(!review.iter().any(|f| matches!(f, ReviewFlag::NoMate { .. })), "{review:?}");
+}
+
 /// An illegal reading (no kings) is reported, but gets no lichess link.
 #[test]
 fn an_illegal_reading_gets_no_lichess_link() {
@@ -556,6 +633,32 @@ fn a_scans_stamp_matches_the_document_until_it_changes() {
     s.undo(id).unwrap();
     assert_ne!(s.chess_stamp(id), Some(scan.stamp()), "so does undoing it: the generation moves on");
     assert_eq!(s.chess_stamp(DocId(9999)), None);
+}
+
+/// Plan A9-I2 (finding R8-03): a job scanned a page at a time (the web, between frames) gives
+/// what it gives run at once, a page a step, and stopped after a page gives that page alone.
+#[test]
+fn a_job_scanned_a_page_at_a_time_finds_what_it_finds_at_once() {
+    let (mut s, id) = open(three_boards(400));
+    for _ in 0..2 {
+        s.apply(id, Edit::DuplicatePages { pages: vec![0], at: None }).unwrap();
+    }
+    let m = models(no_model().models_dir.as_deref());
+    let shape = |scan: &ChessScan| scan.pages.iter().map(|p| (p.page, p.diagrams.len())).collect::<Vec<_>>();
+    let whole = s.chess_scan_job(id, &[], &no_model(), true).unwrap().run(&m, |_, _| true);
+    let mut steps = s.chess_scan_job(id, &[], &no_model(), true).unwrap().steps(&m);
+    assert_eq!((steps.done(), steps.total()), (0, 3));
+    let first = steps.step(&m).expect("the first page");
+    assert_eq!((first.page, steps.done()), (0, 1));
+    while steps.step(&m).is_some() {}
+    assert_eq!(steps.done(), 3);
+    let stepped = steps.finish();
+    assert_eq!(shape(&stepped), shape(&whole));
+    assert_eq!(shape(&stepped), [(0, 3), (1, 3), (2, 3)]);
+    assert!(s.store_chess_scan(&stepped), "kept as a scan run at once is");
+    let mut steps = s.chess_scan_job(id, &[], &no_model(), true).unwrap().steps(&m);
+    steps.step(&m);
+    assert_eq!(shape(&steps.finish()), [(0, 3)], "stopped after a page");
 }
 
 #[test]

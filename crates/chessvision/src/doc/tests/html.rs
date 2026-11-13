@@ -77,7 +77,7 @@ fn the_html_reads_back_as_the_document() {
     let piece_moves = moves.iter().filter(|m| m.san.starts_with(['K', 'Q', 'R', 'B', 'N'])).count();
     let figurines = html.chars().filter(|c| pdfcraft_chess::san::figurine_piece(*c).is_some()).count();
     assert_eq!(figurines, piece_moves, "{html}");
-    assert!(html.contains("♛h5") && html.contains(">1.e4<"), "{html}");
+    assert!(html.contains("♛</span>h5") && html.contains(">1.e4<"), "{html}");
     // The illegal move and the ones after it say so; NAGs keep their glyph and code.
     assert!(html.contains("data-san=\"Bd7\" data-status=\"illegal\""), "{html}");
     assert!(html.contains("data-nag=\"1\"") && html.contains("data-nag=\"4\""), "{html}");
@@ -524,4 +524,52 @@ fn the_accessibility_summary_is_counted_from_the_book() {
     );
     let none = build_page(&input(0, &page_text(vec![line(230.0, "1.e4 e5")]), &[], &[], &[]));
     assert!(accessibility_summary(&none, &options(&pieces)).starts_with("The moves are text. No chess diagrams. Page numbers"));
+}
+
+/// A page reading `1.e4 e5 2.Nf3 Nc6` with a sign (`±`, $16) after `2.Nf3`, its prose in `lang`.
+fn page_with_a_sign(lang: &str) -> ChessDoc {
+    let text = page_text(vec![line(230.0, "1.e4 e5 2.Nf3 Nc6")]);
+    let mut doc = build_page(&input(0, &text, &[], &[], &[]));
+    let para = doc.pages[0].blocks.iter_mut().find_map(|b| if let Block::Paragraph { inlines, .. } = b { Some(inlines) } else { None }).unwrap();
+    para.insert(3, Inline::Nag { code: 16, source_rect: None, review: Vec::new() });
+    doc.pages[0].text_lang = LangTag::parse(lang);
+    doc
+}
+
+/// Plan A9-X3b (R5-06): a sign and a figurine are said in the book's language where the
+/// interface names them (`pdfcraft_chess::spoken`), each figurine by the side that moved (both
+/// sides' are drawn solid: `♞f3` was "black chess knight" on a White move); a language no
+/// catalogue has says them in English, and says so.
+#[test]
+fn signs_and_figurines_are_said_in_the_books_language() {
+    use pdfcraft_chess::placement::{Color, PieceKind};
+    let pieces = PieceSet::geometric();
+    let html = write(&page_with_a_sign("pt"), &HtmlOptions { lang: "pt-BR", ..options(&pieces) });
+    let sign = "As brancas estão claramente melhor";
+    assert!(html.contains(&format!("<span class=\"nag\" data-nag=\"16\" role=\"img\" aria-label=\"{sign}\" title=\"{sign}\">±</span>")), "{html}");
+    assert!(html.contains("<span role=\"img\" aria-label=\"Cavalo branco\">♞</span>f3"), "{html}");
+    let black = pdfcraft_chess::spoken::piece(Color::Black, PieceKind::Knight, Lang::Pt).text;
+    assert!(html.contains(&format!("<span role=\"img\" aria-label=\"{black}\">♞</span>c6")), "{html}");
+    // Dutch prose is recognised, but no catalogue has it.
+    let html = write(&page_with_a_sign("nl"), &HtmlOptions { lang: "nl", ..options(&pieces) });
+    assert!(html.contains("aria-label=\"White is clearly better\" lang=\"en\" title="), "{html}");
+    assert!(html.contains("<span role=\"img\" aria-label=\"White knight\" lang=\"en\">♞</span>f3"), "{html}");
+}
+
+/// Plan A9-X3b (R5-06): with the review highlight on, what was flagged is said to a screen reader
+/// as well as shown, with the reason the Text tab gives a move, in the book's language; a book for
+/// readers says none of it.
+#[test]
+fn a_review_mark_is_said_with_its_reason() {
+    let mut doc = page_with_a_sign("pt");
+    let para = doc.pages[0].blocks.iter_mut().find_map(|b| if let Block::Paragraph { inlines, .. } = b { Some(inlines) } else { None }).unwrap();
+    let Some(Inline::Move(m)) = para.last_mut() else { panic!("Nc6 last") };
+    m.status = MoveStatus::Illegal;
+    m.review.push(ReviewFlag::IllegalMove { text: "Nc6".into(), near: Vec::new() });
+    let pieces = PieceSet::geometric();
+    let html = write(&doc, &HtmlOptions { lang: "pt-BR", ..options(&pieces) });
+    assert!(html.contains("c6</span><span class=\"sr\"> (A revisar: Lance ilegal)</span>"), "{html}");
+    assert!(html.contains(".sr{position:absolute;"), "{html}");
+    let html = write(&doc, &HtmlOptions { lang: "pt-BR", review_marks: false, ..options(&pieces) });
+    assert!(!html.contains("class=\"sr\""), "{html}");
 }

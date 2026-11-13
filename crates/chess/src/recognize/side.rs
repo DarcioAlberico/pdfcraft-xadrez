@@ -38,6 +38,9 @@ pub enum SideSource {
     CaptionAfter,
     /// Proved by the position: only one side to move is legal.
     Legality,
+    /// Proved by the problem: only this side mates in the moves the caption asks (`#2`; plan
+    /// A9-N4, [`crate::mate::mating_side`]).
+    Solved,
     /// From the game a database matched.
     Database,
     /// Set by hand.

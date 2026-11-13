@@ -3458,3 +3458,5 @@ the move's comment	Move comment	Жүріс түсініктемесі
 	Aligning was stopped: the book's link is as it was.	Сәйкестендіру тоқтатылды: кітаптың байланысы бұрынғыдай қалды.
 	The work stopped on an internal error: {why}	Жұмыс ішкі қатеге байланысты тоқтады: {why}
 	The work stopped on an internal error.	Жұмыс ішкі қатеге байланысты тоқтады.
+# Plan A9-I2 (second PR): the web reads the whole book in one frame only for a short book.
+	In the browser, a book of more than {n} pages can't be exported or aligned to its PGN yet: the tab would stop responding until the end. The desktop app does it in the background.	Браузерде {n} беттен асатын кітапты әлі экспорттау немесе PGN-ге сәйкестендіру мүмкін емес: соңына дейін қойынды жауап бермей қалады. Жұмыс үстелі қолданбасы мұны фонда орындайды.
