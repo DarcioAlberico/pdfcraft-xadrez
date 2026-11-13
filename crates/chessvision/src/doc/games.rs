@@ -1686,6 +1686,98 @@ fn rule_implied_close(input: &RuleInput) -> Option<Placement> {
         .map(Placement::CloseTo)
 }
 
+/// The move `seen` played as `node` after `at` (its reading `reading` when an OCR's letter was
+/// read as another): its marks checked, the text before it given to it, the line moved on, and in
+/// a book that marks its main line by weight, the bold line made the main line.
+fn played(game: &mut Game, open: &mut Open, gi: usize, seen: &MoveSeen, at: Option<usize>, node: usize, reading: Option<San>) -> MoveOutcome {
+    let (number, san, bold, printed) = (seen.number, seen.san, seen.bold, &seen.printed);
+    // The marks printed on the move as played, against the position it was played in.
+    let mismatch = game
+        .score
+        .board_after(at)
+        .and_then(|b| reading.as_ref().unwrap_or(san).to_move_checked(&b).ok())
+        .and_then(|(_, m)| m)
+        .map(|m| ReviewFlag::NotationMismatch { text: printed.clone(), capture: m.capture, check: m.check, mate: m.mate });
+    // The move as played, canonical: the printed check mark may not fit it.
+    let played = |reading: San| game.score.nodes.get(node).map_or_else(|| reading.to_english(), |n| n.san.clone());
+    let repaired = reading.map(|reading| ReviewFlag::TextRepaired {
+        from: printed.clone(),
+        to: format!("{}{}", number.map(|n| n.text()).unwrap_or_default(), played(reading)),
+        why: "a file letter an OCR mixes up (c for e) read as the other: only that move is legal here".to_owned(),
+        confidence: CONFIDENCE_ONE_SWAP,
+    });
+    let (pending, own) = open.lines.last_mut().map(|l| (std::mem::take(&mut l.pending), l.after_variations)).unwrap_or_default();
+    if !pending.is_empty() {
+        // After the variations of the move before, the text is this move's own.
+        open.truncated |= if own { game.score.put_before(node, &pending) } else { game.score.comment_before(node, &pending) };
+    }
+    if let Some(line) = open.lines.last_mut() {
+        *line = Line { cursor: Some(node), moved: true, skipped: 0, last_ok: true, ..Line::default() };
+    }
+    if open.lines.len() == 1 {
+        weigh_main_line(game, open, node, bold);
+    }
+    let n = game.score.nodes.get(node);
+    MoveOutcome {
+        status: MoveStatus::Valid,
+        node: Some(NodeRef { game: gi, node }),
+        san: n.map(|n| n.san.clone()),
+        fen: n.map(|n| n.fen.clone()),
+        tried: None,
+        repaired,
+        mismatch,
+    }
+}
+
+/// A move played on the main level: in a book that marks its main line by weight, the bold line
+/// is the main line. A bold move played on it (after its last move, or as an alternative to one
+/// of its moves) puts its own line first; one that could only be read inside a line of analysis
+/// does not, and a book that sets everything in one weight says nothing: its first line stays the
+/// main one. And the main line's reply to a move whose replies came first in brackets goes first.
+fn weigh_main_line(game: &mut Game, open: &mut Open, node: usize, bold: bool) {
+    let parent = game.score.nodes.get(node).and_then(|n| n.parent);
+    if bold && open.regular_seen && game.score.leads_to(parent, open.bold_tip) {
+        game.score.put_line_first(node);
+    }
+    if bold {
+        open.bold_tip = Some(node);
+        open.bold_failed = false;
+    }
+    open.strayed = !bold;
+    if let Some(parent) = parent
+        && let Some(i) = open.replies.iter().position(|&r| r == parent)
+    {
+        open.replies.swap_remove(i);
+        game.score.put_first(node);
+    }
+}
+
+/// The move `seen` not played (`status`, flagged `flag`; `tried`: the position it was tried in):
+/// the line skips it, the bold line's reading notes it, and it stays in the text as a comment.
+fn not_played(
+    game: &mut Game,
+    open: &mut Open,
+    seen: &MoveSeen,
+    loc: Loc,
+    status: MoveStatus,
+    flag: Option<ReviewFlag>,
+    tried: Option<String>,
+) -> MoveOutcome {
+    if let Some(flag) = flag {
+        game.flags.push(GameFlag { page: loc.page, source_rect: loc.rect, flag });
+    }
+    if let Some(line) = open.lines.last_mut() {
+        line.skipped = line.skipped.saturating_add(1);
+        line.last_ok = false;
+    }
+    if open.lines.len() == 1 {
+        open.strayed |= !seen.bold;
+        open.bold_failed |= seen.bold;
+    }
+    comment(game, open, &seen.printed);
+    MoveOutcome { tried, ..MoveOutcome::status(status) }
+}
+
 impl Walker {
     /// Whether the page whose moves come next was read from its picture: only then is a letter
     /// taken for another ([`WalkRules::misread_files`]). A text layer set by the book's own
@@ -2148,10 +2240,11 @@ impl Walker {
 
     /// A printed move; `bold` when it is set in bold (the book's main line).
     ///
-    /// Plan A9-L9 (A7-10): [`Walker::opening`] settles the game the move belongs to (a heading's
-    /// solution, a caption's move, a new game); then each of [`MOVE_RULES`], in order, looks at
-    /// the open game and the move ([`MoveSeen`]) and may decide where it goes ([`Placement`]),
-    /// which [`Walker::place`] does; then the move is decided and played on the line being read.
+    /// Plan A9-L9 (A7-10): three steps. [`Walker::opening`] settles the game the move belongs to
+    /// (a heading's solution, a caption's move, a new game); then each of [`MOVE_RULES`], in
+    /// order, looks at the open game and the move ([`MoveSeen`]) and may decide where it goes
+    /// ([`Placement`]), which [`Walker::place`] does; then the move is decided and played on the
+    /// line being read ([`Walker::play_on_line`]).
     pub fn play(&mut self, number: Option<MoveNumber>, san: &San, text: &str, bold: bool, loc: Loc) -> MoveOutcome {
         let printed = format!("{}{}", number.map(|n| n.text()).unwrap_or_default(), text);
         let mut seen = MoveSeen { number, san, text, bold, printed, ..MoveSeen::new(san) };
@@ -2172,108 +2265,7 @@ impl Walker {
                 return outcome;
             }
         }
-        let (number, san, bold, printed) = (seen.number, seen.san, seen.bold, seen.printed.clone());
-        let misreads = self.rules.misread_files && self.ocr;
-        let Some(open) = self.open.as_mut() else { return MoveOutcome::status(MoveStatus::Unchecked) };
-        let gi = open.game;
-        let Some(game) = self.games.get_mut(gi) else { return MoveOutcome::status(MoveStatus::Unchecked) };
-        let Some(line) = open.lines.last() else { return MoveOutcome::status(MoveStatus::Unchecked) };
-        // The position an illegal or ambiguous move was tried in.
-        let mut tried = None;
-        let (status, flag) = match decide(&game.score, line, number) {
-            Decision::NotReached => (MoveStatus::NotReached, None),
-            Decision::OutOfSequence(expected) => {
-                (MoveStatus::OutOfSequence, Some(ReviewFlag::OutOfSequence { text: printed.clone(), expected: expected.text() }))
-            }
-            Decision::Play(at) => match play_read(&mut game.score, at, san, misreads) {
-                Ok((node, reading)) => {
-                    // The marks printed on the move as played, against the position it was played in.
-                    let mismatch = game
-                        .score
-                        .board_after(at)
-                        .and_then(|b| reading.as_ref().unwrap_or(san).to_move_checked(&b).ok())
-                        .and_then(|(_, m)| m)
-                        .map(|m| ReviewFlag::NotationMismatch { text: printed.clone(), capture: m.capture, check: m.check, mate: m.mate });
-                    // The move as played, canonical: the printed check mark may not fit it.
-                    let played = |reading: San| game.score.nodes.get(node).map_or_else(|| reading.to_english(), |n| n.san.clone());
-                    let repaired = reading.map(|reading| ReviewFlag::TextRepaired {
-                        from: printed.clone(),
-                        to: format!("{}{}", number.map(|n| n.text()).unwrap_or_default(), played(reading)),
-                        why: "a file letter an OCR mixes up (c for e) read as the other: only that move is legal here".to_owned(),
-                        confidence: CONFIDENCE_ONE_SWAP,
-                    });
-                    let (pending, own) = open.lines.last_mut().map(|l| (std::mem::take(&mut l.pending), l.after_variations)).unwrap_or_default();
-                    if !pending.is_empty() {
-                        // After the variations of the move before, the text is this move's own.
-                        open.truncated |= if own { game.score.put_before(node, &pending) } else { game.score.comment_before(node, &pending) };
-                    }
-                    if let Some(line) = open.lines.last_mut() {
-                        *line = Line { cursor: Some(node), moved: true, skipped: 0, last_ok: true, ..Line::default() };
-                    }
-                    if open.lines.len() == 1 {
-                        // In a book that marks its main line by weight, the bold line is the main
-                        // line: a bold move played on it (after its last move, or as an
-                        // alternative to one of its moves) puts its own line first. One that could
-                        // only be read inside a line of analysis does not, and a book that sets
-                        // everything in one weight says nothing: its first line stays the main one.
-                        let parent = game.score.nodes.get(node).and_then(|n| n.parent);
-                        if bold && open.regular_seen && game.score.leads_to(parent, open.bold_tip) {
-                            game.score.put_line_first(node);
-                        }
-                        if bold {
-                            open.bold_tip = Some(node);
-                            open.bold_failed = false;
-                        }
-                        open.strayed = !bold;
-                    }
-                    // The main line's reply to a move whose replies came first in brackets.
-                    if open.lines.len() == 1
-                        && let Some(parent) = game.score.nodes.get(node).and_then(|n| n.parent)
-                        && let Some(i) = open.replies.iter().position(|&r| r == parent)
-                    {
-                        open.replies.swap_remove(i);
-                        game.score.put_first(node);
-                    }
-                    let n = game.score.nodes.get(node);
-                    return MoveOutcome {
-                        status: MoveStatus::Valid,
-                        node: Some(NodeRef { game: gi, node }),
-                        san: n.map(|n| n.san.clone()),
-                        fen: n.map(|n| n.fen.clone()),
-                        tried: None,
-                        repaired,
-                        mismatch,
-                    };
-                }
-                Err(PlayError::Illegal(near)) => {
-                    tried = game.score.board_after(at).map(|b| b.to_string());
-                    (MoveStatus::Illegal, Some(ReviewFlag::IllegalMove { text: printed.clone(), near }))
-                }
-                Err(PlayError::Ambiguous(candidates)) => {
-                    tried = game.score.board_after(at).map(|b| b.to_string());
-                    (MoveStatus::Ambiguous, Some(ReviewFlag::AmbiguousMove { text: printed.clone(), candidates }))
-                }
-                Err(PlayError::NoPosition) => (MoveStatus::NotReached, None),
-                Err(PlayError::TooLarge) => {
-                    let first = !open.too_large;
-                    open.too_large = true;
-                    (MoveStatus::NotReached, first.then_some(ReviewFlag::GameTooLarge))
-                }
-            },
-        };
-        if let Some(flag) = flag {
-            game.flags.push(GameFlag { page: loc.page, source_rect: loc.rect, flag });
-        }
-        if let Some(line) = open.lines.last_mut() {
-            line.skipped = line.skipped.saturating_add(1);
-            line.last_ok = false;
-        }
-        if open.lines.len() == 1 {
-            open.strayed |= !bold;
-            open.bold_failed |= bold;
-        }
-        comment(game, open, &printed);
-        MoveOutcome { tried, ..MoveOutcome::status(status) }
+        self.play_on_line(&seen, loc)
     }
 
     /// The first step of [`Walker::play`]: the game `seen` belongs to. A heading's solution whose
@@ -2387,6 +2379,43 @@ impl Walker {
             }
         }
         None
+    }
+
+    /// The last step of [`Walker::play`]: the move decided and played on the line being read,
+    /// or kept as text with why it was not ([`Walker::played`], [`Walker::not_played`]).
+    fn play_on_line(&mut self, seen: &MoveSeen, loc: Loc) -> MoveOutcome {
+        let misreads = self.rules.misread_files && self.ocr;
+        let Some(open) = self.open.as_mut() else { return MoveOutcome::status(MoveStatus::Unchecked) };
+        let gi = open.game;
+        let Some(game) = self.games.get_mut(gi) else { return MoveOutcome::status(MoveStatus::Unchecked) };
+        let Some(line) = open.lines.last() else { return MoveOutcome::status(MoveStatus::Unchecked) };
+        let at = match decide(&game.score, line, seen.number) {
+            Decision::NotReached => return not_played(game, open, seen, loc, MoveStatus::NotReached, None, None),
+            Decision::OutOfSequence(expected) => {
+                let flag = ReviewFlag::OutOfSequence { text: seen.printed.clone(), expected: expected.text() };
+                return not_played(game, open, seen, loc, MoveStatus::OutOfSequence, Some(flag), None);
+            }
+            Decision::Play(at) => at,
+        };
+        match play_read(&mut game.score, at, seen.san, misreads) {
+            Ok((node, reading)) => played(game, open, gi, seen, at, node, reading),
+            Err(PlayError::Illegal(near)) => {
+                let tried = game.score.board_after(at).map(|b| b.to_string());
+                let flag = ReviewFlag::IllegalMove { text: seen.printed.clone(), near };
+                not_played(game, open, seen, loc, MoveStatus::Illegal, Some(flag), tried)
+            }
+            Err(PlayError::Ambiguous(candidates)) => {
+                let tried = game.score.board_after(at).map(|b| b.to_string());
+                let flag = ReviewFlag::AmbiguousMove { text: seen.printed.clone(), candidates };
+                not_played(game, open, seen, loc, MoveStatus::Ambiguous, Some(flag), tried)
+            }
+            Err(PlayError::NoPosition) => not_played(game, open, seen, loc, MoveStatus::NotReached, None, None),
+            Err(PlayError::TooLarge) => {
+                let first = !open.too_large;
+                open.too_large = true;
+                not_played(game, open, seen, loc, MoveStatus::NotReached, first.then_some(ReviewFlag::GameTooLarge), None)
+            }
+        }
     }
 
     /// An annotation glyph: the last move's, when it was played; else part of the comment.
