@@ -238,7 +238,9 @@ impl Session {
                     creator: doc.info.author.clone(),
                     source: Some(doc.name.clone()).filter(|n| !n.trim().is_empty()),
                 };
-                super::epub::epub(&read.doc, &options, &meta)?
+                // A book with no `/PageLabels` is paged by the numbers it prints (plan A9-L1b).
+                let printed = PageLabel::with_folios(&labels, &read.doc);
+                super::epub::epub(&read.doc, &HtmlOptions { page_labels: &printed, ..options.clone() }, &meta)?
             }
             ChessFormat::Pgn => {
                 // Each game says where in the book it came from (plan A8 P8a).
@@ -313,7 +315,11 @@ impl Session {
                 };
                 let (flow, count) = super::office::to_flow(&read.doc, &office, &mut notes);
                 drawn = count;
-                if format == ChessFormat::Docx { super::office::docx(&flow) } else { super::office::rtf(&flow).into_bytes() }
+                if format == ChessFormat::Docx {
+                    super::office::docx(&flow).map_err(|e| e.to_string())?
+                } else {
+                    super::office::rtf(&flow).into_bytes()
+                }
             }
         };
         Ok(ChessExport { bytes, images, read, drawn, position_games, positions_skipped, pgn_warnings, annotated, notes })

@@ -687,6 +687,7 @@ fn chess_document_links_the_moves_to_the_books_pgn() {
     assert_eq!(r["linked"], json!({ "confirmed": 4, "recovered": 2, "conflict": 0, "absent": 0 }), "{r:#}");
     assert_eq!(r["pages"], json!([{ "page": 1, "game": 1, "name": "Chapter 1 · Ruy" }]));
     assert_eq!((r["warnings"].as_array().map(Vec::len), r["stopped_games"].as_array().map(Vec::len)), (Some(0), Some(0)));
+    assert_eq!(r["walked_again"], false, "no diagram the PGN confirmed: nothing walked again");
     let inlines = read["document"]["pages"][0]["blocks"][0]["inlines"].as_array().unwrap();
     let moves: Vec<&Value> = inlines.iter().filter(|i| i["type"] == "move").collect();
     assert_eq!(moves.len(), 6, "{inlines:#?}");
@@ -755,6 +756,14 @@ fn the_books_pgn_confirms_a_diagram_and_suggests_a_near_one_without_writing_a_co
     // The reading stays what was printed; the diagram shows the PGN's position (plan A9-L6b).
     assert!(diagram["reference"]["fen"].as_str().is_some_and(|f| f.ends_with(" w KQkq - 0 1")), "{diagram:#}");
     assert!(diagram["reference"]["before"].is_null() && diagram["reading"]["side_source"].is_string(), "{diagram:#}");
+    // The reading only assumed the side the PGN gives: the moves were walked again from the PGN's
+    // position (plan A9-L8, A2-11), and the reply says so.
+    assert_eq!(
+        (diagram["reading"]["side_source"].as_str(), &read["reference"]["walked_again"]),
+        (Some("assumed"), &json!(true)),
+        "{:#}",
+        read["reference"]
+    );
     let states = |a: &mut Automation, doc: u64, pgn: Option<&str>| {
         let mut args = json!({ "doc": doc, "models_dir": "models" });
         if let Some(pgn) = pgn {
@@ -3364,6 +3373,28 @@ fn chess_correction_list_tells_another_books_entries_and_a_change_separates_them
         Some(vec![json!("another-books")]),
         "{left}"
     );
+    let _ = std::fs::remove_dir_all(base);
+}
+
+/// Plan A9-G7b (A2-16): the pages a reading tool is given are read in the book's order, each once:
+/// `pages: [2, 1]` read page 2 before page 1 (a game across them read backwards, and the exports in
+/// that order), and `[1, 1]` read page 1 twice (its games doubled, its HTML's ids repeated).
+#[test]
+fn chess_document_reads_pages_in_order_once() {
+    let (base, root) = workdir("pageset");
+    let (mut a, doc) = opened(&root);
+    ok(&mut a, "page_duplicate", json!({ "doc": doc, "pages": [1] }));
+    let indices = |read: &Value| -> Vec<u64> { read["document"]["pages"].as_array().unwrap().iter().map(|p| p["index"].as_u64().unwrap()).collect() };
+    let read = ok(&mut a, "chess_document", json!({ "doc": doc, "pages": [2, 1], "include": ["json"] }));
+    assert_eq!((read["pages"].as_u64(), indices(&read)), (Some(2), vec![0, 1]), "{read:#}");
+    let read = ok(&mut a, "chess_document", json!({ "doc": doc, "pages": [1, 1], "include": ["json"] }));
+    assert_eq!((read["pages"].as_u64(), indices(&read)), (Some(1), vec![0]), "{read:#}");
+    let html = ok(&mut a, "chess_export_html", json!({ "doc": doc, "pages": [2, 1, 2], "out": "two.html" }));
+    assert!(html.get("error").is_none(), "{html:#}");
+    let text = std::fs::read_to_string(root.join("two.html")).unwrap();
+    let first = text.find("data-page=\"1\"").unwrap();
+    let second = text.find("data-page=\"2\"").unwrap();
+    assert!(first < second && text.matches("data-page=\"2\"").count() == 1, "in order, once");
     let _ = std::fs::remove_dir_all(base);
 }
 

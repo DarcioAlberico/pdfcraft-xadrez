@@ -648,26 +648,17 @@ pub fn lookup_family(font_name: &str) -> Option<&'static Family> {
 }
 
 /// Fragments that mean "some chess font" without naming a family.
-const GENERIC_CHESS_NAMES: &[&str] = &[
-    "semfig",
-    "figurin",
-    "chessfig",
-    "chessbase",
-    "diagramttf",
-    "dgt",
-    "linares",
-    "marroquin",
-    "zurich",
-    "berlin",
-    "cheq",
-    "uscf",
-    "tilburg",
-    "utrecht",
-    "leipzig",
-    "lucena",
-    "merida",
-    "skak",
-];
+const GENERIC_CHESS_NAMES: &[&str] =
+    &["semfig", "figurin", "chessfig", "chessbase", "diagramttf", "dgt", "marroquin", "cheq", "uscf", "lucena", "skak"];
+
+/// Cities chess fonts are named after (`Zurich`, `Berlin`, `Merida`), which text fonts are named
+/// after too (Bitstream's `ZurichBT`, Microsoft's `Berlin Sans FB`): a chess font only with a
+/// chess word in its name as well ([`CHESS_WORDS`]; plan A9-L7, A1-24).
+const CITY_NAMES: &[&str] = &["zurich", "berlin", "tilburg", "utrecht", "leipzig", "linares", "merida"];
+
+/// The words that make a city's name a chess font's: `chess`, ChessBase's `dg` (diagram) and
+/// `fig` (figurine), `diagram`, and chess in German and the Nordic languages.
+const CHESS_WORDS: &[&str] = &["chess", "dg", "fig", "diagram", "schach", "skak"];
 
 /// Whether a font name looks like some chess font, catalogued or not. Keeps an unknown chess
 /// font from being taken for body text, and lets unknown families be logged so the catalogue
@@ -678,6 +669,9 @@ pub fn looks_like_chess_font(font_name: &str) -> bool {
         return false;
     }
     if GENERIC_CHESS_NAMES.iter().any(|g| bare.contains(g)) {
+        return true;
+    }
+    if CITY_NAMES.iter().any(|c| bare.contains(c)) && CHESS_WORDS.iter().any(|w| bare.contains(w)) {
         return true;
     }
     bare.match_indices("chess").any(|(i, _)| !bare.get(i + 5..).is_some_and(|rest| rest.starts_with("board")))
@@ -981,6 +975,19 @@ mod tests {
         assert!(looks_like_chess_font("Chessboard Chess"));
         assert!(!looks_like_chess_font("Times New Roman"));
         assert!(!looks_like_chess_font(""));
+    }
+
+    /// Plan A9-L7 (A1-24): a city's name alone is a text font's too (Bitstream's Zurich, a
+    /// Univers cut, was taken for a chess font and its text kept as it extracted); with a chess
+    /// word beside it, it is a chess font's.
+    #[test]
+    fn looks_like_chess_font_needs_a_chess_word_with_a_city() {
+        for text in ["ZurichBT-Roman", "Zurich BT", "Berlin Sans FB Demi", "LinaresText"] {
+            assert!(!looks_like_chess_font(text), "{text}");
+        }
+        for chess in ["ZurichDG", "BerlinChess", "MeridaFig", "LeipzigDiagram", "TilburgSchach"] {
+            assert!(looks_like_chess_font(chess), "{chess}");
+        }
     }
 
     #[test]
